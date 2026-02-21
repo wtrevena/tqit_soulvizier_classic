@@ -1,0 +1,20 @@
+# Large / copyrighted content - never commit
+third_party/
+reference_mods/
+upstream/
+build/
+dist/
+backups/
+local/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.pyc
+.venv/
