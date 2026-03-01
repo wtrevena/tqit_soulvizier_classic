@@ -13,7 +13,7 @@ The mod must preserve the classic scope and feel.
 * Avoid the Steam fork behavior the user dislikes, meaning no aggressive nerfs, no extreme stat requirements, no low soul drop rates, no removal of Blood Cave.
 * Multiplayer: must work as a Custom Quest mod in AE so friends can join if they have the same mod version.
 
-This repository is developed using Cursor Agent in WSL2, while deploying and testing on Windows 11.
+This repository is developed using Cursor Agent natively on Windows 11 with PowerShell scripts.
 
 ## Current system state
 
@@ -22,7 +22,7 @@ On this Windows 11 PC:
 * Steam is installed.
 * Titan Quest Anniversary Edition is installed.
 * The user can already see at least one installed Custom Quest mod: `SVAERA_customquest` and a map `world01.map` is present.
-* WSL2 is installed and Cursor will operate inside WSL2 while editing files located on the Windows drive via `/mnt/c/...`.
+* Development is done natively on Windows using Cursor and PowerShell.
 * A GitHub repo already exists, named `tqit_soulvizier_classic`.
 
 ## Non negotiable constraints
@@ -35,9 +35,10 @@ On this Windows 11 PC:
 * Treat Steam Workshop downloaded mods as read only reference sources. Copy them into repo reference folders instead of editing them in place.
 
 Important note about compilation:
-* ArchiveTool can extract .arz and .arc, but it is not a reliable way to build .arz from CLI.
-* If a pure CLI .arz builder cannot be found, use the official mod toolchain for the build step only.
-* The user does not want to manually interact with any GUI, so if ArtManager is required, automate it using a Windows side script.
+* ArchiveTool handles .arc files only (list/extract). It does NOT handle .arz.
+* We built custom Python tools for .arz manipulation: `tools/arz_extract.py`, `tools/arz_build_delta.py`, `tools/arz_converter.py`, `tools/arz_patcher.py`, `tools/build_svc_database.py`.
+* The current build pipeline loads SV 0.98i, patches it with SoulvizierClassic changes, and writes a fully patched .arz.
+* No GUI interaction (ArtManager) is required for the current workflow.
 
 ## Definitions
 
@@ -118,31 +119,22 @@ Cursor Agent must verify these are present and install where missing.
    * Recommended: Python 3.11 or higher.
    * Required packages if used: `pywinauto`, `pywin32`.
 3. Titan Quest Anniversary Edition is already installed, verify path.
-
-## Required installations in WSL2
-
-Install baseline utilities:
-
-* `unzip`, `p7zip-full`, `rsync`, `python3`, `python3-pip`, `dos2unix`
+4. 7-Zip for archive extraction (optional, `winget install 7zip.7zip`).
 
 ## Scripts to implement
 
-### scripts/doctor.sh
+### scripts/doctor.ps1
 
 Goal:
 Detect all key paths, validate prerequisites, and write a config file at `local/config.env`.
 
 Responsibilities:
 
-* Determine Windows username via `cmd.exe /c echo %USERNAME%` or PowerShell.
-* Determine CustomMaps path under Documents.
-* Locate Titan Quest AE install folder.
-  * Search common locations under `/mnt/c/Program Files (x86)/Steam/steamapps/common/`.
-  * Also parse `libraryfolders.vdf` to find alternate Steam libraries if needed.
+* Determine Windows username and Documents path (handles OneDrive redirect).
+* Locate Titan Quest AE install folder via Steam library paths.
 * Locate Workshop folder for app id 475150.
-* Locate `ArchiveTool.exe` inside the TQAE install folder if present.
-* Locate `ArtManager.exe` inside the TQAE install folder if present.
-* Locate SteamCMD at `C:\steamcmd\steamcmd.exe`.
+* Locate `ArchiveTool.exe` and `ArtManager.exe` inside the TQAE install folder.
+* Locate SteamCMD if installed.
 
 Write `local/config.env` with keys like:
 
@@ -155,10 +147,11 @@ Write `local/config.env` with keys like:
 * `TQ_ARTMANAGER=...`
 * `STEAM_WORKSHOP_475150=...`
 * `STEAMCMD_EXE=...`
+* `REPO_ROOT=...`
 
-Exit nonzero if the game install path or CustomMaps path cannot be found.
+Exit nonzero if the game install path cannot be found.
 
-### scripts/sync_reference_mods.sh
+### scripts/sync_reference_mods.ps1
 
 Goal:
 Copy installed Workshop mod folders into `reference_mods/` for analysis.
@@ -169,10 +162,10 @@ Minimum:
 
 Implementation approach:
 * Search under `STEAM_WORKSHOP_475150` for a directory named `SVAERA_customquest`.
-* Copy it into `reference_mods/SVAERA_customquest/` using `rsync -a`.
+* Copy it into `reference_mods/SVAERA_customquest/`.
 * Write `docs/reference_mods.md` summarizing what was copied and where it came from.
 
-### scripts/import_upstream_soulvizier.sh
+### scripts/import_upstream_soulvizier.ps1
 
 Goal:
 Import the original Soulvizier 0.98i archive from `third_party/` into `upstream/`.
@@ -186,63 +179,44 @@ Responsibilities:
   * `maps/*.map` or similar
 * Write `docs/upstream_inventory.md` listing what upstream contains.
 
-### scripts/bootstrap_working_mod.sh
+### scripts/bootstrap_working_mod.ps1
 
 Goal:
 Create our working mod tree for SoulvizierClassic under `work/SoulvizierClassic/`.
 
 Responsibilities:
-* Create `work/SoulvizierClassic/database/`
-* Create `work/SoulvizierClassic/resources/`
-* Create `work/SoulvizierClassic/maps/` if needed.
+* Create `work/SoulvizierClassic/Database/`
+* Create `work/SoulvizierClassic/Resources/`
 
-Then copy upstream compiled artifacts into the working mod as a baseline:
-
-* Copy upstream `database/*.arz` into `work/SoulvizierClassic/database/` and rename to `SoulvizierClassic.arz`.
-* Copy upstream `resources/*.arc` into `work/SoulvizierClassic/resources/`.
-* Copy upstream map files into `work/SoulvizierClassic/maps/` if present.
+Build the mod from known-good sources:
+* Build `SoulvizierClassic.arz` as a **delta** (SV-unique records only) using `tools/arz_build_delta.py`.
+* Copy upstream `resources/*.arc` into `work/SoulvizierClassic/Resources/`.
+* Replace `Levels.arc` with the AE-compatible version from SVAERA reference mod (critical for pathfinding).
 
 Important:
-* The `.arz` file name should match the mod folder name to avoid confusion at runtime.
+* The `.arz` file name must match the mod folder name.
+* The upstream `Levels.arc` (282 MB, TQIT-era) is NOT compatible with AE pathfinding. Must use SVAERA's version (631 MB).
 
-### scripts/extract_working_database.sh
+### scripts/extract_working_database.ps1
 
 Goal:
-Extract the working `.arz` into editable `.dbr` records.
-
-Responsibilities:
-* Use `ArchiveTool.exe` if available to extract `.arz` with `-database` into:
-  * `work/SoulvizierClassic/database/records/`
-* If ArchiveTool cannot extract, fall back to a dedicated ARZ extractor tool, and document it in the repo.
+Extract the working `.arz` into editable `.dbr` records using `tools/arz_extract.py`.
 
 Output:
 * Editable records in `work/SoulvizierClassic/database/records/...`.
+* Each .dbr is a text file with key=value pairs.
 
-### scripts/build_database.sh
+### scripts/build_database.ps1
 
 Goal:
-Rebuild `SoulvizierClassic.arz` from edited `.dbr` records.
+Rebuild `SoulvizierClassic.arz` from the delta build pipeline.
 
-Important reality:
-* If a pure CLI rebuild tool is not available, the build must use the official mod toolchain.
+Approach:
+1. Use `tools/arz_build_delta.py` to compare upstream SV records against AE base game.
+2. Output only SV-unique or SV-modified records into the delta .arz.
+3. No GUI or ArtManager interaction required.
 
-Approach hierarchy:
-1. If a reliable CLI `.arz` builder is present, use it.
-2. Otherwise, automate ArtManager build on Windows.
-
-If ArtManager build automation is required:
-* Create `scripts/win_artmanager_build.ps1` that:
-  * Launches ArtManager.
-  * Ensures Tools, Working, Build directories are configured.
-  * Loads mod `SoulvizierClassic`.
-  * Triggers Build.
-  * Waits for completion.
-  * Exits cleanly.
-* If ArtManager cannot be controlled without manual intervention, implement UI automation using a Windows Python script under `scripts/win_artmanager_build.py` using `pywinauto`.
-
-The user must not be required to click anything.
-
-### scripts/deploy_to_custommaps.sh
+### scripts/deploy_to_custommaps.ps1
 
 Goal:
 Deploy the built mod into the user CustomMaps folder so they can test.
@@ -255,7 +229,7 @@ Responsibilities:
   * Copy `work/SoulvizierClassic/` or `build/SoulvizierClassic/` depending on build method.
 * Confirm that `database/SoulvizierClassic.arz` exists in deployed folder.
 
-### scripts/package_workshop.sh
+### scripts/package_workshop.ps1
 
 Goal:
 Create a clean staging folder for Workshop upload at:
@@ -270,7 +244,7 @@ Responsibilities:
   * `maps/*.map` if required for custom quest
   * `preview.jpg` and `workshop_description.txt` generated from docs
 
-### scripts/upload_workshop.sh
+### scripts/upload_workshop.ps1
 
 Goal:
 Upload using SteamCMD with a VDF file.
@@ -375,16 +349,64 @@ Multiplayer test milestones:
 * Commit small changes with clear messages.
 * Keep a running changelog in `docs/CHANGELOG.md`.
 
-## Immediate next actions for the agent
+## Progress
 
-1. Implement the directory structure and `.gitignore`.
-2. Implement `scripts/doctor.sh` and run it.
-3. Implement `scripts/sync_reference_mods.sh` and copy `SVAERA_customquest`.
-4. Implement `scripts/import_upstream_soulvizier.sh` using the Soulvizier 0.98i archive in `third_party/`.
-5. Implement `scripts/bootstrap_working_mod.sh`.
-6. Implement `scripts/extract_working_database.sh`.
-7. Decide build approach for `.arz`:
-   * Attempt to find a reliable CLI builder.
-   * If not found, implement ArtManager build automation that does not require user interaction.
-8. Implement deploy script and complete first smoke test.
-9. Only after baseline works, start “missing souls” audit and super caravan edits.
+### Completed
+
+1. ~~Directory structure and `.gitignore`~~ DONE
+2. ~~`scripts/doctor.ps1` -- system detection and config~~ DONE
+3. ~~`scripts/sync_reference_mods.ps1` -- copy SVAERA for reference~~ DONE
+4. ~~`scripts/import_upstream_soulvizier.ps1` -- extract SV 0.98i~~ DONE
+5. ~~`scripts/bootstrap_working_mod.ps1` -- create working mod tree~~ DONE
+6. ~~`scripts/deploy_to_custommaps.ps1` -- deploy for testing~~ DONE
+7. ~~Python .arz toolchain -- extract, delta build, format convert, patch~~ DONE
+8. ~~First playable deployment achieved~~ DONE
+9. ~~Full SV 0.98i .arz deployed (all game balance overrides)~~ DONE
+10. ~~Mastery label fix: Rogue -> Occult in Text_EN.arc~~ DONE
+11. ~~Potion drop rates restored from SV 0.9 (168 loot table weights)~~ DONE
+12. ~~1,667 monsters wired to drop their matching soul items~~ DONE
+    * 66% drop chance for rare/hero monsters, 25% for farmable bosses
+    * Souls already had 0 stat requirements (str/int/dex) -- no change needed
+13. ~~9,804 equipment items made enchantable (numRelicSlots=1)~~ DONE
+
+14. ~~Map restoration: drxmap content (occultist merchant, demon sprites, pit sprites) restored~~ DONE
+    * Hybrid v0x0e blob approach: SV's full 0x05 section + SVAERA's terrain/pathfinding
+    * 9 shared levels surgically merged, 46 SV-only levels appended
+    * Confirmed working in-game: merchant interactive, combat functional
+15. ~~SkillsPanel.arc stripped (TQIT UI incompatible with AE)~~ DONE
+16. ~~Character backup script updated to include Custom Quest saves (SaveData\User)~~ DONE
+
+### Next actions
+
+1. Implement Super Caravan features (expanded stash, bags, respec items)
+2. Verify Blood Cave dungeon (xBloodCave) and Garden of Merchants are accessible via quest triggers
+3. Multiplayer testing
+4. Package and upload to Steam Workshop
+
+17. ~~Uber Dungeon portal at Crisaeos Falls~~ DONE
+    * NPC portal (Action_BoatDialog) placed near the demon sprites in DelphiLowlands04
+    * Teleports player to crypt_floor1.lvl (Uber Dungeon) with Deathstalkers, Ghosts, Fell Minotaurs, golden chests
+    * Return portal inside the Uber Dungeon back to Crisaeos Falls
+    * Uber Dungeon connects onward to Boss Arena via existing portal_olympianarena2
+    * Boss Arena quest (bossarena.qst) spawns Satyr Shaman boss on entry
+    * Quest file builder: `tools/qst_format.py` (fully reverse-engineered .qst format, 89/89 round-trip verified)
+
+### Future ideas
+
+- **Dionyses' Trickster relic drop**: Add a unique relic drop (like the Magneta Shell) to Dionyses' Trickster
+- **Pan's Guard relic drop**: Add a unique relic drop to Pan's Guard
+- **Rakanizeus Soul overhaul**: Current auto-generated soul is underwhelming for an uber monster (only +20% run speed, some lightning damage, a pierce penalty). Needs a major buff -- add a lightning proc skill, massive speed/attack speed bonuses, and stats befitting an uber boss. Use Typhon/Hades souls as reference for stat density.
+- **Mercenary scrolls everywhere**: Make all merc scrolls droppable in any act/difficulty instead of being locked to specific regions. Cascade availability: Normal scrolls also appear in Epic/Legendary tables, Epic scrolls also in Legendary. Currently Act 3 Normal only drops Skoneros, Act 4 Normal only Apollinia, etc.
+- **Blood Mistress formula in loot tables**: The Blood Mistress upgrade is currently forge-only. Add the formula to boss loot tables or forge merchant inventory.
+- **Blood Cave entrance audit**: The Blood Cave is accessed via the "Duister" NPC at the Garden of Merchants (triggered by quest `open_bloodcave_portal.qst`). Need to verify this quest chain works end-to-end in the AE port.
+- **Quest gating**: Optionally gate the Uber Dungeon portal behind a quest condition (kill a boss, reach a certain point) instead of being always visible.
+- **Paragon of Violence**: Not found in any SV database (0.4.1, 0.9, 0.98i). May be from a different mod or was never implemented in SV.
+
+## Archive
+
+The original plan assumed we'd need ArtManager or a CLI .arz builder. In practice, we built
+custom Python tools that handle .arz reading, record extraction, field-level patching, and
+writing fully patched .arz files. The build pipeline (`tools/build_svc_database.py`) loads
+SV 0.98i as the base, compares with SV 0.9 to restore potion drop rates, wires 1,667+
+soul-to-monster assignments, makes all equipment enchantable, and outputs a single patched .arz.
+No GUI interaction is needed.

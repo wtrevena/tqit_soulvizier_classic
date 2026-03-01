@@ -6,6 +6,10 @@ build/
 dist/
 backups/
 local/
+work/
+
+# Accidental directories
+--stats-only/
 
 # OS / editor
 .DS_Store
