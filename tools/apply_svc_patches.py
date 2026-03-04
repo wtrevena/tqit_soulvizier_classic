@@ -267,69 +267,36 @@ def _copy_animation_fields(db, monster_path, pet_path):
     return copied
 
 
-def _copy_equipment_fields(db, monster_path, pet_path):
-    """Copy all equipment/loot fields from a monster record to a pet record.
+_EQUIP_PREFIXES = ('chancetoequip', 'loot')
+_SKILL_PREFIXES = (
+    'skillname', 'skilllevel', 'attackskillname',
+    'specialattack', 'buffself', 'initialskillname',
+)
 
-    After cloning from Hydra, the pet only inherits Hydra's minimal equipment
-    (just a soul ring in finger2).  This copies the real monster's full gear
-    loadout so the pet visually wears the boss equipment.
+
+def _replace_fields_from_monster(db, monster_path, pet_path, prefixes):
+    """Clear all fields matching *prefixes* from pet, then copy from monster.
+
+    This avoids the bug where Hydra-inherited fields (e.g. hydra_arcticbreath)
+    remain when the target monster doesn't have a matching field to overwrite.
     """
     monster_fields = db.get_fields(monster_path)
     pet_fields = db.get_fields(pet_path)
     if not monster_fields or not pet_fields:
         return 0
 
+    # 1. Remove ALL matching fields from pet (clears Hydra leftovers)
+    to_remove = [pk for pk in pet_fields
+                 if any(pk.split('###')[0].lower().startswith(p) for p in prefixes)]
+    for pk in to_remove:
+        del pet_fields[pk]
+
+    # 2. Copy matching fields from monster
     copied = 0
     for key, tf in monster_fields.items():
         fn = key.split('###')[0]
-        fnl = fn.lower()
-        # Copy equipment chance and loot table fields
-        if fnl.startswith('chancetoequip') or fnl.startswith('loot'):
-            target_key = None
-            for pk in pet_fields:
-                if pk.split('###')[0] == fn:
-                    target_key = pk
-                    break
-            if target_key:
-                pet_fields[target_key].dtype = tf.dtype
-                pet_fields[target_key].values = list(tf.values)
-            else:
-                pet_fields[fn] = TypedField(tf.dtype, list(tf.values))
-            copied += 1
-
-    db._modified.add(pet_path)
-    return copied
-
-
-def _copy_skill_fields(db, monster_path, pet_path):
-    """Copy all skill fields from a monster record to a pet record.
-
-    Replaces the manually-specified skill list with the real monster's
-    complete skill set (including passives, buffs, special attacks, etc.).
-    """
-    monster_fields = db.get_fields(monster_path)
-    pet_fields = db.get_fields(pet_path)
-    if not monster_fields or not pet_fields:
-        return 0
-
-    copied = 0
-    for key, tf in monster_fields.items():
-        fn = key.split('###')[0]
-        fnl = fn.lower()
-        if any(fnl.startswith(p) for p in (
-            'skillname', 'skilllevel', 'attackskillname',
-            'specialattack', 'buffself', 'initialskillname',
-        )):
-            target_key = None
-            for pk in pet_fields:
-                if pk.split('###')[0] == fn:
-                    target_key = pk
-                    break
-            if target_key:
-                pet_fields[target_key].dtype = tf.dtype
-                pet_fields[target_key].values = list(tf.values)
-            else:
-                pet_fields[fn] = TypedField(tf.dtype, list(tf.values))
+        if any(fn.lower().startswith(p) for p in prefixes):
+            pet_fields[fn] = TypedField(tf.dtype, list(tf.values))
             copied += 1
 
     db._modified.add(pet_path)
@@ -337,25 +304,22 @@ def _copy_skill_fields(db, monster_path, pet_path):
 
 
 def _create_rakanizeus_pet_skill(db):
-    """Create Rakanizeus pet records by cloning from Hydra and overriding.
+    """Create Rakanizeus pet records by cloning from Lyia Leafsong.
 
-    Clones the complete, working Hydra Pet.tpl records (which have all required
-    fields for pathing, pet behavior, etc.) then copies animation fields from
-    the real Rakanizeus monster record (which uses the same Satyr mesh) and
-    overrides stats, skills, and identity.
+    Lyia is the ideal clone source: she's already a permanent pet with full
+    equipment, skills, and all required Pet.tpl fields.  After cloning, we
+    clear her animations/equipment/skills and replace them with Rakanizeus's.
     """
     CONTROLLER = (r'records\skills\spirit\drxpet'
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
 
-    # Source records to clone from (working Hydra pets)
-    # NOTE: All paths MUST use backslashes — the game engine does exact-match
-    # lookups and all 50k+ existing records use backslashes.
-    hydra_sources = [
-        r'records\skills\soulskills\pets\hydra_1.dbr',
-        r'records\skills\soulskills\pets\hydra_2.dbr',
-        r'records\skills\soulskills\pets\hydra_3.dbr',
+    # Clone from Lyia (permanent pet with working equipment + skills)
+    lyia_sources = [
+        r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_3.dbr',
     ]
-    hydra_summon = r'records\skills\soulskills\summon_hydra.dbr'
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
 
     pet_paths = [
         r'records\skills\soulskills\pets\rakanizeus_1.dbr',
@@ -368,40 +332,42 @@ def _create_rakanizeus_pet_skill(db):
     life_regen = [25.0, 45.0, 65.0]
     dmg_min =    [60, 90, 120]
     dmg_max =    [90, 130, 170]
-    armor_lvl =  [56, 184, 408]
 
-    # Find the real Rakanizeus monster record for animation fields
+    # Find the real Rakanizeus monster record
     rakan_monster = _find_record(
         db, r'records\creature\monster\satyr\um_rakanizeus_17.dbr')
     if not rakan_monster:
         print("  WARNING: Rakanizeus monster record not found!")
 
-    # Clone pet records from Hydra
     for i, path in enumerate(pet_paths):
-        src = _find_record(db, hydra_sources[i])
+        src = _find_record(db, lyia_sources[i])
         if not src:
-            print(f"  WARNING: Hydra source {hydra_sources[i]} not found!")
+            print(f"  WARNING: Lyia source {lyia_sources[i]} not found!")
             return False
         db.clone_record(src, path)
 
-        # Copy fields from the real Rakanizeus monster so the pet looks,
-        # fights, and equips like the actual boss.
+        # Replace Lyia's animations/equipment/skills with Rakanizeus's.
+        # _replace_fields_from_monster CLEARS all matching fields first,
+        # then copies from the monster — no leftover Lyia/Hydra fields.
         if rakan_monster:
             na = _copy_animation_fields(db, rakan_monster, path)
-            ne = _copy_equipment_fields(db, rakan_monster, path)
-            ns = _copy_skill_fields(db, rakan_monster, path)
+            ne = _replace_fields_from_monster(db, rakan_monster, path, _EQUIP_PREFIXES)
+            ns = _replace_fields_from_monster(db, rakan_monster, path, _SKILL_PREFIXES)
             if i == 0:
                 print(f"  Copied from Rakanizeus monster: {na} anim, {ne} equip, {ns} skill fields")
 
         sf = db.set_field
 
-        # Override identity
+        # Override identity (replace Lyia's nymph identity with Rakanizeus)
         sf(path, 'charLevel', i + 1)
         sf(path, 'mesh', r'SVMesh\meshes\rakanizeus.msh')
+        sf(path, 'baseTexture', '')  # use mesh default
+        sf(path, 'bumpTexture', '')
         sf(path, 'scale', 1.4)
         sf(path, 'description', 'tagNewHero87')
         sf(path, 'characterRacialProfile', 'Beastman')
         sf(path, 'controller', CONTROLLER)
+        sf(path, 'charAnimationTableName', '')  # clear Lyia's; mesh has defaults
 
         # Override stats (dtype=None preserves clone's FLOAT types)
         sf(path, 'characterLife', float(life[i]))
@@ -417,7 +383,7 @@ def _create_rakanizeus_pet_skill(db):
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Pet behavior: allow equipment to generate, no XP
+        # Pet behavior
         sf(path, 'dropItems', 1)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
@@ -428,17 +394,16 @@ def _create_rakanizeus_pet_skill(db):
         sf(path, 'StatusIconRed',
            r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex')
 
-    # ── Clone and configure summon skill from Hydra ──────────────────────
+    # ── Clone summon skill from Lyia (already permanent, no TTL) ─────────
     summon_path = SUMMON_RAKANIZEUS_SKILL
-    summon_src = _find_record(db, hydra_summon)
+    summon_src = _find_record(db, lyia_summon)
     if summon_src:
         db.clone_record(summon_src, summon_path)
     else:
-        print(f"  WARNING: Hydra summon {hydra_summon} not found, creating empty")
+        print(f"  WARNING: Lyia summon {lyia_summon} not found, creating empty")
         _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
         db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
 
-    # Override summon skill fields (preserve dtypes from Hydra clone)
     sf = db.set_field
     sf(summon_path, 'isPetDisplayable', 1)
     sf(summon_path, 'skillDisplayName', 'tagSVCSummonRakanizeus')
@@ -448,9 +413,6 @@ def _create_rakanizeus_pet_skill(db):
        r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex')
     sf(summon_path, 'skillDownBitmapName',
        r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex')
-    # Remove time-to-live so pet is permanent like Lyia Leafsong
-    # (Hydra clone has 40-135s timer; empty list drops the field from output)
-    sf(summon_path, 'spawnObjectsTimeToLive', [])
 
     # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
     for name in list(db.record_names()):
@@ -463,30 +425,27 @@ def _create_rakanizeus_pet_skill(db):
             elif '_soul_l.dbr' in nl:
                 db.set_field(name, 'itemSkillLevel', 3)
 
-    print("  Rakanizeus summon: cloned 3 pet records from Hydra + summon skill")
+    print("  Rakanizeus summon: cloned 3 pet records from Lyia + summon skill")
     return True
 
 
 def _create_boneash_pet_skill(db):
-    """Create Boneash pet records by cloning from Hydra and overriding.
+    """Create Boneash pet records by cloning from Lyia Leafsong.
 
     Boneash is a fire skeleton caster — slow movement, high INT, devastating
     fire spells (Fireball, Pillar of Flame, Flamestrike, Ternion).
-    Clones from Hydra to inherit all required Pet.tpl fields, then copies
-    animation fields from the real Boneash monster record.
+    Clones from Lyia for a clean Pet.tpl baseline, then replaces animations,
+    equipment, and skills with the real Boneash monster's.
     """
     CONTROLLER = (r'records\skills\spirit\drxpet'
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
 
-    # Source records to clone from (working Hydra pets)
-    # NOTE: All paths MUST use backslashes — the game engine does exact-match
-    # lookups and all 50k+ existing records use backslashes.
-    hydra_sources = [
-        r'records\skills\soulskills\pets\hydra_1.dbr',
-        r'records\skills\soulskills\pets\hydra_2.dbr',
-        r'records\skills\soulskills\pets\hydra_3.dbr',
+    lyia_sources = [
+        r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_3.dbr',
     ]
-    hydra_summon = r'records\skills\soulskills\summon_hydra.dbr'
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
 
     pet_paths = [
         r'records\skills\soulskills\pets\boneash_1.dbr',
@@ -499,28 +458,25 @@ def _create_boneash_pet_skill(db):
     life_regen = [20.0, 35.0, 50.0]
     dmg_min =    [40, 60, 80]
     dmg_max =    [60, 90, 120]
-    armor_lvl =  [40, 150, 350]
 
-    # Find the real Boneash monster record for animation fields
+    # Find the real Boneash monster record
     boneash_monster = _find_record(
         db, r'records\creature\monster\skeleton\um_boneash_30.dbr')
     if not boneash_monster:
         print("  WARNING: Boneash monster record not found!")
 
-    # Clone pet records from Hydra
     for i, path in enumerate(pet_paths):
-        src = _find_record(db, hydra_sources[i])
+        src = _find_record(db, lyia_sources[i])
         if not src:
-            print(f"  WARNING: Hydra source {hydra_sources[i]} not found!")
+            print(f"  WARNING: Lyia source {lyia_sources[i]} not found!")
             return False
         db.clone_record(src, path)
 
-        # Copy fields from the real Boneash monster so the pet looks,
-        # fights, and equips like the actual boss.
+        # Replace Lyia's animations/equipment/skills with Boneash's
         if boneash_monster:
             na = _copy_animation_fields(db, boneash_monster, path)
-            ne = _copy_equipment_fields(db, boneash_monster, path)
-            ns = _copy_skill_fields(db, boneash_monster, path)
+            ne = _replace_fields_from_monster(db, boneash_monster, path, _EQUIP_PREFIXES)
+            ns = _replace_fields_from_monster(db, boneash_monster, path, _SKILL_PREFIXES)
             if i == 0:
                 print(f"  Copied from Boneash monster: {na} anim, {ne} equip, {ns} skill fields")
 
@@ -553,7 +509,7 @@ def _create_boneash_pet_skill(db):
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Pet behavior: allow equipment to generate, no XP
+        # Pet behavior
         sf(path, 'dropItems', 1)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
@@ -564,17 +520,16 @@ def _create_boneash_pet_skill(db):
         sf(path, 'StatusIconRed',
            r'DRXtextures\skill icons\spirit\bonefienddown.tex')
 
-    # ── Clone and configure summon skill from Hydra ──────────────────────
+    # ── Clone summon skill from Lyia (already permanent, no TTL) ─────────
     summon_path = SUMMON_BONEASH_SKILL
-    summon_src = _find_record(db, hydra_summon)
+    summon_src = _find_record(db, lyia_summon)
     if summon_src:
         db.clone_record(summon_src, summon_path)
     else:
-        print(f"  WARNING: Hydra summon {hydra_summon} not found, creating empty")
+        print(f"  WARNING: Lyia summon {lyia_summon} not found, creating empty")
         _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
         db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
 
-    # Override summon skill fields (preserve dtypes from Hydra clone)
     sf = db.set_field
     sf(summon_path, 'isPetDisplayable', 1)
     sf(summon_path, 'skillDisplayName', 'tagSVCSummonBoneash')
@@ -584,9 +539,6 @@ def _create_boneash_pet_skill(db):
        r'DRXtextures\skill icons\spirit\bonefiendup.tex')
     sf(summon_path, 'skillDownBitmapName',
        r'DRXtextures\skill icons\spirit\bonefienddown.tex')
-    # Remove time-to-live so pet is permanent like Lyia Leafsong
-    # (Hydra clone has 40-135s timer; empty list drops the field from output)
-    sf(summon_path, 'spawnObjectsTimeToLive', [])
 
     # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
     for name in list(db.record_names()):
@@ -599,7 +551,7 @@ def _create_boneash_pet_skill(db):
             elif '_soul_l.dbr' in nl:
                 db.set_field(name, 'itemSkillLevel', 3)
 
-    print("  Boneash summon: cloned 3 pet records from Hydra + summon skill")
+    print("  Boneash summon: cloned 3 pet records from Lyia + summon skill")
     return True
 
 
