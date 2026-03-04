@@ -14,7 +14,8 @@
 #>
 [CmdletBinding()]
 param(
-    [switch]$SkipArzBuild
+    [switch]$SkipArzBuild,
+    [switch]$LiteMode
 )
 
 Set-StrictMode -Version Latest
@@ -115,12 +116,15 @@ if ($arcFiles.Count -gt 0) {
     Write-Host 'WARNING: No .arc files found in upstream.' -ForegroundColor Yellow
 }
 
-# --- Step 2b: Strip TQIT-era UI/engine .arc files that conflict with AE ---
-# SV 0.98i shipped with TQIT engine resources (menus, panels, fonts, etc.)
-# that override AE's modern UI system and cause rendering issues (broken
-# skill icons, missing mastery backgrounds, incompatible UI layouts).
-# SVAERA (working AE port) strips all these and only keeps SV-content archives.
-$tqitStripList = @(
+# --- Step 2b: Strip archives that are incompatible, empty, or redundant ---
+# Categories:
+#   TQIT UI    - TQIT engine resources that break AE's modern UI
+#   Empty      - Archives with 0 files inside (waste of file handles)
+#   Cosmetic   - PC character skin textures (290 skins, 39 MB) -- cosmetic only,
+#                game falls back to base game skins. Saves ~39 MB compressed / ~98 MB
+#                decompressed address space. Matches SVAERA's approach (547 KB).
+$stripList = @(
+    # --- TQIT UI/engine (incompatible with AE) ---
     'Caravan.arc',
     'detailedmap.arc',
     'Dialog.arc',
@@ -139,16 +143,22 @@ $tqitStripList = @(
     'Text_EN.arc',
     'Text_FR.arc',
     'UI.arc',
-    'XPack.arc'
+    'XPack.arc',
+    # --- Empty archives ---
+    'LMesh.arc',
+    # --- Cosmetic-only (PC skin textures, 39 MB) ---
+    'Creatures.arc'
 )
 
 Write-Host ''
-Write-Host 'Stripping TQIT-era UI/engine .arc files (incompatible with AE)...' -ForegroundColor Yellow
+Write-Host 'Stripping incompatible/empty/cosmetic .arc files...' -ForegroundColor Yellow
 $strippedCount = 0
-foreach ($arcName in $tqitStripList) {
+$strippedMB = 0
+foreach ($arcName in $stripList) {
     $target = Join-Path $workDir "Resources\$arcName"
     if (Test-Path $target) {
         $sz = [math]::Round((Get-Item $target).Length / 1MB, 1)
+        $strippedMB += $sz
         Remove-Item $target -Force
         Write-Host "  Stripped: $arcName ($sz MB)"
         $strippedCount++
@@ -167,7 +177,95 @@ if (Test-Path $xpackDir) {
     Remove-Item $xpackDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "Stripped $strippedCount TQIT .arc files"
+Write-Host "Stripped $strippedCount files (~$strippedMB MB)"
+
+# --- Step 2c: Lite Mode -- strip DRX visual overhaul for low-memory systems ---
+# DRX (Diablo Re-eXtinction) adds 339 MB of visual assets. On systems with
+# integrated graphics and limited address space, removing DRX reduces crash
+# frequency. DRX monsters will use fallback/base game visuals.
+if ($LiteMode) {
+    Write-Host ''
+    Write-Host '[LITE MODE] Stripping DRX visual overhaul archives (339 MB)...' -ForegroundColor Yellow
+    $drxStripList = @(
+        'DRXtextures.arc',   # 213 MB - DRX creature textures
+        'drx.arc',           #  60 MB - DRX game data
+        'DRXsounds.arc',     #  58 MB - DRX sounds
+        'DRXeffects.arc'     #   8 MB - DRX effects
+    )
+    $drxStripped = 0
+    $drxMB = 0
+    foreach ($arcName in $drxStripList) {
+        $target = Join-Path $workDir "Resources\$arcName"
+        if (Test-Path $target) {
+            $sz = [math]::Round((Get-Item $target).Length / 1MB, 1)
+            $drxMB += $sz
+            Remove-Item $target -Force
+            Write-Host "  Stripped: $arcName ($sz MB)"
+            $drxStripped++
+        }
+    }
+    Write-Host "Lite mode: stripped $drxStripped DRX archives (~$drxMB MB)" -ForegroundColor Green
+}
+
+# --- Step 2d: Create selective DLC stub archives ---
+# SoulvizierClassic only uses Acts I-IV (through Hades). DLC archives for
+# Ragnarok, Atlantis, Eternal Embers load even in Custom Quest mode.
+# We selectively block DLC-specific content (dialog, music, sounds, region
+# scenery) while KEEPING archives that may update base game resources
+# (creatures, items, terrain textures, underground areas, effects, UI).
+Write-Host ''
+Write-Host 'Creating selective DLC stub archives...' -ForegroundColor Yellow
+$baseResources = Join-Path $Config['TQAE_ROOT'] 'Resources'
+$dlcPacks = @('XPack2', 'XPack3', 'XPack4')
+$dlcStubCount = 0
+$dlcBlockedMB = 0
+
+# Archives that may contain base game updates -- DO NOT BLOCK
+$dlcKeepList = @(
+    'creatures.arc', 'items.arc', 'item.arc',
+    'effects.arc', 'terraintextures.arc', 'underground.arc',
+    'scenerygreece.arc', 'scenery.arc',
+    'ui.arc', 'ingameui.arc', 'menu.arc',
+    'shaders.arc', 'lights.arc', 'system.arc', 'quests.arc'
+)
+
+foreach ($xpack in $dlcPacks) {
+    $baseXpackDir = Join-Path $baseResources $xpack
+    if (-not (Test-Path $baseXpackDir)) { continue }
+
+    $stubDir = Join-Path $workDir "Resources\$xpack"
+    if (-not (Test-Path $stubDir)) {
+        New-Item -ItemType Directory -Path $stubDir -Force | Out-Null
+    }
+
+    $baseArcs = @(Get-ChildItem $baseXpackDir -Filter '*.arc' -ErrorAction SilentlyContinue)
+    $blocked = 0
+    foreach ($baseArc in $baseArcs) {
+        if ($dlcKeepList -contains $baseArc.Name.ToLower()) { continue }
+
+        $stubPath = Join-Path $stubDir $baseArc.Name
+        # Write a valid empty .arc: 28-byte header + padding to 2048 bytes
+        $header = [byte[]]@(
+            0x41, 0x52, 0x43, 0x00,   # Magic: ARC\0
+            0x01, 0x00, 0x00, 0x00,   # Version: 1
+            0x00, 0x00, 0x00, 0x00,   # num_entries: 0
+            0x00, 0x00, 0x00, 0x00,   # num_data: 0
+            0x00, 0x00, 0x00, 0x00,   # toc_size: 0
+            0x00, 0x00, 0x00, 0x00,   # string_size: 0
+            0x00, 0x08, 0x00, 0x00    # toc_offset: 2048 (0x0800)
+        )
+        $padding = [byte[]]::new(2048 - 28)
+        $bytes = $header + $padding
+        [System.IO.File]::WriteAllBytes($stubPath, $bytes)
+
+        $blockedMB = [math]::Round($baseArc.Length / 1MB, 0)
+        $dlcBlockedMB += $blockedMB
+        $dlcStubCount++
+        $blocked++
+    }
+    Write-Host "  $xpack/: $blocked DLC-only archives blocked"
+}
+Write-Host "Created $dlcStubCount DLC stubs (blocks ~$dlcBlockedMB MB of DLC-specific content)" -ForegroundColor Green
 
 # --- Step 3: Levels.arc (merged: SVAERA pathfinding + SV custom map objects) ---
 $mergedLevels = Join-Path $RepoRoot 'local\Levels_merged.arc'
@@ -249,6 +347,20 @@ if (Test-Path $questScript) {
     }
 }
 
+# --- Step 6: Clean up duplicate files in Items.arc ---
+# Items.arc and SVItems.arc both contain azorian bracers textures. Remove
+# duplicates from Items.arc since SVItems.arc takes priority.
+$dstItems = Join-Path $workDir 'Resources\Items.arc'
+if (Test-Path $dstItems) {
+    $dedupeScript = Join-Path $toolsDir 'dedupe_items_arc.py'
+    if (Test-Path $dedupeScript) {
+        Write-Host ''
+        Write-Host 'Deduplicating Items.arc (removing files already in SVItems.arc)...' -ForegroundColor Yellow
+        $svItemsArc = Join-Path $workDir 'Resources\SVItems.arc'
+        & $pythonExe $dedupeScript $dstItems $svItemsArc
+    }
+}
+
 # --- Summary ---
 Write-Host ''
 Write-Host '--- Working mod contents ---' -ForegroundColor Cyan
@@ -257,5 +369,10 @@ $totalMB = [math]::Round(($workFiles | Measure-Object -Property Length -Sum).Sum
 Write-Host "Total: $($workFiles.Count) files, $totalMB MB"
 
 Write-Host ''
-Write-Host 'Working mod bootstrapped at work/SoulvizierClassic/' -ForegroundColor Green
+if ($LiteMode) {
+    Write-Host 'Working mod bootstrapped at work/SoulvizierClassic/ [LITE MODE]' -ForegroundColor Green
+    Write-Host '  DRX visual overhaul stripped for reduced memory footprint.' -ForegroundColor Yellow
+} else {
+    Write-Host 'Working mod bootstrapped at work/SoulvizierClassic/' -ForegroundColor Green
+}
 Write-Host 'Next: run deploy_to_custommaps.ps1 to deploy for testing.' -ForegroundColor Green

@@ -41,6 +41,9 @@ CHIMERA_PET_1 = r'records\skills\soulskills\pets\chimaera_1.dbr'
 
 SOUL_TEMPLATE = 'database\\Templates\\Jewelry_Ring.tpl'
 
+SUMMON_RAKANIZEUS_SKILL = r'records\skills\soulskills\summon_rakanizeus.dbr'
+SUMMON_BONEASH_SKILL = r'records\skills\soulskills\summon_boneash.dbr'
+
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
 NORMAL_SCROLLS = [
@@ -88,13 +91,11 @@ MERC_LOOT_TABLES = {
 SOUL_OVERHAULS = {
     # ── RAKANIZEUS: Lightning god-satyr. Summons Rakanizeus + massive speed + chain lightning
     'rakanizeus_soul': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_RAKANIZEUS_SKILL),
         'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxstormsurge.dbr'),
         'augmentSkillLevel1': (DATA_TYPE_INT, 5),
         'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\storm\drxlightningbolt_chainlightning.dbr'),
         'augmentSkillLevel2': (DATA_TYPE_INT, 4),
-        'itemSkillName': (DATA_TYPE_STRING, r'records\skills\item skills\test_summon.dbr'),
-        'itemSkillLevel': (DATA_TYPE_INT, 1),
-        'itemSkillAutoController': (DATA_TYPE_STRING, _AC_ON_EQUIP),
         'characterRunSpeedModifier': (DATA_TYPE_FLOAT, 45.0),
         'characterAttackSpeedModifier': (DATA_TYPE_INT, 35),
         'characterTotalSpeedModifier': (DATA_TYPE_INT, 25),
@@ -111,6 +112,26 @@ SOUL_OVERHAULS = {
         'characterStrength': (DATA_TYPE_INT, 40),
         'characterDexterity': (DATA_TYPE_INT, 40),
         'characterOffensiveAbility': (DATA_TYPE_INT, 50),
+    },
+
+    # ── BONEASH: Fire skeleton caster. Summons Boneash + fire damage + cast speed
+    'boneash_soul': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_BONEASH_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\earth\drxvolcanicorb.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 5),
+        'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\earth\drxfireenchantment.dbr'),
+        'augmentSkillLevel2': (DATA_TYPE_INT, 3),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 35),
+        'offensiveFireModifier': (DATA_TYPE_INT, 40),
+        'offensiveFireMin': (DATA_TYPE_FLOAT, 15.0),
+        'offensiveFireMax': (DATA_TYPE_FLOAT, 50.0),
+        'offensiveBurnMin': (DATA_TYPE_FLOAT, 30.0),
+        'offensiveBurnMax': (DATA_TYPE_FLOAT, 60.0),
+        'offensiveBurnDurationMin': (DATA_TYPE_FLOAT, 3.0),
+        'defensiveFire': (DATA_TYPE_FLOAT, 55.0),
+        'characterMana': (DATA_TYPE_INT, 150),
+        'characterIntelligence': (DATA_TYPE_INT, 50),
+        'characterLifeModifier': (DATA_TYPE_FLOAT, -4.0),
     },
 
     # ── CALYBE THE WARDANCER: Dual-wield berserker. Eclipse blood drain on-hit
@@ -181,24 +202,345 @@ def _set_soul_fields(db, record_path, field_dict):
     db._modified.add(record_path)
 
 
+def _find_record(db, path):
+    """Find a record by path, trying both slash conventions."""
+    if db.has_record(path):
+        return path
+    alt = path.replace('\\', '/')
+    if db.has_record(alt):
+        return alt
+    alt = path.replace('/', '\\')
+    if db.has_record(alt):
+        return alt
+    # Try case-insensitive search
+    lower = path.replace('\\', '/').lower()
+    for name in db.record_names():
+        if name.replace('\\', '/').lower() == lower:
+            return name
+    return None
+
+
 def _create_rakanizeus_pet_skill(db):
-    """Repurpose the unused test_summon.dbr to summon Rakanizeus.
+    """Create Rakanizeus pet records by cloning from Hydra and overriding.
 
-    Minimal change only: swap spawnObjects to Rakanizeus, leave all other
-    fields at their original values.  Additional field changes (cooldown,
-    mana, display name, icons) are added incrementally once we confirm
-    this baseline is stable.
+    Clones the complete, working Hydra Pet.tpl records (which have all required
+    fields for animations, sounds, pathing, etc.) then overrides the fields
+    that make Rakanizeus unique: mesh, stats, skills, and identity.
     """
-    skill_path = r'records\skills\item skills\test_summon.dbr'
-    rakan_monster = 'records/creature/monster/satyr/um_rakanizeus_17.dbr'
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
 
-    if not db.has_record(skill_path):
-        print("    WARN: test_summon.dbr not found, cannot create Rakanizeus summon")
-        return False
+    # Source records to clone from (working Hydra pets)
+    hydra_sources = [
+        r'records/skills/soulskills/pets/hydra_1.dbr',
+        r'records/skills/soulskills/pets/hydra_2.dbr',
+        r'records/skills/soulskills/pets/hydra_3.dbr',
+    ]
+    hydra_summon = r'records/skills/soulskills/summon_hydra.dbr'
 
-    db.set_field(skill_path, 'spawnObjects', [rakan_monster], DATA_TYPE_STRING)
-    db._modified.add(skill_path)
-    print("    Repurposed test_summon.dbr -> Rakanizeus summon (minimal)")
+    pet_paths = [
+        r'records/skills/soulskills/pets/rakanizeus_1.dbr',
+        r'records/skills/soulskills/pets/rakanizeus_2.dbr',
+        r'records/skills/soulskills/pets/rakanizeus_3.dbr',
+    ]
+
+    # Per-level scaling: [level 1, level 2, level 3]
+    life =       [4500, 6500, 8500]
+    life_regen = [25.0, 45.0, 65.0]
+    dmg_min =    [60, 90, 120]
+    dmg_max =    [90, 130, 170]
+    armor_lvl =  [56, 184, 408]
+
+    # Clone pet records from Hydra
+    for i, path in enumerate(pet_paths):
+        src = _find_record(db, hydra_sources[i])
+        if not src:
+            print(f"  WARNING: Hydra source {hydra_sources[i]} not found!")
+            return False
+        db.clone_record(src, path)
+        sf = db.set_field
+
+        # Override identity
+        sf(path, 'charLevel', i + 1, DATA_TYPE_INT)
+        sf(path, 'mesh', r'SVMesh\meshes\rakanizeus.msh', DATA_TYPE_STRING)
+        sf(path, 'charAnimationTableName',
+           r'Records\Creature\Monster\Satyr\ANM\ANM_Satyr01.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'scale', 1.4, DATA_TYPE_FLOAT)
+        sf(path, 'description', 'tagNewHero87', DATA_TYPE_STRING)
+        sf(path, 'characterRacialProfile', 'Beastman', DATA_TYPE_STRING)
+        sf(path, 'controller', CONTROLLER, DATA_TYPE_STRING)
+
+        # Override stats — fast melee bruiser with lightning
+        sf(path, 'characterLife', life[i], DATA_TYPE_INT)
+        sf(path, 'characterLifeRegen', life_regen[i], DATA_TYPE_FLOAT)
+        sf(path, 'characterMana', 500, DATA_TYPE_INT)
+        sf(path, 'characterManaRegen', 20.0, DATA_TYPE_FLOAT)
+        sf(path, 'characterStrength', 350, DATA_TYPE_INT)
+        sf(path, 'characterDexterity', 300, DATA_TYPE_INT)
+        sf(path, 'characterIntelligence', 200, DATA_TYPE_INT)
+        sf(path, 'characterAttackSpeed', 0.85, DATA_TYPE_FLOAT)
+        sf(path, 'characterRunSpeed', 1.3, DATA_TYPE_FLOAT)
+        sf(path, 'characterSpellCastSpeed', 1.4, DATA_TYPE_FLOAT)
+
+        # Override combat damage
+        sf(path, 'handHitDamageMin', dmg_min[i], DATA_TYPE_INT)
+        sf(path, 'handHitDamageMax', dmg_max[i], DATA_TYPE_INT)
+
+        # Override combat skills (from Rakanizeus monster)
+        sf(path, 'skillName1',
+           r'records/skills/monster skills/buff_self/drxstormnimbus.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel1', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName2',
+           r'records/skills/monster skills/attack_projectile/reptillian_lightningprojectile_burst.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel2', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName3',
+           r'records/skills/monster skills/attack_melee/blitz.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel3', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName4',
+           r'records/skills/monster skills/buff_self/rakanizeus_stormsurge.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel4', i + 1, DATA_TYPE_INT)
+
+        # Override armor passive level
+        sf(path, 'skillLevel13', armor_lvl[i], DATA_TYPE_INT)
+
+        # Override special attacks (AI combat behavior)
+        sf(path, 'attackSkillName',
+           r'records/skills/monster skills/attack_melee/blitz.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'specialAttackSkillName',
+           r'records/skills/monster skills/attack_projectile/reptillian_lightningprojectile_burst.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'specialAttackChance', 30, DATA_TYPE_INT)
+        sf(path, 'specialAttackDelay', 8.0, DATA_TYPE_FLOAT)
+        sf(path, 'specialAttackTimeout', 3.0, DATA_TYPE_FLOAT)
+        sf(path, 'buffSelfSkillName',
+           r'records/skills/monster skills/buff_self/drxstormnimbus.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'buffSelf2SkillName',
+           r'records/skills/monster skills/buff_self/rakanizeus_stormsurge.dbr',
+           DATA_TYPE_STRING)
+
+        # Override pet behavior (ensure no loot drop)
+        sf(path, 'dropItems', 0, DATA_TYPE_INT)
+        sf(path, 'giveXP', 0, DATA_TYPE_INT)
+        sf(path, 'experiencePoints', 0, DATA_TYPE_INT)
+
+        # Override party UI icons
+        sf(path, 'StatusIcon',
+           r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex',
+           DATA_TYPE_STRING)
+        sf(path, 'StatusIconRed',
+           r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex',
+           DATA_TYPE_STRING)
+
+    # ── Clone and configure summon skill from Hydra ──────────────────────
+    summon_path = SUMMON_RAKANIZEUS_SKILL
+    summon_src = _find_record(db, hydra_summon)
+    if summon_src:
+        db.clone_record(summon_src, summon_path)
+    else:
+        print(f"  WARNING: Hydra summon {hydra_summon} not found, creating empty")
+        _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+
+    sf = db.set_field
+    sf(summon_path, 'isPetDisplayable', 1, DATA_TYPE_INT)
+    sf(summon_path, 'skillDisplayName', 'tagSVCSummonRakanizeus',
+       DATA_TYPE_STRING)
+    sf(summon_path, 'skillManaCost', [300, 350, 400], DATA_TYPE_INT)
+    sf(summon_path, 'spawnObjects', pet_paths, DATA_TYPE_STRING)
+    sf(summon_path, 'skillUpBitmapName',
+       r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex',
+       DATA_TYPE_STRING)
+    sf(summon_path, 'skillDownBitmapName',
+       r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex',
+       DATA_TYPE_STRING)
+
+    # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'rakanizeus_soul' in nl and 'equipmentring' in nl:
+            if '_soul_n.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 1, DATA_TYPE_INT)
+            elif '_soul_e.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 2, DATA_TYPE_INT)
+            elif '_soul_l.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 3, DATA_TYPE_INT)
+
+    print("  Rakanizeus summon: cloned 3 pet records from Hydra + summon skill")
+    return True
+
+
+def _create_boneash_pet_skill(db):
+    """Create Boneash pet records by cloning from Hydra and overriding.
+
+    Boneash is a fire skeleton caster — slow movement, high INT, devastating
+    fire spells (Fireball, Pillar of Flame, Flamestrike, Ternion).
+    Clones from Hydra to inherit all required Pet.tpl fields.
+    """
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
+
+    # Source records to clone from (working Hydra pets)
+    hydra_sources = [
+        r'records/skills/soulskills/pets/hydra_1.dbr',
+        r'records/skills/soulskills/pets/hydra_2.dbr',
+        r'records/skills/soulskills/pets/hydra_3.dbr',
+    ]
+    hydra_summon = r'records/skills/soulskills/summon_hydra.dbr'
+
+    pet_paths = [
+        r'records/skills/soulskills/pets/boneash_1.dbr',
+        r'records/skills/soulskills/pets/boneash_2.dbr',
+        r'records/skills/soulskills/pets/boneash_3.dbr',
+    ]
+
+    # Per-level scaling
+    life =       [3500, 5000, 6500]
+    life_regen = [20.0, 35.0, 50.0]
+    dmg_min =    [40, 60, 80]
+    dmg_max =    [60, 90, 120]
+    armor_lvl =  [40, 150, 350]
+
+    # Clone pet records from Hydra
+    for i, path in enumerate(pet_paths):
+        src = _find_record(db, hydra_sources[i])
+        if not src:
+            print(f"  WARNING: Hydra source {hydra_sources[i]} not found!")
+            return False
+        db.clone_record(src, path)
+        sf = db.set_field
+
+        # Override identity
+        sf(path, 'charLevel', i + 1, DATA_TYPE_INT)
+        sf(path, 'mesh',
+           r'Creatures\Monster\Skeleton\RevenantFire.msh', DATA_TYPE_STRING)
+        sf(path, 'charAnimationTableName',
+           r'Records\Creature\Monster\Skeleton\ANM\ANM_Skeleton01.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'description', 'tagNewHero48', DATA_TYPE_STRING)
+        sf(path, 'characterRacialProfile', 'Undead', DATA_TYPE_STRING)
+        sf(path, 'controller', CONTROLLER, DATA_TYPE_STRING)
+
+        # Override stats — slow fire caster, big mana pool
+        sf(path, 'characterLife', life[i], DATA_TYPE_INT)
+        sf(path, 'characterLifeRegen', life_regen[i], DATA_TYPE_FLOAT)
+        sf(path, 'characterMana', 1200, DATA_TYPE_INT)
+        sf(path, 'characterManaRegen', 30.0, DATA_TYPE_FLOAT)
+        sf(path, 'characterStrength', 150, DATA_TYPE_INT)
+        sf(path, 'characterDexterity', 150, DATA_TYPE_INT)
+        sf(path, 'characterIntelligence', 400, DATA_TYPE_INT)
+        sf(path, 'characterAttackSpeed', 1.2, DATA_TYPE_FLOAT)
+        sf(path, 'characterRunSpeed', 0.75, DATA_TYPE_FLOAT)
+        sf(path, 'characterSpellCastSpeed', 1.5, DATA_TYPE_FLOAT)
+
+        # Override combat damage
+        sf(path, 'handHitDamageMin', dmg_min[i], DATA_TYPE_INT)
+        sf(path, 'handHitDamageMax', dmg_max[i], DATA_TYPE_INT)
+
+        # Override combat skills (from Boneash monster)
+        sf(path, 'skillName1',
+           r'Records/Skills/Monster Skills/Monster_Fireball.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel1', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName2',
+           r'Records/Skills/Monster Skills/Auras/Damage_FireBonus.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel2', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName3',
+           r'Records/Skills/Monster Skills/Attack_Radius/PillarofFlame.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel3', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName4',
+           r'records/skills/spirit/ternion.dbr', DATA_TYPE_STRING)
+        sf(path, 'skillLevel4', i + 1, DATA_TYPE_INT)
+        sf(path, 'skillName5',
+           r'Records/Skills/Monster Skills/Attack_Radius/DuneRaider_Flamestrike.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'skillLevel5', i + 1, DATA_TYPE_INT)
+
+        # Override armor passive level
+        sf(path, 'skillLevel13', armor_lvl[i], DATA_TYPE_INT)
+
+        # Override special attacks (AI combat behavior)
+        sf(path, 'attackSkillName',
+           r'records/skills/spirit/ternion.dbr', DATA_TYPE_STRING)
+        sf(path, 'specialAttackSkillName',
+           r'Records/Skills/Monster Skills/Monster_Fireball.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'specialAttackChance', 40, DATA_TYPE_INT)
+        sf(path, 'specialAttackDelay', 6.0, DATA_TYPE_FLOAT)
+        sf(path, 'specialAttackTimeout', 3.0, DATA_TYPE_FLOAT)
+        sf(path, 'specialAttack2SkillName',
+           r'Records/Skills/Monster Skills/Attack_Radius/PillarofFlame.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'specialAttack2Chance', 25, DATA_TYPE_INT)
+        sf(path, 'specialAttack2Delay', 10.0, DATA_TYPE_FLOAT)
+        sf(path, 'specialAttack2Timeout', 4.0, DATA_TYPE_FLOAT)
+        sf(path, 'specialAttack3SkillName',
+           r'Records/Skills/Monster Skills/Attack_Radius/DuneRaider_Flamestrike.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'specialAttack3Chance', 20, DATA_TYPE_INT)
+        sf(path, 'specialAttack3Delay', 12.0, DATA_TYPE_FLOAT)
+        sf(path, 'specialAttack3Timeout', 5.0, DATA_TYPE_FLOAT)
+        sf(path, 'initialSkillName',
+           r'Records/Skills/Monster Skills/Auras/Damage_FireBonus.dbr',
+           DATA_TYPE_STRING)
+        sf(path, 'buffSelfSkillName',
+           r'Records/Skills/Monster Skills/Auras/Damage_FireBonus.dbr',
+           DATA_TYPE_STRING)
+
+        # Override pet behavior (ensure no loot drop)
+        sf(path, 'dropItems', 0, DATA_TYPE_INT)
+        sf(path, 'giveXP', 0, DATA_TYPE_INT)
+        sf(path, 'experiencePoints', 0, DATA_TYPE_INT)
+
+        # Override party UI icons
+        sf(path, 'StatusIcon',
+           r'DRXtextures\skill icons\spirit\bonefiendup.tex',
+           DATA_TYPE_STRING)
+        sf(path, 'StatusIconRed',
+           r'DRXtextures\skill icons\spirit\bonefienddown.tex',
+           DATA_TYPE_STRING)
+
+    # ── Clone and configure summon skill from Hydra ──────────────────────
+    summon_path = SUMMON_BONEASH_SKILL
+    summon_src = _find_record(db, hydra_summon)
+    if summon_src:
+        db.clone_record(summon_src, summon_path)
+    else:
+        print(f"  WARNING: Hydra summon {hydra_summon} not found, creating empty")
+        _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+
+    sf = db.set_field
+    sf(summon_path, 'isPetDisplayable', 1, DATA_TYPE_INT)
+    sf(summon_path, 'skillDisplayName', 'tagSVCSummonBoneash',
+       DATA_TYPE_STRING)
+    sf(summon_path, 'skillManaCost', [250, 300, 350], DATA_TYPE_INT)
+    sf(summon_path, 'spawnObjects', pet_paths, DATA_TYPE_STRING)
+    sf(summon_path, 'skillUpBitmapName',
+       r'DRXtextures\skill icons\spirit\bonefiendup.tex', DATA_TYPE_STRING)
+    sf(summon_path, 'skillDownBitmapName',
+       r'DRXtextures\skill icons\spirit\bonefienddown.tex', DATA_TYPE_STRING)
+
+    # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'boneash_soul' in nl and 'equipmentring' in nl:
+            if '_soul_n.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 1, DATA_TYPE_INT)
+            elif '_soul_e.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 2, DATA_TYPE_INT)
+            elif '_soul_l.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 3, DATA_TYPE_INT)
+
+    print("  Boneash summon: cloned 3 pet records from Hydra + summon skill")
     return True
 
 
@@ -331,10 +673,9 @@ def overhaul_souls(db):
     total = 0
 
     rakan_ok = _create_rakanizeus_pet_skill(db)
-    if not rakan_ok:
-        print("    Falling back: Rakanizeus soul will use chimera summon")
-        SOUL_OVERHAULS['rakanizeus_soul']['itemSkillName'] = (
-            DATA_TYPE_STRING, SUMMON_CHIMERA_SKILL)
+    total += 1
+
+    boneash_ok = _create_boneash_pet_skill(db)
     total += 1
 
     eclipse_skill = r'records\skills\soulskills\calybe_eclipse.dbr'
@@ -481,6 +822,14 @@ def apply_all_extended_patches(db):
         'desperate to reform. Release it and the lightning god-satyr '
         'manifests in a crackling storm of chain lightning, '
         'bound to serve until the tempest fades.'
+    )
+
+    tags['tagSVCSummonBoneash'] = 'Summon Boneash'
+    tags['tagSVCSummonBoneashDESC'] = (
+        'Release the imprisoned essence of Boneash, '
+        'a skeletal fire mage consumed by arcane flame. '
+        'The revenant rises wreathed in fire, hurling bolts of destruction '
+        'and igniting the ground beneath its enemies.'
     )
 
     overhaul_souls(db)
