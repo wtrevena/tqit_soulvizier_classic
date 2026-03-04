@@ -267,6 +267,75 @@ def _copy_animation_fields(db, monster_path, pet_path):
     return copied
 
 
+def _copy_equipment_fields(db, monster_path, pet_path):
+    """Copy all equipment/loot fields from a monster record to a pet record.
+
+    After cloning from Hydra, the pet only inherits Hydra's minimal equipment
+    (just a soul ring in finger2).  This copies the real monster's full gear
+    loadout so the pet visually wears the boss equipment.
+    """
+    monster_fields = db.get_fields(monster_path)
+    pet_fields = db.get_fields(pet_path)
+    if not monster_fields or not pet_fields:
+        return 0
+
+    copied = 0
+    for key, tf in monster_fields.items():
+        fn = key.split('###')[0]
+        fnl = fn.lower()
+        # Copy equipment chance and loot table fields
+        if fnl.startswith('chancetoequip') or fnl.startswith('loot'):
+            target_key = None
+            for pk in pet_fields:
+                if pk.split('###')[0] == fn:
+                    target_key = pk
+                    break
+            if target_key:
+                pet_fields[target_key].dtype = tf.dtype
+                pet_fields[target_key].values = list(tf.values)
+            else:
+                pet_fields[fn] = TypedField(tf.dtype, list(tf.values))
+            copied += 1
+
+    db._modified.add(pet_path)
+    return copied
+
+
+def _copy_skill_fields(db, monster_path, pet_path):
+    """Copy all skill fields from a monster record to a pet record.
+
+    Replaces the manually-specified skill list with the real monster's
+    complete skill set (including passives, buffs, special attacks, etc.).
+    """
+    monster_fields = db.get_fields(monster_path)
+    pet_fields = db.get_fields(pet_path)
+    if not monster_fields or not pet_fields:
+        return 0
+
+    copied = 0
+    for key, tf in monster_fields.items():
+        fn = key.split('###')[0]
+        fnl = fn.lower()
+        if any(fnl.startswith(p) for p in (
+            'skillname', 'skilllevel', 'attackskillname',
+            'specialattack', 'buffself', 'initialskillname',
+        )):
+            target_key = None
+            for pk in pet_fields:
+                if pk.split('###')[0] == fn:
+                    target_key = pk
+                    break
+            if target_key:
+                pet_fields[target_key].dtype = tf.dtype
+                pet_fields[target_key].values = list(tf.values)
+            else:
+                pet_fields[fn] = TypedField(tf.dtype, list(tf.values))
+            copied += 1
+
+    db._modified.add(pet_path)
+    return copied
+
+
 def _create_rakanizeus_pet_skill(db):
     """Create Rakanizeus pet records by cloning from Hydra and overriding.
 
@@ -315,22 +384,18 @@ def _create_rakanizeus_pet_skill(db):
             return False
         db.clone_record(src, path)
 
-        # Copy animation fields from the real Rakanizeus monster (Satyr mesh
-        # needs Satyr animations, not Hydra animations)
+        # Copy fields from the real Rakanizeus monster so the pet looks,
+        # fights, and equips like the actual boss.
         if rakan_monster:
-            n = _copy_animation_fields(db, rakan_monster, path)
+            na = _copy_animation_fields(db, rakan_monster, path)
+            ne = _copy_equipment_fields(db, rakan_monster, path)
+            ns = _copy_skill_fields(db, rakan_monster, path)
             if i == 0:
-                print(f"  Copied {n} animation fields from Rakanizeus monster")
+                print(f"  Copied from Rakanizeus monster: {na} anim, {ne} equip, {ns} skill fields")
 
         sf = db.set_field
 
-        # NOTE: For fields inherited from the Hydra clone, pass dtype=None
-        # to preserve the original data type (usually FLOAT).  Overriding
-        # with DATA_TYPE_INT corrupts the binary — the game reads INT bytes
-        # as FLOAT, getting ~0 for all stats, which prevents the pet from
-        # spawning.
-
-        # Override identity (these are all STRING/INT in the clone)
+        # Override identity
         sf(path, 'charLevel', i + 1)
         sf(path, 'mesh', r'SVMesh\meshes\rakanizeus.msh')
         sf(path, 'scale', 1.4)
@@ -338,8 +403,7 @@ def _create_rakanizeus_pet_skill(db):
         sf(path, 'characterRacialProfile', 'Beastman')
         sf(path, 'controller', CONTROLLER)
 
-        # Override stats — fast melee bruiser with lightning
-        # (clone stores these as FLOAT; dtype=None preserves that)
+        # Override stats (dtype=None preserves clone's FLOAT types)
         sf(path, 'characterLife', float(life[i]))
         sf(path, 'characterLifeRegen', life_regen[i])
         sf(path, 'characterMana', 500.0)
@@ -350,51 +414,15 @@ def _create_rakanizeus_pet_skill(db):
         sf(path, 'characterAttackSpeed', 0.85)
         sf(path, 'characterRunSpeed', 1.3)
         sf(path, 'characterSpellCastSpeed', 1.4)
-
-        # Override combat damage (FLOAT in clone)
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Override combat skills (STRING/INT fields exist in clone)
-        sf(path, 'skillName1',
-           r'records\skills\monster skills\buff_self\drxstormnimbus.dbr')
-        sf(path, 'skillLevel1', i + 1)
-        sf(path, 'skillName2',
-           r'records\skills\monster skills\attack_projectile\reptillian_lightningprojectile_burst.dbr')
-        sf(path, 'skillLevel2', i + 1)
-        sf(path, 'skillName3',
-           r'records\skills\monster skills\attack_melee\blitz.dbr')
-        sf(path, 'skillLevel3', i + 1)
-        sf(path, 'skillName4',
-           r'records\skills\monster skills\buff_self\rakanizeus_stormsurge.dbr')
-        sf(path, 'skillLevel4', i + 1)
-
-        # Override armor passive level
-        sf(path, 'skillLevel13', armor_lvl[i])
-
-        # Override special attacks (AI combat behavior — NEW fields not in clone)
-        sf(path, 'attackSkillName',
-           r'records\skills\monster skills\attack_melee\blitz.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'specialAttackSkillName',
-           r'records\skills\monster skills\attack_projectile\reptillian_lightningprojectile_burst.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'specialAttackChance', 30, DATA_TYPE_INT)
-        sf(path, 'specialAttackDelay', 8.0, DATA_TYPE_FLOAT)
-        sf(path, 'specialAttackTimeout', 3.0, DATA_TYPE_FLOAT)
-        sf(path, 'buffSelfSkillName',
-           r'records\skills\monster skills\buff_self\drxstormnimbus.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'buffSelf2SkillName',
-           r'records\skills\monster skills\buff_self\rakanizeus_stormsurge.dbr',
-           DATA_TYPE_STRING)
-
-        # Override pet behavior (these exist in clone)
-        sf(path, 'dropItems', 0)
+        # Pet behavior: allow equipment to generate, no XP
+        sf(path, 'dropItems', 1)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
 
-        # Override party UI icons
+        # Party UI icons
         sf(path, 'StatusIcon',
            r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex')
         sf(path, 'StatusIconRed',
@@ -487,17 +515,16 @@ def _create_boneash_pet_skill(db):
             return False
         db.clone_record(src, path)
 
-        # Copy animation fields from the real Boneash monster (Skeleton mesh
-        # needs Skeleton animations, not Hydra animations)
+        # Copy fields from the real Boneash monster so the pet looks,
+        # fights, and equips like the actual boss.
         if boneash_monster:
-            n = _copy_animation_fields(db, boneash_monster, path)
+            na = _copy_animation_fields(db, boneash_monster, path)
+            ne = _copy_equipment_fields(db, boneash_monster, path)
+            ns = _copy_skill_fields(db, boneash_monster, path)
             if i == 0:
-                print(f"  Copied {n} animation fields from Boneash monster")
+                print(f"  Copied from Boneash monster: {na} anim, {ne} equip, {ns} skill fields")
 
         sf = db.set_field
-
-        # NOTE: For fields inherited from the Hydra clone, pass dtype=None
-        # to preserve the original data type (usually FLOAT).
 
         # Override identity (scale/height/texture match the real Boneash boss)
         sf(path, 'charLevel', i + 1)
@@ -512,8 +539,7 @@ def _create_boneash_pet_skill(db):
         sf(path, 'characterRacialProfile', 'Undead')
         sf(path, 'controller', CONTROLLER)
 
-        # Override stats — slow fire caster, big mana pool
-        # (clone stores these as FLOAT; dtype=None preserves that)
+        # Override stats (dtype=None preserves clone's FLOAT types)
         sf(path, 'characterLife', float(life[i]))
         sf(path, 'characterLifeRegen', life_regen[i])
         sf(path, 'characterMana', 1200.0)
@@ -524,65 +550,15 @@ def _create_boneash_pet_skill(db):
         sf(path, 'characterAttackSpeed', 1.2)
         sf(path, 'characterRunSpeed', 0.75)
         sf(path, 'characterSpellCastSpeed', 1.5)
-
-        # Override combat damage (FLOAT in clone)
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Override combat skills (exist in clone)
-        sf(path, 'skillName1',
-           r'records\skills\monster skills\monster_fireball.dbr')
-        sf(path, 'skillLevel1', i + 1)
-        sf(path, 'skillName2',
-           r'records\skills\monster skills\auras\damage_firebonus.dbr')
-        sf(path, 'skillLevel2', i + 1)
-        sf(path, 'skillName3',
-           r'records\skills\monster skills\attack_radius\pillarofflame.dbr')
-        sf(path, 'skillLevel3', i + 1)
-        sf(path, 'skillName4',
-           r'records\skills\spirit\ternion.dbr')
-        sf(path, 'skillLevel4', i + 1)
-        sf(path, 'skillName5',
-           r'records\skills\monster skills\attack_radius\duneraider_flamestrike.dbr')
-        sf(path, 'skillLevel5', i + 1)
-
-        # Override armor passive level
-        sf(path, 'skillLevel13', armor_lvl[i])
-
-        # Override special attacks (AI combat behavior — NEW fields not in clone)
-        sf(path, 'attackSkillName',
-           r'records\skills\spirit\ternion.dbr', DATA_TYPE_STRING)
-        sf(path, 'specialAttackSkillName',
-           r'records\skills\monster skills\monster_fireball.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'specialAttackChance', 40, DATA_TYPE_INT)
-        sf(path, 'specialAttackDelay', 6.0, DATA_TYPE_FLOAT)
-        sf(path, 'specialAttackTimeout', 3.0, DATA_TYPE_FLOAT)
-        sf(path, 'specialAttack2SkillName',
-           r'records\skills\monster skills\attack_radius\pillarofflame.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'specialAttack2Chance', 25, DATA_TYPE_INT)
-        sf(path, 'specialAttack2Delay', 10.0, DATA_TYPE_FLOAT)
-        sf(path, 'specialAttack2Timeout', 4.0, DATA_TYPE_FLOAT)
-        sf(path, 'specialAttack3SkillName',
-           r'records\skills\monster skills\attack_radius\duneraider_flamestrike.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'specialAttack3Chance', 20, DATA_TYPE_INT)
-        sf(path, 'specialAttack3Delay', 12.0, DATA_TYPE_FLOAT)
-        sf(path, 'specialAttack3Timeout', 5.0, DATA_TYPE_FLOAT)
-        sf(path, 'initialSkillName',
-           r'records\skills\monster skills\auras\damage_firebonus.dbr',
-           DATA_TYPE_STRING)
-        sf(path, 'buffSelfSkillName',
-           r'records\skills\monster skills\auras\damage_firebonus.dbr',
-           DATA_TYPE_STRING)
-
-        # Override pet behavior (these exist in clone)
-        sf(path, 'dropItems', 0)
+        # Pet behavior: allow equipment to generate, no XP
+        sf(path, 'dropItems', 1)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
 
-        # Override party UI icons
+        # Party UI icons
         sf(path, 'StatusIcon',
            r'DRXtextures\skill icons\spirit\bonefiendup.tex')
         sf(path, 'StatusIconRed',
