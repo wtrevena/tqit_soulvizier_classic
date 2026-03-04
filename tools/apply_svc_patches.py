@@ -274,33 +274,39 @@ _SKILL_PREFIXES = (
 )
 
 
-def _replace_fields_from_monster(db, monster_path, pet_path, prefixes):
-    """Clear all fields matching *prefixes* from pet, then copy from monster.
+def _update_existing_fields(db, monster_path, pet_path, prefixes):
+    """Update VALUES of existing pet fields from monster — never add new fields.
 
-    This avoids the bug where Hydra-inherited fields (e.g. hydra_arcticbreath)
-    remain when the target monster doesn't have a matching field to overwrite.
+    Pet.tpl and Monster.tpl have different valid field sets.  Adding fields
+    that don't exist in Pet.tpl crashes the game on database load.  This
+    function only overwrites values for fields the pet already has (inherited
+    from the Lyia clone, which is a valid Pet.tpl record).
     """
     monster_fields = db.get_fields(monster_path)
     pet_fields = db.get_fields(pet_path)
     if not monster_fields or not pet_fields:
         return 0
 
-    # 1. Remove ALL matching fields from pet (clears Hydra leftovers)
-    to_remove = [pk for pk in pet_fields
-                 if any(pk.split('###')[0].lower().startswith(p) for p in prefixes)]
-    for pk in to_remove:
-        del pet_fields[pk]
-
-    # 2. Copy matching fields from monster
-    copied = 0
+    # Build a lookup: field_name_lower -> (key, TypedField) for monster
+    monster_by_name = {}
     for key, tf in monster_fields.items():
-        fn = key.split('###')[0]
-        if any(fn.lower().startswith(p) for p in prefixes):
-            pet_fields[fn] = TypedField(tf.dtype, list(tf.values))
-            copied += 1
+        fn = key.split('###')[0].lower()
+        if any(fn.startswith(p) for p in prefixes):
+            monster_by_name[fn] = tf
 
-    db._modified.add(pet_path)
-    return copied
+    # Only update pet fields that already exist AND have a monster counterpart
+    updated = 0
+    for pk in list(pet_fields.keys()):
+        fn = pk.split('###')[0].lower()
+        if fn in monster_by_name:
+            mtf = monster_by_name[fn]
+            pet_fields[pk].dtype = mtf.dtype
+            pet_fields[pk].values = list(mtf.values)
+            updated += 1
+
+    if updated:
+        db._modified.add(pet_path)
+    return updated
 
 
 def _create_rakanizeus_pet_skill(db):
@@ -346,15 +352,14 @@ def _create_rakanizeus_pet_skill(db):
             return False
         db.clone_record(src, path)
 
-        # Replace Lyia's animations/equipment/skills with Rakanizeus's.
-        # _replace_fields_from_monster CLEARS all matching fields first,
-        # then copies from the monster — no leftover Lyia/Hydra fields.
+        # Replace Lyia's animations with Rakanizeus's.
+        # Skills: only update values for fields that already exist in Pet.tpl.
+        # Equipment copying disabled — monster loot values crash Pet.tpl records.
         if rakan_monster:
             na = _copy_animation_fields(db, rakan_monster, path)
-            ne = _replace_fields_from_monster(db, rakan_monster, path, _EQUIP_PREFIXES)
-            ns = _replace_fields_from_monster(db, rakan_monster, path, _SKILL_PREFIXES)
+            ns = _update_existing_fields(db, rakan_monster, path, _SKILL_PREFIXES)
             if i == 0:
-                print(f"  Copied from Rakanizeus monster: {na} anim, {ne} equip, {ns} skill fields")
+                print(f"  Copied from Rakanizeus monster: {na} anim, {ns} skill fields (existing only)")
 
         sf = db.set_field
 
@@ -472,13 +477,14 @@ def _create_boneash_pet_skill(db):
             return False
         db.clone_record(src, path)
 
-        # Replace Lyia's animations/equipment/skills with Boneash's
+        # Replace Lyia's animations with Boneash's.
+        # Skills: only update values for fields that already exist in Pet.tpl.
+        # Equipment copying disabled — monster loot values crash Pet.tpl records.
         if boneash_monster:
             na = _copy_animation_fields(db, boneash_monster, path)
-            ne = _replace_fields_from_monster(db, boneash_monster, path, _EQUIP_PREFIXES)
-            ns = _replace_fields_from_monster(db, boneash_monster, path, _SKILL_PREFIXES)
+            ns = _update_existing_fields(db, boneash_monster, path, _SKILL_PREFIXES)
             if i == 0:
-                print(f"  Copied from Boneash monster: {na} anim, {ne} equip, {ns} skill fields")
+                print(f"  Copied from Boneash monster: {na} anim, {ns} skill fields (existing only)")
 
         sf = db.set_field
 
