@@ -420,6 +420,9 @@ def _create_rakanizeus_pet_skill(db):
        r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex')
     sf(summon_path, 'skillDownBitmapName',
        r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex')
+    # Remove time-to-live so pet is permanent like Lyia Leafsong
+    # (Hydra clone has 40-135s timer; empty list drops the field from output)
+    sf(summon_path, 'spawnObjectsTimeToLive', [])
 
     # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
     for name in list(db.record_names()):
@@ -496,9 +499,13 @@ def _create_boneash_pet_skill(db):
         # NOTE: For fields inherited from the Hydra clone, pass dtype=None
         # to preserve the original data type (usually FLOAT).
 
-        # Override identity
+        # Override identity (scale/height/texture match the real Boneash boss)
         sf(path, 'charLevel', i + 1)
         sf(path, 'mesh', r'Creatures\Monster\Skeleton\RevenantFire.msh')
+        sf(path, 'scale', 1.5)
+        sf(path, 'actorHeight', 2.0)
+        sf(path, 'baseTexture',
+           r'Creatures\Monster\Skeleton\NewSkeleton_Charcoal.tex')
         sf(path, 'charAnimationTableName',
            r'records\creature\monster\skeleton\anm\anm_skeleton01.dbr')
         sf(path, 'description', 'tagNewHero48')
@@ -601,6 +608,9 @@ def _create_boneash_pet_skill(db):
        r'DRXtextures\skill icons\spirit\bonefiendup.tex')
     sf(summon_path, 'skillDownBitmapName',
        r'DRXtextures\skill icons\spirit\bonefienddown.tex')
+    # Remove time-to-live so pet is permanent like Lyia Leafsong
+    # (Hydra clone has 40-135s timer; empty list drops the field from output)
+    sf(summon_path, 'spawnObjectsTimeToLive', [])
 
     # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
     for name in list(db.record_names()):
