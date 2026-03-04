@@ -279,17 +279,19 @@ def _create_rakanizeus_pet_skill(db):
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
 
     # Source records to clone from (working Hydra pets)
+    # NOTE: All paths MUST use backslashes — the game engine does exact-match
+    # lookups and all 50k+ existing records use backslashes.
     hydra_sources = [
-        r'records/skills/soulskills/pets/hydra_1.dbr',
-        r'records/skills/soulskills/pets/hydra_2.dbr',
-        r'records/skills/soulskills/pets/hydra_3.dbr',
+        r'records\skills\soulskills\pets\hydra_1.dbr',
+        r'records\skills\soulskills\pets\hydra_2.dbr',
+        r'records\skills\soulskills\pets\hydra_3.dbr',
     ]
-    hydra_summon = r'records/skills/soulskills/summon_hydra.dbr'
+    hydra_summon = r'records\skills\soulskills\summon_hydra.dbr'
 
     pet_paths = [
-        r'records/skills/soulskills/pets/rakanizeus_1.dbr',
-        r'records/skills/soulskills/pets/rakanizeus_2.dbr',
-        r'records/skills/soulskills/pets/rakanizeus_3.dbr',
+        r'records\skills\soulskills\pets\rakanizeus_1.dbr',
+        r'records\skills\soulskills\pets\rakanizeus_2.dbr',
+        r'records\skills\soulskills\pets\rakanizeus_3.dbr',
     ]
 
     # Per-level scaling: [level 1, level 2, level 3]
@@ -348,19 +350,19 @@ def _create_rakanizeus_pet_skill(db):
 
         # Override combat skills (from Rakanizeus monster)
         sf(path, 'skillName1',
-           r'records/skills/monster skills/buff_self/drxstormnimbus.dbr',
+           r'records\skills\monster skills\buff_self\drxstormnimbus.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel1', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName2',
-           r'records/skills/monster skills/attack_projectile/reptillian_lightningprojectile_burst.dbr',
+           r'records\skills\monster skills\attack_projectile\reptillian_lightningprojectile_burst.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel2', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName3',
-           r'records/skills/monster skills/attack_melee/blitz.dbr',
+           r'records\skills\monster skills\attack_melee\blitz.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel3', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName4',
-           r'records/skills/monster skills/buff_self/rakanizeus_stormsurge.dbr',
+           r'records\skills\monster skills\buff_self\rakanizeus_stormsurge.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel4', i + 1, DATA_TYPE_INT)
 
@@ -369,19 +371,19 @@ def _create_rakanizeus_pet_skill(db):
 
         # Override special attacks (AI combat behavior)
         sf(path, 'attackSkillName',
-           r'records/skills/monster skills/attack_melee/blitz.dbr',
+           r'records\skills\monster skills\attack_melee\blitz.dbr',
            DATA_TYPE_STRING)
         sf(path, 'specialAttackSkillName',
-           r'records/skills/monster skills/attack_projectile/reptillian_lightningprojectile_burst.dbr',
+           r'records\skills\monster skills\attack_projectile\reptillian_lightningprojectile_burst.dbr',
            DATA_TYPE_STRING)
         sf(path, 'specialAttackChance', 30, DATA_TYPE_INT)
         sf(path, 'specialAttackDelay', 8.0, DATA_TYPE_FLOAT)
         sf(path, 'specialAttackTimeout', 3.0, DATA_TYPE_FLOAT)
         sf(path, 'buffSelfSkillName',
-           r'records/skills/monster skills/buff_self/drxstormnimbus.dbr',
+           r'records\skills\monster skills\buff_self\drxstormnimbus.dbr',
            DATA_TYPE_STRING)
         sf(path, 'buffSelf2SkillName',
-           r'records/skills/monster skills/buff_self/rakanizeus_stormsurge.dbr',
+           r'records\skills\monster skills\buff_self\rakanizeus_stormsurge.dbr',
            DATA_TYPE_STRING)
 
         # Override pet behavior (ensure no loot drop)
@@ -447,17 +449,19 @@ def _create_boneash_pet_skill(db):
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
 
     # Source records to clone from (working Hydra pets)
+    # NOTE: All paths MUST use backslashes — the game engine does exact-match
+    # lookups and all 50k+ existing records use backslashes.
     hydra_sources = [
-        r'records/skills/soulskills/pets/hydra_1.dbr',
-        r'records/skills/soulskills/pets/hydra_2.dbr',
-        r'records/skills/soulskills/pets/hydra_3.dbr',
+        r'records\skills\soulskills\pets\hydra_1.dbr',
+        r'records\skills\soulskills\pets\hydra_2.dbr',
+        r'records\skills\soulskills\pets\hydra_3.dbr',
     ]
-    hydra_summon = r'records/skills/soulskills/summon_hydra.dbr'
+    hydra_summon = r'records\skills\soulskills\summon_hydra.dbr'
 
     pet_paths = [
-        r'records/skills/soulskills/pets/boneash_1.dbr',
-        r'records/skills/soulskills/pets/boneash_2.dbr',
-        r'records/skills/soulskills/pets/boneash_3.dbr',
+        r'records\skills\soulskills\pets\boneash_1.dbr',
+        r'records\skills\soulskills\pets\boneash_2.dbr',
+        r'records\skills\soulskills\pets\boneash_3.dbr',
     ]
 
     # Per-level scaling
@@ -519,22 +523,22 @@ def _create_boneash_pet_skill(db):
 
         # Override combat skills (from Boneash monster)
         sf(path, 'skillName1',
-           r'Records/Skills/Monster Skills/Monster_Fireball.dbr',
+           r'records\skills\monster skills\monster_fireball.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel1', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName2',
-           r'Records/Skills/Monster Skills/Auras/Damage_FireBonus.dbr',
+           r'records\skills\monster skills\auras\damage_firebonus.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel2', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName3',
-           r'Records/Skills/Monster Skills/Attack_Radius/PillarofFlame.dbr',
+           r'records\skills\monster skills\attack_radius\pillarofflame.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel3', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName4',
-           r'records/skills/spirit/ternion.dbr', DATA_TYPE_STRING)
+           r'records\skills\spirit\ternion.dbr', DATA_TYPE_STRING)
         sf(path, 'skillLevel4', i + 1, DATA_TYPE_INT)
         sf(path, 'skillName5',
-           r'Records/Skills/Monster Skills/Attack_Radius/DuneRaider_Flamestrike.dbr',
+           r'records\skills\monster skills\attack_radius\duneraider_flamestrike.dbr',
            DATA_TYPE_STRING)
         sf(path, 'skillLevel5', i + 1, DATA_TYPE_INT)
 
@@ -543,30 +547,30 @@ def _create_boneash_pet_skill(db):
 
         # Override special attacks (AI combat behavior)
         sf(path, 'attackSkillName',
-           r'records/skills/spirit/ternion.dbr', DATA_TYPE_STRING)
+           r'records\skills\spirit\ternion.dbr', DATA_TYPE_STRING)
         sf(path, 'specialAttackSkillName',
-           r'Records/Skills/Monster Skills/Monster_Fireball.dbr',
+           r'records\skills\monster skills\monster_fireball.dbr',
            DATA_TYPE_STRING)
         sf(path, 'specialAttackChance', 40, DATA_TYPE_INT)
         sf(path, 'specialAttackDelay', 6.0, DATA_TYPE_FLOAT)
         sf(path, 'specialAttackTimeout', 3.0, DATA_TYPE_FLOAT)
         sf(path, 'specialAttack2SkillName',
-           r'Records/Skills/Monster Skills/Attack_Radius/PillarofFlame.dbr',
+           r'records\skills\monster skills\attack_radius\pillarofflame.dbr',
            DATA_TYPE_STRING)
         sf(path, 'specialAttack2Chance', 25, DATA_TYPE_INT)
         sf(path, 'specialAttack2Delay', 10.0, DATA_TYPE_FLOAT)
         sf(path, 'specialAttack2Timeout', 4.0, DATA_TYPE_FLOAT)
         sf(path, 'specialAttack3SkillName',
-           r'Records/Skills/Monster Skills/Attack_Radius/DuneRaider_Flamestrike.dbr',
+           r'records\skills\monster skills\attack_radius\duneraider_flamestrike.dbr',
            DATA_TYPE_STRING)
         sf(path, 'specialAttack3Chance', 20, DATA_TYPE_INT)
         sf(path, 'specialAttack3Delay', 12.0, DATA_TYPE_FLOAT)
         sf(path, 'specialAttack3Timeout', 5.0, DATA_TYPE_FLOAT)
         sf(path, 'initialSkillName',
-           r'Records/Skills/Monster Skills/Auras/Damage_FireBonus.dbr',
+           r'records\skills\monster skills\auras\damage_firebonus.dbr',
            DATA_TYPE_STRING)
         sf(path, 'buffSelfSkillName',
-           r'Records/Skills/Monster Skills/Auras/Damage_FireBonus.dbr',
+           r'records\skills\monster skills\auras\damage_firebonus.dbr',
            DATA_TYPE_STRING)
 
         # Override pet behavior (ensure no loot drop)
