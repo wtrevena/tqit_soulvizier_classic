@@ -267,7 +267,6 @@ def _copy_animation_fields(db, monster_path, pet_path):
     return copied
 
 
-_EQUIP_PREFIXES = ('chancetoequip', 'loot')
 _SKILL_PREFIXES = (
     'skillname', 'skilllevel', 'attackskillname',
     'specialattack', 'buffself', 'initialskillname',
@@ -277,17 +276,14 @@ _SKILL_PREFIXES = (
 def _update_existing_fields(db, monster_path, pet_path, prefixes):
     """Update VALUES of existing pet fields from monster — never add new fields.
 
-    Pet.tpl and Monster.tpl have different valid field sets.  Adding fields
-    that don't exist in Pet.tpl crashes the game on database load.  This
-    function only overwrites values for fields the pet already has (inherited
-    from the Lyia clone, which is a valid Pet.tpl record).
+    Uses set_field() which preserves the pet's original dtype (important!).
+    Direct dtype overwrite from monster records can corrupt the encoding.
     """
     monster_fields = db.get_fields(monster_path)
-    pet_fields = db.get_fields(pet_path)
-    if not monster_fields or not pet_fields:
+    if not monster_fields:
         return 0
 
-    # Build a lookup: field_name_lower -> (key, TypedField) for monster
+    # Build lookup: field_name_lower -> TypedField for monster
     monster_by_name = {}
     for key, tf in monster_fields.items():
         fn = key.split('###')[0].lower()
@@ -295,18 +291,36 @@ def _update_existing_fields(db, monster_path, pet_path, prefixes):
             monster_by_name[fn] = tf
 
     # Only update pet fields that already exist AND have a monster counterpart
+    # Use set_field() to preserve pet's dtype — do NOT overwrite dtype.
+    pet_fields = db.get_fields(pet_path)
+    if not pet_fields:
+        return 0
     updated = 0
     for pk in list(pet_fields.keys()):
         fn = pk.split('###')[0].lower()
         if fn in monster_by_name:
             mtf = monster_by_name[fn]
-            pet_fields[pk].dtype = mtf.dtype
-            pet_fields[pk].values = list(mtf.values)
+            db.set_field(pet_path, pk.split('###')[0], list(mtf.values))
             updated += 1
 
-    if updated:
-        db._modified.add(pet_path)
     return updated
+
+
+def _set_pet_equipment(db, pet_path, equip_spec):
+    """Set pet equipment from a spec dict using set_field() (dtype-safe).
+
+    equip_spec is a dict of {field_name: value}.  All values are set via
+    set_field() which preserves the existing field's dtype if the field
+    already exists, or infers dtype from the Python value type for new fields.
+
+    This is the SAFE way to assign equipment — hardcoded values, no monster
+    record copying, no dtype overwriting.
+    """
+    sf = db.set_field
+    for field_name, value in equip_spec.items():
+        sf(pet_path, field_name, value)
+    db._modified.add(pet_path)
+    return len(equip_spec)
 
 
 def _create_rakanizeus_pet_skill(db):
@@ -352,16 +366,48 @@ def _create_rakanizeus_pet_skill(db):
             return False
         db.clone_record(src, path)
 
-        # Replace Lyia's animations with Rakanizeus's.
-        # Skills: only update values for fields that already exist in Pet.tpl.
-        # Equipment copying disabled — monster loot values crash Pet.tpl records.
+        # Replace Lyia's animations and skills with Rakanizeus's.
         if rakan_monster:
             na = _copy_animation_fields(db, rakan_monster, path)
             ns = _update_existing_fields(db, rakan_monster, path, _SKILL_PREFIXES)
             if i == 0:
-                print(f"  Copied from Rakanizeus monster: {na} anim, {ns} skill fields (existing only)")
+                print(f"  Copied from Rakanizeus monster: {na} anim, {ns} skill fields")
 
         sf = db.set_field
+
+        # ── Equipment: fixed items per difficulty (warrior satyr loadout) ──
+        # [Normal, Epic, Legendary] — game picks by current difficulty.
+        _EQ = r'records\xpack\item\equipmentweapons\sword'
+        _AB = r'records\item\equipmentarmband'
+        _RG = r'records\item\equipmentring'
+        _set_pet_equipment(db, path, {
+            # Swords: Om'ehns (N) → Plissken (E) → Eternal Darkness (L)
+            'chanceToEquipLeftHand': 100.0,
+            'chanceToEquipLeftHandItem1': 5000,
+            'lootLeftHandItem1': [
+                _EQ + r'\u_n_002.dbr',
+                _EQ + r'\u_e_001.dbr',
+                _EQ + r'\u_l_002.dbr',
+            ],
+            # Armbands: Obsidian (N) → Warrior's (E) → Conqueror's (L)
+            'chanceToEquipForearm': 100.0,
+            'chanceToEquipForearmItem1': 5000,
+            'lootForearmItem1': [
+                _AB + r'\us_n_obsidianarmor.dbr',
+                _AB + "\\us_e_warrior'spanoply.dbr",
+                _AB + "\\us_l_conqueror'spanoply.dbr",
+            ],
+            # Rings: Zakalwe (N) → Adroit Loop (E) → Mark of Ares (L)
+            'chanceToEquipFinger1': 100.0,
+            'chanceToEquipFinger1Item1': 5000,
+            'lootFinger1Item1': [
+                _RG + r'\u_n_ringofzakalwe.dbr',
+                _RG + r'\u_e_adroitloop.dbr',
+                _RG + r'\u_l_markofares.dbr',
+            ],
+        })
+        if i == 0:
+            print("  Rakanizeus equipment: sword/armband/ring (N/E/L tiered)")
 
         # Override identity (replace Lyia's nymph identity with Rakanizeus)
         sf(path, 'charLevel', i + 1)
@@ -477,16 +523,48 @@ def _create_boneash_pet_skill(db):
             return False
         db.clone_record(src, path)
 
-        # Replace Lyia's animations with Boneash's.
-        # Skills: only update values for fields that already exist in Pet.tpl.
-        # Equipment copying disabled — monster loot values crash Pet.tpl records.
+        # Replace Lyia's animations and skills with Boneash's.
         if boneash_monster:
             na = _copy_animation_fields(db, boneash_monster, path)
             ns = _update_existing_fields(db, boneash_monster, path, _SKILL_PREFIXES)
             if i == 0:
-                print(f"  Copied from Boneash monster: {na} anim, {ns} skill fields (existing only)")
+                print(f"  Copied from Boneash monster: {na} anim, {ns} skill fields")
 
         sf = db.set_field
+
+        # ── Equipment: fixed items per difficulty (skeleton caster loadout) ─
+        # [Normal, Epic, Legendary] — game picks by current difficulty.
+        _ST = r'records\item\equipmentweapon\staff'
+        _AB = r'records\item\equipmentarmband'
+        _RG = r'records\item\equipmentring'
+        _set_pet_equipment(db, path, {
+            # Staves: Solaris (N) → Blastos Fotia (E) → Staff of Elysium (L)
+            'chanceToEquipLeftHand': 100.0,
+            'chanceToEquipLeftHandItem1': 5000,
+            'lootLeftHandItem1': [
+                _ST + r'\u_n_solaris.dbr',
+                _ST + r'\u_e_blastosfotia.dbr',
+                _ST + r'\u_l_staffofelysium.dbr',
+            ],
+            # Arms: Oracle's Winding (N) → Adept's Clasp (E) → Archmage's (L)
+            'chanceToEquipForearm': 100.0,
+            'chanceToEquipForearmItem1': 5000,
+            'lootForearmItem1': [
+                _AB + "\\usm_n_oracle'sgarments.dbr",
+                _AB + "\\usm_e_adept'sregalia.dbr",
+                _AB + "\\usm_l_archmage'sregalia.dbr",
+            ],
+            # Rings: Cartouche (N) → Star Stone (E) → Seal of Hephaestus (L)
+            'chanceToEquipFinger1': 100.0,
+            'chanceToEquipFinger1Item1': 5000,
+            'lootFinger1Item1': [
+                _RG + r'\u_n_cartouchering.dbr',
+                _RG + r'\u_e_starstone.dbr',
+                _RG + r'\u_l_sealofhephaestus.dbr',
+            ],
+        })
+        if i == 0:
+            print("  Boneash equipment: staff/armband/ring (N/E/L tiered)")
 
         # Override identity (scale/height/texture match the real Boneash boss)
         sf(path, 'charLevel', i + 1)
