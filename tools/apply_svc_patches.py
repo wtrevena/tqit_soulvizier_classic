@@ -220,12 +220,60 @@ def _find_record(db, path):
     return None
 
 
+def _copy_animation_fields(db, monster_path, pet_path):
+    """Copy all animation fields from a monster record to a pet record.
+
+    After cloning a pet from Hydra, the pet inherits Hydra-specific animation
+    file paths that are incompatible with the target mesh.  This function
+    copies the correct animation fields from the real monster record (which
+    uses the same mesh) into the cloned pet record.
+    """
+    monster_fields = db.get_fields(monster_path)
+    pet_fields = db.get_fields(pet_path)
+    if not monster_fields or not pet_fields:
+        return 0
+
+    copied = 0
+    for key, tf in monster_fields.items():
+        field_name = key.split('###')[0]
+        # Copy any field with "Anim" or "anim" in name (animation files,
+        # weights, speeds, etc.)
+        if 'Anim' in field_name or 'anim' in field_name:
+            # Find matching key in pet record (may have different ### suffix)
+            target_key = None
+            for pk in pet_fields:
+                if pk.split('###')[0] == field_name:
+                    target_key = pk
+                    break
+            if target_key:
+                pet_fields[target_key].dtype = tf.dtype
+                pet_fields[target_key].values = list(tf.values)
+            else:
+                pet_fields[field_name] = TypedField(tf.dtype, list(tf.values))
+            copied += 1
+
+    # Blank out any leftover Hydra-specific animation fields that weren't
+    # replaced (e.g. unarmedSpecialAnim1-4, unarmedLongIdleAnim which the
+    # real monster doesn't have but the Hydra pet does)
+    for pk in list(pet_fields.keys()):
+        fn = pk.split('###')[0]
+        if ('Anim' in fn or 'anim' in fn) and pet_fields[pk].dtype == 2:
+            vals = pet_fields[pk].values
+            if vals and isinstance(vals[0], str) and 'Hydra' in vals[0]:
+                pet_fields[pk].values = ['']
+                copied += 1
+
+    db._modified.add(pet_path)
+    return copied
+
+
 def _create_rakanizeus_pet_skill(db):
     """Create Rakanizeus pet records by cloning from Hydra and overriding.
 
     Clones the complete, working Hydra Pet.tpl records (which have all required
-    fields for animations, sounds, pathing, etc.) then overrides the fields
-    that make Rakanizeus unique: mesh, stats, skills, and identity.
+    fields for pathing, pet behavior, etc.) then copies animation fields from
+    the real Rakanizeus monster record (which uses the same Satyr mesh) and
+    overrides stats, skills, and identity.
     """
     CONTROLLER = (r'records\skills\spirit\drxpet'
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
@@ -251,6 +299,12 @@ def _create_rakanizeus_pet_skill(db):
     dmg_max =    [90, 130, 170]
     armor_lvl =  [56, 184, 408]
 
+    # Find the real Rakanizeus monster record for animation fields
+    rakan_monster = _find_record(
+        db, r'records\creature\monster\satyr\um_rakanizeus_17.dbr')
+    if not rakan_monster:
+        print("  WARNING: Rakanizeus monster record not found!")
+
     # Clone pet records from Hydra
     for i, path in enumerate(pet_paths):
         src = _find_record(db, hydra_sources[i])
@@ -258,14 +312,19 @@ def _create_rakanizeus_pet_skill(db):
             print(f"  WARNING: Hydra source {hydra_sources[i]} not found!")
             return False
         db.clone_record(src, path)
+
+        # Copy animation fields from the real Rakanizeus monster (Satyr mesh
+        # needs Satyr animations, not Hydra animations)
+        if rakan_monster:
+            n = _copy_animation_fields(db, rakan_monster, path)
+            if i == 0:
+                print(f"  Copied {n} animation fields from Rakanizeus monster")
+
         sf = db.set_field
 
         # Override identity
         sf(path, 'charLevel', i + 1, DATA_TYPE_INT)
         sf(path, 'mesh', r'SVMesh\meshes\rakanizeus.msh', DATA_TYPE_STRING)
-        sf(path, 'charAnimationTableName',
-           r'Records\Creature\Monster\Satyr\ANM\ANM_Satyr01.dbr',
-           DATA_TYPE_STRING)
         sf(path, 'scale', 1.4, DATA_TYPE_FLOAT)
         sf(path, 'description', 'tagNewHero87', DATA_TYPE_STRING)
         sf(path, 'characterRacialProfile', 'Beastman', DATA_TYPE_STRING)
@@ -381,7 +440,8 @@ def _create_boneash_pet_skill(db):
 
     Boneash is a fire skeleton caster — slow movement, high INT, devastating
     fire spells (Fireball, Pillar of Flame, Flamestrike, Ternion).
-    Clones from Hydra to inherit all required Pet.tpl fields.
+    Clones from Hydra to inherit all required Pet.tpl fields, then copies
+    animation fields from the real Boneash monster record.
     """
     CONTROLLER = (r'records\skills\spirit\drxpet'
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
@@ -407,6 +467,12 @@ def _create_boneash_pet_skill(db):
     dmg_max =    [60, 90, 120]
     armor_lvl =  [40, 150, 350]
 
+    # Find the real Boneash monster record for animation fields
+    boneash_monster = _find_record(
+        db, r'records\creature\monster\skeleton\um_boneash_30.dbr')
+    if not boneash_monster:
+        print("  WARNING: Boneash monster record not found!")
+
     # Clone pet records from Hydra
     for i, path in enumerate(pet_paths):
         src = _find_record(db, hydra_sources[i])
@@ -414,6 +480,14 @@ def _create_boneash_pet_skill(db):
             print(f"  WARNING: Hydra source {hydra_sources[i]} not found!")
             return False
         db.clone_record(src, path)
+
+        # Copy animation fields from the real Boneash monster (Skeleton mesh
+        # needs Skeleton animations, not Hydra animations)
+        if boneash_monster:
+            n = _copy_animation_fields(db, boneash_monster, path)
+            if i == 0:
+                print(f"  Copied {n} animation fields from Boneash monster")
+
         sf = db.set_field
 
         # Override identity
@@ -421,7 +495,7 @@ def _create_boneash_pet_skill(db):
         sf(path, 'mesh',
            r'Creatures\Monster\Skeleton\RevenantFire.msh', DATA_TYPE_STRING)
         sf(path, 'charAnimationTableName',
-           r'Records\Creature\Monster\Skeleton\ANM\ANM_Skeleton01.dbr',
+           r'records\creature\monster\skeleton\anm\anm_skeleton01.dbr',
            DATA_TYPE_STRING)
         sf(path, 'description', 'tagNewHero48', DATA_TYPE_STRING)
         sf(path, 'characterRacialProfile', 'Undead', DATA_TYPE_STRING)
