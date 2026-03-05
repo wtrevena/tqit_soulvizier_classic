@@ -1132,7 +1132,9 @@ def _create_coldworm_soul(db):
         path = f'{SOUL_BASE}\\boss_coldworm50_soul_{diff}.dbr'
         soul_paths.append(path)
 
-        _ensure_record(db, path, SOUL_TEMPLATE)
+        # Clone from a working soul to get all ~618 template fields
+        if not db.has_record(path):
+            db.clone_record(_SOUL_CLONE_SOURCE, path)
 
         # Boilerplate fields
         base = {
@@ -1242,6 +1244,11 @@ _SOUL_BOILERPLATE = {
 
 _SOUL_DIR = r'records\item\equipmentring\soul\svc_uber'
 
+# Reference soul to clone — has all ~618 template fields pre-populated.
+# Cloning this instead of bare _ensure_record ensures the game can render
+# the icon/mesh properly (grey box fix).
+_SOUL_CLONE_SOURCE = r'records\item\equipmentring\soul\skeleton\boneash_soul_n.dbr'
+
 
 def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
     """Create a hand-crafted soul with N/E/L difficulty scaling.
@@ -1256,7 +1263,10 @@ def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
         path = f'{_SOUL_DIR}\\{base_name}_soul_{diff}.dbr'
         soul_paths.append(path)
 
-        _ensure_record(db, path, SOUL_TEMPLATE)
+        # Clone from a working soul to get all ~618 template fields,
+        # then overwrite with our custom values.
+        if not db.has_record(path):
+            db.clone_record(_SOUL_CLONE_SOURCE, path)
         _set_soul_fields(db, path, _SOUL_BOILERPLATE)
         _set_soul_fields(db, path, {
             'itemLevel': (DATA_TYPE_INT, tier['itemLevel']),

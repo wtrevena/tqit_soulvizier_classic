@@ -27,6 +27,10 @@ SOUL_CLASS = 'ArmorJewelry_Ring'
 SOUL_BITMAP = 'Items\\miscellaneous\\n_soul.tex'
 SOUL_MESH = 'drx\\meshes\\n_soulmesh.msh'
 SOUL_COST = 'records/game/itemcost_soul.dbr'
+# Reference soul to clone — has all ~618 template fields pre-populated.
+# Cloning this instead of creating bare records ensures the game renders
+# the icon/mesh properly (grey box fix).
+SOUL_CLONE_SOURCE = r'records\item\equipmentring\soul\skeleton\boneash_soul_n.dbr'
 SOUL_DROP_SOUND = 'records/sounds/soundpak/Items/SoulDropPak.dbr'
 SOUL_DROP_3D = 'records/sounds/soundpak/Items/SoulDrop3DPak.dbr'
 SOUL_DROP_WATER = 'Records\\Sounds\\SoundPak\\Items\\WaterSmDropPak.dbr'
@@ -606,11 +610,13 @@ def create_uber_souls(db: ArzDatabase):
                 else:
                     typed_fields[k] = TypedField(dtype, [val])
 
-            db.ensure_string(soul_path)
-            db._raw_records[soul_path] = (db.ensure_string(soul_path), b'')
-            db._record_types[soul_path] = SOUL_TEMPLATE
-            db._record_timestamps[soul_path] = 0
-            db._decoded_cache[soul_path] = typed_fields
+            # Clone from a working soul to get all ~618 template fields,
+            # then overlay our custom fields on top.  This ensures the game
+            # can render the icon/mesh (grey box fix).
+            db.clone_record(SOUL_CLONE_SOURCE, soul_path)
+            base_fields = db._decoded_cache.get(soul_path, {})
+            base_fields.update(typed_fields)
+            db._decoded_cache[soul_path] = base_fields
             db._modified.add(soul_path)
 
         soul_n = f'records\\item\\equipmentring\\soul\\svc_uber\\{clean}_soul_n.dbr'
