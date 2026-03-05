@@ -1313,8 +1313,8 @@ def _create_sp_toxeus_soul(db):
             'offensiveLifeLeechMin': (F, 35.0),
             'offensivePercentCurrentLifeMin': (F, 5.0),
             # Defensive (moderate — monster equips this soul too!)
-            'characterDodgePercent': (F, 6.0),
-            'characterDeflectProjectile': (F, 6.0),
+            'characterDodgePercent': (F, 10.0),
+            'characterDeflectProjectile': (F, 10.0),
             'defensiveLife': (F, 12.0),
             'characterEnergyAbsorptionPercent': (F, 15.0),
             # Speed (assassin)
@@ -1329,8 +1329,8 @@ def _create_sp_toxeus_soul(db):
             'characterIntelligenceModifier': (F, 5.0),
             'characterOffensiveAbilityModifier': (F, 6.0),
             'characterDefensiveAbilityModifier': (F, 5.0),
-            # Reflect + Armor (kept low — monster equips this!)
-            'defensiveReflect': (F, 5.0),
+            # Reflect + Armor (monster equips this — countered by absorption/resistances)
+            'defensiveReflect': (F, 8.0),
             'defensiveProtectionModifier': (F, 8.0),
         }},
         {'diff': 'e', 'itemLevel': 66, 'stats': {
@@ -1350,8 +1350,8 @@ def _create_sp_toxeus_soul(db):
             'offensivePierceRatioModifier': (I, 22),
             'offensiveLifeLeechMin': (F, 60.0),
             'offensivePercentCurrentLifeMin': (F, 8.0),
-            'characterDodgePercent': (F, 8.0),
-            'characterDeflectProjectile': (F, 10.0),
+            'characterDodgePercent': (F, 14.0),
+            'characterDeflectProjectile': (F, 15.0),
             'defensiveLife': (F, 18.0),
             'characterEnergyAbsorptionPercent': (F, 25.0),
             'characterAttackSpeedModifier': (I, 16),
@@ -1364,7 +1364,7 @@ def _create_sp_toxeus_soul(db):
             'characterIntelligenceModifier': (F, 8.0),
             'characterOffensiveAbilityModifier': (F, 10.0),
             'characterDefensiveAbilityModifier': (F, 8.0),
-            'defensiveReflect': (F, 8.0),
+            'defensiveReflect': (F, 15.0),
             'defensiveProtectionModifier': (F, 12.0),
         }},
         {'diff': 'l', 'itemLevel': 80, 'stats': {
@@ -1386,8 +1386,8 @@ def _create_sp_toxeus_soul(db):
             'offensiveLifeLeechMin': (F, 90.0),
             'offensivePercentCurrentLifeMin': (F, 12.0),
             # Evasion (moderate — monster equips this!)
-            'characterDodgePercent': (F, 10.0),
-            'characterDeflectProjectile': (F, 12.0),
+            'characterDodgePercent': (F, 18.0),
+            'characterDeflectProjectile': (F, 22.0),
             'defensiveLife': (F, 25.0),
             'characterEnergyAbsorptionPercent': (F, 35.0),
             'defensiveManaBurnRatio': (F, 40.0),
@@ -1403,8 +1403,8 @@ def _create_sp_toxeus_soul(db):
             'characterIntelligenceModifier': (F, 12.0),
             'characterOffensiveAbilityModifier': (F, 15.0),
             'characterDefensiveAbilityModifier': (F, 10.0),
-            # Reflect + Armor (kept moderate — monster equips this!)
-            'defensiveReflect': (F, 10.0),
+            # Reflect + Armor (monster equips this — countered by absorption/resistances)
+            'defensiveReflect': (F, 25.0),
             'defensiveProtectionModifier': (F, 16.0),
         }},
     ]
