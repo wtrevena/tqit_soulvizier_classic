@@ -428,8 +428,10 @@ def _create_rakanizeus_pet_skill(db):
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Pet behavior
-        sf(path, 'dropItems', 1)
+        # Pet behavior — dropItems=0 prevents equipped gear from dropping as
+        # loot when the pet dies (the lootItem fields still control what the
+        # pet visually equips, but nothing is dropped on death).
+        sf(path, 'dropItems', 0)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
 
@@ -587,8 +589,10 @@ def _create_boneash_pet_skill(db):
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Pet behavior
-        sf(path, 'dropItems', 1)
+        # Pet behavior — dropItems=0 prevents equipped gear from dropping as
+        # loot when the pet dies (the lootItem fields still control what the
+        # pet visually equips, but nothing is dropped on death).
+        sf(path, 'dropItems', 0)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
 
@@ -718,8 +722,9 @@ def _create_pharaoh_guard_pet_skill(db):
         sf(path, 'handHitDamageMin', float(dmg_min[i]))
         sf(path, 'handHitDamageMax', float(dmg_max[i]))
 
-        # Pet behavior
-        sf(path, 'dropItems', 1)
+        # Pet behavior — dropItems=0 prevents any loot from dropping when
+        # the pet dies (consistent with all other soul pets).
+        sf(path, 'dropItems', 0)
         sf(path, 'giveXP', 0)
         sf(path, 'experiencePoints', 0)
 
