@@ -24,7 +24,7 @@ from uber_soul_designs import SOUL_DESIGNS
 
 SOUL_TEMPLATE = 'database\\Templates\\Jewelry_Ring.tpl'
 SOUL_CLASS = 'ArmorJewelry_Ring'
-SOUL_BITMAP = 'Items\\miscellaneous\\n_soul.tex'
+SOUL_BITMAP = 'SVItems\\jewelry\\soul_n_icon.tex'
 SOUL_MESH = 'drx\\meshes\\n_soulmesh.msh'
 SOUL_COST = 'records/game/itemcost_soul.dbr'
 # Reference soul to clone — has all ~618 template fields pre-populated.

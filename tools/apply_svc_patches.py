@@ -1138,7 +1138,7 @@ def _create_coldworm_soul(db):
         base = {
             'templateName': (DATA_TYPE_STRING, SOUL_TEMPLATE),
             'Class': (DATA_TYPE_STRING, 'ArmorJewelry_Ring'),
-            'bitmap': (DATA_TYPE_STRING, r'Items\miscellaneous\n_soul.tex'),
+            'bitmap': (DATA_TYPE_STRING, r'SVItems\jewelry\soul_n_icon.tex'),
             'mesh': (DATA_TYPE_STRING, r'drx\meshes\n_soulmesh.msh'),
             'itemCostName': (DATA_TYPE_STRING, 'records/game/itemcost_soul.dbr'),
             'dropSound': (DATA_TYPE_STRING, r'records/sounds/soundpak/Items/SoulDropPak.dbr'),
@@ -1217,7 +1217,7 @@ def _create_coldworm_soul(db):
 _SOUL_BOILERPLATE = {
     'templateName': (DATA_TYPE_STRING, SOUL_TEMPLATE),
     'Class': (DATA_TYPE_STRING, 'ArmorJewelry_Ring'),
-    'bitmap': (DATA_TYPE_STRING, r'Items\miscellaneous\n_soul.tex'),
+    'bitmap': (DATA_TYPE_STRING, r'SVItems\jewelry\soul_n_icon.tex'),
     'mesh': (DATA_TYPE_STRING, r'drx\meshes\n_soulmesh.msh'),
     'itemCostName': (DATA_TYPE_STRING, 'records/game/itemcost_soul.dbr'),
     'dropSound': (DATA_TYPE_STRING, r'records/sounds/soundpak/Items/SoulDropPak.dbr'),

@@ -1106,52 +1106,40 @@ def create_uber_dungeon_portal(db: ArzDatabase):
             print(f"  Created NPC (from scratch): {npc_path}")
 
 
-def patch_items_arc(items_arc_path: Path):
-    """Add missing soul inventory icon textures to Items.arc.
+def fix_soul_bitmaps(db: ArzDatabase):
+    """Fix soul inventory icons by pointing bitmap to SVItems.arc paths.
 
-    Soul records reference Items\\miscellaneous\\{n,e,l}_soul.tex but
-    Items.arc doesn't contain these files. The actual 32x32 icon
-    bitmaps are in SVItems.arc as jewelry/soul_{n,e,l}_icon.tex.
-    We copy them into Items.arc at the expected paths.
+    The original SV souls reference Items\\miscellaneous\\{n,e,l}_soul.tex
+    which doesn't exist in Items.arc. The actual 32x32 icons are in
+    SVItems.arc. We rewrite ALL soul bitmap fields to use SVItems paths
+    so the game can resolve them.
     """
-    from arc_patcher import ArcArchive
+    print("\n=== Patch: Fix soul inventory icon bitmaps ===")
 
-    if not items_arc_path.exists():
-        print(f"\n=== Items.arc patch: SKIPPED (not found: {items_arc_path}) ===")
-        return
-
-    sv_items_path = items_arc_path.parent / 'SVItems.arc'
-    if not sv_items_path.exists():
-        print(f"\n=== Items.arc patch: SKIPPED (SVItems.arc not found) ===")
-        return
-
-    print(f"\n=== Patch: Soul icon textures in Items.arc ===")
-    items_arc = ArcArchive.from_file(items_arc_path)
-    sv_arc = ArcArchive.from_file(sv_items_path)
-
-    # Map: target path in Items.arc -> source path in SVItems.arc
-    icon_map = {
-        'miscellaneous/n_soul.tex': 'jewelry/soul_n_icon.tex',
-        'miscellaneous/e_soul.tex': 'jewelry/soul_e_icon.tex',
-        'miscellaneous/l_soul.tex': 'jewelry/soul_l_icon.tex',
+    # Map old broken paths to correct SVItems paths
+    bitmap_fix = {
+        'items\\miscellaneous\\n_soul.tex': 'SVItems\\jewelry\\soul_n_icon.tex',
+        'items\\miscellaneous\\e_soul.tex': 'SVItems\\jewelry\\soul_e_icon.tex',
+        'items\\miscellaneous\\l_soul.tex': 'SVItems\\jewelry\\soul_l_icon.tex',
     }
 
-    changed = False
-    for target, source in icon_map.items():
-        source_data = sv_arc.get_file(source)
-        if not source_data:
-            print(f"  WARNING: {source} not found in SVItems.arc")
+    patched = 0
+    for rname in db.record_names():
+        if 'soul' not in rname.lower():
             continue
-        # add_file overwrites if exists, adds if not
-        items_arc.add_file(target, source_data)
-        print(f"  Set: {target} ({len(source_data)} bytes, 32x32 icon from SVItems/{source})")
-        changed = True
+        fields = db.get_fields(rname)
+        if not fields:
+            continue
+        bmp_tf = fields.get('bitmap')
+        if not bmp_tf:
+            continue
+        old_val = str(bmp_tf.value).lower().replace('/', '\\')
+        if old_val in bitmap_fix:
+            new_val = bitmap_fix[old_val]
+            db.set_field(rname, 'bitmap', new_val, DATA_TYPE_STRING)
+            patched += 1
 
-    if changed:
-        size = items_arc.write(items_arc_path)
-        print(f"  Written: {items_arc_path} ({size} bytes)")
-    else:
-        print("  No changes made.")
+    print(f"  Soul bitmap paths fixed: {patched}")
 
 
 def main():
@@ -1224,11 +1212,10 @@ def main():
             f.write(f"{tag}={value}\n")
     print(f"  Tags file: {tags_path} ({len(text_tags)} uber + {len(legacy_tags)} legacy + {len(extended_tags)} extended)")
 
+    fix_soul_bitmaps(db)
+
     print(f"\nWriting output...")
     db.write_arz(output_path)
-
-    patch_items_arc(output_path.parent.parent / 'Resources' / 'Items.arc')
-
     print("Done.")
 
 
