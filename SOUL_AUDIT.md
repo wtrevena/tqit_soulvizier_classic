@@ -46,32 +46,30 @@ These bosses have NO soul items at all — souls must be designed from scratch i
 | **Murder Bunny** | Boss | 66/79/99 | 275,000 | Secret Passage (`drxcreatures/crowheroes/murderbunny`) | STR 220, DEX 510, INT 400. Ambush boss. 100% immune to freeze/petrify/sleep/stun/trap. Currently drops `zzz_munderizer.dbr` egg — need to add a soul ring alongside it. |
 | **Secret Passage Hades** | Boss | 57/71/80 | ??? | Secret Passage (`drxcreatures/bloodwitch/boss_hades_54`) | Different from main Hades. Tag: xtagMonsterHades. Gets its own soul — **stronger than main Hades Form 3 soul** (SP is endgame content, higher level) but weaker than Toxeus. |
 | **Cold Worm** | Boss | 30/50/65 | ??? | NOT YET IN GAME — test record (`records\test\boss_coldworm50.dbr`) | Insectoid. Uses CryptWorm mesh. Skills: shockwave, drop ceiling, lay eggs, summon bugs, poison gas. Drops HF Parts Recipe. **Add to Act 2 Egypt** (underground caves/tombs where cryptworm enemies already exist). Create soul after placement. |
-| **Dagon** | Boss | 50/65/80 | ??? | NOT YET IN GAME — test record (`records\test\boss_dagon_66.dbr`) | Olympian, Ichthian mesh. Skills: tidal wave, summon water, mud storm, shadow star. Lovecraftian sea god. Drops Dagon relic. **Add to Act 4 Hades** (Styx/underworld water areas — treasure proxy already references Charon's chest). Create soul after placement. |
+| **Dagon** | Boss | 50/65/80 | ??? | NOT YET IN GAME — test record (`records\test\boss_dagon_66.dbr`) | Olympian, Ichthian mesh. Skills: tidal wave, summon water, mud storm, shadow star. Lovecraftian sea god. Drops Dagon relic. **Add wherever Ichthians spawn** — Greece Act 1 coastal areas and Orient Act 3 (Hanging Gardens through Jade Palace). Ichthians appear in both acts. Create soul after placement. |
 
-### Priority 2: Wire Existing Souls to Missing Variants
+### ~~Priority 2: Wire Existing Souls to Missing Variants~~ DONE
 
-These bosses have soul items created but some difficulty/location variants are missing the wiring.
+Implemented in `_wire_missing_boss_souls()` in `apply_svc_patches.py`.
 
-| Monster | Missing Variant | Existing Soul Source | Action |
-|---------|----------------|---------------------|--------|
-| **Charon (Form 1)** | `boss_charon_41.dbr`, `boss_charon_43.dbr` | `svc_uber/boss_charon_soul_*.dbr` (66% on `_39`) | Wire same uber soul to _41 and _43 at 66% |
-| **Hydra** | `boss_hydra_60.dbr`, `boss_hydra_63.dbr` | `hydra_soul_*.dbr` (25% on `_66`) | Wire same soul to _60 and _63 at 25%. Note: user believes only Legendary variant spawns — investigate if _60/_63 are actually used. |
-| **Ormenos (xpack)** | `xpack/.../boss_chinatelkine_ormenos_41.dbr` | `ormenos_soul_*.dbr` (3% on regular variants) | Wire same soul to xpack variant at **25%** |
-| **Yaoguai (xpack)** | `xpack/.../boss_daemonbull_yaoguai_38.dbr` | `yaoguai_soul_*.dbr` (25% on regular variants) | Wire same soul to xpack variant at 25% |
+| Monster | Variant | Soul | Drop Rate | Status |
+|---------|---------|------|-----------|--------|
+| Charon Form 1 | _41, _43 | boss_charon_soul | 66% | WIRED |
+| Hydra | _60, _63 | hydra_soul | 25% | WIRED |
+| Ormenos xpack | xpack _41 | ormenos_soul | 25% | WIRED |
+| Yaoguai xpack | xpack _38 | yaoguai_soul | 25% | WIRED |
 
-### Priority 3: Fix Low Drop Rate Bosses
+### ~~Priority 3: Fix Low Drop Rate Bosses~~ DONE
 
-These major bosses have soul drops well below the 25% standard. Our patch script should push all boss soul drop rates to either 66% (heroes/quest) or 25% (fixed-location bosses), but these are being missed.
+Implemented in `_fix_low_boss_soul_drop_rates()` in `apply_svc_patches.py`.
 
-| Boss | Current Rate | Target Rate | Records |
-|------|-------------|-------------|---------|
-| **Typhon** (Act IV final boss) | 1.5% | 25% | `boss_titan_typhon_42/45/48` (3 records) |
-| **Hades Form 3** (IT final boss) | 1.5% | 25% | `boss_hadesform3_50/52/54` (3 records) |
-| **Megalesios** (Greek Telkine) | 2.0% | 25% | `boss_greektelkine_megalesios_21/24/27` (3 records) |
-| **Ormenos** (China Telkine) | 3.0% | 25% | `boss_chinatelkine_ormenos_38/41/44` (3 records) |
-| **Cerberus** | 3.5% | 25% | `boss_cerberus_40/42/44` (3 records) |
-
-**Total: 15 records need drop rate correction to 25%.**
+| Boss | Old Rate | New Rate | Records |
+|------|----------|----------|---------|
+| Typhon | 1.5% | 25% | 3 |
+| Hades Form 3 | 1.5% | 25% | 3 |
+| Megalesios | 2.0% | 25% | 3 |
+| Ormenos | 3.0% | 25% | 3 + xpack |
+| Cerberus | 3.5% | 25% | 3 |
 
 Additional low-rate records (legacy, not critical):
 - 39 Champion/Common records at 0.5% (legacy SV data — `champion_*` and `mythical_*` prefixed)
@@ -97,11 +95,66 @@ These are the "crow heroes" and other unique secret passage encounters:
 - Need full inventory extraction to identify all unique monster types vs difficulty variants
 
 **Champion-class (37 records — CONFIRMED: give them souls):**
-- Bastien variants (crow heroes)
-- Blood abominations (bladedancer, spearrunner, ravager)
-- Blood harpies, blood hounds, blood dragons
-- The Slasher
-- These are special endgame secret passage monsters — they deserve souls
+
+| # | In-Game Name | Type | Record Path | Levels (N/E/L) |
+|---|-------------|------|-------------|----------------|
+| | **Sileni (Blood Abominations)** | | | |
+| 1 | Sileni - Carver | Dual-wield melee | `bloodabomination/01_bladedancer_35` | 35/54/68 |
+| 2 | Sileni - Carver | Dual-wield melee | `bloodabomination/01_bladedancer_36` | 36/55/69 |
+| 3 | Sileni - Carver | Dual-wield melee | `bloodabomination/01_bladedancer_37` | 37/56/70 |
+| 4 | Sileni - Impaler | Spear melee | `bloodabomination/02_spearrunner_37` | 37/55/70 |
+| 5 | Sileni - Impaler | Spear melee | `bloodabomination/02_spearrunner_38` | 38/56/71 |
+| 6 | Sileni - Impaler | Spear melee | `bloodabomination/02_spearrunner_39` | 39/57/72 |
+| 7 | Sileni - Butcher | Heavy brute | `bloodabomination/03_ravager_38` | 38/55/70 |
+| 8 | Sileni - Butcher | Heavy brute | `bloodabomination/03_ravager_39` | 39/56/71 |
+| 9 | Sileni - Butcher | Heavy brute | `bloodabomination/03_ravager_40` | 40/57/72 |
+| | **Malefice (Blood Demons)** | | | |
+| 10 | Malefice - Mutilator | Large demon | `blooddemon/c_large_blooddemon_38` | 38/56/69 |
+| 11 | Malefice - Mutilator | Large demon | `blooddemon/c_large_blooddemon_39` | 39/57/70 |
+| 12 | Malefice - Mutilator | Large demon | `blooddemon/c_large_blooddemon_40` | 40/58/71 |
+| | **Malefice (Blood Dragon)** | | | |
+| 13 | Malefice - Skinner | Blood dragon | `blooddragons/blooddragon01` | 40/56/71 |
+| | **Blood Cult - Reavers (Blood Harpies)** | | | |
+| 14 | Blood Cult - Reaver | Flying harpy | `bloodharpy/bloodharpy_40` | 40/57/72 |
+| 15 | Blood Cult - Reaver | Flying harpy | `bloodharpy/bloodharpy_41` | 41/58/73 |
+| 16 | Blood Cult - Reaver | Flying harpy | `bloodharpy/bloodharpy_42` | 42/59/74 |
+| | **Malefice (Blood Hounds)** | | | |
+| 17 | Malefice - Blood Beast | Large hound | `bloodhound/c_bloodhound_40` | 40/57/70 |
+| 18 | Malefice - Blood Beast | Large hound | `bloodhound/c_bloodhound_42` | 41/58/71 |
+| 19 | Malefice - Blood Beast | Large hound | `bloodhound/c_bloodhound_44` | 42/59/72 |
+| | **Blood Cult - Seductresses** | | | |
+| 20 | Blood Cult - Seductress | Witch caster | `bloodwitch/b_seductress_39` | 39/56/71 |
+| 21 | Blood Cult - Seductress | Witch caster | `bloodwitch/b_seductress_41` | 40/57/72 |
+| 22 | Blood Cult - Seductress | Witch caster | `bloodwitch/b_seductress_43` | 41/58/73 |
+| | **Blood Cult - Disciples** | | | |
+| 23 | Blood Cult - Disciple | Witch acolyte | `bloodwitch/c_disciple_39` | 39/56/71 |
+| 24 | Blood Cult - Disciple | Witch acolyte | `bloodwitch/c_disciple_41` | 41/58/73 |
+| 25 | Blood Cult - Disciple | Witch acolyte | `bloodwitch/c_disciple_42` | 42/59/74 |
+| | **Blood Cult - Reavers (Blood Witches)** | | | |
+| 26 | Blood Cult - Reaver | Witch warrior | `bloodwitch/d_reaver_40` | 40/57/72 |
+| 27 | Blood Cult - Reaver | Witch warrior | `bloodwitch/d_reaver_41` | 41/58/73 |
+| 28 | Blood Cult - Reaver | Witch warrior | `bloodwitch/d_reaver_42` | 42/59/74 |
+| | **Blood Cult - Special** | | | |
+| 29 | Melinoe - Blade Maiden | Boss-skill champion | `bloodwitch/skills/discipleboss_bladedancer` | 40/56/71 |
+| 30 | Tormented Soul | Leinth summon | `bloodwitch/skills/leinth_skills/summoned_ugly` | 39/48/62 |
+| | **Crow Heroes** | | | |
+| 31 | Bastien | Crow hero variant 1 | `crowheroes/bastien` | 43/59/72 |
+| 32 | Bastien | Crow hero variant 2 | `crowheroes/bastien02` | 43/59/72 |
+| 33 | Bastien | Crow hero variant 3 | `crowheroes/bastien04` | 43/59/72 |
+| 34 | Bastien | Crow hero variant 4 | `crowheroes/bastienx03` | 43/59/72 |
+| 35 | Bastien | Crow hero variant 5 | `crowheroes/bastienx05` | 43/59/72 |
+| 36 | Black Warden | Kaets minion | `crowheroes/kaets_minion` | 40/56/71 |
+| | **Slasher** | | | |
+| 37 | Dune Raider - Elite Assassin | Assassin enemy | `slasher/slasher` | 30/50/65 |
+
+**Summary by creature family (unique monsters, not counting difficulty variants):**
+- **Sileni** (3 types x 3 levels = 9): Carver, Impaler, Butcher — melee blood abominations
+- **Malefice** (3 types): Mutilator (demon), Skinner (dragon), Blood Beast (hound)
+- **Blood Cult** (3 types): Seductress, Disciple, Reaver — blood witch variants
+- **Bastien** (1 type x 5 variants = 5): Crow hero champion, multiple loadouts
+- **Others** (3): Melinoe Blade Maiden, Tormented Soul, Black Warden, Dune Raider
+
+Note: Records #29-30 (Melinoe Blade Maiden, Tormented Soul) are boss-skill entities and Leinth summons — may not warrant their own souls. The other 35 are genuine champion enemies.
 
 **Hero-class in secret passage:**
 - Warden of Souls (`xsecrethero_wardenofsouls`) — Lv 48, Life element, Tank role. **Already has a soul** (tagSoulSVC9141). No action needed.
@@ -128,7 +181,7 @@ These are the "crow heroes" and other unique secret passage encounters:
 
 1. **Main Toxeus soul** (`um_toxeus_21`): Overhaul existing soul to be **one of the strongest** in the game. Melee/rogue themed — lethal strike, traps, physical/pierce damage. Should rival Rakanizeus/Boneash power level but with a different niche.
 
-2. **SP Toxeus soul** (`um_toxeus_99`): Create entirely new soul — **THE strongest soul in the game, bar none.** Dream/nightmare themed — distort reality, lucid dream. Should have:
+2. **SP Toxeus soul** (`um_toxeus_99`): Create entirely new soul — **THE strongest soul in the game (Tier 1).** Dream/nightmare themed — distort reality, lucid dream. Should have:
    - Highest stat bonuses of any soul
    - Unique powerful proc or summon
    - Stats that reflect the nightmare/dream theme (INT + DEX hybrid)
@@ -153,7 +206,7 @@ SP Hades soul should exceed these stats. SP Toxeus soul should exceed SP Hades.
 | Boss | Placement | Rationale |
 |------|-----------|-----------|
 | **Cold Worm** | Act 2 Egypt underground caves/tombs | Insectoid race, CryptWorm mesh matches existing Act 2 enemies. Cave/tunnel skill set (ceiling collapse, egg laying, bug swarms). Level range 30/50/65 fits Act 2 progression. |
-| **Dagon** | Act 4 Hades underworld water areas | Olympian race, Ichthian mesh (fish creature). Water/ocean themed skills (tidal wave, summon water, mud storm). Treasure proxy already references Charon's chest. Level range 50/65/80 fits Act 4. Lovecraftian sea god guarding the Styx. |
+| **Dagon** | Anywhere Ichthians spawn (Greece coastal + Orient) | Olympian race, Ichthian mesh (fish creature). Water/ocean themed skills (tidal wave, summon water, mud storm). Ichthians spawn in Greece Act 1 coastal areas and Orient Act 3 (Hanging Gardens, Silk Road, Great Wall, Chang'an, Jade Palace, Tomb). Level range 50/65/80. |
 
 **Implementation**: Need to create spawn proxies and place them in appropriate level files. Both bosses have complete skill sets, loot tables, and meshes ready — they just need map placement.
 
@@ -161,7 +214,7 @@ SP Hades soul should exceed these stats. SP Toxeus soul should exceed SP Hades.
 
 | Monster | Status | Notes |
 |---------|--------|-------|
-| **Graeae** | No action needed | Already in game at `xpack/.../bosses/01_graeae/`. Three sisters (Deino, Enyo, Pemphredo) all have uber souls. |
+| **Graeae** | No action needed | Already in game — spawn in **Medea's Swamp** (IT expansion quest "Medea's Price", zone xq02). Three sisters (Deino Lv35-39, Enyo Lv37-40, Pemphredo Lv36-40) all have uber souls. The "01_graeae" folder is boss set numbering (01-05), not act numbering. |
 | **Hades Forms 1 & 2** | Do NOT wire | Form 1 and 2 die during the fight → Form 3 spawns. Only Form 3 drops a soul. |
 | **xq03_charonsoundrat** | Ignore | Quest trigger entity, not a real boss. |
 | **Charon Form 2** | Already wired | All 3 Form 2 variants (39/41/43) have SV souls at 25%. |
@@ -362,5 +415,9 @@ Souls scale with monster level. Here are examples at different tiers:
 1. **Toxeus the Murderer must have the STRONGEST soul of any monster** — SP Toxeus soul outclasses everything. Main Toxeus soul is one of the strongest but weaker than SP.
 2. **Hades Forms 1 & 2 do NOT get souls** — only Form 3 (the final form) drops a soul.
 3. **All secret passage monsters should have souls** — Boss, Quest, Champion, and Hero classes all get souls in this endgame area.
-4. **Soul power hierarchy**: SP Toxeus > SP Hades > Main Hades ≥ Main Toxeus > other boss souls.
+4. **Soul power hierarchy (flexible, not rigid)**:
+   - **Tier 1 (Ultimate)**: SP Toxeus — the single strongest soul
+   - **Tier 2 (Elite endgame)**: SP Hades, Murder Bunny, uber bosses at end of Blood Cave / Secret Passage — roughly on par with each other
+   - **Tier 3 (Top-tier)**: Main Toxeus and other strong boss souls — powerful but not dominating Tier 2
+   - Other boss souls can be strong and have outliers, but shouldn't absolutely dominate the souls listed above
 5. **Drop rate standards**: Fixed-location bosses = 25%, Heroes/Quest = 66%.
