@@ -1074,15 +1074,37 @@ def _create_coldworm_soul(db):
         print("  WARNING: Cold Worm monster record not found")
         return False
 
-    # ── Create three soul variants (N/E/L) ──────────────────────────────
+    # ── Difficulty-scaled stats (N=Lv30, E=Lv50, L=Lv65) ──────────────
+    # Comparable to peers: Arachne (Lv61), Scorpos (Lv63), Boneash (Lv65)
+    # Scorpos L: +409 Life, 88-93 poison, +42% poison modifier
+    # Arachne L: +23 Dex, +14% AS, 45-49 poison, +46% poison res
+    tiers = [
+        # (suffix, itemLevel, levelReq, skillLv, augLv1, augLv2,
+        #  defCold, defPoison, coldMin, coldMax, poisMin, poisMax, poisDur,
+        #  coldMod, poisMod, life, mana, str, int, DA, castSpeed)
+        ('n', 30, 25, 2, 2, 2,
+         18.0, 15.0, 10.0, 22.0, 18.0, 35.0, 3.0,
+         12, 15, 150, 80, 14, 12, 30, 10),
+        ('e', 50, 45, 4, 3, 3,
+         30.0, 25.0, 22.0, 40.0, 35.0, 60.0, 3.0,
+         25, 30, 280, 140, 22, 20, 55, 18),
+        ('l', 65, 60, 6, 5, 5,
+         42.0, 38.0, 35.0, 58.0, 50.0, 85.0, 4.0,
+         40, 48, 380, 200, 30, 28, 85, 25),
+    ]
+
     soul_paths = []
-    for diff in ('n', 'e', 'l'):
+    for (diff, item_lv, lv_req, sk_lv, aug1_lv, aug2_lv,
+         def_cold, def_poison, cold_min, cold_max, pois_min, pois_max, pois_dur,
+         cold_mod, pois_mod,
+         life, mana, strength, intel, da, cast_speed) in tiers:
+
         path = f'{SOUL_BASE}\\boss_coldworm50_soul_{diff}.dbr'
         soul_paths.append(path)
 
         _ensure_record(db, path, SOUL_TEMPLATE)
 
-        # Boilerplate fields (same as create_uber_souls._base_soul_fields)
+        # Boilerplate fields
         base = {
             'templateName': (DATA_TYPE_STRING, SOUL_TEMPLATE),
             'Class': (DATA_TYPE_STRING, 'ArmorJewelry_Ring'),
@@ -1103,44 +1125,48 @@ def _create_coldworm_soul(db):
             'hidePrefixName': (DATA_TYPE_INT, 0),
             'hideSuffixName': (DATA_TYPE_INT, 0),
             'quest': (DATA_TYPE_INT, 0),
-            'itemLevel': (DATA_TYPE_INT, 50),
-            'levelRequirement': (DATA_TYPE_INT, 45),
+            'itemLevel': (DATA_TYPE_INT, item_lv),
+            'levelRequirement': (DATA_TYPE_INT, lv_req),
             'strengthRequirement': (DATA_TYPE_INT, 0),
             'intelligenceRequirement': (DATA_TYPE_INT, 0),
             'dexterityRequirement': (DATA_TYPE_INT, 0),
             'numRelicSlots': (DATA_TYPE_INT, 1),
             'itemNameTag': (DATA_TYPE_STRING, 'tagD2Boss004'),
-            'FileDescription': (DATA_TYPE_STRING, 'boss_coldworm50 soul'),
+            'FileDescription': (DATA_TYPE_STRING, f'boss_coldworm50 soul ({diff.upper()})'),
         }
         _set_soul_fields(db, path, base)
 
-        # ── Cold Worm soul stats: cold/poison theme ─────────────────────
+        # Cold/poison themed stats — scaled per difficulty
         stats = {
             # On-hit proc: ice blast
             'itemSkillName': (DATA_TYPE_STRING, r'records\skills\soulskills\gargantuanyeti_iceblast.dbr'),
-            'itemSkillLevel': (DATA_TYPE_INT, 4),
+            'itemSkillLevel': (DATA_TYPE_INT, sk_lv),
             'itemSkillAutoController': (DATA_TYPE_STRING, _AC_ON_HIT),
             # Augment 1: Cold aura
             'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxcoldaura.dbr'),
-            'augmentSkillLevel1': (DATA_TYPE_INT, 3),
+            'augmentSkillLevel1': (DATA_TYPE_INT, aug1_lv),
             # Augment 2: Plague (poison)
             'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\nature\drxplague.dbr'),
-            'augmentSkillLevel2': (DATA_TYPE_INT, 3),
+            'augmentSkillLevel2': (DATA_TYPE_INT, aug2_lv),
             # Defensive: cold & poison resistance
-            'defensiveCold': (DATA_TYPE_FLOAT, 18.0),
-            'defensivePoison': (DATA_TYPE_FLOAT, 15.0),
-            # Offensive: cold + poison damage
-            'offensiveColdMin': (DATA_TYPE_FLOAT, 8.0),
-            'offensiveColdMax': (DATA_TYPE_FLOAT, 18.0),
-            'offensiveSlowPoisonMin': (DATA_TYPE_FLOAT, 12.0),
-            'offensiveSlowPoisonMax': (DATA_TYPE_FLOAT, 24.0),
-            'offensiveSlowPoisonDurationMin': (DATA_TYPE_FLOAT, 3.0),
+            'defensiveCold': (DATA_TYPE_FLOAT, def_cold),
+            'defensivePoison': (DATA_TYPE_FLOAT, def_poison),
+            # Offensive: cold + poison flat damage
+            'offensiveColdMin': (DATA_TYPE_FLOAT, cold_min),
+            'offensiveColdMax': (DATA_TYPE_FLOAT, cold_max),
+            'offensiveSlowPoisonMin': (DATA_TYPE_FLOAT, pois_min),
+            'offensiveSlowPoisonMax': (DATA_TYPE_FLOAT, pois_max),
+            'offensiveSlowPoisonDurationMin': (DATA_TYPE_FLOAT, pois_dur),
+            # Offensive: % damage modifiers
+            'offensiveColdModifier': (DATA_TYPE_INT, cold_mod),
+            'offensiveSlowPoisonModifier': (DATA_TYPE_INT, pois_mod),
             # Stat bonuses
-            'characterLife': (DATA_TYPE_INT, 80),
-            'characterMana': (DATA_TYPE_INT, 40),
-            'characterStrength': (DATA_TYPE_INT, 20),
-            'characterIntelligence': (DATA_TYPE_INT, 15),
-            'characterDefensiveAbility': (DATA_TYPE_INT, 30),
+            'characterLife': (DATA_TYPE_INT, life),
+            'characterMana': (DATA_TYPE_INT, mana),
+            'characterStrength': (DATA_TYPE_INT, strength),
+            'characterIntelligence': (DATA_TYPE_INT, intel),
+            'characterDefensiveAbility': (DATA_TYPE_INT, da),
+            'characterSpellCastSpeedModifier': (DATA_TYPE_INT, cast_speed),
         }
         _set_soul_fields(db, path, stats)
 

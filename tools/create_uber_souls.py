@@ -570,12 +570,41 @@ def create_uber_souls(db: ArzDatabase):
         text_tags.append((tag_name, '{^F}' + f'{display_name} Soul'))
         tag_counter += 1
 
+        # Scale stats by difficulty: N=60%, E=80%, L=100%
+        _DIFF_SCALE = {'n': 0.6, 'e': 0.8, 'l': 1.0}
+        # Fields that should NOT be scaled (identity, skills, strings, booleans)
+        _NO_SCALE = {
+            'templateName', 'Class', 'bitmap', 'mesh', 'itemCostName',
+            'dropSound', 'dropSound3D', 'dropSoundWater',
+            'itemClassification', 'characterBaseAttackSpeedTag',
+            'itemNameTag', 'FileDescription',
+            'itemSkillName', 'itemSkillAutoController',
+            'augmentSkillName1', 'augmentSkillName2',
+            'castsShadows', 'cannotPickUp', 'cannotPickUpMultiple',
+            'hidePrefixName', 'hideSuffixName', 'quest', 'numRelicSlots',
+        }
+
         for diff in ('n', 'e', 'l'):
             soul_path = f'records\\item\\equipmentring\\soul\\svc_uber\\{clean}_soul_{diff}.dbr'
+            scale = _DIFF_SCALE[diff]
 
             typed_fields = {}
             for k, (dtype, val) in soul_fields.items():
-                typed_fields[k] = TypedField(dtype, [val])
+                if k in _NO_SCALE or dtype == DATA_TYPE_STRING:
+                    typed_fields[k] = TypedField(dtype, [val])
+                elif k == 'itemLevel':
+                    scaled_lv = max(1, int(val * scale))
+                    typed_fields[k] = TypedField(dtype, [scaled_lv])
+                elif k == 'levelRequirement':
+                    base_lv = soul_fields.get('itemLevel', (DATA_TYPE_INT, 1))[1]
+                    scaled_lv = max(1, int(base_lv * scale))
+                    typed_fields[k] = TypedField(dtype, [max(1, scaled_lv - 5)])
+                elif dtype == DATA_TYPE_INT:
+                    typed_fields[k] = TypedField(dtype, [max(0, int(val * scale))] if val >= 0 else [int(val * scale)])
+                elif dtype == DATA_TYPE_FLOAT:
+                    typed_fields[k] = TypedField(dtype, [round(val * scale, 1)])
+                else:
+                    typed_fields[k] = TypedField(dtype, [val])
 
             db.ensure_string(soul_path)
             db._raw_records[soul_path] = (db.ensure_string(soul_path), b'')
