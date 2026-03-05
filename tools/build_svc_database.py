@@ -349,6 +349,7 @@ def make_enchantable(db: ArzDatabase):
     item_path_prefixes = (
         'records\\item\\', 'records/item/',
         'records\\drxitem\\', 'records/drxitem/',
+        'records\\xpack\\item\\', 'records/xpack/item/',
     )
 
     equip_templates = (

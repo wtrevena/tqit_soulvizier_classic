@@ -1132,9 +1132,7 @@ def _create_coldworm_soul(db):
         path = f'{SOUL_BASE}\\boss_coldworm50_soul_{diff}.dbr'
         soul_paths.append(path)
 
-        # Clone from a working soul to get all ~618 template fields
-        if not db.has_record(path):
-            db.clone_record(_SOUL_CLONE_SOURCE, path)
+        _ensure_record(db, path, SOUL_TEMPLATE)
 
         # Boilerplate fields
         base = {
@@ -1263,10 +1261,7 @@ def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
         path = f'{_SOUL_DIR}\\{base_name}_soul_{diff}.dbr'
         soul_paths.append(path)
 
-        # Clone from a working soul to get all ~618 template fields,
-        # then overwrite with our custom values.
-        if not db.has_record(path):
-            db.clone_record(_SOUL_CLONE_SOURCE, path)
+        _ensure_record(db, path, SOUL_TEMPLATE)
         _set_soul_fields(db, path, _SOUL_BOILERPLATE)
         _set_soul_fields(db, path, {
             'itemLevel': (DATA_TYPE_INT, tier['itemLevel']),

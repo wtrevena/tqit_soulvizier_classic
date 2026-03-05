@@ -610,13 +610,11 @@ def create_uber_souls(db: ArzDatabase):
                 else:
                     typed_fields[k] = TypedField(dtype, [val])
 
-            # Clone from a working soul to get all ~618 template fields,
-            # then overlay our custom fields on top.  This ensures the game
-            # can render the icon/mesh (grey box fix).
-            db.clone_record(SOUL_CLONE_SOURCE, soul_path)
-            base_fields = db._decoded_cache.get(soul_path, {})
-            base_fields.update(typed_fields)
-            db._decoded_cache[soul_path] = base_fields
+            db.ensure_string(soul_path)
+            db._raw_records[soul_path] = (db.ensure_string(soul_path), b'')
+            db._record_types[soul_path] = SOUL_TEMPLATE
+            db._record_timestamps[soul_path] = 0
+            db._decoded_cache[soul_path] = typed_fields
             db._modified.add(soul_path)
 
         soul_n = f'records\\item\\equipmentring\\soul\\svc_uber\\{clean}_soul_n.dbr'
