@@ -1106,6 +1106,56 @@ def create_uber_dungeon_portal(db: ArzDatabase):
             print(f"  Created NPC (from scratch): {npc_path}")
 
 
+def patch_items_arc(items_arc_path: Path):
+    """Add missing soul icon textures to Items.arc.
+
+    The soul database records reference bitmap paths like
+    Items\\miscellaneous\\n_soul.tex, but Items.arc only contains
+    soultex_n.tex (not n_soul.tex). This adds the missing aliases
+    so the game can resolve the icon bitmaps.
+    """
+    from arc_patcher import ArcArchive
+
+    if not items_arc_path.exists():
+        print(f"\n=== Items.arc patch: SKIPPED (not found: {items_arc_path}) ===")
+        return
+
+    print(f"\n=== Patch: Soul icon textures in Items.arc ===")
+    arc = ArcArchive.from_file(items_arc_path)
+
+    # Map: missing target name -> existing source name
+    needed = {
+        'miscellaneous/n_soul.tex': 'miscellaneous/soultex_n.tex',
+        'miscellaneous/e_soul.tex': 'miscellaneous/soultex_e.tex',
+        'miscellaneous/l_soul.tex': 'miscellaneous/soultex_l.tex',
+    }
+
+    # Check which already exist
+    existing_names = {e.name for e in arc.entries if e.entry_type == 3}
+    sources = {}
+    for target, source in needed.items():
+        if target in existing_names:
+            print(f"  Already exists: {target}")
+        elif source not in existing_names:
+            print(f"  WARNING: source {source} not found, skipping {target}")
+        else:
+            sources[target] = source
+
+    if not sources:
+        print("  No changes needed.")
+        return
+
+    # Extract source content and add as new entries
+    for target, source in sources.items():
+        source_data = arc.get_file(source)
+        if source_data:
+            arc.add_file(target, source_data)
+            print(f"  Added: {target} ({len(source_data)} bytes, from {source})")
+
+    size = arc.write(items_arc_path)
+    print(f"  Written: {items_arc_path} ({size} bytes)")
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz>")
@@ -1178,6 +1228,9 @@ def main():
 
     print(f"\nWriting output...")
     db.write_arz(output_path)
+
+    patch_items_arc(output_path.parent.parent / 'Resources' / 'Items.arc')
+
     print("Done.")
 
 
