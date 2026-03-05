@@ -90,7 +90,7 @@ MERC_LOOT_TABLES = {
 # Key = partial path match, Value = dict of fields to set/override.
 
 SOUL_OVERHAULS = {
-    # ── RAKANIZEUS: Lightning god-satyr. Summons Rakanizeus + massive speed + chain lightning
+    # ── RAKANIZEUS: Lightning god-satyr. Summons Rakanizeus + speed + chain lightning skills
     'rakanizeus_soul': {
         'itemSkillName': (DATA_TYPE_STRING, SUMMON_RAKANIZEUS_SKILL),
         'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxstormsurge.dbr'),
@@ -100,13 +100,6 @@ SOUL_OVERHAULS = {
         'characterRunSpeedModifier': (DATA_TYPE_FLOAT, 45.0),
         'characterAttackSpeedModifier': (DATA_TYPE_INT, 35),
         'characterTotalSpeedModifier': (DATA_TYPE_INT, 25),
-        'offensiveLightningMin': (DATA_TYPE_FLOAT, 25.0),
-        'offensiveLightningMax': (DATA_TYPE_FLOAT, 80.0),
-        'offensiveLightningModifier': (DATA_TYPE_INT, 30),
-        'offensiveElectricalBurnMin': (DATA_TYPE_FLOAT, 40.0),
-        'offensiveElectricalBurnMax': (DATA_TYPE_FLOAT, 75.0),
-        'offensiveElectricalBurnDurationMin': (DATA_TYPE_FLOAT, 3.0),
-        'defensiveLightning': (DATA_TYPE_FLOAT, 60.0),
         'defensivePierce': (DATA_TYPE_FLOAT, 15.0),
         'characterLife': (DATA_TYPE_INT, 200),
         'characterMana': (DATA_TYPE_INT, 100),
@@ -115,7 +108,7 @@ SOUL_OVERHAULS = {
         'characterOffensiveAbility': (DATA_TYPE_INT, 50),
     },
 
-    # ── BONEASH: Fire skeleton caster. Summons Boneash + fire damage + cast speed
+    # ── BONEASH: Fire skeleton caster. Summons Boneash + cast speed + fire skills
     'boneash_soul': {
         'itemSkillName': (DATA_TYPE_STRING, SUMMON_BONEASH_SKILL),
         'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\earth\drxvolcanicorb.dbr'),
@@ -123,13 +116,6 @@ SOUL_OVERHAULS = {
         'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\earth\drxfireenchantment.dbr'),
         'augmentSkillLevel2': (DATA_TYPE_INT, 3),
         'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 35),
-        'offensiveFireModifier': (DATA_TYPE_INT, 40),
-        'offensiveFireMin': (DATA_TYPE_FLOAT, 15.0),
-        'offensiveFireMax': (DATA_TYPE_FLOAT, 50.0),
-        'offensiveBurnMin': (DATA_TYPE_FLOAT, 30.0),
-        'offensiveBurnMax': (DATA_TYPE_FLOAT, 60.0),
-        'offensiveBurnDurationMin': (DATA_TYPE_FLOAT, 3.0),
-        'defensiveFire': (DATA_TYPE_FLOAT, 55.0),
         'characterMana': (DATA_TYPE_INT, 150),
         'characterIntelligence': (DATA_TYPE_INT, 50),
         'characterLifeModifier': (DATA_TYPE_FLOAT, -4.0),
