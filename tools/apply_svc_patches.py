@@ -785,6 +785,131 @@ def _update_pharaoh_guard_drop_rate(db):
     return updated
 
 
+def _fix_low_boss_soul_drop_rates(db):
+    """Raise soul drop rates to 25% for major bosses that have very low rates."""
+    bosses = [
+        ('boss_titan_typhon', 'Typhon', 25.0),
+        ('boss_hadesform3', 'Hades Form 3', 25.0),
+        ('boss_greektelkine_megalesios', 'Megalesios', 25.0),
+        ('boss_chinatelkine_ormenos', 'Ormenos', 25.0),
+        ('boss_cerberus', 'Cerberus', 25.0),
+    ]
+    total = 0
+    for tag, label, target_rate in bosses:
+        updated = 0
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if tag in nl:
+                fields = db.get_fields(name)
+                if not fields:
+                    continue
+                # Check if this record has a soul drop (chanceToEquipFinger2 > 0)
+                for key, tf in fields.items():
+                    fn = key.split('###')[0]
+                    if fn == 'chanceToEquipFinger2' and tf.values and float(tf.values[0]) > 0:
+                        db.set_field(name, 'chanceToEquipFinger2', target_rate, DATA_TYPE_FLOAT)
+                        db._modified.add(name)
+                        updated += 1
+                        break
+        print(f"  {label} drop rate -> {target_rate}% ({updated} monster records)")
+        total += updated
+    return total
+
+
+def _wire_missing_boss_souls(db):
+    """Wire soul drops onto boss variants that are missing them."""
+    total = 0
+
+    # ── Helper: find lootFinger2Item1 values from a donor record ────────
+    def _get_soul_paths(tag):
+        """Find lootFinger2Item1 [N, E, L] from any record matching tag."""
+        for name in db.record_names():
+            nl = name.lower()
+            if tag in nl:
+                fields = db.get_fields(name)
+                if not fields:
+                    continue
+                for key, tf in fields.items():
+                    fn = key.split('###')[0]
+                    if fn == 'lootFinger2Item1' and tf.values and len(tf.values) >= 3:
+                        return list(tf.values)
+        return None
+
+    def _wire_soul(name, soul_paths, chance):
+        """Set lootFinger2Item1 and chanceToEquipFinger2 on a record."""
+        db.set_field(name, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
+        db.set_field(name, 'chanceToEquipFinger2', chance, DATA_TYPE_FLOAT)
+        db.set_field(name, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
+        db._modified.add(name)
+
+    # ── xpack Ormenos: wire soul from regular Ormenos variants ──────────
+    ormenos_souls = _get_soul_paths('boss_chinatelkine_ormenos')
+    if ormenos_souls:
+        wired = 0
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if 'boss_chinatelkine_ormenos' in nl and 'xpack' in nl:
+                # Check it doesn't already have a soul wired
+                existing = db.get_field_value(name, 'lootFinger2Item1')
+                if not existing or existing == '' or existing == 0:
+                    _wire_soul(name, ormenos_souls, 25.0)
+                    wired += 1
+        print(f"  Ormenos xpack soul wired: {wired} records (soul: {ormenos_souls[0].split(chr(92))[-1]})")
+        total += wired
+    else:
+        print("  WARNING: Could not find Ormenos soul paths to wire xpack variants")
+
+    # ── xpack Yaoguai: wire soul from regular Yaoguai variants ──────────
+    yaoguai_souls = _get_soul_paths('boss_daemonbull_yaoguai')
+    if yaoguai_souls:
+        wired = 0
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if 'boss_daemonbull_yaoguai' in nl and 'xpack' in nl:
+                existing = db.get_field_value(name, 'lootFinger2Item1')
+                if not existing or existing == '' or existing == 0:
+                    _wire_soul(name, yaoguai_souls, 25.0)
+                    wired += 1
+        print(f"  Yaoguai xpack soul wired: {wired} records (soul: {yaoguai_souls[0].split(chr(92))[-1]})")
+        total += wired
+    else:
+        print("  WARNING: Could not find Yaoguai soul paths to wire xpack variants")
+
+    # ── Charon Form 1: wire uber soul from boss_charon_39 ───────────────
+    charon_souls = _get_soul_paths('boss_charon_39')
+    if charon_souls:
+        wired = 0
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if ('boss_charon_41' in nl or 'boss_charon_43' in nl):
+                existing = db.get_field_value(name, 'lootFinger2Item1')
+                if not existing or existing == '' or existing == 0:
+                    _wire_soul(name, charon_souls, 66.0)
+                    wired += 1
+        print(f"  Charon Form 1 (41/43) soul wired: {wired} records (soul: {charon_souls[0].split(chr(92))[-1]})")
+        total += wired
+    else:
+        print("  WARNING: Could not find Charon_39 soul paths to wire Charon 41/43")
+
+    # ── Hydra: wire soul from boss_hydra_66 ─────────────────────────────
+    hydra_souls = _get_soul_paths('boss_hydra_66')
+    if hydra_souls:
+        wired = 0
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if ('boss_hydra_60' in nl or 'boss_hydra_63' in nl):
+                existing = db.get_field_value(name, 'lootFinger2Item1')
+                if not existing or existing == '' or existing == 0:
+                    _wire_soul(name, hydra_souls, 25.0)
+                    wired += 1
+        print(f"  Hydra (60/63) soul wired: {wired} records (soul: {hydra_souls[0].split(chr(92))[-1]})")
+        total += wired
+    else:
+        print("  WARNING: Could not find Hydra_66 soul paths to wire Hydra 60/63")
+
+    return total
+
+
 def _find_auto_generated_souls(db):
     """Find svc_uber_ souls we auto-generated that could use skill enhancement."""
     results = []
@@ -922,6 +1047,8 @@ def overhaul_souls(db):
     pharaoh_ok = _create_pharaoh_guard_pet_skill(db)
     total += 1
     _update_pharaoh_guard_drop_rate(db)
+    _fix_low_boss_soul_drop_rates(db)
+    _wire_missing_boss_souls(db)
 
     eclipse_skill = r'records\skills\soulskills\calybe_eclipse.dbr'
     if db.has_record(eclipse_skill):
