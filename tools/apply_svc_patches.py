@@ -1059,6 +1059,36 @@ def _add_coldworm_to_egypt_pools(db):
     return total
 
 
+def _boost_coldworm_stats(db):
+    """Boost Cold Worm monster stats — base record is too slow and weak.
+
+    Original: runSpeed=0.4, handHit=50-100, life=10000, STR=2100, INT=50.
+    Reference: Grimshell (beetle boss, Lv33) has runSpeed=0.48, handHit=146-170.
+    Flarecrawler (CryptWorm unique) runs at 1.2.
+    """
+    COLDWORM = r'records\test\boss_coldworm50.dbr'
+    if not db.has_record(COLDWORM):
+        print("  WARNING: Cold Worm record not found for stat boost")
+        return False
+
+    # Speed: 0.4 -> 0.75 (still lumbering, but can actually reach the player)
+    db.set_field(COLDWORM, 'characterRunSpeed', 0.75, DATA_TYPE_FLOAT)
+    # Hand damage: 50-100 -> 180-280 (comparable to other Act 2 bosses)
+    db.set_field(COLDWORM, 'handHitDamageMin', 180.0, DATA_TYPE_FLOAT)
+    db.set_field(COLDWORM, 'handHitDamageMax', 280.0, DATA_TYPE_FLOAT)
+    # Life: 10000 -> 14000;18000;22000 (scales with difficulty)
+    db.set_field(COLDWORM, 'characterLife', [14000.0, 18000.0, 22000.0],
+                 DATA_TYPE_FLOAT)
+    # Intelligence: 50 -> 250 (uses spell skills: poison gas, shockwave)
+    db.set_field(COLDWORM, 'characterIntelligence', 250.0, DATA_TYPE_FLOAT)
+    # Defensive ability: give it some so it's not trivially hit
+    db.set_field(COLDWORM, 'characterDefensiveAbility', 350.0, DATA_TYPE_FLOAT)
+    db._modified.add(COLDWORM)
+
+    print("  Cold Worm stats boosted (speed 0.75, hand 180-280, life 14k/18k/22k)")
+    return True
+
+
 def _create_coldworm_soul(db):
     """Create a hand-crafted Cold Worm soul and wire it to the monster.
 
@@ -1131,7 +1161,7 @@ def _create_coldworm_soul(db):
             'intelligenceRequirement': (DATA_TYPE_INT, 0),
             'dexterityRequirement': (DATA_TYPE_INT, 0),
             'numRelicSlots': (DATA_TYPE_INT, 1),
-            'itemNameTag': (DATA_TYPE_STRING, 'tagD2Boss004'),
+            'itemNameTag': (DATA_TYPE_STRING, 'tagSVCSoulColdWorm'),
             'FileDescription': (DATA_TYPE_STRING, f'boss_coldworm50 soul ({diff.upper()})'),
         }
         _set_soul_fields(db, path, base)
@@ -2648,19 +2678,23 @@ def apply_all_extended_patches(db):
         'off blows that would fell lesser beings.'
     )
 
-    # Soul name tags
-    tags['tagSVCSoulSPToxeus'] = 'Soul of Toxeus the Murderer (SP)'
-    tags['tagSVCSoulLeinth'] = 'Soul of Leinth the Blood Witch'
-    tags['tagSVCSoulMurderBunny'] = 'Soul of the Murder Bunny'
-    tags['tagSVCSoulSPHades'] = 'Soul of Hades (SP)'
-    tags['tagSVCSoulDagon'] = 'Soul of Dagon'
-    tags['tagSVCSoulNMega'] = 'Soul of the Neanderthal Boss'
-    tags['tagSVCSoulNEmgiec'] = 'Soul of the Neanderthal Hacker'
-    tags['tagSVCSoulNVio'] = 'Soul of the Neanderthal Wizard'
+    # Soul name tags ({^F} = pink/magenta color, matching original SV soul style)
+    tags['tagSVCSoulColdWorm'] = '{^F}Cold Worm Soul'
+    tags['tagSVCSoulSPToxeus'] = '{^F}Soul of Toxeus the Murderer (SP)'
+    tags['tagSVCSoulLeinth'] = '{^F}Soul of Leinth the Blood Witch'
+    tags['tagSVCSoulMurderBunny'] = '{^F}Soul of the Murder Bunny'
+    tags['tagSVCSoulSPHades'] = '{^F}Soul of Hades (SP)'
+    tags['tagSVCSoulDagon'] = '{^F}Soul of Dagon'
+    tags['tagSVCSoulNMega'] = '{^F}Soul of the Neanderthal Boss'
+    tags['tagSVCSoulNEmgiec'] = '{^F}Soul of the Neanderthal Hacker'
+    tags['tagSVCSoulNVio'] = '{^F}Soul of the Neanderthal Wizard'
+    # Monster name tag (Cold Worm's description tag was undefined)
+    tags['tagD2Boss004'] = 'Cold Worm'
 
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
     _add_coldworm_to_egypt_pools(db)
+    _boost_coldworm_stats(db)
     _create_coldworm_soul(db)
     _create_sp_toxeus_soul(db)
     _overhaul_main_toxeus_soul(db)
