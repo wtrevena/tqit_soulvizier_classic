@@ -32,7 +32,116 @@
 
 ---
 
-## Issues Found
+## TO-DO: Soul Work Needed
+
+### Priority 1: Hand-Craft New Souls
+
+These bosses have NO soul items at all — souls must be designed from scratch in `SOUL_OVERHAULS`.
+
+| Monster | Class | Levels | HP | Location | Design Notes |
+|---------|-------|--------|-----|----------|-------------|
+| **Toxeus the Murderer (SP)** | Hero | 33/66/99 | 9,324–13,986 | Secret Passage (`xpack/.../skeleton/um_toxeus_99`) | STR 419, DEX 599, INT 379. Skills: distort reality, lucid dream, lethal strike. **MUST be the STRONGEST soul of any monster.** See Toxeus Comparison below. |
+| **Leinth** | Boss | 47-50 / 62-65 / 74-76 | 32,481 | Secret Passage (`drxcreatures/bloodwitch/q_leinth_47/49/50`) | INT-focused caster (INT 451). Skills: blood boil, flesh eater, heatseeker projectile, summon uglies. 3 difficulty variants. Olympian blood witch. |
+| **Murder Bunny** | Boss | 66/79/99 | 275,000 | Secret Passage (`drxcreatures/crowheroes/murderbunny`) | STR 220, DEX 510, INT 400. Ambush boss. 100% immune to freeze/petrify/sleep/stun/trap. Currently drops `zzz_munderizer.dbr` egg — need to add a soul ring alongside it. |
+| **Secret Passage Hades** | Boss | 57/71/80 | ??? | Secret Passage (`drxcreatures/bloodwitch/boss_hades_54`) | Different from main Hades. Tag: xtagMonsterHades. Needs investigation — may share soul with main Hades Form 3 or need its own. |
+
+### Priority 2: Wire Existing Souls to Missing Variants
+
+These bosses have soul items created but some difficulty/location variants are missing the wiring.
+
+| Monster | Missing Variant | Existing Soul Source | Action |
+|---------|----------------|---------------------|--------|
+| **Charon (Form 1)** | `boss_charon_41.dbr`, `boss_charon_43.dbr` | `svc_uber/boss_charon_soul_*.dbr` (66% on `_39`) | Wire same uber soul to _41 and _43 at 66% |
+| **Hydra** | `boss_hydra_60.dbr`, `boss_hydra_63.dbr` | `hydra_soul_*.dbr` (25% on `_66`) | Wire same soul to _60 and _63 at 25% |
+| **Ormenos (xpack)** | `xpack/.../boss_chinatelkine_ormenos_41.dbr` | `ormenos_soul_*.dbr` (3% on regular variants) | Wire same soul to xpack variant at 3% |
+| **Yaoguai (xpack)** | `xpack/.../boss_daemonbull_yaoguai_38.dbr` | `yaoguai_soul_*.dbr` (25% on regular variants) | Wire same soul to xpack variant at 25% |
+
+### Priority 3: Secret Passage Monster Souls
+
+The Secret Passage (`drxcreatures/`) contains many unique monsters that need souls. Below is the full inventory by classification.
+
+**Boss-class (need hand-crafted souls):**
+- Leinth (3 variants) — see Priority 1
+- Murder Bunny — see Priority 1
+- Secret Passage Hades — see Priority 1
+
+**Quest-class (34 records — need uber-style auto-generated souls):**
+These are the "crow heroes" and other unique secret passage encounters. Notable monsters:
+- Gorgus, Jabarto, Kaets, Kreeloo, Zilla — crow hero quest monsters
+- Spirit Callers — bloodabomination spirit casters
+- D2-themed NPCs — various quest encounters
+- Need full inventory extraction to identify all unique monster types vs difficulty variants
+
+**Champion-class (37 records — decide if they should get souls):**
+- Bastien variants (crow heroes)
+- Blood abominations (bladedancer, spearrunner, ravager)
+- Blood harpies, blood hounds, blood dragons
+- The Slasher
+- Decision needed: Do Champions in the secret passage deserve souls given their special nature?
+
+**Hero-class monsters in secret passage:**
+- Warden of Souls (`xsecrethero_wardenofsouls`) — Lv 48, Life element, Tank role. **Already has a soul** (tagSoulSVC9141).
+
+### Priority 4: Toxeus Soul Design
+
+#### Toxeus Variant Comparison
+
+| Stat | um_toxeus_21 (Main) | um_toxeus_99 (Secret Passage) |
+|------|--------------------|-----------------------------|
+| Classification | **Boss** | **Hero** |
+| Levels | 25 / 45 / 65 | 33 / 66 / 99 |
+| HP | 3,966 – 6,345 | 9,324 – 13,986 |
+| STR | 319 | 419 |
+| DEX | 439 | 599 |
+| INT | 179 | 379 |
+| Key Skills | laytrap_multitrap, battlerage, flashpowder, lethalstrike | toxeus_distortreality, luciddream, luciddream_temporalflux, lethalstrike |
+| Current Soul | YES — 66% drop, Flash Powder skill | NO — drops common ring loot |
+| Soul Path | `skeleton/toxeus_soul_*.dbr` | None |
+
+**Design Decision Needed:**
+- The Secret Passage Toxeus (um_toxeus_99) is significantly stronger and higher level
+- The main game Toxeus already has a soul with Flash Powder
+- Options:
+  - A) Create a separate, **much stronger** soul for SP Toxeus (must be strongest in the game per directive)
+  - B) Upgrade the existing Toxeus soul to be the strongest and have both variants drop it
+  - C) Keep the existing soul on main Toxeus, create a new "Soul of Toxeus the Murderer" for SP variant that is the strongest soul
+- **Recommendation: Option C** — two distinct souls, with the SP version being the ultimate soul
+
+### Priority 5: Investigate & Decide
+
+| Monster | Status | Question |
+|---------|--------|----------|
+| **Cold Worm** | Test record (`records\test\boss_coldworm50.dbr`) | Does NOT spawn in-game. No spawn proxies found. Insectoid boss, Lv 30/50/65. Has full skill set (shockwave, drop ceiling, lay eggs, summon bugs, poison gas). Should we add it to the game + create a soul? |
+| **Dagon** | Test record (`records\test\boss_dagon_66.dbr`) | Does NOT spawn in-game. No spawn proxies found. Olympian boss, Lv 50/65/80. Has skills (shadow star, summon water, tidal wave, mud storm). Should we add it to the game + create a soul? |
+| **Graeae** | Already implemented | The Graeae are the three sisters: Deino (Lv 38), Enyo (Lv 38), Pemphredo (Lv 39). All lightning/tank bosses. **Already have uber souls** (tagSoulSVC9039/9040/9041). No action needed. |
+| **Hades Forms 1 & 2** | Confirmed: do NOT wire | Form 1 and 2 die during the fight → Form 3 spawns. Only Form 3 should drop a soul. Current wiring is correct. |
+| **xq03_charonsoundrat** | Quest trigger entity | Lv 6/36/56. NOT a real boss — it's a sound/quest scripting trigger. Ignore. |
+| **Charon Form 2** | Already wired | All 3 Form 2 variants (39/41/43) have SV souls at 25%. No action needed. |
+| **SP Hades variant** | Needs investigation | `drxcreatures/bloodwitch/boss_hades_54.dbr` — is this a distinct fight from main Hades? Levels 57/71/80. Should it share the Form 3 soul or get its own? |
+
+---
+
+## Completed Work
+
+### Soul Overhauls (in apply_svc_patches.py)
+
+| Soul | Summon | Key Buffs | Status |
+|------|--------|-----------|--------|
+| **Rakanizeus** | Summons Rakanizeus pet | +45% run speed, +35% atk speed, +25% total speed, +15 pierce def, +200 HP, +100 MP, +40 STR/DEX, +50 OA, Storm Surge Lv5, Chain Lightning Lv4 | Done |
+| **Boneash** | Summons Boneash pet | +35% cast speed, +150 MP, +50 INT, -4% life penalty, Volcanic Orb Lv5, Fire Enchantment Lv3 | Done |
+| **Calybe** | Eclipse proc | Dual wield, +atk speed, +dodge, physical/bleed/pierce damage | Done |
+| **Pharaoh's Honor Guard** | Summons Stone Construct | -9% movement penalty (movement only, not total speed) | Done |
+| **Xerkos** | None | Dual weapon, lethal strike, +atk speed, stun, physical damage | Done |
+
+### Drop Rate Changes
+
+| Monster | Old Rate | New Rate |
+|---------|----------|----------|
+| Pharaoh's Honor Guard (12 variants) | 2.25% | 10% |
+
+---
+
+## Issues Found (from original audit)
 
 ### Issue #1: Carrion Crow Soul Still Dropping
 
@@ -74,7 +183,7 @@ These are not our bug -- they were in the original SV data with very low equip c
 |------|-------------|---------------|----------------|
 | Soul of Spiderblackwidow | **poison** | **life** | life=60, poison=50 |
 
-The Black Widow spider deals slightly more life (vitality) damage than poison. However, **poison is thematically correct** for a spider. The damage split is close (60 vs 50). 
+The Black Widow spider deals slightly more life (vitality) damage than poison. However, **poison is thematically correct** for a spider. The damage split is close (60 vs 50).
 
 **Recommendation**: Keep as poison -- thematically appropriate.
 
@@ -187,12 +296,8 @@ Souls scale with monster level. Here are examples at different tiers:
 
 ---
 
-## Tuning Recommendations
+## Standing Directives
 
-1. **Carrion Crow**: The 2 Hero-class crows will legitimately drop souls. If the user reports seeing them from normal (non-starred) crows, that's a save cache issue.
-
-2. **Elder/Quest/Ghost uber monsters**: Consider whether `qs_minotaurconqueror`, `ghosthero`, `eldercyclops`, `elderminotaur`, `elderminotaurlord` should keep their 66% drop rate. These are clearly special encounters but have improper classification in the original SV data.
-
-3. **Soul stat balance**: All 140 uber souls have 0 stat requirements (correct per mod goals). Stats scale linearly with level. Element resistances include a penalty to the opposing element (e.g., fire souls give -cold res).
-
-4. **Legacy 0.5% champions**: 26 champion-prefix monsters with 0.5% from original SV data. Negligible impact.
+1. **Toxeus the Murderer must have the STRONGEST soul of any monster** — the Secret Passage variant soul must outclass every other soul in the game.
+2. **Hades Forms 1 & 2 do NOT get souls** — only Form 3 (the final form) drops a soul.
+3. **All secret passage monsters should have souls** — unique area deserves unique rewards.
