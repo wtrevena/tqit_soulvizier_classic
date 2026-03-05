@@ -1081,23 +1081,23 @@ def _create_coldworm_soul(db):
     tiers = [
         # (suffix, itemLevel, levelReq, skillLv, augLv1, augLv2,
         #  defCold, defPoison, coldMin, coldMax, poisMin, poisMax, poisDur,
-        #  coldMod, poisMod, life, mana, str, int, DA, castSpeed)
+        #  coldMod, poisMod, lifeMod, life, mana, strMod, intMod, daMod, castSpeed)
         ('n', 30, 25, 2, 2, 2,
          18.0, 15.0, 10.0, 22.0, 18.0, 35.0, 3.0,
-         12, 15, 150, 80, 14, 12, 30, 10),
+         12, 15, 5.0, 80, 50, 4.0, 4.0, 3.0, 10),
         ('e', 50, 45, 4, 3, 3,
          30.0, 25.0, 22.0, 40.0, 35.0, 60.0, 3.0,
-         25, 30, 280, 140, 22, 20, 55, 18),
+         25, 30, 10.0, 120, 80, 6.0, 6.0, 5.0, 18),
         ('l', 65, 60, 6, 5, 5,
          42.0, 38.0, 35.0, 58.0, 50.0, 85.0, 4.0,
-         40, 48, 380, 200, 30, 28, 85, 25),
+         40, 48, 15.0, 150, 100, 8.0, 8.0, 6.0, 25),
     ]
 
     soul_paths = []
     for (diff, item_lv, lv_req, sk_lv, aug1_lv, aug2_lv,
          def_cold, def_poison, cold_min, cold_max, pois_min, pois_max, pois_dur,
          cold_mod, pois_mod,
-         life, mana, strength, intel, da, cast_speed) in tiers:
+         life_mod, life, mana, str_mod, int_mod, da_mod, cast_speed) in tiers:
 
         path = f'{SOUL_BASE}\\boss_coldworm50_soul_{diff}.dbr'
         soul_paths.append(path)
@@ -1160,12 +1160,13 @@ def _create_coldworm_soul(db):
             # Offensive: % damage modifiers
             'offensiveColdModifier': (DATA_TYPE_INT, cold_mod),
             'offensiveSlowPoisonModifier': (DATA_TYPE_INT, pois_mod),
-            # Stat bonuses
+            # Stat bonuses (mix of flat + %)
+            'characterLifeModifier': (DATA_TYPE_FLOAT, life_mod),
             'characterLife': (DATA_TYPE_INT, life),
             'characterMana': (DATA_TYPE_INT, mana),
-            'characterStrength': (DATA_TYPE_INT, strength),
-            'characterIntelligence': (DATA_TYPE_INT, intel),
-            'characterDefensiveAbility': (DATA_TYPE_INT, da),
+            'characterStrengthModifier': (DATA_TYPE_FLOAT, str_mod),
+            'characterIntelligenceModifier': (DATA_TYPE_FLOAT, int_mod),
+            'characterDefensiveAbilityModifier': (DATA_TYPE_FLOAT, da_mod),
             'characterSpellCastSpeedModifier': (DATA_TYPE_INT, cast_speed),
         }
         _set_soul_fields(db, path, stats)
@@ -1260,6 +1261,10 @@ _SK_TERNION = r'records\skills\spirit\drxternion.dbr'
 _SK_ENVENOM = r'records\skills\stealth\drxenvenomweapon.dbr'
 _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'
 _SK_COLD_AURA = r'records\skills\storm\drxcoldaura.dbr'
+_SK_STORM_NIMBUS = r'records\skills\storm\drxstormnimbus.dbr'
+_SK_CHAIN_LIGHTNING = r'records\skills\storm\drxchainlightning.dbr'
+_SK_FIRE_ENCHANT = r'records\skills\earth\drxfireenchantment.dbr'
+_SK_HEART_OF_OAK = r'records\skills\nature\drxheartofoak.dbr'
 
 # Soul skill procs
 _SS_RING_LIGHTNING = r'records\skills\soulskills\ringoflightning.dbr'
@@ -1267,6 +1272,12 @@ _SS_BLOOD_BOIL = r'records\skills\soulskills\melinoe_bloodboil.dbr'
 _SS_GROUND_SMASH = r'records\skills\soulskills\cyclops_groundsmash.dbr'
 _SS_VENOM_SPRAY = r'records\skills\soulskills\arachne_venomspray.dbr'
 _SS_FLASH_POWDER = r'records\skills\soulskills\toxeus_flashpowder.dbr'
+_SS_ZOMBIE_SUMMON = r'records\skills\soulskills\summon_zombiesoldier.dbr'
+_SS_FIRE_NOVA = r'records\skills\soulskills\firefragmentnova.dbr'
+_SS_SONIC_WAVE = r'records\skills\soulskills\hero_sonicwave.dbr'
+_SS_HARPY_AURA = r'records\skills\soulskills\harpy_lightningaura.dbr'
+_SS_LIFE_DRAIN = r'records\skills\spirit\lifedrain.dbr'
+_SS_NESSUS_ENDURANCE = r'records\skills\soulskills\nessus_enduranceaura.dbr'
 
 
 def _create_sp_toxeus_soul(db):
@@ -1301,26 +1312,26 @@ def _create_sp_toxeus_soul(db):
             'offensivePierceRatioModifier': (I, 15),
             'offensiveLifeLeechMin': (F, 35.0),
             'offensivePercentCurrentLifeMin': (F, 5.0),
-            # Defensive: dodge + deflect (his passive properties)
-            'characterDodgePercent': (F, 10.0),
-            'characterDeflectProjectile': (F, 10.0),
-            'defensiveLife': (F, 15.0),
+            # Defensive (moderate — monster equips this soul too!)
+            'characterDodgePercent': (F, 6.0),
+            'characterDeflectProjectile': (F, 6.0),
+            'defensiveLife': (F, 12.0),
             'characterEnergyAbsorptionPercent': (F, 15.0),
             # Speed (assassin)
             'characterAttackSpeedModifier': (I, 12),
             'characterTotalSpeedModifier': (I, 8),
             'characterRunSpeedModifier': (F, 10.0),
-            # % Stats (favor modifiers over flat)
-            'characterLifeModifier': (F, 10.0),
+            # % Stats
+            'characterLifeModifier': (F, 8.0),
             'characterManaModifier': (F, 8.0),
             'characterStrengthModifier': (F, 6.0),
             'characterDexterityModifier': (F, 8.0),
             'characterIntelligenceModifier': (F, 5.0),
             'characterOffensiveAbilityModifier': (F, 6.0),
             'characterDefensiveAbilityModifier': (F, 5.0),
-            # % Reflect, Armor, Life (user-requested)
-            'defensiveReflect': (F, 8.0),
-            'defensiveProtectionModifier': (F, 10.0),
+            # Reflect + Armor (kept low — monster equips this!)
+            'defensiveReflect': (F, 5.0),
+            'defensiveProtectionModifier': (F, 8.0),
         }},
         {'diff': 'e', 'itemLevel': 66, 'stats': {
             'itemSkillName': (S, _SS_RING_LIGHTNING),
@@ -1339,22 +1350,22 @@ def _create_sp_toxeus_soul(db):
             'offensivePierceRatioModifier': (I, 22),
             'offensiveLifeLeechMin': (F, 60.0),
             'offensivePercentCurrentLifeMin': (F, 8.0),
-            'characterDodgePercent': (F, 14.0),
-            'characterDeflectProjectile': (F, 15.0),
-            'defensiveLife': (F, 22.0),
+            'characterDodgePercent': (F, 8.0),
+            'characterDeflectProjectile': (F, 10.0),
+            'defensiveLife': (F, 18.0),
             'characterEnergyAbsorptionPercent': (F, 25.0),
             'characterAttackSpeedModifier': (I, 16),
             'characterTotalSpeedModifier': (I, 12),
             'characterRunSpeedModifier': (F, 15.0),
-            'characterLifeModifier': (F, 18.0),
+            'characterLifeModifier': (F, 14.0),
             'characterManaModifier': (F, 14.0),
             'characterStrengthModifier': (F, 10.0),
             'characterDexterityModifier': (F, 12.0),
             'characterIntelligenceModifier': (F, 8.0),
             'characterOffensiveAbilityModifier': (F, 10.0),
             'characterDefensiveAbilityModifier': (F, 8.0),
-            'defensiveReflect': (F, 12.0),
-            'defensiveProtectionModifier': (F, 16.0),
+            'defensiveReflect': (F, 8.0),
+            'defensiveProtectionModifier': (F, 12.0),
         }},
         {'diff': 'l', 'itemLevel': 80, 'stats': {
             'itemSkillName': (S, _SS_RING_LIGHTNING),
@@ -1374,10 +1385,10 @@ def _create_sp_toxeus_soul(db):
             'offensivePierceRatioModifier': (I, 30),
             'offensiveLifeLeechMin': (F, 90.0),
             'offensivePercentCurrentLifeMin': (F, 12.0),
-            # Extreme evasion (Toxeus passive: 15% dodge, 33% deflect)
-            'characterDodgePercent': (F, 18.0),
-            'characterDeflectProjectile': (F, 22.0),
-            'defensiveLife': (F, 30.0),
+            # Evasion (moderate — monster equips this!)
+            'characterDodgePercent': (F, 10.0),
+            'characterDeflectProjectile': (F, 12.0),
+            'defensiveLife': (F, 25.0),
             'characterEnergyAbsorptionPercent': (F, 35.0),
             'defensiveManaBurnRatio': (F, 40.0),
             # Assassin speed
@@ -1385,16 +1396,16 @@ def _create_sp_toxeus_soul(db):
             'characterTotalSpeedModifier': (I, 16),
             'characterRunSpeedModifier': (F, 20.0),
             # % Stats (Tier 1 — strongest in game)
-            'characterLifeModifier': (F, 25.0),
+            'characterLifeModifier': (F, 20.0),
             'characterManaModifier': (F, 20.0),
             'characterStrengthModifier': (F, 15.0),
             'characterDexterityModifier': (F, 18.0),
             'characterIntelligenceModifier': (F, 12.0),
             'characterOffensiveAbilityModifier': (F, 15.0),
-            'characterDefensiveAbilityModifier': (F, 12.0),
-            # % Reflect + Armor (user-requested)
-            'defensiveReflect': (F, 15.0),
-            'defensiveProtectionModifier': (F, 22.0),
+            'characterDefensiveAbilityModifier': (F, 10.0),
+            # Reflect + Armor (kept moderate — monster equips this!)
+            'defensiveReflect': (F, 10.0),
+            'defensiveProtectionModifier': (F, 16.0),
         }},
     ]
 
@@ -1441,7 +1452,7 @@ def _overhaul_main_toxeus_soul(db):
             'characterDefensiveAbilityModifier': (F, 4.0),
             'characterLifeModifier': (F, 6.0),
             'characterStrengthModifier': (F, 5.0), 'characterDexterityModifier': (F, 6.0),
-            'defensiveReflect': (F, 40.0),
+            'defensiveReflect': (F, 12.0),
             'defensiveProtectionModifier': (F, 8.0),
             'defensivePierce': (F, 20.0),
             'characterEnergyAbsorptionPercent': (F, 15.0),
@@ -1470,7 +1481,7 @@ def _overhaul_main_toxeus_soul(db):
             'characterDefensiveAbilityModifier': (F, 6.0),
             'characterLifeModifier': (F, 10.0),
             'characterStrengthModifier': (F, 8.0), 'characterDexterityModifier': (F, 10.0),
-            'defensiveReflect': (F, 55.0),
+            'defensiveReflect': (F, 16.0),
             'defensiveProtectionModifier': (F, 12.0),
             'defensivePierce': (F, 30.0),
             'characterEnergyAbsorptionPercent': (F, 22.0),
@@ -1499,7 +1510,7 @@ def _overhaul_main_toxeus_soul(db):
             'characterDefensiveAbilityModifier': (F, 8.0),
             'characterLifeModifier': (F, 15.0),
             'characterStrengthModifier': (F, 12.0), 'characterDexterityModifier': (F, 14.0),
-            'defensiveReflect': (F, 75.0),
+            'defensiveReflect': (F, 20.0),
             'defensiveProtectionModifier': (F, 16.0),
             'defensivePierce': (F, 40.0),
             'characterEnergyAbsorptionPercent': (F, 30.0),
@@ -1908,16 +1919,17 @@ def _create_dev_skeleton_souls(db):
     # (record_path, soul_base_name, tag, theme_proc, theme_augment1, theme_augment2,
     #  element_stats for L tier — N/E scaled at 0.6x/0.8x)
     DEV_SKELETONS = [
-        # z_arthur — Satyr, spawns z_toxeus on death. Basic melee.
+        # z_arthur — Satyr, spawns z_toxeus on death. Dream theme (Toxeus connection).
         (r'records\xpack\creatures\monster\zzdev\z_arthur.dbr', 'z_arthur',
-         'xtagDevName01', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
-         {'offensivePhysicalMin': 55.0, 'offensivePhysicalMax': 80.0,
-          'characterStrengthModifier': 8.0, 'characterLifeModifier': 10.0, 'characterOffensiveAbilityModifier': 5.0}),
-        # z_ben — Anteok with club, barb flurry, groundbreaker, mass heal.
+         'xtagDevName01', _SS_RING_LIGHTNING, _SK_PHANTOM_STRIKE, _SK_DISTORTION_WAVE,
+         {'offensivePhysicalMin': 45.0, 'offensivePhysicalMax': 70.0,
+          'offensiveSlowLightningMin': 40.0, 'offensiveSlowLightningDurationMin': 3.0,
+          'characterStrengthModifier': 6.0, 'characterLifeModifier': 8.0, 'characterDexterityModifier': 6.0}),
+        # z_ben — Anteok with club, barb flurry, groundbreaker, mass heal. Tank/healer.
         (r'records\xpack\creatures\monster\zzdev\z_ben.dbr', 'z_ben',
-         'xtagDevName02', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
+         'xtagDevName02', _SS_NESSUS_ENDURANCE, _SK_HEART_OF_OAK, _SK_BATTLE_RAGE,
          {'offensivePhysicalMin': 65.0, 'offensivePhysicalMax': 95.0,
-          'characterStrengthModifier': 10.0, 'characterLifeModifier': 12.0, 'characterLifeRegen': 5.0}),
+          'characterStrengthModifier': 10.0, 'characterLifeModifier': 14.0, 'characterLifeRegen': 5.0}),
         # z_chooch — Skeletal Typhon. Bone shards, bone spire, bone trap, spirit breath.
         (r'records\xpack\creatures\monster\zzdev\z_chooch.dbr', 'z_chooch',
          'xtagDevName14', _SS_GROUND_SMASH, _SK_DEATH_CHILL, _SK_DARK_COVENANT,
@@ -1943,11 +1955,12 @@ def _create_dev_skeleton_souls(db):
          {'offensivePierceMin': 40.0, 'offensivePierceMax': 60.0,
           'offensivePhysicalMin': 30.0, 'characterDexterityModifier': 8.0,
           'characterLifeModifier': 8.0, 'characterAttackSpeedModifier': 12.0}),
-        # z_frazier — Satyr, basic.
+        # z_frazier — Satyr, rogue theme. Flash Powder blind + poison.
         (r'records\xpack\creatures\monster\zzdev\z_frazier.dbr', 'z_frazier',
-         'xtagDevName04', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
-         {'offensivePhysicalMin': 48.0, 'offensivePhysicalMax': 70.0,
-          'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'characterOffensiveAbilityModifier': 4.0}),
+         'xtagDevName04', _SS_FLASH_POWDER, _SK_LETHAL_STRIKE, _SK_ENVENOM,
+         {'offensivePierceMin': 35.0, 'offensivePierceMax': 55.0,
+          'offensiveSlowPoisonMin': 30.0, 'offensiveSlowPoisonDurationMin': 3.0,
+          'characterDexterityModifier': 8.0, 'characterLifeModifier': 8.0, 'characterAttackSpeedModifier': 10.0}),
         # z_josh — Satyr, basic.
         (r'records\xpack\creatures\monster\zzdev\z_josh.dbr', 'z_josh',
          'xtagDevName05', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_DUAL_WEAPON,
@@ -1962,32 +1975,36 @@ def _create_dev_skeleton_souls(db):
           'offensiveSlowPoisonMin': 60.0, 'offensiveSlowPoisonDurationMin': 3.0,
           'characterLifeModifier': 14.0, 'characterIntelligenceModifier': 8.0,
           'defensiveFire': 20.0, 'defensiveCold': 20.0, 'defensivePoison': 20.0}),
-        # z_nate — Satyr, basic.
+        # z_nate — Satyr, warfare bruiser. Sonic Wave proc + crushing power.
         (r'records\xpack\creatures\monster\zzdev\z_nate.dbr', 'z_nate',
-         'xtagDevName06', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
-         {'offensivePhysicalMin': 48.0, 'offensivePhysicalMax': 70.0,
-          'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'characterDefensiveAbilityModifier': 4.0}),
-        # z_parnell — Odontotyrannus. Sonic wave, frenzy buff.
+         'xtagDevName06', _SS_SONIC_WAVE, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
+         {'offensivePhysicalMin': 55.0, 'offensivePhysicalMax': 82.0,
+          'offensiveStunMin': 0.5, 'offensiveStunMax': 1.5, 'offensiveStunChance': 10.0,
+          'characterStrengthModifier': 8.0, 'characterLifeModifier': 10.0}),
+        # z_parnell — Odontotyrannus. Lightning beast, sonic wave + storm.
         (r'records\xpack\creatures\monster\zzdev\z_parnell.dbr', 'z_parnell',
-         'xtagDevName11', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
-         {'offensivePhysicalMin': 60.0, 'offensivePhysicalMax': 90.0,
-          'offensiveStunMin': 1.0, 'offensiveStunMax': 2.0, 'offensiveStunChance': 15.0,
-          'characterStrengthModifier': 8.0, 'characterLifeModifier': 12.0}),
-        # z_scott — Satyr.
+         'xtagDevName11', _SS_HARPY_AURA, _SK_STORM_NIMBUS, _SK_CHAIN_LIGHTNING,
+         {'offensivePhysicalMin': 50.0, 'offensivePhysicalMax': 75.0,
+          'offensiveLightningMin': 30.0, 'offensiveLightningMax': 50.0,
+          'characterStrengthModifier': 8.0, 'characterLifeModifier': 12.0, 'defensiveLightning': 15.0}),
+        # z_scott — Satyr, fire theme. Fire nova retaliation.
         (r'records\xpack\creatures\monster\zzdev\z_scott.dbr', 'z_scott',
-         'xtagDevName07', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
-         {'offensivePhysicalMin': 48.0, 'offensivePhysicalMax': 70.0,
-          'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'characterRunSpeedModifier': 8.0}),
+         'xtagDevName07', _SS_FIRE_NOVA, _SK_FIRE_ENCHANT, _SK_ONSLAUGHT,
+         {'offensiveFireMin': 35.0, 'offensiveFireMax': 55.0,
+          'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 40.0,
+          'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'defensiveFire': 15.0}),
         # z_shawn — Satyr, lower HP (3000).
         (r'records\xpack\creatures\monster\zzdev\z_shawn.dbr', 'z_shawn',
          'xtagDevName08', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_LETHAL_STRIKE,
          {'offensivePhysicalMin': 42.0, 'offensivePhysicalMax': 62.0,
           'characterDexterityModifier': 8.0, 'characterLifeModifier': 7.0, 'characterAttackSpeedModifier': 10.0}),
-        # z_tom — Satyr.
+        # z_tom — Satyr, spirit/life drain theme.
         (r'records\xpack\creatures\monster\zzdev\z_tom.dbr', 'z_tom',
-         'xtagDevName09', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
-         {'offensivePhysicalMin': 48.0, 'offensivePhysicalMax': 70.0,
-          'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'characterOffensiveAbilityModifier': 4.0}),
+         'xtagDevName09', _SS_BLOOD_BOIL, _SK_DEATH_CHILL, _SK_DARK_COVENANT,
+         {'offensiveLifeMin': 25.0, 'offensiveLifeMax': 42.0,
+          'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 48.0,
+          'offensiveLifeLeechMin': 15.0,
+          'characterIntelligenceModifier': 7.0, 'characterLifeModifier': 9.0, 'defensiveLife': 15.0}),
         # z_~v~ — Nightmare. Dream/psionic. Psionic Beam, Hypnotic Gaze, Dream Surge.
         (r'records\xpack\creatures\monster\zzdev\z_~v~.dbr', 'z_tildavtilde',
          'xtagDevName13', _SS_RING_LIGHTNING, _SK_PHANTOM_STRIKE, _SK_DISTORTION_WAVE,
@@ -2048,6 +2065,285 @@ def _create_dev_skeleton_souls(db):
 
     print(f"  Developer skeleton souls created: {total} (Secret Passage, 66% drop each)")
     return total
+
+
+def _overhaul_melalos_soul(db):
+    """Overhaul Melalos (um_melalos_19) — Greece cave zombie boss.
+
+    Summons zombies, plague bolts, rotten grasp, weakening strike.
+    Original soul is a weak stat-stick at 5% drop.  Add zombie summon proc,
+    plague/death augments, boost stats and drop rate to 25%.
+    """
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    tiers = {
+        'n': {
+            'itemSkillName': (S, _SS_ZOMBIE_SUMMON),
+            'itemSkillLevel': (I, 3),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT),
+            'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_PLAGUE),
+            'augmentSkillLevel2': (I, 2),
+            # Poison/life damage (plague bolt + rotten grasp)
+            'offensiveSlowPoisonMin': (F, 40.0), 'offensiveSlowPoisonMax': (F, 65.0),
+            'offensiveSlowPoisonDurationMin': (F, 4.0),
+            'offensiveLifeMin': (F, 15.0), 'offensiveLifeMax': (F, 25.0),
+            'offensiveSlowPoisonModifier': (I, 15),
+            'offensiveLifeLeechMin': (F, 15.0),
+            # Stats
+            'characterLifeModifier': (F, 6.0), 'characterLife': (I, 60),
+            'characterStrengthModifier': (F, 4.0),
+            'characterAttackSpeedModifier': (I, 8),
+            'defensivePoison': (F, 15.0),
+        },
+        'e': {
+            'itemSkillName': (S, _SS_ZOMBIE_SUMMON),
+            'itemSkillLevel': (I, 4),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT),
+            'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_PLAGUE),
+            'augmentSkillLevel2': (I, 3),
+            'offensiveSlowPoisonMin': (F, 70.0), 'offensiveSlowPoisonMax': (F, 110.0),
+            'offensiveSlowPoisonDurationMin': (F, 4.0),
+            'offensiveLifeMin': (F, 25.0), 'offensiveLifeMax': (F, 40.0),
+            'offensiveSlowPoisonModifier': (I, 25),
+            'offensiveLifeLeechMin': (F, 25.0),
+            'characterLifeModifier': (F, 10.0), 'characterLife': (I, 90),
+            'characterStrengthModifier': (F, 6.0),
+            'characterAttackSpeedModifier': (I, 12),
+            'defensivePoison': (F, 25.0),
+        },
+        'l': {
+            'itemSkillName': (S, _SS_ZOMBIE_SUMMON),
+            'itemSkillLevel': (I, 6),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT),
+            'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_PLAGUE),
+            'augmentSkillLevel2': (I, 4),
+            # Strong poison/life (plague bolts deal massive poison)
+            'offensiveSlowPoisonMin': (F, 110.0), 'offensiveSlowPoisonMax': (F, 170.0),
+            'offensiveSlowPoisonDurationMin': (F, 5.0),
+            'offensiveLifeMin': (F, 40.0), 'offensiveLifeMax': (F, 60.0),
+            'offensiveSlowPoisonModifier': (I, 40),
+            'offensiveLifeLeechMin': (F, 40.0),
+            'characterLifeModifier': (F, 14.0), 'characterLife': (I, 120),
+            'characterStrengthModifier': (F, 8.0),
+            'characterAttackSpeedModifier': (I, 15),
+            'defensivePoison': (F, 35.0),
+        },
+    }
+
+    total = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'melalos_soul' not in nl or 'equipmentring' not in nl:
+            continue
+        for diff, stats in tiers.items():
+            if f'_soul_{diff}.dbr' in nl:
+                _set_soul_fields(db, name, stats)
+                total += 1
+                break
+
+    # Boost drop rate to 25% (Boss class)
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'um_melalos' in nl and 'creatures' in nl:
+            fields = db.get_fields(name)
+            if not fields:
+                continue
+            for key, tf in fields.items():
+                fn = key.split('###')[0]
+                if fn == 'chanceToEquipFinger2' and tf.values and float(tf.values[0]) > 0:
+                    db.set_field(name, 'chanceToEquipFinger2', 25.0, DATA_TYPE_FLOAT)
+                    db._modified.add(name)
+                    break
+
+    print(f"  Melalos soul overhauled ({total} records — zombie summoner, 25% drop)")
+    return total
+
+
+def _create_neanderthal_warband_souls(db):
+    """Create souls for the 3 Neanderthal warband monsters in zzdev.
+
+    n_mega (Boss/tank, mounted, Rally+speed aura, bleeding, Lv28/49/64)
+    n_emgiec (Hacker, Storm Nimbus lightning aura, axe, Lv27/48/63)
+    n_vio (Wizard, Ternion+custom teleport, Chi Realignment, Lv27/48/63)
+    All Quest class, Beastman race.
+    """
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # n_mega — mounted tank/support with Rally, bleeding, speed aura
+    mega_tiers = [
+        {'diff': 'n', 'itemLevel': 28, 'stats': {
+            'itemSkillName': (S, _SS_NESSUS_ENDURANCE),
+            'itemSkillLevel': (I, 2),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT),
+            'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE),
+            'augmentSkillLevel2': (I, 2),
+            'offensivePhysicalMin': (F, 25.0), 'offensivePhysicalMax': (F, 40.0),
+            'offensiveSlowBleedingMin': (F, 35.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterLifeModifier': (F, 6.0), 'characterLife': (I, 50),
+            'characterStrengthModifier': (F, 5.0),
+            'characterRunSpeedModifier': (F, 6.0),
+            'characterTotalSpeedModifier': (I, 5),
+        }},
+        {'diff': 'e', 'itemLevel': 49, 'stats': {
+            'itemSkillName': (S, _SS_NESSUS_ENDURANCE),
+            'itemSkillLevel': (I, 3),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT),
+            'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE),
+            'augmentSkillLevel2': (I, 3),
+            'offensivePhysicalMin': (F, 40.0), 'offensivePhysicalMax': (F, 65.0),
+            'offensiveSlowBleedingMin': (F, 55.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterLifeModifier': (F, 10.0), 'characterLife': (I, 80),
+            'characterStrengthModifier': (F, 7.0),
+            'characterRunSpeedModifier': (F, 8.0),
+            'characterTotalSpeedModifier': (I, 8),
+        }},
+        {'diff': 'l', 'itemLevel': 64, 'stats': {
+            'itemSkillName': (S, _SS_NESSUS_ENDURANCE),
+            'itemSkillLevel': (I, 4),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT),
+            'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE),
+            'augmentSkillLevel2': (I, 3),
+            # Mounted charger: physical + bleed + speed
+            'offensivePhysicalMin': (F, 60.0), 'offensivePhysicalMax': (F, 90.0),
+            'offensiveSlowBleedingMin': (F, 80.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterLifeModifier': (F, 14.0), 'characterLife': (I, 100),
+            'characterStrengthModifier': (F, 9.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'characterTotalSpeedModifier': (I, 10),
+        }},
+    ]
+    MEGA = r'records\xpack\creatures\monster\zzdev\n_mega.dbr'
+    paths_mega = _create_soul(db, 'n_mega', 'tagSVCSoulNMega', mega_tiers, MEGA, 66.0)
+
+    # n_emgiec — Hacker with Storm Nimbus lightning aura, axe DPS
+    emgiec_tiers = [
+        {'diff': 'n', 'itemLevel': 27, 'stats': {
+            'itemSkillName': (S, _SS_HARPY_AURA),
+            'itemSkillLevel': (I, 2),
+            'itemSkillAutoController': (S, r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onequip.dbr'),
+            'augmentSkillName1': (S, _SK_STORM_NIMBUS),
+            'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_CHAIN_LIGHTNING),
+            'augmentSkillLevel2': (I, 2),
+            'offensivePhysicalMin': (F, 22.0), 'offensivePhysicalMax': (F, 35.0),
+            'offensiveLightningMin': (F, 15.0), 'offensiveLightningMax': (F, 25.0),
+            'characterLifeModifier': (F, 5.0), 'characterLife': (I, 40),
+            'characterStrengthModifier': (F, 5.0),
+            'characterDexterityModifier': (F, 4.0),
+            'characterAttackSpeedModifier': (I, 8),
+            'defensiveLightning': (F, 12.0),
+        }},
+        {'diff': 'e', 'itemLevel': 48, 'stats': {
+            'itemSkillName': (S, _SS_HARPY_AURA),
+            'itemSkillLevel': (I, 3),
+            'itemSkillAutoController': (S, r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onequip.dbr'),
+            'augmentSkillName1': (S, _SK_STORM_NIMBUS),
+            'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_CHAIN_LIGHTNING),
+            'augmentSkillLevel2': (I, 3),
+            'offensivePhysicalMin': (F, 35.0), 'offensivePhysicalMax': (F, 55.0),
+            'offensiveLightningMin': (F, 25.0), 'offensiveLightningMax': (F, 40.0),
+            'characterLifeModifier': (F, 8.0), 'characterLife': (I, 60),
+            'characterStrengthModifier': (F, 7.0),
+            'characterDexterityModifier': (F, 6.0),
+            'characterAttackSpeedModifier': (I, 12),
+            'defensiveLightning': (F, 18.0),
+        }},
+        {'diff': 'l', 'itemLevel': 63, 'stats': {
+            'itemSkillName': (S, _SS_HARPY_AURA),
+            'itemSkillLevel': (I, 4),
+            'itemSkillAutoController': (S, r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onequip.dbr'),
+            'augmentSkillName1': (S, _SK_STORM_NIMBUS),
+            'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_CHAIN_LIGHTNING),
+            'augmentSkillLevel2': (I, 3),
+            # Lightning hacker: phys + lightning, speed
+            'offensivePhysicalMin': (F, 50.0), 'offensivePhysicalMax': (F, 78.0),
+            'offensiveLightningMin': (F, 38.0), 'offensiveLightningMax': (F, 58.0),
+            'characterLifeModifier': (F, 12.0), 'characterLife': (I, 80),
+            'characterStrengthModifier': (F, 9.0),
+            'characterDexterityModifier': (F, 8.0),
+            'characterAttackSpeedModifier': (I, 15),
+            'defensiveLightning': (F, 22.0),
+        }},
+    ]
+    EMGIEC = r'records\xpack\creatures\monster\zzdev\n_emgiec.dbr'
+    paths_emgiec = _create_soul(db, 'n_emgiec', 'tagSVCSoulNEmgiec', emgiec_tiers, EMGIEC, 66.0)
+
+    # n_vio — Wizard with Ternion, custom teleport, Chi Realignment, Death Ward
+    vio_tiers = [
+        {'diff': 'n', 'itemLevel': 27, 'stats': {
+            'itemSkillName': (S, _SS_RING_LIGHTNING),
+            'itemSkillLevel': (I, 3),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _SK_TERNION),
+            'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_DISTORTION_WAVE),
+            'augmentSkillLevel2': (I, 2),
+            'offensiveLightningMin': (F, 18.0), 'offensiveLightningMax': (F, 30.0),
+            'offensiveLifeMin': (F, 10.0), 'offensiveLifeMax': (F, 18.0),
+            'characterLifeModifier': (F, 5.0),
+            'characterManaModifier': (F, 6.0),
+            'characterIntelligenceModifier': (F, 6.0),
+            'characterSpellCastSpeedModifier': (I, 10),
+            'defensiveLife': (F, 12.0),
+            'defensiveLightning': (F, 10.0),
+        }},
+        {'diff': 'e', 'itemLevel': 48, 'stats': {
+            'itemSkillName': (S, _SS_RING_LIGHTNING),
+            'itemSkillLevel': (I, 4),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _SK_TERNION),
+            'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_DISTORTION_WAVE),
+            'augmentSkillLevel2': (I, 3),
+            'offensiveLightningMin': (F, 30.0), 'offensiveLightningMax': (F, 48.0),
+            'offensiveLifeMin': (F, 18.0), 'offensiveLifeMax': (F, 30.0),
+            'characterLifeModifier': (F, 8.0),
+            'characterManaModifier': (F, 10.0),
+            'characterIntelligenceModifier': (F, 9.0),
+            'characterSpellCastSpeedModifier': (I, 16),
+            'defensiveLife': (F, 18.0),
+            'defensiveLightning': (F, 15.0),
+        }},
+        {'diff': 'l', 'itemLevel': 63, 'stats': {
+            'itemSkillName': (S, _SS_RING_LIGHTNING),
+            'itemSkillLevel': (I, 5),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _SK_TERNION),
+            'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_DISTORTION_WAVE),
+            'augmentSkillLevel2': (I, 3),
+            # Powerful caster: lightning + life, cast speed, INT
+            'offensiveLightningMin': (F, 45.0), 'offensiveLightningMax': (F, 70.0),
+            'offensiveLifeMin': (F, 28.0), 'offensiveLifeMax': (F, 45.0),
+            'characterLifeModifier': (F, 12.0),
+            'characterManaModifier': (F, 14.0),
+            'characterIntelligenceModifier': (F, 12.0),
+            'characterSpellCastSpeedModifier': (I, 22),
+            'defensiveLife': (F, 25.0),
+            'defensiveLightning': (F, 20.0),
+        }},
+    ]
+    VIO = r'records\xpack\creatures\monster\zzdev\n_vio.dbr'
+    paths_vio = _create_soul(db, 'n_vio', 'tagSVCSoulNVio', vio_tiers, VIO, 66.0)
+
+    print(f"  Neanderthal warband souls created: n_mega (tank), n_emgiec (hacker), n_vio (wizard)")
+    return [paths_mega, paths_emgiec, paths_vio]
 
 
 def _find_auto_generated_souls(db):
@@ -2358,6 +2654,9 @@ def apply_all_extended_patches(db):
     tags['tagSVCSoulMurderBunny'] = 'Soul of the Murder Bunny'
     tags['tagSVCSoulSPHades'] = 'Soul of Hades (SP)'
     tags['tagSVCSoulDagon'] = 'Soul of Dagon'
+    tags['tagSVCSoulNMega'] = 'Soul of the Neanderthal Boss'
+    tags['tagSVCSoulNEmgiec'] = 'Soul of the Neanderthal Hacker'
+    tags['tagSVCSoulNVio'] = 'Soul of the Neanderthal Wizard'
 
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
@@ -2370,6 +2669,8 @@ def apply_all_extended_patches(db):
     _create_sp_hades_soul(db)
     _create_dagon_soul(db)
     _create_dev_skeleton_souls(db)
+    _overhaul_melalos_soul(db)
+    _create_neanderthal_warband_souls(db)
     cascade_merc_scrolls(db)
     add_blood_mistress_to_loot(db)
 
