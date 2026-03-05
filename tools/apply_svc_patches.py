@@ -910,6 +910,80 @@ def _wire_missing_boss_souls(db):
     return total
 
 
+def _add_dagon_to_ichthian_pools(db):
+    """Add Dagon as a rare champion spawn in all ichthian spawn pools."""
+    DAGON_RECORD = r'records\test\boss_dagon_66.dbr'
+    DAGON_WEIGHT = 2  # Very rare spawn
+
+    if not db.has_record(DAGON_RECORD):
+        print("  WARNING: Dagon record not found in database")
+        return 0
+
+    # Find all ichthian spawn pools (records with nameN fields referencing ichthian)
+    ichthian_pools = []
+    for name in db.record_names():
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+        has_ichthian = False
+        has_name_field = False
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn.startswith('name') and not fn.startswith('nameChampion'):
+                has_name_field = True
+            if tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and 'ichthian' in v.lower():
+                        has_ichthian = True
+                        break
+        if has_ichthian and has_name_field:
+            ichthian_pools.append(name)
+
+    total = 0
+    for pool in ichthian_pools:
+        fields = db.get_fields(pool)
+        if not fields:
+            continue
+
+        # Check if Dagon is already in this pool
+        already_has = False
+        for key, tf in fields.items():
+            if tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and 'boss_dagon' in v.lower():
+                        already_has = True
+                        break
+        if already_has:
+            continue
+
+        # Find the highest existing nameChampionN index
+        max_champ_idx = 0
+        for key in fields:
+            fn = key.split('###')[0]
+            m = __import__('re').match(r'nameChampion(\d+)', fn)
+            if m:
+                idx = int(m.group(1))
+                if idx > max_champ_idx:
+                    max_champ_idx = idx
+
+        # Add Dagon at the next champion slot
+        next_idx = max_champ_idx + 1
+        db.set_field(pool, f'nameChampion{next_idx}', DAGON_RECORD, DATA_TYPE_STRING)
+        db.set_field(pool, f'weightChampion{next_idx}', DAGON_WEIGHT, DATA_TYPE_INT)
+        db._modified.add(pool)
+
+        # Ensure champion spawning is enabled if it wasn't
+        champ_chance = db.get_field_value(pool, 'championChance')
+        if champ_chance is not None and float(champ_chance) == 0.0:
+            db.set_field(pool, 'championChance', 15.0, DATA_TYPE_FLOAT)
+            db.set_field(pool, 'championMax', 1, DATA_TYPE_INT)
+
+        total += 1
+
+    print(f"  Dagon added to {total} ichthian spawn pools as rare champion (weight={DAGON_WEIGHT})")
+    return total
+
+
 def _find_auto_generated_souls(db):
     """Find svc_uber_ souls we auto-generated that could use skill enhancement."""
     results = []
@@ -1213,6 +1287,7 @@ def apply_all_extended_patches(db):
     )
 
     overhaul_souls(db)
+    _add_dagon_to_ichthian_pools(db)
     cascade_merc_scrolls(db)
     add_blood_mistress_to_loot(db)
 

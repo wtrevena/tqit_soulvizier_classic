@@ -79,82 +79,40 @@ Additional low-rate records (legacy, not critical):
 
 ### Priority 4: Secret Passage Monster Souls
 
-The Secret Passage (`drxcreatures/`) contains many unique monsters that ALL need souls.
+**Developer-Named Skeletons (15 records — need souls):**
+
+These are skeleton monsters named after game developers that spawn in the Secret Passage alongside Toxeus the Murderer. Located at `records\xpack\creatures\monster\zzdev\`:
+
+| # | Record | Name |
+|---|--------|------|
+| 1 | `z_arthur.dbr` | Arthur |
+| 2 | `z_ben.dbr` | Ben |
+| 3 | `z_chooch.dbr` | Chooch |
+| 4 | `z_cory.dbr` | Cory |
+| 5 | `z_dave.dbr` | Dave |
+| 6 | `z_david.dbr` | David |
+| 7 | `z_frazier.dbr` | Frazier |
+| 8 | `z_josh.dbr` | Josh |
+| 9 | `z_morgan.dbr` | Morgan |
+| 10 | `z_nate.dbr` | Nate |
+| 11 | `z_parnell.dbr` | Parnell |
+| 12 | `z_scott.dbr` | Scott |
+| 13 | `z_shawn.dbr` | Shawn |
+| 14 | `z_tom.dbr` | Tom |
+| 15 | `z_~v~.dbr` | ~v~ |
+
+Also in zzdev: `n_emgiec.dbr`, `n_mega.dbr`, `n_vio.dbr` — need investigation.
+
+These are the monsters the user wants souls for. They spawn in the same area as Toxeus and are the key Secret Passage encounters.
+
+**Blood Cave monsters (drxcreatures/) — do NOT need souls:**
+The 37 champion records (Sileni, Malefice, Blood Cult, etc.) and 34 quest records (Crow Heroes) in drxcreatures/ are Blood Cave creatures, separate from the Secret Passage proper. These do not need souls per user directive.
 
 **Boss-class (need hand-crafted souls — see Priority 1):**
 - Leinth (3 variants)
 - Murder Bunny
 - Secret Passage Hades
 - SP Toxeus (Hero-class but functions as boss)
-
-**Quest-class (34 records — need uber-style auto-generated souls):**
-These are the "crow heroes" and other unique secret passage encounters:
-- Gorgus, Jabarto, Kaets, Kreeloo, Zilla — crow hero quest monsters
-- Spirit Callers — bloodabomination spirit casters
-- D2-themed NPCs — various quest encounters
-- Need full inventory extraction to identify all unique monster types vs difficulty variants
-
-**Champion-class (37 records — CONFIRMED: give them souls):**
-
-| # | In-Game Name | Type | Record Path | Levels (N/E/L) |
-|---|-------------|------|-------------|----------------|
-| | **Sileni (Blood Abominations)** | | | |
-| 1 | Sileni - Carver | Dual-wield melee | `bloodabomination/01_bladedancer_35` | 35/54/68 |
-| 2 | Sileni - Carver | Dual-wield melee | `bloodabomination/01_bladedancer_36` | 36/55/69 |
-| 3 | Sileni - Carver | Dual-wield melee | `bloodabomination/01_bladedancer_37` | 37/56/70 |
-| 4 | Sileni - Impaler | Spear melee | `bloodabomination/02_spearrunner_37` | 37/55/70 |
-| 5 | Sileni - Impaler | Spear melee | `bloodabomination/02_spearrunner_38` | 38/56/71 |
-| 6 | Sileni - Impaler | Spear melee | `bloodabomination/02_spearrunner_39` | 39/57/72 |
-| 7 | Sileni - Butcher | Heavy brute | `bloodabomination/03_ravager_38` | 38/55/70 |
-| 8 | Sileni - Butcher | Heavy brute | `bloodabomination/03_ravager_39` | 39/56/71 |
-| 9 | Sileni - Butcher | Heavy brute | `bloodabomination/03_ravager_40` | 40/57/72 |
-| | **Malefice (Blood Demons)** | | | |
-| 10 | Malefice - Mutilator | Large demon | `blooddemon/c_large_blooddemon_38` | 38/56/69 |
-| 11 | Malefice - Mutilator | Large demon | `blooddemon/c_large_blooddemon_39` | 39/57/70 |
-| 12 | Malefice - Mutilator | Large demon | `blooddemon/c_large_blooddemon_40` | 40/58/71 |
-| | **Malefice (Blood Dragon)** | | | |
-| 13 | Malefice - Skinner | Blood dragon | `blooddragons/blooddragon01` | 40/56/71 |
-| | **Blood Cult - Reavers (Blood Harpies)** | | | |
-| 14 | Blood Cult - Reaver | Flying harpy | `bloodharpy/bloodharpy_40` | 40/57/72 |
-| 15 | Blood Cult - Reaver | Flying harpy | `bloodharpy/bloodharpy_41` | 41/58/73 |
-| 16 | Blood Cult - Reaver | Flying harpy | `bloodharpy/bloodharpy_42` | 42/59/74 |
-| | **Malefice (Blood Hounds)** | | | |
-| 17 | Malefice - Blood Beast | Large hound | `bloodhound/c_bloodhound_40` | 40/57/70 |
-| 18 | Malefice - Blood Beast | Large hound | `bloodhound/c_bloodhound_42` | 41/58/71 |
-| 19 | Malefice - Blood Beast | Large hound | `bloodhound/c_bloodhound_44` | 42/59/72 |
-| | **Blood Cult - Seductresses** | | | |
-| 20 | Blood Cult - Seductress | Witch caster | `bloodwitch/b_seductress_39` | 39/56/71 |
-| 21 | Blood Cult - Seductress | Witch caster | `bloodwitch/b_seductress_41` | 40/57/72 |
-| 22 | Blood Cult - Seductress | Witch caster | `bloodwitch/b_seductress_43` | 41/58/73 |
-| | **Blood Cult - Disciples** | | | |
-| 23 | Blood Cult - Disciple | Witch acolyte | `bloodwitch/c_disciple_39` | 39/56/71 |
-| 24 | Blood Cult - Disciple | Witch acolyte | `bloodwitch/c_disciple_41` | 41/58/73 |
-| 25 | Blood Cult - Disciple | Witch acolyte | `bloodwitch/c_disciple_42` | 42/59/74 |
-| | **Blood Cult - Reavers (Blood Witches)** | | | |
-| 26 | Blood Cult - Reaver | Witch warrior | `bloodwitch/d_reaver_40` | 40/57/72 |
-| 27 | Blood Cult - Reaver | Witch warrior | `bloodwitch/d_reaver_41` | 41/58/73 |
-| 28 | Blood Cult - Reaver | Witch warrior | `bloodwitch/d_reaver_42` | 42/59/74 |
-| | **Blood Cult - Special** | | | |
-| 29 | Melinoe - Blade Maiden | Boss-skill champion | `bloodwitch/skills/discipleboss_bladedancer` | 40/56/71 |
-| 30 | Tormented Soul | Leinth summon | `bloodwitch/skills/leinth_skills/summoned_ugly` | 39/48/62 |
-| | **Crow Heroes** | | | |
-| 31 | Bastien | Crow hero variant 1 | `crowheroes/bastien` | 43/59/72 |
-| 32 | Bastien | Crow hero variant 2 | `crowheroes/bastien02` | 43/59/72 |
-| 33 | Bastien | Crow hero variant 3 | `crowheroes/bastien04` | 43/59/72 |
-| 34 | Bastien | Crow hero variant 4 | `crowheroes/bastienx03` | 43/59/72 |
-| 35 | Bastien | Crow hero variant 5 | `crowheroes/bastienx05` | 43/59/72 |
-| 36 | Black Warden | Kaets minion | `crowheroes/kaets_minion` | 40/56/71 |
-| | **Slasher** | | | |
-| 37 | Dune Raider - Elite Assassin | Assassin enemy | `slasher/slasher` | 30/50/65 |
-
-**Summary by creature family (unique monsters, not counting difficulty variants):**
-- **Sileni** (3 types x 3 levels = 9): Carver, Impaler, Butcher — melee blood abominations
-- **Malefice** (3 types): Mutilator (demon), Skinner (dragon), Blood Beast (hound)
-- **Blood Cult** (3 types): Seductress, Disciple, Reaver — blood witch variants
-- **Bastien** (1 type x 5 variants = 5): Crow hero champion, multiple loadouts
-- **Others** (3): Melinoe Blade Maiden, Tormented Soul, Black Warden, Dune Raider
-
-Note: Records #29-30 (Melinoe Blade Maiden, Tormented Soul) are boss-skill entities and Leinth summons — may not warrant their own souls. The other 35 are genuine champion enemies.
 
 **Hero-class in secret passage:**
 - Warden of Souls (`xsecrethero_wardenofsouls`) — Lv 48, Life element, Tank role. **Already has a soul** (tagSoulSVC9141). No action needed.
@@ -203,12 +161,10 @@ SP Hades soul should exceed these stats. SP Toxeus soul should exceed SP Hades.
 
 ### Priority 6: Add Test Bosses to Game World
 
-| Boss | Placement | Rationale |
-|------|-----------|-----------|
-| **Cold Worm** | Act 2 Egypt underground caves/tombs | Insectoid race, CryptWorm mesh matches existing Act 2 enemies. Cave/tunnel skill set (ceiling collapse, egg laying, bug swarms). Level range 30/50/65 fits Act 2 progression. |
-| **Dagon** | Anywhere Ichthians spawn (Greece coastal + Orient) | Olympian race, Ichthian mesh (fish creature). Water/ocean themed skills (tidal wave, summon water, mud storm). Ichthians spawn in Greece Act 1 coastal areas and Orient Act 3 (Hanging Gardens, Silk Road, Great Wall, Chang'an, Jade Palace, Tomb). Level range 50/65/80. |
-
-**Implementation**: Need to create spawn proxies and place them in appropriate level files. Both bosses have complete skill sets, loot tables, and meshes ready — they just need map placement.
+| Boss | Placement | Status |
+|------|-----------|--------|
+| **Cold Worm** | Act 2 Egypt underground caves/tombs | PENDING — need to find cryptworm spawn pools and add Cold Worm as rare champion spawn |
+| **Dagon** | All 23 Ichthian spawn pools (Greece coastal + Orient) | **DONE** — added as rare champion spawn (weight=2) via `_add_dagon_to_ichthian_pools()` in `apply_svc_patches.py`. Pools with 0% champion chance bumped to 15%. |
 
 ### Priority 7: Investigate & Decide
 
