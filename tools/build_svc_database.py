@@ -1107,12 +1107,12 @@ def create_uber_dungeon_portal(db: ArzDatabase):
 
 
 def patch_items_arc(items_arc_path: Path):
-    """Add missing soul icon textures to Items.arc.
+    """Add missing soul inventory icon textures to Items.arc.
 
-    The soul database records reference bitmap paths like
-    Items\\miscellaneous\\n_soul.tex, but Items.arc only contains
-    soultex_n.tex (not n_soul.tex). This adds the missing aliases
-    so the game can resolve the icon bitmaps.
+    Soul records reference Items\\miscellaneous\\{n,e,l}_soul.tex but
+    Items.arc doesn't contain these files. The actual 32x32 icon
+    bitmaps are in SVItems.arc as jewelry/soul_{n,e,l}_icon.tex.
+    We copy them into Items.arc at the expected paths.
     """
     from arc_patcher import ArcArchive
 
@@ -1120,40 +1120,38 @@ def patch_items_arc(items_arc_path: Path):
         print(f"\n=== Items.arc patch: SKIPPED (not found: {items_arc_path}) ===")
         return
 
-    print(f"\n=== Patch: Soul icon textures in Items.arc ===")
-    arc = ArcArchive.from_file(items_arc_path)
-
-    # Map: missing target name -> existing source name
-    needed = {
-        'miscellaneous/n_soul.tex': 'miscellaneous/soultex_n.tex',
-        'miscellaneous/e_soul.tex': 'miscellaneous/soultex_e.tex',
-        'miscellaneous/l_soul.tex': 'miscellaneous/soultex_l.tex',
-    }
-
-    # Check which already exist
-    existing_names = {e.name for e in arc.entries if e.entry_type == 3}
-    sources = {}
-    for target, source in needed.items():
-        if target in existing_names:
-            print(f"  Already exists: {target}")
-        elif source not in existing_names:
-            print(f"  WARNING: source {source} not found, skipping {target}")
-        else:
-            sources[target] = source
-
-    if not sources:
-        print("  No changes needed.")
+    sv_items_path = items_arc_path.parent / 'SVItems.arc'
+    if not sv_items_path.exists():
+        print(f"\n=== Items.arc patch: SKIPPED (SVItems.arc not found) ===")
         return
 
-    # Extract source content and add as new entries
-    for target, source in sources.items():
-        source_data = arc.get_file(source)
-        if source_data:
-            arc.add_file(target, source_data)
-            print(f"  Added: {target} ({len(source_data)} bytes, from {source})")
+    print(f"\n=== Patch: Soul icon textures in Items.arc ===")
+    items_arc = ArcArchive.from_file(items_arc_path)
+    sv_arc = ArcArchive.from_file(sv_items_path)
 
-    size = arc.write(items_arc_path)
-    print(f"  Written: {items_arc_path} ({size} bytes)")
+    # Map: target path in Items.arc -> source path in SVItems.arc
+    icon_map = {
+        'miscellaneous/n_soul.tex': 'jewelry/soul_n_icon.tex',
+        'miscellaneous/e_soul.tex': 'jewelry/soul_e_icon.tex',
+        'miscellaneous/l_soul.tex': 'jewelry/soul_l_icon.tex',
+    }
+
+    changed = False
+    for target, source in icon_map.items():
+        source_data = sv_arc.get_file(source)
+        if not source_data:
+            print(f"  WARNING: {source} not found in SVItems.arc")
+            continue
+        # add_file overwrites if exists, adds if not
+        items_arc.add_file(target, source_data)
+        print(f"  Set: {target} ({len(source_data)} bytes, 32x32 icon from SVItems/{source})")
+        changed = True
+
+    if changed:
+        size = items_arc.write(items_arc_path)
+        print(f"  Written: {items_arc_path} ({size} bytes)")
+    else:
+        print("  No changes made.")
 
 
 def main():
