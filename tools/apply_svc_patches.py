@@ -989,6 +989,172 @@ def _add_dagon_to_ichthian_pools(db):
     return total
 
 
+def _add_coldworm_to_egypt_pools(db):
+    """Add Cold Worm as a rare champion spawn in Act 2 Egypt underground/insect pools."""
+    COLDWORM_RECORD = r'records\test\boss_coldworm50.dbr'
+    COLDWORM_WEIGHT = 2  # Very rare spawn
+
+    if not db.has_record(COLDWORM_RECORD):
+        print("  WARNING: Cold Worm record not found in database")
+        return 0
+
+    # Target: all cryptworm pools + scavenger beetle pools + bone scarab pools
+    # These are Egypt underground cave/tomb insectoid pools
+    target_pools = []
+    for name in db.record_names():
+        nl = name.lower()
+        if 'proxies egypt' not in nl and 'proxies egypt' not in nl.replace('\\', ' '):
+            # Also check with backslash
+            if r'proxies egypt' not in nl:
+                continue
+        if 'pools' not in nl:
+            continue
+        # Match cryptworm, scavenger beetle, bone scarab, scorpion pools
+        basename = nl.replace('\\', '/').split('/')[-1]
+        if any(tag in basename for tag in ('cryptworm_', 'scavengerbeetle_', 'bonescarab_', 'scorpion_')):
+            target_pools.append(name)
+
+    total = 0
+    for pool in target_pools:
+        fields = db.get_fields(pool)
+        if not fields:
+            continue
+
+        # Check if Cold Worm is already in this pool
+        already_has = False
+        for key, tf in fields.items():
+            if tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and 'boss_coldworm' in v.lower():
+                        already_has = True
+                        break
+        if already_has:
+            continue
+
+        # Find the highest existing nameChampionN index
+        max_champ_idx = 0
+        for key in fields:
+            fn = key.split('###')[0]
+            m = __import__('re').match(r'nameChampion(\d+)', fn)
+            if m:
+                idx = int(m.group(1))
+                if idx > max_champ_idx:
+                    max_champ_idx = idx
+
+        # Add Cold Worm at the next champion slot
+        next_idx = max_champ_idx + 1
+        db.set_field(pool, f'nameChampion{next_idx}', COLDWORM_RECORD, DATA_TYPE_STRING)
+        db.set_field(pool, f'weightChampion{next_idx}', COLDWORM_WEIGHT, DATA_TYPE_INT)
+        db._modified.add(pool)
+
+        # Ensure champion spawning is enabled if it wasn't
+        champ_chance = db.get_field_value(pool, 'championChance')
+        if champ_chance is not None and float(champ_chance) == 0.0:
+            db.set_field(pool, 'championChance', 15.0, DATA_TYPE_FLOAT)
+            db.set_field(pool, 'championMax', 1, DATA_TYPE_INT)
+
+        total += 1
+
+    print(f"  Cold Worm added to {total} Egypt underground/insect spawn pools (weight={COLDWORM_WEIGHT})")
+    return total
+
+
+def _create_coldworm_soul(db):
+    """Create a hand-crafted Cold Worm soul and wire it to the monster.
+
+    Cold Worm is a level 30/50/65 boss using CryptWorm mesh.  It uses poison
+    gas, shockwave, and summons bugs.  The soul has a cold/poison theme with
+    defensive bonuses, an ice-blast on-hit proc, and cold/poison augments.
+    Drop rate: 66%.
+    """
+    COLDWORM_MONSTER = r'records\test\boss_coldworm50.dbr'
+    SOUL_BASE = r'records\item\equipmentring\soul\svc_uber'
+
+    if not db.has_record(COLDWORM_MONSTER):
+        print("  WARNING: Cold Worm monster record not found")
+        return False
+
+    # ── Create three soul variants (N/E/L) ──────────────────────────────
+    soul_paths = []
+    for diff in ('n', 'e', 'l'):
+        path = f'{SOUL_BASE}\\boss_coldworm50_soul_{diff}.dbr'
+        soul_paths.append(path)
+
+        _ensure_record(db, path, SOUL_TEMPLATE)
+
+        # Boilerplate fields (same as create_uber_souls._base_soul_fields)
+        base = {
+            'templateName': (DATA_TYPE_STRING, SOUL_TEMPLATE),
+            'Class': (DATA_TYPE_STRING, 'ArmorJewelry_Ring'),
+            'bitmap': (DATA_TYPE_STRING, r'Items\miscellaneous\n_soul.tex'),
+            'mesh': (DATA_TYPE_STRING, r'drx\meshes\n_soulmesh.msh'),
+            'itemCostName': (DATA_TYPE_STRING, 'records/game/itemcost_soul.dbr'),
+            'dropSound': (DATA_TYPE_STRING, r'records/sounds/soundpak/Items/SoulDropPak.dbr'),
+            'dropSound3D': (DATA_TYPE_STRING, r'records/sounds/soundpak/Items/SoulDrop3DPak.dbr'),
+            'dropSoundWater': (DATA_TYPE_STRING, r'Records\Sounds\SoundPak\Items\WaterSmDropPak.dbr'),
+            'itemClassification': (DATA_TYPE_STRING, 'Magical'),
+            'characterBaseAttackSpeedTag': (DATA_TYPE_STRING, 'CharacterAttackSpeedAverage'),
+            'castsShadows': (DATA_TYPE_INT, 1),
+            'maxTransparency': (DATA_TYPE_FLOAT, 0.5),
+            'scale': (DATA_TYPE_FLOAT, 1.0),
+            'shadowBias': (DATA_TYPE_FLOAT, 0.01),
+            'cannotPickUp': (DATA_TYPE_INT, 0),
+            'cannotPickUpMultiple': (DATA_TYPE_INT, 0),
+            'hidePrefixName': (DATA_TYPE_INT, 0),
+            'hideSuffixName': (DATA_TYPE_INT, 0),
+            'quest': (DATA_TYPE_INT, 0),
+            'itemLevel': (DATA_TYPE_INT, 50),
+            'levelRequirement': (DATA_TYPE_INT, 45),
+            'strengthRequirement': (DATA_TYPE_INT, 0),
+            'intelligenceRequirement': (DATA_TYPE_INT, 0),
+            'dexterityRequirement': (DATA_TYPE_INT, 0),
+            'numRelicSlots': (DATA_TYPE_INT, 1),
+            'itemNameTag': (DATA_TYPE_STRING, 'tagD2Boss004'),
+            'FileDescription': (DATA_TYPE_STRING, 'boss_coldworm50 soul'),
+        }
+        _set_soul_fields(db, path, base)
+
+        # ── Cold Worm soul stats: cold/poison theme ─────────────────────
+        stats = {
+            # On-hit proc: ice blast
+            'itemSkillName': (DATA_TYPE_STRING, r'records\skills\soulskills\gargantuanyeti_iceblast.dbr'),
+            'itemSkillLevel': (DATA_TYPE_INT, 4),
+            'itemSkillAutoController': (DATA_TYPE_STRING, _AC_ON_HIT),
+            # Augment 1: Cold aura
+            'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxcoldaura.dbr'),
+            'augmentSkillLevel1': (DATA_TYPE_INT, 3),
+            # Augment 2: Plague (poison)
+            'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\nature\drxplague.dbr'),
+            'augmentSkillLevel2': (DATA_TYPE_INT, 3),
+            # Defensive: cold & poison resistance
+            'defensiveCold': (DATA_TYPE_FLOAT, 18.0),
+            'defensivePoison': (DATA_TYPE_FLOAT, 15.0),
+            # Offensive: cold + poison damage
+            'offensiveColdMin': (DATA_TYPE_FLOAT, 8.0),
+            'offensiveColdMax': (DATA_TYPE_FLOAT, 18.0),
+            'offensiveSlowPoisonMin': (DATA_TYPE_FLOAT, 12.0),
+            'offensiveSlowPoisonMax': (DATA_TYPE_FLOAT, 24.0),
+            'offensiveSlowPoisonDurationMin': (DATA_TYPE_FLOAT, 3.0),
+            # Stat bonuses
+            'characterLife': (DATA_TYPE_INT, 80),
+            'characterMana': (DATA_TYPE_INT, 40),
+            'characterStrength': (DATA_TYPE_INT, 20),
+            'characterIntelligence': (DATA_TYPE_INT, 15),
+            'characterDefensiveAbility': (DATA_TYPE_INT, 30),
+        }
+        _set_soul_fields(db, path, stats)
+
+    # ── Wire soul to monster record with 66% drop rate ──────────────────
+    db.set_field(COLDWORM_MONSTER, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
+    db.set_field(COLDWORM_MONSTER, 'chanceToEquipFinger2', 66.0, DATA_TYPE_FLOAT)
+    db.set_field(COLDWORM_MONSTER, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
+    db._modified.add(COLDWORM_MONSTER)
+
+    print("  Cold Worm soul created (cold/poison theme, Lv 50, 66% drop rate)")
+    print(f"    Paths: {soul_paths[0].split(chr(92))[-1]} / _e / _l")
+    return True
+
+
 def _find_auto_generated_souls(db):
     """Find svc_uber_ souls we auto-generated that could use skill enhancement."""
     results = []
@@ -1293,6 +1459,8 @@ def apply_all_extended_patches(db):
 
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
+    _add_coldworm_to_egypt_pools(db)
+    _create_coldworm_soul(db)
     cascade_merc_scrolls(db)
     add_blood_mistress_to_loot(db)
 
