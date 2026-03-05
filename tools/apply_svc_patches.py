@@ -43,6 +43,7 @@ SOUL_TEMPLATE = 'database\\Templates\\Jewelry_Ring.tpl'
 
 SUMMON_RAKANIZEUS_SKILL = r'records\skills\soulskills\summon_rakanizeus.dbr'
 SUMMON_BONEASH_SKILL = r'records\skills\soulskills\summon_boneash.dbr'
+SUMMON_PHARAOH_GUARD_SKILL = r'records\skills\soulskills\summon_pharaohguard.dbr'
 
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
@@ -152,6 +153,13 @@ SOUL_OVERHAULS = {
         'offensiveSlowBleedingModifier': (DATA_TYPE_INT, 35),
         'offensivePierceRatioModifier': (DATA_TYPE_INT, 15),
         'characterLife': (DATA_TYPE_INT, -60),
+    },
+
+    # ── PHARAOH'S HONOR GUARD: Tanky construct. Summon + movement penalty only
+    'pharaohshonorguard_soul': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_PHARAOH_GUARD_SKILL),
+        'characterTotalSpeedModifier': (DATA_TYPE_INT, 0),     # remove total speed penalty
+        'characterRunSpeedModifier': (DATA_TYPE_FLOAT, -9.0),  # movement-only penalty
     },
 
     # ── XERKOS THE BETRAYER: Slow heavy-hitter. Stun + lethal strike, -move speed
@@ -639,6 +647,158 @@ def _create_boneash_pet_skill(db):
     return True
 
 
+def _create_pharaoh_guard_pet_skill(db):
+    """Create Pharaoh's Honor Guard pet records by cloning from Lyia.
+
+    The Honor Guard is a tanky construct (stone guardian statue) — slow movement,
+    high life, high physical damage, no mana/magic.  Fights barehanded (no equipment).
+    """
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
+
+    lyia_sources = [
+        r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_3.dbr',
+    ]
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
+
+    pet_paths = [
+        r'records\skills\soulskills\pets\pharaohguard_1.dbr',
+        r'records\skills\soulskills\pets\pharaohguard_2.dbr',
+        r'records\skills\soulskills\pets\pharaohguard_3.dbr',
+    ]
+
+    # Per-level scaling: tanky slow construct
+    life =       [5000, 7500, 10000]
+    life_regen = [30.0, 50.0, 70.0]
+    dmg_min =    [55, 80, 110]
+    dmg_max =    [85, 120, 160]
+
+    # Find the real Honor Guard monster record
+    guard_monster = _find_record(
+        db, r'records\creature\monster\questbosses\boss_pharaohshonorguard1_31.dbr')
+    if not guard_monster:
+        print("  WARNING: Pharaoh's Honor Guard monster record not found!")
+
+    for i, path in enumerate(pet_paths):
+        src = _find_record(db, lyia_sources[i])
+        if not src:
+            print(f"  WARNING: Lyia source {lyia_sources[i]} not found!")
+            return False
+        db.clone_record(src, path)
+
+        # Replace Lyia's animations and skills with Honor Guard's.
+        if guard_monster:
+            na = _copy_animation_fields(db, guard_monster, path)
+            ns = _update_existing_fields(db, guard_monster, path, _SKILL_PREFIXES)
+            if i == 0:
+                print(f"  Copied from Honor Guard monster: {na} anim, {ns} skill fields")
+
+        sf = db.set_field
+
+        # No equipment — construct fights barehanded (like the real monster)
+        # Disable all equipment slots inherited from Lyia
+        for slot in ('LeftHand', 'RightHand', 'Forearm', 'Finger1',
+                     'Finger2', 'Head', 'Torso', 'LowerBody',
+                     'Misc1', 'Misc2', 'Misc3'):
+            sf(path, f'chanceToEquip{slot}', 0.0)
+        if i == 0:
+            print("  Honor Guard equipment: none (barehanded construct)")
+
+        # Override identity
+        sf(path, 'charLevel', i + 1)
+        sf(path, 'mesh', r'Creatures\Monster\GuardianStatue\StatuePossesed.msh')
+        sf(path, 'baseTexture', '')  # use mesh default
+        sf(path, 'bumpTexture', '')
+        sf(path, 'scale', 1.1)
+        sf(path, 'actorHeight', 1.7)
+        sf(path, 'description', 'tagMonsterName1180')
+        sf(path, 'characterRacialProfile', 'Construct')
+        sf(path, 'controller', CONTROLLER)
+        sf(path, 'charAnimationTableName', '')
+
+        # Override stats — tanky slow melee (dtype=None preserves FLOAT)
+        sf(path, 'characterLife', float(life[i]))
+        sf(path, 'characterLifeRegen', life_regen[i])
+        sf(path, 'characterMana', 0.0)
+        sf(path, 'characterManaRegen', 0.0)
+        sf(path, 'characterStrength', 350.0)
+        sf(path, 'characterDexterity', 150.0)
+        sf(path, 'characterIntelligence', 0.0)
+        sf(path, 'characterAttackSpeed', 1.0)
+        sf(path, 'characterRunSpeed', 0.7)
+        sf(path, 'characterSpellCastSpeed', 1.0)
+        sf(path, 'handHitDamageMin', float(dmg_min[i]))
+        sf(path, 'handHitDamageMax', float(dmg_max[i]))
+
+        # Pet behavior
+        sf(path, 'dropItems', 1)
+        sf(path, 'giveXP', 0)
+        sf(path, 'experiencePoints', 0)
+
+        # Party UI icons (use generic summon icons)
+        sf(path, 'StatusIcon',
+           r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex')
+        sf(path, 'StatusIconRed',
+           r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex')
+
+    # ── Clone summon skill from Lyia (already permanent, no TTL) ─────────
+    summon_path = SUMMON_PHARAOH_GUARD_SKILL
+    summon_src = _find_record(db, lyia_summon)
+    if summon_src:
+        db.clone_record(summon_src, summon_path)
+    else:
+        print(f"  WARNING: Lyia summon {lyia_summon} not found, creating empty")
+        _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+
+    sf = db.set_field
+    sf(summon_path, 'isPetDisplayable', 1)
+    sf(summon_path, 'skillDisplayName', 'tagSVCSummonPharaohGuard')
+    sf(summon_path, 'skillManaCost', [350.0, 400.0, 450.0])
+    sf(summon_path, 'spawnObjects', pet_paths)
+    sf(summon_path, 'skillUpBitmapName',
+       r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex')
+    sf(summon_path, 'skillDownBitmapName',
+       r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex')
+
+    # Set per-variant itemSkillLevel on soul records (N=1, E=2, L=3)
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'pharaohshonorguard_soul' in nl and 'equipmentring' in nl:
+            if '_soul_n.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 1)
+            elif '_soul_e.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 2)
+            elif '_soul_l.dbr' in nl:
+                db.set_field(name, 'itemSkillLevel', 3)
+
+    print("  Pharaoh Guard summon: cloned 3 pet records from Lyia + summon skill")
+    return True
+
+
+def _update_pharaoh_guard_drop_rate(db):
+    """Change Pharaoh's Honor Guard soul drop rate from 2.25% to 10%."""
+    updated = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'pharaohshonorguard' in nl and 'creature' in nl:
+            fields = db.get_fields(name)
+            if not fields:
+                continue
+            # Check if this record has a soul drop (chanceToEquipFinger2 > 0)
+            for key, tf in fields.items():
+                fn = key.split('###')[0]
+                if fn == 'chanceToEquipFinger2' and tf.values and float(tf.values[0]) > 0:
+                    db.set_field(name, 'chanceToEquipFinger2', 10.0)
+                    db._modified.add(name)
+                    updated += 1
+                    break
+    print(f"  Pharaoh's Honor Guard drop rate: 2.25% -> 10% ({updated} monster records)")
+    return updated
+
+
 def _find_auto_generated_souls(db):
     """Find svc_uber_ souls we auto-generated that could use skill enhancement."""
     results = []
@@ -772,6 +932,10 @@ def overhaul_souls(db):
 
     boneash_ok = _create_boneash_pet_skill(db)
     total += 1
+
+    pharaoh_ok = _create_pharaoh_guard_pet_skill(db)
+    total += 1
+    _update_pharaoh_guard_drop_rate(db)
 
     eclipse_skill = r'records\skills\soulskills\calybe_eclipse.dbr'
     if db.has_record(eclipse_skill):
@@ -925,6 +1089,14 @@ def apply_all_extended_patches(db):
         'a skeletal fire mage consumed by arcane flame. '
         'The revenant rises wreathed in fire, hurling bolts of destruction '
         'and igniting the ground beneath its enemies.'
+    )
+
+    tags['tagSVCSummonPharaohGuard'] = "Summon Pharaoh's Honor Guard"
+    tags['tagSVCSummonPharaohGuardDESC'] = (
+        'Awaken the ancient stone guardian, eternally bound to protect '
+        "the pharaoh's tomb. The construct rises with unyielding resolve, "
+        'crushing enemies with devastating physical force while shrugging '
+        'off blows that would fell lesser beings.'
     )
 
     overhaul_souls(db)
