@@ -581,49 +581,85 @@ def expand_caravan(db: ArzDatabase, base_db: ArzDatabase = None):
 
     The caravan has 3 tabs (hardcoded in CaravanWindow.tpl):
       - Storage Area (stashwindow.dbr) — private, per-character
-      - Transfer Area — shared between characters (not expanded here)
+      - Transfer Area (transferwindow.dbr) — shared between characters
       - Relic Vault (relicvaultwindow.dbr) — per-character
 
-    InventoryHeightArray defines expansion stages for a single grid:
-    [5, 10, 15] means start at 5 rows, expand to 10, then 15.
-    We set a single large value so the grid starts fully expanded.
+    Three layers control the visible grid:
+      1. Logical grid: InventoryHeightArray in stashwindow/relicvaultwindow
+      2. Visual pixel area: inventoryYSize in stashinventory.dbr
+      3. Window container: windowDefaultExtentY in caravanwindow.dbr
 
-    These records only exist in the base game database, so we import
-    them first if needed.
+    All three must be sized consistently or the grid is clipped.
+    Targeting 27 rows (fits 1080p) × 10 wide = 270 slots per tab.
     """
     print("\n=== Patch 5: Expand caravan stash ===")
 
-    rows = 50  # 50 rows × 10 wide = 500 slots per tab
+    CELL_PX = 32       # pixels per inventory cell
+    rows = 27           # 27 rows × 32px = 864px (fits 1080p screens)
+    cols = 10
+    grid_h = rows * CELL_PX                    # 864
+    tab_header_y = 126                         # tabs/header area
+    window_h = tab_header_y + grid_h + 30      # 1020 (30px for bottom padding)
 
-    # ── Storage Area (private stash) ──────────────────────────────────
+    # ── Import all caravan UI records from base game ─────────────────
+    caravan_records = [
+        'records\\xpack\\ui\\caravan\\stashwindow.dbr',
+        'records\\xpack\\ui\\caravan\\relicvaultwindow.dbr',
+        'records\\xpack\\ui\\caravan\\transferwindow.dbr',
+        'records\\xpack\\ui\\caravan\\caravanwindow.dbr',
+        'records\\xpack\\ui\\caravan\\stashinventory.dbr',
+        'records\\xpack\\ui\\caravan\\transferinventory.dbr',
+    ]
+    for rec in caravan_records:
+        if _import_base_game_record(db, base_db, rec):
+            short = rec.rsplit('\\', 1)[-1]
+            print(f"  Imported {short} from base game")
+
+    # ── Layer 2: Visual grid pixel area (shared by stash + relic vault) ──
+    stash_inv = 'records\\xpack\\ui\\caravan\\stashinventory.dbr'
+    if db.has_record(stash_inv):
+        db.set_field(stash_inv, 'inventoryYSize', grid_h, DATA_TYPE_INT)
+        # X stays at 512px (room for 16 cols, we use 10)
+        print(f"  Inventory grid pixel area: {grid_h}px tall ({rows} rows)")
+
+    # ── Layer 2b: Transfer grid (also expand for consistency) ────────
+    transfer_inv = 'records\\xpack\\ui\\caravan\\transferinventory.dbr'
+    if db.has_record(transfer_inv):
+        db.set_field(transfer_inv, 'inventoryXSize', cols * CELL_PX, DATA_TYPE_INT)
+        db.set_field(transfer_inv, 'inventoryYSize', grid_h, DATA_TYPE_INT)
+        db.set_field(transfer_inv, 'inventoryX', 27, DATA_TYPE_INT)
+        db.set_field(transfer_inv, 'inventoryY', 0, DATA_TYPE_INT)
+        print(f"  Transfer grid: {cols * CELL_PX}px wide × {grid_h}px tall")
+
+    # ── Layer 1: Logical grid (stash + relic vault) ──────────────────
     stash_window = 'records\\xpack\\ui\\caravan\\stashwindow.dbr'
-    if _import_base_game_record(db, base_db, stash_window):
-        print(f"  Imported stashwindow.dbr from base game")
-
     if db.has_record(stash_window):
-        db.set_field(stash_window, 'InventoryWidth', 10, DATA_TYPE_INT)
+        db.set_field(stash_window, 'InventoryWidth', cols, DATA_TYPE_INT)
         db.set_field(stash_window, 'InventoryHeightArray', [rows], DATA_TYPE_INT)
         db.set_field(stash_window, 'InventoryCostArray', [0], DATA_TYPE_INT)
-        print(f"  Storage Area: 10 wide x {rows} tall ({10 * rows} slots)")
-    else:
-        print(f"  WARNING: stashwindow.dbr not found — cannot expand Storage Area")
+        # Remove cover plates that hide unexpanded area (no expansion stages)
+        db.set_field(stash_window, 'LargeCoverPlate', '', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'SmallCoverPlate', '', DATA_TYPE_STRING)
+        print(f"  Storage Area: {cols} wide × {rows} tall ({cols * rows} slots)")
 
-    # ── Relic Vault ───────────────────────────────────────────────────
     vault_window = 'records\\xpack\\ui\\caravan\\relicvaultwindow.dbr'
-    if _import_base_game_record(db, base_db, vault_window):
-        print(f"  Imported relicvaultwindow.dbr from base game")
-
     if db.has_record(vault_window):
-        db.set_field(vault_window, 'InventoryWidth', 10, DATA_TYPE_INT)
+        db.set_field(vault_window, 'InventoryWidth', cols, DATA_TYPE_INT)
         db.set_field(vault_window, 'InventoryHeightArray', [rows], DATA_TYPE_INT)
-        print(f"  Relic Vault: 10 wide x {rows} tall ({10 * rows} slots)")
-    else:
-        print(f"  WARNING: relicvaultwindow.dbr not found — cannot expand Relic Vault")
+        db.set_field(vault_window, 'LargeCoverPlate', '', DATA_TYPE_STRING)
+        db.set_field(vault_window, 'SmallCoverPlate', '', DATA_TYPE_STRING)
+        print(f"  Relic Vault:  {cols} wide × {rows} tall ({cols * rows} slots)")
 
-    # ── Also import caravanwindow.dbr so Relic Vault tab shows up ────
+    # ── Layer 1b: Transfer Area (also expand) ────────────────────────
+    transfer_window = 'records\\xpack\\ui\\caravan\\transferwindow.dbr'
+    # Transfer uses CaravanWindowPublic.tpl — no InventoryHeightArray,
+    # the grid size comes purely from the InventoryGrid pixel area.
+
+    # ── Layer 3: Window container ────────────────────────────────────
     caravan_window = 'records\\xpack\\ui\\caravan\\caravanwindow.dbr'
-    if _import_base_game_record(db, base_db, caravan_window):
-        print(f"  Imported caravanwindow.dbr from base game (has Relic Vault tab)")
+    if db.has_record(caravan_window):
+        db.set_field(caravan_window, 'windowDefaultExtentY', window_h, DATA_TYPE_INT)
+        print(f"  Caravan window height: {window_h}px (was 637px)")
 
 
 def restore_rest_skill(db: ArzDatabase):
