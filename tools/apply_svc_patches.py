@@ -796,6 +796,7 @@ def _fix_low_boss_soul_drop_rates(db):
         ('boss_titan_typhon', 'Typhon', 25.0),
         ('boss_hadesform3', 'Hades Form 3', 25.0),
         ('boss_greektelkine_megalesios', 'Megalesios', 25.0),
+        ('boss_egypttelkine_aktaios', 'Aktaios', 25.0),
         ('boss_chinatelkine_ormenos', 'Ormenos', 25.0),
         ('boss_cerberus', 'Cerberus', 25.0),
     ]
@@ -847,22 +848,95 @@ def _wire_missing_boss_souls(db):
         db.set_field(name, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
         db._modified.add(name)
 
-    # ── xpack Ormenos: wire soul from regular Ormenos variants ──────────
-    ormenos_souls = _get_soul_paths('boss_chinatelkine_ormenos')
-    if ormenos_souls:
-        wired = 0
-        for name in list(db.record_names()):
-            nl = name.lower()
-            if 'boss_chinatelkine_ormenos' in nl and 'xpack' in nl:
-                # Check it doesn't already have a soul wired
-                existing = db.get_field_value(name, 'lootFinger2Item1')
-                if not existing or existing == '' or existing == 0:
-                    _wire_soul(name, ormenos_souls, 25.0)
-                    wired += 1
-        print(f"  Ormenos xpack soul wired: {wired} records (soul: {ormenos_souls[0].split(chr(92))[-1]})")
-        total += wired
-    else:
-        print("  WARNING: Could not find Ormenos soul paths to wire xpack variants")
+    # ── Ormenos (all variants): direct soul path wiring ─────────────────
+    # Fuzzy matcher can't match "ormenos" (7 chars) in
+    # "boss_chinatelkine_ormenos_44" — below score threshold of 10.
+    ORMENOS_SOULS = [
+        r'records\item\equipmentring\soul\telkine\ormenos_soul_n.dbr',
+        r'records\item\equipmentring\soul\telkine\ormenos_soul_e.dbr',
+        r'records\item\equipmentring\soul\telkine\ormenos_soul_l.dbr',
+    ]
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'boss_chinatelkine_ormenos' in nl:
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, ORMENOS_SOULS, 25.0)
+                wired += 1
+    print(f"  Ormenos soul wired: {wired} records")
+    total += wired
+
+    # ── Aktaios (all variants): direct soul path wiring ───────────────
+    # "aktaios" (7 chars) also below threshold in "boss_egypttelkine_aktaios_27"
+    AKTAIOS_SOULS = [
+        r'records\item\equipmentring\soul\telkine\aktaios_soul_n.dbr',
+        r'records\item\equipmentring\soul\telkine\aktaios_soul_e.dbr',
+        r'records\item\equipmentring\soul\telkine\aktaios_soul_l.dbr',
+    ]
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'boss_egypttelkine_aktaios' in nl:
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, AKTAIOS_SOULS, 25.0)
+                wired += 1
+    print(f"  Aktaios soul wired: {wired} records")
+    total += wired
+
+    # ── Megalesios (all variants): direct soul path wiring ──────────
+    # Borderline score=10 in fuzzy matcher; wire explicitly for reliability
+    MEGALESIOS_SOULS = [
+        r'records\item\equipmentring\soul\telkine\megalesios_soul_n.dbr',
+        r'records\item\equipmentring\soul\telkine\megalesios_soul_e.dbr',
+        r'records\item\equipmentring\soul\telkine\megalesios_soul_l.dbr',
+    ]
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'boss_greektelkine_megalesios' in nl:
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, MEGALESIOS_SOULS, 25.0)
+                wired += 1
+    print(f"  Megalesios soul wired: {wired} records")
+    total += wired
+
+    # ── Typhon (living, all variants): direct soul path wiring ────────
+    # "typhon" (6 chars) below threshold in "copy of boss_titan_typhon_42"
+    TYPHON_SOULS = [
+        r'records\item\equipmentring\soul\typhon\typhon_soul_n.dbr',
+        r'records\item\equipmentring\soul\typhon\typhon_soul_e.dbr',
+        r'records\item\equipmentring\soul\typhon\typhon_soul_l.dbr',
+    ]
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'boss_titan_typhon' in nl:
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, TYPHON_SOULS, 25.0)
+                wired += 1
+    print(f"  Typhon (living) soul wired: {wired} records")
+    total += wired
+
+    # ── Undead Typhon (skeletal, all variants): direct soul path wiring
+    UNDEAD_TYPHON_SOULS = [
+        r'records\item\equipmentring\soul\typhon\undeadtyphon_soul_n.dbr',
+        r'records\item\equipmentring\soul\typhon\undeadtyphon_soul_e.dbr',
+        r'records\item\equipmentring\soul\typhon\undeadtyphon_soul_l.dbr',
+    ]
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'boss_skeletaltyphon' in nl or ('skeletaltyphon' in nl and 'creature' in nl):
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, UNDEAD_TYPHON_SOULS, 25.0)
+                wired += 1
+    print(f"  Undead Typhon soul wired: {wired} records")
+    total += wired
 
     # ── xpack Yaoguai: wire soul from regular Yaoguai variants ──────────
     yaoguai_souls = _get_soul_paths('boss_daemonbull_yaoguai')

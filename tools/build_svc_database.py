@@ -25,6 +25,71 @@ sys.path.insert(0, str(Path(__file__).parent))
 from arz_patcher import ArzDatabase, DATA_TYPE_FLOAT, DATA_TYPE_STRING, DATA_TYPE_INT
 
 
+def import_base_game_bosses(db: ArzDatabase, base_db: ArzDatabase):
+    """Import specific boss records from the base game that aren't in the SV overlay.
+
+    Some base game bosses (e.g. Aktaios telkine) aren't overridden by SV,
+    so they can't get soul wiring. Importing them into the overlay allows
+    the soul wiring passes to find and wire them.
+    """
+    print("\n=== Import base game boss records for soul wiring ===")
+
+    # Boss records to import (only if missing from SV overlay)
+    TARGETS = [
+        r'records\creature\monster\questbosses\boss_egypttelkine_aktaios_27.dbr',
+        r'records\creature\monster\questbosses\boss_egypttelkine_aktaios_30.dbr',
+        r'records\creature\monster\questbosses\boss_egypttelkine_aktaios_33.dbr',
+    ]
+
+    imported = 0
+    for target in TARGETS:
+        if db.has_record(target):
+            continue
+        # Try case-insensitive match in base_db
+        source = None
+        for name in base_db.record_names():
+            if name.lower().replace('/', '\\') == target.lower():
+                source = name
+                break
+            if name.lower() == target.lower():
+                source = name
+                break
+        if not source:
+            print(f"  WARNING: {target.split(chr(92))[-1]} not found in base game")
+            continue
+
+        # Decode source fields and copy to overlay
+        fields = base_db.get_fields(source)
+        if not fields:
+            print(f"  WARNING: {target.split(chr(92))[-1]} has no fields in base game")
+            continue
+
+        # Get template from base_db
+        template = ''
+        for key, tf in fields.items():
+            if key.split('###')[0] == 'templateName' and tf.values:
+                template = str(tf.values[0])
+                break
+
+        # Create empty record
+        from apply_svc_patches import _ensure_record
+        _ensure_record(db, target, template)
+
+        # Copy all fields
+        for key, tf in fields.items():
+            field_name = key.split('###')[0]
+            vals = list(tf.values) if tf.values else []
+            if len(vals) == 1:
+                db.set_field(target, field_name, vals[0], tf.dtype)
+            elif len(vals) > 1:
+                db.set_field(target, field_name, vals, tf.dtype)
+
+        imported += 1
+
+    print(f"  Imported {imported} base game boss records")
+    return imported
+
+
 def strip_ui_overrides(db: ArzDatabase):
     """Remove SV UI records that conflict with AE's modern UI system.
 
@@ -1144,13 +1209,14 @@ def fix_soul_bitmaps(db: ArzDatabase):
 
 def main():
     if len(sys.argv) < 5:
-        print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz>")
+        print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
         sys.exit(1)
 
     sv098_path = Path(sys.argv[1])
     sv09_path = Path(sys.argv[2])
     sv041_path = Path(sys.argv[3])
     output_path = Path(sys.argv[4])
+    base_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
 
     print(f"Loading SV 0.98i: {sv098_path}")
     db = ArzDatabase.from_arz(sv098_path)
@@ -1162,6 +1228,13 @@ def main():
     if sv041_path and str(sv041_path).strip() and Path(sv041_path).exists():
         print(f"\nLoading SV 0.4.1: {sv041_path}")
         db41 = ArzDatabase.from_arz(sv041_path)
+
+    # Import specific base game boss records for soul wiring
+    if base_path and base_path.exists():
+        print(f"\nLoading base game: {base_path}")
+        base_db = ArzDatabase.from_arz(base_path)
+        import_base_game_bosses(db, base_db)
+        del base_db  # Free memory
 
     strip_ui_overrides(db)
     restore_potion_drops(db, db09)
