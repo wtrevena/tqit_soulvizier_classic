@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 Hybrid merge: combines MapCompiler's GROUPS/SD/BITMAPS (correct for all 2281 levels)
-with section surgery on shared levels (SVAERA terrain + SV drxmap objects).
+with full SV blob swap on shared levels that have drxmap content.
 
-For shared levels with drxmap content: replaces only the 0x05 section (object
-placements) with SV's version, keeping SVAERA's terrain, pathfinding, and other
-sections intact. This avoids ints_raw mismatches that break pathfinding.
+For shared levels with drxmap content: uses SV's complete blob + SV's ints_raw,
+with bitmap entries zeroed so the engine uses SV's embedded pathfinding instead
+of SVAERA's DATA2. This preserves SV's internally-consistent level data without
+any cross-format conversion.
 """
 import sys, struct
 from pathlib import Path
@@ -15,8 +16,7 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
     parse_bitmap_index, build_level_index, build_quests, build_bitmap_index,
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
 from build_section_surgery import (
-    parse_blob_sections, rebuild_blob, perform_section_surgery, INJECT_SPECS,
-    inject_into_sv_only_blob, UBER_DUNGEON_QUEST_NAMES)
+    INJECT_SPECS, inject_into_sv_only_blob, UBER_DUNGEON_QUEST_NAMES)
 
 svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
 sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
@@ -108,33 +108,33 @@ data2_raw = ae_data[ae_sec_map[SEC_DATA2]['data_offset']:
 data_raw = ae_data[ae_sec_map[SEC_DATA]['data_offset']:
                    ae_sec_map[SEC_DATA]['data_offset'] + ae_sec_map[SEC_DATA]['size']]
 
-# === Section surgery on shared levels ===
-# Format-aware: v0x11 levels get 0x05 conversion, v0x0e levels use SV's full blob.
-print('\n=== Section Surgery on shared levels ===')
-surgery_blobs = {}  # ae_idx -> new blob
-sv_full_blob_levels = {}  # ae_idx -> (sv_blob, sv_lv) for levels using SV's full blob
+# === Full blob swap for shared levels with drxmap content ===
+# Use SV's complete blob + SV's ints_raw for ALL shared+drxmap levels.
+# This is the same approach that works for SV-only levels — no format conversion,
+# no cross-section mismatches. Bitmap entries are zeroed so the engine uses
+# SV's embedded pathfinding instead of SVAERA's DATA2.
+print('\n=== Full blob swap for shared+drxmap levels ===')
+shared_swap_levels = {}  # ae_idx -> (sv_blob, sv_lv)
 for sv_lv, ae_idx in sv_custom_shared:
     ae_lv = ae_levels[ae_idx]
-    ae_blob = ae_data[ae_lv['data_offset']:ae_lv['data_offset'] + ae_lv['data_length']]
     sv_blob = sv_data[sv_lv['data_offset']:sv_lv['data_offset'] + sv_lv['data_length']]
 
-    result, info = perform_section_surgery(ae_blob, sv_blob, ae_lv['fname'])
-    if result:
-        surgery_blobs[ae_idx] = result
-        print(f'  OK: {ae_lv["fname"]} ({info})')
-    elif info == "use_sv_blob":
-        # v0x0e AE blob (e.g. Random09A): use SV's full blob + SV's ints_raw
-        # SV's blob has the grid connection (0x09 section) that SVAERA lacks
-        sv_full_blob_levels[ae_idx] = (sv_blob, sv_lv)
-        print(f'  FULL: {ae_lv["fname"]} (using SV full blob + ints_raw, same v0x0e format)')
-    else:
-        print(f'  SKIP: {ae_lv["fname"]} ({info})')
+    # Inject objects into shared levels if specified (e.g. uber dungeon portal)
+    lv_key = ae_lv['fname'].replace('\\', '/').lower()
+    if lv_key in INJECT_SPECS:
+        from build_section_surgery import inject_into_sv_only_blob as _inject
+        sv_blob = _inject(sv_blob, INJECT_SPECS[lv_key], ae_lv['fname'])
+
+    ae_ver = ae_data[ae_lv['data_offset'] + 3] if ae_lv['data_length'] > 3 else 0
+    sv_ver = sv_blob[3] if len(sv_blob) > 3 else 0
+    shared_swap_levels[ae_idx] = (sv_blob, sv_lv)
+    drx = sv_blob.count(b'drxmap')
+    print(f'  SWAP: {ae_lv["fname"]} (AE=v0x{ae_ver:02x} -> SV=v0x{sv_ver:02x}, drxmap: {drx})')
 
 # Collect blobs to append
 append_blobs = []
 sv_only_indices = []
-surgery_blob_indices = {}
-sv_full_blob_indices = {}
+shared_swap_indices = {}
 
 for lv in sv_only:
     blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
@@ -145,12 +145,8 @@ for lv in sv_only:
     sv_only_indices.append(len(append_blobs))
     append_blobs.append(blob)
 
-for ae_idx, blob in surgery_blobs.items():
-    surgery_blob_indices[ae_idx] = len(append_blobs)
-    append_blobs.append(blob)
-
-for ae_idx, (sv_blob, sv_lv) in sv_full_blob_levels.items():
-    sv_full_blob_indices[ae_idx] = len(append_blobs)
+for ae_idx, (sv_blob, sv_lv) in shared_swap_levels.items():
+    shared_swap_indices[ae_idx] = len(append_blobs)
     append_blobs.append(sv_blob)
 
 total_append = sum(len(b) for b in append_blobs)
@@ -188,16 +184,10 @@ append_start = new_pre_data_size + 8 + len(data2_raw) + 8 + len(data_raw)
 for i in range(len(ae_levels)):
     merged_levels[i]['data_offset'] = ae_levels[i]['data_offset'] + offset_shift
 
-# Surgically modified shared levels: point to appended blob (ints_raw stays SVAERA's)
-for ae_idx, blob_idx in surgery_blob_indices.items():
+# Shared+drxmap levels: use SV's full blob + SV's ints_raw
+for ae_idx, blob_idx in shared_swap_indices.items():
     blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
-    merged_levels[ae_idx]['data_offset'] = blob_offset
-    merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
-
-# Full SV blob levels (v0x0e like Random09A): use SV's ints_raw + full blob
-for ae_idx, blob_idx in sv_full_blob_indices.items():
-    blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
-    sv_lv = sv_full_blob_levels[ae_idx][1]
+    sv_lv = shared_swap_levels[ae_idx][1]
     merged_levels[ae_idx]['data_offset'] = blob_offset
     merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
     merged_levels[ae_idx]['ints_raw'] = sv_lv['ints_raw']
@@ -228,14 +218,14 @@ for i in range(len(adjusted_bitmaps)):
     if adjusted_bitmaps[i]['offset'] > 0:
         adjusted_bitmaps[i]['offset'] = mc_bitmaps[i]['offset'] + mc_offset_shift
 
-# Zero bitmap entries for sv_full_blob levels (e.g. Random09A).
-# These levels use SV's full blob with embedded 0x0a pathfinding.
-# SVAERA's DATA2 pathfinding doesn't include the extended area (blood cave pathway),
-# so we zero the bitmap entry to prevent DATA2 from blocking walkability.
-for ae_idx in sv_full_blob_levels:
+# Zero bitmap entries for ALL shared+drxmap levels.
+# These levels use SV's full blob with embedded pathfinding.
+# SVAERA's DATA2 pathfinding doesn't match SV's level layout,
+# so we zero the bitmap entry to use SV's embedded pathfinding.
+for ae_idx in shared_swap_levels:
     adjusted_bitmaps[ae_idx]['offset'] = 0
     adjusted_bitmaps[ae_idx]['length'] = 0
-    print(f'  Zeroed bitmap entry for level {ae_idx} ({ae_levels[ae_idx]["fname"].split(chr(92))[-1]})')
+    print(f'  Zeroed bitmap for level {ae_idx} ({ae_levels[ae_idx]["fname"].split(chr(92))[-1]})')
 
 new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, mc_bmp_unknown)
 
@@ -292,17 +282,13 @@ bad = sum(1 for lv in test_levels if lv['data_offset'] + lv['data_length'] > len
 bad_magic = sum(1 for lv in test_levels if result[lv['data_offset']:lv['data_offset']+3] != b'LVL')
 print(f'  Levels: {len(test_levels)}, bad offsets: {bad}, bad magic: {bad_magic}')
 
-# Verify surgery levels have v0x11 magic (format-correct)
-for ae_idx in surgery_blobs:
+# Verify swapped levels
+for ae_idx in shared_swap_levels:
     lv = test_levels[ae_idx]
     ver_byte = result[lv['data_offset'] + 3]
-    print(f'  Surgery level {ae_levels[ae_idx]["fname"].split(chr(92))[-1]}: magic byte=0x{ver_byte:02x}')
-
-# Verify full SV blob levels have v0x0e magic
-for ae_idx in sv_full_blob_levels:
-    lv = test_levels[ae_idx]
-    ver_byte = result[lv['data_offset'] + 3]
-    print(f'  Full SV blob {ae_levels[ae_idx]["fname"].split(chr(92))[-1]}: magic byte=0x{ver_byte:02x}')
+    drx = result[lv['data_offset']:lv['data_offset'] + lv['data_length']].count(b'drxmap')
+    short = ae_levels[ae_idx]["fname"].split(chr(92))[-1]
+    print(f'  Swapped {short}: v0x{ver_byte:02x}, drxmap: {drx}')
 
 # Package into ARC
 print('\nPackaging into ARC...')
