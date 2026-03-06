@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
 Hybrid merge: combines MapCompiler's GROUPS/SD/BITMAPS (correct for all 2281 levels)
-with binary merge's LEVELS/DATA/DATA2 (correct metadata and data).
+with section surgery on shared levels (SVAERA terrain + SV drxmap objects).
+
+For shared levels with drxmap content: replaces only the 0x05 section (object
+placements) with SV's version, keeping SVAERA's terrain, pathfinding, and other
+sections intact. This avoids ints_raw mismatches that break pathfinding.
 """
 import sys, struct
 from pathlib import Path
@@ -10,6 +14,9 @@ from arc_patcher import ArcArchive
 from merge_levels_binary import (parse_sections, parse_level_index, parse_quests,
     parse_bitmap_index, build_level_index, build_quests, build_bitmap_index,
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
+from build_section_surgery import (
+    parse_blob_sections, rebuild_blob, perform_section_surgery, INJECT_SPECS,
+    inject_into_sv_only_blob, UBER_DUNGEON_QUEST_NAMES)
 
 svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
 sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
@@ -69,6 +76,17 @@ ae_quest_set = set(q.lower() for q in ae_quests)
 new_quests = [q for q in sv_quests if q.lower() not in ae_quest_set]
 merged_quests = ae_quests + new_quests
 
+# Add custom quests for Uber Dungeon portal wiring
+existing_lower = set(q.lower() if isinstance(q, str) else q.decode('ascii', errors='replace').lower()
+                     for q in merged_quests)
+added_quests = 0
+for qname in UBER_DUNGEON_QUEST_NAMES:
+    if qname.lower() not in existing_lower:
+        merged_quests.append(qname.encode('ascii'))
+        existing_lower.add(qname.lower())
+        added_quests += 1
+print(f'  Quests: {len(ae_quests)} + {len(new_quests)} new + {added_quests} custom = {len(merged_quests)}')
+
 # === Sections from MapCompiler (correct for all 2281 levels) ===
 mc_groups = mc_data[mc_sec_map[SEC_GROUPS]['data_offset']:
                     mc_sec_map[SEC_GROUPS]['data_offset'] + mc_sec_map[SEC_GROUPS]['size']]
@@ -90,19 +108,39 @@ data2_raw = ae_data[ae_sec_map[SEC_DATA2]['data_offset']:
 data_raw = ae_data[ae_sec_map[SEC_DATA]['data_offset']:
                    ae_sec_map[SEC_DATA]['data_offset'] + ae_sec_map[SEC_DATA]['size']]
 
-# Collect SV data blobs to append
+# === Section surgery on shared levels ===
+# Instead of replacing entire blobs (which causes ints_raw/pathfinding mismatches),
+# perform section surgery: keep SVAERA's terrain/pathfinding, inject SV's 0x05 objects.
+print('\n=== Section Surgery on shared levels ===')
+surgery_blobs = {}  # ae_idx -> new blob
+for sv_lv, ae_idx in sv_custom_shared:
+    ae_lv = ae_levels[ae_idx]
+    ae_blob = ae_data[ae_lv['data_offset']:ae_lv['data_offset'] + ae_lv['data_length']]
+    sv_blob = sv_data[sv_lv['data_offset']:sv_lv['data_offset'] + sv_lv['data_length']]
+
+    result, info = perform_section_surgery(ae_blob, sv_blob, ae_lv['fname'])
+    if result:
+        surgery_blobs[ae_idx] = result
+        print(f'  OK: {ae_lv["fname"]} ({info})')
+    else:
+        print(f'  SKIP: {ae_lv["fname"]} ({info})')
+
+# Collect blobs to append
 append_blobs = []
 sv_only_indices = []
-shared_replace_map = {}
+surgery_blob_indices = {}
 
 for lv in sv_only:
     blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+    # Inject objects into SV-only levels if specified
+    lv_key = lv['fname'].replace('\\', '/').lower()
+    if lv_key in INJECT_SPECS:
+        blob = inject_into_sv_only_blob(blob, INJECT_SPECS[lv_key], lv['fname'])
     sv_only_indices.append(len(append_blobs))
     append_blobs.append(blob)
 
-for lv, ae_idx in sv_custom_shared:
-    blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-    shared_replace_map[ae_idx] = (len(append_blobs), lv)
+for ae_idx, blob in surgery_blobs.items():
+    surgery_blob_indices[ae_idx] = len(append_blobs)
     append_blobs.append(blob)
 
 total_append = sum(len(b) for b in append_blobs)
@@ -140,11 +178,11 @@ append_start = new_pre_data_size + 8 + len(data2_raw) + 8 + len(data_raw)
 for i in range(len(ae_levels)):
     merged_levels[i]['data_offset'] = ae_levels[i]['data_offset'] + offset_shift
 
-for ae_idx, (blob_idx, sv_lv) in shared_replace_map.items():
+# Surgically modified shared levels: point to appended blob (ints_raw stays SVAERA's)
+for ae_idx, blob_idx in surgery_blob_indices.items():
     blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
     merged_levels[ae_idx]['data_offset'] = blob_offset
     merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
-    merged_levels[ae_idx]['ints_raw'] = sv_lv['ints_raw']  # must match SV blob format
 
 for i, sv_blob_idx in enumerate(sv_only_indices):
     lv_idx = len(ae_levels) + i
@@ -226,6 +264,12 @@ test_levels = parse_level_index(result, {s['type']: s for s in test_sections}[SE
 bad = sum(1 for lv in test_levels if lv['data_offset'] + lv['data_length'] > len(result))
 bad_magic = sum(1 for lv in test_levels if result[lv['data_offset']:lv['data_offset']+3] != b'LVL')
 print(f'  Levels: {len(test_levels)}, bad offsets: {bad}, bad magic: {bad_magic}')
+
+# Verify surgery levels have v0x0e magic
+for ae_idx in surgery_blobs:
+    lv = test_levels[ae_idx]
+    ver_byte = result[lv['data_offset'] + 3]
+    print(f'  Surgery level {ae_levels[ae_idx]["fname"].split(chr(92))[-1]}: magic byte=0x{ver_byte:02x}')
 
 # Package into ARC
 print('\nPackaging into ARC...')
