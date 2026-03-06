@@ -547,76 +547,83 @@ def grant_all_inventory_bags(db: ArzDatabase):
     return patched
 
 
-def expand_transfer_stash(db: ArzDatabase, base_db: ArzDatabase = None):
-    """Expand the caravan transfer stash to vault-like proportions.
+def _import_base_game_record(db, base_db, record_name):
+    """Import a single record from the base game database into the SV overlay."""
+    if db.has_record(record_name):
+        return False
+    if not base_db:
+        return False
+    for name in base_db.record_names():
+        if name.lower() == record_name.lower():
+            fields = base_db.get_fields(name)
+            if not fields:
+                return False
+            template = ''
+            for key, tf in fields.items():
+                if key.split('###')[0] == 'templateName' and tf.values:
+                    template = str(tf.values[0])
+                    break
+            from apply_svc_patches import _ensure_record
+            _ensure_record(db, record_name, template)
+            for key, tf in fields.items():
+                fn = key.split('###')[0]
+                vals = list(tf.values) if tf.values else []
+                if len(vals) == 1:
+                    db.set_field(record_name, fn, vals[0], tf.dtype)
+                elif len(vals) > 1:
+                    db.set_field(record_name, fn, vals, tf.dtype)
+            return True
+    return False
 
-    AE's transfer stash uses records/xpack/ui/caravan/stashwindow.dbr.
-    Default is 10 wide x 5 tall (50 slots). We expand to 10 wide x 25 tall
-    per bag, with 10 bags unlocked for free (2500 slots total). The width
-    stays at 10 to fit the caravan window UI bitmap.
 
-    The stash record only exists in the base game database, so we must
-    import it first if it's not already in the SV overlay.
+def expand_caravan(db: ArzDatabase, base_db: ArzDatabase = None):
+    """Expand all caravan stash areas to maximum size.
+
+    The caravan has 3 tabs (hardcoded in CaravanWindow.tpl):
+      - Storage Area (stashwindow.dbr) — private, per-character
+      - Transfer Area — shared between characters (not expanded here)
+      - Relic Vault (relicvaultwindow.dbr) — per-character
+
+    InventoryHeightArray defines expansion stages for a single grid:
+    [5, 10, 15] means start at 5 rows, expand to 10, then 15.
+    We set a single large value so the grid starts fully expanded.
+
+    These records only exist in the base game database, so we import
+    them first if needed.
     """
-    print("\n=== Patch 5: Expand transfer stash ===")
+    print("\n=== Patch 5: Expand caravan stash ===")
 
+    rows = 50  # 50 rows × 10 wide = 500 slots per tab
+
+    # ── Storage Area (private stash) ──────────────────────────────────
     stash_window = 'records\\xpack\\ui\\caravan\\stashwindow.dbr'
+    if _import_base_game_record(db, base_db, stash_window):
+        print(f"  Imported stashwindow.dbr from base game")
 
-    # Import from base game if not in SV overlay
-    if not db.has_record(stash_window) and base_db:
-        for name in base_db.record_names():
-            if name.lower() == stash_window.lower():
-                fields = base_db.get_fields(name)
-                if fields:
-                    template = ''
-                    for key, tf in fields.items():
-                        if key.split('###')[0] == 'templateName' and tf.values:
-                            template = str(tf.values[0])
-                            break
-                    from apply_svc_patches import _ensure_record
-                    _ensure_record(db, stash_window, template)
-                    for key, tf in fields.items():
-                        fn = key.split('###')[0]
-                        vals = list(tf.values) if tf.values else []
-                        if len(vals) == 1:
-                            db.set_field(stash_window, fn, vals[0], tf.dtype)
-                        elif len(vals) > 1:
-                            db.set_field(stash_window, fn, vals, tf.dtype)
-                    print(f"  Imported stashwindow.dbr from base game")
-                break
+    if db.has_record(stash_window):
+        db.set_field(stash_window, 'InventoryWidth', 10, DATA_TYPE_INT)
+        db.set_field(stash_window, 'InventoryHeightArray', [rows], DATA_TYPE_INT)
+        db.set_field(stash_window, 'InventoryCostArray', [0], DATA_TYPE_INT)
+        print(f"  Storage Area: 10 wide x {rows} tall ({10 * rows} slots)")
+    else:
+        print(f"  WARNING: stashwindow.dbr not found — cannot expand Storage Area")
 
-    if not db.has_record(stash_window):
-        # Create minimal record if no base game db available
-        from apply_svc_patches import _ensure_record
-        _ensure_record(db, stash_window, r'database\Templates\InGameUI\CaravanWindowPrivate.tpl')
-        db.set_field(stash_window, 'InventoryDBR',
-                     r'Records\XPack\UI\Caravan\StashInventory.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'IncreaseButton',
-                     r'Records\XPack\UI\Caravan\StashIncreaseButton.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'IncreaseCostText',
-                     r'Records\XPack\UI\Caravan\StashIncreaseCostText.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'WindowLocationX', 0, DATA_TYPE_INT)
-        db.set_field(stash_window, 'WindowLocationY', 126, DATA_TYPE_INT)
-        db.set_field(stash_window, 'StashSortButton',
-                     r'Records\XPack\UI\Caravan\SortStashButton.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'SmallCoverPlate',
-                     r'Records\XPack\UI\Caravan\SmallStashPlate.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'LargeCoverPlate',
-                     r'Records\XPack\UI\Caravan\LargeStashPlate.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'CanAffordFontStyle',
-                     r'Records\ui\fontstyles\numberstandard_green.dbr', DATA_TYPE_STRING)
-        db.set_field(stash_window, 'CannotAffordFontStyle',
-                     r'Records\ui\fontstyles\numberstandard_red.dbr', DATA_TYPE_STRING)
-        print(f"  Created stashwindow.dbr from scratch")
+    # ── Relic Vault ───────────────────────────────────────────────────
+    vault_window = 'records\\xpack\\ui\\caravan\\relicvaultwindow.dbr'
+    if _import_base_game_record(db, base_db, vault_window):
+        print(f"  Imported relicvaultwindow.dbr from base game")
 
-    bags = 10
-    rows = 25
-    db.set_field(stash_window, 'InventoryWidth', 10, DATA_TYPE_INT)
-    db.set_field(stash_window, 'InventoryHeightArray', [rows] * bags, DATA_TYPE_INT)
-    db.set_field(stash_window, 'InventoryCostArray', [0] * bags, DATA_TYPE_INT)
+    if db.has_record(vault_window):
+        db.set_field(vault_window, 'InventoryWidth', 10, DATA_TYPE_INT)
+        db.set_field(vault_window, 'InventoryHeightArray', [rows], DATA_TYPE_INT)
+        print(f"  Relic Vault: 10 wide x {rows} tall ({10 * rows} slots)")
+    else:
+        print(f"  WARNING: relicvaultwindow.dbr not found — cannot expand Relic Vault")
 
-    total = 10 * rows * bags
-    print(f"  Transfer stash: 10 wide x {rows} tall x {bags} bags ({total} slots), free upgrades")
+    # ── Also import caravanwindow.dbr so Relic Vault tab shows up ────
+    caravan_window = 'records\\xpack\\ui\\caravan\\caravanwindow.dbr'
+    if _import_base_game_record(db, base_db, caravan_window):
+        print(f"  Imported caravanwindow.dbr from base game (has Relic Vault tab)")
 
 
 def restore_rest_skill(db: ArzDatabase):
@@ -1293,7 +1300,7 @@ def main():
     wire_souls_to_monsters(db)
     make_enchantable(db)
     grant_all_inventory_bags(db)
-    expand_transfer_stash(db, base_db)
+    expand_caravan(db, base_db)
     del base_db  # Free memory
     restore_rest_skill(db)
 
