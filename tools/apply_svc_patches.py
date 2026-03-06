@@ -1375,6 +1375,22 @@ _SK_STORM_NIMBUS = r'records\skills\storm\drxstormnimbus.dbr'
 _SK_CHAIN_LIGHTNING = r'records\skills\storm\drxchainlightning.dbr'
 _SK_FIRE_ENCHANT = r'records\skills\earth\drxfireenchantment.dbr'
 _SK_HEART_OF_OAK = r'records\skills\nature\drxheartofoak.dbr'
+_SK_STUDY_PREY = r'records\skills\stealth\drxstudyprey.dbr'
+_SK_FLASH_POWDER = r'records\skills\stealth\drxflashpowder.dbr'
+_SK_CALCULATED_STRIKE = r'records\skills\stealth\drxcalculatedstrike.dbr'
+_SK_SHIELD_CHARGE = r'records\skills\warfare\drxshieldcharge.dbr'
+_SK_WAR_HORN = r'records\skills\warfare\drxwarhorn.dbr'
+_SK_EARTH_ENCHANT = r'records\skills\earth\drxearthenchantment.dbr'
+_SK_VOLCANIC_ORB = r'records\skills\earth\drxvolcanicorb.dbr'
+_SK_STORM_SURGE = r'records\skills\storm\drxstormsurge.dbr'
+_SK_SQUALL = r'records\skills\storm\drxsquall.dbr'
+_SK_RAVAGES_OF_TIME = r'records\skills\dream\drxravagesoftime.dbr'
+_SK_PSIONIC_TOUCH = r'records\skills\dream\drxpsionictouch.dbr'
+_SK_REGROWTH = r'records\skills\nature\drxregrowth.dbr'
+_SK_SPIRIT_WARD = r'records\skills\spirit\drxspiritward.dbr'
+_SK_NECROSIS = r'records\skills\spirit\drxnecrosis.dbr'
+_SK_VISION_OF_DEATH = r'records\skills\spirit\drxvisionofdeath.dbr'
+_SK_RUNE_WEAPON = r'records\skills\runemaster\drxruneweapon.dbr'
 
 # Soul skill procs
 _SS_RING_LIGHTNING = r'records\skills\soulskills\ringoflightning.dbr'
@@ -3356,6 +3372,885 @@ def _wire_it_expansion_orphans(db):
         print(f"    WARNING: xhero_rottingdevourer_41 not found")
 
 
+def _force_100_pct_soul_drops(db):
+    """Set chanceToEquipFinger2 to 100% on ALL monsters with souls (testing)."""
+    SEP = chr(92)
+    count = 0
+    for rec in db.record_names():
+        if 'creature' not in rec.lower():
+            continue
+        fields = db.get_fields(rec)
+        if not fields:
+            continue
+        has_soul = False
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn == 'lootFinger2Item1' and tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and 'soul' in v.lower():
+                        has_soul = True
+                        break
+        if has_soul:
+            db.set_field(rec, 'chanceToEquipFinger2', 100.0, DATA_TYPE_FLOAT)
+            db.set_field(rec, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
+            db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
+            db._modified.add(rec)
+            count += 1
+    print(f"  Soul drop rate forced to 100% on {count} monster records (TESTING)")
+
+
+def _overhaul_generic_souls(db):
+    """Overhaul all 78 generic/weak souls with thematic skills and abilities."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    SEP = chr(92)
+    print("\n  Overhauling generic/weak souls:")
+
+    # ── Design specs: {soul_path_substring: {field: (dtype, val)}} ──
+    # Each entry overwrites fields on the _n, _e, and _l variants with scaling.
+    # Format: (n_val, e_val, l_val) for tiered stats, or single val for flat.
+
+    OVERHAULS = {
+        # ══════════════════════════════════════════════════════════════════
+        # SATYR GROUP — Physical/Fire warriors of Greece and Hades
+        # ══════════════════════════════════════════════════════════════════
+
+        # Satyr Scout — fast, light attacker
+        'satyrpawn_soul': {
+            'offensivePhysicalMin': (F, 15.0), 'offensivePhysicalMax': (F, 28.0),
+            'offensivePierceRatioModifier': (I, 12),
+            'characterDexterityModifier': (F, 6.0),
+            'characterAttackSpeedModifier': (F, 10.0),
+            'characterRunSpeedModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_LETHAL_STRIKE), 'augmentSkillLevel1': (I, 1),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Satyr Warrior — solid melee
+        'satyrsoldier_soul': {
+            'offensivePhysicalMin': (F, 18.0), 'offensivePhysicalMax': (F, 32.0),
+            'characterStrengthModifier': (F, 6.0),
+            'characterLifeModifier': (F, 8.0),
+            'characterOffensiveAbility': (F, 40.0),
+            'characterDefensiveAbility': (F, 40.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Satyr Peltast — shield bearer, defensive
+        'satyrpeltast_soul': {
+            'offensivePhysicalMin': (F, 12.0), 'offensivePhysicalMax': (F, 22.0),
+            'offensivePierceMin': (F, 8.0), 'offensivePierceMax': (F, 16.0),
+            'characterDefensiveAbility': (F, 50.0),
+            'defensivePierce': (F, 10.0),
+            'defensiveProtection': (F, 15.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_SONIC_WAVE),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Satyr Elite Peltast
+        'satyrelitepeltast_soul': {
+            'offensivePhysicalMin': (F, 16.0), 'offensivePhysicalMax': (F, 28.0),
+            'offensivePierceMin': (F, 10.0), 'offensivePierceMax': (F, 20.0),
+            'characterDefensiveAbility': (F, 60.0),
+            'defensivePierce': (F, 14.0),
+            'defensiveProtection': (F, 20.0),
+            'characterLifeModifier': (F, 6.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 3),
+            'itemSkillName': (S, _SS_SONIC_WAVE),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Satyr Veteran Peltast
+        'satyrveteranpeltast_soul': {
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 35.0),
+            'offensivePierceMin': (F, 12.0), 'offensivePierceMax': (F, 24.0),
+            'characterDefensiveAbility': (F, 70.0),
+            'defensivePierce': (F, 18.0),
+            'defensiveProtection': (F, 25.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_SONIC_WAVE),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Satyr Veteran Warrior
+        'satyrveteransoldier_soul': {
+            'offensivePhysicalMin': (F, 25.0), 'offensivePhysicalMax': (F, 42.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterLifeModifier': (F, 10.0),
+            'characterOffensiveAbility': (F, 60.0),
+            'offensivePhysicalModifier': (I, 15),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Satyr Brute — heavy tank
+        'satyrchampion_soul': {
+            'offensivePhysicalMin': (F, 22.0), 'offensivePhysicalMax': (F, 40.0),
+            'offensiveStunMin': (F, 0.5), 'offensiveStunMax': (F, 1.5),
+            'offensiveStunChance': (F, 15.0),
+            'characterStrengthModifier': (F, 10.0),
+            'characterLifeModifier': (F, 12.0),
+            'augmentSkillName1': (S, _SK_WAR_HORN), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Satyr Magi — caster
+        'satyrmagi_soul': {
+            'offensiveFireMin': (F, 20.0), 'offensiveFireMax': (F, 38.0),
+            'characterIntelligenceModifier': (F, 8.0),
+            'characterManaModifier': (F, 10.0),
+            'characterSpellCastSpeedModifier': (F, 12.0),
+            'augmentSkillName1': (S, _SK_FIRE_ENCHANT), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_FIRE_NOVA),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Satyr Spirit Caller — life/spirit caster
+        'satyrspiritcaller_soul': {
+            'offensiveLifeMin': (F, 15.0), 'offensiveLifeMax': (F, 30.0),
+            'characterIntelligenceModifier': (F, 6.0),
+            'characterManaModifier': (F, 8.0),
+            'characterManaRegenModifier': (F, 50.0),
+            'augmentSkillName1': (S, _SK_SPIRIT_WARD), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_DARK_COVENANT), 'augmentSkillLevel2': (I, 1),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # DARK SATYR GROUP — Fire/Shadow variants in Hades
+        # ══════════════════════════════════════════════════════════════════
+
+        'darksatyrpeltast_soul': {
+            'offensiveFireMin': (F, 12.0), 'offensiveFireMax': (F, 22.0),
+            'offensivePhysicalMin': (F, 10.0), 'offensivePhysicalMax': (F, 18.0),
+            'characterDefensiveAbility': (F, 40.0),
+            'defensiveFire': (F, 15.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_FIRE_NOVA),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'darksatyrelitepeltast_soul': {
+            'offensiveFireMin': (F, 16.0), 'offensiveFireMax': (F, 30.0),
+            'offensivePhysicalMin': (F, 14.0), 'offensivePhysicalMax': (F, 24.0),
+            'characterDefensiveAbility': (F, 55.0),
+            'defensiveFire': (F, 20.0),
+            'characterLifeModifier': (F, 6.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 3),
+            'itemSkillName': (S, _SS_FIRE_NOVA),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'darksatyrveteranpeltast_soul': {
+            'offensiveFireMin': (F, 20.0), 'offensiveFireMax': (F, 38.0),
+            'offensivePhysicalMin': (F, 16.0), 'offensivePhysicalMax': (F, 30.0),
+            'characterDefensiveAbility': (F, 65.0),
+            'defensiveFire': (F, 25.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_FIRE_ENCHANT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_FIRE_NOVA),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'darksatyrelitesoldier_soul': {
+            'offensiveFireMin': (F, 18.0), 'offensiveFireMax': (F, 35.0),
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 36.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterOffensiveAbility': (F, 45.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_FIRE_ENCHANT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_FIRE_NOVA),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'darksatyrspiritcaller_soul': {
+            'offensiveLifeMin': (F, 20.0), 'offensiveLifeMax': (F, 38.0),
+            'offensiveFireMin': (F, 12.0), 'offensiveFireMax': (F, 22.0),
+            'characterIntelligenceModifier': (F, 8.0),
+            'characterManaRegenModifier': (F, 55.0),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_SPIRIT_WARD), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # MOUNTAIN SATYR GROUP — Cold/Physical, from icy mountains
+        # ══════════════════════════════════════════════════════════════════
+
+        'mountainsatyrsoldier_soul': {
+            'offensiveColdMin': (F, 14.0), 'offensiveColdMax': (F, 26.0),
+            'offensivePhysicalMin': (F, 12.0), 'offensivePhysicalMax': (F, 22.0),
+            'characterStrengthModifier': (F, 6.0),
+            'defensiveCold': (F, 15.0),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'mountainsatyrpeltast_soul': {
+            'offensiveColdMin': (F, 10.0), 'offensiveColdMax': (F, 20.0),
+            'offensivePierceMin': (F, 10.0), 'offensivePierceMax': (F, 18.0),
+            'characterDefensiveAbility': (F, 50.0),
+            'defensiveCold': (F, 18.0), 'defensivePierce': (F, 10.0),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_SONIC_WAVE),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'mountainsatyrelitesoldier_soul': {
+            'offensiveColdMin': (F, 20.0), 'offensiveColdMax': (F, 36.0),
+            'offensivePhysicalMin': (F, 16.0), 'offensivePhysicalMax': (F, 30.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterLifeModifier': (F, 8.0),
+            'defensiveCold': (F, 22.0),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'mountainsatyrveteranpeltast_soul': {
+            'offensiveColdMin': (F, 16.0), 'offensiveColdMax': (F, 30.0),
+            'offensivePierceMin': (F, 14.0), 'offensivePierceMax': (F, 26.0),
+            'characterDefensiveAbility': (F, 65.0),
+            'defensiveCold': (F, 24.0), 'defensivePierce': (F, 14.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel2': (I, 3),
+            'itemSkillName': (S, _SS_SONIC_WAVE),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'mountainsatyrveteransoldier_soul': {
+            'offensiveColdMin': (F, 24.0), 'offensiveColdMax': (F, 42.0),
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 36.0),
+            'characterStrengthModifier': (F, 10.0),
+            'characterLifeModifier': (F, 10.0),
+            'defensiveCold': (F, 28.0),
+            'offensiveFreezeMin': (F, 0.5), 'offensiveFreezeMax': (F, 1.5),
+            'offensiveFreezeChance': (F, 10.0),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 3),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # MAENAD GROUP — Pierce/Bleed fast attackers
+        # ══════════════════════════════════════════════════════════════════
+
+        'maenadscout_soul': {
+            'offensivePierceMin': (F, 14.0), 'offensivePierceMax': (F, 28.0),
+            'offensiveSlowBleedingMin': (F, 30.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 8.0),
+            'characterAttackSpeedModifier': (F, 12.0),
+            'characterDodgePercent': (F, 5.0),
+            'augmentSkillName1': (S, _SK_STUDY_PREY), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'maenadtracker_soul': {
+            'offensivePierceMin': (F, 16.0), 'offensivePierceMax': (F, 32.0),
+            'offensiveSlowBleedingMin': (F, 40.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterAttackSpeedModifier': (F, 14.0),
+            'characterDodgePercent': (F, 6.0),
+            'augmentSkillName1': (S, _SK_STUDY_PREY), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_CALCULATED_STRIKE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'maenadvanguard_soul': {
+            'offensivePierceMin': (F, 18.0), 'offensivePierceMax': (F, 36.0),
+            'offensiveSlowBleedingMin': (F, 50.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 12.0),
+            'characterAttackSpeedModifier': (F, 16.0),
+            'characterDodgePercent': (F, 8.0),
+            'characterRunSpeedModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_STUDY_PREY), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_CALCULATED_STRIKE), 'augmentSkillLevel2': (I, 3),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # BAT GROUP — Life leech, speed, evasion
+        # ══════════════════════════════════════════════════════════════════
+
+        'goatsucker_soul': {  # Lv7 early game
+            'offensiveLifeMin': (F, 5.0), 'offensiveLifeMax': (F, 10.0),
+            'characterLifeRegenModifier': (F, 10.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'characterDodgePercent': (F, 4.0),
+            'augmentSkillName1': (S, _SK_ENVENOM), 'augmentSkillLevel1': (I, 1),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'leatherwing_soul': {  # Lv11
+            'offensiveLifeMin': (F, 8.0), 'offensiveLifeMax': (F, 16.0),
+            'characterDexterityModifier': (F, 5.0),
+            'characterRunSpeedModifier': (F, 12.0),
+            'characterDodgePercent': (F, 6.0),
+            'defensiveCold': (F, 15.0),
+            'augmentSkillName1': (S, _SK_ENVENOM), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'elephantsnatcher_soul': {  # Lv17
+            'offensiveLifeMin': (F, 12.0), 'offensiveLifeMax': (F, 24.0),
+            'offensivePhysicalMin': (F, 10.0), 'offensivePhysicalMax': (F, 20.0),
+            'characterAttackSpeedModifier': (F, 15.0),
+            'characterRunSpeedModifier': (F, 12.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'cavebat_soul': {  # Lv44
+            'offensiveLifeMin': (F, 20.0), 'offensiveLifeMax': (F, 38.0),
+            'characterDexterityModifier': (F, 8.0),
+            'characterDodgePercent': (F, 8.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'giganticbat_soul': {  # Lv44
+            'offensiveLifeMin': (F, 25.0), 'offensiveLifeMax': (F, 45.0),
+            'offensivePhysicalMin': (F, 15.0), 'offensivePhysicalMax': (F, 28.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterDodgePercent': (F, 6.0),
+            'characterAttackSpeedModifier': (F, 12.0),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # CARRION BIRD GROUP — Pierce/Bleed aerial predators
+        # ══════════════════════════════════════════════════════════════════
+
+        'bloodwing_soul': {  # Both Lv12 and Lv44 versions
+            'offensivePierceMin': (F, 14.0), 'offensivePierceMax': (F, 28.0),
+            'offensiveSlowBleedingMin': (F, 40.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterAttackSpeedModifier': (F, 15.0),
+            'characterRunSpeedModifier': (F, 12.0),
+            'characterDodgePercent': (F, 6.0),
+            'augmentSkillName1': (S, _SK_STUDY_PREY), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'carrioncrow_soul': {
+            'offensivePierceMin': (F, 10.0), 'offensivePierceMax': (F, 22.0),
+            'offensiveSlowBleedingMin': (F, 35.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 6.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'augmentSkillName1': (S, _SK_CALCULATED_STRIKE), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        'carrionlord_soul': {
+            'offensivePierceMin': (F, 18.0), 'offensivePierceMax': (F, 34.0),
+            'offensiveSlowBleedingMin': (F, 55.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterAttackSpeedModifier': (F, 14.0),
+            'characterDodgePercent': (F, 8.0),
+            'augmentSkillName1': (S, _SK_STUDY_PREY), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_CALCULATED_STRIKE), 'augmentSkillLevel2': (I, 3),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # BOAR GROUP — Physical chargers, stun
+        # ══════════════════════════════════════════════════════════════════
+
+        'sow_soul': {  # Lv7 early
+            'offensivePhysicalMin': (F, 6.0), 'offensivePhysicalMax': (F, 12.0),
+            'offensiveSlowBleedingMin': (F, 15.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterLifeModifier': (F, 5.0),
+            'characterStrengthModifier': (F, 3.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 1),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'duskyboar_soul': {
+            'offensivePhysicalMin': (F, 22.0), 'offensivePhysicalMax': (F, 40.0),
+            'offensiveStunMin': (F, 0.5), 'offensiveStunMax': (F, 1.5),
+            'offensiveStunChance': (F, 12.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterLifeModifier': (F, 10.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_WAR_HORN), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'ravenousboar_soul': {
+            'offensivePhysicalMin': (F, 18.0), 'offensivePhysicalMax': (F, 34.0),
+            'offensiveSlowBleedingMin': (F, 45.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'characterStrengthModifier': (F, 7.0),
+            'characterLifeModifier': (F, 8.0),
+            'characterAttackSpeedModifier': (F, 10.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # GORGON GROUP — Poison/Pierce, petrification
+        # ══════════════════════════════════════════════════════════════════
+
+        'gorgonarcher_soul': {
+            'offensivePierceMin': (F, 22.0), 'offensivePierceMax': (F, 40.0),
+            'offensiveSlowPoisonMin': (F, 15.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterOffensiveAbility': (F, 50.0),
+            'augmentSkillName1': (S, _SK_STUDY_PREY), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_LETHAL_STRIKE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        'gorgonguard_soul': {
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 38.0),
+            'offensiveSlowPoisonMin': (F, 20.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterDefensiveAbility': (F, 60.0),
+            'defensivePoison': (F, 20.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 3),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+
+        # ══════════════════════════════════════════════════════════════════
+        # INDIVIDUAL NAMED MONSTERS — Unique overhauls
+        # ══════════════════════════════════════════════════════════════════
+
+        # Pandarus — cunning eurynomus, dodge and strike
+        'pandarus_soul': {
+            'offensivePhysicalMin': (F, 8.0), 'offensivePhysicalMax': (F, 16.0),
+            'offensiveLifeMin': (F, 5.0), 'offensiveLifeMax': (F, 10.0),
+            'characterDexterityModifier': (F, 4.0),
+            'characterDodgePercent': (F, 5.0),
+            'augmentSkillName1': (S, _SK_ENVENOM), 'augmentSkillLevel1': (I, 1),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Alossos Tonefist — early satyr hero
+        'alosstonefist_soul': {
+            'offensivePhysicalMin': (F, 10.0), 'offensivePhysicalMax': (F, 20.0),
+            'offensiveStunMin': (F, 0.3), 'offensiveStunMax': (F, 1.0),
+            'offensiveStunChance': (F, 10.0),
+            'characterStrengthModifier': (F, 5.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 1),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Old Snapper — giant turtle, tanky
+        'oldsnapper_soul': {
+            'offensivePhysicalMin': (F, 8.0), 'offensivePhysicalMax': (F, 16.0),
+            'characterLifeModifier': (F, 12.0),
+            'defensiveProtection': (F, 20.0),
+            'defensivePierce': (F, 12.0),
+            'characterTotalSpeedModifier': (F, -5.0),
+            'augmentSkillName1': (S, _SK_HEART_OF_OAK), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Wraithwing — vulture, pierce and speed
+        'wraithwing_soul': {
+            'offensivePierceMin': (F, 16.0), 'offensivePierceMax': (F, 30.0),
+            'characterDodgePercent': (F, 8.0),
+            'characterRunSpeedModifier': (F, 14.0),
+            'offensivePierceRatioModifier': (I, 25),
+            'augmentSkillName1': (S, _SK_CALCULATED_STRIKE), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Slabskin — guardian statue, stone tank
+        'slabskin_soul': {
+            'offensivePhysicalMin': (F, 16.0), 'offensivePhysicalMax': (F, 30.0),
+            'characterLifeModifier': (F, 12.0),
+            'characterStrengthModifier': (F, 8.0),
+            'defensiveProtection': (F, 25.0),
+            'defensivePierce': (F, 15.0),
+            'characterAttackSpeedModifier': (F, -10.0),
+            'augmentSkillName1': (S, _SK_EARTH_ENCHANT), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Spikeclaw — scorpos, poison/physical
+        'spikeclaw_soul': {
+            'offensivePhysicalMin': (F, 14.0), 'offensivePhysicalMax': (F, 26.0),
+            'offensiveSlowPoisonMin': (F, 20.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterOffensiveAbility': (F, 40.0),
+            'defensivePoison': (F, 18.0),
+            'augmentSkillName1': (S, _SK_ENVENOM), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Fluxfang — raptor, fast pierce attacker
+        'fluxfang_soul': {
+            'offensivePierceMin': (F, 18.0), 'offensivePierceMax': (F, 34.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterAttackSpeedModifier': (F, 14.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'characterOffensiveAbility': (F, 40.0),
+            'augmentSkillName1': (S, _SK_LETHAL_STRIKE), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_STUDY_PREY), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Sentinel — elemental construct, physical powerhouse
+        'sentinel_soul': {
+            'offensivePhysicalMin': (F, 25.0), 'offensivePhysicalMax': (F, 45.0),
+            'offensiveLightningMin': (F, 12.0), 'offensiveLightningMax': (F, 24.0),
+            'characterStrengthModifier': (F, 10.0),
+            'characterLifeModifier': (F, 10.0),
+            'offensivePhysicalModifier': (I, 20),
+            'augmentSkillName1': (S, _SK_STORM_NIMBUS), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_RING_LIGHTNING),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Komara — zombie, undead caster
+        'komara_soul': {
+            'offensiveLifeMin': (F, 18.0), 'offensiveLifeMax': (F, 34.0),
+            'offensiveSlowPoisonMin': (F, 15.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterStrengthModifier': (F, 6.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_NECROSIS), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_ZOMBIE_SUMMON),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Phyraxus — raptor, bleed/cold
+        'phyraxus_soul': {
+            'offensivePhysicalMin': (F, 14.0), 'offensivePhysicalMax': (F, 28.0),
+            'offensiveSlowBleedingMin': (F, 40.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveColdMin': (F, 10.0), 'offensiveColdMax': (F, 20.0),
+            'characterDexterityModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Darkmarsh — bog dweller, poison/nature
+        'darkmarsh_soul': {
+            'offensiveSlowPoisonMin': (F, 30.0),
+            'offensiveSlowPoisonDurationMin': (F, 4.0),
+            'characterLifeModifier': (F, 8.0),
+            'characterLifeRegenModifier': (F, 10.0),
+            'defensivePoison': (F, 25.0),
+            'augmentSkillName1': (S, _SK_PLAGUE), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_HEART_OF_OAK), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Hodesugo — ghost, ethereal dream caster
+        'hodesugo_soul': {
+            'offensiveLifeMin': (F, 18.0), 'offensiveLifeMax': (F, 34.0),
+            'characterIntelligenceModifier': (F, 10.0),
+            'characterSpellCastSpeedModifier': (F, 20.0),
+            'characterDodgePercent': (F, 8.0),
+            'defensiveLife': (F, 30.0),
+            'augmentSkillName1': (S, _SK_PHANTOM_STRIKE), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_DISTORTION_WAVE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Bloodfang — arachnos spider, bleed/poison
+        'bloodfang_soul': {
+            'offensiveSlowBleedingMin': (F, 50.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveSlowPoisonMin': (F, 20.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterDexterityModifier': (F, 8.0),
+            'defensivePoison': (F, 20.0),
+            'augmentSkillName1': (S, _SK_ENVENOM), 'augmentSkillLevel1': (I, 3),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Shadefeaster — hydradon, resistance tank
+        'shadefeaster_soul': {
+            'offensivePhysicalMin': (F, 18.0), 'offensivePhysicalMax': (F, 34.0),
+            'offensiveLifeMin': (F, 12.0), 'offensiveLifeMax': (F, 24.0),
+            'characterStrengthModifier': (F, 8.0),
+            'defensiveFire': (F, 18.0), 'defensiveCold': (F, 18.0),
+            'defensivePierce': (F, 18.0),
+            'augmentSkillName1': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel1': (I, 3),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Gatekeeper — ascacophus, plant guardian
+        'gatekeeper_soul': {
+            'offensivePhysicalMin': (F, 22.0), 'offensivePhysicalMax': (F, 42.0),
+            'offensiveSlowPoisonMin': (F, 25.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterStrengthModifier': (F, 10.0),
+            'characterLifeModifier': (F, 12.0),
+            'augmentSkillName1': (S, _SK_PLAGUE), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_HEART_OF_OAK), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Barnacle — karkinos crab, armored physical
+        'barnacle_soul': {
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 38.0),
+            'characterDefensiveAbility': (F, 50.0),
+            'defensivePierce': (F, 20.0),
+            'defensiveProtection': (F, 20.0),
+            'characterLifeModifier': (F, 10.0),
+            'augmentSkillName1': (S, _SK_SHIELD_CHARGE), 'augmentSkillLevel1': (I, 3),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Deathclot — tomb rot undead, cold/fire resist, bleed
+        'deathclot_soul': {
+            'offensiveSlowBleedingMin': (F, 45.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveLifeMin': (F, 15.0), 'offensiveLifeMax': (F, 28.0),
+            'defensiveCold': (F, 25.0), 'defensiveFire': (F, 30.0),
+            'characterLifeModifier': (F, 6.0),
+            'augmentSkillName1': (S, _SK_NECROSIS), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_DARK_COVENANT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Stingeye — mantid, fast dual-attacker
+        'stingeye_soul': {
+            'offensivePierceMin': (F, 16.0), 'offensivePierceMax': (F, 32.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterAttackSpeedModifier': (F, 18.0),
+            'characterOffensiveAbility': (F, 55.0),
+            'characterRunSpeedModifier': (F, 12.0),
+            'augmentSkillName1': (S, _SK_DUAL_WEAPON), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_LETHAL_STRIKE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_FLASH_POWDER),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Daeros — lost soul caster, spell focus
+        'daeros_soul': {
+            'offensiveLifeMin': (F, 22.0), 'offensiveLifeMax': (F, 40.0),
+            'offensiveColdMin': (F, 14.0), 'offensiveColdMax': (F, 28.0),
+            'characterIntelligenceModifier': (F, 10.0),
+            'characterSpellCastSpeedModifier': (F, 25.0),
+            'characterManaModifier': (F, 12.0),
+            'augmentSkillName1': (S, _SK_TERNION), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_VISION_OF_DEATH), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Cursed Creeper — tomb rot, bleed/undead
+        'cursedcreeper_soul': {
+            'offensiveSlowBleedingMin': (F, 50.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveLifeMin': (F, 18.0), 'offensiveLifeMax': (F, 32.0),
+            'defensiveCold': (F, 25.0), 'defensiveFire': (F, 30.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_NECROSIS), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_DARK_COVENANT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Nightmistress — empusa, life drain seductress
+        'nightmistress_soul': {
+            'offensiveLifeMin': (F, 25.0), 'offensiveLifeMax': (F, 45.0),
+            'characterDexterityModifier': (F, 8.0),
+            'characterIntelligenceModifier': (F, 8.0),
+            'characterDodgePercent': (F, 8.0),
+            'characterSpellCastSpeedModifier': (F, 15.0),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_PHANTOM_STRIKE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_BLOOD_BOIL),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Qinshi — terracotta warrior, construct
+        'qinshi_soul': {
+            'offensivePhysicalMin': (F, 22.0), 'offensivePhysicalMax': (F, 40.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterLifeModifier': (F, 12.0),
+            'defensiveProtection': (F, 20.0),
+            'augmentSkillName1': (S, _SK_EARTH_ENCHANT), 'augmentSkillLevel1': (I, 2),
+            'augmentSkillName2': (S, _SK_ONSLAUGHT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Rusted Relic — terracotta, slow armored
+        'rustedrelic_soul': {
+            'offensivePhysicalMin': (F, 18.0), 'offensivePhysicalMax': (F, 35.0),
+            'offensiveSlowPoisonMin': (F, 15.0),
+            'offensiveSlowPoisonDurationMin': (F, 3.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterLifeModifier': (F, 10.0),
+            'defensiveProtection': (F, 18.0),
+            'defensivePoison': (F, 20.0),
+            'augmentSkillName1': (S, _SK_EARTH_ENCHANT), 'augmentSkillLevel1': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Erebenea — lamia, bleed/physical, fast
+        'erebenea_soul': {
+            'offensiveSlowBleedingMin': (F, 55.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 38.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_LETHAL_STRIKE), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_ENVENOM), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_BLOOD_BOIL),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Athenos — furies, dodge/speed caster
+        'athenos': {  # matches both athenos_n_soul and athenos_soul_n
+            'offensiveLightningMin': (F, 18.0), 'offensiveLightningMax': (F, 35.0),
+            'offensiveLifeMin': (F, 12.0), 'offensiveLifeMax': (F, 24.0),
+            'characterDexterityModifier': (F, 10.0),
+            'characterDodgePercent': (F, 12.0),
+            'characterSpellCastSpeedModifier': (F, 15.0),
+            'characterOffensiveAbility': (F, 40.0),
+            'augmentSkillName1': (S, _SK_STORM_SURGE), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_PHANTOM_STRIKE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_RING_LIGHTNING),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+        },
+        # Oythroneus — zombie, completely empty! Undead brute
+        'oythroneus_soul': {
+            'offensivePhysicalMin': (F, 22.0), 'offensivePhysicalMax': (F, 42.0),
+            'offensiveLifeMin': (F, 18.0), 'offensiveLifeMax': (F, 32.0),
+            'characterStrengthModifier': (F, 10.0),
+            'characterLifeModifier': (F, 12.0),
+            'offensivePhysicalModifier': (I, 15),
+            'augmentSkillName1': (S, _SK_NECROSIS), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_ONSLAUGHT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_ZOMBIE_SUMMON),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Sandwraith — completely empty! Spectral desert predator
+        'sandwraith_soul': {
+            'offensiveLifeMin': (F, 25.0), 'offensiveLifeMax': (F, 45.0),
+            'offensiveColdMin': (F, 15.0), 'offensiveColdMax': (F, 28.0),
+            'characterDodgePercent': (F, 10.0),
+            'characterRunSpeedModifier': (F, 10.0),
+            'characterIntelligenceModifier': (F, 8.0),
+            'defensiveLife': (F, 25.0),
+            'augmentSkillName1': (S, _SK_PHANTOM_STRIKE), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_RAVAGES_OF_TIME), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_LIFE_DRAIN),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Camelbane — antlion, fast striker
+        'camelbane_soul': {
+            'offensivePhysicalMin': (F, 20.0), 'offensivePhysicalMax': (F, 38.0),
+            'offensivePierceMin': (F, 12.0), 'offensivePierceMax': (F, 24.0),
+            'characterOffensiveAbility': (F, 50.0),
+            'characterAttackSpeedModifier': (F, 12.0),
+            'characterRunSpeedModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_LETHAL_STRIKE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Sybaris — limos, bleed/life drain
+        'sybaris_soul': {
+            'offensiveSlowBleedingMin': (F, 55.0),
+            'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveLifeMin': (F, 20.0), 'offensiveLifeMax': (F, 38.0),
+            'characterStrengthModifier': (F, 8.0),
+            'characterLifeModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_NECROSIS), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_BLOOD_BOIL),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Beast (Odontotyrannus) — massive brute, raw power
+        'beast_soul': {
+            'offensivePhysicalMin': (F, 30.0), 'offensivePhysicalMax': (F, 55.0),
+            'offensiveStunMin': (F, 0.5), 'offensiveStunMax': (F, 2.0),
+            'offensiveStunChance': (F, 15.0),
+            'characterStrengthModifier': (F, 12.0),
+            'characterLifeModifier': (F, 15.0),
+            'characterAttackSpeedModifier': (F, -8.0),
+            'characterRunSpeedModifier': (F, -10.0),
+            'augmentSkillName1': (S, _SK_WAR_HORN), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_BATTLE_RAGE), 'augmentSkillLevel2': (I, 3),
+            'itemSkillName': (S, _SS_GROUND_SMASH),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Venophobia — spider, poison specialist
+        'venophobia_soul': {
+            'offensiveSlowPoisonMin': (F, 45.0),
+            'offensiveSlowPoisonDurationMin': (F, 5.0),
+            'offensivePierceMin': (F, 12.0), 'offensivePierceMax': (F, 24.0),
+            'defensivePoison': (F, 30.0),
+            'characterDexterityModifier': (F, 8.0),
+            'augmentSkillName1': (S, _SK_ENVENOM), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _SK_PLAGUE), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Viluktia — empusa, fire/life
+        'viluktia_soul': {
+            'offensiveLifeMin': (F, 22.0), 'offensiveLifeMax': (F, 40.0),
+            'offensiveFireMin': (F, 14.0), 'offensiveFireMax': (F, 28.0),
+            'characterManaModifier': (F, 12.0),
+            'characterIntelligenceModifier': (F, 8.0),
+            'defensiveFire': (F, 18.0),
+            'augmentSkillName1': (S, _SK_FIRE_ENCHANT), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_DARK_COVENANT), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_BLOOD_BOIL),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+        # Bthokite — epiales (nightmare), poison/life
+        'bthokite_soul': {
+            'offensiveSlowPoisonMin': (F, 35.0),
+            'offensiveSlowPoisonDurationMin': (F, 4.0),
+            'offensiveLifeMin': (F, 18.0), 'offensiveLifeMax': (F, 32.0),
+            'characterLifeModifier': (F, 10.0),
+            'defensivePoison': (F, 35.0),
+            'augmentSkillName1': (S, _SK_PLAGUE), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _SK_VISION_OF_DEATH), 'augmentSkillLevel2': (I, 2),
+            'itemSkillName': (S, _SS_VENOM_SPRAY),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
+    }
+
+    # Apply overhauls to matching soul records
+    total = 0
+    for rec in list(db.record_names()):
+        rl = rec.lower()
+        if 'equipmentring' not in rl or 'soul' not in rl:
+            continue
+        # Skip template records
+        if 'template' in rl or 'test' in rl:
+            continue
+
+        for pattern, stats in OVERHAULS.items():
+            if pattern in rl:
+                for fname, (dtype, val) in stats.items():
+                    db.set_field(rec, fname, val, dtype)
+                db._modified.add(rec)
+                total += 1
+                break
+
+    print(f"  Generic souls overhauled: {total} records modified")
+    # Also clean up the 5 Dropbox-era conflicted copies
+    conflicts = 0
+    for rec in list(db.record_names()):
+        if 'conflicted copy' in rec.lower() and 'soul' in rec.lower():
+            conflicts += 1
+    if conflicts:
+        print(f"  Note: {conflicts} Dropbox conflicted copy records still exist (harmless)")
+
+
 def apply_all_extended_patches(db):
     """Run all extended patches. Call after create_uber_souls."""
     tags = {}
@@ -3453,5 +4348,11 @@ def apply_all_extended_patches(db):
     _place_orphan_monsters(db)
     _wire_difficulty_variants(db)
     _wire_it_expansion_orphans(db)
+
+    # Soul quality passes
+    _overhaul_generic_souls(db)
+
+    # Testing: 100% soul drop rate
+    _force_100_pct_soul_drops(db)
 
     return tags
