@@ -1349,6 +1349,7 @@ def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
         db.set_field(monster, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
         db.set_field(monster, 'chanceToEquipFinger2', drop_rate, DATA_TYPE_FLOAT)
         db.set_field(monster, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
+        db.set_field(monster, 'dropItems', 1, DATA_TYPE_INT)
         db._modified.add(monster)
 
     return soul_paths
@@ -2030,54 +2031,54 @@ def _create_dev_skeleton_souls(db):
     DEV_SKELETONS = [
         # z_arthur — Satyr, spawns z_toxeus on death. Dream theme (Toxeus connection).
         (r'records\xpack\creatures\monster\zzdev\z_arthur.dbr', 'z_arthur',
-         'xtagDevName01', _SS_RING_LIGHTNING, _SK_PHANTOM_STRIKE, _SK_DISTORTION_WAVE,
+         'tagSVCSoulDevArthur', _SS_RING_LIGHTNING, _SK_PHANTOM_STRIKE, _SK_DISTORTION_WAVE,
          {'offensivePhysicalMin': 45.0, 'offensivePhysicalMax': 70.0,
           'offensiveSlowLightningMin': 40.0, 'offensiveSlowLightningDurationMin': 3.0,
           'characterStrengthModifier': 6.0, 'characterLifeModifier': 8.0, 'characterDexterityModifier': 6.0}),
         # z_ben — Anteok with club, barb flurry, groundbreaker, mass heal. Tank/healer.
         (r'records\xpack\creatures\monster\zzdev\z_ben.dbr', 'z_ben',
-         'xtagDevName02', _SS_NESSUS_ENDURANCE, _SK_HEART_OF_OAK, _SK_BATTLE_RAGE,
+         'tagSVCSoulDevBen', _SS_NESSUS_ENDURANCE, _SK_HEART_OF_OAK, _SK_BATTLE_RAGE,
          {'offensivePhysicalMin': 65.0, 'offensivePhysicalMax': 95.0,
           'characterStrengthModifier': 10.0, 'characterLifeModifier': 14.0, 'characterLifeRegen': 5.0}),
         # z_chooch — Skeletal Typhon. Bone shards, bone spire, bone trap, spirit breath.
         (r'records\xpack\creatures\monster\zzdev\z_chooch.dbr', 'z_chooch',
-         'xtagDevName14', _SS_GROUND_SMASH, _SK_DEATH_CHILL, _SK_DARK_COVENANT,
+         'tagSVCSoulDevChooch', _SS_GROUND_SMASH, _SK_DEATH_CHILL, _SK_DARK_COVENANT,
          {'offensivePhysicalMin': 50.0, 'offensivePhysicalMax': 75.0,
           'offensiveLifeMin': 30.0, 'offensiveLifeMax': 50.0,
           'characterLifeModifier': 10.0, 'characterIntelligenceModifier': 7.0, 'defensiveLife': 20.0}),
         # z_cory — Siege Walker. Turret attack, fire spit.
         (r'records\xpack\creatures\monster\zzdev\z_cory.dbr', 'z_cory',
-         'xtagDevName12', r'records\skills\soulskills\firefragmentnova.dbr',
+         'tagSVCSoulDevCory', r'records\skills\soulskills\firefragmentnova.dbr',
          r'records\skills\earth\drxfireenchantment.dbr', r'records\skills\earth\drxringofflame.dbr',
          {'offensiveFireMin': 45.0, 'offensiveFireMax': 70.0,
           'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 50.0,
           'characterLifeModifier': 14.0, 'characterStrengthModifier': 7.0, 'defensiveFire': 25.0}),
         # z_dave — Satyr with Heart of Oak. Nature/physical.
         (r'records\xpack\creatures\monster\zzdev\z_dave.dbr', 'z_dave',
-         'xtagDevName03', _SS_GROUND_SMASH, r'records\skills\nature\drxheartofoak.dbr',
+         'tagSVCSoulDevDave', _SS_GROUND_SMASH, r'records\skills\nature\drxheartofoak.dbr',
          _SK_PLAGUE,
          {'offensivePhysicalMin': 50.0, 'offensivePhysicalMax': 72.0,
           'characterLifeModifier': 10.0, 'characterStrengthModifier': 7.0, 'characterLifeRegen': 4.0}),
         # z_david — Skeleton. Study Prey, Ensnare + Barbed Netting. Rogue theme.
         (r'records\xpack\creatures\monster\zzdev\z_david.dbr', 'z_david',
-         'xtagDevName15', _SS_FLASH_POWDER, _SK_LETHAL_STRIKE, _SK_ENVENOM,
+         'tagSVCSoulDevDavid', _SS_FLASH_POWDER, _SK_LETHAL_STRIKE, _SK_ENVENOM,
          {'offensivePierceMin': 40.0, 'offensivePierceMax': 60.0,
           'offensivePhysicalMin': 30.0, 'characterDexterityModifier': 8.0,
           'characterLifeModifier': 8.0, 'characterAttackSpeedModifier': 12.0}),
         # z_frazier — Satyr, rogue theme. Flash Powder blind + poison.
         (r'records\xpack\creatures\monster\zzdev\z_frazier.dbr', 'z_frazier',
-         'xtagDevName04', _SS_FLASH_POWDER, _SK_LETHAL_STRIKE, _SK_ENVENOM,
+         'tagSVCSoulDevFrazier', _SS_FLASH_POWDER, _SK_LETHAL_STRIKE, _SK_ENVENOM,
          {'offensivePierceMin': 35.0, 'offensivePierceMax': 55.0,
           'offensiveSlowPoisonMin': 30.0, 'offensiveSlowPoisonDurationMin': 3.0,
           'characterDexterityModifier': 8.0, 'characterLifeModifier': 8.0, 'characterAttackSpeedModifier': 10.0}),
         # z_josh — Satyr, basic.
         (r'records\xpack\creatures\monster\zzdev\z_josh.dbr', 'z_josh',
-         'xtagDevName05', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_DUAL_WEAPON,
+         'tagSVCSoulDevJosh', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_DUAL_WEAPON,
          {'offensivePhysicalMin': 48.0, 'offensivePhysicalMax': 70.0,
           'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'characterDexterityModifier': 6.0}),
         # z_morgan — HYDRA. Fire/cold/poison breath. Most complex dev skeleton.
         (r'records\xpack\creatures\monster\zzdev\z_morgan.dbr', 'z_morgan',
-         'xtagDevName10', r'records\skills\soulskills\firefragmentnova.dbr',
+         'tagSVCSoulDevMorgan', r'records\skills\soulskills\firefragmentnova.dbr',
          _SK_COLD_AURA, _SK_PLAGUE,
          {'offensiveFireMin': 35.0, 'offensiveFireMax': 55.0,
           'offensiveColdMin': 30.0, 'offensiveColdMax': 48.0,
@@ -2086,37 +2087,37 @@ def _create_dev_skeleton_souls(db):
           'defensiveFire': 20.0, 'defensiveCold': 20.0, 'defensivePoison': 20.0}),
         # z_nate — Satyr, warfare bruiser. Sonic Wave proc + crushing power.
         (r'records\xpack\creatures\monster\zzdev\z_nate.dbr', 'z_nate',
-         'xtagDevName06', _SS_SONIC_WAVE, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
+         'tagSVCSoulDevNate', _SS_SONIC_WAVE, _SK_ONSLAUGHT, _SK_BATTLE_RAGE,
          {'offensivePhysicalMin': 55.0, 'offensivePhysicalMax': 82.0,
           'offensiveStunMin': 0.5, 'offensiveStunMax': 1.5, 'offensiveStunChance': 10.0,
           'characterStrengthModifier': 8.0, 'characterLifeModifier': 10.0}),
         # z_parnell — Odontotyrannus. Lightning beast, sonic wave + storm.
         (r'records\xpack\creatures\monster\zzdev\z_parnell.dbr', 'z_parnell',
-         'xtagDevName11', _SS_HARPY_AURA, _SK_STORM_NIMBUS, _SK_CHAIN_LIGHTNING,
+         'tagSVCSoulDevParnell', _SS_HARPY_AURA, _SK_STORM_NIMBUS, _SK_CHAIN_LIGHTNING,
          {'offensivePhysicalMin': 50.0, 'offensivePhysicalMax': 75.0,
           'offensiveLightningMin': 30.0, 'offensiveLightningMax': 50.0,
           'characterStrengthModifier': 8.0, 'characterLifeModifier': 12.0, 'defensiveLightning': 15.0}),
         # z_scott — Satyr, fire theme. Fire nova retaliation.
         (r'records\xpack\creatures\monster\zzdev\z_scott.dbr', 'z_scott',
-         'xtagDevName07', _SS_FIRE_NOVA, _SK_FIRE_ENCHANT, _SK_ONSLAUGHT,
+         'tagSVCSoulDevScott', _SS_FIRE_NOVA, _SK_FIRE_ENCHANT, _SK_ONSLAUGHT,
          {'offensiveFireMin': 35.0, 'offensiveFireMax': 55.0,
           'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 40.0,
           'characterStrengthModifier': 7.0, 'characterLifeModifier': 9.0, 'defensiveFire': 15.0}),
         # z_shawn — Satyr, lower HP (3000).
         (r'records\xpack\creatures\monster\zzdev\z_shawn.dbr', 'z_shawn',
-         'xtagDevName08', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_LETHAL_STRIKE,
+         'tagSVCSoulDevShawn', _SS_GROUND_SMASH, _SK_ONSLAUGHT, _SK_LETHAL_STRIKE,
          {'offensivePhysicalMin': 42.0, 'offensivePhysicalMax': 62.0,
           'characterDexterityModifier': 8.0, 'characterLifeModifier': 7.0, 'characterAttackSpeedModifier': 10.0}),
         # z_tom — Satyr, spirit/life drain theme.
         (r'records\xpack\creatures\monster\zzdev\z_tom.dbr', 'z_tom',
-         'xtagDevName09', _SS_BLOOD_BOIL, _SK_DEATH_CHILL, _SK_DARK_COVENANT,
+         'tagSVCSoulDevTom', _SS_BLOOD_BOIL, _SK_DEATH_CHILL, _SK_DARK_COVENANT,
          {'offensiveLifeMin': 25.0, 'offensiveLifeMax': 42.0,
           'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 48.0,
           'offensiveLifeLeechMin': 15.0,
           'characterIntelligenceModifier': 7.0, 'characterLifeModifier': 9.0, 'defensiveLife': 15.0}),
         # z_~v~ — Nightmare. Dream/psionic. Psionic Beam, Hypnotic Gaze, Dream Surge.
         (r'records\xpack\creatures\monster\zzdev\z_~v~.dbr', 'z_tildavtilde',
-         'xtagDevName13', _SS_RING_LIGHTNING, _SK_PHANTOM_STRIKE, _SK_DISTORTION_WAVE,
+         'tagSVCSoulDevTildaV', _SS_RING_LIGHTNING, _SK_PHANTOM_STRIKE, _SK_DISTORTION_WAVE,
          {'offensiveLightningMin': 40.0, 'offensiveLightningMax': 65.0,
           'offensiveLifeMin': 25.0, 'offensiveLifeMax': 40.0,
           'characterIntelligenceModifier': 10.0, 'characterManaModifier': 10.0, 'characterLifeModifier': 10.0,
@@ -2729,6 +2730,635 @@ def add_blood_mistress_to_loot(db):
     return total
 
 
+import re as _re
+
+
+def _add_monster_to_pools(db, monster_path, pool_keyword, weight=2, tag=None):
+    """Add a monster as a champion entry to spawn pools matching keyword.
+
+    pool_keyword is matched against ALL string field values in a record.
+    tag: string to check if monster is already in pool (defaults to monster filename).
+    Returns count of pools modified.
+    """
+    if tag is None:
+        tag = monster_path.rsplit('\\', 1)[-1].replace('.dbr', '').lower()
+
+    pools = []
+    for name in db.record_names():
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+        has_kw = False
+        has_name = False
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn.startswith('name') and not fn.startswith('nameChampion'):
+                has_name = True
+            if tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and pool_keyword in v.lower():
+                        has_kw = True
+                        break
+        if has_kw and has_name:
+            pools.append(name)
+
+    total = 0
+    for pool in pools:
+        fields = db.get_fields(pool)
+        if not fields:
+            continue
+        already = False
+        for key, tf in fields.items():
+            if tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and tag in v.lower():
+                        already = True
+                        break
+        if already:
+            continue
+
+        max_idx = 0
+        for key in fields:
+            fn = key.split('###')[0]
+            m = _re.match(r'nameChampion(\d+)', fn)
+            if m and int(m.group(1)) > max_idx:
+                max_idx = int(m.group(1))
+
+        nxt = max_idx + 1
+        db.set_field(pool, f'nameChampion{nxt}', monster_path, DATA_TYPE_STRING)
+        db.set_field(pool, f'weightChampion{nxt}', weight, DATA_TYPE_INT)
+        db._modified.add(pool)
+
+        cc = db.get_field_value(pool, 'championChance')
+        if cc is not None and float(cc) == 0.0:
+            db.set_field(pool, 'championChance', 15.0, DATA_TYPE_FLOAT)
+            db.set_field(pool, 'championMax', 1, DATA_TYPE_INT)
+        total += 1
+    return total
+
+
+def _find_record(db, substr):
+    """Find first record containing substr (case-insensitive)."""
+    sl = substr.lower()
+    for name in db.record_names():
+        if sl in name.lower():
+            return name
+    return None
+
+
+def _wire_soul_to_monster(db, monster, soul_paths, drop_rate=66.0):
+    """Wire a soul (list of [n,e,l] paths) to a monster record."""
+    if not db.has_record(monster):
+        return False
+    db.set_field(monster, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
+    db.set_field(monster, 'chanceToEquipFinger2', drop_rate, DATA_TYPE_FLOAT)
+    db.set_field(monster, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
+    db.set_field(monster, 'dropItems', 1, DATA_TYPE_INT)
+    db._modified.add(monster)
+    return True
+
+
+def _has_soul(db, record):
+    """Check if a monster record already has a soul wired."""
+    fields = db.get_fields(record)
+    if not fields:
+        return False
+    for key, tf in fields.items():
+        fn = key.split('###')[0]
+        if fn == 'lootFinger2Item1' and tf.values:
+            v = tf.values[0]
+            if isinstance(v, str) and 'soul' in v.lower():
+                return True
+    return False
+
+
+def _get_soul_paths(db, record):
+    """Get the soul paths wired to a monster record."""
+    fields = db.get_fields(record)
+    if not fields:
+        return None
+    for key, tf in fields.items():
+        fn = key.split('###')[0]
+        if fn == 'lootFinger2Item1' and tf.values:
+            vals = list(tf.values)
+            if vals and isinstance(vals[0], str) and 'soul' in vals[0].lower():
+                return vals
+    return None
+
+
+# ── Task 2: Audit uber soul SKIP lists ──────────────────────────────────
+
+def _audit_uber_soul_skips(db):
+    """Print which monsters were skipped by create_uber_souls SKIP lists
+    and whether they have a soul anyway."""
+    from create_uber_souls import SKIP_NAMES, SKIP_EXACT, SKIP_COMMON_VARIANTS
+
+    print("\n=== Audit: uber soul SKIP list coverage ===")
+    skipped_no_soul = []
+    skipped_has_soul = 0
+
+    for name in db.record_names():
+        nl = name.lower()
+        if 'creature' not in nl:
+            continue
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+
+        # Check if it's a monster
+        is_monster = False
+        classification = ''
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn == 'Class' and tf.values and 'Monster' in str(tf.values[0]):
+                is_monster = True
+            if fn == 'monsterClassification' and tf.values:
+                classification = str(tf.values[0])
+        if not is_monster:
+            continue
+
+        # Must be Hero/Boss/Quest or um_ prefixed
+        is_hero = classification in ('Hero', 'Boss', 'Quest')
+        fname = nl.rsplit('\\', 1)[-1].replace('.dbr', '')
+        is_um = fname.startswith('um_') or fname.startswith('boss_')
+        if not is_hero and not is_um:
+            continue
+
+        # Check SKIP_NAMES
+        skip_reason = None
+        for skip in SKIP_NAMES:
+            if skip in nl:
+                skip_reason = f'SKIP_NAMES({skip})'
+                break
+
+        # Check SKIP_EXACT
+        clean = _re.sub(r'_\d+$', '', fname)
+        if clean in SKIP_EXACT:
+            skip_reason = f'SKIP_EXACT({clean})'
+
+        # Check SKIP_COMMON_VARIANTS
+        if classification not in ('Hero', 'Boss', 'Quest') and clean in SKIP_COMMON_VARIANTS:
+            skip_reason = f'SKIP_COMMON_VARIANTS({clean})'
+
+        if not skip_reason:
+            continue
+
+        has = _has_soul(db, name)
+        if has:
+            skipped_has_soul += 1
+        else:
+            skipped_no_soul.append((fname, skip_reason))
+
+    if skipped_no_soul:
+        print(f"  Skipped WITHOUT soul ({len(skipped_no_soul)}):")
+        for fname, reason in sorted(skipped_no_soul)[:30]:
+            print(f"    {fname} — {reason}")
+        if len(skipped_no_soul) > 30:
+            print(f"    ... and {len(skipped_no_soul) - 30} more")
+    print(f"  Skipped WITH soul (OK): {skipped_has_soul}")
+    print(f"  Total skipped without soul: {len(skipped_no_soul)}")
+
+
+# ── Task 4: um_feth variants + soul ─────────────────────────────────────
+
+def _create_feth_variants_and_soul(db):
+    """Create difficulty variants and soul for um_feth (Reptilian Hero)."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    print("\n  Feth (Reptilian Hero):")
+
+    feth27 = _find_record(db, 'um_feth_27')
+    if not feth27:
+        print("    WARNING: um_feth_27 not found")
+        return
+
+    # Clone Epic (Lv32) and Legendary (Lv37) variants
+    feth32 = feth27.replace('um_feth_27', 'um_feth_32')
+    feth37 = feth27.replace('um_feth_27', 'um_feth_37')
+
+    for dest, lvl, hp_mult in [(feth32, 32, 1.4), (feth37, 37, 1.9)]:
+        db.clone_record(feth27, dest)
+        db.set_field(dest, 'charLevel', lvl, I)
+        # Scale life by multiplier
+        base_life = db.get_field_value(feth27, 'characterLife')
+        if base_life is not None:
+            if isinstance(base_life, (list, tuple)):
+                new_life = [int(v * hp_mult) for v in base_life]
+                db.set_field(dest, 'characterLife', new_life, I)
+            else:
+                db.set_field(dest, 'characterLife', int(float(base_life) * hp_mult), I)
+        # Scale damage
+        for dmg_f in ['handHitDamageMin', 'handHitDamageMax']:
+            v = db.get_field_value(feth27, dmg_f)
+            if v is not None:
+                db.set_field(dest, dmg_f, int(float(v) * hp_mult), I)
+        db._modified.add(dest)
+        print(f"    Created {dest.rsplit(chr(92), 1)[-1]} (Lv{lvl})")
+
+    # Create soul
+    tiers = [
+        {'diff': 'n', 'itemLevel': 27, 'stats': {
+            'offensivePhysicalMin': (F, 25.0), 'offensivePhysicalMax': (F, 40.0),
+            'offensivePierceMin': (F, 15.0), 'offensivePierceMax': (F, 25.0),
+            'characterStrengthModifier': (F, 4.0), 'characterLifeModifier': (F, 5.0),
+            'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 1),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 1),
+        }},
+        {'diff': 'e', 'itemLevel': 42, 'stats': {
+            'offensivePhysicalMin': (F, 38.0), 'offensivePhysicalMax': (F, 58.0),
+            'offensivePierceMin': (F, 22.0), 'offensivePierceMax': (F, 36.0),
+            'characterStrengthModifier': (F, 5.5), 'characterLifeModifier': (F, 7.0),
+            'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 2),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 2),
+        }},
+        {'diff': 'l', 'itemLevel': 57, 'stats': {
+            'offensivePhysicalMin': (F, 50.0), 'offensivePhysicalMax': (F, 75.0),
+            'offensivePierceMin': (F, 30.0), 'offensivePierceMax': (F, 45.0),
+            'characterStrengthModifier': (F, 7.0), 'characterLifeModifier': (F, 9.0),
+            'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 3),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 3),
+        }},
+    ]
+    paths = _create_soul(db, 'um_feth', 'tagSVCSoulFeth', tiers, feth27, 66.0)
+
+    # Wire soul to cloned variants too
+    for v in [feth32, feth37]:
+        _wire_soul_to_monster(db, v, paths, 66.0)
+
+    # Add higher variants to reptilian pools
+    for v in [feth32, feth37]:
+        ct = _add_monster_to_pools(db, v, 'reptilian', 2, 'um_feth')
+        print(f"    {v.rsplit(chr(92), 1)[-1]} added to {ct} reptilian pools")
+
+
+# ── Task 5: Neanderthal warband monster records ─────────────────────────
+
+def _create_neanderthal_warband_monsters(db):
+    """Create monster records for n_mega, n_emgiec, n_vio.
+
+    Clones from an existing neanderthal hero, adjusts stats.
+    Must be called BEFORE _create_neanderthal_warband_souls().
+    """
+    MEGA  = r'records\xpack\creatures\monster\zzdev\n_mega.dbr'
+    EMGIEC = r'records\xpack\creatures\monster\zzdev\n_emgiec.dbr'
+    VIO    = r'records\xpack\creatures\monster\zzdev\n_vio.dbr'
+
+    # Skip if already created
+    if db.has_record(MEGA) and db.has_record(EMGIEC) and db.has_record(VIO):
+        return
+
+    # Find a neanderthal hero to clone from
+    source = None
+    for name in db.record_names():
+        nl = name.lower()
+        if 'neanderthal' in nl and ('hero' in nl or 'um_' in nl) and 'creature' in nl:
+            if '.dbr' in nl and 'old' not in nl:
+                source = name
+                break
+
+    if not source:
+        # Fallback: any neanderthal monster
+        for name in db.record_names():
+            nl = name.lower()
+            if 'neanderthal' in nl and 'creature' in nl and '.dbr' in nl:
+                if 'old' not in nl and 'proxy' not in nl and 'pool' not in nl:
+                    source = name
+                    break
+
+    if not source:
+        print("  WARNING: No neanderthal source record found for warband cloning")
+        return
+
+    print(f"  Neanderthal warband: cloning from {source.rsplit(chr(92), 1)[-1]}")
+
+    for dest, desc, lvl, hp in [
+        (MEGA, 'n_mega (Boss/Tank)', 35, 8000),
+        (EMGIEC, 'n_emgiec (Hacker)', 33, 5500),
+        (VIO, 'n_vio (Wizard)', 33, 4500),
+    ]:
+        if db.has_record(dest):
+            continue
+        db.clone_record(source, dest)
+        db.set_field(dest, 'charLevel', lvl, DATA_TYPE_INT)
+        db.set_field(dest, 'characterLife', hp, DATA_TYPE_INT)
+        db.set_field(dest, 'monsterClassification', 'Quest', DATA_TYPE_STRING)
+        db.set_field(dest, 'FileDescription', desc, DATA_TYPE_STRING)
+        db.set_field(dest, 'dropItems', 1, DATA_TYPE_INT)
+        db._modified.add(dest)
+        print(f"    Created {dest.rsplit(chr(92), 1)[-1]} (Lv{lvl}, {hp} HP)")
+
+    # Add to neanderthal spawn pools
+    for dest in [MEGA, EMGIEC, VIO]:
+        tag = dest.rsplit('\\', 1)[-1].replace('.dbr', '').lower()
+        ct = _add_monster_to_pools(db, dest, 'neanderthal', 2, tag)
+        if ct:
+            print(f"    {tag} added to {ct} neanderthal pools")
+
+
+# ── Task 6: Graeae verification ─────────────────────────────────────────
+
+def _verify_graeae_wiring(db):
+    """Verify and fix dropItems on active Graeae boss records."""
+    GRAEAE = ['boss_deino', 'boss_enyo', 'boss_pemphredo']
+    verified = 0
+    fixed = 0
+
+    for name in db.record_names():
+        nl = name.lower()
+        if not any(g in nl for g in GRAEAE):
+            continue
+        if 'creature' not in nl:
+            continue
+        if 'old' in nl:
+            continue
+
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+
+        has = _has_soul(db, name)
+        drop_ok = False
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn == 'dropItems' and tf.values and int(tf.values[0]) == 1:
+                drop_ok = True
+
+        if has and not drop_ok:
+            db.set_field(name, 'dropItems', 1, DATA_TYPE_INT)
+            db._modified.add(name)
+            fixed += 1
+
+        verified += 1
+
+    print(f"  Graeae verified: {verified} records, {fixed} dropItems fixed")
+    return fixed
+
+
+# ── Task 7: Place orphan monsters in pools ──────────────────────────────
+
+def _place_orphan_monsters(db):
+    """Place 10 unspawnable uber/boss monsters into spawn pools and ensure souls."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    print("\n  Placing orphan monsters in spawn pools:")
+
+    ORPHANS = [
+        ('um_phagia_34',       'human',        'Phagia Lv34',       34),
+        ('um_phagia_44',       'human',        'Phagia Lv44',       44),
+        ('um_frost_36',        'limos',        'Frost Lv36',        36),
+        ('um_ainex_45',        'empusa',       'Ainex Lv45',        45),
+        ('um_droolbog_43',     'anouran',      'Droolbog Lv43',     43),
+        ('um_prox_47',         'archlimos',    'Prox Lv47',         47),
+        ('um_yama_38',         'neanderthal',  'Yama Lv38',         38),
+        ('um_inkeyes2_45',     'ratman',       'Inkeyes2 Lv45',     45),
+        ('um_tombguardian_26', 'tombguardian', 'Tomb Guardian Lv26', 26),
+    ]
+
+    total_placed = 0
+    total_souled = 0
+
+    for substr, pool_kw, desc, lvl in ORPHANS:
+        rec = _find_record(db, substr)
+        if not rec:
+            print(f"    WARNING: {substr} not found")
+            continue
+
+        # Ensure dropItems
+        db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
+        db._modified.add(rec)
+
+        # Create soul if needed
+        if not _has_soul(db, rec):
+            clean = _re.sub(r'_\d+$', '', substr)
+            tag_name = 'tagSVCSoul' + clean.replace('um_', '').replace('_', '').title()
+            e_lvl = lvl + 15
+            l_lvl = lvl + 30
+            tiers = [
+                {'diff': 'n', 'itemLevel': lvl, 'stats': {
+                    'offensivePhysicalMin': (F, lvl * 1.2), 'offensivePhysicalMax': (F, lvl * 1.8),
+                    'characterStrengthModifier': (F, 4.0), 'characterLifeModifier': (F, 5.0),
+                    'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 1),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                }},
+                {'diff': 'e', 'itemLevel': e_lvl, 'stats': {
+                    'offensivePhysicalMin': (F, e_lvl * 1.2), 'offensivePhysicalMax': (F, e_lvl * 1.8),
+                    'characterStrengthModifier': (F, 5.5), 'characterLifeModifier': (F, 7.0),
+                    'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 2),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                }},
+                {'diff': 'l', 'itemLevel': l_lvl, 'stats': {
+                    'offensivePhysicalMin': (F, l_lvl * 1.2), 'offensivePhysicalMax': (F, l_lvl * 1.8),
+                    'characterStrengthModifier': (F, 7.0), 'characterLifeModifier': (F, 9.0),
+                    'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 3),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                }},
+            ]
+            _create_soul(db, clean, tag_name, tiers, rec, 66.0)
+            total_souled += 1
+
+        ct = _add_monster_to_pools(db, rec, pool_kw, 2, substr)
+        print(f"    {desc}: {ct} pools")
+        total_placed += ct
+
+    print(f"  Orphan monsters: {total_placed} pool entries, {total_souled} new souls")
+
+
+# ── Task 8: Wire missing difficulty variants ─────────────────────────────
+
+def _wire_difficulty_variants(db):
+    """Add orphaned higher-difficulty variants to spawn pools alongside siblings."""
+    print("\n  Wiring missing difficulty variants into pools:")
+
+    VARIANTS = [
+        ('um_dapoyan_42',   'um_dapoyan',   'ichthian'),
+        ('um_indrajit_42',  'um_indrajit',   'ichthian'),
+        ('um_vidja_43',     'um_vidja',      'ichthian'),
+        ('um_rong_40',      'um_rong',       'neanderthal'),
+        ('um_vuji_41',      'um_vuji',       'neanderthal'),
+        ('um_rocksting_29', 'um_rocksting',  'scorpion'),
+        ("hero_sehr'tunkah_30", "hero_sehr'tunkah", 'shadowstalker'),
+        ("hero_sehr'tunkah_36", "hero_sehr'tunkah", 'shadowstalker'),
+        ('boss_terracottamage_bandari_40', 'boss_terracottamage_bandari', 'bandari'),
+    ]
+
+    total = 0
+    for var_sub, sibling_sub, pool_kw in VARIANTS:
+        rec = _find_record(db, var_sub)
+        if not rec:
+            print(f"    WARNING: {var_sub} not found")
+            continue
+
+        # Ensure dropItems
+        db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
+        db._modified.add(rec)
+
+        # Copy soul from sibling if variant lacks one
+        if not _has_soul(db, rec):
+            sib = _find_record(db, sibling_sub)
+            if sib:
+                sib_souls = _get_soul_paths(db, sib)
+                if sib_souls:
+                    _wire_soul_to_monster(db, rec, sib_souls, 66.0)
+
+        ct = _add_monster_to_pools(db, rec, pool_kw, 2, var_sub)
+        print(f"    {var_sub}: {ct} pools")
+        total += ct
+
+    print(f"  Difficulty variants: {total} pool entries added")
+
+
+# ── Task 9: Wire IT expansion orphans ────────────────────────────────────
+
+def _wire_it_expansion_orphans(db):
+    """Wire Blood Sisters + bonescourge/hydradon heroes: souls, pools, variants."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    print("\n  Wiring IT expansion orphans:")
+
+    # ── Blood Sisters (souls already exist) ──
+    for sister in ['safiya', 'sagira']:
+        # Find existing soul records
+        soul_n = soul_e = soul_l = None
+        for name in db.record_names():
+            nl = name.lower()
+            if sister in nl and 'soul' in nl and 'equipmentring' in nl:
+                if '_soul_n.dbr' in nl:
+                    soul_n = name
+                elif '_soul_e.dbr' in nl:
+                    soul_e = name
+                elif '_soul_l.dbr' in nl:
+                    soul_l = name
+
+        if not soul_n:
+            print(f"    WARNING: {sister} soul records not found")
+            continue
+
+        soul_paths = [p for p in [soul_n, soul_e, soul_l] if p]
+        if len(soul_paths) < 3:
+            # Pad with the normal variant
+            while len(soul_paths) < 3:
+                soul_paths.append(soul_n)
+
+        # Find and wire all monster variants
+        wired = 0
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if f'bloodsister{sister}' in nl and 'creature' in nl and '.dbr' in nl:
+                if 'soul' not in nl:
+                    _wire_soul_to_monster(db, name, soul_paths, 66.0)
+                    ct = _add_monster_to_pools(db, name, 'djinn', 2, f'bloodsister{sister}')
+                    wired += 1
+        print(f"    Blood Sister {sister.title()}: {wired} variants wired + pooled")
+
+    # ── Bonescourge heroes (need souls) ──
+    for hero_sub, tag, display, lvl, element in [
+        ('xhero_lash_47', 'tagSVCSoulLash', '{^F}Soul of Lash', 47, 'physical'),
+        ('xhero_theflayer_47', 'tagSVCSoulTheFlayer', '{^F}Soul of the Flayer', 47, 'physical'),
+    ]:
+        rec = _find_record(db, hero_sub)
+        if not rec:
+            print(f"    WARNING: {hero_sub} not found")
+            continue
+
+        if not _has_soul(db, rec):
+            tiers = [
+                {'diff': 'n', 'itemLevel': 31, 'stats': {
+                    'offensivePhysicalMin': (F, 35.0), 'offensivePhysicalMax': (F, 55.0),
+                    'offensiveLifeMin': (F, 20.0), 'offensiveLifeMax': (F, 35.0),
+                    'characterStrengthModifier': (F, 5.0), 'characterLifeModifier': (F, 6.0),
+                    'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 1),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                    'augmentSkillName1': (S, _SK_DEATH_CHILL), 'augmentSkillLevel1': (I, 1),
+                }},
+                {'diff': 'e', 'itemLevel': 52, 'stats': {
+                    'offensivePhysicalMin': (F, 50.0), 'offensivePhysicalMax': (F, 75.0),
+                    'offensiveLifeMin': (F, 30.0), 'offensiveLifeMax': (F, 50.0),
+                    'characterStrengthModifier': (F, 7.0), 'characterLifeModifier': (F, 8.0),
+                    'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 2),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                    'augmentSkillName1': (S, _SK_DEATH_CHILL), 'augmentSkillLevel1': (I, 2),
+                }},
+                {'diff': 'l', 'itemLevel': 68, 'stats': {
+                    'offensivePhysicalMin': (F, 65.0), 'offensivePhysicalMax': (F, 95.0),
+                    'offensiveLifeMin': (F, 40.0), 'offensiveLifeMax': (F, 65.0),
+                    'characterStrengthModifier': (F, 9.0), 'characterLifeModifier': (F, 10.0),
+                    'itemSkillName': (S, _SS_GROUND_SMASH), 'itemSkillLevel': (I, 3),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                    'augmentSkillName1': (S, _SK_DEATH_CHILL), 'augmentSkillLevel1': (I, 3),
+                }},
+            ]
+            clean = _re.sub(r'_\d+$', '', hero_sub)
+            _create_soul(db, clean, tag, tiers, rec, 66.0)
+
+        db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
+        db._modified.add(rec)
+
+        # Create lower-level variants
+        for dest_lvl, suffix in [(31, '_31'), (39, '_39')]:
+            dest = rec.replace('_47.dbr', f'{suffix}.dbr')
+            if not db.has_record(dest):
+                db.clone_record(rec, dest)
+                db.set_field(dest, 'charLevel', dest_lvl, DATA_TYPE_INT)
+                soul_p = _get_soul_paths(db, rec)
+                if soul_p:
+                    _wire_soul_to_monster(db, dest, soul_p, 66.0)
+                db._modified.add(dest)
+
+        # Add all variants to bonescourge pools
+        ct = _add_monster_to_pools(db, rec, 'bonescourge', 2, hero_sub.split('_')[0] + '_' + hero_sub.split('_')[1])
+        print(f"    {hero_sub}: soul created, {ct} pools, 2 lower variants")
+
+    # ── Hydradon hero (needs soul) ──
+    hero_sub = 'xhero_rottingdevourer_41'
+    rec = _find_record(db, hero_sub)
+    if rec:
+        if not _has_soul(db, rec):
+            tiers = [
+                {'diff': 'n', 'itemLevel': 27, 'stats': {
+                    'offensiveSlowPoisonMin': (F, 25.0), 'offensiveSlowPoisonDurationMin': (F, 3.0),
+                    'offensivePhysicalMin': (F, 30.0), 'offensivePhysicalMax': (F, 48.0),
+                    'characterStrengthModifier': (F, 4.0), 'characterLifeModifier': (F, 5.0),
+                    'itemSkillName': (S, _SK_PLAGUE), 'itemSkillLevel': (I, 1),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                }},
+                {'diff': 'e', 'itemLevel': 47, 'stats': {
+                    'offensiveSlowPoisonMin': (F, 40.0), 'offensiveSlowPoisonDurationMin': (F, 4.0),
+                    'offensivePhysicalMin': (F, 45.0), 'offensivePhysicalMax': (F, 68.0),
+                    'characterStrengthModifier': (F, 6.0), 'characterLifeModifier': (F, 7.0),
+                    'itemSkillName': (S, _SK_PLAGUE), 'itemSkillLevel': (I, 2),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                }},
+                {'diff': 'l', 'itemLevel': 62, 'stats': {
+                    'offensiveSlowPoisonMin': (F, 55.0), 'offensiveSlowPoisonDurationMin': (F, 5.0),
+                    'offensivePhysicalMin': (F, 60.0), 'offensivePhysicalMax': (F, 88.0),
+                    'characterStrengthModifier': (F, 8.0), 'characterLifeModifier': (F, 9.0),
+                    'itemSkillName': (S, _SK_PLAGUE), 'itemSkillLevel': (I, 3),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                }},
+            ]
+            _create_soul(db, 'xhero_rottingdevourer', 'tagSVCSoulRottingDevourer',
+                         tiers, rec, 66.0)
+
+        db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
+        db._modified.add(rec)
+
+        # Lower-level variants
+        for dest_lvl, suffix in [(27, '_27'), (34, '_34')]:
+            dest = rec.replace('_41.dbr', f'{suffix}.dbr')
+            if not db.has_record(dest):
+                db.clone_record(rec, dest)
+                db.set_field(dest, 'charLevel', dest_lvl, DATA_TYPE_INT)
+                soul_p = _get_soul_paths(db, rec)
+                if soul_p:
+                    _wire_soul_to_monster(db, dest, soul_p, 66.0)
+                db._modified.add(dest)
+
+        ct = _add_monster_to_pools(db, rec, 'hydradon', 2, 'rottingdevourer')
+        print(f"    xhero_rottingdevourer_41: soul created, {ct} pools, 2 lower variants")
+    else:
+        print(f"    WARNING: xhero_rottingdevourer_41 not found")
+
+
 def apply_all_extended_patches(db):
     """Run all extended patches. Call after create_uber_souls."""
     tags = {}
@@ -2770,6 +3400,37 @@ def apply_all_extended_patches(db):
     # Monster name tag (Cold Worm's description tag was undefined)
     tags['tagD2Boss004'] = 'Cold Worm'
 
+    # Dev skeleton soul name tags (Task 3 — pink prefix)
+    tags['tagSVCSoulDevArthur']  = '{^F}Soul of Arthur'
+    tags['tagSVCSoulDevBen']     = '{^F}Soul of Ben'
+    tags['tagSVCSoulDevChooch']  = '{^F}Soul of Chooch'
+    tags['tagSVCSoulDevCory']    = '{^F}Soul of Cory'
+    tags['tagSVCSoulDevDave']    = '{^F}Soul of Dave'
+    tags['tagSVCSoulDevDavid']   = '{^F}Soul of David'
+    tags['tagSVCSoulDevFrazier'] = '{^F}Soul of Frazier'
+    tags['tagSVCSoulDevJosh']    = '{^F}Soul of Josh'
+    tags['tagSVCSoulDevMorgan']  = '{^F}Soul of Morgan'
+    tags['tagSVCSoulDevNate']    = '{^F}Soul of Nate'
+    tags['tagSVCSoulDevParnell'] = '{^F}Soul of Parnell'
+    tags['tagSVCSoulDevScott']   = '{^F}Soul of Scott'
+    tags['tagSVCSoulDevShawn']   = '{^F}Soul of Shawn'
+    tags['tagSVCSoulDevTom']     = '{^F}Soul of Tom'
+    tags['tagSVCSoulDevTildaV']  = '{^F}Soul of ~V~'
+
+    # New soul tags (Tasks 4, 7, 9)
+    tags['tagSVCSoulFeth'] = '{^F}Soul of Feth'
+    tags['tagSVCSoulPhagia'] = '{^F}Soul of Phagia'
+    tags['tagSVCSoulFrost'] = '{^F}Soul of Frost'
+    tags['tagSVCSoulAinex'] = '{^F}Soul of Ainex'
+    tags['tagSVCSoulDroolbog'] = '{^F}Soul of Droolbog'
+    tags['tagSVCSoulProx'] = '{^F}Soul of Prox'
+    tags['tagSVCSoulYama'] = '{^F}Soul of Yama'
+    tags['tagSVCSoulInkeyes2'] = '{^F}Soul of Inkeyes'
+    tags['tagSVCSoulTombguardian'] = '{^F}Soul of the Tomb Guardian'
+    tags['tagSVCSoulLash'] = '{^F}Soul of Lash'
+    tags['tagSVCSoulTheFlayer'] = '{^F}Soul of the Flayer'
+    tags['tagSVCSoulRottingDevourer'] = '{^F}Soul of the Rotting Devourer'
+
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
     _add_coldworm_to_egypt_pools(db)
@@ -2783,8 +3444,17 @@ def apply_all_extended_patches(db):
     _create_dagon_soul(db)
     _create_dev_skeleton_souls(db)
     _overhaul_melalos_soul(db)
+    _create_neanderthal_warband_monsters(db)   # Task 5: create records first
     _create_neanderthal_warband_souls(db)
     cascade_merc_scrolls(db)
     add_blood_mistress_to_loot(db)
+
+    # New patches (Tasks 2, 4, 6-9)
+    _audit_uber_soul_skips(db)
+    _create_feth_variants_and_soul(db)
+    _verify_graeae_wiring(db)
+    _place_orphan_monsters(db)
+    _wire_difficulty_variants(db)
+    _wire_it_expansion_orphans(db)
 
     return tags
