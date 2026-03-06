@@ -2922,7 +2922,12 @@ def _audit_uber_soul_skips(db):
 # ── Task 4: um_feth variants + soul ─────────────────────────────────────
 
 def _create_feth_variants_and_soul(db):
-    """Create difficulty variants and soul for um_feth (Reptilian Hero)."""
+    """Create soul for um_feth (Reptilian Hero).
+
+    um_feth_27 already has charLevel [27, 48, 63] for full N/E/L difficulty
+    scaling.  Reptilian pools only exist in Egypt — no higher-level geographic
+    variants are needed.
+    """
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
     print("\n  Feth (Reptilian Hero):")
 
@@ -2931,30 +2936,6 @@ def _create_feth_variants_and_soul(db):
         print("    WARNING: um_feth_27 not found")
         return
 
-    # Clone Epic (Lv32) and Legendary (Lv37) variants
-    feth32 = feth27.replace('um_feth_27', 'um_feth_32')
-    feth37 = feth27.replace('um_feth_27', 'um_feth_37')
-
-    for dest, lvl, hp_mult in [(feth32, 32, 1.4), (feth37, 37, 1.9)]:
-        db.clone_record(feth27, dest)
-        db.set_field(dest, 'charLevel', lvl, I)
-        # Scale life by multiplier
-        base_life = db.get_field_value(feth27, 'characterLife')
-        if base_life is not None:
-            if isinstance(base_life, (list, tuple)):
-                new_life = [int(v * hp_mult) for v in base_life]
-                db.set_field(dest, 'characterLife', new_life, I)
-            else:
-                db.set_field(dest, 'characterLife', int(float(base_life) * hp_mult), I)
-        # Scale damage
-        for dmg_f in ['handHitDamageMin', 'handHitDamageMax']:
-            v = db.get_field_value(feth27, dmg_f)
-            if v is not None:
-                db.set_field(dest, dmg_f, int(float(v) * hp_mult), I)
-        db._modified.add(dest)
-        print(f"    Created {dest.rsplit(chr(92), 1)[-1]} (Lv{lvl})")
-
-    # Create soul
     tiers = [
         {'diff': 'n', 'itemLevel': 27, 'stats': {
             'offensivePhysicalMin': (F, 25.0), 'offensivePhysicalMax': (F, 40.0),
@@ -2981,16 +2962,8 @@ def _create_feth_variants_and_soul(db):
             'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, 3),
         }},
     ]
-    paths = _create_soul(db, 'um_feth', 'tagSVCSoulFeth', tiers, feth27, 66.0)
-
-    # Wire soul to cloned variants too
-    for v in [feth32, feth37]:
-        _wire_soul_to_monster(db, v, paths, 66.0)
-
-    # Add higher variants to reptilian pools
-    for v in [feth32, feth37]:
-        ct = _add_monster_to_pools(db, v, 'reptilian', 2, 'um_feth')
-        print(f"    {v.rsplit(chr(92), 1)[-1]} added to {ct} reptilian pools")
+    _create_soul(db, 'um_feth', 'tagSVCSoulFeth', tiers, feth27, 66.0)
+    print("    Soul created and wired to um_feth_27 (charLevel [27, 48, 63])")
 
 
 # ── Task 5: Neanderthal warband monster records ─────────────────────────
@@ -3033,6 +3006,14 @@ def _create_neanderthal_warband_monsters(db):
 
     print(f"  Neanderthal warband: cloning from {source.rsplit(chr(92), 1)[-1]}")
 
+    # Compute charLevel offsets from source for proper [N, E, L] arrays
+    src_cl = db.get_field_value(source, 'charLevel')
+    if isinstance(src_cl, (list, tuple)) and len(src_cl) >= 3:
+        _e_off = int(src_cl[1]) - int(src_cl[0])
+        _l_off = int(src_cl[2]) - int(src_cl[0])
+    else:
+        _e_off, _l_off = 20, 35  # fallback based on typical neanderthal scaling
+
     for dest, desc, lvl, hp in [
         (MEGA, 'n_mega (Boss/Tank)', 35, 8000),
         (EMGIEC, 'n_emgiec (Hacker)', 33, 5500),
@@ -3041,7 +3022,7 @@ def _create_neanderthal_warband_monsters(db):
         if db.has_record(dest):
             continue
         db.clone_record(source, dest)
-        db.set_field(dest, 'charLevel', lvl, DATA_TYPE_INT)
+        db.set_field(dest, 'charLevel', [lvl, lvl + _e_off, lvl + _l_off], DATA_TYPE_INT)
         db.set_field(dest, 'characterLife', hp, DATA_TYPE_INT)
         db.set_field(dest, 'monsterClassification', 'Quest', DATA_TYPE_STRING)
         db.set_field(dest, 'FileDescription', desc, DATA_TYPE_STRING)
@@ -3104,8 +3085,8 @@ def _place_orphan_monsters(db):
     print("\n  Placing orphan monsters in spawn pools:")
 
     ORPHANS = [
-        ('um_phagia_34',       'human',        'Phagia Lv34',       34),
-        ('um_phagia_44',       'human',        'Phagia Lv44',       44),
+        ('um_phagia_34',       'maenad',       'Phagia Lv34',       34),
+        ('um_phagia_44',       'djinn',        'Phagia Lv44',       44),
         ('um_frost_36',        'limos',        'Frost Lv36',        36),
         ('um_ainex_45',        'empusa',       'Ainex Lv45',        45),
         ('um_droolbog_43',     'anouran',      'Droolbog Lv43',     43),
@@ -3293,12 +3274,20 @@ def _wire_it_expansion_orphans(db):
         db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
         db._modified.add(rec)
 
-        # Create lower-level variants
+        # Create lower-level variants with proper [N, E, L] charLevel arrays
+        src_cl = db.get_field_value(rec, 'charLevel')
+        if isinstance(src_cl, (list, tuple)) and len(src_cl) >= 3:
+            bc_e_off = int(src_cl[1]) - int(src_cl[0])
+            bc_l_off = int(src_cl[2]) - int(src_cl[0])
+        else:
+            bc_e_off, bc_l_off = 15, 27  # fallback from xhero_lash_47 [47,62,74]
         for dest_lvl, suffix in [(31, '_31'), (39, '_39')]:
             dest = rec.replace('_47.dbr', f'{suffix}.dbr')
             if not db.has_record(dest):
                 db.clone_record(rec, dest)
-                db.set_field(dest, 'charLevel', dest_lvl, DATA_TYPE_INT)
+                db.set_field(dest, 'charLevel',
+                             [dest_lvl, dest_lvl + bc_e_off, dest_lvl + bc_l_off],
+                             DATA_TYPE_INT)
                 soul_p = _get_soul_paths(db, rec)
                 if soul_p:
                     _wire_soul_to_monster(db, dest, soul_p, 66.0)
@@ -3342,12 +3331,20 @@ def _wire_it_expansion_orphans(db):
         db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
         db._modified.add(rec)
 
-        # Lower-level variants
+        # Lower-level variants with proper [N, E, L] charLevel arrays
+        hd_cl = db.get_field_value(rec, 'charLevel')
+        if isinstance(hd_cl, (list, tuple)) and len(hd_cl) >= 3:
+            hd_e_off = int(hd_cl[1]) - int(hd_cl[0])
+            hd_l_off = int(hd_cl[2]) - int(hd_cl[0])
+        else:
+            hd_e_off, hd_l_off = 15, 28  # fallback from _41 [45,60,73]
         for dest_lvl, suffix in [(27, '_27'), (34, '_34')]:
             dest = rec.replace('_41.dbr', f'{suffix}.dbr')
             if not db.has_record(dest):
                 db.clone_record(rec, dest)
-                db.set_field(dest, 'charLevel', dest_lvl, DATA_TYPE_INT)
+                db.set_field(dest, 'charLevel',
+                             [dest_lvl, dest_lvl + hd_e_off, dest_lvl + hd_l_off],
+                             DATA_TYPE_INT)
                 soul_p = _get_soul_paths(db, rec)
                 if soul_p:
                     _wire_soul_to_monster(db, dest, soul_p, 66.0)
