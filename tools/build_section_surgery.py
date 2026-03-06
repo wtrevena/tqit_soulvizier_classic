@@ -334,6 +334,34 @@ def inject_into_0x05_v11(section_data, injections):
     return bytes(out)
 
 
+def count_0x05_instances(data):
+    """Count instances in a 0x05 section (works for both v0x0e and v0x11)."""
+    pos = 0
+    string_count = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+    for _ in range(string_count):
+        if pos + 4 > len(data):
+            return 0
+        slen = struct.unpack_from('<I', data, pos)[0]
+        pos += 4 + slen
+    if pos + 4 > len(data):
+        return 0
+    return struct.unpack_from('<I', data, pos)[0]
+
+
+def generate_default_0x14(instance_count):
+    """Generate default 0x14 records for all instances.
+
+    Each record: index(4) + payload_size(4) + payload(20).
+    Default payload: flags=2, 0, 1, 1, 0.
+    """
+    buf = bytearray()
+    for i in range(instance_count):
+        buf += struct.pack('<II', i, len(DEFAULT_0x14_PAYLOAD))
+        buf += DEFAULT_0x14_PAYLOAD
+    return bytes(buf)
+
+
 def perform_section_surgery(ae_blob, sv_blob, level_name):
     """
     Hybrid blob: inject SV's drxmap objects into SVAERA's level blob.
@@ -341,6 +369,7 @@ def perform_section_surgery(ae_blob, sv_blob, level_name):
     Format-aware: detects AE blob's version (v0x11 vs v0x0e) and handles accordingly:
     - v0x11 AE blob: Convert SV's v0x0e 0x05 records (56-byte) to v0x11 (72-byte),
       keep v0x11 magic and all SVAERA terrain/pathfinding sections.
+      Generates default 0x14 metadata for all instances (required for v0x11 interactivity).
     - v0x0e AE blob (e.g. Random09A): Return 'use_sv_blob' signal to caller,
       since both versions share the same format and SV's blob has the grid connection.
     """
@@ -377,12 +406,17 @@ def perform_section_surgery(ae_blob, sv_blob, level_name):
         v11_05_data = inject_into_0x05_v11(v11_05_data, INJECT_SPECS[level_key])
         print(f'    Injected {len(INJECT_SPECS[level_key])} object(s) into 0x05 (v0x11)')
 
+    # Generate default 0x14 metadata for all instances in the new 0x05
+    # v0x11 levels require 0x14 records for objects to be interactive (fountains, etc.)
+    instance_count = count_0x05_instances(v11_05_data)
+    new_0x14_data = generate_default_0x14(instance_count)
+
     new_secs = []
     for s in ae_secs:
         if s['type'] == 0x05:
             new_secs.append({'type': 0x05, 'data': v11_05_data})
         elif s['type'] == 0x14:
-            new_secs.append({'type': 0x14, 'data': b''})
+            new_secs.append({'type': 0x14, 'data': new_0x14_data})
         else:
             new_secs.append(s)
 
@@ -393,7 +427,7 @@ def perform_section_surgery(ae_blob, sv_blob, level_name):
     ae_05 = [s for s in ae_secs if s['type'] == 0x05]
     ae_05_count = struct.unpack_from('<I', ae_05[0]['data'], 0)[0] if ae_05 else 0
     drx_count = result.count(b'drxmap')
-    return result, f"hybrid v11: strings {ae_05_count}->{sv_05_count}, drxmap: {drx_count}"
+    return result, f"hybrid v11: strings {ae_05_count}->{sv_05_count}, 0x14: {instance_count} records, drxmap: {drx_count}"
 
 
 def main():
@@ -567,6 +601,11 @@ def main():
     for i in range(len(ae_bitmaps)):
         if merged_bitmaps[i]['offset'] > 0:
             merged_bitmaps[i]['offset'] = ae_bitmaps[i]['offset'] + offset_shift
+
+    # Zero bitmap entries for sv_full_blob levels (e.g. Random09A)
+    for ae_idx in sv_full_blob_levels:
+        merged_bitmaps[ae_idx]['offset'] = 0
+        merged_bitmaps[ae_idx]['length'] = 0
 
     new_levels_data = build_level_index(merged_levels)
     new_bitmaps_data = build_bitmap_index(merged_bitmaps, bmp_unknown)

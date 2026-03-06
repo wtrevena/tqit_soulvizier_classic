@@ -228,6 +228,15 @@ for i in range(len(adjusted_bitmaps)):
     if adjusted_bitmaps[i]['offset'] > 0:
         adjusted_bitmaps[i]['offset'] = mc_bitmaps[i]['offset'] + mc_offset_shift
 
+# Zero bitmap entries for sv_full_blob levels (e.g. Random09A).
+# These levels use SV's full blob with embedded 0x0a pathfinding.
+# SVAERA's DATA2 pathfinding doesn't include the extended area (blood cave pathway),
+# so we zero the bitmap entry to prevent DATA2 from blocking walkability.
+for ae_idx in sv_full_blob_levels:
+    adjusted_bitmaps[ae_idx]['offset'] = 0
+    adjusted_bitmaps[ae_idx]['length'] = 0
+    print(f'  Zeroed bitmap entry for level {ae_idx} ({ae_levels[ae_idx]["fname"].split(chr(92))[-1]})')
+
 new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, mc_bmp_unknown)
 
 # Verify bitmap section size matches
