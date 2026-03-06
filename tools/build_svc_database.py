@@ -547,18 +547,67 @@ def grant_all_inventory_bags(db: ArzDatabase):
     return patched
 
 
-def expand_transfer_stash(db: ArzDatabase):
+def expand_transfer_stash(db: ArzDatabase, base_db: ArzDatabase = None):
     """Expand the caravan transfer stash to vault-like proportions.
 
     AE's transfer stash uses records/xpack/ui/caravan/stashwindow.dbr.
     Default is 10 wide x 5 tall (50 slots). We expand to 10 wide x 25 tall
     per bag, with 10 bags unlocked for free (2500 slots total). The width
     stays at 10 to fit the caravan window UI bitmap.
+
+    The stash record only exists in the base game database, so we must
+    import it first if it's not already in the SV overlay.
     """
     print("\n=== Patch 5: Expand transfer stash ===")
 
     stash_window = 'records\\xpack\\ui\\caravan\\stashwindow.dbr'
-    stash_inventory = 'records\\xpack\\ui\\caravan\\stashinventory.dbr'
+
+    # Import from base game if not in SV overlay
+    if not db.has_record(stash_window) and base_db:
+        for name in base_db.record_names():
+            if name.lower() == stash_window.lower():
+                fields = base_db.get_fields(name)
+                if fields:
+                    template = ''
+                    for key, tf in fields.items():
+                        if key.split('###')[0] == 'templateName' and tf.values:
+                            template = str(tf.values[0])
+                            break
+                    from apply_svc_patches import _ensure_record
+                    _ensure_record(db, stash_window, template)
+                    for key, tf in fields.items():
+                        fn = key.split('###')[0]
+                        vals = list(tf.values) if tf.values else []
+                        if len(vals) == 1:
+                            db.set_field(stash_window, fn, vals[0], tf.dtype)
+                        elif len(vals) > 1:
+                            db.set_field(stash_window, fn, vals, tf.dtype)
+                    print(f"  Imported stashwindow.dbr from base game")
+                break
+
+    if not db.has_record(stash_window):
+        # Create minimal record if no base game db available
+        from apply_svc_patches import _ensure_record
+        _ensure_record(db, stash_window, r'database\Templates\InGameUI\CaravanWindowPrivate.tpl')
+        db.set_field(stash_window, 'InventoryDBR',
+                     r'Records\XPack\UI\Caravan\StashInventory.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'IncreaseButton',
+                     r'Records\XPack\UI\Caravan\StashIncreaseButton.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'IncreaseCostText',
+                     r'Records\XPack\UI\Caravan\StashIncreaseCostText.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'WindowLocationX', 0, DATA_TYPE_INT)
+        db.set_field(stash_window, 'WindowLocationY', 126, DATA_TYPE_INT)
+        db.set_field(stash_window, 'StashSortButton',
+                     r'Records\XPack\UI\Caravan\SortStashButton.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'SmallCoverPlate',
+                     r'Records\XPack\UI\Caravan\SmallStashPlate.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'LargeCoverPlate',
+                     r'Records\XPack\UI\Caravan\LargeStashPlate.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'CanAffordFontStyle',
+                     r'Records\ui\fontstyles\numberstandard_green.dbr', DATA_TYPE_STRING)
+        db.set_field(stash_window, 'CannotAffordFontStyle',
+                     r'Records\ui\fontstyles\numberstandard_red.dbr', DATA_TYPE_STRING)
+        print(f"  Created stashwindow.dbr from scratch")
 
     bags = 10
     rows = 25
@@ -1233,18 +1282,19 @@ def main():
         db41 = ArzDatabase.from_arz(sv041_path)
 
     # Import specific base game boss records for soul wiring
+    base_db = None
     if base_path and base_path.exists():
         print(f"\nLoading base game: {base_path}")
         base_db = ArzDatabase.from_arz(base_path)
         import_base_game_bosses(db, base_db)
-        del base_db  # Free memory
 
     strip_ui_overrides(db)
     restore_potion_drops(db, db09)
     wire_souls_to_monsters(db)
     make_enchantable(db)
     grant_all_inventory_bags(db)
-    expand_transfer_stash(db)
+    expand_transfer_stash(db, base_db)
+    del base_db  # Free memory
     restore_rest_skill(db)
 
     legacy_tags = {}
