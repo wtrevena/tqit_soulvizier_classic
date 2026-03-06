@@ -102,7 +102,7 @@ for lv in sv_only:
 
 for lv, ae_idx in sv_custom_shared:
     blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-    shared_replace_map[ae_idx] = len(append_blobs)
+    shared_replace_map[ae_idx] = (len(append_blobs), lv)
     append_blobs.append(blob)
 
 total_append = sum(len(b) for b in append_blobs)
@@ -140,10 +140,11 @@ append_start = new_pre_data_size + 8 + len(data2_raw) + 8 + len(data_raw)
 for i in range(len(ae_levels)):
     merged_levels[i]['data_offset'] = ae_levels[i]['data_offset'] + offset_shift
 
-for ae_idx, blob_idx in shared_replace_map.items():
+for ae_idx, (blob_idx, sv_lv) in shared_replace_map.items():
     blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
     merged_levels[ae_idx]['data_offset'] = blob_offset
     merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
+    merged_levels[ae_idx]['ints_raw'] = sv_lv['ints_raw']  # must match SV blob format
 
 for i, sv_blob_idx in enumerate(sv_only_indices):
     lv_idx = len(ae_levels) + i
