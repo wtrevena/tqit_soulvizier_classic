@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
-Hybrid merge: combines MapCompiler's GROUPS/SD/BITMAPS (correct for all 2281 levels)
-with full SV blob swap on shared levels that have drxmap content.
+Hybrid merge: combines merged GROUPS (SV + SVAERA-only), SV's SD section,
+MapCompiler's BITMAPS, with full SV blob swap on shared levels that have drxmap content.
+
+GROUPS: SV's GROUPS has correct entity GUIDs for shared levels (including the
+blood cave respawn fountain RespawnShrine). SVAERA-only GROUPS entries (AE expansion
+shrines/proxies) are appended to preserve AE expansion functionality.
+
+SD: SV's SD section has zone definitions for blood cave areas that MapCompiler
+(compiled from SVAERA sources) lacks.
 
 For shared levels with drxmap content: uses SV's complete blob + SV's ints_raw,
 with bitmap entries zeroed so the engine uses SV's embedded pathfinding instead
@@ -17,6 +24,71 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
 from build_section_surgery import (
     INJECT_SPECS, inject_into_sv_only_blob, UBER_DUNGEON_QUEST_NAMES)
+
+def _find_next_groups_record(data, start, end_limit):
+    """Find the start of the next GROUPS record by scanning for structural pattern."""
+    for scan in range(start, min(end_limit, len(data) - 12)):
+        sub = struct.unpack_from('<I', data, scan)[0]
+        if sub > 20:
+            continue
+        slen = struct.unpack_from('<I', data, scan + 4)[0]
+        if slen < 3 or slen > 200 or scan + 8 + slen > len(data):
+            continue
+        s = data[scan+8:scan+8+slen]
+        if not all(32 <= b < 127 for b in s):
+            continue
+        pos2 = scan + 8 + slen
+        if pos2 + 4 > len(data):
+            continue
+        slen2 = struct.unpack_from('<I', data, pos2)[0]
+        if slen2 < 3 or slen2 > 200 or pos2 + 4 + slen2 > len(data):
+            continue
+        s2 = data[pos2+4:pos2+4+slen2]
+        if all(32 <= b < 127 for b in s2):
+            return scan
+    return None
+
+
+def _parse_groups(data):
+    """Parse GROUPS section into (val0, records) list."""
+    val0, count = struct.unpack_from('<II', data, 0)
+    pos = 8
+    records = []
+    for i in range(count):
+        rec_start = pos
+        sub_count = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        name_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        name = data[pos:pos+name_len].decode('ascii', errors='replace'); pos += name_len
+        cat_len = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        category = data[pos:pos+cat_len].decode('ascii', errors='replace'); pos += cat_len
+        member_count = struct.unpack_from('<I', data, pos)[0]; pos += 4
+        data_start = pos
+        if i < count - 1:
+            nxt = _find_next_groups_record(data, pos, pos + 200000)
+            data_len = (nxt - pos) if nxt else (len(data) - pos)
+        else:
+            data_len = len(data) - pos
+        records.append({
+            'sub_count': sub_count, 'name': name, 'category': category,
+            'member_count': member_count, 'raw_data': data[data_start:data_start+data_len],
+        })
+        pos = data_start + data_len
+    return val0, records
+
+
+def _rebuild_groups(val0, records):
+    """Rebuild GROUPS section bytes from parsed records."""
+    out = bytearray(struct.pack('<II', val0, len(records)))
+    for rec in records:
+        name_b = rec['name'].encode('ascii')
+        cat_b = rec['category'].encode('ascii')
+        out += struct.pack('<I', rec['sub_count'])
+        out += struct.pack('<I', len(name_b)) + name_b
+        out += struct.pack('<I', len(cat_b)) + cat_b
+        out += struct.pack('<I', rec['member_count'])
+        out += rec['raw_data']
+    return bytes(out)
+
 
 svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
 sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
@@ -87,11 +159,33 @@ for qname in UBER_DUNGEON_QUEST_NAMES:
         added_quests += 1
 print(f'  Quests: {len(ae_quests)} + {len(new_quests)} new + {added_quests} custom = {len(merged_quests)}')
 
-# === Sections from MapCompiler (correct for all 2281 levels) ===
-mc_groups = mc_data[mc_sec_map[SEC_GROUPS]['data_offset']:
-                    mc_sec_map[SEC_GROUPS]['data_offset'] + mc_sec_map[SEC_GROUPS]['size']]
-mc_sd = mc_data[mc_sec_map[SEC_SD]['data_offset']:
-                mc_sec_map[SEC_SD]['data_offset'] + mc_sec_map[SEC_SD]['size']]
+# === Merge GROUPS: SV (correct GUIDs for shared levels) + SVAERA-only (AE expansion) ===
+print('\nMerging GROUPS sections...')
+sv_groups_raw = sv_data[sv_sec_map[SEC_GROUPS]['data_offset']:
+                        sv_sec_map[SEC_GROUPS]['data_offset'] + sv_sec_map[SEC_GROUPS]['size']]
+ae_groups_raw = ae_data[ae_sec_map[SEC_GROUPS]['data_offset']:
+                        ae_sec_map[SEC_GROUPS]['data_offset'] + ae_sec_map[SEC_GROUPS]['size']]
+sv_g_val0, sv_g_recs = _parse_groups(sv_groups_raw)
+_, ae_g_recs = _parse_groups(ae_groups_raw)
+sv_g_names = set(r['name'] for r in sv_g_recs)
+ae_only_recs = [r for r in ae_g_recs if r['name'] not in sv_g_names]
+merged_g_recs = sv_g_recs + ae_only_recs
+merged_groups = _rebuild_groups(sv_g_val0, merged_g_recs)
+print(f'  SV: {len(sv_g_recs)} groups, SVAERA: {len(ae_g_recs)} groups, '
+      f'SVAERA-only: {len(ae_only_recs)}, merged: {len(merged_g_recs)}')
+
+# Show SV-only groups (should include fountain/shrine entries)
+ae_g_names = set(r['name'] for r in ae_g_recs)
+sv_only_groups = [r for r in sv_g_recs if r['name'] not in ae_g_names]
+if sv_only_groups:
+    print(f'  SV-only GROUPS ({len(sv_only_groups)}):')
+    for r in sv_only_groups:
+        print(f'    "{r["name"]}" cat="{r["category"]}" members={r["member_count"]}')
+
+# === SD: use SV's (has blood cave zone definitions) ===
+sv_sd = sv_data[sv_sec_map[SEC_SD]['data_offset']:
+                sv_sec_map[SEC_SD]['data_offset'] + sv_sec_map[SEC_SD]['size']]
+print(f'  Using SV SD section: {len(sv_sd)} bytes')
 mc_bitmaps_raw = mc_data[mc_sec_map[SEC_BITMAPS]['data_offset']:
                          mc_sec_map[SEC_BITMAPS]['data_offset'] + mc_sec_map[SEC_BITMAPS]['size']]
 
@@ -166,8 +260,8 @@ prelim_levels_data = build_level_index(merged_levels)
 # Order: header(8) + quests + groups + sd + levels + bitmaps + unk... + data2 + data
 new_pre_data_size = 8
 new_pre_data_size += 8 + len(new_quests_data)
-new_pre_data_size += 8 + len(mc_groups)
-new_pre_data_size += 8 + len(mc_sd)
+new_pre_data_size += 8 + len(merged_groups)
+new_pre_data_size += 8 + len(sv_sd)
 new_pre_data_size += 8 + len(prelim_levels_data)
 new_pre_data_size += 8 + len(mc_bitmaps_raw)
 for _, ud in unk_sections:
@@ -236,8 +330,8 @@ assert len(new_bitmaps_data) == len(mc_bitmaps_raw), \
 # Recalculate with final bitmaps
 final_pre_data = 8
 final_pre_data += 8 + len(new_quests_data)
-final_pre_data += 8 + len(mc_groups)
-final_pre_data += 8 + len(mc_sd)
+final_pre_data += 8 + len(merged_groups)
+final_pre_data += 8 + len(sv_sd)
 final_pre_data += 8 + len(new_levels_data)
 final_pre_data += 8 + len(new_bitmaps_data)
 for _, ud in unk_sections:
@@ -252,8 +346,8 @@ print(f'  header2: {header2} (SVAERA was {struct.unpack_from("<I", ae_data, 4)[0
 out = bytearray()
 out += struct.pack('<II', MAP_MAGIC, header2)
 out += struct.pack('<II', SEC_QUESTS, len(new_quests_data)); out += new_quests_data
-out += struct.pack('<II', SEC_GROUPS, len(mc_groups)); out += mc_groups
-out += struct.pack('<II', SEC_SD, len(mc_sd)); out += mc_sd
+out += struct.pack('<II', SEC_GROUPS, len(merged_groups)); out += merged_groups
+out += struct.pack('<II', SEC_SD, len(sv_sd)); out += sv_sd
 out += struct.pack('<II', SEC_LEVELS, len(new_levels_data)); out += new_levels_data
 out += struct.pack('<II', SEC_BITMAPS, len(new_bitmaps_data)); out += new_bitmaps_data
 for utype, udata in unk_sections:
