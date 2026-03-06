@@ -109,10 +109,10 @@ data_raw = ae_data[ae_sec_map[SEC_DATA]['data_offset']:
                    ae_sec_map[SEC_DATA]['data_offset'] + ae_sec_map[SEC_DATA]['size']]
 
 # === Section surgery on shared levels ===
-# Instead of replacing entire blobs (which causes ints_raw/pathfinding mismatches),
-# perform section surgery: keep SVAERA's terrain/pathfinding, inject SV's 0x05 objects.
+# Format-aware: v0x11 levels get 0x05 conversion, v0x0e levels use SV's full blob.
 print('\n=== Section Surgery on shared levels ===')
 surgery_blobs = {}  # ae_idx -> new blob
+sv_full_blob_levels = {}  # ae_idx -> (sv_blob, sv_lv) for levels using SV's full blob
 for sv_lv, ae_idx in sv_custom_shared:
     ae_lv = ae_levels[ae_idx]
     ae_blob = ae_data[ae_lv['data_offset']:ae_lv['data_offset'] + ae_lv['data_length']]
@@ -122,6 +122,11 @@ for sv_lv, ae_idx in sv_custom_shared:
     if result:
         surgery_blobs[ae_idx] = result
         print(f'  OK: {ae_lv["fname"]} ({info})')
+    elif info == "use_sv_blob":
+        # v0x0e AE blob (e.g. Random09A): use SV's full blob + SV's ints_raw
+        # SV's blob has the grid connection (0x09 section) that SVAERA lacks
+        sv_full_blob_levels[ae_idx] = (sv_blob, sv_lv)
+        print(f'  FULL: {ae_lv["fname"]} (using SV full blob + ints_raw, same v0x0e format)')
     else:
         print(f'  SKIP: {ae_lv["fname"]} ({info})')
 
@@ -129,6 +134,7 @@ for sv_lv, ae_idx in sv_custom_shared:
 append_blobs = []
 sv_only_indices = []
 surgery_blob_indices = {}
+sv_full_blob_indices = {}
 
 for lv in sv_only:
     blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
@@ -142,6 +148,10 @@ for lv in sv_only:
 for ae_idx, blob in surgery_blobs.items():
     surgery_blob_indices[ae_idx] = len(append_blobs)
     append_blobs.append(blob)
+
+for ae_idx, (sv_blob, sv_lv) in sv_full_blob_levels.items():
+    sv_full_blob_indices[ae_idx] = len(append_blobs)
+    append_blobs.append(sv_blob)
 
 total_append = sum(len(b) for b in append_blobs)
 
@@ -183,6 +193,14 @@ for ae_idx, blob_idx in surgery_blob_indices.items():
     blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
     merged_levels[ae_idx]['data_offset'] = blob_offset
     merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
+
+# Full SV blob levels (v0x0e like Random09A): use SV's ints_raw + full blob
+for ae_idx, blob_idx in sv_full_blob_indices.items():
+    blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
+    sv_lv = sv_full_blob_levels[ae_idx][1]
+    merged_levels[ae_idx]['data_offset'] = blob_offset
+    merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
+    merged_levels[ae_idx]['ints_raw'] = sv_lv['ints_raw']
 
 for i, sv_blob_idx in enumerate(sv_only_indices):
     lv_idx = len(ae_levels) + i
@@ -265,11 +283,17 @@ bad = sum(1 for lv in test_levels if lv['data_offset'] + lv['data_length'] > len
 bad_magic = sum(1 for lv in test_levels if result[lv['data_offset']:lv['data_offset']+3] != b'LVL')
 print(f'  Levels: {len(test_levels)}, bad offsets: {bad}, bad magic: {bad_magic}')
 
-# Verify surgery levels have v0x0e magic
+# Verify surgery levels have v0x11 magic (format-correct)
 for ae_idx in surgery_blobs:
     lv = test_levels[ae_idx]
     ver_byte = result[lv['data_offset'] + 3]
     print(f'  Surgery level {ae_levels[ae_idx]["fname"].split(chr(92))[-1]}: magic byte=0x{ver_byte:02x}')
+
+# Verify full SV blob levels have v0x0e magic
+for ae_idx in sv_full_blob_levels:
+    lv = test_levels[ae_idx]
+    ver_byte = result[lv['data_offset'] + 3]
+    print(f'  Full SV blob {ae_levels[ae_idx]["fname"].split(chr(92))[-1]}: magic byte=0x{ver_byte:02x}')
 
 # Package into ARC
 print('\nPackaging into ARC...')

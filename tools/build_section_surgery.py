@@ -223,12 +223,126 @@ def inject_into_sv_only_blob(blob, injections, level_name):
     return blob
 
 
+V0E_RECORD_SIZE = 56
+V11_RECORD_SIZE = 72
+V0E_MAGIC = struct.pack('<I', 0x0e4c564c)
+V11_MAGIC = struct.pack('<I', 0x114c564c)
+
+
+def convert_0x05_v0e_to_v11(data):
+    """Convert v0x0e 0x05 section data (56-byte records) to v0x11 format (72-byte records).
+
+    The string table is identical between formats. Only the instance records differ:
+    v0x11 has 16 extra zero bytes appended to each 56-byte v0x0e record.
+    """
+    pos = 0
+    string_count = struct.unpack_from('<I', data, pos)[0]
+    pos += 4
+
+    # Skip past string table (identical format)
+    for _ in range(string_count):
+        if pos + 4 > len(data):
+            return None
+        slen = struct.unpack_from('<I', data, pos)[0]
+        pos += 4 + slen
+
+    strings_end = pos
+    if strings_end + 4 > len(data):
+        return None
+
+    instance_count = struct.unpack_from('<I', data, strings_end)[0]
+    instances_start = strings_end + 4
+    instances_data = data[instances_start:]
+
+    expected = instance_count * V0E_RECORD_SIZE
+    if len(instances_data) < expected:
+        return None
+
+    # Build v0x11 instance data: each v0x0e 56-byte record + 16 zero bytes
+    v11_instances = bytearray()
+    for i in range(instance_count):
+        offset = i * V0E_RECORD_SIZE
+        v11_instances += instances_data[offset:offset + V0E_RECORD_SIZE]
+        v11_instances += b'\x00' * 16
+
+    # Reassemble: string table (unchanged) + v0x11 instance records
+    out = bytearray(data[:strings_end])
+    out += struct.pack('<I', instance_count)
+    out += v11_instances
+    # Include any trailing data after instances (unlikely but safe)
+    trailing_start = instances_start + expected
+    if trailing_start < len(data):
+        out += data[trailing_start:]
+    return bytes(out)
+
+
+def inject_into_0x05_v11(section_data, injections):
+    """Append new objects to a v0x11 0x05 section (72-byte records).
+
+    Same as inject_into_0x05 but produces 72-byte records (56 + 16 zero bytes).
+    """
+    if not injections:
+        return section_data
+
+    pos = 0
+    string_count = struct.unpack_from('<I', section_data, pos)[0]
+    pos += 4
+
+    existing_strings = []
+    for _ in range(string_count):
+        slen = struct.unpack_from('<I', section_data, pos)[0]
+        pos += 4
+        existing_strings.append(section_data[pos:pos + slen])
+        pos += slen
+
+    strings_end = pos
+    instance_count = struct.unpack_from('<I', section_data, strings_end)[0]
+    instances_start = strings_end + 4
+    instances_data = section_data[instances_start:instances_start + instance_count * V11_RECORD_SIZE]
+
+    new_strings = list(existing_strings)
+    new_instances = bytearray(instances_data)
+    new_instance_count = instance_count
+
+    for dbr_bytes, x, y, z in injections:
+        if dbr_bytes in new_strings:
+            str_idx = new_strings.index(dbr_bytes)
+        else:
+            str_idx = len(new_strings)
+            new_strings.append(dbr_bytes)
+
+        # 56-byte v0x0e record + 16 zero bytes = 72-byte v0x11 record
+        record = struct.pack('<I', str_idx)
+        record += struct.pack('<fff', 1.0, 0.0, 0.0)     # rotation row0
+        record += struct.pack('<f', 0.0)                   # pad0
+        record += struct.pack('<fff', 0.0, 1.0, 0.0)     # rotation row1
+        record += struct.pack('<f', 0.0)                   # pad1
+        record += struct.pack('<f', 0.0)                   # rotation partial
+        record += struct.pack('<fff', x, y, z)             # world position
+        record += struct.pack('<I', 0)                     # flags
+        record += b'\x00' * 16                             # v0x11 extra bytes
+        new_instances += record
+        new_instance_count += 1
+
+    out = bytearray()
+    out += struct.pack('<I', len(new_strings))
+    for s in new_strings:
+        out += struct.pack('<I', len(s))
+        out += s
+    out += struct.pack('<I', new_instance_count)
+    out += new_instances
+    return bytes(out)
+
+
 def perform_section_surgery(ae_blob, sv_blob, level_name):
     """
-    Hybrid blob: use SV's complete 0x05 (with drxmap + correct instance data)
-    + SVAERA's terrain/pathfinding/level sections.
-    Set magic to v0x0e so the engine reads 0x05 in v0x0e instance format.
-    SVAERA already has a working v0x0e level (Random09A.lvl) proving AE handles this.
+    Hybrid blob: inject SV's drxmap objects into SVAERA's level blob.
+
+    Format-aware: detects AE blob's version (v0x11 vs v0x0e) and handles accordingly:
+    - v0x11 AE blob: Convert SV's v0x0e 0x05 records (56-byte) to v0x11 (72-byte),
+      keep v0x11 magic and all SVAERA terrain/pathfinding sections.
+    - v0x0e AE blob (e.g. Random09A): Return 'use_sv_blob' signal to caller,
+      since both versions share the same format and SV's blob has the grid connection.
     """
     ae_secs, ae_magic = parse_blob_sections(ae_blob)
     sv_secs, sv_magic = parse_blob_sections(sv_blob)
@@ -242,34 +356,44 @@ def perform_section_surgery(ae_blob, sv_blob, level_name):
     if b'drxmap' not in sv_05[0]['data']:
         return None, "SV 0x05 has no drxmap"
 
-    # Use SV's complete 0x05 (strings + instance placements, v0x0e format)
-    # Use empty 0x14 (SV's v0x0e levels have empty 0x14, engine handles this)
-    # Use SVAERA's terrain (0x06), pathfinding (0x0B/0x0A), grid (0x09), level (0x17)
+    ae_version = struct.unpack_from('<B', ae_magic, 3)[0] if len(ae_magic) >= 4 else 0
+
+    # v0x0e AE blobs (e.g. Random09A): use SV's full blob instead of surgery.
+    # Both versions share the same format and SV's blob has grid connections (0x09).
+    if ae_version != 0x11:
+        return None, "use_sv_blob"
+
+    # v0x11 AE blob: convert SV's v0x0e 0x05 data to v0x11 format
     sv_05_data = sv_05[0]['data']
 
-    # Inject any new objects (portals, targets) into the 0x05 section
+    # First convert 56-byte records to 72-byte records
+    v11_05_data = convert_0x05_v0e_to_v11(sv_05_data)
+    if v11_05_data is None:
+        return None, "failed to convert 0x05 v0e->v11"
+
+    # Inject any new objects (portals, targets) using v0x11 format
     level_key = level_name.replace('\\', '/').lower()
     if level_key in INJECT_SPECS:
-        sv_05_data = inject_into_0x05(sv_05_data, INJECT_SPECS[level_key])
-        print(f'    Injected {len(INJECT_SPECS[level_key])} object(s) into 0x05')
+        v11_05_data = inject_into_0x05_v11(v11_05_data, INJECT_SPECS[level_key])
+        print(f'    Injected {len(INJECT_SPECS[level_key])} object(s) into 0x05 (v0x11)')
 
     new_secs = []
     for s in ae_secs:
         if s['type'] == 0x05:
-            new_secs.append({'type': 0x05, 'data': sv_05_data})
+            new_secs.append({'type': 0x05, 'data': v11_05_data})
         elif s['type'] == 0x14:
             new_secs.append({'type': 0x14, 'data': b''})
         else:
             new_secs.append(s)
 
-    # Use v0x0e magic so engine reads 0x05 instance data in v0x0e format
-    v0e_magic = struct.pack('<I', 0x0e4c564c)
-    result = rebuild_blob(v0e_magic, new_secs)
+    # Keep v0x11 magic — matching SVAERA's terrain/pathfinding format
+    result = rebuild_blob(ae_magic, new_secs)
 
     sv_05_count = struct.unpack_from('<I', sv_05[0]['data'], 0)[0]
-    ae_05_count = struct.unpack_from('<I', ae_secs[0]['data'], 0)[0] if ae_secs[0]['type'] == 0x05 else 0
+    ae_05 = [s for s in ae_secs if s['type'] == 0x05]
+    ae_05_count = struct.unpack_from('<I', ae_05[0]['data'], 0)[0] if ae_05 else 0
     drx_count = result.count(b'drxmap')
-    return result, f"hybrid v0e: types {ae_05_count}->{sv_05_count}, drxmap: {drx_count}"
+    return result, f"hybrid v11: strings {ae_05_count}->{sv_05_count}, drxmap: {drx_count}"
 
 
 def main():
@@ -313,6 +437,7 @@ def main():
     # Perform section surgery on shared levels
     print('\n=== Section Surgery ===')
     surgery_blobs = {}  # ae_idx -> new blob
+    sv_full_blob_levels = {}  # ae_idx -> (sv_blob, sv_lv) for v0x0e levels
     for sv_lv, ae_idx in sv_shared_drx:
         ae_lv = ae_levels[ae_idx]
         ae_blob = ae_data[ae_lv['data_offset']:ae_lv['data_offset'] + ae_lv['data_length']]
@@ -322,6 +447,9 @@ def main():
         if result:
             surgery_blobs[ae_idx] = result
             print(f'  OK: {ae_lv["fname"]} ({info})')
+        elif info == "use_sv_blob":
+            sv_full_blob_levels[ae_idx] = (sv_blob, sv_lv)
+            print(f'  FULL: {ae_lv["fname"]} (using SV full blob + ints_raw)')
         else:
             print(f'  SKIP: {ae_lv["fname"]} ({info})')
 
@@ -359,6 +487,11 @@ def main():
     for ae_idx, blob in surgery_blobs.items():
         surgery_blob_indices[ae_idx] = len(append_blobs)
         append_blobs.append(blob)
+
+    sv_full_blob_indices = {}
+    for ae_idx, (sv_blob, sv_lv) in sv_full_blob_levels.items():
+        sv_full_blob_indices[ae_idx] = len(append_blobs)
+        append_blobs.append(sv_blob)
 
     total_append = sum(len(b) for b in append_blobs)
     print(f'  Total append data: {total_append/(1024**2):.1f} MB')
@@ -416,6 +549,14 @@ def main():
         merged_levels[ae_idx]['data_offset'] = blob_offset
         merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
 
+    # Full SV blob levels (v0x0e): use SV's ints_raw + full blob
+    for ae_idx, blob_idx in sv_full_blob_indices.items():
+        blob_offset = append_start + sum(len(append_blobs[j]) for j in range(blob_idx))
+        sv_lv = sv_full_blob_levels[ae_idx][1]
+        merged_levels[ae_idx]['data_offset'] = blob_offset
+        merged_levels[ae_idx]['data_length'] = len(append_blobs[blob_idx])
+        merged_levels[ae_idx]['ints_raw'] = sv_lv['ints_raw']
+
     # SV-only levels: point to appended data
     for i, sv_blob_idx in enumerate(sv_only_blob_indices):
         lv_idx = len(ae_levels) + i
@@ -462,6 +603,10 @@ def main():
     # Verify surgery levels still have correct LVL version (should be 0x11)
     surgery_vers = {}
     for ae_idx in surgery_blobs:
+        lv = v_levels[ae_idx]
+        ver = result[lv['data_offset'] + 3]
+        surgery_vers[ae_idx] = ver
+    for ae_idx in sv_full_blob_levels:
         lv = v_levels[ae_idx]
         ver = result[lv['data_offset'] + 3]
         surgery_vers[ae_idx] = ver
