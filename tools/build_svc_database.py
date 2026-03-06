@@ -551,20 +551,23 @@ def expand_transfer_stash(db: ArzDatabase):
     """Expand the caravan transfer stash to vault-like proportions.
 
     AE's transfer stash uses records/xpack/ui/caravan/stashwindow.dbr.
-    Default is 10 wide x 5 tall (50 slots). We expand to 10 wide x 16 tall
-    per bag, with 3 bags unlocked for free (480 slots total). The width stays
-    at 10 to fit the caravan window UI bitmap.
+    Default is 10 wide x 5 tall (50 slots). We expand to 10 wide x 25 tall
+    per bag, with 10 bags unlocked for free (2500 slots total). The width
+    stays at 10 to fit the caravan window UI bitmap.
     """
     print("\n=== Patch 5: Expand transfer stash ===")
 
     stash_window = 'records\\xpack\\ui\\caravan\\stashwindow.dbr'
     stash_inventory = 'records\\xpack\\ui\\caravan\\stashinventory.dbr'
 
+    bags = 10
+    rows = 25
     db.set_field(stash_window, 'InventoryWidth', 10, DATA_TYPE_INT)
-    db.set_field(stash_window, 'InventoryHeightArray', [16, 16, 16], DATA_TYPE_INT)
-    db.set_field(stash_window, 'InventoryCostArray', [0, 0, 0], DATA_TYPE_INT)
+    db.set_field(stash_window, 'InventoryHeightArray', [rows] * bags, DATA_TYPE_INT)
+    db.set_field(stash_window, 'InventoryCostArray', [0] * bags, DATA_TYPE_INT)
 
-    print("  Transfer stash: 10 wide x 16 tall x 3 bags (480 slots), free upgrades")
+    total = 10 * rows * bags
+    print(f"  Transfer stash: 10 wide x {rows} tall x {bags} bags ({total} slots), free upgrades")
 
 
 def restore_rest_skill(db: ArzDatabase):
