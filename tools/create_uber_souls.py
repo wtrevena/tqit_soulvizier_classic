@@ -543,7 +543,7 @@ def create_uber_souls(db: ArzDatabase):
             continue
 
         # Skip if ANY variant of this monster already has a soul reference
-        if clean in names_with_souls:
+        if clean in names_with_souls and clean not in FORCE_INCLUDE:
             continue
 
         # Also check soul record paths by name substring
