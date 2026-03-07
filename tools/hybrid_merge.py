@@ -11,9 +11,8 @@ SD: SV's SD section has zone definitions for blood cave areas that MapCompiler
 (compiled from SVAERA sources) lacks.
 
 For shared levels with drxmap content: uses SV's complete blob + SV's ints_raw,
-with bitmap entries zeroed so the engine uses SV's embedded pathfinding instead
-of SVAERA's DATA2. This preserves SV's internally-consistent level data without
-any cross-format conversion.
+with SV's DATA2 pathfinding appended to SVAERA's DATA2 and bitmap entries
+updated to point to the correct SV pathfinding data.
 """
 import sys, struct
 from pathlib import Path
@@ -114,8 +113,15 @@ sv_sections = parse_sections(sv_data)
 sv_sec_map = {s['type']: s for s in sv_sections}
 sv_levels = parse_level_index(sv_data, sv_sec_map[SEC_LEVELS])
 sv_quests = parse_quests(sv_data, sv_sec_map[SEC_QUESTS])
+sv_bitmaps = parse_bitmap_index(sv_data, sv_sec_map[SEC_BITMAPS])
+sv_data2_start = sv_sec_map[SEC_DATA2]['data_offset']  # absolute position of DATA2 data in SV file
 
-# Load MapCompiler output (has correct GROUPS, SD, BITMAPS for all 2281 levels)
+# Build SV level name -> index map for bitmap lookup
+sv_by_name = {}
+for i, lv in enumerate(sv_levels):
+    sv_by_name[lv['fname'].replace('\\', '/').lower()] = i
+
+# Load MapCompiler output (has correct BITMAPS for all 2281 levels)
 print('Loading MapCompiler merged output...')
 mc_data = mc_path.read_bytes()
 mc_sections = parse_sections(mc_data)
@@ -194,9 +200,10 @@ ae_unk_sec = [s for s in ae_sections if s['type'] not in
               (SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_LEVELS, SEC_BITMAPS, SEC_DATA2, SEC_DATA)]
 unk_sections = [(s['type'], ae_data[s['data_offset']:s['data_offset'] + s['size']]) for s in ae_unk_sec]
 
-# DATA2 from SVAERA (AE pathfinding)
-data2_raw = ae_data[ae_sec_map[SEC_DATA2]['data_offset']:
-                    ae_sec_map[SEC_DATA2]['data_offset'] + ae_sec_map[SEC_DATA2]['size']]
+# DATA2 from SVAERA (AE pathfinding) + SV pathfinding for swapped levels appended
+data2_raw = bytearray(ae_data[ae_sec_map[SEC_DATA2]['data_offset']:
+                              ae_sec_map[SEC_DATA2]['data_offset'] + ae_sec_map[SEC_DATA2]['size']])
+orig_data2_len = len(data2_raw)
 
 # DATA from SVAERA + appended SV blobs
 data_raw = ae_data[ae_sec_map[SEC_DATA]['data_offset']:
@@ -224,6 +231,31 @@ for sv_lv, ae_idx in sv_custom_shared:
     shared_swap_levels[ae_idx] = (sv_blob, sv_lv)
     drx = sv_blob.count(b'drxmap')
     print(f'  SWAP: {ae_lv["fname"]} (AE=v0x{ae_ver:02x} -> SV=v0x{sv_ver:02x}, drxmap: {drx})')
+
+# Append SV's DATA2 pathfinding for swapped levels.
+# SV's DATA2 has the correct pathfinding for SV's level blobs.
+print('\n=== Appending SV DATA2 pathfinding for swapped levels ===')
+sv_data2_appended = {}  # ae_idx -> (offset_within_data2, length)
+for ae_idx in shared_swap_levels:
+    ae_lv = ae_levels[ae_idx]
+    lv_key = ae_lv['fname'].replace('\\', '/').lower()
+    sv_idx = sv_by_name.get(lv_key)
+    if sv_idx is not None and sv_idx < len(sv_bitmaps) and sv_bitmaps[sv_idx]['length'] > 0:
+        sv_bm = sv_bitmaps[sv_idx]
+        sv_path_data = sv_data[sv_bm['offset']:sv_bm['offset'] + sv_bm['length']]
+        offset_in_data2 = len(data2_raw)
+        data2_raw += sv_path_data
+        sv_data2_appended[ae_idx] = (offset_in_data2, sv_bm['length'])
+        short = ae_lv['fname'].split(chr(92))[-1]
+        print(f'  Appended DATA2 for {short}: {sv_bm["length"]} bytes '
+              f'(SV bitmap[{sv_idx}], at data2 offset {offset_in_data2})')
+    else:
+        sv_data2_appended[ae_idx] = None
+        short = ae_lv['fname'].split(chr(92))[-1]
+        print(f'  No SV DATA2 for {short} (will zero bitmap)')
+data2_raw = bytes(data2_raw)
+data2_extension = len(data2_raw) - orig_data2_len
+print(f'  DATA2 extended by {data2_extension} bytes ({data2_extension/(1024*1024):.1f} MB)')
 
 # Collect blobs to append
 append_blobs = []
@@ -268,8 +300,10 @@ for _, ud in unk_sections:
     new_pre_data_size += 8 + len(ud)
 
 orig_pre_data_size = ae_sec_map[SEC_DATA2]['data_offset'] - 8  # header_offset
-offset_shift = new_pre_data_size - orig_pre_data_size
-print(f'\n  Offset shift: {offset_shift} bytes')
+# offset_shift must account for both pre-data size change AND DATA2 size change,
+# because level data_offsets point into DATA section which comes AFTER DATA2.
+offset_shift = (new_pre_data_size - orig_pre_data_size) + data2_extension
+print(f'\n  Offset shift: {offset_shift} bytes (pre-data: {new_pre_data_size - orig_pre_data_size}, data2 ext: {data2_extension})')
 
 # Calculate append start
 append_start = new_pre_data_size + 8 + len(data2_raw) + 8 + len(data_raw)
@@ -312,14 +346,22 @@ for i in range(len(adjusted_bitmaps)):
     if adjusted_bitmaps[i]['offset'] > 0:
         adjusted_bitmaps[i]['offset'] = mc_bitmaps[i]['offset'] + mc_offset_shift
 
-# Zero bitmap entries for ALL shared+drxmap levels.
-# These levels use SV's full blob with embedded pathfinding.
-# SVAERA's DATA2 pathfinding doesn't match SV's level layout,
-# so we zero the bitmap entry to use SV's embedded pathfinding.
-for ae_idx in shared_swap_levels:
-    adjusted_bitmaps[ae_idx]['offset'] = 0
-    adjusted_bitmaps[ae_idx]['length'] = 0
-    print(f'  Zeroed bitmap for level {ae_idx} ({ae_levels[ae_idx]["fname"].split(chr(92))[-1]})')
+# Set bitmap entries for swapped levels to point to appended SV DATA2 data.
+# Absolute file offset = DATA2 data start + offset_within_data2.
+new_data2_data_start = new_pre_data_size + 8  # 8 = DATA2 section header (type+size)
+print('\n=== Bitmap entries for swapped levels ===')
+for ae_idx, appended_info in sv_data2_appended.items():
+    short = ae_levels[ae_idx]['fname'].split(chr(92))[-1]
+    if appended_info is not None:
+        offset_in_data2, length = appended_info
+        abs_offset = new_data2_data_start + offset_in_data2
+        adjusted_bitmaps[ae_idx]['offset'] = abs_offset
+        adjusted_bitmaps[ae_idx]['length'] = length
+        print(f'  {short}: bitmap -> abs={abs_offset}, len={length}')
+    else:
+        adjusted_bitmaps[ae_idx]['offset'] = 0
+        adjusted_bitmaps[ae_idx]['length'] = 0
+        print(f'  {short}: zeroed (no SV DATA2 data)')
 
 new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, mc_bmp_unknown)
 
