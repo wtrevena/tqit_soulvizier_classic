@@ -117,7 +117,13 @@ The 37 champion records (Sileni, Malefice, Blood Cult, etc.) and 34 quest record
 **Hero-class in secret passage:**
 - Warden of Souls (`xsecrethero_wardenofsouls`) — Lv 48, Life element, Tank role. **Already has a soul** (tagSoulSVC9141). No action needed.
 
-### Priority 5: Toxeus Soul Design
+### Priority 5: Soul Reworks
+
+| Monster | Current Soul | Issue | Action |
+|---------|-------------|-------|--------|
+| **Limos Lifeeater** | Existing SV soul | Needs rework | Redesign soul stats/skills |
+
+### Priority 6: Toxeus Soul Design
 
 **Standing Directive**: Toxeus the Murderer must have the STRONGEST soul of any monster.
 

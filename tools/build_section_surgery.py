@@ -110,10 +110,14 @@ DEFAULT_0x14_PAYLOAD = struct.pack('<IIIII', 2, 0, 1, 1, 0)
 
 ENTRANCE_NPC_DBR = b'records\\quests\\portal_uberdungeon_entrance.dbr'
 RETURN_NPC_DBR = b'records\\quests\\portal_uberdungeon_return.dbr'
+BLOODCAVE_ENTRANCE_NPC_DBR = b'records\\quests\\portal_bloodcave_entrance.dbr'
+BLOODCAVE_RETURN_NPC_DBR = b'records\\quests\\portal_bloodcave_return.dbr'
 
 # Injection specs: level name key -> list of (dbr_bytes, x, y, z) to inject
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
+# HiddenValley01: cave entrance at (14.0, 18.0, 26.0), POI at (15.84, 18.0, 26.58)
+# BC_initialpathway: SV blood cave entrance level
 INJECT_SPECS = {
     'levels/world/greece/delphi/delphilowlands04.lvl': [
         (ENTRANCE_NPC_DBR, 4.0, 10.0, 14.0),
@@ -121,9 +125,17 @@ INJECT_SPECS = {
     'levels/world/uberdungeon/crypt_floor1.lvl': [
         (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
     ],
+    'levels/world/orient/silkroad/hiddenvalley01.lvl': [
+        (BLOODCAVE_ENTRANCE_NPC_DBR, 16.0, 18.0, 26.0),
+    ],
+    'levels/world/xbloodcave/bc_initialpathway.lvl': [
+        (BLOODCAVE_RETURN_NPC_DBR, 20.0, 5.0, 12.0),
+    ],
 }
 
-UBER_DUNGEON_QUEST_NAMES = ['uberdungeon_entrance.qst', 'uberdungeon_return.qst']
+UBER_DUNGEON_QUEST_NAMES = ['Quests/uberdungeon_entrance.qst', 'Quests/uberdungeon_return.qst']
+BLOODCAVE_QUEST_NAMES = ['Quests/bloodcave_entrance.qst', 'Quests/bloodcave_return.qst']
+ALL_CUSTOM_QUEST_NAMES = UBER_DUNGEON_QUEST_NAMES + BLOODCAVE_QUEST_NAMES
 
 
 def inject_into_0x05(section_data, injections):
@@ -140,7 +152,7 @@ def inject_into_0x05(section_data, injections):
       uint32 instance_count
       instance_count * 56-byte records:
         +0:  uint32  string_index
-        +4:  float[9] rotation_matrix (3x3, row-major with padding)
+        +4:  float[9] rotation_matrix (3x3, flat row-major, no padding)
         +40: float   world_x
         +44: float   world_y
         +48: float   world_z
@@ -176,16 +188,12 @@ def inject_into_0x05(section_data, injections):
             str_idx = len(new_strings)
             new_strings.append(dbr_bytes)
 
-        # Identity rotation matrix with v0x0e padding layout:
-        # row0: 1,0,0  pad0: 0
-        # row1: 0,1,0  pad1: 0
-        # partial_row2: 0  then x, y, z, flags
+        # Identity rotation matrix: flat 3x3 row-major, no padding
         record = struct.pack('<I', str_idx)              # string_index
-        record += struct.pack('<fff', 1.0, 0.0, 0.0)     # rotation row0
-        record += struct.pack('<f', 0.0)                  # pad0
-        record += struct.pack('<fff', 0.0, 1.0, 0.0)     # rotation row1
-        record += struct.pack('<f', 0.0)                  # pad1
-        record += struct.pack('<f', 0.0)                  # rotation partial (row2[0])
+        record += struct.pack('<fffffffff',              # 3x3 rotation matrix
+                              1.0, 0.0, 0.0,            # row0
+                              0.0, 1.0, 0.0,            # row1
+                              0.0, 0.0, 1.0)            # row2
         record += struct.pack('<fff', x, y, z)            # world position
         record += struct.pack('<I', 0)                    # flags
         new_instances += record
@@ -313,11 +321,10 @@ def inject_into_0x05_v11(section_data, injections):
 
         # 56-byte v0x0e record + 16 zero bytes = 72-byte v0x11 record
         record = struct.pack('<I', str_idx)
-        record += struct.pack('<fff', 1.0, 0.0, 0.0)     # rotation row0
-        record += struct.pack('<f', 0.0)                   # pad0
-        record += struct.pack('<fff', 0.0, 1.0, 0.0)     # rotation row1
-        record += struct.pack('<f', 0.0)                   # pad1
-        record += struct.pack('<f', 0.0)                   # rotation partial
+        record += struct.pack('<fffffffff',              # 3x3 rotation matrix
+                              1.0, 0.0, 0.0,            # row0
+                              0.0, 1.0, 0.0,            # row1
+                              0.0, 0.0, 1.0)            # row2
         record += struct.pack('<fff', x, y, z)             # world position
         record += struct.pack('<I', 0)                     # flags
         record += b'\x00' * 16                             # v0x11 extra bytes
@@ -360,6 +367,47 @@ def generate_default_0x14(instance_count):
         buf += struct.pack('<II', i, len(DEFAULT_0x14_PAYLOAD))
         buf += DEFAULT_0x14_PAYLOAD
     return bytes(buf)
+
+
+def convert_v0e_blob_to_v11(blob, level_name=''):
+    """Convert an entire v0x0e level blob to v0x11 format.
+
+    Used for SV-only levels and shared levels where AE is also v0x0e.
+    - Converts 0x05 instance records (56→72 bytes)
+    - Removes 0x09 grid section (v0x0e-only, replaced by DATA2 in v0x11)
+    - Adds 0x14 metadata section (required for v0x11 interactivity)
+    - Changes blob magic from v0x0e to v0x11
+    """
+    secs, magic = parse_blob_sections(blob)
+    if not secs:
+        return None
+
+    new_secs = []
+    instance_count = 0
+    has_0x14 = False
+
+    for s in secs:
+        if s['type'] == 0x05:
+            # Convert 0x05 from 56-byte to 72-byte records
+            converted = convert_0x05_v0e_to_v11(s['data'])
+            if converted is None:
+                return None
+            new_secs.append({'type': 0x05, 'data': converted})
+            instance_count = count_0x05_instances(converted)
+        elif s['type'] == 0x09:
+            # Skip 0x09 grid section (v0x0e-only)
+            continue
+        elif s['type'] == 0x14:
+            has_0x14 = True
+            new_secs.append(s)
+        else:
+            new_secs.append(s)
+
+    # Add 0x14 metadata if not already present
+    if not has_0x14 and instance_count > 0:
+        new_secs.append({'type': 0x14, 'data': generate_default_0x14(instance_count)})
+
+    return rebuild_blob(V11_MAGIC, new_secs)
 
 
 def perform_section_surgery(ae_blob, sv_blob, level_name):

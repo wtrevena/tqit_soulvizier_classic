@@ -343,6 +343,7 @@ def make_display_name(clean_name):
 
 FORCE_INCLUDE = {
     'frost',
+    'uber',
 }
 
 MANUAL_OVERRIDES = {

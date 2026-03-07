@@ -1184,7 +1184,35 @@ def promote_uber_monsters(db: ArzDatabase):
     return 0
 
 
-def create_uber_dungeon_portal(db: ArzDatabase):
+def _import_boat_captain(db: ArzDatabase, base_db):
+    """Import the Egypt boat captain NPC from base game into SV database.
+
+    This NPC has a humanoid mesh and is known to work with Action_BoatDialog.
+    """
+    boat = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+    if db.has_record(boat):
+        return boat
+    if not base_db:
+        return None
+    for name in base_db.record_names():
+        if name.lower() == boat.lower():
+            fields = base_db.get_fields(name)
+            template = ''
+            for key, tf in fields.items():
+                if key.split('###')[0] == 'templateName' and tf.values:
+                    template = tf.values[0]
+                    break
+            _ensure_record(db, boat, template or 'database\\Templates\\Npc.tpl')
+            for key, tf in fields.items():
+                fname = key.split('###')[0]
+                db.set_field(boat, fname, tf.values[0] if len(tf.values) == 1 else tf.values, tf.dtype)
+            db._modified.add(boat)
+            print(f"  Imported boat captain from base game: {boat}")
+            return boat
+    return None
+
+
+def create_uber_dungeon_portal(db: ArzDatabase, base_db=None):
     """Create NPC portal DBRs for the Uber Dungeon entrance and return.
 
     Uses the NPC + Action_BoatDialog pattern (like the Secret Place portals).
@@ -1195,39 +1223,56 @@ def create_uber_dungeon_portal(db: ArzDatabase):
 
     entrance_npc = r'records\quests\portal_uberdungeon_entrance.dbr'
     return_npc = r'records\quests\portal_uberdungeon_return.dbr'
-    portal_template = r'records\drxmap\xurder\portaldudes\portal to act 1.dbr'
-    fallback_template = r'records\drxmap\xurder\portaldudes\portal to hallway.dbr'
 
-    src = portal_template if db.has_record(portal_template) else fallback_template
+    # Import boat captain from base game (humanoid mesh, known clickable)
+    boat_template = _import_boat_captain(db, base_db)
+    portal_template = r'records\drxmap\xurder\portaldudes\portal to act 1.dbr'
+    src = boat_template or portal_template
 
     for npc_path, desc in [
         (entrance_npc, 'Portal NPC to Uber Dungeon at Crisaeos Falls'),
         (return_npc, 'Return portal NPC from Uber Dungeon to Crisaeos Falls'),
     ]:
-        if db.has_record(src):
-            db.clone_record(src, npc_path)
-            db.set_field(npc_path, 'FileDescription', desc, DATA_TYPE_STRING)
-            db.set_field(npc_path, 'ActorName', 'Mysterious Portal', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'description', 'xtagMysteriousPortal', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'mesh',
-                         r'Items\shrines\artifactportal01.msh', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'startVisible', 1, DATA_TYPE_INT)
-            db._modified.add(npc_path)
-            print(f"  Created NPC: {npc_path} (cloned from {src}, mesh=artifactportal01)")
-        else:
-            _ensure_record(db, npc_path, 'database\\Templates\\Npc.tpl')
-            db.set_field(npc_path, 'templateName',
-                         'database\\Templates\\Npc.tpl', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'Class', 'Npc', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'FileDescription', desc, DATA_TYPE_STRING)
-            db.set_field(npc_path, 'ActorName', 'Mysterious Portal', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'description', 'xtagMysteriousPortal', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'mesh',
-                         r'Items\shrines\artifactportal01.msh', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'AIType', 'generic', DATA_TYPE_STRING)
-            db.set_field(npc_path, 'startVisible', 1, DATA_TYPE_INT)
-            db.set_field(npc_path, 'scale', 1.0, DATA_TYPE_FLOAT)
-            print(f"  Created NPC (from scratch): {npc_path}")
+        db.clone_record(src, npc_path)
+        db.set_field(npc_path, 'FileDescription', desc, DATA_TYPE_STRING)
+        db.set_field(npc_path, 'ActorName', 'Mysterious Portal', DATA_TYPE_STRING)
+        db.set_field(npc_path, 'description', 'xtagMysteriousPortal', DATA_TYPE_STRING)
+        db.set_field(npc_path, 'startVisible', 1, DATA_TYPE_INT)
+        db.set_field(npc_path, 'IncludeInMap', 1, DATA_TYPE_INT)
+        db._modified.add(npc_path)
+        print(f"  Created NPC: {npc_path} (cloned from {src})")
+
+
+def create_blood_cave_portal(db: ArzDatabase, base_db=None):
+    """Create NPC portal DBRs for the Blood Cave entrance and return.
+
+    Clones from the Egypt boat captain NPC (known working interactable NPC)
+    and configures for portal teleportation via Action_BoatDialog quest.
+    """
+    print("\n=== Patch 13: Create Blood Cave portal records ===")
+
+    entrance_npc = r'records\quests\portal_bloodcave_entrance.dbr'
+    return_npc = r'records\quests\portal_bloodcave_return.dbr'
+
+    # Boat captain should already be imported by create_uber_dungeon_portal
+    boat_template = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+    if not db.has_record(boat_template):
+        _import_boat_captain(db, base_db)
+    portal_template = r'records\drxmap\xurder\portaldudes\portal to act 1.dbr'
+    src = boat_template if db.has_record(boat_template) else portal_template
+
+    for npc_path, desc, name in [
+        (entrance_npc, 'Portal NPC to Blood Cave at Hidden Valley', 'Blood Cave Portal'),
+        (return_npc, 'Return portal NPC from Blood Cave to Hidden Valley', 'Return Portal'),
+    ]:
+        db.clone_record(src, npc_path)
+        db.set_field(npc_path, 'FileDescription', desc, DATA_TYPE_STRING)
+        db.set_field(npc_path, 'ActorName', name, DATA_TYPE_STRING)
+        db.set_field(npc_path, 'description', 'xtagMysteriousPortal', DATA_TYPE_STRING)
+        db.set_field(npc_path, 'startVisible', 1, DATA_TYPE_INT)
+        db.set_field(npc_path, 'IncludeInMap', 1, DATA_TYPE_INT)
+        db._modified.add(npc_path)
+        print(f"  Created NPC: {npc_path} (cloned from {src})")
 
 
 def fix_soul_bitmaps(db: ArzDatabase):
@@ -1301,7 +1346,6 @@ def main():
     make_enchantable(db)
     grant_all_inventory_bags(db)
     expand_caravan(db, base_db)
-    del base_db  # Free memory
     restore_rest_skill(db)
 
     legacy_tags = {}
@@ -1316,7 +1360,9 @@ def main():
 
     promote_uber_monsters(db)
 
-    create_uber_dungeon_portal(db)
+    create_uber_dungeon_portal(db, base_db)
+    create_blood_cave_portal(db, base_db)
+    del base_db  # Free memory
 
     from create_uber_souls import create_uber_souls
     souls, text_tags = create_uber_souls(db)
