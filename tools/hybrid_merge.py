@@ -253,9 +253,29 @@ for ae_idx in shared_swap_levels:
         sv_data2_appended[ae_idx] = None
         short = ae_lv['fname'].split(chr(92))[-1]
         print(f'  No SV DATA2 for {short} (will zero bitmap)')
+# Also append SV's DATA2 pathfinding for ALL SV-only levels.
+# MC has ZERO DATA2 data for SV-only levels, but SV has ~57 MB of pathfinding
+# data for them. Without this, no SV-only levels are accessible.
+print('\n=== Appending SV DATA2 pathfinding for SV-only levels ===')
+sv_only_data2 = {}  # index_in_sv_only_list -> (offset_within_data2, length)
+sv_only_d2_count = 0
+for i, lv in enumerate(sv_only):
+    lv_key = lv['fname'].replace('\\', '/').lower()
+    sv_idx = sv_by_name.get(lv_key)
+    if sv_idx is not None and sv_idx < len(sv_bitmaps) and sv_bitmaps[sv_idx]['length'] > 0:
+        sv_bm = sv_bitmaps[sv_idx]
+        sv_path_data = sv_data[sv_bm['offset']:sv_bm['offset'] + sv_bm['length']]
+        offset_in_data2 = len(data2_raw)
+        data2_raw += sv_path_data
+        sv_only_data2[i] = (offset_in_data2, sv_bm['length'])
+        sv_only_d2_count += 1
+    else:
+        sv_only_data2[i] = None
+print(f'  Appended DATA2 for {sv_only_d2_count}/{len(sv_only)} SV-only levels')
+
 data2_raw = bytes(data2_raw)
 data2_extension = len(data2_raw) - orig_data2_len
-print(f'  DATA2 extended by {data2_extension} bytes ({data2_extension/(1024*1024):.1f} MB)')
+print(f'  Total DATA2 extension: {data2_extension} bytes ({data2_extension/(1024*1024):.1f} MB)')
 
 # Collect blobs to append
 append_blobs = []
@@ -339,8 +359,8 @@ mc_pre_data = mc_sec_map[SEC_DATA2]['data_offset'] - 8
 mc_offset_shift = new_pre_data_size - mc_pre_data
 
 # Adjust MC bitmap offsets: they point into MC's DATA2 section.
-# We're using SVAERA's DATA2 section. MC's DATA2 and SVAERA's DATA2 should be identical
-# (confirmed 0 diffs). So we just need to shift from MC layout to our layout.
+# We use SVAERA's DATA2 as the base (same size as MC's). Shift MC bitmap
+# offsets from MC's file layout to our file layout.
 adjusted_bitmaps = [dict(b) for b in mc_bitmaps]
 for i in range(len(adjusted_bitmaps)):
     if adjusted_bitmaps[i]['offset'] > 0:
@@ -362,6 +382,23 @@ for ae_idx, appended_info in sv_data2_appended.items():
         adjusted_bitmaps[ae_idx]['offset'] = 0
         adjusted_bitmaps[ae_idx]['length'] = 0
         print(f'  {short}: zeroed (no SV DATA2 data)')
+
+# Set bitmap entries for SV-only levels to point to appended SV DATA2 data.
+# MC had ZERO DATA2 for all SV-only levels — now we provide SV's pathfinding.
+print('\n=== Bitmap entries for SV-only levels ===')
+sv_only_bm_set = 0
+for i, appended_info in sv_only_data2.items():
+    merged_idx = len(ae_levels) + i
+    if appended_info is not None:
+        offset_in_data2, length = appended_info
+        abs_offset = new_data2_data_start + offset_in_data2
+        adjusted_bitmaps[merged_idx]['offset'] = abs_offset
+        adjusted_bitmaps[merged_idx]['length'] = length
+        sv_only_bm_set += 1
+    else:
+        adjusted_bitmaps[merged_idx]['offset'] = 0
+        adjusted_bitmaps[merged_idx]['length'] = 0
+print(f'  Set bitmap entries for {sv_only_bm_set}/{len(sv_only)} SV-only levels')
 
 new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, mc_bmp_unknown)
 
