@@ -1212,6 +1212,36 @@ def _import_boat_captain(db: ArzDatabase, base_db):
     return None
 
 
+def _import_dialog_needed(db: ArzDatabase, base_db):
+    """Import Dialog Needed.dbr from base game — required for NPC interaction.
+
+    This DialogPak record makes NPCs clickable when assigned via
+    Action_UpdateNPCDialog in quest files. Without it, NPCs render
+    but have no yellow icon and can't be clicked.
+    """
+    dialog_path = r'records\dialog\story\dialog needed.dbr'
+    if db.has_record(dialog_path):
+        return dialog_path
+    if not base_db:
+        return None
+    for name in base_db.record_names():
+        if name.lower() == dialog_path.lower():
+            fields = base_db.get_fields(name)
+            template = ''
+            for key, tf in fields.items():
+                if key.split('###')[0] == 'templateName' and tf.values:
+                    template = tf.values[0]
+                    break
+            _ensure_record(db, dialog_path, template or 'database\\Templates\\DialogPak.tpl')
+            for key, tf in fields.items():
+                fname = key.split('###')[0]
+                db.set_field(dialog_path, fname, tf.values[0] if len(tf.values) == 1 else tf.values, tf.dtype)
+            db._modified.add(dialog_path)
+            print(f"  Imported Dialog Needed.dbr from base game")
+            return dialog_path
+    return None
+
+
 def create_uber_dungeon_portal(db: ArzDatabase, base_db=None):
     """Create NPC portal DBRs for the Uber Dungeon entrance and return.
 
@@ -1220,6 +1250,9 @@ def create_uber_dungeon_portal(db: ArzDatabase, base_db=None):
     The quest file wiring is handled by build_section_surgery.py + build_quest_files.py.
     """
     print("\n=== Patch 12: Create Uber Dungeon portal records ===")
+
+    # Import Dialog Needed.dbr (required for NPC clickability)
+    _import_dialog_needed(db, base_db)
 
     entrance_npc = r'records\quests\portal_uberdungeon_entrance.dbr'
     return_npc = r'records\quests\portal_uberdungeon_return.dbr'
