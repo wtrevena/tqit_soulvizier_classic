@@ -397,6 +397,9 @@ def convert_v0e_blob_to_v11(blob, level_name=''):
         elif s['type'] == 0x09:
             # Skip 0x09 grid section (v0x0e-only)
             continue
+        elif s['type'] == 0x0a:
+            # Rename 0x0a (TQIT terrain/collision) to 0x0b (TQAE terrain/collision)
+            new_secs.append({'type': 0x0b, 'data': s['data']})
         elif s['type'] == 0x14:
             has_0x14 = True
             new_secs.append(s)
