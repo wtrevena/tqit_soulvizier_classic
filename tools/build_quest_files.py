@@ -30,13 +30,15 @@ RETURN_NPC = r'records\quests\portal_uberdungeon_return.dbr'
 BLOODCAVE_ENTRANCE_NPC = r'records\creature\npc\speaking\orient\silkroad_villager1.dbr'
 BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 
-# Grid-space coordinates (from level index ints_raw[6,7,8])
-# BoatDialog coords must EXACTLY match the level's grid position
-CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -2578, 0, -2682
-DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832
+# BoatDialog coords: world-space position where the player spawns.
+# Must be within the walkable area of the destination level's DATA2 grid.
+# DATA2 grid scale: 4 cells per world unit.
+# Walkable center = grid_origin + (center_col/4, 0, center_row/4)
+CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -2578, 0, -2682  # TODO: validate walkable center
+DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832  # outdoor, grid origin is walkable
 
-BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -2101, 18, 1293
-HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -134, -120, 2174
+BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -2060, 18, 1322  # walkable center (DATA2 row=114, col=163)
+HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -134, -120, 2174  # outdoor, grid origin is walkable
 
 REPEAT_STEPS = 200
 
