@@ -31,11 +31,11 @@ BLOODCAVE_ENTRANCE_NPC = r'records\creature\npc\speaking\orient\silkroad_village
 BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 
 # Grid-space coordinates (from level index ints_raw[6,7,8])
-# Using SVAERA's coordinates since we use SVAERA's base map
-CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -2498, 0, -2602
-DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832  # SVAERA coords
+# BoatDialog coords must EXACTLY match the level's grid position
+CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -2578, 0, -2682
+DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832
 
-BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -2085, 19, 1300
+BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -2101, 18, 1293
 HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -134, -120, 2174
 
 REPEAT_STEPS = 200
