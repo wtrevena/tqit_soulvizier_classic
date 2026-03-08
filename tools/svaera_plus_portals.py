@@ -140,11 +140,9 @@ for qname in ALL_CUSTOM_QUEST_NAMES:
 new_quests_data = build_quests(merged_quests)
 print(f'  Quests: {len(ae_quests)} + {len(new_quests)} SV + {added_quests} custom = {len(merged_quests)}')
 
-# --- 5. Keep SV-only level blobs as v0x0e (preserves in-blob pathfinding) ---
-# SVAERA already has 449 v0x0e levels that work fine in Custom Quest mode.
-# Converting to v0x11 breaks cave pathfinding (0x0a section ignored, DATA2 incompatible).
-print('\n=== Loading SV-only level blobs (keeping v0x0e) ===')
-converted_blobs = {}  # sv_only index -> blob (kept as-is)
+# --- 5. Load SV-only level blobs (will convert to v0x11 after NPC injection) ---
+print('\n=== Loading SV-only level blobs ===')
+converted_blobs = {}  # sv_only index -> blob
 v0e_count = v11_count = other_count = 0
 for i, lv in enumerate(sv_only):
     blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
@@ -249,6 +247,20 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
         else:
             new_secs.append(s)
     ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
+
+# --- 7b. Convert SV-only blobs from v0x0e to v0x11 ---
+# TQAE engine uses DATA2 for pathfinding in v0x11 levels. v0x0e in-blob pathfinding
+# from the TQIT era is not compatible with TQAE Custom Quest mode.
+print('\n=== Converting SV-only levels to v0x11 ===')
+v0e_converted = 0
+for i in range(len(sv_only)):
+    blob = converted_blobs[i]
+    if blob[:3] == b'LVL' and blob[3] == 0x0e:
+        result = convert_v0e_blob_to_v11(blob, sv_only[i]['fname'])
+        if result is not None:
+            converted_blobs[i] = result
+            v0e_converted += 1
+print(f'  Converted {v0e_converted}/{len(sv_only)} levels from v0x0e to v0x11')
 
 # --- 8. Rebuild map ---
 print('\n=== Rebuilding map ===')
