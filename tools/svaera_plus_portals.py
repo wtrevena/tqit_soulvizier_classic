@@ -92,6 +92,7 @@ sv_data = sv_arc_obj.decompress([e for e in sv_arc_obj.entries if e.entry_type =
 sv_sec = {s['type']: s for s in parse_sections(sv_data)}
 sv_levels = parse_level_index(sv_data, sv_sec[SEC_LEVELS])
 sv_quests = parse_quests(sv_data, sv_sec[SEC_QUESTS])
+sv_bitmaps = parse_bitmap_index(sv_data, sv_sec[SEC_BITMAPS])
 
 ae_by_name = {lv['fname'].replace('\\', '/').lower(): i for i, lv in enumerate(ae_levels)}
 sv_by_name = {lv['fname'].replace('\\', '/').lower(): i for i, lv in enumerate(sv_levels)}
@@ -139,32 +140,26 @@ for qname in ALL_CUSTOM_QUEST_NAMES:
 new_quests_data = build_quests(merged_quests)
 print(f'  Quests: {len(ae_quests)} + {len(new_quests)} SV + {added_quests} custom = {len(merged_quests)}')
 
-# --- 5. Convert SV-only level blobs to v0x11 ---
-print('\n=== Converting SV-only levels ===')
-converted_blobs = {}  # sv_only index -> converted blob
-convert_ok = convert_fail = already_v11 = 0
+# --- 5. Keep SV-only level blobs as v0x0e (preserves in-blob pathfinding) ---
+# SVAERA already has 449 v0x0e levels that work fine in Custom Quest mode.
+# Converting to v0x11 breaks cave pathfinding (0x0a section ignored, DATA2 incompatible).
+print('\n=== Loading SV-only level blobs (keeping v0x0e) ===')
+converted_blobs = {}  # sv_only index -> blob (kept as-is)
+v0e_count = v11_count = other_count = 0
 for i, lv in enumerate(sv_only):
     blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+    converted_blobs[i] = blob
     if len(blob) >= 4 and blob[:3] == b'LVL':
         ver = blob[3]
-        if ver == 0x11:
-            converted_blobs[i] = blob
-            already_v11 += 1
-        elif ver == 0x0e:
-            converted = convert_v0e_blob_to_v11(blob, lv['fname'])
-            if converted:
-                converted_blobs[i] = converted
-                convert_ok += 1
-            else:
-                # Keep original if conversion fails
-                converted_blobs[i] = blob
-                convert_fail += 1
+        if ver == 0x0e:
+            v0e_count += 1
+        elif ver == 0x11:
+            v11_count += 1
         else:
-            # Unknown format, keep as-is
-            converted_blobs[i] = blob
+            other_count += 1
     else:
-        converted_blobs[i] = blob
-print(f'  Already v0x11: {already_v11}, converted: {convert_ok}, failed: {convert_fail}')
+        other_count += 1
+print(f'  v0x0e: {v0e_count}, v0x11: {v11_count}, other: {other_count}')
 
 # --- 6. Inject portal NPCs into level blobs ---
 print('\n=== Injecting portal NPCs ===')
@@ -265,19 +260,42 @@ for s in ae_sections:
     if s['type'] not in (SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_LEVELS, SEC_BITMAPS, SEC_DATA2, SEC_DATA):
         unk_sections.append((s['type'], ae_data[s['data_offset']:s['data_offset'] + s['size']]))
 
-# DATA2 from SVAERA (known good for v0x11)
-data2_raw = ae_data[ae_sec[SEC_DATA2]['data_offset']:
-                    ae_sec[SEC_DATA2]['data_offset'] + ae_sec[SEC_DATA2]['size']]
+# DATA2 from SVAERA (base) + SV's DATA2 appended for SV-only levels
+data2_raw = bytearray(ae_data[ae_sec[SEC_DATA2]['data_offset']:
+                              ae_sec[SEC_DATA2]['data_offset'] + ae_sec[SEC_DATA2]['size']])
+orig_data2_len = len(data2_raw)
 
 # Build merged level list: all SVAERA levels + SV-only levels
 merged_levels = [dict(lv) for lv in ae_levels]
 for i, lv in enumerate(sv_only):
     merged_levels.append(dict(lv))
 
-# Build merged bitmaps: SVAERA bitmaps + empty entries for SV-only levels
+# Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
 merged_bitmaps = list(ae_bitmaps)
-for _ in sv_only:
+sv_only_data2 = {}
+sv_only_d2_count = 0
+for i, lv in enumerate(sv_only):
+    lv_key = lv['fname'].replace(chr(92), '/').lower()
+    sv_idx = sv_by_name.get(lv_key)
+    if sv_idx is not None and sv_idx < len(sv_bitmaps) and sv_bitmaps[sv_idx]['length'] > 0:
+        sv_bm = sv_bitmaps[sv_idx]
+        sv_path_data = sv_data[sv_bm['offset']:sv_bm['offset'] + sv_bm['length']]
+        offset_in_data2 = len(data2_raw)
+        data2_raw += sv_path_data
+        sv_only_data2[i] = (offset_in_data2, sv_bm['length'])
+        sv_only_d2_count += 1
+    else:
+        sv_only_data2[i] = None
     merged_bitmaps.append({'offset': 0, 'length': 0, 'parts': 0, 'unknown': 0})
+
+# Patch DATA2 level count to match merged level count
+# DATA2 header: uint32(0) + uint32(level_count) at offset 4
+orig_d2_count = struct.unpack_from('<I', data2_raw, 4)[0]
+struct.pack_into('<I', data2_raw, 4, len(merged_levels))
+print(f'  DATA2 level count: {orig_d2_count} -> {len(merged_levels)}')
+
+data2_raw = bytes(data2_raw)
+print(f'  SV-only DATA2: {sv_only_d2_count}/{len(sv_only)} levels, +{(len(data2_raw) - orig_data2_len)/(1024*1024):.1f} MB')
 
 # Calculate pre-data section layout
 new_levels_data = build_level_index(merged_levels)
@@ -326,6 +344,17 @@ adjusted_bitmaps = [dict(b) for b in merged_bitmaps]
 for i in range(len(ae_bitmaps)):
     if adjusted_bitmaps[i]['offset'] > 0:
         adjusted_bitmaps[i]['offset'] = ae_bitmaps[i]['offset'] + bmp_offset_shift
+
+# Set bitmap entries for SV-only levels (DATA2 pathfinding)
+new_data2_data_start = new_pre_data_size + 8  # after pre-data sections + DATA2 header
+for i, appended_info in sv_only_data2.items():
+    merged_idx = len(ae_levels) + i
+    if appended_info is not None:
+        offset_in_data2, length = appended_info
+        abs_offset = new_data2_data_start + offset_in_data2
+        adjusted_bitmaps[merged_idx]['offset'] = abs_offset
+        adjusted_bitmaps[merged_idx]['length'] = length
+
 new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, ae_bmp_unknown)
 
 # Write map
