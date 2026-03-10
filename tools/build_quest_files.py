@@ -34,11 +34,15 @@ BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 # Must be within the walkable area of the destination level's DATA2 grid.
 # DATA2 grid scale: 4 cells per world unit.
 # Walkable center = grid_origin + (center_col/4, 0, center_row/4)
-CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -2578, 0, -2682  # TODO: validate walkable center
+CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -8148, 0, -256  # DIAG14: ruinedcity02 (idx 30, SV blob swap test)
 DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832  # outdoor, grid origin is walkable
 
-BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -2060, 18, 1322  # walkable center (DATA2 row=114, col=163)
-HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -134, -120, 2174  # outdoor, grid origin is walkable
+# Blood cave entrance: bc_initialpathway walkable center (shifted grid)
+# Grid shift (+1663, 0, +922) → new grid origin (-438, 18, 2215)
+# Local walkable center (41, 0, 29) → world (-397, 18, 2244)
+BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -397, 18, 2244
+# Return to HiddenValley01: confirmed walkable near the cave entrance NPC
+HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -118, -102, 2200
 
 REPEAT_STEPS = 200
 

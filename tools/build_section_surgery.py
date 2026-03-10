@@ -237,6 +237,99 @@ V0E_MAGIC = struct.pack('<I', 0x0e4c564c)
 V11_MAGIC = struct.pack('<I', 0x114c564c)
 
 
+def transplant_rec02(donor_0x0b_data, target_ints_raw):
+    """Transplant a real 0x0b (REC\\x02) section from a donor SVAERA level.
+
+    Patches the header (GUID blocks, center coords, dimensions) to match
+    the target level while keeping the donor's sub-records and mesh data
+    intact. The mesh data is in local coordinates relative to the level
+    center, so updating the header repositions the entire mesh.
+
+    Header layout (variable size based on difficulty_count N):
+      [0-11]:       REC\\x02 magic + uint32(1) + uint32(payload_size)
+      [12-15]:      uint32 difficulty_count (N)
+      [16..16+N*16]: N x 16-byte GUID/hash blocks
+      [+0..+12]:    Level center (3 x int32)
+      [+12..+24]:   Level dimensions (3 x uint32)
+      [+24..]:      Sub-records and mesh data (unchanged)
+    """
+    data = bytearray(donor_0x0b_data)
+
+    if len(data) < 88 or data[:4] != b'REC\x02':
+        return bytes(data)
+
+    vals = struct.unpack_from('<13i', target_ints_raw, 0)
+    uvals = struct.unpack_from('<13I', target_ints_raw, 0)
+    guid = target_ints_raw[36:52]  # ints_raw[9..12]
+
+    # Read difficulty count to find field offsets
+    diff_count = struct.unpack_from('<I', data, 12)[0]
+    if diff_count < 1 or diff_count > 4:
+        diff_count = 3  # safe default
+
+    guid_start = 16
+    center_start = guid_start + diff_count * 16
+    dims_start = center_start + 12
+
+    if dims_start + 12 > len(data):
+        return bytes(data)
+
+    # Patch GUID blocks
+    for i in range(diff_count):
+        off = guid_start + i * 16
+        data[off:off + 16] = guid
+
+    # Patch center coords (grid_corner + half_dimensions)
+    center_x = vals[6] + vals[3]
+    center_y = vals[7] + vals[1]
+    center_z = vals[8] + vals[5]
+    struct.pack_into('<iii', data, center_start, center_x, center_y, center_z)
+
+    # Patch dimensions
+    dim_x = uvals[3] + 16
+    dim_y = max(uvals[4] - 4, 1) if uvals[4] >= 5 else uvals[4] + 12
+    dim_z = uvals[5] + 16
+    struct.pack_into('<III', data, dims_start, dim_x, dim_y, dim_z)
+
+    return bytes(data)
+
+
+def inject_rec02_into_blob(blob, ints_raw, donor_data=None):
+    """Add a 0x0b (REC\\x02) section to a level blob that lacks one.
+
+    If donor_data is provided, transplants it (patches header coords).
+    Otherwise does nothing (returns original blob).
+
+    Returns the modified blob, or the original if it already has 0x0b.
+    """
+    secs, magic = parse_blob_sections(blob)
+    if not secs:
+        return blob
+
+    # Check if 0x0b already exists
+    if any(s['type'] == 0x0b for s in secs):
+        return blob
+
+    if donor_data is None:
+        return blob
+
+    # Transplant donor data with target's header coords
+    patched = transplant_rec02(donor_data, ints_raw)
+
+    # Insert 0x0b after 0x09 (grid) if present, otherwise at end before 0x17
+    insert_idx = len(secs)
+    for i, s in enumerate(secs):
+        if s['type'] == 0x09:
+            insert_idx = i + 1
+            break
+        elif s['type'] == 0x17:
+            insert_idx = i
+            break
+
+    secs.insert(insert_idx, {'type': 0x0b, 'data': patched})
+    return rebuild_blob(magic, secs)
+
+
 def convert_0x05_v0e_to_v11(data):
     """Convert v0x0e 0x05 section data (56-byte records) to v0x11 format (72-byte records).
 
@@ -398,8 +491,8 @@ def convert_v0e_blob_to_v11(blob, level_name=''):
             # Skip 0x09 grid section (v0x0e-only)
             continue
         elif s['type'] == 0x0a:
-            # Rename 0x0a (TQIT terrain/collision) to 0x0b (TQAE terrain/collision)
-            new_secs.append({'type': 0x0b, 'data': s['data']})
+            # Keep 0x0a as-is (PTH\x04 TQIT pathfinding — different format from 0x0b/REC\x02)
+            new_secs.append({'type': 0x0a, 'data': s['data']})
         elif s['type'] == 0x14:
             has_0x14 = True
             new_secs.append(s)

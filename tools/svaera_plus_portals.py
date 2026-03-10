@@ -18,7 +18,7 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
 from build_section_surgery import (
     INJECT_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
     parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11,
-    inject_into_sv_only_blob)
+    inject_into_sv_only_blob, inject_rec02_into_blob)
 
 # --- GROUPS parsing ---
 def _find_next_groups_record(data, start, end_limit):
@@ -85,6 +85,24 @@ ae_levels = parse_level_index(ae_data, ae_sec[SEC_LEVELS])
 ae_quests = parse_quests(ae_data, ae_sec[SEC_QUESTS])
 ae_bitmaps = parse_bitmap_index(ae_data, ae_sec[SEC_BITMAPS])
 ae_bmp_unknown = struct.unpack_from('<I', ae_data, ae_sec[SEC_BITMAPS]['data_offset'])[0]
+
+# Build REC\x02 donor pool from SVAERA v0x0e levels (real 0x0b mesh data)
+print('Building REC\\x02 donor pool...')
+rec02_donor_pool = {}  # (half_w, half_h) -> smallest real 0x0b data
+for lv in ae_levels:
+    blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+    if len(blob) < 4 or blob[:3] != b'LVL' or blob[3] != 0x0e:
+        continue
+    secs, _ = parse_blob_sections(blob)
+    for s in secs:
+        if s['type'] == 0x0b and len(s['data']) > 500:
+            ir = struct.unpack_from('<13I', lv['ints_raw'], 0)
+            key = (ir[3], ir[5])
+            # Keep the smallest real 0x0b for each dimension pair (minimize output size)
+            if key not in rec02_donor_pool or len(s['data']) < len(rec02_donor_pool[key]):
+                rec02_donor_pool[key] = s['data']
+            break
+print(f'  {len(rec02_donor_pool)} unique dimension pairs with real 0x0b data')
 
 print('Loading SV...')
 sv_arc_obj = ArcArchive.from_file(sv_path)
@@ -248,19 +266,34 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
             new_secs.append(s)
     ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
 
-# --- 7b. Convert SV-only blobs from v0x0e to v0x11 ---
-# TQAE engine uses DATA2 for pathfinding in v0x11 levels. v0x0e in-blob pathfinding
-# from the TQIT era is not compatible with TQAE Custom Quest mode.
-print('\n=== Converting SV-only levels to v0x11 ===')
-v0e_converted = 0
-for i in range(len(sv_only)):
-    blob = converted_blobs[i]
-    if blob[:3] == b'LVL' and blob[3] == 0x0e:
-        result = convert_v0e_blob_to_v11(blob, sv_only[i]['fname'])
-        if result is not None:
-            converted_blobs[i] = result
-            v0e_converted += 1
-print(f'  Converted {v0e_converted}/{len(sv_only)} levels from v0x0e to v0x11')
+# --- 7b. (DISABLED) Transplant/strip pathfinding sections ---
+print('\n=== Pathfinding section modification DISABLED (testing raw SV blobs) ===')
+
+# --- 7d. DIAGNOSTIC: Replace a SHARED level's SVAERA blob with SV's version ---
+# Both versions describe the SAME level geometry. SVAERA version has 0x0b (works).
+# SV version has 0x0a only (no 0x0b). If SV version fails at the same index,
+# it PROVES the engine requires valid 0x0b in a TQAE-compiled map.
+# Using ArcadiaDungeonPassage (idx 973) — a shared v0x0e level.
+REPLACE_IDX = 30  # ruinedcity02.lvl — shared v0x0e, AE has 0x0b, SV has 0x0a only
+ae_lv = ae_levels[REPLACE_IDX]
+replace_key = ae_lv['fname'].replace(chr(92), '/').lower()
+sv_replace_idx = sv_by_name.get(replace_key)
+if sv_replace_idx is not None:
+    sv_lv = sv_levels[sv_replace_idx]
+    sv_blob = sv_data[sv_lv['data_offset']:sv_lv['data_offset'] + sv_lv['data_length']]
+    ae_blob = ae_data[ae_lv['data_offset']:ae_lv['data_offset'] + ae_lv['data_length']]
+    # Replace SVAERA blob with SV blob (same level, different pathfinding sections)
+    ae_patched_blobs[REPLACE_IDX] = sv_blob
+    print(f'  REPLACE: Swapped SVAERA blob at idx {REPLACE_IDX} with SV version')
+    print(f'    {ae_lv["fname"]}')
+    print(f'    AE blob: {len(ae_blob)} bytes -> SV blob: {len(sv_blob)} bytes')
+    from build_section_surgery import parse_blob_sections as pbs
+    ae_secs, _ = pbs(ae_blob)
+    sv_secs, _ = pbs(sv_blob)
+    print(f'    AE sections: {[hex(s["type"]) for s in ae_secs]}')
+    print(f'    SV sections: {[hex(s["type"]) for s in sv_secs]}')
+else:
+    print(f'  REPLACE: {replace_key} not found in SV!')
 
 # --- 8. Rebuild map ---
 print('\n=== Rebuilding map ===')
@@ -278,9 +311,33 @@ data2_raw = bytearray(ae_data[ae_sec[SEC_DATA2]['data_offset']:
 orig_data2_len = len(data2_raw)
 
 # Build merged level list: all SVAERA levels + SV-only levels
+# Move blood cave levels to overlap with HiddenValley01's grid area so the engine
+# includes them in the active world grid (required for pathfinding activation).
+# Cave interiors are visually independent of world position.
+GRID_SHIFT = {
+    # Shift entire xBloodCave cluster so xPassageTransitionStart's east edge
+    # touches HighAltituedBorder01's west edge (X=-198, Z[2135,2263]).
+    # This connects the blood cave chain to the SVAERA world grid.
+    # xPassageTransitionStart: original (-2021, 1213), w=160 → new X=[-358,-198]
+    # bc_initialpathway: new grid (-438, 18, 2215), walkable center at (-397, 18, 2244)
+    'xbloodcave': (1663, 0, 922),  # dx, dy, dz
+}
+
 merged_levels = [dict(lv) for lv in ae_levels]
+grid_shifted = 0
 for i, lv in enumerate(sv_only):
-    merged_levels.append(dict(lv))
+    entry = dict(lv)
+    key = lv['fname'].replace('\\', '/').lower()
+    for pattern, (dx, dy, dz) in GRID_SHIFT.items():
+        if pattern in key:
+            raw = bytearray(entry['ints_raw'])
+            ox, oy, oz = struct.unpack_from('<iii', raw, 24)
+            struct.pack_into('<iii', raw, 24, ox + dx, oy + dy, oz + dz)
+            entry['ints_raw'] = bytes(raw)
+            grid_shifted += 1
+            break
+    merged_levels.append(entry)
+print(f'  Grid-shifted {grid_shifted} SV-only levels for world grid connectivity')
 
 # Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
 merged_bitmaps = list(ae_bitmaps)
@@ -299,6 +356,14 @@ for i, lv in enumerate(sv_only):
     else:
         sv_only_data2[i] = None
     merged_bitmaps.append({'offset': 0, 'length': 0, 'parts': 0, 'unknown': 0})
+
+# Append any pending bitmap data from replaced levels
+_replace_bm_offsets = {}  # ae_idx -> offset_in_data2
+for i in range(len(ae_bitmaps)):
+    if isinstance(ae_bitmaps[i], dict) and '_pending_data' in ae_bitmaps[i]:
+        _replace_bm_offsets[i] = len(data2_raw)
+        data2_raw += ae_bitmaps[i]['_pending_data']
+        print(f'  Appended replacement bitmap for idx {i} at DATA2 offset {_replace_bm_offsets[i]}')
 
 # Patch DATA2 level count to match merged level count
 # DATA2 header: uint32(0) + uint32(level_count) at offset 4
@@ -354,7 +419,14 @@ ae_pre_data = ae_sec[SEC_DATA2]['header_offset']
 bmp_offset_shift = new_pre_data_size - ae_pre_data
 adjusted_bitmaps = [dict(b) for b in merged_bitmaps]
 for i in range(len(ae_bitmaps)):
-    if adjusted_bitmaps[i]['offset'] > 0:
+    if i in _replace_bm_offsets:
+        # Replaced level — use pre-computed offset from DATA2 append
+        bm_entry = ae_bitmaps[i]
+        abs_off = (new_pre_data_size + 8) + _replace_bm_offsets[i]
+        adjusted_bitmaps[i]['offset'] = abs_off
+        adjusted_bitmaps[i]['length'] = bm_entry['length']
+        print(f'  Replaced bitmap at idx {i}: offset={abs_off}, length={bm_entry["length"]}')
+    elif adjusted_bitmaps[i]['offset'] > 0:
         adjusted_bitmaps[i]['offset'] = ae_bitmaps[i]['offset'] + bmp_offset_shift
 
 # Set bitmap entries for SV-only levels (DATA2 pathfinding)
