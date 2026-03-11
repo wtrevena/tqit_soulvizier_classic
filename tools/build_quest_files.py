@@ -25,22 +25,16 @@ from qst_format import (
 
 # Use EXISTING NPCs already placed by the level editor (real game entities)
 # Binary 0x05 injection creates rendered meshes but NOT interactive entities
-ENTRANCE_NPC = r'Records\Creature\NPC\Merchants\Greece\Merchant_Delphi_Quest.dbr'
-RETURN_NPC = r'records\quests\portal_uberdungeon_return.dbr'
+# Delphi NPC REMOVED — injection corrupts level blob, crashes game
 BLOODCAVE_ENTRANCE_NPC = r'records\creature\npc\speaking\orient\silkroad_villager1.dbr'
 BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 
-# BoatDialog coords: world-space position where the player spawns.
-# Must be within the walkable area of the destination level's DATA2 grid.
-# DATA2 grid scale: 4 cells per world unit.
-# Walkable center = grid_origin + (center_col/4, 0, center_row/4)
-CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = 4148, 0, 9567  # TASK1: SVAERA clone at 2281+ (grid shifted +10500,0,+10500 from ArcadiaDungeonPassage)
-DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832  # outdoor, grid origin is walkable
+# TASK 1 TEST: HiddenValley01 NPC -> SVAERA clone at idx 2281
+# Clone is ArcadiaDungeonPassage with grid shifted (+10500,0,+10500)
+# Clone grid origin: (4068, 0, 9447), dims: (80, 120)
+# Walkable center: grid_origin + (dims/2) = (4108, 0, 9507)
+CLONE_X, CLONE_Y, CLONE_Z = 4108, 0, 9507
 
-# Blood cave entrance: bc_initialpathway walkable center (shifted grid)
-# Grid shift (+1663, 0, +922) → new grid origin (-438, 18, 2215)
-# Local walkable center (41, 0, 29) → world (-397, 18, 2244)
-BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -397, 18, 2244
 # Return to HiddenValley01: confirmed walkable near the cave entrance NPC
 HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -118, -102, 2200
 
@@ -49,10 +43,10 @@ REPEAT_STEPS = 200
 DIALOG_NEEDED_DBR = r'Records\Dialog\Story\Dialog Needed.dbr'
 
 # Portal definitions: (npc_dbr, tag, x, y, z)
+# Portal 1: HiddenValley01 NPC -> SVAERA clone (TASK 1 TEST)
+# Portal 2: Blood cave return -> HiddenValley01
 PORTALS = [
-    (ENTRANCE_NPC, 'tagNewPortal1Desc', CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z),
-    (RETURN_NPC, 'tagNewPortal1Desc', DELPHI04_X, DELPHI04_Y, DELPHI04_Z),
-    (BLOODCAVE_ENTRANCE_NPC, 'tagNewPortal1Desc', BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z),
+    (BLOODCAVE_ENTRANCE_NPC, 'tagNewPortal1Desc', CLONE_X, CLONE_Y, CLONE_Z),
     (BLOODCAVE_RETURN_NPC, 'tagNewPortal1Desc', HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z),
 ]
 

@@ -119,9 +119,7 @@ BLOODCAVE_RETURN_NPC_DBR = b'records\\quests\\portal_bloodcave_return.dbr'
 # HiddenValley01: cave entrance at (14.0, 18.0, 26.0), POI at (15.84, 18.0, 26.58)
 # BC_initialpathway: SV blood cave entrance level
 INJECT_SPECS = {
-    'levels/world/greece/delphi/delphilowlands04.lvl': [
-        (ENTRANCE_NPC_DBR, 4.0, 10.0, 14.0),
-    ],
+    # Delphi NPC injection REMOVED — corrupts v0x11 blob, crashes game on world streaming
     'levels/world/uberdungeon/crypt_floor1.lvl': [
         (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
     ],
