@@ -30,10 +30,10 @@ BLOODCAVE_ENTRANCE_NPC = r'records\creature\npc\speaking\orient\silkroad_village
 BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 
 # TASK 1 TEST: HiddenValley01 NPC -> SVAERA clone at idx 2281
-# Clone is ArcadiaDungeonPassage with grid shifted (+10500,0,+10500)
-# Clone grid origin: (4068, 0, 9447), dims: (80, 120)
-# Walkable center: grid_origin + (dims/2) = (4108, 0, 9507)
-CLONE_X, CLONE_Y, CLONE_Z = 4108, 0, 9507
+# Clone is ArcadiaDungeonPassage with grid shifted (+80,0,0) — adjacent to donor
+# Clone grid origin: (-6352, 0, -1053), dims: (80, 120)
+# Walkable center: grid_origin + (dims/2) = (-6312, 0, -993)
+CLONE_X, CLONE_Y, CLONE_Z = -6312, 0, -993
 
 # Return to HiddenValley01: confirmed walkable near the cave entrance NPC
 HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -118, -102, 2200

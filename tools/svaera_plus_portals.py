@@ -274,7 +274,7 @@ print('\n=== Pathfinding section modification DISABLED (testing raw SV blobs) ==
 # Clone ArcadiaDungeonPassage (idx 973, known-good SVAERA v0x0e level).
 # Shift grid to non-overlapping position. New unique GUID. Blob unchanged.
 CLONE_DONOR_IDX = 973
-CLONE_GRID_SHIFT = (10500, 0, 10500)  # far from all existing levels
+CLONE_GRID_SHIFT = (80, 0, 0)  # one tile-width right of donor, adjacent for streaming
 _donor = ae_levels[CLONE_DONOR_IDX]
 _donor_blob = ae_data[_donor['data_offset']:_donor['data_offset'] + _donor['data_length']]
 
