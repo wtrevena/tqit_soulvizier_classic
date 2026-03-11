@@ -29,11 +29,11 @@ from qst_format import (
 BLOODCAVE_ENTRANCE_NPC = r'records\creature\npc\speaking\orient\silkroad_villager1.dbr'
 BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 
-# TASK 1 TEST: HiddenValley01 NPC -> SVAERA clone at idx 2281
-# Clone is ArcadiaDungeonPassage with grid shifted (+80,0,0) — adjacent to donor
-# Clone grid origin: (-6352, 0, -1053), dims: (80, 120)
-# Walkable center: grid_origin + (dims/2) = (-6312, 0, -993)
-CLONE_X, CLONE_Y, CLONE_Z = -6312, 0, -993
+# APPROACH 18 TEST: HiddenValley01 NPC -> SVAERA 0x0a-only level (LechaionHarbor_B)
+# SVAERA idx 1113, v0x0e, sections [0x05,0x06,0x09,0x0a,0x14,0x17] — has 0x0a, NO 0x0b
+# Grid: (-7724, 0, -72), dims: (128, 64)
+# Walkable center: grid_origin + (dims/2) = (-7660, 0, -40)
+HARBOR_X, HARBOR_Y, HARBOR_Z = -7660, 0, -40
 
 # Return to HiddenValley01: confirmed walkable near the cave entrance NPC
 HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -118, -102, 2200
@@ -43,10 +43,10 @@ REPEAT_STEPS = 200
 DIALOG_NEEDED_DBR = r'Records\Dialog\Story\Dialog Needed.dbr'
 
 # Portal definitions: (npc_dbr, tag, x, y, z)
-# Portal 1: HiddenValley01 NPC -> SVAERA clone (TASK 1 TEST)
+# Portal 1: HiddenValley01 NPC -> LechaionHarbor_B (SVAERA 0x0a-only, approach 18)
 # Portal 2: Blood cave return -> HiddenValley01
 PORTALS = [
-    (BLOODCAVE_ENTRANCE_NPC, 'tagNewPortal1Desc', CLONE_X, CLONE_Y, CLONE_Z),
+    (BLOODCAVE_ENTRANCE_NPC, 'tagNewPortal1Desc', HARBOR_X, HARBOR_Y, HARBOR_Z),
     (BLOODCAVE_RETURN_NPC, 'tagNewPortal1Desc', HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z),
 ]
 
