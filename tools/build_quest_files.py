@@ -34,7 +34,7 @@ BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 # Must be within the walkable area of the destination level's DATA2 grid.
 # DATA2 grid scale: 4 cells per world unit.
 # Walkable center = grid_origin + (center_col/4, 0, center_row/4)
-CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = -8148, 0, -256  # DIAG14: ruinedcity02 (idx 30, SV blob swap test)
+CRYPT_FLOOR1_X, CRYPT_FLOOR1_Y, CRYPT_FLOOR1_Z = 4148, 0, 9567  # TASK1: SVAERA clone at 2281+ (grid shifted +10500,0,+10500 from ArcadiaDungeonPassage)
 DELPHI04_X, DELPHI04_Y, DELPHI04_Z = -8868, 0, -832  # outdoor, grid origin is walkable
 
 # Blood cave entrance: bc_initialpathway walkable center (shifted grid)

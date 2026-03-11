@@ -269,31 +269,47 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
 # --- 7b. (DISABLED) Transplant/strip pathfinding sections ---
 print('\n=== Pathfinding section modification DISABLED (testing raw SV blobs) ===')
 
-# --- 7d. DIAGNOSTIC: Replace a SHARED level's SVAERA blob with SV's version ---
-# Both versions describe the SAME level geometry. SVAERA version has 0x0b (works).
-# SV version has 0x0a only (no 0x0b). If SV version fails at the same index,
-# it PROVES the engine requires valid 0x0b in a TQAE-compiled map.
-# Using ArcadiaDungeonPassage (idx 973) — a shared v0x0e level.
-REPLACE_IDX = 30  # ruinedcity02.lvl — shared v0x0e, AE has 0x0b, SV has 0x0a only
-ae_lv = ae_levels[REPLACE_IDX]
-replace_key = ae_lv['fname'].replace(chr(92), '/').lower()
-sv_replace_idx = sv_by_name.get(replace_key)
-if sv_replace_idx is not None:
-    sv_lv = sv_levels[sv_replace_idx]
-    sv_blob = sv_data[sv_lv['data_offset']:sv_lv['data_offset'] + sv_lv['data_length']]
-    ae_blob = ae_data[ae_lv['data_offset']:ae_lv['data_offset'] + ae_lv['data_length']]
-    # Replace SVAERA blob with SV blob (same level, different pathfinding sections)
-    ae_patched_blobs[REPLACE_IDX] = sv_blob
-    print(f'  REPLACE: Swapped SVAERA blob at idx {REPLACE_IDX} with SV version')
-    print(f'    {ae_lv["fname"]}')
-    print(f'    AE blob: {len(ae_blob)} bytes -> SV blob: {len(sv_blob)} bytes')
-    from build_section_surgery import parse_blob_sections as pbs
-    ae_secs, _ = pbs(ae_blob)
-    sv_secs, _ = pbs(sv_blob)
-    print(f'    AE sections: {[hex(s["type"]) for s in ae_secs]}')
-    print(f'    SV sections: {[hex(s["type"]) for s in sv_secs]}')
-else:
-    print(f'  REPLACE: {replace_key} not found in SV!')
+# --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
+# Tests whether there is a hidden append-time registration gate.
+# Clone ArcadiaDungeonPassage (idx 973, known-good SVAERA v0x0e level).
+# Shift grid to non-overlapping position. New unique GUID. Blob unchanged.
+CLONE_DONOR_IDX = 973
+CLONE_GRID_SHIFT = (10500, 0, 10500)  # far from all existing levels
+_donor = ae_levels[CLONE_DONOR_IDX]
+_donor_blob = ae_data[_donor['data_offset']:_donor['data_offset'] + _donor['data_length']]
+
+# Build new LEVELS record: copy donor metadata, shift grid, new GUID
+_clone_ints = bytearray(_donor['ints_raw'])
+_orig_gx, _orig_gy, _orig_gz = struct.unpack_from('<iii', _clone_ints, 24)
+_new_gx = _orig_gx + CLONE_GRID_SHIFT[0]
+_new_gy = _orig_gy + CLONE_GRID_SHIFT[1]
+_new_gz = _orig_gz + CLONE_GRID_SHIFT[2]
+struct.pack_into('<iii', _clone_ints, 24, _new_gx, _new_gy, _new_gz)
+# Write a new unique GUID (deterministic, won't collide with any existing)
+struct.pack_into('<iiii', _clone_ints, 36, 0x7F000001, 0x7F000002, 0x7F000003, 0x7F000004)
+_clone_entry = {
+    'ints_raw': bytes(_clone_ints),
+    'dbr_raw': _donor['dbr_raw'],
+    'dbr': _donor['dbr'],
+    'fname_raw': _donor['fname_raw'],
+    'fname': _donor['fname'],
+    'data_offset': 0,  # patched later
+    'data_length': len(_donor_blob),
+}
+# Store for use during map rebuild
+_append_clone_blob = _donor_blob
+_append_clone_entry = _clone_entry
+
+# Clone's bitmap: copy from donor (shifted later during bitmap fixup)
+_donor_bm = ae_bitmaps[CLONE_DONOR_IDX]
+
+_ir = struct.unpack_from('<13i', _clone_ints, 0)
+print(f'  APPEND-CLONE: Cloning SVAERA idx {CLONE_DONOR_IDX} as new appended level')
+print(f'    Donor: {_donor["fname"]}')
+print(f'    Blob: {len(_donor_blob)} bytes (unchanged)')
+print(f'    Grid: ({_orig_gx},{_orig_gy},{_orig_gz}) -> ({_new_gx},{_new_gy},{_new_gz})')
+print(f'    New GUID: [{_ir[9]}, {_ir[10]}, {_ir[11]}, {_ir[12]}]')
+print(f'    Donor bitmap: offset={_donor_bm["offset"]}, length={_donor_bm["length"]}')
 
 # --- 8. Rebuild map ---
 print('\n=== Rebuilding map ===')
@@ -337,7 +353,11 @@ for i, lv in enumerate(sv_only):
             grid_shifted += 1
             break
     merged_levels.append(entry)
+# Append the SVAERA clone as the final level
+merged_levels.append(_append_clone_entry)
+_clone_merged_idx = len(merged_levels) - 1
 print(f'  Grid-shifted {grid_shifted} SV-only levels for world grid connectivity')
+print(f'  Appended SVAERA clone at merged index {_clone_merged_idx}')
 
 # Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
 merged_bitmaps = list(ae_bitmaps)
@@ -356,6 +376,19 @@ for i, lv in enumerate(sv_only):
     else:
         sv_only_data2[i] = None
     merged_bitmaps.append({'offset': 0, 'length': 0, 'parts': 0, 'unknown': 0})
+
+# Append clone's bitmap (copy donor's DATA2 data)
+if _donor_bm['length'] > 0:
+    _clone_bm_offset = len(data2_raw)
+    _clone_bm_data = ae_data[_donor_bm['offset']:_donor_bm['offset'] + _donor_bm['length']]
+    data2_raw += _clone_bm_data
+    merged_bitmaps.append({'offset': 0, 'length': _donor_bm['length']})
+    sv_only_data2[len(sv_only)] = (_clone_bm_offset, _donor_bm['length'])
+    print(f'  Clone bitmap: {len(_clone_bm_data)} bytes appended to DATA2')
+else:
+    merged_bitmaps.append({'offset': 0, 'length': 0})
+    sv_only_data2[len(sv_only)] = None
+    print(f'  Clone bitmap: donor has no bitmap data')
 
 # Append any pending bitmap data from replaced levels
 _replace_bm_offsets = {}  # ae_idx -> offset_in_data2
@@ -409,7 +442,12 @@ for i, lv in enumerate(sv_only):
     merged_levels[ae_count + i]['data_length'] = len(blob)
     compacted_data += blob
 
-print(f'  DATA: {len(compacted_data)/(1024**2):.1f} MB ({len(ae_levels)} SVAERA + {len(sv_only)} SV-only)')
+# Append the SVAERA clone blob
+merged_levels[_clone_merged_idx]['data_offset'] = data_start + len(compacted_data)
+merged_levels[_clone_merged_idx]['data_length'] = len(_append_clone_blob)
+compacted_data += _append_clone_blob
+
+print(f'  DATA: {len(compacted_data)/(1024**2):.1f} MB ({len(ae_levels)} SVAERA + {len(sv_only)} SV-only + 1 clone)')
 
 # Rebuild levels index with corrected offsets
 new_levels_data = build_level_index(merged_levels)
