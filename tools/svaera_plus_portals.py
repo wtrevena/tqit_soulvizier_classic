@@ -266,8 +266,12 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
             new_secs.append(s)
     ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
 
-# --- 7b. (DISABLED) Transplant/strip pathfinding sections ---
-print('\n=== Pathfinding section modification DISABLED (testing raw SV blobs) ===')
+# --- 7b. Transplant 0x0b (REC\x02) pathfinding into SV-only level blobs ---
+# DISABLED: Engine.dll is now patched to route 0x0a sections through the 0x0b
+# handler's init path. This initializes the pathfinding handler (preventing
+# crashes) while preserving the original PTH\x04 data. Testing pure 0x0a
+# handling with the Engine.dll code-cave patch.
+print('\n=== 0x0b transplant DISABLED (testing Engine.dll 0x0a patch) ===')
 
 # --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
 # Tests whether there is a hidden append-time registration gate.
