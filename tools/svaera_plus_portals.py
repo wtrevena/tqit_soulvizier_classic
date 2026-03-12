@@ -267,11 +267,32 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
     ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
 
 # --- 7b. Transplant 0x0b (REC\x02) pathfinding into SV-only level blobs ---
-# DISABLED: Engine.dll is now patched to route 0x0a sections through the 0x0b
-# handler's init path. This initializes the pathfinding handler (preventing
-# crashes) while preserving the original PTH\x04 data. Testing pure 0x0a
-# handling with the Engine.dll code-cave patch.
-print('\n=== 0x0b transplant DISABLED (testing Engine.dll 0x0a patch) ===')
+# SV-only levels have 0x0a (PTH\x04) pathfinding which TQAE cannot parse.
+# Transplant dimension-matched 0x0b (REC\x02) data from SVAERA donors so the
+# engine has valid Recast nav mesh data for these levels.
+print('\n=== Transplanting 0x0b pathfinding into SV-only levels ===')
+transplant_ok = 0
+transplant_fail = 0
+# Find smallest donor as fallback (for unmatched dimensions)
+fallback_donor = min(rec02_donor_pool.values(), key=len) if rec02_donor_pool else None
+for i in range(len(sv_only)):
+    blob = converted_blobs[i]
+    lv = sv_only[i]
+    ir = struct.unpack_from('<13I', lv['ints_raw'], 0)
+    key = (ir[3], ir[5])
+    donor = rec02_donor_pool.get(key, fallback_donor)
+    if donor is not None:
+        result = inject_rec02_into_blob(blob, lv['ints_raw'], donor_data=donor)
+        if result != blob:
+            converted_blobs[i] = result
+            transplant_ok += 1
+        else:
+            transplant_fail += 1
+    else:
+        transplant_fail += 1
+print(f'  Transplanted: {transplant_ok}/{len(sv_only)}')
+if transplant_fail:
+    print(f'  Failed/skipped: {transplant_fail}')
 
 # --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
 # Tests whether there is a hidden append-time registration gate.
