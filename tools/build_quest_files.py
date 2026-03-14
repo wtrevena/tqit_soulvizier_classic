@@ -35,7 +35,7 @@ BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -2060, 18, 1322
 # Return to HiddenValley01: confirmed walkable near the cave entrance NPC
 HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -118, -102, 2200
 
-REPEAT_STEPS = 1000
+REPEAT_STEPS = 200
 
 DIALOG_NEEDED_DBR = r'Records\Dialog\Story\Dialog Needed.dbr'
 
