@@ -292,11 +292,79 @@ def transplant_rec02(donor_0x0b_data, target_ints_raw):
     return bytes(data)
 
 
-def inject_rec02_into_blob(blob, ints_raw, donor_data=None):
+def build_minimal_rec02(ints_raw):
+    """Build a minimal valid 0x0b (REC\\x02) section body.
+
+    Contains the REC\\x02 header with correct level coords plus the standard
+    44-byte Recast parameter header and zero tile counts.  This is enough for
+    ProcessRLTD to initialize the RLTD handler with valid Recast build
+    parameters.  Level::CreatePathMesh / ProcessRLTD_flow can then generate
+    the actual navigation mesh from the level's entity geometry at runtime.
+
+    REC\\x02 format:
+      [0-3]:   'REC\\x02' magic
+      [4-7]:   uint32 version = 1
+      [8-11]:  uint32 payload_size (everything after first 12 bytes)
+      [12-15]: uint32 diff_count (3 = Normal/Epic/Legendary)
+      [16-63]: 3 x 16-byte GUID blocks
+      [64-75]: center coords (3 x int32)
+      [76-87]: dimensions (3 x uint32)
+      --- Body ---
+      [88-131]:  44-byte Recast parameter header (standard values)
+      [132-147]: 4 x uint32 tile counts = 0 (no pre-built tiles)
+    """
+    vals = struct.unpack_from('<13i', ints_raw, 0)
+    uvals = struct.unpack_from('<13I', ints_raw, 0)
+    guid = ints_raw[36:52]  # ints_raw[9..12]
+
+    diff_count = 3
+    # Center = grid_corner + half_dimensions
+    center_x = vals[6] + vals[3]
+    center_y = vals[7] + vals[1]
+    center_z = vals[8] + vals[5]
+    # Dimensions with padding (matching transplant_rec02 logic)
+    dim_x = uvals[3] + 16
+    dim_y = max(uvals[4] - 4, 1) if uvals[4] >= 5 else uvals[4] + 12
+    dim_z = uvals[5] + 16
+
+    data = bytearray()
+    data += b'REC\x02'                              # magic
+    data += struct.pack('<I', 1)                     # version
+    data += struct.pack('<I', 0)                     # payload_size (patched below)
+    data += struct.pack('<I', diff_count)            # diff_count
+    for _ in range(diff_count):
+        data += guid                                 # GUID blocks
+    data += struct.pack('<3i', center_x, center_y, center_z)  # center
+    data += struct.pack('<3I', dim_x, dim_y, dim_z)  # dimensions
+
+    # 44-byte Recast parameter header (identical across all TQAE levels)
+    data += struct.pack('<3f', 0.0, 0.0, 0.0)        # 3x zero
+    data += struct.pack('<2f', 0.2, 0.2)              # cellSize, cellHeight
+    data += struct.pack('<2I', 64, 64)                # tileSize (cells)
+    data += struct.pack('<f', 2.0)                    # agentHeight
+    data += struct.pack('<f', 0.4)                    # agentMaxClimb
+    data += struct.pack('<f', 1.0)                    # agentRadius
+    data += struct.pack('<f', 1.3)                    # unknown param
+
+    # 4 x uint32 tile counts = 0 (no pre-built tiles)
+    data += struct.pack('<4I', 0, 0, 0, 0)
+
+    # Patch payload_size = total - 12 (magic + version + payload_size field)
+    struct.pack_into('<I', data, 8, len(data) - 12)
+
+    return bytes(data)
+
+
+def inject_rec02_into_blob(blob, ints_raw, donor_data=None, use_stub=False):
     """Add a 0x0b (REC\\x02) section to a level blob that lacks one.
 
-    If donor_data is provided, transplants it (patches header coords).
+    If use_stub=True, builds a minimal REC\\x02 stub with Recast parameters
+    but no pre-built tiles (lets the engine generate navmesh from geometry).
+    If donor_data is provided (and use_stub=False), transplants it.
     Otherwise does nothing (returns original blob).
+
+    Also strips any 0x0a sections to prevent ProcessRLTD reinit from undoing
+    the 0x0b handler state (0x0a routes to the same handler via Engine.dll patch).
 
     Returns the modified blob, or the original if it already has 0x0b.
     """
@@ -308,11 +376,15 @@ def inject_rec02_into_blob(blob, ints_raw, donor_data=None):
     if any(s['type'] == 0x0b for s in secs):
         return blob
 
-    if donor_data is None:
+    if use_stub:
+        rec02_data = build_minimal_rec02(ints_raw)
+    elif donor_data is not None:
+        rec02_data = transplant_rec02(donor_data, ints_raw)
+    else:
         return blob
 
-    # Transplant donor data with target's header coords
-    patched = transplant_rec02(donor_data, ints_raw)
+    # Strip any 0x0a sections (would re-trigger ProcessRLTD init after 0x0b)
+    secs = [s for s in secs if s['type'] != 0x0a]
 
     # Insert 0x0b after 0x09 (grid) if present, otherwise at end before 0x17
     insert_idx = len(secs)
@@ -324,7 +396,7 @@ def inject_rec02_into_blob(blob, ints_raw, donor_data=None):
             insert_idx = i
             break
 
-    secs.insert(insert_idx, {'type': 0x0b, 'data': patched})
+    secs.insert(insert_idx, {'type': 0x0b, 'data': rec02_data})
     return rebuild_blob(magic, secs)
 
 

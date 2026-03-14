@@ -86,23 +86,10 @@ ae_quests = parse_quests(ae_data, ae_sec[SEC_QUESTS])
 ae_bitmaps = parse_bitmap_index(ae_data, ae_sec[SEC_BITMAPS])
 ae_bmp_unknown = struct.unpack_from('<I', ae_data, ae_sec[SEC_BITMAPS]['data_offset'])[0]
 
-# Build REC\x02 donor pool from SVAERA v0x0e levels (real 0x0b mesh data)
-print('Building REC\\x02 donor pool...')
-rec02_donor_pool = {}  # (half_w, half_h) -> smallest real 0x0b data
-for lv in ae_levels:
-    blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-    if len(blob) < 4 or blob[:3] != b'LVL' or blob[3] != 0x0e:
-        continue
-    secs, _ = parse_blob_sections(blob)
-    for s in secs:
-        if s['type'] == 0x0b and len(s['data']) > 500:
-            ir = struct.unpack_from('<13I', lv['ints_raw'], 0)
-            key = (ir[3], ir[5])
-            # Keep the smallest real 0x0b for each dimension pair (minimize output size)
-            if key not in rec02_donor_pool or len(s['data']) < len(rec02_donor_pool[key]):
-                rec02_donor_pool[key] = s['data']
-            break
-print(f'  {len(rec02_donor_pool)} unique dimension pairs with real 0x0b data')
+# Donor pool no longer needed — using minimal REC\x02 stubs instead.
+# The engine's built-in Recast generator (ProcessRLTD_flow @ VA 0x101F6210)
+# builds navmeshes from level geometry at runtime when the RLTD handler has
+# valid Recast parameters but no pre-built tiles.
 
 print('Loading SV...')
 sv_arc_obj = ArcArchive.from_file(sv_path)
@@ -268,31 +255,27 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
 
 # --- 7b. Transplant 0x0b (REC\x02) pathfinding into SV-only level blobs ---
 # SV-only levels have 0x0a (PTH\x04) pathfinding which TQAE cannot parse.
-# Transplant dimension-matched 0x0b (REC\x02) data from SVAERA donors so the
-# engine has valid Recast nav mesh data for these levels.
-print('\n=== Transplanting 0x0b pathfinding into SV-only levels ===')
-transplant_ok = 0
-transplant_fail = 0
-# Find smallest donor as fallback (for unmatched dimensions)
-fallback_donor = min(rec02_donor_pool.values(), key=len) if rec02_donor_pool else None
+# Inject minimal 0x0b (REC\x02) stubs with valid Recast parameters but no
+# pre-built tiles.  This lets ProcessRLTD initialize the RLTD handler, and
+# the engine's built-in Recast generator (ProcessRLTD_flow) builds navmeshes
+# from the level's entity geometry at runtime.
+# Also strips 0x0a sections to prevent ProcessRLTD reinit from clobbering
+# the handler state.
+print('\n=== Injecting 0x0b pathfinding stubs into SV-only levels ===')
+stub_ok = 0
+stub_fail = 0
 for i in range(len(sv_only)):
     blob = converted_blobs[i]
     lv = sv_only[i]
-    ir = struct.unpack_from('<13I', lv['ints_raw'], 0)
-    key = (ir[3], ir[5])
-    donor = rec02_donor_pool.get(key, fallback_donor)
-    if donor is not None:
-        result = inject_rec02_into_blob(blob, lv['ints_raw'], donor_data=donor)
-        if result != blob:
-            converted_blobs[i] = result
-            transplant_ok += 1
-        else:
-            transplant_fail += 1
+    result = inject_rec02_into_blob(blob, lv['ints_raw'], use_stub=True)
+    if result != blob:
+        converted_blobs[i] = result
+        stub_ok += 1
     else:
-        transplant_fail += 1
-print(f'  Transplanted: {transplant_ok}/{len(sv_only)}')
-if transplant_fail:
-    print(f'  Failed/skipped: {transplant_fail}')
+        stub_fail += 1
+print(f'  Stubbed: {stub_ok}/{len(sv_only)}')
+if stub_fail:
+    print(f'  Failed/skipped: {stub_fail}')
 
 # --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
 # Tests whether there is a hidden append-time registration gate.
