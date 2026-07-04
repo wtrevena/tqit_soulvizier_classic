@@ -20,6 +20,19 @@ sys.path.insert(0, str(Path(__file__).parent))
 from arc_patcher import ArcArchive
 
 
+# Occult mastery fixes (label + missing skill descriptions) authored directly
+# into modstrings.txt by this build. Module-level so the mod-tag manifest writer
+# can enumerate these as mod-owned tags. The .arz references two of them
+# (tagSkillName050 = mastery title, tagNewSkill321DESC = a skill description);
+# the two tagMastery* are the mastery-panel labels.
+OCCULT_FIX_TAGS = {
+    'tagMasteryBrief05': 'Occult',
+    'tagMasteryTitle05': 'Occult Mastery',
+    'tagSkillName050': 'Occult Mastery',
+    'tagNewSkill321DESC': 'Infusing the Breach with shadow energy, the Occultist reaches through and grasps enemies, immobilizing them as dark forces sap their life force.',
+}
+
+
 def extract_tags(text: str) -> OrderedDict:
     """Parse tag=value lines from a text file, preserving order."""
     tags = OrderedDict()
@@ -86,20 +99,17 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
         section_lines.append(f'//{fname} - END')
         sections.append('\r\n'.join(section_lines))
 
-    # Apply Occult mastery fixes (label + missing skill descriptions)
-    occult_fixes = {
-        'tagMasteryBrief05': 'Occult',
-        'tagMasteryTitle05': 'Occult Mastery',
-        'tagSkillName050': 'Occult Mastery',
-        'tagNewSkill321DESC': 'Infusing the Breach with shadow energy, the Occultist reaches through and grasps enemies, immobilizing them as dark forces sap their life force.',
-    }
+    # Apply Occult mastery fixes (label + missing skill descriptions).
+    # OCCULT_FIX_TAGS is module-level so the manifest writer can treat its keys
+    # as mod-owned tags (tagSkillName050 / tagNewSkill321DESC are the two the
+    # .arz references; the two tagMastery* are the mastery panel labels).
     fix_lines = ['//Occult mastery label fix - START']
-    for key, value in occult_fixes.items():
+    for key, value in OCCULT_FIX_TAGS.items():
         all_tags[key] = value
         fix_lines.append(f'{key}={value}')
     fix_lines.append('//Occult mastery label fix - END')
     sections.append('\r\n'.join(fix_lines))
-    print(f"  Applied Occult mastery fixes ({len(occult_fixes)} tags)")
+    print(f"  Applied Occult mastery fixes ({len(OCCULT_FIX_TAGS)} tags)")
 
     # Add uber soul tags
     uber_count = 0
@@ -161,6 +171,87 @@ QUEST_INTEGRATION_TAGS = {
 }
 
 
+# Manifest of every tag this mod's build AUTHORS into its Text.arc, written next
+# to Text.arc so tools/validate_tags.py can gate on "written-set membership"
+# (a referenced tag is mod-owned iff it is in this manifest) instead of a fixed
+# prefix allowlist. This is what makes the gate false-positive-free: base-game
+# tags the .arz merely carries forward (tagNewMonster*, tagItem*, ...) are NOT
+# in the manifest, so they are never required to appear in the mod's Text.arc
+# even though they are referenced.
+MOD_AUTHORED_TAGS_MANIFEST = 'mod_authored_tags.txt'
+
+
+def _read_tag_keys(path: Path) -> set:
+    """Return the set of 'key' tokens from a key=value tag list file."""
+    keys = set()
+    if not path or not Path(path).exists():
+        return keys
+    for line in Path(path).read_text(encoding='utf-8').split('\n'):
+        line = line.strip('\r').strip()
+        if not line or line.startswith('//') or '=' not in line:
+            continue
+        key, _, _ = line.partition('=')
+        keys.add(key.strip())
+    return keys
+
+
+def collect_mod_authored_tags(uber_tags_path: Path = None) -> set:
+    """Return the authoritative set of tags this mod build authors into Text.arc.
+
+    Union of the build's own tag emitters, gathered from their single sources of
+    truth so the manifest cannot drift from what the build actually writes:
+      - build_text_arc.py OCCULT_FIX_TAGS keys (Occult label + skill fixes)
+      - build_text_arc.py QUEST_INTEGRATION_TAGS keys (quest-reward placeholders)
+      - build_svc_database.py MOD_DESC_FIX_TAGS values (skillBaseDescription tags
+        the DB wires onto DRX skills, e.g. tagbreachDESC / tagNewSkill321DESC)
+      - uber_soul_tags.txt keys (soul + legacy + extended tags, incl. tagD2Boss*)
+
+    Every member is a tag the mod defines in modstrings.txt; none is a base-game
+    tag that resolves from the engine's own text, so requiring these to be
+    present in Text.arc yields zero false positives.
+    """
+    tags = set(OCCULT_FIX_TAGS.keys())
+    tags |= set(QUEST_INTEGRATION_TAGS.keys())
+
+    # Portal description tag referenced by the portal NPC records the DB build
+    # creates (build_svc_database.py, description=xtagMysteriousPortal). Its
+    # display string comes from the upstream SV text; require it so an orphan is
+    # caught (the old prefix validator covered it via the xtagMysteriousPortal prefix).
+    tags.add('xtagMysteriousPortal')
+
+    # MOD_DESC_FIX_TAGS lives in build_svc_database.py (the DB build wires these
+    # description tags onto skill records). Import defensively so a rename there
+    # fails loud rather than silently narrowing the manifest.
+    try:
+        from build_svc_database import MOD_DESC_FIX_TAGS
+        tags |= set(MOD_DESC_FIX_TAGS.values())
+    except Exception as exc:  # pragma: no cover - guard against refactors
+        print(f"  WARNING: could not import MOD_DESC_FIX_TAGS from "
+              f"build_svc_database.py ({exc}); description-fix tags "
+              f"(tagbreachDESC, ...) will be omitted from the mod-tag manifest.")
+
+    tags |= _read_tag_keys(uber_tags_path)
+    return tags
+
+
+def write_mod_tag_manifest(output_dir: Path, uber_tags_path: Path = None) -> Path:
+    """Write the mod-authored-tag manifest next to Text.arc; return its path."""
+    manifest_path = Path(output_dir) / MOD_AUTHORED_TAGS_MANIFEST
+    tags = collect_mod_authored_tags(uber_tags_path)
+    lines = [
+        '// Authoritative list of tags authored into Text.arc by the '
+        'SoulvizierClassic build.',
+        '// Written by tools/build_text_arc.py; consumed by '
+        'tools/validate_tags.py as the',
+        '// mod-owned tag set (written-set membership). One tag key per line. '
+        'Do not hand-edit.',
+    ]
+    lines.extend(sorted(tags))
+    manifest_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    print(f"  Mod-tag manifest: {manifest_path} ({len(tags)} tags)")
+    return manifest_path
+
+
 def build_text_arc(sv_arc_path: Path, output_path: Path,
                    uber_tags_path: Path = None):
     """Build the final Text.arc file."""
@@ -190,6 +281,10 @@ def build_text_arc(sv_arc_path: Path, output_path: Path,
             print("  WARNING: Tags not found in verification read")
     else:
         print(f"  WARNING: Size mismatch in verification ({len(data) if data else 0} vs {len(encoded)})")
+
+    # Emit the authoritative mod-authored-tag manifest alongside Text.arc so the
+    # validate_tags.py build gate can use written-set membership.
+    write_mod_tag_manifest(Path(output_path).parent, uber_tags_path)
 
     return output_path
 

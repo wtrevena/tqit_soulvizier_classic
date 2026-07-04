@@ -337,13 +337,23 @@ if (Test-Path $svTextEnArc) {
     # Text.arc entry. Guards against build_text_arc.py running against a stale
     # uber_soul_tags.txt (the tagSoulSVC9005/9006 orphan class). Fails the build
     # loudly rather than shipping raw tag strings in-game.
+    # The mod-owned tag set is now driven by the mod_authored_tags.txt manifest
+    # that build_text_arc.py writes next to Text.arc (written-set membership),
+    # which also covers previously-missed mod tags (tagSkillName050,
+    # tagNewSkill321DESC, tagbreachDESC). validate_tags.py auto-discovers it, but
+    # we pass it explicitly (4th positional arg, after the authoritative uber
+    # tags) so the wiring is visible and robust.
     $validateScript = Join-Path $toolsDir 'validate_tags.py'
+    $modTagManifest = Join-Path $workDir 'Resources\mod_authored_tags.txt'
     if ((Test-Path $validateScript) -and (Test-Path $dstArz) -and (Test-Path $dstTextArc)) {
         Write-Host ''
         Write-Host 'Validating name/description tags (.arz -> Text.arc)...' -ForegroundColor Yellow
         $validateArgs = @($validateScript, $dstArz, $dstTextArc)
         if (Test-Path $uberTagsFile) {
             $validateArgs += $uberTagsFile
+            if (Test-Path $modTagManifest) {
+                $validateArgs += $modTagManifest
+            }
         }
         & $pythonExe @validateArgs
         if ($LASTEXITCODE -ne 0) {

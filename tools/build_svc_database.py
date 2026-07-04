@@ -26,6 +26,21 @@ sys.path.insert(0, str(Path(__file__).parent))
 from arz_patcher import ArzDatabase, DATA_TYPE_FLOAT, DATA_TYPE_STRING, DATA_TYPE_INT
 
 
+# Description tags this build deliberately WIRES onto skills that ship without a
+# usable description (skillBaseDescription points here). The mod is therefore
+# responsible for these tag STRINGS resolving in Text.arc (tagbreachDESC comes
+# from SV 0.98i's own extracted text; tagNewSkill321DESC is defined by
+# build_text_arc.py's Occult fix). Keyed by target .dbr record path; the VALUES
+# are the mod-owned Text.arc tags. Exposed at module scope (and iterated by
+# fix_broken_mastery_skills below) so build_text_arc.py can fold the values into
+# the authoritative mod-authored-tag manifest that validate_tags.py gates on.
+# This is the single source of truth for these description-fix tags.
+MOD_DESC_FIX_TAGS = {
+    'records\\skills\\stealth\\drxlaytrap.dbr': 'tagbreachDESC',
+    'records\\skills\\stealth\\drxlaytrap_rapidconstruction.dbr': 'tagNewSkill321DESC',
+}
+
+
 def import_base_game_bosses(db: ArzDatabase, base_db: ArzDatabase):
     """Import specific boss records from the base game that aren't in the SV overlay.
 
@@ -581,9 +596,9 @@ def expand_caravan(db: ArzDatabase, base_db: ArzDatabase = None):
     """Expand all caravan stash areas to maximum size.
 
     The caravan has 3 tabs (hardcoded in CaravanWindow.tpl):
-      - Storage Area (stashwindow.dbr) — private, per-character
-      - Transfer Area — shared between characters (not expanded here)
-      - Relic Vault (relicvaultwindow.dbr) — per-character
+      - Storage Area (stashwindow.dbr) - private, per-character
+      - Transfer Area - shared between characters (not expanded here)
+      - Relic Vault (relicvaultwindow.dbr) - per-character
 
     InventoryHeightArray defines expansion stages for a single grid:
     [5, 10, 15] means start at 5 rows, expand to 10, then 15.
@@ -607,7 +622,7 @@ def expand_caravan(db: ArzDatabase, base_db: ArzDatabase = None):
         db.set_field(stash_window, 'InventoryCostArray', [0], DATA_TYPE_INT)
         print(f"  Storage Area: 10 wide x {rows} tall ({10 * rows} slots)")
     else:
-        print(f"  WARNING: stashwindow.dbr not found — cannot expand Storage Area")
+        print(f"  WARNING: stashwindow.dbr not found - cannot expand Storage Area")
 
     # ── Relic Vault ───────────────────────────────────────────────────
     vault_window = 'records\\xpack\\ui\\caravan\\relicvaultwindow.dbr'
@@ -619,7 +634,7 @@ def expand_caravan(db: ArzDatabase, base_db: ArzDatabase = None):
         db.set_field(vault_window, 'InventoryHeightArray', [rows], DATA_TYPE_INT)
         print(f"  Relic Vault: 10 wide x {rows} tall ({10 * rows} slots)")
     else:
-        print(f"  WARNING: relicvaultwindow.dbr not found — cannot expand Relic Vault")
+        print(f"  WARNING: relicvaultwindow.dbr not found - cannot expand Relic Vault")
 
     # ── Also import caravanwindow.dbr so Relic Vault tab shows up ────
     caravan_window = 'records\\xpack\\ui\\caravan\\caravanwindow.dbr'
@@ -809,12 +824,10 @@ def fix_broken_mastery_skills(db: ArzDatabase):
                             return ref2_actual
         return None
 
-    # Fix missing description tags (skills that have icons but no description)
-    desc_fixes = {
-        'records\\skills\\stealth\\drxlaytrap.dbr': 'tagbreachDESC',
-        'records\\skills\\stealth\\drxlaytrap_rapidconstruction.dbr': 'tagNewSkill321DESC',
-    }
-    for path, desc_tag in desc_fixes.items():
+    # Fix missing description tags (skills that have icons but no description).
+    # MOD_DESC_FIX_TAGS is module-level so build_text_arc.py can reuse it as the
+    # authoritative source of these mod-owned description tags for the manifest.
+    for path, desc_tag in MOD_DESC_FIX_TAGS.items():
         actual = _resolve(path)
         if actual and db.has_record(actual):
             db.set_field(actual, 'skillBaseDescription', desc_tag, DATA_TYPE_STRING)
@@ -1214,7 +1227,7 @@ def _import_boat_captain(db: ArzDatabase, base_db):
 
 
 def _import_dialog_needed(db: ArzDatabase, base_db):
-    """Import Dialog Needed.dbr from base game — required for NPC interaction.
+    """Import Dialog Needed.dbr from base game - required for NPC interaction.
 
     This DialogPak record makes NPCs clickable when assigned via
     Action_UpdateNPCDialog in quest files. Without it, NPCs render
@@ -1405,8 +1418,23 @@ def main():
     # Soul drop rate control. 100% override is ON by default (testing build) so
     # souls are easy to test in-game. Set SVC_RELEASE_DROPS=1 to flip to the
     # tuned 66% (Hero/Quest) / 25% (Boss) rates for a release build.
-    release_drops = os.environ.get('SVC_RELEASE_DROPS', '').strip().lower() \
-        in ('1', 'true', 'yes', 'on')
+    #
+    # Typo guard: only accept explicit true/false spellings. A value that is
+    # neither (e.g. SVC_RELEASE_DROPS=release) must NOT be silently treated as a
+    # release flag, nor silently treated as testing - that could ship 100% drops
+    # on what the operator believed was a release build. We keep the default
+    # behavior (unset/unrecognized -> 100% testing) but WARN loudly on an
+    # unrecognized value so the typo is visible in the build log.
+    _raw_release_drops = os.environ.get('SVC_RELEASE_DROPS')
+    _release_val = (_raw_release_drops or '').strip().lower()
+    _TRUE_VALUES = ('1', 'true', 'yes', 'on')
+    _FALSE_VALUES = ('', '0', 'false', 'no', 'off')
+    release_drops = _release_val in _TRUE_VALUES
+    if _raw_release_drops is not None and _release_val not in _TRUE_VALUES \
+            and _release_val not in _FALSE_VALUES:
+        print(f"\nWARNING: SVC_RELEASE_DROPS='{_raw_release_drops}' not "
+              f"recognized; defaulting to TESTING (100% drops). Use "
+              f"SVC_RELEASE_DROPS=1 for tuned rates.")
     force_full_drops = not release_drops
     if release_drops:
         print("\n*** SVC_RELEASE_DROPS set: tuned soul drop rates (66%/25%) will be kept ***")
