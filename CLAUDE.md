@@ -1,4 +1,4 @@
-# CLAUDE.md — Soulvizier Classic (TQAE mod) — Status Board & Working Notes
+# CLAUDE.md - Soulvizier Classic (TQAE mod) - Status Board & Working Notes
 
 > Durable status/notes for Claude Code sessions, committed to git so state survives across
 > sessions and machines. **Read this first.** Newest status at the top of each section.
@@ -25,22 +25,40 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 The database / souls / pets / enchanting side is largely working. The blocker is **map integration**:
 the Soulvizier-only areas (blood cave, uber dungeon, secret place, etc.) are **not physically
-walkable** — the player hits an "invisible wall." Root cause is now fully understood (below), and a
-Steam-clean fix path is chosen. Several independent content bugs and an un-started quest-integration
-workstream also stand between here and a shippable release.
+walkable** (the player hits an "invisible wall") until real navmeshes are baked in the TQAE Editor.
+Root cause is fully understood (below) and a Steam-clean fix path is chosen; the bake is a human GUI
+step.
+
+**Progress (2026-07-04), build-verified + committed:**
+- Content P0s fixed: soul drops stay 100% for testing (`SVC_RELEASE_DROPS=1` for tuned release
+  rates); orphaned soul name-tags fixed + a `tools/validate_tags.py` build-gate added (build passes:
+  every referenced + authoritative tag resolves).
+- SV area questlines integrated: `urder`, `widowletter`, `bossarena`, `open_bloodcave_portal` ported
+  into `Quests.arc` (names were already registered in the map, so no map rebuild). One lost entrance
+  NPC (`starting_storyteller`) surgically neutralized.
+- Blood-cave entrance-portal bugs fixed (correct NPC + grid-shifted teleport target `(-418,23,2227)`).
+- Map-clobber hazards disarmed: deploy Levels sync is now opt-in (`-SyncLevels`); bootstrap Step 3
+  keeps an existing `work/Levels.arc` instead of overwriting it with the SVAERA base.
+- Verified by a real DB+Text+Quests build (drops 100%, `validate_tags` PASS, `Quests.arc` arc-verify
+  105 OK / 0 FAIL). `Levels.arc` deliberately untouched.
+
+**Remaining to "everything should work":** (1) bake real navmeshes in the Editor (human GUI step, see
+the map section + `tools/EDITOR_BAKE_CLICKSTEPS.md`), (2) harvest + inject + rebuild the merged map +
+deploy (scriptable, follows the bake), (3) in-game walk test. Then Steam prep (permissions, Lite
+build).
 
 **Active goal:** get the game to a state where everything *should* work, so a single in-game test
 (walk to the blood cave, confirm entry) is a clean final verification. Then ship to Steam Workshop.
 
 ---
 
-## 🗺️ THE MAP BUG — invisible walls in Soulvizier-only areas
+## 🗺️ THE MAP BUG - invisible walls in Soulvizier-only areas
 
 ### True root cause (disassembly-verified, 2026-07-03)
 TQAE has two pathfinding formats inside each level blob (`.lvl` in `world01.map` in `Levels.arc`):
 - `0x0a` = **PTH** (old TQIT PathEngine navmesh). The 46 SV-only levels shipped with these.
 - `0x0b` = **REC\x02 / RLTD** (modern TQAE Recast navmesh). This is the ONLY format the stock
-  TQAE engine loads. **The TQAE LVL parser has no handler for `0x0a`** — it silently skips it.
+  TQAE engine loads. **The TQAE LVL parser has no handler for `0x0a`** - it silently skips it.
 
 No navmesh loaded → the click-to-move pathfinder refuses to enter the area → invisible wall.
 
@@ -54,13 +72,13 @@ early-returns without building anything. It is Editor/tool-only dead code in the
 ### Decision (locked): ship **Steam-clean, NO DLL patch**
 The shipped mod MUST run on a **stock/unpatched** engine. Therefore:
 - We do **not** ship the Engine.dll patch (Approach 21 `0x0a→0x0b` redirect) or the one-byte gate
-  flip (a personal-play-only option — Steam "Verify integrity" reverts base-game DLLs anyway).
+  flip (a personal-play-only option - Steam "Verify integrity" reverts base-game DLLs anyway).
 - The fix is to give all 46 SV-only levels **real, valid `0x0b` navmeshes**, baked by the **TQAE
   Editor's "Rebuild Pathing"** (the only known generator of valid RLTD sections), then harvest and
   inject them via the existing `inject_rec02_into_blob(use_stub=False, donor_data=<editor 0x0b>)`
   path in `tools/build_section_surgery.py`.
 
-### Critical-path blocker — SOLVED on paper (2026-07-04 investigation)
+### Critical-path blocker - SOLVED on paper (2026-07-04 investigation)
 Prior Editor attempt (git `6710428`) failed with a **black terrain viewport**; per-level navmesh
 baking requires terrain to render. Root cause is now identified and fixable (not a hardware limit):
 
@@ -70,7 +88,7 @@ baking requires terrain to render. Root cause is now identified and fixable (not
    resolve. (`Tools.ini` lives at `<TQ docs>\Tools.ini`, outside the repo.)
 2. **Wrong Editor sub-mode.** The prior run stayed in **Layout Mode**; per-level terrain only loads
    when you enter **Editor Mode** and select the level. Without a loaded `Terrain`, `CreatePathMesh`
-   is skipped (only the world SD bumped v6→v7, no `.lvl` changed — exactly what `6710428` reported).
+   is skipped (only the world SD bumped v6→v7, no `.lvl` changed - exactly what `6710428` reported).
 3. **Harvested from the wrong folder.** The Editor writes optimized output to a **`LevelsOptimized\`**
    directory; the old verify script looked in `source/Maps/`.
 
@@ -81,7 +99,7 @@ from Engine.dll; passes `.lvl` pathing sections through unchanged). `pathengine.
 lives in stock **Engine.dll** and is driven ONLY by the **Editor GUI** ("Build → Rebuild All
 Pathing"). This is Steam-clean (stock tooling, no DLL patch). It must be driven via the GUI
 (computer-use). Fallback if the Editor proves unusable on this hardware: offline Recast from the
-`0x0a` geometry (high effort — RLTD container RE).
+`0x0a` geometry (high effort - RLTD container RE).
 
 **Bake procedure (proven-on-paper; to be run via computer-use):** fix Tools.ini → in Art Manager,
 right-click `Levels/World/world01.wrl` → Auto-Create Asset → Build → in Editor.exe, open the world,
@@ -91,24 +109,24 @@ Build → Rebuild All Pathing → Rebuild All Maps → Save All → harvest the 
 inject via `inject_rec02_into_blob(..., use_stub=False, donor_data=<editor 0x0b>)`.
 **Coordinate pitfall:** xBloodCave is grid-shifted `(1663,0,922)`; either bake at final shifted grid
 coords, or rely on `transplant_rec02` repositioning the mesh via the header center (its docstring
-says mesh data is local to center, so a correct center patch repositions it — verify in-game).
+says mesh data is local to center, so a correct center patch repositions it - verify in-game).
 **Known risk:** TQAE Editor has a documented bug where sub-256×256 tiles render black regardless of
 assets; some small SV tiles may need individual handling.
 
 ### Why not just restore the original terrain doorway?
 SV originally connected the blood cave via terrain edges in the **shared** level `Random09A`. The
 merge deliberately keeps SVAERA's version of all shared levels (replacing them caused crashes/walls),
-so that doorway is gone — which is why the author added a quest-portal teleport instead (see below).
+so that doorway is gone - which is why the author added a quest-portal teleport instead (see below).
 
 ---
 
 ## 🚪 Entrance bugs (block the blood cave even with a good navmesh)
 
 Both verified in source; the quest-portal that teleports the player into the cave is broken two ways:
-1. **Coordinate desync** — `tools/build_quest_files.py:33` hard-codes the teleport target to
+1. **Coordinate desync** - `tools/build_quest_files.py:33` hard-codes the teleport target to
    `(-2060,18,1322)` (the SV-original position), but `tools/svaera_plus_portals.py:347` grid-shifts
    the whole xBloodCave cluster by `(1663,0,922)`. The teleport lands ~1900 units into empty void.
-2. **Wrong NPC** — `build_quest_files.py:29` drives NPC `silkroad_villager1.dbr`, which does **not
+2. **Wrong NPC** - `build_quest_files.py:29` drives NPC `silkroad_villager1.dbr`, which does **not
    exist** in the entrance level `HiddenValley01` (only native `silkroad_villager4` + the injected
    `portal_bloodcave_entrance.dbr` are there). The dialog/teleport never fires.
 
@@ -118,7 +136,7 @@ doorway via shared-level replacement is what caused the original crashes).
 
 ---
 
-## 📜 Quest integration (NEW workstream — largely not done)
+## 📜 Quest integration (NEW workstream - largely not done)
 
 The prior work built only the *portal teleport* to get INTO the blood cave (and it's buggy). The
 actual **Soulvizier content quests** (the questlines inside the blood cave and other SV areas) have
@@ -130,13 +148,13 @@ reader/writer (89/89 round-trip) available for this.
 
 ---
 
-## 🧟 Content gaps (independent of the map fix — can run in parallel)
+## 🧟 Content gaps (independent of the map fix - can run in parallel)
 
 **P0 (release-blocking):**
-- **Soul drops forced to 100%** — `tools/apply_svc_patches.py` `_force_100_pct_soul_drops` (called
+- **Soul drops forced to 100%** - `tools/apply_svc_patches.py` `_force_100_pct_soul_drops` (called
   unconditionally by the build) overrides the tuned 66%/25% rates to 100% ("TESTING", never
   reverted). Gate it behind an explicit testing flag (default OFF).
-- **Orphaned soul name-tags** — `tagSoulSVC9005` (Crowboar) & `9006` (Uber) exist in the `.arz` but
+- **Orphaned soul name-tags** - `tagSoulSVC9005` (Crowboar) & `9006` (Uber) exist in the `.arz` but
   not in shipped `Text.arc` → raw tag text shows in-game. Structural: `build_text_arc.py` isn't
   coupled to `build_svc_database.py`, so this recurs on any soul-roster change. Fix + add a build
   validator that fails loud if any `.arz` name/desc tag is missing from `Text.arc`.
@@ -151,9 +169,9 @@ code-hygiene items (shadowed `_find_record`, unchecked pet-skill return values).
 
 ---
 
-## ⚠️ Deploy hazard — neutralize before any deploy
+## ⚠️ Deploy hazard - neutralize before any deploy
 
-`local/Levels_merged.arc` (May 24, 662 MB, a stale build from a stray test run — ~zero SV content) is
+`local/Levels_merged.arc` (May 24, 662 MB, a stale build from a stray test run - ~zero SV content) is
 **newer** than the good deployed map (`work/.../Levels.arc`, Mar 13, 683 MB, correct). `scripts/
 deploy_to_custommaps.ps1:89` auto-copies `local → work` when local is newer, so **running deploy now
 would clobber the good map**. Regenerate a correct `local/Levels_merged.arc` via
@@ -169,7 +187,7 @@ Payload ~1.11 GB; Workshop can host it (SVAERA AERA is 1.86 GB live on appid 475
 installed at `C:\steamcmd\steamcmd.exe`; never run to completion yet.
 
 Hard blockers: (1) map fix must be stock-engine (this decision handles it); (2) 32-bit
-address-space crashes → ship a Lite build + document the community 4GB LAA patch; (3) **legal** — the
+address-space crashes → ship a Lite build + document the community 4GB LAA patch; (3) **legal** - the
 mod bundles three upstreams wholesale; get written permission from amgoz1, soa, Dragonlord (dropping
 DRX via the Lite build removes the largest permission dependency). Recommend dual distribution:
 Workshop (auto-update) + moddb/Nexus zip (GOG/non-Steam, CustomMaps install).
@@ -195,14 +213,14 @@ Workshop (auto-update) + moddb/Nexus zip (GOG/non-Steam, CustomMaps install).
 - **Package/upload Workshop:** `scripts/package_workshop.ps1` then `scripts/upload_workshop.ps1`
 
 The mod loads via TQAE main menu → **Custom Quest → SoulvizierClassic**. It is a total conversion:
-**create a dedicated Custom Quest character** — never load a normal character into it, and never
+**create a dedicated Custom Quest character** - never load a normal character into it, and never
 "bounce" it (breaks characters).
 
 ---
 
 ## 📌 Key technical lessons (hard-won; don't relearn)
 
-- **dtype preservation:** never pass explicit dtype to `set_field()` on cloned records — INT/FLOAT
+- **dtype preservation:** never pass explicit dtype to `set_field()` on cloned records - INT/FLOAT
   corruption silently zeroes values (pet spawn failure).
 - **Permanent pets:** remove `spawnObjectsTimeToLive` (set to `[]`). Reference soul: Lyia Leafsong.
 - **Pet.tpl vs Monster.tpl:** copying ANY equipment/loot field from Monster.tpl → Pet.tpl crashes the
@@ -212,9 +230,9 @@ The mod loads via TQAE main menu → **Custom Quest → SoulvizierClassic**. It 
   `_ensure_record()`.
 - **Soul icon paths:** `SVItems\jewelry\soul_{n,e,l}_icon.tex` (first path component = archive name).
 - **`{^F}` prefix** required on soul name tags for pink/magenta text.
-- **Enchanting** (epic/legendary) is baked into the `.arz` via `make_enchantable()` — the shippable
+- **Enchanting** (epic/legendary) is baked into the `.arz` via `make_enchantable()` - the shippable
   mod has **no Game.dll dependency**. (An old Game.dll hex-patch exists as a local backup only.)
-- **TQ saves bake item properties** at pickup — pre-patch items won't reflect DB changes; test with
+- **TQ saves bake item properties** at pickup - pre-patch items won't reflect DB changes; test with
   freshly dropped items.
 - **Map format:** `world01.map` sections QUESTS(0x1b) GROUPS(0x11) SD(0x18) LEVELS(0x01) BITMAPS(0x19)
   0x10 DATA2(0x1a) DATA(0x02). `DATA2`/`BITMAPS` = minimap TGA, NOT pathfinding. `ints_raw` = 13×int32:
@@ -224,14 +242,14 @@ The mod loads via TQAE main menu → **Custom Quest → SoulvizierClassic**. It 
 
 ## 📂 Repo layout (orientation)
 
-- `tools/` — the build pipeline: `build_svc_database.py`, `apply_svc_patches.py` (souls/patches),
+- `tools/` - the build pipeline: `build_svc_database.py`, `apply_svc_patches.py` (souls/patches),
   `svaera_plus_portals.py` (map merge), `build_section_surgery.py` (level-blob surgery + navmesh
   inject), `build_quest_files.py`, `qst_format.py`, plus `.arz`/`.arc` I/O and a pile of pathfinding
-  RE scripts. NOTE: `apply_sv_classic_patches.py` (with underscore) is DEAD/orphaned — the live one
+  RE scripts. NOTE: `apply_sv_classic_patches.py` (with underscore) is DEAD/orphaned - the live one
   is `apply_svc_patches.py`.
-- `scripts/` — PowerShell deploy/package/upload/bootstrap.
-- `upstream/` — extracted SV 0.98i / 0.9 / 0.41 sources (gitignored). `reference_mods/SVAERA_customquest`
-  — the SVAERA base (gitignored). `local/` — big working scratch incl. decompiled world source
+- `scripts/` - PowerShell deploy/package/upload/bootstrap.
+- `upstream/` - extracted SV 0.98i / 0.9 / 0.41 sources (gitignored). `reference_mods/SVAERA_customquest`
+  - the SVAERA base (gitignored). `local/` - big working scratch incl. decompiled world source
   (`decompiled_sv/`, `merged_source/`) and candidate maps (gitignored).
-- `work/SoulvizierClassic/` — staged deploy source (the real, good map lives here). `backups/game_dll/`
-  — Engine.dll/Game.dll backups. `docs/` — CHANGELOG, crash analysis, inventories.
+- `work/SoulvizierClassic/` - staged deploy source (the real, good map lives here). `backups/game_dll/`
+  - Engine.dll/Game.dll backups. `docs/` - CHANGELOG, crash analysis, inventories.
