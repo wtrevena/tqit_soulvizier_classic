@@ -281,11 +281,22 @@ if (Test-Path $mergedLevels) {
     Write-Host ''
     Write-Host "Using merged Levels.arc (${mSize} MB) - SVAERA pathfinding + SV custom map areas" -ForegroundColor Green
     Copy-Item $mergedLevels $dstLevels -Force
+} elseif (Test-Path $dstLevels) {
+    # local\Levels_merged.arc is missing but work\ already has a Levels.arc.
+    # Do NOT overwrite it with the SVAERA base: that would wipe the merged SV
+    # areas (blood cave etc.) from the good deployed map. Keep what is there.
+    $keepSize = [math]::Round((Get-Item $dstLevels).Length / 1MB, 1)
+    Write-Host ''
+    Write-Host "NOTE: local\Levels_merged.arc not found; KEEPING existing work Levels.arc (${keepSize} MB)." -ForegroundColor Yellow
+    Write-Host '      Not overwriting with the SVAERA base. Run tools/svaera_plus_portals.py to' -ForegroundColor Yellow
+    Write-Host '      regenerate the merged map (with SV areas + navmeshes) before deploying.' -ForegroundColor Yellow
 } elseif ($svaeraLevels -and (Test-Path $svaeraLevels)) {
+    # Fresh setup only: no merged map AND no existing work Levels.arc. Seed from
+    # the SVAERA base so the mod at least loads; SV areas are added by the merge.
     $svaeraSize = [math]::Round((Get-Item $svaeraLevels).Length / 1MB, 1)
     Write-Host ''
-    Write-Host "Using SVAERA Levels.arc (${svaeraSize} MB) - AE pathfinding, missing custom areas" -ForegroundColor Yellow
-    Write-Host "  Run tools/merge_levels.py to build merged Levels.arc with custom SV areas restored" -ForegroundColor Yellow
+    Write-Host "Seeding SVAERA Levels.arc (${svaeraSize} MB) - AE pathfinding, missing custom SV areas" -ForegroundColor Yellow
+    Write-Host "  Run tools/svaera_plus_portals.py to build the merged Levels.arc with SV areas restored" -ForegroundColor Yellow
     Copy-Item $svaeraLevels $dstLevels -Force
 } else {
     Write-Host 'WARNING: No Levels.arc found.' -ForegroundColor Red
@@ -319,6 +330,30 @@ if (Test-Path $svTextEnArc) {
     } else {
         $arcSize = [math]::Round((Get-Item $dstTextArc).Length / 1KB, 1)
         Write-Host "  Text.arc built ($arcSize KB)" -ForegroundColor Green
+    }
+
+    # --- Step 4b: Gate on tag validation (catches stale Text.arc) ---
+    # Every mod name/description tag the .arz references must resolve to a
+    # Text.arc entry. Guards against build_text_arc.py running against a stale
+    # uber_soul_tags.txt (the tagSoulSVC9005/9006 orphan class). Fails the build
+    # loudly rather than shipping raw tag strings in-game.
+    $validateScript = Join-Path $toolsDir 'validate_tags.py'
+    if ((Test-Path $validateScript) -and (Test-Path $dstArz) -and (Test-Path $dstTextArc)) {
+        Write-Host ''
+        Write-Host 'Validating name/description tags (.arz -> Text.arc)...' -ForegroundColor Yellow
+        $validateArgs = @($validateScript, $dstArz, $dstTextArc)
+        if (Test-Path $uberTagsFile) {
+            $validateArgs += $uberTagsFile
+        }
+        & $pythonExe @validateArgs
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ''
+            Write-Host 'ERROR: Tag validation FAILED. The .arz references tags absent from Text.arc.' -ForegroundColor Red
+            Write-Host '       This usually means Text.arc is stale relative to the .arz.' -ForegroundColor Red
+            Write-Host '       Rebuild the .arz and Text.arc together (do not -SkipArzBuild), then re-run.' -ForegroundColor Red
+            exit 1
+        }
+        Write-Host '  Tag validation passed.' -ForegroundColor Green
     }
 } else {
     Write-Host 'WARNING: SV Text_EN.arc not found for text build' -ForegroundColor Yellow

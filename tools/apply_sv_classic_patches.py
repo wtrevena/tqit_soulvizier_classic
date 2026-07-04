@@ -1,4 +1,13 @@
 """
+HISTORICAL / DEAD CODE -- DO NOT USE.
+
+This underscore-named module (apply_sv_classic_patches.py) is an early,
+superseded prototype. It is NOT imported or invoked anywhere in the build
+pipeline. The live, maintained patcher is tools/apply_svc_patches.py (no
+"classic" in the name), driven by tools/build_svc_database.py. This file is
+kept only for historical reference and should not be run or edited; make all
+changes in apply_svc_patches.py instead.
+
 Apply SoulvizierClassic patches to the upstream SV 0.98i database.
 
 Patches:

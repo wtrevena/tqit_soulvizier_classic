@@ -2608,6 +2608,22 @@ def overhaul_souls(db):
 
     pharaoh_ok = _create_pharaoh_guard_pet_skill(db)
     total += 1
+
+    # Surface pet-skill build failures instead of silently ignoring the return
+    # values. Each helper returns False when a required source record is missing,
+    # which leaves that summonable soul pet non-functional.
+    pet_skill_status = [
+        ('Rakanizeus', rakan_ok),
+        ('Boneash', boneash_ok),
+        ("Pharaoh's Honor Guard", pharaoh_ok),
+    ]
+    failed_pet_skills = [nm for nm, ok in pet_skill_status if not ok]
+    if failed_pet_skills:
+        print(f"  WARNING: pet skill build FAILED for: {', '.join(failed_pet_skills)} "
+              f"(source record missing -- these soul pets will not summon)")
+    else:
+        print("  Pet skills built: Rakanizeus, Boneash, Pharaoh's Honor Guard")
+
     _update_pharaoh_guard_drop_rate(db)
     _fix_low_boss_soul_drop_rates(db)
     _wire_missing_boss_souls(db)
@@ -4251,8 +4267,15 @@ def _overhaul_generic_souls(db):
         print(f"  Note: {conflicts} Dropbox conflicted copy records still exist (harmless)")
 
 
-def apply_all_extended_patches(db):
-    """Run all extended patches. Call after create_uber_souls."""
+def apply_all_extended_patches(db, force_full_drops=True):
+    """Run all extended patches. Call after create_uber_souls.
+
+    force_full_drops: when True (the current default for testing builds),
+    override every monster's soul drop rate to 100% (see
+    _force_100_pct_soul_drops) so souls are easy to test in-game. Pass False
+    (wired to the SVC_RELEASE_DROPS=1 env var by build_svc_database.py) to keep
+    the tuned 66% (Hero/Quest) / 25% (Boss) rates for a release build.
+    """
     tags = {}
 
     tags['tagSVCSummonRakanizeus'] = 'Call of the Storm Tyrant'
@@ -4352,7 +4375,14 @@ def apply_all_extended_patches(db):
     # Soul quality passes
     _overhaul_generic_souls(db)
 
-    # Testing: 100% soul drop rate
-    _force_100_pct_soul_drops(db)
+    # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
+    # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
+    # rates via SVC_RELEASE_DROPS=1 (threaded here as force_full_drops=False).
+    if force_full_drops:
+        _force_100_pct_soul_drops(db)
+        print("  TESTING BUILD: soul drops forced to 100% "
+              "(set SVC_RELEASE_DROPS=1 for tuned 66%/25% rates)")
+    else:
+        print("  RELEASE BUILD: tuned soul drop rates kept (66% Hero/Quest, 25% Boss)")
 
     return tags

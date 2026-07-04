@@ -104,6 +104,23 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
     # Add uber soul tags
     uber_count = 0
     if uber_tags_path and uber_tags_path.exists():
+        # Staleness guard: the soul tag list (uber_soul_tags.txt) is written by
+        # build_svc_database.py alongside SoulvizierClassic.arz. Within one build
+        # the tag list is written first, then the (large) .arz seconds later, so
+        # the .arz is normally a little newer. A LARGE gap means the .arz was
+        # rebuilt in a separate session without regenerating tags, so the tags
+        # are stale and Text.arc would be built against an old soul roster (the
+        # tagSoulSVC9005/9006 orphan bug). We only warn here; the authoritative
+        # content check is the tools/validate_tags.py gate.
+        _STALE_GAP_SECONDS = 600  # 10 min: well past a same-build .arz write
+        sibling_arz = uber_tags_path.parent / 'SoulvizierClassic.arz'
+        if sibling_arz.exists() and \
+                sibling_arz.stat().st_mtime - uber_tags_path.stat().st_mtime \
+                > _STALE_GAP_SECONDS:
+            print(f"  WARNING: {sibling_arz.name} is much newer than "
+                  f"{uber_tags_path.name}; soul tags may be stale. "
+                  f"Rebuild the .arz and Text.arc together, then run "
+                  f"validate_tags.py.")
         uber_text = uber_tags_path.read_text(encoding='utf-8')
         uber_lines = ['//uber_soul_tags - START']
         for line in uber_text.strip().split('\n'):
@@ -132,11 +149,24 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
     return '\r\n'.join(sections) + '\r\n'
 
 
+# Quest text tags the integrated SV area questlines reference but that are ABSENT
+# from SV 0.98i's own Text_EN.arc source. open_bloodcave_portal.qst's hidden-chest
+# reward (Action_GiveItem) uses these two as its locationTag/titleTag; upstream left
+# them as raw "TESTER" placeholders, so without a definition the reward popup would
+# show literal "tagLOCATIONTAGTESTER"/"tagTitleTagTESTER" in-game. We resolve them to
+# the same strings the quest's real journal entry uses (tagSQECLocation/tagSQECTitle).
+QUEST_INTEGRATION_TAGS = {
+    'tagLOCATIONTAGTESTER': 'The Blood Cave',
+    'tagTitleTagTESTER': "Esti's Hidden Chest",
+}
+
+
 def build_text_arc(sv_arc_path: Path, output_path: Path,
                    uber_tags_path: Path = None):
     """Build the final Text.arc file."""
     print(f"Building modstrings.txt from: {sv_arc_path}")
-    modstrings = build_modstrings(sv_arc_path, uber_tags_path)
+    modstrings = build_modstrings(sv_arc_path, uber_tags_path,
+                                  extra_tags=QUEST_INTEGRATION_TAGS)
 
     print(f"\nBuilding Text.arc...")
     # We need to create a new arc with just modstrings.txt

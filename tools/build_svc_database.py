@@ -16,6 +16,7 @@ Pipeline:
 Usage:
   python build_svc_database.py <sv098i.arz> <sv09.arz> <output.arz>
 """
+import os
 import sys
 import re
 from pathlib import Path
@@ -1401,7 +1402,17 @@ def main():
     souls, text_tags = create_uber_souls(db)
 
     from apply_svc_patches import apply_all_extended_patches
-    extended_tags = apply_all_extended_patches(db)
+    # Soul drop rate control. 100% override is ON by default (testing build) so
+    # souls are easy to test in-game. Set SVC_RELEASE_DROPS=1 to flip to the
+    # tuned 66% (Hero/Quest) / 25% (Boss) rates for a release build.
+    release_drops = os.environ.get('SVC_RELEASE_DROPS', '').strip().lower() \
+        in ('1', 'true', 'yes', 'on')
+    force_full_drops = not release_drops
+    if release_drops:
+        print("\n*** SVC_RELEASE_DROPS set: tuned soul drop rates (66%/25%) will be kept ***")
+    else:
+        print("\n*** TESTING BUILD: soul drops forced to 100% (set SVC_RELEASE_DROPS=1 for tuned rates) ***")
+    extended_tags = apply_all_extended_patches(db, force_full_drops=force_full_drops)
 
     report_path = output_path.parent / 'uber_souls_report.md'
     with open(report_path, 'w', encoding='utf-8') as f:
