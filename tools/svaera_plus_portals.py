@@ -6,7 +6,7 @@ Strategy: Keep SVAERA's map untouched (no invisible wall), add SV's custom
 levels (UberDungeon, xBloodCave, BossArena, Secret_Place) as disconnected
 areas, and inject portal NPCs to connect them.
 
-No shared+drxmap level replacements — those caused the invisible wall.
+No shared+drxmap level replacements - those caused the invisible wall.
 """
 import sys, os, struct
 from pathlib import Path
@@ -161,7 +161,7 @@ ae_quests = parse_quests(ae_data, ae_sec[SEC_QUESTS])
 ae_bitmaps = parse_bitmap_index(ae_data, ae_sec[SEC_BITMAPS])
 ae_bmp_unknown = struct.unpack_from('<I', ae_data, ae_sec[SEC_BITMAPS]['data_offset'])[0]
 
-# Donor pool no longer needed — using minimal REC\x02 stubs instead.
+# Donor pool no longer needed - using minimal REC\x02 stubs instead.
 # The engine's built-in Recast generator (ProcessRLTD_flow @ VA 0x101F6210)
 # builds navmeshes from level geometry at runtime when the RLTD handler has
 # valid Recast parameters but no pre-built tiles.
@@ -550,7 +550,7 @@ bmp_offset_shift = new_pre_data_size - ae_pre_data
 adjusted_bitmaps = [dict(b) for b in merged_bitmaps]
 for i in range(len(ae_bitmaps)):
     if i in _replace_bm_offsets:
-        # Replaced level — use pre-computed offset from DATA2 append
+        # Replaced level - use pre-computed offset from DATA2 append
         bm_entry = ae_bitmaps[i]
         abs_off = (new_pre_data_size + 8) + _replace_bm_offsets[i]
         adjusted_bitmaps[i]['offset'] = abs_off
