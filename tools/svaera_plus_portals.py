@@ -120,22 +120,49 @@ def extract_0x0b_body(lvl_path):
     return None
 
 
-# --- Donor directory (harvested baked navmeshes from the TQAE Editor) ---
-# Default: local/editor_normalized/, keyed by level basename (e.g.
-# BC_initialpathway.lvl). Override via SVC_DONOR_DIR. When a donor exists we
-# inject its REAL baked 0x0b and let transplant_rec02 reposition the header to
-# the level's shifted grid; otherwise we fall back to the dead 148-byte stub so
-# the build keeps working during the Editor-bake transition.
+# --- Donor directory (generated / harvested navmeshes) ---
+# Default: local/editor_normalized/ (override via SVC_DONOR_DIR). Two donor
+# kinds live here, keyed by level basename:
+#   1. <basename>.0b.bin  = a PRE-POSITIONED raw 0x0b section produced offline by
+#      tools/gen_bc_navmeshes.py. Its GUID list already resolves in the merged
+#      world and its center is already shifted to the merged grid, so it is
+#      injected VERBATIM (no transplant). This is the actual blood-cave fix.
+#   2. <basename>.lvl     = a full baked .lvl donor (e.g. from a future TQAE
+#      Editor bake). Its 0x0b is extracted and REPOSITIONED via transplant_rec02
+#      to the level's shifted grid.
+# If neither exists we fall back to the dead 148-byte stub so the build stays
+# green (used by the 7 ocean-scenery levels with no walkable geometry).
 DONOR_DIR = Path(os.environ.get(
     'SVC_DONOR_DIR',
     r'c:\Users\willi\repos\tqit_soulvizier_classic\local\editor_normalized'))
 
 
+def find_pre_positioned_donor(lv):
+    """Look up a pre-positioned generated 0x0b for a level by basename.
+
+    Returns (raw_0x0b_bytes, donor_path) if <DONOR_DIR>/<basename>.0b.bin exists
+    and looks like a REC\\x02 section, else (None, None). This file is a raw 0x0b
+    section (not a .lvl blob), so it is read directly, not parsed for sections.
+    """
+    basename = lv['fname'].replace('\\', '/').split('/')[-1]  # e.g. BC_initialpathway.lvl
+    donor_path = DONOR_DIR / f'{basename}.0b.bin'
+    if not donor_path.is_file():
+        return None, None
+    try:
+        body = donor_path.read_bytes()
+    except OSError:
+        return None, None
+    if len(body) < 12 or body[:4] != b'REC\x02':
+        return None, None
+    return body, donor_path
+
+
 def find_donor_0x0b(lv):
-    """Look up a harvested baked donor 0x0b for an SV-only level by basename.
+    """Look up a full baked .lvl donor for an SV-only level by basename.
 
     Returns (donor_0x0b_bytes, donor_path) if <DONOR_DIR>/<basename>.lvl exists
-    and contains a 0x0b section, else (None, None).
+    and contains a 0x0b section, else (None, None). The returned 0x0b still needs
+    transplant_rec02 repositioning (it is NOT pre-positioned).
     """
     basename = lv['fname'].replace('\\', '/').split('/')[-1]  # e.g. BC_initialpathway.lvl
     donor_path = DONOR_DIR / basename
@@ -146,470 +173,501 @@ def find_donor_0x0b(lv):
         return None, None
     return body, donor_path
 
-# --- Paths ---
-svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
-sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
-out_arc_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\local\Levels_merged.arc')
 
-# --- Load maps ---
-print('Loading SVAERA...')
-ae_arc = ArcArchive.from_file(svaera_path)
-ae_data = ae_arc.decompress([e for e in ae_arc.entries if e.entry_type == 3][0])
-ae_sec = {s['type']: s for s in parse_sections(ae_data)}
-ae_levels = parse_level_index(ae_data, ae_sec[SEC_LEVELS])
-ae_quests = parse_quests(ae_data, ae_sec[SEC_QUESTS])
-ae_bitmaps = parse_bitmap_index(ae_data, ae_sec[SEC_BITMAPS])
-ae_bmp_unknown = struct.unpack_from('<I', ae_data, ae_sec[SEC_BITMAPS]['data_offset'])[0]
+def main():
+    """Build the merged Levels.arc (heavy: multi-GB). Not run on import."""
+    # --- Paths ---
+    svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
+    sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
+    out_arc_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\local\Levels_merged.arc')
 
-# Donor pool no longer needed - using minimal REC\x02 stubs instead.
-# The engine's built-in Recast generator (ProcessRLTD_flow @ VA 0x101F6210)
-# builds navmeshes from level geometry at runtime when the RLTD handler has
-# valid Recast parameters but no pre-built tiles.
+    # --- Load maps ---
+    print('Loading SVAERA...')
+    ae_arc = ArcArchive.from_file(svaera_path)
+    ae_data = ae_arc.decompress([e for e in ae_arc.entries if e.entry_type == 3][0])
+    ae_sec = {s['type']: s for s in parse_sections(ae_data)}
+    ae_levels = parse_level_index(ae_data, ae_sec[SEC_LEVELS])
+    ae_quests = parse_quests(ae_data, ae_sec[SEC_QUESTS])
+    ae_bitmaps = parse_bitmap_index(ae_data, ae_sec[SEC_BITMAPS])
+    ae_bmp_unknown = struct.unpack_from('<I', ae_data, ae_sec[SEC_BITMAPS]['data_offset'])[0]
 
-print('Loading SV...')
-sv_arc_obj = ArcArchive.from_file(sv_path)
-sv_data = sv_arc_obj.decompress([e for e in sv_arc_obj.entries if e.entry_type == 3][0])
-sv_sec = {s['type']: s for s in parse_sections(sv_data)}
-sv_levels = parse_level_index(sv_data, sv_sec[SEC_LEVELS])
-sv_quests = parse_quests(sv_data, sv_sec[SEC_QUESTS])
-sv_bitmaps = parse_bitmap_index(sv_data, sv_sec[SEC_BITMAPS])
+    # Donor pool no longer needed - using minimal REC\x02 stubs instead.
+    # The engine's built-in Recast generator (ProcessRLTD_flow @ VA 0x101F6210)
+    # builds navmeshes from level geometry at runtime when the RLTD handler has
+    # valid Recast parameters but no pre-built tiles.
 
-ae_by_name = {lv['fname'].replace('\\', '/').lower(): i for i, lv in enumerate(ae_levels)}
-sv_by_name = {lv['fname'].replace('\\', '/').lower(): i for i, lv in enumerate(sv_levels)}
+    print('Loading SV...')
+    sv_arc_obj = ArcArchive.from_file(sv_path)
+    sv_data = sv_arc_obj.decompress([e for e in sv_arc_obj.entries if e.entry_type == 3][0])
+    sv_sec = {s['type']: s for s in parse_sections(sv_data)}
+    sv_levels = parse_level_index(sv_data, sv_sec[SEC_LEVELS])
+    sv_quests = parse_quests(sv_data, sv_sec[SEC_QUESTS])
+    sv_bitmaps = parse_bitmap_index(sv_data, sv_sec[SEC_BITMAPS])
 
-print(f'  SVAERA: {len(ae_levels)} levels, SV: {len(sv_levels)} levels')
+    ae_by_name = {lv['fname'].replace('\\', '/').lower(): i for i, lv in enumerate(ae_levels)}
+    sv_by_name = {lv['fname'].replace('\\', '/').lower(): i for i, lv in enumerate(sv_levels)}
 
-# --- 1. Identify SV-only levels (not in SVAERA) ---
-sv_only = []
-for lv in sv_levels:
-    key = lv['fname'].replace('\\', '/').lower()
-    if key not in ae_by_name:
-        sv_only.append(lv)
-print(f'\n  SV-only levels to add: {len(sv_only)}')
+    print(f'  SVAERA: {len(ae_levels)} levels, SV: {len(sv_levels)} levels')
 
-# --- 2. GROUPS: SV's + SVAERA-only ---
-print('\n=== Merging GROUPS ===')
-sv_groups_raw = sv_data[sv_sec[SEC_GROUPS]['data_offset']:
-                        sv_sec[SEC_GROUPS]['data_offset'] + sv_sec[SEC_GROUPS]['size']]
-ae_groups_raw = ae_data[ae_sec[SEC_GROUPS]['data_offset']:
-                        ae_sec[SEC_GROUPS]['data_offset'] + ae_sec[SEC_GROUPS]['size']]
-sv_g_val0, sv_g_recs = _parse_groups(sv_groups_raw)
-_, ae_g_recs = _parse_groups(ae_groups_raw)
-sv_g_names = set(r['name'] for r in sv_g_recs)
-ae_only_recs = [r for r in ae_g_recs if r['name'] not in sv_g_names]
-merged_groups = _rebuild_groups(sv_g_val0, sv_g_recs + ae_only_recs)
-print(f'  SV: {len(sv_g_recs)}, SVAERA-only: {len(ae_only_recs)}, merged: {len(sv_g_recs) + len(ae_only_recs)}')
+    # --- 1. Identify SV-only levels (not in SVAERA) ---
+    sv_only = []
+    for lv in sv_levels:
+        key = lv['fname'].replace('\\', '/').lower()
+        if key not in ae_by_name:
+            sv_only.append(lv)
+    print(f'\n  SV-only levels to add: {len(sv_only)}')
 
-# --- 3. SD: SV's (blood cave zone definitions) ---
-sv_sd = sv_data[sv_sec[SEC_SD]['data_offset']:
-                sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
-print(f'  Using SV SD: {len(sv_sd)} bytes')
+    # --- 2. GROUPS: SV's + SVAERA-only ---
+    print('\n=== Merging GROUPS ===')
+    sv_groups_raw = sv_data[sv_sec[SEC_GROUPS]['data_offset']:
+                            sv_sec[SEC_GROUPS]['data_offset'] + sv_sec[SEC_GROUPS]['size']]
+    ae_groups_raw = ae_data[ae_sec[SEC_GROUPS]['data_offset']:
+                            ae_sec[SEC_GROUPS]['data_offset'] + ae_sec[SEC_GROUPS]['size']]
+    sv_g_val0, sv_g_recs = _parse_groups(sv_groups_raw)
+    _, ae_g_recs = _parse_groups(ae_groups_raw)
+    sv_g_names = set(r['name'] for r in sv_g_recs)
+    ae_only_recs = [r for r in ae_g_recs if r['name'] not in sv_g_names]
+    merged_groups = _rebuild_groups(sv_g_val0, sv_g_recs + ae_only_recs)
+    print(f'  SV: {len(sv_g_recs)}, SVAERA-only: {len(ae_only_recs)}, merged: {len(sv_g_recs) + len(ae_only_recs)}')
 
-# --- 4. QUESTS: merged + custom ---
-ae_quest_set = set(q.lower() if isinstance(q, str) else q.lower() for q in ae_quests)
-new_quests = [q for q in sv_quests if (q.lower() if isinstance(q, str) else q.lower()) not in ae_quest_set]
-merged_quests = ae_quests + new_quests
-existing_lower = set(q.lower() if isinstance(q, str) else q.decode('ascii', errors='replace').lower()
-                     for q in merged_quests)
-added_quests = 0
-for qname in ALL_CUSTOM_QUEST_NAMES:
-    if qname.lower() not in existing_lower:
-        merged_quests.append(qname.encode('ascii'))
-        existing_lower.add(qname.lower())
-        added_quests += 1
-new_quests_data = build_quests(merged_quests)
-print(f'  Quests: {len(ae_quests)} + {len(new_quests)} SV + {added_quests} custom = {len(merged_quests)}')
+    # --- 3. SD: SV's (blood cave zone definitions) ---
+    sv_sd = sv_data[sv_sec[SEC_SD]['data_offset']:
+                    sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
+    print(f'  Using SV SD: {len(sv_sd)} bytes')
 
-# --- 5. Load SV-only level blobs (will convert to v0x11 after NPC injection) ---
-print('\n=== Loading SV-only level blobs ===')
-converted_blobs = {}  # sv_only index -> blob
-v0e_count = v11_count = other_count = 0
-for i, lv in enumerate(sv_only):
-    blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-    converted_blobs[i] = blob
-    if len(blob) >= 4 and blob[:3] == b'LVL':
-        ver = blob[3]
-        if ver == 0x0e:
-            v0e_count += 1
-        elif ver == 0x11:
-            v11_count += 1
+    # --- 4. QUESTS: merged + custom ---
+    ae_quest_set = set(q.lower() if isinstance(q, str) else q.lower() for q in ae_quests)
+    new_quests = [q for q in sv_quests if (q.lower() if isinstance(q, str) else q.lower()) not in ae_quest_set]
+    merged_quests = ae_quests + new_quests
+    existing_lower = set(q.lower() if isinstance(q, str) else q.decode('ascii', errors='replace').lower()
+                         for q in merged_quests)
+    added_quests = 0
+    for qname in ALL_CUSTOM_QUEST_NAMES:
+        if qname.lower() not in existing_lower:
+            merged_quests.append(qname.encode('ascii'))
+            existing_lower.add(qname.lower())
+            added_quests += 1
+    new_quests_data = build_quests(merged_quests)
+    print(f'  Quests: {len(ae_quests)} + {len(new_quests)} SV + {added_quests} custom = {len(merged_quests)}')
+
+    # --- 5. Load SV-only level blobs (will convert to v0x11 after NPC injection) ---
+    print('\n=== Loading SV-only level blobs ===')
+    converted_blobs = {}  # sv_only index -> blob
+    v0e_count = v11_count = other_count = 0
+    for i, lv in enumerate(sv_only):
+        blob = sv_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+        converted_blobs[i] = blob
+        if len(blob) >= 4 and blob[:3] == b'LVL':
+            ver = blob[3]
+            if ver == 0x0e:
+                v0e_count += 1
+            elif ver == 0x11:
+                v11_count += 1
+            else:
+                other_count += 1
         else:
             other_count += 1
-    else:
-        other_count += 1
-print(f'  v0x0e: {v0e_count}, v0x11: {v11_count}, other: {other_count}')
+    print(f'  v0x0e: {v0e_count}, v0x11: {v11_count}, other: {other_count}')
 
-# --- 6. Inject portal NPCs into level blobs ---
-print('\n=== Injecting portal NPCs ===')
+    # --- 6. Inject portal NPCs into level blobs ---
+    print('\n=== Injecting portal NPCs ===')
 
-# Build lookup: level key -> (source, index, blob)
-# "ae" levels are in ae_data, "sv_only" are in converted_blobs
-ae_inject_keys = {}
-for lv_key, specs in INJECT_SPECS.items():
-    if lv_key in ae_by_name:
-        ae_inject_keys[lv_key] = specs
+    # Build lookup: level key -> (source, index, blob)
+    # "ae" levels are in ae_data, "sv_only" are in converted_blobs
+    ae_inject_keys = {}
+    for lv_key, specs in INJECT_SPECS.items():
+        if lv_key in ae_by_name:
+            ae_inject_keys[lv_key] = specs
 
-sv_inject_keys = {}
-for lv_key, specs in INJECT_SPECS.items():
-    for i, lv in enumerate(sv_only):
-        if lv['fname'].replace('\\', '/').lower() == lv_key:
-            sv_inject_keys[i] = specs
+    sv_inject_keys = {}
+    for lv_key, specs in INJECT_SPECS.items():
+        for i, lv in enumerate(sv_only):
+            if lv['fname'].replace('\\', '/').lower() == lv_key:
+                sv_inject_keys[i] = specs
 
-# Inject into SVAERA levels (these will be patched blobs)
-ae_patched_blobs = {}  # ae_level_index -> patched blob
-for lv_key, specs in ae_inject_keys.items():
-    ae_idx = ae_by_name[lv_key]
-    lv = ae_levels[ae_idx]
-    blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-    blob_ver = blob[3] if blob[:3] == b'LVL' else None
-
-    if blob_ver == 0x11:
-        secs, magic = parse_blob_sections(blob)
-        for j, s in enumerate(secs):
-            if s['type'] == 0x05:
-                secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
-        ae_patched_blobs[ae_idx] = rebuild_blob(magic, secs)
-        print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x11)')
-    else:
-        print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
-
-# Inject into SV-only levels
-for sv_idx, specs in sv_inject_keys.items():
-    blob = converted_blobs[sv_idx]
-    blob_ver = blob[3] if blob[:3] == b'LVL' else None
-    lv_key = sv_only[sv_idx]['fname'].replace('\\', '/').lower()
-
-    if blob_ver == 0x11:
-        secs, magic = parse_blob_sections(blob)
-        for j, s in enumerate(secs):
-            if s['type'] == 0x05:
-                secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
-        converted_blobs[sv_idx] = rebuild_blob(magic, secs)
-        print(f'  Injected {len(specs)} NPC(s) into SV-only {lv_key} (v0x11)')
-    elif blob_ver == 0x0e:
-        converted_blobs[sv_idx] = inject_into_sv_only_blob(blob, specs, lv_key)
-        print(f'  Injected {len(specs)} NPC(s) into SV-only {lv_key} (v0x0e)')
-    else:
-        print(f'  WARN: {lv_key} has unknown format v0x{blob_ver:02x}')
-
-# --- 7. Append 0x14 entries for injected instances (preserve originals) ---
-from build_section_surgery import count_0x05_instances, DEFAULT_0x14_PAYLOAD
-for ae_idx, patched_blob in ae_patched_blobs.items():
-    secs, magic = parse_blob_sections(patched_blob)
-    # Count total instances after injection
-    new_count = 0
-    for s in secs:
-        if s['type'] == 0x05:
-            new_count = count_0x05_instances(s['data'])
-            break
-    else:
-        continue
-    # Append new 0x14 entries for injected instances (keep original entries intact)
-    new_secs = []
-    for s in secs:
-        if s['type'] == 0x14:
-            # Original 0x14 data covers existing instances; append entries for new ones
-            orig_data = bytearray(s['data'])
-            # Parse existing 0x14 to count entries
-            orig_entries = 0
-            pos = 0
-            while pos + 8 <= len(orig_data):
-                idx = struct.unpack_from('<I', orig_data, pos)[0]
-                psize = struct.unpack_from('<I', orig_data, pos + 4)[0]
-                pos += 8 + psize
-                orig_entries += 1
-            # Append default entries for new instances (indices after original count)
-            for idx in range(orig_entries, new_count):
-                orig_data += struct.pack('<II', idx, len(DEFAULT_0x14_PAYLOAD))
-                orig_data += DEFAULT_0x14_PAYLOAD
-            new_secs.append({'type': 0x14, 'data': bytes(orig_data)})
-            print(f'  0x14: kept {orig_entries} original + added {new_count - orig_entries} new entries')
-        else:
-            new_secs.append(s)
-    ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
-
-# --- 7b. Inject 0x0b (REC\x02) pathfinding into SV-only level blobs ---
-# SV-only levels ship with 0x0a (PTH\x04) pathfinding which the TQAE engine
-# cannot parse. For each level we look up a REAL baked navmesh harvested from
-# the TQAE Editor (donor dir keyed by basename, default local/editor_normalized/
-# or SVC_DONOR_DIR). If found we transplant that donor 0x0b and reposition its
-# header center to the level's SHIFTED merged grid corner via transplant_rec02;
-# this is the actual fix. If no donor exists yet (Editor bake pending), we fall
-# back to the dead 148-byte stub so the build still completes during the
-# transition. Either way inject_rec02_into_blob strips the 0x0a section so
-# ProcessRLTD reinit cannot clobber the 0x0b handler state.
-#
-# We pass the SHIFTED ints_raw (grid corner + GRID_SHIFT) so a transplanted
-# navmesh lands at the level's FINAL merged position, regardless of whether the
-# donor was baked at original or shifted coords (donor-source-agnostic).
-print('\n=== Injecting 0x0b pathfinding into SV-only levels ===')
-print(f'  Donor dir: {DONOR_DIR}  (exists={DONOR_DIR.is_dir()})')
-real_ok = 0
-stub_ok = 0
-inject_fail = 0
-for i in range(len(sv_only)):
-    blob = converted_blobs[i]
-    lv = sv_only[i]
-    target_ints = shifted_ints_raw(lv)  # carries the SHIFTED grid corner
-    donor_0x0b, donor_path = find_donor_0x0b(lv)
-    basename = lv['fname'].replace('\\', '/').split('/')[-1]
-    if donor_0x0b is not None:
-        result = inject_rec02_into_blob(blob, target_ints, donor_data=donor_0x0b, use_stub=False)
-        kind = 'REAL donor'
-    else:
-        result = inject_rec02_into_blob(blob, target_ints, use_stub=True)
-        kind = 'stub'
-    if result != blob:
-        converted_blobs[i] = result
-        if kind == 'REAL donor':
-            real_ok += 1
-            print(f'  REAL donor: {basename} <- {donor_path.name} ({len(donor_0x0b)} B 0x0b)')
-        else:
-            stub_ok += 1
-    else:
-        inject_fail += 1
-        print(f'  {kind}: {basename} -> NO CHANGE (already has 0x0b or empty)')
-print(f'  Injected: {real_ok} real / {stub_ok} stub  (of {len(sv_only)} SV-only)')
-if inject_fail:
-    print(f'  Failed/skipped: {inject_fail}')
-
-# --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
-# Tests whether there is a hidden append-time registration gate.
-# Clone ArcadiaDungeonPassage (idx 973, known-good SVAERA v0x0e level).
-# Shift grid to non-overlapping position. New unique GUID. Blob unchanged.
-CLONE_DONOR_IDX = 973
-CLONE_GRID_SHIFT = (80, 0, 0)  # one tile-width right of donor, adjacent for streaming
-_donor = ae_levels[CLONE_DONOR_IDX]
-_donor_blob = ae_data[_donor['data_offset']:_donor['data_offset'] + _donor['data_length']]
-
-# Build new LEVELS record: copy donor metadata, shift grid, new GUID
-_clone_ints = bytearray(_donor['ints_raw'])
-_orig_gx, _orig_gy, _orig_gz = struct.unpack_from('<iii', _clone_ints, 24)
-_new_gx = _orig_gx + CLONE_GRID_SHIFT[0]
-_new_gy = _orig_gy + CLONE_GRID_SHIFT[1]
-_new_gz = _orig_gz + CLONE_GRID_SHIFT[2]
-struct.pack_into('<iii', _clone_ints, 24, _new_gx, _new_gy, _new_gz)
-# Write a new unique GUID (deterministic, won't collide with any existing)
-struct.pack_into('<iiii', _clone_ints, 36, 0x7F000001, 0x7F000002, 0x7F000003, 0x7F000004)
-_clone_entry = {
-    'ints_raw': bytes(_clone_ints),
-    'dbr_raw': _donor['dbr_raw'],
-    'dbr': _donor['dbr'],
-    'fname_raw': _donor['fname_raw'],
-    'fname': _donor['fname'],
-    'data_offset': 0,  # patched later
-    'data_length': len(_donor_blob),
-}
-# Store for use during map rebuild
-_append_clone_blob = _donor_blob
-_append_clone_entry = _clone_entry
-
-# Clone's bitmap: copy from donor (shifted later during bitmap fixup)
-_donor_bm = ae_bitmaps[CLONE_DONOR_IDX]
-
-_ir = struct.unpack_from('<13i', _clone_ints, 0)
-print(f'  APPEND-CLONE: Cloning SVAERA idx {CLONE_DONOR_IDX} as new appended level')
-print(f'    Donor: {_donor["fname"]}')
-print(f'    Blob: {len(_donor_blob)} bytes (unchanged)')
-print(f'    Grid: ({_orig_gx},{_orig_gy},{_orig_gz}) -> ({_new_gx},{_new_gy},{_new_gz})')
-print(f'    New GUID: [{_ir[9]}, {_ir[10]}, {_ir[11]}, {_ir[12]}]')
-print(f'    Donor bitmap: offset={_donor_bm["offset"]}, length={_donor_bm["length"]}')
-
-# --- 8. Rebuild map ---
-print('\n=== Rebuilding map ===')
-
-# Collect SVAERA sections we keep as-is
-ae_sections = parse_sections(ae_data)
-unk_sections = []
-for s in ae_sections:
-    if s['type'] not in (SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_LEVELS, SEC_BITMAPS, SEC_DATA2, SEC_DATA):
-        unk_sections.append((s['type'], ae_data[s['data_offset']:s['data_offset'] + s['size']]))
-
-# DATA2 from SVAERA (base) + SV's DATA2 appended for SV-only levels
-data2_raw = bytearray(ae_data[ae_sec[SEC_DATA2]['data_offset']:
-                              ae_sec[SEC_DATA2]['data_offset'] + ae_sec[SEC_DATA2]['size']])
-orig_data2_len = len(data2_raw)
-
-# Build merged level list: all SVAERA levels + SV-only levels.
-# Apply GRID_SHIFT (defined once near the top) to each SV-only level's grid
-# corner via shifted_ints_raw so the world-grid position here MATCHES the
-# navmesh header center written in step 7b. xPassageTransitionStart's east edge
-# then touches HighAltituedBorder01's west edge, connecting the blood cave chain
-# to the SVAERA world grid (bc_initialpathway: new grid (-438,18,2215)).
-merged_levels = [dict(lv) for lv in ae_levels]
-grid_shifted = 0
-for i, lv in enumerate(sv_only):
-    entry = dict(lv)
-    new_ints = shifted_ints_raw(lv)
-    if new_ints != lv['ints_raw']:
-        entry['ints_raw'] = new_ints
-        grid_shifted += 1
-    merged_levels.append(entry)
-# Append the SVAERA clone as the final level
-merged_levels.append(_append_clone_entry)
-_clone_merged_idx = len(merged_levels) - 1
-print(f'  Grid-shifted {grid_shifted} SV-only levels for world grid connectivity')
-print(f'  Appended SVAERA clone at merged index {_clone_merged_idx}')
-
-# Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
-merged_bitmaps = list(ae_bitmaps)
-sv_only_data2 = {}
-sv_only_d2_count = 0
-for i, lv in enumerate(sv_only):
-    lv_key = lv['fname'].replace(chr(92), '/').lower()
-    sv_idx = sv_by_name.get(lv_key)
-    if sv_idx is not None and sv_idx < len(sv_bitmaps) and sv_bitmaps[sv_idx]['length'] > 0:
-        sv_bm = sv_bitmaps[sv_idx]
-        sv_path_data = sv_data[sv_bm['offset']:sv_bm['offset'] + sv_bm['length']]
-        offset_in_data2 = len(data2_raw)
-        data2_raw += sv_path_data
-        sv_only_data2[i] = (offset_in_data2, sv_bm['length'])
-        sv_only_d2_count += 1
-    else:
-        sv_only_data2[i] = None
-    merged_bitmaps.append({'offset': 0, 'length': 0, 'parts': 0, 'unknown': 0})
-
-# Append clone's bitmap (copy donor's DATA2 data)
-if _donor_bm['length'] > 0:
-    _clone_bm_offset = len(data2_raw)
-    _clone_bm_data = ae_data[_donor_bm['offset']:_donor_bm['offset'] + _donor_bm['length']]
-    data2_raw += _clone_bm_data
-    merged_bitmaps.append({'offset': 0, 'length': _donor_bm['length']})
-    sv_only_data2[len(sv_only)] = (_clone_bm_offset, _donor_bm['length'])
-    print(f'  Clone bitmap: {len(_clone_bm_data)} bytes appended to DATA2')
-else:
-    merged_bitmaps.append({'offset': 0, 'length': 0})
-    sv_only_data2[len(sv_only)] = None
-    print(f'  Clone bitmap: donor has no bitmap data')
-
-# Append any pending bitmap data from replaced levels
-_replace_bm_offsets = {}  # ae_idx -> offset_in_data2
-for i in range(len(ae_bitmaps)):
-    if isinstance(ae_bitmaps[i], dict) and '_pending_data' in ae_bitmaps[i]:
-        _replace_bm_offsets[i] = len(data2_raw)
-        data2_raw += ae_bitmaps[i]['_pending_data']
-        print(f'  Appended replacement bitmap for idx {i} at DATA2 offset {_replace_bm_offsets[i]}')
-
-# Patch DATA2 level count to match merged level count
-# DATA2 header: uint32(0) + uint32(level_count) at offset 4
-orig_d2_count = struct.unpack_from('<I', data2_raw, 4)[0]
-struct.pack_into('<I', data2_raw, 4, len(merged_levels))
-print(f'  DATA2 level count: {orig_d2_count} -> {len(merged_levels)}')
-
-data2_raw = bytes(data2_raw)
-print(f'  SV-only DATA2: {sv_only_d2_count}/{len(sv_only)} levels, +{(len(data2_raw) - orig_data2_len)/(1024*1024):.1f} MB')
-
-# Calculate pre-data section layout
-new_levels_data = build_level_index(merged_levels)
-new_bitmaps_data = build_bitmap_index(merged_bitmaps, ae_bmp_unknown)
-
-new_pre_data_size = 8  # MAP header
-new_pre_data_size += 8 + len(new_quests_data)
-new_pre_data_size += 8 + len(merged_groups)
-new_pre_data_size += 8 + len(sv_sd)
-new_pre_data_size += 8 + len(new_levels_data)
-new_pre_data_size += 8 + len(new_bitmaps_data)
-for _, ud in unk_sections:
-    new_pre_data_size += 8 + len(ud)
-
-# DATA section: SVAERA blobs (with patches) + SV-only blobs
-print('  Building DATA section...')
-data_start = new_pre_data_size + 8 + len(data2_raw) + 8  # after DATA2 + DATA header
-compacted_data = bytearray()
-
-for i in range(len(ae_levels)):
-    if i in ae_patched_blobs:
-        blob = ae_patched_blobs[i]
-    else:
-        lv = ae_levels[i]
+    # Inject into SVAERA levels (these will be patched blobs)
+    ae_patched_blobs = {}  # ae_level_index -> patched blob
+    for lv_key, specs in ae_inject_keys.items():
+        ae_idx = ae_by_name[lv_key]
+        lv = ae_levels[ae_idx]
         blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-    merged_levels[i]['data_offset'] = data_start + len(compacted_data)
-    merged_levels[i]['data_length'] = len(blob)
-    compacted_data += blob
+        blob_ver = blob[3] if blob[:3] == b'LVL' else None
 
-for i, lv in enumerate(sv_only):
-    ae_count = len(ae_levels)
-    blob = converted_blobs[i]
-    merged_levels[ae_count + i]['data_offset'] = data_start + len(compacted_data)
-    merged_levels[ae_count + i]['data_length'] = len(blob)
-    compacted_data += blob
+        if blob_ver == 0x11:
+            secs, magic = parse_blob_sections(blob)
+            for j, s in enumerate(secs):
+                if s['type'] == 0x05:
+                    secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
+            ae_patched_blobs[ae_idx] = rebuild_blob(magic, secs)
+            print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x11)')
+        else:
+            print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
 
-# Append the SVAERA clone blob
-merged_levels[_clone_merged_idx]['data_offset'] = data_start + len(compacted_data)
-merged_levels[_clone_merged_idx]['data_length'] = len(_append_clone_blob)
-compacted_data += _append_clone_blob
+    # Inject into SV-only levels
+    for sv_idx, specs in sv_inject_keys.items():
+        blob = converted_blobs[sv_idx]
+        blob_ver = blob[3] if blob[:3] == b'LVL' else None
+        lv_key = sv_only[sv_idx]['fname'].replace('\\', '/').lower()
 
-print(f'  DATA: {len(compacted_data)/(1024**2):.1f} MB ({len(ae_levels)} SVAERA + {len(sv_only)} SV-only + 1 clone)')
+        if blob_ver == 0x11:
+            secs, magic = parse_blob_sections(blob)
+            for j, s in enumerate(secs):
+                if s['type'] == 0x05:
+                    secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
+            converted_blobs[sv_idx] = rebuild_blob(magic, secs)
+            print(f'  Injected {len(specs)} NPC(s) into SV-only {lv_key} (v0x11)')
+        elif blob_ver == 0x0e:
+            converted_blobs[sv_idx] = inject_into_sv_only_blob(blob, specs, lv_key)
+            print(f'  Injected {len(specs)} NPC(s) into SV-only {lv_key} (v0x0e)')
+        else:
+            print(f'  WARN: {lv_key} has unknown format v0x{blob_ver:02x}')
 
-# Rebuild levels index with corrected offsets
-new_levels_data = build_level_index(merged_levels)
+    # --- 7. Append 0x14 entries for injected instances (preserve originals) ---
+    from build_section_surgery import count_0x05_instances, DEFAULT_0x14_PAYLOAD
+    for ae_idx, patched_blob in ae_patched_blobs.items():
+        secs, magic = parse_blob_sections(patched_blob)
+        # Count total instances after injection
+        new_count = 0
+        for s in secs:
+            if s['type'] == 0x05:
+                new_count = count_0x05_instances(s['data'])
+                break
+        else:
+            continue
+        # Append new 0x14 entries for injected instances (keep original entries intact)
+        new_secs = []
+        for s in secs:
+            if s['type'] == 0x14:
+                # Original 0x14 data covers existing instances; append entries for new ones
+                orig_data = bytearray(s['data'])
+                # Parse existing 0x14 to count entries
+                orig_entries = 0
+                pos = 0
+                while pos + 8 <= len(orig_data):
+                    idx = struct.unpack_from('<I', orig_data, pos)[0]
+                    psize = struct.unpack_from('<I', orig_data, pos + 4)[0]
+                    pos += 8 + psize
+                    orig_entries += 1
+                # Append default entries for new instances (indices after original count)
+                for idx in range(orig_entries, new_count):
+                    orig_data += struct.pack('<II', idx, len(DEFAULT_0x14_PAYLOAD))
+                    orig_data += DEFAULT_0x14_PAYLOAD
+                new_secs.append({'type': 0x14, 'data': bytes(orig_data)})
+                print(f'  0x14: kept {orig_entries} original + added {new_count - orig_entries} new entries')
+            else:
+                new_secs.append(s)
+        ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
 
-# Fix bitmap offsets (shift SVAERA bitmap offsets for new layout)
-ae_pre_data = ae_sec[SEC_DATA2]['header_offset']
-bmp_offset_shift = new_pre_data_size - ae_pre_data
-adjusted_bitmaps = [dict(b) for b in merged_bitmaps]
-for i in range(len(ae_bitmaps)):
-    if i in _replace_bm_offsets:
-        # Replaced level - use pre-computed offset from DATA2 append
-        bm_entry = ae_bitmaps[i]
-        abs_off = (new_pre_data_size + 8) + _replace_bm_offsets[i]
-        adjusted_bitmaps[i]['offset'] = abs_off
-        adjusted_bitmaps[i]['length'] = bm_entry['length']
-        print(f'  Replaced bitmap at idx {i}: offset={abs_off}, length={bm_entry["length"]}')
-    elif adjusted_bitmaps[i]['offset'] > 0:
-        adjusted_bitmaps[i]['offset'] = ae_bitmaps[i]['offset'] + bmp_offset_shift
+    # --- 7b. Inject 0x0b (REC\x02) pathfinding into SV-only level blobs ---
+    # SV-only levels ship with 0x0a (PTH\x04) pathfinding the TQAE engine cannot
+    # parse. Each level is resolved against the donor dir (default
+    # local/editor_normalized/ or SVC_DONOR_DIR) in THREE tiers:
+    #
+    #   1. GENERATED donor  <basename>.0b.bin  - a pre-positioned raw 0x0b built
+    #      offline by tools/gen_bc_navmeshes.py. GUIDs already resolve in the
+    #      merged world and the center is already shifted to the merged grid, so
+    #      it is injected VERBATIM (pre_positioned=True, NO transplant). This is
+    #      the actual blood-cave fix.
+    #   2. LVL donor        <basename>.lvl      - a full baked .lvl (e.g. future
+    #      Editor bake). Its 0x0b is extracted and REPOSITIONED to this level's
+    #      SHIFTED grid via transplant_rec02.
+    #   3. STUB             - no donor: inject the (dead) 148-byte stub so the
+    #      build stays green. Used by the 7 ocean-scenery BC levels + anything
+    #      still missing a donor.
+    #
+    # inject_rec02_into_blob always strips the 0x0a section so ProcessRLTD reinit
+    # cannot clobber the 0x0b handler state. The SHIFTED ints_raw (grid corner +
+    # GRID_SHIFT) is passed so tier-2/3 land at the level's FINAL merged position.
+    print('\n=== Injecting 0x0b pathfinding into SV-only levels ===')
+    print(f'  Donor dir: {DONOR_DIR}  (exists={DONOR_DIR.is_dir()})')
+    gen_ok = 0
+    lvl_ok = 0
+    stub_ok = 0
+    inject_fail = 0
+    for i in range(len(sv_only)):
+        blob = converted_blobs[i]
+        lv = sv_only[i]
+        target_ints = shifted_ints_raw(lv)  # carries the SHIFTED grid corner
+        basename = lv['fname'].replace('\\', '/').split('/')[-1]
 
-# Set bitmap entries for SV-only levels (DATA2 pathfinding)
-new_data2_data_start = new_pre_data_size + 8  # after pre-data sections + DATA2 header
-for i, appended_info in sv_only_data2.items():
-    merged_idx = len(ae_levels) + i
-    if appended_info is not None:
-        offset_in_data2, length = appended_info
-        abs_offset = new_data2_data_start + offset_in_data2
-        adjusted_bitmaps[merged_idx]['offset'] = abs_offset
-        adjusted_bitmaps[merged_idx]['length'] = length
+        gen_0x0b, gen_path = find_pre_positioned_donor(lv)
+        lvl_0x0b, lvl_path = (None, None)
+        if gen_0x0b is not None:
+            # Tier 1: pre-positioned generated donor - insert as-is.
+            result = inject_rec02_into_blob(blob, target_ints, donor_data=gen_0x0b,
+                                            use_stub=False, pre_positioned=True)
+            kind, donor_path, donor_len = 'generated', gen_path, len(gen_0x0b)
+        else:
+            lvl_0x0b, lvl_path = find_donor_0x0b(lv)
+            if lvl_0x0b is not None:
+                # Tier 2: full baked .lvl donor - transplant/reposition.
+                result = inject_rec02_into_blob(blob, target_ints, donor_data=lvl_0x0b,
+                                                use_stub=False)
+                kind, donor_path, donor_len = 'lvl', lvl_path, len(lvl_0x0b)
+            else:
+                # Tier 3: no donor - stub fallback.
+                result = inject_rec02_into_blob(blob, target_ints, use_stub=True)
+                kind, donor_path, donor_len = 'stub', None, 0
 
-new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, ae_bmp_unknown)
+        if result != blob:
+            converted_blobs[i] = result
+            if kind == 'generated':
+                gen_ok += 1
+                print(f'  GENERATED donor: {basename} <- {donor_path.name} ({donor_len} B 0x0b)')
+            elif kind == 'lvl':
+                lvl_ok += 1
+                print(f'  LVL donor: {basename} <- {donor_path.name} ({donor_len} B 0x0b)')
+            else:
+                stub_ok += 1
+        else:
+            inject_fail += 1
+            print(f'  {kind}: {basename} -> NO CHANGE (already has 0x0b or empty)')
+    print(f'  Injected: {gen_ok} generated-donor / {lvl_ok} lvl-donor / {stub_ok} stub  '
+          f'(of {len(sv_only)} SV-only)')
+    if inject_fail:
+        print(f'  Failed/skipped: {inject_fail}')
 
-# Write map
-print('\nWriting map...')
-header2 = new_pre_data_size - 8
-out = bytearray()
-out += struct.pack('<II', MAP_MAGIC, header2)
-out += struct.pack('<II', SEC_QUESTS, len(new_quests_data)); out += new_quests_data
-out += struct.pack('<II', SEC_GROUPS, len(merged_groups)); out += merged_groups
-out += struct.pack('<II', SEC_SD, len(sv_sd)); out += sv_sd
-out += struct.pack('<II', SEC_LEVELS, len(new_levels_data)); out += new_levels_data
-out += struct.pack('<II', SEC_BITMAPS, len(new_bitmaps_data)); out += new_bitmaps_data
-for utype, udata in unk_sections:
-    out += struct.pack('<II', utype, len(udata)); out += udata
-out += struct.pack('<II', SEC_DATA2, len(data2_raw)); out += data2_raw
-out += struct.pack('<II', SEC_DATA, len(compacted_data))
-out += compacted_data
+    # --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
+    # Tests whether there is a hidden append-time registration gate.
+    # Clone ArcadiaDungeonPassage (idx 973, known-good SVAERA v0x0e level).
+    # Shift grid to non-overlapping position. New unique GUID. Blob unchanged.
+    CLONE_DONOR_IDX = 973
+    CLONE_GRID_SHIFT = (80, 0, 0)  # one tile-width right of donor, adjacent for streaming
+    _donor = ae_levels[CLONE_DONOR_IDX]
+    _donor_blob = ae_data[_donor['data_offset']:_donor['data_offset'] + _donor['data_length']]
 
-result = bytes(out)
-print(f'  Size: {len(result)/(1024**2):.1f} MB, under 2GB: {len(result) < 2147483647}')
+    # Build new LEVELS record: copy donor metadata, shift grid, new GUID
+    _clone_ints = bytearray(_donor['ints_raw'])
+    _orig_gx, _orig_gy, _orig_gz = struct.unpack_from('<iii', _clone_ints, 24)
+    _new_gx = _orig_gx + CLONE_GRID_SHIFT[0]
+    _new_gy = _orig_gy + CLONE_GRID_SHIFT[1]
+    _new_gz = _orig_gz + CLONE_GRID_SHIFT[2]
+    struct.pack_into('<iii', _clone_ints, 24, _new_gx, _new_gy, _new_gz)
+    # Write a new unique GUID (deterministic, won't collide with any existing)
+    struct.pack_into('<iiii', _clone_ints, 36, 0x7F000001, 0x7F000002, 0x7F000003, 0x7F000004)
+    _clone_entry = {
+        'ints_raw': bytes(_clone_ints),
+        'dbr_raw': _donor['dbr_raw'],
+        'dbr': _donor['dbr'],
+        'fname_raw': _donor['fname_raw'],
+        'fname': _donor['fname'],
+        'data_offset': 0,  # patched later
+        'data_length': len(_donor_blob),
+    }
+    # Store for use during map rebuild
+    _append_clone_blob = _donor_blob
+    _append_clone_entry = _clone_entry
 
-# Verify
-test_sections = parse_sections(result)
-test_sec = {s['type']: s for s in test_sections}
-test_levels = parse_level_index(result, test_sec[SEC_LEVELS])
-bad = sum(1 for lv in test_levels if lv['data_offset'] + lv['data_length'] > len(result))
-bad_magic = sum(1 for lv in test_levels if result[lv['data_offset']:lv['data_offset']+3] != b'LVL')
-zero_ints = sum(1 for lv in test_levels if lv['ints_raw'] == b'\x00' * 52)
-print(f'  Levels: {len(test_levels)}, bad offsets: {bad}, bad magic: {bad_magic}, zero ints: {zero_ints}')
-print(f'  drxmap refs: {result.count(b"drxmap")}')
+    # Clone's bitmap: copy from donor (shifted later during bitmap fixup)
+    _donor_bm = ae_bitmaps[CLONE_DONOR_IDX]
 
-v11 = sum(1 for lv in test_levels if result[lv['data_offset']+3:lv['data_offset']+4] == b'\x11')
-v0e = sum(1 for lv in test_levels if result[lv['data_offset']+3:lv['data_offset']+4] == b'\x0e')
-print(f'  Format: v0x11={v11}, v0x0e={v0e}, other={len(test_levels)-v11-v0e}')
+    _ir = struct.unpack_from('<13i', _clone_ints, 0)
+    print(f'  APPEND-CLONE: Cloning SVAERA idx {CLONE_DONOR_IDX} as new appended level')
+    print(f'    Donor: {_donor["fname"]}')
+    print(f'    Blob: {len(_donor_blob)} bytes (unchanged)')
+    print(f'    Grid: ({_orig_gx},{_orig_gy},{_orig_gz}) -> ({_new_gx},{_new_gy},{_new_gz})')
+    print(f'    New GUID: [{_ir[9]}, {_ir[10]}, {_ir[11]}, {_ir[12]}]')
+    print(f'    Donor bitmap: offset={_donor_bm["offset"]}, length={_donor_bm["length"]}')
 
-# Package into ARC
-print('\nPackaging into ARC...')
-arc = ArcArchive.from_file(svaera_path)
-arc.set_file('world/world01.map', result)
-arc.write(out_arc_path)
-print(f'  Written: {out_arc_path.stat().st_size / (1024**2):.1f} MB')
+    # --- 8. Rebuild map ---
+    print('\n=== Rebuilding map ===')
 
-del ae_data, sv_data, result
-print('Done.')
+    # Collect SVAERA sections we keep as-is
+    ae_sections = parse_sections(ae_data)
+    unk_sections = []
+    for s in ae_sections:
+        if s['type'] not in (SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_LEVELS, SEC_BITMAPS, SEC_DATA2, SEC_DATA):
+            unk_sections.append((s['type'], ae_data[s['data_offset']:s['data_offset'] + s['size']]))
+
+    # DATA2 from SVAERA (base) + SV's DATA2 appended for SV-only levels
+    data2_raw = bytearray(ae_data[ae_sec[SEC_DATA2]['data_offset']:
+                                  ae_sec[SEC_DATA2]['data_offset'] + ae_sec[SEC_DATA2]['size']])
+    orig_data2_len = len(data2_raw)
+
+    # Build merged level list: all SVAERA levels + SV-only levels.
+    # Apply GRID_SHIFT (defined once near the top) to each SV-only level's grid
+    # corner via shifted_ints_raw so the world-grid position here MATCHES the
+    # navmesh header center written in step 7b. xPassageTransitionStart's east edge
+    # then touches HighAltituedBorder01's west edge, connecting the blood cave chain
+    # to the SVAERA world grid (bc_initialpathway: new grid (-438,18,2215)).
+    merged_levels = [dict(lv) for lv in ae_levels]
+    grid_shifted = 0
+    for i, lv in enumerate(sv_only):
+        entry = dict(lv)
+        new_ints = shifted_ints_raw(lv)
+        if new_ints != lv['ints_raw']:
+            entry['ints_raw'] = new_ints
+            grid_shifted += 1
+        merged_levels.append(entry)
+    # Append the SVAERA clone as the final level
+    merged_levels.append(_append_clone_entry)
+    _clone_merged_idx = len(merged_levels) - 1
+    print(f'  Grid-shifted {grid_shifted} SV-only levels for world grid connectivity')
+    print(f'  Appended SVAERA clone at merged index {_clone_merged_idx}')
+
+    # Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
+    merged_bitmaps = list(ae_bitmaps)
+    sv_only_data2 = {}
+    sv_only_d2_count = 0
+    for i, lv in enumerate(sv_only):
+        lv_key = lv['fname'].replace(chr(92), '/').lower()
+        sv_idx = sv_by_name.get(lv_key)
+        if sv_idx is not None and sv_idx < len(sv_bitmaps) and sv_bitmaps[sv_idx]['length'] > 0:
+            sv_bm = sv_bitmaps[sv_idx]
+            sv_path_data = sv_data[sv_bm['offset']:sv_bm['offset'] + sv_bm['length']]
+            offset_in_data2 = len(data2_raw)
+            data2_raw += sv_path_data
+            sv_only_data2[i] = (offset_in_data2, sv_bm['length'])
+            sv_only_d2_count += 1
+        else:
+            sv_only_data2[i] = None
+        merged_bitmaps.append({'offset': 0, 'length': 0, 'parts': 0, 'unknown': 0})
+
+    # Append clone's bitmap (copy donor's DATA2 data)
+    if _donor_bm['length'] > 0:
+        _clone_bm_offset = len(data2_raw)
+        _clone_bm_data = ae_data[_donor_bm['offset']:_donor_bm['offset'] + _donor_bm['length']]
+        data2_raw += _clone_bm_data
+        merged_bitmaps.append({'offset': 0, 'length': _donor_bm['length']})
+        sv_only_data2[len(sv_only)] = (_clone_bm_offset, _donor_bm['length'])
+        print(f'  Clone bitmap: {len(_clone_bm_data)} bytes appended to DATA2')
+    else:
+        merged_bitmaps.append({'offset': 0, 'length': 0})
+        sv_only_data2[len(sv_only)] = None
+        print(f'  Clone bitmap: donor has no bitmap data')
+
+    # Append any pending bitmap data from replaced levels
+    _replace_bm_offsets = {}  # ae_idx -> offset_in_data2
+    for i in range(len(ae_bitmaps)):
+        if isinstance(ae_bitmaps[i], dict) and '_pending_data' in ae_bitmaps[i]:
+            _replace_bm_offsets[i] = len(data2_raw)
+            data2_raw += ae_bitmaps[i]['_pending_data']
+            print(f'  Appended replacement bitmap for idx {i} at DATA2 offset {_replace_bm_offsets[i]}')
+
+    # Patch DATA2 level count to match merged level count
+    # DATA2 header: uint32(0) + uint32(level_count) at offset 4
+    orig_d2_count = struct.unpack_from('<I', data2_raw, 4)[0]
+    struct.pack_into('<I', data2_raw, 4, len(merged_levels))
+    print(f'  DATA2 level count: {orig_d2_count} -> {len(merged_levels)}')
+
+    data2_raw = bytes(data2_raw)
+    print(f'  SV-only DATA2: {sv_only_d2_count}/{len(sv_only)} levels, +{(len(data2_raw) - orig_data2_len)/(1024*1024):.1f} MB')
+
+    # Calculate pre-data section layout
+    new_levels_data = build_level_index(merged_levels)
+    new_bitmaps_data = build_bitmap_index(merged_bitmaps, ae_bmp_unknown)
+
+    new_pre_data_size = 8  # MAP header
+    new_pre_data_size += 8 + len(new_quests_data)
+    new_pre_data_size += 8 + len(merged_groups)
+    new_pre_data_size += 8 + len(sv_sd)
+    new_pre_data_size += 8 + len(new_levels_data)
+    new_pre_data_size += 8 + len(new_bitmaps_data)
+    for _, ud in unk_sections:
+        new_pre_data_size += 8 + len(ud)
+
+    # DATA section: SVAERA blobs (with patches) + SV-only blobs
+    print('  Building DATA section...')
+    data_start = new_pre_data_size + 8 + len(data2_raw) + 8  # after DATA2 + DATA header
+    compacted_data = bytearray()
+
+    for i in range(len(ae_levels)):
+        if i in ae_patched_blobs:
+            blob = ae_patched_blobs[i]
+        else:
+            lv = ae_levels[i]
+            blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+        merged_levels[i]['data_offset'] = data_start + len(compacted_data)
+        merged_levels[i]['data_length'] = len(blob)
+        compacted_data += blob
+
+    for i, lv in enumerate(sv_only):
+        ae_count = len(ae_levels)
+        blob = converted_blobs[i]
+        merged_levels[ae_count + i]['data_offset'] = data_start + len(compacted_data)
+        merged_levels[ae_count + i]['data_length'] = len(blob)
+        compacted_data += blob
+
+    # Append the SVAERA clone blob
+    merged_levels[_clone_merged_idx]['data_offset'] = data_start + len(compacted_data)
+    merged_levels[_clone_merged_idx]['data_length'] = len(_append_clone_blob)
+    compacted_data += _append_clone_blob
+
+    print(f'  DATA: {len(compacted_data)/(1024**2):.1f} MB ({len(ae_levels)} SVAERA + {len(sv_only)} SV-only + 1 clone)')
+
+    # Rebuild levels index with corrected offsets
+    new_levels_data = build_level_index(merged_levels)
+
+    # Fix bitmap offsets (shift SVAERA bitmap offsets for new layout)
+    ae_pre_data = ae_sec[SEC_DATA2]['header_offset']
+    bmp_offset_shift = new_pre_data_size - ae_pre_data
+    adjusted_bitmaps = [dict(b) for b in merged_bitmaps]
+    for i in range(len(ae_bitmaps)):
+        if i in _replace_bm_offsets:
+            # Replaced level - use pre-computed offset from DATA2 append
+            bm_entry = ae_bitmaps[i]
+            abs_off = (new_pre_data_size + 8) + _replace_bm_offsets[i]
+            adjusted_bitmaps[i]['offset'] = abs_off
+            adjusted_bitmaps[i]['length'] = bm_entry['length']
+            print(f'  Replaced bitmap at idx {i}: offset={abs_off}, length={bm_entry["length"]}')
+        elif adjusted_bitmaps[i]['offset'] > 0:
+            adjusted_bitmaps[i]['offset'] = ae_bitmaps[i]['offset'] + bmp_offset_shift
+
+    # Set bitmap entries for SV-only levels (DATA2 pathfinding)
+    new_data2_data_start = new_pre_data_size + 8  # after pre-data sections + DATA2 header
+    for i, appended_info in sv_only_data2.items():
+        merged_idx = len(ae_levels) + i
+        if appended_info is not None:
+            offset_in_data2, length = appended_info
+            abs_offset = new_data2_data_start + offset_in_data2
+            adjusted_bitmaps[merged_idx]['offset'] = abs_offset
+            adjusted_bitmaps[merged_idx]['length'] = length
+
+    new_bitmaps_data = build_bitmap_index(adjusted_bitmaps, ae_bmp_unknown)
+
+    # Write map
+    print('\nWriting map...')
+    header2 = new_pre_data_size - 8
+    out = bytearray()
+    out += struct.pack('<II', MAP_MAGIC, header2)
+    out += struct.pack('<II', SEC_QUESTS, len(new_quests_data)); out += new_quests_data
+    out += struct.pack('<II', SEC_GROUPS, len(merged_groups)); out += merged_groups
+    out += struct.pack('<II', SEC_SD, len(sv_sd)); out += sv_sd
+    out += struct.pack('<II', SEC_LEVELS, len(new_levels_data)); out += new_levels_data
+    out += struct.pack('<II', SEC_BITMAPS, len(new_bitmaps_data)); out += new_bitmaps_data
+    for utype, udata in unk_sections:
+        out += struct.pack('<II', utype, len(udata)); out += udata
+    out += struct.pack('<II', SEC_DATA2, len(data2_raw)); out += data2_raw
+    out += struct.pack('<II', SEC_DATA, len(compacted_data))
+    out += compacted_data
+
+    result = bytes(out)
+    print(f'  Size: {len(result)/(1024**2):.1f} MB, under 2GB: {len(result) < 2147483647}')
+
+    # Verify
+    test_sections = parse_sections(result)
+    test_sec = {s['type']: s for s in test_sections}
+    test_levels = parse_level_index(result, test_sec[SEC_LEVELS])
+    bad = sum(1 for lv in test_levels if lv['data_offset'] + lv['data_length'] > len(result))
+    bad_magic = sum(1 for lv in test_levels if result[lv['data_offset']:lv['data_offset']+3] != b'LVL')
+    zero_ints = sum(1 for lv in test_levels if lv['ints_raw'] == b'\x00' * 52)
+    print(f'  Levels: {len(test_levels)}, bad offsets: {bad}, bad magic: {bad_magic}, zero ints: {zero_ints}')
+    print(f'  drxmap refs: {result.count(b"drxmap")}')
+
+    v11 = sum(1 for lv in test_levels if result[lv['data_offset']+3:lv['data_offset']+4] == b'\x11')
+    v0e = sum(1 for lv in test_levels if result[lv['data_offset']+3:lv['data_offset']+4] == b'\x0e')
+    print(f'  Format: v0x11={v11}, v0x0e={v0e}, other={len(test_levels)-v11-v0e}')
+
+    # Package into ARC
+    print('\nPackaging into ARC...')
+    arc = ArcArchive.from_file(svaera_path)
+    arc.set_file('world/world01.map', result)
+    arc.write(out_arc_path)
+    print(f'  Written: {out_arc_path.stat().st_size / (1024**2):.1f} MB')
+
+    del ae_data, sv_data, result
+    print('Done.')
+
+
+if __name__ == "__main__":
+    main()

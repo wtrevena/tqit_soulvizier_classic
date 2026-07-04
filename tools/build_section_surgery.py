@@ -119,7 +119,7 @@ BLOODCAVE_RETURN_NPC_DBR = b'records\\quests\\portal_bloodcave_return.dbr'
 # HiddenValley01: cave entrance at (14.0, 18.0, 26.0), POI at (15.84, 18.0, 26.58)
 # BC_initialpathway: SV blood cave entrance level
 INJECT_SPECS = {
-    # Delphi NPC injection REMOVED — corrupts v0x11 blob, crashes game on world streaming
+    # Delphi NPC injection REMOVED - corrupts v0x11 blob, crashes game on world streaming
     'levels/world/uberdungeon/crypt_floor1.lvl': [
         (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
     ],
@@ -363,13 +363,24 @@ def build_minimal_rec02(ints_raw):
     return bytes(data)
 
 
-def inject_rec02_into_blob(blob, ints_raw, donor_data=None, use_stub=False):
+def inject_rec02_into_blob(blob, ints_raw, donor_data=None, use_stub=False,
+                           pre_positioned=False):
     """Add a 0x0b (REC\\x02) section to a level blob that lacks one.
 
-    If use_stub=True, builds a minimal REC\\x02 stub with Recast parameters
-    but no pre-built tiles (lets the engine generate navmesh from geometry).
-    If donor_data is provided (and use_stub=False), transplants it.
-    Otherwise does nothing (returns original blob).
+    Three donor modes (checked in this order):
+      * use_stub=True: build a minimal REC\\x02 stub with Recast parameters but
+        no pre-built tiles (the dead-code fallback; kept so levels with NO donor
+        - e.g. the 7 ocean-scenery blood-cave levels - still get a valid, if
+        empty, section and the build stays green).
+      * pre_positioned=True with donor_data: insert donor_data VERBATIM. The
+        donor is an already-correct 0x0b (e.g. from tools/gen_bc_navmeshes.py):
+        its GUID list already resolves in the merged world and its center is
+        already shifted to the merged grid. transplant_rec02 must NOT run - it
+        would overwrite the neighbor GUIDs with the own GUID and recompute the
+        center from ints_raw, corrupting a section that is already right.
+      * donor_data alone (pre_positioned=False): transplant_rec02(donor,
+        ints_raw) - reposition an Editor-baked donor's header to this level's
+        (shifted) grid. Kept for any future Editor-baked donor.
 
     Also strips any 0x0a sections to prevent ProcessRLTD reinit from undoing
     the 0x0b handler state (0x0a routes to the same handler via Engine.dll patch).
@@ -386,6 +397,9 @@ def inject_rec02_into_blob(blob, ints_raw, donor_data=None, use_stub=False):
 
     if use_stub:
         rec02_data = build_minimal_rec02(ints_raw)
+    elif donor_data is not None and pre_positioned:
+        # Already-correct 0x0b: insert as-is (no transplant repositioning).
+        rec02_data = donor_data
     elif donor_data is not None:
         rec02_data = transplant_rec02(donor_data, ints_raw)
     else:
@@ -569,7 +583,7 @@ def convert_v0e_blob_to_v11(blob, level_name=''):
             # Skip 0x09 grid section (v0x0e-only)
             continue
         elif s['type'] == 0x0a:
-            # Keep 0x0a as-is (PTH\x04 TQIT pathfinding — different format from 0x0b/REC\x02)
+            # Keep 0x0a as-is (PTH\x04 TQIT pathfinding - different format from 0x0b/REC\x02)
             new_secs.append({'type': 0x0a, 'data': s['data']})
         elif s['type'] == 0x14:
             has_0x14 = True
@@ -642,7 +656,7 @@ def perform_section_surgery(ae_blob, sv_blob, level_name):
         else:
             new_secs.append(s)
 
-    # Keep v0x11 magic — matching SVAERA's terrain/pathfinding format
+    # Keep v0x11 magic - matching SVAERA's terrain/pathfinding format
     result = rebuild_blob(ae_magic, new_secs)
 
     sv_05_count = struct.unpack_from('<I', sv_05[0]['data'], 0)[0]
