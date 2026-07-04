@@ -260,10 +260,18 @@ def transplant_rec02(donor_0x0b_data, target_ints_raw):
     uvals = struct.unpack_from('<13I', target_ints_raw, 0)
     guid = target_ints_raw[36:52]  # ints_raw[9..12]
 
-    # Read difficulty count to find field offsets
+    # Read difficulty count to find field offsets. This is the number of
+    # 16-byte GUID/hash blocks between the fixed header and the center/dims.
+    # Real TQAE 0x0b sections use a WIDE range here (surveyed 1..13 across the
+    # 2214 SVAERA 0x0b levels; ~half are >4), so it must NOT be capped at 4.
+    # Capping it (the old `>4 -> 3` guard) put center_start at the wrong offset
+    # for any donor with diff_count>4, so the center/dims were written INTO the
+    # GUID region and the real center stayed at the donor's position -> the
+    # transplanted navmesh was NOT repositioned. Only fall back if the value is
+    # implausible for the actual section length.
     diff_count = struct.unpack_from('<I', data, 12)[0]
-    if diff_count < 1 or diff_count > 4:
-        diff_count = 3  # safe default
+    if diff_count < 1 or 16 + diff_count * 16 + 24 > len(data):
+        diff_count = 3  # implausible header; safe default
 
     guid_start = 16
     center_start = guid_start + diff_count * 16
