@@ -60,13 +60,40 @@ The shipped mod MUST run on a **stock/unpatched** engine. Therefore:
   inject them via the existing `inject_rec02_into_blob(use_stub=False, donor_data=<editor 0x0b>)`
   path in `tools/build_section_surgery.py`.
 
-### Critical-path blocker being cracked
-Prior Editor attempt (git `6710428`) failed: the Editor's **terrain viewport rendered black**, and
-per-level navmesh baking requires terrain to render. Under investigation: the black-viewport root
-cause (most likely missing terrain assets in the Editor source tree, or a Tools.ini/toolsdir
-misconfig) **and** whether a **headless/command-line** pathing bake (MapCompiler/Editor flags) exists
-that skips the GUI entirely. Fallback if the Editor is unusable on this hardware: offline Recast
-generation from the `0x0a` geometry (high effort — RLTD container format RE).
+### Critical-path blocker — SOLVED on paper (2026-07-04 investigation)
+Prior Editor attempt (git `6710428`) failed with a **black terrain viewport**; per-level navmesh
+baking requires terrain to render. Root cause is now identified and fixable (not a hardware limit):
+
+1. **`additionalbuilddirs=` in `Tools.ini` is EMPTY.** The Editor resolves terrain textures via this
+   setting; empty → textures unresolved → terrain renders black → nothing to bake. Fix: set it to
+   `<game install>;<built SoulvizierClassic mod>` so both base-game and SV custom (`drxmap`) terrain
+   resolve. (`Tools.ini` lives at `<TQ docs>\Tools.ini`, outside the repo.)
+2. **Wrong Editor sub-mode.** The prior run stayed in **Layout Mode**; per-level terrain only loads
+   when you enter **Editor Mode** and select the level. Without a loaded `Terrain`, `CreatePathMesh`
+   is skipped (only the world SD bumped v6→v7, no `.lvl` changed — exactly what `6710428` reported).
+3. **Harvested from the wrong folder.** The Editor writes optimized output to a **`LevelsOptimized\`**
+   directory; the old verify script looked in `source/Maps/`.
+
+**No headless/CLI bake exists.** MapCompiler.exe is only a packager (imports zero navmesh symbols
+from Engine.dll; passes `.lvl` pathing sections through unchanged). `pathengine.dll` is the legacy
+`0x0a`/PTH middleware, not the Recast generator. The Recast/Detour navmesh generator
+(`PathMeshCompiler::CreateNavigationMesh`, `Level::CreatePathMesh`, `TerrainPathMeshCalculator`)
+lives in stock **Engine.dll** and is driven ONLY by the **Editor GUI** ("Build → Rebuild All
+Pathing"). This is Steam-clean (stock tooling, no DLL patch). It must be driven via the GUI
+(computer-use). Fallback if the Editor proves unusable on this hardware: offline Recast from the
+`0x0a` geometry (high effort — RLTD container RE).
+
+**Bake procedure (proven-on-paper; to be run via computer-use):** fix Tools.ini → in Art Manager,
+right-click `Levels/World/world01.wrl` → Auto-Create Asset → Build → in Editor.exe, open the world,
+enter **Editor Mode**, select the level, **confirm terrain renders (GO/NO-GO)** → Layout Mode →
+Build → Rebuild All Pathing → Rebuild All Maps → Save All → harvest the `0x0b` from
+`LevelsOptimized\` (and/or the re-saved source `.lvl`; success = a `REC\x02` section now present) →
+inject via `inject_rec02_into_blob(..., use_stub=False, donor_data=<editor 0x0b>)`.
+**Coordinate pitfall:** xBloodCave is grid-shifted `(1663,0,922)`; either bake at final shifted grid
+coords, or rely on `transplant_rec02` repositioning the mesh via the header center (its docstring
+says mesh data is local to center, so a correct center patch repositions it — verify in-game).
+**Known risk:** TQAE Editor has a documented bug where sub-256×256 tiles render black regardless of
+assets; some small SV tiles may need individual handling.
 
 ### Why not just restore the original terrain doorway?
 SV originally connected the blood cave via terrain edges in the **shared** level `Random09A`. The

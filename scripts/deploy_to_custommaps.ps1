@@ -7,7 +7,13 @@
     into the CustomMaps folder so the user can test via "Play Custom Quest" in TQAE.
 #>
 [CmdletBinding()]
-param()
+param(
+    # Opt-in: sync local\Levels_merged.arc into work\ before deploying.
+    # Guarded because a stale local rebuild once nearly clobbered the good map
+    # (see CLAUDE.md "Deploy hazard"). Pass -SyncLevels only after verifying
+    # local\Levels_merged.arc is a correct, current build.
+    [switch]$SyncLevels
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -80,19 +86,26 @@ if (-not (Test-Path $workMod)) {
     exit 1
 }
 
-# Auto-sync merged Levels.arc if newer than working copy
+# Sync merged Levels.arc into the working mod ONLY when explicitly requested.
+# (Previously auto-synced whenever local was newer; a stale local rebuild made
+# that a foot-gun that would have replaced the good deployed map.)
 $mergedLevels = Join-Path $RepoRoot 'local\Levels_merged.arc'
 $workLevels = Join-Path $workMod 'Resources\Levels.arc'
 if (Test-Path $mergedLevels) {
     $mergedTime = (Get-Item $mergedLevels).LastWriteTime
     $workTime = if (Test-Path $workLevels) { (Get-Item $workLevels).LastWriteTime } else { [datetime]::MinValue }
     if ($mergedTime -gt $workTime) {
-        $mergedMB = [math]::Round((Get-Item $mergedLevels).Length / 1MB, 1)
-        Write-Host "Syncing newer Levels_merged.arc ($mergedMB MB) to working mod..." -ForegroundColor Yellow
-        $resDir = Join-Path $workMod 'Resources'
-        if (-not (Test-Path $resDir)) { New-Item -ItemType Directory -Path $resDir -Force | Out-Null }
-        Copy-Item $mergedLevels $workLevels -Force
-        Write-Host 'Levels.arc synced.' -ForegroundColor Green
+        if ($SyncLevels) {
+            $mergedMB = [math]::Round((Get-Item $mergedLevels).Length / 1MB, 1)
+            Write-Host "Syncing newer Levels_merged.arc ($mergedMB MB) to working mod..." -ForegroundColor Yellow
+            $resDir = Join-Path $workMod 'Resources'
+            if (-not (Test-Path $resDir)) { New-Item -ItemType Directory -Path $resDir -Force | Out-Null }
+            Copy-Item $mergedLevels $workLevels -Force
+            Write-Host 'Levels.arc synced.' -ForegroundColor Green
+        } else {
+            Write-Host 'NOTE: local\Levels_merged.arc is newer than work\ but was NOT synced.' -ForegroundColor Yellow
+            Write-Host '      Re-run with -SyncLevels after verifying the local build is correct.' -ForegroundColor Yellow
+        }
     }
 }
 
