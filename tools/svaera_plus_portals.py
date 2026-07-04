@@ -8,7 +8,7 @@ areas, and inject portal NPCs to connect them.
 
 No shared+drxmap level replacements — those caused the invisible wall.
 """
-import sys, struct
+import sys, os, struct
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from arc_patcher import ArcArchive
@@ -70,6 +70,81 @@ def _rebuild_groups(val0, records):
         out += struct.pack('<I', rec['member_count'])
         out += rec['raw_data']
     return bytes(out)
+
+# --- Grid shift (single source of truth) ---
+# Move blood cave levels to overlap with the SVAERA world grid so the engine
+# includes them in the active world grid (required for pathfinding activation).
+# xPassageTransitionStart's east edge touches HighAltituedBorder01's west edge;
+# bc_initialpathway lands at new grid (-438, 18, 2215). Cave interiors are
+# visually independent of world position. Used BOTH when repositioning a
+# transplanted 0x0b navmesh (step 7b) and when writing the merged LEVELS index
+# (step 8); they must agree so the navmesh header center matches the level's
+# final merged grid corner.
+GRID_SHIFT = {
+    'xbloodcave': (1663, 0, 922),  # dx, dy, dz
+}
+
+
+def shifted_ints_raw(lv):
+    """Return a level's ints_raw with GRID_SHIFT applied to its grid corner.
+
+    Grid corner (world x,y,z) is ints_raw[6,7,8] at byte offset 24. Mirrors the
+    shift applied in step 8's merged_levels build so a transplanted 0x0b header
+    center (grid_corner + half_dims) lands at the level's FINAL merged position.
+    Returns the original ints_raw unchanged if no GRID_SHIFT pattern matches.
+    """
+    key = lv['fname'].replace('\\', '/').lower()
+    for pattern, (dx, dy, dz) in GRID_SHIFT.items():
+        if pattern in key:
+            raw = bytearray(lv['ints_raw'])
+            ox, oy, oz = struct.unpack_from('<iii', raw, 24)
+            struct.pack_into('<iii', raw, 24, ox + dx, oy + dy, oz + dz)
+            return bytes(raw)
+    return lv['ints_raw']
+
+
+def extract_0x0b_body(lvl_path):
+    """Extract the 0x0b (REC\\x02) section body from a standalone baked .lvl file.
+
+    Reuses the repo's parse_blob_sections. Returns the raw 0x0b section bytes
+    (the full REC\\x02 section, header + mesh) or None if the file has no 0x0b.
+    """
+    try:
+        blob = Path(lvl_path).read_bytes()
+    except OSError:
+        return None
+    secs, _magic = parse_blob_sections(blob)
+    for s in secs:
+        if s['type'] == 0x0b:
+            return s['data']
+    return None
+
+
+# --- Donor directory (harvested baked navmeshes from the TQAE Editor) ---
+# Default: local/editor_normalized/, keyed by level basename (e.g.
+# BC_initialpathway.lvl). Override via SVC_DONOR_DIR. When a donor exists we
+# inject its REAL baked 0x0b and let transplant_rec02 reposition the header to
+# the level's shifted grid; otherwise we fall back to the dead 148-byte stub so
+# the build keeps working during the Editor-bake transition.
+DONOR_DIR = Path(os.environ.get(
+    'SVC_DONOR_DIR',
+    r'c:\Users\willi\repos\tqit_soulvizier_classic\local\editor_normalized'))
+
+
+def find_donor_0x0b(lv):
+    """Look up a harvested baked donor 0x0b for an SV-only level by basename.
+
+    Returns (donor_0x0b_bytes, donor_path) if <DONOR_DIR>/<basename>.lvl exists
+    and contains a 0x0b section, else (None, None).
+    """
+    basename = lv['fname'].replace('\\', '/').split('/')[-1]  # e.g. BC_initialpathway.lvl
+    donor_path = DONOR_DIR / basename
+    if not donor_path.is_file():
+        return None, None
+    body = extract_0x0b_body(donor_path)
+    if body is None:
+        return None, None
+    return body, donor_path
 
 # --- Paths ---
 svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
@@ -253,29 +328,50 @@ for ae_idx, patched_blob in ae_patched_blobs.items():
             new_secs.append(s)
     ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
 
-# --- 7b. Transplant 0x0b (REC\x02) pathfinding into SV-only level blobs ---
-# SV-only levels have 0x0a (PTH\x04) pathfinding which TQAE cannot parse.
-# Inject minimal 0x0b (REC\x02) stubs with valid Recast parameters but no
-# pre-built tiles.  This lets ProcessRLTD initialize the RLTD handler, and
-# the engine's built-in Recast generator (ProcessRLTD_flow) builds navmeshes
-# from the level's entity geometry at runtime.
-# Also strips 0x0a sections to prevent ProcessRLTD reinit from clobbering
-# the handler state.
-print('\n=== Injecting 0x0b pathfinding stubs into SV-only levels ===')
+# --- 7b. Inject 0x0b (REC\x02) pathfinding into SV-only level blobs ---
+# SV-only levels ship with 0x0a (PTH\x04) pathfinding which the TQAE engine
+# cannot parse. For each level we look up a REAL baked navmesh harvested from
+# the TQAE Editor (donor dir keyed by basename, default local/editor_normalized/
+# or SVC_DONOR_DIR). If found we transplant that donor 0x0b and reposition its
+# header center to the level's SHIFTED merged grid corner via transplant_rec02;
+# this is the actual fix. If no donor exists yet (Editor bake pending), we fall
+# back to the dead 148-byte stub so the build still completes during the
+# transition. Either way inject_rec02_into_blob strips the 0x0a section so
+# ProcessRLTD reinit cannot clobber the 0x0b handler state.
+#
+# We pass the SHIFTED ints_raw (grid corner + GRID_SHIFT) so a transplanted
+# navmesh lands at the level's FINAL merged position, regardless of whether the
+# donor was baked at original or shifted coords (donor-source-agnostic).
+print('\n=== Injecting 0x0b pathfinding into SV-only levels ===')
+print(f'  Donor dir: {DONOR_DIR}  (exists={DONOR_DIR.is_dir()})')
+real_ok = 0
 stub_ok = 0
-stub_fail = 0
+inject_fail = 0
 for i in range(len(sv_only)):
     blob = converted_blobs[i]
     lv = sv_only[i]
-    result = inject_rec02_into_blob(blob, lv['ints_raw'], use_stub=True)
+    target_ints = shifted_ints_raw(lv)  # carries the SHIFTED grid corner
+    donor_0x0b, donor_path = find_donor_0x0b(lv)
+    basename = lv['fname'].replace('\\', '/').split('/')[-1]
+    if donor_0x0b is not None:
+        result = inject_rec02_into_blob(blob, target_ints, donor_data=donor_0x0b, use_stub=False)
+        kind = 'REAL donor'
+    else:
+        result = inject_rec02_into_blob(blob, target_ints, use_stub=True)
+        kind = 'stub'
     if result != blob:
         converted_blobs[i] = result
-        stub_ok += 1
+        if kind == 'REAL donor':
+            real_ok += 1
+            print(f'  REAL donor: {basename} <- {donor_path.name} ({len(donor_0x0b)} B 0x0b)')
+        else:
+            stub_ok += 1
     else:
-        stub_fail += 1
-print(f'  Stubbed: {stub_ok}/{len(sv_only)}')
-if stub_fail:
-    print(f'  Failed/skipped: {stub_fail}')
+        inject_fail += 1
+        print(f'  {kind}: {basename} -> NO CHANGE (already has 0x0b or empty)')
+print(f'  Injected: {real_ok} real / {stub_ok} stub  (of {len(sv_only)} SV-only)')
+if inject_fail:
+    print(f'  Failed/skipped: {inject_fail}')
 
 # --- 7d. DIAGNOSTIC: Append a byte-for-byte SVAERA clone as level 2281+ ---
 # Tests whether there is a hidden append-time registration gate.
@@ -334,32 +430,20 @@ data2_raw = bytearray(ae_data[ae_sec[SEC_DATA2]['data_offset']:
                               ae_sec[SEC_DATA2]['data_offset'] + ae_sec[SEC_DATA2]['size']])
 orig_data2_len = len(data2_raw)
 
-# Build merged level list: all SVAERA levels + SV-only levels
-# Move blood cave levels to overlap with HiddenValley01's grid area so the engine
-# includes them in the active world grid (required for pathfinding activation).
-# Cave interiors are visually independent of world position.
-GRID_SHIFT = {
-    # Shift entire xBloodCave cluster so xPassageTransitionStart's east edge
-    # touches HighAltituedBorder01's west edge (X=-198, Z[2135,2263]).
-    # This connects the blood cave chain to the SVAERA world grid.
-    # xPassageTransitionStart: original (-2021, 1213), w=160 → new X=[-358,-198]
-    # bc_initialpathway: new grid (-438, 18, 2215), walkable center at (-397, 18, 2244)
-    'xbloodcave': (1663, 0, 922),  # dx, dy, dz
-}
-
+# Build merged level list: all SVAERA levels + SV-only levels.
+# Apply GRID_SHIFT (defined once near the top) to each SV-only level's grid
+# corner via shifted_ints_raw so the world-grid position here MATCHES the
+# navmesh header center written in step 7b. xPassageTransitionStart's east edge
+# then touches HighAltituedBorder01's west edge, connecting the blood cave chain
+# to the SVAERA world grid (bc_initialpathway: new grid (-438,18,2215)).
 merged_levels = [dict(lv) for lv in ae_levels]
 grid_shifted = 0
 for i, lv in enumerate(sv_only):
     entry = dict(lv)
-    key = lv['fname'].replace('\\', '/').lower()
-    for pattern, (dx, dy, dz) in GRID_SHIFT.items():
-        if pattern in key:
-            raw = bytearray(entry['ints_raw'])
-            ox, oy, oz = struct.unpack_from('<iii', raw, 24)
-            struct.pack_into('<iii', raw, 24, ox + dx, oy + dy, oz + dz)
-            entry['ints_raw'] = bytes(raw)
-            grid_shifted += 1
-            break
+    new_ints = shifted_ints_raw(lv)
+    if new_ints != lv['ints_raw']:
+        entry['ints_raw'] = new_ints
+        grid_shifted += 1
     merged_levels.append(entry)
 # Append the SVAERA clone as the final level
 merged_levels.append(_append_clone_entry)
