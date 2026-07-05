@@ -82,6 +82,11 @@ def _rebuild_groups(val0, records):
 # final merged grid corner.
 GRID_SHIFT = {
     'xbloodcave': (1663, 0, 922),  # dx, dy, dz
+    # Relocate the hijacked Silk Road cave (blood-cave walk-in) by the SAME shift
+    # so its west edge abuts the shifted xPassageTransitionStart. Matched by
+    # substring, so this key hits ONLY Random09A (path is
+    # Levels/World/Orient/Underground/Random09A.lvl).
+    'orient/underground/random09a': (1663, 0, 922),
 }
 
 
@@ -505,6 +510,41 @@ def main():
     print(f'  Grid-shifted {grid_shifted} SV-only levels for world grid connectivity')
     print(f'  Appended SVAERA clone at merged index {_clone_merged_idx}')
 
+    # --- Blood-cave walk-in: swap SVAERA's Random09A blob for SV's (west tunnel) ---
+    # Keep AE's GUID/fname/bitmap (index identity) so HiddenValley01's cave-mouth
+    # 0x14 binding + xPTS's navmesh neighbor list still resolve. Take SV's blob (it
+    # adds the west tunnel + the 0x0a edge to xPassageTransitionStart), shift its
+    # grid corner by GRID_SHIFT so its west edge abuts the shifted xPTS, strip 0x0a,
+    # and inject the pre-positioned generated 0x0b (own-GUID = AE's). This is an
+    # in-place swap: no new level/GUID is added, so the level count + GUID set are
+    # unchanged and xPTS needs no navmesh regen.
+    R09_KEY = 'levels/world/orient/underground/random09a.lvl'
+    ae_r09_idx = ae_by_name[R09_KEY]
+    sv_r09_idx = sv_by_name[R09_KEY]
+    sv_r09 = sv_levels[sv_r09_idx]
+    sv_r09_blob = sv_data[sv_r09['data_offset']:sv_r09['data_offset'] + sv_r09['data_length']]
+
+    # Shifted grid corner, but carry AE's GUID (ints_raw[9..12], bytes 36:52) so
+    # the merged index identity stays AE's.
+    swapped_ints = bytearray(shifted_ints_raw(sv_r09))              # SV dims + shifted corner
+    swapped_ints[36:52] = ae_levels[ae_r09_idx]['ints_raw'][36:52]  # keep AE GUID
+    # Inject the pre-positioned generated 0x0b (Random09A.lvl.0b.bin) + strip 0x0a.
+    gen_0b, gen_path = find_pre_positioned_donor(sv_r09)            # basename Random09A.lvl -> .0b.bin
+    assert gen_0b is not None, 'Random09A.lvl.0b.bin donor missing - run gen_bc_navmeshes.py'
+    swapped_blob = inject_rec02_into_blob(sv_r09_blob, bytes(swapped_ints),
+                                          donor_data=gen_0b, use_stub=False,
+                                          pre_positioned=True)
+
+    # Overwrite the merged Random09A entry in-place (index identity stays AE's).
+    merged_levels[ae_r09_idx]['ints_raw'] = bytes(swapped_ints)
+    # Record the swapped blob so the DATA-compaction loop writes it instead of AE's.
+    _r09_swap = (ae_r09_idx, swapped_blob)
+    _sw_ir = struct.unpack_from('<13i', swapped_ints, 0)
+    print(f'  R09-SWAP: SVAERA Random09A (idx {ae_r09_idx}) blob <- SV ({len(sv_r09_blob)} B), '
+          f'0x0b donor {gen_path.name} ({len(gen_0b)} B)')
+    print(f'    corner ({_sw_ir[6]},{_sw_ir[7]},{_sw_ir[8]}) + AE GUID kept; '
+          f'swapped blob {len(swapped_blob)} B')
+
     # Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
     merged_bitmaps = list(ae_bitmaps)
     sv_only_data2 = {}
@@ -574,6 +614,8 @@ def main():
     for i in range(len(ae_levels)):
         if i in ae_patched_blobs:
             blob = ae_patched_blobs[i]
+        elif _r09_swap and i == _r09_swap[0]:
+            blob = _r09_swap[1]                 # SV blob + shifted corner + generated 0x0b
         else:
             lv = ae_levels[i]
             blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]

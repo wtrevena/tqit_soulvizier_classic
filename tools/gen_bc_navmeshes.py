@@ -162,6 +162,23 @@ def main():
           if BC_TOKEN in lv['fname'].replace('\\', '/').lower()]
     print(f'  xBloodCave levels: {len(bc)}')
 
+    # Relocated Silk Road cave (blood-cave walk-in). Not under xBloodCave; add it
+    # explicitly. It carries the WEST tunnel into the blood cave, and its 0x0a
+    # grid edge points at xPassageTransitionStart, so its 0x0b must resolve both
+    # its own (AE) GUID and the xPTS GUID in the merged world.
+    R09_KEY = 'levels/world/orient/underground/random09a.lvl'
+    sv_r09 = next(lv for lv in sv_levels
+                  if lv['fname'].replace('\\', '/').lower() == R09_KEY)
+    bc.append(sv_r09)
+    # Own-GUID override: the merge keeps SVAERA's Random09A GUID in the index (so
+    # HiddenValley01's cave-mouth 0x14 binding + xPTS's navmesh neighbor list keep
+    # resolving without regen), so the donor's own GUID must be AE's, not SV's.
+    _ae_data2, ae_levels2 = _load_map(SVAERA_ARC)
+    AE_R09_GUID = next(lv['ints_raw'][36:52] for lv in ae_levels2
+                       if lv['fname'].replace('\\', '/').lower() == R09_KEY)
+    OWN_GUID_OVERRIDE = {R09_KEY: AE_R09_GUID}
+    print(f'  + Random09A (own-GUID override -> {AE_R09_GUID.hex()})')
+
     if not dry_run:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f'Output dir: {OUT_DIR}  (dry_run={dry_run})')
@@ -189,7 +206,8 @@ def main():
         lvl_tmp = tmp / basename
         lvl_tmp.write_bytes(blob)
 
-        own_guid = lv['ints_raw'][36:52]
+        key = fname.replace('\\', '/').lower()
+        own_guid = OWN_GUID_OVERRIDE.get(key, lv['ints_raw'][36:52])
         guids_0a, center_a, dims_a, _tok = extract_mesh(str(lvl_tmp))
 
         t0 = time.time()
