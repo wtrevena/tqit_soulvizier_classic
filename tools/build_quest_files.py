@@ -42,14 +42,16 @@ from qst_format import (
 BLOODCAVE_ENTRANCE_NPC = r'records\quests\portal_bloodcave_entrance.dbr'
 BLOODCAVE_RETURN_NPC = r'records\quests\portal_bloodcave_return.dbr'
 
-# Blood cave interior entrance point. Grid-shift-derived: the xBloodCave cluster
-# is grid-shifted by (1663,0,922) in the deployed map (svaera_plus_portals.py
-# GRID_SHIFT), so the old SV-original target (-2060,18,1322) landed in void.
-# Target = deployed BC_initialpathway grid corner (-438,18,2215) + the injected
-# portal_bloodcave_return.dbr local offset (20,5,12) = (-418,23,2227), which sits
-# inside the level footprint (X[-438,-398], Z[2215,2239]) beside the walkable
-# center (-397,18,2244). SHOULD BE IN-GAME VERIFIED.
-BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -418, 23, 2227
+# Blood cave interior entrance point. NAVMESH-DERIVED (2026-07-04): parsed from
+# the generated BC_initialpathway 0x0b (local/editor_normalized/
+# BC_initialpathway.lvl.0b.bin). True walkable footprint in world coords:
+# X[-446,-334] Z[2218,2252], floor Y flat 16.4, walkable centroid (-386,2234).
+# The previous target (-418,23,2227) was derived from the LEVELS grid corner,
+# but the navmesh's own origin is center-dims = (-454,1,2199) (dims carry +16
+# padding), so it landed 0.28u OFF-mesh and ~7u above the floor -> the
+# boat-dialog teleport silently no-opped in-game ("yes" did nothing).
+# New target = deep-interior walkable cell (erosion depth 5+), on-floor.
+BC_INITIAL_X, BC_INITIAL_Y, BC_INITIAL_Z = -385, 16, 2236
 
 # Return to HiddenValley01: confirmed walkable near the cave entrance NPC
 HIDDENVALLEY01_X, HIDDENVALLEY01_Y, HIDDENVALLEY01_Z = -118, -102, 2200
