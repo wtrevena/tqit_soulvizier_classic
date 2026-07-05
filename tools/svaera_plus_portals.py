@@ -133,6 +133,22 @@ def shifted_ints_raw(lv):
             raw = bytearray(lv['ints_raw'])
             ox, oy, oz = struct.unpack_from('<iii', raw, 24)
             struct.pack_into('<iii', raw, 24, ox + dx, oy + dy, oz + dz)
+            # SEAM FIX (2026-07-05, docs/NAVMESH_COVERAGE_FIX.md sec 4): the
+            # engine's cross-region walk-link builder keys on INDEX-footprint
+            # adjacency (corner + content_tiles*2); a 2u gap blocks the link
+            # even when navmesh cells overlap. SV authored a few cluster levels
+            # with content dims < box dims (harmless under SV's single
+            # continuous 0x0a mesh, fatal for per-level 0x0b stitching):
+            # BC_initialpathway content x=39 vs box x=40 left a 2u gap at the
+            # xPTS seam = the in-game wall. Normalize content dims to box dims
+            # (the base-game content==box invariant) for cluster levels; the
+            # measured result is all 39 connecting cluster seams flush, no new
+            # overlap (the other slack levels' widened edges face no
+            # connecting neighbor).
+            cx_t, cy_t, cz_t, bx_t, by_t, bz_t = struct.unpack_from('<6i', raw, 0)
+            if (cx_t, cz_t) != (bx_t, bz_t):
+                struct.pack_into('<2i', raw, 0, bx_t, cy_t)  # content x <- box x
+                struct.pack_into('<i', raw, 8, bz_t)         # content z <- box z
             return bytes(raw)
     return lv['ints_raw']
 
