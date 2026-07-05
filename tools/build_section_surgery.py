@@ -123,12 +123,19 @@ INJECT_SPECS = {
     'levels/world/uberdungeon/crypt_floor1.lvl': [
         (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
     ],
-    'levels/world/orient/silkroad/hiddenvalley01.lvl': [
-        (BLOODCAVE_ENTRANCE_NPC_DBR, 16.0, 18.0, 26.0),
-    ],
-    'levels/world/xbloodcave/bc_initialpathway.lvl': [
-        (BLOODCAVE_RETURN_NPC_DBR, 20.0, 5.0, 12.0),
-    ],
+    # REMOVED (blood-cave walk-in): the surface-side portal NPC. The authentic SV
+    # entry is engine-native - HiddenValley01's existing GridEntrance cave mouth
+    # + its 0x14 GUID binding stream in the (blob-swapped) Random09A, whose west
+    # tunnel leads into the blood cave. No surface NPC to inject.
+    # 'levels/world/orient/silkroad/hiddenvalley01.lvl': [
+    #     (BLOODCAVE_ENTRANCE_NPC_DBR, 16.0, 18.0, 26.0),
+    # ],
+    # REMOVED (blood-cave walk-in): the cave-side return portal NPC. The return is
+    # the reciprocal terrain walk-out (SV-Random09A's 0x06 embeds HiddenValley01's
+    # GUID), so no return NPC is needed either.
+    # 'levels/world/xbloodcave/bc_initialpathway.lvl': [
+    #     (BLOODCAVE_RETURN_NPC_DBR, 20.0, 5.0, 12.0),
+    # ],
 }
 
 UBER_DUNGEON_QUEST_NAMES = ['Quests/uberdungeon_entrance.qst', 'Quests/uberdungeon_return.qst']
