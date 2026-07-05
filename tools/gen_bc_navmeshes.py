@@ -222,6 +222,23 @@ def main():
         # (b) install the merged-world-resolvable GUID list.
         resolved, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)
         assert resolved, f'{basename}: no resolvable GUIDs (own GUID unregistered?)'
+        # Residency-gate hardening: ProcessRLTD (0x101f4ba0) refuses the WHOLE
+        # navmesh unless EVERY listed GUID's level is RESIDENT at load time,
+        # and a failed load is never retried (docs/CAVE_ENTRY_CHAIN_TRACE.md).
+        # Donors that list far-side neighbors therefore wall the first seam
+        # whose neighbor sits beyond the streaming frontier (proven in-game at
+        # xPTS -> BC_initialpathway, 2026-07-05). Ship every donor gate-free
+        # with its own GUID alone, EXCEPT the walk-proven entrance pair which
+        # stays byte-identical. Single-GUID meshes are base-game-normal
+        # (251/2214, including AE-Random09A itself). Grid seams carry no other
+        # cross-level link data, so this cannot break seam handoff
+        # (docs/NAVMESH_COVERAGE_FIX.md sections 4-5).
+        KEEP_NEIGHBOR_GUIDS = {
+            R09_KEY,
+            'levels/world/xbloodcave/xpassagetransitionstart.lvl',
+        }
+        if key not in KEEP_NEIGHBOR_GUIDS:
+            resolved = [resolved[0]]        # own GUID only (resolve_guids puts it first)
         doc['guids'] = resolved
         # Did any 0x0a GUID get redirected SV->AE (a replaced shared level)?
         remapped = any(g in shared_remap for g in guids_0a)
