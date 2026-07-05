@@ -78,34 +78,44 @@ def _rebuild_groups(val0, records):
 # (step 8); they must agree so a navmesh header center (grid_corner + half_dims)
 # matches the level's final merged grid corner.
 #
-# PLACEMENT-BUG FIX (2026-07-05): the previous shift (1663,0,922) put the swapped
-# Random09A doorway cave at corner (-198,18,2135), where its 80x80 footprint
-# AREA-OVERLAPPED three live surface levels - HighAltituedBorder01 (5120 sq u),
-# HiddenValley01 (656), HiddenValleyBorder05 (624). Disassembly + a working-cave
-# survey showed TQAE refuses a cave transition whose destination interior
-# co-resides (xz-area overlaps) with live surface regions: every working base-game
-# cave interior is parked fully DISJOINT from any surface region. Random09A was the
-# ONLY cave in the merged map that overlapped surface levels, which is why the
-# player hit an invisible wall at the HiddenValley01 cave mouth.
+# PLACEMENT-BUG FIX (2026-07-05, v2 - the real fix): the swapped Random09A doorway
+# cave fails the engine's navmesh-load GUID gate, so the HiddenValley01 cave mouth
+# stays an invisible wall. Byte+disasm-proven mechanism: a level's 0x0b navmesh
+# lists own + neighbor level GUIDs, and the engine loads that navmesh ONLY if EVERY
+# listed GUID is currently STREAM-RESIDENT. Random09A correctly lists its neighbor
+# xPassageTransitionStart (needed to stitch the tunnel seam; 57/57 shipping
+# connected-dungeon levels list their neighbors, so we do NOT strip it). The bug:
+# at the earlier shifts Random09A's footprint EDGE-TOUCHED a SURFACE level
+# (HighAltituedBorder01 at x=-198), so the surface streamed Random09A in EARLY,
+# before its cave-neighbor xPTS was resident -> GUID gate fails -> navmesh never
+# loads -> mouth wall. (The prior (1583,0,968) only removed AREA overlap; the
+# residual edge-touch alone still triggers the early surface stream-in.) Every
+# WORKING base-game cave interior is an ISOLATED ISLAND: zero footprint overlap AND
+# zero edge-touch with any surface/non-cave level, so it only loads as a complete
+# unit via the mouth portal, all its rooms co-resident.
 #
-# FIX = shift the WHOLE xBloodCave cluster AND Random09A by the SAME new total
-# shift (1583,0,968) = the old (1663,0,922) plus an extra (dx=-80,dz=+46). This
-# slides the cluster one tile west + 46u south so Random09A's footprint
-# (now corner (-278,18,2181), X[-278,-198] Z[2181,2261]) has ZERO area overlap with
-# every non-cluster level (it only EDGE-TOUCHES HighAltituedBorder01 at x=-198,
-# zero area, which is allowed - working caves edge-touch too). Because Random09A
-# and xPassageTransitionStart move together, their generated navmeshes stay aligned:
-# the R09<->xPTS walkable grid-seam intersection is shift-invariant at ~73 world-u
-# (>> the 4u needed for the tunnel hand-off). Both GRID_SHIFT keys MUST carry the
-# identical delta or the seam breaks. gen_bc_navmeshes.py imports this dict, so the
-# donors follow automatically.
+# FIX = relocate the WHOLE blood-cave cluster (31 levels: 30 xBloodCave-path +
+# swapped Random09A) RIGIDLY into empty map space with a real CLEARANCE GAP from
+# every non-cluster level, eliminating the surface edge-touch. New total shift
+# (7840,0,2030) parks the cluster at X[3426,6059] Z[2629,3545] - a genuine empty
+# gap well inside the populated non-cluster map extent (X[-13017,17702]
+# Z[-17793,8052]), coords comparable to existing levels. Measured MIN clearance to
+# ANY of the 2251 non-cluster spatial levels = 3001.8 world-units (>> the 512
+# preferred / 256 minimum target that mirrors the isolated-island pattern; nearest
+# neighbours are SilkRoad/JadePalace/Atlantis-cave levels, all >= 3001.8u). NO
+# overlap, NO edge-touch anywhere. A rigid shift preserves every intra-cluster seam
+# automatically: Random09A's west edge still exactly abuts xPassageTransitionStart's
+# east edge (both at x=5979, with an 80-unit z-overlap - identical to before the
+# move), so the R09<->xPTS tunnel hand-off is unchanged. Both GRID_SHIFT keys MUST
+# carry the identical delta or the seam breaks. gen_bc_navmeshes.py imports this
+# dict, so the donors follow automatically (rerun it after any change here).
 GRID_SHIFT = {
-    'xbloodcave': (1583, 0, 968),  # dx, dy, dz  (was (1663,0,922); -80 x / +46 z)
+    'xbloodcave': (7840, 0, 2030),  # dx, dy, dz  (was (1583,0,968); relocated to empty map space, 3001.8u clearance)
     # Relocate the hijacked Silk Road cave (blood-cave walk-in) by the SAME shift
     # so its west edge stays abutting the shifted xPassageTransitionStart. Matched
     # by substring, so this key hits ONLY Random09A (path is
     # Levels/World/Orient/Underground/Random09A.lvl).
-    'orient/underground/random09a': (1583, 0, 968),
+    'orient/underground/random09a': (7840, 0, 2030),
 }
 
 
@@ -181,6 +191,18 @@ def find_pre_positioned_donor(lv):
     return body, donor_path
 
 
+# Tolerance (world-units) for the donor-freshness center check. The layout
+# invariant center == corner-16+dims holds only up to tile-grid rounding: the
+# donor's stored dims come from the rasterizer (ceil(2*extent/CS) tiling +
+# erosion), so on levels with odd 0x0a half-extents the donor center legitimately
+# differs from corner-16+dims by up to 2 world-units (measured max = 2 across all
+# 24 tier-1 blood-cave donors). A genuine STALE-GRID_SHIFT donor - the class this
+# gate exists to catch - is off by the shift delta on x and/or z, i.e. hundreds to
+# thousands of world-units, so a small tolerance keeps full stale-shift protection
+# while not false-tripping on odd geometry.
+DONOR_FRESH_TOL = 32
+
+
 def assert_donor_fresh(donor, target_ints, name):
     """Fail loud if a pre-positioned donor was generated at a different GRID_SHIFT.
 
@@ -188,7 +210,8 @@ def assert_donor_fresh(donor, target_ints, name):
     other (e.g. abandoned/experimental) shift silently places the navmesh
     kilometres from its level (2026-07-05 corruption class: a size-only check
     passes because only the 12-byte center differs). Layout invariant on healthy
-    donors: center = index corner - 16 + dims on the x and z axes.
+    donors: center == index corner - 16 + dims on the x and z axes, up to
+    DONOR_FRESH_TOL world-units of tile-grid rounding (see the constant note).
     """
     gc = struct.unpack_from('<I', donor, 12)[0]
     pos = 16 + gc * 16
@@ -196,11 +219,11 @@ def assert_donor_fresh(donor, target_ints, name):
     dx, _dy, dz = struct.unpack_from('<3I', donor, pos + 12)
     ints = struct.unpack_from('<13i', target_ints, 0)
     exp_x, exp_z = ints[6] - 16 + dx, ints[8] - 16 + dz
-    if cx != exp_x or cz != exp_z:
+    if abs(cx - exp_x) > DONOR_FRESH_TOL or abs(cz - exp_z) > DONOR_FRESH_TOL:
         raise SystemExit(
             f'STALE DONOR {name}: 0x0b center ({cx},{cz}) != expected ({exp_x},{exp_z}) '
-            f'for grid corner ({ints[6]},{ints[8]}). Donors were generated at a '
-            f'different GRID_SHIFT - rerun: py tools/gen_bc_navmeshes.py')
+            f'+/-{DONOR_FRESH_TOL} for grid corner ({ints[6]},{ints[8]}). Donors were '
+            f'generated at a different GRID_SHIFT - rerun: py tools/gen_bc_navmeshes.py')
 
 
 def find_donor_0x0b(lv):
@@ -535,9 +558,10 @@ def main():
     # Apply GRID_SHIFT (defined once near the top) to each SV-only level's grid
     # corner via shifted_ints_raw so the world-grid position here MATCHES the
     # navmesh header center written in step 7b. The whole xBloodCave cluster +
-    # Random09A move by the same shift (1583,0,968), keeping the Random09A<->xPTS
-    # grid-seam aligned while parking Random09A's footprint clear of every surface
-    # level (corner (-278,18,2181); see the GRID_SHIFT note for the placement fix).
+    # Random09A move by the same shift (7840,0,2030), keeping the Random09A<->xPTS
+    # grid-seam aligned while parking the WHOLE cluster in empty map space with a
+    # 3001.8u clearance gap from every non-cluster level (Random09A corner
+    # (5979,18,3243); see the GRID_SHIFT note for the placement fix).
     merged_levels = [dict(lv) for lv in ae_levels]
     grid_shifted = 0
     for i, lv in enumerate(sv_only):
