@@ -23,13 +23,22 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ## Current status (2026-07-04)
 
-The database / souls / pets / enchanting side is largely working. The blocker is **map integration**:
-the Soulvizier-only areas (blood cave, uber dungeon, secret place, etc.) are **not physically
-walkable** (the player hits an "invisible wall") until real navmeshes are baked in the TQAE Editor.
-Root cause is fully understood (below) and a Steam-clean fix path is chosen; the bake is a human GUI
-step.
+The database / souls / pets / enchanting side is working. The map-integration blocker is **SOLVED**:
+the 23 walkable Soulvizier blood-cave levels now carry **real, valid `0x0b` (RLTD) navmeshes**,
+generated **offline in pure Python** after the RLTD / Detour `dtTileCache` format was fully
+reverse-engineered (see the map section) - NO TQAE Editor bake and NO DLL patch needed (Steam-clean).
+The 23 navmeshes are generated, injected into the merged map, byte-verified present (0x0b size ==
+donor size, 0x0a stripped, via `tools/verify_merged_bc_navmeshes.py`), and **deployed to CustomMaps**.
+The one remaining unknown is the **in-game walk test** - the only thing a launch can confirm.
 
 **Progress (2026-07-04), build-verified + committed:**
+- **MAP BUG SOLVED (headline):** the RLTD / Detour `dtTileCache` navmesh format was fully
+  reverse-engineered, so the 23 walkable blood-cave navmeshes are generated **offline in pure Python**
+  (`tools/gen_bc_navmeshes.py`) from the pristine upstream `0x0a` geometry, GUID-remapped to resolve
+  in the merged world, injected pre-positioned into the merge (`svaera_plus_portals.py` tier-1 +
+  `build_section_surgery.py` `pre_positioned=True`), byte-verified in the merged map (23/23 size-exact,
+  `0x0a` stripped, `tools/verify_merged_bc_navmeshes.py`), merged, and **deployed to CustomMaps**. This
+  bypasses the (unusable-on-this-hardware) TQAE Editor bake entirely and stays Steam-clean.
 - Content P0s fixed: soul drops stay 100% for testing (`SVC_RELEASE_DROPS=1` for tuned release
   rates); orphaned soul name-tags fixed + a `tools/validate_tags.py` build-gate added (build passes:
   every referenced + authoritative tag resolves).
@@ -42,10 +51,11 @@ step.
 - Verified by a real DB+Text+Quests build (drops 100%, `validate_tags` PASS, `Quests.arc` arc-verify
   105 OK / 0 FAIL). `Levels.arc` deliberately untouched.
 
-**Remaining to "everything should work":** (1) bake real navmeshes in the Editor (human GUI step, see
-the map section + `tools/EDITOR_BAKE_CLICKSTEPS.md`), (2) harvest + inject + rebuild the merged map +
-deploy (scriptable, follows the bake), (3) in-game walk test. Then Steam prep (permissions, Lite
-build).
+**Remaining to "everything should work":** just the **in-game walk test** - launch TQAE, Play Custom
+Quest, `SoulvizierClassic`, create a dedicated Custom Quest character, and walk into the blood cave.
+The offline navmesh generation + inject + merge + deploy are all done + verified (see the headline
+progress bullet). If the walk test surfaces any navmesh imperfection, Path-B fallbacks are documented
+in the map section (flip the 1-byte area flag first). Then Steam prep (permissions, Lite build).
 
 **Active goal:** get the game to a state where everything *should* work, so a single in-game test
 (walk to the blood cave, confirm entry) is a clean final verification. Then ship to Steam Workshop.
@@ -69,6 +79,36 @@ generator is gated by `cmp byte[0x10374441],0 / je (skip)`, and gate byte `0x103
 zero-initialized memory that **nothing in the 3.78 MB Engine.dll ever sets non-zero**. So it always
 early-returns without building anything. It is Editor/tool-only dead code in the shipping build.
 
+### ✅ SOLVED (2026-07-04): real navmeshes generated OFFLINE (no Editor, no DLL patch)
+The Editor bake proved unusable on this hardware (black grid viewport + "Error creating path mesh" on
+the custom GridSystem levels). Instead the `0x0b` payload was fully reverse-engineered: it is a
+serialized Detour **`dtTileCache`** layer set (rasterized walkable cells, NOT prebuilt polys; the
+engine builds polys at load via `dtTileCache::buildNavMeshTile`), FastLZ-0.1.0-level-1 compressed,
+wrapped in a `REC\x02` container (version + payload size + GUID list [own + neighbor level GUIDs] +
+center + dims + exactly 3 `dtTileCacheParams` tilesets, each record = a 56-byte `dtTileCacheLayerHeader`
+[magic `DTLR` == bytes `RLTD`] + FastLZ(heights+areas+cons)). Round-trip identity was proven on 670
+real base-game sections + confirmed against the Engine.dll disassembly.
+
+Generation pipeline (all pure Python, committed): `tools/tok_parse.py` (parse the `0x0a` PTH "tok"
+walkable mesh) -> `tools/gen_rec02.py` (rasterize -> erode -> 64x64 tiles) -> `tools/fastlz.py`
+(byte-exact FastLZ port) -> `tools/rec02_format.py` (byte-accurate container). Driver
+`tools/gen_bc_navmeshes.py` reads the pristine upstream `0x0a`, shifts the container center by the
+xBloodCave `GRID_SHIFT (1663,0,922)`, and remaps GUIDs so every own + neighbor GUID resolves in the
+merged world (critical: `xPassageTransitionStart` referenced the SV-original `Random09A` that the
+merge replaced with SVAERA's - the raw GUID would fail the engine's GUID gate `ProcessRLTD`
+`0x101f4ba0`, which rejects the whole `0x0b` section unless EVERY GUID resolves). Output: 23
+`local/editor_normalized/*.0b.bin` (regenerable, `py tools/gen_bc_navmeshes.py`, ~213s, deterministic).
+
+Injected via `svaera_plus_portals.py` step 7b tier-1 (`find_pre_positioned_donor` ->
+`inject_rec02_into_blob(pre_positioned=True)`: insert VERBATIM, skip transplant, strip `0x0a`).
+Verified in the final merged map by `tools/verify_merged_bc_navmeshes.py` (23/23 `0x0b` size == donor
+size, `0x0a` gone) and deployed. **Walk test is the only remaining confirmation.**
+
+Fallbacks if the walk test shows imperfection (ranked): (1) flip the 1-byte area flag in the header
+(currently area id=2); (2) C++ Recast for exact erosion parity; (3) pull terrain heights from the
+`0x06`/`0x09` sections (BC_initialpathway's tok mesh is height-flat at z=-56 - click-projection there
+is the least-certain spot).
+
 ### Decision (locked): ship **Steam-clean, NO DLL patch**
 The shipped mod MUST run on a **stock/unpatched** engine. Therefore:
 - We do **not** ship the Engine.dll patch (Approach 21 `0x0a→0x0b` redirect) or the one-byte gate
@@ -82,15 +122,60 @@ The shipped mod MUST run on a **stock/unpatched** engine. Therefore:
 Prior Editor attempt (git `6710428`) failed with a **black terrain viewport**; per-level navmesh
 baking requires terrain to render. Root cause is now identified and fixable (not a hardware limit):
 
-1. **`additionalbuilddirs=` in `Tools.ini` is EMPTY.** The Editor resolves terrain textures via this
-   setting; empty → textures unresolved → terrain renders black → nothing to bake. Fix: set it to
-   `<game install>;<built SoulvizierClassic mod>` so both base-game and SV custom (`drxmap`) terrain
-   resolve. (`Tools.ini` lives at `<TQ docs>\Tools.ini`, outside the repo.)
+1. **`additionalbuilddirs=` in `Tools.ini`** (at `<TQ docs>\Tools.ini`, outside the repo) is now SET
+   to `<game install>;<TQ docs>\CustomMaps\SoulvizierClassic` (verified 2026-07-04). This makes the
+   Editor resolve terrain **textures/meshes** (the `.tex`/`.msh` art) from the base game + the built
+   SV `.arc`. NOTE (corrected below): this covers ART only - it does **not** make the SV custom
+   **records** resolve for the pathing build; those must be loose in the mod source tree. That
+   records gap (not textures) is the real "Error creating path mesh" cause. See the blood-cave
+   subsection just below.
 2. **Wrong Editor sub-mode.** The prior run stayed in **Layout Mode**; per-level terrain only loads
    when you enter **Editor Mode** and select the level. Without a loaded `Terrain`, `CreatePathMesh`
    is skipped (only the world SD bumped v6→v7, no `.lvl` changed - exactly what `6710428` reported).
 3. **Harvested from the wrong folder.** The Editor writes optimized output to a **`LevelsOptimized\`**
    directory; the old verify script looked in `source/Maps/`.
+
+### Blood-cave "Error creating path mesh" - RESOLVED on paper (2026-07-04, evidence-verified)
+The 30 xBloodCave levels fail the Editor pathing bake with **"Error creating path mesh"** because
+they place **custom records** (`records\drxmap\bloodcave\...` etc.) that live ONLY inside the
+compiled `SoulvizierClassic.arz`. The **Editor asset-resolution model** (empirically pinned + forum
+corroborated):
+- A placed record reference is resolved from the Editor's **working database** = the mod's **loose
+  source tree** `<mod>\source\database\records\...\*.dbr` merged over the base game's compiled
+  `<game>\Database\database.arz`. The Editor does **NOT** read records from a mod's compiled `.arz`
+  in `additionalbuilddirs` during the pathing build. **Proof:** swapping the built `BCBakeSV.arz`
+  for the full 54 MB `SoulvizierClassic.arz` had **zero effect** (still 0/30) - the compiled mod
+  `.arz` is never consulted for records at bake time.
+- Record **`.tpl` templates** resolve automatically from **`<game>\Toolset\Templates.arc`** (566
+  templates; all 14 the blood-cave records use are present). No templates need placing in the mod.
+- **Art (`.msh`/`.tex`)** DOES resolve from the compiled `.arc` reachable via `additionalbuilddirs`.
+  Verified: every blood-cave terrain mesh is in `SoulvizierClassic\Resources\drx.arc`, wall textures
+  in `DRXtextures.arc`, and base XPack cave/hades meshes in `<game>\Resources\xpack\
+  SceneryUnderground.arc` / `SceneryHades.arc` / `Items.arc`. So **no source art extraction is
+  needed - only the loose RECORDS were missing.**
+
+**The blood-cave terrain is a `GridSystem`** (`records\drxmap\bloodcave\bloodcave.dbr`, Class
+`GridSystem`, template `Engine\GridSystem.tpl`): a dungeon-tile system whose `feature` +
+`wallPieceBase*` fields list the floor/wall `.msh` pieces Recast rasterizes. Placed dungeon pieces
+are `Decoration` records with a `mesh` + `baseTexture`.
+
+**THE FIX (built 2026-07-04): `tools/populate_svbake_records.py`.** Extracts the region's placed
+SV-custom records into `<mod>\source\database\records\...` as loose ArtManager-format `.dbr`
+(CRLF, `key,value,`). Idempotent, parameterized by `--region` (xbloodcave|uberdungeon|bossarena|
+secret_place). Default `--placed` mode = the region's `.lvl` DIRECT refs that are SV-only + 1 hop of
+SV-only children. Ran for xBloodCave: **285 loose records written** to
+`<TQ docs>\Working\CustomMaps\BCBakeSV\source\database\records\` (0.5 MB, 0 malformed).
+**Verified without the Editor (GO):** for the two test levels drxBC_Finale (20 placed) and
+drxFirstRoom (68 placed) every placed record resolves (SOURCE+BASE, **0 MISSING**), every template
+resolves in the toolset, and **every referenced mesh/texture resolves in the arcs (0 unresolved).**
+Fallback if the Editor still errors on a deeper (Monster-spawn) ref: `--all-sv-custom` (all ~3,185
+`drx*`-namespace SV-custom records; Monster spawns are dynamic and not normally needed for the static
+navmesh, which is why base-game levels bake without their loot/monster sub-graph loose).
+
+**Re-bake now:** ArtManager -> Set Mod BCBakeSV -> Build the world asset (compiles the new loose
+records into the mod DB) -> Editor -> open world -> Editor Mode -> confirm terrain renders -> Layout
+Mode -> Build -> Rebuild All Pathing -> Rebuild All Maps -> Save All. Verify with
+`py tools/verify_editor_output.py`.
 
 **No headless/CLI bake exists.** MapCompiler.exe is only a packager (imports zero navmesh symbols
 from Engine.dll; passes `.lvl` pathing sections through unchanged). `pathengine.dll` is the legacy
@@ -171,12 +256,12 @@ code-hygiene items (shadowed `_find_record`, unchecked pet-skill return values).
 
 ## ⚠️ Deploy hazard - neutralize before any deploy
 
-`local/Levels_merged.arc` (May 24, 662 MB, a stale build from a stray test run - ~zero SV content) is
-**newer** than the good deployed map (`work/.../Levels.arc`, Mar 13, 683 MB, correct). `scripts/
-deploy_to_custommaps.ps1:89` auto-copies `local → work` when local is newer, so **running deploy now
-would clobber the good map**. Regenerate a correct `local/Levels_merged.arc` via
-`tools/svaera_plus_portals.py` (which also drops the leftover diagnostic append-clone at idx 2281)
-before deploying.
+RESOLVED (2026-07-04). The old foot-gun (deploy auto-copied a stale `local → work`) is fixed: the
+Levels sync is now opt-in (`-SyncLevels`). `local/Levels_merged.arc` was rebuilt fresh (652 MB, the
+real navmesh map, 0 bad offsets, append-clone at idx 2281 is a harmless diagnostic) and deployed with
+`-SyncLevels`; the deployed `work/.../Levels.arc` is now byte-identical to it (684,002,931 bytes).
+Always regenerate via `tools/svaera_plus_portals.py` (deterministic) rather than trusting a leftover
+`local/` build.
 
 ---
 
