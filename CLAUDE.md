@@ -2,7 +2,12 @@
 
 > Durable status/notes for Claude Code sessions, committed to git so state survives across
 > sessions and machines. **Read this first.** Newest status at the top of each section.
-> Last updated: 2026-07-04.
+> Last updated: 2026-07-05.
+
+> 📘 **For HOW-TO knowledge** (add new caves/areas/quests/portals, how the engine's world
+> model works, navmesh pipeline, recipes, failure graveyard, engine internals):
+> **`docs/MODDING_PLAYBOOK.md`** - the durable playbook distilled from everything learned
+> fixing the map. This file (CLAUDE.md) is the STATUS board; the playbook is the MANUAL.
 
 ---
 
