@@ -1,22 +1,20 @@
 """
 Build custom quest files and patch them into the mod's Quests.arc.
 
-Two independent quest payloads are written into the mod's Quests.arc:
+The mod's Quests.arc = SVAERA's original archive (restored clean each build) plus
+the Soulvizier AREA questlines (blood cave interior, uber dungeon, widow letter,
+boss arena): the original SV .qst files, ported byte-for-byte from upstream into
+the Quests.arc root. Their names are already registered in the deployed map's
+QUESTS section and their trigger volumes / proxies / doors / portals are already
+placed in the level blobs, so backing them here (a Quests.arc-only change, no map
+rebuild) makes the questlines live. See PORT_QUESTS.
 
-1. The combined PORTAL quest (title "Portal System"): all portals (uber dungeon
-   entrance/return, blood cave entrance/return) built into the sv_commonmechanics.qst
-   slot, which is the quest slot proven to load in Custom Quest mode. Each step has a
-   trigger per portal with an OnLevelLoad condition plus ShowNpc + UpdateNpcDialog +
-   BoatDialog actions; steps repeat ~200 times because TQ advances through steps
-   sequentially and the actions only take effect when the target NPC's level is loaded.
-   This drives ENTRY into the Soulvizier areas (e.g. the blood cave via HiddenValley01).
-
-2. The Soulvizier AREA questlines (blood cave interior, uber dungeon, widow letter,
-   boss arena): the original SV .qst files, ported byte-for-byte from upstream into the
-   Quests.arc root ALONGSIDE (never replacing) the portal quest. Their names are already
-   registered in the deployed map's QUESTS section and their trigger volumes / proxies /
-   doors / portals are already placed in the level blobs, so backing them here (a
-   Quests.arc-only change, no map rebuild) makes the questlines live. See PORT_QUESTS.
+Blood-cave ENTRY needs no quest at all: it is engine-native (HiddenValley01's
+GridEntrance cave mouth streams into the blob-swapped SV Random09A, whose west
+tunnel walks into the blood cave; the cave's 0x06 return-link walks back out).
+The old quest-driven boat-dialog portal hack is REMOVED; PORTALS is kept only as
+an (empty) hook - if it is ever non-empty again, a "Portal System" quest is
+built into the sv_commonmechanics.qst slot as before.
 """
 import sys
 from pathlib import Path
