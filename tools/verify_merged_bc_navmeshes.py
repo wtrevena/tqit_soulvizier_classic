@@ -56,8 +56,14 @@ def main():
     levels = parse_level_index(data, sec[SEC_LEVELS])
     print(f'  levels in map: {len(levels)}')
 
-    bc = [lv for lv in levels if 'xbloodcave' in lv['fname'].replace('\\', '/').lower()]
-    print(f'  xBloodCave levels: {len(bc)}\n')
+    def in_scope(lv):
+        key = lv['fname'].replace('\\', '/').lower()
+        # xBloodCave cluster + the blob-swapped SV-Random09A doorway cave
+        # (Orient/Underground path, so the xbloodcave filter misses it).
+        return 'xbloodcave' in key or key.endswith('orient/underground/random09a.lvl')
+
+    bc = [lv for lv in levels if in_scope(lv)]
+    print(f'  levels in scope (xBloodCave + Random09A): {len(bc)}\n')
 
     real_ok = stub_ok = 0
     fails = []
