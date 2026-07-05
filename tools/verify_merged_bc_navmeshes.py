@@ -56,7 +56,10 @@ def center_consistent(sec_0b, lv):
     import struct
     (cx, _cy, cz), (dx, _dy, dz) = rec02_center_dims(sec_0b)
     ints = struct.unpack_from('<13i', lv['ints_raw'], 0)  # [6,7,8] = grid corner
-    return cx == ints[6] - 16 + dx and cz == ints[8] - 16 + dz
+    # Tolerance: odd-geometry levels differ from corner-16+dims by <=2u (tile-grid
+    # rounding, shift-independent); a stale-GRID_SHIFT donor is off by 100s-1000s.
+    return (abs(cx - (ints[6] - 16 + dx)) <= 4
+            and abs(cz - (ints[8] - 16 + dz)) <= 4)
 
 
 def main():

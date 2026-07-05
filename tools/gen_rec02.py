@@ -26,7 +26,10 @@ TILE = 64
 PAD = 16            # world units of padding around level box (Editor-like)
 ERODE_CELLS = 2     # walkableRadius 0.4 / cs 0.2
 CLIMB_CELLS = 5     # walkableClimb 1.0 / ch 0.2
-AREA_ID = 2
+AREA_ID = 1     # base-game cave interiors use walkable area-id 1 (SpartaOptCave,
+                # DelphiOptCave, etc.); id 2 is a surface-level class. Match the
+                # working cave convention so any area-selective in-cave path query
+                # treats our generated cells as walkable.
 
 
 def load_tok_mesh(lvl_path):
