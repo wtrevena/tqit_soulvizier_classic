@@ -210,6 +210,28 @@ records\item\equipmentweapon\bow\u_n_hornsofcyprus.dbr
    `weaponmage`, `weaponstaff`, `shield`. Templates resolve automatically from
    `<game>/Toolset/Templates.arc` - you never place a `.tpl`.
 
+   Full Class -> template map (verified against every record in the built
+   `SoulvizierClassic.arz`, 50,236 records):
+
+   | Class | Template | Notes |
+   |-------|----------|-------|
+   | `WeaponMelee_Sword` / `_Mace` / `_Axe` | `Weapon_Sword.tpl` / `Weapon_Mace.tpl` / `Weapon_Axe.tpl` | one-handed melee |
+   | `WeaponMagical_Staff` | `Weapon_Staff.tpl` | two-handed caster weapon |
+   | `WeaponHunting_Bow` / `_Spear` | `Weapon_Bow.tpl` / `Weapon_Spear.tpl` | ranged / polearm |
+   | `ArmorProtective_Head` / `_UpperBody` / `_LowerBody` / `_Forearm` | `Armor_Head.tpl` / `Armor_UpperBody.tpl` / `Armor_LowerBody.tpl` / `Armor_Forearm.tpl` | body-slot armor |
+   | `WeaponArmor_Shield` | `WeaponArmor_Shield.tpl` | off-hand shield |
+   | `ArmorJewelry_Ring` / `_Amulet` / `_Bracelet` | `Jewelry_Ring.tpl` / `Jewelry_Amulet.tpl` / `Jewelry_Bracelet.tpl` | **souls are `ArmorJewelry_Ring`/`Jewelry_Ring.tpl`** (Section 5) |
+   | `ItemRelic` | `ItemRelic.tpl` | relic-slot filler |
+   | `ItemCharm` | `ItemCharm.tpl` | charm-slot filler |
+   | `ItemArtifact` | `ItemArtifact.tpl` (or `ItemArtifactSupra.tpl`) | crafted artifact |
+   | `ItemArtifactFormula` | `ItemArtifactFormula.tpl` | forge upgrade recipe (Section 10) |
+   | `OneShot_Potion*` (e.g. `OneShot_PotionHealth`, `OneShot_PotionMana`) / `OneShot_Scroll` | matching `OneShot_*.tpl` | consumables |
+   | `QuestItem` | `QuestItem.tpl` | quest-only, non-sellable item |
+
+   Class is case-exact as written above; a couple of base-game records store
+   `templateName` with a capitalized `Database\` vs lowercase `database\` drive
+   prefix inconsistently - harmless, the engine resolves either.
+
 2. **Create the record and set required fields.** Easiest path: `clone_record` an
    existing item of the same template and override with `set_field` (no dtype, to
    preserve the source's field dtypes), OR `_ensure_record(db, path, template)` then
@@ -284,11 +306,70 @@ wiring the tutorial chest, `build_svc_database.py:551-558`), a monster's loot sl
 or a forge-formula drop pool. `loot{n}Chance` (FLOAT %) gates whether slot group N
 rolls at all; the `lootName`/`lootWeight` inside pick which item.
 
+There is a second field-set site for the equip-drop mechanism worth knowing:
+`_wire_soul_to_monster` (`apply_svc_patches.py:2841-2850`) is the general-purpose
+helper version of `_set_soul_drop` (Section 4.2) - same four fields
+(`lootFinger2Item1`, `chanceToEquipFinger2`, `chanceToEquipFinger2Item1`,
+`dropItems`), used by the extended-patches pass when wiring souls the fuzzy matcher
+missed.
+
+**The four loot-table Classes, all verified present in the built DB (50,236-record
+tally):**
+
+| Class | Count in DB | Shape | Use |
+|-------|-------------|-------|-----|
+| `LootMasterTable` | 1,963 | table-of-tables: `lootName{i}`/`lootWeight{i}` where each `lootName{i}` points at ANOTHER loot table (not necessarily a direct item) | the top-level table a chest/merchant/monster references; fans out into category sub-tables |
+| `LootItemTable_FixedWeight` | 3,431 | `lootName{i}`/`lootWeight{i}` = direct item DBR paths + fixed weights (the example above) | a fixed pool of specific items (scrolls, unique formulas, set pieces) |
+| `LootItemTable_DynWeight` | 580 | `itemNames` (the candidate pool, one field with multiple values), `minItemLevelEquation`/`maxItemLevelEquation`/`targetLevelEquation` (string formulas evaluated at drop time, e.g. `"69 * 1"` / `"((8 + parentLevel) / 1.6) * (1+(averagePlayerLevel/625))"`), `prefixRandomizerChance`/`suffixRandomizerChance` (FLOAT, wires into the affix system below) | procedural drops: base-game gear tables that scale by area/player level and roll affixes |
+| `LootRandomizerTable` | 1,239 | `randomizerName{i}` (points at a `LootRandomizer` affix record) + `randomizerWeight{i}` | a weighted pool of possible affixes for one slot (e.g. relic bonus pool `01_froststone.dbr`) |
+| `LootRandomizer` | 2,406 | one single affix: `lootRandomizerName` (a **Text.arc tag**, e.g. `tagNewAffix1` - scanned by `validate_tags.py`, Section 9.4) + `lootRandomizerCost`/`lootRandomizerJitter` + the actual stat-modifier fields it grants | the leaf affix record referenced from a `LootRandomizerTable` |
+
 Item sets, relics, charms, and monster-infrequents (MIs) are all just items placed in
-loot tables the same way; there is no special mechanism beyond the table + the item's
-own template. Affix (prefix/suffix) generation is driven by base-game randomizer
-records; this mod does not author new affix tables (it makes items enchantable via
-relic slots instead, Section 9).
+`LootMasterTable`/`LootItemTable_FixedWeight` tables the same way as any item; there is
+no special mechanism beyond the table + the item's own template. **Affixes
+(prefix/suffix) are entirely base-game:** this mod authors NO new
+`LootRandomizerTable`/`LootRandomizer` records (grepped across every `tools/*.py` build
+pass - only a read-only diagnostic, `diagnose_loot_contents.py`, and the
+`validate_tags.py` tag-scan touch those fields). New/ported items simply inherit
+whatever `prefixRandomizerChance`/`suffixRandomizerChance` wiring their
+`LootItemTable_DynWeight` parent already has; this mod's chosen customization lever is
+enchanting via relic slots instead (Section 10).
+
+### 4.1a Merchants (shop inventory)
+
+A merchant is a record whose template is `database\Templates\Market.tpl` - note it has
+**NO `Class` field** (verified: none of the 186 `Market.tpl` records in the built DB
+carry one; `templateName` alone identifies it as a merchant). Real example from the
+built DB (`records\item\merchants\greece\copy of 01_market_athens_mage.dbr`, a caster
+merchant):
+
+```
+templateName             = database\Templates\Market.tpl
+marketHelmTable1         = records/item/merchants/merchantloottables/head/caster_11-13.dbr
+marketHelmTable2..4      = (progressively higher-level caster helm tables)
+marketRingTable1..4      = records/item/merchants/merchantloottables/jewelry/ring_11-13.dbr ...
+marketSwordTable1..4     = records/item/merchants/merchantloottables/weapons/1h_sword_07-09.dbr ...
+marketStaffTable1..4, marketMaceTable1..4, marketScrollTable1..4, ...  (one per category)
+marketNumHelmMin/Max     = 5 / 6              (how many items of this category roll)
+marketNumRingMin/Max     = 14 / 18
+marketPlayerLevel        = [13, 14, 16]       ([normal, epic, legendary] level tuning)
+marketRefreshTimeMin/Max = 10.0 / 10.0        (hours before restock)
+marketHealthPotion       = records/item/miscellaneous/oneshot/potionhealth_02.dbr
+marketManaPotion         = records/item/miscellaneous/oneshot/potionmana_02.dbr
+```
+
+Each `market<Category>Table{1..4}` (Helm/Ring/Sword/Staff/Mace/Bow/Amulet/Bracelet/
+Scroll/Shield/Spear/Axe/BodyArmor/Greaves/...) points at a per-category loot table -
+almost always a `LootMasterTable` or `LootItemTable_*` (the same table Classes as
+Section 4.1), which chain into the same base loot tables the rest of the game uses.
+The 1/2/3/4 suffix is a difficulty/tier ladder (not strictly normal/epic/legendary -
+some tiers repeat the same table, e.g. `marketHelmTable2`/`3` both point at
+`caster_13-15.dbr` above), and `marketNum<Cat>Min/Max` caps how many roll per restock.
+
+**To add an item to a shop:** add it to the loot table that the merchant's
+`market<Category>Table{N}` points at (the append-at-`N+1` recipe, Section 4.1) - do
+NOT edit the merchant record itself unless you are changing which table/category it
+stocks or the roll counts.
 
 ### 4.2 The AE equip-drop mechanism (how SOULS drop) - IMPORTANT, not a loot table
 
@@ -534,10 +615,15 @@ A trigger fires its ACTIONS when its CONDITIONS are met. Trigger header fields:
 
 **Parse quirk:** `parse()` renders every int32 as UNSIGNED. Normalize when comparing
 signed values, e.g. negative teleport coords: `Action_BoatDialog`'s `x/y/z` are signed
-int32 stored as uint32 two's-complement (`tools/qst_format.py:93-97,466-468`). The
+int32 stored as uint32 two's-complement (`tools/qst_format.py:93-97,466-468`) - e.g. a
+coordinate of `-2317` parses back as `0xFFFFF6F3` (4294964979 unsigned), not `-2317`;
+compare against the two's-complement form or convert back before comparing. The
 builder writes `x/y/z` as signed (`_build_action`, line 585-586); everything else in
 `INT_FIELDS` (line 113-133) writes as raw uint32, and `delayTime`/`fadeTime` are IEEE
-754 floats stored as uint32 bits (`float_to_uint32`, line 461-463).
+754 floats stored as uint32 bits. Two helpers exist for AUTHORING (not needed for
+parsing, which always hands back the raw uint32): `signed_to_uint32(i)` (line 466-468,
+two's-complement encode) for signed coordinate fields, and `float_to_uint32(f)` (line
+461-463, IEEE 754 bit-reinterpret) for `delayTime`/`fadeTime`-style float fields.
 
 ### 7.2 The full condition + action vocabulary (the quest verbs)
 
@@ -621,6 +707,27 @@ Ready-made builders (`make_*`, `tools/qst_format.py:596-687`) cover the common o
 `make_open_dyn_grid_entrance_action`, `make_update_npc_dialog_action`,
 `make_boat_dialog_action`, `make_spawn_entity_action`, `make_open_door_action`,
 `make_bestow_token_action`.
+
+**GAP: no reward-granting `make_*` helpers exist.** That is 6 condition helpers + 8
+action helpers = 14 total (verified: `grep -c "^def make_" tools/qst_format.py` = 14),
+and NONE of the 8 action helpers cover `Action_GiveItem`, `Action_GiveExp`,
+`Action_GiveMoney`, `Action_GiveSkillPoints`, or `Action_GiveAttributePoints`.
+Authoring a reward today means dropping to the raw form directly:
+```python
+Action('Action_GiveItem', fields={
+    'item[0]': '<normal-tier item or LootMasterTable dbr>',
+    'item[1]': '<epic-tier>', 'item[2]': '<legendary-tier>',
+    'num[0]': '1', 'num[1]': '1', 'num[2]': '1',
+    'region': '', 'locationTag': 'tagYourPopupLocation', 'titleTag': 'tagYourPopupTitle',
+})
+```
+**Recommended future improvement:** add `make_give_item_action`,
+`make_give_exp_action`, `make_give_money_action`, and
+`make_give_skill_points_action` to `tools/qst_format.py` alongside the existing 14,
+mirroring their signature style (keyword-only tiers with sane defaults, e.g.
+`make_give_item_action(item_normal, item_epic=None, item_legendary=None, num=1, *,
+region='', location_tag='', title_tag='', delay=0.0)`), so reward-granting triggers
+stop needing the raw `Action(...)` form.
 
 ### 7.3 Port an existing questline (the cheap path) - PREFERRED
 
@@ -726,6 +833,16 @@ The referenced item record must resolve in the built `.arz` or the base game
 confirm it resolves, then reference it. To grant multiple items, use the multi-reward
 header slots or several `Action_GiveItem` actions. Test by completing the quest on a
 fresh Custom Quest character and confirming the item lands in inventory.
+
+**`item[tier]` on `Action_GiveItem` points at a LootMasterTable, not a direct item.**
+To grant a specific FIXED item (rather than a random roll), author a single-entry
+`LootMasterTable` DBR with `lootName1=<your item dbr>` and `lootWeight1=100` (Section
+4.1's table taxonomy), then point `item[0]`/`[1]`/`[2]` at that table's normal/epic/
+legendary variant - this is the same "one-entry table = a guaranteed item" idiom the
+base game uses for quest rewards. A permanent stat-buff reward (as opposed to an
+item) is `Action_GiveSkillPoints` with `skill=<a Skill_Passive-class DBR>` and
+`skillAmount[tier]=1` - it grants ranks in a passive skill rather than handing over
+an item.
 
 ---
 
@@ -938,7 +1055,8 @@ Where things live (paths relative to repo root unless noted):
 | I want to add... | Section | Key mechanism |
 |------------------|---------|---------------|
 | A new equipment / weapon / armor / jewelry item | 3 | record + template + tags; `make_enchantable` for a relic slot |
-| It to actually drop from a chest / merchant / formula pool | 4.1 | append `lootName{i}`/`lootWeight{i}` to a `LootItemTable_FixedWeight` |
+| It to actually drop from a chest / formula pool | 4.1 | append `lootName{i}`/`lootWeight{i}` to a `LootItemTable_FixedWeight`/`LootMasterTable` |
+| It to be sold by a merchant | 4.1a | append to the loot table the merchant's `market<Category>Table{N}` points at |
 | A new soul that drops from a monster | 4.2, 5 | soul ring record + wire the monster's `lootFinger2Item1`+`chanceToEquipFinger2`+`dropItems` |
 | A summonable pet for a soul | 6 | `Skill_SpawnPet` (no TTL) + `Pet` cloned from Lyia; `_set_pet_equipment` |
 | A quest (ported) | 7.3 | copy the `.qst` byte-exact to `Quests.arc` root; no map rebuild if the name is registered |
