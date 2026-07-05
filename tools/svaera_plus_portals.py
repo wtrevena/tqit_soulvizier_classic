@@ -181,6 +181,28 @@ def find_pre_positioned_donor(lv):
     return body, donor_path
 
 
+def assert_donor_fresh(donor, target_ints, name):
+    """Fail loud if a pre-positioned donor was generated at a different GRID_SHIFT.
+
+    A pre-positioned 0x0b is injected VERBATIM, so a donor regenerated at some
+    other (e.g. abandoned/experimental) shift silently places the navmesh
+    kilometres from its level (2026-07-05 corruption class: a size-only check
+    passes because only the 12-byte center differs). Layout invariant on healthy
+    donors: center = index corner - 16 + dims on the x and z axes.
+    """
+    gc = struct.unpack_from('<I', donor, 12)[0]
+    pos = 16 + gc * 16
+    cx, _cy, cz = struct.unpack_from('<3i', donor, pos)
+    dx, _dy, dz = struct.unpack_from('<3I', donor, pos + 12)
+    ints = struct.unpack_from('<13i', target_ints, 0)
+    exp_x, exp_z = ints[6] - 16 + dx, ints[8] - 16 + dz
+    if cx != exp_x or cz != exp_z:
+        raise SystemExit(
+            f'STALE DONOR {name}: 0x0b center ({cx},{cz}) != expected ({exp_x},{exp_z}) '
+            f'for grid corner ({ints[6]},{ints[8]}). Donors were generated at a '
+            f'different GRID_SHIFT - rerun: py tools/gen_bc_navmeshes.py')
+
+
 def find_donor_0x0b(lv):
     """Look up a full baked .lvl donor for an SV-only level by basename.
 
@@ -418,6 +440,7 @@ def main():
         lvl_0x0b, lvl_path = (None, None)
         if gen_0x0b is not None:
             # Tier 1: pre-positioned generated donor - insert as-is.
+            assert_donor_fresh(gen_0x0b, target_ints, basename)
             result = inject_rec02_into_blob(blob, target_ints, donor_data=gen_0x0b,
                                             use_stub=False, pre_positioned=True)
             kind, donor_path, donor_len = 'generated', gen_path, len(gen_0x0b)
@@ -551,6 +574,7 @@ def main():
     # Inject the pre-positioned generated 0x0b (Random09A.lvl.0b.bin) + strip 0x0a.
     gen_0b, gen_path = find_pre_positioned_donor(sv_r09)            # basename Random09A.lvl -> .0b.bin
     assert gen_0b is not None, 'Random09A.lvl.0b.bin donor missing - run gen_bc_navmeshes.py'
+    assert_donor_fresh(gen_0b, bytes(swapped_ints), 'Random09A.lvl')
     swapped_blob = inject_rec02_into_blob(sv_r09_blob, bytes(swapped_ints),
                                           donor_data=gen_0b, use_stub=False,
                                           pre_positioned=True)

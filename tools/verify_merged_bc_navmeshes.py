@@ -31,21 +31,45 @@ OCEAN_STUB = {
 
 def blob_0b_0a(blob):
     secs, _ = parse_blob_sections(blob)
-    size_0b = next((len(s['data']) for s in secs if s['type'] == 0x0b), None)
+    data_0b = next((s['data'] for s in secs if s['type'] == 0x0b), None)
     has_0a = any(s['type'] == 0x0a for s in secs)
-    return size_0b, has_0a
+    return data_0b, has_0a
+
+
+def rec02_center_dims(d):
+    """(center xyz, dims xyz) from a raw REC\\x02 section."""
+    import struct
+    gc = struct.unpack_from('<I', d, 12)[0]
+    pos = 16 + gc * 16
+    return struct.unpack_from('<3i', d, pos), struct.unpack_from('<3I', d, pos + 12)
+
+
+def center_consistent(sec_0b, lv):
+    """True if the navmesh center matches this level's index corner.
+
+    Layout invariant (proven on healthy donors): center = corner - 16 + dims on
+    the x and z axes (y half-extent rounding differs, so y is not gated). This
+    catches STALE donors generated at a different GRID_SHIFT (the 2026-07-05
+    corruption class: donors regenerated at an abandoned shift would otherwise
+    inject navmeshes kilometres from their level, and a size-only check passes).
+    """
+    import struct
+    (cx, _cy, cz), (dx, _dy, dz) = rec02_center_dims(sec_0b)
+    ints = struct.unpack_from('<13i', lv['ints_raw'], 0)  # [6,7,8] = grid corner
+    return cx == ints[6] - 16 + dx and cz == ints[8] - 16 + dz
 
 
 def main():
     print('=== Verify merged-map blood-cave navmeshes ===')
     print(f'  map: {MAP_ARC}  ({MAP_ARC.stat().st_size:,} bytes)')
 
-    # donor sizes by basename (e.g. BC_initialpathway -> 48172)
-    donor_size = {}
+    # donor bytes by basename (e.g. BC_initialpathway -> 48172 raw bytes)
+    donor_bytes = {}
     for p in DONOR_DIR.glob('*.0b.bin'):
         base = p.name[:-len('.0b.bin')]           # strip .0b.bin
         base = base[:-4] if base.lower().endswith('.lvl') else base  # strip .lvl
-        donor_size[base.lower()] = p.stat().st_size
+        donor_bytes[base.lower()] = p.read_bytes()
+    donor_size = {k: len(v) for k, v in donor_bytes.items()}
     print(f'  generated donors on disk: {len(donor_size)}')
 
     arc = ArcArchive.from_file(MAP_ARC)
@@ -73,8 +97,10 @@ def main():
         base = lv['fname'].replace('\\', '/').split('/')[-1]
         base = base[:-4] if base.lower().endswith('.lvl') else base
         blob = data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-        size_0b, has_0a = blob_0b_0a(blob)
+        sec_0b, has_0a = blob_0b_0a(blob)
+        size_0b = len(sec_0b) if sec_0b is not None else None
 
+        exp_bytes = donor_bytes.get(base.lower())
         exp = donor_size.get(base.lower())
         is_ocean = base.lower() in OCEAN_STUB
         verdict = 'OK'
@@ -82,11 +108,20 @@ def main():
             verdict = 'FAIL: no 0x0b'; fails.append(base)
         elif has_0a:
             verdict = 'FAIL: 0x0a not stripped'; fails.append(base)
-        elif exp is not None:
-            if size_0b == exp:
-                verdict = 'OK real navmesh'; real_ok += 1
+        elif exp_bytes is not None:
+            if sec_0b != exp_bytes:
+                verdict = ('FAIL: bytes!=donor' if size_0b == exp
+                           else f'FAIL: size!=donor({exp})')
+                fails.append(base)
+            elif not center_consistent(sec_0b, lv):
+                import struct as _st
+                c, _d = rec02_center_dims(sec_0b)
+                _ir = _st.unpack_from('<13i', lv['ints_raw'], 0)
+                verdict = (f'FAIL: STALE center {tuple(c)} vs corner '
+                           f'{_ir[6:9]} (regen donors!)')
+                fails.append(base)
             else:
-                verdict = f'FAIL: size!=donor({exp})'; fails.append(base)
+                verdict = 'OK real navmesh (bytes+center)'; real_ok += 1
         elif is_ocean:
             if size_0b == STUB_SIZE:
                 verdict = 'ok ocean-stub'; stub_ok += 1
