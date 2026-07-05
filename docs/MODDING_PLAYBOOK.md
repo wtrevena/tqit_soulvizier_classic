@@ -1,5 +1,9 @@
 # THE MODDING PLAYBOOK - Soulvizier Classic (Titan Quest Anniversary Edition)
 
+> For CONTENT (items, souls, pets, quests, quest rewards, loot drops, text/tags):
+> see the companion **`docs/CONTENT_PLAYBOOK.md`**. This file is the WORLD layer
+> (levels, navmesh, connections, entities); that one is the DB/records layer.
+
 > How the TQAE game world actually works, and exactly what to do to add new caves,
 > walkable areas, portals, teleports, quests, records, and entities into this mod.
 > Written for a future session (or Will) starting from the repo with ZERO project
