@@ -1,279 +1,228 @@
-# Navmesh coverage / connectivity fix: the xPTS -> BC_initialpathway wall
+# The xPTS -> BC_initialpathway wall: index-footprint gap (root cause + exact fix)
 
-Deepest-tier navmesh-generation analysis, 2026-07-05. Read-only investigation over the
-deployed build Will walk-tested today (deployed `CustomMaps/.../Levels.arc` of
-2026-07-05 15:20, 2282 levels; its R09A / xPassageTransitionStart / BC_initialpathway
-`0x0b` sections are byte-identical, sha1-verified, to `local/editor_normalized/*.0b.bin`
-regenerated 15:13-15:17, so everything below analyzes exactly the bytes that were
-in-game). `tools/gen_rec02.py` was never modified (all what-if numbers come from
-importing its functions and re-running them in memory; the donor cell sets reproduce
-byte-exactly, see Section 3).
+Deepest-tier navmesh analysis, 2026-07-05. Read-only over the deployed build Will
+walk-tested today, and the follow-up deployed build with the gate-free GUID fix.
 
-In-game state this explains (Will, 2026-07-05): entrance mouth PERFECT, Random09A ->
-xPassageTransitionStart seam crossing WORKS, and an invisible wall + stuck at the
-xPassageTransitionStart -> BC_initialpathway transition.
+## 0. UPDATE / verdict correction (read this first)
 
----
+The gate-free GUID-list fix (own-GUID-only deep donors) was deployed and CONFIRMED in
+the map (BC_initialpathway guid_count=1), and **Will still walls at the exact same
+xPTS -> BC_initialpathway spot.** So the ProcessRLTD residency gate was NOT the (sole)
+cause of THIS seam. The GUID trim was still correct and worth keeping (it removes a
+latent residency wall from every deeper seam, and single-GUID meshes are
+base-game-normal), but it is not what fixes Will's wall.
 
-## 0. Verdict (read this first)
+**The real cause, measured in the deployed index: a 2-world-unit INDEX-FOOTPRINT GAP
+at exactly this one seam.** BC_initialpathway's LEVELS-index content tile-dims are
+`[39,4,24, 40,4,24]` (byte-verified from the SV source blob): the CONTENT triple
+x-tiles = 39, so BC's footprint east edge = corner.x 5739 + 39*SCALE(2) = **5817**,
+but xPassageTransitionStart's footprint west edge = **5819**. Every other TQAE level in
+the game has the content triple equal to the box triple; BC is one of a handful of SV
+levels that ship a content triple one tile short. The engine builds the cross-region
+walk link only between levels whose index footprints EDGE-ABUT (share an edge, gap=0);
+a 2u index gap blocks the link even though the two navmeshes' walkable CELLS overlap at
+the seam. **This is the walls-for-a-2u-gap that the coordinator measured, and the data
+below confirms it is the sole gap in the whole cluster and that the fix is safe.**
 
-**The wall at xPTS -> BC_initialpathway is NOT a navmesh-geometry defect. The seam
-geometry is measurably the best in the whole chain (Section 2). The wall is the
-navmesh LOAD gate recurring one hop deeper than the mouth bug that was just fixed:
-BC_initialpathway's `0x0b` GUID list is `[own, drxFirstxistion_connection, xPTS]`,
-and ProcessRLTD (VA 0x101f4ba0) refuses to load the WHOLE navmesh unless EVERY listed
-GUID's level is RESIDENT at load time, with no retry. When the player crosses into
-xPTS and BC streams in, `drxFirstxistion_connection` (2+ grid-hops beyond the player,
-touching only BC and drxFirstRoom) is at/behind the streaming frontier, the gate
-fails, `Level+0x6a48` stays 0, and the pathfinder linker skips every link into BC =
-invisible wall exactly at that seam** (mechanism chain disasm-proven in
-`docs/CAVE_ENTRY_CHAIN_TRACE.md` sections 2-3; this is the same mechanism that walled
-the mouth before the cluster relocation, now firing at the first seam whose
-destination lists a GUID the mouth-stream neighborhood cannot satisfy).
+**THE ONE EXACT FIX (minimal, engine-correct, no navmesh regen): widen BC's index
+content x-tiles 39 -> 40** so its east edge = 5819 = flush with xPTS. BC's box triple
+is ALREADY 40 and BC's actual navmesh already covers the widened strip, so the fix is a
+pure index-metadata edit (Section 4). Fix A over Fix B, decisively (Section 3).
 
-**The one exact fix: trim every blood-cave donor's GUID list to `[own GUID]` alone,
-except the two walk-proven donors (Random09A, xPassageTransitionStart) which stay
-byte-identical.** One small edit in `tools/gen_bc_navmeshes.py` (Section 5), donor
-regen, re-merge, deploy. 251 of 2214 real base-game navmeshes ship single-GUID
-(including AE-Random09A itself), so the shape is engine-proven; the GUID list's only
-RE-proven consumer is the residency gate, and grid seams carry no other cross-level
-link data (Section 4), so shrinking the list cannot break seam handoff but removes
-every present and future residency wall in the cluster, in both walk directions.
+## 1. THE decisive measurement: every cluster seam's index gap
 
-Everything else measured (coverage, erosion, connectivity, cons bytes, area id,
-spatial alignment) is healthy; numbers below. Erosion needs NO change.
+For all 39 cluster level-pairs that SHOULD connect (each lists the other in its `0x0b`
+GUID list, i.e. authored as neighbors) AND are near-abutting, I computed the
+index-footprint gap = corner + content_tiles*SCALE(2):
 
----
+- **38 of 39 seams are FLUSH (gap = 0).** Random09A<->xPTS (walks today), BC<->
+  drxFirstxistion (walks), drxFirstxistion<->drxFirstRoom, drxFirstRoom<->Connector1
+  / river_extension01, all downstream drxBC*/ocean seams: all gap=0.
+- **EXACTLY ONE seam has a non-zero gap: BC_initialpathway <-> xPassageTransitionStart,
+  x-gap = +2u** (BC.E=5817, xPTS.W=5819), over a 48u shared z-band. **This is Will's
+  wall.** No other cluster seam that should connect has any gap.
 
-## 1. Coverage and alignment: the generator is NOT under-covering, and there is NO offset
+That is a controlled experiment with n=39 and a perfect correlation: the one seam with
+an index gap is the one, and the only one, that walls. Combined with the disasm-codified
+rule (playbook Section 3: grid-seam link requires the footprints to abut AND both
+navmeshes to have overlapping walkable cells at the shared edge), the mechanism is
+established: **the linker keys on index-footprint adjacency; a 2u gap = no link.**
 
-True walkable floor = the pristine SV `0x0a` tok mesh (extracted from upstream
-`world01.map`), rasterized with the exact `gen_rec02` functions. Donor = the deployed
-`0x0b` walkable cells (`area != 0`, `height != 0xff`), tile-unpacked to the global
-grid.
+Why SV shipped these ints and it worked in the original game: SV's blood-cave was a
+single continuous `0x0a` PathEngine mesh that spanned the gap, so the cross-level link
+was not gated on per-level index abutment. Our port replaces that with per-level `0x0b`
+Detour navmeshes, which the TQAE engine stitches by index-footprint adjacency. The 2u
+index slack was harmless under `0x0a` and is fatal under per-level `0x0b`.
 
-| level | tok 2D area | raster cells (% of tok) | after ERODE_CELLS=2 (% of tok) | donor == re-derived erode2? |
-|---|---|---|---|---|
-| Random09A (SV blob) | 3,022 u2 | 77,074 = 102.0% | 72,673 = **96.2%** | YES, exact |
-| xPassageTransitionStart | 2,915 u2 | 74,982 = 102.9% | 69,021 = **94.7%** | YES, exact |
-| BC_initialpathway | 1,575 u2 | 40,410 = 102.6% | 37,191 = **94.5%** | YES, exact |
+## 2. Fix A gives the engine walkable cells on BOTH sides of the flush seam
 
-(raster > 100% because a cell is marked when ANY part of a triangle overlaps it, a
-conservative superset; erosion then insets by walkableRadius.)
+Widening the index does not move the navmesh (the mesh is level-local, indexed off
+`center - dims`, independent of index tile-dims). So the only question is whether both
+meshes already have walkable cells straddling the flush edge x=5819. Measured, door
+z-band [3323,3371]:
 
-Calibration against a real Editor bake of the SAME cave (SVAERA's baked Random09A
-`0x0b`, extracted from the reference arc): our generated R09A donor covers **99.5% of
-the baked mesh's walkable cells at cell shift (0,0)**; the cross-correlation surface
-over +-15 cells is a flat plateau centered on zero (62.3% raw match at (0,0), (+-1,+-1)
-all within noise; the mismatch tail is SV's added west tunnel plus our slightly more
-generous erosion). **There is no spatial (dx,dz) offset between our navmesh frame and
-the Editor's.** The earlier "walk into the wall" report is fully explained by the
-previous flaky build; the current frame chain (tok corner-relative -> container
-center-dims -> engine placement) is proven correct in-game by today's successful mouth
-and R09<->xPTS crossing. The known (8,7,8) drift of the SV `0x0a` container center vs
-the LEVELS-index center is real but harmless: the grid origin `center - dims` stays
-exactly `index_corner - 16` on x/z, matching the baked convention, because the SV
-`dims` carry the same +8 slack as the center.
-
-Baked-cave norms (AE-Random09A bake) vs our donor, for calibration: 45,384 cells /
-1,815 u2 over 23 tiles, NINE connected components (759, 236, 14, 9, and single-cell
-islands), 112 portal bits per tile, walkable area ids 1 and 2 both in normal use
-base-game-wide. Ours: 72,673 cells over 37 tiles (bigger box + tunnel), TWO
-components, 117 portal bits per tile, area id 1. Editor bakes are messier than our
-output; islands are baked-normal.
-
-## 2. The seams, cell by cell (the decisive measurement)
-
-Seam profiles list, per 2u z-row, how far each mesh's walkable cells reach relative to
-the shared index edge, the floor heights there, and the count of XZ-coincident
-walkable cell pairs (overlap).
-
-**BROKEN seam, xPTS (east) <-> BC_initialpathway (west) at x=5819, shared z
-[3323,3371]** (door window z 3325..3343):
-
-- BC's mesh crosses 19.9u EAST past the seam line (to x=5838.9): SV baked xPTS's
-  floor geometry into BC's tok (BC's `0x0a` GUID list names xPTS as a contributor).
-- xPTS's own westmost walkable cell is x=5819.5, i.e. it reaches the line but does
-  not cross (SV never baked BC geometry into xPTS's tok; its `0x0a` lists only R09A).
-- Overlap: 227-941 coincident walkable cells per 2u row across the whole door window.
-- Height agreement: dy = **+0.0** on every row (both floors flat at world y 16.4).
-
-**WORKING seam, R09A (east) <-> xPTS (west) at x=5979** (walked today): R09 crosses
-7.5u west, xPTS crosses 19.9u east, overlap up to 941 cells/row, and dy = **+2.6
-everywhere** (R09 floor 19.0, xPTS flat 16.4).
-
-**Working BAKED surface seam, HiddenValley01 <-> HighAltituedBorder01 at x=-134**
-(base game, walked by everyone): HV1 crosses only 0.7u; HAB01's entire 901-cell mesh
-sits INSIDE HV1's box (16.3u past the line); the usable link band is a 58-cell strip
-where dy=-0.2; elsewhere dy=+20 (cliff). One-sided crossing and tiny link bands are
-baked-normal.
-
-Conclusion: the broken seam has MORE overlap and PERFECT height agreement compared to
-both working references. Geometry cannot be the wall. The only engine-visible
-difference on the broken side is BC's navmesh GUID list (and see Section 4 residual).
-
-## 3. Connectivity, islands, erosion audit (original brief items 2-3)
-
-Connected components under the engine model (4-adjacency, both walkable,
-|dh| <= CLIMB_CELLS=5, exactly dtBuildTileCacheRegions' isConnected):
-
-| level | components (deployed, erode2) | erode1 | erode0 |
+| x-window | BC cells | xPTS cells | coincident |
 |---|---|---|---|
-| Random09A | 2: [72,345 + 328] | 2: [74,442 + 410] | 2: [76,571 + 503] |
-| xPassageTransitionStart | 2: [68,693 + 328] | 2 | 2 |
-| BC_initialpathway | **1**: [37,191] | 1 | 1 |
+| [5815,5817) (BC's current 39t edge) | 352 | 0 | 0 |
+| [5817,5819) (BC's side of the flush seam) | **113** | 0 | 0 |
+| [5819,5821) (xPTS's side / xPTS west edge) | 113 | **94** | 94 |
+| [5821,5823) | 352 | 352 | 352 |
 
-- The 328-cell secondary components in R09A and xPTS are the SAME 4x4u pad at
-  x[5979.5,5983.5] z[3251.5,3255.3], just inside R09's west edge: the cross-seam
-  handoff strip, present in both meshes at each mesh's own floor height (19.0 vs
-  16.4), disconnected intra-mesh by the 2.6u step. It exists at erosion 0 too, so it
-  is geometry, not an erosion artifact, and the baked AE cave has nine such islands
-  including single cells. Islands are NOT the stuck bug (that build is gone; today's
-  build walks R09+xPTS fine).
-- cons bytes: **0 mismatches** in all three meshes against the heights/areas adjacency
-  model (intra-tile low nibble AND tile-border portal high nibble). Portal-bit density
-  matches the Editor bake (117/tile vs 112/tile). Tile stitching is correct.
-- Erosion sweep (regenerated in memory with the same functions, donor sets reproduce
-  exactly): ERODE_CELLS 2 -> 1 -> 0 changes total coverage 94.5-96.2% -> 98.5-99.1% ->
-  102-103% of tok area and NEVER changes the component count. Narrowest traverse
-  corridor (max-min clearance path between high-clearance anchors in the east and
-  west thirds of the main component):
+- BC's navmesh already extends to x=5842.7 (its mesh box east edge; box tile-dim is
+  already 40). BC has **113 walkable cells in the x[5817,5819) strip** that a 40-tile
+  index brings into the footprint.
+- xPTS's westmost walkable cells sit at x=5819.5-5820.7 (its own west edge, 94 cells).
+- After widen, BC's east tile-column strip [5817,5819) (113 cells) meets xPTS's west
+  tile-column strip [5819,5821) (94 cells) at the flush plane 5819, with their z-bands
+  overlapping on **12 of 13 door rows** (z 3333.7-3336.1). Both sides have walkable
+  cells at the shared edge in overlapping z -> the hand-off condition is met.
 
-| level | erode0 | erode1 | erode2 (deployed) |
-|---|---|---|---|
-| Random09A E->W | 26.6u | 26.2u | 25.8u |
-| xPTS E->W (the passage squeeze) | 2.2u | 1.8u | **1.4u** |
-| BC_initialpathway E->W | 7.0u | 6.6u | 6.2u |
+Calibration against the WORKING R09<->xPTS seam (walks today, gap=0): it has dense
+coincident cells straddling x=5979 (95 coincident at [5977,5979], 256 at [5979,5981]).
+The widened BC seam reproduces the same shape (cells on both sides of the flush plane
+in overlapping z). Coverage/erosion/cons of all three meshes are healthy (94.5-96.2%
+of the true tok floor, 0 cons-byte mismatches, single/expected components) - full
+numbers in Section 6; none of that is the wall.
 
-The xPTS 1.4u pinch is the tightest spot in the chain and Will traversed it today, so
-it is walkable (player radius 0.4). **Erosion needs no change (keep ERODE_CELLS=2,
-walkableRadius parity with the engine params we declare).** If in-passage tightness
-is ever re-reported, ERODE_CELLS=1 widens the pinch to 1.8u at zero connectivity cost
-and stays under the raster's +2-3% wall-clipping slack; do not go to 0 (cells would
-touch walls the engine believes walkable, 102% of tok).
+## 3. Fix A vs Fix B - pick A
 
-## 4. Why the wall is the load gate, and the residual suspects
+**Fix A (WIDEN BC index content x-tiles 39 -> 40): minimal and engine-correct.**
+- No navmesh regeneration. The donor `.0b.bin` is byte-unchanged; it is injected
+  verbatim (`pre_positioned=True`), and `inject_rec02_into_blob` never reads tile-dims.
+- Does NOT trip the donor-freshness gate: `assert_donor_fresh` reads only the grid
+  CORNER (ints[6],ints[8]) vs the donor center; widening ints[0] leaves the corner
+  untouched, so the gate still passes (verified by reading the gate code).
+- Makes the seam FLUSH (gap 0), NOT overlapping: BC(40t) x[5739,5819], xPTS
+  x[5819,5979] -> shared edge at 5819, area overlap 0. Matches every working seam and
+  keeps the interior XZ-disjoint rule.
+- BC's OTHER seam is unaffected: widening moves only the EAST edge. BC's west edge stays
+  at corner.x 5739, still flush with drxFirstxistion_connection (east=5739).
+- The engine already agrees the terrain extends to 5819: BC's box triple ints[3] is
+  ALREADY 40. Fix A just makes the CONTENT triple match the box triple, i.e. restores
+  the base-game invariant (content == box on x/z for all 2235 AE levels).
 
-- ProcessRLTD's per-GUID gate (find in whole-map GUID map AND live instance array
-  `[reg+0x50]` non-null) fail-closes the ENTIRE `0x0b` on one non-resident neighbor;
-  `Level+0x6a48` stays 0; the cross-region linker at 0x101f3680 skips every link whose
-  destination has `+0x6a48 == 0`. All disasm-proven in CAVE_ENTRY_CHAIN_TRACE.md.
-- BC's list `[e39fcb11 own, 57d83343 drxFirstxistion, 2d2acbf5 xPTS]` is the FIRST in
-  the walk order whose gate needs a level beyond the player's streaming neighborhood.
-  R09's list is [own, xPTS] and xPTS's is [own, R09]: each other only, always resident
-  at their load moments, which is exactly why those two load and their seam works.
-- The deeper chain has the same defect at EVERY hop (drxFirstxistion lists
-  drxFirstRoom; drxFirstRoom lists Connector1 + river_extension01; drxBC3 and
-  drxBC_Finale list up to 8 and 12 levels including non-abutting ocean scenery).
-  Fixing BC alone moves the wall one seam west. The fix must cover all 21 donors
-  beyond xPTS.
-- Grid seams carry no other cross-level link data: the `0x06` sections of R09A, xPTS,
-  and BC embed NO neighbor GUIDs (byte-scanned; R09's 0x06 embeds only the
-  HiddenValley01 portal-return trailer). Seam handoff therefore rides on the meshes'
-  walkable overlap (which is why baked meshes carry neighbor-contributed geometry and
-  why our measured overlap being perfect matters) plus both meshes being LOADED.
-- Residual secondary anomaly, kept on the bench: BC's LEVELS-index first tile-dims
-  triple is (39,4,24) vs second (40,4,24). Computed from the first triple, BC's east
-  edge is x=5817, a 2u gap to xPTS's west edge 5819; from the second triple they abut
-  exactly. Several SV levels share this first<second slack (bossfight 58 vs 61,
-  drxFirstxistion z 39 vs 40, river extensions), while ALL 2235 base-game entries have
-  x/z equal in both triples. The original SV game shipped these exact ints and its
-  TQIT engine streamed and linked the chain fine, so this is unlikely to be the wall,
-  but it is a one-line normalization if fix #1 proves insufficient (below).
+**Fix B (SHIFT BC + its downstream sub-chain +2 in x): heavier, and it MISALIGNS
+BC's working west seam.** Shifting BC +2 to abut xPTS at its real geometry would move
+BC's west edge to 5741, opening a NEW 2u gap with drxFirstxistion (east 5739) - so you
+would have to shift drxFirstxistion +2 too, and then drxFirstRoom, Connector1,
+river_extension01, ... i.e. the entire sub-chain reachable from BC not through xPTS,
+AND regenerate every shifted donor (positions change), AND re-run the freshness gate.
+It cascades and needs a donor regen for no benefit over A. Reject B.
 
-## 5. THE FIX (exact, ranked, with expected effect)
+**Decision: Fix A.**
 
-### Fix 1 (apply now): gate-free GUID lists for the 21 donors beyond xPTS
+## 4. THE EXACT EDIT (Fix A)
 
-`tools/gen_bc_navmeshes.py`, in `main()`, immediately after
-`resolved, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)`
-(currently line ~223), insert:
+Single source of truth for cluster placement is `shifted_ints_raw(lv)` in
+`tools/svaera_plus_portals.py` (called for both the injected blob's `target_ints` in
+step 7b and the merged LEVELS index entry in step 8, so patching it there keeps the two
+in lock-step). BC's tile-dim x is `ints_raw[0]` at BYTE OFFSET 0 (13x int32; [0..5]
+tile dims, [6,7,8] corner, [9..12] GUID).
+
+In `tools/svaera_plus_portals.py`, in `shifted_ints_raw` (currently lines 122-137),
+after the corner-shift `struct.pack_into('<iii', raw, 24, ...)` and before
+`return bytes(raw)`, add a targeted content-triple normalization:
 
 ```python
-        # Residency-gate hardening: ProcessRLTD (0x101f4ba0) refuses the WHOLE
-        # navmesh unless EVERY listed GUID's level is RESIDENT at load time,
-        # and a failed load is never retried (CAVE_ENTRY_CHAIN_TRACE.md sec 3).
-        # Donors that list far-side neighbors therefore wall the first seam
-        # whose neighbor sits beyond the streaming frontier (proven in-game at
-        # xPTS -> BC_initialpathway, 2026-07-05). Ship every donor gate-free
-        # with its own GUID alone, EXCEPT the walk-proven entrance pair which
-        # stays byte-identical. Single-GUID meshes are base-game-normal
-        # (251/2214, including AE-Random09A itself).
-        KEEP_NEIGHBOR_GUIDS = {
-            R09_KEY,
-            'levels/world/xbloodcave/xpassagetransitionstart.lvl',
-        }
-        if key not in KEEP_NEIGHBOR_GUIDS:
-            resolved = [resolved[0]]        # own GUID only (resolve_guids puts it first)
+        # Normalize the CONTENT tile triple to the BOX triple on x/z. A handful of
+        # SV levels (BC_initialpathway [39,4,24 / 40,4,24], riverextension02, etc.)
+        # ship a content x/z tile-dim one short of the box triple. Under SV's single
+        # 0x0a PathEngine mesh that was harmless, but TQAE stitches the per-level
+        # 0x0b navmeshes by INDEX-FOOTPRINT adjacency (corner + content_tiles*2), so
+        # the 2u short edge leaves a 2u gap that blocks the cross-region walk link
+        # (measured: BC.E=5817 vs xPTS.W=5819 = Will's wall, the ONLY non-zero gap in
+        # the cluster). The box triple already reaches the correct edge and the
+        # navmesh already covers it, so widening content->box is a pure metadata fix
+        # (no donor regen; freshness gate checks only the corner). ints layout:
+        # [0..2]=content tile x,y,z  [3..5]=box tile x,y,z.
+        cx, cy, cz, bx, by, bz = struct.unpack_from('<6i', raw, 0)
+        if (cx, cz) != (bx, bz):
+            struct.pack_into('<2i', raw, 0, bx, cy)   # content x <- box x (offset 0)
+            struct.pack_into('<i', raw, 8, bz)        # content z <- box z (offset 8)
 ```
 
-Then `py tools/gen_bc_navmeshes.py` (approx 213s; 21 donors change, R09A + xPTS stay
-byte-identical), re-merge, deploy. The donor-freshness gate and the per-donor
-self-verifies all still pass (center untouched, own GUID resolves, 3 sets).
+This runs for every GRID_SHIFT-matched cluster level (all xBloodCave + Random09A). It
+fixes BC (39->40 on x) and normalizes the other slack cluster levels (Section 5) to the
+base-game invariant in the same pass, all on edges that are currently flush so it can
+only help. Random09A and xPTS have equal content/box triples already, so they are
+untouched (their walk-proven donors and index entries do not change).
 
-Expected effect, from the measurements: BC's navmesh (and every deeper one) loads
-unconditionally the instant its level streams in, `+0x6a48 = 1`, the linker stops
-skipping it, and the xPTS -> BC seam links over the measured 941-cells/row dy=0.0
-overlap, strictly better geometry than the R09 seam that already works. Fixes all 12+
-downstream seams in the same stroke, in BOTH walk directions (own-only lists cannot
-fail on re-approach after eviction, which is a latent directional failure mode of any
-neighbor-listing policy in this engine).
+Then rebuild the map (`py tools/svaera_plus_portals.py`) and deploy. No
+`gen_bc_navmeshes.py` run needed. Verify post-build that BC's merged index east edge is
+5819 (`corner.x 5739 + ints[0]*2`).
 
-Why it is safe: the GUID list's only reverse-engineered consumer is the load gate; the
-portal linker resolves destinations by PORTAL GUIDs, not mesh lists; seams have no
-other link data (Section 4); and the walk-proven R09A/xPTS donors do not change by a
-single byte.
+Narrower alternative if you want to touch ONLY BC: guard the block with
+`if key.endswith('/bc_initialpathway.lvl')` instead of the general
+`(cx,cz) != (bx,bz)`. The general form is safe and future-proofs the other slack
+levels; the BC-only form is the strictly minimal change to clear the reported wall.
 
-### Fix 2 (only if a specific seam still walls after fix 1): normalize the index tile dims
+## 5. SANITY: other cluster seams that could wall later - all clear except this one
 
-In the merge (`tools/svaera_plus_portals.py`, where relocated `ints_raw` corners are
-already rewritten), also set `ints[0]=ints[3]`, `ints[2]=ints[5]` for the 24 cluster
-entries (BC 39->40 etc.), removing the 2u footprint gap in case any TQAE edge-keyed
-logic reads the content triple. Zero-risk normalization to the base-game invariant
-(first triple == second on x/z for all 2235 AE levels).
+Cluster levels with content<box tile-dim slack: BC_initialpathway (39/40 x),
+drxFirstxistion_connection (39/40 z), bossfight (58/61 x, 60/60 z),
+river_extension01 (87/88 z), riverextension02 (39/40 x). For EACH, I checked its
+listed-neighbor seams against the content-triple footprint:
 
-### Fix 3 (only if both above fail): symmetric seam crossing for xPTS
+- BC_initialpathway: **x-gap +2 to xPTS = the wall** (fixed by A); flush to
+  drxFirstxistion.
+- drxFirstxistion_connection: flush to BC (x) AND flush to drxFirstRoom (z). Its short
+  edge (content z north = 3369) faces NOTHING (its neighbor seam to drxFirstRoom is on
+  its SOUTH edge z=3291). No wall.
+- bossfight: isolated (no listed navmesh neighbors); its short edges face nothing.
+- river_extension01: flush to drxFirstRoom, drxBC2, drxBC_Connector1 (its short z-edge
+  faces none of them at the short side). No wall.
+- riverextension02: flush to drxBC2 (z); its xTempleTransitionHallway relation is a
+  corner-touch (xov=0, zov=0), not a walk seam. No wall.
 
-Regenerate xPTS's donor with BC's tok rasterized into xPTS's padded grid (neighbor
-geometry contribution, WITHOUT adding BC's GUID), so xPTS's mesh crosses the 5819
-plane the way both sides of every other working seam do. Not indicated by current
-data (the baked HV1/HAB01 seam works with the same one-sided crossing shape).
+So today the 2u BC<->xPTS gap is the ONLY footprint gap between levels meant to connect
+anywhere in the cluster (uber/boss/secret branches included - those are the drxBC3 /
+drxBC_Finale / ocean sub-graph, all measured flush). Fix A's general form also
+normalizes the other four slack levels for free, pre-empting any gap if their layout
+ever shifts. **After Fix A, all 39 cluster seams are flush.**
 
-### Fix 4 (cosmetic/quality, not now): none needed for erosion or area id
+## 6. Supporting geometry (unchanged from the first pass, confirms it is not the mesh)
 
-ERODE_CELLS=2 keeps 94.5-96.2% of the true floor, never fragments, and beats the
-Editor bake's coverage of the same cave; AREA_ID=1 matches base-game cave convention;
-cons bytes are perfect. Keep gen_rec02.py exactly as is.
+- Coverage vs the true SV tok floor (rasterized with gen_rec02's own functions; donor
+  cell sets reproduce byte-exactly): Random09A 96.2%, xPTS 94.7%, BC 94.5% after
+  ERODE_CELLS=2. Our R09A donor covers 99.5% of the Editor-baked AE Random09A at cell
+  shift (0,0); no (dx,dz) frame offset.
+- Seam overlap richness at the BROKEN seam BEFORE the fix: 227-941 coincident walkable
+  cells per 2u row across the door window, floor dy = +0.0 everywhere (both flat at
+  y=16.4) - i.e. the meshes overlap perfectly; only the INDEX footprints did not abut.
+- Connectivity: BC is a single connected component; the 328-cell secondary components
+  in R09A/xPTS are the shared cross-seam handoff pad (baked AE caves carry up to 9
+  islands). cons bytes: 0 mismatches in all three meshes (intra-tile + tile-border
+  portals correct). Erosion never fragments; keep ERODE_CELLS=2.
+- gen_rec02.py needs NO change and is untouched at HEAD (git diff clean). The fix is
+  entirely in the LEVELS-index metadata, not the navmesh generator.
 
-## 6. Confidence
+## 7. Confidence
 
-- Wall mechanism (load gate, no retry, linker skip): HIGH. Disasm-proven end to end;
-  predicts today's wall location exactly (first far-GUID gate in the walk order);
-  every geometric alternative measured and eliminated (coverage 94-96%, zero offset,
-  dy=0.0, overlap richer than two working references, cons perfect, BC
-  single-component).
-- Fix 1 clearing the seam: HIGH-MEDIUM. It provably makes every mesh load; the one
-  runtime unknown static analysis cannot close is whether seam handoff has an
-  additional undiscovered requirement (if so, next in line are fix 2, then fix 3,
-  then the paired-portal branch at 0x101f37f2/0x101f3854 per the trace doc).
-- What only the walk test can confirm: the seam link forming with BC's mesh loaded,
-  and the deeper 12 seams behaving identically.
+- Mechanism (linker keys on index-footprint abutment; 2u gap blocks the link): HIGH.
+  n=39 controlled correlation (the one gapped seam is the one wall), matches the
+  disasm-codified grid-seam rule, and the gate-free GUID experiment already excluded
+  the residency gate as this seam's cause.
+- Fix A clearing the wall: HIGH. It makes the footprints flush (proven arithmetic:
+  5739+40*2 = 5819 = xPTS.W) with walkable cells on both sides in overlapping z
+  (measured), reproducing the working R09<->xPTS seam shape, without disturbing BC's
+  working west seam or any donor.
+- What only the walk test confirms: the link forming once the footprints abut. If it
+  somehow still walls, the next suspect is the paired-portal / dstRegion branch in
+  CAVE_ENTRY_CHAIN_TRACE.md, but the index gap is by far the strongest and simplest
+  remaining cause and every geometric alternative is measured out.
 
-## Appendix: donor GUID lists as deployed (from the merged map, sha1-matched to local)
+## Appendix: the numbers to cite
 
 ```
-Random09A               [d840e7ae own(AE), 2d2acbf5 xPTS]                 KEEP
-xPassageTransitionStart [2d2acbf5 own, d840e7ae R09A]                     KEEP
-BC_initialpathway       [e39fcb11 own, 57d83343 FirstXistion, 2d2acbf5]   -> [own]
-drxFirstxistion_conn.   [own, e39fcb11 BC, 170d3701 FirstRoom]            -> [own]
-drxFirstRoom            [own, FirstXistion, Connector1, river_ext01]      -> [own]
-drxBC_Connector1        [own, FirstRoom, drxBC2, river_ext01]             -> [own]
-river_extension01       [own, FirstRoom, drxBC2, Connector1]              -> [own]
-drxBC2                  [own, Connector1, river_ext01, riverext02, xTTH]  -> [own]
-riverextension02        [own, drxBC2, xTempleTransitionHallway]           -> [own]
-xTempleTransitionHallway[own, drxBC2, riverextension02]                   -> [own]
-drxBC3                  [own + 7 (incl. non-abutting oceans)]             -> [own]
-drxBC_Finale            [own + 11 (incl. non-abutting oceans)]            -> [own]
-+ connectors/oceans with real meshes, same treatment; bossfight is
-already single-GUID; the six 148-byte ocean stubs are untouched scenery.
+Cluster seams meant to connect: 39 near-abutting listed pairs
+  gap == 0 (flush):  38   [incl. R09<->xPTS and BC<->drxFirstxistion, both walk today]
+  gap  > 0 (wall) :   1   ONLY BC_initialpathway.E=5817 <-> xPassageTransitionStart.W=5819  (+2u)
+
+BC_initialpathway index ints (SV source, byte-verified): [39,4,24, 40,4,24]
+  content x-tiles = 39 -> east edge 5739 + 39*2 = 5817  (2u short)
+  box     x-tiles = 40 -> east edge 5739 + 40*2 = 5819  (already correct; = xPTS.W)
+  FIX: content x-tiles 39 -> 40  =>  east edge 5819 = FLUSH with xPTS
+
+Walkable cells at the flush seam (door z-band), after widen:
+  BC   in [5817,5819): 113 cells   xPTS in [5819,5821): 94 cells   z-overlap: 12/13 rows
 ```
