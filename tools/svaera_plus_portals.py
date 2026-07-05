@@ -72,21 +72,40 @@ def _rebuild_groups(val0, records):
     return bytes(out)
 
 # --- Grid shift (single source of truth) ---
-# Move blood cave levels to overlap with the SVAERA world grid so the engine
-# includes them in the active world grid (required for pathfinding activation).
-# xPassageTransitionStart's east edge touches HighAltituedBorder01's west edge;
-# bc_initialpathway lands at new grid (-438, 18, 2215). Cave interiors are
-# visually independent of world position. Used BOTH when repositioning a
-# transplanted 0x0b navmesh (step 7b) and when writing the merged LEVELS index
-# (step 8); they must agree so the navmesh header center matches the level's
-# final merged grid corner.
+# Move blood cave levels into the active SVAERA world grid so the engine includes
+# them for pathfinding activation. Used BOTH when repositioning/writing a 0x0b
+# navmesh (step 7b + the Random09A swap) and when writing the merged LEVELS index
+# (step 8); they must agree so a navmesh header center (grid_corner + half_dims)
+# matches the level's final merged grid corner.
+#
+# PLACEMENT-BUG FIX (2026-07-05): the previous shift (1663,0,922) put the swapped
+# Random09A doorway cave at corner (-198,18,2135), where its 80x80 footprint
+# AREA-OVERLAPPED three live surface levels - HighAltituedBorder01 (5120 sq u),
+# HiddenValley01 (656), HiddenValleyBorder05 (624). Disassembly + a working-cave
+# survey showed TQAE refuses a cave transition whose destination interior
+# co-resides (xz-area overlaps) with live surface regions: every working base-game
+# cave interior is parked fully DISJOINT from any surface region. Random09A was the
+# ONLY cave in the merged map that overlapped surface levels, which is why the
+# player hit an invisible wall at the HiddenValley01 cave mouth.
+#
+# FIX = shift the WHOLE xBloodCave cluster AND Random09A by the SAME new total
+# shift (1583,0,968) = the old (1663,0,922) plus an extra (dx=-80,dz=+46). This
+# slides the cluster one tile west + 46u south so Random09A's footprint
+# (now corner (-278,18,2181), X[-278,-198] Z[2181,2261]) has ZERO area overlap with
+# every non-cluster level (it only EDGE-TOUCHES HighAltituedBorder01 at x=-198,
+# zero area, which is allowed - working caves edge-touch too). Because Random09A
+# and xPassageTransitionStart move together, their generated navmeshes stay aligned:
+# the R09<->xPTS walkable grid-seam intersection is shift-invariant at ~73 world-u
+# (>> the 4u needed for the tunnel hand-off). Both GRID_SHIFT keys MUST carry the
+# identical delta or the seam breaks. gen_bc_navmeshes.py imports this dict, so the
+# donors follow automatically.
 GRID_SHIFT = {
-    'xbloodcave': (1663, 0, 922),  # dx, dy, dz
+    'xbloodcave': (1583, 0, 968),  # dx, dy, dz  (was (1663,0,922); -80 x / +46 z)
     # Relocate the hijacked Silk Road cave (blood-cave walk-in) by the SAME shift
-    # so its west edge abuts the shifted xPassageTransitionStart. Matched by
-    # substring, so this key hits ONLY Random09A (path is
+    # so its west edge stays abutting the shifted xPassageTransitionStart. Matched
+    # by substring, so this key hits ONLY Random09A (path is
     # Levels/World/Orient/Underground/Random09A.lvl).
-    'orient/underground/random09a': (1663, 0, 922),
+    'orient/underground/random09a': (1583, 0, 968),
 }
 
 
@@ -492,9 +511,10 @@ def main():
     # Build merged level list: all SVAERA levels + SV-only levels.
     # Apply GRID_SHIFT (defined once near the top) to each SV-only level's grid
     # corner via shifted_ints_raw so the world-grid position here MATCHES the
-    # navmesh header center written in step 7b. xPassageTransitionStart's east edge
-    # then touches HighAltituedBorder01's west edge, connecting the blood cave chain
-    # to the SVAERA world grid (bc_initialpathway: new grid (-438,18,2215)).
+    # navmesh header center written in step 7b. The whole xBloodCave cluster +
+    # Random09A move by the same shift (1583,0,968), keeping the Random09A<->xPTS
+    # grid-seam aligned while parking Random09A's footprint clear of every surface
+    # level (corner (-278,18,2181); see the GRID_SHIFT note for the placement fix).
     merged_levels = [dict(lv) for lv in ae_levels]
     grid_shifted = 0
     for i, lv in enumerate(sv_only):
