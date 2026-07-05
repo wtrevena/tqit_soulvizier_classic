@@ -198,10 +198,9 @@ says mesh data is local to center, so a correct center patch repositions it - ve
 **Known risk:** TQAE Editor has a documented bug where sub-256×256 tiles render black regardless of
 assets; some small SV tiles may need individual handling.
 
-### Why not just restore the original terrain doorway?
-SV originally connected the blood cave via terrain edges in the **shared** level `Random09A`. The
-merge deliberately keeps SVAERA's version of all shared levels (replacing them caused crashes/walls),
-so that doorway is gone - which is why the author added a quest-portal teleport instead (see below).
+### The original terrain doorway - now RESTORABLE (2026-07-04 investigation, evidence-verified)
+SV 0.98i's real blood-cave entry was a WALK-IN tunnel: terrain grid-edge chain
+`Random09A -> xPassageTransitionStart -> BC_initialpathway` (GUID-proven from the 0x0a edge records;
 
 ---
 
@@ -246,9 +245,10 @@ reader/writer (89/89 round-trip) available for this.
 - **Multiplayer never tested** (an explicit non-negotiable). Also SV's `RunEquation` MP spawn-scaling
   formulas fail to parse in AE → silently fewer spawns in MP.
 
-**P1/P2:** Super Caravan "respec items" never implemented; Lite (DRX-free, −339 MB) build coded
-(`bootstrap_working_mod.ps1 -LiteMode`) but never packaged/validated (mitigates the 32-bit
-address-space D3D crash class); dead orphan `tools/apply_sv_classic_patches.py`; stale docs
+**P1/P2:** Super Caravan "respec items" never implemented; Lite build is OFF THE TABLE (Will
+2026-07-04: keep DRX; also `-LiteMode` as-coded strips drx.arc/DRXtextures.arc which the blood cave
+itself needs - do NOT run it; crash mitigation is the 4GB LAA patch instead); dead orphan
+`tools/apply_sv_classic_patches.py`; stale docs
 (`SOUL_AUDIT.md`, `CHANGELOG.md`, `system_check.md`); `dist/` artifact stale vs HEAD; a few
 code-hygiene items (shadowed `_find_record`, unchecked pet-skill return values).
 
@@ -271,10 +271,17 @@ Payload ~1.11 GB; Workshop can host it (SVAERA AERA is 1.86 GB live on appid 475
 `scripts/package_workshop.ps1` + `scripts/upload_workshop.ps1` (steamcmd, appid 475150). SteamCMD is
 installed at `C:\steamcmd\steamcmd.exe`; never run to completion yet.
 
-Hard blockers: (1) map fix must be stock-engine (this decision handles it); (2) 32-bit
-address-space crashes → ship a Lite build + document the community 4GB LAA patch; (3) **legal** - the
-mod bundles three upstreams wholesale; get written permission from amgoz1, soa, Dragonlord (dropping
-DRX via the Lite build removes the largest permission dependency). Recommend dual distribution:
+Hard blockers: (1) map fix must be stock-engine (SOLVED: offline navmesh generation, Steam-clean);
+(2) 32-bit address-space crashes → mitigation is the community 4GB LAA patch, shipped as
+INSTRUCTIONS (README in the mod + Workshop description pointing at the NTCore 4GB Patch tool; a
+Workshop mod is content-only and cannot legally/mechanically ship a patched TQ.exe, and Steam
+verify/update reverts it anyway). Will's TQ.exe was LAA-patched locally 2026-07-04 (backups beside
+the exe + backups/game_dll/). **DECISION (Will, 2026-07-04): KEEP DRX - no Lite build.** Note
+LiteMode as-coded is now UNSAFE anyway: it strips drx.arc + DRXtextures.arc, which hold the blood
+cave's own terrain meshes/wall textures (the cave is DRX-built: drxBC*, records\drxmap\...).
+(3) **legal** - the mod bundles three upstreams wholesale; get written permission from amgoz1, soa,
+Dragonlord (keeping DRX keeps Dragonlord's permission on the critical path). Recommend dual
+distribution:
 Workshop (auto-update) + moddb/Nexus zip (GOG/non-Steam, CustomMaps install).
 
 ---
