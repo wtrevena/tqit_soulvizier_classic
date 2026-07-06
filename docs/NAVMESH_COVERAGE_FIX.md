@@ -1,5 +1,12 @@
 # The xPTS -> BC_initialpathway wall: index-footprint gap (root cause + exact fix)
 
+> ⚠️ SUPERSEDED for the seam MECHANISM by `docs/CROSS_LEVEL_STITCH_RE.md` (2026-07-05
+> night, disassembly-proven). There is NO "cross-region walk-link keyed on index-footprint
+> adjacency": each level owns a PRIVATE navmesh, and a seam crossing is a single-mesh path
+> onto cells this mesh rasterized PAST the boundary and tagged with the neighbour's GUID-list
+> index. The index-footprint-gap fix below was harmless metadata hygiene, not the wall's cause.
+> Kept for history.
+
 Deepest-tier navmesh analysis, 2026-07-05. Read-only over the deployed build Will
 walk-tested today, and the follow-up deployed build with the gate-free GUID fix.
 

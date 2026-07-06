@@ -98,3 +98,29 @@ CAVE_ENTRY_CHAIN_TRACE.md): navmesh loader ProcessRLTD 0x1f4ba0; cross-region po
 = live `Instruction.parse` disassembler (grounds struct offsets). `frida_portals.py` =
 FindCrossedPortal hook. `seam_lattice_check.py <map> [--gate]` = static AE-vs-ours lattice +
 boundary-crossing diff. `scan_mouths.py` = 0x14/0x06 door-record scan. All read-only.
+
+## TRACK 1 RESULT (2026-07-05 late night): STITCH MECHANISM FOUND - read docs/CROSS_LEVEL_STITCH_RE.md
+Disassembly-proven end to end + 100% data correlation on vanilla meshes. **The stitch is NOT in
+any map section (SD/0x10/LEVELS-fields/GROUPS all moot): there is no walk-link, no seam linker,
+no adjacency table. Seamless walking = a path inside ONE level's navmesh.** Every Editor-baked
+mesh rasterizes its NEIGHBORS' geometry ~16u past its own footprint, and every walkable cell's
+AREA ID is a **1-based index into that mesh's GUID list** naming the level that owns the cell
+(poly flags = area id, identity-copied by the engine meshproc at 0x10105a90; position->Region
+resolution at 0x101f0cf0/0x101f0c90 reads poly flags-1 -> GUIDlist -> live region array).
+PathManager::FindPath (0x101ee910) only ever does same-pathfinder mesh paths (0x101f2a00) or
+portal hops (0x101f3680); a pathfinder "covers" a point iff its OWN mesh has a walkable poly
+within (2,2,2) of it (0x101f2490). Vanilla seams work because BOTH meshes carry each other's
+tagged strip (measured HV01|HVborder01: 13,534/6,373 reciprocal cross-tagged cells, 0-15u past
+the plane; area K == GUID[K-1] footprint at 98-100% over ~750k cells / 5 levels; own GUID is NOT
+always first - the "areas are walkable classes" doctrine is DEAD). Build13 donors: guids=[own],
+all cells area 1, raster stops at the seam plane -> the engine has ZERO data linking R09<->xPTS
+-> path end snaps to the plane -> the wall. The 64u lattice snap chased a ghost (per-level meshes
+are SEPARATE dtNavMesh instances; no cross-mesh tile math exists). The RELOCATION/spatial-bounds
+angle is also moot (pathfinder lookup is a live spatial index of resident pathfinders, position-
+based, no world-bounds table). FIX (generator-only; no engine, no map-structure change):
+union-rasterize own + abutting-neighbor toks per level, erode as ONE field, tag each walkable
+cell by footprint containment (own=area 1, neighbor K=area K+1), GUID list [own+neighbors],
+symmetric on both sides of all 39 seams; add a merged-map gate "both meshes of each seam pair
+carry >=50 cells tagged as the other level past the plane". Exact code spec + self-verify gates +
+risk ladder in docs/CROSS_LEVEL_STITCH_RE.md Section 6 (one watch-item: R09 multi-GUID load-order
+residency at the mouth preload - build11/12 Frida logs show it held fine in practice).

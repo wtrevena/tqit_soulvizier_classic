@@ -131,10 +131,33 @@ def erode(open_cells, gw, gh, iterations):
     return cur
 
 
-def build_tiles(hgrid, open_cells, gw, gh, tw, th):
-    """Slice global grid into tile records."""
+def build_tiles(hgrid, open_cells, gw, gh, tw, th, grid_ox=0.0, grid_oz=0.0,
+                area_boxes=None):
+    """Slice global grid into tile records.
+
+    area_boxes: optional ordered list of (x0,z0,x1,z1) WORLD footprint boxes
+    parallel to the navmesh GUID list. When given, each walkable cell's area id
+    (== its poly flags at runtime, which the engine reads as a 1-BASED INDEX
+    INTO THE GUID LIST to decide which level owns the cell - see
+    docs/CROSS_LEVEL_STITCH_RE.md) is set to 1 + index of the first box (own
+    first) whose half-open [x0,x1)x[z0,z1) contains the cell CENTER. This is the
+    cross-level seam mechanism: a level's mesh rasterizes its neighbours' strip
+    and tags those cells with the neighbour's GUID index, so one mesh covers
+    both sides of a seam. Cell -> world uses the grid origin (grid_ox,grid_oz).
+    Without area_boxes, the constant AREA_ID is stamped (legacy single-level)."""
     records = []
     climb = CLIMB_CELLS
+
+    def _cell_area(gx, gz):
+        if not area_boxes:
+            return AREA_ID
+        wx = grid_ox + (gx + 0.5) * CS
+        wz = grid_oz + (gz + 0.5) * CS
+        for k, (bx0, bz0, bx1, bz1) in enumerate(area_boxes):
+            if bx0 <= wx < bx1 and bz0 <= wz < bz1:
+                return k + 1
+        return 1  # inside no declared box -> own (index 0); avoids notching own mesh
+
     for ty in range(th):
         for tx in range(tw):
             x0, z0 = tx * TILE, ty * TILE
@@ -152,7 +175,7 @@ def build_tiles(hgrid, open_cells, gw, gh, tw, th):
                     idx = base + lx
                     if idx in open_cells:
                         h = hgrid[idx]
-                        cells.append((lx, lz, idx, h))
+                        cells.append((lx, lz, idx, h, _cell_area(gx, gz)))
                         hmin = h if hmin is None else min(hmin, h)
                         hmax = h if hmax is None else max(hmax, h)
             if not cells:
@@ -163,14 +186,14 @@ def build_tiles(hgrid, open_cells, gw, gh, tw, th):
             cons = bytearray(TILE * TILE)
             minx = miny = 255
             maxx = maxy = 0
-            for lx, lz, idx, h in cells:
+            for lx, lz, idx, h, area in cells:
                 li = lz * TILE + lx
                 heights[li] = h - hmin
-                areas[li] = AREA_ID
+                areas[li] = area
                 minx = min(minx, lx); maxx = max(maxx, lx)
                 miny = min(miny, lz); maxy = max(maxy, lz)
             # connectivity: dirs 0=W(x-1) 1=N(z+1) 2=E(x+1) 3=S(z-1)
-            for lx, lz, idx, h in cells:
+            for lx, lz, idx, h, area in cells:
                 li = lz * TILE + lx
                 con = 0
                 portal = 0
@@ -201,7 +224,7 @@ def build_tiles(hgrid, open_cells, gw, gh, tw, th):
 
 
 def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
-             neighbors=(), footprint=None):
+             neighbors=(), footprint=None, area_boxes=None):
     """Generate a 0x0b doc from a level's 0x0a tok mesh.
 
     mesh: optional pre-parsed load_tok_mesh() tuple (guids, center, dims,
@@ -368,7 +391,11 @@ def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
             fill[i] = min(max(h, lo_b), hi_b)
     hgrid.update(fill)
     open_cells = erode(set(hgrid), gw, gh, ERODE_CELLS)
-    records = build_tiles(hgrid, open_cells, gw, gh, tw, th)
+    # grid origin in WORLD coords: cell (gx,gz) center = (x0 + (gx+.5)*CS, ...).
+    # area_boxes must be in this same world frame (the SV-original frame the toks
+    # live in - GRID_SHIFT is applied to the container center AFTER generate()).
+    records = build_tiles(hgrid, open_cells, gw, gh, tw, th,
+                          grid_ox=x0, grid_oz=z0, area_boxes=area_boxes)
     params = dict(orig=(0.0, 0.0, 0.0), cs=CS, ch=CH, width=TILE, height=TILE,
                   walkableHeight=2.0, walkableRadius=0.4, walkableClimb=1.0,
                   maxSimplificationError=1.3, maxTiles=2 * tw * th, maxObstacles=128)

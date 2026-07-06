@@ -54,6 +54,7 @@ import sys
 import struct
 import time
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -297,49 +298,64 @@ def main():
                  tuple(o['corner0a'][i] - ent['corner0a'][i] for i in range(3)))
                 for o in entries if o is not ent]
 
+        # THE CROSS-LEVEL STITCH (disasm-proven, docs/CROSS_LEVEL_STITCH_RE.md):
+        # there is NO walk-link and NO adjacency table. Each level owns a PRIVATE
+        # dtNavMesh. The engine tags EVERY navmesh poly with its rasterized cell
+        # AREA ID, and reads that area id at runtime as a 1-BASED INDEX INTO THIS
+        # MESH'S GUID LIST, naming the level that owns the cell. A seamless seam
+        # crossing is a SINGLE-mesh path: the level's mesh rasterizes its
+        # neighbour's terrain ~16u PAST the shared boundary and tags that strip
+        # with the neighbour's GUID index, so one mesh covers both sides of the
+        # click and the entity's region flips as the poly tags change. Vanilla
+        # meshes carry 2..13 GUIDs and mirror the strip from both sides; our
+        # single-GUID/own-tagged/stops-at-the-plane donors gave the engine no
+        # data connecting the rooms -> the wall (all 11 prior fixes missed this).
+        #
+        # So each donor's GUID list = [own] + every footprint-ABUTTING neighbour
+        # (resolved to the merged world; own first so area 1 == own), and
+        # area_boxes (parallel to the list) lets generate() tag each cell by
+        # which level's footprint box contains it. resolve_guids stays only for
+        # the `dropped` log. (Residency note: multi-GUID re-arms ProcessRLTD's
+        # load-time residency gate at the mouth preload; build11/12 Frida logs
+        # show the cluster co-streams so R09 loads fine - watch Level+0x6a48 on
+        # R09 if the mouth ever walls again.)
+        def _resolve_merged(g, tag):
+            if g in merged_guids:
+                return g
+            if g in shared_remap and shared_remap[g] in merged_guids:
+                return shared_remap[g]
+            raise SystemExit(
+                f'{basename}: abutting-neighbour GUID {g.hex()} ({tag}) does not '
+                f'resolve in the merged world - cannot tag the seam. Fix the '
+                f'GRID_SHIFT/merge so the neighbour is present, or drop the seam.')
+
+        assert own_guid in merged_guids, f'{basename}: own GUID unresolved in merged world'
+        guid_list = [own_guid]
+        area_boxes = [ent['fp_sv']]              # parallel to guid_list; own box first
+        for other in entries:
+            if other is ent or not _fp_adjacent(ent['fp_sv'], other['fp_sv']):
+                continue
+            g = _resolve_merged(_merged_own(other), other['basename'])
+            if g in guid_list:
+                continue
+            guid_list.append(g)
+            area_boxes.append(other['fp_sv'])
+
         t0 = time.time()
         doc, stats = generate(
             str(ent['lvl_tmp']),
+            own_guid=own_guid, neighbor_guids=guid_list[1:], area_boxes=area_boxes,
             mesh=(guids_0a, center_a, dims_a, ent['verts'], ent['tris']),
             neighbors=nbrs, footprint=ent['fp_sv'])
         gen_dt = time.time() - t0
 
-        # (a) reposition to the merged grid by shifting the container center.
+        # reposition to the merged grid by shifting the container center only.
         shift = grid_shift_for(fname)
         shifted_center = shift_center(doc['center'], shift)
         doc['center'] = shifted_center
-
-        # (b) install the merged-world-resolvable GUID list = own + all resolvable
-        # grid-neighbor GUIDs (base-game-normal: 57/57 connected-dungeon levels
-        # cross-list their neighbors). The neighbor GUID is what stitches two
-        # adjacent levels' navmeshes into one walkable surface across the shared
-        # tile edge; without it the seam does NOT hand off and the player walls.
-        #
-        # HISTORY: a "gate-free" experiment (own-GUID-only) and later a
-        # 0x0a-derived cross-list both walled - because 0x0a lists are ASYMMETRIC
-        # (xPTS omits BC). The GUID list is now the MUTUAL grid-adjacency set
-        # (adj_guids, computed above from footprint abutment); resolve_guids is
-        # retained only to compute `dropped` for the log.
-        # OWN-GUID-ONLY (disasm-grounded, docs/CAVE_ENTRY_CHAIN_TRACE.md sec 3):
-        # the navmesh GUID list is consumed ONLY by ProcessRLTD's RESIDENCY gate -
-        # for EACH listed neighbor GUID, [regmgr+0x50][idx] must be non-null (that
-        # level stream-resident) or the WHOLE navmesh is REJECTED (Level+0x6a48
-        # stays 0) and the pathfinder builds no walk-link into the level; its
-        # terrain still renders ("see the room, cant walk in" - Will's exact
-        # symptom). The list is NOT the tile stitch (that is geometric: adjacent
-        # LOADED, flush tiles connect on their own). Our relocated APPENDED cluster
-        # (xPTS/BC at index 2246/2261, isolated at world 7840) does not reliably
-        # co-stream a level's neighbors, so ANY neighbor GUID risks rejection - the
-        # earlier "mutual" list added exactly such a dependency (BC listed its far
-        # neighbor drxfirstxistion, not resident from xPTS -> BC navmesh rejected
-        # -> wall). Fix: list OWN GUID ONLY so every level's navmesh ALWAYS loads;
-        # flush-adjacent neighbors then stitch geometrically. This is exactly
-        # base-game AE-Random09A (own-only isolated cave). A prior own-only build
-        # walled ONLY because footprints still had a 2u gap (no tile adjacency);
-        # footprints are flush now, so own-only + flush is the untested combo.
-        guid_list = [own_guid]
-        assert own_guid in merged_guids, f'{basename}: own GUID unresolved in merged world'
-        doc['guids'] = guid_list
+        # generate() set doc['guids'] = [own] + neighbor_guids = guid_list.
+        assert doc['guids'] == guid_list, \
+            f'{basename}: guid list mismatch ({doc["guids"]} vs {guid_list})'
         _, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)
         remapped = own_guid != lv['ints_raw'][36:52]
 
@@ -353,8 +369,31 @@ def main():
             f'{basename}: center not shifted ({doc2["center"]} vs {shifted_center})'
         assert all(g in merged_guids for g in doc2['guids']), \
             f'{basename}: a serialized GUID does not resolve'
-        # center must equal shifted (grid_corner+half_extents) => grid_corner+shift+half
-        # (center_a already = grid_corner + half; shift moves it to the merged grid)
+
+        # CROSS-TAG self-verify (Track 1, docs/CROSS_LEVEL_STITCH_RE.md): decode
+        # set 0's area histogram. area id == 1-based GUID-list index of the level
+        # owning each cell. Two invariants: (i) no area id exceeds guid_count;
+        # (ii) if this donor lists neighbours, the mesh MUST rasterize a strip
+        # tagged with at least one neighbour index - a list with zero cross-tagged
+        # cells is exactly the build13 failure mode (registration but no strip ->
+        # the wall). The authoritative per-seam >=50-cell check is the merged-map
+        # seam gate; this catches total failure cheaply, pre-merge.
+        ahist = Counter()
+        for rec in doc2['sets'][0]['records']:
+            for a in rec['areas']:
+                if a:
+                    ahist[a] += 1
+        gc = len(guid_list)
+        if ahist:
+            assert max(ahist) <= gc, \
+                f'{basename}: area id {max(ahist)} exceeds guid_count {gc}'
+        if gc > 1 and not any(a > 1 for a in ahist):
+            raise SystemExit(
+                f'{basename}: {gc} GUIDs listed but ZERO neighbour-tagged cells - '
+                f'the seam strip was never rasterized (build13 failure mode). The '
+                f'neighbour toks are not reaching past this level\'s boundary into '
+                f'the padded grid; check the neighbour bbox prefilter / pad.')
+        area_note = ' areas={' + ','.join(f'{k}:{ahist[k]}' for k in sorted(ahist)) + '}'
 
         if not dry_run:
             (OUT_DIR / f'{basename}.0b.bin').write_bytes(data)
@@ -364,8 +403,8 @@ def main():
         generated.append((basename, len(data), stats['n_tiles'], len(guid_list)))
         print(f'  GEN   {basename:38s} {len(data):7d} B  tiles={stats["n_tiles"]:3d} '
               f'guids={len(guid_list):2d} nbrs={stats["n_neighbors"]:2d} '
-              f'cells={stats["n_rast_own"]}+{stats["n_rast"] - stats["n_rast_own"]} '
-              f'center{tuple(doc["center"])} {gen_dt:4.1f}s{remap_note}{drop_note}')
+              f'cells={stats["n_rast_own"]}+{stats["n_rast"] - stats["n_rast_own"]}'
+              f'{area_note} {gen_dt:4.1f}s{remap_note}{drop_note}')
 
     print('\n=== Summary ===')
     print(f'  generated: {len(generated)}   skipped-no-geometry: {len(skipped_no_geom)}   '

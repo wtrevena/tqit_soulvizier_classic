@@ -75,6 +75,25 @@ byte-verified as deployed, and every one still walled at the same spot in-game.*
 | 9 | 64u tile-lattice snap (build13, `gen_rec02` origin snap) | tiles stitch only if the two 12.8u lattices coincide; ours were 6.4u off, AE seams 0.000 | WALL | verified 24/24 seams 0.000 offset in merged map; STILL walls. The lattice geometry is not what gates the link |
 | 10| (Era-1 residency fixes are separate - they fixed the MOUTH, not the seam) | | | |
 
+## Era 4 - MECHANISM FOUND + THE FIX (2026-07-05 night, attempt #12)
+Parallel Fable-max RE (docs/CROSS_LEVEL_STITCH_RE.md) cracked the actual mechanism, disasm-proven
+with 100% correlation on ~750k vanilla cells: **there is no walk-link. Each level owns a PRIVATE
+navmesh. The engine tags every poly with its cell's AREA ID and reads that at runtime as a 1-BASED
+INDEX INTO THE MESH'S GUID LIST = the level that owns the cell. A seamless seam crossing is a
+SINGLE-mesh path: a level's mesh rasterizes its neighbour's terrain ~16u PAST the shared boundary
+and tags that strip with the neighbour's GUID index, so one mesh covers both sides of the click.**
+Our meshes stopped at the boundary with only their own GUID -> no mesh covered both sides -> wall.
+
+| # | Attempt | What it added over #1-11 | Static result |
+|---|---------|--------------------------|---------------|
+| 12 | **Cross-tag rasterization** (gen_rec02 per-cell area = 1+index of the GUID-list level whose footprint box contains the cell; gen_bc_navmeshes GUID list = [own]+abutting neighbours; each mesh rasterizes neighbour toks past the boundary) | the ONE thing all 11 missed: cross-boundary walkable cells tagged with the neighbour's GUID index, in BOTH meshes | **GATE PASS 20/20 walk seams**; R09\|xPTS = 3493/69473 cross-tagged cells past the plane (was 0/0). Built + verified 24/24 byte-exact + DEPLOYED (684,869,910 B). Walk test pending. |
+
+New tooling: `tools/verify_cross_tags.py` (the anti-regression gate: both sides of every walk seam
+must carry >=50 cross-tagged cells past the plane - all 11 prior builds fail it, #12 passes),
+`tools/debug/navlib.py` (decode donor -> tagged cells). The gate is the static success-predictor;
+only Will's walk test gives final confirmation (project discipline), but the mechanism is HIGH
+confidence + the gate objectively distinguishes #12 from every failure.
+
 ## Era 3 - the DEBUGGER (Frida) turning point - what is now PROVEN
 Will authorized attaching a debugger. Frida (scriptable, no GUI) attached to the running 32-bit
 TQ.exe and hooked Engine.dll. Probes: `scratchpad/frida_probe.py` (ProcessRLTD load hook),

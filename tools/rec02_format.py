@@ -9,9 +9,15 @@ FORMAT (all little-endian):
     +4   uint32 version            == 1 (engine skips payload otherwise)
     +8   uint32 payload_size       == total_size - 12
     +12  uint32 guid_count         (1..13 observed)
-    +16  guid_count * 16B GUIDs    (own level GUID + geometry-contributing neighbor
-                                    level GUIDs; engine REQUIRES each to resolve in
-                                    the loaded world's level-GUID map)
+    +16  guid_count * 16B GUIDs    (the levels whose terrain this mesh rasterizes:
+                                    own + geometry-contributing neighbours. Order is
+                                    ARBITRARY - own is NOT necessarily first (vanilla
+                                    Valley01's own GUID is index 3). Each area id in
+                                    the tiles is a 1-BASED INDEX into THIS list naming
+                                    the level that owns the cell - see below + the
+                                    RE in docs/CROSS_LEVEL_STITCH_RE.md. Engine REQUIRES
+                                    each GUID to resolve in the loaded world's map AND
+                                    (residency gate) be stream-resident at load.)
     +..  int32  center[3]          world-space center (= map grid corner + half-extents)
     +..  uint32 dims[3]            half-extents in world units (x/z: level half-extent
                                     + 16 padding; grid spans local [0, 2*dims])
@@ -42,7 +48,13 @@ FORMAT (all little-endian):
                 uint8 pad[2] = 0
              fastlz level-1 compressed (heights[w*h] + areas[w*h] + cons[w*h])
                 heights: cell y index - hmin; 0xff = empty
-                areas:   0 = unwalkable; 1..6 = walkable classes (terrain types)
+                areas:   0 = unwalkable; K>=1 = walkable AND == the 1-based index
+                         into this mesh's GUID list of the level that OWNS the cell.
+                         At runtime dtTileCacheMeshProcess copies area->poly flags and
+                         the engine reads flags-1 to resolve the cell's Region (this is
+                         the cross-level seam handoff; NOT "terrain-type classes").
+                         A mesh tags its neighbour's strip with the neighbour's index so
+                         one mesh covers both sides of a seam (docs/CROSS_LEVEL_STITCH_RE.md).
                 cons:    low nibble = intra-layer 4-dir connectivity,
                          high nibble = tile-border portals; Detour dirs
                          bit0=W(x-1) bit1=N(z+1) bit2=E(x+1) bit3=S(z-1)
