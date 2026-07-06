@@ -207,18 +207,6 @@ def find_pre_positioned_donor(lv):
     return body, donor_path
 
 
-# Tolerance (world-units) for the donor-freshness center check. The layout
-# invariant center == corner-16+dims holds only up to tile-grid rounding: the
-# donor's stored dims come from the rasterizer (ceil(2*extent/CS) tiling +
-# erosion), so on levels with odd 0x0a half-extents the donor center legitimately
-# differs from corner-16+dims by up to 2 world-units (measured max = 2 across all
-# 24 tier-1 blood-cave donors). A genuine STALE-GRID_SHIFT donor - the class this
-# gate exists to catch - is off by the shift delta on x and/or z, i.e. hundreds to
-# thousands of world-units, so a small tolerance keeps full stale-shift protection
-# while not false-tripping on odd geometry.
-DONOR_FRESH_TOL = 32
-
-
 def assert_donor_fresh(donor, target_ints, name):
     """Fail loud if a pre-positioned donor was generated at a different GRID_SHIFT.
 
@@ -226,20 +214,35 @@ def assert_donor_fresh(donor, target_ints, name):
     other (e.g. abandoned/experimental) shift silently places the navmesh
     kilometres from its level (2026-07-05 corruption class: a size-only check
     passes because only the 12-byte center differs). Layout invariant on healthy
-    donors: center == index corner - 16 + dims on the x and z axes, up to
-    DONOR_FRESH_TOL world-units of tile-grid rounding (see the constant note).
+    donors (global-lattice pipeline, 2026-07-05): the mesh corner (center - dims)
+    is the level's padded corner snapped DOWN to the 64u tile lattice of the SV
+    generation frame, so on x and z it must (a) lie within [corner-16-63,
+    corner-16] (snap distance < 64) and (b) the mesh far edge must cover the
+    level box + 16u pad. (No absolute mod-64 check here: GRID_SHIFT moves the
+    lattice phase in the merged frame; cross-donor phase CONSISTENCY - the
+    walkability requirement - is gated by the seam alignment check on the merged
+    map.) A wrong-GRID_SHIFT donor is off by hundreds of units and fails (a).
     """
     gc = struct.unpack_from('<I', donor, 12)[0]
     pos = 16 + gc * 16
     cx, _cy, cz = struct.unpack_from('<3i', donor, pos)
     dx, _dy, dz = struct.unpack_from('<3I', donor, pos + 12)
     ints = struct.unpack_from('<13i', target_ints, 0)
-    exp_x, exp_z = ints[6] - 16 + dx, ints[8] - 16 + dz
-    if abs(cx - exp_x) > DONOR_FRESH_TOL or abs(cz - exp_z) > DONOR_FRESH_TOL:
+    mesh_x0, mesh_z0 = cx - dx, cz - dz
+    mesh_x1, mesh_z1 = cx + dx, cz + dz
+    lo_x, lo_z = ints[6] - 16, ints[8] - 16
+    hi_x, hi_z = ints[6] + 2 * ints[3] + 16, ints[8] + 2 * ints[5] + 16
+    bad = []
+    if not (lo_x - 63 <= mesh_x0 <= lo_x and lo_z - 63 <= mesh_z0 <= lo_z):
+        bad.append(f'corner ({mesh_x0},{mesh_z0}) outside snap window of padded corner ({lo_x},{lo_z})')
+    if mesh_x1 < hi_x or mesh_z1 < hi_z:
+        bad.append(f'far edge ({mesh_x1},{mesh_z1}) does not cover padded box ({hi_x},{hi_z})')
+    if bad:
         raise SystemExit(
-            f'STALE DONOR {name}: 0x0b center ({cx},{cz}) != expected ({exp_x},{exp_z}) '
-            f'+/-{DONOR_FRESH_TOL} for grid corner ({ints[6]},{ints[8]}). Donors were '
-            f'generated at a different GRID_SHIFT - rerun: py tools/gen_bc_navmeshes.py')
+            f'STALE DONOR {name}: ' + '; '.join(bad) +
+            f' [center=({cx},{cz}) dims=({dx},{dz}) grid corner=({ints[6]},{ints[8]})]. '
+            f'Donors were generated at a different GRID_SHIFT or by the pre-lattice '
+            f'pipeline - rerun: py tools/gen_bc_navmeshes.py')
 
 
 def find_donor_0x0b(lv):

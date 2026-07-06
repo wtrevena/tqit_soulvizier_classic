@@ -269,6 +269,19 @@ def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
         x0, x1 = min(x0, fx0), max(x1, fx1)
         z0, z1 = min(z0, fz0), max(z1, fz1)
     x0 -= pad; x1 += pad; z0 -= pad; z1 += pad
+    # GLOBAL TILE LATTICE (2026-07-05 invisible-wall root cause): the engine
+    # stitches walk-links across a grid seam only when both levels' 12.8u tile
+    # lattices coincide. Every Editor-baked AE batch measures offset 0.000 mod
+    # 12.8 across its seams (levels sit 64u = exactly 5 tiles apart); SV levels
+    # sit at arbitrary offsets, so per-level-anchored meshes cannot stitch =
+    # invisible wall at every generated<->generated seam while each room stays
+    # internally walkable. Snap the grid origin DOWN and the extent UP to the
+    # global 64u lattice: 64 = 5 tiles keeps corner deltas == 0 mod 12.8 AND
+    # center/dims exactly integral (int32/uint32 header fields).
+    x0 = (x0 // 64) * 64
+    z0 = (z0 // 64) * 64
+    x1 = x0 + ((x1 - x0 + 63) // 64) * 64
+    z1 = z0 + ((z1 - z0 + 63) // 64) * 64
     if (x1 - x0) % 2:
         x1 += 1
     if (z1 - z0) % 2:

@@ -26,7 +26,32 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ---
 
-## Current status (2026-07-04)
+## Current status (2026-07-05 night)
+
+**INVISIBLE-WALL TRUE ROOT CAUSE FOUND (runtime-proven) + FIX DEPLOYED (build13).** After 9
+navmesh-content fixes all walled identically, Frida runtime probes (hook ProcessRLTD; walk the
+region-manager table at Engine+0x3743f0; portal dumps) proved: navmeshes LOAD fine (ret=1), portals
+exist only for declared cave mouths (entrance pair healthy, open=1), and room-to-room walking is
+navmesh TILE STITCHING. The stitch requires both levels' 12.8u tile lattices to coincide: every
+working AE seam measures offset 0.000 mod 12.8 (AE batch rooms sit exactly 64u = 5 tiles apart);
+every generated seam of ours was misaligned (6.4u at Will's wall = worst case). Fix:
+`gen_rec02.generate()` snaps each raster origin down (and extent up) to a shared 64u lattice;
+donor-freshness + verifier gates rewritten for the snapped invariant; new merged-map LATTICE GATE
+(scratchpad seam_lattice_check.py `<map> --gate`). Build13: 24/24 donors one shared phase, verify
+24/24, **24 aligned seams / 0 misaligned**, deployed byte-identical (684,860,698 B). Awaiting Will's
+walk test (full TQ restart required).
+
+**Yeti soul-drop bug FIXED + DB deployed:** normal (Common) yetis dropped souls because
+`_force_100_pct_soul_drops` keyed off the soul-loot field alone, re-enabling Common/Champion that
+`wire_souls_to_monsters` deliberately gates off (design: only Hero/Boss/Quest drop souls). Fix both
+sides: wire_souls now zeroes `chanceToEquipFinger2` on non-Hero/Boss/Quest with inherited soul loot
+(419 records); the 100% forcer only boosts monsters already at chance>0 (894 boosted, 415 left
+gated). Verified in the rebuilt .arz: am_yeti_*/hulking_yeti_35/am_yetichampion_* = 0.0;
+boss_gargantuanyeti + um_ heroes = 100. validate_tags PASS. Deployed byte-identical (54,437,387 B).
+NOTE: Champion-rank ALSO stops dropping (matches documented design) - if Will wants champions to
+drop souls, add 'Champion' to the gate in both files.
+
+## Prior status (2026-07-04)
 
 The database / souls / pets / enchanting side is working. The map-integration blocker is **SOLVED**:
 the 23 walkable Soulvizier blood-cave levels now carry **real, valid `0x0b` (RLTD) navmeshes**,

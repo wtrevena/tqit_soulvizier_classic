@@ -45,21 +45,26 @@ def rec02_center_dims(d):
 
 
 def center_consistent(sec_0b, lv):
-    """True if the navmesh center matches this level's index corner.
+    """True if the navmesh is positioned right for this level's index corner.
 
-    Layout invariant (proven on healthy donors): center = corner - 16 + dims on
-    the x and z axes (y half-extent rounding differs, so y is not gated). This
-    catches STALE donors generated at a different GRID_SHIFT (the 2026-07-05
-    corruption class: donors regenerated at an abandoned shift would otherwise
-    inject navmeshes kilometres from their level, and a size-only check passes).
+    Layout invariant (global-lattice pipeline, 2026-07-05): the mesh corner
+    (center - dims) is the level's padded corner (grid corner - 16) snapped DOWN
+    to the generation frame's 64u tile lattice on x and z, and the far edge
+    covers the level box + 16u pad. So: corner within [padded-63, padded], far
+    edge >= padded far edge. (Cross-donor lattice phase consistency - the actual
+    walkability requirement - is gated separately by the merged-map seam
+    alignment check.) This still catches STALE donors generated at a different
+    GRID_SHIFT (off by hundreds of units -> outside the snap window). y is not
+    gated (half-extent rounding differs).
     """
     import struct
     (cx, _cy, cz), (dx, _dy, dz) = rec02_center_dims(sec_0b)
     ints = struct.unpack_from('<13i', lv['ints_raw'], 0)  # [6,7,8] = grid corner
-    # Tolerance: odd-geometry levels differ from corner-16+dims by <=2u (tile-grid
-    # rounding, shift-independent); a stale-GRID_SHIFT donor is off by 100s-1000s.
-    return (abs(cx - (ints[6] - 16 + dx)) <= 4
-            and abs(cz - (ints[8] - 16 + dz)) <= 4)
+    mx0, mz0, mx1, mz1 = cx - dx, cz - dz, cx + dx, cz + dz
+    lo_x, lo_z = ints[6] - 16, ints[8] - 16
+    hi_x, hi_z = ints[6] + 2 * ints[3] + 16, ints[8] + 2 * ints[5] + 16
+    return (lo_x - 63 <= mx0 <= lo_x and lo_z - 63 <= mz0 <= lo_z
+            and mx1 >= hi_x and mz1 >= hi_z)
 
 
 def main():
