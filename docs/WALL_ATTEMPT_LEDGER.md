@@ -94,6 +94,31 @@ must carry >=50 cross-tagged cells past the plane - all 11 prior builds fail it,
 only Will's walk test gives final confirmation (project discipline), but the mechanism is HIGH
 confidence + the gate objectively distinguishes #12 from every failure.
 
+## Era 5 - THE HEIGHT STEP: measurement era -> ROOT CAUSE -> Y-ALIGN (2026-07-06, attempts #13-16)
+
+#12 (cross-tag) walled in-game despite the gate passing and Frida proving the donors LOADED
+(R09 guids=2, both OK ret=1). The tags/strips were necessary but NOT sufficient - something still
+blocked the crossing. The breakthrough was to stop shipping theories and MEASURE the floors.
+
+| # | Attempt | Idea | In-game result | Lesson |
+|---|---------|------|----------------|--------|
+| 13 | Interior GridEntrance portal R09<->xPTS (build15, `inject_interior_portals.py` + svaera step 7e `SVC_INTERIOR_PORTALS=1`) | bypass the seam with the PROVEN mouth mechanism | Portal BUILT at runtime (Frida: R09 region +0x8c = 2 portals, ->xPTS open=1; needed rot_facing() - identity rot vs the mouth's 90deg) but NO doorway visible + STILL walled | a portal doesn't help when the DESTINATION floor can't place the player; also Will: NO portals, fix it properly. Flag now OFF. |
+| 14 | **MEASURE, don't guess** (`seam_height_profile.py`, `corridor_connect.py`, `engine_corridor.py`) | - | - | **R09 floor Y=19.0 vs xPTS floor Y=16.4 at the seam = 2.6u step > walkableClimb 1u > findNearestPoly 2u tolerance = the freeze, exactly at "Mysterious Passage"**. 2D BFS oracles gave false positives on this 3D winding cave; `engine_corridor.py` (3D: intra-mesh climb 1u + cross-mesh handoff within 2u) is THE reliable oracle. |
+| 15 | Owner-wins heights + relax_gradient_down ramp (deployed) | bend each mesh's strip to the owner's height + ramp the join | **REGRESSION: wall moved EARLIER** (Will's blue-line screenshot) - the per-mesh ramp bent one floor down unevenly and created a NEW cliff inside R09 | height SURGERY inside a mesh is a minefield; never bend floors non-rigidly |
+| 16 | **Y-ALIGNMENT (the fix): rigid per-level shift** | `seam_anchor_probe.py` proved the 2.56u step is CONSTANT (stdev 0.00 over 528 shared cells) = a per-level Y-ANCHOR ARTIFACT of splitting SV's ONE continuous floor into per-level toks, NOT terrain. `chain_offsets.py`: EVERY chain seam is exactly 0.00 or +/-2.56u. Fix: measure each abutting pair's constant offset from the toks, BFS-propagate per-level integer corrections (max 3u), apply via the int32 container CENTER (rigid = cannot create cliffs) + neighbour strips carry (shift[nbr]-shift[own]) via dy | **ORACLE PASS: the ENTIRE 10-room walk chain 100% reachable from deep R09** (was BC 36%, deeper 0%); all 14 chain seams median dY=0.00u max 0.40u. Deployed 2026-07-06 16:06 (684,829,146 B). Walk test pending | measure constant-vs-variable BEFORE designing a fix; rigid transforms preserve internal shape |
+
+Era-5 implementation notes:
+- `gen_rec02.generate(y_shift=)` applies the shift to the CENTER (int32; a fractional `off_y`
+  shift pushed stacked-below neighbour cells negative -> uint16 serialize crash). Cells with
+  h<0 (stacked-below XZ-overlap garbage) are dropped outright.
+- Rejected en route: `reconcile_seam_heights.py` (2D global-min reconcile) FLATTENS stacked 3D
+  levels (11u corruption) - do NOT use; 2D corridor oracles are unreliable on this cave.
+- Unreached-by-walk rooms (temple, bossfight, finale, secret door) share ZERO floor cells with
+  the chain (`frontier_seams.py`) = door/portal/quest-gated BY DESIGN, not walls.
+- Known residual risk: drxFirstRoom residency-gate rejection (navmeshOK=0 dead=1 in a build14
+  Frida capture when far listed neighbours weren't resident at load). Multi-GUID lists unchanged;
+  if Will walls exactly at drxFirstxistion->drxFirstRoom, that is the next target.
+
 ## Era 3 - the DEBUGGER (Frida) turning point - what is now PROVEN
 Will authorized attaching a debugger. Frida (scriptable, no GUI) attached to the running 32-bit
 TQ.exe and hooked Engine.dll. Probes: `scratchpad/frida_probe.py` (ProcessRLTD load hook),

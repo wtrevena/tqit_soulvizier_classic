@@ -126,9 +126,28 @@ def _parse_05(section_data, rec_size):
     return strings, inst_count, inst_bytes, trailing
 
 
-def inject_gridentrance_05(section_data, ver, dbr_bytes, x, y, z):
+def rot_facing(fx, fz):
+    """3x3 row-major rotation orienting the GridEntrance's local -Z 'forward' toward
+    world direction (fx,0,fz), keeping +Y up. This makes the portal PLANE perpendicular
+    to the crossing direction so the player's movement segment intersects it. Matches
+    the working HiddenValley01 mouth exactly: rot_facing(-1,0) == (-0,0,-1,0,1,0,1,0,-0).
+    (An identity rotation leaves the plane facing sideways -> the player walks past it,
+    the failure that made the injected portal invisible/untriggerable.)"""
+    import math
+    L = math.hypot(fx, fz) or 1.0
+    fx, fz = fx / L, fz / L
+    # columns = [right, up, forward] with forward = (fx,0,fz), up=(0,1,0),
+    # right = up x forward = (fz,0,-fx). Row-major:
+    return (fz, 0.0, fx,
+            0.0, 1.0, 0.0,
+            -fx, 0.0, fz)
+
+
+def inject_gridentrance_05(section_data, ver, dbr_bytes, x, y, z, rot=None):
     """Append a GridEntrance instance to a 0x05 section. Returns (new_section_data,
-    injected_instance_index). Handles v0x0e (56B) and v0x11 (72B)."""
+    injected_instance_index). Handles v0x0e (56B) and v0x11 (72B). `rot` = 9-float
+    row-major rotation matrix (default identity); use rot_facing() to orient the
+    portal plane toward the destination."""
     rec_size = V11_RECORD_SIZE if ver == 0x11 else V0E_RECORD_SIZE
     strings, inst_count, inst_bytes, trailing = _parse_05(section_data, rec_size)
 
@@ -139,8 +158,10 @@ def inject_gridentrance_05(section_data, ver, dbr_bytes, x, y, z):
         sidx = len(new_strings)
         new_strings.append(dbr_bytes)
 
+    if rot is None:
+        rot = (1, 0, 0, 0, 1, 0, 0, 0, 1)
     rec = struct.pack('<I', sidx)
-    rec += struct.pack('<9f', 1, 0, 0, 0, 1, 0, 0, 0, 1)   # identity rotation
+    rec += struct.pack('<9f', *rot)                        # orientation (portal plane normal)
     rec += struct.pack('<3f', x, y, z)                     # local position
     rec += struct.pack('<I', 0)                            # flags
     if ver == 0x11:
@@ -413,11 +434,18 @@ def inject_interior_portals(get_blob, set_blob, get_ints, level_index_by_key,
                 from_0b, from_ints, near_world_x=seam_wx, near_world_z=seam_wz)
             epos = (elx, ely, elz)
 
-        # inject GridEntrance + binding into fromLevel
+        # inject GridEntrance + binding into fromLevel. Orient the portal plane toward
+        # the destination: forward = fromLevel-footprint-center -> toLevel-center. An
+        # identity rotation leaves the plane facing sideways so the player never crosses
+        # it (the injected portal was invisible/untriggerable in-game). rot_facing makes
+        # the plane perpendicular to the crossing direction (matches the working mouth).
+        fwd_x = (tfp[0] + tfp[2]) / 2.0 - (ffp[0] + ffp[2]) / 2.0
+        fwd_z = (tfp[1] + tfp[3]) / 2.0 - (ffp[1] + ffp[3]) / 2.0
+        rot = w.get('rot') or rot_facing(fwd_x, fwd_z)
         s05 = next(s for s in from_secs if s['type'] == 0x05)
         s14 = next((s for s in from_secs if s['type'] == 0x14), None)
         dbr = w.get('entranceDbr', DEFAULT_ENTRANCE_DBR)
-        new_05, inj_idx = inject_gridentrance_05(s05['data'], from_ver, dbr, *epos)
+        new_05, inj_idx = inject_gridentrance_05(s05['data'], from_ver, dbr, *epos, rot=rot)
         payload = make_binding_payload(from_ver, mouth_id, exit_id, to_guid)
         # upsert preserves the sparse 0x14 record set and only adds the binding for
         # inj_idx (inst_count arg is unused - kept for signature stability).

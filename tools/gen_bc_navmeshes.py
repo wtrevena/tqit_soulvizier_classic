@@ -279,6 +279,64 @@ def main():
                     lst.append(g)
         adj_guids[ent['basename']] = lst
 
+    # --- Y-ALIGNMENT (2026-07-06): adjacent SV cluster levels are anchored a CONSTANT
+    # 0 or ~2.56u apart in Y (stdev 0 across the shared floor) - a placement artifact
+    # of splitting SV's one continuous floor into per-level toks, NOT real terrain.
+    # That constant step is exactly what froze the player at the seam (> the engine's
+    # 1u climb / 2u findNearestPoly tolerance). Fix: rigidly shift each level's floor
+    # so every abutting pair's shared floor meets at ONE height (no step, no ramp -
+    # ramps created a NEW earlier cliff). Measure each seam's constant offset from the
+    # toks, then propagate a per-level correction (BFS per connected component). Max
+    # correction is ~2.56u (a tiny, imperceptible float vs the rendered terrain).
+    def _floor_cells(e):
+        c = e['corner0a']; pts = {}
+        for tri in e['tris']:
+            for vi in tri:
+                vx, vz, vy = e['verts'][vi]
+                k = (round(c[0] + vx), round(c[2] + vz)); wy = c[1] + vy
+                if k not in pts or wy < pts[k]:
+                    pts[k] = wy
+        return pts
+    _fc = {e['basename']: _floor_cells(e) for e in entries}
+    _seam_off = {}
+    for _i in range(len(entries)):
+        for _j in range(_i + 1, len(entries)):
+            a, b = entries[_i], entries[_j]
+            if not _fp_adjacent(a['fp_sv'], b['fp_sv']):
+                continue
+            common = set(_fc[a['basename']]) & set(_fc[b['basename']])
+            if len(common) < 30:
+                continue
+            d = [_fc[a['basename']][k] - _fc[b['basename']][k] for k in common]
+            md = sorted(d)[len(d) // 2]
+            sd = (sum((x - sum(d) / len(d)) ** 2 for x in d) / len(d)) ** 0.5
+            if sd < 1.0:        # CONSTANT offset only; leave genuine terrain steps alone
+                _seam_off[(a['basename'], b['basename'])] = md
+    _yadj = {}
+    for (a, b), off in _seam_off.items():
+        _yadj.setdefault(a, []).append((b, off))
+        _yadj.setdefault(b, []).append((a, -off))
+    yshift = {}
+    from collections import deque as _deque
+    for e in entries:
+        root = e['basename']
+        if root in yshift:
+            continue
+        # Shifts are WHOLE world units: the container center is int32 (rec02_format
+        # LHDR center[3]), so a fractional shift can't be stored, and a fractional
+        # off_y risks pushing a stacked neighbour's cell heights out of uint16 range.
+        # Rounding each seam offset (~2.56u -> 3u) leaves a constant <=0.5u residual
+        # step, far under the engine's 1u climb / 2u findNearestPoly tolerance.
+        yshift[root] = 0; _q = _deque([root])
+        while _q:
+            u = _q.popleft()
+            for v, off in _yadj.get(u, ()):
+                if v not in yshift:
+                    yshift[v] = yshift[u] + int(round(off)); _q.append(v)
+    _nsh = sum(1 for v in yshift.values() if v != 0)
+    print(f'  Y-ALIGN: {len(_seam_off)} constant seam offsets; {_nsh} levels shifted; '
+          f'max |shift|={max((abs(v) for v in yshift.values()), default=0)}u')
+
     generated = []
     print('\n=== Generating ===')
     for ent in entries:
@@ -294,9 +352,18 @@ def main():
         # bbox prefilter + the rasterizer's per-tri clip keep only what falls
         # inside this level's padded grid (robust adjacency: the bbox clip
         # does the work, no fragile footprint-adjacency computation).
-        nbrs = [(o['verts'], o['tris'],
-                 tuple(o['corner0a'][i] - ent['corner0a'][i] for i in range(3)))
-                for o in entries if o is not ent]
+        # Neighbour Y delta carries the RELATIVE Y-alignment (yshift[neighbour] -
+        # yshift[own]) on top of the 0x0a-corner delta, so a neighbour's strip lands
+        # at its own aligned floor height in this level's grid (matches the reciprocal
+        # handoff and this level's own aligned floor).
+        _ys_own = yshift.get(basename, 0)
+        nbrs = []
+        for o in entries:
+            if o is ent:
+                continue
+            dxyz = list(o['corner0a'][i] - ent['corner0a'][i] for i in range(3))
+            dxyz[1] += yshift.get(o['basename'], 0) - _ys_own
+            nbrs.append((o['verts'], o['tris'], tuple(dxyz)))
 
         # THE CROSS-LEVEL STITCH (disasm-proven, docs/CROSS_LEVEL_STITCH_RE.md):
         # there is NO walk-link and NO adjacency table. Each level owns a PRIVATE
@@ -346,7 +413,7 @@ def main():
             str(ent['lvl_tmp']),
             own_guid=own_guid, neighbor_guids=guid_list[1:], area_boxes=area_boxes,
             mesh=(guids_0a, center_a, dims_a, ent['verts'], ent['tris']),
-            neighbors=nbrs, footprint=ent['fp_sv'])
+            neighbors=nbrs, footprint=ent['fp_sv'], y_shift=_ys_own)
         gen_dt = time.time() - t0
 
         # reposition to the merged grid by shifting the container center only.

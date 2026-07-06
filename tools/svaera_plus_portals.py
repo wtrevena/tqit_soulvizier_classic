@@ -632,6 +632,38 @@ def main():
     print(f'    corner ({_sw_ir[6]},{_sw_ir[7]},{_sw_ir[8]}) + AE GUID kept; '
           f'swapped blob {len(swapped_blob)} B')
 
+    # --- 7e. INTERIOR PORTALS (Track 2, flag SVC_INTERIOR_PORTALS=1) ---
+    # The seamless grid-seam stitch failed 12x: the Frida debugger proved the
+    # navmeshes load (R09/xPTS navmeshOK=1) and the cross-tag strips are present,
+    # yet it still walls - and the R09|xPTS floors differ ~11u (a cliff). So we
+    # replicate the WORKING HiddenValley01->Random09A cave-mouth PORTAL between the
+    # interior rooms: a portal resolves the destination purely by GUID (height- and
+    # geometry-independent), the one mechanism proven to move the player between
+    # these relocated levels. Injects a GridEntrance + 0x14 binding into the source
+    # and a reciprocal 0x06 descriptor into the destination (see
+    # tools/inject_interior_portals.py + docs/CAVE_INTERIOR_PORTALS.md).
+    if os.environ.get('SVC_INTERIOR_PORTALS') == '1':
+        from inject_interior_portals import inject_interior_portals
+        XPTS_KEY = 'levels/world/xbloodcave/xpassagetransitionstart.lvl'
+        _xpts_sv_idx = next(i for i, lv in enumerate(sv_only)
+                            if lv['fname'].replace(chr(92), '/').lower() == XPTS_KEY)
+        _pblobs = {R09_KEY: swapped_blob, XPTS_KEY: converted_blobs[_xpts_sv_idx]}
+        _pints = {R09_KEY: bytes(swapped_ints),
+                  XPTS_KEY: shifted_ints_raw(sv_only[_xpts_sv_idx])}
+        _idscan = [(b,) for b in converted_blobs.values()] + [(swapped_blob,)]
+        _wiring = [{'fromLevel': R09_KEY, 'toLevel': XPTS_KEY,
+                    'entrancePos': None, 'exitPos': None}]
+        _preps = inject_interior_portals(
+            get_blob=lambda k: _pblobs[k],
+            set_blob=lambda k, v: _pblobs.__setitem__(k, v),
+            get_ints=lambda k: _pints[k], level_index_by_key={},
+            wiring=_wiring, id_scan_pairs=_idscan)
+        swapped_blob = _pblobs[R09_KEY]
+        converted_blobs[_xpts_sv_idx] = _pblobs[XPTS_KEY]
+        _r09_swap = (ae_r09_idx, swapped_blob)   # compaction reads this for R09
+        print(f'  INTERIOR PORTALS: injected {len(_preps)} seam(s) '
+              f'(R09 blob now {len(swapped_blob)} B, xPTS {len(converted_blobs[_xpts_sv_idx])} B)')
+
     # Build merged bitmaps: SVAERA bitmaps + SV DATA2 entries for SV-only levels
     merged_bitmaps = list(ae_bitmaps)
     sv_only_data2 = {}

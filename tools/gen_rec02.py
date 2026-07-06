@@ -118,6 +118,46 @@ def rasterize(verts, tris, off_x, off_z, off_y, gw, gh, hgrid=None):
     return hgrid
 
 
+def relax_gradient_down(hgrid, gw, gh, climb):
+    """Make every 4-adjacent walkable pair <= climb apart by LOWERING any cell that
+    sits > climb above its lowest walkable neighbour, to (lowest_nbr + climb). Repeat
+    until stable. Lowering-only + bounded: a high plateau only ramps down within
+    ~(step/climb) cells of a lower neighbour, so real floor away from seams is
+    untouched. This reconciles the up-to-2.6u disagreement between adjacent SV toks
+    at a shared boundary into a WALKABLE ramp (the 2026-07-06 seam-handoff fix: an
+    unramped 2.6u step froze the player at the region hand-off, > the engine's 2u
+    findNearestPoly tolerance). Queue-based: only steep edges do work."""
+    from collections import deque
+    ncell = gw * gh
+
+    def steps(i):
+        x = i % gw
+        out = []
+        if x > 0 and (i - 1) in hgrid: out.append(i - 1)
+        if x < gw - 1 and (i + 1) in hgrid: out.append(i + 1)
+        if i >= gw and (i - gw) in hgrid: out.append(i - gw)
+        if i < ncell - gw and (i + gw) in hgrid: out.append(i + gw)
+        return out
+
+    q = deque(hgrid.keys())
+    inq = set(hgrid.keys())
+    guard = 0
+    limit = 60 * len(hgrid) + 10000
+    while q and guard < limit:
+        guard += 1
+        i = q.popleft(); inq.discard(i)
+        nb = steps(i)
+        if not nb:
+            continue
+        lo = min(hgrid[n] for n in nb)
+        if hgrid[i] - lo > climb:
+            hgrid[i] = lo + climb
+            for n in nb:
+                if n not in inq:
+                    q.append(n); inq.add(n)
+    return guard
+
+
 def erode(open_cells, gw, gh, iterations):
     cur = open_cells
     for _ in range(iterations):
@@ -132,7 +172,7 @@ def erode(open_cells, gw, gh, iterations):
 
 
 def build_tiles(hgrid, open_cells, gw, gh, tw, th, grid_ox=0.0, grid_oz=0.0,
-                area_boxes=None):
+                area_boxes=None, area_map=None):
     """Slice global grid into tile records.
 
     area_boxes: optional ordered list of (x0,z0,x1,z1) WORLD footprint boxes
@@ -149,6 +189,8 @@ def build_tiles(hgrid, open_cells, gw, gh, tw, th, grid_ox=0.0, grid_oz=0.0,
     climb = CLIMB_CELLS
 
     def _cell_area(gx, gz):
+        if area_map is not None:            # preserved areas (retile post-pass)
+            return area_map.get((gx, gz), 1)
         if not area_boxes:
             return AREA_ID
         wx = grid_ox + (gx + 0.5) * CS
@@ -224,7 +266,7 @@ def build_tiles(hgrid, open_cells, gw, gh, tw, th, grid_ox=0.0, grid_oz=0.0,
 
 
 def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
-             neighbors=(), footprint=None, area_boxes=None):
+             neighbors=(), footprint=None, area_boxes=None, y_shift=0.0):
     """Generate a 0x0b doc from a level's 0x0a tok mesh.
 
     mesh: optional pre-parsed load_tok_mesh() tuple (guids, center, dims,
@@ -310,7 +352,12 @@ def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
     if (z1 - z0) % 2:
         z1 += 1
     dims = ((x1 - x0) // 2, dims_a[1] + pad, (z1 - z0) // 2)
-    center = (x0 + dims[0], center_a[1], z0 + dims[2])
+    # y_shift (2026-07-06 Y-alignment): rigidly raise/lower the whole navmesh in Y via
+    # the container center (integer world units) so this level's floor meets its
+    # neighbours at one height (levels are anchored a constant 0/2.56u apart). Applied
+    # to the CENTER (not the cell heights) so heights stay in valid uint16 range;
+    # neighbour strips carry (shift_nbr - shift_own) via their dy so they land right.
+    center = (x0 + dims[0], center_a[1] + int(round(y_shift)), z0 + dims[2])
     # local offsets: tok verts are relative to the 0x0a corner; grid origin is
     # (x0, z0) on the ground plane and (0x0a corner - pad) on the y axis
     off_x = corner[0] - x0
@@ -348,13 +395,16 @@ def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
         tverts = [(v[0] + dx, v[1] + dz, v[2] + dy) for v in nverts]
         rasterize(tverts, ntris, off_x, off_z, off_y, gw, gh, hgrid=nbr_grid)
         n_nbr += 1
+    # OWN-WINS + JOIN-RAMP fill. Own tok wins where it has floor; neighbour toks
+    # only fill the pad strip past the own footprint. NOTE (2026-07-06): the
+    # earlier owner-wins+relax height surgery was REVERTED - it created a NEW cliff
+    # earlier than the seam (the ramp bent one floor down unevenly). The real cause
+    # of the seam step is a CONSTANT per-level Y ANCHOR offset (levels are 0 or 2.56u
+    # apart, stdev 0); gen_bc_navmeshes now rigidly Y-aligns adjacent levels so the
+    # own floor and the neighbour strip meet at the SAME height with no step and no
+    # ramp needed. area_boxes is still used purely for per-cell REGION TAGGING below.
     fill = {i: h for i, h in nbr_grid.items() if i not in hgrid}
-    # JOIN RAMP: multi-source BFS from own cells into the fill (4-neighbor),
-    # carrying the adjacent own height as anchor; clamp each fill cell's
-    # height to anchor +- climb*distance so the first steps off the own floor
-    # are walkable. Only bites within RAMP_DEPTH cells of the join and only
-    # for small (<= RAMP_MAX) disagreements; genuine cliffs are preserved.
-    RAMP_MAX = 15                                  # height units (3.0u)
+    RAMP_MAX = 15
     RAMP_DEPTH = (RAMP_MAX + CLIMB_CELLS - 1) // CLIMB_CELLS
     ncells = gw * gh
     dist, anch, frontier = {}, {}, []
@@ -390,6 +440,15 @@ def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
             lo_b, hi_b = anch[i] - CLIMB_CELLS * di, anch[i] + CLIMB_CELLS * di
             fill[i] = min(max(h, lo_b), hi_b)
     hgrid.update(fill)
+    # Drop cells that landed below the valid height floor (h < 0). These are only
+    # ever stacked-below NEIGHBOUR contributions - a different level 16u+ under this
+    # one that overlaps only in XZ (the neighbour rasteriser is XZ-bbox clipped, not
+    # Y-clipped). Own floor can never be here (own uses off_y = pad, so h >= pad/CH =
+    # 80). They are unwalkable garbage far below the floor; keeping them is harmless
+    # in gen18 but the Y-alignment shift on a neighbour strip can push such a cell from
+    # ~0 to negative, and bmin.y = hmin*CH is packed as uint16 -> serialize crash.
+    for _i in [i for i, h in hgrid.items() if h < 0]:
+        del hgrid[_i]
     open_cells = erode(set(hgrid), gw, gh, ERODE_CELLS)
     # grid origin in WORLD coords: cell (gx,gz) center = (x0 + (gx+.5)*CS, ...).
     # area_boxes must be in this same world frame (the SV-original frame the toks
