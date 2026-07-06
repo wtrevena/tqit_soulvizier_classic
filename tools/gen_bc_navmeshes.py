@@ -219,26 +219,24 @@ def main():
         shifted_center = shift_center(doc['center'], shift)
         doc['center'] = shifted_center
 
-        # (b) install the merged-world-resolvable GUID list.
+        # (b) install the merged-world-resolvable GUID list = own + all resolvable
+        # grid-neighbor GUIDs (base-game-normal: 57/57 connected-dungeon levels
+        # cross-list their neighbors). The neighbor GUID is what stitches two
+        # adjacent levels' navmeshes into one walkable surface across the shared
+        # tile edge; without it the seam does NOT hand off and the player walls.
+        #
+        # HISTORY (do NOT re-strip): a 2026-07-05 "gate-free" experiment forced
+        # own-GUID-only on the deep-cave donors, betting the ProcessRLTD residency
+        # gate (CAVE_ENTRY_CHAIN_TRACE.md) was walling the xPTS->BC seam. It was
+        # NOT: in-game the wall never moved, and measurement disproved every
+        # geometric alternative (footprint gap closed, seam heights match 0.0u
+        # vs the WORKING R09<->xPTS seam's tolerated 2.6u, walkable cells present
+        # both sides). The only structural difference left between the working
+        # seam (mutual cross-list) and the walled seam (stripped) WAS the stripped
+        # neighbor list -> stripping broke the stitch. Reverted: keep the full
+        # cross-listed list, exactly like the R09<->xPTS seam that walks.
         resolved, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)
         assert resolved, f'{basename}: no resolvable GUIDs (own GUID unregistered?)'
-        # Residency-gate hardening: ProcessRLTD (0x101f4ba0) refuses the WHOLE
-        # navmesh unless EVERY listed GUID's level is RESIDENT at load time,
-        # and a failed load is never retried (docs/CAVE_ENTRY_CHAIN_TRACE.md).
-        # Donors that list far-side neighbors therefore wall the first seam
-        # whose neighbor sits beyond the streaming frontier (proven in-game at
-        # xPTS -> BC_initialpathway, 2026-07-05). Ship every donor gate-free
-        # with its own GUID alone, EXCEPT the walk-proven entrance pair which
-        # stays byte-identical. Single-GUID meshes are base-game-normal
-        # (251/2214, including AE-Random09A itself). Grid seams carry no other
-        # cross-level link data, so this cannot break seam handoff
-        # (docs/NAVMESH_COVERAGE_FIX.md sections 4-5).
-        KEEP_NEIGHBOR_GUIDS = {
-            R09_KEY,
-            'levels/world/xbloodcave/xpassagetransitionstart.lvl',
-        }
-        if key not in KEEP_NEIGHBOR_GUIDS:
-            resolved = [resolved[0]]        # own GUID only (resolve_guids puts it first)
         doc['guids'] = resolved
         # Did any 0x0a GUID get redirected SV->AE (a replaced shared level)?
         remapped = any(g in shared_remap for g in guids_0a)
