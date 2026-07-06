@@ -3389,9 +3389,18 @@ def _wire_it_expansion_orphans(db):
 
 
 def _force_100_pct_soul_drops(db):
-    """Set chanceToEquipFinger2 to 100% on ALL monsters with souls (testing)."""
-    SEP = chr(92)
+    """Set chanceToEquipFinger2 to 100% for TESTING - but ONLY on monsters that
+    are already configured to drop a soul (chanceToEquipFinger2 > 0).
+
+    wire_souls_to_monsters() gates soul drops to Hero/Boss/Quest and forces
+    Common/Champion (e.g. normal yetis, which inherit lootFinger2Item1=yeti_soul
+    from base SV) to chanceToEquipFinger2=0. Keying the 100% boost off the
+    soul-loot field alone would re-enable exactly those - the normal-yeti bug
+    (every common yeti dropping a soul). Gating on the existing chance keeps the
+    classification gate intact: only monsters meant to drop get boosted to 100%.
+    """
     count = 0
+    skipped = 0
     for rec in db.record_names():
         if 'creature' not in rec.lower():
             continue
@@ -3399,6 +3408,7 @@ def _force_100_pct_soul_drops(db):
         if not fields:
             continue
         has_soul = False
+        cur_chance = 0.0
         for key, tf in fields.items():
             fn = key.split('###')[0]
             if fn == 'lootFinger2Item1' and tf.values:
@@ -3406,13 +3416,22 @@ def _force_100_pct_soul_drops(db):
                     if isinstance(v, str) and 'soul' in v.lower():
                         has_soul = True
                         break
-        if has_soul:
+            elif fn == 'chanceToEquipFinger2' and tf.values:
+                try:
+                    cur_chance = float(tf.values[0])
+                except (TypeError, ValueError):
+                    cur_chance = 0.0
+        if has_soul and cur_chance > 0:
             db.set_field(rec, 'chanceToEquipFinger2', 100.0, DATA_TYPE_FLOAT)
             db.set_field(rec, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
             db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
             db._modified.add(rec)
             count += 1
+        elif has_soul:
+            # soul-loot present but drop gated off (Common/Champion) - leave at 0
+            skipped += 1
     print(f"  Soul drop rate forced to 100% on {count} monster records (TESTING)")
+    print(f"  Left gated-off (Common/Champion, no drop): {skipped}")
 
 
 def _overhaul_generic_souls(db):

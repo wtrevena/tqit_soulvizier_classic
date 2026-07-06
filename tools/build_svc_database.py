@@ -269,6 +269,7 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
     wired = 0
     already = 0
     fixed_chance = 0
+    zeroed_common = 0
 
     def _is_farmable_boss(record_name, fields_dict):
         """True only for fixed-location act bosses that can be farmed repeatedly.
@@ -334,8 +335,6 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
         existing = db.get_field_value(name, 'lootFinger2Item1')
         if existing and existing != '' and existing != 0:
             # Only enable soul drops for Hero/Boss/Quest monsters.
-            # Common/Champion monsters keep their lootFinger2Item1 but
-            # won't get chanceToEquipFinger2, so they'll never drop souls.
             monster_cls = ''
             for key, tf in fields.items():
                 if key.split('###')[0] == 'monsterClassification' and tf.values:
@@ -346,6 +345,15 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
                 target = boss_chance if is_boss else rare_chance
                 _set_soul_drop(name, fields, target)
                 fixed_chance += 1
+            else:
+                # Common/Champion (incl. um_ minions) must NEVER drop souls.
+                # They keep their inherited lootFinger2Item1, but the base SV
+                # data can carry a live chanceToEquipFinger2 here (e.g. normal
+                # yetis inherit lootFinger2Item1=yeti_soul + a nonzero chance).
+                # Force it to 0 - otherwise the 100% test forcer, which keys off
+                # the soul-loot field, re-enables the drop (the normal-yeti bug).
+                db.set_field(name, 'chanceToEquipFinger2', 0.0, DATA_TYPE_FLOAT)
+                zeroed_common += 1
             already += 1
             continue
 
@@ -415,6 +423,7 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
     print(f"  Newly wired: {wired}")
     print(f"  Already had souls: {already} (all updated to AE equip fields)")
     print(f"  Equip fields set: {fixed_chance + wired}")
+    print(f"  Common/Champion drop-chance zeroed: {zeroed_common} (never drop souls)")
     return wired + fixed_chance
 
 
