@@ -13,7 +13,19 @@ generated section land correctly in the MERGED world:
 
   1. Reads the pristine 0x0a from upstream world01.map (the decompiled tree lost
      28/30 xBloodCave 0x0a to failed Editor re-saves; upstream is untouched).
-  2. Generates the 0x0b via gen_rec02.generate().
+  2. Generates the 0x0b via gen_rec02.generate() with NEIGHBOR-AWARE
+     rasterization: each level's heightfield unions in the tok geometry of
+     every other cluster level (translated by the 0x0a-corner world delta and
+     clipped to the level's padded grid), so the walkable floor EXTENDS across
+     every shared grid-tile boundary into neighbor territory. Two adjacent
+     levels connect (the engine builds the cross-level walk link) only where
+     BOTH levels' walkable navmesh crosses the shared boundary and overlaps;
+     SV shipped one continuous 0x0a mesh spanning all levels so it never had a
+     per-level stitch gap, but several SV toks stop dead AT their own boundary
+     (xPassageTransitionStart's west edge = the blood-cave invisible wall:
+     BC_initialpathway crossed east 23.6u, xPTS crossed west 0u -> one-sided
+     -> no link). The neighbor fill makes every seam interlock on both sides
+     like the walk-proven Random09A<->xPTS seam.
   3. Repositions it to the merged grid by SHIFTING the container center by
      GRID_SHIFT (imported from svaera_plus_portals so the two never drift). The
      tile records are level-local (bmin = tx*12.8 ...), so shifting only the
@@ -50,8 +62,7 @@ sys.path.insert(0, str(REPO / 'tools'))
 from arc_patcher import ArcArchive
 from merge_levels_binary import parse_sections, parse_level_index, SEC_LEVELS
 from build_section_surgery import parse_blob_sections
-from tok_parse import extract_mesh
-from gen_rec02 import generate
+from gen_rec02 import generate, load_tok_mesh
 from rec02_format import serialize_rec02, parse_rec02
 from svaera_plus_portals import GRID_SHIFT  # single source of truth for the shift
 
@@ -189,9 +200,20 @@ def main():
     tmp = Path(tempfile.gettempdir()) / 'svc_bc_upstream_lvl_cache'
     tmp.mkdir(parents=True, exist_ok=True)
 
-    generated = []
+    # Phase 1: extract + tok-parse every cluster level ONCE. Each parsed mesh
+    # is used twice: as its own level's floor AND as neighbor geometry unioned
+    # into every adjacent level's heightfield (see gen_rec02.generate
+    # neighbors=). A level's tok verts are LEVEL-LOCAL, relative to its 0x0a
+    # corner = 0x0a header center - dims per axis; that corner is the true
+    # world anchor of the geometry (the LEVELS-index corner differs from it by
+    # up to 1u in x/z and 12u in y on SV levels, which would misplace copied
+    # floor heights past the 1.0u walkableClimb), so neighbor deltas are
+    # computed 0x0a-corner to 0x0a-corner. All corners are SV-ORIGINAL; the
+    # whole cluster is shifted rigidly by GRID_SHIFT afterwards (container
+    # center only), so relative placement is preserved.
+    entries = []
     skipped_no_geom = []
-    print('\n=== Generating ===')
+    print('\n=== Parsing cluster geometry ===')
     for lv in bc:
         fname = lv['fname']
         basename = fname.replace('\\', '/').split('/')[-1]  # e.g. BC_initialpathway.lvl
@@ -201,17 +223,51 @@ def main():
             skipped_no_geom.append(basename)
             print(f'  SKIP  {basename:38s} (no 0x0a geometry - ocean scenery)')
             continue
-
         # Extract the pristine blob to a loose .lvl gen_rec02 can read.
         lvl_tmp = tmp / basename
         lvl_tmp.write_bytes(blob)
+        guids_0a, center_a, dims_a, verts, tris = load_tok_mesh(str(lvl_tmp))
+        corner0a = tuple(center_a[i] - dims_a[i] for i in range(3))
+        # SV-original LEVELS-index footprint, BOX tile triple (the merge
+        # normalizes content tiles -> box tiles via shifted_ints_raw, so the
+        # engine stitches at the BOX edges; SCALE = 2 world units per tile).
+        # generate() grows the grid to cover it so the walkable fill can
+        # always cross the index boundary (slack levels' 0x0a boxes are
+        # smaller than their index footprints).
+        ints = struct.unpack_from('<13i', lv['ints_raw'], 0)
+        fp_sv = (ints[6], ints[8],
+                 ints[6] + ints[3] * 2, ints[8] + ints[5] * 2)
+        entries.append(dict(
+            lv=lv, fname=fname, basename=basename, lvl_tmp=lvl_tmp,
+            guids_0a=guids_0a, center_a=center_a, dims_a=dims_a,
+            verts=verts, tris=tris, corner0a=corner0a, fp_sv=fp_sv))
+        print(f'  MESH  {basename:38s} verts={len(verts):6d} tris={len(tris):6d} '
+              f'corner0a={corner0a} fp={fp_sv}')
 
+    generated = []
+    print('\n=== Generating ===')
+    for ent in entries:
+        lv = ent['lv']
+        fname = ent['fname']
+        basename = ent['basename']
         key = fname.replace('\\', '/').lower()
         own_guid = OWN_GUID_OVERRIDE.get(key, lv['ints_raw'][36:52])
-        guids_0a, center_a, dims_a, _tok = extract_mesh(str(lvl_tmp))
+        guids_0a, center_a, dims_a = ent['guids_0a'], ent['center_a'], ent['dims_a']
+
+        # Every other cluster level is offered as neighbor geometry, offset by
+        # the world delta between the two levels' 0x0a corners; generate()'s
+        # bbox prefilter + the rasterizer's per-tri clip keep only what falls
+        # inside this level's padded grid (robust adjacency: the bbox clip
+        # does the work, no fragile footprint-adjacency computation).
+        nbrs = [(o['verts'], o['tris'],
+                 tuple(o['corner0a'][i] - ent['corner0a'][i] for i in range(3)))
+                for o in entries if o is not ent]
 
         t0 = time.time()
-        doc, stats = generate(str(lvl_tmp))
+        doc, stats = generate(
+            str(ent['lvl_tmp']),
+            mesh=(guids_0a, center_a, dims_a, ent['verts'], ent['tris']),
+            neighbors=nbrs, footprint=ent['fp_sv'])
         gen_dt = time.time() - t0
 
         # (a) reposition to the merged grid by shifting the container center.
@@ -261,8 +317,9 @@ def main():
         remap_note = ' [REMAP]' if remapped else ''
         generated.append((basename, len(data), stats['n_tiles'], len(resolved)))
         print(f'  GEN   {basename:38s} {len(data):7d} B  tiles={stats["n_tiles"]:3d} '
-              f'guids={len(resolved):2d} center{tuple(doc["center"])} '
-              f'{gen_dt:4.1f}s{remap_note}{drop_note}')
+              f'guids={len(resolved):2d} nbrs={stats["n_neighbors"]:2d} '
+              f'cells={stats["n_rast_own"]}+{stats["n_rast"] - stats["n_rast_own"]} '
+              f'center{tuple(doc["center"])} {gen_dt:4.1f}s{remap_note}{drop_note}')
 
     print('\n=== Summary ===')
     print(f'  generated: {len(generated)}   skipped-no-geometry: {len(skipped_no_geom)}   '

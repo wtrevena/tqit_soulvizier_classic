@@ -71,10 +71,13 @@ def tri_box_overlap_2d(v0, v1, v2, bx0, bz0, bx1, bz1):
     return True
 
 
-def rasterize(verts, tris, off_x, off_z, off_y, gw, gh):
+def rasterize(verts, tris, off_x, off_z, off_y, gw, gh, hgrid=None):
     """Rasterize triangles into a gw x gh cell grid.
-    Returns dict cell_index -> height_index (max y wins)."""
-    hgrid = {}
+    Returns dict cell_index -> height_index (max y wins). Pass an existing
+    hgrid to ACCUMULATE additional geometry (e.g. neighbor-level meshes) into
+    the same grid; triangles outside the grid are clipped by the bbox test."""
+    if hgrid is None:
+        hgrid = {}
     for (a, b, c) in tris:
         v0 = (verts[a][0] + off_x, verts[a][1] + off_z, verts[a][2] + off_y)
         v1 = (verts[b][0] + off_x, verts[b][1] + off_z, verts[b][2] + off_y)
@@ -197,19 +200,160 @@ def build_tiles(hgrid, open_cells, gw, gh, tw, th):
     return records
 
 
-def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD):
-    guids_a, center_a, dims_a, verts, tris = load_tok_mesh(lvl_path)
-    # 0x0b frame: same center, dims padded
-    center = tuple(center_a)
-    dims = (dims_a[0] + pad, dims_a[1] + pad, dims_a[2] + pad)
-    # local offsets: tok is relative to 0x0a corner (center - dims_a); our grid
-    # origin is center - dims  => shift by (dims - dims_a) = pad
-    off = pad
+def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD, mesh=None,
+             neighbors=(), footprint=None):
+    """Generate a 0x0b doc from a level's 0x0a tok mesh.
+
+    mesh: optional pre-parsed load_tok_mesh() tuple (guids, center, dims,
+        verts, tris) for lvl_path; skips re-reading the file.
+    footprint: optional (fx0, fz0, fx1, fz1) = the level's LEVELS-INDEX
+        footprint (grid corner .. corner + BOX tiles * 2) in the SAME world
+        frame as the 0x0a header (SV-original). The generation grid covers
+        the UNION of the 0x0a box and this footprint, plus pad. Without it
+        the grid is the 0x0a box + pad only - and on levels whose 0x0a box
+        is SMALLER than their index footprint (SV slack levels; also
+        BC_initialpathway after the merge's content->box widen) the
+        walkable fill physically cannot reach past the index boundary the
+        engine stitches at, leaving a one-sided seam (measured:
+        ocean_extension01's east fill was clipped 2u past the boundary
+        instead of crossing 15.6u).
+    neighbors: iterable of (verts, tris, (dx, dy, dz)) tok meshes of
+        grid-adjacent levels, rasterized IN ADDITION to the level's own mesh.
+        The delta is world-units neighbor_0x0a_corner - own_0x0a_corner, where
+        a level's 0x0a corner = its 0x0a header center - dims per axis (NOT
+        the LEVELS-index corner: the two differ by up to 1u in x/z and 12u in
+        y on SV levels, and the tok/0x0b world anchor is the 0x0a center).
+        Vert tuples are (x, z_ground, y_height), so dx/dz shift the ground
+        plane and dy shifts the height. Purpose: extend the walkable floor
+        ACROSS shared level boundaries into neighbor territory, mimicking
+        SV's single continuous 0x0a mesh - two adjacent levels' 0x0b
+        navmeshes only stitch (player walks across) where BOTH cross the
+        shared boundary and overlap. Neighbor tris outside this level's
+        padded grid are clipped by the rasterizer's bbox test.
+
+        OWN-WINS merge (do NOT change to max-y): neighbor cells fill ONLY
+        where the level's own tok has no floor. Adjacent SV toks genuinely
+        DISAGREE about the floor height where they overlap (measured:
+        Random09A says 19.0 vs xPassageTransitionStart 16.4 at the same
+        world cells, 2.6u apart, across their whole 30u overlap strip - and
+        the engine's cross-level stitch tolerates that in-game). A max-y
+        merge would overwrite a level's own walk-proven floor with the
+        neighbor's higher copy and cut an internal cons cliff (climb is 5
+        height units = 1.0u) INSIDE the level = a NEW invisible wall a few
+        units past the seam. Own-wins keeps every level's own floor heights
+        and only ADDS floor.
+
+        JOIN RAMP: where the fill meets the own floor with a small height
+        disagreement (<= RAMP_MAX = 15 height units = 3.0u, just above the
+        measured 2.6u tok disagreement), the first fill cells are blended
+        toward the adjacent own height so no step exceeds walkableClimb
+        (5 units/cell) - otherwise a level whose own tok stops exactly AT
+        the shared boundary gets a cons cliff at the own|fill join and the
+        outward edge bits stay 0 exactly like the original xPTS wall
+        (measured at drxBC2|drxBC_Connector1: 2.6u join = outward bits
+        0/10). Disagreements > RAMP_MAX are genuine vertical separations
+        (bridge over pit, stacked floors) and are deliberately NOT ramped.
+    """
+    if mesh is not None:
+        guids_a, center_a, dims_a, verts, tris = mesh
+    else:
+        guids_a, center_a, dims_a, verts, tris = load_tok_mesh(lvl_path)
+    corner = tuple(center_a[i] - dims_a[i] for i in range(3))
+    # 0x0b frame: cover the union of the 0x0a box and the index footprint,
+    # padded; degenerates to the old center_a/dims_a+pad frame when the
+    # footprint is absent or inside the 0x0a box.
+    x0, x1 = corner[0], corner[0] + 2 * dims_a[0]
+    z0, z1 = corner[2], corner[2] + 2 * dims_a[2]
+    if footprint is not None:
+        fx0, fz0, fx1, fz1 = footprint
+        x0, x1 = min(x0, fx0), max(x1, fx1)
+        z0, z1 = min(z0, fz0), max(z1, fz1)
+    x0 -= pad; x1 += pad; z0 -= pad; z1 += pad
+    if (x1 - x0) % 2:
+        x1 += 1
+    if (z1 - z0) % 2:
+        z1 += 1
+    dims = ((x1 - x0) // 2, dims_a[1] + pad, (z1 - z0) // 2)
+    center = (x0 + dims[0], center_a[1], z0 + dims[2])
+    # local offsets: tok verts are relative to the 0x0a corner; grid origin is
+    # (x0, z0) on the ground plane and (0x0a corner - pad) on the y axis
+    off_x = corner[0] - x0
+    off_z = corner[2] - z0
+    off_y = pad
     gw = int(math.ceil(2 * dims[0] / CS))
     gh = int(math.ceil(2 * dims[2] / CS))
     tw = int(math.ceil(2 * dims[0] / (TILE * CS)))
     th = int(math.ceil(2 * dims[2] / (TILE * CS)))
-    hgrid = rasterize(verts, tris, off, off, off, gw, gh)
+    hgrid = rasterize(verts, tris, off_x, off_z, off_y, gw, gh)
+    n_own = len(hgrid)
+    # Neighbor-aware rasterization: union in adjacent levels' geometry so the
+    # walkable floor crosses every shared boundary (fills the pad margin).
+    # Cheap prefilter: skip neighbors whose translated xz bbox misses this
+    # level's grid rect ([-off, 2*dims - off] in own-0x0a-corner frame).
+    # Neighbors rasterize into a SEPARATE grid (max-y among neighbors), then
+    # merge OWN-WINS + JOIN RAMP: only cells the own tok left empty are
+    # filled, and fill heights are blended at the own|fill join (see the
+    # docstring - overlapping SV toks disagree by up to 2.6u about the same
+    # floor; overwriting own cells would cut an internal cons cliff, and an
+    # unramped join cliff kills the outward seam bits).
+    n_nbr = 0
+    nbr_grid = {}
+    gx0f, gx1f = -off_x, 2 * dims[0] - off_x
+    gz0f, gz1f = -off_z, 2 * dims[2] - off_z
+    for nverts, ntris, (dx, dy, dz) in neighbors:
+        if not nverts or not ntris:
+            continue
+        nx0 = min(v[0] for v in nverts) + dx
+        nx1 = max(v[0] for v in nverts) + dx
+        nz0 = min(v[1] for v in nverts) + dz
+        nz1 = max(v[1] for v in nverts) + dz
+        if nx1 < gx0f or nx0 > gx1f or nz1 < gz0f or nz0 > gz1f:
+            continue
+        tverts = [(v[0] + dx, v[1] + dz, v[2] + dy) for v in nverts]
+        rasterize(tverts, ntris, off_x, off_z, off_y, gw, gh, hgrid=nbr_grid)
+        n_nbr += 1
+    fill = {i: h for i, h in nbr_grid.items() if i not in hgrid}
+    # JOIN RAMP: multi-source BFS from own cells into the fill (4-neighbor),
+    # carrying the adjacent own height as anchor; clamp each fill cell's
+    # height to anchor +- climb*distance so the first steps off the own floor
+    # are walkable. Only bites within RAMP_DEPTH cells of the join and only
+    # for small (<= RAMP_MAX) disagreements; genuine cliffs are preserved.
+    RAMP_MAX = 15                                  # height units (3.0u)
+    RAMP_DEPTH = (RAMP_MAX + CLIMB_CELLS - 1) // CLIMB_CELLS
+    ncells = gw * gh
+    dist, anch, frontier = {}, {}, []
+    for i in fill:
+        x = i % gw
+        best = None
+        for step, ok in ((-1, x > 0), (1, x < gw - 1),
+                         (-gw, i >= gw), (gw, i < ncells - gw)):
+            if not ok:
+                continue
+            a = hgrid.get(i + step)
+            if a is not None and (best is None or a > best):
+                best = a
+        if best is not None:
+            dist[i], anch[i] = 1, best
+            frontier.append(i)
+    d = 1
+    while frontier and d < RAMP_DEPTH:
+        nxt = []
+        for i in frontier:
+            x = i % gw
+            for step, ok in ((-1, x > 0), (1, x < gw - 1),
+                             (-gw, i >= gw), (gw, i < ncells - gw)):
+                nb = i + step
+                if ok and nb in fill and nb not in dist:
+                    dist[nb], anch[nb] = d + 1, anch[i]
+                    nxt.append(nb)
+        frontier = nxt
+        d += 1
+    for i, di in dist.items():
+        h = fill[i]
+        if abs(h - anch[i]) <= RAMP_MAX:
+            lo_b, hi_b = anch[i] - CLIMB_CELLS * di, anch[i] + CLIMB_CELLS * di
+            fill[i] = min(max(h, lo_b), hi_b)
+    hgrid.update(fill)
     open_cells = erode(set(hgrid), gw, gh, ERODE_CELLS)
     records = build_tiles(hgrid, open_cells, gw, gh, tw, th)
     params = dict(orig=(0.0, 0.0, 0.0), cs=CS, ch=CH, width=TILE, height=TILE,
@@ -224,8 +368,8 @@ def generate(lvl_path, own_guid=None, neighbor_guids=(), pad=PAD):
     doc = dict(version=1, guids=guids, center=center, dims=dims,
                sets=[dict(params=params, records=records) for _ in range(3)])
     return doc, dict(tw=tw, th=th, gw=gw, gh=gh, n_open=len(open_cells),
-                     n_rast=len(hgrid), n_tiles=len(records), nv=len(verts),
-                     nt=len(tris))
+                     n_rast=len(hgrid), n_rast_own=n_own, n_neighbors=n_nbr,
+                     n_tiles=len(records), nv=len(verts), nt=len(tris))
 
 
 if __name__ == '__main__':
