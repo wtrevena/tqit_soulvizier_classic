@@ -320,13 +320,28 @@ def main():
         # (xPTS omits BC). The GUID list is now the MUTUAL grid-adjacency set
         # (adj_guids, computed above from footprint abutment); resolve_guids is
         # retained only to compute `dropped` for the log.
-        guid_list = adj_guids[basename]
-        assert guid_list, f'{basename}: empty adjacency GUID list'
-        assert all(g in merged_guids for g in guid_list), \
-            f'{basename}: an adjacency GUID does not resolve in the merged world'
+        # OWN-GUID-ONLY (disasm-grounded, docs/CAVE_ENTRY_CHAIN_TRACE.md sec 3):
+        # the navmesh GUID list is consumed ONLY by ProcessRLTD's RESIDENCY gate -
+        # for EACH listed neighbor GUID, [regmgr+0x50][idx] must be non-null (that
+        # level stream-resident) or the WHOLE navmesh is REJECTED (Level+0x6a48
+        # stays 0) and the pathfinder builds no walk-link into the level; its
+        # terrain still renders ("see the room, cant walk in" - Will's exact
+        # symptom). The list is NOT the tile stitch (that is geometric: adjacent
+        # LOADED, flush tiles connect on their own). Our relocated APPENDED cluster
+        # (xPTS/BC at index 2246/2261, isolated at world 7840) does not reliably
+        # co-stream a level's neighbors, so ANY neighbor GUID risks rejection - the
+        # earlier "mutual" list added exactly such a dependency (BC listed its far
+        # neighbor drxfirstxistion, not resident from xPTS -> BC navmesh rejected
+        # -> wall). Fix: list OWN GUID ONLY so every level's navmesh ALWAYS loads;
+        # flush-adjacent neighbors then stitch geometrically. This is exactly
+        # base-game AE-Random09A (own-only isolated cave). A prior own-only build
+        # walled ONLY because footprints still had a 2u gap (no tile adjacency);
+        # footprints are flush now, so own-only + flush is the untested combo.
+        guid_list = [own_guid]
+        assert own_guid in merged_guids, f'{basename}: own GUID unresolved in merged world'
         doc['guids'] = guid_list
         _, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)
-        remapped = any(g in shared_remap for g in guids_0a)
+        remapped = own_guid != lv['ints_raw'][36:52]
 
         data = serialize_rec02(doc)
 
