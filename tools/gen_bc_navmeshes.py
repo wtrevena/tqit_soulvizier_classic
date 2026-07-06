@@ -244,6 +244,40 @@ def main():
         print(f'  MESH  {basename:38s} verts={len(verts):6d} tris={len(tris):6d} '
               f'corner0a={corner0a} fp={fp_sv}')
 
+    # Precompute each level's neighbor-GUID list from ACTUAL GRID ADJACENCY
+    # (footprint abutment), NOT from its own 0x0a list. The engine builds a
+    # cross-level WALK link only when the two levels MUTUALLY list each other's
+    # GUID (base-game 57/57 connected-dungeon levels cross-list every grid
+    # neighbor). SV's per-level 0x0a lists are ASYMMETRIC - e.g.
+    # xPassageTransitionStart's 0x0a names Random09A but OMITS BC_initialpathway,
+    # so deriving lists from 0x0a left xPTS->BC one-way (BC listed xPTS, xPTS did
+    # not list BC) -> the engine linked only from BC's side -> the blood-cave
+    # invisible wall that survived every geometry/footprint/cons/height fix.
+    # Footprint adjacency is symmetric by construction, so every seam becomes
+    # mutual like the walk-proven Random09A<->xPTS seam.
+    def _merged_own(e):
+        k = e['fname'].replace('\\', '/').lower()
+        return OWN_GUID_OVERRIDE.get(k, e['lv']['ints_raw'][36:52])
+
+    def _fp_adjacent(a, b):
+        ax0, az0, ax1, az1 = a
+        bx0, bz0, bx1, bz1 = b
+        xgap = max(0, max(ax0, bx0) - min(ax1, bx1))
+        zgap = max(0, max(az0, bz0) - min(az1, bz1))
+        return xgap == 0 and zgap == 0  # touch on an edge or overlap
+
+    adj_guids = {}
+    for ent in entries:
+        lst = [_merged_own(ent)]  # own GUID first (ProcessRLTD needs it first)
+        for other in entries:
+            if other is ent:
+                continue
+            if _fp_adjacent(ent['fp_sv'], other['fp_sv']):
+                g = _merged_own(other)
+                if g not in lst:
+                    lst.append(g)
+        adj_guids[ent['basename']] = lst
+
     generated = []
     print('\n=== Generating ===')
     for ent in entries:
@@ -281,20 +315,17 @@ def main():
         # adjacent levels' navmeshes into one walkable surface across the shared
         # tile edge; without it the seam does NOT hand off and the player walls.
         #
-        # HISTORY (do NOT re-strip): a 2026-07-05 "gate-free" experiment forced
-        # own-GUID-only on the deep-cave donors, betting the ProcessRLTD residency
-        # gate (CAVE_ENTRY_CHAIN_TRACE.md) was walling the xPTS->BC seam. It was
-        # NOT: in-game the wall never moved, and measurement disproved every
-        # geometric alternative (footprint gap closed, seam heights match 0.0u
-        # vs the WORKING R09<->xPTS seam's tolerated 2.6u, walkable cells present
-        # both sides). The only structural difference left between the working
-        # seam (mutual cross-list) and the walled seam (stripped) WAS the stripped
-        # neighbor list -> stripping broke the stitch. Reverted: keep the full
-        # cross-listed list, exactly like the R09<->xPTS seam that walks.
-        resolved, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)
-        assert resolved, f'{basename}: no resolvable GUIDs (own GUID unregistered?)'
-        doc['guids'] = resolved
-        # Did any 0x0a GUID get redirected SV->AE (a replaced shared level)?
+        # HISTORY: a "gate-free" experiment (own-GUID-only) and later a
+        # 0x0a-derived cross-list both walled - because 0x0a lists are ASYMMETRIC
+        # (xPTS omits BC). The GUID list is now the MUTUAL grid-adjacency set
+        # (adj_guids, computed above from footprint abutment); resolve_guids is
+        # retained only to compute `dropped` for the log.
+        guid_list = adj_guids[basename]
+        assert guid_list, f'{basename}: empty adjacency GUID list'
+        assert all(g in merged_guids for g in guid_list), \
+            f'{basename}: an adjacency GUID does not resolve in the merged world'
+        doc['guids'] = guid_list
+        _, dropped = resolve_guids(guids_0a, own_guid, merged_guids, shared_remap)
         remapped = any(g in shared_remap for g in guids_0a)
 
         data = serialize_rec02(doc)
@@ -315,9 +346,9 @@ def main():
 
         drop_note = f' dropped={dropped}' if dropped else ''
         remap_note = ' [REMAP]' if remapped else ''
-        generated.append((basename, len(data), stats['n_tiles'], len(resolved)))
+        generated.append((basename, len(data), stats['n_tiles'], len(guid_list)))
         print(f'  GEN   {basename:38s} {len(data):7d} B  tiles={stats["n_tiles"]:3d} '
-              f'guids={len(resolved):2d} nbrs={stats["n_neighbors"]:2d} '
+              f'guids={len(guid_list):2d} nbrs={stats["n_neighbors"]:2d} '
               f'cells={stats["n_rast_own"]}+{stats["n_rast"] - stats["n_rast_own"]} '
               f'center{tuple(doc["center"])} {gen_dt:4.1f}s{remap_note}{drop_note}')
 
