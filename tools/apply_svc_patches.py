@@ -5777,6 +5777,485 @@ def _complete_boss_souls(db):
     return total
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  BLOOD TOXEUS wave (docs/BLOOD_TOXEUS_DESIGN.md) - Hemorrheus, the Red Verdict
+#  A crimson Toxeus-revenant superboss + his Blood Boil kit + the Crimson
+#  Verdict legendary bleed set + his soul + loot. DB side only; the map spawn
+#  (proxy injection into new_secretdoor_transitionhallway) is a separate lane.
+# ══════════════════════════════════════════════════════════════════════════
+
+# ── Verified record paths (all DB-confirmed present in the built .arz) ──────
+_BT_MONSTER = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
+_BT_DONOR_MONSTER = r'records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr'  # SP Toxeus (crimson revenant kin)
+_BT_PROXY = r'records\drxmap\proxy\q_bloodtoxeus_lone.dbr'
+_BT_POOL = r'records\drxmap\proxy\pools\q_bloodtoxeus_lone.dbr'
+_BT_DONOR_PROXY = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_BT_DONOR_POOL = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+
+# Blood-demon champions + exploding blood sprites (the phase adds) - all EXIST.
+_BT_BLOODDEMON = [
+    r'records\drxcreatures\blooddemon\b_med_blooddemon_30.dbr',
+    r'records\drxcreatures\blooddemon\b_med_blooddemon_31.dbr',
+    r'records\drxcreatures\blooddemon\b_med_blooddemon_32.dbr',
+]
+_BT_LILDUDE_SUMMON = r'records\drxmap\pitsprites\t1_skill_pitspawner_summonlildude_02.dbr'  # Skill_SpawnPetMonster
+
+# Kit skills (all EXIST, classes DB-verified against the design doc §2).
+_BT_SK_BLOODBOIL      = r'records\skills\soulskills\melinoe_bloodboil.dbr'                       # Skill_AttackRadius (signature nova)
+_BT_SK_BLADESTORM     = r'records\skills\monster skills\attack_radius\toxeus_bladestorm.dbr'      # Skill_AttackProjectileRing
+_BT_SK_ENVENOM        = r'records\skills\monster skills\buff_self\toxeus_envenomweapon.dbr'       # Skill_BuffSelfToggled (blood-slick blades)
+_BT_SK_LIFEDRAIN      = r'records\skills\spirit\lifedrain.dbr'                                    # Skill_AttackSpellChaos (drinks it)
+_BT_SK_FLASHPOWDER    = r'records\skills\stealth\flashpowder.dbr'                                 # Skill_AttackRadius (blink)
+_BT_SK_LETHALSTRIKE   = r'records\skills\stealth\lethalstrike.dbr'                                # Skill_AttackWeapon
+_BT_SK_MORTALWOUND    = r'records\skills\stealth\lethalstrike_mortalwound.dbr'                    # Skill_Modifier
+_BT_SK_OPENWOUND      = r'records\skills\stealth\openwound.dbr'                                   # Skill_Passive (bleed-on-crit)
+_BT_SK_HEROSCALING    = r'records\skills\monster skills\passive_buffs\hero_scaling.dbr'           # Skill_Passive
+_BT_SK_TOXEUSPASSIVE  = r'records\skills\monster skills\passive_buffs\toxeus_passiveproperties.dbr'  # Skill_Passive
+_BT_SK_ARMORPASSIVE   = r'records\skills\monster skills\defense\armor_passive.dbr'                # Skill_Passive
+_BT_SK_BOSSIMMUNITY   = r'records\skills\boss skills\boss_conversionimmunity.dbr'                 # Skill_Passive
+_BT_SK_BLEEDWALL      = r'records\drxcreatures\bloodwitch\skills\zpassive_resists_bleedvitleechconvert_x10plvl.dbr'  # Skill_Passive (his bleed wall)
+_BT_SK_ATTACKSKILL    = r'records\skills\monster skills\attack_melee\toxeus_attackskill.dbr'      # base melee attack
+
+# Soul augments (verified real Skill_Modifier records; the dangling variants are avoided).
+_BT_AUG_OPENWOUND = r'records\skills\stealth\drxopenwound.dbr'                       # Skill_Modifier (Open Wound - the bleed augment)
+_BT_AUG_RAVAGES   = r'records\skills\spirit\drxdeathchillaura_ravagesoftime.dbr'     # Skill_Modifier (real Ravages of Time)
+
+# Crimson Verdict set + item paths (all collision-free).
+_BT_SET = r'records\item\sets\svc_crimsonverdict.dbr'
+_BT_ITEM_BASES = {  # (slot key) -> per-tier derive-from base (EXISTS, correct Class)
+    'wpn': {t: rf'records\xpack\item\equipmentweapons\sword\mi_{t}_melinoe.dbr' for t in 'nel'},
+    'hlm': {t: rf'records\xpack\item\equipmentarmor\helm\mi_{t}_melinoemage.dbr' for t in 'nel'},
+    'tor': {t: rf'records\xpack\item\equipmentarmor\torso\mi_{t}_melinoemage.dbr' for t in 'nel'},
+    'arm': {t: rf'records\xpack\item\equipmentarmor\armband\mi_{t}_melinoemage.dbr' for t in 'nel'},
+}
+_BT_ITEM_DEST = {  # (slot key) -> per-tier NEW item path
+    'wpn': {t: rf'records\item\equipmentweapon\sword\svc_{t}_veinrender.dbr' for t in 'nel'},
+    'hlm': {t: rf'records\item\equipmenthelm\svc_{t}_crimsonverdict.dbr' for t in 'nel'},
+    'tor': {t: rf'records\item\equipmentarmor\svc_{t}_crimsonverdict.dbr' for t in 'nel'},
+    'arm': {t: rf'records\item\equipmentarmband\svc_{t}_crimsonverdict.dbr' for t in 'nel'},
+}
+_BT_ITEM_NAMETAG = {
+    'wpn': 'tagSVCwpnVeinRender', 'hlm': 'tagSVChlmCrimsonVerdict',
+    'tor': 'tagSVCtorCrimsonVerdict', 'arm': 'tagSVCarmCrimsonVerdict',
+}
+_BT_ITEM_CLASS = {'n': 'Rare', 'e': 'Epic', 'l': 'Legendary'}
+_BT_ITEM_LEVEL = {'n': 40, 'e': 68, 'l': 95}  # L=95 (endgame, per doc); lr = itemLevel - 5
+
+# Loot tables (per-tier; monster loot fields are [n,e,l] arrays).
+_BT_LOOT_GUAR = {t: rf'records\item\loottables\svc\crimsonverdict_guaranteed_{t}.dbr' for t in 'nel'}
+_BT_LOOT_BLEED = {t: rf'records\item\loottables\svc\bleed_affix_high_{t}.dbr' for t in 'nel'}
+# High-bleed unique weapons per tier to seed the bleed-affix FixedWeight table (all EXIST, verified bleed>0).
+_BT_BLEED_SRC = {
+    'n': [r"records\item\equipmentweapon\bow\u_n_tendonripper.dbr",
+          r"records\equipmentweapon\axe\u_n_butcher'sbride.dbr",
+          r'records\equipmentweapon\axe\mi_n_tigermanchampion.dbr'],
+    'e': [r'records\equipmentweapon\axe\u_e_fleshreaver.dbr',
+          r'records\equipmentweapon\axe\u_e_ageaxe.dbr',
+          r'records\equipmentweapon\axe\mi_e_tigermanchampion.dbr'],
+    'l': [r"records\item\equipmentweapon\bow\u_l_nemesis'recurve.dbr",
+          r"records\equipmentweapon\axe\u_l_cerberus'bite.dbr",
+          r'records\equipmentweapon\axe\mi_l_tigermanchampion.dbr'],
+}
+
+
+def _create_blood_toxeus_monster(db):
+    """Hemorrheus, the Red Verdict - the crimson Toxeus superboss (§7).
+
+    Clone um_toxeus_99 (SP Toxeus, the crimson-revenant kin) so mesh/texture/
+    animation all carry over correct, then override level/HP/attributes/resists
+    and REPLACE the SP Dream kit with the Blood Boil hemorrhage kit (§2). One
+    record with charLevel [40,68,100] (the um_toxeus_21 array style). NOT a pet
+    (Monster.tpl), so the Pet.tpl crash rule does not apply. No explicit dtype on
+    cloned fields (crash rule): set_field keeps each existing field's dtype.
+    """
+    if not db.has_record(_BT_DONOR_MONSTER):
+        print("  BLOOD TOXEUS: WARNING donor um_toxeus_99 missing; monster skipped")
+        return None
+    db.clone_record(_BT_DONOR_MONSTER, _BT_MONSTER)
+    M = _BT_MONSTER
+
+    # ── Identity + power baseline (§7). No dtype -> preserve each field's type. ──
+    db.set_field(M, 'description', 'tagMonsterHemorrheus')
+    db.set_field(M, 'monsterClassification', 'Boss')      # hidden end-of-area guardian
+    db.set_field(M, 'charLevel', [40, 68, 100])            # existing INT array -> INT
+    db.set_field(M, 'characterLife', [13000.0, 18000.0, 24000.0])  # existing FLOAT array -> FLOAT
+    db.set_field(M, 'characterStrength', 480.0)
+    db.set_field(M, 'characterDexterity', 660.0)
+    db.set_field(M, 'characterIntelligence', 420.0)
+    db.set_field(M, 'characterLifeRegen', 10.0)           # blood-drinker
+    db.set_field(M, 'handHitDamageMin', 60.0)             # bigger blades
+    db.set_field(M, 'handHitDamageMax', 120.0)
+    db.set_field(M, 'scale', 2.1)                          # visibly the bigger, redder Toxeus
+    db.set_field(M, 'actorHeight', 2.0)
+    # mesh + baseTexture already = revenantstorm.msh + newskeleton_crimson.tex on the
+    # donor (SP crimson Toxeus); reassert for clarity + guaranteed correctness.
+    db.set_field(M, 'mesh', r'Creatures\Monster\skeleton\revenantstorm.msh')
+    db.set_field(M, 'baseTexture', r'Creatures\monster\skeleton\newskeleton_crimson.tex')
+
+    # ── Resistance wall (§7): pierce 70, poison 80 (bleed identity, not green
+    #    Toxeus), life 100, and his SIGNATURE bleed resist 80 (donor has none). ──
+    db.set_field(M, 'defensivePierce', 70.0)
+    db.set_field(M, 'defensivePoison', 80.0)
+    db.set_field(M, 'defensiveLife', 100.0)
+    db.set_field(M, 'defensiveBleeding', 80.0)            # NEW field -> auto FLOAT (his wall)
+
+    # ── Blood kit: overwrite the donor's 17 SP-Dream skill slots with the
+    #    hemorrhage kit (§2.1 + §2.3) + the exploding-blood-sprite summon
+    #    (§2.2B). All strings -> existing STRING slots keep type. The summon is
+    #    ALSO wired into the specialAttack rotation below so the AI actually
+    #    casts it during the fight (monsters fire from specialAttack*/controller,
+    #    not from an item-autocast controller, so no fake skillController field). ──
+    kit = [
+        (_BT_SK_BLOODBOIL,     [8, 12, 16]),   # signature nova, tier-scaled
+        (_BT_SK_BLADESTORM,    [8, 12, 16]),   # bleeding bladestorm
+        (_BT_SK_ENVENOM,       1),             # blood-slick blades (toggle)
+        (_BT_SK_LIFEDRAIN,     [6, 10, 14]),   # ranged life drain
+        (_BT_SK_FLASHPOWDER,   [6, 10, 14]),   # assassin blink
+        (_BT_SK_LETHALSTRIKE,  [6, 10, 14]),   # crit strike
+        (_BT_SK_MORTALWOUND,   [4, 6, 8]),     # crit modifier
+        (_BT_SK_OPENWOUND,     [4, 6, 8]),     # bleed-on-crit passive
+        (_BT_LILDUDE_SUMMON,   [1, 2, 3]),     # §2.2B exploding-blood-sprite burst
+        (_BT_SK_HEROSCALING,   [1, 2, 3]),     # level scaling
+        (_BT_SK_TOXEUSPASSIVE, [1, 2, 3]),     # Toxeus difficulty passive
+        (_BT_SK_ARMORPASSIVE,  [142, 238, 396]),  # armor passive (donor's tier array)
+        (_BT_SK_BOSSIMMUNITY,  1),             # convert/taunt/fear immunity bundle
+        (_BT_SK_BLEEDWALL,     [1, 2, 3]),     # blood-witch bleed/vit/leech resist-per-level
+        (_BT_SK_ATTACKSKILL,   1),             # base melee attack
+    ]
+    for idx, (path, lvl) in enumerate(kit, start=1):
+        db.set_field(M, f'skillName{idx}', path)
+        db.set_field(M, f'skillLevel{idx}', lvl)
+    # Blank the donor's unused trailing slots (kit fills 1..15; donor had 17).
+    for i in range(len(kit) + 1, 18):
+        db.set_field(M, f'skillName{i}', '')
+
+    # ── specialAttack* rotation: point the AI's cast slots at the blood skills
+    #    (donor pointed them at Dream skills). The donor's per-slot Chance/Delay/
+    #    Range/Timeout carry over via clone, so these fire. Slot 5 = the sprite
+    #    burst so the exploding-blood adds actually appear mid-fight. ──
+    db.set_field(M, 'specialAttackSkillName', _BT_SK_BLOODBOIL)     # signature primary
+    db.set_field(M, 'specialAttack2SkillName', _BT_SK_FLASHPOWDER)
+    db.set_field(M, 'specialAttack3SkillName', _BT_SK_BLADESTORM)
+    db.set_field(M, 'specialAttack4SkillName', _BT_SK_LIFEDRAIN)
+    db.set_field(M, 'specialAttack5SkillName', _BT_LILDUDE_SUMMON)  # exploding-sprite phase burst
+    db.set_field(M, 'attackSkillName', _BT_SK_ATTACKSKILL)
+    db.set_field(M, 'initialSkillName', _BT_SK_ENVENOM)             # buff up on spawn
+
+    db.set_field(M, 'dropItems', 1)
+    db._modified.add(M)
+    print(f"  Hemorrheus monster created: Lv[40,68,100] HP[13000,18000,24000], blood kit + bleed wall")
+    return M
+
+
+def _create_blood_toxeus_proxy(db):
+    """Placed-proxy + pool for Hemorrheus (§5.2). Mirror q_leinth_lone's STRUCTURE
+    with two deliberate preview-only overrides (mesh->revenantstorm, scale->2.1)
+    and the champion-add pool fix the critique flagged (§2.2A): the donor pool
+    ships championChance/Min/Max = 0/0/0 (blood-demon adds never spawn); we set
+    championChance=100, championMin=1, championMax=2 so the guard wave appears.
+    """
+    if not (db.has_record(_BT_DONOR_PROXY) and db.has_record(_BT_DONOR_POOL)):
+        print("  BLOOD TOXEUS: WARNING donor q_leinth_lone proxy/pool missing; proxy skipped")
+        return None
+
+    # ── Proxy ──
+    db.clone_record(_BT_DONOR_PROXY, _BT_PROXY)
+    P = _BT_PROXY
+    db.set_field(P, 'mesh', r'Creatures\Monster\skeleton\revenantstorm.msh')  # Toxeus-family preview silhouette
+    db.set_field(P, 'scale', 2.1)                                             # Hemorrheus size (donor 4.0)
+    db.set_field(P, 'pool1', _BT_POOL)
+    # baseTexture (proxyu_boss.tex), placementExtents (3.5), difficulty*/weight1
+    # carry over verbatim from the donor via clone.
+    db._modified.add(P)
+
+    # ── Pool ──
+    db.clone_record(_BT_DONOR_POOL, _BT_POOL)
+    PL = _BT_POOL
+    db.set_field(PL, 'FileDescription', 'Hemorrheus + blood-demon guard adds')
+    db.set_field(PL, 'name1', _BT_MONSTER)
+    db.set_field(PL, 'name2', _BT_MONSTER)
+    db.set_field(PL, 'name3', _BT_MONSTER)
+    db.set_field(PL, 'nameChampion1', _BT_BLOODDEMON[0])
+    db.set_field(PL, 'nameChampion2', _BT_BLOODDEMON[1])
+    db.set_field(PL, 'nameChampion3', _BT_BLOODDEMON[2])
+    # THE FIX: dormant-champion defaults -> guaranteed blood-demon guard wave (§2.2A).
+    db.set_field(PL, 'championChance', 100.0)
+    db.set_field(PL, 'championMin', 1)
+    db.set_field(PL, 'championMax', 2)
+    # spawnMin/spawnMax stay 1 (Hemorrheus himself); weightChampion1-3 carry over (34/33/33).
+    db._modified.add(PL)
+    print(f"  Hemorrheus proxy + pool created (champion adds: chance=100, min=1, max=2)")
+    return P
+
+
+def _create_crimsonverdict_set(db):
+    """The Crimson Verdict - a single-tier LEGENDARY 4-piece bleed set (§3.1) +
+    12 item records (4 svc_l_* set members with itemSetName; 8 svc_{n,e}_*
+    standalone bleed pieces with NO itemSetName). Set-bonus stats are per-count
+    arrays [1pc,2pc,3pc,4pc] with idx0=0 (drxset026's [0,75,130,230] pattern).
+    Dead fields (skillLifeBonus, set-level defensiveBleeding, defensiveLifeLeech
+    on armor) are NOT authored - see the field-validity ledger §8.
+    """
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── 12 item records (per slot, per tier) ──
+    # L stat blocks (§3.2). N ~0.55x, E ~0.78x on the offensive/leech lines; the
+    # flat/defensive lines scale gently. Only item-VALID fields (no skillLifeBonus,
+    # no defensiveLifeLeech on armor). itemSetName ONLY on the L pieces.
+    #
+    # dtype discipline (CRASH RULE): these items are CLONED from the melinoe
+    # bases, and every stat field below is FLOAT (or absent) on those bases
+    # (DB-audited). We therefore write FLOAT values and pass NO explicit dtype -
+    # set_field then preserves each existing field's FLOAT type (and auto-infers
+    # FLOAT for new fields). Passing an INT dtype onto a base FLOAT field would
+    # silently corrupt the value to ~0 in-game (the INT/FLOAT trap in CLAUDE.md).
+    def wpn_block(t):
+        m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            'offensivePhysicalMin': r(95.0), 'offensivePhysicalMax': r(150.0),
+            'offensivePhysicalModifier': r(40.0),
+            'offensiveSlowBleedingMin': r(180.0), 'offensiveSlowBleedingDurationMin': 3.0,
+            'offensiveSlowBleedingModifier': r(60.0),
+            'offensiveLifeMin': r(70.0), 'offensiveLifeMax': r(110.0), 'offensiveLifeModifier': r(35.0),
+            'offensiveLifeLeechMin': r(45.0),
+            'offensivePierceRatioModifier': r(25.0), 'offensivePercentCurrentLifeMin': r(6.0),
+            'characterAttackSpeedModifier': r(16.0),
+            'characterDexterityModifier': r(12.0), 'characterStrengthModifier': r(8.0),
+            'characterLife': r(250.0),   # was skillLifeBonus (skill-only) -> characterLife (item-valid)
+        }
+
+    def hlm_block(t):
+        m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            'characterLife': r(400.0), 'characterLifeModifier': r(12.0),
+            'defensiveBleeding': r(40.0), 'defensiveLife': r(25.0),
+            'offensiveSlowBleedingModifier': r(30.0), 'offensiveLifeLeechMin': r(20.0),
+            'characterOffensiveAbility': r(90.0), 'characterDefensiveAbility': r(60.0),
+            'defensivePhysical': r(180.0),
+        }
+
+    def tor_block(t):
+        m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        # skillLifeBonus + defensiveLifeLeech dropped (inert on armor); intent carried
+        # by characterLife (folded to 850) + defensiveBleeding + bumped defensiveLife.
+        return {
+            'characterLife': r(850.0), 'characterLifeModifier': r(15.0),
+            'defensiveBleeding': r(45.0), 'defensiveLife': r(45.0),
+            'defensivePhysical': r(260.0), 'characterLifeRegen': r(12.0),
+            'characterDefensiveAbility': r(70.0),
+        }
+
+    def arm_block(t):
+        m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            'offensiveSlowBleedingMin': r(140.0), 'offensiveSlowBleedingDurationMin': 3.0,
+            'offensiveSlowBleedingModifier': r(45.0),
+            'offensiveLifeLeechMin': r(25.0), 'offensiveLifeModifier': r(25.0),
+            'characterAttackSpeedModifier': r(12.0), 'characterOffensiveAbility': r(70.0),
+            'defensiveBleeding': r(30.0), 'defensivePhysical': r(140.0),
+        }
+
+    blocks = {'wpn': wpn_block, 'hlm': hlm_block, 'tor': tor_block, 'arm': arm_block}
+    item_count = 0
+    for slot in ('wpn', 'hlm', 'tor', 'arm'):
+        for t in 'nel':
+            base = _BT_ITEM_BASES[slot][t]
+            dest = _BT_ITEM_DEST[slot][t]
+            if not db.has_record(base):
+                print(f"  BLOOD TOXEUS: WARNING item base missing {base}")
+                continue
+            db.clone_record(base, dest)   # brings correct mesh/tex/template/base fields
+            # Identity: no dtype (itemLevel/levelRequirement are INT on the base ->
+            # preserved by the int values; itemNameTag/itemSetName are new STRING
+            # slots -> auto STRING; itemClassification is STRING on the base).
+            db.set_field(dest, 'itemNameTag', _BT_ITEM_NAMETAG[slot])
+            db.set_field(dest, 'itemLevel', _BT_ITEM_LEVEL[t])
+            db.set_field(dest, 'levelRequirement', max(1, _BT_ITEM_LEVEL[t] - 5))
+            db.set_field(dest, 'itemClassification', _BT_ITEM_CLASS[t])
+            if t == 'l':
+                db.set_field(dest, 'itemSetName', _BT_SET)  # ONLY the L pieces are set members
+            # Over-stat with the (tier-scaled) bespoke block. FLOAT values, no
+            # explicit dtype -> preserves base FLOAT type / auto-infers FLOAT (safe).
+            for fname, val in blocks[slot](t).items():
+                db.set_field(dest, fname, val)
+            db._modified.add(dest)
+            item_count += 1
+
+    # ── The set record (single-tier L; members = the 4 svc_l_* pieces) ──
+    _ensure_record(db, _BT_SET, 'database\\Templates\\ItemSet.tpl')
+    db._record_types[_BT_SET] = ''  # real ItemSet records store empty record-type header
+    db.set_field(_BT_SET, 'Class', 'ItemSet', S)
+    db.set_field(_BT_SET, 'templateName', 'database\\Templates\\ItemSet.tpl', S)
+    db.set_field(_BT_SET, 'FileDescription', 'The Crimson Verdict', S)
+    db.set_field(_BT_SET, 'setName', 'tagSVCSetCrimsonVerdict', S)
+    db.set_field(_BT_SET, 'setMembers', [
+        _BT_ITEM_DEST['wpn']['l'], _BT_ITEM_DEST['hlm']['l'],
+        _BT_ITEM_DEST['tor']['l'], _BT_ITEM_DEST['arm']['l'],
+    ], S)
+    # Per-count set BONUS: 4-element arrays [1pc=0, 2pc, 3pc, 4pc]. Every field
+    # DB-verified as carried by real ItemSet records (§3.1). NO skillLifeBonus,
+    # NO set-level defensiveBleeding.
+    set_bonus = {
+        'characterLifeModifier':                 [0.0, 6.0, 10.0, 15.0],
+        'offensiveSlowBleedingModifier':         [0.0, 25.0, 45.0, 75.0],   # the payoff
+        'offensiveSlowBleedingDurationModifier': [0.0, 0.0, 20.0, 40.0],
+        'offensiveLifeLeechMin':                 [0.0, 15.0, 25.0, 40.0],
+        'offensiveLifeModifier':                 [0.0, 15.0, 25.0, 40.0],
+        'characterAttackSpeedModifier':          [0.0, 8.0, 12.0, 18.0],
+        'characterLife':                         [0.0, 150.0, 300.0, 600.0],  # was skillLifeBonus -> characterLife
+        'retaliationSlowBleedingMin':            [0.0, 0.0, 0.0, 120.0],       # 4pc "bleed back" capstone
+        'retaliationSlowBleedingDurationMin':    [0.0, 0.0, 0.0, 3.0],
+    }
+    for fname, arr in set_bonus.items():
+        db.set_field(_BT_SET, fname, arr, F)
+    db._modified.add(_BT_SET)
+    print(f"  Crimson Verdict set created: single-tier L set + {item_count} item records "
+          f"(4 L members + {item_count - 4} N/E standalone)")
+    return _BT_SET
+
+
+def _create_crimsonverdict_loot(db):
+    """Loot tables (§3.3): a per-tier guaranteed-set-piece FixedWeight table
+    (4 pieces @ weight 100 -> always one) + a per-tier high-bleed FixedWeight
+    table (bleed uniques). Cloned in SHAPE from supra_special (FixedWeight);
+    NONE of its formulae contents are used. Returns nothing; wiring is on the
+    monster (done by the caller / wire step).
+    """
+    S, I = DATA_TYPE_STRING, DATA_TYPE_INT
+
+    def fixedweight(path, members, desc):
+        _ensure_record(db, path, 'Database\\Templates\\LootItemTable_FixedWeight.tpl')
+        db._record_types[path] = 'LootItemTable_FixedWeight'  # match real FixedWeight records' header
+        db.set_field(path, 'Class', 'LootItemTable_FixedWeight', S)
+        db.set_field(path, 'templateName', 'Database\\Templates\\LootItemTable_FixedWeight.tpl', S)
+        db.set_field(path, 'FileDescription', desc, S)
+        db.set_field(path, 'brokenRandomizerChance', 0.0, DATA_TYPE_FLOAT)
+        db.set_field(path, 'prefixRandomizerChance', 0.0, DATA_TYPE_FLOAT)
+        db.set_field(path, 'suffixRandomizerChance', 0.0, DATA_TYPE_FLOAT)
+        for i, m in enumerate(members, start=1):
+            db.set_field(path, f'lootName{i}', m, S)
+            db.set_field(path, f'lootWeight{i}', 100, I)
+        db._modified.add(path)
+
+    for t in 'nel':
+        pieces = [_BT_ITEM_DEST[k][t] for k in ('wpn', 'hlm', 'tor', 'arm')]
+        fixedweight(_BT_LOOT_GUAR[t], pieces, f'Crimson Verdict guaranteed piece ({t.upper()})')
+        fixedweight(_BT_LOOT_BLEED[t], _BT_BLEED_SRC[t], f'High bleed-affix gear ({t.upper()})')
+    print(f"  Crimson Verdict loot: 3 guaranteed-piece + 3 high-bleed FixedWeight tables")
+
+
+def _create_blood_toxeus_soul(db):
+    """{^F}Soul of Hemorrhage (§4). Blood Boil proc on-hit + Open Wound + real
+    Ravages-of-time augments, bleed/vitality/leech suite. Bare _ensure_record
+    via _create_soul (NEVER clone_record). Three tiers, {^F} tag, per-tier icon.
+    defensiveLifeLeech is VALID here (ring/jewelry record, like the Limos soul).
+    """
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    tiers = [
+        {'diff': 'n', 'itemLevel': 40, 'stats': {
+            **_bmp('n'),
+            'itemSkillName': (S, _BT_SK_BLOODBOIL), 'itemSkillLevel': (I, 4),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _BT_AUG_OPENWOUND), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _BT_AUG_RAVAGES), 'augmentSkillLevel2': (I, 2),
+            'offensiveLifeMin': (F, 45.0), 'offensiveLifeMax': (F, 70.0), 'offensiveLifeModifier': (I, 25),
+            'offensiveSlowBleedingMin': (F, 70.0), 'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveSlowBleedingModifier': (I, 35),
+            'offensiveLifeLeechMin': (F, 35.0), 'offensivePercentCurrentLifeMin': (F, 4.0),
+            'offensivePhysicalMin': (F, 35.0), 'offensivePhysicalMax': (F, 55.0),
+            'offensivePhysicalModifier': (I, 20), 'offensivePierceRatioModifier': (I, 15),
+            'characterAttackSpeedModifier': (I, 12), 'characterTotalSpeedModifier': (I, 8),
+            'characterRunSpeedModifier': (F, 10.0), 'characterDodgePercent': (F, 8.0),
+            'characterLifeModifier': (F, 10.0), 'characterStrengthModifier': (F, 6.0),
+            'characterDexterityModifier': (F, 8.0),
+            'defensiveLife': (F, 18.0), 'defensiveBleeding': (F, 20.0), 'defensiveLifeLeech': (F, 20.0),
+        }},
+        {'diff': 'e', 'itemLevel': 68, 'stats': {
+            **_bmp('e'),
+            'itemSkillName': (S, _BT_SK_BLOODBOIL), 'itemSkillLevel': (I, 6),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _BT_AUG_OPENWOUND), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _BT_AUG_RAVAGES), 'augmentSkillLevel2': (I, 3),
+            'offensiveLifeMin': (F, 65.0), 'offensiveLifeMax': (F, 100.0), 'offensiveLifeModifier': (I, 35),
+            'offensiveSlowBleedingMin': (F, 120.0), 'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveSlowBleedingModifier': (I, 50),
+            'offensiveLifeLeechMin': (F, 55.0), 'offensivePercentCurrentLifeMin': (F, 6.0),
+            'offensivePhysicalMin': (F, 60.0), 'offensivePhysicalMax': (F, 90.0),
+            'offensivePhysicalModifier': (I, 28), 'offensivePierceRatioModifier': (I, 20),
+            'characterAttackSpeedModifier': (I, 16), 'characterTotalSpeedModifier': (I, 12),
+            'characterRunSpeedModifier': (F, 15.0), 'characterDodgePercent': (F, 11.0),
+            'characterLifeModifier': (F, 14.0), 'characterStrengthModifier': (F, 8.0),
+            'characterDexterityModifier': (F, 11.0),
+            'defensiveLife': (F, 26.0), 'defensiveBleeding': (F, 28.0), 'defensiveLifeLeech': (F, 25.0),
+        }},
+        {'diff': 'l', 'itemLevel': 100, 'stats': {
+            **_bmp('l'),
+            'itemSkillName': (S, _BT_SK_BLOODBOIL), 'itemSkillLevel': (I, 8),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _BT_AUG_OPENWOUND), 'augmentSkillLevel1': (I, 5),
+            'augmentSkillName2': (S, _BT_AUG_RAVAGES), 'augmentSkillLevel2': (I, 4),
+            'offensiveLifeMin': (F, 95.0), 'offensiveLifeMax': (F, 150.0), 'offensiveLifeModifier': (I, 55),
+            'offensiveSlowBleedingMin': (F, 190.0), 'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveSlowBleedingModifier': (I, 75),
+            'offensiveLifeLeechMin': (F, 90.0), 'offensivePercentCurrentLifeMin': (F, 8.0),
+            'offensivePhysicalMin': (F, 100.0), 'offensivePhysicalMax': (F, 160.0),
+            'offensivePhysicalModifier': (I, 40), 'offensivePierceRatioModifier': (I, 25),
+            'characterAttackSpeedModifier': (I, 20), 'characterTotalSpeedModifier': (I, 16),
+            'characterRunSpeedModifier': (F, 20.0), 'characterDodgePercent': (F, 14.0),
+            'characterLifeModifier': (F, 20.0), 'characterStrengthModifier': (F, 12.0),
+            'characterDexterityModifier': (F, 14.0), 'characterOffensiveAbilityModifier': (F, 12.0),
+            'defensiveLife': (F, 34.0), 'defensiveBleeding': (F, 40.0), 'defensiveLifeLeech': (F, 30.0),
+        }},
+    ]
+    paths = _create_soul(db, 'blood_toxeus', 'tagSVCSoulHemorrhage', tiers, _BT_MONSTER, 100.0)
+    print(f"  Soul of Hemorrhage created: {len(paths)} tiers (Blood Boil proc, 100% drop)")
+    return paths
+
+
+def _wire_blood_toxeus_loot(db):
+    """Wire the guaranteed-set-piece + high-bleed tables onto Hemorrheus (§3.3).
+
+    Guaranteed set piece: FixedWeight table on the RightHand weapon slot at
+    chance 100 (mirrors how q_leinth_47 guarantees lenithsveil on lootHeadItem1,
+    and how the donor already drops a RightHand weapon). High-bleed table: on the
+    LeftHand slot at chance 100. Soul stays on Finger2 (wired by _create_soul).
+    Per-tier [n,e,l] arrays, matching every loot field's shape.
+    """
+    if not db.has_record(_BT_MONSTER):
+        return
+    M = _BT_MONSTER
+    guar = [_BT_LOOT_GUAR['n'], _BT_LOOT_GUAR['e'], _BT_LOOT_GUAR['l']]
+    bleed = [_BT_LOOT_BLEED['n'], _BT_LOOT_BLEED['e'], _BT_LOOT_BLEED['l']]
+    # Guaranteed Crimson Verdict piece -> RightHand slot @100.
+    db.set_field(M, 'lootRightHandItem1', guar, DATA_TYPE_STRING)
+    db.set_field(M, 'chanceToEquipRightHand', 100.0)
+    db.set_field(M, 'chanceToEquipRightHandItem1', 100)
+    # High-bleed gear -> LeftHand slot @100.
+    db.set_field(M, 'lootLeftHandItem1', bleed, DATA_TYPE_STRING)
+    db.set_field(M, 'chanceToEquipLeftHand', 100.0)
+    db.set_field(M, 'chanceToEquipLeftHandItem1', 100)
+    db._modified.add(M)
+    print(f"  Hemorrheus loot wired: guaranteed set piece (RightHand@100) + high-bleed (LeftHand@100)")
+
+
+def _create_blood_toxeus(db):
+    """Build the whole Blood Toxeus DB side in dependency order (§6.1):
+    monster -> proxy/pool (references monster) -> set + items (loot references
+    members) -> loot -> soul (wires to monster) -> wire loot tables to monster.
+    """
+    print("\n=== Blood Toxeus wave (Hemorrheus, the Red Verdict) ===")
+    _create_blood_toxeus_monster(db)
+    _create_blood_toxeus_proxy(db)
+    _create_crimsonverdict_set(db)
+    _create_crimsonverdict_loot(db)
+    _create_blood_toxeus_soul(db)
+    _wire_blood_toxeus_loot(db)
+
+
 def apply_all_extended_patches(db, force_full_drops=True):
     """Run all extended patches. Call after create_uber_souls.
 
@@ -5988,6 +6467,19 @@ def apply_all_extended_patches(db, force_full_drops=True):
         'The Fire Trap erupts in a burst of flame at the careless. Its soul grants '
         'that fiery burst and turns the bearer\'s skin to searing retaliation.')
 
+    # ── Blood Toxeus wave tags (docs/BLOOD_TOXEUS_DESIGN.md §6.3) ──
+    tags['tagMonsterHemorrheus'] = '{^r}Hemorrheus, the Red Verdict'
+    tags['tagSVCSoulHemorrhage'] = '{^F}Soul of Hemorrhage'
+    tags['tagSVCSoulHemorrhageDESC'] = (
+        'Toxeus, boiled down and refilled with the blood of the drowned. His soul '
+        'makes your every strike burst into a red mist that opens all wounds at once '
+        'and drinks them dry.')
+    tags['tagSVCSetCrimsonVerdict'] = 'The Crimson Verdict'
+    tags['tagSVCwpnVeinRender'] = '{^r}Vein-Render'
+    tags['tagSVChlmCrimsonVerdict'] = '{^r}Cowl of the Red Verdict'
+    tags['tagSVCtorCrimsonVerdict'] = '{^r}Sanguine Shroud'
+    tags['tagSVCarmCrimsonVerdict'] = '{^r}Hemorrhage Bindings'
+
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
     _add_coldworm_to_egypt_pools(db)
@@ -6046,6 +6538,12 @@ def apply_all_extended_patches(db, force_full_drops=True):
     _complete_boss_souls(db)
     # Gate Common/no-class soul leaks (skeletaltyphon.dbr, um_tombguardian_26)
     _gate_common_soul_leaks(db)
+
+    # ── Blood Toxeus wave (docs/BLOOD_TOXEUS_DESIGN.md) ──
+    # Hemorrheus superboss + Crimson Verdict legendary set + his soul + loot.
+    # Runs AFTER the gate (he is a legit Boss, so the drop forcer keeping his
+    # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
+    _create_blood_toxeus(db)
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
     # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
