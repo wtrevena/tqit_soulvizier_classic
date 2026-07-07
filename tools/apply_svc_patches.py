@@ -3420,6 +3420,217 @@ def _wire_it_expansion_orphans(db):
         print(f"    WARNING: xhero_rottingdevourer_41 not found")
 
 
+# ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──────
+#
+# SV 0.98i replaced the base game's monster-pool spawn-scaling equations with its
+# own, more aggressive formulas that DIVIDE by numberOfPlayers, e.g.
+#     spawnMaxEquation = ((poolValue * 2.3) - (poolValue / (0.4 + numberOfPlayers*0.6)))*2.7
+# The tokens (poolValue, numberOfPlayers) are valid AE equation variables, and the
+# '/' operator is fine in AE ITEM equations (targetLevelEquation etc. use it 822x
+# in the base game). But the engine's PROXY SPAWN equation evaluator is a more
+# limited code path: across the ENTIRE base TQAE database, spawn/champion pool
+# equations use only  + - *  (never '/').  When the spawn evaluator hits SV's
+# '/'-bearing formula it logs "RunEquation load failure" and falls back to a
+# default pool value -> in MULTIPLAYER, monster/champion spawn density silently
+# reverts to base-game (fewer monsters than SV intends). It is a benign,
+# non-crashing, DETERMINISTIC fallback (same on host + client, so no desync), but
+# it defeats SV's MP scaling. Evidence: docs/crash_analysis_report.md "Proxy
+# RunEquation Failures"; tools/debug/mp_operator_audit.py (operator-set anomaly).
+#
+# FIX: rewrite every '/'-bearing spawn/champion equation to a '/'-free replacement
+# in numberOfPlayers that reproduces SV's intended spawn count across the valid
+# 1..6 player range, using only  + - *  (the operator set proven-good for the AE
+# proxy-spawn evaluator: across ALL 53 distinct base-game spawn-eq forms the
+# operator union is exactly {+,-,*}, max paren depth 2 -- tools/debug/
+# mp_base_spawn_forms via database.arz). A binary-subtraction term is used (no
+# unary-minus reliance).
+#
+# TWO replacement families are provided; select with the SVC_MP_SPAWN_LINEAR env
+# flag (build_svc_database.py may thread it, else it defaults OFF -> quadratic):
+#
+#  DEFAULT = QUADRATIC  poolValue*(c0 + c1*np - c2*np*np):
+#    Best fit to SV's saturating (concave) curve across the FULL 1..6 range, which
+#    matters because the primary co-op case is np=2 (Will + one friend). Measured
+#    error vs SV intent (tools/debug/mp_quad_pinned / mp_fit_bakeoff):
+#      primary spawnMax '*2.7' form: np1=2.57%, np2=3.25%, max(1..6)=3.25%
+#      pure '1/np' forms:            np1=4.40%, np2=5.32%, max(1..6)=5.32%
+#    NOTE (was a doc overclaim, now corrected in docs/MULTIPLAYER_COMPAT.md): the
+#    unconstrained polyfit is NOT exact at np=1 -- single-player differs by the
+#    ~2.6-4.4% above. It is left UNPINNED on purpose: pinning np=1 exact is trivial
+#    (constrained fit) BUT it pushes ~7-10% error onto np=2, i.e. it makes the
+#    Will+friend case measurably WORSE (co-op under-delivers up to ~5 more monsters
+#    at high poolValue) to buy an in-practice-invisible single-player nicety. The
+#    engine FLOORS these budgets to integer counts, so the SP delta is <=1 spawn on
+#    almost every pool and the replacement never REDUCES SP spawns below SV -- so
+#    the honest, goal-optimal choice is the balanced unpinned fit + an accurate doc.
+#
+#  OPT-IN  = LINEAR  poolValue*(c0 + c1*np)   [SVC_MP_SPAWN_LINEAR=1]:
+#    Structurally IDENTICAL to a real base-game spawn eq -- base game ships
+#    '(poolValue * 1.6) * (0.53 +(0.2*numberOfPlayers))'  ==  poolValue*(0.848 +
+#    0.32*np) -- so it uses ZERO novel structure. Exact at np=1, monotone by
+#    construction, higher mid-range error (np2 ~11-16%). This is the SAFE FALLBACK
+#    if a live game-log check ever shows the quadratic's  np*np  term failing to
+#    parse in the narrow spawn evaluator: 'numberOfPlayers*numberOfPlayers'
+#    (variable self-multiply) has NO precedent anywhere in the base game (proven:
+#    0 self-multiply equations across all 74,013 base records / 16,519 equation
+#    values, and the spawn evaluator has never been observed to accept it), so its
+#    parseability is confirmed ONLY by an in-game launch (see MULTIPLAYER_COMPAT.md
+#    M1.5 live-test). A sane arithmetic parser handles np*np and the quadratic is
+#    strictly no-worse than the pre-fix '/'-parse-failure state, so it is the
+#    default; flip to linear only if a launch log shows a spawn RunEquation failure.
+_MP_SPAWN_EQ_FIELDS = (
+    'spawnMaxEquation', 'spawnMinEquation',
+    'championMaxEquation', 'championMinEquation',
+    'numSpawnMaxEquation', 'numSpawnMinEquation',
+)
+
+# Exact SV equation string -> '/'-free QUADRATIC replacement (+ - * only, depth 2).
+# c2 is always positive in the fit, written as a binary '-' term (idiomatic).
+_MP_SPAWN_EQ_REPLACEMENTS = {
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))':
+        'poolValue * (0.91 + (0.497143 * numberOfPlayers) - (0.05 * numberOfPlayers * numberOfPlayers))',
+    '(poolValue * 2.3) - (poolValue / numberOfPlayers)':
+        'poolValue * (0.91 + (0.497143 * numberOfPlayers) - (0.05 * numberOfPlayers * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / (0.0 +(numberOfPlayers * 1.0))))':
+        'poolValue * (0.91 + (0.497143 * numberOfPlayers) - (0.05 * numberOfPlayers * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / (0.4 +(numberOfPlayers * 0.6))))*2.7':
+        'poolValue * (2.623966 + (1.076769 * numberOfPlayers) - (0.100485 * numberOfPlayers * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))*2.7':
+        'poolValue * (2.457 + (1.342286 * numberOfPlayers) - (0.135 * numberOfPlayers * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))*2':
+        'poolValue * (1.82 + (0.994286 * numberOfPlayers) - (0.1 * numberOfPlayers * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / (0.0 +(numberOfPlayers * 1.0))))*2':
+        'poolValue * (1.82 + (0.994286 * numberOfPlayers) - (0.1 * numberOfPlayers * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))*3':
+        'poolValue * (2.73 + (1.491429 * numberOfPlayers) - (0.15 * numberOfPlayers * numberOfPlayers))',
+}
+
+# Exact SV equation string -> '/'-free LINEAR replacement (SVC_MP_SPAWN_LINEAR=1).
+# poolValue*(c0 + c1*np): exact at np=1, monotone, base-game-idiomatic (no np*np).
+# Pinned at np=1 with an LS slope over np=2..6 (tools/debug/mp_linear_design.py).
+_MP_SPAWN_EQ_REPLACEMENTS_LINEAR = {
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))':
+        'poolValue * (1.091818 + (0.208182 * numberOfPlayers))',
+    '(poolValue * 2.3) - (poolValue / numberOfPlayers)':
+        'poolValue * (1.091818 + (0.208182 * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / (0.0 +(numberOfPlayers * 1.0))))':
+        'poolValue * (1.091818 + (0.208182 * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / (0.4 +(numberOfPlayers * 0.6))))*2.7':
+        'poolValue * (3.020661 + (0.489339 * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))*2.7':
+        'poolValue * (2.947909 + (0.562091 * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))*2':
+        'poolValue * (2.183636 + (0.416364 * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / (0.0 +(numberOfPlayers * 1.0))))*2':
+        'poolValue * (2.183636 + (0.416364 * numberOfPlayers))',
+    '((poolValue * 2.3) - (poolValue / numberOfPlayers))*3':
+        'poolValue * (3.275455 + (0.624545 * numberOfPlayers))',
+}
+
+# Safe '/'-free static fallback for any UNKNOWN '/'-bearing spawn equation that
+# does not match the SV pattern (defensive; keeps the mod parseable + spawning).
+# Mirrors SV's single-player intent (~2.2x poolValue) with mild player scaling,
+# using only + - * (linear -> zero novel structure, always monotone).
+_MP_SPAWN_EQ_FALLBACK = (
+    'poolValue * (1.9 + (0.15 * numberOfPlayers))'
+)
+
+
+def _fix_mp_spawn_equations(db):
+    """Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free forms
+    the AE spawn evaluator accepts, so multiplayer spawn scaling actually runs
+    instead of silently falling back to base-game pool defaults.
+
+    By default emits the QUADRATIC replacement (best co-op/full-range fidelity to
+    SV's saturating curve). Set env SVC_MP_SPAWN_LINEAR=1 to emit the LINEAR
+    replacement instead (base-game-idiomatic, no np*np term, exact at np=1) -- the
+    safe fallback if a live game-log check ever shows the quadratic's np*np failing
+    to parse in the narrow spawn evaluator. See the module comment above and
+    docs/MULTIPLAYER_COMPAT.md M1.
+
+    Returns the number of equation VALUES rewritten. Idempotent: replacement
+    strings contain no '/', so a second pass is a no-op.
+    """
+    import os
+    # Match build_svc_database.py's SVC_RELEASE_DROPS convention (case-insensitive
+    # true-spellings). Anything else (incl. unset) -> default QUADRATIC.
+    use_linear = (os.environ.get('SVC_MP_SPAWN_LINEAR') or '').strip().lower() \
+        in ('1', 'true', 'yes', 'on')
+    repl_table = _MP_SPAWN_EQ_REPLACEMENTS_LINEAR if use_linear else _MP_SPAWN_EQ_REPLACEMENTS
+    mode = 'LINEAR (idiomatic, no np*np; np=1 exact)' if use_linear else \
+           'QUADRATIC (best co-op fidelity; default)'
+    print("\n=== Patch MP: Fix multiplayer spawn-scaling equations ===")
+    print(f"  replacement family: {mode}")
+    rewritten = 0
+    records_touched = 0
+    unknown_forms = {}
+    for rec in db.record_names():
+        fields = db.get_fields(rec)
+        if not fields:
+            continue
+        touched_this = False
+        for key, tf in list(fields.items()):
+            fn = key.split('###')[0]
+            if fn not in _MP_SPAWN_EQ_FIELDS:
+                continue
+            if tf.dtype != DATA_TYPE_STRING:
+                continue
+            new_vals = []
+            changed = False
+            for v in tf.values:
+                s = str(v)
+                if '/' not in s:
+                    new_vals.append(s)
+                    continue
+                repl = repl_table.get(s.strip())
+                if repl is None:
+                    # Unknown '/'-bearing spawn equation: use the safe fallback so
+                    # the mod stays parseable + spawning in MP. Record it loudly.
+                    unknown_forms[s] = unknown_forms.get(s, 0) + 1
+                    repl = _MP_SPAWN_EQ_FALLBACK
+                new_vals.append(repl)
+                changed = True
+                rewritten += 1
+            if changed:
+                # Preserve single vs multi cardinality.
+                if len(new_vals) == 1:
+                    db.set_field(rec, fn, new_vals[0], DATA_TYPE_STRING)
+                else:
+                    db.set_field(rec, fn, new_vals, DATA_TYPE_STRING)
+                touched_this = True
+        if touched_this:
+            db._modified.add(rec)
+            records_touched += 1
+
+    if unknown_forms:
+        print(f"  WARNING: {len(unknown_forms)} UNKNOWN '/'-bearing spawn "
+              f"equation form(s) hit the static fallback (review these):")
+        for s, c in sorted(unknown_forms.items(), key=lambda kv: -kv[1]):
+            print(f"    x{c}  {s!r}")
+    print(f"  Rewrote {rewritten} spawn/champion equation value(s) across "
+          f"{records_touched} proxy record(s) to '/'-free AE-valid form")
+    return rewritten
+
+
+def _verify_no_slash_in_spawn_equations(db):
+    """Post-fix invariant check: assert NO spawn/champion equation field still
+    contains '/'. Returns list of (record, field, value) offenders (empty = OK).
+    """
+    offenders = []
+    for rec in db.record_names():
+        fields = db.get_fields(rec)
+        if not fields:
+            continue
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn not in _MP_SPAWN_EQ_FIELDS or tf.dtype != DATA_TYPE_STRING:
+                continue
+            for v in tf.values:
+                if '/' in str(v):
+                    offenders.append((rec, fn, str(v)))
+    return offenders
+
+
 def _force_100_pct_soul_drops(db):
     """Set chanceToEquipFinger2 to 100% for TESTING - but ONLY on monsters that
     are already configured to drop a soul (chanceToEquipFinger2 > 0).
@@ -6544,6 +6755,20 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Runs AFTER the gate (he is a legit Boss, so the drop forcer keeping his
     # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
     _create_blood_toxeus(db)
+
+    # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
+    # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid
+    # forms so MP monster/champion density scales as SV intends instead of
+    # silently falling back to base-game pool defaults. Then assert the invariant
+    # (no '/' left in any spawn equation) and fail the build loud if violated.
+    _fix_mp_spawn_equations(db)
+    _mp_offenders = _verify_no_slash_in_spawn_equations(db)
+    if _mp_offenders:
+        for _rec, _fn, _val in _mp_offenders[:10]:
+            print(f"  MP-EQ OFFENDER: {_rec} :: {_fn} = {_val!r}")
+        raise SystemExit(
+            f"MP spawn-equation fix incomplete: {len(_mp_offenders)} spawn/champion "
+            f"equation value(s) still contain '/' (see offenders above)")
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
     # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
