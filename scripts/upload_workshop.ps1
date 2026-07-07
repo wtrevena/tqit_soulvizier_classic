@@ -17,7 +17,12 @@
 param(
     [Parameter(Mandatory=$true)]
     [string]$SteamUser,
-    [switch]$Update
+    [switch]$Update,
+    # Steam Workshop visibility: 0=public, 1=friends-only, 2=hidden, 3=unlisted.
+    # First upload defaults to friends-only so the item can be verified (and
+    # coop-tested by a friend) before flipping public with -Update -Visibility 0.
+    [ValidateSet('0','1','2','3')]
+    [string]$Visibility = '1'
 )
 
 Set-StrictMode -Version Latest
@@ -73,19 +78,26 @@ if ($Update) {
 # Build the VDF manifest
 $title = 'Soulvizier Classic (AE Port)'
 $description = @"
-Soulvizier 0.98i ported to Titan Quest Anniversary Edition.
+Soulvizier 0.98i ported to Titan Quest Anniversary Edition - the classic
+souls overhaul, playable again, plus new content.
 
-A massive overhaul mod featuring:
-- 800+ new monster souls to collect and equip
-- 10 masteries (including Occult and Neidan from DLC)
-- New uber boss dungeon with custom portals
-- Enhanced mercenary scroll system
-- Improved pet summon skills (Hydra, Rakanizeus, Boneash, and more)
-- Legacy skills restored from Soulvizier 0.4.1
-- Balanced for AE engine with DLC compatibility
+Features:
+- 800+ monster souls to collect and equip, including 60+ newly completed
+  boss souls (summon-the-boss and boss-skill souls)
+- The Soulvizier blood cave restored and fully walkable, with its
+  questlines (Grieving Widow, secret waterfall chamber, and more)
+- NEW superboss: Hemorrheus, the Crimson Butcher - a blood-soaked
+  incarnation of Toxeus guarding the secret area, with the Crimson
+  Verdict legendary set
+- 10 masteries (including Occult and Neidan), legacy skills restored
+- Epic/legendary enchanting, Super Caravan storage, improved pet summons
 
-Requires: Titan Quest Anniversary Edition (base game only - DLCs optional)
-Play via: Custom Quest > SoulvizierClassic
+Requires: Titan Quest Anniversary Edition. Play via Custom Quest >
+SoulvizierClassic with a dedicated Custom Quest character.
+Strongly recommended: the community 4GB LAA patch for TQ.exe (large mod).
+
+Credits and thanks: amgoz1 (Soulvizier 0.98i), soa (Soulvizier AERA),
+Dragonlord (DRX) - published with their permission.
 "@
 
 $contentFullPath = (Resolve-Path $contentDir).Path
@@ -98,7 +110,7 @@ $vdfContent = @"
   "contentfolder"   "$($contentFullPath -replace '\\', '\\')"
   "title"           "$title"
   "description"     "$($description -replace '"', '\"' -replace "`n", '\n')"
-  "visibility"      "0"
+  "visibility"      "$Visibility"
 }
 "@
 
