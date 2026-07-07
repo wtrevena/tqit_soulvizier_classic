@@ -262,6 +262,102 @@ def find_donor_0x0b(lv):
     return body, donor_path
 
 
+# --- QUESTS(0x1b) registration list (single source of truth) ----------------
+# The world-file's QUESTS section is the ONLY quest registry the engine reads at
+# world-load (byte-verified 2026-07-06: NO parallel registry exists - no .wrl, no
+# second count field in SD/GROUPS/BITMAPS/DATA2; each entry = u32 len + path bytes,
+# no null terminator). Quest IDENTITY is 100% path-based (md5 of `quests\<name>.qst`
+# for the character save's Quest.myw + .que names; DBR path strings for level-entity
+# bindings), so the section's ORDER is engine-internal only and REORDERING/INSERTING
+# is provably safe for existing saves and every level's entity bindings.
+#
+# The 4 ported SV area questlines (widowletter / urder / bossarena /
+# open_bloodcave_portal) must sit at the LOWEST appended indices (right after the
+# SVAERA natives, ahead of all XPack-dup / dead junk) so they fall inside any
+# plausible engine load window. Their PRIMARY `Quests/<name>.qst` form is what the
+# engine instantiates (identity = md5(quests\<name>.qst), matching Quests.arc). We:
+#   1. keep ALL SVAERA natives byte-identical, in original order (indices 0..N-1),
+#      so no native quest can regress under any cap >= the SVAERA count;
+#   2. place the 4 primary `Quests/<name>.qst` forms FIRST in the appended block;
+#      3 already exist in SV's list, `Quests/bossarena.qst` does NOT (SV ships only
+#      `XPack/Quests/bossarena.qst`, which would hash to a DIFFERENT identity than
+#      the spec's `quests\bossarena.qst`), so we SYNTHESIZE the plain form;
+#   3. append every other SV-only entry (XPack dups etc.) after, order preserved;
+#   4. DROP the provably-dead entries whose .qst files exist nowhere
+#      (`ALL_CUSTOM_QUEST_NAMES` = uberdungeon/bloodcave _entrance/_return) - they
+#      only spam the engine's `QuestRepository: Invalid Quest File` path.
+FOUR_PRIMARY_QUEST_FORMS = [
+    b'Quests/open_bloodcave_portal.qst',
+    b'Quests/urder.qst',
+    b'Quests/widowletter.qst',
+    b'Quests/bossarena.qst',
+]
+
+
+def build_ordered_quest_list(ae_quests, sv_quests):
+    """Return the merged QUESTS entry list (list[bytes]) in load-window-optimal order.
+
+    ae_quests / sv_quests are the parsed native-byte name lists (no length prefix).
+    Guarantees, all asserted by the caller's Z1 gate:
+      - the SVAERA natives are the exact same bytes in the exact same order at the
+        front (so ae-prefix byte-parity holds and no native regresses);
+      - the 4 FOUR_PRIMARY_QUEST_FORMS occupy the first 4 appended slots (indices
+        len(ae_quests) .. +3);
+      - a synthesized `Quests/bossarena.qst` is added iff no case-insensitive twin
+        already exists;
+      - the dead ALL_CUSTOM_QUEST_NAMES stubs are NOT appended.
+    """
+    # SV-only entries (case-insensitive), in SV's original order - same rule the
+    # legacy build used, so the appended set is otherwise unchanged.
+    ae_lower = set(q.lower() for q in ae_quests)
+    sv_only = [q for q in sv_quests if q.lower() not in ae_lower]
+
+    # The 4 primary forms, in intent order, added iff not already present anywhere.
+    primary = []
+    for form in FOUR_PRIMARY_QUEST_FORMS:
+        if form.lower() not in {p.lower() for p in primary}:
+            primary.append(form)
+
+    # Everything else = sv_only MINUS any entry equal (case-insensitively) to a
+    # primary form (so a primary form is not duplicated when it already came from
+    # SV, e.g. open_bloodcave_portal/urder/widowletter), preserving SV order.
+    primary_lower = {p.lower() for p in primary}
+    rest = [q for q in sv_only if q.lower() not in primary_lower]
+
+    # Drop the dead nonexistent stubs (uberdungeon/bloodcave _entrance/_return):
+    # they are NOT re-appended here (the legacy code appended them from
+    # ALL_CUSTOM_QUEST_NAMES; we intentionally omit them). Guard in case any snuck
+    # into SV's own list. ALL_CUSTOM_QUEST_NAMES holds str; compare lowercased.
+    dead_lower = {q.lower() for q in ALL_CUSTOM_QUEST_NAMES}
+    rest = [q for q in rest if q.decode('ascii', 'replace').lower() not in dead_lower]
+
+    ordered = list(ae_quests) + primary + rest
+
+    # Hard invariants (fail loud rather than ship a bad registry). NOTE: SVAERA's
+    # native list itself contains benign case-insensitive duplicates (e.g. three
+    # `XPack2/quests/x2quest_controlsdoors.qst` at native idx 159/196/199, differing
+    # only in case) that ship + load fine, so we do NOT assert global uniqueness -
+    # only that (a) natives are byte-verbatim and (b) the APPENDED block introduces
+    # no NEW collision (with itself or with a native), which is what our reorder
+    # could plausibly get wrong.
+    assert ordered[:len(ae_quests)] == list(ae_quests), \
+        'native-prefix changed - QUESTS reorder must preserve SVAERA natives verbatim'
+    ap = ordered[len(ae_quests):len(ae_quests) + 4]
+    assert ap == primary, f'four primary forms not at lowest appended slots: {ap}'
+    native_lower = {q.lower() for q in ae_quests}
+    appended = primary + rest
+    seen_app = set()
+    for q in appended:
+        ql = q.lower()
+        # A primary form intentionally added when SV lacked it is fine; but the
+        # appended block must not repeat an entry (self-collision) nor duplicate a
+        # native (that would re-register something already in the map).
+        assert ql not in seen_app, f'appended QUESTS self-duplicate: {q!r}'
+        assert ql not in native_lower, f'appended entry duplicates a native: {q!r}'
+        seen_app.add(ql)
+    return ordered
+
+
 def main():
     """Build the merged Levels.arc (heavy: multi-GB). Not run on import."""
     # --- Paths ---
@@ -323,20 +419,21 @@ def main():
                     sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
     print(f'  Using SV SD: {len(sv_sd)} bytes')
 
-    # --- 4. QUESTS: merged + custom ---
-    ae_quest_set = set(q.lower() if isinstance(q, str) else q.lower() for q in ae_quests)
-    new_quests = [q for q in sv_quests if (q.lower() if isinstance(q, str) else q.lower()) not in ae_quest_set]
-    merged_quests = ae_quests + new_quests
-    existing_lower = set(q.lower() if isinstance(q, str) else q.decode('ascii', errors='replace').lower()
-                         for q in merged_quests)
-    added_quests = 0
-    for qname in ALL_CUSTOM_QUEST_NAMES:
-        if qname.lower() not in existing_lower:
-            merged_quests.append(qname.encode('ascii'))
-            existing_lower.add(qname.lower())
-            added_quests += 1
+    # --- 4. QUESTS: natives + 4 SV questlines at lowest appended indices ---
+    # See build_ordered_quest_list: natives byte-identical + the 4 primary
+    # `Quests/<name>.qst` forms first in the appended block (synthesizing
+    # `Quests/bossarena.qst`) + the rest of SV, minus the dead nonexistent stubs.
+    # This lands the 4 SV questlines inside any plausible engine load window while
+    # keeping every SVAERA native quest at its exact original index (no regression).
+    merged_quests = build_ordered_quest_list(ae_quests, sv_quests)
     new_quests_data = build_quests(merged_quests)
-    print(f'  Quests: {len(ae_quests)} + {len(new_quests)} SV + {added_quests} custom = {len(merged_quests)}')
+    _ae_lower = set(q.lower() for q in ae_quests)
+    _sv_only_ct = len([q for q in sv_quests if q.lower() not in _ae_lower])
+    _synth_boss = b'Quests/bossarena.qst' not in {q for q in sv_quests}
+    print(f'  Quests: {len(ae_quests)} natives + {_sv_only_ct} SV-only '
+          f'(4 primary forms hoisted to idx {len(ae_quests)}..{len(ae_quests)+3}'
+          f'{"; +synth Quests/bossarena.qst" if _synth_boss else ""}; '
+          f'dead stubs dropped) = {len(merged_quests)}')
 
     # --- 5. Load SV-only level blobs (will convert to v0x11 after NPC injection) ---
     print('\n=== Loading SV-only level blobs ===')
