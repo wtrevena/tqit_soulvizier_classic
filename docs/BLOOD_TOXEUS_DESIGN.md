@@ -1,5 +1,7 @@
 # BLOOD TOXEUS - design spec for a new bleeding/vitality superboss + soul + set
 
+> RENAME NOTE (Will 2026-07-07): the boss now ships as **"Toxeus the Murderer, Devourer of Blood"** (display tag `tagMonsterHemorrheus`) and his soul as **"{^F}Devourer of Blood Soul"** (`tagSVCSoulHemorrhage`); his visual uses the GREEN Athens Toxeus mesh `RevenantPoison.msh` (was `revenantstorm.msh`) with the crimson skin. The name "Hemorrheus / the Red Verdict" in the body below is superseded for DISPLAY but kept as the internal codename; record paths, tag keys, and set/item names are unchanged.
+
 > A complete, DB-grounded design for a NEW Toxeus-family superboss who deals massive
 > bleeding + vitality damage, out-classes the green Athens Toxeus, drops a bespoke bleeding
 > item set + a boss soul, and stands guard beyond the exploding-blood-wall secret area.

@@ -6132,10 +6132,15 @@ def _complete_boss_souls(db):
 
 
 # ══════════════════════════════════════════════════════════════════════════
-#  BLOOD TOXEUS wave (docs/BLOOD_TOXEUS_DESIGN.md) - Hemorrheus, the Red Verdict
-#  A crimson Toxeus-revenant superboss + his Blood Boil kit + the Crimson
-#  Verdict legendary bleed set + his soul + loot. DB side only; the map spawn
-#  (proxy injection into new_secretdoor_transitionhallway) is a separate lane.
+#  BLOOD TOXEUS wave (docs/BLOOD_TOXEUS_DESIGN.md)
+#  Display name (Will 2026-07-07): "Toxeus the Murderer, Devourer of Blood"
+#  (tagMonsterHemorrheus). "Hemorrheus" below is the internal build-time codename
+#  only - the record path (um_bloodtoxeus_99), tag KEYS, function names, and this
+#  codename are engine/code identity and stay; only the display-string VALUES were
+#  renamed (see the tags block). A crimson Toxeus-revenant superboss + his Blood
+#  Boil kit + the Crimson Verdict legendary bleed set + his soul + loot. DB side
+#  only; the map spawn (proxy injection into new_secretdoor_transitionhallway) is
+#  a separate lane.
 # ══════════════════════════════════════════════════════════════════════════
 
 # ── Verified record paths (all DB-confirmed present in the built .arz) ──────
@@ -6241,9 +6246,18 @@ def _create_blood_toxeus_monster(db):
     db.set_field(M, 'handHitDamageMax', 120.0)
     db.set_field(M, 'scale', 2.1)                          # visibly the bigger, redder Toxeus
     db.set_field(M, 'actorHeight', 2.0)
-    # mesh + baseTexture already = revenantstorm.msh + newskeleton_crimson.tex on the
-    # donor (SP crimson Toxeus); reassert for clarity + guaranteed correctness.
-    db.set_field(M, 'mesh', r'Creatures\Monster\skeleton\revenantstorm.msh')
+    # ── VISUAL: "the GREEN Athens Toxeus, but RED" (Will's directive #2). ──────
+    # The green Athens Toxeus (um_toxeus_21) is DB-verified to use mesh
+    # RevenantPoison.msh + baseTexture newskeleton_grean.tex. To read as the SAME
+    # boss but red, use the IDENTICAL Athens mesh (RevenantPoison.msh) and the
+    # crimson SIBLING skin from the SAME newskeleton_* family (newskeleton_crimson.tex).
+    # Both resolve in the shipped Creatures.arc; the newskeleton_* skins are a
+    # shared, mesh-independent skin set (crimson already rides revenantfire/storm/
+    # goldenskeleton/skeletonrumorboss in the shipped DB), so crimson on the poison
+    # rig is engine-valid and renders red. (The donor um_toxeus_99 SP variant uses
+    # revenantstorm.msh, a DIFFERENT rig from the Athens boss Will pointed at; the
+    # clone brought revenantstorm across, so we override it back to the Athens mesh.)
+    db.set_field(M, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')
     db.set_field(M, 'baseTexture', r'Creatures\monster\skeleton\newskeleton_crimson.tex')
 
     # ── Resistance wall (§7): pierce 70, poison 80 (bleed identity, not green
@@ -6303,7 +6317,7 @@ def _create_blood_toxeus_monster(db):
 
 def _create_blood_toxeus_proxy(db):
     """Placed-proxy + pool for Hemorrheus (§5.2). Mirror q_leinth_lone's STRUCTURE
-    with two deliberate preview-only overrides (mesh->revenantstorm, scale->2.1)
+    with two deliberate preview-only overrides (mesh->the Athens Toxeus rig, scale->2.1)
     and the champion-add pool fix the critique flagged (§2.2A): the donor pool
     ships championChance/Min/Max = 0/0/0 (blood-demon adds never spawn); we set
     championChance=100, championMin=1, championMax=2 so the guard wave appears.
@@ -6315,7 +6329,11 @@ def _create_blood_toxeus_proxy(db):
     # ── Proxy ──
     db.clone_record(_BT_DONOR_PROXY, _BT_PROXY)
     P = _BT_PROXY
-    db.set_field(P, 'mesh', r'Creatures\Monster\skeleton\revenantstorm.msh')  # Toxeus-family preview silhouette
+    # Preview silhouette matches the ACTUAL boss rig: the green Athens Toxeus mesh
+    # (RevenantPoison.msh), so the map preview reads as the Toxeus he is. (Not the
+    # placed map instance - that lives in build_section_surgery INJECT_SPECS, a
+    # separate lane; this is only the proxy DB record's preview visual.)
+    db.set_field(P, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')  # Athens Toxeus preview silhouette
     db.set_field(P, 'scale', 2.1)                                             # Hemorrheus size (donor 4.0)
     db.set_field(P, 'pool1', _BT_POOL)
     # baseTexture (proxyu_boss.tex), placementExtents (3.5), difficulty*/weight1
@@ -6503,10 +6521,12 @@ def _create_crimsonverdict_loot(db):
 
 
 def _create_blood_toxeus_soul(db):
-    """{^F}Soul of Hemorrhage (§4). Blood Boil proc on-hit + Open Wound + real
-    Ravages-of-time augments, bleed/vitality/leech suite. Bare _ensure_record
-    via _create_soul (NEVER clone_record). Three tiers, {^F} tag, per-tier icon.
-    defensiveLifeLeech is VALID here (ring/jewelry record, like the Limos soul).
+    """{^F}Devourer of Blood Soul (§4; renamed from "Soul of Hemorrhage" per Will
+    2026-07-07 - tag KEY tagSVCSoulHemorrhage kept, only the display value changed).
+    Blood Boil proc on-hit + Open Wound + real Ravages-of-time augments,
+    bleed/vitality/leech suite. Bare _ensure_record via _create_soul (NEVER
+    clone_record). Three tiers, {^F} tag, per-tier icon. defensiveLifeLeech is
+    VALID here (ring/jewelry record, like the Limos soul).
     """
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
     tiers = [
@@ -6822,12 +6842,28 @@ def apply_all_extended_patches(db, force_full_drops=True):
         'that fiery burst and turns the bearer\'s skin to searing retaliation.')
 
     # ── Blood Toxeus wave tags (docs/BLOOD_TOXEUS_DESIGN.md §6.3) ──
-    tags['tagMonsterHemorrheus'] = '{^r}Hemorrheus, the Red Verdict'
-    tags['tagSVCSoulHemorrhage'] = '{^F}Soul of Hemorrhage'
+    # RENAME (Will 2026-07-07): the boss is now explicitly a Toxeus derivative -
+    # "Toxeus the Murderer, Devourer of Blood" (verbatim from Will). The Athens
+    # Toxeus display name is "Toxeus the Murderer" (tagMonsterName190); this name
+    # extends it with the blood-devourer epithet so both bosses read as the same
+    # murderer, one crimson-reborn. 38 visible chars (color code {^r} is free) -
+    # shorter than 8 shipped boss/hero names (e.g. "Sentinel Nok-hai, Guardian of
+    # the Necklace" 42, "Fenuku, Martyr of the Crimson Brotherhood" 41), and the
+    # "Name, Epithet of X" comma form is a shipped convention, so it fits the
+    # nameplate. The record path (um_bloodtoxeus_99) is UNCHANGED - only the
+    # display tag is renamed.
+    tags['tagMonsterHemorrheus'] = '{^r}Toxeus the Murderer, Devourer of Blood'
+    # His soul keeps the new identity WITHOUT duplicating the green Toxeus's soul
+    # ("{^F}Toxeus the Murderer Soul" = tagSoulName505) or the SP soul
+    # ("{^F}Soul of Toxeus the Murderer (SP)" = tagSVCSoulSPToxeus). "Devourer of
+    # Blood Soul" (Will's suggestion) is distinct from both and on-identity.
+    # (Tag key stays tagSVCSoulHemorrhage - key is engine identity, only the value
+    # is renamed; renaming the key would orphan the soul's itemNameTag binding.)
+    tags['tagSVCSoulHemorrhage'] = '{^F}Devourer of Blood Soul'
     tags['tagSVCSoulHemorrhageDESC'] = (
-        'Toxeus, boiled down and refilled with the blood of the drowned. His soul '
-        'makes your every strike burst into a red mist that opens all wounds at once '
-        'and drinks them dry.')
+        'Toxeus the Murderer, boiled down and refilled with the blood of the drowned. '
+        'His soul makes your every strike burst into a red mist that opens all wounds '
+        'at once and drinks them dry.')
     tags['tagSVCSetCrimsonVerdict'] = 'The Crimson Verdict'
     tags['tagSVCwpnVeinRender'] = '{^r}Vein-Render'
     tags['tagSVChlmCrimsonVerdict'] = '{^r}Cowl of the Red Verdict'
