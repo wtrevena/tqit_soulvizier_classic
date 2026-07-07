@@ -11,6 +11,13 @@ work/
 # Accidental directories
 --stats-only/
 
+# Scratch / tool byproducts (Editor drops MapBuildStatistics.csv in cwd;
+# test_*.tok are tok_parse experiment outputs; catalog_output.txt is a one-off dump)
+/MapBuildStatistics.csv
+/test_*.tok
+/tools/catalog_output.txt
+/scratchpad/
+
 # OS / editor
 .DS_Store
 Thumbs.db

@@ -316,26 +316,76 @@ def main():
     for (a, b), off in _seam_off.items():
         _yadj.setdefault(a, []).append((b, off))
         _yadj.setdefault(b, []).append((a, -off))
+    # ANCHOR (2026-07-06 entrance-regression fix): each connected component's BFS root
+    # (shift=0) must be DETERMINISTIC and must be a level that interfaces FIXED,
+    # non-regenerated data - never the arbitrary first entry. Random09A is the cave
+    # ENTRANCE: HiddenValley01's native GridEntrance portal pair (0x14 record #30 +
+    # R09's 0x06 reciprocal descriptor, FIXED world coords incl. Y at the door grid
+    # cell) drops the player onto R09's mesh, and the engine's findNearestPoly
+    # vertical extent is 2u - the arbitrary root shifted R09 by -3u and the landing
+    # missed the mesh (frida-verified: navmesh loads ret=1, portal open=1 both ways;
+    # purely the mesh-height-vs-fixed-landing mismatch -> could not enter the cave).
+    # Root preference: Random09A, then any OWN_GUID_OVERRIDE level (those keep
+    # AE-native GUIDs = native interfaces), then smallest basename (deterministic).
+    # (Rank 1 is currently redundant - OWN_GUID_OVERRIDE == {Random09A} today, which
+    # rank 0 already catches - but is kept deliberately: any FUTURE level added to
+    # OWN_GUID_OVERRIDE is by definition another native-interface anchor and must
+    # out-rank arbitrary cluster levels for the component root.)
+    # Ground truth backing this root (0x05 entity-Y vs tok-floor survey, 2026-07-06):
+    # R09-rooting also re-anchors every cluster level onto its OWN terrain - the +3u
+    # levels (xPTS, BC_initialpathway, drxBC_Connector1, xTempleTransitionHallway)
+    # are exactly the toks SV exported 2.56u BELOW their placed entities, so the
+    # in-cluster door portals (drxBC_Finale<->bossfight 0x06 pair, yafc->drxBC3 and
+    # xTTH->new_secretdoor 0x14 pairs) stay on-mesh too.
+    _key_of = {e['basename']: e['fname'].replace('\\', '/').lower() for e in entries}
+
+    def _root_rank(bn):
+        return (0 if bn.lower() == 'random09a.lvl'
+                else 1 if _key_of[bn] in OWN_GUID_OVERRIDE
+                else 2, bn.lower())
+
     yshift = {}
     from collections import deque as _deque
     for e in entries:
-        root = e['basename']
-        if root in yshift:
+        if e['basename'] in yshift:
             continue
         # Shifts are WHOLE world units: the container center is int32 (rec02_format
         # LHDR center[3]), so a fractional shift can't be stored, and a fractional
         # off_y risks pushing a stacked neighbour's cell heights out of uint16 range.
         # Rounding each seam offset (~2.56u -> 3u) leaves a constant <=0.5u residual
         # step, far under the engine's 1u climb / 2u findNearestPoly tolerance.
-        yshift[root] = 0; _q = _deque([root])
+        _comp = [e['basename']]
+        _cseen = {e['basename']}
+        _q = _deque(_comp)
+        while _q:
+            u = _q.popleft()
+            for v, _off in _yadj.get(u, ()):
+                if v not in _cseen:
+                    _cseen.add(v); _comp.append(v); _q.append(v)
+        _root = min(_comp, key=_root_rank)
+        yshift[_root] = 0; _q = _deque([_root])
         while _q:
             u = _q.popleft()
             for v, off in _yadj.get(u, ()):
                 if v not in yshift:
                     yshift[v] = yshift[u] + int(round(off)); _q.append(v)
+    # HARD anchor gate: Random09A must be UNSHIFTED (shift exactly 0). Its donor must
+    # meet the FIXED HiddenValley01 GridEntrance landing, which we never regenerate.
+    _r09_bn = next((e['basename'] for e in entries
+                    if e['basename'].lower() == 'random09a.lvl'), None)
+    if _r09_bn is not None and yshift.get(_r09_bn, 0) != 0:
+        raise AssertionError(
+            f'Y-ALIGN ANCHOR VIOLATION: Random09A yshift={yshift[_r09_bn]:+d} (must be 0). '
+            f'Its mesh must stay at the 0x0a-authored height or the fixed HV01 '
+            f'GridEntrance portal landing (findNearestPoly vertical ext 2u) misses it '
+            f'and the cave cannot be entered at all. Fix _root_rank / the component '
+            f'root selection; do NOT ship these donors.')
     _nsh = sum(1 for v in yshift.values() if v != 0)
+    _sh_note = ', '.join(f'{k}:{v:+d}' for k, v in sorted(yshift.items()) if v != 0) or 'none'
     print(f'  Y-ALIGN: {len(_seam_off)} constant seam offsets; {_nsh} levels shifted; '
-          f'max |shift|={max((abs(v) for v in yshift.values()), default=0)}u')
+          f'max |shift|={max((abs(v) for v in yshift.values()), default=0)}u; '
+          f'anchor Random09A shift={yshift.get(_r09_bn, 0) if _r09_bn is not None else "n/a"}; '
+          f'shifts: {_sh_note}')
 
     generated = []
     print('\n=== Generating ===')
@@ -420,6 +470,18 @@ def main():
         shift = grid_shift_for(fname)
         shifted_center = shift_center(doc['center'], shift)
         doc['center'] = shifted_center
+        # ANCHOR gate (G1): a level that interfaces non-regenerated data
+        # (OWN_GUID_OVERRIDE, e.g. Random09A vs HiddenValley01's fixed GridEntrance
+        # landing) must keep its 0x0a-authored container height: donor center Y ==
+        # 0x0a center Y + GRID_SHIFT dy, i.e. zero y_shift leaked in.
+        if key in OWN_GUID_OVERRIDE:
+            _want_y = center_a[1] + shift[1]
+            if shifted_center[1] != _want_y:
+                raise AssertionError(
+                    f'{basename}: ANCHOR violated - donor center Y {shifted_center[1]} '
+                    f'!= 0x0a center Y {center_a[1]} + grid dy {shift[1]} = {_want_y} '
+                    f'(y_shift {_ys_own:+d} leaked into an anchored level). The fixed '
+                    f'portal landing would miss this mesh; do NOT ship.')
         # generate() set doc['guids'] = [own] + neighbor_guids = guid_list.
         assert doc['guids'] == guid_list, \
             f'{basename}: guid list mismatch ({doc["guids"]} vs {guid_list})'
