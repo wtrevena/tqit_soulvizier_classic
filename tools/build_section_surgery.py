@@ -190,6 +190,30 @@ WIDOW_LING_ROT = (0.40753135085105896, 0.0, -0.9131911993026733,
                   0.0, 1.0, 0.0,
                   0.9131911993026733, 0.0, 0.40753135085105896)
 
+# --- Hemorrheus (Blood Toxeus) superboss proxy (docs/BLOOD_TOXEUS_DESIGN.md sec 5) ------
+# The DB side (commit aa14564) built the Proxy record + its ProxyPool (with the
+# champion-add override) + the um_bloodtoxeus_99 monster, all resolving in the deployed
+# SoulvizierClassic.arz. This places the PROXY ENTITY into the secret hallway past the mega
+# chest, mirroring EXACTLY how SV places q_leinth_lone in bossfight.lvl.
+#
+# EXEMPLAR BYTE-SHAPE (measured from the SV 0.98i upstream Levels.arc, the actual merge
+# donor - NOT the editor-normalized decompiled_sv copy, which is a different v0x11
+# extraction). q_leinth_lone in bossfight.lvl (v0x0e) is a plain 0x05 instance:
+#   flags = 0 (unflagged -> NO trailing UniqueId block; 56-byte v0x0e record)
+#   NO 0x14 entry (bossfight's whole 0x14 section is EMPTY, size 0 in SV upstream)
+#   rotation = a specific non-identity yaw (~91.94 deg), Leinth's own facing.
+# So the faithful placement is a plain flags=0 record with NO 0x14 (identical shape to the
+# widow/wagon SV-only injections above), carrying the exemplar's exact rotation matrix so
+# the injected record is byte-shape-identical to q_leinth_lone (position + rot + flags).
+# The Proxy visual (mesh/scale/texture) lives on the DB record; the real spawn is the
+# um_bloodtoxeus_99 monster via the pool.
+Q_BLOODTOXEUS_LONE_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone.dbr'
+# q_leinth_lone's EXACT float32 rotation (from its SV-upstream bossfight 0x05 record bytes);
+# carried verbatim so the Hemorrheus proxy's byte-shape matches the exemplar's rotation too.
+Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
+                         0.0, 1.0, 0.0,
+                         0.9994250535964966, 0.0, -0.03390489146113396)
+
 # Injection specs: level name key -> list of specs (see INJECTION-SPEC FORMAT above).
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
@@ -245,6 +269,28 @@ INJECT_SPECS = {
     # 'levels/world/xbloodcave/bc_initialpathway.lvl': [
     #     (BLOODCAVE_RETURN_NPC_DBR, 20.0, 5.0, 12.0),
     # ],
+    # Hemorrheus (Blood Toxeus) superboss, guarding the secret hallway past the mega chest
+    # (docs/BLOOD_TOXEUS_DESIGN.md sec 5). Placed as a Proxy 0x05 instance, flags=0, NO 0x14
+    # entry - byte-shape identical to how SV places q_leinth_lone in bossfight.lvl (measured
+    # from the SV 0.98i upstream Levels.arc, v0x0e; the exemplar record is flags=0 / 56 bytes
+    # / no UniqueId / no 0x14 entry). new_secretdoor_transitionhallway is an SV-only level ->
+    # the merge routes this through inject_into_sv_only_blob -> inject_into_0x05 (v0x0e).
+    #
+    # COORD is SV-LOCAL for this level (the xBloodCave GRID_SHIFT (7840,0,2030) is applied by
+    # the merge to the level's grid corner, NOT here). Derivation, verified against the
+    # CURRENT build20 donor (obstacle-carved) with tools/debug/navlib.py:
+    #   world centroid (4999.9, 4.0, 3467.1) is 0.000u on-mesh, IN the largest walkable
+    #     component (159,742 cells; cell (519,465), area=1);
+    #   shifted grid corner (from shifted_ints_raw) = (4932, 1, 3425);
+    #   SV-local = world - shifted_corner = (67.9, 3.0, 42.1).
+    # Round-trip: local + shifted_corner == world centroid -> same on-mesh cell (proven
+    # against the same donor). Spawn is 47.1u from the exit portal (xprtl_bc2et_02 @ world
+    # x=5047) and 38.9u from respawn_hadescave01 -> no instant-aggro spawn-camp on arrival.
+    # Rotation = q_leinth_lone's exact float32 matrix (orientation-only; the real spawn is the
+    # um_bloodtoxeus_99 monster via the pool). Y local=3.0 matches every other proxy here.
+    'levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl': [
+        (Q_BLOODTOXEUS_LONE_DBR, 67.9, 3.0, 42.1, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
 }
 
 UBER_DUNGEON_QUEST_NAMES = ['Quests/uberdungeon_entrance.qst', 'Quests/uberdungeon_return.qst']
