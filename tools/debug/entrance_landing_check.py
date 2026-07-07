@@ -218,7 +218,7 @@ def main():
     sv_i = ints13(sv_lv)
     tmp = Path(tempfile.gettempdir()) / 'svc_g2_r09_upstream.lvl'
     tmp.write_bytes(blob_of(sv_data, sv_lv))
-    _g, center_a, dims_a, verts, tris = load_tok_mesh(str(tmp))
+    _g, center_a, dims_a, verts, tris, _obs = load_tok_mesh(str(tmp))
     corner0a = tuple(center_a[i] - dims_a[i] for i in range(3))
     dxz = (r_i[6] - sv_i[6], r_i[8] - sv_i[8])
     dy = r_i[7] - sv_i[7]

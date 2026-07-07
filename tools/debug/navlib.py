@@ -120,7 +120,7 @@ def load_tok_raster(lvl_path, erode_iters=(0, 1, 2)):
     """Rasterize a level's tok mesh exactly like gen_rec02.generate does.
     Returns dict with grid meta + hgrid + eroded cell sets per iteration."""
     import math
-    guids_a, center_a, dims_a, verts, tris = gen_rec02.load_tok_mesh(str(lvl_path))
+    guids_a, center_a, dims_a, verts, tris, _obstacles = gen_rec02.load_tok_mesh(str(lvl_path))
     pad = gen_rec02.PAD
     dims = (dims_a[0] + pad, dims_a[1] + pad, dims_a[2] + pad)
     off = pad

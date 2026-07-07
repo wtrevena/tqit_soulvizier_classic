@@ -1,9 +1,14 @@
 """PathEngine .tok tokenizer with pluggable value widths; validate hypotheses by
 full-stream parse + semantic checks (tri indices < nverts etc.).
 """
+import re
 import struct
 import sys
 from pathlib import Path
+
+# tok attr value widths by type id (signed LE): 1=cstring, 2=int32, 3=int16,
+# 4=int8, 7=int8. Single source of truth for the width map every caller uses.
+TOK_WIDTHS = {2: 4, 3: 2, 4: 1, 7: 1}
 
 def read_tables(tok):
     pos = 0
@@ -119,6 +124,52 @@ def extract_mesh(lvl_path):
     dims = struct.unpack_from('<3I', d, off + 12)
     tok = d[off + 24: 12 + psize]
     return guids, center, dims, tok
+
+
+def parse_obstacles(tok):
+    """Return the ground mesh's baseObstacle polygons as LEVEL-LOCAL (x,z) point
+    lists (world units, relative to the 0x0a corner = header center - dims).
+
+    Each `<obstacle>` under `mesh/baseObstacles` carries two cstring attrs:
+      position = 'FACE:x,z'                       (x,z in centi-units, level-local)
+      vertices = 'vx0,vz0,vx1,vz1,vx2,vz2,vx3,vz3' (4 offsets, centi-units)
+    so the polygon is [(px+vx_i, pz+vz_i)] with px,pz = position/100 and each
+    offset/100 (exactly batch_validate.parse_ground / the RCA FIX SPEC formula).
+    The leading FACE index (the tri the obstacle sits on) is NOT a coordinate and
+    is skipped. Returns [] when the tok has no baseObstacles element.
+
+    This is the ONLY encoding of the SV rock/wall footprints (RCA Measurement 6:
+    there is no carved alternate mesh); gen_rec02 subtracts these from the
+    walkable set so the player cannot walk through solid rocks.
+    """
+    elems, attrs, pos = read_tables(tok)
+    root, _endpos, err = parse_stream(tok, pos, elems, attrs, TOK_WIDTHS)
+    assert root is not None, f'tok parse failed: {err}'
+    mesh = root[0]
+    bo = [c for c in mesh['children'] if c['tag'] == 'baseObstacles']
+    if not bo:
+        return []
+    polys = []
+    for ob in bo[0]['children']:
+        if ob['tag'] != 'obstacle':
+            continue
+        p = [int(n) for n in re.findall(r'-?\d+', ob['attrs']['position'])]  # [face,x,z]
+        v = [int(n) for n in re.findall(r'-?\d+', ob['attrs']['vertices'])]  # 8 offsets
+        if len(p) < 3 or len(v) < 8:
+            continue
+        px, pz = p[1] / 100.0, p[2] / 100.0
+        poly = [(px + v[i] / 100.0, pz + v[i + 1] / 100.0)
+                for i in range(0, len(v) - 1, 2)]
+        polys.append(poly)
+    return polys
+
+
+def load_tok_obstacles(lvl_path):
+    """Convenience: extract the 0x0a container from a .lvl and return its
+    baseObstacle polygons (level-local x,z). See parse_obstacles."""
+    _guids, _center, _dims, tok = extract_mesh(lvl_path)
+    return parse_obstacles(tok)
+
 
 if __name__ == '__main__':
     lvl = sys.argv[1] if len(sys.argv) > 1 else \

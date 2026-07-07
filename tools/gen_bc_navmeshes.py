@@ -227,7 +227,7 @@ def main():
         # Extract the pristine blob to a loose .lvl gen_rec02 can read.
         lvl_tmp = tmp / basename
         lvl_tmp.write_bytes(blob)
-        guids_0a, center_a, dims_a, verts, tris = load_tok_mesh(str(lvl_tmp))
+        guids_0a, center_a, dims_a, verts, tris, obstacles = load_tok_mesh(str(lvl_tmp))
         corner0a = tuple(center_a[i] - dims_a[i] for i in range(3))
         # SV-original LEVELS-index footprint, BOX tile triple (the merge
         # normalizes content tiles -> box tiles via shifted_ints_raw, so the
@@ -241,9 +241,10 @@ def main():
         entries.append(dict(
             lv=lv, fname=fname, basename=basename, lvl_tmp=lvl_tmp,
             guids_0a=guids_0a, center_a=center_a, dims_a=dims_a,
-            verts=verts, tris=tris, corner0a=corner0a, fp_sv=fp_sv))
+            verts=verts, tris=tris, obstacles=obstacles,
+            corner0a=corner0a, fp_sv=fp_sv))
         print(f'  MESH  {basename:38s} verts={len(verts):6d} tris={len(tris):6d} '
-              f'corner0a={corner0a} fp={fp_sv}')
+              f'obs={len(obstacles):5d} corner0a={corner0a} fp={fp_sv}')
 
     # Precompute each level's neighbor-GUID list from ACTUAL GRID ADJACENCY
     # (footprint abutment), NOT from its own 0x0a list. The engine builds a
@@ -413,7 +414,13 @@ def main():
                 continue
             dxyz = list(o['corner0a'][i] - ent['corner0a'][i] for i in range(3))
             dxyz[1] += yshift.get(o['basename'], 0) - _ys_own
-            nbrs.append((o['verts'], o['tris'], tuple(dxyz)))
+            # 4th element = the neighbour's own level-local obstacle polygons;
+            # generate() translates them by this same (dx,dz) and carves the
+            # neighbour strip it rasterizes past the seam (a rock near a boundary
+            # is solid on both sides - RCA FIX SPEC). Only the (dx,dz) ground
+            # offset applies to obstacles (they are 2D XZ footprints; the dy Y
+            # shift is irrelevant to a point-in-poly carve).
+            nbrs.append((o['verts'], o['tris'], tuple(dxyz), o['obstacles']))
 
         # THE CROSS-LEVEL STITCH (disasm-proven, docs/CROSS_LEVEL_STITCH_RE.md):
         # there is NO walk-link and NO adjacency table. Each level owns a PRIVATE
@@ -449,6 +456,15 @@ def main():
         assert own_guid in merged_guids, f'{basename}: own GUID unresolved in merged world'
         guid_list = [own_guid]
         area_boxes = [ent['fp_sv']]              # parallel to guid_list; own box first
+        # region_obstacles PARALLEL to area_boxes: region k's obstacle polys in THIS
+        # level's local frame (region 0 = own; region k>=1 = the k-th abutting
+        # neighbour's obstacles translated by its 0x0a-corner delta = the SAME
+        # (dx,dz) the neighbour's geometry is shifted by above). generate() carves
+        # each cell by the polys of the region its area_box tags it into - the
+        # runtime-faithful carve that fixes both the seam walk-through-rock leak and
+        # the river-handoff severing (RCA FIX SPEC "carve each region k's cells with
+        # level-k's obstacles"; see gen_rec02.generate region_obstacles).
+        region_obstacles = [ent['obstacles']]
         for other in entries:
             if other is ent or not _fp_adjacent(ent['fp_sv'], other['fp_sv']):
                 continue
@@ -457,13 +473,20 @@ def main():
                 continue
             guid_list.append(g)
             area_boxes.append(other['fp_sv'])
+            odx = other['corner0a'][0] - ent['corner0a'][0]
+            odz = other['corner0a'][2] - ent['corner0a'][2]
+            region_obstacles.append(
+                [[(px + odx, pz + odz) for (px, pz) in poly]
+                 for poly in other['obstacles']])
 
         t0 = time.time()
         doc, stats = generate(
             str(ent['lvl_tmp']),
             own_guid=own_guid, neighbor_guids=guid_list[1:], area_boxes=area_boxes,
-            mesh=(guids_0a, center_a, dims_a, ent['verts'], ent['tris']),
-            neighbors=nbrs, footprint=ent['fp_sv'], y_shift=_ys_own)
+            mesh=(guids_0a, center_a, dims_a, ent['verts'], ent['tris'],
+                  ent['obstacles']),
+            neighbors=nbrs, footprint=ent['fp_sv'], y_shift=_ys_own,
+            obstacles=ent['obstacles'], region_obstacles=region_obstacles)
         gen_dt = time.time() - t0
 
         # reposition to the merged grid by shifting the container center only.
@@ -530,10 +553,14 @@ def main():
         drop_note = f' dropped={dropped}' if dropped else ''
         remap_note = ' [REMAP]' if remapped else ''
         generated.append((basename, len(data), stats['n_tiles'], len(guid_list)))
+        _pre = stats.get('n_open_pre_carve', 0)
+        _cv = stats.get('n_carved', 0)
+        carve_note = (f' carve={_cv}/{_pre}'
+                      f'({100 * _cv / max(_pre, 1):.1f}% obs={stats.get("n_obs_polys", 0)})')
         print(f'  GEN   {basename:38s} {len(data):7d} B  tiles={stats["n_tiles"]:3d} '
               f'guids={len(guid_list):2d} nbrs={stats["n_neighbors"]:2d} '
               f'cells={stats["n_rast_own"]}+{stats["n_rast"] - stats["n_rast_own"]}'
-              f'{area_note} {gen_dt:4.1f}s{remap_note}{drop_note}')
+              f'{carve_note}{area_note} {gen_dt:4.1f}s{remap_note}{drop_note}')
 
     print('\n=== Summary ===')
     print(f'  generated: {len(generated)}   skipped-no-geometry: {len(skipped_no_geom)}   '
