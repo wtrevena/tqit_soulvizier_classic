@@ -113,6 +113,20 @@ RETURN_NPC_DBR = b'records\\quests\\portal_uberdungeon_return.dbr'
 BLOODCAVE_ENTRANCE_NPC_DBR = b'records\\quests\\portal_bloodcave_entrance.dbr'
 BLOODCAVE_RETURN_NPC_DBR = b'records\\quests\\portal_bloodcave_return.dbr'
 
+# --- Merge-dropped SV content restored via SV-faithful 0x05 re-injection ---------
+# The map merge keeps SVAERA's copy of every shared level, which DROPPED all SV-added
+# entities on those levels. These records + their exact SV-LOCAL coords are extracted
+# byte-for-byte from the SV 0.98i upstream Levels.arc (RoadToTown03A / HiddenValley01
+# 0x05 sections); both shared levels are NOT grid-shifted (SV corner+GUID == SVAERA's,
+# verified), so the SV-local coord is the correct local coord in the merged (SVAERA)
+# blob. See docs/DROPPED_CONTENT_AUDIT.md sections 2.2 + 2.4 + WAVE A/E.
+# Widow Letter quest (widowletter.qst) placement-dependent triggers:
+WIDOW_LING_NPC_DBR = b'records\\drxmap\\quest\\widow_ling.dbr'          # Condition_ConversationStart
+TRG_FOUNDZHIDAN_DBR = b'records\\drxmap\\quest\\trg_foundzhidan.dbr'    # Condition_EnterVolume volume
+LOCATION_TREASURECHEST_DBR = b'records\\drxmap\\quest\\location_treasurechest.dbr'
+# Rebirth Fountain (respawn shrine at the blood-cave surface entrance):
+RESPAWNTEMPLEORIENT01_DBR = b'records\\item\\shrines\\respawntempleorient01.dbr'
+
 # Injection specs: level name key -> list of (dbr_bytes, x, y, z) to inject
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
@@ -122,6 +136,22 @@ INJECT_SPECS = {
     # Delphi NPC injection REMOVED - corrupts v0x11 blob, crashes game on world streaming
     'levels/world/uberdungeon/crypt_floor1.lvl': [
         (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
+    ],
+    # Widow Letter questline (WAVE E): restore the 3 SV entities the widowletter.qst
+    # conditions reference. widow_ling = the NPC (Condition_ConversationStart),
+    # trg_foundzhidan = the trigger volume (Condition_EnterVolume), and
+    # location_treasurechest = the chest location. Coords are SV-LOCAL, byte-exact from
+    # the SV upstream RoadToTown03A 0x05 (this shared level is NOT grid-shifted).
+    'levels/world/orient/greatwall/roadtotown03a.lvl': [
+        (WIDOW_LING_NPC_DBR, 66.5019, -63.3410, 50.1083),
+        (TRG_FOUNDZHIDAN_DBR, 77.0740, -63.8614, 61.6060),
+        (LOCATION_TREASURECHEST_DBR, 27.1969, -63.6251, 34.7034),
+    ],
+    # Rebirth Fountain (WAVE A): plain respawn shrine at the blood-cave surface
+    # entrance. No destination/pairing/quest wiring. Coord is SV-LOCAL, byte-exact from
+    # the SV upstream HiddenValley01 0x05 (this shared level is NOT grid-shifted).
+    'levels/world/orient/silkroad/hiddenvalley01.lvl': [
+        (RESPAWNTEMPLEORIENT01_DBR, 49.2629, 15.6341, 14.9496),
     ],
     # REMOVED (blood-cave walk-in): the surface-side portal NPC. The authentic SV
     # entry is engine-native - HiddenValley01's existing GridEntrance cave mouth
@@ -477,9 +507,17 @@ def convert_0x05_v0e_to_v11(data):
 
 
 def inject_into_0x05_v11(section_data, injections):
-    """Append new objects to a v0x11 0x05 section (72-byte records).
+    """Append new objects to a v0x11 0x05 section.
 
-    Same as inject_into_0x05 but produces 72-byte records (56 + 16 zero bytes).
+    A v0x11 instance record is VARIABLE length: a 72-byte base record, plus a
+    trailing 16-byte UniqueId block when the record's flags field (at +52) != 0
+    (the v0x11 analogue of the v0e "56 + 16 if flags@52 != 0" rule the merge's
+    v0e->v11 converter and the audit's SV-side parser both document). Some shared
+    levels (e.g. RoadToTown03A: 23 of 288 records flagged = +368 bytes) carry these
+    flagged records, so we MUST walk the existing instance block record-by-record to
+    find its true end and preserve every original byte VERBATIM; slicing a fixed
+    instance_count*72 would drop the flagged records' UniqueId tails and corrupt the
+    v0x11 blob. New injected records are written unflagged (72 bytes, 16 zero pad).
     """
     if not injections:
         return section_data
@@ -498,7 +536,19 @@ def inject_into_0x05_v11(section_data, injections):
     strings_end = pos
     instance_count = struct.unpack_from('<I', section_data, strings_end)[0]
     instances_start = strings_end + 4
-    instances_data = section_data[instances_start:instances_start + instance_count * V11_RECORD_SIZE]
+    # Variable-length walk over the existing records to find the true block end.
+    ipos = instances_start
+    for _ in range(instance_count):
+        if ipos + V11_RECORD_SIZE > len(section_data):
+            raise ValueError(
+                f'v0x11 0x05 instance block underrun: expected {instance_count} '
+                f'records, ran out of data after offset {ipos}')
+        flags = struct.unpack_from('<I', section_data, ipos + 52)[0]
+        ipos += V11_RECORD_SIZE + (16 if flags != 0 else 0)
+    # Preserve the entire original instance block (base + any flagged UniqueId tails)
+    # plus any trailing bytes exactly, so nothing existing is disturbed.
+    instances_data = section_data[instances_start:ipos]
+    tail_after_instances = section_data[ipos:]
 
     new_strings = list(existing_strings)
     new_instances = bytearray(instances_data)
@@ -530,6 +580,9 @@ def inject_into_0x05_v11(section_data, injections):
         out += s
     out += struct.pack('<I', new_instance_count)
     out += new_instances
+    # Any bytes after the instance block are not instance records; a correctly
+    # parsed v0x11 0x05 section has none (tail is b''). Preserve defensively.
+    out += tail_after_instances
     return bytes(out)
 
 

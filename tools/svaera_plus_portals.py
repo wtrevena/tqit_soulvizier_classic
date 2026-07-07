@@ -375,6 +375,7 @@ def main():
 
     # Inject into SVAERA levels (these will be patched blobs)
     ae_patched_blobs = {}  # ae_level_index -> patched blob
+    ae_injected_count = {}  # ae_level_index -> number of instances injected
     for lv_key, specs in ae_inject_keys.items():
         ae_idx = ae_by_name[lv_key]
         lv = ae_levels[ae_idx]
@@ -387,6 +388,7 @@ def main():
                 if s['type'] == 0x05:
                     secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
             ae_patched_blobs[ae_idx] = rebuild_blob(magic, secs)
+            ae_injected_count[ae_idx] = len(specs)
             print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x11)')
         else:
             print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
@@ -411,6 +413,14 @@ def main():
             print(f'  WARN: {lv_key} has unknown format v0x{blob_ver:02x}')
 
     # --- 7. Append 0x14 entries for injected instances (preserve originals) ---
+    # A 0x14 entry is keyed by its INSTANCE INDEX (the `idx` field), and the section is
+    # SPARSE: a shared AE level often has fewer 0x14 entries than 0x05 instances, with
+    # index gaps (only interactive objects carry per-instance metadata). So the append
+    # start index MUST be the ORIGINAL INSTANCE COUNT (indices of the newly injected
+    # instances = [orig_instance_count, new_count)), NOT the 0x14 entry COUNT. Using the
+    # entry count would re-emit indices that already exist in the sparse section,
+    # producing DUPLICATE 0x14 indices (a corrupt blob). The injected 0x05 records were
+    # appended AFTER all originals, so their instance indices are exactly this tail range.
     from build_section_surgery import count_0x05_instances, DEFAULT_0x14_PAYLOAD
     for ae_idx, patched_blob in ae_patched_blobs.items():
         secs, magic = parse_blob_sections(patched_blob)
@@ -422,26 +432,39 @@ def main():
                 break
         else:
             continue
+        n_injected = ae_injected_count.get(ae_idx, 0)
+        orig_instance_count = new_count - n_injected
         # Append new 0x14 entries for injected instances (keep original entries intact)
         new_secs = []
         for s in secs:
             if s['type'] == 0x14:
-                # Original 0x14 data covers existing instances; append entries for new ones
+                # Preserve the original (possibly sparse) 0x14 verbatim.
                 orig_data = bytearray(s['data'])
-                # Parse existing 0x14 to count entries
-                orig_entries = 0
+                # Collect existing indices so we can assert no collision with the appended ones.
+                existing_idx = set()
                 pos = 0
+                orig_entries = 0
                 while pos + 8 <= len(orig_data):
                     idx = struct.unpack_from('<I', orig_data, pos)[0]
                     psize = struct.unpack_from('<I', orig_data, pos + 4)[0]
+                    existing_idx.add(idx)
                     pos += 8 + psize
                     orig_entries += 1
-                # Append default entries for new instances (indices after original count)
-                for idx in range(orig_entries, new_count):
+                # Append a default entry for each newly injected instance index.
+                added = 0
+                for idx in range(orig_instance_count, new_count):
+                    if idx in existing_idx:
+                        raise ValueError(
+                            f'0x14 append collision: instance index {idx} already has a '
+                            f'0x14 entry (orig_instance_count={orig_instance_count}, '
+                            f'new_count={new_count}, n_injected={n_injected}). The 0x05 '
+                            f'injection accounting is wrong; refusing to corrupt the blob.')
                     orig_data += struct.pack('<II', idx, len(DEFAULT_0x14_PAYLOAD))
                     orig_data += DEFAULT_0x14_PAYLOAD
+                    added += 1
                 new_secs.append({'type': 0x14, 'data': bytes(orig_data)})
-                print(f'  0x14: kept {orig_entries} original + added {new_count - orig_entries} new entries')
+                print(f'  0x14: kept {orig_entries} original entries + added {added} new '
+                      f'(instance idx {orig_instance_count}..{new_count - 1})')
             else:
                 new_secs.append(s)
         ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
