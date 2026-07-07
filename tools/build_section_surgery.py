@@ -333,6 +333,49 @@ PORTAL_OLYMPIANARENA1_0x14 = bytes.fromhex(
     'dbc245c358434e0bb54760b234293cc5')  # dest_guid (== crypt_floor1 merged GUID)
 assert len(PORTAL_OLYMPIANARENA1_0x14) == 48
 
+# --- WORKSTREAM A: INVENTED Sparta Crypt L2 entrance (mirrors A1 exactly, pure-0x14) -------
+# SpartaCryptLevel2 never had an entrance in SV (SV-areas Wave 5 proved: zero inbound binders
+# in pristine SV either). Will's directive: INVENT one - place an entry portal inside the
+# base-game Athens-battlefield crypt (CataCube02_FloorLast, the DEEPEST Athens catacomb, an
+# exact thematic match for SpartaCryptLevel2's Athens-catacomb set) bound to SpartaCryptLevel2's
+# MERGED GUID, landing on-mesh, + a reciprocal RETURN portal inside SpartaCryptLevel2 back to
+# the crypt. Full recon + design: docs/SPARTA_CORRECTIONS_LOG.md.
+#
+# MECHANISM (the only cross-level portal BUILDABLE in map-tooling-only scope; proven by
+# survey_gridentrance.py + recon_gridpair.py): the A1 GridEntranceDynamic + GridExitOneWay
+# 48-byte-0x14 pair. NOT the static GridEntrance (blood-cave) pattern - that needs a reciprocal
+# 0x06 GridSystem descriptor on the destination (294/295 static entrances have it), and 0x06
+# GridSystem-pair authoring is not built in this project. The GridEntranceDynamic is opened by
+# the EXISTING bossarena.qst (Condition_OnLevelLoad -> Action_OpenDynGridEntrance by RECORD NAME
+# `portal_olympianarena1.dbr`), level-agnostic, so a SECOND instance of that record in ANY loaded
+# level is opened too and teleports via ITS OWN 0x14. => NO Quests.arc change, NO 0x06, NO new
+# records. Each instance's 0x14 mirrors A1: entrance = mouth+exit+dest(48B); landing = exit+zeros.
+#
+# HOST = CataCube02_FloorLast (v0x0f, corner (-6612,0,-3218), GUID 817574a8674093619ebf6581db63274c,
+#   real baked navmesh, 0 existing 0x14 = clean append; the v0f inject path is the proven A1 one).
+# DEST = SpartaCryptLevel2 (v0x0e SV-ONLY, corner (-5644,0,-1451), MERGED GUID
+#   797c78594040cba419340c990e6903c4, real navmesh since build23). SV-only -> inject_into_sv_only_blob,
+#   which now supports x14_payload appends (0x14 section already exists at size 0).
+#
+# MINTED map-unique UID pairs (collision-checked vs 157,524 known UIDs, plan_sparta_portals.py):
+SPARTA_M1 = bytes.fromhex('efbf54c99a6b2bc7b64f04cd0ce8d0db')  # inbound entrance mouth
+SPARTA_X1 = bytes.fromhex('d76121ad4419c6d4dcab9301e18f0dca')  # inbound exit (== inbound landing mouth)
+SPARTA_M2 = bytes.fromhex('e8d88f28dbfe1c3fa79ae1aacc435010')  # return entrance mouth
+SPARTA_X2 = bytes.fromhex('6babdaaf344cc5476258f8e7ce8925f3')  # return exit (== return landing mouth)
+SC2_MERGED_GUID = bytes.fromhex('797c78594040cba419340c990e6903c4')          # SpartaCryptLevel2
+CATACUBE_FLOORLAST_GUID = bytes.fromhex('817574a8674093619ebf6581db63274c')  # CataCube02_FloorLast
+PORTAL_OLYMPIANARENA2_DBR = b'records\\quests\\portal_olympianarena2.dbr'     # GridExitOneWay landing
+# P1 HOST entrance -> SC2 : mouth M1, exit X1 (pairs P2), dest = SC2 GUID
+SPARTA_P1_0x14 = SPARTA_M1 + SPARTA_X1 + SC2_MERGED_GUID
+# P2 SC2 landing (inbound) : mouth X1 (pairs P1.exit), + 32 zero bytes (GridExitOneWay shape)
+SPARTA_P2_0x14 = SPARTA_X1 + b'\x00' * 32
+# P3 SC2 entrance -> HOST (return) : mouth M2, exit X2 (pairs P4), dest = HOST GUID
+SPARTA_P3_0x14 = SPARTA_M2 + SPARTA_X2 + CATACUBE_FLOORLAST_GUID
+# P4 HOST landing (return) : mouth X2 (pairs P3.exit), + 32 zero bytes
+SPARTA_P4_0x14 = SPARTA_X2 + b'\x00' * 32
+for _p in (SPARTA_P1_0x14, SPARTA_P2_0x14, SPARTA_P3_0x14, SPARTA_P4_0x14):
+    assert len(_p) == 48
+
 # --- B1: smoke/dark-cloud occult atmosphere over the entrance area (Will's ask) -----------
 # SV dressed the cave-mouth "special area" (the Hades merchant = "the occultist") with an
 # occult FX/light scene the merge DROPPED. These are ALL Class EffectEntity / light /
@@ -448,7 +491,16 @@ INJECT_SPECS = {
     #     merchant never crosses them. IDENTITY rotation (SV uses identity). See
     #     docs/ENTRANCES_POLISH_LOG.md + tools/debug/plan_b_final.py.
     'levels/world/orient/silkroad/hiddenvalleyborder04.lvl': [
-        (MERCHANT_HADES_WAGON_DBR, 36.22654724121094, 1.6249699592590332, 26.539936065673828,
+        # B1/B2 CORRECTION (Will's build23 screenshot: the wagon sat ON TOP of the occultist
+        # merchant, 2.32u away = no clickable clearance). MOVED the wagon WEST to compose ONE
+        # coherent caravan scene with the (relocated) Horse02 + silkroad_villager1 driver, on
+        # the open bench west of the occult camp, clear of the merchant. New local (23.0,1.62,
+        # 20.0) = world (-111.0,-102.4,2322.0): 13.4u from the merchant (was 2.32u), on-mesh
+        # 0.14u, 4.2u from the moved horse (hitched in front), 7.1u from the pyre/pit (clear of
+        # the fire). Keeps the SV wagon yaw. The horse+villager are MOVED via MOVE_SPECS (they
+        # are native Border04 records) so the whole caravan travels together. See
+        # docs/SPARTA_CORRECTIONS_LOG.md B1/B2/B4 + tools/debug/plan_b_corrections.py.
+        (MERCHANT_HADES_WAGON_DBR, 23.00, 1.62, 20.00,
          {'rot': MERCHANT_HADES_WAGON_ROT}),
         # --- B1 occult atmosphere (SV Border04 exact local coords) ---
         (FOG_OCCULT_FX01_DBR, 26.641, 1.476, 24.831),
@@ -487,6 +539,28 @@ INJECT_SPECS = {
         (PORTAL_OLYMPIANARENA1_DBR, 290.70, 1.20, 152.50,
          {'x14_payload': PORTAL_OLYMPIANARENA1_0x14}),
     ],
+    # WORKSTREAM A: INVENTED Sparta Crypt L2 entrance (mirrors A1; see the SPARTA_* block above).
+    # HOST = CataCube02_FloorLast (SHARED v0x0f, the deepest Athens catacomb). Two instances:
+    #   P1 = portal_olympianarena1 (GridEntranceDynamic) -> SpartaCryptLevel2, near the
+    #        stairsdown (the descend-deeper landmark), on-mesh 0.14u openNbr 8/8, 6u standoff.
+    #   P4 = portal_olympianarena2 (GridExitOneWay) = the RETURN landing (from SC2), on-mesh,
+    #        8u standoff, 28u from P1. Both flags=0 IDENTITY rot; v0f 0x05 base-72 inject path;
+    #        both 0x14 bindings append at the injected instance indices (FloorLast 0x14 size 0).
+    'levels/world/greece/athens/underground/catacube02_floorlast.lvl': [
+        (PORTAL_OLYMPIANARENA1_DBR, 29.10, 1.20, 41.30, {'x14_payload': SPARTA_P1_0x14}),
+        (PORTAL_OLYMPIANARENA2_DBR, 39.70, 1.20, 67.50, {'x14_payload': SPARTA_P4_0x14}),
+    ],
+    # DEST = SpartaCryptLevel2 (SV-ONLY v0x0e). Two instances:
+    #   P2 = portal_olympianarena2 (GridExitOneWay) = the INBOUND landing (mouth == P1.exit),
+    #        on-mesh @ crypt centroid, 6u standoff.
+    #   P3 = portal_olympianarena1 (GridEntranceDynamic) -> HOST (the RETURN entrance), 8.1u
+    #        from P2 (arrival + return portal in the same chamber = a portal room), on-mesh.
+    # SV-only -> inject_into_sv_only_blob (v0e, 56-byte records) + the NEW x14_payload append
+    # (SpartaCryptLevel2 has a 0x14 section at size 0). flags=0 IDENTITY rot.
+    'levels/world/greece/minidungeons/spartacryptlevel2.lvl': [
+        (PORTAL_OLYMPIANARENA2_DBR, 48.90, -1.60, 34.70, {'x14_payload': SPARTA_P2_0x14}),
+        (PORTAL_OLYMPIANARENA1_DBR, 50.30, -1.60, 26.70, {'x14_payload': SPARTA_P3_0x14}),
+    ],
     # REMOVED (blood-cave walk-in): the surface-side portal NPC. The authentic SV
     # entry is engine-native - HiddenValley01's existing GridEntrance cave mouth
     # + its 0x14 GUID binding stream in the (blob-swapped) Random09A, whose west
@@ -521,6 +595,29 @@ INJECT_SPECS = {
     # um_bloodtoxeus_99 monster via the pool). Y local=3.0 matches every other proxy here.
     'levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl': [
         (Q_BLOODTOXEUS_LONE_DBR, 67.9, 3.0, 42.1, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+}
+
+# --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
+# The merge already places these records; move_0x05_instances rewrites ONLY their 12
+# position bytes (rotation/flags/string-index preserved), so the caravan scene composes
+# around the moved wagon without the wagon overlapping the occultist merchant.
+#   Format: level_key -> [ {dbr, x, y, z, match?, from_xyz?} ]  (coords are LEVEL-LOCAL)
+#   match defaults to 'all'; both targets below have exactly ONE instance in Border04
+#   (verified: Horse02 x1 @ local (34.45,1.62,19.85); silkroad_villager1 x1 @ (39.11,1.62,
+#   29.95)) so 'all' is unambiguous. New spots (tools/debug/plan_b_corrections.py):
+#     Horse02          -> (26.00,1.62,17.00) world (-108.0,-102.4,2319.0) [hitched in front
+#                          of the wagon, on-mesh 0.14u, 12.2u from merchant]
+#     silkroad_villager1 (driver) -> (25.50,1.62,22.50) world (-108.5,-102.4,2324.5) [by the
+#                          wagon, on-mesh 1.00u, 10.4u from merchant = clickable/functional]
+HORSE02_DBR = b'Records/Creature/Ambient/Horse02.dbr'
+SILKROAD_VILLAGER1_DBR = b'records\\creature\\npc\\speaking\\orient\\silkroad_villager1.dbr'
+MOVE_SPECS = {
+    'levels/world/orient/silkroad/hiddenvalleyborder04.lvl': [
+        {'dbr': HORSE02_DBR, 'x': 26.00, 'y': 1.62, 'z': 17.00,
+         'from_xyz': (34.445534, 1.620424, 19.845734)},
+        {'dbr': SILKROAD_VILLAGER1_DBR, 'x': 25.50, 'y': 1.62, 'z': 22.50,
+         'from_xyz': (39.108494, 1.619662, 29.949188)},
     ],
 }
 
@@ -689,12 +786,44 @@ def inject_into_0x05(section_data, injections):
 
 
 def inject_into_sv_only_blob(blob, injections, level_name):
-    """Inject objects into an SV-only level blob by modifying its 0x05 section."""
+    """Inject objects into an SV-only level blob by modifying its 0x05 section, and
+    (NEW) append per-instance 0x14 bindings for any spec that carries an x14_payload.
+
+    0x14 support (needed for the Sparta Crypt L2 entrance's GridExitOneWay landing +
+    GridEntranceDynamic return portal, which live in the SV-only SpartaCryptLevel2 and
+    each need a 48-byte 0x14 binding - the A1 machinery, now for an SV-only level):
+      * A 0x14 entry is keyed by INSTANCE INDEX. The injected instances occupy the tail
+        [orig_instance_count, new_instance_count) in spec order, so a spec's binding is
+        keyed by (orig_instance_count + spec_index) - IDENTICAL accounting to the shared-
+        level step-7 append in svaera_plus_portals.
+      * The 0x14 section is preserved verbatim and only APPENDED to; a hard collision
+        assert guards against index mis-accounting. If the blob has NO 0x14 section but a
+        spec wants one, a fresh 0x14 section is created (SpartaCryptLevel2 already has an
+        empty 0x14 section, so this is a defensive fallback, matching maze03's empty-0x14).
+      * Backward-compatible: specs without x14_payload (the Hemorrheus proxy, widow trio,
+        finalletter) append NO 0x14 entry, so existing SV-only injections are unchanged.
+    """
     secs, magic = parse_blob_sections(blob)
     if not secs:
         return blob
 
+    # Count original 0x05 instances BEFORE injection (for 0x14 index accounting).
+    orig_instance_count = 0
+    for s in secs:
+        if s['type'] == 0x05:
+            orig_instance_count = count_0x05_instances(s['data'])
+            break
+
+    # Decide which injected instances want a 0x14 entry (tail index + payload).
+    want_idx = []  # list of (instance_index, payload_bytes)
+    for j, spec in enumerate(injections):
+        _, _, _, _, _flags, _uid, wants_0x14, _rot, x14pl = _normalize_spec(spec)
+        if wants_0x14:
+            want_idx.append((orig_instance_count + j,
+                             x14pl if x14pl is not None else DEFAULT_0x14_PAYLOAD))
+
     modified = False
+    has_0x14 = any(s['type'] == 0x14 for s in secs)
     new_secs = []
     for s in secs:
         if s['type'] == 0x05 and injections:
@@ -702,12 +831,59 @@ def inject_into_sv_only_blob(blob, injections, level_name):
             new_secs.append({'type': 0x05, 'data': new_data})
             modified = True
             print(f'    Injected {len(injections)} object(s) into SV-only {level_name}')
+        elif s['type'] == 0x14 and want_idx:
+            merged = _append_0x14_entries(s['data'], want_idx, level_name)
+            new_secs.append({'type': 0x14, 'data': merged})
+            modified = True
         else:
             new_secs.append(s)
+
+    # If a 0x14 was requested but the blob had no 0x14 section, create one now.
+    if want_idx and not has_0x14:
+        created = _append_0x14_entries(b'', want_idx, level_name)
+        # Insert 0x14 right after 0x05 (its canonical neighbour), else append.
+        insert_at = len(new_secs)
+        for i, s in enumerate(new_secs):
+            if s['type'] == 0x05:
+                insert_at = i + 1
+                break
+        new_secs.insert(insert_at, {'type': 0x14, 'data': created})
+        modified = True
+        print(f'    Created 0x14 section in SV-only {level_name} '
+              f'({len(want_idx)} binding(s))')
 
     if modified:
         return rebuild_blob(magic, new_secs)
     return blob
+
+
+def _append_0x14_entries(orig_0x14_data, want_idx, level_name):
+    """Append (index, payload) entries to an existing 0x14 section body, VERBATIM +
+    append-only, with a hard collision assert (mirrors svaera_plus_portals step-7).
+
+    orig_0x14_data may be b'' (create a fresh section). Each 0x14 record is
+    index(4) + payload_size(4) + payload.
+    """
+    orig = bytearray(orig_0x14_data)
+    existing_idx = set()
+    pos = 0
+    while pos + 8 <= len(orig):
+        idx = struct.unpack_from('<I', orig, pos)[0]
+        psz = struct.unpack_from('<I', orig, pos + 4)[0]
+        existing_idx.add(idx)
+        pos += 8 + psz
+    for idx, payload in want_idx:
+        if idx in existing_idx:
+            raise ValueError(
+                f'0x14 append collision in SV-only {level_name}: instance index {idx} '
+                f'already has a 0x14 entry. The 0x05 injection accounting is wrong; '
+                f'refusing to corrupt the blob.')
+        orig += struct.pack('<II', idx, len(payload))
+        orig += payload
+        existing_idx.add(idx)
+    print(f'    0x14: appended {len(want_idx)} binding(s) to SV-only {level_name} '
+          f'(instance idx {[i for i, _ in want_idx]})')
+    return bytes(orig)
 
 
 V0E_RECORD_SIZE = 56
@@ -1022,6 +1198,94 @@ def inject_into_0x05_v11(section_data, injections):
     # parsed v0x11 0x05 section has none (tail is b''). Preserve defensively.
     out += tail_after_instances
     return bytes(out)
+
+
+def move_0x05_instances(section_data, moves, base_size, level_name=''):
+    """Rewrite the POSITION (x,y,z) of EXISTING instances in a 0x05 section IN PLACE.
+
+    Used to reposition NATIVE records the merge already placed (e.g. moving the
+    HiddenValleyBorder04 Horse02 + silkroad_villager1 so the caravan scene composes
+    around the moved wagon without the wagon overlapping the occultist merchant). Only
+    the 12 position bytes (at record offset +40) are overwritten; string_index, rotation,
+    flags, UniqueId tail, and the v11 zero pad are all preserved byte-for-byte, so the
+    record's shape and every other field are untouched. This is a surgical, bounded edit
+    (no append, no reindex) - the safest way to move an existing instance.
+
+    moves: list of dicts {dbr: bytes, x, y, z, nth (optional, default match ALL instances
+    of that dbr), match (optional 'all'|'first'|int index-among-that-dbr)}. To disambiguate
+    when a level places the same record several times, pass match=<k> to move only the k-th
+    (0-based) instance of that dbr, or the exact current (x,y,z) via 'from_xyz' to target one.
+
+    A hard assert fires if a move matches ZERO instances (so a typo cannot silently no-op).
+    base_size = 56 (v0e) or 72 (v11); records are walked flag-aware (+16 if flags@+52 != 0).
+    Returns the modified section bytes.
+    """
+    if not moves:
+        return section_data
+
+    pos = 0
+    string_count = struct.unpack_from('<I', section_data, pos)[0]
+    pos += 4
+    strings = []
+    for _ in range(string_count):
+        slen = struct.unpack_from('<I', section_data, pos)[0]
+        pos += 4
+        strings.append(section_data[pos:pos + slen])
+        pos += slen
+    strings_end = pos
+    instance_count = struct.unpack_from('<I', section_data, strings_end)[0]
+    instances_start = strings_end + 4
+
+    # normalize moves -> {str_idx: [ (matcher, x,y,z) ]}
+    norm = []
+    for mv in moves:
+        dbr = mv['dbr']
+        if dbr not in strings:
+            raise ValueError(f'move target dbr not present in {level_name} 0x05 string '
+                             f'table: {dbr!r}')
+        sidx = strings.index(dbr)
+        norm.append(dict(sidx=sidx, x=float(mv['x']), y=float(mv['y']), z=float(mv['z']),
+                         match=mv.get('match', 'all'), from_xyz=mv.get('from_xyz'),
+                         dbr=dbr, hits=0))
+
+    buf = bytearray(section_data)
+    ipos = instances_start
+    per_dbr_seen = {}
+    for _ in range(instance_count):
+        if ipos + base_size > len(buf):
+            raise ValueError(f'0x05 instance underrun while moving in {level_name}')
+        rec_sidx = struct.unpack_from('<I', buf, ipos)[0]
+        cx, cy, cz = struct.unpack_from('<3f', buf, ipos + 40)
+        flags = struct.unpack_from('<I', buf, ipos + 52)[0]
+        rec_size = base_size + (16 if flags != 0 else 0)
+        k = per_dbr_seen.get(rec_sidx, 0)
+        for m in norm:
+            if m['sidx'] != rec_sidx:
+                continue
+            take = False
+            if m['from_xyz'] is not None:
+                fx, fy, fz = m['from_xyz']
+                take = (abs(cx - fx) < 0.5 and abs(cy - fy) < 0.5 and abs(cz - fz) < 0.5)
+            elif m['match'] == 'all':
+                take = True
+            elif m['match'] == 'first':
+                take = (k == 0)
+            elif isinstance(m['match'], int):
+                take = (k == m['match'])
+            if take:
+                struct.pack_into('<3f', buf, ipos + 40, m['x'], m['y'], m['z'])
+                m['hits'] += 1
+        per_dbr_seen[rec_sidx] = k + 1
+        ipos += rec_size
+
+    for m in norm:
+        if m['hits'] == 0:
+            raise ValueError(f'move matched ZERO instances in {level_name} for '
+                             f'{m["dbr"]!r} (match={m["match"]}, from_xyz={m["from_xyz"]}) '
+                             f'- refusing to silently no-op')
+        print(f'    Moved {m["hits"]} instance(s) of {m["dbr"].decode("ascii","replace")} '
+              f'in {level_name} -> ({m["x"]:.2f},{m["y"]:.2f},{m["z"]:.2f})')
+    return bytes(buf)
 
 
 def count_0x05_instances(data):
