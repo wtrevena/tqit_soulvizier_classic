@@ -77,6 +77,34 @@ BLOODCAVE_INTERIOR_QUEST = 'open_bloodcave_portal.qst'
 # The lost-terrain NPC that marks the trigger to neutralize.
 BLOODCAVE_LOST_NPC = r'records\creature\npc\speaking\greece\starting_storyteller.dbr'
 
+# ── Widow-letter static-placement de-duplication ─────────────────────────────
+# BUG: the widow letter never appears for existing characters. finalletter is
+# QUEST-SPAWNED (widowletter.qst step 0 "Letter Control" trigger "Spawn Letter":
+# Condition_OnLevelLoad + NOT OwnsToken(SQWL_PickedUpLetter) ->
+# Action_SpawnEntityAtLocation(finalletter, location_letterdrop)), and the quest is
+# never tracked for a character that predates it (docs/LETTER_SPAWN_DIAGNOSIS.md), so
+# the spawn never fires. The robust, character-independent fix is to place finalletter
+# as a STATIC 0x05 world entity at the location_letterdrop spot in
+# drxFirstxistion_connection (via INJECT_SPECS), so the letter is physically present to
+# pick up for ALL characters regardless of quest tracking.
+#
+# DUPLICATE-PREVENTION (brief C2): with the static letter always present, a character
+# that DOES track the quest would otherwise see BOTH the static letter AND the
+# quest-spawned one. To guarantee exactly ONE letter ever exists per character, we
+# NEUTRALIZE the quest's own "Spawn Letter" action here (a byte-exact qst edit): the
+# trigger keeps its conditions but drops the Action_SpawnEntityAtLocation, so the quest
+# never spawns a second letter. The "Stop Letter Spawning" trigger
+# (Condition_PickupItem(finalletter) -> BestowTriggerToken(SQWL_PickedUpLetter)) is left
+# byte-identical, so picking up the STATIC letter still grants the token and advances the
+# questline for tracking characters (Condition_PickupItem keys on the item RECORD, not on
+# how the item entered the world). Net: static letter is the single instance the pickup
+# condition keys on; the quest spawn is removed so no duplicate can exist.
+WIDOWLETTER_QUEST = 'widowletter.qst'
+# The two records that jointly + uniquely identify the letter-spawn action (the chest
+# spawn uses location_treasurechest; the blocker uses blockersquirrel).
+WIDOWLETTER_SPAWN_ENTITY = r'records\drxmap\quest\finalletter.dbr'
+WIDOWLETTER_SPAWN_LOCATION = r'records\drxmap\quest\location_letterdrop.dbr'
+
 
 def _make_combined_portal_quest() -> bytes:
     """Build a single quest with all portal triggers in each step."""
@@ -206,16 +234,146 @@ def _neutralize_bloodcave_entry_step(data: bytes) -> bytes:
     return out
 
 
+def _neutralize_widowletter_spawn(data: bytes) -> bytes:
+    """Remove ONLY the finalletter->location_letterdrop spawn action from widowletter.qst.
+
+    The letter is placed statically in the world (INJECT_SPECS); this drops the quest's
+    duplicate spawn so exactly one letter can ever exist. Finds the single trigger whose
+    ACTIONS block contains an Action_SpawnEntityAtLocation with BOTH
+    WIDOWLETTER_SPAWN_ENTITY and WIDOWLETTER_SPAWN_LOCATION (uniquely the "Spawn Letter"
+    trigger; the chest/blocker spawns use location_treasurechest), and empties that ONE
+    Action_SpawnEntityAtLocation from the actions block: decrement actionCount by 1 and
+    drop the matching (actionClassName field, action-fields block) pair. The trigger keeps
+    its conditions; every OTHER trigger/step/action is byte-identical.
+
+    A trigger's ACTIONS block is a flat sequence:
+      [ ('field','actionCount',...),
+        ('field','actionClassName',...), ('block', <action fields>),   # repeated
+        ... ]
+    We do not touch trigger/step counts (the trigger still exists, action-less), matching
+    the always-present zero-action sentinel-trigger shape.
+    """
+    ent = WIDOWLETTER_SPAWN_ENTITY.replace('\\', '/').lower()
+    loc = WIDOWLETTER_SPAWN_LOCATION.replace('\\', '/').lower()
+
+    def str_fields(items):
+        out = set()
+        for it in items:
+            if it[0] == 'block':
+                out |= str_fields(it[1])
+            elif it[0] == 'field' and it[2][0] == 'str':
+                out.add(it[2][1].replace('\\', '/').lower())
+        return out
+
+    def block_positions(items):
+        return [i for i, it in enumerate(items) if it[0] == 'block']
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    step_triples = [block_positions(steps_container)[i:i + 3]
+                    for i in range(0, len(block_positions(steps_container)), 3)]
+
+    removed = 0
+    for stepdef_pos, trigcont_pos, sentinel_pos in step_triples:
+        trigcont = steps_container[trigcont_pos][1]
+        tg = [block_positions(trigcont)[i:i + 3]
+              for i in range(0, len(block_positions(trigcont)), 3)]
+        for (hpos, cpos, apos) in tg:
+            actions_block = trigcont[apos][1]  # list of items in the actions block
+            # walk the actions block: find an Action_SpawnEntityAtLocation classname field
+            # immediately followed by a fields block that references BOTH the letter entity
+            # and the letterdrop location.
+            new_items = []
+            i = 0
+            dropped_here = 0
+            while i < len(actions_block):
+                it = actions_block[i]
+                is_spawn = (it[0] == 'field' and it[1] == 'actionClassName'
+                            and it[2][0] == 'str'
+                            and it[2][1] == 'Action_SpawnEntityAtLocation')
+                if is_spawn and i + 1 < len(actions_block) and actions_block[i + 1][0] == 'block':
+                    fld = str_fields(actions_block[i + 1][1])
+                    if ent in fld and loc in fld:
+                        # drop this classname field + its fields block
+                        i += 2
+                        dropped_here += 1
+                        removed += 1
+                        continue
+                new_items.append(it)
+                i += 1
+            if dropped_here:
+                # decrement actionCount by the number dropped
+                for idx, it in enumerate(new_items):
+                    if it[0] == 'field' and it[1] == 'actionCount':
+                        old = it[2][1]
+                        new_items[idx] = ('field', 'actionCount', ('int', old - dropped_here))
+                        break
+                new_trigcont = list(trigcont)
+                new_trigcont[apos] = ('block', new_items)
+                steps_container[trigcont_pos] = ('block', new_trigcont)
+                # refresh local ref for any subsequent triggers in the same container
+                trigcont = new_trigcont
+
+    if removed != 1:
+        raise ValueError(
+            f'{WIDOWLETTER_QUEST}: expected exactly 1 Action_SpawnEntityAtLocation '
+            f'spawning {WIDOWLETTER_SPAWN_ENTITY} at {WIDOWLETTER_SPAWN_LOCATION}, '
+            f'found {removed}. Upstream changed; review before shipping.')
+
+    out = qst_format.serialize(tree)
+    # sanity: the letter-spawn action must be gone (no actions block references BOTH refs),
+    # the file must round-trip stably, and finalletter must still be referenced elsewhere
+    # (the Condition_PickupItem / RemoveItemFromInventory refs stay).
+    reparsed = qst_format.parse(out)
+
+    def any_spawn_letter(container):
+        sc = container[1]
+        for sd, tc, sn in [block_positions(sc)[i:i + 3]
+                           for i in range(0, len(block_positions(sc)), 3)]:
+            tcb = sc[tc][1]
+            tgg = [block_positions(tcb)[i:i + 3]
+                   for i in range(0, len(block_positions(tcb)), 3)]
+            for (h, c, a) in tgg:
+                items = sc[tc][1][a][1]
+                j = 0
+                while j < len(items):
+                    it = items[j]
+                    if (it[0] == 'field' and it[1] == 'actionClassName'
+                            and it[2][0] == 'str'
+                            and it[2][1] == 'Action_SpawnEntityAtLocation'
+                            and j + 1 < len(items) and items[j + 1][0] == 'block'):
+                        fld = str_fields(items[j + 1][1])
+                        if ent in fld and loc in fld:
+                            return True
+                    j += 1
+        return False
+
+    if any_spawn_letter(reparsed[1]):
+        raise ValueError('widowletter neutralization failed: letter spawn still present')
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError('neutralized widowletter does not round-trip stably')
+    if ent not in str_fields([b for blk in reparsed for b in blk]):
+        raise ValueError('widowletter neutralization removed finalletter entirely; '
+                         'the pickup condition must still reference it')
+    return out
+
+
 def _build_area_quests() -> dict:
     """Return {archive_basename: qst_bytes} for the SV area questlines to add."""
     arc = _open_upstream_arc()
     out = {}
 
-    # Byte-exact ports (all referenced records/tags resolve).
+    # Byte-exact ports (all referenced records/tags resolve), EXCEPT widowletter.qst,
+    # whose duplicate letter spawn is neutralized (the letter is placed statically via
+    # INJECT_SPECS, so the quest must not spawn a second one). See
+    # _neutralize_widowletter_spawn.
     for name in PORT_QUESTS:
         data = _upstream_quest_bytes(arc, name)
         _assert_roundtrip(name, data)
-        out[name] = data
+        if name == WIDOWLETTER_QUEST:
+            out[name] = _neutralize_widowletter_spawn(data)
+        else:
+            out[name] = data
 
     # Blood cave interior: byte-exact except the single lost-NPC entry trigger.
     bc = _upstream_quest_bytes(arc, BLOODCAVE_INTERIOR_QUEST)

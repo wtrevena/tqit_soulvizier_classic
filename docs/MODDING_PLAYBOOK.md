@@ -499,11 +499,11 @@ builders are the `make_*` helpers (line 596+).
 
 ### 6a. Port an existing upstream questline (the cheap path)
 
-If the map's QUESTS section already registers the quest name AND the level blobs
-already place the trigger volumes/proxies/doors, then adding the questline is a
-Quests.arc-ONLY change (NO map rebuild). This is how `urder`, `widowletter`,
-`bossarena`, `open_bloodcave_portal` were integrated
-(`tools/build_quest_files.py:53-75`):
+If the map's QUESTS section already registers the quest name **at an index the engine
+LOADS** (see the load-window rule below) AND the level blobs already place the trigger
+volumes/proxies/doors, then adding the questline is a Quests.arc-ONLY change (NO map
+rebuild). This is how `urder`, `widowletter`, `bossarena`, `open_bloodcave_portal` were
+integrated (`tools/build_quest_files.py:53-75`):
 
 1. Copy the upstream `.qst` byte-for-byte from
    `upstream/soulvizier_098i/Resources/XPack/Quests.arc` into the mod's `Quests.arc`
@@ -514,6 +514,28 @@ Quests.arc-ONLY change (NO map rebuild). This is how `urder`, `widowletter`,
    restore the record or surgically neutralize just that trigger (6c).
 3. Rebuild `Quests.arc` (the DB/text/quests build; Section 9). Byte-scan the built qst
    for expected coords/refs as a cheap verification.
+
+> 🚨 THE QUESTS LOAD-WINDOW RULE (cost a repeat bug - "widow letter STILL missing").
+> Merely having the quest NAME somewhere in the world's QUESTS(0x1b) list is NOT enough:
+> **the engine only loads a QUESTS entry that sits within the first ~256 registered
+> entries** (vanilla TQAE registers exactly 256 and all load; SVAERA registers 254). An
+> entry APPENDED past that window NEVER loads for ANY character - the quest never tracks,
+> its `OnLevelLoad` triggers never fire, no letter/chest/reward. This is empirically proven
+> (docs/QUEST_STATE_INJECT.md sec 2: 53 appended entries produced zero state across 5
+> custom-quest chars + vanilla saves). The prior build appended the 4 SV quests at idx
+> 254-257 (widowletter at 256) and they were dead. THE FIX (build22): rebuild the QUESTS
+> section so ported quests sit at a LOW index inside the window, via
+> `tools/svaera_plus_portals.py build_ordered_quest_list` (a MAP rebuild). It: inserts the
+> primary `Quests/<name>.qst` forms right after `Quests/sv_commonmechanics.qst` (idx 96),
+> drops redundant native re-registrations (identity-duplicates like the 3x
+> `x2quest_controlsdoors.qst`) to make room, and drops the appended `XPack/Quests/*`
+> dup+dead tail (every identity is preserved by a native `Quests/` twin - the engine keys
+> identity on the folder-stripped BASENAME: `md5(quests\<basename>.qst)`). Keep the final
+> list <= 256 and keep the idx 254-255 tail == vanilla's (`x4_other_002_hcdungeon_control`
+> + `x2_StartQuest`) so nothing a player needs shifts out of the window. Verify with the
+> C5 gate (`tools/debug/gate_c5_regression.py`): 4 SV quests at idx < 254, no native lost
+> from idx < 256, total <= 256. So porting an upstream questline whose name is ONLY in the
+> appended tail DOES require a map rebuild to relocate it into the window.
 
 ### 6b. Author a new quest
 

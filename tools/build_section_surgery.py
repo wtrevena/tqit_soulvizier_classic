@@ -190,6 +190,81 @@ WIDOW_LING_ROT = (0.40753135085105896, 0.0, -0.9131911993026733,
                   0.0, 1.0, 0.0,
                   0.9131911993026733, 0.0, 0.40753135085105896)
 
+# --- FUNCTIONAL Super-Caravan at the blood-cave cave mouth (BUG 1, repeat report) --------
+# Will still sees no usable caravan on build21. The build19 restoration placed the SV Hades
+# merchant WAGON (merchant_hades_merchantwagon01, Class=Decoration) at HiddenValleyBorder04
+# - a DECORATIVE, non-interactive prop off at the valley border. Will means the FUNCTIONAL
+# Super-Caravan (an NpcCaravan storage NPC he can USE) at the cave mouth. Diagnosis (parsed
+# from the deployed build21 map, tools/debug/diag_bugs.py + hunt_npccaravan.py):
+#   - the build19 wagon IS present in build21 (HiddenValleyBorder04 world (-97.8,-102.4,2328.5),
+#     Class=Decoration) - but it is not a caravan the player can interact with;
+#   - NO NpcCaravan exists anywhere near the cave mouth in build21;
+#   - the base game places 43 native NpcCaravan storage NPCs, ALL flags=0, non-identity rot;
+#     the Silk-Road-region one (records\xpack\creatures\npc\caravan\caravan_silkroad.dbr,
+#     Class=NpcCaravan, GrkCaravan01.msh) is natively placed in BaseCampForest02.lvl (the
+#     same Orient Silk Road region as HiddenValley01/the cave mouth) - the thematically
+#     native, byte-shape-proven exemplar to mirror.
+# So we place caravan_silkroad (a REAL, interactive Super-Caravan) at the HiddenValley01 cave
+# mouth, ~6u from the working Rebirth Fountain (verified on-mesh: world (-78.7,-104.4,2188.9)
+# = HV01-local (55.3,15.6,14.9) is 0.00u on the largest walkable component of HV01's real
+# 238KB navmesh, tools/debug/probe_hv01_walk.py; 6.04u from the fountain, clear of it). The
+# record byte-shape mirrors the native caravan_silkroad placement exactly: flags=0, NO
+# UniqueId, NO 0x14 entry (HV01 is v0x11 -> the record is 72 bytes; every native NpcCaravan
+# is flags=0). Rotation = caravan_silkroad's own SV-native facing (from BaseCampForest02's
+# 0x05 bytes) so the injected record is byte-shape identical to a real working caravan.
+# The border wagon is KEPT (it is SV-faithful cave-mouth dressing that SV itself placed at
+# HiddenValleyBorder04; it does not conflict with the functional caravan ~150u away).
+#
+# DESIGN NOTE (conscious substitution, not a byte-faithful SV restore): SV 0.98i also ships
+# `caravan_rhodes.dbr` (verified in the built arz: Class=NpcCaravan, mesh GrkCaravan01.msh -
+# the SAME cart mesh as caravan_silkroad), reached in SV via a dedicated
+# `Levels/World/Olympus/GardenofMerchants.lvl` merchant hub, NOT physically at the
+# HiddenValley01 cave mouth. We deliberately place base-game `caravan_silkroad` directly at
+# the cave mouth instead, because that matches Will's stated ask (a usable caravan AT the
+# cave mouth) and avoids rebuilding SV's separate Garden-of-Merchants hub/portal path. Both
+# resolve as Class=NpcCaravan (functionally identical Super-Caravan storage) and render the
+# same cart. If strict SV fidelity is ever wanted, the faithful route is caravan_rhodes in a
+# restored GardenofMerchants hub (a much larger, portal-based change). caravan_silkroad is
+# also thematically native to the Orient Silk Road region that HiddenValley01 sits in.
+CARAVAN_SILKROAD_DBR = b'records\\xpack\\creatures\\npc\\caravan\\caravan_silkroad.dbr'
+# Every native v0x11 NpcCaravan carries a 12-byte 0x14 metadata entry with this exact
+# payload (<III> 2,0,1) - surveyed 31/32 native NpcCaravan placements
+# (tools/debug/survey_caravan_0x14.py). To byte-mirror a real working caravan, the
+# injected record must carry the SAME 12-byte 0x14 entry (NOT the generic 20-byte default).
+CARAVAN_SILKROAD_0x14 = struct.pack('<III', 2, 0, 1)  # 020000000000000001000000
+# caravan_silkroad's EXACT float32 rotation from its native BaseCampForest02 0x05 record
+# (yaw ~232deg), carried verbatim so the placed Super-Caravan's byte-shape matches the
+# proven native NpcCaravan placement's rotation too.
+CARAVAN_SILKROAD_ROT = (-0.6152916550636292, 0.0, 0.7882996201515198,
+                        0.0, 1.0, 0.0,
+                        -0.7882996201515198, 0.0, -0.6152916550636292)
+
+# --- Static Widow Letter at the letterdrop spot (BUG 2, repeat report) -------------------
+# Will still sees no widow letter on build21. finalletter is QUEST-SPAWNED
+# (widowletter.qst Action_SpawnEntityAtLocation on OnLevelLoad) and the quest is never
+# tracked for a character that predates it (docs/LETTER_SPAWN_DIAGNOSIS.md), so the spawn
+# never fires for his _Toxeus. Robust, character-independent fix: place finalletter as a
+# STATIC 0x05 world entity at the SAME spot the quest's location_letterdrop marker occupies
+# in drxFirstxistion_connection, so the letter is physically present to pick up for ALL
+# characters (existing, fresh, and his friend), no quest tracking required.
+#   - Coord = location_letterdrop's SV-LOCAL position (32.459,10.005,17.593) -> world
+#     (5691.5,1.0,3308.6). Re-verified ON the CURRENT build21 carved mesh: 0.10u from a
+#     walkable cell, in the largest walkable component (tools/debug/probe_hv01_walk.py).
+#     Placing it at the identical local coord as the QuestLocation means the static letter
+#     and (for tracking chars, if the spawn ever ran) the quest letter would coincide.
+#   - drxFirstxistion_connection is an SV-only v0x0e level -> the merge routes this through
+#     inject_into_sv_only_blob -> inject_into_0x05 (56-byte record). finalletter is
+#     ItemEquipment/Parchment (cannotPickUp=0), placed flags=0 like any ground item, NO
+#     0x14 (SV-only 0x0e items carry none). DisplayAsQuestItem=0 (no quest glyph - a small
+#     scroll to spot deliberately).
+#   - DUPLICATE PREVENTION: the quest's own "Spawn Letter" action is NEUTRALIZED in
+#     tools/build_quest_files.py (_neutralize_widowletter_spawn), so exactly ONE letter
+#     (this static one) can ever exist per character. The quest's Condition_PickupItem
+#     (finalletter) still fires on picking up the static letter (it keys on the item
+#     RECORD, not provenance), granting SQWL_PickedUpLetter so the questline still advances
+#     for characters that track it.
+FINALLETTER_DBR = b'records\\drxmap\\quest\\finalletter.dbr'
+
 # --- Hemorrheus (Blood Toxeus) superboss proxy (docs/BLOOD_TOXEUS_DESIGN.md sec 5) ------
 # The DB side (commit aa14564) built the Proxy record + its ProxyPool (with the
 # champion-add override) + the um_bloodtoxeus_99 monster, all resolving in the deployed
@@ -247,6 +322,18 @@ INJECT_SPECS = {
     'levels/world/orient/silkroad/hiddenvalley01.lvl': [
         (RESPAWNTEMPLEORIENT01_DBR, 49.26285934448242, 15.634109497070312, 14.949617385864258,
          {'flags': 1, 'uniqueid': RESPAWNTEMPLEORIENT01_UNIQUEID}),
+        # Functional Super-Caravan (NpcCaravan) at the cave mouth, ~6u E of the fountain,
+        # on-mesh (largest walkable component). flags=0, byte-shape = native caravan_silkroad
+        # (same rot + the same 12-byte 0x14 metadata entry every native NpcCaravan carries).
+        (CARAVAN_SILKROAD_DBR, 55.3, 15.6, 14.9,
+         {'rot': CARAVAN_SILKROAD_ROT, 'x14_payload': CARAVAN_SILKROAD_0x14}),
+    ],
+    # Static Widow Letter (BUG 2): finalletter placed at the location_letterdrop spot so it
+    # is physically present for ALL characters (the quest spawn is neutralized in
+    # build_quest_files.py to prevent a duplicate). SV-only v0x0e -> inject_into_0x05 (56 B),
+    # flags=0, no 0x14. Local = location_letterdrop's exact SV-local coord (on-mesh 0.10u).
+    'levels/world/xbloodcave/drxfirstxistion_connection.lvl': [
+        (FINALLETTER_DBR, 32.459, 10.005, 17.593),
     ],
     # The cave-mouth "caravan" (WAVE A): the Hades merchant wagon SV placed at the
     # blood-cave border. Dropped by the merge (absent build17+build18). Plain Decoration:
@@ -305,13 +392,14 @@ IDENTITY_ROT = (1.0, 0.0, 0.0,
 
 
 def _normalize_spec(spec):
-    """Normalize an injection spec into (dbr_bytes, x, y, z, flags, uniqueid, wants_0x14, rot).
+    """Normalize an injection spec into
+    (dbr_bytes, x, y, z, flags, uniqueid, wants_0x14, rot, x14_payload).
 
     Accepts a 4-tuple (dbr, x, y, z) or a 5-tuple (dbr, x, y, z, opts_dict). opts keys:
     'flags' (int, default 0), 'uniqueid' (16 raw bytes, default 16 zero bytes),
     'wants_0x14' (bool, default False), 'rot' (a 9-float flat row-major 3x3 rotation
-    matrix, default IDENTITY_ROT). Asserts hard on malformed opts so a bad spec can
-    never silently corrupt a blob.
+    matrix, default IDENTITY_ROT), 'x14_payload' (raw bytes, default None). Asserts hard
+    on malformed opts so a bad spec can never silently corrupt a blob.
 
     'rot' carries the entity's SV-original ORIENTATION so an injected record is byte-exact
     to SV's own placement (not just position-exact). SV orients some entities off-identity
@@ -319,6 +407,13 @@ def _normalize_spec(spec):
     identity there would face them the wrong way and risk clipping terrain/walls differently
     than SV authored. Pass the exact SV float32 values (full precision) so struct.pack
     reproduces SV's rotation bytes exactly.
+
+    'x14_payload' carries the EXACT per-instance 0x14 metadata bytes to append for this
+    instance (used when the native placement being mirrored carries a specific 0x14 entry
+    that is NOT the generic 20-byte default). Setting it implies wants_0x14=True. Example:
+    every native v0x11 NpcCaravan carries a 12-byte 0x14 payload (2,0,1) - to byte-mirror a
+    working caravan the injected record must carry that same 12-byte entry (not the 20-byte
+    default). When None, a wanting instance gets DEFAULT_0x14_PAYLOAD (20 bytes).
     """
     if len(spec) == 4:
         dbr, x, y, z = spec
@@ -333,7 +428,6 @@ def _normalize_spec(spec):
     uniqueid = opts.get('uniqueid', b'\x00' * 16)
     if not isinstance(uniqueid, (bytes, bytearray)) or len(uniqueid) != 16:
         raise ValueError(f'injection spec uniqueid must be exactly 16 bytes: {spec!r}')
-    wants_0x14 = bool(opts.get('wants_0x14', False))
     if flags == 0 and uniqueid != b'\x00' * 16:
         raise ValueError(
             f'injection spec sets a non-zero uniqueid but flags==0; the trailing UniqueId '
@@ -342,7 +436,15 @@ def _normalize_spec(spec):
     if len(rot) != 9:
         raise ValueError(f'injection spec rot must be exactly 9 floats (flat 3x3): {spec!r}')
     rot = tuple(float(v) for v in rot)
-    return bytes(dbr), float(x), float(y), float(z), flags, bytes(uniqueid), wants_0x14, rot
+    x14_payload = opts.get('x14_payload', None)
+    if x14_payload is not None:
+        if not isinstance(x14_payload, (bytes, bytearray)):
+            raise ValueError(f'injection spec x14_payload must be raw bytes: {spec!r}')
+        x14_payload = bytes(x14_payload)
+    # x14_payload implies wants_0x14; otherwise honor the explicit flag.
+    wants_0x14 = bool(opts.get('wants_0x14', False)) or (x14_payload is not None)
+    return (bytes(dbr), float(x), float(y), float(z), flags, bytes(uniqueid), wants_0x14,
+            rot, x14_payload)
 
 
 def _build_0x05_record(str_idx, x, y, z, flags, uniqueid, base_size, rot=IDENTITY_ROT):
@@ -422,7 +524,7 @@ def inject_into_0x05(section_data, injections):
     new_instance_count = instance_count
 
     for spec in injections:
-        dbr_bytes, x, y, z, flags, uniqueid, _wants14, rot = _normalize_spec(spec)
+        dbr_bytes, x, y, z, flags, uniqueid, _wants14, rot, _x14pl = _normalize_spec(spec)
         if dbr_bytes in new_strings:
             str_idx = new_strings.index(dbr_bytes)
         else:
@@ -753,7 +855,7 @@ def inject_into_0x05_v11(section_data, injections):
     new_instance_count = instance_count
 
     for spec in injections:
-        dbr_bytes, x, y, z, flags, uniqueid, _wants14, rot = _normalize_spec(spec)
+        dbr_bytes, x, y, z, flags, uniqueid, _wants14, rot, _x14pl = _normalize_spec(spec)
         if dbr_bytes in new_strings:
             str_idx = new_strings.index(dbr_bytes)
         else:

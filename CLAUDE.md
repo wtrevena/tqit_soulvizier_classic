@@ -26,7 +26,44 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ---
 
-## Current status (2026-07-05 night)
+## Current status (2026-07-07: build22 - QUESTS load-window fix)
+
+**WIDOW-LETTER + CARAVAN REPEAT-REPORT ROOT CAUSE FIXED (map-side QUESTS registry).** Will
+re-reported "widow letter STILL missing" and "caravan STILL missing" on build21. The letter
+half was a REAL, newly-diagnosed map defect (the caravan half was addressed in the prior wave
+by placing a functional NpcCaravan at the cave mouth). Root cause of the letter: the world
+QUESTS(0x1b) section appended the 4 SV area questlines (widowletter/urder/bossarena/
+open_bloodcave_portal) PAST index 254 (widowletter at 256), and the engine NEVER loads a
+QUESTS entry past the original ~254-256 window (empirically proven across 5 custom-quest chars
++ vanilla saves; docs/QUEST_STATE_INJECT.md sec 2). So the quest never tracked for ANY
+character (fresh OR existing) -> the letter's OnLevelLoad spawn never fired. build19b's slot
+tweak and quest_state_inject.py were both NO-OPs for this (the engine rebuilds Quest.myw from
+live objects on save).
+
+FIX (build22, `tools/svaera_plus_portals.py` `build_ordered_quest_list`, map-tooling only, no
+DLL/navmesh/donor change): rebuild the QUESTS section so the 4 SV quests sit INSIDE the load
+window - insert their primary `Quests/<name>.qst` forms right after `Quests/sv_commonmechanics.qst`
+(idx 96 -> they land at idx 97-100), drop the 2 redundant `x2quest_controlsdoors.qst` native
+re-registrations (identity kept via the first copy), and drop the entire ~46-entry appended
+`XPack/Quests/*` dup+dead tail (every identity preserved by a native twin or the relocated
+primary). Result: EXACTLY 256 entries (vanilla's proven-loading count), widowletter at idx 99,
+and idx 254-255 = `x4_other_002_hcdungeon_control.qst` + `x2_StartQuest.qst` = the SAME 2 quests
+at the SAME indices as VANILLA (byte parity at the boundary -> provably load; 0 native
+regression). Now Will's EXISTING `_Toxeus` auto-adopts widowletter on next load (the engine
+auto-adopts newly-loadable quests for existing chars), the STATIC finalletter (placed at the
+letterdrop spot in the prior wave via INJECT_SPECS) is picked up -> SQWL_PickedUpLetter granted
+-> the chest + widow + reward chain completes. Reward reachable for BOTH fresh and existing
+chars, no save surgery. Verified: gates C1-C5 PASS + verify_merged_bc_navmeshes 24/24 +
+entrance_landing --check-merged PASS; only 2 level blobs differ vs build21 (hiddenvalley01
+0x05+0x14 caravan, drxfirstxistion_connection 0x05 letter), all navmeshes byte-identical.
+`local/Levels_merged.arc` rebuilt (685,652,028 B). NOT yet deployed/committed.
+
+> ⚠️ DEPLOY COUPLING (must ship together): the single-letter guarantee needs BOTH artifacts -
+> the STATIC letter in `Levels_merged.arc` AND the widowletter.qst spawn-neutralization in
+> `Quests.arc` (`tools/build_quest_files.py` removes the quest's own `Action_SpawnEntityAtLocation`
+> so it cannot spawn a second letter). Deploying the new map WITHOUT rebuilding + staging the new
+> `Quests.arc` would, once the quest tracks, yield static + quest-spawned = 2 letters. Always run
+> `tools/build_quest_files.py` (or bootstrap) in the SAME deploy as the map.
 
 **INVISIBLE-WALL TRUE ROOT CAUSE FOUND (runtime-proven) + FIX DEPLOYED (build13).** After 9
 navmesh-content fixes all walled identically, Frida runtime probes (hook ProcessRLTD; walk the

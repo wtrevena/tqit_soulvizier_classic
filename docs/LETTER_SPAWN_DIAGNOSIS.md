@@ -1,5 +1,13 @@
 # Widow Letter no-show - SAVE-STATE DIAGNOSIS (Will's character `_Toxeus`)
 
+> ✅ RESOLVED 2026-07-07 (build22): the world-side QUESTS registration-slot defect this doc's
+> CORRECTION block identifies is FIXED. widowletter is now registered at QUESTS idx 99 (inside
+> the load window), so Will's existing `_Toxeus` auto-adopts it on next load, the STATIC
+> finalletter (placed at the letterdrop spot) is picked up, SQWL_PickedUpLetter is granted, and
+> the widow chain + reward complete. No fresh character, no save surgery. Fix lives in
+> `tools/svaera_plus_portals.py build_ordered_quest_list`; see CLAUDE.md "build22" + gate C3.
+
+
 > 🚨 2026-07-06 LATE-NIGHT CORRECTION (read this first): the same-night follow-up
 > investigation (`docs/QUEST_STATE_INJECT.md`) DISPROVED the per-character
 > adoption-freeze mechanism this doc concludes with. The OBSERVATIONS below

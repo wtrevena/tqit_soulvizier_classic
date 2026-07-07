@@ -266,95 +266,163 @@ def find_donor_0x0b(lv):
 # The world-file's QUESTS section is the ONLY quest registry the engine reads at
 # world-load (byte-verified 2026-07-06: NO parallel registry exists - no .wrl, no
 # second count field in SD/GROUPS/BITMAPS/DATA2; each entry = u32 len + path bytes,
-# no null terminator). Quest IDENTITY is 100% path-based (md5 of `quests\<name>.qst`
-# for the character save's Quest.myw + .que names; DBR path strings for level-entity
-# bindings), so the section's ORDER is engine-internal only and REORDERING/INSERTING
-# is provably safe for existing saves and every level's entity bindings.
+# no null terminator). Quest IDENTITY is 100% path-based: the engine strips each
+# registry path to its BASENAME and instantiates md5(`quests\<basename>.qst`)
+# (proven in docs/QUEST_STATE_INJECT.md sec 1.1 + confirmed here: identity(
+# `XPack/Quests/bossarena.qst`) == identity(`Quests/bossarena.qst`)). Level-entity
+# bindings use DBR path strings, NOT registry paths. So the section's ORDER is
+# engine-internal and REORDERING/INSERTING/DROPPING-a-duplicate is provably safe for
+# existing saves and every level's entity bindings, PROVIDED every distinct identity
+# that must load is still present at least once, at an index the engine loads.
 #
-# The 4 ported SV area questlines (widowletter / urder / bossarena /
-# open_bloodcave_portal) must sit at the LOWEST appended indices (right after the
-# SVAERA natives, ahead of all XPack-dup / dead junk) so they fall inside any
-# plausible engine load window. Their PRIMARY `Quests/<name>.qst` form is what the
-# engine instantiates (identity = md5(quests\<name>.qst), matching Quests.arc). We:
-#   1. keep ALL SVAERA natives byte-identical, in original order (indices 0..N-1),
-#      so no native quest can regress under any cap >= the SVAERA count;
-#   2. place the 4 primary `Quests/<name>.qst` forms FIRST in the appended block;
-#      3 already exist in SV's list, `Quests/bossarena.qst` does NOT (SV ships only
-#      `XPack/Quests/bossarena.qst`, which would hash to a DIFFERENT identity than
-#      the spec's `quests\bossarena.qst`), so we SYNTHESIZE the plain form;
-#   3. append every other SV-only entry (XPack dups etc.) after, order preserved;
-#   4. DROP the provably-dead entries whose .qst files exist nowhere
-#      (`ALL_CUSTOM_QUEST_NAMES` = uberdungeon/bloodcave _entrance/_return) - they
-#      only spam the engine's `QuestRepository: Invalid Quest File` path.
+# THE LOAD-WINDOW DEFECT (this is the fix for the "widow letter STILL missing" repeat
+# report). Empirically proven across 5 custom-quest chars + vanilla saves
+# (docs/QUEST_STATE_INJECT.md sec 2, docs/LETTER_SPAWN_DIAGNOSIS.md 2026-07-06
+# correction): the engine NEVER loads a QUESTS entry appended past the original
+# SVAERA count. The prior build APPENDED the 4 SV quests right after the 254 natives
+# -> widowletter landed at index 256 -> it never loaded for ANY character (fresh OR
+# existing), so the letter never spawned and the questline never tracked. Reference
+# counts: vanilla TQAE world01.map registers EXACTLY 256 quests and all 256 load;
+# SVAERA registers 254. So the safe, proven-loading window is the first <=256 entries.
+#
+# THE FIX: put the 4 SV quests at LOW indices INSIDE the native block and keep the
+# whole list <= 256 (vanilla's proven-loading length), so NOTHING a player needs ever
+# shifts past the window:
+#   1. Take the SVAERA natives in their exact original order, but DROP the 2 redundant
+#      `x2quest_controlsdoors.qst` re-registrations (SVAERA lists it 3x at idx
+#      159/196/199, all the SAME identity `quests\x2quest_controlsdoors.qst`; one copy
+#      is enough - dropping 2 loses ZERO identity). 254 -> 252 natives.
+#   2. INSERT the 4 primary `Quests/<name>.qst` forms immediately AFTER
+#      `Quests/sv_commonmechanics.qst` (native idx 96) -> they sit at idx ~97..100,
+#      deep inside the load window. `Quests/bossarena.qst` is SYNTHESIZED (SV ships
+#      only `XPack/Quests/bossarena.qst`; same identity but we emit the `Quests/` form
+#      to mirror how the mod Quests.arc + the other 3 are stored). 252 -> 256 entries.
+#   3. DROP the entire ~46-entry appended `XPack/Quests/*` tail: every one is either a
+#      dup-of-native (same identity as a native `Quests/` twin), a dup-of-primary
+#      (`XPack/Quests/{widowletter,urder,bossarena,open_bloodcave_portal}.qst`), or a
+#      dead file (`imhotepfix`, `typhonportal` - exist nowhere). Dropping the tail
+#      loses ZERO distinct identity: each identity is preserved by a native twin (1)
+#      or by the relocated primary form (2).
+# Net: exactly 256 entries, indices 0..255, the 4 SV quests at ~97..100 inside the
+# proven window; every SVAERA native identity preserved; no player-facing quest can
+# regress. Will's EXISTING _Toxeus now auto-adopts widowletter on next load (the
+# engine auto-adopts newly-loadable quests for existing chars, proven in
+# QUEST_STATE_INJECT.md sec 2) and step 0 fires -> the static letter is already there,
+# pickup grants SQWL_PickedUpLetter, and the chain can complete. No save surgery.
 FOUR_PRIMARY_QUEST_FORMS = [
     b'Quests/open_bloodcave_portal.qst',
     b'Quests/urder.qst',
     b'Quests/widowletter.qst',
     b'Quests/bossarena.qst',
 ]
+# The redundant native re-registrations to drop (identity-duplicates within the 254
+# SVAERA natives). Keyed by BASENAME; we keep the FIRST occurrence, drop later ones.
+# `x2quest_controlsdoors.qst` is registered 3x (idx 159/196/199) differing only in
+# case/folder - all hash to `quests\x2quest_controlsdoors.qst`. Dropping the 2 extra
+# copies frees 2 slots to keep the list at 256 after inserting the 4 SV quests, with
+# ZERO identity lost. Verified 2026-07-07: this is the ONLY basename-duplicate group in
+# the 254 SVAERA natives (all other basenames are unique). The build fails loud (invariant
+# (v) below) if any duplicate identity survives, so a future SVAERA change that adds a new
+# duplicate group cannot silently ship a bad registry.
+NATIVE_REDUNDANT_BASENAMES = {'x2quest_controlsdoors.qst'}  # str, matches _quest_basename()
+# Insert the 4 SV quests immediately after this native (a stable, low anchor well
+# inside the load window). sv_commonmechanics is SV-added, present since char creation.
+QUEST_INSERT_ANCHOR = b'Quests/sv_commonmechanics.qst'
+
+
+def _quest_basename(entry):
+    """The identity basename of a QUESTS entry (folder stripped, lowercased)."""
+    return entry.decode('ascii', 'replace').replace('/', '\\').lower().split('\\')[-1]
 
 
 def build_ordered_quest_list(ae_quests, sv_quests):
-    """Return the merged QUESTS entry list (list[bytes]) in load-window-optimal order.
+    """Return the merged QUESTS entry list (list[bytes]) with the 4 SV questlines
+    placed INSIDE the engine's proven load window (first <=256 entries), not appended
+    past it. See the module comment above for the full rationale + proof.
 
     ae_quests / sv_quests are the parsed native-byte name lists (no length prefix).
-    Guarantees, all asserted by the caller's Z1 gate:
-      - the SVAERA natives are the exact same bytes in the exact same order at the
-        front (so ae-prefix byte-parity holds and no native regresses);
-      - the 4 FOUR_PRIMARY_QUEST_FORMS occupy the first 4 appended slots (indices
-        len(ae_quests) .. +3);
-      - a synthesized `Quests/bossarena.qst` is added iff no case-insensitive twin
-        already exists;
-      - the dead ALL_CUSTOM_QUEST_NAMES stubs are NOT appended.
+    Guarantees, all re-asserted by the caller's Z1 gate:
+      - every DISTINCT native identity (by basename) is still present, in the natives'
+        original relative order, minus only redundant re-registrations of an identity
+        that still appears earlier (NATIVE_REDUNDANT_BASENAMES);
+      - the 4 FOUR_PRIMARY_QUEST_FORMS are inserted right after QUEST_INSERT_ANCHOR, so
+        they load; a synthesized `Quests/bossarena.qst` is used since SV lacks it;
+      - the whole list is <= 256 entries (vanilla's proven-loading length), so no
+        surviving native shifts past the window;
+      - NO appended `XPack/Quests/*` dup tail and NO dead ALL_CUSTOM_QUEST_NAMES stub.
     """
-    # SV-only entries (case-insensitive), in SV's original order - same rule the
-    # legacy build used, so the appended set is otherwise unchanged.
-    ae_lower = set(q.lower() for q in ae_quests)
-    sv_only = [q for q in sv_quests if q.lower() not in ae_lower]
+    # (1) Natives in original order, dropping redundant re-registrations of an
+    # identity that already appeared (keep the first occurrence of each basename in
+    # NATIVE_REDUNDANT_BASENAMES; every other basename is kept as-is).
+    natives_deduped = []
+    seen_redundant = set()
+    for q in ae_quests:
+        b = _quest_basename(q)
+        if b in NATIVE_REDUNDANT_BASENAMES:
+            if b in seen_redundant:
+                continue  # drop this extra re-registration (identity kept via the first)
+            seen_redundant.add(b)
+        natives_deduped.append(q)
 
-    # The 4 primary forms, in intent order, added iff not already present anywhere.
+    # (2) The 4 primary forms, in intent order (unique among themselves).
     primary = []
+    primary_lower = set()
     for form in FOUR_PRIMARY_QUEST_FORMS:
-        if form.lower() not in {p.lower() for p in primary}:
+        if form.lower() not in primary_lower:
             primary.append(form)
+            primary_lower.add(form.lower())
 
-    # Everything else = sv_only MINUS any entry equal (case-insensitively) to a
-    # primary form (so a primary form is not duplicated when it already came from
-    # SV, e.g. open_bloodcave_portal/urder/widowletter), preserving SV order.
-    primary_lower = {p.lower() for p in primary}
-    rest = [q for q in sv_only if q.lower() not in primary_lower]
+    # Splice the 4 primary forms immediately AFTER the insert anchor within the
+    # deduped natives, so they sit at a low, in-window index.
+    anchor_idx = next((i for i, q in enumerate(natives_deduped)
+                       if q == QUEST_INSERT_ANCHOR), None)
+    assert anchor_idx is not None, \
+        f'insert anchor {QUEST_INSERT_ANCHOR!r} not found among SVAERA natives'
+    ordered = (natives_deduped[:anchor_idx + 1] + primary
+               + natives_deduped[anchor_idx + 1:])
 
-    # Drop the dead nonexistent stubs (uberdungeon/bloodcave _entrance/_return):
-    # they are NOT re-appended here (the legacy code appended them from
-    # ALL_CUSTOM_QUEST_NAMES; we intentionally omit them). Guard in case any snuck
-    # into SV's own list. ALL_CUSTOM_QUEST_NAMES holds str; compare lowercased.
+    # (3) The appended SV-only `XPack/Quests/*` tail + dead stubs are intentionally
+    # NOT carried over: every distinct identity there is already present (a native
+    # `Quests/` twin, or a relocated primary form). We assert that below.
+
+    # --- Hard invariants (fail loud rather than ship a bad registry) -------------
+    # (i) size stays within the proven-loading window.
+    assert len(ordered) <= 256, \
+        f'QUESTS list {len(ordered)} > 256 exceeds the proven vanilla load window'
+
+    # (ii) the 4 primary forms are inside the window and contiguous after the anchor.
+    for k, form in enumerate(primary):
+        assert ordered[anchor_idx + 1 + k] == form, \
+            f'primary form {form!r} not spliced at expected position'
+        assert anchor_idx + 1 + k < 256, \
+            f'primary form {form!r} at index {anchor_idx + 1 + k} outside load window'
+
+    # (iii) EVERY distinct native identity (basename) still appears at least once, at
+    # an index < 256. This is the anti-regression guarantee: dropping the redundant
+    # copies + the appended tail must not lose any quest a character could load.
+    ordered_basenames_in_window = {_quest_basename(q) for q in ordered[:256]}
+    for q in ae_quests:
+        b = _quest_basename(q)
+        assert b in ordered_basenames_in_window, \
+            f'native identity {b!r} lost from the load window - regression!'
+    # every distinct SV-only identity we intend to ship (the 4) is present too.
+    for form in primary:
+        assert _quest_basename(form) in ordered_basenames_in_window, \
+            f'SV quest identity {_quest_basename(form)!r} missing from the load window'
+
+    # (iv) no dead stub survived (uberdungeon/bloodcave _entrance/_return).
     dead_lower = {q.lower() for q in ALL_CUSTOM_QUEST_NAMES}
-    rest = [q for q in rest if q.decode('ascii', 'replace').lower() not in dead_lower]
+    for q in ordered:
+        assert q.decode('ascii', 'replace').lower() not in dead_lower, \
+            f'dead stub {q!r} must not be registered'
 
-    ordered = list(ae_quests) + primary + rest
+    # (v) the only basename that may appear more than once is a benign leftover we
+    # explicitly allow NONE of - after dedup every basename in the window is unique.
+    from collections import Counter
+    bn_counts = Counter(_quest_basename(q) for q in ordered)
+    dups = {b: c for b, c in bn_counts.items() if c > 1}
+    assert not dups, f'duplicate identities remain after dedup: {dups}'
 
-    # Hard invariants (fail loud rather than ship a bad registry). NOTE: SVAERA's
-    # native list itself contains benign case-insensitive duplicates (e.g. three
-    # `XPack2/quests/x2quest_controlsdoors.qst` at native idx 159/196/199, differing
-    # only in case) that ship + load fine, so we do NOT assert global uniqueness -
-    # only that (a) natives are byte-verbatim and (b) the APPENDED block introduces
-    # no NEW collision (with itself or with a native), which is what our reorder
-    # could plausibly get wrong.
-    assert ordered[:len(ae_quests)] == list(ae_quests), \
-        'native-prefix changed - QUESTS reorder must preserve SVAERA natives verbatim'
-    ap = ordered[len(ae_quests):len(ae_quests) + 4]
-    assert ap == primary, f'four primary forms not at lowest appended slots: {ap}'
-    native_lower = {q.lower() for q in ae_quests}
-    appended = primary + rest
-    seen_app = set()
-    for q in appended:
-        ql = q.lower()
-        # A primary form intentionally added when SV lacked it is fine; but the
-        # appended block must not repeat an entry (self-collision) nor duplicate a
-        # native (that would re-register something already in the map).
-        assert ql not in seen_app, f'appended QUESTS self-duplicate: {q!r}'
-        assert ql not in native_lower, f'appended entry duplicates a native: {q!r}'
-        seen_app.add(ql)
     return ordered
 
 
@@ -419,21 +487,22 @@ def main():
                     sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
     print(f'  Using SV SD: {len(sv_sd)} bytes')
 
-    # --- 4. QUESTS: natives + 4 SV questlines at lowest appended indices ---
-    # See build_ordered_quest_list: natives byte-identical + the 4 primary
-    # `Quests/<name>.qst` forms first in the appended block (synthesizing
-    # `Quests/bossarena.qst`) + the rest of SV, minus the dead nonexistent stubs.
-    # This lands the 4 SV questlines inside any plausible engine load window while
-    # keeping every SVAERA native quest at its exact original index (no regression).
+    # --- 4. QUESTS: 4 SV questlines spliced INSIDE the load window ---
+    # See build_ordered_quest_list: the 4 primary `Quests/<name>.qst` forms are
+    # inserted right after Quests/sv_commonmechanics.qst (native idx 96 -> they land
+    # at ~97..100, inside the proven <=256 load window), 2 redundant native
+    # re-registrations of x2quest_controlsdoors.qst are dropped to keep the list at
+    # 256, and the whole ~46-entry appended XPack/Quests/* dup+dead tail is dropped
+    # (every identity preserved by a native twin or the relocated primary form). This
+    # FIXES the "widow letter STILL missing" repeat report: widowletter was at index
+    # 256 (past the window, never loaded for ANY char); it now loads.
     merged_quests = build_ordered_quest_list(ae_quests, sv_quests)
     new_quests_data = build_quests(merged_quests)
-    _ae_lower = set(q.lower() for q in ae_quests)
-    _sv_only_ct = len([q for q in sv_quests if q.lower() not in _ae_lower])
-    _synth_boss = b'Quests/bossarena.qst' not in {q for q in sv_quests}
-    print(f'  Quests: {len(ae_quests)} natives + {_sv_only_ct} SV-only '
-          f'(4 primary forms hoisted to idx {len(ae_quests)}..{len(ae_quests)+3}'
-          f'{"; +synth Quests/bossarena.qst" if _synth_boss else ""}; '
-          f'dead stubs dropped) = {len(merged_quests)}')
+    _wl_idx = next((i for i, q in enumerate(merged_quests)
+                    if b'widowletter' in q.lower()), None)
+    print(f'  Quests: {len(ae_quests)} SVAERA natives -> {len(merged_quests)} entries '
+          f'(4 SV quests spliced in-window; widowletter now at idx {_wl_idx}; '
+          f'2 redundant natives + ~46 appended dup/dead entries dropped)')
 
     # --- 5. Load SV-only level blobs (will convert to v0x11 after NPC injection) ---
     print('\n=== Loading SV-only level blobs ===')
@@ -543,11 +612,12 @@ def main():
         # Injected instances occupy the tail [orig_instance_count, new_count) in spec order.
         # Decide per spec whether it wants a 0x14 entry.
         specs = ae_injected_specs.get(ae_idx, [])
-        want_idx = []
+        want_idx = []  # list of (instance_index, payload_bytes)
         for j, spec in enumerate(specs):
-            _, _, _, _, _flags, _uid, wants_0x14, _rot = _normalize_spec(spec)
+            _, _, _, _, _flags, _uid, wants_0x14, _rot, x14pl = _normalize_spec(spec)
             if wants_0x14:
-                want_idx.append(orig_instance_count + j)
+                want_idx.append((orig_instance_count + j,
+                                 x14pl if x14pl is not None else DEFAULT_0x14_PAYLOAD))
         new_secs = []
         for s in secs:
             if s['type'] == 0x14:
@@ -563,21 +633,22 @@ def main():
                     existing_idx.add(idx)
                     pos += 8 + psize
                     orig_entries += 1
-                # Append a default entry ONLY for injected instances that requested one.
+                # Append an entry ONLY for injected instances that requested one, using
+                # each spec's own payload (custom x14_payload, else the 20-byte default).
                 added = 0
-                for idx in want_idx:
+                for idx, payload in want_idx:
                     if idx in existing_idx:
                         raise ValueError(
                             f'0x14 append collision: instance index {idx} already has a '
                             f'0x14 entry (orig_instance_count={orig_instance_count}, '
                             f'new_count={new_count}, n_injected={n_injected}). The 0x05 '
                             f'injection accounting is wrong; refusing to corrupt the blob.')
-                    orig_data += struct.pack('<II', idx, len(DEFAULT_0x14_PAYLOAD))
-                    orig_data += DEFAULT_0x14_PAYLOAD
+                    orig_data += struct.pack('<II', idx, len(payload))
+                    orig_data += payload
                     added += 1
                 new_secs.append({'type': 0x14, 'data': bytes(orig_data)})
                 print(f'  0x14: kept {orig_entries} original entries + added {added} new '
-                      f'({"instance idx " + str(want_idx) if want_idx else "none - SV-faithful"})')
+                      f'({"instance idx " + str([i for i, _ in want_idx]) if want_idx else "none - SV-faithful"})')
             else:
                 new_secs.append(s)
         ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)

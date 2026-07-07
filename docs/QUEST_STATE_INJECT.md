@@ -1,3 +1,10 @@
+> ✅ RESOLVED 2026-07-07 (build22): the map-side fix this doc's section 3 prescribes is DONE.
+> `tools/svaera_plus_portals.py` `build_ordered_quest_list` now rebuilds the QUESTS section so
+> the 4 SV quests sit inside the load window (widowletter at idx 99, list = exactly 256 entries
+> = vanilla's proven-loading count; idx 254-255 match vanilla byte-for-byte). widowletter now
+> loads for fresh AND existing characters (auto-adoption). `quest_state_inject.py` is NOT needed
+> (and remains the NO-OP this doc proved). No save-side work required. See CLAUDE.md "build22".
+
 # QUEST SAVE-STATE: format spec, character copy, and why registration injection is a NO-OP
 
 > Companion to `docs/LETTER_SPAWN_DIAGNOSIS.md` (updated the same night with the
