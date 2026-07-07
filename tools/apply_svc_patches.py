@@ -2198,6 +2198,20 @@ def _create_dev_skeleton_souls(db):
             {'diff': 'l', 'itemLevel': 71, 'stats': {**common_skills, **_typed(l_stats)}},
         ]
 
+        # These Secret-Passage dev skeletons are intended soul-droppers. 17 of the
+        # 18 ship as monsterClassification=Quest in the base data; only z_~v~
+        # shipped as Champion, which the soul-drop gate rejects (non-Hero/Boss/
+        # Quest) - so its wired soul would leak a drop in BOTH release (66%) and
+        # testing (100%). Force Quest here so every dev skeleton is uniformly a
+        # gated, intended dropper. Only raises a non-gated class; never demotes a
+        # Boss/Hero (none here are).
+        _mc = db.get_field_value(record, 'monsterClassification')
+        if _mc not in ('Hero', 'Boss', 'Quest'):
+            db.set_field(record, 'monsterClassification', 'Quest', DATA_TYPE_STRING)
+            db._modified.add(record)
+            print(f"    dev skeleton {base_name}: promoted classification "
+                  f"{_mc!r} -> 'Quest' (soul-dropper gate)")
+
         _create_soul(db, base_name, tag, tiers, record, 66.0)
         total += 1
 
@@ -3136,6 +3150,22 @@ def _verify_graeae_wiring(db):
 
 # ── Task 7: Place orphan monsters in pools ──────────────────────────────
 
+# Authoritative deny-list: records that must NEVER drop a soul, regardless of any
+# classification promotion. Enforced by _gate_common_soul_leaks (force-zero) AND
+# respected by _place_orphan_monsters (which will not promote/re-soul these). Kept
+# as a module constant so both stay in lockstep.
+_SOUL_DROP_DENY_SUBSTRINGS = [
+    r'04_skeletaltyphon\skeletaltyphon.dbr',
+    r'04_skeletaltyphon\anm\anm_skeletaltyphon.dbr',
+    r'tombguardian\um_tombguardian_26.dbr',
+]
+
+
+def _is_soul_drop_denied(record_name):
+    nl = record_name.replace('/', '\\').lower()
+    return any(sub in nl for sub in _SOUL_DROP_DENY_SUBSTRINGS)
+
+
 def _place_orphan_monsters(db):
     """Place 10 unspawnable uber/boss monsters into spawn pools and ensure souls."""
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
@@ -3172,6 +3202,31 @@ def _place_orphan_monsters(db):
         # Ensure dropItems
         db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
         db._modified.add(rec)
+
+        # Ensure a soul-eligible classification. These orphans are deliberately
+        # placed farmable uber/boss encounters and are wired to drop their soul
+        # just below - but the soul-drop GATE (wire_souls_to_monsters +
+        # _verify_no_unclassified_soul_leaks) only permits Hero/Boss/Quest. In the
+        # base SV data um_prox_47 shipped with NO monsterClassification (its
+        # archlimos siblings um_darkhellion_43 / um_frozenhorror_43 / xhero_* are
+        # all Hero), so its wired soul would drop from a non-gated monster - a leak
+        # in BOTH the release (66%) and testing (100%) builds. Promote any orphan
+        # that is not already Hero/Boss/Quest to Hero (the sibling class), so the
+        # intended drop is preserved AND the gate holds. Never DEMOTES an already
+        # gated boss (only raises None/Common/Champion -> Hero).
+        #
+        # EXCEPTION: records on the soul-drop deny-list (um_tombguardian_26) must
+        # STAY non-dropping - _gate_common_soul_leaks deliberately zeros them
+        # (design: they are not real farmable soul sources). Skip the promotion so
+        # the gate's later force-zero holds; the soul record is still created below
+        # (harmless, chance ends at 0).
+        if not _is_soul_drop_denied(rec):
+            _mc = db.get_field_value(rec, 'monsterClassification')
+            if _mc not in ('Hero', 'Boss', 'Quest'):
+                db.set_field(rec, 'monsterClassification', 'Hero', DATA_TYPE_STRING)
+                db._modified.add(rec)
+                print(f"    {desc}: promoted classification {_mc!r} -> 'Hero' "
+                      f"(soul-dropper gate)")
 
         # Create soul if needed
         if not _has_soul(db, rec):
@@ -5504,37 +5559,125 @@ def _create_other_soul_targets(db):
 # ── Guards: gate Common/no-class soul leaks (skeletaltyphon.dbr + tombguardian) ──
 
 def _gate_common_soul_leaks(db):
-    """Zero chanceToEquipFinger2 on records that carry soul loot but are NOT a
-    real farmable Hero/Boss/Quest, so _force_100_pct_soul_drops cannot boost them
-    to a 100% farmable-adds drop (design: only Hero/Boss/Quest drop souls):
+    """Zero chanceToEquipFinger2 on records that carry soul loot but must NEVER
+    drop a soul (design: only Hero/Boss/Quest drop souls, and these specific
+    records are hand-picked exceptions that must stay dry):
       - skeletaltyphon.dbr (Common minion) + anm_skeletaltyphon.dbr (no class)
         both inherit undeadtyphon_soul at 100%. The real boss_skeletaltyphon_42/
         45/48 keep their soul (untouched).
-      - um_tombguardian_26.dbr (Common) which _place_orphan_monsters wires to
-        svc_uber\\um_tombguardian_soul at 100% (against Hero/Boss/Quest design).
+      - um_tombguardian_26.dbr which _place_orphan_monsters wires to
+        svc_uber\\um_tombguardian_soul (against the Hero/Boss/Quest design).
+
+    This is an AUTHORITATIVE deny-list: it zeros the drop REGARDLESS of
+    classification. _place_orphan_monsters deliberately skips these records when it
+    promotes orphans (see _SOUL_DROP_DENY_SUBSTRINGS), so tombguardian is never
+    promoted; but we force-zero here too so the deny-list is self-contained and
+    robust to ordering.
     """
-    GATE_SUBSTRINGS = [
-        r'04_skeletaltyphon\skeletaltyphon.dbr',
-        r'04_skeletaltyphon\anm\anm_skeletaltyphon.dbr',
-        r'tombguardian\um_tombguardian_26.dbr',
-    ]
     gated = 0
     for name in list(db.record_names()):
         nl = name.replace('/', '\\').lower()
-        if not any(sub in nl for sub in GATE_SUBSTRINGS):
-            continue
-        mc = db.get_field_value(name, 'monsterClassification')
-        if mc in ('Hero', 'Boss', 'Quest'):
-            # Safety: never gate a legitimate farmable boss (should not match here).
+        if not any(sub in nl for sub in _SOUL_DROP_DENY_SUBSTRINGS):
             continue
         cur = db.get_field_value(name, 'chanceToEquipFinger2')
         if cur and float(cur) > 0:
+            mc = db.get_field_value(name, 'monsterClassification')
             db.set_field(name, 'chanceToEquipFinger2', 0.0, DATA_TYPE_FLOAT)
             db._modified.add(name)
             gated += 1
             print(f"    gated soul drop OFF (class={mc}): {name}")
     print(f"  Common/no-class soul leaks gated: {gated} records")
     return gated
+
+
+# All equipment slots a monster can carry an item in. A soul ring dropped in ANY
+# of these leaks if the monster is not Hero/Boss/Quest.
+_EQUIP_SLOTS = ('Finger1', 'Finger2', 'Head', 'Torso', 'LowerBody', 'Forearm',
+                'RightHand', 'LeftHand', 'Misc1', 'Misc2', 'Misc3')
+_SOUL_RING_MARK = 'equipmentring\\soul\\'
+
+
+def _find_soul_drop_leaks(db):
+    """Return every (record, class, [(slot, chance, soul_item), ...]) where a
+    CREATURE that is NOT Hero/Boss/Quest has a soul ring in an equipment slot with
+    a live chanceToEquip<slot> > 0.
+
+    This is the exhaustive, slot-agnostic complement to the per-record gate in
+    wire_souls_to_monsters (which only touches Finger2). It catches classification
+    holes in the source data (e.g. um_prox_47 = no class, z_~v~ = Champion) and any
+    future soul wired into Finger1/Misc/etc on a non-gated monster. Souls are the
+    Hero/Boss/Quest-only design, so a non-gated live soul drop is always a bug.
+    """
+    leaks = []
+    for name in db.record_names():
+        nl = name.replace('/', '\\').lower()
+        if '\\creature\\' not in nl and '\\creatures\\' not in nl:
+            continue
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+        # Fast screen: any soul-ring value in any loot*Item* field?
+        has_soul_ring = False
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn.startswith('loot') and 'Item' in fn and tf.values:
+                if any(isinstance(v, str) and _SOUL_RING_MARK in v.replace('/', '\\').lower()
+                       for v in tf.values):
+                    has_soul_ring = True
+                    break
+        if not has_soul_ring:
+            continue
+        mc = db.get_field_value(name, 'monsterClassification')
+        if mc in ('Hero', 'Boss', 'Quest'):
+            continue
+        live = []
+        for slot in _EQUIP_SLOTS:
+            soul_item = None
+            for i in range(1, 7):
+                val = db.get_field_value(name, f'loot{slot}Item{i}')
+                vals = val if isinstance(val, list) else ([val] if val is not None else [])
+                for v in vals:
+                    if isinstance(v, str) and _SOUL_RING_MARK in v.replace('/', '\\').lower():
+                        soul_item = v
+                        break
+                if soul_item:
+                    break
+            if not soul_item:
+                continue
+            ch = db.get_field_value(name, f'chanceToEquip{slot}')
+            if isinstance(ch, list):
+                ch = ch[0] if ch else 0
+            try:
+                ch = float(ch)
+            except (TypeError, ValueError):
+                ch = 0.0
+            if ch > 0:
+                live.append((slot, ch, soul_item))
+        if live:
+            leaks.append((name, mc, live))
+    return leaks
+
+
+def _verify_no_unclassified_soul_leaks(db):
+    """Build-time invariant: NO non-Hero/Boss/Quest creature may drop a soul in any
+    equipment slot. Runs after all wiring + gating, before the drop forcer. Raises
+    SystemExit (fails the build loud) on any leak, mirroring the MP spawn-equation
+    guard. This is what makes flipping to the RELEASE default safe: it proves the
+    Hero/Boss/Quest gate holds across EVERY slot for the whole roster, not just the
+    Finger2 slot the per-record passes touch."""
+    leaks = _find_soul_drop_leaks(db)
+    if leaks:
+        print(f"\n  SOUL-LEAK INVARIANT FAILED: {len(leaks)} non-Hero/Boss/Quest "
+              f"creature(s) drop a soul:")
+        for name, mc, live in leaks[:20]:
+            for slot, ch, soul_item in live:
+                print(f"    LEAK: {name} [class={mc!r}] "
+                      f"chanceToEquip{slot}={ch} -> {soul_item}")
+        raise SystemExit(
+            f"Soul-drop gate breached: {len(leaks)} non-Hero/Boss/Quest creature(s) "
+            f"still drop a soul (see leaks above). Fix classification or gate them.")
+    print("  Soul-leak invariant OK: 0 non-Hero/Boss/Quest creatures drop a soul.")
+    return 0
 # ── Section 5: Table B "never-completed" completion pass (~51 bosses) ──
 #
 # Brings each wired-but-shallow boss soul up to exemplar depth by scan-and-setting
@@ -6755,6 +6898,14 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Runs AFTER the gate (he is a legit Boss, so the drop forcer keeping his
     # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
     _create_blood_toxeus(db)
+
+    # ── Soul-drop gate invariant (fail-loud) ──────────────────────────────────
+    # After EVERY soul is wired and every known Common/no-class leak is gated,
+    # prove that no non-Hero/Boss/Quest creature drops a soul in ANY equipment
+    # slot. Runs in BOTH release and testing builds (before the drop forcer), so a
+    # classification hole can never silently ship - the reason flipping to the
+    # RELEASE default (tuned 66%/25%) is safe.
+    _verify_no_unclassified_soul_leaks(db)
 
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
     # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid

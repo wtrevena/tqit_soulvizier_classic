@@ -1457,31 +1457,64 @@ def main():
     souls, text_tags = create_uber_souls(db)
 
     from apply_svc_patches import apply_all_extended_patches
-    # Soul drop rate control. 100% override is ON by default (testing build) so
-    # souls are easy to test in-game. Set SVC_RELEASE_DROPS=1 to flip to the
-    # tuned 66% (Hero/Quest) / 25% (Boss) rates for a release build.
+    # ── Soul drop-rate control (RELEASE is the DEFAULT for this repo) ──────────
+    # DECISION (2026-07-07, Will, for the public Steam release): the RELEASE build
+    # - the tuned 66% (Hero/Quest) / 25% (Boss) soul drop rates - is now the
+    # DEFAULT. Building with NO environment override produces a shippable release
+    # .arz. The old 100%-everywhere "testing" behavior is now an EXPLICIT opt-in.
     #
-    # Typo guard: only accept explicit true/false spellings. A value that is
-    # neither (e.g. SVC_RELEASE_DROPS=release) must NOT be silently treated as a
-    # release flag, nor silently treated as testing - that could ship 100% drops
-    # on what the operator believed was a release build. We keep the default
-    # behavior (unset/unrecognized -> 100% testing) but WARN loudly on an
-    # unrecognized value so the typo is visible in the build log.
-    _raw_release_drops = os.environ.get('SVC_RELEASE_DROPS')
-    _release_val = (_raw_release_drops or '').strip().lower()
-    _TRUE_VALUES = ('1', 'true', 'yes', 'on')
-    _FALSE_VALUES = ('', '0', 'false', 'no', 'off')
-    release_drops = _release_val in _TRUE_VALUES
-    if _raw_release_drops is not None and _release_val not in _TRUE_VALUES \
-            and _release_val not in _FALSE_VALUES:
-        print(f"\nWARNING: SVC_RELEASE_DROPS='{_raw_release_drops}' not "
-              f"recognized; defaulting to TESTING (100% drops). Use "
-              f"SVC_RELEASE_DROPS=1 for tuned rates.")
-    force_full_drops = not release_drops
-    if release_drops:
-        print("\n*** SVC_RELEASE_DROPS set: tuned soul drop rates (66%/25%) will be kept ***")
+    # Two knobs, evaluated with a strict typo-guard (only explicit true/false
+    # spellings are honored; anything else WARNS loudly and does NOT silently
+    # change the mode - so a typo can never ship the wrong drop rates):
+    #   SVC_TESTING_DROPS=1   -> force 100% drops (testing).           [opt-in]
+    #   SVC_RELEASE_DROPS=0   -> force 100% drops (testing).  (legacy inverse)
+    #   (unset / SVC_RELEASE_DROPS=1) -> tuned 66%/25% RELEASE rates.  [default]
+    # SVC_RELEASE_DROPS is kept for backward compatibility with existing scripts
+    # and docs; SVC_TESTING_DROPS is the new, clearer way to ask for a test build.
+    _TRUE = ('1', 'true', 'yes', 'on')
+    _FALSE = ('0', 'false', 'no', 'off')
+
+    def _tri(name):
+        """Return True/False for a recognized bool env var, or None if unset.
+        Warns (and returns None) on an unrecognized non-empty value."""
+        raw = os.environ.get(name)
+        if raw is None:
+            return None
+        v = raw.strip().lower()
+        if v == '':
+            return None
+        if v in _TRUE:
+            return True
+        if v in _FALSE:
+            return False
+        print(f"\nWARNING: {name}='{raw}' not recognized (use 1/0); ignoring it.")
+        return None
+
+    _testing = _tri('SVC_TESTING_DROPS')            # explicit testing opt-in
+    _release = _tri('SVC_RELEASE_DROPS')            # legacy release flag (True=release)
+
+    # Resolve to a single decision. RELEASE is the default; testing must be asked
+    # for explicitly via either knob.
+    if _testing is True or _release is False:
+        force_full_drops = True
+        _reason = ("SVC_TESTING_DROPS=1" if _testing is True else "SVC_RELEASE_DROPS=0")
     else:
-        print("\n*** TESTING BUILD: soul drops forced to 100% (set SVC_RELEASE_DROPS=1 for tuned rates) ***")
+        force_full_drops = False
+        _reason = ("SVC_TESTING_DROPS unset / SVC_RELEASE_DROPS in "
+                   "{unset,1}") if (_testing is None and _release in (None, True)) \
+            else "default"
+
+    print("\n" + "=" * 70)
+    if force_full_drops:
+        print("*** TESTING BUILD: soul drops FORCED to 100% "
+              f"({_reason}) ***")
+        print("*** For the RELEASE .arz (tuned 66%/25%), build with NO override "
+              "(or SVC_RELEASE_DROPS=1). ***")
+    else:
+        print("*** RELEASE BUILD (repo default): tuned soul drop rates kept "
+              "(66% Hero/Quest, 25% Boss). ***")
+        print("*** For a 100% test build, set SVC_TESTING_DROPS=1. ***")
+    print("=" * 70)
     extended_tags = apply_all_extended_patches(db, force_full_drops=force_full_drops)
 
     report_path = output_path.parent / 'uber_souls_report.md'
