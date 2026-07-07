@@ -4318,6 +4318,1465 @@ def _overhaul_generic_souls(db):
         print(f"  Note: {conflicts} Dropbox conflicted copy records still exist (harmless)")
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# BOSS SOULS WAVE (docs/BOSS_SOULS_DESIGN.md) - headliner + faction + completion
+# souls. Every proc/augment/pet/equipment path below was DB-verified to resolve
+# against the built .arz (dangling paths from the doc's Section 0 are avoided).
+# ══════════════════════════════════════════════════════════════════════════
+
+# Verified soul-usable procs referenced by the new designs (all resolve).
+_SS_SPIRITBOLT = r'records\xpack\skills\monsterskills\activeattackprojectile\empusasoulcarver_spiritbolt.dbr'
+_SS_LICHEQUEEN_SOULSTRIKE = r'records\skills\soulskills\lichequeen_soulstrike.dbr'
+_SS_BARMANU_BLIZZARD = r'records\skills\soulskills\barmanu_blizzard.dbr'
+_SS_THUNDERBALLNOVA = r'records\skills\soulskills\thunderballnova.dbr'
+_SS_QUILLVINES = r'records\skills\soulskills\strongbark_quillvines.dbr'
+_SS_EARTHFURY_RING = r'records\skills\soulskills\earthfury_ring.dbr'
+_SS_BLADETWIRL = r'records\xpack\skills\monsterskills\activeattackradius\hero_bladetwirl2_ring.dbr'
+_SS_SHADOWSURGE = r'records\skills\soulskills\nightstalker_shadowsurge.dbr'
+_SS_BATTLESTANDARD = r'records\skills\warfare\battlestandard.dbr'
+_SS_MANTICORE_QUILLS = r'records\skills\soulskills\manticore_quills.dbr'
+_SS_SPELLSHOCK = r'records\xpack\skills\dream\drxspellbreaker_spellshock.dbr'
+_SS_POISONORBS = r'records\skills\soulskills\poisonorbs.dbr'
+_SS_SABERSLASH = r'records\skills\soulskills\furyclaw_saberslash.dbr'
+_SS_DEMASTIA_STRIKE = r'records\skills\soulskills\demastia_strike.dbr'
+
+# Verified augment (drx mastery) paths - VERBATIM strings (never a dangling _SK_*).
+_AUG_TERNION = r'records\skills\spirit\drxternion.dbr'
+_AUG_DEATHCHILL = r'records\skills\spirit\drxdeathchillaura.dbr'
+_AUG_RAVAGES = r'records\skills\spirit\drxdeathchillaura_ravagesoftime.dbr'  # real "ravages of time"
+_AUG_DARKCOVENANT = r'records\skills\spirit\drxdarkcovenant.dbr'
+_AUG_ENSLAVESPIRIT = r'records\skills\spirit\drxenslavespirit.dbr'
+_AUG_DUALWEAPON = r'records\skills\warfare\drxdualweapontraining.dbr'
+_AUG_ONSLAUGHT = r'records\skills\warfare\drxonslaught.dbr'
+_AUG_BATTLERAGE = r'records\skills\warfare\drxbattlerage.dbr'
+_AUG_WARHORN = r'records\skills\warfare\drxwarhorn.dbr'
+_AUG_COLDAURA = r'records\skills\storm\drxcoldaura.dbr'
+_AUG_SQUALL = r'records\skills\storm\drxsquall.dbr'
+_AUG_STORMNIMBUS = r'records\skills\storm\drxstormnimbus.dbr'
+_AUG_CHAINLIGHTNING = r'records\skills\storm\drxlightningbolt_chainlightning.dbr'  # real chain lightning
+_AUG_LIGHTNINGBOLT = r'records\skills\storm\drxlightningbolt.dbr'
+_AUG_PLAGUE = r'records\skills\nature\drxplague.dbr'
+_AUG_HEARTOFOAK = r'records\skills\nature\drxheartofoak.dbr'
+_AUG_REGROWTH = r'records\skills\nature\drxregrowth.dbr'
+_AUG_LETHALSTRIKE = r'records\skills\stealth\drxlethalstrike.dbr'
+_AUG_PHANTOMSTRIKE = r'records\xpack\skills\dream\drxphantomstrike.dbr'  # xpack (dream path dangles)
+_AUG_CONCUSSIVE = r'records\skills\defensive\drxconcussiveblow.dbr'
+_AUG_RALLY = r'records\skills\defensive\drxrally.dbr'
+_AUG_STUDYPREY = r'records\skills\hunting\drxstudyprey.dbr'  # hunting (stealth path dangles)
+_AUG_ENVENOM = r'records\skills\stealth\drxenvenomweapon.dbr'
+_AUG_CALCSTRIKE = r'records\skills\stealth\drxcalculatedstrike.dbr'
+_AUG_FIREENCHANT = r'records\skills\earth\drxfireenchantment.dbr'
+_AUG_RINGOFFLAME = r'records\skills\earth\drxringofflame.dbr'
+_AUG_ENERGYSHIELD = r'records\skills\storm\drxenergyshield.dbr'
+_AUG_VOLCANICORB = r'records\skills\earth\drxvolcanicorb.dbr'
+
+_BITMAP = {
+    'n': (DATA_TYPE_STRING, r'SVItems\jewelry\soul_n_icon.tex'),
+    'e': (DATA_TYPE_STRING, r'SVItems\jewelry\soul_e_icon.tex'),
+    'l': (DATA_TYPE_STRING, r'SVItems\jewelry\soul_l_icon.tex'),
+}
+
+
+def _bmp(diff):
+    """Per-tier icon override tuple for the stats dict."""
+    return {'bitmap': _BITMAP[diff]}
+
+
+# ── 2.1 Ainex, Queen of Crows (REPLACE the thin orphan placeholder in place) ──
+
+def _create_ainex_soul(db):
+    """Ainex (um_ainex_45) - spectral vitality caster. REPLACES the thin
+    svc_uber\\ainex_soul_{n,e,l} placeholder authored by _place_orphan_monsters
+    at the SAME paths (no second creator). Proc = her soul-carver spirit bolt;
+    augments = triple vitality bolts + crow-queen death aura. Level 45/59/71."""
+    MONSTER = r'records\xpack\creatures\monster\empusa\um_ainex_45.dbr'
+    TAG = 'tagSVCSoulAinex'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    tiers = [
+        {'diff': 'n', 'itemLevel': 45, 'stats': {
+            **_bmp('n'),
+            'itemSkillName': (S, _SS_SPIRITBOLT), 'itemSkillLevel': (I, 4),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_TERNION), 'augmentSkillLevel1': (I, 3),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, 3),
+            'offensiveLifeMin': (F, 45.0), 'offensiveLifeMax': (F, 70.0), 'offensiveLifeModifier': (I, 25),
+            'offensiveColdMin': (F, 25.0), 'offensiveColdMax': (F, 40.0),
+            'offensiveLifeLeechMin': (F, 25.0), 'offensivePercentCurrentLifeMin': (F, 4.0),
+            'characterDodgePercent': (F, 14.0), 'characterDeflectProjectile': (F, 14.0),
+            'defensiveElementalResistance': (F, 15.0), 'defensiveLife': (F, 18.0),
+            'characterIntelligenceModifier': (F, 8.0), 'characterDexterityModifier': (F, 6.0),
+            'characterManaModifier': (F, 10.0), 'characterLifeModifier': (F, 8.0),
+            'characterSpellCastSpeedModifier': (I, 18), 'characterDefensiveAbilityModifier': (F, 6.0),
+            # Neutralize leftover physical/strength from the orphan placeholder (caster, no phys)
+            'offensivePhysicalMin': (F, 0.0), 'offensivePhysicalMax': (F, 0.0),
+            'characterStrengthModifier': (F, 0.0),
+        }},
+        {'diff': 'e', 'itemLevel': 59, 'stats': {
+            **_bmp('e'),
+            'itemSkillName': (S, _SS_SPIRITBOLT), 'itemSkillLevel': (I, 6),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_TERNION), 'augmentSkillLevel1': (I, 4),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, 4),
+            'offensiveLifeMin': (F, 80.0), 'offensiveLifeMax': (F, 120.0), 'offensiveLifeModifier': (I, 38),
+            'offensiveColdMin': (F, 38.0), 'offensiveColdMax': (F, 58.0),
+            'offensiveLifeLeechMin': (F, 38.0), 'offensivePercentCurrentLifeMin': (F, 5.0),
+            'characterDodgePercent': (F, 18.0), 'characterDeflectProjectile': (F, 18.0),
+            'defensiveElementalResistance': (F, 20.0), 'defensiveLife': (F, 26.0),
+            'characterIntelligenceModifier': (F, 11.0), 'characterDexterityModifier': (F, 9.0),
+            'characterManaModifier': (F, 14.0), 'characterLifeModifier': (F, 11.0),
+            'characterSpellCastSpeedModifier': (I, 28), 'characterDefensiveAbilityModifier': (F, 9.0),
+            'offensivePhysicalMin': (F, 0.0), 'offensivePhysicalMax': (F, 0.0),
+            'characterStrengthModifier': (F, 0.0),
+        }},
+        {'diff': 'l', 'itemLevel': 71, 'stats': {
+            **_bmp('l'),
+            'itemSkillName': (S, _SS_SPIRITBOLT), 'itemSkillLevel': (I, 8),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_TERNION), 'augmentSkillLevel1': (I, 5),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, 5),
+            'offensiveLifeMin': (F, 120.0), 'offensiveLifeMax': (F, 185.0), 'offensiveLifeModifier': (I, 55),
+            'offensiveColdMin': (F, 55.0), 'offensiveColdMax': (F, 82.0),
+            'offensiveLifeLeechMin': (F, 55.0), 'offensivePercentCurrentLifeMin': (F, 6.0),
+            'characterDodgePercent': (F, 22.0), 'characterDeflectProjectile': (F, 22.0),
+            'defensiveElementalResistance': (F, 25.0), 'defensiveLife': (F, 34.0),
+            'characterIntelligenceModifier': (F, 14.0), 'characterDexterityModifier': (F, 11.0),
+            'characterManaModifier': (F, 18.0), 'characterLifeModifier': (F, 16.0),
+            'characterSpellCastSpeedModifier': (I, 40), 'characterDefensiveAbilityModifier': (F, 11.0),
+            'offensivePhysicalMin': (F, 0.0), 'offensivePhysicalMax': (F, 0.0),
+            'characterStrengthModifier': (F, 0.0),
+        }},
+    ]
+    paths = _create_soul(db, 'ainex', TAG, tiers, MONSTER, 66.0)
+    print(f"  Ainex soul: rich spectral-caster block at {len(paths)} svc_uber paths (replaced placeholder)")
+    return paths
+
+
+# ── 2.3 Limos Lifeeater STUB FIX (scan-and-set the 3 existing stub records) ──
+
+def _fix_limos_lifeeater_stub(db):
+    """Limos Lifeeater (um_frost_36) - complete the 3 pure-stub
+    limoslifeater_soul_{n,e,l} records in place (scan-and-set, keep wiring).
+    Life-drain proc (convention: _AC_ON_ATTACK per sandwraith/elephantsnatcher)
+    + dark-covenant + real ravages-of-time. Retag + reset itemLevel 36/54/69."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    # (diff, itemLevel, skLv, augLv, lifeMin, lifeMax, lifeMod, leech, curLife,
+    #  resShred, resShredDur, lifeModPct, manaMod, intMod, defLife, defLeech, lifeRegenMod)
+    tiers = [
+        ('n', 36, 3, 2, 35.0, 55.0, 22, 35.0, 4.0, 10.0, 3.0, 12.0, 6.0, 5.0, 20.0, 25.0, 15),
+        ('e', 54, 5, 3, 60.0, 92.0, 35, 48.0, 5.0, 15.0, 3.0, 17.0, 9.0, 8.0, 28.0, 35.0, 22),
+        ('l', 69, 7, 4, 95.0, 150.0, 55, 65.0, 6.0, 20.0, 4.0, 24.0, 12.0, 11.0, 38.0, 48.0, 30),
+    ]
+    tier_by_diff = {t[0]: t for t in tiers}
+    total = 0
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if 'limoslifeater_soul' not in nl or 'equipmentring' not in nl:
+            continue
+        if 'ancientlimoslifeater' in nl:
+            continue  # separate Olympus super-variant soul, not this stub
+        for diff, t in tier_by_diff.items():
+            if nl.endswith(f'_soul_{diff}.dbr'):
+                (_, ilvl, sk, aug, lmin, lmax, lmod, leech, cur, rs, rsd,
+                 lmp, mm, im, dl, dll, lrm) = t
+                stats = {
+                    **_bmp(diff),
+                    'itemNameTag': (S, 'tagSVCSoulLimosLifeeater'),
+                    'itemLevel': (I, ilvl), 'levelRequirement': (I, ilvl - 5),
+                    'itemSkillName': (S, _SS_LIFE_DRAIN), 'itemSkillLevel': (I, sk),
+                    'itemSkillAutoController': (S, _AC_ON_ATTACK),
+                    'augmentSkillName1': (S, _AUG_DARKCOVENANT), 'augmentSkillLevel1': (I, aug),
+                    'augmentSkillName2': (S, _AUG_RAVAGES), 'augmentSkillLevel2': (I, aug),
+                    'offensiveLifeMin': (F, lmin), 'offensiveLifeMax': (F, lmax),
+                    'offensiveLifeModifier': (I, lmod), 'offensiveLifeLeechMin': (F, leech),
+                    'offensivePercentCurrentLifeMin': (F, cur),
+                    'offensiveTotalResistanceReductionAbsoluteMin': (F, rs),
+                    'offensiveTotalResistanceReductionAbsoluteDurationMin': (F, rsd),
+                    'characterLifeModifier': (F, lmp), 'characterManaModifier': (F, mm),
+                    'characterIntelligenceModifier': (F, im),
+                    'defensiveLife': (F, dl), 'defensiveLifeLeech': (F, dll),
+                    'characterLifeRegenModifier': (I, lrm),
+                }
+                _set_soul_fields(db, name, stats)
+                total += 1
+                break
+    print(f"  Limos Lifeeater stub completed: {total} records (life-drain, Lv 36/54/69)")
+    return total
+
+
+# ── 2.4 Kallixenia the Lich Queen (D2NPC Akara) ──
+
+def _create_kallixenia_soul(db):
+    """Kallixenia (01_akara) - lich-queen caster raining soul orbs. Level 36/54/69."""
+    MONSTER = r'records\drxcreatures\xurder\d2npc\01_akara.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, lmin, lmax, lmod, cmin, cmax, leech, im, mm, lm,
+             cast, manaregen, dl, dc, mb):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_LICHEQUEEN_SOULSTRIKE), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_DEATHCHILL), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_TERNION), 'augmentSkillLevel2': (I, aug),
+            'offensiveLifeMin': (F, lmin), 'offensiveLifeMax': (F, lmax), 'offensiveLifeModifier': (I, lmod),
+            'offensiveColdMin': (F, cmin), 'offensiveColdMax': (F, cmax), 'offensiveLifeLeechMin': (F, leech),
+            'characterIntelligenceModifier': (F, im), 'characterManaModifier': (F, mm),
+            'characterLifeModifier': (F, lm), 'characterSpellCastSpeedModifier': (I, cast),
+            'characterManaRegenModifier': (I, manaregen),
+            'defensiveLife': (F, dl), 'defensiveCold': (F, dc), 'defensiveManaBurnRatio': (F, mb),
+        }}
+    tiers = [
+        tier('n', 36, 3, 2, 40.0, 62.0, 25, 25.0, 40.0, 30.0, 8.0, 12.0, 8.0, 20, 15, 20.0, 12.0, 20.0),
+        tier('e', 54, 5, 3, 72.0, 110.0, 38, 40.0, 62.0, 45.0, 11.0, 17.0, 11.0, 32, 22, 28.0, 18.0, 28.0),
+        tier('l', 69, 7, 4, 105.0, 165.0, 55, 55.0, 85.0, 60.0, 14.0, 22.0, 15.0, 46, 30, 36.0, 24.0, 36.0),
+    ]
+    paths = _create_soul(db, 'kallixenia', 'tagSVCSoulKallixenia', tiers, MONSTER, 66.0)
+    print(f"  Kallixenia soul: lich-queen caster ({len(paths)} paths, 66% drop)")
+    return paths
+
+
+# ── 2.6 Zilla the Blade Dancer ──
+
+def _create_zilla_soul(db):
+    """Zilla (crowheroes\\zilla) - dual-blade freezing whirlwind. Level 45/60/73."""
+    MONSTER = r'records\drxcreatures\crowheroes\zilla.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, pmin, pmax, pmod, cmin, cmax, frzchance,
+             asm, tsm, dodge, strm, dexm, oam, lm, dc):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_BLADETWIRL), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_DUALWEAPON), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_ONSLAUGHT), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveColdMin': (F, cmin), 'offensiveColdMax': (F, cmax),
+            'offensiveFreezeMin': (F, 0.5), 'offensiveFreezeMax': (F, 1.5), 'offensiveFreezeChance': (F, frzchance),
+            'offensivePierceRatioModifier': (I, 15),
+            'characterAttackSpeedModifier': (F, asm), 'characterTotalSpeedModifier': (I, tsm),
+            'characterDodgePercent': (F, dodge),
+            'characterStrengthModifier': (F, strm), 'characterDexterityModifier': (F, dexm),
+            'characterOffensiveAbilityModifier': (F, oam), 'characterLifeModifier': (F, lm),
+            'defensiveCold': (F, dc),
+        }}
+    tiers = [
+        tier('n', 45, 4, 3, 55.0, 80.0, 30, 30.0, 48.0, 15.0, 14.0, 10, 10.0, 6.0, 8.0, 6.0, 10.0, 15.0),
+        tier('e', 60, 6, 4, 85.0, 118.0, 42, 42.0, 66.0, 18.0, 18.0, 13, 13.0, 8.0, 11.0, 8.0, 13.0, 21.0),
+        tier('l', 73, 8, 5, 120.0, 160.0, 57, 57.0, 90.0, 22.0, 22.0, 16, 16.0, 11.0, 15.0, 11.0, 18.0, 28.0),
+    ]
+    paths = _create_soul(db, 'zilla', 'tagSVCSoulZilla', tiers, MONSTER, 66.0)
+    print(f"  Zilla soul: dual-blade cold whirlwind ({len(paths)} paths)")
+    return paths
+
+
+# ── 2.7 Numberouane the Frost King ──
+
+def _create_numberouane_soul(db):
+    """Numberouane (crowheroes\\numberouane) - walking blizzard. Level 45/60/73."""
+    MONSTER = r'records\drxcreatures\crowheroes\numberouane.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, cmin, cmax, cmod, slow, slowdur, pmin, pmax, lm, im, dc):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_BARMANU_BLIZZARD), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_COLDAURA), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_SQUALL), 'augmentSkillLevel2': (I, aug),
+            'offensiveColdMin': (F, cmin), 'offensiveColdMax': (F, cmax), 'offensiveColdModifier': (I, cmod),
+            'offensiveSlowColdMin': (F, slow), 'offensiveSlowColdDurationMin': (F, slowdur),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax),
+            'characterLifeModifier': (F, lm), 'characterIntelligenceModifier': (F, im),
+            'characterManaModifier': (F, im), 'defensiveCold': (F, dc),
+            'characterSpellCastSpeedModifier': (I, int(cmod)),
+        }}
+    tiers = [
+        tier('n', 45, 4, 3, 40.0, 62.0, 25, 25.0, 3.0, 20.0, 34.0, 10.0, 8.0, 25.0),
+        tier('e', 60, 6, 4, 58.0, 88.0, 35, 35.0, 3.0, 28.0, 48.0, 13.0, 11.0, 34.0),
+        tier('l', 73, 8, 5, 78.0, 118.0, 48, 48.0, 4.0, 38.0, 62.0, 18.0, 14.0, 44.0),
+    ]
+    paths = _create_soul(db, 'numberouane', 'tagSVCSoulNumberouane', tiers, MONSTER, 66.0)
+    print(f"  Numberouane soul: frost-king blizzard ({len(paths)} paths)")
+    return paths
+
+
+# ── 2.8 Kreeloo the Telkine Ghost ──
+
+def _create_kreeloo_soul(db):
+    """Kreeloo (crowheroes\\kreeloo) - telkine chaos-lightning. Level 21/44/60."""
+    MONSTER = r'records\drxcreatures\crowheroes\kreeloo.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug1, aug2, lmin, lmax, lmod, lifemin, lifemax, im, mm, lm, cast, dl, dlife):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_THUNDERBALLNOVA), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_CHAINLIGHTNING), 'augmentSkillLevel1': (I, aug1),
+            'augmentSkillName2': (S, _AUG_STORMNIMBUS), 'augmentSkillLevel2': (I, aug2),
+            'offensiveLightningMin': (F, lmin), 'offensiveLightningMax': (F, lmax), 'offensiveLightningModifier': (I, lmod),
+            'offensiveLifeMin': (F, lifemin), 'offensiveLifeMax': (F, lifemax),
+            'characterIntelligenceModifier': (F, im), 'characterManaModifier': (F, mm),
+            'characterLifeModifier': (F, lm), 'characterSpellCastSpeedModifier': (I, cast),
+            'defensiveLightning': (F, dl), 'defensiveLife': (F, dlife),
+        }}
+    tiers = [
+        tier('n', 21, 3, 2, 2, 25.0, 45.0, 25, 12.0, 20.0, 6.0, 8.0, 6.0, 14, 15.0, 12.0),
+        tier('e', 44, 5, 3, 3, 40.0, 68.0, 32, 18.0, 30.0, 9.0, 12.0, 9.0, 22, 22.0, 18.0),
+        tier('l', 60, 7, 4, 3, 70.0, 120.0, 42, 26.0, 44.0, 12.0, 16.0, 13.0, 30, 30.0, 24.0),
+    ]
+    paths = _create_soul(db, 'kreeloo', 'tagSVCSoulKreeloo', tiers, MONSTER, 66.0)
+    print(f"  Kreeloo soul: telkine chaos-lightning ({len(paths)} paths)")
+    return paths
+
+
+# ── 2.9 Kaets the Ascacophus (plant summoner - reuses existing SpawnPet skill) ──
+
+def _create_kaets_soul(db):
+    """Kaets (crowheroes\\kaets) - nature summoner raising quill-vines. Level 44/60/73.
+    itemSkillName = the existing soul-usable strongbark_quillvines SpawnPet, granted
+    as an activated skill with NO autocast controller (chimera/hydra soul pattern)."""
+    MONSTER = r'records\drxcreatures\crowheroes\kaets.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, pmin, pmax, pmod, poismin, poismax, poisdur, lm, lrm, defbleed, defpois):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_QUILLVINES), 'itemSkillLevel': (I, sk),
+            # NO itemSkillAutoController (activated summon, like chimera_soul/hydra_soul)
+            'augmentSkillName1': (S, _AUG_PLAGUE), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_HEARTOFOAK), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveSlowPoisonMin': (F, poismin), 'offensiveSlowPoisonMax': (F, poismax),
+            'offensiveSlowPoisonDurationMin': (F, poisdur),
+            'characterLifeModifier': (F, lm), 'characterLifeRegenModifier': (I, lrm),
+            'defensiveBleeding': (F, defbleed), 'defensivePoison': (F, defpois),
+        }}
+    tiers = [
+        tier('n', 44, 3, 2, 30.0, 48.0, 22, 30.0, 50.0, 3.0, 12.0, 15, 15.0, 15.0),
+        tier('e', 60, 4, 3, 42.0, 66.0, 30, 45.0, 72.0, 3.0, 17.0, 22, 21.0, 21.0),
+        tier('l', 73, 6, 4, 60.0, 92.0, 42, 65.0, 100.0, 4.0, 24.0, 30, 28.0, 28.0),
+    ]
+    paths = _create_soul(db, 'kaets', 'tagSVCSoulKaets', tiers, MONSTER, 66.0)
+    print(f"  Kaets soul: nature quill-vine summoner ({len(paths)} paths)")
+    return paths
+
+
+# ── 2.10 Anapaest the Dishonor Guard ──
+
+def _create_anapaest_soul(db):
+    """Anapaest (drxdishonorguard\\anapaest_45) - gigantes ground-breaker tank.
+    Level 51/64/75. NOTE: monster's Finger2 currently points at loot tables; the
+    soul wiring re-points it (standard Finger2 soul slot)."""
+    MONSTER = r'records\drxcreatures\drxdishonorguard\anapaest_45.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, pmin, pmax, pmod, slow, slowdur, strm, lm, lregen,
+             lregenmod, defphys, defprotmod, oam, conmod):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_EARTHFURY_RING), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_ONSLAUGHT), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_WARHORN), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveSlowTotalSpeedMin': (F, slow), 'offensiveSlowTotalSpeedDurationMin': (F, slowdur),
+            'characterStrengthModifier': (F, strm), 'characterLifeModifier': (F, lm),
+            'characterLifeRegen': (F, lregen), 'characterLifeRegenModifier': (I, lregenmod),
+            'defensivePhysical': (F, defphys), 'defensiveProtectionModifier': (F, defprotmod),
+            'characterOffensiveAbilityModifier': (F, oam), 'characterConstitutionModifier': (F, conmod),
+        }}
+    tiers = [
+        tier('n', 51, 4, 3, 70.0, 100.0, 35, 15.0, 3.0, 8.0, 14.0, 6.0, 20, 15.0, 10.0, 6.0, 6.0),
+        tier('e', 64, 6, 4, 100.0, 145.0, 49, 21.0, 3.0, 11.0, 20.0, 9.0, 28, 21.0, 14.0, 8.0, 8.0),
+        tier('l', 75, 8, 5, 150.0, 210.0, 66, 28.0, 4.0, 15.0, 27.0, 12.0, 38, 28.0, 19.0, 11.0, 11.0),
+    ]
+    paths = _create_soul(db, 'anapaest', 'tagSVCSoulAnapaest', tiers, MONSTER, 66.0)
+    print(f"  Anapaest soul: gigantes ground-breaker tank ({len(paths)} paths)")
+    return paths
+# ── 2.2 Blood Witch High Priest - SUMMON (Melinoe blade-dancer pet from Lyia) ──
+
+def _create_bwpriest_pet_skill(db):
+    """Blood Witch High Priest summon: 3 Melinoe blade-dancer pets cloned from
+    Lyia (Boneash pattern). Blade/necro/blood loadout. Permanent (no TTL)."""
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
+    lyia_sources = [
+        r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_3.dbr',
+    ]
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
+    pet_paths = [
+        r'records\skills\soulskills\pets\bwpriest_1.dbr',
+        r'records\skills\soulskills\pets\bwpriest_2.dbr',
+        r'records\skills\soulskills\pets\bwpriest_3.dbr',
+    ]
+    life = [4200, 6000, 8000]
+    life_regen = [22.0, 40.0, 60.0]
+    dmg_min = [55, 85, 120]
+    dmg_max = [85, 130, 180]
+    src_monster = _find_record(db, r'records\drxcreatures\bloodwitch\skills\discipleboss_bladedancer.dbr')
+    if not src_monster:
+        print("  WARNING: bladedancer source not found!")
+
+    for i, path in enumerate(pet_paths):
+        src = _find_record(db, lyia_sources[i])
+        if not src:
+            print(f"  WARNING: Lyia source {lyia_sources[i]} not found!")
+            return False
+        db.clone_record(src, path)
+        if src_monster:
+            _copy_animation_fields(db, src_monster, path)
+            _update_existing_fields(db, src_monster, path, _SKILL_PREFIXES)
+        sf = db.set_field
+        _EQ = r'records\xpack\item\equipmentweapons\sword'
+        _AB = r'records\item\equipmentarmband'
+        _RG = r'records\item\equipmentring'
+        _set_pet_equipment(db, path, {
+            'chanceToEquipLeftHand': 100.0, 'chanceToEquipLeftHandItem1': 5000,
+            'lootLeftHandItem1': [_EQ + r'\u_n_003.dbr', _EQ + r'\u_e_002.dbr', _EQ + r'\u_l_003.dbr'],
+            'chanceToEquipForearm': 100.0, 'chanceToEquipForearmItem1': 5000,
+            'lootForearmItem1': [_AB + r'\us_n_lazarusarmor.dbr', _AB + r'\us_e_shadowguard.dbr', _AB + r'\us_l_abyssalarmor.dbr'],
+            'chanceToEquipFinger1': 100.0, 'chanceToEquipFinger1Item1': 5000,
+            'lootFinger1Item1': [_RG + r'\u_n_bloodstone.dbr', _RG + r'\u_e_sealofthehighpriest.dbr', _RG + r'\u_l_blackpearlring.dbr'],
+        })
+        sf(path, 'charLevel', i + 1)
+        sf(path, 'mesh', r'DRX\meshes\melinoe01.msh')
+        sf(path, 'baseTexture', r'DRXtextures\creatures\bloodwitch\bladedancer.tex')
+        sf(path, 'bumpTexture', '')
+        sf(path, 'scale', 1.4)
+        sf(path, 'description', 'tagBWHighPriest')
+        sf(path, 'characterRacialProfile', 'Demon')
+        sf(path, 'controller', CONTROLLER)
+        sf(path, 'charAnimationTableName', r'records\xpack\creatures\monster\melinoe\anm\anm_melinoe.dbr')
+        sf(path, 'characterLife', float(life[i]))
+        sf(path, 'characterLifeRegen', life_regen[i])
+        sf(path, 'characterMana', 600.0)
+        sf(path, 'characterManaRegen', 20.0)
+        sf(path, 'characterStrength', 300.0)
+        sf(path, 'characterDexterity', 300.0)
+        sf(path, 'characterIntelligence', 200.0)
+        sf(path, 'characterAttackSpeed', 1.0)
+        sf(path, 'characterRunSpeed', 1.2)
+        sf(path, 'handHitDamageMin', float(dmg_min[i]))
+        sf(path, 'handHitDamageMax', float(dmg_max[i]))
+        sf(path, 'dropItems', 0)
+        sf(path, 'giveXP', 0)
+        sf(path, 'experiencePoints', 0)
+        sf(path, 'StatusIcon', r'DRXtextures\skill icons\spirit\bonefiendup.tex')
+        sf(path, 'StatusIconRed', r'DRXtextures\skill icons\spirit\bonefienddown.tex')
+
+    summon_path = r'records\skills\soulskills\summon_bwpriest.dbr'
+    summon_src = _find_record(db, lyia_summon)
+    if summon_src:
+        db.clone_record(summon_src, summon_path)
+    else:
+        _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+    sf = db.set_field
+    sf(summon_path, 'isPetDisplayable', 1)
+    sf(summon_path, 'skillDisplayName', 'tagSVCSummonBWHighPriest')
+    sf(summon_path, 'skillManaCost', [250.0, 300.0, 350.0])
+    sf(summon_path, 'spawnObjects', pet_paths)
+    sf(summon_path, 'skillUpBitmapName', r'DRXtextures\skill icons\spirit\bonefiendup.tex')
+    sf(summon_path, 'skillDownBitmapName', r'DRXtextures\skill icons\spirit\bonefienddown.tex')
+    print("  Blood High Priest summon: 3 Melinoe blade-dancer pets + summon skill")
+    return True
+
+
+def _create_bwpriest_soul(db):
+    """Blood Witch High Priest soul (c_disciple_miniboss) - summon-soul shape.
+    Level 39/56/71."""
+    MONSTER = r'records\drxcreatures\bloodwitch\c_disciple_miniboss.dbr'
+    SUMMON = r'records\skills\soulskills\summon_bwpriest.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, lm, im, mm, lmin, lmax, leech, dl, cast, manaregen):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, SUMMON), 'itemSkillLevel': (I, sk),
+            'augmentSkillName1': (S, _AUG_DARKCOVENANT), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, aug),
+            'characterLifeModifier': (F, lm), 'characterIntelligenceModifier': (F, im),
+            'characterManaModifier': (F, mm),
+            'offensiveLifeMin': (F, lmin), 'offensiveLifeMax': (F, lmax), 'offensiveLifeLeechMin': (F, leech),
+            'defensiveLife': (F, dl), 'characterSpellCastSpeedModifier': (I, cast),
+            'characterManaRegenModifier': (I, manaregen),
+        }}
+    tiers = [
+        tier('n', 39, 1, 2, 10.0, 6.0, 8.0, 25.0, 40.0, 20.0, 18.0, 14, 12),
+        tier('e', 56, 2, 3, 14.0, 9.0, 11.0, 38.0, 58.0, 30.0, 26.0, 20, 18),
+        tier('l', 71, 3, 4, 19.0, 12.0, 15.0, 55.0, 82.0, 42.0, 34.0, 28, 24),
+    ]
+    paths = _create_soul(db, 'bwpriest', 'tagSVCSoulBWHighPriest', tiers, MONSTER, 66.0)
+    print(f"  Blood High Priest soul: summon-soul ({len(paths)} paths)")
+    return paths
+
+
+# ── 2.5 Lil'Lued the Elder Djinn - SUMMON (storm djinn pet from Lyia) ──
+
+def _create_lillued_pet_skill(db):
+    """Lil'Lued Elder Djinn summon: 3 djinn pets cloned from Lyia (Boneash
+    staff-caster pattern). Storm staff/armband/ring loadout. Permanent."""
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
+    lyia_sources = [
+        r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_3.dbr',
+    ]
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
+    pet_paths = [
+        r'records\skills\soulskills\pets\lillued_1.dbr',
+        r'records\skills\soulskills\pets\lillued_2.dbr',
+        r'records\skills\soulskills\pets\lillued_3.dbr',
+    ]
+    life = [4800, 6800, 9000]
+    life_regen = [25.0, 45.0, 65.0]
+    dmg_min = [50, 75, 105]
+    dmg_max = [80, 120, 165]
+    src_monster = _find_record(db, r'records\drxcreatures\crowheroes\lillued_big.dbr')
+    if not src_monster:
+        print("  WARNING: lillued_big source not found!")
+
+    for i, path in enumerate(pet_paths):
+        src = _find_record(db, lyia_sources[i])
+        if not src:
+            print(f"  WARNING: Lyia source {lyia_sources[i]} not found!")
+            return False
+        db.clone_record(src, path)
+        if src_monster:
+            _copy_animation_fields(db, src_monster, path)
+            _update_existing_fields(db, src_monster, path, _SKILL_PREFIXES)
+        sf = db.set_field
+        _ST = r'records\item\equipmentweapon\staff'
+        _AB = r'records\item\equipmentarmband'
+        _RG = r'records\item\equipmentring'
+        _set_pet_equipment(db, path, {
+            'chanceToEquipLeftHand': 100.0, 'chanceToEquipLeftHandItem1': 5000,
+            'lootLeftHandItem1': [_ST + r'\u_n_fulminator.dbr', _ST + r'\u_e_ilektrismos.dbr', _ST + r'\u_l_morosnyx.dbr'],
+            'chanceToEquipForearm': 100.0, 'chanceToEquipForearmItem1': 5000,
+            'lootForearmItem1': [_AB + r"\usm_n_ronzer'sgift.dbr", _AB + r'\usm_e_raimentofthestorm.dbr', _AB + r"\usm_l_archmage'sregalia.dbr"],
+            'chanceToEquipFinger1': 100.0, 'chanceToEquipFinger1Item1': 5000,
+            'lootFinger1Item1': [_RG + r'\u_n_stormeye.dbr', _RG + r'\u_e_celestialband.dbr', _RG + r"\u_l_apollo'swill.dbr"],
+        })
+        sf(path, 'charLevel', i + 1)
+        sf(path, 'mesh', r'Creatures\Monster\Djinn\ElderDjinn01.msh')
+        sf(path, 'baseTexture', r'Creatures\Monster\Djinn\ElderDjinn01.tex')
+        sf(path, 'bumpTexture', '')
+        sf(path, 'scale', 2.7)
+        sf(path, 'description', 'tagUrderBigLued')
+        sf(path, 'characterRacialProfile', 'Demon')
+        sf(path, 'controller', CONTROLLER)
+        sf(path, 'charAnimationTableName', r'records\creature\monster\djinn\anm\anm_djinn.dbr')
+        sf(path, 'characterLife', float(life[i]))
+        sf(path, 'characterLifeRegen', life_regen[i])
+        sf(path, 'characterMana', 900.0)
+        sf(path, 'characterManaRegen', 25.0)
+        sf(path, 'characterStrength', 250.0)
+        sf(path, 'characterDexterity', 200.0)
+        sf(path, 'characterIntelligence', 350.0)
+        sf(path, 'characterAttackSpeed', 1.0)
+        sf(path, 'characterRunSpeed', 1.1)
+        sf(path, 'characterSpellCastSpeed', 1.4)
+        sf(path, 'handHitDamageMin', float(dmg_min[i]))
+        sf(path, 'handHitDamageMax', float(dmg_max[i]))
+        sf(path, 'dropItems', 0)
+        sf(path, 'giveXP', 0)
+        sf(path, 'experiencePoints', 0)
+        sf(path, 'StatusIcon', r'DRXtextures\skill icons\spirit\bonefiendup.tex')
+        sf(path, 'StatusIconRed', r'DRXtextures\skill icons\spirit\bonefienddown.tex')
+
+    summon_path = r'records\skills\soulskills\summon_lillued.dbr'
+    summon_src = _find_record(db, lyia_summon)
+    if summon_src:
+        db.clone_record(summon_src, summon_path)
+    else:
+        _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+    sf = db.set_field
+    sf(summon_path, 'isPetDisplayable', 1)
+    sf(summon_path, 'skillDisplayName', 'tagSVCSummonLilLued')
+    sf(summon_path, 'skillManaCost', [300.0, 350.0, 400.0])
+    sf(summon_path, 'spawnObjects', pet_paths)
+    sf(summon_path, 'skillUpBitmapName', r'DRXtextures\skill icons\spirit\bonefiendup.tex')
+    sf(summon_path, 'skillDownBitmapName', r'DRXtextures\skill icons\spirit\bonefienddown.tex')
+    print("  Lil'Lued Elder Djinn summon: 3 storm-djinn pets + summon skill")
+    return True
+
+
+def _create_lillued_soul(db):
+    """Lil'Lued Elder Djinn soul (lillued_big) - storm summon-soul. Level 40/57/71."""
+    MONSTER = r'records\drxcreatures\crowheroes\lillued_big.dbr'
+    SUMMON = r'records\skills\soulskills\summon_lillued.dbr'
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def tier(diff, ilvl, sk, aug, lmin, lmax, lmod, tsm, lm, im, dl, cast):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, SUMMON), 'itemSkillLevel': (I, sk),
+            'augmentSkillName1': (S, _AUG_STORMNIMBUS), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_SQUALL), 'augmentSkillLevel2': (I, aug),
+            'offensiveLightningMin': (F, lmin), 'offensiveLightningMax': (F, lmax), 'offensiveLightningModifier': (I, lmod),
+            'characterTotalSpeedModifier': (I, tsm), 'characterLifeModifier': (F, lm),
+            'characterIntelligenceModifier': (F, im), 'defensiveLightning': (F, dl),
+            'characterSpellCastSpeedModifier': (I, cast),
+        }}
+    tiers = [
+        tier('n', 40, 1, 2, 25.0, 55.0, 22, 8, 10.0, 6.0, 15.0, 12),
+        tier('e', 57, 2, 3, 38.0, 78.0, 30, 10, 14.0, 9.0, 22.0, 18),
+        tier('l', 71, 3, 4, 55.0, 110.0, 40, 12, 19.0, 12.0, 30.0, 26),
+    ]
+    paths = _create_soul(db, 'lillued', 'tagSVCSoulLilLued', tiers, MONSTER, 66.0)
+    print(f"  Lil'Lued soul: storm-djinn summon-soul ({len(paths)} paths)")
+    return paths
+# ── Section 3: Crow Heroes faction (remaining 9) - built together (warband style) ──
+
+def _create_crow_heroes_souls(db):
+    """The remaining 9 Crow Heroes souls (5 marquee full blocks + 4 novelties).
+    Each calls _create_soul with per-monster tier tuples. Quest class, 66% drop.
+    Uses only DB-verified proc/augment paths (never a dangling _SK_*)."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    CH = r'records\drxcreatures\crowheroes'
+    total = 0
+
+    # ---- Gorgus (Beastman DW blade-twin of Zilla, Lv 45/60/73) ----
+    def gorgus_tier(diff, ilvl, sk, aug, pmin, pmax, pmod, cmin, cmax, asm, tsm, dodge, strm, dexm, oam, lm, dp):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_BLADETWIRL), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_DUALWEAPON), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_ONSLAUGHT), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveColdMin': (F, cmin), 'offensiveColdMax': (F, cmax), 'offensivePierceRatioModifier': (I, 15),
+            'characterAttackSpeedModifier': (F, asm), 'characterTotalSpeedModifier': (I, tsm),
+            'characterDodgePercent': (F, dodge), 'characterStrengthModifier': (F, strm),
+            'characterDexterityModifier': (F, dexm), 'characterOffensiveAbilityModifier': (F, oam),
+            'characterLifeModifier': (F, lm), 'defensivePhysical': (F, dp),
+        }}
+    total += len(_create_soul(db, 'gorgus', 'tagSVCSoulGorgus', [
+        gorgus_tier('n', 45, 4, 3, 60.0, 88.0, 32, 22.0, 36.0, 14.0, 8, 10.0, 8.0, 6.0, 6.0, 10.0, 14.0),
+        gorgus_tier('e', 60, 6, 4, 90.0, 130.0, 45, 32.0, 52.0, 18.0, 11, 13.0, 11.0, 8.0, 8.0, 13.0, 20.0),
+        gorgus_tier('l', 73, 8, 5, 130.0, 168.0, 60, 44.0, 70.0, 22.0, 14, 16.0, 15.0, 11.0, 11.0, 18.0, 26.0),
+    ], f'{CH}\\gorgus.dbr', 66.0))
+
+    # ---- Jiaco the Nightstalker (Demon ninja, Lv 40/57/71) ----
+    def jiaco_tier(diff, ilvl, sk, aug, pmin, pmax, pmod, pcmin, pcmax, leech, asm, rsm, dodge, dproj, dexm, oam, lm):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_SHADOWSURGE), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_LETHALSTRIKE), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_PHANTOMSTRIKE), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensivePierceMin': (F, pcmin), 'offensivePierceMax': (F, pcmax), 'offensivePierceRatioModifier': (I, 18),
+            'offensiveLifeLeechMin': (F, leech),
+            'characterAttackSpeedModifier': (F, asm), 'characterRunSpeedModifier': (F, rsm),
+            'characterDodgePercent': (F, dodge), 'characterDeflectProjectile': (F, dproj),
+            'characterDexterityModifier': (F, dexm), 'characterOffensiveAbilityModifier': (F, oam),
+            'characterLifeModifier': (F, lm),
+        }}
+    total += len(_create_soul(db, 'jiaco', 'tagSVCSoulJiaco', [
+        jiaco_tier('n', 40, 4, 3, 48.0, 72.0, 28, 28.0, 45.0, 20.0, 16.0, 10.0, 14.0, 12.0, 8.0, 8.0, 8.0),
+        jiaco_tier('e', 57, 6, 4, 76.0, 108.0, 40, 40.0, 63.0, 28.0, 20.0, 13.0, 18.0, 15.0, 11.0, 11.0, 11.0),
+        jiaco_tier('l', 71, 8, 5, 110.0, 150.0, 54, 55.0, 85.0, 38.0, 24.0, 16.0, 22.0, 18.0, 15.0, 15.0, 16.0),
+    ], f'{CH}\\jiaco.dbr', 66.0))
+
+    # ---- Yerk (Magical club-brute, Lv 41/57/71) ----
+    def yerk_tier(diff, ilvl, sk, aug, pmin, pmax, pmod, stunmin, stunmax, sleepmin, sleepmax, strm, lm, conm, oam, dp, dpm):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_EARTHFURY_RING), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_BATTLERAGE), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_CONCUSSIVE), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveStunMin': (F, stunmin), 'offensiveStunMax': (F, stunmax),
+            'offensiveSleepMin': (F, sleepmin), 'offensiveSleepMax': (F, sleepmax),
+            'characterStrengthModifier': (F, strm), 'characterLifeModifier': (F, lm),
+            'characterConstitutionModifier': (F, conm), 'characterOffensiveAbilityModifier': (F, oam),
+            'defensivePhysical': (F, dp), 'defensiveProtectionModifier': (F, dpm),
+        }}
+    total += len(_create_soul(db, 'yerk', 'tagSVCSoulYerk', [
+        yerk_tier('n', 41, 4, 3, 62.0, 92.0, 34, 1.0, 2.0, 1.5, 2.5, 8.0, 12.0, 6.0, 6.0, 15.0, 8.0),
+        yerk_tier('e', 57, 6, 4, 92.0, 133.0, 47, 1.0, 2.0, 2.0, 3.0, 11.0, 17.0, 8.0, 8.0, 21.0, 11.0),
+        yerk_tier('l', 71, 8, 5, 130.0, 175.0, 63, 1.0, 2.0, 2.5, 3.5, 15.0, 24.0, 11.0, 11.0, 28.0, 15.0),
+    ], f'{CH}\\yerk.dbr', 66.0))
+
+    # ---- Jabarto (Boarman storm-caster, Lv 18/42/58) ----
+    def jabarto_tier(diff, ilvl, sk, aug, lmin, lmax, lmod, im, mm, lm, cast, dl):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_RING_LIGHTNING), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_STORMNIMBUS), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_CHAINLIGHTNING), 'augmentSkillLevel2': (I, aug),
+            'offensiveLightningMin': (F, lmin), 'offensiveLightningMax': (F, lmax), 'offensiveLightningModifier': (I, lmod),
+            'characterIntelligenceModifier': (F, im), 'characterManaModifier': (F, mm),
+            'characterLifeModifier': (F, lm), 'characterSpellCastSpeedModifier': (I, cast),
+            'defensiveLightning': (F, dl),
+        }}
+    total += len(_create_soul(db, 'jabarto', 'tagSVCSoulJabarto', [
+        jabarto_tier('n', 18, 3, 2, 20.0, 40.0, 22, 6.0, 8.0, 6.0, 14, 15.0),
+        jabarto_tier('e', 42, 5, 3, 34.0, 65.0, 32, 9.0, 12.0, 9.0, 22, 22.0),
+        jabarto_tier('l', 58, 7, 4, 55.0, 100.0, 44, 12.0, 16.0, 13.0, 30, 30.0),
+    ], f'{CH}\\jabarto.dbr', 66.0))
+
+    # ---- Rainbowbright the Standard-Bearer (SUMMON via existing battlestandard SpawnPet) ----
+    def rainbow_tier(diff, ilvl, sk, aug, pmin, pmax, pmod, strm, lm, oam, dam, dp, dpm):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_BATTLESTANDARD), 'itemSkillLevel': (I, sk),
+            # NO autocast controller (activated summon, chimera/hydra pattern)
+            'augmentSkillName1': (S, _AUG_BATTLERAGE), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_RALLY), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'characterStrengthModifier': (F, strm), 'characterLifeModifier': (F, lm),
+            'characterOffensiveAbilityModifier': (F, oam), 'characterDefensiveAbilityModifier': (F, dam),
+            'defensivePhysical': (F, dp), 'defensiveProtectionModifier': (F, dpm),
+        }}
+    total += len(_create_soul(db, 'rainbowbright', 'tagSVCSoulRainbowbright', [
+        rainbow_tier('n', 46, 1, 2, 30.0, 48.0, 20, 8.0, 12.0, 8.0, 6.0, 14.0, 8.0),
+        rainbow_tier('e', 61, 2, 3, 45.0, 70.0, 28, 11.0, 17.0, 11.0, 8.0, 20.0, 11.0),
+        rainbow_tier('l', 74, 3, 4, 68.0, 95.0, 38, 15.0, 24.0, 15.0, 11.0, 28.0, 15.0),
+    ], f'{CH}\\rainbowbright.dbr', 66.0))
+
+    # ---- Novelties (recipe-row depth): Less, Nomnom, Gitar3, Kir4, Lil'Lued child ----
+    # Less (Beast igloo-burst, Lv 10/37/54)
+    def less_tier(diff, ilvl, sk, aug, cmin, cmax, im, lm, dc):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_SPELLSHOCK), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_RINGOFFLAME), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, aug),
+            'offensiveColdMin': (F, cmin), 'offensiveColdMax': (F, cmax),
+            'characterIntelligenceModifier': (F, im), 'characterLifeModifier': (F, lm),
+            'defensiveCold': (F, dc),
+        }}
+    total += len(_create_soul(db, 'less', 'tagSVCSoulLess', [
+        less_tier('n', 10, 2, 1, 8.0, 16.0, 4.0, 5.0, 10.0),
+        less_tier('e', 37, 4, 2, 18.0, 32.0, 6.0, 7.0, 18.0),
+        less_tier('l', 54, 6, 3, 30.0, 52.0, 9.0, 10.0, 26.0),
+    ], f'{CH}\\less.dbr', 66.0))
+
+    # Nomnom (Plague Feast beast, Lv 13/39/56)
+    def nomnom_tier(diff, ilvl, sk, aug, poismin, poismax, poisdur, dexm, lm, dpois):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_VENOM_SPRAY), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_ENVENOM), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_PLAGUE), 'augmentSkillLevel2': (I, aug),
+            'offensiveSlowPoisonMin': (F, poismin), 'offensiveSlowPoisonMax': (F, poismax),
+            'offensiveSlowPoisonDurationMin': (F, poisdur),
+            'characterDexterityModifier': (F, dexm), 'characterLifeModifier': (F, lm),
+            'defensivePoison': (F, dpois),
+        }}
+    total += len(_create_soul(db, 'nomnom', 'tagSVCSoulNomnom', [
+        nomnom_tier('n', 13, 2, 1, 20.0, 35.0, 3.0, 5.0, 5.0, 15.0),
+        nomnom_tier('e', 39, 4, 2, 35.0, 55.0, 4.0, 7.0, 7.0, 22.0),
+        nomnom_tier('l', 56, 6, 3, 55.0, 85.0, 5.0, 9.0, 10.0, 30.0),
+    ], f'{CH}\\nomnom.dbr', 66.0))
+
+    # Gitar3 (Lv1 reflect shrine turret novelty)
+    def gitar_tier(diff, ilvl, sk, aug, lmin, lmax, refl, dl):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_RING_LIGHTNING), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_ENERGYSHIELD), 'augmentSkillLevel1': (I, aug),
+            'offensiveLightningMin': (F, lmin), 'offensiveLightningMax': (F, lmax),
+            'defensiveReflect': (F, refl), 'defensiveLightning': (F, dl),
+        }}
+    total += len(_create_soul(db, 'gitar3', 'tagSVCSoulGitar3', [
+        gitar_tier('n', 1, 1, 1, 5.0, 12.0, 10.0, 12.0),
+        gitar_tier('e', 20, 2, 2, 14.0, 26.0, 14.0, 18.0),
+        gitar_tier('l', 40, 3, 3, 26.0, 44.0, 18.0, 24.0),
+    ], f'{CH}\\gitar3.dbr', 66.0))
+
+    # Kir4 (Lv20 bolt-trap novelty, pierce/ranged)
+    def kir_tier(diff, ilvl, sk, aug, pcmin, pcmax, dexm, oam, dp):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_MANTICORE_QUILLS), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_STUDYPREY), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_CALCSTRIKE), 'augmentSkillLevel2': (I, aug),
+            'offensivePierceMin': (F, pcmin), 'offensivePierceMax': (F, pcmax), 'offensivePierceRatioModifier': (I, 15),
+            'characterDexterityModifier': (F, dexm), 'characterOffensiveAbilityModifier': (F, oam),
+            'defensivePierce': (F, dp),
+        }}
+    total += len(_create_soul(db, 'kir4', 'tagSVCSoulKir4', [
+        kir_tier('n', 20, 2, 1, 18.0, 32.0, 6.0, 6.0, 12.0),
+        kir_tier('e', 42, 4, 2, 30.0, 52.0, 8.0, 8.0, 18.0),
+        kir_tier('l', 58, 6, 3, 48.0, 78.0, 11.0, 11.0, 24.0),
+    ], f'{CH}\\kir4.dbr', 66.0))
+
+    # Lil'Lued CHILD (Lv8 "Standing Child" novelty). DISTINCT base name (lilluedchild)
+    # so it never collides with the Elder Djinn's lillued_soul_* records.
+    def child_tier(diff, ilvl, lm, im, dl):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'characterLifeModifier': (F, lm), 'characterIntelligenceModifier': (F, im),
+            'characterManaModifier': (F, im), 'defensiveLife': (F, dl),
+            'characterSpellCastSpeedModifier': (I, int(im)),
+        }}
+    total += len(_create_soul(db, 'lilluedchild', 'tagSVCSoulLilLuedChild', [
+        child_tier('n', 8, 4.0, 4.0, 8.0),
+        child_tier('e', 30, 6.0, 6.0, 14.0),
+        child_tier('l', 50, 9.0, 9.0, 20.0),
+    ], f'{CH}\\lillued.dbr', 66.0))
+
+    print(f"  Crow Heroes faction: {total} soul records across 9 heroes")
+    return total
+
+
+# ── Section 4: D2 NPC trio (Charsi, Gheed; Kallixenia is separate) ──
+
+def _create_d2npc_souls(db):
+    """Charsi (smith bruiser) + Gheed (utility/luck merchant). Level 36/54/69."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    D2 = r'records\drxcreatures\xurder\d2npc'
+    total = 0
+
+    # Charsi the Smith - heavy physical charged-strike
+    def charsi_tier(diff, ilvl, sk, aug, pmin, pmax, pmod, openmin, opendur, strm, oam, lm, dp):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_DEMASTIA_STRIKE), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_CALCSTRIKE), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_DUALWEAPON), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveSlowBleedingMin': (F, openmin), 'offensiveSlowBleedingDurationMin': (F, opendur),
+            'characterStrengthModifier': (F, strm), 'characterOffensiveAbilityModifier': (F, oam),
+            'characterLifeModifier': (F, lm), 'defensivePhysical': (F, dp),
+        }}
+    total += len(_create_soul(db, 'charsi', 'tagSVCSoulCharsi', [
+        charsi_tier('n', 36, 4, 3, 48.0, 72.0, 28, 40.0, 3.0, 8.0, 6.0, 10.0, 14.0),
+        charsi_tier('e', 54, 6, 4, 72.0, 108.0, 40, 60.0, 3.0, 11.0, 8.0, 14.0, 20.0),
+        charsi_tier('l', 69, 8, 5, 105.0, 150.0, 55, 85.0, 4.0, 15.0, 11.0, 19.0, 28.0),
+    ], f'{D2}\\01_charsi.dbr', 66.0))
+
+    # Gheed the Merchant - the ONE intentionally non-combat utility soul (no proc/augments)
+    def gheed_tier(diff, ilvl, life, lm, mm, tsm, dodge, dodgeproj, defprot, dam):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'characterLife': (I, life), 'characterLifeModifier': (F, lm),
+            'characterManaModifier': (F, mm), 'characterTotalSpeedModifier': (I, tsm),
+            'characterDodgePercent': (F, dodge), 'characterDeflectProjectile': (F, dodgeproj),
+            'defensiveProtection': (F, defprot), 'characterDefensiveAbilityModifier': (F, dam),
+        }}
+    total += len(_create_soul(db, 'gheed', 'tagSVCSoulGheed', [
+        gheed_tier('n', 36, 150, 12.0, 12.0, 8, 10.0, 8.0, 30.0, 8.0),
+        gheed_tier('e', 54, 250, 16.0, 16.0, 10, 13.0, 11.0, 45.0, 11.0),
+        gheed_tier('l', 69, 380, 22.0, 22.0, 12, 16.0, 14.0, 65.0, 15.0),
+    ], f'{D2}\\01_gheed.dbr', 66.0))
+
+    print(f"  D2 NPC souls: Charsi (smith) + Gheed (utility) = {total} records")
+    return total
+
+
+# ── Section 6: Other single-boss no-soul targets (5) ──
+
+def _create_other_soul_targets(db):
+    """Blood Shaman, Fleshrender, Anklesickle, Dark Monolith, Fire Trap souls."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    total = 0
+
+    # Blood Abomination Spiritcaller (shadow/leech caster, Lv 40/56/71)
+    def shaman_tier(diff, ilvl, sk, aug, cmin, cmax, lmin, lmax, leech, im, mm, lm, cast, dl):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_LIFE_DRAIN), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_DARKCOVENANT), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, aug),
+            'offensiveColdMin': (F, cmin), 'offensiveColdMax': (F, cmax),
+            'offensiveLifeMin': (F, lmin), 'offensiveLifeMax': (F, lmax), 'offensiveLifeLeechMin': (F, leech),
+            'characterIntelligenceModifier': (F, im), 'characterManaModifier': (F, mm),
+            'characterLifeModifier': (F, lm), 'characterSpellCastSpeedModifier': (I, cast),
+            'defensiveLife': (F, dl),
+        }}
+    total += len(_create_soul(db, '04_spiritcaller', 'tagSVCSoulBloodShaman', [
+        shaman_tier('n', 40, 3, 2, 20.0, 34.0, 35.0, 55.0, 30.0, 8.0, 10.0, 8.0, 18, 18.0),
+        shaman_tier('e', 56, 5, 3, 30.0, 50.0, 55.0, 82.0, 42.0, 11.0, 14.0, 11.0, 28, 26.0),
+        shaman_tier('l', 71, 7, 4, 44.0, 70.0, 82.0, 125.0, 58.0, 14.0, 18.0, 15.0, 40, 34.0),
+    ], r'records\drxcreatures\bloodabomination\04_spiritcaller_40.dbr', 66.0))
+
+    # Fleshrender (raptor rending bleed, Lv 30/50/65)
+    def flesh_tier(diff, ilvl, sk, aug, pmin, pmax, pmod, bleedmin, bleeddur, pcmin, pcmax, dexm, strm, oam, asm):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_SABERSLASH), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_BATTLERAGE), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_LETHALSTRIKE), 'augmentSkillLevel2': (I, aug),
+            'offensivePhysicalMin': (F, pmin), 'offensivePhysicalMax': (F, pmax), 'offensivePhysicalModifier': (I, pmod),
+            'offensiveSlowBleedingMin': (F, bleedmin), 'offensiveSlowBleedingDurationMin': (F, bleeddur),
+            'offensivePierceMin': (F, pcmin), 'offensivePierceMax': (F, pcmax), 'offensivePierceRatioModifier': (I, 15),
+            'characterDexterityModifier': (F, dexm), 'characterStrengthModifier': (F, strm),
+            'characterOffensiveAbilityModifier': (F, oam), 'characterAttackSpeedModifier': (F, asm),
+        }}
+    total += len(_create_soul(db, 'jo7_raptor', 'tagSVCSoulFleshrender', [
+        flesh_tier('n', 30, 3, 2, 40.0, 62.0, 28, 55.0, 3.0, 20.0, 34.0, 8.0, 6.0, 6.0, 12.0),
+        flesh_tier('e', 50, 5, 3, 62.0, 92.0, 40, 90.0, 3.0, 30.0, 48.0, 11.0, 8.0, 8.0, 16.0),
+        flesh_tier('l', 65, 7, 4, 92.0, 130.0, 55, 135.0, 3.0, 42.0, 66.0, 15.0, 11.0, 11.0, 20.0),
+    ], r'records\creature\monster\rumormonsters\orient\jo7_raptor_30.dbr', 66.0))
+
+    # Ambush! Anklesickle (tidecrawler ambush strike, Lv 13/39/57)
+    def ankle_tier(diff, ilvl, sk, aug, poismin, poismax, poisdur, pcmin, pcmax, dexm, dodge, dpois):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_POISONORBS), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _AUG_ENVENOM), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_STUDYPREY), 'augmentSkillLevel2': (I, aug),
+            'offensiveSlowPoisonMin': (F, poismin), 'offensiveSlowPoisonMax': (F, poismax),
+            'offensiveSlowPoisonDurationMin': (F, poisdur),
+            'offensivePierceMin': (F, pcmin), 'offensivePierceMax': (F, pcmax), 'offensivePierceRatioModifier': (I, 15),
+            'characterDexterityModifier': (F, dexm), 'characterDodgePercent': (F, dodge),
+            'defensivePoison': (F, dpois),
+        }}
+    total += len(_create_soul(db, 'um_anklesickle', 'tagSVCSoulAnklesickle', [
+        ankle_tier('n', 13, 2, 1, 20.0, 35.0, 3.0, 15.0, 26.0, 6.0, 6.0, 15.0),
+        ankle_tier('e', 39, 4, 2, 35.0, 55.0, 4.0, 26.0, 42.0, 8.0, 8.0, 22.0),
+        ankle_tier('l', 57, 6, 3, 55.0, 85.0, 5.0, 40.0, 62.0, 11.0, 10.0, 30.0),
+    ], r'records\creature\monster\tidecrawler\um_anklesickle_13_ambush.dbr', 66.0))
+
+    # Egypt Monolith (dark obelisk device, Lv 50/70/93)
+    def monolith_tier(diff, ilvl, sk, aug, lmin, lmax, vmin, vmax, im, eleres, dl):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_RING_LIGHTNING), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_LIGHTNINGBOLT), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_DEATHCHILL), 'augmentSkillLevel2': (I, aug),
+            'offensiveLightningMin': (F, lmin), 'offensiveLightningMax': (F, lmax),
+            'offensiveLifeMin': (F, vmin), 'offensiveLifeMax': (F, vmax),
+            'characterIntelligenceModifier': (F, im), 'defensiveElementalResistance': (F, eleres),
+            'defensiveLife': (F, dl),
+        }}
+    total += len(_create_soul(db, 'egypt_monolith', 'tagSVCSoulDarkMonolith', [
+        monolith_tier('n', 50, 3, 2, 30.0, 55.0, 15.0, 25.0, 8.0, 20.0, 20.0),
+        monolith_tier('e', 70, 5, 3, 48.0, 80.0, 24.0, 40.0, 11.0, 26.0, 28.0),
+        monolith_tier('l', 93, 7, 4, 72.0, 120.0, 36.0, 60.0, 15.0, 32.0, 36.0),
+    ], r'records\creature\devices\darkobelisk\egypt_monolith_50.dbr', 66.0))
+
+    # The Trap (fire trap device, Lv 25/45/68)
+    def trap_tier(diff, ilvl, sk, aug, fmin, fmax, fmod, burnmin, burndur, retal, strm, df):
+        return {'diff': diff, 'itemLevel': ilvl, 'stats': {
+            **_bmp(diff),
+            'itemSkillName': (S, _SS_FIRE_NOVA), 'itemSkillLevel': (I, sk),
+            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'augmentSkillName1': (S, _AUG_FIREENCHANT), 'augmentSkillLevel1': (I, aug),
+            'augmentSkillName2': (S, _AUG_RINGOFFLAME), 'augmentSkillLevel2': (I, aug),
+            'offensiveFireMin': (F, fmin), 'offensiveFireMax': (F, fmax), 'offensiveFireModifier': (I, fmod),
+            'offensiveSlowBurnMin': (F, burnmin), 'offensiveSlowBurnDurationMin': (F, burndur),
+            'retaliationFireMin': (F, retal), 'retaliationFireMax': (F, retal * 1.6),
+            'characterStrengthModifier': (F, strm), 'defensiveFire': (F, df),
+        }}
+    total += len(_create_soul(db, 'um_thetrap', 'tagSVCSoulFireTrap', [
+        trap_tier('n', 25, 3, 2, 25.0, 45.0, 22, 12.0, 3.0, 15.0, 5.0, 20.0),
+        trap_tier('e', 45, 5, 3, 40.0, 68.0, 32, 20.0, 3.0, 25.0, 7.0, 28.0),
+        trap_tier('l', 68, 7, 4, 62.0, 100.0, 44, 32.0, 4.0, 40.0, 10.0, 36.0),
+    ], r'records\creature\devices\firetrap\um_thetrap_25.dbr', 66.0))
+
+    print(f"  Other single-boss soul targets: {total} records across 5 monsters")
+    return total
+
+
+# ── Guards: gate Common/no-class soul leaks (skeletaltyphon.dbr + tombguardian) ──
+
+def _gate_common_soul_leaks(db):
+    """Zero chanceToEquipFinger2 on records that carry soul loot but are NOT a
+    real farmable Hero/Boss/Quest, so _force_100_pct_soul_drops cannot boost them
+    to a 100% farmable-adds drop (design: only Hero/Boss/Quest drop souls):
+      - skeletaltyphon.dbr (Common minion) + anm_skeletaltyphon.dbr (no class)
+        both inherit undeadtyphon_soul at 100%. The real boss_skeletaltyphon_42/
+        45/48 keep their soul (untouched).
+      - um_tombguardian_26.dbr (Common) which _place_orphan_monsters wires to
+        svc_uber\\um_tombguardian_soul at 100% (against Hero/Boss/Quest design).
+    """
+    GATE_SUBSTRINGS = [
+        r'04_skeletaltyphon\skeletaltyphon.dbr',
+        r'04_skeletaltyphon\anm\anm_skeletaltyphon.dbr',
+        r'tombguardian\um_tombguardian_26.dbr',
+    ]
+    gated = 0
+    for name in list(db.record_names()):
+        nl = name.replace('/', '\\').lower()
+        if not any(sub in nl for sub in GATE_SUBSTRINGS):
+            continue
+        mc = db.get_field_value(name, 'monsterClassification')
+        if mc in ('Hero', 'Boss', 'Quest'):
+            # Safety: never gate a legitimate farmable boss (should not match here).
+            continue
+        cur = db.get_field_value(name, 'chanceToEquipFinger2')
+        if cur and float(cur) > 0:
+            db.set_field(name, 'chanceToEquipFinger2', 0.0, DATA_TYPE_FLOAT)
+            db._modified.add(name)
+            gated += 1
+            print(f"    gated soul drop OFF (class={mc}): {name}")
+    print(f"  Common/no-class soul leaks gated: {gated} records")
+    return gated
+# ── Section 5: Table B "never-completed" completion pass (~51 bosses) ──
+#
+# Brings each wired-but-shallow boss soul up to exemplar depth by scan-and-setting
+# a full stat block onto its existing <base>_soul_{n,e,l} records, KEEPING its proc
+# and wiring (the _overhaul_main_toxeus_soul pattern; never clone_record, never
+# re-wire the monster). Each spec gives BASE (Normal-tier) values; E/L auto-scale
+# ~1.4x / 1.9x on numeric damage + modifier fields, proc level 4/6/8, aug 3/4/5.
+# Matching is on the EXACT basename tail '\<base>_soul_{diff}.dbr' so greedy
+# substrings (typhon vs undeadtyphon, hades vs sp_hades) never cross-hit.
+
+# Exemplars already hand-crafted by dedicated fns - NEVER touched by this pass.
+_COMPLETION_EXEMPLAR_BASES = frozenset({
+    'boss_coldworm50', 'dagon', 'calybe', 'leinth', 'murderbunny',
+    'sp_toxeus', 'toxeus', 'rakanizeus', 'boneash', 'pharaohshonorguard',
+    'sp_hades', 'sphades',
+})
+
+# Damage/mod field names that get tier-scaled (E=1.4x, L=1.9x). Everything else
+# (durations, chances, freeze secs, stun secs, small % speeds) is passed verbatim.
+_SCALE_FIELDS = frozenset({
+    'offensivePhysicalMin', 'offensivePhysicalMax', 'offensivePhysicalModifier',
+    'offensiveFireMin', 'offensiveFireMax', 'offensiveFireModifier',
+    'offensiveColdMin', 'offensiveColdMax', 'offensiveColdModifier',
+    'offensiveLightningMin', 'offensiveLightningMax', 'offensiveLightningModifier',
+    'offensiveLifeMin', 'offensiveLifeMax', 'offensiveLifeModifier',
+    'offensivePierceMin', 'offensivePierceMax',
+    'offensiveSlowPoisonMin', 'offensiveSlowPoisonMax',
+    'offensiveSlowBleedingMin',
+    'offensiveSlowBurnMin',
+    'offensiveTotalResistanceReductionAbsoluteMin',
+    'offensiveLifeLeechMin', 'offensivePercentCurrentLifeMin',
+    'characterStrengthModifier', 'characterDexterityModifier', 'characterIntelligenceModifier',
+    'characterLifeModifier', 'characterManaModifier',
+    'characterOffensiveAbilityModifier', 'characterDefensiveAbilityModifier',
+    'characterConstitutionModifier',
+    'defensivePhysical', 'defensiveFire', 'defensiveCold', 'defensiveLightning',
+    'defensivePoison', 'defensiveLife', 'defensivePierce', 'defensiveProtectionModifier',
+    'characterSpellCastSpeedModifier', 'characterManaRegenModifier', 'characterLifeRegenModifier',
+    'characterAttackSpeedModifier',
+})
+
+
+def _complete_boss_souls(db):
+    """Deepen ~51 Table B boss souls in place (keep grant, add depth, tier-scale)."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # Each entry:
+    #   base: exact soul basename stem (record tail = \<base>_soul_{n,e,l}.dbr)
+    #   add_proc: (skill_path, controller) to ADD when the soul had no proc, else None
+    #   aug1/aug2: (path, base_level) augments to (re)assert; None to leave existing
+    #   base_stats: dict {field: value} at NORMAL tier (scaled for E/L per _SCALE_FIELDS)
+    #   ctrl_for_kept: controller to (re)assert on the KEPT proc (matches its Class), or None
+    # proc level: 4/6/8 (kept or added). aug level: base_level, base_level+1, base_level+2.
+    C_ATK, C_HIT = _AC_ON_ATTACK, _AC_ON_HIT
+    SPECS = [
+        # ---- Quest-boss main-story bosses ----
+        # Cyclops Polyphemus (worked example) - phys + stun (club)
+        dict(base='polyphemus', ctrl=C_ATK,
+             aug1=(_AUG_ONSLAUGHT, 3), aug2=(_AUG_BATTLERAGE, 3),
+             stats={'offensivePhysicalMax': 60.0, 'offensivePhysicalModifier': 30,
+                    'offensiveStunMin': 1.0, 'offensiveStunMax': 2.0,
+                    'offensivePierceRatioModifier': 12, 'characterStrengthModifier': 8.0,
+                    'characterConstitutionModifier': 6.0, 'characterOffensiveAbilityModifier': 6.0,
+                    'defensivePhysical': 15.0, 'defensiveProtectionModifier': 8.0,
+                    'characterTotalSpeedModifier': -4}),
+        # Chimaera - summon (KEEP), pet-focused
+        dict(base='chimera', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'characterStrengthModifier': 8.0, 'characterConstitutionModifier': 6.0,
+                    'defensiveFire': 18.0}),
+        # China Telkine Ormenos - cold+life caster. Reassert a VALID controller:
+        # the base soul shipped a dangling ormenos_atenemy_onattack controller;
+        # ormenos_energyblast is an on-attack projectile, so _AC_ON_ATTACK fits.
+        dict(base='ormenos', ctrl=C_ATK, aug1=(_AUG_CHAINLIGHTNING, 3), aug2=(_AUG_DEATHCHILL, 3),
+             stats={'offensiveColdMin': 25.0, 'offensiveColdMax': 42.0,
+                    'offensiveLifeMin': 20.0, 'offensiveLifeMax': 34.0,
+                    'offensiveSlowColdMin': 20.0, 'offensiveSlowColdDurationMin': 3.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 10.0,
+                    'characterSpellCastSpeedModifier': 18, 'defensiveCold': 20.0}),
+        # Yaoguai - fire + burn + phys
+        dict(base='yaoguai', ctrl=C_ATK, aug1=(_AUG_FIREENCHANT, 3), aug2=(_AUG_BATTLERAGE, 3),
+             stats={'offensiveFireMin': 30.0, 'offensiveFireMax': 50.0, 'offensiveFireModifier': 25,
+                    'offensiveSlowBurnMin': 20.0, 'offensiveSlowBurnDurationMin': 3.0,
+                    'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'characterStrengthModifier': 8.0, 'characterIntelligenceModifier': 6.0,
+                    'defensiveFire': 22.0}),
+        # Dragon Liche - cold + freeze + resist-shred, pet-steal flavor
+        dict(base='dragonliche', ctrl=None, aug1=(_AUG_COLDAURA, 3), aug2=(_AUG_DEATHCHILL, 3),
+             stats={'offensiveColdMin': 35.0, 'offensiveColdMax': 55.0, 'offensiveColdModifier': 25,
+                    'offensiveFreezeMin': 0.5, 'offensiveFreezeMax': 1.5, 'offensiveFreezeChance': 15.0,
+                    'offensivePercentCurrentLifeMin': 4.0,
+                    'offensiveTotalResistanceReductionAbsoluteMin': 10.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 14.0,
+                    'defensiveCold': 25.0}),
+        # Gargantuan Yeti - cold + freeze
+        dict(base='gargantuanyeti', ctrl=None, aug1=(_AUG_COLDAURA, 3), aug2=None,
+             stats={'offensiveColdMin': 30.0, 'offensiveColdMax': 50.0, 'offensiveColdModifier': 25,
+                    'offensiveFreezeMin': 0.5, 'offensiveFreezeMax': 1.5, 'offensiveFreezeChance': 15.0,
+                    'characterStrengthModifier': 8.0, 'characterConstitutionModifier': 6.0,
+                    'defensiveCold': 28.0}),
+        # Euryale - cold+life (heal identity)
+        dict(base='euryale', ctrl=None, aug1=None, aug2=(_AUG_DEATHCHILL, 3),
+             stats={'offensiveColdMin': 22.0, 'offensiveColdMax': 38.0,
+                    'offensiveLifeMin': 18.0, 'offensiveLifeMax': 30.0,
+                    'characterIntelligenceModifier': 8.0, 'characterDexterityModifier': 6.0,
+                    'characterManaRegenModifier': 20, 'defensiveCold': 20.0}),
+        # Medusa - fire + phys, petrify star
+        dict(base='medusa', ctrl=C_ATK, aug1=None, aug2=(_AUG_REGROWTH, 3),
+             stats={'offensiveFireMin': 22.0, 'offensiveFireMax': 38.0,
+                    'offensivePhysicalMin': 18.0, 'offensivePhysicalMax': 30.0,
+                    'offensiveFreezeMin': 0.5, 'offensiveFreezeMax': 1.2, 'offensiveFreezeChance': 12.0,
+                    'characterIntelligenceModifier': 8.0, 'characterDexterityModifier': 8.0,
+                    'defensiveFire': 18.0}),
+        # Sstheno - ADD arachne venomspray proc; poison + phys + pierce (spear)
+        dict(base='sstheno', add_proc=(_SS_VENOM_SPRAY, C_ATK), aug1=None, aug2=None,
+             stats={'offensiveSlowPoisonMin': 30.0, 'offensiveSlowPoisonMax': 50.0,
+                    'offensiveSlowPoisonDurationMin': 3.0,
+                    'offensivePhysicalMin': 18.0, 'offensivePhysicalMax': 32.0,
+                    'offensivePierceMin': 15.0, 'offensivePierceMax': 26.0, 'offensivePierceRatioModifier': 15,
+                    'characterStrengthModifier': 6.0, 'characterDexterityModifier': 8.0,
+                    'characterOffensiveAbilityModifier': 8.0, 'defensivePoison': 20.0}),
+        # Greek Telkine Megalesios - lightning + %life + disruption
+        dict(base='megalesios', ctrl=None, aug1=(_AUG_CHAINLIGHTNING, 3), aug2=(_AUG_STORMNIMBUS, 3),
+             stats={'offensiveLightningMin': 30.0, 'offensiveLightningMax': 55.0, 'offensiveLightningModifier': 25,
+                    'offensiveLifeMin': 15.0, 'offensiveLifeMax': 26.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 20, 'defensiveLightning': 20.0}),
+        # Hydra - summon (KEEP), tri-breath flat + tri-elem defense
+        dict(base='hydra', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveFireMin': 12.0, 'offensiveFireMax': 22.0,
+                    'offensiveColdMin': 12.0, 'offensiveColdMax': 22.0,
+                    'offensiveSlowPoisonMin': 15.0, 'offensiveSlowPoisonDurationMin': 3.0,
+                    'characterStrengthModifier': 8.0, 'characterConstitutionModifier': 6.0,
+                    'defensiveFire': 12.0, 'defensiveCold': 12.0, 'defensivePoison': 12.0}),
+        # Manticore - phys+poison quills + pierce + disruption
+        dict(base='manticore', ctrl=C_ATK, aug1=(_AUG_STUDYPREY, 3), aug2=(_AUG_ENVENOM, 3),
+             stats={'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensiveSlowPoisonMin': 30.0, 'offensiveSlowPoisonMax': 50.0,
+                    'offensiveSlowPoisonDurationMin': 3.0,
+                    'offensivePierceMin': 20.0, 'offensivePierceMax': 34.0, 'offensivePierceRatioModifier': 15,
+                    'characterDexterityModifier': 8.0, 'characterStrengthModifier': 6.0}),
+        # Minotaur Lord - ADD earthfury proc; phys + fire + battle-rage speed
+        dict(base='minotaurlord', add_proc=(_SS_EARTHFURY_RING, C_ATK), aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 50.0, 'offensivePhysicalModifier': 30,
+                    'offensiveFireMin': 15.0, 'offensiveFireMax': 26.0,
+                    'characterStrengthModifier': 8.0, 'characterOffensiveAbilityModifier': 8.0,
+                    'characterAttackSpeedModifier': 12.0, 'defensivePhysical': 15.0}),
+        # Barmanu - cold + stun + phys (blunt)
+        dict(base='barmanu', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveColdMin': 25.0, 'offensiveColdMax': 42.0, 'offensiveColdModifier': 22,
+                    'offensiveStunMin': 1.0, 'offensiveStunMax': 2.0,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'characterStrengthModifier': 8.0, 'characterOffensiveAbilityModifier': 8.0,
+                    'defensiveCold': 22.0}),
+        # Necromancer Alastor - ADD lifedrain proc; cold+life + leech
+        dict(base='alastor', add_proc=(_SS_LIFE_DRAIN, C_ATK), aug1=None, aug2=None,
+             stats={'offensiveColdMin': 20.0, 'offensiveColdMax': 34.0,
+                    'offensiveLifeMin': 25.0, 'offensiveLifeMax': 42.0,
+                    'offensiveLifeLeechMin': 25.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 18, 'defensiveLife': 20.0}),
+        # Sandwraith Lord - phys + pierce (sandblast) + slow + resist-shred
+        dict(base='sandwraithlord', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensivePierceMin': 18.0, 'offensivePierceMax': 30.0, 'offensivePierceRatioModifier': 15,
+                    'offensiveSlowTotalSpeedMin': 12.0, 'offensiveSlowTotalSpeedDurationMin': 3.0,
+                    'offensiveTotalResistanceReductionAbsoluteMin': 10.0,
+                    'characterStrengthModifier': 8.0, 'characterOffensiveAbilityModifier': 8.0,
+                    'defensivePierce': 18.0}),
+        # Scarabaeus - poison spray + %life
+        dict(base='scarabaeus', ctrl=C_ATK, aug1=None, aug2=(_AUG_PLAGUE, 3),
+             stats={'offensiveSlowPoisonMin': 35.0, 'offensiveSlowPoisonMax': 58.0,
+                    'offensiveSlowPoisonDurationMin': 3.0, 'offensivePercentCurrentLifeMin': 4.0,
+                    'characterStrengthModifier': 8.0, 'characterConstitutionModifier': 6.0,
+                    'defensivePoison': 22.0}),
+        # Scorpos King Nehebkau - poison + phys sting + speed
+        dict(base='nehebkau', ctrl=C_ATK, aug1=None, aug2=(_AUG_ENVENOM, 3),
+             stats={'offensiveSlowPoisonMin': 35.0, 'offensiveSlowPoisonMax': 58.0,
+                    'offensiveSlowPoisonDurationMin': 3.0,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'characterStrengthModifier': 6.0, 'characterDexterityModifier': 8.0,
+                    'characterTotalSpeedModifier': 8, 'defensivePoison': 20.0}),
+        # Spartacentaur Nessus - phys + bleed + endurance
+        dict(base='nessus', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensiveSlowBleedingMin': 45.0, 'offensiveSlowBleedingDurationMin': 3.0,
+                    'characterStrengthModifier': 8.0, 'defensiveProtection': 20.0,
+                    'characterLifeRegenModifier': 20}),
+        # Spider Queen Arachne - poison + %life + speed
+        dict(base='arachne', ctrl=C_ATK, aug1=None, aug2=(_AUG_PLAGUE, 3),
+             stats={'offensiveSlowPoisonMin': 35.0, 'offensiveSlowPoisonMax': 58.0,
+                    'offensiveSlowPoisonDurationMin': 3.0, 'offensivePercentCurrentLifeMin': 4.0,
+                    'characterDexterityModifier': 8.0, 'characterTotalSpeedModifier': 8,
+                    'defensivePoison': 22.0}),
+        # Talos - fire + phys (fist) + stun (stomp)
+        dict(base='talos', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveFireMin': 25.0, 'offensiveFireMax': 42.0,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'offensiveStunMin': 1.0, 'offensiveStunMax': 2.0,
+                    'characterStrengthModifier': 8.0, 'defensiveProtection': 30.0}),
+        # Terracotta Mage Bandari - cold+lightning
+        dict(base='bandari', ctrl=None, aug1=None, aug2=(_AUG_CHAINLIGHTNING, 3),
+             stats={'offensiveColdMin': 20.0, 'offensiveColdMax': 34.0,
+                    'offensiveLightningMin': 20.0, 'offensiveLightningMax': 40.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 18, 'defensiveLightning': 20.0}),
+        # Titan Typhon (living) - fire meteors + phys + %life. EXACT base 'typhon' only.
+        dict(base='typhon', ctrl=None, aug1=(_AUG_FIREENCHANT, 3), aug2=(_AUG_VOLCANICORB, 3),
+             stats={'offensiveFireMin': 35.0, 'offensiveFireMax': 58.0, 'offensiveFireModifier': 25,
+                    'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensivePercentCurrentLifeMin': 4.0,
+                    'characterStrengthModifier': 8.0, 'characterIntelligenceModifier': 8.0,
+                    'characterManaModifier': 12.0, 'defensiveFire': 22.0}),
+        # Xiao - summon peng (KEEP), lightning-melee flavor, keep glass -life
+        dict(base='xiao', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveLightningMin': 15.0, 'offensiveLightningMax': 28.0,
+                    'offensivePhysicalMin': 15.0, 'offensivePhysicalMax': 26.0,
+                    'characterDexterityModifier': 8.0, 'defensiveLightning': 18.0}),
+
+        # ---- Hero um_ bosses across creature folders ----
+        # Grimshell - vitality bolt + %life (necro augs kept)
+        dict(base='grimshell', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveLifeMin': 25.0, 'offensiveLifeMax': 42.0,
+                    'offensivePercentCurrentLifeMin': 4.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 10.0,
+                    'defensiveLife': 18.0}),
+        # Dark Satyr Shaman - ADD firefragmentnova proc; fire + mana
+        dict(base='darksatyrshaman', add_proc=(_SS_FIRE_NOVA, C_HIT), aug1=None, aug2=(_AUG_VOLCANICORB, 3),
+             stats={'offensiveFireMin': 30.0, 'offensiveFireMax': 50.0, 'offensiveFireModifier': 25,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 18, 'defensiveFire': 20.0}),
+        # Stormbird Mormo - ADD ringoflightning proc; lightning + dodge
+        dict(base='stormbird', add_proc=(_SS_RING_LIGHTNING, C_HIT), aug1=None, aug2=None,
+             stats={'offensiveLightningMin': 25.0, 'offensiveLightningMax': 45.0, 'offensiveLightningModifier': 22,
+                    'characterDexterityModifier': 8.0, 'characterIntelligenceModifier': 6.0,
+                    'characterDodgePercent': 10.0, 'defensiveLightning': 18.0}),
+        # Permean - phys+fire (sandspire/breath) + slow (pet-augment kept)
+        dict(base='permean', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensiveFireMin': 20.0, 'offensiveFireMax': 34.0,
+                    'offensiveSlowTotalSpeedMin': 12.0, 'offensiveSlowTotalSpeedDurationMin': 3.0,
+                    'characterStrengthModifier': 8.0, 'defensiveFire': 18.0}),
+        # Kaublasia - ADD firefragmentnova; fire + phys (bow/fire theme kept)
+        dict(base='kaublasia', add_proc=(_SS_FIRE_NOVA, C_HIT), aug1=None, aug2=None,
+             stats={'offensiveFireMin': 25.0, 'offensiveFireMax': 42.0, 'offensiveFireModifier': 22,
+                    'offensivePhysicalMin': 18.0, 'offensivePhysicalMax': 30.0,
+                    'characterDexterityModifier': 8.0, 'characterDefensiveAbilityModifier': 8.0,
+                    'defensiveFire': 20.0}),
+        # Phagia - summon (KEEP), maenad sorcery small lightning
+        dict(base='phagia', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveLightningMin': 15.0, 'offensiveLightningMax': 28.0,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 10.0,
+                    'defensiveLightning': 15.0}),
+        # Maenad Sorceress (phagia's variant soul) - lightning caster
+        dict(base='maenadsorceress', ctrl=None, aug1=None, aug2=(_AUG_STORMNIMBUS, 3),
+             stats={'offensiveLightningMin': 20.0, 'offensiveLightningMax': 40.0, 'offensiveLightningModifier': 22,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 18, 'defensiveLightning': 18.0}),
+        # Uber Limos - cold + freeze (glacial) + phys
+        dict(base='uber', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveColdMin': 30.0, 'offensiveColdMax': 50.0, 'offensiveColdModifier': 25,
+                    'offensiveFreezeMin': 0.5, 'offensiveFreezeMax': 1.5, 'offensiveFreezeChance': 15.0,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'characterStrengthModifier': 6.0, 'characterIntelligenceModifier': 6.0,
+                    'defensiveCold': 28.0}),
+        # Syrinx - lightning/void + %life (nymph-summon aug kept)
+        dict(base='syrinx', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveLightningMin': 22.0, 'offensiveLightningMax': 40.0,
+                    'offensiveLifeMin': 18.0, 'offensiveLifeMax': 30.0,
+                    'offensivePercentCurrentLifeMin': 4.0,
+                    'characterDexterityModifier': 8.0, 'characterIntelligenceModifier': 6.0,
+                    'defensiveLightning': 18.0}),
+        # Wheedletongue - ADD arachne venomspray; poison + phys + deathchill
+        dict(base='wheedletongue', add_proc=(_SS_VENOM_SPRAY, C_ATK), aug1=None, aug2=None,
+             stats={'offensiveSlowPoisonMin': 30.0, 'offensiveSlowPoisonMax': 50.0,
+                    'offensiveSlowPoisonDurationMin': 3.0,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'characterDexterityModifier': 8.0, 'defensivePoison': 20.0}),
+        # Palai - fire + phys (firebreath/nova) + fire retaliation
+        dict(base='palai', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveFireMin': 30.0, 'offensiveFireMax': 50.0, 'offensiveFireModifier': 25,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'retaliationFireMin': 20.0, 'retaliationFireMax': 35.0,
+                    'characterStrengthModifier': 6.0, 'characterIntelligenceModifier': 6.0,
+                    'defensiveFire': 22.0}),
+        # Xaiweng (xeiwang_soul) - fire + %life (heal/absorb kept), heal life-regen
+        dict(base='xeiwang', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveFireMin': 25.0, 'offensiveFireMax': 42.0,
+                    'offensivePercentCurrentLifeMin': 4.0,
+                    'characterDexterityModifier': 8.0, 'characterStrengthModifier': 6.0,
+                    'characterLifeRegenModifier': 20}),
+        # Black Widow Arachne's Shame (arachnesshame) - poison + web-slow + %life
+        dict(base='arachnesshame', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveSlowPoisonMin': 35.0, 'offensiveSlowPoisonMax': 58.0,
+                    'offensiveSlowPoisonDurationMin': 3.0, 'offensivePercentCurrentLifeMin': 4.0,
+                    'characterDexterityModifier': 8.0, 'defensivePoison': 22.0}),
+        # Melalos - summon zombiesoldier (KEEP), plague/rot small poison-vitality (dark-cov/plague kept)
+        dict(base='melalos', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveSlowPoisonMin': 25.0, 'offensiveSlowPoisonMax': 42.0,
+                    'offensiveSlowPoisonDurationMin': 3.0,
+                    'offensiveLifeMin': 15.0, 'offensiveLifeMax': 26.0,
+                    'characterIntelligenceModifier': 8.0, 'defensivePoison': 18.0}),
+        # Hades main (hades_soul) - shadow phys + life + resist-shred (ternion/bladehoning kept)
+        dict(base='hades', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 50.0,
+                    'offensiveLifeMin': 25.0, 'offensiveLifeMax': 42.0,
+                    'offensiveTotalResistanceReductionAbsoluteMin': 10.0,
+                    'characterStrengthModifier': 8.0, 'characterIntelligenceModifier': 8.0,
+                    'characterLifeModifier': 10.0, 'defensiveLife': 20.0}),
+        # Aktaios - fire nova + mana (volcanic-orb augs kept)
+        dict(base='aktaios', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveFireMin': 30.0, 'offensiveFireMax': 50.0, 'offensiveFireModifier': 25,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 18, 'defensiveFire': 20.0}),
+        # Graeae sisters (3-soul lightning set) - built together
+        dict(base='deino', ctrl=C_HIT, aug1=(_AUG_STORMNIMBUS, 3), aug2=(_AUG_CHAINLIGHTNING, 3),
+             stats={'offensiveLightningMin': 30.0, 'offensiveLightningMax': 55.0, 'offensiveLightningModifier': 25,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 20, 'defensiveLightning': 20.0,
+                    'characterStrengthModifier': -4.0}),
+        dict(base='enyo', ctrl=C_HIT, aug1=(_AUG_STORMNIMBUS, 3), aug2=(_AUG_CHAINLIGHTNING, 3),
+             stats={'offensiveLightningMin': 30.0, 'offensiveLightningMax': 55.0, 'offensiveLightningModifier': 25,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 20, 'defensiveLightning': 20.0,
+                    'characterStrengthModifier': -4.0}),
+        dict(base='pemphredo', ctrl=C_HIT, aug1=(_AUG_STORMNIMBUS, 3), aug2=(_AUG_CHAINLIGHTNING, 3),
+             stats={'offensiveLightningMin': 30.0, 'offensiveLightningMax': 55.0, 'offensiveLightningModifier': 25,
+                    'characterIntelligenceModifier': 8.0, 'characterManaModifier': 12.0,
+                    'characterSpellCastSpeedModifier': 20, 'defensiveLightning': 20.0,
+                    'characterStrengthModifier': -4.0}),
+        # Charon Form2 - fire+phys (geyser/swoop) + mana
+        dict(base='charon', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveFireMin': 30.0, 'offensiveFireMax': 50.0,
+                    'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'characterIntelligenceModifier': 6.0, 'characterStrengthModifier': 6.0,
+                    'characterManaModifier': 10.0, 'defensiveFire': 18.0}),
+        # Cerberus - poison/acid breath + phys bite + roar-slow
+        dict(base='cerberus', ctrl=None, aug1=None, aug2=None,
+             stats={'offensiveSlowPoisonMin': 30.0, 'offensiveSlowPoisonMax': 50.0,
+                    'offensiveSlowPoisonDurationMin': 3.0,
+                    'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensiveSlowTotalSpeedMin': 12.0, 'offensiveSlowTotalSpeedDurationMin': 3.0,
+                    'characterStrengthModifier': 8.0, 'characterDexterityModifier': 6.0,
+                    'defensivePoison': 20.0}),
+        # Skeletal Typhon (undeadtyphon_soul) - phys bone + spirit + trap-debuf (enslave kept)
+        dict(base='undeadtyphon', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 50.0,
+                    'offensiveLifeMin': 20.0, 'offensiveLifeMax': 34.0,
+                    'characterStrengthModifier': 8.0, 'characterIntelligenceModifier': 6.0,
+                    'defensiveLife': 18.0}),
+        # Antaeus - phys+poison charged + teleport (sword aug kept)
+        dict(base='antaeus', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 50.0, 'offensivePhysicalModifier': 25,
+                    'offensiveSlowPoisonMin': 25.0, 'offensiveSlowPoisonDurationMin': 3.0,
+                    'characterStrengthModifier': 8.0, 'defensivePhysical': 15.0}),
+        # Deep Thresher (deeptresher_soul - note the data's single-s spelling) - phys+fire geyser + bleed + protection
+        dict(base='deeptresher', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 30.0, 'offensivePhysicalMax': 50.0,
+                    'offensiveFireMin': 20.0, 'offensiveFireMax': 34.0,
+                    'offensiveSlowBleedingMin': 45.0, 'offensiveSlowBleedingDurationMin': 3.0,
+                    'characterStrengthModifier': 8.0, 'characterDefensiveAbilityModifier': 8.0,
+                    'defensiveProtection': 30.0}),
+        # Meglograi (keres) - phys+life (bat/attack) + blink (heal life-regen)
+        dict(base='meglograi', ctrl=None, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 25.0, 'offensivePhysicalMax': 42.0,
+                    'offensiveLifeMin': 20.0, 'offensiveLifeMax': 34.0,
+                    'characterDexterityModifier': 8.0, 'characterManaModifier': 8.0,
+                    'characterLifeRegenModifier': 20}),
+        # Blood Crow - ADD firefragmentnova; fire enchant + deathchill + keep glass -life
+        dict(base='bloodcrow', add_proc=(_SS_FIRE_NOVA, C_HIT), aug1=None, aug2=None,
+             stats={'offensiveFireMin': 25.0, 'offensiveFireMax': 42.0, 'offensiveFireModifier': 22,
+                    'characterIntelligenceModifier': 8.0, 'defensiveFire': 20.0}),
+        # Elephant Snatcher already in OVERHAULS (elephantsnatcher_soul) - deepen further:
+        # (kept lifedrain + battlerage; add life-leech + frost flavor + con)
+        dict(base='elephantsnatcher', ctrl=C_ATK, aug1=None, aug2=None,
+             stats={'offensivePhysicalMin': 20.0, 'offensivePhysicalMax': 34.0,
+                    'offensiveLifeMin': 18.0, 'offensiveLifeMax': 30.0, 'offensiveLifeLeechMin': 22.0,
+                    'offensiveColdMin': 12.0, 'offensiveColdMax': 20.0,
+                    'characterStrengthModifier': 6.0, 'characterConstitutionModifier': 6.0,
+                    'defensiveLife': 15.0}),
+    ]
+
+    def scaled(val, mult):
+        if isinstance(val, float):
+            return round(val * mult, 1)
+        if isinstance(val, int):
+            return int(round(val * mult))
+        return val
+
+    DIFF_MULT = {'n': 1.0, 'e': 1.4, 'l': 1.9}
+    PROC_LV = {'n': 4, 'e': 6, 'l': 8}
+    AUG_OFF = {'n': 0, 'e': 1, 'l': 2}
+
+    total = 0
+    touched_bases = []
+    for spec in SPECS:
+        base = spec['base']
+        add_proc = spec.get('add_proc')
+        ctrl = spec.get('ctrl')
+        aug1 = spec.get('aug1')
+        aug2 = spec.get('aug2')
+        base_stats = spec['stats']
+        base_hits = 0
+        for name in list(db.record_names()):
+            nl = name.replace('/', '\\').lower()
+            if 'equipmentring' not in nl or '\\soul\\' not in nl:
+                continue
+            if 'test' in nl or 'template' in nl:
+                continue
+            # exact basename match on the tail
+            matched_diff = None
+            for diff in ('n', 'e', 'l'):
+                if nl.endswith(f'\\{base}_soul_{diff}.dbr'):
+                    matched_diff = diff
+                    break
+            if matched_diff is None:
+                continue
+            diff = matched_diff
+            fields = {}
+            # proc: KEEP existing + rescale level + reassert controller; or ADD
+            if add_proc:
+                fields['itemSkillName'] = (S, add_proc[0])
+                fields['itemSkillLevel'] = (I, PROC_LV[diff])
+                fields['itemSkillAutoController'] = (S, add_proc[1])
+            else:
+                # only rescale level if the soul actually has a proc
+                if db.get_field_value(name, 'itemSkillName'):
+                    fields['itemSkillLevel'] = (I, PROC_LV[diff])
+                    if ctrl:
+                        fields['itemSkillAutoController'] = (S, ctrl)
+            if aug1:
+                fields['augmentSkillName1'] = (S, aug1[0])
+                fields['augmentSkillLevel1'] = (I, aug1[1] + AUG_OFF[diff])
+            if aug2:
+                fields['augmentSkillName2'] = (S, aug2[0])
+                fields['augmentSkillLevel2'] = (I, aug2[1] + AUG_OFF[diff])
+            mult = DIFF_MULT[diff]
+            for fname, val in base_stats.items():
+                sval = scaled(val, mult) if fname in _SCALE_FIELDS else val
+                dtype = F if isinstance(sval, float) else I
+                fields[fname] = (dtype, sval)
+            _set_soul_fields(db, name, fields)
+            total += 1
+            base_hits += 1
+        if base_hits:
+            touched_bases.append(f'{base}({base_hits})')
+        else:
+            print(f"    WARNING: completion base '{base}' matched 0 records")
+    print(f"  Table B completion: {total} soul records deepened across {len(touched_bases)} bases")
+    print(f"    bases: {', '.join(touched_bases)}")
+    return total
+
+
 def apply_all_extended_patches(db, force_full_drops=True):
     """Run all extended patches. Call after create_uber_souls.
 
@@ -4397,6 +5856,138 @@ def apply_all_extended_patches(db, force_full_drops=True):
     tags['tagSVCSoulTheFlayer'] = '{^F}Soul of the Flayer'
     tags['tagSVCSoulRottingDevourer'] = '{^F}Soul of the Rotting Devourer'
 
+    # ── Boss Souls wave tags (docs/BOSS_SOULS_DESIGN.md Section 9) ──
+    # tagSVCSoulAinex already defined above (its rich block reuses the existing tag).
+    tags['tagSVCSoulAinexDESC'] = (
+        'The Queen of Crows carves souls from the air with spectral bolts. Bound '
+        'into this ring, her essence lends the bearer her uncanny evasion and the '
+        'killing lance of her gaze.')
+    tags['tagSVCSoulBWHighPriest'] = '{^F}Soul of the Blood High Priest'
+    tags['tagSVCSoulBWHighPriestDESC'] = (
+        'High Priest of the Blood Witch cult, who tore living demons from the '
+        'blood of his victims. His soul, released, calls forth a Melinoe '
+        'blade-dancer to fight at your side until it is cut down.')
+    tags['tagSVCSummonBWHighPriest'] = 'Call the Blood Blade-Dancer'
+    tags['tagSVCSummonBWHighPriestDESC'] = (
+        'Release the imprisoned Melinoe blade-dancer, a synergy demon torn from '
+        'blood, to dance her killing dance at your side.')
+    tags['tagSVCSoulLimosLifeeater'] = '{^F}Soul of the Lifeeater'
+    tags['tagSVCSoulLimosLifeeaterDESC'] = (
+        'The Lifeeater knows only endless hunger. Its soul drains the vitality of '
+        'all it touches, feeding the bearer on the lives of the slain.')
+    tags['tagSVCSoulKallixenia'] = '{^F}Soul of Kallixenia'
+    tags['tagSVCSoulKallixeniaDESC'] = (
+        'Kallixenia, the Lich Queen, rained soul-orbs from a poisoned sky. Her '
+        "soul answers the call, drawing down a storm of life-stealing spirits "
+        "upon the bearer's foes.")
+    tags['tagSVCSoulLilLued'] = "{^F}Soul of Lil'Lued the Elder Djinn"
+    tags['tagSVCSoulLilLuedDESC'] = (
+        "Bound in a crow-cursed lamp, the Elder Djinn Lil'Lued rages against its "
+        'imprisonment. Freed by the soul, it fights beside you wreathed in storm '
+        'and blood-pact, hastening your step and blasting your enemies.')
+    tags['tagSVCSummonLilLued'] = 'Free the Elder Djinn'
+    tags['tagSVCSummonLilLuedDESC'] = (
+        'Shatter the crow-cursed lamp and loose the Elder Djinn, a towering '
+        'storm-wreathed ally, to blast your foes and haste your step.')
+    tags['tagSVCSoulZilla'] = '{^F}Soul of Zilla the Blade Dancer'
+    tags['tagSVCSoulZillaDESC'] = (
+        'Zilla dances between two frost-forged blades, freezing all he cuts. His '
+        'soul grants the whirling blade-storm and the killing cold of the Crow '
+        'assassins.')
+    tags['tagSVCSoulNumberouane'] = '{^F}Soul of Numberouane'
+    tags['tagSVCSoulNumberouaneDESC'] = (
+        'The Frost King of the Crow court buries his foes beneath endless '
+        'blizzards. His soul calls down the frost-storm and armors the bearer '
+        'against the cold he commands.')
+    tags['tagSVCSoulKreeloo'] = '{^F}Soul of Kreeloo the Telkine'
+    tags['tagSVCSoulKreelooDESC'] = (
+        'Kreeloo, ghost of a fallen Telkine, still crackles with the '
+        'chaos-lightning of the god-kings. His soul looses spectral thunderballs '
+        "and wraps the bearer in a telkine's storm.")
+    tags['tagSVCSoulKaets'] = '{^F}Soul of Kaets the Thornheart'
+    tags['tagSVCSoulKaetsDESC'] = (
+        'Kaets, the walking thornwood of the Crow court, seeds the earth with '
+        'living quill-vines. Its soul lets the bearer raise a thicket of thrashing '
+        'thorns to rend the enemy.')
+    tags['tagSVCSoulAnapaest'] = '{^F}Soul of Anapaest the Dishonored'
+    tags['tagSVCSoulAnapaestDESC'] = (
+        'Anapaest, a gigantes cast out for dishonor, shatters the earth with every '
+        'blow. His soul grants the ground-breaking wave and the tireless '
+        'regeneration of the giant-kind.')
+    # Crow Heroes (remaining)
+    tags['tagSVCSoulGorgus'] = '{^F}Soul of Gorgus'
+    tags['tagSVCSoulGorgusDESC'] = (
+        'Gorgus, blade-twin of Zilla, spins a beastman whirlwind of frost-forged '
+        'steel. His soul grants the whirling blades and the cold of the Crow court.')
+    tags['tagSVCSoulJiaco'] = '{^F}Soul of Jiaco the Nightstalker'
+    tags['tagSVCSoulJiacoDESC'] = (
+        'Jiaco stalks the shadows and strikes from nowhere. His soul grants the '
+        "nightstalker's shadow-surge and the killing precision of the Crow assassins.")
+    tags['tagSVCSoulYerk'] = '{^F}Soul of Yerk'
+    tags['tagSVCSoulYerkDESC'] = (
+        'Yerk pounds the earth with his great club and lulls his foes to a deadly '
+        'sleep. His soul grants the ground-pound and the chain-sleep of the brute.')
+    tags['tagSVCSoulJabarto'] = '{^F}Soul of Jabarto'
+    tags['tagSVCSoulJabartoDESC'] = (
+        'Jabarto, boarman storm-caller of the Crow court, wreathes himself in '
+        'lightning. His soul looses the storm-nimbus and the chaining bolt.')
+    tags['tagSVCSoulRainbowbright'] = '{^F}Soul of Rainbowbright the Standard-Bearer'
+    tags['tagSVCSoulRainbowbrightDESC'] = (
+        'Rainbowbright rallies the insectoid host beneath his battle standard. His '
+        'soul raises that standard to hearten your allies and break your foes.')
+    tags['tagSVCSoulLess'] = '{^F}Soul of Less'
+    tags['tagSVCSoulLessDESC'] = (
+        'Less bursts from its icy igloo in a shock of spell-broken frost. Its soul '
+        'grants the igloo-burst and the biting cold of the Crow beasts.')
+    tags['tagSVCSoulNomnom'] = '{^F}Soul of Nomnom'
+    tags['tagSVCSoulNomnomDESC'] = (
+        'Nomnom feasts on plague and rot. Its soul spits venom and festering '
+        'poison upon all who draw near.')
+    tags['tagSVCSoulGitar3'] = '{^F}Soul of the Gitar Shrine'
+    tags['tagSVCSoulGitar3DESC'] = (
+        'A crackling rock-shrine of the Crow court, the Gitar turret reflects '
+        'harm back upon its attackers. Its soul lends that reflecting ward and a '
+        'lash of lightning.')
+    tags['tagSVCSoulKir4'] = '{^F}Soul of the Kir Trap'
+    tags['tagSVCSoulKir4DESC'] = (
+        'The Kir tiki-trap looses a burst of piercing bolts at the unwary. Its '
+        "soul grants that trap-hunter's volley and the hunter's eye.")
+    tags['tagSVCSoulLilLuedChild'] = '{^F}Soul of Little Lued'
+    tags['tagSVCSoulLilLuedChildDESC'] = (
+        'The child-spirit of Little Lued lingers, a small and stubborn ember of '
+        'the djinn it might have become.')
+    # D2 NPC trio (Charsi, Gheed; Kallixenia above)
+    tags['tagSVCSoulCharsi'] = '{^F}Soul of Charsi the Smith'
+    tags['tagSVCSoulCharsiDESC'] = (
+        "Charsi the smith swings her hammer like a weapon of war, opening wounds "
+        "that will not close. Her soul grants the smith's crushing strike.")
+    tags['tagSVCSoulGheed'] = '{^F}Soul of Gheed the Merchant'
+    tags['tagSVCSoulGheedDESC'] = (
+        'Gheed the caravan merchant survives by luck, speed, and a merchant\'s '
+        'cunning. His soul lends the bearer his charmed endurance and quick feet.')
+    # Other single-boss targets
+    tags['tagSVCSoulBloodShaman'] = '{^F}Soul of the Blood Shaman'
+    tags['tagSVCSoulBloodShamanDESC'] = (
+        'The Blood Shaman drains life and mana with shadow spells. His soul feeds '
+        "the bearer on the enemy's vitality and chills the air with decay.")
+    tags['tagSVCSoulFleshrender'] = '{^F}Soul of the Fleshrender'
+    tags['tagSVCSoulFleshrenderDESC'] = (
+        'The Fleshrender raptor tears its prey to ribbons. Its soul grants the '
+        'rending saber-slash and the bleeding hunger of the pack.')
+    tags['tagSVCSoulAnklesickle'] = '{^F}Soul of the Anklesickle'
+    tags['tagSVCSoulAnklesickleDESC'] = (
+        'The Anklesickle strikes from ambush with venom-slick blades. Its soul '
+        'grants the poisoned ambush-volley and the tidecrawler\'s evasion.')
+    tags['tagSVCSoulDarkMonolith'] = '{^F}Soul of the Dark Monolith'
+    tags['tagSVCSoulDarkMonolithDESC'] = (
+        'The Dark Monolith crackles with a stone-bound curse. Its soul looses '
+        'that curse as lightning and vitality and armors the bearer like ancient '
+        'stone.')
+    tags['tagSVCSoulFireTrap'] = '{^F}Soul of the Fire Trap'
+    tags['tagSVCSoulFireTrapDESC'] = (
+        'The Fire Trap erupts in a burst of flame at the careless. Its soul grants '
+        'that fiery burst and turns the bearer\'s skin to searing retaliation.')
+
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
     _add_coldworm_to_egypt_pools(db)
@@ -4425,6 +6016,36 @@ def apply_all_extended_patches(db, force_full_drops=True):
 
     # Soul quality passes
     _overhaul_generic_souls(db)
+
+    # ── Boss Souls wave (docs/BOSS_SOULS_DESIGN.md) ──
+    # Order: run AFTER _place_orphan_monsters (so _create_ainex_soul REPLACES the
+    # thin svc_uber\ainex_soul placeholder at the same paths) and AFTER
+    # _overhaul_generic_souls (so _complete_boss_souls deepens the OVERHAULS-touched
+    # Table B souls with proper N/E/L tier scaling). Gate leaks BEFORE the drop
+    # forcer so it never boosts a gated Common/no-class record to 100%.
+    print("\n=== Boss Souls wave (design doc) ===")
+    # Headliners (skill souls + in-place stub/placeholder fixes)
+    _create_ainex_soul(db)
+    _fix_limos_lifeeater_stub(db)
+    _create_kallixenia_soul(db)
+    _create_zilla_soul(db)
+    _create_numberouane_soul(db)
+    _create_kreeloo_soul(db)
+    _create_kaets_soul(db)
+    _create_anapaest_soul(db)
+    # Headliner summon souls (pet built first, then soul)
+    _create_bwpriest_pet_skill(db)
+    _create_bwpriest_soul(db)
+    _create_lillued_pet_skill(db)
+    _create_lillued_soul(db)
+    # Faction + trio + other single-boss targets
+    _create_crow_heroes_souls(db)
+    _create_d2npc_souls(db)
+    _create_other_soul_targets(db)
+    # Table B completion pass (deepen ~51 wired-but-shallow boss souls in place)
+    _complete_boss_souls(db)
+    # Gate Common/no-class soul leaks (skeletaltyphon.dbr, um_tombguardian_26)
+    _gate_common_soul_leaks(db)
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
     # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
