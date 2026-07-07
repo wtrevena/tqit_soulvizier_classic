@@ -1,5 +1,26 @@
 # Widow Letter no-show - SAVE-STATE DIAGNOSIS (Will's character `_Toxeus`)
 
+> 🚨 2026-07-06 LATE-NIGHT CORRECTION (read this first): the same-night follow-up
+> investigation (`docs/QUEST_STATE_INJECT.md`) DISPROVED the per-character
+> adoption-freeze mechanism this doc concludes with. The OBSERVATIONS below
+> (quest untracked for `_Toxeus`, zero SQWL tokens, the timeline) all stand, but
+> the CAUSE is WORLD-side, not save-side: the deployed map's QUESTS section =
+> SVAERA's original 254 entries + 53 appended by our build, and the engine never
+> loads ANY appended entry (`widowletter` sits at index 256; vanilla TQAE
+> registers exactly 256; none of the 53 has ever produced state for ANY
+> character). The engine DOES auto-adopt newly loadable quests on existing
+> characters (proven: `x2Quest_AesirBrawlYlvaController` wrote fresh OnLevelLoad
+> state on Will's 4.5-month-old character tonight), and `Condition_OnLevelLoad`
+> DOES satisfy on revisited levels. Therefore:
+> - FIX A below (fresh character) is WRONG and would NOT have produced the
+>   letter either; do not act on it;
+> - the real fix is map-side: rebuild the QUESTS registration list so the four
+>   SV quests sit inside the engine's load window (see QUEST_STATE_INJECT.md
+>   section 3). Once that lands, Will's EXISTING character gets the letter
+>   automatically: no fresh start, no save surgery, no copy needed.
+>
+> Original (superseded in mechanism, accurate in observations) analysis follows.
+
 > Read-only forensic diagnosis of WHY the widow-letter scroll does not appear in-game on
 > the CURRENT deployed build, done by decoding Will's live per-character quest-save state.
 > Companion to `docs/BLOODCAVE_QUESTS_RCA.md` (which proved the letter's DATA is complete
