@@ -1369,10 +1369,13 @@ def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
 
 # ── Skill path shortcuts for soul designs ─────────────────────────────────
 
-_SK_PHANTOM_STRIKE = r'records\skills\dream\drxphantomstrike.dbr'
-_SK_DISTORTION_WAVE = r'records\skills\dream\drxdistortionwave.dbr'
-_SK_DISTORTION_FIELD = r'records\skills\dream\drxdistortionfield.dbr'
-_SK_LUCID_DREAM = r'records\skills\dream\drxluciddream.dbr'
+# Dream-mastery skills live under xpack\skills\dream (verified in the built arz;
+# the bare records\skills\dream\drx* paths below never existed -> soul augments
+# using them silently granted nothing).
+_SK_PHANTOM_STRIKE = r'records\xpack\skills\dream\drxphantomstrike.dbr'
+_SK_DISTORTION_WAVE = r'records\xpack\skills\dream\drxdistortionwave.dbr'
+_SK_DISTORTION_FIELD = r'records\xpack\skills\dream\drxdistortionfield.dbr'
+_SK_LUCID_DREAM = r'records\xpack\skills\dream\drxluciddream.dbr'
 _SK_LETHAL_STRIKE = r'records\skills\stealth\drxlethalstrike.dbr'
 _SK_BATTLE_RAGE = r'records\skills\warfare\drxbattlerage.dbr'
 _SK_ONSLAUGHT = r'records\skills\warfare\drxonslaught.dbr'
@@ -1384,25 +1387,31 @@ _SK_ENVENOM = r'records\skills\stealth\drxenvenomweapon.dbr'
 _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'
 _SK_COLD_AURA = r'records\skills\storm\drxcoldaura.dbr'
 _SK_STORM_NIMBUS = r'records\skills\storm\drxstormnimbus.dbr'
-_SK_CHAIN_LIGHTNING = r'records\skills\storm\drxchainlightning.dbr'
+_SK_CHAIN_LIGHTNING = r'records\skills\storm\drxlightningbolt_chainlightning.dbr'  # no drxchainlightning record exists; matches rakanizeus_soul usage
 _SK_FIRE_ENCHANT = r'records\skills\earth\drxfireenchantment.dbr'
 _SK_HEART_OF_OAK = r'records\skills\nature\drxheartofoak.dbr'
-_SK_STUDY_PREY = r'records\skills\stealth\drxstudyprey.dbr'
+_SK_STUDY_PREY = r'records\skills\hunting\drxstudyprey.dbr'  # Study Prey is a Hunting skill, not Rogue/stealth
 _SK_FLASH_POWDER = r'records\skills\stealth\drxflashpowder.dbr'
 _SK_CALCULATED_STRIKE = r'records\skills\stealth\drxcalculatedstrike.dbr'
-_SK_SHIELD_CHARGE = r'records\skills\warfare\drxshieldcharge.dbr'
+_SK_SHIELD_CHARGE = r'records\skills\defensive\drxshieldcharge.dbr'  # Shield Charge is a Defense skill, not Warfare
 _SK_WAR_HORN = r'records\skills\warfare\drxwarhorn.dbr'
-_SK_EARTH_ENCHANT = r'records\skills\earth\drxearthenchantment.dbr'
+# No "earth enchantment" skill exists in TQAE; Fire Enchantment IS the Earth
+# mastery's weapon-enchant skill (tagSkillName105) -> the real thematic augment
+# for the stone/construct souls (slabskin/qinshi/rustedrelic) that use this.
+_SK_EARTH_ENCHANT = r'records\skills\earth\drxfireenchantment.dbr'
 _SK_VOLCANIC_ORB = r'records\skills\earth\drxvolcanicorb.dbr'
 _SK_STORM_SURGE = r'records\skills\storm\drxstormsurge.dbr'
 _SK_SQUALL = r'records\skills\storm\drxsquall.dbr'
-_SK_RAVAGES_OF_TIME = r'records\skills\dream\drxravagesoftime.dbr'
-_SK_PSIONIC_TOUCH = r'records\skills\dream\drxpsionictouch.dbr'
+_SK_RAVAGES_OF_TIME = r'records\skills\spirit\drxdeathchillaura_ravagesoftime.dbr'  # Ravages of Time is a Death Chill Aura modifier (Spirit), tagSkillName036
+_SK_PSIONIC_TOUCH = r'records\xpack\skills\dream\drxpsionictouch.dbr'
 _SK_REGROWTH = r'records\skills\nature\drxregrowth.dbr'
 _SK_SPIRIT_WARD = r'records\skills\spirit\drxspiritward.dbr'
-_SK_NECROSIS = r'records\skills\spirit\drxnecrosis.dbr'
+_SK_NECROSIS = r'records\skills\spirit\drxdeathchillaura_necrosis.dbr'  # Necrosis is a Death Chill Aura modifier (Spirit), tagSkillName037
 _SK_VISION_OF_DEATH = r'records\skills\spirit\drxvisionofdeath.dbr'
-_SK_RUNE_WEAPON = r'records\skills\runemaster\drxruneweapon.dbr'
+# No Runemaster mastery exists in TQAE (no runeweapon/runemaster record in the
+# arz). This constant is currently unused; point it at a real weapon-enchant
+# skill so it can never dangle if a future soul references it.
+_SK_RUNE_WEAPON = r'records\skills\earth\drxfireenchantment.dbr'
 
 # Soul skill procs
 _SS_RING_LIGHTNING = r'records\skills\soulskills\ringoflightning.dbr'
@@ -5678,6 +5687,62 @@ def _verify_no_unclassified_soul_leaks(db):
             f"still drop a soul (see leaks above). Fix classification or gate them.")
     print("  Soul-leak invariant OK: 0 non-Hero/Boss/Quest creatures drop a soul.")
     return 0
+
+
+# Skill-granting string fields on a soul ring. Each holds a DBR path that MUST
+# resolve to a real record or the engine silently grants nothing for it.
+_SOUL_SKILL_FIELDS = (
+    'itemSkillName', 'augmentSkillName1', 'augmentSkillName2',
+    'augmentSkillName3', 'augmentSkillName4', 'itemSkillAutoController',
+)
+_SOUL_PATH_MARKERS = ('\\soul\\', '/soul/')
+
+
+def _verify_soul_augments_resolve(db):
+    """Build-time invariant: every skill a SOUL grants must resolve in the db.
+
+    Soul rings grant skills by storing a DBR path verbatim (see
+    `_set_soul_fields` -> `db.set_field`); nothing resolves the path, so a wrong
+    one (a records\\skills\\dream\\* skill that really lives under
+    records\\xpack\\skills\\dream\\*, or a skill that does not exist in TQAE at
+    all like a Runemaster skill) makes the augment/proc a silent no-op in-game.
+    This decodes augmentSkillName1..4 + itemSkillName + itemSkillAutoController on
+    every soul and raises SystemExit (fails the build loud) on any dangling ref,
+    mirroring the soul-leak and MP-equation invariants. The standalone
+    tools/validate_soul_augments.py re-checks this on the WRITTEN .arz."""
+    recset = {n.replace('/', '\\').lower() for n in db.record_names()}
+
+    def _resolves(p):
+        return p.replace('/', '\\').lower() in recset
+
+    dangling = []  # (soul, field, dead_path)
+    for name in db.record_names():
+        low = name.lower()
+        if not any(m in low for m in _SOUL_PATH_MARKERS):
+            continue
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn not in _SOUL_SKILL_FIELDS or not tf.values:
+                continue
+            for val in tf.values:
+                if isinstance(val, str) and val.strip() and not _resolves(val):
+                    dangling.append((name, fn, val))
+
+    if dangling:
+        print(f"\n  SOUL-AUGMENT INVARIANT FAILED: {len(dangling)} soul skill "
+              f"reference(s) do not resolve:")
+        for soul, fn, val in dangling[:20]:
+            print(f"    DANGLING: {soul} :: {fn} = {val!r}")
+        raise SystemExit(
+            f"Soul augment/proc gate breached: {len(dangling)} soul skill "
+            f"reference(s) point at a record that does not exist (silent no-op). "
+            f"Fix the skill-path constant(s) in apply_svc_patches.py.")
+    print("  Soul-augment invariant OK: every soul augment/proc/item-skill "
+          "reference resolves.")
+    return 0
 # ── Section 5: Table B "never-completed" completion pass (~51 bosses) ──
 #
 # Brings each wired-but-shallow boss soul up to exemplar depth by scan-and-setting
@@ -6942,6 +7007,14 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # classification hole can never silently ship - the reason flipping to the
     # RELEASE default (tuned 66%/25%) is safe.
     _verify_no_unclassified_soul_leaks(db)
+
+    # ── Soul augment/proc resolution invariant (fail-loud) ────────────────────
+    # After every soul is wired, prove that every skill each soul GRANTS
+    # (augmentSkillName1..4 / itemSkillName / itemSkillAutoController) points at a
+    # real record. A dangling path is a silent no-op in-game (the bug that left
+    # "the strongest soul in the game" with two dead augments). The standalone
+    # tools/validate_soul_augments.py re-checks this on the written .arz.
+    _verify_soul_augments_resolve(db)
 
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
     # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid

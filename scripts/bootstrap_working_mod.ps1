@@ -369,6 +369,29 @@ if (Test-Path $svTextEnArc) {
     Write-Host 'WARNING: SV Text_EN.arc not found for text build' -ForegroundColor Yellow
 }
 
+# --- Step 4c: Gate on soul augment/proc resolution ---
+# Every skill a SOUL grants (augmentSkillName1..4 / itemSkillName /
+# itemSkillAutoController) is a DBR path written verbatim into the .arz with no
+# resolution (apply_svc_patches.py _set_soul_fields). A wrong path (e.g. a
+# records\skills\dream\* skill that actually lives under records\xpack\skills\
+# dream\*, or a Runemaster skill that does not exist in TQAE) makes the engine
+# silently grant nothing. This gate decodes every soul's granted-skill refs and
+# fails the build loudly if any does not resolve. .arz-only (no Text.arc dep).
+$soulValidateScript = Join-Path $toolsDir 'validate_soul_augments.py'
+if ((Test-Path $soulValidateScript) -and (Test-Path $dstArz)) {
+    Write-Host ''
+    Write-Host 'Validating soul augment/proc skill references (.arz)...' -ForegroundColor Yellow
+    & $pythonExe $soulValidateScript $dstArz
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host 'ERROR: Soul augment validation FAILED. One or more souls grant a' -ForegroundColor Red
+        Write-Host '       skill whose DBR path does not resolve in the .arz (silent no-op).' -ForegroundColor Red
+        Write-Host '       Fix the offending skill path constant in tools/apply_svc_patches.py.' -ForegroundColor Red
+        exit 1
+    }
+    Write-Host '  Soul augment validation passed.' -ForegroundColor Green
+}
+
 # --- Step 5: Quest system ---
 # Use SVAERA's Quests.arc (100 AE-compatible quest files + tokens.bin).
 # Custom portal quests are added on top.
