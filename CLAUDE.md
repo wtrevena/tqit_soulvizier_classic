@@ -26,7 +26,29 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ---
 
-## Current status (2026-07-07: build22 - QUESTS load-window fix)
+## Current status (2026-07-07: PUBLIC ON STEAM WORKSHOP - item 3759792705)
+
+**The mod is LIVE and PUBLIC** (subscribe to download; updates push via
+`scripts/upload_workshop.ps1 -SteamUser trevenaw7 -Update -Visibility 0` after
+`package_workshop.ps1`; steamcmd session cached). Deployed = build25 map +
+augments-fix arz + current Text. Highlights since 07-06: blood cave fully
+walkable (Y-align build17 + rocks-carve build20); quest load-window fixed
+(build22 - QUESTS section = 256 vanilla-parity entries, THE letter/widow root
+cause); fountain/caravan/letter/smoke/sprites restored; Knossos->UberDungeon
+door (build24) + invented Sparta Crypt door (build25); all 15 SV-area interiors
+have real navmeshes (build23, config-driven CLUSTERS generator w/ blood-cave
+byte-identity proof); ~60 boss souls implemented + Ainex fixed + release drop
+rates 66/25 + zero dead augments; Hemorrheus superboss = "Toxeus the Murderer,
+Devourer of Blood" (Athens mesh, crimson skin) beyond the secret waterfall
+chamber. THREE fail-loud DB build invariants (soul leaks / soul augments /
+text tags) + per-wave map gates; a unified map contract suite is queued.
+**LIVE session state + run-books: the memory board (tq-soulvizier-2026-07-resume.md).**
+⚠️ STANDING: Occult + Hunting masteries contain Will's HAND-TUNING - never
+revert them to SV. Will's build-script soul edits = law; SV originals = the
+design bible for generated souls. TESTHUB map variants are LOCAL-ONLY, never
+uploaded. Deploy couplings: Levels+Quests together; arz+Text together.
+
+## Prior status: Current status (2026-07-07: build22 - QUESTS load-window fix)
 
 **WIDOW-LETTER + CARAVAN REPEAT-REPORT ROOT CAUSE FIXED (map-side QUESTS registry).** Will
 re-reported "widow letter STILL missing" and "caravan STILL missing" on build21. The letter
