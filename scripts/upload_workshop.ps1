@@ -77,27 +77,20 @@ if ($Update) {
 
 # Build the VDF manifest
 $title = 'Soulvizier Classic (AE Port)'
+# NOTE: the VDF description must contain REAL newlines (KeyValues quoted strings
+# accept them); never escape them into literal '\n' - Steam renders that as text.
 $description = @"
-Soulvizier 0.98i ported to Titan Quest Anniversary Edition - the classic
-souls overhaul, playable again, plus new content.
+Soulvizier 0.98i ported to Titan Quest Anniversary Edition - the classic souls overhaul, playable again, plus new content.
 
 Features:
-- 800+ monster souls to collect and equip, including 60+ newly completed
-  boss souls (summon-the-boss and boss-skill souls)
-- The Soulvizier blood cave restored and fully walkable, with its
-  questlines (Grieving Widow, secret waterfall chamber, and more)
-- NEW superboss: Hemorrheus, the Crimson Butcher - a blood-soaked
-  incarnation of Toxeus guarding the secret area, with the Crimson
-  Verdict legendary set
+- 800+ monster souls to collect and equip, including 60+ newly completed boss souls (summon-the-boss and boss-skill souls)
+- The Soulvizier blood cave restored and fully walkable, with its questlines (Grieving Widow, secret waterfall chamber, and more)
+- New superboss: a blood-soaked incarnation of Toxeus the Murderer guarding the secret area, with the Crimson Verdict legendary set
 - 10 masteries (including Occult and Neidan), legacy skills restored
-- Epic/legendary enchanting, Super Caravan storage, improved pet summons
+- Epic and legendary enchanting, improved pet summons
 
-Requires: Titan Quest Anniversary Edition. Play via Custom Quest >
-SoulvizierClassic with a dedicated Custom Quest character.
+Requires: Titan Quest Anniversary Edition. Play via Custom Quest > SoulvizierClassic with a dedicated Custom Quest character.
 Strongly recommended: the community 4GB LAA patch for TQ.exe (large mod).
-
-Credits and thanks: amgoz1 (Soulvizier 0.98i), soa (Soulvizier AERA),
-Dragonlord (DRX) - published with their permission.
 "@
 
 $contentFullPath = (Resolve-Path $contentDir).Path
@@ -109,7 +102,7 @@ $vdfContent = @"
   "publishedfileid" "$publishedId"
   "contentfolder"   "$($contentFullPath -replace '\\', '\\')"
   "title"           "$title"
-  "description"     "$($description -replace '"', '\"' -replace "`n", '\n')"
+  "description"     "$($description -replace '"', '\"')"
   "visibility"      "$Visibility"
 }
 "@
