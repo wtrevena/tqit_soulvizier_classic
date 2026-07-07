@@ -116,18 +116,81 @@ BLOODCAVE_RETURN_NPC_DBR = b'records\\quests\\portal_bloodcave_return.dbr'
 # --- Merge-dropped SV content restored via SV-faithful 0x05 re-injection ---------
 # The map merge keeps SVAERA's copy of every shared level, which DROPPED all SV-added
 # entities on those levels. These records + their exact SV-LOCAL coords are extracted
-# byte-for-byte from the SV 0.98i upstream Levels.arc (RoadToTown03A / HiddenValley01
-# 0x05 sections); both shared levels are NOT grid-shifted (SV corner+GUID == SVAERA's,
-# verified), so the SV-local coord is the correct local coord in the merged (SVAERA)
-# blob. See docs/DROPPED_CONTENT_AUDIT.md sections 2.2 + 2.4 + WAVE A/E.
+# byte-for-byte from the SV 0.98i upstream Levels.arc (RoadToTown03A / HiddenValley01 /
+# HiddenValleyBorder04 0x05 sections); these shared levels are NOT grid-shifted (SV
+# corner+GUID == SVAERA's, verified), so the SV-local coord is the correct local coord
+# in the merged (SVAERA) blob. See docs/DROPPED_CONTENT_AUDIT.md sections 2.2 + 2.4 +
+# 3 + 4 + WAVE A/E.
+#
+# INJECTION-SPEC FORMAT (SV-faithful, measured against SV 0.98i's own placements):
+#   Each spec is (dbr_bytes, x, y, z) OR (dbr_bytes, x, y, z, opts) where opts is a dict:
+#     'flags'    : the 0x05 record flags word (default 0). SV marks tracked/unique
+#                  gameplay entities (respawn shrines) with flags=1.
+#     'uniqueid' : 16 raw bytes written into the v0x11/v0e record's trailing UniqueId
+#                  block (only present when flags != 0). MUST be the SV-original value
+#                  for entities the map's GROUPS/quest systems bind BY UniqueId.
+#     'wants_0x14': whether step-7 should append a default 0x14 metadata entry for this
+#                  instance (default FALSE). Measured: NONE of the restored entities
+#                  (shrine, wagon, widow trio) carries a 0x14 entry in SV, and SVAERA's
+#                  own shared-level 0x14 sections are SPARSE (many flags=0 entities have
+#                  none), so the SV-faithful default is to NOT add a 0x14 entry. 0x14 is
+#                  per-instance engine binding metadata (e.g. cave-mouth GridEntrance
+#                  GUID bindings), NOT a respawn/decoration requirement.
+#
+# THE REBIRTH-FOUNTAIN FIX (2026-07-06, measured, gate F1): build18 injected the shrine
+# with flags=0 + a ZERO UniqueId + a spurious default 0x14 entry. But SV's HiddenValley01
+# shrine record is flags=1 with UniqueId feeb4bc6ce4e08c0e279b3824244aeeb and NO 0x14
+# entry, and the map's `Shrine_Respawn_Orient` GROUPS(0x11) record (RespawnShrine
+# category, carried into the merge from SV's GROUPS) registers respawn shrines by their
+# 16-byte UniqueId (that exact value is a member). With a zero UniqueId the shrine never
+# matches the group, so the respawn system never binds it: it renders but does nothing
+# ("visible but does not work"). Re-injecting it flags=1 + the SV UniqueId (verified
+# collision-free: 0 other flagged records in the merged map use it) makes the group match
+# and the shrine functional, structure-for-structure identical to SV.
 # Widow Letter quest (widowletter.qst) placement-dependent triggers:
 WIDOW_LING_NPC_DBR = b'records\\drxmap\\quest\\widow_ling.dbr'          # Condition_ConversationStart
 TRG_FOUNDZHIDAN_DBR = b'records\\drxmap\\quest\\trg_foundzhidan.dbr'    # Condition_EnterVolume volume
 LOCATION_TREASURECHEST_DBR = b'records\\drxmap\\quest\\location_treasurechest.dbr'
 # Rebirth Fountain (respawn shrine at the blood-cave surface entrance):
 RESPAWNTEMPLEORIENT01_DBR = b'records\\item\\shrines\\respawntempleorient01.dbr'
+# SV 0.98i HiddenValley01 shrine UniqueId (byte-exact from its flagged 0x05 record).
+# This is the value the `Shrine_Respawn_Orient` RespawnShrine group binds to.
+RESPAWNTEMPLEORIENT01_UNIQUEID = bytes.fromhex('feeb4bc6ce4e08c0e279b3824244aeeb')
+# The Hades merchant WAGON near the cave mouth (the "caravan" Will remembers). SV places
+# it at HiddenValleyBorder04; the merge dropped it (absent in build17 AND build18). It is
+# a plain Decoration (flags=0, no UniqueId, no 0x14 entry in SV).
+#
+# CARAVAN-IDENTITY EVIDENCE (2026-07-06, gate F2 + the round-2 vet challenge): Will reported
+# "the caravan at/near the cave mouth / by the fountain is gone." Three independent measures
+# prove that IS this wagon, not the GoM Super-Caravan `caravan_rhodes` (NpcCaravan):
+#   (1) GEOGRAPHY: this wagon sits at HiddenValleyBorder04 corner (-134,-104,2302), one tile
+#       from HiddenValley01 (-134,-120,2174) where the fountain is - literally the cave-mouth
+#       border. `caravan_rhodes` lives in gardenofmerchants corner (1043,0,-4074), ~6200u away
+#       behind a broken entrance the player cannot currently reach. "At the cave mouth" == the
+#       wagon.
+#   (2) WHAT DROPPED: this wagon was dropped by the merge (SVAERA swapped it for its own
+#       `TravelingVendorShopOrient01` stall; absent in build17 AND build18). `caravan_rhodes`
+#       was NEVER dropped (present in SV/build17/build18/merged) - so it cannot be the thing
+#       Will saw "go."
+#   (3) SCENE: in SV the wagon sits beside a Horse02 + Merchant_HiddenValley_General = a
+#       caravan-with-driver scene at the cave mouth (the horse + merchant NPC are still present
+#       in build18; only the distinctive wagon dropped, so the visible loss is exactly this
+#       wagon). Restoring `caravan_rhodes` at HV01 would be a NON-SV-faithful invention (SV
+#       never places it there) and is a separate WAVE-B item (fix the GoM warp), out of scope.
+# rot: SV orients the wagon at ~141.5deg yaw (NOT identity); carry the exact SV float32 matrix
+# so the record is byte-exact to SV and the wagon faces the way SV authored it (avoids the
+# identity-facing clip risk the vet flagged).
+MERCHANT_HADES_WAGON_DBR = b'records\\xpack\\sceneryhades\\structure\\merchant\\merchant_hades_merchantwagon01.dbr'
+MERCHANT_HADES_WAGON_ROT = (-0.7823697328567505, 0.0, 0.6228142380714417,
+                            0.0, 1.0, 0.0,
+                            -0.6228142380714417, 0.0, -0.7823697328567505)
+# SV orients widow_ling at ~-66deg yaw (NOT identity); carry the exact SV float32 matrix so
+# the NPC faces the way SV authored it (was written identity in build18 - cosmetic, fixed here).
+WIDOW_LING_ROT = (0.40753135085105896, 0.0, -0.9131911993026733,
+                  0.0, 1.0, 0.0,
+                  0.9131911993026733, 0.0, 0.40753135085105896)
 
-# Injection specs: level name key -> list of (dbr_bytes, x, y, z) to inject
+# Injection specs: level name key -> list of specs (see INJECTION-SPEC FORMAT above).
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
 # HiddenValley01: cave entrance at (14.0, 18.0, 26.0), POI at (15.84, 18.0, 26.58)
@@ -141,17 +204,33 @@ INJECT_SPECS = {
     # conditions reference. widow_ling = the NPC (Condition_ConversationStart),
     # trg_foundzhidan = the trigger volume (Condition_EnterVolume), and
     # location_treasurechest = the chest location. Coords are SV-LOCAL, byte-exact from
-    # the SV upstream RoadToTown03A 0x05 (this shared level is NOT grid-shifted).
+    # the SV upstream RoadToTown03A 0x05 (this shared level is NOT grid-shifted). All
+    # three are flags=0 with NO 0x14 entry in SV (measured), so no 0x14 is appended.
+    # Coords below are the EXACT SV 0.98i float32 values (full precision, so the packed
+    # bytes are byte-identical to SV's own placement - gate F1 parity to zero), extracted
+    # via tools/debug/extract_sv_coords.py.
     'levels/world/orient/greatwall/roadtotown03a.lvl': [
-        (WIDOW_LING_NPC_DBR, 66.5019, -63.3410, 50.1083),
-        (TRG_FOUNDZHIDAN_DBR, 77.0740, -63.8614, 61.6060),
-        (LOCATION_TREASURECHEST_DBR, 27.1969, -63.6251, 34.7034),
+        (WIDOW_LING_NPC_DBR, 66.50193786621094, -63.34101867675781, 50.108333587646484,
+         {'rot': WIDOW_LING_ROT}),
+        (TRG_FOUNDZHIDAN_DBR, 77.0739517211914, -63.86141586303711, 61.606048583984375),
+        (LOCATION_TREASURECHEST_DBR, 27.196889877319336, -63.62507247924805, 34.70340347290039),
     ],
-    # Rebirth Fountain (WAVE A): plain respawn shrine at the blood-cave surface
-    # entrance. No destination/pairing/quest wiring. Coord is SV-LOCAL, byte-exact from
-    # the SV upstream HiddenValley01 0x05 (this shared level is NOT grid-shifted).
+    # Rebirth Fountain (WAVE A): the SV respawn shrine at the blood-cave surface entrance.
+    # Injected SV-faithfully: flags=1 + the SV UniqueId so the Shrine_Respawn_Orient
+    # RespawnShrine group binds it (WITHOUT this it renders but is non-functional), and
+    # NO 0x14 entry (SV's shrine has none). Coord is the EXACT SV-LOCAL float32 from the
+    # SV upstream HiddenValley01 0x05 (this shared level is NOT grid-shifted).
     'levels/world/orient/silkroad/hiddenvalley01.lvl': [
-        (RESPAWNTEMPLEORIENT01_DBR, 49.2629, 15.6341, 14.9496),
+        (RESPAWNTEMPLEORIENT01_DBR, 49.26285934448242, 15.634109497070312, 14.949617385864258,
+         {'flags': 1, 'uniqueid': RESPAWNTEMPLEORIENT01_UNIQUEID}),
+    ],
+    # The cave-mouth "caravan" (WAVE A): the Hades merchant wagon SV placed at the
+    # blood-cave border. Dropped by the merge (absent build17+build18). Plain Decoration:
+    # flags=0, no UniqueId, no 0x14. Coord is the EXACT SV-LOCAL float32 from the SV
+    # upstream HiddenValleyBorder04 0x05 (this shared level is NOT grid-shifted).
+    'levels/world/orient/silkroad/hiddenvalleyborder04.lvl': [
+        (MERCHANT_HADES_WAGON_DBR, 36.22654724121094, 1.6249699592590332, 26.539936065673828,
+         {'rot': MERCHANT_HADES_WAGON_ROT}),
     ],
     # REMOVED (blood-cave walk-in): the surface-side portal NPC. The authentic SV
     # entry is engine-native - HiddenValley01's existing GridEntrance cave mouth
@@ -173,11 +252,91 @@ BLOODCAVE_QUEST_NAMES = ['Quests/bloodcave_entrance.qst', 'Quests/bloodcave_retu
 ALL_CUSTOM_QUEST_NAMES = UBER_DUNGEON_QUEST_NAMES + BLOODCAVE_QUEST_NAMES
 
 
+# Identity 3x3 rotation matrix (flat, row-major) - the default when a spec omits 'rot'.
+IDENTITY_ROT = (1.0, 0.0, 0.0,
+                0.0, 1.0, 0.0,
+                0.0, 0.0, 1.0)
+
+
+def _normalize_spec(spec):
+    """Normalize an injection spec into (dbr_bytes, x, y, z, flags, uniqueid, wants_0x14, rot).
+
+    Accepts a 4-tuple (dbr, x, y, z) or a 5-tuple (dbr, x, y, z, opts_dict). opts keys:
+    'flags' (int, default 0), 'uniqueid' (16 raw bytes, default 16 zero bytes),
+    'wants_0x14' (bool, default False), 'rot' (a 9-float flat row-major 3x3 rotation
+    matrix, default IDENTITY_ROT). Asserts hard on malformed opts so a bad spec can
+    never silently corrupt a blob.
+
+    'rot' carries the entity's SV-original ORIENTATION so an injected record is byte-exact
+    to SV's own placement (not just position-exact). SV orients some entities off-identity
+    (e.g. the Hades merchant wagon at ~141.5deg yaw, widow_ling at ~-66deg yaw); writing
+    identity there would face them the wrong way and risk clipping terrain/walls differently
+    than SV authored. Pass the exact SV float32 values (full precision) so struct.pack
+    reproduces SV's rotation bytes exactly.
+    """
+    if len(spec) == 4:
+        dbr, x, y, z = spec
+        opts = {}
+    elif len(spec) == 5:
+        dbr, x, y, z, opts = spec
+        if not isinstance(opts, dict):
+            raise ValueError(f'injection spec opts must be a dict, got {type(opts)}: {spec!r}')
+    else:
+        raise ValueError(f'injection spec must be a 4- or 5-tuple, got len {len(spec)}: {spec!r}')
+    flags = int(opts.get('flags', 0))
+    uniqueid = opts.get('uniqueid', b'\x00' * 16)
+    if not isinstance(uniqueid, (bytes, bytearray)) or len(uniqueid) != 16:
+        raise ValueError(f'injection spec uniqueid must be exactly 16 bytes: {spec!r}')
+    wants_0x14 = bool(opts.get('wants_0x14', False))
+    if flags == 0 and uniqueid != b'\x00' * 16:
+        raise ValueError(
+            f'injection spec sets a non-zero uniqueid but flags==0; the trailing UniqueId '
+            f'block only exists when flags != 0 (SV rule). Set flags=1: {spec!r}')
+    rot = tuple(opts.get('rot', IDENTITY_ROT))
+    if len(rot) != 9:
+        raise ValueError(f'injection spec rot must be exactly 9 floats (flat 3x3): {spec!r}')
+    rot = tuple(float(v) for v in rot)
+    return bytes(dbr), float(x), float(y), float(z), flags, bytes(uniqueid), wants_0x14, rot
+
+
+def _build_0x05_record(str_idx, x, y, z, flags, uniqueid, base_size, rot=IDENTITY_ROT):
+    """Build one 0x05 instance record, byte-exact to SV/AE layout.
+
+    base_size = 56 (v0x0e) or 72 (v0x11). Measured record layout (probe_v11_flagged.py):
+      core (56 B) = str_idx(4) + rotation 3x3(36) + position(12) + flags(4)
+      then, in order:
+        * a 16-byte UniqueId block IFF flags != 0  (v0e: bytes +56..+72; v11: +56..+72)
+        * a 16-byte ZERO PAD block IFF the section is v0x11 (the pad v0e->v11 appends to
+          EVERY record; v11: unflagged +56..+72, flagged +72..+88)
+    So the four cases are: v0e unflagged=56, v0e flagged=72, v11 unflagged=72,
+    v11 flagged=88 - exactly the sizes the flag-walk (`base + 16 if flags`) implies and
+    the SV 0.98i HiddenValley01 shrine (v0e, 72 B, UniqueId at +56) confirms.
+
+    rot = flat row-major 3x3 rotation matrix (9 floats). Defaults to identity; pass SV's
+    exact float32 values to reproduce SV's orientation bytes exactly.
+    """
+    if base_size not in (56, 72):
+        raise ValueError(f'unsupported 0x05 base record size {base_size}')
+    if len(rot) != 9:
+        raise ValueError(f'rotation matrix must be 9 floats, got {len(rot)}')
+    core = struct.pack('<I', str_idx)                        # string_index
+    core += struct.pack('<fffffffff', *rot)                   # 3x3 rotation (SV-exact or identity)
+    core += struct.pack('<fff', x, y, z)                       # world position
+    core += struct.pack('<I', flags)                           # flags
+    assert len(core) == 56
+    record = bytearray(core)
+    if flags != 0:
+        record += uniqueid                                     # 16-byte UniqueId
+    if base_size == 72:
+        record += b'\x00' * 16                                 # v0x11 trailing zero pad
+    return bytes(record)
+
+
 def inject_into_0x05(section_data, injections):
     """Append new objects to a v0x0e 0x05 section.
 
     section_data: raw bytes of the 0x05 section
-    injections: list of (dbr_bytes, x, y, z) to add
+    injections: list of specs (see _normalize_spec: 4-tuple or 5-tuple with opts)
 
     Returns modified section_data with new strings and instance records appended.
 
@@ -216,22 +375,15 @@ def inject_into_0x05(section_data, injections):
     new_instances = bytearray(instances_data)
     new_instance_count = instance_count
 
-    for dbr_bytes, x, y, z in injections:
+    for spec in injections:
+        dbr_bytes, x, y, z, flags, uniqueid, _wants14, rot = _normalize_spec(spec)
         if dbr_bytes in new_strings:
             str_idx = new_strings.index(dbr_bytes)
         else:
             str_idx = len(new_strings)
             new_strings.append(dbr_bytes)
-
-        # Identity rotation matrix: flat 3x3 row-major, no padding
-        record = struct.pack('<I', str_idx)              # string_index
-        record += struct.pack('<fffffffff',              # 3x3 rotation matrix
-                              1.0, 0.0, 0.0,            # row0
-                              0.0, 1.0, 0.0,            # row1
-                              0.0, 0.0, 1.0)            # row2
-        record += struct.pack('<fff', x, y, z)            # world position
-        record += struct.pack('<I', 0)                    # flags
-        new_instances += record
+        new_instances += _build_0x05_record(str_idx, x, y, z, flags, uniqueid,
+                                            base_size=56, rot=rot)
         new_instance_count += 1
 
     out = bytearray()
@@ -554,23 +706,17 @@ def inject_into_0x05_v11(section_data, injections):
     new_instances = bytearray(instances_data)
     new_instance_count = instance_count
 
-    for dbr_bytes, x, y, z in injections:
+    for spec in injections:
+        dbr_bytes, x, y, z, flags, uniqueid, _wants14, rot = _normalize_spec(spec)
         if dbr_bytes in new_strings:
             str_idx = new_strings.index(dbr_bytes)
         else:
             str_idx = len(new_strings)
             new_strings.append(dbr_bytes)
-
-        # 56-byte v0x0e record + 16 zero bytes = 72-byte v0x11 record
-        record = struct.pack('<I', str_idx)
-        record += struct.pack('<fffffffff',              # 3x3 rotation matrix
-                              1.0, 0.0, 0.0,            # row0
-                              0.0, 1.0, 0.0,            # row1
-                              0.0, 0.0, 1.0)            # row2
-        record += struct.pack('<fff', x, y, z)             # world position
-        record += struct.pack('<I', 0)                     # flags
-        record += b'\x00' * 16                             # v0x11 extra bytes
-        new_instances += record
+        # v0x11 record: 56-byte core (+16 UniqueId if flagged) + 16-byte zero pad.
+        # Unflagged -> 72 B (old behaviour); flagged -> 88 B with the SV UniqueId at +56.
+        new_instances += _build_0x05_record(str_idx, x, y, z, flags, uniqueid,
+                                            base_size=72, rot=rot)
         new_instance_count += 1
 
     out = bytearray()

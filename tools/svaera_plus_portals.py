@@ -376,6 +376,7 @@ def main():
     # Inject into SVAERA levels (these will be patched blobs)
     ae_patched_blobs = {}  # ae_level_index -> patched blob
     ae_injected_count = {}  # ae_level_index -> number of instances injected
+    ae_injected_specs = {}  # ae_level_index -> the injected spec list (for 0x14 decisions)
     for lv_key, specs in ae_inject_keys.items():
         ae_idx = ae_by_name[lv_key]
         lv = ae_levels[ae_idx]
@@ -389,6 +390,7 @@ def main():
                     secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
             ae_patched_blobs[ae_idx] = rebuild_blob(magic, secs)
             ae_injected_count[ae_idx] = len(specs)
+            ae_injected_specs[ae_idx] = specs
             print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x11)')
         else:
             print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
@@ -412,16 +414,23 @@ def main():
         else:
             print(f'  WARN: {lv_key} has unknown format v0x{blob_ver:02x}')
 
-    # --- 7. Append 0x14 entries for injected instances (preserve originals) ---
-    # A 0x14 entry is keyed by its INSTANCE INDEX (the `idx` field), and the section is
-    # SPARSE: a shared AE level often has fewer 0x14 entries than 0x05 instances, with
-    # index gaps (only interactive objects carry per-instance metadata). So the append
-    # start index MUST be the ORIGINAL INSTANCE COUNT (indices of the newly injected
-    # instances = [orig_instance_count, new_count)), NOT the 0x14 entry COUNT. Using the
-    # entry count would re-emit indices that already exist in the sparse section,
-    # producing DUPLICATE 0x14 indices (a corrupt blob). The injected 0x05 records were
-    # appended AFTER all originals, so their instance indices are exactly this tail range.
-    from build_section_surgery import count_0x05_instances, DEFAULT_0x14_PAYLOAD
+    # --- 7. Append 0x14 entries ONLY for injected instances that need one (SV-faithful) ---
+    # A 0x14 entry is per-instance engine BINDING metadata (e.g. a cave-mouth GridEntrance
+    # GUID binding). It is keyed by INSTANCE INDEX (the `idx` field) and the section is
+    # SPARSE: shared AE levels have FEWER 0x14 entries than 0x05 instances (e.g. HV01
+    # 205 inst / 190 entries, RoadToTown03A 288/276, HVBorder04 37/36 - many flags=0
+    # entities carry NO 0x14). So NOT every injected instance should get a 0x14 entry.
+    #
+    # SV-FAITHFUL RULE (measured against SV 0.98i, gate F1): append a default 0x14 entry
+    # ONLY for injected specs that explicitly set opts['wants_0x14']=True. None of the
+    # currently-restored entities do: SV's respawn shrine, merchant wagon, and the 3
+    # widow entities ALL have NO 0x14 entry in SV, so appending one is non-faithful (and
+    # for the shrine it was part of the build18 defect). The append index for a wanting
+    # instance is its INSTANCE index (tail range [orig_instance_count, new_count)); using
+    # the 0x14 ENTRY count instead would collide with existing sparse indices (the latent
+    # bug fixed in build18). A hard collision assert still guards against mis-accounting.
+    from build_section_surgery import (count_0x05_instances, DEFAULT_0x14_PAYLOAD,
+                                        _normalize_spec)
     for ae_idx, patched_blob in ae_patched_blobs.items():
         secs, magic = parse_blob_sections(patched_blob)
         # Count total instances after injection
@@ -434,7 +443,14 @@ def main():
             continue
         n_injected = ae_injected_count.get(ae_idx, 0)
         orig_instance_count = new_count - n_injected
-        # Append new 0x14 entries for injected instances (keep original entries intact)
+        # Injected instances occupy the tail [orig_instance_count, new_count) in spec order.
+        # Decide per spec whether it wants a 0x14 entry.
+        specs = ae_injected_specs.get(ae_idx, [])
+        want_idx = []
+        for j, spec in enumerate(specs):
+            _, _, _, _, _flags, _uid, wants_0x14, _rot = _normalize_spec(spec)
+            if wants_0x14:
+                want_idx.append(orig_instance_count + j)
         new_secs = []
         for s in secs:
             if s['type'] == 0x14:
@@ -450,9 +466,9 @@ def main():
                     existing_idx.add(idx)
                     pos += 8 + psize
                     orig_entries += 1
-                # Append a default entry for each newly injected instance index.
+                # Append a default entry ONLY for injected instances that requested one.
                 added = 0
-                for idx in range(orig_instance_count, new_count):
+                for idx in want_idx:
                     if idx in existing_idx:
                         raise ValueError(
                             f'0x14 append collision: instance index {idx} already has a '
@@ -464,7 +480,7 @@ def main():
                     added += 1
                 new_secs.append({'type': 0x14, 'data': bytes(orig_data)})
                 print(f'  0x14: kept {orig_entries} original entries + added {added} new '
-                      f'(instance idx {orig_instance_count}..{new_count - 1})')
+                      f'({"instance idx " + str(want_idx) if want_idx else "none - SV-faithful"})')
             else:
                 new_secs.append(s)
         ae_patched_blobs[ae_idx] = rebuild_blob(magic, new_secs)
