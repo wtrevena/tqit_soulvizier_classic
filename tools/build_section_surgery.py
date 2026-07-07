@@ -289,6 +289,88 @@ Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
                          0.0, 1.0, 0.0,
                          0.9994250535964966, 0.0, -0.03390489146113396)
 
+# --- A1: maze03 -> Uber Dungeon (+ Boss Arena) entrance (portal_olympianarena1) ----------
+# The SV-areas campaign SKIPPED this as "ungateable offline"; the accepted pattern now is to
+# implement with every offline gate achievable and ship WALK-TEST-PENDING (like the blood
+# cave). Full recon: docs/ENTRANCES_POLISH_LOG.md (recon_maze03.py / recon_portal_chain.py /
+# place_maze03_portal.py).
+#
+# MECHANISM (fully verified self-consistent): `records\quests\portal_olympianarena1.dbr` =
+# Class GridEntranceDynamic (a quest-opened dynamic grid entrance). The ported `bossarena.qst`
+# fires `Action_OpenDynGridEntrance(dynGridEntranceName=records/quests/portal_olympianarena1.dbr)`
+# on Condition_OnLevelLoad - it opens the portal BY RECORD NAME, so NO Quests.arc change is
+# needed; the portal record instance just has to EXIST in the loaded level. Entering it
+# teleports to crypt_floor1 (Uber Dungeon) via its 0x14 binding; crypt_floor1's
+# portal_olympianarena2 (GridExitOneWay) is the landing (on-mesh, Wave 1).
+#
+# THE 0x14 BINDING (SV maze03's exact 48-byte payload, byte-verified from the SV upstream
+# Levels.arc, and PROVEN self-consistent in the merge):
+#   [0:16]  mouth_uid  = 58941143e04eb3c0d62dbd952143f05d
+#   [16:32] exit_uid   = 6e513e901549b1d558db968c61bda66a  (== crypt_floor1 portal_olympianarena2
+#                          mouth_uid EXACTLY -> the GridEntrance<->GridExit pair is intact)
+#   [32:48] dest_guid  = dbc245c358434e0bb54760b234293cc5  (== crypt_floor1's MERGED-WORLD GUID
+#                          EXACTLY -> crypt keeps its GUID in the merge, so NO remap needed)
+# crypt_floor1's landing 0x14 is byte-identical SV vs merged, so restoring these exact bytes
+# reconnects both sides perfectly.
+#
+# PLACEMENT: SV placed the portal 0.3u from a Knossos SECRET-DOOR frame (doorframesecretos01)
+# in a decorated alcove at SV maze's WEST entrance (SV-local ~101,144). AE TRIMMED that west
+# alcove (SV-local X=101 -> AE world X=-7974, 104u WEST of AE mesh min X=-7870 = OFF-MESH). AE
+# preserves the Minotaur boss room INCLUDING q07_minotaursecretosdoor (a secret door) @ AE-local
+# (289,150). The faithful AE analogue = beside that secret door. Chosen on-mesh cell (openNbr
+# 8/8, on AE's Editor-baked navmesh): AE-local (290.70,1.20,152.50) = world (-7785.3,1.2,
+# -3790.5): 3.0u from the secret door (mirrors SV's ~0.3u), 16.7u from the Minotaur boss proxy
+# (so not ON it), 15.0u from the boss chest. Reached after the Minotaur Lord fight (main Knossos
+# quest) = a sensible late-Knossos gate for an end-game Uber Dungeon. flags=0, IDENTITY rotation
+# (SV's portal record uses identity - byte-verified). AE Maze03 is v0x0f; the v0x0f 0x05 record
+# is base-72 (byte-verified), handled by inject_into_0x05_v11 + the widened v0f guard in
+# svaera_plus_portals.py step 6. maze03 has a 0x14 section (size 0) so the step-7 x14_payload
+# append lands the binding at the injected instance index.
+PORTAL_OLYMPIANARENA1_DBR = b'records\\quests\\portal_olympianarena1.dbr'
+PORTAL_OLYMPIANARENA1_0x14 = bytes.fromhex(
+    '58941143e04eb3c0d62dbd952143f05d'   # mouth_uid
+    '6e513e901549b1d558db968c61bda66a'   # exit_uid  (pairs crypt_floor1 portal_olympianarena2)
+    'dbc245c358434e0bb54760b234293cc5')  # dest_guid (== crypt_floor1 merged GUID)
+assert len(PORTAL_OLYMPIANARENA1_0x14) == 48
+
+# --- B1: smoke/dark-cloud occult atmosphere over the entrance area (Will's ask) -----------
+# SV dressed the cave-mouth "special area" (the Hades merchant = "the occultist") with an
+# occult FX/light scene the merge DROPPED. These are ALL Class EffectEntity / light /
+# Decoration / Tile (NO aggro), re-injected SV-faithfully at SV's EXACT local coords
+# (HiddenValleyBorder04 is a shared level, NOT grid-shifted -> SV-local == merged-local).
+# Byte-extracted from the SV upstream Border04 0x05 (recon_greece_occultist.py). All resolve
+# in the built arz. flags=0, no 0x14 (SV places none for these).
+FOG_OCCULT_FX01_DBR = b'records\\drxmap\\effects\\fog_occult_fx01.dbr'
+OCCULTISTAURA_FX01_DBR = b'records\\drxmap\\effects\\occultistaura_fx01.dbr'
+PIT_FX01_DBR = b'records\\drxmap\\effects\\pit_fx01.dbr'
+LIGHT_10M_DYN_PURPLE_DBR = b'records\\xpack\\effects\\lights\\dynamic\\10mlight_dyn_purple.dbr'
+LIGHT_10M_DYN_RED_DBR = b'records\\xpack\\effects\\lights\\dynamic\\10mlight_dyn_red.dbr'
+LIGHT_5M_STAT_BLUE_DBR = b'records\\lights\\staticlights\\5mlight_stat_blue.dbr'
+MC_HADES_WOODPYRE01_DBR = b'records\\xpack\\sceneryhades\\structure\\camp\\monstercamp\\mc_hades_woodpyre01.dbr'
+MC_HADES_ANOURANFIREPIT02_DBR = b'records\\xpack\\sceneryhades\\structure\\camp\\monstercamp\\mc_hades_anouranfirepit02.dbr'
+DRXMAP_TOTEM_DBR = b'records\\drxmap\\dress2\\totem.dbr'
+FX_DISCIPLE_AURA_01_DBR = b'records\\drxcreatures\\bloodwitch\\skills\\skilleffects\\fx_disciple_aura_eyechantment01.dbr'
+FX_DISCIPLE_AURA_02_DBR = b'records\\drxcreatures\\bloodwitch\\skills\\skilleffects\\fx_disciple_aura_eyechantment02.dbr'
+# SV's EXACT non-identity rotations for the props it orients (byte-verified from SV's own
+# Border04 0x05). Most B1 records are identity; these three physical props are angled, so
+# carrying their exact matrix makes the injected record byte-shape identical to SV's placement
+# (a firepit/pyre and two cult totems face specific ways in the scene).
+WOODPYRE_ROT = (0.224837, 0.0, -0.974396, 0.0, 1.0, 0.0, 0.974396, 0.0, 0.224837)
+TOTEM_ROT_A = (-0.329537, 0.0, -0.944143, 0.0, 1.0, 0.0, 0.944143, 0.0, -0.329537)   # @ (40.24,12.34)
+TOTEM_ROT_B = (-0.372804, 0.0, -0.92791, 0.0, 1.0, 0.0, 0.92791, 0.0, -0.372804)     # @ (46.46,29.55)
+LIGHT_PURPLE_ROT = (0.99995, 0.0, 0.010048, 0.0, 1.0, 0.0, -0.010048, 0.0, 0.99995)  # @ (47.03,29.58)
+
+# --- B2: exploding sprites near the occultist (Will's ask), aggro-safe standoff -----------
+# Mirror the WORKING Greece pit-sprite cluster (SV DelphiLowlands02): a t1_pitspawner (the
+# emitter) + a few t1_lildude around a pit_fx. Class Monster (aggro) - so the >=18u standoff
+# from the occultist merchant is load-bearing (Greece's working merchant->sprite standoff is
+# 10.8-11.6u; 18u has a >6u margin, and the sprites sit on the FAR/north side of the occultist
+# so the player approaching from the south fountain never crosses them). SV uses IDENTITY
+# rotation for these (byte-verified). All resolve in the arz. flags=0, no 0x14.
+T1_LILDUDE_01_DBR = b'records\\drxmap\\pitsprites\\t1_lildude_01.dbr'
+T1_LILDUDE_02_DBR = b'records\\drxmap\\pitsprites\\t1_lildude_02.dbr'
+T1_PITSPAWNER_01_DBR = b'records\\drxmap\\pitsprites\\t1_pitspawner_01.dbr'
+
 # Injection specs: level name key -> list of specs (see INJECTION-SPEC FORMAT above).
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
@@ -314,19 +396,33 @@ INJECT_SPECS = {
         (TRG_FOUNDZHIDAN_DBR, 77.0739517211914, -63.86141586303711, 61.606048583984375),
         (LOCATION_TREASURECHEST_DBR, 27.196889877319336, -63.62507247924805, 34.70340347290039),
     ],
-    # Rebirth Fountain (WAVE A): the SV respawn shrine at the blood-cave surface entrance.
-    # Injected SV-faithfully: flags=1 + the SV UniqueId so the Shrine_Respawn_Orient
-    # RespawnShrine group binds it (WITHOUT this it renders but is non-functional), and
-    # NO 0x14 entry (SV's shrine has none). Coord is the EXACT SV-LOCAL float32 from the
-    # SV upstream HiddenValley01 0x05 (this shared level is NOT grid-shifted).
+    # Rebirth Fountain + Super-Caravan - MOVED to the occultist's side (B3, Will's ask).
+    # Will: the beastman swarm proxies spawn-camp and kill players respawning at the OLD spot
+    # (the nearest ag_beastman_neanderthal_02t proxy was 9.1u from the old fountain). The fix
+    # moves BOTH the respawn fountain and the caravan NORTH to HV01's north end (the occultist
+    # side, adjacent to the HiddenValleyBorder04 merchant/occultist scene), 100+u from every
+    # hostile spawn proxy and on the largest walkable component. This is a MOVE (the old coord
+    # is simply changed, so the old placement is gone).
+    #   4 HV01 hostiles (NOT touched): ag_beastman_neanderthal_02t/02n/03t + encact3.
+    #   New fountain HV01-local (35.70,17.60,143.10) world (-98.3,-102.4,2317.1): 100.5u from
+    #     the nearest hostile (was 9.1u), 9.2u from the occultist merchant, openNbr 8/8.
+    #   New caravan  HV01-local (41.70,17.80,143.10) world (-92.3,-102.2,2317.1): 6.0u E of the
+    #     new fountain, 100.9u from hostiles, openNbr 8/8. (tools/debug/plan_b_final.py)
+    # The fountain KEEPS flags=1 + the SV UniqueId (feeb4bc6...) - the Shrine_Respawn_Orient
+    # GROUPS binding is by UniqueId, POSITION-INDEPENDENT, so moving it keeps the respawn
+    # binding intact (group member count unchanged). Y uses the walkable-floor height at the
+    # new spot (17.6). The caravan keeps its native rot + 12-byte 0x14 (2,0,1).
     'levels/world/orient/silkroad/hiddenvalley01.lvl': [
-        (RESPAWNTEMPLEORIENT01_DBR, 49.26285934448242, 15.634109497070312, 14.949617385864258,
+        (RESPAWNTEMPLEORIENT01_DBR, 35.70, 17.60, 143.10,
          {'flags': 1, 'uniqueid': RESPAWNTEMPLEORIENT01_UNIQUEID}),
-        # Functional Super-Caravan (NpcCaravan) at the cave mouth, ~6u E of the fountain,
-        # on-mesh (largest walkable component). flags=0, byte-shape = native caravan_silkroad
-        # (same rot + the same 12-byte 0x14 metadata entry every native NpcCaravan carries).
-        (CARAVAN_SILKROAD_DBR, 55.3, 15.6, 14.9,
+        (CARAVAN_SILKROAD_DBR, 41.70, 17.80, 143.10,
          {'rot': CARAVAN_SILKROAD_ROT, 'x14_payload': CARAVAN_SILKROAD_0x14}),
+        # B1 atmosphere over the NEW respawn area (a couple of occult emitters so the moved
+        # respawn portal reads as the atmospheric entrance too). EffectEntity/light = no aggro,
+        # flags=0, no 0x14. Placed a few u around the new fountain, off the walk line.
+        (LIGHT_10M_DYN_PURPLE_DBR, 33.5, 17.6, 145.0),
+        (LIGHT_10M_DYN_RED_DBR, 38.0, 17.8, 145.0),
+        (FOG_OCCULT_FX01_DBR, 35.7, 17.6, 146.5),
     ],
     # Static Widow Letter (BUG 2): finalletter placed at the location_letterdrop spot so it
     # is physically present for ALL characters (the quest spawn is neutralized in
@@ -335,13 +431,61 @@ INJECT_SPECS = {
     'levels/world/xbloodcave/drxfirstxistion_connection.lvl': [
         (FINALLETTER_DBR, 32.459, 10.005, 17.593),
     ],
-    # The cave-mouth "caravan" (WAVE A): the Hades merchant wagon SV placed at the
-    # blood-cave border. Dropped by the merge (absent build17+build18). Plain Decoration:
-    # flags=0, no UniqueId, no 0x14. Coord is the EXACT SV-LOCAL float32 from the SV
-    # upstream HiddenValleyBorder04 0x05 (this shared level is NOT grid-shifted).
+    # HiddenValleyBorder04 = the cave-mouth "occultist" scene (the Hades merchant
+    # Merchant_HiddenValley_General + wagon, which SV dressed with occult FX). The merge kept
+    # SVAERA's copy and DROPPED all the SV occult dressing. This block restores:
+    #   - the Hades merchant WAGON (WAVE A, already shipped): the "caravan" dressing at the
+    #     border. Plain Decoration, flags=0, no 0x14.
+    #   - B1: the smoke/dark-cloud OCCULT ATMOSPHERE Will asked for (fog/aura/pit + coloured
+    #     lights + firepit/pyre + totems + disciple aura). ALL Class EffectEntity/light/
+    #     Decoration/Tile (NO aggro). SV-LOCAL coords are byte-exact from SV's own Border04
+    #     0x05 (NOT grid-shifted -> SV-local == merged-local). flags=0, no 0x14 (SV places none).
+    #   - B2: the exploding pit-sprites, mirroring the WORKING Greece cluster (DelphiLowlands02:
+    #     a t1_pitspawner + t1_lildude around a pit_fx). Class Monster (aggro) -> placed on the
+    #     FAR/north side of the occultist (cluster ~seed B04-local (50.7,1.8,34.3), 18.0u from
+    #     the merchant >> Greece's proven-safe 10.8u standoff, and 24u/21u from the moved
+    #     fountain/caravan) so a player respawning at the south fountain and walking to the
+    #     merchant never crosses them. IDENTITY rotation (SV uses identity). See
+    #     docs/ENTRANCES_POLISH_LOG.md + tools/debug/plan_b_final.py.
     'levels/world/orient/silkroad/hiddenvalleyborder04.lvl': [
         (MERCHANT_HADES_WAGON_DBR, 36.22654724121094, 1.6249699592590332, 26.539936065673828,
          {'rot': MERCHANT_HADES_WAGON_ROT}),
+        # --- B1 occult atmosphere (SV Border04 exact local coords) ---
+        (FOG_OCCULT_FX01_DBR, 26.641, 1.476, 24.831),
+        (FOG_OCCULT_FX01_DBR, 36.901, 1.624, 23.884),
+        (OCCULTISTAURA_FX01_DBR, 41.010, 1.514, 21.990),
+        (PIT_FX01_DBR, 26.981, 0.379, 24.936),
+        (LIGHT_10M_DYN_PURPLE_DBR, 47.033, 6.513, 29.578, {'rot': LIGHT_PURPLE_ROT}),
+        (LIGHT_10M_DYN_PURPLE_DBR, 41.085, 6.509, 12.375),
+        (LIGHT_10M_DYN_RED_DBR, 47.312, 6.617, 29.640),
+        (LIGHT_10M_DYN_RED_DBR, 41.136, 6.563, 12.398),
+        (LIGHT_5M_STAT_BLUE_DBR, 32.350, 6.055, 24.497),
+        (LIGHT_5M_STAT_BLUE_DBR, 35.645, 7.138, 24.220),
+        (MC_HADES_WOODPYRE01_DBR, 27.653, 0.943, 25.309, {'rot': WOODPYRE_ROT}),
+        (MC_HADES_ANOURANFIREPIT02_DBR, 27.354, 1.591, 25.044),
+        (DRXMAP_TOTEM_DBR, 40.240, 1.616, 12.337, {'rot': TOTEM_ROT_A}),
+        (DRXMAP_TOTEM_DBR, 46.461, 1.621, 29.552, {'rot': TOTEM_ROT_B}),
+        (FX_DISCIPLE_AURA_01_DBR, 38.679, 4.959, 29.893),
+        (FX_DISCIPLE_AURA_02_DBR, 38.916, 4.920, 29.634),
+        # --- B2 exploding pit-sprites (far/north side of the occultist) ---
+        # A compact cluster mirroring Greece's spawner+lildude+pit_fx. EVERY spot on-mesh,
+        # >=18u from the occultist merchant, and >=20u from BOTH the moved fountain and caravan
+        # (tools/debug/plan_b_final.py + verified by gate_polish_placement.py).
+        (T1_PITSPAWNER_01_DBR, 50.70, 1.80, 34.30),   # d_occ 18.0 d_carv 21.2
+        (T1_LILDUDE_01_DBR, 51.30, 1.80, 33.30),      # d_occ 18.0 d_carv 20.6
+        (T1_LILDUDE_01_DBR, 49.30, 1.80, 36.10),      # d_occ 18.0 d_carv 22.3
+        (T1_LILDUDE_02_DBR, 49.50, 1.80, 35.90),      # d_occ 18.0 d_carv 22.2
+        (PIT_FX01_DBR, 50.70, 1.80, 34.30),
+    ],
+    # A1: maze03 -> Uber Dungeon (+ Boss Arena) entrance. Restore SV's portal_olympianarena1
+    # (GridEntranceDynamic) at the AE-mesh-on secret-door spot with SV's exact 48-byte 0x14
+    # binding (mouth+exit+dest -> crypt_floor1). AE Maze03 is a SHARED v0x0f level -> routed
+    # through the (widened) step-6 v0f inject path; the x14_payload appends the binding at the
+    # injected instance index (maze03 has a 0x14 section of size 0). flags=0, IDENTITY rot.
+    # See the PORTAL_OLYMPIANARENA1 block above for the full mechanism + coord derivation.
+    'levels/world/greece/knossos/underground/maze03.lvl': [
+        (PORTAL_OLYMPIANARENA1_DBR, 290.70, 1.20, 152.50,
+         {'x14_payload': PORTAL_OLYMPIANARENA1_0x14}),
     ],
     # REMOVED (blood-cave walk-in): the surface-side portal NPC. The authentic SV
     # entry is engine-native - HiddenValley01's existing GridEntrance cave mouth

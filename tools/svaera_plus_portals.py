@@ -549,7 +549,13 @@ def main():
         blob = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
         blob_ver = blob[3] if blob[:3] == b'LVL' else None
 
-        if blob_ver == 0x11:
+        # v0x11 AND v0x0f use the SAME base-72 0x05 instance record (+16 if flags@+52 != 0).
+        # Byte-verified on AE Maze03 (v0x0f, 447 instances): walking base=72 lands EXACTLY at
+        # the 0x05 data end (base=56 desyncs at instance 5). So inject_into_0x05_v11 (which
+        # walks base V11_RECORD_SIZE=72 and preserves flagged UniqueId tails) is correct for
+        # both. This unblocks the maze03 (v0x0f) portal restore. The section rebuild preserves
+        # the original blob magic (v0x0f stays v0x0f).
+        if blob_ver in (0x11, 0x0f):
             secs, magic = parse_blob_sections(blob)
             for j, s in enumerate(secs):
                 if s['type'] == 0x05:
@@ -557,7 +563,7 @@ def main():
             ae_patched_blobs[ae_idx] = rebuild_blob(magic, secs)
             ae_injected_count[ae_idx] = len(specs)
             ae_injected_specs[ae_idx] = specs
-            print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x11)')
+            print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x{blob_ver:02x})')
         else:
             print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
 
