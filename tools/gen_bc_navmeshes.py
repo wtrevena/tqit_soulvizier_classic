@@ -55,6 +55,7 @@ import struct
 import time
 import tempfile
 from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -72,7 +73,123 @@ SVAERA_ARC = REPO / 'reference_mods' / 'SVAERA_customquest' / 'Resources' / 'Lev
 OUT_DIR = Path(os.environ.get(
     'SVC_DONOR_DIR', str(REPO / 'local' / 'editor_normalized')))
 
-BC_TOKEN = 'xbloodcave'
+BC_TOKEN = 'xbloodcave'   # legacy alias kept for any external reference; see CLUSTERS['bloodcave']
+
+
+# ---------------------------------------------------------------------------
+# Cluster configuration (generalization, 2026-07-07)
+# ---------------------------------------------------------------------------
+# gen_bc_navmeshes was blood-cave-hardcoded (BC_TOKEN, R09_KEY, OWN_GUID_OVERRIDE,
+# _root_rank pinned to 'random09a.lvl'). The generation MECHANISM (neighbour-aware
+# raster, cross-tag, Y-align, obstacle carve, anchor gate) is area-agnostic; only
+# the CLUSTER MEMBERSHIP + the entrance anchor differ per area. ClusterConfig
+# captures exactly those differences so run_cluster() applies the same proven
+# mechanism to any SV-only area. The blood-cave config below reproduces the prior
+# hardcoded behaviour BYTE-FOR-BYTE (proven: regen after this refactor == the 24
+# committed donors, byte-identical). See docs/SV_AREAS_CAMPAIGN_PLAN.md sec 4.
+#
+# Anchor discipline (AREA_WIRING_RECIPE Phase B.5): each connected component's
+# Y-align BFS root (shift=0) must be the level that interfaces FIXED, non-
+# regenerated data (the entrance). For the blood cave that is Random09A (whose
+# donor must meet HiddenValley01's native GridEntrance landing). For a single-
+# level isolated area, the level IS its own component root at shift 0 trivially,
+# but we still assert it (recipe: "assert it explicitly rather than assuming").
+@dataclass
+class ClusterConfig:
+    name: str                       # human label + log/gate id (e.g. 'bloodcave')
+    tokens: tuple                   # substring(s) matched against the SV level path
+                                    #   (lowercased, '/'-normalized) to collect members
+    extra_level_keys: tuple = ()    # exact SV path keys to add beyond the token match
+                                    #   (e.g. the relocated Random09A cave for blood cave)
+    own_guid_override_keys: tuple = ()  # SV path keys whose donor OWN GUID must be the
+                                    #   AE (merged) GUID, not SV's - i.e. a level kept at
+                                    #   an AE index slot (blob-swap). Resolved to the AE
+                                    #   GUID from SVAERA at run time.
+    anchor_key: str = ''            # SV path key of the entrance-interfacing level: its
+                                    #   Y-align shift is hard-asserted == 0 (its mesh must
+                                    #   meet a FIXED external landing we never regenerate).
+                                    #   '' => no external anchor beyond override levels
+                                    #   (component root falls to the deterministic min).
+
+    def matches(self, key):
+        """True if a lowercased '/'-normalized SV level path belongs to this cluster."""
+        if any(t in key for t in self.tokens):
+            return True
+        return key in self.extra_level_keys
+
+
+# The blood-cave cluster - reproduces the prior hardcoded behaviour exactly.
+R09_KEY = 'levels/world/orient/underground/random09a.lvl'
+BLOODCAVE = ClusterConfig(
+    name='bloodcave',
+    tokens=('xbloodcave',),
+    extra_level_keys=(R09_KEY,),
+    own_guid_override_keys=(R09_KEY,),
+    anchor_key=R09_KEY,
+)
+
+# --- Wave 1: single-level, isolated-island areas (navmesh only, no entrance yet) ---
+# Each is ONE SV-only level whose 0x0a lists exactly its own GUID (confirmed
+# 2026-07-07 against the upstream SV map): no neighbours, no cross-tags, no seams,
+# so the Y-align component is trivially the level itself at shift 0. No GRID_SHIFT
+# (all sit at their SV-original, already-disjoint grid positions). anchor_key = the
+# level itself: the shift==0 assert then documents "this level interfaces the fixed
+# outside" - true once its entrance is wired in a later wave; harmless now (a lone
+# component is always shift 0). The token is the level path stem, made specific
+# enough not to collide with any other level (e.g. 'underground/crypt_floor1').
+UBER_DUNGEON = ClusterConfig(
+    name='uberdungeon',
+    tokens=('/crypt_floor1.lvl',),
+    anchor_key='levels/world/uberdungeon/crypt_floor1.lvl',
+)
+BOSS_ARENA = ClusterConfig(
+    name='bossarena',
+    tokens=('/boss_arena.lvl',),
+    anchor_key='levels/world/bossarena/boss_arena.lvl',
+)
+GARDEN_OF_MERCHANTS = ClusterConfig(
+    name='gardenofmerchants',
+    tokens=('/gardenofmerchants.lvl',),
+    anchor_key='levels/world/olympus/gardenofmerchants.lvl',
+)
+SPARTA_CRYPT_L2 = ClusterConfig(
+    name='spartacryptl2',
+    tokens=('/spartacryptlevel2.lvl',),
+    anchor_key='levels/world/greece/minidungeons/spartacryptlevel2.lvl',
+)
+
+# --- Wave 3: Secret Place (11 levels, the only multi-seam SV area) ---
+# The full blood-cave recipe applies INTERNALLY: neighbour-aware raster + cross-tag +
+# Y-align + obstacle carve across the forest chain (darkforestenter<->woodscorner<->
+# secretforest2<->pillagedvillage) and the rogue-camp trio (rogueencampment<->rogue
+# encampment forest entrance<->rogueencampmentforestfiller). The other 4 levels
+# (behindthesp, forestobsidiantransition, tfinale, murderbossroom) are single-GUID
+# isolated islands (own footprint abuts no sibling). No GRID_SHIFT (all at SV-original
+# positions, merged fp == SV fp for all 11 - confirmed 2026-07-07). Token = the SV
+# 'secret_place/' path segment (matches exactly the 11 levels, nothing else).
+#
+# Anchor: behindthesp is the entrance-interfacing level (the scrabledeggs_floor06 ->
+# behindthesp portal lands here), so it is the anchor_key (its shift is hard-asserted
+# 0). It is its OWN connected component (footprint-disjoint from the forest chain), so
+# the forest-chain and rogue-trio components each take their deterministic min-basename
+# root: darkforestenter for the forest chain (also the first urder.qst teleport target,
+# exactly the plan's recommended internal anchor) and 'rogue encampment forest
+# entrance' for the rogue trio. Verified in the generation output's Y-ALIGN line.
+SECRET_PLACE = ClusterConfig(
+    name='secretplace',
+    tokens=('secret_place/',),
+    anchor_key='xpack/levels/secret_place/behindthesp.lvl',
+)
+
+# Registry of all defined clusters (blood cave first = the byte-identity reference).
+CLUSTERS = {
+    'bloodcave': BLOODCAVE,
+    'uberdungeon': UBER_DUNGEON,
+    'bossarena': BOSS_ARENA,
+    'gardenofmerchants': GARDEN_OF_MERCHANTS,
+    'spartacryptl2': SPARTA_CRYPT_L2,
+    'secretplace': SECRET_PLACE,
+}
 
 
 def _load_map(arc_path):
@@ -160,10 +277,17 @@ def grid_shift_for(fname):
     return (0, 0, 0)
 
 
-def main():
-    dry_run = '--dry-run' in sys.argv[1:]
+def run_cluster(cfg, dry_run=False):
+    """Generate pre-positioned 0x0b donors for one SV-only cluster.
+
+    This is the generalized former main(): the blood-cave-specific token/anchor/
+    GUID-override are now taken from `cfg` (a ClusterConfig). Every generation
+    mechanism (neighbour raster, cross-tag, Y-align, obstacle carve, anchor gate)
+    is unchanged. Returns (generated, skipped_no_geom) exactly as before.
+    """
     t_all = time.time()
 
+    print(f'=== cluster: {cfg.name}  tokens={cfg.tokens} ===')
     print('Loading merged-world GUID map (SVAERA + SV-only)...')
     merged_guids, shared_remap = build_merged_guid_map()
     print(f'  merged GUIDs: {len(merged_guids)}   shared SV->AE remaps: {len(shared_remap)}')
@@ -171,25 +295,44 @@ def main():
     print(f'Loading upstream SV map: {UPSTREAM_SV_ARC.name}')
     sv_data, sv_levels = _load_map(UPSTREAM_SV_ARC)
     bc = [lv for lv in sv_levels
-          if BC_TOKEN in lv['fname'].replace('\\', '/').lower()]
-    print(f'  xBloodCave levels: {len(bc)}')
+          if any(t in lv['fname'].replace('\\', '/').lower() for t in cfg.tokens)]
+    print(f'  {cfg.name} token levels: {len(bc)}')
 
-    # Relocated Silk Road cave (blood-cave walk-in). Not under xBloodCave; add it
-    # explicitly. It carries the WEST tunnel into the blood cave, and its 0x0a
-    # grid edge points at xPassageTransitionStart, so its 0x0b must resolve both
-    # its own (AE) GUID and the xPTS GUID in the merged world.
-    R09_KEY = 'levels/world/orient/underground/random09a.lvl'
-    sv_r09 = next(lv for lv in sv_levels
-                  if lv['fname'].replace('\\', '/').lower() == R09_KEY)
-    bc.append(sv_r09)
-    # Own-GUID override: the merge keeps SVAERA's Random09A GUID in the index (so
-    # HiddenValley01's cave-mouth 0x14 binding + xPTS's navmesh neighbor list keep
-    # resolving without regen), so the donor's own GUID must be AE's, not SV's.
-    _ae_data2, ae_levels2 = _load_map(SVAERA_ARC)
-    AE_R09_GUID = next(lv['ints_raw'][36:52] for lv in ae_levels2
-                       if lv['fname'].replace('\\', '/').lower() == R09_KEY)
-    OWN_GUID_OVERRIDE = {R09_KEY: AE_R09_GUID}
-    print(f'  + Random09A (own-GUID override -> {AE_R09_GUID.hex()})')
+    # Extra levels beyond the token match (e.g. the relocated Silk Road cave for
+    # the blood cave: not under any xBloodCave path, added explicitly because it
+    # carries the WEST tunnel + its 0x0a grid edge points at xPassageTransitionStart,
+    # so its 0x0b must resolve both its own (AE) GUID and the xPTS GUID). De-dupes
+    # against the token match so an extra key that also matches a token is not doubled.
+    _seen_keys = {lv['fname'].replace('\\', '/').lower() for lv in bc}
+    for _xk in cfg.extra_level_keys:
+        if _xk in _seen_keys:
+            continue
+        _xlv = next((lv for lv in sv_levels
+                     if lv['fname'].replace('\\', '/').lower() == _xk), None)
+        if _xlv is None:
+            raise SystemExit(f'{cfg.name}: extra_level_key {_xk!r} not found in the SV map')
+        bc.append(_xlv)
+        _seen_keys.add(_xk)
+        print(f'  + extra level: {_xk}')
+
+    # Own-GUID override: for a level KEPT at an AE index slot (blob-swap), the merge
+    # keeps SVAERA's GUID in the index (so any native binding referencing that GUID -
+    # e.g. HiddenValley01's cave-mouth 0x14, xPTS's neighbour list - keeps resolving
+    # without regen), so the donor's OWN GUID must be AE's, not SV's. Resolve each
+    # override key to its AE GUID from SVAERA.
+    OWN_GUID_OVERRIDE = {}
+    if cfg.own_guid_override_keys:
+        _ae_data2, ae_levels2 = _load_map(SVAERA_ARC)
+        _ae_by = {lv['fname'].replace('\\', '/').lower(): lv['ints_raw'][36:52]
+                  for lv in ae_levels2}
+        for _ok in cfg.own_guid_override_keys:
+            _aeg = _ae_by.get(_ok)
+            if _aeg is None:
+                raise SystemExit(
+                    f'{cfg.name}: own_guid_override_key {_ok!r} has no SVAERA copy '
+                    f'(a GUID override only makes sense for a level kept at an AE slot)')
+            OWN_GUID_OVERRIDE[_ok] = _aeg
+            print(f'  + own-GUID override {_ok} -> {_aeg.hex()}')
 
     if not dry_run:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -341,7 +484,11 @@ def main():
     _key_of = {e['basename']: e['fname'].replace('\\', '/').lower() for e in entries}
 
     def _root_rank(bn):
-        return (0 if bn.lower() == 'random09a.lvl'
+        # Root preference: the cluster's designated entrance anchor, then any
+        # OWN_GUID_OVERRIDE level (those keep AE-native GUIDs = native interfaces),
+        # then smallest basename (deterministic). Anchor match is on the full path
+        # key so two areas that reuse a basename never cross-anchor.
+        return (0 if (cfg.anchor_key and _key_of[bn] == cfg.anchor_key)
                 else 1 if _key_of[bn] in OWN_GUID_OVERRIDE
                 else 2, bn.lower())
 
@@ -370,22 +517,29 @@ def main():
             for v, off in _yadj.get(u, ()):
                 if v not in yshift:
                     yshift[v] = yshift[u] + int(round(off)); _q.append(v)
-    # HARD anchor gate: Random09A must be UNSHIFTED (shift exactly 0). Its donor must
-    # meet the FIXED HiddenValley01 GridEntrance landing, which we never regenerate.
-    _r09_bn = next((e['basename'] for e in entries
-                    if e['basename'].lower() == 'random09a.lvl'), None)
-    if _r09_bn is not None and yshift.get(_r09_bn, 0) != 0:
+    # HARD anchor gate: the cluster's entrance-interfacing level must be UNSHIFTED
+    # (shift exactly 0). Its donor must meet a FIXED external portal landing we never
+    # regenerate (for the blood cave: HiddenValley01's GridEntrance landing;
+    # findNearestPoly vertical extent is 2u). A rigid whole-component Y error passes
+    # every RELATIVE interior gate but breaks this one interface - so it is asserted
+    # here at generation time and re-checked by the area's G2 gate on the merged map.
+    _anchor_bn = None
+    if cfg.anchor_key:
+        _anchor_bn = next((e['basename'] for e in entries
+                           if _key_of[e['basename']] == cfg.anchor_key), None)
+    if _anchor_bn is not None and yshift.get(_anchor_bn, 0) != 0:
         raise AssertionError(
-            f'Y-ALIGN ANCHOR VIOLATION: Random09A yshift={yshift[_r09_bn]:+d} (must be 0). '
-            f'Its mesh must stay at the 0x0a-authored height or the fixed HV01 '
-            f'GridEntrance portal landing (findNearestPoly vertical ext 2u) misses it '
-            f'and the cave cannot be entered at all. Fix _root_rank / the component '
-            f'root selection; do NOT ship these donors.')
+            f'Y-ALIGN ANCHOR VIOLATION [{cfg.name}]: anchor {_anchor_bn} '
+            f'yshift={yshift[_anchor_bn]:+d} (must be 0). Its mesh must stay at the '
+            f'0x0a-authored height or the fixed external portal landing '
+            f'(findNearestPoly vertical ext 2u) misses it and the area cannot be '
+            f'entered at all. Fix _root_rank / the component root selection; do NOT '
+            f'ship these donors.')
     _nsh = sum(1 for v in yshift.values() if v != 0)
     _sh_note = ', '.join(f'{k}:{v:+d}' for k, v in sorted(yshift.items()) if v != 0) or 'none'
     print(f'  Y-ALIGN: {len(_seam_off)} constant seam offsets; {_nsh} levels shifted; '
           f'max |shift|={max((abs(v) for v in yshift.values()), default=0)}u; '
-          f'anchor Random09A shift={yshift.get(_r09_bn, 0) if _r09_bn is not None else "n/a"}; '
+          f'anchor {_anchor_bn or "(none)"} shift={yshift.get(_anchor_bn, 0) if _anchor_bn is not None else "n/a"}; '
           f'shifts: {_sh_note}')
 
     generated = []
@@ -564,13 +718,41 @@ def main():
 
     print('\n=== Summary ===')
     print(f'  generated: {len(generated)}   skipped-no-geometry: {len(skipped_no_geom)}   '
-          f'total xBloodCave: {len(bc)}')
+          f'total {cfg.name} levels: {len(bc)}')
     print(f'  total time: {time.time() - t_all:.1f}s')
     if skipped_no_geom:
-        print(f'  ocean-scenery (no 0x0b, by design): {", ".join(skipped_no_geom)}')
+        print(f'  no-0x0a (no 0x0b, by design): {", ".join(skipped_no_geom)}')
     if not dry_run:
         print(f'  wrote {len(generated)} .0b.bin -> {OUT_DIR}')
     return generated, skipped_no_geom
+
+
+def main():
+    """CLI dispatch. Default = the blood cave (byte-identity reference); pass a
+    cluster name (or 'all') to generate a different area. --dry-run verifies
+    without writing .0b.bin files.
+
+    Usage:
+      py tools/gen_bc_navmeshes.py                     # blood cave (default)
+      py tools/gen_bc_navmeshes.py --cluster uberdungeon
+      py tools/gen_bc_navmeshes.py --cluster all       # every defined cluster
+      py tools/gen_bc_navmeshes.py --dry-run
+    """
+    args = sys.argv[1:]
+    dry_run = '--dry-run' in args
+    cluster_name = 'bloodcave'
+    if '--cluster' in args:
+        cluster_name = args[args.index('--cluster') + 1]
+    if cluster_name == 'all':
+        allgen = []
+        for nm, cfg in CLUSTERS.items():
+            g, _ = run_cluster(cfg, dry_run=dry_run)
+            allgen.extend(g)
+            print()
+        return allgen, []
+    if cluster_name not in CLUSTERS:
+        raise SystemExit(f'unknown cluster {cluster_name!r}; known: {sorted(CLUSTERS)}')
+    return run_cluster(CLUSTERS[cluster_name], dry_run=dry_run)
 
 
 if __name__ == '__main__':

@@ -71,7 +71,10 @@ def main():
     print('=== Verify merged-map blood-cave navmeshes ===')
     print(f'  map: {MAP_ARC}  ({MAP_ARC.stat().st_size:,} bytes)')
 
-    # donor bytes by basename (e.g. BC_initialpathway -> 48172 raw bytes)
+    # donor bytes by basename (e.g. BC_initialpathway -> 48172 raw bytes). ALL donors
+    # on disk are read here; the pass/fail count below is restricted to donors whose
+    # level is IN SCOPE (blood cave + Random09A), so other areas' donors in the same
+    # dir (Wave 1+ single-level areas) neither inflate nor fail this blood-cave gate.
     donor_bytes = {}
     for p in DONOR_DIR.glob('*.0b.bin'):
         base = p.name[:-len('.0b.bin')]           # strip .0b.bin
@@ -95,7 +98,16 @@ def main():
         return 'xbloodcave' in key or key.endswith('orient/underground/random09a.lvl')
 
     bc = [lv for lv in levels if in_scope(lv)]
-    print(f'  levels in scope (xBloodCave + Random09A): {len(bc)}\n')
+    # Donors that belong to an in-scope level = the count this gate must match
+    # (a donor exists for a level, and that level is in scope).
+    scope_bases = set()
+    for lv in bc:
+        b = lv['fname'].replace('\\', '/').split('/')[-1]
+        b = b[:-4] if b.lower().endswith('.lvl') else b
+        scope_bases.add(b.lower())
+    n_scope_donors = sum(1 for k in donor_size if k in scope_bases)
+    print(f'  levels in scope (xBloodCave + Random09A): {len(bc)}  '
+          f'(in-scope donors: {n_scope_donors})\n')
 
     real_ok = stub_ok = 0
     fails = []
@@ -143,15 +155,15 @@ def main():
         print(f'  {base:40s} {str(size_0b):>10s}  {exp_s:>10s}  {str(has_0a):>5s}  {verdict}')
 
     print('\n  ' + '=' * 60)
-    print(f'  real navmeshes matching donor: {real_ok}/{len(donor_size)}')
+    print(f'  real navmeshes matching donor: {real_ok}/{n_scope_donors} (in scope)')
     print(f'  ocean/other stubs: {stub_ok}')
     if fails:
         print(f'  FAIL ({len(fails)}): {fails}')
         sys.exit(1)
-    if real_ok != len(donor_size):
-        print(f'  FAIL: expected {len(donor_size)} real navmeshes, got {real_ok}')
+    if real_ok != n_scope_donors:
+        print(f'  FAIL: expected {n_scope_donors} in-scope real navmeshes, got {real_ok}')
         sys.exit(1)
-    print('  PASS: every generated navmesh is present in the merged map, 0x0a stripped.')
+    print('  PASS: every in-scope generated navmesh is present in the merged map, 0x0a stripped.')
 
 
 if __name__ == '__main__':
