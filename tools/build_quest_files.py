@@ -15,6 +15,18 @@ tunnel walks into the blood cave; the cave's 0x06 return-link walks back out).
 The old quest-driven boat-dialog portal hack is REMOVED; PORTALS is kept only as
 an (empty) hook - if it is ever non-empty again, a "Portal System" quest is
 built into the sv_commonmechanics.qst slot as before.
+
+This build ALSO ports one VANILLA base-game controller quest to hard-cap the
+campaign at Immortal Throne for DLC owners: x4_other_001_control_expansionportals.qst
+(from the base game's XPack4/Quests.arc, identity already registered in our map at
+idx 232) is added with ONLY its Immortal-Throne -> Eternal-Embers act-portal
+Action_UnlockFixedItem removed, so an Eternal Embers owner no longer gets the
+"portal opens after Hades" transition and the arc ends at Hades as SV's difficulty
+balance assumes. Every other step of that quest is preserved byte-faithfully. See
+EXPANSIONPORTALS_QUEST + _neutralize_expansionportals_it_to_ee + docs/IT_ENDPOINT_AUDIT.md.
+(SCOPE: this caps Eternal Embers owners; Ragnarok owners' IT->Scandia act portal
+lives in a DIFFERENT controller, xquest_controlsbossdoors.qst -- see that function's
+NOTE for the follow-up.)
 """
 import sys
 from pathlib import Path
@@ -104,6 +116,62 @@ WIDOWLETTER_QUEST = 'widowletter.qst'
 # spawn uses location_treasurechest; the blocker uses blockersquirrel).
 WIDOWLETTER_SPAWN_ENTITY = r'records\drxmap\quest\finalletter.dbr'
 WIDOWLETTER_SPAWN_LOCATION = r'records\drxmap\quest\location_letterdrop.dbr'
+
+# ── Immortal-Throne endpoint hard-cap (Eternal-Embers act portal removal) ────────
+# WHY: SV 0.98i's difficulty balance assumes the playable arc ENDS at the end of
+# Immortal Throne (Act 4 / Hades). A non-DLC player already stops there. But a player
+# who owns the Eternal Embers DLC (TQX4) inherits vanilla TQAE's Immortal-Throne ->
+# Eternal-Embers ACT portal: the base-game controller quest
+# x4_other_001_control_expansionportals.qst (registered in OUR map's QUESTS window at
+# idx 232, inherited from vanilla) holds the step "IMMORTAL THRONE Portal to Eternal
+# Embers" whose single trigger "RESETTABLE: Portal From Immortal Throne" fires on
+# Condition_ConversationStart(persephone_hades.dbr) -> Action_UnlockFixedItem(
+# x4_other_immortalthrone_to_eternalembers_teleport_a.dbr). That fixed item is a
+# FixedItemTeleport (RequireDLC=TQX4) whose FileDescription is literally "ACT PORTAL -
+# Immortal Throne End teleport to Eternal Embers Beginning" -- talk to Persephone after
+# Hades dies and a portal to a NEW act opens. Taking it extends the arc past Hades and
+# moves the Epic/Legendary completion gate off the Hades kill, breaking SV's IT-end
+# scaling for an EE owner. See docs/IT_ENDPOINT_AUDIT.md FIX OPTION 1.
+#
+# THE FIX (per audit, Will-approved): port this vanilla quest into the mod's Quests.arc
+# with THAT ONE Action_UnlockFixedItem removed (identical surgical pattern to the
+# widowletter spawn neutralization above). The quest identity is already registered at
+# idx 232, so this is a Quests.arc-only change: NO map/Levels rebuild. The trigger keeps
+# its persephone condition and becomes a zero-action trigger (the same shape as the
+# always-present zero-action sentinel trigger), so nothing else in the quest shifts.
+#
+# WHAT IS DELIBERATELY KEPT (evidence-driven; see docs/IT_ENDPOINT_AUDIT.md + the ground-
+# truth probes in this session): every OTHER step/action of the quest is preserved
+# byte-faithfully. In particular the OTHER Persephone-after-Hades trigger -- step
+# "IMMORTAL THRONE: Has EE - Normal/Epic" -> Action_UnlockFixedItem(
+# endportal_hades_NORMAL_EPIC.dbr) -- is KEPT: that record is a FixedItemTyphonPortal
+# (RequireDLC=TQX4, RequireNoDLC=TQA2) whose FileDescription is "End of game portal when
+# completed hades (if no DLC2)". It is a game-ENDING credits portal for the EE-owner who
+# does NOT own Ragnarok; it terminates the arc AT Hades (exactly the SV-desired outcome),
+# so removing it would strip a legitimate end-of-game portal, not extend the arc. Every
+# other step (ON LOAD PORTALS, the Ragnarok/Valhalla Odin portals, the Eternal-Embers-
+# interior Pingyang/Marshland/SQ301 portals, and the "Makes it so Quest Never Completes"
+# keep-alive control step) only fires once the player is already physically inside a DLC
+# act, so none can move the IT completion gate; all are left intact.
+#
+# NOTE / SCOPE FLAG (Ragnarok owners are NOT capped by this change alone): the Immortal-
+# Throne -> RAGNAROK (Scandia) act portal for a TQA2 (Ragnarok) owner is opened by a
+# DIFFERENT controller quest -- XPack/quests/xquest_controlsbossdoors.qst (registered in
+# our window at idx 118), whose Hades-boss step's persephone_hades trigger unlocks
+# records/xpack2/quests/objects/portal_hadesscandia.dbr (FixedItemTeleport, RequireDLC=
+# TQA2, "The Portal to Scandia (if DLC2)"). This task is scoped to the x4 quest at idx
+# 232 only; capping Ragnarok owners requires the same surgical treatment on
+# xquest_controlsbossdoors.qst and is called out for a follow-up.
+EXPANSIONPORTALS_QUEST = 'x4_other_001_control_expansionportals.qst'
+# The base-game (NOT upstream-SV) archive that holds the vanilla controller quest.
+BASE_GAME_XPACK4_QUESTS = Path(
+    r'C:\Program Files (x86)\Steam\steamapps\common'
+    r'\Titan Quest Anniversary Edition\Resources\XPack4\Quests.arc')
+# The single fixedItem that uniquely identifies the IT->Eternal-Embers act-portal unlock
+# to remove (the ONLY Action_UnlockFixedItem in the quest that references it).
+EXPANSIONPORTALS_IT_TO_EE_FIXEDITEM = (
+    r'records/xpack4/quests/item/teleport/'
+    r'x4_other_immortalthrone_to_eternalembers_teleport_a.dbr')
 
 
 def _make_combined_portal_quest() -> bytes:
@@ -358,6 +426,145 @@ def _neutralize_widowletter_spawn(data: bytes) -> bytes:
     return out
 
 
+def _open_base_game_arc(path: Path) -> ArcArchive:
+    """Open a pristine base-game .arc (e.g. XPack4/Quests.arc) for verbatim porting."""
+    if not path.exists():
+        raise FileNotFoundError(
+            f'Base-game archive not found at {path}; cannot port the vanilla '
+            f'expansion-portals controller quest. (Is TQAE installed at the '
+            f'expected Steam path?)')
+    return ArcArchive.from_file(path)
+
+
+def _neutralize_expansionportals_it_to_ee(data: bytes) -> bytes:
+    """Remove ONLY the Immortal-Throne -> Eternal-Embers act-portal UnlockFixedItem.
+
+    Ports x4_other_001_control_expansionportals.qst byte-faithfully EXCEPT for the
+    single Action_UnlockFixedItem whose fixedItem is EXPANSIONPORTALS_IT_TO_EE_FIXEDITEM
+    (uniquely the step "IMMORTAL THRONE Portal to Eternal Embers" / trigger "RESETTABLE:
+    Portal From Immortal Throne"; every other unlock in the quest targets a different
+    record). That action is the ONE choke point that opens a NEW act (Eternal Embers)
+    from the end of Immortal Throne for a DLC owner, moving their difficulty completion
+    gate off the Hades kill and breaking SV's IT-end scaling (see the module header +
+    docs/IT_ENDPOINT_AUDIT.md). The trigger keeps its Condition_ConversationStart(
+    persephone_hades) condition and becomes a zero-action trigger (structurally identical
+    to the always-present zero-action sentinel trigger), so no other step/trigger/action
+    shifts and the quest keeps working as a resettable controller for every OTHER portal.
+
+    Same surgical shape as _neutralize_widowletter_spawn: find the trigger whose ACTIONS
+    block contains an Action_UnlockFixedItem with fixedItem == the target, decrement that
+    block's actionCount by 1, and drop the matching (actionClassName field, action-fields
+    block) pair. Trigger/step counts are untouched.
+    """
+    fixed = EXPANSIONPORTALS_IT_TO_EE_FIXEDITEM.replace('\\', '/').lower()
+
+    def str_fields(items):
+        out = set()
+        for it in items:
+            if it[0] == 'block':
+                out |= str_fields(it[1])
+            elif it[0] == 'field' and it[2][0] == 'str':
+                out.add(it[2][1].replace('\\', '/').lower())
+        return out
+
+    def block_positions(items):
+        return [i for i, it in enumerate(items) if it[0] == 'block']
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    step_triples = [block_positions(steps_container)[i:i + 3]
+                    for i in range(0, len(block_positions(steps_container)), 3)]
+
+    removed = 0
+    for stepdef_pos, trigcont_pos, sentinel_pos in step_triples:
+        trigcont = steps_container[trigcont_pos][1]
+        tg = [block_positions(trigcont)[i:i + 3]
+              for i in range(0, len(block_positions(trigcont)), 3)]
+        for (hpos, cpos, apos) in tg:
+            actions_block = trigcont[apos][1]  # list of items in the actions block
+            # walk the actions block: find an Action_UnlockFixedItem classname field
+            # immediately followed by a fields block whose fixedItem == the target.
+            new_items = []
+            i = 0
+            dropped_here = 0
+            while i < len(actions_block):
+                it = actions_block[i]
+                is_unlock = (it[0] == 'field' and it[1] == 'actionClassName'
+                             and it[2][0] == 'str'
+                             and it[2][1] == 'Action_UnlockFixedItem')
+                if is_unlock and i + 1 < len(actions_block) and actions_block[i + 1][0] == 'block':
+                    fld = str_fields(actions_block[i + 1][1])
+                    if fixed in fld:
+                        # drop this classname field + its fields block
+                        i += 2
+                        dropped_here += 1
+                        removed += 1
+                        continue
+                new_items.append(it)
+                i += 1
+            if dropped_here:
+                # decrement actionCount by the number dropped
+                for idx, it in enumerate(new_items):
+                    if it[0] == 'field' and it[1] == 'actionCount':
+                        old = it[2][1]
+                        new_items[idx] = ('field', 'actionCount', ('int', old - dropped_here))
+                        break
+                new_trigcont = list(trigcont)
+                new_trigcont[apos] = ('block', new_items)
+                steps_container[trigcont_pos] = ('block', new_trigcont)
+                trigcont = new_trigcont  # refresh for any later triggers in same container
+
+    if removed != 1:
+        raise ValueError(
+            f'{EXPANSIONPORTALS_QUEST}: expected exactly 1 Action_UnlockFixedItem '
+            f'unlocking {EXPANSIONPORTALS_IT_TO_EE_FIXEDITEM}, found {removed}. '
+            f'Upstream/base-game changed; review before shipping.')
+
+    out = qst_format.serialize(tree)
+    # sanity: the IT->EE unlock action must be gone (no actions block references the
+    # target fixedItem), the file must round-trip stably, and the OTHER Persephone-side
+    # end-of-game credits portal (endportal_hades) must still be present.
+    reparsed = qst_format.parse(out)
+
+    def any_it_to_ee_unlock(container):
+        sc = container[1]
+        for sd, tc, sn in [block_positions(sc)[i:i + 3]
+                           for i in range(0, len(block_positions(sc)), 3)]:
+            tcb = sc[tc][1]
+            tgg = [block_positions(tcb)[i:i + 3]
+                   for i in range(0, len(block_positions(tcb)), 3)]
+            for (h, c, a) in tgg:
+                items = sc[tc][1][a][1]
+                j = 0
+                while j < len(items):
+                    it = items[j]
+                    if (it[0] == 'field' and it[1] == 'actionClassName'
+                            and it[2][0] == 'str'
+                            and it[2][1] == 'Action_UnlockFixedItem'
+                            and j + 1 < len(items) and items[j + 1][0] == 'block'):
+                        if fixed in str_fields(items[j + 1][1]):
+                            return True
+                    j += 1
+        return False
+
+    if any_it_to_ee_unlock(reparsed[1]):
+        raise ValueError('expansion-portals neutralization failed: IT->EE unlock '
+                         'still present')
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError('neutralized expansion-portals quest does not round-trip stably')
+    # the target fixedItem string must be gone entirely (it appears in exactly ONE place,
+    # the unlock action we removed) -- guards against a partial/mismatched edit.
+    if fixed in str_fields([b for blk in reparsed for b in blk]):
+        raise ValueError('expansion-portals neutralization left a dangling IT->EE '
+                         'fixedItem reference')
+    # the KEPT end-of-game credits portal must survive (proves we removed the RIGHT one).
+    if 'records/xpack2/quests/objects/endportal_hades_normal_epic.dbr' \
+            not in str_fields([b for blk in reparsed for b in blk]):
+        raise ValueError('expansion-portals neutralization also dropped the KEPT '
+                         'endportal_hades credits portal; over-removed.')
+    return out
+
+
 def _build_area_quests() -> dict:
     """Return {archive_basename: qst_bytes} for the SV area questlines to add."""
     arc = _open_upstream_arc()
@@ -379,6 +586,17 @@ def _build_area_quests() -> dict:
     bc = _upstream_quest_bytes(arc, BLOODCAVE_INTERIOR_QUEST)
     _assert_roundtrip(BLOODCAVE_INTERIOR_QUEST, bc)
     out[BLOODCAVE_INTERIOR_QUEST] = _neutralize_bloodcave_entry_step(bc)
+
+    # Immortal-Throne endpoint hard-cap: port the VANILLA base-game expansion-portals
+    # controller (from XPack4/Quests.arc, NOT upstream SV) with the single IT->Eternal-
+    # Embers act-portal UnlockFixedItem removed. Its identity is already registered in
+    # the map at idx 232, so adding the body here (basename at the archive root) makes
+    # the neutralized controller live with NO map/Levels change. See the module header
+    # + docs/IT_ENDPOINT_AUDIT.md.
+    base_arc = _open_base_game_arc(BASE_GAME_XPACK4_QUESTS)
+    ep = _upstream_quest_bytes(base_arc, EXPANSIONPORTALS_QUEST)
+    _assert_roundtrip(EXPANSIONPORTALS_QUEST, ep)
+    out[EXPANSIONPORTALS_QUEST] = _neutralize_expansionportals_it_to_ee(ep)
     return out
 
 
