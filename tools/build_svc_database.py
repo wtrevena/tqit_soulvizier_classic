@@ -330,6 +330,39 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
                 tmpl_val = str(tf.values[0]).lower()
 
         if 'monster' not in cls_val and 'monster' not in tmpl_val:
+            # Defense-in-depth (generalizes the 2026-07-05 normal-yeti fix).
+            # Records whose Class/template is not a plain "Monster" (e.g. the
+            # SpiritHost possessed-statue props of the Megalesios fight, whose
+            # Class=SpiritHost / template=SpiritHost.tpl) are otherwise invisible
+            # to the soul passes below. If such a non-Hero/Boss/Quest prop ever
+            # arrives here already carrying INHERITED soul loot with a live
+            # chance, _force_100_pct_soul_drops would later boost it to 100% -
+            # the same classification loophole as the yeti bug, one filter
+            # deeper. Zero it here so it can never drop. Only ever ZERO (never
+            # raise), so the real Hero/Boss/Quest bosses that legitimately use a
+            # non-Monster Class (Megalesios/Ormenos/Typhon/Cerberus/Hades, and
+            # the Boss-classed SpiritHost Pharaoh's Honor Guards) keep their
+            # inherited drop untouched. NOTE: on the current data the Megalesios
+            # statues carry NO soul loot at this stage - their soul is wired
+            # later by _wire_missing_boss_souls in apply_svc_patches.py, which is
+            # where the actual Inhabited-Statue fix (a classification guard)
+            # lives; this pass is the belt-and-suspenders complement.
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if existing and existing != '' and existing != 0:
+                fields2 = db.get_fields(name)
+                loot_vals = []
+                monster_cls = ''
+                for key, tf in fields2.items():
+                    rk = key.split('###')[0]
+                    if rk == 'lootFinger2Item1' and tf.values:
+                        loot_vals = tf.values
+                    elif rk == 'monsterClassification' and tf.values:
+                        monster_cls = str(tf.values[0])
+                has_soul_loot = any(
+                    isinstance(v, str) and 'soul' in v.lower() for v in loot_vals)
+                if has_soul_loot and monster_cls not in ('Hero', 'Boss', 'Quest'):
+                    db.set_field(name, 'chanceToEquipFinger2', 0.0, DATA_TYPE_FLOAT)
+                    zeroed_common += 1
             continue
 
         existing = db.get_field_value(name, 'lootFinger2Item1')

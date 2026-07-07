@@ -896,6 +896,18 @@ def _wire_missing_boss_souls(db):
     for name in list(db.record_names()):
         nl = name.lower()
         if 'boss_greektelkine_megalesios' in nl:
+            # The substring also matches boss_greektelkine_megalesiosstatue_*,
+            # the possessed-statue props of the Megalesios fight
+            # (Class=SpiritHost, monsterClassification=Champion). Those must
+            # NEVER drop a soul (design: only Hero/Boss/Quest do). Wiring the
+            # telkine soul onto them here is what _force_100_pct_soul_drops later
+            # boosts to a 100% farmable-adds drop (the Inhabited Statue bug).
+            # Gate on classification so only the real Boss variants get wired;
+            # the real boss already carries base soul loot and is untouched by
+            # this "if not existing" block regardless.
+            mc = db.get_field_value(name, 'monsterClassification')
+            if mc not in ('Hero', 'Boss', 'Quest'):
+                continue
             existing = db.get_field_value(name, 'lootFinger2Item1')
             if not existing or existing == '' or existing == 0:
                 _wire_soul(name, MEGALESIOS_SOULS, 25.0)
@@ -2851,16 +2863,29 @@ def _wire_soul_to_monster(db, monster, soul_paths, drop_rate=66.0):
 
 
 def _has_soul(db, record):
-    """Check if a monster record already has a soul wired."""
+    """Check if a monster record already has a *real* soul wired.
+
+    A soul counts only if lootFinger2Item1 references a soul item AND at least
+    one referenced record actually exists in the database. The mere presence of
+    a 'soul' path is not enough: SV 0.98i ships dangling references (e.g.
+    um_ainex_45 -> empusa/ainex_soul_{n,e,l}, records that were never authored),
+    and treating those as "has a soul" silently disables the fallback
+    soul-creator, leaving the boss dropping nothing at a wired 100% chance.
+    Resolve references the same tolerant way the rest of this module does
+    (_find_record: both slash conventions + case-insensitive) so a legitimately
+    wired soul stored under a different slash/case convention is never counted
+    as missing.
+    """
     fields = db.get_fields(record)
     if not fields:
         return False
     for key, tf in fields.items():
         fn = key.split('###')[0]
         if fn == 'lootFinger2Item1' and tf.values:
-            v = tf.values[0]
-            if isinstance(v, str) and 'soul' in v.lower():
-                return True
+            for v in tf.values:
+                if isinstance(v, str) and 'soul' in v.lower():
+                    if _find_record(db, v):
+                        return True
     return False
 
 
@@ -3116,22 +3141,29 @@ def _place_orphan_monsters(db):
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
     print("\n  Placing orphan monsters in spawn pools:")
 
+    # (record_substring, pool_keyword, description, level, soul_base_override)
+    # soul_base_override: explicit soul-item base name when the record needs its
+    # fallback soul under a specific canonical name. Ainex's boss soul MUST be
+    # authored as ainex_soul_{n,e,l} (the name the design/audit specifies and the
+    # Soul-of-Ainex tag pairs with); the default derivation would name it
+    # um_ainex_soul_* off the um_ainex_45 record. None => derive as before, which
+    # keeps every other orphan's existing soul name unchanged.
     ORPHANS = [
-        ('um_phagia_34',       'maenad',       'Phagia Lv34',       34),
-        ('um_phagia_44',       'djinn',        'Phagia Lv44',       44),
-        ('um_frost_36',        'limos',        'Frost Lv36',        36),
-        ('um_ainex_45',        'empusa',       'Ainex Lv45',        45),
-        ('um_droolbog_43',     'anouran',      'Droolbog Lv43',     43),
-        ('um_prox_47',         'archlimos',    'Prox Lv47',         47),
-        ('um_yama_38',         'neanderthal',  'Yama Lv38',         38),
-        ('um_inkeyes2_45',     'ratman',       'Inkeyes2 Lv45',     45),
-        ('um_tombguardian_26', 'tombguardian', 'Tomb Guardian Lv26', 26),
+        ('um_phagia_34',       'maenad',       'Phagia Lv34',       34, None),
+        ('um_phagia_44',       'djinn',        'Phagia Lv44',       44, None),
+        ('um_frost_36',        'limos',        'Frost Lv36',        36, None),
+        ('um_ainex_45',        'empusa',       'Ainex Lv45',        45, 'ainex'),
+        ('um_droolbog_43',     'anouran',      'Droolbog Lv43',     43, None),
+        ('um_prox_47',         'archlimos',    'Prox Lv47',         47, None),
+        ('um_yama_38',         'neanderthal',  'Yama Lv38',         38, None),
+        ('um_inkeyes2_45',     'ratman',       'Inkeyes2 Lv45',     45, None),
+        ('um_tombguardian_26', 'tombguardian', 'Tomb Guardian Lv26', 26, None),
     ]
 
     total_placed = 0
     total_souled = 0
 
-    for substr, pool_kw, desc, lvl in ORPHANS:
+    for substr, pool_kw, desc, lvl, soul_base in ORPHANS:
         rec = _find_record(db, substr)
         if not rec:
             print(f"    WARNING: {substr} not found")
@@ -3143,7 +3175,7 @@ def _place_orphan_monsters(db):
 
         # Create soul if needed
         if not _has_soul(db, rec):
-            clean = _re.sub(r'_\d+$', '', substr)
+            clean = soul_base if soul_base else _re.sub(r'_\d+$', '', substr)
             tag_name = 'tagSVCSoul' + clean.replace('um_', '').replace('_', '').title()
             e_lvl = lvl + 15
             l_lvl = lvl + 30
