@@ -26,6 +26,10 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ---
 
+## ⚡ SUCCESSOR AGENTS: read docs/HANDOFF_LIVE_STATE.md FIRST (live deploy state, open bugs
+from Will's 2026-07-07 test session incl. the broken summon-pet visuals, running fix workflows,
+the full queue, standing rules, and the build/deploy cheat sheet). This repo is self-sufficient.
+
 ## Current status (2026-07-07: PUBLIC ON STEAM WORKSHOP - item 3759792705)
 
 **The mod is LIVE and PUBLIC** (subscribe to download; updates push via
