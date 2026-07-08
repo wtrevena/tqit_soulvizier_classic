@@ -32,7 +32,13 @@ $ErrorActionPreference = 'Stop'
 
 $steamcmd = Require-Config 'STEAMCMD_EXE'
 $distDir = Join-Path $RepoRoot 'dist\workshop'
-$contentDir = Join-Path $distDir 'SoulvizierClassic'
+# contentDir = the vdf contentfolder SteamCMD uploads. It must contain EXACTLY one child,
+# the SoulvizierClassic wrapper folder, so the Workshop item root = a single
+# SoulvizierClassic folder (database\ + resources\ inside it). Pointing contentfolder at
+# the wrapper folder itself would upload database\/resources\ to the item root, which TQAE
+# reads as two broken mods "database" and "resources" (the 2026-07-08 "two mods" bug).
+$contentDir = Join-Path $distDir 'content'
+$wrapperDir = Join-Path $contentDir 'SoulvizierClassic'
 $vdfPath = Join-Path $distDir 'workshop.vdf'
 $idFile = Join-Path $RepoRoot 'local\workshop_item_id.txt'
 
@@ -43,9 +49,18 @@ if (-not (Test-Path $steamcmd)) {
     exit 1
 }
 
-# Verify package exists
-if (-not (Test-Path (Join-Path $contentDir 'database\SoulvizierClassic.arz'))) {
+# Verify package exists (inside the SoulvizierClassic wrapper) and has the required
+# single-wrapper layout, so we never upload the "two mods" layout.
+if (-not (Test-Path (Join-Path $wrapperDir 'database\SoulvizierClassic.arz'))) {
     Write-Host 'ERROR: Workshop package not found. Run package_workshop.ps1 first.' -ForegroundColor Red
+    exit 1
+}
+$rootChildren = @(Get-ChildItem $contentDir -Force)
+if ($rootChildren.Count -ne 1 -or $rootChildren[0].Name -ne 'SoulvizierClassic' -or -not ($rootChildren[0] -is [System.IO.DirectoryInfo])) {
+    $names = ($rootChildren | ForEach-Object { $_.Name }) -join ', '
+    Write-Host "ERROR: contentfolder $contentDir must contain exactly one folder 'SoulvizierClassic'." -ForegroundColor Red
+    Write-Host "Found: $names" -ForegroundColor Red
+    Write-Host 'Re-run package_workshop.ps1 (it rebuilds the correct single-wrapper layout).' -ForegroundColor Red
     exit 1
 }
 

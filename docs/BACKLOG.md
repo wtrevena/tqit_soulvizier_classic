@@ -145,3 +145,21 @@ All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1)
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
 deploy. The DB items (B-SUMMON-1, B-TOXEUS-1) share apply_svc_patches → one DB wave. Portals
 touch BOTH lanes (record fields = DB; placement = map) — coordinate.
+
+## ✅ RESOLVED: deploy / packaging
+
+### B-WORKSHOP-PKG-1: Workshop item shipped as two broken mods "database" + "resources" (FIXED 2026-07-08)
+- **Symptom:** subscribers to item 3759792705 saw TWO broken mods "database" and "resources"
+  instead of one "SoulvizierClassic". Root cause: package_workshop.ps1 staged database/ and
+  resources/ as direct children of the vdf contentfolder, and SteamCMD uploads the contentfolder's
+  CONTENTS, so the item root had no SoulvizierClassic wrapper (TQAE treats each top-level folder of a
+  workshop item as a mod name).
+- **Fix:** package_workshop.ps1 now stages to dist/workshop/content/SoulvizierClassic/{database,
+  resources} and upload_workshop.ps1 points the vdf contentfolder at dist/workshop/content (whose
+  only child is SoulvizierClassic). The packager wipes the stale wrapperless staging each run,
+  asserts the content root has exactly one child, adds a permanent fail-loud TESTHUB guard (aborts if
+  the packaged Levels.arc MD5 equals local/Levels_merged_TESTHUB.arc), and prints the packaged
+  Levels.arc size + MD5. Verified: canonical map A1BA5DB2F00FFA067A808753A2E1EAC5 (688,691,849 B)
+  matches the published copy; 53-file package; item root = a single SoulvizierClassic folder. Not yet
+  re-uploaded (the next Workshop update push replaces the live broken item). Scripts:
+  scripts/package_workshop.ps1, scripts/upload_workshop.ps1.

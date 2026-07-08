@@ -17,6 +17,17 @@
 - Workshop updates: `powershell -ExecutionPolicy Bypass -File scripts/package_workshop.ps1` then
   `scripts/upload_workshop.ps1 -SteamUser trevenaw7 -Update -Visibility 0` (steamcmd session cached,
   no prompts). NEVER upload a TESTHUB artifact.
+- **Workshop item layout (2026-07-08 fix, MUST hold):** the uploaded item root must contain a
+  SINGLE wrapper folder `SoulvizierClassic/` with `database/` and `resources/` INSIDE it.
+  `package_workshop.ps1` now stages to `dist/workshop/content/SoulvizierClassic/{database,resources}`
+  and `upload_workshop.ps1` sets the vdf `contentfolder` to `dist/workshop/content` (SteamCMD uploads
+  that folder's CONTENTS, i.e. the one wrapper). Shipping `database/` and `resources/` at the item
+  root (the old wrapperless staging) made TQAE read them as two broken mods "database" and
+  "resources": the 2026-07-08 "two mods" bug on item 3759792705. The packager now deletes the stale
+  `dist/workshop/SoulvizierClassic` layout every run, asserts the content root has exactly one child,
+  fail-loud ABORTS if `work/SoulvizierClassic/Resources/Levels.arc` MD5 equals
+  `local/Levels_merged_TESTHUB.arc` MD5 (new permanent TESTHUB guard), and prints the packaged
+  Levels.arc size + MD5 on every run for audit.
 
 ## 2. OPEN BUGS from Will's LIVE test session (2026-07-07 night, on TESTHUB) — the work queue
 
