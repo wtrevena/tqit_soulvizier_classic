@@ -414,6 +414,124 @@ T1_LILDUDE_01_DBR = b'records\\drxmap\\pitsprites\\t1_lildude_01.dbr'
 T1_LILDUDE_02_DBR = b'records\\drxmap\\pitsprites\\t1_lildude_02.dbr'
 T1_PITSPAWNER_01_DBR = b'records\\drxmap\\pitsprites\\t1_pitspawner_01.dbr'
 
+# =====================================================================================
+# ============  DOORS + TEST HUB + BUILD24/25 FEEDBACK WAVE (this session) =============
+# =====================================================================================
+# Mirrors the Sparta machinery verbatim (docs/DOORS_HUB_LOG.md). Every new cross-level
+# portal reuses portal_olympianarena1.dbr (GridEntranceDynamic, opened globally by the
+# EXISTING bossarena.qst Condition_OnLevelLoad -> Action_OpenDynGridEntrance by record
+# name) + portal_olympianarena2.dbr (GridExitOneWay landing), each instance carrying its
+# OWN 48-byte 0x14 binding: entrance = mouth+exit+dest, landing = mouth(==entrance.exit)+
+# zeros(32). NO Quests.arc change, NO 0x06, NO new records - same constraint/price as
+# Sparta (portals render with the Olympian-arena mesh). All UIDs minted map-unique
+# (collision-checked vs 157,548 known map UIDs, tools/debug/plan_doors_hub.py).
+
+# --- C2/C4 atmosphere records (new DBR constants; existing ones reused above) ---------
+# C4 restores 21 SV-dropped atmosphere emitters at SV's EXACT float32 coords + rotations
+# (byte-shape identical to SV's own placement). C2 adds the Hades firepit "volcano bowl"
+# at the sprite spawner. All Class EffectEntity/light/Decoration/Tile (NO aggro), flags=0,
+# no 0x14 (SV places none). SV corners == shipped corners for HV01+Delphi (verified), so
+# SV-local == merged-local. Coords + rotations extracted via extract_c4_atmosphere.py.
+MC_HADES_ANOURANFIREPIT03_DBR = b'records\\xpack\\sceneryhades\\structure\\camp\\monstercamp\\mc_hades_anouranfirepit03.dbr'
+MC_HADES_ANOURANFIREPITMD01_DBR = b'records\\xpack\\sceneryhades\\structure\\camp\\monstercamp\\mc_hades_anouranfirepitmd01.dbr'
+PIT_FX02_DBR = b'records\\drxmap\\effects\\pit_fx02.dbr'
+BUGCLOUD_SMALLFX_DBR = b'records\\xpack\\effects\\particles\\environment\\bugcloud_smallfx.dbr'
+MERCHANT_DELPHI_OCCULTTENT01_DBR = b'records\\drxmap\\dress\\merchant_delphi_occulttent01.dbr'
+LIGHT_5M_DYN_ORANGE_DBR = b'records\\lights\\dynamiclights\\5mlight_dyn_orange.dbr'
+LIGHT_10M_SIMPLE_RED_DBR = b'records\\xpack\\effects\\lights\\simple\\10mlight_simple_red.dbr'
+LIGHT_15M_SIMPLE_PURPLE_DBR = b'records\\xpack\\effects\\lights\\simple\\15mlight_simple_purple.dbr'
+LIGHT_10M_STATNL_BLUE_DBR = b'records\\lights\\nightlights\\static nightlight\\10mlight_statnl_blue.dbr'
+LIGHT_5M_DYN_GREEN_DBR = b'records\\lights\\dynamiclights\\5mlight_dyn_green.dbr'
+CAMPFIRE01_DBR = b'records\\sceneryorient\\structure\\camps\\setdress\\campfire01.dbr'
+# SV-exact non-identity rotations (byte-verified via extract_c4_atmosphere.py). Records not
+# listed here use IDENTITY (SV places them identity).
+HV01_TOTEM_ROT = (-4.371138828673793e-08, 0.0, -1.0, 0.0, 1.0, 0.0, 1.0, 0.0, -4.371138828673793e-08)  # both HV01 totems
+HV01_5M_DYN_ORANGE_ROT = (0.9999160766601562, 0.0, 0.012954838573932648, 0.0, 1.0, 0.0, -0.012954838573932648, 0.0, 0.9999160766601562)
+DELPHI_OCCULTTENT_ROT = (0.7340660691261292, 0.0, -0.6790779232978821, 0.0, 1.0, 0.0, 0.6790779232978821, 0.0, 0.7340660691261292)
+DELPHI_STATNL_BLUE_ROT = (0.9988024234771729, 0.0, 0.04892538860440254, 0.0, 1.0, 0.0, -0.04892538860440254, 0.0, 0.9988024234771729)
+DELPHI_5M_DYN_GREEN_ROT = (0.8890920281410217, 0.0, 0.4577282667160034, 0.0, 1.0, 0.0, -0.4577282667160034, 0.0, 0.8890920281410217)
+DELPHI_ANOURANFIREPIT03_ROT = (0.7082276344299316, 0.0, -0.7059841156005859, 0.0, 1.0, 0.0, 0.7059841156005859, 0.0, 0.7082276344299316)
+
+# --- A1 GARDEN OF MERCHANTS door (canonical + hub) : HV01 <-> GardenofMerchants ------
+# HOST = HiddenValley01 (v0x11 shared), portal beside the moved Super-Caravan at HV01 north
+# (16u E of caravan_silkroad, >=15u from fountain/caravan/hostiles). DEST = GardenofMerchants
+# (v0x0e SV-only); the landing sits in the caravan_rhodes COMPONENT (comp #1, 112,172 cells -
+# NOT the main comp) so the player arrives IN the merchant hub. Unlocks the caravan_rhodes
+# Super-Caravan region. G1<->G4 sep 14.4u; G2<->G3 sep 12u.
+GARDEN_gM1 = bytes.fromhex('a8605b3120dc06df34ac0734e531052e')  # in mouth
+GARDEN_gX1 = bytes.fromhex('f9f0d0051580d19a9680a9c62c617f23')  # in exit (== G2 landing mouth)
+GARDEN_gM2 = bytes.fromhex('8f83a7e17a10749081b657243a7eb98b')  # return mouth
+GARDEN_gX2 = bytes.fromhex('4aecb0aa270c1563687f67c52281d6cc')  # return exit (== G4 landing mouth)
+GOM_GUID = bytes.fromhex('15f9d3d7214d56d42a2ac6abd6114d78')          # GardenofMerchants merged GUID
+HV01_GUID = bytes.fromhex('ce93e328b14a5eba7ab5be8e623fa215')         # HiddenValley01 merged GUID
+GARDEN_G1_0x14 = GARDEN_gM1 + GARDEN_gX1 + GOM_GUID   # HV01 entrance -> GoM
+GARDEN_G2_0x14 = GARDEN_gX1 + b'\x00' * 32            # GoM landing (inbound)
+GARDEN_G3_0x14 = GARDEN_gM2 + GARDEN_gX2 + HV01_GUID  # GoM entrance -> HV01 (return)
+GARDEN_G4_0x14 = GARDEN_gX2 + b'\x00' * 32            # HV01 landing (return)
+for _p in (GARDEN_G1_0x14, GARDEN_G2_0x14, GARDEN_G3_0x14, GARDEN_G4_0x14):
+    assert len(_p) == 48
+
+# --- A2 SECRET PLACE door (canonical + hub) : rhodes_secretvista_01 <-> darkforestenter -
+# HOST = rhodes_secretvista_01 (v0x0f shared) - a scenic Rhodes overlook (thematic "hidden
+# secret place" host, same Rhodes region as the Secret Place cluster, ZERO hostiles); portal
+# at a tucked-away east-edge nook (17.8u from any decor). DEST = darkforestenter (v0x0e
+# SV-only) = the 11-level Secret Place cluster's ENTRY (SV_AREAS_CAMPAIGN Wave 3a).
+SECRET_sM1 = bytes.fromhex('bab0519fdc5f79a364f3b3eb492927ac')
+SECRET_sX1 = bytes.fromhex('f6474fb1f4ba46d01a4deefaebba1480')
+SECRET_sM2 = bytes.fromhex('46d2a8ba61db650f148f3944f56f4923')
+SECRET_sX2 = bytes.fromhex('c513d76bc21a59cacdc21296f99e0862')
+DFE_GUID = bytes.fromhex('1397c8e754491051bcd1be9cc4dd092f')            # darkforestenter merged GUID
+SECRETVISTA01_GUID = bytes.fromhex('88b842ba1a4329176dc2a995c33eda29')  # rhodes_secretvista_01 merged GUID
+SECRET_S1_0x14 = SECRET_sM1 + SECRET_sX1 + DFE_GUID           # vista entrance -> DFE
+SECRET_S2_0x14 = SECRET_sX1 + b'\x00' * 32                    # DFE landing (inbound)
+SECRET_S3_0x14 = SECRET_sM2 + SECRET_sX2 + SECRETVISTA01_GUID # DFE entrance -> vista (return)
+SECRET_S4_0x14 = SECRET_sX2 + b'\x00' * 32                    # vista landing (return)
+for _p in (SECRET_S1_0x14, SECRET_S2_0x14, SECRET_S3_0x14, SECRET_S4_0x14):
+    assert len(_p) == 48
+
+# --- TEST HUB (SVC_TEST_HUB=1 only) : blood-cave Random09A -> 5 destinations ----------
+# 5 one-way pairs from inside Random09A (blood cave, near the mouth/entry, on-mesh, no combat
+# proxies inside), each with a reciprocal RETURN to the cave. Each destination gets 4 UIDs
+# (in_mouth,in_exit,ret_mouth,ret_exit). Random09A is the blob-swapped SV-only doorway cave
+# (v0x0e; its merged GUID d840e7ae.. is the KEPT AE GUID). Destinations: maze03 (v0x0f shared),
+# murderbossroom / SpartaCryptLevel2 / darkforestenter / GardenofMerchants (v0x0e SV-only).
+RANDOM09A_GUID = bytes.fromhex('d840e7ae4a42c504453f13a47940bc55')
+MAZE03_GUID = bytes.fromhex('cdef89ae834a4adf1214609306708c02')
+MURDERBOSSROOM_GUID = bytes.fromhex('2817751af24828502c9d7ea5f0a5c6ab')
+SC2_HUB_GUID = bytes.fromhex('797c78594040cba419340c990e6903c4')  # SpartaCryptLevel2 (same as SC2_MERGED_GUID)
+# Per-destination minted UID quads (in_mouth, in_exit, ret_mouth, ret_exit):
+HUB_UIDS = {
+    'maze03':            ('91ccd4fb07261e482d01b72fde2cf4c5', 'e2b46e1a433c791d83e212ca2b99c97c',
+                          '2394fc8c0de5045a1ae4679949e650ce', 'ead10570d4b66b6d294801bd2a903d24'),
+    'murderbossroom':    ('8d29a9068e3853bf1ec9de68891b68dd', '114b77af27717a5da706fc5f5bd340a5',
+                          '37e8f289cfb58dd4452b85f87c5e57e7', '2d0279f4ebf5a29cf894b91bdc878417'),
+    'spartacryptlevel2': ('e9d6531602f1a9ccbe8a47089628d8cb', '249305cf8e7a4e0204fa5a55339d14a2',
+                          '47a5bb8cdd2268158eb9eca40fde05ed', '63fdac4e140eab8b4c7a2b0650e4a1db'),
+    'darkforestenter':   ('3a00c5d5108198c8d8372bd6fa4b1fef', 'f690898bbe4395f1019189477b9ce1dd',
+                          '887a8bb55a8f182d0e58b0feb6cac3c0', '6e4614c6bf42e026d52378c8da3885f2'),
+    'gardenofmerchants': ('0ad82f095231c69a7f47ca205c46b76f', '957fb0b7be921d6b3770f287d29a9bb4',
+                          '1e404b95c182f8988d1bd701b87ba980', '540455d4336172ea9e746eedc7e84407'),
+}
+HUB_DEST_GUID = {
+    'maze03': MAZE03_GUID, 'murderbossroom': MURDERBOSSROOM_GUID,
+    'spartacryptlevel2': SC2_HUB_GUID, 'darkforestenter': DFE_GUID, 'gardenofmerchants': GOM_GUID,
+}
+
+
+def _hub_pair_0x14(dest_key):
+    """Return (cave_entrance_0x14, dest_landing_0x14, dest_ret_entrance_0x14, cave_ret_landing_0x14)
+    for one hub destination, mirroring the A1/Sparta shape."""
+    im, ix, rm, rx = (bytes.fromhex(h) for h in HUB_UIDS[dest_key])
+    dg = HUB_DEST_GUID[dest_key]
+    cave_entrance = im + ix + dg               # in the cave, -> dest
+    dest_landing = ix + b'\x00' * 32           # in dest, inbound landing (mouth == cave entrance exit)
+    dest_ret_entrance = rm + rx + RANDOM09A_GUID  # in dest, -> cave (return)
+    cave_ret_landing = rx + b'\x00' * 32       # in cave, return landing
+    for _p in (cave_entrance, dest_landing, dest_ret_entrance, cave_ret_landing):
+        assert len(_p) == 48
+    return cave_entrance, dest_landing, dest_ret_entrance, cave_ret_landing
+
+
 # Injection specs: level name key -> list of specs (see INJECTION-SPEC FORMAT above).
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
@@ -452,9 +570,13 @@ INJECT_SPECS = {
     #   New caravan  HV01-local (41.70,17.80,143.10) world (-92.3,-102.2,2317.1): 6.0u E of the
     #     new fountain, 100.9u from hostiles, openNbr 8/8. (tools/debug/plan_b_final.py)
     # The fountain KEEPS flags=1 + the SV UniqueId (feeb4bc6...) - the Shrine_Respawn_Orient
-    # GROUPS binding is by UniqueId, POSITION-INDEPENDENT, so moving it keeps the respawn
-    # binding intact (group member count unchanged). Y uses the walkable-floor height at the
-    # new spot (17.6). The caravan keeps its native rot + 12-byte 0x14 (2,0,1).
+    # GROUPS member is keyed by that UniqueId. CORRECTION (this session, C1): the GROUPS member is
+    # NOT position-independent - it carries a POSITION triplet (UID+levelGUID+pos) and the engine
+    # RESPAWNS the player at THAT position, not the 0x05 instance. Moving the 0x05 alone (build24)
+    # left the GROUPS position STALE -> the player kept respawning at the old spot (Will's report).
+    # The fix is patch_respawn_group_position() in svaera_plus_portals.py step 2b, which rewrites the
+    # GROUPS member pos to match this 0x05 coord (native-shrine parity). Y = walkable floor (17.6).
+    # The caravan keeps its native rot + 12-byte 0x14 (2,0,1).
     'levels/world/orient/silkroad/hiddenvalley01.lvl': [
         (RESPAWNTEMPLEORIENT01_DBR, 35.70, 17.60, 143.10,
          {'flags': 1, 'uniqueid': RESPAWNTEMPLEORIENT01_UNIQUEID}),
@@ -466,6 +588,37 @@ INJECT_SPECS = {
         (LIGHT_10M_DYN_PURPLE_DBR, 33.5, 17.6, 145.0),
         (LIGHT_10M_DYN_RED_DBR, 38.0, 17.8, 145.0),
         (FOG_OCCULT_FX01_DBR, 35.7, 17.6, 146.5),
+        # --- C4 (this session): restore the 6 SV-dropped HV01 atmosphere emitters at SV's
+        # EXACT float32 coords + rotations (byte-shape identical to SV's own placement). SV had
+        # FAR MORE entrance atmosphere than shipped; build24 restored only the Border04 emitters.
+        # These are the HV01 surface totems + campfire + coloured lights SV placed and the merge
+        # dropped (extract_c4_atmosphere.py). flags=0, no 0x14. Pure visual (EffectEntity/light/
+        # Decoration) - no aggro, no on-mesh requirement (authored heights).
+        (DRXMAP_TOTEM_DBR, 65.0, 12.004941940307617, 106.0, {'rot': HV01_TOTEM_ROT}),
+        (DRXMAP_TOTEM_DBR, 65.0, 12.004964828491211, 98.0, {'rot': HV01_TOTEM_ROT}),
+        # ROUND-2 (vet fix): SV placed 2x 10mlight_dyn_purple + 2x 10mlight_dyn_red as the
+        # occult UNDER-LIGHTING for each of the 2 HV01 totems above (SV-098i HV01: ~0.3-0.5u XZ /
+        # ~4u ABOVE each totem, flags=0, IDENTITY rot - byte-verified independently via
+        # verify_c4_hv01_totemlights.py). Round-1 omitted these (the extract TARGETS list did not
+        # include the dyn_purple/dyn_red substrings), so the restored totems appeared WITHOUT their
+        # SV purple/red under-glow. These are the SEPARATE totem lights, NOT the B1 new-fountain
+        # purple/red at local ~(33.5/38.0,145) ~50u away. Pure visual (light, no aggro/0x14/mesh).
+        # Coords are SV's exact float32; identity rot -> no rot override (SV places them identity).
+        (LIGHT_10M_DYN_PURPLE_DBR, 65.4732666015625, 16.431617736816406, 106.04359436035156),
+        (LIGHT_10M_DYN_PURPLE_DBR, 65.3399887084961, 16.19445037841797, 98.02886962890625),
+        (LIGHT_10M_DYN_RED_DBR, 65.44312286376953, 16.418643951416016, 106.00531005859375),
+        (LIGHT_10M_DYN_RED_DBR, 65.39828491210938, 16.303573608398438, 98.03968811035156),
+        (LIGHT_15M_SIMPLE_PURPLE_DBR, 45.061309814453125, 29.081031799316406, 102.41687774658203),
+        (CAMPFIRE01_DBR, 38.722877502441406, 15.005194664001465, 89.65540313720703),
+        (LIGHT_5M_DYN_ORANGE_DBR, 38.88533020019531, 15.425609588623047, 90.27568817138672,
+         {'rot': HV01_5M_DYN_ORANGE_ROT}),
+        (LIGHT_10M_SIMPLE_RED_DBR, 46.9508056640625, 25.032676696777344, 112.49130249023438),
+        # --- A1 GARDEN OF MERCHANTS door (this session): HV01 host portals. G1 = entrance ->
+        # GardenofMerchants (16u E of the Super-Caravan); G4 = return landing (14.4u from G1).
+        # GridEntranceDynamic/GridExitOneWay, opened by bossarena.qst by record name. v0x11
+        # shared -> step-6/7 x14_payload append. flags=0, identity rot.
+        (PORTAL_OLYMPIANARENA1_DBR, 46.70, 15.80, 127.90, {'x14_payload': GARDEN_G1_0x14}),
+        (PORTAL_OLYMPIANARENA2_DBR, 56.90, 17.60, 138.10, {'x14_payload': GARDEN_G4_0x14}),
     ],
     # Static Widow Letter (BUG 2): finalletter placed at the location_letterdrop spot so it
     # is physically present for ALL characters (the quest spawn is neutralized in
@@ -491,16 +644,16 @@ INJECT_SPECS = {
     #     merchant never crosses them. IDENTITY rotation (SV uses identity). See
     #     docs/ENTRANCES_POLISH_LOG.md + tools/debug/plan_b_final.py.
     'levels/world/orient/silkroad/hiddenvalleyborder04.lvl': [
-        # B1/B2 CORRECTION (Will's build23 screenshot: the wagon sat ON TOP of the occultist
-        # merchant, 2.32u away = no clickable clearance). MOVED the wagon WEST to compose ONE
-        # coherent caravan scene with the (relocated) Horse02 + silkroad_villager1 driver, on
-        # the open bench west of the occult camp, clear of the merchant. New local (23.0,1.62,
-        # 20.0) = world (-111.0,-102.4,2322.0): 13.4u from the merchant (was 2.32u), on-mesh
-        # 0.14u, 4.2u from the moved horse (hitched in front), 7.1u from the pyre/pit (clear of
-        # the fire). Keeps the SV wagon yaw. The horse+villager are MOVED via MOVE_SPECS (they
-        # are native Border04 records) so the whole caravan travels together. See
-        # docs/SPARTA_CORRECTIONS_LOG.md B1/B2/B4 + tools/debug/plan_b_corrections.py.
-        (MERCHANT_HADES_WAGON_DBR, 23.00, 1.62, 20.00,
+        # B1/B2 CORRECTION (build23) + C3 CORRECTION (this session): Will's build24/25 feedback
+        # = "wagon on the RIGHT-HAND side of the driver NPC (from the standard game camera)". TQ
+        # camera: North(+Z)=top of screen -> screen-RIGHT = East = +X. build25 had the wagon at
+        # (23.0,20.0) = WEST (screen-left) of the driver (25.5,22.5). C3 recomposes the caravan in
+        # the same west bench (clear of the occult camp): wagon EAST (+X) of the driver. New wagon
+        # local (26.70,1.62,19.90) = 4.0u E of the moved driver (22.70,19.90) = screen-RIGHT; wagon
+        # d_merchant=10.0u (clickable), 4u N of the horse (hitched in front), min 4.9u from occult
+        # props, on-mesh <0.3u. The horse+driver MOVE via MOVE_SPECS (native records). Keeps the SV
+        # wagon yaw. See docs/DOORS_HUB_LOG.md C3.
+        (MERCHANT_HADES_WAGON_DBR, 26.70, 1.62, 19.90,
          {'rot': MERCHANT_HADES_WAGON_ROT}),
         # --- B1 occult atmosphere (SV Border04 exact local coords) ---
         (FOG_OCCULT_FX01_DBR, 26.641, 1.476, 24.831),
@@ -528,6 +681,13 @@ INJECT_SPECS = {
         (T1_LILDUDE_01_DBR, 49.30, 1.80, 36.10),      # d_occ 18.0 d_carv 22.3
         (T1_LILDUDE_02_DBR, 49.50, 1.80, 35.90),      # d_occ 18.0 d_carv 22.2
         (PIT_FX01_DBR, 50.70, 1.80, 34.30),
+        # --- C2 (this session): purple occult PYRE/VOLCANO visual anchor AT the sprite spawner.
+        # Will pointed at the wagon-side occult purple-flame art. The spawner already carries
+        # pit_fx01 (DRXeffects\other\pitfx.pfx = the purple occult flame); ADD the Hades firepit
+        # "volcano bowl" (mc_hades_anouranfirepit02, Class Tile) at the same spot so the spawner
+        # reads as a solid purple flaming volcano. Sprite coords UNCHANGED (add-only). On-mesh
+        # 0.00u. flags=0, no 0x14 (Tile).
+        (MC_HADES_ANOURANFIREPIT02_DBR, 50.70, 1.80, 34.30),
     ],
     # A1: maze03 -> Uber Dungeon (+ Boss Arena) entrance. Restore SV's portal_olympianarena1
     # (GridEntranceDynamic) at the AE-mesh-on secret-door spot with SV's exact 48-byte 0x14
@@ -596,6 +756,63 @@ INJECT_SPECS = {
     'levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl': [
         (Q_BLOODTOXEUS_LONE_DBR, 67.9, 3.0, 42.1, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
+    # ===== A2 SECRET PLACE door (this session): rhodes_secretvista_01 HOST (v0x0f shared) =====
+    # S1 = entrance -> darkforestenter (tucked-away east-edge nook, 17.8u from decor); S4 = return
+    # landing (10.1u from S1). See docs/DOORS_HUB_LOG.md A2. GridEntranceDynamic/GridExitOneWay,
+    # opened by bossarena.qst by record name. v0x0f shared -> step-6/7 x14_payload append.
+    'xpack/levels/area01_rhodes/rhodes_secretvista_01.lvl': [
+        (PORTAL_OLYMPIANARENA1_DBR, 138.50, 18.40, 33.10, {'x14_payload': SECRET_S1_0x14}),
+        (PORTAL_OLYMPIANARENA2_DBR, 137.10, 17.00, 43.10, {'x14_payload': SECRET_S4_0x14}),
+    ],
+    # ===== A2 SECRET PLACE door: darkforestenter DEST (v0x0e SV-only) =====
+    # S2 = inbound landing (central, mouth == S1.exit); S3 = return entrance -> vista (8u from S2).
+    # SV-only -> inject_into_sv_only_blob + x14_payload append (darkforestenter has a 0x14 section).
+    'xpack/levels/secret_place/darkforestenter.lvl': [
+        (PORTAL_OLYMPIANARENA2_DBR, 23.90, 2.00, 30.50, {'x14_payload': SECRET_S2_0x14}),
+        (PORTAL_OLYMPIANARENA1_DBR, 17.90, 7.00, 38.50, {'x14_payload': SECRET_S3_0x14}),
+    ],
+    # ===== A1 GARDEN OF MERCHANTS door: GardenofMerchants DEST (v0x0e SV-only) =====
+    # G2 = inbound landing (in the caravan_rhodes component #1 = the merchant hub, 6u from the
+    # caravan; mouth == G1.exit); G3 = return entrance -> HV01 (12u from G2). Unlocks the
+    # caravan_rhodes Super-Caravan region. SV-only -> inject_into_sv_only_blob + x14_payload.
+    'levels/world/olympus/gardenofmerchants.lvl': [
+        (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 79.10, {'x14_payload': GARDEN_G2_0x14}),
+        (PORTAL_OLYMPIANARENA1_DBR, 142.30, -39.00, 79.10, {'x14_payload': GARDEN_G3_0x14}),
+    ],
+    # ===== C4 (this session): Greece occultist region atmosphere restore (SV-exact) =====
+    # SV's Delphi "Crisaeos Falls" occultist region had the SAME regional smoke Will remembers
+    # (occult fog + pit + Hades firepits + coloured lights). The merge dropped it. Restore at SV's
+    # EXACT float32 coords + rotations (extract_c4_atmosphere.py). ALL v0x11 shared levels with
+    # SPARSE 0x14 -> the SAFE append-only path (atmosphere = flags=0 = NO 0x14 appended; the naive
+    # wholesale-0x14-regen that crashed in a674c49 does NOT run for these). Pure visual, no aggro.
+    # DelphiLowlands04 = the occultist TENT scene (5 records):
+    'levels/world/greece/delphi/delphilowlands04.lvl': [
+        (MERCHANT_DELPHI_OCCULTTENT01_DBR, 12.882176399230957, 9.980415344238281, 2.524287223815918,
+         {'rot': DELPHI_OCCULTTENT_ROT}),
+        (FOG_OCCULT_FX01_DBR, 19.344999313354492, 10.004997253417969, 2.115000009536743),
+        (FOG_OCCULT_FX01_DBR, 8.53499984741211, 10.004997253417969, 15.024999618530273),
+        (LIGHT_10M_STATNL_BLUE_DBR, 15.212060928344727, 16.30961799621582, 5.173452377319336,
+         {'rot': DELPHI_STATNL_BLUE_ROT}),
+        (LIGHT_5M_DYN_GREEN_DBR, 14.883951187133789, 11.311467170715332, 4.744840621948242,
+         {'rot': DELPHI_5M_DYN_GREEN_ROT}),
+    ],
+    # DelphiLowlands02 = the pit-sprites / lava-pit "volcano" scene (8 records):
+    'levels/world/greece/delphi/delphilowlands02.lvl': [
+        (PIT_FX02_DBR, 52.12237548828125, 10.881780624389648, 116.73532104492188),
+        (MC_HADES_ANOURANFIREPITMD01_DBR, 52.255706787109375, 10.331375122070312, 116.76100158691406),
+        (BUGCLOUD_SMALLFX_DBR, 44.85322570800781, 10.314421653747559, 125.21780395507812),
+        (FOG_OCCULT_FX01_DBR, 54.708003997802734, 10.246397972106934, 121.40185546875),
+        (FOG_OCCULT_FX01_DBR, 56.388099670410156, 10.308216094970703, 121.92228698730469),
+        (PIT_FX01_DBR, 79.44921112060547, 10.288912773132324, 122.02896118164062),
+        (FOG_OCCULT_FX01_DBR, 81.38713073730469, 10.411105155944824, 122.9507827758789),
+        (MC_HADES_ANOURANFIREPIT03_DBR, 79.54350280761719, 9.956783294677734, 122.13789367675781,
+         {'rot': DELPHI_ANOURANFIREPIT03_ROT}),
+    ],
+    # DelphiLowlands03 = sprite-dress continuation (2 records):
+    'levels/world/greece/delphi/delphilowlands03.lvl': [
+        (BUGCLOUD_SMALLFX_DBR, 123.81183624267578, 10.15844440460205, 6.107987403869629),
+        (BUGCLOUD_SMALLFX_DBR, 123.97244262695312, 10.947917938232422, 8.745109558105469),
+    ],
 }
 
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
@@ -605,21 +822,136 @@ INJECT_SPECS = {
 #   Format: level_key -> [ {dbr, x, y, z, match?, from_xyz?} ]  (coords are LEVEL-LOCAL)
 #   match defaults to 'all'; both targets below have exactly ONE instance in Border04
 #   (verified: Horse02 x1 @ local (34.45,1.62,19.85); silkroad_villager1 x1 @ (39.11,1.62,
-#   29.95)) so 'all' is unambiguous. New spots (tools/debug/plan_b_corrections.py):
-#     Horse02          -> (26.00,1.62,17.00) world (-108.0,-102.4,2319.0) [hitched in front
-#                          of the wagon, on-mesh 0.14u, 12.2u from merchant]
-#     silkroad_villager1 (driver) -> (25.50,1.62,22.50) world (-108.5,-102.4,2324.5) [by the
-#                          wagon, on-mesh 1.00u, 10.4u from merchant = clickable/functional]
+#   29.95)) so 'all' is unambiguous. from_xyz is the ORIGINAL SVAERA-native position (the merge
+#   re-runs from the fresh SVAERA blob each build, so from_xyz stays the native coord).
+#   C3 CORRECTION (this session): recompose so the wagon is EAST (screen-right) of the driver.
+#     silkroad_villager1 (driver) -> (22.70,1.62,19.90) world (-111.3,-102.4,2321.9) [WEST of the
+#                          wagon; wagon at (26.70,19.90) is 4u E = screen-right; on-mesh, 13.7u from
+#                          merchant = clickable]
+#     Horse02          -> (26.70,1.62,15.90) world (-107.3,-102.4,2317.9) [4u S of the wagon =
+#                          hitched in front, on-mesh <0.3u, 12u from merchant]
 HORSE02_DBR = b'Records/Creature/Ambient/Horse02.dbr'
 SILKROAD_VILLAGER1_DBR = b'records\\creature\\npc\\speaking\\orient\\silkroad_villager1.dbr'
 MOVE_SPECS = {
     'levels/world/orient/silkroad/hiddenvalleyborder04.lvl': [
-        {'dbr': HORSE02_DBR, 'x': 26.00, 'y': 1.62, 'z': 17.00,
+        {'dbr': HORSE02_DBR, 'x': 26.70, 'y': 1.62, 'z': 15.90,
          'from_xyz': (34.445534, 1.620424, 19.845734)},
-        {'dbr': SILKROAD_VILLAGER1_DBR, 'x': 25.50, 'y': 1.62, 'z': 22.50,
+        {'dbr': SILKROAD_VILLAGER1_DBR, 'x': 22.70, 'y': 1.62, 'z': 19.90,
          'from_xyz': (39.108494, 1.619662, 29.949188)},
     ],
 }
+
+# ===== TEST HUB (SVC_TEST_HUB=1 only) - a SEPARATE ARTIFACT (local/Levels_merged_TESTHUB.arc) =====
+# 5 one-way pairs from inside the blood cave (Random09A, near the mouth/entry, on-mesh, NO combat
+# proxies inside the cave) to maze03 / murderbossroom / SpartaCryptLevel2 / darkforestenter /
+# GardenofMerchants, each with a reciprocal RETURN to the cave. Cave cells S0..S4 = the 5 outbound
+# entrances; S5..S9 = the 5 return-landings (all >=10u apart). Each destination gets a landing +
+# a return-entrance. The flag-OFF (canonical) build must be BYTE-IDENTICAL to the flag-ON build
+# minus these hub entities - proven by gate_hub_identity.py (diff = ONLY the hub blobs). Each hub
+# pair uses its OWN minted UIDs (HUB_UIDS) so there is NO cross-talk with A1/A2/Sparta pairs.
+#
+# The 5 cave entrances (S0..S4) each carry cave_entrance_0x14 (mouth+exit+dest); the 5 cave return
+# landings (S5..S9) each carry cave_ret_landing_0x14 (ret-exit+zeros). Order pairs S<i> outbound
+# with S<i+5> return for the SAME destination.
+_HUB_CAVE_ENTRANCES = [  # (local x,y,z) for S0..S4 = the 5 outbound entrances (in Random09A)
+    (21.10, 1.00, 12.10), (21.10, 1.00, 22.10), (21.10, 1.00, 32.10),
+    (21.10, 1.00, 42.10), (24.30, 1.00, 57.90),
+]
+_HUB_CAVE_RETURNS = [    # (local x,y,z) for S5..S9 = the 5 return landings (in Random09A)
+    (29.10, 1.00, 48.10), (29.90, 1.00, 16.90), (29.90, 1.00, 26.90),
+    (29.90, 1.00, 36.90), (34.30, 1.00, 57.50),
+]
+# destination order (must match the cave-entrance order): each = (dest_key, dest_level_key,
+# landing_local, ret_entrance_local)
+_HUB_DESTS = [
+    ('maze03', 'levels/world/greece/knossos/underground/maze03.lvl',
+     (290.70, 1.20, 148.50), (292.50, 1.20, 156.30)),
+    ('murderbossroom', 'xpack/levels/secret_place/murderbossroom.lvl',
+     (52.90, 3.00, 28.10), (52.90, 3.00, 39.90)),
+    # SC2 also hosts the Sparta P2/P3 portals; hub landing/ret spaced >=10u from them
+    # (P2 @ 48.90,34.70 -> land d=10.1; P3 @ 50.30,26.70 -> ret d=22.7).
+    ('spartacryptlevel2', 'levels/world/greece/minidungeons/spartacryptlevel2.lvl',
+     (42.30, -1.60, 42.30), (29.70, -1.60, 36.30)),
+    # darkforestenter also hosts the A2 S2/S3 portals; hub landing/ret spaced >=10u from them.
+    ('darkforestenter', 'xpack/levels/secret_place/darkforestenter.lvl',
+     (29.90, 1.40, 38.50), (21.10, 6.80, 20.90)),
+    # gardenofmerchants also hosts the A1 G2/G3 portals; hub landing/ret in the caravan comp,
+    # >=10u from G2/G3 (8u from the caravan).
+    ('gardenofmerchants', 'levels/world/olympus/gardenofmerchants.lvl',
+     (136.30, -39.00, 71.10), (136.30, -39.00, 87.10)),
+]
+
+
+def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
+    """C1 FIX (respawn position): rewrite the POSITION triplet of a respawn-shrine member in the
+    world GROUPS(0x11) section, keyed by the shrine's 16-byte UniqueId.
+
+    ROOT CAUSE (byte-proven, docs/DOORS_HUB_LOG.md C1): the engine respawns the player at the
+    position recorded in the GROUPS respawnorient member, NOT at the shrine's 0x05 instance. Each
+    member is `UID(16) + levelGUID(16) + position(3xfloat32,12)`; every NATIVE respawn shrine's
+    GROUPS position == its 0x05 position. When build24 MOVED the HV01 fountain's 0x05 instance, the
+    GROUPS member position stayed the OLD (49.263,15.634,14.950) value, so the player kept
+    respawning at the pre-move spot (Will's disproven-activation-caching report). This rewrites the
+    12 position bytes at UID+32 to the fountain's NEW 0x05 position so GROUPS == 0x05 (native parity).
+
+    Idempotent + surgical: finds the UID, asserts the levelGUID+pos layout is present, rewrites ONLY
+    the 12 position bytes. Asserts the UID is found EXACTLY once (a respawn shrine has one member).
+    Returns the modified groups bytes.
+    """
+    buf = bytearray(groups_data)
+    n = buf.count(shrine_uid)
+    if n == 0:
+        raise ValueError(f'respawn shrine UID {shrine_uid.hex()} not found in GROUPS '
+                         f'({level_name}) - cannot patch respawn position')
+    if n != 1:
+        raise ValueError(f'respawn shrine UID {shrine_uid.hex()} appears {n}x in GROUPS '
+                         f'({level_name}) - ambiguous, refusing to patch')
+    off = buf.find(shrine_uid)
+    pos_off = off + 32  # UID(16) + levelGUID(16) -> position triplet
+    if pos_off + 12 > len(buf):
+        raise ValueError(f'GROUPS respawn member truncated at UID {shrine_uid.hex()} ({level_name})')
+    old = struct.unpack_from('<3f', buf, pos_off)
+    struct.pack_into('<3f', buf, pos_off, float(new_xyz[0]), float(new_xyz[1]), float(new_xyz[2]))
+    print(f'    C1: GROUPS respawn member {shrine_uid.hex()[:12]}.. pos '
+          f'({old[0]:.3f},{old[1]:.3f},{old[2]:.3f}) -> ({new_xyz[0]:.2f},{new_xyz[1]:.2f},{new_xyz[2]:.2f})')
+    return bytes(buf)
+
+
+def build_hub_inject_specs():
+    """Build the TEST-HUB INJECT_SPECS additions (level_key -> [specs]) - the 20 hub portal
+    instances. Called only when SVC_TEST_HUB=1. Returns a dict to be MERGED into INJECT_SPECS
+    (appending to existing keys)."""
+    R09_KEY = 'levels/world/orient/underground/random09a.lvl'
+    hub = {R09_KEY: []}
+    for i, (dest_key, dest_lvl, land_xyz, ret_xyz) in enumerate(_HUB_DESTS):
+        cave_entrance, dest_landing, dest_ret_entrance, cave_ret_landing = _hub_pair_0x14(dest_key)
+        # Cave entrance S<i> (portal_olympianarena1, -> dest)
+        ex, ey, ez = _HUB_CAVE_ENTRANCES[i]
+        hub[R09_KEY].append((PORTAL_OLYMPIANARENA1_DBR, ex, ey, ez, {'x14_payload': cave_entrance}))
+        # Cave return landing S<i+5> (portal_olympianarena2, landing from dest)
+        rx, ry, rz = _HUB_CAVE_RETURNS[i]
+        hub[R09_KEY].append((PORTAL_OLYMPIANARENA2_DBR, rx, ry, rz, {'x14_payload': cave_ret_landing}))
+        # Dest landing (portal_olympianarena2) + dest return-entrance (portal_olympianarena1)
+        lx, ly, lz = land_xyz
+        rex, rey, rez = ret_xyz
+        hub.setdefault(dest_lvl, [])
+        hub[dest_lvl].append((PORTAL_OLYMPIANARENA2_DBR, lx, ly, lz, {'x14_payload': dest_landing}))
+        hub[dest_lvl].append((PORTAL_OLYMPIANARENA1_DBR, rex, rey, rez, {'x14_payload': dest_ret_entrance}))
+    return hub
+
+
+def merge_hub_into_inject_specs(base_specs):
+    """Return a NEW INJECT_SPECS dict = base_specs with the hub specs appended (order-preserving:
+    hub portals are APPENDED after any base entries on the same level, so base instance indices
+    are unchanged -> the flag-OFF build's non-hub blobs stay byte-identical). Does not mutate
+    base_specs."""
+    hub = build_hub_inject_specs()
+    out = {k: list(v) for k, v in base_specs.items()}
+    for k, specs in hub.items():
+        out.setdefault(k, [])
+        out[k] = list(out[k]) + list(specs)
+    return out
+
 
 UBER_DUNGEON_QUEST_NAMES = ['Quests/uberdungeon_entrance.qst', 'Quests/uberdungeon_return.qst']
 BLOODCAVE_QUEST_NAMES = ['Quests/bloodcave_entrance.qst', 'Quests/bloodcave_return.qst']
