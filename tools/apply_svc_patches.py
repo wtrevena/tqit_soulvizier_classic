@@ -3831,6 +3831,175 @@ def _verify_no_supra_dead_refs(db):
     return offenders
 
 
+# ── Grid-portal UNCONDITIONAL OPENNESS + VISIBILITY via BORN-OPEN CLASS SWAP ──
+#    (Will 2026-07-07: blood-cave hub + all invented doors invisible AND inert
+#     in-game; wf_c0012e88-64a goal = "portals open from raw data, no quest") ──
+# Every invented door + the whole test hub places `portal_olympianarena1.dbr` as
+# the ENTRANCE. Upstream SV ships it as Class `GridEntranceDynamic` with
+# `visibilityMode=NeverVisible`. TWO independent defects follow, BOTH requiring the
+# bossarena.qst OnLevelLoad trigger to fire (i.e. per-character quest adoption):
+#   (1) VISIBILITY: the mesh is hidden at spawn unless Action_ShowNpc fires.
+#   (2) OPENNESS: the GridEntranceDynamic activate method calls SetPortalIsOpen(0)
+#       UNCONDITIONALLY at every spawn (Game.dll 0x101ae2f1), so the teleport is
+#       CLOSED until Action_OpenDynGridEntrance -> Open() (0x101ad910) reopens it.
+# On a pre-existing char (or any char the quest never tracked) NEITHER fires ->
+# portals are invisible-and-inert = exactly Will's report.
+#
+# ROOT CAUSE + FIX are fully disasm-proven in docs/DYNGRID_GATE_RCA.md sec 3-5
+# (VAs in backups/game_dll/*.original; reproduce with tools/debug/disasm_*.py):
+#  - `SetPortalIsOpen` (Engine export 0x10194d60) is CALLED from EXACTLY 3 sites in
+#    ALL of Game.dll and 0 sites in Engine.dll: GridEntranceDynamic::Close (arg 0),
+#    ::Open (arg 1), ::activate (arg 0). All three are the GridEntranceDynamic
+#    state machine. => a STATIC `GridEntrance` (the cave-mouth class) NEVER closes
+#    its portal; the Engine Portal is BORN OPEN ([+0xfc]=0x0101) and stays open.
+#  - `GridEntrance` is a full instantiable Engine class used by 153 base-game
+#    cave-mouth records (template Engine\GridEntrance.tpl), each ALWAYS-VISIBLE and
+#    ALWAYS-OPEN with NO quest -> the decisive base-game precedent.
+#  - The teleport RESOLUTION is identical for static + dynamic and reads ONLY the
+#    0x14 binding: GridEntrance::GetConnectedPortalId=[this+0x2d8] (exit_uid),
+#    GetConnectedRegionId=[this+0x2e8] (dest_guid); the linker pairs exit_uid to the
+#    born-open GridExitOneWay landing via Region::GetPortal. NO 0x06 dependency.
+#    This is the SAME pure-0x14 path A1/Sparta already rely on; the swap only
+#    removes the quest-open GATE.
+#
+# THE FIX (this DB patch is HALF of it; the MAP half is the 48->60 byte 0x14 prefix
+# in tools/build_section_surgery.py + a rebuild of BOTH map artifacts -- the two
+# MUST ship together, see the COUPLING note below): swap the ENTRANCE record's Class
+# from GridEntranceDynamic to the born-open static `GridEntrance`. Mirror a native
+# GridEntrance cave-mouth record's minimal field set: keep mesh/scale/actorHeight/
+# actorRadius, set templateName=database\Templates\Engine\GridEntrance.tpl, and DROP
+# the Dynamic-only fields (visibilityMode, quest, opening/openIdleAnimationSpeed) so
+# no field references a template that no longer includes it. Also update the arz
+# per-record TYPE string (db._record_types[name]) to 'GridEntrance' to match Class
+# (native GridEntrance records carry record_type='GridEntrance').
+#
+# >>> DEPLOY COUPLING (fail-loud): a class-swapped entrance record is read by the
+# engine with GridEntrance::Read, which consumes a 60-byte 0x14 payload
+# (12-byte (2,0,1) generic prefix + 48-byte mouth/exit/dest). Our maps historically
+# wrote a BARE 48-byte 0x14 for the Dynamic class. Deploying THIS arz against a map
+# whose portal 0x14 is still 48 bytes would make GridEntrance::Read eat 12 bytes of
+# the binding and MISALIGN (visible-but-inert or worse). So this arz change is only
+# valid paired with a map rebuilt by the current build_section_surgery.py (which
+# emits 60-byte entrance 0x14). The _verify_portals_born_open invariant asserts the
+# DB half; the map gate (tools/debug/gate_portal_openness.py) asserts the map half.
+#
+# NO base-game collateral: portal_olympianarena1/2 are placed ZERO times in the
+# base-game map (tools/debug/count_portal_instances.py on the base Levels.arc = 0/0)
+# -> changing the record's class/fields has no vanilla side effect.
+_PORTAL_ENTRANCE_DBRS = [
+    r'records\quests\portal_olympianarena1.dbr',
+    # aliases the upstream SV tree also carries (kept for completeness; only the
+    # base name is placed in the maps, but patch every casing/variant that exists)
+    r'records\quests\portal_olympianarena1x.dbr',
+]
+
+# The native minimal GridEntrance record shape (mirrors silkrddngentrance_c01_ext):
+# Class GridEntrance + templateName Engine\GridEntrance.tpl + mesh/scale/actor*.
+_GRIDENTRANCE_TEMPLATE = r'database\Templates\Engine\GridEntrance.tpl'
+# Dynamic-only fields to strip on the swapped record (not in the GridEntrance
+# template's include chain). Leaving them would reference a non-existent template
+# field. mesh/scale/actorHeight/actorRadius are shared (Tile include) and KEPT.
+_DYNAMIC_ONLY_FIELDS = (
+    'visibilityMode', 'quest', 'openingAnimationSpeed', 'openIdleAnimationSpeed',
+    'allowUnconnected', 'openingAnimation', 'openIdleAnimation', 'openIdleSound',
+    'openingSound', 'sound1', 'sound2', 'sound3', 'sound4', 'sound5',
+    'lightName', 'lightAttachPointName', 'lightFadeInTime',
+)
+
+
+def _resolve_record(db, path):
+    """Return the actual record key matching path (tolerating '/'-vs-'\\' + case)."""
+    if db.has_record(path):
+        return path
+    want = path.replace('/', '\\').lower()
+    for cand in db.record_names():
+        if cand.replace('/', '\\').lower() == want:
+            return cand
+    return None
+
+
+def _make_portals_born_open_gridentrance(db):
+    """Swap the shared portal ENTRANCE record from Class GridEntranceDynamic to the
+    born-open static `GridEntrance`, so every invented-door + test-hub portal renders
+    AND teleports at spawn with NO quest dependency (fresh AND pre-existing chars).
+    Returns the number of records swapped. Idempotent (re-running on an already-
+    GridEntrance record is a no-op).
+
+    Requires the MAP half (60-byte entrance 0x14); see the module comment COUPLING
+    note. The LANDING record portal_olympianarena2 (Class GridExitOneWay) is already
+    born-open + invisibleInWorld=1 and is left UNTOUCHED (its 48-byte 0x14 is
+    correct for GridExitOneWay).
+    """
+    print("\n=== Patch: grid portal ENTRANCE -> born-open GridEntrance "
+          "(unconditional open + visible, no quest) ===")
+    swapped = 0
+    for path in _PORTAL_ENTRANCE_DBRS:
+        rec = _resolve_record(db, path)
+        if rec is None:
+            continue
+        cls = db.get_field_value(rec, 'Class')
+        if cls == 'GridEntrance':
+            print(f"  SKIP {rec}: already Class=GridEntrance (idempotent no-op)")
+            continue
+        if cls not in ('GridEntranceDynamic', 'DynGridEntrance'):
+            print(f"  SKIP {rec}: Class={cls!r} (not a dynamic grid entrance)")
+            continue
+        mesh = db.get_field_value(rec, 'mesh')
+        # 1) Class + templateName -> static GridEntrance
+        db.set_field(rec, 'Class', 'GridEntrance', DATA_TYPE_STRING)
+        db.set_field(rec, 'templateName', _GRIDENTRANCE_TEMPLATE, DATA_TYPE_STRING)
+        # 2) drop every Dynamic-only field (not in the GridEntrance template chain)
+        fields = db.get_fields(rec)
+        dropped = []
+        if fields is not None:
+            for fname in list(fields.keys()):
+                base = fname.split('###')[0]
+                if base in _DYNAMIC_ONLY_FIELDS:
+                    del fields[fname]
+                    dropped.append(base)
+            db._modified.add(rec)
+        # 3) update the arz per-record TYPE string to match the Class (native
+        #    GridEntrance records carry record_type='GridEntrance')
+        old_type = db._record_types.get(rec)
+        db._record_types[rec] = 'GridEntrance'
+        db._modified.add(rec)
+        print(f"  {rec}: Class GridEntranceDynamic -> GridEntrance; "
+              f"record_type {old_type!r} -> 'GridEntrance'; "
+              f"dropped {dropped}; mesh kept={mesh!r}")
+        swapped += 1
+    if swapped == 0:
+        print("  (no dynamic-entrance record to swap; may already be GridEntrance)")
+    return swapped
+
+
+def _verify_portals_born_open(db):
+    """Invariant: after the swap, the placed entrance record is a static GridEntrance
+    (born-open, always-visible) with NO Dynamic-only fields left, its templateName is
+    the GridEntrance template, and its arz record_type matches. Returns a list of
+    offenders (empty == PASS). Checks portal_olympianarena1 (the record placed in the
+    maps)."""
+    offenders = []
+    path = r'records\quests\portal_olympianarena1.dbr'
+    rec = _resolve_record(db, path)
+    if rec is None:
+        return [(path, 'MISSING', None)]
+    cls = db.get_field_value(rec, 'Class')
+    if cls != 'GridEntrance':
+        offenders.append((rec, 'Class', cls))
+    tpl = (db.get_field_value(rec, 'templateName') or '')
+    if tpl.replace('/', '\\').lower() != _GRIDENTRANCE_TEMPLATE.lower():
+        offenders.append((rec, 'templateName', tpl))
+    rt = db._record_types.get(rec)
+    if rt != 'GridEntrance':
+        offenders.append((rec, 'record_type', rt))
+    for f in _DYNAMIC_ONLY_FIELDS:
+        if db.get_field_value(rec, f) is not None:
+            offenders.append((rec, f'residual:{f}', db.get_field_value(rec, f)))
+    if not db.get_field_value(rec, 'mesh'):
+        offenders.append((rec, 'mesh', 'MISSING (portal would be invisible)'))
+    return offenders
+
+
 def _force_100_pct_soul_drops(db):
     """Set chanceToEquipFinger2 to 100% for TESTING - but ONLY on monsters that
     are already configured to drop a soul (chanceToEquipFinger2 > 0).
@@ -6351,6 +6520,18 @@ _BT_PROXY = r'records\drxmap\proxy\q_bloodtoxeus_lone.dbr'
 _BT_POOL = r'records\drxmap\proxy\pools\q_bloodtoxeus_lone.dbr'
 _BT_DONOR_PROXY = r'records\drxmap\proxy\q_leinth_lone.dbr'
 _BT_DONOR_POOL = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+# NEW no-cap boss limits file for Hemorrheus (collision-checked free). The donor
+# proxy carries difficultyLimitsFile=limit_area002 whose player-level windows
+# (N[23-26] E[38-51] L[60-65]) top out BELOW Hemorrheus's charLevel [40,68,100]
+# on every difficulty, so the proxy's difficulty clamp would scale him DOWN toward
+# those windows. limit_area002 is an area-TRASH limit; a lone superboss must carry
+# a boss/no-cap limit (the base game gives its bosses herolimit_all N/E/L[1-75] or
+# bosslimit_all). Hemorrheus is the single highest-level monster in the game
+# (L=100), above EVERY shipped limit file's max (75), so we author a fresh no-cap
+# file whose window CONTAINS [40,68,100] on all three modes (mirrors herolimit_all's
+# ProxyLimits.tpl shape). See the eligibility math in docs/BLOOD_TOXEUS_DESIGN.md.
+_BT_DONOR_LIMIT = r'records\proxies boss\herolimit_all.dbr'   # N/E/L [1..75] no-cap shape donor
+_BT_LIMIT = r'records\proxies orient\limit_bloodtoxeus.dbr'   # NEW: window contains [40,68,100]
 
 # Blood-demon champions + exploding blood sprites (the phase adds) - all EXIST.
 _BT_BLOODDEMON = [
@@ -6518,14 +6699,63 @@ def _create_blood_toxeus_monster(db):
 
 def _create_blood_toxeus_proxy(db):
     """Placed-proxy + pool for Hemorrheus (§5.2). Mirror q_leinth_lone's STRUCTURE
-    with two deliberate preview-only overrides (mesh->the Athens Toxeus rig, scale->2.1)
-    and the champion-add pool fix the critique flagged (§2.2A): the donor pool
-    ships championChance/Min/Max = 0/0/0 (blood-demon adds never spawn); we set
-    championChance=100, championMin=1, championMax=2 so the guard wave appears.
+    with two deliberate preview-only overrides (mesh->the Athens Toxeus rig, scale->2.1),
+    a NO-CAP boss limits file (so his charLevel [40,68,100] is not clamped down by the
+    donor's limit_area002 area-trash window), and the CORRECT boss+adds pool math.
+
+    ── ROOT CAUSE of the "boss never spawned, only blood demons" bug (Will, TESTHUB,
+       2026-07-07), DB-proven, not the limit-bracket hypothesis ──
+    The prior code set the pool to spawnMin=spawnMax=1 + championChance=100 + championMin=1.
+    In the TQ proxy resolver, championChance is the PER-SPAWN probability that a spawn
+    slot is filled by a CHAMPION (drawn from nameChampionN = blood demons) INSTEAD of a
+    main-pool monster (nameN = Hemorrheus). With ONE spawn slot and a 100% champion chance
+    (and championMin=1 forcing >=1 champion), the single slot was ALWAYS converted to a
+    blood-demon champion and Hemorrheus (the main) got ZERO slots -> he never materialized,
+    while the blood demons Will saw ARE that converted slot. DB evidence: ALL 30 base-game
+    boss pools (bosspool_02_nessus .. bosspool_24_hydra) use championChance=0.1 + spawnMax=1
+    so the boss (the main) always spawns; q_bloodtoxeus_lone was the ONLY Boss-main pool in
+    the game set to championChance=100. (The limit_area002 bracket is NOT the spawn blocker:
+    Hades charLevel[57,71,80] via bosslimit_all[max 75], Murder Bunny L99, the high priest
+    c_disciple_miniboss[39,56,71] via THIS SAME limit_area002, and 120 monsters with L>75 all
+    spawn - exceeding the limit window SCALES a monster, it does not filter it out.)
+
+    ── THE FIX (base-game-proven "boss + guaranteed champion escort" pattern) ──
+    Copy the shipped xsq22_wave2_odontotyrranusandmelinoe_pool / xsq17_keres_escortparty_pool
+    recipe: spawnMin=spawnMax=3, championChance=100, championMin=2, championMax=2. The
+    championMax=2 cap leaves 3-2 = exactly 1 main-pool slot -> exactly 1 Hemorrheus, and
+    championMin=2 guarantees exactly 2 blood-demon adds. So EVERY spawn = 1 Hemorrheus + 2
+    blood demons, on all three difficulties, at both placements (this proxy record is what
+    BOTH the TESTHUB HV01 placement and the canonical secret-area placement inject).
     """
     if not (db.has_record(_BT_DONOR_PROXY) and db.has_record(_BT_DONOR_POOL)):
         print("  BLOOD TOXEUS: WARNING donor q_leinth_lone proxy/pool missing; proxy skipped")
         return None
+
+    # ── No-cap boss limits file (author BEFORE the proxy so it resolves) ──
+    # herolimit_all is N/E/L [1..75]; Hemorrheus reaches L=100, so widen the upper
+    # bound to 110 (> his 100) on every mode. Lower bounds stay at 1 (a lone
+    # superboss should be spawnable/at-level for any player who reaches him). This is
+    # the "boss/no-cap limits file" the working superboss precedent uses, corrected
+    # to actually contain his level so the difficulty clamp never scales him down.
+    if db.has_record(_BT_DONOR_LIMIT):
+        db.clone_record(_BT_DONOR_LIMIT, _BT_LIMIT)
+        L = _BT_LIMIT
+        # ProxyLimits equations are STRING fields ("<n> * 1"); keep the donor's
+        # STRING dtype (set_field preserves it) - never pass an INT here.
+        db.set_field(L, 'minPlayerLevelEquationNormal',    '1 * 1')
+        db.set_field(L, 'maxPlayerLevelEquationNormal',    '110 * 1')
+        db.set_field(L, 'minPlayerLevelEquationEpic',      '1 * 1')
+        db.set_field(L, 'maxPlayerLevelEquationEpic',      '110 * 1')
+        db.set_field(L, 'minPlayerLevelEquationLegendary', '1 * 1')
+        db.set_field(L, 'maxPlayerLevelEquationLegendary', '110 * 1')
+        db._modified.add(L)
+        _bt_limit_ref = _BT_LIMIT
+    else:
+        # Fallback: if the herolimit_all donor is somehow absent, keep the donor
+        # proxy's limit_area002 (spawn still works - the fix is the pool math; the
+        # limit only affects level scaling). The invariant below will flag it.
+        print("  BLOOD TOXEUS: WARNING herolimit_all donor missing; keeping donor limit file")
+        _bt_limit_ref = None
 
     # ── Proxy ──
     db.clone_record(_BT_DONOR_PROXY, _BT_PROXY)
@@ -6537,27 +6767,36 @@ def _create_blood_toxeus_proxy(db):
     db.set_field(P, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')  # Athens Toxeus preview silhouette
     db.set_field(P, 'scale', 2.1)                                             # Hemorrheus size (donor 4.0)
     db.set_field(P, 'pool1', _BT_POOL)
-    # baseTexture (proxyu_boss.tex), placementExtents (3.5), difficulty*/weight1
-    # carry over verbatim from the donor via clone.
+    # Point at the no-cap boss limits file so his [40,68,100] is never clamped down
+    # (donor cloned limit_area002; override it). difficultyEquationFile (difficulty_04)
+    # + weight1 + baseTexture (proxyu_boss.tex) + placementExtents (3.5) carry over.
+    if _bt_limit_ref:
+        db.set_field(P, 'difficultyLimitsFile', _bt_limit_ref)
     db._modified.add(P)
 
-    # ── Pool ──
+    # ── Pool ── (base-game "boss + guaranteed champion escort" math; see docstring)
     db.clone_record(_BT_DONOR_POOL, _BT_POOL)
     PL = _BT_POOL
-    db.set_field(PL, 'FileDescription', 'Hemorrheus + blood-demon guard adds')
+    db.set_field(PL, 'FileDescription', 'Hemorrheus (main) + 2 blood-demon champion adds')
     db.set_field(PL, 'name1', _BT_MONSTER)
     db.set_field(PL, 'name2', _BT_MONSTER)
     db.set_field(PL, 'name3', _BT_MONSTER)
     db.set_field(PL, 'nameChampion1', _BT_BLOODDEMON[0])
     db.set_field(PL, 'nameChampion2', _BT_BLOODDEMON[1])
     db.set_field(PL, 'nameChampion3', _BT_BLOODDEMON[2])
-    # THE FIX: dormant-champion defaults -> guaranteed blood-demon guard wave (§2.2A).
+    # THE FIX: 3 spawn slots; exactly 2 become blood-demon champions (championMin=Max=2),
+    # leaving exactly 1 main-pool slot for Hemorrheus. championChance=100 only decides
+    # WHICH slots are champion-eligible; championMax=2 CAPS the count so the boss keeps a
+    # slot (proven by xsq22_wave2 / xsq17 / duneraider_03). spawnMin=spawnMax=3.
+    db.set_field(PL, 'spawnMin', 3)
+    db.set_field(PL, 'spawnMax', 3)
     db.set_field(PL, 'championChance', 100.0)
-    db.set_field(PL, 'championMin', 1)
+    db.set_field(PL, 'championMin', 2)
     db.set_field(PL, 'championMax', 2)
-    # spawnMin/spawnMax stay 1 (Hemorrheus himself); weightChampion1-3 carry over (34/33/33).
+    # weightChampion1-3 carry over (34/33/33) = which blood-demon variant; weight1-3 too.
     db._modified.add(PL)
-    print(f"  Hemorrheus proxy + pool created (champion adds: chance=100, min=1, max=2)")
+    print(f"  Hemorrheus proxy + pool created (limit=limit_bloodtoxeus [1..110]; "
+          f"spawn 1 boss + 2 blood-demon adds via spawn=3/champMin=Max=2/champChance=100)")
     return P
 
 
@@ -6829,6 +7068,136 @@ def _create_blood_toxeus(db):
     _create_crimsonverdict_loot(db)
     _create_blood_toxeus_soul(db)
     _wire_blood_toxeus_loot(db)
+
+
+# ── Spawn-eligibility gate for mod-authored spawn proxies (fail-loud) ──────────
+# Registry of every proxy this build AUTHORS/edits, with the "main" (boss/hero) monster
+# that MUST reliably spawn. Add future mod-authored spawn proxies here so the invariant
+# below guards them too. (Base-game proxies are NOT listed - we only gate our own.)
+_MOD_AUTHORED_SPAWN_PROXIES = [
+    {
+        'proxy': _BT_PROXY,
+        'pool': _BT_POOL,
+        'main_monster': _BT_MONSTER,   # the boss that must not be crowded out
+        'name': 'q_bloodtoxeus_lone (Hemorrheus)',
+    },
+]
+
+
+def _lim_eq_to_int(s):
+    """Parse a ProxyLimits equation string like '110 * 1' / '38* 1' / '26 * 1' to its
+    integer coefficient (the level). Returns None if unparseable."""
+    if s is None:
+        return None
+    try:
+        # equations are '<level> * 1' (spacing varies); take the leading number
+        head = str(s).split('*')[0].strip()
+        return int(float(head))
+    except (ValueError, TypeError):
+        return None
+
+
+def _verify_mod_spawn_proxies_eligible(db):
+    """FAIL-LOUD invariant: for every mod-authored spawn proxy, prove the MAIN (boss)
+    monster will actually SPAWN on all three difficulties. Two independent checks,
+    each of which silently produced a no-spawn boss in a shipped build if wrong:
+
+      (A) CHAMPION-CROWD-OUT (the 2026-07-07 Hemorrheus bug): championChance is the
+          per-spawn chance a slot is filled by a nameChampionN monster INSTEAD of a
+          main-pool nameN monster. If the pool cannot leave >=1 slot for the main, the
+          boss NEVER spawns. Guaranteed main slots = spawnMax - championMax (when
+          championChance>0); if championChance==0 all spawnMax slots are mains. Assert
+          this is >= 1. (Root cause: spawnMax=1 + championChance=100 + championMin=1 ->
+          0 guaranteed mains -> only blood demons spawned, never the boss.)
+
+      (B) LIMIT-WINDOW CONTAINMENT: the proxy's difficultyLimitsFile sets per-mode
+          max PLAYER-level windows; a main monster whose charLevel exceeds the window
+          max is SCALED DOWN toward it (it still spawns - Hades L80 via bosslimit_all
+          max75 proves exceeding does not filter - but a lone superboss should fight at
+          his authored level). Assert the main's charLevel <= the limit window's max on
+          every difficulty, so he is never diluted. (This is the "brackets intersect on
+          ALL difficulties" gate the fix brief requires; for a single-level boss,
+          intersection == the boss level sitting within [min,max].)
+    """
+    def _base(p):
+        """basename without importing os (paths use backslashes)."""
+        return str(p).replace('/', '\\').split('\\')[-1]
+
+    problems = []
+    for spec in _MOD_AUTHORED_SPAWN_PROXIES:
+        proxy, pool, main = spec['proxy'], spec['pool'], spec['main_monster']
+        label = spec['name']
+        if not db.has_record(proxy):
+            problems.append(f"{label}: proxy record {proxy} MISSING")
+            continue
+        if not db.has_record(pool):
+            problems.append(f"{label}: pool record {pool} MISSING")
+            continue
+
+        def gi(rec, f, d=0):
+            v = db.get_field_value(rec, f)
+            if v is None:
+                return d
+            return (v[0] if isinstance(v, list) else v)
+
+        # (A) champion-crowd-out
+        spawn_max = gi(pool, 'spawnMax', 0)
+        champ_chance = gi(pool, 'championChance', 0.0)
+        champ_max = gi(pool, 'championMax', 0)
+        guaranteed_mains = spawn_max if (champ_chance or 0) <= 0 else (spawn_max - champ_max)
+        if guaranteed_mains < 1:
+            problems.append(
+                f"{label}: CHAMPION-CROWD-OUT - guaranteed main slots = "
+                f"{guaranteed_mains} (spawnMax={spawn_max}, championChance={champ_chance}, "
+                f"championMax={champ_max}); the boss will NEVER spawn (only champion adds). "
+                f"Need spawnMax - championMax >= 1 (or championChance == 0).")
+        # sanity: the main must actually be in a name-slot
+        name_slots = [gi(pool, f'name{i}', None) for i in range(1, 7)]
+        if not any(n and str(n).lower() == main.lower() for n in name_slots):
+            problems.append(
+                f"{label}: main monster {main} is not in any pool nameN slot "
+                f"(name1..6 = {[_base(str(n)) for n in name_slots if n]})")
+
+        # (B) limit-window containment (per difficulty)
+        lim = db.get_field_value(proxy, 'difficultyLimitsFile')
+        lim = lim[0] if isinstance(lim, list) else lim
+        cl = db.get_field_value(main, 'charLevel')
+        if lim and db.has_record(lim) and cl:
+            levels = cl if isinstance(cl, list) else [cl]
+            mode_fields = [
+                ('Normal', 'minPlayerLevelEquationNormal', 'maxPlayerLevelEquationNormal', 0),
+                ('Epic', 'minPlayerLevelEquationEpic', 'maxPlayerLevelEquationEpic', 1),
+                ('Legendary', 'minPlayerLevelEquationLegendary', 'maxPlayerLevelEquationLegendary', 2),
+            ]
+            for mode, minf, maxf, idx in mode_fields:
+                if idx >= len(levels):
+                    continue
+                mlvl = levels[idx]
+                wmin = _lim_eq_to_int(db.get_field_value(lim, minf))
+                wmax = _lim_eq_to_int(db.get_field_value(lim, maxf))
+                if wmax is not None and mlvl > wmax:
+                    problems.append(
+                        f"{label}: LIMIT-WINDOW - {mode} main charLevel {mlvl} > limit "
+                        f"window max {wmax} ({_base(str(lim))}); the boss is "
+                        f"scaled DOWN below his authored level. Use a limits file whose "
+                        f"{mode} window contains {mlvl}.")
+                if wmin is not None and mlvl < wmin:
+                    problems.append(
+                        f"{label}: LIMIT-WINDOW - {mode} main charLevel {mlvl} < limit "
+                        f"window min {wmin} ({_base(str(lim))}).")
+        elif lim and not db.has_record(lim):
+            problems.append(f"{label}: difficultyLimitsFile {lim} does not resolve")
+
+    if problems:
+        print(f"\n  SPAWN-ELIGIBILITY INVARIANT FAILED: {len(problems)} problem(s):")
+        for p in problems:
+            print(f"    - {p}")
+        raise SystemExit(
+            f"Spawn-eligibility gate breached: {len(problems)} mod-authored spawn "
+            f"proxy problem(s) (see above). A boss that cannot claim a spawn slot, or "
+            f"is scaled below its level, must be fixed before shipping.")
+    print(f"  Spawn-eligibility invariant OK: {len(_MOD_AUTHORED_SPAWN_PROXIES)} "
+          f"mod-authored spawn proxy(ies) spawn their boss on N/E/L with adds.")
 
 
 def apply_all_extended_patches(db, force_full_drops=True):
@@ -7136,6 +7505,17 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
     _create_blood_toxeus(db)
 
+    # ── Spawn-eligibility invariant (fail-loud) ───────────────────────────────
+    # After the boss/proxy/pool are built, prove every mod-authored spawn proxy will
+    # actually spawn its BOSS on all three difficulties: (A) the champion mechanic
+    # cannot crowd the boss out of every spawn slot (the 2026-07-07 Hemorrheus
+    # no-spawn bug: spawnMax=1 + championChance=100 -> 0 main slots -> only blood
+    # demons), and (B) the boss's charLevel fits within the proxy's limits window on
+    # N/E/L so he is never scaled below his authored level. Guards BOTH placements
+    # (this proxy record is injected at the TESTHUB HV01 mouth AND the canonical
+    # secret area). A silent no-spawn boss can never ship past this.
+    _verify_mod_spawn_proxies_eligible(db)
+
     # ── Uber (DRX supra) craftable dead-reference repair ──────────────────────
     # Repair the two objectively-dead references baked into the DRX supra
     # craftables by their original authors (itemCostName stripped-separator on
@@ -7180,6 +7560,27 @@ def apply_all_extended_patches(db, force_full_drops=True):
         raise SystemExit(
             f"MP spawn-equation fix incomplete: {len(_mp_offenders)} spawn/champion "
             f"equation value(s) still contain '/' (see offenders above)")
+
+    # Grid portals unconditionally OPEN + VISIBLE, no quest: swap the shared portal
+    # ENTRANCE record (portal_olympianarena1) from Class GridEntranceDynamic (which
+    # self-closes at every spawn and hides until a quest fires) to the born-open
+    # static GridEntrance (always-visible + always-open, like every base-game cave
+    # mouth), so every invented door + test-hub portal renders AND teleports on fresh
+    # AND pre-existing characters with no bossarena.qst adoption dependency
+    # (wf_c0012e88-64a goal; disasm-proven in docs/DYNGRID_GATE_RCA.md sec 5). Then
+    # assert the invariant and fail the build loud if violated. NOTE: this DB half is
+    # only valid paired with a map rebuilt by the current build_section_surgery.py
+    # (60-byte entrance 0x14); see the COUPLING note at _make_portals_born_open_*.
+    _make_portals_born_open_gridentrance(db)
+    _portal_offenders = _verify_portals_born_open(db)
+    if _portal_offenders:
+        for _rec, _fn, _val in _portal_offenders[:10]:
+            print(f"  PORTAL-OPENNESS OFFENDER: {_rec} :: {_fn} = {_val!r}")
+        raise SystemExit(
+            "Grid-portal born-open class swap incomplete: the placed entrance record "
+            "portal_olympianarena1.dbr is not a clean static GridEntrance "
+            "(see offenders above). The map 0x14 must also be 60-byte; do not ship "
+            "this arz against a 48-byte-0x14 map.")
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
     # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
