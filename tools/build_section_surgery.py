@@ -881,6 +881,50 @@ _HUB_DESTS = [
      (136.30, -39.00, 71.10), (136.30, -39.00, 87.10)),
 ]
 
+# --- TEST-HUB EXTRA: "Toxeus the Murderer, Devourer of Blood" RIGHT OUTSIDE the blood-cave
+# entrance (Will's ask - encounter him and die gloriously). TESTHUB-only. -----------------
+# Places the q_bloodtoxeus_lone PROXY into HiddenValley01's 0x05 - the SURFACE Silk Road
+# level that owns the blood-cave mouth (native GridEntrance SilkRdDngEntrance_C01_Ext @ HV01
+# local (14,18,26), 0x14-bound to Random09A GUID d840e7ae.. = the blood cave). This is the
+# SAME proxy entity already placed deep inside new_secretdoor_transitionhallway (the secret
+# waterfall guardian); here it is a SECOND placement, gated to the TESTHUB build only, so
+# Will can meet Toxeus the instant he reaches / exits the cave mouth.
+#
+# BYTE-SHAPE (exemplar-matched): identical logical shape to the build21 secret-area placement
+# = q_leinth_lone in bossfight.lvl: flags=0, NO 0x14, non-identity rotation (Q_LEINTH_EXEMPLAR_ROT).
+# HV01 is a v0x11 SHARED level (NOT the v0x0e secret hallway), so inject_into_0x05_v11 writes a
+# 72-byte unflagged record (56-byte core + 16-byte zero pad) - the v0x11 size for the same
+# flags=0/no-UniqueId shape. The Proxy resolves proxy -> pool -> um_bloodtoxeus_99 in the arz.
+#
+# COORD (HV01-local, verified on the native Editor-baked 0x0b, tools/debug/finalize_hv01_toxeus.py):
+#   local (21.9, 17.0, 31.9) world (-112.10,-103.00,2205.90):
+#     * on-mesh 0.000u (dY 0.000u) on HV01's LARGEST walkable component (area=1);
+#     * 9.86u from the cave mouth (14,18,26) - right outside it, squarely in the approach/exit
+#       funnel (the walkable valley opens E/SE of the mouth), so a player approaching OR exiting
+#       the cave meets him;
+#     * >=57u from EVERY friendly scenery/NPC (the moved fountain/caravan/occult scene + the A1
+#       door portals are all at the HV01 NORTH camp Z~143, ~112u away; nearest friendly = camp
+#       campfire at 60.2u; nearest speaking NPC villager4 at 74.0u) - he cannot wipe the scenery;
+#     * flanked by the native Silk Road beastman pack (ag_beastman_neanderthal @ 6.3u) - thematic,
+#       not a friendly, and the proxy's own difficultyLimitsFile is limit_area002 (Silk Road),
+#       so it scales natively to HV01's region.
+_TOXEUS_HV01_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
+_TOXEUS_HV01_LOCAL = (21.9, 17.0, 31.9)
+
+
+def build_hub_extra_specs():
+    """Build the TEST-HUB NON-PORTAL entity additions (level_key -> [specs]) - currently just
+    the lone Toxeus proxy right outside the blood-cave mouth in HiddenValley01. Called only when
+    SVC_TEST_HUB=1. Kept SEPARATE from build_hub_inject_specs (the 20 portals) so the portal
+    gates that iterate build_hub_inject_specs are unaffected, and the Toxeus placement is
+    independently gatable. Returns a dict to be MERGED into INJECT_SPECS (appended to the key)."""
+    tx, ty, tz = _TOXEUS_HV01_LOCAL
+    return {
+        _TOXEUS_HV01_KEY: [
+            (Q_BLOODTOXEUS_LONE_DBR, tx, ty, tz, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        ],
+    }
+
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
     """C1 FIX (respawn position): rewrite the POSITION triplet of a respawn-shrine member in the
@@ -942,14 +986,15 @@ def build_hub_inject_specs():
 
 def merge_hub_into_inject_specs(base_specs):
     """Return a NEW INJECT_SPECS dict = base_specs with the hub specs appended (order-preserving:
-    hub portals are APPENDED after any base entries on the same level, so base instance indices
-    are unchanged -> the flag-OFF build's non-hub blobs stay byte-identical). Does not mutate
-    base_specs."""
-    hub = build_hub_inject_specs()
+    hub entities are APPENDED after any base entries on the same level, so base instance indices
+    are unchanged -> the flag-OFF build's non-hub blobs stay byte-identical). Folds in BOTH the
+    20 hub portals (build_hub_inject_specs) AND the non-portal TEST-HUB extras (build_hub_extra_specs
+    = the lone Toxeus proxy outside the blood-cave mouth). Does not mutate base_specs."""
     out = {k: list(v) for k, v in base_specs.items()}
-    for k, specs in hub.items():
-        out.setdefault(k, [])
-        out[k] = list(out[k]) + list(specs)
+    for adds in (build_hub_inject_specs(), build_hub_extra_specs()):
+        for k, specs in adds.items():
+            out.setdefault(k, [])
+            out[k] = list(out[k]) + list(specs)
     return out
 
 

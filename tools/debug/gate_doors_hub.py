@@ -98,10 +98,14 @@ def gate_hubidentity():
     for t, nm in [(0x11, 'GROUPS'), (0x18, 'SD'), (0x1b, 'QUESTS'), (0x19, 'BITMAPS')]:
         a = sec_bytes(d0, s0, t); b = sec_bytes(d1, s1, t)
         print(f'  {nm}: identical={a == b}')
-    # blobs that differ
+    # blobs that differ. HV01 differs too now: the TEST-HUB build adds the lone Toxeus proxy
+    # outside the blood-cave mouth (a 0x05 +1 instance, appended after HV01's base specs). The
+    # prefix/subset check below proves canonical HV01 is a byte-exact prefix of the TESTHUB HV01
+    # (+1 appended Toxeus instance), same as the portal hub levels.
     hub_levels = {'orient/underground/random09a.lvl', 'knossos/underground/maze03.lvl',
                   'secret_place/murderbossroom.lvl', 'minidungeons/spartacryptlevel2.lvl',
-                  'secret_place/darkforestenter.lvl', 'olympus/gardenofmerchants.lvl'}
+                  'secret_place/darkforestenter.lvl', 'olympus/gardenofmerchants.lvl',
+                  'silkroad/hiddenvalley01.lvl'}
     changed = [k for k in set(b0) | set(b1) if b0.get(k) != b1.get(k)]
     unexpected = [k for k in changed if not any(h in k for h in hub_levels)]
     print(f'  CHANGED BLOBS (canon vs hub): {len(changed)}')
