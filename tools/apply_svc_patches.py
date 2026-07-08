@@ -3695,6 +3695,142 @@ def _verify_no_slash_in_spawn_equations(db):
     return offenders
 
 
+# ── Uber (DRX "supra") craftable-weapon dead-reference repair ────────────────
+#
+# The DRX "supra" supreme-tier craftables (records\drxitem\supra\* - Blood
+# Whisper spear, Paragon of Violence, etc.) are passed through VERBATIM from the
+# SV 0.98i upstream. Two dead references are baked into that upstream data by the
+# original DRX authors (identical in SV098; not introduced by this port); both
+# point at a record that DOES exist, so they are objectively-broken links the
+# audit (docs/UBER_WEAPONS_AUDIT.md) is entitled to repair without changing any
+# gameplay value, mesh, stat, or SV-authored design:
+#
+#   1. itemCostName = 'recordsgameitemcost_uniquelegendary_primary.dbr'
+#      The leading path separators were stripped in the DRX source, so it
+#      resolves to nothing and the item falls back to a default cost. The
+#      intended target 'records\game\itemcost_uniquelegendary_primary.dbr' is a
+#      real base-game record (the legendary-tier cost table). Present on all 23
+#      supra result items.
+#
+#   2. xhunter_helm_galefury.dbr buffSkillName =
+#      'records\drxitem\supra\skills\hunter_helm_galefurybuff.dbr'
+#      The x-prefixed (xpack) galefury variant points at the NON-x buff, which
+#      does not exist; the x-prefixed buff 'xhunter_helm_galefurybuff.dbr' does.
+#      (The item ar_hunter_helm actually uses the non-x skill, which has no
+#      buffSkillName, so its own proc was never broken - but the orphaned x
+#      variant's dead edge is still a dangling ref we resolve to its obvious
+#      twin.)
+#
+# Both fixes are EXACT-string, supra-scoped, and idempotent (a second pass finds
+# nothing because the repaired value already resolves). The BMP bump-texture
+# refs (*BMP.tex) on the 4 supra jewelry items are DELIBERATELY left untouched:
+# no such texture file exists anywhere to point at, they are identical to SV098,
+# and a missing normal-map is cosmetically inert (the engine simply skips
+# normal-mapping) - inventing a texture would diverge from SV with no benefit.
+
+_SUPRA_PREFIX = 'records\\drxitem\\supra\\'
+
+# (record-substring-filter, field, dead-exact-value, repaired-value)
+_SUPRA_DEAD_REF_FIXES = [
+    (_SUPRA_PREFIX, 'itemCostName',
+     'recordsgameitemcost_uniquelegendary_primary.dbr',
+     'records\\game\\itemcost_uniquelegendary_primary.dbr'),
+    ('records\\drxitem\\supra\\skills\\xhunter_helm_galefury.dbr', 'buffSkillName',
+     'records\\drxitem\\supra\\skills\\hunter_helm_galefurybuff.dbr',
+     'records\\drxitem\\supra\\skills\\xhunter_helm_galefurybuff.dbr'),
+]
+
+
+def _repair_supra_dead_refs(db):
+    """Repair the DRX supra dead references (see the block comment above).
+
+    EXACT-string match, supra-scoped, idempotent. Only rewrites a value that
+    matches the known dead string on a record whose path contains the fix's
+    record-filter substring. Returns the number of field values rewritten.
+    """
+    print("\n=== Patch U: Repair DRX supra craftable dead references ===")
+    rewritten = 0
+    records_touched = 0
+    for rec_filter, field, dead, repl in _SUPRA_DEAD_REF_FIXES:
+        # Safety: the intended target must actually resolve, else skip (never
+        # trade one dead ref for another).
+        if not _resolves_ci(db, repl):
+            print(f"  SKIP {field}: repair target {repl!r} does not resolve; "
+                  f"leaving dead ref untouched.")
+            continue
+        hits = 0
+        for rec in db.record_names():
+            rl = rec.replace('/', '\\').lower()
+            if rec_filter.lower() not in rl:
+                continue
+            fields = db.get_fields(rec)
+            if not fields:
+                continue
+            for key, tf in list(fields.items()):
+                fn = key.split('###')[0]
+                if fn != field or tf.dtype != DATA_TYPE_STRING or not tf.values:
+                    continue
+                new_vals = []
+                changed = False
+                for v in tf.values:
+                    if isinstance(v, str) and v.replace('/', '\\').lower() == dead.lower():
+                        new_vals.append(repl)
+                        changed = True
+                    else:
+                        new_vals.append(v)
+                if changed:
+                    if len(new_vals) == 1:
+                        db.set_field(rec, fn, new_vals[0], DATA_TYPE_STRING)
+                    else:
+                        db.set_field(rec, fn, new_vals, DATA_TYPE_STRING)
+                    db._modified.add(rec)
+                    hits += 1
+                    rewritten += 1
+        if hits:
+            records_touched += hits
+            print(f"  {field}: repaired {hits} record(s) "
+                  f"({dead.split(chr(92))[-1]} -> {repl.split(chr(92))[-1]})")
+    print(f"  Total supra dead references repaired: {rewritten} value(s) across "
+          f"{records_touched} record(s)")
+    return rewritten
+
+
+def _resolves_ci(db, path):
+    """Case/slash-insensitive: does `path` resolve to a record in this db?"""
+    target = path.replace('/', '\\').lower()
+    if not hasattr(db, '_ci_recset_cache') or db._ci_recset_cache_size != len(db.record_names()):
+        db._ci_recset_cache = {n.replace('/', '\\').lower() for n in db.record_names()}
+        db._ci_recset_cache_size = len(db.record_names())
+    return target in db._ci_recset_cache
+
+
+def _verify_no_supra_dead_refs(db):
+    """Post-fix invariant: assert the specific supra dead refs we repair are gone.
+    Returns list of (record, field, value) offenders still holding a known dead
+    value (empty = OK). Scoped to the exact known dead strings so it never trips
+    on the deliberately-preserved *BMP.tex refs."""
+    offenders = []
+    dead_by_field = {}
+    for rec_filter, field, dead, repl in _SUPRA_DEAD_REF_FIXES:
+        dead_by_field.setdefault(field, set()).add(dead.replace('/', '\\').lower())
+    for rec in db.record_names():
+        rl = rec.replace('/', '\\').lower()
+        if _SUPRA_PREFIX not in rl:
+            continue
+        fields = db.get_fields(rec)
+        if not fields:
+            continue
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            deads = dead_by_field.get(fn)
+            if not deads or not tf.values:
+                continue
+            for v in tf.values:
+                if isinstance(v, str) and v.replace('/', '\\').lower() in deads:
+                    offenders.append((rec, fn, v))
+    return offenders
+
+
 def _force_100_pct_soul_drops(db):
     """Set chanceToEquipFinger2 to 100% for TESTING - but ONLY on monsters that
     are already configured to drop a soul (chanceToEquipFinger2 > 0).
@@ -6999,6 +7135,21 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Runs AFTER the gate (he is a legit Boss, so the drop forcer keeping his
     # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
     _create_blood_toxeus(db)
+
+    # ── Uber (DRX supra) craftable dead-reference repair ──────────────────────
+    # Repair the two objectively-dead references baked into the DRX supra
+    # craftables by their original authors (itemCostName stripped-separator on
+    # all 23 results; the orphaned x-galefury buff edge). Both targets resolve;
+    # no gameplay value changes. See docs/UBER_WEAPONS_AUDIT.md. The post-fix
+    # invariant below fails the build loud if any known dead ref survives.
+    _repair_supra_dead_refs(db)
+    _supra_offenders = _verify_no_supra_dead_refs(db)
+    if _supra_offenders:
+        for _rec, _fn, _val in _supra_offenders[:10]:
+            print(f"  SUPRA-REF OFFENDER: {_rec} :: {_fn} = {_val!r}")
+        raise SystemExit(
+            f"Supra dead-reference repair incomplete: {len(_supra_offenders)} "
+            f"known-dead supra reference(s) still present (see offenders above)")
 
     # ── Soul-drop gate invariant (fail-loud) ──────────────────────────────────
     # After EVERY soul is wired and every known Common/no-class leak is gated,
