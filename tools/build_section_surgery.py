@@ -295,13 +295,20 @@ Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
 # cave). Full recon: docs/ENTRANCES_POLISH_LOG.md (recon_maze03.py / recon_portal_chain.py /
 # place_maze03_portal.py).
 #
-# MECHANISM (fully verified self-consistent): `records\quests\portal_olympianarena1.dbr` =
-# Class GridEntranceDynamic (a quest-opened dynamic grid entrance). The ported `bossarena.qst`
-# fires `Action_OpenDynGridEntrance(dynGridEntranceName=records/quests/portal_olympianarena1.dbr)`
-# on Condition_OnLevelLoad - it opens the portal BY RECORD NAME, so NO Quests.arc change is
-# needed; the portal record instance just has to EXIST in the loaded level. Entering it
-# teleports to crypt_floor1 (Uber Dungeon) via its 0x14 binding; crypt_floor1's
-# portal_olympianarena2 (GridExitOneWay) is the landing (on-mesh, Wave 1).
+# MECHANISM (ROUND-2 born-open, disasm-proven; supersedes the old quest-opened model):
+# `records\quests\portal_olympianarena1.dbr` is now Class **GridEntrance** (the born-open static
+# cave-mouth class), swapped from GridEntranceDynamic by apply_svc_patches
+# _make_portals_born_open_gridentrance. A static GridEntrance is ALWAYS-OPEN + ALWAYS-VISIBLE at
+# spawn with NO quest (like every base-game cave mouth) - it never runs the Dynamic activate that
+# closed the portal, so it teleports for FRESH AND PRE-EXISTING characters with no bossarena.qst
+# adoption dependency (docs/DYNGRID_GATE_RCA.md sec 5; wf_c0012e88-64a). The teleport still fires
+# off the SAME 0x14 binding (GridEntrance::GetConnectedPortalId/RegionId read the same offsets);
+# crypt_floor1's portal_olympianarena2 (GridExitOneWay, born-open) is the paired landing (on-mesh,
+# Wave 1). The bossarena.qst Action_OpenDynGridEntrance is now a harmless no-op (the record is no
+# longer a DynGrid). The ONLY format consequence: a static GridEntrance's 0x14 is 60 bytes (a
+# 12-byte (2,0,1) prefix + the 48-byte binding below), so the ENTRANCE payload is prefixed at
+# injection time in _normalize_spec (landings keep 48 bytes). The 48-byte binding itself is
+# unchanged:
 #
 # THE 0x14 BINDING (SV maze03's exact 48-byte payload, byte-verified from the SV upstream
 # Levels.arc, and PROVEN self-consistent in the merge):
@@ -333,6 +340,22 @@ PORTAL_OLYMPIANARENA1_0x14 = bytes.fromhex(
     'dbc245c358434e0bb54760b234293cc5')  # dest_guid (== crypt_floor1 merged GUID)
 assert len(PORTAL_OLYMPIANARENA1_0x14) == 48
 
+# --- BORN-OPEN ENTRANCE 0x14 PREFIX (round 2 openness fix, wf_c0012e88-64a) --------------
+# The DB half (apply_svc_patches _make_portals_born_open_gridentrance) swaps the ENTRANCE
+# record portal_olympianarena1 from GridEntranceDynamic (self-closes at every spawn -> needs
+# a quest to open) to the born-open STATIC GridEntrance (always-open + always-visible, like
+# every base-game cave mouth; no quest). Disasm-proven in docs/DYNGRID_GATE_RCA.md sec 5.
+# GridEntrance::Read (Engine 0x10195240) consumes a 60-byte 0x14 = a 12-byte generic prefix
+# (2,0,1) + the 48-byte mouth/exit/dest binding, whereas the Dynamic class read a BARE 48-byte
+# 0x14. So the entrance's 0x14 MUST become 60 bytes: prepend this 12-byte prefix. Byte-verified
+# against the working Silk Road cave mouth (SilkRdDngEntrance_C01_Ext 0x14 in HiddenValley01):
+# its 60-byte payload's first 12 bytes are EXACTLY 02000000 00000000 01000000. The LANDING
+# record portal_olympianarena2 stays GridExitOneWay (born-open) with its 48-byte 0x14 unchanged.
+# _normalize_spec applies this prefix to EVERY portal_olympianarena1 spec (A1 + Sparta + Garden
+# + Secret Place + all 20 hub entrances) so the map + DB halves stay in lockstep.
+GRIDENTRANCE_0x14_PREFIX = struct.pack('<III', 2, 0, 1)  # 02000000 00000000 01000000
+assert len(GRIDENTRANCE_0x14_PREFIX) == 12
+
 # --- WORKSTREAM A: INVENTED Sparta Crypt L2 entrance (mirrors A1 exactly, pure-0x14) -------
 # SpartaCryptLevel2 never had an entrance in SV (SV-areas Wave 5 proved: zero inbound binders
 # in pristine SV either). Will's directive: INVENT one - place an entry portal inside the
@@ -341,15 +364,17 @@ assert len(PORTAL_OLYMPIANARENA1_0x14) == 48
 # MERGED GUID, landing on-mesh, + a reciprocal RETURN portal inside SpartaCryptLevel2 back to
 # the crypt. Full recon + design: docs/SPARTA_CORRECTIONS_LOG.md.
 #
-# MECHANISM (the only cross-level portal BUILDABLE in map-tooling-only scope; proven by
-# survey_gridentrance.py + recon_gridpair.py): the A1 GridEntranceDynamic + GridExitOneWay
-# 48-byte-0x14 pair. NOT the static GridEntrance (blood-cave) pattern - that needs a reciprocal
-# 0x06 GridSystem descriptor on the destination (294/295 static entrances have it), and 0x06
-# GridSystem-pair authoring is not built in this project. The GridEntranceDynamic is opened by
-# the EXISTING bossarena.qst (Condition_OnLevelLoad -> Action_OpenDynGridEntrance by RECORD NAME
-# `portal_olympianarena1.dbr`), level-agnostic, so a SECOND instance of that record in ANY loaded
-# level is opened too and teleports via ITS OWN 0x14. => NO Quests.arc change, NO 0x06, NO new
-# records. Each instance's 0x14 mirrors A1: entrance = mouth+exit+dest(48B); landing = exit+zeros.
+# MECHANISM: the A1 portal pair, which ROUND 2 made born-open. The ENTRANCE record
+# portal_olympianarena1 is Class GridEntrance (static, born-open, always-visible - see the A1
+# block); the LANDING portal_olympianarena2 is GridExitOneWay (born-open). NOTE (round-2
+# correction): the old comment here claimed "a static GridEntrance needs a reciprocal 0x06
+# GridSystem descriptor" - that was a MIS-generalization from a base-game correlation (base cave
+# mouths happen to ALSO front 0x06 dungeons). Disassembly proved the portal TELEPORT reads ONLY
+# the 0x14 binding (GridEntrance::GetConnectedPortalId=[+0x2d8], GetConnectedRegionId=[+0x2e8]);
+# the paired landing supplies the other-side portal via Region::GetPortal(exit_uid). NO 0x06 is
+# consulted (docs/DYNGRID_GATE_RCA.md sec 4). So the pure-0x14 pair works born-open with NO quest
+# and NO 0x06. Each instance's 0x14: entrance = 12-byte prefix + mouth+exit+dest(60B total,
+# prefixed in _normalize_spec); landing = exit+zeros(48B).
 #
 # HOST = CataCube02_FloorLast (v0x0f, corner (-6612,0,-3218), GUID 817574a8674093619ebf6581db63274c,
 #   real baked navmesh, 0 existing 0x14 = clean append; the v0f inject path is the proven A1 one).
@@ -1059,6 +1084,23 @@ def _normalize_spec(spec):
         if not isinstance(x14_payload, (bytes, bytearray)):
             raise ValueError(f'injection spec x14_payload must be raw bytes: {spec!r}')
         x14_payload = bytes(x14_payload)
+        # BORN-OPEN ENTRANCE (round 2): the entrance record portal_olympianarena1 is now a
+        # static GridEntrance, whose GridEntrance::Read consumes a 60-byte 0x14 (12-byte
+        # (2,0,1) prefix + 48-byte binding). Every portal_olympianarena1 spec passes a bare
+        # 48-byte binding (mouth+exit+dest); prepend the prefix here so the on-disk 0x14 is
+        # the 60-byte GridEntrance shape. Landings (portal_olympianarena2, GridExitOneWay)
+        # keep their 48-byte 0x14. Idempotent-guarded: if a 60-byte payload is ever passed
+        # directly it is left as-is. See docs/DYNGRID_GATE_RCA.md sec 5 + the constant above.
+        if bytes(dbr).replace(b'/', b'\\').lower() == PORTAL_OLYMPIANARENA1_DBR.replace(b'/', b'\\').lower():
+            if len(x14_payload) == 48:
+                x14_payload = GRIDENTRANCE_0x14_PREFIX + x14_payload
+            elif len(x14_payload) == 60 and x14_payload[:12] == GRIDENTRANCE_0x14_PREFIX:
+                pass  # already prefixed (idempotent)
+            else:
+                raise ValueError(
+                    f'portal_olympianarena1 entrance x14_payload must be a 48-byte binding '
+                    f'(to be prefixed to 60) or an already-60-byte GridEntrance payload; '
+                    f'got {len(x14_payload)} bytes: {spec!r}')
     # x14_payload implies wants_0x14; otherwise honor the explicit flag.
     wants_0x14 = bool(opts.get('wants_0x14', False)) or (x14_payload is not None)
     return (bytes(dbr), float(x), float(y), float(z), flags, bytes(uniqueid), wants_0x14,
