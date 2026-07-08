@@ -92,21 +92,31 @@ if ($Update) {
 
 # Build the VDF manifest
 $title = 'Soulvizier Classic (AE Port)'
-# NOTE: the VDF description must contain REAL newlines (KeyValues quoted strings
-# accept them); never escape them into literal '\n' - Steam renders that as text.
-$description = @"
-Soulvizier 0.98i ported to Titan Quest Anniversary Edition - the classic souls overhaul, playable again, plus new content.
-
-Features:
-- 800+ monster souls to collect and equip, including 60+ newly completed boss souls (summon-the-boss and boss-skill souls)
-- The Soulvizier blood cave restored and fully walkable, with its questlines (Grieving Widow, secret waterfall chamber, and more)
-- New superboss: a blood-soaked incarnation of Toxeus the Murderer guarding the secret area, with the Crimson Verdict legendary set
-- 10 masteries (including Occult and Neidan), legacy skills restored
-- Epic and legendary enchanting, improved pet summons
-
-Requires: Titan Quest Anniversary Edition. Play via Custom Quest > SoulvizierClassic with a dedicated Custom Quest character.
-Strongly recommended: the community 4GB LAA patch for TQ.exe (large mod).
-"@
+# The description lives in docs/WORKSHOP_DESCRIPTION.bbcode - the single source of truth,
+# shared with scripts/update_workshop_description.ps1 (metadata-only pushes). Every content
+# upload re-sends it, so edits to the live description MUST go into that file.
+# NOTE: the VDF description must contain REAL newlines (KeyValues quoted strings accept
+# them); never escape them into literal '\n' - Steam renders that as text. Double-quote
+# characters are FORBIDDEN in the description (SteamCMD's KeyValues parser can terminate
+# the string early); we fail loud instead of trusting escape handling.
+$descFile = Join-Path $RepoRoot 'docs\WORKSHOP_DESCRIPTION.bbcode'
+if (-not (Test-Path $descFile)) {
+    Write-Host "ERROR: description file not found: $descFile" -ForegroundColor Red
+    exit 1
+}
+$description = (Get-Content $descFile -Raw).TrimEnd()
+if ($description.Contains('"')) {
+    Write-Host "ERROR: docs/WORKSHOP_DESCRIPTION.bbcode contains a double-quote character; use single quotes instead (VDF-unsafe)." -ForegroundColor Red
+    exit 1
+}
+if ($description.Contains('\')) {
+    Write-Host 'ERROR: docs/WORKSHOP_DESCRIPTION.bbcode contains a backslash; VDF treats it as an escape character (VDF-unsafe). Use forward slashes.' -ForegroundColor Red
+    exit 1
+}
+if ($description.Length -lt 100 -or $description.Length -gt 8000) {
+    Write-Host "ERROR: description length $($description.Length) chars is outside the sane range (100..8000; Steam caps at 8000)." -ForegroundColor Red
+    exit 1
+}
 
 $contentFullPath = (Resolve-Path $contentDir).Path
 
@@ -117,7 +127,7 @@ $vdfContent = @"
   "publishedfileid" "$publishedId"
   "contentfolder"   "$($contentFullPath -replace '\\', '\\')"
   "title"           "$title"
-  "description"     "$($description -replace '"', '\"')"
+  "description"     "$description"
   "visibility"      "$Visibility"
 }
 "@
