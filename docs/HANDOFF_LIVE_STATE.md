@@ -66,6 +66,33 @@ brief (they are written self-contained).
    per-player drops, Legendary stalker feasibility, 6-player checklist).
 8. **#36** Cold Tombs ON HOLD (Will said hold; investigate-first plan in the task).
 
+## 4b. TOP-PRIORITY NEW BUILD (Will's final directive 2026-07-07): ENTITY CONTRACT SUITE, COMMIT-BLOCKING
+
+Build tools/validate_entity_contracts.py + wire as BOTH a build gate AND a git pre-commit hook
+(hook runs when DB build scripts change; blocks the commit on failure). Goal: wiring gaps like
+bug F (summon spawns a floating weapon, no body, immobile) become IMPOSSIBLE to commit.
+
+Contract classes (beyond path-resolution - the existing 4 invariants already do that; these check
+SEMANTIC COMPLETENESS AND CONSISTENCY):
+1. PETS/SUMMONS: for every summonable (every spawnObjects target of every summon skill, transitively
+   from every soul/item/skill grant): mesh EXISTS + charAnimationTable EXISTS + the anim table's
+   animation set matches the mesh's rig family (derive the rig-compat rule from working exemplars:
+   Boneash, Lyia, base-game pets - compare which anim-table/mesh pairings ship together); required
+   Pet.tpl field-set completeness vs a working exemplar (no missing movement/controller fields -
+   'cannot move' = likely missing controller/anim wiring); sounds/fx resolve.
+2. SKILLS: per-class required-field completeness (a Skill_SpawnPet needs spawnObjects+TTL policy;
+   an attack skill needs its projectile/fx chain; derive per-class required sets from base-game
+   exemplar populations, not hand lists).
+3. MONSTERS: mesh+animTable consistency (same rule as pets), skill refs resolve, loot chains
+   resolve, classification present.
+4. SOULS/ITEMS: full transitive grant-chain terminates in COMPLETE entities (skill -> pet -> mesh/
+   anims), icons resolve, tiers n/e/l all present and consistently laddered.
+5. NEGATIVE-TEST every contract class (break a copy, prove the gate fires) - the established pattern.
+Run modes: fast static (pre-commit, against the last built arz + the diff'd records) and full
+(build gate, whole DB). Wire into scripts/bootstrap + build_svc_database like the 4 invariants.
+FIRST TARGET: bug F itself - the suite must fail on the current broken blade-dancer pet, then the
+fix (correct mesh/animTable per the source monster) makes it pass. Same wave fixes ALL wave-created
+pets it flags. Implement->vet loop, Opus max.
 ## 5. STANDING RULES (Will's law — NEVER violate)
 
 - **Occult + Hunting masteries contain Will's HAND-TUNING.** Never revert to SV. Only objectively
