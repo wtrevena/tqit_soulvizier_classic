@@ -5,7 +5,7 @@
 
 ## 1. WHAT IS DEPLOYED RIGHT NOW (critical asymmetry!)
 
-- **Steam Workshop item 3759792705 (PUBLIC)** = the CANONICAL build: map build26
+- DEPLOYED NOW: Workshop CANONICAL = build27 (map a1ba5db2 born-open portals + arz w/ toxeus-spawn + born-open invariants). Will LOCAL = TESTHUB map 96a9eb14 (+hub portals +toxeus spawn) over the SAME coupled arz. (superseded line:) map build26
   (`local/Levels_merged.arc`, md5 3f1b2e4d..., commit 0f9ceef tag build26-doors-hub) +
   Quests.arc (it-cap-complete, md5 74603c0d) + arz (masteries-supra-audit, md5 4e1acb48...) + Text.arc.
 - **Will's LOCAL install** (`...My Games/Titan Quest - Immortal Throne/CustomMaps/SoulvizierClassic/`)
@@ -22,7 +22,7 @@
 
 | # | Bug | Diagnosis state | Where |
 |---|-----|-----------------|-------|
-| A | Hub/door portals INVISIBLE in-game | DynGridEntrance closed-state renders nothing; the quest open-action never reached them. Fix loop RUNNING (see §3): goal = portals open from raw data, no quest dependency. | workflow wf_c0012e88-64a |
+| A | ✅ FIXED+SHIPPED (build27-portals-born-open): the portals were GridEntranceDynamic = born-closed/invisible, quest never opened them. Swapped to base GridEntrance = born-open + always-visible, no quest dependency (DLL-proven). COUPLED deploy done: arz e8064cf9-successor + canonical map a1ba5db2 + TESTHUB 96a9eb14; Workshop pushed canonical; TESTHUB local. — was: Hub/door portals INVISIBLE | DynGridEntrance closed-state renders nothing; the quest open-action never reached them. Fix loop RUNNING (see §3): goal = portals open from raw data, no quest dependency. | workflow wf_c0012e88-64a |
 | B | ✅ FIXED+SHIPPED (commit tag toxeus-spawn-fix; champion crowd-out was the cause - championChance=100 with 1 slot REPLACED the boss with a demon; now 1 boss + 2 demons guaranteed N/E/L at authored level, both placements, 5th invariant added; arz e8064cf9 deployed + Workshop pushed) — was: Blood Toxeus main monster doesn't spawn (his blood-demon adds DO) | Prime suspect: proxy difficultyLimitsFile=limit_area002 level bracket filters charLevel-40 main on Normal. Affects BOTH the hub test spawn AND the canonical secret-area spawn (build21 - likely never spawned for anyone). Fix loop RUNNING. | workflow wf_30460e48-ca1 |
 | C | Sprite pit near occultist does NOT respawn sprites continuously | Compare our t1_pitspawner cluster config vs the LIVE Greece occultist pit (interval/max-alive/controller). Will is testing leave-and-return (per-level-load vs dead). | task #37A |
 | D | Smoke density still far below SV (starts-at-entry region fog missing) | The C4 restore covered ENTITY emitters only; the REGION-ENV half (SD/0x18 or 0x09 env params) was never restored (vet hedge on record). Deep-parse SV SD/0x09 for HV01 region + Delphi occultist region, diff, restore. | task #37B |
