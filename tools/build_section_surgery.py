@@ -384,22 +384,204 @@ assert len(GRIDENTRANCE_0x14_PREFIX) == 12
 #
 # MINTED map-unique UID pairs (collision-checked vs 157,524 known UIDs, plan_sparta_portals.py):
 SPARTA_M1 = bytes.fromhex('efbf54c99a6b2bc7b64f04cd0ce8d0db')  # inbound entrance mouth
-SPARTA_X1 = bytes.fromhex('d76121ad4419c6d4dcab9301e18f0dca')  # inbound exit (== inbound landing mouth)
-SPARTA_M2 = bytes.fromhex('e8d88f28dbfe1c3fa79ae1aacc435010')  # return entrance mouth
-SPARTA_X2 = bytes.fromhex('6babdaaf344cc5476258f8e7ce8925f3')  # return exit (== return landing mouth)
+SPARTA_X1 = bytes.fromhex('d76121ad4419c6d4dcab9301e18f0dca')  # inbound exit (== SC2 native door id)
 SC2_MERGED_GUID = bytes.fromhex('797c78594040cba419340c990e6903c4')          # SpartaCryptLevel2
 CATACUBE_FLOORLAST_GUID = bytes.fromhex('817574a8674093619ebf6581db63274c')  # CataCube02_FloorLast
 PORTAL_OLYMPIANARENA2_DBR = b'records\\quests\\portal_olympianarena2.dbr'     # GridExitOneWay landing
-# P1 HOST entrance -> SC2 : mouth M1, exit X1 (pairs P2), dest = SC2 GUID
+# P1 HOST entrance -> SC2 : mouth M1, exit X1 (pairs the SC2 0x06 native door), dest = SC2 GUID
 SPARTA_P1_0x14 = SPARTA_M1 + SPARTA_X1 + SC2_MERGED_GUID
-# P2 SC2 landing (inbound) : mouth X1 (pairs P1.exit), + 32 zero bytes (GridExitOneWay shape)
-SPARTA_P2_0x14 = SPARTA_X1 + b'\x00' * 32
-# P3 SC2 entrance -> HOST (return) : mouth M2, exit X2 (pairs P4), dest = HOST GUID
-SPARTA_P3_0x14 = SPARTA_M2 + SPARTA_X2 + CATACUBE_FLOORLAST_GUID
-# P4 HOST landing (return) : mouth X2 (pairs P3.exit), + 32 zero bytes
-SPARTA_P4_0x14 = SPARTA_X2 + b'\x00' * 32
-for _p in (SPARTA_P1_0x14, SPARTA_P2_0x14, SPARTA_P3_0x14, SPARTA_P4_0x14):
-    assert len(_p) == 48
+assert len(SPARTA_P1_0x14) == 48
+#
+# ── NATIVE TWO-WAY DOOR CONVERSION (2026-07-08 wave, appended-host discriminator) ──
+# LIVE-PROVEN engine gate (Will's walk tests + the fork's byte diagnosis): a GridEntrance
+# hosted in an ORIGINAL-INDEX level fires; one hosted in an APPENDED SV-only level NEVER
+# fires, even with a byte-perfect 0x14 (G3/S3/hub-returns all dead, G1/S1/hub-outbound all
+# live). So the old P2/P3/P4 instances (landing + return entrance inside SC2 + return
+# landing in the catacube) are REMOVED and replaced by the mechanism the blood cave uses
+# to walk OUT: the DESTINATION level's 0x06 portal-descriptor tail. SC2 ships ONE 0x06
+# descriptor authored by SV for a SpartaOptCata01 entrance that never existed - byte-
+# verified DANGLING (exit 3593305c.., mouth 04aea7af.., each occurring exactly ONCE in the
+# whole merged world). rewrite_0x06_descriptors repurposes that descriptor IN PLACE
+# (60-byte rewrite, count stays 1): exit=SPARTA_X1, mouth=SPARTA_M1, src=catacube GUID,
+# trailer=(6,0,4) = the door GRID CELL (x, layer, z) in SC2's 10x10 grid of 8u cells
+# (byte-precedent: Random09A's working walk-out descriptor trailer (8,0,2) = its door
+# cell; crypt_floor1 is 2-layer, hence the A1-uber conversion stays DEFERRED). Cell
+# (6,0,4) center = SC2-local (52,36): on-mesh 0.14u, openNbr 8/8, 1402/1600 walkable
+# cells in the 8u square, median floor Y -1.60 (== the old P2/P3 floor). The engine
+# builds the door + return teleport from the descriptor alone (no 0x05 art entity needed
+# in SC2), paired 1:1 with P1's 0x14 (mouth M1/exit X1) - a native bidirectional door.
+# The retired minted ids (kept for the audit trail; no longer written anywhere):
+#   SPARTA_M2 e8d88f28dbfe1c3fa79ae1aacc435010 / SPARTA_X2 6babdaaf344cc5476258f8e7ce8925f3
+SC2_LEVEL_KEY = 'levels/world/greece/minidungeons/spartacryptlevel2.lvl'
+SC2_DANGLING_EXIT = bytes.fromhex('3593305c5f449ee852833aa3692aa72c')
+SC2_DANGLING_MOUTH = bytes.fromhex('04aea7af234f0eaedd5a3cbd30348aaa')
+# level_key -> list of 0x06 descriptor rewrites (see rewrite_0x06_descriptors)
+REWRITE_0X06_SPECS = {
+    SC2_LEVEL_KEY: [{
+        'match_exit': SC2_DANGLING_EXIT, 'match_mouth': SC2_DANGLING_MOUTH,
+        'new_exit': SPARTA_X1, 'new_mouth': SPARTA_M1,
+        'new_src': CATACUBE_FLOORLAST_GUID, 'new_trailer': (6, 0, 4),
+    }],
+}
+
+
+def rewrite_0x06_descriptors(blob, specs, level_name=''):
+    """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
+
+    The 0x06 portal list tail = [u32 64][u32 count][count x 60B descriptor], each
+    descriptor = [exit 16][mouth 16][srcGUID 16][3x u32 trailer] (byte-decoded from the
+    deployed map; the trailer = the door grid cell (x, layer, z) - Random09A precedent).
+    Each spec matches ONE descriptor by its current (exit, mouth) ids and rewrites all
+    60 bytes in place; the count and every other byte of the blob are unchanged.
+    Fails loud unless every spec matches exactly once.
+    """
+    secs, magic = parse_blob_sections(blob)
+    out_secs = []
+    rewrote = 0
+    for s in secs:
+        if s['type'] != 0x06:
+            out_secs.append(s)
+            continue
+        d6 = bytearray(s['data'])
+        n = len(d6)
+        found = None
+        for count in range(1, 9):
+            hdr_off = n - (8 + count * 60)
+            if hdr_off < 0:
+                break
+            f0, c = struct.unpack_from('<2I', d6, hdr_off)
+            if f0 == 64 and c == count:
+                found = (hdr_off, count)
+                break
+        if found is None:
+            raise ValueError(f'{level_name}: 0x06 has no [64][count] portal tail to rewrite')
+        hdr_off, count = found
+        for spec in specs:
+            hits = []
+            for i in range(count):
+                off = hdr_off + 8 + i * 60
+                if (bytes(d6[off:off + 16]) == spec['match_exit']
+                        and bytes(d6[off + 16:off + 32]) == spec['match_mouth']):
+                    hits.append(off)
+            if len(hits) != 1:
+                raise ValueError(
+                    f'{level_name}: 0x06 descriptor match (exit {spec["match_exit"].hex()[:12]}..) '
+                    f'found {len(hits)} times, expected exactly 1')
+            off = hits[0]
+            d6[off:off + 16] = spec['new_exit']
+            d6[off + 16:off + 32] = spec['new_mouth']
+            d6[off + 32:off + 48] = spec['new_src']
+            struct.pack_into('<3I', d6, off + 48, *spec['new_trailer'])
+            rewrote += 1
+            print(f'    0x06 REWRITE {level_name}: desc@{off} -> exit={spec["new_exit"].hex()[:12]}.. '
+                  f'mouth={spec["new_mouth"].hex()[:12]}.. src={spec["new_src"].hex()[:12]}.. '
+                  f'cell={spec["new_trailer"]}')
+        out_secs.append({'type': 0x06, 'data': bytes(d6)})
+    if rewrote != len(specs):
+        raise ValueError(f'{level_name}: rewrote {rewrote} 0x06 descriptors, expected {len(specs)}')
+    return rebuild_blob(magic, out_secs)
+
+
+# ── DUISTER RETURN: wire the INERT RogueEncampment rift shrine (2026-07-08 wave) ────
+# The Secret Place / Duister cluster has NO working return (its return GridEntrances are
+# appended-host = never fire, see the native-door block above), and terrain levels have
+# no 0x06 descriptor tail to repurpose. SV's DESIGNED return for these areas is the
+# TeleportShrine (rift/portal-pad) network: GardenofMerchants ships teleportshrine_gom
+# FULLY WIRED (0x05 inst[254] flags=1 uid e08e87ff.. + GROUPS record
+# 'DRXShrineTeleport_Duister' cat 'TeleportShrine') - activating it joins the portal
+# network = the way back out. RogueEncampment ships the SAME-CLASS shrine
+# (teleportshrineorient01.dbr, Class StrategicMovementTeleportShrine, 0x05 inst[74]
+# @ local (76,0,66)) but INERT: flags=0, no UniqueId, no GROUPS member (byte-verified
+# vs SV upstream - SV itself never finished wiring it). Wire it by mirroring the Garden
+# shrine's byte-shape exactly:
+#   (1) 0x05: flags 0 -> 1 + append the 16-byte UniqueId (set_0x05_flags_uid);
+#   (2) GROUPS: append a 1-member 'TeleportShrine' record (sub_count=2, the category
+#       constant across all 10 native TeleportShrine records; member = uid(16) +
+#       levelGUID(16) + pos(12) == the 0x05 pos; 20-byte tail = an opaque record-unique
+#       id(16) + u32 0, mirroring the Garden record's tail shape).
+# NO 0x14 (the Garden shrine has none). Engine tolerance for partial wiring is proven
+# by the native dangling 'Scandia01_02' TeleportShrine record (unresolved level, no 0x05
+# partner, ships in every build). Minted ids below are byte-verified collision-free
+# against the whole merged world (recon_wave4_0708 + the doorshub gate re-checks).
+ROGUE_ENCAMPMENT_KEY = 'xpack/levels/secret_place/rogueencampment.lvl'
+ROGUE_ENCAMPMENT_GUID = bytes.fromhex('f31e50a12e45ca1dec8a328a9b5d87c5')
+TELEPORTSHRINEORIENT01_DBR = b'records\\item\\shrines\\teleportshrineorient01.dbr'
+DUISTER_SHRINE_POS = (76.00, 0.00, 66.00)   # the existing inert instance's exact 0x05 pos
+DUISTER_SHRINE_UID = bytes.fromhex('feedcafe6100000000000000000000a1')   # minted, unique
+DUISTER_SHRINE_TAIL16 = bytes.fromhex('feedcafe6200000000000000000000a2')  # minted, unique
+DUISTER_SHRINE_GROUP_NAME = 'DRXShrineTeleport_RogueEncampment'
+# level_key -> list of {dbr, from_xyz, uid}: set flags=1 + UniqueId on an EXISTING instance
+FLAG_UID_SPECS = {
+    ROGUE_ENCAMPMENT_KEY: [{
+        'dbr': TELEPORTSHRINEORIENT01_DBR,
+        'from_xyz': DUISTER_SHRINE_POS,
+        'uid': DUISTER_SHRINE_UID,
+    }],
+}
+
+
+def set_0x05_flags_uid(section_data, dbr, from_xyz, uid, base_size, level_name=''):
+    """Set flags=1 + insert the 16-byte UniqueId on an EXISTING 0x05 instance.
+
+    Walks the section flag-aware (record = base_size + 16 iff flags != 0), finds the
+    single instance whose string-table dbr matches `dbr` (case/sep-insensitive) AND
+    whose position is within 0.05u of from_xyz, asserts it currently has flags == 0,
+    rewrites flags to 1 and inserts `uid` right after the 56-byte core (the byte-shape
+    of every natively-flagged v0x0e record, e.g. the Garden shrine / HV01 fountain).
+    Instance indices are unchanged (only byte offsets after the record shift).
+    """
+    assert len(uid) == 16
+    want = bytes(dbr).replace(b'/', b'\\').lower()
+    scount = struct.unpack_from('<I', section_data, 0)[0]
+    pos = 4
+    strings = []
+    for _ in range(scount):
+        slen = struct.unpack_from('<I', section_data, pos)[0]
+        pos += 4
+        strings.append(section_data[pos:pos + slen])
+        pos += slen
+    inst_count = struct.unpack_from('<I', section_data, pos)[0]
+    pos += 4
+    hits = []
+    for i in range(inst_count):
+        str_idx, = struct.unpack_from('<I', section_data, pos)
+        x, y, z = struct.unpack_from('<3f', section_data, pos + 40)
+        flags, = struct.unpack_from('<I', section_data, pos + 52)
+        rec_size = base_size + (16 if flags != 0 else 0)
+        sdbr = strings[str_idx].replace(b'/', b'\\').lower() if str_idx < len(strings) else b''
+        if (sdbr == want and abs(x - from_xyz[0]) < 0.05 and abs(y - from_xyz[1]) < 0.05
+                and abs(z - from_xyz[2]) < 0.05):
+            hits.append((i, pos, flags))
+        pos += rec_size
+    if len(hits) != 1:
+        raise ValueError(f'{level_name}: flags/uid target {dbr!r}@{from_xyz} matched '
+                         f'{len(hits)} instances, expected exactly 1')
+    i, rec_off, flags = hits[0]
+    if flags != 0:
+        raise ValueError(f'{level_name}: instance {i} already flagged ({flags}); refusing')
+    out = bytearray(section_data)
+    struct.pack_into('<I', out, rec_off + 52, 1)
+    insert_at = rec_off + 56          # right after the 56-byte core (v0x0e flagged shape)
+    out[insert_at:insert_at] = uid
+    print(f'    FLAG+UID {level_name}: inst[{i}] {dbr.decode("ascii", "replace").split(chr(92))[-1]} '
+          f'flags 0->1 uid={uid.hex()[:12]}..')
+    return bytes(out)
+
+
+def build_teleport_shrine_group_record():
+    """The GROUPS record dict wiring the RogueEncampment shrine into the portal network.
+
+    Mirrors the Garden shrine's record byte-shape exactly (measured: sub_count=2 like all
+    10 native TeleportShrine records; 1 member = uid+levelGUID+pos(12); 20-byte tail =
+    opaque unique id(16) + u32 0). Consumed by svaera_plus_portals step 2c via
+    _rebuild_groups (same path as every other GROUPS record).
+    """
+    raw = (DUISTER_SHRINE_UID + ROGUE_ENCAMPMENT_GUID
+           + struct.pack('<3f', *DUISTER_SHRINE_POS)
+           + DUISTER_SHRINE_TAIL16 + struct.pack('<I', 0))
+    assert len(raw) == 64
+    return {'sub_count': 2, 'name': DUISTER_SHRINE_GROUP_NAME,
+            'category': 'TeleportShrine', 'member_count': 1, 'raw_data': raw}
 
 # --- B1: smoke/dark-cloud occult atmosphere over the entrance area (Will's ask) -----------
 # SV dressed the cave-mouth "special area" (the Hades merchant = "the occultist") with an
@@ -438,6 +620,26 @@ LIGHT_PURPLE_ROT = (0.99995, 0.0, 0.010048, 0.0, 1.0, 0.0, -0.010048, 0.0, 0.999
 T1_LILDUDE_01_DBR = b'records\\drxmap\\pitsprites\\t1_lildude_01.dbr'
 T1_LILDUDE_02_DBR = b'records\\drxmap\\pitsprites\\t1_lildude_02.dbr'
 T1_PITSPAWNER_01_DBR = b'records\\drxmap\\pitsprites\\t1_pitspawner_01.dbr'
+T1_PITSPAWNER_02_DBR = b'records\\drxmap\\pitsprites\\t1_pitspawner_02.dbr'
+
+# --- B-SMOKE-1 (2026-07-08): the REST of SV's dropped Delphi occultist-region scene ------
+# recon_wave4_0708 delphi: SV-vs-merged 0x05 diff on the three shared Delphi levels
+# (corners byte-identical, so SV-local == merged-local). The C4 wave restored only the
+# ATMOSPHERE emitters; SVAERA also dropped the pit-sprite MONSTERS, the caged-sprite
+# props, and the scene's sound objects. All restored at SV's exact float32 coords + rots
+# below. Resolution byte-verified: the 13 drxmap records in the built SoulvizierClassic
+# .arz, the 2 base-game sound objects in database.arz. flags=0, no 0x14 (SV places none).
+T1_LILDUDE_DRESS_01_DBR = b'records\\drxmap\\dress\\t1_lildude_01.dbr'   # caged-sprite props
+T1_LILDUDE_DRESS_02_DBR = b'records\\drxmap\\dress\\t1_lildude_02.dbr'   # (Decoration, no aggro)
+T1_LILDUDE_DRESS_03_DBR = b'records\\drxmap\\dress\\t1_lildude_03.dbr'
+VITSTAFF_01_DBR = b'records\\drxmap\\dress\\vitstaff_01.dbr'
+VITSTAFF_05_DBR = b'records\\drxmap\\dress\\vitstaff_05.dbr'
+CAGE_SMALL_DBR = b'records\\drxmap\\dress\\cage_small.dbr'
+CAGE_MEDIUM_DBR = b'records\\drxmap\\dress\\cage_medium.dbr'
+CAGE_BINDING_FX01_DBR = b'records\\drxmap\\effects\\cage_binding_fx01.dbr'
+SOUNDOBJECT_DEMONCAGE_DBR = b'records\\drxmap\\sounds\\soundobject_demoncagebindingloop.dbr'
+SOUNDOBJECT_CAGEGLOW_DBR = b'records\\xpack\\sounds\\soundobjects\\soundobject_cageglow.dbr'
+BIGOBSIDIAN_DBR = b'records\\sounds\\soundobjects\\bigobsidian.dbr'
 
 # =====================================================================================
 # ============  DOORS + TEST HUB + BUILD24/25 FEEDBACK WAVE (this session) =============
@@ -638,11 +840,24 @@ INJECT_SPECS = {
         (LIGHT_5M_DYN_ORANGE_DBR, 38.88533020019531, 15.425609588623047, 90.27568817138672,
          {'rot': HV01_5M_DYN_ORANGE_ROT}),
         (LIGHT_10M_SIMPLE_RED_DBR, 46.9508056640625, 25.032676696777344, 112.49130249023438),
-        # --- A1 GARDEN OF MERCHANTS door (this session): HV01 host portals. G1 = entrance ->
-        # GardenofMerchants (16u E of the Super-Caravan); G4 = return landing (14.4u from G1).
-        # GridEntranceDynamic/GridExitOneWay, opened by bossarena.qst by record name. v0x11
-        # shared -> step-6/7 x14_payload append. flags=0, identity rot.
-        (PORTAL_OLYMPIANARENA1_DBR, 46.70, 15.80, 127.90, {'x14_payload': GARDEN_G1_0x14}),
+        # --- A1 GARDEN OF MERCHANTS door: HV01 host portals. G1 = entrance -> GardenofMerchants.
+        # B-PORTAL-2 FIX (2026-07-08): the build26/27 G1 spot (46.70,15.80,127.90) sat DEAD-CENTER
+        # in the southward exit corridor leaving the north camp (X36-50 / Z117-142), so Will was
+        # force-teleported just walking past it (born-open entrance = teleport-on-touch). Relocated
+        # to the EAST END of the camp's north-edge row at (51.00,17.80,142.00): it now sits in a
+        # tidy row along the north wall AFTER the respawn fountain (X35.7,Z143.1) and the
+        # Super-Caravan (X41.7,Z143.1) - 9.4u E of the caravan, so it is clearly visible from the
+        # camp yet OFF the through-path (the exit lane runs SOUTH from the caravan; the portal is a
+        # NE spur the player only walks TO deliberately). Verified (recon_hv01_portal_relocate.py):
+        # on-mesh dY 0.00u, same walkable component #0 as the fountain/caravan/cave-mouth, 9.4u from
+        # the caravan (>=6u), 15.3u from the fountain (not on the respawn), 7.1u from the G4 landing
+        # (no mesh overlap), 9.4u off the caravan->cave-mouth corridor centerline. The 0x14 binding
+        # (GARDEN_G1_0x14 = gM1+gX1+GoM GUID) is UNCHANGED - portal position lives purely in the
+        # 0x05 instance; the 0x14 mouth/exit/dest are position-independent UIDs. G4 = return landing
+        # (GridExitOneWay, invisible, does NOT teleport-on-touch) left in place. Born-open static
+        # GridEntrance/GridExitOneWay (see the A1 born-open block). v0x11 shared -> step-6/7
+        # x14_payload append. flags=0, identity rot.
+        (PORTAL_OLYMPIANARENA1_DBR, 51.00, 17.80, 142.00, {'x14_payload': GARDEN_G1_0x14}),
         (PORTAL_OLYMPIANARENA2_DBR, 56.90, 17.60, 138.10, {'x14_payload': GARDEN_G4_0x14}),
     ],
     # Static Widow Letter (BUG 2): finalletter placed at the location_letterdrop spot so it
@@ -702,6 +917,22 @@ INJECT_SPECS = {
         # >=18u from the occultist merchant, and >=20u from BOTH the moved fountain and caravan
         # (tools/debug/plan_b_final.py + verified by gate_polish_placement.py).
         (T1_PITSPAWNER_01_DBR, 50.70, 1.80, 34.30),   # d_occ 18.0 d_carv 21.2
+        # B-SPRITE-1 (2026-07-08): the sprites "spawn once then never again". arz recon:
+        # t1_pitspawner_01 is an INVINCIBLE (invincible=1, ControllerStationaryMonster) Monster whose
+        # self-buff skill t1_skill_pitspawner_lildude_0x (Skill_SpawnPetMonster, cooldown 12s /
+        # petLimit 5 / burst 3) plus its specialAttack summons re-summon the lildude sprites while it
+        # is present. The WORKING SV 0.98i exemplar (DelphiLowlands02) runs a REDUNDANT pitspawner
+        # PAIR per pit: t1_pitspawner_01 + t1_pitspawner_02 (~5u apart) + more seed lildude; SVAERA
+        # dropped Delphi's sprites entirely, so this injected HVBorder04 pit is the ONLY sprite pit in
+        # the whole mod and we shipped just ONE spawner. Adding the second spawner mirrors the exemplar
+        # density (a second independent self-summoning source + a second combat target to keep the
+        # specialAttack summons firing). MAP-SIDE, low-confidence: it is faithful + harmless (invincible,
+        # on-mesh, standoff-safe) but does NOT change the respawn ENGINE (the DBR summon AI). The
+        # DEFINITIVE respawn fix = a dedicated Proxy driver (like HiddenValley01's respawning beastman
+        # proxies) is a NEW DBR (DB lane) - see coordination_needed. On-mesh 0.00u, comp #0 (same as
+        # spawner_01 + occultist), 18.0u occultist standoff (== the existing spawner), 2.8u N of
+        # spawner_01. Verified: tools/debug/recon_border04_spawner_0708.py.
+        (T1_PITSPAWNER_02_DBR, 50.70, 1.80, 37.10),   # d_occ 18.0, 2.8u N of spawner_01, on-mesh 0.00u
         (T1_LILDUDE_01_DBR, 51.30, 1.80, 33.30),      # d_occ 18.0 d_carv 20.6
         (T1_LILDUDE_01_DBR, 49.30, 1.80, 36.10),      # d_occ 18.0 d_carv 22.3
         (T1_LILDUDE_02_DBR, 49.50, 1.80, 35.90),      # d_occ 18.0 d_carv 22.2
@@ -724,28 +955,29 @@ INJECT_SPECS = {
         (PORTAL_OLYMPIANARENA1_DBR, 290.70, 1.20, 152.50,
          {'x14_payload': PORTAL_OLYMPIANARENA1_0x14}),
     ],
-    # WORKSTREAM A: INVENTED Sparta Crypt L2 entrance (mirrors A1; see the SPARTA_* block above).
-    # HOST = CataCube02_FloorLast (SHARED v0x0f, the deepest Athens catacomb). Two instances:
-    #   P1 = portal_olympianarena1 (GridEntranceDynamic) -> SpartaCryptLevel2, near the
-    #        stairsdown (the descend-deeper landmark), on-mesh 0.14u openNbr 8/8, 6u standoff.
-    #   P4 = portal_olympianarena2 (GridExitOneWay) = the RETURN landing (from SC2), on-mesh,
-    #        8u standoff, 28u from P1. Both flags=0 IDENTITY rot; v0f 0x05 base-72 inject path;
-    #        both 0x14 bindings append at the injected instance indices (FloorLast 0x14 size 0).
+    # WORKSTREAM A: INVENTED Sparta Crypt L2 entrance (see the SPARTA_* block above).
+    # HOST = CataCube02_FloorLast (SHARED v0x0f, the deepest Athens catacomb). ONE instance:
+    #   P1 = portal_olympianarena1 (born-open GridEntrance) -> SpartaCryptLevel2.
+    # 2026-07-08 wave: P1 RELOCATED off the stairsdown funnel (the same teleport-on-touch
+    # walkway hazard class as the Garden G1 fix): the old spot (29.10,1.20,41.30) sat 6.0u
+    # from stairsdown01 (30.51,35.47) at the stairs-room east edge = the arrival lane. New
+    # spot (20.00,1.20,46.00) = the room's NE dead-end nook (recon_wave4_0708 cata): same
+    # walkable component #0, on-mesh 0.14u openNbr 8/8, 14.9u from the stairs, 7.4u from the
+    # nearest decor, opens SOUTH into the room only (no through-lane crosses it), visible
+    # from the stairs across the room = a deliberate spur, G1-style. The 0x14 binding is
+    # UNCHANGED (position lives purely in the 0x05 instance).
+    # P4 (the old return landing @ 39.70,1.20,67.50) is REMOVED: the SC2 return is now the
+    # native 0x06 descriptor door (REWRITE_0X06_SPECS above), whose landing side is the
+    # engine's own door pairing - the orphaned GridExitOneWay had no live partner.
     'levels/world/greece/athens/underground/catacube02_floorlast.lvl': [
-        (PORTAL_OLYMPIANARENA1_DBR, 29.10, 1.20, 41.30, {'x14_payload': SPARTA_P1_0x14}),
-        (PORTAL_OLYMPIANARENA2_DBR, 39.70, 1.20, 67.50, {'x14_payload': SPARTA_P4_0x14}),
+        (PORTAL_OLYMPIANARENA1_DBR, 20.00, 1.20, 46.00, {'x14_payload': SPARTA_P1_0x14}),
     ],
-    # DEST = SpartaCryptLevel2 (SV-ONLY v0x0e). Two instances:
-    #   P2 = portal_olympianarena2 (GridExitOneWay) = the INBOUND landing (mouth == P1.exit),
-    #        on-mesh @ crypt centroid, 6u standoff.
-    #   P3 = portal_olympianarena1 (GridEntranceDynamic) -> HOST (the RETURN entrance), 8.1u
-    #        from P2 (arrival + return portal in the same chamber = a portal room), on-mesh.
-    # SV-only -> inject_into_sv_only_blob (v0e, 56-byte records) + the NEW x14_payload append
-    # (SpartaCryptLevel2 has a 0x14 section at size 0). flags=0 IDENTITY rot.
-    'levels/world/greece/minidungeons/spartacryptlevel2.lvl': [
-        (PORTAL_OLYMPIANARENA2_DBR, 48.90, -1.60, 34.70, {'x14_payload': SPARTA_P2_0x14}),
-        (PORTAL_OLYMPIANARENA1_DBR, 50.30, -1.60, 26.70, {'x14_payload': SPARTA_P3_0x14}),
-    ],
+    # DEST = SpartaCryptLevel2: NO 0x05 injections anymore (2026-07-08 wave). The old
+    # P2 (inbound landing) + P3 (return entrance) are REMOVED: P3 was appended-host = never
+    # fires (live-proven engine gate), and P2's mouth uid (SPARTA_X1) now belongs to the
+    # native 0x06 descriptor door that replaces both (REWRITE_0X06_SPECS above) - keeping
+    # P2 would collide with the door's id. The engine renders the door from the repurposed
+    # descriptor natively (grid cell (6,0,4)); arrival lands the player at the door cell.
     # REMOVED (blood-cave walk-in): the surface-side portal NPC. The authentic SV
     # entry is engine-native - HiddenValley01's existing GridEntrance cave mouth
     # + its 0x14 GUID binding stream in the (blob-swapped) Random09A, whose west
@@ -820,6 +1052,63 @@ INJECT_SPECS = {
          {'rot': DELPHI_STATNL_BLUE_ROT}),
         (LIGHT_5M_DYN_GREEN_DBR, 14.883951187133789, 11.311467170715332, 4.744840621948242,
          {'rot': DELPHI_5M_DYN_GREEN_ROT}),
+        # --- B-SMOKE-1 (2026-07-08): the dropped CAGE scene at the occultist tent (binding
+        # fx + cages + caged-sprite dress + vitstaffs + the cage sound loop), SV-exact
+        # coords/rots (recon_wave4_0708 delphi). Decoration/EffectEntity/SoundObject only -
+        # no aggro. flags=0, no 0x14 (SV places none).
+        (CAGE_BINDING_FX01_DBR, 2.5120930671691895, 10.257486343383789, 11.083516120910645,
+         {'rot': (0.8221694231033325, 0.0, 0.5692428350448608,
+                  0.0, 1.0, 0.0,
+                  -0.5692428350448608, 0.0, 0.8221694231033325)}),
+        (CAGE_MEDIUM_DBR, 1.8174877166748047, 10.003944396972656, 12.080963134765625,
+         {'rot': (0.5028848052024841, 0.0, -0.8643534183502197,
+                  0.0, 1.0, 0.0,
+                  0.8643534183502197, 0.0, 0.5028848052024841)}),
+        (T1_LILDUDE_DRESS_02_DBR, 1.4740500450134277, 11.881990432739258, 10.670920372009277,
+         {'rot': (-0.9482517838478088, 0.0, -0.3175193667411804,
+                  0.0, 1.0, 0.0,
+                  0.3175193667411804, 0.0, -0.9482517838478088)}),
+        (T1_LILDUDE_DRESS_03_DBR, 2.658547878265381, 11.852787017822266, 9.270751953125,
+         {'rot': (0.4952678978443146, 0.0, -0.8687403202056885,
+                  0.0, 1.0, 0.0,
+                  0.8687403202056885, 0.0, 0.4952678978443146)}),
+        (SOUNDOBJECT_DEMONCAGE_DBR, 2.19281005859375, 9.999998092651367, 10.903641700744629),
+        (CAGE_SMALL_DBR, 2.534714698791504, 11.812200546264648, 9.186098098754883,
+         {'rot': (0.3389511704444885, 0.0, -0.9408039450645447,
+                  0.0, 1.0, 0.0,
+                  0.9408039450645447, 0.0, 0.3389511704444885)}),
+        (CAGE_SMALL_DBR, 1.4819526672363281, 11.844521522521973, 10.7604341506958,
+         {'rot': (-0.22213487327098846, 0.0, 0.9750158786773682,
+                  0.0, 1.0, 0.0,
+                  -0.9750158786773682, 0.0, -0.22213487327098846)}),
+        (CAGE_MEDIUM_DBR, 0.139495849609375, 10.004996299743652, 9.855687141418457,
+         {'rot': (0.3385816514492035, 0.0, -0.9409369826316833,
+                  0.0, 1.0, 0.0,
+                  0.9409369826316833, 0.0, 0.3385816514492035)}),
+        (CAGE_MEDIUM_DBR, 3.1532297134399414, 10.004997253417969, 9.70942497253418,
+         {'rot': (0.34604352712631226, 0.0, -0.9382184147834778,
+                  0.0, 1.0, 0.0,
+                  0.9382184147834778, 0.0, 0.34604352712631226)}),
+        (T1_LILDUDE_DRESS_01_DBR, 3.8037586212158203, 10.004998207092285, 9.676807403564453,
+         {'rot': (-0.21790535748004913, 0.0, -0.9759699702262878,
+                  0.0, 1.0, 0.0,
+                  0.9759699702262878, 0.0, -0.21790535748004913)}),
+        (T1_LILDUDE_DRESS_01_DBR, 2.9295451641082764, 10.004998207092285, 8.955889701843262,
+         {'rot': (-0.8212995529174805, 0.0, 0.5704973936080933,
+                  0.0, 1.0, 0.0,
+                  -0.5704973936080933, 0.0, -0.8212995529174805)}),
+        (T1_LILDUDE_DRESS_01_DBR, 2.944338798522949, 10.004997253417969, 10.272355079650879,
+         {'rot': (0.640135645866394, 0.0, -0.7682619094848633,
+                  0.0, 1.0, 0.0,
+                  0.7682619094848633, 0.0, 0.640135645866394)}),
+        (VITSTAFF_01_DBR, 12.787829399108887, 11.219710350036621, 7.1061553955078125,
+         {'rot': (0.9818659424781799, 0.14403623342514038, -0.12325886636972427,
+                  0.11613059043884277, 0.05692309886217117, 0.9916014671325684,
+                  0.14984282851219177, -0.9879338145256042, 0.03916383907198906)}),
+        (VITSTAFF_05_DBR, 12.282719612121582, 11.395538330078125, 8.074625968933105,
+         {'rot': (0.1790051907300949, -0.009947560727596283, -0.9837979674339294,
+                  0.9677491188049316, 0.181934654712677, 0.17424550652503967,
+                  0.17725369334220886, -0.9832603931427002, 0.04219392314553261)}),
     ],
     # DelphiLowlands02 = the pit-sprites / lava-pit "volcano" scene (8 records):
     'levels/world/greece/delphi/delphilowlands02.lvl': [
@@ -832,11 +1121,56 @@ INJECT_SPECS = {
         (FOG_OCCULT_FX01_DBR, 81.38713073730469, 10.411105155944824, 122.9507827758789),
         (MC_HADES_ANOURANFIREPIT03_DBR, 79.54350280761719, 9.956783294677734, 122.13789367675781,
          {'rot': DELPHI_ANOURANFIREPIT03_ROT}),
+        # --- B-SMOKE-1 (2026-07-08): the dropped LIVE pit-sprite scene (SV-exact). The two
+        # Delphi pits get their spawner pairs + seed lildudes back (Monster class, aggro -
+        # SV's own placement, the "working Greece cluster" the HVBorder04 pit mirrors) plus
+        # the scene sound objects. Coords/rots byte-exact from SV 0.98i (recon_wave4_0708).
+        (T1_LILDUDE_02_DBR, 49.064998626708984, 10.335891723632812, 119.2449951171875),
+        (T1_LILDUDE_02_DBR, 53.27499771118164, 10.388538360595703, 113.59500122070312),
+        (T1_LILDUDE_01_DBR, 55.334999084472656, 10.315872192382812, 114.48500061035156),
+        (T1_PITSPAWNER_01_DBR, 55.00510787963867, 10.848041534423828, 117.33020782470703),
+        (BIGOBSIDIAN_DBR, 53.17753982543945, 10.589143753051758, 119.64012908935547,
+         {'rot': (0.999930739402771, -0.011760160326957703, -0.00041142263216897845,
+                  0.011761130765080452, 0.9999278783798218, 0.002441165503114462,
+                  0.0003826844331342727, -0.0024458353873342276, 0.9999969601631165)}),
+        (T1_PITSPAWNER_02_DBR, 49.529090881347656, 11.298062324523926, 118.4052734375,
+         {'rot': (0.9999987483024597, 0.0, -0.0015911301597952843,
+                  0.0, 1.0, 0.0,
+                  0.0015911301597952843, 0.0, 0.9999987483024597)}),
+        (T1_LILDUDE_01_DBR, 54.78499984741211, 10.467788696289062, 119.15499877929688),
+        (T1_LILDUDE_01_DBR, 76.59500122070312, 9.97555160522461, 120.54499816894531),
+        (T1_PITSPAWNER_01_DBR, 80.52296447753906, 10.787839889526367, 123.01321411132812),
+        (SOUNDOBJECT_CAGEGLOW_DBR, 80.39462280273438, 9.97697639465332, 124.99458312988281,
+         {'rot': (0.999902606010437, 0.013953262008726597, -0.0002705814258661121,
+                  -0.013954824768006802, 0.9998777508735657, -0.007057285401970148,
+                  0.00017207619384862483, 0.00706037413328886, 0.9999750852584839)}),
+        (T1_LILDUDE_01_DBR, 82.1449966430664, 9.968833923339844, 121.71499633789062),
     ],
-    # DelphiLowlands03 = sprite-dress continuation (2 records):
+    # DelphiLowlands03 = sprite-dress continuation (2 C4 records + B-SMOKE-1 restores):
     'levels/world/greece/delphi/delphilowlands03.lvl': [
         (BUGCLOUD_SMALLFX_DBR, 123.81183624267578, 10.15844440460205, 6.107987403869629),
         (BUGCLOUD_SMALLFX_DBR, 123.97244262695312, 10.947917938232422, 8.745109558105469),
+        # --- B-SMOKE-1: dropped caged-sprite DRESS props (Decoration, no aggro), SV-exact.
+        (T1_LILDUDE_DRESS_02_DBR, 127.98994445800781, 10.004997253417969, 8.962763786315918,
+         {'rot': (-0.13307425379753113, 0.0, -0.9911060929298401,
+                  0.0, 1.0, 0.0,
+                  0.9911060929298401, 0.0, -0.13307425379753113)}),
+        (T1_LILDUDE_DRESS_02_DBR, 127.3948974609375, 10.004997253417969, 10.090458869934082,
+         {'rot': (0.9828716516494751, 0.0, -0.18429139256477356,
+                  0.0, 1.0, 0.0,
+                  0.18429139256477356, 0.0, 0.9828716516494751)}),
+        (VITSTAFF_01_DBR, 125.63081359863281, 10.04549503326416, 1.2841295003890991,
+         {'rot': (0.9663739800453186, 0.2503989338874817, 0.0584961362183094,
+                  -0.25052839517593384, 0.9680951237678528, -0.005229487083852291,
+                  -0.057939283549785614, -0.009601302444934845, 0.9982739686965942)}),
+        (VITSTAFF_01_DBR, 125.35291290283203, 10.09128475189209, 0.9109594821929932,
+         {'rot': (0.9992513656616211, 0.038682721555233, -0.0006079100421629846,
+                  -0.03868189826607704, 0.9992507100105286, 0.0013141712406650186,
+                  0.0006582902278751135, -0.001289672334678471, 0.9999989867210388)}),
+        (VITSTAFF_01_DBR, 125.24671936035156, 10.073407173156738, 0.9723517894744873,
+         {'rot': (0.9805499911308289, 0.0, -0.1962699145078659,
+                  0.0, 1.0, 0.0,
+                  0.1962699145078659, 0.0, 0.9805499911308289)}),
     ],
 }
 
@@ -893,8 +1227,9 @@ _HUB_DESTS = [
      (290.70, 1.20, 148.50), (292.50, 1.20, 156.30)),
     ('murderbossroom', 'xpack/levels/secret_place/murderbossroom.lvl',
      (52.90, 3.00, 28.10), (52.90, 3.00, 39.90)),
-    # SC2 also hosts the Sparta P2/P3 portals; hub landing/ret spaced >=10u from them
-    # (P2 @ 48.90,34.70 -> land d=10.1; P3 @ 50.30,26.70 -> ret d=22.7).
+    # SC2's Sparta P2/P3 portals were REMOVED 2026-07-08 (native 0x06 door conversion);
+    # the hub landing/ret coords are kept unchanged (they were already >=10u from the
+    # native door cell (6,0,4) center at local (52,36): land d=11.5, ret d=22.3).
     ('spartacryptlevel2', 'levels/world/greece/minidungeons/spartacryptlevel2.lvl',
      (42.30, -1.60, 42.30), (29.70, -1.60, 36.30)),
     # darkforestenter also hosts the A2 S2/S3 portals; hub landing/ret spaced >=10u from them.
@@ -938,17 +1273,16 @@ _TOXEUS_HV01_LOCAL = (21.9, 17.0, 31.9)
 
 
 def build_hub_extra_specs():
-    """Build the TEST-HUB NON-PORTAL entity additions (level_key -> [specs]) - currently just
-    the lone Toxeus proxy right outside the blood-cave mouth in HiddenValley01. Called only when
-    SVC_TEST_HUB=1. Kept SEPARATE from build_hub_inject_specs (the 20 portals) so the portal
-    gates that iterate build_hub_inject_specs are unaffected, and the Toxeus placement is
-    independently gatable. Returns a dict to be MERGED into INJECT_SPECS (appended to the key)."""
-    tx, ty, tz = _TOXEUS_HV01_LOCAL
-    return {
-        _TOXEUS_HV01_KEY: [
-            (Q_BLOODTOXEUS_LONE_DBR, tx, ty, tz, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
-        ],
-    }
+    """Build the TEST-HUB NON-PORTAL entity additions (level_key -> [specs]).
+
+    2026-07-08 (coordinator interrupt, PERMANENT): the lone Toxeus test spawn outside the
+    blood-cave mouth is REMOVED. It served its purpose (Will met Hemorrheus and the spawn
+    chain was verified live) and now BLOCKS walk-testing: a superboss proxy 9.9u outside the
+    cave mouth kills the tester before they can enter. The canonical build never had it; the
+    real Hemorrheus placement (deep in new_secretdoor_transitionhallway, past the secret
+    waterfall) is in INJECT_SPECS and is unaffected. The _TOXEUS_HV01_* constants and this
+    hook are kept so a future test build can re-add TESTHUB-only extras trivially."""
+    return {}
 
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):

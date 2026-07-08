@@ -163,6 +163,45 @@ def strip_ui_overrides(db: ArzDatabase):
     return len(stripped)
 
 
+# Dead orphan records to strip for hygiene: unreferenced SV-passthrough records
+# that carry corrupted data. Each MUST be verified to have ZERO inbound references
+# in the built DB before being listed here (removing a referenced record would
+# dangle that reference).
+_DEAD_ORPHAN_RECORDS = (
+    # SV 0.98i debug XP potion: ships a corrupted bonusExperiencePoints (a 4e9
+    # int32 overflow -> -294967296) and has ZERO inbound references anywhere in the
+    # built DB (verified 2026-07-08), so it is pure dead weight. Safe to drop.
+    r'records\item\miscellaneous\oneshot\potionexp_test.dbr',
+)
+
+
+def remove_dead_orphan_records(db: ArzDatabase):
+    """Strip unreferenced/corrupted dead orphan records (hygiene). Mirrors the
+    strip_ui_overrides removal (delete by path from every db index). Each listed
+    record was verified to have ZERO inbound references before being added."""
+    print("\n=== Patch 0b: Remove dead orphan records ===")
+    removed = 0
+    for target in _DEAD_ORPHAN_RECORDS:
+        rec = None
+        want = target.replace('/', '\\').lower()
+        for name in list(db._raw_records.keys()):
+            if name.replace('/', '\\').lower() == want:
+                rec = name
+                break
+        if rec is None:
+            print(f"  SKIP {target}: not present (already absent)")
+            continue
+        del db._raw_records[rec]
+        db._record_types.pop(rec, None)
+        db._record_timestamps.pop(rec, None)
+        db._decoded_cache.pop(rec, None)
+        db._modified.discard(rec)
+        removed += 1
+        print(f"  Removed dead orphan: {rec}")
+    print(f"  Dead orphan records removed: {removed}")
+    return removed
+
+
 def restore_potion_drops(db098: ArzDatabase, db09: ArzDatabase):
     """Restore zeroed potion drop weights from SV 0.9 into 0.98i."""
     print("\n=== Patch 1: Restore potion drop rates ===")
@@ -591,13 +630,30 @@ def grant_all_inventory_bags(db: ArzDatabase):
             break
 
     if tutorial_chest:
-        db.set_field(tutorial_chest, 'loot2Chance', 100.0, DATA_TYPE_FLOAT)
+        # ── Item 10 (co-op QoL, Will 2026-07-08): the starter chest must yield
+        #    12 INVENTORY BAGS + 36 HEALTH POTIONS so a full 6-player party can
+        #    each grab bags. FixedItemLoot spawns `numSpawn` items drawn from the
+        #    active loot slots weighted by lootNWeight (there is NO FixedNumber
+        #    table in TQAE, and the base chest proves the model: one slot @weight
+        #    125 + numSpawn='2+numberOfPlayers' -> 2+P potions). So set a FIXED
+        #    total of 48 items and split it 36:12 via the slot weights, reusing
+        #    the chest's OWN existing tables (loot1 = the Health_01-05All potion
+        #    table; loot2 = startingloot_sack -> inventorysack). No shared loot
+        #    table is modified, so NO other container's drops change. The old
+        #    redundant 2nd-sack slot (loot3) is disabled so the split stays clean.
+        #    NOTE: exact 12/36 depends on FixedItemLoot distributing numSpawn
+        #    proportionally to weights; if it draws weighted-random the counts are
+        #    ~36/~12 (expectation) - flagged for Will's in-game confirmation.
+        db.set_field(tutorial_chest, 'numSpawnMinEquation', '48', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'numSpawnMaxEquation', '48', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'loot1Chance', 100.0, DATA_TYPE_FLOAT)   # health-potion slot (loot1Name1 kept = Health_01-05All)
+        db.set_field(tutorial_chest, 'loot1Weight1', 36, DATA_TYPE_INT)       # 36 health potions
+        db.set_field(tutorial_chest, 'loot2Chance', 100.0, DATA_TYPE_FLOAT)   # inventory-bag slot
         db.set_field(tutorial_chest, 'loot2Name1', sack_table, DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot2Weight1', 100, DATA_TYPE_INT)
-        db.set_field(tutorial_chest, 'loot3Chance', 100.0, DATA_TYPE_FLOAT)
-        db.set_field(tutorial_chest, 'loot3Name1', sack_table, DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot3Weight1', 100, DATA_TYPE_INT)
-        print(f"  Tutorial chest: added 2 inventory sacks to loot slots 2 & 3")
+        db.set_field(tutorial_chest, 'loot2Weight1', 12, DATA_TYPE_INT)       # 12 inventory bags
+        db.set_field(tutorial_chest, 'loot3Chance', 0.0, DATA_TYPE_FLOAT)     # disable old redundant 2nd-sack slot
+        db.set_field(tutorial_chest, 'loot3Name1', '', DATA_TYPE_STRING)
+        print("  Starter chest (Item 10): numSpawn=48, weights 36 health potions : 12 inventory bags")
         patched += 1
     else:
         print("  WARNING: tutorial potion chest not found")
@@ -1430,6 +1486,7 @@ def main():
         import_base_game_bosses(db, base_db)
 
     strip_ui_overrides(db)
+    remove_dead_orphan_records(db)   # P3 hygiene: drop the corrupted potionexp_test orphan
     restore_potion_drops(db, db09)
     wire_souls_to_monsters(db)
     make_enchantable(db)
@@ -1542,6 +1599,22 @@ def main():
 
     print(f"\nWriting output...")
     db.write_arz(output_path)
+
+    # ── B-SUMMON-1 gate (fail-loud): validate every soul-granted summon chain
+    # on the WRITTEN artifact (mesh present, proven rig pairing, resolving
+    # equipment with no never-equips player uniques, live controller/skills).
+    # Runs against the runtime resolution model (mod UNION base game) with
+    # SV-upstream leniency; a broken mod-authored summon can never ship.
+    del db, db09, db41  # free memory before the validator reloads from disk
+    from validate_summon_pets import validate as _validate_summon_pets
+    _rc = _validate_summon_pets(
+        output_path,
+        str(base_path) if base_path and base_path.exists() else None,
+        str(sv098_path))
+    if _rc != 0:
+        raise SystemExit(
+            "Summon-pet validation FAILED on the written .arz (see offenders "
+            "above); this build does not ship (B-SUMMON-1 gate)")
     print("Done.")
 
 

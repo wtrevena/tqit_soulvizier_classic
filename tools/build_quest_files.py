@@ -490,6 +490,210 @@ def _neutralize_widowletter_spawn(data: bytes) -> bytes:
     return out
 
 
+# ── Guardian-sealed door hardening (B-TEMPLE-DOOR-1, 2026-07-08) ────────────────
+# LIVE REPRO (Will, public build, fresh char): killed the guardian boss in front of the
+# waterfall-room "Sealed By Guardian" door and it STAYED locked. Byte-side diagnosis
+# exhausted with EVERY element correct: quest registered in the load window (idx 97),
+# file well-formed + native-shaped (isActive=0 and isQuestCritical2 both native-normal;
+# checked against base/xpack/XPack4 archives), the watched proxy q_highpriest_lone
+# placed once, on-mesh (0.10u, full 3.5u placement disc walkable) 16.9u from the door,
+# its pool spawns exactly one c_disciple_miniboss (championChance=0 -> no crowd-out),
+# doors + unlock actions well-formed. So the failure is a RUNTIME defect in the
+# Condition_KillAllCreaturesFromProxy -> proxy-kill-credit chain that offline bytes
+# cannot pin (Frida would). Note the same chamber also holds bw_acolyte_clutch_wpriestcnc
+# (a priest-looking pack 21.6u from the door), so the kill Will credited may even have
+# been a different monster than the proxy's.
+#
+# THE MITIGATION (native-precedent, design-preserving): ADD redundant triggers keyed on
+# Condition_KillCreature(creatureRecord) -- the mechanism VANILLA uses to gate the Greek
+# Telkine boss fight ("scripted scene - greek telkine boss fight.qst") -- alongside the
+# original proxy triggers (kept intact; strictly additive). Kill-credit then keys on the
+# CONCRETE monster record the player kills, independent of proxy association. Proven
+# exclusivity (arz + whole-map scan): each guardian record is referenced by exactly ONE
+# pool (its own lone proxy) and placed directly in ZERO levels, so "kill this record
+# anywhere" is exactly equivalent to "kill this proxy's spawn":
+#   c_disciple_miniboss        -> only pools/q_highpriest_lone (waterfall pair)
+#   04_spiritcaller_40/41/42   -> only pools/q_shaman_lone     (ornate treasury door)
+#   q_leinth_47/49/50          -> only pools/q_leinth_lone     (boss room trap door)
+# Added triggers (field layout mirrors the NATIVE AE Condition_KillCreature block:
+# comments/isNot/isResettable/isQuestCritical/creatureRecord):
+#   step "BloodCave Doors and Portals":
+#     kill c_disciple_miniboss -> UnlockFixedItem(secretdoor, 3s) + UnlockFixedItem(
+#       waterblocker, 4s)                         [mirrors the original pair exactly]
+#     kill 04_spiritcaller_40|41|42 (3 triggers) -> UnlockFixedItem(hc_treasurydoor02_boss)
+#   step "Boss Room Crystal Gate":
+#     kill q_leinth_47|49|50 (3 triggers) -> OpenDoor(door_bossroom_trap)
+#       [door-open ONLY: prevents the locked-in-boss-room trap if the same defect hits
+#        Leinth's trigger; the vortex ShowNpc/dialog actions are NOT duplicated -- the
+#        boat-dialog idiom is fragile and double-firing it is riskier than the residual]
+# Both trigger families can fire (original + redundant): the second unlock/open of an
+# already-unlocked/open item is a no-op, so double-firing is harmless.
+HARDEN_STEP0_NAME = 'BloodCave Doors and Portals'
+HARDEN_STEP2_NAME = 'Boss Room Crystal Gate'
+GUARDIAN_DISCIPLE = r'records/drxcreatures/bloodwitch/c_disciple_miniboss.dbr'
+GUARDIAN_SPIRITCALLERS = [
+    r'records/drxcreatures/bloodabomination/04_spiritcaller_40.dbr',
+    r'records/drxcreatures/bloodabomination/04_spiritcaller_41.dbr',
+    r'records/drxcreatures/bloodabomination/04_spiritcaller_42.dbr',
+]
+GUARDIAN_LEINTHS = [
+    r'records/drxcreatures/bloodwitch/q_leinth_47.dbr',
+    r'records/drxcreatures/bloodwitch/q_leinth_49.dbr',
+    r'records/drxcreatures/bloodwitch/q_leinth_50.dbr',
+]
+DOOR_SECRET = r'records/drxmap/bloodcave/babtpl_waterfallroom_secretdoor.dbr'
+DOOR_WATERBLOCKER = r'records/drxmap/bloodcave/triggers/waterblocker.dbr'
+DOOR_TREASURY = r'records/drxmap/bloodcave/bossroomentrancedress/hc_treasurydoor02_boss.dbr'
+DOOR_BOSSROOM_TRAP = r'records/drxmap/bloodcave/triggers/door_bossroom_trap.dbr'
+DELAY_3S = 1077936128  # float32 3.0 bit pattern, as the original secretdoor unlock uses
+DELAY_4S = 1082130432  # float32 4.0 bit pattern, as the original waterblocker unlock uses
+
+
+def _mk_kill_trigger(display, creature_record, actions):
+    """Build one trigger triple (header, conditions, actions) in qst tree form.
+
+    actions: list of (action_class, record_key, dbr, delay_bits) tuples, e.g.
+    ('Action_UnlockFixedItem', 'fixedItem', dbr, DELAY_3S) or
+    ('Action_OpenDoor', 'door', dbr, 0).
+    Field layouts mirror byte-verified native/AE shapes exactly (see the block comment).
+    """
+    header = ('block', [
+        ('field', 'displayTag', ('str', display)),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+        ('field', 'bRatchet', ('int', 0)),
+    ])
+    conditions = ('block', [
+        ('field', 'conditionCount', ('int', 1)),
+        ('field', 'conditionClassName', ('str', 'Condition_KillCreature')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 0)),
+            ('field', 'creatureRecord', ('str', creature_record)),
+        ]),
+    ])
+    act_items = [('field', 'actionCount', ('int', len(actions)))]
+    for cls, key, dbr, delay in actions:
+        act_items.append(('field', 'actionClassName', ('str', cls)))
+        act_items.append(('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'delayTime', ('int', delay)),
+            ('field', key, ('str', dbr)),
+            ('field', 'canReFire', ('int', 0)),
+        ]))
+    return [header, conditions, ('block', act_items)]
+
+
+def _harden_guardian_door_unlocks(data: bytes) -> bytes:
+    """ADD the redundant Condition_KillCreature door triggers (see the block comment).
+
+    Strictly additive: appends 4 triggers to the "BloodCave Doors and Portals" step and
+    3 triggers to the "Boss Room Crystal Gate" step (each step's trigger-container `max`
+    incremented to match); every existing byte of every other field is untouched. Fails
+    loud if the steps are missing, if the original proxy triggers vanished, or if the
+    result does not re-parse/round-trip with exactly the expected additions.
+    """
+    def block_positions(items):
+        return [i for i, it in enumerate(items) if it[0] == 'block']
+
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    additions = {
+        HARDEN_STEP0_NAME: (
+            [_mk_kill_trigger('Unlock Waterfall Door Fallback', GUARDIAN_DISCIPLE,
+                              [('Action_UnlockFixedItem', 'fixedItem', DOOR_SECRET, DELAY_3S),
+                               ('Action_UnlockFixedItem', 'fixedItem', DOOR_WATERBLOCKER, DELAY_4S)])]
+            + [_mk_kill_trigger('Unlock Ornate Door Fallback', sc,
+                                [('Action_UnlockFixedItem', 'fixedItem', DOOR_TREASURY, 0)])
+               for sc in GUARDIAN_SPIRITCALLERS]),
+        HARDEN_STEP2_NAME: (
+            [_mk_kill_trigger('Open Boss Trap Door Fallback', ql,
+                              [('Action_OpenDoor', 'door', DOOR_BOSSROOM_TRAP, 0)])
+             for ql in GUARDIAN_LEINTHS]),
+    }
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = block_positions(steps_container)
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched_steps = 0
+    for stepdef_pos, trigcont_pos, sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        name = field_val(stepdef, 'name')
+        if name not in additions:
+            continue
+        new_triples = additions[name]
+        trigcont = list(steps_container[trigcont_pos][1])
+        n_before = None
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                n_before = it[2][1]
+                trigcont[idx] = ('field', 'max', ('int', n_before + len(new_triples)))
+                break
+        if n_before is None:
+            raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: step {name!r} trigger '
+                             f'container has no max field')
+        for triple in new_triples:
+            trigcont.extend(triple)
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched_steps += 1
+
+    if patched_steps != 2:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: expected to harden exactly 2 steps '
+            f'({HARDEN_STEP0_NAME!r}, {HARDEN_STEP2_NAME!r}), hardened {patched_steps}. '
+            f'Upstream changed; review before shipping.')
+
+    out = qst_format.serialize(tree)
+
+    # ── fail-loud verification on the emitted bytes ──
+    reparsed = qst_format.parse(out)
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError('hardened quest does not round-trip stably')
+
+    def collect(items, key, cls_key, cls_val, out_list):
+        """Collect values of `key` inside blocks following a classname field == cls_val."""
+        i = 0
+        while i < len(items):
+            it = items[i]
+            if it[0] == 'block':
+                collect(it[1], key, cls_key, cls_val, out_list)
+            elif (it[0] == 'field' and it[1] == cls_key and it[2][0] == 'str'
+                    and it[2][1] == cls_val and i + 1 < len(items)
+                    and items[i + 1][0] == 'block'):
+                v = field_val(items[i + 1][1], key)
+                if v is not None:
+                    out_list.append(v.replace('\\', '/').lower())
+            i += 1
+
+    flat = [it for blk in reparsed for it in blk]
+    kills, proxies = [], []
+    collect(flat, 'creatureRecord', 'conditionClassName', 'Condition_KillCreature', kills)
+    collect(flat, 'proxyRecord', 'conditionClassName',
+            'Condition_KillAllCreaturesFromProxy', proxies)
+    want_kills = sorted([GUARDIAN_DISCIPLE.lower()] +
+                        [s.lower() for s in GUARDIAN_SPIRITCALLERS] +
+                        [s.lower() for s in GUARDIAN_LEINTHS])
+    if sorted(kills) != want_kills:
+        raise ValueError(f'hardening verification failed: Condition_KillCreature set is '
+                         f'{sorted(kills)}, expected {want_kills}')
+    for p in ('records/drxmap/proxy/q_highpriest_lone.dbr',
+              'records/drxmap/proxy/q_shaman_lone.dbr',
+              'records/drxmap/proxy/q_leinth_lone.dbr'):
+        if p not in proxies:
+            raise ValueError(f'hardening dropped the ORIGINAL proxy trigger for {p}; '
+                             f'the change must be strictly additive')
+    return out
+
+
 def _open_base_game_arc(path: Path) -> ArcArchive:
     """Open a pristine base-game .arc (e.g. xpack or XPack4 Quests.arc) for verbatim port."""
     if not path.exists():
@@ -784,10 +988,14 @@ def _build_area_quests() -> dict:
         else:
             out[name] = data
 
-    # Blood cave interior: byte-exact except the single lost-NPC entry trigger.
+    # Blood cave interior: byte-exact except (1) the single lost-NPC entry trigger is
+    # neutralized and (2) the guardian-sealed door unlocks are HARDENED with redundant
+    # native-shape Condition_KillCreature triggers (B-TEMPLE-DOOR-1 live repro; see
+    # _harden_guardian_door_unlocks).
     bc = _upstream_quest_bytes(arc, BLOODCAVE_INTERIOR_QUEST)
     _assert_roundtrip(BLOODCAVE_INTERIOR_QUEST, bc)
-    out[BLOODCAVE_INTERIOR_QUEST] = _neutralize_bloodcave_entry_step(bc)
+    out[BLOODCAVE_INTERIOR_QUEST] = _harden_guardian_door_unlocks(
+        _neutralize_bloodcave_entry_step(bc))
 
     # Immortal-Throne endpoint hard-cap: port the VANILLA base-game expansion-portals
     # controller (from XPack4/Quests.arc, NOT upstream SV) with the single IT->Eternal-

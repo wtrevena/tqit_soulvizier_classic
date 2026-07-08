@@ -69,20 +69,40 @@ def is_soul_record(name):
     return any(m in low for m in SOUL_MARKERS)
 
 
+
+# Template path of a skill auto-cast controller (controllers carry NO Class
+# field, so template identity is the check).
+_CTRL_TEMPLATE = 'database\\templates\\skillautocastcontroller.tpl'
+
+
 def validate(arz_path):
     db = ArzDatabase.from_arz(Path(arz_path))
 
-    # Full normalized resolution set of every record name in the .arz.
-    recset = {_norm(n) for n in db.record_names()}
+    # Full normalized resolution map of every record name in the .arz.
+    recmap = {_norm(n): n for n in db.record_names()}
 
     def resolves(path):
-        return _norm(path) in recset
+        return _norm(path) in recmap
+
+    def field_of(rec, name):
+        ff = db.get_fields(rec)
+        if not ff:
+            return None
+        for key, tf in ff.items():
+            if key.split('###')[0] == name and tf.values:
+                return tf.values
+        return None
 
     souls = [n for n in db.record_names() if is_soul_record(n)]
 
     dangling = {}          # dead_path -> [(soul, field), ...]
+    inactive = []          # (soul, reason) - B-SOUL-PROC-1 activation-chain problems
     refs_checked = 0
+    grants_checked = 0
     for name in souls:
+        # Skip the few Monster records parked under soul\test\ paths.
+        if db._record_types.get(name) == 'Monster':
+            continue
         fields = db.get_fields(name)
         if not fields:
             continue
@@ -97,16 +117,63 @@ def validate(arz_path):
                 if not resolves(val):
                     dangling.setdefault(_norm(val), []).append((name, fname))
 
+        # ── B-SOUL-PROC-1 activation-chain checks: a RESOLVING grant can still
+        # be a silent no-op. A granted item skill instantiates at
+        # itemSkillLevel; absent or 0 = level-0 = INACTIVE (the tooltip renders
+        # 'Grants Skill' but the auto-controller has nothing castable - the
+        # Crommyonian Sow bug, 219 souls). Also verify the granted record is a
+        # real Skill_* and the controller is a live SkillAutoCastController. ──
+        isn = field_of(name, 'itemSkillName')
+        if isn and str(isn[0]).strip():
+            grants_checked += 1
+            skill_path = str(isn[0]).strip()
+            skill_rec = recmap.get(_norm(skill_path))
+            if skill_rec:
+                cls = field_of(skill_rec, 'Class')
+                if not cls or not str(cls[0]).startswith('Skill_'):
+                    inactive.append((name, f"itemSkillName is not a Skill_* record "
+                                           f"(Class={cls[0] if cls else None}): "
+                                           f"{skill_path}"))
+            lvl = field_of(name, 'itemSkillLevel')
+            if lvl is None:
+                inactive.append((name, "itemSkillLevel ABSENT (granted skill "
+                                       "instantiates at level 0 = inactive, "
+                                       "never procs)"))
+            elif int(lvl[0]) < 1:
+                inactive.append((name, f"itemSkillLevel == {int(lvl[0])} "
+                                       f"(level-0 grant = inactive, never procs)"))
+            ctl = field_of(name, 'itemSkillAutoController')
+            if ctl and str(ctl[0]).strip():
+                ctl_rec = recmap.get(_norm(str(ctl[0])))
+                if ctl_rec:  # unresolved controllers already reported as dangling
+                    tpl = field_of(ctl_rec, 'templateName')
+                    if not tpl or _norm(str(tpl[0])) != _CTRL_TEMPLATE:
+                        inactive.append((name, f"controller {ctl[0]} has wrong "
+                                               f"template {tpl[0] if tpl else None}"))
+                    chance = field_of(ctl_rec, 'chanceToRun')
+                    if not chance or float(chance[0]) <= 0:
+                        inactive.append((name, f"controller {ctl[0]} chanceToRun "
+                                               f"{chance[0] if chance else None} "
+                                               f"(never fires)"))
+                    trig = field_of(ctl_rec, 'triggerType')
+                    if not trig or not str(trig[0]).strip():
+                        inactive.append((name, f"controller {ctl[0]} has empty "
+                                               f"triggerType"))
+
     print("=" * 72)
     print("SOUL AUGMENT / PROC VALIDATOR")
     print(f"  .arz             : {arz_path}")
-    print(f"  records total    : {len(recset)}")
+    print(f"  records total    : {len(recmap)}")
     print(f"  soul records     : {len(souls)}")
     print(f"  skill refs check : {refs_checked}")
+    print(f"  granted-skill souls (activation-chain checked): {grants_checked}")
     print(f"  DANGLING refs    : {len(dangling)}")
+    print(f"  INACTIVE grants  : {len(inactive)}")
     print("=" * 72)
 
+    ok = True
     if dangling:
+        ok = False
         print("\nFAIL - the following soul skill references do NOT resolve to a")
         print("record in the .arz (the granted skill silently does nothing):\n")
         for dead in sorted(dangling):
@@ -115,9 +182,20 @@ def validate(arz_path):
             for soul, field in users:
                 print(f"    {soul}  <{field}>")
             print()
+
+    if inactive:
+        ok = False
+        print("\nFAIL - the following souls grant a skill whose ACTIVATION chain is")
+        print("broken (resolves, but can never actually proc - B-SOUL-PROC-1):\n")
+        for soul, why in inactive:
+            print(f"[INACTIVE] {soul}")
+            print(f"    {why}\n")
+
+    if not ok:
         return 1
 
-    print("\nPASS - every soul augment / proc / item-skill reference resolves.")
+    print("\nPASS - every soul augment / proc / item-skill reference resolves "
+          "and every granted skill's activation chain is live.")
     return 0
 
 

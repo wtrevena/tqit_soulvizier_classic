@@ -24,13 +24,41 @@ from arc_patcher import ArcArchive
 # into modstrings.txt by this build. Module-level so the mod-tag manifest writer
 # can enumerate these as mod-owned tags. The .arz references two of them
 # (tagSkillName050 = mastery title, tagNewSkill321DESC = a skill description);
-# the two tagMastery* are the mastery-panel labels.
+# the two tagMastery* are the mastery-panel labels and tagMasteryDescription05
+# is the mastery SELECT-screen blurb.
+#
+# B-MASTERY-LABEL-1: the ENGINE KEEPS THE FIRST DEFINITION of a duplicated tag
+# (byte-proven: with SV's "Rogue Mastery" lines emitted first and this block
+# appended at the end, the select screen showed "Rogue"). build_modstrings()
+# therefore SKIPS any key in this dict during per-file section emission, making
+# this block the SINGLE definition of each key, and a fail-loud duplicate-tag
+# gate (check_duplicate_tags) guards the whole file against regressions.
 OCCULT_FIX_TAGS = {
     'tagMasteryBrief05': 'Occult',
     'tagMasteryTitle05': 'Occult Mastery',
+    # Select-screen mastery description (replaces the vanilla Rogue flavor text
+    # SV left in place). Wording drafted from the shipped Occult tree's actual
+    # skill set (envenomed blades/knives, Breach + Shadow Grasp, Nether Strike,
+    # Darklings + Shadow Stalker summons) - EXACT COPY NEEDS WILL'S SIGN-OFF
+    # (Occult is his hand-tuned mastery).
+    'tagMasteryDescription05': "The Occultist tempers an assassin's craft with powers drawn from the dark: envenomed blades and flurries of knives for the single kill, and torn-open breaches that grasp, drain, and wither whole packs. Those who walk deepest into the shadow no longer fight alone, for darklings and the shadow stalker answer their call.",
     'tagSkillName050': 'Occult Mastery',
     'tagNewSkill321DESC': 'Infusing the Breach with shadow energy, the Occultist reaches through and grasps enemies, immobilizing them as dark forces sap their life force.',
 }
+
+# Non-Occult display-string corrections, same single-definition mechanism as
+# OCCULT_FIX_TAGS (skipped during per-file SV emission; emitted once in the fix
+# block; guarded by the duplicate-tag gate; folded into the mod-tag manifest).
+# B-AREA-NAME-1: SV 0.98i's own text ships tagMZoneGoM=Duister (upstream
+# leftover), so the Garden of Merchants zone displayed 'Duister' on the minimap.
+# NOTE deliberately NOT touched (out of scope per the area-name audit): the
+# sibling tagMPortalGoM still reads 'Duister Portal' - flagged for Will.
+TEXT_FIX_TAGS = {
+    'tagMZoneGoM': 'Garden of Merchants',
+}
+
+# The union skip-set: any key in here is emitted ONLY by the fix block.
+_FIX_BLOCK_TAGS = {**OCCULT_FIX_TAGS, **TEXT_FIX_TAGS}
 
 
 def extract_tags(text: str) -> OrderedDict:
@@ -90,26 +118,39 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
 
         section_lines = [f'//{fname} - START']
         for key, value in tags.items():
+            # B-MASTERY-LABEL-1 / B-AREA-NAME-1: keys owned by the fix block
+            # (Occult labels + text corrections) are NEVER emitted from the SV
+            # source files - the fix block below is their single definition.
+            # (The engine keeps the FIRST definition of a duplicated tag, so
+            # emitting SV's "Rogue Mastery" / "Duister" lines here made the
+            # appended fix block a dead letter.)
+            if key in _FIX_BLOCK_TAGS:
+                continue
             if key not in all_tags:
                 all_tags[key] = value
                 section_lines.append(f'{key}={value}')
-            elif all_tags[key] != value:
-                all_tags[key] = value
-                section_lines.append(f'{key}={value}')
+            # A later SV file may redefine a tag with a different value (12
+            # such cross-file redefinitions exist, e.g. xui.txt restyling
+            # ui.txt format strings). The engine keeps the FIRST definition,
+            # so re-emitting the later value is dead weight that would also
+            # trip the duplicate-tag gate; drop it. Effective in-game values
+            # are IDENTICAL to the previous build (first-wins either way).
         section_lines.append(f'//{fname} - END')
         sections.append('\r\n'.join(section_lines))
 
-    # Apply Occult mastery fixes (label + missing skill descriptions).
-    # OCCULT_FIX_TAGS is module-level so the manifest writer can treat its keys
-    # as mod-owned tags (tagSkillName050 / tagNewSkill321DESC are the two the
-    # .arz references; the two tagMastery* are the mastery panel labels).
-    fix_lines = ['//Occult mastery label fix - START']
-    for key, value in OCCULT_FIX_TAGS.items():
+    # Apply the fix block: Occult mastery fixes (labels + select-screen
+    # description + missing skill descriptions) + text corrections
+    # (TEXT_FIX_TAGS, e.g. the tagMZoneGoM 'Duister' -> 'Garden of Merchants'
+    # zone-name fix). These keys were SKIPPED during per-file emission above,
+    # so each line below is that tag's SINGLE definition (first-wins safe).
+    fix_lines = ['//Occult mastery label fix + text corrections - START']
+    for key, value in _FIX_BLOCK_TAGS.items():
         all_tags[key] = value
         fix_lines.append(f'{key}={value}')
-    fix_lines.append('//Occult mastery label fix - END')
+    fix_lines.append('//Occult mastery label fix + text corrections - END')
     sections.append('\r\n'.join(fix_lines))
-    print(f"  Applied Occult mastery fixes ({len(OCCULT_FIX_TAGS)} tags)")
+    print(f"  Applied fix-block tags ({len(OCCULT_FIX_TAGS)} Occult + "
+          f"{len(TEXT_FIX_TAGS)} text corrections)")
 
     # Add uber soul tags
     uber_count = 0
@@ -157,6 +198,32 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
     print(f"  Total unique tags: {len(all_tags)}")
 
     return '\r\n'.join(sections) + '\r\n'
+
+
+def check_duplicate_tags(modstrings: str):
+    """FAIL-LOUD duplicate-tag gate (B-MASTERY-LABEL-1 hardening).
+
+    The engine keeps the FIRST definition of a tag duplicated inside
+    modstrings.txt, so a second CONFLICTING definition is at best dead weight
+    and at worst (when the intended value is the later one, as with the Occult
+    mastery fix) a silent display bug. Returns the list of
+    (tag, [values...]) conflicts; callers raise on non-empty. Exact-duplicate
+    re-definitions (same value twice) are reported as warnings only.
+    """
+    from collections import OrderedDict
+    defs = OrderedDict()
+    for line in modstrings.split('\n'):
+        line = line.strip('\r').strip()
+        if not line or line.startswith('//') or '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        defs.setdefault(key.strip(), []).append(value)
+    conflicts = [(k, vs) for k, vs in defs.items() if len(set(vs)) > 1]
+    exact_dups = [(k, vs) for k, vs in defs.items()
+                  if len(vs) > 1 and len(set(vs)) == 1]
+    for k, vs in exact_dups:
+        print(f"  WARNING duplicate tag (same value {len(vs)}x, harmless): {k}")
+    return conflicts
 
 
 # Quest text tags the integrated SV area questlines reference but that are ABSENT
@@ -211,6 +278,7 @@ def collect_mod_authored_tags(uber_tags_path: Path = None) -> set:
     present in Text.arc yields zero false positives.
     """
     tags = set(OCCULT_FIX_TAGS.keys())
+    tags |= set(TEXT_FIX_TAGS.keys())
     tags |= set(QUEST_INTEGRATION_TAGS.keys())
 
     # Portal description tag referenced by the portal NPC records the DB build
@@ -258,6 +326,22 @@ def build_text_arc(sv_arc_path: Path, output_path: Path,
     print(f"Building modstrings.txt from: {sv_arc_path}")
     modstrings = build_modstrings(sv_arc_path, uber_tags_path,
                                   extra_tags=QUEST_INTEGRATION_TAGS)
+
+    # ── Duplicate-tag gate (fail-loud, B-MASTERY-LABEL-1 hardening) ─────────
+    # The engine keeps the FIRST definition of a duplicated tag, so a second
+    # conflicting definition is a silent display bug (the "Rogue" mastery
+    # label). A build with any conflicting duplicate does NOT ship.
+    conflicts = check_duplicate_tags(modstrings)
+    if conflicts:
+        for k, vs in conflicts[:20]:
+            print(f"  DUPLICATE-TAG OFFENDER: {k} defined {len(vs)}x with "
+                  f"conflicting values: {[v[:60] for v in vs]}")
+        raise SystemExit(
+            f"Duplicate-tag gate FAILED: {len(conflicts)} tag(s) defined more "
+            f"than once with conflicting values in modstrings.txt (the engine "
+            f"keeps the FIRST, so later intended values are silently dead). "
+            f"Fix the emitters; see offenders above.")
+    print(f"  Duplicate-tag gate OK: no conflicting duplicate definitions")
 
     print(f"\nBuilding Text.arc...")
     # We need to create a new arc with just modstrings.txt

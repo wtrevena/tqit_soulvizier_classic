@@ -392,6 +392,34 @@ if ((Test-Path $soulValidateScript) -and (Test-Path $dstArz)) {
     Write-Host '  Soul augment validation passed.' -ForegroundColor Green
 }
 
+# --- Step 4d: Gate on soul-granted summon pets (B-SUMMON-1) ---
+# Every soul-granted summon must spawn a complete, renderable, usable pet:
+# mesh present, proven mesh+animation rig pairing, resolving equipment with no
+# never-auto-equips player Epic/Legendary uniques (the naked-Boneash bug),
+# live controller and skill refs. Resolution matches runtime (mod UNION base
+# game); SV-upstream pets are warn-only (proven by SV play). Fails the build
+# loudly on any broken mod-authored summon chain.
+$summonValidateScript = Join-Path $toolsDir 'validate_summon_pets.py'
+if ((Test-Path $summonValidateScript) -and (Test-Path $dstArz)) {
+    Write-Host ''
+    Write-Host 'Validating soul-granted summon pets (.arz)...' -ForegroundColor Yellow
+    $summonArgs = @($summonValidateScript, $dstArz)
+    if (Test-Path $baseArz) { $summonArgs += $baseArz }
+    if ($srcArz.Count -gt 0) {
+        if (-not (Test-Path $baseArz)) { $summonArgs += '' }
+        $summonArgs += $srcArz[0].FullName
+    }
+    & $pythonExe @summonArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ''
+        Write-Host 'ERROR: Summon-pet validation FAILED. One or more soul-granted' -ForegroundColor Red
+        Write-Host '       summons spawn a broken pet (naked/floating/inert class).' -ForegroundColor Red
+        Write-Host '       Fix the pet-creation block in tools/apply_svc_patches.py.' -ForegroundColor Red
+        exit 1
+    }
+    Write-Host '  Summon-pet validation passed.' -ForegroundColor Green
+}
+
 # --- Step 5: Quest system ---
 # Use SVAERA's Quests.arc (100 AE-compatible quest files + tokens.bin).
 # Custom portal quests are added on top.

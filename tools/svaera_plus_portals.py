@@ -16,9 +16,13 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
     parse_bitmap_index, build_level_index, build_quests, build_bitmap_index,
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
 from build_section_surgery import (
-    INJECT_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
+    INJECT_SPECS, MOVE_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
     parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11,
-    inject_into_sv_only_blob, inject_rec02_into_blob)
+    inject_into_sv_only_blob, inject_rec02_into_blob, move_0x05_instances,
+    merge_hub_into_inject_specs, build_hub_inject_specs, patch_respawn_group_position,
+    RESPAWNTEMPLEORIENT01_UNIQUEID,
+    REWRITE_0X06_SPECS, rewrite_0x06_descriptors,
+    FLAG_UID_SPECS, set_0x05_flags_uid, build_teleport_shrine_group_record)
 
 # --- GROUPS parsing ---
 def _find_next_groups_record(data, start, end_limit):
@@ -431,7 +435,18 @@ def main():
     # --- Paths ---
     svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
     sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
-    out_arc_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\local\Levels_merged.arc')
+
+    # --- TEST HUB flag (SVC_TEST_HUB=1) ---
+    # OFF (default): canonical build -> local/Levels_merged.arc (A1/A2 doors + C1-C4 fixes, hub-free).
+    # ON: build the SEPARATE hub artifact -> local/Levels_merged_TESTHUB.arc (canonical + the 20
+    # blood-cave hub portals). The flag-OFF build MUST be byte-identical to flag-ON minus the hub
+    # entities (proven by gate_hub_identity.py); the hub specs are APPENDED after base specs so base
+    # instance indices never shift. Everything ELSE (A1/A2/C1-C4) is in BOTH builds.
+    USE_HUB = os.environ.get('SVC_TEST_HUB') == '1'
+    inject_specs = merge_hub_into_inject_specs(INJECT_SPECS) if USE_HUB else INJECT_SPECS
+    out_name = 'Levels_merged_TESTHUB.arc' if USE_HUB else 'Levels_merged.arc'
+    out_arc_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\local') / out_name
+    print(f'BUILD MODE: {"TEST HUB (SVC_TEST_HUB=1)" if USE_HUB else "canonical"} -> {out_name}')
 
     # --- Load maps ---
     print('Loading SVAERA...')
@@ -482,6 +497,42 @@ def main():
     merged_groups = _rebuild_groups(sv_g_val0, sv_g_recs + ae_only_recs)
     print(f'  SV: {len(sv_g_recs)}, SVAERA-only: {len(ae_only_recs)}, merged: {len(sv_g_recs) + len(ae_only_recs)}')
 
+    # --- 2b. C1 FIX (respawn position): the HV01 fountain's GROUPS respawnorient member still
+    # carries the OLD (49.263,15.634,14.950) position; the engine respawns THERE, not at the moved
+    # 0x05 instance. Rewrite the GROUPS member position to the fountain's NEW 0x05 position so GROUPS
+    # == 0x05 (native-shrine parity). Byte-scan-proven root cause (docs/DOORS_HUB_LOG.md C1). This is
+    # the ONLY stale copy (SD is byte-identical + carries no fountain coord; 0x05 is already correct).
+    print('=== C1: respawn-position GROUPS fix ===')
+    merged_groups = patch_respawn_group_position(
+        merged_groups, RESPAWNTEMPLEORIENT01_UNIQUEID, (35.70, 17.60, 143.10),
+        level_name='HiddenValley01 fountain')
+
+    # --- 2c. DUISTER RETURN (2026-07-08): wire the RogueEncampment rift shrine into the
+    # TeleportShrine portal network - the GROUPS half. Mirrors the Garden shrine's record
+    # byte-shape exactly (1 member = uid+levelGUID+pos + 20B tail; sub_count=2 like every
+    # native TeleportShrine record). The 0x05 half (flags=1 + UniqueId on the existing
+    # inert instance) is applied in step 6c via FLAG_UID_SPECS. See the DUISTER block in
+    # build_section_surgery.py for the full mechanism + byte evidence.
+    print('=== C2c: Duister shrine GROUPS record (TeleportShrine network) ===')
+    # Direct byte-append (val0 + count header, records back-to-back): safer than
+    # re-parsing the rebuilt section through the heuristic boundary scanner. The new
+    # record's serialized form matches _rebuild_groups' per-record layout exactly.
+    _duister_rec = build_teleport_shrine_group_record()
+    _name_b = _duister_rec['name'].encode('ascii')
+    _cat_b = _duister_rec['category'].encode('ascii')
+    assert _name_b not in merged_groups, f'GROUPS already contains {_duister_rec["name"]!r}'
+    _rec_bytes = (struct.pack('<I', _duister_rec['sub_count'])
+                  + struct.pack('<I', len(_name_b)) + _name_b
+                  + struct.pack('<I', len(_cat_b)) + _cat_b
+                  + struct.pack('<I', _duister_rec['member_count'])
+                  + _duister_rec['raw_data'])
+    _g_count = struct.unpack_from('<I', merged_groups, 4)[0]
+    _mg = bytearray(merged_groups + _rec_bytes)
+    struct.pack_into('<I', _mg, 4, _g_count + 1)
+    merged_groups = bytes(_mg)
+    print(f'  appended GROUPS record {_duister_rec["name"]!r} cat={_duister_rec["category"]!r} '
+          f'(count {_g_count} -> {_g_count + 1}, +{len(_rec_bytes)} B)')
+
     # --- 3. SD: SV's (blood cave zone definitions) ---
     sv_sd = sv_data[sv_sec[SEC_SD]['data_offset']:
                     sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
@@ -529,12 +580,12 @@ def main():
     # Build lookup: level key -> (source, index, blob)
     # "ae" levels are in ae_data, "sv_only" are in converted_blobs
     ae_inject_keys = {}
-    for lv_key, specs in INJECT_SPECS.items():
+    for lv_key, specs in inject_specs.items():
         if lv_key in ae_by_name:
             ae_inject_keys[lv_key] = specs
 
     sv_inject_keys = {}
-    for lv_key, specs in INJECT_SPECS.items():
+    for lv_key, specs in inject_specs.items():
         for i, lv in enumerate(sv_only):
             if lv['fname'].replace('\\', '/').lower() == lv_key:
                 sv_inject_keys[i] = specs
@@ -557,13 +608,23 @@ def main():
         # the original blob magic (v0x0f stays v0x0f).
         if blob_ver in (0x11, 0x0f):
             secs, magic = parse_blob_sections(blob)
+            move_specs = MOVE_SPECS.get(lv_key, [])
+            base_size = 72 if blob_ver in (0x11, 0x0f) else 56
             for j, s in enumerate(secs):
                 if s['type'] == 0x05:
-                    secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(s['data'], specs)}
+                    data = s['data']
+                    # Workstream B: MOVE native instances in place FIRST (rewrites only their
+                    # position bytes), THEN append the injected records. Moves target existing
+                    # instances by dbr+from_xyz; injection appends new ones to the tail - the
+                    # two do not interact (moves never change instance count or ordering).
+                    if move_specs:
+                        data = move_0x05_instances(data, move_specs, base_size, lv_key)
+                    secs[j] = {'type': 0x05, 'data': inject_into_0x05_v11(data, specs)}
             ae_patched_blobs[ae_idx] = rebuild_blob(magic, secs)
             ae_injected_count[ae_idx] = len(specs)
             ae_injected_specs[ae_idx] = specs
-            print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x{blob_ver:02x})')
+            print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x{blob_ver:02x})'
+                  + (f' + moved {len(move_specs)} native instance(s)' if move_specs else ''))
         else:
             print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
 
@@ -585,6 +646,35 @@ def main():
             print(f'  Injected {len(specs)} NPC(s) into SV-only {lv_key} (v0x0e)')
         else:
             print(f'  WARN: {lv_key} has unknown format v0x{blob_ver:02x}')
+
+    # --- 6c. SV-only structural patches (2026-07-08 wave) ---------------------------
+    # (a) FLAG_UID_SPECS: set flags=1 + UniqueId on an EXISTING 0x05 instance (the
+    #     inert RogueEncampment rift shrine; pairs the step-2c GROUPS record).
+    # (b) REWRITE_0X06_SPECS: repurpose SpartaCryptLevel2's dangling 0x06 portal
+    #     descriptor into the native return door to the catacube (in-place 60-byte
+    #     rewrite; count unchanged). See build_section_surgery.py for both mechanisms.
+    print('\n=== SV-only structural patches (flags/uid + 0x06 rewrites) ===')
+    for i, lv in enumerate(sv_only):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in FLAG_UID_SPECS:
+            blob = converted_blobs[i]
+            blob_ver = blob[3] if blob[:3] == b'LVL' else None
+            assert blob_ver == 0x0e, f'{lv_key}: FLAG_UID_SPECS expects v0x0e, got v0x{blob_ver:02x}'
+            secs, magic = parse_blob_sections(blob)
+            new_secs = []
+            for s in secs:
+                if s['type'] == 0x05:
+                    d = s['data']
+                    for spec in FLAG_UID_SPECS[lv_key]:
+                        d = set_0x05_flags_uid(d, spec['dbr'], spec['from_xyz'],
+                                               spec['uid'], 56, lv_key)
+                    new_secs.append({'type': 0x05, 'data': d})
+                else:
+                    new_secs.append(s)
+            converted_blobs[i] = rebuild_blob(magic, new_secs)
+        if lv_key in REWRITE_0X06_SPECS:
+            converted_blobs[i] = rewrite_0x06_descriptors(
+                converted_blobs[i], REWRITE_0X06_SPECS[lv_key], lv_key)
 
     # --- 7. Append 0x14 entries ONLY for injected instances that need one (SV-faithful) ---
     # A 0x14 entry is per-instance engine BINDING metadata (e.g. a cave-mouth GridEntrance
@@ -834,6 +924,17 @@ def main():
     swapped_blob = inject_rec02_into_blob(sv_r09_blob, bytes(swapped_ints),
                                           donor_data=gen_0b, use_stub=False,
                                           pre_positioned=True)
+
+    # TEST HUB: inject the 10 blood-cave hub portals into Random09A's 0x05 (+ their 48-byte 0x14
+    # bindings). Random09A is v0x0e and handled by the special swap path (NOT the normal INJECT_SPECS
+    # loop), so the hub R09 specs must be applied to swapped_blob here. Only when SVC_TEST_HUB=1; the
+    # canonical build leaves swapped_blob untouched (byte-identity requirement). The 0x0b navmesh was
+    # already injected above; inject_into_sv_only_blob only touches 0x05/0x14.
+    if USE_HUB:
+        _r09_hub_specs = build_hub_inject_specs().get(R09_KEY, [])
+        if _r09_hub_specs:
+            swapped_blob = inject_into_sv_only_blob(swapped_blob, _r09_hub_specs, R09_KEY)
+            print(f'  TEST HUB: injected {len(_r09_hub_specs)} hub portal(s) into Random09A 0x05/0x14')
 
     # Overwrite the merged Random09A entry in-place (index identity stays AE's).
     merged_levels[ae_r09_idx]['ints_raw'] = bytes(swapped_ints)

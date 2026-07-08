@@ -66,7 +66,14 @@ def gate_collateral():
                 'area01_rhodes/rhodes_secretvista_01.lvl', 'minidungeons/spartacryptlevel2.lvl',
                 'secret_place/darkforestenter.lvl', 'olympus/gardenofmerchants.lvl',
                 'delphi/delphilowlands02.lvl', 'delphi/delphilowlands03.lvl',
-                'delphi/delphilowlands04.lvl'}
+                'delphi/delphilowlands04.lvl',
+                # ROUND 2 (born-open GridEntrance): catacube02_floorlast hosts the Sparta P1
+                # entrance, whose 0x14 grew +12 bytes (the (2,0,1) GridEntrance prefix). It was
+                # already changed vs build25 by the build25 Sparta wave; the +12 here is the
+                # openness fix. (The other entrance-bearing door blobs above also grow +12.)
+                'athens/underground/catacube02_floorlast.lvl',
+                # 2026-07-08 wave: Duister shrine wiring (0x05 flags=1 + UniqueId).
+                'secret_place/rogueencampment.lvl'}
     unexpected = []
     for k, s0b, s1b in changed:
         hit = any(i in k for i in intended)
@@ -184,7 +191,7 @@ def gate_placement():
     P1 = bss.PORTAL_OLYMPIANARENA1_DBR; P2 = bss.PORTAL_OLYMPIANARENA2_DBR
     checks = [
         # A1
-        ('A1 G1 entrance', 'levels/world/orient/silkroad/hiddenvalley01.lvl', P1, (46.70, 15.80, 127.90), bss.GARDEN_G1_0x14, 'HiddenValley01'),
+        ('A1 G1 entrance', 'levels/world/orient/silkroad/hiddenvalley01.lvl', P1, (51.00, 17.80, 142.00), bss.GARDEN_G1_0x14, 'HiddenValley01'),  # B-PORTAL-2 relocate off the exit corridor
         ('A1 G4 landing', 'levels/world/orient/silkroad/hiddenvalley01.lvl', P2, (56.90, 17.60, 138.10), bss.GARDEN_G4_0x14, 'HiddenValley01'),
         ('A1 G2 landing', 'levels/world/olympus/gardenofmerchants.lvl', P2, (130.30, -39.00, 79.10), bss.GARDEN_G2_0x14, 'GardenofMerchants'),
         ('A1 G3 entrance', 'levels/world/olympus/gardenofmerchants.lvl', P1, (142.30, -39.00, 79.10), bss.GARDEN_G3_0x14, 'GardenofMerchants'),
@@ -193,6 +200,9 @@ def gate_placement():
         ('A2 S4 landing', 'xpack/levels/area01_rhodes/rhodes_secretvista_01.lvl', P2, (137.10, 17.00, 43.10), bss.SECRET_S4_0x14, 'rhodes_secretvista_01'),
         ('A2 S2 landing', 'xpack/levels/secret_place/darkforestenter.lvl', P2, (23.90, 2.00, 30.50), bss.SECRET_S2_0x14, 'DarkForestEnter'),
         ('A2 S3 entrance', 'xpack/levels/secret_place/darkforestenter.lvl', P1, (17.90, 7.00, 38.50), bss.SECRET_S3_0x14, 'DarkForestEnter'),
+        # 2026-07-08: Sparta P1 relocated off the stairsdown funnel (native-door wave);
+        # its landing side is now SC2's repurposed 0x06 descriptor (gate_wave4_0708).
+        ('SPARTA P1 entrance', 'levels/world/greece/athens/underground/catacube02_floorlast.lvl', P1, (20.00, 1.20, 46.00), bss.SPARTA_P1_0x14, 'CataCube02_FloorLast'),
     ]
     for label, key, dbr, local, exp14, donor in checks:
         blob = bm.get(key)
@@ -202,7 +212,12 @@ def gate_placement():
         if it is None:
             print(f'  {label}: PORTAL NOT FOUND at {local}'); ok = False; continue
         rot_ident = all(abs(it['rot'][i] - (1.0 if i in (0, 4, 8) else 0.0)) < 1e-5 for i in range(9))
-        pl_ok = (pl == exp14)
+        # ROUND 2 (born-open GridEntrance): the ENTRANCE record (portal_olympianarena1) now
+        # carries a 60-byte 0x14 = 12-byte (2,0,1) prefix + the 48-byte binding; landings
+        # (portal_olympianarena2, GridExitOneWay) keep the bare 48-byte binding.
+        is_entrance = dbr.replace(b'/', b'\\').lower() == P1.replace(b'/', b'\\').lower()
+        want14 = (bss.GRIDENTRANCE_0x14_PREFIX + exp14) if is_entrance else exp14
+        pl_ok = (pl == want14)
         # on-mesh
         mesh = _donor_or_blob_mesh(blob, donor)
         c = corner[key]
@@ -228,10 +243,13 @@ def gate_placement():
         blob = bm.get(key)
         for (dbr, x, y, z, opts) in specs:
             it, pl, ver = _portal_0x14(blob, dbr, (x, y, z))
-            good = it is not None and pl == opts['x14_payload'] and it['flags'] == 0
+            # ROUND 2: entrance instances carry the 60-byte (prefix + binding) 0x14.
+            is_entrance = dbr.replace(b'/', b'\\').lower() == P1.replace(b'/', b'\\').lower()
+            want14 = (bss.GRIDENTRANCE_0x14_PREFIX + opts['x14_payload']) if is_entrance else opts['x14_payload']
+            good = it is not None and pl == want14 and it['flags'] == 0
             if not good:
                 ok = False
-                print(f'  HUB {key.split("/")[-1]} {dbr.decode("ascii","replace").split(chr(92))[-1]} @({x},{y},{z}): FAIL (found={it is not None} 0x14ok={it is not None and pl==opts["x14_payload"]})')
+                print(f'  HUB {key.split("/")[-1]} {dbr.decode("ascii","replace").split(chr(92))[-1]} @({x},{y},{z}): FAIL (found={it is not None} 0x14ok={it is not None and pl==want14})')
     print(f'  HUB: all {sum(len(v) for v in hub.values())} hub portals present with correct 0x14 (if no FAIL above)')
     print(f'  PLACEMENT: {PASS if ok else FAIL}')
     return ok
@@ -374,8 +392,17 @@ def gate_crosstalk():
             while pos + 8 <= len(dd):
                 psz = struct.unpack_from('<I', dd, pos + 4)[0]
                 payload = dd[pos + 8:pos + 8 + psz]
-                if psz == 48:
-                    m = payload[0:16]; x = payload[16:32]; dest = payload[32:48]
+                # ROUND 2: our ENTRANCE portals now carry a 60-byte 0x14 (12-byte (2,0,1)
+                # prefix + 48-byte mouth+exit+dest); LANDINGS keep the bare 48-byte
+                # (mouth + zeros). Strip the prefix off a 60-byte GridEntrance payload so
+                # the binding is read at the same offsets as before.
+                binding = None
+                if psz == 60 and payload[:12] == bss.GRIDENTRANCE_0x14_PREFIX:
+                    binding = payload[12:]        # a static-GridEntrance entrance
+                elif psz == 48:
+                    binding = payload             # a landing (or a legacy 48-byte entrance)
+                if binding is not None and len(binding) == 48:
+                    m = binding[0:16]; x = binding[16:32]; dest = binding[32:48]
                     if dest == b'\x00' * 16:  # landing (mouth + zeros)
                         land_mouths.append((fn, m))
                     else:  # entrance (mouth+exit+dest)

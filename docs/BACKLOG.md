@@ -36,6 +36,10 @@
   `_HUB_CAVE_ENTRANCES` / `_HUB_CAVE_RETURNS` coords in tools/build_section_surgery.py; the door
   portal coords in the A1/A2/Sparta specs. Re-run gate_doors_hub after moving.
 - **NOTE:** this is the TESTHUB hub portals AND possibly canonical doors - check both.
+- **2026-07-08:** G1 (the fountain-camp Garden door, the offender Will hit) relocated ~12.4u off
+  the walking lane by the map wave. NEW SAME-CLASS HAZARD found by audit: the Sparta door entrance
+  P1 in catacube02_floorlast sits 6.0u from the stairsdown01 traffic funnel; relocate it too
+  (in the wave). Vista S1 and maze03 A1 placements are fine.
 
 ### B-PORTAL-3: Return/back teleport doesn't work (one-way trip)
 - **Symptom:** Will teleported to "Duister" (Secret Place) via the panel, could walk around, but
@@ -57,6 +61,23 @@
   With Duister's returns already confirmed broken, one-way returns are SYSTEMIC: verify and fix the
   returns of ALL FOUR portal areas (Garden, Secret Place, Uber Dungeon, Sparta Crypt). Outbound
   born-open entrances are CONFIRMED WORKING live (first public-build walk-in teleport verified).
+- **ROOT-CAUSE DISCRIMINATOR (2026-07-08 byte-level diagnosis):** every 0x14 binding is CORRECT
+  (60B prefixed entrances, 48B landings, pairing intact, dest GUIDs verified, no mis-wire). The
+  live pattern: entrances hosted in ORIGINAL-INDEX levels fire (G1 in HV01, hub portals in swapped
+  Random09A); entrances hosted in APPENDED SV-only levels never fire (G3 in the Garden, S3 + hub
+  returns in darkforestenter). Invented return-entrances have zero native precedent (native
+  bidirectional doors = one 0x14 mouth + one reciprocal 0x06 descriptor in the destination).
+- **FIX RECIPES (handed to the 2026-07-08 map wave):** SPARTA = convert to a NATIVE two-way door by
+  repurposing SC2's dangling 0x06 tail descriptor in place (exit d76121ad..., mouth efbf54c9...,
+  src catacube GUID 817574a8..., door cell (6,0,4)); remove injected P2/P3/P4. UBER (A1) = DEFER
+  (crypt_floor1 is a 2-layer grid; door-cell Y = layer index; needs layer RE first). GARDEN =
+  no native map return possible (terrain level); SV's DESIGNED return is the rift shrine
+  teleportshrine_gom, VERIFIED FULLY WIRED in our build (Will: walk-test rift travel from the
+  Garden shrine). DUISTER = its teleportshrineorient01 shrine is INERT (flags=0, no uid, no GROUPS
+  member); wiring it like the Garden shrine gives Duister the same SV-native rift return.
+  Escalation if appended-host entrances must ever fire: Frida runtime session in the Garden.
+- **Walk-test predictions:** maze03-hosted hub return WORKS; SC2/murderbossroom-hosted returns
+  broken until the SC2 conversion; pillagedvillage -> forestobsidiantransition = control case.
 
 ### B-SUMMON-1: Summoned pets spawn NAKED / broken (no equipment, some immobile)
 - **Symptom (Will):** "Summon Boneash" summons Boneash but he has **no weapon, no helmet, no
@@ -106,22 +127,36 @@
 ### B-TEMPLE-DOOR-1: "Temple Entrance - Locked ~ Sealed By Guardian" won't open
 - **Symptom:** killing the guardian in front of the sealed temple door in the blood cave does NOT
   unseal it. (Was task #37C.)
-- **Cause candidates:** (1) the controlling quest was NEVER PORTED - the "4 questlines = complete"
-  conclusion may be wrong; re-audit the ~86 upstream .qst files for a temple-door/guardian
-  controller; (2) the quest's Condition_MonsterDeath watches a DIFFERENT monster record than the
-  one Will killed (check our monster renames/soul-wave didn't change the guardian's record name);
-  (3) the door's UnlockFixedItem binding broke in the merge.
-- **Fix approach:** trace SV's unlock chain end-to-end; port/restore the controller quest; add to
-  the map contract suite (a sealed door must have a live unlock path). Files: tools/build_quest_files.py.
+- **DIAGNOSIS 2026-07-08 (byte-proven; 'never ported' REFUTED):** the full unlock chain is present
+  and intact in build27. Doors = babtpl_waterfallroom_secretdoor.dbr + waterblocker.dbr
+  (FixedItemDoor, locked=1, tagBloodCaveTempleEntrance; waterblocker carries the Sealed By Guardian
+  hint tag) in drxbc2.lvl. Controller = open_bloodcave_portal.qst step 0 trigger 'Unlock Waterfall
+  Door': Condition_KillAllCreaturesFromProxy(q_highpriest_lone, isResettable=1) ->
+  Action_UnlockFixedItem on BOTH doors; ported byte-intact; quest registered at idx 97/256 (inside
+  the load window since build22). Guardian proxy/pool/monsters all present under identical names
+  (no soul-wave rename). Nothing to port, no slot to add, no rename.
+- **Residual = RUNTIME** (quest adoption / proxy-death arming across region streaming; same
+  reliability class as the widow-letter window bug). Will's original failing test predates the
+  build22 window fix, so the door may ALREADY WORK. **DISCRIMINATOR (Will, on the fresh public-build
+  character): in the blood cave waterfall room (drxBC2), kill the lone guardian miniboss in front of
+  the Temple Entrance and see if it unlocks.** Unlocks = close this item (build22 fixed it). Still
+  sealed = the proxy is not spawning its guardian (population wiring, sibling of B-SPRITE-1) or
+  KillAllCreaturesFromProxy is not arming for an adopted control quest; investigate THAT, not the port.
 
 ### B-SMOKE-1: Region smoke density far below SV (STILL - reconfirmed)
 - **Symptom:** some smoke present, but SV had FAR more, starting the moment you enter the section.
 - **Cause:** the C4 atmosphere restore covered ENTITY emitters only; the REGION-WIDE ENVIRONMENT
   half (SD/0x18 or level 0x09 env params - volumetric fog) was never restored (vet hedge on record).
-- **Fix approach:** deep-parse SV's SD/0x09 env records for the HV01 region + the Delphi occultist
-  region; diff vs shipped; restore the region-wide fog params SV-faithfully. Files: map tooling
-  (svaera_plus_portals / build_section_surgery - needs an SD or 0x09 patch path that may not exist
-  yet = new capability).
+- **2026-07-08 REFUTATION:** the region-env transplant hypothesis is DEAD: the 0x09 env/fog record
+  is byte-identical SV vs shipped for every affected level (the v1-vs-v2 divergence is a re-save
+  framing marker, not content); SD/0x10 carry no fog delta. DO NOT transplant 0x09/0x17 (framing
+  mismatch corrupts). Remaining levers: (a) map side = restore the still-dropped SV Delphi entities
+  via INJECT_SPECS at SV-exact coords (delphilowlands02: t1_pitspawner_01 x2, t1_pitspawner_02,
+  t1_lildude x6, soundobject_cageglow; delphilowlands04: cage_binding_fx01 + cage props + lildudes
+  + vitstaffs; delphilowlands03: lildudes + vitstaffs) - in the 2026-07-08 map wave; (b) DB side =
+  audit fog_occult_fx01/pit_fx01/pit_fx02/bugcloud_smallfx emission values vs SV-era - in the
+  2026-07-08 DB wave (item 9). If both come back SV-faithful, the residual gap is engine-era
+  rendering, not data.
 
 ### B-TEXT-TAGS-1: 8 Blood Toxeus / Crimson Verdict tags render as raw strings in-game
 - **Symptom:** on the PUBLIC item, Hemorrheus's name, the Crimson Verdict set name, its 4 set-piece
@@ -143,6 +178,28 @@
   Files: `tools/build_text_arc.py`, the tag manifests (`work/.../Database/uber_soul_tags.txt` is the
   LIVE one), and whatever authored these records in `tools/apply_svc_patches.py`.
 
+### B-SOUL-PROC-1: Soul-granted 'Activated on attack' skill never procs (NEW 2026-07-08, P1)
+- **Symptom (Will, public build, co-op session, fresh level-5 Occultist):** the Crommyonian Sow
+  Soul tooltip says "Grants Skill: Ground Smash (Activated on attack), Cooldown: 8 Seconds" but the
+  skill NEVER activates when attacking.
+- **Why the existing validator missed it:** validate_soul_augments only checks that
+  itemSkillName / itemSkillAutoController REFERENCES RESOLVE; a proc needs the whole activation
+  chain to be semantically right (controller Class + activation event + proc chance + the granted
+  skill being an executable active skill with a valid animation on the wielder).
+- **ROOT CAUSE FOUND (2026-07-08 recon, byte-verified): PORT REGRESSION, SYSTEMIC = 219 souls.**
+  The souls set itemSkillName + itemSkillAutoController but omit itemSkillLevel, so the granted
+  skill instantiates at level 0 = inactive (tooltip renders, controller has nothing castable).
+  Base game sets itemSkillLevel on 876/876 granted-skill items; SV 0.98i on 941/941. A/B proof in
+  our own arz: sstheno_soul (same controller + same skill class, level 4) works; gorgonguard_soul
+  (SAME skill + SAME controller, level absent) is dead. 211 broken souls come from ONE function
+  (apply_svc_patches _overhaul_generic_souls: OVERHAULS dict never includes itemSkillLevel) + 8
+  hand-authored itemSkillLevel==0 (snaptooth/orythroneus/rocksting e/l + crowboar n/e).
+- **Fix (spec'd, folded into the 2026-07-08 DB wave as item 7):** inject per-tier default
+  itemSkillLevel (n/e/l = 1/2/3) in the overhaul apply loop when absent; bump the 8 zeros; extend
+  the validator with semantic activation-chain checks (skill Class = Skill_*, itemSkillLevel >= 1,
+  controller template = SkillAutoCastController.tpl with chanceToRun > 0 and triggerType set).
+  Gate: broken chains 219 -> 0, previously-OK 1,152 souls byte-unchanged.
+
 ## 🟡 P2 - pending answers / smaller
 
 ### B-AREA-NAME-1: Garden of Merchants minimap label reads 'Duister' (NEW 2026-07-08)
@@ -161,6 +218,17 @@
   (tagTitleTagTESTER / tagLOCATIONTAGTESTER) so players get NO visible message and easily miss the
   reward. Inherited SV 0.98i debt, not a port regression. Fix: real notification text (Quests+Text
   coupling). See the 2026-07-08 Esfri recon in the resolved item below.
+
+### B-STARTER-CHEST-1 (Will request 2026-07-08): more bags + potions for co-op
+- The starter chest must drop 12 INVENTORY BAG items + 36 HEALTH POTIONS (so a full co-op party
+  each get bags). Guaranteed fixed loot; branch the table if shared so only the starter chest
+  changes. Ships canonical (co-op = public byte-identical build). Routed to the DB wave (item 10).
+
+### B-TESTHUB-TOXEUS-1 (Will request 2026-07-08): remove cave-mouth Toxeus from TESTHUB
+- The Blood Toxeus/Hemorrheus test spawn ~9.9u outside the blood-cave mouth (TESTHUB-only) BLOCKS
+  Will from walking into the cave to test the hub portals. Remove it permanently from the TESTHUB
+  injection (canonical never had it; the superboss lives in the waterfall chamber). Routed to the
+  map wave; ships in a local interim TESTHUB test build for Will now + the vetted wave build.
 
 ### B-DB-HYGIENE-1 (P3): dead orphan record potionexp_test.dbr
 - records/item/miscellaneous/oneshot/potionexp_test.dbr carries a corrupted NEGATIVE

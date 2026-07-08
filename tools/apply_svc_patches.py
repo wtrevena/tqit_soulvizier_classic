@@ -317,6 +317,29 @@ def _set_pet_equipment(db, pet_path, equip_spec):
     return len(equip_spec)
 
 
+def _loadout_spec(loadout):
+    """Build a _set_pet_equipment() spec dict from a source monster's proven
+    equip loadout (B-SUMMON-1 fix).
+
+    ``loadout`` is a list of ``(slot, chance, weight, [n, e, l paths])`` tuples
+    transcribed HARD-CODED from the pet's source monster record. Soul-granted
+    pets previously equipped player-tier UNIQUE items
+    (``records\\item\\equipment...\\u_*``) in their loot slots; a DB-wide audit
+    proved that of 25,000+ working monster/pet equip slots, ZERO auto-equip a
+    player Epic/Legendary unique - every working slot points at a dynamic LOOT
+    TABLE (``records\\item\\loottables\\...``) or a monster/merc weapon. So the
+    unique-equipping pets spawned NAKED. This mirrors the source monster's own
+    loot-table loadout (the proven-rendering configuration) using the sanctioned
+    hard-coded ``_set_pet_equipment`` path (no Monster.tpl -> Pet.tpl field copy).
+    """
+    spec = {}
+    for slot, chance, weight, paths in loadout:
+        spec[f'chanceToEquip{slot}'] = float(chance)
+        spec[f'chanceToEquip{slot}Item1'] = int(weight)
+        spec[f'loot{slot}Item1'] = list(paths)
+    return spec
+
+
 def _create_rakanizeus_pet_skill(db):
     """Create Rakanizeus pet records by cloning from Lyia Leafsong.
 
@@ -371,40 +394,38 @@ def _create_rakanizeus_pet_skill(db):
 
         # ── Equipment: fixed items per difficulty (warrior satyr loadout) ──
         # [Normal, Epic, Legendary] — game picks by current difficulty.
-        _EQ = r'records\xpack\item\equipmentweapons\sword'
-        _AB = r'records\item\equipmentarmband'
-        _RG = r'records\item\equipmentring'
-        _set_pet_equipment(db, path, {
-            # Swords: Om'ehns (N) → Plissken (E) → Eternal Darkness (L)
-            'chanceToEquipLeftHand': 100.0,
-            'chanceToEquipLeftHandItem1': 5000,
-            'lootLeftHandItem1': [
-                _EQ + r'\u_n_002.dbr',
-                _EQ + r'\u_e_001.dbr',
-                _EQ + r'\u_l_002.dbr',
-            ],
-            # Armbands: Obsidian (N) → Warrior's (E) → Conqueror's (L)
-            'chanceToEquipForearm': 100.0,
-            'chanceToEquipForearmItem1': 5000,
-            'lootForearmItem1': [
-                _AB + r'\us_n_obsidianarmor.dbr',
-                _AB + "\\us_e_warrior'spanoply.dbr",
-                _AB + "\\us_l_conqueror'spanoply.dbr",
-            ],
-            # Rings: Zakalwe (N) → Adroit Loop (E) → Mark of Ares (L)
-            'chanceToEquipFinger1': 100.0,
-            'chanceToEquipFinger1Item1': 5000,
-            'lootFinger1Item1': [
-                _RG + r'\u_n_ringofzakalwe.dbr',
-                _RG + r'\u_e_adroitloop.dbr',
-                _RG + r'\u_l_markofares.dbr',
-            ],
-        })
+        # ── Equipment: mirror the SOURCE monster (um_rakanizeus_17) proven
+        #    loot-table loadout (B-SUMMON-1). Player-unique gear never
+        #    auto-equipped -> naked satyr; these are the dual-wield warrior
+        #    tables the real Rakanizeus boss equips (1H + off-sword + armband
+        #    + greaves; no helm/torso, matching the satyr body).
+        _set_pet_equipment(db, path, _loadout_spec([
+            ('LeftHand', 100.0, 5000, [
+                r'records\item\loottables\weapons\mastertables\1h_dyn_n01b.dbr',
+                r'records\item\loottables\weapons\mastertables\1h_dyn_e01.dbr',
+                r'records\item\loottables\weapons\mastertables\1h_dyn_l01.dbr']),
+            ('RightHand', 100.0, 5000, [
+                r'records\item\loottables\weapons\commondynamic\sword_n01.dbr',
+                r'records\item\loottables\weapons\commondynamic\sword_e01.dbr',
+                r'records\item\loottables\weapons\commondynamic\sword_l01.dbr']),
+            ('Forearm', 100.0, 5000, [
+                r'records\item\loottables\arms\commondynamic\armband_n01.dbr',
+                r'records\item\loottables\arms\commondynamic\armband_e01.dbr',
+                r'records\item\loottables\arms\commondynamic\armband_l01.dbr']),
+            ('LowerBody', 100.0, 5000, [
+                r'records\item\loottables\legs\commondynamic\greaves_n01.dbr',
+                r'records\item\loottables\legs\commondynamic\greaves_e01.dbr',
+                r'records\item\loottables\legs\commondynamic\greaves_l01.dbr']),
+        ]))
+        # Disable the stale unique-ring slot from the earlier authoring (the
+        # source Rakanizeus equips no ring; Lyia's clone base is chance 5).
+        sf = db.set_field
+        sf(path, 'chanceToEquipFinger1', 0.0)
         if i == 0:
-            print("  Rakanizeus equipment: sword/armband/ring (N/E/L tiered)")
+            print("  Rakanizeus equipment: source loot-table loadout (1H/off-sword/armband/greaves)")
 
         # Override identity (replace Lyia's nymph identity with Rakanizeus)
-        sf(path, 'charLevel', i + 1)
+        sf(path, 'charLevel', [17, 44, 61])  # match source Rakanizeus level band (B-SUMMON-1); was 1/2/3
         sf(path, 'mesh', r'SVMesh\meshes\rakanizeus.msh')
         sf(path, 'baseTexture', '')  # use mesh default
         sf(path, 'bumpTexture', '')
@@ -528,42 +549,43 @@ def _create_boneash_pet_skill(db):
 
         sf = db.set_field
 
-        # ── Equipment: fixed items per difficulty (skeleton caster loadout) ─
-        # [Normal, Epic, Legendary] — game picks by current difficulty.
-        _ST = r'records\item\equipmentweapon\staff'
-        _AB = r'records\item\equipmentarmband'
-        _RG = r'records\item\equipmentring'
-        _set_pet_equipment(db, path, {
-            # Staves: Solaris (N) → Blastos Fotia (E) → Staff of Elysium (L)
-            'chanceToEquipLeftHand': 100.0,
-            'chanceToEquipLeftHandItem1': 5000,
-            'lootLeftHandItem1': [
-                _ST + r'\u_n_solaris.dbr',
-                _ST + r'\u_e_blastosfotia.dbr',
-                _ST + r'\u_l_staffofelysium.dbr',
-            ],
-            # Arms: Oracle's Winding (N) → Adept's Clasp (E) → Archmage's (L)
-            'chanceToEquipForearm': 100.0,
-            'chanceToEquipForearmItem1': 5000,
-            'lootForearmItem1': [
-                _AB + "\\usm_n_oracle'sgarments.dbr",
-                _AB + "\\usm_e_adept'sregalia.dbr",
-                _AB + "\\usm_l_archmage'sregalia.dbr",
-            ],
-            # Rings: Cartouche (N) → Star Stone (E) → Seal of Hephaestus (L)
-            'chanceToEquipFinger1': 100.0,
-            'chanceToEquipFinger1Item1': 5000,
-            'lootFinger1Item1': [
-                _RG + r'\u_n_cartouchering.dbr',
-                _RG + r'\u_e_starstone.dbr',
-                _RG + r'\u_l_sealofhephaestus.dbr',
-            ],
-        })
+        # ── Equipment: mirror the SOURCE monster (um_boneash_30) proven
+        #    loot-table loadout so the pet renders fully geared (B-SUMMON-1).
+        #    The prior player-unique gear (u_*/usm_*, itemClassification Epic)
+        #    never auto-equipped on a monster/pet -> the pet spawned NAKED. These
+        #    are the exact dynamic loot tables the real Boneash hero equips
+        #    (staff + bracelet + circlet + caster torso + caster greaves).
+        _set_pet_equipment(db, path, _loadout_spec([
+            ('LeftHand', 100.0, 5000, [
+                r'records\item\loottables\weapons\mastertables\staff_dyn_n02.dbr',
+                r'records\item\loottables\weapons\mastertables\staff_dyn_e02.dbr',
+                r'records\item\loottables\weapons\mastertables\staff_dyn_l02.dbr']),
+            ('Forearm', 100.0, 5000, [
+                r'records\item\loottables\arms\commondynamic\bracelet_n02.dbr',
+                r'records\item\loottables\arms\commondynamic\bracelet_e02.dbr',
+                r'records\item\loottables\arms\commondynamic\bracelet_l02.dbr']),
+            ('Head', 100.0, 5000, [
+                r'records\item\loottables\head\commondynamic\circlet_n02.dbr',
+                r'records\item\loottables\head\commondynamic\circlet_e02.dbr',
+                r'records\item\loottables\head\commondynamic\circlet_l02.dbr']),
+            ('Torso', 100.0, 5000, [
+                r'records\item\loottables\torso\commondynamic\caster_n02.dbr',
+                r'records\item\loottables\torso\commondynamic\caster_e02.dbr',
+                r'records\item\loottables\torso\commondynamic\caster_l02.dbr']),
+            ('LowerBody', 100.0, 5000, [
+                r'records\item\loottables\legs\commondynamic\greavescaster_n02.dbr',
+                r'records\item\loottables\legs\commondynamic\greavescaster_e02.dbr',
+                r'records\item\loottables\legs\commondynamic\greavescaster_l02.dbr']),
+            ('Finger1', 5.0, 5000, [
+                r'records\item\loottables\finger\commondynamic\finger_n02.dbr',
+                r'records\item\loottables\finger\commondynamic\finger_e02.dbr',
+                r'records\item\loottables\finger\commondynamic\finger_l02.dbr']),
+        ]))
         if i == 0:
-            print("  Boneash equipment: staff/armband/ring (N/E/L tiered)")
+            print("  Boneash equipment: source loot-table loadout (staff/bracelet/circlet/caster armor/greaves)")
 
         # Override identity (scale/height/texture match the real Boneash boss)
-        sf(path, 'charLevel', i + 1)
+        sf(path, 'charLevel', [30, 50, 65])  # match source Boneash level band (B-SUMMON-1); was 1/2/3
         sf(path, 'mesh', r'Creatures\Monster\Skeleton\RevenantFire.msh')
         sf(path, 'scale', 1.5)
         sf(path, 'actorHeight', 2.0)
@@ -3896,6 +3918,22 @@ _PORTAL_ENTRANCE_DBRS = [
 # The native minimal GridEntrance record shape (mirrors silkrddngentrance_c01_ext):
 # Class GridEntrance + templateName Engine\GridEntrance.tpl + mesh/scale/actor*.
 _GRIDENTRANCE_TEMPLATE = r'database\Templates\Engine\GridEntrance.tpl'
+
+# B-PORTAL-1 (VISUAL, DB-lane only). The born-open portal rendered as a flat blue
+# panel because its mesh (TJ_JudgementRoom_PortalObject_01) is a NeverVisible,
+# QUEST-SHOWN Dynamic-portal mesh whose swirl is its OPEN-IDLE ANIMATION; on the
+# born-open STATIC GridEntrance (which never plays an idle anim) that mesh collapses
+# to a near-invisible quad, leaving only the engine's blue entrance-plane + arrow.
+# A static GridEntrance is MESH-ONLY (DB-verified: 0 of 153 base static GridEntrance
+# records carry any fx/light/portal-glow field - there is NO DB-side FX field to
+# set), so the mesh is the only visual lever. HC_GoldMirror01 is the mesh the
+# base-game ALWAYS-VISIBLE portal xsq15_mirrorportal uses, so it is proven to render
+# statically-visible (a shimmering mirror portal). visibilityMode/openness/class/0x14
+# (the map-lane born-open mechanics) are NOT touched. Alternatives for Will's eye:
+# keep TJ_JudgementRoom_PortalObject_01 (blue swirl, needs the Dynamic idle anim to
+# show), the Tartarus AlwaysVisible cave-mouth entrance01.msh, or a map-lane
+# co-located swirl-FX entity (BACKLOG B-PORTAL-1 option b, out of DB scope).
+_PORTAL_VISUAL_MESH = r'XPack\SceneryUnderground\HadesCrypt\SetDress\HC_GoldMirror01.msh'
 # Dynamic-only fields to strip on the swapped record (not in the GridEntrance
 # template's include chain). Leaving them would reference a non-existent template
 # field. mesh/scale/actorHeight/actorRadius are shared (Tile include) and KEPT.
@@ -3972,12 +4010,32 @@ def _make_portals_born_open_gridentrance(db):
     return swapped
 
 
+def _apply_portal_visual(db):
+    """B-PORTAL-1 (VISUAL, DB-lane): repoint the born-open portal ENTRANCE mesh to a
+    base-game ALWAYS-VISIBLE portal mesh (_PORTAL_VISUAL_MESH) so it renders as a
+    visible glowing portal instead of the flat blue panel the prior quest-shown TJ
+    mesh produced on the static class. VISUAL-ONLY: does NOT touch Class / openness /
+    visibilityMode / the 60-byte 0x14 (the map-lane born-open mechanics). Idempotent.
+    Run AFTER _make_portals_born_open_gridentrance (which keeps the old mesh)."""
+    n = 0
+    for path in _PORTAL_ENTRANCE_DBRS:
+        rec = _resolve_record(db, path)
+        if rec is None:
+            continue
+        db.set_field(rec, 'mesh', _PORTAL_VISUAL_MESH, DATA_TYPE_STRING)
+        db._modified.add(rec)
+        n += 1
+    print(f"  Portal visual (B-PORTAL-1): mesh -> {_PORTAL_VISUAL_MESH} on {n} record(s)")
+    return n
+
+
 def _verify_portals_born_open(db):
     """Invariant: after the swap, the placed entrance record is a static GridEntrance
     (born-open, always-visible) with NO Dynamic-only fields left, its templateName is
-    the GridEntrance template, and its arz record_type matches. Returns a list of
-    offenders (empty == PASS). Checks portal_olympianarena1 (the record placed in the
-    maps)."""
+    the GridEntrance template, and its arz record_type matches. Also (B-PORTAL-1)
+    asserts the VISUAL mesh is the intended always-visible portal mesh. Returns a list
+    of offenders (empty == PASS). Checks portal_olympianarena1 (the record placed in
+    the maps)."""
     offenders = []
     path = r'records\quests\portal_olympianarena1.dbr'
     rec = _resolve_record(db, path)
@@ -3995,8 +4053,15 @@ def _verify_portals_born_open(db):
     for f in _DYNAMIC_ONLY_FIELDS:
         if db.get_field_value(rec, f) is not None:
             offenders.append((rec, f'residual:{f}', db.get_field_value(rec, f)))
-    if not db.get_field_value(rec, 'mesh'):
+    # B-PORTAL-1: the mesh is the ONLY DB-side visual field on a static GridEntrance,
+    # so assert it is the intended always-visible portal mesh (not empty, not the
+    # flat/near-invisible quest-shown TJ quad that produced the blue-panel look).
+    mesh = (db.get_field_value(rec, 'mesh') or '')
+    if not mesh:
         offenders.append((rec, 'mesh', 'MISSING (portal would be invisible)'))
+    elif mesh.replace('/', '\\').lower() != _PORTAL_VISUAL_MESH.lower():
+        offenders.append((rec, 'mesh',
+                          f'{mesh!r} != intended portal visual {_PORTAL_VISUAL_MESH!r}'))
     return offenders
 
 
@@ -4884,6 +4949,30 @@ def _overhaul_generic_souls(db):
             if pattern in rl:
                 for fname, (dtype, val) in stats.items():
                     db.set_field(rec, fname, val, dtype)
+                # B-SOUL-PROC-1: a granted item skill instantiates at
+                # itemSkillLevel; absent (or 0) = level-0 = INACTIVE, so the
+                # tooltip shows "Grants Skill" but the auto-controller never has
+                # a castable skill (the Crommyonian Sow bug; 211 souls). Every
+                # base-game (876/876) and SV-upstream (941/941) item that grants
+                # a skill also sets itemSkillLevel >= 1. The OVERHAULS specs
+                # above never set it, so inject the mod's established per-tier
+                # default (n/e/l = 1/2/3) whenever a spec grants a skill
+                # without a level.
+                if 'itemSkillName' in stats and 'itemSkillLevel' not in stats:
+                    # Never clobber a record that already carries a live level
+                    # (>= 1) from upstream or an earlier pass - the previously
+                    # OK souls must stay byte-identical.
+                    _cur = None
+                    _ff = db.get_fields(rec) or {}
+                    for _k, _tf in _ff.items():
+                        if _k.split('###')[0] == 'itemSkillLevel' and _tf.values:
+                            _cur = int(_tf.values[0])
+                            break
+                    if _cur is None or _cur < 1:
+                        tier_level = 3 if rl.endswith('_l.dbr') else \
+                                     2 if rl.endswith('_e.dbr') else 1
+                        db.set_field(rec, 'itemSkillLevel', tier_level,
+                                     DATA_TYPE_INT)
                 db._modified.add(rec)
                 total += 1
                 break
@@ -4896,6 +4985,135 @@ def _overhaul_generic_souls(db):
             conflicts += 1
     if conflicts:
         print(f"  Note: {conflicts} Dropbox conflicted copy records still exist (harmless)")
+
+
+def _fix_zero_level_soul_procs(db):
+    """B-SOUL-PROC-1 FIX B: bump the souls whose records ship an EXPLICIT
+    itemSkillLevel == 0 (a level-0 granted skill is inactive - it tooltips but
+    never procs/summons). These come from two origins we cannot fix at source:
+    the SV 0.98i upstream base records (snaptooth/rocksting/orythroneus - the
+    upstream itself ships the e/l tiers at 0) and the parked-generator crowboar
+    souls (create_uber_souls.py, other-lane owned - patched here instead).
+    Values follow each family's own tier convention and NEVER touch a record
+    whose level is already >= 1 (the previously-OK set stays byte-identical):
+      - snaptooth   n=1 (upstream, kept) -> e=2, l=3  (1/2/3 ladder; Skill_Passive max 50)
+      - orythroneus n=1 (upstream, kept) -> e=2, l=3  (same)
+      - rocksting   n=4 (upstream, kept) -> e=6, l=8  (continue the n=4 ladder; skill max 20)
+      - crowboar    l=1 (generator, kept) -> n=1, e=2 (summon-tier convention; the
+        latent non-monotone l=1 [Legendary summons the weakest crow variant] is NOT
+        changed because l is in the previously-OK set - flagged for Will).
+    """
+    S_DIR = r'records\item\equipmentring\soul'
+    FIXES = {
+        S_DIR + r'\jackalman\snaptooth_soul_e.dbr': 2,
+        S_DIR + r'\jackalman\snaptooth_soul_l.dbr': 3,
+        S_DIR + r'\zombie\orythroneus_soul_e.dbr': 2,
+        S_DIR + r'\zombie\orythroneus_soul_l.dbr': 3,
+        S_DIR + r'\scorpion\rocksting_soul_e.dbr': 6,
+        S_DIR + r'\scorpion\rocksting_soul_l.dbr': 8,
+        S_DIR + r'\svc_uber\crowboar_soul_n.dbr': 1,
+        S_DIR + r'\svc_uber\crowboar_soul_e.dbr': 2,
+    }
+    fixed = 0
+    for rec, lvl in FIXES.items():
+        r = _find_record(db, rec)
+        if not r:
+            print(f"  WARNING B-SOUL-PROC-1: {rec} not found; zero-level fix skipped")
+            continue
+        fields = db.get_fields(r) or {}
+        cur = None
+        for key, tf in fields.items():
+            if key.split('###')[0] == 'itemSkillLevel' and tf.values:
+                cur = int(tf.values[0])
+                break
+        if cur is not None and cur >= 1:
+            continue  # already active - never disturb the OK set
+        db.set_field(r, 'itemSkillLevel', lvl, DATA_TYPE_INT)
+        db._modified.add(r)
+        fixed += 1
+    print(f"  Zero-level soul procs fixed: {fixed} record(s) (B-SOUL-PROC-1 FIX B)")
+
+
+def _verify_soul_itemskill_activation(db):
+    """FAIL-LOUD invariant (B-SOUL-PROC-1): every soul that GRANTS an item skill
+    must have a complete, ACTIVATABLE chain, or the grant is a silent no-op that
+    still renders a 'Grants Skill' tooltip (the Crommyonian Sow bug - 219 souls
+    shipped with itemSkillLevel absent/0 = the skill instantiates at level 0 =
+    inactive, so the auto-cast controller has nothing castable).
+
+    For every soul record with a non-empty itemSkillName:
+      1. the skill record resolves and its Class starts with 'Skill_';
+      2. itemSkillLevel is present and >= 1 (level-0 = inactive);
+      3. if itemSkillAutoController is non-empty: it resolves, its templateName
+         is the SkillAutoCastController template (controllers carry no Class
+         field), its chanceToRun > 0 and triggerType is non-empty.
+    Raises SystemExit on any violation. Re-checked standalone on the written
+    .arz by tools/validate_soul_augments.py.
+    """
+    CTRL_TPL = r'database\templates\skillautocastcontroller.tpl'
+
+    def field(rec, name):
+        ff = db.get_fields(rec)
+        if not ff:
+            return None
+        for key, tf in ff.items():
+            if key.split('###')[0] == name and tf.values:
+                return tf.values
+        return None
+
+    problems = []
+    checked = 0
+    for rec in db.record_names():
+        rl = rec.lower()
+        if '\\soul\\' not in rl and '/soul/' not in rl:
+            continue
+        if db._record_types.get(rec) == 'Monster':
+            continue  # a few monster records live under soul\test\
+        isn = field(rec, 'itemSkillName')
+        if not isn or not str(isn[0]).strip():
+            continue
+        checked += 1
+        skill = str(isn[0]).strip()
+        sk = _find_record(db, skill)
+        if not sk:
+            problems.append((rec, f"itemSkillName does not resolve: {skill}"))
+        else:
+            cls = field(sk, 'Class')
+            if not cls or not str(cls[0]).startswith('Skill_'):
+                problems.append((rec, f"granted record is not a Skill_*: {skill} "
+                                      f"(Class={cls[0] if cls else None})"))
+        lvl = field(rec, 'itemSkillLevel')
+        if lvl is None:
+            problems.append((rec, "itemSkillLevel ABSENT (skill instantiates at "
+                                  "level 0 = inactive, never procs)"))
+        elif int(lvl[0]) < 1:
+            problems.append((rec, f"itemSkillLevel == {int(lvl[0])} (level-0 "
+                                  f"grant = inactive, never procs)"))
+        ctl = field(rec, 'itemSkillAutoController')
+        if ctl and str(ctl[0]).strip():
+            c = _find_record(db, str(ctl[0]).strip())
+            if not c:
+                problems.append((rec, f"itemSkillAutoController does not resolve: {ctl[0]}"))
+            else:
+                tpl = field(c, 'templateName')
+                if not tpl or str(tpl[0]).lower().replace('/', '\\') != CTRL_TPL:
+                    problems.append((rec, f"controller {ctl[0]} has wrong template "
+                                          f"{tpl[0] if tpl else None}"))
+                chance = field(c, 'chanceToRun')
+                if not chance or float(chance[0]) <= 0:
+                    problems.append((rec, f"controller {ctl[0]} chanceToRun "
+                                          f"{chance[0] if chance else None} (never fires)"))
+                trig = field(c, 'triggerType')
+                if not trig or not str(trig[0]).strip():
+                    problems.append((rec, f"controller {ctl[0]} has empty triggerType"))
+    if problems:
+        for rec, why in problems[:20]:
+            print(f"  SOUL-PROC OFFENDER: {rec} :: {why}")
+        raise SystemExit(
+            f"Soul item-skill activation invariant FAILED: {len(problems)} "
+            f"problem(s) across granted-skill souls (see offenders above)")
+    print(f"  Soul item-skill activation invariant OK: {checked} granted-skill "
+          f"soul(s) all have resolving Skill_* + itemSkillLevel >= 1 + live controllers.")
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -5311,18 +5529,25 @@ def _create_bwpriest_pet_skill(db):
             _copy_animation_fields(db, src_monster, path)
             _update_existing_fields(db, src_monster, path, _SKILL_PREFIXES)
         sf = db.set_field
-        _EQ = r'records\xpack\item\equipmentweapons\sword'
-        _AB = r'records\item\equipmentarmband'
-        _RG = r'records\item\equipmentring'
-        _set_pet_equipment(db, path, {
-            'chanceToEquipLeftHand': 100.0, 'chanceToEquipLeftHandItem1': 5000,
-            'lootLeftHandItem1': [_EQ + r'\u_n_003.dbr', _EQ + r'\u_e_002.dbr', _EQ + r'\u_l_003.dbr'],
-            'chanceToEquipForearm': 100.0, 'chanceToEquipForearmItem1': 5000,
-            'lootForearmItem1': [_AB + r'\us_n_lazarusarmor.dbr', _AB + r'\us_e_shadowguard.dbr', _AB + r'\us_l_abyssalarmor.dbr'],
-            'chanceToEquipFinger1': 100.0, 'chanceToEquipFinger1Item1': 5000,
-            'lootFinger1Item1': [_RG + r'\u_n_bloodstone.dbr', _RG + r'\u_e_sealofthehighpriest.dbr', _RG + r'\u_l_blackpearlring.dbr'],
-        })
-        sf(path, 'charLevel', i + 1)
+        # ── Equipment: mirror the SOURCE monster (discipleboss_bladedancer)
+        #    proven loadout (B-SUMMON-1). The prior player-unique swords
+        #    (u_n_003 etc., itemClassification Epic) never auto-equipped ->
+        #    the blade-dancer showed no proper weapon. The real blade-dancer
+        #    dual-wields the monster weapon wep_bladedancersword (Rare, which
+        #    DOES auto-equip); no armor slots (the melinoe body is the look).
+        _BDSWORD = r'records\drxcreatures\bloodwitch\skills\skilleffects'
+        _bd_swords = [_BDSWORD + r'\wep_bladedancersword01.dbr',
+                      _BDSWORD + r'\wep_bladedancersword02.dbr',
+                      _BDSWORD + r'\wep_bladedancersword03.dbr']
+        _set_pet_equipment(db, path, _loadout_spec([
+            ('LeftHand', 100.0, 1000, _bd_swords),
+            ('RightHand', 100.0, 1000, _bd_swords),
+        ]))
+        # Disable the stale unique armband/ring slots from the earlier
+        # authoring (the source blade-dancer has Forearm/Finger1 chance 0).
+        sf(path, 'chanceToEquipForearm', 0.0)
+        sf(path, 'chanceToEquipFinger1', 0.0)
+        sf(path, 'charLevel', [40, 56, 71])  # match source blade-dancer band (B-SUMMON-1); was 1/2/3
         sf(path, 'mesh', r'DRX\meshes\melinoe01.msh')
         sf(path, 'baseTexture', r'DRXtextures\creatures\bloodwitch\bladedancer.tex')
         sf(path, 'bumpTexture', '')
@@ -5431,18 +5656,29 @@ def _create_lillued_pet_skill(db):
             _copy_animation_fields(db, src_monster, path)
             _update_existing_fields(db, src_monster, path, _SKILL_PREFIXES)
         sf = db.set_field
-        _ST = r'records\item\equipmentweapon\staff'
-        _AB = r'records\item\equipmentarmband'
-        _RG = r'records\item\equipmentring'
-        _set_pet_equipment(db, path, {
-            'chanceToEquipLeftHand': 100.0, 'chanceToEquipLeftHandItem1': 5000,
-            'lootLeftHandItem1': [_ST + r'\u_n_fulminator.dbr', _ST + r'\u_e_ilektrismos.dbr', _ST + r'\u_l_morosnyx.dbr'],
-            'chanceToEquipForearm': 100.0, 'chanceToEquipForearmItem1': 5000,
-            'lootForearmItem1': [_AB + r"\usm_n_ronzer'sgift.dbr", _AB + r'\usm_e_raimentofthestorm.dbr', _AB + r"\usm_l_archmage'sregalia.dbr"],
-            'chanceToEquipFinger1': 100.0, 'chanceToEquipFinger1Item1': 5000,
-            'lootFinger1Item1': [_RG + r'\u_n_stormeye.dbr', _RG + r'\u_e_celestialband.dbr', _RG + r"\u_l_apollo'swill.dbr"],
-        })
-        sf(path, 'charLevel', i + 1)
+        # ── Equipment: mirror the SOURCE monster (lillued_big) proven
+        #    loot-table loadout (B-SUMMON-1). Player-unique staves/gear never
+        #    auto-equipped -> naked djinn; the real Lil'Lued dual-wields swords
+        #    with a djinn monster-armband (no helm/torso on the djinn body).
+        _set_pet_equipment(db, path, _loadout_spec([
+            ('LeftHand', 50.0, 5000, [
+                r'records\item\loottables\weapons\commondynamic\sword_n03.dbr',
+                r'records\item\loottables\weapons\commondynamic\sword_e03.dbr',
+                r'records\item\loottables\weapons\commondynamic\sword_l03.dbr']),
+            ('RightHand', 100.0, 5000, [
+                r'records\item\loottables\weapons\commondynamic\sword_n03.dbr',
+                r'records\item\loottables\weapons\commondynamic\sword_e03.dbr',
+                r'records\item\loottables\weapons\commondynamic\sword_l03.dbr']),
+            ('Forearm', 45.0, 1000, [
+                r'records\item\loottables\arms\mastertables\monster\n_djinn.dbr',
+                r'records\item\loottables\arms\mastertables\monster\e_djinn.dbr',
+                r'records\item\loottables\arms\mastertables\monster\l_djinn.dbr']),
+            ('Finger1', 5.0, 5000, [
+                r'records\item\loottables\finger\commondynamic\finger_n03.dbr',
+                r'records\item\loottables\finger\commondynamic\finger_e03.dbr',
+                r'records\item\loottables\finger\commondynamic\finger_l03.dbr']),
+        ]))
+        sf(path, 'charLevel', [40, 57, 71])  # match source Lil'Lued level band (B-SUMMON-1); was 1/2/3
         sf(path, 'mesh', r'Creatures\Monster\Djinn\ElderDjinn01.msh')
         sf(path, 'baseTexture', r'Creatures\Monster\Djinn\ElderDjinn01.tex')
         sf(path, 'bumpTexture', '')
@@ -6539,12 +6775,19 @@ _BT_BLOODDEMON = [
     r'records\drxcreatures\blooddemon\b_med_blooddemon_31.dbr',
     r'records\drxcreatures\blooddemon\b_med_blooddemon_32.dbr',
 ]
-_BT_LILDUDE_SUMMON = r'records\drxmap\pitsprites\t1_skill_pitspawner_summonlildude_02.dbr'  # Skill_SpawnPetMonster
+_BT_LILDUDE_SUMMON_DONOR = r'records\drxmap\pitsprites\t1_skill_pitspawner_summonlildude_02.dbr'  # shared donor (green poison charfx)
+_BT_LILDUDE_SUMMON = r'records\drxmap\pitsprites\bloodtoxeus_summonlildude.dbr'  # NEW blood-recolored variant (B-TOXEUS-1)
 
 # Kit skills (all EXIST, classes DB-verified against the design doc §2).
 _BT_SK_BLOODBOIL      = r'records\skills\soulskills\melinoe_bloodboil.dbr'                       # Skill_AttackRadius (signature nova)
 _BT_SK_BLADESTORM     = r'records\skills\monster skills\attack_radius\toxeus_bladestorm.dbr'      # Skill_AttackProjectileRing
-_BT_SK_ENVENOM        = r'records\skills\monster skills\buff_self\toxeus_envenomweapon.dbr'       # Skill_BuffSelfToggled (blood-slick blades)
+_BT_SK_ENVENOM_DONOR  = r'records\skills\monster skills\buff_self\toxeus_envenomweapon.dbr'       # shared donor (Athens GREEN poison shroud)
+_BT_SK_ENVENOM        = r'records\skills\monster skills\buff_self\bloodtoxeus_envenomweapon.dbr'  # NEW blood-recolored variant (B-TOXEUS-1)
+# Blood-red character-FX pak replacing the green poison shroud (B-TOXEUS-1). Primary =
+# the blood-witch Leinth persistent boss aura (same cult family, red). Documented
+# alternatives for Will's eye: bloodboil_charfxpak (his signature Blood Boil FX),
+# charfxpak_disciple_aura / charfxpak_seductress_aura (other blood-cult auras).
+_BT_BLOOD_CHARFXPAK   = r'records\drxcreatures\bloodwitch\skills\skilleffects\charfxpak_leinth_aura.dbr'
 _BT_SK_LIFEDRAIN      = r'records\skills\spirit\lifedrain.dbr'                                    # Skill_AttackSpellChaos (drinks it)
 _BT_SK_FLASHPOWDER    = r'records\skills\stealth\flashpowder.dbr'                                 # Skill_AttackRadius (blink)
 _BT_SK_LETHALSTRIKE   = r'records\skills\stealth\lethalstrike.dbr'                                # Skill_AttackWeapon
@@ -7056,12 +7299,51 @@ def _wire_blood_toxeus_loot(db):
     print(f"  Hemorrheus loot wired: guaranteed set piece (RightHand@100) + high-bleed (LeftHand@100)")
 
 
+def _create_blood_toxeus_fx(db):
+    """B-TOXEUS-1: recolor the boss's GREEN shroud to RED.
+
+    The green aura is NOT on the monster record - it comes from two SHARED skills
+    in the boss kit: toxeus_envenomweapon (cast on spawn via initialSkillName, a
+    toggle that stays on) and the lildude summon (specialAttack5 phase burst). Both
+    carry charFxPakSelfNames = 343_weapon_poisoncharfxpak (the green poison hand-mist
+    = the shroud); the envenom also tints the weapon green (skillWeaponTintGreen=1.0)
+    and applies the green poisonweaponenchantment blade glow. Those two skills are
+    SHARED with the real Athens Toxeus (um_toxeus_21, must stay green) + the Delphi
+    blood-pit, so we CLONE per-boss blood variants and repoint ONLY Hemorrheus's kit
+    at them (the _BT_SK_ENVENOM / _BT_LILDUDE_SUMMON constants already point here).
+
+    Red replacement = charfxpak_leinth_aura (_BT_BLOOD_CHARFXPAK): the blood-witch
+    Leinth persistent boss aura, red and thematically in the same cult family.
+    """
+    # 1) Blood envenom = the persistent shroud + weapon tint.
+    if db.has_record(_BT_SK_ENVENOM_DONOR):
+        db.clone_record(_BT_SK_ENVENOM_DONOR, _BT_SK_ENVENOM)
+        db.set_field(_BT_SK_ENVENOM, 'charFxPakSelfNames', _BT_BLOOD_CHARFXPAK)  # green mist -> red aura
+        db.set_field(_BT_SK_ENVENOM, 'skillWeaponTintRed', 1.0)    # was 0.25
+        db.set_field(_BT_SK_ENVENOM, 'skillWeaponTintGreen', 0.25)  # was 1.0
+        db.set_field(_BT_SK_ENVENOM, 'skillWeaponTintBlue', 0.25)
+        db.set_field(_BT_SK_ENVENOM, 'weaponEnchantment', '')  # drop the green poison blade glow
+        db._modified.add(_BT_SK_ENVENOM)
+    else:
+        print("  BLOOD TOXEUS FX: WARNING envenom donor missing; shroud NOT recolored")
+    # 2) Blood lildude summon = the transient phase-burst self-FX.
+    if db.has_record(_BT_LILDUDE_SUMMON_DONOR):
+        db.clone_record(_BT_LILDUDE_SUMMON_DONOR, _BT_LILDUDE_SUMMON)
+        db.set_field(_BT_LILDUDE_SUMMON, 'charFxPakSelfNames', _BT_BLOOD_CHARFXPAK)
+        db._modified.add(_BT_LILDUDE_SUMMON)
+    else:
+        print("  BLOOD TOXEUS FX: WARNING lildude-summon donor missing")
+    print("  Blood Toxeus FX: GREEN poison shroud recolored RED "
+          "(envenom + lildude-summon blood variants; Athens Toxeus untouched)")
+
+
 def _create_blood_toxeus(db):
     """Build the whole Blood Toxeus DB side in dependency order (§6.1):
     monster -> proxy/pool (references monster) -> set + items (loot references
     members) -> loot -> soul (wires to monster) -> wire loot tables to monster.
     """
     print("\n=== Blood Toxeus wave (Hemorrheus, the Red Verdict) ===")
+    _create_blood_toxeus_fx(db)   # B-TOXEUS-1: blood shroud skills BEFORE the monster refs them
     _create_blood_toxeus_monster(db)
     _create_blood_toxeus_proxy(db)
     _create_crimsonverdict_set(db)
@@ -7468,6 +7750,11 @@ def apply_all_extended_patches(db, force_full_drops=True):
 
     # Soul quality passes
     _overhaul_generic_souls(db)
+    # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
+    # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs
+    # after the overhauls; crowboar_* exist already (create_uber_souls runs
+    # before apply_all_extended_patches).
+    _fix_zero_level_soul_procs(db)
 
     # ── Boss Souls wave (docs/BOSS_SOULS_DESIGN.md) ──
     # Order: run AFTER _place_orphan_monsters (so _create_ainex_soul REPLACES the
@@ -7547,6 +7834,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # tools/validate_soul_augments.py re-checks this on the written .arz.
     _verify_soul_augments_resolve(db)
 
+    # ── Soul item-skill ACTIVATION invariant (fail-loud, B-SOUL-PROC-1) ──────
+    # Resolution alone is not enough: a granted skill with itemSkillLevel
+    # absent/0 instantiates at level 0 = INACTIVE (tooltip renders, proc never
+    # fires - the Crommyonian Sow bug, 219 souls). Prove every granted-skill
+    # soul has Class Skill_*, itemSkillLevel >= 1, and a live auto-controller.
+    _verify_soul_itemskill_activation(db)
+
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
     # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid
     # forms so MP monster/champion density scales as SV intends instead of
@@ -7572,6 +7866,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # only valid paired with a map rebuilt by the current build_section_surgery.py
     # (60-byte entrance 0x14); see the COUPLING note at _make_portals_born_open_*.
     _make_portals_born_open_gridentrance(db)
+    _apply_portal_visual(db)   # B-PORTAL-1: visible portal mesh (visual-only; after the class swap)
     _portal_offenders = _verify_portals_born_open(db)
     if _portal_offenders:
         for _rec, _fn, _val in _portal_offenders[:10]:
