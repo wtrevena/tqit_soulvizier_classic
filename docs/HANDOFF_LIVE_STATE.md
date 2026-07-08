@@ -152,3 +152,19 @@ Character `_Toxeus` (lvl ~38 Stalker). Save backups: `local/save_backups/*.zip` 
 `_ToxeuQ` sandbox copy DELETED (was 14MB; Steam Cloud quota). Steam Cloud sync errors = quota;
 never accept cloud-over-local. Quest adoption on existing characters WORKS (engine auto-adopts;
 hidden/controller quests never show in the journal - do not misdiagnose from journal absence).
+
+## 9. REVERT THE TESTHUB (when Will wants his local back to the plain Workshop build)
+The deployed local Levels.arc is currently the TESTHUB (hub portals + Blood Toxeus at the mouth).
+To restore the canonical (Workshop-identical) build so co-op works:
+  cp local/Levels_merged.arc "<DEPLOY>/Resources/Levels.arc"   # canonical map
+  cmp -s local/Levels_merged.arc "<DEPLOY>/Resources/Levels.arc"
+The arz/Quests/Text are already the shared coupled build (no change needed). After this, local ==
+Workshop item 3759792705 and multiplayer is safe.
+
+## 10. NEW BACKLOG + PLAYBOOK (2026-07-08)
+- docs/BACKLOG.md = every open issue from Will's live play (portals ugly/misplaced/one-way,
+  naked summons, green-not-red Toxeus shroud, sprites/smoke/temple-door still open). READ IT.
+- docs/PLAYBOOK.md = the complete how-to-add-anything manual (souls, pets, monsters, portals,
+  entities, fountains, map areas, quests; build/deploy/Workshop commands; gates; pitfalls).
+- docs/CUT_CONTENT.md = declared-unreachable levels (for the map contract suite).
+
