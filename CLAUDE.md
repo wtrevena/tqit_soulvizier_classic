@@ -2,7 +2,8 @@
 
 > Durable status/notes for Claude Code sessions, committed to git so state survives across
 > sessions and machines. **Read this first.** Newest status at the top of each section.
-> Last updated: 2026-07-05.
+> Last updated: 2026-07-08 (orientation + read-order below are current; the "Current status" and
+> later sections are HISTORICAL - the live state lives in `docs/HANDOFF_LIVE_STATE.md`).
 
 > 📘 **For HOW-TO knowledge** (add new caves/areas/quests/portals, how the engine's world
 > model works, navmesh pipeline, recipes, failure graveyard, engine internals):
@@ -26,9 +27,17 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ---
 
-## ⚡ SUCCESSOR AGENTS: read docs/HANDOFF_LIVE_STATE.md FIRST (live deploy state, open bugs
-from Will's 2026-07-07 test session incl. the broken summon-pet visuals, running fix workflows,
-the full queue, standing rules, and the build/deploy cheat sheet). This repo is self-sufficient.
+## ⚡ SUCCESSOR AGENTS - READ ORDER: this file (CLAUDE.md) → **`docs/README.md`** (the doc index +
+trust levels) → **`docs/HANDOFF_LIVE_STATE.md`** (the current-state board: build27 sizes/MD5s, the
+TESTHUB-vs-canonical deploy asymmetry, standing rules). Then `docs/BACKLOG.md` (the single open
+bug/queue board) and `docs/PLAYBOOK.md` (how to add/change anything) as needed. This repo is
+self-sufficient; no conversation context is required.
+
+> ⚠️ **STATUS BELOW IS HISTORICAL - see `docs/HANDOFF_LIVE_STATE.md` for the LIVE state** (build27,
+> Workshop wrapper fix, exact sizes/MD5s; open bugs in `docs/BACKLOG.md`). The "Current status" and
+> every section below were written build25-era and earlier; they are preserved as the map/RE decision
+> record (how the invisible-wall bug was solved, entrance history, content-gap origins), NOT as
+> current fact.
 
 ## Current status (2026-07-07: PUBLIC ON STEAM WORKSHOP - item 3759792705)
 

@@ -1,4 +1,4 @@
-# Share & Play — Soulvizier Classic co-op, right now (no Steam needed)
+# Share & Play - Soulvizier Classic co-op, right now (no Steam needed)
 
 > The simplest path for **Will + a friend to play Soulvizier Classic together
 > today**, without waiting on the Steam Workshop. This uses the manual
@@ -19,7 +19,7 @@ Do not have the friend build the mod themselves.
 
 ---
 
-## Step 1 — Will: build the shareable zip
+## Step 1 - Will: build the shareable zip
 
 From the repo (`C:\Users\willi\repos\tqit_soulvizier_classic`):
 
@@ -27,12 +27,12 @@ From the repo (`C:\Users\willi\repos\tqit_soulvizier_classic`):
 powershell -ExecutionPolicy Bypass -File scripts\package_custommaps_zip.ps1
 ```
 
-This produces **`dist\SoulvizierClassic_CustomMaps.zip`** (~1.12 GB — the `.arc`
+This produces **`dist\SoulvizierClassic_CustomMaps.zip`** (~1.12 GB - the `.arc`
 files are already compressed, so the zip barely shrinks; the staged tree is
 1143 MB uncompressed across 53 files). Its top-level folder is
 `SoulvizierClassic`, so the friend can extract it straight into their CustomMaps
 folder. The script prints the zip's SHA-256 and the embedded `SoulvizierClassic.arz`
-SHA-256 — **send those hashes to the friend** so byte-identity can be verified.
+SHA-256 - **send those hashes to the friend** so byte-identity can be verified.
 
 ### Exact contents of the zip
 
@@ -43,7 +43,7 @@ SoulvizierClassic\
   Database\
     SoulvizierClassic.arz          ~52 MB   (items, skills, monsters, souls, MP spawn fix)
   Resources\
-    Levels.arc                     ~685 MB  (the world + navmeshes — the big one)
+    Levels.arc                     ~685 MB  (the world + navmeshes - the big one)
     drx.arc, DRXtextures.arc, DRXsounds.arc, DRXeffects.arc   (DRX visual overhaul)
     SVMesh.arc, SVTextures.arc, SVSounds.arc, SVItems.arc, SVEffects.arc  (Soulvizier assets)
     Items.arc, Itemus_Textures.arc, DiabloTextures.arc, HexTextures.arc, LTex.arc, LSounds.arc
@@ -52,7 +52,7 @@ SoulvizierClassic\
     XPack2\, XPack3\, XPack4\       (DLC-compat stubs)
 ```
 
-(The zip is exactly **53 files** under `SoulvizierClassic\Database\` + `SoulvizierClassic\Resources\`. The staged `work\SoulvizierClassic\Maps\` folder is empty, so nothing from it is packaged — the mod's world data lives entirely inside `Resources\Levels.arc`.)
+(The zip is exactly **53 files** under `SoulvizierClassic\Database\` + `SoulvizierClassic\Resources\`. The staged `work\SoulvizierClassic\Maps\` folder is empty, so nothing from it is packaged - the mod's world data lives entirely inside `Resources\Levels.arc`.)
 
 The packaging script deliberately **excludes** dev cruft that must not ship and
 that would break byte-identity if only one player had it: `*.md` notes,
@@ -65,18 +65,18 @@ text files, and the `mod_authored_tags.txt` build manifest.
 
 ---
 
-## Step 2 — Both players: apply the 4GB LAA patch (required for stability)
+## Step 2 - Both players: apply the 4GB LAA patch (required for stability)
 
 Soulvizier Classic is a large mod on a 32-bit engine; without the Large Address
 Aware (4GB) patch, TQAE can run out of address space and crash under load. **Both
 Will and the friend must patch their own `TQ.exe`** (it is a per-machine change to
-the game executable and is not — and cannot be — shipped inside the mod).
+the game executable and is not - and cannot be - shipped inside the mod).
 
-1. Download the **NTCore 4GB Patch** (`4gb_patch.exe`) — the standard community tool.
+1. Download the **NTCore 4GB Patch** (`4gb_patch.exe`) - the standard community tool.
 2. Run it and point it at the game executable:
    `...\steamapps\common\Titan Quest Anniversary Edition\TQ.exe`
    (the tool makes a `TQ.exe.Backup` automatically).
-3. That's it — the exe is now Large-Address-Aware.
+3. That's it - the exe is now Large-Address-Aware.
 
 Notes:
 - Steam's "Verify integrity of game files" will revert this patch; just re-run the
@@ -88,13 +88,13 @@ Notes:
 
 ---
 
-## Step 3 — The friend: install the mod
+## Step 3 - The friend: install the mod
 
 1. Fully close TQAE.
 2. Locate the friend's TQ documents folder. It is one of:
    - `Documents\My Games\Titan Quest - Immortal Throne\`
    - `OneDrive\Documents\My Games\Titan Quest - Immortal Throne\` (if OneDrive
-     redirects Documents — this is how Will's machine is set up)
+     redirects Documents - this is how Will's machine is set up)
 3. If a `CustomMaps` folder doesn't exist there yet, create it.
 4. Extract `SoulvizierClassic_CustomMaps.zip` so the result is exactly:
    ```
@@ -111,7 +111,7 @@ Notes:
 
 ---
 
-## Step 4 — Host and join an MP Custom Quest game
+## Step 4 - Host and join an MP Custom Quest game
 
 Titan Quest MP uses **LAN or direct-IP** hosting (the classic TQ multiplayer
 model). One player hosts, the other joins.
@@ -122,7 +122,7 @@ model). One player hosts, the other joins.
 3. Choose **Custom Quest / Custom Game** and select **SoulvizierClassic** as the map/quest.
 4. **Create a NEW, dedicated Custom-Quest character** for this mod. Never load a
    normal-campaign character into the mod, and never "bounce" a character between
-   the mod and the base game — it corrupts the character. (This applies to both
+   the mod and the base game - it corrupts the character. (This applies to both
    players.)
 5. Set difficulty and start hosting. Note the host's LAN IP if joining by direct IP.
 
@@ -132,7 +132,7 @@ model). One player hosts, the other joins.
 3. Pick the host's game from the LAN list, or enter the host's IP directly.
 4. **Create/select a dedicated Custom-Quest character** (again, a fresh one made
    for the mod).
-5. Join. If the game immediately desyncs or drops you, the mod files differ —
+5. Join. If the game immediately desyncs or drops you, the mod files differ -
    go back to Step 3 and re-verify the hashes match.
 
 > Direct-IP over the internet needs the host to be reachable (port-forward the
@@ -148,7 +148,7 @@ model). One player hosts, the other joins.
   a graceful error. Verifying the `.arz` (and ideally `Levels.arc`) SHA-256 on
   both machines before playing avoids wasted time.
 - **Re-sync on every update.** Any time Will rebuilds the mod (new arz, new map,
-  new content), he must send the friend the new zip and both must reinstall —
+  new content), he must send the friend the new zip and both must reinstall -
   otherwise the next session desyncs. The build is deterministic, so an unchanged
   source produces an unchanged hash; a changed hash means "resend the zip."
 - Both players also need the **same base-game version** (both on current TQAE via
@@ -156,7 +156,7 @@ model). One player hosts, the other joins.
   its own desync source.
 - The multiplayer spawn-scaling fix (see `MULTIPLAYER_COMPAT.md`) is already baked
   into the shared `.arz`, so both players get correctly-scaled co-op monster
-  density automatically — nothing extra to configure.
+  density automatically - nothing extra to configure.
 
 ---
 
