@@ -34,7 +34,7 @@ VERIFIED WORKING live: rocks block; fountain visible+functional+safe+respawn-poi
 member position); caravan usable; letter drops (static); 66/25 release drop rates (hero no-drop is
 correct behavior); chest quest opened; occult purple totems/atmosphere entities visible.
 
-## 3. RUNNING WORKFLOWS (may complete after this session dies) - NOW FOUR:
+## 3. RUNNING WORKFLOWS - TWO live fix loops (contract suites STOPPED ON HOLD per Will 2026-07-07: resume later via Workflow({scriptPath, resumeFromRunId}) - entity=wf_87586bbf-b63, map=wf_8da16855-efe, scripts in the workflows/scripts dir; their specs stand in 4b + queue item 4):
 - wf_87586bbf-b63 (ENTITY contract suite, spec 4b): new-files-only; on clean -> commit the validator + hook installer, run full-DB, then the BUG-F FIX WAVE (fix the broken pets it diagnosed, apply_svc_patches, after wf_30460e48 frees that file), rebuild arz (validator must then PASS), deploy, Workshop.
 - wf_8da16855-efe (MAP contract suite, queue item 4): new-files-only; on clean -> commit, run vs both artifacts, wire into svaera_plus_portals (one line, documented), it gates all future map waves.
 (original two below)
