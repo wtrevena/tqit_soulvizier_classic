@@ -1013,6 +1013,22 @@ HELOS_H2_0x14 = HELOS_hX1 + b'\x00' * 32           # GoM landing (inbound from H
 for _p in (HELOS_H1_0x14, HELOS_H2_0x14):
     assert len(_p) == 48
 
+# --- N1b (build31): Garden -> HELOS RETURN pair (coordinator-approved stranding fix) --------
+# The Garden's classic G3 return shrine sends EVERYONE to HiddenValley01 (Act 3) - stranding
+# an Act-1 player who entered from Helos. N1b adds a SECOND, independent return: R1 = return
+# entrance IN the Garden near the H2 landing ("the way you came in is the way back"), R2 =
+# landing in the Helos portal plaza offset from H1. G3 stays untouched for Act-3 players.
+# Fresh minted UID pair (verified absent from both shipped maps, scratchpad/n1b_recon.py).
+# HELOS_GUID = startingfarmland06d's merged level-index GUID, extracted with the SAME method
+# that reproduces GOM_GUID/HV01_GUID byte-exactly (validated against GOM in n1b_recon.py).
+HELOS_GUID = bytes.fromhex('5d8f9b96c54ca73098922e8463d1d665')  # startingfarmland06d merged GUID
+HELOS_rM1 = bytes.fromhex('c6826e2998fff966f6318064f4f5277c')  # Garden return-entrance mouth
+HELOS_rX1 = bytes.fromhex('9570d357607d0ffcbb99eb7d5e4274f0')  # return exit (== R2 landing mouth)
+HELOS_R1_0x14 = HELOS_rM1 + HELOS_rX1 + HELOS_GUID  # GoM return entrance -> Helos
+HELOS_R2_0x14 = HELOS_rX1 + b'\x00' * 32            # Helos landing (return from GoM)
+for _p in (HELOS_R1_0x14, HELOS_R2_0x14):
+    assert len(_p) == 48
+
 # --- A2 SECRET PLACE door (canonical + hub) : rhodes_secretvista_01 <-> darkforestenter -
 # HOST = rhodes_secretvista_01 (v0x0f shared) - a scenic Rhodes overlook (thematic "hidden
 # secret place" host, same Rhodes region as the Secret Place cluster, ZERO hostiles); portal
@@ -1357,10 +1373,19 @@ INJECT_SPECS = {
     # -Z of G2, on-mesh, fully crossable 3u both axes, in the same caravan_rhodes component,
     # 13.4u from the G3 return shrine, nearest decor 6u (scratchpad/n1_spot_pick.py L1).
     # GridExitOneWay landing = invisible, no teleport-on-touch, no FX needed (same as G2/G4).
+    # R1 (N1b build31) = return entrance -> HELOS at (136.30,-39.00,71.10): 6.3u ESE of the H2
+    # landing ("the way you came in is the way back"), the ONLY probed spot near H2 fully
+    # crossable 3u on BOTH axes (plane-crossing rule), on-mesh, same caravan_rhodes component,
+    # 10.0u from both G2 and the G3 shrine (spatially distinct from the classic HV01 return),
+    # 6.0u from nearest decor (scratchpad/n1b_recon.py R1d). Co-located map_portal_aura swirl
+    # marks it as an active portal (G3 has none - extra visual distinction). Off the G2->G3 and
+    # H2->caravan walk lines (both run ~Z 76-79; R1 sits at Z 71.1), so no accidental crossing.
     'levels/world/olympus/gardenofmerchants.lvl': [
         (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 79.10, {'x14_payload': GARDEN_G2_0x14}),
         (PORTAL_OLYMPIANARENA1_DBR, 142.30, -39.00, 79.10, {'x14_payload': GARDEN_G3_0x14}),
         (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 73.10, {'x14_payload': HELOS_H2_0x14}),
+        (PORTAL_OLYMPIANARENA1_DBR, 136.30, -39.00, 71.10, {'x14_payload': HELOS_R1_0x14}),
+        (PORTAL_FX_MAP_AURA_DBR, 136.30, -39.00, 71.10),
     ],
     # ===== N1 (build31): HELOS -> GARDEN OF MERCHANTS entrance (first town, Act 1) =====
     # Will: "the portal to Duister should be put in the first town". HOST = startingfarmland06d
@@ -1376,9 +1401,15 @@ INJECT_SPECS = {
     # (scratchpad/n1_spot_pick.py P5). Co-located map_portal_aura swirl = M4 visibility recipe.
     # 0x14 = minted mouth/exit + GOM_GUID; landing = H2 in the Garden (above). Return = the
     # Garden's EXISTING G3 shrine -> HV01 (Act 3) - flagged to Will, walk-test-gated.
+    # R2 (N1b build31) = return landing from the Garden at (68.00,-0.40,181.00): 6.7u W of H1
+    # (arrivals do not stack on the entrance; H1's teleport plane is 6.7u away so no accidental
+    # re-entry), fully crossable 3u both axes (open plaza), same walkable component, 7.3u from
+    # Starting_PortalMan, 4.8u from nearest decor (scratchpad/n1b_recon.py R2b). GridExitOneWay
+    # landing = invisible, no teleport-on-touch, no FX (same as G4/H2).
     'levels/world/greece/startingtownver2/startingfarmland06d.lvl': [
         (PORTAL_OLYMPIANARENA1_DBR, 74.00, 0.40, 184.00, {'x14_payload': HELOS_H1_0x14}),
         (PORTAL_FX_MAP_AURA_DBR, 74.00, 0.40, 184.00),
+        (PORTAL_OLYMPIANARENA2_DBR, 68.00, -0.40, 181.00, {'x14_payload': HELOS_R2_0x14}),
     ],
     # ===== C4 (this session): Greece occultist region atmosphere restore (SV-exact) =====
     # SV's Delphi "Crisaeos Falls" occultist region had the SAME regional smoke Will remembers
