@@ -1275,14 +1275,19 @@ _TOXEUS_HV01_LOCAL = (21.9, 17.0, 31.9)
 def build_hub_extra_specs():
     """Build the TEST-HUB NON-PORTAL entity additions (level_key -> [specs]).
 
-    2026-07-08 (coordinator interrupt, PERMANENT): the lone Toxeus test spawn outside the
-    blood-cave mouth is REMOVED. It served its purpose (Will met Hemorrheus and the spawn
-    chain was verified live) and now BLOCKS walk-testing: a superboss proxy 9.9u outside the
-    cave mouth kills the tester before they can enter. The canonical build never had it; the
-    real Hemorrheus placement (deep in new_secretdoor_transitionhallway, past the secret
-    waterfall) is in INJECT_SPECS and is unaffected. The _TOXEUS_HV01_* constants and this
-    hook are kept so a future test build can re-add TESTHUB-only extras trivially."""
-    return {}
+    2026-07-08: RE-ADDED at Will's request (local TESTHUB only) so he can see/fight Toxeus at
+    the blood-cave mouth again (verifies the B-TOXEUS-1 red-shroud fix, which lives in the arz).
+    It was briefly removed on 2026-07-08 because it blocked walk-testing the portals; the portals
+    are now tested, so the lone Toxeus proxy 9.9u outside the cave mouth is restored. TESTHUB-ONLY
+    (called only when SVC_TEST_HUB=1); the canonical Workshop build never includes it. The real
+    Hemorrheus placement (deep in new_secretdoor_transitionhallway, past the secret waterfall) is
+    in INJECT_SPECS and is independent of this hook."""
+    tx, ty, tz = _TOXEUS_HV01_LOCAL
+    return {
+        _TOXEUS_HV01_KEY: [
+            (Q_BLOODTOXEUS_LONE_DBR, tx, ty, tz, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        ],
+    }
 
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
