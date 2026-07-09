@@ -5834,6 +5834,58 @@ def _fix_wave30_items(db):
     return {}
 
 
+def _fix_bladedancer_invisible_body(db):
+    r"""build30/D5: the melinoe blade-dancer family renders an INVISIBLE body
+    (floating blades only). Root cause is the SHARED mesh DRX\meshes\melinoe01.msh,
+    which embeds its skin shader as `XPack\Shaders\standardblendedglowskinned.ssh`.
+    The engine resolves an `XPackN\<Arc>\...` path ONLY in Resources\XPackN\<Arc>.arc,
+    so it looks in Resources\XPack\Shaders.arc (Immortal Throne shaders, 2 entries)
+    which does NOT contain that shader - it lives only in base Resources\Shaders.arc.
+    The skin shader fails to load; the body never renders while the skeleton still
+    animates the weapon hardpoints. This is NOT the per-record .anm overrides
+    (build29's pet-only _strip_*_anim fix): the hostile discipleboss_bladedancer has
+    ZERO .anm fields and is invisible too. Controls: base ElderDjinn01.msh uses the
+    SAME shader via base-scoped `Shaders\...` and renders; base PC meshes use
+    `XPack2\shaders\...` present in Resources\XPack2\Shaders.arc and render.
+
+    Fix: repoint every melinoe01.msh user to the base melinoe mesh (base-scoped
+    Shaders\standardskinned.ssh -> resolves). Same melinoe skeleton, so anm_melinoe
+    and dual-wield equipment are unchanged; the crimson look is kept via each record's
+    baseTexture (bladedancer.tex, a melinoe-UV skin). Proven-rendering by precedent:
+    um_demastia_47 / um_insenzia_48 are DRX melinoe heroes already on the base mesh +
+    a DRX .tex override + anm_melinoe. Covers all three owner-reported cases with ONE
+    change: pets (soul-granted), the hostile discipleboss_bladedancer (roaming via
+    q_melinoe_trap pools AND summoned 20x by c_disciple_miniboss), and the proxies.
+    (Trade-off: loses the DRX self-illum glow, which DRX's own melinoe heroes also forgo.)
+
+    NOTE on set_field dtype: 'mesh' is an existing STRING field on these records, and
+    ArzDatabase.set_field(...dtype=None) preserves the existing field's dtype (verified
+    in arz_patcher.py). This complies with the repo rule "never pass explicit dtype to
+    set_field on existing/cloned records" (INT/FLOAT corruption trap).
+    """
+    BASE = r'XPack\Creatures\Monster\Melinoe\Melinoe01.msh'
+    BROKEN = r'drx\meshes\melinoe01.msh'
+    n = 0
+    for rec in db.record_names():
+        mv = db.get_field_value(rec, 'mesh')
+        if isinstance(mv, str) and mv.lower() == BROKEN:
+            db.set_field(rec, 'mesh', BASE)   # no dtype: preserve the string field
+            n += 1
+    # Expected sweep count = 3 (discipleboss_bladedancer + q_melinoe_trap + _trap02):
+    # the bwpriest_1/2/3 pets are born-correct at their authoring site
+    # (_create_bwpriest_pet_skill now sets the base mesh directly), so the sweep
+    # only catches the upstream hostile + proxies. Fewer than 3 = the family
+    # roster or the mesh-string casing drifted; fail loud.
+    if n < 3:
+        raise SystemExit(
+            f"wave30 D5: blade-dancer mesh sweep repointed only {n} record(s) "
+            f"(expected >= 3: discipleboss_bladedancer + 2 q_melinoe_trap proxies) "
+            f"- family roster or mesh-string casing drifted; investigate")
+    print(f"  blade-dancer invisible-body fix (D5): repointed {n} record(s) "
+          f"off DRX\\meshes\\melinoe01.msh -> base Melinoe01.msh")
+    return n
+
+
 # ── A3 / B-STARTER-CHEST-1: DEFERRED to the parallel disasm-grounded impl ───
 # build29 note (reconciliation): A3 (the co-op starter chest = 12 bags + 36
 # potions + Crommyonian Sow souls) is implemented in build_svc_database.py
@@ -6429,7 +6481,13 @@ def _create_bwpriest_pet_skill(db):
         sf(path, 'chanceToEquipForearm', 0.0)
         sf(path, 'chanceToEquipFinger1', 0.0)
         sf(path, 'charLevel', [40, 56, 71])  # match source blade-dancer band (B-SUMMON-1); was 1/2/3
-        sf(path, 'mesh', r'DRX\meshes\melinoe01.msh')
+        # D5 (build30): the BASE melinoe mesh, NOT DRX\meshes\melinoe01.msh - the
+        # DRX mesh embeds shader XPack\Shaders\standardblendedglowskinned.ssh which
+        # the engine resolves only in Resources\XPack\Shaders.arc (absent there) ->
+        # INVISIBLE body. Base mesh = base-scoped Shaders\standardskinned.ssh ->
+        # renders; same melinoe skeleton (anm_melinoe + dual-wield unchanged);
+        # crimson kept via bladedancer.tex. Precedent: um_demastia_47/um_insenzia_48.
+        sf(path, 'mesh', r'XPack\Creatures\Monster\Melinoe\Melinoe01.msh')
         sf(path, 'baseTexture', r'DRXtextures\creatures\bloodwitch\bladedancer.tex')
         sf(path, 'bumpTexture', '')
         sf(path, 'scale', 1.4)
@@ -9004,6 +9062,9 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # ── build30 wave: D-item fixes (hanif nameplate; see _fix_wave30_items) ──
     print("\n=== build30 wave: D-item fixes ===")
     tags.update(_fix_wave30_items(db))
+    # ── build30 wave: blade-dancer invisible-body family fix (D5) - runs after
+    #    all record creation so it also catches the upstream hostile + proxies ──
+    _fix_bladedancer_invisible_body(db)
 
     # ── Boss-kit clone-shape invariant (fail-loud, B-TOXEUS-2) ────────────────
     # After all boss authoring: every registered boss-kit clone must keep its
