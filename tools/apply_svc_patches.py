@@ -8428,6 +8428,160 @@ def _apply_d8_d9_summon_souls(db, tags):
     tags['tagSVCSummonMountainBlade'] = 'Summon Huo-ren, the Mountainblade'
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  D10 EMBERSCALE (Will 2026-07-09): a new 5-shard collectible charm (ItemCharm,
+#  exact Turtle Shell pattern) dropped by the "{^G}Flameguard Slayer" green
+#  Dragonian champion (em_ravager_39 + em_ravager_41, Act 3 Orient). Weapons-only,
+#  fire damage + armor melt (offensiveSlowDefensiveReduction), NO granted skill
+#  (deliberate: charms have no skill hook; the armor-melt passive is the fantasy).
+#  Drop = the turtle-matched 7% on the first UNUSED lootMisc slot (slot 3,
+#  DB-verified free on both bodies), mirroring the turtle wiring shape exactly
+#  (chanceToEquipMisc3=7.0, chanceToEquipMisc3Item1=100, [N,E,L] table array).
+# ══════════════════════════════════════════════════════════════════════════
+_D10_CHARM = {t: rf'records\item\animalrelics\svc_flameguard\{t}_flameguardslayer.dbr'
+              for t in ('01', '02', '03')}
+_D10_CHARM_DONOR = {t: rf'records\item\animalrelics\{t}_act1_turtleshell.dbr'
+                    for t in ('01', '02', '03')}
+_D10_BONUS = {t: rf'records\item\lootmagicalaffixes\animalrelics\svc_flameguard\{t}_flameguardslayer.dbr'
+              for t in ('01', '02', '03')}
+_D10_LOOT = {t: rf'records\item\loottables\animalrelics\svc_flameguard\{t}_flameguardslayer.dbr'
+             for t in ('01', '02', '03')}
+_D10_LOOT_DONOR = r'records\item\loottables\animalrelics\01_act1_turtleshell.dbr'
+_D10_RAVAGERS = [r'records\creature\monster\dragonian\em_ravager_39.dbr',
+                 r'records\creature\monster\dragonian\em_ravager_41.dbr']
+_D10_AFF = r'records\item\lootmagicalaffixes'
+# Completion-bonus entries per tier: 6 weighted rolls, total weight 1500 per tier.
+# Legendary = the Will-approved set; N/E step the same affix families down to the
+# tier-appropriate existing variants (all 18 paths DB-verified to exist).
+_D10_BONUS_ENTRIES = {
+    '01': [(_D10_AFF + r'\suffix\default\offensive_+%fire_02.dbr', 250),
+           (_D10_AFF + r'\animalrelics\bonuses\offensive_+%fire_01.dbr', 300),
+           (_D10_AFF + r'\suffix\default\character_abilityoffensive_02.dbr', 300),
+           (_D10_AFF + r'\suffix\default\character_attributestrength_01.dbr', 250),
+           (_D10_AFF + r'\suffix\default\character_attributelife_01.dbr', 200),
+           (_D10_AFF + r'\prefix\default\defensive_resistfire_01.dbr', 200)],
+    '02': [(_D10_AFF + r'\suffix\default\offensive_+%fire_03.dbr', 250),
+           (_D10_AFF + r'\animalrelics\bonuses\offensive_+%fire_02.dbr', 300),
+           (_D10_AFF + r'\suffix\default\character_abilityoffensive_04.dbr', 300),
+           (_D10_AFF + r'\suffix\default\character_attributestrength_03.dbr', 250),
+           (_D10_AFF + r'\suffix\default\character_attributelife_02.dbr', 200),
+           (_D10_AFF + r'\prefix\default\defensive_resistfire_02.dbr', 200)],
+    '03': [(_D10_AFF + r'\suffix\default\offensive_+%fire_04.dbr', 250),
+           (_D10_AFF + r'\animalrelics\bonuses\offensive_+%fire_03.dbr', 300),
+           (_D10_AFF + r'\suffix\default\character_abilityoffensive_06.dbr', 300),
+           (_D10_AFF + r'\suffix\default\character_attributestrength_05.dbr', 250),
+           (_D10_AFF + r'\suffix\default\character_attributelife_03.dbr', 200),
+           (_D10_AFF + r'\prefix\default\defensive_resistfire_03.dbr', 200)],
+}
+# Per-shard length-5 FLOAT arrays (shards 1..5), per tier N/E/L (Will-approved).
+_D10_STATS = {
+    '01': {'offensiveFireMin': [3.0, 6.0, 9.0, 12.0, 15.0],
+           'offensiveFireMax': [7.0, 14.0, 21.0, 28.0, 35.0],
+           'offensiveSlowDefensiveReductionMin': [4.0, 8.0, 12.0, 16.0, 20.0]},
+    '02': {'offensiveFireMin': [5.0, 10.0, 15.0, 20.0, 25.0],
+           'offensiveFireMax': [10.0, 20.0, 30.0, 40.0, 50.0],
+           'offensiveSlowDefensiveReductionMin': [6.0, 12.0, 18.0, 24.0, 30.0]},
+    '03': {'offensiveFireMin': [7.0, 14.0, 21.0, 28.0, 35.0],
+           'offensiveFireMax': [13.0, 26.0, 39.0, 52.0, 65.0],
+           'offensiveSlowDefensiveReductionMin': [8.0, 16.0, 24.0, 32.0, 40.0]},
+}
+_D10_LEVELREQ = {'01': 24, '02': 38, '03': 50}
+# ItemCharm slot-permission fields (all exist on the donor as 0/1 INTs).
+_D10_SLOTS_ON = ('sword', 'axe', 'mace', 'spear', 'bow', 'staff')
+_D10_SLOTS_OFF = ('shield', 'amulet', 'armband', 'bodyArmor', 'bracelet',
+                  'greaves', 'helmet', 'ring')
+
+
+def _create_emberscale_charm(db, tags):
+    """D10: build the Emberscale charm chain: 3 tier charms (clone the turtle
+    donors = full ItemCharm field population + shipping icon/mesh/bitmaps, so no
+    grey box), 3 completion-bonus LootRandomizerTables, 3 FixedWeight loot
+    tables, and the 7% lootMisc3 wiring on both Flameguard Slayer bodies.
+    dtype discipline: cloned-record overrides pass NO dtype (preserve each
+    existing field's type); explicit dtypes only on NEW records' fields."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    for t in ('01', '02', '03'):
+        donor = _find_record(db, _D10_CHARM_DONOR[t])
+        if not donor:
+            raise SystemExit(f"D10: turtle charm donor missing: {_D10_CHARM_DONOR[t]}")
+        for path, _w in _D10_BONUS_ENTRIES[t]:
+            if not _find_record(db, path):
+                raise SystemExit(f"D10: completion-bonus affix missing: {path}")
+
+        # ── charm (clone -> override; NO dtypes on existing fields) ──
+        charm = _D10_CHARM[t]
+        db.clone_record(donor, charm)
+        sf = db.set_field
+        sf(charm, 'description', 'tagSVCFlameguardRelic')
+        sf(charm, 'itemText', 'tagSVCFlameguardRelicDESC')
+        sf(charm, 'FileDescription', 'Fire damage + armor melt')
+        sf(charm, 'levelRequirement', _D10_LEVELREQ[t])
+        # the turtle's block identity is zeroed out (Emberscale is offensive)
+        sf(charm, 'defensiveBlockModifier', [0.0, 0.0, 0.0, 0.0, 0.0])
+        sf(charm, 'characterDefensiveBlockRecoveryReduction', 0.0)
+        # per-shard fire + armor-melt ladder
+        for fname, arr in _D10_STATS[t].items():
+            sf(charm, fname, list(arr))
+        sf(charm, 'offensiveSlowDefensiveReductionDurationMin', 3.0)
+        # weapons-only
+        for slot in _D10_SLOTS_ON:
+            sf(charm, slot, 1)
+        for slot in _D10_SLOTS_OFF:
+            sf(charm, slot, 0)
+        sf(charm, 'bonusTableName', _D10_BONUS[t])
+        db._modified.add(charm)
+
+        # ── completion-bonus table (NEW record; explicit dtypes OK on new fields) ──
+        bt = _D10_BONUS[t]
+        _ensure_record(db, bt, r'database\Templates\LootRandomizerTable.tpl')
+        db.set_field(bt, 'templateName', r'database\Templates\LootRandomizerTable.tpl', S)
+        db.set_field(bt, 'Class', 'LootRandomizerTable', S)
+        total_w = 0
+        for i, (path, w) in enumerate(_D10_BONUS_ENTRIES[t], start=1):
+            db.set_field(bt, f'randomizerName{i}', path, S)
+            db.set_field(bt, f'randomizerWeight{i}', w, I)
+            total_w += w
+        if total_w != 1500:
+            raise SystemExit(f"D10: tier {t} bonus weights sum {total_w} != 1500")
+        db._modified.add(bt)
+
+        # ── loot table (clone the turtle FixedWeight table: only slot 1 active,
+        #    noPrefixNoSuffix already 100 on the donor) ──
+        lt = _D10_LOOT[t]
+        ldonor = _find_record(db, _D10_LOOT_DONOR)
+        if not ldonor:
+            raise SystemExit(f"D10: turtle loot table donor missing: {_D10_LOOT_DONOR}")
+        db.clone_record(ldonor, lt)
+        db.set_field(lt, 'lootName1', charm)
+        db._modified.add(lt)
+
+    # ── wire both Flameguard Slayer bodies: turtle-shape 7% on the free slot 3 ──
+    loot_arr = [_D10_LOOT['01'], _D10_LOOT['02'], _D10_LOOT['03']]
+    for mon in _D10_RAVAGERS:
+        rec = _find_record(db, mon)
+        if not rec:
+            raise SystemExit(f"D10: Flameguard Slayer body missing: {mon}")
+        cur = db.get_field_value(rec, 'lootMisc3Item1')
+        if cur not in (None, '', 0):
+            raise SystemExit(f"D10: {mon} lootMisc3 is NOT free (has {cur!r}); "
+                             f"slot assumption broken - pick another slot")
+        # lootMisc3Item1 is a NEW field on these records -> explicit STRING dtype;
+        # the chanceToEquipMisc3* fields EXIST (0.0 FLOAT / 0 INT) -> no dtype.
+        db.set_field(rec, 'lootMisc3Item1', list(loot_arr), S)
+        db.set_field(rec, 'chanceToEquipMisc3', 7.0)
+        db.set_field(rec, 'chanceToEquipMisc3Item1', 100)
+        db._modified.add(rec)
+
+    tags['tagSVCFlameguardRelic'] = 'Emberscale'
+    tags['tagSVCFlameguardRelicDESC'] = (
+        'Pried still-smoking from the Flameguard Slayer. Where its edge fell, '
+        'good armor ran like candle wax.')
+    print("  D10 Emberscale: 3 charms (turtle-pattern, weapons-only, fire + armor melt) "
+          "+ 3 bonus tables (w1500) + 3 loot tables; wired em_ravager_39/41 "
+          "lootMisc3 @ 7% (turtle-matched)")
+
+
 def _wire_blood_toxeus_loot(db):
     """Wire the guaranteed-set-piece + high-bleed tables onto Hemorrheus (§3.3).
 
@@ -9006,6 +9160,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Soul quality passes
     _overhaul_generic_souls(db)
     _apply_d8_d9_summon_souls(db, tags)   # D8 Xeiwang + D9 Huo-ren summon-souls (after the overhaul, so the summon rewire wins)
+    _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs
     # after the overhauls; crowboar_* exist already (create_uber_souls runs
