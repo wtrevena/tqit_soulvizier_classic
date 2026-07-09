@@ -6007,6 +6007,25 @@ def _fix_wave30_render_and_refs(db):
     print(f"  F7b Melee_Poison: repointed {repointed} dangling skillName refs "
           f"-> attackmelee_poison09-12_10")
 
+    # ── F10 (delta vet, MINOR): melalos souls carried itemSkillLevel 3/4/6 vs
+    #    summon_zombiesoldier's skillMaxLevel 3 - a harmless single-pet clamp,
+    #    but the exact over-max class F1 eliminated. Normalize to the 1/2/3
+    #    tier convention (clears the validator WARNs; the F1 Table-B guard
+    #    already protects these levels from being re-stomped). ──
+    f10 = 0
+    for t, lv in (('n', 1), ('e', 2), ('l', 3)):
+        tail = rf'\melalos_soul_{t}.dbr'
+        cands = [n for n in db.record_names()
+                 if n.lower().endswith(tail) and 'equipmentring' in n.lower()
+                 and '\\soul\\' in n.lower()]
+        if len(cands) != 1:
+            raise SystemExit(f"wave30 F10: melalos soul {t} not found uniquely "
+                             f"({len(cands)} candidates: {cands[:3]})")
+        db.set_field(cands[0], 'itemSkillLevel', lv)
+        db._modified.add(cands[0])
+        f10 += 1
+    print(f"  F10 melalos souls: itemSkillLevel normalized to 1/2/3 ({f10} records)")
+
 
 # ── A3 / B-STARTER-CHEST-1: DEFERRED to the parallel disasm-grounded impl ───
 # build29 note (reconciliation): A3 (the co-op starter chest = 12 bags + 36
