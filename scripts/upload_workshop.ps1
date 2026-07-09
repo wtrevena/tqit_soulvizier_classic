@@ -64,6 +64,25 @@ if ($rootChildren.Count -ne 1 -or $rootChildren[0].Name -ne 'SoulvizierClassic' 
     exit 1
 }
 
+# ── Contract push-gate (build30 F7, Will's standing "protection from push"):
+# the FULL permanent contract suite must PASS against the LIVE staged artifacts
+# (work/ + local/) before ANY upload. run_contracts exits 0 = clean (gate PASS),
+# 1 = non-whitelisted P0/P1 violation or module crash, 2 = setup/artifact error.
+# NOTE: the LIVE artifacts it gates are the STAGED set - stage the canonical
+# Levels/Quests (deploy_to_custommaps.ps1 -SyncLevels; Levels_merged MD5
+# 74240222..., Quests 846c43f3...) BEFORE packaging + uploading (F8).
+Write-Host '=== Contract push-gate (tools/contracts/run_contracts.py) ===' -ForegroundColor Cyan
+$pyExe = Join-Path $env:LOCALAPPDATA 'Programs\Python\Python312\python.exe'
+if (-not (Test-Path $pyExe)) { $pyExe = 'py' }
+$env:PYTHONIOENCODING = 'utf-8'
+& $pyExe (Join-Path $RepoRoot 'tools\contracts\run_contracts.py')
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: contract suite FAILED (exit $LASTEXITCODE) - upload ABORTED." -ForegroundColor Red
+    Write-Host 'Fix the violations (or add a JUSTIFIED whitelist entry) and re-run.' -ForegroundColor Yellow
+    exit 1
+}
+Write-Host 'Contract suite PASS - proceeding to upload.' -ForegroundColor Green
+
 Write-Host '=== Upload to Steam Workshop ===' -ForegroundColor Cyan
 
 # Determine published file ID
