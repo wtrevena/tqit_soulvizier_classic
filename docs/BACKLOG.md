@@ -257,6 +257,25 @@
 
 ## 🟡 P2 - pending answers / smaller
 
+### B-STARTER-CHEST-2: "open the chest, nothing happens" (build30 P0 report) - DB byte-exonerated, needs in-game protocol
+- **Symptom (Will, live build30):** opening the starter chest yields nothing.
+- **Byte diagnosis (build30.1, exhaustive - all failure hypotheses REFUTED with live precedent):**
+  the shipped chest record (defaultloot\tutorialpotionchest, arz 45be22b8) differs from build29 by
+  exactly numSpawn '54'->'48' + the sow-soul slot zeroed; its dormant-slot shape (chance 0 + zero
+  weights + name absent) is the BASE GAME's own unused-slot shape on this exact record; bare-constant
+  numSpawn equations are LIVE base precedent (Ragnarok boss_tartarus_{n,e,l} chests ship min/max='1');
+  dtypes preserved; the full chain map -> TutorialPotionChestProxy -> accessorypool -> greece
+  FixedItemContainer -> defaultloot table is intact and byte-identical to build29 (proxy/pool/container
+  records unchanged; map placement bytes identical in both shipped maps); zero dangling refs.
+- **Open in-game questions (needed to progress):** (1) WHICH chest did Will open (the intended one =
+  the wooden "Small Chest" where it stood in build29)? (2) Difficulty: on Epic/Legendary the proxy
+  spawns an EMPTY pool BY DESIGN (base behavior, unchanged since build29) - the starter chest only
+  exists on Normal. (3) Does it reproduce on a FRESH character + fresh session? (4) Does the chest
+  play its open animation (record loads) or is it fully inert?
+- **Hardening shipped (build30.1):** container loot-slot shape contract gate in build_svc_database
+  (_validate_container_loot_shapes; negtest tools/debug/negtest_container_shape.py, 1 positive + 3
+  negatives all proven). No artifact change - the payload is byte-identical.
+
 ### B-FX-DANGLING-1: ~353 pre-existing dangling Chris\UnarmedProjectile_FX01 particle refs (build30 delta vet)
 - **Symptom:** arz-wide, ~353 records (incl. player Earth skills drxflamesurge/drxvolcanicorb)
   reference the nonexistent `Records\SandBox\Chris\UnarmedProjectile_FX01.dbr` in

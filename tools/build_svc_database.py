@@ -670,6 +670,71 @@ def grant_all_inventory_bags(db: ArzDatabase):
     return patched
 
 
+def _validate_container_loot_shapes(db, base_db=None):
+    """P0/build30.1 fail-loud gate: container loot-slot contract, calibrated to
+    what the BASE GAME's 611 FixedItemLoot records actually ship (measured):
+
+    FAIL (zero base precedent - the classes that make a chest drop nothing or
+    fail to load):
+      - a lootN slot whose lootNName1 is present + non-empty but does NOT
+        resolve to a record in the mod .arz (dangling loot-table ref);
+      - numSpawnMinEquation/numSpawnMaxEquation missing or empty on a modified
+        FixedItemLoot record (bare integer constants ARE precedented: the
+        Ragnarok boss_tartarus_{n,e,l} chests ship '1'; xpack4 ships '0').
+
+    WARN only (base-PRECEDENTED design idioms, measured in the base arz):
+      - ACTIVE slot (chance > 0) without a name: 95 base slots ship this (the
+        'chance of nothing' idiom, e.g. the hermit mage chests);
+      - DORMANT slot (chance 0) carrying a name: 199 base slots ship this
+        (parked tables).
+    Raises SystemExit on any FAIL. Cheap: only scans db._modified.
+    """
+    bad = []
+    warned = 0
+    all_low = {n.replace('/', '\\').lower() for n in db.record_names()}
+    if base_db is not None:
+        # runtime resolution model = mod UNION base game (same as the other gates)
+        all_low |= {n.replace('/', '\\').lower() for n in base_db.record_names()}
+    for rec in sorted(getattr(db, '_modified', set())):
+        fields = db.get_fields(rec)
+        if not fields:
+            continue
+        fmap = {}
+        for k, tf in fields.items():
+            fmap[k.split('###')[0]] = tf
+        tpl = fmap.get('templateName')
+        tplv = str(tpl.values[0]).lower() if (tpl and tpl.values) else ''
+        if not tplv.endswith('fixeditemloot.tpl'):
+            continue
+        for n in range(1, 7):
+            ch_tf = fmap.get(f'loot{n}Chance')
+            chance = float(ch_tf.values[0]) if (ch_tf and ch_tf.values) else 0.0
+            nm_tf = fmap.get(f'loot{n}Name1')
+            name = str(nm_tf.values[0]).strip() if (nm_tf and nm_tf.values) else ''
+            if name:
+                # the ONE unprecedented killer: a named slot whose table does
+                # not exist -> that slot's draws yield nothing (or worse).
+                if name.replace('/', '\\').lower() not in all_low:
+                    bad.append((rec, f'loot{n}Name1 DANGLING: {name!r} '
+                                     f'(table not in the built .arz)'))
+            if chance > 0 and not name:
+                warned += 1   # base-precedented 'chance of nothing' idiom (95 in base)
+            if chance <= 0 and name:
+                warned += 1   # base-precedented parked-table idiom (199 in base)
+        for eq in ('numSpawnMinEquation', 'numSpawnMaxEquation'):
+            eq_tf = fmap.get(eq)
+            if not eq_tf or not eq_tf.values or not str(eq_tf.values[0]).strip():
+                bad.append((rec, f'{eq} missing/empty'))
+    if bad:
+        for rec, why in bad:
+            print(f'  CONTAINER-SHAPE FAIL: {rec} :: {why}')
+        raise SystemExit(
+            f'Container loot contract FAILED on {len(bad)} violation(s); '
+            f'this build does not ship (P0/build30.1 gate)')
+    print(f'  Container loot contract: PASS (modified FixedItemLoot records; '
+          f'{warned} base-precedented idiom slot(s) noted)')
+
+
 def _import_base_game_record(db, base_db, record_name):
     """Import a single record from the base game database into the SV overlay."""
     if db.has_record(record_name):
@@ -1645,6 +1710,17 @@ def main():
     print(f"  Tags file: {tags_path} ({len(text_tags)} uber + {len(legacy_tags)} legacy + {len(extended_tags)} extended)")
 
     fix_soul_bitmaps(db)
+
+    # ── P0/build30.1 gate (fail-loud): container loot-slot SHAPE contract.
+    # Every mod-MODIFIED FixedItemLoot record must have base-precedent slot
+    # shapes: an ACTIVE slot (lootNChance > 0) must carry a non-empty lootNName1
+    # AND a positive weight; a DORMANT slot (chance == 0) must carry NO name
+    # (the base game's own unused-slot shape: chance 0 + zero weights + name
+    # absent). Also: numSpawnMin/MaxEquation must be non-empty. Born from the
+    # build30 starter-chest P0 (the record proved byte-clean, but this contract
+    # makes the whole malformed-slot class unshippable). Negative-tested via
+    # tools/debug/negtest_container_shape.py.
+    _validate_container_loot_shapes(db, base_db=base_db)
 
     print(f"\nWriting output...")
     db.write_arz(output_path)
