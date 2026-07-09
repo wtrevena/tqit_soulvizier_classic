@@ -34,15 +34,9 @@ Both mods bring Soulvizier to Anniversary Edition. Soulvizier Classic preserves 
 [h1]Known issues / work in progress[/h1]
 We are actively fixing these. This list is updated as fixes ship.
 [list]
-[*] Portals to the restored areas currently render as plain flat blue panels instead of proper portal effects.
-[*] The Garden of Merchants portal sits on the walkway near the fountain and can teleport you while walking past. It is being relocated.
-[*] The Secret Place is currently a one-way trip: the return portal and the portals inside it do not work yet.
-[*] The sealed temple door in the Blood Cave does not open after its guardian is defeated.
-[*] The Occult mastery shows up as 'Rogue' on the mastery select screen. The skill tree itself is correct.
-[*] Some names and descriptions display as raw tags (the blood superboss, his soul, the Crimson Verdict set pieces, and the Vein Render sword).
-[*] The blood superboss is shrouded in green instead of red.
-[*] Some summoned pets from boss souls appear broken (missing bodies or standing immobile).
-[*] Atmosphere/smoke density in parts of the Blood Cave is lower than classic Soulvizier.
+[*] IMPORTANT: items already in your bags keep the stats they had when they dropped. If a soul you picked up before an update has a granted skill that does not activate, that specific item stays broken; newly dropped copies work. This is how the game engine stores items, not something we can patch retroactively.
+[*] To return from the Garden of Merchants and the Secret Place, use the rift/teleport SHRINE inside the area (that is the classic Soulvizier way back). The Uber Dungeon return is not wired yet; use a Portal Stone to leave.
+[*] Exploding sprites near the occultist pyre may not respawn, and Blood Cave smoke density is still being tuned toward classic levels.
 [/list]
 
 [h1]Found a bug?[/h1]
@@ -51,10 +45,16 @@ Please leave a comment below describing what you ran into: where you were, what 
 [h1]Requirements and how to play[/h1]
 [list]
 [*] Requires Titan Quest Anniversary Edition.
+[*] REQUIRES the Eternal Embers expansion. If the mod fails to launch, or the map list looks wrong, or you get sent back to the menu, you are almost certainly missing Eternal Embers. This is the number one cause of the mod not working.
+[*] The other expansions (Ragnarok, Atlantis) are recommended for full compatibility, since this is a total conversion that touches every act.
 [*] Play via Custom Quest > SoulvizierClassic with a dedicated Custom Quest character. Never load a normal-campaign character into the mod.
 [*] Strongly recommended: the community 4GB LAA patch for TQ.exe (this is a large mod). Steam's verify-integrity feature reverts it, so re-apply it after verifying files.
 [*] Multiplayer: up to 6 players; everyone must be on the same mod version (let Steam finish updating the mod before hosting).
 [/list]
 
 [h1]Updates[/h1]
+2026-07-09: Major fix wave. The four classic Soulvizier questlines (the Grieving Widow, the sealed temple door, the hidden Esti chest with its Supra formula reward, and the Boss Arena progression) now actually load and track. They had never worked before due to an archive bug, and they now start for both new and existing characters on next load. Soul-granted attack skills like Ground Smash now fire (test with a freshly dropped soul). Summoned pets from boss souls (the Blood Blade-Dancer and Lil'Lued) now show their bodies instead of floating weapons. The blood superboss and his counterpart in the secret chamber spawn correctly again. Restored-area portals use a proper glowing portal instead of a solid slab, and no longer block you. Narok the Rockskin and Vort the Red souls now summon their bosses. Please report anything that still looks off in the comments.
+
+2026-07-08 (second update): Big fix wave. Portals now look like proper gold portals instead of flat blue panels. The Garden of Merchants portal no longer blocks the walkway by the fountain. Sparta Crypt now has a true two-way door. The Secret Place teleport shrine is now active as the way back (like the Garden shrine). The blood superboss wears his proper blood-red shroud. Summoned pets from boss souls now spawn with their gear. Over 200 souls whose granted skills never activated now work on newly dropped copies. The Occult mastery is named correctly on the class select screen, the Garden of Merchants is labeled correctly on the map, and the blood superboss / Crimson Verdict set names display properly. The sealed temple door in the Blood Cave got a more reliable unlock. Restored more classic Soulvizier atmosphere around Delphi. For multiplayer, everyone must let Steam finish downloading this update before hosting.
+
 2026-07-08: Fixed the Workshop packaging issue that made the mod show up as two broken entries (database and resources) and fail to launch. If you subscribed before this date, let Steam re-download the mod and it will appear as SoulvizierClassic under Custom Quest.
