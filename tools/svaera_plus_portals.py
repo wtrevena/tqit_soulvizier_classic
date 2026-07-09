@@ -22,6 +22,9 @@ from build_section_surgery import (
     merge_hub_into_inject_specs, build_hub_inject_specs, patch_respawn_group_position,
     RESPAWNTEMPLEORIENT01_UNIQUEID,
     REWRITE_0X06_SPECS, rewrite_0x06_descriptors,
+    APPEND_0X06_SPECS, append_0x06_descriptors,
+    REMOVE_0X05_BY_0X14_UID_SPECS, remove_0x05_instances_by_0x14_uid,
+    REMOVE_BY_DBR_SPECS, remove_0x05_instances_by_dbr,
     FLAG_UID_SPECS, set_0x05_flags_uid, build_teleport_shrine_group_record)
 
 # --- GROUPS parsing ---
@@ -653,7 +656,14 @@ def main():
     # (b) REWRITE_0X06_SPECS: repurpose SpartaCryptLevel2's dangling 0x06 portal
     #     descriptor into the native return door to the catacube (in-place 60-byte
     #     rewrite; count unchanged). See build_section_surgery.py for both mechanisms.
-    print('\n=== SV-only structural patches (flags/uid + 0x06 rewrites) ===')
+    # (c) APPEND_0X06_SPECS + REMOVE_0X05_BY_0X14_UID_SPECS: the Uber Dungeon native
+    #     return door (M1) - APPEND a reciprocal 0x06 descriptor to crypt_floor1 (count
+    #     2->3) mirroring maze03's host mouth, and REMOVE crypt's GridExitOneWay landing
+    #     portal_olympianarena2 (0x05 inst + its 48B 0x14) so it does not duplicate the
+    #     descriptor's portal id. maze03 (base, host) is UNCHANGED. Both run AFTER step-6
+    #     injection so instance-index accounting (portal_uberdungeon_return at the tail) is
+    #     already settled.
+    print('\n=== SV-only structural patches (flags/uid + 0x06 rewrites/appends + removals) ===')
     for i, lv in enumerate(sv_only):
         lv_key = lv['fname'].replace('\\', '/').lower()
         if lv_key in FLAG_UID_SPECS:
@@ -675,6 +685,12 @@ def main():
         if lv_key in REWRITE_0X06_SPECS:
             converted_blobs[i] = rewrite_0x06_descriptors(
                 converted_blobs[i], REWRITE_0X06_SPECS[lv_key], lv_key)
+        if lv_key in APPEND_0X06_SPECS:
+            converted_blobs[i] = append_0x06_descriptors(
+                converted_blobs[i], APPEND_0X06_SPECS[lv_key], lv_key)
+        if lv_key in REMOVE_0X05_BY_0X14_UID_SPECS:
+            converted_blobs[i] = remove_0x05_instances_by_0x14_uid(
+                converted_blobs[i], REMOVE_0X05_BY_0X14_UID_SPECS[lv_key], lv_key)
 
     # --- 7. Append 0x14 entries ONLY for injected instances that need one (SV-faithful) ---
     # A 0x14 entry is per-instance engine BINDING metadata (e.g. a cave-mouth GridEntrance
@@ -1038,6 +1054,41 @@ def main():
     new_pre_data_size += 8 + len(new_bitmaps_data)
     for _, ud in unk_sections:
         new_pre_data_size += 8 + len(ud)
+
+    # --- M2: DE-PLACE MAP-REF-1 records (SV NPCs/setdress absent from the arz) -----------
+    # Runs as the FINAL per-blob edit (after all injection + step-7 0x14 appends + navmesh),
+    # so remove_0x05_instances_by_dbr's 0x14 reindex accounts for every injected binding.
+    # Interim build30 default (Will can override to full-restore-later); see REMOVE_BY_DBR_SPECS.
+    print('\n=== M2: de-placing MAP-REF-1 records ===')
+    _m2_total = 0
+    _m2_per_level = {}
+    for i, lv in enumerate(ae_levels):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_BY_DBR_SPECS:
+            if i in ae_patched_blobs:
+                _base = ae_patched_blobs[i]
+            elif _r09_swap and i == _r09_swap[0]:
+                _base = _r09_swap[1]
+            else:
+                _base = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+            newb, n = remove_0x05_instances_by_dbr(_base, REMOVE_BY_DBR_SPECS[lv_key], lv_key)
+            ae_patched_blobs[i] = newb
+            _m2_total += n
+            _m2_per_level[lv_key] = n
+    for i, lv in enumerate(sv_only):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_BY_DBR_SPECS:
+            newb, n = remove_0x05_instances_by_dbr(converted_blobs[i], REMOVE_BY_DBR_SPECS[lv_key], lv_key)
+            converted_blobs[i] = newb
+            _m2_total += n
+            _m2_per_level[lv_key] = n
+    print(f'  M2: de-placed {_m2_total} instance(s) across {len(_m2_per_level)} level(s)')
+    assert len(_m2_per_level) == len(REMOVE_BY_DBR_SPECS), \
+        (f'M2 touched {len(_m2_per_level)} levels, expected {len(REMOVE_BY_DBR_SPECS)} '
+         f'(missing: {sorted(set(REMOVE_BY_DBR_SPECS) - set(_m2_per_level))})')
+    # 72 = build30's 70 (68 D3 pairs, 2 double-placed) + build31's 2 latent Helos soul
+    # collectors (exposed by the N1 portal making startingfarmland06d a scanned level).
+    assert _m2_total == 72, f'M2 expected 72 de-placements, got {_m2_total}'
 
     # DATA section: SVAERA blobs (with patches) + SV-only blobs
     print('  Building DATA section...')

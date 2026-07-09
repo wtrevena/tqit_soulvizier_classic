@@ -283,6 +283,11 @@ FINALLETTER_DBR = b'records\\drxmap\\quest\\finalletter.dbr'
 # The Proxy visual (mesh/scale/texture) lives on the DB record; the real spawn is the
 # um_bloodtoxeus_99 monster via the pool.
 Q_BLOODTOXEUS_LONE_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone.dbr'
+# M5' (build30): the ~50%-spawn variant proxy for the parchment placement (chanceToRun=50).
+# COUPLED WITH DB LANE: this record is created by the DB lane; until it lands in the shipped
+# arz, the parchment placement below shows as a MAP-REF-1 (placed record absent from arz) and
+# the map+arz must ship together. Same proxy dir as q_bloodtoxeus_lone.
+Q_BLOODTOXEUS_LONE_50_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone_50.dbr'
 # q_leinth_lone's EXACT float32 rotation (from its SV-upstream bossfight 0x05 record bytes);
 # carried verbatim so the Hemorrheus proxy's byte-shape matches the exemplar's rotation too.
 Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
@@ -334,6 +339,13 @@ Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
 # svaera_plus_portals.py step 6. maze03 has a 0x14 section (size 0) so the step-7 x14_payload
 # append lands the binding at the injected instance index.
 PORTAL_OLYMPIANARENA1_DBR = b'records\\quests\\portal_olympianarena1.dbr'
+# M4 (build30): a persistent portal-swirl EffectEntity co-located with a GridEntrance to make
+# the born-open static portal VISIBLE (static GridEntrance has NO fx field and its placeholder
+# mesh renders as a flat, near-featureless pane - the base game's swirl comes from a Dynamic
+# portal's open-animation FX we do not have). map_portal_aura ships: records\drxmap\effects\
+# objefx\map_portal_aura.dbr + its DRXeffects\other\map_portal_aura.pfx are both present in the
+# shipped arz + DRXeffects.arc (scratchpad/m4_impl_analysis.py). flags=0, no 0x14.
+PORTAL_FX_MAP_AURA_DBR = b'records\\drxmap\\effects\\objefx\\map_portal_aura.dbr'
 PORTAL_OLYMPIANARENA1_0x14 = bytes.fromhex(
     '58941143e04eb3c0d62dbd952143f05d'   # mouth_uid
     '6e513e901549b1d558db968c61bda66a'   # exit_uid  (pairs crypt_floor1 portal_olympianarena2)
@@ -424,6 +436,203 @@ REWRITE_0X06_SPECS = {
     }],
 }
 
+# ── UBER DUNGEON NATIVE RETURN DOOR (M1, build30) ──────────────────────────────────
+# Resolves the "crypt_floor1 is 2-layer, hence the A1-uber conversion stays DEFERRED"
+# note above, now that the 2-layer door-cell layer RE is solved (tasks/wx21win4f.output,
+# RE + independent Verify both "solved"): doorY is the 0-based vertical GRID-LAYER index
+# (< glay), layer 0 = lowest floor. crypt_floor1 realizes ONE navmesh floor at world Y=10
+# = layer 0, so doorY=0. The forward maze03 -> crypt door already works via maze03's
+# INJECTED born-open GridEntrance mouth portal_olympianarena1 (0x14 inst[447]: mouth
+# 58941143.., exit 6e513e90.., dest crypt GUID) - the "maze03 host 0x14 UNCHANGED"
+# constraint. crypt currently ALSO carries the native GridExitOneWay LANDING
+# portal_olympianarena2 (0x05 inst[192] + a 48B 0x14 whose mouth == 6e513e90). This wave
+# converts the door to the pure-native two-way mechanism the blood cave + Sparta use:
+#   (a) APPEND a reciprocal 0x06 descriptor to crypt whose (exit, mouth, src) MIRROR the
+#       maze03 host mouth + maze03's level GUID, at the landing door cell (17, 0, 28) =
+#       (floor(139.94/8), layer 0, floor(231.94/8)); the engine then builds the paired
+#       two-way portal (UniqueId == exit 6e513e90) from the descriptor alone (Random09A
+#       walk-tested precedent), giving the RETURN leg.
+#   (b) REMOVE the landing portal_olympianarena2 + its 0x14 so it does not register a
+#       SECOND portal with the same id 6e513e90 as the new descriptor (Random09A has NO
+#       landing entity, only the descriptor). See remove_0x05_instances_by_0x14_uid.
+# NOTE: crypt also has an INJECTED-but-inert portal_uberdungeon_return (0x05, no 0x14) at
+# (140,10,215), 13u from the door cell - out of M1 scope, harmless to the mechanism
+# (no 0x14 = registers no portal); flagged as a residual, not touched here.
+CRYPT_FLOOR1_LEVEL_KEY = 'levels/world/uberdungeon/crypt_floor1.lvl'
+MAZE03_GUID = bytes.fromhex('cdef89ae834a4adf1214609306708c02')      # maze03 level GUID (host)
+UBER_RETURN_EXIT = bytes.fromhex('6e513e901549b1d558db968c61bda66a')  # == maze03 host mouth's exit
+UBER_RETURN_MOUTH = bytes.fromhex('58941143e04eb3c0d62dbd952143f05d')  # == maze03 host mouth's mouth
+# level_key -> list of 0x06 descriptors to APPEND (see append_0x06_descriptors)
+APPEND_0X06_SPECS = {
+    CRYPT_FLOOR1_LEVEL_KEY: [{
+        'exit': UBER_RETURN_EXIT, 'mouth': UBER_RETURN_MOUTH, 'src': MAZE03_GUID,
+        'cell': (17, 0, 28),
+    }],
+}
+# level_key -> list of 0x05-instance removals keyed by a uid inside the instance's 0x14
+# binding (see remove_0x05_instances_by_0x14_uid). The landing's 0x14 mouth == the new
+# descriptor's exit, so keying on that uid deletes exactly the duplicate-id landing.
+REMOVE_0X05_BY_0X14_UID_SPECS = {
+    CRYPT_FLOOR1_LEVEL_KEY: [{
+        'uid': UBER_RETURN_EXIT, 'uid_field': 'mouth',
+        'expect_dbr': PORTAL_OLYMPIANARENA2_DBR, 'expect_0x14_size': 48,
+    }],
+}
+
+# ── MAP-REF-1 DE-PLACEMENT (M2, build30) ───────────────────────────────────────────
+# The 68 SV town NPCs / setdress placed in these (mostly base-game) town levels reference
+# records that are ABSENT from the shipped arz (fully restoring them needs a 3169-record
+# SVAERA economy import + external mesh/texture arcs + merchant tags = out of build30 scope;
+# left in place they silently fail to spawn / show raw-named). INTERIM build30 DEFAULT
+# (Will informed, can override to full-restore-later): DE-PLACE all 68 so the MAP-REF-1
+# contract passes at 0 and the push-gate can ship. remove_0x05_instances_by_dbr strips each
+# placement (all instances of each dbr) from its level blob, reindexing 0x14. Source of truth:
+# scratchpad/contracts_violations_map.json (DB lane D3); this dict is the committed copy so the
+# build reproduces without the scratch file. Setdress paths carry a LEADING SPACE (SV-authored
+# corrupt path) - preserved exactly. level_key -> [record paths to de-place].
+REMOVE_BY_DBR_SPECS = {
+    'levels/world/babylon/hanginggardensexit01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_02a_babylon-outskirts.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_02b_babylon-outskirts.dbr',
+    ],
+    'levels/world/egypt/memphis/256x256memphiscityarea.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\02_egypt_dyer_03a_memphis.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\02_egypt_dyer_03b_memphis.dbr',
+    ],
+    'levels/world/egypt/rhakotis/rhakotis02.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\02_egypt_dyer_01a_rhakotis.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\02_egypt_dyer_01b_rhakotis.dbr',
+    ],
+    'levels/world/egypt/thebes/thebes02.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\02_egypt_dyer_06a_thebes.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\02_egypt_dyer_06b_thebes.dbr',
+    ],
+    'levels/world/greece/area002/valley01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_02a_sparta.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_02b_sparta.dbr',
+    ],
+    'levels/world/greece/area004/coastaltown01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_04a_megara.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_04b_megara.dbr',
+    ],
+    'levels/world/greece/athens/athenscity03.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_10a_athens_.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_10b_athens.dbr',
+    ],
+    'levels/world/greece/delphi/delphicenter01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_07a_delphi.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_07b_delphi.dbr',
+    ],
+    'levels/world/greece/delphi/delphilowlands04.lvl': [
+        b'records\\proxies greek\\area005\\ag_magical_oceanid_02n.dbr',
+    ],
+    # N1/build31 addition: the Helos SOUL COLLECTORS are LATENT MAP-REF-1s exposed when the N1
+    # portal made startingfarmland06d a mod-touched (scanned) level - the placements predate
+    # build31 (SVAERA-era; the records are in NO arz, so they have silently never spawned).
+    # Same record family and same interim policy as sc_orient_greatwall_01/02 above.
+    'levels/world/greece/startingtownver2/startingfarmland06d.lvl': [
+        b'records\\creature\\npc\\soulcollectors\\sc_greece_helos.dbr',
+        b'records\\creature\\npc\\soulcollectors\\sc_greece_helos_02.dbr',
+    ],
+    'levels/world/greece/knossos/knossostownstarta.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_12a_herakleion.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\01_greece_dyer_12b_herakleion.dbr',
+    ],
+    'levels/world/orient/changan/changancity06.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_07a_changan.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_07b_changan.dbr',
+    ],
+    'levels/world/orient/greatwall/roadtotown03a.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_06a_village-of-zhidan.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_06b_village-of-zhidan.dbr',
+        b'records\\creature\\npc\\alchemists\\03_orient_alchemist_greatwall.dbr',
+        b'records\\creature\\npc\\item_breaker\\a03_free_upgrader_greatwall.dbr',
+        b'records\\creature\\npc\\item_upgrader\\a03_unique_upgrader_greatwall.dbr',
+        b'records\\creature\\npc\\soulcollectors\\sc_orient_greatwall_01.dbr',
+        b'records\\creature\\npc\\soulcollectors\\sc_orient_greatwall_02.dbr',
+        b'records\\creature\\npc\\uniquetrader\\03_orient_trader_greatwall.dbr',
+        b'records\\sceneryorient\\structure\\building\\town\\setdress\\ orienttownsetdresssqbasketveg02.dbr',
+        b'records\\sceneryorient\\structure\\building\\town\\setdress\\ orienttownsetdresstablegroup.dbr',
+        b'records\\xpack\\creatures\\npc\\enchanter\\enchanter_greatwall.dbr',
+    ],
+    'levels/world/orient/silkroad/basecampforest02.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_03a_shangshung-village.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\03_orient_dyer_03b_shangshung-village.dbr',
+    ],
+    'levels/world/orient/silkroad/hiddenvalley01.lvl': [
+        b'records\\sceneryorient\\structure\\building\\town\\setdress\\ orienttownsetdresstablegroup.dbr',
+    ],
+    'xpack/levels/area01_rhodes/rhodes_cityfinal_01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04_hades_dyer_01a_rhodes.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\04_hades_dyer_01b_rhodes.dbr',
+    ],
+    'xpack/levels/area04_styx/undergrounds/styx_cryptug_stonetransitioniii01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04_hades_dyer_05a_city-of-lost-souls.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\04_hades_dyer_05b_city-of-lost-souls.dbr',
+    ],
+    'xpack/levels/area06_elysian/elysian_fields_04.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04_hades_dyer_07a_elysium.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\04_hades_dyer_07b_elysium.dbr',
+    ],
+    'xpack2/levels/asgard/underground/valhollcave08.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_10a_valholl.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_10b_valholl.dbr',
+    ],
+    'xpack2/levels/celticheartlands/glauberg02.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_05a_glauberg.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_05b_glauberg.dbr',
+    ],
+    'xpack2/levels/celticheartlands/heuneburgoutskirts02.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_03a_heuneburg.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_03b_heuneburg.dbr',
+    ],
+    'xpack2/levels/corinthia/corinthia.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_01a_corinth.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_01b_corinth.dbr',
+    ],
+    'xpack2/levels/darklands/underground/mfc01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_09a_dark-lands.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_09b_dark-lands.dbr',
+    ],
+    'xpack2/levels/scandia/kinggylfissettlement.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_07a_gylfis-settlement.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\05_north_dyer_07b_gylfis-settlement.dbr',
+    ],
+    'xpack3/levels/atlantis/atlantishigh02b.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04b_atlantis_dyer_07a_atlantis-high-district.dbr',
+    ],
+    'xpack3/levels/iberia/atlasmountains14.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04b_atlantis_dyer_04a_atlas-mountains.dbr',
+    ],
+    'xpack3/levels/iberia/gadir01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04b_atlantis_dyer_01a_gadir.dbr',
+    ],
+    'xpack3/levels/tartarus/underground/transitioncave01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\04b_atlantis_dyer_08a_tartarus.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\04b_atlantis_dyer_08b_tartarus.dbr',
+    ],
+    'xpack4/levels/act1/06ricefields/1_6ricefields04.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_05a_village-of-xiao.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_05b_village-of-xiao.dbr',
+    ],
+    'xpack4/levels/act1/underground/yaosummerresidence.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_01a_summer-palace.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_01b_summer-palace.dbr',
+    ],
+    'xpack4/levels/act2/01pingyang/2_1pingyang05.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_06a_pingyang.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_06b_pingyang.dbr',
+    ],
+    'xpack4/levels/act3/01thedunes/3_1thedunes01.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_09a_asyut-encampment.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_09b_asyut-encampment.dbr',
+    ],
+    'xpack4/levels/act3/01thedunes/3_1thedunes20.lvl': [
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_13a_thebes.dbr',
+        b'records\\all_sv\\creature\\npc\\dyer\\06_east_dyer_13b_thebes.dbr',
+    ],
+}
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
@@ -479,6 +688,93 @@ def rewrite_0x06_descriptors(blob, specs, level_name=''):
         out_secs.append({'type': 0x06, 'data': bytes(d6)})
     if rewrote != len(specs):
         raise ValueError(f'{level_name}: rewrote {rewrote} 0x06 descriptors, expected {len(specs)}')
+    return rebuild_blob(magic, out_secs)
+
+
+def append_0x06_descriptors(blob, specs, level_name=''):
+    """APPEND new 60-byte reciprocal-door descriptors to a level's 0x06 tail block.
+
+    (rewrite_0x06_descriptors edits an existing descriptor in place with the count fixed;
+    this GROWS the block. Needed for crypt_floor1, whose native block already has count=2,
+    where the Uber return door is a THIRD descriptor - the append the older function cannot
+    do; it also keys off f0==64 which is only the SIZE of a single-descriptor block.)
+
+    The 0x06 GridSystem section = [u32 1][u32 2][u32 1][u32 payloadlen][payloadlen bytes of
+    GridSystem body][descriptor tail block]. The tail block = [u32 marker=2][u32 size=
+    4+count*60][u32 count][count x 60B descriptor] and ALWAYS ends at the section end; the
+    grid header's payloadlen (int[3]) points at (block_start - 16) i.e. block_start ==
+    16 + payloadlen, and EXCLUDES the descriptor tail, so appending descriptors leaves
+    payloadlen untouched (byte-proven on crypt: payloadlen 19585, block@19601). Each 60B
+    descriptor = [exit 16][mouth 16][srcGUID 16][doorX u32][doorY u32][doorZ u32] where
+    doorX/doorZ are 0-based grid cells (floor(local/cellSize)) and doorY is the 0-based
+    vertical LAYER index (layer 0 = lowest floor; tasks/wx21win4f.output). This mirrors the
+    native cave/tomb two-way-door mechanism: the destination's reciprocal 0x06 descriptor +
+    the host's 0x14 GridEntrance mouth build the paired portal, no landing entity needed
+    (Random09A walk-tested precedent).
+
+    Each spec: {'exit': 16B, 'mouth': 16B, 'src': 16B, 'cell': (dx, dy, dz)}. Bumps
+    count += len(specs), size += len(specs)*60, appends the descriptor bytes at the section
+    end (preserving the existing descriptors). Fails loud unless exactly one well-formed
+    0x06 section is present, and refuses to append a descriptor whose exit id already exists.
+    """
+    secs, magic = parse_blob_sections(blob)
+    out_secs = []
+    appended = 0
+    saw_06 = 0
+    for s in secs:
+        if s['type'] != 0x06:
+            out_secs.append(s)
+            continue
+        saw_06 += 1
+        d6 = bytes(s['data'])
+        n = len(d6)
+        if n < 16:
+            raise ValueError(f'{level_name}: 0x06 too small ({n} B) for a descriptor tail')
+        one, two, oneb, payloadlen = struct.unpack_from('<4I', d6, 0)
+        if not (one == 1 and two == 2 and oneb == 1):
+            raise ValueError(f'{level_name}: 0x06 header {(one, two, oneb)} != (1,2,1); '
+                             f'not a GridSystem section, refusing to append')
+        block_start = 16 + payloadlen
+        if block_start + 12 > n:
+            raise ValueError(f'{level_name}: 0x06 descriptor block start {block_start} '
+                             f'past section end {n}')
+        marker, size, count = struct.unpack_from('<3I', d6, block_start)
+        if marker != 2:
+            raise ValueError(f'{level_name}: 0x06 tail marker {marker} != 2 at {block_start}')
+        if size != 4 + count * 60:
+            raise ValueError(f'{level_name}: 0x06 tail size {size} != 4+count*60 '
+                             f'({4 + count * 60}) for count={count}')
+        if block_start + 12 + count * 60 != n:
+            raise ValueError(f'{level_name}: 0x06 descriptor block does not end at section '
+                             f'end (block_end {block_start + 12 + count * 60} != {n})')
+        existing_exits = {bytes(d6[block_start + 12 + i * 60:block_start + 12 + i * 60 + 16])
+                          for i in range(count)}
+        new_bytes = bytearray()
+        for spec in specs:
+            ex, mo, sr = spec['exit'], spec['mouth'], spec['src']
+            dx, dy, dz = spec['cell']
+            if not (len(ex) == 16 and len(mo) == 16 and len(sr) == 16):
+                raise ValueError(f'{level_name}: descriptor exit/mouth/src must be 16 bytes each')
+            if ex in existing_exits:
+                raise ValueError(f'{level_name}: 0x06 already has a descriptor with exit '
+                                 f'{ex.hex()[:12]}..; refusing to append a duplicate')
+            desc = ex + mo + sr + struct.pack('<3I', dx, dy, dz)
+            assert len(desc) == 60
+            new_bytes += desc
+            existing_exits.add(ex)
+            print(f'    0x06 APPEND {level_name}: exit={ex.hex()[:12]}.. mouth={mo.hex()[:12]}.. '
+                  f'src={sr.hex()[:12]}.. cell=({dx},{dy},{dz}) (count {count}->{count + len(specs)})')
+        new_count = count + len(specs)
+        new_size = size + len(specs) * 60
+        d6new = bytearray(d6)
+        struct.pack_into('<3I', d6new, block_start, 2, new_size, new_count)
+        d6new += new_bytes
+        out_secs.append({'type': 0x06, 'data': bytes(d6new)})
+        appended += len(specs)
+    if saw_06 != 1:
+        raise ValueError(f'{level_name}: expected exactly 1 0x06 section, found {saw_06}')
+    if appended != len(specs):
+        raise ValueError(f'{level_name}: appended {appended} descriptors, expected {len(specs)}')
     return rebuild_blob(magic, out_secs)
 
 
@@ -698,6 +994,25 @@ GARDEN_G4_0x14 = GARDEN_gX2 + b'\x00' * 32            # HV01 landing (return)
 for _p in (GARDEN_G1_0x14, GARDEN_G2_0x14, GARDEN_G3_0x14, GARDEN_G4_0x14):
     assert len(_p) == 48
 
+# --- N1 (build31): SECOND Garden entrance from HELOS (first town, Act 1 Greece) ------------
+# Will: "the portal to Duister [= Garden of Merchants] should be put in the first town".
+# ADDITIVE: the HV01 camp entrance (G1-G4) stays; Helos gets its OWN pair with freshly minted
+# UIDs (the hub lesson: every cross-level pair uses its own UIDs, zero cross-talk with
+# A1/A2/Sparta/hub pairs; both minted UIDs verified ABSENT from both shipped maps). H1 =
+# entrance in startingfarmland06d (Helos village, v0x11 shared -> step-6/7 x14_payload append)
+# + co-located map_portal_aura swirl (M4 recipe: static GridEntrance is otherwise near-
+# invisible). H2 = inbound landing in the Garden's caravan_rhodes component near G2.
+# RETURN IS THE EXISTING G3 SHRINE -> HV01 (coordinator decision build31). ⚠️ Flagged: an
+# Act-1 player who enters from Helos and takes the return shrine lands in HiddenValley01
+# (Act 3 Orient) - walk-test-gated; if Will dislikes it, add a hub-style second return pair
+# (Garden -> Helos) with 2 more minted UIDs.
+HELOS_hM1 = bytes.fromhex('f2f9cbfb79166ec992e1281b2fd25207')  # Helos entrance mouth
+HELOS_hX1 = bytes.fromhex('1460bdc60254e065833db5ec4f502128')  # Helos entrance exit (== H2 landing mouth)
+HELOS_H1_0x14 = HELOS_hM1 + HELOS_hX1 + GOM_GUID   # Helos entrance -> GoM
+HELOS_H2_0x14 = HELOS_hX1 + b'\x00' * 32           # GoM landing (inbound from Helos)
+for _p in (HELOS_H1_0x14, HELOS_H2_0x14):
+    assert len(_p) == 48
+
 # --- A2 SECRET PLACE door (canonical + hub) : rhodes_secretvista_01 <-> darkforestenter -
 # HOST = rhodes_secretvista_01 (v0x0f shared) - a scenic Rhodes overlook (thematic "hidden
 # secret place" host, same Rhodes region as the Secret Place cluster, ZERO hostiles); portal
@@ -841,23 +1156,28 @@ INJECT_SPECS = {
          {'rot': HV01_5M_DYN_ORANGE_ROT}),
         (LIGHT_10M_SIMPLE_RED_DBR, 46.9508056640625, 25.032676696777344, 112.49130249023438),
         # --- A1 GARDEN OF MERCHANTS door: HV01 host portals. G1 = entrance -> GardenofMerchants.
-        # B-PORTAL-2 FIX (2026-07-08): the build26/27 G1 spot (46.70,15.80,127.90) sat DEAD-CENTER
-        # in the southward exit corridor leaving the north camp (X36-50 / Z117-142), so Will was
-        # force-teleported just walking past it (born-open entrance = teleport-on-touch). Relocated
-        # to the EAST END of the camp's north-edge row at (51.00,17.80,142.00): it now sits in a
-        # tidy row along the north wall AFTER the respawn fountain (X35.7,Z143.1) and the
-        # Super-Caravan (X41.7,Z143.1) - 9.4u E of the caravan, so it is clearly visible from the
-        # camp yet OFF the through-path (the exit lane runs SOUTH from the caravan; the portal is a
-        # NE spur the player only walks TO deliberately). Verified (recon_hv01_portal_relocate.py):
-        # on-mesh dY 0.00u, same walkable component #0 as the fountain/caravan/cave-mouth, 9.4u from
-        # the caravan (>=6u), 15.3u from the fountain (not on the respawn), 7.1u from the G4 landing
-        # (no mesh overlap), 9.4u off the caravan->cave-mouth corridor centerline. The 0x14 binding
+        # M4 FIX (build30, "Chumbi Valley portal still broken" P0): the build28 B-PORTAL-2 move to
+        # the NE spur (51.00,17.80,142.00) KILLED the teleport - a born-open GridEntrance fires only
+        # when the player's movement SEGMENT CROSSES the portal PLANE (Region::FindCrossedPortal,
+        # plane-vs-segment, NOT touch/proximity); the spur is a Z-dead-end (walkable-both-sides Z=
+        # False) so the player stops AT the portal without crossing (scratchpad/m4_impl_analysis.py).
+        # It is ALSO invisible: the static portal mesh is a flat placeholder-textured pane (the swirl
+        # is a Dynamic-portal FX we lack), so Will saw only the engine's blue GridEntrance arrow.
+        # FIX (both proven-by-data): (a) MOVE G1 back to the build27 THROUGH-corridor spot
+        # (46.70,15.80,127.90) - walkable-both-sides X AND Z (crossable), on-mesh 0.00u, same
+        # walkable component #0, 16-19u from the moved fountain/caravan; it byte-proven teleported
+        # there on build27 (identity rot in BOTH builds, so rotation was never the cause). (b) add a
+        # co-located persistent portal-swirl FX (PORTAL_FX_MAP_AURA_DBR) so it is VISIBLE. Trade-off
+        # flagged for Will: this re-introduces the on-path position B-PORTAL-2 complained about, but
+        # the portal is now VISIBLE (glowing) so walking into it reads as intentional travel, not an
+        # invisible surprise-teleport; exact feel is WALK-TEST-GATED. The 0x14 binding
         # (GARDEN_G1_0x14 = gM1+gX1+GoM GUID) is UNCHANGED - portal position lives purely in the
         # 0x05 instance; the 0x14 mouth/exit/dest are position-independent UIDs. G4 = return landing
         # (GridExitOneWay, invisible, does NOT teleport-on-touch) left in place. Born-open static
         # GridEntrance/GridExitOneWay (see the A1 born-open block). v0x11 shared -> step-6/7
-        # x14_payload append. flags=0, identity rot.
-        (PORTAL_OLYMPIANARENA1_DBR, 51.00, 17.80, 142.00, {'x14_payload': GARDEN_G1_0x14}),
+        # x14_payload append. flags=0, identity rot. The FX is flags=0, no 0x14.
+        (PORTAL_OLYMPIANARENA1_DBR, 46.70, 15.80, 127.90, {'x14_payload': GARDEN_G1_0x14}),
+        (PORTAL_FX_MAP_AURA_DBR, 46.70, 15.80, 127.90),
         (PORTAL_OLYMPIANARENA2_DBR, 56.90, 17.60, 138.10, {'x14_payload': GARDEN_G4_0x14}),
     ],
     # Static Widow Letter (BUG 2): finalletter placed at the location_letterdrop spot so it
@@ -866,6 +1186,13 @@ INJECT_SPECS = {
     # flags=0, no 0x14. Local = location_letterdrop's exact SV-local coord (on-mesh 0.10u).
     'levels/world/xbloodcave/drxfirstxistion_connection.lvl': [
         (FINALLETTER_DBR, 32.459, 10.005, 17.593),
+        # M5' (build30, Will redesign): the ~50%-spawn Blood Toxeus ON the Tattered Parchment /
+        # widow-letter drop. Same local coords as the finalletter (location_letterdrop): on-mesh
+        # 0.10u, world Y=1.0, layer 0, same walkable component (scratchpad/check_letter_onmesh.py).
+        # Uses q_bloodtoxeus_lone_50 (chanceToRun=50) - COUPLED with the DB lane, which creates
+        # that record + sets its pool spawnMax=1; until it ships in the arz this placement reads as
+        # a known MAP-REF-1 (map + arz ship together). flags=0, no 0x14, Q_LEINTH_EXEMPLAR_ROT.
+        (Q_BLOODTOXEUS_LONE_50_DBR, 32.459, 10.005, 17.593, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
     # HiddenValleyBorder04 = the cave-mouth "occultist" scene (the Hades merchant
     # Merchant_HiddenValley_General + wagon, which SV dressed with occult FX). The merge kept
@@ -991,27 +1318,21 @@ INJECT_SPECS = {
     # 'levels/world/xbloodcave/bc_initialpathway.lvl': [
     #     (BLOODCAVE_RETURN_NPC_DBR, 20.0, 5.0, 12.0),
     # ],
-    # Hemorrheus (Blood Toxeus) superboss, guarding the secret hallway past the mega chest
-    # (docs/BLOOD_TOXEUS_DESIGN.md sec 5). Placed as a Proxy 0x05 instance, flags=0, NO 0x14
-    # entry - byte-shape identical to how SV places q_leinth_lone in bossfight.lvl (measured
-    # from the SV 0.98i upstream Levels.arc, v0x0e; the exemplar record is flags=0 / 56 bytes
-    # / no UniqueId / no 0x14 entry). new_secretdoor_transitionhallway is an SV-only level ->
-    # the merge routes this through inject_into_sv_only_blob -> inject_into_0x05 (v0x0e).
-    #
-    # COORD is SV-LOCAL for this level (the xBloodCave GRID_SHIFT (7840,0,2030) is applied by
-    # the merge to the level's grid corner, NOT here). Derivation, verified against the
-    # CURRENT build20 donor (obstacle-carved) with tools/debug/navlib.py:
-    #   world centroid (4999.9, 4.0, 3467.1) is 0.000u on-mesh, IN the largest walkable
-    #     component (159,742 cells; cell (519,465), area=1);
-    #   shifted grid corner (from shifted_ints_raw) = (4932, 1, 3425);
-    #   SV-local = world - shifted_corner = (67.9, 3.0, 42.1).
-    # Round-trip: local + shifted_corner == world centroid -> same on-mesh cell (proven
-    # against the same donor). Spawn is 47.1u from the exit portal (xprtl_bc2et_02 @ world
-    # x=5047) and 38.9u from respawn_hadescave01 -> no instant-aggro spawn-camp on arrival.
-    # Rotation = q_leinth_lone's exact float32 matrix (orientation-only; the real spawn is the
-    # um_bloodtoxeus_99 monster via the pool). Y local=3.0 matches every other proxy here.
-    'levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl': [
-        (Q_BLOODTOXEUS_LONE_DBR, 67.9, 3.0, 42.1, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    # M5' (build30, Will redesign): the ALWAYS-spawn Blood Toxeus (Hemorrheus /
+    # um_bloodtoxeus_99) now GUARDS ESTI'S HIDDEN CHEST. Moved OUT of
+    # new_secretdoor_transitionhallway (the "Temple of Eternal Love" spawn Will reported as
+    # wrong) INTO drxbc2, the waterfall room holding proxy_hidden_bloodcave_chest @ local
+    # (9.13,28.00,137.14). Placed as a Proxy 0x05 instance flags=0 / NO 0x14 (byte-shape
+    # identical to SV's q_leinth_lone in bossfight.lvl). drxbc2 is SV-only v0x0e -> the merge
+    # routes this through inject_into_sv_only_blob -> inject_into_0x05 (56 B).
+    # COORD (drxbc2 SV-LOCAL; the xBloodCave GRID_SHIFT is applied to the corner by the merge,
+    # NOT here): local (13.10, 28.00, 137.70) = 4.0u due +X of the chest, on-mesh 0.01u, layer 0,
+    # floor world Y=1.00 (== local 28.00), in the chest's own walkable component (670 cells within
+    # 3u of the chest) -> reads as guarding the chest without overlapping its interaction radius
+    # (scratchpad/m5b_chest_coords.py). Rotation = q_leinth_lone's exact float32 matrix. The pool
+    # spawnMax must be 1 (DB lane) so this location spawns exactly ONE Toxeus.
+    'levels/world/xbloodcave/drxbc2.lvl': [
+        (Q_BLOODTOXEUS_LONE_DBR, 13.10, 28.00, 137.70, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
     # ===== A2 SECRET PLACE door (this session): rhodes_secretvista_01 HOST (v0x0f shared) =====
     # S1 = entrance -> darkforestenter (tucked-away east-edge nook, 17.8u from decor); S4 = return
@@ -1032,9 +1353,32 @@ INJECT_SPECS = {
     # G2 = inbound landing (in the caravan_rhodes component #1 = the merchant hub, 6u from the
     # caravan; mouth == G1.exit); G3 = return entrance -> HV01 (12u from G2). Unlocks the
     # caravan_rhodes Super-Caravan region. SV-only -> inject_into_sv_only_blob + x14_payload.
+    # H2 (N1 build31) = inbound landing for the HELOS entrance: (130.30,-39.00,73.10) = 6.0u due
+    # -Z of G2, on-mesh, fully crossable 3u both axes, in the same caravan_rhodes component,
+    # 13.4u from the G3 return shrine, nearest decor 6u (scratchpad/n1_spot_pick.py L1).
+    # GridExitOneWay landing = invisible, no teleport-on-touch, no FX needed (same as G2/G4).
     'levels/world/olympus/gardenofmerchants.lvl': [
         (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 79.10, {'x14_payload': GARDEN_G2_0x14}),
         (PORTAL_OLYMPIANARENA1_DBR, 142.30, -39.00, 79.10, {'x14_payload': GARDEN_G3_0x14}),
+        (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 73.10, {'x14_payload': HELOS_H2_0x14}),
+    ],
+    # ===== N1 (build31): HELOS -> GARDEN OF MERCHANTS entrance (first town, Act 1) =====
+    # Will: "the portal to Duister should be put in the first town". HOST = startingfarmland06d
+    # (Helos village, v0x11 shared -> step-6/7 x14_payload append). H1 at (74.00,0.40,184.00) =
+    # the town-portal plaza: 10.65u due -Z of the base-game TeleportShrineHelios01 device
+    # (74.18,0.50,194.65) and 6.6u from Starting_PortalMan - the corner of town where portals
+    # already live, so a glowing second portal reads as intentional; 33u from the merchant-row
+    # through-path (main village flow does NOT cross it), nearest instance 5.6u (a shepherd
+    # wander marker, not decor). On-mesh (floor local Y=0.40), fully crossable 3u on BOTH axes
+    # (the M4 plane-crossing lesson: born-open GridEntrance only fires when the player's
+    # movement segment crosses the portal plane - dead-end spots kill the teleport), same
+    # walkable component as the merchants/fountain (comp 725,476 cells)
+    # (scratchpad/n1_spot_pick.py P5). Co-located map_portal_aura swirl = M4 visibility recipe.
+    # 0x14 = minted mouth/exit + GOM_GUID; landing = H2 in the Garden (above). Return = the
+    # Garden's EXISTING G3 shrine -> HV01 (Act 3) - flagged to Will, walk-test-gated.
+    'levels/world/greece/startingtownver2/startingfarmland06d.lvl': [
+        (PORTAL_OLYMPIANARENA1_DBR, 74.00, 0.40, 184.00, {'x14_payload': HELOS_H1_0x14}),
+        (PORTAL_FX_MAP_AURA_DBR, 74.00, 0.40, 184.00),
     ],
     # ===== C4 (this session): Greece occultist region atmosphere restore (SV-exact) =====
     # SV's Delphi "Crisaeos Falls" occultist region had the SAME regional smoke Will remembers
@@ -1241,53 +1585,18 @@ _HUB_DESTS = [
      (136.30, -39.00, 71.10), (136.30, -39.00, 87.10)),
 ]
 
-# --- TEST-HUB EXTRA: "Toxeus the Murderer, Devourer of Blood" RIGHT OUTSIDE the blood-cave
-# entrance (Will's ask - encounter him and die gloriously). TESTHUB-only. -----------------
-# Places the q_bloodtoxeus_lone PROXY into HiddenValley01's 0x05 - the SURFACE Silk Road
-# level that owns the blood-cave mouth (native GridEntrance SilkRdDngEntrance_C01_Ext @ HV01
-# local (14,18,26), 0x14-bound to Random09A GUID d840e7ae.. = the blood cave). This is the
-# SAME proxy entity already placed deep inside new_secretdoor_transitionhallway (the secret
-# waterfall guardian); here it is a SECOND placement, gated to the TESTHUB build only, so
-# Will can meet Toxeus the instant he reaches / exits the cave mouth.
-#
-# BYTE-SHAPE (exemplar-matched): identical logical shape to the build21 secret-area placement
-# = q_leinth_lone in bossfight.lvl: flags=0, NO 0x14, non-identity rotation (Q_LEINTH_EXEMPLAR_ROT).
-# HV01 is a v0x11 SHARED level (NOT the v0x0e secret hallway), so inject_into_0x05_v11 writes a
-# 72-byte unflagged record (56-byte core + 16-byte zero pad) - the v0x11 size for the same
-# flags=0/no-UniqueId shape. The Proxy resolves proxy -> pool -> um_bloodtoxeus_99 in the arz.
-#
-# COORD (HV01-local, verified on the native Editor-baked 0x0b, tools/debug/finalize_hv01_toxeus.py):
-#   local (21.9, 17.0, 31.9) world (-112.10,-103.00,2205.90):
-#     * on-mesh 0.000u (dY 0.000u) on HV01's LARGEST walkable component (area=1);
-#     * 9.86u from the cave mouth (14,18,26) - right outside it, squarely in the approach/exit
-#       funnel (the walkable valley opens E/SE of the mouth), so a player approaching OR exiting
-#       the cave meets him;
-#     * >=57u from EVERY friendly scenery/NPC (the moved fountain/caravan/occult scene + the A1
-#       door portals are all at the HV01 NORTH camp Z~143, ~112u away; nearest friendly = camp
-#       campfire at 60.2u; nearest speaking NPC villager4 at 74.0u) - he cannot wipe the scenery;
-#     * flanked by the native Silk Road beastman pack (ag_beastman_neanderthal @ 6.3u) - thematic,
-#       not a friendly, and the proxy's own difficultyLimitsFile is limit_area002 (Silk Road),
-#       so it scales natively to HV01's region.
-_TOXEUS_HV01_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
-_TOXEUS_HV01_LOCAL = (21.9, 17.0, 31.9)
-
-
+# --- TEST-HUB EXTRA (M5', build30): NO extra Toxeus -----------------------------------------
+# The lone Blood Toxeus is consolidated to TWO CANONICAL INJECT_SPECS placements (both inherited
+# by TESTHUB): (A) guarding Esti's chest in drxbc2 (q_bloodtoxeus_lone, always) and (B) on the
+# Tattered Parchment / widow-letter drop in drxfirstxistion_connection (q_bloodtoxeus_lone_50,
+# ~50%). The old TESTHUB-only cave-mouth spawn (and the interim M5 letter-drop TESTHUB spawn) are
+# RETIRED so TESTHUB == canonical: exactly the 2 placements, no duplicate. This hook now adds
+# nothing; kept as an extension point.
 def build_hub_extra_specs():
-    """Build the TEST-HUB NON-PORTAL entity additions (level_key -> [specs]).
-
-    2026-07-08: RE-ADDED at Will's request (local TESTHUB only) so he can see/fight Toxeus at
-    the blood-cave mouth again (verifies the B-TOXEUS-1 red-shroud fix, which lives in the arz).
-    It was briefly removed on 2026-07-08 because it blocked walk-testing the portals; the portals
-    are now tested, so the lone Toxeus proxy 9.9u outside the cave mouth is restored. TESTHUB-ONLY
-    (called only when SVC_TEST_HUB=1); the canonical Workshop build never includes it. The real
-    Hemorrheus placement (deep in new_secretdoor_transitionhallway, past the secret waterfall) is
-    in INJECT_SPECS and is independent of this hook."""
-    tx, ty, tz = _TOXEUS_HV01_LOCAL
-    return {
-        _TOXEUS_HV01_KEY: [
-            (Q_BLOODTOXEUS_LONE_DBR, tx, ty, tz, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
-        ],
-    }
+    """TEST-HUB non-portal entity additions (level_key -> [specs]). Empty since M5': the Blood
+    Toxeus placements live in INJECT_SPECS (canonical + TESTHUB), so there is no TESTHUB-only
+    extra."""
+    return {}
 
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
@@ -2044,6 +2353,271 @@ def move_0x05_instances(section_data, moves, base_size, level_name=''):
         print(f'    Moved {m["hits"]} instance(s) of {m["dbr"].decode("ascii","replace")} '
               f'in {level_name} -> ({m["x"]:.2f},{m["y"]:.2f},{m["z"]:.2f})')
     return bytes(buf)
+
+
+def remove_0x05_instances_by_0x14_uid(blob, specs, level_name=''):
+    """Remove ONE 0x05 instance (and its 0x14 binding) identified by a uid in its 0x14
+    record, reindexing every later 0x14 record. The inverse of the append-only injectors.
+
+    Used to delete the native GridExitOneWay LANDING (portal_olympianarena2) when a level is
+    converted to a native 0x06 two-way door: the landing's 0x14 binding registers a portal
+    with the SAME id the new 0x06 descriptor now owns, so it must go (Random09A, the walk-
+    tested exemplar, has NO landing entity - only the descriptor). This is the "remove-by-uid
+    path the section-surgery tooling did not have" the Uber-door RE flagged.
+
+    Each spec: {'uid': 16B, 'uid_field': 'mouth'|'exit'|'dest', 'expect_dbr': bytes (the
+    0x05 dbr the target instance MUST carry - safety), 'expect_0x14_size': int (48 or 60)}.
+    Mechanism (fail-loud at every step):
+      1. Find the SINGLE 0x14 record whose selected binding field == uid -> removed_idx.
+      2. Walk the 0x05 section flag-aware (base 56 for v0x0e, 72 for v0x11/0x0f), assert it
+         lands EXACTLY at the section end, and assert the instance at removed_idx carries
+         expect_dbr. Excise that instance's record bytes; decrement the instance count. The
+         string table is left intact (an orphan string is harmless and avoids reindexing
+         every remaining instance's string index).
+      3. Remove the 0x14 record at removed_idx; decrement the `index` of every 0x14 record
+         whose index > removed_idx (the 0x05 instances after it shifted down by one). Re-
+         assert the post-removal 0x05 flag-aware walk lands exactly at the new section end.
+    Only 0x14 keys on the 0x05 instance index in these level blobs (0x06 keys by uid/cell;
+    0x0b by GUID; 0x17 is terrain-bound resource hashes), so no other section is reindexed.
+    """
+    if not specs:
+        return blob
+    secs, magic = parse_blob_sections(blob)
+    ver = magic[3] if magic[:3] == b'LVL' else None
+    base = 72 if ver in (0x11, 0x0f) else 56
+    d05 = d14 = None
+    for s in secs:
+        if s['type'] == 0x05:
+            d05 = bytearray(s['data'])
+        elif s['type'] == 0x14:
+            d14 = bytearray(s['data'])
+    if d05 is None or d14 is None:
+        raise ValueError(f'{level_name}: remove-by-uid needs both 0x05 and 0x14 sections '
+                         f'(0x05={d05 is not None}, 0x14={d14 is not None})')
+
+    def _field_off(psz, fld):
+        # 48B binding = [mouth 16][exit 16][dest 16]; 60B = [prefix 12] + the 48B binding
+        prefix = 0 if psz == 48 else (12 if psz == 60 else None)
+        if prefix is None:
+            return None
+        return prefix + {'mouth': 0, 'exit': 16, 'dest': 32}[fld]
+
+    # parse 0x14 records once; the list is carried across specs (indices stay consistent)
+    recs = []
+    pos = 0
+    while pos + 8 <= len(d14):
+        idx, psz = struct.unpack_from('<II', d14, pos)
+        if pos + 8 + psz > len(d14):
+            raise ValueError(f'{level_name}: 0x14 truncated record at {pos}')
+        recs.append({'index': idx, 'psz': psz, 'payload': bytes(d14[pos + 8:pos + 8 + psz])})
+        pos += 8 + psz
+    if pos != len(d14):
+        raise ValueError(f'{level_name}: 0x14 walk did not consume the section '
+                         f'({pos} != {len(d14)})')
+
+    for spec in specs:
+        uid = spec['uid']
+        fld = spec['uid_field']
+        assert len(uid) == 16
+        # 1. locate the single matching 0x14 record
+        hits = [r for r in recs
+                if _field_off(r['psz'], fld) is not None
+                and r['payload'][_field_off(r['psz'], fld):_field_off(r['psz'], fld) + 16] == uid]
+        if len(hits) != 1:
+            raise ValueError(f'{level_name}: 0x14 field {fld}=={uid.hex()[:12]}.. matched '
+                             f'{len(hits)} record(s), expected exactly 1')
+        target = hits[0]
+        removed_idx = target['index']
+        if 'expect_0x14_size' in spec and target['psz'] != spec['expect_0x14_size']:
+            raise ValueError(f'{level_name}: 0x14 target size {target["psz"]} != expected '
+                             f'{spec["expect_0x14_size"]}')
+        # 2. excise the 0x05 instance at removed_idx (flag-aware, exact-consumption asserts)
+        scount = struct.unpack_from('<I', d05, 0)[0]
+        p = 4
+        strings = []
+        for _ in range(scount):
+            sl = struct.unpack_from('<I', d05, p)[0]
+            p += 4
+            strings.append(bytes(d05[p:p + sl]))
+            p += sl
+        icount = struct.unpack_from('<I', d05, p)[0]
+        icount_off = p
+        inst_start = p + 4
+        q = inst_start
+        target_off = target_size = target_sidx = None
+        for i in range(icount):
+            if q + base > len(d05):
+                raise ValueError(f'{level_name}: 0x05 instance underrun at i={i}')
+            sidx = struct.unpack_from('<I', d05, q)[0]
+            flags = struct.unpack_from('<I', d05, q + 52)[0]
+            rs = base + (16 if flags != 0 else 0)
+            if i == removed_idx:
+                target_off, target_size, target_sidx = q, rs, sidx
+            q += rs
+        if q != len(d05):
+            raise ValueError(f'{level_name}: 0x05 flag-aware walk did not land at section '
+                             f'end ({q} != {len(d05)}); base={base}')
+        if target_off is None:
+            raise ValueError(f'{level_name}: 0x05 has no instance at index {removed_idx} '
+                             f'(icount={icount})')
+        tdbr = strings[target_sidx] if target_sidx < len(strings) else b''
+        if 'expect_dbr' in spec:
+            want = bytes(spec['expect_dbr']).replace(b'/', b'\\').lower()
+            if tdbr.replace(b'/', b'\\').lower() != want:
+                raise ValueError(f'{level_name}: 0x05 instance[{removed_idx}] dbr {tdbr!r} '
+                                 f'!= expected {spec["expect_dbr"]!r}')
+        new05 = bytearray(d05[:target_off]) + bytearray(d05[target_off + target_size:])
+        struct.pack_into('<I', new05, icount_off, icount - 1)
+        # re-assert the shrunk 0x05 still walks exactly to its end
+        q2 = inst_start
+        for _ in range(icount - 1):
+            flags = struct.unpack_from('<I', new05, q2 + 52)[0]
+            q2 += base + (16 if flags != 0 else 0)
+        if q2 != len(new05):
+            raise ValueError(f'{level_name}: post-removal 0x05 walk mismatch '
+                             f'({q2} != {len(new05)})')
+        d05 = new05
+        print(f'    0x05 REMOVE {level_name}: inst[{removed_idx}] '
+              f'{tdbr.decode("ascii", "replace").split(chr(92))[-1]} ({target_size} B) '
+              f'icount {icount}->{icount - 1}')
+        # 3. drop the 0x14 record at removed_idx; decrement index of records after it
+        newrecs = []
+        for r in recs:
+            if r['index'] == removed_idx:
+                continue
+            ni = r['index'] - 1 if r['index'] > removed_idx else r['index']
+            newrecs.append({'index': ni, 'psz': r['psz'], 'payload': r['payload']})
+        print(f'    0x14 REMOVE {level_name}: dropped idx={removed_idx}, '
+              f'{len(recs)}->{len(newrecs)} record(s)')
+        recs = newrecs
+
+    new14 = bytearray()
+    for r in recs:
+        new14 += struct.pack('<II', r['index'], r['psz'])
+        new14 += r['payload']
+
+    out_secs = []
+    for s in secs:
+        if s['type'] == 0x05:
+            out_secs.append({'type': 0x05, 'data': bytes(d05)})
+        elif s['type'] == 0x14:
+            out_secs.append({'type': 0x14, 'data': bytes(new14)})
+        else:
+            out_secs.append(s)
+    return rebuild_blob(magic, out_secs)
+
+
+def remove_0x05_instances_by_dbr(blob, dbrs, level_name=''):
+    """DE-PLACE every 0x05 instance whose .dbr string matches one of `dbrs`, reindexing the
+    0x14 bindings of the instances that shift down. Returns (new_blob, removed_count).
+
+    Used for MAP-REF-1 (M2): SV NPCs / setdress placed in a level whose record is ABSENT from
+    the shipped arz (they silently fail to spawn - naked/missing content). De-placing the 0x05
+    reference is the interim build30 fix (full restore = a 3169-record SVAERA economy import,
+    deferred). MAP-REF-1 keys on records referenced by an ACTIVE INSTANCE, so removing the
+    instance clears the violation (the now-orphan string is left in the table - harmless, and
+    removing it would reindex every other instance's string index).
+
+    `dbrs` = iterable of record paths (case/sep-insensitive, matched EXACTLY incl. any leading
+    space - some SV setdress paths carry one). ALL instances of each matching dbr are removed
+    (a record placed N times -> N removals). Fail-loud unless every dbr matches >= 1 instance
+    (typo guard). Reindex rule (only 0x14 keys on the instance index in these blobs): a 0x14
+    record bound to a removed instance is dropped; every other record's index decreases by the
+    number of removed indices below it, so it keeps pointing at the SAME instance. Flag-aware
+    walk (base 56 v0x0e / 72 v0x11-v0x0f) with exact-consumption asserts before and after.
+    """
+    want = {bytes(x).replace(b'/', b'\\').lower() for x in dbrs}
+    if not want:
+        return blob, 0
+    secs, magic = parse_blob_sections(blob)
+    ver = magic[3] if magic[:3] == b'LVL' else None
+    base = 72 if ver in (0x11, 0x0f) else 56
+    d05 = d14 = None
+    for s in secs:
+        if s['type'] == 0x05:
+            d05 = bytearray(s['data'])
+        elif s['type'] == 0x14:
+            d14 = bytearray(s['data'])
+    if d05 is None:
+        raise ValueError(f'{level_name}: remove-by-dbr needs a 0x05 section')
+    scount = struct.unpack_from('<I', d05, 0)[0]
+    p = 4
+    strings = []
+    for _ in range(scount):
+        sl = struct.unpack_from('<I', d05, p)[0]
+        p += 4
+        strings.append(bytes(d05[p:p + sl]))
+        p += sl
+    icount = struct.unpack_from('<I', d05, p)[0]
+    icount_off = p
+    inst_start = p + 4
+    q = inst_start
+    spans = []          # (index, off, size) for every instance, in order
+    remove_idx = []     # indices to remove (ascending, since we walk in order)
+    matched = set()
+    for i in range(icount):
+        if q + base > len(d05):
+            raise ValueError(f'{level_name}: 0x05 instance underrun at i={i}')
+        sidx = struct.unpack_from('<I', d05, q)[0]
+        flags = struct.unpack_from('<I', d05, q + 52)[0]
+        rs = base + (16 if flags != 0 else 0)
+        sdbr = strings[sidx].replace(b'/', b'\\').lower() if sidx < len(strings) else b''
+        spans.append((i, q, rs))
+        if sdbr in want:
+            remove_idx.append(i)
+            matched.add(sdbr)
+        q += rs
+    if q != len(d05):
+        raise ValueError(f'{level_name}: 0x05 flag-aware walk did not land at section end '
+                         f'({q} != {len(d05)}); base={base}')
+    missing = want - matched
+    if missing:
+        raise ValueError(f'{level_name}: remove-by-dbr matched NO instance for '
+                         f'{len(missing)} requested dbr(s): '
+                         f'{sorted(x.decode("ascii", "replace") for x in missing)[:6]}')
+    remove_set = set(remove_idx)
+    # rebuild 0x05 keeping non-removed instances in order; decrement icount
+    keep = bytearray(d05[:inst_start])
+    for (i, off, rs) in spans:
+        if i not in remove_set:
+            keep += d05[off:off + rs]
+    struct.pack_into('<I', keep, icount_off, icount - len(remove_idx))
+    q2 = inst_start
+    for _ in range(icount - len(remove_idx)):
+        flags = struct.unpack_from('<I', keep, q2 + 52)[0]
+        q2 += base + (16 if flags != 0 else 0)
+    if q2 != len(keep):
+        raise ValueError(f'{level_name}: post-removal 0x05 walk mismatch ({q2} != {len(keep)})')
+    # reindex 0x14: drop records bound to a removed instance; shift the rest down
+    new14 = None
+    if d14 is not None:
+        pos = 0
+        nb = bytearray()
+        while pos + 8 <= len(d14):
+            idx, psz = struct.unpack_from('<II', d14, pos)
+            if pos + 8 + psz > len(d14):
+                raise ValueError(f'{level_name}: 0x14 truncated record at {pos}')
+            payload = d14[pos + 8:pos + 8 + psz]
+            if idx not in remove_set:
+                shift = sum(1 for r in remove_idx if r < idx)
+                nb += struct.pack('<II', idx - shift, psz)
+                nb += payload
+            pos += 8 + psz
+        if pos != len(d14):
+            raise ValueError(f'{level_name}: 0x14 walk did not consume section '
+                             f'({pos} != {len(d14)})')
+        new14 = bytes(nb)
+    out_secs = []
+    for s in secs:
+        if s['type'] == 0x05:
+            out_secs.append({'type': 0x05, 'data': bytes(keep)})
+        elif s['type'] == 0x14 and new14 is not None:
+            out_secs.append({'type': 0x14, 'data': new14})
+        else:
+            out_secs.append(s)
+    print(f'    0x05 DE-PLACE {level_name}: removed {len(remove_idx)} instance(s) of '
+          f'{len(want)} dbr(s), icount {icount}->{icount - len(remove_idx)}')
+    return rebuild_blob(magic, out_secs), len(remove_idx)
 
 
 def count_0x05_instances(data):
