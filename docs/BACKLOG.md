@@ -257,6 +257,24 @@
 
 ## 🟡 P2 - pending answers / smaller
 
+### B-FX-DANGLING-1: ~353 pre-existing dangling Chris\UnarmedProjectile_FX01 particle refs (build30 delta vet)
+- **Symptom:** arz-wide, ~353 records (incl. player Earth skills drxflamesurge/drxvolcanicorb)
+  reference the nonexistent `Records\SandBox\Chris\UnarmedProjectile_FX01.dbr` in
+  particleEffectNameN slots. Cosmetic only (the engine skips the missing layer; no crash).
+  The 3 pcsafe soul-skill copies were fixed in the build30 F-wave (F7a); the rest are upstream
+  SV debt. Fix approach: an F7b-style sweep (strip or repoint) if Will wants the fx layers
+  back; else leave. Also inert leftovers to strip in the same pass: orphaned
+  particleEffectAttachPoint2/3 on the 3 pcsafe skills; supra wep_spear.dbr's bumpTexture
+  (harmless on the base RSpear14B mesh).
+
+### B-GATE-HARDEN-1: build gates SKIP (not FAIL) outside the work/ layout (build30 delta vet)
+- The A9 render-chain + F2 summons-contract gates skip loudly when the game dir / staged
+  Resources are absent (scratch determinism builds). Optional hardening: an env flag
+  (SVC_REQUIRE_GATES=1 -> FAIL instead of SKIP) so a mis-pathed work build can never
+  silently skip its gates. Also: persist stage-baseline arz copies (e.g. the D10 0e70ffe6
+  baseline) under local/db_backups/ so intermediate record-diffs stay reproducible after
+  session scratchpads are cleaned.
+
 ### B-AREA-NAME-1: Garden of Merchants minimap label reads 'Duister' (NEW 2026-07-08)
 - **Symptom (Will, public build):** he teleported from the fountain camp into a garden/courtyard
   full of merchants (= the Garden of Merchants, destination wiring CORRECT), but the minimap/region
