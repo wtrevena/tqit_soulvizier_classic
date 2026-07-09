@@ -1,0 +1,26 @@
+# Whitelist for contracts_resources.py (DOMAIN C: CROSS-ARTIFACT RESOURCE RESOLUTION).
+#
+# Format: one "<CONTRACT-ID> <subject>" per line; '#' begins a comment line. A listed
+# (contract-id, subject) pair is suppressed from the returned violations. `subject` must
+# match the violation's `subject` string exactly (record path with backslashes, or a
+# "quest:<file>" / "world01.map:SD:<tag>" location).
+#
+# KNOWN-INTENTIONAL deviations: NONE at build27.
+#
+# Nothing here is whitelisted because every gate-blocking (P1) finding on the build27
+# baseline is a REAL bug queued for a bug wave, NOT an intentional design choice - so the
+# gate deliberately keeps flagging them until they are fixed:
+#   C-RES-TAGDUP-1  tagSkillName050 / tagMasteryBrief05 / tagMasteryTitle05
+#         -> the Occult-shows-as-Rogue duplicate-definition bug (BACKLOG B-MASTERY-LABEL-1);
+#            the DB wave is fixing the instances, this contract prevents recurrence.
+#   C-RES-TAGDUP-1  tagGate01 / tagGate02
+#         -> two gate object display names each defined twice with conflicting values
+#            (one definition is silently dropped by the engine); reconcile to a single value.
+#
+# The ~4,900 P2 findings are the "universal net": references our shipped .arz makes that do
+# not resolve but were inherited VERBATIM from the DRX overhaul, from SV 0.98i, or from a
+# base-game passthrough record (e.g. drx skill records pointing at records\sandbox\chris\...,
+# SV soulskills pets pointing at the absent creatures\monster\sprite\anm\spritefire_att_spitfire.anm,
+# the 8 orphaned tagSVCSoul* name strings). They are reported for triage but never block the
+# gate (P2), so they need no whitelist entry. If the owner deems a specific inherited P2 finding
+# permanently acceptable, add it here with a one-line justification.

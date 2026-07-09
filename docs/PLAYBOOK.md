@@ -291,9 +291,32 @@ powershell -ExecutionPolicy Bypass -File scripts/upload_workshop.ps1 -SteamUser 
 - **Map gates (per wave):** verify_merged_bc_navmeshes, entrance_landing_check --check-merged,
   engine_corridor_full, cluster_seam_check, overcoverage_check, gate_doors_hub, portal-openness,
   blob re-parse (2282 levels to exact stream end).
-- **TWO SUITES STILL TO BUILD (on hold, resumable):** entity contract suite (pets/summons/skills
-  semantic completeness → commit-blocking, HANDOFF §4b, wf_87586bbf-b63) + map contract suite
-  (portals/reachability/registries/UID/blob → gate every merge, task #30, wf_8da16855-efe).
+- **CONTRACT SUITE (built; run before every deploy):** `tools/contracts/` - one permanent,
+  precedent-derived suite of 51 contracts across 5 lanes (souls, summons, resources, map, quests)
+  that asserts every entity we ship carries EACH requirement a functioning base-game exemplar has.
+  It subsumes the two previously-planned suites (the entity + map contract suites). Each contract
+  fails loud with the offending record + field and is guarded by a negative test
+  (`tests_*_negative.py` / `_negtest_map.py`) proving it fires. Run the whole thing:
+  ```
+  py tools/contracts/run_contracts.py \
+     --arz work/SoulvizierClassic/Database/SoulvizierClassic.arz \
+     --text-arc work/SoulvizierClassic/Resources/Text.arc \
+     --quests-arc work/SoulvizierClassic/Resources/Quests.arc \
+     --levels-arc local/Levels_merged.arc \
+     --resource-arc-dir work/SoulvizierClassic/Resources \
+     --base-game-dir "C:/Program Files (x86)/Steam/steamapps/common/Titan Quest Anniversary Edition" \
+     --upstream-dir upstream
+  ```
+  (Or `--baseline` to gate the frozen build27 copies; `--only souls,map` for one lane; `--list`
+  for the inventory; `--in-process` to debug.) Exit 0 = clean; exit 1 = a non-whitelisted P0/P1
+  survives (gate FAIL) or a module crashed. P2 = inherited SV/DRX/base third-party debt (reported,
+  never blocks). It runs each lane in an isolated subprocess (~3 min wall) and writes a consolidated
+  JSON. Known-intentional deviations go in `whitelist_<lane>.txt` (never weaken a contract to hide a
+  real bug - map the failing subject to a BACKLOG bug id instead). Contracts catch the whole
+  recurring taxonomy: B-SOUL-PROC-1 (granted-skill activation chain), B-SUMMON-1 (naked/immobile
+  pets), B-TEXT-TAGS-1 (raw name tags), B-MASTERY-LABEL-1 (duplicate tags), B-TEMPLE-DOOR-1 (locked
+  door with no unlock), B-PORTAL-* (dangling dest/exit), B-AREA-NAME-1 (mislabeled zone), and the
+  cross-artifact resource-resolution classes.
 
 ## 13. RECURRING PITFALLS (learned the hard way)
 

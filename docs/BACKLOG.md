@@ -243,8 +243,31 @@
 
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
-- Entity contract suite (HANDOFF §4b, wf_87586bbf-b63) - RESUME; it owns B-SUMMON-1.
-- Map contract suite (task #30, wf_8da16855-efe) - RESUME; add B-TEMPLE-DOOR + B-PORTAL contracts.
+- Contract suite - **BUILT + committed** (`tools/contracts/`, branch `feat/contract-suite`). One
+  unified 51-contract, 5-lane suite (souls/summons/resources/map/quests) that subsumes BOTH the
+  planned entity + map contract suites; every contract has a negative test proving it fires. Run:
+  `py tools/contracts/run_contracts.py --arz … --levels-arc local/Levels_merged.arc …` (full
+  command in PLAYBOOK §12). Run it before every deploy; fail-loud (exit 1 on any non-whitelisted
+  P0/P1). **Against the build29-in-flight artifacts it (correctly) FAILS with 108 P1** on real,
+  unfixed defects - do NOT weaken the contracts; fix the records:
+  - `SUMMON-PET-CLASSIFICATION` x17 (soulskills pets carrioncrow/peng/… have no
+    monsterClassification) -> **B-SUMMON-1** (the DB wave owns this).
+  - `MAP-REF-1` x68 (SV `all_sv\creature\npc\dyer\*` NPCs + a few `proxies greek\*` pools are placed
+    in Greek/Egypt town levels but never compiled into the arz -> silently fail to spawn) ->
+    dropped-SV content (#28 / `DROPPED_CONTENT_AUDIT.md`); restore the records OR, if the dyer
+    feature is cut-by-design, list them in `whitelist_map.txt` + `CUT_CONTENT.md`.
+  - `MONSTER-SKILLS-LOOT` x10 (drxmap blood-cave `bodies\ancestralwarrior*`/`body01` reference a
+    missing `Melee_Poison09-12_10.dbr` skill) -> **NEW**; add the skill or clear the ref.
+  - `SOUL-NAME-RESOLVES` x8 (satyrmagi/satyrspiritcaller/kyrashadowdancer souls carry placeholder
+    name tags `tagSoul1`/`tagSoulName` that resolve nowhere) -> **B-TEXT-TAGS-1 class**, new souls.
+  - `SOUL-AUGMENT-LEVEL` x4 (crowboar_soul_n/e `augmentSkillLevel1/2 == 0` = dead +0 augments) ->
+    **B-SOUL-PROC-1 residual** (build29 fixed itemSkillLevel but not these augment levels).
+  - `MONSTER-SPAWN-ELIGIBILITY` x1 (`bw_priest_houndmaster` pool: championChance=100/championMin=2/
+    spawnMax=2 crowds out its named `c_disciple_39`) -> the Blood-Toxeus no-spawn class, **NEW**.
+  Build29 progress the suite confirms vs the frozen build27 baseline: 338 -> 108 P1 (SOUL-PROC-
+  ACTIVATION 219->0 = B-SOUL-PROC-1; SUMMON-PET-NAKED 6->0; C-RES-TAGDUP-1 5->0 = B-MASTERY-LABEL-1;
+  B-TEXT-TAGS-1 Crimson-Verdict tags now resolve). B-TEMPLE-DOOR/B-PORTAL coverage is already in
+  (MAP-DOOR-1, MAP-PORTAL-1/2/3).
 - Occult/Hunting mastery UI recheck (#35) - PARTIALLY ROOT-CAUSED 2026-07-08 (B-MASTERY-LABEL-1):
   the mastery SELECT screen shows 'Rogue' because modstrings.txt defines tagSkillName050 /
   tagMasteryBrief05 / tagMasteryTitle05 TWICE (SV's Rogue lines first, the Occult fix block appended

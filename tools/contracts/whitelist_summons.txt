@@ -1,0 +1,23 @@
+# whitelist_summons.txt  -  suppress KNOWN-INTENTIONAL deviations for contracts_summons.py
+#
+# Format: one entry per line:  <CONTRACT-ID> <subject>   # reason
+#   - <subject> is the record path (or map location) exactly as it appears in a violation's
+#     "subject" field (case-insensitive, slash-insensitive).
+#   - everything after a '#' is an ignored comment.
+#   - a line with only a <CONTRACT-ID> (no subject) suppresses that whole contract (avoid).
+#
+# As of the 2026-07-08 baseline audit there are NO active suppressions: every violation the suite
+# reports on the shipped build27 arz is either a real bug (P0/P1) or genuine inherited SV/DRX debt
+# (P2). Nothing here is suppressed, so the gate surfaces all of them. Add lines below only after
+# confirming a flagged item is intentional by design.
+#
+# ------------------------------------------------------------------------------------------------
+# REFERENCE (handled in-code, listed here for auditability, NOT active suppressions):
+# SUMMON-TTL-PERMANENT deliberately EXCLUDES tactical/temporary soul-summons (a positive
+# spawnObjectsTimeToLive is correct for these) via the _TEMPORARY_SUMMON_TOKENS list in the module.
+# The 11 shipped temporary soul-summons that carry a TTL by design are:
+#   summon_hydra, summon_chimera, summon_hellflower, battlestandard, drxbattlestandard,
+#   ikaie_iceward, bladetraps_summon3, sinel_slamsummon, hazur_summon, tatos_summon,
+#   flamesprite_summon_soul  (hydra/chimera/standard/trap/ward = classic timed summons, not
+#   permanent companions like Lyia Leafsong / Boneash).
+# If a NEW permanent-companion soul ever legitimately needs a TTL, add a real suppression line here.
