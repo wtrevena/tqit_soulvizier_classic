@@ -12,6 +12,7 @@ Pipeline:
 4. Append uber soul tags
 5. Pack into Text.arc
 """
+import os
 import sys
 from pathlib import Path
 from collections import OrderedDict
@@ -55,6 +56,10 @@ OCCULT_FIX_TAGS = {
 # sibling tagMPortalGoM still reads 'Duister Portal' - flagged for Will.
 TEXT_FIX_TAGS = {
     'tagMZoneGoM': 'Garden of Merchants',
+    # B-SUPRA-NOTIFY-1: the tester-tag notification strings are ALREADY
+    # resolved by QUEST_INTEGRATION_TAGS below (tagLOCATIONTAGTESTER /
+    # tagTitleTagTESTER); do not redefine them here or the duplicate-tag gate
+    # fails (verified 2026-07-08, build29).
 }
 
 # The union skip-set: any key in here is emitted ONLY by the fix block.
@@ -370,6 +375,23 @@ def build_text_arc(sv_arc_path: Path, output_path: Path,
     # validate_tags.py build gate can use written-set membership.
     write_mod_tag_manifest(Path(output_path).parent, uber_tags_path)
 
+    # ── A7 golden freeze guard, Text half (fail-loud) ───────────────────────
+    # The arz build already gated the DB half; with the fresh Text.arc in hand
+    # we re-check the FULL pair, so any drift in an Occult/Hunting name/desc
+    # tag definition (value, duplication, or definition order - the engine
+    # keeps the FIRST definition) fails the Text build too. The arz is derived
+    # from the uber_soul_tags.txt location (same Database dir, same build).
+    arz_path = Path(uber_tags_path).resolve().parent / 'SoulvizierClassic.arz'
+    if arz_path.exists():
+        from validate_mastery_golden import validate as _validate_golden
+        if _validate_golden(str(arz_path), str(output_path)) != 0:
+            raise SystemExit(
+                "Occult/Hunting golden freeze guard FAILED on arz + Text.arc; "
+                "this Text build does not ship (A7 gate)")
+    else:
+        print(f"  WARNING: A7 golden guard SKIPPED - no arz at {arz_path} "
+              f"(build the database first for the full gate)")
+
     return output_path
 
 
@@ -430,6 +452,16 @@ def create_single_file_arc(data: bytes, filename: str) -> ArcArchive:
 
 
 if __name__ == '__main__':
+    # Reproducible builds: pin PYTHONHASHSEED=0 (see build_svc_database._pin_hashseed).
+    # PYTHONHASHSEED must be fixed BEFORE interpreter startup, so re-exec once with
+    # it set if it was not already pinned. Text.arc is already order-stable; this
+    # keeps the whole DB-lane pipeline uniformly deterministic regardless of the
+    # launching environment.
+    if os.environ.get('PYTHONHASHSEED') != '0':
+        os.environ['PYTHONHASHSEED'] = '0'
+        import subprocess
+        sys.exit(subprocess.call([sys.executable, *sys.argv]))
+
     if len(sys.argv) < 3:
         print("Usage: build_text_arc.py <sv_text_en.arc> <output_text.arc> [uber_tags.txt]")
         sys.exit(1)

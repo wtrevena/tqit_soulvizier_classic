@@ -346,6 +346,20 @@ FORCE_INCLUDE = {
     'uber',
 }
 
+# Display-name overrides keyed on the derived `clean` monster name. Used when the
+# cleaned filename does NOT yield a proper monster name - the soul would otherwise
+# be named generically. The classic offender is um_uber_45 ("Waeizhi, Scion of
+# Winter"): its filename cleans to the literal token "uber", so make_display_name
+# produced "Uber" -> the soul showed in-game as the generic "{^F}Uber Soul"
+# instead of a monster-specific name (Will's T3 report: "an uber monster starting
+# with W drops a soul named 'Uber Soul'"). Map the token to the monster's real
+# short name so the soul becomes "{^F}Waeizhi Soul". The value is the monster
+# name; make_display_name-style capitalization is NOT re-applied, so give it
+# already display-ready.
+DISPLAY_NAME_OVERRIDES = {
+    'uber': 'Waeizhi',   # um_uber_45 = "Waeizhi, Scion of Winter" (tagNewHero307)
+}
+
 MANUAL_OVERRIDES = {
     'frost':                     ('cold', 'melee'),
     'boss_sandwraithlord':       ('physical', 'caster'),
@@ -565,7 +579,7 @@ def create_uber_souls(db: ArzDatabase):
             element, all_elements = infer_element_from_data(db, skills_paths, skills_names, desc, clean)
             role = infer_role(skills_names, desc, clean, monster_dir)
 
-        display_name = make_display_name(clean)
+        display_name = DISPLAY_NAME_OVERRIDES.get(clean) or make_display_name(clean)
         soul_fields = design_soul(level, element, role, clean)
 
         tag_name = f'tagSoulSVC{tag_counter}'

@@ -74,12 +74,46 @@ def is_soul_record(name):
 # field, so template identity is the check).
 _CTRL_TEMPLATE = 'database\\templates\\skillautocastcontroller.tpl'
 
+# The shipped PC animation tables (SV 0.98i's own). B-SOUL-PROC-2: Game.dll
+# SkillManager::StartSkill ABORTS a cast whose skillSpecialAnimationName the
+# caster's table cannot start ("Animation failed to start in
+# SkillManager::StartSkill", string va 0x1035c3b0, gate at va 0x102561d4), so
+# a soul-granted skill is reliably castable only when its special anim is
+# EMPTY or present in EVERY weapon row of BOTH tables.
+_PC_ANM_TABLES = (
+    'records\\creature\\pc\\anm\\anm_malepc01.dbr',
+    'records\\creature\\pc\\anm\\anm_femalepc.dbr',
+)
+
+
+def _pc_universal_anims(db, recmap):
+    import re
+    universal = None
+    for tbl in _PC_ANM_TABLES:
+        rec = recmap.get(_norm(tbl))
+        if not rec:
+            print(f"ERROR: PC animation table missing from .arz: {tbl}")
+            return None
+        rows = {}
+        for key, tf in (db.get_fields(rec) or {}).items():
+            fname = key.split('###')[0]
+            m = re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
+            if m and tf.values and str(tf.values[0]).strip():
+                rows.setdefault(m.group(1), set()).add(str(tf.values[0]).lower())
+        for names in rows.values():
+            universal = set(names) if universal is None else (universal & names)
+    return universal or set()
+
 
 def validate(arz_path):
     db = ArzDatabase.from_arz(Path(arz_path))
 
     # Full normalized resolution map of every record name in the .arz.
     recmap = {_norm(n): n for n in db.record_names()}
+
+    universal_anims = _pc_universal_anims(db, recmap)
+    if universal_anims is None:
+        return 2
 
     def resolves(path):
         return _norm(path) in recmap
@@ -134,6 +168,16 @@ def validate(arz_path):
                     inactive.append((name, f"itemSkillName is not a Skill_* record "
                                            f"(Class={cls[0] if cls else None}): "
                                            f"{skill_path}"))
+                # B-SOUL-PROC-2: castability - the special anim must be empty
+                # or universally playable, or StartSkill aborts the cast.
+                anim = field_of(skill_rec, 'skillSpecialAnimationName')
+                if anim and str(anim[0]).strip() and \
+                        str(anim[0]).lower() not in universal_anims:
+                    inactive.append((name,
+                                     f"granted skill {skill_path} carries special "
+                                     f"anim '{anim[0]}' NOT universally playable "
+                                     f"by the PC (SkillManager::StartSkill aborts "
+                                     f"the cast; B-SOUL-PROC-2)"))
             lvl = field_of(name, 'itemSkillLevel')
             if lvl is None:
                 inactive.append((name, "itemSkillLevel ABSENT (granted skill "
@@ -159,6 +203,18 @@ def validate(arz_path):
                     if not trig or not str(trig[0]).strip():
                         inactive.append((name, f"controller {ctl[0]} has empty "
                                                f"triggerType"))
+                    # B-SOUL-PROC-2: Enemy-targeted controllers need a target
+                    # acquisition radius (base concrete controllers: 10-15).
+                    tt = field_of(ctl_rec, 'targetType')
+                    if tt and str(tt[0]) == 'Enemy':
+                        rad = field_of(ctl_rec, 'autoTargetRadius')
+                        if not rad or float(rad[0]) < 1.0:
+                            inactive.append((name,
+                                             f"Enemy controller {ctl[0]} has "
+                                             f"autoTargetRadius "
+                                             f"{rad[0] if rad else 'ABSENT'} "
+                                             f"(no target acquisition; "
+                                             f"B-SOUL-PROC-2)"))
 
     print("=" * 72)
     print("SOUL AUGMENT / PROC VALIDATOR")

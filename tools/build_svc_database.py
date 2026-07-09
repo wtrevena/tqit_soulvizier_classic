@@ -629,31 +629,58 @@ def grant_all_inventory_bags(db: ArzDatabase):
             tutorial_chest = name
             break
 
+    # ── A3 / B-STARTER-CHEST-1 (build29): the starter chest is the co-op kit:
+    #    12 INVENTORY BAGS + 36 HEALTH POTIONS + Crommyonian Sow Souls (the
+    #    Ground Smash proc acceptance-test item, sow_soul_n).
+    #
+    #    ENGINE SEMANTICS (Game.dll disasm, build29 - FixedItemContainerController
+    #    at 0x10182120/0x10181530/0x10181da0): the chest spawns
+    #    N = SelectLootNumber items where N is DETERMINISTIC iff
+    #    numSpawnMinEquation == numSpawnMaxEquation; then for EACH of the N items
+    #    it picks ONE loot slot by ROULETTE over the slots' lootNChance values
+    #    (chances are RELATIVE WEIGHTS - every draw lands on a slot; a slot's
+    #    chance is NOT an independent gate), then one table within the slot by
+    #    lootNWeightX, then one item from that table. CONSEQUENCE: the per-
+    #    category counts of a multi-slot chest are MULTINOMIAL - exact per-open
+    #    composition can NOT be guaranteed by any FixedItemLoot record; only the
+    #    TOTAL and the EXPECTATION are exact. (The only true exactly-once grant
+    #    mechanism is a quest Action_GiveItem - the Esti chest pattern.)
+    #
+    #    Design under those semantics: N = 54 with slot chances 36 : 12 : 6 ->
+    #    expectation exactly 36 potions + 12 bags + 6 sow souls per open, and
+    #    P(zero souls) = (48/54)^54 = 0.17% (the acceptance-test soul arrives in
+    #    99.83% of opens; 6 expected copies = one per co-op party member).
+    #    Slots: loot1 = the chest's OWN Health_01-05All potion table (referenced,
+    #    not modified); loot2 = startingloot_sack (mod-created, only this chest
+    #    uses it); loot3 = NEW mod-created startingloot_sowsoul (branched, so no
+    #    shared table changes and no other container's drops change).
+    sow_soul = 'records\\item\\equipmentring\\soul\\boar\\sow_soul_n.dbr'
+    sow_table = 'records\\quests\\rewards\\startingloot_sowsoul.dbr'
+    if not db.has_record(sow_soul):
+        raise SystemExit(f"A3: acceptance-test soul missing from the build: {sow_soul}")
+    _ensure_record(db, sow_table, fixed_tpl)
+    db.set_field(sow_table, 'templateName', fixed_tpl, DATA_TYPE_STRING)
+    db.set_field(sow_table, 'Class', 'LootItemTable_FixedWeight', DATA_TYPE_STRING)
+    db.set_field(sow_table, 'lootName1', sow_soul, DATA_TYPE_STRING)
+    db.set_field(sow_table, 'lootWeight1', 100, DATA_TYPE_INT)
+    # no affix randomization on a soul (mirror startingloot.dbr's shape)
+    db.set_field(sow_table, 'noPrefixNoSuffix', 100, DATA_TYPE_INT)
+    db.set_field(sow_table, 'brokenRandomizerChance', 0.0, DATA_TYPE_FLOAT)
+    db.set_field(sow_table, 'prefixRandomizerChance', 0.0, DATA_TYPE_FLOAT)
+    db.set_field(sow_table, 'suffixRandomizerChance', 0.0, DATA_TYPE_FLOAT)
+
     if tutorial_chest:
-        # ── Item 10 (co-op QoL, Will 2026-07-08): the starter chest must yield
-        #    12 INVENTORY BAGS + 36 HEALTH POTIONS so a full 6-player party can
-        #    each grab bags. FixedItemLoot spawns `numSpawn` items drawn from the
-        #    active loot slots weighted by lootNWeight (there is NO FixedNumber
-        #    table in TQAE, and the base chest proves the model: one slot @weight
-        #    125 + numSpawn='2+numberOfPlayers' -> 2+P potions). So set a FIXED
-        #    total of 48 items and split it 36:12 via the slot weights, reusing
-        #    the chest's OWN existing tables (loot1 = the Health_01-05All potion
-        #    table; loot2 = startingloot_sack -> inventorysack). No shared loot
-        #    table is modified, so NO other container's drops change. The old
-        #    redundant 2nd-sack slot (loot3) is disabled so the split stays clean.
-        #    NOTE: exact 12/36 depends on FixedItemLoot distributing numSpawn
-        #    proportionally to weights; if it draws weighted-random the counts are
-        #    ~36/~12 (expectation) - flagged for Will's in-game confirmation.
-        db.set_field(tutorial_chest, 'numSpawnMinEquation', '48', DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'numSpawnMaxEquation', '48', DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot1Chance', 100.0, DATA_TYPE_FLOAT)   # health-potion slot (loot1Name1 kept = Health_01-05All)
-        db.set_field(tutorial_chest, 'loot1Weight1', 36, DATA_TYPE_INT)       # 36 health potions
-        db.set_field(tutorial_chest, 'loot2Chance', 100.0, DATA_TYPE_FLOAT)   # inventory-bag slot
+        db.set_field(tutorial_chest, 'numSpawnMinEquation', '54', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'numSpawnMaxEquation', '54', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'loot1Chance', 36.0, DATA_TYPE_FLOAT)    # health potions (loot1Name1 kept = Health_01-05All, weight kept)
+        db.set_field(tutorial_chest, 'loot2Chance', 12.0, DATA_TYPE_FLOAT)    # inventory bags
         db.set_field(tutorial_chest, 'loot2Name1', sack_table, DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot2Weight1', 12, DATA_TYPE_INT)       # 12 inventory bags
-        db.set_field(tutorial_chest, 'loot3Chance', 0.0, DATA_TYPE_FLOAT)     # disable old redundant 2nd-sack slot
-        db.set_field(tutorial_chest, 'loot3Name1', '', DATA_TYPE_STRING)
-        print("  Starter chest (Item 10): numSpawn=48, weights 36 health potions : 12 inventory bags")
+        db.set_field(tutorial_chest, 'loot2Weight1', 100, DATA_TYPE_INT)
+        db.set_field(tutorial_chest, 'loot3Chance', 6.0, DATA_TYPE_FLOAT)     # sow souls (was a redundant 2nd sack slot)
+        db.set_field(tutorial_chest, 'loot3Name1', sow_table, DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'loot3Weight1', 100, DATA_TYPE_INT)
+        print("  Starter chest (A3): numSpawn=54 fixed; slot roulette 36:12:6 = "
+              "E[36 potions + 12 bags + 6 sow souls]; P(no soul)=0.17%")
         patched += 1
     else:
         print("  WARNING: tutorial potion chest not found")
@@ -1615,8 +1642,59 @@ def main():
         raise SystemExit(
             "Summon-pet validation FAILED on the written .arz (see offenders "
             "above); this build does not ship (B-SUMMON-1 gate)")
+
+    # ── A9 render-chain contract (fail-loud): every soul-granted summon pet's
+    # mesh/texture/status icons + the summon skill's bar icons must resolve in
+    # the shipped art arcs (mod Resources + game Resources[/XPack*]), or the
+    # pet spawns INVISIBLE. Mod-authored pets FAIL the build; upstream = WARN.
+    from validate_render_chain import validate as _validate_render
+    _mod_resources = output_path.resolve().parent.parent / 'Resources'
+    _game_dir = Path(base_path).resolve().parent.parent if base_path else None
+    if _game_dir and _game_dir.is_dir() and _mod_resources.is_dir():
+        if _validate_render(str(output_path), str(_mod_resources), str(_game_dir)) != 0:
+            raise SystemExit(
+                "Summon-pet render-chain validation FAILED on the written .arz; "
+                "this build does not ship (A9 gate)")
+    else:
+        # Without BOTH the game dir and the mod's staged Resources beside the
+        # output (the standard work/ layout), mod-side art cannot be resolved
+        # and every mod ref would false-FAIL (seen on isolated determinism
+        # rebuilds writing to a scratch dir). Skip loudly instead.
+        print(f"  WARNING: A9 render-chain gate SKIPPED - needs the game dir "
+              f"AND a Resources dir beside the output "
+              f"(game={_game_dir}, mod_resources={_mod_resources})")
+
+    # ── A7 golden freeze guard (fail-loud): the owner's hand-tuned Occult (UI
+    # slot 5) + Hunting (UI slot 6) state must match tools/occult_hunting_golden
+    # .json exactly (records/tree/UI bindings; Text tags are re-checked with the
+    # full artifact pair by build_text_arc.py). Any drift needs Will's sign-off
+    # via the golden's owner_approved_overrides. Missing golden = FAIL (a build
+    # must never silently run unguarded); bootstrap it once with --generate.
+    from validate_mastery_golden import validate as _validate_golden
+    if _validate_golden(str(output_path), None) != 0:
+        raise SystemExit(
+            "Occult/Hunting golden freeze guard FAILED on the written .arz; "
+            "this build does not ship (A7 gate)")
     print("Done.")
 
 
+def _pin_hashseed():
+    """Reproducible builds: pin PYTHONHASHSEED=0 so hash-based ordering is stable.
+
+    Python randomizes str/bytes hashing per process by default, which makes the
+    iteration order of any set (and therefore the order strings are first seeded
+    into the .arz string table, which feeds every record's encoded string IDs)
+    vary run to run. That produced the build29 non-reproducibility (two distinct
+    .arz MD5s from one tree). PYTHONHASHSEED must be fixed BEFORE interpreter
+    startup to take effect, so when we were launched without it pinned we re-exec
+    ourselves once with it set to 0. Deterministic regardless of how invoked.
+    """
+    if os.environ.get('PYTHONHASHSEED') != '0':
+        os.environ['PYTHONHASHSEED'] = '0'
+        import subprocess
+        sys.exit(subprocess.call([sys.executable, *sys.argv]))
+
+
 if __name__ == '__main__':
+    _pin_hashseed()
     main()

@@ -19,11 +19,18 @@ Each file with N parts uses N consecutive TOC entries starting at file_index.
 import struct
 import zlib
 import sys
+import time
 from pathlib import Path
 
 HEADER_SIZE = 28
 DATA_START = 0x800
 PART_SIZE = 262144  # 256KB
+
+# Fixed Windows FILETIME written into new ARC file-records (@20/@24). A constant,
+# not time.time(), so add_file output is byte-reproducible (build29 reproducibility
+# gate). Non-zero to mirror native records; the engine ignores the value for load.
+# Value = FILETIME for 2020-01-01T00:00:00Z (arbitrary fixed epoch).
+FIXED_RECORD_FILETIME = 132223104000000000
 
 
 class FilePart:
@@ -149,6 +156,12 @@ class ArcArchive:
             if entry.name.lower() == name.lower() and entry.entry_type == 3:
                 entry.modified_data = data
 
+                # @16 = adler32 of the DECOMPRESSED data; recompute on every content
+                # change or it goes stale (the load path validates it). @36 (name len)
+                # is unchanged here since the name is not touched. See the B2 RCA.
+                struct.pack_into('<I', entry.raw_record, 16,
+                                 zlib.adler32(data) & 0xFFFFFFFF)
+
                 # Recompress into parts
                 entry.parts = []
                 pos = 0
@@ -180,6 +193,27 @@ class ArcArchive:
         struct.pack_into('<I', raw, 0, 3)       # entry_type = file
         struct.pack_into('<I', raw, 12, len(data))  # decomp_size
         struct.pack_into('<I', raw, 40, str_offset)  # string table offset
+
+        # Populate the three record fields the native ARC writer sets that a bare
+        # bytearray(44) leaves zero. Leaving these zero is FATAL for a quest that
+        # exists in no other archive: the engine's QuestRepository resource-open
+        # returns NULL when @36 (filename length) is 0 -> "Invalid Quest File" ->
+        # the quest is silently skipped (no object, no .que, no tokens). Native
+        # records always carry all three (verified: every SVAERA entry has
+        # @16==adler32(decompress) and @36==len(name)). See the B2 RCA.
+        struct.pack_into('<I', raw, 16,
+                         zlib.adler32(data) & 0xFFFFFFFF)  # @16 adler32 of DECOMPRESSED bytes
+        # @20/@24 = Windows FILETIME (100ns ticks since 1601-01-01), low/high dwords.
+        # Use a FIXED non-zero constant, NOT time.time(): the engine ignores the
+        # FILETIME value for load (only @36 + @16 matter, verified against 101 native
+        # records with 101 distinct times), and a wall-clock value would make the arc
+        # non-byte-reproducible, breaking the build29 reproducibility gate. A constant
+        # mirrors native shape (non-zero) while staying deterministic.
+        ft = FIXED_RECORD_FILETIME
+        struct.pack_into('<I', raw, 20, ft & 0xFFFFFFFF)
+        struct.pack_into('<I', raw, 24, (ft >> 32) & 0xFFFFFFFF)
+        struct.pack_into('<I', raw, 36,
+                         len(name.encode('ascii')))  # @36 filename length (NO trailing null)
 
         entry = ArcEntry(bytes(raw))
         entry.raw_record = bytearray(raw)

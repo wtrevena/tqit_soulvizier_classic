@@ -44,6 +44,9 @@ SOUL_TEMPLATE = 'database\\Templates\\Jewelry_Ring.tpl'
 SUMMON_RAKANIZEUS_SKILL = r'records\skills\soulskills\summon_rakanizeus.dbr'
 SUMMON_BONEASH_SKILL = r'records\skills\soulskills\summon_boneash.dbr'
 SUMMON_PHARAOH_GUARD_SKILL = r'records\skills\soulskills\summon_pharaohguard.dbr'
+# A10 (build29, owner request): summon-the-boss souls for Narok + Vort.
+SUMMON_NAROK_SKILL = r'records\skills\soulskills\summon_narok.dbr'
+SUMMON_VORT_SKILL = r'records\skills\soulskills\summon_vort.dbr'
 
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
@@ -119,6 +122,39 @@ SOUL_OVERHAULS = {
         'characterMana': (DATA_TYPE_INT, 150),
         'characterIntelligence': (DATA_TYPE_INT, 50),
         'characterLifeModifier': (DATA_TYPE_FLOAT, -4.0),
+    },
+
+    # ── NAROK THE ROCKSKIN (A10, Will 2026-07-08 "way more powerful + summon
+    #    Narok himself"): manual-cast boss summon + buffed caster stat lines.
+    #    Source: um_rockskin_42 (dragonian storm/spirit caster, tagNewHero88).
+    #    Values flagged in needs_will_signoff.
+    'rockskin_soul': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_NAROK_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\spirit\drxternion.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 6),          # was 3/4/5 per tier
+        'characterLife': (DATA_TYPE_INT, 250),             # was 85
+        'characterMana': (DATA_TYPE_INT, 150),             # was -80 (penalty removed)
+        'characterManaRegenModifier': (DATA_TYPE_FLOAT, 80.0),   # was 60
+        'characterIntelligence': (DATA_TYPE_INT, 50),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 25),
+        'defensiveFire': (DATA_TYPE_FLOAT, 25.0),          # was 12
+    },
+
+    # ── VORT THE RED (A10 extension, same owner request): manual-cast boss
+    #    summon + buffed storm-caster stat lines. Source: the "Vort the Red"
+    #    hero (hero_tarthon_na'arak_40, tagMonsterName1139 - SV filename vs
+    #    display-name mismatch is upstream). Values in needs_will_signoff.
+    'vort_soul': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_VORT_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball_concussiveblast.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 5),          # was 2/3/4 per tier
+        'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball.dbr'),
+        'augmentSkillLevel2': (DATA_TYPE_INT, 4),          # new second augment
+        'characterLife': (DATA_TYPE_INT, 200),
+        'characterMana': (DATA_TYPE_INT, 200),
+        'characterIntelligence': (DATA_TYPE_INT, 60),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 30),
+        'defensiveLightning': (DATA_TYPE_FLOAT, 25.0),
     },
 
     # ── CALYBE THE WARDANCER: Dual-wield berserker. Eclipse blood drain on-hit
@@ -259,6 +295,65 @@ def _copy_animation_fields(db, monster_path, pet_path):
 
     db._modified.add(pet_path)
     return copied
+
+
+def _strip_foreign_anim_overrides(db, pet_path, src_monster):
+    """Make a summon pet's per-record animation-FILE (``.anm``) overrides match
+    its SOURCE MONSTER exactly: strip every ``.anm`` override field the source
+    monster does not itself define. This kills the B-SUMMON-2 invisible-body
+    class without disturbing a source creature's legitimate cross-family rig.
+
+    B-SUMMON-2 (Will screenshot-confirmed, build28): summon pets are cloned from
+    Lyia (a MAENAD) and inherit ~59 Maenad / JackalMan per-weapon-class ``.anm``
+    override fields. ``_copy_animation_fields`` overwrites the slots the source
+    monster defines, but leaves every OTHER slot still pointing at the foreign
+    Lyia animation. When the pet actively uses such a slot (e.g. DUAL-WIELDS ->
+    ``dHanded*``), the engine plays a foreign-skeleton animation on the pet's
+    body mesh, skinning the body vertices to a bone hierarchy the mesh lacks ->
+    the BODY renders INVISIBLE while the weapons float at their hardpoints.
+
+    The correct fix is source-faithful, NOT a blanket wipe: strip only the
+    ``.anm`` override fields whose base name is NOT a field of ``src_monster``.
+    What remains is exactly (a) the source monster's own overrides (already
+    copied with the source's values by ``_copy_animation_fields``) and nothing
+    else; every stripped slot falls back to the pet's ``charAnimationTableName``
+    - the mesh's OWN-family table (same skeleton). So no foreign-skeleton
+    animation can ever play. Proven byte-for-byte against the shipped DB:
+      - blade-dancer (``discipleboss_bladedancer``): source has 0 ``.anm``
+        fields -> all 59 foreign overrides stripped; the pet drives purely from
+        ``anm_melinoe`` (which defines the melinoe dual-wield set
+        ``dHandedAttackAnim = Melinoe01_DW_*``).
+      - Lil'Lued (``lillued_big``): source defines 10 Bat overrides, all in the
+        ``unarmed*`` slots (the ElderDjinn is an unarmed flying caster, DRX-rigged
+        to Bat flying anims) -> those 10 Bat fields are KEPT; the 49 Maenad /
+        JackalMan fields (``dHanded*``/``sHanded*``/spear/staff/bow) are stripped,
+        and those slots fall back to ``anm_djinn``'s own Djinn dual-wield / one-hand
+        set (``Djinn_DW_AttAlpha.anm`` etc.).
+
+    ``charAnimationTableName`` is never touched. An empty value list is omitted by
+    ``_encode_fields``, so a stripped field is ABSENT in the built record (exactly
+    like the source monster), not present-but-empty. Deterministic: iterates the
+    record's ordered field dict. Returns the count stripped.
+    """
+    if not src_monster:
+        return 0
+    src_fields = db.get_fields(src_monster) or {}
+    src_names = {k.split('###')[0] for k in src_fields}
+    fields = db.get_fields(pet_path)
+    if not fields:
+        return 0
+    stripped = 0
+    for key, tf in fields.items():
+        base = key.split('###')[0]
+        if base == 'charAnimationTableName' or base in src_names:
+            continue
+        if tf.dtype != DATA_TYPE_STRING:
+            continue
+        if any(isinstance(v, str) and v.lower().endswith('.anm') for v in tf.values):
+            tf.values = []
+            stripped += 1
+    db._modified.add(pet_path)
+    return stripped
 
 
 _SKILL_PREFIXES = (
@@ -656,6 +751,226 @@ def _create_boneash_pet_skill(db):
                 db.set_field(name, 'itemSkillLevel', 3)
 
     print("  Boneash summon: cloned 3 pet records from Lyia + summon skill")
+    return True
+
+
+# ── A10 (build29): generic summon-the-boss builder (Narok + Vort) ────────────
+# Mirrors the PROVEN _create_boneash_pet_skill pattern exactly: clone the
+# working Lyia Leafsong pets for a clean Pet.tpl baseline, replace anims +
+# skill refs with the SOURCE boss monster's own (rig-consistent by
+# construction), equip via _set_pet_equipment loot-table loadouts (never
+# player uniques), permanent companion (no spawnObjectsTimeToLive - inherited
+# from Lyia), manual-cast summon skill (NO autocast controller; tonight's live
+# evidence: manual-cast granted summons execute in-game).
+
+_A10_BOSS_SUMMONS = [
+    {
+        # NAROK THE ROCKSKIN (um_rockskin_42, "Caster w Staff", storm/spirit)
+        'label': 'Narok the Rockskin',
+        'source': r'records\creature\monster\dragonian\um_rockskin_42.dbr',
+        'summon_path': SUMMON_NAROK_SKILL,
+        'pet_paths': [r'records\skills\soulskills\pets\narok_1.dbr',
+                      r'records\skills\soulskills\pets\narok_2.dbr',
+                      r'records\skills\soulskills\pets\narok_3.dbr'],
+        'souls_partial': 'rockskin_soul',
+        'display_tag': 'tagSVCSummonNarok',
+        'icon_src': r'records\skills\spirit\ternion.dbr',   # his signature Ternion
+        'attack_skill': r'records\skills\monster skills\attack_projectile\ternion.dbr',
+        'pet_desc_tag': 'tagNewHero88',                     # = "Narok the Rockskin"
+        'char_level': [42, 58, 73],                         # source band
+        'life': [9500.0, 14000.0, 20000.0],                 # source floor 9.3k-13.9k
+        'life_regen': [30.0, 50.0, 80.0],
+        'mana': 1500.0, 'mana_regen': 30.0,
+        'strength': 250.0, 'dexterity': 200.0, 'intelligence': 450.0,
+        'dmg_min': [60.0, 90.0, 130.0], 'dmg_max': [90.0, 140.0, 200.0],
+        'attack_speed': 1.2, 'run_speed': 0.85, 'cast_speed': 1.5,
+        'scale': 1.3,   # source record carries no scale; dragonian bulk
+    },
+    {
+        # VORT THE RED (hero_tarthon_na'arak_40 displays tagMonsterName1139 =
+        # "Vort the Red"; SV filename/display mismatch is upstream)
+        'label': 'Vort the Red',
+        'source': "records\\creature\\monster\\dragonian\\hero_tarthon_na'arak_40.dbr",
+        'summon_path': SUMMON_VORT_SKILL,
+        'pet_paths': [r'records\skills\soulskills\pets\vort_1.dbr',
+                      r'records\skills\soulskills\pets\vort_2.dbr',
+                      r'records\skills\soulskills\pets\vort_3.dbr'],
+        'souls_partial': 'vort_soul',
+        'display_tag': 'tagSVCSummonVort',
+        'icon_src': r'records\skills\storm\thunderball.dbr',  # his signature Thunderball
+        'attack_skill': r'records\skills\monster skills\attack_projectile\damagelightning_lightningball.dbr',
+        'pet_desc_tag': 'tagMonsterName1139',               # = "Vort the Red"
+        'char_level': [40, 57, 71],                         # source band
+        'life': [18000.0, 26000.0, 36000.0],                # source floor 17.8k-26.8k
+        'life_regen': [40.0, 70.0, 110.0],
+        'mana': 2900.0, 'mana_regen': 35.0,                 # source mana kept
+        'strength': 450.0, 'dexterity': 350.0, 'intelligence': 400.0,
+        'dmg_min': [70.0, 105.0, 150.0], 'dmg_max': [100.0, 160.0, 230.0],
+        'attack_speed': 1.25, 'run_speed': 0.9, 'cast_speed': 1.5,
+        'scale': 1.55,  # source's own scale
+    },
+]
+
+
+def _create_boss_summon_from_source(db, spec):
+    """Build one summon-the-boss chain (pets + summon skill + soul wiring)
+    from _A10_BOSS_SUMMONS. Returns True when complete."""
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
+    lyia_sources = [
+        r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+        r'records\skills\soulskills\pets\lyialeafsong_3.dbr',
+    ]
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
+
+    source = _find_record(db, spec['source'])
+    if not source:
+        print(f"  WARNING A10: source monster missing for {spec['label']}; skipped")
+        return False
+
+    def src_val(rec, name):
+        ff = db.get_fields(rec) or {}
+        for key, tf in ff.items():
+            if key.split('###')[0] == name and tf.values and str(tf.values[0]).strip():
+                return tf.values
+        return None
+
+    mesh = src_val(source, 'mesh')
+    anim = src_val(source, 'charAnimationTableName')
+    tex = src_val(source, 'baseTexture')
+    bump = src_val(source, 'bumpTexture')
+    icon_rec = _find_record(db, spec['icon_src'])
+    icon_up = src_val(icon_rec, 'skillUpBitmapName') if icon_rec else None
+    icon_down = src_val(icon_rec, 'skillDownBitmapName') if icon_rec else None
+
+    for i, path in enumerate(spec['pet_paths']):
+        src = _find_record(db, lyia_sources[i])
+        if not src:
+            print(f"  WARNING A10: Lyia source {lyia_sources[i]} missing")
+            return False
+        db.clone_record(src, path)
+        # rig + skill refs from the SOURCE boss (values only, never new fields)
+        _copy_animation_fields(db, source, path)
+        _update_existing_fields(db, source, path, _SKILL_PREFIXES)
+
+        sf = db.set_field
+        # Equipment: the source is a staff caster (staff_dyn_*03 = its OWN
+        # loot tables); armor set = the proven Boneash caster loadout.
+        _set_pet_equipment(db, path, _loadout_spec([
+            ('LeftHand', 100.0, 5000, [
+                r'records\item\loottables\weapons\mastertables\staff_dyn_n03.dbr',
+                r'records\item\loottables\weapons\mastertables\staff_dyn_e03.dbr',
+                r'records\item\loottables\weapons\mastertables\staff_dyn_l03.dbr']),
+            ('Forearm', 100.0, 5000, [
+                r'records\item\loottables\arms\commondynamic\bracelet_n02.dbr',
+                r'records\item\loottables\arms\commondynamic\bracelet_e02.dbr',
+                r'records\item\loottables\arms\commondynamic\bracelet_l02.dbr']),
+            ('Head', 100.0, 5000, [
+                r'records\item\loottables\head\commondynamic\circlet_n02.dbr',
+                r'records\item\loottables\head\commondynamic\circlet_e02.dbr',
+                r'records\item\loottables\head\commondynamic\circlet_l02.dbr']),
+            ('Torso', 100.0, 5000, [
+                r'records\item\loottables\torso\commondynamic\caster_n02.dbr',
+                r'records\item\loottables\torso\commondynamic\caster_e02.dbr',
+                r'records\item\loottables\torso\commondynamic\caster_l02.dbr']),
+            ('LowerBody', 100.0, 5000, [
+                r'records\item\loottables\legs\commondynamic\greavescaster_n02.dbr',
+                r'records\item\loottables\legs\commondynamic\greavescaster_e02.dbr',
+                r'records\item\loottables\legs\commondynamic\greavescaster_l02.dbr']),
+        ]))
+
+        # identity = the source boss (render chain: mesh + texture + rig all
+        # from ONE proven-rendering monster record)
+        if mesh:
+            sf(path, 'mesh', str(mesh[0]))
+        if tex:
+            sf(path, 'baseTexture', str(tex[0]))
+        # bumpTexture: mirror the source boss so the normal map matches the
+        # body mesh. The Lyia clone base carries her Maenad normal map
+        # (maenad_lyiabmp.tex); leaving it un-reset paints that map onto the
+        # source's mesh (wrong surface shading). src_val returns None when the
+        # source has no bumpTexture (e.g. the Dragonian sources for Narok/Vort),
+        # so this correctly clears the residue to ''.
+        sf(path, 'bumpTexture', str(bump[0]) if bump else '')
+        if anim:
+            sf(path, 'charAnimationTableName', str(anim[0]))
+        if spec.get('attack_skill'):
+            atk = _find_record(db, spec['attack_skill'])
+            if atk:
+                sf(path, 'attackSkillName', atk)
+        sf(path, 'scale', float(spec['scale']))
+        sf(path, 'actorHeight', 2.0)
+        sf(path, 'description', spec['pet_desc_tag'])
+        sf(path, 'controller', CONTROLLER)
+        sf(path, 'monsterClassification', 'Common')   # working-exemplar parity
+
+        # per-tier power (floor = source stats; flagged for Will's sign-off)
+        sf(path, 'charLevel', list(spec['char_level']))
+        sf(path, 'characterLife', spec['life'][i])
+        sf(path, 'characterLifeRegen', spec['life_regen'][i])
+        sf(path, 'characterMana', spec['mana'])
+        sf(path, 'characterManaRegen', spec['mana_regen'])
+        sf(path, 'characterStrength', spec['strength'])
+        sf(path, 'characterDexterity', spec['dexterity'])
+        sf(path, 'characterIntelligence', spec['intelligence'])
+        sf(path, 'characterAttackSpeed', spec['attack_speed'])
+        sf(path, 'characterRunSpeed', spec['run_speed'])
+        sf(path, 'characterSpellCastSpeed', spec['cast_speed'])
+        sf(path, 'handHitDamageMin', spec['dmg_min'][i])
+        sf(path, 'handHitDamageMax', spec['dmg_max'][i])
+
+        sf(path, 'dropItems', 0)
+        sf(path, 'giveXP', 0)
+        sf(path, 'experiencePoints', 0)
+        if icon_up:
+            sf(path, 'StatusIcon', str(icon_up[0]))
+        if icon_down:
+            sf(path, 'StatusIconRed', str(icon_down[0]))
+
+    # summon skill (clone Lyia's = permanent pet, no TTL; boss-summon tier
+    # cost/recharge = the Boneash/blade-dancer exemplar 250 energy / 180s)
+    summon_path = spec['summon_path']
+    summon_src = _find_record(db, lyia_summon)
+    if summon_src:
+        db.clone_record(summon_src, summon_path)
+    else:
+        _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+    sf = db.set_field
+    sf(summon_path, 'isPetDisplayable', 1)
+    sf(summon_path, 'skillDisplayName', spec['display_tag'])
+    sf(summon_path, 'skillManaCost', [250.0, 300.0, 350.0])
+    sf(summon_path, 'skillCooldownTime', 180.0)
+    sf(summon_path, 'skillCooldownReductionModifier', 180.0)
+    sf(summon_path, 'skillMaxLevel', 3)
+    sf(summon_path, 'petLimit', 1)
+    sf(summon_path, 'petBurstSpawn', 1)
+    sf(summon_path, 'spawnObjects', list(spec['pet_paths']))
+    if icon_up:
+        sf(summon_path, 'skillUpBitmapName', str(icon_up[0]))
+    if icon_down:
+        sf(summon_path, 'skillDownBitmapName', str(icon_down[0]))
+    db._modified.add(summon_path)
+
+    # per-tier itemSkillLevel on the souls (N=1 E=2 L=3; any other matched
+    # variant - e.g. upstream "conflicted copy" parkings that SOUL_OVERHAULS
+    # also touches - gets level 1 so the activation invariant holds)
+    for name in list(db.record_names()):
+        nl = name.lower()
+        if spec['souls_partial'] in nl and 'equipmentring' in nl and '\\soul\\' in nl:
+            if nl.endswith('_soul_n.dbr'):
+                db.set_field(name, 'itemSkillLevel', 1)
+            elif nl.endswith('_soul_e.dbr'):
+                db.set_field(name, 'itemSkillLevel', 2)
+            elif nl.endswith('_soul_l.dbr'):
+                db.set_field(name, 'itemSkillLevel', 3)
+            else:
+                db.set_field(name, 'itemSkillLevel', 1)
+            db._modified.add(name)
+
+    print(f"  A10 {spec['label']}: 3 pets from source rig + summon skill "
+          f"(250/300/350 en, 180s cd) + souls wired 1/2/3")
     return True
 
 
@@ -2666,6 +2981,13 @@ def overhaul_souls(db):
     pharaoh_ok = _create_pharaoh_guard_pet_skill(db)
     total += 1
 
+    # A10 (build29, owner request): summon-the-boss souls (Narok + Vort).
+    a10_status = []
+    for _spec in _A10_BOSS_SUMMONS:
+        a10_status.append((_spec['label'],
+                           _create_boss_summon_from_source(db, _spec)))
+        total += 1
+
     # Surface pet-skill build failures instead of silently ignoring the return
     # values. Each helper returns False when a required source record is missing,
     # which leaves that summonable soul pet non-functional.
@@ -2673,13 +2995,16 @@ def overhaul_souls(db):
         ('Rakanizeus', rakan_ok),
         ('Boneash', boneash_ok),
         ("Pharaoh's Honor Guard", pharaoh_ok),
-    ]
+    ] + a10_status
     failed_pet_skills = [nm for nm, ok in pet_skill_status if not ok]
     if failed_pet_skills:
-        print(f"  WARNING: pet skill build FAILED for: {', '.join(failed_pet_skills)} "
-              f"(source record missing -- these soul pets will not summon)")
+        raise SystemExit(
+            f"Pet skill build FAILED for: {', '.join(failed_pet_skills)} "
+            f"(source record missing -- these soul pets would not summon); "
+            f"fail-loud instead of shipping dead summons")
     else:
-        print("  Pet skills built: Rakanizeus, Boneash, Pharaoh's Honor Guard")
+        print("  Pet skills built: Rakanizeus, Boneash, Pharaoh's Honor Guard, "
+              "Narok, Vort")
 
     _update_pharaoh_guard_drop_rate(db)
     _fix_low_boss_soul_drop_rates(db)
@@ -3926,14 +4251,23 @@ _GRIDENTRANCE_TEMPLATE = r'database\Templates\Engine\GridEntrance.tpl'
 # to a near-invisible quad, leaving only the engine's blue entrance-plane + arrow.
 # A static GridEntrance is MESH-ONLY (DB-verified: 0 of 153 base static GridEntrance
 # records carry any fx/light/portal-glow field - there is NO DB-side FX field to
-# set), so the mesh is the only visual lever. HC_GoldMirror01 is the mesh the
-# base-game ALWAYS-VISIBLE portal xsq15_mirrorportal uses, so it is proven to render
-# statically-visible (a shimmering mirror portal). visibilityMode/openness/class/0x14
-# (the map-lane born-open mechanics) are NOT touched. Alternatives for Will's eye:
-# keep TJ_JudgementRoom_PortalObject_01 (blue swirl, needs the Dynamic idle anim to
-# show), the Tartarus AlwaysVisible cave-mouth entrance01.msh, or a map-lane
-# co-located swirl-FX entity (BACKLOG B-PORTAL-1 option b, out of DB scope).
-_PORTAL_VISUAL_MESH = r'XPack\SceneryUnderground\HadesCrypt\SetDress\HC_GoldMirror01.msh'
+# set), so the mesh is the only visual lever.
+#
+# build29 (A2): build28 shipped HC_GoldMirror01.msh here, which turned out to be a
+# REGRESSION - it is a large SOLID 3D "gold mirror" object (73,318 B mesh in
+# SceneryUnderground.arc) whose collision AABB straddles the walkway, so the portal
+# physically BLOCKS passage / force-teleports the player (Will, build28 public). The
+# fix is a THIN glowing portal PANE: XPack\SceneryHades\Structure\Building\SetDress\
+# Elysium_from_TOJ_PortalObject_01.msh - a 1,428 B upright pane (verified present in
+# base-game SceneryHades.arc) whose depth is thin (D~1.7u << 2.5u), so it renders as a
+# visible portal without obstructing the tunnel. It is the SAME size-class of pane as
+# the build27 proven-teleporting TJ_JudgementRoom_PortalObject_01.msh (also 1,428 B,
+# ships in drx.arc) - kept as the FALLBACK below if Elysium reads wrong in-game.
+# CAVEAT (honest): our record is a base STATIC GridEntrance; whether the pane renders
+# attractively on the static class is NOT provable from the DB and needs Will's in-game
+# confirmation (needs_will_signoff / BACKLOG B-PORTAL-1). visibilityMode/openness/
+# class/0x14 (the map-lane born-open mechanics) are NOT touched.
+_PORTAL_VISUAL_MESH = r'XPack\SceneryHades\Structure\Building\SetDress\Elysium_from_TOJ_PortalObject_01.msh'
 # Dynamic-only fields to strip on the swapped record (not in the GridEntrance
 # template's include chain). Leaving them would reference a non-existent template
 # field. mesh/scale/actorHeight/actorRadius are shared (Tile include) and KEPT.
@@ -4011,12 +4345,16 @@ def _make_portals_born_open_gridentrance(db):
 
 
 def _apply_portal_visual(db):
-    """B-PORTAL-1 (VISUAL, DB-lane): repoint the born-open portal ENTRANCE mesh to a
-    base-game ALWAYS-VISIBLE portal mesh (_PORTAL_VISUAL_MESH) so it renders as a
-    visible glowing portal instead of the flat blue panel the prior quest-shown TJ
-    mesh produced on the static class. VISUAL-ONLY: does NOT touch Class / openness /
-    visibilityMode / the 60-byte 0x14 (the map-lane born-open mechanics). Idempotent.
-    Run AFTER _make_portals_born_open_gridentrance (which keeps the old mesh)."""
+    """B-PORTAL-1 (VISUAL, DB-lane): repoint the portal ENTRANCE mesh to
+    _PORTAL_VISUAL_MESH (Elysium_from_TOJ_PortalObject_01.msh, a thin glowing portal pane;
+    see the _PORTAL_VISUAL_MESH block for the donor + the static-class caveat) so it renders as
+    a visible portal object instead of the flat blue panel the prior quest-shown TJ mesh
+    produced on the static class. Iterates _PORTAL_ENTRANCE_DBRS, so it repoints BOTH
+    portal_olympianarena1 (the placed born-open GridEntrance) AND portal_olympianarena1x
+    (an unplaced FixedItemTeleport - repointed defensively; it is placed 0 times in
+    either map, so this has no in-game effect). VISUAL-ONLY: does NOT touch Class /
+    openness / visibilityMode / the 60-byte 0x14 (the map-lane born-open mechanics).
+    Idempotent. Run AFTER _make_portals_born_open_gridentrance (which keeps the old mesh)."""
     n = 0
     for path in _PORTAL_ENTRANCE_DBRS:
         rec = _resolve_record(db, path)
@@ -5034,6 +5372,371 @@ def _fix_zero_level_soul_procs(db):
     print(f"  Zero-level soul procs fixed: {fixed} record(s) (B-SOUL-PROC-1 FIX B)")
 
 
+# ── B-SOUL-PROC-2 (build29): PLAYER-CASTABILITY of soul-granted skills ──────
+# The build28 itemSkillLevel fix was NECESSARY but NOT SUFFICIENT (Will,
+# 2026-07-08 live on build28: "the ground attack in the soul is still not
+# working"). Disasm-proven root cause (Game.dll SkillManager::StartSkill,
+# string xref va 0x1025622a): when a skill carries a skillSpecialAnimationName,
+# StartSkill asks the caster's ANIMATION TABLE to start that named animation;
+# if the name is not in the table's <row>SpecialAnimRef1..15 entries for the
+# CURRENT WEAPON row, the start fails, StartSkill logs "Animation failed to
+# start in SkillManager::StartSkill - %s %s", SKIPS the entire skill-start
+# continuation and returns false. The cast silently never happens.
+#
+# Our shipped PC tables (SV 0.98i's own, byte-identical port) define exactly
+# 32 special-anim names, and only TWO of them (AoE360, Colossus) appear in
+# EVERY weapon row of BOTH sexes. cyclops_groundsmash (the Crommyonian Sow
+# "Ground Smash") carries anim 'ClubSlam' - a Cyclops-rig animation that is in
+# NO PC row, so the proc can never fire for a player, at any itemSkillLevel.
+# 39 distinct soul-granted skills carry such never-playable anims (ClubSlam,
+# Spit, Punch, BloodBoil, Summon, GroundPound, ...); dozens more carry anims
+# playable only with SOME weapon types. The proven-working precedent is anim-
+# LESS granted skills (base game: wraithlordsummons + 172 of 204 proc items
+# grant skills with NO special anim; our own summon_boneash - the one grant
+# Will SAW fire - has none).
+#
+# FIX: for every soul-granted skill whose special anim is not universally
+# playable, clone the skill to records\skills\soulskills\pcsafe\<name>.dbr,
+# BLANK the clone's skillSpecialAnimationName (engine then uses the default
+# attack/cast animation, always available), and repoint the souls'
+# itemSkillName at the clone. Cloning (never editing in place) means monsters
+# and pets that share the original skill keep their own animations
+# (e.g. melinoe_bloodboil is also Blood Toxeus' kit; spellbreaker is cast by
+# several monsters). Deterministic: souls are processed in sorted order.
+
+_PC_ANM_TABLE_PATHS = (
+    r'records\creature\pc\anm\anm_malepc01.dbr',
+    r'records\creature\pc\anm\anm_femalepc.dbr',
+)
+_PCSAFE_DIR = r'records\skills\soulskills\pcsafe'
+
+
+def _pc_universal_special_anims(db):
+    """Return the set of special-anim names (lowercase) present in EVERY
+    weapon row of BOTH shipped PC animation tables - the only names a player
+    character can be guaranteed to play regardless of equipped weapon."""
+    import re as _re
+    universal = None
+    for tbl in _PC_ANM_TABLE_PATHS:
+        rec = _find_record(db, tbl)
+        if not rec:
+            raise SystemExit(f"PC animation table missing from the build: {tbl}")
+        rows = {}
+        for key, tf in (db.get_fields(rec) or {}).items():
+            fname = key.split('###')[0]
+            m = _re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
+            if m and tf.values and str(tf.values[0]).strip():
+                rows.setdefault(m.group(1), set()).add(str(tf.values[0]).lower())
+        for names in rows.values():
+            universal = set(names) if universal is None else (universal & names)
+    return universal or set()
+
+
+def _soul_item_records(db):
+    """All soul ITEM records (sorted, Monster-typed test parkings skipped)."""
+    out = []
+    for rec in db.record_names():
+        rl = rec.lower()
+        if '\\soul\\' not in rl and '/soul/' not in rl:
+            continue
+        if db._record_types.get(rec) == 'Monster':
+            continue
+        out.append(rec)
+    return sorted(out)
+
+
+def _fix_granted_skill_castability(db):
+    """B-SOUL-PROC-2: make every soul-granted skill castable by the player.
+
+    1. Skills with a special anim not universally playable -> pcsafe clone
+       with the special-anim field REMOVED (base-absent parity); souls
+       repointed (see block comment above).
+    2. ENEMY-targeted auto-cast controllers used by souls that lack
+       autoTargetRadius get the base-game concrete-controller value 15.0.
+       Every WORKING base-game AttackEnemy controller carries autoTargetRadius
+       7-15; the base_atenemy_* basetemplates the SV souls inherited carry
+       NONE (their only base-game item user is the known-broken EE
+       sihailongwang spear, so they have zero working precedent). Self/Ally
+       controllers are deliberately left untouched (base Self controllers use a
+       wide 10-15 radius; forcing a small value could suppress self-buff
+       auto-casts, and the invariant only requires a radius on Enemy). Additive
+       + idempotent: existing values are never changed.
+    """
+    S = DATA_TYPE_STRING
+    universal = _pc_universal_special_anims(db)
+    print(f"\n  B-SOUL-PROC-2: universally playable PC anims = {sorted(universal)}")
+
+    # Exact case/slash-tolerant resolution map (O(1) lookups; the module-level
+    # _find_record is a SUBSTRING matcher and O(n) per call, both wrong here).
+    recmap = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+
+    def resolve(path):
+        return recmap.get(str(path).replace('/', '\\').lower().strip())
+
+    def field(rec, name):
+        ff = db.get_fields(rec) or {}
+        for key, tf in ff.items():
+            if key.split('###')[0] == name and tf.values:
+                return tf.values
+        return None
+
+    def delete_field(rec, name):
+        ff = db.get_fields(rec)
+        if not ff:
+            return
+        for key in [k for k in ff if k.split('###')[0] == name]:
+            del ff[key]
+        db._modified.add(rec)
+
+    clones = {}          # source skill rec -> pcsafe clone path
+    repointed = 0
+    controllers_seen = set()
+    controllers_fixed = 0
+
+    for rec in _soul_item_records(db):
+        isn = field(rec, 'itemSkillName')
+        if not isn or not str(isn[0]).strip():
+            continue
+        skill = resolve(str(isn[0]).strip())
+        if not skill:
+            continue  # dangling refs are the resolution invariant's job
+        anim = field(skill, 'skillSpecialAnimationName')
+        anim_val = str(anim[0]).strip() if anim and str(anim[0]).strip() else ''
+        target = skill
+        if anim_val and anim_val.lower() not in universal:
+            if skill not in clones:
+                if skill.replace('/', '\\').lower().startswith(_PCSAFE_DIR):
+                    clones[skill] = skill  # already a pcsafe record (idempotence)
+                else:
+                    base_name = skill.replace('/', '\\').split('\\')[-1]
+                    clone = _PCSAFE_DIR + '\\' + base_name
+                    if not db.has_record(clone):
+                        if not db.clone_record(skill, clone):
+                            raise SystemExit(
+                                f"B-SOUL-PROC-2: failed to clone {skill}")
+                        recmap[clone.lower()] = clone
+                    # REMOVE the special-anim field entirely (rather than set it
+                    # to ''): the proven-working base-game anim-less grants OMIT
+                    # skillSpecialAnimationName (verified: 60/60 sampled base
+                    # controller-cast grants have the field ABSENT, 0 empty-str),
+                    # so an absent field is the exact, ambiguity-free reproduction
+                    # of the pattern that never trips SkillManager::StartSkill.
+                    delete_field(clone, 'skillSpecialAnimationName')
+                    clones[skill] = clone
+            target = clones[skill]
+        # repoint ONLY when a pcsafe clone replaced the skill; souls whose
+        # grants are already playable stay byte-identical.
+        if target != skill and _norm_ref(target) != _norm_ref(str(isn[0])):
+            db.set_field(rec, 'itemSkillName', target, S)
+            db._modified.add(rec)
+            repointed += 1
+
+        # 2. controller autoTargetRadius parity - ENEMY controllers only.
+        # Every WORKING base-game Enemy/AttackEnemy autocast controller carries
+        # autoTargetRadius 7-15; the base_atenemy_* templates the souls inherit
+        # carry NONE (target-acquisition gap). Self/Ally controllers are left
+        # untouched: base Self controllers use a WIDE radius (10-15), so forcing
+        # a small value could SUPPRESS self-buff auto-casts, and the activation
+        # invariant only requires a radius on Enemy controllers.
+        ctl = field(rec, 'itemSkillAutoController')
+        if ctl and str(ctl[0]).strip():
+            c = resolve(str(ctl[0]).strip())
+            if c and c not in controllers_seen:
+                controllers_seen.add(c)
+                tt = field(c, 'targetType')
+                tt = str(tt[0]) if tt else 'Self'
+                if tt == 'Enemy' and field(c, 'autoTargetRadius') is None:
+                    db.set_field(c, 'autoTargetRadius', 15.0, DATA_TYPE_FLOAT)
+                    db._modified.add(c)
+                    controllers_fixed += 1
+
+    n_cloned = len([1 for s, c in clones.items() if s != c])
+    print(f"  B-SOUL-PROC-2: {n_cloned} skill(s) cloned to pcsafe with anim "
+          f"removed; {repointed} soul grant(s) repointed; "
+          f"{controllers_fixed} Enemy controller(s) given base-parity "
+          f"autoTargetRadius (of {len(controllers_seen)} seen)")
+
+
+def _norm_ref(path):
+    return str(path).replace('/', '\\').lower().strip()
+
+
+def _fix_wave29_contract_items(db):
+    """build29 contract-suite fixes (DB side). Returns new display tags.
+
+    - SOUL-NAME-RESOLVES: satyrmagi_soul + satyrspiritcaller_soul {n,e,l}
+      carried placeholder tagSoul1 (undefined -> raw tag in-game); the parked
+      test\\kyrashadowdancer_soul {e,l} carried bare tagSoulName. Real tags
+      assigned; kyra test pair repointed at the live tagSoulName323.
+    - SOUL-AUGMENT-LEVEL: crowboar_soul_n/e shipped augmentSkillLevel1/2 == 0
+      (level-0 augment = no bonus). Bumped n=1, e=2 (l already live at 1).
+    - MONSTER-SKILLS-LOOT: the 5 blood-cave ancestralwarrior bodies referenced
+      Records\\Skills\\Monster Skills\\Melee_Poison09-12_10.dbr which does not
+      exist in SV/AE; the real record is attackmelee_poison09-12_10.dbr
+      (same dir, SV renamed it). Repointed.
+    - MONSTER-SPAWN-ELIGIBILITY: bw_priest_houndmaster pool had spawnMax=2
+      with championMin=championMax=2 -> guaranteed mains = 0, the disciple
+      never spawns (Blood-Toxeus champion-crowd-out class). spawnMax -> 3.
+    - SUMMON-PET-CLASSIFICATION: soulskills pets missing monsterClassification
+      get 'Common' (the classification of every working exemplar: Lyia,
+      Boneash, base WraithLord).
+    """
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    tags = {}
+    soul_dir = r'records\item\equipmentring\soul'
+
+    # 1. real names for the placeholder-tagged souls
+    name_fixes = {
+        soul_dir + r'\satyrmagi_soul_n.dbr': 'tagSVCSoulSatyrMagi',
+        soul_dir + r'\satyrmagi_soul_e.dbr': 'tagSVCSoulSatyrMagi',
+        soul_dir + r'\satyrmagi_soul_l.dbr': 'tagSVCSoulSatyrMagi',
+        soul_dir + r'\satyrspiritcaller_soul_n.dbr': 'tagSVCSoulSatyrSpiritcaller',
+        soul_dir + r'\satyrspiritcaller_soul_e.dbr': 'tagSVCSoulSatyrSpiritcaller',
+        soul_dir + r'\satyrspiritcaller_soul_l.dbr': 'tagSVCSoulSatyrSpiritcaller',
+        soul_dir + r'\test\kyrashadowdancer_soul_e.dbr': 'tagSoulName323',
+        soul_dir + r'\test\kyrashadowdancer_soul_l.dbr': 'tagSoulName323',
+    }
+    fixed_names = 0
+    for path, tag in name_fixes.items():
+        rec = _find_record(db, path)
+        if not rec:
+            print(f"  WARNING wave29: soul not found for name fix: {path}")
+            continue
+        db.set_field(rec, 'itemNameTag', tag, S)
+        db._modified.add(rec)
+        fixed_names += 1
+    tags['tagSVCSoulSatyrMagi'] = '{^F}Satyr Magi Soul'
+    tags['tagSVCSoulSatyrSpiritcaller'] = '{^F}Satyr Spirit Caller Soul'
+
+    # 2. crowboar zero augment levels (never disturb a live >= 1 value)
+    aug_fixes = {
+        soul_dir + r'\svc_uber\crowboar_soul_n.dbr': 1,
+        soul_dir + r'\svc_uber\crowboar_soul_e.dbr': 2,
+    }
+    fixed_augs = 0
+    for path, lvl in aug_fixes.items():
+        rec = _find_record(db, path)
+        if not rec:
+            print(f"  WARNING wave29: crowboar soul not found: {path}")
+            continue
+        ff = db.get_fields(rec) or {}
+        for fname in ('augmentSkillLevel1', 'augmentSkillLevel2'):
+            cur = None
+            for key, tf in ff.items():
+                if key.split('###')[0] == fname and tf.values:
+                    cur = int(tf.values[0])
+                    break
+            if cur is not None and cur >= 1:
+                continue
+            db.set_field(rec, fname, lvl, I)
+            db._modified.add(rec)
+            fixed_augs += 1
+
+    # 3. ancestralwarrior dead melee skill refs
+    aw_target = r'records\skills\monster skills\attackmelee_poison09-12_10.dbr'
+    if not _find_record(db, aw_target):
+        raise SystemExit(f"wave29: repoint target missing: {aw_target}")
+    fixed_aw = 0
+    for suffix in 'abcde':
+        path = (r'records\drxmap\bloodcave\bodies\ancestralwarrior'
+                + suffix + '.dbr')
+        rec = _find_record(db, path)
+        if not rec:
+            print(f"  WARNING wave29: ancestralwarrior body not found: {path}")
+            continue
+        db.set_field(rec, 'skillName1', aw_target, S)
+        db._modified.add(rec)
+        fixed_aw += 1
+
+    # 4. houndmaster champion crowd-out: spawnMax 2 -> 3 (1 guaranteed main)
+    pool = _find_record(db, r'records\drxmap\proxy\pools\bw_priest_houndmaster.dbr')
+    fixed_pool = 0
+    if pool:
+        ff = db.get_fields(pool) or {}
+        smax = cmax = None
+        for key, tf in ff.items():
+            fname = key.split('###')[0]
+            if fname == 'spawnMax' and tf.values:
+                smax = int(tf.values[0])
+            elif fname == 'championMax' and tf.values:
+                cmax = int(tf.values[0])
+        if smax is not None and cmax is not None and smax - cmax < 1:
+            db.set_field(pool, 'spawnMax', cmax + 1, I)
+            db._modified.add(pool)
+            fixed_pool = 1
+    else:
+        print("  WARNING wave29: bw_priest_houndmaster pool not found")
+
+    # 5. soulskills pets missing monsterClassification
+    fixed_pets = 0
+    for rec in sorted(db.record_names()):
+        rl = rec.lower()
+        if not rl.startswith(r'records\skills\soulskills\pets'):
+            continue
+        ff = db.get_fields(rec) or {}
+        tpl = mc = None
+        for key, tf in ff.items():
+            fname = key.split('###')[0]
+            if fname == 'templateName' and tf.values:
+                tpl = str(tf.values[0])
+            elif fname == 'monsterClassification' and tf.values:
+                mc = str(tf.values[0])
+        if not tpl or not _norm_ref(tpl).endswith('\\pet.tpl'):
+            continue
+        if mc and mc.strip():
+            continue
+        db.set_field(rec, 'monsterClassification', 'Common', S)
+        db._modified.add(rec)
+        fixed_pets += 1
+
+    print(f"  wave29 contract fixes: {fixed_names} soul name tag(s), "
+          f"{fixed_augs} crowboar augment level(s), {fixed_aw} ancestralwarrior "
+          f"skill ref(s), {fixed_pool} spawn pool(s), {fixed_pets} pet "
+          f"classification(s)")
+    return tags
+
+
+# ── A3 / B-STARTER-CHEST-1: DEFERRED to the parallel disasm-grounded impl ───
+# build29 note (reconciliation): A3 (the co-op starter chest = 12 bags + 36
+# potions + Crommyonian Sow souls) is implemented in build_svc_database.py
+# (~L632) by a parallel agent whose comment cites Game.dll disasm
+# (FixedItemContainerController 0x10182120/0x10181530/0x10181da0): the chest
+# spawns N = numSpawn items and picks each item's loot slot by ROULETTE over the
+# slots' relative lootNChance weights - so per-CATEGORY counts are MULTINOMIAL
+# and an EXACT composition (e.g. "exactly 1 soul") can NOT be guaranteed by any
+# FixedItemLoot record; only the total N and the per-category EXPECTATION are
+# exact (the only true exactly-once grant is a quest Action_GiveItem, the Esti
+# pattern). My earlier _setup_starter_chest here (container.tables -> 49 single-
+# item tables, assuming each `tables` entry resolves exactly once) was built on
+# the WRONG engine model AND repointed the container away from the parallel
+# agent's `defaultloot` edits, silently disabling their version. It is removed;
+# A3 = the build_svc_database implementation (numSpawn=54; slot roulette 36:12:6
+# -> E[36 potions + 12 bags + 6 sow souls]; P(no soul)=0.17%). See the report.
+
+
+# ── A4: Esti (hidden blood-cave) chest tier-1 supra formula = NOT APPLIED ───
+# build29 FINAL DISPOSITION (disasm-refuted; the tables stay byte-identical to
+# build28). The closed RCA's mechanism claim ("set the unused loot3 group to
+# loot3Chance=100 -> the chest always drops exactly 1 supra formula") is FALSE
+# under the real engine algorithm (Game.dll FixedItemContainerController,
+# 0x10182120/0x10181530/0x10181da0): lootNChance values are RELATIVE ROULETTE
+# WEIGHTS - every one of the numSpawn (~18-20) draws picks ONE slot with
+# probability chance_i/sum(chances). The Esti tables' chances sum to 113.2, so
+# a loot3Chance=100 slot means ~47% of EVERY draw = ~8-9 supra formulas per
+# open (a loot-economy flood), never "exactly 1"; and a chance tuned for
+# E[supra]=1 (about 6.66) would leave ~36% of opens with ZERO formulas. The
+# ONLY exactly-once mechanism is the EXISTING quest Action_GiveItem
+# (Condition_UseFixedItem -> OpenedHiddenChest token + GiveItem supra_special)
+# = SV's original design, already live, with its notification tags resolving
+# (B-SUPRA-NOTIFY-1). COUPLING FLAG: Lane B's _neutralize_esti_chest_supra in
+# tools/build_quest_files.py (written expecting a chest-side grant) MUST NOT
+# ship - with the quest grant removed and no chest change the player would
+# never receive a formula. Keep the quest grant; the whole item needs no
+# change. (An earlier in-tree implementation of the refuted spec was removed
+# here; the record-diff gate asserts the 3 tables stay byte-identical to
+# build28.)
+
+
 def _verify_soul_itemskill_activation(db):
     """FAIL-LOUD invariant (B-SOUL-PROC-1): every soul that GRANTS an item skill
     must have a complete, ACTIVATABLE chain, or the grant is a silent no-op that
@@ -5049,8 +5752,19 @@ def _verify_soul_itemskill_activation(db):
          field), its chanceToRun > 0 and triggerType is non-empty.
     Raises SystemExit on any violation. Re-checked standalone on the written
     .arz by tools/validate_soul_augments.py.
+
+    build29 (B-SOUL-PROC-2) additions, disasm-grounded (Game.dll
+    SkillManager::StartSkill aborts the cast when the special animation cannot
+    start on the caster's animation table):
+      4. the granted skill's skillSpecialAnimationName must be EMPTY or a name
+         present in EVERY weapon row of both PC animation tables (universally
+         playable); anything else is a sometimes/never-castable grant;
+      5. an Enemy-targeted auto-cast controller must carry autoTargetRadius
+         >= 1 (base-game concrete-controller parity; absent = 0 = no target
+         acquisition).
     """
     CTRL_TPL = r'database\templates\skillautocastcontroller.tpl'
+    universal = _pc_universal_special_anims(db)
 
     def field(rec, name):
         ff = db.get_fields(rec)
@@ -5082,6 +5796,14 @@ def _verify_soul_itemskill_activation(db):
             if not cls or not str(cls[0]).startswith('Skill_'):
                 problems.append((rec, f"granted record is not a Skill_*: {skill} "
                                       f"(Class={cls[0] if cls else None})"))
+            anim = field(sk, 'skillSpecialAnimationName')
+            if anim and str(anim[0]).strip() and \
+                    str(anim[0]).lower() not in universal:
+                problems.append((rec,
+                                 f"granted skill {skill} carries special anim "
+                                 f"'{anim[0]}' which is NOT universally playable "
+                                 f"by the PC (StartSkill aborts the cast; "
+                                 f"B-SOUL-PROC-2 pcsafe clone missing)"))
         lvl = field(rec, 'itemSkillLevel')
         if lvl is None:
             problems.append((rec, "itemSkillLevel ABSENT (skill instantiates at "
@@ -5106,6 +5828,15 @@ def _verify_soul_itemskill_activation(db):
                 trig = field(c, 'triggerType')
                 if not trig or not str(trig[0]).strip():
                     problems.append((rec, f"controller {ctl[0]} has empty triggerType"))
+                tt = field(c, 'targetType')
+                if tt and str(tt[0]) == 'Enemy':
+                    rad = field(c, 'autoTargetRadius')
+                    if not rad or float(rad[0]) < 1.0:
+                        problems.append((rec,
+                                         f"Enemy controller {ctl[0]} has "
+                                         f"autoTargetRadius "
+                                         f"{rad[0] if rad else 'ABSENT'} "
+                                         f"(no target acquisition)"))
     if problems:
         for rec, why in problems[:20]:
             print(f"  SOUL-PROC OFFENDER: {rec} :: {why}")
@@ -5113,7 +5844,8 @@ def _verify_soul_itemskill_activation(db):
             f"Soul item-skill activation invariant FAILED: {len(problems)} "
             f"problem(s) across granted-skill souls (see offenders above)")
     print(f"  Soul item-skill activation invariant OK: {checked} granted-skill "
-          f"soul(s) all have resolving Skill_* + itemSkillLevel >= 1 + live controllers.")
+          f"soul(s) all have resolving Skill_* + itemSkillLevel >= 1 + playable "
+          f"anims + live controllers.")
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -5528,6 +6260,16 @@ def _create_bwpriest_pet_skill(db):
         if src_monster:
             _copy_animation_fields(db, src_monster, path)
             _update_existing_fields(db, src_monster, path, _SKILL_PREFIXES)
+        # B-SUMMON-2: the clone brought Lyia's Maenad/JackalMan per-weapon .anm
+        # overrides; the source monster (discipleboss_bladedancer) has none to
+        # overwrite them (it drives anim from anm_melinoe). The pet dual-wields,
+        # so its foreign dHanded overrides play on the melinoe body -> INVISIBLE
+        # body. Strip every override the source monster does not define so the
+        # pet renders/animates purely from anm_melinoe, like the monster.
+        n_stripped = _strip_foreign_anim_overrides(db, path, src_monster)
+        if n_stripped:
+            print(f"  {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} "
+                  f"foreign .anm overrides (anm_melinoe now drives the body)")
         sf = db.set_field
         # ── Equipment: mirror the SOURCE monster (discipleboss_bladedancer)
         #    proven loadout (B-SUMMON-1). The prior player-unique swords
@@ -5655,6 +6397,17 @@ def _create_lillued_pet_skill(db):
         if src_monster:
             _copy_animation_fields(db, src_monster, path)
             _update_existing_fields(db, src_monster, path, _SKILL_PREFIXES)
+        # B-SUMMON-2 (invisible body): the clone brought Lyia's Maenad/JackalMan
+        # per-weapon .anm overrides. lillued_big (source) only defines Bat
+        # unarmed anims, so the pet's foreign dHanded/sHanded overrides survived
+        # -> playing JackalMan/Maenad on the Djinn body -> INVISIBLE. Strip every
+        # override the source monster does not define; the kept Bat unarmed anims
+        # match the source and the weapon slots fall back to anm_djinn (Djinn
+        # dual-wield / one-hand set), all Djinn-skeleton -> the body renders.
+        n_stripped = _strip_foreign_anim_overrides(db, path, src_monster)
+        if n_stripped:
+            print(f"  {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} "
+                  f"foreign .anm overrides (anm_djinn + Bat now drive the body)")
         sf = db.set_field
         # ── Equipment: mirror the SOURCE monster (lillued_big) proven
         #    loot-table loadout (B-SUMMON-1). Player-unique staves/gear never
@@ -6775,8 +7528,17 @@ _BT_BLOODDEMON = [
     r'records\drxcreatures\blooddemon\b_med_blooddemon_31.dbr',
     r'records\drxcreatures\blooddemon\b_med_blooddemon_32.dbr',
 ]
-_BT_LILDUDE_SUMMON_DONOR = r'records\drxmap\pitsprites\t1_skill_pitspawner_summonlildude_02.dbr'  # shared donor (green poison charfx)
-_BT_LILDUDE_SUMMON = r'records\drxmap\pitsprites\bloodtoxeus_summonlildude.dbr'  # NEW blood-recolored variant (B-TOXEUS-1)
+_BT_LILDUDE_SUMMON_DONOR = r'records\drxmap\pitsprites\t1_skill_pitspawner_summonlildude_02.dbr'  # shared donor
+# B-TOXEUS-2 (build29): the summon skill is the DONOR again, NOT a clone. The
+# build28 recolor cloned it to bloodtoxeus_summonlildude.dbr and ADDED
+# charFxPakSelfNames to it, but (a) the donor never carried the green pak in the
+# first place (the recolor premise was wrong for this skill - byte-verified vs
+# build27), and (b) NO Skill_SpawnPet*/Skill_SpawnPetMonster record in the base
+# game OR build27 carries charFxPakSelfNames at all (zero-precedent field on the
+# class = prime loadability suspect for the build28 boss no-spawn regression,
+# B-TOXEUS-2). Reverting to the donor restores exact build27 bytes on the boss's
+# skillName9/specialAttack5SkillName.
+_BT_LILDUDE_SUMMON = _BT_LILDUDE_SUMMON_DONOR
 
 # Kit skills (all EXIST, classes DB-verified against the design doc §2).
 _BT_SK_BLOODBOIL      = r'records\skills\soulskills\melinoe_bloodboil.dbr'                       # Skill_AttackRadius (signature nova)
@@ -7301,40 +8063,112 @@ def _wire_blood_toxeus_loot(db):
 
 def _create_blood_toxeus_fx(db):
     """B-TOXEUS-1: recolor the boss's GREEN shroud to RED.
+    B-TOXEUS-2 (build29): rebuilt so the recolor cannot break boss loadability.
 
-    The green aura is NOT on the monster record - it comes from two SHARED skills
-    in the boss kit: toxeus_envenomweapon (cast on spawn via initialSkillName, a
-    toggle that stays on) and the lildude summon (specialAttack5 phase burst). Both
-    carry charFxPakSelfNames = 343_weapon_poisoncharfxpak (the green poison hand-mist
-    = the shroud); the envenom also tints the weapon green (skillWeaponTintGreen=1.0)
-    and applies the green poisonweaponenchantment blade glow. Those two skills are
-    SHARED with the real Athens Toxeus (um_toxeus_21, must stay green) + the Delphi
-    blood-pit, so we CLONE per-boss blood variants and repoint ONLY Hemorrheus's kit
-    at them (the _BT_SK_ENVENOM / _BT_LILDUDE_SUMMON constants already point here).
+    The green aura comes from toxeus_envenomweapon (cast on spawn via
+    initialSkillName, a toggle that stays on): charFxPakSelfNames =
+    343_weapon_poisoncharfxpak (green hand-mist), green weapon tint, and the green
+    poisonweaponenchantment blade glow. The skill is SHARED with the real Athens
+    Toxeus (um_toxeus_21, must stay green), so we CLONE a per-boss blood variant
+    and repoint ONLY Hemorrheus's kit (_BT_SK_ENVENOM).
 
     Red replacement = charfxpak_leinth_aura (_BT_BLOOD_CHARFXPAK): the blood-witch
-    Leinth persistent boss aura, red and thematically in the same cult family.
+    Leinth persistent boss aura - red, same cult family, and PROVEN LOADABLE in
+    this exact field shape (leinth_aura_buff carries the same pak in
+    charFxPakSelfNames on a monster that spawns live).
+
+    B-TOXEUS-2 regression lessons (byte-verified build27 vs build28; the boss
+    stopped spawning on the SAME proxy/pool/map with only the arz changed):
+      - NEVER set weaponEnchantment to '' - ZERO base-game or build27 records
+        carry an EMPTY weaponEnchantment (base: 0 of 56); enchantment-less
+        Skill_BuffSelfToggled records OMIT the field (31 of 50 in base). The
+        field is DELETED from the clone instead.
+      - NEVER add charFxPakSelfNames to the lildude summon skill - its donor
+        never had it and NO Skill_SpawnPet*/Monster record in base or build27
+        carries that field (zero-precedent shape). The summon stays the shared
+        donor record, untouched (_BT_LILDUDE_SUMMON == donor).
+    The clone-shape invariant (_verify_boss_kit_clone_shape) gates both rules.
     """
-    # 1) Blood envenom = the persistent shroud + weapon tint.
+    # Blood envenom = the persistent shroud + weapon tint (the ONLY clone).
     if db.has_record(_BT_SK_ENVENOM_DONOR):
         db.clone_record(_BT_SK_ENVENOM_DONOR, _BT_SK_ENVENOM)
         db.set_field(_BT_SK_ENVENOM, 'charFxPakSelfNames', _BT_BLOOD_CHARFXPAK)  # green mist -> red aura
         db.set_field(_BT_SK_ENVENOM, 'skillWeaponTintRed', 1.0)    # was 0.25
         db.set_field(_BT_SK_ENVENOM, 'skillWeaponTintGreen', 0.25)  # was 1.0
         db.set_field(_BT_SK_ENVENOM, 'skillWeaponTintBlue', 0.25)
-        db.set_field(_BT_SK_ENVENOM, 'weaponEnchantment', '')  # drop the green poison blade glow
+        # Drop the green poison blade glow by DELETING the field (field-absence
+        # parity with the 31 enchantment-less base Skill_BuffSelfToggled records;
+        # an empty-string value has zero precedent anywhere - B-TOXEUS-2).
+        fields = db.get_fields(_BT_SK_ENVENOM)
+        if fields is not None:
+            for key in list(fields.keys()):
+                if key.split('###')[0] == 'weaponEnchantment':
+                    del fields[key]
         db._modified.add(_BT_SK_ENVENOM)
+        _BOSS_KIT_CLONES.append((_BT_SK_ENVENOM_DONOR, _BT_SK_ENVENOM))
     else:
         print("  BLOOD TOXEUS FX: WARNING envenom donor missing; shroud NOT recolored")
-    # 2) Blood lildude summon = the transient phase-burst self-FX.
-    if db.has_record(_BT_LILDUDE_SUMMON_DONOR):
-        db.clone_record(_BT_LILDUDE_SUMMON_DONOR, _BT_LILDUDE_SUMMON)
-        db.set_field(_BT_LILDUDE_SUMMON, 'charFxPakSelfNames', _BT_BLOOD_CHARFXPAK)
-        db._modified.add(_BT_LILDUDE_SUMMON)
-    else:
-        print("  BLOOD TOXEUS FX: WARNING lildude-summon donor missing")
-    print("  Blood Toxeus FX: GREEN poison shroud recolored RED "
-          "(envenom + lildude-summon blood variants; Athens Toxeus untouched)")
+    print("  Blood Toxeus FX: GREEN poison shroud recolored RED (envenom blood "
+          "variant only; lildude summon = shared donor untouched; Athens Toxeus "
+          "untouched) [B-TOXEUS-2 safe shape]")
+
+
+# ── B-TOXEUS-2 invariant: clone-shape loadability guard ────────────────────────
+# Registry of (donor, clone) skill/record pairs authored for the Blood Toxeus kit
+# (and any future boss kit). The build28 no-spawn regression was caused by a clone
+# whose FIELD SHAPE had zero base-game precedent; this guard makes both failure
+# modes fail-loud at build time.
+_BOSS_KIT_CLONES = []
+
+
+def _verify_boss_kit_clone_shape(db):
+    """FAIL-LOUD invariant (B-TOXEUS-2): every registered boss-kit clone must
+    keep its donor's field SHAPE:
+      1. the clone must not ADD any field the donor lacks (zero-precedent field
+         on the class = potential loader abort -> silent boss no-spawn);
+      2. any field holding a non-empty .dbr reference on the donor must not be
+         EMPTY on the clone (empty-string ref values have zero precedent; delete
+         the field instead);
+      3. every .dbr reference the clone changed or kept must resolve in the mod
+         db when the donor's value also resolved there.
+    Raises SystemExit on any violation."""
+    problems = []
+    for donor, clone in _BOSS_KIT_CLONES:
+        drec = _resolve_record(db, donor)
+        crec = _resolve_record(db, clone)
+        if drec is None or crec is None:
+            problems.append((clone, f"donor or clone missing (donor={drec}, clone={crec})"))
+            continue
+        dfields = {}
+        for key, tf in (db.get_fields(drec) or {}).items():
+            dfields[key.split('###')[0]] = [str(v) for v in tf.values]
+        for key, tf in (db.get_fields(crec) or {}).items():
+            fname = key.split('###')[0]
+            cvals = [str(v) for v in tf.values]
+            if fname not in dfields:
+                problems.append((clone, f"ADDS field '{fname}' absent on donor "
+                                        f"{donor} (zero-precedent shape)"))
+                continue
+            dvals = dfields[fname]
+            for i, dv in enumerate(dvals):
+                if dv.strip().lower().endswith('.dbr'):
+                    cv = cvals[i] if i < len(cvals) else ''
+                    if not cv.strip():
+                        problems.append((clone, f"field '{fname}' EMPTY where donor "
+                                                f"held ref {dv} (delete the field "
+                                                f"instead of blanking)"))
+                    elif _resolve_record(db, dv) is not None and \
+                            _resolve_record(db, cv) is None:
+                        problems.append((clone, f"field '{fname}' ref does not "
+                                                f"resolve: {cv}"))
+    if problems:
+        for rec, why in problems:
+            print(f"  BOSS-KIT-CLONE OFFENDER: {rec} :: {why}")
+        raise SystemExit(
+            f"Boss-kit clone-shape invariant FAILED: {len(problems)} problem(s) "
+            f"(B-TOXEUS-2 class regression; see offenders above)")
+    print(f"  Boss-kit clone-shape invariant OK: {len(_BOSS_KIT_CLONES)} "
+          f"clone pair(s) keep donor field shape.")
 
 
 def _create_blood_toxeus(db):
@@ -7515,6 +8349,22 @@ def apply_all_extended_patches(db, force_full_drops=True):
         "the pharaoh's tomb. The construct rises with unyielding resolve, "
         'crushing enemies with devastating physical force while shrugging '
         'off blows that would fell lesser beings.'
+    )
+
+    # A10 (build29, owner request): summon-the-boss souls
+    tags['tagSVCSummonNarok'] = 'Summon Narok the Rockskin'
+    tags['tagSVCSummonNarokDESC'] = (
+        'The stone-scaled dragonian sorcerer answers the call of his own '
+        'captured soul. Narok strides forth with staff in claw, weaving '
+        'ternion bolts and storm orbs while his rocky hide turns aside '
+        'the blows of lesser foes.'
+    )
+    tags['tagSVCSummonVort'] = 'Summon Vort the Red'
+    tags['tagSVCSummonVortDESC'] = (
+        'Vort the Red erupts from his soul-prison in a crackle of crimson '
+        'lightning. The dragonian storm-lord hurls thunderballs and '
+        'concussive blasts, his red-scaled bulk a living bulwark before '
+        'his summoner.'
     )
 
     # Soul name tags ({^F} = pink/magenta color, matching original SV soul style)
@@ -7791,6 +8641,22 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Runs AFTER the gate (he is a legit Boss, so the drop forcer keeping his
     # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
     _create_blood_toxeus(db)
+
+    # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
+    # MUST run after EVERY soul-authoring pass above (it post-processes all
+    # soul-granted skills) and before the activation invariant below (which now
+    # also gates on anim playability + Enemy-controller autoTargetRadius).
+    print("\n=== build29 wave: granted-skill castability + contract fixes ===")
+    tags.update(_fix_wave29_contract_items(db))
+    _fix_granted_skill_castability(db)
+    # A4 (esti chest tier-1): NOT APPLIED - the closed RCA's mechanism is
+    # disasm-REFUTED (see the block comment at _setup_esti_chest_tier1). A3
+    # (starter chest) lives in build_svc_database.py (disasm-grounded).
+
+    # ── Boss-kit clone-shape invariant (fail-loud, B-TOXEUS-2) ────────────────
+    # After all boss authoring: every registered boss-kit clone must keep its
+    # donor's field shape (no added fields, no blanked .dbr refs, refs resolve).
+    _verify_boss_kit_clone_shape(db)
 
     # ── Spawn-eligibility invariant (fail-loud) ───────────────────────────────
     # After the boss/proxy/pool are built, prove every mod-authored spawn proxy will

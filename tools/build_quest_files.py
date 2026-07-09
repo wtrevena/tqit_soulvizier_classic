@@ -43,6 +43,8 @@ SV's difficulty balance assumes. Every OTHER step of both quests is preserved by
 faithfully. See docs/IT_ENDPOINT_AUDIT.md.
 """
 import sys
+import struct
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -287,6 +289,57 @@ def _assert_roundtrip(basename: str, data: bytes):
         raise ValueError(
             f'{basename}: qst_format round-trip is NOT byte-exact '
             f'({len(rebuilt)} vs {len(data)} bytes); refusing to ship a mangled quest.')
+
+
+def _assert_quest_records_loadable(arc: ArcArchive):
+    """PERMANENT CONTRACT (B2): make 'registered-but-silently-unloadable' impossible.
+
+    A quest that exists in no other archive is silently skipped by the engine's
+    QuestRepository if its 44-byte ARC file record leaves the native-populated fields
+    zero: @36 (filename length) == 0 makes resource-open return NULL -> 'Invalid Quest
+    File' -> no quest object, no .que, no tokens. This bug produced ZERO unresolved
+    references and survived four rebuilds because nothing validated the record shape.
+
+    Assert, for EVERY entry_type==3 record in the rebuilt Quests.arc:
+      * @36 != 0  and  @36 == len(name)         (filename length, as native writers set it)
+      * @16 != 0  and  @16 == adler32(decompress(entry))   (checksum of decompressed body)
+      * the decompressed body parses via qst_format
+    Native SVAERA entries already satisfy all three (verified: 101/101), so this gate
+    only ever fires on a record our own writer malformed. Fail loud on any violation.
+    """
+    violations = []
+    checked = 0
+    for e in arc.entries:
+        if e.entry_type != 3:
+            continue
+        checked += 1
+        rr = e.raw_record
+        name_len = struct.unpack_from('<I', rr, 36)[0]
+        adler_rec = struct.unpack_from('<I', rr, 16)[0]
+        expect_len = len(e.name.encode('ascii'))
+        body = arc.decompress(e)
+        expect_adler = zlib.adler32(body) & 0xFFFFFFFF
+        if name_len == 0:
+            violations.append(f'{e.name!r}: @36 filename-length is 0 (record UNLOADABLE)')
+        elif name_len != expect_len:
+            violations.append(
+                f'{e.name!r}: @36 filename-length {name_len} != len(name) {expect_len}')
+        if adler_rec == 0:
+            violations.append(f'{e.name!r}: @16 adler32 is 0 (record UNLOADABLE)')
+        elif adler_rec != expect_adler:
+            violations.append(
+                f'{e.name!r}: @16 adler32 {adler_rec:#010x} != '
+                f'adler32(decompress) {expect_adler:#010x}')
+        try:
+            qst_format.parse(body)
+        except Exception as exc:
+            violations.append(f'{e.name!r}: body does not parse via qst_format ({exc})')
+    if violations:
+        raise ValueError(
+            'QUEST RECORD CONTRACT FAILED (registered quests would silently NOT load):\n  '
+            + '\n  '.join(violations))
+    print(f'  quest-record contract PASS: {checked} entry_type==3 records '
+          f'(all @36==len(name)!=0, @16==adler32(decompress)!=0, bodies parse)')
 
 
 def _neutralize_bloodcave_entry_step(data: bytes) -> bytes:
@@ -694,6 +747,224 @@ def _harden_guardian_door_unlocks(data: bytes) -> bytes:
     return out
 
 
+# -- Esti's Hidden Chest supra-formula de-duplication (B1, 2026-07-08) -----------
+# WHY: the Esti (Esfri) hidden chest in the blood cave grants a random supra arcane
+# formula. In build28 the ONLY source of that formula is a QUEST action: each of the 3
+# "Open Chest" triggers in open_bloodcave_portal.qst step "Hidden Chest Control" fires an
+# Action_GiveItem(records/xpack/item/loottables/arcaneformulae/supra_special.dbr) straight
+# into the bag (the chest CONTAINER itself drops only random gear/gold -- see the closed
+# B-CHEST-1 RCA in docs/BACKLOG.md). Lane A (build29) is adding that supra formula to the
+# physical chest's own loot table, so the container itself drops it. With BOTH sources live
+# an opener would receive TWO formulas -- one from the loot table and one from this quest
+# action. To keep exactly ONE grant, we DROP the quest's Action_GiveItem(supra_special) from
+# each of the 3 "Open Chest" triggers, leaving Lane A's container-loot grant as the single
+# source.
+#
+# THE FIX (same surgical shape as _neutralize_widowletter_spawn / the two IT-cap
+# neutralizers): in the "Hidden Chest Control" step, for EACH of the 3 "Open Chest" triggers,
+# find the Action_GiveItem whose item references supra_special and drop that (actionClassName
+# field, action-fields block) pair, decrementing that trigger's actionCount 4 -> 3. The two
+# Action_UpdateJournalEntry actions (the "Esti's Chest" journal popups) and the
+# Action_BestowTriggerToken('OpenedHiddenChest') in each trigger are KEPT byte-identical, so
+# the one-time-per-character token + journal chain is untouched; the separate "Disable Chest"
+# trigger (Condition_OnLevelLoad + OwnsToken -> Action_DisableProxy) is left byte-identical.
+# Trigger/step counts are untouched (still 4 triggers in the step); only actionCount drops in
+# the 3 Open Chest triggers, so nothing else in the quest shifts.
+#
+# DEPLOY COUPLING (must ship together): this Quests.arc change ships together with Lane A's
+# arz (which adds the supra formula to the chest loot table) AND the shared Text.arc build.
+# Neither alone is correct -- arz-only still double-grants via this quest action; Quests-only
+# yields ZERO formula. See docs/HANDOFF_LIVE_STATE.md deploy couplings + B-CHEST-1.
+ESTI_CHEST_STEP_NAME = 'Hidden Chest Control'
+ESTI_CHEST_OPEN_TRIGGER_TAG = 'Open Chest'
+ESTI_CHEST_DISABLE_TRIGGER_TAG = 'Disable Chest'
+ESTI_CHEST_SUPRA_ITEM = r'records/xpack/item/loottables/arcaneformulae/supra_special.dbr'
+ESTI_CHEST_OPEN_TRIGGERS = 3    # exactly 3 "Open Chest" triggers (one per chest variant)
+ESTI_CHEST_KEEP_JOURNAL = 2     # Action_UpdateJournalEntry KEPT per Open Chest trigger
+ESTI_CHEST_KEEP_TOKEN = 1       # Action_BestowTriggerToken KEPT per Open Chest trigger
+# The Disable Chest proxy + the bestowed token that MUST survive (prove we kept the chain).
+ESTI_CHEST_DISABLE_PROXY = r'records/drxitem/container/proxy_hidden_bloodcave_chest.dbr'
+ESTI_CHEST_TOKEN = 'OpenedHiddenChest'
+
+
+def _neutralize_esti_chest_supra(data: bytes) -> bytes:
+    """Remove the supra-formula Action_GiveItem from each "Open Chest" trigger.
+
+    In open_bloodcave_portal.qst step "Hidden Chest Control", each of the 3 "Open Chest"
+    triggers fires Action_UpdateJournalEntry x2 + Action_BestowTriggerToken +
+    Action_GiveItem(supra_special) (actionCount 4). This drops ONLY the
+    Action_GiveItem(supra_special) block from each (actionCount 4 -> 3), keeping the two
+    journal actions and the token, and leaving the separate "Disable Chest" trigger
+    byte-identical. Prevents a double supra grant once Lane A adds the formula to the chest's
+    own loot table (B1 / B-CHEST-1; see the module-level comment above this function).
+
+    Fail-loud AND idempotent: requires the step + exactly 3 "Open Chest" triggers + the
+    "Disable Chest" trigger (else raise -- e.g. a copy lacking the step raises), removes 0 or
+    3 supra GiveItem blocks (a second application on already-neutralized bytes removes 0 and
+    returns the bytes unchanged), and verifies the KEEP set (2 journal + 1 token per Open
+    Chest trigger), the Disable Chest proxy, and the token all survive while no supra
+    reference remains anywhere in the quest.
+
+    A trigger's ACTIONS block is a flat sequence:
+      [ ('field','actionCount',...),
+        ('field','actionClassName',...), ('block', <action fields>),   # repeated
+        ... ]
+    We drop the (actionClassName field, fields block) pair for the matching GiveItem and
+    decrement actionCount; every OTHER trigger/step/action is byte-identical.
+    """
+    supra = ESTI_CHEST_SUPRA_ITEM.replace('\\', '/').lower()
+
+    def str_fields(items):
+        out = set()
+        for it in items:
+            if it[0] == 'block':
+                out |= str_fields(it[1])
+            elif it[0] == 'field' and it[2][0] == 'str':
+                out.add(it[2][1].replace('\\', '/').lower())
+        return out
+
+    def block_positions(items):
+        return [i for i, it in enumerate(items) if it[0] == 'block']
+
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    def action_class_count(actions_items, cls):
+        return sum(1 for it in actions_items
+                   if it[0] == 'field' and it[1] == 'actionClassName'
+                   and it[2][0] == 'str' and it[2][1] == cls)
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = block_positions(steps_container)
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    # locate the "Hidden Chest Control" step (fail loud if absent -- e.g. a copy lacking it).
+    target = None
+    for stepdef_pos, trigcont_pos, sentinel_pos in step_triples:
+        if field_val(steps_container[stepdef_pos][1], 'name') == ESTI_CHEST_STEP_NAME:
+            target = (stepdef_pos, trigcont_pos, sentinel_pos)
+            break
+    if target is None:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: step {ESTI_CHEST_STEP_NAME!r} not found; cannot '
+            f'neutralize the Esti-chest supra grant. Upstream changed; review before shipping.')
+    _stepdef_pos, trigcont_pos, _sentinel_pos = target
+    trigcont = list(steps_container[trigcont_pos][1])
+    tgp = block_positions(trigcont)
+    tg = [tgp[i:i + 3] for i in range(0, len(tgp), 3)]
+
+    # partition the step's triggers by displayTag.
+    open_triggers = [(h, c, a) for (h, c, a) in tg
+                     if field_val(trigcont[h][1], 'displayTag') == ESTI_CHEST_OPEN_TRIGGER_TAG]
+    disable_triggers = [(h, c, a) for (h, c, a) in tg
+                        if field_val(trigcont[h][1], 'displayTag')
+                        == ESTI_CHEST_DISABLE_TRIGGER_TAG]
+    if len(open_triggers) != ESTI_CHEST_OPEN_TRIGGERS:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: expected exactly {ESTI_CHEST_OPEN_TRIGGERS} '
+            f'{ESTI_CHEST_OPEN_TRIGGER_TAG!r} triggers in step {ESTI_CHEST_STEP_NAME!r}, '
+            f'found {len(open_triggers)}. Upstream changed; review before shipping.')
+    if len(disable_triggers) != 1:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: expected exactly 1 '
+            f'{ESTI_CHEST_DISABLE_TRIGGER_TAG!r} trigger in step {ESTI_CHEST_STEP_NAME!r}, '
+            f'found {len(disable_triggers)}. Upstream changed; review before shipping.')
+
+    # drop the supra Action_GiveItem from each Open Chest trigger's actions block.
+    removed = 0
+    for (hpos, cpos, apos) in open_triggers:
+        actions_block = trigcont[apos][1]
+        new_items = []
+        i = 0
+        dropped_here = 0
+        while i < len(actions_block):
+            it = actions_block[i]
+            is_give = (it[0] == 'field' and it[1] == 'actionClassName'
+                       and it[2][0] == 'str' and it[2][1] == 'Action_GiveItem')
+            if is_give and i + 1 < len(actions_block) and actions_block[i + 1][0] == 'block':
+                if supra in str_fields(actions_block[i + 1][1]):
+                    # drop this classname field + its fields block
+                    i += 2
+                    dropped_here += 1
+                    removed += 1
+                    continue
+            new_items.append(it)
+            i += 1
+        if dropped_here:
+            for idx, it in enumerate(new_items):
+                if it[0] == 'field' and it[1] == 'actionCount':
+                    new_items[idx] = ('field', 'actionCount', ('int', it[2][1] - dropped_here))
+                    break
+            trigcont[apos] = ('block', new_items)
+
+    # fresh -> removed exactly 3 (one per trigger); already-neutralized -> removed 0
+    # (idempotent). Any other count is a partial/corrupt edit.
+    if removed not in (0, ESTI_CHEST_OPEN_TRIGGERS):
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: expected 0 or {ESTI_CHEST_OPEN_TRIGGERS} supra '
+            f'Action_GiveItem removals across the {ESTI_CHEST_OPEN_TRIGGER_TAG!r} triggers, '
+            f'made {removed}. Upstream changed; review before shipping.')
+
+    steps_container[trigcont_pos] = ('block', trigcont)
+
+    # postcondition on each Open Chest trigger: KEEP set intact, no supra GiveItem left,
+    # actionCount consistent with the remaining actions.
+    for (hpos, cpos, apos) in open_triggers:
+        acts = trigcont[apos][1]
+        if supra in str_fields(acts):
+            raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: an {ESTI_CHEST_OPEN_TRIGGER_TAG!r} '
+                             f'trigger still references supra_special after removal.')
+        if action_class_count(acts, 'Action_UpdateJournalEntry') != ESTI_CHEST_KEEP_JOURNAL:
+            raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: an {ESTI_CHEST_OPEN_TRIGGER_TAG!r} '
+                             f'trigger lost an Action_UpdateJournalEntry; over-removed.')
+        if action_class_count(acts, 'Action_BestowTriggerToken') != ESTI_CHEST_KEEP_TOKEN:
+            raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: an {ESTI_CHEST_OPEN_TRIGGER_TAG!r} '
+                             f'trigger lost its Action_BestowTriggerToken; over-removed.')
+        acount = field_val(acts, 'actionCount')
+        n_actions = sum(1 for it in acts
+                        if it[0] == 'field' and it[1] == 'actionClassName')
+        if acount != n_actions:
+            raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: actionCount ({acount}) != number of '
+                             f'actions ({n_actions}) in an {ESTI_CHEST_OPEN_TRIGGER_TAG!r} '
+                             f'trigger.')
+        want = ESTI_CHEST_KEEP_JOURNAL + ESTI_CHEST_KEEP_TOKEN
+        if acount != want:
+            raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: an {ESTI_CHEST_OPEN_TRIGGER_TAG!r} '
+                             f'trigger has actionCount {acount}, expected {want} '
+                             f'({ESTI_CHEST_KEEP_JOURNAL} journal + {ESTI_CHEST_KEEP_TOKEN} '
+                             f'token) after removal; an unexpected action survived.')
+
+    # the Disable Chest trigger must still fire Action_DisableProxy on its proxy.
+    (dh, dc, da) = disable_triggers[0]
+    if action_class_count(trigcont[da][1], 'Action_DisableProxy') != 1:
+        raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: the {ESTI_CHEST_DISABLE_TRIGGER_TAG!r} '
+                         f'trigger lost its Action_DisableProxy; it must be left intact.')
+
+    out = qst_format.serialize(tree)
+
+    # -- fail-loud verification on the emitted bytes --
+    reparsed = qst_format.parse(out)
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError('neutralized esti-chest quest does not round-trip stably')
+    # the supra item must be gone from the WHOLE quest (it appears ONLY in the 3 GiveItem
+    # blocks we removed -- item[0..2] x 3), and the Disable Chest proxy + the OpenedHiddenChest
+    # token must remain (proves we kept the one-time-per-character chain, not stripped it).
+    all_strs = str_fields([b for blk in reparsed for b in blk])
+    if supra in all_strs:
+        raise ValueError('esti-chest neutralization left a dangling supra_special reference')
+    if ESTI_CHEST_DISABLE_PROXY.replace('\\', '/').lower() not in all_strs:
+        raise ValueError('esti-chest neutralization dropped the Disable Chest proxy; '
+                         'the Disable Chest trigger must be left intact')
+    if ESTI_CHEST_TOKEN.lower() not in all_strs:
+        raise ValueError('esti-chest neutralization dropped the OpenedHiddenChest token; '
+                         'the one-time-per-character token chain must be kept')
+    return out
+
+
 def _open_base_game_arc(path: Path) -> ArcArchive:
     """Open a pristine base-game .arc (e.g. xpack or XPack4 Quests.arc) for verbatim port."""
     if not path.exists():
@@ -989,9 +1260,17 @@ def _build_area_quests() -> dict:
             out[name] = data
 
     # Blood cave interior: byte-exact except (1) the single lost-NPC entry trigger is
-    # neutralized and (2) the guardian-sealed door unlocks are HARDENED with redundant
+    # neutralized, and (2) the guardian-sealed door unlocks are HARDENED with redundant
     # native-shape Condition_KillCreature triggers (B-TEMPLE-DOOR-1 live repro; see
     # _harden_guardian_door_unlocks).
+    # NOTE (build29, 2026-07-09): the Esti-chest supra-formula Action_GiveItem is DELIBERATELY
+    # KEPT (the earlier _neutralize_esti_chest_supra de-dup is NOT applied). Rationale: the
+    # whole reason the chest granted nothing was B2 (the quest never LOADED, arc-record bug);
+    # with B2 fixed the quest loads and its original SV Action_GiveItem(supra_special) is the
+    # correct exactly-once, per-difficulty-locked grant. The alternative chest-loot grant is
+    # engine-impossible to make exactly-1 (FixedItemContainer lootNChance are roulette weights,
+    # disasm-proven in Lane A A4), so the DB lane correctly left the chest tables untouched.
+    # Keeping the quest grant + NOT touching the chest = the authentic mechanism, restored by B2.
     bc = _upstream_quest_bytes(arc, BLOODCAVE_INTERIOR_QUEST)
     _assert_roundtrip(BLOODCAVE_INTERIOR_QUEST, bc)
     out[BLOODCAVE_INTERIOR_QUEST] = _harden_guardian_door_unlocks(
@@ -1079,6 +1358,11 @@ def main():
               f'({len(back) if back else 0} bytes)')
         if not ok:
             print(f'    ERROR: {name} did not round-trip through Quests.arc!')
+
+    # PERMANENT CONTRACT (B2): every quest record must be structurally loadable, or the
+    # engine silently skips it (the four SV questlines were dead for four rebuilds because
+    # their 44-byte ARC records left @16/@20/@24/@36 zero). Fail the build loud otherwise.
+    _assert_quest_records_loadable(arc2)
 
 
 if __name__ == '__main__':

@@ -97,6 +97,22 @@
   Files: tools/apply_svc_patches.py pet-creation blocks; reference the WORKING Lyia Leafsong pet.
 - **Cross-check:** Will said "if this soul has this issue we probably have many others" - treat as
   systemic across ALL summon souls we created (bwpriest x3, lillued x3, and any other spawnObjects).
+- **build28 (2026-07-08):** 12 broken pets repointed at their source monsters' loot-table
+  loadouts (player uniques never auto-equip -> naked) + NEW validate_summon_pets gate. Verified
+  present in the deployed arz (c4aa4d75); validator PASSes with upstream-only WARNs.
+- **REPEAT-FILED (Will, live on build28): "summons are broken".** build29 findings, all fixed:
+  (1) SOUL-GRANTED summon skills are gated by the SAME StartSkill anim abort as B-SOUL-PROC-2
+  (see its RCA v2): a summon skill with a non-playable special anim NEVER SPAWNS its pet
+  (strongbark_quillvines anim Roar x8 souls, barmanu_blizzard + gargantuanyeti_iceblast +
+  nehebkau-class anim Summon x21 souls) - pcsafe clone + repoint like every other grant;
+  (2) 25 soulskills pets (carrioncrow, peng, quillvine_03, skeleton_archer/soldier ladders)
+  shipped with EMPTY monsterClassification while every working exemplar (Lyia, Boneash, base
+  WraithLord) is Common - set to Common;
+  (3) validate_summon_pets extended to cover the FULL chain from GRANTING ITEM to living pet:
+  summon-skill castability (anim), itemSkillLevel vs spawnObjects ladder (warn), pet
+  monsterClassification, plus the existing mesh/rig/equipment/controller/skill checks.
+  Equipment-side (naked/floating) remains as build28 authored it; needs Will's walk verdict on
+  freshly summoned pets (saved-item baking does not affect pets, they spawn from the DB).
 
 ### B-TOXEUS-1: Blood Toxeus shroud is still GREEN, not RED
 - **Symptom (Will, screenshot 2):** the new Toxeus the Murderer, Devourer of Blood boss fights, but
@@ -199,6 +215,45 @@
   the validator with semantic activation-chain checks (skill Class = Skill_*, itemSkillLevel >= 1,
   controller template = SkillAutoCastController.tpl with chanceToRun > 0 and triggerType set).
   Gate: broken chains 219 -> 0, previously-OK 1,152 souls byte-unchanged.
+- **REPEAT-FILED (Will, live on build28, 2026-07-08): "the ground attack in the soul is still not
+  working" / "souls skills are broken".** The build28 itemSkillLevel fix IS in the deployed arz
+  (c4aa4d75: 1371/1371 granted-skill souls carry level >= 1, sow souls at 1/2/3) so the level fix
+  was NECESSARY but NOT SUFFICIENT.
+- **RCA v2 (B-SOUL-PROC-2, build29, disasm-proven):** Game.dll SkillManager::StartSkill (log
+  string "Animation failed to start in SkillManager::StartSkill" va 0x1035c3b0, gate vcall at va
+  0x102561d4) ABORTS the whole cast and returns false when the skill's skillSpecialAnimationName
+  cannot start on the CASTER's animation table. Our shipped PC tables (SV's own, byte-identical
+  port; anm_malepc01/anm_femalepc) define 32 special-anim names of which only TWO (AoE360,
+  Colossus) exist in EVERY weapon row of both sexes. cyclops_groundsmash ("Ground Smash") carries
+  anim ClubSlam, a Cyclops-rig animation in NO PC row: the proc can never fire for a player at any
+  itemSkillLevel. 39 distinct soul-granted skills carry never-playable monster anims (ClubSlam
+  x105 souls, Spit x55, Punch x36, BloodBoil x29, Summon x21, GroundPound, Bite, ...); dozens more
+  (ThunderClap/Ensnare/CallOfTheHunt/...) play only with SOME weapon types. Working A/B from
+  Will's own sessions: summon_boneash (NO special anim) fired; cyclops_groundsmash (ClubSlam)
+  never did. Secondary defect, same chain: the basetemplates autocast controllers the souls
+  inherit carry NO autoTargetRadius while every WORKING base-game Enemy/AttackEnemy controller
+  carries 10-15 (the only base item using base_atenemy_onattack is the known-broken EE
+  sihailongwang spear).
+- **FIX (build29, SHIPPED in the wave):** apply_svc_patches _fix_granted_skill_castability:
+  every soul-granted skill whose special anim is not universally playable is CLONED to
+  records\skills\soulskills\pcsafe\ with the skillSpecialAnimationName field REMOVED entirely
+  (exact base-parity: sampled base controller-cast grants carry the field ABSENT, never
+  empty-string; wraithlordsummons + 172/204 base proc grants are anim-less) and the souls
+  repointed; originals untouched so monsters/pets sharing them (melinoe_bloodboil = Blood
+  Toxeus kit, spellbreaker, wraithlord deathnova) keep their animations. Enemy-targeted soul
+  controllers lacking autoTargetRadius get 15.0 (base concrete-controller parity); Self/Ally
+  controllers are deliberately untouched (base Self controllers use a wide 10-15 radius;
+  forcing a small value could suppress self-buff auto-casts). Build29 counts: 60 skills cloned,
+  442 soul grants repointed, 6 Enemy controllers given a radius. Invariant + the standalone
+  validate_soul_augments now FAIL the build on any non-universal granted anim and any Enemy
+  controller without a radius (negative-tested against the build28 arz, which they fail).
+  NOTE for testing: TQ saves bake item properties at pickup, so souls already in a bag may keep
+  dead grants; verify on FRESHLY DROPPED souls (the build29 starter chest's sow souls are the
+  deterministic test vehicle).
+- **Same-gate siblings found (NOT fixed in build29, report-only):** player mastery skills with
+  monster-only anims are equally uncastable and were already dead in SV (Earth drxmeteor anim
+  MeteorShower; Medicine tree TelkineSummonSkeleton/TelekinesisStart; Storm spellbreaker anim
+  Drain as a TREE skill). Fixing those changes mastery behavior; needs Will's call.
 
 ## 🟡 P2 - pending answers / smaller
 
@@ -212,17 +267,73 @@
   Sparta Crypt, Duister itself) for the same inherited-name defect. The 2026-07-08 map wave was told
   to investigate; if the fix is Text-side it rides the next arz+Text coupled push.
 
+### B-TOXEUS-2 (P0, build29 RCA + FIX): Blood Toxeus stopped spawning on build28
+- **Symptom (Will, TESTHUB, 2026-07-08):** the cave-mouth Blood Toxeus no longer spawns. Proxy
+  q_bloodtoxeus_lone byte-verified present in the TESTHUB map; the SAME proxy+pool spawned him
+  2026-07-07 on the build27 arz. Delta = the arz only.
+- **RCA (byte-proven, build27-vs-build28 boss closure diff):** proxy + pool + monster stats are
+  IDENTICAL; the ONLY closure delta is the B-TOXEUS-1 recolor: (1) new clone
+  bloodtoxeus_envenomweapon set weaponEnchantment='' - an empty-string .dbr ref with ZERO
+  precedent (base game 0 of 56 weaponEnchantment carriers; build27 0 of 56; enchantment-less
+  base Skill_BuffSelfToggled records OMIT the field, 31 of 50); (2) new clone
+  bloodtoxeus_summonlildude ADDED charFxPakSelfNames to a Skill_SpawnPetMonster - a field NO
+  record of any Skill_SpawnPet* class carries in base or build27 (and the donor never had the
+  green pak, so the recolor premise was wrong for this skill). Both zero-precedent field shapes
+  are loader-abort suspects (unloadable monster = silent no-spawn). **The arz is shared, so the
+  canonical secret-area Hemorrheus is equally dead on the PUBLIC build28 item = live P0.**
+- **FIX (build29, Lane A):** the envenom clone DELETES the weaponEnchantment field (base-absence
+  parity) and keeps the red leinth-aura pak (proven loadable in that exact field shape via
+  leinth_aura_buff on a live-spawning boss); the lildude summon reverts to the shared donor
+  record (boss skillName9/specialAttack5SkillName = exact build27 bytes; the clone is no longer
+  created). Red-shroud intent KEPT (initialSkillName/skillName3 -> the envenom clone). NEW
+  fail-loud invariant _verify_boss_kit_clone_shape (apply_svc_patches): a registered boss-kit
+  clone must not add fields its donor lacks, must not blank a donor .dbr ref, and its refs must
+  resolve. Negative-tested. Gate: boss + closure field-parity with build27 except the intended
+  recolor deltas (verified in the build29 record diff). Will's walk test still decides.
+
 ### B-SUPRA-NOTIFY-1 (P3): supra formula grant is SILENT (placeholder tags)
 - The Esfri chest quest grant (open_bloodcave_portal.qst, Hidden Chest Control) gives the supra
   formula via Action_GiveItem straight into the bag, but its notification uses SV's placeholder tags
   (tagTitleTagTESTER / tagLOCATIONTAGTESTER) so players get NO visible message and easily miss the
   reward. Inherited SV 0.98i debt, not a port regression. Fix: real notification text (Quests+Text
   coupling). See the 2026-07-08 Esfri recon in the resolved item below.
+- **BUILD29 DISASM REFUTATION of the "chest tier-1" plan (LANE B COORDINATION, P0):** the closed
+  RCA's mechanism claim ("set loot3Chance=100 on loottable_hidden_bloodcave_0{1,2,3} -> the chest
+  always drops exactly 1 supra formula") is FALSE. Game.dll FixedItemContainerController disasm
+  (0x10182120 / 0x10181530 / 0x10181da0): a chest spawns numSpawn items and picks ONE loot slot
+  PER ITEM by roulette over the slots' chance values (chances are RELATIVE WEIGHTS, not
+  independent gates). With the Esti tables' chances summing 113.2 and numSpawn ~18-20, a
+  loot3Chance=100 slot would put a supra formula on ~47% of every draw = ~8-9 formulas per open,
+  and can never guarantee exactly 1. The ONLY exactly-once mechanism is the EXISTING quest
+  Action_GiveItem (Condition_UseFixedItem -> token + GiveItem) - i.e. SV's original design.
+  **Lane A therefore left the Esti loot tables byte-identical to build28, and Lane B's
+  _neutralize_esti_chest_supra (already written into tools/build_quest_files.py expecting the
+  chest-side grant) MUST NOT SHIP - with it the player would get ZERO formulas ever. Keep the
+  quest grant; the whole item then needs no change at all (notification tags already resolve).**
+- **ALREADY RESOLVED Text-side (verified during build29):** build_text_arc
+  QUEST_INTEGRATION_TAGS defines tagLOCATIONTAGTESTER = "The Blood Cave" and tagTitleTagTESTER =
+  "Esti's Hidden Chest", so the popup renders real strings, not raw tags (the build29 attempt to
+  redefine them tripped the duplicate-tag gate, proving the definitions live). Residual polish
+  only: the quest still references the TESTER tag KEYS and "Esti's" is a probable "Esfri's" typo;
+  wording pass for Will.
 
 ### B-STARTER-CHEST-1 (Will request 2026-07-08): more bags + potions for co-op
 - The starter chest must drop 12 INVENTORY BAG items + 36 HEALTH POTIONS (so a full co-op party
   each get bags). Guaranteed fixed loot; branch the table if shared so only the starter chest
   changes. Ships canonical (co-op = public byte-identical build). Routed to the DB wave (item 10).
+- **BUILD29 IMPLEMENTED (Lane A) with disasm-bounded honesty:** engine semantics (same disasm as
+  the B-SUPRA refutation above) make EXACT per-category counts impossible from one
+  FixedItemLoot record: numSpawn total is deterministic (min==max equations) but each item's
+  slot is a chance-weighted roulette pick, so composition is multinomial. Shipped design:
+  numSpawn=54 fixed, slot chances 36 (health potions, the chest's own vanilla table) : 12
+  (inventory bags via the mod-only startingloot_sack -> OneShot_Sack) : 6 (NEW branched
+  startingloot_sowsoul -> sow_soul_n, the Ground Smash acceptance-test soul). Expectation
+  exactly 36/12/6 per open; P(zero souls) = (48/54)^54 = 0.17%; ~6 soul copies = one per co-op
+  member. No shared table modified (both non-vanilla slots are mod-only tables).
+- **TRUE exactly-1 soul (optional next wave, Lane B):** a quest grant on the chest
+  (Condition_UseFixedItem tutorialpotionchest -> Action_BestowTriggerToken + Action_GiveItem
+  sow_soul_n, token-gated once per character - the Esti pattern) is the only 100% mechanism;
+  spec ready if Will wants it after his walk test.
 
 ### B-TESTHUB-TOXEUS-1 (Will request 2026-07-08): remove cave-mouth Toxeus from TESTHUB
 - The Blood Toxeus/Hemorrheus test spawn ~9.9u outside the blood-cave mouth (TESTHUB-only) BLOCKS
@@ -240,6 +351,29 @@
 - Will reached Duister but died to Toxeus before touring the other areas. All 5 hub destinations
   (Knossos/Uber, Garden, Sparta, Secret Place, Murder Bunny) still need a full walk-test once the
   portals are pretty + return works. Duister's own portals all reported broken (see B-PORTAL-3).
+
+### BUILD29 CONTRACT-SUITE DB FIXES (2026-07-08, shipped with the B-SOUL-PROC-2 wave)
+Violations found by the finished entity contract suite (feat/contract-suite), fixed in
+apply_svc_patches _fix_wave29_contract_items:
+- SOUL-NAME-RESOLVES (8): satyrmagi_soul + satyrspiritcaller_soul {n,e,l} carried undefined
+  placeholder tagSoul1 -> new tags tagSVCSoulSatyrMagi / tagSVCSoulSatyrSpiritcaller with real
+  names; test\kyrashadowdancer_soul {e,l} carried bare tagSoulName -> repointed at the live
+  tagSoulName323. (SV 0.98i upstream carries the SAME dangling tags - inherited debt, no
+  original names existed to prefer. The test\kyra pair is dropped by ZERO monsters =
+  unreachable dev items; tags fixed anyway per the brief. The live maenad kyra souls already
+  used tagSoulName323 and are untouched.)
+- SOUL-AUGMENT-LEVEL (4): crowboar_soul_n/e augmentSkillLevel1/2 == 0 -> n=1, e=2 (l untouched).
+- MONSTER-SKILLS-LOOT (5, was reported as 10 refs): blood-cave bodies ancestralwarrior a-e
+  skillName1 pointed at nonexistent Melee_Poison09-12_10.dbr -> repointed at the real
+  attackmelee_poison09-12_10.dbr (same dir, SV renamed it).
+- MONSTER-SPAWN-ELIGIBILITY (1): bw_priest_houndmaster pool spawnMax=2 with
+  championMin=championMax=2 left 0 guaranteed main slots (champion crowd-out, Blood-Toxeus
+  class) -> spawnMax=3.
+- SUMMON-PET-CLASSIFICATION (25, was reported as 17): soulskills pets missing
+  monsterClassification -> Common (see B-SUMMON-1 build29 note).
+- B-SUPRA-NOTIFY-1 (2 tags): already resolved by build_text_arc QUEST_INTEGRATION_TAGS
+  (see its entry); no change needed.
+(68x MAP-REF-1 dropped dyer/Great-Wall NPCs = map lane, not this wave.)
 
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
@@ -287,6 +421,59 @@ Standing watch items likely to draw comments until fixed: the 8 raw tags (B-TEXT
 to every subscriber right now; portals look rough (B-PORTAL-1). Prioritize those before a wider push.
 
 ## ✅ RESOLVED / VERIFIED
+
+### A10 SUMMON-THE-BOSS SOULS: Narok the Rockskin + Vort the Red (build29, owner request)
+- Both souls now GRANT A MANUAL-CAST SUMMON OF THEIR OWN BOSS (the Boneash-proven pattern:
+  pets cloned from Lyia Leafsong's Pet.tpl baseline, rig/skills replaced with the SOURCE
+  monster's own, loot-table equipment via _set_pet_equipment, permanent companion, no autocast
+  controller). Narok = um_rockskin_42 (storm/spirit staff caster, Ternion + storm orbs); Vort =
+  hero_tarthon_na'arak_40 (the record that DISPLAYS "Vort the Red" via tagMonsterName1139 - the
+  SV filename mismatch is upstream). Summon skills records\skills\soulskills\summon_{narok,vort}
+  .dbr: 250/300/350 energy, 180s recharge, 3-tier pet ladder, boss-name pet nameplates.
+- NEEDS WILL SIGN-OFF (aggressive-but-sane per "way more powerful"): Narok pet life
+  9500/14000/20000 (source floor 9.3-13.9k), INT 450 STR 250 DEX 200, dmg 60-90/90-140/130-200,
+  scale 1.3; Vort pet life 18000/26000/36000 (source floor 17.8-26.8k), STR 450 DEX 350 INT 400,
+  dmg 70-100/105-160/150-230, scale 1.55 (source). Soul lines: rockskin ternion augment 3/4/5 ->
+  6 uniform, +250 life, mana penalty -80 -> +150, +25% cast, +25 fire res; vort concussive blast
+  2/3/4 -> 5 uniform + NEW thunderball augment 4, +200 life/mana, +30% cast, +25 lightning res.
+- Gated by: summon-pet chain validator, castability (no special anim), clone-shape rules,
+  record-diff enumeration. Fail-loud: a missing source record now ABORTS the build (was a
+  print-and-continue WARNING for all pet summons).
+
+### A6 HUNTING BOLT TRAP = FOUND, ALREADY LIVE (build29 decode, REPORT-ONLY - no change made)
+- Will's memory of "a custom-modded bolt trap in Hunting" is CORRECT and matches the SHIPPED
+  build28 artifact: Hunting (mastery UI slot 6) slot 19 = records\skills\hunting\drxmonsterlure.dbr,
+  display name "Lay Trap" (tagSkillName083), Class Skill_AttackProjectileSpawnPet, spawnObjects =
+  the full 20-level bolt-trap pet ladder (records\skills\hunting\drxpet\bolttrap_01..20, mesh
+  Effects\Hunting\TrapTikiCrossbow.msh, attack = bolttrap_defaultattackskill
+  Skill_AttackProjectileBurst, petLimit 3-5, TTL 30s, monsterClassification Common, NO special
+  anim = castable). SV 0.98i upstream had the same design but wired only levels 1-2 in
+  spawnObjects; the shipped 20-level ladder is richer (hand-tuning). Modifier slots: 20 =
+  drxmonsterlure_petmodifier_detonate, 21 = drxmonsterlure_rapidconstruction. Separately, the
+  OCCULT tree (slot 5) carries drxlaytrap ("Breach") + drxlaytrap_petmodifier_multishotbolttrap.
+  NOTHING to fix; tree untouched per the hand-tuning law.
+
+### A9 SUMMON-PET RENDER-CHAIN VALIDATOR = LIVE (build29)
+- tools/validate_render_chain.py, wired into build_svc_database post-write: every soul-granted
+  summon pet's mesh + baseTexture + status icons and the summon skill's bar icons must resolve
+  in the shipped arcs (mod Resources + game Resources[/XPack*]; TQ archive-name resolution incl.
+  the XPack second-component convention). Mod-authored pet mesh/texture = FAIL (invisible-pet
+  class of bug); icons + upstream records = WARN. build29: 203 pets / 2852 art refs checked,
+  PASS with ~22 upstream WARNs (known cosmetic debt now visible: thunderballnova + some soul
+  party icons, albinospider/formicid upstream meshes). Negative-tested (bogus mesh on a mod pet
+  correctly fails the build). NOTE: the gate needs the standard work/ layout (a Resources dir
+  beside the arz output + the game dir from the base-arz argument); an isolated rebuild to a
+  scratch dir SKIPS it loudly instead of false-failing every mod art ref.
+
+### A7 GOLDEN FREEZE GUARD = LIVE (build29)
+- tools/occult_hunting_golden.json (generated from the build28 SHIPPED pair arz c4aa4d75 + Text
+  38d6582a) freezes the owner's hand-tuned Occult (slot 5) + Hunting (slot 6) state: 125 records
+  (UI slots/panectrl x3 priorities/positions + every tree skill + 1 hop of buff/pet delegation
+  payloads) + 110 name/desc tag definition lists (per-file, in order - first-definition wins).
+  Fail-loud gates: build_svc_database post-write (DB half) + build_text_arc post-write (full
+  pair). ANY drift fails the build unless its printed key is added to owner_approved_overrides
+  with Will's sign-off. Negative-tested (record-field, tag-value, and tree-membership mutations
+  all caught). Validator: tools/validate_mastery_golden.py (also runs standalone).
 
 ### B-CHEST-1: Esfri's chest = WORKING AS DESIGNED, one-time per character (RESOLVED 2026-07-08)
 - Exhaustive recon (shipped arz + Quests.arc + SV 0.98i upstream, byte-level): the chest

@@ -57,6 +57,35 @@ from arz_patcher import ArzDatabase
 SOUL_MARKERS = ('\\soul\\', '/soul/')
 SPAWN_CLASSES = ('Skill_SpawnPet', 'Skill_AttackProjectileSpawnPet')
 
+# The shipped PC animation tables. B-SOUL-PROC-2 (build29): Game.dll
+# SkillManager::StartSkill ABORTS a cast whose skillSpecialAnimationName the
+# caster's animation table cannot start, so a soul-granted SUMMON skill whose
+# special anim is not universally playable NEVER SPAWNS ITS PET (the summon
+# half of "souls skills and summons are broken"). The chain check therefore
+# starts at the GRANTING ITEM, not at the pet.
+PC_ANM_TABLES = (
+    'records\\creature\\pc\\anm\\anm_malepc01.dbr',
+    'records\\creature\\pc\\anm\\anm_femalepc.dbr',
+)
+
+
+def _pc_universal_anims(db, modset):
+    import re
+    universal = None
+    for tbl in PC_ANM_TABLES:
+        rec = modset.get(_norm(tbl))
+        if not rec:
+            return None
+        rows = {}
+        for key, tf in (db.get_fields(rec) or {}).items():
+            fname = key.split('###')[0]
+            m = re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
+            if m and tf.values and str(tf.values[0]).strip():
+                rows.setdefault(m.group(1), set()).add(str(tf.values[0]).lower())
+        for names in rows.values():
+            universal = set(names) if universal is None else (universal & names)
+    return universal or set()
+
 EQUIP_SLOTS = ('LeftHand', 'RightHand', 'Forearm', 'Finger1', 'Finger2',
                'Head', 'Torso', 'LowerBody', 'Misc1', 'Misc2', 'Misc3')
 
@@ -95,6 +124,104 @@ def _collect_pairings(db, templates=('Monster',)):
     return pairs
 
 
+# ── B-SUMMON-2 foreign-anim gate (invisible-body class) ──────────────────────
+# The primary, continuously-played animation slots. A foreign-skeleton override
+# on one of THESE (for a weapon class the pet actually equips) is what skins the
+# body mesh to a bone hierarchy it lacks -> INVISIBLE body (bwpriest/lillued).
+# Special/buff/die/stun slots are excluded: they fire rarely (or never, for an
+# unused skill) so an inherited foreign override there is latent, not breaking
+# (e.g. every working exemplar - boneash/rakanizeus/pharaohguard - carries a
+# residual Maenad sHandedSpecialAnim1 yet renders fine).
+_PRIMARY_ANIM_SUFFIXES = ('attackanim1', 'attackanim2', 'attackanim3',
+                          'attackidleanim', 'walkanim', 'runanim')
+_WEAPON_CLASS_PREFIXES = ('dhanded', 'shanded', 'spear', 'bow', 'staff',
+                          'unarmed', 'thrown', 'shield')
+
+
+def _anim_family(path):
+    """Creature family token from a .anm / .msh / anm-table .dbr path, taken as
+    the segment after 'monster' (case-insensitive). None if there is no
+    'monster' segment (NPC / generic / effects anims - universal-skeleton, never
+    treated as foreign). Examples: Creatures\\Monster\\JackalMan\\ANM\\x.anm ->
+    'jackalman'; records\\creature\\monster\\djinn\\anm\\anm_djinn.dbr -> 'djinn';
+    XPack\\Creatures\\Monster\\Melinoe\\ANM\\x.anm -> 'melinoe'."""
+    parts = _norm(path).split('\\')
+    for i, p in enumerate(parts):
+        if p == 'monster' and i + 1 < len(parts):
+            return parts[i + 1]
+    return None
+
+
+def _weapon_class(field_name):
+    low = field_name.lower()
+    for w in _WEAPON_CLASS_PREFIXES:
+        if low.startswith(w):
+            return w
+    return None
+
+
+def _is_primary_anim_field(field_name):
+    w = _weapon_class(field_name)
+    if not w:
+        return False
+    return field_name.lower()[len(w):] in _PRIMARY_ANIM_SUFFIXES
+
+
+def _collect_mesh_anim_families(db, templates, out=None):
+    """mesh(norm) -> set of creature families PROVEN to render on that mesh, from
+    records of the given templates: the family of each record's
+    charAnimationTableName plus the family of every per-record .anm override it
+    carries. This is what permits a legitimate cross-family rig (e.g. the
+    ElderDjinn body driven by Bat flying anims, or a Dragonian body driven by
+    CrocMan anims): if a real Monster with that mesh uses the family, it renders.
+    Mod-authored pets (the records under test) are intentionally NOT a source."""
+    field = _mkfield(db)
+    if out is None:
+        out = {}
+    for n in db.record_names():
+        if templates is not None and db._record_types.get(n) not in templates:
+            continue
+        m = field(n, 'mesh')
+        if not m or not str(m[0]).strip():
+            continue
+        mesh = _norm(m[0])
+        fams = out.setdefault(mesh, set())
+        a = field(n, 'charAnimationTableName')
+        if a and str(a[0]).strip():
+            fam = _anim_family(a[0])
+            if fam:
+                fams.add(fam)
+        for key, tf in (db.get_fields(n) or {}).items():
+            for v in (tf.values or []):
+                if isinstance(v, str) and v.lower().endswith('.anm'):
+                    fam = _anim_family(v)
+                    if fam:
+                        fams.add(fam)
+                    break
+    return out
+
+
+def _reachable_weapon_classes(field):
+    """Weapon-anim classes a pet can actually play, from its hand-equip chances.
+    Conservative: a single equipped hand -> one-hand melee (sHanded); both hands
+    -> dual-wield (dHanded) reachable too; unarmed is always reachable (a
+    disarmed pet falls back to it)."""
+    def _chance(name):
+        v = field(name)
+        try:
+            return float(v[0]) if v else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+    lh = _chance('chanceToEquipLeftHand')
+    rh = _chance('chanceToEquipRightHand')
+    reach = {'unarmed'}
+    if lh > 0 and rh > 0:
+        reach.add('dhanded')
+    if lh > 0 or rh > 0:
+        reach.add('shanded')
+    return reach
+
+
 def validate(arz_path, base_path=None, upstream_path=None):
     db = ArzDatabase.from_arz(Path(arz_path))
     field = _mkfield(db)
@@ -102,17 +229,23 @@ def validate(arz_path, base_path=None, upstream_path=None):
     modset = {_norm(n): n for n in db.record_names()}
     baseset = set()
     upset = set()
+    universal_anims = _pc_universal_anims(db, modset)
     proven_pairings = _collect_pairings(db, ('Monster',))
+    # per-mesh proven animation families (B-SUMMON-2 gate): mod Monsters only
+    # (mod-authored pets are the records UNDER TEST, never a proof source).
+    mesh_families = _collect_mesh_anim_families(db, ('Monster',))
 
     if base_path:
         base = ArzDatabase.from_arz(Path(base_path))
         baseset = {_norm(n) for n in base.record_names()}
         proven_pairings |= _collect_pairings(base, ('Monster', 'Pet'))
+        _collect_mesh_anim_families(base, ('Monster', 'Pet'), mesh_families)
     if upstream_path:
         up = ArzDatabase.from_arz(Path(upstream_path))
         upset = {_norm(n) for n in up.record_names()}
         # ANY upstream pairing is proven by SV play (Monster or Pet or other).
         proven_pairings |= _collect_pairings(up, ('Monster', 'Pet'))
+        _collect_mesh_anim_families(up, ('Monster', 'Pet'), mesh_families)
 
     def resolve(path):
         n = _norm(path)
@@ -154,6 +287,51 @@ def validate(arz_path, base_path=None, upstream_path=None):
         if anim_n and not resolve(anim_n):
             problems.append((sev, chain, f"pet {pet_rec} charAnimationTableName "
                                          f"does not resolve: {anim}"))
+        # b2. FOREIGN-ANIMATION gate (B-SUMMON-2, the invisible-body class):
+        # a per-record .anm override whose creature family is not proven to
+        # render on this pet's mesh, played on a PRIMARY slot of an EQUIPPED
+        # weapon class, skins the body to a foreign skeleton -> INVISIBLE body
+        # (Will's build28 blade-dancer + Lil'Lued). Legitimate cross-family rigs
+        # (ElderDjinn+Bat, Dragonian+CrocMan) pass because a real same-mesh
+        # Monster vouches the family; NPC/generic anims (no family) are skipped.
+        proven_fams = set(mesh_families.get(_norm(mesh), set()))
+        table_fam = _anim_family(anim_n) if anim_n else None
+        if table_fam:
+            proven_fams.add(table_fam)   # the mesh's OWN table family is proven
+        reach = _reachable_weapon_classes(lambda nm: field(pet_rec, nm))
+        for key, tf in (db.get_fields(pet_rec) or {}).items():
+            fname = key.split('###')[0]
+            wclass = _weapon_class(fname)
+            if not wclass:
+                continue
+            val = tf.values[0] if tf.values else None
+            if not isinstance(val, str) or not val.lower().endswith('.anm'):
+                continue
+            fam = _anim_family(val)
+            if not fam or fam in proven_fams:
+                continue  # unknown/NPC family, or a family proven on this mesh
+            active = wclass in reach
+            if not active:
+                continue  # a weapon class the pet never equips can never play
+                          # this anim -> not a render risk (pure latent noise).
+            if _is_primary_anim_field(fname):
+                problems.append((sev, chain,
+                                 f"pet {pet_rec} plays a FOREIGN-skeleton "
+                                 f"animation on its body mesh: <{fname}>={val} "
+                                 f"(family '{fam}') is not proven on mesh {mesh} "
+                                 f"and this weapon class is EQUIPPED -> INVISIBLE "
+                                 f"body (B-SUMMON-2). Match the source monster's "
+                                 f"anim set or drive from a same-family table."))
+            else:
+                # an equipped class, but a rarely-played slot (special/buff/die/
+                # stun): inherited-foreign but not continuously on the body ->
+                # latent, report-only (this is why boneash/rakanizeus render fine
+                # despite a residual Maenad sHandedSpecialAnim1).
+                problems.append(('WARN', chain,
+                                 f"pet {pet_rec} carries a foreign-family "
+                                 f"override <{fname}>={val} (family '{fam}') not "
+                                 f"proven on mesh {mesh} (equipped class, rarely-"
+                                 f"played slot; latent invisible-body risk)"))
         # d. equipment
         for slot in EQUIP_SLOTS:
             ch = field(pet_rec, f'chanceToEquip{slot}')
@@ -196,6 +374,15 @@ def validate(arz_path, base_path=None, upstream_path=None):
         elif not resolve(ctl):
             problems.append((sev, chain, f"pet {pet_rec} controller does not "
                                          f"resolve (mod or base): {ctl}"))
+        # g. classification (build29): every working exemplar pet (Lyia,
+        # Boneash, base WraithLord) carries monsterClassification=Common; a
+        # missing classification leaves the pet outside the engine's
+        # class-driven handling.
+        mc = field(pet_rec, 'monsterClassification')
+        if not mc or not str(mc[0]).strip():
+            problems.append((sev, chain,
+                             f"pet {pet_rec} has EMPTY monsterClassification "
+                             f"(working exemplars all carry 'Common')"))
         # f. skill refs
         ff = db.get_fields(pet_rec) or {}
         for key, tf in ff.items():
@@ -235,11 +422,32 @@ def validate(arz_path, base_path=None, upstream_path=None):
         chains += 1
         chain = f"{name} -> {skill}"
         sev = 'WARN' if _norm(skill) in upset else 'FAIL'
+        # CASTABILITY of the summon skill itself (build29, B-SOUL-PROC-2): a
+        # special anim the PC cannot universally play means StartSkill aborts
+        # and the pet NEVER spawns, regardless of how complete the pet is.
+        if universal_anims is not None:
+            anim = field(skill, 'skillSpecialAnimationName')
+            if anim and str(anim[0]).strip() and \
+                    str(anim[0]).lower() not in universal_anims:
+                problems.append((sev, chain,
+                                 f"summon skill carries special anim "
+                                 f"'{anim[0]}' NOT universally playable by the "
+                                 f"PC (cast aborts, pet never spawns)"))
         spawn = field(skill, 'spawnObjects')
         if not spawn or not any(str(s).strip() for s in spawn):
             problems.append((sev, chain, "summon skill has EMPTY spawnObjects "
                                          "(summons nothing)"))
             continue
+        # level-vs-array sanity (WARN only; the engine clamps to the last
+        # array entry, but a granted level far past the authored spawnObjects
+        # ladder is a design smell worth surfacing).
+        lvl = field(name, 'itemSkillLevel')
+        n_spawn = len([s for s in spawn if str(s).strip()])
+        if lvl and int(lvl[0]) > n_spawn:
+            problems.append(('WARN', chain,
+                             f"granted itemSkillLevel {int(lvl[0])} exceeds "
+                             f"spawnObjects ladder length {n_spawn} (engine "
+                             f"clamps to the last pet entry)"))
         for pet_path in spawn:
             if not str(pet_path).strip():
                 continue

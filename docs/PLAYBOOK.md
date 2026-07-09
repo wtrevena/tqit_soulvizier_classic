@@ -288,6 +288,20 @@ powershell -ExecutionPolicy Bypass -File scripts/upload_workshop.ps1 -SteamUser 
 
 - **DB build invariants (in build_svc_database, fail-loud):** soul-leak, soul-augment, supra-ref,
   tags, spawn-eligibility. Validators: validate_tags.py, validate_soul_augments.py.
+- **build29 additions (all fail-loud):**
+  - **Castability (B-SOUL-PROC-2):** every soul-granted skill's special anim must be absent or
+    universally PC-playable, and Enemy autocast controllers must carry autoTargetRadius (in-build
+    invariant + validate_soul_augments + validate_summon_pets standalone re-checks).
+  - **Boss-kit clone shape (B-TOXEUS-2):** a registered boss-kit clone must not add fields its
+    donor lacks, must not blank a donor .dbr ref, and its refs must resolve
+    (apply_svc_patches _verify_boss_kit_clone_shape).
+  - **A9 render chain:** every soul-granted summon pet's mesh/texture/status icons + the summon
+    skill's bar icons must resolve in the shipped arcs (tools/validate_render_chain.py,
+    post-write; mod-authored pets FAIL, upstream WARN).
+  - **A7 Occult/Hunting golden freeze:** the hand-tuned mastery state (records + tree + UI slots
+    + Text tag definitions) must match tools/occult_hunting_golden.json; ANY drift requires
+    Will's sign-off via owner_approved_overrides (tools/validate_mastery_golden.py, wired into
+    the arz build [DB half] AND the Text build [full pair]).
 - **Map gates (per wave):** verify_merged_bc_navmeshes, entrance_landing_check --check-merged,
   engine_corridor_full, cluster_seam_check, overcoverage_check, gate_doors_hub, portal-openness,
   blob re-parse (2282 levels to exact stream end).
