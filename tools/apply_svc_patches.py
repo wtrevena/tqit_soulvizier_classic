@@ -47,6 +47,10 @@ SUMMON_PHARAOH_GUARD_SKILL = r'records\skills\soulskills\summon_pharaohguard.dbr
 # A10 (build29, owner request): summon-the-boss souls for Narok + Vort.
 SUMMON_NAROK_SKILL = r'records\skills\soulskills\summon_narok.dbr'
 SUMMON_VORT_SKILL = r'records\skills\soulskills\summon_vort.dbr'
+# D7/D8/D9 (Will 2026-07-09): more boss-named-soul -> summons-that-boss.
+SUMMON_TOXEUS_SKILL = r'records\skills\soulskills\summon_bloodtoxeus.dbr'
+SUMMON_XEIWANG_SKILL = r'records\skills\soulskills\summon_xeiwang.dbr'
+SUMMON_MOUNTAINBLADE_SKILL = r'records\skills\soulskills\summon_mountainblade.dbr'
 
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
@@ -124,37 +128,90 @@ SOUL_OVERHAULS = {
         'characterLifeModifier': (DATA_TYPE_FLOAT, -4.0),
     },
 
-    # ── NAROK THE ROCKSKIN (A10, Will 2026-07-08 "way more powerful + summon
-    #    Narok himself"): manual-cast boss summon + buffed caster stat lines.
-    #    Source: um_rockskin_42 (dragonian storm/spirit caster, tagNewHero88).
-    #    Values flagged in needs_will_signoff.
-    'rockskin_soul': {
+    # ── NAROK THE ROCKSKIN (A10 build29 + D2 build30, Will: he wanted the
+    #    SOUL way more powerful, not the boss monster). Source: um_rockskin_42
+    #    (dragonian storm/spirit caster, tagNewHero88; hostile record verified
+    #    byte-identical build28->build29, untouched here). build30 D2b: the
+    #    passive stat lines are buffed AGGRESSIVELY and LADDERED per the family
+    #    convention (SV souls scale n < e < l with itemLevel 42/59/71; build29's
+    #    flat lines broke that). Numbers flagged in needs_will_signoff.
+    #    The three keys below each match exactly one tier (the parked
+    #    "conflicted copy" n-variant matches the _n key, same as build29).
+    'rockskin_soul_n': {
         'itemSkillName': (DATA_TYPE_STRING, SUMMON_NAROK_SKILL),
         'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\spirit\drxternion.dbr'),
-        'augmentSkillLevel1': (DATA_TYPE_INT, 6),          # was 3/4/5 per tier
-        'characterLife': (DATA_TYPE_INT, 250),             # was 85
-        'characterMana': (DATA_TYPE_INT, 150),             # was -80 (penalty removed)
-        'characterManaRegenModifier': (DATA_TYPE_FLOAT, 80.0),   # was 60
-        'characterIntelligence': (DATA_TYPE_INT, 50),
-        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 25),
-        'defensiveFire': (DATA_TYPE_FLOAT, 25.0),          # was 12
+        'augmentSkillLevel1': (DATA_TYPE_INT, 6),                 # b29 flat 6, SV 3
+        'characterLife': (DATA_TYPE_INT, 350),                    # b29 flat 250, SV 85
+        'characterMana': (DATA_TYPE_INT, 200),                    # b29 flat 150, SV -80
+        'characterManaRegenModifier': (DATA_TYPE_FLOAT, 80.0),    # b29 flat 80, SV 60
+        'characterIntelligence': (DATA_TYPE_INT, 60),             # b29 flat 50
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 25),   # b29 flat 25
+        'defensiveFire': (DATA_TYPE_FLOAT, 25.0),                 # b29 flat 25, SV 12
+    },
+    'rockskin_soul_e': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_NAROK_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\spirit\drxternion.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 8),
+        'characterLife': (DATA_TYPE_INT, 550),
+        'characterMana': (DATA_TYPE_INT, 300),
+        'characterManaRegenModifier': (DATA_TYPE_FLOAT, 100.0),
+        'characterIntelligence': (DATA_TYPE_INT, 90),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 32),
+        'defensiveFire': (DATA_TYPE_FLOAT, 32.0),
+    },
+    'rockskin_soul_l': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_NAROK_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\spirit\drxternion.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 10),
+        'characterLife': (DATA_TYPE_INT, 800),
+        'characterMana': (DATA_TYPE_INT, 450),
+        'characterManaRegenModifier': (DATA_TYPE_FLOAT, 130.0),
+        'characterIntelligence': (DATA_TYPE_INT, 130),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 40),
+        'defensiveFire': (DATA_TYPE_FLOAT, 40.0),
     },
 
-    # ── VORT THE RED (A10 extension, same owner request): manual-cast boss
-    #    summon + buffed storm-caster stat lines. Source: the "Vort the Red"
-    #    hero (hero_tarthon_na'arak_40, tagMonsterName1139 - SV filename vs
-    #    display-name mismatch is upstream). Values in needs_will_signoff.
-    'vort_soul': {
+    # ── VORT THE RED (A10 build29 + D2 build30, same owner clarification):
+    #    manual-cast boss summon + AGGRESSIVE laddered storm-bruiser stat lines
+    #    (n/e/l per family convention, itemLevel 40/57/70). Source hero
+    #    hero_tarthon_na'arak_40 (tagMonsterName1139; SV filename vs display
+    #    mismatch is upstream; hostile verified byte-identical build28->build29,
+    #    untouched here). Numbers flagged in needs_will_signoff.
+    'vort_soul_n': {
         'itemSkillName': (DATA_TYPE_STRING, SUMMON_VORT_SKILL),
         'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball_concussiveblast.dbr'),
-        'augmentSkillLevel1': (DATA_TYPE_INT, 5),          # was 2/3/4 per tier
+        'augmentSkillLevel1': (DATA_TYPE_INT, 5),                 # b29 flat 5, SV 2
         'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball.dbr'),
-        'augmentSkillLevel2': (DATA_TYPE_INT, 4),          # new second augment
-        'characterLife': (DATA_TYPE_INT, 200),
-        'characterMana': (DATA_TYPE_INT, 200),
-        'characterIntelligence': (DATA_TYPE_INT, 60),
-        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 30),
-        'defensiveLightning': (DATA_TYPE_FLOAT, 25.0),
+        'augmentSkillLevel2': (DATA_TYPE_INT, 4),                 # b29 flat 4 (new augment)
+        'characterLife': (DATA_TYPE_INT, 300),                    # b29 flat 200
+        'characterMana': (DATA_TYPE_INT, 250),                    # b29 flat 200
+        'characterIntelligence': (DATA_TYPE_INT, 70),             # b29 flat 60
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 30),   # b29 flat 30
+        'defensiveLightning': (DATA_TYPE_FLOAT, 25.0),            # b29 flat 25, SV 25
+    },
+    'vort_soul_e': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_VORT_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball_concussiveblast.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 7),
+        'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball.dbr'),
+        'augmentSkillLevel2': (DATA_TYPE_INT, 6),
+        'characterLife': (DATA_TYPE_INT, 500),
+        'characterMana': (DATA_TYPE_INT, 350),
+        'characterIntelligence': (DATA_TYPE_INT, 100),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 38),
+        'defensiveLightning': (DATA_TYPE_FLOAT, 33.0),
+    },
+    'vort_soul_l': {
+        'itemSkillName': (DATA_TYPE_STRING, SUMMON_VORT_SKILL),
+        'augmentSkillName1': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball_concussiveblast.dbr'),
+        'augmentSkillLevel1': (DATA_TYPE_INT, 9),
+        'augmentSkillName2': (DATA_TYPE_STRING, r'records\skills\storm\drxthunderball.dbr'),
+        'augmentSkillLevel2': (DATA_TYPE_INT, 8),
+        'characterLife': (DATA_TYPE_INT, 750),
+        'characterMana': (DATA_TYPE_INT, 500),
+        'characterIntelligence': (DATA_TYPE_INT, 140),
+        'characterSpellCastSpeedModifier': (DATA_TYPE_INT, 48),
+        'defensiveLightning': (DATA_TYPE_FLOAT, 42.0),
     },
 
     # ── CALYBE THE WARDANCER: Dual-wield berserker. Eclipse blood drain on-hit
@@ -5696,6 +5753,87 @@ def _fix_wave29_contract_items(db):
     return tags
 
 
+def _fix_wave30_items(db):
+    """build30 DB fixes.
+
+    D4 HANIF NAMEPLATE: the summon_hanif pet ladder (soulskills\\pets\\
+    hanifthecruel{,_1,_2,_3}.dbr, inherited from SV upstream) carries
+    description = tagMonsterName1201 ("Senusnet Mal") - the wrong monster's
+    nameplate. The correct tag is tagMonsterName1198 ("Hanif the Cruel"),
+    verified defined in both SV upstream Text_EN and our shipped Text.arc.
+    The base (suffix-less) pet record is orphaned (0 inbound refs) but carries
+    the same wrong tag; fixed for family consistency. NOTE (report-only, not
+    changed): the HOSTILE hero_hanifthecruel_34 carries tagMonsterName1200
+    ("Nexeu, Doomed Prophet") - same upstream tag-shift debt class, but
+    touching hostile monsters is out of the build30 D-item scope.
+
+    D6 REST-SKILL VULNERABILITY (Will 2026-07-09): the drx REST self-buff
+    (drxrest_skillbuff.dbr, Class Skill_BuffSelfImmobilize) is the channeled
+    recover skill the player learns via the quest reward skill tree
+    (questrewardskilltree.dbr skillName22 references THIS record directly - it
+    is the ONLY player-reachable rest buff; drxrest_skill.dbr,
+    drxrest_skillbuffx.dbr and "copy of drxrest_skillbuff.dbr" all have 0
+    inbound refs and are never applied). While resting it drops six
+    all-resistance stats to -300%. Will wants resting to be a hard commit -
+    any hit taken while resting should effectively one-shot you - so each of
+    the six penalty fields is scaled from -300% to -1000%. These fields are
+    PERCENT-encoded floats (the stored value IS the percent: -300.0 = -300%),
+    so the new value is -1000.0. Everything else (the recovery/regen effect,
+    duration, energy cost, the immobilize) is untouched. A fail-loud pre-check
+    asserts each field currently reads -300.0 so an upstream SV re-tune can not
+    be silently over-written. The two dead orphan variants (drxrest_skillbuffx,
+    "copy of drxrest_skillbuff") are left at -300 and reported in
+    needs_will_signoff.
+    """
+    S = DATA_TYPE_STRING
+    hanif_pets = [
+        r'records\skills\soulskills\pets\hanifthecruel.dbr',
+        r'records\skills\soulskills\pets\hanifthecruel_1.dbr',
+        r'records\skills\soulskills\pets\hanifthecruel_2.dbr',
+        r'records\skills\soulskills\pets\hanifthecruel_3.dbr',
+    ]
+    fixed = 0
+    for path in hanif_pets:
+        rec = _find_record(db, path)
+        if not rec:
+            raise SystemExit(f"wave30 D4: hanif pet record missing: {path}")
+        db.set_field(rec, 'description', 'tagMonsterName1198', S)
+        db._modified.add(rec)
+        fixed += 1
+    print(f"  wave30 fixes: {fixed} hanif pet nameplate(s) -> "
+          f"tagMonsterName1198 (Hanif the Cruel)")
+
+    # ── D6: rest-skill all-resistance penalty -300% -> -1000% (see docstring).
+    rest_buff = r'records\quests\rewards\drxrest_skillbuff.dbr'
+    rest_rec = _find_record(db, rest_buff)
+    if not rest_rec:
+        raise SystemExit(f"wave30 D6: rest skill buff record missing: {rest_buff}")
+    rest_fields = ['defensiveBleeding', 'defensiveElementalResistance',
+                   'defensiveLife', 'defensivePhysical', 'defensivePierce',
+                   'defensivePoison']
+    rest_cur = db.get_fields(rest_rec) or {}
+
+    def _rest_val(fname):
+        for k, tf in rest_cur.items():
+            if k.split('###')[0] == fname:
+                return tf.values[0] if tf.values else None
+        return None
+
+    rest_fixed = 0
+    for fname in rest_fields:
+        v = _rest_val(fname)
+        if v is None or abs(float(v) - (-300.0)) > 1e-6:
+            raise SystemExit(
+                f"wave30 D6: {fname} expected -300.0 in {rest_buff}, got {v!r} "
+                f"(upstream drift - reverify the rest-skill penalty encoding before scaling)")
+        db.set_field(rest_rec, fname, -1000.0, DATA_TYPE_FLOAT)
+        rest_fixed += 1
+    db._modified.add(rest_rec)
+    print(f"  wave30 D6: rest-skill all-resist penalty -300% -> -1000% "
+          f"({rest_fixed} fields on drxrest_skillbuff)")
+    return {}
+
+
 # ── A3 / B-STARTER-CHEST-1: DEFERRED to the parallel disasm-grounded impl ───
 # build29 note (reconciliation): A3 (the co-op starter chest = 12 bags + 36
 # potions + Crommyonian Sow souls) is implemented in build_svc_database.py
@@ -5710,8 +5848,9 @@ def _fix_wave29_contract_items(db):
 # item tables, assuming each `tables` entry resolves exactly once) was built on
 # the WRONG engine model AND repointed the container away from the parallel
 # agent's `defaultloot` edits, silently disabling their version. It is removed;
-# A3 = the build_svc_database implementation (numSpawn=54; slot roulette 36:12:6
-# -> E[36 potions + 12 bags + 6 sow souls]; P(no soul)=0.17%). See the report.
+# A3 = the build_svc_database implementation. build30 D1 (owner revert): the
+# sow-soul slot is REMOVED there - chest = numSpawn 48, slot roulette 36:12 ->
+# E[36 potions + 12 bags], nothing else.
 
 
 # ── A4: Esti (hidden blood-cave) chest tier-1 supra formula = NOT APPLIED ───
@@ -7521,6 +7660,11 @@ _BT_DONOR_POOL = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
 # ProxyLimits.tpl shape). See the eligibility math in docs/BLOOD_TOXEUS_DESIGN.md.
 _BT_DONOR_LIMIT = r'records\proxies boss\herolimit_all.dbr'   # N/E/L [1..75] no-cap shape donor
 _BT_LIMIT = r'records\proxies orient\limit_bloodtoxeus.dbr'   # NEW: window contains [40,68,100]
+# D7 (Will 2026-07-09): the summon-the-boss pets + the 2nd (parchment, 50%) proxy.
+_BT_PET_PATHS = [r'records\skills\soulskills\pets\bloodtoxeus_1.dbr',
+                 r'records\skills\soulskills\pets\bloodtoxeus_2.dbr',
+                 r'records\skills\soulskills\pets\bloodtoxeus_3.dbr']
+_BT_PROXY_50 = r'records\drxmap\proxy\q_bloodtoxeus_lone_50.dbr'  # parchment @ chanceToRun=50
 
 # Blood-demon champions + exploding blood sprites (the phase adds) - all EXIST.
 _BT_BLOODDEMON = [
@@ -7772,6 +7916,7 @@ def _create_blood_toxeus_proxy(db):
     db.set_field(P, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')  # Athens Toxeus preview silhouette
     db.set_field(P, 'scale', 2.1)                                             # Hemorrheus size (donor 4.0)
     db.set_field(P, 'pool1', _BT_POOL)
+    db.set_field(P, 'chanceToRun', 100.0)   # D7: chest proxy always guards the stash (explicit)
     # Point at the no-cap boss limits file so his [40,68,100] is never clamped down
     # (donor cloned limit_area002; override it). difficultyEquationFile (difficulty_04)
     # + weight1 + baseTexture (proxyu_boss.tex) + placementExtents (3.5) carry over.
@@ -7977,8 +8122,7 @@ def _create_blood_toxeus_soul(db):
     tiers = [
         {'diff': 'n', 'itemLevel': 40, 'stats': {
             **_bmp('n'),
-            'itemSkillName': (S, _BT_SK_BLOODBOIL), 'itemSkillLevel': (I, 4),
-            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'itemSkillName': (S, SUMMON_TOXEUS_SKILL), 'itemSkillLevel': (I, 1),  # D7: manual-cast summon-the-boss (N pet)
             'augmentSkillName1': (S, _BT_AUG_OPENWOUND), 'augmentSkillLevel1': (I, 3),
             'augmentSkillName2': (S, _BT_AUG_RAVAGES), 'augmentSkillLevel2': (I, 2),
             'offensiveLifeMin': (F, 45.0), 'offensiveLifeMax': (F, 70.0), 'offensiveLifeModifier': (I, 25),
@@ -7995,8 +8139,7 @@ def _create_blood_toxeus_soul(db):
         }},
         {'diff': 'e', 'itemLevel': 68, 'stats': {
             **_bmp('e'),
-            'itemSkillName': (S, _BT_SK_BLOODBOIL), 'itemSkillLevel': (I, 6),
-            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'itemSkillName': (S, SUMMON_TOXEUS_SKILL), 'itemSkillLevel': (I, 2),  # D7: manual-cast summon-the-boss (E pet)
             'augmentSkillName1': (S, _BT_AUG_OPENWOUND), 'augmentSkillLevel1': (I, 4),
             'augmentSkillName2': (S, _BT_AUG_RAVAGES), 'augmentSkillLevel2': (I, 3),
             'offensiveLifeMin': (F, 65.0), 'offensiveLifeMax': (F, 100.0), 'offensiveLifeModifier': (I, 35),
@@ -8013,8 +8156,7 @@ def _create_blood_toxeus_soul(db):
         }},
         {'diff': 'l', 'itemLevel': 100, 'stats': {
             **_bmp('l'),
-            'itemSkillName': (S, _BT_SK_BLOODBOIL), 'itemSkillLevel': (I, 8),
-            'itemSkillAutoController': (S, _AC_ON_HIT),
+            'itemSkillName': (S, SUMMON_TOXEUS_SKILL), 'itemSkillLevel': (I, 3),  # D7: manual-cast summon-the-boss (L pet)
             'augmentSkillName1': (S, _BT_AUG_OPENWOUND), 'augmentSkillLevel1': (I, 5),
             'augmentSkillName2': (S, _BT_AUG_RAVAGES), 'augmentSkillLevel2': (I, 4),
             'offensiveLifeMin': (F, 95.0), 'offensiveLifeMax': (F, 150.0), 'offensiveLifeModifier': (I, 55),
@@ -8030,9 +8172,202 @@ def _create_blood_toxeus_soul(db):
             'defensiveLife': (F, 34.0), 'defensiveBleeding': (F, 40.0), 'defensiveLifeLeech': (F, 30.0),
         }},
     ]
-    paths = _create_soul(db, 'blood_toxeus', 'tagSVCSoulHemorrhage', tiers, _BT_MONSTER, 100.0)
-    print(f"  Soul of Hemorrhage created: {len(paths)} tiers (Blood Boil proc, 100% drop)")
+    paths = _create_soul(db, 'blood_toxeus', 'tagSVCSoulHemorrhage', tiers, _BT_MONSTER, 25.0)
+    print(f"  Toxeus (Devourer of Blood) summon-soul created: {len(paths)} tiers "
+          f"(manual-cast summon-the-boss; 25% drop [release])")
     return paths
+
+
+def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, desc_tag,
+                       char_level, life, life_regen, dmg_min, dmg_max, scale=None):
+    """D7/D8/D9 shared summon-the-boss builder (3 permanent pets + manual-cast
+    summon skill from a source boss's OWN rig). Same crash-safe contract as A10
+    Narok/Vort: clone Lyia pets for a Pet.tpl baseline; copy ONLY anim + skill refs
+    from the source Monster.tpl; barehanded (no _set_pet_equipment); permanent
+    (Lyia base = no TTL). set_field with no explicit dtype (preserve type)."""
+    CONTROLLER = (r'records\skills\spirit\drxpet'
+                  r'\drxpet_controllers\controller_skelly_aggressive.dbr')
+    lyia_sources = [r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
+                    r'records\skills\soulskills\pets\lyialeafsong_2.dbr',
+                    r'records\skills\soulskills\pets\lyialeafsong_3.dbr']
+    lyia_summon = r'records\skills\soulskills\summon_lyia.dbr'
+    source = _find_record(db, source_path)
+    if not source:
+        print(f"  WARNING D7/8/9: source monster missing: {source_path}")
+        return False
+
+    def src_val(rec, name):
+        ff = db.get_fields(rec) or {}
+        for key, tf in ff.items():
+            if key.split('###')[0] == name and tf.values and str(tf.values[0]).strip():
+                return tf.values
+        return None
+
+    mesh = src_val(source, 'mesh'); anim = src_val(source, 'charAnimationTableName')
+    tex = src_val(source, 'baseTexture'); bump = src_val(source, 'bumpTexture')
+    src_scale = src_val(source, 'scale'); src_atk = src_val(source, 'attackSkillName')
+    for i, path in enumerate(pet_paths):
+        s = _find_record(db, lyia_sources[i])
+        if not s:
+            print(f"  WARNING D7/8/9: Lyia source {lyia_sources[i]} missing")
+            return False
+        db.clone_record(s, path)
+        _copy_animation_fields(db, source, path)
+        _update_existing_fields(db, source, path, _SKILL_PREFIXES)
+        # B-SUMMON-2 guard: strip every .anm override the SOURCE monster does not
+        # itself define (kills the Lyia-clone Maenad residue; stripped slots fall
+        # back to the source's own charAnimationTableName). Source-faithful: a
+        # no-op for sources that define their full override set (Toxeus/Huo-ren),
+        # and exactly the proven lillued/blade-dancer fix for table-driven sources
+        # (Xeiwang's anm_skeleton01 - the build-gate caught 15 Maenad residues).
+        n_stripped = _strip_foreign_anim_overrides(db, path, source)
+        if n_stripped:
+            print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} foreign "
+                  f".anm overrides (source anm table now drives the body)")
+        sf = db.set_field
+        if mesh: sf(path, 'mesh', str(mesh[0]))
+        if tex: sf(path, 'baseTexture', str(tex[0]))
+        sf(path, 'bumpTexture', str(bump[0]) if bump else '')   # clear Lyia Maenad residue
+        if anim: sf(path, 'charAnimationTableName', str(anim[0]))
+        if src_atk: sf(path, 'attackSkillName', str(src_atk[0]))
+        sf(path, 'scale', float(scale) if scale is not None
+                          else (float(src_scale[0]) if src_scale else 1.0))
+        sf(path, 'actorHeight', 2.0)
+        sf(path, 'description', desc_tag)
+        sf(path, 'controller', CONTROLLER)
+        sf(path, 'monsterClassification', 'Common')            # working-exemplar parity
+        sf(path, 'charLevel', list(char_level))
+        sf(path, 'characterLife', life[i])
+        sf(path, 'characterLifeRegen', life_regen[i])
+        sf(path, 'characterMana', 1000.0); sf(path, 'characterManaRegen', 30.0)
+        sf(path, 'handHitDamageMin', dmg_min[i]); sf(path, 'handHitDamageMax', dmg_max[i])
+        sf(path, 'dropItems', 0); sf(path, 'giveXP', 0); sf(path, 'experiencePoints', 0)
+        db._modified.add(path)
+    ss = _find_record(db, lyia_summon)
+    if ss:
+        db.clone_record(ss, summon_skill)
+    else:
+        _ensure_record(db, summon_skill, r'database\Templates\Skill_SpawnPet.tpl')
+        db.set_field(summon_skill, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+    sf = db.set_field
+    sf(summon_skill, 'isPetDisplayable', 1)
+    sf(summon_skill, 'skillDisplayName', display_tag)
+    sf(summon_skill, 'skillManaCost', [250.0, 300.0, 350.0])
+    sf(summon_skill, 'skillCooldownTime', 180.0)
+    sf(summon_skill, 'skillCooldownReductionModifier', 180.0)
+    sf(summon_skill, 'skillMaxLevel', 3)
+    sf(summon_skill, 'petLimit', 1); sf(summon_skill, 'petBurstSpawn', 1)
+    sf(summon_skill, 'spawnObjects', list(pet_paths))
+    db._modified.add(summon_skill)
+    return True
+
+
+def _create_blood_toxeus_summon(db):
+    """D7 (Will 2026-07-09): the Devourer of Blood soul's summon chain - 3 permanent
+    Toxeus pets (RevenantPoison.msh + newskeleton_crimson.tex, ship-verified in
+    Creatures.arc) + the manual-cast summon skill. Aggressive superboss power
+    (flagged in needs_will_signoff)."""
+    ok = _build_boss_summon(
+        db, _BT_MONSTER, _BT_PET_PATHS, SUMMON_TOXEUS_SKILL,
+        'tagSVCSummonBloodToxeus', 'tagMonsterHemorrheus',
+        char_level=[40, 68, 100], life=[12000.0, 18000.0, 26000.0],
+        life_regen=[30.0, 60.0, 100.0],
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1)
+    if ok:
+        print("  D7 Toxeus summon: 3 pets from boss rig (RevenantPoison + crimson) + "
+              "summon skill (250/300/350 en, 180s cd), barehanded")
+    return ok
+
+
+def _create_blood_toxeus_proxy_50(db):
+    """D7 (Will 2026-07-09): the 2nd Toxeus spawn proxy for the parchment placement
+    at chanceToRun=50 (the chest proxy q_bloodtoxeus_lone stays chanceToRun=100).
+    Same pool (_BT_POOL = same boss + 2 blood-demon adds). Map lane: place the record
+    q_bloodtoxeus_lone_50 (records/drxmap/proxy/q_bloodtoxeus_lone_50.dbr) at the
+    parchment placement."""
+    if not db.has_record(_BT_PROXY):
+        print("  WARNING D7: q_bloodtoxeus_lone missing; 50% proxy skipped")
+        return None
+    db.clone_record(_BT_PROXY, _BT_PROXY_50)
+    db.set_field(_BT_PROXY_50, 'chanceToRun', 50.0)
+    db._modified.add(_BT_PROXY_50)
+    print("  D7 Toxeus 2nd proxy: q_bloodtoxeus_lone_50 @ chanceToRun=50 "
+          "(same pool/boss; chest proxy stays 100%)")
+    return _BT_PROXY_50
+
+
+def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
+    """D8/D9: repoint each n/e/l soul to the manual-cast summon (itemSkillLevel
+    1/2/3). These souls carry NO itemSkillAutoController (verified) so nothing to
+    clear. Optionally reassign itemNameTag to a mod-owned disambiguated name tag."""
+    for i, sp in enumerate(soul_paths):
+        r = _find_record(db, sp)
+        if not r:
+            print(f"  WARNING D8/9: soul missing: {sp}")
+            continue
+        db.set_field(r, 'itemSkillName', summon_skill)
+        db.set_field(r, 'itemSkillLevel', i + 1)
+        if name_tag:
+            db.set_field(r, 'itemNameTag', name_tag)
+        db._modified.add(r)
+
+
+def _apply_d8_d9_summon_souls(db, tags):
+    """D8 (Xeiwang, Flame of Hatred) + D9 (Huo-ren, the Mountainblade): boss-named
+    soul -> summons that boss (same proven A10/D7 pattern). Render assets SHIP:
+    xaiwengmesh.msh (drx.arc) + skeleton_xeiwang.tex (DRXtextures.arc); flameguardmesh
+    .msh (drx.arc) + mountainblade.tex (SVTextures.arc). Aggressive power flagged for
+    Will's sign-off. D9 ALSO FIXES a wrong-drop: um_mountainblade_43 inherited
+    lootFinger2Item1=mukesha_soul from SV upstream (wire_souls preserves inherited
+    loot so it never self-corrected); _create_soul re-points it to its own new soul.
+    Runs AFTER _overhaul_generic_souls so the summon rewire wins."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── D8: Xeiwang, Flame of Hatred (um_xaiweng_48, Boss L48/59/71; souls EXIST). ──
+    XW_SRC = r'records\creature\monster\skeleton\um_xaiweng_48.dbr'
+    xw_pets = [rf'records\skills\soulskills\pets\xeiwang_{i}.dbr' for i in (1, 2, 3)]
+    xw_souls = [rf'records\item\equipmentring\soul\skeleton\xeiwang_soul_{t}.dbr' for t in 'nel']
+    if _build_boss_summon(db, XW_SRC, xw_pets, SUMMON_XEIWANG_SKILL,
+                          'tagSVCSummonXeiwang', 'tagNewHero196',
+                          char_level=[48, 59, 71], life=[12000.0, 16000.0, 21000.0],
+                          life_regen=[30.0, 60.0, 100.0],
+                          dmg_min=[70.0, 105.0, 150.0], dmg_max=[110.0, 165.0, 235.0]):
+        _wire_summon_soul(db, xw_souls, SUMMON_XEIWANG_SKILL, name_tag='tagSVCSoulXeiwang')
+        print("  D8 Xeiwang summon-soul: 3 pets from um_xaiweng_48 rig + summon; souls rewired 1/2/3")
+    tags['tagSVCSoulXeiwang'] = '{^F}Xeiwang, Flame of Hatred Soul'
+    tags['tagSVCSoulXeiwangDESC'] = ('Xeiwang, the flame of undying hatred, boiled into a soul. '
+        'Its bearer may call him forth to burn at their side.')
+    tags['tagSVCSummonXeiwang'] = 'Summon Xeiwang, Flame of Hatred'
+
+    # ── D9: Huo-ren, the Mountainblade (um_mountainblade_43, Hero L43/59/72). ──
+    MB_SRC = r'records\creature\monster\dragonian\um_mountainblade_43.dbr'
+    mb_tiers = []
+    for t, il, sk, of, op, cs, cd, dfr in [
+            ('n', 43, 1, (30.0, 50.0, 25), (28.0, 45.0, 18), 8.0, 6.0, 22.0),
+            ('e', 59, 2, (50.0, 80.0, 35), (45.0, 70.0, 26), 11.0, 8.0, 30.0),
+            ('l', 72, 3, (80.0, 125.0, 50), (70.0, 110.0, 38), 15.0, 11.0, 38.0)]:
+        mb_tiers.append({'diff': t, 'itemLevel': il, 'stats': {
+            **_bmp(t),
+            'itemSkillName': (S, SUMMON_MOUNTAINBLADE_SKILL), 'itemSkillLevel': (I, sk),
+            'offensiveFireMin': (F, of[0]), 'offensiveFireMax': (F, of[1]), 'offensiveFireModifier': (I, of[2]),
+            'offensivePhysicalMin': (F, op[0]), 'offensivePhysicalMax': (F, op[1]), 'offensivePhysicalModifier': (I, op[2]),
+            'characterStrengthModifier': (F, cs), 'characterDexterityModifier': (F, cd),
+            'defensiveFire': (F, dfr)}})
+    # _create_soul re-points um_mountainblade_43's lootFinger2Item1 to this new soul
+    # (the wrong-drop fix) AND the tiers already set itemSkillName=SUMMON_MOUNTAINBLADE.
+    _create_soul(db, 'mountainblade', 'tagSVCSoulMountainBlade', mb_tiers, MB_SRC, 66.0)
+    mb_pets = [rf'records\skills\soulskills\pets\mountainblade_{i}.dbr' for i in (1, 2, 3)]
+    if _build_boss_summon(db, MB_SRC, mb_pets, SUMMON_MOUNTAINBLADE_SKILL,
+                          'tagSVCSummonMountainBlade', 'tagNewHero289',
+                          char_level=[43, 59, 72], life=[11000.0, 15000.0, 20000.0],
+                          life_regen=[30.0, 55.0, 90.0],
+                          dmg_min=[65.0, 100.0, 145.0], dmg_max=[105.0, 160.0, 230.0]):
+        print("  D9 Huo-ren the Mountainblade: WRONG-DROP FIXED (um_mountainblade_43 -> own soul, "
+              "was mukesha_soul) + summon-soul + 3 pets from flameguard rig")
+    tags['tagSVCSoulMountainBlade'] = '{^F}Huo-ren, the Mountainblade Soul'
+    tags['tagSVCSoulMountainBladeDESC'] = ('Huo-ren, the Mountainblade, whose fire never cooled. '
+        'Its bearer may call him forth, blade and flame, to fight at their side.')
+    tags['tagSVCSummonMountainBlade'] = 'Summon Huo-ren, the Mountainblade'
 
 
 def _wire_blood_toxeus_loot(db):
@@ -8180,9 +8515,11 @@ def _create_blood_toxeus(db):
     _create_blood_toxeus_fx(db)   # B-TOXEUS-1: blood shroud skills BEFORE the monster refs them
     _create_blood_toxeus_monster(db)
     _create_blood_toxeus_proxy(db)
+    _create_blood_toxeus_proxy_50(db)   # D7: 2nd (50%) proxy for the parchment placement
+    _create_blood_toxeus_summon(db)     # D7: pets + summon skill (needs the monster; before the soul)
     _create_crimsonverdict_set(db)
     _create_crimsonverdict_loot(db)
-    _create_blood_toxeus_soul(db)
+    _create_blood_toxeus_soul(db)       # D7: soul's itemSkill = SUMMON_TOXEUS_SKILL
     _wire_blood_toxeus_loot(db)
 
 
@@ -8195,7 +8532,15 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'proxy': _BT_PROXY,
         'pool': _BT_POOL,
         'main_monster': _BT_MONSTER,   # the boss that must not be crowded out
-        'name': 'q_bloodtoxeus_lone (Hemorrheus)',
+        'name': 'q_bloodtoxeus_lone (Hemorrheus, chest @100%)',
+    },
+    {
+        # D7: the 2nd (parchment) proxy shares the SAME pool/boss, so the same
+        # spawn-eligibility math must hold. chanceToRun only gates WHETHER it fires.
+        'proxy': _BT_PROXY_50,
+        'pool': _BT_POOL,
+        'main_monster': _BT_MONSTER,
+        'name': 'q_bloodtoxeus_lone_50 (Hemorrheus, parchment @50%)',
     },
 ]
 
@@ -8561,11 +8906,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Blood Soul" (Will's suggestion) is distinct from both and on-identity.
     # (Tag key stays tagSVCSoulHemorrhage - key is engine identity, only the value
     # is renamed; renaming the key would orphan the soul's itemNameTag binding.)
-    tags['tagSVCSoulHemorrhage'] = '{^F}Devourer of Blood Soul'
+    # D7 (Will 2026-07-09): summon-the-boss soul; full disambiguated name.
+    tags['tagSVCSoulHemorrhage'] = '{^F}Toxeus the Murderer, Devourer of Blood Soul'
     tags['tagSVCSoulHemorrhageDESC'] = (
         'Toxeus the Murderer, boiled down and refilled with the blood of the drowned. '
-        'His soul makes your every strike burst into a red mist that opens all wounds '
-        'at once and drinks them dry.')
+        'Its bearer may call him forth to fight at their side - a crimson revenant '
+        'who opens every wound and drinks the field dry.')
+    tags['tagSVCSummonBloodToxeus'] = 'Summon Toxeus the Murderer, Devourer of Blood'
     tags['tagSVCSetCrimsonVerdict'] = 'The Crimson Verdict'
     tags['tagSVCwpnVeinRender'] = '{^r}Vein-Render'
     tags['tagSVChlmCrimsonVerdict'] = '{^r}Cowl of the Red Verdict'
@@ -8600,6 +8947,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
 
     # Soul quality passes
     _overhaul_generic_souls(db)
+    _apply_d8_d9_summon_souls(db, tags)   # D8 Xeiwang + D9 Huo-ren summon-souls (after the overhaul, so the summon rewire wins)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs
     # after the overhauls; crowboar_* exist already (create_uber_souls runs
@@ -8652,6 +9000,10 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # A4 (esti chest tier-1): NOT APPLIED - the closed RCA's mechanism is
     # disasm-REFUTED (see the block comment at _setup_esti_chest_tier1). A3
     # (starter chest) lives in build_svc_database.py (disasm-grounded).
+
+    # ── build30 wave: D-item fixes (hanif nameplate; see _fix_wave30_items) ──
+    print("\n=== build30 wave: D-item fixes ===")
+    tags.update(_fix_wave30_items(db))
 
     # ── Boss-kit clone-shape invariant (fail-loud, B-TOXEUS-2) ────────────────
     # After all boss authoring: every registered boss-kit clone must keep its

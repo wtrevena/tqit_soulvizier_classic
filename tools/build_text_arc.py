@@ -56,6 +56,12 @@ OCCULT_FIX_TAGS = {
 # sibling tagMPortalGoM still reads 'Duister Portal' - flagged for Will.
 TEXT_FIX_TAGS = {
     'tagMZoneGoM': 'Garden of Merchants',
+    # D7 (Will 2026-07-09): the hidden blood-cave chest is renamed from "Esti's
+    # Chest" to "Toxeus the Murderer's Stash" (now guarded by the Toxeus the
+    # Murderer, Devourer of Blood superboss). tagSQECTitle is the chest journal/
+    # name tag; single-definition here (skipped during SV emission, dup-gated). The
+    # reward-popup mirror tagTitleTagTESTER is updated to match below. No em dashes.
+    'tagSQECTitle': "Toxeus the Murderer's Stash",
     # B-SUPRA-NOTIFY-1: the tester-tag notification strings are ALREADY
     # resolved by QUEST_INTEGRATION_TAGS below (tagLOCATIONTAGTESTER /
     # tagTitleTagTESTER); do not redefine them here or the duplicate-tag gate
@@ -239,7 +245,9 @@ def check_duplicate_tags(modstrings: str):
 # the same strings the quest's real journal entry uses (tagSQECLocation/tagSQECTitle).
 QUEST_INTEGRATION_TAGS = {
     'tagLOCATIONTAGTESTER': 'The Blood Cave',
-    'tagTitleTagTESTER': "Esti's Hidden Chest",
+    # D7 (Will 2026-07-09): mirror the renamed chest title (tagSQECTitle ->
+    # "Toxeus the Murderer's Stash") so the reward-popup title matches the journal.
+    'tagTitleTagTESTER': "Toxeus the Murderer's Stash",
 }
 
 

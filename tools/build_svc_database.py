@@ -629,9 +629,12 @@ def grant_all_inventory_bags(db: ArzDatabase):
             tutorial_chest = name
             break
 
-    # ── A3 / B-STARTER-CHEST-1 (build29): the starter chest is the co-op kit:
-    #    12 INVENTORY BAGS + 36 HEALTH POTIONS + Crommyonian Sow Souls (the
-    #    Ground Smash proc acceptance-test item, sow_soul_n).
+    # ── D1 / B-STARTER-CHEST-1 (build30, owner revert of build29's A3): the
+    #    starter chest is the co-op kit: 36 HEALTH POTIONS + 12 INVENTORY BAGS
+    #    and NOTHING ELSE. Will 2026-07-09: "should not have a soul that drops
+    #    in the starter chest, doesn't make sense" - the build29 sow-soul slot
+    #    (loot3 -> startingloot_sowsoul) is REMOVED ENTIRELY, and the branched
+    #    sow table record is no longer created.
     #
     #    ENGINE SEMANTICS (Game.dll disasm, build29 - FixedItemContainerController
     #    at 0x10182120/0x10181530/0x10181da0): the chest spawns
@@ -641,46 +644,25 @@ def grant_all_inventory_bags(db: ArzDatabase):
     #    (chances are RELATIVE WEIGHTS - every draw lands on a slot; a slot's
     #    chance is NOT an independent gate), then one table within the slot by
     #    lootNWeightX, then one item from that table. CONSEQUENCE: the per-
-    #    category counts of a multi-slot chest are MULTINOMIAL - exact per-open
-    #    composition can NOT be guaranteed by any FixedItemLoot record; only the
-    #    TOTAL and the EXPECTATION are exact. (The only true exactly-once grant
-    #    mechanism is a quest Action_GiveItem - the Esti chest pattern.)
-    #
-    #    Design under those semantics: N = 54 with slot chances 36 : 12 : 6 ->
-    #    expectation exactly 36 potions + 12 bags + 6 sow souls per open, and
-    #    P(zero souls) = (48/54)^54 = 0.17% (the acceptance-test soul arrives in
-    #    99.83% of opens; 6 expected copies = one per co-op party member).
+    #    category counts of a multi-slot chest are MULTINOMIAL - only the TOTAL
+    #    and the EXPECTATION are exact. N = 48 with slot chances 36 : 12 ->
+    #    total exactly 48, expectation exactly 36 potions + 12 bags per open;
+    #    P(zero bags) = (36/48)^48 ~ 1e-6.
     #    Slots: loot1 = the chest's OWN Health_01-05All potion table (referenced,
     #    not modified); loot2 = startingloot_sack (mod-created, only this chest
-    #    uses it); loot3 = NEW mod-created startingloot_sowsoul (branched, so no
-    #    shared table changes and no other container's drops change).
-    sow_soul = 'records\\item\\equipmentring\\soul\\boar\\sow_soul_n.dbr'
-    sow_table = 'records\\quests\\rewards\\startingloot_sowsoul.dbr'
-    if not db.has_record(sow_soul):
-        raise SystemExit(f"A3: acceptance-test soul missing from the build: {sow_soul}")
-    _ensure_record(db, sow_table, fixed_tpl)
-    db.set_field(sow_table, 'templateName', fixed_tpl, DATA_TYPE_STRING)
-    db.set_field(sow_table, 'Class', 'LootItemTable_FixedWeight', DATA_TYPE_STRING)
-    db.set_field(sow_table, 'lootName1', sow_soul, DATA_TYPE_STRING)
-    db.set_field(sow_table, 'lootWeight1', 100, DATA_TYPE_INT)
-    # no affix randomization on a soul (mirror startingloot.dbr's shape)
-    db.set_field(sow_table, 'noPrefixNoSuffix', 100, DATA_TYPE_INT)
-    db.set_field(sow_table, 'brokenRandomizerChance', 0.0, DATA_TYPE_FLOAT)
-    db.set_field(sow_table, 'prefixRandomizerChance', 0.0, DATA_TYPE_FLOAT)
-    db.set_field(sow_table, 'suffixRandomizerChance', 0.0, DATA_TYPE_FLOAT)
-
+    #    uses it). loot3 is NOT touched: it reverts to the source record's inert
+    #    native shape (loot3Chance 0.0, no loot3Name1 field). Deliberately NOT
+    #    blanking loot3Name1 to '' - an empty-string .dbr ref is a zero-precedent
+    #    field shape (the B-TOXEUS-2 loader-abort class).
     if tutorial_chest:
-        db.set_field(tutorial_chest, 'numSpawnMinEquation', '54', DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'numSpawnMaxEquation', '54', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'numSpawnMinEquation', '48', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'numSpawnMaxEquation', '48', DATA_TYPE_STRING)
         db.set_field(tutorial_chest, 'loot1Chance', 36.0, DATA_TYPE_FLOAT)    # health potions (loot1Name1 kept = Health_01-05All, weight kept)
         db.set_field(tutorial_chest, 'loot2Chance', 12.0, DATA_TYPE_FLOAT)    # inventory bags
         db.set_field(tutorial_chest, 'loot2Name1', sack_table, DATA_TYPE_STRING)
         db.set_field(tutorial_chest, 'loot2Weight1', 100, DATA_TYPE_INT)
-        db.set_field(tutorial_chest, 'loot3Chance', 6.0, DATA_TYPE_FLOAT)     # sow souls (was a redundant 2nd sack slot)
-        db.set_field(tutorial_chest, 'loot3Name1', sow_table, DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot3Weight1', 100, DATA_TYPE_INT)
-        print("  Starter chest (A3): numSpawn=54 fixed; slot roulette 36:12:6 = "
-              "E[36 potions + 12 bags + 6 sow souls]; P(no soul)=0.17%")
+        print("  Starter chest (D1/build30): numSpawn=48 fixed; slot roulette "
+              "36:12 = E[36 potions + 12 bags]; sow-soul slot REMOVED")
         patched += 1
     else:
         print("  WARNING: tutorial potion chest not found")
@@ -1535,6 +1517,46 @@ def main():
 
     create_uber_dungeon_portal(db, base_db)
     create_blood_cave_portal(db, base_db)
+
+    # ── D3 (build30): restore the placed-but-missing SVAERA town NPC records ─────
+    # SVAERA's world map PLACES 68 instances (67 distinct records: town dyers, the
+    # Great Wall vendor row, a Delphi oceanid proxy) whose .dbr definitions live
+    # ONLY in the SVAERA database. restore_dropped_npcs() imports the 65 resolvable
+    # records + their full recursive .dbr closure (3169 records) from the SVAERA
+    # workshop DB, deterministically, and MAP-REF-1 drops 68 -> 3 on a placing map.
+    #
+    # DEFAULT OFF (SVC_RESTORE_DROPPED_NPCS unset): the restore is NOT applied.
+    # Ground truth (D3 render-risk check, 2026-07-09): 63/65 of these SVAERA NPCs
+    # reference art in SVAERA's `_DRX_Meshes`/`_DRX_Textures` arcs and names in
+    # `tagNewMerchantName*` tags that our mod does NOT ship, so restoring them makes
+    # them LOADABLE but INVISIBLE + RAW-NAMED in-game (worse than absent). The MAP
+    # lane already DE-PLACES these instances (MAP-REF-1 -> 0 for them), so the
+    # default shippable build leaves them out. Turning the restore ON only helps as
+    # part of a future full job that ALSO bundles the SVAERA _DRX art arcs + the
+    # merchant name tags (out of DB-lane scope). base_db is REQUIRED when ON (the
+    # closure skips refs that already resolve), so it runs BEFORE `del base_db`.
+    _restore_npcs = os.environ.get('SVC_RESTORE_DROPPED_NPCS', '').strip().lower() \
+        in ('1', 'true', 'yes', 'on')
+    if _restore_npcs and base_db is not None:
+        from restore_dropped_npcs import restore_dropped_npcs, find_svaera_arz
+        _svaera_arz = find_svaera_arz()
+        if _svaera_arz is None:
+            raise SystemExit(
+                "D3: SVC_RESTORE_DROPPED_NPCS=1 but SVAERA_customquest.arz not found "
+                "(set $SVC_SVAERA_ARZ or install SVAERA Workshop item 2076433374).")
+        print(f"\nD3 restore ON: loading SVAERA source: {_svaera_arz}")
+        _svaera_db = ArzDatabase.from_arz(_svaera_arz)
+        _closure_dbs = [_svaera_db, db09] + ([db41] if db41 else [])
+        restore_dropped_npcs(db, _closure_dbs, base_db=base_db)
+        del _svaera_db  # free the ~68 MB source db before the rest of the build
+    elif _restore_npcs:
+        print("\nD3 restore requested (SVC_RESTORE_DROPPED_NPCS=1) but no base game "
+              "arz provided; SKIPPED to avoid over-importing base-resolvable records.")
+    else:
+        print("\nD3 restore OFF (default; SVC_RESTORE_DROPPED_NPCS unset): dropped "
+              "SVAERA town NPCs stay DE-PLACED by the map lane. Restoring them ships "
+              "invisible/raw-named without the SVAERA _DRX art arcs + merchant tags.")
+
     del base_db  # Free memory
 
     from create_uber_souls import create_uber_souls
