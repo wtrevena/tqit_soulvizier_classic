@@ -395,6 +395,19 @@ apply_svc_patches _fix_wave29_contract_items:
 
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
+- **FEATURE (Will 2026-07-09): throwing weapons in the campaign.** The mod already requires
+  Ragnarok (Runemaster mastery, XPack2 world levels), so throwing weapons are available engine-side;
+  they never drop in Acts 1-4 because vanilla loot tables only place them in Act 5. Wire thrown
+  weapons into the campaign loot tables (and consider a thrown-weapon soul or two). Will: "we dont
+  even have the throwing objects in the game (although I wish we did)".
+- **DESCRIPTION CORRECTIONS for next metadata push (2026-07-09):** (1) known-issues still says the
+  Uber Dungeon return is not wired - build30's M1 wired the crypt_floor1 native return door, remove
+  that line; (2) requirements: state that MULTIPLAYER (joining a session) requires ALL expansions
+  (Ragnarok + Atlantis + Eternal Embers) because the merged world declares all-DLC content
+  (server-join "get DLC" bounce, confirmed by a real player 2026-07-09); single-player hard
+  requirement stays Eternal Embers. Also warn the Steam "get DLC" redirect lands in an empty cart
+  (Steam deep-link bug) - buy from the store pages directly.
+
 - Contract suite - **BUILT + committed** (`tools/contracts/`, branch `feat/contract-suite`). One
   unified 51-contract, 5-lane suite (souls/summons/resources/map/quests) that subsumes BOTH the
   planned entity + map contract suites; every contract has a negative test proving it fires. Run:
