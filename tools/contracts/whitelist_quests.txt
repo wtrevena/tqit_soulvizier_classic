@@ -1,0 +1,19 @@
+# Whitelist for contracts_quests.py (DOMAIN E: QUEST CONTRACTS).
+#
+# Format: one "<CONTRACT-ID> <subject>" per line; '#' begins a comment line.
+# A listed (contract-id, subject) pair is suppressed from the returned violations.
+# `subject` must match the violation's `subject` string exactly (e.g.
+#   "open_bloodcave_portal.qst :: Action_GiveItem.titleTag").
+#
+# KNOWN-INTENTIONAL deviations: NONE at build27.
+#
+# The only real finding on the build27 baseline is the two placeholder tags
+# (QST-TAG-PLACEHOLDER) in open_bloodcave_portal.qst -> BACKLOG B-SUPRA-NOTIFY-1.
+# Those are a REAL BUG queued for the bug wave to fix, NOT an intentional
+# deviation, so they are deliberately NOT whitelisted (the gate should keep
+# flagging them until the notification tags are replaced with dedicated ones).
+#
+# Inherited native-quest dead references (dominated by sv_commonmechanics.qst's
+# vestigial item-upgrade crafting) are reported as INFORMATIONAL only and never
+# enter the returned violation list or affect the exit code, so they need no
+# whitelist entry.

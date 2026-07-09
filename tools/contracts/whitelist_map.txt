@@ -1,0 +1,14 @@
+# whitelist_map.txt - KNOWN-INTENTIONAL map-contract deviations (suppressed).
+# Format: "<CONTRACT-ID> <subject>" per line; "# ..." comments allowed.
+# The subject must byte-match the violation's 'subject' field exactly.
+# Every entry documents WHY the deviation is intentional / not our bug.
+
+# --- MAP-GROUPS-1 -----------------------------------------------------------
+# Two base-game / DLC shrine-binding groups inherited from the SVAERA base map,
+# each with a single member that resolves to no placed instance in the merged
+# world. Neither is our content and neither sits on the reachable campaign:
+#  - Scandia01_02 is a Ragnarok (XPack2) teleport-shrine group.
+#  - X4RespawnTestWorld is an Eternal Embers (XPack4) DEV test-world respawn
+#    (never reachable in play). Both are base-inherited, not port regressions.
+MAP-GROUPS-1 GROUPS/Scandia01_02 [TeleportShrine]
+MAP-GROUPS-1 GROUPS/X4RespawnTestWorld [RespawnShrine]

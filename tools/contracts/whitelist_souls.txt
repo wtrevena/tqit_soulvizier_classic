@@ -1,0 +1,13 @@
+# Whitelist for contracts_souls.py - KNOWN-INTENTIONAL deviations only.
+# Format: "<CONTRACT-ID> <subject>"  (one per line; '#' starts a comment).
+# A line suppresses exactly that (contract, subject) violation. Keep this list
+# minimal and justified; every entry is a deliberate design choice, NOT a bug.
+
+# The "Any Soul" records are a filler/wildcard jewelry item (name string literally
+# "Any Soul"), not a monster soul, so they intentionally do NOT carry the {^F} pink
+# soul-name color prefix that real collectible souls use. Confirmed on the frozen
+# build27 baseline: these are the only 3 real souls whose name string lacks {^F}
+# (1997/2000 use it). They resolve correctly in Text; only the color convention differs.
+SOUL-NAME-COLOR records\item\equipmentring\soul\anysoul.dbr
+SOUL-NAME-COLOR records\item\equipmentring\soul\anysoul_e.dbr
+SOUL-NAME-COLOR records\item\equipmentring\soul\anysoul_l.dbr
