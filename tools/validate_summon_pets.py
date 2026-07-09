@@ -448,6 +448,19 @@ def validate(arz_path, base_path=None, upstream_path=None):
                              f"granted itemSkillLevel {int(lvl[0])} exceeds "
                              f"spawnObjects ladder length {n_spawn} (engine "
                              f"clamps to the last pet entry)"))
+        # ── build30/F1 gate (vet-proven miss): a summon-soul's granted level must
+        # not exceed the summon skill's own skillMaxLevel - the engine clamps the
+        # granted level to skillMaxLevel BEFORE the spawnObjects lookup, so
+        # levels 4/6/8 on a max-3 skill collapse every difficulty tier onto the
+        # SAME pet (the D8 xeiwang bug: Table-B PROC_LV stomped the 1/2/3 tier
+        # wiring). Mod-authored chains FAIL the build; upstream-proven WARN. ──
+        mx = field(skill, 'skillMaxLevel')
+        if lvl and mx and int(lvl[0]) > int(mx[0]):
+            problems.append((sev, chain,
+                             f"granted itemSkillLevel {int(lvl[0])} EXCEEDS the "
+                             f"summon skill's skillMaxLevel {int(mx[0])} (engine "
+                             f"clamps - every tier grants the same pet; tier "
+                             f"wiring must be 1..{int(mx[0])})"))
         for pet_path in spawn:
             if not str(pet_path).strip():
                 continue

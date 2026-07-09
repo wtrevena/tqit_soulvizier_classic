@@ -5868,7 +5868,8 @@ def _fix_bladedancer_invisible_body(db):
     n = 0
     for rec in db.record_names():
         mv = db.get_field_value(rec, 'mesh')
-        if isinstance(mv, str) and mv.lower() == BROKEN:
+        # F6c: slash-normalize (engine treats / and \ as equivalent path seps)
+        if isinstance(mv, str) and mv.lower().replace('/', '\\') == BROKEN:
             db.set_field(rec, 'mesh', BASE)   # no dtype: preserve the string field
             n += 1
     # Expected sweep count = 3 (discipleboss_bladedancer + q_melinoe_trap + _trap02):
@@ -5884,6 +5885,127 @@ def _fix_bladedancer_invisible_body(db):
     print(f"  blade-dancer invisible-body fix (D5): repointed {n} record(s) "
           f"off DRX\\meshes\\melinoe01.msh -> base Melinoe01.msh")
     return n
+
+
+def _strip_record_fields(db, rec, field_names):
+    """Remove fields from a record entirely (values=[] -> _encode_fields omits
+    them -> ABSENT in the built record, never present-but-empty). The proven
+    _strip_foreign_anim_overrides deletion mechanism, generalized."""
+    fields = db.get_fields(rec)
+    if not fields:
+        return 0
+    n = 0
+    want = set(field_names)
+    for key, tf in fields.items():
+        if key.split('###')[0] in want and tf.values:
+            tf.values = []
+            n += 1
+    if n:
+        db._modified.add(rec)
+    return n
+
+
+def _fix_wave30_render_and_refs(db):
+    """build30 F-wave (post-vet): F3 supra invisible weapons, F5 glacial orb
+    projectile, F7a pcsafe dangling particle fx, F7b Melee_Poison dangling skill.
+
+    F3 (MAJOR, Will's flagship Esti reward): the supra Legendary dagger + spear
+    render INVISIBLE - DRX\\meshes\\supra\\wep_dagger.msh embeds the XPack-scoped
+    shader XPack\\Shaders\\distortadditivestatic.ssh and wep_spear.msh embeds
+    XPack/Shaders/standardblendedglowstatic.ssh; the engine resolves XPack\\ refs
+    ONLY in Resources\\XPack\\Shaders.arc, which contains neither (the D5 melinoe
+    class, EngineArcResolver-verified). Fix = the proven D5 DBR-level repoint to
+    visually-close BASE weapon meshes whose internal shaders resolve (verified):
+      wep_dagger.dbr -> XPack2 hochdorflordsdagger01.msh (a real dagger rig)
+      wep_spear.dbr  -> base RSpear14B.msh (the Ares' Wrath legendary spear rig)
+    wep_spear's DRX baseTexture is STRIPPED (its UV skin fits only the DRX mesh;
+    the base mesh uses its own internal texture - wep_dagger carries none).
+
+    F5 (MINOR): SVMesh\\meshes\\glacialorb01.msh embeds
+    Shaders\\StandardBlendedScrollSkinned.ssh which ships NOWHERE (mod+base) ->
+    the Storm drxiceshard projectile renders invisible. Repoint
+    glacialorb_projectile_01.dbr to the base ice-shard projectile mesh
+    Effects\\Projectiles\\ShardIce01.msh (shader-verified).
+
+    F7a: our authored pcsafe soul-skill clones (arachne_venomspray, hero_sonicwave,
+    yeti_sonicroar) carry particleEffectName2/3 = the nonexistent
+    Records\\SandBox\\Chris\\UnarmedProjectile_FX01.dbr (inherited upstream debt).
+    The fields are STRIPPED (absent = clean; a dangling fx layer draws nothing
+    anyway, and empty-string refs are the B-TOXEUS-2 loader-abort class).
+
+    F7b: 12 records (5 blood-cave bodies, scorpos, meshif3_dead, etc.) reference
+    skillName1 = Records\\Skills\\Monster Skills\\Melee_Poison09-12_10.dbr which
+    does not exist; the shipped sibling is attackmelee_poison09-12_10.dbr (same
+    dir). Repoint the whole dangling class.
+    """
+    # ── F3: supra weapons ──
+    fixes = [
+        (r'records\drxitem\supra\wep_dagger.dbr',
+         r'XPack2\items\equipmentweapon\sword\hochdorflordsdagger01.msh', False),
+        (r'records\drxitem\supra\wep_spear.dbr',
+         r'Items\EquipmentWeapon\Spear\Default\RSpear14B.msh', True),
+    ]
+    for rec, new_mesh, strip_tex in fixes:
+        if not db.has_record(rec):
+            raise SystemExit(f"wave30 F3: supra weapon record missing: {rec}")
+        db.set_field(rec, 'mesh', new_mesh)   # no dtype: preserve STRING
+        if strip_tex:
+            _strip_record_fields(db, rec, ['baseTexture'])
+        db._modified.add(rec)
+    print("  F3 supra invisible weapons: wep_dagger -> hochdorflordsdagger01, "
+          "wep_spear -> RSpear14B (+ DRX skin stripped)")
+
+    # ── F5: glacial orb projectile ──
+    g = r'records\skills\storm\sveffects\glacialorb_projectile_01.dbr'
+    if db.has_record(g):
+        db.set_field(g, 'mesh', r'Effects\Projectiles\ShardIce01.msh')
+        db._modified.add(g)
+        print("  F5 glacial orb: projectile mesh -> ShardIce01 (shader-verified)")
+    else:
+        print("  WARNING F5: glacialorb_projectile_01 missing; skipped")
+
+    # ── F7a: pcsafe dangling particle fx ──
+    stripped = 0
+    for rec in [r'records\skills\soulskills\pcsafe\arachne_venomspray.dbr',
+                r'records\skills\soulskills\pcsafe\hero_sonicwave.dbr',
+                r'records\skills\soulskills\pcsafe\yeti_sonicroar.dbr']:
+        if not db.has_record(rec):
+            raise SystemExit(f"wave30 F7a: pcsafe record missing: {rec}")
+        stripped += _strip_record_fields(
+            db, rec, ['particleEffectName2', 'particleEffectName3'])
+    print(f"  F7a pcsafe souls: stripped {stripped} dangling UnarmedProjectile_FX01 "
+          f"particle refs (3 records)")
+
+    # ── F7b: Melee_Poison dangling skill refs ──
+    MISSING = r'records\skills\monster skills\melee_poison09-12_10.dbr'
+    GOOD = r'records\skills\monster skills\attackmelee_poison09-12_10.dbr'
+    if not db.has_record(GOOD):
+        raise SystemExit(f"wave30 F7b: replacement skill missing: {GOOD}")
+    repointed = 0
+    for rec in db.record_names():
+        ff = db.get_fields(rec) or {}
+        for key, tf in ff.items():
+            if not tf.values:
+                continue
+            changed = False
+            new_vals = []
+            for v in tf.values:
+                if isinstance(v, str) and \
+                        v.lower().replace('/', '\\') == MISSING:
+                    new_vals.append(GOOD)
+                    changed = True
+                else:
+                    new_vals.append(v)
+            if changed:
+                tf.values = new_vals
+                db._modified.add(rec)
+                repointed += 1
+    if repointed < 5:
+        raise SystemExit(f"wave30 F7b: only {repointed} Melee_Poison09-12_10 refs "
+                         f"repointed (expected >= 5, vet counted 12) - "
+                         f"path/casing drifted; investigate")
+    print(f"  F7b Melee_Poison: repointed {repointed} dangling skillName refs "
+          f"-> attackmelee_poison09-12_10")
 
 
 # ── A3 / B-STARTER-CHEST-1: DEFERRED to the parallel disasm-grounded impl ───
@@ -7519,12 +7641,12 @@ def _complete_boss_souls(db):
                     'retaliationFireMin': 20.0, 'retaliationFireMax': 35.0,
                     'characterStrengthModifier': 6.0, 'characterIntelligenceModifier': 6.0,
                     'defensiveFire': 22.0}),
-        # Xaiweng (xeiwang_soul) - fire + %life (heal/absorb kept), heal life-regen
-        dict(base='xeiwang', ctrl=None, aug1=None, aug2=None,
-             stats={'offensiveFireMin': 25.0, 'offensiveFireMax': 42.0,
-                    'offensivePercentCurrentLifeMin': 4.0,
-                    'characterDexterityModifier': 8.0, 'characterStrengthModifier': 6.0,
-                    'characterLifeRegenModifier': 20}),
+        # Xaiweng (xeiwang_soul): ENTRY REMOVED (build30 F1, vet-proven bug). The
+        # soul is now the D8 summon-the-boss soul (itemSkillLevel 1/2/3 tier-selects
+        # the pet); this Table-B entry ran AFTER _apply_d8_d9_summon_souls and its
+        # PROC_LV rescale stomped the levels to 4/6/8 (> skillMaxLevel 3 -> every
+        # tier clamped to the same pet). The systemic SpawnPet guard in the apply
+        # loop below protects the whole class; the entry itself is retired.
         # Black Widow Arachne's Shame (arachnesshame) - poison + web-slow + %life
         dict(base='arachnesshame', ctrl=None, aug1=None, aug2=None,
              stats={'offensiveSlowPoisonMin': 35.0, 'offensiveSlowPoisonMax': 58.0,
@@ -7653,17 +7775,32 @@ def _complete_boss_souls(db):
                 continue
             diff = matched_diff
             fields = {}
+            # ── F1 SYSTEMIC GUARD (build30, vet-proven): NEVER rescale/replace
+            #    the proc of a summon-the-boss soul. On those souls itemSkillLevel
+            #    IS the pet-tier selector (1/2/3, hard-coupled to the summon's
+            #    skillMaxLevel=3); PROC_LV {4,6,8} clamps every tier to the same
+            #    pet (the D8 xeiwang bug). Stats/augs below still apply. ──
+            cur_skill = db.get_field_value(name, 'itemSkillName')
+            skill_cls = None
+            if cur_skill:
+                sk_rec = _find_record(db, cur_skill)
+                if sk_rec:
+                    skill_cls = db.get_field_value(sk_rec, 'Class')
+            is_summon_soul = bool(skill_cls) and str(skill_cls).startswith('Skill_SpawnPet')
             # proc: KEEP existing + rescale level + reassert controller; or ADD
-            if add_proc:
+            if add_proc and not is_summon_soul:
                 fields['itemSkillName'] = (S, add_proc[0])
                 fields['itemSkillLevel'] = (I, PROC_LV[diff])
                 fields['itemSkillAutoController'] = (S, add_proc[1])
-            else:
+            elif not add_proc and not is_summon_soul:
                 # only rescale level if the soul actually has a proc
-                if db.get_field_value(name, 'itemSkillName'):
+                if cur_skill:
                     fields['itemSkillLevel'] = (I, PROC_LV[diff])
                     if ctrl:
                         fields['itemSkillAutoController'] = (S, ctrl)
+            elif is_summon_soul:
+                print(f"    F1 guard: {name.rsplit(chr(92), 1)[-1]} grants a "
+                      f"{skill_cls} summon - proc level/controller left alone")
             if aug1:
                 fields['augmentSkillName1'] = (S, aug1[0])
                 fields['augmentSkillLevel1'] = (I, aug1[1] + AUG_OFF[diff])
@@ -8237,12 +8374,19 @@ def _create_blood_toxeus_soul(db):
 
 
 def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, desc_tag,
-                       char_level, life, life_regen, dmg_min, dmg_max, scale=None):
+                       char_level, life, life_regen, dmg_min, dmg_max, scale=None,
+                       loadout=None):
     """D7/D8/D9 shared summon-the-boss builder (3 permanent pets + manual-cast
     summon skill from a source boss's OWN rig). Same crash-safe contract as A10
     Narok/Vort: clone Lyia pets for a Pet.tpl baseline; copy ONLY anim + skill refs
-    from the source Monster.tpl; barehanded (no _set_pet_equipment); permanent
-    (Lyia base = no TTL). set_field with no explicit dtype (preserve type)."""
+    from the source Monster.tpl; permanent (Lyia base = no TTL). set_field with no
+    explicit dtype (preserve type).
+
+    loadout (build30/F2, SUMMON-PET-NAKED fix): optional _loadout_spec()-style list
+    of (slot, chance, weight, [n,e,l loot-table paths]) HARD-CODED to mirror the
+    source monster's own equip loadout - applied via the sanctioned
+    _set_pet_equipment path (never Monster.tpl field copying). None = barehanded
+    (correct only when the source itself equips nothing, e.g. Xeiwang)."""
     CONTROLLER = (r'records\skills\spirit\drxpet'
                   r'\drxpet_controllers\controller_skelly_aggressive.dbr')
     lyia_sources = [r'records\skills\soulskills\pets\lyialeafsong_1.dbr',
@@ -8272,6 +8416,11 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         db.clone_record(s, path)
         _copy_animation_fields(db, source, path)
         _update_existing_fields(db, source, path, _SKILL_PREFIXES)
+        # F2 (SUMMON-PET-NAKED): mirror the source's armor via the sanctioned
+        # hard-coded loadout path (loot TABLES on Pet.tpl equip slots, exactly
+        # the proven A10 Narok/Vort mechanism - never Monster.tpl field copies).
+        if loadout:
+            _set_pet_equipment(db, path, _loadout_spec(loadout))
         # B-SUMMON-2 guard: strip every .anm override the SOURCE monster does not
         # itself define (kills the Lyia-clone Maenad residue; stripped slots fall
         # back to the source's own charAnimationTableName). Source-faithful: a
@@ -8330,10 +8479,22 @@ def _create_blood_toxeus_summon(db):
         'tagSVCSummonBloodToxeus', 'tagMonsterHemorrheus',
         char_level=[40, 68, 100], life=[12000.0, 18000.0, 26000.0],
         life_regen=[30.0, 60.0, 100.0],
-        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1)
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1,
+        # F2: mirror um_bloodtoxeus_99's own armor loadout (Torso+LowerBody @100,
+        # DB-verified) so the summon is not naked - hard-coded tables, Pet-safe.
+        loadout=[
+            ('Torso', 100.0, 5000, [
+                r'records\item\loottables\torso\commondynamic\melee_n01b.dbr',
+                r'records\item\loottables\torso\commondynamic\melee_e01.dbr',
+                r'records\item\loottables\torso\commondynamic\melee_l01.dbr']),
+            ('LowerBody', 100.0, 5000, [
+                r'records\item\loottables\legs\commondynamic\greaves_n01b.dbr',
+                r'records\item\loottables\legs\commondynamic\greaves_e01.dbr',
+                r'records\item\loottables\legs\commondynamic\greaves_l01.dbr']),
+        ])
     if ok:
         print("  D7 Toxeus summon: 3 pets from boss rig (RevenantPoison + crimson) + "
-              "summon skill (250/300/350 en, 180s cd), barehanded")
+              "summon skill (250/300/350 en, 180s cd); armor mirrors the boss (F2)")
     return ok
 
 
@@ -8419,7 +8580,15 @@ def _apply_d8_d9_summon_souls(db, tags):
                           'tagSVCSummonMountainBlade', 'tagNewHero289',
                           char_level=[43, 59, 72], life=[11000.0, 15000.0, 20000.0],
                           life_regen=[30.0, 55.0, 90.0],
-                          dmg_min=[65.0, 100.0, 145.0], dmg_max=[105.0, 160.0, 230.0]):
+                          dmg_min=[65.0, 100.0, 145.0], dmg_max=[105.0, 160.0, 230.0],
+                          # F2: mirror um_mountainblade_43's own armor (Torso @100,
+                          # dragonian mastertables, DB-verified) - not naked.
+                          loadout=[
+                              ('Torso', 100.0, 5000, [
+                                  r'records\item\loottables\torso\mastertables\monster\n_dragonian.dbr',
+                                  r'records\item\loottables\torso\mastertables\monster\e_dragonian.dbr',
+                                  r'records\item\loottables\torso\mastertables\monster\l_dragonian.dbr']),
+                          ]):
         print("  D9 Huo-ren the Mountainblade: WRONG-DROP FIXED (um_mountainblade_43 -> own soul, "
               "was mukesha_soul) + summon-soul + 3 pets from flameguard rig")
     tags['tagSVCSoulMountainBlade'] = '{^F}Huo-ren, the Mountainblade Soul'
@@ -8502,12 +8671,16 @@ def _create_emberscale_charm(db, tags):
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
 
     for t in ('01', '02', '03'):
-        donor = _find_record(db, _D10_CHARM_DONOR[t])
-        if not donor:
-            raise SystemExit(f"D10: turtle charm donor missing: {_D10_CHARM_DONOR[t]}")
+        # F6b (vet): EXACT-path asserts - _find_record is a shadowed SUBSTRING
+        # matcher (module def at ~3271 shadows the exact-path def at ~292), so a
+        # substring hit could silently select the wrong donor. has_record is
+        # exact-match on the record table.
+        donor = _D10_CHARM_DONOR[t]
+        if not db.has_record(donor):
+            raise SystemExit(f"D10: turtle charm donor missing (exact): {donor}")
         for path, _w in _D10_BONUS_ENTRIES[t]:
-            if not _find_record(db, path):
-                raise SystemExit(f"D10: completion-bonus affix missing: {path}")
+            if not db.has_record(path):
+                raise SystemExit(f"D10: completion-bonus affix missing (exact): {path}")
 
         # ── charm (clone -> override; NO dtypes on existing fields) ──
         charm = _D10_CHARM[t]
@@ -8549,9 +8722,9 @@ def _create_emberscale_charm(db, tags):
         # ── loot table (clone the turtle FixedWeight table: only slot 1 active,
         #    noPrefixNoSuffix already 100 on the donor) ──
         lt = _D10_LOOT[t]
-        ldonor = _find_record(db, _D10_LOOT_DONOR)
-        if not ldonor:
-            raise SystemExit(f"D10: turtle loot table donor missing: {_D10_LOOT_DONOR}")
+        if not db.has_record(_D10_LOOT_DONOR):   # F6b: exact-path assert
+            raise SystemExit(f"D10: turtle loot table donor missing (exact): {_D10_LOOT_DONOR}")
+        ldonor = _D10_LOOT_DONOR
         db.clone_record(ldonor, lt)
         db.set_field(lt, 'lootName1', charm)
         db._modified.add(lt)
@@ -8559,9 +8732,9 @@ def _create_emberscale_charm(db, tags):
     # ── wire both Flameguard Slayer bodies: turtle-shape 7% on the free slot 3 ──
     loot_arr = [_D10_LOOT['01'], _D10_LOOT['02'], _D10_LOOT['03']]
     for mon in _D10_RAVAGERS:
-        rec = _find_record(db, mon)
-        if not rec:
-            raise SystemExit(f"D10: Flameguard Slayer body missing: {mon}")
+        if not db.has_record(mon):   # F6b: exact-path assert
+            raise SystemExit(f"D10: Flameguard Slayer body missing (exact): {mon}")
+        rec = mon
         cur = db.get_field_value(rec, 'lootMisc3Item1')
         if cur not in (None, '', 0):
             raise SystemExit(f"D10: {mon} lootMisc3 is NOT free (has {cur!r}); "
@@ -9220,6 +9393,9 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # ── build30 wave: blade-dancer invisible-body family fix (D5) - runs after
     #    all record creation so it also catches the upstream hostile + proxies ──
     _fix_bladedancer_invisible_body(db)
+    # ── build30 F-wave (post-vet): supra/glacialorb invisible renders + the
+    #    pcsafe/Melee_Poison dangling-ref P1s (see _fix_wave30_render_and_refs) ──
+    _fix_wave30_render_and_refs(db)
 
     # ── Boss-kit clone-shape invariant (fail-loud, B-TOXEUS-2) ────────────────
     # After all boss authoring: every registered boss-kit clone must keep its

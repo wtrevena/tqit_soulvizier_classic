@@ -1697,6 +1697,29 @@ def main():
         raise SystemExit(
             "Occult/Hunting golden freeze guard FAILED on the written .arz; "
             "this build does not ship (A7 gate)")
+
+    # ── F2 contract gate (build30, post-vet): the summons contract lane
+    # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build
+    # is contract-clean by construction (the vet proved the validators above
+    # miss the naked-pet class). Same skip rule as A9: needs the game dir AND
+    # the staged Resources beside the output (scratch/determinism builds skip
+    # loudly - the work/-layout build is the gate of record).
+    import subprocess as _sp
+    _contracts = Path(__file__).resolve().parent / 'contracts' / 'run_contracts.py'
+    if _game_dir and _game_dir.is_dir() and _mod_resources.is_dir() \
+            and _contracts.is_file():
+        _rc = _sp.call([sys.executable, str(_contracts), '--only', 'summons',
+                        '--arz', str(output_path),
+                        '--base-game-dir', str(_game_dir),
+                        '--resource-arc-dir', str(_mod_resources)])
+        if _rc != 0:
+            raise SystemExit(
+                f"Summons contract lane FAILED on the written .arz (exit {_rc}); "
+                f"this build does not ship (F2 gate)")
+    else:
+        print(f"  WARNING: F2 summons-contract gate SKIPPED - needs the game dir, "
+              f"a Resources dir beside the output, and tools/contracts "
+              f"(game={_game_dir}, mod_resources={_mod_resources})")
     print("Done.")
 
 
