@@ -780,6 +780,21 @@ def main():
             ae_injected_specs[ae_idx] = specs
             print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x{blob_ver:02x})'
                   + (f' + moved {len(move_specs)} native instance(s)' if move_specs else ''))
+        elif blob_ver == 0x0e:
+            # build31h (M9 prerequisite - the Vashkarr FotA-cave class): native v0x0e
+            # SVAERA-side hosts. Same LVL v0e blob structure as SV-only v0e levels, so
+            # route through the PROVEN SV-only v0e injector (inject_into_0x05 base-56;
+            # per-spec x14_payload/0x14 appends handled INSIDE inject_into_sv_only_blob).
+            # Deliberately NOT registered in ae_injected_specs/ae_injected_count: step 7's
+            # v11 0x14-append pass must not double-append (it no-ops on this blob since
+            # n_injected=0 and specs=[]). Previously this case WARN-skipped, silently
+            # dropping any spec targeting a base-game v0e host. MOVE_SPECS on a v0e host
+            # stays unsupported - fail loud rather than silently skip.
+            if MOVE_SPECS.get(lv_key):
+                raise ValueError(f'{lv_key}: MOVE_SPECS on a v0x0e SVAERA host is not '
+                                 f'supported (only the v11/v0f move path exists)')
+            ae_patched_blobs[ae_idx] = inject_into_sv_only_blob(blob, specs, lv_key)
+            print(f'  Injected {len(specs)} NPC(s) into SVAERA {lv_key} (v0x0e branch)')
         else:
             print(f'  WARN: {lv_key} is v0x{blob_ver:02x}, skipping injection')
 
