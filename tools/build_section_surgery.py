@@ -777,16 +777,17 @@ PORTAL_MASTER_SPEC_PENDING = (PORTAL_MASTER_NPC_DBR, 76.50, 0.60, 189.50)  # NOT
 # exemplar decoded: Knossos->Rhakotis stores x=-1966 as two's-complement):
 #   Rhodes arrival  ->  x = 700,  y = 41,  z = -6466   (on-mesh, Rhodes_CityFinal_01)
 #
-# ⚠️ GATED ON THE DB LANE (a8f5446a) exactly like M8 (MAP-REF-1): the summit NPC record
-# below does NOT exist in the arz yet - do NOT wire this into INJECT_SPECS until the DB lane
-# ships the record + the boat-dialog quest (registered inside the 256 load window). Then:
-# uncomment OLYMPUS_RHODES_NPC_SPEC_PENDING into INJECT_SPECS under the host key, rebuild
-# BOTH maps, full map gates, COUPLED map+Quests deploy. Note: this NPC replaces the dead
-# FixedItemTeleport as the continuation; the locked xq00 gate can stay (harmless) or the DB
-# lane may drop the now-moot Q1 Action_UnlockFixedItem.
-OLYMPUS_RHODES_NPC_DBR = b'records\\quests\\portal_master_olympus.dbr'  # DB lane: keep this path
+# ✅ WIRED (build31g, 2026-07-09 overnight): the DB/Quests lane shipped the record + the
+# boat-dialog quest in Q3 commit 36a6212 ('herald record name+spec now FINAL'; arz bd6ae869
+# carries records\quests\portal_master_olympus.dbr cloned from the proven Knossos boatman;
+# Quests 3db3764c hosts the Action_BoatDialog to (700,41,-6466); both DEV-deployed by that
+# lane). The spec below is LIVE in INJECT_SPECS under olympusfinal02 (v0x11 shared ->
+# step-6/7 v11 injection; flags=0, identity rot, no 0x14 - the Starting_PortalMan NPC
+# byte-shape). The map half completes the coupled set. Note: the locked xq00 gate stays
+# placed (harmless; also has the Q3 instant kill-unlock as belt-and-suspenders).
+OLYMPUS_RHODES_NPC_DBR = b'records\\quests\\portal_master_olympus.dbr'  # matches the arz record
 OLYMPUS_RHODES_HOST_KEY = 'levels/world/olympus/olympusfinal02.lvl'
-OLYMPUS_RHODES_NPC_SPEC_PENDING = (OLYMPUS_RHODES_NPC_DBR, 305.80, 90.20, 490.80)  # NOT wired yet
+OLYMPUS_RHODES_NPC_SPEC = (OLYMPUS_RHODES_NPC_DBR, 305.80, 90.20, 490.80)  # WIRED (build31g)
 
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
@@ -1252,8 +1253,25 @@ def _hub_pair_0x14(dest_key):
 # BC_initialpathway: SV blood cave entrance level
 INJECT_SPECS = {
     # Delphi NPC injection REMOVED - corrupts v0x11 blob, crashes game on world streaming
+    # (LEGACY note: that early failure used the old generate_default_0x14 path; the LIVE
+    # v11 injector [inject_into_0x05_v11, step 6/7] is proven by the HV01 caravan/fountain
+    # + the Helos H1/R2 portals, all v0x11 walk-verified.)
     'levels/world/uberdungeon/crypt_floor1.lvl': [
         (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
+    ],
+    # M12/Q3 HERALD (build31g): the Olympus->Rhodes continuation NPC ("Hermes the herald"),
+    # the Model-C boat-dialog teleporter that replaces the dead engine FixedItemTeleport as
+    # the guaranteed post-Typhon path to Rhodes/Immortal Throne. Record + boat-dialog quest
+    # shipped by the DB/Quests lane (Q3 36a6212: arz bd6ae869 +1 record cloned from the
+    # Knossos boatman; Quests 3db3764c Action_BoatDialog -> world (700,41,-6466) = the base
+    # game's own Rhodes arrival target, navmesh-verified). SPOT local (305.80,90.20,490.80)
+    # = world (1155.80,90.20,-3190.20): 4.0u +Z of the locked xq00 portal [41] on the Typhon
+    # plateau - navmesh-verified exact cell, floor-matched Y, 100% 3u clearance, connected
+    # to the portal cell, zero entities within 18u (see the M12 spec block for the full
+    # evidence). v0x11 shared level -> the proven step-6/7 v11 injection; flags=0, identity
+    # rot, no 0x14 (Starting_PortalMan NPC byte-shape).
+    'levels/world/olympus/olympusfinal02.lvl': [
+        OLYMPUS_RHODES_NPC_SPEC,
     ],
     # Widow Letter questline (WAVE E): restore the 3 SV entities the widowletter.qst
     # conditions reference. widow_ling = the NPC (Condition_ConversationStart),
