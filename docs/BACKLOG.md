@@ -56,8 +56,57 @@
 > 0 collateral. Gates GREEN: summon-pet STRICT 0, render PASS, golden PASS, contracts PASS,
 > clone-shape invariant OK, validate_tags PASS (104 mod tags). **MAP-REF-1: records land ->
 > map lane injects the Random05A placement + v0e routing (M9 spec in build_section_surgery).**
-> **REMAINING build32 groups (specs + verified donor recon below):** B Enslaver, E N5 thrown
-> weapons, F N6 obsidian roulette, G N7 wyrm hordes.
+> **GROUP G = N7 WYRM HORDES + SEPULCHRAL SCALE (map-unblocking):** apply_svc_patches
+> `_create_wyrm_hordes`. Transforms the 6 Act-3 tomb `ug_demon_wyrmsprite_0{1,2,3}{n,t}`
+> encounters into escalating sepulchral wyrm hordes. `um_sepulchralwyrm_common_31` DERIVED
+> (clone of the Champion _31 -> Common, no soul drop) fills the main pool slots. 3 NEW pools
+> `svc_wyrmhorde_0{1,2,3}` (cloned from the firesprite pools; the SHARED firesprite pools are
+> left untouched) sized 4/8, 6/12, 8/16; tier-03 adds champion config 100/4/6 with the 4
+> champion worms (16-6=10 guaranteed mains, spawnMax-championMax>=1 holds). No-cap
+> `limit_wyrmhorde` (herolimit_all clone) on all 6 repointed proxies. Sepulchral Scale charm
+> `svc_sepulchralscale\0{1,2,3}` (Emberscale/D10 pattern: yeti-fur ARMOR charm clone -> cold /
+> frostburn / cold-slow / life per-shard ladder + GUARANTEED completion fear 2/2/3, lvlReq
+> 30/44/56, RelicAnimal01 art, yeti-fur working completion table kept) + 3 loot tables, wired
+> at 7% on the 4 champion worms via free lootMisc4 (D10 mechanism). **ARTIFACTS: arz
+> `27e67420`, Text `cf3cb227` (2 new tags, coupled).** Record-diff vs Group C 968c0b6c = 11
+> ADDED (common wyrm/3 charms/3 loot tables/limit/3 pools) + 10 MODIFIED (4 champion worms'
+> charm-drop wiring + 6 proxy pool/limit repoints) + 0 REMOVED, 0 collateral. Gates GREEN:
+> summon-pet STRICT 0, render PASS, golden PASS, contracts PASS, validate_tags PASS (106).
+> **MAP note:** the wyrmsprite proxies are ALREADY placed in the Act-3 tombs (native
+> encounters); repointing their pools makes the hordes live with NO new map injection needed.
+> **REMAINING build32 groups (full specs below; verified donor recon appended):** B Enslaver,
+> E N5 thrown weapons, F N6 obsidian roulette.
+>
+> **DEFERRED B/E/F - VERIFIED DONOR RECON (2026-07-10, for a fast follow-up):**
+> - **F Obsidian:** guardian bases are `as_abyssalliche_flame_42` / `uw_as_abyssalliche_flame_42`
+>   (NOT us_abyssalliche), `boss_dragonliche_57` (Voranthys); the golden-skeleton melee monster
+>   (Gorrahk) is referenced by the `records\proxies orient\pools\undead\goldenskeleton_*` POOLS
+>   (resolve the monster record from a pool's name1). ondeath skills resolve at `records\skills\
+>   monster skills\ondeath\skills\{bladenova,frostnova}.dbr` + `...\attack_radius\ondeath_
+>   {frostnova,necronova}.dbr` + `...\monster skills\ondeath_spawnskeleton.dbr` (doubled
+>   `skills\skills\` variants also exist - use the single-`skills\` path). `arena_meteor` =
+>   `records\skills\monster skills\attack_radius\arena_meteor.dbr`; `ormenos_droptelekinesis`
+>   OK; cyclops = `records\skills\boss skills\cyclops_terrifyingroar.dbr` + pcsafe
+>   `cyclops_groundsmash`. The mega-chest mesh `container_hpalace_chestlg01.msh` sits on a
+>   FixedItemContainer - derive from the blood-cave mega chest RECORD. No `limit_obsidianbosses`
+>   exists yet (author a herolimit_all-clone no-cap). Voranthys summon = `_build_boss_summon`
+>   on SepulchralWyrm01. The Vashkarr proxy/pool + wyrmhorde pool recipes are the exact
+>   templates for F's shared warband pool + 4 corner proxies; chest chain = the D10 loot-table
+>   + `_ensure_record` LootRandomizerTable pattern.
+> - **E Thrown:** supra tables = `records\xpack\item\loottables\arcaneformulae\supra.dbr` +
+>   `supra_special.dbr` (add slots 25-27 / 26-28 @w100). Formula template =
+>   `records\drxitem\supra\zrecipes\wep_spear_formula.dbr` (ItemArtifactFormula: artifactName +
+>   reagent1/2/3BaseName = 1L+1E+1MI). Thrown-weapon base records live under
+>   `records\item\equipmentweapon\throwingknife\` (clone for the 3 supers; avoid the fenrirsbite
+>   stray mesh). Loot-restore half needs base_db + a diff of the mod-overridden
+>   `c_default_*/boss_default_*/bandari_default_*` tables vs the base twins' loot6Name5/6.
+> - **B Enslaver:** boss donor = `records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr`
+>   (xpack path, the SP Toxeus / ShadowStalker-kin). Summon-shadowstalker donor =
+>   `yaoguai_summonshadowstalkers` (Vashkarr-proven clone). toxeus_bladestorm / flashpowder /
+>   lethalstrike_mortalwound all resolve. The roaming sweep (`_sweep_inject_roaming_rare`) is
+>   the hard kernel: eligibility filter must EXCLUDE boss/quest/hero/escort/friendly pools;
+>   pair with a `_verify_roaming_sweep` fail-loud gate (only eligible pools touched, weight-1
+>   name-append, 18-slot caps respected).
 
 > 🛠️ **BUILD32 SESSION (2026-07-10, autonomous DB-lane, Will blanket sign-off) - SHIPPED GROUPS:**
 > STEP 0 det-2x reproducibility of build31-ship VERIFIED (arz `fc393741` + Text `b7251fd7`

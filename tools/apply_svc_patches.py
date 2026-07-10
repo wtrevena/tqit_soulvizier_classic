@@ -9586,6 +9586,198 @@ def _create_emberscale_charm(db, tags):
           "lootMisc3 @ 7% (turtle-matched)")
 
 
+# ── GROUP G (build32): N7 Wyrm Hordes + the Sepulchral Scale charm ──────────
+# Will PRE-AUTHORIZED (BACKLOG N7). Transform the 6 Act-3 tomb ug_demon_wyrmsprite
+# encounters into escalating SEPULCHRAL WYRM HORDES + a themed cold charm.
+# - Common horde body: um_sepulchralwyrm_common_31 DERIVED (the base ships only
+#   Champion um_sepulchralwyrm_31/34/37/40; clone _31 -> Common for the main
+#   pool slots so the horde reads as fodder and drops no souls).
+# - 3 NEW pools (svc_wyrmhorde_0{1,2,3}, cloned from the firesprite pools so all
+#   flavor/weight fields carry over) sized 4/8, 6/12, 8/16; tier-03 adds the
+#   champion config 100/4/6 (nameChampion = the 4 champion worms) - spawnMax 16
+#   - championMax 6 = 10 guaranteed main slots (the spawnMax-championMax>=1 law).
+#   NEW pools + repointing the 6 proxies leaves the shared firesprite pools
+#   untouched (they may spawn elsewhere).
+# - no-cap limit_wyrmhorde (herolimit_all clone) on all 6 proxies.
+# - Sepulchral Scale charm (svc_sepulchralscale, Emberscale/D10 pattern): clone
+#   the yeti-fur ARMOR charm (keeps its armor-slot flags + working cold-themed
+#   completion bonus table), retheme to cold/frostburn/cold-slow/life + a
+#   GUARANTEED completion fear (2/2/3), lvlReq 30/44/56; 7% on the 4 champion
+#   worms via a free lootMisc slot (D10 mechanism).
+_WH_COMMON = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr'
+_WH_COMMON_DONOR = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_31.dbr'
+_WH_CHAMP_WORMS = [rf'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_{lv}.dbr'
+                   for lv in ('31', '34', '37', '40')]
+_WH_PROXY_TIERS = {
+    '01': [r'records\proxies orient\area007 - tomb\ug_demon_wyrmsprite_01n.dbr',
+           r'records\proxies orient\area007 - tomb\ug_demon_wyrmsprite_01t.dbr'],
+    '02': [r'records\proxies orient\area007 - tomb\ug_demon_wyrmsprite_02n.dbr',
+           r'records\proxies orient\area007 - tomb\ug_demon_wyrmsprite_02t.dbr'],
+    '03': [r'records\proxies orient\area007 - tomb\ug_demon_wyrmsprite_03n.dbr',
+           r'records\proxies orient\area007 - tomb\ug_demon_wyrmsprite_03t.dbr'],
+}
+_WH_POOL_DONOR = {t: rf'records\proxies orient\pools\demon\firesprite_{t}_general06.dbr'
+                  for t in ('01', '02', '03')}
+_WH_POOL = {t: rf'records\proxies orient\pools\demon\svc_wyrmhorde_{t}.dbr'
+            for t in ('01', '02', '03')}
+_WH_SIZE = {'01': (4, 8), '02': (6, 12), '03': (8, 16)}
+_WH_LIMIT = r'records\proxies orient\limit_wyrmhorde.dbr'
+_WH_LIMIT_DONOR = r'records\proxies boss\herolimit_all.dbr'
+_WH_CHARM_DONOR = {t: rf'records\item\animalrelics\{t}_act3_yetifur.dbr' for t in ('01', '02', '03')}
+_WH_CHARM = {t: rf'records\item\animalrelics\svc_sepulchralscale\{t}_sepulchralscale.dbr'
+             for t in ('01', '02', '03')}
+_WH_LOOT_DONOR = {t: rf'records\item\loottables\animalrelics\{t}_act3_yetifur.dbr'
+                  for t in ('01', '02', '03')}
+_WH_LOOT = {t: rf'records\item\loottables\animalrelics\svc_sepulchralscale\{t}_sepulchralscale.dbr'
+            for t in ('01', '02', '03')}
+_WH_LEVELREQ = {'01': 30, '02': 44, '03': 56}
+# per-shard 5-arrays (escalate with each socketed shard); completion fear at full.
+_WH_STATS = {
+    '01': {'defensiveCold': [6.0, 12.0, 18.0, 24.0, 30.0],
+           'offensiveColdMin': [10.0, 20.0, 30.0, 40.0, 50.0],
+           'offensiveColdMax': [16.0, 32.0, 48.0, 64.0, 80.0],
+           'offensiveSlowColdMin': [8.0, 16.0, 24.0, 32.0, 40.0],
+           'offensiveSlowColdDurationMin': [1.0, 1.5, 2.0, 2.5, 3.0],
+           'offensiveSlowRunSpeedMin': [8.0, 12.0, 16.0, 20.0, 24.0],
+           'offensiveSlowRunSpeedDurationMin': [1.0, 1.25, 1.5, 1.75, 2.0],
+           'characterLife': [40.0, 80.0, 120.0, 160.0, 200.0],
+           'offensiveFearMin': [0.0, 0.0, 0.0, 0.0, 2.0]},
+    '02': {'defensiveCold': [9.0, 18.0, 27.0, 36.0, 45.0],
+           'offensiveColdMin': [15.0, 30.0, 45.0, 60.0, 75.0],
+           'offensiveColdMax': [24.0, 48.0, 72.0, 96.0, 120.0],
+           'offensiveSlowColdMin': [12.0, 24.0, 36.0, 48.0, 60.0],
+           'offensiveSlowColdDurationMin': [1.0, 1.5, 2.0, 2.5, 3.0],
+           'offensiveSlowRunSpeedMin': [10.0, 15.0, 20.0, 25.0, 30.0],
+           'offensiveSlowRunSpeedDurationMin': [1.0, 1.5, 2.0, 2.5, 3.0],
+           'characterLife': [70.0, 140.0, 210.0, 280.0, 350.0],
+           'offensiveFearMin': [0.0, 0.0, 0.0, 0.0, 2.0]},
+    '03': {'defensiveCold': [12.0, 24.0, 36.0, 48.0, 60.0],
+           'offensiveColdMin': [22.0, 44.0, 66.0, 88.0, 110.0],
+           'offensiveColdMax': [34.0, 68.0, 102.0, 136.0, 170.0],
+           'offensiveSlowColdMin': [16.0, 32.0, 48.0, 64.0, 80.0],
+           'offensiveSlowColdDurationMin': [1.0, 1.5, 2.0, 2.5, 3.0],
+           'offensiveSlowRunSpeedMin': [12.0, 18.0, 24.0, 30.0, 36.0],
+           'offensiveSlowRunSpeedDurationMin': [1.0, 1.5, 2.0, 2.5, 3.0],
+           'characterLife': [100.0, 200.0, 300.0, 400.0, 500.0],
+           'offensiveFearMin': [0.0, 0.0, 0.0, 0.0, 3.0]},
+}
+
+
+def _create_wyrm_hordes(db, tags):
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    if not db.has_record(_WH_COMMON_DONOR):
+        print("  WYRM HORDES: WARNING common-wyrm donor missing; group skipped")
+        return
+
+    # ── 1. Common horde body (Common-classified derived wyrm) ──
+    db.clone_record(_WH_COMMON_DONOR, _WH_COMMON)
+    sf(_WH_COMMON, 'monsterClassification', 'Common')
+    sf(_WH_COMMON, 'dropItems', 0)
+    db._modified.add(_WH_COMMON)
+
+    # ── 2. No-cap limit ──
+    if db.has_record(_WH_LIMIT_DONOR):
+        db.clone_record(_WH_LIMIT_DONOR, _WH_LIMIT)
+        db._modified.add(_WH_LIMIT)
+        limit_ref = _WH_LIMIT
+    else:
+        limit_ref = None
+
+    # ── 3. New pools (clone firesprite pools; retheme to wyrm hordes) ──
+    for t in ('01', '02', '03'):
+        donor = _WH_POOL_DONOR[t]
+        if not db.has_record(donor):
+            raise SystemExit(f"WYRM HORDES: firesprite pool donor missing: {donor}")
+        pool = _WH_POOL[t]
+        db.clone_record(donor, pool)
+        smin, smax = _WH_SIZE[t]
+        sf(pool, 'FileDescription', f'Sepulchral Wyrm Horde tier {t}')
+        sf(pool, 'spawnMin', smin)
+        sf(pool, 'spawnMax', smax)
+        # main slots -> the common wyrm (a true wyrm horde)
+        sf(pool, 'name1', _WH_COMMON)
+        sf(pool, 'name2', _WH_COMMON)
+        sf(pool, 'name3', _WH_COMMON)
+        sf(pool, 'name4', _WH_COMMON)
+        if t == '03':
+            # tier-03 champion config: the 4 champion worms lead the horde
+            sf(pool, 'championChance', 100.0)
+            sf(pool, 'championMin', 4)
+            sf(pool, 'championMax', 6)
+            for i, w in enumerate(_WH_CHAMP_WORMS, start=1):
+                sf(pool, f'nameChampion{i}', w)
+                sf(pool, f'weightChampion{i}', 100)
+        else:
+            # tiers 1/2 = pure common hordes (no champion crowd-out)
+            sf(pool, 'championChance', 0.0)
+            sf(pool, 'championMin', 0)
+            sf(pool, 'championMax', 0)
+        db._modified.add(pool)
+
+    # ── 4. Repoint the 6 proxies to the new pools + no-cap limit ──
+    for t, proxies in _WH_PROXY_TIERS.items():
+        for px in proxies:
+            if not db.has_record(px):
+                raise SystemExit(f"WYRM HORDES: wyrmsprite proxy missing: {px}")
+            sf(px, 'pool1', _WH_POOL[t])
+            if limit_ref:
+                sf(px, 'difficultyLimitsFile', limit_ref)
+            db._modified.add(px)
+
+    # ── 5. Sepulchral Scale charm (Emberscale/D10 pattern) ──
+    for t in ('01', '02', '03'):
+        donor = _WH_CHARM_DONOR[t]
+        if not db.has_record(donor):
+            raise SystemExit(f"WYRM HORDES: yeti-fur charm donor missing: {donor}")
+        charm = _WH_CHARM[t]
+        db.clone_record(donor, charm)
+        sf(charm, 'description', 'tagSVCSepulchralScale')
+        sf(charm, 'itemText', 'tagSVCSepulchralScaleDESC')
+        sf(charm, 'FileDescription', 'Sepulchral Scale: cold + frostbite + fear on completion')
+        sf(charm, 'levelRequirement', _WH_LEVELREQ[t])
+        sf(charm, 'relicBitmap', r'Items\AnimalRelics\AnimalPart01B.tex')   # RelicAnimal01 art (yeti-fur bitmaps)
+        sf(charm, 'shardBitmap', r'Items\AnimalRelics\AnimalPart01A.tex')
+        for fname, arr in _WH_STATS[t].items():
+            sf(charm, fname, list(arr))
+        db._modified.add(charm)
+        # loot table (clone the yeti-fur FixedWeight table; point at our charm)
+        ldonor = _WH_LOOT_DONOR[t]
+        if not db.has_record(ldonor):
+            raise SystemExit(f"WYRM HORDES: yeti-fur loot-table donor missing: {ldonor}")
+        lt = _WH_LOOT[t]
+        db.clone_record(ldonor, lt)
+        sf(lt, 'lootName1', charm)
+        db._modified.add(lt)
+
+    # ── 6. Wire the charm onto the 4 champion worms at 7% (a free lootMisc slot) ──
+    loot_arr = [_WH_LOOT['01'], _WH_LOOT['02'], _WH_LOOT['03']]
+    slot = None
+    for cand in (3, 4, 2, 1):
+        if all((db.get_field_value(w, f'lootMisc{cand}Item1') in (None, '', 0))
+               for w in _WH_CHAMP_WORMS if db.has_record(w)):
+            slot = cand
+            break
+    if slot is None:
+        raise SystemExit("WYRM HORDES: no free lootMisc slot on the champion worms")
+    for w in _WH_CHAMP_WORMS:
+        if not db.has_record(w):
+            raise SystemExit(f"WYRM HORDES: champion worm missing: {w}")
+        sf(w, f'lootMisc{slot}Item1', list(loot_arr), S)
+        sf(w, f'chanceToEquipMisc{slot}', 7.0)
+        sf(w, f'chanceToEquipMisc{slot}Item1', 100)
+        db._modified.add(w)
+
+    tags['tagSVCSepulchralScale'] = 'Sepulchral Scale'
+    tags['tagSVCSepulchralScaleDESC'] = (
+        'A frost-riven scale shed by the sepulchral wyrms of the deep tombs. '
+        'Cold clings to it, and the dead things it touched learned fear.')
+    print(f"  Wyrm Hordes: common wyrm + 3 pools (4/8, 6/12, 8/16; tier03 champ "
+          f"100/4/6) + no-cap limit; 6 wyrmsprite proxies repointed; Sepulchral "
+          f"Scale charm x3 (lvlReq 30/44/56) @ 7% on 4 champion worms (lootMisc{slot})")
+
+
 def _wire_blood_toxeus_loot(db):
     """Wire the guaranteed-set-piece + high-bleed tables onto Hemorrheus (§3.3).
 
@@ -10230,6 +10422,10 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # minion-summon clone) + _force_100_pct_soul_drops.
     print("\n=== GROUP C: Vashkarr, Eldest of the Ancients ===")
     _create_vashkarr(db, tags)
+
+    # GROUP G (build32): N7 sepulchral wyrm hordes + the Sepulchral Scale charm.
+    print("\n=== GROUP G: Wyrm Hordes + Sepulchral Scale ===")
+    _create_wyrm_hordes(db, tags)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
