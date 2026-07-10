@@ -12,6 +12,19 @@
 > Toxeus group-spawn from b31 still pending his eyes); deferred queue = M13b SD restore,
 > portal-master Phase 2, wraithlord re-enable, golden-freeze of the 7 tuned trees post-QA,
 > broodmother nest set-piece, Tartarus-gates-if-Atlantis-reachable, hoard lockedSound cosmetic.
+> **DESIGN LANDED (2026-07-10, sign-off-first): docs/BROODMOTHER_NEST_DESIGN.md** covers BOTH
+> deferred items. (1) Broodmother nest: full amgoz1-voice design (eaterofdays rig boss @ [40,58,74]
+> 22/30/40k HP, 4-6 no-cap egg-cluster spawner ring + uncapped brood-summon petLimit 24, ONE
+> summon soul, guaranteed tier-03 Sepulchral Scale loot hook; host = Act-3 tomb tombobs02 per the
+> byte-verified open-floor survey; record plan + INJECT_SPEC table + gates ready for an implement
+> wave). (2) Tartarus/Atlantis RECON RESOLVED: Atlantis is REACHABLE for an Atlantis-DLC owner
+> (Rhodes-side Marinos boat chain in base x3mq_atlantisadventure.qst = OnLevelLoad/ConversationStart/
+> BoatDialog, all CQ-satisfiable, NOT touched by the IT->Scandia/IT->EE caps which are post-Hades
+> only; UNREACHABLE without the DLC), Tartarus entry portal is unlock-loaded, but the 16
+> tartarus_entrance_gate01 arena gates are DEAD (no loaded opener). RECOMMEND capping the
+> Rhodes->Atlantis entry the same surgical way as Scandia/EE (Quests.arc-only if x3mq idx<256);
+> cheap residual checks = confirm x3mq registry idx + Marinos placement at Rhodes. Awaiting Will
+> sign-off before any implementation.
 
 > 🛠️ **BUILD32 FINAL-CONTENT SESSION (2026-07-10, autonomous DB-lane) - GROUPS F/E/B:**
 > Baseline = HEAD e3ab0a6 (arz 27e6742 / Text cf3cb227 / Quests 6ff23c29, det-2x).
