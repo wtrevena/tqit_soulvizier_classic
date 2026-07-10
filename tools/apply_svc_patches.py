@@ -51,6 +51,8 @@ SUMMON_VORT_SKILL = r'records\skills\soulskills\summon_vort.dbr'
 SUMMON_TOXEUS_SKILL = r'records\skills\soulskills\summon_bloodtoxeus.dbr'
 SUMMON_XEIWANG_SKILL = r'records\skills\soulskills\summon_xeiwang.dbr'
 SUMMON_MOUNTAINBLADE_SKILL = r'records\skills\soulskills\summon_mountainblade.dbr'
+SUMMON_ENSLAVER_SKILL = r'records\skills\soulskills\summon_toxeus_enslaver.dbr'
+SUMMON_ENSLAVER_PETMARAUDERS = r'records\skills\soulskills\svc_enslaver_petmarauders.dbr'
 
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
@@ -8620,6 +8622,404 @@ def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
         db._modified.add(r)
 
 
+# ── GROUP B (build32): Toxeus the Murderer, Enslaver of Souls ────────────────
+# Will APPROVED (BACKLOG N6/Enslaver). A ShadowStalker-demon reincarnation of
+# Toxeus who ROAMS the world as a rare mini-boss leading a warband of shadow
+# marauders. Derived from am_deathstalker_55_ambush (the ShadowStalker.msh rig,
+# racialProfile Demon, table-LESS inline anim block incl. unarmedRunAnim -
+# rig-safe + summon-safe by construction; the um_toxeus_99 SP-Toxeus lineage is
+# carried through the KIT + name, since the design mandates ShadowStalker.msh
+# which um_toxeus_99 does not use). The ROAMING SWEEP appends him at weight 1 to
+# every eligible hostile trash pool with each existing member weight x60 (so he
+# stays rarer than 1/2400 per main-slot); a fail-loud gate proves ONLY eligible
+# (non boss/quest/hero) pools were touched. His soul is a MANUAL summon-the-boss
+# (pet-of-pet: the friendly Enslaver pet auto-casts a friendly marauder summon).
+_EN_BOSS = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
+_EN_RIG_DONOR = r'records\creature\monster\shadowstalker\am_deathstalker_55_ambush.dbr'  # ShadowStalker.msh, Demon, inline anim
+_EN_MARAUDER = r'records\creature\monster\shadowstalker\um_enslaver_marauder_99.dbr'      # hostile Champion
+_EN_SUMMON_MARAUDERS = r'records\skills\boss skills\svc_enslaver_summonmarauders.dbr'      # boss's HOSTILE Skill_SpawnPetMonster
+_EN_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
+_EN_BAND = [40, 68, 100]
+_EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
+# Enslaver kit (Toxeus lineage; all existence-verified).
+_EN_SK_NETHERSTRIKE = r'records\skills\monster skills\attack_melee\netherstrike.dbr'
+_EN_SK_BLADESTORM = r'records\skills\monster skills\attack_radius\toxeus_bladestorm.dbr'
+_EN_SK_LIFEDRAIN = r'records\skills\spirit\lifedrain.dbr'
+_EN_SK_FLASHPOWDER = r'records\skills\stealth\flashpowder.dbr'
+_EN_SK_LETHALSTRIKE = r'records\skills\stealth\lethalstrike.dbr'
+_EN_SK_MORTALWOUND = r'records\skills\stealth\lethalstrike_mortalwound.dbr'
+_EN_SK_SPEEDALL = r'records\skills\monster skills\auras\character_speedall.dbr'
+_EN_SK_CONVIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+_EN_SK_HEROSCALING = r'records\skills\monster skills\passive_buffs\hero_scaling.dbr'
+_EN_SK_TOXEUSPASSIVE = r'records\skills\monster skills\passive_buffs\toxeus_passiveproperties.dbr'
+_EN_SK_ARMORPASSIVE = r'records\skills\monster skills\defense\armor_passive.dbr'
+_EN_SK_GP_N = r'records\skills\monster skills\globalproperties_normal01.dbr'
+_EN_SK_GP_E = r'records\skills\monster skills\globalproperties_epic01.dbr'
+_EN_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
+# soul augments (Occult).
+_EN_AUG_ANATOMY = r'records\skills\stealth\drxanatomy.dbr'
+_EN_AUG_DARKAPERTURE = r'records\skills\stealth\drxdarklings_darkaperture.dbr'
+# roaming sweep tuning.
+_EN_SWEEP_K = 60          # existing-weight multiplier
+_EN_SWEEP_MAX_P = 1.0 / (40 * 60)   # per-pool enslaver p_slot ceiling (1/2400)
+_EN_SWEEP_ALLOW_PREFIX = (
+    'records\\proxies orient\\pools',
+    'records\\proxies egypt\\pools',
+    'records\\proxies greek\\',
+    'records\\xpack\\proxieshades',
+)
+_EN_SWEEP_BAD_SUB = ('boss', 'quest', 'hero', 'escort', 'summon', 'minion',
+                     'ambush', 'unique', 'spawner', 'shrine', 'chest',
+                     'telkine', 'gorgon')
+
+
+def _create_enslaver(db, tags):
+    """Build the whole Enslaver DB side (boss + marauder + hostile summon +
+    friendly pet-of-pet + summon soul). The roaming sweep + verify gate run
+    separately (after this, so the boss exists to reference)."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    if not db.has_record(_EN_RIG_DONOR) or not db.has_record(_EN_SUMMON_DONOR):
+        print("  ENSLAVER: WARNING rig/summon donor missing; group skipped")
+        return
+
+    def _clear_range(rec, prefix, lo, hi):
+        ff = db.get_fields(rec)
+        if not ff:
+            return
+        import re as _re
+        for k in list(ff):
+            base = k.split('###')[0]
+            m = _re.match(_re.escape(prefix) + r'(\d+)$', base)
+            if m and lo <= int(m.group(1)) <= hi:
+                del ff[k]
+        db._modified.add(rec)
+
+    # ── 1. Hostile marauder (Champion, ~2x hand dmg, ShadowStalker rig + cloak). ──
+    db.clone_record(_EN_RIG_DONOR, _EN_MARAUDER)
+    M = _EN_MARAUDER
+    sf(M, 'description', 'tagSVCMonsterEnslaverMarauder')
+    sf(M, 'monsterClassification', 'Champion')
+    sf(M, 'characterRacialProfile', 'Demon')
+    sf(M, 'charLevel', list(_EN_BAND))
+    sf(M, 'characterLife', [2600.0, 4200.0, 6000.0])
+    sf(M, 'characterStrength', 340.0)
+    sf(M, 'characterDexterity', 480.0)
+    sf(M, 'handHitDamageMin', 190.0)                 # ~2x am_deathstalker (95/116)
+    sf(M, 'handHitDamageMax', 232.0)
+    sf(M, 'characterRunSpeed', 1.7)
+    sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], S)   # drxshadowcloakrunning_fx
+    sf(M, 'dropItems', 0)
+    db._modified.add(M)
+
+    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone; burst 3 / ~6s). ──
+    db.clone_record(_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS)
+    sf(_EN_SUMMON_MARAUDERS, 'spawnObjects', [_EN_MARAUDER])
+    sf(_EN_SUMMON_MARAUDERS, 'petBurstSpawn', 3)
+    sf(_EN_SUMMON_MARAUDERS, 'skillCooldownTime', 6.0)
+    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 8)
+    db._modified.add(_EN_SUMMON_MARAUDERS)
+    _BOSS_KIT_CLONES.append((_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS))
+
+    # ── 3. The boss (ShadowStalker-demon, scale 2.0, Toxeus kit). ──
+    db.clone_record(_EN_RIG_DONOR, _EN_BOSS)
+    B = _EN_BOSS
+    sf(B, 'description', 'tagSVCMonsterEnslaver')
+    sf(B, 'monsterClassification', 'Boss')
+    sf(B, 'characterRacialProfile', 'Demon')
+    sf(B, 'charLevel', list(_EN_BAND))
+    sf(B, 'characterLife', [13000.0, 18000.0, 24000.0])
+    sf(B, 'characterStrength', 480.0)
+    sf(B, 'characterDexterity', 660.0)
+    sf(B, 'characterIntelligence', 420.0)
+    sf(B, 'characterLifeRegen', 12.0)
+    sf(B, 'handHitDamageMin', 150.0)
+    sf(B, 'handHitDamageMax', 250.0)
+    sf(B, 'scale', 2.0)
+    sf(B, 'actorHeight', 2.5)
+    sf(B, 'characterRunSpeed', 1.5)
+    # defensive wall (NO bleeding wall: expressed as flat resists, not the
+    # bloodwitch zpassive_resists_bleed record).
+    sf(B, 'defensiveLife', 100.0)
+    sf(B, 'defensivePierce', 80.0)
+    sf(B, 'defensivePhysical', 30.0)
+    # kit (clear the donor's trash passives 1..18 first, then author; the
+    # specialAttack*SkillName slots are explicitly overwritten below).
+    _clear_range(B, 'skillName', 1, 18)
+    kit = [
+        _EN_SK_NETHERSTRIKE, _EN_SK_BLADESTORM, _EN_SK_LIFEDRAIN, _EN_SK_FLASHPOWDER,
+        _EN_SK_LETHALSTRIKE, _EN_SK_MORTALWOUND, _EN_SK_SPEEDALL, _EN_SUMMON_MARAUDERS,
+        _EN_SK_CONVIMMUNITY, _EN_SK_HEROSCALING, _EN_SK_TOXEUSPASSIVE, _EN_SK_ARMORPASSIVE,
+        _EN_SK_GP_N, _EN_SK_GP_E, _EN_SK_GP_L,
+    ]
+    for i, sk in enumerate(kit, start=1):
+        sf(B, f'skillName{i}', sk)
+    sf(B, 'attackSkillName', _EN_SK_NETHERSTRIKE)
+    for i, (sk, ch) in enumerate([
+            (_EN_SUMMON_MARAUDERS, 50.0), (_EN_SK_NETHERSTRIKE, 45.0),
+            (_EN_SK_BLADESTORM, 40.0), (_EN_SK_FLASHPOWDER, 30.0),
+            (_EN_SK_LETHALSTRIKE, 35.0)], start=1):
+        suf = '' if i == 1 else str(i)
+        sf(B, f'specialAttack{suf}SkillName', sk)
+        sf(B, f'specialAttack{suf}Chance', ch)
+    db._modified.add(B)
+
+    # ── 4. Friendly pet-of-pet marauders (reuse _build_boss_summon on the
+    #    marauder rig -> friendly pet + summon skill). isPetDisplayable off (the
+    #    Enslaver PET auto-casts it, it is not a player button). ──
+    marauder_pets = [rf'records\skills\soulskills\pets\enslaver_marauder_{i}.dbr' for i in (1, 2, 3)]
+    _build_boss_summon(
+        db, _EN_MARAUDER, marauder_pets, SUMMON_ENSLAVER_PETMARAUDERS,
+        'tagSVCSummonEnslaverMarauders', 'tagSVCMonsterEnslaverMarauder',
+        char_level=list(_EN_BAND), life=[2600.0, 4200.0, 6000.0],
+        life_regen=[20.0, 35.0, 50.0],
+        dmg_min=[90.0, 140.0, 200.0], dmg_max=[130.0, 200.0, 280.0], scale=1.0)
+    sf(SUMMON_ENSLAVER_PETMARAUDERS, 'isPetDisplayable', 0)
+    sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petLimit', 3)
+    sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petBurstSpawn', 1)
+    sf(SUMMON_ENSLAVER_PETMARAUDERS, 'skillCooldownTime', 10.0)
+    sf(SUMMON_ENSLAVER_PETMARAUDERS, 'skillManaCost', 0.0)
+    db._modified.add(SUMMON_ENSLAVER_PETMARAUDERS)
+
+    # ── 5. The summon-the-boss soul: friendly Enslaver pet via _build_boss_summon,
+    #    then repoint the boss-pet's specialAttackSkillName to the FRIENDLY pet-of-pet
+    #    summon (so the friendly pet raises FRIENDLY marauders, not the boss's hostile
+    #    Skill_SpawnPetMonster). ──
+    enslaver_pets = [rf'records\skills\soulskills\pets\toxeus_enslaver_{i}.dbr' for i in (1, 2, 3)]
+    _build_boss_summon(
+        db, _EN_BOSS, enslaver_pets, SUMMON_ENSLAVER_SKILL,
+        'tagSVCSummonEnslaver', 'tagSVCMonsterEnslaver',
+        char_level=list(_EN_BAND), life=[13000.0, 18000.0, 24000.0],
+        life_regen=[30.0, 60.0, 100.0],
+        dmg_min=[110.0, 170.0, 240.0], dmg_max=[160.0, 250.0, 350.0], scale=2.0)
+    _host = _EN_SUMMON_MARAUDERS.replace('/', '\\').lower()
+    for p in enslaver_pets:
+        if not db.has_record(p):
+            continue
+        # replace EVERY inherited reference to the boss's HOSTILE marauder summon
+        # (in any skillName / specialAttack*SkillName slot) with the friendly
+        # pet-of-pet summon, so the friendly Enslaver pet raises FRIENDLY marauders
+        # (never enemies for the player).
+        ff = db.get_fields(p) or {}
+        for k, tf in ff.items():
+            for j, v in enumerate(list(tf.values)):
+                if isinstance(v, str) and v.replace('/', '\\').lower() == _host:
+                    tf.values[j] = SUMMON_ENSLAVER_PETMARAUDERS
+        sf(p, 'specialAttackSkillName', SUMMON_ENSLAVER_PETMARAUDERS)
+        sf(p, 'specialAttackChance', 40.0)
+        db._modified.add(p)
+
+    # ── 6. Soul records (manual summon; Occult augments; dense stats). ──
+    def _en_stats(t, il, sklvl):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]; r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'itemSkillName': (S, SUMMON_ENSLAVER_SKILL), 'itemSkillLevel': (I, sklvl),
+            'augmentSkillName1': (S, _EN_AUG_ANATOMY), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _EN_AUG_DARKAPERTURE), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(320.0)), 'characterLifeModifier': (F, r(12.0)),
+            'characterStrength': (F, r(35.0)), 'characterDexterity': (F, r(40.0)),
+            'characterOffensiveAbility': (F, r(100.0)),
+            'characterRunSpeedModifier': (F, r(12.0)),
+            'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)),
+            'offensivePhysicalModifier': (I, int(r(40))),
+            'offensiveLifeLeechMin': (F, r(40.0)),
+            'offensivePierceRatioMin': (F, r(25.0)),
+            'defensiveDisruption': (F, r(40.0)),      # weird signature: soul-enslaver's grip resists mind magic
+            'defensivePierce': (F, r(30.0)), 'defensiveLife': (F, r(25.0)),
+            'characterDeflectProjectile': (F, r(10.0)),
+        }
+    en_tiers = [{'diff': t, 'itemLevel': il, 'stats': _en_stats(t, il, sk)}
+                for t, il, sk in (('n', 40, 1), ('e', 68, 2), ('l', 100, 3))]
+    # drop off the boss's Finger2 at 66% (Boss classification -> soul-leak gate OK).
+    en_souls = _create_soul(db, 'enslaver', 'tagSVCSoulEnslaver', en_tiers,
+                            monster=_EN_BOSS, drop_rate=66.0)
+    _wire_summon_soul(db, en_souls, SUMMON_ENSLAVER_SKILL)   # manual: strip controller, level 1/2/3
+
+    tags['tagSVCMonsterEnslaver'] = '{^r}Toxeus the Murderer, Enslaver of Souls'
+    tags['tagSVCMonsterEnslaverMarauder'] = '{^r}Enslaved Shadow Marauder'
+    tags['tagSVCSummonEnslaver'] = 'Summon Toxeus, Enslaver of Souls'
+    tags['tagSVCSummonEnslaverMarauders'] = 'Raise Shadow Marauders'
+    tags['tagSVCSoulEnslaver'] = '{^F}Enslaver of Souls Soul'
+    tags['tagSVCSoulEnslaverDESC'] = ('Toxeus the Murderer, reborn from the shadow as '
+        'the Enslaver of Souls, who binds the dead into a marauding warband. Its bearer '
+        'may call him forth - and he raises his own shadow pack to fight beside you.')
+    print("  Enslaver: boss (ShadowStalker-demon, scale 2.0, Toxeus kit + hostile "
+          "marauder summon) + Champion marauder + friendly pet-of-pet + summon soul "
+          "(66% Finger2, Occult augments); tags set. Roaming sweep runs next.")
+
+
+def _sweep_inject_roaming_rare(db):
+    """Append the Enslaver at weight 1 to every ELIGIBLE hostile trash pool, with
+    each existing member weight x60, so he stays rarer than 1/2400 per main-slot.
+    Only touches act-trash pools (orient/egypt/greek/hades) whose basename carries
+    no boss/quest/hero/summon marker, whose resolvable name members are all
+    Class=Monster, that have a free name slot (< 18), and whose x60 name-weight
+    total reaches >= 2400 (so the weight-1 append satisfies the p_slot ceiling).
+    Returns the list of touched pool record names."""
+    if not db.has_record(_EN_BOSS):
+        print("  ENSLAVER SWEEP: boss record missing; skipped")
+        return []
+    S, I = DATA_TYPE_STRING, DATA_TYPE_INT
+    recmap = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+
+    def gv(n, f):
+        v = db.get_field_value(n, f)
+        return (v[0] if isinstance(v, list) else v)
+
+    def is_pool(n):
+        t = gv(n, 'templateName')
+        return t and 'proxypool.tpl' in str(t).lower()
+
+    def eligible(n):
+        nl = n.replace('/', '\\').lower()
+        if not any(nl.startswith(p) for p in _EN_SWEEP_ALLOW_PREFIX):
+            return False
+        base = nl.split('\\')[-1]
+        if base.startswith(('q_', 'sq', 'xsq', 'mq', 'svc_')):
+            return False
+        if any(b in base for b in _EN_SWEEP_BAD_SUB):
+            return False
+        # all resolvable name members must be hostile Class=Monster
+        names = [gv(n, 'name%d' % i) for i in range(1, 19)]
+        names = [str(x) for x in names if x and str(x).strip()]
+        if not names:
+            return False
+        for m in names:
+            r = recmap.get(m.replace('/', '\\').lower())
+            if r is not None and str(gv(r, 'Class')) != 'Monster':
+                return False
+        return True
+
+    touched = []
+    for n in list(db.record_names()):
+        if not is_pool(n) or not eligible(n):
+            continue
+        # find used name slots + total weight
+        used = []
+        wtotal = 0
+        for i in range(1, 19):
+            nm = gv(n, 'name%d' % i)
+            if nm and str(nm).strip():
+                used.append(i)
+                w = gv(n, 'weight%d' % i)
+                try:
+                    wtotal += int(w) if w else 0
+                except (TypeError, ValueError):
+                    pass
+        free = next((i for i in range(1, 19) if i not in used), None)
+        if free is None:                    # at 18-slot cap
+            continue
+        if wtotal <= 0 or (_EN_SWEEP_K * wtotal + 1) < (40 * 60):
+            continue                        # too small: would exceed the p_slot ceiling
+        # x60 the existing member weights, append the enslaver at weight 1
+        for i in used:
+            w = gv(n, 'weight%d' % i)
+            try:
+                w = int(w) if w else 0
+            except (TypeError, ValueError):
+                w = 0
+            db.set_field(n, 'weight%d' % i, w * _EN_SWEEP_K, I)
+        db.set_field(n, 'name%d' % free, _EN_BOSS, S)
+        db.set_field(n, 'weight%d' % free, 1, I)
+        db._modified.add(n)
+        touched.append(n)
+    print("  ENSLAVER SWEEP: injected the roaming Enslaver into %d eligible hostile "
+          "trash pool(s) (each existing weight x%d, him at weight 1)"
+          % (len(touched), _EN_SWEEP_K))
+    return touched
+
+
+def _verify_roaming_sweep(db, touched):
+    """FAIL-LOUD gate for the Enslaver roaming sweep: prove ONLY eligible
+    (non boss/quest/hero) pools were touched, the enslaver is present at weight 1
+    with p_slot <= 1/2400 in each, his boss + marauder + summon resolve at the
+    right band, and no touched pool matches an exclusion marker. Re-derives the
+    touched set from the arz (verifies the actual diff, not a passed list)."""
+    S = DATA_TYPE_STRING
+    problems = []
+
+    def gv(n, f):
+        v = db.get_field_value(n, f)
+        return (v[0] if isinstance(v, list) else v)
+
+    # (0) boss + marauder + summon resolve at band [40,68,100] (read the FULL
+    # list, not gv() which collapses multi-value fields to their first element).
+    for rec in (_EN_BOSS, _EN_MARAUDER):
+        if not db.has_record(rec):
+            problems.append(f"{rec} missing")
+            continue
+        cl = db.get_field_value(rec, 'charLevel')
+        cl = cl if isinstance(cl, list) else [cl]
+        if [int(x) for x in cl] != _EN_BAND:
+            problems.append(f"{rec} charLevel {cl} != {_EN_BAND}")
+    for sk in (SUMMON_ENSLAVER_SKILL, _EN_SUMMON_MARAUDERS):
+        if not db.has_record(sk):
+            problems.append(f"summon skill {sk} missing")
+
+    # (1) re-derive touched pools = any ProxyPool containing the enslaver in a name slot
+    enl = _EN_BOSS.replace('/', '\\').lower()
+    derived = []
+    for n in db.record_names():
+        t = gv(n, 'templateName')
+        if not (t and 'proxypool.tpl' in str(t).lower()):
+            continue
+        names = [gv(n, 'name%d' % i) for i in range(1, 19)]
+        if any(x and str(x).replace('/', '\\').lower() == enl for x in names):
+            derived.append(n)
+
+    if set(derived) != set(touched):
+        problems.append(f"touched set mismatch: sweep touched {len(touched)}, "
+                        f"arz shows {len(derived)} pools with the enslaver")
+
+    for n in derived:
+        nl = n.replace('/', '\\').lower()
+        base = nl.split('\\')[-1]
+        # (2) eligibility: allowed prefix + no boss/quest/hero marker
+        if not any(nl.startswith(p) for p in _EN_SWEEP_ALLOW_PREFIX):
+            problems.append(f"TOUCHED NON-ELIGIBLE PATH: {n}")
+        if base.startswith(('q_', 'sq', 'xsq', 'mq', 'svc_')) or \
+                any(b in base for b in _EN_SWEEP_BAD_SUB):
+            problems.append(f"TOUCHED BOSS/QUEST/HERO POOL: {n}")
+        # (3) enslaver at weight 1 + p_slot <= 1/2400
+        wtotal = 0
+        enl_w = None
+        for i in range(1, 19):
+            nm = gv(n, 'name%d' % i)
+            if not (nm and str(nm).strip()):
+                continue
+            w = gv(n, 'weight%d' % i)
+            try:
+                w = int(w) if w else 0
+            except (TypeError, ValueError):
+                w = 0
+            wtotal += w
+            if str(nm).replace('/', '\\').lower() == enl:
+                enl_w = w
+        if enl_w != 1:
+            problems.append(f"{n}: enslaver weight {enl_w} != 1")
+        elif wtotal <= 0 or (1.0 / wtotal) > _EN_SWEEP_MAX_P + 1e-9:
+            problems.append(f"{n}: enslaver p_slot {1.0/max(wtotal,1):.5f} > "
+                            f"{_EN_SWEEP_MAX_P:.5f} (too common)")
+
+    if not derived:
+        problems.append("sweep touched ZERO pools (roaming Enslaver would never appear)")
+    elif len(derived) < 500:
+        problems.append(f"sweep touched only {len(derived)} pools (< 500 floor; "
+                        f"a regression likely narrowed eligibility)")
+
+    if problems:
+        for p in problems[:20]:
+            print(f"  ROAMING-SWEEP OFFENDER: {p}")
+        raise SystemExit(
+            f"Enslaver roaming-sweep gate FAILED: {len(problems)} problem(s) "
+            f"(see offenders above)")
+    print(f"  Roaming-sweep gate OK: {len(derived)} eligible hostile trash pools "
+          f"carry the Enslaver at weight 1 (p_slot <= 1/2400), 0 boss/quest/hero "
+          f"pools touched, boss+marauder at band {_EN_BAND}.")
+
+
 def _apply_d8_d9_summon_souls(db, tags):
     """D8 (Xeiwang, Flame of Hatred) + D9 (Huo-ren, the Mountainblade): boss-named
     soul -> summons that boss (same proven A10/D7 pattern). Render assets SHIP:
@@ -11152,6 +11552,16 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # map lane can inject the 4 INJECT_SPECS + shared v0e branch (M10).
     print("\n=== GROUP F: Obsidian Halls Treasure Roulette ===")
     _create_obsidian_roulette(db, tags)
+
+    # GROUP B (build32): Toxeus the Enslaver of Souls - a roaming rare mini-boss.
+    # Build the boss/marauder/soul, then the roaming sweep (append him at weight 1
+    # to eligible hostile trash pools, existing weights x60) + the fail-loud verify
+    # gate. Before the build29 castability wave (processes his summon soul) and the
+    # clone-shape gate (registers his hostile marauder-summon clone).
+    print("\n=== GROUP B: Toxeus the Enslaver of Souls ===")
+    _create_enslaver(db, tags)
+    _enslaver_touched = _sweep_inject_roaming_rare(db)
+    _verify_roaming_sweep(db, _enslaver_touched)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all

@@ -2,6 +2,40 @@
 
 > 🛠️ **BUILD32 FINAL-CONTENT SESSION (2026-07-10, autonomous DB-lane) - GROUPS F/E/B:**
 > Baseline = HEAD e3ab0a6 (arz 27e6742 / Text cf3cb227 / Quests 6ff23c29, det-2x).
+> **GROUP B = TOXEUS THE MURDERER, ENSLAVER OF SOULS (BACKLOG Enslaver, Will approved).**
+> apply_svc_patches `_create_enslaver` + `_sweep_inject_roaming_rare` + `_verify_roaming_sweep`.
+> A ROAMING RARE mini-boss: `um_toxeus_enslaver_99` (`{^r}Toxeus the Murderer, Enslaver of Souls`)
+> DERIVED from am_deathstalker_55_ambush (the ShadowStalker.msh rig, racialProfile Demon, table-LESS
+> inline anim block incl. unarmedRunAnim -> rig-safe + summon-safe; the um_toxeus_99 SP-Toxeus
+> lineage rides the KIT+name since the design mandates ShadowStalker.msh which um_toxeus_99 does not
+> use). Boss @ scale 2.0, charLevel [40,68,100], life [13000,18000,24000], STR/DEX/INT 480/660/420,
+> kit = netherstrike + toxeus_bladestorm + lifedrain + flashpowder + lethalstrike(+mortalwound) +
+> character_speedall + hostile marauder-summon + boss passives (conversionimmunity/hero_scaling/
+> toxeus_passiveproperties/armor_passive/globalproperties); defensive wall = defensiveLife 100 +
+> defensivePierce 80 (NO bloodwitch bleed-wall zpassive, per design). `um_enslaver_marauder_99`
+> (Champion, [40,68,100], ~2x hand dmg 190/232, runSpeed 1.7, drxshadowcloakrunning_fx via
+> charFxPakRunningNames, own inline anim from the clone). Boss summons them via
+> `svc_enslaver_summonmarauders` (yaoguai_summonshadowstalkers clone, Skill_SpawnPetMonster, burst 3 /
+> 6s cd / petLimit 8; registered with the boss-kit clone-shape invariant). **THE SWEEP:** enumerate
+> ProxyPool.tpl records, keep only act-trash pools (proxies orient/egypt/greek + xpack proxieshades)
+> whose basename carries NO boss/quest/hero/summon/ambush marker, whose resolvable name members are
+> ALL Class=Monster, that have a free name slot (<18), and whose x60 name-weight reaches >=2400;
+> multiply existing name weights x60 and append the boss at weight 1 -> p_slot <= 1/2400 per
+> main-slot. `_verify_roaming_sweep` (fail-loud) RE-DERIVES the touched set from the arz and proves:
+> ONLY eligible pools touched (0 boss/quest/hero), enslaver at weight 1 with p_slot <= 1/2400 in
+> each, boss+marauder charLevel == [40,68,100], summon skills resolve, >=500-pool floor. SOUL
+> `enslaver_soul_{n,e,l}` = 66% Finger2 MANUAL summon (summon_toxeus_enslaver via _build_boss_summon
+> on the boss rig) with a PET-OF-PET: the friendly Enslaver pet's every inherited HOSTILE-summon ref
+> is swapped to a friendly `svc_enslaver_petmarauders` Skill_SpawnPet (built via a 2nd
+> _build_boss_summon on the marauder rig) so it raises FRIENDLY marauders, never enemies; Occult
+> augments drxanatomy + drxdarklings_darkaperture; weird signature stat defensiveDisruption.
+> **ARTIFACTS: arz 9265619d, Text (6 new tags, coupled).** Record-diff vs 79daa74e (post-E) = 14
+> ADDED (boss / marauder / 3 souls / hostile summon / 3 marauder pets / 3 enslaver pets / summon
+> skill / friendly petmarauders skill) + 1224 MODIFIED (all eligible act-trash pools, x60 + append)
+> + 0 REMOVED, 0 collateral. Gates GREEN: roaming-sweep gate PASS (1224 pools, 0 boss/quest/hero),
+> clone-shape PASS, spawn-eligibility PASS, soul-activation PASS (1406 souls), summon-pet STRICT
+> PASS (manual-cast + D19 mobility on the ShadowStalker rig), render/golden PASS, validate_tags PASS
+> (127 mod tags), contracts GATE PASS (0 P1, no B record flagged), STRICT 0.
 > **GROUP E = N5 THROWN WEAPONS (BACKLOG N5, Will approved all designer recs).** Two halves,
 > both run in build_svc_database.main() while base_db is alive (del'd before apply_all_extended):
 > (1) `_restore_thrown_weapon_drops(db, base_db)` - the base game drops roh (ranged-one-hand =
