@@ -8585,9 +8585,21 @@ def _create_blood_toxeus_proxy_50(db):
 
 
 def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
-    """D8/D9: repoint each n/e/l soul to the manual-cast summon (itemSkillLevel
-    1/2/3). These souls carry NO itemSkillAutoController (verified) so nothing to
-    clear. Optionally reassign itemNameTag to a mod-owned disambiguated name tag."""
+    """D8/D9: repoint each n/e/l soul to the MANUAL-CAST summon (itemSkillLevel
+    1/2/3). A summon soul is a pet BUTTON, never an on-attack proc, so any
+    inherited itemSkillAutoController is DELETED here (absent shape, never
+    blanked to '' per the B-TOXEUS-2 zero-precedent loader-abort law).
+
+    D21 Long Nu fix (2026-07-10, live Steam b31): her souls are the SV
+    palai_soul_{n,e,l} records, which carried an on-attack proc controller
+    (base_atenemy_onattack) from their original proc wiring. build31 set
+    itemSkillName=summon_longnu but LEFT the controller, so the game re-cast the
+    summon on every player hit; with the summon skill's petLimit=1 she was
+    re-summoned/reset each swing and never landed an attack. That single stray
+    field is the ONE root cause of BOTH of Will's reports ('summons on attack'
+    and 'does no damage'). Clearing it here fixes every summon soul uniformly
+    (a no-op for the D8/D9/D13/D14/D20 souls, which carry no controller).
+    Optionally reassign itemNameTag to a mod-owned disambiguated name tag."""
     for i, sp in enumerate(soul_paths):
         r = _find_record(db, sp)
         if not r:
@@ -8595,6 +8607,14 @@ def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
             continue
         db.set_field(r, 'itemSkillName', summon_skill)
         db.set_field(r, 'itemSkillLevel', i + 1)
+        cleared = False
+        for k, tf in (db.get_fields(r) or {}).items():
+            if k.split('###')[0] == 'itemSkillAutoController' and tf.values:
+                tf.values = []
+                cleared = True
+        if cleared:
+            print(f"    manual-cast: stripped inherited itemSkillAutoController "
+                  f"from {sp.rsplit(chr(92), 1)[-1]} (summon = pet button)")
         if name_tag:
             db.set_field(r, 'itemNameTag', name_tag)
         db._modified.add(r)
@@ -8746,6 +8766,51 @@ def _create_olympus_rhodes_herald(db, tags):
     tags['tagSVCOlympusRhodesTravel'] = 'Travel to Rhodes?'
     print("  Q3 herald: portal_master_olympus.dbr cloned from the Knossos "
           "boatman (proven boat-dialog NPC shape); name/chat/travel tags set")
+
+
+# ── Q2 (build32, Group A): Helos portal-master for the 4 SV side-areas ───────
+# Will chose Model C (boat-dialog NPC) for SV-area travel (BACKLOG Q2). This is
+# the twin of the Q3 Olympus herald: a single friendly NPC placed in the Helos
+# starting-town portal plaza (map lane build_section_surgery.py
+# PORTAL_MASTER_SPEC_PENDING @ startingfarmland06d local (76.50,0.60,189.50))
+# whose boat-dialog menu offers all FOUR SV destinations at once. Each
+# Action_BoatDialog registered on this NPC adds one destination to its menu
+# (base-game precedent: quest 8 registers Knossos->Rhakotis on
+# Knossos_BoatmanToEgypt; multiple calls on ONE npc accumulate ports). Donor =
+# knossos_boatmantoegypt (the same proven boat-dialog Npc shape the herald uses:
+# Class=Npc + GreekSailor02 base art, render-safe per D5). The 4-destination
+# boat-dialog trigger ships in the SAME wave via build_quest_files.py
+# (_add_helos_portal_travel, appended to the already-registered, always-loaded
+# sv_commonmechanics.qst refire step - QUESTS registry law: no new
+# registrations). Text tags ride the standard mechanism (validate_tags gates).
+PORTAL_MASTER_HELOS_NPC = r'records\quests\portal_master_helos.dbr'
+_HELOS_PORTAL_DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+
+
+def _create_helos_portal_master(db, tags):
+    donor = _find_record(db, _HELOS_PORTAL_DONOR)
+    if not donor:
+        raise SystemExit(f"Q2 portal-master: donor NPC missing: {_HELOS_PORTAL_DONOR}")
+    if db.has_record(PORTAL_MASTER_HELOS_NPC):
+        raise SystemExit(f"Q2 portal-master: {PORTAL_MASTER_HELOS_NPC} already exists")
+    db.clone_record(donor, PORTAL_MASTER_HELOS_NPC)
+    sf = db.set_field
+    sf(PORTAL_MASTER_HELOS_NPC, 'description', 'tagSVCNpcHelosPortalMaster')
+    sf(PORTAL_MASTER_HELOS_NPC, 'FileDescription',
+       'SVC Q2: Helos portal-master (Model C boat-dialog, 4 SV areas)')
+    sf(PORTAL_MASTER_HELOS_NPC, 'messageDialogTag', 'tagSVCHelosPortalChat')
+    db._modified.add(PORTAL_MASTER_HELOS_NPC)
+    tags['tagSVCNpcHelosPortalMaster'] = 'Almyros the Wayfarer'
+    tags['tagSVCHelosPortalChat'] = ('I have walked the hidden roads of this '
+        'land, friend. Name where you would go, and I will set you upon the way.')
+    # boat-menu destination labels (one per Action_BoatDialog in the quest)
+    tags['tagSVCHelosToGarden'] = 'The Garden of Merchants'
+    tags['tagSVCHelosToSecret'] = 'The Secret Place'
+    tags['tagSVCHelosToUber'] = 'The Uber Dungeon'
+    tags['tagSVCHelosToSparta'] = 'The Sparta Crypt'
+    print("  Q2 portal-master: portal_master_helos.dbr cloned from the Knossos "
+          "boatman (proven boat-dialog NPC shape); name/chat + 4 destination "
+          "menu tags set")
 
 
 # ── GROUP 4 (build31, overnight run): D13/D14/D20/D21 summon-the-boss souls ──
@@ -9884,6 +9949,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
     _overhaul_generic_souls(db)
     _apply_d8_d9_summon_souls(db, tags)   # D8 Xeiwang + D9 Huo-ren summon-souls (after the overhaul, so the summon rewire wins)
     _create_olympus_rhodes_herald(db, tags)   # Q3: Olympus->Rhodes boat-dialog herald (record path locked with the map lane)
+    _create_helos_portal_master(db, tags)     # Q2 (Group A): Helos portal-master NPC -> 4 SV-area boat destinations (map lane places it)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs

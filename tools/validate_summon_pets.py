@@ -485,6 +485,64 @@ def validate(arz_path, base_path=None, upstream_path=None):
                     problems.append((sev, chain,
                                      f"pet {pet_rec} skill ref <{fname}> does "
                                      f"not resolve (mod or base): {v}"))
+        # i. DAMAGE-SANITY (D21 Long Nu, 2026-07-10): a summon pet must be able
+        # to deal damage - nonzero hand damage OR at least one offensive
+        # (Skill_Attack*) skill in its kit. A pet with zero hand damage and no
+        # attack skill whiffs forever (Will's 'does no damage' class; Long Nu
+        # herself PASSES this - her real defect was the on-attack controller
+        # above - but the gate guards against a future zeroed-damage regression).
+        def _num(nm):
+            v = field(pet_rec, nm)
+            try:
+                return float(v[0]) if v else 0.0
+            except (TypeError, ValueError):
+                return 0.0
+
+        def _skill_class(path):
+            m = resolve_mod(path)
+            if m:
+                c = field(m, 'Class')
+                return str(c[0]) if c else ''
+            if base is not None:
+                bn = _norm(path)
+                if bn in basemap:
+                    for _k, _tf in (base.get_fields(basemap[bn]) or {}).items():
+                        if _k.split('###')[0] == 'Class' and _tf.values:
+                            return str(_tf.values[0])
+            return ''
+
+        hand = max(_num('handHitDamageMin'), _num('handHitDamageMax'))
+        has_offense = False
+        has_kit = False   # any real skill ref at all (buff-totems have a kit)
+        if hand <= 0:
+            for key, tf in (db.get_fields(pet_rec) or {}).items():
+                fname = key.split('###')[0]
+                is_skill = (fname in ('attackSkillName', 'initialSkillName')
+                            or fname.startswith('skillName')
+                            or (fname.startswith('buff') and fname.endswith('SkillName'))
+                            or fname == 'healSkillName'
+                            or (fname.startswith('specialAttack')
+                                and fname.endswith('SkillName')))
+                if not is_skill:
+                    continue
+                for v in (tf.values or []):
+                    if not (isinstance(v, str) and v.lower().endswith('.dbr')):
+                        continue
+                    has_kit = True
+                    if _skill_class(v).startswith('Skill_Attack'):
+                        has_offense = True
+                        break
+                if has_offense:
+                    break
+        # A COMBAT summon that whiffs forever = zero hand damage AND no offensive
+        # skill AND no kit at all (the coordinator's "no skills + zero base
+        # damage" case). Legitimate zero-damage support pets (battle-standard /
+        # ancestral-horn totems) carry a buff kit and are correctly exempt.
+        if hand <= 0 and not has_offense and not has_kit:
+            problems.append((sev, chain,
+                             f"pet {pet_rec} is DAMAGE-DEAD: zero hand damage, no "
+                             f"offensive skill, and no kit at all - an inert pet "
+                             f"that can never act."))
 
     for name in db.record_names():
         low = name.lower()
@@ -505,6 +563,21 @@ def validate(arz_path, base_path=None, upstream_path=None):
         chains += 1
         chain = f"{name} -> {skill}"
         sev = 'WARN' if _norm(skill) in upset else 'FAIL'
+        # MANUAL-CAST LAW (D21 Long Nu, 2026-07-10, live Steam b31): a summon
+        # soul (itemSkillName -> Skill_SpawnPet*) must be a manual pet BUTTON,
+        # never an on-attack proc. An itemSkillAutoController re-casts the summon
+        # on every player hit; with the summon skill's petLimit=1 the pet is
+        # re-summoned/reset each swing and never attacks (Will: 'Long Nu summons
+        # on attack' + 'does no damage' = this one stray field). Mod-authored
+        # chains FAIL; upstream-proven WARN.
+        ac = field(name, 'itemSkillAutoController')
+        if ac and str(ac[0]).strip():
+            problems.append((sev, chain,
+                             f"summon soul carries itemSkillAutoController "
+                             f"'{ac[0]}' - a Skill_SpawnPet grant must be "
+                             f"MANUAL-CAST (no controller). An on-attack summon "
+                             f"re-spawns the pet every hit (petLimit=1) so it "
+                             f"resets before it can attack."))
         # CASTABILITY of the summon skill itself (build29, B-SOUL-PROC-2): a
         # special anim the PC cannot universally play means StartSkill aborts
         # and the pet NEVER spawns, regardless of how complete the pet is.

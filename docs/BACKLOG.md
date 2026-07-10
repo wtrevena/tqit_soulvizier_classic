@@ -1,5 +1,45 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🛠️ **BUILD32 SESSION cont'd (2026-07-10, autonomous DB-lane) - GROUP A + D21 P1:**
+> **D21 LONG NU P1 (Will, live Steam b31 - TWO reports, ONE root cause):** 'her soul
+> summons ON ATTACK instead of like a summon' + 'she does no damage when summoned'.
+> RCA (byte-decoded, arz 6eb3cd6f): her souls are the SV `palai_soul_{n,e,l}`
+> (itemNameTag tagSoulName471), which carried an inherited on-attack proc controller
+> `base_atenemy_onattack`; build31 set itemSkillName=summon_longnu but LEFT the
+> controller, so the game re-cast the summon on EVERY player hit and, with the summon
+> skill's petLimit=1, re-summoned/reset her each swing -> she never landed an attack.
+> The stray controller is the SINGLE cause of BOTH reports. The pet itself is
+> structurally sound (nonzero hand damage 70/110/160, full leveled fire kit
+> firebreath/ringofflame/nova, aggressive controller) - verified field-by-field vs the
+> working bloodtoxeus pet; NOT damage-dead. FIX (apply_svc_patches `_wire_summon_soul`):
+> DELETE any inherited itemSkillAutoController (absent shape, never '' per B-TOXEUS-2) so
+> every summon soul is a manual pet button; no-op for the D8/D9/D13/D14/D20 siblings
+> (verified controller-free). Wiring resolves LIVE (D7 precedent) -> Will's existing Long
+> Nu soul self-heals on the next build. NEW GATES in validate_summon_pets: (1) MANUAL-CAST
+> LAW - a soul whose itemSkillName resolves to Skill_SpawnPet* must have NO
+> itemSkillAutoController (negative-tested: FAILs on the b31 arz's 3 palai souls, PASS
+> post-fix); (2) DAMAGE-SANITY - a summon pet must have nonzero hand damage OR an
+> offensive skill OR a support kit (battle-standard totems correctly exempt).
+> **GROUP A = Q2 HELOS PORTAL-MASTER (map-unblocking):** new NPC record
+> `records\quests\portal_master_helos.dbr` (apply_svc_patches `_create_helos_portal_master`,
+> cloned from knossos_boatmantoegypt = the proven boat-dialog Npc shape, name 'Almyros the
+> Wayfarer') + a 4-destination boat-dialog trigger (build_quest_files `_add_helos_portal_travel`,
+> appended to the always-loaded sv_commonmechanics refire step - registry law, no new
+> registration; ONE trigger, FOUR Action_BoatDialog actions on the one npc, base quest-8
+> precedent). Destinations (world coords from the map lane PORTAL_MASTER list): Garden of
+> Merchants (1173,-39,-4001), The Secret Place (-2396,2,-5790), The Uber Dungeon
+> (-2438,10,-2450), The Sparta Crypt (-5602,-2,-1409). 6 new tags (name/chat + 4 menu labels).
+> **MAP-LANE COUPLING (MAP-REF-1 satisfied):** the record now lands in the arz -> wire
+> `PORTAL_MASTER_SPEC_PENDING` into INJECT_SPECS at startingfarmland06d local
+> (76.50,0.60,189.50) on the next map build. **ARTIFACTS: arz `fbd2c6d1`, Text `6fb34430`
+> (coupled - 6 new tags), Quests `6ff23c29`.** Record-diff vs Group D 6eb3cd6f = 1 ADDED
+> (portal_master_helos) + 3 MODIFIED (palai souls, 1 field each) + 0 REMOVED, 0 collateral.
+> ALL GATES GREEN: summon-pet STRICT 0, render PASS, golden PASS, contracts GATE PASS,
+> validate_tags PASS (100 mod tags resolve), Quests contract PASS (107). PRESERVED the
+> shipped Q1/Q3 Typhon unlock + Olympus herald byte-intact (separate host quest).
+> **REMAINING build32 groups (specs intact below):** B Enslaver, C Vashkarr, E N5 thrown
+> weapons, F N6 obsidian roulette, G N7 wyrm hordes.
+
 > 🛠️ **BUILD32 SESSION (2026-07-10, autonomous DB-lane, Will blanket sign-off) - SHIPPED GROUPS:**
 > STEP 0 det-2x reproducibility of build31-ship VERIFIED (arz `fc393741` + Text `b7251fd7`
 > BOTH reproduce byte-exact from a clean HEAD rebuild, x2 - no process breach).

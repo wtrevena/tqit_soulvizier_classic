@@ -1499,6 +1499,137 @@ def _add_olympus_rhodes_travel(data: bytes) -> bytes:
     return out
 
 
+# ── Q2 (build32, Group A): Helos portal-master -> 4 SV-area boat destinations ─
+# Will chose Model C (boat-dialog NPC) for SV-area travel. This mirrors
+# _add_olympus_rhodes_travel exactly: a single Action_BoatDialog trigger
+# appended to an already-registered, always-loaded host quest. The difference:
+# ONE trigger with FOUR Action_BoatDialog actions (one per SV destination), all
+# on the SAME npc (records\quests\portal_master_helos.dbr, shipped by
+# apply_svc_patches _create_helos_portal_master). Base precedent: quest 8
+# registers Knossos->Rhakotis on ONE boatman via Action_BoatDialog; multiple
+# calls on one npc accumulate destinations on its menu. NO token gate - the SV
+# side-areas are optional and available from the start (Condition_OnLevelLoad
+# fires on every level load and re-registers the four ports idempotently).
+# HOST = sv_commonmechanics.qst (registered idx 96, always loaded), its
+# "never completes / refire" step - the natural home for a standing OnLevelLoad
+# trigger; NO new QUESTS registration (registry law). Field shapes mirror the
+# herald's byte-verified idioms; x/y/z are signed-int world coords (base
+# exemplar decoded: two's-complement negatives). Landing coords come from the
+# map lane's build_section_surgery.py PORTAL_MASTER destination list.
+HELOS_PORTAL_HOST_QUEST = 'sv_commonmechanics.qst'
+HELOS_PORTAL_HOST_STEP = ('Makes it so Quest Never Completes -- '
+                          'Allows for refiring on triggers')
+HELOS_PORTAL_NPC = r'records\quests\portal_master_helos.dbr'
+# (world x, y, z), boat-menu label tag - one per SV side-area destination.
+HELOS_PORTAL_DESTS = [
+    ((1173, -39, -4001), 'tagSVCHelosToGarden'),   # Garden of Merchants (N1 H2 landing)
+    ((-2396, 2, -5790), 'tagSVCHelosToSecret'),    # The Secret Place (A2 S2 landing)
+    ((-2438, 10, -2450), 'tagSVCHelosToUber'),     # Uber Dungeon (SV-native A1 arrival)
+    ((-5602, -2, -1409), 'tagSVCHelosToSparta'),   # Sparta Crypt (hub landing)
+]
+
+
+def _add_helos_portal_travel(data: bytes) -> bytes:
+    """Append the 4-destination Helos portal-master boat-dialog trigger to the
+    sv_commonmechanics refire step. Strictly additive (one trigger triple with
+    four Action_BoatDialog actions; the step's trigger-container max is bumped
+    by 1). Fails loud if the host step is missing, the bytes do not round-trip,
+    or the reference-count deltas do not land exactly."""
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    helos_header = ('block', [
+        ('field', 'displayTag', ('str', 'SVC: Helos Portal-Master - SV Area Travel')),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+    ])
+    helos_conditions = ('block', [
+        ('field', 'conditionCount', ('int', 1)),
+        ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 1)),
+        ]),
+    ])
+
+    def _boatdialog(xyz, tag):
+        x, y, z = xyz
+        return [
+            ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'delayTime', ('int', 0)),
+                ('field', 'npc', ('str', HELOS_PORTAL_NPC)),
+                ('field', 'onOff', ('int', 1)),
+                ('field', 'x', ('int', x & 0xFFFFFFFF)),
+                ('field', 'y', ('int', y & 0xFFFFFFFF)),
+                ('field', 'z', ('int', z & 0xFFFFFFFF)),
+                ('field', 'tag', ('str', tag)),
+            ]),
+        ]
+
+    helos_action_items = [('field', 'actionCount', ('int', len(HELOS_PORTAL_DESTS)))]
+    for xyz, tag in HELOS_PORTAL_DESTS:
+        helos_action_items.extend(_boatdialog(xyz, tag))
+    helos_actions = ('block', helos_action_items)
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = [i for i, it in enumerate(steps_container) if it[0] == 'block']
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched = 0
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        if field_val(stepdef, 'name') != HELOS_PORTAL_HOST_STEP:
+            continue
+        trigcont = list(steps_container[trigcont_pos][1])
+        bumped = False
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 1))
+                bumped = True
+                break
+        if not bumped:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: host step has no '
+                             f'trigger max')
+        trigcont.extend([helos_header, helos_conditions, helos_actions])
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched += 1
+
+    if patched != 1:
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: expected to patch exactly 1 step '
+            f'({HELOS_PORTAL_HOST_STEP!r}), patched {patched}. Upstream '
+            f'changed; review before shipping.')
+
+    out = qst_format.serialize(tree)
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: patched quest does not '
+                         f'round-trip stably')
+    low = out.replace(b'/', b'\\').lower()
+    low_in = data.replace(b'/', b'\\').lower()
+
+    def _delta(needle):
+        nd = needle.replace('/', '\\').lower().encode()
+        return low.count(nd) - low_in.count(nd)
+    if _delta(HELOS_PORTAL_NPC) != len(HELOS_PORTAL_DESTS):
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: portal-master NPC '
+                         f'reference count must increase by exactly '
+                         f'{len(HELOS_PORTAL_DESTS)} (one per destination)')
+    for _xyz, tag in HELOS_PORTAL_DESTS:
+        if _delta(tag) != 1:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: destination tag '
+                             f'{tag} reference count must increase by exactly 1')
+    return out
+
+
 # ── Q4 (build31, dead-content audit Lane D): surgical quest-ref fixes ────────
 # All three are string-value edits inside otherwise byte-faithful quests; each
 # helper walks the parse tree, replaces exactly the expected count of values,
@@ -1723,6 +1854,20 @@ def main():
     arc.set_file(TYPHON_HOST_QUEST, patched2)
     print(f'Q3: instant Typhon-kill unlock + Olympus herald boat-dialog '
           f'appended ({len(patched)} -> {len(patched2)} bytes)')
+
+    # Q2 (Group A): Helos portal-master 4-destination boat-dialog appended to
+    # the always-loaded sv_commonmechanics refire step (registry law: no new
+    # registration). PORTALS is empty (blood-cave walk-in), so this quest is the
+    # clean SVAERA original here; if PORTALS is ever restored it replaces this
+    # quest and the loud step-not-found failure is the correct signal to review.
+    raw_cm = arc.get_file(HELOS_PORTAL_HOST_QUEST)
+    if raw_cm is None:
+        raise SystemExit(f'Q2: host quest missing: {HELOS_PORTAL_HOST_QUEST}')
+    patched_cm = _add_helos_portal_travel(raw_cm)
+    arc.set_file(HELOS_PORTAL_HOST_QUEST, patched_cm)
+    print(f'Q2: Helos portal-master {len(HELOS_PORTAL_DESTS)}-destination '
+          f'boat-dialog appended to {HELOS_PORTAL_HOST_QUEST} '
+          f'({len(raw_cm)} -> {len(patched_cm)} bytes)')
 
     # Q4-3: chimera chest double-extension retarget (arz records renamed by
     # fix_chimera_chest_double_ext in build_svc_database.py, same wave).
