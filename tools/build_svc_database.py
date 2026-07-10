@@ -1227,6 +1227,235 @@ def _port_pc_anim_tokens(db: ArzDatabase, base_db: ArzDatabase):
     return ported, skipped
 
 
+def apply_mastery_wave1_boosts(db: ArzDatabase):
+    """MASTERY WAVE 1 boosts: Defense / Earth / Storm
+    (docs/MASTERY_AUDIT_2026-07-09.md section 3 Wave 1; Will approved all
+    [WILL] items at the recommended numbers, 2026-07-09; executed under the
+    overnight autonomous directive). Field edits + added ladders only - zero
+    removals (the standing mastery law). Earth item 6 uses the VERIFIED base
+    resist-shred field family offensiveTotalResistanceReductionPercentMin
+    (47 base-record precedent; per-element fire fields have ZERO base values
+    = zero-precedent shape, avoided)."""
+    print("\n=== MASTERY WAVE 1: Defense/Earth/Storm boosts ===")
+
+    def arr(rec, f):
+        v = db.get_field_value(rec, f)
+        if v is None:
+            return None
+        return list(v) if isinstance(v, list) else [v]
+
+    def expect(cond, msg):
+        if not cond:
+            raise SystemExit(f"Mastery W1 boosts: {msg} - spec drift, reconcile")
+
+    def ramp(lo, hi, n):
+        if n <= 1:
+            return [float(hi)]
+        return [lo + (hi - lo) * i / (n - 1) for i in range(n)]
+
+    # ---- DEFENSE ----------------------------------------------------------
+    B = r'records\skills\defensive\drxbatter.dbr'
+    v = arr(B, 'offensivePhysicalModifier')
+    expect(v and abs(v[0] - 3.0) < 0.01 and abs(max(v) - 25.0) < 0.01,
+           f"drxbatter offensivePhysicalModifier anchors {v and v[:1]}..{v and max(v)} != 3..25")
+    ml = arr(B, 'skillMaxLevel'); ul = arr(B, 'skillUltimateLevel')
+    m = int(ml[0]) if ml else 8
+    u = int(ul[0]) if ul and int(ul[0]) > 0 else len(v)
+    n = max(len(v), u)
+    new = ramp(6.0, 40.0, min(m, n))
+    if n > m:
+        new += ramp(new[-1], 55.0, n - m + 1)[1:]
+    db.set_field(B, 'offensivePhysicalModifier', [round(x, 1) for x in new])
+    mc = arr(B, 'skillManaCost')
+    expect(mc and abs(mc[0] - 18.0) < 0.01, f"drxbatter skillManaCost[0] {mc and mc[0]} != 18")
+    db.set_field(B, 'skillManaCost', [max(1.0, round(x - 6.0, 1)) for x in mc])
+    print(f"  DEF drxbatter: physMod 3..25 -> 6..55 (len {n}); manaCost -6/lvl")
+
+    SC = r'records\skills\defensive\drxshieldcharge.dbr'
+    expect(arr(SC, 'offensivePhysicalModifier') in (None, [0.0]),
+           "drxshieldcharge already has a physical modifier ladder")
+    scu = arr(SC, 'skillUltimateLevel'); scn = int(scu[0]) if scu else 12
+    db.set_field(SC, 'offensivePhysicalModifier',
+                 [round(x, 1) for x in ramp(15.0, 80.0, scn)])
+    print(f"  DEF drxshieldcharge: +offensivePhysicalModifier 15..80 (len {scn})")
+
+    H = r'records\skills\defensive\drxheave.dbr'
+    expect(arr(H, 'offensivePercentCurrentLifeMin') in (None, [0.0]),
+           "drxheave already has an execute ladder")
+    hu = arr(H, 'skillUltimateLevel'); hn = int(hu[0]) if hu else 12
+    hv = [1.0, 1.6, 2.2, 2.8, 3.4, 4.0, 4.4, 4.7, 4.9, 5.0, 5.0, 5.0]
+    hv = (hv + [5.0] * hn)[:max(hn, len(hv))]
+    db.set_field(H, 'offensivePercentCurrentLifeMin', hv)
+    print(f"  DEF drxheave: +offensivePercentCurrentLifeMin 1..5%% (len {len(hv)})")
+
+    CF = r'records\skills\defensive\drxcolossusform.dbr'
+    cd = arr(CF, 'skillCooldownTime')
+    expect(cd and abs(cd[0] - 360.0) < 0.01, f"colossus cd {cd} != 360")
+    db.set_field(CF, 'skillCooldownTime', 180.0)
+    sp = arr(CF, 'characterTotalSpeedModifier')
+    expect(sp and abs(sp[0] - (-30.0)) < 0.01, f"colossus speed {sp} != -30")
+    db.set_field(CF, 'characterTotalSpeedModifier', -15.0)
+    ab = arr(CF, 'damageAbsorptionPercent')
+    if ab and abs(max(ab) - 35.0) < 0.01:
+        db.set_field(CF, 'damageAbsorptionPercent',
+                     [round(x * 50.0 / 35.0, 1) for x in ab])
+        print("  DEF drxcolossusform: cd 360->180, speed -30->-15, absorb x50/35")
+    else:
+        print(f"  DEF drxcolossusform: cd 360->180, speed -30->-15 "
+              f"(absorb {ab} != 35 anchor; left)")
+
+    DM = r'records\skills\defensive\drxdefensivemastery.dbr'
+    er = arr(DM, 'defensiveElementalResistance')
+    expect(er and len(er) > 40 and max(er[:40]) == 0.0,
+           f"defensivemastery elemRes head not zeroed (len {er and len(er)})")
+    db.set_field(DM, 'defensiveElementalResistance',
+                 [round(0.2 * (i + 1), 1) for i in range(40)] + er[40:])
+    print(f"  DEF drxdefensivemastery: elemRes ML1-40 0 -> 0.2/lvl (8%% @40); "
+          f"tail {len(er) - 40} entries kept")
+
+    RA = r'records\skills\defensive\drxbatter_rendarmor.dbr'
+    rv = arr(RA, 'offensiveSlowDefensiveReductionMin')
+    # stored POSITIVE (the tooltip renders the sign); the audit wrote -115.
+    expect(rv and abs(max(rv) - 115.0) < 0.01,
+           f"rendarmor ult {rv and max(rv)} != 115")
+    db.set_field(RA, 'offensiveSlowDefensiveReductionMin',
+                 [round(x * 160.0 / 115.0, 1) for x in rv])
+    du = arr(RA, 'offensiveSlowDefensiveReductionDurationMin')
+    if du and abs(du[0] - 5.0) < 0.01:
+        db.set_field(RA, 'offensiveSlowDefensiveReductionDurationMin',
+                     [6.0] * len(du))
+        print("  DEF rendarmor: armor-amp x160/115 + duration 5->6s")
+    else:
+        print(f"  DEF rendarmor: armor-amp x160/115 (duration {du} != 5; left)")
+
+    HC = r'records\skills\defensive\drxheave_cleave.dbr'
+    expect(arr(HC, 'offensiveSlowBleedingMin') in (None, [0.0]),
+           "heave_cleave already has base bleed")
+    hcu = arr(HC, 'skillUltimateLevel'); hcn = int(hcu[0]) if hcu else 12
+    db.set_field(HC, 'offensiveSlowBleedingMin',
+                 [round(x, 1) for x in ramp(30.0, 120.0, hcn)])
+    db.set_field(HC, 'offensiveSlowBleedingDurationMin', 3.0)
+    print(f"  DEF heave_cleave: +bleed 30..120 over 3s (len {hcn}; its +245%% "
+          f"amp finally has a base)")
+
+    # ---- EARTH ------------------------------------------------------------
+    MT = r'records\skills\earth\drxmeteor.dbr'
+    mcd = arr(MT, 'skillCooldownTime')
+    expect(mcd and abs(mcd[0] - 360.0) < 0.01, f"meteor cd {mcd} != 360")
+    db.set_field(MT, 'skillCooldownTime', 60.0)
+    VO = r'records\skills\earth\drxvolcanicorb.dbr'
+    vcd = arr(VO, 'skillCooldownTime')
+    expect(vcd and abs(vcd[0] - 4.0) < 0.01, f"volcanicorb cd {vcd} != 4")
+    db.set_field(VO, 'skillCooldownTime', 1.5)
+    print("  EARTH: Meteor cd 360->60; Volcanic Orb cd 4->1.5")
+
+    EM = r'records\skills\earth\drxearthmastery.dbr'
+    mn = arr(EM, 'characterMana')
+    expect(mn and abs(mn[0] - 8.0) < 0.01 and abs(mn[39] - 320.0) < 0.01,
+           f"earthmastery mana anchors {mn and (mn[0], mn[39])} != (8, 320)")
+    db.set_field(EM, 'characterMana',
+                 [float(12 * (i + 1)) for i in range(40)] + mn[40:])
+    expect(arr(EM, 'characterSpellCastSpeed') in (None, [0.0]),
+           "earthmastery already grants cast speed")
+    db.set_field(EM, 'characterSpellCastSpeed',
+                 [round(0.5 * (i + 1), 1) for i in range(40)])
+    db.set_field(EM, 'characterRunSpeed',
+                 [round(0.3 * (i + 1), 1) for i in range(40)])
+    print("  EARTH drxearthmastery: mana 8..320 -> 12..480; +castSpeed 0..20%; "
+          "+runSpeed 0..12% (ML1-40)")
+
+    ML = r'records\skills\earth\drxeruption_moltenlava.dbr'
+    expect(arr(ML, 'offensiveTotalResistanceReductionPercentMin') in (None, [0.0]),
+           "moltenlava already has resist shred")
+    mlu = arr(ML, 'skillUltimateLevel'); mln = int(mlu[0]) if mlu else 12
+    db.set_field(ML, 'offensiveTotalResistanceReductionPercentMin',
+                 [round(x, 1) for x in ramp(25.0, 40.0, mln)])
+    db.set_field(ML, 'offensiveTotalResistanceReductionPercentDurationMin', 3.0)
+    print(f"  EARTH eruption_moltenlava: +total-resist shred 25..40%% over 3s "
+          f"(len {mln}; verified base field family, 47-record precedent)")
+
+    # hygiene: dangling SandBox FX + Wildfire sounds (clear = absent, never '')
+    for rec, flds in [
+        (r'records\skills\earth\drxvolcanicorb.dbr',
+         ('particleEffectName2', 'particleEffectName3')),
+        (r'records\skills\earth\drxflamesurge.dbr',
+         ('particleEffectName2', 'particleEffectName3')),
+        (r'records\effects\earth\eruption_aeprojectile.dbr',
+         ('projectileHitSound', 'projectileSwipeSound')),
+    ]:
+        ff = db.get_fields(rec) or {}
+        for k, tf in ff.items():
+            if k.split('###')[0] in flds and tf.values \
+                    and any('sandbox' in str(x).lower() or 'wildfire' in str(x).lower()
+                            for x in tf.values):
+                tf.values = []
+                db._modified.add(rec)
+    print("  EARTH hygiene: dangling SandBox FX / Wildfire sound refs cleared")
+
+    # ---- STORM ------------------------------------------------------------
+    SM = r'records\skills\storm\drxstormmastery.dbr'
+    lf = arr(SM, 'characterLife')
+    expect(lf and len(lf) >= 40 and abs(lf[39] - 680.0) < 0.5,
+           f"stormmastery life ML40 {lf and lf[39:40]} != 680")
+    db.set_field(SM, 'characterLife',
+                 [round(22.5 * (i + 1), 1) for i in range(40)] + lf[40:])
+    print("  STORM drxstormmastery: life 17/lvl -> 22.5/lvl (ML40 680 -> 900)")
+
+    # wisp ladder: edit the ladder the summon actually spawns
+    WS = r'records\skills\storm\drxstormwispsummoning.dbr'
+    so = arr(WS, 'spawnObjects')
+    expect(so, "stormwispsummoning has no spawnObjects")
+    wisp_paths = [str(p) for p in so if 'stormwisp_' in str(p).lower()]
+    expect(wisp_paths, f"no stormwisp entries in spawnObjects: {so}")
+    namemap = {nn.replace('/', '\\').lower(): nn for nn in db.record_names()}
+    edited = 0
+    for wp in wisp_paths:
+        rec = namemap.get(wp.replace('/', '\\').lower())
+        expect(rec, f"wisp record does not resolve: {wp}")
+        t = int(rec.rsplit('_', 1)[-1].split('.')[0])
+        db.set_field(rec, 'characterLife', float(240 + 50 * (t - 1)))
+        edited += 1
+    print(f"  STORM wisps: characterLife -> 240 + 50/tier on {edited} tier(s) "
+          f"(ult ~{240 + 50 * 19}, kept < Shadow Stalker ~1440)")
+
+    # wisp resist passive: pet-safe Skill_Passive clone wired into a free slot
+    donor = (r'records\skills\spirit\drxpet\drxpet_skills'
+             r'\bonepet_passive_attributes.dbr')
+    newp = r'records\skills\storm\pet\stormwisp_resists_passive.dbr'
+    expect(db.has_record(donor), f"passive donor missing: {donor}")
+    if not db.has_record(newp):
+        db.clone_record(donor, newp)
+    for f_, val in [('characterLife', 0.0), ('characterLifeModifier', 0.0),
+                    ('defensiveFreeze', 35.0), ('defensiveStun', 35.0),
+                    ('defensiveFire', 35.0), ('defensiveLightning', 35.0),
+                    ('defensiveCold', 35.0)]:
+        db.set_field(newp, f_, val)
+    db._modified.add(newp)
+    wired = 0
+    for wp in wisp_paths:
+        rec = namemap[wp.replace('/', '\\').lower()]
+        for slot in range(1, 17):
+            if not arr(rec, f'skillName{slot}'):
+                db.set_field(rec, f'skillName{slot}', newp)
+                db.set_field(rec, f'skillLevel{slot}', 1)
+                wired += 1
+                break
+    print(f"  STORM wisps: +resist passive (35%% freeze/stun/fire/lightning/"
+          f"cold) wired into a free skill slot on {wired} tier(s)")
+
+    EB = r'records\skills\storm\drxstormwisp_petskill_eyeofthestormbuff.dbr'
+    expect(arr(EB, 'characterRunSpeedModifier') in (None, [0.0]),
+           "eyeofthestorm already grants run speed")
+    db.set_field(EB, 'characterRunSpeedModifier', 12.0)
+    print("  STORM eye-of-the-storm aura: +12%% run speed (party-wide)")
+
+    fxv = arr(WS, 'targetFxPakName')
+    if fxv and str(fxv[0]).startswith('Records\\Effects\\PetFX\\ '):
+        db.set_field(WS, 'targetFxPakName', str(fxv[0]).replace('\\ ', '\\'))
+        print("  STORM hygiene: wisp summon targetFxPakName leading space fixed")
+    print("  Mastery Wave 1 boosts applied (Defense 7, Earth 5+hyg, Storm 5)")
+
+
 def fix_broken_mastery_skills(db: ArzDatabase):
     """Fix broken mastery skills across ALL skill trees.
 
@@ -1882,6 +2111,8 @@ def main():
     # MASTERY WAVE 1 (build31): the six broken-class fixes B1-B6 + hygiene.
     # Needs base_db for the B6 anim-table restoration.
     apply_mastery_wave1_broken_fixes(db, base_db)
+    # MASTERY WAVE 1 boosts (Group 2): Defense/Earth/Storm per the audit doc.
+    apply_mastery_wave1_boosts(db)
 
     promote_uber_monsters(db)
 
