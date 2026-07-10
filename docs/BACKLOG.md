@@ -385,15 +385,61 @@ apply_svc_patches _fix_wave29_contract_items:
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
 ### BUILD31 DB WAVE QUEUE (Will via coordinator, 2026-07-09; batch as one wave)
-Train contents (commit-group order per coordinator 2026-07-09): (1) MASTERY WAVE 1 broken fixes
-B1-B6 + the new player-skill-anim gate, (2) Mastery Wave 1 Defense/Earth/Storm boosts, (3) D11 +
-D12 + D15, (4) D13 + D14, (5) Enslaver (approved), (6) N4-DB Vashkarr, (7) N2 Typhon portal
-visual ONLY IF the map lane's M8 report says the DB-side change still applies (ask coordinator
-first). Mastery specs = docs/MASTERY_AUDIT_2026-07-09.md (§2 broken fixes, §3 Wave 1; the
-no-removal standing rule in its header is BINDING). Broken player skills outrank feature items.
+Train contents (commit-group order per coordinator 2026-07-09): (0) Q1 Typhon->Rhodes portal
+unlock (URGENT, Quests.arc lane - IMPLEMENTED, see below), (1) MASTERY WAVE 1 broken fixes
+B1-B6 + the new player-skill-anim gate (IN FLIGHT - code written, build pending), (2) Mastery
+Wave 1 Defense/Earth/Storm boosts + D16 Shadow Stalker + D17 Core Dweller, (3) D11 + D12 + D15,
+(4) D13 + D14, (5) Enslaver (approved), (6) N4-DB Vashkarr, (7) Q2 portal-master NPC
+(arz + Quests + Text coupled). N2 Typhon-gate mesh swap = CANCELLED (Will chose the
+portal-master model C; existing walk-through portals stay transitionally, retire in phase 2).
+Mastery specs = docs/MASTERY_AUDIT_2026-07-09.md (§2 broken fixes, §3 Wave 1; the no-removal
+standing rule in its header is BINDING). Broken player skills outrank feature items.
 Each group: gates + bucketed record-diff + commit; whole set -> independent delta-vet before
 ship (coordinator dispatches); DEV-deploy for Will after major groups is fine (local only).
 Will's standing ruling: only convert summon-souls he EXPLICITLY names.
+
+- **Q1 IMPLEMENTED (2026-07-09): Olympus -> Rhodes portal unlock.** M7 RCA: the portal record
+  (xq00_olympus_portaltorhodes, FixedItemTeleport locked=1 'Opened by Zeus after Typhon
+  Killed') is unlocked by an engine-internal campaign hook that never fires in Custom Quest;
+  no quest references it. FIX (tools/build_quest_files.py _add_typhon_rhodes_unlock): ONE
+  trigger appended to the vanilla controller 'quest that controls bosses and their doors.qst'
+  (already in-arc + registered + never completes + already evaluates this exact token):
+  OnLevelLoad + OwnsTriggerToken('Olympus - Typhon Defeated') -> Action_UnlockFixedItem
+  (canReFire=1; field shapes mirror the HOST file's own byte-verified idioms - no
+  isQuestCritical2, no delayTime). Repeat-on-load = idempotent + retroactive for existing
+  token-holders (Will's main). Rebuilt Quests.arc 631a2b4d; entry-diff vs shipped 846c43f3 =
+  EXACTLY the host quest; quest-record contract PASS (107 records). DEV deploy in flight
+  (file was game-locked; background retry armed). Will's test: load main at Olympus -> summit
+  portal unlocks -> click -> Rhodes. FALLBACK if the engine dest doesn't resolve in the custom
+  map: boat-dialog NPC at the summit (coordinate via the coordinator).
+- **Q2 QUEUED: PORTAL-MASTER NPC for SV-area travel (Will chose model C; map lane M8b has the
+  mechanism analysis).** DB+Quests+Text triple: (a) friendly quest-NPC record (base boatman
+  class pattern, render-safe mesh per D5 law, amgoz1-voice name e.g. 'Almyros the Wayfarer' +
+  'Portal Master' title tag); (b) boat-dialog quest offering the 4 SV destinations (Garden of
+  Merchants / Secret Place / Uber Dungeon / Sparta Crypt), each -> Action_BoatDialog teleport
+  to landing coords from the map lane (coordinate); QUESTS REGISTRY LAW: events append to an
+  already-registered loaded quest (sv_commonmechanics = natural host), NO new registrations;
+  verify action shapes against base boatman quests (quest 8 to-egypt, quest 7 knossos) via
+  qst_format; (c) confirmation-dialog text tags (validate_tags). All three artifacts couple;
+  map lane places the NPC after the record lands. Old boat-dialog failure predated B2 (quests
+  now load); pilot walk-test proves it.
+- **D16 QUEUED (Will, verbatim: the swap skill 'is basically suicide... make him stronger,
+  much stronger'): SHADOW STALKER OVERHAUL - EXPLICIT OCCULT-FREEZE EXCEPTION.** (1) find the
+  Stalker's position-swap first ability (teleport-exchange into packs) in the Occult pet kit
+  and REMOVE it from the PET kit (Will explicitly sanctioned; pet skill slot, not a player
+  tree slot - the no-remove mastery law does not bind; substitute a better skill if one fits,
+  report the choice); (2) substantially buff the pet ladder (life/damage/resists/speed, all
+  tiers; benchmark = mastery-audit Part II, Stalker ~1440 HP reference; aggressive per Will);
+  (3) validate_mastery_golden WILL fire: regenerate the golden baseline for EXACTLY the
+  changed records/fields, commit documents the Will-ordered exception verbatim; gate keeps
+  guarding all other Occult records. Pets spawn fresh per cast = retroactive for existing
+  characters.
+- **D17 QUEUED (Will: 'make the volcano guy much stronger in earth mastery'): CORE DWELLER.**
+  The Earth magma golem (audit: 781/1940/2250 HP, STR 425, taunt+boulder+stonehand+wildfire).
+  Buff substantially ON TOP of the Wave 1 Earth boosts: ~1.5-2x life, meaningful damage
+  scaling, armor up, keep the taunt identity (Earth's ONLY pet vs Occult's 5-body package).
+  Report before/after ladders. (Reading note: 'volcano guy' = the golem; if Will meant
+  Volcanic Orb, the Wave 1 cd 4->1.5 boost already covers it - flagged in the report.)
 
 ### BUILD32 TRAIN (queued 2026-07-09; implement AFTER build31 ships)
 - **N6-DB: Obsidian Halls treasure roulette - WILL SIGNED OFF (2026-07-09).** Full approved

@@ -1302,6 +1302,132 @@ def _build_area_quests() -> dict:
     return out
 
 
+# ── Q1 (build31, Will campaign blocker): Olympus -> Rhodes portal unlock ─────
+# The Olympus summit portal (OlympusFinal02 instance [41] =
+# records\xpack\quests\objects\xq00_olympus_portaltorhodes.dbr, FixedItemTeleport,
+# locked=1, staticPortal=1, "Opened by Zeus after Typhon Killed") is unlocked in
+# the base CAMPAIGN by an engine-internal hook that does NOT fire in a Custom
+# Quest - no quest anywhere references the record (M7 RCA, verified across all 6
+# quest arcs), so in the mod the portal has NEVER opened and Act 4 travel from
+# Olympus was dead.
+#
+# THE FIX: append ONE trigger to the vanilla boss-door controller
+# 'quest that controls bosses and their doors.qst' (ALREADY inside SVAERA's
+# Quests.arc + registered in the map's QUESTS window; the controller never
+# completes - its last step exists to keep it refiring - and it ALREADY
+# evaluates the exact token in its Typhon repeat-loot trigger, proving the
+# context is live):
+#   Condition_OnLevelLoad + Condition_OwnsTriggerToken('Olympus - Typhon
+#   Defeated')  ->  Action_UnlockFixedItem(xq00_olympus_portaltorhodes,
+#   canReFire=1)
+# Repeat-on-load + canReFire=1 makes the unlock idempotent and RETROACTIVE:
+# an existing character who already holds the token (quest 15 grants it on the
+# kill, byte-identical base-vs-mod) gets the portal unlocked on next load.
+# Every field layout below mirrors THIS quest's own byte-verified shapes: the
+# condition blocks carry isQuestCritical but NOT isQuestCritical2 (older file
+# format), and this file's Action_UnlockFixedItem carries NO delayTime field
+# (unlike the x4 controller's) - copy the host file, never another file.
+TYPHON_HOST_QUEST = 'quest that controls bosses and their doors.qst'
+TYPHON_HOST_STEP = 'BOSS: Change the Loot Drops From Telkines & Typhon on Repeat Battles'
+TYPHON_TOKEN = 'Olympus - Typhon Defeated'
+RHODES_PORTAL = r'records\xpack\quests\objects\xq00_olympus_portaltorhodes.dbr'
+
+
+def _add_typhon_rhodes_unlock(data: bytes) -> bytes:
+    """Append the Rhodes-portal unlock trigger to the Typhon repeat-loot step.
+
+    Strictly additive (one trigger triple; the step's trigger-container max is
+    incremented). Fails loud if the host step is missing, if the emitted bytes
+    do not round-trip, or if the addition is not exactly one unlock action.
+    """
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    header = ('block', [
+        ('field', 'displayTag', ('str', 'SVC: Unlock Olympus Portal To Rhodes')),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+    ])
+    conditions = ('block', [
+        ('field', 'conditionCount', ('int', 2)),
+        ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 1)),
+        ]),
+        ('field', 'conditionClassName', ('str', 'Condition_OwnsTriggerToken')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 1)),
+            ('field', 'tokenName', ('str', TYPHON_TOKEN)),
+        ]),
+    ])
+    actions = ('block', [
+        ('field', 'actionCount', ('int', 1)),
+        ('field', 'actionClassName', ('str', 'Action_UnlockFixedItem')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'fixedItem', ('str', RHODES_PORTAL)),
+            ('field', 'canReFire', ('int', 1)),
+        ]),
+    ])
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = [i for i, it in enumerate(steps_container) if it[0] == 'block']
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched = 0
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        if field_val(stepdef, 'name') != TYPHON_HOST_STEP:
+            continue
+        trigcont = list(steps_container[trigcont_pos][1])
+        bumped = False
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 1))
+                bumped = True
+                break
+        if not bumped:
+            raise ValueError(f'{TYPHON_HOST_QUEST}: host step has no trigger max')
+        trigcont.extend([header, conditions, actions])
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched += 1
+
+    if patched != 1:
+        raise ValueError(
+            f'{TYPHON_HOST_QUEST}: expected to patch exactly 1 step '
+            f'({TYPHON_HOST_STEP!r}), patched {patched}. Upstream changed; '
+            f'review before shipping.')
+
+    out = qst_format.serialize(tree)
+    reparsed = qst_format.parse(out)
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: patched quest does not '
+                         f'round-trip stably')
+    # exactly one new unlock action pointing at the portal (qst strings are
+    # 8-bit, so byte-level search is exact)
+    hits = out.replace(b'/', b'\\').lower().count(
+        RHODES_PORTAL.replace('/', '\\').lower().encode())
+    if hits != 1:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: expected exactly 1 reference '
+                         f'to the Rhodes portal after the patch, found {hits}')
+    tok = TYPHON_TOKEN.encode()
+    if out.count(tok) != data.count(tok) + 1:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: token reference count did not '
+                         f'increase by exactly 1')
+    return out
+
+
 def main():
     # Start from SVAERA's original Quests.arc (clean)
     svaera_quests = Path(r'reference_mods\SVAERA_customquest\Resources\Quests.arc')
@@ -1332,6 +1458,18 @@ def main():
     else:
         print('No portals defined (blood-cave walk-in) - leaving clean '
               'sv_commonmechanics.qst untouched.')
+
+    # Q1 (build31): unlock the Olympus -> Rhodes portal for Typhon-slayers.
+    # The host quest is an EXISTING SVAERA-arc entry, so this is a set_file
+    # (in-place replacement), not an add.
+    raw = arc.get_file(TYPHON_HOST_QUEST)
+    if raw is None:
+        raise SystemExit(f'Q1: host quest missing from Quests.arc: '
+                         f'{TYPHON_HOST_QUEST}')
+    patched = _add_typhon_rhodes_unlock(raw)
+    arc.set_file(TYPHON_HOST_QUEST, patched)
+    print(f'Q1: Typhon->Rhodes portal unlock appended to {TYPHON_HOST_QUEST} '
+          f'({len(raw)} -> {len(patched)} bytes)')
 
     # Add the Soulvizier AREA questlines at the archive root, ALONGSIDE the portal
     # quest (never replacing it). Their names are already registered in the map's
