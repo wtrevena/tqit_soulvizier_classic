@@ -1,5 +1,25 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🌙 **BUILD31 OVERNIGHT RUN (2026-07-10, autonomous per Will) - SHIPPED GROUPS:**
+> Group1 mastery fixes B1-B6 (06a9a24a) -> D19 immobile-summon fix + PET-MOBILITY gate
+> (95e816d3) -> Q3 instant Rhodes unlock + token path + herald NPC (arz bd6ae869 / Quests
+> 3db3764c) -> Q4 bossarena/widowletter/chimera (Quests 20ff9f30, arz 754c3279) -> M15 Toxeus
+> group-joins (7a59919f) -> Group2 Def/Earth/Storm boosts (3c065e70) -> Group3 D11/D12/D15/
+> D16/D17/D18 (arz 3656a83f + Text b622d0d7) -> Group4 D13/D14/D20/D21 summon souls
+> (**FINAL arz 0de2ce56 + Text b622d0d7 + Quests 20ff9f30**). Every group: gates + bucketed
+> record-diff + commit + DEV deploy. **DEFERRED to the next session (specs intact below):**
+> Group5 Q2 Helos portal-master (herald pattern proven by Q3; M8 dest table in
+> build_section_surgery), Group6 Enslaver, Group7 Vashkarr, N5 thrown weapons + N6 roulette +
+> N7 wyrm hordes + Mastery Wave 2 (build32). ⚠️ N5/N7 design agent output files
+> (tasks/ab8a4644fa12b0169.output, tasks/a4e3cbf48ea86eff4.output) were EMPTY (0 bytes) when
+> forwarded - coordinator must re-send the full design texts before implementation (the
+> coordinator-locked decision summaries are in the train queue entries below).
+> **MAP-LANE COUPLINGS OUTSTANDING:** (1) Q3 herald placement: wire
+> OLYMPUS_RHODES_NPC_SPEC_PENDING into INJECT_SPECS (record records\quests> portal_master_olympus.dbr is IN the arz now); (2) M15: repoint the parchment demon_01_cluster
+> instance to demon_01_cluster_toxeus50.dbr + REMOVE both standalone q_bloodtoxeus proxies
+> (drxBC2 + parchment) or double-spawns return; (3) Q4 testquesttoopendoors deregistration.
+
+
 > This is the authoritative running list of everything still broken or unfinished.
 > Ordered roughly by priority. Each item: symptom (what Will saw) → likely cause →
 > fix approach → which lane/files. Read docs/HANDOFF_LIVE_STATE.md first for deploy state,
