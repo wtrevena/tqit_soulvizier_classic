@@ -203,6 +203,56 @@ def remove_dead_orphan_records(db: ArzDatabase):
     return removed
 
 
+def fix_chimera_chest_double_ext(db: ArzDatabase):
+    """Q4-3 (build31, dead-content audit Lane D): SV ships the Chimera boss
+    chests with double '.dbr.dbr' record names. Two defects, one rename:
+    - bosschest13_chimera_epic.dbr.dbr -> .dbr (+ rewrite the accessory pool's
+      fixedItemName1, which carried the same typo - self-consistent but wrong);
+    - repeatbosschest13_chimera_epic.dbr.dbr -> .dbr: the epic REPEAT pool's
+      fixedItemName1 already points at the single-ext name, i.e. a DANGLING
+      ref today - the rename makes the epic repeat chest spawnable at all.
+    The quest condition is retargeted in the same wave by
+    tools/build_quest_files.py (_fix_chimera_chest_typo). Coordinated ship.
+    """
+    print("\n=== Patch 0c: Chimera chest double-extension rename (Q4-3) ===")
+    renames = [
+        (r'records\item\containers\boss\bosschest13_chimera_epic.dbr.dbr',
+         r'records\item\containers\boss\bosschest13_chimera_epic.dbr'),
+        (r'records\item\containers\boss\repeatbosschest13_chimera_epic.dbr.dbr',
+         r'records\item\containers\boss\repeatbosschest13_chimera_epic.dbr'),
+    ]
+    namemap = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+    for old, new in renames:
+        rec = namemap.get(old.lower())
+        if rec is None:
+            raise SystemExit(f"Q4-3: expected double-ext record missing: {old}")
+        if namemap.get(new.lower()):
+            raise SystemExit(f"Q4-3: rename target already exists: {new}")
+        db.clone_record(rec, new)
+        del db._raw_records[rec]
+        db._record_types.pop(rec, None)
+        db._record_timestamps.pop(rec, None)
+        db._decoded_cache.pop(rec, None)
+        db._modified.discard(rec)
+        db._modified.add(new)
+        print(f"  renamed {rec} -> {new}")
+    # rewrite the one in-arz field ref that carried the typo (the epic pool)
+    pool = namemap.get(r'records\item\containers\boss\accessorypools'
+                       r'\bosschestpool13_chimera_epic.dbr'.lower())
+    if pool is None:
+        raise SystemExit("Q4-3: bosschestpool13_chimera_epic.dbr missing")
+    cur = db.get_field_value(pool, 'fixedItemName1')
+    cur0 = cur[0] if isinstance(cur, list) else cur
+    if not (isinstance(cur0, str) and cur0.lower().endswith('.dbr.dbr')):
+        raise SystemExit(f"Q4-3: pool fixedItemName1 unexpectedly {cur0!r} "
+                         f"(expected the .dbr.dbr typo) - reconcile")
+    db.set_field(pool, 'fixedItemName1',
+                 r'records\item\containers\boss\bosschest13_chimera_epic.dbr')
+    db._modified.add(pool)
+    print("  rewrote bosschestpool13_chimera_epic.fixedItemName1 -> single .dbr")
+    return len(renames)
+
+
 def restore_potion_drops(db098: ArzDatabase, db09: ArzDatabase):
     """Restore zeroed potion drop weights from SV 0.9 into 0.98i."""
     print("\n=== Patch 1: Restore potion drop rates ===")
@@ -1811,6 +1861,7 @@ def main():
 
     strip_ui_overrides(db)
     remove_dead_orphan_records(db)   # P3 hygiene: drop the corrupted potionexp_test orphan
+    fix_chimera_chest_double_ext(db)  # Q4-3: .dbr.dbr rename (quest retargeted same wave)
     restore_potion_drops(db, db09)
     wire_souls_to_monsters(db)
     make_enchantable(db)

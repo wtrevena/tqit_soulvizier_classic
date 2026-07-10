@@ -1255,7 +1255,12 @@ def _build_area_quests() -> dict:
         data = _upstream_quest_bytes(arc, name)
         _assert_roundtrip(name, data)
         if name == WIDOWLETTER_QUEST:
-            out[name] = _neutralize_widowletter_spawn(data)
+            # Q4-2 rides the same port: align the honor-branch chest watch.
+            out[name] = _fix_widowletter_chest_branch(
+                _neutralize_widowletter_spawn(data))
+        elif name == 'bossarena.qst':
+            # Q4-1: retarget the arena-entry volume to the placed record.
+            out[name] = _fix_bossarena_entervolume(data)
         else:
             out[name] = data
 
@@ -1494,6 +1499,88 @@ def _add_olympus_rhodes_travel(data: bytes) -> bytes:
     return out
 
 
+# ── Q4 (build31, dead-content audit Lane D): surgical quest-ref fixes ────────
+# All three are string-value edits inside otherwise byte-faithful quests; each
+# helper walks the parse tree, replaces exactly the expected count of values,
+# and asserts a stable round-trip. See docs/DEAD_CONTENT_AUDIT_2026-07-10.md.
+
+def _replace_field_values(data: bytes, quest_label: str, field_name: str,
+                          wanted_old, new_value: str, expect: int) -> bytes:
+    """Replace the value of every ('field', field_name) whose normalized value
+    is in wanted_old (a set of normalized paths) with new_value (written in
+    the file's own separator style). Fails loud unless exactly `expect`
+    replacements happen and the output round-trips stably."""
+    def norm(s):
+        return s.replace('/', '\\').lower()
+
+    wanted = {norm(w) for w in wanted_old}
+    tree = qst_format.parse(data)
+    replaced = 0
+
+    def walk(items):
+        nonlocal replaced
+        for i, it in enumerate(items):
+            if isinstance(it, list):
+                walk(it)
+            elif isinstance(it, tuple) and it[0] == 'block':
+                walk(it[1])
+            elif isinstance(it, tuple) and it[0] == 'field' \
+                    and it[1] == field_name \
+                    and isinstance(it[2][1], str) and norm(it[2][1]) in wanted:
+                style_fwd = '/' in it[2][1]
+                nv = new_value.replace('\\', '/') if style_fwd \
+                    else new_value.replace('/', '\\')
+                items[i] = ('field', field_name, (it[2][0], nv))
+                replaced += 1
+    walk(tree if isinstance(tree, list) else [tree])
+    if replaced != expect:
+        raise ValueError(f'{quest_label}: expected exactly {expect} '
+                         f'{field_name} replacement(s), made {replaced}')
+    out = qst_format.serialize(tree)
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError(f'{quest_label}: patched quest does not round-trip')
+    return out
+
+
+def _fix_bossarena_entervolume(data: bytes) -> bytes:
+    """Q4-1: bossarena.qst STEP 1 waits on EnterVolume(portal_olympianarena)
+    which is placed NOWHERE; the volume actually placed in boss_arena.lvl is
+    volume_startolympianarena (SV-inherited authoring bug, byte-verified
+    against upstream). One-line retarget makes the Satyr Shaman arena boss
+    spawn."""
+    return _replace_field_values(
+        data, 'bossarena.qst', 'volumeRecord',
+        {r'records\quests\portal_olympianarena.dbr'},
+        r'records\quests\volume_startolympianarena.dbr', expect=1)
+
+
+def _fix_widowletter_chest_branch(data: bytes) -> bytes:
+    """Q4-2: the honor/dishonor branch spawns chest_goldenchest_normal_03 but
+    its three 'Block Chest' UseFixedItem conditions watch the per-difficulty
+    goldenchest_01/02/03 variants that are never spawned -> the moral-choice
+    branch never fires. Align the watched records to the spawned chest."""
+    return _replace_field_values(
+        data, 'widowletter.qst', 'itemRecord',
+        {r'records\drxmap\quest\goldenchest_01_normal.dbr',
+         r'records\drxmap\quest\goldenchest_02_epic.dbr',
+         r'records\drxmap\quest\goldenchest_03_legendary.dbr'},
+        r'records\drxmap\quest\chest_goldenchest_normal_03.dbr', expect=3)
+
+
+CHESTSWAP_QUEST = 'quest that controls boss chest swap.qst'
+
+
+def _fix_chimera_chest_typo(data: bytes) -> bytes:
+    """Q4-3 (coordinated with fix_chimera_chest_double_ext in
+    build_svc_database.py, which renames the arz records in the same wave):
+    the chest-swap controller's UseFixedItem watches the double-extension
+    bosschest13_chimera_epic.dbr.dbr; retarget to the renamed single-.dbr."""
+    return _replace_field_values(
+        data, CHESTSWAP_QUEST, 'itemRecord',
+        {r'records\item\containers\boss\bosschest13_chimera_epic.dbr.dbr'},
+        r'records\item\containers\boss\bosschest13_chimera_epic.dbr', expect=1)
+
+
 def _add_typhon_rhodes_unlock(data: bytes) -> bytes:
     """Append the Rhodes-portal unlock trigger to the Typhon repeat-loot step.
 
@@ -1636,6 +1723,15 @@ def main():
     arc.set_file(TYPHON_HOST_QUEST, patched2)
     print(f'Q3: instant Typhon-kill unlock + Olympus herald boat-dialog '
           f'appended ({len(patched)} -> {len(patched2)} bytes)')
+
+    # Q4-3: chimera chest double-extension retarget (arz records renamed by
+    # fix_chimera_chest_double_ext in build_svc_database.py, same wave).
+    raw_cs = arc.get_file(CHESTSWAP_QUEST)
+    if raw_cs is None:
+        raise SystemExit(f'Q4-3: host quest missing: {CHESTSWAP_QUEST}')
+    patched_cs = _fix_chimera_chest_typo(raw_cs)
+    arc.set_file(CHESTSWAP_QUEST, patched_cs)
+    print(f'Q4-3: chimera chest .dbr.dbr retargeted in {CHESTSWAP_QUEST}')
 
     # Add the Soulvizier AREA questlines at the archive root, ALONGSIDE the portal
     # quest (never replacing it). Their names are already registered in the map's
