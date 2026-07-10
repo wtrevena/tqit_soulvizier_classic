@@ -453,10 +453,37 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   (canReFire=1; field shapes mirror the HOST file's own byte-verified idioms - no
   isQuestCritical2, no delayTime). Repeat-on-load = idempotent + retroactive for existing
   token-holders (Will's main). Rebuilt Quests.arc 631a2b4d; entry-diff vs shipped 846c43f3 =
-  EXACTLY the host quest; quest-record contract PASS (107 records). DEV deploy in flight
-  (file was game-locked; background retry armed). Will's test: load main at Olympus -> summit
-  portal unlocks -> click -> Rhodes. FALLBACK if the engine dest doesn't resolve in the custom
-  map: boat-dialog NPC at the summit (coordinate via the coordinator).
+  EXACTLY the host quest; quest-record contract PASS (107 records). SHIPPED as build30.3.
+  **Q1 FAILED IN-GAME (Will, fresh session, 2026-07-09): Typhon killed, unlock event present,
+  still NO portal.** Confirms M7's FixedItemTeleport-destination-is-engine-internal risk.
+
+- **Q3 (2026-07-09): Olympus->Rhodes = COPY SVAERA, not a quest. QUESTS-LANE VERDICT: NO
+  restore needed - the fix is MAP-SIDE.** Coordinator hypothesis (build22 dropped IT-act main
+  quest registrations -> Rhodes campaign won't activate) is REFUTED by byte analysis
+  (scratchpad q3_registry_diff.py / q3_content_diff.py / q3_portal_refs.py):
+  - SVAERA registers 254 QUESTS entries; ours 256. **SVAERA-registered identities absent from
+    our registry: 0.** Every SVAERA main quest (scripted scene_rhodes, xq03_theroadtohades,
+    xq06_thethroneofhades, quest 10-15, all XPack2/3/4) is registered, cleanly shifted +4 by the
+    build22 SV-quest insertion, all inside the 256 window (Rhodes/Hades at idx 108-138, far in).
+  - Quest FILE presence: **0 SVAERA .qst files missing** from our Quests.arc (we ship all 100 +
+    our 6). Only ONE file byte-differs from SVAERA: 'quest that controls bosses and their
+    doors.qst' (+804B = our Q1 trigger APPENDED = byte-superset, all SVAERA behavior preserved).
+    The 2 added endpoint-cap controllers (x4_other_001_control_expansionportals,
+    xquest_controlsbossdoors) surgically remove ONLY the POST-Hades IT->EE / IT->Ragnarok
+    EXPANSION portals - they do NOT touch Rhodes/Hades progression.
+  - **NO quest in SVAERA OR the base game references xq00_olympus_portaltorhodes** (corroborates
+    M7). SVAERA (a working Custom Quest that runs the full Rhodes/Hades campaign) drives the
+    Olympus->Rhodes transition MAP-SIDE, not via a quest -> the fix belongs to the MAP LANE
+    (a4207d65): make our OlympusFinal02 portal instance [41] born-open (locked=0) like SVAERA's,
+    OR replicate SVAERA's placed transition. There is nothing for the Quests lane to author.
+  - **Q1 unlock trigger recommendation:** it is the ONLY non-SVAERA-faithful edit in our
+    Quests.arc and it is INERT (failed in-game). Once the map lane makes the portal born-open it
+    is fully redundant. RECOMMEND reverting 'quest that controls bosses and their doors.qst' to
+    byte-identical SVAERA (drop _add_typhon_rhodes_unlock) for fidelity; harmless if kept.
+    DECISION DEFERRED to coordinator + map-lane mechanism report. If kept, it must remain a
+    byte-superset (the survival gate-assert still holds).
+  - COUPLED SHIP: map(born-open portal) is the load-bearing change; arz/Quests/Text unchanged on
+    the DB lane for Q3.
 - **Q2 QUEUED: PORTAL-MASTER NPC for SV-area travel (Will chose model C; map lane M8b has the
   mechanism analysis).** DB+Quests+Text triple: (a) friendly quest-NPC record (base boatman
   class pattern, render-safe mesh per D5 law, amgoz1-voice name e.g. 'Almyros the Wayfarer' +
