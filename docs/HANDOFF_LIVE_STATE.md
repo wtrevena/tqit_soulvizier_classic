@@ -36,6 +36,13 @@ COMMITTED source of truth. `upstream/` and `reference_mods/` are gitignored sour
 
 ## 3. CURRENT STATE (build27 + workshop-wrapper-fix, all verified on disk 2026-07-08)
 
+> **DB-lane UPDATE 2026-07-09 (build30.2):** the shipped arz is now the STARTER-CHEST-FIXED
+> build30.2 (`work/.../SoulvizierClassic.arz`, 54,658,764 B, md5 `3f60574155d18f24a28658725093d699`;
+> record-diff vs build30 `45be22b8` = exactly `tutorialpotionchest.dbr`). Root cause + lesson in
+> `BACKLOG.md` -> RESOLVED -> B-STARTER-CHEST. The table below is otherwise build27-era history
+> (builds 28/29/30 shipped 07-08/07-09 without this file being refreshed; map lane is at build31b
+> in git, not yet uploaded at the time of this note).
+
 **Published Workshop content = build27 canonical.** Verified via fresh steamcmd download; sizes/MD5s
 below re-verified against `work/` and the deployed CustomMaps copy on 2026-07-08.
 

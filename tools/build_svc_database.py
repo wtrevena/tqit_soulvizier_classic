@@ -23,7 +23,8 @@ from pathlib import Path
 from collections import defaultdict, OrderedDict
 
 sys.path.insert(0, str(Path(__file__).parent))
-from arz_patcher import ArzDatabase, DATA_TYPE_FLOAT, DATA_TYPE_STRING, DATA_TYPE_INT
+from arz_patcher import (ArzDatabase, TypedField,
+                         DATA_TYPE_FLOAT, DATA_TYPE_STRING, DATA_TYPE_INT)
 
 
 # Description tags this build deliberately WIRES onto skills that ship without a
@@ -611,8 +612,9 @@ def grant_all_inventory_bags(db: ArzDatabase):
         print("  Inventory sack cost set to 0 (free)")
         patched += 1
 
-    # Add 2 inventory sacks to the tutorial potion chest (first chest in the game).
-    # It uses FixedItemLoot.tpl with independent loot slots.
+    # The tutorial potion chest (first chest in the game, FixedItemLoot.tpl)
+    # carries the bags via the mod-only startingloot_sack table (see the
+    # build30.2 construct below).
     sack_table = 'records\\quests\\rewards\\startingloot_sack.dbr'
     fixed_tpl = 'database\\Templates\\LootItemTable_FixedWeight.tpl'
 
@@ -629,40 +631,77 @@ def grant_all_inventory_bags(db: ArzDatabase):
             tutorial_chest = name
             break
 
-    # ── D1 / B-STARTER-CHEST-1 (build30, owner revert of build29's A3): the
-    #    starter chest is the co-op kit: 36 HEALTH POTIONS + 12 INVENTORY BAGS
-    #    and NOTHING ELSE. Will 2026-07-09: "should not have a soul that drops
-    #    in the starter chest, doesn't make sense" - the build29 sow-soul slot
-    #    (loot3 -> startingloot_sowsoul) is REMOVED ENTIRELY, and the branched
-    #    sow table record is no longer created.
+    # ── build30.2 / B-STARTER-CHEST-1+2 RESOLUTION (in-game verified on the DEV
+    #    entry 2026-07-09, arz c959a372: "that worked perfect, both the inventory
+    #    bags and potions dropped" - Will). The co-op kit: E[36 HEALTH POTIONS +
+    #    12 INVENTORY BAGS], nothing else. Total = exactly 48 solo.
     #
-    #    ENGINE SEMANTICS (Game.dll disasm, build29 - FixedItemContainerController
-    #    at 0x10182120/0x10181530/0x10181da0): the chest spawns
-    #    N = SelectLootNumber items where N is DETERMINISTIC iff
-    #    numSpawnMinEquation == numSpawnMaxEquation; then for EACH of the N items
-    #    it picks ONE loot slot by ROULETTE over the slots' lootNChance values
-    #    (chances are RELATIVE WEIGHTS - every draw lands on a slot; a slot's
-    #    chance is NOT an independent gate), then one table within the slot by
-    #    lootNWeightX, then one item from that table. CONSEQUENCE: the per-
-    #    category counts of a multi-slot chest are MULTINOMIAL - only the TOTAL
-    #    and the EXPECTATION are exact. N = 48 with slot chances 36 : 12 ->
-    #    total exactly 48, expectation exactly 36 potions + 12 bags per open;
-    #    P(zero bags) = (36/48)^48 ~ 1e-6.
-    #    Slots: loot1 = the chest's OWN Health_01-05All potion table (referenced,
-    #    not modified); loot2 = startingloot_sack (mod-created, only this chest
-    #    uses it). loot3 is NOT touched: it reverts to the source record's inert
-    #    native shape (loot3Chance 0.0, no loot3Name1 field). Deliberately NOT
-    #    blanking loot3Name1 to '' - an empty-string .dbr ref is a zero-precedent
-    #    field shape (the B-TOXEUS-2 loader-abort class).
+    #    ROOT CAUSE of the build28/29/30 dead chest (the "opens, drops nothing"
+    #    P0): build28 (5af85d3) replaced the record's native RunEquation
+    #    numSpawnMin/MaxEquation '3+(2*numberOfPlayers)' with the bare integer
+    #    literal '48' -> the engine's equation evaluator yields 0 for the bare-
+    #    literal form on this container -> numSpawn 0 -> the whole chest drops
+    #    NOTHING (not even the untouched potion slot). Every byte-exoneration
+    #    (build30.1) compared build30-vs-build29 = broken-vs-broken. The proof
+    #    pair: build27's chest (native equation, sack slots) DROPS; the identical
+    #    construct with only numSpawn changed to a literal does not. LESSON:
+    #    RunEquation-typed fields require equation-form values; bare literals can
+    #    silently evaluate to 0. In-game verification is mandatory for engine-
+    #    facing constructs - byte precedent from OTHER records (boss_tartarus
+    #    min/max='1') did not transfer to this container.
+    #
+    #    PROVEN CONSTRUCT (every element is either the record's own native shape
+    #    or ubiquitous base FixedItemLoot precedent, e.g. defaultloot\
+    #    hiddenchest_greece_00-15 / typhon_default_29-31 = multi-table slots):
+    #      numSpawnMin==Max = '46+(2*numberOfPlayers)'  (native equation FORM;
+    #                          48 solo, scales co-op like the original)
+    #      loot1 = the ONE active slot (chance 100), TWO tables inside it:
+    #        loot1Name1 = the chest's own Health_01-05All potion table, w108
+    #        loot1Name2 = startingloot_sack (mod-only) -> inventorysack,  w36
+    #        -> 108:36 = 3:1 -> E[36 potions : 12 bags] per open (multinomial;
+    #           P(zero bags) ~ 1e-6). Weight fields loot1Weight1/2 exist natively
+    #           on the record (weight matrix ships even for unused tables).
+    #      loot2..6 = the record's native inert shape: chance 0.0, weights 0,
+    #        and NO lootNNameM fields AT ALL. Never blank a NameM to '' - an
+    #        empty-string .dbr ref is the zero-precedent B-TOXEUS-2 loader-abort
+    #        field shape; native inert = field ABSENT (delete, don't blank).
+    #      NO soul (Will 2026-07-09; the build29 sow-soul slot stays removed).
     if tutorial_chest:
-        db.set_field(tutorial_chest, 'numSpawnMinEquation', '48', DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'numSpawnMaxEquation', '48', DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot1Chance', 36.0, DATA_TYPE_FLOAT)    # health potions (loot1Name1 kept = Health_01-05All, weight kept)
-        db.set_field(tutorial_chest, 'loot2Chance', 12.0, DATA_TYPE_FLOAT)    # inventory bags
-        db.set_field(tutorial_chest, 'loot2Name1', sack_table, DATA_TYPE_STRING)
-        db.set_field(tutorial_chest, 'loot2Weight1', 100, DATA_TYPE_INT)
-        print("  Starter chest (D1/build30): numSpawn=48 fixed; slot roulette "
-              "36:12 = E[36 potions + 12 bags]; sow-soul slot REMOVED")
+        db.set_field(tutorial_chest, 'numSpawnMinEquation',
+                     '46+(2*numberOfPlayers)', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'numSpawnMaxEquation',
+                     '46+(2*numberOfPlayers)', DATA_TYPE_STRING)
+        db.set_field(tutorial_chest, 'loot1Chance', 100.0, DATA_TYPE_FLOAT)
+        db.set_field(tutorial_chest, 'loot1Weight1', 108, DATA_TYPE_INT)   # health potions (loot1Name1 kept = Health_01-05All)
+        db.set_field(tutorial_chest, 'loot1Weight2', 36, DATA_TYPE_INT)    # inventory bags (loot1Name2 below)
+        # slots 2..6: force the native inert shape defensively (idempotent
+        # against any previously-patched input record)
+        for _slot in range(2, 7):
+            db.set_field(tutorial_chest, f'loot{_slot}Chance', 0.0,
+                         DATA_TYPE_FLOAT)
+            db.set_field(tutorial_chest, f'loot{_slot}Weight1', 0,
+                         DATA_TYPE_INT)
+        # insert loot1Name2 right after loot1Name1 (base field adjacency) and
+        # DELETE any NameM field on the inert slots (restore native shape)
+        _fields = db.get_fields(tutorial_chest)
+        _rebuilt = OrderedDict()
+        for _k, _tf in _fields.items():
+            _base = _k.split('###')[0]
+            if _base == 'loot1Name2':
+                continue  # re-inserted at the canonical position below
+            if any(_base == f'loot{_s}Name{_j}'
+                   for _s in range(2, 7) for _j in range(1, 7)):
+                continue  # inert slots carry NO Name fields natively
+            _rebuilt[_k] = _tf
+            if _base == 'loot1Name1':
+                _rebuilt['loot1Name2'] = TypedField(DATA_TYPE_STRING,
+                                                    [sack_table])
+        assert 'loot1Name2' in _rebuilt
+        db._decoded_cache[tutorial_chest] = _rebuilt
+        db._modified.add(tutorial_chest)
+        print("  Starter chest (build30.2): numSpawn='46+(2*numberOfPlayers)' "
+              "(equation form, 48 solo); single slot, dual table 108:36 = "
+              "E[36 potions + 12 bags]; in-game verified 2026-07-09")
         patched += 1
     else:
         print("  WARNING: tutorial potion chest not found")
@@ -670,7 +709,7 @@ def grant_all_inventory_bags(db: ArzDatabase):
     return patched
 
 
-def _validate_container_loot_shapes(db, base_db=None):
+def _validate_container_loot_shapes(db, base_db=None, base_names=None):
     """P0/build30.1 fail-loud gate: container loot-slot contract, calibrated to
     what the BASE GAME's 611 FixedItemLoot records actually ship (measured):
 
@@ -695,6 +734,10 @@ def _validate_container_loot_shapes(db, base_db=None):
     if base_db is not None:
         # runtime resolution model = mod UNION base game (same as the other gates)
         all_low |= {n.replace('/', '\\').lower() for n in base_db.record_names()}
+    if base_names:
+        # pre-snapshotted lowercase base-game names (main() frees base_db long
+        # before this end-of-build gate runs)
+        all_low |= set(base_names)
     for rec in sorted(getattr(db, '_modified', set())):
         fields = db.get_fields(rec)
         if not fields:
@@ -1622,6 +1665,14 @@ def main():
               "SVAERA town NPCs stay DE-PLACED by the map lane. Restoring them ships "
               "invisible/raw-named without the SVAERA _DRX art arcs + merchant tags.")
 
+    # Snapshot the base-game record names (lowercased) BEFORE freeing the db:
+    # the end-of-build container gate resolves loot refs against the runtime
+    # model (mod UNION base). Passing the full base_db there is impossible - it
+    # is deleted here - and that exact wiring (gate call naming the deleted
+    # local) made every full rebuild crash with UnboundLocalError (found on the
+    # first real work-layout build after build30.1 wired the gate).
+    _base_names_low = {n.replace('/', '\\').lower()
+                       for n in base_db.record_names()} if base_db else set()
     del base_db  # Free memory
 
     from create_uber_souls import create_uber_souls
@@ -1720,7 +1771,7 @@ def main():
     # build30 starter-chest P0 (the record proved byte-clean, but this contract
     # makes the whole malformed-slot class unshippable). Negative-tested via
     # tools/debug/negtest_container_shape.py.
-    _validate_container_loot_shapes(db, base_db=base_db)
+    _validate_container_loot_shapes(db, base_names=_base_names_low)
 
     print(f"\nWriting output...")
     db.write_arz(output_path)

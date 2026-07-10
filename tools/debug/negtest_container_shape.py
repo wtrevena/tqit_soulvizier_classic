@@ -51,11 +51,16 @@ def main():
     results = []
 
     # POSITIVE 1: the real record must PASS
-    results.append(('positive 1 (real build30 chest)', run_gate(db), 'PASS'))
+    results.append(('positive 1 (real shipped chest)', run_gate(db), 'PASS'))
 
     # POSITIVE 2: the base-precedented 'chance of nothing' idiom must PASS
-    #   (active chance, name field emptied - the hermit-mage shape)
-    nm = field(db, CHEST, 'loot2Name1')
+    #   (active chance, name field emptied - the hermit-mage shape).
+    # build30.2 note: the chest's inert slots carry NO NameN fields any more
+    # (native shape), so the mutable fixture is the ACTIVE slot's loot1Name1.
+    nm = field(db, CHEST, 'loot1Name1')
+    if nm is None:
+        print('ERROR: chest has no loot1Name1 field to use as the fixture')
+        return 2
     saved = list(nm.values)
     nm.values = []
     results.append(('positive 2 (active-no-name idiom)', run_gate(db), 'PASS'))

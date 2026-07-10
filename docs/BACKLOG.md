@@ -248,33 +248,14 @@
   validate_soul_augments now FAIL the build on any non-universal granted anim and any Enemy
   controller without a radius (negative-tested against the build28 arz, which they fail).
   NOTE for testing: TQ saves bake item properties at pickup, so souls already in a bag may keep
-  dead grants; verify on FRESHLY DROPPED souls (the build29 starter chest's sow souls are the
-  deterministic test vehicle).
+  dead grants; verify on FRESHLY DROPPED souls (the build29 starter chest's sow souls were the
+  test vehicle; that slot is gone since build30 - use any boss/hero soul drop instead).
 - **Same-gate siblings found (NOT fixed in build29, report-only):** player mastery skills with
   monster-only anims are equally uncastable and were already dead in SV (Earth drxmeteor anim
   MeteorShower; Medicine tree TelkineSummonSkeleton/TelekinesisStart; Storm spellbreaker anim
   Drain as a TREE skill). Fixing those changes mastery behavior; needs Will's call.
 
 ## 🟡 P2 - pending answers / smaller
-
-### B-STARTER-CHEST-2: "open the chest, nothing happens" (build30 P0 report) - DB byte-exonerated, needs in-game protocol
-- **Symptom (Will, live build30):** opening the starter chest yields nothing.
-- **Byte diagnosis (build30.1, exhaustive - all failure hypotheses REFUTED with live precedent):**
-  the shipped chest record (defaultloot\tutorialpotionchest, arz 45be22b8) differs from build29 by
-  exactly numSpawn '54'->'48' + the sow-soul slot zeroed; its dormant-slot shape (chance 0 + zero
-  weights + name absent) is the BASE GAME's own unused-slot shape on this exact record; bare-constant
-  numSpawn equations are LIVE base precedent (Ragnarok boss_tartarus_{n,e,l} chests ship min/max='1');
-  dtypes preserved; the full chain map -> TutorialPotionChestProxy -> accessorypool -> greece
-  FixedItemContainer -> defaultloot table is intact and byte-identical to build29 (proxy/pool/container
-  records unchanged; map placement bytes identical in both shipped maps); zero dangling refs.
-- **Open in-game questions (needed to progress):** (1) WHICH chest did Will open (the intended one =
-  the wooden "Small Chest" where it stood in build29)? (2) Difficulty: on Epic/Legendary the proxy
-  spawns an EMPTY pool BY DESIGN (base behavior, unchanged since build29) - the starter chest only
-  exists on Normal. (3) Does it reproduce on a FRESH character + fresh session? (4) Does the chest
-  play its open animation (record loads) or is it fully inert?
-- **Hardening shipped (build30.1):** container loot-slot shape contract gate in build_svc_database
-  (_validate_container_loot_shapes; negtest tools/debug/negtest_container_shape.py, 1 positive + 3
-  negatives all proven). No artifact change - the payload is byte-identical.
 
 ### B-FX-DANGLING-1: ~353 pre-existing dangling Chris\UnarmedProjectile_FX01 particle refs (build30 delta vet)
 - **Symptom:** arz-wide, ~353 records (incl. player Earth skills drxflamesurge/drxvolcanicorb)
@@ -353,24 +334,6 @@
   redefine them tripped the duplicate-tag gate, proving the definitions live). Residual polish
   only: the quest still references the TESTER tag KEYS and "Esti's" is a probable "Esfri's" typo;
   wording pass for Will.
-
-### B-STARTER-CHEST-1 (Will request 2026-07-08): more bags + potions for co-op
-- The starter chest must drop 12 INVENTORY BAG items + 36 HEALTH POTIONS (so a full co-op party
-  each get bags). Guaranteed fixed loot; branch the table if shared so only the starter chest
-  changes. Ships canonical (co-op = public byte-identical build). Routed to the DB wave (item 10).
-- **BUILD29 IMPLEMENTED (Lane A) with disasm-bounded honesty:** engine semantics (same disasm as
-  the B-SUPRA refutation above) make EXACT per-category counts impossible from one
-  FixedItemLoot record: numSpawn total is deterministic (min==max equations) but each item's
-  slot is a chance-weighted roulette pick, so composition is multinomial. Shipped design:
-  numSpawn=54 fixed, slot chances 36 (health potions, the chest's own vanilla table) : 12
-  (inventory bags via the mod-only startingloot_sack -> OneShot_Sack) : 6 (NEW branched
-  startingloot_sowsoul -> sow_soul_n, the Ground Smash acceptance-test soul). Expectation
-  exactly 36/12/6 per open; P(zero souls) = (48/54)^54 = 0.17%; ~6 soul copies = one per co-op
-  member. No shared table modified (both non-vanilla slots are mod-only tables).
-- **TRUE exactly-1 soul (optional next wave, Lane B):** a quest grant on the chest
-  (Condition_UseFixedItem tutorialpotionchest -> Action_BestowTriggerToken + Action_GiveItem
-  sow_soul_n, token-gated once per character - the Esti pattern) is the only 100% mechanism;
-  spec ready if Will wants it after his walk test.
 
 ### B-TESTHUB-TOXEUS-1 (Will request 2026-07-08): remove cave-mouth Toxeus from TESTHUB
 - The Blood Toxeus/Hemorrheus test spawn ~9.9u outside the blood-cave mouth (TESTHUB-only) BLOCKS
@@ -494,6 +457,31 @@ Standing watch items likely to draw comments until fixed: the 8 raw tags (B-TEXT
 to every subscriber right now; portals look rough (B-PORTAL-1). Prioritize those before a wider push.
 
 ## ✅ RESOLVED / VERIFIED
+
+### B-STARTER-CHEST-1 + B-STARTER-CHEST-2: starter chest RESOLVED (build30.2, in-game verified 2026-07-09)
+- **Symptoms:** (1) Will 2026-07-08: the chest should drop 12 inventory bags + 36 potions for co-op;
+  (2) Will, live build30: opening the starter chest drops NOTHING (not even potions).
+- **ROOT CAUSE (validated end-to-end via DEV A/B tests):** build28 (5af85d3) replaced the record's
+  native RunEquation numSpawnMin/MaxEquation '3+(2*numberOfPlayers)' with the bare integer literal
+  '48'. The engine evaluates the bare-literal form to 0 on this container -> numSpawn 0 -> the
+  WHOLE chest dead (including the untouched potion slot) through b28/b29/b30. The chest had dropped
+  bags since v1.0 (17257c8: loot2+loot3 = startingloot_sack at chance 100, native equation); every
+  build27-era deployed arz (e.g. c4aa4d75) drops. The build30.1 "byte exoneration" compared
+  build30-vs-build29 = broken-vs-broken, and its bare-literal precedent (boss_tartarus min/max='1',
+  a different container) did not transfer. Decisive in-game datapoints: SV-original byte-restore
+  (arz 39174e9c) = potions drop; equation-form fix (arz c959a372) = potions + bags drop ("that
+  worked perfect" - Will 2026-07-09); the literal builds = nothing.
+- **FIX (build30.2, grant_all_inventory_bags in tools/build_svc_database.py):** numSpawnMin==Max =
+  '46+(2*numberOfPlayers)' (equation FORM, 48 solo, scales co-op like the original); ONE active
+  slot loot1Chance=100 with dual tables Health_01-05All w108 : startingloot_sack w36 (3:1 ->
+  E[36 potions + 12 bags]; multi-table slots = ubiquitous base FixedItemLoot precedent, e.g.
+  defaultloot\hiddenchest_greece_00-15); loot2..6 restored to the record's NATIVE inert shape
+  (chance 0, weights 0, NameN fields DELETED not blanked - an empty-string .dbr ref is the
+  B-TOXEUS-2 zero-precedent loader-abort shape); NO soul (build29's sow slot stays removed).
+- **LESSON (standing):** RunEquation-typed fields require equation-form values - bare integer
+  literals can silently evaluate to 0. Byte precedent does not transfer between containers, and
+  a byte-diff against another broken build proves nothing: in-game verification is MANDATORY for
+  engine-facing constructs.
 
 ### A10 SUMMON-THE-BOSS SOULS: Narok the Rockskin + Vort the Red (build29, owner request)
 - Both souls now GRANT A MANUAL-CAST SUMMON OF THEIR OWN BOSS (the Boneash-proven pattern:

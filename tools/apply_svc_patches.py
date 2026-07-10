@@ -6042,8 +6042,13 @@ def _fix_wave30_render_and_refs(db):
 # the WRONG engine model AND repointed the container away from the parallel
 # agent's `defaultloot` edits, silently disabling their version. It is removed;
 # A3 = the build_svc_database implementation. build30 D1 (owner revert): the
-# sow-soul slot is REMOVED there - chest = numSpawn 48, slot roulette 36:12 ->
-# E[36 potions + 12 bags], nothing else.
+# sow-soul slot was REMOVED there. build30.2 POSTSCRIPT: the A3/D1 chest was
+# DEAD IN-GAME anyway - build28 had replaced the native RunEquation numSpawn
+# ('3+(2*numberOfPlayers)') with a bare literal ('48') which the engine
+# evaluates to 0 on this container -> the chest dropped NOTHING through
+# b28/b29/b30. Fixed in grant_all_inventory_bags (build_svc_database.py):
+# equation-form numSpawn + single-slot dual-table construct, in-game verified
+# on the DEV entry 2026-07-09.
 
 
 # ── A4: Esti (hidden blood-cave) chest tier-1 supra formula = NOT APPLIED ───
