@@ -1,5 +1,54 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🧪 **MONSTER TEST YARD (DB LANE) + WRAITHLORD RE-ENABLE (2026-07-10, autonomous DB-lane).**
+> Baseline = shipped build32b arz `e27dd1cb`. NEW arz `e3810219379c6d1d809a470d889007ba`
+> (det-2x reproduced byte-exact: build1==build2==build3-scratch). Text/Quests/Levels UNCHANGED
+> (zero new tags -> Text stays `346572bb`, no coupling). Record-diff vs `e27dd1cb` = EXACTLY
+> 13 ADDED + 20 MODIFIED + 0 REMOVED, 0 collateral.
+> **GROUP 1 = TEST YARD (apply_svc_patches `_create_test_yard`, hooked between `_create_enslaver`
+> and the roaming sweep):** 6 new ProxyPools + 7 new Proxies under `records\drxmap\proxy\` (the
+> q_leinth_lone "lone" pattern), ALL pointing at the REAL shipped monster records (never clones),
+> so tuning those records tunes the yard fight 1:1. Added UNCONDITIONALLY to the arz but INERT (the
+> canonical/Steam map references none; ONLY the TESTHUB map's build_hub_extra_specs [MAP LANE] places
+> the proxies). Records: `q_yard_enslaver` (pool name1-3=um_toxeus_enslaver_99 @100, spawn 1/champ 0
+> -> boss @100%; he auto-bursts his own marauder summon petLimit8 in-fight), `q_yard_marauders`
+> (name1-4=um_enslaver_marauder_99, spawn 3-4/champ 0 -> pack @100%), `q_yard_obs_{sarkoth,gorrahk,
+> voranthys,ilsevar}` (name1-3=the ONE guardian, spawnMin=Max=6 + championMin=Max=5 -> 6-5=1
+> guaranteed guardian + the 5-elite q_obs_warband set; each corner proxy also carries the
+> svc_obsidianhoard_pool_0{1,2,3} accessory chest chain), `q_yard_wyrm` (proxy only; pool1 REUSES
+> the shipped svc_wyrmhorde_03 -> 16-6=10 common wyrms + 4-6 champion worms). ALL proxies:
+> chanceToRun=100, difficultyLimitsFile=**limit_obsidianbosses [1..110]** (REQUIRED: Enslaver L100 +
+> Ilsevar L74 both exceed herolimit_all's 75 Legendary cap), difficulty_04, placementExtents 3.0
+> (wyrm 2.5); preview mesh/scale copied from each real monster. **GATE WORK:** (a) precise yard
+> whitelist in `_verify_roaming_sweep` (`_EN_YARD_POOLS` = the EXACT `q_yard_enslaver.dbr` pool path)
+> excludes it from the swept-set derivation + a NEW bidirectional leak guard (every enslaver-bearing
+> pool must be swept-OR-yard); still FAILS if the Enslaver appears >weight 1 in ANY non-yard pool.
+> Negative test `tools/debug/negtest_roaming_yard.py` proves BOTH directions (weight-leak FAIL,
+> pool-leak FAIL, whitelist-load-bearing FAIL, all with PASS restores) = ALL OK. (b) all 7 new yard
+> proxies REGISTERED in `_MOD_AUTHORED_SPAWN_PROXIES` -> spawn-eligibility gate proves each spawns
+> its main (13 total OK). **GATES GREEN:** roaming-sweep (1224 swept + 1 yard whitelisted),
+> spawn-eligibility (13), boss-kit clone-shape (3, unchanged), container-loot, B-SUMMON-1, A9
+> render-chain, A7 golden-freeze (Occult/Hunting intact), F2 summons-contract (0 P0/0 P1),
+> validate_tags (127 mod tags resolve). **MAP-REF-1 for the map lane:** the 12 injectable proxy
+> records = `records\drxmap\proxy\q_yard_{enslaver,marauders,obs_sarkoth,obs_gorrahk,obs_voranthys,
+> obs_ilsevar,wyrm}.dbr` + REUSE the existing `q_vashkarr_lone.dbr` for SPOT B (no new record).
+> **GROUP 3 = WRAITHLORD SKELLY RE-ENABLE (build_svc_database `apply_mastery_wave2_boosts`, Spirit
+> section):** dropped the `xxx` disable prefix on wraithlord_01..20 skillName15/16 (drx_lichskill_
+> skellysummon2/3), re-enabling the Liche King's signature skeleton summon (chain resolves:
+> Skill_AttackProjectileSpawnPet -> drx_skelly_01..20, rev2skelly.msh). SURGICAL: skillLevel ladders
+> UNTOUCHED (original ramp kept); the redundant soulblight double-slot (skillName4+14) KEPT (dropping
+> a duplicate = a slot removal, forbidden without Will's per-item OK). Spirit is slot 8 = OUTSIDE the
+> Occult(5)/Hunting(6) golden freeze. REVERTIBLE before the next Steam ship (re-add `xxx`) if his
+> in-game pet-cap test shows the capstone over-summons.
+> **GROUP 2 = PORTAL RIG DB: DEFERRED (not implemented).** NOT map-only (Model C needs +2 NPC records
+> + boat-dialog triggers in build_quest_files + ~5-7 Text tags), but it is a SEPARATE portal lane's
+> feature (the yard spec reserves the portal strips for that lane); building its DB footprint in these
+> shared files would collide. Also gated on the map lane's 0x0b survey of the Boss Arena landing coord
+> (3 derived coords) + the keep-vs-remove GridEntrance-hub decision. A working portal-master (Almyros,
+> 4 SV destinations) ALREADY ships canonical. Footprint handed off for a coordinated portal wave.
+> **NOT DEPLOYED anywhere (DB lane; no dist/, no SteamCMD).** Coupling on eventual deploy: arz-only
+> (no Text/Quests/Levels change from these two groups).
+
 > 🚢 **BUILD32 SHIPPED TO STEAM + VERIFIED (2026-07-10, main session, tag `build32-ship` @ 3401852).**
 > Payload fresh-download byte-verified 4/4: arz e27dd1cb / Text 346572bb / Levels d5259629
 > (build32b) / Quests 6ff23c29. F9 dist==work 4/4 + F7 contracts on dist 0P0/0P1. Description

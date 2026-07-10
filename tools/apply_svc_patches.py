@@ -8958,20 +8958,28 @@ def _verify_roaming_sweep(db, touched):
         if not db.has_record(sk):
             problems.append(f"summon skill {sk} missing")
 
-    # (1) re-derive touched pools = any ProxyPool containing the enslaver in a name slot
+    # (1) re-derive touched pools = any ProxyPool containing the enslaver in a name
+    # slot, EXCLUDING the whitelisted dedicated test-yard pool (which legitimately
+    # carries him at weight 100, TESTHUB-only + inert on canonical). all_enslaver_
+    # pools keeps EVERY enslaver-bearing pool (incl. yard) for the leak guard (4).
     enl = _EN_BOSS.replace('/', '\\').lower()
+    yard_pools = {p.replace('/', '\\').lower() for p in _EN_YARD_POOLS}
     derived = []
+    all_enslaver_pools = []
     for n in db.record_names():
         t = gv(n, 'templateName')
         if not (t and 'proxypool.tpl' in str(t).lower()):
             continue
         names = [gv(n, 'name%d' % i) for i in range(1, 19)]
         if any(x and str(x).replace('/', '\\').lower() == enl for x in names):
+            all_enslaver_pools.append(n)
+            if n.replace('/', '\\').lower() in yard_pools:
+                continue        # yard pool: excluded from the swept-set derivation
             derived.append(n)
 
     if set(derived) != set(touched):
         problems.append(f"touched set mismatch: sweep touched {len(touched)}, "
-                        f"arz shows {len(derived)} pools with the enslaver")
+                        f"arz shows {len(derived)} non-yard pools with the enslaver")
 
     for n in derived:
         nl = n.replace('/', '\\').lower()
@@ -9003,6 +9011,22 @@ def _verify_roaming_sweep(db, touched):
             problems.append(f"{n}: enslaver p_slot {1.0/max(wtotal,1):.5f} > "
                             f"{_EN_SWEEP_MAX_P:.5f} (too common)")
 
+    # (4) LEAK GUARD (proves BOTH directions): EVERY pool carrying the Enslaver
+    # must be either a swept eligible trash pool (in `touched`) OR the whitelisted
+    # dedicated yard pool (_EN_YARD_POOLS). Any enslaver-bearing pool that is
+    # neither = a LEAK (he escaped into a non-eligible pool) -> FAIL loud. This is
+    # paired with the weight-1 check above (which still fires for any NON-yard
+    # derived pool), so together the gate FAILS if the Enslaver appears above
+    # weight 1 in ANY non-yard pool AND if he appears in any unexpected pool at
+    # all - while allowing the yard's legitimate 100% pool.
+    touched_lc = {t.replace('/', '\\').lower() for t in touched}
+    for n in all_enslaver_pools:
+        nl = n.replace('/', '\\').lower()
+        if nl not in touched_lc and nl not in yard_pools:
+            problems.append(f"ENSLAVER LEAK: {n} carries the Enslaver but is "
+                            f"neither a swept eligible trash pool nor a "
+                            f"whitelisted yard pool ({sorted(_EN_YARD_POOLS)})")
+
     if not derived:
         problems.append("sweep touched ZERO pools (roaming Enslaver would never appear)")
     elif len(derived) < 500:
@@ -9020,7 +9044,9 @@ def _verify_roaming_sweep(db, touched):
           f"(basename) boss/quest/hero/escort/friendly pools touched; 19 general "
           f"trash pools legitimately contain rare low-weight hero MEMBERS per "
           f"vanilla (the roaming rare walks among area heroes), boss+marauder at "
-          f"band {_EN_BAND}.")
+          f"band {_EN_BAND}. Leak guard: all {len(all_enslaver_pools)} "
+          f"enslaver-bearing pools are swept-or-yard ({len(_EN_YARD_POOLS)} "
+          f"whitelisted yard pool(s) at weight 100 excluded from the weight-1 rule).")
 
 
 def _apply_d8_d9_summon_souls(db, tags):
@@ -11047,6 +11073,175 @@ def _create_blood_toxeus(db):
     _wire_blood_toxeus_loot(db)
 
 
+# ── MONSTER TEST YARD (TESTHUB-only; build31/32 hostiles) ────────────────────
+# Will's dedicated fight-and-tune yard at the HiddenValley01 blood-cave mouth.
+# The arz gets these pool/proxy records UNCONDITIONALLY, but they stay INERT
+# because ONLY the TESTHUB map (build_section_surgery.build_hub_extra_specs, the
+# separate map lane) places their proxies; the canonical/Steam map references
+# none of them (that is why the flag design can never ship test content). Every
+# yard pool references the REAL shipped monster records (never a clone), so
+# stat-tuning those records in the arz tunes the yard fight 1:1. Donor for every
+# pool/proxy = q_leinth_lone (the 1-placement/1-level "lone" dedicated pattern,
+# the Vashkarr/bloodtoxeus precedent). All refs existence-verified vs the shipped
+# arz e27dd1cb (scratchpad/yard_recon.py). NOTE: q_yard_* basenames start with
+# 'q_' AND live under records\drxmap\proxy (NOT proxies orient/egypt/greek/hades)
+# -> the roaming-sweep eligibility filter skips them on BOTH counts, so the sweep
+# never touches them; the ONE yard pool that carries the Enslaver is whitelisted
+# in _verify_roaming_sweep via _EN_YARD_POOLS below.
+_YARD_POOL_DONOR = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+_YARD_PROXY_DONOR = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_YARD_LIMIT = r'records\proxies orient\limit_obsidianbosses.dbr'   # [1..110] contains L100 Enslaver + L74 Ilsevar
+_YARD_DIFFICULTY = r'records\proxies orient\difficulty_04.dbr'
+# Enslaver cluster (SPOT A1 boss + A2 marauder pack).
+_YARD_ENSLAVER_POOL = r'records\drxmap\proxy\pools\q_yard_enslaver.dbr'
+_YARD_ENSLAVER_PROXY = r'records\drxmap\proxy\q_yard_enslaver.dbr'
+_YARD_MARAUDERS_POOL = r'records\drxmap\proxy\pools\q_yard_marauders.dbr'
+_YARD_MARAUDERS_PROXY = r'records\drxmap\proxy\q_yard_marauders.dbr'
+# Obsidian guardians (SPOT C + adjacent pockets): one dedicated 100% pool each.
+_YARD_OBS_GUARDIANS = {
+    'sarkoth':   _OBS_SARKOTH,
+    'gorrahk':   _OBS_GORRAHK,
+    'voranthys': _OBS_VORANTHYS,
+    'ilsevar':   _OBS_ILSEVAR,
+}
+_YARD_OBS_POOL = {c: rf'records\drxmap\proxy\pools\q_yard_obs_{c}.dbr' for c in _YARD_OBS_GUARDIANS}
+_YARD_OBS_PROXY = {c: rf'records\drxmap\proxy\q_yard_obs_{c}.dbr' for c in _YARD_OBS_GUARDIANS}
+# Wyrm horde (SPOT D): reuse the shipped tier-03 pool; one dedicated proxy.
+_YARD_WYRM_POOL = r'records\proxies orient\pools\demon\svc_wyrmhorde_03.dbr'   # REUSE (no new pool)
+_YARD_WYRM_PROXY = r'records\drxmap\proxy\q_yard_wyrm.dbr'
+# Obsidian hoard accessory chest chain (existing GROUP F records) reused so the
+# yard obs fights also drop the Boss-locked hoard (no new container records).
+_YARD_OBS_ACC = {t: rf'records\drxitem\container\svc_obsidianhoard_pool_{t}.dbr'
+                 for t in ('01', '02', '03')}
+# The ONE yard pool that legitimately carries the Enslaver at weight > 1
+# (whitelisted out of the roaming-sweep derivation). EXACT record-path set (never
+# a loose substring), per the roaming-sweep leak-detection contract.
+_EN_YARD_POOLS = {_YARD_ENSLAVER_POOL}
+
+
+def _create_test_yard(db, tags):
+    """GROUP 1 (yard): build the dedicated TESTHUB monster-yard pool/proxy records.
+    Pools reference the REAL shipped monster records (never clones), so tuning
+    those records tunes the yard fight. Records are added unconditionally (inert
+    on the canonical map). Must run AFTER the enslaver/obsidian/wyrm/vashkarr
+    groups (their monster records must exist) and BEFORE _sweep_inject_roaming_rare
+    + _verify_roaming_sweep (so the sweep gate sees + whitelists the yard enslaver
+    pool). No souls/monsters/containers created here - only proxies + pools."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    for donor in (_YARD_POOL_DONOR, _YARD_PROXY_DONOR):
+        if not db.has_record(donor):
+            print(f"  TEST YARD: WARNING donor missing: {donor}; group skipped")
+            return
+
+    def _gv(rec, f):
+        v = db.get_field_value(rec, f)
+        return (v[0] if isinstance(v, list) else v)
+
+    def _clear_champions(pool):
+        """Blank the q_leinth_lone donor's 3 blood-demon champion slots
+        (nameChampion1..3 + weightChampion1..3) to the inert empty-string/0 shape
+        (the proven vashkarr-pool nameChampion3='' shape). Only the donor's real
+        slots are touched - no empty high slots are added. Callers that WANT
+        champions (the obsidian pools) overwrite these afterwards."""
+        for i in (1, 2, 3):
+            sf(pool, f'nameChampion{i}', '')
+            sf(pool, f'weightChampion{i}', 0)
+
+    def _make_proxy(proxy, pool_ref, primary_monster, extents,
+                    accessory=None, mesh_from=None):
+        """Clone the q_leinth_lone proxy -> a yard proxy pointing at pool_ref.
+        chanceToRun=100 (donor has none), no-cap [1..110] limit, difficulty_04.
+        Preview mesh/scale mirror the primary spawned monster (falls back to the
+        donor's leinth silhouette if the monster defines none)."""
+        db.clone_record(_YARD_PROXY_DONOR, proxy)
+        sf(proxy, 'pool1', pool_ref)
+        sf(proxy, 'chanceToRun', 100.0)
+        sf(proxy, 'difficultyLimitsFile', _YARD_LIMIT)
+        sf(proxy, 'difficultyEquationFile', _YARD_DIFFICULTY)
+        sf(proxy, 'placementExtents', float(extents))
+        if mesh_from and db.has_record(mesh_from):
+            m = _gv(mesh_from, 'mesh')
+            sc = _gv(mesh_from, 'scale')
+            if m and str(m).strip():
+                sf(proxy, 'mesh', str(m))
+            if sc is not None:
+                sf(proxy, 'scale', float(sc))
+        if accessory:
+            sf(proxy, 'accessory1', accessory['01'], S)
+            sf(proxy, 'accessoryEpic1', accessory['02'], S)
+            sf(proxy, 'accessoryLegendary1', accessory['03'], S)
+        db._modified.add(proxy)
+
+    # ── 1. ENSLAVER boss (SPOT A1): pool name1..3 = the real Enslaver, spawn 1,
+    #    championChance 0 -> the boss alone @100%. He auto-summons his own hostile
+    #    marauder burst (svc_enslaver_summonmarauders, petLimit 8) in-fight. ──
+    db.clone_record(_YARD_POOL_DONOR, _YARD_ENSLAVER_POOL)
+    PL = _YARD_ENSLAVER_POOL
+    sf(PL, 'FileDescription', 'YARD: Toxeus the Enslaver boss @100% (TESTHUB-only)')
+    for i in (1, 2, 3):
+        sf(PL, f'name{i}', _EN_BOSS)
+        sf(PL, f'weight{i}', 100)
+    _clear_champions(PL)                   # no champions; blank the leinth donor residue
+    sf(PL, 'spawnMin', 1); sf(PL, 'spawnMax', 1)
+    sf(PL, 'championChance', 0.0); sf(PL, 'championMin', 0); sf(PL, 'championMax', 0)
+    db._modified.add(PL)
+    _make_proxy(_YARD_ENSLAVER_PROXY, _YARD_ENSLAVER_POOL, _EN_BOSS, 3.0,
+                mesh_from=_EN_BOSS)
+
+    # ── 2. MARAUDER pack (SPOT A2): pool name1..4 = the real Champion marauder,
+    #    spawn 3-4, championChance 0 -> a 3-4 marauder pack @100% (mirrors the
+    #    swarm he normally spawns with). ──
+    db.clone_record(_YARD_POOL_DONOR, _YARD_MARAUDERS_POOL)
+    PL = _YARD_MARAUDERS_POOL
+    sf(PL, 'FileDescription', 'YARD: Enslaved Shadow Marauder pack 3-4 @100% (TESTHUB-only)')
+    for i in (1, 2, 3, 4):
+        sf(PL, f'name{i}', _EN_MARAUDER)
+        sf(PL, f'weight{i}', 100)
+    _clear_champions(PL)
+    sf(PL, 'spawnMin', 3); sf(PL, 'spawnMax', 4)
+    sf(PL, 'championChance', 0.0); sf(PL, 'championMin', 0); sf(PL, 'championMax', 0)
+    db._modified.add(PL)
+    _make_proxy(_YARD_MARAUDERS_PROXY, _YARD_MARAUDERS_POOL, _EN_MARAUDER, 3.0,
+                mesh_from=_EN_MARAUDER)
+
+    # ── 3. OBSIDIAN guardians (SPOT C + pockets): FOUR dedicated pools, EACH
+    #    guaranteeing its ONE named guardian at 100% + the 5-elite warband (the
+    #    shipped q_obs_warband gives only 1 RANDOM guardian, so it cannot pin each
+    #    one). name1..3 = that guardian (all identical -> the guaranteed main is
+    #    always him); championMin=Max=5 + nameChampion1..6 = the real warband set. ──
+    for c, guardian in _YARD_OBS_GUARDIANS.items():
+        pool = _YARD_OBS_POOL[c]
+        db.clone_record(_YARD_POOL_DONOR, pool)
+        sf(pool, 'FileDescription', f'YARD: obsidian guardian {c} @100% + 5-elite warband (TESTHUB-only)')
+        for i in (1, 2, 3):
+            sf(pool, f'name{i}', guardian)
+            sf(pool, f'weight{i}', 100)
+        # the 6 warband members OVERWRITE the donor's 3 champion slots + add 3 more
+        for i, w in enumerate(_OBS_WARBAND, start=1):
+            sf(pool, f'nameChampion{i}', w)
+            sf(pool, f'weightChampion{i}', 100)
+        sf(pool, 'spawnMin', 6); sf(pool, 'spawnMax', 6)
+        sf(pool, 'championChance', 100.0)
+        sf(pool, 'championMin', 5); sf(pool, 'championMax', 5)   # 6-5=1 guaranteed guardian
+        db._modified.add(pool)
+        _make_proxy(_YARD_OBS_PROXY[c], pool, guardian, 3.0,
+                    accessory=_YARD_OBS_ACC, mesh_from=guardian)
+
+    # ── 4. WYRM horde (SPOT D): reuse the shipped tier-03 pool verbatim (no new
+    #    pool), one dedicated proxy. placementExtents 2.5 (SPOT D is the tightest
+    #    pocket; the map lane re-verifies + nudges the coord to >=~95% at 2.5u). ──
+    _make_proxy(_YARD_WYRM_PROXY, _YARD_WYRM_POOL,
+                r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr',
+                2.5, mesh_from=r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr')
+
+    print("  TEST YARD: enslaver + marauder + 4 obsidian-guardian pools + 4 corner "
+          "proxies (hoard chests) + wyrm proxy (reuse svc_wyrmhorde_03); 6 new pools "
+          "+ 7 new proxies (13 records), all referencing REAL records (inert without "
+          "the TESTHUB map)")
+
+
 # ── Spawn-eligibility gate for mod-authored spawn proxies (fail-loud) ──────────
 # Registry of every proxy this build AUTHORS/edits, with the "main" (boss/hero) monster
 # that MUST reliably spawn. Add future mod-authored spawn proxies here so the invariant
@@ -11080,6 +11275,41 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'name': f'q_obs_roulette_{_c} (obsidian roulette corner @25%)',
     }
     for _c in 'abcd'
+] + [
+    # GROUP 1 (test yard): every NEW yard proxy is registered so the champion-
+    # crowd-out (spawnMax-championMax>=1) + limit-window (main charLevel <= the
+    # [1..110] limit max on N/E/L) checks prove each yard fight spawns its main.
+    # THIS is why the yard pools use limit_obsidianbosses ([1..110]): the Enslaver
+    # (L100) and Ilsevar (L74) exceed herolimit_all's Legendary cap of 75.
+    {
+        'proxy': _YARD_ENSLAVER_PROXY, 'pool': _YARD_ENSLAVER_POOL,
+        'main_monster': _EN_BOSS,
+        'name': 'q_yard_enslaver (yard: Enslaver boss @100%)',
+    },
+    {
+        # marauder pack: championChance=0 -> all spawnMax(=4) slots are mains; the
+        # Champion marauder (L[40,68,100]) needs the [1..110] window too.
+        'proxy': _YARD_MARAUDERS_PROXY, 'pool': _YARD_MARAUDERS_POOL,
+        'main_monster': _EN_MARAUDER,
+        'name': 'q_yard_marauders (yard: marauder pack 3-4 @100%)',
+    },
+] + [
+    {
+        # 4 obsidian-guardian yard pools: name1..3 = the ONE guardian,
+        # championMin=Max=5 -> 6-5=1 guaranteed guardian; main = that guardian.
+        'proxy': _YARD_OBS_PROXY[_c], 'pool': _YARD_OBS_POOL[_c],
+        'main_monster': _YARD_OBS_GUARDIANS[_c],
+        'name': f'q_yard_obs_{_c} (yard: obsidian guardian @100% + warband)',
+    }
+    for _c in _YARD_OBS_GUARDIANS
+] + [
+    {
+        # wyrm horde: reuses svc_wyrmhorde_03 (spawnMax=16, championMax=6 ->
+        # 16-6=10 guaranteed common wyrms); main = the common wyrm (L[31,51,66]).
+        'proxy': _YARD_WYRM_PROXY, 'pool': _YARD_WYRM_POOL,
+        'main_monster': r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr',
+        'name': 'q_yard_wyrm (yard: sepulchral wyrm horde @100%)',
+    },
 ]
 
 
@@ -11573,6 +11803,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # clone-shape gate (registers his hostile marauder-summon clone).
     print("\n=== GROUP B: Toxeus the Enslaver of Souls ===")
     _create_enslaver(db, tags)
+
+    # GROUP 1 (test yard): build the TESTHUB monster-yard pool/proxy records. MUST
+    # sit AFTER every yard-referenced group (Vashkarr/wyrm/obsidian/enslaver all
+    # created above) and BEFORE the sweep + verify below, so _verify_roaming_sweep
+    # sees the yard enslaver pool and whitelists it (_EN_YARD_POOLS). The sweep
+    # itself never touches q_yard_* (basename q_ + non-allow-prefix path).
+    print("\n=== GROUP 1: Monster Test Yard (TESTHUB-only) ===")
+    _create_test_yard(db, tags)
+
     _enslaver_touched = _sweep_inject_roaming_rare(db)
     _verify_roaming_sweep(db, _enslaver_touched)
 
