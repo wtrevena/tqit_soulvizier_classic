@@ -1866,14 +1866,53 @@ _HUB_DESTS = [
 # Both M5' standalones (chest room q_bloodtoxeus_lone + parchment q_bloodtoxeus_lone_50) are
 # RETIRED - Toxeus joins the pools of the EXISTING chest-area egg_blooddragon_pack (100%) and
 # a clone of the parchment demon_01_cluster (50%), both DB-lane arz edits (see the M15 notes
-# at the former spec sites). The old TESTHUB-only cave-mouth spawn stays retired too, so
-# TESTHUB == canonical: zero Toxeus map placements, all spawns pool-driven. This hook adds
-# nothing; kept as an extension point.
+# at the former spec sites). The old TESTHUB-only cave-mouth spawn stays retired too.
+#
+# --- MONSTER TEST YARD (build33, TESTHUB-only) ----------------------------------------------
+# Will (mod author) wants to fight+tune every new hostile monster from build31/32 in one place.
+# The DB lane (arz e3810219) added 7 dedicated Proxy records + their ProxyPool records under
+# records\drxmap\proxy\, each pointing at the REAL shipped monster records (never clones), so
+# tuning those records tunes the yard fight 1:1. They are added UNCONDITIONALLY to the shared
+# arz but stay INERT because ONLY the TESTHUB map places them (build_hub_extra_specs, folded in
+# by merge_hub_into_inject_specs only when SVC_TEST_HUB=1). The canonical/Steam map references
+# none -> byte-identical d5259629. SPOT B reuses the EXISTING q_vashkarr_lone proxy (already
+# placed once canonical at FotA; a second TESTHUB-only placement here needs no new DB record).
+# All proxies placed flags=0, no 0x14 (the q_vashkarr_lone proxy byte-shape precedent).
+# Coords re-surveyed 2026-07-10 against the canonical HV01 0x0b navmesh (single fixed Silk Road
+# navmesh, no tileset variants): every spot on-mesh, on-largest-component, >=98% clear at its
+# pool's placementExtents (all 100% here), spawn spots spaced+off the villager (41.7,103.2)/
+# fountain (Z143)/garden-portal (Z128+) reference entities.
+Q_YARD_ENSLAVER_DBR      = b'records\\drxmap\\proxy\\q_yard_enslaver.dbr'
+Q_YARD_MARAUDERS_DBR     = b'records\\drxmap\\proxy\\q_yard_marauders.dbr'
+Q_YARD_OBS_SARKOTH_DBR   = b'records\\drxmap\\proxy\\q_yard_obs_sarkoth.dbr'
+Q_YARD_OBS_GORRAHK_DBR   = b'records\\drxmap\\proxy\\q_yard_obs_gorrahk.dbr'
+Q_YARD_OBS_VORANTHYS_DBR = b'records\\drxmap\\proxy\\q_yard_obs_voranthys.dbr'
+Q_YARD_OBS_ILSEVAR_DBR   = b'records\\drxmap\\proxy\\q_yard_obs_ilsevar.dbr'
+Q_YARD_WYRM_DBR          = b'records\\drxmap\\proxy\\q_yard_wyrm.dbr'
+# VASHKARR_PROXY_DBR (records\drxmap\proxy\q_vashkarr_lone.dbr) is defined above (SPOT B reuse).
+HV01_LVL_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
+
+
 def build_hub_extra_specs():
-    """TEST-HUB non-portal entity additions (level_key -> [specs]). Empty since M5' (and M15:
-    Blood Toxeus spawns are pool-driven, no map placements), so there is no TESTHUB-only
-    extra."""
-    return {}
+    """TEST-HUB non-portal entity additions (level_key -> [specs]). The MONSTER TEST YARD:
+    8 proxy placements in HiddenValley01 (Silk Road), a down-valley gauntlet from the blood-cave
+    mouth. Folded into INJECT_SPECS ONLY when SVC_TEST_HUB=1 (append-only -> canonical HV01 byte-
+    unchanged). Each is a 4-tuple (dbr, x, y, z) -> flags=0, no 0x14, identity rot.
+      ENSLAVER CLUSTER (right outside the mouth): A1 boss + A2 marauder pack.
+      B: Vashkarr + 2 champion escorts (reused q_vashkarr_lone).
+      OBSIDIAN WARBAND (down-valley pocket Z87-95): Sarkoth/Gorrahk/Voranthys/Ilsevar, each its
+        own guaranteed guardian + the 5-elite warband, clustered 6-12u apart.
+      WYRM HORDE: 10 common + 4-6 champion sepulchral wyrms (reused svc_wyrmhorde_03)."""
+    return {HV01_LVL_KEY: [
+        (Q_YARD_ENSLAVER_DBR,      23.0, 17.0,  33.0),   # A1 boss  clr@3.0=100%  dMouth 11.4u
+        (Q_YARD_MARAUDERS_DBR,     31.9, 16.2,  26.9),   # A2 pack  clr@3.0=100%  dMouth 17.9u
+        (VASHKARR_PROXY_DBR,       36.0, 16.0,  28.5),   # B  Vashkarr clr@3.5=100% dMouth 22.1u
+        (Q_YARD_OBS_SARKOTH_DBR,   42.0, 15.2,  91.0),   # C  clr@3.0=100%
+        (Q_YARD_OBS_GORRAHK_DBR,   36.0, 15.2,  90.0),   # C  clr@3.0=100%
+        (Q_YARD_OBS_VORANTHYS_DBR, 47.0, 15.4,  87.0),   # C  clr@3.0=100%
+        (Q_YARD_OBS_ILSEVAR_DBR,   47.0, 15.2,  95.0),   # C  clr@3.0=100%
+        (Q_YARD_WYRM_DBR,          30.0, 15.2, 113.0),   # D  clr@2.5=100%  dFount 30u
+    ]}
 
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
@@ -1939,7 +1978,7 @@ def merge_hub_into_inject_specs(base_specs):
     hub entities are APPENDED after any base entries on the same level, so base instance indices
     are unchanged -> the flag-OFF build's non-hub blobs stay byte-identical). Folds in BOTH the
     20 hub portals (build_hub_inject_specs) AND the non-portal TEST-HUB extras (build_hub_extra_specs
-    = the lone Toxeus proxy outside the blood-cave mouth). Does not mutate base_specs."""
+    = the monster test yard in HiddenValley01). Does not mutate base_specs."""
     out = {k: list(v) for k, v in base_specs.items()}
     for adds in (build_hub_inject_specs(), build_hub_extra_specs()):
         for k, specs in adds.items():

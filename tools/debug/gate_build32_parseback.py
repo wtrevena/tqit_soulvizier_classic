@@ -115,7 +115,10 @@ def main():
                     help='skip the M10 tombobs checks (to gate a pre-M10 build)')
     ap.add_argument('--testhub', action='store_true',
                     help='expect the TESTHUB variant (same M8/M9 assertions; farmland/random05a '
-                         'counts are hub-independent)')
+                         'counts are hub-independent) PLUS the MYARD HiddenValley01 monster-yard '
+                         'checks (8 TESTHUB-only proxy placements)')
+    ap.add_argument('--yard-baseline', default=str(REPO / 'local' / 'Levels_merged.arc'),
+                    help='canonical map (no yard) baseline for the TESTHUB HV01 yard collateral')
     args = ap.parse_args()
 
     print(f'=== GATE build32 parse-back: {args.map} ===')
@@ -249,11 +252,65 @@ def main():
             check('0x0b navmesh section survived byte-identical',
                   secs.get(0x0b) == bsecs.get(0x0b), f'{len(bsecs.get(0x0b, b""))} bytes')
 
+    # ---------------- MYARD: HiddenValley01 monster test yard (TESTHUB-only, v0x11) ------------
+    # The yard is 8 proxy placements appended to HV01 ONLY in the TESTHUB build (build_hub_extra_
+    # specs). Baseline = the canonical map (no yard); TESTHUB HV01 must equal canonical HV01 plus
+    # exactly these 8 appended flags=0 instances, with every other section (incl. 0x0b navmesh)
+    # byte-identical (append-only -> the byte-identity + hub-identity guarantees hold).
+    if args.testhub:
+        ydata, ylevels = load_world(args.yard_baseline)
+        print('--- MYARD HiddenValley01 (v0x11, TESTHUB-only monster yard) ---')
+        lv, blob = get_blob(data, levels, 'orient/silkroad/hiddenvalley01.lvl')
+        blv, bblob = get_blob(ydata, ylevels, 'orient/silkroad/hiddenvalley01.lvl')
+        check('blob version v0x11', blob[3] == 0x11, f'v0x{blob[3]:02x}')
+        ok, end = blob_walk_exact(blob)
+        check('blob section walk reaches exact blob end', ok, f'end={end} len={len(blob)}')
+        secs = dict(parse_blob_sections(blob))
+        bsecs = dict(parse_blob_sections(bblob))
+        sd = secs[0x05]
+        strings, insts, endpos, ninst = walk_0x05(sd, 72)
+        _, binsts, _, bninst = walk_0x05(bsecs[0x05], 72)
+        check(f'0x05 instance count {bninst} -> {bninst + 8}', ninst == bninst + 8, f'count={ninst}')
+        check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
+              f'end={endpos} len={len(sd)}')
+        YARD = [
+            (b'q_yard_enslaver.dbr',      (23.0, 17.0, 33.0)),
+            (b'q_yard_marauders.dbr',     (31.9, 16.2, 26.9)),
+            (b'q_vashkarr_lone.dbr',      (36.0, 16.0, 28.5)),
+            (b'q_yard_obs_sarkoth.dbr',   (42.0, 15.2, 91.0)),
+            (b'q_yard_obs_gorrahk.dbr',   (36.0, 15.2, 90.0)),
+            (b'q_yard_obs_voranthys.dbr', (47.0, 15.4, 87.0)),
+            (b'q_yard_obs_ilsevar.dbr',   (47.0, 15.2, 95.0)),
+            (b'q_yard_wyrm.dbr',          (30.0, 15.2, 113.0)),
+        ]
+        for k, (bname, pos3) in enumerate(YARD):
+            inst = insts[bninst + k]
+            check(f'yard[{k}] is {bname.decode()}',
+                  inst['dbr'].lower().endswith(BS.encode() + bname), inst['dbr'].decode('latin-1'))
+            check(f'yard[{k}] at local {pos3}',
+                  all(abs(inst['pos'][i] - pos3[i]) < 1e-3 for i in range(3)), str(inst['pos']))
+            check(f'yard[{k}] flags == 0 (proxy byte-shape)', inst['flags'] == 0,
+                  f"flags={inst['flags']}")
+        for t in sorted(set(bsecs) | set(secs)):
+            if t == 0x05:
+                continue
+            check(f'section 0x{t:02x} byte-identical to canonical HV01',
+                  secs.get(t) == bsecs.get(t),
+                  f'{len(bsecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
+        same = all(insts[i]['dbr'] == binsts[i]['dbr'] and insts[i]['pos'] == binsts[i]['pos']
+                   for i in range(bninst))
+        check(f'all {bninst} pre-existing HV01 instances unchanged (dbr+pos)', same)
+        check('0x0b navmesh section survived byte-identical', secs.get(0x0b) == bsecs.get(0x0b),
+              f'{len(bsecs.get(0x0b, b""))} bytes')
+        check('no stale 0x0a alongside 0x0b', 0x0a not in secs or 0x0b not in secs)
+
     print()
     if FAIL:
         print(f'RESULT: FAIL ({len(FAIL)}): {FAIL}')
         return 1
     scope = 'M8 + M9' if args.skip_m10 else 'M8 + M9 + M10'
+    if args.testhub:
+        scope += ' + MYARD'
     print(f'RESULT: PASS ({scope} parse-back clean)')
     return 0
 

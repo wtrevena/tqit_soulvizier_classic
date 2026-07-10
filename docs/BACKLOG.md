@@ -1,5 +1,58 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🗺️ **MONSTER TEST YARD (MAP LANE) + PORTAL-RIG DEFERRAL (2026-07-10, autonomous map-lane).**
+> Couples with the DB-lane yard note below (arz `e3810219`). MAP artifacts: canonical
+> `local/Levels_merged.arc` = **`d5259629`** (REPRODUCED byte-identical -> the yard change is
+> strictly TESTHUB-only); TESTHUB `local/Levels_merged_TESTHUB.arc` = **`37f58d29`**
+> (688,649,020 B, det-2x reproduced), was build32b `4fb76084`. Text/Quests UNCHANGED
+> (`346572bb`/`6ff23c29`).
+> **WHAT (map hook):** `build_section_surgery.py::build_hub_extra_specs()` (was `{}`) now returns
+> the 8 monster-yard proxy placements in HiddenValley01 (Silk Road), folded into INJECT_SPECS
+> ONLY when `SVC_TEST_HUB=1` (append-only after HV01's 222 base instances -> canonical HV01 byte-
+> unchanged; parse-back MYARD proves 222->230, every other section incl. 0x0b navmesh byte-
+> identical). Each is a flags=0 / no-0x14 proxy (the q_vashkarr_lone byte-shape). SPOT B reuses
+> the existing `q_vashkarr_lone.dbr` (already placed canonical at FotA; 2nd TESTHUB placement
+> needs no new record). **FINAL COORDS (re-surveyed on-mesh + clearance vs the real HV01 0x0b
+> navmesh; the C obsidian pocket was re-nudged since the raw spec coords hit walls/villager):**
+> a down-valley gauntlet from the blood-cave mouth (local, HV01 corner (-134,-120,2174)):
+> q_yard_enslaver (23.0,17.0,33.0), q_yard_marauders (31.9,16.2,26.9), q_vashkarr_lone
+> (36.0,16.0,28.5), then the OBSIDIAN WARBAND cluster Z87-95 [q_yard_obs_sarkoth (42.0,15.2,91.0),
+> q_yard_obs_gorrahk (36.0,15.2,90.0), q_yard_obs_voranthys (47.0,15.4,87.0), q_yard_obs_ilsevar
+> (47.0,15.2,95.0), each own guardian + 5-elite warband, mutually >=6.1u, >=9.8u off the villager],
+> then q_yard_wyrm (30.0,15.2,113.0) [dFount 30u]. ALL 8: on-mesh, on-largest-component, 100%
+> clear at their placementExtents, flags=0.
+> **STANDING DEV TEST PATTERN (how to enable/disable the yard on the DEV entry):** the yard rides
+> the TESTHUB map. TO ENABLE: deploy `local/Levels_merged_TESTHUB.arc` (37f58d29) as the DEV entry's
+> `Resources/Levels.arc` + the yard arz `e3810219` as `SoulvizierClassicDEV.arz`; walk a Custom-Quest
+> char into HiddenValley01, out the cave mouth -> Enslaver+marauders, Vashkarr+2 champs, the 4
+> Obsidian guardians+warbands, the wyrm horde (each @100%). TO DISABLE (restore canonical, e.g. for
+> a co-op-safe DEV): deploy `local/Levels_merged.arc` (d5259629) as the DEV `Resources/Levels.arc`
+> (arz unchanged; the yard records go inert with no map placing them). The yard records ship in the
+> shared arz UNCONDITIONALLY but are INERT on canonical/Steam (the packager's live TESTHUB-MD5 guard
+> - which hashes `local/Levels_merged_TESTHUB.arc` at runtime, no hard-coded md5 - still ABORTS on
+> 37f58d29, so the yard can never reach Workshop). Tune the fight by editing the REAL monster
+> records in the arz (see the DB-lane tuning table); the yard follows 1:1.
+> **GATES (all GREEN, map-lane):** canonical md5==d5259629; parse-back M8+M9+M10+**MYARD** PASS;
+> MAP-REF-1 = 0 P0/0 P1 on TESTHUB vs the new arz (3 P2 = pre-existing base-game XPack Act3/Styx
+> portals, not the yard); navmesh 24/24; groups-bindings 374/374 (0 DEAD); det-2x TESTHUB byte-
+> identical; all 8 instances on-mesh in the single HV01 tileset. `gate_doors_hub hubidentity`: the
+> HV01 yard append passes (canonical is a byte-exact prefix of the +8 hub HV01); its random09a
+> "fewer instances" flag is PRE-EXISTING (random09a byte-identical to the shipped build32b TESTHUB
+> 4fb76084; that gate is an untracked debug tool with a stale subset assumption for random09a).
+> **PORTAL RIG (Helos + blood-cave-entrance hubs): DEFERRED this build.** The portal spec's settled
+> mechanism (Model C BoatDialog portal-master, the ONLY one with working returns from appended
+> SV-only areas) needs +2 NPC records (`svc_testhub_master`/`svc_testhub_return`), boat-dialog
+> triggers in `sv_commonmechanics.qst`, and ~5-7 Text tags - all of which the DB lane explicitly
+> DEFERRED (GROUP 2; verified ABSENT from arz e3810219). Placing those NPC records would fail
+> MAP-REF-1. The only map-only alternative (born-open GridEntrance) ships exactly the B-PORTAL-1/2/3
+> bugs (blue-pane render, walkway force-teleport, DEAD returns from every SV area) the design is
+> RETIRING, so it is not a valid deliverable. Will ALREADY has working Helos->SV forward travel via
+> the canonical Almyros/portal_master_helos BoatDialog NPC (4 dests), and the existing Random09A
+> GridEntrance hub (5 dests, LEFT untouched) covers rough forward walk-testing. TO UNBLOCK: run a
+> coordinated portal wave = DB lane builds the 2 NPC records + boat-dialog triggers + tags, THEN the
+> map lane places the 2 hub NPCs + 5 return NPCs (Model C) per PORTAL spec sections 1-3. This is a
+> map-only-code change here (`build_hub_extra_specs` extension) once those records exist.
+
 > 🧪 **MONSTER TEST YARD (DB LANE) + WRAITHLORD RE-ENABLE (2026-07-10, autonomous DB-lane).**
 > Baseline = shipped build32b arz `e27dd1cb`. NEW arz `e3810219379c6d1d809a470d889007ba`
 > (det-2x reproduced byte-exact: build1==build2==build3-scratch). Text/Quests/Levels UNCHANGED
