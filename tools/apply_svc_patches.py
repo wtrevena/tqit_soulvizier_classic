@@ -8733,6 +8733,97 @@ def _create_olympus_rhodes_herald(db, tags):
           "boatman (proven boat-dialog NPC shape); name/chat/travel tags set")
 
 
+# ── M15 (Will, 2026-07-09 night): Toxeus joins the existing spawn groups ────
+# 'find the spawn group that currently exists within the esti chest area and
+# add toxeus devourer of blood to it with 100% spawn rate' + 'there is a spawn
+# group of little demon guys that are right on top of the tattered parchment -
+# you can put toxeus devourer of blood there too with 50% spawn chance.'
+# Map recon (m15_proxy_recon.py, byte-decoded from the shipped 0x05):
+#   CHEST ROOM (drxBC2): proxy egg_blooddragon_pack @ local (13.17,28,136.06),
+#     4.2u from the chest; pool pools\egg_blooddragon.dbr; BOTH proxy and pool
+#     are EXCLUSIVE (1 placement, 1 referencing proxy) -> edit the pool IN
+#     PLACE: guaranteed-boss construction, championChance=100/championMax=1,
+#     Toxeus the only champion entry; spawnMax(4)-championMax(1)>=1 law holds
+#     (3 blood dragons + Toxeus every run).
+#   PARCHMENT (drxFirstxistion_connection): proxy demon_01_cluster @ local
+#     (37.16,10,20.46), 5.5u from the letter; its pool is proxy-exclusive but
+#     the PROXY has 19 placements across 3 levels -> DERIVE copies
+#     (demon_01_cluster_toxeus50 proxy + pool) with the champion list replaced
+#     by Toxeus-only @50 (the 3-8 small demons stay; the other 18 placements
+#     keep the original 40% med-demon champion). spawnMax(8)-championMax(1)>=1.
+# COUPLED SHIP (map lane): repoint the ONE parchment instance to the derived
+# proxy record + REMOVE both standalone proxies (q_bloodtoxeus_lone in drxBC2
+# + q_bloodtoxeus_lone_50 on the letter) or the old double-spawn returns.
+# Champion field shapes mirror the demon pool's own live shape verbatim
+# (championChance FLOAT / championMax INT / nameChampionN / weightChampionN;
+# no championMin - zero-precedent in this pool family).
+_M15_EGG_POOL = r'records\drxmap\proxy\pools\egg_blooddragon.dbr'
+_M15_DEMON_PROXY = r'records\drxmap\proxy\demon_01_cluster.dbr'
+_M15_DEMON_POOL = r'records\drxmap\proxy\pools\demon_01_cluster.dbr'
+_M15_DERIVED_PROXY = r'records\drxmap\proxy\demon_01_cluster_toxeus50.dbr'
+_M15_DERIVED_POOL = r'records\drxmap\proxy\pools\demon_01_cluster_toxeus50.dbr'
+_M15_TOXEUS = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
+
+
+def _apply_m15_toxeus_group_joins(db):
+    if not db.has_record(_M15_TOXEUS):
+        raise SystemExit("M15: um_bloodtoxeus_99 missing")
+
+    def val(rec, f, default=None):
+        v = db.get_field_value(rec, f)
+        if isinstance(v, list):
+            v = v[0] if v else None
+        return default if v is None else v
+
+    # ── chest room: edit the exclusive egg pool in place (@100) ──
+    if not db.has_record(_M15_EGG_POOL):
+        raise SystemExit(f"M15: pool missing: {_M15_EGG_POOL}")
+    if val(_M15_EGG_POOL, 'championChance') not in (None, 0, 0.0):
+        raise SystemExit("M15: egg pool already has champion fields - "
+                         "pre-shape changed, reconcile")
+    sf = db.set_field
+    sf(_M15_EGG_POOL, 'championChance', 100.0)
+    sf(_M15_EGG_POOL, 'championMax', 1)
+    sf(_M15_EGG_POOL, 'nameChampion1', _M15_TOXEUS)
+    sf(_M15_EGG_POOL, 'weightChampion1', 100)
+    smax = int(float(val(_M15_EGG_POOL, 'spawnMax', 0)))
+    if smax - 1 < 1:
+        raise SystemExit(f"M15: egg pool spawnMax {smax} - championMax 1 < 1 "
+                         f"(champion crowd-out law)")
+    db._modified.add(_M15_EGG_POOL)
+    print(f"  M15 chest room: egg_blooddragon pool += Toxeus champion @100 "
+          f"(spawnMax {smax}, {smax - 1} dragons + the Devourer every run)")
+
+    # ── parchment: derive proxy+pool copies (@50); map lane repoints ──
+    for rec in (_M15_DERIVED_PROXY, _M15_DERIVED_POOL):
+        if db.has_record(rec):
+            raise SystemExit(f"M15: derived record already exists: {rec}")
+    if not db.has_record(_M15_DEMON_POOL) or not db.has_record(_M15_DEMON_PROXY):
+        raise SystemExit("M15: demon_01_cluster proxy/pool missing")
+    if float(val(_M15_DEMON_POOL, 'championChance', 0)) != 40.0:
+        raise SystemExit("M15: demon pool championChance != 40 - pre-shape "
+                         "changed, reconcile")
+    db.clone_record(_M15_DEMON_POOL, _M15_DERIVED_POOL)
+    # pure VALUE edits on the clone (no field-shape change; empty-string .dbr
+    # refs are the B-TOXEUS-2 loader-abort class, so all three existing
+    # champion entries are repointed at Toxeus instead of blanked - any
+    # champion roll yields him; weights keep their native 34/33/33 values).
+    sf(_M15_DERIVED_POOL, 'championChance', 50.0)
+    sf(_M15_DERIVED_POOL, 'nameChampion1', _M15_TOXEUS)
+    sf(_M15_DERIVED_POOL, 'nameChampion2', _M15_TOXEUS)
+    sf(_M15_DERIVED_POOL, 'nameChampion3', _M15_TOXEUS)
+    db._modified.add(_M15_DERIVED_POOL)
+    db.clone_record(_M15_DEMON_PROXY, _M15_DERIVED_PROXY)
+    sf(_M15_DERIVED_PROXY, 'pool1', _M15_DERIVED_POOL)
+    db._modified.add(_M15_DERIVED_PROXY)
+    smax2 = int(float(val(_M15_DERIVED_POOL, 'spawnMax', 0)))
+    if smax2 - 1 < 1:
+        raise SystemExit(f"M15: derived pool spawnMax {smax2} law violation")
+    print(f"  M15 parchment: derived demon_01_cluster_toxeus50 proxy+pool "
+          f"(Toxeus only champion @50; {smax2} max small demons). MAP LANE: "
+          f"repoint the parchment instance + remove both standalone proxies.")
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  D10 EMBERSCALE (Will 2026-07-09): a new 5-shard collectible charm (ItemCharm,
 #  exact Turtle Shell pattern) dropped by the "{^G}Flameguard Slayer" green
@@ -9512,6 +9603,11 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Runs AFTER the gate (he is a legit Boss, so the drop forcer keeping his
     # soul at 100% is intended) and BEFORE _force_100_pct_soul_drops.
     _create_blood_toxeus(db)
+
+    # M15 (Will): Toxeus joins the chest-room egg group @100 + the derived
+    # parchment demon group @50. Must run AFTER _create_blood_toxeus (needs
+    # um_bloodtoxeus_99 to exist).
+    _apply_m15_toxeus_group_joins(db)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
