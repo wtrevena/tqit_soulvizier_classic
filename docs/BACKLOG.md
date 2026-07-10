@@ -405,17 +405,28 @@ D13 + D14 + D15. Will's standing ruling: only convert summon-souls he EXPLICITLY
   (tag tagSoulName583): augment swordtraining 3/4/5 + petBonusName petbonus_pygmalion_{n,e,l},
   NO itemSkillName proc -> the summon displaces nothing; KEEP augment + petBonus (petBonus buffs
   pets = direct synergy with the new summon).
-  **SELF-REPLICATION EDGE (confirmed in-data):** the monster's buffSelfSkillName AND skillName8 =
-  `records\skills\sv\pygmalion\replicate.dbr` (Class Skill_SpawnPet) spawning
-  `records\skills\sv\pygmalion\replicant_41.dbr` = a Common L41 copy of itself (same mesh/tex,
-  tag tagNewPet9, chanceToEquipFinger2=0 so replicas drop no souls). The summoned PET would
-  therefore spawn pets. Implementer design call: keep `replicate` on the pet ONLY IF pet-of-pet
-  is verified safe (Boneash precedent) AND the skill self-limits (check replicate's petLimit /
-  spawnObjectsTimeToLive; permanent unlimited replicas = degenerate army); else strip replicate
-  from the PET kit only (monster untouched) and report the call. Replication IS the monster's
-  identity - prefer keep-with-limit if the data supports it. (`copy of replicate.dbr` =
-  Skill_AktaiosMirage upstream junk; ignore.) Full D13 recipe + gates; ladder scaled to the
-  L41 hero band.
+  **SELF-REPLICATION - WILL'S RULING (2026-07-09, verbatim): "dont have the safe limits on the
+  pygmalion replicator replicates make it crazy."** Faithful transplant of the monster's replicate
+  kit; ADD NOTHING (no new petLimit, TTL, cooldown, or any artificial constraint). Both
+  engineering checks RESOLVED from the decoded records (build30.2 arz):
+  (1) NO RECURSION IN-DATA: `replicant_41.dbr`'s full kit is decoded (batter, shieldcharge +
+  disruption, shieldsmash, lightning melee w/ slow, armor_passive, construct_resists,
+  globalproperties) and it does NOT carry replicate (no skillName8, no buffSelfSkillName). The
+  monster's faithful shape = ONE-GENERATION replication: copies do not copy. Ship exactly that.
+  (2) ENGINE TOLERANCE MOOT: `replicate.dbr`'s OWN native fields already bound the population -
+  petLimit = 3/4/5 (per skill level 1/2/3), skillCooldownTime = 9/8/7 s, petBurstSpawn = 1,
+  skillManaCost = 75, skillMaxLevel = 3 (ladder 1/2/3 fits the F1 gate), NO
+  spawnObjectsTimeToLive (replicants persist until killed). These are limits the MONSTER lives
+  with = faithful = KEEP; nothing new is added per the ruling. No unbounded growth exists, no
+  crash mechanism; nothing was silently limited.
+  EXPECTED IN-GAME (sign-off numbers): the pet auto-casts Replicate every 9/8/7 s (same buffSelf
+  wiring as the monster), building to the native cap of 3/4/5 PERMANENT replicants whose
+  charLevel scales 41/58/71 with the skill level; each replicant is a full fighting construct.
+  Legendary-tier screen state: the Pygmalion pet + 5 permanent L71 copies, all friendly
+  (pet-side Skill_SpawnPet chain, Boneash precedent). `spawnObjects = replicant_41` with
+  charLevel [41,58,71] = the ladder's power curve comes free from the skill itself.
+  (`copy of replicate.dbr` = Skill_AktaiosMirage upstream junk; ignore.) Full D13 recipe +
+  gates; the summon-skill ladder tiers map 1:1 onto replicate's existing 3 levels.
 - **D13: Eater of Days summon soul** (Will: "The Eater of Days soul should let you summon him").
   Records identified on the build30.2 arz: monster
   `records\creature\monster\sepulchralwyrm\um_eaterofdays_45.dbr` (Hero-classified, single tier
