@@ -41,22 +41,32 @@
   DEV deploy. Mesh `Credits_Portal.msh` + the portal anms DO resolve (base XPack Items.arc) - render
   is not the blocker; the dead engine destination is.
 
-### B-MERGE-SD-GROUPS-1 (P1, map lane - real regression found during M12): our merge clobbers SVAERA's SD + shrine bindings with SV 0.98i's
-- **Finding (byte-proven):** `svaera_plus_portals.py` prefers SV 0.98i's world-level sections over
-  SVAERA's: GROUPS(0x11) keeps SV's version of same-named records (line ~501 `sv_g_recs + ae_only`),
-  and SD(0x18) is wholesale SV's (line ~543 "Using SV SD"). Result: our SD is **116,299 B vs
-  SVAERA/base's 227,893 B**, and 4 same-name GROUPS members are lost (Shrine_Respawn_Hades 53->51,
-  Shrine_Teleport_Hades 5->4, Shrine_Teleport_Orient 12->11) - including the 2 dangling Olympus
-  shrines (respawn_olympus_new [removed in build31c per Will] + teleportshrineolympus01
-  [B-OLYMPUS-TELESHRINE-1]). SVAERA=base for both sections. Neither section carries the
-  FixedItemTeleport portal destination (uids absent from both SDs), so this is NOT proven to fix
-  B-OLYMPUS-RHODES-1, but it IS the only world-level data difference between SVAERA and ours and it
-  breaks IT/Hades-act teleport+respawn shrines (and possibly IT-act zone/strategic data).
-- **Fix (needs care + vet + walk-test, NOT a rushed swap):** MERGE SVAERA's SD + GROUPS (preserve
-  the IT/DLC-act strategic data + shrine bindings) with SV's blood-cave zone/GROUPS additions,
-  instead of letting SV clobber them. The SD merge needs the section's zone structure decoded first
-  (SVAERA's is ~2x SV's). Low-risk sub-fix: for the 3 same-name shrine groups, prefer SVAERA's
-  (restores the Olympus/Orient shrine bindings).
+### B-MERGE-SD-GROUPS-1 (P1, map lane): GROUPS half FIXED (build31e M13a); SD half OPEN (M13b, needs sd_format RE)
+- **M13a SHIPPED (build31e, 2026-07-10): the GROUPS restoration.** New merge in
+  `svaera_plus_portals.py merge_groups_svaera_base`: SVAERA/base records (SVAERA order, verbatim)
+  + SV-extra members appended per-record (4: the HV01 fountain, the SV maze respawn, JadeFigurine,
+  1 SV Hades member; levelGUID-validated, 0 stale skips) + the 4 SV-only groups (New Group x2,
+  DRXShrineTeleport_Duister, zRespawnSanctuary). RESTORED: Tower-of-Judgement floor-4 respawn
+  (32703cac.., the Lane B mandatory-path dead shrine), teleportshrineolympus01 (3c007d48.., the
+  Olympus rift stop - B-OLYMPUS-TELESHRINE-1 is thereby RESOLVED BETTER THAN FILED: restored, not
+  removed), Shrine_Teleport_Orient 12th member, + base-correct member positions/GUIDs in 42 more
+  same-name records (golden chests, unified proxies, the Q15/xQ00 portal-pairing [Any Entity]
+  records). NEW fail-loud GATE `tools/verify_groups_bindings.py` (forward per-instance check:
+  every placed StrategicMovement*Shrine uid must be GROUPS-bound; the gap contracts_map
+  MAP-GROUPS-1 could not catch): **374/374 devices bound, 0 dead** on both variants + the 5
+  Lane-B must-bind uids asserted in-build (M13A_MUST_BIND). Walk-test: ToJ floor-4 respawn +
+  the Olympus rift shrine + HV01 fountain still binding.
+- **M13b OPEN: the SD(0x18) half.** Ours is still SV's v6 section (116,299B) vs SVAERA/base v7
+  (227,893B). Analysis so far (2026-07-10 session, scratchpad m13_sd_parse/m13_sd_deep): SD =
+  [u32=2][version 6|7][u32][count] + named zone/env records; REGION records = type+unk+name +
+  GUID(16) + 8 floats + embedded display tag + trailer (SV carries the FULL base tagRegionName01-185
+  set + its 9 SV zone tags: tagBCX x4, tagMZoneGoM, tagNewMZone1, tagJoLandia, tagSPDarkForest,
+  tagSPRogueEncampment); env/fog records ('Rhodes Fog', 'X2_*') have larger bodies and **v7 records
+  carry an extra field at body offset ~112 vs v6** - so porting requires a real sd_format.py
+  (round-trip-proven, qst_format-standard) and v6->v7 record conversion, NOT a heuristic splice.
+  What the SD swap would gain: TQAE base-act env re-authoring + all DLC-act zone/env records
+  (mostly capped acts). What a naive swap would LOSE: the 9 SV zone-label records (blood cave,
+  GoM, Secret Place) - hence record-level merge only. No PROVEN defect is SD-attributed today.
 
 ### B-PORTAL-1: Portals are ugly flat blue panels / hard-to-see arrows
 - **Symptom (Will, screenshots):** the born-open GridEntrance portals now APPEAR (build27 fix
@@ -392,16 +402,13 @@
   injection (canonical never had it; the superboss lives in the waterfall chamber). Routed to the
   map wave; ships in a local interim TESTHUB test build for Will now + the vetted wave build.
 
-### B-OLYMPUS-TELESHRINE-1 (P3, known dead prop - Will: leave as-is for now): Olympus teleport shrine is dangling
-- Sibling of the REMOVED Lower-Olympus respawn trophy (build31c, commit 6d7f473): OlympusFinal02
-  also places teleportshrineolympus01 (StrategicMovementTeleportShrine, local (454.2,21.7,938.0),
-  uid 3c007d48...) whose UniqueId is ABSENT from the merged world's GROUPS Shrine_Teleport_Hades
-  record (base binds it, 5 members; ours 4) - the SAME SVAERA-merge-inherited dangling-binding
-  class. It renders but never joins the rift/fast-travel network. Will confirmed keep-removed for
-  the respawn trophy and leave-as-is for this one. Fix options when picked up: re-bind the uid
-  into Shrine_Teleport_Hades (restores an Olympus rift stop) or de-place it via
-  REMOVE_DANGLING_SHRINE_SPECS (tools/build_section_surgery.py). Evidence: the M6 recon
-  (scratchpad check_respawn.py, 2026-07-09).
+### B-OLYMPUS-TELESHRINE-1 - RESOLVED BETTER THAN FILED (build31e M13a, 2026-07-10): shrine RESTORED
+- The M13a GROUPS restoration re-bound teleportshrineolympus01 (uid 3c007d48...) into
+  Shrine_Teleport_Hades as part of base parity - the Olympus rift shrine now WORKS instead of
+  dangling (strictly better than the leave-as-is ruling; nothing removed, base-game behavior
+  restored). Walk-verify with the M13 wave: activate the shrine at the Olympus summit approach
+  and check it joins the rift/teleport network. History: it was dangling since the original
+  merge (SV's TQIT-era Shrine_Teleport_Hades clobbered base's; the M6 recon, check_respawn.py).
 
 ### B-DB-HYGIENE-1 (P3): dead orphan record potionexp_test.dbr
 - records/item/miscellaneous/oneshot/potionexp_test.dbr carries a corrupted NEGATIVE
@@ -784,6 +791,19 @@ Standing watch items likely to draw comments until fixed: the 8 raw tags (B-TEXT
 to every subscriber right now; portals look rough (B-PORTAL-1). Prioritize those before a wider push.
 
 ## ✅ RESOLVED / VERIFIED
+
+### M14 (build31e, 2026-07-10): dead-content-audit small items - dev quest de-registered + stray tombstone de-placed
+- `testquesttoopendoors.qst` DE-REGISTERED from the QUESTS(0x1b) load window (was idx 101 - a
+  leftover dev quest duplicating door unlocks on unverified conditions and burning a slot of the
+  256 window). Registry is now 255 entries; boundary pair (hcdungeon_control + x2_StartQuest)
+  intact; quest identity is name-keyed so the post-101 index shift is neutral; one slot FREED for
+  future registrations (e.g. z_primrosecontroller if the Primrose secret is ever un-mooted). The
+  .qst stays in the arcs harmlessly (never loads). `DEREGISTERED_NATIVE_BASENAMES` +
+  fail-loud asserts in svaera_plus_portals.build_ordered_quest_list.
+- The stray Atlantis `tombstone.dbr` (locked FixedItemQuestObject, dev placeholder description
+  'Hogge', zero quest refs) DE-PLACED from Greek MonsterCave01B (was inst [58]).
+  `REMOVE_STRAY_PROP_SPECS` in build_section_surgery.py; the only level blob the build31e wave
+  changed (per-level byte-diff proof; M13a lives in the world GROUPS/QUESTS sections).
 
 ### B-STARTER-CHEST-1 + B-STARTER-CHEST-2: starter chest RESOLVED (build30.2, in-game verified 2026-07-09)
 - **Symptoms:** (1) Will 2026-07-08: the chest should drop 12 inventory bags + 36 potions for co-op;

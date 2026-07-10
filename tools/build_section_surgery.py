@@ -662,6 +662,21 @@ REMOVE_DANGLING_SHRINE_SPECS = {
     ],
 }
 
+# ── M14: DE-PLACE stray cross-expansion props (audit 2026-07-10 Lane A, cosmetic) ────
+# records\xpack3\scenery\atlantis\underground\tombstone.dbr = an Atlantis-DLC
+# FixedItemQuestObject (locked=1, description = the literal dev placeholder 'Hogge', no
+# quest reference in any of the 6 quest arcs) placed ONCE inside the Greek base-game
+# minidungeon MonsterCave01B (v0f, instance [58], local (13.03,1.00,14.43), flags=0,
+# no 0x14). A cross-expansion merge artifact: a locked, non-interactive prop a curious
+# player clicks and gets nothing from. Same de-place mechanism as M2/M6; the record
+# RESOLVES in the arz (base XPack3), so this is neither MAP-REF-1 nor a dangling
+# binding - simply a stray prop with no function.
+REMOVE_STRAY_PROP_SPECS = {
+    'levels/world/greece/minidungeons/monstercave01b.lvl': [
+        b'records\\xpack3\\scenery\\atlantis\\underground\\tombstone.dbr',
+    ],
+}
+
 # ── M8 PHASE-1 PILOT: the PORTAL-MASTER NPC (Model C, Will-approved 2026-07-09) ──────
 # Will chose Model C (an NPC you talk to who teleports you) as the portal model going
 # forward; Model B (FixedItemTeleport class-swap) is DEAD (its destination is encoded

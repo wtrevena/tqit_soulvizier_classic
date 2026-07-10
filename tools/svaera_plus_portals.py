@@ -25,7 +25,7 @@ from build_section_surgery import (
     APPEND_0X06_SPECS, append_0x06_descriptors,
     REMOVE_0X05_BY_0X14_UID_SPECS, remove_0x05_instances_by_0x14_uid,
     REMOVE_BY_DBR_SPECS, remove_0x05_instances_by_dbr,
-    REMOVE_DANGLING_SHRINE_SPECS,
+    REMOVE_DANGLING_SHRINE_SPECS, REMOVE_STRAY_PROP_SPECS,
     FLAG_UID_SPECS, set_0x05_flags_uid, build_teleport_shrine_group_record)
 
 # --- GROUPS parsing ---
@@ -78,6 +78,130 @@ def _rebuild_groups(val0, records):
         out += struct.pack('<I', rec['member_count'])
         out += rec['raw_data']
     return bytes(out)
+
+
+def _groups_key_seq(recs):
+    """(name, occurrence#) keyed sequence - duplicate group names exist in both maps
+    (Egypt_Ambush_ThebesUG07, GoldenChest_Orient_BabylonUG01, X2_Kenchreai_*, New Group),
+    so records must be matched by ordinal occurrence, never by bare name."""
+    seen = {}
+    out = []
+    for r in recs:
+        n = seen.get(r['name'], 0)
+        seen[r['name']] = n + 1
+        out.append(((r['name'], n), r))
+    return out
+
+
+# M13a must-bind list (docs/DEAD_CONTENT_AUDIT_2026-07-10.md Lane B): after the GROUPS
+# restoration these device uids MUST be members of the right-category group, else the
+# build fails loud. (uid hex, group category, why)
+M13A_MUST_BIND = [
+    ('32703cacc540dc22f9a1e1ac35a39cc1', 'RespawnShrine',
+     'respawn_towerofjudgement01 @ judgment_towerug_floor04 (Lane B dead shrine, mandatory Hades path)'),
+    ('3c007d48f94617f2b400a9847eb12731', 'TeleportShrine',
+     'teleportshrineolympus01 @ olympusfinal02 (Lower Olympus rift stop, B-OLYMPUS-TELESHRINE-1)'),
+    ('dbbd704cc445cf869b9a2c8261784ac3', 'TeleportShrine',
+     'base Shrine_Teleport_Orient 12th member (Olympus-side; harmless-if-unplaced base parity)'),
+    ('feeb4bc6ce4e08c0e279b3824244aeeb', 'RespawnShrine',
+     'SV HV01 rebirth fountain (the build18 fix - MUST survive the restoration)'),
+    ('ca07e97f18434def27a529a7ccbb5c8b', 'RespawnShrine',
+     'SV-added Greece maze respawn (Greece_Maze_Respawn01 6th member)'),
+]
+
+
+def merge_groups_svaera_base(ae_g_recs, sv_g_recs, merged_level_guids):
+    """M13a GROUPS RESTORATION (2026-07-10, from the dead-content audit + the M6/M12 RCAs).
+
+    THE OLD MERGE ('SV records + SVAERA-only names') let SV 0.98i's TQIT-era version of
+    every same-named group CLOBBER SVAERA/base's - byte-proven to kill the shrine-binding
+    class: Shrine_Respawn_Hades 53->51 (the Tower-of-Judgement floor-4 respawn 32703cac...
+    + the Lower-Olympus trophy 90de912a...), Shrine_Teleport_Hades 5->4 (the Olympus rift
+    shrine 3c007d48...), Shrine_Teleport_Orient 12->11, plus stale TQIT member positions/
+    GUIDs in 42 more same-named records (golden chests, unified proxies, the Q15/xQ00
+    portal-pairing [Any Entity] records). Lane B of docs/DEAD_CONTENT_AUDIT_2026-07-10.md:
+    372/375 placed devices bound; the ONLY dead ones = these merge casualties.
+
+    NEW MERGE (this function):
+      base   = SVAERA's records, verbatim, in SVAERA order (byte-parity with the base-game
+               GROUPS up to SVAERA's own upstream edits);
+      + for each same-named record where SV differs: append SV's EXTRA members (uids absent
+        from SVAERA's member set) - these are SV's legitimate additions (the HV01 fountain,
+        the SV maze respawn, ...). A member payload = uid(16)+levelGUID(16)+pos(12) = 44 B;
+        the record tail (20/36/68 B, byte-identical SV vs SVAERA for every differing record,
+        verified) is preserved. An SV-extra whose levelGUID does not resolve in the merged
+        LEVELS index is SKIPPED loudly (a stale TQIT-era reference, not content).
+      + SV-only group NAMES appended verbatim (exactly 4: 'New Group' x2 [the SV respawn
+        networks], 'DRXShrineTeleport_Duister' [the GoM rift shrine], 'zRespawnSanctuary').
+    Member-set analysis: scratchpad m13_member_diff.py (2026-07-10): 46 differing same-name
+    records, 0 layout violations, 4 records carry SV-extra members.
+
+    Returns the merged record list (caller rebuilds bytes + runs C1/C2c on top).
+    """
+    ae_seq = _groups_key_seq(ae_g_recs)
+    sv_seq = _groups_key_seq(sv_g_recs)
+    svd = dict(sv_seq)
+    ae_keys = {k for k, _ in ae_seq}
+
+    out = []
+    n_identical = n_sv_extra_recs = n_members_added = n_skipped = 0
+    for key, ae_rec in ae_seq:
+        sv_rec = svd.get(key)
+        if (sv_rec is None
+                or (sv_rec['raw_data'] == ae_rec['raw_data']
+                    and sv_rec['member_count'] == ae_rec['member_count']
+                    and sv_rec['category'] == ae_rec['category']
+                    and sv_rec['sub_count'] == ae_rec['sub_count'])):
+            out.append(ae_rec)
+            n_identical += 1
+            continue
+        # differing same-name record: SVAERA base + SV-extra members
+        m_ae, m_sv = ae_rec['member_count'], sv_rec['member_count']
+        raw_ae, raw_sv = ae_rec['raw_data'], sv_rec['raw_data']
+        if 44 * m_ae > len(raw_ae) or 44 * m_sv > len(raw_sv):
+            raise ValueError(f'GROUPS {key!r}: member layout != 44*m + tail '
+                             f'(ae {m_ae}/{len(raw_ae)}, sv {m_sv}/{len(raw_sv)}) - '
+                             f'manual handling required')
+        ae_uids = {raw_ae[i * 44:i * 44 + 16] for i in range(m_ae)}
+        extras = []
+        for i in range(m_sv):
+            pay = raw_sv[i * 44:(i + 1) * 44]
+            if pay[:16] in ae_uids:
+                continue
+            if pay[16:32].hex() not in merged_level_guids:
+                print(f'    GROUPS {key[0]!r}: SKIP SV-extra member uid={pay[:16].hex()[:12]}.. '
+                      f'(levelGUID {pay[16:32].hex()[:12]}.. not in the merged LEVELS index)')
+                n_skipped += 1
+                continue
+            extras.append(pay)
+        if extras:
+            tail = raw_ae[44 * m_ae:]
+            rec = dict(ae_rec)
+            rec['raw_data'] = raw_ae[:44 * m_ae] + b''.join(extras) + tail
+            rec['member_count'] = m_ae + len(extras)
+            out.append(rec)
+            n_sv_extra_recs += 1
+            n_members_added += len(extras)
+            print(f'    GROUPS {key[0]!r}: SVAERA base ({m_ae}) + {len(extras)} SV-extra '
+                  f'member(s) -> {rec["member_count"]}')
+        else:
+            out.append(ae_rec)  # pos/guid drift only -> base truth wins
+    sv_only_recs = [(k, r) for k, r in sv_seq if k not in ae_keys]
+    for key, sv_rec in sv_only_recs:
+        out.append(sv_rec)
+    print(f'  GROUPS M13a: {len(ae_seq)} SVAERA-base records ({n_identical} byte-identical, '
+          f'{n_sv_extra_recs} with SV-extra members [{n_members_added} added, {n_skipped} '
+          f'skipped-stale]) + {len(sv_only_recs)} SV-only groups = {len(out)}')
+    assert len(out) == len(ae_g_recs) + len(sv_only_recs), 'M13a record-count mismatch'
+    assert len(sv_only_recs) == 4, \
+        (f'M13a expected exactly 4 SV-only groups (New Group x2, DRXShrineTeleport_Duister, '
+         f'zRespawnSanctuary), got {[k for k, _ in sv_only_recs]}')
+    # fail-loud must-bind verification (Lane B's exact dead-device uids + the SV keepers)
+    for uid_hex, cat, why in M13A_MUST_BIND:
+        uid = bytes.fromhex(uid_hex)
+        holders = [r['name'] for r in out if uid in r['raw_data'] and r['category'] == cat]
+        assert holders, f'M13a MUST-BIND FAILED: {uid_hex[:12]}.. [{cat}] not bound - {why}'
+    return out
 
 # --- Grid shift (single source of truth) ---
 # Move blood cave levels into the active SVAERA world grid so the engine includes
@@ -333,6 +457,16 @@ FOUR_PRIMARY_QUEST_FORMS = [
 # (v) below) if any duplicate identity survives, so a future SVAERA change that adds a new
 # duplicate group cannot silently ship a bad registry.
 NATIVE_REDUNDANT_BASENAMES = {'x2quest_controlsdoors.qst'}  # str, matches _quest_basename()
+# M14 (docs/DEAD_CONTENT_AUDIT_2026-07-10.md Lane D): natives deliberately DE-REGISTERED
+# from the QUESTS load window. testquesttoopendoors.qst is a leftover DEVELOPER TEST quest
+# (its literal name) shipped registered at idx 101: it duplicates door unlocks the real
+# controller ('quest that controls bosses and their doors.qst') already owns, references
+# Ragnarok-DLC Surtr monsters unreachable in the IT-bounded campaign, could open the
+# Gorgon/Changan doors on unintended conditions, and burns one of the EXACTLY-256 slots
+# whose overflow was the widow-letter root cause. De-registering frees the slot; the .qst
+# stays in the arcs harmlessly (an unregistered quest never loads). Quest identity is by
+# NAME, not index, so natives after idx 101 shifting down by one is functionally neutral.
+DEREGISTERED_NATIVE_BASENAMES = {'testquesttoopendoors.qst'}
 # Insert the 4 SV quests immediately after this native (a stable, low anchor well
 # inside the load window). sv_commonmechanics is SV-added, present since char creation.
 QUEST_INSERT_ANCHOR = b'Quests/sv_commonmechanics.qst'
@@ -366,6 +500,8 @@ def build_ordered_quest_list(ae_quests, sv_quests):
     seen_redundant = set()
     for q in ae_quests:
         b = _quest_basename(q)
+        if b in DEREGISTERED_NATIVE_BASENAMES:
+            continue  # M14: deliberately de-registered (see the constant's rationale)
         if b in NATIVE_REDUNDANT_BASENAMES:
             if b in seen_redundant:
                 continue  # drop this extra re-registration (identity kept via the first)
@@ -411,8 +547,14 @@ def build_ordered_quest_list(ae_quests, sv_quests):
     ordered_basenames_in_window = {_quest_basename(q) for q in ordered[:256]}
     for q in ae_quests:
         b = _quest_basename(q)
+        if b in DEREGISTERED_NATIVE_BASENAMES:
+            continue  # M14: intentionally absent
         assert b in ordered_basenames_in_window, \
             f'native identity {b!r} lost from the load window - regression!'
+    # M14: the de-registration actually happened (fail loud if the dev quest sneaks back).
+    for b in DEREGISTERED_NATIVE_BASENAMES:
+        assert b not in ordered_basenames_in_window, \
+            f'M14: {b!r} must be DE-REGISTERED from the QUESTS window but is present'
     # every distinct SV-only identity we intend to ship (the 4) is present too.
     for form in primary:
         assert _quest_basename(form) in ordered_basenames_in_window, \
@@ -488,18 +630,27 @@ def main():
             sv_only.append(lv)
     print(f'\n  SV-only levels to add: {len(sv_only)}')
 
-    # --- 2. GROUPS: SV's + SVAERA-only ---
-    print('\n=== Merging GROUPS ===')
+    # --- 2. GROUPS: M13a RESTORATION - SVAERA/base as the BASE + SV's additions on top ---
+    # (was: 'SV records + SVAERA-only names', which let SV's TQIT-era sections clobber the
+    # base shrine bindings - the proven-dead-device class. See merge_groups_svaera_base.)
+    print('\n=== Merging GROUPS (M13a: SVAERA base + SV additions) ===')
     sv_groups_raw = sv_data[sv_sec[SEC_GROUPS]['data_offset']:
                             sv_sec[SEC_GROUPS]['data_offset'] + sv_sec[SEC_GROUPS]['size']]
     ae_groups_raw = ae_data[ae_sec[SEC_GROUPS]['data_offset']:
                             ae_sec[SEC_GROUPS]['data_offset'] + ae_sec[SEC_GROUPS]['size']]
     sv_g_val0, sv_g_recs = _parse_groups(sv_groups_raw)
-    _, ae_g_recs = _parse_groups(ae_groups_raw)
-    sv_g_names = set(r['name'] for r in sv_g_recs)
-    ae_only_recs = [r for r in ae_g_recs if r['name'] not in sv_g_names]
-    merged_groups = _rebuild_groups(sv_g_val0, sv_g_recs + ae_only_recs)
-    print(f'  SV: {len(sv_g_recs)}, SVAERA-only: {len(ae_only_recs)}, merged: {len(sv_g_recs) + len(ae_only_recs)}')
+    ae_g_val0, ae_g_recs = _parse_groups(ae_groups_raw)
+    # merged-world level-GUID set (AE levels keep their GUIDs incl. the R09 swap; SV-only
+    # levels keep SV GUIDs) - validates SV-extra member payloads before they are appended.
+    _merged_guids = set()
+    for _lv in ae_levels:
+        _ints = struct.unpack_from('<13I', _lv['ints_raw'], 0)
+        _merged_guids.add(struct.pack('<4I', *_ints[9:13]).hex())
+    for _lv in sv_only:
+        _ints = struct.unpack_from('<13I', _lv['ints_raw'], 0)
+        _merged_guids.add(struct.pack('<4I', *_ints[9:13]).hex())
+    _m13a_recs = merge_groups_svaera_base(ae_g_recs, sv_g_recs, _merged_guids)
+    merged_groups = _rebuild_groups(ae_g_val0, _m13a_recs)
 
     # --- 2b. C1 FIX (respawn position): the HV01 fountain's GROUPS respawnorient member still
     # carries the OLD (49.263,15.634,14.950) position; the engine respawns THERE, not at the moved
@@ -1128,6 +1279,41 @@ def main():
          f'{len(REMOVE_DANGLING_SHRINE_SPECS)} '
          f'(missing: {sorted(set(REMOVE_DANGLING_SHRINE_SPECS) - set(_m6_per_level))})')
     assert _m6_total == 1, f'M6 expected 1 de-placement (respawn_olympus_new), got {_m6_total}'
+
+    # --- M14: DE-PLACE stray cross-expansion props (audit 2026-07-10 Lane A) --------------
+    # Same mechanism as M2/M6; distinct concern (a functionless locked Atlantis prop inside a
+    # Greek minidungeon). See build_section_surgery.REMOVE_STRAY_PROP_SPECS for the RCA.
+    print('\n=== M14: de-placing stray cross-expansion props ===')
+    _m14_total = 0
+    _m14_per_level = {}
+    for i, lv in enumerate(ae_levels):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_STRAY_PROP_SPECS:
+            if i in ae_patched_blobs:
+                _base = ae_patched_blobs[i]
+            elif _r09_swap and i == _r09_swap[0]:
+                _base = _r09_swap[1]
+            else:
+                _base = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+            newb, n = remove_0x05_instances_by_dbr(
+                _base, REMOVE_STRAY_PROP_SPECS[lv_key], lv_key)
+            ae_patched_blobs[i] = newb
+            _m14_total += n
+            _m14_per_level[lv_key] = n
+    for i, lv in enumerate(sv_only):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_STRAY_PROP_SPECS:
+            newb, n = remove_0x05_instances_by_dbr(
+                converted_blobs[i], REMOVE_STRAY_PROP_SPECS[lv_key], lv_key)
+            converted_blobs[i] = newb
+            _m14_total += n
+            _m14_per_level[lv_key] = n
+    print(f'  M14: de-placed {_m14_total} instance(s) across {len(_m14_per_level)} level(s)')
+    assert len(_m14_per_level) == len(REMOVE_STRAY_PROP_SPECS), \
+        (f'M14 touched {len(_m14_per_level)} levels, expected '
+         f'{len(REMOVE_STRAY_PROP_SPECS)} '
+         f'(missing: {sorted(set(REMOVE_STRAY_PROP_SPECS) - set(_m14_per_level))})')
+    assert _m14_total == 1, f'M14 expected 1 de-placement (tombstone), got {_m14_total}'
 
     # DATA section: SVAERA blobs (with patches) + SV-only blobs
     print('  Building DATA section...')
