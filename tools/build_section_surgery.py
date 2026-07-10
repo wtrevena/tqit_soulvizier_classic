@@ -662,6 +662,65 @@ REMOVE_DANGLING_SHRINE_SPECS = {
     ],
 }
 
+# ── M8 PHASE-1 PILOT: the PORTAL-MASTER NPC (Model C, Will-approved 2026-07-09) ──────
+# Will chose Model C (an NPC you talk to who teleports you) as the portal model going
+# forward; Model B (FixedItemTeleport class-swap) is DEAD (its destination is encoded
+# NOWHERE in data - not the record, not the 0x14, not SD - the engine resolves vanilla
+# pairs internally, so a swapped gate teleports nowhere); Model A (walk-through
+# GridEntrance) stays as the transitional fallback and NO existing portal is removed in
+# Phase 1. Mechanism = the base-game boatman: Action_BoatDialog(npc, onOff, x, y, z, tag)
+# (used by 'quest 8 part i - greece to egypt' + 'quest 7 - knossos'; the mod already has
+# make_boat_dialog_action in qst_format.py). Its x/y/z are WORLD coordinates as SIGNED
+# INTEGERS (base exemplar: Knossos->Rhakotis x=-1966 y=13 z=4423 stored two's-complement).
+#
+# COORDINATE FORMULA (double-validated 2026-07-09): world = LEVELS-index corner
+# (ints_raw[6,7,8]) + instance-local. Proof 1: drxBC2 corner (5275,-27,2955) + Toxeus
+# local (13.10,28.00,137.70) = world (5288.10,1.00,3092.70), and the level 0x0b navmesh
+# floor at that exact cell reads Y=1.00. Proof 2: the base boat target (-1966,13,4423)
+# falls at a small positive local offset inside the Rhakotis dock levels.
+#
+# THE NPC (Phase-1 pilot, ONE instance): HOST = startingfarmland06d (Helos village,
+# v0x11 shared). SPOT local (76.50, 0.60, 189.50) = world (-5971.50, 1.60, 917.50):
+# the Helos town-portal plaza, visually grouped with the portal corner - 5.7u S of the
+# TeleportShrineHelios01 device (74.18,0.50,194.65), 7.7u E of Starting_PortalMan
+# (68.92,0.34,188.25), 6.0u NE of the H1 Garden portal (74.00,0.40,184.00 - far enough
+# that walking to the NPC cannot cross H1's ~3u teleport plane), 8.9u from the R2 return
+# landing (68.00,-0.40,181.00 - arrivals see him immediately), nearest decor >= 8.5u
+# (statue 68.50,193.18). Navmesh-verified (scratchpad npc_spot_check.py vs the level's
+# own 0x0b): ON-MESH exact cell, floor local Y=0.60 (spec Y matches the floor), 100%
+# walkable coverage in a 3u square, CONNECTED (engine 4-adj/climb model) to H1, R2, the
+# shrine and PortalMan. Plane-crossing rules do NOT apply (NPC, not a portal).
+#
+# DESTINATIONS for the boat-dialog quest (proven landing points; world = corner+local,
+# rounded to int for the qst fields; all four spots carry >= 3u walkable clearance):
+#   Garden of Merchants  gardenofmerchants   corner (1043,0,-4074)  local (130.30,-39.00,73.10)
+#       -> world (1173, -39, -4001)   [= the N1 H2 landing, caravan_rhodes merchant hub]
+#   The Secret Place     darkforestenter     corner (-2420,0,-5820) local (23.90,2.00,30.50)
+#       -> world (-2396, 2, -5790)    [= the A2 S2 landing, cluster entry]
+#   Uber Dungeon         crypt_floor1        corner (-2578,0,-2682) local (139.94,10.01,231.94)
+#       -> world (-2438, 10, -2450)   [= the SV-native A1 arrival spot; its landing ENTITY was
+#                                      removed in the build30 native-door conversion but the
+#                                      SPOT is the proven walkable arrival point by the arena
+#                                      portal / minotaur statue]
+#   Sparta Crypt depths  spartacryptlevel2   corner (-5644,0,-1451) local (42.30,-1.60,42.30)
+#       -> world (-5602, -2, -1409)   [= the hub landing spot, >= 10u from the native door cell]
+#
+# ⚠️ ACTIVATION IS GATED ON THE DB LANE (MAP-REF-1): the NPC record below does NOT exist
+# in the arz yet. Wiring the spec into INJECT_SPECS before the DB lane ships the record
+# makes the map contract suite FAIL (placed-but-absent-from-DB). ACTIVATION CHECKLIST:
+#   1. DB lane ships the NPC record (suggested path below; Class NPC / speaking-NPC shape
+#      mirroring Starting_PortalMan) + the boat-dialog quest (Quests.arc, registered inside
+#      the load window) using the 4 destination world coords above.
+#   2. Uncomment PORTAL_MASTER_SPEC_PENDING into INJECT_SPECS under
+#      'levels/world/greece/startingtownver2/startingfarmland06d.lvl' (flags=0, no 0x14,
+#      byte-shape = Starting_PortalMan exemplar).
+#   3. Rebuild BOTH maps, full map gates, coupled deploy with the new Quests.arc.
+# Phase 2 (after Will's pilot walk-test): return-side portal-masters in each area, then
+# retire the GridEntrance portals per Will's call.
+PORTAL_MASTER_NPC_DBR = b'records\\quests\\portal_master_helos.dbr'  # DB lane: keep this path
+PORTAL_MASTER_HOST_KEY = 'levels/world/greece/startingtownver2/startingfarmland06d.lvl'
+PORTAL_MASTER_SPEC_PENDING = (PORTAL_MASTER_NPC_DBR, 76.50, 0.60, 189.50)  # NOT wired yet
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.

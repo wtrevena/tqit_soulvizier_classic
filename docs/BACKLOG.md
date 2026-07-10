@@ -348,6 +348,17 @@
   injection (canonical never had it; the superboss lives in the waterfall chamber). Routed to the
   map wave; ships in a local interim TESTHUB test build for Will now + the vetted wave build.
 
+### B-OLYMPUS-TELESHRINE-1 (P3, known dead prop - Will: leave as-is for now): Olympus teleport shrine is dangling
+- Sibling of the REMOVED Lower-Olympus respawn trophy (build31c, commit 6d7f473): OlympusFinal02
+  also places teleportshrineolympus01 (StrategicMovementTeleportShrine, local (454.2,21.7,938.0),
+  uid 3c007d48...) whose UniqueId is ABSENT from the merged world's GROUPS Shrine_Teleport_Hades
+  record (base binds it, 5 members; ours 4) - the SAME SVAERA-merge-inherited dangling-binding
+  class. It renders but never joins the rift/fast-travel network. Will confirmed keep-removed for
+  the respawn trophy and leave-as-is for this one. Fix options when picked up: re-bind the uid
+  into Shrine_Teleport_Hades (restores an Olympus rift stop) or de-place it via
+  REMOVE_DANGLING_SHRINE_SPECS (tools/build_section_surgery.py). Evidence: the M6 recon
+  (scratchpad check_respawn.py, 2026-07-09).
+
 ### B-DB-HYGIENE-1 (P3): dead orphan record potionexp_test.dbr
 - records/item/miscellaneous/oneshot/potionexp_test.dbr carries a corrupted NEGATIVE
   bonusExperiencePoints (int32 overflow of ~4e9) and has ZERO inbound references. Harmless dead
