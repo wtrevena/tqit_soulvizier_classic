@@ -8813,6 +8813,222 @@ def _create_helos_portal_master(db, tags):
           "menu tags set")
 
 
+# ── GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB) ──────────────
+# Will signed off (BACKLOG N4-DB): a lone Ancient-Dragonian warlord in the
+# Random05A cave east of Chang'an. Identity B - {^r}Vashkarr, Eldest of the
+# Ancients, mesh AncientDragonian01.msh; derive the whole kit from the DRAGONIAN
+# family for anim-safety (recon: bm_deathlance_32 = the AncientDragonian01
+# takedown-melee base; bs_warlock_40 = the AncientDragonianB01 caster champion;
+# bm_ravager_31 = the AncientDragonian01 melee brute). Band charLevel [38,56,71],
+# HP [12000,16500,21000]. Escort = Vashkarr + 2 full-strength dragonian
+# champions ALWAYS (pool spawnMax=3 / championChance=100 / championMin=Max=2 ->
+# 3-2 = 1 guaranteed main slot; the spawnMax-championMax>=1 law holds). Minions:
+# a frequent dragonian-fodder summon on his kit (yaoguai_summonshadowstalkers
+# clone, burst 3 / ~6s). Proxy q_vashkarr_lone (chanceToRun=100) + pool staged in
+# drxmap\proxy(\pools) per the q_bloodtoxeus_lone precedent; difficultyLimitsFile
+# = herolimit_all (no-cap, [1..75] already contains the band). SOUL = STAT-ONLY,
+# no summon ("it can just be really good"): a dense aggressive fire/physical
+# ladder, 66% Finger2, {^F} tag. MAP-REF-1: these records land in the arz BEFORE
+# the map lane injects the placement + the v0e routing case.
+_VK_MONSTER = r'records\creature\monster\dragonian\um_vashkarr_99.dbr'
+_VK_DONOR = r'records\creature\monster\dragonian\bm_deathlance_32.dbr'         # AncientDragonian01, takedown melee
+_VK_FODDER = r'records\creature\monster\dragonian\svc_vashkarr_fodder.dbr'      # laddered dragonian minion
+_VK_FODDER_DONOR = r'records\creature\monster\dragonian\bm_ravager_31.dbr'      # AncientDragonian01 melee brute
+_VK_ESCORT_MELEE = r'records\creature\monster\dragonian\svc_vashkarr_lance.dbr'  # Champion melee escort
+_VK_ESCORT_CASTER = r'records\creature\monster\dragonian\svc_vashkarr_warlock.dbr'  # Champion caster escort
+_VK_ESCORT_CASTER_DONOR = r'records\creature\monster\dragonian\bs_warlock_40.dbr'   # AncientDragonianB01 caster champ
+_VK_MINION_SUMMON = r'records\skills\boss skills\svc_vashkarr_summonhorde.dbr'
+_VK_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'   # Skill_SpawnPetMonster
+_VK_PROXY = r'records\drxmap\proxy\q_vashkarr_lone.dbr'
+_VK_POOL = r'records\drxmap\proxy\pools\q_vashkarr_lone.dbr'
+_VK_PROXY_DONOR = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_VK_POOL_DONOR = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+_VK_LIMIT = r'records\proxies boss\herolimit_all.dbr'   # no-cap [1..75] contains [38,56,71]
+_VK_BAND = [38, 56, 71]
+# Kit skill refs (all dragonian-family, existence-verified in recon).
+_VK_SK_TAKEDOWN = r'records\skills\hunting\takedown.dbr'
+_VK_SK_EVISCERATE = r'records\skills\hunting\takedown_eviscerate.dbr'
+_VK_SK_DMGMOD = r'records\skills\monster skills\passive_buffs\attack_damagemodifier_02.dbr'
+_VK_SK_SPEEDALL = r'records\skills\monster skills\auras\character_speedall.dbr'
+_VK_SK_SHIELDCHARGE = r'records\skills\defensive\shieldcharge.dbr'
+_VK_SK_DEFLECT = r'records\skills\monster skills\defense\deflectprojectiles_passive.dbr'
+_VK_SK_MELEE = r'records\skills\monster skills\attack_melee\meleeattack_+3physicalandfireperlvlx100.dbr'
+_VK_SK_BOSSIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+_VK_SK_BOSSSCALING = r'records\skills\monster skills\passive_buffs\boss_scaling.dbr'
+_VK_SK_GP_N = r'records\skills\monster skills\globalproperties_normal01.dbr'
+_VK_SK_GP_E = r'records\skills\monster skills\globalproperties_epic01.dbr'
+_VK_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
+
+
+def _create_vashkarr(db, tags):
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    # ── 1. The minion-summon skill (clone the yaoguai donor; keep its field
+    #    SHAPE - only change existing fields, so it stays loader-safe and is
+    #    registered with the boss-kit clone invariant). ──
+    if not db.has_record(_VK_SUMMON_DONOR):
+        print("  VASHKARR: WARNING summon donor missing; group skipped")
+        return
+    if not db.has_record(_VK_FODDER_DONOR):
+        print("  VASHKARR: WARNING fodder donor missing; group skipped")
+        return
+
+    # Fodder monster (laddered dragonian brute) - author BEFORE the summon skill
+    # references it. Clone bm_ravager_31 (AncientDragonian01 melee, anim-safe).
+    db.clone_record(_VK_FODDER_DONOR, _VK_FODDER)
+    sf(_VK_FODDER, 'charLevel', list(_VK_BAND))              # INT array preserved
+    sf(_VK_FODDER, 'characterLife', [900.0, 1400.0, 1900.0])  # fodder-tier
+    sf(_VK_FODDER, 'monsterClassification', 'Common')        # Common -> no soul drop, fodder
+    sf(_VK_FODDER, 'dropItems', 0)
+    db._modified.add(_VK_FODDER)
+
+    db.clone_record(_VK_SUMMON_DONOR, _VK_MINION_SUMMON)
+    sf(_VK_MINION_SUMMON, 'spawnObjects', [_VK_FODDER])       # existing field -> repoint
+    sf(_VK_MINION_SUMMON, 'petBurstSpawn', 3)                 # burst 3 per cast (design)
+    sf(_VK_MINION_SUMMON, 'skillCooldownTime', 6.0)          # ~6s (design)
+    sf(_VK_MINION_SUMMON, 'petLimit', 12)                    # "many minions"
+    db._modified.add(_VK_MINION_SUMMON)
+    _BOSS_KIT_CLONES.append((_VK_SUMMON_DONOR, _VK_MINION_SUMMON))
+
+    # ── 2. Vashkarr (the boss). Clone bm_deathlance_32 (AncientDragonian01
+    #    takedown-melee); override identity/power/kit. Monster.tpl clone -> free
+    #    to add resist fields (blood_toxeus precedent). ──
+    db.clone_record(_VK_DONOR, _VK_MONSTER)
+    M = _VK_MONSTER
+    sf(M, 'description', 'tagSVCMonsterVashkarr')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'charLevel', list(_VK_BAND))
+    sf(M, 'characterLife', [12000.0, 16500.0, 21000.0])
+    sf(M, 'characterStrength', 460.0)
+    sf(M, 'characterDexterity', 380.0)
+    sf(M, 'characterIntelligence', 300.0)
+    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'handHitDamageMin', 90.0)
+    sf(M, 'handHitDamageMax', 150.0)
+    sf(M, 'scale', 1.55)                                      # visibly the Eldest
+    sf(M, 'actorHeight', 2.0)
+    # boss resistance wall (new fields auto-FLOAT on the Monster.tpl clone)
+    sf(M, 'defensivePierce', 55.0)
+    sf(M, 'defensiveFire', 70.0)                              # dragonfire kin
+    sf(M, 'defensivePhysical', 30.0)
+    sf(M, 'defensiveLife', 90.0)
+    # kit: dragonian melee + frequent horde summon + boss passives (anim-safe;
+    # attackSkillName gives him a real scaling basic melee - the deathlance donor
+    # had none). All refs existence-verified.
+    sf(M, 'attackSkillName', _VK_SK_MELEE)
+    sf(M, 'skillName1', _VK_SK_TAKEDOWN)
+    sf(M, 'skillName2', _VK_SK_EVISCERATE)
+    sf(M, 'skillName3', _VK_SK_DMGMOD)
+    sf(M, 'skillName4', _VK_SK_SPEEDALL)
+    sf(M, 'skillName5', _VK_MINION_SUMMON)                    # the horde
+    sf(M, 'skillName6', _VK_SK_SHIELDCHARGE)                  # gap-closer
+    sf(M, 'skillName7', _VK_SK_DEFLECT)
+    sf(M, 'skillName8', _VK_SK_BOSSIMMUNITY)
+    sf(M, 'skillName9', _VK_SK_BOSSSCALING)
+    sf(M, 'skillName10', _VK_SK_GP_N)
+    sf(M, 'skillName11', _VK_SK_GP_E)
+    sf(M, 'skillName12', _VK_SK_GP_L)
+    # AI rotation: summon the horde often, takedown as the signature special.
+    sf(M, 'specialAttackSkillName', _VK_MINION_SUMMON)
+    sf(M, 'specialAttackChance', 55.0)
+    sf(M, 'specialAttack2SkillName', _VK_SK_TAKEDOWN)
+    sf(M, 'specialAttack2Chance', 45.0)
+    db._modified.add(M)
+
+    # ── 3. Two full-strength dragonian champion escorts (laddered [38,56,71]). ──
+    db.clone_record(_VK_FODDER_DONOR, _VK_ESCORT_MELEE)      # ravager melee brute
+    sf(_VK_ESCORT_MELEE, 'description', 'tagSVCMonsterVashkarrLance')
+    sf(_VK_ESCORT_MELEE, 'monsterClassification', 'Champion')
+    sf(_VK_ESCORT_MELEE, 'charLevel', list(_VK_BAND))
+    sf(_VK_ESCORT_MELEE, 'characterLife', [3000.0, 4500.0, 6000.0])
+    sf(_VK_ESCORT_MELEE, 'characterStrength', 300.0)
+    sf(_VK_ESCORT_MELEE, 'handHitDamageMin', 60.0)
+    sf(_VK_ESCORT_MELEE, 'handHitDamageMax', 100.0)
+    sf(_VK_ESCORT_MELEE, 'dropItems', 0)
+    db._modified.add(_VK_ESCORT_MELEE)
+
+    if db.has_record(_VK_ESCORT_CASTER_DONOR):
+        db.clone_record(_VK_ESCORT_CASTER_DONOR, _VK_ESCORT_CASTER)  # warlock caster
+        sf(_VK_ESCORT_CASTER, 'description', 'tagSVCMonsterVashkarrWarlock')
+        sf(_VK_ESCORT_CASTER, 'monsterClassification', 'Champion')
+        sf(_VK_ESCORT_CASTER, 'charLevel', list(_VK_BAND))
+        sf(_VK_ESCORT_CASTER, 'characterLife', [2500.0, 3800.0, 5000.0])
+        sf(_VK_ESCORT_CASTER, 'characterIntelligence', 340.0)
+        sf(_VK_ESCORT_CASTER, 'dropItems', 0)
+        db._modified.add(_VK_ESCORT_CASTER)
+    else:
+        print("  VASHKARR: WARNING warlock escort donor missing; using melee escort twice")
+
+    # ── 4. Proxy + pool (q_bloodtoxeus_lone precedent; boss + 2 guaranteed
+    #    champion escorts via spawnMax=3 / champMin=Max=2). ──
+    if db.has_record(_VK_PROXY_DONOR) and db.has_record(_VK_POOL_DONOR):
+        db.clone_record(_VK_POOL_DONOR, _VK_POOL)
+        PL = _VK_POOL
+        sf(PL, 'FileDescription', 'Vashkarr (main) + 2 dragonian champion escorts')
+        sf(PL, 'name1', _VK_MONSTER)
+        sf(PL, 'name2', _VK_MONSTER)
+        sf(PL, 'name3', _VK_MONSTER)
+        sf(PL, 'nameChampion1', _VK_ESCORT_MELEE)
+        sf(PL, 'nameChampion2', _VK_ESCORT_CASTER if db.has_record(_VK_ESCORT_CASTER)
+           else _VK_ESCORT_MELEE)
+        sf(PL, 'spawnMin', 3)
+        sf(PL, 'spawnMax', 3)
+        sf(PL, 'championChance', 100.0)
+        sf(PL, 'championMin', 2)
+        sf(PL, 'championMax', 2)
+        db._modified.add(PL)
+
+        db.clone_record(_VK_PROXY_DONOR, _VK_PROXY)
+        P = _VK_PROXY
+        sf(P, 'mesh', r'Creatures\Monster\Dragonian\AncientDragonian01.msh')  # preview silhouette
+        sf(P, 'scale', 1.55)
+        sf(P, 'pool1', _VK_POOL)
+        sf(P, 'chanceToRun', 100.0)
+        sf(P, 'difficultyLimitsFile', _VK_LIMIT)             # no-cap [1..75] contains the band
+        db._modified.add(P)
+        print("  Vashkarr proxy + pool: 1 boss + 2 dragonian champions "
+              "(spawn=3/champMin=Max=2/champChance=100); chanceToRun=100")
+    else:
+        print("  VASHKARR: WARNING q_leinth_lone proxy/pool donor missing; proxy skipped")
+
+    # ── 5. Stat-only soul (no summon; dense aggressive fire/physical ladder). ──
+    def _vk_stats(t, il):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'augmentSkillName1': (S, _SK_FIRE_ENCHANT), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _SK_ONSLAUGHT), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(280.0)), 'characterLifeModifier': (F, r(10.0)),
+            'characterStrength': (F, r(30.0)), 'characterStrengthModifier': (F, r(8.0)),
+            'characterOffensiveAbility': (F, r(90.0)),
+            'characterAttackSpeedModifier': (F, r(16.0)),
+            'offensivePhysicalMin': (F, r(60.0)), 'offensivePhysicalMax': (F, r(95.0)),
+            'offensivePhysicalModifier': (F, r(35.0)),
+            'offensiveFireMin': (F, r(50.0)), 'offensiveFireMax': (F, r(80.0)),
+            'offensiveFireModifier': (F, r(30.0)),
+            'offensiveSlowBleedingMin': (F, r(120.0)), 'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveLifeLeechMin': (F, r(25.0)),
+            'defensivePhysical': (F, r(140.0)), 'defensiveBleeding': (F, r(30.0)),
+            'defensiveFire': (F, r(25.0)), 'defensiveLife': (F, r(20.0)),
+            'characterDefensiveAbility': (F, r(60.0)),
+        }
+    tiers = [{'diff': t, 'itemLevel': il, 'stats': _vk_stats(t, il)}
+             for t, il in (('n', 38), ('e', 56), ('l', 71))]
+    _create_soul(db, 'vashkarr', 'tagSVCSoulVashkarr', tiers, monster=_VK_MONSTER, drop_rate=66.0)
+
+    tags['tagSVCMonsterVashkarr'] = '{^r}Vashkarr, Eldest of the Ancients'
+    tags['tagSVCMonsterVashkarrLance'] = '{^r}Ancient Lancer of the Deep'
+    tags['tagSVCMonsterVashkarrWarlock'] = '{^r}Ancient Warlock of the Deep'
+    tags['tagSVCSoulVashkarr'] = '{^F}Soul of the Eldest'
+    tags['tagSVCSoulVashkarrDESC'] = ('Torn from Vashkarr, Eldest of the Ancients, '
+        'the last warlord of the dragonian race. It burns with the fury of an age '
+        'the world has forgotten.')
+    print("  Vashkarr: boss + fodder + 2 champion escorts + horde summon "
+          "(burst 3/~6s) + stat-only soul (66% Finger2); tags set")
+
+
 # ── GROUP 4 (build31, overnight run): D13/D14/D20/D21 summon-the-boss souls ──
 def _mirror_source_loadout(db, source):
     """Build a _build_boss_summon loadout that mirrors the SOURCE monster's own
@@ -10007,6 +10223,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # GROUP 4 (build31): the four Will-named summon-the-boss souls.
     print("\n=== GROUP 4: D13/D14/D20/D21 summon souls ===")
     _apply_group4_summons(db, tags)
+
+    # GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB). After the
+    # groups (a legit Boss, so the drop forcer keeping his soul at 100% in test
+    # mode is intended) and BEFORE _verify_boss_kit_clone_shape (registers its
+    # minion-summon clone) + _force_100_pct_soul_drops.
+    print("\n=== GROUP C: Vashkarr, Eldest of the Ancients ===")
+    _create_vashkarr(db, tags)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all

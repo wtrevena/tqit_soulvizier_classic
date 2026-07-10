@@ -37,7 +37,26 @@
 > ALL GATES GREEN: summon-pet STRICT 0, render PASS, golden PASS, contracts GATE PASS,
 > validate_tags PASS (100 mod tags resolve), Quests contract PASS (107). PRESERVED the
 > shipped Q1/Q3 Typhon unlock + Olympus herald byte-intact (separate host quest).
-> **REMAINING build32 groups (specs intact below):** B Enslaver, C Vashkarr, E N5 thrown
+> **GROUP C = VASHKARR, ELDEST OF THE ANCIENTS (N4-DB, map-unblocking):**
+> apply_svc_patches `_create_vashkarr`. `um_vashkarr_99` (Boss, `{^r}Vashkarr, Eldest of
+> the Ancients`) derived from bm_deathlance_32 (AncientDragonian01.msh, anim-safe dragonian
+> family), charLevel [38,56,71], HP [12000,16500,21000], boss wall + dragonian melee kit +
+> frequent horde summon + boss_conversionimmunity/boss_scaling. Minion horde =
+> `svc_vashkarr_summonhorde` (yaoguai_summonshadowstalkers clone, burst 3 / cd 6s, petLimit
+> 12) spawning `svc_vashkarr_fodder` (bm_ravager_31-derived Common, laddered [38,56,71]).
+> 2 full-strength Champion escorts ALWAYS: `svc_vashkarr_lance` (ravager melee) +
+> `svc_vashkarr_warlock` (bs_warlock_40 caster), laddered. Proxy `q_vashkarr_lone`
+> (chanceToRun=100) + pool (spawnMax=3 / championChance=100 / championMin=Max=2 -> 1 boss +
+> 2 champions; spawnMax-championMax>=1 law holds), difficultyLimitsFile=herolimit_all
+> (no-cap, [1..75] contains the band). STAT-ONLY soul `vashkarr_soul_{n,e,l}` ({^F}Soul of
+> the Eldest, dense fire/physical ladder + fireEnchant/onslaught augments, 66% Finger2). The
+> minion-summon clone is registered with the boss-kit clone-shape invariant (OK, 2 pairs).
+> **ARTIFACTS: arz `968c0b6c`, Text (5 new tags, coupled).** Record-diff vs Group A fbd2c6d1
+> = 10 ADDED (boss/fodder/2 escorts/proxy/pool/3 souls/horde skill) + 0 MODIFIED + 0 REMOVED,
+> 0 collateral. Gates GREEN: summon-pet STRICT 0, render PASS, golden PASS, contracts PASS,
+> clone-shape invariant OK, validate_tags PASS (104 mod tags). **MAP-REF-1: records land ->
+> map lane injects the Random05A placement + v0e routing (M9 spec in build_section_surgery).**
+> **REMAINING build32 groups (specs + verified donor recon below):** B Enslaver, E N5 thrown
 > weapons, F N6 obsidian roulette, G N7 wyrm hordes.
 
 > 🛠️ **BUILD32 SESSION (2026-07-10, autonomous DB-lane, Will blanket sign-off) - SHIPPED GROUPS:**
