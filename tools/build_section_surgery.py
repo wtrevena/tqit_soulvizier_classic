@@ -721,6 +721,53 @@ PORTAL_MASTER_NPC_DBR = b'records\\quests\\portal_master_helos.dbr'  # DB lane: 
 PORTAL_MASTER_HOST_KEY = 'levels/world/greece/startingtownver2/startingfarmland06d.lvl'
 PORTAL_MASTER_SPEC_PENDING = (PORTAL_MASTER_NPC_DBR, 76.50, 0.60, 189.50)  # NOT wired yet
 
+# ── M12 CAMPAIGN BLOCKER: Olympus->Rhodes continuation NPC (Will, 2026-07-09) ────────
+# RCA (M7, now CONFIRMED in-game): the base post-Typhon portal xq00_olympus_portaltorhodes
+# (FixedItemTeleport, locked=1) is present + unchanged in our map, and the Q1 quest lane
+# added an Action_UnlockFixedItem on the "Olympus - Typhon Defeated" token (in "quest that
+# controls bosses and their doors.qst" - condition = Condition_OnLevelLoad + that token,
+# satisfiable). Will killed Typhon on a fresh session, the unlock event is present in the
+# DEV Quests, and STILL no working portal. This EMPIRICALLY PROVES the M7 finding:
+# FixedItemTeleport's Olympus->Rhodes DESTINATION is ENGINE-INTERNAL (the base end-of-TQ
+# campaign pairing), encoded NOWHERE in data (not the record, not the 0x14, not SD) and
+# never activated for a Custom Quest total conversion; unlocking the gate cannot supply a
+# destination. (Render side is NOT the root cause: the mesh XPack\Items\Shrines\Teleport\
+# Credits_Portal.msh + the Egypt_Hatshepsut_PortalGate idle/activate anms all RESOLVE in
+# the base XPack Items.arc, inherited cleanly by the mod - so the locked gate can render,
+# it just teleports nowhere.)
+#
+# FIX = Model C boat-dialog NPC at the summit -> Action_BoatDialog to the Rhodes arrival
+# (data-driven world coord, no engine hook), exactly like the M8 portal-master.
+#
+# THE NPC: HOST = OlympusFinal02 (v0x11 shared; the ONLY Olympus level; regions "Lower
+# Olympus"/"Olympus Summit"). SPOT local (305.80, 90.20, 490.80) = world
+# (1155.80, 90.20, -3190.20): 4.0u due +Z of the locked portal xq00_olympus_portaltorhodes
+# (instance [41], local (305.79,90.11,486.84)) on the Typhon-summit plateau where the
+# player fights + kills Typhon - the exact spot Will looks for the missing portal. Navmesh-
+# verified vs OlympusFinal02's own 0x0b (scratchpad m12.py): ON-MESH exact cell, floor
+# world Y=90.20, 100% walkable coverage in a 3u square, CONNECTED (engine 4-adj/climb model)
+# to the portal cell; ZERO entities within 18u (open plateau -> prominent, unobstructed).
+# Plane-crossing rules do NOT apply (NPC, not a portal).
+#
+# BOAT-DIALOG DESTINATION (for the DB/Quests lane): the Rhodes arrival is the base game's
+# OWN paired target xq00_rhodes_olympusportaltarget.dbr, placed at Rhodes_CityFinal_01
+# instance [439], corner (585,-11,-6692) + local (114.65,52.13,226.26) = WORLD
+# (699.65, 41.13, -6465.74). The navmesh floor at that x/z is world Y=41.20 (target marker
+# floats ~0.07u above floor). Action_BoatDialog x/y/z = SIGNED-INT world coords (base
+# exemplar decoded: Knossos->Rhakotis stores x=-1966 as two's-complement):
+#   Rhodes arrival  ->  x = 700,  y = 41,  z = -6466   (on-mesh, Rhodes_CityFinal_01)
+#
+# ⚠️ GATED ON THE DB LANE (a8f5446a) exactly like M8 (MAP-REF-1): the summit NPC record
+# below does NOT exist in the arz yet - do NOT wire this into INJECT_SPECS until the DB lane
+# ships the record + the boat-dialog quest (registered inside the 256 load window). Then:
+# uncomment OLYMPUS_RHODES_NPC_SPEC_PENDING into INJECT_SPECS under the host key, rebuild
+# BOTH maps, full map gates, COUPLED map+Quests deploy. Note: this NPC replaces the dead
+# FixedItemTeleport as the continuation; the locked xq00 gate can stay (harmless) or the DB
+# lane may drop the now-moot Q1 Action_UnlockFixedItem.
+OLYMPUS_RHODES_NPC_DBR = b'records\\quests\\portal_master_olympus.dbr'  # DB lane: keep this path
+OLYMPUS_RHODES_HOST_KEY = 'levels/world/olympus/olympusfinal02.lvl'
+OLYMPUS_RHODES_NPC_SPEC_PENDING = (OLYMPUS_RHODES_NPC_DBR, 305.80, 90.20, 490.80)  # NOT wired yet
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.

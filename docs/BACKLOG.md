@@ -14,6 +14,50 @@
 
 ## 🔴 P0 - visible/blocking, confirmed in-game 2026-07-08
 
+### B-OLYMPUS-RHODES-1 (P0 CAMPAIGN BLOCKER): no working portal after Typhon (Olympus -> Rhodes/Hades)
+- **Symptom (Will, fresh session):** killed Typhon at the Olympus summit, no working continuation
+  portal to Rhodes; the campaign cannot progress past Olympus. Q1 lane added an
+  Action_UnlockFixedItem on the "Olympus - Typhon Defeated" token (in "quest that controls bosses
+  and their doors.qst" idx 68, loads fine) - STILL no portal on a genuinely fresh kill.
+- **RCA (M7 + M12, byte-definitive):** the base post-Typhon portal `xq00_olympus_portaltorhodes`
+  (FixedItemTeleport, `locked=1`, "Opened by Zeus after Typhon Killed") is present at OlympusFinal02
+  instance [41]. Its destination is ENGINE-INTERNAL (not in the record, the 0x14 [generic 12B], the
+  GROUPS, or the SD - verified in ours AND SVAERA). No quest in ANY arc (base + 5 XPack + SVAERA +
+  ours) references it. **"Copy SVAERA" has NOTHING to copy:** instance [41] is BYTE-IDENTICAL across
+  SVAERA / ours / base (rec_md5 `0975f9aa…`, flags=1, uid `24018446…`, 0x14 `2900…01000000`, pos
+  (305.79,90.11,486.84)); SVAERA's DB is an empty 2KB stub so it uses base's `locked=1` record;
+  SVAERA's quest 15 / boss-doors controller / init quest are all byte-identical to base; SVAERA's
+  QUESTS registry is a subset of ours (DB-lane Q3: no IT main quest missing). So SVAERA is NOT
+  born-open and has NO special portal wiring. (scratchpad inst41_diff.py / svaera_cmp.py / svaera_q.py)
+- **FIX (chosen): the boat-dialog NPC (Model C).** A summit "portal master / Hermes" NPC ->
+  Action_BoatDialog to the Rhodes arrival - a DATA-DRIVEN teleport that does not depend on the
+  engine-internal FixedItemTeleport. Map-side spec READY (build_section_surgery.py
+  OLYMPUS_RHODES_NPC_SPEC_PENDING): NPC at OlympusFinal02 local (305.80,90.20,490.80) = world
+  (1155.80,90.20,-3190.20), 4u from the portal on the Typhon plateau, navmesh-verified on-mesh +
+  100% clear + connected. Rhodes arrival = the base's OWN paired target
+  `xq00_rhodes_olympusportaltarget` @ Rhodes_CityFinal_01 = WORLD **(700, 41, -6466)** (on-mesh).
+  GATED on the DB lane (a8f5446a) authoring `records\quests\portal_master_olympus.dbr` + the
+  boat-dialog quest (MAP-REF-1). Then wire the spec, rebuild both maps, gates, coupled map+Quests
+  DEV deploy. Mesh `Credits_Portal.msh` + the portal anms DO resolve (base XPack Items.arc) - render
+  is not the blocker; the dead engine destination is.
+
+### B-MERGE-SD-GROUPS-1 (P1, map lane - real regression found during M12): our merge clobbers SVAERA's SD + shrine bindings with SV 0.98i's
+- **Finding (byte-proven):** `svaera_plus_portals.py` prefers SV 0.98i's world-level sections over
+  SVAERA's: GROUPS(0x11) keeps SV's version of same-named records (line ~501 `sv_g_recs + ae_only`),
+  and SD(0x18) is wholesale SV's (line ~543 "Using SV SD"). Result: our SD is **116,299 B vs
+  SVAERA/base's 227,893 B**, and 4 same-name GROUPS members are lost (Shrine_Respawn_Hades 53->51,
+  Shrine_Teleport_Hades 5->4, Shrine_Teleport_Orient 12->11) - including the 2 dangling Olympus
+  shrines (respawn_olympus_new [removed in build31c per Will] + teleportshrineolympus01
+  [B-OLYMPUS-TELESHRINE-1]). SVAERA=base for both sections. Neither section carries the
+  FixedItemTeleport portal destination (uids absent from both SDs), so this is NOT proven to fix
+  B-OLYMPUS-RHODES-1, but it IS the only world-level data difference between SVAERA and ours and it
+  breaks IT/Hades-act teleport+respawn shrines (and possibly IT-act zone/strategic data).
+- **Fix (needs care + vet + walk-test, NOT a rushed swap):** MERGE SVAERA's SD + GROUPS (preserve
+  the IT/DLC-act strategic data + shrine bindings) with SV's blood-cave zone/GROUPS additions,
+  instead of letting SV clobber them. The SD merge needs the section's zone structure decoded first
+  (SVAERA's is ~2x SV's). Low-risk sub-fix: for the 3 same-name shrine groups, prefer SVAERA's
+  (restores the Olympus/Orient shrine bindings).
+
 ### B-PORTAL-1: Portals are ugly flat blue panels / hard-to-see arrows
 - **Symptom (Will, screenshots):** the born-open GridEntrance portals now APPEAR (build27 fix
   worked) but render as a **flat 2D blue rectangle** with a small light-blue triangle/arrow, not
