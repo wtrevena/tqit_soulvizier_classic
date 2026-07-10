@@ -970,6 +970,213 @@ def fix_mastery_panel_buttons(db: ArzDatabase):
     return total_added
 
 
+def apply_mastery_wave1_broken_fixes(db: ArzDatabase, base_db=None):
+    """MASTERY WAVE 1 broken-class fixes B1-B6 + hygiene
+    (docs/MASTERY_AUDIT_2026-07-09.md section 2; Will approved 2026-07-09).
+
+    STANDING RULE (Will): NEVER remove skills from masteries. Everything here
+    is a field edit, a ladder restore, or an anim-table RESTORATION of content
+    the SV port dropped - zero removals.
+
+    B1 Earth Meteor / B2 Storm Thunderball / B3 Spirit Bonespire: the SV port
+    grafted anim tokens absent from the PC anim tables onto these player nukes
+    -> SkillManager::StartSkill aborts every cast (hard-law #2). Fix = empty
+    string (NOT '0': any non-empty non-resolving token still aborts).
+
+    B4 Defense Shield Smash: port regression zeroed the damage payload
+    (base ships a 12->61 ladder). Restore Min + Modifier ladders (FLOAT,
+    ult-level length 10).
+
+    B5 Dream Nightmare MasterMind aura: dead 3 ways - skillName1 points at a
+    non-resolving path AND skillLevel1=0 on all 20 tiers (the omitted tree-
+    modifier slot alternative is deliberately NOT taken: adding a tree slot is
+    a Wave-2+ decision). Repoint to the resolving lowercase record + ramp
+    skillLevel1 = min(tier, 12).
+
+    B6 PC anim-table restoration (Neidan lane + RuneMaster lane): the mod's
+    overridden anm_malepc01/anm_femalepc dropped tokens that Neidan and
+    RuneMaster actives name (Ensnare/Flamesurge/ThunderClap/Barrage/Crosscut/
+    Hew) -> those casts abort. Port the missing (clip, ref) pairs ROW-MATCHED
+    from the base game tables into FREE indices only. HARD CAP: index 15 -
+    no record anywhere in base populates SpecialAnim(Ref)N above 15 (measured
+    2026-07-09), so writing 16+ would be a zero-precedent field shape (the
+    B-TOXEUS-2 loader-abort class). Rows already at 15/15 (dHanded, sHanded,
+    spear) are SKIPPED LOUDLY - replacing an existing entry could break other
+    skills and is removal-adjacent (forbidden). PhantomStrike is deliberately
+    NOT ported: only Neidan's 'Splash' modifier names it, Splash is unattached
+    (never cast), and its base rows (dHanded/sHanded) are exactly the full
+    ones.
+
+    Hygiene (found by the new gate's negative test): two Dream PASSIVES ship
+    the literal-'0' anim token (drxluciddream_premonition,
+    drxdistortionfield). Passives never cast so it is inert, but '0' is the
+    documented anti-pattern - normalize to ''.
+    """
+    print("\n=== MASTERY WAVE 1: broken-class fixes (B1-B6) ===")
+
+    def _expect_anim(rec, expected):
+        got = db.get_field_value(rec, 'skillSpecialAnimationName')
+        got = got[0] if isinstance(got, list) else got
+        if str(got) != expected:
+            raise SystemExit(
+                f"Mastery W1: {rec} skillSpecialAnimationName is {got!r}, "
+                f"expected {expected!r} - the tree changed under the fix; "
+                f"reconcile the spec before shipping")
+
+    fixed = 0
+
+    # ---- B1 / B2 / B3 + the two '0' passives -------------------------------
+    anim_fixes = [
+        (r'records\skills\earth\drxmeteor.dbr', 'MeteorShower', 'B1 Meteor'),
+        (r'records\skills\storm\drxthunderball.dbr', 'Ensnare',
+         'B2 Thunderball (also revives concussiveblast)'),
+        (r'records\skills\spirit\drxenslavespirit.dbr', 'BoneSpire',
+         'B3 Bonespire'),
+        (r'records\xpack\skills\dream\drxluciddream_premonition.dbr', '0',
+         "hygiene: literal-'0' anim on a passive"),
+        (r'records\xpack\skills\dream\drxdistortionfield.dbr', '0',
+         "hygiene: literal-'0' anim on a passive"),
+    ]
+    for rec, expected, label in anim_fixes:
+        if not db.has_record(rec):
+            raise SystemExit(f"Mastery W1: target record missing: {rec}")
+        _expect_anim(rec, expected)
+        db.set_field(rec, 'skillSpecialAnimationName', '', DATA_TYPE_STRING)
+        print(f"  {label}: skillSpecialAnimationName {expected!r} -> ''")
+        fixed += 1
+
+    # ---- B4 Shield Smash damage-ladder restore ------------------------------
+    smash = r'records\skills\defensive\drxweaponpool_shieldsmash.dbr'
+    if not db.has_record(smash):
+        raise SystemExit(f"Mastery W1: target record missing: {smash}")
+    cur = db.get_field_value(smash, 'offensivePhysicalMin')
+    cur0 = float(cur[0]) if isinstance(cur, list) and cur else float(cur or 0)
+    if cur0 != 0.0:
+        raise SystemExit(
+            f"Mastery W1 B4: {smash} offensivePhysicalMin already {cur0} "
+            f"(expected the zeroed regression) - reconcile before shipping")
+    db.set_field(smash, 'offensivePhysicalMin',
+                 [12.0, 18.0, 25.0, 31.0, 37.0, 43.0, 49.0, 55.0, 59.0, 61.0])
+    db.set_field(smash, 'offensivePhysicalModifier',
+                 [20.0, 24.0, 28.0, 32.0, 36.0, 40.0, 44.0, 47.0, 49.0, 50.0])
+    print("  B4 Shield Smash: offensivePhysicalMin 0 -> 12..61 ladder; "
+          "offensivePhysicalModifier 0 -> 20..50 ladder (len 10 = ult)")
+    fixed += 1
+
+    # ---- B5 Nightmare MasterMind aura revive --------------------------------
+    mm_target = r'records\xpack\skills\dream\nightmare_petskill_mastermind.dbr'
+    if not db.has_record(mm_target):
+        raise SystemExit(f"Mastery W1 B5: repoint target missing: {mm_target}")
+    nm_fixed = 0
+    for tier in range(1, 21):
+        rec = (r'records\xpack\skills\dream\pet\nightmare_%02d.dbr' % tier)
+        if not db.has_record(rec):
+            raise SystemExit(f"Mastery W1 B5: nightmare tier missing: {rec}")
+        db.set_field(rec, 'skillName1', mm_target, DATA_TYPE_STRING)
+        db.set_field(rec, 'skillLevel1', min(tier, 12), DATA_TYPE_INT)
+        nm_fixed += 1
+    print(f"  B5 Nightmare MasterMind: skillName1 repointed (resolving "
+          f"lowercase path) + skillLevel1 ramp min(tier,12) on "
+          f"{nm_fixed} tiers")
+    fixed += 1
+
+    # ---- B6 PC anim-table restoration ---------------------------------------
+    if base_db is None:
+        raise SystemExit(
+            "Mastery W1 B6: base game arz REQUIRED to port the dropped PC "
+            "anim references (pass the 5th build argument)")
+    ported, skipped = _port_pc_anim_tokens(db, base_db)
+    print(f"  B6 anim tables: {ported} (clip,ref) pair(s) restored from base "
+          f"(row-matched, free indices <= 15 only); {skipped} row(s) full - "
+          f"skipped loudly, never replaced")
+    fixed += 1
+
+    print(f"  Mastery Wave 1 broken fixes applied: {fixed} item(s)")
+    return fixed
+
+
+# Anim tokens B6 restores (lowercase). PhantomStrike deliberately excluded -
+# see apply_mastery_wave1_broken_fixes docstring. 'taunt' added after the new
+# gate's first live run caught mp_taunt (quest-reward tree, Skill_AttackRadius,
+# anim 'Taunt'): base ships Taunt 8/8 in BOTH PC tables and the mod's tables
+# dropped it - the same regression class as the Neidan tokens.
+_B6_PORT_TOKENS = {'ensnare', 'flamesurge', 'thunderclap',
+                   'barrage', 'crosscut', 'hew', 'taunt'}
+_PC_ANM_TABLES = (r'records\creature\pc\anm\anm_malepc01.dbr',
+                  r'records\creature\pc\anm\anm_femalepc.dbr')
+_ANIM_IDX_CAP = 15   # measured: no base record populates SpecialAnim(Ref)N > 15
+
+
+def _port_pc_anim_tokens(db: ArzDatabase, base_db: ArzDatabase):
+    """Port missing (SpecialAnimN clip, SpecialAnimRefN name) pairs for the
+    B6 tokens from the base game PC anim tables into the mod's, row-matched,
+    into free indices only (hard cap 15). Returns (ported, skipped_full)."""
+    mod_map = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+    base_map = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
+    ported = skipped = 0
+    for tbl in _PC_ANM_TABLES:
+        key = tbl.lower()
+        mrec, brec = mod_map.get(key), base_map.get(key)
+        if not mrec or not brec:
+            raise SystemExit(f"Mastery W1 B6: anim table missing "
+                             f"(mod={mrec}, base={brec}) for {tbl}")
+        mf = db.get_fields(mrec)
+        bf = base_db.get_fields(brec)
+        bmap = {k.split('###')[0]: tf for k, tf in bf.items()}
+
+        # base row -> [(ref, clip)] for the port tokens
+        base_pairs = {}
+        for fname, tf in bmap.items():
+            m = re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
+            if not (m and tf.values):
+                continue
+            ref = str(tf.values[0]).strip()
+            if ref.lower() not in _B6_PORT_TOKENS:
+                continue
+            row, idx = m.group(1), int(m.group(2))
+            clip_tf = bmap.get(f'{row}SpecialAnim{idx}')
+            clip = (str(clip_tf.values[0]).strip()
+                    if clip_tf and clip_tf.values else '')
+            if clip:
+                base_pairs.setdefault(row, []).append((ref, clip))
+
+        # mod row state: existing ref tokens + used indices (either field kind)
+        mod_refs, used = {}, {}
+        for k, tf in mf.items():
+            fname = k.split('###')[0]
+            m = re.match(r'(.+?)SpecialAnim(Ref)?(\d+)$', fname)
+            if m and tf.values and str(tf.values[0]).strip():
+                row, isref, idx = m.group(1), m.group(2), int(m.group(3))
+                used.setdefault(row, set()).add(idx)
+                if isref:
+                    mod_refs.setdefault(row, set()).add(
+                        str(tf.values[0]).strip().lower())
+
+        for row in sorted(base_pairs):
+            for ref, clip in base_pairs[row]:
+                if ref.lower() in mod_refs.get(row, set()):
+                    continue   # row already carries the token
+                free = [i for i in range(1, _ANIM_IDX_CAP + 1)
+                        if i not in used.get(row, set())]
+                if not free:
+                    print(f"    B6 SKIP {mrec.rsplit(chr(92), 1)[-1]} "
+                          f"{row}: row FULL (15/15) - cannot port {ref!r} "
+                          f"without replacing an entry (forbidden)")
+                    skipped += 1
+                    continue
+                i = free[0]
+                db.set_field(mrec, f'{row}SpecialAnim{i}', clip,
+                             DATA_TYPE_STRING)
+                db.set_field(mrec, f'{row}SpecialAnimRef{i}', ref,
+                             DATA_TYPE_STRING)
+                used.setdefault(row, set()).add(i)
+                mod_refs.setdefault(row, set()).add(ref.lower())
+                print(f"    B6 port {mrec.rsplit(chr(92), 1)[-1]} "
+                      f"{row}[{i}] = {ref} ({clip.rsplit(chr(92), 1)[-1]})")
+                ported += 1
+    return ported, skipped
+
+
 def fix_broken_mastery_skills(db: ArzDatabase):
     """Fix broken mastery skills across ALL skill trees.
 
@@ -1621,6 +1828,10 @@ def main():
     fix_mastery_panel_buttons(db)
     add_dlc_mastery_trees(db)
 
+    # MASTERY WAVE 1 (build31): the six broken-class fixes B1-B6 + hygiene.
+    # Needs base_db for the B6 anim-table restoration.
+    apply_mastery_wave1_broken_fixes(db, base_db)
+
     promote_uber_monsters(db)
 
     create_uber_dungeon_portal(db, base_db)
@@ -1673,6 +1884,19 @@ def main():
     # first real work-layout build after build30.1 wired the gate).
     _base_names_low = {n.replace('/', '\\').lower()
                        for n in base_db.record_names()} if base_db else set()
+
+    # ── MASTERY WAVE 1 gate (fail-loud, 4th DB invariant): every castable
+    # mastery-tree skill's skillSpecialAnimationName must be empty or present
+    # in the PC anim tables (hard-law #2 / StartSkill abort). Runs while
+    # base_db is still alive because the RuneMaster/Neidan trees resolve from
+    # the base game. Negative-tested: FAILS on the pre-fix build30.2 arz
+    # (Meteor 'MeteorShower' + Thunderball 'Ensnare' + Bonespire 'BoneSpire'),
+    # PASSES post-fix. NOTE: no later build stage may touch
+    # skillSpecialAnimationName or the anm tables (they run after this gate).
+    from validate_player_skill_anims import check_db as _check_player_anims
+    print("\n=== Gate: player-skill anim castability (Mastery W1) ===")
+    _check_player_anims(db, base_db=base_db, fail=True)
+
     del base_db  # Free memory
 
     from create_uber_souls import create_uber_souls
