@@ -807,18 +807,24 @@ VASHKARR_HOST_KEY = 'levels/world/orient/underground/random05a.lvl'
 VASHKARR_SPEC = (VASHKARR_PROXY_DBR, 24.00, 1.00, 31.70,
                  {'rot': Q_LEINTH_EXEMPLAR_ROT})  # WIRED (build32b)
 
-# ── M10 PENDING: Obsidian Halls treasure roulette corners (N6-DB, Will signed off) ───
-# 4 corner proxies (chanceToRun=25 each, shared warband pool) in the Act-3 Obsidian
-# Halls: tombobs01 + tombobs02 (Levels/World/Orient/TyphonUG/, base-game v0x0e -> the
-# v0e branch). Corner coords = the design doc's surveyed on-mesh spots
-# (docs/OBSIDIAN_ROULETTE_DESIGN.md: calibration 23/23 + 36/36 floor markers):
+# ── M10 WIRED (build32b): Obsidian Halls treasure roulette corners (N6-DB) ───────────
+# 4 corner proxies (chanceToRun=25 each, shared warband pool q_obs_warband) in the Act-3
+# Obsidian Halls: tombobs01 + tombobs02 (Levels/World/Orient/TyphonUG/, base-game v0x0e
+# -> the v0e branch, M9-proven live). Corner coords = the design doc's surveyed on-mesh
+# spots (docs/OBSIDIAN_ROULETTE_DESIGN.md: calibration 23/23 + 36/36 floor markers):
 #   A tombobs02 (50.4, 1.0, 143.6)    C tombobs02 (200.4, 1.0, 97.6)
-#   B tombobs01 (220.8, 1.0, 89.6)    D tombobs01 (90.8, 1.0, 45.6)
-# byte-shape = q_leinth_lone exemplar. ⚠️ GATED on the DB lane's build32 N6 arz records
-# (q_obs_roulette_a..d + pools\q_obs_warband + guardians/chests): MAP-REF-1. Verify the
-# exact proxy record paths against the landed arz before wiring (the design names the
-# basenames; drxmap\proxy\ is the N4/Toxeus precedent dir).
-OBS_ROULETTE_SPECS_PENDING = {
+#   B tombobs01 (220.8, 1.0, 89.6)    D tombobs01 (92.8, 1.0, 47.6)  [nudged, see below]
+# ✅ WIRED (build32b, 2026-07-10): the DB lane's build32 Group F (commit 6c6c0cd) shipped
+# q_obs_roulette_{a,b,c,d} + pools\q_obs_warband + the obsidianhoard chest chains in the
+# arz (9265619d...); all 4 proxy paths byte-verified against the landed record table.
+# ON-MESH RE-VERIFY (vs the levels' own 0x0b in the build32a map, all 3 tilesets +
+# 3.5u/49-sample clearance): A 100%, B 100%, C 100% (all walkable in every tileset).
+# CORNER D at the surveyed (90.8,45.6) CONFIRMED TIGHT: walkable only in the radius-0.4
+# tileset (NOT 0.6/0.8), 71% clearance -> NUDGED +2.0/+2.0 within the same corner pocket
+# to (92.8, 1.0, 47.6): walkable in ALL 3 tilesets, 100% clearance, same flat floor as
+# corner B (floor probe local Y 1.2 at both spots; spec keeps the design's Y=1.0
+# convention). byte-shape = q_leinth_lone exemplar (flags=0, no 0x14, exemplar rot).
+OBS_ROULETTE_SPECS = {
     'levels/world/orient/typhonug/tombobs02.lvl': [
         (b'records\\drxmap\\proxy\\q_obs_roulette_a.dbr', 50.4, 1.0, 143.6,
          {'rot': Q_LEINTH_EXEMPLAR_ROT}),
@@ -828,10 +834,10 @@ OBS_ROULETTE_SPECS_PENDING = {
     'levels/world/orient/typhonug/tombobs01.lvl': [
         (b'records\\drxmap\\proxy\\q_obs_roulette_b.dbr', 220.8, 1.0, 89.6,
          {'rot': Q_LEINTH_EXEMPLAR_ROT}),
-        (b'records\\drxmap\\proxy\\q_obs_roulette_d.dbr', 90.8, 1.0, 45.6,
+        (b'records\\drxmap\\proxy\\q_obs_roulette_d.dbr', 92.8, 1.0, 47.6,
          {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-}  # NOT wired yet
+}  # WIRED (build32b): merged into INJECT_SPECS right after its definition below
 
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
@@ -1779,6 +1785,14 @@ INJECT_SPECS = {
                   0.1962699145078659, 0.0, 0.9805499911308289)}),
     ],
 }
+
+# M10 (build32b): merge the Obsidian roulette corner placements (defined above with their
+# survey + re-verify evidence) into INJECT_SPECS. Collision-guarded: neither tombobs level
+# hosts any other injection; a future key collision must be resolved by explicit list
+# merge, not silent clobber.
+for _m10_key in OBS_ROULETTE_SPECS:
+    assert _m10_key not in INJECT_SPECS, f'M10 host key collision with INJECT_SPECS: {_m10_key}'
+INJECT_SPECS.update(OBS_ROULETTE_SPECS)
 
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
 # The merge already places these records; move_0x05_instances rewrites ONLY their 12

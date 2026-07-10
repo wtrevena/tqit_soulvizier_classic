@@ -108,6 +108,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--map', default=str(REPO / 'local' / 'Levels_merged.arc'))
     ap.add_argument('--baseline', default=str(REPO / 'local' / 'Levels_merged.build31g-baseline.arc'))
+    ap.add_argument('--m10-baseline',
+                    default=str(REPO / 'local' / 'Levels_merged.build32a-baseline.arc'),
+                    help='baseline for the M10 tombobs checks (the pre-M10 build32a map)')
+    ap.add_argument('--skip-m10', action='store_true',
+                    help='skip the M10 tombobs checks (to gate a pre-M10 build)')
     ap.add_argument('--testhub', action='store_true',
                     help='expect the TESTHUB variant (same M8/M9 assertions; farmland/random05a '
                          'counts are hub-independent)')
@@ -193,11 +198,63 @@ def main():
                for i in range(bninst))
     check('all 995 pre-existing instances unchanged (dbr+pos)', same)
 
+    # ---------------- M10: tombobs01/02 Obsidian roulette corners (v0x0e) ----------------
+    if not args.skip_m10:
+        mdata, mlevels = load_world(args.m10_baseline)
+        M10 = {
+            'orient/typhonug/tombobs02.lvl': [
+                (b'q_obs_roulette_a.dbr', (50.4, 1.0, 143.6)),
+                (b'q_obs_roulette_c.dbr', (200.4, 1.0, 97.6)),
+            ],
+            'orient/typhonug/tombobs01.lvl': [
+                (b'q_obs_roulette_b.dbr', (220.8, 1.0, 89.6)),
+                (b'q_obs_roulette_d.dbr', (92.8, 1.0, 47.6)),
+            ],
+        }
+        for suffix, expect in M10.items():
+            print(f'--- M10 {suffix} (v0x0e branch) ---')
+            lv, blob = get_blob(data, levels, suffix)
+            blv, bblob = get_blob(mdata, mlevels, suffix)
+            check('blob version v0x0e', blob[3] == 0x0e, f'v0x{blob[3]:02x}')
+            ok, end = blob_walk_exact(blob)
+            check('blob section walk reaches exact blob end', ok, f'end={end} len={len(blob)}')
+            secs = dict(parse_blob_sections(blob))
+            bsecs = dict(parse_blob_sections(bblob))
+            sd = secs[0x05]
+            strings, insts, endpos, ninst = walk_0x05(sd, 56)
+            _, binsts, _, bninst = walk_0x05(bsecs[0x05], 56)
+            check(f'0x05 instance count {bninst} -> {bninst + 2}', ninst == bninst + 2,
+                  f'count={ninst}')
+            check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
+                  f'end={endpos} len={len(sd)}')
+            for k, (base, pos3) in enumerate(expect):
+                inst = insts[bninst + k]
+                check(f'appended[{k}] is {base.decode()}',
+                      inst['dbr'].lower().endswith(BS.encode() + base),
+                      inst['dbr'].decode('latin-1'))
+                check(f'appended[{k}] at local {pos3}',
+                      all(abs(inst['pos'][i] - pos3[i]) < 1e-3 for i in range(3)),
+                      str(inst['pos']))
+                check(f'appended[{k}] flags == 0 (proxy byte-shape)', inst['flags'] == 0,
+                      f"flags={inst['flags']}")
+            for t in sorted(set(bsecs) | set(secs)):
+                if t == 0x05:
+                    continue
+                check(f'section 0x{t:02x} byte-identical to M10 baseline',
+                      secs.get(t) == bsecs.get(t),
+                      f'{len(bsecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
+            same = all(insts[i]['dbr'] == binsts[i]['dbr'] and insts[i]['pos'] == binsts[i]['pos']
+                       for i in range(bninst))
+            check(f'all {bninst} pre-existing instances unchanged (dbr+pos)', same)
+            check('0x0b navmesh section survived byte-identical',
+                  secs.get(0x0b) == bsecs.get(0x0b), f'{len(bsecs.get(0x0b, b""))} bytes')
+
     print()
     if FAIL:
         print(f'RESULT: FAIL ({len(FAIL)}): {FAIL}')
         return 1
-    print('RESULT: PASS (M8 + M9 parse-back clean)')
+    scope = 'M8 + M9' if args.skip_m10 else 'M8 + M9 + M10'
+    print(f'RESULT: PASS ({scope} parse-back clean)')
     return 0
 
 

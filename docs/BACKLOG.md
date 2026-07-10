@@ -230,10 +230,29 @@
 > startingfarmland06d (+1 0x05 instance). DEV deploy = all four coupled artifacts (Levels +
 > Quests 6ff23c29 + arz 27e67420 as SoulvizierClassicDEV.arz + Text cf3cb227; the DEV arz was
 > Group-D-stale with ZERO helos/vashkarr records - MAP-REF-1 ordering at DEV required the sync).
-> **M10 Obsidian corners STILL PENDING** (Group F records not in the arz; landing watcher
-> armed; corner D (90.8,1.0,45.6) 66%-clearance needs on-mesh re-verify at wiring). Walk-test:
+> ~~M10 Obsidian corners STILL PENDING~~ (superseded by build32b below). Walk-test:
 > (1) Helos plaza - talk to Almyros the Wayfarer, all 4 destinations; (2) FotA cave (ToTomb02
 > east of Chang'an) - Vashkarr + 2 champions guard the Majestic Chest, soul drops.
+
+> 🗺️ **BUILD32b MAP LANE (2026-07-10): M10 WIRED - build32 map COMPLETE, ship candidate.**
+> DB Group F landed (6c6c0cd, arz 9265619d...): all 4 corner proxy paths byte-verified vs the
+> record table (records\drxmap\proxy\q_obs_roulette_{a,b,c,d} + pools\q_obs_warband + the
+> obsidianhoard chest chains). `OBS_ROULETTE_SPECS` merged into INJECT_SPECS (collision-
+> guarded), v0e branch (M9-proven). **Corner-D re-verify CONFIRMED THE SURVEY FLAG:** at
+> (90.8,45.6) walkable only in the radius-0.4 tileset, 71% clearance -> **NUDGED +2.0/+2.0
+> within the pocket to (92.8, 1.0, 47.6)**: walkable in ALL 3 tilesets, 100% clearance, same
+> flat floor as corner B. A/B/C verified 100%/all-tilesets at the surveyed spots. Parse-back
+> gate extended to M10 (57 checks, both variants): tombobs02 578->580 (A@(50.4,143.6) +
+> C@(200.4,97.6)), tombobs01 408->410 (B@(220.8,89.6) + D@(92.8,47.6)), all appended flags=0
+> exemplar-rot, every other section byte-identical (incl. both 0x0b navmeshes). **Gates:**
+> contracts GATE PASS 0 P0/0 P1 (MAP-REF-1=0 vs arz 9265619d), navmesh 24/24, groups-bindings
+> 374/374 0 dead, det-2x both variants. **SHIP-CANDIDATE MD5s: canonical
+> `d5259629d16e1fa8e39e7a6d59b3e57e`, TESTHUB `4fb76084a275d65682ac38426055acf6`** (baselines
+> preserved: build31g f1d31d23, build32a 1dad265e). Whole-map delta byte-proven: exactly 2
+> blobs vs build32a (tombobs pair), exactly 4 vs build31g (the four M8/M9/M10 hosts). DEV
+> deploy = full coupled build32 set (Levels d5259629 + Quests 6ff23c29 + arz 9265619d as
+> SoulvizierClassicDEV.arz + Text 346572bb). Walk-test: Act-3 Obsidian Halls (TyphonUG) -
+> each visit rolls the 4 corners at 25% each for a warband + hoard chest.
 
 > 🛠️ **BUILD32 SESSION (2026-07-10, autonomous DB-lane, Will blanket sign-off) - SHIPPED GROUPS:**
 > STEP 0 det-2x reproducibility of build31-ship VERIFIED (arz `fc393741` + Text `b7251fd7`
