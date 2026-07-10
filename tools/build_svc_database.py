@@ -1664,7 +1664,42 @@ def apply_mastery_wave2_boosts(db: ArzDatabase, base_db=None):
         cur = arr(SBR, f)
         if cur and 'sandbox' in str(cur[0]).lower():
             clear_field(SBR, f)
-    print("  SPIRIT bonescourge_spiritbreath: dangling SandBox particleEffectName2/3 cleared (re-enable is clean); wraithlord skellysummon2/3 DEFERRED (pet-cap unverifiable)")
+    print("  SPIRIT bonescourge_spiritbreath: dangling SandBox particleEffectName2/3 cleared (re-enable is clean)")
+
+    # ── SPIRIT: re-enable the Liche King's signature skeleton summons (GROUP 3,
+    # BACKLOG "wraithlord skelly re-enable, pet-cap unverifiable"). The DRX author
+    # DISABLED wraithlord_01..20.dbr skillName15/16 by 'xxx'-prefixing their paths
+    # (drx_lichskill_skellysummon2/3). Re-enabling DISABLED original content is
+    # ENCOURAGED (Will's standing mastery ruling #4); the summon chain is fully
+    # built and resolves (Skill_AttackProjectileSpawnPet -> drx_skelly_01..20,
+    # rev2skelly.msh; scratchpad/skelly_chain.py). SURGICAL: only the 'xxx' prefix
+    # is stripped - skillLevel ladders are left EXACTLY as authored (the original
+    # tier ramp), and the redundant soulblight double-slot (skillName4 + 14) is
+    # KEPT UNTOUCHED (dropping a duplicate = a slot REMOVAL, forbidden without
+    # Will's per-item approval). Revertible before the next Steam ship (re-add the
+    # 'xxx' prefix) if Will's in-game pet-cap test shows the capstone over-summons.
+    SS2 = r'records\skills\spirit\drxpet\drxpet_skills\drx_lichskill_skellysummon2.dbr'
+    SS3 = r'records\skills\spirit\drxpet\drxpet_skills\drx_lichskill_skellysummon3.dbr'
+    expect(db.has_record(SS2) and db.has_record(SS3),
+           "wraithlord skellysummon2/3 target records missing (re-enable would dangle)")
+    wl_reenabled = 0
+    for t in range(1, 21):
+        rec = r'records\skills\spirit\drxpet\wraithlord_%02d.dbr' % t
+        need(rec)
+        touched = False
+        for slot in ('skillName15', 'skillName16'):
+            cur = arr(rec, slot)
+            if cur and str(cur[0]).lower().startswith('xxx'):
+                db.set_field(rec, slot, str(cur[0])[3:], DATA_TYPE_STRING)
+                touched = True
+        if touched:
+            wl_reenabled += 1
+    expect(wl_reenabled == 20,
+           f"wraithlord re-enable touched {wl_reenabled}/20 tiers (expected 20 "
+           f"'xxx'-disabled skellysummon2/3 pairs)")
+    print(f"  SPIRIT wraithlord (Liche King): skellysummon2/3 'xxx' RE-ENABLED on "
+          f"{wl_reenabled}/20 tiers (chain resolves to drx_skelly_01..20); soulblight "
+          f"double-slot KEPT (removal forbidden); revertible")
 
     # ---- DREAM (exact numbers from PART III) ------------------------------
     tf_cleared = 0
