@@ -725,21 +725,19 @@ REMOVE_STRAY_PROP_SPECS = {
 #   Sparta Crypt depths  spartacryptlevel2   corner (-5644,0,-1451) local (42.30,-1.60,42.30)
 #       -> world (-5602, -2, -1409)   [= the hub landing spot, >= 10u from the native door cell]
 #
-# ⚠️ ACTIVATION IS GATED ON THE DB LANE (MAP-REF-1): the NPC record below does NOT exist
-# in the arz yet. Wiring the spec into INJECT_SPECS before the DB lane ships the record
-# makes the map contract suite FAIL (placed-but-absent-from-DB). ACTIVATION CHECKLIST:
-#   1. DB lane ships the NPC record (suggested path below; Class NPC / speaking-NPC shape
-#      mirroring Starting_PortalMan) + the boat-dialog quest (Quests.arc, registered inside
-#      the load window) using the 4 destination world coords above.
-#   2. Uncomment PORTAL_MASTER_SPEC_PENDING into INJECT_SPECS under
-#      'levels/world/greece/startingtownver2/startingfarmland06d.lvl' (flags=0, no 0x14,
-#      byte-shape = Starting_PortalMan exemplar).
-#   3. Rebuild BOTH maps, full map gates, coupled deploy with the new Quests.arc.
+# ✅ WIRED (build32a, 2026-07-10): the DB lane's build32 Group A (commit 3638ba4) shipped
+# records\quests\portal_master_helos.dbr in the arz (27e6742012833cf63da33035cb618353) +
+# the boat-dialog rides sv_commonmechanics.qst in Quests.arc (6ff23c29..., 4 destination
+# hits verified by decompressed-entry scan). The spec below is LIVE in INJECT_SPECS under
+# startingfarmland06d (v0x11 shared -> the proven step-6/7 v11 injection; flags=0,
+# identity rot, no 0x14 - the Starting_PortalMan NPC byte-shape, same path as the shipped
+# Olympus herald). DEPLOY COUPLING: this map ships together with that Quests.arc
+# (Levels+Quests law - the dialog lives quest-side).
 # Phase 2 (after Will's pilot walk-test): return-side portal-masters in each area, then
 # retire the GridEntrance portals per Will's call.
-PORTAL_MASTER_NPC_DBR = b'records\\quests\\portal_master_helos.dbr'  # DB lane: keep this path
+PORTAL_MASTER_NPC_DBR = b'records\\quests\\portal_master_helos.dbr'  # matches the arz record
 PORTAL_MASTER_HOST_KEY = 'levels/world/greece/startingtownver2/startingfarmland06d.lvl'
-PORTAL_MASTER_SPEC_PENDING = (PORTAL_MASTER_NPC_DBR, 76.50, 0.60, 189.50)  # NOT wired yet
+PORTAL_MASTER_SPEC = (PORTAL_MASTER_NPC_DBR, 76.50, 0.60, 189.50)  # WIRED (build32a)
 
 # ── M12 CAMPAIGN BLOCKER: Olympus->Rhodes continuation NPC (Will, 2026-07-09) ────────
 # RCA (M7, now CONFIRMED in-game): the base post-Typhon portal xq00_olympus_portaltorhodes
@@ -789,7 +787,7 @@ OLYMPUS_RHODES_NPC_DBR = b'records\\quests\\portal_master_olympus.dbr'  # matche
 OLYMPUS_RHODES_HOST_KEY = 'levels/world/olympus/olympusfinal02.lvl'
 OLYMPUS_RHODES_NPC_SPEC = (OLYMPUS_RHODES_NPC_DBR, 305.80, 90.20, 490.80)  # WIRED (build31g)
 
-# ── M9 PENDING: Vashkarr, Eldest of the Ancients (N4-DB, Will signed off) ────────────
+# ── M9 WIRED (build32b): Vashkarr, Eldest of the Ancients (N4-DB, Will signed off) ───
 # HOST = Levels/World/Orient/Underground/Random05A.lvl (the cave via ToTomb02 east of
 # Chang'an; base-game v0x0e -> the new SVAERA-side v0e injection branch, commit 5af756c).
 # The 'Majestic Chest' (GoldenChest_Normal_02, inst [25] @ local (24.01,1.00,28.70))
@@ -800,13 +798,14 @@ OLYMPUS_RHODES_NPC_SPEC = (OLYMPUS_RHODES_NPC_DBR, 305.80, 90.20, 490.80)  # WIR
 # vs a wall). NOTE: the native Hero_Djinn_BloodSisters proxy also lives in this room
 # (6.8u from the chest) - fights can stack, accepted (the design chose this cave).
 # byte-shape = q_leinth_lone exemplar (flags=0, no 0x14, exemplar rot).
-# ⚠️ GATED on the DB lane's build31 Group-7 arz carrying q_vashkarr_lone (+ pool +
-# um_vashkarr_99): MAP-REF-1 blocks wiring before the records exist. Wire by moving the
-# spec into INJECT_SPECS under the host key.
+# ✅ WIRED (build32b, 2026-07-10): the DB lane's build32 Group C (commit 36ab4ee) shipped
+# q_vashkarr_lone + pools\q_vashkarr_lone + um_vashkarr_99 in the arz (27e67420...).
+# FIRST LIVE USE of the v0e SVAERA-host branch (5af756c): parse-back gate = random05a
+# 0x05 instance count 59 -> 60 + blob re-parse to exact stream end + on-mesh re-verify.
 VASHKARR_PROXY_DBR = b'records\\drxmap\\proxy\\q_vashkarr_lone.dbr'
 VASHKARR_HOST_KEY = 'levels/world/orient/underground/random05a.lvl'
-VASHKARR_SPEC_PENDING = (VASHKARR_PROXY_DBR, 24.00, 1.00, 31.70,
-                         {'rot': Q_LEINTH_EXEMPLAR_ROT})  # NOT wired yet
+VASHKARR_SPEC = (VASHKARR_PROXY_DBR, 24.00, 1.00, 31.70,
+                 {'rot': Q_LEINTH_EXEMPLAR_ROT})  # WIRED (build32b)
 
 # ── M10 PENDING: Obsidian Halls treasure roulette corners (N6-DB, Will signed off) ───
 # 4 corner proxies (chanceToRun=25 each, shared warband pool) in the Act-3 Obsidian
@@ -1629,6 +1628,19 @@ INJECT_SPECS = {
         (PORTAL_OLYMPIANARENA1_DBR, 74.00, 0.40, 184.00, {'x14_payload': HELOS_H1_0x14}),
         (PORTAL_FX_MAP_AURA_DBR, 74.00, 0.40, 184.00),
         (PORTAL_OLYMPIANARENA2_DBR, 68.00, -0.40, 181.00, {'x14_payload': HELOS_R2_0x14}),
+        # M8 Phase-1 (build32a): the Helos portal-master NPC (Model C pilot) at the
+        # town-portal plaza - 5.7u S of TeleportShrineHelios01, 6.0u NE of the H1 Garden
+        # portal (walking to the NPC cannot cross H1's teleport plane), 8.9u from the R2
+        # return landing. flags=0, no 0x14 (Starting_PortalMan NPC byte-shape). The
+        # boat-dialog quest rides the DB lane's Quests.arc 6ff23c29 (COUPLED deploy).
+        PORTAL_MASTER_SPEC,
+    ],
+    # M9 (build32b): Vashkarr, Eldest of the Ancients - boss proxy guarding the Majestic
+    # Chest in the FotA cave (Random05A, base-game v0x0e). FIRST LIVE USE of the v0e
+    # SVAERA-host injection branch (5af756c): routes through inject_into_sv_only_blob
+    # (base-56), NOT step 7's v11 0x14-append pass. Parse-back gate: 59 -> 60 instances.
+    VASHKARR_HOST_KEY: [
+        VASHKARR_SPEC,
     ],
     # ===== C4 (this session): Greece occultist region atmosphere restore (SV-exact) =====
     # SV's Delphi "Crisaeos Falls" occultist region had the SAME regional smoke Will remembers

@@ -108,6 +108,30 @@
 >   pair with a `_verify_roaming_sweep` fail-loud gate (only eligible pools touched, weight-1
 >   name-append, 18-slot caps respected).
 
+> 🗺️ **BUILD32a MAP LANE (2026-07-10): M8 + M9 WIRED, gated, DEV-deployed (coupled).**
+> **M8 Helos portal-master:** `PORTAL_MASTER_SPEC` LIVE in INJECT_SPECS @ startingfarmland06d
+> local (76.50,0.60,189.50) (v0x11 step-6/7 path, NPC byte-shape, no 0x14). Dialog rides the
+> DB lane's Quests 6ff23c29 (sv_commonmechanics refire step; COUPLED map+Quests deploy).
+> **M9 Vashkarr:** `VASHKARR_SPEC` LIVE @ random05a local (24.00,1.00,31.70) - **FIRST LIVE
+> USE of the 5af756c v0e SVAERA-host branch, byte-proven clean**: parse-back gate
+> (tools/debug/gate_build32_parseback.py) = random05a 0x05 59->60 instances, appended
+> q_vashkarr_lone flags=0 exemplar-rot, flag-aware walk to exact section+blob end, ALL other
+> sections byte-identical (incl. the 0x0b navmesh, 76,438 B); farmland06d 995->996, 0x14
+> byte-identical. On-mesh RE-verify vs the level's own 0x0b: spot walkable in ALL 3 tilesets
+> (radius 0.4/0.6/0.8), 100% clearance in the 3.5u square (survey said 95%), set0 walkable
+> cells 60,356 = survey-exact parity. **Gates:** contracts GATE PASS 0 P0/0 P1 (MAP-REF-1=0
+> vs arz 27e67420), navmesh 24/24, groups-bindings 374/374 0 dead, det-2x BOTH variants.
+> **MD5s: canonical `1dad265e68614ab813b5f9a0aed10286`, TESTHUB `892f8f14bd605f67d2d323af2ced6d88`**
+> (build31g baseline f1d31d23 preserved at local/Levels_merged.build31g-baseline.arc).
+> Per-level delta vs build31g = EXACTLY 2 blobs: random05a (+1 0x05 instance) +
+> startingfarmland06d (+1 0x05 instance). DEV deploy = all four coupled artifacts (Levels +
+> Quests 6ff23c29 + arz 27e67420 as SoulvizierClassicDEV.arz + Text cf3cb227; the DEV arz was
+> Group-D-stale with ZERO helos/vashkarr records - MAP-REF-1 ordering at DEV required the sync).
+> **M10 Obsidian corners STILL PENDING** (Group F records not in the arz; landing watcher
+> armed; corner D (90.8,1.0,45.6) 66%-clearance needs on-mesh re-verify at wiring). Walk-test:
+> (1) Helos plaza - talk to Almyros the Wayfarer, all 4 destinations; (2) FotA cave (ToTomb02
+> east of Chang'an) - Vashkarr + 2 champions guard the Majestic Chest, soul drops.
+
 > 🛠️ **BUILD32 SESSION (2026-07-10, autonomous DB-lane, Will blanket sign-off) - SHIPPED GROUPS:**
 > STEP 0 det-2x reproducibility of build31-ship VERIFIED (arz `fc393741` + Text `b7251fd7`
 > BOTH reproduce byte-exact from a clean HEAD rebuild, x2 - no process breach).
