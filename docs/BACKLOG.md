@@ -377,6 +377,38 @@ apply_svc_patches _fix_wave29_contract_items:
 
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
+### BUILD31 DB WAVE QUEUE (Will via coordinator, 2026-07-09; batch as one wave)
+- **D11: Rally** (coordinator holds the brief).
+- **D12: Coastal Ichthian Myrmidon soul boost** (coordinator brief 2026-07-09).
+- **D13: Eater of Days summon soul** (Will: "The Eater of Days soul should let you summon him").
+  Records identified on the build30.2 arz: monster
+  `records\creature\monster\sepulchralwyrm\um_eaterofdays_45.dbr` (Hero-classified, single tier
+  L45, tag tagNewHero91, mesh `DRX\meshes\eaterofdaysmesh.msh`, texture
+  `DRXTextures\creatures\sepulchralwyrm\sepulchralwyrm_eaterofdays.tex` - DRX arcs ship with the
+  mod; render-chain gate must still verify mesh-internal shaders). Souls
+  `...\soul\sepulchralwyrm\eaterofdays_soul_{n,e,l}.dbr` carry ONLY an augment
+  (drxdeathchillaura 3/4/5), NO itemSkillName proc - the summon grant displaces nothing (keep
+  the aura augment). Kit donor skill available: `eaterofdays_necrobolt` (attack_projectile).
+  Standard D7/D8/D9 conversion: manual-cast Skill_SpawnPet ladder tiers 1/2/3, itemSkillLevel
+  1/2/3 (F1 gate enforces <= skillMaxLevel), permanent pet via _build_boss_summon from the
+  boss's OWN mesh/anim/skills, NO monster equipment/loot field copies (_set_pet_equipment
+  hardcoded if armor is needed), 'Summon <full name>' tag + {^F} law + uber_soul_tags, gates:
+  validate_summon_pets + render_chain + soul_augments + summons contract 0 P1 + bucketed
+  record-diff.
+- **Boss-summon-soul candidates remaining (for Will's batch approval):** regenerated ranked on
+  the build30.2 arz via the real wiring join (lootFinger2Item1): 643 souls wired to monsters,
+  61 already summon, 578 do not. Top Boss-class by level: dragonliche L63, manticore L56,
+  darksatyrshaman L55, hades L54, bloodcrow + talos L50, antaeus L49, typhon + undeadtyphon +
+  meglograi L48, palai + deeptresher L47, syrinx + polyphemus + wheedletongue + uber L45,
+  ormenos + cerberus + maenadsorceress(no proc) L44, charon both forms L43, yaoguai L41,
+  pemphredo + bandari L40, deino + enyo L39, gargantuanyeti L38, barmanu L37, scarabaeus +
+  permean L35, sandwraithlord L34, aktaios L33, grimshell L33, nehebkau L30, sandwraith L29,
+  megalesios L27, minotaurlord L26, medusa L24, alastor L24, euryale L23, sstheno + arachne L22,
+  toxeus (Athens) L21, calybe L20, nessus L15; notable Hero-class: sp_toxeus L99 (the SP
+  superboss), wardenofsouls L48, insenzia/torak/koios L47-48 (procless souls - clean adds).
+  Regeneration script (re-runnable on any arz): session scratchpad `rank_summon_candidates.py`;
+  full dump `summon_candidates_ranked.txt`.
+
 - **FEATURE (Will 2026-07-09): throwing weapons in the campaign.** The mod already requires
   Ragnarok (Runemaster mastery, XPack2 world levels), so throwing weapons are available engine-side;
   they never drop in Acts 1-4 because vanilla loot tables only place them in Act 5. Wire thrown
