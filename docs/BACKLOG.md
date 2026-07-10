@@ -378,8 +378,44 @@ apply_svc_patches _fix_wave29_contract_items:
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
 ### BUILD31 DB WAVE QUEUE (Will via coordinator, 2026-07-09; batch as one wave)
+Train contents: Enslaver implementation (approved) + N2 Typhon portal visual spec + D11 + D12 +
+D13 + D14 + D15. Will's standing ruling: only convert summon-souls he EXPLICITLY names.
 - **D11: Rally** (coordinator holds the brief).
 - **D12: Coastal Ichthian Myrmidon soul boost** (coordinator brief 2026-07-09).
+- **D15: reward-potion name colors** (Will: Fortitude + skill-point potions should be the same
+  dark red as the experience potions). RECON COMPLETE - ready to implement, pure Text-side:
+  the dark red is the leading **`^M` color code** in the tag VALUE (shipped Text.arc:
+  `tagNewItem6=^MPotion of Experience`, shared by ALL 48 potionexp_NN records). The four
+  uncolored tags, each used by EXACTLY ONE record (arz-wide reverse-scan done, zero sharing,
+  so no recolor side effects): `tagNewItem3` = 'Lesser Potion of Fortitude' (potionattri_01),
+  `tagNewItem70` = 'Potion of Fortitude' (potionattri_02), `tagNewItem4` = 'Lesser Potion of
+  Learning' (potionskill_01), `tagNewItem69` = 'Potion of Learning' (potionskill_02).
+  FIX: these are SV-upstream tags (SV Text_EN.arc via build_modstrings), so override through
+  the sanctioned single-definition dict `TEXT_FIX_TAGS` in tools/build_text_arc.py (skipped
+  during SV emission, duplicate-tag gate stays green): add the four keys with the same values
+  prefixed `^M`. No arz change; itemText desc tags untouched; check_duplicate_tags +
+  validate_tags must PASS; Text.arc ships coupled with the build31 arz push as always.
+- **D14: Phygmalian Replicator summon soul** (Will: "Phygmalian replicator soul should summon the
+  soul" = the soul summons the Replicator). Records identified on the build30.2 arz (spelled
+  PYGMALION in-data): monster `records\creature\monster\automatoi\um_pygmalion_41.dbr` (Hero,
+  single tier, charLevel 41, tag tagNewHero262, mesh `Creatures\Monster\Automatoi\Automatoi01.msh`
+  = base-game + texture `SVTextures/creatures/automatoi/pygmalion_body.tex` = SV arc; wears
+  `defaultHeadPiece = ...\automatoi\pygmalion_headb.dbr` -> pet NEEDS _set_pet_equipment with
+  that head piece per the F2 naked-pet law). Souls `...\soul\automatoi\pygmalion_soul_{n,e,l}.dbr`
+  (tag tagSoulName583): augment swordtraining 3/4/5 + petBonusName petbonus_pygmalion_{n,e,l},
+  NO itemSkillName proc -> the summon displaces nothing; KEEP augment + petBonus (petBonus buffs
+  pets = direct synergy with the new summon).
+  **SELF-REPLICATION EDGE (confirmed in-data):** the monster's buffSelfSkillName AND skillName8 =
+  `records\skills\sv\pygmalion\replicate.dbr` (Class Skill_SpawnPet) spawning
+  `records\skills\sv\pygmalion\replicant_41.dbr` = a Common L41 copy of itself (same mesh/tex,
+  tag tagNewPet9, chanceToEquipFinger2=0 so replicas drop no souls). The summoned PET would
+  therefore spawn pets. Implementer design call: keep `replicate` on the pet ONLY IF pet-of-pet
+  is verified safe (Boneash precedent) AND the skill self-limits (check replicate's petLimit /
+  spawnObjectsTimeToLive; permanent unlimited replicas = degenerate army); else strip replicate
+  from the PET kit only (monster untouched) and report the call. Replication IS the monster's
+  identity - prefer keep-with-limit if the data supports it. (`copy of replicate.dbr` =
+  Skill_AktaiosMirage upstream junk; ignore.) Full D13 recipe + gates; ladder scaled to the
+  L41 hero band.
 - **D13: Eater of Days summon soul** (Will: "The Eater of Days soul should let you summon him").
   Records identified on the build30.2 arz: monster
   `records\creature\monster\sepulchralwyrm\um_eaterofdays_45.dbr` (Hero-classified, single tier
