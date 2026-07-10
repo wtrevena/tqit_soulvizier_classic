@@ -287,6 +287,11 @@ Q_BLOODTOXEUS_LONE_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone.dbr'
 # COUPLED WITH DB LANE: this record is created by the DB lane; until it lands in the shipped
 # arz, the parchment placement below shows as a MAP-REF-1 (placed record absent from arz) and
 # the map+arz must ship together. Same proxy dir as q_bloodtoxeus_lone.
+# ⚠️ M15 (2026-07-09): BOTH standalone placements are RETIRED (specs removed from
+# INJECT_SPECS) - Will's mechanism change joins Toxeus to the EXISTING chest-area
+# egg_blooddragon_pack pool (100%, in-place edit, single placement) and a CLONE of the
+# parchment demon_01_cluster pool (50%, DB lane clones; see the M15 notes at both former
+# spec sites). The constants stay for history/greps; the records remain in the arz unplaced.
 Q_BLOODTOXEUS_LONE_50_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone_50.dbr'
 # q_leinth_lone's EXACT float32 rotation (from its SV-upstream bossfight 0x05 record bytes);
 # carried verbatim so the Hemorrheus proxy's byte-shape matches the exemplar's rotation too.
@@ -1352,13 +1357,21 @@ INJECT_SPECS = {
     # flags=0, no 0x14. Local = location_letterdrop's exact SV-local coord (on-mesh 0.10u).
     'levels/world/xbloodcave/drxfirstxistion_connection.lvl': [
         (FINALLETTER_DBR, 32.459, 10.005, 17.593),
-        # M5' (build30, Will redesign): the ~50%-spawn Blood Toxeus ON the Tattered Parchment /
-        # widow-letter drop. Same local coords as the finalletter (location_letterdrop): on-mesh
-        # 0.10u, world Y=1.0, layer 0, same walkable component (scratchpad/check_letter_onmesh.py).
-        # Uses q_bloodtoxeus_lone_50 (chanceToRun=50) - COUPLED with the DB lane, which creates
-        # that record + sets its pool spawnMax=1; until it ships in the arz this placement reads as
-        # a known MAP-REF-1 (map + arz ship together). flags=0, no 0x14, Q_LEINTH_EXEMPLAR_ROT.
-        (Q_BLOODTOXEUS_LONE_50_DBR, 32.459, 10.005, 17.593, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        # M15 (2026-07-09, Will mechanism change): the standalone ~50% parchment Toxeus proxy
+        # (q_bloodtoxeus_lone_50 @ the finalletter's exact coords, the M5' build30 placement -
+        # byte-verified d=0.0u ON the Tattered Parchment) is REMOVED. New mechanism = the DB
+        # lane adds um_bloodtoxeus_99 at 50% to the pool of the 'little demon guys' group ON
+        # the parchment: records\drxmap\proxy\demon_01_cluster.dbr, THIS level inst [25] @
+        # local (37.16,10.01,20.46), 5.5u from the letter. ⚠️ demon_01_cluster is placed 30x
+        # across the blood cave (24x drxFirstRoom, 6x drxBC2, 1x here) - the DB lane MUST
+        # CLONE the proxy+pool (never edit the shared pool in place, or Toxeus rolls 50% at
+        # all 30 spawn points); the map then repoints ONLY inst [25] to the clone (de-place
+        # by dbr in this level [single instance here] + re-inject the clone at the exact
+        # original bytes: pos (37.158714,10.005000,20.461723), identity rot, flags=1,
+        # uniqueid 00ec9e28d14b2ca6f287fb8ed314ffe9 [verified NOT GROUPS-bound], no 0x14).
+        # Keeping the standalone alongside the group-add = two independent 50% rolls = 25%
+        # double-Toxeus (the old bug reborn) - hence the removal. ⚠️ COUPLED SHIP with the
+        # DB lane's arz. History: M5' spec kept in git (build31e and earlier).
     ],
     # HiddenValleyBorder04 = the cave-mouth "occultist" scene (the Hades merchant
     # Merchant_HiddenValley_General + wagon, which SV dressed with occult FX). The merge kept
@@ -1484,22 +1497,15 @@ INJECT_SPECS = {
     # 'levels/world/xbloodcave/bc_initialpathway.lvl': [
     #     (BLOODCAVE_RETURN_NPC_DBR, 20.0, 5.0, 12.0),
     # ],
-    # M5' (build30, Will redesign): the ALWAYS-spawn Blood Toxeus (Hemorrheus /
-    # um_bloodtoxeus_99) now GUARDS ESTI'S HIDDEN CHEST. Moved OUT of
-    # new_secretdoor_transitionhallway (the "Temple of Eternal Love" spawn Will reported as
-    # wrong) INTO drxbc2, the waterfall room holding proxy_hidden_bloodcave_chest @ local
-    # (9.13,28.00,137.14). Placed as a Proxy 0x05 instance flags=0 / NO 0x14 (byte-shape
-    # identical to SV's q_leinth_lone in bossfight.lvl). drxbc2 is SV-only v0x0e -> the merge
-    # routes this through inject_into_sv_only_blob -> inject_into_0x05 (56 B).
-    # COORD (drxbc2 SV-LOCAL; the xBloodCave GRID_SHIFT is applied to the corner by the merge,
-    # NOT here): local (13.10, 28.00, 137.70) = 4.0u due +X of the chest, on-mesh 0.01u, layer 0,
-    # floor world Y=1.00 (== local 28.00), in the chest's own walkable component (670 cells within
-    # 3u of the chest) -> reads as guarding the chest without overlapping its interaction radius
-    # (scratchpad/m5b_chest_coords.py). Rotation = q_leinth_lone's exact float32 matrix. The pool
-    # spawnMax must be 1 (DB lane) so this location spawns exactly ONE Toxeus.
-    'levels/world/xbloodcave/drxbc2.lvl': [
-        (Q_BLOODTOXEUS_LONE_DBR, 13.10, 28.00, 137.70, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
-    ],
+    # M15 (2026-07-09, Will mechanism change): the standalone chest-room Blood Toxeus proxy
+    # (q_bloodtoxeus_lone @ drxbc2 local (13.10,28.00,137.70), the M5' build30 placement) is
+    # REMOVED. New mechanism = the DB lane adds um_bloodtoxeus_99 at 100% to the pool of the
+    # EXISTING chest-area pack proxy records\drxmap\proxy\egg_blooddragon_pack.dbr (drxBC2
+    # inst [1084] @ local (13.17,28.00,136.06), 1.6u from the old spot; verified placed exactly
+    # ONCE in the whole merged world, so an IN-PLACE pool edit is safe - no clone/repoint
+    # needed map-side). ⚠️ COUPLED SHIP: this map (standalone removed) + the DB lane's pool
+    # edit deploy TOGETHER - the map alone = no chest-room Toxeus at all. History: M5' spec
+    # kept in git (build31e and earlier).
     # ===== A2 SECRET PLACE door (this session): rhodes_secretvista_01 HOST (v0x0f shared) =====
     # S1 = entrance -> darkforestenter (tucked-away east-edge nook, 17.8u from decor); S4 = return
     # landing (10.1u from S1). See docs/DOORS_HUB_LOG.md A2. GridEntranceDynamic/GridExitOneWay,
@@ -1767,15 +1773,16 @@ _HUB_DESTS = [
 ]
 
 # --- TEST-HUB EXTRA (M5', build30): NO extra Toxeus -----------------------------------------
-# The lone Blood Toxeus is consolidated to TWO CANONICAL INJECT_SPECS placements (both inherited
-# by TESTHUB): (A) guarding Esti's chest in drxbc2 (q_bloodtoxeus_lone, always) and (B) on the
-# Tattered Parchment / widow-letter drop in drxfirstxistion_connection (q_bloodtoxeus_lone_50,
-# ~50%). The old TESTHUB-only cave-mouth spawn (and the interim M5 letter-drop TESTHUB spawn) are
-# RETIRED so TESTHUB == canonical: exactly the 2 placements, no duplicate. This hook now adds
+# M15 (2026-07-09) UPDATE: the Blood Toxeus now has ZERO standalone INJECT_SPECS placements.
+# Both M5' standalones (chest room q_bloodtoxeus_lone + parchment q_bloodtoxeus_lone_50) are
+# RETIRED - Toxeus joins the pools of the EXISTING chest-area egg_blooddragon_pack (100%) and
+# a clone of the parchment demon_01_cluster (50%), both DB-lane arz edits (see the M15 notes
+# at the former spec sites). The old TESTHUB-only cave-mouth spawn stays retired too, so
+# TESTHUB == canonical: zero Toxeus map placements, all spawns pool-driven. This hook adds
 # nothing; kept as an extension point.
 def build_hub_extra_specs():
-    """TEST-HUB non-portal entity additions (level_key -> [specs]). Empty since M5': the Blood
-    Toxeus placements live in INJECT_SPECS (canonical + TESTHUB), so there is no TESTHUB-only
+    """TEST-HUB non-portal entity additions (level_key -> [specs]). Empty since M5' (and M15:
+    Blood Toxeus spawns are pool-driven, no map placements), so there is no TESTHUB-only
     extra."""
     return {}
 
