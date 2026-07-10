@@ -633,6 +633,35 @@ REMOVE_BY_DBR_SPECS = {
     ],
 }
 
+# ── M6: DE-PLACE the DANGLING Olympus respawn shrine (Will 2026-07-09) ───────────────
+# DIFFERENT rationale from REMOVE_BY_DBR_SPECS above (that dict is MAP-REF-1: records
+# ABSENT from the arz). Here the record RESOLVES fine (it is the base-game xpack2 respawn
+# shrine), but its RESPAWN-SYSTEM BINDING is broken in the merged world: OlympusFinal02
+# (the single base-game Olympus level; region "Lower Olympus" = tagRegionName146) places
+# StrategicMovementRespawnShrine records\xpack2\item\shrines\respawn\respawn_olympus_new.dbr
+# at world (414.8,43.0,822.6) with flags=1 + UniqueId 90de912a674ae54b8c7cb2a8d4ae1348.
+# In VANILLA that UniqueId is a member of the world GROUPS(0x11) `Shrine_Respawn_Hades`
+# record (53 members), so the respawn system binds it and it works. In OUR merged (SVAERA-
+# base) world that GROUPS record carries only 51 members and the shrine's UniqueId is ABSENT
+# (byte-verified: scratchpad/check_respawn.py) - a SVAERA-merge-inherited dangling binding,
+# present since the earliest merged baseline (NOT a wave regression). Result: the shrine
+# RENDERS but never functions as a respawn point ("visible but does not work"), exactly the
+# same failure class as the Duister teleportshrineorient01 (docs/BACKLOG.md B-PORTAL-3) and
+# the build18 rebirth fountain. Will's request (verbatim): "there is a non working respawn
+# trophy in lower olympus that needs to be removed." De-placing the (already non-functional)
+# 0x05 instance + its 12-byte 0x14 removes the dead prop with ZERO gameplay change (it never
+# bound a respawn anyway). Placed EXACTLY ONCE in the whole merged world (verified), so the
+# per-level by-dbr removal is unambiguous. NOTE (reported to Will): the sibling
+# teleportshrineolympus01 in the SAME level is dangling the SAME way (Shrine_Teleport_Hades
+# 5->4); left in place pending Will's call (he named only the respawn one). An ALTERNATIVE to
+# removal is to RE-BIND the UniqueId into Shrine_Respawn_Hades (restore a working Olympus
+# respawn point); removal was chosen per Will's explicit instruction.
+REMOVE_DANGLING_SHRINE_SPECS = {
+    'levels/world/olympus/olympusfinal02.lvl': [
+        b'records\\xpack2\\item\\shrines\\respawn\\respawn_olympus_new.dbr',
+    ],
+}
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.

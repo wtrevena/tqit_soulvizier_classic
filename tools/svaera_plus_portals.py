@@ -25,6 +25,7 @@ from build_section_surgery import (
     APPEND_0X06_SPECS, append_0x06_descriptors,
     REMOVE_0X05_BY_0X14_UID_SPECS, remove_0x05_instances_by_0x14_uid,
     REMOVE_BY_DBR_SPECS, remove_0x05_instances_by_dbr,
+    REMOVE_DANGLING_SHRINE_SPECS,
     FLAG_UID_SPECS, set_0x05_flags_uid, build_teleport_shrine_group_record)
 
 # --- GROUPS parsing ---
@@ -1089,6 +1090,44 @@ def main():
     # 72 = build30's 70 (68 D3 pairs, 2 double-placed) + build31's 2 latent Helos soul
     # collectors (exposed by the N1 portal making startingfarmland06d a scanned level).
     assert _m2_total == 72, f'M2 expected 72 de-placements, got {_m2_total}'
+
+    # --- M6: DE-PLACE the DANGLING Olympus respawn shrine (Will 2026-07-09) --------------
+    # Same de-place mechanism as M2 but a distinct concern (a base-game respawn shrine whose
+    # world GROUPS(0x11) binding was lost in the SVAERA merge -> visible but non-functional).
+    # See build_section_surgery.REMOVE_DANGLING_SHRINE_SPECS for the full RCA. Runs after M2
+    # so the by-dbr 0x14 reindex accounts for every prior edit (OlympusFinal02 is untouched by
+    # M2, so this is the only edit to it). Applies to BOTH the canonical and TESTHUB builds.
+    print('\n=== M6: de-placing the dangling Olympus respawn shrine ===')
+    _m6_total = 0
+    _m6_per_level = {}
+    for i, lv in enumerate(ae_levels):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_DANGLING_SHRINE_SPECS:
+            if i in ae_patched_blobs:
+                _base = ae_patched_blobs[i]
+            elif _r09_swap and i == _r09_swap[0]:
+                _base = _r09_swap[1]
+            else:
+                _base = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+            newb, n = remove_0x05_instances_by_dbr(
+                _base, REMOVE_DANGLING_SHRINE_SPECS[lv_key], lv_key)
+            ae_patched_blobs[i] = newb
+            _m6_total += n
+            _m6_per_level[lv_key] = n
+    for i, lv in enumerate(sv_only):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_DANGLING_SHRINE_SPECS:
+            newb, n = remove_0x05_instances_by_dbr(
+                converted_blobs[i], REMOVE_DANGLING_SHRINE_SPECS[lv_key], lv_key)
+            converted_blobs[i] = newb
+            _m6_total += n
+            _m6_per_level[lv_key] = n
+    print(f'  M6: de-placed {_m6_total} instance(s) across {len(_m6_per_level)} level(s)')
+    assert len(_m6_per_level) == len(REMOVE_DANGLING_SHRINE_SPECS), \
+        (f'M6 touched {len(_m6_per_level)} levels, expected '
+         f'{len(REMOVE_DANGLING_SHRINE_SPECS)} '
+         f'(missing: {sorted(set(REMOVE_DANGLING_SHRINE_SPECS) - set(_m6_per_level))})')
+    assert _m6_total == 1, f'M6 expected 1 de-placement (respawn_olympus_new), got {_m6_total}'
 
     # DATA section: SVAERA blobs (with patches) + SV-only blobs
     print('  Building DATA section...')
