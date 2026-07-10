@@ -9778,6 +9778,453 @@ def _create_wyrm_hordes(db, tags):
           f"Scale charm x3 (lvlReq 30/44/56) @ 7% on 4 champion worms (lootMisc{slot})")
 
 
+# ── GROUP F (build32): N6 Obsidian Halls Treasure Roulette ──────────────────
+# WILL SIGNED OFF 2026-07-09 (docs/OBSIDIAN_ROULETTE_DESIGN.md, all decisions
+# locked). Four guardian bosses derived from region natives with wild theatrical
+# kits + ondeath skills; a shared 4-boss warband pool (spawnMin=Max=6,
+# championChance=100, championMin=Max=5 -> 6-5=1 guaranteed main = a RANDOM
+# guardian; the LAW holds); four corner proxies (chanceToRun=25 = the roulette
+# dial) each carrying pool1=the shared pool AND the accessory chest chain
+# (accessory1/Epic1/Legendary1 -> ProxyAccessoryPool -> FixedItemContainer),
+# exactly the shipped 1,819-proxy monster+container pattern (donor
+# proxy_hidden_bloodcave_chest, TutorialPotionChestProxy chain). One Boss-locked
+# Obsidian Hoard chest per difficulty (clone of the blood-cave mega chest,
+# container_hpalace_chestlg01.msh scale 1.4, LockedClassification=Boss/50,
+# goldGeneratorChance=100, below-mega loot). Four amgoz1-voice souls: Sarkoth +
+# Gorrahk = MANUAL pcsafe signature-move grants (typhon_meteorstorm 2/3/4 /
+# cyclops_groundsmash 3/4/5); Voranthys = THE ONE SUMMON (manual summon_voranthys
+# via _build_boss_summon on the render-verified SepulchralWyrm01 rig, D19 +
+# damage-sanity gated); Ilsevar = lifedrain ON-ATTACK proc (autocast correct -
+# manual-cast law binds only Skill_SpawnPet grants). MAP-REF-1: the
+# q_obs_roulette_{a,b,c,d} records MUST land in the arz BEFORE the map lane
+# injects the 4 INJECT_SPECS + shared v0e branch (M10).
+_OBS_BAND = [40, 58, 72]                 # Sarkoth/Gorrahk/Voranthys band
+_OBS_BAND_ILS = [42, 60, 74]             # Ilsevar band
+# Guardian monsters (derive natives; rig + anim table stay compatible - D5).
+_OBS_SARKOTH = r'records\creature\monster\abyssalliche\um_sarkoth_99.dbr'
+_OBS_SARKOTH_DONOR = r'records\xpack\creatures\monster\abyssalliche\uw_as_abyssalliche_flame_42.dbr'  # LicheKing02Flame caster
+_OBS_GORRAHK = r'records\creature\monster\skeleton\um_gorrahk_99.dbr'
+_OBS_GORRAHK_DONOR = r'records\creature\monster\skeleton\orient_cm_gildedskeleton_27.dbr'  # GoldenSkeleton01 melee
+_OBS_VORANTHYS = r'records\creature\monster\questbosses\um_voranthys_99.dbr'
+_OBS_VORANTHYS_DONOR = r'records\creature\monster\questbosses\boss_dragonliche_57.dbr'  # DragonLich01 summon-storm boss
+_OBS_ILSEVAR = r'records\creature\monster\skeleton\um_ilsevar_99.dbr'
+_OBS_ILSEVAR_DONOR = r'records\creature\monster\skeleton\cm_revenantstorm_17.dbr'  # RevenantStorm poltergeist
+# Voranthys summon pet rig (SepulchralWyrm01 per design section 3).
+_OBS_VORANTHYS_PET_SRC = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_31.dbr'
+SUMMON_VORANTHYS_SKILL = r'records\skills\soulskills\summon_voranthys.dbr'
+# Kit skills (all existence-verified this session).
+_OBS_SK_DROPTELE = r'records\skills\boss skills\ormenos_droptelekinesis.dbr'
+_OBS_SK_ARENAMETEOR = r'records\skills\monster skills\attack_radius\arena_meteor.dbr'
+_OBS_SK_VOLCORB = r'records\skills\earth\volcanicorb.dbr'
+_OBS_SK_VOLCFRAG = r'records\skills\earth\volcanicorb_fragmentation.dbr'
+_OBS_SK_VOLCIMMO = r'records\skills\earth\volcanicorb_immolation.dbr'
+_OBS_SK_RINGFLAME = r'records\skills\earth\ringofflame.dbr'
+_OBS_SK_ICESHARD = r'records\skills\storm\iceshard.dbr'
+_OBS_SK_SQUALL = r'records\skills\storm\squall.dbr'
+_OBS_SK_SPELLBREAKER = r'records\skills\storm\drxspellbreaker.dbr'
+_OBS_SK_ONDEATH_FROSTNOVA = r'records\skills\monster skills\attack_radius\ondeath_frostnova.dbr'
+_OBS_SK_BLADESTORM = r'records\skills\monster skills\attack_radius\bladestorm.dbr'
+_OBS_SK_GROUNDSMASH = r'records\skills\soulskills\cyclops_groundsmash.dbr'
+_OBS_SK_TERRIFYROAR = r'records\skills\boss skills\cyclops_terrifyingroar.dbr'
+_OBS_SK_DMGMOD = r'records\skills\monster skills\passive_buffs\attack_damagemodifier_02.dbr'
+_OBS_SK_SPEEDALL = r'records\skills\monster skills\auras\character_speedall.dbr'
+_OBS_SK_ONDEATH_BLADENOVA = r'records\skills\monster skills\ondeath\skills\bladenova.dbr'
+_OBS_SK_FIREBREATH = r'records\skills\monster skills\attack_melee\sepulchralwyrm_firebreath.dbr'
+_OBS_SK_FREEZEBREATH = r'records\skills\boss skills\dragonliche_freezingbreath.dbr'
+_OBS_SK_DECOMP = r'records\skills\boss skills\dragonliche_decomposition.dbr'
+_OBS_SK_BUFFETWINGS = r'records\skills\boss skills\dragonliche_buffetingwings.dbr'
+_OBS_SK_SUMMONARCHER = r'records\skills\boss skills\alastor_summonskeletonarcher.dbr'
+_OBS_SK_SUMMONWARRIOR = r'records\skills\boss skills\alastor_summonskeletonwarrior.dbr'
+_OBS_SK_SUMMONTOMB = r'records\skills\boss skills\aktaios_summontombguardians.dbr'
+_OBS_SK_ONDEATH_SPAWNSKEL = r'records\skills\monster skills\ondeath_spawnskeleton.dbr'
+_OBS_SK_ONDEATH_NECRONOVA = r'records\skills\monster skills\attack_radius\ondeath_necronova.dbr'
+_OBS_SK_PHANTOMSTRIKE = r'records\skills\monster skills\attack_melee\phantomstrike.dbr'
+_OBS_SK_KIKASTRIKE = r'records\skills\monster skills\attack_projectile\kika_phantomstrike.dbr'
+_OBS_SK_DISTORTWAVE = r'records\xpack\skills\dream\distortionwave.dbr'   # xpack (base twin dangles)
+_OBS_SK_LIFEDRAIN = r'records\skills\spirit\lifedrain.dbr'
+_OBS_SK_DEATHCHILLAURA = r'records\skills\spirit\drxdeathchillaura.dbr'
+_OBS_SK_HALIROAR = r'records\skills\monster skills\attack_projectile\halimedes_terrifyingroar.dbr'
+_OBS_SK_ONDEATH_DETONATE = r'records\skills\monster skills\attack_radius\ondeath_detonate.dbr'
+# Boss passive suite (shared).
+_OBS_SK_BOSSIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+_OBS_SK_BOSSSCALING = r'records\skills\monster skills\passive_buffs\boss_scaling.dbr'
+_OBS_SK_ARMORPASSIVE = r'records\skills\monster skills\defense\armor_passive.dbr'
+_OBS_SK_GP_N = r'records\skills\monster skills\globalproperties_normal01.dbr'
+_OBS_SK_GP_E = r'records\skills\monster skills\globalproperties_epic01.dbr'
+_OBS_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
+# Soul-grant skills (pcsafe = player-castable) + augments.
+_OBS_SS_TYPHON_METEOR = r'records\skills\soulskills\pcsafe\typhon_meteorstorm.dbr'   # Sarkoth manual grant
+_OBS_SS_GROUNDSMASH_PC = r'records\skills\soulskills\pcsafe\cyclops_groundsmash.dbr'  # Gorrahk manual grant
+_OBS_AUG_VOLCORB = r'records\skills\earth\drxvolcanicorb.dbr'
+_OBS_AUG_STONESKIN = r'records\skills\earth\drxfireenchantment_stoneskin.dbr'
+_OBS_AUG_CONCUSSIVE = r'records\skills\defensive\drxconcussiveblow.dbr'
+_OBS_AUG_ONSLAUGHT = r'records\skills\warfare\drxonslaught.dbr'
+_OBS_AUG_COLDAURA = r'records\skills\storm\drxcoldaura.dbr'
+_OBS_AUG_DEATHCHILL = r'records\skills\spirit\drxdeathchillaura.dbr'
+_OBS_AUG_PHANTOMSTRIKE = r'records\xpack\skills\dream\drxphantomstrike.dbr'   # xpack (base dream twin dangles)
+_OBS_AUG_DISTORTWAVE = r'records\xpack\skills\dream\drxdistortionwave.dbr'    # xpack
+# Warband champions (6, equal weights): 3 abyssalliche Champs + permean hero +
+# a dragonian champ + a golden-skeleton hero.
+_OBS_WARBAND = [
+    r'records\creature\monster\abyssalliche\us_abyssalliche_flame_42.dbr',
+    r'records\creature\monster\abyssalliche\us_abyssalliche_frost_42.dbr',
+    r'records\creature\monster\abyssalliche\us_abyssalliche_plague_42.dbr',
+    r'records\creature\monster\dragonlich\um_permean_35.dbr',
+    r'records\creature\monster\dragonian\em_ravager_41.dbr',
+    r'records\creature\monster\skeleton\um_bonehallow_37.dbr',
+]
+# Proxy/pool/limit/chest chain.
+_OBS_WARBAND_POOL = r'records\drxmap\proxy\pools\q_obs_warband.dbr'
+_OBS_POOL_DONOR = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+_OBS_PROXY_DONOR = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_OBS_CORNERS = {c: rf'records\drxmap\proxy\q_obs_roulette_{c}.dbr' for c in 'abcd'}
+_OBS_LIMIT = r'records\proxies orient\limit_obsidianbosses.dbr'
+_OBS_LIMIT_DONOR = r'records\proxies boss\herolimit_all.dbr'
+_OBS_DIFFICULTY = r'records\proxies orient\difficulty_04.dbr'
+_OBS_CHEST = {t: rf'records\drxitem\container\svc_obsidianhoard_{t}.dbr' for t in ('01', '02', '03')}
+_OBS_CHEST_DONOR = {t: rf'records\drxitem\container\hidden_bloodcave_chest_{t}.dbr' for t in ('01', '02', '03')}
+_OBS_HOARD_LOOT = {t: rf'records\drxitem\container\svc_obsidianhoard_loot_{t}.dbr' for t in ('01', '02', '03')}
+_OBS_HOARD_LOOT_DONOR = {t: rf'records\drxitem\container\loottable_hidden_bloodcave_{t}.dbr' for t in ('01', '02', '03')}
+_OBS_ACC_POOL = {t: rf'records\drxitem\container\svc_obsidianhoard_pool_{t}.dbr' for t in ('01', '02', '03')}
+_OBS_ACC_POOL_DONOR = {t: rf'records\drxitem\container\pool_hidden_{t}.dbr' for t in ('01', '02', '03')}
+# Guaranteed high-value table for the hoard's loot3 slot (already resolves - the
+# mega chest references it in loot1Name3).
+_OBS_GUAR_UNIQUE = r'records\xpack\item\loottables\weapons\mastertables\unique_1h_n01.dbr'
+_OBS_GUAR_RELIC = r'records\xpack\item\loottables\relics\01_act4_relics.dbr'
+
+
+def _create_obsidian_roulette(db, tags):
+    """Build the whole N6 obsidian roulette DB side in dependency order:
+    guardians (with kits + ondeath) -> Voranthys summon pet+skill -> warband pool
+    + limit -> hoard loot tables -> chests -> accessory pools -> 4 corner proxies
+    -> 4 souls -> tags. All refs existence-verified. Monster.tpl clones are free
+    to add resist fields (blood_toxeus/Vashkarr precedent); dtype-free set_field
+    on cloned records preserves each field's type."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    for donor in (_OBS_SARKOTH_DONOR, _OBS_GORRAHK_DONOR, _OBS_VORANTHYS_DONOR,
+                  _OBS_ILSEVAR_DONOR, _OBS_VORANTHYS_PET_SRC, _OBS_POOL_DONOR,
+                  _OBS_PROXY_DONOR):
+        if not db.has_record(donor):
+            print(f"  OBSIDIAN: WARNING donor missing: {donor}; group skipped")
+            return
+
+    def _clear_extra_skills(rec, keep_upto):
+        """Delete skillName slots ABOVE keep_upto that the donor carried (avoid
+        stray donor skills; DELETE not blank, per the B-TOXEUS-2 zero-precedent
+        empty-ref law)."""
+        ff = db.get_fields(rec)
+        if not ff:
+            return
+        for key in [k for k in list(ff) if k.split('###')[0].startswith('skillName')]:
+            base = key.split('###')[0]
+            try:
+                n = int(base[len('skillName'):])
+            except ValueError:
+                continue
+            if n > keep_upto:
+                del ff[key]
+        db._modified.add(rec)
+
+    def _clear_special_attacks(rec, keep_upto):
+        """Delete specialAttack{N}SkillName + its paired chance/delay/etc. slots
+        ABOVE keep_upto (so leftover donor special attacks don't fire)."""
+        ff = db.get_fields(rec)
+        if not ff:
+            return
+        import re as _re
+        for key in list(ff):
+            base = key.split('###')[0]
+            m = _re.match(r'specialAttack(\d*)([A-Za-z].*)', base)
+            if not m:
+                continue
+            num = m.group(1)
+            idx = 1 if num == '' else int(num)
+            if idx > keep_upto:
+                del ff[key]
+        db._modified.add(rec)
+
+    def _set_kit(rec, skills, specials):
+        """skills = ordered list -> skillName1..N; specials = list of
+        (skill, chance) -> specialAttackSkillName / specialAttack2.. rotation."""
+        for i, sk in enumerate(skills, start=1):
+            sf(rec, f'skillName{i}', sk)
+        _clear_extra_skills(rec, len(skills))
+        _clear_special_attacks(rec, len(specials))
+        for i, (sk, ch) in enumerate(specials, start=1):
+            suffix = '' if i == 1 else str(i)
+            sf(rec, f'specialAttack{suffix}SkillName', sk)
+            sf(rec, f'specialAttack{suffix}Chance', float(ch))
+
+    # ── 1. SARKOTH, the Glasswright (flame-liche caster; obsidian drop + meteor). ──
+    db.clone_record(_OBS_SARKOTH_DONOR, _OBS_SARKOTH)
+    M = _OBS_SARKOTH
+    sf(M, 'description', 'tagSVCMonsterSarkoth')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'charLevel', list(_OBS_BAND))
+    sf(M, 'characterLife', [4500.0, 7000.0, 10500.0])
+    sf(M, 'characterLifeRegen', 10.0)
+    sf(M, 'scale', 1.35)
+    sf(M, 'defensiveFire', 80.0); sf(M, 'defensivePierce', 45.0)
+    sf(M, 'defensiveLife', 60.0)
+    _set_kit(M, [
+        _OBS_SK_DROPTELE, _OBS_SK_ARENAMETEOR, _OBS_SK_VOLCORB, _OBS_SK_VOLCFRAG,
+        _OBS_SK_VOLCIMMO, _OBS_SK_RINGFLAME, _OBS_SK_ICESHARD, _OBS_SK_SQUALL,
+        _OBS_SK_SPELLBREAKER, _OBS_SK_ONDEATH_FROSTNOVA, _OBS_SK_ARMORPASSIVE,
+        _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
+        _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
+    ], [(_OBS_SK_DROPTELE, 55.0), (_OBS_SK_ARENAMETEOR, 40.0),
+        (_OBS_SK_VOLCORB, 50.0), (_OBS_SK_SQUALL, 35.0)])
+    db._modified.add(M)
+
+    # ── 2. GORRAHK, the Tombsplitter (golden-skeleton bruiser; 16-knife death). ──
+    db.clone_record(_OBS_GORRAHK_DONOR, _OBS_GORRAHK)
+    M = _OBS_GORRAHK
+    sf(M, 'description', 'tagSVCMonsterGorrahk')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'charLevel', list(_OBS_BAND))
+    sf(M, 'characterLife', [6500.0, 10000.0, 15000.0])
+    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'characterStrength', 460.0)
+    sf(M, 'handHitDamageMin', 95.0); sf(M, 'handHitDamageMax', 155.0)
+    sf(M, 'scale', 1.5)
+    sf(M, 'defensivePhysical', 35.0); sf(M, 'defensiveLife', 70.0)
+    _set_kit(M, [
+        _OBS_SK_BLADESTORM, _OBS_SK_GROUNDSMASH, _OBS_SK_TERRIFYROAR,
+        _OBS_SK_DMGMOD, _OBS_SK_SPEEDALL, _OBS_SK_ONDEATH_BLADENOVA,
+        _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
+        _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
+    ], [(_OBS_SK_BLADESTORM, 55.0), (_OBS_SK_GROUNDSMASH, 45.0),
+        (_OBS_SK_TERRIFYROAR, 35.0)])
+    db._modified.add(M)
+
+    # ── 3. VORANTHYS, the Sepulchral (dragon-lich summon-storm; ondeath raise). ──
+    db.clone_record(_OBS_VORANTHYS_DONOR, _OBS_VORANTHYS)
+    M = _OBS_VORANTHYS
+    sf(M, 'description', 'tagSVCMonsterVoranthys')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'charLevel', list(_OBS_BAND))
+    sf(M, 'characterLife', [5000.0, 8000.0, 12000.0])
+    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'scale', 1.3)
+    sf(M, 'defensiveCold', 60.0); sf(M, 'defensiveLife', 80.0)
+    _set_kit(M, [
+        _OBS_SK_FIREBREATH, _OBS_SK_FREEZEBREATH, _OBS_SK_DECOMP,
+        _OBS_SK_BUFFETWINGS, _OBS_SK_SUMMONWARRIOR, _OBS_SK_SUMMONARCHER,
+        _OBS_SK_SUMMONTOMB, _OBS_SK_ONDEATH_SPAWNSKEL, _OBS_SK_ONDEATH_NECRONOVA,
+        _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
+        _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
+    ], [(_OBS_SK_SUMMONWARRIOR, 60.0), (_OBS_SK_SUMMONARCHER, 55.0),
+        (_OBS_SK_SUMMONTOMB, 45.0), (_OBS_SK_FREEZEBREATH, 40.0)])
+    db._modified.add(M)
+
+    # ── 4. ILSEVAR, the Ashen Watch (blink-flicker poltergeist duelist). ──
+    db.clone_record(_OBS_ILSEVAR_DONOR, _OBS_ILSEVAR)
+    M = _OBS_ILSEVAR
+    sf(M, 'description', 'tagSVCMonsterIlsevar')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'charLevel', list(_OBS_BAND_ILS))
+    sf(M, 'characterLife', [5500.0, 8500.0, 13000.0])
+    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'characterStrength', 360.0); sf(M, 'characterDexterity', 340.0)
+    sf(M, 'handHitDamageMin', 80.0); sf(M, 'handHitDamageMax', 130.0)
+    sf(M, 'scale', 1.45)
+    sf(M, 'defensiveLife', 70.0); sf(M, 'defensivePierce', 40.0)
+    _set_kit(M, [
+        _OBS_SK_PHANTOMSTRIKE, _OBS_SK_KIKASTRIKE, _OBS_SK_DISTORTWAVE,
+        _OBS_SK_LIFEDRAIN, _OBS_SK_DEATHCHILLAURA, _OBS_SK_HALIROAR,
+        _OBS_SK_ONDEATH_DETONATE, _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY,
+        _OBS_SK_BOSSSCALING, _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
+    ], [(_OBS_SK_PHANTOMSTRIKE, 55.0), (_OBS_SK_KIKASTRIKE, 45.0),
+        (_OBS_SK_DISTORTWAVE, 40.0), (_OBS_SK_HALIROAR, 35.0)])
+    db._modified.add(M)
+
+    # ── 5. Voranthys summon pet + skill (SepulchralWyrm01 rig, D19-hardened). ──
+    vor_pets = [rf'records\skills\soulskills\pets\voranthys_{i}.dbr' for i in (1, 2, 3)]
+    _build_boss_summon(
+        db, _OBS_VORANTHYS_PET_SRC, vor_pets, SUMMON_VORANTHYS_SKILL,
+        'tagSVCSummonVoranthys', 'tagSVCMonsterVoranthys',
+        char_level=[42, 60, 72], life=[5000.0, 8000.0, 12000.0],
+        life_regen=[30.0, 60.0, 100.0],
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[115.0, 175.0, 250.0], scale=1.2)
+
+    # ── 6. Shared warband pool + no-cap limit. ──
+    db.clone_record(_OBS_LIMIT_DONOR, _OBS_LIMIT)
+    for f in ('maxPlayerLevelEquationNormal', 'maxPlayerLevelEquationEpic',
+              'maxPlayerLevelEquationLegendary'):
+        sf(_OBS_LIMIT, f, '110*1')
+    db._modified.add(_OBS_LIMIT)
+
+    db.clone_record(_OBS_POOL_DONOR, _OBS_WARBAND_POOL)
+    PL = _OBS_WARBAND_POOL
+    sf(PL, 'FileDescription', 'Obsidian roulette warband: 1 random guardian + 5 elites')
+    guardians = [_OBS_SARKOTH, _OBS_GORRAHK, _OBS_VORANTHYS, _OBS_ILSEVAR]
+    for i in range(1, 7):    # clear donor name1..3 residue, then set 1..4
+        ff = db.get_fields(PL) or {}
+        for key in [k for k in ff if k.split('###')[0] in (f'name{i}', f'weight{i}')]:
+            del ff[key]
+    for i, g in enumerate(guardians, start=1):
+        sf(PL, f'name{i}', g)
+        sf(PL, f'weight{i}', 25)
+    for i, w in enumerate(_OBS_WARBAND, start=1):
+        sf(PL, f'nameChampion{i}', w)
+        sf(PL, f'weightChampion{i}', 100)
+    sf(PL, 'spawnMin', 6)
+    sf(PL, 'spawnMax', 6)
+    sf(PL, 'championChance', 100.0)
+    sf(PL, 'championMin', 5)
+    sf(PL, 'championMax', 5)
+    db._modified.add(PL)
+
+    # ── 7. Hoard chest chain (loot tables -> chests -> accessory pools). ──
+    for t in ('01', '02', '03'):
+        # loot table: clone the mega-chest table (valid slot shapes), reduce
+        # numSpawn below-mega, add a guaranteed high-value loot3 slot.
+        lt = _OBS_HOARD_LOOT[t]
+        db.clone_record(_OBS_HOARD_LOOT_DONOR[t], lt)
+        sf(lt, 'numSpawnMinEquation', '(3+(1.8*numberOfPlayers))*2.4')
+        sf(lt, 'numSpawnMaxEquation', '(3+(1.8*numberOfPlayers))*2.8')
+        sf(lt, 'loot3Chance', 100.0)
+        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE); sf(lt, 'loot3Weight1', 100)
+        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC); sf(lt, 'loot3Weight2', 60)
+        db._modified.add(lt)
+
+        # chest: clone the blood-cave mega chest, retheme to a Boss-locked hoard.
+        ch = _OBS_CHEST[t]
+        db.clone_record(_OBS_CHEST_DONOR[t], ch)
+        sf(ch, 'description', 'tagSVCObsidianHoard')
+        sf(ch, 'LockedClassification', 'Boss')
+        sf(ch, 'LockedRadius', 50.0)
+        sf(ch, 'locked', 1)
+        sf(ch, 'goldGeneratorChance', 100.0)
+        sf(ch, 'tables', lt)
+        db._modified.add(ch)
+
+        # accessory pool: clone the mega-chest accessory pool, point at our chest.
+        ap = _OBS_ACC_POOL[t]
+        db.clone_record(_OBS_ACC_POOL_DONOR[t], ap)
+        sf(ap, 'fixedItemName1', ch)
+        sf(ap, 'fixedItemChance', 100)
+        sf(ap, 'fixedItemWeight1', 100)
+        db._modified.add(ap)
+
+    # ── 8. Four corner proxies (roulette dial + monster pool + accessory chest). ──
+    for c, px in _OBS_CORNERS.items():
+        db.clone_record(_OBS_PROXY_DONOR, px)
+        sf(px, 'chanceToRun', 25.0)
+        sf(px, 'pool1', _OBS_WARBAND_POOL)
+        sf(px, 'accessory1', _OBS_ACC_POOL['01'], S)
+        sf(px, 'accessoryEpic1', _OBS_ACC_POOL['02'], S)
+        sf(px, 'accessoryLegendary1', _OBS_ACC_POOL['03'], S)
+        sf(px, 'difficultyEquationFile', _OBS_DIFFICULTY)
+        sf(px, 'difficultyLimitsFile', _OBS_LIMIT)
+        sf(px, 'placementExtents', 4.0)
+        db._modified.add(px)
+
+    # ── 9. Four amgoz1-voice souls (flat iconic names, signature-move grants). ──
+    def _soul_stats(base, extra):
+        return {**_bmp(base), **extra}
+
+    # SARKOTH: manual pcsafe typhon_meteorstorm 2/3/4 + drxvolcanicorb/stoneskin.
+    sarkoth_tiers = []
+    for t, il, sklvl in (('n', 40, 2), ('e', 58, 3), ('l', 72, 4)):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]; r = lambda v: round(v * m, 1)
+        sarkoth_tiers.append({'diff': t, 'itemLevel': il, 'stats': _soul_stats(t, {
+            'itemSkillName': (S, _OBS_SS_TYPHON_METEOR), 'itemSkillLevel': (I, sklvl),
+            'augmentSkillName1': (S, _OBS_AUG_VOLCORB), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _OBS_AUG_STONESKIN), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(240.0)),
+            'offensiveFireMin': (F, r(60.0)), 'offensiveFireMax': (F, r(100.0)), 'offensiveFireModifier': (I, int(r(40))),
+            'offensiveColdMin': (F, r(30.0)), 'offensiveColdMax': (F, r(55.0)),
+            'retaliationSlowRunSpeedMin': (F, r(40.0)), 'retaliationSlowRunSpeedDurationMin': (F, 2.0),
+            'defensiveFire': (F, r(30.0)), 'characterOffensiveAbility': (F, r(80.0)),
+        })})
+    _create_soul(db, 'sarkoth', 'tagSVCSoulSarkoth', sarkoth_tiers, monster=_OBS_SARKOTH, drop_rate=66.0)
+
+    # GORRAHK: manual pcsafe cyclops_groundsmash 3/4/5 + drxconcussive/onslaught.
+    gorrahk_tiers = []
+    for t, il, sklvl in (('n', 40, 3), ('e', 58, 4), ('l', 72, 5)):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]; r = lambda v: round(v * m, 1)
+        gorrahk_tiers.append({'diff': t, 'itemLevel': il, 'stats': _soul_stats(t, {
+            'itemSkillName': (S, _OBS_SS_GROUNDSMASH_PC), 'itemSkillLevel': (I, sklvl),
+            'augmentSkillName1': (S, _OBS_AUG_CONCUSSIVE), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _OBS_AUG_ONSLAUGHT), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(300.0)), 'characterStrength': (F, r(35.0)),
+            'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)), 'offensivePhysicalModifier': (I, int(r(45))),
+            'offensiveStunMin': (F, 0.5), 'offensiveStunModifier': (I, int(r(30))),
+            'retaliationPhysicalMin': (F, r(80.0)), 'retaliationPhysicalMax': (F, r(140.0)),
+            'characterDeflectProjectile': (F, r(12.0)),
+            'defensivePhysical': (F, r(120.0)), 'characterDefensiveAbility': (F, r(70.0)),
+        })})
+    _create_soul(db, 'gorrahk', 'tagSVCSoulGorrahk', gorrahk_tiers, monster=_OBS_GORRAHK, drop_rate=66.0)
+
+    # VORANTHYS: THE SUMMON (manual summon_voranthys) + drxcoldaura/deathchill.
+    voranthys_tiers = []
+    for t, il in (('n', 40), ('e', 58), ('l', 72)):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]; r = lambda v: round(v * m, 1)
+        voranthys_tiers.append({'diff': t, 'itemLevel': il, 'stats': _soul_stats(t, {
+            'itemSkillName': (S, SUMMON_VORANTHYS_SKILL), 'itemSkillLevel': (I, {'n': 1, 'e': 2, 'l': 3}[t]),
+            'augmentSkillName1': (S, _OBS_AUG_COLDAURA), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _OBS_AUG_DEATHCHILL), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(260.0)), 'characterMana': (F, r(180.0)),
+            'offensiveColdMin': (F, r(45.0)), 'offensiveColdMax': (F, r(75.0)), 'offensiveColdModifier': (I, int(r(35))),
+            'offensiveLifeMin': (F, r(30.0)), 'offensiveLifeMax': (F, r(50.0)),
+            'defensiveFreeze': (F, 100.0),           # weird signature stat (Dragon Liche weirdness)
+            'defensiveCold': (F, r(30.0)), 'skillCooldownReduction': (F, r(10.0)),
+        })})
+    voranthys_souls = _create_soul(db, 'voranthys', 'tagSVCSoulVoranthys', voranthys_tiers,
+                                   monster=_OBS_VORANTHYS, drop_rate=66.0)
+    _wire_summon_soul(db, voranthys_souls, SUMMON_VORANTHYS_SKILL)   # strip controller, level 1/2/3
+
+    # ILSEVAR: lifedrain ON-ATTACK proc + drxphantomstrike/drxdistortionwave.
+    ilsevar_tiers = []
+    for t, il, sklvl in (('n', 42, 2), ('e', 60, 3), ('l', 74, 4)):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]; r = lambda v: round(v * m, 1)
+        ilsevar_tiers.append({'diff': t, 'itemLevel': il, 'stats': _soul_stats(t, {
+            'itemSkillName': (S, _OBS_SK_LIFEDRAIN), 'itemSkillLevel': (I, sklvl),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+            'augmentSkillName1': (S, _OBS_AUG_PHANTOMSTRIKE), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _OBS_AUG_DISTORTWAVE), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(240.0)), 'characterDexterity': (F, r(30.0)),
+            'offensiveLifeLeechMin': (F, r(30.0)),
+            'offensivePierceRatioMin': (F, r(25.0)),
+            'offensiveFearMin': (F, 2.0),            # weird signature stat (ghost fear)
+            'defensiveDisruption': (F, r(30.0)),
+            'characterDodgePercent': (F, r(12.0)), 'characterDeflectProjectile': (F, r(12.0)),
+        })})
+    _create_soul(db, 'ilsevar', 'tagSVCSoulIlsevar', ilsevar_tiers, monster=_OBS_ILSEVAR, drop_rate=66.0)
+
+    # ── 10. Tags (amgoz1 voice: flat iconic names). ──
+    tags['tagSVCMonsterSarkoth'] = '{^r}Sarkoth, the Glasswright'
+    tags['tagSVCMonsterGorrahk'] = '{^r}Gorrahk, the Tombsplitter'
+    tags['tagSVCMonsterVoranthys'] = '{^r}Voranthys, the Sepulchral'
+    tags['tagSVCMonsterIlsevar'] = '{^r}Ilsevar, the Ashen Watch'
+    tags['tagSVCObsidianHoard'] = 'Obsidian Hoard'
+    tags['tagSVCSummonVoranthys'] = 'Summon Voranthys, the Sepulchral'
+    tags['tagSVCSoulSarkoth'] = '{^F}Sarkoth the Glasswright Soul'
+    tags['tagSVCSoulSarkothDESC'] = ('Sarkoth ripped the black glass of the halls '
+        'from the dark and rained it down. His soul calls that same sky of falling '
+        'obsidian upon the bearer\'s foes.')
+    tags['tagSVCSoulGorrahk'] = '{^F}Gorrahk the Tombsplitter Soul'
+    tags['tagSVCSoulGorrahkDESC'] = ('Gorrahk split tombs with a single blow and '
+        'died in a burst of sixteen knives. His soul grants that earth-breaking '
+        'slam and the tireless fury of the tombsplitter.')
+    tags['tagSVCSoulVoranthys'] = '{^F}Voranthys the Sepulchral Soul'
+    tags['tagSVCSoulVoranthysDESC'] = ('Voranthys raised a rising tide of the dead '
+        'and, when cut down, raised more. Its bearer may call the sepulchral wyrm '
+        'forth to fight and freeze at their side.')
+    tags['tagSVCSoulIlsevar'] = '{^F}Ilsevar the Ashen Watch Soul'
+    tags['tagSVCSoulIlsevarDESC'] = ('Ilsevar flickered through the corner-pockets '
+        'of the halls, draining the life of all it touched. Its soul drinks the '
+        'vitality of the bearer\'s enemies and wraps them in a duelist\'s dread.')
+
+    print("  Obsidian Roulette: 4 guardians (Sarkoth/Gorrahk/Voranthys/Ilsevar) "
+          "+ warband pool (6/champ5) + no-cap limit + 4 corner proxies "
+          "(chanceToRun=25) + 3 Boss-locked hoard chests + 3 accessory pools + "
+          "4 souls (Voranthys summons; Sarkoth/Gorrahk manual; Ilsevar proc); tags set")
+
+
 def _wire_blood_toxeus_loot(db):
     """Wire the guaranteed-set-piece + high-bleed tables onto Hemorrheus (§3.3).
 
@@ -9950,6 +10397,20 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'main_monster': _BT_MONSTER,
         'name': 'q_bloodtoxeus_lone_50 (Hemorrheus, parchment @50%)',
     },
+] + [
+    {
+        # GROUP F: the 4 obsidian-roulette corner proxies all share the ONE
+        # warband pool (spawnMax=6, championChance=100, championMax=5 -> 1
+        # guaranteed main = a RANDOM guardian). main_monster = Ilsevar (in a
+        # name slot, highest band L74 <= the [1..110] limit window). The
+        # champion-crowd-out math is identical for all 4; register each so both
+        # the math AND the per-proxy limit window are proven for every placement.
+        'proxy': _OBS_CORNERS[_c],
+        'pool': _OBS_WARBAND_POOL,
+        'main_monster': _OBS_ILSEVAR,
+        'name': f'q_obs_roulette_{_c} (obsidian roulette corner @25%)',
+    }
+    for _c in 'abcd'
 ]
 
 
@@ -10426,6 +10887,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # GROUP G (build32): N7 sepulchral wyrm hordes + the Sepulchral Scale charm.
     print("\n=== GROUP G: Wyrm Hordes + Sepulchral Scale ===")
     _create_wyrm_hordes(db, tags)
+
+    # GROUP F (build32): N6 Obsidian Halls treasure roulette. After the groups
+    # (guardians are legit Bosses, so the drop forcer keeping their souls at 100%
+    # in test mode is intended) and BEFORE the build29 castability wave (which
+    # post-processes the souls' granted skills) + the clone-shape / spawn-
+    # eligibility gates. MAP-REF-1: the q_obs_roulette records land here so the
+    # map lane can inject the 4 INJECT_SPECS + shared v0e branch (M10).
+    print("\n=== GROUP F: Obsidian Halls Treasure Roulette ===")
+    _create_obsidian_roulette(db, tags)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all

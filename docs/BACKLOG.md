@@ -1,5 +1,49 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🛠️ **BUILD32 FINAL-CONTENT SESSION (2026-07-10, autonomous DB-lane) - GROUPS F/E/B:**
+> Baseline = HEAD e3ab0a6 (arz 27e6742 / Text cf3cb227 / Quests 6ff23c29, det-2x).
+> **GROUP F = N6 OBSIDIAN HALLS TREASURE ROULETTE (docs/OBSIDIAN_ROULETTE_DESIGN.md,
+> all decisions locked; map-unblocking - the map lane M10 waits on the q_obs_roulette
+> records):** apply_svc_patches `_create_obsidian_roulette`. FOUR guardian bosses derived
+> from region natives (rig/anim-safe): `um_sarkoth_99` (from uw_as_abyssalliche_flame_42,
+> LicheKing02Flame caster; kit ormenos_droptelekinesis + arena_meteor + volcanicorb trio +
+> ringofflame + iceshard/squall + drxspellbreaker + ondeath_frostnova; L40/58/72 HP
+> 4.5/7/10.5k), `um_gorrahk_99` (from orient_cm_gildedskeleton_27, GoldenSkeleton01;
+> bladestorm + cyclops_groundsmash + cyclops_terrifyingroar + dmg/speed buffs +
+> ondeath bladenova 16-knife; HP 6.5/10/15k), `um_voranthys_99` (from boss_dragonliche_57,
+> DragonLich01; sepulchralwyrm_firebreath + dragonliche freeze/decomp/buffetwings + alastor
+> summonarcher/warrior + aktaios_summontombguardians + ondeath_spawnskeleton + ondeath_necronova;
+> HP 5/8/12k), `um_ilsevar_99` (from cm_revenantstorm_17, RevenantStorm; phantomstrike +
+> kika_phantomstrike + distortionwave[xpack] + lifedrain + drxdeathchillaura +
+> halimedes_terrifyingroar + ondeath_detonate; L42/60/74 HP 5.5/8.5/13k). Shared warband pool
+> `q_obs_warband` (spawnMin=Max=6, championChance=100, championMin=Max=5 -> 6-5=1 guaranteed
+> main = RANDOM guardian [name1..4 w25], LAW holds; nameChampion1..6 = us_abyssalliche
+> flame/frost/plague_42 + um_permean_35 + em_ravager_41 + um_bonehallow_37, equal w). FOUR
+> corner proxies `q_obs_roulette_{a,b,c,d}` (chanceToRun=25, pool1=warband,
+> accessory1/Epic1/Legendary1 = svc_obsidianhoard_pool_0{1,2,3}, difficulty_04,
+> difficultyLimitsFile=limit_obsidianbosses [1..110] no-cap clone, placementExtents 4.0).
+> THREE `svc_obsidianhoard_0{1,2,3}` FixedItemContainers (clone the blood-cave mega chest
+> hidden_bloodcave_chest_0{1,2,3}: container_hpalace_chestlg01.msh scale 1.4, **LockedClassification
+> =Boss/50** [donor was Champion/60], goldGeneratorChance=100, below-mega loot [numSpawn *2.4/*2.8
+> vs mega *3.8/*4.1] + guaranteed epic/relic loot3 slot) + 3 loot tables + 3 ProxyAccessoryPools.
+> FOUR amgoz1-voice souls (66% Finger2): Sarkoth = MANUAL pcsafe typhon_meteorstorm 2/3/4
+> (drxvolcanicorb/stoneskin augs); Gorrahk = MANUAL pcsafe cyclops_groundsmash 3/4/5
+> (drxconcussive/onslaught); Voranthys = THE ONE SUMMON (manual summon_voranthys via
+> _build_boss_summon on SepulchralWyrm01 rig, D19 mobility + damage-sanity PASS; drxcoldaura/
+> deathchill augs; weird stat defensiveFreeze=100); Ilsevar = lifedrain ON-ATTACK proc
+> (base_atenemy_onattack - manual-cast law binds only Skill_SpawnPet; drxphantomstrike/
+> drxdistortionwave xpack augs; weird stat offensiveFearMin=2). **ARTIFACTS: arz 674f31b4,
+> Text (16 new tags, coupled).** Record-diff vs baseline 27e6742 = 35 ADDED (4 guardians / 3
+> chests / 3 loot / 3 acc-pools / warband pool / 4 corner proxies / 12 souls / limit / 3
+> voranthys pets / summon skill) + 0 MODIFIED + 0 REMOVED, 0 collateral. ALL GATES GREEN:
+> summon-pet STRICT PASS (Voranthys manual-cast, no controller), render-chain A9 PASS, golden
+> A7 PASS, spawn-eligibility PASS (all 4 corners: 6-5=1 main, L74<=110), clone-shape PASS,
+> soul-augment + activation PASS, validate_tags PASS (116 mod tags), contracts GATE PASS (0
+> P0/0 P1; the 3 hoard chests' only P2 = openFxPakName/lockedSound refs inherited VERBATIM from
+> the mega-chest donor, resolve in-game via drx/base arcs). **MAP-REF-1 for M10:** the 4 corner
+> proxy records = `records\drxmap\proxy\q_obs_roulette_{a,b,c,d}.dbr` (each pool1=q_obs_warband
+> + accessory chest chain); wire the 4 INJECT_SPECS + shared v0e branch per the design section 6.
+>
 > 🛠️ **BUILD32 SESSION cont'd (2026-07-10, autonomous DB-lane) - GROUP A + D21 P1:**
 > **D21 LONG NU P1 (Will, live Steam b31 - TWO reports, ONE root cause):** 'her soul
 > summons ON ATTACK instead of like a summon' + 'she does no damage when summoned'.
