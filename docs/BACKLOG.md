@@ -14,7 +14,18 @@
 
 ## 🔴 P0 - visible/blocking, confirmed in-game 2026-07-08
 
-### B-OLYMPUS-RHODES-1 (P0 CAMPAIGN BLOCKER): no working portal after Typhon (Olympus -> Rhodes/Hades)
+### B-OLYMPUS-RHODES-1 - FIX SET COMPLETE (build31g map + Q3 arz/Quests), awaiting Will's walk-test
+- **MAP HALF WIRED (build31g, commit d06f334, 2026-07-09 overnight):** the herald NPC
+  (portal_master_olympus, cloned from the Knossos boatman) is PLACED at OlympusFinal02
+  inst[205], local (305.80,90.20,490.80) = world (1155.80,90.20,-3190.20), 4u from the locked
+  xq00 portal on the Typhon plateau (navmesh-verified). Q3 (36a6212) had already shipped the
+  record (arz bd6ae869) + boat-dialog quest -> world (700,41,-6466) (Quests 3db3764c) + the
+  INSTANT kill-unlock trigger on the engine portal. Player path after Typhon: talk to the
+  herald -> Rhodes (guaranteed), or the xq00 portal if the engine honors the kill-unlock.
+  Walk-test: kill Typhon, herald dialog -> Rhodes arrival at the base game's own target.
+- ORIGINAL ENTRY (history):
+
+### (historical) B-OLYMPUS-RHODES-1 (P0 CAMPAIGN BLOCKER): no working portal after Typhon (Olympus -> Rhodes/Hades)
 - **Symptom (Will, fresh session):** killed Typhon at the Olympus summit, no working continuation
   portal to Rhodes; the campaign cannot progress past Olympus. Q1 lane added an
   Action_UnlockFixedItem on the "Olympus - Typhon Defeated" token (in "quest that controls bosses
