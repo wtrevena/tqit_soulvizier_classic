@@ -1,5 +1,18 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🚢 **BUILD32 SHIPPED TO STEAM + VERIFIED (2026-07-10, main session, tag `build32-ship` @ 3401852).**
+> Payload fresh-download byte-verified 4/4: arz e27dd1cb / Text 346572bb / Levels d5259629
+> (build32b) / Quests 6ff23c29. F9 dist==work 4/4 + F7 contracts on dist 0P0/0P1. Description
+> sixth-update entry live (7954 chars). DEV entry = full coupled build32 set (arz redeployed as
+> SoulvizierClassicDEV.arz). Steam killed + restarted per standing rule. LIVE CONTENT: Helos
+> portal-master (Almyros, 4 destinations), Vashkarr @ FotA (post-fix 50/50 dragonian escorts),
+> Obsidian Halls roulette (4 corners), Enslaver of Souls roaming rare, wyrm hordes + Sepulchral
+> Scale, thrown weapons + 3 supra supers, Mastery Wave 2, Long Nu manual-summon fix.
+> OPEN AFTER SHIP: Will's in-game acceptance (Sarkoth cast anims statically unprovable; blood-cave
+> Toxeus group-spawn from b31 still pending his eyes); deferred queue = M13b SD restore,
+> portal-master Phase 2, wraithlord re-enable, golden-freeze of the 7 tuned trees post-QA,
+> broodmother nest set-piece, Tartarus-gates-if-Atlantis-reachable, hoard lockedSound cosmetic.
+
 > 🛠️ **BUILD32 FINAL-CONTENT SESSION (2026-07-10, autonomous DB-lane) - GROUPS F/E/B:**
 > Baseline = HEAD e3ab0a6 (arz 27e6742 / Text cf3cb227 / Quests 6ff23c29, det-2x).
 > **GROUP B = TOXEUS THE MURDERER, ENSLAVER OF SOULS (BACKLOG Enslaver, Will approved).**
