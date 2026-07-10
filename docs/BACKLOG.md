@@ -32,7 +32,9 @@
 > **ARTIFACTS: arz 9265619d, Text (6 new tags, coupled).** Record-diff vs 79daa74e (post-E) = 14
 > ADDED (boss / marauder / 3 souls / hostile summon / 3 marauder pets / 3 enslaver pets / summon
 > skill / friendly petmarauders skill) + 1224 MODIFIED (all eligible act-trash pools, x60 + append)
-> + 0 REMOVED, 0 collateral. Gates GREEN: roaming-sweep gate PASS (1224 pools, 0 boss/quest/hero),
+> + 0 REMOVED, 0 collateral. Gates GREEN: roaming-sweep gate PASS (1224 pools, 0 dedicated
+> (basename) boss/quest/hero/escort/friendly pools touched; 19 general trash pools legitimately
+> contain rare low-weight hero MEMBERS per vanilla - the roaming rare walks among area heroes),
 > clone-shape PASS, spawn-eligibility PASS, soul-activation PASS (1406 souls), summon-pet STRICT
 > PASS (manual-cast + D19 mobility on the ShadowStalker rig), render/golden PASS, validate_tags PASS
 > (127 mod tags), contracts GATE PASS (0 P1, no B record flagged), STRICT 0.

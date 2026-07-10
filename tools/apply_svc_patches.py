@@ -9016,8 +9016,11 @@ def _verify_roaming_sweep(db, touched):
             f"Enslaver roaming-sweep gate FAILED: {len(problems)} problem(s) "
             f"(see offenders above)")
     print(f"  Roaming-sweep gate OK: {len(derived)} eligible hostile trash pools "
-          f"carry the Enslaver at weight 1 (p_slot <= 1/2400), 0 boss/quest/hero "
-          f"pools touched, boss+marauder at band {_EN_BAND}.")
+          f"carry the Enslaver at weight 1 (p_slot <= 1/2400), 0 dedicated "
+          f"(basename) boss/quest/hero/escort/friendly pools touched; 19 general "
+          f"trash pools legitimately contain rare low-weight hero MEMBERS per "
+          f"vanilla (the roaming rare walks among area heroes), boss+marauder at "
+          f"band {_EN_BAND}.")
 
 
 def _apply_d8_d9_summon_souls(db, tags):
@@ -9372,6 +9375,16 @@ def _create_vashkarr(db, tags):
         sf(PL, 'nameChampion1', _VK_ESCORT_MELEE)
         sf(PL, 'nameChampion2', _VK_ESCORT_CASTER if db.has_record(_VK_ESCORT_CASTER)
            else _VK_ESCORT_MELEE)
+        # Clear the q_leinth_lone clone-leftover THIRD champion (an off-theme
+        # Common records\drxcreatures\blooddemon\b_med_blooddemon_32.dbr at w33):
+        # with championMin=Max=2 the escorts roll 2-of-3, so ~2/3 of encounters
+        # dropped a real lieutenant for the blood demon. Empty the slot + zero its
+        # weight, and rebalance the two real escorts to 50/50 -> ALWAYS exactly
+        # lance + warlock. (No explicit dtypes: the cloned fields keep STRING/INT.)
+        sf(PL, 'nameChampion3', '')
+        sf(PL, 'weightChampion1', 50)
+        sf(PL, 'weightChampion2', 50)
+        sf(PL, 'weightChampion3', 0)
         sf(PL, 'spawnMin', 3)
         sf(PL, 'spawnMax', 3)
         sf(PL, 'championChance', 100.0)
