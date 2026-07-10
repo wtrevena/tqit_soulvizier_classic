@@ -396,6 +396,21 @@ ship (coordinator dispatches); DEV-deploy for Will after major groups is fine (l
 Will's standing ruling: only convert summon-souls he EXPLICITLY names.
 
 ### BUILD32 TRAIN (queued 2026-07-09; implement AFTER build31 ships)
+- **N6-DB: Obsidian Halls treasure roulette - WILL SIGNED OFF (2026-07-09).** Full approved
+  design + locked decisions: docs/OBSIDIAN_ROULETTE_DESIGN.md (chanceToRun 25.0/corner;
+  Voranthys = the one summon-soul via _build_boss_summon on the SepulchralWyrm01 rig; all
+  designer defaults incl. locked Boss-classification mega-chest, 5-elite warbands, no charm,
+  Sarkoth soul = pcsafe typhon_meteorstorm 2/3/4). Scope per design section 6:
+  _create_obsidian_roulette(db) = 4 guardians (derived natives, wild kits + ondeath skills all
+  existence-verified), shared warband pool (spawnMin=Max=6, championChance=100, championMax=5),
+  4 corner proxies w/ accessory tiers + no-cap limit clone [1..110], 3 svc_obsidianhoard chests
+  (hpalace_chestlg01 mesh scale 1.4, goldGeneratorChance=100, guaranteed epic N /
+  legendary-or-epic E/L) + 3 accessory pools + loot tables, 4 amgoz1-voice souls (66% Finger2;
+  Ilsevar dream augments MUST use the xpack paths - the base-dream twins DANGLE), tags.
+  NEW gates: accessory-chain-resolves + chest-lock-classification==Boss + ondeath resolution.
+  In-game confirm item for Will's DEV pass: DropProjectileTelekinesis anim on the liche rig.
+  MAP-REF-1 ordering: DB records land in the build32 arz BEFORE map lane M10 injects
+  (4 INJECT_SPECS + shared v0e branch).
 - **MASTERY WAVE 2** per docs/MASTERY_AUDIT_2026-07-09.md §3 Wave 2: Warfare (horn/standard
   uptime, armband path fix, optional warwind), Nature (force-of-nature 360->180, petBonus ML1-40
   ramp w/ overshoot check, defensiveConvert artifact zeroing, wolf FX hygiene), remaining Spirit
