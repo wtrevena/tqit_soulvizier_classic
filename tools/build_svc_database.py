@@ -221,6 +221,22 @@ def fix_chimera_chest_double_ext(db: ArzDatabase):
         (r'records\item\containers\boss\repeatbosschest13_chimera_epic.dbr.dbr',
          r'records\item\containers\boss\repeatbosschest13_chimera_epic.dbr'),
     ]
+    # Q4-3 fallout: both chimera chests carry SV's stock lockedSound string
+    # 'Sounds\SoundPaks\Decorations\LockedObjectPak.dbr' (SoundPaks plural, no
+    # records\ prefix). That literal is a base-game convention used verbatim by
+    # dozens of stock chests and the engine resolves it at runtime, but it does
+    # NOT match the actual base record name by exact path
+    # (records\sounds\soundpak\decorations\lockedobjectpak.dbr - soundpak
+    # singular, records\ prefix). While these chests were sv-provenance
+    # (.dbr.dbr) that mismatch was a non-blocking P2; renaming them to single
+    # .dbr makes them 'authored', which promotes the same dangling lockedSound to
+    # a gate-blocking C-RES-DBR-1 P1. Repoint it at the real base record path (the
+    # sibling openSound field on these same records already uses that
+    # records\sounds\soundpak\... convention): functionally identical sound,
+    # exactly resolvable.
+    LOCKED_SOUND_STOCK = r'Sounds\SoundPaks\Decorations\LockedObjectPak.dbr'
+    LOCKED_SOUND_RESOLVED = (r'records\sounds\soundpak\decorations'
+                             r'\lockedobjectpak.dbr')
     namemap = {n.replace('/', '\\').lower(): n for n in db.record_names()}
     for old, new in renames:
         rec = namemap.get(old.lower())
@@ -235,7 +251,19 @@ def fix_chimera_chest_double_ext(db: ArzDatabase):
         db._decoded_cache.pop(rec, None)
         db._modified.discard(rec)
         db._modified.add(new)
-        print(f"  renamed {rec} -> {new}")
+        # Fix the dangling lockedSound on the renamed (now 'authored') chest.
+        ls = db.get_field_value(new, 'lockedSound')
+        ls0 = ls[0] if isinstance(ls, list) else ls
+        ls_norm = ls0.replace('/', '\\').lower() if isinstance(ls0, str) else ''
+        if ls_norm == LOCKED_SOUND_STOCK.lower():
+            db.set_field(new, 'lockedSound', LOCKED_SOUND_RESOLVED)
+            print(f"  renamed {rec} -> {new} (+ lockedSound -> resolvable base path)")
+        elif ls_norm in ('', LOCKED_SOUND_RESOLVED.lower()):
+            print(f"  renamed {rec} -> {new}")
+        else:
+            raise SystemExit(
+                f"Q4-3: {new} lockedSound unexpectedly {ls0!r} "
+                f"(expected the SV stock LockedObjectPak string) - reconcile")
     # rewrite the one in-arz field ref that carried the typo (the epic pool)
     pool = namemap.get(r'records\item\containers\boss\accessorypools'
                        r'\bosschestpool13_chimera_epic.dbr'.lower())
