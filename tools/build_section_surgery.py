@@ -789,6 +789,51 @@ OLYMPUS_RHODES_NPC_DBR = b'records\\quests\\portal_master_olympus.dbr'  # matche
 OLYMPUS_RHODES_HOST_KEY = 'levels/world/olympus/olympusfinal02.lvl'
 OLYMPUS_RHODES_NPC_SPEC = (OLYMPUS_RHODES_NPC_DBR, 305.80, 90.20, 490.80)  # WIRED (build31g)
 
+# ── M9 PENDING: Vashkarr, Eldest of the Ancients (N4-DB, Will signed off) ────────────
+# HOST = Levels/World/Orient/Underground/Random05A.lvl (the cave via ToTomb02 east of
+# Chang'an; base-game v0x0e -> the new SVAERA-side v0e injection branch, commit 5af756c).
+# The 'Majestic Chest' (GoldenChest_Normal_02, inst [25] @ local (24.01,1.00,28.70))
+# stays UNTOUCHED per the design. SPOT local (24.00, 1.00, 31.70) = 3.0u in FRONT of the
+# chest (guarding it, per Will's M15 'spawn AT the treasure' taste): navmesh-verified
+# (level's own 0x0b, 60,356 cells): on-mesh exact cell, floorY 1.0, 95% walkable coverage
+# in a 3.5u square (room for the spawnMax=3 escort; the at-chest spot itself is only 65%
+# vs a wall). NOTE: the native Hero_Djinn_BloodSisters proxy also lives in this room
+# (6.8u from the chest) - fights can stack, accepted (the design chose this cave).
+# byte-shape = q_leinth_lone exemplar (flags=0, no 0x14, exemplar rot).
+# ⚠️ GATED on the DB lane's build31 Group-7 arz carrying q_vashkarr_lone (+ pool +
+# um_vashkarr_99): MAP-REF-1 blocks wiring before the records exist. Wire by moving the
+# spec into INJECT_SPECS under the host key.
+VASHKARR_PROXY_DBR = b'records\\drxmap\\proxy\\q_vashkarr_lone.dbr'
+VASHKARR_HOST_KEY = 'levels/world/orient/underground/random05a.lvl'
+VASHKARR_SPEC_PENDING = (VASHKARR_PROXY_DBR, 24.00, 1.00, 31.70,
+                         {'rot': Q_LEINTH_EXEMPLAR_ROT})  # NOT wired yet
+
+# ── M10 PENDING: Obsidian Halls treasure roulette corners (N6-DB, Will signed off) ───
+# 4 corner proxies (chanceToRun=25 each, shared warband pool) in the Act-3 Obsidian
+# Halls: tombobs01 + tombobs02 (Levels/World/Orient/TyphonUG/, base-game v0x0e -> the
+# v0e branch). Corner coords = the design doc's surveyed on-mesh spots
+# (docs/OBSIDIAN_ROULETTE_DESIGN.md: calibration 23/23 + 36/36 floor markers):
+#   A tombobs02 (50.4, 1.0, 143.6)    C tombobs02 (200.4, 1.0, 97.6)
+#   B tombobs01 (220.8, 1.0, 89.6)    D tombobs01 (90.8, 1.0, 45.6)
+# byte-shape = q_leinth_lone exemplar. ⚠️ GATED on the DB lane's build32 N6 arz records
+# (q_obs_roulette_a..d + pools\q_obs_warband + guardians/chests): MAP-REF-1. Verify the
+# exact proxy record paths against the landed arz before wiring (the design names the
+# basenames; drxmap\proxy\ is the N4/Toxeus precedent dir).
+OBS_ROULETTE_SPECS_PENDING = {
+    'levels/world/orient/typhonug/tombobs02.lvl': [
+        (b'records\\drxmap\\proxy\\q_obs_roulette_a.dbr', 50.4, 1.0, 143.6,
+         {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (b'records\\drxmap\\proxy\\q_obs_roulette_c.dbr', 200.4, 1.0, 97.6,
+         {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+    'levels/world/orient/typhonug/tombobs01.lvl': [
+        (b'records\\drxmap\\proxy\\q_obs_roulette_b.dbr', 220.8, 1.0, 89.6,
+         {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (b'records\\drxmap\\proxy\\q_obs_roulette_d.dbr', 90.8, 1.0, 45.6,
+         {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+}  # NOT wired yet
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
