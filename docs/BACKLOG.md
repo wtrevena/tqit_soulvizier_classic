@@ -394,17 +394,26 @@
   MAP-GROUPS-1 could not catch): **374/374 devices bound, 0 dead** on both variants + the 5
   Lane-B must-bind uids asserted in-build (M13A_MUST_BIND). Walk-test: ToJ floor-4 respawn +
   the Olympus rift shrine + HV01 fountain still binding.
-- **M13b OPEN: the SD(0x18) half.** Ours is still SV's v6 section (116,299B) vs SVAERA/base v7
-  (227,893B). Analysis so far (2026-07-10 session, scratchpad m13_sd_parse/m13_sd_deep): SD =
-  [u32=2][version 6|7][u32][count] + named zone/env records; REGION records = type+unk+name +
-  GUID(16) + 8 floats + embedded display tag + trailer (SV carries the FULL base tagRegionName01-185
-  set + its 9 SV zone tags: tagBCX x4, tagMZoneGoM, tagNewMZone1, tagJoLandia, tagSPDarkForest,
-  tagSPRogueEncampment); env/fog records ('Rhodes Fog', 'X2_*') have larger bodies and **v7 records
-  carry an extra field at body offset ~112 vs v6** - so porting requires a real sd_format.py
-  (round-trip-proven, qst_format-standard) and v6->v7 record conversion, NOT a heuristic splice.
-  What the SD swap would gain: TQAE base-act env re-authoring + all DLC-act zone/env records
-  (mostly capped acts). What a naive swap would LOSE: the 9 SV zone-label records (blood cave,
-  GoM, Secret Place) - hence record-level merge only. No PROVEN defect is SD-attributed today.
+- **M13b RE COMPLETE -> verdict NO-GO (2026-07-10, backlog lane).** Full SD(0x18) format RE +
+  round-trip-proven parser landed: **`tools/sd_format.py`** (byte-identical round-trip on all 4
+  maps: SV v6, ours v6, SVAERA v7, vanilla v7) + **`docs/SD_FORMAT_RE.md`** (RECIPE). Findings:
+  SD = `[magic=2][version 6|7]` then a POSITION-ORDERED list sequence `[listTag][count][records]`
+  (listTag is REUSED - 1=env&miniboss, 2=region&audio - so order, not tag, keys the schema).
+  Lists: [0] env/fog, [1] region/zone-label (**the SV zone labels**), [2] audio, [3] miniboss, ...
+  REGION schema (identical v6<->v7): `a=1 | nameLen+name | guid[16] | color1[4] | color2[4] |
+  tagLen+dispTag | t1 | t2`. ENV schema: `a=1 | name | guid[16] | block(120 v6 / 148 v7) |
+  [v7-only: effectPathLen+weatherDbrPath]`.
+  **What the merge dropped (SV v6 vs SVAERA v7):** 252 region records ALL unreachable DLC/HC
+  (X4=130, X2=96, X3=23, +3 HCDun) - campaign caps at Hades so none are entered; the 282 shared
+  base-act regions are **byte-identical** v6<->v7. Meanwhile SV's SD carries the 9 SV-only zone
+  labels (tagBCX x4, tagMZoneGoM, tagSPDarkForest, tagSPRogueEncampment, tagJoLandia, tagNewMZone1)
+  + 17 SV-only env presets (BloodCave/Duister/UberDungeonLevel1/RogueEncampment/...) + SV audio/
+  miniboss bindings - all for the RESTORED SV AREAS. **A v7 SD swap loses all of that to gain
+  only unreachable DLC + ~10 cosmetic base-act fog presets.** No proven defect is SD-attributed.
+  **CLOSE unless** someone wants the cosmetic fog polish: a targeted record-level merge keeping SV
+  v6 as base + porting just the ~10 re-authored base-act fog env presets - blocked on the v6->v7
+  env-block conversion (the +28 v7 bytes' field semantics), low priority. Region-record edits are
+  trivial via sd_format.py; env porting is the only real cost. Full detail: `docs/SD_FORMAT_RE.md`.
 
 ### B-PORTAL-1: Portals are ugly flat blue panels / hard-to-see arrows
 - **Symptom (Will, screenshots):** the born-open GridEntrance portals now APPEAR (build27 fix
