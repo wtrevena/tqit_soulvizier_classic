@@ -537,8 +537,43 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   **Q1 FAILED IN-GAME (Will, fresh session, 2026-07-09): Typhon killed, unlock event present,
   still NO portal.** Confirms M7's FixedItemTeleport-destination-is-engine-internal risk.
 
-- **Q3 (2026-07-09): Olympus->Rhodes = COPY SVAERA, not a quest. QUESTS-LANE VERDICT: NO
-  restore needed - the fix is MAP-SIDE.** Coordinator hypothesis (build22 dropped IT-act main
+- **Q3 SHIPPED TO DEV (2026-07-09 night, Will escalation): instant kill unlock + token reload
+  path + herald fallback, coupled arz bd6ae869 + Quests 3db3764c + Text 06c04985.**
+  - **DB EXONERATED (the 'SV overrides an engine hook' hypothesis REFUTED, full-arz scan
+    q3_engine_chain_hunt.py + q3_gameengine_removed.py):** ZERO records in OUR arz AND ZERO in
+    BASE reference portaltorhodes/olympusportaltarget/typhontomb_portaltoolympus, any record
+    type, any namespace. All 49 engine-namespace overrides (gameengine/combatequations/
+    balance/itemcost/quests.dbr) diffed field-by-field vs base: every delta is SV/DRX
+    balance/UI identity; quests.dbr byte-identical; NOTHING scene/portal/act/campaign-related.
+    There is no data-side hook to restore - base opens xq00 from ENGINE CODE (end-of-campaign
+    event) that never fires in Custom Quest.
+  - **q15-vs-xq00 ANSWERED:** q15 (tomb->Olympus) works because base DATA unlocks it (quest
+    15's own Action_UnlockFixedItem on the Typhon-proxy kill). xq00 has no unlocker in ANY
+    data. The kill trigger makes xq00's chain structurally IDENTICAL to the proven q15 chain;
+    M13a's GROUPS pairing restore (build31e) supplies the destination side.
+  - **SHIPPED (one host-step append, 'quest that controls bosses and their doors.qst'):**
+    (1) INSTANT: Condition_KillAllCreaturesFromProxy(Records\Proxies Boss\Boss\
+    BossProxy_20_Typhon_Titan.dbr - byte-verified LIVE: quest 15 grants Will's token on this
+    exact condition) -> Action_UnlockFixedItem(xq00, canReFire=1); (2) Q1 token+OnLevelLoad
+    reload path KEPT (Will's main gets the portal on next Olympus entry, no re-kill);
+    (3) HERALD fallback: Action_BoatDialog(records\quests\portal_master_olympus.dbr, onOff=1,
+    x=700 y=41 z=-6466 = the base game's own xq00_rhodes_olympusportaltarget landing) gated on
+    the token; NPC record cloned from knossos_boatmantoegypt (proven boat-dialog Npc shape,
+    GreekSailor02 base art = render-safe), name 'Keryx, Herald of Olympus', 3 new tags
+    (validate_tags PASS). **MAP LANE (a4207d65): the record name records\quests\
+    portal_master_olympus.dbr + placement spec are now FINAL - wire
+    OLYMPUS_RHODES_NPC_SPEC_PENDING into INJECT_SPECS on the next map build.**
+  - Gates: quest-record contract PASS (107); Quests entry-diff vs shipped 631a2b4d = EXACTLY
+    the host quest with exactly the new strings; arz record-diff vs D19 95e816d3 = EXACTLY
+    +1 ADDED (the herald); golden freeze PASS on the pair; all arz internal gates green.
+  - **WILL'S TEST (DEV): load main at Olympus summit -> the Rhodes portal should BE OPEN
+    (token path fires on level load; M13a pairing gives it a destination). Fresh kill path:
+    kill Typhon -> portal opens AT THE KILL, in view, no reload. The herald NPC appears at the
+    summit only after the MAP lane wires the placement (next map build) - it is the fallback
+    if the portal still teleports nowhere.**
+
+- **Q3 archive (2026-07-09 day): Olympus->Rhodes = COPY SVAERA, not a quest. QUESTS-LANE
+  VERDICT: NO restore needed.** Coordinator hypothesis (build22 dropped IT-act main
   quest registrations -> Rhodes campaign won't activate) is REFUTED by byte analysis
   (scratchpad q3_registry_diff.py / q3_content_diff.py / q3_portal_refs.py):
   - SVAERA registers 254 QUESTS entries; ours 256. **SVAERA-registered identities absent from

@@ -8693,6 +8693,46 @@ def _apply_d8_d9_summon_souls(db, tags):
     tags['tagSVCSummonMountainBlade'] = 'Summon Huo-ren, the Mountainblade'
 
 
+# ── Q3 (build31, campaign blocker): Olympus -> Rhodes herald NPC ─────────────
+# M12 RCA (map lane, in-game confirmed): the base post-Typhon portal's
+# destination is ENGINE-INTERNAL and never activates in a Custom Quest; the Q1
+# token-gated Action_UnlockFixedItem shipped in build30.3 opened NOTHING for
+# Will. Model C fix: a boat-dialog herald NPC on the Typhon summit plateau ->
+# Action_BoatDialog to the Rhodes arrival (data-driven world coord, no engine
+# hook), exactly the M8 portal-master mechanism. THE RECORD PATH IS LOCKED with
+# the map lane (build_section_surgery.py OLYMPUS_RHODES_NPC_SPEC_PENDING wires
+# the placement at OlympusFinal02 local (305.80, 90.20, 490.80) once this
+# record ships). Donor = knossos_boatmantoegypt: the PROVEN base boat-dialog
+# NPC shape (Class=Npc + GreekSailor02 mesh/anims, all base Creatures.arc =
+# render-safe per the D5 law); a ferryman-to-Rhodes reads naturally at the
+# summit. The boat-dialog quest trigger ships in the SAME wave via
+# tools/build_quest_files.py (_add_olympus_rhodes_travel); Text tags ride the
+# standard tags mechanism (validate_tags gates them).
+OLYMPUS_HERALD_NPC = r'records\quests\portal_master_olympus.dbr'
+_OLYMPUS_HERALD_DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+
+
+def _create_olympus_rhodes_herald(db, tags):
+    donor = _find_record(db, _OLYMPUS_HERALD_DONOR)
+    if not donor:
+        raise SystemExit(f"Q3 herald: donor NPC missing: {_OLYMPUS_HERALD_DONOR}")
+    if db.has_record(OLYMPUS_HERALD_NPC):
+        raise SystemExit(f"Q3 herald: {OLYMPUS_HERALD_NPC} already exists")
+    db.clone_record(donor, OLYMPUS_HERALD_NPC)
+    sf = db.set_field
+    sf(OLYMPUS_HERALD_NPC, 'description', 'tagSVCNpcOlympusHerald')
+    sf(OLYMPUS_HERALD_NPC, 'FileDescription',
+       'SVC Q3: Olympus->Rhodes herald (Model C boat-dialog)')
+    sf(OLYMPUS_HERALD_NPC, 'messageDialogTag', 'tagSVCOlympusHeraldChat')
+    db._modified.add(OLYMPUS_HERALD_NPC)
+    tags['tagSVCNpcOlympusHerald'] = 'Keryx, Herald of Olympus'
+    tags['tagSVCOlympusHeraldChat'] = ('Typhon has fallen! Zeus bids you '
+                                       'onward - the path to Rhodes opens.')
+    tags['tagSVCOlympusRhodesTravel'] = 'Travel to Rhodes?'
+    print("  Q3 herald: portal_master_olympus.dbr cloned from the Knossos "
+          "boatman (proven boat-dialog NPC shape); name/chat/travel tags set")
+
+
 # ══════════════════════════════════════════════════════════════════════════
 #  D10 EMBERSCALE (Will 2026-07-09): a new 5-shard collectible charm (ItemCharm,
 #  exact Turtle Shell pattern) dropped by the "{^G}Flameguard Slayer" green
@@ -9429,6 +9469,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # Soul quality passes
     _overhaul_generic_souls(db)
     _apply_d8_d9_summon_souls(db, tags)   # D8 Xeiwang + D9 Huo-ren summon-souls (after the overhaul, so the summon rewire wins)
+    _create_olympus_rhodes_herald(db, tags)   # Q3: Olympus->Rhodes boat-dialog herald (record path locked with the map lane)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs

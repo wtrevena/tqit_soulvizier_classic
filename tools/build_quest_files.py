@@ -1332,6 +1332,167 @@ TYPHON_HOST_STEP = 'BOSS: Change the Loot Drops From Telkines & Typhon on Repeat
 TYPHON_TOKEN = 'Olympus - Typhon Defeated'
 RHODES_PORTAL = r'records\xpack\quests\objects\xq00_olympus_portaltorhodes.dbr'
 
+# ── Q3 (build31, Will escalation): INSTANT Rhodes unlock + herald fallback ──
+# Will (verbatim): "this is not the right unlock path to have to walk away and
+# walk back in ... restore it to how it normally is in the base fucking game."
+# ACCEPTANCE: kill Typhon -> the portal opens IMMEDIATELY, in view, no reload.
+# Mechanism: a kill-gated trigger on the SAME host step -
+#   Condition_KillAllCreaturesFromProxy(BossProxy_20_Typhon_Titan)
+#     -> Action_UnlockFixedItem(xq00_olympus_portaltorhodes, canReFire=1)
+# The proxy record is byte-verified LIVE: 'quest 15 - save olympus from
+# typhon.qst' bestows the 'Olympus - Typhon Defeated' token on EXACTLY this
+# condition shape, and Will HOLDS that token from his kill - the proxy name
+# and the kill-condition mechanism are proven in his own session. Live
+# in-session Action_UnlockFixedItem is equally proven (the blood-cave
+# guardian-door quests open doors live). The Q1 token-gated OnLevelLoad
+# trigger is KEPT: a character already holding the token (Will's main) gets
+# the portal on next level entry without re-killing.
+# Herald fallback (Model C): the map-placed NPC portal_master_olympus gets an
+# Action_BoatDialog binding to the Rhodes arrival - the base game's OWN paired
+# target xq00_rhodes_olympusportaltarget at world (700, 41, -6466) (signed-int
+# coords, M12 navmesh-verified ON-MESH). Field shapes: conditions mirror the
+# HOST's own byte-verified idioms (isQuestCritical w/o isQuestCritical2; the
+# KillAllCreaturesFromProxy block mirrors the host's 19 existing ones);
+# Action_BoatDialog mirrors base quest 7 (the only real-engine exemplar:
+# comments, delayTime, npc, onOff, x, y, z, tag).
+TYPHON_PROXY = r'Records\Proxies Boss\Boss\BossProxy_20_Typhon_Titan.dbr'
+OLYMPUS_HERALD_NPC = r'records\quests\portal_master_olympus.dbr'
+OLYMPUS_HERALD_TRAVEL_TAG = 'tagSVCOlympusRhodesTravel'
+RHODES_ARRIVAL_XYZ = (700, 41, -6466)
+
+
+def _add_olympus_rhodes_travel(data: bytes) -> bytes:
+    """Append the instant kill-gated unlock + the herald boat-dialog binding
+    to the Typhon host step (two trigger triples; strictly additive; the
+    step's trigger-container max is incremented by 2). Fails loud if the host
+    step is missing, the bytes do not round-trip, or the reference counts do
+    not land exactly."""
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    kill_header = ('block', [
+        ('field', 'displayTag', ('str', 'SVC: Instant Rhodes Unlock On Typhon Kill')),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+    ])
+    kill_conditions = ('block', [
+        ('field', 'conditionCount', ('int', 1)),
+        ('field', 'conditionClassName', ('str', 'Condition_KillAllCreaturesFromProxy')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 0)),
+            ('field', 'proxyRecord', ('str', TYPHON_PROXY)),
+        ]),
+    ])
+    kill_actions = ('block', [
+        ('field', 'actionCount', ('int', 1)),
+        ('field', 'actionClassName', ('str', 'Action_UnlockFixedItem')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'fixedItem', ('str', RHODES_PORTAL)),
+            ('field', 'canReFire', ('int', 1)),
+        ]),
+    ])
+
+    x, y, z = RHODES_ARRIVAL_XYZ
+    herald_header = ('block', [
+        ('field', 'displayTag', ('str', 'SVC: Olympus Herald - Sail To Rhodes')),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+    ])
+    herald_conditions = ('block', [
+        ('field', 'conditionCount', ('int', 2)),
+        ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 1)),
+        ]),
+        ('field', 'conditionClassName', ('str', 'Condition_OwnsTriggerToken')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),
+            ('field', 'isQuestCritical', ('int', 1)),
+            ('field', 'tokenName', ('str', TYPHON_TOKEN)),
+        ]),
+    ])
+    herald_actions = ('block', [
+        ('field', 'actionCount', ('int', 1)),
+        ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'delayTime', ('int', 0)),
+            ('field', 'npc', ('str', OLYMPUS_HERALD_NPC)),
+            ('field', 'onOff', ('int', 1)),
+            ('field', 'x', ('int', x & 0xFFFFFFFF)),
+            ('field', 'y', ('int', y & 0xFFFFFFFF)),
+            ('field', 'z', ('int', z & 0xFFFFFFFF)),
+            ('field', 'tag', ('str', OLYMPUS_HERALD_TRAVEL_TAG)),
+        ]),
+    ])
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = [i for i, it in enumerate(steps_container) if it[0] == 'block']
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched = 0
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        if field_val(stepdef, 'name') != TYPHON_HOST_STEP:
+            continue
+        trigcont = list(steps_container[trigcont_pos][1])
+        bumped = False
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 2))
+                bumped = True
+                break
+        if not bumped:
+            raise ValueError(f'{TYPHON_HOST_QUEST}: host step has no trigger max')
+        trigcont.extend([kill_header, kill_conditions, kill_actions,
+                         herald_header, herald_conditions, herald_actions])
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched += 1
+
+    if patched != 1:
+        raise ValueError(
+            f'{TYPHON_HOST_QUEST}: expected to patch exactly 1 step '
+            f'({TYPHON_HOST_STEP!r}), patched {patched}. Upstream changed; '
+            f'review before shipping.')
+
+    out = qst_format.serialize(tree)
+    reparsed = qst_format.parse(out)
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: patched quest does not '
+                         f'round-trip stably')
+    low = out.replace(b'/', b'\\').lower()
+    low_in = data.replace(b'/', b'\\').lower()
+
+    def _delta(needle):
+        nd = needle.replace('/', '\\').lower().encode()
+        return low.count(nd) - low_in.count(nd)
+    if _delta(RHODES_PORTAL) != 1:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: Rhodes portal reference count '
+                         f'must increase by exactly 1 (the kill unlock)')
+    if _delta(TYPHON_PROXY) != 1:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: Typhon proxy reference count '
+                         f'must increase by exactly 1 (the host already '
+                         f'references it in its own repeat-battle triggers)')
+    if _delta(OLYMPUS_HERALD_NPC) != 1:
+        raise ValueError(f'{TYPHON_HOST_QUEST}: herald NPC reference count '
+                         f'must increase by exactly 1')
+    return out
+
 
 def _add_typhon_rhodes_unlock(data: bytes) -> bytes:
     """Append the Rhodes-portal unlock trigger to the Typhon repeat-loot step.
@@ -1467,9 +1628,14 @@ def main():
         raise SystemExit(f'Q1: host quest missing from Quests.arc: '
                          f'{TYPHON_HOST_QUEST}')
     patched = _add_typhon_rhodes_unlock(raw)
-    arc.set_file(TYPHON_HOST_QUEST, patched)
     print(f'Q1: Typhon->Rhodes portal unlock appended to {TYPHON_HOST_QUEST} '
           f'({len(raw)} -> {len(patched)} bytes)')
+    # Q3 (Will escalation): instant kill-gated unlock + herald boat-dialog on
+    # the same host step. Q1's token-gated reload path is KEPT above.
+    patched2 = _add_olympus_rhodes_travel(patched)
+    arc.set_file(TYPHON_HOST_QUEST, patched2)
+    print(f'Q3: instant Typhon-kill unlock + Olympus herald boat-dialog '
+          f'appended ({len(patched)} -> {len(patched2)} bytes)')
 
     # Add the Soulvizier AREA questlines at the archive root, ALONGSIDE the portal
     # quest (never replacing it). Their names are already registered in the map's
