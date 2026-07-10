@@ -1484,6 +1484,325 @@ def apply_mastery_wave1_boosts(db: ArzDatabase):
     print("  Mastery Wave 1 boosts applied (Defense 7, Earth 5+hyg, Storm 5)")
 
 
+def apply_mastery_wave2_boosts(db: ArzDatabase, base_db=None):
+    """MASTERY WAVE 2 boosts: Warfare / Nature / Spirit / Dream + the two DLC
+    masteries RuneMaster (slot 11) / Neidan (slot 12).
+    (docs/MASTERY_AUDIT_2026-07-09.md section 3 Wave 2 + PART III per-mastery
+    boost lists; Will approved BOTH waves 2026-07-09; build32.)
+
+    STANDING RULE (Will): NEVER remove skills/tree slots from masteries.
+    Everything here is a field edit, an added ladder, a base->mod override, or
+    dangling-ref cleanup INSIDE a record (the standing rule explicitly allows
+    clearing dead particleEffectName / placeholder skillName slots on PET
+    records). Borderline no-ops are KEPT, never removed (Spirit bonepet
+    skillName6; Dream phantomstrike self-slow is ZEROED in place, field kept).
+
+    ALREADY-SHIPPED (Wave 1 B6): the #1 audited RuneMaster + Neidan fix - the
+    dropped Ensnare/Flamesurge/ThunderClap/Barrage/Crosscut/Hew PC anims that
+    abort their casts - was ported by _port_pc_anim_tokens and is VERIFIED by
+    the player-skill-anim gate that runs AFTER this function. It is NOT
+    re-implemented here (BACKLOG: "verify before re-implementing").
+
+    base_db is REQUIRED: RuneMaster + Neidan records resolve ONLY from the base
+    game, so they are imported verbatim as mod overrides
+    (_import_base_game_record) before the field edits."""
+    print("\n=== MASTERY WAVE 2: Warfare/Nature/Spirit/Dream + RuneMaster/Neidan ===")
+
+    def arr(rec, f):
+        v = db.get_field_value(rec, f)
+        if v is None:
+            return None
+        return list(v) if isinstance(v, list) else [v]
+
+    def expect(cond, msg):
+        if not cond:
+            raise SystemExit(f"Mastery W2: {msg} - spec drift, reconcile")
+
+    def need(rec):
+        expect(db.has_record(rec), f"target record missing: {rec}")
+
+    def eq(a, b):
+        return a is not None and b is not None and len(a) == len(b) \
+            and all(abs(float(x) - float(y)) < 1e-4 for x, y in zip(a, b))
+
+    def clear_field(rec, f):
+        """Clear a field to ABSENT (tf.values = []) - the base-game 'unused'
+        shape for a dangling ref (never '' = a live empty string)."""
+        ff = db.get_fields(rec) or {}
+        for k, tf in ff.items():
+            if k.split('###')[0] == f:
+                tf.values = []
+                db._modified.add(rec)
+                return True
+        return False
+
+    namemap = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+
+    # ---- WARFARE ----------------------------------------------------------
+    AH = r'records\skills\warfare\drxancestralhorn.dbr'; need(AH)
+    for f, old in (('skillCooldownTime', 300.0),
+                   ('skillCooldownReductionModifier', 300.0)):
+        v = arr(AH, f); expect(v and abs(v[0] - old) < 0.01,
+                               f"ancestralhorn {f} {v} != {old}")
+        db.set_field(AH, f, 120.0)
+    ttl = arr(AH, 'spawnObjectsTimeToLive')
+    expect(ttl and abs(ttl[0] - 30.0) < 0.01, f"ancestralhorn TTL {ttl} != 30")
+    db.set_field(AH, 'spawnObjectsTimeToLive', 45.0)
+    print("  WARFARE ancestralhorn: cd/crm 300->120, TTL 30->45 (~10%->37% pet uptime)")
+
+    BS = r'records\skills\warfare\drxbattlestandard.dbr'; need(BS)
+    bt = arr(BS, 'spawnObjectsTimeToLive')
+    expect(bt and len(bt) == 10 and abs(bt[0] - 18.0) < 0.01 and abs(bt[-1] - 36.0) < 0.01,
+           f"battlestandard TTL {bt and (bt[0], bt[-1], len(bt))} != (18,36,10)")
+    db.set_field(BS, 'spawnObjectsTimeToLive',
+                 [round(24.0 + 26.0 * i / 9.0, 1) for i in range(10)])
+    print("  WARFARE battlestandard: TTL 18..36 -> 24..50 (banner amp ~50%->~70% uptime)")
+
+    WW = r'records\skills\warfare\drxwarwind.dbr'; need(WW)   # OPTIONAL (feel)
+    for f in ('skillCooldownTime', 'skillCooldownReductionModifier'):
+        v = arr(WW, f); expect(v and abs(v[0] - 12.0) < 0.01, f"warwind {f} {v} != 12")
+        db.set_field(WW, f, 8.0)
+    print("  WARFARE warwind (optional): cd/crm 12->8 (pre-Refinement AoE feel)")
+
+    armband = 'records\\item\\equipmentarmband\\default\\m_wraitharmband.dbr'
+    expect(armband in namemap, f"spectralsoldier armband target missing: {armband}")
+    ss_fixed = 0
+    for t in range(1, 21):
+        rec = r'records\skills\warfare\pets\spectralsoldier_%02d.dbr' % t
+        need(rec)
+        cur = arr(rec, 'lootForearmItem1')
+        if cur and 'armbands\\' in str(cur[0]).lower():
+            db.set_field(rec, 'lootForearmItem1', armband, DATA_TYPE_STRING)
+            ss_fixed += 1
+    expect(ss_fixed == 20, f"spectralsoldier armband fix hit {ss_fixed}/20")
+    print(f"  WARFARE spectralsoldier: dangling armband path fixed on {ss_fixed}/20 tiers")
+
+    # ---- NATURE -----------------------------------------------------------
+    FN = r'records\skills\nature\drxforceofnature.dbr'; need(FN)
+    for f in ('skillCooldownTime', 'skillCooldownReductionModifier'):
+        v = arr(FN, f); expect(v and abs(v[0] - 360.0) < 0.01, f"forceofnature {f} {v} != 360")
+        db.set_field(FN, f, 180.0)
+    print("  NATURE forceofnature: cd/crm 360->180 (~17%->33% treant uptime; 180 not 120 = no Occult overshoot)")
+
+    # petBonus ML1-40 ramp. Overshoot check (audit S4-F, Will-approved): +30%
+    # pet total-damage at ML40 is conservative - Occult's mastery grants NO pet
+    # damage bonus, so even stacked with Overgrowth(+60%)/Susceptibility(-54%)
+    # no Nature pet exceeds Occult's Shadow-Stalker peak.
+    NPB = r'records\skills\nature\drxnaturemastery_petbonus.dbr'; need(NPB)
+    otd = arr(NPB, 'offensiveTotalDamageModifier')
+    expect(otd in (None, [0.0]), f"naturemastery petBonus already has a pet-dmg ladder: {otd}")
+    db.set_field(NPB, 'offensiveTotalDamageModifier',
+                 [round(0.75 * (i + 1), 2) for i in range(40)])
+    dp = arr(NPB, 'defensiveProtection')
+    expect(dp in (None, [0.0]), f"naturemastery petBonus already grants protection: {dp}")
+    db.set_field(NPB, 'defensiveProtection',
+                 [round(4.0 * (i + 1), 1) for i in range(40)])
+    print("  NATURE naturemastery petBonus: +pet dmg 0->30%% + protection 0->160 (ML1-40)")
+
+    for rec in (r'records\skills\nature\drxregrowth_acceleratedgrowth.dbr',
+                r'records\skills\nature\drxrenewal.dbr'):
+        need(rec)
+        cd_ = arr(rec, 'skillCooldownTime'); dc = arr(rec, 'defensiveConvert')
+        expect(eq(cd_, dc), f"{rec} defensiveConvert != skillCooldownTime (already fixed?)")
+        clear_field(rec, 'defensiveConvert')
+    print("  NATURE accel-growth+renewal: dangling defensiveConvert (==cooldown ladder, silent charm-res malus) cleared; cooldown kept")
+
+    WM = r'records\skills\nature\drxwolf_petskill_maul.dbr'; need(WM)
+    for f in ('particleEffectName1', 'warmUpEffectName'):
+        cur = arr(WM, f)
+        if cur and 'lethal_strike01' in str(cur[0]).lower():
+            db.set_field(WM, f, 'records\\effects\\default\\damage01.dbr', DATA_TYPE_STRING)
+    WSI = r'records\skills\nature\drxwolf_petskill_survivalinstinct.dbr'; need(WSI)
+    cur = arr(WSI, 'skillActivatedAuraName')
+    if cur and 'adrenaline_fx01' in str(cur[0]).lower():
+        db.set_field(WSI, 'skillActivatedAuraName',
+                     'records\\effects\\default\\buff07.dbr', DATA_TYPE_STRING)
+    nymph_ctrl = 'records\\skills\\nature\\pet\\controller_nymph01_aggressive.dbr'
+    expect(nymph_ctrl in namemap, f"nymph aggressive controller missing: {nymph_ctrl}")
+    ny = 0
+    for t in range(1, 21):
+        rec = r'records\skills\nature\pet\sylvannymph_%02d.dbr' % t
+        if db.has_record(rec):
+            cur = arr(rec, 'controllerAggressive')
+            if cur and 'controller_nymph01_normal' in str(cur[0]).lower():
+                db.set_field(rec, 'controllerAggressive', nymph_ctrl, DATA_TYPE_STRING)
+                ny += 1
+    print(f"  NATURE wolf/sylvan dangling FX: maul->Damage01, survivalinstinct->Buff07, nymph controllerAggressive repointed on {ny} tier(s)")
+
+    # ---- SPIRIT -----------------------------------------------------------
+    OS = r'records\skills\spirit\drxoutsidersummons.dbr'; need(OS)
+    ocd = arr(OS, 'skillCooldownTime')
+    expect(ocd and abs(ocd[0] - 360.0) < 0.01, f"outsider cd {ocd} != 360")
+    db.set_field(OS, 'skillCooldownTime', 120.0)
+    ott = arr(OS, 'spawnObjectsTimeToLive')
+    expect(ott and abs(ott[0] - 30.0) < 0.01, f"outsider TTL {ott} != 30")
+    db.set_field(OS, 'spawnObjectsTimeToLive', 60.0)
+    print("  SPIRIT outsidersummons (Ether Lord): cd 360->120, TTL 30->60 (~8%->50% uptime; stays temporary)")
+
+    DW = r'records\skills\spirit\drxdeathward.dbr'; need(DW)
+    dcd = arr(DW, 'skillCooldownTime')
+    expect(dcd and abs(dcd[0] - 300.0) < 0.01, f"deathward cd {dcd} != 300")
+    db.set_field(DW, 'skillCooldownTime', 180.0)
+    print("  SPIRIT deathward: cd 300->180 (panic on Cornered-Rage cadence)")
+
+    unpref = plc = 0
+    for t in range(1, 21):
+        rec = r'records\skills\spirit\drxpet\bonepet%02d.dbr' % t
+        need(rec)
+        s4 = arr(rec, 'skillName4')
+        if s4 and str(s4[0]).lower().startswith('xxx'):
+            db.set_field(rec, 'skillName4', str(s4[0])[3:], DATA_TYPE_STRING)
+            unpref += 1
+        s2 = arr(rec, 'skillName2')
+        if s2 and 'drxplaceholder' in str(s2[0]).lower():
+            clear_field(rec, 'skillName2'); plc += 1
+    print(f"  SPIRIT bonepet: spiritbreath 'xxx' unprefixed on {unpref} tier(s); dangling drxplaceholder skillName2 cleared on {plc} tier(s); skillName6 no-op KEPT")
+
+    SBR = r'records\skills\spirit\drxpet\drxpet_skills\bonescourge_spiritbreath.dbr'
+    need(SBR)
+    for f in ('particleEffectName2', 'particleEffectName3'):
+        cur = arr(SBR, f)
+        if cur and 'sandbox' in str(cur[0]).lower():
+            clear_field(SBR, f)
+    print("  SPIRIT bonescourge_spiritbreath: dangling SandBox particleEffectName2/3 cleared (re-enable is clean); wraithlord skellysummon2/3 DEFERRED (pet-cap unverifiable)")
+
+    # ---- DREAM (exact numbers from PART III) ------------------------------
+    tf_cleared = 0
+    for t in range(1, 21):
+        rec = r'records\xpack\skills\dream\pet\nightmare_%02d.dbr' % t
+        need(rec)
+        touched = False
+        for f in ('skillName4', 'buffSelfSkillName'):
+            cur = arr(rec, f)
+            if cur and 'dreampet_timefield' in str(cur[0]).lower():
+                clear_field(rec, f); touched = True
+        if touched:
+            clear_field(rec, 'skillLevel4'); tf_cleared += 1
+    print(f"  DREAM nightmare: dangling timefield self-buff cleared on {tf_cleared} tier(s) (MasterMind repoint already shipped W1 B5)")
+
+    PH = r'records\xpack\skills\dream\drxphantasm.dbr'; need(PH)
+    pcd = arr(PH, 'skillCooldownTime')
+    expect(pcd and abs(pcd[0] - 180.0) < 0.01, f"phantasm cd {pcd} != 180")
+    db.set_field(PH, 'skillCooldownTime', 120.0)
+    ptt = arr(PH, 'spawnObjectsTimeToLive')
+    expect(ptt and len(ptt) == 20 and abs(ptt[0] - 15.0) < 0.01 and abs(ptt[-1] - 25.0) < 0.01,
+           f"phantasm TTL {ptt and (ptt[0], ptt[-1], len(ptt))} != (15,25,20)")
+    db.set_field(PH, 'spawnObjectsTimeToLive',
+                 [round(15.0 + 15.0 * i / 19.0, 1) for i in range(20)])
+    print("  DREAM phantasm: cd 180->120; TTL 15..25 -> 15..30 (~14%->~30% uptime)")
+
+    pl_clear = 0
+    for t in range(1, 21):
+        rec = r'records\xpack\skills\dream\drxpet\phantasm_%02d.dbr' % t
+        need(rec)
+        lf = arr(rec, 'lootFinger1Item2')
+        if lf and 'ringall' in str(lf[0]).lower():
+            clear_field(rec, 'lootFinger1Item2'); pl_clear += 1
+    print(f"  DREAM phantasm pet: dangling RingAll loot ref cleared on {pl_clear} tier(s)")
+
+    PB = r'records\xpack\skills\dream\pet\drxnightmare_psionicbeam.dbr'; need(PB)
+    for f in ('offensivePhysicalMin', 'offensiveLifeMin'):
+        v = arr(PB, f)
+        expect(v and len(v) == 20 and abs(v[0] - 8.0) < 0.01 and abs(v[-1] - 66.0) < 0.01,
+               f"psionicbeam {f} {v and (v[0], v[-1], len(v))} != (8,66,20)")
+        db.set_field(PB, f, [round(x * 2.0, 1) for x in v])
+    print("  DREAM nightmare psionicbeam: offensivePhysical/LifeMin [8..66] x2 -> [16..132] (elite-pet share)")
+
+    for rec, mx in ((r'records\xpack\skills\dream\drxdistortreality_temporalrift.dbr', 16),
+                    (r'records\xpack\skills\dream\drxspellbreaker.dbr', 12),
+                    (r'records\xpack\skills\dream\drxspellbreaker_spellshock.dbr', 12)):
+        need(rec)
+        mc = arr(rec, 'skillManaCost'); ul = arr(rec, 'skillUltimateLevel')
+        uln = int(ul[0]) if ul else mx
+        expect(mc and len(mc) == 10 and uln == mx,
+               f"{rec} manaCost/ult {mc and len(mc)}/{uln} != (10,{mx})")
+        step = round(float(mc[-1]) - float(mc[-2]), 2)
+        ext = [round(float(x), 1) for x in mc] + \
+              [round(float(mc[-1]) + step * (k + 1), 1) for k in range(uln - len(mc))]
+        db.set_field(rec, 'skillManaCost', ext)
+    print("  DREAM mana ladders: temporalrift 10->16, spellbreaker 10->12, spellshock 10->12 (continued step)")
+
+    PS = r'records\xpack\skills\dream\drxphantomstrike.dbr'; need(PS)
+    rs = arr(PS, 'characterRunSpeedModifier')
+    expect(rs and abs(rs[0] - (-11.0)) < 0.01 and abs(min(rs) - (-50.0)) < 0.01,
+           f"phantomstrike runspeed {rs and (rs[0], min(rs))} != (-11,-50)")
+    db.set_field(PS, 'characterRunSpeedModifier', [0.0] * len(rs))
+    print(f"  DREAM phantomstrike: self-slow [-11..-50] -> zeroed (len {len(rs)}; blink no longer self-roots; field kept per rule)")
+
+    # ---- RUNEMASTER (slot 11; base-only -> mod overrides) -----------------
+    expect(base_db is not None,
+           "RuneMaster/Neidan need base_db (5th build arg) to override base-only records")
+    RM = r'records\xpack2\skills\runemaster\runemaster_mastery.dbr'
+    if not db.has_record(RM):
+        _import_base_game_record(db, base_db, RM)
+    need(RM)
+    rl = arr(RM, 'characterLife')
+    expect(rl and len(rl) == 40 and abs(rl[0] - 20.0) < 0.01 and abs(rl[-1] - 800.0) < 0.01,
+           f"runemaster life {rl and (rl[0], rl[-1], len(rl))} != (20,800,40)")
+    db.set_field(RM, 'characterLife', [round(29.0 * (i + 1), 1) for i in range(40)])
+    rmn = arr(RM, 'characterMana')
+    expect(rmn in (None, [0.0]) or (rmn and abs(float(rmn[0])) < 0.01),
+           f"runemaster mana already granted: {rmn and rmn[:1]}")
+    db.set_field(RM, 'characterMana', [round(10.0 * (i + 1), 1) for i in range(40)])
+    print("  RUNEMASTER mastery: life 800->1160 (ML40); mana 0->400 (ML40; was the sole 0-mana INT mastery)")
+
+    MA = r'records\xpack2\skills\runemaster\menhiraltar.dbr'
+    if not db.has_record(MA):
+        _import_base_game_record(db, base_db, MA)
+    need(MA)
+    mcd = arr(MA, 'skillCooldownTime')
+    expect(mcd and abs(mcd[0] - 240.0) < 0.01, f"menhiraltar cd {mcd} != 240")
+    db.set_field(MA, 'skillCooldownTime', 120.0)
+    mtt = arr(MA, 'spawnObjectsTimeToLive')
+    if mtt and abs(mtt[0] - 45.0) < 0.01:
+        db.set_field(MA, 'spawnObjectsTimeToLive', 60.0)
+    print("  RUNEMASTER menhiraltar (Guardian Stones): cd 240->120, TTL 45->60 (~19%->~50% pet uptime)")
+
+    # ---- NEIDAN (slot 12; base-only -> mod overrides) ---------------------
+    NM = r'records\xpack4\skills\neidan\neidanmastery.dbr'
+    if not db.has_record(NM):
+        _import_base_game_record(db, base_db, NM)
+    need(NM)
+    nl = arr(NM, 'characterLife')
+    expect(nl and len(nl) == 40 and abs(nl[0] - 22.5) < 0.01 and abs(nl[-1] - 900.0) < 0.01,
+           f"neidan life {nl and (nl[0], nl[-1], len(nl))} != (22.5,900,40)")
+    db.set_field(NM, 'characterLife', [round(26.25 * (i + 1), 2) for i in range(40)])
+    print("  NEIDAN mastery: life 900->1050 (ML40; still squishiest/caster-leaning)")
+
+    TS = r'records\xpack4\skills\neidan\terracotta_servant.dbr'
+    if not db.has_record(TS):
+        _import_base_game_record(db, base_db, TS)
+    need(TS)
+    pl = arr(TS, 'petLimit')
+    expect(pl and len(pl) == 10 and int(pl[0]) == 1 and int(pl[-1]) == 2,
+           f"terracotta petLimit {pl} != [1..2] len10")
+    db.set_field(TS, 'petLimit', [1, 1, 1, 1, 1, 1, 1, 2, 2, 3])
+    print("  NEIDAN terracotta_servant: petLimit [1x9,2] -> [1x7,2,2,3] (2 constructs by skill L8, 3 at L10)")
+
+    DBB = r'records\xpack4\skills\neidan\deathbomb.dbr'
+    if not db.has_record(DBB):
+        _import_base_game_record(db, base_db, DBB)
+    need(DBB)
+    sc = arr(DBB, 'skillCastChance')
+    expect(sc and len(sc) == 16 and abs(sc[0] - 33.0) < 0.01 and abs(sc[-1] - 33.0) < 0.01,
+           f"deathbomb castChance {sc and (sc[0], sc[-1], len(sc))} != (33,33,16)")
+    db.set_field(DBB, 'skillCastChance', [45.0] * 16)
+    print("  NEIDAN deathbomb: skillCastChance 33 -> 45 (x16; corpse-explosion clear engine)")
+
+    SP = r'records\xpack4\skills\neidan\splash.dbr'
+    if not db.has_record(SP):
+        _import_base_game_record(db, base_db, SP)
+    need(SP)
+    dep = arr(SP, 'skillDependancy')
+    expect(not dep, f"splash already has skillDependancy: {dep}")
+    db.set_field(SP, 'skillDependancy',
+                 'records\\xpack4\\skills\\neidan\\shenpao.dbr', DATA_TYPE_STRING)
+    print("  NEIDAN splash (Spreading Influence): +skillDependancy=shenpao (attaches the ML40 modifier)")
+
+    print("  Mastery Wave 2 boosts applied "
+          "(Warfare 4, Nature 4, Spirit 4, Dream 6, RuneMaster 2, Neidan 4)")
+
+
 def fix_broken_mastery_skills(db: ArzDatabase):
     """Fix broken mastery skills across ALL skill trees.
 
@@ -2141,6 +2460,13 @@ def main():
     apply_mastery_wave1_broken_fixes(db, base_db)
     # MASTERY WAVE 1 boosts (Group 2): Defense/Earth/Storm per the audit doc.
     apply_mastery_wave1_boosts(db)
+    # MASTERY WAVE 2 (build32, Group D): Warfare/Nature/Spirit/Dream + the two
+    # DLC masteries RuneMaster/Neidan per the audit doc S3 Wave 2 + Part III.
+    # Needs base_db (still alive here) to import the base-only RuneMaster/Neidan
+    # records as mod overrides. Touches NO anim tables / skillSpecialAnimationName
+    # (the player-anim gate below still passes) and NO Occult/Hunting records
+    # (the golden-freeze gate stays green).
+    apply_mastery_wave2_boosts(db, base_db)
 
     promote_uber_monsters(db)
 

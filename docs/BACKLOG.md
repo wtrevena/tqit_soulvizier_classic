@@ -1,5 +1,30 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🛠️ **BUILD32 SESSION (2026-07-10, autonomous DB-lane, Will blanket sign-off) - SHIPPED GROUPS:**
+> STEP 0 det-2x reproducibility of build31-ship VERIFIED (arz `fc393741` + Text `b7251fd7`
+> BOTH reproduce byte-exact from a clean HEAD rebuild, x2 - no process breach).
+> **Group D = MASTERY WAVE 2** (docs/MASTERY_AUDIT_2026-07-09.md S3 Wave 2 + PART III):
+> Warfare (ancestralhorn/battlestandard uptime, spectralsoldier armband path, warwind feel),
+> Nature (FoN 360->180, petBonus +30%% pet-dmg/+160 prot ML1-40, defensiveConvert malus cleared,
+> wolf/sylvan dangling FX), Spirit (outsider 360->120+TTL60, deathward 300->180, bonepet
+> spiritbreath 'xxx' re-enable + drxplaceholder cleared [skillName6 no-op KEPT], bonescourge FX),
+> Dream (timefield cleared, phantasm uptime, psionicbeam x2, mana-ladder extensions, phantomstrike
+> self-slow zeroed, phantasm loot dangler), RuneMaster (mastery Life 800->1160 + Mana 0->400,
+> menhiraltar cd 240->120) + Neidan (mastery Life 900->1050, terracotta petLimit ->3, deathbomb
+> 33->45%%, splash attached to shenpao) as base->mod overrides. **arz `fc393741` -> `6eb3cd6f`**;
+> Text UNCHANGED (`b7251fd7`, zero new tags = arz-only, NO coupling); Quests/Levels untouched.
+> Record-diff = 6 ADDED (RuneMaster/Neidan overrides) + 118 MODIFIED, **0 REMOVED, 0 unbucketed**
+> (WARFARE 23/NATURE 26/SPIRIT 23/DREAM 46/RUNEMASTER 2/NEIDAN 4). ALL GATES GREEN: player-anim
+> PASS (40 tree skills; splash's PhantomStrike correctly an inert modifier), summon-pets PASS,
+> contracts GATE:PASS, render-chain PASS (22 upstream WARN), golden-freeze Occult/Hunting intact
+> (0 waived). det-2x reproducible. **RuneMaster+Neidan castability CONFIRMED already fixed by
+> Wave 1 B6** (Ensnare/Flamesurge/ThunderClap/Barrage/Crosscut/Hew ported; NOT re-implemented).
+> **DEFERRED (in amgoz1's spirit, honest):** wraithlord skellysummon2/3 re-enable (pet-cap
+> unverifiable without a walk-test); golden-freeze tree expansion to the 7 tuned trees (post-QA
+> per audit S5 - freeze after Will's walk-test, regenerating the snapshot same step).
+> **REMAINING build32 groups (specs intact below):** A Q2 Helos portal-master, B Enslaver,
+> C Vashkarr, E N5 thrown weapons, F N6 obsidian roulette, G N7 wyrm hordes.
+
 > 🌙 **BUILD31 OVERNIGHT RUN (2026-07-10, autonomous per Will) - SHIPPED GROUPS:**
 > Group1 mastery fixes B1-B6 (06a9a24a) -> D19 immobile-summon fix + PET-MOBILITY gate
 > (95e816d3) -> Q3 instant Rhodes unlock + token path + herald NPC (arz bd6ae869 / Quests
