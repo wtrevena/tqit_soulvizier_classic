@@ -5,6 +5,13 @@
 > fix approach → which lane/files. Read docs/HANDOFF_LIVE_STATE.md first for deploy state,
 > then docs/PLAYBOOK.md for how to do each kind of change.
 
+> 🚨 **STANDING RULE (Will, 2026-07-09): NEVER REMOVE SKILLS FROM MASTERIES.** Edit fields =
+> preferred; add new skills/slots = allowed; REMOVE a skill/tree slot = forbidden without Will's
+> explicit per-item approval (removal candidates go on a proposal list back to Will, never into
+> a build); re-enabling disabled original content = encouraged; in-record dangling-ref cleanup =
+> allowed field-editing, but when in doubt treat it as a removal and ask. Full operational text
+> + the Wave 1/2 compliance sweep in the header of docs/MASTERY_AUDIT_2026-07-09.md.
+
 ## 🔴 P0 - visible/blocking, confirmed in-game 2026-07-08
 
 ### B-PORTAL-1: Portals are ugly flat blue panels / hard-to-see arrows
@@ -378,8 +385,31 @@ apply_svc_patches _fix_wave29_contract_items:
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
 ### BUILD31 DB WAVE QUEUE (Will via coordinator, 2026-07-09; batch as one wave)
-Train contents: Enslaver implementation (approved) + N2 Typhon portal visual spec + D11 + D12 +
-D13 + D14 + D15 + N4-DB. Will's standing ruling: only convert summon-souls he EXPLICITLY names.
+Train contents (commit-group order per coordinator 2026-07-09): (1) MASTERY WAVE 1 broken fixes
+B1-B6 + the new player-skill-anim gate, (2) Mastery Wave 1 Defense/Earth/Storm boosts, (3) D11 +
+D12 + D15, (4) D13 + D14, (5) Enslaver (approved), (6) N4-DB Vashkarr, (7) N2 Typhon portal
+visual ONLY IF the map lane's M8 report says the DB-side change still applies (ask coordinator
+first). Mastery specs = docs/MASTERY_AUDIT_2026-07-09.md (§2 broken fixes, §3 Wave 1; the
+no-removal standing rule in its header is BINDING). Broken player skills outrank feature items.
+Each group: gates + bucketed record-diff + commit; whole set -> independent delta-vet before
+ship (coordinator dispatches); DEV-deploy for Will after major groups is fine (local only).
+Will's standing ruling: only convert summon-souls he EXPLICITLY names.
+
+### BUILD32 TRAIN (queued 2026-07-09; implement AFTER build31 ships)
+- **MASTERY WAVE 2** per docs/MASTERY_AUDIT_2026-07-09.md §3 Wave 2: Warfare (horn/standard
+  uptime, armband path fix, optional warwind), Nature (force-of-nature 360->180, petBonus ML1-40
+  ramp w/ overshoot check, defensiveConvert artifact zeroing, wolf FX hygiene), remaining Spirit
+  (outsider 360->120 + TTL 60, deathward 300->180, bonepet xxx-spiritbreath re-enable +
+  placeholder cleanup - skillName6 no-op = KEEP or EDIT, never remove, per the standing rule),
+  remaining Dream (timefield dead-ref clear, phantasm uptime, psionic beam, mana-ladder
+  extensions, phantomstrike self-slow = EDIT to zero/flip not remove, phantasm loot dangler),
+  RuneMaster tunes (castability breakage may already be covered in build31 group 1 via the
+  anim-table restoration - verify before re-implementing), Neidan tunes (mastery-bar stat-stick
+  question = Will decision, splash modifier attachment = verify EE semantics first).
+  ⚠️ Dream truncation note: §3 Wave 2 Dream items 2-6 numbers are reconstructed - pull the FULL
+  Dream boosts block from Part III (the Dream lane's boosts array) for exact targets before
+  writing. ⚠️ Golden-freeze expansion decision (doc §5): freeze the tuned trees AFTER each
+  wave's QA, regenerating the snapshot in the same step.
 - **N4-DB: Forest of the Ancients cave boss - WILL SIGNED OFF w/ amendments (2026-07-09).**
   Full design = the FotA design agent's final report (coordinator-held). Placement: Random05A.lvl
   cave via ToTomb02 east of Chang'an; Majestic Chest at local (24.01,1.00,28.70) stays UNTOUCHED.

@@ -3,6 +3,25 @@
 > Produced by the 11-agent exhaustive audit (workflow wf_c05e6c83-4b0). Occult + Hunting = FROZEN benchmarks, never modified.
 > Will approved BOTH WAVES 2026-07-09. Wave 1 = 6 broken fixes + Defense/Earth/Storm; Wave 2 = the rest.
 
+> 🚨 **STANDING DIRECTIVE (Will, 2026-07-09, binding on ALL mastery work): NEVER REMOVE SKILLS
+> FROM MASTERIES.** Verbatim: "editing skills is probably preferred, but we can add new skills,
+> i just dont want to arbitrarily delete things for cleanliness, i want to be very careful about
+> preserving much of the original work and intent of the original devs." Operational rules:
+> (1) EDIT existing skills' fields = preferred; (2) ADD new skills/tree slots = allowed;
+> (3) REMOVE a skill or tree slot = FORBIDDEN without Will's explicit per-item approval - if
+> something SHOULD be removed it goes on a proposal list back to Will, never into a build;
+> (4) re-enabling DISABLED original content (xxx-prefixed spiritbreath, wraithlord skelly
+> summons, the dead MasterMind aura) = ENCOURAGED (preserves original dev intent);
+> (5) dangling-ref cleanup INSIDE a record (dead particleEffectName, placeholder skillName
+> slots on PET records) = field-editing, allowed - if in doubt whether something removes
+> player-facing content, treat it as (3).
+> **Compliance status of this doc's plan (swept 2026-07-09): COMPLIES - zero tree-slot or
+> skill removals in either wave.** Three rule-5 borderline items flagged for careful handling:
+> Nature defensiveConvert zeroing (hidden self-malus copy-paste artifact = field edit, allowed);
+> Spirit bonepet skillName6 no-op drop (borderline - implement as KEEP or EDIT, not removal,
+> unless Will approves); Dream phantomstrike self-slow "remove or flip" (implement as EDIT:
+> zero/flip the values, never delete the field).
+
 # PART I - THE MASTER PLAN (synthesis)
 
 I have everything I need. The golden-freeze scoping is confirmed (`MASTERIES = {'5':'Occult','6':'Hunting'}`, line 47 — both `capture()` and `_diff()` iterate only those two slots), and the cast-abort castability logic already exists and is certified in `validate_soul_augments.py` (`_pc_universal_anims()` + the StartSkill-abort gate) but is scoped to souls only — which is exactly why the three mastery-tree anim bugs shipped. Synthesizing the master doc now.
