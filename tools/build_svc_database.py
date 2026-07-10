@@ -2468,6 +2468,18 @@ def main():
     # (the golden-freeze gate stays green).
     apply_mastery_wave2_boosts(db, base_db)
 
+    # ── GROUP E (build32, N5 thrown weapons): both halves need base_db (del'd
+    # below), so they run here. (1) faithfully restore the base game's roh
+    # (thrown) drops that SV dropped from its defaultloot overrides; (2) author
+    # 3 Legendary supra thrown weapons + 3 ItemArtifactFormula recipes wired into
+    # the supra tables. thrown_tags is merged into uber_soul_tags.txt below so
+    # build_text_arc emits the supra/recipe names (validate_tags gates them).
+    from apply_svc_patches import (_restore_thrown_weapon_drops,
+                                   _add_supra_thrown_weapons)
+    print("\n=== GROUP E: N5 thrown weapons (drop restore + supra) ===")
+    _restore_thrown_weapon_drops(db, base_db)
+    thrown_tags = _add_supra_thrown_weapons(db, base_db)
+
     promote_uber_monsters(db)
 
     create_uber_dungeon_portal(db, base_db)
@@ -2618,7 +2630,9 @@ def main():
             f.write(f"{tag}={value}\n")
         for tag, value in extended_tags.items():
             f.write(f"{tag}={value}\n")
-    print(f"  Tags file: {tags_path} ({len(text_tags)} uber + {len(legacy_tags)} legacy + {len(extended_tags)} extended)")
+        for tag, value in thrown_tags.items():   # GROUP E (N5 supra thrown weapons)
+            f.write(f"{tag}={value}\n")
+    print(f"  Tags file: {tags_path} ({len(text_tags)} uber + {len(legacy_tags)} legacy + {len(extended_tags)} extended + {len(thrown_tags)} thrown)")
 
     fix_soul_bitmaps(db)
 

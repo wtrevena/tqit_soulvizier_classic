@@ -2,6 +2,31 @@
 
 > 🛠️ **BUILD32 FINAL-CONTENT SESSION (2026-07-10, autonomous DB-lane) - GROUPS F/E/B:**
 > Baseline = HEAD e3ab0a6 (arz 27e6742 / Text cf3cb227 / Quests 6ff23c29, det-2x).
+> **GROUP E = N5 THROWN WEAPONS (BACKLOG N5, Will approved all designer recs).** Two halves,
+> both run in build_svc_database.main() while base_db is alive (del'd before apply_all_extended):
+> (1) `_restore_thrown_weapon_drops(db, base_db)` - the base game drops roh (ranged-one-hand =
+> thrown) weapons from Act1-4 monsters via loot6Name5 (static_roh_NN @ w400) + loot6Name6
+> (roh_NN @ band weight) on its defaultloot tables; SV DROPPED these in its overrides. Restore
+> them VERBATIM (level-matched by the same-named base twin), only into an ACTIVE loot6 slot whose
+> Name5/6 are EMPTY (never clobber SV; recon proved all 198 eligible twins have empty Name5/6 +
+> live loot6Chance). Fail-loud count gate: restored == eligible-skipped and >= 150; got 198/198,
+> skipped 0. (2) `_add_supra_thrown_weapons(db, base_db)` - 3 Legendary supra thrown weapons
+> `svc_wep_{sanguineorbit,lastword,charonstoll}` built by copying the base roh uniques that carry
+> the design meshes (u_l_03=chakramofthesun01 / us_l_donarsmight=mjolnir01 / u_n_12=fingerofcharon01),
+> clearing the donor's native offensive stats, and retuning to wep_spear supra conventions
+> (itemLevel/lvlReq 65, Legendary, itemcost_uniquelegendary_primary, DRX trail_wep_dagger,
+> augmentAllLevel 1, numRelicSlots 1, hidePrefix/Suffix) + the u_l_05/09/08 projectiles + a fresh
+> thematic stat block (Sanguine=phys/bleed/leech, LastWord=phys/lightning/stun + kept
+> proj_chainlightning, Charon=phys/vitality/manaburn). 3 ItemArtifactFormula `svc_thrown_*_formula`
+> cloned from wep_spear_formula (kept the big affix pools + 03_act4_offense bonus; reagents 1L u_l_08
+> + 1E u_e_06 + 1MI mi_l_machae; 500k/10M costs) wired into supra.dbr lootName25-27 + supra_special
+> lootName26-28 @ w100. D5 mesh re-scan: all 3 supers' meshes + projectiles + trail RESOLVE.
+> **ARTIFACTS: arz 79daa74e, Text (6 new tags, coupled).** Record-diff vs 674f31b4 (post-F) = 6
+> ADDED (3 supra weapons + 3 formulas) + 200 MODIFIED (198 defaultloot roh restore + supra.dbr +
+> supra_special.dbr) + 0 REMOVED, 0 collateral. Gates GREEN: container loot-shape contract PASS
+> (restored slots valid), summon-pet/render/golden PASS, validate_tags PASS (122 mod tags),
+> contracts GATE PASS (0 P1, no E record flagged), STRICT 0.
+> 
 > **GROUP F = N6 OBSIDIAN HALLS TREASURE ROULETTE (docs/OBSIDIAN_ROULETTE_DESIGN.md,
 > all decisions locked; map-unblocking - the map lane M10 waits on the q_obs_roulette
 > records):** apply_svc_patches `_create_obsidian_roulette`. FOUR guardian bosses derived

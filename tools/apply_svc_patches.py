@@ -10225,6 +10225,262 @@ def _create_obsidian_roulette(db, tags):
           "4 souls (Voranthys summons; Sarkoth/Gorrahk manual; Ilsevar proc); tags set")
 
 
+# ── GROUP E (build32): N5 Thrown Weapons in the campaign ─────────────────────
+# Will APPROVED at all designer recommendations (BACKLOG N5). Two halves:
+#   (1) _restore_thrown_weapon_drops(db, base_db): the base game drops thrown
+#       weapons (roh = ranged-one-hand) from Act-1..4 monsters via loot6Name5
+#       (static_roh_NN @ w400) + loot6Name6 (roh_NN @ band weight) on its
+#       defaultloot tables; SV DROPPED these when it overrode the tables. Copy
+#       them back VERBATIM (level-matched by the same-named base twin), only into
+#       an ACTIVE loot6 slot whose Name5/Name6 are EMPTY (never clobber SV). Runs
+#       in main() while base_db is alive; fail-loud restored-count gate.
+#   (2) _add_supra_thrown_weapons(db, base_db): 3 Legendary supra thrown weapons
+#       (Sanguine Orbit / The Last Word / Charon's Toll) built from the base roh
+#       uniques carrying the design meshes (chakramofthesun01 / mjolnir01 /
+#       fingerofcharon01) + the u_l_05/09/08 projectiles + DRX supra trail, retuned
+#       to the wep_spear supra conventions; 3 ItemArtifactFormula records mirroring
+#       wep_spear_formula (1L u_l_08 + 1E u_e_06 + 1MI mi_l_machae reagents,
+#       03_act4_offense bonus) wired into supra.dbr lootName25-27 + supra_special
+#       26-28 @ w100. (Both run in main(): they need base_db, which is del'd before
+#       apply_all_extended_patches.)
+_E_DL_MARK = 'containers\\defaultloot\\'
+# 3 supra thrown weapons (crafted artifacts).
+_E_SUPRA_WPN = {
+    'sanguineorbit': r'records\drxitem\supra\svc_wep_sanguineorbit.dbr',
+    'lastword':      r'records\drxitem\supra\svc_wep_lastword.dbr',
+    'charonstoll':   r'records\drxitem\supra\svc_wep_charonstoll.dbr',
+}
+# base roh donor per super (carries the design mesh + a complete valid roh weapon).
+_E_SUPRA_DONOR = {
+    'sanguineorbit': r'records\xpack2\item\equipmentweapons\1hranged\u_l_03.dbr',           # chakramofthesun01
+    'lastword':      r'records\xpack2\item\equipmentweapons\1hranged\us_l_donarsmight.dbr',  # mjolnir01
+    'charonstoll':   r'records\xpack2\item\equipmentweapons\1hranged\u_n_12.dbr',            # fingerofcharon01
+}
+_E_SUPRA_PROJ = {
+    'sanguineorbit': r'records\xpack2\item\equipmentweapons\1hranged\projectiles\u_l_05.dbr',
+    'lastword':      r'records\xpack2\item\equipmentweapons\1hranged\projectiles\u_l_09.dbr',
+    'charonstoll':   r'records\xpack2\item\equipmentweapons\1hranged\projectiles\u_l_08.dbr',
+}
+_E_SUPRA_TAG = {
+    'sanguineorbit': 'tagSVCwpnSanguineOrbit',
+    'lastword':      'tagSVCwpnLastWord',
+    'charonstoll':   'tagSVCwpnCharonsToll',
+}
+_E_SUPRA_TRAIL = r'records\drxeffects\item\trail_wep_dagger.dbr'         # DRX supra trail (thrown blade)
+_E_SUPRA_COSTNAME = r'records\game\itemcost_uniquelegendary_primary.dbr'  # wep_spear supra cost
+_E_FORMULA_DONOR = r'records\drxitem\supra\zrecipes\wep_spear_formula.dbr'
+_E_FORMULA = {
+    'sanguineorbit': r'records\drxitem\supra\zrecipes\svc_thrown_sanguineorbit_formula.dbr',
+    'lastword':      r'records\drxitem\supra\zrecipes\svc_thrown_lastword_formula.dbr',
+    'charonstoll':   r'records\drxitem\supra\zrecipes\svc_thrown_charonstoll_formula.dbr',
+}
+_E_FORMULA_TAG = {
+    'sanguineorbit': 'tagSVCRecipeSanguineOrbit',
+    'lastword':      'tagSVCRecipeLastWord',
+    'charonstoll':   'tagSVCRecipeCharonsToll',
+}
+# reagents: 1 Legendary + 1 Epic + 1 MI thrown weapon (all base roh uniques).
+_E_REAGENTS = [
+    r'records\xpack2\item\equipmentweapons\1hranged\u_l_08.dbr',       # 1L
+    r'records\xpack2\item\equipmentweapons\1hranged\u_e_06.dbr',       # 1E
+    r'records\xpack2\item\equipmentweapons\1hranged\mi_l_machae.dbr',  # 1MI
+]
+_E_SUPRA_TABLE = r'records\xpack\item\loottables\arcaneformulae\supra.dbr'
+_E_SUPRA_SPECIAL = r'records\xpack\item\loottables\arcaneformulae\supra_special.dbr'
+# per-super Legendary supra stat block + name value.
+_E_SUPRA_STATS = {
+    'sanguineorbit': {
+        'name': 'Sanguine Orbit',
+        'stats': {
+            'offensivePhysicalMin': 180.0, 'offensivePhysicalMax': 215.0, 'offensivePhysicalModifier': 30.0,
+            'offensiveSlowBleedingMin': 350.0, 'offensiveSlowBleedingDurationMin': 3.0,
+            'offensiveSlowBleedingChance': 100.0,
+            'offensiveLifeLeechMin': 80.0, 'offensiveLifeLeechChance': 100.0,
+            'offensivePierceRatioMin': 25.0,
+            'characterAttackSpeedModifier': 25.0,
+            'characterDexterity': 60.0, 'characterLife': 200.0, 'characterOffensiveAbility': 80.0,
+        }},
+    'lastword': {
+        'name': 'The Last Word',
+        'stats': {
+            'offensivePhysicalMin': 300.0, 'offensivePhysicalMax': 360.0, 'offensivePhysicalModifier': 25.0,
+            'offensiveLightningMin': 5.0, 'offensiveLightningMax': 500.0,
+            'offensiveStunMin': 1.0,
+            'characterStrength': 80.0, 'characterLife': 250.0, 'characterOffensiveAbility': 90.0,
+        }},
+    'charonstoll': {
+        'name': "Charon's Toll",
+        'stats': {
+            'offensivePhysicalMin': 180.0, 'offensivePhysicalMax': 210.0, 'offensivePhysicalModifier': 20.0,
+            'offensiveLifeMin': 60.0, 'offensiveLifeMax': 90.0, 'offensiveLifeModifier': 20.0,
+            'offensiveSlowLifeMin': 60.0, 'offensiveSlowLifeMax': 90.0, 'offensiveSlowLifeDurationMin': 5.0,
+            'offensiveManaBurnDrainMin': 20.0,
+            'offensiveLifeLeechMin': 60.0, 'offensiveLifeLeechChance': 100.0,
+            'characterIntelligence': 60.0, 'characterLife': 200.0, 'characterOffensiveAbility': 80.0,
+        }},
+}
+
+
+def _resolve_in(db_, path):
+    """Case/slash-tolerant exact resolution against a db's record table."""
+    want = str(path).replace('/', '\\').lower()
+    for n in db_.record_names():
+        if n.replace('/', '\\').lower() == want:
+            return n
+    return None
+
+
+def _restore_thrown_weapon_drops(db, base_db):
+    """N5 (Group E) part 1: faithful base-game thrown-weapon (roh) drop restore."""
+    if base_db is None:
+        print("  N5 thrown drops: base_db unavailable; SKIPPED")
+        return 0
+    S, I = DATA_TYPE_STRING, DATA_TYPE_INT
+
+    def gv(db_, rec, f):
+        v = db_.get_field_value(rec, f)
+        return (v[0] if isinstance(v, list) else v)
+
+    base_map = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
+    eligible = restored = skipped = 0
+    for n in db.record_names():
+        nl = n.replace('/', '\\').lower()
+        if _E_DL_MARK not in nl:
+            continue
+        bn = base_map.get(nl)
+        if not bn:
+            continue
+        b5 = str(gv(base_db, bn, 'loot6Name5') or '')
+        b6 = str(gv(base_db, bn, 'loot6Name6') or '')
+        if 'roh' not in b5.lower() and 'roh' not in b6.lower():
+            continue
+        eligible += 1
+        m5 = str(gv(db, n, 'loot6Name5') or '')
+        m6 = str(gv(db, n, 'loot6Name6') or '')
+        mch = gv(db, n, 'loot6Chance')
+        # only a live loot6 group with empty Name5/6 (never clobber SV; a name in
+        # a dormant chance-0 slot would break the container loot-shape gate).
+        if m5.strip() or m6.strip() or not mch or float(mch) <= 0:
+            skipped += 1
+            continue
+        if b5.strip():
+            db.set_field(n, 'loot6Name5', b5, S)
+            db.set_field(n, 'loot6Weight5', int(gv(base_db, bn, 'loot6Weight5') or 0), I)
+        if b6.strip():
+            db.set_field(n, 'loot6Name6', b6, S)
+            db.set_field(n, 'loot6Weight6', int(gv(base_db, bn, 'loot6Weight6') or 0), I)
+        db._modified.add(n)
+        restored += 1
+    print(f"  N5 thrown-weapon drops RESTORED: {restored} defaultloot tables "
+          f"(eligible {eligible}, skipped-occupied {skipped})")
+    if restored != (eligible - skipped) or restored < 150:
+        raise SystemExit(
+            f"N5 thrown-drop restore count gate FAILED: restored={restored} != "
+            f"eligible-skipped={eligible - skipped} (or < 150). The base roh drop "
+            f"pattern changed - reverify before shipping.")
+    return restored
+
+
+def _add_supra_thrown_weapons(db, base_db):
+    """N5 (Group E) part 2: 3 supra thrown weapons + 3 formulas + supra wiring.
+    Returns the Text tags dict (merged into uber_soul_tags.txt by main())."""
+    tags = {}
+    if base_db is None:
+        print("  N5 supra thrown: base_db unavailable; SKIPPED")
+        return tags
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── the 3 supra weapons (copy the base roh donor's full field set into a mod
+    #    supra path so the weapon is structurally complete, then override to
+    #    Legendary supra conventions + a fresh thematic stat block). ──
+    for key, dest in _E_SUPRA_WPN.items():
+        bn = _resolve_in(base_db, _E_SUPRA_DONOR[key])
+        if not bn:
+            raise SystemExit(f"N5 supra: base donor missing: {_E_SUPRA_DONOR[key]}")
+        fields = base_db.get_fields(bn) or {}
+        template = ''
+        for k, tf in fields.items():
+            if k.split('###')[0] == 'templateName' and tf.values:
+                template = str(tf.values[0]); break
+        _ensure_record(db, dest, template)
+        # copy every donor field verbatim (complete valid roh weapon)...
+        for k, tf in fields.items():
+            fn = k.split('###')[0]
+            vals = list(tf.values) if tf.values else []
+            if len(vals) == 1:
+                db.set_field(dest, fn, vals[0], tf.dtype)
+            elif len(vals) > 1:
+                db.set_field(dest, fn, vals, tf.dtype)
+        # ...then CLEAR the donor's offensive/retaliation/character bonus stats so
+        # its native element does not bleed into the retheme.
+        ff = db.get_fields(dest)
+        for k in [k for k in list(ff) if k.split('###')[0].startswith(
+                ('offensive', 'retaliation', 'characterDexterity',
+                 'characterStrength', 'characterIntelligence', 'characterLife',
+                 'characterOffensiveAbility', 'characterAttackSpeedModifier'))]:
+            del ff[k]
+        # supra conventions (wep_spear parity): L65 Legendary, DRX trail, supra
+        # cost, hide affix names, +1 all skills, 1 relic slot, design projectile.
+        db.set_field(dest, 'itemClassification', 'Legendary', S)
+        db.set_field(dest, 'itemLevel', 65, I)
+        db.set_field(dest, 'levelRequirement', 65, I)
+        db.set_field(dest, 'itemCostName', _E_SUPRA_COSTNAME, S)
+        db.set_field(dest, 'weaponTrail', _E_SUPRA_TRAIL, S)
+        db.set_field(dest, 'basicProjectileName', _E_SUPRA_PROJ[key], S)
+        db.set_field(dest, 'itemNameTag', _E_SUPRA_TAG[key], S)
+        db.set_field(dest, 'FileDescription', 'SVC N5 supra thrown weapon: '
+                     + _E_SUPRA_STATS[key]['name'], S)
+        db.set_field(dest, 'augmentAllLevel', 1, I)
+        db.set_field(dest, 'numRelicSlots', 1, I)
+        db.set_field(dest, 'hidePrefixName', 1, I)
+        db.set_field(dest, 'hideSuffixName', 1, I)
+        # (keep the donor's native inventory bitmap/mesh/textures - the DRX
+        #  recipe bitmap belongs on the FORMULA scroll, not the weapon.)
+        for fn, v in _E_SUPRA_STATS[key]['stats'].items():
+            db.set_field(dest, fn, float(v), F)
+        db._modified.add(dest)
+        tags[_E_SUPRA_TAG[key]] = _E_SUPRA_STATS[key]['name']
+
+    # ── the 3 formulas (clone the wep_spear formula = a MOD record; keep its big
+    #    affix pools + bonus table, repoint artifactName + reagents + costs). ──
+    for key in _E_SUPRA_WPN:
+        fdest = _E_FORMULA[key]
+        if not db.has_record(_E_FORMULA_DONOR):
+            raise SystemExit(f"N5 supra: formula donor missing: {_E_FORMULA_DONOR}")
+        db.clone_record(_E_FORMULA_DONOR, fdest)
+        db.set_field(fdest, 'artifactName', _E_SUPRA_WPN[key])
+        db.set_field(fdest, 'reagent1BaseName', _E_REAGENTS[0])
+        db.set_field(fdest, 'reagent2BaseName', _E_REAGENTS[1])
+        db.set_field(fdest, 'reagent3BaseName', _E_REAGENTS[2])
+        db.set_field(fdest, 'description', _E_FORMULA_TAG[key])
+        db.set_field(fdest, 'FileDescription',
+                     'SVC N5 supra thrown formula: ' + _E_SUPRA_STATS[key]['name'])
+        db.set_field(fdest, 'artifactCreationCost', 10000000)
+        db.set_field(fdest, 'itemCost', 500000)
+        db._modified.add(fdest)
+        tags[_E_FORMULA_TAG[key]] = 'Arcane Formula - ' + _E_SUPRA_STATS[key]['name']
+
+    # ── wire the formulas into the supra tables at the next free lootName slot. ──
+    def _next_slot(table):
+        i = 1
+        while db.get_field_value(table, f'lootName{i}') not in (None, '', 0):
+            i += 1
+        return i
+
+    for table in (_E_SUPRA_TABLE, _E_SUPRA_SPECIAL):
+        if not db.has_record(table):
+            raise SystemExit(f"N5 supra: loot table missing: {table}")
+        for key in _E_SUPRA_WPN:
+            slot = _next_slot(table)
+            db.set_field(table, f'lootName{slot}', _E_FORMULA[key], S)
+            db.set_field(table, f'lootWeight{slot}', 100, I)
+        db._modified.add(table)
+
+    print(f"  N5 supra thrown weapons: 3 supers ({', '.join(v['name'] for v in _E_SUPRA_STATS.values())}) "
+          f"+ 3 formulas wired into supra.dbr + supra_special.dbr @ w100")
+    return tags
+
+
 def _wire_blood_toxeus_loot(db):
     """Wire the guaranteed-set-piece + high-bleed tables onto Hemorrheus (§3.3).
 
