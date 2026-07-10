@@ -379,7 +379,48 @@ apply_svc_patches _fix_wave29_contract_items:
 
 ### BUILD31 DB WAVE QUEUE (Will via coordinator, 2026-07-09; batch as one wave)
 Train contents: Enslaver implementation (approved) + N2 Typhon portal visual spec + D11 + D12 +
-D13 + D14 + D15. Will's standing ruling: only convert summon-souls he EXPLICITLY names.
+D13 + D14 + D15 + N4-DB. Will's standing ruling: only convert summon-souls he EXPLICITLY names.
+- **N4-DB: Forest of the Ancients cave boss - WILL SIGNED OFF w/ amendments (2026-07-09).**
+  Full design = the FotA design agent's final report (coordinator-held). Placement: Random05A.lvl
+  cave via ToTomb02 east of Chang'an; Majestic Chest at local (24.01,1.00,28.70) stays UNTOUCHED.
+  Band/HP APPROVED: charLevel [38,56,71], HP [12000,16500,21000].
+  WILL'S DECISIONS: identity = (B) `{^r}Vashkarr, Eldest of the Ancients`, ANCIENT DRAGONIAN
+  warlord, mesh `Creatures\Monster\Dragonian\AncientDragonian01.msh`; derive the kit from the
+  DRAGONIAN family for anim-safety (NOT the option-A djinn donor). Escort = FULL-STRENGTH
+  dragonian lieutenants (pool spawnMax=3, championChance=100, championMax=2 - satisfies
+  spawnMax-championMax>=1): Vashkarr + 2 serious dragonians ALWAYS. Minions ("he should also be
+  able to spawn many minions very often") = frequent minion-summon on his kit: clone the
+  yaoguai_summonshadowstalkers Skill_SpawnPetMonster pattern -> DRAGONIAN fodder, short cooldown,
+  multiple per cast; exact numbers in the implementation sign-off. SOUL = NO SUMMON ("it can just
+  be really good"): vashkarr_soul_{n,e,l} = dense aggressive STAT suite at the band, richer than
+  the Narok/Vort suites, {^F} tag ('Soul of the Eldest' or similar), 66% drop via
+  SVC_RELEASE_DROPS, validate_soul_augments green.
+  RECON (build30.2 arz, verified on-disk): `AncientDragonian01.msh` SHIPS on 7 records
+  (bm_deathlance_32/34/36 + bm_ravager_31/33/35/37, Common L31-37) = the anim-safety derivation
+  base; variants AncientDragonianB01.msh (bs_warlock Champions L34/37/40), AncientDragonianC01.msh
+  (br_frostscourge). ESCORT CANDIDATES at band: Champions bs_warlock_40 (ancient-B caster,
+  visually kin), em_ravager_41 (flameguardmesh), savage_deathlance_39; dragonian Heroes
+  um_mukashi_38 / um_bloodskinner_40 / um_wisang_43 / um_mountainblade_43 (CAVEAT: hero escorts
+  each 66%-drop their own souls per kill and Mountainblade is already a summon-boss soul - decide
+  if that double reward is intended; the visually-kin pick = bs_warlock + a deathlance/ravager-
+  derived full-strength champion clone). CEILING NOTE: shipped dragonians top out at L43, so
+  escorts + minions need charLevel [38,56,71] laddered clones for epic/legendary (the
+  replicant_41 [41,58,71] pattern). MINION FODDER pick: bm_ravager / bm_deathlance derived (SAME
+  ancient mesh = literally 'the Ancients'); proposed cadence for sign-off: burst 3 per cast,
+  ~6 s cooldown, minion charLevel [38,56,71] (tune off the decoded donor - VERIFIED at
+  records\skills\boss skills\yaoguai_summonshadowstalkers.dbr, plus a skills\skills\ alias).
+  PROXY: q_vashkarr_lone (chanceToRun=100) staged in BOTH drxmap\proxy\ and drxmap\proxy\pools\
+  per the verified q_bloodtoxeus_lone precedent; limit/difficulty donors ON DISK:
+  records\proxies boss\herolimit_all.dbr (verified present); NOTE 'HeroDifficulty_01' does NOT
+  exist as a record-name substring - on-disk difficulty donors are the difficulty_01..04
+  families (records\proxies orient\, xpack\proxieshades\) + xpack bossdifficulty_01; pull the
+  EXACT donor path from the design doc (donor-verbatim rule). Boss passives suite per design
+  section 4 (boss_conversionimmunity, all_hpscaling, boss_scaling, globalproperties
+  epic/legendary boss, monsterClassification=Boss). RENDER LAW on AncientDragonian01.msh + skin
+  (EngineArcResolver). Records: um_vashkarr_99 (named path preferred) + proxy + pool + minion
+  skill + soul + tags (validate_tags). MAP-SIDE DEPENDENCY: these records MUST land in the
+  build31 arz BEFORE the map lane injects the placement (MAP-REF-1); the map lane adds the v0e
+  routing case + INJECT_SPECS in its next wave. All gates + bucketed record-diff.
 - **D11: Rally** (coordinator holds the brief).
 - **D12: Coastal Ichthian Myrmidon soul boost** (coordinator brief 2026-07-09).
 - **D15: reward-potion name colors** (Will: Fortitude + skill-point potions should be the same
