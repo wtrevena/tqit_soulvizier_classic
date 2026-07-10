@@ -66,6 +66,15 @@ TEXT_FIX_TAGS = {
     # resolved by QUEST_INTEGRATION_TAGS below (tagLOCATIONTAGTESTER /
     # tagTitleTagTESTER); do not redefine them here or the duplicate-tag gate
     # fails (verified 2026-07-08, build29).
+    # D15 (Will, build31): Fortitude + skill-point potions get the same dark
+    # red ^M color as the experience potions (tagNewItem6=^MPotion of
+    # Experience). Each tag is used by EXACTLY ONE record (arz-wide reverse
+    # scan, zero sharing - see BACKLOG D15 recon). SV-upstream tags, so the
+    # override rides this sanctioned single-definition block.
+    'tagNewItem3': '^MLesser Potion of Fortitude',
+    'tagNewItem70': '^MPotion of Fortitude',
+    'tagNewItem4': '^MLesser Potion of Learning',
+    'tagNewItem69': '^MPotion of Learning',
 }
 
 # The union skip-set: any key in here is emitted ONLY by the fix block.

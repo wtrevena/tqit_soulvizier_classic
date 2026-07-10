@@ -8733,6 +8733,146 @@ def _create_olympus_rhodes_herald(db, tags):
           "boatman (proven boat-dialog NPC shape); name/chat/travel tags set")
 
 
+# ── GROUP 3 (build31, overnight autonomous run): D11/D12/D16/D17/D18 ────────
+def _apply_group3_tunes(db, tags):
+    """D11 Rally cd 45->30; D12 Coastal Ichthian Myrmidon soul big boost;
+    D16 Shadow Stalker overhaul (Will-ordered Occult exception: the suicide
+    position-swap skill_shadowstrike [Skill_AttackSpellTeleport, teleports the
+    squishy pet into packs] is SUBSTITUTED with the shadow distortion field -
+    a defensive veil - plus a real stat ladder; golden drift rides
+    owner_approved_overrides = Will's per-item sign-off mechanism);
+    D17 Core Dweller much stronger (Will: 'make the volcano guy much
+    stronger'); D18a Emberscale icon de-turtled (raptor-tooth family art =
+    reptilian scale read); D18b Emberscale effect redesign (armor-melt out;
+    escalating dragonfire in: big fire amp + burn-over-time on a weapons-only
+    charm)."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    def val(rec, f):
+        v = db.get_field_value(rec, f)
+        if isinstance(v, list):
+            return v[0] if v else None
+        return v
+
+    # ── D11: Rally cooldown 45 -> 30 (party heal-burst uptime) ──
+    RB = r'records\skills\defensive\drxrallybuff.dbr'
+    if not db.has_record(RB):
+        raise SystemExit('G3 D11: drxrallybuff missing')
+    cur = val(RB, 'skillCooldownTime')
+    if abs(float(cur) - 45.0) > 0.01:
+        raise SystemExit(f'G3 D11: rally cd {cur} != 45 - spec drift')
+    sf(RB, 'skillCooldownTime', 30.0)
+    print('  G3 D11 Rally: cooldown 45 -> 30')
+
+    # ── D12: Coastal Ichthian Myrmidon souls - big boost ──
+    d12 = {
+        'n': dict(life=250.0, oa=60.0, cmin=15.0, cmax=25.0, cmod=20, res=20.0, atk=8.0),
+        'e': dict(life=450.0, oa=120.0, cmin=30.0, cmax=45.0, cmod=35, res=30.0, atk=12.0),
+        'l': dict(life=650.0, oa=180.0, cmin=50.0, cmax=75.0, cmod=50, res=40.0, atk=15.0),
+    }
+    for t, v in d12.items():
+        rec = (r'records\item\equipmentring\soul\ichthian'
+               '\\coastalichthianmyrmidon_soul_%s.dbr' % t)
+        if not db.has_record(rec):
+            raise SystemExit('G3 D12: soul missing: %s' % rec)
+        sf(rec, 'characterLife', v['life'])
+        sf(rec, 'characterOffensiveAbility', v['oa'])
+        sf(rec, 'offensiveColdMin', v['cmin'])
+        sf(rec, 'offensiveColdMax', v['cmax'])
+        sf(rec, 'offensiveColdModifier', v['cmod'])
+        sf(rec, 'defensiveCold', v['res'])
+        sf(rec, 'characterAttackSpeedModifier', v['atk'])
+        db._modified.add(rec)
+    print('  G3 D12 Myrmidon souls: life 250/450/650, OA 60/120/180, cold '
+          '15-25/30-45/50-75 +20/35/50 pct, cold res, +atk speed')
+
+    # ── D16: Shadow Stalker overhaul (Occult exception, Will-ordered) ──
+    VEIL = (r'records\skills\monster skills\passive_buffs'
+            '\\shadowstalker_distortionfield.dbr')
+    if not db.has_record(VEIL):
+        raise SystemExit('G3 D16: distortionfield substitute missing')
+    changed = 0
+    for t in range(1, 21):
+        rec = r'records\skills\stealth\drxpet' + '\\drx_shadow_stalker_%02d.dbr' % t
+        if not db.has_record(rec):
+            raise SystemExit('G3 D16: stalker tier missing: %s' % rec)
+        s7 = val(rec, 'skillName7')
+        if not (isinstance(s7, str) and s7.lower().endswith('skill_shadowstrike.dbr')):
+            raise SystemExit('G3 D16: %s skillName7 is %r, expected '
+                             'shadowstrike - spec drift' % (rec, s7))
+        sf(rec, 'skillName7', VEIL, S)
+        sf(rec, 'skillLevel7', min(t, 7), I)   # veil caps near the monster max
+        sf(rec, 'characterLife', float(500 + 90 * (t - 1)))
+        sf(rec, 'characterStrength', float(160 + 8 * t))
+        sf(rec, 'characterDexterity', float(200 + 10 * t))
+        sf(rec, 'handHitDamageMin', float(120 + 14 * (t - 1)))
+        sf(rec, 'handHitDamageMax', float(150 + 18 * (t - 1)))
+        db._modified.add(rec)
+        changed += 1
+    print('  G3 D16 Shadow Stalker (%d tiers): suicide shadowstrike -> '
+          'distortion veil; life 500..2210 (was flat 297), dmg 120-150..'
+          '386-492 (was flat 83-98), str/dex ladders. OCCULT EXCEPTION per '
+          "Will: 'make him stronger, much stronger'" % changed)
+
+    # ── D17: Core Dweller much stronger (keep the taunt identity) ──
+    for t in range(1, 21):
+        rec = r'records\skills\earth\pet' + '\\coredweller_%02d.dbr' % t
+        if not db.has_record(rec):
+            raise SystemExit('G3 D17: coredweller tier missing: %s' % rec)
+        for f_, mult in (('characterLife', 1.75), ('handHitDamageMin', 1.6),
+                         ('handHitDamageMax', 1.6), ('characterStrength', 1.25),
+                         ('characterLifeRegen', 1.5)):
+            cur = val(rec, f_)
+            if cur is None:
+                raise SystemExit('G3 D17: %s lacks %s' % (rec, f_))
+            sf(rec, f_, round(float(cur) * mult, 1))
+        db._modified.add(rec)
+    print('  G3 D17 Core Dweller (20 tiers): life x1.75 (781->1367 .. '
+          '2250->3937), dmg x1.6, str x1.25, regen x1.5; taunt kit untouched')
+
+    # ── D18a+b: Emberscale icon + effect redesign ──
+    d18 = {
+        '01': dict(suff='', mod=[4.0, 8.0, 12.0, 16.0, 20.0],
+                   burn=[6.0, 12.0, 18.0, 24.0, 30.0]),
+        '02': dict(suff='_E', mod=[6.0, 12.0, 18.0, 24.0, 30.0],
+                   burn=[10.0, 20.0, 30.0, 40.0, 50.0]),
+        '03': dict(suff='_L', mod=[8.0, 16.0, 24.0, 32.0, 40.0],
+                   burn=[14.0, 28.0, 42.0, 56.0, 70.0]),
+    }
+    for t, v in d18.items():
+        rec = (r'records\item\animalrelics\svc_flameguard'
+               '\\%s_flameguardslayer.dbr' % t)
+        if not db.has_record(rec):
+            raise SystemExit('G3 D18: charm missing: %s' % rec)
+        # D18a: raptor-tooth family art (reptilian scale read; the turtle
+        # donor bitmaps made it read as a Turtle Shell). Shard suffix mirrors
+        # the donor pattern exactly (01=A, 02=A_E, 03=A).
+        sf(rec, 'relicBitmap',
+           'Items\\AnimalRelics\\AnimalPart13B%s.tex' % v['suff'], S)
+        shard_suff = '_E' if t == '02' else ''
+        sf(rec, 'shardBitmap',
+           'Items\\AnimalRelics\\AnimalPart13A%s.tex' % shard_suff, S)
+        # D18b: drop the armor melt (absent-shape clear, never '')
+        ff = db.get_fields(rec) or {}
+        for k, tf in ff.items():
+            if k.split('###')[0] in ('offensiveSlowDefensiveReductionMin',
+                                     'offensiveSlowDefensiveReductionDurationMin'):
+                tf.values = []
+        # escalating dragonfire: fire amp + burn over 3s (flat fire kept)
+        sf(rec, 'offensiveFireModifier', v['mod'])
+        sf(rec, 'offensiveSlowFireMin', v['burn'])
+        sf(rec, 'offensiveSlowFireDurationMin', 3.0)
+        sf(rec, 'FileDescription', 'Emberscale: fire damage + pct fire + burn', S)
+        db._modified.add(rec)
+    tags['tagSVCFlameguardRelicDESC'] = (
+        'A scale pried from a Flameguard Slayer, still smoldering. Weapons '
+        'socketed with it bite with dragonfire that clings and burns.')
+    print('  G3 D18 Emberscale: raptor-tooth icon (de-turtled) + redesigned '
+          'effect (flat fire + 20/30/40 pct fire amp + 30/50/70 burn over 3s; '
+          'armor-melt removed)')
+
+
 # ── M15 (Will, 2026-07-09 night): Toxeus joins the existing spawn groups ────
 # 'find the spawn group that currently exists within the esti chest area and
 # add toxeus devourer of blood to it with 100% spawn rate' + 'there is a spawn
@@ -9608,6 +9748,12 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # parchment demon group @50. Must run AFTER _create_blood_toxeus (needs
     # um_bloodtoxeus_99 to exist).
     _apply_m15_toxeus_group_joins(db)
+
+    # GROUP 3 (build31): D11 Rally + D12 Myrmidon + D16 Shadow Stalker +
+    # D17 Core Dweller + D18 Emberscale (D15 potion colors ride
+    # build_text_arc). After D10 above, so the charm records exist.
+    print("\n=== GROUP 3: D11/D12/D16/D17/D18 tunes ===")
+    _apply_group3_tunes(db, tags)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
