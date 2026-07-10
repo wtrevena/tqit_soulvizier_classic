@@ -452,13 +452,29 @@ unlock (URGENT, Quests.arc lane - SHIPPED as build30.3, live on Steam 2026-07-09
 event now lives in the shipped Quests.arc 631a2b4d - build ON it, keep it byte-intact in any
 Quests rebuild + gate-assert its survival), (1) MASTERY WAVE 1 broken fixes B1-B6 + the new
 player-skill-anim gate (**GATED + GREEN 2026-07-09**, arz 06a9a24a, commit afb30a0 - see the
-gate log below), (D19) IMMOBILE HUO-REN SUMMON P1 (insert NEXT, before feature groups - on
-Steam now; see item below), (2) Mastery Wave 1 Defense/Earth/Storm boosts + D16 Shadow Stalker
+gate log below), (D19) IMMOBILE HUO-REN SUMMON P1 - **DONE, gated, arz 95e816d3** (see item
+below), (Q3+Q4 batch) Olympus herald NPC + kill-gated instant Rhodes unlock (M13a proxy
+BossProxy_20_Typhon - verify the placed proxy record name) + Q4 dead-content one-liners
+(bossarena EnterVolume volume -> volume_startolympianarena; widowletter honor-branch chest
+alignment; chimera .dbr.dbr double-extension coordinated rename; q15 reconciliation per the
+audit note - all ride ONE Quests.arc rebuild; Q4 item 4 testquest deregistration = MAP lane),
+(2) Mastery Wave 1 Defense/Earth/Storm boosts + D16 Shadow Stalker
 + D17 Core Dweller, (3) D11 + D12 + D15 + **D18a Emberscale icon + D18b Emberscale effect
-redesign**, (4) D13 + D14 + **D20 War King Sarpedon summon soul**, (5) Enslaver (approved),
+redesign**, (4) D13 + D14 + **D20 War King Sarpedon summon soul** + **D21 Long Nu the Flame
+Mother summon soul (Will 2026-07-09: 'her soul needs to be able to summon her'; standard
+recipe + the D19 mobility law from birth; find her records via 'Long Nu'/'Flame Mother' tags;
+keep existing augments unless conflicting, report)**, (5) Enslaver (approved),
 (6) N4-DB Vashkarr, (7) Q2 portal-master NPC (arz + Quests + Text coupled). N2 Typhon-gate mesh
 swap = CANCELLED (Will chose the portal-master model C; existing walk-through portals stay
-transitionally, retire in phase 2).
+transitionally, retire in phase 2). BUILD32 additions (Will blanket sign-off 2026-07-09):
+**N5 THROWING WEAPONS APPROVED** at ALL designer recommendations (faithful base drop weights
+static_roh=400/roh=1/12 bosses; merchants DEFERRED; all 3 supers 'Sanguine Orbit' /
+'The Last Word' / 'Charon's Toll'; formulas w100 supra slots 25-27 + supra_special 26-28,
+reagents 1L+1E+1MI-thrown; design doc = tasks/ab8a4644fa12b0169.output;
+_restore_thrown_weapon_drops faithful-copy + fail-loud gate, _add_supra_thrown_weapons clones
+base thrown records - avoid the fenrirsbite stray mesh; D5 full-mesh scan must show the supers
+resolve); **N7 sepulchral-wyrm hordes PRE-AUTHORIZED** (implement at designer recommendation
+when the doc lands, no further sign-off).
 
 > **GROUP 1 GATE LOG (2026-07-09, DB lane):** arz 06a9a24a (54,660,353 B) vs build30.2 baseline
 > 3f605741. Record-diff = EXACTLY 28 records, all bucketed to B1-B6 (0 unbucketed): drxmeteor/
@@ -473,21 +489,34 @@ transitionally, retire in phase 2).
 > PASS; validate_tags PASS; contracts souls+summons 0 P0/0 P1 (112 pre-existing upstream P2, not
 > Group-1 records); det-2x rebuild both == committed 06a9a24a. No gate-code fixes needed.
 
-### D19 (P1 BUG, INSERT NEXT - on Steam build30.3): Huo-ren the Mountainblade summon is IMMOBILE
-- **Symptom (Will, live):** "I can summon Huo-ren the mountainblade when I pick up his soul but he
-  is broken he doesnt move." The D9 summon pet (mountainblade_1/2/3, built by _build_boss_summon
-  from um_mountainblade_43) spawns but does not move.
-- **Diagnose the pet-mobility axes:** (a) charAnimationTableName - does the pet's anim table carry
-  MOVEMENT clips for the flameguard mesh rig (the B-SUMMON-1 'immobile floating scythe' class was
-  exactly this); (b) characterRunSpeed/characterWalkSpeed silently ZEROED (dtype law - decode the
-  numeric fields); (c) the pet 'controller' field (working pets carry e.g. controller_skelly_aggressive
-  - does mountainblade_N have one?); (d) compare against working exemplars (lyialeafsong; also check
-  ALL THREE new summon families Narok/Vort/Mountainblade - if _build_boss_summon has a systemic gap
-  it hits all; fix at the BUILDER level).
-- **Fix + GATE:** extend the summon validators with a PET-MOBILITY check (movement anims present in
-  the anim table for the rig + runSpeed>0 + controller present); negative-test on the current broken
-  record. Also apply the resulting fix from birth to D13/D14/D20 pets. Files: tools/apply_svc_patches.py
-  (_build_boss_summon), tools/validate_summon_pets.py.
+### D19 FIXED (build31, arz 95e816d3, det-2x, gated): Huo-ren summon was IMMOBILE
+- **Symptom (Will, live):** "I can summon Huo-ren the mountainblade... he is broken he doesnt move."
+- **ROOT CAUSE (bone-level proof 2026-07-09; the suspected axes all EXONERATED - runSpeed 0.96,
+  controller, classification all fine):** (1) the F2 loadout under-mirrored the source -
+  um_mountainblade_43 equips RightHand=100 (1h_dyn) + LeftHand=100 (shield) + Torso, the pet got
+  Torso ONLY -> WEAPONLESS -> engine uses the UNARMED anim row; (2) anm_dragonian defines NO
+  unarmedRunAnim (base dragonians are never unarmed); (3) the source-copied unarmedRunAnim=
+  CrocMan_Run.anm is FOREIGN-RIG: flameguardmesh shares 30/30 bone tokens with Dragonian01.msh,
+  4 with CrocMan; CrocMan_Run binds 2/19 tracks -> unplayable. Live um_mountainblade/em_ravager
+  move because their WEAPONED row falls back to the table's Dragonian_Run; the weaponless pet had
+  no fallback -> immobile statue. (Evidence: scratchpad d19_*.py; bone test d19_bone_test.py.)
+- **FIX (builder-level, feeds D13/D14/D20/D21/Voranthys/Enslaver from birth):** (a) D9 loadout now
+  mirrors the source's hands (RightHand 1h_dyn trio + LeftHand shield trio + Torso) -> pet lives
+  on the sHanded row = the exact configuration the LIVE source hero moves with; (b) D8 Xeiwang
+  loadout=None premise REFUTED (um_xaiweng_48 equips RightHand/Torso/Forearm/LowerBody @100) ->
+  full source-exact commondynamic mirror (also fixes his naked-hand B-SUMMON-1 class); (c) NEW
+  fail-loud D19 PET-MOBILITY assert in _build_boss_summon (primary anim row must have TABLE
+  RunAnim; stationary-rig tables exempt); (d) validate_summon_pets extended with the same law
+  (h. LOCOMOTION: primary row weapon-derived - RightHand=weapon, LeftHand weapon-vs-shield via
+  weight>0 loot tables, dual-wield -> dHanded; locomotion must come from the TABLE or a
+  table-family override; foreign-family overrides do NOT count). NEGATIVE-TESTED: exactly
+  mountainblade_1/2/3 FAIL pre-fix (bwpriest dual-wield correctly passes via dHanded); PASS
+  post-fix. Record-diff vs Group-1 06a9a24a = EXACTLY 6 records (mountainblade_1/2/3 + xeiwang
+  _1/2/3), every delta a chanceToEquip/loot field. det-2x = 95e816d3 both runs. Pets spawn fresh
+  from the DB per cast -> retroactive for existing characters.
+- **D7 Toxeus verified NOT in the immobile class** (unarmed but anm_skeleton01 covers
+  unarmedRunAnim). His HAND slots left unchanged: the source's RightHand tables are SVC
+  set/unique tables (crimsonverdict_guaranteed) = pet auto-equip risk; flag for a later pass.
 Mastery specs = docs/MASTERY_AUDIT_2026-07-09.md (§2 broken fixes, §3 Wave 1; the no-removal
 standing rule in its header is BINDING). Broken player skills outrank feature items.
 Each group: gates + bucketed record-diff + commit; whole set -> independent delta-vet before

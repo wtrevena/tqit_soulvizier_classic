@@ -235,9 +235,12 @@ def validate(arz_path, base_path=None, upstream_path=None):
     # (mod-authored pets are the records UNDER TEST, never a proof source).
     mesh_families = _collect_mesh_anim_families(db, ('Monster',))
 
+    base = None
+    basemap = {}
     if base_path:
         base = ArzDatabase.from_arz(Path(base_path))
-        baseset = {_norm(n) for n in base.record_names()}
+        basemap = {_norm(n): n for n in base.record_names()}
+        baseset = set(basemap)
         proven_pairings |= _collect_pairings(base, ('Monster', 'Pet'))
         _collect_mesh_anim_families(base, ('Monster', 'Pet'), mesh_families)
     if upstream_path:
@@ -383,6 +386,86 @@ def validate(arz_path, base_path=None, upstream_path=None):
             problems.append((sev, chain,
                              f"pet {pet_rec} has EMPTY monsterClassification "
                              f"(working exemplars all carry 'Common')"))
+        # h. LOCOMOTION (D19, the immobile-pet class; bone-level proof
+        # 2026-07-09): a foreign-family per-record RunAnim override does NOT
+        # play (CrocMan_Run binds 2/19 bone tracks on the dragonian/flameguard
+        # skeleton); live monsters still move because their WEAPONED row falls
+        # back to the TABLE clip. A pet whose PRIMARY row has no TABLE RunAnim
+        # (and no same-family override) has NOTHING playable -> immobile statue
+        # (Huo-ren/mountainblade: weaponless -> unarmed row; anm_dragonian has
+        # no unarmedRunAnim; the CrocMan override is foreign). LAW: the primary
+        # row's RunAnim must come from the TABLE or a table-family override.
+        # Rigs whose table defines NO RunAnim on ANY row are stationary by
+        # design (turret/vine class) and are exempt.
+        if anim_n:
+            _tname = None
+            _tdb = None
+            if anim_n in modset:
+                _tdb, _tname = db, modset[anim_n]
+            elif base is not None and anim_n in basemap:
+                _tdb, _tname = base, basemap[anim_n]
+            if _tname:
+                _tf = _tdb.get_fields(_tname) or {}
+                _tbl_fields = {}
+                for _k, _v in _tf.items():
+                    _bk = _k.split('###')[0]
+                    if _bk.endswith('RunAnim') and _v.values \
+                            and str(_v.values[0]).strip():
+                        _tbl_fields[_bk.lower()] = str(_v.values[0])
+                # primary row: RightHand is always a weapon; LeftHand is a
+                # weapon only when its loot tables are not shield tables
+                # (weapon+shield -> sHanded; two weapons -> dHanded).
+                def _hand(nm):
+                    v = field(pet_rec, f'chanceToEquip{nm}')
+                    try:
+                        return bool(v) and float(v[0]) > 0
+                    except (TypeError, ValueError):
+                        return False
+
+                def _lh_is_shield():
+                    # only sub-slots the engine can SELECT (weight > 0) count;
+                    # Lyia-clone residue rides in zero-weight ItemN slots.
+                    for _i in range(1, 7):
+                        _w = field(pet_rec, f'chanceToEquipLeftHandItem{_i}')
+                        try:
+                            if not _w or int(float(_w[0])) <= 0:
+                                continue
+                        except (TypeError, ValueError):
+                            continue
+                        _it = field(pet_rec, f'lootLeftHandItem{_i}')
+                        for _p in (_it or []):
+                            if isinstance(_p, str) and _p.strip() \
+                                    and 'shield' not in _p.lower():
+                                return False
+                    return True
+                rh_w = _hand('RightHand')
+                lh_w = _hand('LeftHand') and not _lh_is_shield()
+                if rh_w and lh_w:
+                    prim = 'dhanded'
+                elif rh_w or lh_w:
+                    prim = 'shanded'
+                else:
+                    prim = 'unarmed'
+                prim_field = {'dhanded': 'dHandedRunAnim',
+                              'shanded': 'sHandedRunAnim',
+                              'unarmed': 'unarmedRunAnim'}[prim]
+                if _tbl_fields and prim_field.lower() not in _tbl_fields:
+                    # table locomotion missing for the primary row; a pet-record
+                    # override only counts if it is the table's OWN family
+                    ov = field(pet_rec, prim_field)
+                    ov_fam = _anim_family(ov[0]) if ov and str(ov[0]).strip() \
+                        else None
+                    if not (ov_fam and table_fam and ov_fam == table_fam):
+                        problems.append((sev, chain,
+                                         f"pet {pet_rec} IMMOBILE (D19): primary "
+                                         f"anim row '{prim}' has no TABLE RunAnim "
+                                         f"in {anim} and its override "
+                                         f"{ov[0] if ov else '(none)'} is not the "
+                                         f"table's own family "
+                                         f"('{ov_fam}' vs '{table_fam}') -> no "
+                                         f"playable locomotion. Equip the source "
+                                         f"monster's weapon (table-covered row) "
+                                         f"or use a table with {prim_field}."))
         # f. skill refs
         ff = db.get_fields(pet_rec) or {}
         for key, tf in ff.items():

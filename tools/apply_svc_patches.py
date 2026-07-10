@@ -8473,6 +8473,36 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         sf(path, 'characterMana', 1000.0); sf(path, 'characterManaRegen', 30.0)
         sf(path, 'handHitDamageMin', dmg_min[i]); sf(path, 'handHitDamageMax', dmg_max[i])
         sf(path, 'dropItems', 0); sf(path, 'giveXP', 0); sf(path, 'experiencePoints', 0)
+
+        # ── D19 PET-MOBILITY assert (fail-loud; bone-proven 2026-07-09): the
+        # pet's PRIMARY anim row must have TABLE locomotion. Foreign-family
+        # per-record RunAnim overrides do NOT play (CrocMan_Run binds 2/19 bone
+        # tracks on the dragonian/flameguard skeleton); live monsters move
+        # because their WEAPONED row falls back to the table clip. A weaponless
+        # pet on a table with no unarmedRunAnim has NOTHING playable ->
+        # immobile statue (D19 Huo-ren). Weapon-slot loadouts move the pet onto
+        # a table-covered row; this assert makes the class unbuildable.
+        _rh = any(s == 'RightHand' and c > 0 for s, c, _w, _p in (loadout or []))
+        _lh_weap = any(s == 'LeftHand' and c > 0
+                       and not all('shield' in q.lower() for q in p)
+                       for s, c, _w, p in (loadout or []))
+        _row = ('dHanded' if (_rh and _lh_weap)
+                else 'sHanded' if (_rh or _lh_weap) else 'unarmed')
+        _tbl = _find_record(db, str(anim[0])) if anim else None
+        if not _tbl:
+            raise SystemExit(f"D19 pet-mobility: {path} anim table missing/"
+                             f"unresolvable: {anim and anim[0]}")
+        _tblf = db.get_fields(_tbl) or {}
+        _run_fields = {k.split('###')[0] for k, tf in _tblf.items()
+                       if k.split('###')[0].endswith('RunAnim')
+                       and tf.values and str(tf.values[0]).strip()}
+        if _run_fields and f'{_row}RunAnim' not in _run_fields:
+            raise SystemExit(
+                f"D19 pet-mobility: {path} primary anim row '{_row}' has no "
+                f"TABLE RunAnim in {anim[0]} (table rows with locomotion: "
+                f"{sorted(_run_fields)}) -> pet would be IMMOBILE. Equip the "
+                f"source monster's weapon (table-covered row) or use a table "
+                f"that covers '{_row}'.")
         db._modified.add(path)
     ss = _find_record(db, lyia_summon)
     if ss:
@@ -8574,7 +8604,31 @@ def _apply_d8_d9_summon_souls(db, tags):
                           'tagSVCSummonXeiwang', 'tagNewHero196',
                           char_level=[48, 59, 71], life=[12000.0, 16000.0, 21000.0],
                           life_regen=[30.0, 60.0, 100.0],
-                          dmg_min=[70.0, 105.0, 150.0], dmg_max=[110.0, 165.0, 235.0]):
+                          dmg_min=[70.0, 105.0, 150.0], dmg_max=[110.0, 165.0, 235.0],
+                          # D19 correction: the old loadout=None rode on a FALSE
+                          # premise ("Xeiwang equips nothing") - um_xaiweng_48
+                          # equips RightHand/Torso/Forearm/LowerBody at 100
+                          # (decoded 2026-07-09). Mirror its own Item1 tables
+                          # (commondynamic, the proven auto-equip path); the
+                          # weapon also parks the pet on the sHanded row.
+                          loadout=[
+                              ('RightHand', 100.0, 5000, [
+                                  r'records\item\loottables\weapons\mastertables\1h_dyn_n03.dbr',
+                                  r'records\item\loottables\weapons\mastertables\1h_dyn_e03.dbr',
+                                  r'records\item\loottables\weapons\mastertables\1h_dyn_l03.dbr']),
+                              ('Torso', 100.0, 5000, [
+                                  r'records\item\loottables\torso\commondynamic\melee_n03.dbr',
+                                  r'records\item\loottables\torso\commondynamic\melee_e03.dbr',
+                                  r'records\item\loottables\torso\commondynamic\melee_l03.dbr']),
+                              ('Forearm', 100.0, 5000, [
+                                  r'records\item\loottables\arms\commondynamic\armband_n03.dbr',
+                                  r'records\item\loottables\arms\commondynamic\armband_e03.dbr',
+                                  r'records\item\loottables\arms\commondynamic\armband_l03.dbr']),
+                              ('LowerBody', 100.0, 5000, [
+                                  r'records\item\loottables\legs\commondynamic\greaves_n03.dbr',
+                                  r'records\item\loottables\legs\commondynamic\greaves_e03.dbr',
+                                  r'records\item\loottables\legs\commondynamic\greaves_l03.dbr']),
+                          ]):
         _wire_summon_soul(db, xw_souls, SUMMON_XEIWANG_SKILL, name_tag='tagSVCSoulXeiwang')
         print("  D8 Xeiwang summon-soul: 3 pets from um_xaiweng_48 rig + summon; souls rewired 1/2/3")
     tags['tagSVCSoulXeiwang'] = '{^F}Xeiwang, Flame of Hatred Soul'
@@ -8607,7 +8661,25 @@ def _apply_d8_d9_summon_souls(db, tags):
                           dmg_min=[65.0, 100.0, 145.0], dmg_max=[105.0, 160.0, 230.0],
                           # F2: mirror um_mountainblade_43's own armor (Torso @100,
                           # dragonian mastertables, DB-verified) - not naked.
+                          # D19 (P1, bone-proven 2026-07-09): the source ALSO
+                          # equips RightHand=100 (1h_dyn) + LeftHand=100 (shield)
+                          # - the Torso-only loadout left the pet WEAPONLESS on
+                          # the unarmed anim row, where anm_dragonian defines NO
+                          # RunAnim and the source-copied CrocMan_Run override
+                          # binds 2/19 bone tracks on the flameguard/dragonian
+                          # skeleton -> nothing playable -> IMMOBILE (Will's
+                          # "he doesnt move"). The weapon parks the pet on the
+                          # sHanded row (table Dragonian_Run = the exact
+                          # configuration the LIVE source hero moves with).
                           loadout=[
+                              ('RightHand', 100.0, 5000, [
+                                  r'records\item\loottables\weapons\mastertables\1h_dyn_n03.dbr',
+                                  r'records\item\loottables\weapons\mastertables\1h_dyn_e03.dbr',
+                                  r'records\item\loottables\weapons\mastertables\1h_dyn_l03.dbr']),
+                              ('LeftHand', 100.0, 5000, [
+                                  r'records\item\loottables\shields\commondynamic\shield_n03.dbr',
+                                  r'records\item\loottables\shields\commondynamic\shield_e03.dbr',
+                                  r'records\item\loottables\shields\commondynamic\shield_l03.dbr']),
                               ('Torso', 100.0, 5000, [
                                   r'records\item\loottables\torso\mastertables\monster\n_dragonian.dbr',
                                   r'records\item\loottables\torso\mastertables\monster\e_dragonian.dbr',
