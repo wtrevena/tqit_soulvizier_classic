@@ -8459,7 +8459,14 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         if mesh: sf(path, 'mesh', str(mesh[0]))
         if tex: sf(path, 'baseTexture', str(tex[0]))
         sf(path, 'bumpTexture', str(bump[0]) if bump else '')   # clear Lyia Maenad residue
-        if anim: sf(path, 'charAnimationTableName', str(anim[0]))
+        if anim:
+            sf(path, 'charAnimationTableName', str(anim[0]))
+        else:
+            # table-less source (e.g. minotaur family): the live monster
+            # drives purely from its own per-record .anm overrides (copied
+            # above). Clear Lyia's Maenad table so no foreign clip can shadow
+            # them (the proven Rakanizeus 'mesh has defaults' precedent).
+            sf(path, 'charAnimationTableName', '')
         if src_atk: sf(path, 'attackSkillName', str(src_atk[0]))
         sf(path, 'scale', float(scale) if scale is not None
                           else (float(src_scale[0]) if src_scale else 1.0))
@@ -8489,20 +8496,28 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         _row = ('dHanded' if (_rh and _lh_weap)
                 else 'sHanded' if (_rh or _lh_weap) else 'unarmed')
         _tbl = _find_record(db, str(anim[0])) if anim else None
-        if not _tbl:
-            raise SystemExit(f"D19 pet-mobility: {path} anim table missing/"
-                             f"unresolvable: {anim and anim[0]}")
-        _tblf = db.get_fields(_tbl) or {}
-        _run_fields = {k.split('###')[0] for k, tf in _tblf.items()
-                       if k.split('###')[0].endswith('RunAnim')
-                       and tf.values and str(tf.values[0]).strip()}
-        if _run_fields and f'{_row}RunAnim' not in _run_fields:
-            raise SystemExit(
-                f"D19 pet-mobility: {path} primary anim row '{_row}' has no "
-                f"TABLE RunAnim in {anim[0]} (table rows with locomotion: "
-                f"{sorted(_run_fields)}) -> pet would be IMMOBILE. Equip the "
-                f"source monster's weapon (table-covered row) or use a table "
-                f"that covers '{_row}'.")
+        if _tbl:
+            _tblf = db.get_fields(_tbl) or {}
+            _run_fields = {k.split('###')[0] for k, tf in _tblf.items()
+                           if k.split('###')[0].endswith('RunAnim')
+                           and tf.values and str(tf.values[0]).strip()}
+            if _run_fields and f'{_row}RunAnim' not in _run_fields:
+                raise SystemExit(
+                    f"D19 pet-mobility: {path} primary anim row '{_row}' has "
+                    f"no TABLE RunAnim in {anim[0]} (table rows with "
+                    f"locomotion: {sorted(_run_fields)}) -> pet would be "
+                    f"IMMOBILE. Equip the source monster's weapon "
+                    f"(table-covered row) or use a table that covers "
+                    f"'{_row}'.")
+        else:
+            # table-less source: locomotion must come from the source's OWN
+            # per-record override on the primary row (native-rig, proven by
+            # the live monster; copied onto the pet above).
+            if not src_val(source, f'{_row}RunAnim'):
+                raise SystemExit(
+                    f"D19 pet-mobility: {path} has no anim table AND the "
+                    f"source defines no {_row}RunAnim override -> pet would "
+                    f"be IMMOBILE on its primary row '{_row}'.")
         db._modified.add(path)
     ss = _find_record(db, lyia_summon)
     if ss:
@@ -8731,6 +8746,174 @@ def _create_olympus_rhodes_herald(db, tags):
     tags['tagSVCOlympusRhodesTravel'] = 'Travel to Rhodes?'
     print("  Q3 herald: portal_master_olympus.dbr cloned from the Knossos "
           "boatman (proven boat-dialog NPC shape); name/chat/travel tags set")
+
+
+# ── GROUP 4 (build31, overnight run): D13/D14/D20/D21 summon-the-boss souls ──
+def _mirror_source_loadout(db, source):
+    """Build a _build_boss_summon loadout that mirrors the SOURCE monster's own
+    equip slots (D19 law generalized: hands mirrored -> the pet lives on a
+    weaponed, table-covered anim row). Only slots with chance>0 AND an Item1
+    that is a \\loottables\\ table (the F2 proven auto-equip path) or a
+    creature-namespace monster armor piece (defaultHeadPiece class) are
+    mirrored; player unique/set tables are skipped."""
+    def val(f):
+        v = db.get_field_value(source, f)
+        if isinstance(v, list):
+            return v
+        return [v] if v is not None else None
+
+    out = []
+    for slot in ('RightHand', 'LeftHand', 'Head', 'Torso', 'Forearm', 'LowerBody'):
+        ch = val('chanceToEquip%s' % slot)
+        try:
+            chance = float(ch[0]) if ch else 0.0
+        except (TypeError, ValueError):
+            chance = 0.0
+        if chance <= 0:
+            continue
+        items = val('loot%sItem1' % slot)
+        paths = [str(x) for x in (items or []) if isinstance(x, str) and x.strip()]
+        ok = [x for x in paths
+              if '\\loottables\\' in x.replace('/', '\\').lower()
+              and '\\unique' not in x.replace('/', '\\').lower()
+              and '\\svc\\' not in x.replace('/', '\\').lower()]
+        if len(ok) == len(paths) and len(ok) in (1, 3):
+            if len(ok) == 1:
+                ok = ok * 3
+            out.append((slot, 100.0, 5000, ok))
+    # direct headpiece (pygmalion class): a creature-namespace armor .dbr
+    hp = val('defaultHeadPiece')
+    if hp and isinstance(hp[0], str) and hp[0].strip() \
+            and not any(sl == 'Head' for sl, _c, _w, _p in out):
+        out.append(('Head', 100.0, 5000, [str(hp[0])] * 3))
+    return out or None
+
+
+def _apply_group4_summons(db, tags):
+    """D13 Eater of Days + D14 Pygmalion (no-limits replicate, Will verbatim:
+    'dont have the safe limits on the pygmalion replicator replicates make it
+    crazy' - the kit transplant is FAITHFUL, replicate's own native bounds are
+    kept, nothing added) + D20 War-King Sarpedon + D21 Long Nu the Flame
+    Mother ('her soul needs to be able to summon her'). All via the
+    D19-hardened _build_boss_summon (mobility assert + full law suite).
+    Existing soul augments/petBonuses are KEPT (none of the four soul lines
+    carries an itemSkillName proc, verified - the summon displaces nothing)."""
+    namemap = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+
+    def by_desc(tag):
+        for n in db.record_names():
+            v = db.get_field_value(n, 'description')
+            v = v[0] if isinstance(v, list) else v
+            if v == tag and '\\creature\\' in n.replace('/', '\\').lower():
+                return n
+        return None
+
+    def src_charlevel(src):
+        v = db.get_field_value(src, 'charLevel')
+        v = v if isinstance(v, list) else [v]
+        lv = [int(x) for x in v]
+        while len(lv) < 3:
+            lv.append(int(lv[-1] * 1.4))
+        return lv[:3]
+
+    def souls_by_nametag(tag):
+        out = []
+        for n in db.record_names():
+            if '\\soul\\' not in n.replace('/', '\\').lower():
+                continue
+            v = db.get_field_value(n, 'itemNameTag')
+            v = v[0] if isinstance(v, list) else v
+            if v == tag:
+                out.append(n)
+        order = {'_n.dbr': 0, '_e.dbr': 1, '_l.dbr': 2}
+        return sorted(out, key=lambda x: order.get(x[-6:].lower(), 9))
+
+    jobs = [
+        dict(label='D13 Eater of Days',
+             src=r'records\creature\monster\sepulchralwyrm\um_eaterofdays_45.dbr',
+             pets=[r'records\skills\soulskills\pets\eaterofdays_%d.dbr' % i
+                   for i in (1, 2, 3)],
+             skill=r'records\skills\soulskills\summon_eaterofdays.dbr',
+             disp='tagSVCSummonEaterOfDays', desc='tagNewHero91',
+             souls=[r'records\item\equipmentring\soul\sepulchralwyrm'
+                    r'\eaterofdays_soul_%s.dbr' % t for t in 'nel'],
+             life=[12000.0, 16500.0, 21000.0], regen=[30.0, 60.0, 100.0],
+             dmin=[70.0, 110.0, 160.0], dmax=[110.0, 170.0, 250.0]),
+        dict(label='D14 Pygmalion',
+             src=r'records\creature\monster\automatoi\um_pygmalion_41.dbr',
+             pets=[r'records\skills\soulskills\pets\pygmalion_%d.dbr' % i
+                   for i in (1, 2, 3)],
+             skill=r'records\skills\soulskills\summon_pygmalion.dbr',
+             disp='tagSVCSummonPygmalion', desc='tagNewHero262',
+             souls=[r'records\item\equipmentring\soul\automatoi'
+                    r'\pygmalion_soul_%s.dbr' % t for t in 'nel'],
+             life=[9500.0, 12000.0, 14500.0], regen=[25.0, 50.0, 80.0],
+             dmin=[60.0, 95.0, 140.0], dmax=[95.0, 150.0, 215.0]),
+        dict(label='D20 War-King Sarpedon',
+             src=r'records\creature\monster\minotaur\um_sarpedon_41.dbr',
+             pets=[r'records\skills\soulskills\pets\sarpedon_%d.dbr' % i
+                   for i in (1, 2, 3)],
+             skill=r'records\skills\soulskills\summon_sarpedon.dbr',
+             disp='tagSVCSummonSarpedon', desc=None,
+             souls=[r'records\item\equipmentring\soul\minotaur'
+                    r'\sarpedon_soul_%s.dbr' % t for t in 'nel'],
+             life=[11000.0, 15000.0, 20000.0], regen=[30.0, 55.0, 90.0],
+             dmin=[65.0, 105.0, 150.0], dmax=[105.0, 165.0, 235.0]),
+        dict(label='D21 Long Nu the Flame Mother',
+             src=None, src_desc='tagNewHero181',
+             pets=[r'records\skills\soulskills\pets\longnu_%d.dbr' % i
+                   for i in (1, 2, 3)],
+             skill=r'records\skills\soulskills\summon_longnu.dbr',
+             disp='tagSVCSummonLongNu', desc='tagNewHero181',
+             souls=None, souls_tag='tagSoulName471',
+             life=[12000.0, 16000.0, 21000.0], regen=[30.0, 60.0, 100.0],
+             dmin=[70.0, 110.0, 160.0], dmax=[110.0, 170.0, 245.0]),
+    ]
+    tags['tagSVCSummonEaterOfDays'] = 'Summon the Eater of Days'
+    tags['tagSVCSummonPygmalion'] = 'Summon Pygmalion, the Replicator'
+    tags['tagSVCSummonSarpedon'] = 'Summon War-King Sarpedon'
+    tags['tagSVCSummonLongNu'] = 'Summon Long Nu, the Flame Mother'
+
+    for j in jobs:
+        src = j['src']
+        if src is None:
+            src = by_desc(j['src_desc'])
+            if not src:
+                raise SystemExit('G4 %s: no creature record carries %s'
+                                 % (j['label'], j['src_desc']))
+        real = namemap.get(src.replace('/', '\\').lower())
+        if not real:
+            raise SystemExit('G4 %s: source missing: %s' % (j['label'], src))
+        souls = j.get('souls')
+        if souls is None:
+            souls = souls_by_nametag(j['souls_tag'])
+            if len(souls) != 3:
+                raise SystemExit('G4 %s: expected 3 souls via %s, found %s'
+                                 % (j['label'], j['souls_tag'], souls))
+        for sp in souls:
+            if not _find_record(db, sp):
+                raise SystemExit('G4 %s: soul missing: %s' % (j['label'], sp))
+            isk = db.get_field_value(_find_record(db, sp), 'itemSkillName')
+            isk = isk[0] if isinstance(isk, list) else isk
+            if isinstance(isk, str) and isk.strip():
+                print('  G4 %s NOTE: soul %s had a proc %s - DISPLACED by the '
+                      'summon per Will naming this soul' % (j['label'], sp, isk))
+        desc_tag = j['desc']
+        if desc_tag is None:
+            v = db.get_field_value(real, 'description')
+            desc_tag = v[0] if isinstance(v, list) else v
+        loadout = _mirror_source_loadout(db, real)
+        lv = src_charlevel(real)
+        if not _build_boss_summon(db, src, j['pets'], j['skill'], j['disp'],
+                                  desc_tag, char_level=lv, life=j['life'],
+                                  life_regen=j['regen'], dmg_min=j['dmin'],
+                                  dmg_max=j['dmax'], loadout=loadout):
+            raise SystemExit('G4 %s: _build_boss_summon failed' % j['label'])
+        _wire_summon_soul(db, souls, j['skill'])
+        print('  G4 %s: 3 pets from %s (charLevel %s, loadout %s slot(s)) + '
+              'summon skill; souls rewired 1/2/3'
+              % (j['label'], real.rsplit(chr(92), 1)[-1], lv,
+                 len(loadout) if loadout else 0))
 
 
 # ── GROUP 3 (build31, overnight autonomous run): D11/D12/D16/D17/D18 ────────
@@ -9754,6 +9937,10 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # build_text_arc). After D10 above, so the charm records exist.
     print("\n=== GROUP 3: D11/D12/D16/D17/D18 tunes ===")
     _apply_group3_tunes(db, tags)
+
+    # GROUP 4 (build31): the four Will-named summon-the-boss souls.
+    print("\n=== GROUP 4: D13/D14/D20/D21 summon souls ===")
+    _apply_group4_summons(db, tags)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
