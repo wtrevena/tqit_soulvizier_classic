@@ -208,8 +208,8 @@ BOSS_SPOTS = [
 ]
 
 WARDEN_SPOTS = [
-    ('greece/monsters/startingfarmland06d.lvl',
-     [('M3 Helos warden nudged', 86.0, 189.5, 3.0), ('M3 Helos warden old', 79.5, 189.5, 3.0),
+    ('greece/startingtownver2/startingfarmland06d.lvl',
+     [('M3 Helos warden FINAL', 64.5, 189.5, 3.0), ('M3 Helos warden draft(86, bad)', 86.0, 189.5, 3.0),
       ('Almyros (ref)', 76.5, 189.5, 3.0)]),
 ]
 
