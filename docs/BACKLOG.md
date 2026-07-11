@@ -49,10 +49,19 @@
 >   repointed to vanilla, render closure resolves. `validate_render_chain_golem.py` PASSES with real args.
 >   No code fix needed. Minor note (in-game only): skillMaxLevel 16 vs the 20-tier pet ladder is a faithful
 >   SVAERA-snapshot artifact (tiers 17-20 vestigial, harmless).
+> **GATES (all GREEN, verified this round):** full arz rebuild `590deb99` (50,652 recs, vs ref@88d2b03
+> `72eacf8a`) - the 5 fail-loud invariants + boss-kit clone-shape (5 pairs) + spawn-eligibility (17
+> proxies) + golden-freeze all PASS; the THREE NEW pet gates PASS (12 families stat-mirror + gear-parity
+> both ways, 201 pets skill-kit); det pending (single build this round). `negtest_pet_gates.py` fires all
+> 3 on the e3810219 baseline (90/15/12) + PASS on the build36 arz. `validate_render_chain_golem.py` PASS
+> (real args). Text.arc rebuilt from restored SV source: duplicate-tag gate OK, `validate_tags` PASS (148
+> mod refs + 203 authoritative). Contracts summons+resources **0 P0 / 0 P1** (4891 P2 = pre-existing
+> SV/DRX debt). Coupled ship set on the eventual wave: arz + Text (+ Quests/Levels for the A5/A6 map wave).
 > **OPEN (for Will / in-game vet):** eyeball bloodtoxeus/all-pet damage after the STR/INT raw-mirror
 > (may over-tune); confirm the A2 all-black skeleton renders + summon cadence; the A5 map placement +
-> A6 quests/map split are separate waves; A3 jewelry relic-slot scarcity QA (fallback = weapon+jewelry).
-> Full detail: the build36 specs + `docs/reports/build36_laneA_map_needs.md`. NOT DEPLOYED.
+> A6 quests/map split are separate waves; A3 jewelry relic-slot scarcity QA (fallback = weapon+jewelry);
+> A2 enslaver boss keeps full Hero loot (renders geared - clear the equip tables only if Will wants a
+> lean rare). Full detail: the build36 specs + `docs/reports/build36_laneA_map_needs.md`. NOT DEPLOYED.
 
 > 🕷️ **BROODMOTHER NEST - MAP LANE PLACED (build35, 2026-07-11; tag build35).** The map lane placed
 > the DB lane's broodmother-nest proxies (arz `a947e98d` + Text `3fb65c20`, both already staged in
