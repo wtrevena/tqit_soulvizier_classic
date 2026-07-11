@@ -928,54 +928,57 @@ DREAD_HOST_KEY = 'xpack/levels/area05_judgment/undergrounds/judgment_stonecity_e
 Q_EPHIALTES_LONE_DBR = b'records\\drxmap\\proxy\\q_ephialtes_lone.dbr'
 
 UBERBOSS_SPECS = {
-    # M4: Great Hall approach between the north crypt descent and the SW treasure vault
-    # (bars the way to his own hoard). RE-SURVEYED on the BUILT build35 map (Tomb01's native
-    # 0x0b is byte-identical base<->merged, so the survey holds for build36): the spec primary
-    # local (52,60) reads only clr@4.0 ~56%/53%/45% (N/E/L) - too close to a wall for the
-    # boss+2-champion 4.0u ring. Nudged +4.2u to local (49.0,1.2,63.0) = clr@4.0 97%/97%/94%
-    # all 3 tilesets, on-mesh; nearest solid feature is a point-light (harmless). world
-    # ~(309,1.2,-8459). Same great-hall approach between crypt descent and the SW vault.
+    # R4 FRAME FIX: every boss placement is now the SPEC-PRIMARY coord. The R1-R3 "nudges" were
+    # ALL artifacts of a 16u frame bug in tools/debug/survey_uberboss_spots.py (fixed R4): the
+    # survey compared 0x05-local query coords directly against the 0x0b navmesh-cell frame, but
+    # the base-game XPack hosts carry a fixed (16,16) offset between the LEVELS-index grid corner
+    # (which 0x05 coords are relative to) and the 0x0b navmesh origin (center-dims). So the tool
+    # mis-read every spec-primary as off-mesh / near-wall / low-clearance and drove bogus nudges.
+    # Re-surveyed in the CORRECTED frame (grid_corner-anchored; floor-instance calibration reads
+    # ~0-1u; confirmed independently by the specs' own navlib survey): every spec-primary is
+    # ON-mesh in the main component at clr 100% all 3 tilesets. Reverting to the spec coords
+    # restores spec fidelity + clean map<->record convergence parity.
+    #
+    # M4 Dorus: PRIMARY hall-toward-vault. spec local (52.0,1.2,60.0) = world (312,1.2,-8462).
+    # Corrected-frame survey: d=0.14u, clr@4.0 100%/100%/100% (N/E/L), comp#1. (R3 shipped the
+    # bogus +4.2u nudge (49,63); reverted.)
     DORUS_HOST_KEY: [
-        (Q_DORUS_LONE_DBR, 49.0, 1.2, 63.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_DORUS_LONE_DBR, 52.0, 1.2, 60.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-    # M5: Den-of-Tantalus floor, ~28u from the pj_denoftantalus POI marker. RE-SURVEYED on the
-    # BUILT map: the spec primary local (54,114.3) reads off-mesh in the validated grid-local
-    # frame (clr@3.5 38%/30%/25%). Nudged +4.5u to local (50.0,-15.2,116.0) = clr@3.5
-    # 94%/93%/90% all 3 tilesets, on-mesh, floor Y -15.2, nearest solid 9.8u. world
-    # ~(-346,-15.2,-10093). Den floor, still near the POI marker.
+    # M5 Tantalus: PRIMARY den floor by the pj_denoftantalus POI. spec local (54.0,-15.2,114.3)
+    # = world (-342,-15.2,-10094.7). Corrected-frame survey: d=0.10u, clr@3.5 100%/100%/100%,
+    # comp#1. (R3 shipped the bogus +4.5u nudge (50,116); reverted.)
     TANTALUS_HOST_KEY: [
-        (Q_TANTALUS_LONE_DBR, 50.0, -15.2, 116.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_TANTALUS_LONE_DBR, 54.0, -15.2, 114.3, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-    # M6: the Shrine of the Golden Bough. The design-preferred spot is the SUMMIT beside the
-    # eternal flame; the spec mandated the temple FORECOURT fallback if the summit ring is
-    # non-walkable. RE-SURVEYED on the BUILT map: the draft forecourt local (187.9,46.9) reads
-    # only clr@3.5 ~61%/57%/53%; nudged +3.2u to local (185.0,-7.0,48.0) = clr@3.5 100%/99%/96%
-    # all 3 tilesets (between the two colossal statues), nearest solid 7.3u. world
-    # ~(-339,-7.0,-9649). NOTE (re-survey finding): the SUMMIT also becomes viable at a +2.2u
-    # nudge - local (219.0,1.2,14.0) = clr@3.5 98%/96%/94% - so a future in-game A/B could move
-    # Charon atop the shrine beside the eternal flame (the iconic spot). Forecourt kept as the
-    # safe primary this wave.
+    # M6 Charon: the Shrine of the Golden Bough. The spec's DEFAULT primary is the SUMMIT beside
+    # the eternal flame, with the temple FORECOURT as the mandated fallback if the boss+2-champion
+    # ring is non-walkable on the tight summit. Corrected-frame survey CONFIRMS the summit is
+    # genuinely tight - summit local (217.7,1.2,12.5) reads d=0.00 but clr@3.5 only 92%/91%/82%
+    # (N/E/L); 18% of the champion ring hangs off on Legendary (matches the spec's ~2.8u<3.5u-
+    # extents warning). So the spec FORECOURT is used: local (187.9,-7.0,46.9) = world
+    # (-336.1,-7.0,-9650.1), d=0.00u, clr@3.5 100%/100%/100%, comp#1, between the two colossal
+    # statues. (R3 shipped a +3u nudge (185,48) off the spec forecourt; reverted to the spec
+    # coord.) SUMMIT stays a viable in-game A/B if Will accepts the tighter champion ring.
     GOLDENBOUGH_HOST_KEY: [
-        (Q_GOLDENBOUGH_LONE_DBR, 185.0, -7.0, 48.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
-        # SUMMIT alternate (re-survey-VIABLE at +2.2u): (Q_GOLDENBOUGH_LONE_DBR, 219.0, 1.2, 14.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_GOLDENBOUGH_LONE_DBR, 187.9, -7.0, 46.9, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        # SUMMIT alt (spec default, tight 82% Leg): (Q_GOLDENBOUGH_LONE_DBR, 217.7, 1.2, 12.5, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-    # M7: the north node of the machae boss-glyph ritual ring (the boss rises within the
-    # glyphs). world (170,~-10,-11438); the Charon torch landmark is ~31u SE. RE-SURVEYED on
-    # the BUILT map: local (43,71) is already clean - clr@3.5 97%/97%/94% all 3 tilesets,
-    # on-mesh, nearest solid 3.8u - so NO nudge needed (the one boss spot the draft nailed).
-    # ALT-B dead-center = local (41.0,3.0,61.0).
+    # M7 Mnemophage: PRIMARY north node of the machae boss-glyph ritual ring (the boss rises
+    # within the glyphs). spec local (43.0,3.0,71.0) = world (170,~-10,-11438); Charon torch ~31u
+    # SE. Corrected-frame survey: d=0.14u, clr@3.5 100%/100%/100%, comp#1. Already spec-exact in
+    # R3 (the one spot the frame bug happened not to move); UNCHANGED. ALT-B = local (41.0,3.0,61.0).
     MNEMOPHAGE_HOST_KEY: [
         (Q_MNEMOPHAGE_LONE_DBR, 43.0, 3.0, 71.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-    # M8: the SW deep corner of the Dread Halls terminal reward vault. RE-SURVEYED on the BUILT
-    # map: the spec primary local (15.9,34.7) reads OFF-mesh (clr 0%; ~7u past the mesh edge -
-    # the dreadhalls spec's coord did not resolve on-mesh in the validated grid-local frame,
-    # confirmed by native-instance calibration on this level). Nudged +11.7u NE to local
-    # (22.0,3.2,45.0) = clr@3.5 100%/100%/100% all 3 tilesets, on-mesh, nearest solid 6.6u.
-    # Still ~110u from the NE arrival stairs (local ~(90,132)) = the far diagonal / back corner.
-    # world ~(-1822,3.2,-13275).
+    # M8 Ephialtes: PRIMARY SW deep back corner of the Dread Halls terminal reward vault. spec
+    # local (15.9,3.2,34.7) = world (-1828.1,3.2,-13285.3). The R3 report called this "off-mesh
+    # 7.2u" - that was the frame bug (it surveyed grid-local 15.9 = the wrong world point -1844.1;
+    # the true world point -1828.1 is on-mesh). Corrected-frame survey: d=0.00u, clr@3.5
+    # 100%/100%/100%, comp#1 = the spec-intended deepest-SW back corner per Will's "back corner"
+    # order. (R3 shipped the bogus +11.7u NE nudge (22,45) to a shallower spot; reverted.)
     DREAD_HOST_KEY: [
-        (Q_EPHIALTES_LONE_DBR, 22.0, 3.2, 45.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_EPHIALTES_LONE_DBR, 15.9, 3.2, 34.7, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
 }  # WIRED (build36): merged into INJECT_SPECS collision-guarded below (native AE v0f/v11 branch)
 

@@ -253,8 +253,19 @@ def survey_level(data, levels, suffix, points, base, calibrate=False):
         print('  NO 0x0b navmesh - cannot survey')
         return None
     doc = parse_rec02(b0b, decompress=True)
-    corner = tuple(doc['center'][i] - doc['dims'][i] for i in range(3))
-    print(f'  center={doc["center"]} dims={doc["dims"]} -> corner(world)={corner}')
+    # --- FRAME (R4 fix): 0x05 instance coords are LEVEL-LOCAL relative to the LEVELS-index
+    # grid corner (ints_raw[6,7,8]); the 0x0b navmesh's own origin = center - dims can DIFFER
+    # from the grid corner (a fixed 16u border on the base-game XPack hosts). The walkable-cell
+    # frame (build_walk_cells: cell = bmin + (l+0.5)*cs, bmin = tile*12.8) is anchored to the
+    # 0x0b origin, NOT the grid corner. So a 0x05-local query (x,z) must be shifted by
+    # OFF = grid_corner - origin before it is compared to the cells. R1-R3 skipped this shift
+    # and mis-read every spec-primary as off-mesh/near-wall (the survey narrative was wrong 3
+    # rounds running). Native floor-instance calibration in the corrected frame reads ~0-1u.
+    origin = tuple(doc['center'][i] - doc['dims'][i] for i in range(3))
+    grid_corner = struct.unpack_from('<13i', lv['ints_raw'], 0)[6:9]
+    off = (grid_corner[0] - origin[0], grid_corner[2] - origin[2])
+    print(f'  center={doc["center"]} dims={doc["dims"]} -> origin(0x0b)={origin}')
+    print(f'  grid_corner(LEVELS)={grid_corner}  frame OFF(0x05-local -> cell-frame)={off}')
     setcells = build_walk_cells(doc)
     for i, (cs, cells) in enumerate(setcells):
         print(f'  tileset {SETNAMES[i]}: cs={cs} walkable_cells={len(cells)}')
@@ -267,29 +278,39 @@ def survey_level(data, levels, suffix, points, base, calibrate=False):
               f'{" ..." if len(comps0) > 4 else ""})')
     if calibrate:
         insts = native_instances(blob, base)
-        print(f'  CALIBRATION vs {len(insts)} native instances (nearest walkable cell dist, Normal set):')
         cs0, cells0 = setcells[0]
-        shown = 0
-        for (dbr, x, z) in insts:
-            if shown >= 8:
-                break
-            d = nearest(cells0, x, z)
-            print(f'    {dbr.decode(errors="replace")[:52]:52s} local({x:.1f},{z:.1f})  nearest={d:.2f}u')
-            shown += 1
+        # Frame validation: floor-anchored native instances (POI/containers/proxies/
+        # setdressing/sound) must read on-mesh in the offset-corrected frame. The median
+        # nearest is the gate - if OFF is right it is ~0-1u; in the RAW (unshifted) frame it
+        # is ~the offset magnitude. Report BOTH so the frame fix is auditable.
+        floor = [(d, x, z) for (d, x, z) in insts if any(
+            k in d for k in (b'poi', b'containers', b'proxies', b'setdress', b'soundobject'))]
+        def _med(shift):
+            ds = sorted(nearest(cells0, x + shift[0], z + shift[1]) for (_, x, z) in floor)
+            return ds[len(ds) // 2] if ds else float('nan')
+        print(f'  CALIBRATION: {len(insts)} native 0x05 instances, {len(floor)} floor-anchors.')
+        print(f'    median nearest RAW(unshifted)={_med((0,0)):.2f}u  '
+              f'OFFSET-CORRECTED(+{off})={_med(off):.2f}u  (lower = true frame)')
+        for (dbr, x, z) in insts[:8]:
+            d = nearest(cells0, x + off[0], z + off[1])
+            print(f'    {dbr.decode(errors="replace")[:52]:52s} local({x:.1f},{z:.1f})  nearest(corr)={d:.2f}u')
         return None
     results = []
     for (label, x, z, ext) in points:
-        line = [f'  {label}: local({x},{z}) ext={ext}']
+        # offset-corrected query: 0x05-local -> cell frame (see FRAME note above)
+        qx, qz = x + off[0], z + off[1]
+        wx, wz = grid_corner[0] + x, grid_corner[2] + z
+        line = [f'  {label}: local({x},{z}) world({wx:.1f},{wz:.1f}) ext={ext}']
         allok = True
         for i, (cs, cells) in enumerate(setcells):
-            d = nearest(cells, x, z)
-            clr = clearance(cells, x, z, ext, cs)
+            d = nearest(cells, qx, qz)
+            clr = clearance(cells, qx, qz, ext, cs)
             onmesh = d <= cs * 2.5
             allok = allok and onmesh and clr >= 0.95
             line.append(f'{SETNAMES[i][0]}:d={d:.2f}/clr={clr*100:.0f}%')
         # Reachability: the nearest set-0 cell must belong to the MAIN component
         # (rank 1). A clear-but-isolated island spot (rank > 1) now reads CHECK.
-        rank, size, _cd = point_component(cellmap0, cs0c, comps0, x, z)
+        rank, size, _cd = point_component(cellmap0, cs0c, comps0, qx, qz)
         if rank is None:
             line.append('comp=NONE')
             allok = False
@@ -307,17 +328,21 @@ def survey_level(data, levels, suffix, points, base, calibrate=False):
 # build36 FINAL placements (re-surveyed + nudged on the built map; extents = proxy placementExtents).
 # Each PRIMARY below is the SHIPPED coord in UBERBOSS_SPECS; the pre-nudge spec coord is kept as
 # a labelled reference so the gate shows the before/after.
+# R4: shipped coord = the spec-primary (the R1-R3 "nudges" were driven by the 16u frame bug
+# fixed above; every spec-primary is on-mesh clr 100% in the corrected frame). M6 keeps the
+# spec's FORECOURT fallback (the summit ring is genuinely tight - 82% on Legendary). The old
+# nudge is kept as a labelled reference so the gate shows before/after.
 BOSS_SPOTS = [
     ('area02_medea/undergrounds/medea_templeug_tomb01.lvl',
-     [('M4 Dorus PRIMARY (nudged)', 49.0, 63.0, 4.0), ('M4 Dorus spec(pre-nudge)', 52.0, 60.0, 4.0)]),
+     [('M4 Dorus SPEC-PRIMARY (shipped)', 52.0, 60.0, 4.0), ('M4 R3-nudge (reverted)', 49.0, 63.0, 4.0)]),
     ('area04_styx/styx_swampborder_01.lvl',
-     [('M5 Tantalus PRIMARY (nudged)', 50.0, 116.0, 3.5), ('M5 Tantalus spec(pre-nudge)', 54.0, 114.3, 3.5)]),
+     [('M5 Tantalus SPEC-PRIMARY (shipped)', 54.0, 114.3, 3.5), ('M5 R3-nudge (reverted)', 50.0, 116.0, 3.5)]),
     ('area04_styx/styx_riveredge_01.lvl',
-     [('M6 GoldenBough FORECOURT (nudged)', 185.0, 48.0, 3.5), ('M6 GoldenBough SUMMIT (alt)', 219.0, 14.0, 3.5)]),
+     [('M6 GoldenBough FORECOURT-spec (shipped)', 187.9, 46.9, 3.5), ('M6 SUMMIT-spec (tight, 82% Leg)', 217.7, 12.5, 3.5)]),
     ('area05_judgment/undergrounds/judgment_templeug_mnemosyne01.lvl',
-     [('M7 Mnemophage PRIMARY', 43.0, 71.0, 3.5), ('M7 Mnemophage ALT-B', 41.0, 61.0, 3.5)]),
+     [('M7 Mnemophage SPEC-PRIMARY (shipped)', 43.0, 71.0, 3.5), ('M7 Mnemophage ALT-B', 41.0, 61.0, 3.5)]),
     ('area05_judgment/undergrounds/judgment_stonecity_exit01.lvl',
-     [('M8 Ephialtes PRIMARY (nudged)', 22.0, 45.0, 3.5), ('M8 Ephialtes spec(pre-nudge)', 15.9, 34.7, 3.5)]),
+     [('M8 Ephialtes SPEC-PRIMARY (shipped)', 15.9, 34.7, 3.5), ('M8 R3-nudge (reverted)', 22.0, 45.0, 3.5)]),
 ]
 
 WARDEN_SPOTS = [
