@@ -10,6 +10,59 @@
 > reachable for now and we will fine tune immortal throne then if we want to add in the other areas
 > later then we can."
 
+> 🕷️ **BROODMOTHER NEST - DB LANE IMPLEMENTED (2026-07-10, Will 'proceed with the broodmother nest
+> implementation'; 7 flagged decisions DELEGATED = take each doc recommendation, amgoz1 taste, NO
+> artificial caps).** The deferred apex of the N7 sepulchral-wyrm-horde chain, per
+> `docs/BROODMOTHER_NEST_DESIGN.md`. Baseline = graft-lane Group 0 arz `ef52a476`. NEW arz
+> **`a947e98dd97d5cd4fe5eb8eded302b37`** (det-2x reproduced byte-identical). Text COUPLED + changed:
+> `6c84d66d`->**`3fb65c20`** (6 new tags). Quests/Levels UNCHANGED. record_diff vs `ef52a476` = EXACTLY
+> **25 ADDED + 0 MODIFIED + 0 REMOVED**, 0 collateral.
+> **RECORDS (apply_svc_patches `_create_broodmother_nest`, hooked AFTER `_create_wyrm_hordes`):**
+> boss `um_broodmother_99` (Eater-of-Days `um_eaterofdays_45` derivation - D13-render+summon-proven rig;
+> Boss, band [40,58,74], HP [22k,30k,40k], scale 1.9/height 2.4, cold wall Life100/Pierce60/Cold80/
+> Phys30; kept the eater's anim-safe wyrm kit + Hero->Boss passives + firebreath + the brood-summon);
+> the UNCAPPED hostile brood-summon `svc_broodnest_summon` (yaoguai clone, boss-kit clone-shape gated;
+> burst 4 / cd 5s / petLimit 24; spawns PURE common wyrmlings `um_sepulchralwyrm_common_31` - fodder
+> churn, no scale-spam); egg-cluster hatch pool `svc_broodnest_hatch` (3-6 common, champ 0);
+> `limit_broodnest` (herolimit_all clone bumped to [1..110]); lone-boss pool `svc_broodmother_pool`
+> (spawnMax=3/championMin=Max=2 -> 1 guaranteed mother + 2 `um_sepulchralwyrm_40` elder-worm escorts;
+> LAW holds); 1 lone proxy `q_broodmother_lone` + 6 egg proxies `q_broodnest_egg_{a..f}` (all
+> chanceToRun=100, no-cap limit; map lane places them, recommended host tombobs02); the SOUL chain -
+> fresh manual `summon_broodmother` + `broodmother_{1,2,3}` pets via `_build_boss_summon` (NO
+> itemSkillAutoController; D19 mobility + damage-sanity STRICT) PLUS the pet-of-pet brood twist
+> (`summon_broodmother_wyrmlings` + `broodmother_wyrmling_{1,2,3}` on the SepulchralWyrm01 rig,
+> isPetDisplayable off, petLimit 6 - the friendly broodmother pet auto-raises FRIENDLY wyrmlings,
+> Enslaver precedent); soul `broodmother_soul_{n,e,l}` (svc_uber dir; cold/vitality sheet, augments
+> drxcoldaura+drxdeathchillaura, weird stat defensiveFreeze 100, 66% Finger2 ONLY on the mother);
+> guaranteed apex loot = tier-03 Sepulchral Scale on the mother's dedicated Misc3 slot @100%; TESTHUB
+> yard `q_yard_broodmother` pool+proxy (mother + 2 escorts @100%, q_yard_ namespace, REAL records).
+> **7 DECISIONS TAKEN (all doc recommendations):** (1) host tombobs02 [MAP lane; DB provides proxies];
+> (2) rig = Eater-of-Days (D13-proven); (3) density = 6 clusters + petLimit 24 [crazier / no caps];
+> (4) fresh summon_broodmother WITH pet-of-pet friendly wyrmling brood; (5) guaranteed tier-03 scale +
+> soul, NO 4th-tier charm rung; (6) egg-sac props = FUNCTIONAL-ONLY [design says don't block; map-lane
+> cosmetic follow-up if a clean mesh resolves]; (7) Tartarus/Atlantis = PARKED per the IT-cap ruling
+> above [no action]. Refinements noted: the brood-summon spawns pure common wyrmlings (not the scale-
+> dropping champion worms) to avoid loot-spam - the 2 guaranteed champion escorts come from the pool;
+> limit_broodnest is a herolimit_all clone bumped to [1..110] (build-order-independent) rather than a
+> limit_obsidianbosses clone.
+> **GATES (all GREEN):** record_diff exactly 25 ADDED/0 else; boss-kit clone-shape 4 pairs OK;
+> spawn-eligibility 15 proxies OK (q_broodmother_lone + q_yard_broodmother registered; mother L74 <=
+> limit 110; spawnMax-championMax=1); summon-pet STRICT 0 failures (manual-cast law + damage-sanity +
+> D19 + clone-shape); soul-augment + activation OK; validate_tags PASS (134 referenced mod tags);
+> render-chain (A9/D5) PASS (233 pets/3032 art refs - eaterofdaysmesh + SepulchralWyrm01 + all
+> summons); Occult/Hunting golden (A7) PASS; MP spawn-equation '/'-free; soul-leak 0; negtest_roaming_
+> yard ALL OK (broodmother pools don't carry the Enslaver -> no whitelist needed; positive/real-arz
+> PASS); negtest_container_shape ALL OK; det-2x arz `a947e98d` + Text `3fb65c20` both byte-identical.
+> **MAP HANDOFF (MAP-REF-1; arz `a947e98d` must land before placements):** inject the lone proxy
+> `records\drxmap\proxy\q_broodmother_lone.dbr` (the mother + 2 escorts set-piece) + 6 egg-cluster
+> proxies `records\drxmap\proxy\q_broodnest_egg_{a,b,c,d,e,f}.dbr` in an OPEN >=8u-radius disc of the
+> recommended host `levels/world/orient/typhonug/tombobs02.lvl` (survey each on-mesh/all-tilesets/100%
+> per the M9/M10 pattern; the 6 eggs ring the mother). YARD SPOT: inject
+> `records\drxmap\proxy\q_yard_broodmother.dbr` in the TESTHUB monster yard (SVC_TEST_HUB-gated). All
+> are flags=0/no-0x14 q_leinth_lone-shape proxies. Coupling on eventual deploy: arz + Text ship together
+> (canonical Levels unchanged until the map lane injects). NOT DEPLOYED (no dist/, no SteamCMD; map
+> tools untouched).
+
 > 🎭 **SVAERA MASTERY GRAFT (DB lane, 2026-07-10, Will approved 'yes make them').** Implementing
 > `docs/SVAERA_MASTERY_COMPARISON.md` additively (soa verbal permission recorded in
 > `docs/PERMISSIONS.md`). **GROUP 0 (ANM-row completion) LANDED:** `build_svc_database`

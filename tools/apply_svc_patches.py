@@ -10304,6 +10304,350 @@ def _create_wyrm_hordes(db, tags):
           f"Scale charm x3 (lvlReq 30/44/56) @ 7% on 4 champion worms (lootMisc{slot})")
 
 
+# ── BROODMOTHER NEST (deferred wyrm set-piece; docs/BROODMOTHER_NEST_DESIGN.md) ──
+# WILL SIGNED OFF 2026-07-10 ("proceed with the broodmother nest implementation";
+# 7 flagged decisions DELEGATED = take each doc recommendation, amgoz1 taste, NO
+# artificial caps). The apex of the N7 sepulchral-wyrm-horde chain: a titanic
+# mother wyrm coiled over an uncapped hatchery. She derives from the DRX
+# Eater-of-Days rig (um_eaterofdays_45), which build31 D13 already proved render-
+# AND summon-safe (its own summon_eaterofdays + pets passed the D19 mobility +
+# summon-pet STRICT gates). While she lives the eggs never stop hatching (no
+# petLimit-cap in spirit: 6 static egg clusters + a burst-4/petLimit-24 mother
+# summon). Kill her before the room fills. Reward = a guaranteed apex tier-03
+# Sepulchral Scale + (66% Finger2) the ONE summon of the set: the manual-cast
+# Broodmother Soul (Skill_SpawnPet, NO itemSkillAutoController) whose friendly
+# broodmother pet in turn raises a small FRIENDLY wyrmling brood (the pet-of-pet
+# twist the Enslaver soul already ships). MAP-REF-1: these records (esp. the
+# q_broodmother_lone + q_broodnest_egg_* proxies) land in the arz FIRST; the map
+# lane then injects the placements (recommended host tombobs02, surveyed on-mesh).
+_BM_BAND = [40, 58, 74]                        # Obsidian-guardian / Ilsevar Act-3 band
+_BM_MONSTER = r'records\creature\monster\sepulchralwyrm\um_broodmother_99.dbr'
+_BM_DONOR = r'records\creature\monster\sepulchralwyrm\um_eaterofdays_45.dbr'          # DRX Eater-of-Days rig (D13-proven)
+_BM_COMMON = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr'  # Common wyrmling (hatch + summon fodder + friendly-pet src)
+_BM_ESCORT = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_40.dbr'         # Champion elder-worm escort
+# The uncapped hostile brood-summon (yaoguai clone; boss-kit clone-shape invariant).
+_BM_SUMMON = r'records\skills\boss skills\svc_broodnest_summon.dbr'
+_BM_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
+# Egg-cluster hatch pool (clone a firesprite general pool; retheme to wyrmlings).
+_BM_HATCH_POOL = r'records\proxies orient\pools\demon\svc_broodnest_hatch.dbr'
+_BM_HATCH_POOL_DONOR = r'records\proxies orient\pools\demon\firesprite_01_general06.dbr'
+# Lone-boss pool + proxy (q_leinth_lone "lone" pattern; Vashkarr accounting).
+_BM_POOL = r'records\drxmap\proxy\pools\svc_broodmother_pool.dbr'
+_BM_POOL_DONOR = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+_BM_PROXY = r'records\drxmap\proxy\q_broodmother_lone.dbr'
+_BM_PROXY_DONOR = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_BM_EGG_PROXIES = [rf'records\drxmap\proxy\q_broodnest_egg_{c}.dbr' for c in 'abcdef']  # 6 clusters (crazier; no caps)
+# No-cap [1..110] limit (clone the BASE herolimit_all -> bump the max window to 110,
+# the exact obsidian-limit recipe; build-order-independent - herolimit_all is a base
+# record). Contains the mother L74 with headroom AND the L71 escort (eligibility-safe).
+_BM_LIMIT = r'records\proxies orient\limit_broodnest.dbr'
+_BM_LIMIT_DONOR = r'records\proxies boss\herolimit_all.dbr'   # base [1..75] -> bumped to [1..110]
+_BM_DIFFICULTY = r'records\proxies orient\difficulty_04.dbr'
+# Soul summon chain (fresh summon_broodmother + pet-of-pet friendly wyrmling brood).
+_BM_SUMMON_SKILL = r'records\skills\soulskills\summon_broodmother.dbr'
+_BM_PETS = [rf'records\skills\soulskills\pets\broodmother_{i}.dbr' for i in (1, 2, 3)]
+_BM_WYRMLING_SUMMON = r'records\skills\soulskills\summon_broodmother_wyrmlings.dbr'
+_BM_WYRMLING_PETS = [rf'records\skills\soulskills\pets\broodmother_wyrmling_{i}.dbr' for i in (1, 2, 3)]
+# Guaranteed apex loot: the Group-G tier-03 Sepulchral Scale loot TABLE.
+_BM_SCALE_LOOT = r'records\item\loottables\animalrelics\svc_sepulchralscale\03_sepulchralscale.dbr'
+# TESTHUB yard placement (q_yard_ namespace; real records; 100%).
+_BM_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_broodmother.dbr'
+_BM_YARD_PROXY = r'records\drxmap\proxy\q_yard_broodmother.dbr'
+# Mother kit (all existence-verified vs the eater's own kit + this build's records).
+_BM_SK_NECROBOLT = r'records\skills\monster skills\attack_projectile\eaterofdays_necrobolt.dbr'
+_BM_SK_ARMOR = r'records\skills\monster skills\defense\armor_passive.dbr'
+_BM_SK_FROSTSLOW = r'records\skills\monster skills\passive_buffs\raptor_frostslow.dbr'
+_BM_SK_DEFLECT = r'records\skills\monster skills\defense\deflectprojectiles_passive.dbr'
+_BM_SK_CIRCLEOFDECAY = r'records\skills\boss skills\alastor_circleofdecay.dbr'
+_BM_SK_FIREBREATH = r'records\skills\monster skills\attack_melee\sepulchralwyrm_firebreath.dbr'
+_BM_SK_SPELLBREAKER = r'records\skills\monster skills\attack_radius\spellbreaker.dbr'
+_BM_SK_COLDBONUS = r'records\skills\monster skills\passive_buffs\bonusdamage_cold_+5perlevelx500.dbr'
+_BM_SK_BOSSIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+_BM_SK_BOSSSCALING = r'records\skills\monster skills\passive_buffs\boss_scaling.dbr'
+_BM_SK_GP_N = r'records\skills\monster skills\globalproperties_normal01.dbr'
+_BM_SK_GP_E = r'records\skills\monster skills\globalproperties_epic01.dbr'
+_BM_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
+
+
+def _create_broodmother_nest(db, tags):
+    """Build the whole Broodmother Nest DB side in dependency order: the uncapped
+    hostile brood-summon -> the mother boss (Eater-of-Days derivation; kit + brood
+    summon) -> egg-cluster hatch pool -> no-cap limit -> lone-boss pool (2 guaranteed
+    escorts) -> lone + 6 egg proxies -> friendly wyrmling pet-of-pet -> the
+    broodmother pets + manual summon (hostile->friendly repoint) -> soul (manual
+    cast, 2 cold augments, weird stat, 66% Finger2) -> guaranteed tier-03 Sepulchral
+    Scale loot hook -> TESTHUB yard pool/proxy -> tags. Monster.tpl clone -> free to
+    add resist fields (Vashkarr precedent); dtype-free set_field on clones preserves
+    each field's type. All refs existence-verified. Must run AFTER _create_wyrm_hordes
+    (the tier-03 scale loot table + the champion/common wyrms it references exist)."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+
+    for donor in (_BM_DONOR, _BM_COMMON, _BM_ESCORT, _BM_SUMMON_DONOR,
+                  _BM_HATCH_POOL_DONOR, _BM_POOL_DONOR, _BM_PROXY_DONOR,
+                  _BM_LIMIT_DONOR):
+        if not db.has_record(donor):
+            print(f"  BROODMOTHER: WARNING donor missing: {donor}; group skipped")
+            return
+    if not db.has_record(_BM_SCALE_LOOT):
+        print(f"  BROODMOTHER: WARNING tier-03 scale loot table missing "
+              f"({_BM_SCALE_LOOT}); group skipped (run after _create_wyrm_hordes)")
+        return
+
+    def _clear_skill_slots_above(rec, keep):
+        """Delete skillName slots above `keep` the donor carried (avoid stray donor
+        skills; DELETE not blank, per the B-TOXEUS-2 empty-ref law)."""
+        ff = db.get_fields(rec)
+        if not ff:
+            return
+        for key in [k for k in list(ff) if k.split('###')[0].startswith('skillName')]:
+            base = key.split('###')[0]
+            try:
+                n = int(base[len('skillName'):])
+            except ValueError:
+                continue
+            if n > keep:
+                del ff[key]
+        db._modified.add(rec)
+
+    # ── 1. The uncapped hostile brood-summon (yaoguai clone; only existing fields
+    #    changed -> loader-safe + boss-kit clone-shape invariant). Spawns PURE common
+    #    wyrmlings (Common, no soul, no scale drop) so the churn is fodder, never a
+    #    scale-loot / over-tough flood; the guaranteed champion escorts come from the
+    #    pool (2d), keeping the two density sources cleanly separate. burst 4 / cd 5 /
+    #    petLimit 24 = "no cap" in spirit (the engine needs a finite petLimit). ──
+    db.clone_record(_BM_SUMMON_DONOR, _BM_SUMMON)
+    sf(_BM_SUMMON, 'spawnObjects', [_BM_COMMON])
+    sf(_BM_SUMMON, 'petBurstSpawn', 4)
+    sf(_BM_SUMMON, 'skillCooldownTime', 5.0)
+    sf(_BM_SUMMON, 'petLimit', 24)
+    db._modified.add(_BM_SUMMON)
+    _BOSS_KIT_CLONES.append((_BM_SUMMON_DONOR, _BM_SUMMON))
+
+    # ── 2. THE BROODMOTHER (boss). Clone the Eater-of-Days rig; override identity /
+    #    power / kit. Keep the eater's proven anim-safe wyrm kit, upgrade Hero->Boss
+    #    passives, add firebreath + the brood-summon; she summons OFTEN. ──
+    db.clone_record(_BM_DONOR, _BM_MONSTER)
+    M = _BM_MONSTER
+    sf(M, 'description', 'tagSVCMonsterBroodmother')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'charLevel', list(_BM_BAND))
+    sf(M, 'characterLife', [22000.0, 30000.0, 40000.0])
+    sf(M, 'characterLifeRegen', [40.0, 70.0, 110.0])
+    sf(M, 'scale', 1.9)                                       # visibly the mother
+    sf(M, 'actorHeight', 2.4)
+    # boss resistance wall (new fields auto-FLOAT on the Monster.tpl clone)
+    sf(M, 'defensiveLife', 100.0)
+    sf(M, 'defensivePierce', 60.0)
+    sf(M, 'defensiveCold', 80.0)                              # she IS the cold
+    sf(M, 'defensivePhysical', 30.0)
+    kit = [
+        _BM_SK_NECROBOLT, _BM_SK_ARMOR, _BM_SK_FROSTSLOW, _BM_SK_DEFLECT,
+        _BM_SK_CIRCLEOFDECAY, _BM_SK_FIREBREATH, _BM_SK_SPELLBREAKER,
+        _BM_SK_COLDBONUS, _BM_SUMMON, _BM_SK_BOSSIMMUNITY, _BM_SK_BOSSSCALING,
+        _BM_SK_GP_N, _BM_SK_GP_E, _BM_SK_GP_L,
+    ]
+    for i, sk in enumerate(kit, start=1):
+        sf(M, f'skillName{i}', sk)
+    _clear_skill_slots_above(M, len(kit))
+    sf(M, 'initialSkillName', _BM_SK_CIRCLEOFDECAY)           # persistent death aura (eater default)
+    # AI rotation: summon the brood OFTEN (the nest churns even without the static
+    # clusters), necrobolt + firebreath as the offensive specials.
+    sf(M, 'specialAttackSkillName', _BM_SUMMON)
+    sf(M, 'specialAttackChance', 55.0)
+    sf(M, 'specialAttack2SkillName', _BM_SK_NECROBOLT)
+    sf(M, 'specialAttack2Chance', 40.0)
+    sf(M, 'specialAttack3SkillName', _BM_SK_FIREBREATH)
+    sf(M, 'specialAttack3Chance', 50.0)
+    db._modified.add(M)
+
+    # ── 3. Egg-cluster hatch pool (clone a firesprite general pool; pure common
+    #    wyrmling fodder, 3-6 per cluster, no champion crowd-out). ──
+    db.clone_record(_BM_HATCH_POOL_DONOR, _BM_HATCH_POOL)
+    HP = _BM_HATCH_POOL
+    sf(HP, 'FileDescription', 'Broodmother nest egg cluster (common wyrmling hatch)')
+    for i in (1, 2, 3, 4):
+        sf(HP, f'name{i}', _BM_COMMON)
+    sf(HP, 'spawnMin', 3); sf(HP, 'spawnMax', 6)
+    sf(HP, 'championChance', 0.0); sf(HP, 'championMin', 0); sf(HP, 'championMax', 0)
+    db._modified.add(HP)
+
+    # ── 4. No-cap [1..110] limit (clone base herolimit_all -> bump max window to
+    #    110, the exact obsidian-limit recipe; contains the mother L74 + escort L71
+    #    with headroom). Build-order-independent (herolimit_all is a base record). ──
+    db.clone_record(_BM_LIMIT_DONOR, _BM_LIMIT)
+    for f in ('maxPlayerLevelEquationNormal', 'maxPlayerLevelEquationEpic',
+              'maxPlayerLevelEquationLegendary'):
+        sf(_BM_LIMIT, f, '110*1')
+    sf(_BM_LIMIT, 'FileDescription', 'Broodmother nest no-cap limit [1..110]')
+    db._modified.add(_BM_LIMIT)
+
+    # ── 5. Lone-boss pool: 1 mother + 2 guaranteed um_sepulchralwyrm_40 escorts
+    #    (spawnMax=3 / championMin=Max=2 -> 3-2 = 1 guaranteed main = the mother;
+    #    the spawnMax-championMax>=1 LAW holds). Clear the leinth clone-leftover
+    #    3rd champion (Vashkarr fix). ──
+    db.clone_record(_BM_POOL_DONOR, _BM_POOL)
+    PL = _BM_POOL
+    sf(PL, 'FileDescription', 'Broodmother (main) + 2 elder-worm champion escorts')
+    sf(PL, 'name1', _BM_MONSTER)
+    sf(PL, 'name2', _BM_MONSTER)
+    sf(PL, 'name3', _BM_MONSTER)
+    sf(PL, 'nameChampion1', _BM_ESCORT)
+    sf(PL, 'nameChampion2', _BM_ESCORT)
+    sf(PL, 'nameChampion3', '')
+    sf(PL, 'weightChampion1', 50)
+    sf(PL, 'weightChampion2', 50)
+    sf(PL, 'weightChampion3', 0)
+    sf(PL, 'spawnMin', 3); sf(PL, 'spawnMax', 3)
+    sf(PL, 'championChance', 100.0); sf(PL, 'championMin', 2); sf(PL, 'championMax', 2)
+    db._modified.add(PL)
+
+    def _make_nest_proxy(proxy, pool_ref, extents, mesh_from=None, scale=None):
+        db.clone_record(_BM_PROXY_DONOR, proxy)
+        sf(proxy, 'pool1', pool_ref)
+        sf(proxy, 'chanceToRun', 100.0)
+        sf(proxy, 'difficultyLimitsFile', _BM_LIMIT)
+        sf(proxy, 'difficultyEquationFile', _BM_DIFFICULTY)
+        sf(proxy, 'placementExtents', float(extents))
+        if mesh_from and db.has_record(mesh_from):
+            m = db.get_field_value(mesh_from, 'mesh')
+            m = m[0] if isinstance(m, list) else m
+            if m and str(m).strip():
+                sf(proxy, 'mesh', str(m))
+        if scale is not None:
+            sf(proxy, 'scale', float(scale))
+        db._modified.add(proxy)
+
+    # ── 6. The mother placement (lone proxy) + the 6 egg-cluster proxies. ──
+    _make_nest_proxy(_BM_PROXY, _BM_POOL, 3.5, mesh_from=_BM_MONSTER, scale=1.9)
+    for egg in _BM_EGG_PROXIES:
+        _make_nest_proxy(egg, _BM_HATCH_POOL, 2.5, mesh_from=_BM_COMMON, scale=1.0)
+
+    # ── 7. Friendly wyrmling pet-of-pet brood (the soul's brood twist): 3 friendly
+    #    wyrmling pets on the SepulchralWyrm01 rig (Voranthys-proven as a pet) +
+    #    their summon skill (auto-cast by the broodmother pet, NOT a player button:
+    #    isPetDisplayable off, low petLimit). ──
+    if not _build_boss_summon(
+            db, _BM_COMMON, _BM_WYRMLING_PETS, _BM_WYRMLING_SUMMON,
+            'tagSVCSummonBroodmotherBrood', 'tagSVCMonsterBroodmotherWyrmling',
+            char_level=[31, 51, 66], life=[1200.0, 2000.0, 3000.0],
+            life_regen=[10.0, 20.0, 30.0],
+            dmg_min=[40.0, 70.0, 110.0], dmg_max=[70.0, 110.0, 160.0], scale=1.0,
+            loadout=_mirror_source_loadout(db, _BM_COMMON)):
+        raise SystemExit('BROODMOTHER: wyrmling pet-of-pet _build_boss_summon failed')
+    sf(_BM_WYRMLING_SUMMON, 'isPetDisplayable', 0)
+    sf(_BM_WYRMLING_SUMMON, 'petLimit', 6)
+    sf(_BM_WYRMLING_SUMMON, 'petBurstSpawn', 2)
+    sf(_BM_WYRMLING_SUMMON, 'skillCooldownTime', 8.0)
+    sf(_BM_WYRMLING_SUMMON, 'skillManaCost', 0.0)
+    db._modified.add(_BM_WYRMLING_SUMMON)
+
+    # ── 8. The manual-cast Broodmother summon (3 permanent pets on the mother's own
+    #    Eater-of-Days rig, D13-proven) + the player summon skill. Then repoint the
+    #    pet's inherited HOSTILE brood-summon -> the FRIENDLY wyrmling summon so the
+    #    broodmother pet raises FRIENDLY wyrmlings (never enemies), the exact Enslaver
+    #    pet-of-pet mechanism. ──
+    if not _build_boss_summon(
+            db, _BM_MONSTER, _BM_PETS, _BM_SUMMON_SKILL,
+            'tagSVCSummonBroodmother', 'tagSVCMonsterBroodmother',
+            char_level=list(_BM_BAND), life=[16000.0, 22000.0, 30000.0],
+            life_regen=[30.0, 60.0, 100.0],
+            dmg_min=[70.0, 110.0, 160.0], dmg_max=[110.0, 170.0, 250.0], scale=1.6,
+            loadout=_mirror_source_loadout(db, _BM_MONSTER)):
+        raise SystemExit('BROODMOTHER: summon_broodmother _build_boss_summon failed')
+    _hostile = _BM_SUMMON.replace('/', '\\').lower()
+    for p in _BM_PETS:
+        if not db.has_record(p):
+            continue
+        ff = db.get_fields(p) or {}
+        for k, tf in ff.items():
+            for j, v in enumerate(list(tf.values)):
+                if isinstance(v, str) and v.replace('/', '\\').lower() == _hostile:
+                    tf.values[j] = _BM_WYRMLING_SUMMON
+        sf(p, 'specialAttackSkillName', _BM_WYRMLING_SUMMON)
+        sf(p, 'specialAttackChance', 40.0)
+        db._modified.add(p)
+
+    # ── 9. The soul (amgoz1 voice, the ONE summon). Dense cold/vitality sheet + 2
+    #    thematic cold augments (Cold Aura + Death Chill Aura) + one weird signature
+    #    stat (defensiveFreeze 100 - the cold mother cannot be frozen). Grants the
+    #    MANUAL summon (_wire_summon_soul strips any inherited itemSkillAutoController
+    #    -> a pet BUTTON, never an on-attack proc). 66% Finger2, ONLY on the mother. ──
+    def _bm_stats(t, il):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        lvl = {'n': 3, 'e': 4, 'l': 5}[t]
+        return {
+            **_bmp(t),
+            'augmentSkillName1': (S, _SK_COLD_AURA), 'augmentSkillLevel1': (I, lvl),
+            'augmentSkillName2': (S, _SK_DEATH_CHILL), 'augmentSkillLevel2': (I, lvl),
+            'characterLife': (F, r(360.0)), 'characterLifeModifier': (F, r(14.0)),
+            'characterLifeRegen': (F, r(12.0)),
+            'characterIntelligence': (F, r(40.0)), 'characterIntelligenceModifier': (F, r(8.0)),
+            'characterManaModifier': (F, r(12.0)),
+            'characterOffensiveAbility': (F, r(90.0)),
+            'characterSpellCastSpeedModifier': (I, int(r(16))),
+            'offensiveColdMin': (F, r(60.0)), 'offensiveColdMax': (F, r(95.0)),
+            'offensiveColdModifier': (I, int(r(35))),
+            'offensiveLifeMin': (F, r(40.0)), 'offensiveLifeMax': (F, r(65.0)),
+            'offensiveLifeModifier': (I, int(r(25))),
+            'offensiveSlowColdMin': (F, r(60.0)), 'offensiveSlowColdDurationMin': (F, 3.0),
+            'offensiveSlowRunSpeedMin': (F, r(30.0)), 'offensiveSlowRunSpeedDurationMin': (F, 2.0),
+            'offensiveLifeLeechMin': (F, r(25.0)),
+            'defensiveFreeze': (F, 100.0),        # weird signature: the cold mother cannot be frozen
+            'defensiveCold': (F, r(45.0)), 'defensiveLife': (F, r(22.0)),
+            'characterDefensiveAbility': (F, r(60.0)),
+        }
+    bm_tiers = [{'diff': t, 'itemLevel': il, 'stats': _bm_stats(t, il)}
+                for t, il in (('n', 40), ('e', 58), ('l', 74))]
+    bm_souls = _create_soul(db, 'broodmother', 'tagSVCSoulBroodmother', bm_tiers,
+                            monster=_BM_MONSTER, drop_rate=66.0)
+    _wire_summon_soul(db, bm_souls, _BM_SUMMON_SKILL)   # manual: strip controller, level 1/2/3
+
+    # ── 10. Guaranteed apex loot: the tier-03 Sepulchral Scale on a DEDICATED Misc3
+    #    slot at 100% (the nest is where a player reliably completes the horde charm).
+    #    Repurposes the eater-inherited low-value Misc3 slot; soul stays on Finger2. ──
+    sf(M, 'chanceToEquipMisc3', 100.0)
+    sf(M, 'lootMisc3Item1', [_BM_SCALE_LOOT, _BM_SCALE_LOOT, _BM_SCALE_LOOT], S)
+    sf(M, 'chanceToEquipMisc3Item1', 100, I)
+    for j in (2, 3, 4, 5, 6):
+        sf(M, f'chanceToEquipMisc3Item{j}', 0, I)
+    db._modified.add(M)
+
+    # ── 11. TESTHUB yard placement (q_yard_ namespace; REAL records; 100%): the full
+    #    nest (mother + 2 escorts) so the map lane can give Will a yard spot to fight
+    #    and tune her 1:1. INERT on the canonical/Steam map (only the TESTHUB map
+    #    places it). Registered in _MOD_AUTHORED_SPAWN_PROXIES (spawn-eligibility). ──
+    db.clone_record(_BM_POOL_DONOR, _BM_YARD_POOL)
+    YP = _BM_YARD_POOL
+    sf(YP, 'FileDescription', 'YARD: Broodmother nest (mother + 2 escorts) @100% (TESTHUB-only)')
+    sf(YP, 'name1', _BM_MONSTER); sf(YP, 'name2', _BM_MONSTER); sf(YP, 'name3', _BM_MONSTER)
+    sf(YP, 'nameChampion1', _BM_ESCORT); sf(YP, 'nameChampion2', _BM_ESCORT)
+    sf(YP, 'nameChampion3', '')
+    sf(YP, 'weightChampion1', 50); sf(YP, 'weightChampion2', 50); sf(YP, 'weightChampion3', 0)
+    sf(YP, 'spawnMin', 3); sf(YP, 'spawnMax', 3)
+    sf(YP, 'championChance', 100.0); sf(YP, 'championMin', 2); sf(YP, 'championMax', 2)
+    db._modified.add(YP)
+    _make_nest_proxy(_BM_YARD_PROXY, _BM_YARD_POOL, 3.5, mesh_from=_BM_MONSTER, scale=1.9)
+
+    # ── 12. Tags (Text.arc COUPLED with the arz; validate_tags must pass). ──
+    tags['tagSVCMonsterBroodmother'] = '{^r}The Broodmother of the Deep'
+    tags['tagSVCMonsterBroodmotherWyrmling'] = 'Broodmother Wyrmling'
+    tags['tagSVCSummonBroodmother'] = 'Summon the Broodmother'
+    tags['tagSVCSummonBroodmotherBrood'] = 'Spawn the Brood'
+    tags['tagSVCSoulBroodmother'] = '{^F}Broodmother Soul'
+    tags['tagSVCSoulBroodmotherDESC'] = (
+        'Torn from the Broodmother of the Deep, the titanic mother wyrm whose eggs '
+        'never stopped hatching. It calls her forth to coil at your side, and her '
+        'brood spills out to swarm your enemies in her cold.')
+    print("  Broodmother Nest: mother boss (Eater-of-Days rig, band [40,58,74], HP "
+          "[22k,30k,40k], cold wall) + uncapped brood-summon (burst 4/cd 5/petLimit "
+          "24) + egg hatch pool (3-6 common) + no-cap limit + lone pool (1 mother + "
+          "2 escorts) + 1 lone proxy + 6 egg proxies + friendly wyrmling pet-of-pet "
+          "+ manual Broodmother Soul (66% Finger2, cold augments, defensiveFreeze) + "
+          "guaranteed tier-03 Sepulchral Scale (Misc3@100) + TESTHUB yard; tags set")
+
+
 # ── GROUP F (build32): N6 Obsidian Halls Treasure Roulette ──────────────────
 # WILL SIGNED OFF 2026-07-09 (docs/OBSIDIAN_ROULETTE_DESIGN.md, all decisions
 # locked). Four guardian bosses derived from region natives with wild theatrical
@@ -11397,6 +11741,22 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'main_monster': r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr',
         'name': 'q_yard_wyrm (yard: sepulchral wyrm horde @100%)',
     },
+] + [
+    {
+        # BROODMOTHER NEST: the lone-boss placement (spawnMax=3, championMin=Max=2 ->
+        # 3-2=1 guaranteed main = the mother; limit_broodnest [1..110] contains her
+        # L74 + the L71 escort). main = um_broodmother_99.
+        'proxy': _BM_PROXY, 'pool': _BM_POOL,
+        'main_monster': _BM_MONSTER,
+        'name': 'q_broodmother_lone (Broodmother + 2 elder-worm escorts)',
+    },
+    {
+        # BROODMOTHER yard placement (TESTHUB-only): same nest shape (mother + 2
+        # escorts @100%); same spawn-eligibility math + limit window.
+        'proxy': _BM_YARD_PROXY, 'pool': _BM_YARD_POOL,
+        'main_monster': _BM_MONSTER,
+        'name': 'q_yard_broodmother (yard: Broodmother nest @100%)',
+    },
 ]
 
 
@@ -11874,6 +12234,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # GROUP G (build32): N7 sepulchral wyrm hordes + the Sepulchral Scale charm.
     print("\n=== GROUP G: Wyrm Hordes + Sepulchral Scale ===")
     _create_wyrm_hordes(db, tags)
+
+    # BROODMOTHER NEST (build34+, Will 2026-07-10): the deferred apex wyrm set-piece.
+    # MUST run AFTER _create_wyrm_hordes (references its tier-03 Sepulchral Scale loot
+    # table + the common/champion wyrms) and BEFORE the clone-shape / spawn-eligibility
+    # / soul gates + the build29 castability wave (which post-processes her summon soul).
+    # MAP-REF-1: her q_broodmother_lone + q_broodnest_egg_* proxies land here so the map
+    # lane can inject the placements (recommended host tombobs02).
+    print("\n=== BROODMOTHER NEST: apex wyrm set-piece ===")
+    _create_broodmother_nest(db, tags)
 
     # GROUP F (build32): N6 Obsidian Halls treasure roulette. After the groups
     # (guardians are legit Bosses, so the drop forcer keeping their souls at 100%
