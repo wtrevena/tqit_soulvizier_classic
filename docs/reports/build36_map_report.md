@@ -1,4 +1,19 @@
-# build36 MAP WAVE report (rounds 1-3)
+# build36 MAP WAVE report (rounds 1-4)
+
+> **ROUND 4 (vet fixes) applied 2026-07-11 - see the `## ROUND 4` section below.** HEADLINE: root-caused
+> the recurring (3-round) survey-narrative failure. `tools/debug/survey_uberboss_spots.py` compared
+> 0x05-local query coords directly against the 0x0b navmesh-cell frame, but the base-game XPack hosts
+> carry a fixed **(16,16) offset** between the LEVELS-index grid corner (0x05 coords are relative to it)
+> and the 0x0b navmesh origin (center-dims). So the tool mis-read every spec-primary as off-mesh /
+> near-wall and drove bogus nudges. FIXED the tool (derive grid_corner from `ints_raw`, shift queries
+> by grid_corner-origin; calibration proves it: M8 floor-anchor median 8.30u RAW -> 0.90u corrected).
+> Independently confirmed on the BUILT map: **every spec-primary is on-mesh in the main component at
+> 100% clr all 3 tilesets** (M6 summit correctly flagged tight, 82% Leg). REVERTED M4/M5/M6/M8 to their
+> SPEC-PRIMARY coords (M7 was already spec-exact); M8 restores the spec-intended deepest-SW **back
+> corner** (Will's order). Both variants rebuilt + full gate battery re-run (all PASS). ALSO caught: a
+> stale `contracts_map.pyc` producing false MAP-DOOR-1 (gate-integrity hazard, purged); the warden
+> Helos true clearance is 64/51/42% near-wall, NOT the R3-claimed 100% (frame bug) - functional but
+> corrected here. NO map-artifact change vs R3 EXCEPT the 4 moved boss 0x05 instances (blob-diff proven).
 
 > **ROUND 3 (vet fixes) applied 2026-07-11 - see the `## ROUND 3` section below.** Headline: the R3
 > vet found FOUR report/narrative errors (no artifact defects): (1) M1 yard count was wrongly
@@ -38,13 +53,22 @@ flags=0, `Q_LEINTH_EXEMPLAR_ROT`, appended to the host's 0x05 via the version-co
 The DB lane authors the `q_*_lone` records + pools + hoard chests against the same specs; the map
 placement is inert until the arz merges (convergence delta-vet checks placement<->record-path parity).
 
-| # | Boss | Host level (INJECT_SPECS key) | ver | grid corner (world) | FINAL local (x,y,z) | WORLD (x,z) | clr@ext (N/E/L) | INJECT_SPECS key |
+> **R4 UPDATE: all coords below are now the SPEC-PRIMARIES** (the R1-R3 "FINAL" nudges were frame-bug
+> artifacts; see `## ROUND 4`). Clearances re-measured on the BUILT R4 map with the FIXED survey tool
+> (offset-corrected frame): every placement is on-mesh in the main component at 100% all 3 tilesets.
+
+| # | Boss | Host level (INJECT_SPECS key) | ver | grid corner (world) | R4 local (x,y,z) = SPEC | WORLD (x,z) | clr@ext (N/E/L) | INJECT_SPECS key |
 |---|------|-------------------------------|-----|----------------------|---------------------|-------------|-----------------|------------------|
-| M4 | Dorus, the Drowned King | Medea_TempleUG_Tomb01 [784] | v0e | (260,0,-8522) | (49.0, 1.2, 63.0) | (309,-8459) | 97/95/94% @4.0 | `xpack/levels/area02_medea/undergrounds/medea_templeug_tomb01.lvl` |
-| M5 | Tantalus, the Insatiable | Styx_SwampBorder_01 [755] | v0f | (-396,0,-10209) | (50.0, -15.2, 116.0) | (-346,-10093) | 96/94/92% @3.5 | `xpack/levels/area04_styx/styx_swampborder_01.lvl` |
-| M6 | Charon at the Golden Bough | Styx_RiverEdge_01 | v11 | (-524,0,-9697) | (185.0, -7.0, 48.0) | (-339,-9649) | 100/100/100% @3.5 | `xpack/levels/area04_styx/styx_riveredge_01.lvl` |
-| M7 | The Mnemophage | Judgment_TempleUG_Mnemosyne01 [801] | v11 | (127,-13,-11509) | (43.0, 3.0, 71.0) | (170,-11438) | 97/97/94% @3.5 | `xpack/levels/area05_judgment/undergrounds/judgment_templeug_mnemosyne01.lvl` |
-| M8 | Ephialtes, the Dread | Judgment_StoneCity_Exit01 [931] | v11 | (-1844,0,-13320) | (22.0, 3.2, 45.0) | (-1822,-13275) | 100/100/100% @3.5 | `xpack/levels/area05_judgment/undergrounds/judgment_stonecity_exit01.lvl` |
+| M4 | Dorus, the Drowned King | Medea_TempleUG_Tomb01 [784] | v0e | (260,0,-8522) | (52.0, 1.2, 60.0) | (312,-8462) | 100/100/100% @4.0 | `xpack/levels/area02_medea/undergrounds/medea_templeug_tomb01.lvl` |
+| M5 | Tantalus, the Insatiable | Styx_SwampBorder_01 [755] | v0f | (-396,0,-10209) | (54.0, -15.2, 114.3) | (-342,-10094.7) | 100/100/100% @3.5 | `xpack/levels/area04_styx/styx_swampborder_01.lvl` |
+| M6 | Charon at the Golden Bough | Styx_RiverEdge_01 | v11 | (-524,0,-9697) | (187.9, -7.0, 46.9) | (-336.1,-9650.1) | 100/100/100% @3.5 | `xpack/levels/area04_styx/styx_riveredge_01.lvl` |
+| M7 | The Mnemophage | Judgment_TempleUG_Mnemosyne01 [801] | v11 | (127,-13,-11509) | (43.0, 3.0, 71.0) | (170,-11438) | 100/100/100% @3.5 | `xpack/levels/area05_judgment/undergrounds/judgment_templeug_mnemosyne01.lvl` |
+| M8 | Ephialtes, the Dread (Dread Halls) | Judgment_StoneCity_Exit01 [931] | v11 | (-1844,0,-13320) | (15.9, 3.2, 34.7) | (-1828.1,-13285.3) | 100/100/100% @3.5 | `xpack/levels/area05_judgment/undergrounds/judgment_stonecity_exit01.lvl` |
+
+**M6 note:** the shipped coord is the spec's FORECOURT fallback (not the spec-default summit). The
+mandated on-mesh re-survey CONFIRMS the summit (217.7,1.2,12.5) is genuinely tight: clr 92/91/**82%**
+(N/E/L) - the boss+2-champion 3.5u ring hangs ~18% off on Legendary. Forecourt (187.9,-7.0,46.9) =
+100% clear. (Vindicates the R1-R3 forecourt SHIP call; only the coord is corrected to the spec's.)
 
 Proxy DBRs placed (one per boss): `q_dorus_lone`, `q_tantalus_lone`, `q_goldenbough_lone`,
 `q_mnemophage_lone`, `q_ephialtes_lone` (all under `records\drxmap\proxy\`). Each boss's hoard chest
@@ -399,3 +423,138 @@ Two independent builds per variant, byte-identical -> det-2x PASS, CLOSED (P3 no
    off-mesh spec coord, not a tool disagreement. Noted.
 6. **4 MAP-REF-1 P1 = intended placement-inert state** -> OPEN ITEM #8 (convergence MUST re-run
    contracts_map after the DB records merge to confirm placement<->record-path parity before deploy).
+
+## ROUND 4 (vet fixes) - 2026-07-11
+
+The R3 vet returned 3 NO_GO issues (1 P2 + 2 P3) + 5 curiosity findings. The through-line of the
+"most important" finding (survey-tool reliability, wrong 3 rounds running) turned out to be a single
+concrete, provable bug. Fixing it resolves the M8 P3 AND vindicates/corrects every boss placement.
+
+### ROOT CAUSE: the 16u survey frame bug (finally nailed, with proof)
+`tools/debug/survey_uberboss_spots.py` decoded each host's 0x0b navmesh into walkable cells anchored
+to the 0x0b **origin** (center - dims), then compared the INJECT_SPECS 0x05-local query coords
+directly against those cells - assuming 0x05-local == 0x0b-cell-frame. That assumption is FALSE on
+the base-game XPack hosts: the LEVELS-index **grid corner** (`ints_raw[6,7,8]`, which 0x05 instance
+coords are relative to) sits a fixed **(16,16)** off the 0x0b origin. Independently proven per host
+(grid_corner / 0x0b-origin / offset):
+
+| host | grid_corner | 0x0b origin | offset | floor-anchor median: RAW -> corrected |
+|---|---|---|---|---|
+| M4 Medea_TempleUG_Tomb01 | (260,0,-8522) | (244,-16,-8538) | (16,16) | 2.12u -> 0.20u |
+| M5 Styx_SwampBorder_01 | (-396,0,-10209) | (-412,-63,-10225) | (16,16) | (den, noisy) |
+| M6 Styx_RiverEdge_01 | (-524,0,-9697) | (-540,-87,-9713) | (16,16) | 0.10u -> 0.08u |
+| M7 Judgment_Mnemosyne01 | (127,-13,-11509) | (111,-28,-11525) | (16,16) | 3.81u -> 1.15u |
+| M8 Judgment_StoneCity_Exit01 | (-1844,0,-13320) | (-1860,-22,-13336) | (16,16) | **8.30u -> 0.90u** |
+
+The ground-truth anchor: the native `poi\generic\exit.dbr` in M8's host is stored at 0x05-local
+(35,6); grid_corner+local = world (-1809,-13314) = EXACTLY the "exit" world coord the dreadhalls spec
+identified. So 0x05 uses the grid corner, and the fixed tool's corrected-frame calibration reads
+native floor instances on-mesh (~0-1u) where the RAW frame read them ~8u off. Both the specs' own
+navlib survey and the R3 vet's independent navlib re-survey agree with the corrected tool.
+
+### FIX 1 (the tool) - `tools/debug/survey_uberboss_spots.py`
+`survey_level` now derives `grid_corner` from `lv['ints_raw']` (13x int32, [6:9]), computes
+`OFF = grid_corner - origin`, and shifts every query point (bosses, warden, calibration) into the
+cell frame. Calibration now prints the floor-anchor median nearest in BOTH frames (RAW vs corrected)
+so the frame is self-auditing. Re-surveyed on the BUILT R4 map, every spec-primary reads OK (on-mesh,
+comp#1, clr 100% all 3 tilesets); M8's spec-primary (15.9,34.7), which R3 called "off-mesh 7.2u",
+reads **d=0.00u / clr 100%**. The M6 summit correctly reads CHECK (82% Legendary).
+
+### FIX 2 (the placements) - `tools/build_section_surgery.py` UBERBOSS_SPECS
+Reverted all four frame-bug nudges to the SPEC-PRIMARY coords (verified on-mesh 100% in the corrected
+frame). M7 was already spec-exact (unchanged). M6 uses the spec's FORECOURT fallback (the summit ring
+is genuinely tight - the mandated survey now confirms 82% Legendary):
+
+| boss | R3 shipped (nudge) | R4 shipped (spec-primary) | corrected-frame survey |
+|---|---|---|---|
+| M4 Dorus | (49.0,1.2,63.0) | **(52.0,1.2,60.0)** | d=0.14u, 100/100/100%, comp#1 |
+| M5 Tantalus | (50.0,-15.2,116.0) | **(54.0,-15.2,114.3)** | d=0.10u, 100/100/100%, comp#1 |
+| M6 Charon | (185.0,-7.0,48.0) | **(187.9,-7.0,46.9)** forecourt | d=0.00u, 100/100/100%, comp#1 |
+| M7 Mnemophage | (43.0,3.0,71.0) | (43.0,3.0,71.0) unchanged | d=0.14u, 100/100/100%, comp#1 |
+| M8 Ephialtes | (22.0,3.2,45.0) | **(15.9,3.2,34.7)** | d=0.00u, 100/100/100%, comp#1 |
+
+M8 (15.9,34.7) restores the spec-intended deepest-SW **back corner** (Will's verbatim order) - the
+R3 +11.7u NE nudge had moved the boss to a shallower spot. This is the key spec-fidelity + trust fix.
+
+### R4 GATE BATTERY (both variants rebuilt from the SVAERA base)
+Canonical `local/Levels_merged.arc` = 688,690,453 B; TESTHUB `..._TESTHUB.arc` = 688,689,521 B (the
+few-byte deltas vs R3 are ARC-compression variance of the moved coord floats; the decompressed
+blob-diff is exactly the 4 boss instances).
+
+| Gate | Result |
+|---|---|
+| Build validity (both variants) | **PASS** 2282 levels, 0 bad offsets / 0 bad magic / 0 zero ints |
+| verify_merged_bc_navmeshes (canonical) | **PASS 24/24** real navmeshes, 0x0a stripped |
+| seam_lattice_check --gate (canonical) | **PASS** 24 aligned seams, 0 misaligned |
+| entrance_landing_check --check-merged | **PASS** G2 (DONOR+MERGED both 508 cells, dY +0.00u) |
+| Boss survey (fixed tool, BUILT canonical AND TESTHUB) | **PASS** all 5 on-mesh comp#1, clr 100% all 3 tilesets (M4 d0.14 / M5 d0.10 / M6 d0.00 / M7 d0.14 / M8 d0.00); M6 summit CHECK (82% Leg) as designed |
+| Canonical blob-diff vs build35 | **PASS** EXACTLY 5 blobs (the 5 boss hosts), each 0x05 +1, EVERY 0x0b byte-identical, 0 added/removed |
+| TESTHUB blob-diff vs build35-TESTHUB | **PASS** EXACTLY 8 blobs (5 boss + HV01 yard 231->232 + 2 warden hosts), all 0x0b byte-identical |
+| R4-vs-R3 blob-diff (surgical proof) | **PASS** EXACTLY 4 blobs differ (M4/M5/M6/M8 hosts), each 0x05 count UNCHANGED (coords moved), 0x0b identical; **M7 Mnemosyne byte-identical** (untouched) |
+| contracts_map (canonical + TESTHUB, frozen arz) | **PASS** 7 viol / 0 P0 / **4 P1 = the expected MAP-REF-1** (q_goldenbough/q_tantalus/q_mnemophage/q_ephialtes not-yet-in-arz; q_dorus resolves) + 3 pre-existing native portal P2s; **0 MAP-DOOR-1** |
+| _negtest_map.py | **PASS 25/25** (incl. door scope-guard + REF-1 non-SV guard) |
+| Yard (TESTHUB) | **10 proxies, min pairwise 32.25u** (unchanged); all 9 q_yard_ arz records + q_vashkarr_lone placed (nothing un-placed) |
+| det-2x | NOT re-run this round (build determinism unchanged from R3's CLOSED-PASS; only 4 coord constants differ). The build reads hard-coded main-repo paths and is deterministic per R3's proof. |
+
+### DISPOSITION of the R4 vet NO_GO issues
+1. **(P2) M1 yard >=60u** - UNCHANGED at 32.25u (10 groups), needs Will's product decision. The vet
+   independently re-confirmed 60u is geometrically infeasible for 10 groups in HV01's ~4,470 sq-unit
+   valley (hex-packing 10x 60u discs needs ~31,000). The ~5x de-crowd from 6.1u resolves the "on top
+   of each other, i am dying" complaint. TESTHUB-only (no ship impact). Also checked the Lane A
+   map-needs handoff + the arz: the ONLY new-pet yard proxy this build is `q_yard_dorus` (placed);
+   there are no `q_yard_meritamen`/`_runegolem`/`_skeleton` records to place (the task-brief examples
+   were speculative; Lane A did not materialize them as yard proxies). So M1's "add new-pet spots"
+   half is complete; only the >=60u half is Will's call. See OPEN ITEM #1.
+2. **(P3) M8 placed 11.7u off the spec corner (buggy tool)** - **FIXED.** Reverted to spec-primary
+   (15.9,3.2,34.7); independently verified on-mesh 100% in the corrected frame; survey tool fixed at
+   the root so this cannot recur. See FIX 1 + FIX 2.
+3. **(P3) M2 blue-box removal** - no actionable target (unchanged, correct no-op). Grepped BACKLOG +
+   all docs + the whole INJECT_SPECS dump again: no debug/placeholder blue-box entity exists in map
+   scope. The retired GridEntrance hub panels are already absent; the remaining portal_olympianarena
+   content doors are the B-PORTAL lane's give-them-mesh scope, NOT blind removal. Needs Will to point
+   at a specific in-game artifact. See OPEN ITEM #2.
+
+### DISPOSITION of the R4 curiosity findings
+- **Survey-tool reliability (MOST IMPORTANT)** - FIXED at the root (the 16u frame bug). The tool now
+  agrees with navlib. Recommend the convergence lane still spot-check any NEW placement with the
+  fixed tool's calibration line (RAW vs corrected median) as a frame self-check.
+- **M7 task-brief coord is a copy-paste typo** - CONFIRMED (the shipped M7 uses the real
+  `mnemosyne_uberboss_spec.md` primary (43,3,71), on-mesh 100%). No change.
+- **M6 forecourt-over-summit is correct** - VINDICATED with numbers: the corrected-frame survey shows
+  the summit at 82% Legendary (ring hangs off), forecourt at 100%. Forecourt shipped at the spec coord.
+  A future in-game A/B to the summit remains a design option (OPEN ITEM #3).
+- **Apex bosses on the mainline campaign path** - unchanged; still worth Will's one-line confirm
+  (OPEN ITEM #7). Placement is correct per each spec either way.
+- **Convergence gate must re-run contracts_map after the DB records merge** - yes (OPEN ITEM #8); the
+  4 MAP-REF-1 clear when the 4 remaining boss records land. NEW caveat below.
+
+### NEW findings this round (curiosity, beyond the vet's list)
+- **Stale-pyc gate hazard (fixed):** a stale `tools/contracts/__pycache__/contracts_map.cpython-312.pyc`
+  (compiled from a pre-R2-fix source) was being loaded and produced **4 false MAP-DOOR-1** on Tomb01's
+  native xsq06 doors - turning the ship-gate red for a non-defect. Proven: `py -B` (no bytecode cache)
+  and in-process `run(cfg)` both return 0 MAP-DOOR-1; only the stale .pyc emitted them. Purged the
+  stale pycs; the gate is now correct (0 MAP-DOOR-1). **Convergence lane: run contracts with a clean
+  `__pycache__` (or `py -B`) so a stale pyc cannot re-introduce this.** Also note the arz is a
+  DB-lane-owned moving target (its mtime jumped 15:04 -> 15:34 mid-run); freeze/snapshot the arz for a
+  deterministic contracts run (R4 vs R3 against the SAME frozen arz are byte-identical = my change has
+  zero contract effect).
+- **Warden Helos true clearance (corrected):** in the fixed frame the M3 Helos spot (64.5,0.8,189.5)
+  reads clr **64/51/42%** (N/E/L), near-wall - NOT the R3-report's "100%" (that was the RAW-frame bug;
+  the native Almyros ref reads 100%). It is still on-mesh (d<=0.28u) + comp#1 + clickable, so it is
+  FUNCTIONAL for a TESTHUB test NPC (an NPC standing near a wall is fine; it does not spawn a champion
+  ring). LEFT unchanged (warden was not a vet-flagged item; moving it trades the design's Almyros
+  click-separation for clearance). A verified-clean alternative if Will wants it: local (72.0,0.8,184.0)
+  = clr 100% all tilesets, 7.1u from Almyros. See OPEN ITEM #9.
+
+### OPEN ITEMS (R4 delta)
+1. **M1 yard >=60u** - Will's product decision (accept 32.25u [recommended] / fewer groups / relocate).
+   The new-pet half is DONE (q_yard_dorus placed; no other yard records exist). TESTHUB-only.
+2. **M2 blue-box** - Will to identify a specific in-game artifact (no map-scope target exists).
+3. **M6 Charon summit A/B** - optional in-game A/B (summit 82% Leg vs forecourt 100%).
+7. **Apex bosses on the mainline path** - one-line Will confirm (placement correct either way).
+8. **Convergence delta-vet MUST re-run contracts_map after the DB records merge** (with a clean
+   `__pycache__`) to confirm placement<->record-path parity; the 4 MAP-REF-1 clear when q_tantalus/
+   q_goldenbough/q_mnemophage/q_ephialtes_lone land. Map lane placed all proxies at the EXACT spec
+   paths (verified verbatim), so parity is achievable.
+9. **(NEW) Warden Helos near-wall** - functional but 64% clr; verified-clean alt (72,184)=100% if Will
+   wants a cleaner stand. TESTHUB-only.
