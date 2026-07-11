@@ -4462,6 +4462,57 @@ def _verify_portals_born_open(db):
     return offenders
 
 
+# ── A4 (build36, Will 2026-07-11): Aphiastas Finger2 zero ────────────────────
+# Will's order (live blood-cave testing): the Aphiastas keres bodies must STOP
+# dropping the Aphiastas soul. Close the leak PROPERLY (not cosmetically): set
+# chanceToEquipFinger2=0 on every Aphiastas keres record whose Finger2 loot is
+# souls-ONLY, WITHOUT touching the lootFinger2Item refs (Will was informed of the
+# aphiastas-soul / potion-recipe coupling; the soul-loot ref + any recipe stay
+# intact, only the DROP CHANCE goes to 0). Runs BEFORE the drop-rate forcer so the
+# forcer's chance>0 gate leaves these at 0 in BOTH testing and release builds.
+# Fail-loud if a record is missing OR its Finger2 loot is NOT souls-only (never
+# zero a slot that would strip a non-soul reward).
+_APHIASTAS_FINGER2_ZERO = [
+    r'records\xpack\creatures\monster\keres\um_afaistas_46.dbr',
+    r'records\xpack\creatures\monster\keres\copy of uw_ar_huntress_40.dbr',
+    r'records\xpack\creatures\monster\keres\copy of uw_ar_huntress_46.dbr',
+    r'records\xpack\creatures\monster\keres\xsq09_am_scavenger_37.dbr',
+    r'records\xpack\creatures\monster\keres\xsq09_am_scavenger_39.dbr',
+    r'records\xpack\creatures\monster\keres\xsq09_ar_huntress_36.dbr',
+    r'records\xpack\creatures\monster\keres\xsq09_ar_huntress_38.dbr',
+]
+
+
+def _apply_aphiastas_finger2_zero(db):
+    """A4: set chanceToEquipFinger2=0 on the Aphiastas keres records after proving
+    each one's Finger2 loot is souls-only. Leaves lootFinger2Item refs + any potion
+    formula untouched. Fail-loud on a missing record or a non-souls-only Finger2
+    slot. Uses exact-path resolution (never the substring _find_record)."""
+    zeroed = 0
+    for path in _APHIASTAS_FINGER2_ZERO:
+        rec = _resolve_record(db, path)
+        if rec is None:
+            raise SystemExit(f"A4 Aphiastas-zero: record missing (exact): {path}")
+        f2 = db.get_field_value(rec, 'lootFinger2Item1')
+        f2 = f2 if isinstance(f2, list) else [f2]
+        refs = [str(v) for v in f2 if v and str(v).strip()]
+        if not refs:
+            raise SystemExit(f"A4 Aphiastas-zero: {path} has EMPTY Finger2 loot "
+                             f"(refusing to zero - nothing to gate)")
+        non_soul = [v for v in refs if 'soul' not in v.lower()]
+        if non_soul:
+            raise SystemExit(f"A4 Aphiastas-zero: {path} Finger2 loot is NOT "
+                             f"souls-only (non-soul refs: {non_soul}); refusing "
+                             f"to zero (would strip a non-soul reward)")
+        # existing FLOAT field -> no dtype (dtype-safe). lootFinger2Item refs kept.
+        db.set_field(rec, 'chanceToEquipFinger2', 0.0)
+        db._modified.add(rec)
+        zeroed += 1
+    print(f"  A4 Aphiastas-zero: chanceToEquipFinger2=0 on {zeroed}/"
+          f"{len(_APHIASTAS_FINGER2_ZERO)} keres records (souls-only Finger2 "
+          f"verified; loot refs + any potion formula untouched)")
+
+
 def _force_100_pct_soul_drops(db):
     """Set chanceToEquipFinger2 to 100% for TESTING - but ONLY on monsters that
     are already configured to drop a soul (chanceToEquipFinger2 > 0).
@@ -8414,6 +8465,186 @@ def _create_blood_toxeus_soul(db):
     return paths
 
 
+# ── build36 A1 PET BUILDER OVERHAUL (Will 2026-07-11: "audit all pets for stat
+#    issues and gear issues") ───────────────────────────────────────────────
+# Registry of every _build_boss_summon (source_path, [pet paths]) family, appended
+# by the builder. Consumed by the three new fail-loud pet gates (parity/gear/
+# skill-kit). Module-global so the gates need no threading through the orchestrator.
+_SUMMON_PET_BUILDS = []
+
+# Slot-appropriate COMMON substitute loot tables for the STRICT gear-mirror. Used
+# ONLY when a source equips an \svc\ / \unique\ table in that slot (those spawn a
+# pet NAKED - the F2 naked-pet law), so the pet stays source-faithful (same slot
+# filled) without the unique-equip failure. All are proven 3-tier [n,e,l] common
+# tables that render on the humanoid/skeleton rigs these pets use.
+_GEAR_SUBSTITUTE = {
+    'RightHand': [r'records\item\loottables\weapons\mastertables\1h_dyn_n03.dbr',
+                  r'records\item\loottables\weapons\mastertables\1h_dyn_e03.dbr',
+                  r'records\item\loottables\weapons\mastertables\1h_dyn_l03.dbr'],
+    'LeftHand':  [r'records\item\loottables\shields\commondynamic\shield_n03.dbr',
+                  r'records\item\loottables\shields\commondynamic\shield_e03.dbr',
+                  r'records\item\loottables\shields\commondynamic\shield_l03.dbr'],
+    'Head':      [r'records\item\loottables\head\commondynamic\helm_n01b.dbr',
+                  r'records\item\loottables\head\commondynamic\helm_e01.dbr',
+                  r'records\item\loottables\head\commondynamic\helm_l01.dbr'],
+    'Torso':     [r'records\item\loottables\torso\commondynamic\melee_n01b.dbr',
+                  r'records\item\loottables\torso\commondynamic\melee_e01.dbr',
+                  r'records\item\loottables\torso\commondynamic\melee_l01.dbr'],
+    'Forearm':   [r'records\item\loottables\arms\commondynamic\armband_n01b.dbr',
+                  r'records\item\loottables\arms\commondynamic\armband_e01.dbr',
+                  r'records\item\loottables\arms\commondynamic\armband_l01.dbr'],
+    'LowerBody': [r'records\item\loottables\legs\commondynamic\greaves_n01b.dbr',
+                  r'records\item\loottables\legs\commondynamic\greaves_e01.dbr',
+                  r'records\item\loottables\legs\commondynamic\greaves_l01.dbr'],
+}
+_GEAR_SLOTS = ('RightHand', 'LeftHand', 'Head', 'Torso', 'Forearm', 'LowerBody')
+
+# Pet-AI role slots. Summons fire ONLY from attack/special slots; a summon in a
+# buff/init/dying/berserk slot NEVER casts (the Pygmalion "never summons" bug).
+_PET_AI_SLOTS = ('attackSkillName', 'specialAttackSkillName', 'specialAttack2SkillName',
+                 'specialAttack3SkillName', 'specialAttack4SkillName', 'specialAttack5SkillName')
+_PET_SPECIAL_SLOTS = ('specialAttackSkillName', 'specialAttack2SkillName',
+                      'specialAttack3SkillName', 'specialAttack4SkillName',
+                      'specialAttack5SkillName')
+_PET_SRC_KIT_SLOTS = ('specialAttack2SkillName', 'specialAttack3SkillName',
+                      'specialAttack4SkillName', 'specialAttack5SkillName')
+_PET_NONAI_SLOTS = ('buffSelfSkillName', 'buffSelf2SkillName', 'buffSelf3SkillName',
+                    'buffOtherSkillName', 'buffOther2SkillName', 'buffOther3SkillName',
+                    'healSkillName', 'initialSkillName', 'dyingSkillName', 'berserkSkillName')
+# Lyia archer-clone residue skills the source boss does not itself use.
+_LYIA_RESIDUE = ('envenomweapon', 'heartofoak', 'regrowth_lyia', "nature'swrath",
+                 'maenadsummon_attack_default')
+
+
+def _skill_class_of(db, ref):
+    """Resolve a skill ref's Class ('Skill_SpawnPet' / 'Skill_SpawnPetMonster' /
+    ...); None if the ref does not resolve."""
+    r = _resolve_record(db, str(ref))
+    if not r:
+        return None
+    c = db.get_field_value(r, 'Class')
+    return c[0] if isinstance(c, list) else c
+
+
+def _pet_slot_str(db, path, field):
+    v = db.get_field_value(path, field)
+    v = v[0] if isinstance(v, list) else v
+    return str(v).strip() if v is not None and str(v).strip() else ''
+
+
+def _free_pet_special_slot(db, path):
+    for s in _PET_SPECIAL_SLOTS:
+        if not _pet_slot_str(db, path, s):
+            return s
+    return None
+
+
+def _source_skill_level(db, source, skill):
+    """The level the SOURCE registers `skill` at (its skillLevelK), else 1."""
+    ff = db.get_fields(source) or {}
+    want = str(skill).replace('/', '\\').lower()
+    for k, tf in ff.items():
+        base = k.split('###')[0]
+        if base.startswith('skillName') and tf.values and \
+                str(tf.values[0]).replace('/', '\\').lower() == want:
+            try:
+                n = int(base[len('skillName'):])
+            except ValueError:
+                continue
+            lv = db.get_field_value(source, f'skillLevel{n}')
+            return lv if lv not in (None, '', []) else 1
+    return 1
+
+
+def _register_pet_skill(db, path, skill, level=1):
+    """Ensure `skill` sits in some skillNameK/skillLevelK on the pet (registration
+    = the per-level index; a role-slot skill with no registration fires at lvl 1)."""
+    ff = db.get_fields(path) or {}
+    want = str(skill).replace('/', '\\').lower()
+    used = set()
+    for k, tf in ff.items():
+        base = k.split('###')[0]
+        if base.startswith('skillName'):
+            try:
+                used.add(int(base[len('skillName'):]))
+            except ValueError:
+                pass
+            if tf.values and str(tf.values[0]).replace('/', '\\').lower() == want:
+                return  # already registered
+    slot = next((i for i in range(1, 25) if i not in used), None)
+    if slot is None:
+        return
+    db.set_field(path, f'skillName{slot}', str(skill))
+    db.set_field(path, f'skillLevel{slot}', level if not isinstance(level, list) else list(level))
+
+
+def _relocate_pet_buffslot_summon(db, path):
+    """FIX the Pygmalion/Aquardia/Dayria class: a friendly Skill_SpawnPet wired
+    into a NON-AI slot (buffSelf*/init/dying/berserk) never casts. Move it to a
+    free specialAttack slot (Chance 60) + register it, and DELETE the vacated slot
+    (never blank to '' - the B-TOXEUS-2 empty-ref law). Returns #relocated."""
+    moved = 0
+    for slot in _PET_NONAI_SLOTS:
+        sk = _pet_slot_str(db, path, slot)
+        if not sk or _skill_class_of(db, sk) != 'Skill_SpawnPet':
+            continue
+        in_ai = any(_pet_slot_str(db, path, s).replace('/', '\\').lower()
+                    == sk.replace('/', '\\').lower() for s in _PET_AI_SLOTS)
+        if not in_ai:
+            free = _free_pet_special_slot(db, path)
+            if free is not None:
+                db.set_field(path, free, sk)
+                db.set_field(path, free.replace('SkillName', 'Chance'), 60.0)
+                _register_pet_skill(db, path, sk, 1)
+        ff = db.get_fields(path) or {}
+        for k in list(ff):
+            if k.split('###')[0] == slot:
+                del ff[k]
+        moved += 1
+    if moved:
+        db._modified.add(path)
+    return moved
+
+
+def _mirror_source_skill_kit(db, source, path):
+    """build36 A1 (pet-skill-kit): restore the source boss's AI-fired combat kit
+    the Lyia-clone transplant structurally dropped. Copies the source's
+    specialAttack2-5 combat skills (+ their Chance) into the pet's free special
+    slots and registers them, EXCEPT a hostile Skill_SpawnPetMonster (never
+    re-teamed onto a friendly pet - it would spawn ENEMIES) and Lyia residue.
+    Then relocates any friendly summon the pet inherited into a non-AI slot.
+    Additive + defensive; never blanks a slot the source populated to ''."""
+    for slot in _PET_SRC_KIT_SLOTS:
+        sk = _pet_slot_str(db, source, slot)
+        if not sk:
+            continue
+        base = sk.replace('/', '\\').lower().rsplit('\\', 1)[-1].replace('.dbr', '')
+        if _skill_class_of(db, sk) == 'Skill_SpawnPetMonster':
+            continue
+        if any(res in base for res in _LYIA_RESIDUE):
+            continue
+        if any(_pet_slot_str(db, path, s).replace('/', '\\').lower()
+               == sk.replace('/', '\\').lower() for s in _PET_AI_SLOTS):
+            continue  # pet already fires it
+        free = _free_pet_special_slot(db, path)
+        if free is None:
+            break
+        db.set_field(path, free, sk)
+        ch = _pet_slot_str(db, source, slot.replace('SkillName', 'Chance'))
+        if ch:
+            try:
+                db.set_field(path, free.replace('SkillName', 'Chance'), float(ch))
+            except (TypeError, ValueError):
+                pass
+        _register_pet_skill(db, path, sk, _source_skill_level(db, source, sk))
+    _relocate_pet_buffslot_summon(db, path)
+    for slot in _PET_AI_SLOTS:
+        sk = _pet_slot_str(db, path, slot)
+        if sk and _skill_class_of(db, sk) is not None:
+            _register_pet_skill(db, path, sk, 1)
+    db._modified.add(path)
+
+
 def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, desc_tag,
                        char_level, life, life_regen, dmg_min, dmg_max, scale=None,
                        loadout=None):
@@ -8449,6 +8680,14 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
     mesh = src_val(source, 'mesh'); anim = src_val(source, 'charAnimationTableName')
     tex = src_val(source, 'baseTexture'); bump = src_val(source, 'bumpTexture')
     src_scale = src_val(source, 'scale'); src_atk = src_val(source, 'attackSkillName')
+    # build36 A1 (pet-gear-parity, Will's verbatim law: "a summoned pet carries
+    # exactly the gear its wild/hostile source form carries"): when no explicit
+    # loadout is given, MIRROR the source's own equip slots (strict = svc/unique
+    # source slots get a common substitute so the pet is not naked). An explicit
+    # loadout= still wins (D8/D9 keep their proven hand-transcribed tables).
+    if loadout is None:
+        loadout = _mirror_source_loadout(db, source, strict=True)
+    _loadout_slots = {s for s, _c, _w, _p in (loadout or [])}
     for i, path in enumerate(pet_paths):
         s = _find_record(db, lyia_sources[i])
         if not s:
@@ -8462,6 +8701,12 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         # the proven A10 Narok/Vort mechanism - never Monster.tpl field copies).
         if loadout:
             _set_pet_equipment(db, path, _loadout_spec(loadout))
+        # build36 A1 (pet-gear-parity): clear every equip slot the SOURCE does not
+        # use (Lyia-clone residue) so the pet mirrors the source EXACTLY - no gear
+        # the source lacks (the Xeiwang "no gear" / over-add direction of the law).
+        for _gslot in _GEAR_SLOTS:
+            if _gslot not in _loadout_slots:
+                db.set_field(path, f'chanceToEquip{_gslot}', 0.0)
         # B-SUMMON-2 guard: strip every .anm override the SOURCE monster does not
         # itself define (kills the Lyia-clone Maenad residue; stripped slots fall
         # back to the source's own charAnimationTableName). Source-faithful: a
@@ -8497,6 +8742,28 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         sf(path, 'characterMana', 1000.0); sf(path, 'characterManaRegen', 30.0)
         sf(path, 'handHitDamageMin', dmg_min[i]); sf(path, 'handHitDamageMax', dmg_max[i])
         sf(path, 'dropItems', 0); sf(path, 'giveXP', 0); sf(path, 'experiencePoints', 0)
+
+        # ── build36 A1 (pet-stat-mirror): mirror the source monster's attack/
+        #    locomotion cadence + primary attributes. The Lyia archer clone left
+        #    every boss-summon pet at atkSpeed 0.5 / run 0.96 / cast 0.65 / DEX 81
+        #    / STR 44 / INT 17 -> 38-56% of the hostile swing rate + near-zero
+        #    physical/elemental scaling (the "attacks too slowly / hits soft" bug).
+        #    set_field with NO dtype preserves each field's FLOAT type (all 12
+        #    exist on the Lyia base and on the sources). Builder tuning (life,
+        #    charLevel, handHitDamage, scale) above is intentional and kept.
+        for _st in ('characterAttackSpeed', 'characterAttackSpeedModifier',
+                    'characterRunSpeed', 'characterRunSpeedModifier',
+                    'characterSpellCastSpeed', 'characterSpellCastSpeedModifier',
+                    'characterDexterity', 'characterDexterityModifier',
+                    'characterStrength', 'characterStrengthModifier',
+                    'characterIntelligence', 'characterIntelligenceModifier'):
+            _sv = src_val(source, _st)
+            if _sv is not None:
+                sf(path, _st, list(_sv))
+        # ── build36 A1 (pet-skill-kit): restore the source's dropped specialAttack
+        #    2-5 combat kit + force any friendly summon into an AI-fired slot (the
+        #    Pygmalion "never summons" fix). Runs AFTER _update_existing_fields.
+        _mirror_source_skill_kit(db, source, path)
 
         # ── D19 PET-MOBILITY assert (fail-loud; bone-proven 2026-07-09): the
         # pet's PRIMARY anim row must have TABLE locomotion. Foreign-family
@@ -8536,6 +8803,9 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
                     f"source defines no {_row}RunAnim override -> pet would "
                     f"be IMMOBILE on its primary row '{_row}'.")
         db._modified.add(path)
+    # build36 A1: register this family (source + pets) for the three fail-loud pet
+    # gates (parity / gear / skill-kit), run once after all pets are built.
+    _SUMMON_PET_BUILDS.append((source_path, list(pet_paths)))
     ss = _find_record(db, lyia_summon)
     if ss:
         db.clone_record(ss, summon_skill)
@@ -8565,22 +8835,17 @@ def _create_blood_toxeus_summon(db):
         'tagSVCSummonBloodToxeus', 'tagMonsterHemorrheus',
         char_level=[40, 68, 100], life=[12000.0, 18000.0, 26000.0],
         life_regen=[30.0, 60.0, 100.0],
-        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1,
-        # F2: mirror um_bloodtoxeus_99's own armor loadout (Torso+LowerBody @100,
-        # DB-verified) so the summon is not naked - hard-coded tables, Pet-safe.
-        loadout=[
-            ('Torso', 100.0, 5000, [
-                r'records\item\loottables\torso\commondynamic\melee_n01b.dbr',
-                r'records\item\loottables\torso\commondynamic\melee_e01.dbr',
-                r'records\item\loottables\torso\commondynamic\melee_l01.dbr']),
-            ('LowerBody', 100.0, 5000, [
-                r'records\item\loottables\legs\commondynamic\greaves_n01b.dbr',
-                r'records\item\loottables\legs\commondynamic\greaves_e01.dbr',
-                r'records\item\loottables\legs\commondynamic\greaves_l01.dbr']),
-        ])
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1)
+        # build36 A1 (pet-gear-parity): loadout OMITTED -> auto-derive the STRICT
+        # source mirror. um_bloodtoxeus_99 equips RightHand(svc\crimsonverdict) +
+        # LeftHand(svc\bleed_affix) + Torso + Forearm + LowerBody. The old Torso+
+        # LowerBody-only loadout left the Devourer bare-fisted; the strict mirror
+        # substitutes a common weapon+shield for the two svc slots (naked-pet law)
+        # and mirrors the three common armor slots -> the Devourer "keeps its
+        # weapon" (Will's law), fully geared like its wild form.
     if ok:
         print("  D7 Toxeus summon: 3 pets from boss rig (RevenantPoison + crimson) + "
-              "summon skill (250/300/350 en, 180s cd); armor mirrors the boss (F2)")
+              "summon skill (250/300/350 en, 180s cd); gear auto-mirrors the boss (A1)")
     return ok
 
 
@@ -8656,6 +8921,17 @@ _EN_SUMMON_MARAUDERS = r'records\skills\boss skills\svc_enslaver_summonmarauders
 _EN_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
 _EN_BAND = [40, 68, 100]
 _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
+# build36 A2 (Enslaver rework, Will 2026-07-11: "black skeleton on the Blood-
+# Toxeus rig"): the BOSS now clones the skeleton kin um_toxeus_99 (the exact rig
+# the Devourer of Blood uses: RevenantPoison.msh + anm_skeleton01 + a full common
+# skeleton weapon loadout + skeleton weapon/cast anims) and wears an ALL-BLACK
+# charcoal skin, instead of the ShadowStalker demon. Its friendly summon pet
+# inherits the black-skeleton rig automatically. The MARAUDERS stay ShadowStalker
+# demons (Will: "keep the form he looks like now"), only super-strong.
+_EN_SKELETON_DONOR = r'records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr'
+_EN_BOSS_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
+_EN_BOSS_TEX = r'Creatures\Monster\Skeleton\NewSkeleton_Charcoal.tex'
+_EN_SK_ATTACKSKILL = r'records\skills\monster skills\attack_melee\toxeus_attackskill.dbr'
 # Enslaver kit (Toxeus lineage; all existence-verified).
 _EN_SK_NETHERSTRIKE = r'records\skills\monster skills\attack_melee\netherstrike.dbr'
 _EN_SK_BLADESTORM = r'records\skills\monster skills\attack_radius\toxeus_bladestorm.dbr'
@@ -8695,8 +8971,9 @@ def _create_enslaver(db, tags):
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
     sf = db.set_field
 
-    if not db.has_record(_EN_RIG_DONOR) or not db.has_record(_EN_SUMMON_DONOR):
-        print("  ENSLAVER: WARNING rig/summon donor missing; group skipped")
+    if not db.has_record(_EN_RIG_DONOR) or not db.has_record(_EN_SUMMON_DONOR) \
+            or not db.has_record(_EN_SKELETON_DONOR):
+        print("  ENSLAVER: WARNING rig/summon/skeleton donor missing; group skipped")
         return
 
     def _clear_range(rec, prefix, lo, hi):
@@ -8718,31 +8995,43 @@ def _create_enslaver(db, tags):
     sf(M, 'monsterClassification', 'Champion')
     sf(M, 'characterRacialProfile', 'Demon')
     sf(M, 'charLevel', list(_EN_BAND))
-    sf(M, 'characterLife', [2600.0, 4200.0, 6000.0])
-    sf(M, 'characterStrength', 340.0)
-    sf(M, 'characterDexterity', 480.0)
-    sf(M, 'handHitDamageMin', 190.0)                 # ~2x am_deathstalker (95/116)
-    sf(M, 'handHitDamageMax', 232.0)
+    # build36 A2 (super-strong shadow marauders, Will Option A): a 10-12 pack of
+    # these on top of the boss is a real AoE-or-die swarm.
+    sf(M, 'characterLife', [5000.0, 8500.0, 13000.0])
+    sf(M, 'characterStrength', 460.0)
+    sf(M, 'characterDexterity', 620.0)
+    sf(M, 'handHitDamageMin', 300.0)
+    sf(M, 'handHitDamageMax', 380.0)
     sf(M, 'characterRunSpeed', 1.7)
     sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], S)   # drxshadowcloakrunning_fx
     sf(M, 'dropItems', 0)
     db._modified.add(M)
 
-    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone; burst 3 / ~6s). ──
+    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone). build36 A2: rapid
+    #    many-summon (burst 6 / cd 2.0s / petLimit 12) - he reaches ~12 marauders
+    #    within ~2s of aggro; all class-proven (donor is burst 5 / limit 15). ──
     db.clone_record(_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS)
     sf(_EN_SUMMON_MARAUDERS, 'spawnObjects', [_EN_MARAUDER])
-    sf(_EN_SUMMON_MARAUDERS, 'petBurstSpawn', 3)
-    sf(_EN_SUMMON_MARAUDERS, 'skillCooldownTime', 6.0)
-    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 8)
+    sf(_EN_SUMMON_MARAUDERS, 'petBurstSpawn', 6)
+    sf(_EN_SUMMON_MARAUDERS, 'skillCooldownTime', 2.0)
+    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 12)
     db._modified.add(_EN_SUMMON_MARAUDERS)
     _BOSS_KIT_CLONES.append((_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS))
 
-    # ── 3. The boss (ShadowStalker-demon, scale 2.0, Toxeus kit). ──
-    db.clone_record(_EN_RIG_DONOR, _EN_BOSS)
+    # ── 3. The boss (build36 A2: ALL-BLACK SKELETON on the Blood-Toxeus rig).
+    #    Clone the skeleton kin um_toxeus_99 (NOT am_deathstalker) so we inherit
+    #    RevenantPoison.msh + charAnimationTableName=anm_skeleton01 + the full
+    #    common skeleton weapon loadout + skeleton weapon/cast anims (every kit
+    #    skill below is anim-safe on anm_skeleton01, shared with um_toxeus_21/99 +
+    #    bloodtoxeus). Then override to the charcoal all-black skin. scale 2.0,
+    #    actorHeight 2.5 ("towering"), HP/attrs/resists as before. ──
+    db.clone_record(_EN_SKELETON_DONOR, _EN_BOSS)
     B = _EN_BOSS
     sf(B, 'description', 'tagSVCMonsterEnslaver')
     sf(B, 'monsterClassification', 'Boss')
-    sf(B, 'characterRacialProfile', 'Demon')
+    sf(B, 'mesh', _EN_BOSS_MESH)                          # RevenantPoison (Devourer rig)
+    sf(B, 'baseTexture', _EN_BOSS_TEX)                    # ALL-BLACK charcoal skin
+    sf(B, 'characterRacialProfile', 'Undead')            # skeleton (was Demon)
     sf(B, 'charLevel', list(_EN_BAND))
     sf(B, 'characterLife', [13000.0, 18000.0, 24000.0])
     sf(B, 'characterStrength', 480.0)
@@ -8770,9 +9059,19 @@ def _create_enslaver(db, tags):
     ]
     for i, sk in enumerate(kit, start=1):
         sf(B, f'skillName{i}', sk)
-    sf(B, 'attackSkillName', _EN_SK_NETHERSTRIKE)
+    # build36 A2: skeleton-native basic attack (what bloodtoxeus uses); netherstrike
+    # stays a special-attack blink proc below.
+    sf(B, 'attackSkillName', _EN_SK_ATTACKSKILL)
+    # build36 A2: DELETE the inherited GREEN weapon-glow initialSkill (um_toxeus_99
+    # carries initialSkillName=toxeus_envenomweapon -> a green blade shroud on an
+    # all-black skeleton). Field-absence parity (never blank to '' - B-TOXEUS-2).
+    _en_ff = db.get_fields(B) or {}
+    for _k in list(_en_ff):
+        if _k.split('###')[0] == 'initialSkillName':
+            del _en_ff[_k]
+    # build36 A2: he casts the rapid marauder summon aggressively (chance 50 -> 70).
     for i, (sk, ch) in enumerate([
-            (_EN_SUMMON_MARAUDERS, 50.0), (_EN_SK_NETHERSTRIKE, 45.0),
+            (_EN_SUMMON_MARAUDERS, 70.0), (_EN_SK_NETHERSTRIKE, 45.0),
             (_EN_SK_BLADESTORM, 40.0), (_EN_SK_FLASHPOWDER, 30.0),
             (_EN_SK_LETHALSTRIKE, 35.0)], start=1):
         suf = '' if i == 1 else str(i)
@@ -8784,12 +9083,15 @@ def _create_enslaver(db, tags):
     #    marauder rig -> friendly pet + summon skill). isPetDisplayable off (the
     #    Enslaver PET auto-casts it, it is not a player button). ──
     marauder_pets = [rf'records\skills\soulskills\pets\enslaver_marauder_{i}.dbr' for i in (1, 2, 3)]
+    # build36 A2: the player's raised shadow pack matches the super-strong ladder
+    # (Will: "he raises his own shadow pack for you"). Gear/skills auto-mirror the
+    # marauder source (RightHand dyn_1h) via the A1 builder overhaul.
     _build_boss_summon(
         db, _EN_MARAUDER, marauder_pets, SUMMON_ENSLAVER_PETMARAUDERS,
         'tagSVCSummonEnslaverMarauders', 'tagSVCMonsterEnslaverMarauder',
-        char_level=list(_EN_BAND), life=[2600.0, 4200.0, 6000.0],
-        life_regen=[20.0, 35.0, 50.0],
-        dmg_min=[90.0, 140.0, 200.0], dmg_max=[130.0, 200.0, 280.0], scale=1.0)
+        char_level=list(_EN_BAND), life=[5000.0, 8500.0, 13000.0],
+        life_regen=[25.0, 45.0, 70.0],
+        dmg_min=[150.0, 230.0, 300.0], dmg_max=[220.0, 320.0, 420.0], scale=1.0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'isPetDisplayable', 0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petLimit', 3)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petBurstSpawn', 1)
@@ -8856,13 +9158,16 @@ def _create_enslaver(db, tags):
     tags['tagSVCMonsterEnslaverMarauder'] = '{^r}Enslaved Shadow Marauder'
     tags['tagSVCSummonEnslaver'] = 'Summon Toxeus, Enslaver of Souls'
     tags['tagSVCSummonEnslaverMarauders'] = 'Raise Shadow Marauders'
-    tags['tagSVCSoulEnslaver'] = '{^F}Enslaver of Souls Soul'
+    # build36 A2: full corrected soul name (was "{^F}Enslaver of Souls Soul").
+    tags['tagSVCSoulEnslaver'] = '{^F}Toxeus the Murderer, Enslaver of Souls Soul'
     tags['tagSVCSoulEnslaverDESC'] = ('Toxeus the Murderer, reborn from the shadow as '
-        'the Enslaver of Souls, who binds the dead into a marauding warband. Its bearer '
-        'may call him forth - and he raises his own shadow pack to fight beside you.')
-    print("  Enslaver: boss (ShadowStalker-demon, scale 2.0, Toxeus kit + hostile "
-          "marauder summon) + Champion marauder + friendly pet-of-pet + summon soul "
-          "(66% Finger2, Occult augments); tags set. Roaming sweep runs next.")
+        'the Enslaver of Souls: a towering skeletal revenant robed all in black who '
+        'binds the dead into a marauding warband. Its bearer may call him forth - and '
+        'he raises his own shadow pack to fight beside you.')
+    print("  Enslaver (A2): boss = ALL-BLACK skeleton (RevenantPoison + charcoal, "
+          "um_toxeus_99 rig) scale 2.0 + rapid marauder summon (burst 6/cd 2/limit "
+          "12); super-strong ShadowStalker-demon marauders [5000/8500/13000]; "
+          "friendly pet-of-pet; summon soul (66% Finger2); tags set. Sweep runs next.")
 
 
 def _sweep_inject_roaming_rare(db):
@@ -9291,6 +9596,15 @@ def _create_helos_portal_master(db, tags):
 TESTHUB_MASTER_NPC = r'records\quests\svc_testhub_master.dbr'
 TESTHUB_RETURN_NPC = r'records\quests\svc_testhub_return.dbr'
 _TESTHUB_NPC_DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+# build36 A6 (WARDEN SPLIT-FIX): the single svc_testhub_master was PLACED in TWO
+# levels (Helos + blood-cave mouth), but Action_BoatDialog binds its menu to ONE
+# entity resolved from the record path, so the second instance spawned mute-but-
+# visible (byte-proven H1: identical record/trigger, only the double placement
+# differs). Split into TWO singly-placed master records (each = the proven single-
+# placement boat NPC). Quests + map wave (see docs/reports/build36_laneA_map_needs
+# .md) emits a trigger per record + places each once.
+TESTHUB_MASTER_HELOS_NPC = r'records\quests\svc_testhub_master_helos.dbr'
+TESTHUB_MASTER_CAVE_NPC = r'records\quests\svc_testhub_master_cave.dbr'
 
 
 def _create_testhub_portal_npcs(db, tags):
@@ -9324,9 +9638,26 @@ def _create_testhub_portal_npcs(db, tags):
     tags['tagSVCTestHubToBossArena'] = 'The Boss Arena'
     tags['tagSVCTestHubToBloodCave'] = 'The Blood Cave'
     tags['tagSVCTestHubToHelos'] = 'Helos (Return)'
-    print("  Portal rig: svc_testhub_master + svc_testhub_return cloned from the "
-          "Knossos boatman (proven boat-dialog NPC shape); name/chat + 3 new "
-          "menu tags set (Garden/Secret/Uber/Sparta reuse Almyros labels)")
+    # ── build36 A6 (WARDEN SPLIT-FIX): the two singly-placed master records (Helos
+    #    + cave), reusing the SAME name/chat tags (no Text change). The map/quests
+    #    wave places each once + emits a trigger per record; the original
+    #    svc_testhub_master is kept until that wave retires its double placement. ──
+    for path, filedesc in (
+        (TESTHUB_MASTER_HELOS_NPC,
+         'SVC portal rig: TESTHUB Helos master (Model C, split, 7 ports)'),
+        (TESTHUB_MASTER_CAVE_NPC,
+         'SVC portal rig: TESTHUB blood-cave master (Model C, split, 7 ports)'),
+    ):
+        if db.has_record(path):
+            raise SystemExit(f"Portal rig A6: {path} already exists")
+        db.clone_record(donor, path)
+        db.set_field(path, 'description', 'tagSVCNpcTestHubMaster')
+        db.set_field(path, 'FileDescription', filedesc)
+        db.set_field(path, 'messageDialogTag', 'tagSVCTestHubMasterChat')
+        db._modified.add(path)
+    print("  Portal rig: svc_testhub_master + svc_testhub_return + A6 split masters "
+          "(svc_testhub_master_helos/_cave) cloned from the Knossos boatman; name/"
+          "chat + 3 new menu tags set (Garden/Secret/Uber/Sparta reuse Almyros)")
 
 
 # ── GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB) ──────────────
@@ -9555,14 +9886,222 @@ def _create_vashkarr(db, tags):
           "(burst 3/~6s) + stat-only soul (66% Finger2); tags set")
 
 
+# ── build36 A5 (Will 2026-07-11): PROPONTIS SUPER BOSS - Dorus, the Drowned King
+#    (DB side only; map lane places the proxy per docs/reports/build36_laneA_map_
+#    needs.md). The risen last king of Propontis, guarding the fortune the xSQ06
+#    treasure quest sends every hero after. Derived from the questline King Dorus
+#    shade (xsq06_king_dorus_41, the crowned drowned-king royalty rig, anim-safe:
+#    already casts Hero_ThunderClap/Thunderball) -> a Boss 7x his weight who raises
+#    his whole court out of the sarcophagi. Vashkarr/broodmother recipe. S1 dense
+#    STAT soul (Vashkarr precedent, NO summon). Hoard = a Boss-locked mega-chest
+#    (reuses the proven Obsidian Hoard chest/pool records -> zero new loot tables).
+_DK_BOSS = r'records\xpack\creatures\monster\lostsoul\um_dorus_99.dbr'
+_DK_DONOR = r'records\xpack\creatures\monster\lostsoul\xsq06_king_dorus_41.dbr'
+_DK_COURTIER = r'records\xpack\creatures\monster\lostsoul\svc_dorus_courtier_71.dbr'
+_DK_COURTIER_DONOR = r'records\xpack\creatures\monster\lostsoul\xsq06_lostsoul_courtier_34.dbr'
+_DK_ROYALGUARD = r'records\xpack\creatures\monster\lostsoul\svc_dorus_royalguard_71.dbr'
+_DK_ROYALGUARD_DONOR = r'records\xpack\creatures\monster\lostsoul\xsq06_lostsoul_nobleman_39.dbr'
+_DK_SUMMON = r'records\skills\boss skills\svc_dorus_raisecourt.dbr'
+_DK_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
+_DK_POOL = r'records\drxmap\proxy\pools\q_dorus_lone.dbr'
+_DK_PROXY = r'records\drxmap\proxy\q_dorus_lone.dbr'
+_DK_POOL_DONOR = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+_DK_PROXY_DONOR = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_DK_LIMIT = r'records\proxies orient\limit_obsidianbosses.dbr'   # no-cap [1..110] contains L71
+_DK_DIFFICULTY = r'records\proxies orient\difficulty_04.dbr'
+_DK_HOARD = {t: r'records\drxitem\container\svc_dorushoard_%s.dbr' % t for t in ('01', '02', '03')}
+_DK_HOARD_DONOR = {t: r'records\drxitem\container\svc_obsidianhoard_%s.dbr' % t for t in ('01', '02', '03')}
+_DK_HOARD_POOL = {t: r'records\drxitem\container\svc_dorushoard_pool_%s.dbr' % t for t in ('01', '02', '03')}
+_DK_HOARD_POOL_DONOR = {t: r'records\drxitem\container\svc_obsidianhoard_pool_%s.dbr' % t for t in ('01', '02', '03')}
+_DK_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_dorus.dbr'
+_DK_YARD_PROXY = r'records\drxmap\proxy\q_yard_dorus.dbr'
+_DK_BAND = [41, 57, 71]
+_DK_MESH = r'XPack\Creatures\Monster\Zombie\xSQ06_Royalty_NonQuest.msh'
+_DK_SK_CONVIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+_DK_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
+
+
+def _create_propontis_superboss(db, tags):
+    """A5: Dorus, the Drowned King - Propontis super boss (DB side). Runs AFTER
+    _create_obsidian_roulette (the hoard reuses its Boss-locked chest/pool
+    records). Vashkarr/broodmother idiom: clone donors, override existing fields
+    only on kit clones, _modified.add, fail-loud on missing donors."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    sf = db.set_field
+    for donor in (_DK_DONOR, _DK_COURTIER_DONOR, _DK_ROYALGUARD_DONOR,
+                  _DK_SUMMON_DONOR, _DK_POOL_DONOR, _DK_PROXY_DONOR,
+                  _DK_HOARD_DONOR['01'], _DK_HOARD_POOL_DONOR['01']):
+        if not db.has_record(donor):
+            print(f"  PROPONTIS: WARNING donor missing: {donor}; group skipped")
+            return
+
+    # ── 1. The raise-the-court summon (uncapped burst; yaoguai clone -> only
+    #    existing fields changed -> loader-safe + boss-kit clone-shape invariant).
+    #    Spawns PURE Common courtier fodder (no soul/scale spam); the 2 guaranteed
+    #    champion escorts come from the pool. ──
+    db.clone_record(_DK_SUMMON_DONOR, _DK_SUMMON)
+    sf(_DK_SUMMON, 'spawnObjects', [_DK_COURTIER])
+    sf(_DK_SUMMON, 'petBurstSpawn', 3)
+    sf(_DK_SUMMON, 'skillCooldownTime', 5.0)
+    sf(_DK_SUMMON, 'petLimit', 20)                       # "no cap" in spirit
+    db._modified.add(_DK_SUMMON)
+    _BOSS_KIT_CLONES.append((_DK_SUMMON_DONOR, _DK_SUMMON))
+
+    # ── 2. The Common courtier fodder (laddered to the band, no soul). ──
+    db.clone_record(_DK_COURTIER_DONOR, _DK_COURTIER)
+    sf(_DK_COURTIER, 'charLevel', list(_DK_BAND))
+    sf(_DK_COURTIER, 'monsterClassification', 'Common')
+    sf(_DK_COURTIER, 'characterLife', [900.0, 1400.0, 1900.0])
+    sf(_DK_COURTIER, 'dropItems', 0)
+    db._modified.add(_DK_COURTIER)
+
+    # ── 3. The Champion royal-guard escort (laddered; keeps its court-necromancer
+    #    lifedrain-ward summon, on-theme). ──
+    db.clone_record(_DK_ROYALGUARD_DONOR, _DK_ROYALGUARD)
+    sf(_DK_ROYALGUARD, 'description', 'tagSVCMonsterDorusGuard')
+    sf(_DK_ROYALGUARD, 'monsterClassification', 'Champion')
+    sf(_DK_ROYALGUARD, 'charLevel', list(_DK_BAND))
+    sf(_DK_ROYALGUARD, 'characterLife', [2600.0, 3800.0, 5000.0])
+    sf(_DK_ROYALGUARD, 'dropItems', 0)
+    db._modified.add(_DK_ROYALGUARD)
+
+    # ── 4. THE KING (boss). Clone the questline Dorus shade; keep its anim-safe
+    #    ThunderClap/Thunderball kit + royalty rig, upgrade Hero->Boss, add the
+    #    raise-court summon + boss passives + the resist wall. Monster.tpl clone ->
+    #    free to add resist fields (Vashkarr precedent). ──
+    db.clone_record(_DK_DONOR, _DK_BOSS)
+    M = _DK_BOSS
+    sf(M, 'description', 'tagSVCMonsterDrownedKing')
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'mesh', _DK_MESH)                              # crowned drowned-king rig (explicit)
+    sf(M, 'charLevel', list(_DK_BAND))
+    sf(M, 'characterLife', [13500.0, 18500.0, 24000.0]) # between Vashkarr and Toxeus
+    sf(M, 'characterLifeRegen', [12.0, 24.0, 40.0])
+    sf(M, 'scale', 1.6)                                  # looms over his court
+    sf(M, 'actorHeight', 2.0)
+    # boss resistance wall (he IS a bloated corpse; new fields auto-FLOAT)
+    sf(M, 'defensiveLife', 100.0)                        # vitality
+    sf(M, 'defensivePierce', 55.0)
+    sf(M, 'defensivePhysical', 30.0)
+    sf(M, 'defensiveBleeding', 40.0)
+    # ADD to the donor's kit (skillName1-4 + 10-12 used; 5-9 free): the raise-court
+    # summon + boss immunity + legendary globals. Keep ThunderClap/Thunderball etc.
+    sf(M, 'skillName5', _DK_SUMMON)
+    sf(M, 'skillName6', _DK_SK_CONVIMMUNITY)
+    sf(M, 'skillName7', _DK_SK_GP_L)
+    # AI: he raises the court OFTEN (specialAttack1/2 = the donor's Thunder casts).
+    sf(M, 'specialAttack3SkillName', _DK_SUMMON)
+    sf(M, 'specialAttack3Chance', 55.0)
+    db._modified.add(M)
+
+    # ── 5. Lone-boss pool: 1 king + 2 guaranteed royal-guard escorts (spawnMax=3 /
+    #    championMin=Max=2 -> 3-2=1 guaranteed main = the king; LAW holds). Clear
+    #    the leinth clone-leftover 3rd champion (Vashkarr fix). ──
+    def _dorus_pool(pool_path, desc):
+        db.clone_record(_DK_POOL_DONOR, pool_path)
+        sf(pool_path, 'FileDescription', desc)
+        sf(pool_path, 'name1', _DK_BOSS)
+        sf(pool_path, 'name2', _DK_BOSS)
+        sf(pool_path, 'name3', _DK_BOSS)
+        sf(pool_path, 'nameChampion1', _DK_ROYALGUARD)
+        sf(pool_path, 'nameChampion2', _DK_ROYALGUARD)
+        sf(pool_path, 'nameChampion3', '')
+        sf(pool_path, 'weightChampion1', 50)
+        sf(pool_path, 'weightChampion2', 50)
+        sf(pool_path, 'weightChampion3', 0)
+        sf(pool_path, 'spawnMin', 3); sf(pool_path, 'spawnMax', 3)
+        sf(pool_path, 'championChance', 100.0)
+        sf(pool_path, 'championMin', 2); sf(pool_path, 'championMax', 2)
+        db._modified.add(pool_path)
+    _dorus_pool(_DK_POOL, 'Dorus (main) + 2 royal-guard champion escorts')
+
+    # ── 6. The hoard: reuse the proven Obsidian Hoard Boss-locked chest + pool
+    #    records (locked=1 / Boss / radius 50 / gold gen 100 / rich loot). No new
+    #    loot tables; the blood-cave mega chest stays the crown. ──
+    for t in ('01', '02', '03'):
+        db.clone_record(_DK_HOARD_DONOR[t], _DK_HOARD[t])
+        sf(_DK_HOARD[t], 'FileDescription', "Dorus's Hoard (Boss-locked king's ransom)")
+        db._modified.add(_DK_HOARD[t])
+        db.clone_record(_DK_HOARD_POOL_DONOR[t], _DK_HOARD_POOL[t])
+        sf(_DK_HOARD_POOL[t], 'fixedItemName1', _DK_HOARD[t])
+        db._modified.add(_DK_HOARD_POOL[t])
+
+    # ── 7. Proxy (q_leinth_lone precedent) - the king + 2 escorts, chanceToRun 100,
+    #    no-cap limit, royalty preview mesh, hoard chest as the accessory. ──
+    def _dorus_proxy(proxy_path, pool_ref):
+        db.clone_record(_DK_PROXY_DONOR, proxy_path)
+        sf(proxy_path, 'mesh', _DK_MESH)                # preview silhouette
+        sf(proxy_path, 'scale', 1.6)
+        sf(proxy_path, 'pool1', pool_ref)
+        sf(proxy_path, 'chanceToRun', 100.0)
+        sf(proxy_path, 'difficultyLimitsFile', _DK_LIMIT)
+        sf(proxy_path, 'difficultyEquationFile', _DK_DIFFICULTY)
+        sf(proxy_path, 'placementExtents', 4.0)
+        db._modified.add(proxy_path)
+    _dorus_proxy(_DK_PROXY, _DK_POOL)
+    sf(_DK_PROXY, 'accessory1', _DK_HOARD_POOL['01'], S)
+    sf(_DK_PROXY, 'accessoryEpic1', _DK_HOARD_POOL['02'], S)
+    sf(_DK_PROXY, 'accessoryLegendary1', _DK_HOARD_POOL['03'], S)
+
+    # ── 8. S1 dense STAT soul (Vashkarr precedent: NO summon, a king's-ransom
+    #    sheet; ONLY the king drops it at 66% Finger2). ──
+    def _dk_stats(t, il):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _SK_DEATH_CHILL), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'characterLife': (F, r(340.0)), 'characterLifeModifier': (F, r(12.0)),
+            'characterStrength': (F, r(35.0)), 'characterStrengthModifier': (F, r(8.0)),
+            'characterOffensiveAbility': (F, r(100.0)), 'characterDefensiveAbility': (F, r(70.0)),
+            'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)),
+            'offensivePhysicalModifier': (F, r(35.0)),
+            'offensiveLifeMin': (F, r(50.0)), 'offensiveLifeMax': (F, r(80.0)),   # vitality
+            'offensiveLifeModifier': (F, r(30.0)),
+            'offensivePercentCurrentLifeMin': (F, r(3.0)),   # the bloated king tears current-life
+            'offensiveLifeLeechMin': (F, r(30.0)),
+            'offensiveFearMin': (F, 2.0),        # weird signature: the drowned dead make the living flee
+            'defensiveLife': (F, r(25.0)), 'defensivePierce': (F, r(30.0)),
+            'defensiveBleeding': (F, r(30.0)),
+        }
+    tiers = [{'diff': t, 'itemLevel': il, 'stats': _dk_stats(t, il)}
+             for t, il in (('n', 41), ('e', 57), ('l', 71))]
+    _create_soul(db, 'drowned_king', 'tagSVCSoulDrownedKing', tiers,
+                 monster=_DK_BOSS, drop_rate=66.0)
+
+    # ── 9. TESTHUB yard pool + proxy (king + 2 escorts @100%; SVC_TEST_HUB-gated
+    #    placement; REAL records, so tuning the king tunes the yard 1:1). ──
+    _dorus_pool(_DK_YARD_POOL, 'YARD: Dorus + 2 royal-guard escorts @100% (TESTHUB-only)')
+    _dorus_proxy(_DK_YARD_PROXY, _DK_YARD_POOL)
+
+    tags['tagSVCMonsterDrownedKing'] = '{^r}Dorus, the Drowned King'
+    tags['tagSVCMonsterDorusGuard'] = '{^r}Drowned Royal Guard'
+    tags['tagSVCSoulDrownedKing'] = '{^F}Soul of the Drowned King'
+    tags['tagSVCSoulDrownedKingDESC'] = (
+        'Torn from Dorus, the last king of Propontis, who hoarded a fortune and '
+        'drowned with it. His soul is bloated with the coin he died clutching and '
+        'the cold patience of a corpse that never let go.')
+    print("  A5 Propontis: Dorus the Drowned King (Boss [41,57,71] HP 13.5/18.5/24k, "
+          "royalty rig, ThunderClap/ball + raise-court summon burst3/petLimit20) + "
+          "Common courtier fodder + Champion royal-guard escort + lone pool/proxy "
+          "(1 king + 2 escorts) + Boss-locked hoard (Obsidian-chest reuse) + dense "
+          "stat soul (66% Finger2) + TESTHUB yard; tags set. Map lane places it.")
+
+
 # ── GROUP 4 (build31, overnight run): D13/D14/D20/D21 summon-the-boss souls ──
-def _mirror_source_loadout(db, source):
+def _mirror_source_loadout(db, source, strict=False):
     """Build a _build_boss_summon loadout that mirrors the SOURCE monster's own
     equip slots (D19 law generalized: hands mirrored -> the pet lives on a
     weaponed, table-covered anim row). Only slots with chance>0 AND an Item1
     that is a \\loottables\\ table (the F2 proven auto-equip path) or a
     creature-namespace monster armor piece (defaultHeadPiece class) are
-    mirrored; player unique/set tables are skipped."""
+    mirrored; player unique/set tables are skipped.
+
+    strict (build36 A1 pet-gear-parity): when a source slot has chance>0 but its
+    loot is an \\svc\\/\\unique\\ table (would spawn the pet NAKED), substitute a
+    slot-appropriate COMMON table (_GEAR_SUBSTITUTE) instead of dropping the slot,
+    so the pet carries EXACTLY the gear-slots the source carries (Will's law)."""
     def val(f):
         v = db.get_field_value(source, f)
         if isinstance(v, list):
@@ -9570,7 +10109,7 @@ def _mirror_source_loadout(db, source):
         return [v] if v is not None else None
 
     out = []
-    for slot in ('RightHand', 'LeftHand', 'Head', 'Torso', 'Forearm', 'LowerBody'):
+    for slot in _GEAR_SLOTS:
         ch = val('chanceToEquip%s' % slot)
         try:
             chance = float(ch[0]) if ch else 0.0
@@ -9584,16 +10123,189 @@ def _mirror_source_loadout(db, source):
               if '\\loottables\\' in x.replace('/', '\\').lower()
               and '\\unique' not in x.replace('/', '\\').lower()
               and '\\svc\\' not in x.replace('/', '\\').lower()]
-        if len(ok) == len(paths) and len(ok) in (1, 3):
+        if paths and len(ok) == len(paths) and len(ok) in (1, 3):
             if len(ok) == 1:
                 ok = ok * 3
             out.append((slot, 100.0, 5000, ok))
+        elif strict and slot in _GEAR_SUBSTITUTE:
+            # source equips an \svc\/\unique\ (naked-pet) table here -> keep the
+            # slot filled with a common substitute (bloodtoxeus RightHand=svc\
+            # crimsonverdict / LeftHand=svc\bleed_affix -> the Devourer pet keeps
+            # its weapon + offhand instead of fighting bare-fisted).
+            out.append((slot, 100.0, 5000, list(_GEAR_SUBSTITUTE[slot])))
     # direct headpiece (pygmalion class): a creature-namespace armor .dbr
     hp = val('defaultHeadPiece')
     if hp and isinstance(hp[0], str) and hp[0].strip() \
             and not any(sl == 'Head' for sl, _c, _w, _p in out):
         out.append(('Head', 100.0, 5000, [str(hp[0])] * 3))
     return out or None
+
+
+def _all_pet_records(db):
+    """Every soul pet record under \\skills\\soulskills\\pets\\."""
+    for n in db.record_names():
+        nl = n.replace('/', '\\').lower()
+        if '\\soulskills\\pets\\' in nl and nl.endswith('.dbr'):
+            yield n
+
+
+def _fix_sv_pet_summons(db):
+    """build36 A1 (per-pet skill fixes): GLOBAL sweep - relocate every friendly
+    Skill_SpawnPet wired into a non-AI slot on ANY soul pet into a free
+    specialAttack slot so it actually casts. Fixes the SV-original 'never summons'
+    pets the _build_boss_summon skill-kit mirror does not touch (Aquardia's
+    coral_crabsummon + Dayria's carrionbirdsummons in buffSelf slots) alongside
+    the _build_boss_summon products. Idempotent; run after every pet is built."""
+    swept = fixed = 0
+    for p in _all_pet_records(db):
+        swept += 1
+        if _relocate_pet_buffslot_summon(db, p):
+            fixed += 1
+    print(f"  A1 pet-summon relocation: swept {swept} soul pets, relocated buff-slot "
+          f"summon(s) into AI-fired slots on {fixed} pet(s)")
+
+
+# ── build36 A1: THREE fail-loud pet gates (parity / gear / skill-kit) ─────────
+def _verify_summon_pet_parity(db, pairs):
+    """PET-STAT-MIRROR gate (fail-loud). Every _build_boss_summon pet must mirror
+    its source monster's attack/locomotion cadence + primary attributes. PASS iff
+    each mirrored stat is >= threshold x the source's, with hard Lyia-archer-clone
+    fingerprint tripwires (atkSpd 0.5 / DEX 81 / STR 44 / INT 17 vs a stronger
+    source = the exact un-mirrored bug). Negative-tested against baseline (flags
+    all 30); green after the builder mirror."""
+    checks = [('characterAttackSpeed', 0.95), ('characterRunSpeed', 0.90),
+              ('characterSpellCastSpeed', 0.90), ('characterDexterity', 0.90),
+              ('characterStrength', 0.90), ('characterIntelligence', 0.90)]
+    trips = [('characterAttackSpeed', 0.5, 0.6), ('characterDexterity', 81, 100),
+             ('characterStrength', 44, 60), ('characterIntelligence', 17, 30)]
+
+    def fv(rec, f):
+        v = db.get_field_value(rec, f)
+        v = v[0] if isinstance(v, list) else v
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    problems = []
+    for src_path, pets in pairs:
+        src = _resolve_record(db, src_path)
+        if not src:
+            continue
+        for p in pets:
+            pr = _resolve_record(db, p)
+            if not pr:
+                continue
+            for f, ratio in checks:
+                sv, pv = fv(src, f), fv(pr, f)
+                if sv is None or sv <= 0:
+                    continue
+                if pv is None or pv < ratio * sv:
+                    problems.append((p, f, pv, sv, 'below %.2fx source' % ratio))
+            for f, bad, thr in trips:
+                sv, pv = fv(src, f), fv(pr, f)
+                if pv is not None and sv is not None and abs(pv - bad) < 1e-6 and sv > thr:
+                    problems.append((p, f, pv, sv, 'Lyia fingerprint'))
+    if problems:
+        for p, f, pv, sv, why in problems[:40]:
+            print(f"  PET-STAT-MIRROR OFFENDER: {p.rsplit(chr(92), 1)[-1]} :: "
+                  f"{f} pet={pv} src={sv} ({why})")
+        raise SystemExit(f"PET-STAT-MIRROR gate FAILED: {len(problems)} stat-parity "
+                         f"violation(s) across {len(pairs)} summon families")
+    print(f"  PET-STAT-MIRROR gate OK: {len(pairs)} summon families mirror source "
+          f"cadence + attributes (no Lyia archer-clone fingerprint)")
+
+
+def _verify_summon_pet_gear(db, pairs):
+    """PET-GEAR-PARITY gate (fail-loud; Will's verbatim law). A summoned pet
+    carries EXACTLY the gear its source form carries - no more, no less. STRICT +
+    TWO-WAY per slot: if source.chanceToEquip<S> > 0 the pet MUST equip S (else it
+    is bare-fisted/naked); if source.chanceToEquip<S> == 0 the pet must NOT (else
+    it over-adds gear the source lacks - the Xeiwang case). Negative-tested against
+    baseline (flags bloodtoxeus/toxeus_enslaver/enslaver_marauder bare-fisted);
+    green after the strict source-mirror loadout."""
+    def chance(rec, s):
+        v = db.get_field_value(rec, 'chanceToEquip' + s)
+        v = v[0] if isinstance(v, list) else v
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def equips(rec, s):
+        # source-faithful "equips slot S": chance>0, OR (Head only) a fixed
+        # defaultHeadPiece - the Pygmalion-automatoi construct wears a baked head
+        # piece the _mirror_source_loadout mirrors even though chanceToEquipHead=0.
+        if chance(rec, s) > 0:
+            return True
+        if s == 'Head':
+            hp = db.get_field_value(rec, 'defaultHeadPiece')
+            hp = hp[0] if isinstance(hp, list) else hp
+            return bool(hp and str(hp).strip())
+        return False
+
+    problems = []
+    for src_path, pets in pairs:
+        src = _resolve_record(db, src_path)
+        if not src:
+            continue
+        for p in pets:
+            pr = _resolve_record(db, p)
+            if not pr:
+                continue
+            for s in _GEAR_SLOTS:
+                sc = equips(src, s)
+                pc = equips(pr, s)
+                if sc and not pc:
+                    problems.append((p, s, 'source equips it, pet is bare (bare-fisted/naked)'))
+                elif pc and not sc:
+                    problems.append((p, s, 'pet equips it, source does NOT (over-add)'))
+    if problems:
+        for p, s, why in problems[:40]:
+            print(f"  PET-GEAR-PARITY OFFENDER: {p.rsplit(chr(92), 1)[-1]} :: {s}: {why}")
+        raise SystemExit(f"PET-GEAR-PARITY gate FAILED: {len(problems)} gear-parity "
+                         f"violation(s) (Will's law: exactly the source's gear, both ways)")
+    print(f"  PET-GEAR-PARITY gate OK: {len(pairs)} summon families carry exactly "
+          f"their source's gear (both directions)")
+
+
+def _verify_summon_pet_skill_kit(db):
+    """PET-SKILL-KIT gate (fail-loud). Sweeps EVERY soul pet and asserts its
+    summon kit can actually FIRE: (a) no friendly Skill_SpawnPet sits in a non-AI
+    slot (buffSelf*/init/dying/berserk -> the pet can never summon; the Pygmalion
+    bug), and (d) no Skill_SpawnPetMonster (hostile spawner) sits in ANY role slot
+    on a friendly pet (it would raise ENEMIES for the player). Negative-tested
+    against baseline (flags Pygmalion/Aquardia/Dayria)."""
+    nonai = ('buffSelfSkillName', 'buffSelf2SkillName', 'buffSelf3SkillName',
+             'buffOtherSkillName', 'buffOther2SkillName', 'buffOther3SkillName',
+             'healSkillName', 'initialSkillName', 'dyingSkillName', 'berserkSkillName')
+
+    def fs(rec, f):
+        v = db.get_field_value(rec, f)
+        v = v[0] if isinstance(v, list) else v
+        return str(v).strip() if v is not None and str(v).strip() else ''
+
+    problems = []
+    swept = 0
+    for p in _all_pet_records(db):
+        swept += 1
+        for slot in _PET_AI_SLOTS + nonai:
+            sk = fs(p, slot)
+            if not sk:
+                continue
+            cls = _skill_class_of(db, sk)
+            if cls == 'Skill_SpawnPetMonster':
+                problems.append((p, slot, sk, 'HOSTILE Skill_SpawnPetMonster on a friendly pet'))
+            elif cls == 'Skill_SpawnPet' and slot in nonai:
+                problems.append((p, slot, sk, 'friendly summon in a non-AI slot -> never casts'))
+    if problems:
+        for p, slot, sk, why in problems[:40]:
+            print(f"  PET-SKILL-KIT OFFENDER: {p.rsplit(chr(92), 1)[-1]} :: "
+                  f"{slot}={sk.rsplit(chr(92), 1)[-1]}: {why}")
+        raise SystemExit(f"PET-SKILL-KIT gate FAILED: {len(problems)} summon-wiring "
+                         f"violation(s) across {swept} soul pets")
+    print(f"  PET-SKILL-KIT gate OK: {swept} soul pets - every summon in an AI-fired "
+          f"slot, no hostile spawner on a friendly pet")
 
 
 def _apply_group4_summons(db, tags):
@@ -10110,6 +10822,149 @@ def _create_emberscale_charm(db, tags):
     print("  D10 Emberscale: 3 charms (turtle-pattern, weapons-only, fire + armor melt) "
           "+ 3 bonus tables (w1500) + 3 loot tables; wired em_ravager_39/41 "
           "lootMisc3 @ 7% (turtle-matched)")
+
+
+# ── build36 A3 (Will 2026-07-11): SANGUINE TITHE relic off the Sileni ────────
+# "the blood harness guys with the green name should drop a special relic." The
+# mod's THIRD custom charm (after Emberscale/fire-weapon + Sepulchral Scale/cold-
+# armor): a JEWELRY blood charm (life leech + vitality damage + %-current-life
+# bleed) off the Sileni (DRX bloodabomination satyr-brutes = the blood-harness
+# guys). Same builder shape as D10 Emberscale / Group-G Sepulchral Scale. Donor =
+# the base-game Demon's Blood animalrelic (already blood art + ItemCharm +
+# completedRelicLevel=5 + jewelry slots -> NO art repoint, one better than
+# Emberscale/Sepulchral which had to repoint their bitmaps).
+_ST_CHARM = {t: r'records\item\animalrelics\svc_sanguinetithe\%s_sanguinetithe.dbr' % t for t in ('01', '02', '03')}
+_ST_DONOR = {t: r'records\item\animalrelics\%s_multacts_demonsblood.dbr' % t for t in ('01', '02', '03')}
+_ST_BONUS = {t: r'records\item\lootmagicalaffixes\animalrelics\svc_sanguinetithe\%s_sanguinetithe.dbr' % t for t in ('01', '02', '03')}
+_ST_LOOT = {t: r'records\item\loottables\animalrelics\svc_sanguinetithe\%s_sanguinetithe.dbr' % t for t in ('01', '02', '03')}
+_ST_LOOTDON = r'records\item\loottables\animalrelics\01_multacts_demonsblood.dbr'
+_ST_SILENI = [
+    r'records\drxcreatures\bloodabomination\01_bladedancer_35.dbr',
+    r'records\drxcreatures\bloodabomination\01_bladedancer_36.dbr',
+    r'records\drxcreatures\bloodabomination\01_bladedancer_37.dbr',
+    r'records\drxcreatures\bloodabomination\02_spearrunner_37.dbr',
+    r'records\drxcreatures\bloodabomination\02_spearrunner_38.dbr',
+    r'records\drxcreatures\bloodabomination\02_spearrunner_39.dbr',
+    r'records\drxcreatures\bloodabomination\03_ravager_38.dbr',
+    r'records\drxcreatures\bloodabomination\03_ravager_39.dbr',
+    r'records\drxcreatures\bloodabomination\03_ravager_40.dbr',
+]
+_ST_LEVELREQ = {'01': 34, '02': 48, '03': 60}
+_ST_DROP_PCT = 7.0
+_ST_SLOTS_OFF = ('sword', 'axe', 'mace', 'spear', 'bow', 'staff', 'shield',
+                 'bodyArmor', 'greaves', 'helmet', 'armband', 'bracelet')
+# per-shard 5-arrays (Legendary 03; 02 ~0.66x; 01 ~0.4x). SIGNATURE = GUARANTEED
+# Life Leech at 5/5 only (the vampiric awakening), like Sepulchral's guaranteed
+# fear ([0,0,0,0,X]): the charm is inert-leech while incomplete, then "wakes up".
+_ST_STATS = {
+    '03': {'offensiveLifeMin': [15.0, 30.0, 45.0, 60.0, 75.0],
+           'offensiveLifeMax': [25.0, 50.0, 75.0, 100.0, 125.0],
+           'offensivePercentCurrentLifeMin': [1.0, 2.0, 3.0, 4.0, 5.0],
+           'characterLife': [40.0, 80.0, 120.0, 160.0, 200.0],
+           'offensiveLifeLeechMin': [0.0, 0.0, 0.0, 0.0, 16.0]},
+    '02': {'offensiveLifeMin': [10.0, 20.0, 30.0, 40.0, 50.0],
+           'offensiveLifeMax': [16.0, 32.0, 48.0, 64.0, 80.0],
+           'offensivePercentCurrentLifeMin': [0.6, 1.2, 1.8, 2.4, 3.0],
+           'characterLife': [26.0, 52.0, 78.0, 104.0, 130.0],
+           'offensiveLifeLeechMin': [0.0, 0.0, 0.0, 0.0, 12.0]},
+    '01': {'offensiveLifeMin': [6.0, 12.0, 18.0, 24.0, 30.0],
+           'offensiveLifeMax': [10.0, 20.0, 30.0, 40.0, 50.0],
+           'offensivePercentCurrentLifeMin': [0.4, 0.8, 1.2, 1.6, 2.0],
+           'characterLife': [16.0, 32.0, 48.0, 64.0, 80.0],
+           'offensiveLifeLeechMin': [0.0, 0.0, 0.0, 0.0, 8.0]},
+}
+# blood/life/vitality completion-bonus affixes (all 3-tier verified present). 1500.
+_ST_BONUS_ENTRIES = {t: [
+    (r'records\item\lootmagicalaffixes\animalrelics\bonuses\offensive_damagelife_%s.dbr' % t, 300),
+    (r'records\item\lootmagicalaffixes\forge\bonuses\offensive_vitality_%s.dbr' % t, 250),
+    (r'records\item\lootmagicalaffixes\animalrelics\bonuses\glowingmoss_%%health_%s.dbr' % t, 250),
+    (r'records\item\lootmagicalaffixes\suffix\default\character_attributelife_%s.dbr' % t, 250),
+    (r'records\item\lootmagicalaffixes\animalrelics\bonuses\defensive_liferesist_%s.dbr' % t, 250),
+    (r'records\item\lootmagicalaffixes\animalrelics\bonuses\glowingmoss_healthregen_%s.dbr' % t, 200),
+] for t in ('01', '02', '03')}
+
+
+def _create_sanguine_tithe(db, tags):
+    """A3: build the Sanguine Tithe jewelry blood charm (Emberscale/D10 +
+    Sepulchral/Group-G pattern): 3 tier charms (clone the Demon's Blood donor ->
+    override to the blood ladder), 3 completion-bonus LootRandomizerTables, 3
+    FixedWeight loot tables, and the 7% lootMisc4 wiring on all 9 Sileni combat
+    bodies. dtype discipline: cloned overrides pass NO dtype; NEW records' brand-
+    new fields carry explicit dtypes."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    if not db.has_record(_ST_DONOR['01']) or not db.has_record(_ST_LOOTDON):
+        print("  SANGUINE TITHE: WARNING Demon's Blood donor missing; group skipped")
+        return
+    for t in ('01', '02', '03'):
+        donor = _ST_DONOR[t]
+        if not db.has_record(donor):                     # exact-path assert (D10 rule)
+            raise SystemExit(f"A3: Demon's Blood charm donor missing (exact): {donor}")
+        for path, _w in _ST_BONUS_ENTRIES[t]:
+            if not db.has_record(path):
+                raise SystemExit(f"A3: completion-bonus affix missing (exact): {path}")
+        # ── charm (clone -> override; NO dtypes on existing fields) ──
+        charm = _ST_CHARM[t]
+        db.clone_record(donor, charm)
+        sf = db.set_field
+        sf(charm, 'description', 'tagSVCSanguineTithe')
+        sf(charm, 'itemText', 'tagSVCSanguineTitheDESC')
+        sf(charm, 'FileDescription', 'Sanguine Tithe: life leech + vitality + %current-life bleed')
+        sf(charm, 'levelRequirement', _ST_LEVELREQ[t])
+        # jewelry only (the donor is already amulet+ring; force weapon/armor OFF)
+        sf(charm, 'amulet', 1); sf(charm, 'ring', 1)
+        for slot in _ST_SLOTS_OFF:
+            sf(charm, slot, 0)
+        # zero the donor's non-blood stat block, then author the blood ladder
+        sf(charm, 'defensiveStun', [0.0, 0.0, 0.0, 0.0, 0.0])
+        sf(charm, 'defensiveLife', [0.0, 0.0, 0.0, 0.0, 0.0])
+        for fname, arr in _ST_STATS[t].items():
+            sf(charm, fname, list(arr))
+        sf(charm, 'bonusTableName', _ST_BONUS[t])
+        db._modified.add(charm)
+        # ── completion-bonus table (NEW LootRandomizerTable) ──
+        bt = _ST_BONUS[t]
+        _ensure_record(db, bt, r'database\Templates\LootRandomizerTable.tpl')
+        db.set_field(bt, 'templateName', r'database\Templates\LootRandomizerTable.tpl', S)
+        db.set_field(bt, 'Class', 'LootRandomizerTable', S)
+        total_w = 0
+        for i, (path, w) in enumerate(_ST_BONUS_ENTRIES[t], start=1):
+            db.set_field(bt, f'randomizerName{i}', path, S)
+            db.set_field(bt, f'randomizerWeight{i}', w, I)
+            total_w += w
+        if total_w != 1500:
+            raise SystemExit(f"A3: tier {t} bonus weights sum {total_w} != 1500")
+        db._modified.add(bt)
+        # ── loot table (clone the Demon's Blood FixedWeight table; slot 1 = charm) ──
+        lt = _ST_LOOT[t]
+        db.clone_record(_ST_LOOTDON, lt)
+        db.set_field(lt, 'lootName1', charm)
+        db._modified.add(lt)
+    # ── wire all 9 Sileni combat bodies: turtle-matched 7% on the free lootMisc4 ──
+    loot_arr = [_ST_LOOT['01'], _ST_LOOT['02'], _ST_LOOT['03']]
+    wired = 0
+    for w in _ST_SILENI:
+        if not db.has_record(w):                          # exact-path assert
+            raise SystemExit(f"A3: Sileni combat body missing (exact): {w}")
+        cur = db.get_field_value(w, 'lootMisc4Item1')
+        if cur not in (None, '', 0, []):
+            raise SystemExit(f"A3: {w} lootMisc4 is NOT free (has {cur!r}); pick another slot")
+        db.set_field(w, 'lootMisc4Item1', list(loot_arr), S)   # NEW field -> STRING dtype
+        db.set_field(w, 'chanceToEquipMisc4', _ST_DROP_PCT)    # existing 0.0 FLOAT -> no dtype
+        db.set_field(w, 'chanceToEquipMisc4Item1', 100)        # existing 0 INT -> no dtype
+        db._modified.add(w)
+        wired += 1
+    tags['tagSVCSanguineTithe'] = 'Sanguine Tithe'
+    tags['tagSVCSanguineTitheDESC'] = (
+        "Cut from a Sileni's harness, still warm. It was never a decoration. Wear "
+        "it, and every wound you open pays its due back to you in blood.")
+    # NOTE: the green-name polish (Will's "green name"): the 3 Sileni name tags
+    # (tagAbomDW/Spear/Brute) get the {^G} green prefix via build_text_arc.py's
+    # TEXT_FIX_TAGS single-definition override, NOT here - putting an OVERRIDE of an
+    # existing base/SV tag in the uber-soul-tags section would trip the fail-loud
+    # duplicate-tag gate (the engine keeps the FIRST definition).
+    print(f"  A3 Sanguine Tithe: 3 jewelry charms (life leech + vitality + %-current-"
+          f"life bleed, guaranteed 5/5 leech) + 3 bonus tables (w1500) + 3 loot "
+          f"tables; wired {wired}/9 Sileni lootMisc4 @ {_ST_DROP_PCT}%; Sileni -> green")
 
 
 # ── GROUP G (build32): N7 Wyrm Hordes + the Sepulchral Scale charm ──────────
@@ -11751,16 +12606,16 @@ def _create_test_yard(db, tags):
                 mesh_from=_EN_BOSS)
 
     # ── 2. MARAUDER pack (SPOT A2): pool name1..4 = the real Champion marauder,
-    #    spawn 3-4, championChance 0 -> a 3-4 marauder pack @100% (mirrors the
-    #    swarm he normally spawns with). ──
+    #    championChance 0 -> a guaranteed marauder pack @100%. build36 A2: spawn
+    #    10 (Will's "guaranteed 10-pack" - a real AoE-or-die swarm in the yard). ──
     db.clone_record(_YARD_POOL_DONOR, _YARD_MARAUDERS_POOL)
     PL = _YARD_MARAUDERS_POOL
-    sf(PL, 'FileDescription', 'YARD: Enslaved Shadow Marauder pack 3-4 @100% (TESTHUB-only)')
+    sf(PL, 'FileDescription', 'YARD: Enslaved Shadow Marauder pack 10 @100% (TESTHUB-only)')
     for i in (1, 2, 3, 4):
         sf(PL, f'name{i}', _EN_MARAUDER)
         sf(PL, f'weight{i}', 100)
     _clear_champions(PL)
-    sf(PL, 'spawnMin', 3); sf(PL, 'spawnMax', 4)
+    sf(PL, 'spawnMin', 10); sf(PL, 'spawnMax', 10)
     sf(PL, 'championChance', 0.0); sf(PL, 'championMin', 0); sf(PL, 'championMax', 0)
     db._modified.add(PL)
     _make_proxy(_YARD_MARAUDERS_PROXY, _YARD_MARAUDERS_POOL, _EN_MARAUDER, 3.0,
@@ -11885,6 +12740,21 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'proxy': _BM_YARD_PROXY, 'pool': _BM_YARD_POOL,
         'main_monster': _BM_MONSTER,
         'name': 'q_yard_broodmother (yard: Broodmother nest @100%)',
+    },
+] + [
+    {
+        # A5 PROPONTIS: Dorus the Drowned King lone placement (spawnMax=3,
+        # championMin=Max=2 -> 3-2=1 guaranteed main = the king; limit_
+        # obsidianbosses [1..110] contains his L71). main = um_dorus_99.
+        'proxy': _DK_PROXY, 'pool': _DK_POOL,
+        'main_monster': _DK_BOSS,
+        'name': 'q_dorus_lone (Dorus, the Drowned King + 2 royal-guard escorts)',
+    },
+    {
+        # A5 Dorus TESTHUB yard placement (same shape @100%).
+        'proxy': _DK_YARD_PROXY, 'pool': _DK_YARD_POOL,
+        'main_monster': _DK_BOSS,
+        'name': 'q_yard_dorus (yard: Dorus + escorts @100%)',
     },
 ]
 
@@ -12015,6 +12885,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
     the tuned 66% (Hero/Quest) / 25% (Boss) rates for a release build.
     """
     tags = {}
+    _SUMMON_PET_BUILDS.clear()   # build36 A1: fresh per-run registry for the pet gates
 
     tags['tagSVCSummonRakanizeus'] = 'Call of the Storm Tyrant'
     tags['tagSVCSummonRakanizeusDESC'] = (
@@ -12364,6 +13235,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     print("\n=== GROUP G: Wyrm Hordes + Sepulchral Scale ===")
     _create_wyrm_hordes(db, tags)
 
+    # build36 A3 (Will 2026-07-11): Sanguine Tithe jewelry blood charm off the
+    # Sileni (blood-harness satyrs). After the charm builders (D10/Group-G), the
+    # same turtle/emberscale/sepulchral pattern; coupled arz + Text (2 new tags +
+    # the {^G} Sileni green-name polish).
+    print("\n=== build36 A3: Sanguine Tithe (Sileni blood relic) ===")
+    _create_sanguine_tithe(db, tags)
+
     # BROODMOTHER NEST (build34+, Will 2026-07-10): the deferred apex wyrm set-piece.
     # MUST run AFTER _create_wyrm_hordes (references its tier-03 Sepulchral Scale loot
     # table + the common/champion wyrms) and BEFORE the clone-shape / spawn-eligibility
@@ -12391,6 +13269,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # map lane can inject the 4 INJECT_SPECS + shared v0e branch (M10).
     print("\n=== GROUP F: Obsidian Halls Treasure Roulette ===")
     _create_obsidian_roulette(db, tags)
+
+    # build36 A5 (Will 2026-07-11): PROPONTIS SUPER BOSS - Dorus, the Drowned King
+    # (DB side only). MUST run AFTER _create_obsidian_roulette (the hoard reuses
+    # its Boss-locked chest/pool records). Map lane places q_dorus_lone per
+    # docs/reports/build36_laneA_map_needs.md.
+    print("\n=== build36 A5: Propontis Super Boss (Dorus, the Drowned King) ===")
+    _create_propontis_superboss(db, tags)
 
     # GROUP B (build32): Toxeus the Enslaver of Souls - a roaming rare mini-boss.
     # Build the boss/marauder/soul, then the roaming sweep (append him at weight 1
@@ -12431,6 +13316,19 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # ── build30 F-wave (post-vet): supra/glacialorb invisible renders + the
     #    pcsafe/Melee_Poison dangling-ref P1s (see _fix_wave30_render_and_refs) ──
     _fix_wave30_render_and_refs(db)
+
+    # ── build36 A1 PET BUILDER OVERHAUL gates (fail-loud) ─────────────────────
+    # After every summon pet is built: (1) relocate any SV-original buff-slot
+    # summon (Aquardia/Dayria) globally so it can fire, then (2) run the three new
+    # pet invariants - stat-mirror (source cadence + attributes), gear-parity
+    # (exactly the source's gear both ways, Will's law) over every _build_boss_
+    # summon family, and skill-kit (every summon in an AI-fired slot, no hostile
+    # spawner) over every soul pet. A pet that trips any of these does NOT ship.
+    print("\n=== build36 A1: pet builder overhaul gates ===")
+    _fix_sv_pet_summons(db)
+    _verify_summon_pet_parity(db, _SUMMON_PET_BUILDS)
+    _verify_summon_pet_gear(db, _SUMMON_PET_BUILDS)
+    _verify_summon_pet_skill_kit(db)
 
     # ── Boss-kit clone-shape invariant (fail-loud, B-TOXEUS-2) ────────────────
     # After all boss authoring: every registered boss-kit clone must keep its
@@ -12521,6 +13419,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
             "portal_olympianarena1.dbr is not a clean static GridEntrance "
             "(see offenders above). The map 0x14 must also be 60-byte; do not ship "
             "this arz against a 48-byte-0x14 map.")
+
+    # ── A4 (build36, Will): zero the Aphiastas keres Finger2 soul drops ────────
+    # Runs AFTER the soul-leak gate (the leak gate ignores chance=0 records) and
+    # BEFORE the drop-rate forcer so the forcer's chance>0 gate leaves these at 0
+    # in BOTH testing and release builds (they stop dropping the Aphiastas soul;
+    # the souls-only Finger2 loot ref + any potion recipe stay intact).
+    _apply_aphiastas_finger2_zero(db)
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
     # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)

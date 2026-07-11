@@ -1,5 +1,59 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🩸 **BUILD36 LANE A - DB CONTENT WAVE (2026-07-11, `feat/build36-lane-a`, round 1).** Eight items,
+> all DB-side (arz + Text), no map/quests/steam. Reference baseline = the ref build of main @88d2b03
+> (`ref_88d2b03.arz` md5 `72eacf8a`); record_diff runs vs it.
+> - **A1 PET BUILDER OVERHAUL** (`apply_svc_patches._build_boss_summon` + 3 new fail-loud gates):
+>   (1) 12-STAT SOURCE MIRROR - every `_build_boss_summon` pet now mirrors the source monster's
+>   `characterAttackSpeed/RunSpeed/SpellCastSpeed/Dexterity/Strength/Intelligence` (+ each Modifier);
+>   the 30 boss-summon pets were stuck at the Lyia archer clone (atkSpd 0.5 / DEX 81 / STR 44 / INT 17
+>   = 38-56% of the hostile swing rate, near-zero scaling). (2) `_mirror_source_skill_kit` - restores
+>   the dropped `specialAttack2-5` boss combat kit (skips hostile `Skill_SpawnPetMonster`) + registers
+>   it. (3) STRICT source GEAR MIRROR - `_mirror_source_loadout(strict=True)` auto-derives each pet's
+>   loadout from its source (svc/unique source slots get a common substitute), and non-source slots are
+>   zeroed, so a pet carries EXACTLY the source's gear (Will's law). bloodtoxeus keeps its weapon;
+>   Xeiwang stays gearless; the enslaver skeleton/marauder get their weapons. (4) `_fix_sv_pet_summons`
+>   global relocation of buff-slot friendly summons into AI-fired slots (fixes Pygmalion/Aquardia/Dayria
+>   "never summons"). THREE NEW GATES wired into the build like the 5 invariants: **PET-STAT-MIRROR**
+>   (`_verify_summon_pet_parity`), **PET-GEAR-PARITY** (`_verify_summon_pet_gear`, two-way), **PET-SKILL-KIT**
+>   (`_verify_summon_pet_skill_kit`, no summon in a non-AI slot, no hostile spawner on a friendly pet).
+>   Negative-tested: `tools/debug/negtest_pet_gates.py` fires all 3 on the e3810219 baseline (90 stat /
+>   15 gear / 12 skill violations = bloodtoxeus/enslaver/Pygmalion et al), green after fix.
+> - **A2 ENSLAVER REWORK** (`_create_enslaver`): the boss is now an ALL-BLACK SKELETON on the Blood-
+>   Toxeus rig (clone um_toxeus_99 -> RevenantPoison.msh + NewSkeleton_Charcoal.tex + Undead; deleted the
+>   inherited green `toxeus_envenomweapon` initialSkill; attackSkillName -> toxeus_attackskill). Super-
+>   strong ShadowStalker-demon marauders [5000/8500/13000] + rapid many-summon (burst 6 / cd 2 /
+>   petLimit 12, summon chance 70); friendly pet-of-pet + yard pack 10; soul renamed
+>   `{^F}Toxeus the Murderer, Enslaver of Souls Soul`.
+> - **A3 SANGUINE TITHE** (`_create_sanguine_tithe`): the mod's 3rd custom charm - a JEWELRY blood relic
+>   (life leech + vitality + %-current-life bleed, GUARANTEED 5/5 leech) off the 9 Sileni combat bodies
+>   (7% lootMisc4), Demon's-Blood-donor pattern (no new art); Sileni names -> green `{^G}` via
+>   build_text_arc TEXT_FIX_TAGS.
+> - **A4 APHIASTAS SOUL DROP -> 0** (`_apply_aphiastas_finger2_zero`): chanceToEquipFinger2=0 on the 7
+>   Aphiastas keres records (souls-only Finger2 proven), loot refs + potion recipe kept; runs before the
+>   drop-forcer so it holds in test AND release.
+> - **A5 PROPONTIS SUPER BOSS "Dorus, the Drowned King"** (`_create_propontis_superboss`, DB side only):
+>   Boss [41,57,71] HP 13.5/18.5/24k on the questline royalty rig, ThunderClap/ball + raise-court summon;
+>   Common courtier fodder + Champion royal-guard escorts; lone pool/proxy; Boss-locked hoard (reuses the
+>   Obsidian Hoard chest/pool); dense S1 stat soul; TESTHUB yard. **Map placement pending -> see
+>   `docs/reports/build36_laneA_map_needs.md`** (host Medea_TempleUG_Tomb01, primary WORLD (312,1.2,-8462)).
+> - **A6 WARDEN SPLIT-FIX** (DB side): added the 2 singly-placed master records
+>   `svc_testhub_master_helos/_cave` (reuse the same tags, no Text change) so the double-placed hub NPC
+>   (byte-proven H1 mute-but-visible) is retired. **Quests trigger + map placement pending -> same report.**
+> - **A7 TEXT TAGS**: every new/changed name+desc tag rides the tags dict -> uber_soul_tags.txt ->
+>   `build_text_arc.py`; the Sileni `{^G}` override went through TEXT_FIX_TAGS (single-definition) to
+>   avoid the duplicate-tag gate. tags invariant must pass clean.
+> - **A8 RUNE GOLEM VET+FINISH**: hostile review of the pre-vet graft (main @88d2b03) = CORRECT. "mastery
+>   10" IS Runemaster (base slots 1-22 are Runemaster skills), skill23 is the correct free UI slot, the
+>   golem's `Skill_DefensiveGround` class + `masteryLevelRequired=None` MATCH sibling `menhirwall`, prereq
+>   repointed to vanilla, render closure resolves. `validate_render_chain_golem.py` PASSES with real args.
+>   No code fix needed. Minor note (in-game only): skillMaxLevel 16 vs the 20-tier pet ladder is a faithful
+>   SVAERA-snapshot artifact (tiers 17-20 vestigial, harmless).
+> **OPEN (for Will / in-game vet):** eyeball bloodtoxeus/all-pet damage after the STR/INT raw-mirror
+> (may over-tune); confirm the A2 all-black skeleton renders + summon cadence; the A5 map placement +
+> A6 quests/map split are separate waves; A3 jewelry relic-slot scarcity QA (fallback = weapon+jewelry).
+> Full detail: the build36 specs + `docs/reports/build36_laneA_map_needs.md`. NOT DEPLOYED.
+
 > 🕷️ **BROODMOTHER NEST - MAP LANE PLACED (build35, 2026-07-11; tag build35).** The map lane placed
 > the DB lane's broodmother-nest proxies (arz `a947e98d` + Text `3fb65c20`, both already staged in
 > `work/`), per `docs/BROODMOTHER_NEST_DESIGN.md`. **This is the FIRST canonical-map content change

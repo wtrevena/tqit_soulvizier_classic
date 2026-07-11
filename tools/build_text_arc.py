@@ -75,6 +75,16 @@ TEXT_FIX_TAGS = {
     'tagNewItem70': '^MPotion of Fortitude',
     'tagNewItem4': '^MLesser Potion of Learning',
     'tagNewItem69': '^MPotion of Learning',
+    # build36 A3 (Sanguine Tithe green-name polish, Will's "the blood harness guys
+    # with the green name"): the 3 Sileni (DRX bloodabomination) name tags get the
+    # {^G} green prefix so they read green in-game, the same way the Emberscale-
+    # source Flameguard Slayer is flagged green. Single-definition override here
+    # (skipped during SV per-file emission, emitted once in the fix block) so it
+    # cannot trip the duplicate-tag gate; folded into the mod-tag manifest via
+    # TEXT_FIX_TAGS.keys() so validate_tags treats them as mod-owned + present.
+    'tagAbomDW': '{^G}Sileni - Carver',
+    'tagAbomSpear': '{^G}Sileni - Impaler',
+    'tagAbomBrute': '{^G}Sileni - Butcher',
 }
 
 # The union skip-set: any key in here is emitted ONLY by the fix block.
