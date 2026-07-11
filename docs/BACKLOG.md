@@ -41,6 +41,21 @@
 >   special heavy-melee risks anim-castability), Pygmalion "make it crazy" uncapped replicate (kept faithful
 >   native `petLimit=3;4;5` per spec "do NOT silently add"). A6 warden is DB-only BY DESIGN (map/quests wave
 >   completes it - `docs/reports/build36_laneA_map_needs.md`).
+> **GATES (round 2, all GREEN):** full arz rebuild MD5 `32de31a6` (round-1 was `590deb99`; changed by
+> design), Text.arc `b89bfe3e` (371,990 B). Built to scratch `local/laneA_r2/` (main `work/` untouched).
+> IN-BUILD: the 5 fail-loud invariants + boss-kit clone-shape (5 pairs) + spawn-eligibility (17 proxies)
+> + Occult/Hunting golden-freeze + the 3 pet gates (12 families stat-mirror + gear-parity both ways, 201
+> pets skill-kit) + the NEW `RUNEMASTER-GOLEM-BUTTON` gate (Skill23 in BOTH panes) all PASS. VERIFIED IN
+> THE BUILT ARZ: xpack2 panectrl 23 buttons + xpack3 25, both carry Skill23 -> `_drx_runegolem`;
+> pygmalion_1/2/3 replicate in specialAttack5 at skillLevel 1/2/3; Dorus soul aug2 = ravagesoftime (n/e/l),
+> um_dorus_99 skillName6 empty (dedup) + skillName16 keeps conversionimmunity. EXTERNAL: golem render-chain
+> validator PASS (168 refs), A9 soul render-chain PASS (233 pets/3032 refs, 22 upstream WARN), contracts
+> souls+summons+resources **0 P0 / 0 P1** (4891 P2 = pre-existing SV/DRX debt), validate_tags PASS (148 mod
+> + 203 authoritative), Text duplicate-tag gate OK. NEGATIVE-TESTED: the new golem gate
+> (`tools/debug/rg_panel_gate_negtest.py` - green wired; FAILS on dropped button / missing pane /
+> mis-pointed button; idempotent) + the 3 pet gates (`negtest_pet_gates.py`, 12 baseline violations). Det-2x
+> deferred to the phase-2 vet per the one-build cap (pipeline deterministic by construction, PYTHONHASHSEED=0;
+> the new code adds no sets/unordered-dict iteration). NOT DEPLOYED.
 >
 > 🩸 **BUILD36 LANE A - DB CONTENT WAVE (2026-07-11, `feat/build36-lane-a`, round 1).** Eight items,
 > all DB-side (arz + Text), no map/quests/steam. Reference baseline = the ref build of main @88d2b03
