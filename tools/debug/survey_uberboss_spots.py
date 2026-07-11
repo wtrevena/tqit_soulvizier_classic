@@ -83,7 +83,13 @@ def native_instances(blob, base):
 
 def build_walk_cells(doc):
     """doc = parse_rec02(decompress=True). Return per-set list of (wx, wz) walkable
-    cell centres in grid-LOCAL frame, plus cs, for each of the 3 tilesets."""
+    cell centres in grid-LOCAL frame, plus cs, for each of the 3 tilesets.
+
+    A cell is walkable only if areas != 0 AND heights != 0xff. The height (0xff =
+    null/hole) check mirrors the engine's dtTileCache model (see navlib.Mesh) - a
+    cell over a null-height hole is NOT walkable even if its area byte is nonzero.
+    Skipping it here prevents the survey from reporting a spot as clear when it
+    actually sits over a hole (survey blind-spot #1)."""
     out = []
     for s in doc['sets']:
         cs = s['params']['cs']
@@ -94,13 +100,103 @@ def build_walk_cells(doc):
             # tile min corner in grid-local frame = header bmin (x,z)
             bx, _, bz = h['bmin']
             areas = rec['areas']
+            heights = rec['heights']
             for lz in range(ht):
                 row = lz * w
                 for lx in range(w):
-                    if areas[row + lx] != 0:
+                    idx = row + lx
+                    if areas[idx] != 0 and heights[idx] != 0xff:
                         cells.append((bx + (lx + 0.5) * cs, bz + (lz + 0.5) * cs))
         out.append((cs, cells))
     return out
+
+
+# --- Absolute-height connected-component model (survey blind-spot #2) ----------
+# Mirrors navlib.Mesh.components: a cell's absolute height is hmin+hs (in CH step
+# units); two 4-adjacent walkable cells are connected iff |dh| <= CLIMB. Using this
+# lets the survey confirm a query spot lands in the MAIN reachable component and not
+# on an isolated navmesh island that a raw clearance% would still read as "clear".
+COMP_CLIMB = 5   # navlib.CLIMB: 5 CH-steps (= 1.0 world unit at CH=0.2)
+
+
+def build_indexed_cells(doc, set_idx=0):
+    """Return ({(gcx,gcz): habs}, cs) for one tileset in a global integer cell grid
+    (gcx = round(cx/cs - 0.5)), null-height holes skipped. habs = hmin+hs (steps)."""
+    s = doc['sets'][set_idx]
+    cs = s['params']['cs']
+    cm = {}
+    for rec in s['records']:
+        h = rec['hdr']
+        w, ht = h['width'], h['height']
+        bx, _, bz = h['bmin']
+        hmin = h['hmin']
+        areas = rec['areas']
+        heights = rec['heights']
+        for lz in range(ht):
+            row = lz * w
+            for lx in range(w):
+                idx = row + lx
+                if areas[idx] != 0 and heights[idx] != 0xff:
+                    cx = bx + (lx + 0.5) * cs
+                    cz = bz + (lz + 0.5) * cs
+                    gcx = int(round(cx / cs - 0.5))
+                    gcz = int(round(cz / cs - 0.5))
+                    cm[(gcx, gcz)] = hmin + heights[idx]
+    return cm, cs
+
+
+def components_of(cellmap, climb=COMP_CLIMB):
+    """Connected components (frozensets of (gcx,gcz)), largest first, engine model."""
+    from collections import deque
+    seen = set()
+    comps = []
+    for start in cellmap:
+        if start in seen:
+            continue
+        q = deque([start])
+        seen.add(start)
+        comp = []
+        while q:
+            c = q.popleft()
+            comp.append(c)
+            hc = cellmap[c]
+            for dx, dz in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                n = (c[0] + dx, c[1] + dz)
+                if n in seen or n not in cellmap:
+                    continue
+                if abs(cellmap[n] - hc) <= climb:
+                    seen.add(n)
+                    q.append(n)
+        comps.append(frozenset(comp))
+    comps.sort(key=len, reverse=True)
+    return comps
+
+
+def point_component(cellmap, cs, comps, x, z, max_r=6.0):
+    """Rank (1=largest) + size of the component the nearest cell to (x,z) belongs to,
+    searching within max_r units. Returns (rank, size, dist) or (None, 0, inf)."""
+    gcx0 = int(round(x / cs - 0.5))
+    gcz0 = int(round(z / cs - 0.5))
+    rr = int(math.ceil(max_r / cs))
+    best = None
+    bestd = 1e18
+    for dx in range(-rr, rr + 1):
+        for dz in range(-rr, rr + 1):
+            key = (gcx0 + dx, gcz0 + dz)
+            if key not in cellmap:
+                continue
+            cx = (key[0] + 0.5) * cs
+            cz = (key[1] + 0.5) * cs
+            d = (cx - x) ** 2 + (cz - z) ** 2
+            if d < bestd:
+                bestd = d
+                best = key
+    if best is None:
+        return None, 0, float('inf')
+    for rank, comp in enumerate(comps, 1):
+        if best in comp:
+            return rank, len(comp), math.sqrt(bestd)
+    return None, 0, math.sqrt(bestd)
 
 
 def nearest(cells, x, z):
@@ -162,6 +258,13 @@ def survey_level(data, levels, suffix, points, base, calibrate=False):
     setcells = build_walk_cells(doc)
     for i, (cs, cells) in enumerate(setcells):
         print(f'  tileset {SETNAMES[i]}: cs={cs} walkable_cells={len(cells)}')
+    # Set-0 connected components (absolute-height model) for reachability checks.
+    cellmap0, cs0c = build_indexed_cells(doc, 0)
+    comps0 = components_of(cellmap0)
+    if comps0:
+        sizes = ', '.join(str(len(c)) for c in comps0[:4])
+        print(f'  set0 components: {len(comps0)} (top sizes: {sizes}'
+              f'{" ..." if len(comps0) > 4 else ""})')
     if calibrate:
         insts = native_instances(blob, base)
         print(f'  CALIBRATION vs {len(insts)} native instances (nearest walkable cell dist, Normal set):')
@@ -184,6 +287,16 @@ def survey_level(data, levels, suffix, points, base, calibrate=False):
             onmesh = d <= cs * 2.5
             allok = allok and onmesh and clr >= 0.95
             line.append(f'{SETNAMES[i][0]}:d={d:.2f}/clr={clr*100:.0f}%')
+        # Reachability: the nearest set-0 cell must belong to the MAIN component
+        # (rank 1). A clear-but-isolated island spot (rank > 1) now reads CHECK.
+        rank, size, _cd = point_component(cellmap0, cs0c, comps0, x, z)
+        if rank is None:
+            line.append('comp=NONE')
+            allok = False
+        else:
+            line.append(f'comp#{rank}/{size}')
+            if rank != 1:
+                allok = False
         verdict = 'OK' if allok else 'CHECK'
         print('  '.join(line) + f'   -> {verdict}')
         results.append((label, allok, x, z))

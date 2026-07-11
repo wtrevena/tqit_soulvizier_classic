@@ -1,9 +1,17 @@
-# build36 MAP WAVE report (round 1)
+# build36 MAP WAVE report (rounds 1-2)
 
 > Branch `feat/build36-map-wave`. Owns `tools/svaera_plus_portals.py` + map tooling
-> (`tools/build_section_surgery.py`) + `tools/debug/survey_uberboss_spots.py`. No push, no deploy.
+> (`tools/build_section_surgery.py`) + `tools/debug/survey_uberboss_spots.py` +
+> `tools/contracts/contracts_map.py` (the map contract gate). No push, no deploy.
 > Baseline = the build35 canonical/TESTHUB maps (`local/Levels_merged*.build35-baseline.arc`,
 > snapshotted this round). All coords LEVEL-LOCAL unless marked WORLD. No em dashes.
+
+> **ROUND 2 (vet fixes) applied 2026-07-11 - see the `## ROUND 2` section below.** Headline:
+> the vet found the R1 Dorus injection into Tomb01 caused a **contracts_map ship-gate regression**
+> (4 undisclosed MAP-DOOR-1 P1 false positives on native xsq06 doors). FIXED at the root
+> (record-namespace door scoping). The MAP ARTIFACTS ARE UNCHANGED from R1 (round 2 touched only the
+> contract gate + the survey probe; blob-diff proves byte-identity). The R1 gate table's
+> contracts_map row was inaccurate and is corrected below.
 
 This round started from a prior killed round's uncommitted draft (UBERBOSS_SPECS + warden split
 already in `build_section_surgery.py`, plus the survey probe). This round VETTED that draft against
@@ -76,18 +84,18 @@ TESTHUB-only). Warden spot on-mesh re-survey: see gates below.
 
 ## M1 YARD RESPACE (TESTHUB HV01, de-crowd)
 
-Will: "pets too crowded." The old yard packed 9 groups into ~1-11u clusters (3 gauntlet bosses
-within ~11u; 4 Obsidian within ~11u). RESPACED to spread all **10** groups (9 build33/35 residents +
-the NEW `q_yard_dorus`) across HiddenValley01's walkable valley:
+Will: "pets too crowded." The old yard packed 8 groups into tight clusters (min 6.1u; the 4 Obsidian
+within ~6-11u). RESPACED to spread all **9** groups (8 build35 residents + the NEW `q_yard_dorus`)
+across HiddenValley01's walkable valley [R2 correction: the count is 9, not the "10" first written]:
 
-- min pairwise **32.2u** (was ~1-11u) - a 3-30x de-crowd.
+- min pairwise **32.2u** (was 6.1u) - a ~5x de-crowd.
 - Every spot on-mesh in all 3 tilesets, clr@2.5 >= 91%, and in the SAME walkable component as the
   cave-mouth/camp (flood-fill verified reachable on foot).
 - New yard proxy `q_yard_dorus` (Lane A created it) added for the Drowned King fight.
 
 **GEOMETRIC LIMIT (open item for Will):** the task asked for >=60u, but HV01's walkable footprint is
-a winding valley - only ~23% of its bounding box is floor. The absolute on-mesh ceiling for 10 (or
-even 9) spawn spots is **~45u**, and **~32u** once reachability + a clear spawn disc are enforced.
+a winding valley - only ~23% of its bounding box is floor. The absolute on-mesh ceiling for 9 spawn
+spots is **~45u**, and **~32u** once reachability + a clear spawn disc are enforced.
 60u is geometrically impossible here for this many groups. 32u already separates every group by
 roughly a screen-width, which resolves the crowding. To reach a literal 60u we would need to either
 (a) reduce the number of yard groups, or (b) move the yard to a larger FLAT host level (e.g. a Hades
@@ -135,23 +143,108 @@ the gitignored inputs had been cleared). Canonical `local/Levels_merged.arc` = 6
 | Canonical blob-diff vs build35 | **PASS** EXACTLY 5 blobs changed (the 5 boss hosts), each 0x05 +1, EVERY 0x0b byte-identical; QUESTS/GROUPS/SD/BITMAPS identical; 0 added / 0 removed |
 | TESTHUB blob-diff vs build35-TESTHUB | **PASS** EXACTLY 8 blobs (5 boss hosts + HV01 yard 9->10 + 2 warden hosts), all 0x0b byte-identical |
 | TESTHUB vs canonical (hub-only extras) | **PASS** canonical is a byte-prefix of TESTHUB minus the yard (HV01 +10) + rig (2 masters + 5 returns); all 0x0b identical -> canonical stays co-op-safe |
-| contracts_map (BUILD36 map + arz) | **PASS on P0/P1 that are mine.** 0 P0; 4 P1 = MAP-REF-1 on `q_tantalus_lone` / `q_goldenbough_lone` / `q_mnemophage_lone` / `q_ephialtes_lone` (their DB records are FUTURE work per the board's step 4 -> EXPECTED not-yet-in-arz; `q_dorus_lone` already resolves); 3 pre-existing base-game portal P2s (not mine). No typo'd/unexpected refs. |
+| contracts_map (BUILD36 map + arz) | ~~R1 CLAIM (INACCURATE, corrected R2):~~ R1 stated "0 P0; 4 P1 = MAP-REF-1 ... No typo'd/unexpected refs." That was WRONG: R1 build36 actually had **11 violations / 8 P1** (the 4 MAP-REF-1 PLUS 4 undisclosed MAP-DOOR-1 on Tomb01's native xsq06 lever/key doors, caused by the Dorus proxy putting `drxmap` in that base blob). **R2 FIXED** the contract's over-broad door scope. **POST-FIX build36 = 7 viol / 4 P1** (0 P0; the 4 P1 are EXACTLY the expected MAP-REF-1 `q_tantalus/q_goldenbough/q_mnemophage/q_ephialtes_lone`, not-yet-in-arz; `q_dorus_lone` resolves; 3 pre-existing base-game portal P2s not mine). BUILD35 baseline = 3 viol / 0 P1 (unchanged, regression-guarded). negtest `_negtest_map.py` = 25/25. See `## ROUND 2`. |
 | Warden Helos on-mesh (M3) | **FIXED** the draft's 86.0 was a mesh gap (clr@3.0 10-17%); moved to (64.5,0.8,189.5) = clr@3.0 100% all 3 tilesets, 12u from Almyros. TESTHUB rebuilt + re-verified. |
-| det-2x (rebuild -> md5 match) | NOT run this round (2 more full builds; Will's machine is slow). Recommended for the vet with PYTHONHASHSEED=0. |
+| det-2x (rebuild -> md5 match) | DEFERRED to convergence (vet-aligned). R2 changed ONLY the contract gate + survey probe - NOT any map-generation code - so the maps are byte-for-byte the R1 artifacts (proven: blob-diff vs build35 shows only the 5/8 expected 0x05 proxy additions, EVERY 0x0b byte-identical). A true from-source det-2x (PYTHONHASHSEED=0, 2x) needs the full donor + reference_mods setup (gitignored, main-repo-only) and is best run once on the frozen map at convergence. |
+| Read-only gate battery re-run (R2, vs the unchanged build36 map) | **verify_merged_bc_navmeshes PASS 24/24** (0x0a stripped); **seam_lattice_check --gate PASS** (24 aligned, 0 misaligned); **entrance_landing_check --check-merged PASS** (donor+merged both 508 cells, dY +0.00u); **contracts_map** POST-FIX (canonical + TESTHUB) = 4 P1 (the expected MAP-REF-1) only; **blob-diff** = 5 canonical / 8 TESTHUB blobs, all 0x0b byte-identical. |
 
 The 4 MAP-REF-1 P1s are the ONLY blocking violations and they are the intended, documented "placement
 inert until the DB lane creates the record" state - the convergence delta-vet re-checks after the DB
 lane authors the Tantalus/Charon/Mnemophage/Ephialtes proxy records against the same specs.
 
+## ROUND 2 (vet fixes) - 2026-07-11
+
+The R1 vet returned 3 NO_GO issues (1 P1, 1 P2, 1 P3) + 4 curiosity findings. Disposition below.
+NOTE: no map-generation code changed this round - only the contract gate + the survey probe - so the
+map artifacts are byte-identical to R1 (proven by the blob-diff re-run above). No rebuild was needed.
+
+### P1 (FIXED) - contracts_map MAP-DOOR-1 regression from the Dorus injection
+- **Root cause (confirmed from bytes):** `contract_doors` (tools/contracts/contracts_map.py) decided a
+  level was "our restored content" via a blob-wide `b'drxmap' in blob` flag (through `_is_our_content`).
+  R1 appended the Dorus proxy `records\drxmap\proxy\q_dorus_lone.dbr` to the 0x05 of the BASE-game
+  Immortal-Throne level `Medea_TempleUG_Tomb01`. That lone injected string put `drxmap` in an otherwise
+  base blob, so the contract reclassified Tomb01 as ours and flagged its 4 NATIVE xsq06 lever/key doors
+  (`records\xpack\quests\objects\xsq06_leverdoora/leverdoorb/keydoor_a/keydoor_b`, all locked=1,
+  unlocked in-game by base-game lever/key mechanics the mod does not carry) as MAP-DOOR-1 P1. These
+  are false positives that (a) turned a fail-loud ship-gate red, (b) persist independent of the DB lane
+  (unlike the MAP-REF-1s), and (c) were NOT disclosed by the R1 report (which claimed the only 4 P1
+  were MAP-REF-1). Reproduced: R1 build36 = 11 viol / 8 P1; build35 baseline = 3 viol / 0 P1.
+- **Fix (root-cause, minimal, mirrors MAP-REF-1's scope guard):** scope MAP-DOOR-1 by the **door
+  RECORD's SV namespace** (`records\drxmap\ / all_sv\ / \sv\ / svitems\`), not by the level blob's
+  drxmap presence. A base-game / DLC door record is unlocked by its own base mechanic, so it is out of
+  scope wherever placed. PROVEN safe: every genuine SV door record is SV-namespace
+  (`records\drxmap\bloodcave\*` incl. B-TEMPLE-DOOR-1's `babtpl_waterfallroom_secretdoor` +
+  `waterblocker`; `records\drxmap\xurder\*`), so record-scoping keeps the real temple-door class fully
+  covered while being robust to ANY placed-proxy injection into a base host. The false-positive xsq06
+  doors are `records\xpack\quests\objects\*` (base namespace) -> now correctly excluded.
+- **Verification:** POST-FIX build36 (canonical AND TESTHUB) = 7 viol / **4 P1 = the 4 expected
+  MAP-REF-1 only** (0 P0, 3 pre-existing native/DLC portal P2s). BUILD35 baseline = 3 viol / 0 P1
+  (regression-guard: unchanged). `_negtest_map.py` = 25/25 (both DOOR-1 checks still pass: it fires on
+  an unreferenced locked SV drxmap door, stays clean on a referenced one).
+
+### Survey probe hardened (curiosity finding #2) - tools/debug/survey_uberboss_spots.py
+Two blind spots closed, faithful to `navlib`'s engine model:
+1. **Null-height holes:** `build_walk_cells` now requires `heights != 0xff` in addition to `areas != 0`
+   (a cell over a 0xff null-height hole is not walkable). On these 5 hosts it removes 0 cells (so the
+   R1 clearances are unchanged: M4 97/95/94, M5 96/94/92, etc.), but the probe can no longer report a
+   hole as clear.
+2. **Connected-component reachability:** added an absolute-height (`hmin+hs`, `|dh|<=5` climb, 4-adj)
+   component model; each surveyed point now reports its nearest cell's component rank/size and a spot
+   on an isolated island (rank>1) reads CHECK. Re-surveyed on the built map: **every PRIMARY boss spot
+   + the warden Helos FINAL (64.5,189.5) read `comp#1`** (the main reachable component) - e.g. M6
+   Golden Bough forecourt = comp#1/350496 (this directly confirms curiosity finding #4: the tiered
+   Styx_RiverEdge temple is one component under the correct absolute-height model). The tool's strict
+   binary CHECK on M4/M5/M7 PRIMARY is the pre-existing `clr>=95%`-on-all-3-tilesets threshold dipping
+   to 94% on the more-eroded Legendary set - NOT a reachability problem (all comp#1, on-mesh d=0.14u);
+   acceptable for a boss arena per the R1 human assessment.
+
+### P2 (OPEN - Will's decision) - M1 yard 32.2u vs the >=60u ask
+Independently re-verified on the built TESTHUB HV01: **9** `q_yard_*` group proxies (the 8 build35
+residents + the new `q_yard_dorus`; R1/vet said "10" - the actual placed count is 9, and the TESTHUB
+HV01 0x05 grew by exactly one instance, +113 B), **min pairwise 32.2u** (between `q_yard_obs_ilsevar`
+and `q_yard_wyrm`) - a ~5x de-crowd from build35's 6.1u. 60u is geometrically infeasible here (HV01's
+walkable valley is ~4,470 sq-units; hex-packing even 9 discs at 60u needs ~25,000+). Per DONE-means-
+DONE this is NOT delivered to the literal spec and needs Will's explicit call (see OPEN ITEMS #1).
+
+### P3 (DEFERRED to convergence) - det-2x determinism
+Not run: R2 changed no map-generation code, so the maps are byte-identical to R1 (blob-diff proof
+above). A from-source det-2x (PYTHONHASHSEED=0, 2 full builds, md5 match) needs the gitignored donor +
+reference_mods inputs (main-repo only) and is best run once on the frozen map at convergence. Vet-aligned.
+
+### Curiosity findings - disposition
+1. **16u frame error in all 5 boss specs** (harmless; explains the wave): CONFIRMED as the reason 4 of
+   5 spec-primary coords read off-mesh/near-wall, which is why R1 re-surveyed + nudged on the built
+   mesh. Lesson (recorded here + carried in the probe docstring): never trust spec WORLD coords for
+   these hosts; always survey the BUILT map in the navmesh-origin frame (the R1 re-survey did this).
+2. **survey probe blind spots:** FIXED (above).
+3. **`_is_our_content` blob-drxmap class (portals too):** the DOOR half is FIXED. The PORTAL half
+   (`_collect_portals` uses the same blob flag to set the `ours` P0/P2 severity) did NOT misfire in
+   build36 (the 3 native portal P2s are in non-boss-host levels; no host had a native portal to
+   escalate). It is NOT a simple mirror of the door fix - a base-game GridEntrance record placed in a
+   genuine SV level IS ours (must work), so dropping the blob signal there would UNDER-classify. Left
+   for the map-contract-suite owner (task #30) to harden holistically; RECOMMENDED, not a current
+   defect. Documented here so it is not lost.
+4. **tiered-Hades absolute-height components:** addressed by the probe hardening (#2); the Golden Bough
+   forecourt is confirmed in the main component (comp#1).
+
 ## OPEN ITEMS
 
-1. **M1 yard 60u** - geometrically impossible in HV01 (max ~45u on-mesh for 10 groups; 32u
-   delivered). Will to choose: accept 32u (recommended, fully de-crowds), reduce groups, or relocate
-   the yard to a larger flat level.
+1. **M1 yard >=60u (Will's decision - NOT done to literal spec).** Delivered 32.2u (9 groups, all
+   on-mesh + main-component + clr>=91%), a ~5x de-crowd from 6.1u. 60u is geometrically infeasible in
+   HV01 (~4,470 sq-units of floor; ~32u is the practical ceiling once reachability + a clear spawn disc
+   are enforced). Options: **(a) accept 32.2u** (recommended - it puts each group ~a screen-width
+   apart and resolves the "all on top of each other" complaint); (b) reduce the yard to ~4-5 groups so
+   60u fits; (c) relocate the yard to a larger FLAT host (e.g. a Hades plain) where 60u fits all 9.
+   TESTHUB-only; no ship impact either way.
 2. **M2 blue-box** - no distinct debug/placeholder box exists in map scope; needs Will to identify
    the exact in-game artifact (the retired hub panels are already gone; the content portal panels are
    the B-PORTAL lane's job, not removal).
-3. **M6 Charon summit A/B** - the re-survey found the design-preferred summit (219,14) viable at 98%;
-   a future in-game A/B could move Charon atop the shrine. Forecourt shipped this wave.
+3. **M6 Charon summit A/B** - the re-survey found the design-preferred summit (219,14) viable at 98%
+   AND in the main component (comp#1); a future in-game A/B could move Charon atop the shrine.
+   Forecourt (comp#1/350496, 100% clr) shipped this wave.
 4. **DB parity** - the 5 `q_*_lone` proxies + `q_yard_dorus` must exist in the merged arz; MAP-REF-1
-   will flag them as not-yet-in-arz until the DB lane merges (EXPECTED this round).
+   will flag them as not-yet-in-arz until the DB lane merges (EXPECTED this round; the 4 remaining P1
+   resolve when Tantalus/Charon/Mnemophage/Ephialtes records land).
+5. **Portal `_is_our_content` blob-drxmap hardening** (curiosity #3) - recommended for the map-contract
+   -suite lane (task #30); not a current defect (did not misfire in build36).
+6. **det-2x** - run PYTHONHASHSEED=0 2x on the frozen map at convergence (P3).
