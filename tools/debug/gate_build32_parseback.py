@@ -179,18 +179,31 @@ def main():
     bsecs = dict(parse_blob_sections(bblob))
     sd = secs[0x05]
     strings, insts, endpos, ninst = walk_0x05(sd, 72)
-    check('0x05 instance count 995 -> 996', ninst == 996, f'count={ninst}')
+    # canonical appends only Almyros (portal_master_helos) at [995] -> count 996. The build34
+    # TESTHUB rig ALSO appends svc_testhub_master AFTER Almyros -> Almyros at [995], hub master at
+    # [996] -> count 997. Both are flags=0 NPCs (no 0x14).
+    exp_count = 997 if args.testhub else 996
+    check(f'0x05 instance count 995 -> {exp_count}', ninst == exp_count, f'count={ninst}')
     check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
           f'end={endpos} len={len(sd)}')
-    last = insts[-1]
-    check('appended instance is portal_master_helos.dbr',
-          last['dbr'].lower() == b'records' + BS.encode() + b'quests' + BS.encode()
-          + b'portal_master_helos.dbr', last['dbr'].decode('latin-1'))
-    check('appended instance at local (76.50,0.60,189.50)',
-          abs(last['pos'][0] - 76.5) < 1e-4 and abs(last['pos'][1] - 0.6) < 1e-4
-          and abs(last['pos'][2] - 189.5) < 1e-4, str(last['pos']))
-    check('appended instance flags == 0 (NPC byte-shape, no UniqueId)', last['flags'] == 0,
-          f"flags={last['flags']}")
+    helos = insts[995]
+    check('instance[995] is portal_master_helos.dbr (Almyros)',
+          helos['dbr'].lower() == b'records' + BS.encode() + b'quests' + BS.encode()
+          + b'portal_master_helos.dbr', helos['dbr'].decode('latin-1'))
+    check('Almyros at local (76.50,0.60,189.50)',
+          abs(helos['pos'][0] - 76.5) < 1e-4 and abs(helos['pos'][1] - 0.6) < 1e-4
+          and abs(helos['pos'][2] - 189.5) < 1e-4, str(helos['pos']))
+    check('Almyros flags == 0 (NPC byte-shape, no UniqueId)', helos['flags'] == 0,
+          f"flags={helos['flags']}")
+    if args.testhub:
+        master = insts[996]
+        check('instance[996] is svc_testhub_master.dbr (rig hub master)',
+              master['dbr'].lower() == b'records' + BS.encode() + b'quests' + BS.encode()
+              + b'svc_testhub_master.dbr', master['dbr'].decode('latin-1'))
+        check('rig hub master at local (79.50,0.80,189.50)',
+              abs(master['pos'][0] - 79.5) < 1e-4 and abs(master['pos'][1] - 0.8) < 1e-4
+              and abs(master['pos'][2] - 189.5) < 1e-4, str(master['pos']))
+        check('rig hub master flags == 0', master['flags'] == 0, f"flags={master['flags']}")
     # 0x14 must be UNCHANGED (NPC appends no 0x14)
     check('0x14 section byte-identical to baseline (no 0x14 for the NPC)',
           secs.get(0x14) == bsecs.get(0x14),
@@ -304,13 +317,62 @@ def main():
               f'{len(bsecs.get(0x0b, b""))} bytes')
         check('no stale 0x0a alongside 0x0b', 0x0a not in secs or 0x0b not in secs)
 
+    # ---------------- RIG: portal test rig (build34, TESTHUB-only, Model C boat-dialog NPCs) ------
+    # The Model C rig appends ONE flags=0 NPC to each of 6 hosts (the Helos hub master is checked by
+    # the M8 block above). Each TESTHUB host must equal its CANONICAL blob (yard_baseline) PLUS
+    # exactly that one appended NPC, with every OTHER section (incl the 0x0b navmesh, and the 0x06/
+    # 0x14 sections that the Uber/Sparta native-door patches touch) BYTE-IDENTICAL. random09a is the
+    # decisive one: retiring the GridEntrance hub reverts TESTHUB random09a to the canonical SV
+    # blood-cave swap blob, so its 0x0b/0x06/0x17 must now match canonical exactly.
+    if args.testhub:
+        cdata, clevels = load_world(args.yard_baseline)
+        print('--- RIG portal test rig (TESTHUB = canonical + 1 appended NPC per host) ---')
+        RIG = [
+            ('orient/underground/random09a.lvl',   56, b'svc_testhub_master.dbr', (32.0, 1.0, 45.0)),
+            ('olympus/gardenofmerchants.lvl',      56, b'svc_testhub_return.dbr', (133.0, -39.0, 73.0)),
+            ('secret_place/darkforestenter.lvl',   56, b'svc_testhub_return.dbr', (27.0, 1.0, 30.0)),
+            ('uberdungeon/crypt_floor1.lvl',       56, b'svc_testhub_return.dbr', (140.0, 10.0, 229.0)),
+            ('minidungeons/spartacryptlevel2.lvl', 56, b'svc_testhub_return.dbr', (45.0, -1.6, 42.0)),
+            ('bossarena/boss_arena.lvl',           56, b'svc_testhub_return.dbr', (131.0, 0.0, 40.0)),
+        ]
+        for suffix, base, bname, pos3 in RIG:
+            print(f'--- RIG {suffix} ---')
+            lv, blob = get_blob(data, levels, suffix)
+            clv, cblob = get_blob(cdata, clevels, suffix)
+            ok, end = blob_walk_exact(blob)
+            check(f'{suffix}: blob walk reaches exact end', ok, f'end={end} len={len(blob)}')
+            secs = dict(parse_blob_sections(blob))
+            csecs = dict(parse_blob_sections(cblob))
+            _, insts, endpos, ninst = walk_0x05(secs[0x05], base)
+            _, cinsts, _, cninst = walk_0x05(csecs[0x05], base)
+            check(f'{suffix}: 0x05 count {cninst} -> {cninst + 1}', ninst == cninst + 1,
+                  f'count={ninst}')
+            check(f'{suffix}: 0x05 walk lands at exact section end', endpos == len(secs[0x05]),
+                  f'end={endpos} len={len(secs[0x05])}')
+            last = insts[-1]
+            check(f'{suffix}: appended is {bname.decode()}',
+                  last['dbr'].lower().endswith(BS.encode() + bname), last['dbr'].decode('latin-1'))
+            check(f'{suffix}: appended at local {pos3}',
+                  all(abs(last['pos'][i] - pos3[i]) < 1e-3 for i in range(3)), str(last['pos']))
+            check(f'{suffix}: appended flags == 0 (NPC byte-shape)', last['flags'] == 0,
+                  f"flags={last['flags']}")
+            same = all(insts[i]['dbr'] == cinsts[i]['dbr'] and insts[i]['pos'] == cinsts[i]['pos']
+                       for i in range(cninst))
+            check(f'{suffix}: all {cninst} canonical instances unchanged (dbr+pos)', same)
+            for t in sorted(set(csecs) | set(secs)):
+                if t == 0x05:
+                    continue
+                check(f'{suffix}: section 0x{t:02x} byte-identical to canonical',
+                      secs.get(t) == csecs.get(t),
+                      f'{len(csecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
+
     print()
     if FAIL:
         print(f'RESULT: FAIL ({len(FAIL)}): {FAIL}')
         return 1
     scope = 'M8 + M9' if args.skip_m10 else 'M8 + M9 + M10'
     if args.testhub:
-        scope += ' + MYARD'
+        scope += ' + MYARD + RIG'
     print(f'RESULT: PASS ({scope} parse-back clean)')
     return 0
 

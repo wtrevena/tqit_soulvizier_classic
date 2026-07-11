@@ -1892,27 +1892,104 @@ Q_YARD_WYRM_DBR          = b'records\\drxmap\\proxy\\q_yard_wyrm.dbr'
 # VASHKARR_PROXY_DBR (records\drxmap\proxy\q_vashkarr_lone.dbr) is defined above (SPOT B reuse).
 HV01_LVL_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
 
+# --- PORTAL TEST RIG (build34, TESTHUB-only; Model C boat-dialog NPCs) -----------------------
+# Will (mod author) wants a flag-gated LOCAL-ONLY travel rig to reach EVERY restored SV area from
+# Helos AND from the blood-cave entrance, verify each area (real gold portals), then return to the
+# normal map. Mechanism = Model C: BoatDialog portal-master NPCs (the proven Almyros shape), NOT
+# born-open GridEntrance portals (RETIRED this wave: they ship the B-PORTAL-1/2/3 blue-pane /
+# walkway-force-teleport / dead-appended-host-return bugs; see merge_hub_into_inject_specs).
+# The DB lane (arz c7da07f6) added 2 NPC records (clones of the boat-dialog donor
+# knossos_boatmantoegypt), boat-dialog triggers in sv_commonmechanics.qst, and 7 Text tags:
+#   svc_testhub_master (HUB portal-master, 7 ports)   -> placed at Helos + the blood-cave mouth,
+#   svc_testhub_return (RETURN NPC, 2 ports Helos+Blood Cave) -> placed once inside each of the 5
+#     restored SV areas (Garden/Secret/Uber/Sparta/BossArena), a few u from that area's boat-dialog
+#     landing so Will sees it on arrival.
+# Records added UNCONDITIONALLY to the shared arz/Quests/Text but INERT on canonical/Steam (the
+# canonical map places NONE of these NPCs). ONLY the TESTHUB map (build_hub_extra_specs, folded in
+# by merge_hub_into_inject_specs when SVC_TEST_HUB=1) places them -> canonical stays byte-identical.
+# Coords surveyed 2026-07-10 against the CANONICAL 0x0b navmeshes (byte-identical to TESTHUB for
+# every host): every spot on-mesh, on the SAME connected component as that area's boat-dialog
+# landing coord (reachable after the teleport), >=96% clear at a 3.0u disc, flags=0 no-0x14
+# (the q_vashkarr_lone byte-shape). Retiring the GridEntrance hub reverts TESTHUB random09a to the
+# canonical SV blood-cave swap blob (the normal INJECT_SPECS loop no longer overrides it), so the
+# blood-cave hub-master coord is valid against that SV navmesh (see the R09_LVL_KEY note below).
+SVC_TESTHUB_MASTER_DBR = b'records\\quests\\svc_testhub_master.dbr'
+SVC_TESTHUB_RETURN_DBR = b'records\\quests\\svc_testhub_return.dbr'
+# Host-level keys (reuse the existing constants where defined).
+HELOS_HOST_KEY    = PORTAL_MASTER_HOST_KEY   # startingfarmland06d (AE v0x11); Almyros host
+R09_LVL_KEY       = 'levels/world/orient/underground/random09a.lvl'  # SV blood-cave swap blob
+GARDEN_LVL_KEY    = 'levels/world/olympus/gardenofmerchants.lvl'          # SV-only v0e
+SECRET_LVL_KEY    = 'xpack/levels/secret_place/darkforestenter.lvl'       # SV-only v0e
+UBER_LVL_KEY      = CRYPT_FLOOR1_LEVEL_KEY                                 # crypt_floor1 SV-only v0e
+SPARTA_LVL_KEY    = 'levels/world/greece/minidungeons/spartacryptlevel2.lvl'  # SV-only v0e
+BOSSARENA_LVL_KEY = 'levels/world/bossarena/boss_arena.lvl'               # SV-only v0e
+
 
 def build_hub_extra_specs():
-    """TEST-HUB non-portal entity additions (level_key -> [specs]). The MONSTER TEST YARD:
-    8 proxy placements in HiddenValley01 (Silk Road), a down-valley gauntlet from the blood-cave
-    mouth. Folded into INJECT_SPECS ONLY when SVC_TEST_HUB=1 (append-only -> canonical HV01 byte-
-    unchanged). Each is a 4-tuple (dbr, x, y, z) -> flags=0, no 0x14, identity rot.
-      ENSLAVER CLUSTER (right outside the mouth): A1 boss + A2 marauder pack.
-      B: Vashkarr + 2 champion escorts (reused q_vashkarr_lone).
-      OBSIDIAN WARBAND (down-valley pocket Z87-95): Sarkoth/Gorrahk/Voranthys/Ilsevar, each its
-        own guaranteed guardian + the 5-elite warband, clustered 6-12u apart.
-      WYRM HORDE: 10 common + 4-6 champion sepulchral wyrms (reused svc_wyrmhorde_03)."""
-    return {HV01_LVL_KEY: [
-        (Q_YARD_ENSLAVER_DBR,      23.0, 17.0,  33.0),   # A1 boss  clr@3.0=100%  dMouth 11.4u
-        (Q_YARD_MARAUDERS_DBR,     31.9, 16.2,  26.9),   # A2 pack  clr@3.0=100%  dMouth 17.9u
-        (VASHKARR_PROXY_DBR,       36.0, 16.0,  28.5),   # B  Vashkarr clr@3.5=100% dMouth 22.1u
-        (Q_YARD_OBS_SARKOTH_DBR,   42.0, 15.2,  91.0),   # C  clr@3.0=100%
-        (Q_YARD_OBS_GORRAHK_DBR,   36.0, 15.2,  90.0),   # C  clr@3.0=100%
-        (Q_YARD_OBS_VORANTHYS_DBR, 47.0, 15.4,  87.0),   # C  clr@3.0=100%
-        (Q_YARD_OBS_ILSEVAR_DBR,   47.0, 15.2,  95.0),   # C  clr@3.0=100%
-        (Q_YARD_WYRM_DBR,          30.0, 15.2, 113.0),   # D  clr@2.5=100%  dFount 30u
-    ]}
+    """TEST-HUB non-portal entity additions (level_key -> [specs]). Folded into INJECT_SPECS ONLY
+    when SVC_TEST_HUB=1 (append-only -> canonical blobs byte-unchanged). Each is a 4-tuple
+    (dbr, x, y, z) -> flags=0, no 0x14, identity rot. Two groups:
+
+    (1) MONSTER TEST YARD (build33): 8 proxy placements in HiddenValley01 (Silk Road), a
+        down-valley gauntlet from the blood-cave mouth (Enslaver + marauders, Vashkarr + 2 champs,
+        the 4 Obsidian guardians + warbands, the wyrm horde).
+
+    (2) PORTAL TEST RIG (build34, Model C): the 2 svc_testhub_master hub NPCs (Helos plaza +
+        blood-cave mouth) and the 5 svc_testhub_return NPCs (one inside each restored SV area).
+        All coords surveyed on-mesh (see the module note above the DBR constants). NOTE: the
+        random09a (R09_LVL_KEY) placement is EXCLUDED from the normal INJECT_SPECS fold by
+        merge_hub_into_inject_specs and applied instead via the special swap path in
+        svaera_plus_portals.py (random09a is rebuilt from the SV blood-cave blob there; the normal
+        loop would inject into the discarded AE blob). It still lives in this dict as the single
+        source of truth for the coord."""
+    return {
+        HV01_LVL_KEY: [
+            (Q_YARD_ENSLAVER_DBR,      23.0, 17.0,  33.0),   # A1 boss  clr@3.0=100%  dMouth 11.4u
+            (Q_YARD_MARAUDERS_DBR,     31.9, 16.2,  26.9),   # A2 pack  clr@3.0=100%  dMouth 17.9u
+            (VASHKARR_PROXY_DBR,       36.0, 16.0,  28.5),   # B  Vashkarr clr@3.5=100% dMouth 22.1u
+            (Q_YARD_OBS_SARKOTH_DBR,   42.0, 15.2,  91.0),   # C  clr@3.0=100%
+            (Q_YARD_OBS_GORRAHK_DBR,   36.0, 15.2,  90.0),   # C  clr@3.0=100%
+            (Q_YARD_OBS_VORANTHYS_DBR, 47.0, 15.4,  87.0),   # C  clr@3.0=100%
+            (Q_YARD_OBS_ILSEVAR_DBR,   47.0, 15.2,  95.0),   # C  clr@3.0=100%
+            (Q_YARD_WYRM_DBR,          30.0, 15.2, 113.0),   # D  clr@2.5=100%  dFount 30u
+        ],
+        # -- PORTAL RIG: 2 HUB masters --
+        # Helos plaza: 3u E of canonical Almyros (76.5,0.6,189.5); world (-5968.5,1.8,917.5);
+        # on-mesh d2d=0.00, in-largest, clr@3.0=100%, floor 1.8.
+        HELOS_HOST_KEY: [
+            (SVC_TESTHUB_MASTER_DBR, 79.5, 0.8, 189.5),
+        ],
+        # Blood-cave mouth (random09a SV swap blob): the spec's cave-mouth approach band; world
+        # (6011,19,3288); comp 0 (same as the cave-mouth entry corridor AND the return landing at
+        # (6018,19,3293)); 8.6u from that return landing so the repeated test loop barely walks;
+        # clr@3.0=100%. Yard is in HV01 (a different level) -> the >=40u-from-yard rule is moot.
+        # APPLIED VIA THE SWAP PATH (see merge_hub_into_inject_specs + svaera_plus_portals.py).
+        R09_LVL_KEY: [
+            (SVC_TESTHUB_MASTER_DBR, 32.0, 1.0, 45.0),
+        ],
+        # -- PORTAL RIG: 5 RETURN NPCs (one per restored SV area, a few u from its landing) --
+        # Garden of Merchants: 3u E of landing (1173,-39,-4001); comp 1 (= landing comp); clr@3.0=100%.
+        GARDEN_LVL_KEY: [
+            (SVC_TESTHUB_RETURN_DBR, 133.0, -39.0, 73.0),
+        ],
+        # The Secret Place (darkforestenter): 3u E of landing (-2396,2,-5790); comp 0; clr@3.0=100%.
+        SECRET_LVL_KEY: [
+            (SVC_TESTHUB_RETURN_DBR, 27.0, 1.0, 30.0),
+        ],
+        # The Uber Dungeon (crypt_floor1): 3u S of landing (-2438,10,-2450); single comp; clr@3.0=96%.
+        UBER_LVL_KEY: [
+            (SVC_TESTHUB_RETURN_DBR, 140.0, 10.0, 229.0),
+        ],
+        # The Sparta Crypt (spartacryptlevel2): 3u E of landing (-5602,-2,-1409); comp 0; clr@3.0=100%.
+        SPARTA_LVL_KEY: [
+            (SVC_TESTHUB_RETURN_DBR, 45.0, -1.6, 42.0),
+        ],
+        # The Boss Arena (boss_arena): 3u E of landing (-433,0,-3602); comp 0; clr@3.0=100%; the
+        # landing is ~90u off volume_startolympianarena (DB lane), so this NPC stays well off it.
+        BOSSARENA_LVL_KEY: [
+            (SVC_TESTHUB_RETURN_DBR, 131.0, 0.0, 40.0),
+        ],
+    }
 
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
@@ -1951,9 +2028,12 @@ def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''
 
 
 def build_hub_inject_specs():
-    """Build the TEST-HUB INJECT_SPECS additions (level_key -> [specs]) - the 20 hub portal
-    instances. Called only when SVC_TEST_HUB=1. Returns a dict to be MERGED into INJECT_SPECS
-    (appending to existing keys)."""
+    """RETIRED (build34): the 20 born-open GridEntrance hub portal instances. Superseded by the
+    Model C boat-dialog rig (build_hub_extra_specs). No longer folded into INJECT_SPECS by
+    merge_hub_into_inject_specs, and no longer applied to random09a by the swap path - it shipped
+    the B-PORTAL-1/2/3 bugs (blue-pane render, walkway force-teleport, dead returns from every
+    appended SV-only host) that Will retired. Kept here (unused) for reference + possible fallback.
+    Returns a dict of (level_key -> [specs]) - the 20 hub portal instances."""
     R09_KEY = 'levels/world/orient/underground/random09a.lvl'
     hub = {R09_KEY: []}
     for i, (dest_key, dest_lvl, land_xyz, ret_xyz) in enumerate(_HUB_DESTS):
@@ -1974,16 +2054,25 @@ def build_hub_inject_specs():
 
 
 def merge_hub_into_inject_specs(base_specs):
-    """Return a NEW INJECT_SPECS dict = base_specs with the hub specs appended (order-preserving:
-    hub entities are APPENDED after any base entries on the same level, so base instance indices
-    are unchanged -> the flag-OFF build's non-hub blobs stay byte-identical). Folds in BOTH the
-    20 hub portals (build_hub_inject_specs) AND the non-portal TEST-HUB extras (build_hub_extra_specs
-    = the monster test yard in HiddenValley01). Does not mutate base_specs."""
+    """Return a NEW INJECT_SPECS dict = base_specs with the TEST-HUB extras appended
+    (order-preserving: hub entities are APPENDED after any base entries on the same level, so base
+    instance indices are unchanged -> the flag-OFF/canonical build's non-hub blobs stay
+    byte-identical). Does not mutate base_specs.
+
+    build34: RETIRES the born-open GridEntrance hub (build_hub_inject_specs is NO LONGER folded in;
+    it shipped the retired B-PORTAL-1/2/3 bugs). Folds in ONLY build_hub_extra_specs (the monster
+    test yard + the Model C portal rig). The random09a (R09_LVL_KEY) entry is EXCLUDED here because
+    random09a is rebuilt from the SV blood-cave blob by the special swap path in
+    svaera_plus_portals.py; the normal INJECT_SPECS loop would inject into the DISCARDED AE blob
+    (and, worse, leaving R09 in inject_specs makes ae_patched_blobs override the swap at compaction
+    -> TESTHUB random09a would wrongly become the AE silkroad blob, the pre-existing build33 quirk).
+    The swap path applies build_hub_extra_specs()[R09_LVL_KEY] directly to the SV swap blob."""
     out = {k: list(v) for k, v in base_specs.items()}
-    for adds in (build_hub_inject_specs(), build_hub_extra_specs()):
-        for k, specs in adds.items():
-            out.setdefault(k, [])
-            out[k] = list(out[k]) + list(specs)
+    for k, specs in build_hub_extra_specs().items():
+        if k == R09_LVL_KEY:
+            continue  # applied via the swap path (SV blood-cave blob), not the normal loop
+        out.setdefault(k, [])
+        out[k] = list(out[k]) + list(specs)
     return out
 
 

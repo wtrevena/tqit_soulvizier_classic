@@ -1,5 +1,49 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🚪 **PORTAL TEST RIG - MAP LANE (Model C boat-dialog NPCs) LANDED (2026-07-10, autonomous map-lane).**
+> Places the DB lane's 2 rig NPC records (arz `c7da07f6`) so the flag-gated LOCAL-ONLY travel rig is now
+> LIVE on the TESTHUB entry. RESOLVES the map-lane PORTAL-RIG DEFERRAL (see the yard-map-lane note below).
+> MAP artifacts: canonical `local/Levels_merged.arc` = **`d5259629`** (688,684,102 B; REPRODUCED
+> byte-identical -> the rig is strictly TESTHUB-only); TESTHUB `local/Levels_merged_TESTHUB.arc` =
+> **`8d30ec533b19e7775a819a6a9d3c19c7`** (688,689,898 B; det-2x reproduced byte-exact), was build33
+> `37f58d29`. Text/Quests/arz UNCHANGED by the map lane (the DB lane's coupled `c7da07f6`/`6c84d66d`/
+> `56acee66` ship with it).
+> **WHAT (map hooks - `tools/build_section_surgery.py` + `tools/svaera_plus_portals.py`, sole-owned):**
+>   (1) `build_hub_extra_specs()` extended with the 7 rig placements (+ the 8 build33 yard placements kept
+>       INTACT): 2 `svc_testhub_master` hub NPCs + 5 `svc_testhub_return` NPCs, all flags=0 / no-0x14 /
+>       identity-rot, folded into INJECT_SPECS ONLY when SVC_TEST_HUB=1 (append-only -> canonical byte-
+>       unchanged).
+>   (2) GridEntrance TEST HUB **RETIRED** (Will's order: Model C, NOT the born-open B-PORTAL-1/2/3 blue-pane
+>       /walkway-force-teleport/dead-return portals): `merge_hub_into_inject_specs` no longer folds
+>       `build_hub_inject_specs` (kept defined+unused for reference); the swap path applies
+>       `build_hub_extra_specs()[R09_KEY]` to the SV blood-cave blob. R09_KEY is EXCLUDED from the normal
+>       fold (random09a is rebuilt by the swap path). **SIDE EFFECT (a fix):** retiring reverts TESTHUB
+>       random09a from the pre-existing build33 AE-silkroad-blob quirk (0x0b 58226, corner/geometry
+>       mismatch) BACK to the canonical SV blood-cave swap blob (0x0b 115749 byte-identical to canonical)
+>       + the hub master -> the "fewer instances random09a" gate quirk is now GONE (append-only prefix).
+> **PLACEMENT MANIFEST (host level; LOCAL x,y,z; WORLD x,y,z; survey vs canonical 0x0b):**
+>   - `svc_testhub_master`  startingfarmland06d (AE v0x11)   L(79.5,0.8,189.5)   W(-5968.5,1.8,917.5)  3u E of canonical Almyros, clr@3.0=100%, comp0
+>   - `svc_testhub_master`  random09a (SV blood-cave swap)    L(32.0,1.0,45.0)    W(6011,19,3288)       8.6u from the boat-dialog Blood-Cave landing (6018,19,3293) = the dominant blood-cave arrival, clr@3.0=100%, comp0
+>   - `svc_testhub_return`  gardenofmerchants (SV-only v0e)   L(133.0,-39.0,73.0) W(1176,-39,-4001)     3u E of landing, comp1 (= the Almyros landing comp), clr@3.0=100%
+>   - `svc_testhub_return`  darkforestenter (SV-only v0e)     L(27.0,1.0,30.0)    W(-2393,1,-5790)      3u E of landing, comp0, clr@3.0=100%
+>   - `svc_testhub_return`  crypt_floor1 (SV-only v0e)        L(140.0,10.0,229.0) W(-2438,10,-2453)     3u S of landing, single comp, clr@3.0=96%
+>   - `svc_testhub_return`  spartacryptlevel2 (SV-only v0e)   L(45.0,-1.6,42.0)   W(-5599,-1.6,-1409)   3u E of landing, comp0, clr@3.0=100%
+>   - `svc_testhub_return`  boss_arena (SV-only v0e)          L(131.0,0.0,40.0)   W(-430,0,-3602)       3u E of landing (~90u off volume_startolympianarena), comp0, clr@3.0=100%
+> **GATES (all GREEN):** canonical md5 == `d5259629` (byte-identical to build33); parse-back
+> M8+M9+M10+MYARD+**RIG** PASS (each rig host = canonical + 1 appended flags=0 NPC, EVERY other section
+> incl 0x0b/0x06/0x14 byte-identical; extended `tools/debug/gate_build32_parseback.py` with the RIG
+> section + testhub-aware M8); MAP-REF-1 (`run_contracts.py --only map`, TESTHUB vs new arz) 0 P0/0 P1
+> (3 P2 = the pre-existing base-game XPack Act3/Styx portals); navmesh 24/24; groups-bindings 374/374
+> 0 DEAD (both variants); entrance_landing PASS; det-2x TESTHUB byte-identical (`8d30ec53`). NOTE: the
+> untracked, parked `gate_doors_hub.py hubidentity` FAILs ONLY because its hardcoded hub-level whitelist
+> predates the Model C rig (flags startingfarmland06d/crypt_floor1 as UNEXPECTED); every level it checks
+> shows the correct +1/+8 prefix, and the parse-back RIG section proves the prefix for all 7 hosts.
+> **PACKAGER:** the TESTHUB-MD5 guard hashes BOTH files at RUNTIME (no hard-coded md5), so the TESTHUB md5
+> change (`4fb76084`->`8d30ec53`) needs NO packager edit; work/ staging holds canonical `d5259629` (guard
+> prints OK, would ABORT if `8d30ec53` were ever staged).
+> **DEPLOY COUPLING:** TESTHUB `Levels.arc` (`8d30ec53`) + arz (`c7da07f6`) + Text (`6c84d66d`) + Quests
+> (`56acee66`) ship together to the DEV entry; canonical `Levels.arc` UNCHANGED.
+
 > 🚪 **PORTAL TEST RIG - DB LANE (Model C boat-dialog NPCs) IMPLEMENTED (2026-07-10, autonomous DB-lane).**
 > UNBLOCKS the map-lane PORTAL-RIG DEFERRAL + the DB-lane GROUP 2 DEFERRAL below. Baseline = build33 arz
 > `e3810219`. NEW arz `c7da07f6efb8b14c27cf4a628824d133` (det-2x reproduced byte-exact). Text + Quests
@@ -74,13 +118,22 @@
 > (47.0,15.2,95.0), each own guardian + 5-elite warband, mutually >=6.1u, >=9.8u off the villager],
 > then q_yard_wyrm (30.0,15.2,113.0) [dFount 30u]. ALL 8: on-mesh, on-largest-component, 100%
 > clear at their placementExtents, flags=0.
-> **STANDING DEV TEST PATTERN (how to enable/disable the yard on the DEV entry):** the yard rides
-> the TESTHUB map. TO ENABLE: deploy `local/Levels_merged_TESTHUB.arc` (37f58d29) as the DEV entry's
-> `Resources/Levels.arc` + the yard arz `e3810219` as `SoulvizierClassicDEV.arz`; walk a Custom-Quest
-> char into HiddenValley01, out the cave mouth -> Enslaver+marauders, Vashkarr+2 champs, the 4
-> Obsidian guardians+warbands, the wyrm horde (each @100%). TO DISABLE (restore canonical, e.g. for
-> a co-op-safe DEV): deploy `local/Levels_merged.arc` (d5259629) as the DEV `Resources/Levels.arc`
-> (arz unchanged; the yard records go inert with no map placing them). The yard records ship in the
+> **STANDING DEV TEST PATTERN (how to enable/disable the yard AND the portal rig on the DEV entry):**
+> BOTH the monster yard AND the Model C portal rig ride the SAME TESTHUB map. [UPDATED 2026-07-10 by the
+> portal-rig map lane: the TESTHUB map is now `8d30ec53` (was 37f58d29) and the coupled DB set is arz
+> `c7da07f6` + Text `6c84d66d` + Quests `56acee66` (was arz e3810219, no Text/Quests).]
+> TO ENABLE: deploy `local/Levels_merged_TESTHUB.arc` (`8d30ec53`) as the DEV entry's
+> `Resources/Levels.arc` + arz `c7da07f6` as `SoulvizierClassicDEV.arz` + Text `6c84d66d` as
+> `Resources/Text.arc` + Quests `56acee66` as `Resources/Quests.arc` (the four ship as a coupled set).
+> YARD: walk a Custom-Quest char into HiddenValley01, out the cave mouth -> Enslaver+marauders,
+> Vashkarr+2 champs, the 4 Obsidian guardians+warbands, the wyrm horde (each @100%). PORTAL RIG: at
+> Helos, click the "Waypoint Warden (Test Rig)" NPC ~3u E of Almyros -> 7 ports (Garden/Secret/Uber/
+> Sparta/Boss Arena/Blood Cave/Helos); in the blood cave (arrive via any hub's "Blood Cave" port ->
+> world (6018,19,3293)) the same Warden stands ~8.6u away; inside each SV area a "Return Warden (Test
+> Rig)" stands ~3u from where you land -> 2 ports (Helos + Blood Cave). TO DISABLE (restore canonical,
+> e.g. for a co-op-safe DEV): deploy `local/Levels_merged.arc` (`d5259629`) as the DEV
+> `Resources/Levels.arc` (arz/Text/Quests unchanged; the yard + rig records go inert with no map
+> placing them). The yard records ship in the
 > shared arz UNCONDITIONALLY but are INERT on canonical/Steam (the packager's live TESTHUB-MD5 guard
 > - which hashes `local/Levels_merged_TESTHUB.arc` at runtime, no hard-coded md5 - still ABORTS on
 > 37f58d29, so the yard can never reach Workshop). Tune the fight by editing the REAL monster
@@ -92,7 +145,10 @@
 > HV01 yard append passes (canonical is a byte-exact prefix of the +8 hub HV01); its random09a
 > "fewer instances" flag is PRE-EXISTING (random09a byte-identical to the shipped build32b TESTHUB
 > 4fb76084; that gate is an untracked debug tool with a stale subset assumption for random09a).
-> **PORTAL RIG (Helos + blood-cave-entrance hubs): DEFERRED this build.** [UPDATE 2026-07-10: the DB
+> **PORTAL RIG (Helos + blood-cave-entrance hubs): RESOLVED 2026-07-10** (was DEFERRED this build).
+> The 2 hub + 5 return Model C NPCs are now PLACED on the TESTHUB entry (TESTHUB map -> `8d30ec53`) and
+> the GridEntrance hub is RETIRED - see the PORTAL TEST RIG - MAP LANE note at the TOP of this file for
+> the placement manifest, gates, and the random09a-blob fix. [UPDATE 2026-07-10: the DB
 > footprint now EXISTS - see the PORTAL TEST RIG - DB LANE note at the TOP of this file (arz c7da07f6,
 > +2 NPC records svc_testhub_master/return, boat-dialog triggers, 7 tags). The map-only `build_hub_extra_
 > specs` extension to PLACE the 2 hub + 5 return NPCs is now unblocked; the destination coords are surveyed.] The portal spec's settled

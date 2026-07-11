@@ -19,7 +19,7 @@ from build_section_surgery import (
     INJECT_SPECS, MOVE_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
     parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11,
     inject_into_sv_only_blob, inject_rec02_into_blob, move_0x05_instances,
-    merge_hub_into_inject_specs, build_hub_inject_specs, patch_respawn_group_position,
+    merge_hub_into_inject_specs, build_hub_extra_specs, patch_respawn_group_position,
     RESPAWNTEMPLEORIENT01_UNIQUEID,
     REWRITE_0X06_SPECS, rewrite_0x06_descriptors,
     APPEND_0X06_SPECS, append_0x06_descriptors,
@@ -1108,16 +1108,22 @@ def main():
                                           donor_data=gen_0b, use_stub=False,
                                           pre_positioned=True)
 
-    # TEST HUB: inject the 10 blood-cave hub portals into Random09A's 0x05 (+ their 48-byte 0x14
-    # bindings). Random09A is v0x0e and handled by the special swap path (NOT the normal INJECT_SPECS
-    # loop), so the hub R09 specs must be applied to swapped_blob here. Only when SVC_TEST_HUB=1; the
-    # canonical build leaves swapped_blob untouched (byte-identity requirement). The 0x0b navmesh was
-    # already injected above; inject_into_sv_only_blob only touches 0x05/0x14.
+    # TEST HUB (build34): inject the Model C blood-cave hub-master NPC (svc_testhub_master) into
+    # Random09A's 0x05. Random09A is v0x0e and handled by THIS special swap path (NOT the normal
+    # INJECT_SPECS loop), so its rig spec must be applied to swapped_blob here. It comes from
+    # build_hub_extra_specs()[R09_KEY], which merge_hub_into_inject_specs deliberately EXCLUDES from
+    # the normal fold (keeping R09 out of inject_specs is what lets _r09_swap win at compaction, so
+    # TESTHUB random09a is the canonical SV blood-cave blob + this NPC, not the AE silkroad blob).
+    # The retired GridEntrance hub (build_hub_inject_specs) is no longer applied here. Only when
+    # SVC_TEST_HUB=1; the canonical build leaves swapped_blob untouched (byte-identity requirement).
+    # The 0x0b navmesh was already injected above; inject_into_sv_only_blob only touches 0x05 (the
+    # NPC is flags=0 / no-0x14, so no 0x14 append).
     if USE_HUB:
-        _r09_hub_specs = build_hub_inject_specs().get(R09_KEY, [])
-        if _r09_hub_specs:
-            swapped_blob = inject_into_sv_only_blob(swapped_blob, _r09_hub_specs, R09_KEY)
-            print(f'  TEST HUB: injected {len(_r09_hub_specs)} hub portal(s) into Random09A 0x05/0x14')
+        _r09_rig_specs = build_hub_extra_specs().get(R09_KEY, [])
+        if _r09_rig_specs:
+            swapped_blob = inject_into_sv_only_blob(swapped_blob, _r09_rig_specs, R09_KEY)
+            print(f'  TEST HUB: injected {len(_r09_rig_specs)} rig NPC(s) into Random09A '
+                  f'(SV blood-cave swap blob) 0x05')
 
     # Overwrite the merged Random09A entry in-place (index identity stays AE's).
     merged_levels[ae_r09_idx]['ints_raw'] = bytes(swapped_ints)
