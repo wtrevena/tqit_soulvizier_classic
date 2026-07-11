@@ -1,0 +1,49 @@
+{
+  "lane": "build36 lane B",
+  "purpose": "SV-authored display tags for the 18-skill SVAERA mastery graft.",
+  "integration_status": "ALREADY WIRED via the data path - no phase-2 action required.",
+  "data_path": {
+    "mechanism": "build_svc_database.py main() writes these key=value pairs into work/SoulvizierClassic/Database/uber_soul_tags.txt (the graft_tags dict). tools/build_text_arc.py reads uber_soul_tags.txt as its 3rd argument and (a) emits every key into modstrings.txt inside Text.arc AND (b) lists every key in the mod_authored_tags.txt manifest. tools/validate_tags.py then treats them as mod-owned AND finds them defined -> PASS.",
+    "no_edit_to": "tools/build_text_arc.py was NOT modified (data-driven pipeline).",
+    "source_of_strings": "Ported verbatim from the real SVAERA Text.arc (workshop item 2076433374); fancy quotes normalized to ASCII."
+  },
+  "base_atlantis_tags_no_action": {
+    "note": "These display tags resolve at runtime from the engine's own base-game Atlantis Text (the mod overlays on base). They are NOT authored by the mod and are intentionally absent from uber_soul_tags.txt.",
+    "tags": {
+      "x3tagSkillWarfareLastingLegacy": "Lasting Legacy",
+      "x3tagSkillDefenseActiveBlock": "Perfect Block",
+      "x3tagSkillDefenseSummonPhalanx": "Unyielding Phalanx",
+      "x3tagSkillEarthFireNova": "Fire Nova",
+      "x3tagSkillStormFlash": "Lightning Dash",
+      "x3tagSkillNatureEarthbind": "Earthbind",
+      "x3tagSkillNatureSylvanProtection": "Sylvan Protection",
+      "x3tagSkillDreamSummonDoppelganger": "Dream Image"
+    }
+  },
+  "sv_authored_tags_wired": {
+    "count": 8,
+    "tags": {
+      "tagSlam_NAME": "Slam",
+      "tagSlam_DESC": "Hit all enemies in a straight line with staggering force. {^n}{^y}The length of the line extends with levels. {^n}{^y}Melee weapon or Staff required.",
+      "tagSlam_FissureNAME": "Fissure",
+      "tagSlam_FissureDESC": "Your slam can be cast more frequently, and creates a larger and more powerful fissure in the ground, disrupting the aim and spellcasting of your enemies. ^y^n(The width of the line extends with levels. Reduced cooldown starts at level 2)",
+      "tagBurningBoltsNAME": "Burning Bolts",
+      "tagBurningBoltsDESC": "Adds burn damage to staff attacks, and a chance to pass through enemies.",
+      "tagSVAERSkillStorm001": "Frost Nova",
+      "tagSVAERSkillStormDescription001": "Casts an expanding ring of frost that slows and freezes your enemies."
+    }
+  },
+  "sv_tags_already_shipped_not_readded": {
+    "note": "These 4 display tags ALREADY exist in the mod's SV 0.98i text (Resources/Text_EN.arc -> xuniqueequipment.txt), so the grafted Earth Rupture/Flare skills resolve to the existing definitions. They are intentionally NOT emitted by the graft: build_text_arc keeps the FIRST definition, so re-adding them is a no-op for the same-value ones and a HARD duplicate-tag-gate failure for tagRuptureDESC (0.98i value says 'Staff Only'; SVAERA's says 'Staff or Bow'). The build's duplicate-tag gate CAUGHT this on the first Text build; dropping these 4 from the graft is the fix.",
+    "tags": {
+      "tagRuptureNAME": "Rupture (0.98i xuniqueequipment.txt)",
+      "tagRuptureDESC": "0.98i: 'Connects the player's tumultuous earth energies to their staff... ^y(Staff Only)' - a minor cosmetic mismatch (SVAERA's Rupture is Staff-or-Bow); functionally fine, not overridable via the data path.",
+      "tagFlareNAME": "Flare (0.98i, identical value)",
+      "tagFlareDESC": "0.98i (identical value to SVAERA)"
+    }
+  },
+  "expected_tags_gate_delta": {
+    "measured": "validate_tags PASS on the rebuilt arz+Text: 'all 148 referenced mod tags present' + 'all 205 authoritative tags present'. The 8 new tags are in the mod_authored_tags.txt manifest (220 mod-owned) and defined in Text.arc.",
+    "acceptable_lane_level_delta": "none - the data path makes the tags gate PASS clean; there is no residual tags-gate failure from this lane."
+  }
+}
