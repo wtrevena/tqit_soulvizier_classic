@@ -1,5 +1,58 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🚪 **PORTAL TEST RIG - DB LANE (Model C boat-dialog NPCs) IMPLEMENTED (2026-07-10, autonomous DB-lane).**
+> UNBLOCKS the map-lane PORTAL-RIG DEFERRAL + the DB-lane GROUP 2 DEFERRAL below. Baseline = build33 arz
+> `e3810219`. NEW arz `c7da07f6efb8b14c27cf4a628824d133` (det-2x reproduced byte-exact). Text + Quests
+> are COUPLED and changed; Levels UNCHANGED (map lane owns placements): Text `346572bb`->`6c84d66d`,
+> Quests `6ff23c29`->`56acee66`. Record-diff vs `e3810219` = EXACTLY **2 ADDED + 0 MODIFIED + 0 REMOVED**,
+> 0 collateral.
+> **RECORDS (apply_svc_patches `_create_testhub_portal_npcs`, hooked right after `_create_helos_portal_
+> master`):** 2 NPCs cloned from the proven boat-dialog donor `records\creature\npc\speaking\greece\
+> knossos_boatmantoegypt.dbr` (the Almyros/Keryx shape; GreekSailor02 mesh+baseTexture inherited
+> BYTE-IDENTICAL -> render-safe per the D5 law):
+>   `records\quests\svc_testhub_master.dbr` (HUB portal-master; map lane places it TWICE - Helos plaza +
+>     blood-cave-mouth strip) and `records\quests\svc_testhub_return.dbr` (RETURN NPC; map lane places it
+>     once inside each of the 5 SV areas). Added UNCONDITIONALLY, INERT on canonical (map places neither).
+> **TRIGGERS (build_quest_files `_add_testhub_portal_travel`, CHAINED onto the Helos patch in the always-
+> loaded `sv_commonmechanics.qst` refire step; registry law respected - NO new QUESTS registration):**
+> one `Condition_OnLevelLoad` trigger per NPC (trigger `max` bumped +2), keyed on the DISTINCT rig records
+> ONLY (never canonical Almyros - no leak): HUB (svc_testhub_master) = 7 `Action_BoatDialog` ports; RETURN
+> (svc_testhub_return) = 2 ports. Fail-loud ref-delta checks (hub NPC +7, return NPC +2, per-tag deltas) +
+> stable round-trip. Parse-back confirms 7+2 ports, exact SIGNED coords, Almyros untouched (4 ports, 0 leak).
+> **DESTINATION TABLE (all 7 landing coords SURVEYED on-mesh against canonical d5259629 0x0b navmeshes):**
+>   - Garden of Merchants ( 1173,-39,-4001) GardenofMerchants.lvl  tagSVCHelosToGarden  [Almyros table, re-verified]
+>   - The Secret Place    (-2396,  2,-5790) DarkForestEnter.lvl    tagSVCHelosToSecret  [re-verified]
+>   - The Uber Dungeon    (-2438, 10,-2450) crypt_floor1.lvl       tagSVCHelosToUber    [re-verified]
+>   - The Sparta Crypt    (-5602, -2,-1409) SpartaCryptLevel2.lvl  tagSVCHelosToSparta  [re-verified]
+>   - The Boss Arena      ( -433,  0,-3602) boss_arena.lvl         tagSVCTestHubToBossArena [NEW; 0x0b-surveyed on-mesh (largest comp 1.38M cells, floorY 0), **90u off volume_startolympianarena** so boss step-in stays player-controlled]
+>   - The Blood Cave      ( 6018, 19, 3293) Random09A.lvl          tagSVCTestHubToBloodCave [NEW; **RE-DERIVED** - the spec's (-168,19,2162) is ~6200u STALE (Random09A now at corner (5979,18,3243)); this is proven-band local (29.9,1,26.9)+corner, 27.6u off the jo04 shrine ghost pool, largest comp, floorY 19]
+>   - Helos (Return)      (-5980,  1,  909) StartingFarmland06D.lvl tagSVCTestHubToHelos  [NEW; surveyed on-mesh, floorY 0.6]
+>   RETURN NPC menu = Helos (-5980,1,909) + Blood Cave (6018,19,3293).
+> **TEXT (7 NEW tags via the tags dict -> uber_soul_tags.txt -> Text.arc; the 4 Almyros labels are
+> REUSED):** tagSVCNpcTestHubMaster='Waypoint Warden (Test Rig)', tagSVCTestHubMasterChat,
+> tagSVCNpcTestHubReturn='Return Warden (Test Rig)', tagSVCTestHubReturnChat, tagSVCTestHubToBossArena=
+> 'The Boss Arena', tagSVCTestHubToBloodCave='The Blood Cave', tagSVCTestHubToHelos='Helos (Return)'.
+> **STEAM-INERTNESS (explicit mechanism):** `Action_BoatDialog` attaches its menu to the NPC ENTITY in the
+> loaded level; canonical places NEITHER rig NPC, so both triggers no-op there (D3 unplaced-record
+> precedent + the Almyros shape). Proven by `tools/debug/gate_testhub_portal_rig.py` part B: canonical
+> `local/Levels_merged.arc` = **0 master + 0 return** placements. (The rig NPC records + triggers + tags
+> DO ship inside arz+Quests+Text but are inert on Steam - the sanctioned flag model.)
+> **GATES GREEN:** record-diff = 2 ADDED/0 else; validate_tags PASS (129 mod refs + 185 authoritative);
+> contracts quests/souls/summons/resources **0 P0/0 P1** (4891 P2 all pre-existing base/upstream);
+> render-chain gate part A (mesh GreekSailor02.msh resolvable + 1 internal shader ok + baseTexture in
+> base Creatures.arc; both rig NPCs share donor art); inertness gate part B (0 canonical placements);
+> roaming-yard negtest ALL OK (sweep byte-unaffected, still 1224 pools + 1 yard whitelist); in-build
+> summon-pet STRICT + A9 render + A7 Occult/Hunting golden + container-loot-shape PASS; det-2x
+> byte-identical (arz/Text/Quests). **NOT DEPLOYED (no dist/, no SteamCMD; map tools untouched).**
+> **COUPLING on eventual deploy:** arz + Quests + Text ship together (canonical Levels unchanged).
+> **HANDOFF TO MAP LANE (to make the rig live on the TESTHUB entry):** extend `build_hub_extra_specs`
+> (SVC_TEST_HUB-gated) to place svc_testhub_master at Helos (~local (79.5,0.6,189.5), a few u off canonical
+> Almyros) AND at the blood-cave-mouth strip (random09a flank; the HV01 monster yard is a DIFFERENT level,
+> so no 40u conflict with the Random09A landing), and svc_testhub_return once inside each of Garden/Secret/
+> Uber/Sparta/BossArena a few u from that area's landing coord above. Recommend RETIRING the existing
+> Random09A GridEntrance hub's 5 dest pairs (spec sec 8 #7) so Will never tests the known-dead
+> appended-host returns. Refresh the packager's TESTHUB-MD5 guard (it hashes at runtime, no hard-coded md5).
+
 > 🗺️ **MONSTER TEST YARD (MAP LANE) + PORTAL-RIG DEFERRAL (2026-07-10, autonomous map-lane).**
 > Couples with the DB-lane yard note below (arz `e3810219`). MAP artifacts: canonical
 > `local/Levels_merged.arc` = **`d5259629`** (REPRODUCED byte-identical -> the yard change is
@@ -39,7 +92,10 @@
 > HV01 yard append passes (canonical is a byte-exact prefix of the +8 hub HV01); its random09a
 > "fewer instances" flag is PRE-EXISTING (random09a byte-identical to the shipped build32b TESTHUB
 > 4fb76084; that gate is an untracked debug tool with a stale subset assumption for random09a).
-> **PORTAL RIG (Helos + blood-cave-entrance hubs): DEFERRED this build.** The portal spec's settled
+> **PORTAL RIG (Helos + blood-cave-entrance hubs): DEFERRED this build.** [UPDATE 2026-07-10: the DB
+> footprint now EXISTS - see the PORTAL TEST RIG - DB LANE note at the TOP of this file (arz c7da07f6,
+> +2 NPC records svc_testhub_master/return, boat-dialog triggers, 7 tags). The map-only `build_hub_extra_
+> specs` extension to PLACE the 2 hub + 5 return NPCs is now unblocked; the destination coords are surveyed.] The portal spec's settled
 > mechanism (Model C BoatDialog portal-master, the ONLY one with working returns from appended
 > SV-only areas) needs +2 NPC records (`svc_testhub_master`/`svc_testhub_return`), boat-dialog
 > triggers in `sv_commonmechanics.qst`, and ~5-7 Text tags - all of which the DB lane explicitly
@@ -93,7 +149,8 @@
 > a duplicate = a slot removal, forbidden without Will's per-item OK). Spirit is slot 8 = OUTSIDE the
 > Occult(5)/Hunting(6) golden freeze. REVERTIBLE before the next Steam ship (re-add `xxx`) if his
 > in-game pet-cap test shows the capstone over-summons.
-> **GROUP 2 = PORTAL RIG DB: DEFERRED (not implemented).** NOT map-only (Model C needs +2 NPC records
+> **GROUP 2 = PORTAL RIG DB: DEFERRED (not implemented).** [SUPERSEDED 2026-07-10: IMPLEMENTED in a
+> dedicated portal wave - see the PORTAL TEST RIG - DB LANE note at the TOP of this file.] NOT map-only (Model C needs +2 NPC records
 > + boat-dialog triggers in build_quest_files + ~5-7 Text tags), but it is a SEPARATE portal lane's
 > feature (the yard spec reserves the portal strips for that lane); building its DB footprint in these
 > shared files would collide. Also gated on the map lane's 0x0b survey of the Boss Arena landing coord

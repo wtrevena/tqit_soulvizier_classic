@@ -1630,6 +1630,154 @@ def _add_helos_portal_travel(data: bytes) -> bytes:
     return out
 
 
+# ── PORTAL RIG (2026-07-10, GROUP 2 unblock): TESTHUB Model C travel triggers ─
+# The flag-gated LOCAL-ONLY travel rig. Two boat-dialog triggers appended to the
+# SAME always-loaded sv_commonmechanics refire step (registry law: no new QUESTS
+# registration), each keyed on a DISTINCT rig NPC record (apply_svc_patches
+# _create_testhub_portal_npcs). Mirrors _add_helos_portal_travel exactly, only
+# with two triggers instead of one, and MUST key on the new rig NPCs ONLY - never
+# on canonical Almyros/portal_master_helos, or the Boss Arena / Blood Cave ports
+# would leak into the shipped Helos menu (spec risk #3).
+#   HUB (svc_testhub_master):  7 ports - Garden, Secret, Uber, Sparta, Boss
+#       Arena, Blood Cave interior, Helos return.
+#   RETURN (svc_testhub_return): 2 ports - Helos, Blood Cave interior.
+# INERT on canonical: the ports register onto NPCs the canonical map never places
+# (D3 unplaced-record no-op; the Almyros precedent). ALL 7 landing coords were
+# surveyed ON-MESH against the canonical d5259629 map. NOTE: Garden/Secret/Uber/
+# Sparta reuse the shipped Almyros table (re-verified on-mesh); Boss Arena was
+# 0x0b-surveyed (on-mesh, 90u off volume_startolympianarena); Blood Cave was
+# RE-DERIVED (the spec's old (-168,19,2162) is ~6200u stale - Random09A now sits
+# at corner (5979,18,3243)); Helos return surveyed on-mesh.
+TESTHUB_MASTER_NPC = r'records\quests\svc_testhub_master.dbr'
+TESTHUB_RETURN_NPC = r'records\quests\svc_testhub_return.dbr'
+TESTHUB_MASTER_DESTS = [
+    ((1173, -39, -4001), 'tagSVCHelosToGarden'),      # Garden of Merchants (GardenofMerchants.lvl)
+    ((-2396, 2, -5790), 'tagSVCHelosToSecret'),       # The Secret Place (DarkForestEnter.lvl)
+    ((-2438, 10, -2450), 'tagSVCHelosToUber'),        # The Uber Dungeon (crypt_floor1.lvl)
+    ((-5602, -2, -1409), 'tagSVCHelosToSparta'),      # The Sparta Crypt (SpartaCryptLevel2.lvl)
+    ((-433, 0, -3602), 'tagSVCTestHubToBossArena'),   # Boss Arena (boss_arena.lvl; 90u off boss volume)
+    ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior (Random09A.lvl)
+    ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza (StartingFarmland06D.lvl)
+]
+TESTHUB_RETURN_DESTS = [
+    ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza
+    ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior
+]
+
+
+def _add_testhub_portal_travel(data: bytes) -> bytes:
+    """Append the TESTHUB portal-rig boat-dialog triggers (Model C) to the
+    sv_commonmechanics refire step: one Condition_OnLevelLoad trigger per rig NPC
+    (svc_testhub_master, 7 ports; svc_testhub_return, 2 ports). Strictly additive
+    (two trigger triples; the step's trigger max is bumped by 2). Fails loud if
+    the host step is missing, the bytes do not round-trip, or the reference-count
+    deltas do not land exactly."""
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    def _boatdialog(npc, xyz, tag):
+        x, y, z = xyz
+        return [
+            ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'delayTime', ('int', 0)),
+                ('field', 'npc', ('str', npc)),
+                ('field', 'onOff', ('int', 1)),
+                ('field', 'x', ('int', x & 0xFFFFFFFF)),
+                ('field', 'y', ('int', y & 0xFFFFFFFF)),
+                ('field', 'z', ('int', z & 0xFFFFFFFF)),
+                ('field', 'tag', ('str', tag)),
+            ]),
+        ]
+
+    def _trigger(display, npc, dests):
+        header = ('block', [
+            ('field', 'displayTag', ('str', display)),
+            ('field', 'displayBitmap', ('int_or_empty', 0)),
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isActive', ('int', 0)),
+        ])
+        conditions = ('block', [
+            ('field', 'conditionCount', ('int', 1)),
+            ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'isNot', ('int', 0)),
+                ('field', 'isResettable', ('int', 1)),
+                ('field', 'isQuestCritical', ('int', 1)),
+            ]),
+        ])
+        action_items = [('field', 'actionCount', ('int', len(dests)))]
+        for xyz, tag in dests:
+            action_items.extend(_boatdialog(npc, xyz, tag))
+        actions = ('block', action_items)
+        return [header, conditions, actions]
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = [i for i, it in enumerate(steps_container) if it[0] == 'block']
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched = 0
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        if field_val(stepdef, 'name') != HELOS_PORTAL_HOST_STEP:
+            continue
+        trigcont = list(steps_container[trigcont_pos][1])
+        bumped = False
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 2))
+                bumped = True
+                break
+        if not bumped:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: host step has no '
+                             f'trigger max')
+        trigcont.extend(_trigger('SVC: TESTHUB Hub Portal-Master (Model C)',
+                                 TESTHUB_MASTER_NPC, TESTHUB_MASTER_DESTS))
+        trigcont.extend(_trigger('SVC: TESTHUB Return NPC (Model C)',
+                                 TESTHUB_RETURN_NPC, TESTHUB_RETURN_DESTS))
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched += 1
+
+    if patched != 1:
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: TESTHUB rig expected to patch exactly 1 '
+            f'step ({HELOS_PORTAL_HOST_STEP!r}), patched {patched}. Upstream '
+            f'changed; review before shipping.')
+
+    out = qst_format.serialize(tree)
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: TESTHUB-patched quest does '
+                         f'not round-trip stably')
+    low = out.replace(b'/', b'\\').lower()
+    low_in = data.replace(b'/', b'\\').lower()
+
+    def _delta(needle):
+        nd = needle.replace('/', '\\').lower().encode()
+        return low.count(nd) - low_in.count(nd)
+    if _delta(TESTHUB_MASTER_NPC) != len(TESTHUB_MASTER_DESTS):
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub NPC reference count '
+                         f'must increase by exactly {len(TESTHUB_MASTER_DESTS)}')
+    if _delta(TESTHUB_RETURN_NPC) != len(TESTHUB_RETURN_DESTS):
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: return NPC reference count '
+                         f'must increase by exactly {len(TESTHUB_RETURN_DESTS)}')
+    from collections import Counter
+    want = Counter()
+    for _xyz, tag in TESTHUB_MASTER_DESTS + TESTHUB_RETURN_DESTS:
+        want[tag] += 1
+    for tag, n in want.items():
+        if _delta(tag) != n:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: destination tag {tag} '
+                             f'reference count must increase by exactly {n} '
+                             f'(got {_delta(tag)})')
+    return out
+
+
 # ── Q4 (build31, dead-content audit Lane D): surgical quest-ref fixes ────────
 # All three are string-value edits inside otherwise byte-faithful quests; each
 # helper walks the parse tree, replaces exactly the expected count of values,
@@ -1864,10 +2012,17 @@ def main():
     if raw_cm is None:
         raise SystemExit(f'Q2: host quest missing: {HELOS_PORTAL_HOST_QUEST}')
     patched_cm = _add_helos_portal_travel(raw_cm)
+    # Portal rig (GROUP 2 unblock): TESTHUB Model C hub + return boat-dialog
+    # triggers, chained onto the just-patched quest (same refire step). Keyed on
+    # the DISTINCT rig NPC records only; INERT on canonical (no rig NPC placed).
+    patched_cm = _add_testhub_portal_travel(patched_cm)
     arc.set_file(HELOS_PORTAL_HOST_QUEST, patched_cm)
     print(f'Q2: Helos portal-master {len(HELOS_PORTAL_DESTS)}-destination '
           f'boat-dialog appended to {HELOS_PORTAL_HOST_QUEST} '
           f'({len(raw_cm)} -> {len(patched_cm)} bytes)')
+    print(f'Portal rig: TESTHUB hub ({len(TESTHUB_MASTER_DESTS)} ports) + return '
+          f'({len(TESTHUB_RETURN_DESTS)} ports) boat-dialog appended to '
+          f'{HELOS_PORTAL_HOST_QUEST}')
 
     # Q4-3: chimera chest double-extension retarget (arz records renamed by
     # fix_chimera_chest_double_ext in build_svc_database.py, same wave).

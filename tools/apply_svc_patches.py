@@ -9242,6 +9242,78 @@ def _create_helos_portal_master(db, tags):
           "menu tags set")
 
 
+# ── PORTAL RIG (2026-07-10, GROUP 2 unblock): TESTHUB travel rig NPCs ─────────
+# Will's flag-gated LOCAL-ONLY travel rig (Model C, BoatDialog portal-master -
+# the proven Almyros shape) so he can reach EVERY restored SV area from Helos
+# AND from the blood-cave mouth, verify each area (its real gold portals + the
+# area content), then return to the normal map. Two NPC records, both cloned
+# from the SAME proven boat-dialog donor Almyros/Keryx use (knossos_boatmantoegypt:
+# Class=Npc + GreekSailor02 mesh/tex, render-safe per D5 - mesh/baseTexture are
+# inherited byte-identical, so the render chain matches the two shipping portal
+# masters exactly):
+#   svc_testhub_master  - the HUB portal-master. The map lane places it TWICE
+#       (Helos plaza + blood-cave-mouth strip, TESTHUB map only). Its boat menu
+#       (build_quest_files _add_testhub_portal_travel) offers all 7 ports:
+#       Garden, Secret, Uber, Sparta, Boss Arena, Blood Cave interior, Helos.
+#   svc_testhub_return  - the RETURN NPC, placed once INSIDE each of the 5 SV
+#       destination areas (TESTHUB map only). Its 2-port menu (Helos, Blood Cave)
+#       gives every area a deterministic round-trip back to the normal map. This
+#       is why Model C beats born-open GridEntrance: BoatDialog is a quest-action
+#       teleport, NOT a map portal, so the live-proven appended-host firing gate
+#       (a born-open GridEntrance NEVER fires from an appended SV-only host, the
+#       shipped B-PORTAL-3 bug) does NOT apply - returns from every SV area WORK.
+#
+# STEAM-INERTNESS (stated explicitly): both records are added to the arz
+# UNCONDITIONALLY, but they are INERT on the canonical/Steam map because the
+# canonical map PLACES NEITHER of them (only the TESTHUB Levels variant does).
+# An Action_BoatDialog whose `npc` record is not placed in the loaded level has
+# no entity to attach its dialog to, so it is a no-op - the exact same
+# inert-unless-placed principle the flag design already relies on for the arz's
+# TESTHUB-referenced records (the D3 unplaced-record no-op precedent + the
+# Almyros shape: a boat-dialog trigger keyed to an NPC the map never places does
+# not fire). A negative check (tools/debug/gate_testhub_inert.py) proves the
+# canonical map places 0 of these records.
+TESTHUB_MASTER_NPC = r'records\quests\svc_testhub_master.dbr'
+TESTHUB_RETURN_NPC = r'records\quests\svc_testhub_return.dbr'
+_TESTHUB_NPC_DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+
+
+def _create_testhub_portal_npcs(db, tags):
+    donor = _find_record(db, _TESTHUB_NPC_DONOR)
+    if not donor:
+        raise SystemExit(f"Portal rig: donor NPC missing: {_TESTHUB_NPC_DONOR}")
+    for path, desc_tag, chat_tag, filedesc in (
+        (TESTHUB_MASTER_NPC, 'tagSVCNpcTestHubMaster', 'tagSVCTestHubMasterChat',
+         'SVC portal rig: TESTHUB hub portal-master (Model C boat-dialog, 7 ports)'),
+        (TESTHUB_RETURN_NPC, 'tagSVCNpcTestHubReturn', 'tagSVCTestHubReturnChat',
+         'SVC portal rig: TESTHUB return NPC (Model C boat-dialog, Helos + Blood Cave)'),
+    ):
+        if db.has_record(path):
+            raise SystemExit(f"Portal rig: {path} already exists")
+        db.clone_record(donor, path)
+        db.set_field(path, 'description', desc_tag)
+        db.set_field(path, 'FileDescription', filedesc)
+        db.set_field(path, 'messageDialogTag', chat_tag)
+        db._modified.add(path)
+    # NPC name + greeting tags (referenced by the arz records above; validate_tags
+    # requires these to resolve in Text.arc).
+    tags['tagSVCNpcTestHubMaster'] = 'Waypoint Warden (Test Rig)'
+    tags['tagSVCTestHubMasterChat'] = ('I hold every hidden road to the restored '
+        'lands. Name your destination and I will set you upon the way.')
+    tags['tagSVCNpcTestHubReturn'] = 'Return Warden (Test Rig)'
+    tags['tagSVCTestHubReturnChat'] = ('Seen enough? I can set you back on the '
+        'road to Helos or to the Blood Cave.')
+    # Boat-menu destination labels for the THREE new ports (Garden/Secret/Uber/
+    # Sparta reuse the 4 Almyros labels set by _create_helos_portal_master, which
+    # always runs just before this). These are referenced by the quest file only.
+    tags['tagSVCTestHubToBossArena'] = 'The Boss Arena'
+    tags['tagSVCTestHubToBloodCave'] = 'The Blood Cave'
+    tags['tagSVCTestHubToHelos'] = 'Helos (Return)'
+    print("  Portal rig: svc_testhub_master + svc_testhub_return cloned from the "
+          "Knossos boatman (proven boat-dialog NPC shape); name/chat + 3 new "
+          "menu tags set (Garden/Secret/Uber/Sparta reuse Almyros labels)")
+
+
 # ── GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB) ──────────────
 # Will signed off (BACKLOG N4-DB): a lone Ancient-Dragonian warlord in the
 # Random05A cave east of Chang'an. Identity B - {^r}Vashkarr, Eldest of the
@@ -11718,6 +11790,7 @@ def apply_all_extended_patches(db, force_full_drops=True):
     _apply_d8_d9_summon_souls(db, tags)   # D8 Xeiwang + D9 Huo-ren summon-souls (after the overhaul, so the summon rewire wins)
     _create_olympus_rhodes_herald(db, tags)   # Q3: Olympus->Rhodes boat-dialog herald (record path locked with the map lane)
     _create_helos_portal_master(db, tags)     # Q2 (Group A): Helos portal-master NPC -> 4 SV-area boat destinations (map lane places it)
+    _create_testhub_portal_npcs(db, tags)     # Portal rig (GROUP 2 unblock): TESTHUB hub + return NPCs -> Model C travel (map lane places them; INERT on canonical)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs
