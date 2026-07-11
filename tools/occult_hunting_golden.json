@@ -174391,7 +174391,13 @@
       ]
     }
   },
-  "owner_approved_overrides": {},
+  "owner_approved_overrides": {
+    "field::records\\skills\\stealth\\drxflashpowder.dbr::skillCooldownTime": "Will-authorized Flash Powder rework 2026-07-11 (F5): 15s->6s tempo",
+    "field::records\\skills\\stealth\\drxflashpowder.dbr::offensivePierceMin": "Will-authorized Flash Powder rework 2026-07-11 (F5): add pierce damage verb",
+    "field::records\\skills\\stealth\\drxflashpowder.dbr::offensivePierceMax": "Will-authorized Flash Powder rework 2026-07-11 (F5): add pierce damage verb",
+    "field::records\\skills\\stealth\\drxflashpowder.dbr::offensiveProjectileFumbleMin": "Will-authorized Flash Powder rework 2026-07-11 (F5): blind ranged attackers too",
+    "field::records\\skills\\stealth\\drxflashpowder.dbr::offensiveProjectileFumbleDurationMin": "Will-authorized Flash Powder rework 2026-07-11 (F5): projectile-fumble duration"
+  },
   "tags": {
     "tagBladeMasteryDESC": [
       [

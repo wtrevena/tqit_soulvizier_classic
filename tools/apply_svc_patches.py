@@ -1813,6 +1813,12 @@ _SK_RUNE_WEAPON = r'records\skills\earth\drxfireenchantment.dbr'
 _SS_RING_LIGHTNING = r'records\skills\soulskills\ringoflightning.dbr'
 _SS_BLOOD_BOIL = r'records\skills\soulskills\melinoe_bloodboil.dbr'
 _SS_GROUND_SMASH = r'records\skills\soulskills\cyclops_groundsmash.dbr'
+# F3: identity-true tremor proc for burrowers (antlion). Skill_AttackRadius,
+# anim GroundPound -> the B-SOUL-PROC-2 wave pcsafe-clones + anim-blanks it, so it
+# is player-castable (verified: pcsafe\myrto_tremor.dbr exists, anim=None).
+_SS_MYRTO_TREMOR = r'records\skills\soulskills\myrto_tremor.dbr'
+# F3: Foul Beast (tomb guardian) SV summon - restore amgoz1's original grant.
+_SS_FOULBEAST_SUMMON = r'records\skills\sv\foulbeast\foulbeast_summon_soul.dbr'
 _SS_VENOM_SPRAY = r'records\skills\soulskills\arachne_venomspray.dbr'
 _SS_FLASH_POWDER = r'records\skills\soulskills\toxeus_flashpowder.dbr'
 _SS_ZOMBIE_SUMMON = r'records\skills\soulskills\summon_zombiesoldier.dbr'
@@ -3023,7 +3029,11 @@ def _guess_element(basename, fields):
         if any(kw in text for kw in keywords):
             return elem
 
-    return 'physical'
+    # F3 (build36): NO silent 'physical' default. Returning 'physical' here made
+    # the svc_uber enhancer stamp the cyclops club-slam (Ground Smash) onto every
+    # unclassifiable soul - a latent mass-assignment trap. Return None so the
+    # enhancer leaves an element-less, skill-less soul STAT-ONLY instead.
+    return None
 
 
 def overhaul_souls(db):
@@ -3092,7 +3102,13 @@ def overhaul_souls(db):
             continue
 
         elem = _guess_element(soul['basename'], fields)
-        skill_map = _ELEMENT_SKILL_MAP.get(elem, _ELEMENT_SKILL_MAP['physical'])
+        # F3 (build36): _guess_element now returns None when it cannot classify a
+        # soul (was silently 'physical' -> the Ground Smash filler). Leave those
+        # souls STAT-ONLY rather than stamping any element's signature skill by
+        # default. Only a positively-classified soul gets an element skill/augment.
+        skill_map = _ELEMENT_SKILL_MAP.get(elem) if elem else None
+        if not skill_map:
+            continue
         level = soul['level']
         power = max(1.0, level / 10.0)
 
@@ -5381,6 +5397,16 @@ def _overhaul_generic_souls(db):
             'itemSkillName': (S, _SS_VENOM_SPRAY),
             'itemSkillAutoController': (S, _AC_ON_ATTACK),
         },
+        # F3 (build36): Foul Beast (tomb guardian) - RESTORE amgoz1's SV summon.
+        # The old substring matcher let 'beast_soul' collateral-overwrite this
+        # with Ground Smash; anchoring stops that, and this entry makes the
+        # restore deterministic (SV098i foulbeast_soul_* -> foulbeast_summon_soul,
+        # which is present at records\skills\sv\foulbeast\). The B-SOUL-PROC-2
+        # wave pcsafe-clones it if its anim is not universal; level auto-injects.
+        'foulbeast_soul': {
+            'itemSkillName': (S, _SS_FOULBEAST_SUMMON),
+            'itemSkillAutoController': (S, _AC_ON_ATTACK),
+        },
     }
 
     # Apply overhauls to matching soul records
@@ -5393,10 +5419,33 @@ def _overhaul_generic_souls(db):
         if 'template' in rl or 'test' in rl:
             continue
 
+        # F3 (build36): anchored soul-basename match. The old `pattern in rl`
+        # substring test bled across records (beast_soul -> foulbeast_soul GS
+        # collateral; satyrsoldier_soul -> mountainsatyrsoldier_soul stat-hijack).
+        # Require the pattern to sit on a name-token boundary in the soul filename.
+        _base = rl.replace('/', '\\').rsplit('\\', 1)[-1]
+        if _base.endswith('.dbr'):
+            _base = _base[:-4]
         for pattern, stats in OVERHAULS.items():
-            if pattern in rl:
+            if _re.search(r'(?:^|[\\_.])' + _re.escape(pattern) + r'(?:$|[\\_.])', _base):
                 for fname, (dtype, val) in stats.items():
                     db.set_field(rec, fname, val, dtype)
+                # F3 (build36 GS de-filler): Ground Smash (a cyclops club-slam,
+                # anim ClubSlam) was the codebase's generic physical proc, pasted
+                # onto 19 unrelated OVERHAULS filler souls (satyrs/boars/crabs/
+                # turtles/statues/raptors...). Keep it ONLY on its namesake (the
+                # Crommyonian Sow); give camelbane (antlion burrower) an identity-
+                # true tremor; make every other filler STAT-ONLY (never swap one
+                # over-shared filler for another, per the anti-filler rule).
+                _granted = stats.get('itemSkillName', (None, None))[1]
+                if _granted == _SS_GROUND_SMASH:
+                    if pattern == 'camelbane_soul':
+                        db.set_field(rec, 'itemSkillName', _SS_MYRTO_TREMOR, S)
+                        _granted = _SS_MYRTO_TREMOR
+                    elif pattern != 'sow_soul':
+                        db.set_field(rec, 'itemSkillName', '', S)
+                        db.set_field(rec, 'itemSkillAutoController', '', S)
+                        _granted = ''
                 # B-SOUL-PROC-1: a granted item skill instantiates at
                 # itemSkillLevel; absent (or 0) = level-0 = INACTIVE, so the
                 # tooltip shows "Grants Skill" but the auto-controller never has
@@ -5405,8 +5454,8 @@ def _overhaul_generic_souls(db):
                 # a skill also sets itemSkillLevel >= 1. The OVERHAULS specs
                 # above never set it, so inject the mod's established per-tier
                 # default (n/e/l = 1/2/3) whenever a spec grants a skill
-                # without a level.
-                if 'itemSkillName' in stats and 'itemSkillLevel' not in stats:
+                # without a level. (F3: skip for the now stat-only souls.)
+                if _granted and 'itemSkillLevel' not in stats:
                     # Never clobber a record that already carries a live level
                     # (>= 1) from upstream or an earlier pass - the previously
                     # OK souls must stay byte-identical.
@@ -7370,6 +7419,306 @@ def _find_soul_drop_leaks(db):
         if live:
             leaks.append((name, mc, live))
     return leaks
+
+
+# ── F3 (build36): Ground Smash roster (the ONLY 6 souls that keep the cyclops
+# club-slam) - the SV-bible Elder Cyclopes + the two mod namesakes. ───────────
+_GS_ROSTER_TAGS = frozenset((
+    'tagSoulName244',   # Brontes (SV bible)
+    'tagSoulName243',   # Steropes (SV bible)
+    'tagSoulName48',    # Polyphemus (SV bible)
+    'tagSoulName237',   # Surryln the anteok (SV bible)
+    'tagSoulName509',   # Crommyonian Sow (skill namesake)
+    'tagSVCSoulGorrahk',  # Gorrahk the Tombsplitter (cyclops boss)
+))
+
+
+def _defiller_ground_smash(db):
+    """F3 (build36): strip the Ground Smash filler from every soul outside its
+    6-soul roster (_GS_ROSTER_TAGS). camelbane (antlion burrower) gets an
+    identity-true tremor; every other filler becomes STAT-ONLY (never swap one
+    over-shared filler for another). This is the single source of truth the
+    diversity gate then verifies: it catches the boss/dev/orphan design tables
+    (murderbunny / feth / prox / tombguardian / z_chooch / z_dave / z_josh /
+    z_shawn / bonescourge) and any latent GS assignment. The OVERHAULS filler
+    souls are already cleared inline in _overhaul_generic_souls; this is their
+    backstop too. MUST run AFTER all soul authoring and BEFORE the B-SOUL-PROC-2
+    castability wave (so camelbane's tremor rides the pcsafe clone)."""
+    S = DATA_TYPE_STRING
+    reassigned = stat_only = kept = 0
+    for rec in db.record_names():
+        rl = rec.replace('/', '\\').lower()
+        if '\\soul\\' not in rl or 'equipmentring' not in rl:
+            continue
+        isk = db.get_field_value(rec, 'itemSkillName')
+        isk = isk[0] if isinstance(isk, list) else isk
+        if not (isinstance(isk, str) and 'cyclops_groundsmash' in isk.lower()):
+            continue
+        tag = db.get_field_value(rec, 'itemNameTag')
+        tag = tag[0] if isinstance(tag, list) else tag
+        if tag in _GS_ROSTER_TAGS:
+            kept += 1
+            continue
+        if 'camelbane' in rl:
+            db.set_field(rec, 'itemSkillName', _SS_MYRTO_TREMOR, S)
+            reassigned += 1
+        else:
+            db.set_field(rec, 'itemSkillName', '', S)
+            db.set_field(rec, 'itemSkillAutoController', '', S)
+            stat_only += 1
+        db._modified.add(rec)
+    print(f"  F3 Ground Smash de-filler: kept {kept} roster records, "
+          f"{reassigned} -> myrto_tremor (camelbane), {stat_only} -> stat-only")
+
+
+def _verify_granted_skill_diversity(db):
+    """FAIL-LOUD (F3 build36). Ground Smash (a cyclops club-slam) may be granted
+    ONLY by its 6-soul roster; any other soul granting it is a re-introduced
+    filler -> hard fail. Additionally, any NON-roster, non-summon, non-known-
+    element-filler skill mass-assigned beyond a high ceiling hard-fails (a new
+    mass-assignment). The known over-shared element fillers (lifedrain / venom-
+    spray / flash powder / sonic wave + siblings) are WARN-listed for the standing
+    souls quality pass, not failed. Collapses n/e/l + pcsafe/plain by skill
+    basename and counts DISTINCT soul identities (by itemNameTag)."""
+    GS = 'cyclops_groundsmash.dbr'
+    CEILING = 15
+    # Known over-shared element/utility fillers - tracked (WARN) for the quality
+    # pass, exempt from the hard ceiling this wave (out of scope; see BACKLOG).
+    WARN_FILLERS = {
+        'lifedrain.dbr', 'arachne_venomspray.dbr', 'toxeus_flashpowder.dbr',
+        'hero_sonicwave.dbr', 'ringoflightning.dbr', 'firefragmentnova.dbr',
+        'melinoe_bloodboil.dbr', 'gargantuanyeti_iceblast.dbr',
+    }
+
+    def base(p):
+        return str(p).replace('/', '\\').rsplit('\\', 1)[-1].lower()
+
+    skill_ids = {}   # skill basename -> set(itemNameTag)
+    for rec in db.record_names():
+        rl = rec.replace('/', '\\').lower()
+        if '\\soul\\' not in rl or 'equipmentring' not in rl:
+            continue
+        isk = db.get_field_value(rec, 'itemSkillName')
+        isk = isk[0] if isinstance(isk, list) else isk
+        if not (isinstance(isk, str) and isk.strip()):
+            continue
+        tag = db.get_field_value(rec, 'itemNameTag')
+        tag = tag[0] if isinstance(tag, list) else tag
+        skill_ids.setdefault(base(isk), set()).add(str(tag))
+
+    problems = []
+    # 1. GS roster identity check
+    gs_grantors = skill_ids.get(GS, set())
+    gs_bad = sorted(t for t in gs_grantors if t not in _GS_ROSTER_TAGS)
+    if gs_bad:
+        problems.append(f"Ground Smash granted by {len(gs_bad)} NON-roster soul "
+                        f"identit(y/ies): {gs_bad[:12]}")
+    # 2. high-ceiling mass-assignment (excluding GS, summons, known fillers)
+    for sk, tags in sorted(skill_ids.items(), key=lambda x: -len(x[1])):
+        if sk == GS or sk in WARN_FILLERS:
+            continue
+        if 'summon' in sk or 'skeleton' in sk or 'skelly' in sk:
+            continue  # legitimately shared raise-dead/summon grants
+        if len(tags) > CEILING:
+            problems.append(f"'{sk}' mass-assigned to {len(tags)} distinct soul "
+                            f"identities (> ceiling {CEILING}) - new filler?")
+    # WARN report for the tracked element fillers (quality pass, non-fatal)
+    warn_lines = [f"{sk}={len(skill_ids.get(sk, ()))}" for sk in sorted(WARN_FILLERS)
+                  if sk in skill_ids]
+    if warn_lines:
+        print("  [quality-pass WARN] over-shared element fillers (tracked, not "
+              "failed): " + ", ".join(warn_lines))
+    if problems:
+        for p in problems:
+            print(f"  GRANTED-SKILL-DIVERSITY OFFENDER: {p}")
+        raise SystemExit(f"F3 granted-skill diversity gate FAILED: {len(problems)} "
+                         f"issue(s) (see offenders above)")
+    print(f"  F3 granted-skill diversity gate OK: Ground Smash on its "
+          f"{len(gs_grantors)}-soul roster only; no new mass-assignment > {CEILING}")
+
+
+def _verify_soul_summon_identity(db, pairs):
+    """FAIL-LOUD (F2 build36). Registry-scoped soul->summon body identity. For
+    every pet THIS mod builds via _build_boss_summon (source, pets), the soul(s)
+    wired to that pet's summon skill MUST be dropped by a monster whose mesh
+    matches the SOURCE's mesh. Catches the Meritamen/Phagia class (a soul named
+    after monster X that summons monster Y's body) for the built pets, WITHOUT
+    the false positives of a DB-wide pet-mesh sweep (which flags Lyia et al.,
+    whose summon pet legitimately uses a dedicated mesh vs a reskin dropper): here
+    we compare SOURCE mesh to DROPPER mesh - the same monster by construction for
+    a legit soul - so only a genuine cross-wire fails."""
+    def one(rec, f):
+        v = db.get_field_value(rec, f)
+        return v[0] if isinstance(v, list) else v
+
+    def norm(s):
+        return str(s).replace('/', '\\').strip().lower() if s else ''
+
+    skill_spawns = {}   # SpawnPet skill (norm) -> {pet norm}
+    soul_skill = {}     # soul (norm) -> its itemSkillName (norm)
+    soul_drop_meshes = {}   # soul (norm) -> {dropper mesh norm}
+    for n in db.record_names():
+        nl = norm(n)
+        if _skill_class_of(db, n) == 'Skill_SpawnPet':
+            spawn = db.get_field_value(n, 'spawnObjects') or []
+            spawn = spawn if isinstance(spawn, list) else [spawn]
+            pets = {norm(p) for p in spawn if isinstance(p, str) and p.strip()}
+            if pets:
+                skill_spawns[nl] = pets
+        if '\\soul\\' in nl and 'equipmentring' in nl:
+            isk = one(n, 'itemSkillName')
+            if isinstance(isk, str) and isk.strip():
+                soul_skill[nl] = norm(isk)
+        elif '\\creature' in nl or '\\monster' in nl or '\\creatures' in nl:
+            ch = one(n, 'chanceToEquipFinger2')
+            try:
+                if float(ch) <= 0:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            mesh = norm(one(n, 'mesh'))
+            if not mesh:
+                continue
+            loot = db.get_field_value(n, 'lootFinger2Item1') or []
+            loot = loot if isinstance(loot, list) else [loot]
+            for s in loot:
+                if isinstance(s, str) and 'soul' in s.lower():
+                    soul_drop_meshes.setdefault(norm(s), set()).add(mesh)
+
+    problems = []
+    for src_path, pets in pairs:
+        src = _resolve_record(db, src_path)
+        if not src:
+            continue
+        src_mesh = norm(one(src, 'mesh'))
+        if not src_mesh:
+            continue
+        petset = {norm(p) for p in pets}
+        skills = {sk for sk, sp in skill_spawns.items() if sp & petset}
+        if not skills:
+            continue
+        for soul, isk in soul_skill.items():
+            if isk not in skills:
+                continue
+            meshes = soul_drop_meshes.get(soul)
+            if not meshes:
+                continue  # no live dropper -> cannot verify (e.g. TESTHUB-only)
+            if src_mesh not in meshes:
+                problems.append((soul.rsplit('\\', 1)[-1],
+                                 src_path.rsplit('\\', 1)[-1], src_mesh,
+                                 sorted(meshes)))
+    if problems:
+        for soul, src, sm, dm in problems[:40]:
+            print(f"  SOUL-SUMMON-IDENTITY OFFENDER: {soul} -> summon built from "
+                  f"{src} (mesh {sm}) but dropped by body {dm}")
+        raise SystemExit(f"F2 soul-summon-identity gate FAILED: {len(problems)} "
+                         f"registered summon soul(s) summon a body that does not "
+                         f"match their dropper's mesh")
+    print(f"  F2 soul-summon-identity gate OK: every registered summon soul "
+          f"({len(pairs)} families) spawns its dropper's body")
+
+
+# ── F6 (build36): the 54 OUR-soul renames to the '{^F}<Monster display> Soul'
+# standard (per soul_naming_and_droprate_fix_spec §8.3) + amgoz1's Xeiwang name
+# restore. SV-ORIGINAL soul names are NOT in this table (law #2: never override
+# amgoz1). Applied as a final authoritative override of the `tags` dict before
+# the naming gate. Titled monsters keep their full display form; dev easter-eggs
+# get the trivial '<Name> Soul'; (SP) markers disambiguate SP-lineage duplicates.
+_SOUL_NAME_STANDARD = {
+    'tagSVCSoulAinex': '{^F}Ainex, Queen of Crows Soul',
+    'tagSVCSoulAnapaest': '{^F}Gigantes - Anapaest Soul',
+    'tagSVCSoulAnklesickle': '{^F}Ankle Sickle Soul',
+    'tagSVCSoulBWHighPriest': '{^F}Blood Cult - High Priest Soul',
+    'tagSVCSoulCharsi': '{^F}Charsi Soul',
+    'tagSVCSoulDagon': '{^F}Dagon Soul',
+    'tagSVCSoulDarkMonolith': '{^F}Monolith Soul',
+    'tagSVCSoulDevArthur': '{^F}Arthur Soul',
+    'tagSVCSoulDevBen': '{^F}Ben Soul',
+    'tagSVCSoulDevChooch': '{^F}Chooch Soul',
+    'tagSVCSoulDevCory': '{^F}Cory Soul',
+    'tagSVCSoulDevDave': '{^F}Dave Soul',
+    'tagSVCSoulDevDavid': '{^F}David Soul',
+    'tagSVCSoulDevFrazier': '{^F}Frazier Soul',
+    'tagSVCSoulDevJosh': '{^F}Josh Soul',
+    'tagSVCSoulDevMorgan': '{^F}Morgan Soul',
+    'tagSVCSoulDevNate': '{^F}Nate Soul',
+    'tagSVCSoulDevParnell': '{^F}Parnell Soul',
+    'tagSVCSoulDevScott': '{^F}Scott Soul',
+    'tagSVCSoulDevShawn': '{^F}Shawn Soul',
+    'tagSVCSoulDevTildaV': '{^F}~V~ Soul',
+    'tagSVCSoulDevTom': '{^F}Tom Soul',
+    'tagSVCSoulDrownedKing': '{^F}Dorus, the Drowned King Soul',
+    'tagSVCSoulFeth': '{^F}Feth Thundertail Soul',
+    'tagSVCSoulFireTrap': '{^F}The Trap Soul',
+    'tagSVCSoulFleshrender': '{^F}Jungle Raptor ~ Fleshrender Soul',
+    'tagSVCSoulGheed': '{^F}Gheed Soul',
+    'tagSVCSoulGitar3': '{^F}Gitar Shrine Soul',
+    'tagSVCSoulGorgus': '{^F}Gorgus - Obi One Soul',
+    'tagSVCSoulJabarto': '{^F}Team Jabarto Soul',
+    'tagSVCSoulJiaco': '{^F}jiaco Soul',
+    'tagSVCSoulKaets': '{^F}Kaets Soul',
+    'tagSVCSoulKallixenia': '{^F}Kallixenia ~ Liche Queen Soul',
+    'tagSVCSoulKir4': '{^F}Kir Trap Soul',
+    'tagSVCSoulKreeloo': '{^F}Kreeloo Soul',
+    'tagSVCSoulLeinth': '{^F}Leinth Soul',
+    'tagSVCSoulLess': '{^F}Less Soul',
+    'tagSVCSoulLilLued': '{^F}Big Lued Soul',
+    'tagSVCSoulLilLuedChild': "{^F}Lil' Lued Soul",
+    'tagSVCSoulLimosLifeeater': '{^F}Limos Lifeeater Soul',
+    'tagSVCSoulMurderBunny': '{^F}Murder Bunny Soul',
+    'tagSVCSoulNEmgiec': '{^F}Rong Saberbane the Hacker Soul',
+    'tagSVCSoulNMega': '{^F}Rong Saberbane the Boss Soul',
+    'tagSVCSoulNVio': '{^F}Rong Saberbane the Wizard Soul',
+    'tagSVCSoulNomnom': '{^F}Plague Feast Soul',
+    'tagSVCSoulNumberouane': '{^F}Numberouane Soul',
+    'tagSVCSoulProx': '{^F}Ancient Limos, Soul Stealer Soul',
+    'tagSVCSoulRainbowbright': "{^F}General Yrrt'ik Soul",
+    'tagSVCSoulSPHades': '{^F}Hades Soul (SP)',
+    'tagSVCSoulSPToxeus': '{^F}Toxeus the Murderer Soul (SP)',
+    'tagSVCSoulTombguardian': '{^F}Tomb Guardian ~ Hound of Anubis Soul',
+    'tagSVCSoulVashkarr': '{^F}Vashkarr, Eldest of the Ancients Soul',
+    'tagSVCSoulYerk': '{^F}yerk yerk Soul',
+    'tagSVCSoulZilla': '{^F}Zilla Soul',
+    # law-#2 RESTORE: drop the comma we added back to amgoz1's SV name.
+    'tagSVCSoulXeiwang': '{^F}Xeiwang Flame of Hatred Soul',
+}
+
+
+def _verify_soul_naming(db, tags):
+    """FAIL-LOUD (F6 build36). Provenance by authored-tag membership: an OURS
+    soul's display name is authored in this build's `tags` dict (tagSVCSoul*/
+    tagSoulSVC*); an SV-ORIGINAL soul's itemNameTag (tagSoulNameNNN) is NOT in
+    `tags` -> auto-whitelisted (amgoz1's name, law #2 - never checked, no
+    hand-list). Every OURS soul MUST follow the standard '{^F}<Monster> Soul':
+    start '{^F}', end ' Soul' (a trailing ' (SP)'/'(...)' disambiguator marker is
+    allowed), and NEVER the '{^F}Soul of ' deviation (the reported mis-name)."""
+    problems = []
+    seen = set()
+    for n in db.record_names():
+        nl = n.replace('/', '\\').lower()
+        if '\\soul\\' not in nl or 'equipmentring' not in nl:
+            continue
+        tag = db.get_field_value(n, 'itemNameTag')
+        tag = tag[0] if isinstance(tag, list) else tag
+        if not (isinstance(tag, str) and tag in tags):
+            continue  # SV-original or untagged -> auto-whitelist
+        if tag in seen:
+            continue
+        seen.add(tag)
+        val = str(tags[tag])
+        core = _re.sub(r'\s*\([^)]*\)\s*$', '', val).rstrip()  # strip a (SP) marker
+        bad = ((not val.startswith('{^F}')) or (not core.endswith(' Soul'))
+               or ('Soul of ' in val))
+        if bad:
+            problems.append((tag, val))
+    if problems:
+        for tag, val in problems[:60]:
+            print(f"  SOUL-NAMING OFFENDER: {tag} = {val!r} "
+                  f"(must be '{{^F}}<Monster> Soul', never 'Soul of X')")
+        raise SystemExit(f"F6 soul-naming gate FAILED: {len(problems)} OURS soul(s) "
+                         f"violate the '{{^F}}<Monster> Soul' standard")
+    print(f"  F6 soul-naming gate OK: {len(seen)} OURS souls follow "
+          f"'{{^F}}<Monster> Soul'; SV-original names auto-whitelisted")
 
 
 def _verify_no_unclassified_soul_leaks(db):
@@ -10233,6 +10582,73 @@ def _all_pet_records(db):
             yield n
 
 
+def _fix_dayria_wolfsummon(db):
+    """F7d (build36): the friendly Dayria soul pets (dayria_{1,2,3}) are missing
+    the wolf summon the hostile dayria_45 carries. Lane A's _fix_sv_pet_summons
+    only RELOCATES existing skills (it moved dayria_carrionbirdsummons into an AI
+    slot); it never ADDS. Mirror dayria_45: put dayria_wolfsummons in
+    specialAttack3 (its chance is already 100) and register it in the first free
+    skillName slot so it instantiates. Both summons are friendly Skill_SpawnPet."""
+    WOLF = r'records\skills\monster skills\summoning_pets\dayria_wolfsummons.dbr'
+    S, I = DATA_TYPE_STRING, DATA_TYPE_INT
+    if not db.has_record(WOLF):
+        print('  F7d Dayria: dayria_wolfsummons missing (skipped)')
+        return
+    done = 0
+    for i in (1, 2, 3):
+        pet = r'records\skills\soulskills\pets\dayria_%d.dbr' % i
+        if not db.has_record(pet):
+            continue
+        db.set_field(pet, 'specialAttack3SkillName', WOLF, S)
+        free = None
+        for s in range(5, 13):
+            v = db.get_field_value(pet, 'skillName%d' % s)
+            v = v[0] if isinstance(v, list) else v
+            if not (isinstance(v, str) and v.strip()):
+                free = s
+                break
+        if free is None:
+            free = 5
+        db.set_field(pet, 'skillName%d' % free, WOLF, S)
+        db.set_field(pet, 'skillLevel%d' % free, 1, I)
+        db._modified.add(pet)
+        done += 1
+    print('  F7d Dayria: dayria_wolfsummons -> specialAttack3 + registered on '
+          '%d soul pets' % done)
+
+
+def _wire_soul_desc_itemtext(db, tags):
+    """F7c (build36): _create_soul never set the itemText field, so every authored
+    soul DESC tag (the amgoz1-style flavor text) never rendered in-game (lane A
+    vet P3). Systematically wire itemText -> (itemNameTag + 'DESC') on EVERY
+    generated soul whose DESC tag was authored in this build's `tags` dict, so the
+    flavor text finally shows. Keyed on tag membership -> only OUR authored DESCs
+    are wired (SV-original souls, whose name tags are not in `tags`, are left
+    untouched -> no dangling ref; validate_tags stays green since the DESC ships
+    in modstrings.txt)."""
+    S = DATA_TYPE_STRING
+    wired = 0
+    for n in db.record_names():
+        nl = n.replace('/', '\\').lower()
+        if '\\soul\\' not in nl or 'equipmentring' not in nl:
+            continue
+        tag = db.get_field_value(n, 'itemNameTag')
+        tag = tag[0] if isinstance(tag, list) else tag
+        if not isinstance(tag, str):
+            continue
+        desc = tag + 'DESC'
+        if desc not in tags:
+            continue
+        cur = db.get_field_value(n, 'itemText')
+        cur = cur[0] if isinstance(cur, list) else cur
+        if cur == desc:
+            continue
+        db.set_field(n, 'itemText', desc, S)
+        db._modified.add(n)
+        wired += 1
+    print('  F7c soul flavor text: wired itemText -> DESC on %d soul records' % wired)
+
+
 def _fix_sv_pet_summons(db):
     """build36 A1 (per-pet skill fixes): GLOBAL sweep - relocate every friendly
     Skill_SpawnPet wired into a non-AI slot on ANY soul pet into a free
@@ -10471,11 +10887,29 @@ def _apply_group4_summons(db, tags):
              souls=None, souls_tag='tagSoulName471',
              life=[12000.0, 16000.0, 21000.0], regen=[30.0, 60.0, 100.0],
              dmin=[70.0, 110.0, 160.0], dmax=[110.0, 170.0, 245.0]),
+        # F2 (build36): "Meritamen the Shadowcaller Soul" must summon Meritamen,
+        # not Phagia. The phagia_soul_{n,e,l} ring (itemNameTag tagSoulName472 =
+        # "{^F}Meritamen the Shadowcaller Soul") currently grants summon_phagia ->
+        # a phagiapetmesh body (an SV-0.98i name/summon conflation). This builds a
+        # meritamen_{1,2,3} pet from us_meritamen_34 (meritamen.msh + anm_sandspirit
+        # + 12-stat + skill-kit mirror incl. the friendly shadowstalker_summon3
+        # "Shadowcaller") and _wire_summon_soul repoints the 3 souls to it. Long-Nu
+        # shaped (souls resolved by nametag). Registry-gated by F2 identity.
+        dict(label='D22 Meritamen the Shadowcaller',
+             src=r'records\creature\monster\sandspirit\us_meritamen_34.dbr',
+             pets=[r'records\skills\soulskills\pets\meritamen_%d.dbr' % i
+                   for i in (1, 2, 3)],
+             skill=r'records\skills\soulskills\summon_meritamen.dbr',
+             disp='tagSVCSummonMeritamen', desc='tagNewHero182',
+             souls=None, souls_tag='tagSoulName472',
+             life=[7500.0, 9800.0, 12000.0], regen=[25.0, 50.0, 80.0],
+             dmin=[38.0, 60.0, 90.0], dmax=[53.0, 85.0, 125.0]),
     ]
     tags['tagSVCSummonEaterOfDays'] = 'Summon the Eater of Days'
     tags['tagSVCSummonPygmalion'] = 'Summon Pygmalion, the Replicator'
     tags['tagSVCSummonSarpedon'] = 'Summon War-King Sarpedon'
     tags['tagSVCSummonLongNu'] = 'Summon Long Nu, the Flame Mother'
+    tags['tagSVCSummonMeritamen'] = 'Summon Meritamen the Shadowcaller'
 
     for j in jobs:
         src = j['src']
@@ -10520,6 +10954,70 @@ def _apply_group4_summons(db, tags):
 
 
 # ── GROUP 3 (build31, overnight autonomous run): D11/D12/D16/D17/D18 ────────
+def _apply_flashpowder_rework(db):
+    """F5 (build36 FIX WAVE): Bloodcrow Flame Nova cd + Flash Powder rework (both
+    lives) + the droolbog repoint. Will: Flame Nova 4s recool; Flash Powder is
+    'trash/unviable' in the Occult mastery AND on souls - give it a damage verb
+    (pierce) + close the ranged-blind gap (projectile-fumble, what makes Smoke
+    Screen good) + a real tempo. Edit-in-place, no clones; the Skill_AttackRadius
+    per-level arrays are length-12 = drxflashpowder's skillUltimateLevel (a len-8
+    array would silently plateau at overcap levels 9-12)."""
+    S = DATA_TYPE_STRING
+    sf = db.set_field
+
+    def _f12(seq):
+        return [float(x) for x in seq]
+
+    # ITEM 1 - Bloodcrow Flame Nova (shared firefragmentnova; 10 fire souls, 0
+    # non-soul refs -> halving cd cannot buff any enemy). 8.0 -> 4.0.
+    FN = _SS_FIRE_NOVA
+    if not db.has_record(FN):
+        raise SystemExit('F5 ITEM1: firefragmentnova missing')
+    _cd = db.get_field_value(FN, 'skillCooldownTime')
+    _cd = _cd[0] if isinstance(_cd, list) else _cd
+    if abs(float(_cd) - 8.0) > 0.01:
+        raise SystemExit('F5 ITEM1: firefragmentnova cd=%r != 8.0 (drift)' % _cd)
+    sf(FN, 'skillCooldownTime', 4.0)
+    db._modified.add(FN)
+
+    # ITEM 2A - Occult mastery Flash Powder (drxflashpowder, GOLDEN slot-5). Add a
+    # pierce damage verb + projectile-fumble (blinds RANGED) + short cd. Golden
+    # drift is WAIVED per-field in occult_hunting_golden.json owner_approved_
+    # overrides (Will-authorized 2026-07-11).
+    FPA = r'records\skills\stealth\drxflashpowder.dbr'
+    if not db.has_record(FPA):
+        raise SystemExit('F5 ITEM2A: drxflashpowder missing')
+    sf(FPA, 'skillCooldownTime', 6.0)                    # was 15.0
+    sf(FPA, 'offensivePierceMin', _f12([40, 60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260]))
+    sf(FPA, 'offensivePierceMax', _f12([72, 100, 128, 156, 184, 212, 240, 268, 296, 324, 352, 380]))
+    sf(FPA, 'offensiveProjectileFumbleMin', _f12([30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85]))
+    sf(FPA, 'offensiveProjectileFumbleDurationMin', 8.0)
+    db._modified.add(FPA)
+
+    # ITEM 2B - soul-granted Flash Powder (toxeus_flashpowder; 13 souls). Tempo
+    # only + ranged-blind parity; keep amgoz's loaded pierce/-DA payload. 20->10.
+    FPB = _SS_FLASH_POWDER
+    if db.has_record(FPB):
+        sf(FPB, 'skillCooldownTime', 10.0)               # was 20.0
+        sf(FPB, 'offensiveProjectileFumbleMin', _f12([30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85]))
+        sf(FPB, 'offensiveProjectileFumbleDurationMin', 8.0)
+        db._modified.add(FPB)
+
+    # ITEM 3 - repoint the enemy um_droolbog_43 off the improved player skill to
+    # the base flashpowder so the buff does not arm an uber monster vs the player.
+    DROOL = r'records\xpack\creatures\monster\anouran\um_droolbog_43.dbr'
+    BASE_FP = r'records\skills\stealth\flashpowder.dbr'
+    if db.has_record(DROOL) and db.has_record(BASE_FP):
+        for fld in ('skillName3', 'specialAttackSkillName'):
+            v = db.get_field_value(DROOL, fld)
+            v = v[0] if isinstance(v, list) else v
+            if isinstance(v, str) and v.lower().endswith('drxflashpowder.dbr'):
+                sf(DROOL, fld, BASE_FP, S)
+        db._modified.add(DROOL)
+    print('  F5: Flame Nova cd 8->4; Occult Flash Powder cd 15->6 + pierce + '
+          'ranged-blind; soul Flash Powder cd 20->10; droolbog -> base flashpowder')
+
+
 def _apply_group3_tunes(db, tags):
     """D11 Rally cd 45->30; D12 Coastal Ichthian Myrmidon soul big boost;
     D16 Shadow Stalker overhaul (Will-ordered Occult exception: the suicide
@@ -10600,6 +11098,63 @@ def _apply_group3_tunes(db, tags):
           'distortion veil; life 500..2210 (was flat 297), dmg 120-150..'
           '386-492 (was flat 83-98), str/dex ladders. OCCULT EXCEPTION per '
           "Will: 'make him stronger, much stronger'" % changed)
+
+    # ── D16b (build36 FIX WAVE, F4): Shadow Stalker paralysis restore ─────────
+    # Will: "i think we lost the paralysis effect ... now he doesnt teleport".
+    # D16 substituted the suicide teleport (skill_shadowstrike) with the veil but
+    # left specialAttack2SkillName DANGLING at the now-dead teleport AND dropped
+    # the hard CC it delivered. Restore the lock as an AoE petrify/stun/confusion
+    # on the already-fired, already-registered shadowzap CHAIN (arcs a whole pack
+    # -> a shadow that freezes the pack from the dark, strictly safer than a
+    # single-target blink), reclaim the dead action slot, and add a modest resist
+    # floor so his fragile 0-resist body survives to control. Occult exception,
+    # same Will-ordered precedent as D16. Edit-in-place, no clones, no explicit
+    # dtype (float literals -> the arz infers FLOAT for the added ladders/valves).
+    # skill_shadowzap + the drx_shadow_stalker_* pet bodies are NOT golden-tracked
+    # (verified: shadowzap absent from occult_hunting_golden.json; the pets appear
+    # only inside drx_summon_shadow_stalker.spawnObjects, not field-snapshotted).
+    ZAP = (r'records\skills\stealth\drxpet\drx_stalker_skills'
+           '\\skill_shadowzap.dbr')
+    if not db.has_record(ZAP):
+        raise SystemExit('G3 D16b: skill_shadowzap missing')
+    _pm = val(ZAP, 'offensivePetrifyMin')
+    if _pm is None or abs(float(_pm) - 1.1) > 0.01:
+        raise SystemExit('G3 D16b: shadowzap offensivePetrifyMin[0]=%r, expected '
+                         '1.1 - spec drift' % _pm)
+
+    def _cc_ladder(lo, hi, n=20):
+        return [round(lo + (hi - lo) * i / (n - 1), 3) for i in range(n)]
+
+    sf(ZAP, 'offensivePetrifyMin', _cc_ladder(2.0, 4.0))    # was 1.1..3.0
+    sf(ZAP, 'offensiveStunMin', _cc_ladder(0.8, 2.0))       # was flat 0
+    sf(ZAP, 'offensiveConfusionMin', _cc_ladder(0.5, 1.5))  # was flat 0
+    sf(ZAP, 'offensivePetrifyChance', 65.0)     # safety valve (was every-hit)
+    sf(ZAP, 'offensiveStunChance', 45.0)        # was 0
+    sf(ZAP, 'offensiveConfusionChance', 35.0)   # was 0 (avoid perma-confuse)
+    db._modified.add(ZAP)
+
+    _ss_changed = 0
+    for t in range(1, 41):
+        rec = r'records\skills\stealth\drxpet' + '\\drx_shadow_stalker_%02d.dbr' % t
+        if not db.has_record(rec):
+            continue
+        s2 = val(rec, 'specialAttack2SkillName')
+        if not (isinstance(s2, str) and s2.lower().endswith('skill_shadowstrike.dbr')):
+            continue
+        # reclaim the orphaned dead-teleport slot so the AI stops attempting it
+        sf(rec, 'specialAttack2SkillName', '', S)
+        # modest durability floor (~8% -> ~29% at cap); body currently 0 resist.
+        _res = round(8.0 + 1.1 * (t - 1), 1)
+        _ele = round(_res * 0.85, 1)
+        sf(rec, 'defensivePhysical', _res)
+        sf(rec, 'defensiveFire', _ele)
+        sf(rec, 'defensiveCold', _ele)
+        sf(rec, 'defensiveLightning', _ele)
+        db._modified.add(rec)
+        _ss_changed += 1
+    print('  G3 D16b Shadow Stalker (F4): shadowzap -> AoE petrify 2.0-4.0 + '
+          'stun 0.8-2.0 + confuse 0.5-1.5 (valves 65/45/35); dead teleport slot '
+          'cleared + resist floor on %d tiers' % _ss_changed)
 
     # ── D17: Core Dweller much stronger (keep the taunt identity) ──
     for t in range(1, 21):
@@ -13491,6 +14046,12 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # also gates on anim playability + Enemy-controller autoTargetRadius).
     print("\n=== build29 wave: granted-skill castability + contract fixes ===")
     tags.update(_fix_wave29_contract_items(db))
+    # F5 (build36): Bloodcrow Flame Nova cd + Flash Powder rework (both lives) +
+    # droolbog repoint. Before the castability wave so any pcsafe clone inherits it.
+    _apply_flashpowder_rework(db)
+    # F3 (build36): de-filler Ground Smash from every non-roster soul BEFORE the
+    # castability wave, so camelbane's replacement tremor rides the pcsafe clone.
+    _defiller_ground_smash(db)
     _fix_granted_skill_castability(db)
     # A4 (esti chest tier-1): NOT APPLIED - the closed RCA's mechanism is
     # disasm-REFUTED (see the block comment at _setup_esti_chest_tier1). A3
@@ -13515,6 +14076,10 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # spawner) over every soul pet. A pet that trips any of these does NOT ship.
     print("\n=== build36 A1: pet builder overhaul gates ===")
     _fix_sv_pet_summons(db)
+    # F7d (build36): the sweep only relocates; ADD dayria_wolfsummons the friendly
+    # Dayria pets are missing (present on the hostile dayria_45). Before the pet
+    # gates so the skill-kit gate sees it in an AI-fired slot.
+    _fix_dayria_wolfsummon(db)
     _verify_summon_pet_parity(db, _SUMMON_PET_BUILDS)
     _verify_summon_pet_gear(db, _SUMMON_PET_BUILDS)
     _verify_summon_pet_skill_kit(db)
@@ -13580,6 +14145,22 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # soul has Class Skill_*, itemSkillLevel >= 1, and a live auto-controller.
     _verify_soul_itemskill_activation(db)
 
+    # ── build36 FIX WAVE gates (fail-loud) ────────────────────────────────────
+    # F3: Ground Smash stays on its 6-soul roster (+ no new mass-assignment).
+    _verify_granted_skill_diversity(db)
+    # F2: every registered summon-soul spawns its dropper's body (mesh identity),
+    # so a soul named after monster X cannot summon monster Y (Meritamen/Phagia).
+    _verify_soul_summon_identity(db, _SUMMON_PET_BUILDS)
+    # F6: rename the 54 OUR souls from 'Soul of X' to the '{^F}<Monster> Soul'
+    # standard + restore amgoz1's Xeiwang name (single authoritative table,
+    # overrides whatever each soul builder set). SV-original names are UNTOUCHED
+    # (not in this table). Then the provenance naming gate proves compliance.
+    _n_renamed = sum(1 for k in _SOUL_NAME_STANDARD if k in tags)
+    tags.update(_SOUL_NAME_STANDARD)
+    print(f"  F6 soul naming: applied the '{{^F}}<Monster> Soul' standard to "
+          f"{_n_renamed} OUR soul name tags (+ Xeiwang restore)")
+    _verify_soul_naming(db, tags)
+
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
     # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid
     # forms so MP monster/champion density scales as SV intends instead of
@@ -13632,5 +14213,11 @@ def apply_all_extended_patches(db, force_full_drops=True):
               "(set SVC_RELEASE_DROPS=1 for tuned 66%/25% rates)")
     else:
         print("  RELEASE BUILD: tuned soul drop rates kept (66% Hero/Quest, 25% Boss)")
+
+    # F7c (build36): wire itemText -> the authored DESC tag on every generated
+    # soul, so the amgoz1-style flavor text finally renders in-game. Runs last,
+    # after all souls + all tags exist; keyed on tag membership so only OUR
+    # authored DESCs are wired (SV-original souls untouched -> no dangling ref).
+    _wire_soul_desc_itemtext(db, tags)
 
     return tags

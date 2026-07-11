@@ -546,7 +546,18 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
                 elif soul_name in clean and len(soul_name) >= 5:
                     score = len(soul_name)
 
-                total = score + type_bonus
+                # F1 (build36 fix wave): type_bonus (family membership) and a
+                # weak cross-family prefix must NEVER *qualify* a wire on their
+                # own - only a real name identity does. Folding type_bonus into
+                # the qualifying score is what collapsed every soulless
+                # Hero/Boss/Quest onto its family's first soul (the Phantom
+                # Weaver -> Ararat-soul + Siege-Strider -> Leveler-soul bug), and
+                # a weak prefix (clean "storm" -> carrionbird "stormbird",
+                # score 10) re-collapsed the residue. Qualify iff an EXACT name
+                # identity (any family) OR a same-family positive NAME match
+                # (type_bonus then only disambiguates real name matches).
+                qualifies = (score == 100) or (score > 0 and type_bonus > 0)
+                total = (score + type_bonus) if qualifies else 0
                 if total > best_score:
                     best_score = total
                     best_match = diffs
@@ -576,6 +587,122 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
     print(f"  Equip fields set: {fixed_chance + wired}")
     print(f"  Common/Champion drop-chance zeroed: {zeroed_common} (never drop souls)")
     return wired + fixed_chance
+
+
+# ── F1 (build36 fix wave): cross-wire regression gate ──────────────────────
+# Part A above stops the fuzzy matcher from wiring a soul onto a monster whose
+# name does not identify it. This gate is the fail-loud recurrence guard: it
+# flags any Hero/Boss/Quest soul drop that is neither an exact name identity
+# NOR a same-family positive name match, EXCLUDING the mismatches SV 0.98i
+# itself authored (captured as a pristine snapshot before wire_souls mutates
+# loot - the "SV membership = whitelist, no hand-list" rule). Post-fix it must
+# find ZERO offenders.
+
+def _soul_base_of(path):
+    """Soul-item base-name (family-agnostic) used for name matching:
+    '...\\spider\\ararat_soul_n.dbr' -> 'ararat'."""
+    b = str(path).replace('/', '\\').rsplit('\\', 1)[-1]
+    if b.lower().endswith('.dbr'):
+        b = b[:-4]
+    b = re.sub(r'_(n|e|l)$', '', b, flags=re.IGNORECASE)
+    b = re.sub(r'_soul$', '', b, flags=re.IGNORECASE)
+    return b.lower().strip('_')
+
+
+def _soul_family_of(path):
+    parts = str(path).replace('/', '\\').lower().split('\\')
+    return parts[-2] if len(parts) >= 2 else ''
+
+
+def _monster_clean_name(monster_path):
+    fn = str(monster_path).replace('/', '\\').rsplit('\\', 1)[-1].replace('.dbr', '')
+    clean = re.sub(r'^(u_|um_|uw_|qm_|bm_|cb_|am_|ar_|as_|em_|vampiric_)', '', fn)
+    clean = re.sub(r'_?\d+$', '', clean).strip('_')
+    return clean.lower()
+
+
+def _soul_name_overlap(clean, soul_base):
+    """Mirror wire_souls_to_monsters' name-score tiers (>0 iff a real name
+    overlap). Returns (is_exact, has_overlap)."""
+    if soul_base == clean:
+        return True, True
+    if clean.startswith(soul_base) and len(soul_base) >= 4:
+        return False, True
+    if soul_base.startswith(clean) and len(clean) >= 4:
+        return False, True
+    if clean in soul_base and len(clean) >= 5:
+        return False, True
+    if soul_base in clean and len(soul_base) >= 5:
+        return False, True
+    return False, False
+
+
+def _capture_sv_soul_drops(db: ArzDatabase):
+    """Snapshot monster(lower path) -> {soul base-names it carries} from the
+    PRISTINE db (== SV 0.98i, called BEFORE wire_souls_to_monsters). Any final
+    Hero/Boss/Quest drop whose soul base is in this set is SV-authored (legit),
+    so the cross-wire gate never flags amgoz1's own intentional name-mismatches."""
+    out = {}
+    for name in db.record_names():
+        loot = db.get_field_value(name, 'lootFinger2Item1')
+        if not loot:
+            continue
+        loot = loot if isinstance(loot, list) else [loot]
+        bases = {_soul_base_of(s) for s in loot
+                 if isinstance(s, str) and 'soul' in s.lower()}
+        if bases:
+            out[name.replace('/', '\\').lower()] = bases
+    return out
+
+
+def _verify_no_fuzzy_cross_wire(db: ArzDatabase, sv_drops):
+    """FAIL-LOUD (F1 Part B). No Hero/Boss/Quest may drop a soul that is neither
+    an exact name identity nor a same-family positive name match, unless SV 0.98i
+    authored that exact monster->soul pairing (sv_drops). Catches a re-introduced
+    fuzzy cross-wire (Phantom Weaver -> Ararat-soul / Siege Strider -> Leveler-soul)."""
+    offenders = []
+    for name in db.record_names():
+        nl = name.replace('/', '\\').lower()
+        cls = db.get_field_value(name, 'monsterClassification')
+        cls = cls[0] if isinstance(cls, list) else cls
+        if cls not in ('Hero', 'Boss', 'Quest'):
+            continue
+        chance = db.get_field_value(name, 'chanceToEquipFinger2')
+        chance = chance[0] if isinstance(chance, list) else chance
+        try:
+            if float(chance) <= 0:
+                continue
+        except (TypeError, ValueError):
+            continue
+        loot = db.get_field_value(name, 'lootFinger2Item1') or []
+        loot = loot if isinstance(loot, list) else [loot]
+        clean = _monster_clean_name(name)
+        mdir = nl.split('\\')[-2] if len(nl.split('\\')) >= 2 else ''
+        sv_bases = sv_drops.get(nl, set())
+        seen = set()
+        for s in loot:
+            if not (isinstance(s, str) and 'soul' in s.lower()):
+                continue
+            base = _soul_base_of(s)
+            if base in seen:
+                continue
+            seen.add(base)
+            is_exact, has_overlap = _soul_name_overlap(clean, base)
+            same_family = (mdir == _soul_family_of(s))
+            qualified = is_exact or (has_overlap and same_family)
+            if qualified:
+                continue
+            if base in sv_bases:
+                continue  # SV 0.98i authored this exact pairing -> legit
+            offenders.append((name.rsplit('\\', 1)[-1], clean, base, mdir))
+    if offenders:
+        for mon, clean, base, mdir in offenders[:40]:
+            print(f"  CROSS-WIRE OFFENDER: {mon} (clean='{clean}', dir='{mdir}') "
+                  f"drops soul '{base}' - not exact, not same-family, not SV-authored")
+        raise SystemExit(
+            f"F1 cross-wire gate FAILED: {len(offenders)} Hero/Boss/Quest soul "
+            f"drop(s) are a NEW fuzzy cross-wire (see offenders above)")
+    print("  F1 cross-wire gate OK: no NEW fuzzy Hero/Boss/Quest soul cross-wires")
 
 
 def make_enchantable(db: ArzDatabase):
@@ -2935,6 +3062,29 @@ def _apply_runemaster_buffs(db: ArzDatabase, base_db):
     return n
 
 
+def _fix_storm_panel_icon_overlap(db: ArzDatabase):
+    """F7a: de-overlap the Storm mastery-4 panel. Skill06 (Static Charge) and
+    Skill25 (Spell Shock) both sit at cell (128,217); move Skill25 to the free
+    in-column cell (128,279). Case-insensitive record resolve; cosmetic, so it
+    warns (never fails) on drift/absence."""
+    ci = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+    rec = ci.get(r'records\ingameui\player skills\mastery 4\skill25.dbr')
+    if not rec:
+        print("  F7a storm panel: Skill25 button not found (skipped)")
+        return
+    def cur(f):
+        v = db.get_field_value(rec, f)
+        return v[0] if isinstance(v, list) else v
+    px, py = cur('bitmapPositionX'), cur('bitmapPositionY')
+    if (px, py) != (128, 217):
+        print(f"  F7a storm panel: Skill25 at ({px},{py}) != expected (128,217) "
+              f"- layout drifted, skipped (verify manually)")
+        return
+    db.set_field(rec, 'bitmapPositionY', 279, DATA_TYPE_INT)
+    print("  F7a storm panel: Skill25 moved (128,217) -> (128,279) "
+          "(was overlapping Skill06 Static Charge)")
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
@@ -2968,7 +3118,11 @@ def main():
     remove_dead_orphan_records(db)   # P3 hygiene: drop the corrupted potionexp_test orphan
     fix_chimera_chest_double_ext(db)  # Q4-3: .dbr.dbr rename (quest retargeted same wave)
     restore_potion_drops(db, db09)
+    # F1 Part B: snapshot SV098i's pristine soul-drop pairings BEFORE wiring
+    # mutates loot, then wire, then fail loud on any NEW fuzzy cross-wire.
+    _sv_soul_drops = _capture_sv_soul_drops(db)
     wire_souls_to_monsters(db)
+    _verify_no_fuzzy_cross_wire(db, _sv_soul_drops)
     make_enchantable(db)
     grant_all_inventory_bags(db)
     expand_caravan(db, base_db)
@@ -3025,6 +3179,13 @@ def main():
     else:
         print("\nBuild36 graft OFF (SVC_GRAFT_SVAERA=0): the 18 SVAERA mastery "
               "skills + Runemaster buffs are NOT applied.")
+
+    # F7a (build36 fix wave): the Storm mastery-4 panel has Skill06 (Static
+    # Charge) and Skill25 (Spellbreaker/Spell Shock) both at grid cell (128,217)
+    # -> the two icons overlap. Pre-existing bug (lane B curiosity finding).
+    # Move Skill25 down to the free in-column cell (128,279). Runs after every
+    # panel build (fix_mastery_panel_buttons + the graft) so it wins.
+    _fix_storm_panel_icon_overlap(db)
 
     # ── GROUP E (build32, N5 thrown weapons): both halves need base_db (del'd
     # below), so they run here. (1) faithfully restore the base game's roh
