@@ -1166,7 +1166,20 @@ def apply_mastery_wave1_broken_fixes(db: ArzDatabase, base_db=None):
     ported, skipped = _port_pc_anim_tokens(db, base_db)
     print(f"  B6 anim tables: {ported} (clip,ref) pair(s) restored from base "
           f"(row-matched, free indices <= 15 only); {skipped} row(s) full - "
-          f"skipped loudly, never replaced")
+          f"skipped by the conservative <=15 policy (graft #0 below completes "
+          f"the melee rows above index 15)")
+    fixed += 1
+
+    # ---- GRAFT #0: melee-row completion (docs/SVAERA_MASTERY_COMPARISON.md) ----
+    # The three FULL melee rows B6 just skipped (dHanded/sHanded/spear) are the
+    # exact rows a Warfare/Neidan/Runemaster player's weapon uses; completing them
+    # ABOVE index 15 (SVAERA-proven engine-valid) unblocks the half-casting melee
+    # skills (Exploding Strikes/Hail of Axes/Arc Attack/Chi Realignment/Shen Pao/
+    # Smoke Cloud) and is the prerequisite for the Warfare Slam graft. ADD-ONLY.
+    melee_ported = _complete_pc_anim_melee_rows(db, base_db)
+    print(f"  GRAFT #0 melee-row completion: {melee_ported} (clip,ref) pair(s) "
+          f"restored onto dHanded/sHanded/spear at indices >15 "
+          f"(Hew/Ensnare/Crosscut/Barrage/ThunderClap; 'Rest' preserved)")
     fixed += 1
 
     print(f"  Mastery Wave 1 broken fixes applied: {fixed} item(s)")
@@ -1253,6 +1266,118 @@ def _port_pc_anim_tokens(db: ArzDatabase, base_db: ArzDatabase):
                       f"{row}[{i}] = {ref} ({clip.rsplit(chr(92), 1)[-1]})")
                 ported += 1
     return ported, skipped
+
+
+# GRAFT #0 (docs/SVAERA_MASTERY_COMPARISON.md, Will approved 2026-07-10): our PC
+# anim tables are a lossy DRX merge that filled the three MELEE weapon rows to
+# 15/15 with DRX tokens and DROPPED the vanilla melee clips those rows carry, so
+# _port_pc_anim_tokens (cap 15) SKIPS them as "full" - leaving the melee tokens
+# (Hew/Ensnare/Crosscut/Barrage/ThunderClap) present only on ranged/staff rows.
+# A cast with a MELEE weapon equipped then aborts (StartSkill, hard-law #2). This
+# half-casts Exploding Strikes(Hew)/Hail of Axes(Barrage)/Arc Attack(Crosscut)/
+# Chi Realignment(ThunderClap)/Shen Pao+Smoke Cloud(Ensnare) and would abort the
+# new Warfare Slam(Hew).
+#
+# BYTE PROOF (throwaway probe, OS temp scratchpad, 2026-07-10): SVAERA's own PC
+# tables populate dHanded to index 23, sHanded/spear to 21 - on the SAME TQAE
+# engine, in a shipping mod - so SpecialAnim(Ref) indices >15 ARE engine-valid;
+# the old "no base record >15" note was a VANILLA-only observation, not an engine
+# limit. The vanilla base clips for these (row,token) pairs are BYTE-IDENTICAL to
+# SVAERA's (verified), so this restores them ROW-MATCHED FROM BASE into fresh
+# CONTIGUOUS indices ABOVE 15. ADD ROWS ONLY: indices 1-15 are never touched, so
+# our unique 'Rest' token (sHanded/spear) survives byte-identical. This is exactly
+# the doc's graft #0 (row,token) set (no 'taunt' - that stays in the <=15
+# non-melee coverage of _port_pc_anim_tokens).
+_MELEE_ANIM_TABLES = (r'records\creature\pc\anm\anm_malepc01.dbr',
+                      r'records\creature\pc\anm\anm_femalepc.dbr')
+_MELEE_ROW_TOKENS = {
+    'dHanded': ('Hew', 'Ensnare', 'Barrage', 'ThunderClap'),  # crosscut already 15<=
+    'sHanded': ('Hew', 'Ensnare', 'Crosscut'),                # thunderclap already
+    'spear':   ('Hew', 'Ensnare', 'Crosscut'),                # thunderclap already
+}
+_MELEE_PORT_EXPECT = 10   # pairs per table = 4 + 3 + 3
+
+
+def _complete_pc_anim_melee_rows(db: ArzDatabase, base_db: ArzDatabase):
+    """Restore the dropped vanilla melee clips onto the FULL dHanded/sHanded/spear
+    rows at fresh contiguous indices >15, row-matched from the base game arz.
+    ADD-ONLY. Fail-loud on any spec drift. Returns the total pairs added."""
+    mod_map = {n.replace('/', '\\').lower(): n for n in db.record_names()}
+    base_map = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
+    total = 0
+    for tbl in _MELEE_ANIM_TABLES:
+        key = tbl.lower()
+        mrec, brec = mod_map.get(key), base_map.get(key)
+        if not mrec or not brec:
+            raise SystemExit(f"Graft #0: PC anim table missing "
+                             f"(mod={mrec}, base={brec}) for {tbl}")
+        mf = db.get_fields(mrec)
+        bf = base_db.get_fields(brec)
+        bmap = {k.split('###')[0]: tf for k, tf in bf.items()}
+
+        # base: row -> {token_lower: (ref_verbatim, clip)}
+        base_row_tok = {}
+        for fname, tf in bmap.items():
+            m = re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
+            if not (m and tf.values and str(tf.values[0]).strip()):
+                continue
+            row, idx = m.group(1), int(m.group(2))
+            if row not in _MELEE_ROW_TOKENS:
+                continue
+            ref = str(tf.values[0]).strip()
+            clip_tf = bmap.get(f'{row}SpecialAnim{idx}')
+            clip = (str(clip_tf.values[0]).strip()
+                    if clip_tf and clip_tf.values else '')
+            if clip:
+                base_row_tok.setdefault(row, {})[ref.lower()] = (ref, clip)
+
+        # mod: row -> (existing ref-token set, max index used by EITHER field kind)
+        mod_refs, maxidx = {}, {}
+        for k, tf in mf.items():
+            m = re.match(r'(.+?)SpecialAnim(Ref)?(\d+)$', k.split('###')[0])
+            if m and tf.values and str(tf.values[0]).strip():
+                row, isref, idx = m.group(1), m.group(2), int(m.group(3))
+                if row not in _MELEE_ROW_TOKENS:
+                    continue
+                maxidx[row] = max(maxidx.get(row, 0), idx)
+                if isref:
+                    mod_refs.setdefault(row, set()).add(
+                        str(tf.values[0]).strip().lower())
+
+        per_table = 0
+        for row, tokens in _MELEE_ROW_TOKENS.items():
+            nxt = maxidx.get(row, 0) + 1
+            if nxt <= 15:
+                raise SystemExit(
+                    f"Graft #0: {mrec} row {row!r} is NOT full (max idx "
+                    f"{nxt - 1} < 15) - the lossy-merge assumption changed; "
+                    f"reconcile the spec before shipping")
+            for tok in tokens:
+                if tok.lower() in mod_refs.get(row, set()):
+                    raise SystemExit(
+                        f"Graft #0: {mrec} row {row!r} already carries {tok!r} "
+                        f"(<=15) - unexpected; reconcile before shipping")
+                src = base_row_tok.get(row, {}).get(tok.lower())
+                if not src:
+                    raise SystemExit(
+                        f"Graft #0: base table {brec} row {row!r} lacks a {tok!r} "
+                        f"clip - cannot restore it row-matched")
+                ref, clip = src
+                db.set_field(mrec, f'{row}SpecialAnim{nxt}', clip,
+                             DATA_TYPE_STRING)
+                db.set_field(mrec, f'{row}SpecialAnimRef{nxt}', ref,
+                             DATA_TYPE_STRING)
+                mod_refs.setdefault(row, set()).add(tok.lower())
+                print(f"    graft#0 {mrec.rsplit(chr(92), 1)[-1]} {row}[{nxt}] "
+                      f"= {ref} ({clip.rsplit(chr(92), 1)[-1]})")
+                nxt += 1
+                per_table += 1
+        if per_table != _MELEE_PORT_EXPECT:
+            raise SystemExit(
+                f"Graft #0: {mrec} added {per_table} pair(s), expected "
+                f"{_MELEE_PORT_EXPECT} - spec drift, reconcile before shipping")
+        total += per_table
+    return total
 
 
 def apply_mastery_wave1_boosts(db: ArzDatabase):

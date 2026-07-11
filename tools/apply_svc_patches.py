@@ -5468,12 +5468,26 @@ _PC_ANM_TABLE_PATHS = (
     r'records\creature\pc\anm\anm_femalepc.dbr',
 )
 _PCSAFE_DIR = r'records\skills\soulskills\pcsafe'
+# The engine's SkillManager::StartSkill reads <row>SpecialAnimRef1..15 (disasm,
+# va 0x1025622a; see the B-SOUL-PROC-2 block comment). GRAFT #0
+# (build_svc_database `_complete_pc_anim_melee_rows`) deliberately restores the
+# dropped melee tokens (Hew/Ensnare/Crosscut/Barrage/ThunderClap) at indices
+# >15 - a SVAERA-proven space that HELPS the mastery melee skills if the engine
+# reads past 15, and is harmless (no regression) if it does not. Those >15
+# additions must NOT inflate this soul-castability set: if they did, souls whose
+# grant carries Ensnare/ThunderClap would stop being pcsafe-cloned yet remain
+# uncastable with a melee weapon should the 15-cap be real - a regression. So
+# the soul pcsafe universal set is computed with the SAME <=15 bound the engine
+# documents, keeping soul-grant behavior byte-identical to the pre-graft build.
+_PCSAFE_ANIM_IDX_CAP = 15
 
 
 def _pc_universal_special_anims(db):
     """Return the set of special-anim names (lowercase) present in EVERY
     weapon row of BOTH shipped PC animation tables - the only names a player
-    character can be guaranteed to play regardless of equipped weapon."""
+    character can be guaranteed to play regardless of equipped weapon. Only
+    indices <=15 count (the engine's documented SpecialAnimRef read bound; see
+    _PCSAFE_ANIM_IDX_CAP)."""
     import re as _re
     universal = None
     for tbl in _PC_ANM_TABLE_PATHS:
@@ -5484,7 +5498,8 @@ def _pc_universal_special_anims(db):
         for key, tf in (db.get_fields(rec) or {}).items():
             fname = key.split('###')[0]
             m = _re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
-            if m and tf.values and str(tf.values[0]).strip():
+            if m and int(m.group(2)) <= _PCSAFE_ANIM_IDX_CAP \
+                    and tf.values and str(tf.values[0]).strip():
                 rows.setdefault(m.group(1), set()).add(str(tf.values[0]).lower())
         for names in rows.values():
             universal = set(names) if universal is None else (universal & names)

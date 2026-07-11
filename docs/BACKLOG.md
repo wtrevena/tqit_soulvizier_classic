@@ -1,5 +1,31 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🧭 **STANDING RULING - IMMORTAL-THRONE CAP (Will, 2026-07-10).** The campaign stays capped at
+> **Immortal Throne (Hades)** for now. Do NOT make Atlantis or anything past IT reachable. Focus is
+> fine-tuning the Greece-to-Hades game. The Tartarus-arena-gates fix and the Rhodes->Atlantis entry
+> cap are **PARKED** under this ruling (see the build32-ship note's Tartarus/Atlantis recon block
+> below, now marked PARKED). This joins the prior "campaign ends at Hades for ALL DLC combos" rule
+> (HANDOFF_LIVE_STATE §6) - DLC integration remains CANCELLED; revisit only if Will later decides to
+> add the post-IT areas. Quote (Will): "lets not make atlantis or anything past immortal throne
+> reachable for now and we will fine tune immortal throne then if we want to add in the other areas
+> later then we can."
+
+> 🎭 **SVAERA MASTERY GRAFT (DB lane, 2026-07-10, Will approved 'yes make them').** Implementing
+> `docs/SVAERA_MASTERY_COMPARISON.md` additively (soa verbal permission recorded in
+> `docs/PERMISSIONS.md`). **GROUP 0 (ANM-row completion) LANDED:** `build_svc_database`
+> `_complete_pc_anim_melee_rows` restores the dropped vanilla melee anim clips
+> (Hew/Ensnare/Crosscut/Barrage/ThunderClap) onto the FULL dHanded/sHanded/spear rows of
+> anm_malepc01.dbr + anm_femalepc.dbr at indices >15 (byte-identical to base==SVAERA clips; 'Rest'
+> preserved; add-only). Unblocks the 6 half-casting melee skills (Exploding Strikes/Hail of
+> Axes/Arc Attack/Chi Realignment/Shen Pao/Smoke Cloud) and is the Warfare-Slam prerequisite.
+> Paired guard: the soul pcsafe universal set (`apply_svc_patches._pc_universal_special_anims`) is
+> bounded at index<=15 so the >15 additions never suppress a soul's pcsafe clone (no soul
+> regression if the engine's SpecialAnimRef read cap is truly 15). record-diff vs c7da07f6 =
+> EXACTLY the 2 anm tables. **IN-GAME CONFIRM STILL NEEDED (per doc + MASTERY_AUDIT):** whether the
+> engine reads SpecialAnimRef>15 - a melee cast test confirms; if the 15-cap is real the additions
+> are inert (no regression). Groups 1 (additive skill grafts) + 2 (permissions/ruling docs) status
+> tracked in the DB-lane report.
+
 > 🚪 **PORTAL TEST RIG - MAP LANE (Model C boat-dialog NPCs) LANDED (2026-07-10, autonomous map-lane).**
 > Places the DB lane's 2 rig NPC records (arz `c7da07f6`) so the flag-gated LOCAL-ONLY travel rig is now
 > LIVE on the TESTHUB entry. RESOLVES the map-lane PORTAL-RIG DEFERRAL (see the yard-map-lane note below).
@@ -238,8 +264,11 @@
 > only; UNREACHABLE without the DLC), Tartarus entry portal is unlock-loaded, but the 16
 > tartarus_entrance_gate01 arena gates are DEAD (no loaded opener). RECOMMEND capping the
 > Rhodes->Atlantis entry the same surgical way as Scandia/EE (Quests.arc-only if x3mq idx<256);
-> cheap residual checks = confirm x3mq registry idx + Marinos placement at Rhodes. Awaiting Will
-> sign-off before any implementation.
+> cheap residual checks = confirm x3mq registry idx + Marinos placement at Rhodes.
+> **PARKED 2026-07-10 by Will's Immortal-Throne-cap ruling (see the STANDING RULING at the TOP of
+> this file):** the campaign stays capped at Immortal Throne (Hades); do NOT make Atlantis or
+> anything past IT reachable for now. The Tartarus-arena-gates fix and the Rhodes->Atlantis cap are
+> both PARKED under this ruling. Revisit only if Will decides to add the other areas later.
 
 > 🛠️ **BUILD32 FINAL-CONTENT SESSION (2026-07-10, autonomous DB-lane) - GROUPS F/E/B:**
 > Baseline = HEAD e3ab0a6 (arz 27e6742 / Text cf3cb227 / Quests 6ff23c29, det-2x).
