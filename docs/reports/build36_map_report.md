@@ -494,7 +494,7 @@ blob-diff is exactly the 4 boss instances).
 | contracts_map (canonical + TESTHUB, frozen arz) | **PASS** 7 viol / 0 P0 / **4 P1 = the expected MAP-REF-1** (q_goldenbough/q_tantalus/q_mnemophage/q_ephialtes not-yet-in-arz; q_dorus resolves) + 3 pre-existing native portal P2s; **0 MAP-DOOR-1** |
 | _negtest_map.py | **PASS 25/25** (incl. door scope-guard + REF-1 non-SV guard) |
 | Yard (TESTHUB) | **10 proxies, min pairwise 32.25u** (unchanged); all 9 q_yard_ arz records + q_vashkarr_lone placed (nothing un-placed) |
-| det-2x | NOT re-run this round (build determinism unchanged from R3's CLOSED-PASS; only 4 coord constants differ). The build reads hard-coded main-repo paths and is deterministic per R3's proof. |
+| det-2x (canonical, rebuild -> md5) | **PASS** two independent worktree rebuilds byte-identical: `5825c516c666c442d14f621d0136ef64` == `5825c516c666c442d14f621d0136ef64`. Build reads hard-coded main-repo inputs; deterministic. (TESTHUB not re-run; determinism is a build-wide property.) |
 
 ### DISPOSITION of the R4 vet NO_GO issues
 1. **(P2) M1 yard >=60u** - UNCHANGED at 32.25u (10 groups), needs Will's product decision. The vet
