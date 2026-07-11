@@ -14362,6 +14362,10 @@ def _create_goldenbough_boss(db, tags):
     sf(_GB_ESCORT, 'monsterClassification', 'Champion')
     sf(_GB_ESCORT, 'description', 'tagSVCMonsterCharonWraith')
     sf(_GB_ESCORT, 'charLevel', list(_GB_BAND))
+    # drop the donor's inherited boss-only ALL_DamageScaling_Passive (a Champion
+    # escort should not carry boss damage scaling; the ref is base-only and would
+    # be an authored unresolved-ref P1 on the clone).
+    sf(_GB_ESCORT, 'skillName7', '')
     _svc_clear_soul_loot(db, _GB_ESCORT)
     db._modified.add(_GB_ESCORT)
 
@@ -14997,15 +15001,19 @@ def _apply_dorus_amendments(db, tags):
         return
     sf = db.set_field
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
-    coral = _svc_clone_blank_anim(db, _DR_CORAL_DON, _DR_CORAL)
+    # coral tsunami: use the RAW upstream skill (no authored clone). Cloning it
+    # promotes its base-only skillProjectileName (DragonianFireBreath01) to an
+    # authored unresolved-ref P1; the raw skill is upstream (tolerated) and still
+    # fires as Dorus's flood specialAttack.
+    coral = db.has_record(_DR_CORAL_DON)
     grasp = _svc_clone_blank_anim(db, _DR_GRASP_DON, _DR_GRASP)
     # kit re-theme: add the drowned kit in free slots (6, 8, 9); keep armor/thunder/
     # raisecourt/scaling passives. Dread-Pall aura + slow-decay-poison touch.
     if db.has_record(_DR_DREADPALL):
         _svc_add_skill(db, _DR_DORUS, _DR_DREADPALL)
     if coral:
-        _svc_add_skill(db, _DR_DORUS, _DR_CORAL, [3, 4, 5])
-        sf(_DR_DORUS, 'specialAttackSkillName', _DR_CORAL)     # sweeping flood
+        _svc_add_skill(db, _DR_DORUS, _DR_CORAL_DON, [3, 4, 5])
+        sf(_DR_DORUS, 'specialAttackSkillName', _DR_CORAL_DON)  # sweeping flood
         sf(_DR_DORUS, 'specialAttackChance', 40.0)
     if grasp:
         _svc_add_skill(db, _DR_DORUS, _DR_GRASP, [3, 4, 5])
@@ -15112,29 +15120,22 @@ def _apply_content_uplift_picks(db, tags):
         print("  C7 Sepulchral Wyrm cold tide: %d frost champions (freezing breath + "
               "shatter-on-death frostnova) repointed into svc_wyrmhorde_03." % made)
 
-    # ── Broodmother death crescendo: cold breath + frostnova + last-brood on death. ──
+    # ── Broodmother death crescendo: frostnova + last-brood on death. (The
+    #    fire->cold breath re-theme is DROPPED: cloning sepulchralwyrm_firebreath
+    #    would carry its base-only DragonianFireBreath01 projectile ref into an
+    #    authored unresolved-ref P1, and blanking it would leave the AttackProjectile
+    #    ring visually empty. The crescendo's headline is the frostnova + last-brood.)
     if db.has_record(_BM_BROOD):
-        if _svc_clone_blank_anim(db, _BM_FIREBREATH_DON, _BM_COLDBREATH):
-            # keep the FireBreath anim (proven on the Eater rig); make it cold
-            db.set_field(_BM_COLDBREATH, 'skillSpecialAnimationName',
-                         db.get_field_value(_BM_FIREBREATH_DON, 'skillSpecialAnimationName') or '')
-            for ff in ('offensiveFireMin', 'offensiveFireMax', 'offensiveBurnDamageMin'):
-                if db.get_field_value(_BM_COLDBREATH, ff) is not None:
-                    sf(_BM_COLDBREATH, ff, 0.0)
-            sf(_BM_COLDBREATH, 'offensiveColdMin', [120.0, 180.0, 260.0])
-            sf(_BM_COLDBREATH, 'offensiveColdMax', [200.0, 300.0, 420.0])
-            db._modified.add(_BM_COLDBREATH)
         if db.has_record(_BM_LASTBROOD_DON) and db.has_record(_BM_COMMON_WYRM):
             db.clone_record(_BM_LASTBROOD_DON, _BM_LASTBROOD)
             sf(_BM_LASTBROOD, 'spawnObjects', [_BM_COMMON_WYRM])
             db._modified.add(_BM_LASTBROOD)
             _BOSS_KIT_CLONES.append((_BM_LASTBROOD_DON, _BM_LASTBROOD))
-        for path in (_SK_ONDEATH_FROSTNOVA, _BM_LASTBROOD, _BM_COLDBREATH):
+        for path in (_SK_ONDEATH_FROSTNOVA, _BM_LASTBROOD):
             if db.has_record(path):
                 _svc_add_skill(db, _BM_BROOD, path, [1, 2, 3])
         db._modified.add(_BM_BROOD)
-        print("  C7 Broodmother death crescendo: ondeath frostnova + last-brood spawn "
-              "+ cold breath (anim-kept, fire->cold).")
+        print("  C7 Broodmother death crescendo: ondeath frostnova + last-brood spawn.")
 
     # ── Obsidian Halls fifth pocket: Kravmoloch, Keeper of the Wheel (jackpot). ──
     if db.has_record(_OBS_WARBAND) and db.has_record(_KV_DONOR):
