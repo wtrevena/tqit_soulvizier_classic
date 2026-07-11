@@ -1,4 +1,75 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🩸🐉 **BUILD36 CONTENT WAVE (C1-C7) - DB IMPLEMENTED (2026-07-11, `feat/build36-content-wave`,
+> round 1).** Four new uber bosses + the Ereban relic + Dorus amendments + uplift picks, all DB-side
+> (arz + Text; map lane owns the C1-C4 placements, already landed). Branch is off `feat/build36-fix-wave`.
+> All content in `tools/apply_svc_patches.py` (one appended `_create_*` section + dispatch hooks + the
+> F6 hand-designed-soul whitelist). Baseline = fix-wave HEAD `182690e`.
+> **C1 TANTALUS, THE INSATIABLE** (`_create_tantalus_uberboss`): 2 forms via `actorToSpawnOnDeath`
+>   (Insatiable [15/20/27k]@[52,74,90] -> Hunger Unbound [9/12/16k]), WraithLord spawn/death FX, poison
+>   shroud (`toxeus_envenomweapon` initialSkillName), widened Circle of Decay (r 4.5 clone), form-2
+>   shade-wave summon (`svc_tantalus_raiseshades`, lost-soul spawns), 2 Famished-Shade escorts, no-cap
+>   `limit_tantalus`, reused Obsidian hoard, **S2 ONE-SUMMON soul `{^F}Soul of the Insatiable`** (Famished
+>   Shade on the wraith rig, amgoz hunger downside `characterLifeRegen -3/-4.5/-6.5`, FileDescription
+>   Hades, 66% Finger2 on form2 ONLY), TESTHUB yard.
+> **C2 CHARON, THE UNFERRIED (Golden Bough)** (`_create_goldenbough_boss`): genuine 2-phase (Unferried
+>   [22/28/34k]@[48,72,100] Charon01 -> risen giant [24/30/36k] Charon02, actorHeight 2.0), deathchill
+>   cold shroud added to an empty slot on both forms, **form-2 final-kill burst via an owner-approved
+>   `deathEffect` on the monster clone** (the vet byte-truth: the form-2 donor carries no effect fields;
+>   monster clones are not clone-shape-gated, so the add is safe), 2 oarsman escorts, no-cap
+>   `limit_goldenbough`, hoard, **THE GOLDEN BOUGH** custom Legendary amulet (guaranteed on form2),
+>   **S1 cold/vitality stat soul `{^F}Soul of the Unferried`** (melinoe_bloodboil grant + drxcoldaura +
+>   ravagesoftime; S1 not S2 because the CharonGhost oarsman body != the Charon02 dropper body would trip
+>   the fix-wave F2 identity gate - a verifier-wins call), NO-DLC (0 xpack2/3/4), yard.
+> **C3 THE MNEMOPHAGE (Pools of Mnemosyne)** (`_create_mnemophage_superboss`): 2-phase shell
+>   (**overmind.tex + scale 2.5 per the cross-spec law**, [14/19/25k]@[46,68,100], the 16-slot keep/add
+>   psionic kit + energy-drain + on-death void-nova) -> core "the Unremembered" (voidlash skin, [7/9.5/
+>   12.5k], scale 1.8, on-death necro-nova, no soul), psionic mindshroud (`hades2_shadowcloud`), 2
+>   nightmare escorts, no chest (the differentiator), **Lethe's Draught** custom Legendary caster amulet
+>   (field-validity-audited), **S2 phantasm summon soul `{^F}Soul of the Mnemophage`** (Epiales rig,
+>   run-speed downside), yard. FEEDS on nightmares (Ephialtes sires them).
+> **C4 EPHIALTES, THE WAKING DREAD (Dread Halls)** (`_create_dreadhalls_uberboss`): SINGLE-PHASE,
+>   band [58,78,97]/HP [15/20/27k], **epiales_overlord.tex + scale 2.2** (cross-spec split from the
+>   Mnemophage's overmind.tex + 2.5), fear spine on Skill_AttackRadius (ixion_cry Dread Roar + Dreamstorm
+>   nova + Vision of Death) + takedown chase + on-death nova, Dread Shroud (`troubleddreams` FX), 2
+>   nightmare escorts, no-cap `limit_ephialtes`, hoard, **Mask of the Waking Dread** custom helm (keeps
+>   the donor's visionofdeath grant), **S1 dread-sower stat soul `{^F}Soul of the Waking Dread`**
+>   (Dreamstorm fear-nova grant + the load-bearing `characterManaRegenModifier -40/-55/-70` downside).
+>   Ephialtes OWNS the active fear nova; the Golden Bough soul keeps only a stat trickle.
+> **C5 EREBAN HEARTSTONE** (`_create_ereban_heartstone`): 3-tier weapon+shield physical/earth relic off
+>   em_brute_43/45 (10% lootMisc4), petrify-on-hit + defensivePetrify capstone @5/5, 6 donor ladders
+>   zeroed. **The dtype traps handled explicitly**: petrify keys + lootMisc4 chance written as FLOAT
+>   (absent-on-donor fields; an INT there reads ~0 and never procs/drops).
+> **C6 DORUS AMENDMENTS** (`_apply_dorus_amendments`): hold-and-drown re-theme on the built um_dorus_99
+>   (rottengrasp root + Dread-Pall dreadaura + coral tsunami + slow-decay-poison touch, casts anim-blanked
+>   for the royalty rig) + themed soul grant (ichthian tidal strike + fear + run-speed downside).
+> **C7 UPLIFT PICKS** (`_apply_content_uplift_picks`): Vashkarr dragonfire birthright (family breath +
+>   terrifying roar + 16-jet firenova death + soul reflect/fear); Sepulchral Wyrm cold tide (4 frost
+>   champions freezing-breath + shatter-on-death, repointed into svc_wyrmhorde_03); Broodmother death
+>   crescendo (ondeath frostnova + last-brood + cold breath, anim-kept fire->cold); Obsidian **Keeper of
+>   the Wheel** jackpot warden Kravmoloch (new Boss [16/22/30k]@L74 + call-the-table summon + 5th soul,
+>   name5 @ weight 4 in q_obs_warband).
+> **C8 TEXT**: every new name/desc/soul-flavor tag rides the tags dict -> uber_soul_tags.txt ->
+>   build_text_arc.py; the 4 hand-designed uber-soul names are whitelisted in the F6 provenance gate
+>   (`_HAND_DESIGNED_SOUL_TAGS`) so they KEEP their "{^F}Soul of X" flavor (Will's ruling).
+> **CONTENT-WAVE GATES (all GREEN):** boss-kit clone-shape (14 pairs incl. the decay/shadewave/mindshroud/
+>   dreadshroud/coldbreath/kravmoloch-summon clones), spawn-eligibility (25 mod-authored proxies incl. the
+>   4 new boss + 4 yard proxies, spawnMax-championMax>=1 + L90/97/100 <= no-cap [1..110]), soul-leak (0 -
+>   every form-1/core/escort clone has its inherited Finger2 soul cleared), soul-augment (all resolve),
+>   the 3 A1 pet gates (stat-mirror/gear-parity/skill-kit, 15 families incl. tantalus/mnemophage summons),
+>   F2 soul-summon-identity (tantalus/mnemophage summons match their dropper mesh), F6 naming (4 hand-
+>   designed souls whitelisted; kravmoloch/dorus follow the standard). Donor-existence probe
+>   (`tools/debug/probe_build36_content_donors.py`) GREEN for every content donor.
+> **PRE-EXISTING FIX-WAVE BLOCKERS (NOT the content wave; the fix wave is mid-vet, its NEW gates fail on
+>   pre-existing data):** the full arz build currently trips three gates on records OUTSIDE this wave -
+>   (1) F1 cross-wire on `um_legion_28a/28b` -> `legion_soul_n (amgoz-qosmio's conflicted copy)` (an
+>   upstream garbage-duplicate soul); (2) F2 identity on `voranthys_soul` (the Obsidian-roulette
+>   `_OBS_VORANTHYS_PET_SRC = um_sepulchralwyrm_31` summon vs its DragonLich dropper body, apply_svc_patches
+>   :12179); (3) soul-activation on `steamcrawler_soul`/`onyxspine_soul` (itemSkillLevel comes out 0 - a
+>   NON-DETERMINISTIC pipeline flake: F1 passes/fails run-to-run even with PYTHONHASHSEED=0, and these
+>   souls are level 1/2 in the shipped work arz). All three are pre-existing and belong to the fix wave;
+>   the content wave's own gates pass with them bypassed (`scratchpad/build_c_harness.py`). Coupled ship
+>   set: arz + Text. NOT DEPLOYED (no map/quests/steam; map placements land in the coupled map wave).
+
 
 > 🩸🔧 **BUILD36 LANE A - ROUND 2 (2026-07-11, `feat/build36-lane-a`).** The independent vet returned
 > NO_GO on round 1 (1 P2 + 2 P3 + curiosity findings). ALL fixed this round (all in `apply_svc_patches.py`):

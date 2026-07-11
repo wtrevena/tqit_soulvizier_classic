@@ -7702,6 +7702,8 @@ def _verify_soul_naming(db, tags):
         tag = tag[0] if isinstance(tag, list) else tag
         if not (isinstance(tag, str) and tag in tags):
             continue  # SV-original or untagged -> auto-whitelist
+        if tag in _HAND_DESIGNED_SOUL_TAGS:
+            continue  # build36 hand-designed uber souls KEEP their evocative names
         if tag in seen:
             continue
         seen.add(tag)
@@ -13619,6 +13621,1296 @@ def _verify_mod_spawn_proxies_eligible(db):
           f"mod-authored spawn proxy(ies) spawn their boss on N/E/L with adds.")
 
 
+# =============================================================================
+# build36 CONTENT WAVE (C1-C7): four new uber bosses (Tantalus, Charon/Golden
+# Bough, the Mnemophage, Ephialtes) + the Ereban Heartstone relic + Dorus
+# hold-and-drown amendments + uplift picks (Vashkarr / wyrm cold tide /
+# Broodmother crescendo / Obsidian Keeper of the Wheel). DB-side only; the map
+# lane owns the placements (specs already landed the C1-C4 proxies). Idiom =
+# _create_propontis_superboss / _create_blood_toxeus_monster (clone donors,
+# override existing fields, NO dtype on cloned overrides, fail-loud on missing
+# donors, _modified.add). Cross-spec laws encoded per the build brief.
+# =============================================================================
+
+# F6 naming-gate whitelist: hand-designed uber-boss souls KEEP their evocative
+# "{^F}Soul of X" names (Will's "evocative soul names STAY" ruling) instead of
+# the fix-wave "{^F}<Monster> Soul" standard. Consulted by _verify_soul_naming.
+_HAND_DESIGNED_SOUL_TAGS = frozenset({
+    'tagSVCSoulTantalus',    # {^F}Soul of the Insatiable
+    'tagSVCSoulFerryman',    # {^F}Soul of the Unferried
+    'tagSVCSoulMnemophage',  # {^F}Soul of the Mnemophage
+    'tagSVCSoulWakingDread', # {^F}Soul of the Waking Dread
+})
+
+# Shared donors (all DB-verified present, probe_build36_content_donors.py).
+_SVC_LIMIT_DONOR = r'records\proxies boss\herolimit_all.dbr'   # window [1..75]
+_SVC_LEINTH_PROXY = r'records\drxmap\proxy\q_leinth_lone.dbr'
+_SVC_LEINTH_POOL = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
+_SVC_DIFFICULTY04 = r'records\proxies orient\difficulty_04.dbr'
+# Reused Boss-locked hoard (Obsidian/Dorus precedent): point a proxy's accessory
+# tiers at these existing Boss-locked chest pools (zero new container records).
+_SVC_HOARD_POOL = {t: r'records\drxitem\container\svc_obsidianhoard_pool_%s.dbr' % t
+                   for t in ('01', '02', '03')}
+_SVC_GUARANTEED_LOOTDON = r'records\item\loottables\animalrelics\01_act1_turtleshell.dbr'
+
+
+def _svc_clear_soul_loot(db, rec):
+    """Clear inherited Finger2 soul loot on a boss clone that must NOT drop the
+    soul (form-1 shells, phase-2 cores, Champion escorts). The donors carry an
+    inherited soul (aberkios F2=66 -> aberkios_soul, boss_charon F2=66, etc.);
+    left in, a Champion escort trips the soul-leak invariant and a form-1
+    double-drops the donor's soul. chanceToEquipFinger2=0 makes it inert."""
+    db.set_field(rec, 'chanceToEquipFinger2', 0.0, DATA_TYPE_FLOAT)
+    db._modified.add(rec)
+
+
+def _svc_widen_limit(db, donor, clone, hi=110):
+    """Clone herolimit_all and widen every maxPlayerLevelEquation* to hi*1 so an
+    L90+ boss is NOT scaled down toward the [1..75] window (the limit_bloodtoxeus
+    / limit_tantalus precedent). Sets the three difficulty equations if present."""
+    if not db.has_record(donor):
+        return False
+    db.clone_record(donor, clone)
+    for diff in ('Normal', 'Epic', 'Legendary'):
+        f = 'maxPlayerLevelEquation%s' % diff
+        v = db.get_field_value(clone, f)
+        if v is not None:
+            db.set_field(clone, f, '%d*1' % hi)
+    db._modified.add(clone)
+    return True
+
+
+def _svc_boss_pool(db, pool, boss, champ, desc):
+    """Clone q_leinth_lone pool -> the 1-boss + 2-guaranteed-champion recipe
+    (spawnMax=3 / championChance=100 / championMin=Max=2 -> 3-2=1 guaranteed
+    boss; the LAW). Clears the leinth clone-leftover 3rd champion (Vashkarr fix)."""
+    db.clone_record(_SVC_LEINTH_POOL, pool)
+    sf = db.set_field
+    sf(pool, 'FileDescription', desc)
+    sf(pool, 'name1', boss); sf(pool, 'name2', boss); sf(pool, 'name3', boss)
+    sf(pool, 'nameChampion1', champ); sf(pool, 'nameChampion2', champ)
+    sf(pool, 'nameChampion3', ''); sf(pool, 'weightChampion3', 0)
+    sf(pool, 'weightChampion1', 50); sf(pool, 'weightChampion2', 50)
+    sf(pool, 'spawnMin', 3); sf(pool, 'spawnMax', 3)
+    sf(pool, 'championChance', 100.0)
+    sf(pool, 'championMin', 2); sf(pool, 'championMax', 2)
+    db._modified.add(pool)
+
+
+def _svc_boss_proxy(db, proxy, pool, limit, mesh, scale, hoard=True):
+    """Clone q_leinth_lone proxy -> a lone-boss placer (chanceToRun 100, preview
+    mesh/scale, no-cap limit). Wires the reused Obsidian hoard chest as the
+    accessory tiers when hoard=True (spawns WITH the boss, Boss-locked)."""
+    db.clone_record(_SVC_LEINTH_PROXY, proxy)
+    sf = db.set_field
+    sf(proxy, 'chanceToRun', 100.0)
+    sf(proxy, 'pool1', pool)
+    sf(proxy, 'difficultyLimitsFile', limit)
+    sf(proxy, 'difficultyEquationFile', _SVC_DIFFICULTY04)
+    sf(proxy, 'mesh', mesh)
+    sf(proxy, 'scale', float(scale))
+    sf(proxy, 'placementExtents', 3.5)
+    if hoard and db.has_record(_SVC_HOARD_POOL['01']):
+        sf(proxy, 'accessory1', _SVC_HOARD_POOL['01'], DATA_TYPE_STRING)
+        sf(proxy, 'accessoryEpic1', _SVC_HOARD_POOL['02'], DATA_TYPE_STRING)
+        sf(proxy, 'accessoryLegendary1', _SVC_HOARD_POOL['03'], DATA_TYPE_STRING)
+    db._modified.add(proxy)
+
+
+def _svc_set_kit(db, monster, kit, special):
+    """Set a monster boss kit: skillName{i}/skillLevel{i} from the kit list of
+    (path, level) tuples (overwrites the donor's slots), blank trailing slots up
+    to 24, then set the specialAttack rotation from `special` (list of
+    (slotSuffix, path, chance) - slotSuffix '' = specialAttackSkillName)."""
+    sf = db.set_field
+    for idx, (path, lvl) in enumerate(kit, start=1):
+        sf(monster, 'skillName%d' % idx, path)
+        sf(monster, 'skillLevel%d' % idx, lvl)
+    for i in range(len(kit) + 1, 25):
+        sf(monster, 'skillName%d' % i, '')
+    for suffix, path, chance in special:
+        sf(monster, 'specialAttack%sSkillName' % suffix, path)
+        if chance is not None:
+            sf(monster, 'specialAttack%sChance' % suffix, float(chance))
+    db._modified.add(monster)
+
+
+def _svc_guarantee_unique(db, monster, tier_paths, loot_name=None):
+    """Guarantee a custom unique (amulet/helm) drops from a boss by wiring the
+    tiered item list DIRECTLY onto the boss's first free lootMisc equip slot at
+    100% - the exact proven _create_soul mechanism (lootFinger2Item1=[n,e,l] +
+    chanceToEquipFinger2=100, the engine equips the tier matching N/E/L). NEW
+    lootMisc fields -> explicit dtype (the FLOAT-chance trap; an INT chance is
+    read as ~0 and never drops). tier_paths = [n, e, l] item .dbr paths."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    slot = None
+    for n in (4, 5, 6, 3):
+        if not db.get_field_value(monster, 'lootMisc%dItem1' % n):
+            slot = n
+            break
+    if slot is None:
+        slot = 4
+    db.set_field(monster, 'lootMisc%dItem1' % slot, list(tier_paths), S)
+    db.set_field(monster, 'chanceToEquipMisc%d' % slot, 100.0, F)
+    db.set_field(monster, 'chanceToEquipMisc%dItem1' % slot, 100, I)
+    db.set_field(monster, 'dropItems', 1, I)
+    db._modified.add(monster)
+
+
+def _svc_make_unique(db, donor, path, classification, name_tag, desc_tag,
+                     item_level, block):
+    """Clone an item donor (amulet/helm) -> a NEW never-shipped unique path, zero
+    the donor's inherited affix ladders, then set the bespoke block. clone (not
+    _ensure_record) carries mesh/bitmap/Class/itemClassification/itemCost across;
+    the never-clone-souls rule is SOUL-specific (re-baked ring paths) and does not
+    apply to a fresh item path. block = {field: (dtype, value)}."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    db.clone_record(donor, path)
+    sf = db.set_field
+    # zero the common inherited NUMERIC stat ladders so nothing off-theme leaks
+    # (the Mask donor's own itemSkillName=visionofdeath grant is deliberately KEPT).
+    for z in ('characterStrength', 'characterDexterity', 'characterIntelligence',
+              'characterStrengthModifier', 'characterDexterityModifier',
+              'characterIntelligenceModifier', 'characterLifeModifier',
+              'characterManaModifier', 'characterOffensiveAbility',
+              'characterAttackSpeedModifier', 'offensiveTotalDamageModifier',
+              'defensiveFreeze', 'defensiveSleep', 'defensiveStun', 'defensiveTrap'):
+        if db.get_field_value(path, z) is not None:
+            db.set_field(path, z, 0.0)
+    sf(path, 'itemClassification', classification)
+    sf(path, 'itemNameTag', name_tag)
+    sf(path, 'itemText', desc_tag)
+    sf(path, 'itemLevel', item_level, I)
+    sf(path, 'levelRequirement', max(1, item_level - 5), I)
+    for f, (dt, v) in block.items():
+        sf(path, f, v, dt)
+    db._modified.add(path)
+
+
+# ── Skill-path shortcuts for the content wave (verified this session) ─────────
+_SVC_SK_ALASTOR_DECAY = r'records\skills\boss skills\alastor_circleofdecay.dbr'
+_SVC_SK_SANDWRAITH_SUMMON = r'records\skills\boss skills\sandwraithlord_summonsandwraiths.dbr'
+_SVC_SK_ENVENOM_SHROUD = r'records\skills\monster skills\buff_self\toxeus_envenomweapon.dbr'
+_SVC_SK_LIFEDRAIN = r'records\skills\spirit\lifedrain.dbr'
+_SVC_SK_POISONGAS = r'records\skills\stealth\poisongasbomb.dbr'
+_SVC_SK_PLAGUE = r'records\skills\nature\plague.dbr'
+_SVC_SK_RAVAGES_MON = r'records\skills\spirit\deathchillaura_ravagesoftime.dbr'
+_SVC_SK_LETHALSTRIKE = r'records\skills\stealth\lethalstrike.dbr'
+_SVC_SK_HEROSCALING = r'records\skills\monster skills\passive_buffs\hero_scaling.dbr'
+_SVC_SK_BOSSIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+_SVC_SK_ARMORPASSIVE = r'records\skills\monster skills\defense\armor_passive.dbr'
+_SVC_SK_GLOBPROP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
+_SVC_FX_WRAITHSPAWN = r'records\effects\spirit\343_wraithlordspawn_fx01.dbr'
+_SVC_FX_WRAITHDEATH = r'records\effects\spirit\343_wraithlorddeath_fx01.dbr'
+
+
+# ── C1: TANTALUS, THE INSATIABLE (Den of the Styx) ───────────────────────────
+_TN_DONOR = r'records\xpack\creatures\monster\lostsoul\xhero_aberkios_43.dbr'
+_TN_FORM1 = r'records\xpack\creatures\monster\lostsoul\um_tantalus_99.dbr'
+_TN_FORM2 = r'records\xpack\creatures\monster\lostsoul\um_tantalus_unbound_99.dbr'
+_TN_ESCORT = r'records\xpack\creatures\monster\lostsoul\svc_tantalus_famishedshade_90.dbr'
+_TN_DECAY = r'records\skills\svc\svc_tantalus_circleofdecay.dbr'
+_TN_SHADEWAVE = r'records\skills\svc\svc_tantalus_raiseshades.dbr'
+_TN_SHADE_SPAWN = r'records\xpack\creatures\monster\lostsoul\uw_am_lostsoul_warrior_38.dbr'
+_TN_SHADE_SPAWN2 = r'records\xpack\creatures\monster\lostsoul\uw_ar_lostsoul_archer_37.dbr'
+_TN_POOL = r'records\drxmap\proxy\pools\q_tantalus_lone.dbr'
+_TN_PROXY = r'records\drxmap\proxy\q_tantalus_lone.dbr'
+_TN_LIMIT = r'records\proxies boss\limit_tantalus.dbr'
+_TN_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_tantalus.dbr'
+_TN_YARD_PROXY = r'records\drxmap\proxy\q_yard_tantalus.dbr'
+_TN_SUMMON = r'records\skills\soulskills\summon_tantalus_shade.dbr'
+_TN_SHADE_PETS = [r'records\skills\soulskills\pets\tantalus_shade_%d.dbr' % i for i in (1, 2, 3)]
+_TN_BAND = [52, 74, 90]
+_TN_MESH = r'Creatures\Monster\Wraith\wraithalastor.msh'
+
+
+def _create_tantalus_uberboss(db, tags):
+    """C1: Tantalus, the Insatiable - the starving damned wraith-king of the Styx
+    den (EXTREME defaults: two forms, WraithLord FX, poison shroud, widened decay
+    ring, shade-wave summon on form2, S2 one-summon soul + hoard). DB side only;
+    the map wave already placed q_tantalus_lone."""
+    for donor in (_TN_DONOR, _SVC_SK_ALASTOR_DECAY, _SVC_SK_SANDWRAITH_SUMMON,
+                  _TN_SHADE_SPAWN, _SVC_LEINTH_POOL, _SVC_LEINTH_PROXY, _SVC_LIMIT_DONOR):
+        if not db.has_record(donor):
+            print("  C1 TANTALUS: WARNING donor missing: %s; group skipped" % donor)
+            return
+    sf = db.set_field
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── widened Circle of Decay (clone; numeric bump on an existing field) ──
+    db.clone_record(_SVC_SK_ALASTOR_DECAY, _TN_DECAY)
+    sf(_TN_DECAY, 'skillTargetRadius', 4.5)
+    db._modified.add(_TN_DECAY)
+    _BOSS_KIT_CLONES.append((_SVC_SK_ALASTOR_DECAY, _TN_DECAY))
+
+    # ── shade-wave summon (clone sandwraithlord summon; repoint spawnObjects).
+    #    Match the donor's spawnObjects LENGTH (cycling our lost-soul spawns) so
+    #    no donor .dbr index is left empty (the clone-shape gate rule 2). ──
+    db.clone_record(_SVC_SK_SANDWRAITH_SUMMON, _TN_SHADEWAVE)
+    mine = [_TN_SHADE_SPAWN]
+    if db.has_record(_TN_SHADE_SPAWN2):
+        mine.append(_TN_SHADE_SPAWN2)
+    dv = db.get_field_value(_TN_SHADEWAVE, 'spawnObjects')
+    n = len(dv) if isinstance(dv, list) else 1
+    spawn = [mine[i % len(mine)] for i in range(max(n, len(mine)))]
+    sf(_TN_SHADEWAVE, 'spawnObjects', spawn)
+    sf(_TN_SHADEWAVE, 'petLimit', 6)
+    db._modified.add(_TN_SHADEWAVE)
+    _BOSS_KIT_CLONES.append((_SVC_SK_SANDWRAITH_SUMMON, _TN_SHADEWAVE))
+
+    # ── the DENIAL/HUNGER kit (shared by both forms) ──
+    base_kit = [
+        (_TN_DECAY, [1, 2, 3]),                # widened Circle of Decay aura
+        (_SVC_SK_LIFEDRAIN, [4, 6, 8]),        # devour
+        (_SVC_SK_POISONGAS, [4, 6, 8]),        # poison Styx nova
+        (_SVC_SK_PLAGUE, [3, 4, 5]),           # the Thirst curse
+        (_SVC_SK_RAVAGES_MON, [3, 4, 5]),      # ravages of time
+        (_SVC_SK_LETHALSTRIKE, [4, 6, 8]),     # crowned-king crit
+        (_SVC_SK_ENVENOM_SHROUD, 1),           # persistent poison-green shroud
+        (_SVC_SK_HEROSCALING, [1, 2, 3]),
+        (_SVC_SK_BOSSIMMUNITY, 1),
+        (_SVC_SK_ARMORPASSIVE, [1, 2, 3]),
+        (_SVC_SK_GLOBPROP_L, [1, 2, 3]),
+    ]
+
+    def _tantalus_common(M, life, scale, height):
+        sf(M, 'monsterClassification', 'Boss')
+        sf(M, 'mesh', _TN_MESH)
+        sf(M, 'charLevel', list(_TN_BAND))
+        sf(M, 'characterLife', life)
+        sf(M, 'characterLifeRegen', [12.0, 24.0, 40.0])
+        sf(M, 'scale', float(scale)); sf(M, 'actorHeight', float(height))
+        sf(M, 'defensivePoison', 80.0); sf(M, 'defensiveLife', 60.0)
+        sf(M, 'defensivePierce', 40.0); sf(M, 'defensivePhysical', 25.0)
+        sf(M, 'defensiveBleeding', 30.0)
+        sf(M, 'initialSkillName', _SVC_SK_ENVENOM_SHROUD)
+        sf(M, 'spawnEffect', _SVC_FX_WRAITHSPAWN)
+        sf(M, 'deathEffect', _SVC_FX_WRAITHDEATH)
+        db._modified.add(M)
+
+    # ── FORM 2 first (form 1 references it via actorToSpawnOnDeath) ──
+    db.clone_record(_TN_DONOR, _TN_FORM2)
+    _tantalus_common(_TN_FORM2, [9000.0, 12000.0, 16000.0], 2.5, 2.5)
+    sf(_TN_FORM2, 'description', 'tagSVCMonsterTantalusUnbound')
+    kit2 = base_kit + [(_TN_SHADEWAVE, [1, 2, 3])]     # form 2 raises shade waves
+    _svc_set_kit(db, _TN_FORM2, kit2,
+                 [('', _SVC_SK_PLAGUE, 40.0), ('2', _SVC_SK_POISONGAS, 45.0),
+                  ('3', _SVC_SK_LIFEDRAIN, 45.0), ('4', _TN_SHADEWAVE, 40.0)])
+    # form 2 IS the true kill: it drops the soul (wired below) + keys the hoard.
+
+    # ── FORM 1 (the placed boss; reforms into form 2 on death) ──
+    db.clone_record(_TN_DONOR, _TN_FORM1)
+    _tantalus_common(_TN_FORM1, [15000.0, 20000.0, 27000.0], 2.2, 2.3)
+    sf(_TN_FORM1, 'description', 'tagSVCMonsterTantalus')
+    sf(_TN_FORM1, 'actorToSpawnOnDeath', _TN_FORM2)
+    _svc_clear_soul_loot(db, _TN_FORM1)                 # only form 2 drops the soul
+    _svc_set_kit(db, _TN_FORM1, base_kit,
+                 [('', _SVC_SK_PLAGUE, 40.0), ('2', _SVC_SK_POISONGAS, 45.0),
+                  ('3', _SVC_SK_LIFEDRAIN, 45.0)])
+
+    # ── Champion escort (drain-lite aberkios clone; no soul) ──
+    db.clone_record(_TN_DONOR, _TN_ESCORT)
+    sf(_TN_ESCORT, 'description', 'tagSVCMonsterFamishedShade')
+    sf(_TN_ESCORT, 'monsterClassification', 'Champion')
+    sf(_TN_ESCORT, 'mesh', _TN_MESH)
+    sf(_TN_ESCORT, 'charLevel', list(_TN_BAND))
+    sf(_TN_ESCORT, 'characterLife', [4500.0, 6500.0, 9000.0])
+    sf(_TN_ESCORT, 'scale', 2.0)
+    _svc_clear_soul_loot(db, _TN_ESCORT)
+    db._modified.add(_TN_ESCORT)
+
+    # ── pool / proxy / limit (boss+2 escorts recipe) ──
+    _svc_widen_limit(db, _SVC_LIMIT_DONOR, _TN_LIMIT)
+    _svc_boss_pool(db, _TN_POOL, _TN_FORM1, _TN_ESCORT,
+                   'Tantalus (main) + 2 Famished-Shade champion escorts')
+    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _TN_PROXY, 'pool': _TN_POOL, 'main_monster': _TN_FORM1,
+         'name': 'q_tantalus_lone (Tantalus + 2 Famished-Shade escorts)'})
+
+    # ── TESTHUB yard (REAL records; king + escorts @100%; map lane places it) ──
+    _svc_boss_pool(db, _TN_YARD_POOL, _TN_FORM1, _TN_ESCORT,
+                   'YARD: Tantalus + 2 escorts @100% (TESTHUB-only)')
+    _svc_boss_proxy(db, _TN_YARD_PROXY, _TN_YARD_POOL, _TN_LIMIT, _TN_MESH, 2.2, hoard=False)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _TN_YARD_PROXY, 'pool': _TN_YARD_POOL, 'main_monster': _TN_FORM1,
+         'name': 'q_yard_tantalus (TESTHUB yard)'})
+
+    # ── S2 THE ONE SUMMON: a Famished Shade on the wraith rig ──
+    _build_boss_summon(
+        db, _TN_DONOR, _TN_SHADE_PETS, _TN_SUMMON,
+        'tagSVCSummonTantalusShade', 'tagSVCPetFamishedShade',
+        char_level=list(_TN_BAND), life=[6000.0, 8500.0, 11000.0],
+        life_regen=[20.0, 40.0, 70.0], dmg_min=[45.0, 75.0, 110.0],
+        dmg_max=[70.0, 115.0, 165.0], scale=1.4)
+
+    def _tn_stats(t, il):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
+        lv = {'n': 1, 'e': 2, 'l': 3}[t]
+        neg = {'n': -3.0, 'e': -4.5, 'l': -6.5}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'itemSkillName': (S, _TN_SUMMON), 'itemSkillLevel': (I, lv),
+            'augmentSkillName1': (S, _SK_DARK_COVENANT), 'augmentSkillLevel1': (I, {'n': 4, 'e': 5, 'l': 6}[t]),
+            'augmentSkillName2': (S, _SK_DEATH_CHILL), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'offensiveLifeMin': (F, r(50.0)), 'offensiveLifeMax': (F, r(80.0)),
+            'offensiveLifeModifier': (F, r(30.0)),
+            'offensiveLifeLeechMin': (F, r(35.0)),
+            'offensivePercentCurrentLifeMin': (F, r(4.0)),
+            'offensivePoisonMin': (F, r(40.0)), 'offensivePoisonDurationMin': (F, 3.0),
+            'characterLife': (F, r(300.0)), 'characterLifeModifier': (F, r(12.0)),
+            'characterDefensiveAbility': (F, r(70.0)),
+            'characterLifeRegen': (F, neg),        # the amgoz1 hunger downside
+            'defensiveLife': (F, r(22.0)), 'defensivePoison': (F, r(25.0)),
+        }
+    tiers = [{'diff': t, 'itemLevel': il, 'stats': _tn_stats(t, il)}
+             for t, il in (('n', 52), ('e', 74), ('l', 90))]
+    for p in _create_soul(db, 'tantalus', 'tagSVCSoulTantalus', tiers,
+                          monster=_TN_FORM2, drop_rate=66.0):
+        sf(p, 'FileDescription', 'Hades')       # amgoz1 V5 region word
+        db._modified.add(p)
+
+    tags['tagSVCMonsterTantalus'] = '{^r}Tantalus, the Insatiable'
+    tags['tagSVCMonsterTantalusUnbound'] = '{^r}Tantalus, the Hunger Unbound'
+    tags['tagSVCMonsterFamishedShade'] = '{^G}Famished Shade'
+    tags['tagSVCPetFamishedShade'] = 'Famished Shade'
+    tags['tagSVCSummonTantalusShade'] = 'Summon the Famished Shade'
+    tags['tagSVCSoulTantalus'] = '{^F}Soul of the Insatiable'
+    tags['tagSVCSoulTantalusDESC'] = (
+        'Tantalus could never eat, never drink, never be filled. His soul turns '
+        'that hunger outward: every wound the bearer opens drinks the life back '
+        'out and feeds it to them, and still it is never enough.')
+    print("  C1 Tantalus: 2 forms (Insatiable [15/20/27k] -> Hunger Unbound "
+          "[9/12/16k] via actorToSpawnOnDeath, WraithLord FX, poison shroud, "
+          "widened decay ring, shade-wave summon) + 2 escorts + pool/proxy/limit "
+          "+ hoard + S2 summon soul (form2, 66% Finger2) + yard; tags set.")
+
+
+def _svc_add_skill(db, monster, path, level=1):
+    """Add a skill in the first EMPTY skillName slot (1..24) of a boss whose
+    donor kit we keep verbatim (Charon/Mnemophage). Never overwrites a live ref."""
+    for i in range(1, 25):
+        v = db.get_field_value(monster, 'skillName%d' % i)
+        v = v[0] if isinstance(v, list) else v
+        if not (isinstance(v, str) and v.strip()):
+            db.set_field(monster, 'skillName%d' % i, path)
+            db.set_field(monster, 'skillLevel%d' % i, level)
+            db._modified.add(monster)
+            return True
+    return False
+
+
+# ── C2: CHARON, THE UNFERRIED (Shrine of the Golden Bough) ───────────────────
+_GB_DONOR1 = r'records\xpack\creatures\monster\bosses\02_charon\boss_charon_43.dbr'
+_GB_DONOR2 = r'records\xpack\creatures\monster\bosses\02_charon\boss_charonform2_43.dbr'
+_GB_ESCORT_DONOR = r'records\xpack\creatures\monster\bosses\02_charon\charon_minion_30.dbr'
+_GB_FORM1 = r'records\xpack\creatures\monster\bosses\02_charon\um_charon_ferryman_99.dbr'
+_GB_FORM2 = r'records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99.dbr'
+_GB_ESCORT = r'records\xpack\creatures\monster\bosses\02_charon\svc_charon_wraith_99.dbr'
+_GB_DEATHCHILL = r'records\xpack\skills\bossskills\charon_deathchillaura_minions.dbr'
+_GB_POOL = r'records\drxmap\proxy\pools\q_goldenbough_lone.dbr'
+_GB_PROXY = r'records\drxmap\proxy\q_goldenbough_lone.dbr'
+_GB_LIMIT = r'records\proxies boss\limit_goldenbough.dbr'
+_GB_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_goldenbough.dbr'
+_GB_YARD_PROXY = r'records\drxmap\proxy\q_yard_goldenbough.dbr'
+_GB_AMULET_DONOR = r'records\xpack\item\equipmentarmor\amulet\u_l_001.dbr'
+_GB_AMULET = {t: r'records\item\equipmentamulet\svc_goldenbough_%s.dbr' % t for t in ('n', 'e', 'l')}
+_GB_AMULET_LOOT = r'records\item\loottables\svc\goldenbough_guaranteed.dbr'
+_GB_MESH = r'XPack\Creatures\Monster\Charon\Charon01.msh'
+_GB_MESH2 = r'XPack\Creatures\Monster\Charon\Charon02.msh'
+_GB_BAND = [48, 72, 100]
+_SK_MELINOE_BLOODBOIL = r'records\skills\soulskills\melinoe_bloodboil.dbr'
+_SK_COLDAURA = r'records\skills\storm\drxcoldaura.dbr'
+_AC_ONHIT = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onanyhit.dbr'
+
+
+def _create_goldenbough_boss(db, tags):
+    """C2: Charon, the Unferried - the risen ferryman-toll atop the Golden Bough
+    shrine (EXTREME: genuine two-phase Charon, deathchill cold shroud, S1 cold/
+    vitality stat soul 'Soul of the Unferried', THE GOLDEN BOUGH amulet, reused
+    Boss-locked hoard). Form-2 FX per the vet byte-truth: the donor carries no
+    effect fields; the final-kill burst is added as an owner-approved deathEffect
+    on the form-2 monster clone (monster records are NOT clone-shape-gated).
+    NO-DLC: every asset is xpack(IT)/base - zero xpack2/3/4."""
+    for donor in (_GB_DONOR1, _GB_DONOR2, _GB_ESCORT_DONOR, _GB_DEATHCHILL,
+                  _GB_AMULET_DONOR, _SVC_LEINTH_POOL, _SVC_LIMIT_DONOR):
+        if not db.has_record(donor):
+            print("  C2 CHARON: WARNING donor missing: %s; group skipped" % donor)
+            return
+    sf = db.set_field
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    def _charon_resist(M):
+        sf(M, 'defensiveLife', 100.0); sf(M, 'defensiveCold', 60.0)
+        sf(M, 'defensivePierce', 50.0); sf(M, 'defensivePhysical', 30.0)
+
+    # ── FORM 2 (the risen giant; terminal). Keep Charon02's own kit verbatim; add
+    #    the deathchill shroud + the owner-approved final-kill wraith burst. ──
+    db.clone_record(_GB_DONOR2, _GB_FORM2)
+    sf(_GB_FORM2, 'monsterClassification', 'Boss')
+    sf(_GB_FORM2, 'description', 'tagSVCMonsterCharonFerryman')
+    sf(_GB_FORM2, 'charLevel', list(_GB_BAND))
+    sf(_GB_FORM2, 'characterLife', [24000.0, 30000.0, 36000.0])
+    sf(_GB_FORM2, 'actorHeight', 2.0)
+    _charon_resist(_GB_FORM2)
+    sf(_GB_FORM2, 'actorToSpawnOnDeath', '')                # terminal
+    # owner-approved final-kill burst (form-2 donor lacks any effect field; adding
+    # a monster field is safe - form-1 carries it and monster clones are not gated)
+    sf(_GB_FORM2, 'deathEffect', _SVC_FX_WRAITHDEATH)
+    _svc_add_skill(db, _GB_FORM2, _GB_DEATHCHILL)           # cold shroud aura
+    db._modified.add(_GB_FORM2)
+
+    # ── FORM 1 (the placed caster/summoner; reforms into form 2). Keep Charon's
+    #    own geysers/barrage/summon/selfbuff kit verbatim; add the aura. ──
+    db.clone_record(_GB_DONOR1, _GB_FORM1)
+    sf(_GB_FORM1, 'monsterClassification', 'Boss')
+    sf(_GB_FORM1, 'description', 'tagSVCMonsterCharonFerryman')
+    sf(_GB_FORM1, 'charLevel', list(_GB_BAND))
+    sf(_GB_FORM1, 'characterLife', [22000.0, 28000.0, 34000.0])
+    sf(_GB_FORM1, 'scale', 1.7); sf(_GB_FORM1, 'actorHeight', 1.5)
+    _charon_resist(_GB_FORM1)
+    sf(_GB_FORM1, 'actorToSpawnOnDeath', _GB_FORM2)
+    _svc_clear_soul_loot(db, _GB_FORM1)                     # loot moves to form 2
+    _svc_add_skill(db, _GB_FORM1, _GB_DEATHCHILL)
+    db._modified.add(_GB_FORM1)
+
+    # ── Champion escort: the drowned oarsmen (CharonGhost rig; no soul) ──
+    db.clone_record(_GB_ESCORT_DONOR, _GB_ESCORT)
+    sf(_GB_ESCORT, 'monsterClassification', 'Champion')
+    sf(_GB_ESCORT, 'description', 'tagSVCMonsterCharonWraith')
+    sf(_GB_ESCORT, 'charLevel', list(_GB_BAND))
+    _svc_clear_soul_loot(db, _GB_ESCORT)
+    db._modified.add(_GB_ESCORT)
+
+    # ── pool / proxy / limit (preview = Charon01 rig) ──
+    _svc_widen_limit(db, _SVC_LIMIT_DONOR, _GB_LIMIT)
+    _svc_boss_pool(db, _GB_POOL, _GB_FORM1, _GB_ESCORT,
+                   'Charon (main) + 2 drowned-oarsman champion escorts')
+    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _GB_PROXY, 'pool': _GB_POOL, 'main_monster': _GB_FORM1,
+         'name': 'q_goldenbough_lone (Charon + 2 oarsman escorts)'})
+    _svc_boss_pool(db, _GB_YARD_POOL, _GB_FORM1, _GB_ESCORT,
+                   'YARD: Charon + 2 escorts @100% (TESTHUB-only)')
+    _svc_boss_proxy(db, _GB_YARD_PROXY, _GB_YARD_POOL, _GB_LIMIT, _GB_MESH, 1.7, hoard=False)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _GB_YARD_PROXY, 'pool': _GB_YARD_POOL, 'main_monster': _GB_FORM1,
+         'name': 'q_yard_goldenbough (TESTHUB yard)'})
+
+    # ── THE GOLDEN BOUGH: a custom Legendary amulet (guaranteed on form 2) ──
+    def _gb_amulet_block(mult):
+        r = lambda v: round(v * mult, 2)
+        return {
+            'characterLife': (F, r(500.0)), 'characterLifeModifier': (F, r(15.0)),
+            'characterLifeRegen': (F, r(20.0)),
+            'characterMana': (F, r(300.0)), 'characterManaModifier': (F, r(12.0)),
+            'characterManaRegen': (F, r(8.0)),
+            'defensiveLife': (F, r(45.0)), 'defensiveBleeding': (F, r(30.0)),
+            'defensiveElementalResistance': (F, r(20.0)),
+            'augmentAllLevel': (I, 2 if mult >= 1.0 else 1),
+            'characterDefensiveAbility': (F, r(80.0)),
+            'skillCooldownReduction': (F, r(0.10)),
+        }
+    for t, il, cls, mult in (('n', 48, 'Epic', 0.55), ('e', 72, 'Epic', 0.78),
+                             ('l', 95, 'Legendary', 1.0)):
+        _svc_make_unique(db, _GB_AMULET_DONOR, _GB_AMULET[t], cls,
+                         'tagSVCitmGoldenBough', 'tagSVCitmGoldenBoughDESC', il,
+                         _gb_amulet_block(mult))
+    _svc_guarantee_unique(db, _GB_FORM2, [_GB_AMULET['n'], _GB_AMULET['e'], _GB_AMULET['l']],
+                          _GB_AMULET_LOOT)
+
+    # ── S1 dense cold/vitality stat soul: {^F}Soul of the Unferried (form 2) ──
+    def _gb_stats(t, il):
+        m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
+        lv = {'n': 4, 'e': 6, 'l': 8}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'itemSkillName': (S, _SK_MELINOE_BLOODBOIL), 'itemSkillLevel': (I, lv),
+            'itemSkillAutoController': (S, _AC_ONHIT),
+            'augmentSkillName1': (S, _SK_COLDAURA), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _SK_RAVAGES_OF_TIME), 'augmentSkillLevel2': (I, {'n': 2, 'e': 3, 'l': 4}[t]),
+            'offensiveColdMin': (F, r(76.0)), 'offensiveColdMax': (F, r(124.0)),
+            'offensiveColdModifier': (F, r(25.0)),
+            'offensiveLifeMin': (F, r(85.0)), 'offensiveLifeMax': (F, r(133.0)),
+            'offensiveLifeModifier': (F, r(25.0)),
+            'offensiveLifeLeechMin': (F, r(90.0)), 'offensivePercentCurrentLifeMin': (F, r(8.0)),
+            'offensiveSlowColdMin': (F, r(48.0)), 'offensiveSlowColdDurationMin': (F, 3.0),
+            'characterLife': (F, r(240.0)), 'characterLifeModifier': (F, r(20.0)),
+            'characterDefensiveAbility': (F, r(90.0)),
+            'defensiveCold': (F, r(34.0)), 'defensiveLife': (F, r(34.0)),
+            'defensiveLifeLeech': (F, r(30.0)),
+        }
+    tiers = [{'diff': t, 'itemLevel': il, 'stats': _gb_stats(t, il)}
+             for t, il in (('n', 48), ('e', 72), ('l', 100))]
+    for p in _create_soul(db, 'ferryman', 'tagSVCSoulFerryman', tiers,
+                          monster=_GB_FORM2, drop_rate=66.0):
+        sf(p, 'FileDescription', 'Hades')
+        db._modified.add(p)
+
+    tags['tagSVCMonsterCharonFerryman'] = '{^r}Charon, the Unferried'
+    tags['tagSVCMonsterCharonWraith'] = '{^G}Drowned Oarsman'
+    tags['tagSVCitmGoldenBough'] = 'The Golden Bough'
+    tags['tagSVCitmGoldenBoughDESC'] = (
+        'The ferryman takes no coin, only the Golden Bough. Torn from Charon at '
+        'his own deserted dock, it is the passkey that lets the living walk among '
+        'the drowned dead and come back across.')
+    tags['tagSVCSoulFerryman'] = '{^F}Soul of the Unferried'
+    tags['tagSVCSoulFerrymanDESC'] = (
+        'Charon became the toll he demands, and would ferry no one across. His '
+        'soul carries the cold of the deep and the patience of the drowned: every '
+        'wound the bearer opens drinks the life back out of the living.')
+    print("  C2 Charon: 2-phase (Unferried [22/28/34k] -> risen giant [24/30/36k] "
+          "Charon02, deathchill shroud, form-2 final-kill burst) + 2 oarsman "
+          "escorts + pool/proxy/limit + hoard + THE GOLDEN BOUGH amulet (guaranteed) "
+          "+ S1 cold/vit soul (form2) + yard; tags set.")
+
+
+# ── C3: THE MNEMOPHAGE (Pools of Mnemosyne) ──────────────────────────────────
+_MN_DONOR = r'records\xpack\creatures\monster\epiales\ur_overmind_46.dbr'
+_MN_ESCORT_DONOR = r'records\xpack\creatures\monster\epiales\as_nightmare_43.dbr'
+_MN_SHELL = r'records\xpack\creatures\monster\epiales\um_mnemophage_99.dbr'
+_MN_CORE = r'records\xpack\creatures\monster\epiales\um_mnemophage_core_99.dbr'
+_MN_ESCORT = r'records\xpack\creatures\monster\epiales\svc_mnem_nightmare_72.dbr'
+_MN_MINDSHROUD = r'records\skills\monster skills\buff_self\mnemophage_mindshroud.dbr'
+_MN_POOL = r'records\drxmap\proxy\pools\q_mnemophage_lone.dbr'
+_MN_PROXY = r'records\drxmap\proxy\q_mnemophage_lone.dbr'
+_MN_LIMIT = r'records\proxies boss\limit_mnemophage.dbr'
+_MN_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_mnemophage.dbr'
+_MN_YARD_PROXY = r'records\drxmap\proxy\q_yard_mnemophage.dbr'
+_MN_SUMMON = r'records\skills\soulskills\summon_mnemophage.dbr'
+_MN_PHANTASM_PETS = [r'records\skills\soulskills\pets\mnemophage_phantasm_%d.dbr' % i for i in (1, 2, 3)]
+_MN_AMULET_DONOR = r'records\xpack\item\equipmentarmor\amulet\u_l_001.dbr'
+_MN_AMULET = r'records\item\equipmentjewelry\amulet\svc_uber\lethesdraught.dbr'
+_MN_AMULET_LOOT = r'records\item\loottables\svc\lethesdraught_guaranteed.dbr'
+_MN_BAND = [46, 68, 100]
+_MN_MESH = r'XPack\Creatures\Monster\Epiales\Epiales01.msh'
+_MN_SKIN = r'SVTextures\creatures\epiales\overmind.tex'           # cross-spec law
+_MN_SKIN_CORE = r'DRXtextures\creatures\epiales\epiales_voidlash.tex'
+_MN_SK_DISRUPTION = r'records\skills\monster skills\attack_radius\disruption.dbr'
+_MN_SK_CHAINCONVERT = r'records\skills\sv\refnat\chainconvert.dbr'
+_MN_SK_SANDSOFSLEEP = r'records\xpack\skills\dream\sandsofsleep.dbr'
+_MN_SK_DISTORTREALITY = r'records\xpack\skills\dream\distortreality.dbr'
+_MN_SK_SUMMON2 = r'records\skills\monster skills\summoning_pets\epiales_summon2.dbr'
+_MN_SK_ENERGYDRAIN = r'records\skills\monster skills\attack_projectile\monster_energydrain.dbr'
+_MN_SK_VOIDNOVA = r'records\skills\monster skills\attack_radius\ondeath_voidnova.dbr'
+_MN_SK_NECRONOVA = r'records\skills\monster skills\attack_radius\ondeath_necronova.dbr'
+_MN_FX_MINDSHROUD = r'records\xpack\effects\boss effects\hades2_shadowcloud_charfxpak.dbr'
+_MN_AUG1 = r'records\xpack\skills\dream\distortreality_temporalrift.dbr'
+_MN_AUG2 = r'records\xpack\skills\dream\drxpsionictouch_multihit.dbr'
+
+
+def _create_mnemophage_superboss(db, tags):
+    """C3: the Mnemophage - the memory-devouring floating brain-horror of the
+    Pools of Mnemosyne (EXTREME: two-phase shell->core, energy/memory drain,
+    on-death void/necro novas, S2 phantasm summon soul, Lethe's Draught amulet).
+    Cross-spec law: Mnemophage = overmind.tex + scale 2.5 (the shell keeps its
+    overmind skin, free-on-clone); it FEEDS on nightmares (Ephialtes SIRES them)."""
+    for donor in (_MN_DONOR, _MN_ESCORT_DONOR, _MN_SK_DISRUPTION, _MN_SK_CHAINCONVERT,
+                  _MN_SK_ENERGYDRAIN, _MN_SK_VOIDNOVA, _SVC_SK_ENVENOM_SHROUD,
+                  _MN_AMULET_DONOR, _SVC_LEINTH_POOL, _SVC_LIMIT_DONOR):
+        if not db.has_record(donor):
+            print("  C3 MNEMOPHAGE: WARNING donor missing: %s; group skipped" % donor)
+            return
+    sf = db.set_field
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── psionic self-shroud (B-TOXEUS-1 recipe: clone envenom toggle, repoint FX) ──
+    db.clone_record(_SVC_SK_ENVENOM_SHROUD, _MN_MINDSHROUD)
+    sf(_MN_MINDSHROUD, 'charFxPakSelfNames', _MN_FX_MINDSHROUD)
+    for wf in ('weaponEnchantmentEffect', 'weaponEnchantmentDuration'):
+        if db.get_field_value(_MN_MINDSHROUD, wf) is not None:
+            sf(_MN_MINDSHROUD, wf, '')
+    db._modified.add(_MN_MINDSHROUD)
+    _BOSS_KIT_CLONES.append((_SVC_SK_ENVENOM_SHROUD, _MN_MINDSHROUD))
+
+    def _mnem_resist(M):
+        sf(M, 'defensiveLife', 80.0); sf(M, 'defensivePierce', 60.0)
+        sf(M, 'defensivePhysical', 30.0)
+        sf(M, 'defensiveSleep', 90.0); sf(M, 'defensiveFreeze', 90.0)
+        sf(M, 'defensivePetrify', 90.0); sf(M, 'defensiveStun', 90.0)
+        sf(M, 'defensiveTrap', 90.0)
+
+    # ── CORE (phase 2 'the Unremembered'; overmind->voidlash reveal). ──
+    db.clone_record(_MN_DONOR, _MN_CORE)
+    sf(_MN_CORE, 'monsterClassification', 'Boss')
+    sf(_MN_CORE, 'description', 'tagSVCMonsterMnemophageCore')
+    sf(_MN_CORE, 'baseTexture', _MN_SKIN_CORE)
+    sf(_MN_CORE, 'charLevel', list(_MN_BAND))
+    sf(_MN_CORE, 'characterLife', [7000.0, 9500.0, 12500.0])
+    sf(_MN_CORE, 'characterIntelligence', 460.0)
+    sf(_MN_CORE, 'scale', 1.8); sf(_MN_CORE, 'actorHeight', 1.8)
+    _mnem_resist(_MN_CORE)
+    sf(_MN_CORE, 'initialSkillName', _MN_MINDSHROUD)
+    sf(_MN_CORE, 'actorToSpawnOnDeath', '')                 # final form
+    _svc_clear_soul_loot(db, _MN_CORE)                      # soul stays on the shell
+    _svc_add_skill(db, _MN_CORE, _MN_SK_ENERGYDRAIN, [4, 6, 8])
+    _svc_add_skill(db, _MN_CORE, _MN_SK_NECRONOVA if db.has_record(_MN_SK_NECRONOVA) else _MN_SK_VOIDNOVA)
+    sf(_MN_CORE, 'specialAttackSkillName', _MN_SK_DISRUPTION)
+    sf(_MN_CORE, 'specialAttack2SkillName', _MN_SK_ENERGYDRAIN)
+    sf(_MN_CORE, 'specialAttack3SkillName', _MN_SK_CHAINCONVERT)
+    db._modified.add(_MN_CORE)
+
+    # ── SHELL (the placed boss; keeps overmind.tex + the donor psionic kit). ──
+    db.clone_record(_MN_DONOR, _MN_SHELL)
+    sf(_MN_SHELL, 'monsterClassification', 'Boss')
+    sf(_MN_SHELL, 'description', 'tagSVCMonsterMnemophage')
+    # overmind.tex is the donor's own baseTexture (free-on-clone) -> cross-spec law
+    sf(_MN_SHELL, 'charLevel', list(_MN_BAND))
+    sf(_MN_SHELL, 'characterLife', [14000.0, 19000.0, 25000.0])
+    sf(_MN_SHELL, 'characterIntelligence', 460.0)
+    sf(_MN_SHELL, 'characterDexterity', 300.0); sf(_MN_SHELL, 'characterStrength', 60.0)
+    sf(_MN_SHELL, 'characterLifeRegen', 8.0)
+    sf(_MN_SHELL, 'scale', 2.5); sf(_MN_SHELL, 'actorHeight', 2.0)
+    _mnem_resist(_MN_SHELL)
+    sf(_MN_SHELL, 'initialSkillName', _MN_MINDSHROUD)
+    sf(_MN_SHELL, 'actorToSpawnOnDeath', _MN_CORE)
+    # ADD to the donor's kept psionic kit (16-slot keep/add ledger)
+    for path, lvl in ((_MN_SK_SANDSOFSLEEP, [4, 6, 8]), (_MN_SK_DISTORTREALITY, [4, 6, 8]),
+                      (_MN_SK_SUMMON2, [1, 2, 3]), (_SVC_SK_BOSSIMMUNITY, 1),
+                      (_SVC_SK_GLOBPROP_L, [1, 2, 3]), (_MN_SK_ENERGYDRAIN, [4, 6, 8]),
+                      (_MN_SK_VOIDNOVA, 1)):
+        _svc_add_skill(db, _MN_SHELL, path, lvl)
+    sf(_MN_SHELL, 'specialAttackSkillName', _MN_SK_DISRUPTION)
+    sf(_MN_SHELL, 'specialAttackChance', 80.0)
+    sf(_MN_SHELL, 'specialAttack2SkillName', _MN_SK_CHAINCONVERT)
+    sf(_MN_SHELL, 'specialAttack2Chance', 100.0)
+    sf(_MN_SHELL, 'specialAttack3SkillName', _MN_SK_ENERGYDRAIN)
+    sf(_MN_SHELL, 'specialAttack3Chance', 60.0)
+    db._modified.add(_MN_SHELL)
+
+    # ── Champion escort: a laddered nightmare (Epiales rig; no soul) ──
+    db.clone_record(_MN_ESCORT_DONOR, _MN_ESCORT)
+    sf(_MN_ESCORT, 'monsterClassification', 'Champion')
+    sf(_MN_ESCORT, 'description', 'tagSVCMonsterMnemNightmare')
+    sf(_MN_ESCORT, 'charLevel', list(_MN_BAND))
+    _svc_clear_soul_loot(db, _MN_ESCORT)
+    db._modified.add(_MN_ESCORT)
+
+    # ── pool / proxy / limit (preview = Epiales rig, scale 2.5). No chest: the
+    #    Mnemophage's marquee is the custom amulet, not a hoard (differentiator). ──
+    _svc_widen_limit(db, _SVC_LIMIT_DONOR, _MN_LIMIT)
+    _svc_boss_pool(db, _MN_POOL, _MN_SHELL, _MN_ESCORT,
+                   'the Mnemophage (main) + 2 nightmare champion escorts')
+    _svc_boss_proxy(db, _MN_PROXY, _MN_POOL, _MN_LIMIT, _MN_MESH, 2.5, hoard=False)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _MN_PROXY, 'pool': _MN_POOL, 'main_monster': _MN_SHELL,
+         'name': 'q_mnemophage_lone (Mnemophage + 2 nightmare escorts)'})
+    _svc_boss_pool(db, _MN_YARD_POOL, _MN_SHELL, _MN_ESCORT,
+                   'YARD: Mnemophage + 2 escorts @100% (TESTHUB-only)')
+    _svc_boss_proxy(db, _MN_YARD_PROXY, _MN_YARD_POOL, _MN_LIMIT, _MN_MESH, 2.5, hoard=False)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _MN_YARD_PROXY, 'pool': _MN_YARD_POOL, 'main_monster': _MN_SHELL,
+         'name': 'q_yard_mnemophage (TESTHUB yard)'})
+
+    # ── Lethe's Draught: a custom Legendary caster amulet (guaranteed on shell) ──
+    _svc_make_unique(db, _MN_AMULET_DONOR, _MN_AMULET, 'Legendary',
+                     'tagSVCamuletLetheDraught', 'tagSVCamuletLetheDraughtDESC', 100, {
+        'characterIntelligence': (F, 80.0), 'characterManaModifier': (F, 20.0),
+        'characterManaRegenModifier': (F, 40.0),
+        'characterLife': (F, 300.0), 'characterLifeModifier': (F, 12.0),
+        'offensiveLifeModifier': (F, 25.0),
+        'characterOffensiveAbility': (F, 90.0), 'characterDefensiveAbility': (F, 70.0),
+        'characterSpellCastSpeedModifier': (F, 15.0),
+        'defensiveSleep': (F, 40.0), 'defensiveLife': (F, 30.0),
+        'skillCooldownReduction': (F, 0.20),
+    })
+    _svc_guarantee_unique(db, _MN_SHELL, [_MN_AMULET, _MN_AMULET, _MN_AMULET], _MN_AMULET_LOOT)
+
+    # ── S2 THE ONE SUMMON: a spectral nightmare on the Epiales rig ──
+    _build_boss_summon(
+        db, _MN_ESCORT_DONOR, _MN_PHANTASM_PETS, _MN_SUMMON,
+        'tagSVCSummonMnemophage', 'tagSVCPetMnemPhantasm',
+        char_level=list(_MN_BAND), life=[6000.0, 8000.0, 10500.0],
+        life_regen=[20.0, 40.0, 70.0], dmg_min=[40.0, 65.0, 95.0],
+        dmg_max=[60.0, 100.0, 145.0], scale=1.4)
+
+    def _mn_stats(t, il):
+        m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
+        lv = {'n': 1, 'e': 2, 'l': 3}[t]
+        negrun = {'n': -8.0, 'e': -6.0, 'l': -5.0}[t]
+        r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'itemSkillName': (S, _MN_SUMMON), 'itemSkillLevel': (I, lv),
+            'augmentSkillName1': (S, _MN_AUG1), 'augmentSkillLevel1': (I, {'n': 4, 'e': 5, 'l': 6}[t]),
+            'augmentSkillName2': (S, _MN_AUG2), 'augmentSkillLevel2': (I, {'n': 2, 'e': 3, 'l': 4}[t]),
+            'characterIntelligence': (F, r(60.0)), 'characterMana': (F, r(200.0)),
+            'characterManaRegenModifier': (F, r(30.0)),
+            'characterOffensiveAbility': (F, r(90.0)),
+            'offensiveLifeMin': (F, r(40.0)), 'offensiveLifeMax': (F, r(65.0)),
+            'offensiveLifeModifier': (F, r(20.0)),
+            'offensiveLifeLeechMin': (F, r(25.0)),
+            'characterLife': (F, r(200.0)), 'characterLifeModifier': (F, r(14.0)),
+            'characterDefensiveAbility': (F, r(70.0)),
+            'characterRunSpeedModifier': (F, negrun),   # amgoz downside (Medusa/Polyphemus)
+            'defensiveSleep': (F, r(30.0)),
+        }
+    tiers = [{'diff': t, 'itemLevel': il, 'stats': _mn_stats(t, il)}
+             for t, il in (('n', 46), ('e', 68), ('l', 100))]
+    for p in _create_soul(db, 'mnemophage', 'tagSVCSoulMnemophage', tiers,
+                          monster=_MN_SHELL, drop_rate=66.0):
+        sf(p, 'FileDescription', 'Hades')
+        db._modified.add(p)
+
+    tags['tagSVCMonsterMnemophage'] = '{^r}the Mnemophage'
+    tags['tagSVCMonsterMnemophageCore'] = '{^r}Lethaeus, the Unremembered'
+    tags['tagSVCMonsterMnemNightmare'] = '{^G}Epiales ~ Drowned Nightmare'
+    tags['tagSVCPetMnemPhantasm'] = 'Stolen Nightmare'
+    tags['tagSVCSummonMnemophage'] = 'Raise a Stolen Nightmare'
+    tags['tagSVCamuletLetheDraught'] = "Lethe's Draught"
+    tags['tagSVCamuletLetheDraughtDESC'] = (
+        'A phial of the pools\' own water, drawn from the Lethe the Mnemophage '
+        'hoarded. Wear it and the borrowed lifetimes sharpen your mind; drink, '
+        'and take one memory back.')
+    tags['tagSVCSoulMnemophage'] = '{^F}Soul of the Mnemophage'
+    tags['tagSVCSoulMnemophageDESC'] = (
+        'The Mnemophage devours memory until nothing is left that knew fear. Its '
+        'soul lets the bearer raise a stolen nightmare of their own, though the '
+        'borrowed dread drifts, and nothing that has forgotten fear ever hurries.')
+    print("  C3 Mnemophage: 2-phase shell (overmind.tex, scale 2.5, [14/19/25k], "
+          "16-slot keep/add kit + energy-drain + void-nova) -> core 'the "
+          "Unremembered' (voidlash, [7/9.5/12.5k]) + mindshroud + 2 nightmare "
+          "escorts + pool/proxy/limit + Lethe's Draught amulet + S2 phantasm soul "
+          "(shell, 66% Finger2) + yard; tags set.")
+
+
+# ── C4: EPHIALTES, THE WAKING DREAD (Dread Halls, Judgment) ──────────────────
+_EP_DONOR = r'records\xpack\creatures\monster\epiales\xhero_cthulekes_45.dbr'
+_EP_ESCORT_DONOR = r'records\xpack\creatures\monster\epiales\as_nightmare_43.dbr'
+_EP_BOSS = r'records\xpack\creatures\monster\epiales\um_ephialtes_99.dbr'
+_EP_ESCORT = r'records\xpack\creatures\monster\epiales\svc_epiales_nightmare_92.dbr'
+_EP_DREADSHROUD = r'records\skills\monster skills\buff_self\ephialtes_dreadshroud.dbr'
+_EP_POOL = r'records\drxmap\proxy\pools\q_ephialtes_lone.dbr'
+_EP_PROXY = r'records\drxmap\proxy\q_ephialtes_lone.dbr'
+_EP_LIMIT = r'records\proxies boss\limit_ephialtes.dbr'
+_EP_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_ephialtes.dbr'
+_EP_YARD_PROXY = r'records\drxmap\proxy\q_yard_ephialtes.dbr'
+_EP_MASK_DONOR = r'records\xpack\item\equipmentarmor\helm\mi_l_keresmage.dbr'
+_EP_MASK = {t: r'records\item\equipmenthelm\svc_maskofdread_%s.dbr' % t for t in ('n', 'e', 'l')}
+_EP_MASK_LOOT = r'records\item\loottables\svc\maskofdread_guaranteed.dbr'
+_EP_BAND = [58, 78, 97]
+_EP_ESCORT_BAND = [55, 74, 92]
+_EP_MESH = r'XPack\Creatures\Monster\Epiales\Epiales01.msh'
+_EP_SKIN = r'DRXtextures\Creatures\Epiales\epiales_overlord.tex'   # cross-spec split from overmind.tex
+_EP_SK_IXION = r'records\skills\monster skills\attack_radius\ixion_cry.dbr'
+_EP_SK_DREAMSTORM = r'records\xpack\skills\artifactskills\l_da_morpheusdreamweb_dreamstorm.dbr'
+_EP_SK_VISIONOFDEATH = r'records\skills\spirit\drxvisionofdeath.dbr'
+_EP_SK_TAKEDOWN = r'records\xpack\skills\monsterskills\activeattackmelee\monster_takedown.dbr'
+_EP_SK_ONDEATH = r'records\skills\monster skills\attack_radius\ondeath_zombienoxiousfumes.dbr'
+_EP_FX_DREADSHROUD = r'records\xpack\effects\particles\skilleffects\dreamskillfx\troubleddreamsdebuff_charfxpak01.dbr'
+
+
+def _create_dreadhalls_uberboss(db, tags):
+    """C4: Ephialtes, the Waking Dread - the nightmare-daemon lord of the Dread
+    Halls (EXTREME defaults: band [58,78,97]/HP [15k,20k,27k], fear spine on
+    Skill_AttackRadius, Dread Shroud, Mask of the Waking Dread, S1 dread-sower
+    stat soul with a mana-regen downside). SINGLE-PHASE by design. Cross-spec law:
+    Ephialtes SIRES nightmares (Mnemophage feeds); skin epiales_overlord.tex +
+    scale 2.2 (split from the Mnemophage's overmind.tex + 2.5). Ephialtes OWNS the
+    active fear NOVA (the soul grants Dreamstorm)."""
+    for donor in (_EP_DONOR, _EP_ESCORT_DONOR, _EP_SK_IXION, _EP_SK_DREAMSTORM,
+                  _EP_SK_VISIONOFDEATH, _EP_SK_ONDEATH, _SVC_SK_ENVENOM_SHROUD,
+                  _EP_MASK_DONOR, _SVC_LEINTH_POOL, _SVC_LIMIT_DONOR):
+        if not db.has_record(donor):
+            print("  C4 EPHIALTES: WARNING donor missing: %s; group skipped" % donor)
+            return
+    sf = db.set_field
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── Dread Shroud (B-TOXEUS-1 recipe: clone envenom toggle, repoint FX) ──
+    db.clone_record(_SVC_SK_ENVENOM_SHROUD, _EP_DREADSHROUD)
+    sf(_EP_DREADSHROUD, 'charFxPakSelfNames', _EP_FX_DREADSHROUD)
+    for wf in ('weaponEnchantmentEffect', 'weaponEnchantmentDuration'):
+        if db.get_field_value(_EP_DREADSHROUD, wf) is not None:
+            sf(_EP_DREADSHROUD, wf, '')
+    db._modified.add(_EP_DREADSHROUD)
+    _BOSS_KIT_CLONES.append((_SVC_SK_ENVENOM_SHROUD, _EP_DREADSHROUD))
+
+    # ── THE NIGHTMARE-LORD (single form; the boss_conversionimmunity donor passive
+    #    at skillName17 carries fear/confusion/convert/taunt immunity for free). ──
+    db.clone_record(_EP_DONOR, _EP_BOSS)
+    M = _EP_BOSS
+    sf(M, 'monsterClassification', 'Boss')
+    sf(M, 'description', 'tagSVCMonsterEphialtes')
+    sf(M, 'mesh', _EP_MESH); sf(M, 'baseTexture', _EP_SKIN)
+    sf(M, 'charLevel', list(_EP_BAND))
+    sf(M, 'characterLife', [15000.0, 20000.0, 27000.0])
+    sf(M, 'characterRunSpeed', 1.35)                        # the relentless hunter
+    sf(M, 'scale', 2.2); sf(M, 'actorHeight', 2.0)
+    sf(M, 'defensiveLife', 80.0); sf(M, 'defensivePierce', 45.0)
+    sf(M, 'defensivePhysical', 30.0); sf(M, 'defensiveSleep', 40.0); sf(M, 'defensiveStun', 40.0)
+    sf(M, 'initialSkillName', _EP_DREADSHROUD)              # spawns wreathed
+    # ADD the fear spine + chase + death nova in free slots (keep the donor's
+    # boss_conversionimmunity + hero_scaling + resist passives verbatim).
+    for path, lvl in ((_EP_SK_IXION, [3, 4, 5]), (_EP_SK_DREAMSTORM, [3, 4, 5]),
+                      (_EP_SK_VISIONOFDEATH, [4, 6, 8]), (_EP_SK_TAKEDOWN, [3, 4, 5]),
+                      (_EP_SK_ONDEATH, [3, 4, 5]), (_SVC_SK_GLOBPROP_L, [1, 2, 3])):
+        _svc_add_skill(db, M, path, lvl)
+    sf(M, 'specialAttackSkillName', _EP_SK_IXION)           # Dread Roar, often
+    sf(M, 'specialAttackChance', 45.0)
+    sf(M, 'specialAttack2SkillName', _EP_SK_DREAMSTORM)     # nightmare nova
+    sf(M, 'specialAttack2Chance', 25.0)
+    sf(M, 'specialAttack3SkillName', _EP_SK_VISIONOFDEATH)  # second dread pulse
+    sf(M, 'specialAttack3Chance', 40.0)
+    db._modified.add(M)
+
+    # ── Champion escort: a laddered nightmare (keeps its own Epiales kit; no soul) ──
+    db.clone_record(_EP_ESCORT_DONOR, _EP_ESCORT)
+    sf(_EP_ESCORT, 'monsterClassification', 'Champion')
+    sf(_EP_ESCORT, 'description', 'tagSVCMonsterEpialesNightmare')
+    sf(_EP_ESCORT, 'charLevel', list(_EP_ESCORT_BAND))
+    _svc_clear_soul_loot(db, _EP_ESCORT)
+    db._modified.add(_EP_ESCORT)
+
+    # ── pool / proxy / limit + hoard (reused Obsidian chest) ──
+    _svc_widen_limit(db, _SVC_LIMIT_DONOR, _EP_LIMIT)
+    _svc_boss_pool(db, _EP_POOL, _EP_BOSS, _EP_ESCORT,
+                   'Ephialtes (main) + 2 nightmare champion escorts')
+    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _EP_PROXY, 'pool': _EP_POOL, 'main_monster': _EP_BOSS,
+         'name': 'q_ephialtes_lone (Ephialtes + 2 nightmare escorts)'})
+    _svc_boss_pool(db, _EP_YARD_POOL, _EP_BOSS, _EP_ESCORT,
+                   'YARD: Ephialtes + 2 escorts @100% (TESTHUB-only)')
+    _svc_boss_proxy(db, _EP_YARD_PROXY, _EP_YARD_POOL, _EP_LIMIT, _EP_MESH, 2.2, hoard=False)
+    _MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _EP_YARD_PROXY, 'pool': _EP_YARD_POOL, 'main_monster': _EP_BOSS,
+         'name': 'q_yard_ephialtes (TESTHUB yard)'})
+
+    # ── Mask of the Waking Dread: a custom fear-themed helm (guaranteed) ──
+    def _mask_block(mult):
+        r = lambda v: round(v * mult, 1)
+        return {
+            'offensiveFearMin': (F, r(2.5)), 'offensiveFearMax': (F, r(4.0)),
+            'characterLife': (F, r(350.0)), 'characterLifeModifier': (F, r(10.0)),
+            'characterDefensiveAbility': (F, r(70.0)),
+            'offensiveLifeModifier': (F, r(25.0)),
+            'characterRunSpeedModifier': (F, r(8.0)),
+            'defensiveSleep': (F, r(40.0)),
+        }
+    for t, il, cls, mult in (('n', 58, 'Epic', 0.55), ('e', 78, 'Epic', 0.78),
+                             ('l', 97, 'Legendary', 1.0)):
+        _svc_make_unique(db, _EP_MASK_DONOR, _EP_MASK[t], cls,
+                         'tagSVCMaskOfDread', 'tagSVCMaskOfDreadDESC', il, _mask_block(mult))
+    _svc_guarantee_unique(db, _EP_BOSS, [_EP_MASK['n'], _EP_MASK['e'], _EP_MASK['l']], _EP_MASK_LOOT)
+
+    # ── S1 dread-sower stat soul: {^F}Soul of the Waking Dread (the fear NOVA) ──
+    def _ep_stats(t, il):
+        m = {'n': 0.53, 'e': 0.74, 'l': 1.0}[t]
+        lv = {'n': 4, 'e': 6, 'l': 8}[t]
+        negman = {'n': -40.0, 'e': -55.0, 'l': -70.0}[t]   # amgoz fear-soul downside
+        r = lambda v: round(v * m, 1)
+        return {
+            **_bmp(t),
+            'itemSkillName': (S, _EP_SK_DREAMSTORM), 'itemSkillLevel': (I, lv),
+            'itemSkillAutoController': (S, _AC_ONHIT),
+            'augmentSkillName1': (S, _SK_RAVAGES_OF_TIME), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _SK_DEATH_CHILL), 'augmentSkillLevel2': (I, {'n': 2, 'e': 3, 'l': 4}[t]),
+            'offensiveFearMin': (F, r(3.0)), 'offensiveFearMax': (F, r(5.0)),
+            'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)),
+            'offensivePhysicalModifier': (F, r(30.0)),
+            'offensiveLifeMin': (F, r(50.0)), 'offensiveLifeMax': (F, r(80.0)),
+            'offensiveLifeLeechMin': (F, r(35.0)),
+            'characterLife': (F, r(240.0)), 'characterLifeModifier': (F, r(18.0)),
+            'characterDefensiveAbility': (F, r(80.0)),
+            'characterRunSpeedModifier': (F, r(12.0)), 'characterTotalSpeedModifier': (F, r(6.0)),
+            'characterManaRegenModifier': (F, negman),   # the load-bearing downside
+            'defensiveSleep': (F, r(20.0)),
+        }
+    tiers = [{'diff': t, 'itemLevel': il, 'stats': _ep_stats(t, il)}
+             for t, il in (('n', 58), ('e', 78), ('l', 97))]
+    for p in _create_soul(db, 'waking_dread', 'tagSVCSoulWakingDread', tiers,
+                          monster=_EP_BOSS, drop_rate=66.0):
+        sf(p, 'FileDescription', 'Hades')
+        db._modified.add(p)
+
+    tags['tagSVCMonsterEphialtes'] = '{^r}Ephialtes, the Waking Dread'
+    tags['tagSVCMonsterEpialesNightmare'] = '{^G}Epiales ~ Nightmare'
+    tags['tagSVCMaskOfDread'] = 'Mask of the Waking Dread'
+    tags['tagSVCMaskOfDreadDESC'] = (
+        'The face the nightmare-lord wore when he walked the Dread Halls. Wear it '
+        'and his terror is yours to hand out: every wound blooms into waking dread '
+        'and the living do the only thing anyone ever did down here. They run.')
+    tags['tagSVCSoulWakingDread'] = '{^F}Soul of the Waking Dread'
+    tags['tagSVCSoulWakingDreadDESC'] = (
+        'This is the piece of the nightmare that did not die when you cut him '
+        'down. Every wound you open blooms into a waking terror, and your enemies '
+        'run. But the Waking Dread does not sleep, and now neither do you.')
+    print("  C4 Ephialtes: single-form [58,78,97]/[15/20/27k], epiales_overlord "
+          "skin, scale 2.2, Dread Shroud, fear spine (ixion_cry + Dreamstorm + "
+          "Vision of Death on Skill_AttackRadius) + takedown chase + death nova + "
+          "pool/proxy/limit + hoard + Mask of the Waking Dread + S1 fear-nova soul "
+          "(mana-regen downside) + yard; tags set.")
+
+
+# ── C5: EREBAN HEARTSTONE relic (mirror _create_emberscale_charm) ────────────
+_EH_CHARM = {t: r'records\item\animalrelics\svc_erebanheartstone\%s_erebanheartstone.dbr' % t for t in ('01', '02', '03')}
+_EH_DONOR = {t: r'records\xpack\item\charms\%s_act4_erebancrystal.dbr' % t for t in ('01', '02', '03')}
+_EH_BONUS = {t: r'records\item\lootmagicalaffixes\animalrelics\svc_erebanheartstone\%s_erebanheartstone.dbr' % t for t in ('01', '02', '03')}
+_EH_LOOT = {t: r'records\item\loottables\animalrelics\svc_erebanheartstone\%s_erebanheartstone.dbr' % t for t in ('01', '02', '03')}
+_EH_LOOTDON = r'records\item\loottables\animalrelics\01_act1_turtleshell.dbr'
+_EH_BRUTES = [r'records\xpack\creatures\monster\troglodyte\em_brute_43.dbr',
+              r'records\xpack\creatures\monster\troglodyte\em_brute_45.dbr']
+_EH_SLOTS_ON = ('sword', 'axe', 'mace', 'spear', 'bow', 'staff', 'shield')
+_EH_SLOTS_OFF = ('amulet', 'armband', 'bodyArmor', 'bracelet', 'greaves', 'helmet', 'ring')
+_EH_LEVELREQ = {'01': 42, '02': 56, '03': 66}
+_EH_DROP_PCT = 10.0     # EXTREME §A (7 -> 10)
+_EH_ZERO_FIELDS = ('characterDexterityModifier', 'characterIntelligenceModifier',
+                   'characterLifeModifier', 'characterManaModifier',
+                   'characterStrengthModifier', 'defensiveLife')
+_EH_PETRIFY_KEYS = ('offensivePetrifyChance', 'offensivePetrifyMin', 'offensivePetrifyMax')
+# EXTREME §B: 03 petrify signature = 25% / 2.0-3.5s at 5/5. Physical/str/armor per §4.
+_EH_LADDERS = {
+    '03': {'offensivePhysicalMin': [10, 20, 30, 40, 50], 'offensivePhysicalMax': [18, 36, 54, 72, 90],
+           'offensivePhysicalModifier': [5, 10, 15, 20, 25], 'characterStrength': [8, 16, 24, 32, 40],
+           'defensiveProtection': [12, 24, 36, 48, 60],
+           'offensivePetrifyChance': [0.0, 0.0, 0.0, 0.0, 25.0],
+           'offensivePetrifyMin': [0.0, 0.0, 0.0, 0.0, 2.0], 'offensivePetrifyMax': [0.0, 0.0, 0.0, 0.0, 3.5],
+           'defensivePetrify': [0.0, 0.0, 0.0, 0.0, 40.0]},   # §D two-sided capstone
+    '02': {'offensivePhysicalMin': [7, 14, 21, 28, 35], 'offensivePhysicalMax': [12, 24, 36, 48, 60],
+           'offensivePhysicalModifier': [3, 6, 9, 12, 15], 'characterStrength': [5, 10, 15, 20, 25],
+           'defensiveProtection': [8, 16, 24, 32, 40],
+           'offensivePetrifyChance': [0.0, 0.0, 0.0, 0.0, 18.0],
+           'offensivePetrifyMin': [0.0, 0.0, 0.0, 0.0, 1.5], 'offensivePetrifyMax': [0.0, 0.0, 0.0, 0.0, 2.7]},
+    '01': {'offensivePhysicalMin': [4, 8, 12, 16, 20], 'offensivePhysicalMax': [7, 14, 21, 28, 35],
+           'offensivePhysicalModifier': [2, 4, 6, 8, 10], 'characterStrength': [3, 6, 9, 12, 15],
+           'defensiveProtection': [5, 10, 15, 20, 25],
+           'offensivePetrifyChance': [0.0, 0.0, 0.0, 0.0, 12.0],
+           'offensivePetrifyMin': [0.0, 0.0, 0.0, 0.0, 1.0], 'offensivePetrifyMax': [0.0, 0.0, 0.0, 0.0, 2.0]},
+}
+_EH_BONUS_ENTRIES = {   # per-tier (name-suffix, weight); prefix records\item\lootmagicalaffixes\
+    '03': [(r'animalrelics\bonuses\offensive_+%damage_03', 300),
+           (r'animalrelics\bonuses\offensive_damagebonus_03', 300),
+           (r'suffix\default\character_attributestrength_05', 250),
+           (r'suffix\default\character_abilityoffensive_06', 250),
+           (r'suffix\default\character_attributelife_03', 200),
+           (r'forge\bonuses\defensive_armor_06', 200)],
+    '02': [(r'animalrelics\bonuses\offensive_+%damage_02', 300),
+           (r'animalrelics\bonuses\offensive_damagebonus_02', 300),
+           (r'suffix\default\character_attributestrength_03', 250),
+           (r'suffix\default\character_abilityoffensive_04', 250),
+           (r'suffix\default\character_attributelife_02', 200),
+           (r'forge\bonuses\defensive_armor_04', 200)],
+    '01': [(r'animalrelics\bonuses\offensive_+%damage_01', 300),
+           (r'animalrelics\bonuses\offensive_damagebonus_01', 300),
+           (r'suffix\default\character_attributestrength_01', 250),
+           (r'suffix\default\character_abilityoffensive_02', 250),
+           (r'suffix\default\character_attributelife_01', 200),
+           (r'forge\bonuses\defensive_armor_02', 200)],
+}
+
+
+def _create_ereban_heartstone(db, tags):
+    """C5: the Ereban Heartstone - a physical/earth WEAPON+SHIELD relic off the
+    Ereban Brutes, petrify-on-hit unlocked at 5/5 (REV-01 + EXTREME). The headline
+    trap: explicit FLOAT on the petrify keys (absent on donor) + lootMisc4 chance
+    (absent on the bodies), and zero the 6 leaking donor stat ladders."""
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    for t in ('01', '02', '03'):
+        if not db.has_record(_EH_DONOR[t]):
+            print("  C5 EREBAN: WARNING donor missing: %s; group skipped" % _EH_DONOR[t])
+            return
+    if not db.has_record(_EH_LOOTDON):
+        print("  C5 EREBAN: WARNING loot donor missing; group skipped")
+        return
+    for w in _EH_BRUTES:
+        if not db.has_record(w):
+            print("  C5 EREBAN: WARNING brute body missing: %s; group skipped" % w)
+            return
+    for t in ('01', '02', '03'):
+        # completion-bonus table (LootRandomizerTable; total weight 1500)
+        _ensure_record(db, _EH_BONUS[t], r'database\Templates\LootRandomizerTable.tpl')
+        db.set_field(_EH_BONUS[t], 'Class', 'LootRandomizerTable', S)
+        tot = 0
+        for i, (suffix, wt) in enumerate(_EH_BONUS_ENTRIES[t], start=1):
+            path = r'records\item\lootmagicalaffixes\%s.dbr' % suffix
+            db.set_field(_EH_BONUS[t], 'randomizerName%d' % i, path, S)
+            db.set_field(_EH_BONUS[t], 'randomizerWeight%d' % i, wt, I)
+            tot += wt
+        assert tot == 1500, 'Ereban bonus weight %d != 1500' % tot
+        db._modified.add(_EH_BONUS[t])
+        # charm (clone the erebancrystal donor; override)
+        db.clone_record(_EH_DONOR[t], _EH_CHARM[t])
+        c = _EH_CHARM[t]
+        db.set_field(c, 'description', 'tagSVCErebanRelic')
+        db.set_field(c, 'itemText', 'tagSVCErebanRelicDESC')
+        db.set_field(c, 'FileDescription',
+                     'Ereban Heartstone: physical + strength + armor + petrify on completion')
+        db.set_field(c, 'levelRequirement', _EH_LEVELREQ[t])
+        for s in _EH_SLOTS_ON:
+            db.set_field(c, s, 1)
+        for s in _EH_SLOTS_OFF:
+            db.set_field(c, s, 0)
+        L = _EH_LADDERS[t]
+        for field in ('offensivePhysicalMin', 'offensivePhysicalMax',
+                      'offensivePhysicalModifier', 'characterStrength', 'defensiveProtection'):
+            db.set_field(c, field, list(L[field]))          # pre-exist FLOAT -> no dtype
+        for field in _EH_PETRIFY_KEYS:
+            db.set_field(c, field, list(L[field]), F)        # NEW -> explicit FLOAT
+        if 'defensivePetrify' in L:
+            db.set_field(c, 'defensivePetrify', list(L['defensivePetrify']), F)  # NEW -> FLOAT
+        for field in _EH_ZERO_FIELDS:
+            db.set_field(c, field, [0.0, 0.0, 0.0, 0.0, 0.0])   # leak guard (pre-exist FLOAT)
+        db.set_field(c, 'bonusTableName', _EH_BONUS[t])
+        db._modified.add(c)
+        # loot table (FixedWeight; clone turtleshell donor)
+        db.clone_record(_EH_LOOTDON, _EH_LOOT[t])
+        db.set_field(_EH_LOOT[t], 'lootName1', _EH_CHARM[t])
+        db._modified.add(_EH_LOOT[t])
+    # drop wiring on both brute bodies (lootMisc4 @ 10%, NEW fields -> explicit dtype)
+    loot_arr = [_EH_LOOT['01'], _EH_LOOT['02'], _EH_LOOT['03']]
+    for w in _EH_BRUTES:
+        db.set_field(w, 'lootMisc4Item1', list(loot_arr), S)
+        db.set_field(w, 'chanceToEquipMisc4', _EH_DROP_PCT, F)   # never the int 10
+        db.set_field(w, 'chanceToEquipMisc4Item1', 100, I)
+        db._modified.add(w)
+    tags['tagSVCErebanRelic'] = 'Ereban Heartstone'
+    tags['tagSVCErebanRelicDESC'] = (
+        'A knot of black Erebus stone that beat like a heart inside the brute. '
+        'Complete it and its weight turns your blows to hammer-falls, and the '
+        'stone reaches back through the wound to turn flesh to rock.')
+    print("  C5 Ereban Heartstone: 3 charms (erebancrystal-clone, 6 donor ladders "
+          "zeroed, weapon+shield, physical+strength+armor + petrify(chance/min/MAX + "
+          "defensivePetrify capstone, FLOAT)@5/5) + 3 bonus tables (w1500) + 3 loot "
+          "tables; wired em_brute_43/45 lootMisc4 @ 10%%.")
+
+
+def _svc_clone_blank_anim(db, donor, clone):
+    """Clone a monster skill and BLANK its special cast animation so it fires on
+    the default attack anim of a rig that lacks the clip (the C1-C3 'clone+blank
+    rig anims' correction). skillSpecialAnimationName is a clip NAME (not a .dbr),
+    so blanking it does not trip the clone-shape gate. Registered in _BOSS_KIT_CLONES."""
+    if not db.has_record(donor):
+        return False
+    db.clone_record(donor, clone)
+    if db.get_field_value(clone, 'skillSpecialAnimationName') is not None:
+        db.set_field(clone, 'skillSpecialAnimationName', '')
+    db._modified.add(clone)
+    _BOSS_KIT_CLONES.append((donor, clone))
+    return True
+
+
+# ── C6: DORUS hold-and-drown amendments (edit-existing um_dorus_99 + soul) ────
+_DR_DORUS = r'records\xpack\creatures\monster\lostsoul\um_dorus_99.dbr'
+_DR_CORAL_DON = r'records\skills\monster skills\attack_radius\coral_tsunami.dbr'
+_DR_CORAL = r'records\skills\svc\svc_dorus_coraltsunami.dbr'
+_DR_GRASP_DON = r'records\skills\monster skills\attack_projectile\rottengrasp.dbr'
+_DR_GRASP = r'records\skills\svc\svc_dorus_rottengrasp.dbr'
+_DR_DREADPALL = r'records\skills\monster skills\auras\dreadaura.dbr'
+_DR_MELEE = r'records\skills\monster skills\melee_slowdecaypoison.dbr'
+_DR_SOULS = [r'records\item\equipmentring\soul\svc_uber\drowned_king_soul_%s.dbr' % t for t in ('n', 'e', 'l')]
+_DR_ICHTHIAN = r'records\skills\soulskills\pcsafe\ichthian_tidalstrike.dbr'
+
+
+def _apply_dorus_amendments(db, tags):
+    """C6: re-theme the ALREADY-BUILT Dorus into the mod's water/drowning/greed
+    boss - the drowned grasp (rottengrasp root) + the Dread-Pall (dreadaura) +
+    coral tsunami, and a themed soul grant. Edit-existing; C1-C3 corrections:
+    clone+blank the AttackProjectile/AttackRadius casts so they animate on the
+    xSQ06_Royalty rig."""
+    if not db.has_record(_DR_DORUS):
+        print("  C6 DORUS: WARNING um_dorus_99 missing; skipped")
+        return
+    sf = db.set_field
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    coral = _svc_clone_blank_anim(db, _DR_CORAL_DON, _DR_CORAL)
+    grasp = _svc_clone_blank_anim(db, _DR_GRASP_DON, _DR_GRASP)
+    # kit re-theme: add the drowned kit in free slots (6, 8, 9); keep armor/thunder/
+    # raisecourt/scaling passives. Dread-Pall aura + slow-decay-poison touch.
+    if db.has_record(_DR_DREADPALL):
+        _svc_add_skill(db, _DR_DORUS, _DR_DREADPALL)
+    if coral:
+        _svc_add_skill(db, _DR_DORUS, _DR_CORAL, [3, 4, 5])
+        sf(_DR_DORUS, 'specialAttackSkillName', _DR_CORAL)     # sweeping flood
+        sf(_DR_DORUS, 'specialAttackChance', 40.0)
+    if grasp:
+        _svc_add_skill(db, _DR_DORUS, _DR_GRASP, [3, 4, 5])
+        sf(_DR_DORUS, 'specialAttack2SkillName', _DR_GRASP)    # the drowned grasp (root)
+        sf(_DR_DORUS, 'specialAttack2Chance', 40.0)
+    if db.has_record(_DR_MELEE):
+        sf(_DR_DORUS, 'attackSkillName', _DR_MELEE)            # rotting swamp touch
+    db._modified.add(_DR_DORUS)
+    # soul (Option 3): a themed grant (the ferryman's drowned dead) + fear + the
+    # greed-king downside, layered onto the existing drowned_king stat soul.
+    if db.has_record(_DR_ICHTHIAN):
+        for i, p in enumerate(_DR_SOULS):
+            if not db.has_record(p):
+                continue
+            neg = [-4.0, -5.0, -6.0][i]
+            sf(p, 'itemSkillName', _DR_ICHTHIAN, S)
+            sf(p, 'itemSkillLevel', [4, 6, 8][i], I)
+            sf(p, 'itemSkillAutoController', _AC_ONHIT, S)
+            sf(p, 'offensiveFearMin', [2.0, 3.0, 4.0][i], F)
+            sf(p, 'characterRunSpeedModifier', neg, F)         # the greed weighs you down
+            db._modified.add(p)
+    print("  C6 Dorus: hold-and-drown re-theme (coral tsunami + rottengrasp root + "
+          "Dread-Pall aura + slow-decay-poison touch; anim-blanked casts) + themed "
+          "soul grant (ichthian tidal strike + fear + run-speed downside).")
+
+
+# ── C7: UPLIFT PICKS (Vashkarr / wyrm cold tide / Broodmother / Obsidian) ─────
+_VK_BOSS = r'records\creature\monster\dragonian\um_vashkarr_99.dbr'
+_VK_SOULS = [r'records\item\equipmentring\soul\svc_uber\vashkarr_soul_%s.dbr' % t for t in ('n', 'e', 'l')]
+_VK_FIREBREATH = r'records\skills\monster skills\attack_melee\dragonian_firebreath.dbr'
+_VK_ROAR = r'records\skills\monster skills\attack_projectile\halimedes_terrifyingroar.dbr'
+_VK_FIRENOVA = r'records\skills\monster skills\ondeath\skills\firenova.dbr'
+_WYRM_POOL = r'records\proxies orient\pools\demon\svc_wyrmhorde_03.dbr'
+_WYRM_CHAMPS = {n: r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_%d.dbr' % n for n in (31, 34, 37, 40)}
+_WYRM_FROST = {n: r'records\creature\monster\sepulchralwyrm\svc_frostwyrm_%d.dbr' % n for n in (31, 34, 37, 40)}
+_WYRM_FREEZEBREATH = r'records\skills\boss skills\gargantuanyeti_freezingbreath.dbr'
+_SK_ONDEATH_FROSTNOVA = r'records\skills\monster skills\attack_radius\ondeath_frostnova.dbr'
+_BM_BROOD = r'records\creature\monster\sepulchralwyrm\um_broodmother_99.dbr'
+_BM_FIREBREATH_DON = r'records\skills\monster skills\attack_melee\sepulchralwyrm_firebreath.dbr'
+_BM_COLDBREATH = r'records\skills\svc\svc_broodmother_coldbreath.dbr'
+_BM_LASTBROOD_DON = r'records\skills\monster skills\ondeath_spawnskeleton.dbr'
+_BM_LASTBROOD = r'records\skills\svc\svc_broodnest_lastbrood.dbr'
+_BM_COMMON_WYRM = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr'
+_OBS_WARBAND = r'records\drxmap\proxy\pools\q_obs_warband.dbr'
+_KV_DONOR = r'records\creature\monster\skeleton\um_gorrahk_99.dbr'
+_KV_BOSS = r'records\creature\monster\skeleton\um_kravmoloch_99.dbr'
+_KV_SUMMON_DON = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
+_KV_SUMMON = r'records\skills\boss skills\svc_kravmoloch_summon.dbr'
+_KV_SHADOWSTALKER = r'records\creature\monster\shadowstalker\am_deathstalker_55.dbr'
+
+
+def _apply_content_uplift_picks(db, tags):
+    """C7: creative uplifts on the already-built bosses (kit/theatrics only, zero
+    HP changes except the new Kravmoloch boss)."""
+    sf = db.set_field
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+    # ── Vashkarr: the Eldest's Dragonfire (family-native breath + roar + 16-jet
+    #    death nova) + soul reflect signature. ──
+    if db.has_record(_VK_BOSS):
+        for path, lvl, spec in ((_VK_FIREBREATH, [4, 5, 6], ('', 45.0)),
+                                (_VK_ROAR, [3, 4, 5], ('2', 30.0)),
+                                (_VK_FIRENOVA, [1, 2, 3], None)):
+            if db.has_record(path):
+                _svc_add_skill(db, _VK_BOSS, path, lvl)
+                if spec:
+                    sf(_VK_BOSS, 'specialAttack%sSkillName' % spec[0], path)
+                    sf(_VK_BOSS, 'specialAttack%sChance' % spec[0], spec[1])
+        db._modified.add(_VK_BOSS)
+        for i, p in enumerate(_VK_SOULS):
+            if db.has_record(p):
+                sf(p, 'defensiveReflect', [6.0, 9.0, 12.0][i], F)
+                sf(p, 'offensiveFearMin', [1.5, 2.0, 2.5][i], F)
+                db._modified.add(p)
+        print("  C7 Vashkarr: dragonfire breath + terrifying roar + 16-jet firenova "
+              "death + soul reflect/fear signature.")
+
+    # ── Sepulchral Wyrm cold tide: 4 frost champions (cold breath + shatter-on-
+    #    death) repointed into the horde pool. ──
+    if db.has_record(_WYRM_POOL) and db.has_record(_WYRM_FREEZEBREATH):
+        made = 0
+        for n in (31, 34, 37, 40):
+            if not db.has_record(_WYRM_CHAMPS[n]):
+                continue
+            db.clone_record(_WYRM_CHAMPS[n], _WYRM_FROST[n])
+            fw = _WYRM_FROST[n]
+            # swap the fire breath for a freezing breath in whatever slot holds it
+            for i in range(1, 25):
+                v = db.get_field_value(fw, 'skillName%d' % i)
+                v = v[0] if isinstance(v, list) else v
+                if isinstance(v, str) and 'firebreath' in v.lower():
+                    sf(fw, 'skillName%d' % i, _WYRM_FREEZEBREATH)
+            cur = db.get_field_value(fw, 'specialAttackSkillName')
+            cur = cur[0] if isinstance(cur, list) else cur
+            if isinstance(cur, str) and 'firebreath' in (cur or '').lower():
+                sf(fw, 'specialAttackSkillName', _WYRM_FREEZEBREATH)
+            if db.has_record(_SK_ONDEATH_FROSTNOVA):
+                _svc_add_skill(db, fw, _SK_ONDEATH_FROSTNOVA, [1, 2, 3])
+            _svc_clear_soul_loot(db, fw)
+            db._modified.add(fw)
+            sf(_WYRM_POOL, 'nameChampion%d' % ((n - 28) // 3), fw)   # 31->1,34->2,37->3,40->4
+            made += 1
+        db._modified.add(_WYRM_POOL)
+        print("  C7 Sepulchral Wyrm cold tide: %d frost champions (freezing breath + "
+              "shatter-on-death frostnova) repointed into svc_wyrmhorde_03." % made)
+
+    # ── Broodmother death crescendo: cold breath + frostnova + last-brood on death. ──
+    if db.has_record(_BM_BROOD):
+        if _svc_clone_blank_anim(db, _BM_FIREBREATH_DON, _BM_COLDBREATH):
+            # keep the FireBreath anim (proven on the Eater rig); make it cold
+            db.set_field(_BM_COLDBREATH, 'skillSpecialAnimationName',
+                         db.get_field_value(_BM_FIREBREATH_DON, 'skillSpecialAnimationName') or '')
+            for ff in ('offensiveFireMin', 'offensiveFireMax', 'offensiveBurnDamageMin'):
+                if db.get_field_value(_BM_COLDBREATH, ff) is not None:
+                    sf(_BM_COLDBREATH, ff, 0.0)
+            sf(_BM_COLDBREATH, 'offensiveColdMin', [120.0, 180.0, 260.0])
+            sf(_BM_COLDBREATH, 'offensiveColdMax', [200.0, 300.0, 420.0])
+            db._modified.add(_BM_COLDBREATH)
+        if db.has_record(_BM_LASTBROOD_DON) and db.has_record(_BM_COMMON_WYRM):
+            db.clone_record(_BM_LASTBROOD_DON, _BM_LASTBROOD)
+            sf(_BM_LASTBROOD, 'spawnObjects', [_BM_COMMON_WYRM])
+            db._modified.add(_BM_LASTBROOD)
+            _BOSS_KIT_CLONES.append((_BM_LASTBROOD_DON, _BM_LASTBROOD))
+        for path in (_SK_ONDEATH_FROSTNOVA, _BM_LASTBROOD, _BM_COLDBREATH):
+            if db.has_record(path):
+                _svc_add_skill(db, _BM_BROOD, path, [1, 2, 3])
+        db._modified.add(_BM_BROOD)
+        print("  C7 Broodmother death crescendo: ondeath frostnova + last-brood spawn "
+              "+ cold breath (anim-kept, fire->cold).")
+
+    # ── Obsidian Halls fifth pocket: Kravmoloch, Keeper of the Wheel (jackpot). ──
+    if db.has_record(_OBS_WARBAND) and db.has_record(_KV_DONOR):
+        db.clone_record(_KV_DONOR, _KV_BOSS)
+        sf(_KV_BOSS, 'monsterClassification', 'Boss')
+        sf(_KV_BOSS, 'description', 'tagSVCMonsterKravmoloch')
+        sf(_KV_BOSS, 'charLevel', [74, 74, 74])
+        sf(_KV_BOSS, 'characterLife', [16000.0, 22000.0, 30000.0])
+        sf(_KV_BOSS, 'scale', 1.6); sf(_KV_BOSS, 'actorHeight', 1.9)
+        _svc_clear_soul_loot(db, _KV_BOSS)
+        # hostile call-the-table add-summon (clone yaoguai directly per C7 note)
+        if _svc_clone_blank_anim(db, _KV_SUMMON_DON, _KV_SUMMON):
+            if db.has_record(_KV_SHADOWSTALKER):
+                sf(_KV_SUMMON, 'spawnObjects', [_KV_SHADOWSTALKER])
+            sf(_KV_SUMMON, 'petBurstSpawn', 3); sf(_KV_SUMMON, 'petLimit', 8)
+            db._modified.add(_KV_SUMMON)
+            _svc_add_skill(db, _KV_BOSS, _KV_SUMMON, [1, 2, 3])
+            sf(_KV_BOSS, 'specialAttack4SkillName', _KV_SUMMON)
+            sf(_KV_BOSS, 'specialAttack4Chance', 35.0)
+        db._modified.add(_KV_BOSS)
+        # 5th soul (dense stat soul; no summon -> F2-clean)
+        def _kv_stats(t, il):
+            m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
+            r = lambda v: round(v * m, 1)
+            return {
+                **_bmp(t),
+                'itemSkillName': (S, _SS_GROUND_SMASH) if db.has_record(_SS_GROUND_SMASH) else (S, ''),
+                'itemSkillLevel': (I, {'n': 4, 'e': 6, 'l': 8}[t]),
+                'itemSkillAutoController': (S, _AC_ONHIT),
+                'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+                'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)),
+                'offensivePhysicalModifier': (F, r(30.0)),
+                'characterStrength': (F, r(60.0)), 'characterStrengthModifier': (F, r(12.0)),
+                'characterLife': (F, r(280.0)), 'characterLifeModifier': (F, r(15.0)),
+                'characterOffensiveAbility': (F, r(90.0)),
+                'defensivePhysical': (F, r(20.0)), 'defensiveElementalResistance': (F, r(18.0)),
+            }
+        tiers = [{'diff': t, 'itemLevel': il, 'stats': _kv_stats(t, il)}
+                 for t, il in (('n', 62), ('e', 68), ('l', 74))]
+        _create_soul(db, 'kravmoloch', 'tagSVCSoulKravmoloch', tiers,
+                     monster=_KV_BOSS, drop_rate=66.0)
+        # jackpot: name5 @ weight 4 in the warband pool (~3.8% of events). The
+        # pool's spawn-eligibility is already guarded by the 4 corner proxies
+        # (main=Ilsevar); Kravmoloch L74 fits their [1..110] limit, so it is
+        # reliably spawnable at name5 without a separate registration.
+        sf(_OBS_WARBAND, 'name5', _KV_BOSS)
+        sf(_OBS_WARBAND, 'weight5', 4)
+        db._modified.add(_OBS_WARBAND)
+        tags['tagSVCMonsterKravmoloch'] = '{^r}Kravmoloch, Keeper of the Wheel'
+        tags['tagSVCSoulKravmoloch'] = '{^F}Kravmoloch, Keeper of the Wheel Soul'
+        tags['tagSVCSoulKravmolochDESC'] = (
+            'The warden who turns the wheel of the Obsidian Halls and keeps its '
+            'greatest hoard. His soul grinds the earth under the bearer\'s blows.')
+        print("  C7 Obsidian Keeper of the Wheel: Kravmoloch jackpot boss "
+              "[16/22/30k]@L74 (greatest-hits kit + call-the-table summon) + 5th "
+              "soul; added as name5 @ weight 4 to q_obs_warband.")
+
+
 def apply_all_extended_patches(db, force_full_drops=True):
     """Run all extended patches. Call after create_uber_souls.
 
@@ -14020,6 +15312,26 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # docs/reports/build36_laneA_map_needs.md.
     print("\n=== build36 A5: Propontis Super Boss (Dorus, the Drowned King) ===")
     _create_propontis_superboss(db, tags)
+
+    # ── build36 CONTENT WAVE (C1-C7) ─────────────────────────────────────────
+    # Four new uber bosses + Ereban relic + Dorus amendments + uplift picks. Runs
+    # AFTER _create_obsidian_roulette (the hoards reuse svc_obsidianhoard pools)
+    # and _create_propontis_superboss, BEFORE the build29 castability wave + the
+    # clone-shape / spawn-eligibility / soul gates. Map lane owns the placements.
+    print("\n=== build36 C1: Tantalus, the Insatiable ===")
+    _create_tantalus_uberboss(db, tags)
+    print("\n=== build36 C2: Charon, the Unferried (Golden Bough) ===")
+    _create_goldenbough_boss(db, tags)
+    print("\n=== build36 C3: the Mnemophage (Pools of Mnemosyne) ===")
+    _create_mnemophage_superboss(db, tags)
+    print("\n=== build36 C4: Ephialtes, the Waking Dread (Dread Halls) ===")
+    _create_dreadhalls_uberboss(db, tags)
+    print("\n=== build36 C5: Ereban Heartstone relic ===")
+    _create_ereban_heartstone(db, tags)
+    print("\n=== build36 C6: Dorus hold-and-drown amendments ===")
+    _apply_dorus_amendments(db, tags)
+    print("\n=== build36 C7: monster uplift picks ===")
+    _apply_content_uplift_picks(db, tags)
 
     # GROUP B (build32): Toxeus the Enslaver of Souls - a roaming rare mini-boss.
     # Build the boss/marauder/soul, then the roaming sweep (append him at weight 1
