@@ -217,10 +217,22 @@ def main():
     # ---------------- M10: tombobs01/02 Obsidian roulette corners (v0x0e) ----------------
     if not args.skip_m10:
         mdata, mlevels = load_world(args.m10_baseline)
+        # tombobs02 carries the 2 roulette corners (build32b) AND, since build35, the 7
+        # Broodmother Nest proxies APPENDED after them (mother + 6 eggs, Y=1.2). tombobs01
+        # carries only the 2 roulette corners. The M10 baseline (build32a) predates BOTH, so
+        # the tombobs02 delta vs build32a is +9 and tombobs01 is +2. The nest proxies are
+        # canonical, so this holds identically for the canonical AND TESTHUB variants.
         M10 = {
             'orient/typhonug/tombobs02.lvl': [
                 (b'q_obs_roulette_a.dbr', (50.4, 1.0, 143.6)),
                 (b'q_obs_roulette_c.dbr', (200.4, 1.0, 97.6)),
+                (b'q_broodmother_lone.dbr', (184.0, 1.2, 192.0)),
+                (b'q_broodnest_egg_a.dbr', (184.0, 1.2, 202.0)),
+                (b'q_broodnest_egg_b.dbr', (175.3, 1.2, 197.0)),
+                (b'q_broodnest_egg_c.dbr', (175.3, 1.2, 187.0)),
+                (b'q_broodnest_egg_d.dbr', (184.0, 1.2, 182.0)),
+                (b'q_broodnest_egg_e.dbr', (192.7, 1.2, 187.0)),
+                (b'q_broodnest_egg_f.dbr', (192.7, 1.2, 197.0)),
             ],
             'orient/typhonug/tombobs01.lvl': [
                 (b'q_obs_roulette_b.dbr', (220.8, 1.0, 89.6)),
@@ -239,8 +251,8 @@ def main():
             sd = secs[0x05]
             strings, insts, endpos, ninst = walk_0x05(sd, 56)
             _, binsts, _, bninst = walk_0x05(bsecs[0x05], 56)
-            check(f'0x05 instance count {bninst} -> {bninst + 2}', ninst == bninst + 2,
-                  f'count={ninst}')
+            check(f'0x05 instance count {bninst} -> {bninst + len(expect)}',
+                  ninst == bninst + len(expect), f'count={ninst}')
             check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
                   f'end={endpos} len={len(sd)}')
             for k, (base, pos3) in enumerate(expect):
@@ -283,7 +295,8 @@ def main():
         sd = secs[0x05]
         strings, insts, endpos, ninst = walk_0x05(sd, 72)
         _, binsts, _, bninst = walk_0x05(bsecs[0x05], 72)
-        check(f'0x05 instance count {bninst} -> {bninst + 8}', ninst == bninst + 8, f'count={ninst}')
+        # build35: the yard grew from 8 to 9 with the broodmother apex (q_yard_broodmother).
+        check(f'0x05 instance count {bninst} -> {bninst + 9}', ninst == bninst + 9, f'count={ninst}')
         check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
               f'end={endpos} len={len(sd)}')
         YARD = [
@@ -295,6 +308,7 @@ def main():
             (b'q_yard_obs_voranthys.dbr', (47.0, 15.4, 87.0)),
             (b'q_yard_obs_ilsevar.dbr',   (47.0, 15.2, 95.0)),
             (b'q_yard_wyrm.dbr',          (30.0, 15.2, 113.0)),
+            (b'q_yard_broodmother.dbr',   (89.0,  6.6, 100.0)),
         ]
         for k, (bname, pos3) in enumerate(YARD):
             inst = insts[bninst + k]

@@ -839,6 +839,55 @@ OBS_ROULETTE_SPECS = {
     ],
 }  # WIRED (build32b): merged into INJECT_SPECS right after its definition below
 
+# ── BROODNEST WIRED (build35, 2026-07-11): Broodmother Nest apex set-piece (CANONICAL) ─
+# docs/BROODMOTHER_NEST_DESIGN.md, the deferred climax of the N7 sepulchral-wyrm-horde
+# chain. This is the FIRST canonical-map content change since build32b (Will-approved:
+# "proceed with the broodmother nest implementation", 7 decisions delegated = take each
+# doc recommendation). Host = tombobs02 (the doc's recommended primary), the SAME Act-3
+# Obsidian Halls hall the roulette (above) already dresses, so the "treasure-tomb climax"
+# reading is coherent. The DB lane (arz a947e98d) shipped the proxy records FIRST
+# (MAP-REF-1 ordering): q_broodmother_lone (Proxy, pool svc_broodmother_pool -> 1 mother
+# um_broodmother_99 + 2 um_sepulchralwyrm_40 escorts, placementExtents 3.5) and 6 egg-
+# cluster proxies q_broodnest_egg_{a..f} (Proxy, pool svc_broodnest_hatch -> 3-6 common
+# wyrmlings, placementExtents 2.5). All are the q_leinth_lone byte-shape (flags=0, no
+# 0x14, exemplar rot) and inject via the same v0e branch (inject_into_sv_only_blob) the
+# roulette uses.
+#
+# SURVEYED AT IMPLEMENT TIME against the canonical map's own tombobs02 0x0b (all 3
+# tilesets = agent radii 0.4/0.6/0.8), the M9/M10 pattern:
+#   nest CENTER local (184.0, 192.0) sits in the deep south chamber, a 14.0u-radius disc
+#   that is fully walkable in ALL 3 tilesets; floor probe local Y = 1.20 (spec keeps Y at
+#   the floor per the doc). The mother sits at center; the 6 eggs ring her at radius 10u.
+# For EACH of the 7 spots (mother + 6 eggs): on-mesh in all 3 tilesets (nearest walkable
+#   largest-comp cell <= 0.14u), 100% clearance measured BOTH over a 3.5u/49-sample square
+#   AND over a filled disc at the record's real placementExtents (mother 3.5u, eggs 2.5u)
+#   in all 3 tilesets, and nearest EXISTING native 0x05 instance > placementExtents+2u
+#   (mother 14.4u, min egg 5.0u to a native tomb-monster proxy = ambient, no navmesh
+#   blocker). No nudge was needed (every spot hit 100% on the first survey).
+# SEPARATION from the roulette (Will's >=40u rule so encounters do not merge): the nearest
+#   nest point is 82.0u from the corner-C warband edge (placementExtents 4.0) and 128.2u
+#   from corner-A; corner A local (50.4,143.6), corner C local (200.4,97.6). Min point-to-
+#   corner-centre distances: dCornerA >= 132.2u, dCornerC >= 86.0u. Far past 40u.
+BROODNEST_HOST_KEY = 'levels/world/orient/typhonug/tombobs02.lvl'
+Q_BROODMOTHER_LONE_DBR = b'records\\drxmap\\proxy\\q_broodmother_lone.dbr'
+Q_BROODNEST_EGG_A_DBR = b'records\\drxmap\\proxy\\q_broodnest_egg_a.dbr'
+Q_BROODNEST_EGG_B_DBR = b'records\\drxmap\\proxy\\q_broodnest_egg_b.dbr'
+Q_BROODNEST_EGG_C_DBR = b'records\\drxmap\\proxy\\q_broodnest_egg_c.dbr'
+Q_BROODNEST_EGG_D_DBR = b'records\\drxmap\\proxy\\q_broodnest_egg_d.dbr'
+Q_BROODNEST_EGG_E_DBR = b'records\\drxmap\\proxy\\q_broodnest_egg_e.dbr'
+Q_BROODNEST_EGG_F_DBR = b'records\\drxmap\\proxy\\q_broodnest_egg_f.dbr'
+BROODNEST_SPECS = {
+    BROODNEST_HOST_KEY: [
+        (Q_BROODMOTHER_LONE_DBR, 184.0, 1.2, 192.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_BROODNEST_EGG_A_DBR, 184.0, 1.2, 202.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_BROODNEST_EGG_B_DBR, 175.3, 1.2, 197.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_BROODNEST_EGG_C_DBR, 175.3, 1.2, 187.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_BROODNEST_EGG_D_DBR, 184.0, 1.2, 182.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_BROODNEST_EGG_E_DBR, 192.7, 1.2, 187.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_BROODNEST_EGG_F_DBR, 192.7, 1.2, 197.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+}  # WIRED (build35): APPENDED to INJECT_SPECS[tombobs02] after the roulette corners below
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
@@ -1794,6 +1843,18 @@ for _m10_key in OBS_ROULETTE_SPECS:
     assert _m10_key not in INJECT_SPECS, f'M10 host key collision with INJECT_SPECS: {_m10_key}'
 INJECT_SPECS.update(OBS_ROULETTE_SPECS)
 
+# BROODNEST (build35): merge the Broodmother Nest set-piece (CANONICAL) into INJECT_SPECS.
+# tombobs02 ALREADY carries the 2 roulette corners (merged just above), so this APPENDS the
+# 7 nest proxies to that level's existing list rather than clobbering it (order-preserving:
+# the 2 roulette instances keep their indices, the nest lands after them). This is the first
+# canonical-map content change since build32b; it applies to BOTH map variants because it
+# lives in the base INJECT_SPECS (canonical uses INJECT_SPECS directly; TESTHUB layers the
+# hub extras on top). Assert the only expected collision is the shared tombobs02 host.
+for _bn_key, _bn_specs in BROODNEST_SPECS.items():
+    assert _bn_key == BROODNEST_HOST_KEY, f'unexpected broodnest host {_bn_key}'
+    INJECT_SPECS.setdefault(_bn_key, [])
+    INJECT_SPECS[_bn_key] = list(INJECT_SPECS[_bn_key]) + list(_bn_specs)
+
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
 # The merge already places these records; move_0x05_instances rewrites ONLY their 12
 # position bytes (rotation/flags/string-index preserved), so the caravan scene composes
@@ -1889,6 +1950,9 @@ Q_YARD_OBS_GORRAHK_DBR   = b'records\\drxmap\\proxy\\q_yard_obs_gorrahk.dbr'
 Q_YARD_OBS_VORANTHYS_DBR = b'records\\drxmap\\proxy\\q_yard_obs_voranthys.dbr'
 Q_YARD_OBS_ILSEVAR_DBR   = b'records\\drxmap\\proxy\\q_yard_obs_ilsevar.dbr'
 Q_YARD_WYRM_DBR          = b'records\\drxmap\\proxy\\q_yard_wyrm.dbr'
+# build35: the broodmother yard proxy (DB lane created q_yard_broodmother + its pool =
+# 1 um_broodmother_99 mother + 2 um_sepulchralwyrm_40 escorts @100%, placementExtents 3.5).
+Q_YARD_BROODMOTHER_DBR   = b'records\\drxmap\\proxy\\q_yard_broodmother.dbr'
 # VASHKARR_PROXY_DBR (records\drxmap\proxy\q_vashkarr_lone.dbr) is defined above (SPOT B reuse).
 HV01_LVL_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
 
@@ -1952,6 +2016,12 @@ def build_hub_extra_specs():
             (Q_YARD_OBS_VORANTHYS_DBR, 47.0, 15.4,  87.0),   # C  clr@3.0=100%
             (Q_YARD_OBS_ILSEVAR_DBR,   47.0, 15.2,  95.0),   # C  clr@3.0=100%
             (Q_YARD_WYRM_DBR,          30.0, 15.2, 113.0),   # D  clr@2.5=100%  dFount 30u
+            # build35: broodmother apex (mother + 2 escorts). Surveyed on-mesh against the
+            # canonical HV01 0x0b (single Silk Road tileset): local (89.0,6.6,100.0), on-mesh
+            # 0.14u, 6.5u-radius fully-clear disc, 100% clearance at placementExtents 3.5 in
+            # all 3 samples; 42.3u from the nearest existing yard group (obs_ilsevar at
+            # (47,95)) = well past the >=30u rule. floor local Y 6.6.
+            (Q_YARD_BROODMOTHER_DBR,   89.0,  6.6, 100.0),   # E  clr@3.5=100%  dYard 42.3u
         ],
         # -- PORTAL RIG: 2 HUB masters --
         # Helos plaza: 3u E of canonical Almyros (76.5,0.6,189.5); world (-5968.5,1.8,917.5);

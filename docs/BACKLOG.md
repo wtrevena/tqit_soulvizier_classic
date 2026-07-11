@@ -1,5 +1,53 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🕷️ **BROODMOTHER NEST - MAP LANE PLACED (build35, 2026-07-11; tag build35).** The map lane placed
+> the DB lane's broodmother-nest proxies (arz `a947e98d` + Text `3fb65c20`, both already staged in
+> `work/`), per `docs/BROODMOTHER_NEST_DESIGN.md`. **This is the FIRST canonical-map content change
+> since build32b** (Will-approved; intended). NEW map MD5s (det-2x reproduced byte-identical, each
+> built twice): canonical `local/Levels_merged.arc` = **`391b267461bbb7e75b0f965d6e298ff7`** (was
+> build34 `d5259629`); TESTHUB `local/Levels_merged_TESTHUB.arc` = **`ea928648e2ede29abe00a6e87ff4900c`**
+> (was build34 `8d30ec53`). arz/Text/Quests UNCHANGED by the map lane.
+> **WHAT (map hooks, `tools/build_section_surgery.py` sole-owned; svaera_plus_portals.py untouched -
+> tombobs02 already routes through the INJECT_SPECS v0e branch):**
+>   (1) CANONICAL SET-PIECE = `BROODNEST_SPECS` (7 proxies) APPENDED to `INJECT_SPECS`'s existing
+>       tombobs02 roulette list (order-preserving -> roulette keeps its indices). Host
+>       `levels/world/orient/typhonug/tombobs02.lvl` (the doc's recommended primary, the deep Act-3
+>       Obsidian Halls hall the roulette already dresses). Applies to BOTH variants (canonical uses
+>       INJECT_SPECS; TESTHUB layers hub extras on top).
+>   (2) TESTHUB YARD = `q_yard_broodmother` APPENDED (9th entry) to `build_hub_extra_specs()`'s HV01
+>       list (SVC_TEST_HUB-gated -> canonical byte-unchanged in HV01).
+> **PLACEMENT MANIFEST (host level; LOCAL x,y,z; nest center local (184,192), 6-egg ring r=10u,
+> floor local Y 1.20; surveyed on-mesh in ALL 3 tilesets, 100% clearance at each record's real
+> placementExtents [mother 3.5u, eggs 2.5u], nearest native > extents+2u):**
+>   - `q_broodmother_lone`  tombobs02  L(184.0,1.2,192.0)  WORLD(-1794,-73.8,-298)  clr all-3-set 100%, nearestNative 14.4u
+>   - `q_broodnest_egg_a`   tombobs02  L(184.0,1.2,202.0)   ring N
+>   - `q_broodnest_egg_b`   tombobs02  L(175.3,1.2,197.0)   ring NW
+>   - `q_broodnest_egg_c`   tombobs02  L(175.3,1.2,187.0)   ring SW
+>   - `q_broodnest_egg_d`   tombobs02  L(184.0,1.2,182.0)   ring S
+>   - `q_broodnest_egg_e`   tombobs02  L(192.7,1.2,187.0)   ring SE
+>   - `q_broodnest_egg_f`   tombobs02  L(192.7,1.2,197.0)   ring NE
+>   - `q_yard_broodmother`  hiddenvalley01 (TESTHUB)  L(89.0,6.6,100.0)  42.3u from nearest yard group (obs_ilsevar)
+> **ROULETTE SEPARATION (Will's >=40u no-merge rule):** the nest sits 82.0u from the corner-C
+> warband edge (placementExtents 4.0) and 128.2u from corner-A; min point-to-corner-centre dCornerA
+> 132.2u / dCornerC 86.0u. World corner tombobs02 = (-1978,-75,-490). Corners A local (50.4,143.6),
+> C (200.4,97.6). Far past 40u -> encounters cannot merge.
+> **GATES (all GREEN, both variants):** parse-back (`gate_build32_parseback.py`, extended: M10
+> tombobs02 now expects the 7 broodnest appended after the 2 roulette; MYARD now +9 incl
+> q_yard_broodmother) PASS on canonical (M8+M9+M10) and TESTHUB (M8+M9+M10+MYARD+RIG); MAP-REF-1
+> (`run_contracts.py --only map`, both maps vs arz `a947e98d`) 0 P0/0 P1 (3 P2 = pre-existing
+> base-game XPack Act3/Styx portals, not the nest); navmesh 24/24 both; groups-bindings 374/374
+> both; det-2x both byte-identical. **BLOB-DIFF proof:** canonical NEW vs build34 `d5259629` = EXACTLY
+> 1 level changed (tombobs02, section 0x05 only, count 580->587 = +7 set-piece); TESTHUB NEW vs
+> build34 `8d30ec53` = EXACTLY 2 levels (tombobs02 0x05 580->587 set-piece + hiddenvalley01 0x05
+> 230->231 = +1 yard broodmother). Every other level+section byte-identical.
+> **STAGING:** the new canonical `391b2674` is STAGED into `work/SoulvizierClassic/Resources/Levels.arc`
+> (the coupled ship trio is now arz `a947e98d` + Text `3fb65c20` + Levels `391b2674`; ships on the NEXT
+> Steam package after Will's DEV pass, per the QA-gated ship law). Packager TESTHUB-MD5 guard state OK
+> (work Levels `391b2674` != TESTHUB `ea928648` -> no abort). **NOT DEPLOYED** (no dist/ write, no
+> SteamCMD, no CustomMaps copy). Deploy coupling on the eventual wave: canonical Levels + arz + Text
+> ship together (the set-piece is inert without the arz records/tags, already present).
+
+
 > 🧭 **STANDING RULING - IMMORTAL-THRONE CAP (Will, 2026-07-10).** The campaign stays capped at
 > **Immortal Throne (Hades)** for now. Do NOT make Atlantis or anything past IT reachable. Focus is
 > fine-tuning the Greece-to-Hades game. The Tartarus-arena-gates fix and the Rhodes->Atlantis entry
