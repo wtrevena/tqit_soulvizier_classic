@@ -2566,6 +2566,373 @@ def fix_soul_bitmaps(db: ArzDatabase):
     print(f"  Soul bitmap paths fixed: {patched}")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# BUILD36 LANE B: SVAERA mastery-skill graft (18 skills) + Runemaster buffs
+# docs/SVAERA_MASTERY_COMPARISON.md (soa gave verbal permission to reuse SVAERA).
+#
+# SCOPE: 14 player-tree mastery skills (Warfare/Defense/Earth/Storm/Nature/Dream)
+# each appended as a NEW tree slot + a NEW mastery-panel UI button, PLUS their
+# recursive .dbr closure (4 gameplay support records: a nymph pet-skill, the
+# Doppelganger pet + its aura + a pet conversion-immunity passive = 18 grafted
+# "skills"), PLUS 3 asset-closure records (2 Frost-Nova FX + 1 Doppelganger anim
+# table). The Rune Golem is NOT here (lane A owns it in apply_svc_patches.py).
+#
+# LAWS honored (verified against the shipped .arz bytes before writing):
+#  - ADDITIVE ONLY. Never renumbers/removes an existing tree or UI slot; every
+#    graft lands at the next FREE tree slot + a FREE UI grid cell (collision-
+#    checked against the live panels). Existing characters keep every point.
+#  - Never swaps the RuneMaster/Neidan tree POINTER to SVAERA's _drx copies (that
+#    would strand invested points); the Runemaster buffs are field edits on the
+#    vanilla-path records only.
+#  - Occult (mastery/UI 5) + Hunting (6) are UNTOUCHED (validate_mastery_golden
+#    stays green with no re-baseline).
+#  - Anim safety: every non-empty skillSpecialAnimationName a grafted skill names
+#    already resolves in BOTH PC anim tables (Hew 7 rows, ShieldSkill02 3 incl
+#    sHanded, CallOfTheHunt 7, Colossus 8, ThunderClap 8 - verified). Graft #0
+#    (build31/build35) already restored the melee rows. Runs BEFORE the player-
+#    anim gate so the grafted skills are validated there.
+#  - CLOSURE: every .dbr a grafted skill needs that does NOT resolve in the
+#    runtime model (mod .arz UNION base game) is imported from the REAL SVAERA
+#    arz, recursively, dtype-preserving. Zero _DRX mesh/texture refs across the
+#    whole closure (probed) -> no D5 invisible-pet risk; the Doppelganger is a
+#    doppelganger.tpl clone of the player mesh (which we ship) and its only _DRX
+#    refs are 6 fallback .anm run-fix clips (engine falls back to base cleanly).
+#  - TAGS: the 8 base-Atlantis (x3tag*) display tags resolve from the engine's
+#    own Text at runtime (no action). The 12 SV-authored tags (Slam/Fissure/
+#    Rupture/Burning Bolts/Flare/Frost Nova) are authored into Text.arc via the
+#    DATA PATH (uber_soul_tags.txt, read by build_text_arc.py) - no edit to the
+#    text pipeline. validate_tags then sees them mod-owned AND defined -> PASS.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# SVAERA-internal dangling ref the closure tolerates (absent even in SVAERA - the
+# same placeholder our own Volcanic Orb / Flamesurge already carry harmlessly).
+# drxrupture's two particleEffectName refs point here; we clear them post-import.
+_GRAFT_KNOWN_DANGLING = (
+    r'records\sandbox\chris\unarmedprojectile_fx01.dbr',
+)
+
+# The 14 player-tree skills. Each becomes a NEW tree slot + a NEW UI button.
+# Fields: (svaera_path, tree_path, tree_slot, ui_folder_base, ui_slot,
+#          ui_x, ui_y, circular, label). Support records (nymph pet-skill, the
+#          Doppelganger pet chain, Frost-Nova FX) ride the recursive closure.
+# Tree slots + UI cells were chosen from the LIVE shipped .arz (next free tree
+# skillName + a free grid cell in the column with the most room). UI folders are
+# NON-STANDARD in this mod (verified via malepc01 skillTreeN + folder slot idents):
+#   Warfare->ingameui M1, Defense->M2, Earth->M3, Storm->M4, Nature->M8,
+#   Spirit->M7, Dream->xpack M9.
+_UI_ING = r'records\ingameui\player skills\mastery %d'
+_UI_XP9 = r'records\xpack\ui\skills\mastery 9'
+_TREE_WAR = r'records\skills\warfare\drxwarfareskilltree.dbr'
+_TREE_DEF = r'records\skills\defensive\drxdefensiveskilltree.dbr'
+_TREE_EAR = r'records\skills\earth\drxearthskilltree.dbr'
+_TREE_STO = r'records\skills\storm\drxstormskilltree.dbr'
+_TREE_NAT = r'records\skills\nature\drxnatureskilltree.dbr'
+_TREE_DRE = r'records\xpack\skills\dream\drxdreamskilltree.dbr'
+
+_GRAFT_SKILLS = [
+    # --- Warfare (tree drxwarfareskilltree; UI ingameui mastery 1) ---
+    (r'records\skills\warfare\drx_clubslam.dbr',          _TREE_WAR, 27, _UI_ING % 1, 26, 328,  31, False, 'Slam'),
+    (r'records\skills\warfare\drx_clubslam_fissure.dbr',  _TREE_WAR, 28, _UI_ING % 1, 27, 328, 217, True,  'Fissure'),
+    (r'records\skills\warfare\drx_ancestralmod.dbr',      _TREE_WAR, 29, _UI_ING % 1, 28, 328, 341, True,  'Lasting Legacy'),
+    # --- Defense (tree drxdefensiveskilltree; UI ingameui mastery 2) ---
+    (r'records\skills\defensive\drx_activeblock.dbr',     _TREE_DEF, 26, _UI_ING % 2, 25, 428,  31, False, 'Perfect Block'),
+    (r'records\skills\defensive\drx_summonphalanx.dbr',   _TREE_DEF, 27, _UI_ING % 2, 26, 428, 155, False, 'Unyielding Phalanx'),
+    # --- Earth (tree drxearthskilltree; UI ingameui mastery 3) ---
+    (r'records\skills\earth\drx_firenova.dbr',            _TREE_EAR, 26, _UI_ING % 3, 25, 428,  31, False, 'Fire Nova'),
+    (r'records\skills\earth\drxrupture.dbr',              _TREE_EAR, 27, _UI_ING % 3, 26, 428,  93, False, 'Rupture'),
+    (r'records\skills\earth\drxrupture_burning.dbr',      _TREE_EAR, 28, _UI_ING % 3, 27, 428, 217, True,  'Burning Bolts'),
+    (r'records\skills\earth\drxrupture_flare.dbr',        _TREE_EAR, 29, _UI_ING % 3, 28, 428, 341, True,  'Flare'),
+    # --- Storm (tree drxstormskilltree; UI ingameui mastery 4) ---
+    (r'records\skills\storm\drx_lightningdash.dbr',       _TREE_STO, 26, _UI_ING % 4, 26, 428,  31, False, 'Lightning Dash'),
+    (r'records\skills\storm\drxfrostnova.dbr',            _TREE_STO, 27, _UI_ING % 4, 27, 428, 155, False, 'Frost Nova'),
+    # --- Nature (tree drxnatureskilltree; UI ingameui mastery 8) ---
+    (r'records\skills\nature\drx_earthbind.dbr',                    _TREE_NAT, 26, _UI_ING % 8, 25, 328,  31, False, 'Earthbind'),
+    (r'records\skills\nature\drx_nymph_petmodifier_rootwave.dbr',   _TREE_NAT, 27, _UI_ING % 8, 26, 328, 155, True,  'Sylvan Protection'),
+    # --- Dream (tree drxdreamskilltree; UI xpack mastery 9) ---
+    (r'records\xpack\skills\dream\drx_summoncopy.dbr',    _TREE_DRE, 26, _UI_XP9,     25, 128,  31, False, 'Dream Image'),
+]
+
+# The 12 SV-authored display tags (base-Atlantis x3tag* ones resolve at runtime
+# and are intentionally absent here). Strings ported verbatim from SVAERA's
+# Text.arc; fancy quotes normalized to ASCII (house rule: no em dashes - none here).
+_GRAFT_TAGS = {
+    'tagSlam_NAME': 'Slam',
+    'tagSlam_DESC': ('Hit all enemies in a straight line with staggering force. '
+                     '{^n}{^y}The length of the line extends with levels. '
+                     '{^n}{^y}Melee weapon or Staff required.'),
+    'tagSlam_FissureNAME': 'Fissure',
+    'tagSlam_FissureDESC': ('Your slam can be cast more frequently, and creates a '
+                            'larger and more powerful fissure in the ground, '
+                            'disrupting the aim and spellcasting of your enemies. '
+                            '^y^n(The width of the line extends with levels. '
+                            'Reduced cooldown starts at level 2)'),
+    'tagRuptureNAME': 'Rupture',
+    'tagRuptureDESC': ("Connects the player's tumultuous earth energies to their "
+                       'weapon, causing projectiles to explode on impact. '
+                       '{^n}{^y}Staff or Bow required. {^n}Unlike most other '
+                       'default attack replacers, this is a special ranged attack. '
+                       "It won't trigger the following effects: {^n}- Volley, "
+                       'Gouge [Hunting] {^n}- Runeword: Explode, Runeword: Burn [Runes]'),
+    'tagBurningBoltsNAME': 'Burning Bolts',
+    'tagBurningBoltsDESC': ('Adds burn damage to staff attacks, and a chance to '
+                            'pass through enemies.'),
+    'tagFlareNAME': 'Flare',
+    'tagFlareDESC': ('Increases fire damage on staff attacks, turning the '
+                     "caster's staff into an instrument of destruction."),
+    'tagSVAERSkillStorm001': 'Frost Nova',
+    'tagSVAERSkillStormDescription001': ('Casts an expanding ring of frost that '
+                                         'slows and freezes your enemies.'),
+}
+
+
+def _gnorm(s):
+    return str(s).replace('/', '\\').lower().strip()
+
+
+def _gdbr_refs(fields):
+    """Every .dbr reference (normalized) held by a decoded fields dict."""
+    out = []
+    for key, tf in (fields or {}).items():
+        for v in tf.values:
+            if isinstance(v, str) and v.strip().lower().endswith('.dbr'):
+                out.append(_gnorm(v))
+    return out
+
+
+def _graft_store_record(db, store_name, src_fields):
+    """Create store_name from src_fields, preserving dtypes exactly (the dtype-
+    preservation lesson: never let set_field auto-detect on cloned INT/FLOAT)."""
+    template = ''
+    for key, tf in src_fields.items():
+        if key.split('###')[0] == 'templateName' and tf.values:
+            template = str(tf.values[0])
+            break
+    _ensure_record(db, store_name, template)
+    for key, tf in src_fields.items():
+        fn = key.split('###')[0]
+        vals = list(tf.values) if tf.values else []
+        if len(vals) == 1:
+            db.set_field(store_name, fn, vals[0], tf.dtype)
+        elif len(vals) > 1:
+            db.set_field(store_name, fn, vals, tf.dtype)
+
+
+def _graft_import_closure(db, svaera_db, base_names, roots):
+    """Import each root + its recursive .dbr closure from SVAERA into db. A ref is
+    imported iff it resolves in NEITHER db NOR the base game (the runtime model);
+    otherwise it is a leaf. Existing db records are never overwritten. Refs absent
+    even in SVAERA fail loud UNLESS documented in _GRAFT_KNOWN_DANGLING. Records
+    are stored under their SVAERA (lowercase-canonical) name. Returns imported."""
+    sv_map = {_gnorm(n): n for n in svaera_db.record_names()}
+    db_names = {_gnorm(n) for n in db.record_names()}
+    dangling = {_gnorm(d) for d in _GRAFT_KNOWN_DANGLING}
+    imported, seen = [], set()
+    work = list(dict.fromkeys(_gnorm(r) for r in roots))
+    while work:
+        key = work.pop()
+        if key in seen:
+            continue
+        seen.add(key)
+        if key in db_names or key in base_names:
+            continue  # resolves at runtime -> leaf, do not import
+        sv_name = sv_map.get(key)
+        if sv_name is None:
+            if key in dangling:
+                continue
+            raise SystemExit(
+                f"build36 graft: closure ref resolves in NO source "
+                f"(db/base/SVAERA): {key} - reconcile before shipping")
+        src = svaera_db.get_fields(sv_name)
+        _graft_store_record(db, sv_name, src)
+        db_names.add(_gnorm(sv_name))
+        imported.append(sv_name)
+        for ref in _gdbr_refs(src):
+            if ref not in seen:
+                work.append(ref)
+    return imported
+
+
+def _graft_create_ui_slot(db, folder_base, slot_num, skill_ref, x, y, circ, desc):
+    """Create a mastery-panel skill button by cloning slot01 of folder_base and
+    overriding position/skill/border. Works for BOTH the ingameui and the xpack
+    Dream folders (border textures are shared base-game assets). Fail loud if the
+    template slot or the destination is unexpected (never overwrite an existing
+    slot - that would be removal-adjacent)."""
+    nm = {_gnorm(n): n for n in db.record_names()}
+    template = nm.get(_gnorm(r'%s\skill01.dbr' % folder_base))
+    if not template:
+        raise SystemExit(f"build36 graft: UI template slot01 missing in {folder_base}")
+    new_path = r'%s\skill%02d.dbr' % (folder_base, slot_num)
+    if _gnorm(new_path) in nm:
+        raise SystemExit(f"build36 graft: UI slot already exists (refusing to "
+                         f"overwrite): {new_path}")
+    db.clone_record(template, new_path)
+    db.set_field(new_path, 'skillName', skill_ref, DATA_TYPE_STRING)
+    db.set_field(new_path, 'bitmapPositionX', x, DATA_TYPE_INT)
+    db.set_field(new_path, 'bitmapPositionY', y, DATA_TYPE_INT)
+    db.set_field(new_path, 'isCircular', 1 if circ else 0, DATA_TYPE_INT)
+    db.set_field(new_path, 'FileDescription', desc, DATA_TYPE_STRING)
+    if circ:
+        db.set_field(new_path, 'bitmapNameUp', r'InGameUI\SkillButtonBorderRound01.tex', DATA_TYPE_STRING)
+        db.set_field(new_path, 'bitmapNameDown', r'InGameUI\SkillButtonBorderRoundDown01.tex', DATA_TYPE_STRING)
+        db.set_field(new_path, 'bitmapNameInFocus', r'InGameUI\SkillButtonBorderRoundOver01.tex', DATA_TYPE_STRING)
+    else:
+        db.set_field(new_path, 'bitmapNameUp', r'InGameUI\SkillButtonBorder01.tex', DATA_TYPE_STRING)
+        db.set_field(new_path, 'bitmapNameDown', r'InGameUI\SkillButtonBorderDown01.tex', DATA_TYPE_STRING)
+        db.set_field(new_path, 'bitmapNameInFocus', r'InGameUI\SkillButtonBorderOver01.tex', DATA_TYPE_STRING)
+    return new_path
+
+
+def _graft_register_dream_button(db, ui_slot_num):
+    """Register the new Dream (xpack mastery 9) skill button into its panectrl's
+    tabSkillButtons. fix_mastery_panel_buttons only covers ingameui masteries 1-8;
+    the Dream mastery uses the xpack folder + has no xpack3 override, so its single
+    panectrl must be appended to directly. Idempotent + fail-loud if absent."""
+    pane = r'records\xpack\ui\skills\mastery 9\panectrl.dbr'
+    if not db.has_record(pane):
+        raise SystemExit(f"build36 graft: Dream panectrl missing: {pane}")
+    btns = db.get_field_value(pane, 'tabSkillButtons')
+    btns = list(btns) if isinstance(btns, list) else ([btns] if btns else [])
+    btn = r'records\xpack\ui\skills\mastery 9\skill%02d.dbr' % ui_slot_num
+    if any(_gnorm(b) == _gnorm(btn) for b in btns):
+        return 0
+    btns.append(btn)
+    db.set_field(pane, 'tabSkillButtons', btns, DATA_TYPE_STRING)
+    return 1
+
+
+def graft_svaera_mastery_skills(db: ArzDatabase, base_db, svaera_db):
+    """Graft the 18 SVAERA mastery skills onto our tuned trees (additive-only).
+    Imports each player-tree skill + its recursive closure from SVAERA, wires a
+    new tree slot + a new UI button per player skill, registers the buttons in the
+    mastery panels, and returns the 12 SV-authored display tags for the Text
+    pipeline (uber_soul_tags.txt). base_db is REQUIRED (closure resolution)."""
+    print("\n=== BUILD36 LANE B: SVAERA mastery-skill graft (18 skills) ===")
+    if base_db is None:
+        raise SystemExit("build36 graft: base game arz REQUIRED (5th build arg) "
+                         "for closure resolution")
+    base_names = {_gnorm(n) for n in base_db.record_names()}
+
+    # 1) Import every player-skill root + its full recursive closure.
+    roots = [g[0] for g in _GRAFT_SKILLS]
+    imported = _graft_import_closure(db, svaera_db, base_names, roots)
+    print(f"  closure import: {len(imported)} record(s) pulled from SVAERA")
+
+    # sanity: every player-skill root must now exist (fail loud if a root somehow
+    # resolved to base and was skipped - would mean a name collision we did not see).
+    for r in roots:
+        if not db.has_record(r):
+            raise SystemExit(f"build36 graft: player-skill root not imported "
+                             f"(unexpected base/db collision?): {r}")
+
+    # 2) drxrupture cosmetic fixup: clear the two dangling projectile-FX refs (the
+    #    SVAERA placeholder). Equivalent to our existing skills that carry it, but
+    #    keeps the freshly-authored record free of any dangling ref.
+    rup = r'records\skills\earth\drxrupture.dbr'
+    for f in ('particleEffectName2', 'particleEffectName3'):
+        cur = db.get_field_value(rup, f)
+        if cur:
+            db.set_field(rup, f, '', DATA_TYPE_STRING)
+    print("  drxrupture: cleared 2 dangling placeholder projectile-FX refs")
+
+    # 3) Wire tree slots + UI buttons (all additive; fail loud on any collision).
+    wired = 0
+    touched_ing_masteries = set()
+    dream_ui_slot = None
+    for (svp, tree, tslot, uifolder, uislot, x, y, circ, label) in _GRAFT_SKILLS:
+        if not db.has_record(tree):
+            raise SystemExit(f"build36 graft: target tree missing: {tree}")
+        # tree slot must be FREE (additive law)
+        existing = db.get_field_value(tree, f'skillName{tslot}')
+        existing = existing[0] if isinstance(existing, list) and existing else existing
+        if existing and str(existing).strip():
+            raise SystemExit(
+                f"build36 graft: tree slot {tree} skillName{tslot} already "
+                f"occupied by {existing!r} - the tree changed under the graft; "
+                f"reconcile the slot plan before shipping")
+        db.set_field(tree, f'skillName{tslot}', svp, DATA_TYPE_STRING)
+        _graft_create_ui_slot(db, uifolder, uislot, svp, x, y, circ, label)
+        if uifolder.startswith(r'records\ingameui'):
+            # recover the mastery number from the folder path tail
+            touched_ing_masteries.add(int(uifolder.rsplit(' ', 1)[-1]))
+        else:
+            dream_ui_slot = uislot
+        wired += 1
+        print(f"    wired {label}: {tree.rsplit(chr(92),1)[-1]}[skillName{tslot}] "
+              f"+ UI {uifolder.rsplit(chr(92),1)[-1]}\\skill{uislot:02d} ({x},{y})")
+
+    # 4) Re-register the ingameui mastery panels (1-8) so the new buttons render.
+    #    fix_mastery_panel_buttons rebuilds each panel's contiguous button list +
+    #    the xpack/xpack3 overrides from the folder contents; our new slots are
+    #    contiguous so they are picked up. (It already ran once earlier; re-running
+    #    is idempotent and now includes the grafted slots.)
+    print(f"  re-registering ingameui panels for masteries {sorted(touched_ing_masteries)}")
+    fix_mastery_panel_buttons(db)
+
+    # 5) Register the Dream button (xpack folder - not covered by the above).
+    if dream_ui_slot is not None:
+        added = _graft_register_dream_button(db, dream_ui_slot)
+        print(f"  Dream panectrl: +{added} button (xpack mastery 9 skill{dream_ui_slot:02d})")
+
+    print(f"  GRAFT COMPLETE: {wired} player-tree skills wired "
+          f"({len(imported)} closure records; {len(_GRAFT_TAGS)} SV-authored tags)")
+    return dict(_GRAFT_TAGS)
+
+
+def _apply_runemaster_buffs(db: ArzDatabase, base_db):
+    """RUNEMASTER buffs (docs/SVAERA_MASTERY_COMPARISON.md section 5.3, the
+    'optional idea-grafts onto our vanilla-path Runemaster records'). Character-
+    safe additive EDITS on the vanilla-path skill records (never the tree pointer,
+    never SVAERA's _drx copies). Scalar-field edits only (base-precedent shape) so
+    no zero-precedent field-shape risk.
+
+    Non-overlap (verified read-only at 88d2b03): wave2 already tunes
+    runemaster_mastery (Life 1160/Mana 400) + menhiraltar (Guardian Stones cd/TTL);
+    the Rune Golem block (lane A, apply_svc_patches) only REFERENCES menhirwall as
+    a prereq and never edits its numbers. These buffs touch DIFFERENT records/fields
+    (menhirwall + mines uptime), so nothing is double-applied. base_db REQUIRED (the
+    records are base-only -> imported as mod overrides, exactly like wave2)."""
+    print("\n=== BUILD36 LANE B: Runemaster buffs (vanilla-path, additive) ===")
+    if base_db is None:
+        raise SystemExit("build36 Runemaster buffs: base game arz REQUIRED")
+
+    def _scalar(rec, field):
+        v = db.get_field_value(rec, field)
+        return float(v[0]) if isinstance(v, list) and v else (float(v) if v is not None else None)
+
+    n = 0
+    # Menhir Wall (Skill_DefensiveGround): faster + longer-lived wall (uptime).
+    mw = r'records\xpack2\skills\runemaster\menhirwall.dbr'
+    _import_base_game_record(db, base_db, mw)
+    if not db.has_record(mw):
+        raise SystemExit(f"build36 Runemaster buffs: {mw} did not import from base")
+    cd, ttl = _scalar(mw, 'skillCooldownTime'), _scalar(mw, 'spawnObjectsTimeToLive')
+    if cd != 22.0 or ttl != 10.0:
+        raise SystemExit(f"build36 Runemaster buffs: menhirwall baseline drifted "
+                         f"(cd={cd}, ttl={ttl}; expected 22.0/10.0) - reconcile")
+    db.set_field(mw, 'skillCooldownTime', 18.0, DATA_TYPE_FLOAT)
+    db.set_field(mw, 'spawnObjectsTimeToLive', 14.0, DATA_TYPE_FLOAT)
+    print("  Menhir Wall: cd 22->18, wall TTL 10->14 (+40% uptime)")
+    n += 1
+
+    # Mines (Skill_DefensiveProjectileGroundRing): linger longer + slightly faster.
+    mn = r'records\xpack2\skills\runemaster\mines.dbr'
+    _import_base_game_record(db, base_db, mn)
+    if not db.has_record(mn):
+        raise SystemExit(f"build36 Runemaster buffs: {mn} did not import from base")
+    mcd, mdur = _scalar(mn, 'skillCooldownTime'), _scalar(mn, 'skillActiveDuration')
+    if mcd != 9.0 or mdur != 10.0:
+        raise SystemExit(f"build36 Runemaster buffs: mines baseline drifted "
+                         f"(cd={mcd}, dur={mdur}; expected 9.0/10.0) - reconcile")
+    db.set_field(mn, 'skillCooldownTime', 8.0, DATA_TYPE_FLOAT)
+    db.set_field(mn, 'skillActiveDuration', 14.0, DATA_TYPE_FLOAT)
+    print("  Mines: cd 9->8, active duration 10->14 (mines linger)")
+    n += 1
+
+    print(f"  RUNEMASTER buffs applied: {n} vanilla-path record(s)")
+    return n
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
@@ -2627,6 +2994,35 @@ def main():
     # (the player-anim gate below still passes) and NO Occult/Hunting records
     # (the golden-freeze gate stays green).
     apply_mastery_wave2_boosts(db, base_db)
+
+    # ── BUILD36 LANE B: graft the 18 SVAERA mastery skills + Runemaster buffs.
+    # Runs AFTER all mastery tuning (so it is purely additive on the final trees)
+    # and BEFORE the player-anim gate + `del base_db` (both need base_db alive, and
+    # the gate must validate the grafted skills). Default ON; SVC_GRAFT_SVAERA=0
+    # disables (e.g. a machine without the SVAERA Workshop install). The SVAERA arz
+    # is the SOURCE OF TRUTH (the in-repo reference_mods stub is NOT usable); it is
+    # resolved via restore_dropped_npcs.find_svaera_arz ($SVC_SVAERA_ARZ or the
+    # known Workshop path). graft_tags flows into uber_soul_tags.txt below.
+    graft_tags = {}
+    _do_graft = os.environ.get('SVC_GRAFT_SVAERA', '1').strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+    if _do_graft:
+        from restore_dropped_npcs import find_svaera_arz
+        _graft_svaera_arz = find_svaera_arz()
+        if _graft_svaera_arz is None:
+            raise SystemExit(
+                "build36 graft: the real SVAERA_customquest.arz was not found "
+                "(set $SVC_SVAERA_ARZ or install SVAERA Workshop item 2076433374; "
+                "the in-repo reference_mods stub is a 2 KB decoy). To build WITHOUT "
+                "the graft, set SVC_GRAFT_SVAERA=0.")
+        print(f"\nBuild36 graft ON: loading SVAERA source: {_graft_svaera_arz}")
+        _graft_svaera_db = ArzDatabase.from_arz(_graft_svaera_arz)
+        graft_tags = graft_svaera_mastery_skills(db, base_db, _graft_svaera_db)
+        del _graft_svaera_db  # free the ~68 MB source before the rest of the build
+        _apply_runemaster_buffs(db, base_db)
+    else:
+        print("\nBuild36 graft OFF (SVC_GRAFT_SVAERA=0): the 18 SVAERA mastery "
+              "skills + Runemaster buffs are NOT applied.")
 
     # ── GROUP E (build32, N5 thrown weapons): both halves need base_db (del'd
     # below), so they run here. (1) faithfully restore the base game's roh
@@ -2792,7 +3188,9 @@ def main():
             f.write(f"{tag}={value}\n")
         for tag, value in thrown_tags.items():   # GROUP E (N5 supra thrown weapons)
             f.write(f"{tag}={value}\n")
-    print(f"  Tags file: {tags_path} ({len(text_tags)} uber + {len(legacy_tags)} legacy + {len(extended_tags)} extended + {len(thrown_tags)} thrown)")
+        for tag, value in graft_tags.items():     # BUILD36 LANE B (SVAERA mastery graft)
+            f.write(f"{tag}={value}\n")
+    print(f"  Tags file: {tags_path} ({len(text_tags)} uber + {len(legacy_tags)} legacy + {len(extended_tags)} extended + {len(thrown_tags)} thrown + {len(graft_tags)} graft)")
 
     fix_soul_bitmaps(db)
 
