@@ -491,3 +491,50 @@ Rebuilt BOTH artifacts (canonical + TESTHUB).
 `tools/debug/extract_c4_atmosphere.py` (recon TARGETS), `tools/debug/gate_doors_hub.py` (gate_c4),
 `tools/debug/verify_c4_hv01_totemlights.py` (NEW independent verification). Deploy targets unchanged
 (canonical is Workshop-safe; TESTHUB is local-only).
+
+---
+
+## ROUND 3 - PORTAL OPENNESS FIX (born-open GridEntrance class swap) - IMPLEMENTED + GATED
+
+**Problem (Will, TESTHUB, blood-cave first room):** NO hub portals visible; and per the round-1
+DynGridEntrance RCA the portals were ALSO born CLOSED (inert) - both gated on bossarena.qst being
+adopted per-character. Goal (wf_c0012e88-64a + brief): make the portals OPEN + VISIBLE from raw
+data with NO quest dependency, for FRESH and PRE-EXISTING characters.
+
+**Root cause + fix (disasm-proven, full evidence in docs/DYNGRID_GATE_RCA.md sec 5):** the ENTRANCE
+record `portal_olympianarena1` was Class `GridEntranceDynamic`, whose activate method calls
+`SetPortalIsOpen(0)` UNCONDITIONALLY at every spawn (Game.dll 0x101ae2f1) and hides its mesh unless
+a quest fires. `SetPortalIsOpen` has EXACTLY 3 callers in Game.dll (all GridEntranceDynamic: Open/
+Close/activate) and 0 in Engine.dll, so a static `GridEntrance` (the born-open cave-mouth class,
+153 base-game precedents) NEVER self-closes and is always visible. The teleport reads ONLY the 0x14
+binding (GetConnectedPortalId=[+0x2d8], GetConnectedRegionId=[+0x2e8]) - no 0x06, same pure-0x14
+path A1/Sparta already use. **FIX = swap the entrance record to Class GridEntrance + reformat every
+entrance's 0x14 from 48 -> 60 bytes (prepend the 12-byte (2,0,1) GridEntrance prefix).** Landing
+`portal_olympianarena2` (GridExitOneWay) is already born-open - untouched (48-byte 0x14 kept).
+
+**TWO coupled halves (must deploy together):**
+- DB: `apply_svc_patches.py` `_make_portals_born_open_gridentrance` (Class/templateName/record_type
+  -> GridEntrance, drop Dynamic-only fields, keep mesh) + fail-loud `_verify_portals_born_open`.
+- MAP: `build_section_surgery.py` `GRIDENTRANCE_0x14_PREFIX` prepended to every entrance x14_payload
+  in `_normalize_spec` (flows through both inject paths -> all entrances in BOTH artifacts 60-byte).
+
+**Rebuilt (NOT deployed/committed - main session owns that + the coupled arz build):**
+- `local/Levels_merged.arc` = 688,691,849 B, md5 `a1ba5db2f00ffa067a808753a2e1eac5` (7 entrances).
+- `local/Levels_merged_TESTHUB.arc` = 688,687,885 B, md5 `96a9eb14c88e308e9f850515526c23e4` (17 entr).
+- baselines: `local/Levels_merged*.build26-baseline.arc`. DB test build: scratchpad SVC_r2_test.arz.
+- DB not restaged (the wf_30460e48-ca1 Toxeus-spawn loop also edits apply_svc_patches; the final
+  arz build picks up BOTH fixes - main session runs `build_svc_database.py` once for the deploy).
+
+**GATES (all PASS, both artifacts):** DB build 4 invariants + `_verify_portals_born_open` (exit 0);
+`gate_portal_visibility.py` (arz born-open swap) PASS; `gate_portal_openness.py` PASS (canon 7/7 +
+9 landings; TESTHUB 17/17 + 19 landings; pairing intact); `compare_gridentrance_0x14.py` = our
+entrance 0x14 is BYTE-IDENTICAL in framing to the working native Silk Road cave mouth (60B, (2,0,1)
+prefix); `gate_openness_collateral.py` + `gate_doors_hub.py` collateral = ONLY portal blobs changed
+(+12B/entrance in 0x14 only), 0 navmeshes changed, QUESTS/GROUPS/SD identical; verify_merged_bc_
+navmeshes 24/24; entrance_landing_check --check-merged PASS; gate_doors_hub placement/crosstalk/
+hubidentity/c1/c3/c4 PASS; gate_sparta_placement A-workstream PASS with 60-byte entrances.
+
+**DEPLOY (main session):** ship the freshly-built arz (via build_svc_database.py) + the two new
+maps TOGETHER (60-byte 0x14 is byte-locked to the GridEntrance class; a mismatch misaligns the
+read). Quests.arc needs NO change (bossarena.qst's OpenDynGridEntrance/ShowNpc become harmless
+RTTI-filtered no-ops). Canonical map -> Workshop; TESTHUB -> Will's local CustomMaps only.

@@ -267,6 +267,32 @@ foreach ($xpack in $dlcPacks) {
 }
 Write-Host "Created $dlcStubCount DLC stubs (blocks ~$dlcBlockedMB MB of DLC-specific content)" -ForegroundColor Green
 
+# --- Step 2e: Stage grafted render arcs (Rune Golem D5 closure) ---
+# assets/runegolem/_DRX_Meshes.arc + _DRX_Textures.arc carry the ONLY SVAERA art the
+# Rune Golem graft needs (mesh + 3 skins + glow + spawn anim + 4 skill-bar icons). They
+# are committed minimal arcs (extracted once from SVAERA's unshipped _DRX_Meshes/
+# _DRX_Textures) so the build is self-contained. The pet record's mesh + the mesh's own
+# texture refs hardcode the archive names `_DRX_Meshes` / `_DRX_Textures`, so the arcs
+# MUST keep those exact filenames. Everything else in the golem render chain resolves in
+# base AE (shader/bump/anims/party icons). Do NOT strip these.
+Write-Host ''
+Write-Host 'Staging grafted render arcs (Rune Golem)...' -ForegroundColor Yellow
+$golemAssets = Join-Path $RepoRoot 'assets\runegolem'
+$golemArcs = @('_DRX_Meshes.arc', '_DRX_Textures.arc')
+$golemStaged = 0
+foreach ($ga in $golemArcs) {
+    $src = Join-Path $golemAssets $ga
+    if (Test-Path $src) {
+        Copy-Item $src (Join-Path $workDir "Resources\$ga") -Force
+        $gz = [math]::Round((Get-Item $src).Length / 1KB, 1)
+        Write-Host "  Staged: $ga ($gz KB)"
+        $golemStaged++
+    } else {
+        Write-Host "  WARNING: missing $src (Rune Golem will render invisible)" -ForegroundColor Red
+    }
+}
+Write-Host "Staged $golemStaged Rune Golem render arc(s)" -ForegroundColor Green
+
 # --- Step 3: Levels.arc (merged: SVAERA pathfinding + SV custom map objects) ---
 $mergedLevels = Join-Path $RepoRoot 'local\Levels_merged.arc'
 $svaeraLevels = Join-Path $referenceDir 'Levels.arc'

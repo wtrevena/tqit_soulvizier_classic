@@ -146,20 +146,30 @@ sources are EXISTING records:
 
 **Two data-only ways to wire the phase (pick one at build time):**
 
-- **(A) Proxy-pool add-wave (SIMPLEST, recommended).** Hemorrheus is placed via a Proxy whose
-  `ProxyPool` (like `q_leinth_lone`'s pool) already carries `nameChampion1-3 = b_med_blooddemon_3{0,1,2}`.
-  **IMPORTANT tuning (was under-specified): setting `weightChampion1-3` is NOT enough.** DB-verified,
-  BOTH the donor pools `pools\q_leinth_lone` and `pools\q_highpriest_lone` ship
-  `championChance = 0.0, championMin = 0, championMax = 0` - so despite their `nameChampion1-3` being
-  set to blood demons, they spawn **ZERO champions by default** (the weights only pick WHICH champion,
-  never WHETHER one spawns). The new `pools\q_bloodtoxeus_lone` MUST therefore set, at minimum:
-  `championChance` > 0 (e.g. `championChance = 100.0` for a guaranteed guard add), and
-  `championMin`/`championMax` >= 1 (e.g. `championMin = 1, championMax = 2`), in addition to the
-  `weightChampion1-3` and `nameChampion1-3 = b_med_blooddemon_3{0,1,2}` values. Without those three
-  count/chance fields the blood-demon add-wave never appears. (`spawnMin`/`spawnMax` on the donor pool
-  are both 1 - that governs Hemorrheus himself, keep at 1; the adds come from the champion fields, not
-  from bumping the main spawn count.) Zero new skills; the pool spawns the adds. This mirrors
-  `q_highpriest_lone`/`q_leinth_lone`'s STRUCTURE while fixing their dormant-champion defaults.
+- **(A) Proxy-pool boss + champion escort (SIMPLEST, recommended).** Hemorrheus is placed via a Proxy
+  whose `ProxyPool` (like `q_leinth_lone`'s pool) carries `nameChampion1-3 = b_med_blooddemon_3{0,1,2}`.
+  > ⚠️ **CORRECTED 2026-07-07 (the field semantics below were BACKWARDS in the original plan and shipped
+  > a no-spawn boss).** `championChance` is NOT "the chance an add-wave appears on top of the boss." In
+  > the TQ proxy resolver, **`championChance` is the PER-SPAWN probability that a spawn slot is filled by
+  > a `nameChampionN` monster (blood demon) INSTEAD of a main-pool `nameN` monster (Hemorrheus).**
+  > Champions REPLACE main spawns; they are not additive. `championMin/Max` cap how many of the
+  > `spawnMin..spawnMax` slots become champions. So the original tuning
+  > (`spawnMin=spawnMax=1, championChance=100, championMin=1`) meant the **single** spawn slot was ALWAYS
+  > converted to a blood demon and the boss got **zero** slots -> Hemorrheus never spawned, only the
+  > blood demons did (exactly Will's TESTHUB report). DB-proof: **every one of the 30 base-game boss
+  > pools** (`bosspool_02_nessus` .. `bosspool_24_hydra`) ships `championChance = 0.1` + `spawnMax = 1`
+  > precisely so the boss (the main) always spawns; `q_bloodtoxeus_lone` was the ONLY Boss-main pool in
+  > the game set to `championChance = 100`.
+  >
+  > **CORRECT recipe (copies the shipped `xsq22_wave2_odontotyrranusandmelinoe_pool` /
+  > `xsq17_keres_escortparty_pool` "boss + guaranteed champion escort" pattern):** give the pool
+  > **`spawnMin = spawnMax = 3`, `championChance = 100.0`, `championMin = 2`, `championMax = 2`**, with
+  > `name1-3 = um_bloodtoxeus_99` and `nameChampion1-3 = b_med_blooddemon_3{0,1,2}`. The `championMax = 2`
+  > cap leaves `3 - 2 = 1` main-pool slot -> **exactly 1 Hemorrheus + exactly 2 blood-demon adds**, every
+  > spawn, on all three difficulties. (`championMax` reliably leaving `spawnMax - championMax` mains is
+  > proven by `duneraider_03_general03` and the two xsq pools above, all shipped/working encounters.) A
+  > fail-loud build invariant (`_verify_mod_spawn_proxies_eligible`, §6.4) now asserts
+  > `spawnMax - championMax >= 1` for every mod-authored spawn proxy so a crowded-out boss can never ship.
 - **(B) On-death / on-hit sprite burst (more dramatic).** Add
   `records\drxmap\pitsprites\t1_skill_pitspawner_summonlildude_02.dbr` (`Skill_SpawnPetMonster`,
   EXISTS) to Hemorrheus's `skillName*` list with an on-low-health or on-death controller
@@ -512,22 +522,35 @@ STRUCTURE** (two deliberate field overrides, called out below). Two NEW records 
 1. **NEW proxy** `records\drxmap\proxy\q_bloodtoxeus_lone.dbr` (template `Proxy.tpl`), field-shape
    from `q_leinth_lone`: `Class=Proxy`, `baseTexture=Creatures\proxyu_boss.tex` (verbatim from donor),
    `placementExtents=3.5` (verbatim), `difficultyEquationFile=records\proxies orient\difficulty_04.dbr`
-   (verbatim), `difficultyLimitsFile=records\proxies orient\limit_area002.dbr` (verbatim), `weight1=10`
-   (verbatim), `pool1=records\drxmap\proxy\pools\q_bloodtoxeus_lone.dbr`.
-   **Two deliberate overrides vs the donor (DB-verified donor values shown):** `mesh` = donor's
-   `DRX\meshes\bloodwitch_leinth.msh` -> **`Creatures\Monster\skeleton\revenantstorm.msh`** (Toxeus-
-   family preview silhouette, not Leinth); `scale` = donor's **`4.0`** -> **`2.1`** (Hemorrheus's
-   size). These two are the preview-only proxy visual (§1.3); the real spawned model is on the monster.
+   (verbatim), `weight1=10` (verbatim), `pool1=records\drxmap\proxy\pools\q_bloodtoxeus_lone.dbr`.
+   **THREE deliberate overrides vs the donor (DB-verified donor values shown):** (i) `mesh` = donor's
+   `DRX\meshes\bloodwitch_leinth.msh` -> the Athens-Toxeus rig (`Creatures\Monster\Skeleton\RevenantPoison.msh`,
+   Toxeus-family preview silhouette, not Leinth) and (ii) `scale` = donor's **`4.0`** -> **`2.1`**
+   (Hemorrheus's size) - both preview-only (§1.3; the real spawned model is on the monster); and
+   (iii) **`difficultyLimitsFile`** = donor's **`limit_area002`** -> a NEW no-cap boss limit
+   **`records\proxies orient\limit_bloodtoxeus.dbr`** (windows `N/E/L = [1 .. 110]`, cloned from
+   `records\proxies boss\herolimit_all.dbr`'s ProxyLimits.tpl shape).
+   > **Why the limit override (CORRECTED 2026-07-07):** `limit_area002` is an area-TRASH limit whose
+   > player-level windows (N[23-26] E[38-51] L[60-65]) top out BELOW Hemorrheus's `charLevel [40,68,100]`
+   > on **every** difficulty. Exceeding a limit window does NOT prevent a monster from spawning (Hades
+   > `charLevel[57,71,80]` via `bosslimit_all` max 75, Murder Bunny L99, and 120 monsters with L>75 all
+   > spawn) - it **scales the monster's effective level DOWN toward the window**. So keeping
+   > `limit_area002` would dilute the level-100 superboss to a ~65-level fight on Legendary. He is the
+   > single highest-level monster in the game (L=100), above EVERY shipped limit file's max (75), so a
+   > fresh no-cap file whose window CONTAINS [40,68,100] is required to fight him at his authored level.
+   > (This is the "boss/no-cap limits file" the working superboss precedent uses; it is a balance/level
+   > correction - the *spawn* blocker was the champion-crowd-out in item 2, not this limit.)
 2. **NEW proxy pool** `records\drxmap\proxy\pools\q_bloodtoxeus_lone.dbr` (template
-   `ProxyPool.tpl`), copied from `pools\q_leinth_lone.dbr` with `name1/2/3` = the 3 NEW
-   Hemorrheus monster variants (Section 7 table: `um_bloodtoxeus_40/68/100`) and
-   `nameChampion1-3 = b_med_blooddemon_3{0,1,2}` (the add-wave, Section 2.2A); `spawnMin=spawnMax=1`
-   (Hemorrheus himself; verbatim from donor),
+   `ProxyPool.tpl`), copied from `pools\q_leinth_lone.dbr` with `name1/2/3 = um_bloodtoxeus_99`
+   (one record, `charLevel [40,68,100]`) and `nameChampion1-3 = b_med_blooddemon_3{0,1,2}`,
    `proxyPoolEquation=records\proxies orient\proxypoolequation_02.dbr`.
-   **Champion-add tuning (MUST override the donor's dormant defaults, per §2.2A):** the donor pool ships
-   `championChance=0.0, championMin=0, championMax=0` (champions never spawn). Set
-   **`championChance=100.0, championMin=1, championMax=2`** (plus keep `weightChampion1-3=34/33/33`) so
-   the blood-demon guard actually spawns. Without these three fields the add-wave is silent.
+   **Boss + escort tuning (the FIX for the no-spawn bug, per the CORRECTED §2.2A):** set
+   **`spawnMin=spawnMax=3, championChance=100.0, championMin=2, championMax=2`** (keep
+   `weightChampion1-3=34/33/33`). This is the shipped `xsq22_wave2`/`xsq17` "boss + guaranteed champion
+   escort" recipe: the `championMax=2` cap leaves `3-2=1` main-pool slot -> **exactly 1 Hemorrheus + 2
+   blood-demon adds** every spawn, on N/E/L. (The ORIGINAL `spawnMin=spawnMax=1, championChance=100,
+   championMin=1` converted the single spawn slot to a champion 100% of the time -> the boss got 0 slots
+   and never spawned; only the blood demons did. See §2.2A for the corrected `championChance` semantics.)
 3. **NEW monster** `records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr` (+ the level
    variants) - see Section 7 for the stat targets; derive by `_ensure_record` from
    `um_toxeus_99` (the closest existing kin) then override level/HP/res: this record uses
@@ -644,8 +667,16 @@ tagSVCarmCrimsonVerdict={^r}Hemorrhage Bindings
   set-level bleed-resist must not be authored; per-piece `defensiveBleeding` is fine;
   (d) every field written on the set BONUS is one DB-verified as carried by real ItemSet records
   (the §3.1 list). A 6-line assertion script over the built `.arz` catches all four.
-- **CHAMPION-POOL GUARD:** assert `pools\q_bloodtoxeus_lone` has `championChance > 0` AND
-  `championMax >= 1` (not just `weightChampion*`), else the blood-demon add-wave is silent (§2.2A).
+- **SPAWN-ELIGIBILITY GUARD (fail-loud, `_verify_mod_spawn_proxies_eligible`; replaces the earlier
+  "CHAMPION-POOL GUARD" which was itself wrong - it asserted `championChance > 0`, the exact setting that
+  crowded the boss out):** for every mod-authored spawn proxy assert BOTH: (a) **champion-crowd-out** -
+  guaranteed main slots `= spawnMax - championMax` (when `championChance > 0`) must be **>= 1**, so the
+  boss (`name1-3`) always claims a spawn slot and is never fully replaced by `nameChampion*` adds
+  (the 2026-07-07 no-spawn root cause: `spawnMax=1, championChance=100, championMax=2 -> -1 main slots`);
+  and (b) **limit-window containment** - the main monster's `charLevel` must be `<= difficultyLimitsFile`
+  window max (and `>= min`) on **N/E/L**, so the boss is never scaled below his authored level
+  (`um_bloodtoxeus_99` [40,68,100] vs `limit_bloodtoxeus` [1..110] passes all three). Negative-tested:
+  the gate fails loud on the old `championChance=100/spawnMax=1` + `limit_area002` config with 4 problems.
 - Map: `new_secretdoor_transitionhallway` 0x05 instance count = baseline+1; injected local coord
   maps to a walkable cell (`navlib.Mesh(...).gx/gz` in `.cells`); donor `0x0b` byte-identical
   (unchanged) via `tools/verify_merged_bc_navmeshes.py`.

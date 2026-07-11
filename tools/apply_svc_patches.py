@@ -10763,6 +10763,135 @@ _OBS_GUAR_UNIQUE = r'records\xpack\item\loottables\weapons\mastertables\unique_1
 _OBS_GUAR_RELIC = r'records\xpack\item\loottables\relics\01_act4_relics.dbr'
 
 
+# ── RUNE GOLEM (SVAERA Runemaster graft; docs/SVAERA_MASTERY_COMPARISON.md §3/§5.2) ──
+# Will signed off 2026-07-10 ("yes make them"). This is the doc's deferred, D5-blocked
+# item: a durable elite Runemaster construct pet whose mesh lived only in SVAERA's
+# unshipped ~430MB _DRX_Meshes.arc. The render closure was proven CLEAN and extracted
+# into two shipped minimal arcs (assets/runegolem/_DRX_Meshes.arc = mesh + 3 skins +
+# glow + spawn anim, 6 files; _DRX_Textures.arc = 4 skill-bar icons); EVERY other art
+# ref resolves in base AE (the mesh's own shader Shaders\standardglowskinned.ssh is
+# base-scoped - NOT the XPack-scoped melinoe trap; granitegolem bump + EarthElemental
+# anims + party icons all base). Proof: tools/validate_render_chain_golem.py resolves
+# the whole pet render chain against OUR arcs only.
+# The records are a faithful snapshot of the TREE-WIRED xpack2 golem set
+# (assets/runegolem/runegolem_svaera_snapshot.json - the copy actually referenced by
+# SVAERA's _drx_runemaster_skilltree + mastery-10 UI, not the unreferenced monster-
+# skills orphan). SVAERA-only COSMETIC deps are repointed to base so NOTHING but the
+# render closure is added: the Menhir-Wall prerequisite -> vanilla menhirwall (present
+# on our base-inherited Runemaster tree at UI skill21); the custom death/summon .pfx FX
+# (in the unshipped _DRX_Effects.arc) and custom sound paks -> dropped / base stone
+# sound. Appended as a NEW Runemaster tree slot (UI skill23, grid 628,217 = directly
+# above Menhir Wall) - additive, character-safe (never renumbers an existing slot,
+# never swaps the tree pointer to SVAERA's _drx tree, so no invested points are
+# stranded). Summon cast anim = ThunderClap (covered by the G0 anim-row completion).
+_RG_SNAPSHOT = (Path(__file__).resolve().parent.parent / 'assets' / 'runegolem'
+                / 'runegolem_svaera_snapshot.json')
+_RG_SUMMON = r'records\xpack2\skills\runemaster\_drx_runegolem.dbr'
+_RG_UI = r'records\xpack2\ui\skills\mastery 10\skill23.dbr'
+_RG_MENHIR_BASE = r'records\xpack2\skills\runemaster\menhirwall.dbr'   # vanilla, on our tree
+_RG_STONE_SOUND = r'Records\Sounds\SoundPak\Armor\StoneImpactPak.dbr'  # base (pet impactSound already uses it)
+
+
+def _create_rune_golem(db, tags):
+    """Graft the SVAERA Rune Golem onto our vanilla Runemaster tree from a committed
+    faithful snapshot: 35 records (summon skill + 20-tier pet ladder + 7 pet-skills +
+    6 stat passives + AI controller) + 1 appended UI tree slot + 6 Text tags. Render
+    art ships in assets/runegolem/*.arc (staged into Resources by bootstrap/deploy);
+    the D5 render closure is proven by tools/validate_render_chain_golem.py. Cosmetic
+    SVAERA-only deps are repointed/dropped to base (menhir prereq -> vanilla; FX/sounds
+    -> base) so only the render closure is a new asset. Additive + character-safe."""
+    import json
+    S, I = DATA_TYPE_STRING, DATA_TYPE_INT
+    if not _RG_SNAPSHOT.exists():
+        print(f"  RUNE GOLEM: WARNING snapshot missing ({_RG_SNAPSHOT}); group skipped")
+        return
+    snap = json.loads(_RG_SNAPSHOT.read_text(encoding='utf-8'))
+
+    def _put(path, rectype, fields, drop=(), repoint=None):
+        _ensure_record(db, path, rectype)
+        for name, dt, vals in fields:
+            if name in drop:
+                continue
+            v = list(repoint[name]) if (repoint and name in repoint) else list(vals)
+            db.set_field(path, name, v, dt)
+        db._modified.add(path)
+
+    created = 0
+    # 1) non-pet records (summon skill, 7 pet-skills, 6 passives, AI controller)
+    for path, rec in snap['records'].items():
+        drop, repoint = (), None
+        if path.lower() == _RG_SUMMON.lower():
+            # keep the Menhir-Wall prereq but point it at OUR vanilla menhirwall
+            repoint = {'skillDependancy': [_RG_MENHIR_BASE]}
+        if path.lower().endswith('_drx_runegolem_petskill_catalystbuff.dbr'):
+            # drop the SVAERA-only catalyst aura FX (in the unshipped _DRX_Effects.arc);
+            # the passive mana buff still applies, just without the custom sparkle
+            drop = ('skillCastAuraName', 'targetFxPakName')
+        _put(path, rec['type'], rec['fields'], drop=drop, repoint=repoint)
+        created += 1
+
+    # 2) 20-tier pet ladder = pet_base (full) overlaid with per-tier deltas.
+    base = snap['pet_base']
+    varying = set(snap['pet_varying_fields'])
+    pet_drop = ('deathEffect', 'genericSound1')       # SVAERA-only .pfx FX + summon soundpak
+    pet_repoint = {'deathSound1': [_RG_STONE_SOUND]}   # -> base stone thud (dust crumble stays)
+    for idx, pet_path in enumerate(snap['pet_paths']):
+        _ensure_record(db, pet_path, base['type'])
+        for name, dt, vals in base['fields']:
+            if name in varying or name in pet_drop:
+                continue
+            v = list(pet_repoint[name]) if name in pet_repoint else list(vals)
+            db.set_field(pet_path, name, v, dt)
+        for name, dv in snap['pet_deltas'][idx].items():
+            if dv is None or name in pet_drop:          # None = field absent in this tier
+                continue
+            dt, vals = dv
+            v = list(pet_repoint[name]) if name in pet_repoint else list(vals)
+            db.set_field(pet_path, name, v, dt)
+        db._modified.add(pet_path)
+        created += 1
+
+    # 3) appended UI tree slot (clone-shape of base skill21/MenhirWall; grid 628,217 =
+    #    one row above Menhir Wall). Base ships skill01..22 contiguous -> skill23 is the
+    #    next enumerated slot; UI records store an EMPTY record-type header.
+    _ensure_record(db, _RG_UI, '')
+    for name, dt, vals in (
+        ('templateName', S, [r'database\Templates\InGameUI\SkillButton.tpl']),
+        ('FileDescription', S, ['Rune Golem']),
+        ('bitmapNameDown', S, [r'InGameUI\SkillButtonBorderDown01.tex']),
+        ('bitmapNameInFocus', S, [r'InGameUI\SkillButtonBorderOver01.tex']),
+        ('bitmapNameUp', S, [r'InGameUI\SkillButtonBorder01.tex']),
+        ('bitmapPositionX', I, [628]),
+        ('bitmapPositionY', I, [217]),
+        ('isCircular', I, [0]),
+        ('skillName', S, [_RG_SUMMON]),
+        ('skillOffsetX', I, [4]),
+        ('skillOffsetY', I, [4]),
+        ('soundNameDown', S, [r'Records\Sounds\SoundPak\UI\AddSkillPointPak.dbr']),
+    ):
+        db.set_field(_RG_UI, name, vals, dt)
+    db._modified.add(_RG_UI)
+    created += 1
+
+    # 4) Text tags (6 new golem strings; the menhir-bolt clause is trimmed since our
+    #    vanilla Menhir Wall lacks SVAERA's catalyst-bolt synergy).
+    tags['x2tagNewSkillRunes001'] = 'Runic Golem'
+    tags['x2tagNewSkillRunesDescription001'] = (
+        'Call for a Runic Golem with a special affinity for energy. Two Golems can be '
+        'summoned at higher levels.{^n}{^y}Catalyst: the Golem improves the Energy of '
+        'nearby allies.')
+    tags['x2tagNewPetRunes001'] = 'Runic Golem'
+    tags['x2tagNewSkillRunesPet001'] = 'Catalyst Aura'
+    tags['x2tagNewSkillRunesPetDescription001'] = (
+        'Grants energy and reduces energy reservations from aura skills.')
+    tags['x2tagNewSkillRunesPet002'] = 'Cleave'
+
+    print(f"  Rune Golem: {created} records (summon + 20-tier pet ladder + 7 pet-skills "
+          f"+ 6 passives + AI controller + UI slot23); render closure in "
+          f"assets/runegolem/_DRX_Meshes.arc + _DRX_Textures.arc; menhir prereq -> "
+          f"vanilla, cosmetic FX/sounds -> base; 6 tags")
+
+
 def _create_obsidian_roulette(db, tags):
     """Build the whole N6 obsidian roulette DB side in dependency order:
     guardians (with kits + ondeath) -> Voranthys summon pet+skill -> warband pool
@@ -12243,6 +12372,16 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # lane can inject the placements (recommended host tombobs02).
     print("\n=== BROODMOTHER NEST: apex wyrm set-piece ===")
     _create_broodmother_nest(db, tags)
+
+    # RUNE GOLEM (SVAERA Runemaster graft; docs/SVAERA_MASTERY_COMPARISON.md). The
+    # doc's deferred D5-blocked item: a durable elite construct pet grafted onto our
+    # vanilla Runemaster tree from a committed faithful snapshot, its render closure
+    # shipped in assets/runegolem/*.arc. Independent of the boss/soul machinery (not a
+    # soul, not a boss), so it neither trips nor needs the clone-shape / soul gates; it
+    # IS covered by validate_render_chain_golem + validate_player_skill_anims (its
+    # ThunderClap summon anim rides the G0 anim-row completion).
+    print("\n=== RUNE GOLEM: Runemaster construct pet (SVAERA graft) ===")
+    _create_rune_golem(db, tags)
 
     # GROUP F (build32): N6 Obsidian Halls treasure roulette. After the groups
     # (guardians are legit Bosses, so the drop forcer keeping their souls at 100%
