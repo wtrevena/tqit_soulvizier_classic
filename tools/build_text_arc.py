@@ -85,6 +85,15 @@ TEXT_FIX_TAGS = {
     'tagAbomDW': '{^G}Sileni - Carver',
     'tagAbomSpear': '{^G}Sileni - Impaler',
     'tagAbomBrute': '{^G}Sileni - Butcher',
+    # F7b (build36 fix wave): the grafted Earth Rupture skill is Staff-OR-Bow
+    # (lane B graft), but its 0.98i tooltip (tagRuptureDESC in xuniqueequipment.txt)
+    # reads "^y(Staff Only)". Overriding it here (single-definition; SV emission
+    # skips _FIX_BLOCK_TAGS keys, so no duplicate-tag-gate trip - the exact reason
+    # lane B could NOT fix it via the uber_soul_tags data path) corrects the
+    # weapon restriction to match the skill.
+    'tagRuptureDESC': ("Connects the player's tumultuous earth energies to their "
+                       "weapon, causing projectiles to explode on impact. "
+                       "^y(Staff or Bow)"),
 }
 
 # The union skip-set: any key in here is emitted ONLY by the fix block.

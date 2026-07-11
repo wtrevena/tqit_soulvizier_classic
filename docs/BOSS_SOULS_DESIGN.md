@@ -892,7 +892,7 @@ Same completion template; grant kept, stat block deepened. Key ones (each keyed 
 | Stormbird Mormo (`tagNewHero316`, carrionbird) | (stormwisp aug only) -> **ADD** `ringoflightning` proc | lightning (etherealshock/ternion) + dodge (his dodge); Dex/Int |
 | Permean (`tagNewHero236`, dragonlich) | permean_extinction (KEEP) | phys+fire (sandspire/breath) + slow; Str; pet-augment already good |
 | Kaublasia (`tagNewHero179`, gorgon) | (bow+fire augs only) -> **ADD** `firefragmentnova` or `duneraider`-style flame proc | fire + phys; Dex/DA (its current bow/fire theme); +`defensiveFire` |
-| Phagia (`tagNewHero182`, human) | summon_phagia (KEEP - iconic) | pet-focused; her maenad sorcery small lightning line; Int (note: also has a `maenadsorceress_soul` variant) |
+| Meritamen the Shadowcaller (`tagNewHero182`, sandspirit `us_meritamen_34`) | summon_meritamen (build36 F2 fix - was mis-wired to `summon_phagia` -> a Phagia body; `tagNewHero182` resolves to "Meritamen the Shadowcaller", NOT "Phagia") | summons Meritamen with his full kit incl. the friendly `shadowstalker_summon3` "Shadowcaller". The REAL Phagia is `um_phagia_44` -> `maenadsorceress_soul` (separate, untouched). |
 | Uber Limos (`tagNewHero307`, limos) | barmanu_blizzard (KEEP) | cold + freeze (glacial assault/chilling air) + phys; Str/Int; big `defensiveCold` |
 | Syrinx (`tagNewHero317`, naiad) | syrinx_chainleech (KEEP) | lightning/void + %life (void nova) + chain; Dex/Int; nymph-summon augment good |
 | Wheedletongue (`tagNewHero321`, ratman) | (envenom+calc augs only) -> **ADD** `arachne_venomspray` or `poisonorbs` proc | poison + phys (throwing knife/takedown) + deathchill; Dex |
