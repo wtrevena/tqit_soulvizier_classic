@@ -59,16 +59,24 @@
 >   F2 soul-summon-identity (tantalus/mnemophage summons match their dropper mesh), F6 naming (4 hand-
 >   designed souls whitelisted; kravmoloch/dorus follow the standard). Donor-existence probe
 >   (`tools/debug/probe_build36_content_donors.py`) GREEN for every content donor.
-> **PRE-EXISTING FIX-WAVE BLOCKERS (NOT the content wave; the fix wave is mid-vet, its NEW gates fail on
->   pre-existing data):** the full arz build currently trips three gates on records OUTSIDE this wave -
->   (1) F1 cross-wire on `um_legion_28a/28b` -> `legion_soul_n (amgoz-qosmio's conflicted copy)` (an
->   upstream garbage-duplicate soul); (2) F2 identity on `voranthys_soul` (the Obsidian-roulette
->   `_OBS_VORANTHYS_PET_SRC = um_sepulchralwyrm_31` summon vs its DragonLich dropper body, apply_svc_patches
->   :12179); (3) soul-activation on `steamcrawler_soul`/`onyxspine_soul` (itemSkillLevel comes out 0 - a
->   NON-DETERMINISTIC pipeline flake: F1 passes/fails run-to-run even with PYTHONHASHSEED=0, and these
->   souls are level 1/2 in the shipped work arz). All three are pre-existing and belong to the fix wave;
->   the content wave's own gates pass with them bypassed (`scratchpad/build_c_harness.py`). Coupled ship
->   set: arz + Text. NOT DEPLOYED (no map/quests/steam; map placements land in the coupled map wave).
+> **GATES (FULL REAL BUILD, GREEN after merging the fix wave `5e2e30b`):** the fix-wave round-1 merge
+>   fixed the three blockers that were flagged pre-merge (F1 conflicted-copy `legion_soul` skip; F2
+>   `_SUMMON_IDENTITY_ALLOW` voranthys; activation onyxspine/steamcrawler). Full arz build exit 0 ("Done."):
+>   F1 cross-wire OK; spawn-eligibility OK (25 mod-authored proxies incl. the 4 new boss + 4 yard);
+>   soul-leak 0 (every form-1/core/escort clone has its inherited Finger2 soul cleared); soul-augment OK;
+>   soul item-skill activation OK (1400 souls; Kravmoloch soul made stat+augment to clear the F3 Ground-
+>   Smash roster gate); F3 diversity OK; F2 identity OK (15 summon families incl. tantalus/mnemophage);
+>   F6 naming OK (63 OURS-path souls + 2158 SV auto-whitelisted; the 6 hand-designed evocative souls in
+>   `_HAND_DESIGNED_SOUL_TAGS`); boss-kit clone-shape OK (12 pairs); MP 44 eqs '/'-free; Occult/Hunting
+>   golden PASS. **Text.arc built + validate_tags PASS** (250 referenced mod tags + 266 authoritative all
+>   present). **validate_render_chain PASS** (every new skin/FX/mesh resolves; 28 upstream WARN). **Contracts
+>   souls/summons/resources: 0 P0 / 0 ADDED P1** (souls 0/0, summons 0/0, resources 0 P0 + the SAME 1
+>   pre-existing P1 the shipped work arz carries - `anm_dreamcopy`, 5 unresolved dream-pet anim clips, a
+>   pre-existing mod-record bug NOT this wave, verified identical on the shipped arz). The 3 authored
+>   resource P1s my clones briefly added (inherited base-only refs) were eliminated: Charon-escort
+>   `skillName7` blanked, Dorus coral tsunami uses the raw upstream skill, Broodmother coldbreath dropped
+>   (the crescendo keeps its frostnova + last-brood). Coupled ship set: arz + Text.arc. NOT DEPLOYED
+>   (no map/quests/steam; the C1-C4 map placements land in the coupled map wave).
 
 
 > 🛠️ **BUILD36 FIX WAVE - ROUND 1 (2026-07-11, `feat/build36-fix-wave`, branched off main `31a0bce`).**
