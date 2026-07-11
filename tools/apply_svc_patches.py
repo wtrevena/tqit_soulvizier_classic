@@ -8516,13 +8516,30 @@ _LYIA_RESIDUE = ('envenomweapon', 'heartofoak', 'regrowth_lyia', "nature'swrath"
                  'maenadsummon_attack_default')
 
 
+# Lazy normalized-name cache for _skill_class_of (build36 A1). The gates +
+# relocation sweep resolve a Class for ~200 pets x ~16 slots; the bare
+# _resolve_record fallback is an O(50k) linear scan per MISS, so cache the
+# lowercase-name -> key map and rebuild it only when the record COUNT changes
+# (records are only ADDED during the build, never removed -> a count change is
+# the sole way the name set grows). Output-identical to _resolve_record.
+_SKILL_NAME_CACHE = {'count': -1, 'map': {}}
+
+
 def _skill_class_of(db, ref):
     """Resolve a skill ref's Class ('Skill_SpawnPet' / 'Skill_SpawnPetMonster' /
-    ...); None if the ref does not resolve."""
-    r = _resolve_record(db, str(ref))
-    if not r:
+    ...); None if the ref does not resolve. Cached name-map (see above): the
+    validity check is O(1) (record-table SIZE), so a stable record set (the gate
+    phase) gives O(1) lookups instead of _resolve_record's O(50k) scan-on-miss."""
+    raw = getattr(db, '_raw_records', None)
+    n = len(raw) if raw is not None else None
+    if n is None or _SKILL_NAME_CACHE['count'] != n:
+        src = raw if raw is not None else db.record_names()
+        _SKILL_NAME_CACHE['map'] = {str(x).replace('/', '\\').lower(): x for x in src}
+        _SKILL_NAME_CACHE['count'] = n if n is not None else -1
+    key = _SKILL_NAME_CACHE['map'].get(str(ref).replace('/', '\\').lower())
+    if not key:
         return None
-    c = db.get_field_value(r, 'Class')
+    c = db.get_field_value(key, 'Class')
     return c[0] if isinstance(c, list) else c
 
 
