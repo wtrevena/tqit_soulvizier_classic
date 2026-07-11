@@ -1,4 +1,17 @@
-# build36 MAP WAVE report (rounds 1-4)
+# build36 MAP WAVE report (rounds 1-5)
+
+> **ROUND 5 (vet fixes) applied 2026-07-11 - see the `## ROUND 5` section below.** HEADLINE: the R4
+> vet returned ONE actionable map-engineering item (the rest are a Will product decision + a no-op +
+> an expected cross-lane state). FIXED it: the M3 Warden Helos NPC was standing NEAR A WALL at
+> (64.5,189.5) - clr 64/51/42% (N/E/L) once the R4 frame fix exposed the true reading. Moved it to the
+> vet's verified-clean spot **local (72.0,0.8,184.0)** = clr 100% in ALL 3 tilesets, on-mesh d=0.14u,
+> comp#1, 7.1u from the Almyros NPC (clean click-separation). Independently re-surveyed on the REBUILT
+> TESTHUB. This is the ONLY R4->R5 map-artifact delta: **canonical `Levels_merged.arc` is BYTE-IDENTICAL
+> to R4** (md5 `5825c516...`, co-op-safe, unchanged), and the TESTHUB variant differs from R4 in EXACTLY
+> ONE blob (StartingFarmland06D 0x05, warden coord moved, count unchanged 997->997, 0x0b identical).
+> M1 (yard >=60u) stays a WILL PRODUCT DECISION (32.25u/10 groups is the feasible HV01 ceiling), M2
+> (blue-box) stays a correct no-op, and the 4 MAP-REF-1 P1 stay the expected DB-lane convergence state.
+> Full gate battery re-run on both rebuilt variants (all PASS). No boss/yard coord changed.
 
 > **ROUND 4 (vet fixes) applied 2026-07-11 - see the `## ROUND 4` section below.** HEADLINE: root-caused
 > the recurring (3-round) survey-narrative failure. `tools/debug/survey_uberboss_spots.py` compared
@@ -117,11 +130,12 @@ broodmother into tombobs01/02 v0e; maze03 v0f).
 Map-side of the build36 warden split (root cause: the single `svc_testhub_master` was placed in TWO
 levels, so `Action_BoatDialog` bound its menu to one entity and the second placement went mute).
 `build_hub_extra_specs`:
-- Helos host (`startingfarmland06d`): `svc_testhub_master_helos.dbr` at local **(64.5, 0.8, 189.5)**
-  (NUDGED ~12u WEST of the canonical Almyros NPC at (76.5,0.6,189.5) for H5 click-occlusion insurance;
-  the code + the gate row have always used 64.5 - this M3 body text formerly said the REJECTED 86.0
-  draft, corrected in R3). Re-surveyed on the built TESTHUB: FINAL (64.5) reads d=0.00u/clr=100% in all
-  3 tilesets (comp#1); the abandoned 86.0 draft read clr 10-17% in a mesh gap.
+- Helos host (`startingfarmland06d`): `svc_testhub_master_helos.dbr` at local **(72.0, 0.8, 184.0)**
+  (**R5 MOVE**, was (64.5,0.8,189.5)). SW of the canonical Almyros NPC at (76.5,0.6,189.5), 7.1u away -
+  clear click-separation (H5 insurance; the record SPLIT is the real muteness fix). Re-surveyed on the
+  REBUILT TESTHUB with the R4-corrected frame: (72.0,184.0) reads d=0.14u/clr=**100%** in ALL 3 tilesets,
+  comp#1. The prior (64.5,189.5) read on-mesh but NEAR A WALL - clr **64/51/42%** (N/E/L) once the R4
+  frame bug was fixed (the R3 "100%" was the raw-frame artifact); the abandoned 86.0 draft read 10-17%.
 - Blood-cave mouth (`random09a` SV swap blob, applied via the swap path): `svc_testhub_master_cave.dbr`
   at local (32.0, 1.0, 45.0) (coords unchanged).
 - STOPPED placing the shared `svc_testhub_master` (constant kept for reference).
@@ -558,3 +572,111 @@ blob-diff is exactly the 4 boss instances).
    paths (verified verbatim), so parity is achievable.
 9. **(NEW) Warden Helos near-wall** - functional but 64% clr; verified-clean alt (72,184)=100% if Will
    wants a cleaner stand. TESTHUB-only.
+
+## ROUND 5 (vet fixes) - 2026-07-11
+
+The R4 vet returned 4 NO_GO issues + 7 curiosity findings. Exactly ONE is a map-engineering item the
+implementer can fix by re-running; the other three are a Will product decision (M1), a correct no-op
+(M2), and an expected cross-lane state (the 4 MAP-REF-1). All 7 curiosity findings independently
+CONFIRM R4's work (the frame-bug root cause, the 5 byte-exact on-mesh boss placements, the co-op-safe
+canonical map, the door-scope fix). Round 5 = fix the one item + re-verify everything on rebuilt maps.
+
+### THE ONE FIX: M3 Warden Helos near-wall -> verified-clean spot (build_section_surgery.py)
+- **Root of the flag:** the R4 frame-bug fix (the fixed 16u 0x05-vs-0x0b offset) exposed that the R3
+  "100% clr" reading for the Helos warden at (64.5,189.5) was a RAW-frame artifact. In the corrected
+  frame it reads on-mesh (d<=0.28u) but NEAR A WALL: clr **64/51/42%** (N/E/L) at a 3.0u disc. This is
+  cosmetic + FUNCTIONAL for a single portal-master test NPC (it spawns no champion ring), but the vet
+  offered a verified-clean alternative and the round brief is "fix all," so it is fixed.
+- **Fix:** moved `svc_testhub_master_helos.dbr` from local (64.5,0.8,189.5) to **(72.0,0.8,184.0)**
+  in `build_hub_extra_specs()[HELOS_HOST_KEY]`. I FIRST re-surveyed 6 candidate points on the built
+  StartingFarmland06D navmesh (the level's 0x0b is byte-identical between canonical + TESTHUB), then
+  picked the vet's spot: (72.0,184.0) reads **d=0.14u / clr 100% in all 3 tilesets, comp#1** (the main
+  reachable component), 7.1u from the canonical Almyros NPC (76.5,189.5) - well past the ~3u
+  click-occlusion overlap that motivated the H5 insurance, so both NPCs stay individually clickable.
+  Re-verified on the REBUILT TESTHUB (`survey_uberboss_spots.py --warden`): FINAL (72,184) = OK 100%,
+  the reverted (64.5,189.5) = CHECK 64/51/42%, Almyros ref = OK 100%.
+- Also updated the survey tool's `WARDEN_SPOTS` FINAL to (72,184) so `--warden` gates the shipped spot.
+- **This is the ONLY R4->R5 map-artifact change.** No boss coord, no yard coord, no navmesh touched.
+
+### DISPOSITION of the 4 R4 vet NO_GO issues
+1. **(P2, sole blocker) M1 yard >=60u** - UNCHANGED at 32.25u / 10 groups; **WILL PRODUCT DECISION**
+   (the vet itself calls it "not a solvable map-engineering task / not re-implementable"). Independently
+   re-confirmed on the rebuilt TESTHUB: 10 proxies, min pairwise 32.25u (between `q_yard_obs_ilsevar`
+   and `q_yard_wyrm`). The layout is at the HV01 feasible CEILING - the three tightest pairs are all
+   ~32u (ilsevar-wyrm 32.25, marauders-vashkarr 32.3, dorus-marauders 32.56), i.e. the winding valley
+   is evenly packed; 60u for 10 groups needs ~540u of usable valley length (HV01 has ~300u) or ~31,000
+   sq-units of floor (HV01 has ~4,470) - a ~7x shortfall. Options for Will remain (a) **accept 32.25u
+   [RECOMMENDED]** - a ~5x de-crowd from build35's 6.1u that resolves "pets on top of each other"; (b)
+   cut to ~4-6 groups so 60u fits (loses coverage of pets Will wants to test); (c) relocate the yard to
+   a larger FLAT host (changes his in-HV01 workflow). I did NOT unilaterally cut groups or relocate -
+   those trade away yard purpose/workflow and are Will's call. The new-pet half is DONE (q_yard_dorus
+   placed + present in arz). TESTHUB-only, ZERO ship impact. Escalated, not churned.
+2. **(P3) Warden Helos near-wall** - **FIXED** (above). Now 100% clr all tilesets, comp#1.
+3. **(P3/needs-Will) M2 blue-box** - correct NO-OP (unchanged). Re-confirmed: no distinct debug/
+   placeholder blue-box entity exists in map scope. The only "blue" artifacts are the B-PORTAL-1 flat
+   blue portal PANELS (content doors) = the B-PORTAL lane's give-them-mesh/FX scope, NOT removal
+   (deleting them breaks Garden/Secret/Sparta/Uber access). The retired GridEntrance hub panels are
+   already absent (build34+). Needs Will to point at a specific in-game artifact. See OPEN ITEM #2.
+4. **(INFO) 4 MAP-REF-1 P1 in contracts_map** - EXPECTED cross-lane state, NOT a map defect. Byte-
+   verified in the frozen arz: `q_tantalus/q_goldenbough/q_mnemophage/q_ephialtes_lone` are ABSENT
+   (the DB lane merges them in convergence), while `q_dorus_lone` + all 10 yard proxies + BOTH
+   warden-split records (`svc_testhub_master_helos/cave`) + `svc_testhub_return` RESOLVE. The map
+   placed all 5 boss proxies at the EXACT spec record paths + spec coords, so parity is achievable.
+   CONVERGENCE MUST re-run contracts_map (clean `__pycache__` / `py -B`, frozen arz) after the DB lane
+   merges those 4 records. See OPEN ITEM #8.
+
+### DISPOSITION of the R4 curiosity findings (all CONFIRM R4; no action beyond re-verify)
+- **Frame-bug root cause correct + independently reproduced** (navlib OFF=(16,16) uniform; M8 exit
+  anchor airtight) -> the R4 spec-primary reverts are correct. Re-verified: all 5 boss spec-primaries
+  on-mesh comp#1 100% on the rebuilt map. No action.
+- **All 5 boss placements byte-exact spec-primary + on-mesh 100%** -> re-verified on the rebuilt
+  canonical (M4 d0.14 / M5 d0.10 / M6 forecourt d0.00 / M7 d0.14 / M8 d0.00, all 100% N/E/L comp#1;
+  M6 summit 82% Leg CHECK as designed). No action.
+- **Canonical map co-op-safe + regression-free** -> re-proven: canonical R5 is BYTE-IDENTICAL to R4
+  (md5 5825c516); vs build35 it differs in EXACTLY the 5 boss 0x05 sections, every 0x0b byte-identical,
+  no TESTHUB leak. No action.
+- **contracts_map MAP-DOOR-1 fix correct** -> re-verified 0 MAP-DOOR-1 on both variants (py -B, purged
+  pyc); `_negtest_map` 25/25 incl. the door scope-guard + REF-1 non-SV guard. No action.
+- **M7 task-brief coord is a copy-paste typo** -> the shipped M7 uses the real spec primary (43,71). No action.
+- **M6 forecourt-over-summit correct** -> summit 82% Leg, forecourt 100%. Forecourt shipped. No action.
+- **M1 geometric infeasibility** -> confirmed (see NO_GO #1). No action.
+- **Apex bosses on the mainline campaign path** -> one-line Will confirm (OPEN ITEM #7); placement correct per spec either way.
+
+### R5 GATE BATTERY (both variants rebuilt from the SVAERA base; canonical 1m49s, TESTHUB 1m54s)
+Canonical `local/Levels_merged.arc` = 688,690,453 B, md5 **`5825c516c666c442d14f621d0136ef64`** (==R4).
+TESTHUB `local/Levels_merged_TESTHUB.arc` = 688,689,522 B, md5 `458c81d730566f135b834f014c77429e`.
+Frozen arz for the deterministic contracts run: `local/build36_map_R5_frozen.arz` (md5 `07de3349...`).
+
+| Gate | Result |
+|---|---|
+| Build validity (both variants) | **PASS** 2282 levels, 0 bad offsets / 0 bad magic / 0 zero ints |
+| Canonical R5 == R4 (byte-compare) | **PASS** md5 `5825c516...`, `cmp` byte-identical -> warden change is TESTHUB-only + build deterministic + canonical co-op-safe |
+| verify_merged_bc_navmeshes (canonical) | **PASS 24/24** real navmeshes, 0x0a stripped |
+| seam_lattice_check --gate (canonical) | **PASS** 24 aligned seams, 0 misaligned |
+| entrance_landing_check --check-merged | **PASS** DONOR + MERGED both 508 cells, median Y=19.00, dY +0.00u |
+| contracts_map (canonical, frozen arz, py -B) | **7 viol / 0 P0 / 4 P1 (the expected MAP-REF-1) / 3 P2; 0 MAP-DOOR-1** (== R4) |
+| contracts_map (TESTHUB, frozen arz, py -B) | **identical** 7 viol / 0 P0 / 4 P1 / 3 P2; 0 MAP-DOOR-1 (warden + yard records resolve -> no extra REF) |
+| _negtest_map.py | **PASS 25/25** (incl. door scope-guard + REF-1 non-SV guard) |
+| Boss placement survey (canonical, fixed frame, 3 tilesets) | **PASS** M4 100/100/100 · M5 100/100/100 · M6 forecourt 100/100/100 · M7 100/100/100 · M8 100/100/100 (all d<=0.14u comp#1); M6 summit 92/91/82 CHECK as designed |
+| Warden survey (TESTHUB, fixed frame) | **PASS** FINAL (72,184) d=0.14/clr 100% all 3 tilesets comp#1; reverted (64.5,189.5) CHECK 64/51/42% |
+| Yard count/spacing (TESTHUB) | **10 proxies, min pairwise 32.25u** (unchanged; all flags=0) |
+| Canonical blob-diff vs build35 | **PASS** EXACTLY 5 blobs (the 5 boss hosts), each 0x05 +1, EVERY 0x0b byte-identical, 0 added/removed |
+| TESTHUB blob-diff vs build35-TESTHUB | **PASS** EXACTLY 8 blobs (5 boss + HV01 yard 231->232 + StartingFarmland06D warden 997->997 + Random09A cave-warden 108->108), all 0x0b byte-identical |
+| TESTHUB R5 vs R4 blob-diff (surgical) | **PASS** EXACTLY 1 blob differs: StartingFarmland06D, ONLY 0x05, count 997->997 (warden moved not added), 0x0b IDENTICAL |
+| arz record parity (frozen arz) | warden-split + all 10 yard + q_dorus_lone RESOLVE; 4 boss proxies ABSENT (the expected MAP-REF-1) |
+
+The 4 MAP-REF-1 P1 are the ONLY blocking violations and are the intended "placement inert until the DB
+lane authors the record" state (convergence re-checks after those 4 boss records merge). Everything a
+map-lane implementer can gate is GREEN; the canonical shipping map is clean + deploy-ready.
+
+### OPEN ITEMS (R5 delta)
+1. **M1 yard >=60u = WILL PRODUCT DECISION** (accept 32.25u [recommended] / fewer groups / relocate).
+   Geometrically infeasible for 10 groups in HV01; feasible ceiling ~32u; ~5x de-crowd delivered.
+   TESTHUB-only, no ship impact. The new-pet half (q_yard_dorus) is DONE.
+2. **M2 blue-box** - Will to identify a specific in-game artifact (no map-scope removal target exists).
+3. **M6 Charon summit A/B** - optional in-game A/B (summit 82% Leg vs forecourt 100%, both comp#1).
+7. **Apex bosses on the mainline path** - one-line Will confirm (placement correct per each spec either way).
+8. **Convergence delta-vet MUST re-run contracts_map** (clean `__pycache__`, frozen arz) after the DB
+   lane merges q_tantalus/q_goldenbough/q_mnemophage/q_ephialtes_lone, to confirm placement<->record-
+   path parity. Map lane placed all proxies at the EXACT spec paths (verified verbatim).
+9. **Warden Helos near-wall** - **CLOSED (FIXED)**. Now (72,184) = 100% clr all tilesets, comp#1.

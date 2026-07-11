@@ -2151,13 +2151,16 @@ def build_hub_extra_specs():
             (Q_YARD_WYRM_DBR,          55.0,  17.6, 157.0),   # D horde  clr@2.5=100%
         ],
         # -- PORTAL RIG: 2 HUB masters (build36 warden split: each a distinct, singly-placed record) --
-        # Helos plaza: placed 12u W of canonical Almyros (76.5,0.6,189.5) at local (64.5,0.8,189.5)
-        # as H5 click-occlusion insurance. RE-SURVEYED on the built map (survey_uberboss_spots.py
-        # --warden): the prior draft's 86.0 spot landed in a mesh gap (clr@3.0 only 10-17% - it would
-        # have spawned the warden half-in-a-wall); this spot reads clr@3.0=100% on-mesh in all 3
-        # tilesets, same Z-row as Almyros, 12.0u away. Points at the split ..._helos record.
+        # Helos plaza: placed at local (72.0,0.8,184.0), SW of the canonical Almyros NPC
+        # (76.5,0.6,189.5), 7.1u away - clear click-separation for H5 insurance (the record split is
+        # the REAL muteness fix; the coord only needs both NPCs individually clickable).
+        # R5 MOVE (was (64.5,0.8,189.5)): once the survey FRAME BUG (a fixed 16u 0x05-vs-0x0b offset)
+        # was corrected, (64.5,189.5) read on-mesh but NEAR A WALL - clr 64/51/42% (N/E/L) at a 3.0u
+        # disc (the R3 "100%" was the raw-frame artifact). RE-SURVEYED on the built map with the
+        # corrected-frame tool: (72.0,184.0) reads d=0.14u / clr 100% in ALL 3 tilesets, comp#1 (the
+        # main reachable component). Points at the split ..._helos record. TESTHUB-only.
         HELOS_HOST_KEY: [
-            (SVC_TESTHUB_MASTER_HELOS_DBR, 64.5, 0.8, 189.5),
+            (SVC_TESTHUB_MASTER_HELOS_DBR, 72.0, 0.8, 184.0),
         ],
         # Blood-cave mouth (random09a SV swap blob): the spec's cave-mouth approach band; world
         # (6011,19,3288); comp 0 (same as the cave-mouth entry corridor AND the return landing at
