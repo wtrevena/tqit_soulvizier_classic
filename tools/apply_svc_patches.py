@@ -13636,10 +13636,17 @@ def _verify_mod_spawn_proxies_eligible(db):
 # "{^F}Soul of X" names (Will's "evocative soul names STAY" ruling) instead of
 # the fix-wave "{^F}<Monster> Soul" standard. Consulted by _verify_soul_naming.
 _HAND_DESIGNED_SOUL_TAGS = frozenset({
+    # build36 content wave hand-designed uber-boss souls.
     'tagSVCSoulTantalus',    # {^F}Soul of the Insatiable
     'tagSVCSoulFerryman',    # {^F}Soul of the Unferried
     'tagSVCSoulMnemophage',  # {^F}Soul of the Mnemophage
     'tagSVCSoulWakingDread', # {^F}Soul of the Waking Dread
+    # Pre-existing hand-designed evocative souls the fix-wave _SOUL_NAME_STANDARD
+    # rename table missed (they are deliberate "{^F}Soul of X" marquee names, like
+    # the uber souls, not auto-generated "{^F}<Monster> Soul" commons). Registered
+    # here so the provenance gate keeps their evocative names (Will's ruling).
+    'tagSVCSoulFrost',       # {^F}Soul of Frost
+    'tagSVCSoulBloodShaman', # {^F}Soul of the Blood Shaman
 })
 
 # Shared donors (all DB-verified present, probe_build36_content_donors.py).
