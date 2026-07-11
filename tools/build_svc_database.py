@@ -2598,10 +2598,12 @@ def fix_soul_bitmaps(db: ArzDatabase):
 #    doppelganger.tpl clone of the player mesh (which we ship) and its only _DRX
 #    refs are 6 fallback .anm run-fix clips (engine falls back to base cleanly).
 #  - TAGS: the 8 base-Atlantis (x3tag*) display tags resolve from the engine's
-#    own Text at runtime (no action). The 12 SV-authored tags (Slam/Fissure/
-#    Rupture/Burning Bolts/Flare/Frost Nova) are authored into Text.arc via the
-#    DATA PATH (uber_soul_tags.txt, read by build_text_arc.py) - no edit to the
-#    text pipeline. validate_tags then sees them mod-owned AND defined -> PASS.
+#    own Text at runtime (no action). The 8 genuinely-new SV-authored tags (Slam/
+#    Fissure/Burning Bolts/Frost Nova) are authored into Text.arc via the DATA PATH
+#    (uber_soul_tags.txt, read by build_text_arc.py) - no edit to the text pipeline.
+#    The Rupture/Flare display tags ALREADY ship in the mod's 0.98i text, so they
+#    are NOT re-emitted (would trip the duplicate-tag gate). validate_tags then
+#    sees the new tags mod-owned AND defined -> PASS.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # SVAERA-internal dangling ref the closure tolerates (absent even in SVAERA - the
@@ -2652,9 +2654,19 @@ _GRAFT_SKILLS = [
     (r'records\xpack\skills\dream\drx_summoncopy.dbr',    _TREE_DRE, 26, _UI_XP9,     25, 128,  31, False, 'Dream Image'),
 ]
 
-# The 12 SV-authored display tags (base-Atlantis x3tag* ones resolve at runtime
-# and are intentionally absent here). Strings ported verbatim from SVAERA's
-# Text.arc; fancy quotes normalized to ASCII (house rule: no em dashes - none here).
+# The 8 genuinely-NEW SV-authored display tags (strings ported verbatim from
+# SVAERA's Text.arc; fancy quotes normalized to ASCII - house rule: no em dashes).
+# Deliberately EXCLUDED (would collide / are already shipped by the mod, so the
+# grafted skills' display resolves to the EXISTING definition):
+#   - base-Atlantis x3tag* tags (Lasting Legacy/Perfect Block/Unyielding Phalanx/
+#     Fire Nova/Lightning Dash/Earthbind/Sylvan Protection/Dream Image) resolve at
+#     runtime from the engine's own base-game Text.
+#   - tagRuptureNAME/tagRuptureDESC/tagFlareNAME/tagFlareDESC ALREADY exist in the
+#     mod's SV 0.98i text (xuniqueequipment.txt). build_text_arc keeps the FIRST
+#     definition, so re-adding them either does nothing (Flare/Rupture NAME, Flare
+#     DESC = same string) or trips the duplicate-tag gate (0.98i Rupture DESC says
+#     "Staff Only" vs SVAERA's "Staff or Bow"). The grafted Earth Rupture/Burning
+#     Bolts/Flare skills reference these tags and resolve to the 0.98i definitions.
 _GRAFT_TAGS = {
     'tagSlam_NAME': 'Slam',
     'tagSlam_DESC': ('Hit all enemies in a straight line with staggering force. '
@@ -2666,19 +2678,9 @@ _GRAFT_TAGS = {
                             'disrupting the aim and spellcasting of your enemies. '
                             '^y^n(The width of the line extends with levels. '
                             'Reduced cooldown starts at level 2)'),
-    'tagRuptureNAME': 'Rupture',
-    'tagRuptureDESC': ("Connects the player's tumultuous earth energies to their "
-                       'weapon, causing projectiles to explode on impact. '
-                       '{^n}{^y}Staff or Bow required. {^n}Unlike most other '
-                       'default attack replacers, this is a special ranged attack. '
-                       "It won't trigger the following effects: {^n}- Volley, "
-                       'Gouge [Hunting] {^n}- Runeword: Explode, Runeword: Burn [Runes]'),
     'tagBurningBoltsNAME': 'Burning Bolts',
     'tagBurningBoltsDESC': ('Adds burn damage to staff attacks, and a chance to '
                             'pass through enemies.'),
-    'tagFlareNAME': 'Flare',
-    'tagFlareDESC': ('Increases fire damage on staff attacks, turning the '
-                     "caster's staff into an instrument of destruction."),
     'tagSVAERSkillStorm001': 'Frost Nova',
     'tagSVAERSkillStormDescription001': ('Casts an expanding ring of frost that '
                                          'slows and freezes your enemies.'),
@@ -2805,8 +2807,8 @@ def graft_svaera_mastery_skills(db: ArzDatabase, base_db, svaera_db):
     """Graft the 18 SVAERA mastery skills onto our tuned trees (additive-only).
     Imports each player-tree skill + its recursive closure from SVAERA, wires a
     new tree slot + a new UI button per player skill, registers the buttons in the
-    mastery panels, and returns the 12 SV-authored display tags for the Text
-    pipeline (uber_soul_tags.txt). base_db is REQUIRED (closure resolution)."""
+    mastery panels, and returns the 8 genuinely-new SV-authored display tags for
+    the Text pipeline (uber_soul_tags.txt). base_db is REQUIRED (closure resolution)."""
     print("\n=== BUILD36 LANE B: SVAERA mastery-skill graft (18 skills) ===")
     if base_db is None:
         raise SystemExit("build36 graft: base game arz REQUIRED (5th build arg) "

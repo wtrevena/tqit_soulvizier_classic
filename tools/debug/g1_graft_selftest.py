@@ -162,7 +162,7 @@ def main():
           "mines buffed (cd 8, dur 14)")
 
     # 6) tags
-    check(len(tags) == 12, f"12 SV-authored tags returned (got {len(tags)})")
+    check(len(tags) == 8, f"8 SV-authored tags returned (got {len(tags)})")
 
     # 7) Occult/Hunting (mastery/UI 5,6) untouched: their highest UI slot unchanged
     for mi, exp_hi in ((5, 26), (6, 24)):
