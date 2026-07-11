@@ -660,9 +660,21 @@ def _verify_no_fuzzy_cross_wire(db: ArzDatabase, sv_drops):
     an exact name identity nor a same-family positive name match, unless SV 0.98i
     authored that exact monster->soul pairing (sv_drops). Catches a re-introduced
     fuzzy cross-wire (Phantom Weaver -> Ararat-soul / Siege Strider -> Leveler-soul)."""
+    def _is_conflict_junk(p):
+        # amgoz's Dropbox git-conflict duplicate records (e.g. '... (amgoz-
+        # qosmio's conflicted copy 2013-08-07)', '... modstridende kopi ...')
+        # are compiled-in junk duplicates (meritamen verifier F). A duplicate of
+        # a monster's OWN soul is identity-correct, not a cross-wire; its garbage
+        # filename just defeats name-matching. Exclude both sides from the gate;
+        # the junk itself is a separate data-hygiene ticket, out of this wave.
+        pl = str(p).lower()
+        return 'conflicted copy' in pl or 'kopi' in pl
+
     offenders = []
     for name in db.record_names():
         nl = name.replace('/', '\\').lower()
+        if _is_conflict_junk(nl):
+            continue
         cls = db.get_field_value(name, 'monsterClassification')
         cls = cls[0] if isinstance(cls, list) else cls
         if cls not in ('Hero', 'Boss', 'Quest'):
@@ -683,6 +695,8 @@ def _verify_no_fuzzy_cross_wire(db: ArzDatabase, sv_drops):
         for s in loot:
             if not (isinstance(s, str) and 'soul' in s.lower()):
                 continue
+            if _is_conflict_junk(s):
+                continue  # conflicted-copy duplicate soul record - junk, not a cross-wire
             base = _soul_base_of(s)
             if base in seen:
                 continue
@@ -3098,6 +3112,24 @@ def main():
 
     print(f"Loading SV 0.98i: {sv098_path}")
     db = ArzDatabase.from_arz(sv098_path)
+
+    # F6 (build36): capture SV 0.98i soul .dbr paths BEFORE the merge mutates db,
+    # so the provenance naming gate (Part E, apply_svc_patches) can whitelist
+    # SV-ORIGINAL souls by PATH (the winning verifier correction: a soul whose
+    # .dbr is in SV keeps amgoz1's name even if we retagged it - law #2 - and is
+    # never forced to a synthesized standard).
+    try:
+        import apply_svc_patches as _asp_prov
+        _asp_prov._SV098I_ALL_PATHS = {
+            n.replace('/', '\\').lower() for n in db.record_names()}
+        _asp_prov._SV098I_SOUL_PATHS = {
+            p for p in _asp_prov._SV098I_ALL_PATHS
+            if '\\soul\\' in p and 'equipmentring' in p}
+        print(f"  F6 provenance: captured {len(_asp_prov._SV098I_SOUL_PATHS)} "
+              f"SV-original soul paths ({len(_asp_prov._SV098I_ALL_PATHS)} total "
+              f"SV records) for the naming + mod-authored-summon gates")
+    except Exception as _e:  # never block the build on the capture
+        print(f"  F6 provenance: SV path capture skipped ({_e})")
 
     print(f"\nLoading SV 0.9: {sv09_path}")
     db09 = ArzDatabase.from_arz(sv09_path)

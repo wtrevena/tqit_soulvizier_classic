@@ -1,5 +1,63 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🛠️ **BUILD36 FIX WAVE - ROUND 1 (2026-07-11, `feat/build36-fix-wave`, branched off main `31a0bce`).**
+> Seven live-test fixes (F1-F7) implemented + built + all gates green + negative-tested. Built (RELEASE)
+> arz md5 `07de3349dcc5b854508a610aea23584b` (55,043,244 B), Text.arc md5 `b9ecb973ae84808dab46dc38a651c9ea`
+> (372,752 B). NOT deployed. Items:
+> - **F1 wrong-soul matcher (Cave of Whispers "white spider drops Ararat's soul" + Siege Strider drops
+>   Leveler Soul).** `wire_souls_to_monsters` verifier-v7 rule: `qualifies=(score==100) or (score>0 and
+>   type_bonus>0)`. Kills all 64 cross-wires + 8 flood pools. NEW fail-loud gate `_verify_no_fuzzy_cross_wire`
+>   (snapshot SV pairings pre-wire -> flag any NEW Hero/Boss/Quest drop that is neither exact nor same-family,
+>   skipping amgoz git-conflict-copy junk). **Side effect (spec §4-sanctioned house pattern):** de-wiring makes
+>   `create_uber_souls` newly generate the named heroes' OWN identity souls (Phantom Weaver -> `shadowhero_soul`,
+>   Spider Brooding -> `blinkfang_soul`), so they drop their own soul, not Ararat's; Thunder Crawl (`um_storm_16`)
+>   drops nothing; the real owner `um_ararat_36` keeps `ararat_soul`.
+> - **F2 Meritamen true summon.** D22 job in `_apply_group4_summons`: `phagia_soul_{n,e,l}` ("Meritamen the
+>   Shadowcaller Soul") now grants `summon_meritamen` -> a `meritamen.msh` sand-spirit with the full kit incl.
+>   the friendly `shadowstalker_summon3`. Real Phagia (`um_phagia_44` -> `maenadsorceress_soul`) untouched. NEW
+>   REGISTRY-SCOPED gate `_verify_soul_summon_identity` (allow-set: `voranthys`, an intentional themed cross-mesh
+>   summon). Fixed the wrong `BOSS_SOULS_DESIGN.md:895` row.
+> - **F3 Ground Smash de-filler.** GS kept on its 6-soul roster (Brontes/Steropes/Polyphemus/Surryln/Sow/Gorrahk);
+>   camelbane -> `myrto_tremor`; all other 25 fillers -> stat-only (never another over-shared filler). Anchored
+>   soul-basename matcher (kills the `beast_soul`->`foulbeast_soul` bleed + mountain-satyr hijack). Restored
+>   `foulbeast_soul` -> its SV `records\skills\sv\foulbeast\foulbeast_summon_soul.dbr` (present, no port).
+>   Neutralized `_guess_element` physical->GS latent default (returns None -> stat-only). NEW fail-loud gate
+>   `_verify_granted_skill_diversity` (hard-fail GS off-roster + ceiling 15; WARN-list the element fillers).
+> - **F4 Shadow Stalker.** `skill_shadowzap` AoE petrify 2.0-4.0 + stun 0.8-2.0 + confuse 0.5-1.5 (chance valves
+>   65/45/35); dead `specialAttack2` teleport slot cleared on all 20 tiers + resist floor (~8-29%). Occult
+>   exception (not golden-tracked). Edit-in-place.
+> - **F5 Bloodcrow Flame Nova + Flash Powder.** `firefragmentnova` cd 8->4; Occult `drxflashpowder` cd 15->6 +
+>   pierce ladders + `offensiveProjectileFumbleMin` (len-12) + duration 8; `toxeus_flashpowder` cd 20->10;
+>   enemy `um_droolbog_43` repointed to base `flashpowder`. Golden gate: 5 per-field `owner_approved_overrides`
+>   (Will-authorized); NEGATIVE-TESTED (mutating `drxpoisongasbomb` still fails loud -> scoped waiver proven).
+> - **F6 soul naming.** 54 curated OUR-soul renames to `{^F}<Monster> Soul` (+ Xeiwang/limoslifeater SV
+>   RESTORES) + an auto-transform for uncovered OURS `Soul of X` (e.g. Blood Shaman). NEW **path-based**
+>   provenance gate `_verify_soul_naming` (SV-original-path souls auto-whitelisted, the winning verifier
+>   correction #3; SV soul paths captured in `build_svc_database`). SV-original names (e.g. Leveler Soul) untouched.
+> - **F7 small items.** (a) Storm mastery-4 panel: Skill25 moved (128,217)->(128,279) off Skill06. (b) Rupture
+>   tooltip "Staff Only" -> "Staff or Bow" via `build_text_arc` `TEXT_FIX_TAGS` (single-def, dup-gate-safe).
+>   (c) SOUL DESC RENDERING: `_wire_soul_desc_itemtext` wires `itemText` -> the authored DESC tag on 114 souls
+>   so amgoz-style flavor text renders. (d) Dayria: `dayria_wolfsummons` ADDED to `dayria_{1,2,3}` specialAttack3
+>   + registered.
+> - **F1-ripple reconciliations (owned-file, since `create_uber_souls`/`uber_soul_designs.py` are never-commit
+>   strays):** B-SOUL-PROC-1 level backstop (create_uber_souls' `_DIFF_SCALE` floored SOUL_DESIGNS level-1 to 0
+>   on n/e -> fixed 4 item-skill + 8 augment level-0 grants); MANUAL-CAST backstop (cleared the on-attack
+>   controller on the newly-generated mod-authored `summon_mountainblade` chain); foulbeast pet naked-Finger2
+>   equip slot zeroed; A4 Aphiastas-zero now gracefully skips the records F1 already de-wired at the root.
+> - **GATES (all green):** 5 fail-loud DB invariants + 3 pet gates + RUNEMASTER-GOLEM-BUTTON + golem/soul
+>   render validators + the 4 NEW fix-wave gates (F1 cross-wire, F2 summon-identity, F3 diversity, F6 naming) +
+>   Occult/Hunting golden freeze (5 waived) + in-build summons contract (B-SUMMON-1 + F2 run_contracts) all
+>   PASS. NEGATIVE-TESTED all 5 (F1/F2/F3/F6 seed->SystemExit; F5 golden scoped-waiver). Contracts (with
+>   `--text-arc`): **souls 0 P0/0 P1/0 P2, summons 0 P0/0 P1, resources 0 P0/1 P1** (`C-RES-ASSET-1`
+>   `anm_dreamcopy` = pre-existing DRX Dream-mastery asset debt, not F1-F7) + 4896 P2 pre-existing SV/DRX debt.
+> - **NOTES / open (for Will / follow-up):** (1) the F1 house-pattern new souls (`shadowhero_soul` etc.) are
+>   named by `create_uber_souls` from the record name (e.g. "Shadowhero Soul"), not the monster's display
+>   ("Phantom Weaver") - a naming-polish item; if Will prefers the de-wired heroes to drop NOTHING instead,
+>   that needs a `create_uber_souls` filter change (not-owned). (2) 7 orphan `{^F}Soul of X` tags remain in
+>   Text.arc (no soul record references them -> never render; pre-existing dead strings). (3) F5's ~9 off-theme
+>   flash-powder souls + the element-filler over-shares (lifedrain 20 / venomspray 14 / etc.) are WARN-listed
+>   for the standing souls quality pass, not reassigned this wave.
+
 > 🩸🔧 **BUILD36 LANE A - ROUND 2 (2026-07-11, `feat/build36-lane-a`).** The independent vet returned
 > NO_GO on round 1 (1 P2 + 2 P3 + curiosity findings). ALL fixed this round (all in `apply_svc_patches.py`):
 > - **A8 GOLEM PANEL (P2, the blocker) - FIXED.** Round 1's "A8 vetted correct, no code fix needed" was
