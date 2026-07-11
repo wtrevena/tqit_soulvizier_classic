@@ -15159,11 +15159,10 @@ def _apply_content_uplift_picks(db, tags):
         def _kv_stats(t, il):
             m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
             r = lambda v: round(v * m, 1)
+            # STAT soul (no itemSkillName grant): avoids the F3 Ground-Smash
+            # roster gate + the activation gate; the augment carries the theme.
             return {
                 **_bmp(t),
-                'itemSkillName': (S, _SS_GROUND_SMASH) if db.has_record(_SS_GROUND_SMASH) else (S, ''),
-                'itemSkillLevel': (I, {'n': 4, 'e': 6, 'l': 8}[t]),
-                'itemSkillAutoController': (S, _AC_ONHIT),
                 'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
                 'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)),
                 'offensivePhysicalModifier': (F, r(30.0)),
