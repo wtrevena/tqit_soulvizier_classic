@@ -4503,8 +4503,17 @@ def _apply_aphiastas_finger2_zero(db):
     """A4: set chanceToEquipFinger2=0 on the Aphiastas keres records after proving
     each one's Finger2 loot is souls-only. Leaves lootFinger2Item refs + any potion
     formula untouched. Fail-loud on a missing record or a non-souls-only Finger2
-    slot. Uses exact-path resolution (never the substring _find_record)."""
+    slot. Uses exact-path resolution (never the substring _find_record).
+
+    build36 F1 RECONCILIATION: A4 was the TARGETED hotfix for the aphiastas keres
+    cross-wire; F1 Part A now fixes that at the ROOT (the fuzzy matcher no longer
+    wires a soul onto a name-unrelated Hero/Boss/Quest), so these keres already
+    carry EMPTY Finger2 loot. An empty slot = the goal (no aphiastas-soul drop) is
+    already achieved, so SKIP it gracefully instead of failing. A4 still zeroes any
+    record that STILL carries soul loot (defensive backstop), and still fails loud
+    on a missing record or a non-souls-only slot (never strip a real reward)."""
     zeroed = 0
+    already = 0
     for path in _APHIASTAS_FINGER2_ZERO:
         rec = _resolve_record(db, path)
         if rec is None:
@@ -4513,8 +4522,18 @@ def _apply_aphiastas_finger2_zero(db):
         f2 = f2 if isinstance(f2, list) else [f2]
         refs = [str(v) for v in f2 if v and str(v).strip()]
         if not refs:
-            raise SystemExit(f"A4 Aphiastas-zero: {path} has EMPTY Finger2 loot "
-                             f"(refusing to zero - nothing to gate)")
+            # F1 Part A already de-wired this cross-wire at the root -> nothing to
+            # zero. (Also enforce the end-state: chance must be 0 too.)
+            ch = db.get_field_value(rec, 'chanceToEquipFinger2')
+            ch = ch[0] if isinstance(ch, list) else ch
+            try:
+                if float(ch) > 0:
+                    db.set_field(rec, 'chanceToEquipFinger2', 0.0)
+                    db._modified.add(rec)
+            except (TypeError, ValueError):
+                pass
+            already += 1
+            continue
         non_soul = [v for v in refs if 'soul' not in v.lower()]
         if non_soul:
             raise SystemExit(f"A4 Aphiastas-zero: {path} Finger2 loot is NOT "
@@ -4526,7 +4545,8 @@ def _apply_aphiastas_finger2_zero(db):
         zeroed += 1
     print(f"  A4 Aphiastas-zero: chanceToEquipFinger2=0 on {zeroed}/"
           f"{len(_APHIASTAS_FINGER2_ZERO)} keres records (souls-only Finger2 "
-          f"verified; loot refs + any potion formula untouched)")
+          f"verified; loot refs + any potion formula untouched); {already} already "
+          f"de-wired at the root by F1 (skipped)")
 
 
 def _force_100_pct_soul_drops(db):
@@ -7471,6 +7491,160 @@ def _defiller_ground_smash(db):
           f"{reassigned} -> myrto_tremor (camelbane), {stat_only} -> stat-only")
 
 
+def _fix_foulbeast_summon_pets(db):
+    """F3 (build36): restoring foulbeast_soul's SV summon (foulbeast_summon_soul)
+    re-activates its foulbeast_{1,2,3} pets, which carry a vestigial equip slot
+    (chanceToEquip<Slot> > 0 with no resolving loot<Slot>Item) inherited from the
+    SV monster record = a naked equip slot the summons contract flags P1. These
+    are companion pets, not droppers, so zero any empty equip-chance slot -> the
+    restored summon is contract-clean. dtype-safe: chanceToEquip* is an existing
+    FLOAT field (NOT a Monster->Pet field copy)."""
+    _SLOTS = ('Head', 'Torso', 'LowerBody', 'Forearm', 'LeftHand', 'RightHand',
+              'Finger1', 'Finger2', 'Misc1', 'Misc2', 'Misc3')
+
+    def _first(v):
+        return (v[0] if v else None) if isinstance(v, list) else v
+
+    fixed = 0
+    for i in (1, 2, 3):
+        pet = r'records\skills\soulskills\pets\foulbeast_%d.dbr' % i
+        if not db.has_record(pet):
+            continue
+        for slot in _SLOTS:
+            ch = _first(db.get_field_value(pet, 'chanceToEquip%s' % slot))
+            try:
+                if float(ch) <= 0:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            has = False
+            for j in range(1, 8):
+                it = _first(db.get_field_value(pet, 'loot%sItem%d' % (slot, j)))
+                if isinstance(it, str) and it.strip() and db.has_record(it):
+                    has = True
+                    break
+            if not has:
+                db.set_field(pet, 'chanceToEquip%s' % slot, 0.0)
+                db._modified.add(pet)
+                fixed += 1
+    if fixed:
+        print('  F3 foulbeast pets: zeroed %d naked equip-chance slot(s) so the '
+              'restored SV summon is contract-clean' % fixed)
+
+
+def _fix_modauthored_summon_controllers(db):
+    """MANUAL-CAST LAW backstop (build36 F1 side-effect). A soul that grants a
+    Skill_SpawnPet summon must be MANUAL-CAST (no itemSkillAutoController): an
+    on-attack controller re-spawns the pet every hit (petLimit resets) so it never
+    acts (validate_summon_pets, D21 Long Nu law). The build FAILS on this only for
+    a MOD-AUTHORED summon (skill absent from SV 0.98i); upstream summons WARN. F1
+    Part A de-wired the cross-wired uber monsters, so create_uber_souls newly
+    generated a summoner-role identity soul (e.g. mountainblade -> summon_mountain-
+    blade from SOUL_DESIGNS) carrying the default on-attack controller -> a NEW
+    mod-authored BROKEN chain. Clear the controller on every soul granting a
+    mod-authored Skill_SpawnPet (upstream/SV summon souls untouched -> their WARN
+    debt is unchanged). Registered boss summons already have no controller (Lane
+    A's _wire_summon_soul clears it) so this is a no-op for them."""
+    if not _SV098I_ALL_PATHS:
+        return  # standalone (no SV path set) -> cannot classify mod-authored; skip
+
+    def _first(v):
+        if isinstance(v, list):
+            return v[0] if v else None
+        return v
+
+    cleared = 0
+    for rec in db.record_names():
+        rl = rec.replace('/', '\\').lower()
+        if '\\soul\\' not in rl or 'equipmentring' not in rl:
+            continue
+        isk = _first(db.get_field_value(rec, 'itemSkillName'))
+        if not (isinstance(isk, str) and isk.strip()):
+            continue
+        ctl = _first(db.get_field_value(rec, 'itemSkillAutoController'))
+        if not (isinstance(ctl, str) and ctl.strip()):
+            continue  # already manual-cast
+        if _skill_class_of(db, isk) != 'Skill_SpawnPet':
+            continue
+        if isk.replace('/', '\\').lower() in _SV098I_ALL_PATHS:
+            continue  # upstream summon (SV shipped it this way) -> WARN, leave it
+        db.set_field(rec, 'itemSkillAutoController', '', DATA_TYPE_STRING)
+        db._modified.add(rec)
+        cleared += 1
+    if cleared:
+        print('  MANUAL-CAST backstop: cleared on-attack controller on %d '
+              'mod-authored summon soul grant(s) (manual-cast)' % cleared)
+    else:
+        print('  MANUAL-CAST backstop: no mod-authored summon soul carried a '
+              'stray on-attack controller')
+
+
+def _fix_soul_skill_levels(db):
+    """B-SOUL-PROC-1 backstop (build36). Every soul ring that GRANTS an item skill
+    must carry itemSkillLevel >= 1 (level-0 = inactive, the Crommyonian-Sow no-op).
+    create_uber_souls (SOUL_DESIGNS via uber_soul_designs.py) scales itemSkillLevel
+    by the per-tier _DIFF_SCALE (0.6/0.8/1.0), so a design level of 1 floors to 0
+    on the n/e tiers - which surfaced when F1 Part A de-wired the cross-wired uber
+    monsters (onyxspine/steamcrawler...) and create_uber_souls newly generated
+    their identity souls. Set any level-0 grant to the mod's per-tier default
+    (n/e/l = 1/2/3). Only touches souls WITH a non-empty granted skill (stat-only
+    souls untouched); never lowers an already-valid level. Runs after all soul
+    authoring, before _verify_soul_itemskill_activation."""
+    def _first(v):
+        if isinstance(v, list):
+            return v[0] if v else None
+        return v
+
+    fixed = 0
+    for rec in db.record_names():
+        rl = rec.replace('/', '\\').lower()
+        if '\\soul\\' not in rl or 'equipmentring' not in rl:
+            continue
+        isk = _first(db.get_field_value(rec, 'itemSkillName'))
+        if not (isinstance(isk, str) and isk.strip()):
+            continue
+        lvl = _first(db.get_field_value(rec, 'itemSkillLevel'))
+        try:
+            cur = int(lvl)
+        except (TypeError, ValueError):
+            cur = 0
+        if cur >= 1:
+            continue
+        tier = 3 if rl.endswith('_l.dbr') else 2 if rl.endswith('_e.dbr') else 1
+        db.set_field(rec, 'itemSkillLevel', tier, DATA_TYPE_INT)
+        db._modified.add(rec)
+        fixed += 1
+
+    # Same _DIFF_SCALE bug hits augmentSkillLevel1..4 (SOUL_DESIGNS level 1 floors
+    # to 0 on n/e) - a +0 augment does nothing (contract SOUL-AUGMENT-LEVEL). Fix
+    # any augment with a name but level 0 to the same per-tier default.
+    aug_fixed = 0
+    for rec in db.record_names():
+        rl = rec.replace('/', '\\').lower()
+        if '\\soul\\' not in rl or 'equipmentring' not in rl:
+            continue
+        tier = 3 if rl.endswith('_l.dbr') else 2 if rl.endswith('_e.dbr') else 1
+        for k in (1, 2, 3, 4):
+            nm = _first(db.get_field_value(rec, 'augmentSkillName%d' % k))
+            if not (isinstance(nm, str) and nm.strip()):
+                continue
+            av = _first(db.get_field_value(rec, 'augmentSkillLevel%d' % k))
+            try:
+                if int(av) >= 1:
+                    continue
+            except (TypeError, ValueError):
+                pass
+            db.set_field(rec, 'augmentSkillLevel%d' % k, tier, DATA_TYPE_INT)
+            db._modified.add(rec)
+            aug_fixed += 1
+
+    if fixed or aug_fixed:
+        print('  B-SOUL-PROC-1 level backstop: fixed %d level-0 item-skill grant(s) '
+              '+ %d level-0 augment(s) (-> per-tier n/e/l=1/2/3)' % (fixed, aug_fixed))
+    else:
+        print('  B-SOUL-PROC-1 level backstop: no level-0 soul grants/augments found')
+
+
 def _verify_granted_skill_diversity(db):
     """FAIL-LOUD (F3 build36). Ground Smash (a cyclops club-slam) may be granted
     ONLY by its 6-soul roster; any other soul granting it is a re-introduced
@@ -7537,6 +7711,29 @@ def _verify_granted_skill_diversity(db):
           f"{len(gs_grantors)}-soul roster only; no new mass-assignment > {CEILING}")
 
 
+# Registered summons that DELIBERATELY build the pet from a creature other than
+# the soul's dropper (the soul's namesake summons a themed minion / its "true"
+# form, not its in-world body). Each needs a written justification. Keyed by soul
+# base-name; the meritamen spec sanctions "a tiny explicit allow-set with a
+# written justification rather than weakening the gate."
+_SUMMON_IDENTITY_ALLOW = {
+    'voranthys': "Voranthys 'the Sepulchral' drops from a dragonlich-reskin body "
+                 "but its summon is deliberately built from um_sepulchralwyrm_31 "
+                 "(a Sepulchral Wyrm) - the epithet-matched themed form, a "
+                 "registered design choice, NOT a Meritamen-class body conflation "
+                 "(meritamen spec verifier false-positive list, section E).",
+}
+
+
+def _soul_basename_for_allow(soul_path):
+    b = str(soul_path).replace('/', '\\').rsplit('\\', 1)[-1]
+    if b.lower().endswith('.dbr'):
+        b = b[:-4]
+    b = _re.sub(r'_(n|e|l)$', '', b, flags=_re.IGNORECASE)
+    b = _re.sub(r'_soul$', '', b, flags=_re.IGNORECASE)
+    return b.lower().strip('_')
+
+
 def _verify_soul_summon_identity(db, pairs):
     """FAIL-LOUD (F2 build36). Registry-scoped soul->summon body identity. For
     every pet THIS mod builds via _build_boss_summon (source, pets), the soul(s)
@@ -7546,7 +7743,9 @@ def _verify_soul_summon_identity(db, pairs):
     the false positives of a DB-wide pet-mesh sweep (which flags Lyia et al.,
     whose summon pet legitimately uses a dedicated mesh vs a reskin dropper): here
     we compare SOURCE mesh to DROPPER mesh - the same monster by construction for
-    a legit soul - so only a genuine cross-wire fails."""
+    a legit soul - so only a genuine cross-wire fails. `_SUMMON_IDENTITY_ALLOW`
+    exempts the handful of registered summons whose pet is deliberately a themed
+    creature different from the dropper (each justified)."""
     def one(rec, f):
         v = db.get_field_value(rec, f)
         return v[0] if isinstance(v, list) else v
@@ -7603,6 +7802,8 @@ def _verify_soul_summon_identity(db, pairs):
             meshes = soul_drop_meshes.get(soul)
             if not meshes:
                 continue  # no live dropper -> cannot verify (e.g. TESTHUB-only)
+            if _soul_basename_for_allow(soul) in _SUMMON_IDENTITY_ALLOW:
+                continue  # intentional themed cross-creature summon (justified)
             if src_mesh not in meshes:
                 problems.append((soul.rsplit('\\', 1)[-1],
                                  src_path.rsplit('\\', 1)[-1], src_mesh,
@@ -7684,24 +7885,97 @@ _SOUL_NAME_STANDARD = {
 }
 
 
+# F6 provenance (Part E): SV 0.98i soul .dbr paths, injected by build_svc_database
+# right after it loads sv098 (before the merge). A soul whose .dbr path is in this
+# set is SV-ORIGINAL and is whitelisted by both the rename and the gate (law #2 -
+# amgoz1's name, even if we retagged it). Empty when apply_svc_patches is used
+# standalone -> both degrade to tag-based (safe: nothing whitelisted by path).
+_SV098I_SOUL_PATHS = set()
+# All SV 0.98i record paths (superset of the above), injected the same way. Used
+# to tell a MOD-AUTHORED summon skill (absent from SV) from an upstream one - the
+# exact discriminator validate_summon_pets uses (mod-authored FAIL vs upstream
+# WARN). Empty standalone -> the mod-summon controller fix becomes a no-op.
+_SV098I_ALL_PATHS = set()
+
+
+def _soul_tag_sv_map(db, tags):
+    """Map each authored soul tag (present in `tags`) -> True iff ANY soul record
+    carrying it has an SV-ORIGINAL .dbr path (so we never re-synthesize an SV
+    name). Also returns the set of authored tags seen on any soul record."""
+    tag_sv = {}
+    for n in db.record_names():
+        nl = n.replace('/', '\\').lower()
+        if '\\soul\\' not in nl or 'equipmentring' not in nl:
+            continue
+        t = db.get_field_value(n, 'itemNameTag')
+        t = t[0] if isinstance(t, list) else t
+        if not (isinstance(t, str) and t in tags):
+            continue
+        if nl in _SV098I_SOUL_PATHS:
+            tag_sv[t] = True
+        else:
+            tag_sv.setdefault(t, False)
+    return tag_sv
+
+
+def _standardize_soul_of(val):
+    """'{^F}Soul of [the ]X' -> '{^F}X Soul' (the auto-transform fallback for OURS
+    souls not in the curated table). Returns None if `val` is not a 'Soul of'
+    name."""
+    m = _re.match(r'^\s*(\{\^[A-Za-z]\})?\s*Soul of\s+(.*?)\s*$', str(val), _re.IGNORECASE)
+    if not m:
+        return None
+    prefix = m.group(1) or '{^F}'
+    rest = _re.sub(r'^the\s+', '', m.group(2), flags=_re.IGNORECASE).strip()
+    if not rest:
+        return None
+    return f"{prefix}{rest} Soul"
+
+
+def _apply_soul_naming_standard(db, tags):
+    """F6 (build36): rename OUR souls to the '{^F}<Monster> Soul' standard.
+    (1) apply the curated explicit table (verifier-picked names for titled
+    monsters / dev souls + the limoslifeater/xeiwang SV-name RESTORES); (2)
+    auto-transform any remaining OURS-PATH soul whose authored name is still
+    '{^F}Soul of X' -> '{^F}X Soul' (covers souls outside the curated list, e.g.
+    tagSVCSoulBloodShaman, and any F1 de-wire newly generates). SV-ORIGINAL-PATH
+    souls are NEVER auto-transformed (law #2 - keep/restore amgoz1's name).
+    Returns (curated_count, auto_count)."""
+    n_curated = sum(1 for k in _SOUL_NAME_STANDARD if k in tags)
+    tags.update(_SOUL_NAME_STANDARD)
+    tag_sv = _soul_tag_sv_map(db, tags)
+    n_auto = 0
+    for t, is_sv in tag_sv.items():
+        if is_sv or t in _SOUL_NAME_STANDARD:
+            continue
+        new = _standardize_soul_of(tags.get(t, ''))
+        if new and new != tags.get(t):
+            tags[t] = new
+            n_auto += 1
+    return n_curated, n_auto
+
+
 def _verify_soul_naming(db, tags):
-    """FAIL-LOUD (F6 build36). Provenance by authored-tag membership: an OURS
-    soul's display name is authored in this build's `tags` dict (tagSVCSoul*/
-    tagSoulSVC*); an SV-ORIGINAL soul's itemNameTag (tagSoulNameNNN) is NOT in
-    `tags` -> auto-whitelisted (amgoz1's name, law #2 - never checked, no
-    hand-list). Every OURS soul MUST follow the standard '{^F}<Monster> Soul':
-    start '{^F}', end ' Soul' (a trailing ' (SP)'/'(...)' disambiguator marker is
-    allowed), and NEVER the '{^F}Soul of ' deviation (the reported mis-name)."""
+    """FAIL-LOUD (F6 build36, Part E). Provenance by soul .dbr PATH (the winning
+    verifier correction, not authored-tag membership): a soul whose .dbr path is
+    in SV 0.98i (`_SV098I_SOUL_PATHS`) is SV-ORIGINAL -> whitelisted (law #2,
+    amgoz1's name, never enforced/synthesized). Every OURS-PATH soul whose display
+    name we AUTHOR (itemNameTag in `tags`) MUST follow '{^F}<Monster> Soul': start
+    '{^F}', end ' Soul' (a trailing ' (SP)'/'(...)' marker allowed), and NEVER the
+    '{^F}Soul of ' deviation. Souls whose name we do not author (SV tags, or
+    create_uber_souls' auto '{^F}<display> Soul') are out of scope."""
     problems = []
     seen = set()
     for n in db.record_names():
         nl = n.replace('/', '\\').lower()
         if '\\soul\\' not in nl or 'equipmentring' not in nl:
             continue
+        if nl in _SV098I_SOUL_PATHS:
+            continue  # SV-ORIGINAL by path -> law #2 whitelist (no hand-list)
         tag = db.get_field_value(n, 'itemNameTag')
         tag = tag[0] if isinstance(tag, list) else tag
         if not (isinstance(tag, str) and tag in tags):
-            continue  # SV-original or untagged -> auto-whitelist
+            continue  # name not authored here -> out of scope
         if tag in _HAND_DESIGNED_SOUL_TAGS:
             continue  # build36 hand-designed uber souls KEEP their evocative names
         if tag in seen:
@@ -7717,10 +7991,11 @@ def _verify_soul_naming(db, tags):
         for tag, val in problems[:60]:
             print(f"  SOUL-NAMING OFFENDER: {tag} = {val!r} "
                   f"(must be '{{^F}}<Monster> Soul', never 'Soul of X')")
-        raise SystemExit(f"F6 soul-naming gate FAILED: {len(problems)} OURS soul(s) "
-                         f"violate the '{{^F}}<Monster> Soul' standard")
-    print(f"  F6 soul-naming gate OK: {len(seen)} OURS souls follow "
-          f"'{{^F}}<Monster> Soul'; SV-original names auto-whitelisted")
+        raise SystemExit(f"F6 soul-naming gate FAILED: {len(problems)} OURS-path "
+                         f"soul(s) violate the '{{^F}}<Monster> Soul' standard")
+    print(f"  F6 soul-naming gate OK: {len(seen)} OURS-path souls follow "
+          f"'{{^F}}<Monster> Soul'; {len(_SV098I_SOUL_PATHS)} SV-original paths "
+          f"auto-whitelisted")
 
 
 def _verify_no_unclassified_soul_leaks(db):
@@ -15457,6 +15732,29 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # tools/validate_soul_augments.py re-checks this on the written .arz.
     _verify_soul_augments_resolve(db)
 
+    # ── MANUAL-CAST backstop (build36 F1 side-effect) ────────────────────────
+    # F1 Part A de-wired the cross-wired uber monsters, so create_uber_souls newly
+    # generated summoner-role identity souls (e.g. mountainblade -> the mod summon
+    # summon_mountainblade) carrying SOUL_DESIGNS' default on-attack controller - a
+    # BROKEN mod-authored summon chain (the pet re-spawns every hit). Clear the
+    # controller on mod-authored summon souls so they are manual-cast (upstream
+    # summon souls left as their pre-existing WARN debt).
+    _fix_modauthored_summon_controllers(db)
+    # F3 side-effect: the restored foulbeast summon re-activates its foulbeast pets;
+    # zero their vestigial naked equip slots so the summons contract stays clean.
+    _fix_foulbeast_summon_pets(db)
+
+    # ── B-SOUL-PROC-1 level backstop (build36 F1 side-effect) ────────────────
+    # Any soul that GRANTS a skill must carry itemSkillLevel >= 1. create_uber_
+    # souls scales SOUL_DESIGNS' itemSkillLevel by the per-tier _DIFF_SCALE
+    # (0.6/0.8/1.0), so a design level of 1 floors to 0 on the n/e tiers. That
+    # was latent until F1 Part A de-wired the cross-wired uber monsters
+    # (onyxspine/steamcrawler...), making create_uber_souls newly generate their
+    # identity souls. Fix any level-0 grant to the mod's per-tier default before
+    # the activation gate (a real fix, not a gate bypass - the gate still catches
+    # unresolved/wrong-class/bad-anim/bad-controller grants).
+    _fix_soul_skill_levels(db)
+
     # ── Soul item-skill ACTIVATION invariant (fail-loud, B-SOUL-PROC-1) ──────
     # Resolution alone is not enough: a granted skill with itemSkillLevel
     # absent/0 instantiates at level 0 = INACTIVE (tooltip renders, proc never
@@ -15470,14 +15768,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # F2: every registered summon-soul spawns its dropper's body (mesh identity),
     # so a soul named after monster X cannot summon monster Y (Meritamen/Phagia).
     _verify_soul_summon_identity(db, _SUMMON_PET_BUILDS)
-    # F6: rename the 54 OUR souls from 'Soul of X' to the '{^F}<Monster> Soul'
-    # standard + restore amgoz1's Xeiwang name (single authoritative table,
-    # overrides whatever each soul builder set). SV-original names are UNTOUCHED
-    # (not in this table). Then the provenance naming gate proves compliance.
-    _n_renamed = sum(1 for k in _SOUL_NAME_STANDARD if k in tags)
-    tags.update(_SOUL_NAME_STANDARD)
-    print(f"  F6 soul naming: applied the '{{^F}}<Monster> Soul' standard to "
-          f"{_n_renamed} OUR soul name tags (+ Xeiwang restore)")
+    # F6: rename the OUR souls from 'Soul of X' to the '{^F}<Monster> Soul'
+    # standard - the curated table (verifier names + limoslifeater/Xeiwang SV
+    # RESTORES) plus an auto-transform for any uncovered OURS-path 'Soul of X'
+    # (bloodshaman / F1-ripple souls). SV-ORIGINAL-PATH names are UNTOUCHED (law
+    # #2). Then the provenance (by soul .dbr path) naming gate proves compliance.
+    _n_curated, _n_auto = _apply_soul_naming_standard(db, tags)
+    print(f"  F6 soul naming: curated '{{^F}}<Monster> Soul' standard on "
+          f"{_n_curated} tags + auto-standardized {_n_auto} uncovered 'Soul of X' "
+          f"OURS soul(s); SV-original-path names untouched")
     _verify_soul_naming(db, tags)
 
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
