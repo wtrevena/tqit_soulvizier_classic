@@ -8543,6 +8543,19 @@ def _skill_class_of(db, ref):
     return c[0] if isinstance(c, list) else c
 
 
+def _norm_skill_ref(s):
+    """Normalize a skill .dbr ref to the mod's `records\\...` backslash convention.
+    Base-game monster records store refs as `database/records/...` (forward slashes
+    + a database\\ prefix) which the ENGINE resolves but the mod's records + the
+    resource-resolution contract key off `records\\...`; mirroring such a ref
+    verbatim onto a pet leaves an unresolved-looking (C-RES-DBR-1) authored ref."""
+    s = str(s).replace('/', '\\')
+    low = s.lower()
+    if low.startswith('database\\records\\'):
+        s = s[len('database\\'):]
+    return s
+
+
 def _pet_slot_str(db, path, field):
     v = db.get_field_value(path, field)
     v = v[0] if isinstance(v, list) else v
@@ -8576,6 +8589,7 @@ def _source_skill_level(db, source, skill):
 def _register_pet_skill(db, path, skill, level=1):
     """Ensure `skill` sits in some skillNameK/skillLevelK on the pet (registration
     = the per-level index; a role-slot skill with no registration fires at lvl 1)."""
+    skill = _norm_skill_ref(skill)
     ff = db.get_fields(path) or {}
     want = str(skill).replace('/', '\\').lower()
     used = set()
@@ -8610,7 +8624,7 @@ def _relocate_pet_buffslot_summon(db, path):
         if not in_ai:
             free = _free_pet_special_slot(db, path)
             if free is not None:
-                db.set_field(path, free, sk)
+                db.set_field(path, free, _norm_skill_ref(sk))
                 db.set_field(path, free.replace('SkillName', 'Chance'), 60.0)
                 _register_pet_skill(db, path, sk, 1)
         ff = db.get_fields(path) or {}
@@ -8646,7 +8660,7 @@ def _mirror_source_skill_kit(db, source, path):
         free = _free_pet_special_slot(db, path)
         if free is None:
             break
-        db.set_field(path, free, sk)
+        db.set_field(path, free, _norm_skill_ref(sk))
         ch = _pet_slot_str(db, source, slot.replace('SkillName', 'Chance'))
         if ch:
             try:
