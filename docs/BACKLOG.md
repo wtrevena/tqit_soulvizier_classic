@@ -1,5 +1,47 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> 🩸🔧 **BUILD36 LANE A - ROUND 2 (2026-07-11, `feat/build36-lane-a`).** The independent vet returned
+> NO_GO on round 1 (1 P2 + 2 P3 + curiosity findings). ALL fixed this round (all in `apply_svc_patches.py`):
+> - **A8 GOLEM PANEL (P2, the blocker) - FIXED.** Round 1's "A8 vetted correct, no code fix needed" was
+>   WRONG: the golem's `skill23` SkillButton was ORPHANED - it sat in NO mastery-10 panectrl's
+>   `tabSkillButtons`, so TQ (no auto-discovery) would never show the Rune Golem on the Runemaster tree.
+>   `fix_mastery_panel_buttons` only covers ingameui masteries 1-8 and lives in the parallel-owned
+>   `build_svc_database.py`; Lane B's Runemaster buffs edit only menhirwall/mines (NOT the panel). Fix:
+>   `_rg_wire_runemaster_panel` reconstructs BOTH base-game mastery-10 panectrl overrides (xpack2 Ragnarok-
+>   tier + xpack3 Atlantis-tier, from the verified base field set - base_db is freed + the SV-0.98i-rooted
+>   working db never carried the Ragnarok UI) and APPENDS `Skill23` (additive, never renumbers). Covers
+>   both DLC configs, the same multi-tier pattern fix_mastery_panel_buttons uses for M1-8. NEW fail-loud
+>   gate `_verify_runemaster_golem_button` (Skill23 in BOTH panes + button->summon); negative-tested
+>   (`tools/debug/rg_panel_gate_negtest.py` - passes wired, FAILS on dropped button / missing pane /
+>   mis-pointed button; idempotent).
+> - **PYGMALION PER-TIER (P3) - FIXED.** `_relocate_pet_buffslot_summon` registered the relocated summon
+>   at a FLAT level 1, so `replicate.petLimit=3;4;5` indexed to 3 on all soul tiers. New `_tier_source_level`
+>   registers the summon at the SOURCE's per-tier level (replicate `skillLevel8=1;2;3` -> the n/e/l pets
+>   get 1/2/3 -> petLimit 3/4/5). Threaded `tier=i+1` through `_mirror_source_skill_kit`; the same helper
+>   replaces the old raw-array `_source_skill_level` at the kit-registration call (a pet is ONE creature -
+>   a level ARRAY on a pet record is meaningless; now always a per-tier scalar). Verified vs the real
+>   Pygmalion source (`tools/debug/tier_level_check.py`).
+> - **LATENT PET-SUMMON LOSS - HARDENED.** `_relocate_pet_buffslot_summon` used to DELETE the vacated buff
+>   slot unconditionally, so a pet with all 5 special slots full + a buff-slot summon would silently LOSE
+>   the summon (the skill-kit gate would not catch it). Now the buff slot is deleted ONLY when the summon
+>   was relocated (or already fires from an AI slot); otherwise it is KEPT so the PET-SKILL-KIT gate flags
+>   it loud. No real pet hits this (all 9 relocate), so zero behaviour change on the shipped set.
+> - **BLOODTOXEUS COMMENT (P3) - FIXED.** Rewrote the misleading `_create_blood_toxeus_summon` comment: it
+>   claimed an svc->common gear substitution that does not happen. BUILD-ORDER-verified reality: the summon
+>   reads `um_bloodtoxeus_99` (a `um_toxeus_99` clone = COMMON gear) BEFORE `_wire_blood_toxeus_loot` swaps
+>   the hands to svc, so the pet mirrors the common tables directly (the vet's finding; comment-only).
+> - **A5 DORUS polish (curiosity) - ADDRESSED.** (1) Removed the duplicate `skillName6=boss_conversionimmunity`
+>   (the donor already registers it at `skillName16`; boss keeps immunity). (2) Swapped soul augment2 from
+>   the cold `drxdeathchillaura` to the vitality/decay `drxdeathchillaura_ravagesoftime` (Ravages of Time) -
+>   matches the spec's "vitality/decay drx* mod" + his corpse-king vitality sheet; a proven soul augment
+>   (Blood-Toxeus soul uses it, gate-green).
+> - **TRIAGED (vet-blessed acceptable, flagged for Will):** Dorus soul granted-MOVE (`itemSkillName=None` -
+>   the Vashkarr "really-good stat soul" precedent; adding an active is a design escalation needing its own
+>   vet), Dorus heavy-melee `attackSkillName` (donor has none -> basic weapon melee + Thunder casts; a
+>   special heavy-melee risks anim-castability), Pygmalion "make it crazy" uncapped replicate (kept faithful
+>   native `petLimit=3;4;5` per spec "do NOT silently add"). A6 warden is DB-only BY DESIGN (map/quests wave
+>   completes it - `docs/reports/build36_laneA_map_needs.md`).
+>
 > 🩸 **BUILD36 LANE A - DB CONTENT WAVE (2026-07-11, `feat/build36-lane-a`, round 1).** Eight items,
 > all DB-side (arz + Text), no map/quests/steam. Reference baseline = the ref build of main @88d2b03
 > (`ref_88d2b03.arz` md5 `72eacf8a`); record_diff runs vs it.

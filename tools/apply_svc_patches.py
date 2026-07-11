@@ -8586,6 +8586,26 @@ def _source_skill_level(db, source, skill):
     return 1
 
 
+def _tier_source_level(db, source, skill, tier):
+    """The SCALAR level to register `skill` at on a tier-`tier` (1=n,2=e,3=l) pet:
+    the SOURCE's own skillLevel for `skill`, indexed by tier when the source
+    registers a per-level array (e.g. replicate skillLevel8=1;2;3 -> the n/e/l pets
+    register at 1/2/3 so its petLimit=3;4;5 indexes to 3/4/5, not a flat 3), else
+    the source's scalar level, else 1. ALWAYS returns a scalar - a pet is ONE
+    creature, so a level ARRAY on a pet record is meaningless (the engine would
+    index every per-level skill array at element [0])."""
+    if source is None:
+        return 1
+    lv = _source_skill_level(db, source, skill)
+    if isinstance(lv, list):
+        if not lv:
+            return 1
+        if tier and 1 <= tier <= len(lv):
+            return lv[tier - 1]
+        return lv[0]
+    return lv if lv not in (None, '', []) else 1
+
+
 def _register_pet_skill(db, path, skill, level=1):
     """Ensure `skill` sits in some skillNameK/skillLevelK on the pet (registration
     = the per-level index; a role-slot skill with no registration fires at lvl 1)."""
@@ -8609,11 +8629,23 @@ def _register_pet_skill(db, path, skill, level=1):
     db.set_field(path, f'skillLevel{slot}', level if not isinstance(level, list) else list(level))
 
 
-def _relocate_pet_buffslot_summon(db, path):
+def _relocate_pet_buffslot_summon(db, path, source=None, tier=None):
     """FIX the Pygmalion/Aquardia/Dayria class: a friendly Skill_SpawnPet wired
     into a NON-AI slot (buffSelf*/init/dying/berserk) never casts. Move it to a
     free specialAttack slot (Chance 60) + register it, and DELETE the vacated slot
-    (never blank to '' - the B-TOXEUS-2 empty-ref law). Returns #relocated."""
+    (never blank to '' - the B-TOXEUS-2 empty-ref law). Returns #relocated.
+
+    source+tier (build36 round-2, the vet's Pygmalion-per-tier fix): register the
+    relocated summon at the level the SOURCE registers it at FOR THIS TIER
+    (replicate skillLevel8=1;2;3 -> the n/e/l Pygmalion pets register at 1/2/3 so
+    petLimit=3;4;5 indexes to 3/4/5, not a flat 3). Omitted (the SV-pet standalone
+    sweep) -> level 1, a no-op there because those summons are already registered.
+
+    Hardening (build36 round-2 latent fix): the vacated buff slot is deleted ONLY
+    when the summon was actually relocated into a free special slot (or already
+    fires from an AI slot). If NO free special slot exists, the buff slot is KEPT
+    so the summon is not silently LOST - the fail-loud PET-SKILL-KIT gate then
+    flags it (WRONG_SLOT) rather than the build hiding the loss."""
     moved = 0
     for slot in _PET_NONAI_SLOTS:
         sk = _pet_slot_str(db, path, slot)
@@ -8621,23 +8653,26 @@ def _relocate_pet_buffslot_summon(db, path):
             continue
         in_ai = any(_pet_slot_str(db, path, s).replace('/', '\\').lower()
                     == sk.replace('/', '\\').lower() for s in _PET_AI_SLOTS)
+        relocated = False
         if not in_ai:
             free = _free_pet_special_slot(db, path)
             if free is not None:
                 db.set_field(path, free, _norm_skill_ref(sk))
                 db.set_field(path, free.replace('SkillName', 'Chance'), 60.0)
-                _register_pet_skill(db, path, sk, 1)
-        ff = db.get_fields(path) or {}
-        for k in list(ff):
-            if k.split('###')[0] == slot:
-                del ff[k]
-        moved += 1
+                _register_pet_skill(db, path, sk, _tier_source_level(db, source, sk, tier))
+                relocated = True
+        if relocated or in_ai:
+            ff = db.get_fields(path) or {}
+            for k in list(ff):
+                if k.split('###')[0] == slot:
+                    del ff[k]
+            moved += 1
     if moved:
         db._modified.add(path)
     return moved
 
 
-def _mirror_source_skill_kit(db, source, path):
+def _mirror_source_skill_kit(db, source, path, tier=None):
     """build36 A1 (pet-skill-kit): restore the source boss's AI-fired combat kit
     the Lyia-clone transplant structurally dropped. Copies the source's
     specialAttack2-5 combat skills (+ their Chance) into the pet's free special
@@ -8667,8 +8702,8 @@ def _mirror_source_skill_kit(db, source, path):
                 db.set_field(path, free.replace('SkillName', 'Chance'), float(ch))
             except (TypeError, ValueError):
                 pass
-        _register_pet_skill(db, path, sk, _source_skill_level(db, source, sk))
-    _relocate_pet_buffslot_summon(db, path)
+        _register_pet_skill(db, path, sk, _tier_source_level(db, source, sk, tier))
+    _relocate_pet_buffslot_summon(db, path, source=source, tier=tier)
     for slot in _PET_AI_SLOTS:
         sk = _pet_slot_str(db, path, slot)
         if sk and _skill_class_of(db, sk) is not None:
@@ -8794,7 +8829,9 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         # ── build36 A1 (pet-skill-kit): restore the source's dropped specialAttack
         #    2-5 combat kit + force any friendly summon into an AI-fired slot (the
         #    Pygmalion "never summons" fix). Runs AFTER _update_existing_fields.
-        _mirror_source_skill_kit(db, source, path)
+        #    tier=i+1 (1=n,2=e,3=l) -> multi-level summons/skills register at the
+        #    source's per-tier level (replicate 1/2/3 -> petLimit 3/4/5).
+        _mirror_source_skill_kit(db, source, path, tier=i + 1)
 
         # ── D19 PET-MOBILITY assert (fail-loud; bone-proven 2026-07-09): the
         # pet's PRIMARY anim row must have TABLE locomotion. Foreign-family
@@ -8868,12 +8905,19 @@ def _create_blood_toxeus_summon(db):
         life_regen=[30.0, 60.0, 100.0],
         dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1)
         # build36 A1 (pet-gear-parity): loadout OMITTED -> auto-derive the STRICT
-        # source mirror. um_bloodtoxeus_99 equips RightHand(svc\crimsonverdict) +
-        # LeftHand(svc\bleed_affix) + Torso + Forearm + LowerBody. The old Torso+
-        # LowerBody-only loadout left the Devourer bare-fisted; the strict mirror
-        # substitutes a common weapon+shield for the two svc slots (naked-pet law)
-        # and mirrors the three common armor slots -> the Devourer "keeps its
-        # weapon" (Will's law), fully geared like its wild form.
+        # source mirror of um_bloodtoxeus_99. BUILD-ORDER matters (round-2 comment
+        # fix): this summon reads the source HERE, and at this point um_bloodtoxeus_
+        # 99 still carries the COMMON loadout it inherited from its clone donor
+        # um_toxeus_99 (RightHand sword_n01b + LeftHand shield_n01b + Torso/Forearm/
+        # LowerBody melee/armband/greaves; Head chance 0). The boss's own svc DROP
+        # gear (svc\crimsonverdict RightHand + svc\bleed_affix LeftHand) is wired
+        # LATER by _wire_blood_toxeus_loot - AFTER this read - so it never reaches
+        # the pets. The strict mirror therefore copies those COMMON weapon+shield+
+        # armor tables DIRECTLY (the svc->common substitute branch is NOT taken for
+        # these slots) -> the Devourer "keeps its weapon" (Will's law) because its
+        # wild source form carries a common weapon+shield at mirror time. (Were the
+        # svc gear ever wired first, the strict svc->common substitute would still
+        # keep the pet armed with a common weapon+shield, never the svc set item.)
     if ok:
         print("  D7 Toxeus summon: 3 pets from boss rig (RevenantPoison + crimson) + "
               "summon skill (250/300/350 en, 180s cd); gear auto-mirrors the boss (A1)")
@@ -9948,7 +9992,7 @@ _DK_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_dorus.dbr'
 _DK_YARD_PROXY = r'records\drxmap\proxy\q_yard_dorus.dbr'
 _DK_BAND = [41, 57, 71]
 _DK_MESH = r'XPack\Creatures\Monster\Zombie\xSQ06_Royalty_NonQuest.msh'
-_DK_SK_CONVIMMUNITY = r'records\skills\boss skills\boss_conversionimmunity.dbr'
+# (boss_conversionimmunity is inherited from the donor's skillName16 - not re-added)
 _DK_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
 
 
@@ -10015,10 +10059,13 @@ def _create_propontis_superboss(db, tags):
     sf(M, 'defensivePierce', 55.0)
     sf(M, 'defensivePhysical', 30.0)
     sf(M, 'defensiveBleeding', 40.0)
-    # ADD to the donor's kit (skillName1-4 + 10-12 used; 5-9 free): the raise-court
-    # summon + boss immunity + legendary globals. Keep ThunderClap/Thunderball etc.
+    # ADD to the donor's kit in its FREE slots. The donor (xsq06_king_dorus_41)
+    # uses skillName1-3 + 10-12 + 15-17, and skillName16 ALREADY registers
+    # boss_conversionimmunity, so we do NOT re-add it (round-2 dedup: the old
+    # skillName6=boss_conversionimmunity was a harmless duplicate of the inherited
+    # slot 16). Add the raise-court summon (5) + the legendary globalproperties (7);
+    # keep the donor's ThunderClap/Thunderball + conversion-immunity/resist passives.
     sf(M, 'skillName5', _DK_SUMMON)
-    sf(M, 'skillName6', _DK_SK_CONVIMMUNITY)
     sf(M, 'skillName7', _DK_SK_GP_L)
     # AI: he raises the court OFTEN (specialAttack1/2 = the donor's Thunder casts).
     sf(M, 'specialAttack3SkillName', _DK_SUMMON)
@@ -10081,8 +10128,14 @@ def _create_propontis_superboss(db, tags):
         r = lambda v: round(v * m, 1)
         return {
             **_bmp(t),
+            # Two thematic drx* augments (spec S1: "drxonslaught + a vitality/decay
+            # drx* mod"): Onslaught (Warfare, physical/OA) + Ravages of Time (the
+            # Spirit Death-Chill-Aura vitality/decay modifier) - matches his corpse-
+            # king VITALITY sheet below (offensiveLife* + defensiveLife) far better
+            # than the cold base aura. Ravages is a proven soul augment (the Blood-
+            # Toxeus soul uses it; soul-augment gate green).
             'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
-            'augmentSkillName2': (S, _SK_DEATH_CHILL), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
+            'augmentSkillName2': (S, _SK_RAVAGES_OF_TIME), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
             'characterLife': (F, r(340.0)), 'characterLifeModifier': (F, r(12.0)),
             'characterStrength': (F, r(35.0)), 'characterStrengthModifier': (F, r(8.0)),
             'characterOffensiveAbility': (F, r(100.0)), 'characterDefensiveAbility': (F, r(70.0)),
@@ -11676,6 +11729,106 @@ _RG_SUMMON = r'records\xpack2\skills\runemaster\_drx_runegolem.dbr'
 _RG_UI = r'records\xpack2\ui\skills\mastery 10\skill23.dbr'
 _RG_MENHIR_BASE = r'records\xpack2\skills\runemaster\menhirwall.dbr'   # vanilla, on our tree
 _RG_STONE_SOUND = r'Records\Sounds\SoundPak\Armor\StoneImpactPak.dbr'  # base (pet impactSound already uses it)
+# The golem's SkillButton, referenced from the Runemaster panectrl tabSkillButtons
+# (case-insensitive -> _RG_UI). PascalCase to match the base game's button refs.
+_RG_UI_BTN = r'records\XPack2\ui\skills\mastery 10\Skill23.dbr'
+_RG_PANE_XPACK2 = r'records\xpack2\ui\skills\mastery 10\panectrl.dbr'
+_RG_PANE_XPACK3 = r'records\xpack3\ui\skills\mastery 10\panectrl.dbr'
+
+
+def _rg_runemaster_base_buttons():
+    """The base-game xpack2 Runemaster panel button list (Mastery + Skill01..22;
+    Skill05 is intentionally absent, exactly as the shipping base game panel)."""
+    btns = [r'records\XPack2\ui\skills\mastery 10\Mastery.dbr']
+    for si in (1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22):
+        btns.append(rf'records\XPack2\ui\skills\mastery 10\Skill{si:02d}.dbr')
+    return btns
+
+
+def _rg_wire_runemaster_panel(db):
+    """build36 round-2 P2 fix: register the golem's Skill23 button in the Runemaster
+    (mastery 10) skill PANEL. TQ shows ONLY the buttons a mastery panectrl lists in
+    tabSkillButtons (no auto-discovery), so without this the golem SkillButton is
+    orphaned and the skill never appears on the tree. The stock build's
+    fix_mastery_panel_buttons covers only ingameui masteries 1-8 (never mastery 10)
+    and lives in the parallel-owned build_svc_database.py; Lane B's Runemaster buffs
+    touch only menhirwall/mines fields (NOT the panel). So Lane A owns this.
+
+    base_db is freed before the golem runs and the working db (SV-0.98i-rooted) never
+    carried the Ragnarok UI, so we RECONSTRUCT the two base-game mastery-10 panectrl
+    overrides from their verified field set (database.arz, byte-dumped 2026-07-11) and
+    append Skill23. Both the xpack2 (Ragnarok-tier) and xpack3 (Atlantis-tier) panes
+    are overridden so the button shows regardless of which DLC the player owns - the
+    same multi-tier override pattern fix_mastery_panel_buttons uses for masteries 1-8.
+    Additive: never renumbers or removes an existing button; idempotent."""
+    S, F = DATA_TYPE_STRING, DATA_TYPE_FLOAT
+    base_btns = _rg_runemaster_base_buttons()
+    xpack3_btns = base_btns + [r'records\xpack3\ui\skills\mastery 10\skill+1.dbr',
+                               r'records\xpack3\ui\skills\mastery 10\skill+2.dbr']
+    common = [
+        ('templateName', S, r'database\Templates\InGameUI\SkillPaneCtrl.tpl'),
+        ('masteryBar', S, r'records\XPack2\ui\skills\mastery 10\MasteryBar.dbr'),
+        ('peekThroughColorBlue', F, 0.2),
+        ('peekThroughColorGreen', F, 0.3),
+        ('peekThroughColorRed', F, 0.4),
+        ('peekThroughNextTierSound', S, r'Records\Sounds\SoundPak\UI\SkillTierActivate.dbr'),
+        ('skillPaneBaseBitmap', S, r'records\XPack2\ui\skills\mastery 10\SkillPaneBaseBitmap.dbr'),
+        ('skillPaneBaseReallocationBitmap', S, r'records\XPack2\ui\skills\mastery 10\SkillPaneReallocationBitmap.dbr'),
+        ('skillPaneDescriptionTag', S, 'x2tagRuneMaster_skillPaneDescripton'),
+        ('skillPaneMasteryBitmap', S, r'records\XPack2\ui\skills\mastery 10\MasteryBitmap.dbr'),
+        ('skillTabTitle', S, 'x2tagRuneMaster_skillTabTitle'),
+    ]
+    panes = [
+        (_RG_PANE_XPACK2, r'Records\XPack\UI\Skills\Mastery Base\BaseSkillPane.dbr', base_btns),
+        (_RG_PANE_XPACK3, r'Records\XPack3\UI\Skills\Mastery Base\BaseSkillPane.dbr', xpack3_btns),
+    ]
+    want = _RG_UI_BTN.replace('/', '\\').lower()
+    for pane, base_pane, btns in panes:
+        buttons = list(btns)
+        if not any(str(b).replace('/', '\\').lower() == want for b in buttons):
+            buttons.append(_RG_UI_BTN)          # additive: append the golem button
+        _ensure_record(db, pane, '')
+        for name, dt, val in common:
+            db.set_field(pane, name, [val], dt)
+        db.set_field(pane, 'BasePane', [base_pane], S)
+        db.set_field(pane, 'tabSkillButtons', buttons, S)
+        db._modified.add(pane)
+    print("  Rune Golem: registered Skill23 in the Runemaster panel (xpack2 + xpack3 "
+          "mastery-10 panectrl overrides, +1 button each, additive)")
+
+
+def _verify_runemaster_golem_button(db):
+    """A8 golem-panel gate (fail-loud, build36 round-2). If the Rune Golem summon
+    skill exists (the graft ran) its Skill23 button MUST be registered in BOTH
+    mastery-10 panectrl overrides' tabSkillButtons, and the button must point at the
+    summon - else the skill is orphaned off the Runemaster tree (the vet's P2). The
+    gate is vacuously OK when the golem was not built (snapshot absent)."""
+    if not db.has_record(_RG_SUMMON):
+        print("  RUNEMASTER-GOLEM-BUTTON gate: golem not built (skipped)")
+        return
+    problems = []
+    if not db.has_record(_RG_UI):
+        problems.append(f"golem summon exists but its UI button {_RG_UI} is missing")
+    else:
+        sk = db.get_field_value(_RG_UI, 'skillName')
+        sk0 = (sk[0] if isinstance(sk, list) else sk) or ''
+        if str(sk0).replace('/', '\\').lower() != _RG_SUMMON.replace('/', '\\').lower():
+            problems.append(f"{_RG_UI}: skillName={sk0!r} != golem summon {_RG_SUMMON}")
+    want = _RG_UI_BTN.replace('/', '\\').lower()
+    for pane in (_RG_PANE_XPACK2, _RG_PANE_XPACK3):
+        if not db.has_record(pane):
+            problems.append(f"{pane}: panectrl override MISSING")
+            continue
+        btns = db.get_field_value(pane, 'tabSkillButtons') or []
+        if not any(str(b).replace('/', '\\').lower() == want for b in btns):
+            problems.append(f"{pane}: Skill23 not in tabSkillButtons ({len(btns)} buttons)")
+    if problems:
+        for p in problems:
+            print(f"  RUNEMASTER-GOLEM-BUTTON OFFENDER: {p}")
+        raise SystemExit(f"RUNEMASTER-GOLEM-BUTTON gate FAILED: {len(problems)} issue(s) "
+                         "- the Rune Golem skill would be orphaned off the Runemaster panel")
+    print("  RUNEMASTER-GOLEM-BUTTON gate OK: Skill23 wired into both mastery-10 "
+          "panectrl overrides -> the golem skill appears on the Runemaster tree")
 
 
 def _create_rune_golem(db, tags):
@@ -11758,6 +11911,11 @@ def _create_rune_golem(db, tags):
         db.set_field(_RG_UI, name, vals, dt)
     db._modified.add(_RG_UI)
     created += 1
+
+    # 3b) REGISTER Skill23 in the Runemaster (mastery 10) skill PANEL so the button
+    #     is not orphaned (TQ shows only panectrl-listed buttons; no auto-discovery).
+    #     build36 round-2 P2 fix - see _rg_wire_runemaster_panel for the full why.
+    _rg_wire_runemaster_panel(db)
 
     # 4) Text tags (6 new golem strings; the menhir-bolt clause is trimmed since our
     #    vanilla Menhir Wall lacks SVAERA's catalyst-bolt synergy).
@@ -13360,6 +13518,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     _verify_summon_pet_parity(db, _SUMMON_PET_BUILDS)
     _verify_summon_pet_gear(db, _SUMMON_PET_BUILDS)
     _verify_summon_pet_skill_kit(db)
+
+    # ── A8 Rune Golem panel gate (fail-loud, build36 round-2) ─────────────────
+    # The golem SkillButton is useless unless it is listed in the Runemaster
+    # mastery-10 panectrl(s); prove Skill23 is wired into both DLC-tier overrides
+    # so the summon skill is actually selectable on the tree (the vet's P2).
+    print("\n=== build36 A8: Rune Golem panel-button gate ===")
+    _verify_runemaster_golem_button(db)
 
     # ── Boss-kit clone-shape invariant (fail-loud, B-TOXEUS-2) ────────────────
     # After all boss authoring: every registered boss-kit clone must keep its
