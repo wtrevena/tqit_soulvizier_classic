@@ -107,6 +107,115 @@ def import_base_game_bosses(db: ArzDatabase, base_db: ArzDatabase):
     return imported
 
 
+# A5 ACT-5 LEAK FIX (build36 AMENDMENT) - FIX C: DB-record suppression + Victory-
+# Portal un-gate. Post-Hades a DLC owner sees "Portal to the North" (portal_
+# hadesscandia, RequireDLC=TQA2) -> vanilla Act 5, because the IT-cap in Quests.arc
+# is inert (it edits the ROOT-stored copy, but the map registers the controller
+# under the XPack/ DLC namespace, which resolves to the UNCAPPED base Quests.arc).
+# The arz-only fix overrides the two act-portal records so the engine never spawns
+# them (AND-unsatisfiable DLC gate), AND un-gates the placed Victory Portal so a DLC
+# owner gets a working portal -> Epic (the mandatory adversarial-check correction:
+# fixeditemtyphonportal is NOT placed, so it does nothing; endportal_hades is the
+# only placed Victory Portal but is RequireNoDLC-gated OFF for DLC owners -> a
+# both-DLC owner has ZERO victory portals; suppressing it would STRAND them on
+# Normal. Un-gating it resolves the minimap "ghost" into the one visible Victory
+# Portal AND preserves Epic - the only reading consistent with "ONE clean Victory
+# Portal after Hades -> use it -> Epic"). fixeditemtyphonportal stays UNTOUCHED.
+_ACT5_SUPPRESS = [
+    # (record, field, add-value) - AND-suppress: RequireDLC=X AND RequireNoDLC=X is
+    # unsatisfiable (owns X AND not-X), proven by the shipped endportal_hades_normal_
+    # epic (RequireDLC=TQX4 + RequireNoDLC=TQA2). So the portal never spawns.
+    (r'records\xpack2\quests\objects\portal_hadesscandia.dbr', 'RequireNoDLC', 'TQA2'),   # North leak
+    (r'records\xpack4\quests\item\teleport\x4_other_immortalthrone_to_eternalembers_teleport_a.dbr',
+     'RequireNoDLC', 'TQX4'),                                                             # IT->EE leak
+]
+_ACT5_UNGATE = r'records\xpack2\quests\objects\endportal_hades.dbr'                        # DROP RequireNoDLC (reveal)
+_ACT5_TIDY_EPIC = r'records\xpack2\quests\objects\endportal_hades_normal_epic.dbr'         # optional: suppress the redundant 2nd portal
+
+
+def apply_act5_leak_fix(db: ArzDatabase, base_db):
+    """Override the post-Hades portal records so DLC owners are routed to Epic (the
+    classic IT ending), not vanilla Act 5. arz-only, re-evaluated at spawn on every
+    load (covers fresh AND existing chars). Imports each base record into the overlay
+    (clean override-add: none of the four exist in the mod arz today), then edits it.
+    """
+    print("\n=== A5: Act-5 leak fix (post-Hades portal suppression + Victory-Portal un-gate) ===")
+    if base_db is None:
+        print("  A5: base_db unavailable; SKIPPED (cannot import portal records)")
+        return 0
+
+    base_names = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
+
+    def _import_base_record(path):
+        """Copy a base-game record into the overlay (ensure_record + field copy),
+        mirroring import_base_game_bosses. Returns the overlay key or None."""
+        want = path.replace('/', '\\').lower()
+        src = base_names.get(want)
+        if src is None:
+            print(f"  A5: base record MISSING {path}")
+            return None
+        fields = base_db.get_fields(src)
+        if not fields:
+            print(f"  A5: base record has no fields {path}")
+            return None
+        template = ''
+        for key, tf in fields.items():
+            if key.split('###')[0] == 'templateName' and tf.values:
+                template = str(tf.values[0]); break
+        from apply_svc_patches import _ensure_record
+        _ensure_record(db, path, template)
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            vals = list(tf.values) if tf.values else []
+            if len(vals) == 1:
+                db.set_field(path, fn, vals[0], tf.dtype)
+            elif len(vals) > 1:
+                db.set_field(path, fn, vals, tf.dtype)
+        return path
+
+    n = 0
+    # 1+2. SUPPRESS the two act portals (AND-unsatisfiable DLC gate).
+    for path, field, val in _ACT5_SUPPRESS:
+        rec = _import_base_record(path)
+        if rec is None:
+            continue
+        db.set_field(rec, field, val, DATA_TYPE_STRING)   # add RequireNoDLC
+        db._modified.add(rec)
+        n += 1
+        print(f"  A5 SUPPRESS: {path.split(chr(92))[-1]} += {field}={val} (never spawns)")
+
+    # 3. UN-GATE the placed Victory Portal: drop RequireNoDLC so it renders for DLC
+    #    owners (resolves the ghost + preserves Epic). Delete the field entirely
+    #    (never blank to '' - field-absence parity).
+    rec = _import_base_record(_ACT5_UNGATE)
+    if rec is not None:
+        ff = db.get_fields(rec) or {}
+        removed = False
+        for k in list(ff):
+            if k.split('###')[0] == 'RequireNoDLC':
+                del ff[k]; removed = True
+        db._modified.add(rec)
+        n += 1
+        print(f"  A5 UN-GATE: endportal_hades RequireNoDLC dropped ({'removed' if removed else 'was absent'}) "
+              "-> the one visible Victory Portal for all DLC combos -> Epic")
+
+    # 4. (tidy) suppress the redundant 2nd Victory Portal for TQX4 owners: add TQX4
+    #    to its existing RequireNoDLC=TQA2 -> [TQA2,TQX4] (owns TQX4 AND not-TQX4 =
+    #    unsatisfiable). Harmless if skipped; keeps exactly one portal on screen.
+    rec = _import_base_record(_ACT5_TIDY_EPIC)
+    if rec is not None:
+        cur = db.get_field_value(rec, 'RequireNoDLC')
+        cur = cur if isinstance(cur, list) else ([cur] if cur else [])
+        newv = sorted(set([str(x) for x in cur if x] + ['TQX4']))
+        db.set_field(rec, 'RequireNoDLC', newv)
+        db._modified.add(rec)
+        n += 1
+        print(f"  A5 TIDY: endportal_hades_normal_epic RequireNoDLC={newv} (suppress the redundant 2nd portal)")
+
+    print(f"  A5: {n} portal record override(s) written (arz-only; re-evaluated at spawn every load)")
+    return n
+
+
 def strip_ui_overrides(db: ArzDatabase):
     """Remove SV UI records that conflict with AE's modern UI system.
 
@@ -3145,6 +3254,10 @@ def main():
         print(f"\nLoading base game: {base_path}")
         base_db = ArzDatabase.from_arz(base_path)
         import_base_game_bosses(db, base_db)
+
+    # A5 (build36 AMENDMENT): post-Hades Act-5 leak fix. Imports + overrides the base
+    # portal records so DLC owners route to Epic, not vanilla Act 5. Needs base_db.
+    apply_act5_leak_fix(db, base_db)
 
     strip_ui_overrides(db)
     remove_dead_orphan_records(db)   # P3 hygiene: drop the corrupted potionexp_test orphan

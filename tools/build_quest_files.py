@@ -74,10 +74,26 @@ PORTALS = []
 # ── Soulvizier area questlines ───────────────────────────────────────────────
 # Source .qst files live in upstream SV 0.98i's XPack Quests.arc. They round-trip
 # byte-exact through qst_format. Each name below is ALREADY registered in the
-# deployed map's QUESTS section (as Quests/<name> and/or XPack/Quests/<name>), and
-# the shipped Quests.arc stores every quest at the ARCHIVE ROOT (basename only) --
-# the engine strips the folder prefix to the basename and resolves it at the root.
-# So we add these at the root, mirroring how the other ~100 quests are stored.
+# deployed map's QUESTS section under the plain `Quests/<name>` namespace, and the
+# shipped Quests.arc stores them at the ARCHIVE ROOT (basename). We add these at the
+# root, mirroring how the other ~100 `Quests/`-namespaced quests are stored.
+#
+# ⚠️ CORRECTION (A5 act-5 leak RCA, 2026-07-11): the earlier claim here -- "the
+# engine strips the folder prefix to the basename and resolves it at the root" -- is
+# WRONG for DLC-namespaced quests, and it made the IT-cap (build33) 100% INERT. The
+# per-quest save identity (`.que`) is `md5(lowercased FULL registry path, backslash-
+# separated)`, NOT `quests\<basename>`. Root-basename storage only overrides a quest
+# REGISTERED under the plain `Quests/` namespace. A quest the map registers under
+# `XPack/quests/...` or `XPack4/quests/...` is identified AND its file resolved via
+# that DLC namespace, which the engine reads from the base game's UNCAPPED
+# `Resources/xpack/Quests.arc` / `XPack4/Quests.arc` -- a mod copy placed at the
+# plain Quests.arc root is NEVER consulted for it. That is why the post-Hades cap on
+# xquest_controlsbossdoors.qst (removing the portal_hadesscandia unlock) never
+# loaded, and the North portal to Act 5 leaked through. Any "port a vanilla DLC
+# controller with one action removed" fix MUST land in the matching mod
+# `Resources/xpack/`/`XPack4/` archive, re-point the map registry, or (as A5 does)
+# be done at the DB-record level (RequireNoDLC suppression). This is the exact
+# sibling of the build22 widow-letter "inert fix" lesson (PLAYBOOK failure graveyard).
 UPSTREAM_SV_QUESTS = Path(
     r'upstream\soulvizier_098i\Resources\XPack\Quests.arc')
 
