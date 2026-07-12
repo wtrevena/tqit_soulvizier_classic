@@ -3473,7 +3473,18 @@ def main():
               "(66% Hero/Quest, 25% Boss). ***")
         print("*** For a 100% test build, set SVC_TESTING_DROPS=1. ***")
     print("=" * 70)
-    extended_tags = apply_all_extended_patches(db, force_full_drops=force_full_drops)
+    # ── patches-registry (build37) hook ───────────────────────────────────────
+    # Run the monolith's content, THEN the ordered patches-registry content
+    # modules over the SAME db/tags, THEN the monolith's whole gate battery -
+    # so every gate validates the FINAL assembled db (monolith + every module)
+    # and nothing a module does escapes the gates. With an EMPTY REGISTRY this
+    # is byte-identical to the pre-registry build (tools/patches/README.md S5).
+    extended_tags = apply_all_extended_patches(
+        db, force_full_drops=force_full_drops, _defer_gates=True)
+    from patches import run_registry
+    run_registry(db, extended_tags)
+    from apply_svc_patches import run_registry_gates
+    run_registry_gates(db, extended_tags, force_full_drops=force_full_drops)
 
     report_path = output_path.parent / 'uber_souls_report.md'
     with open(report_path, 'w', encoding='utf-8') as f:
