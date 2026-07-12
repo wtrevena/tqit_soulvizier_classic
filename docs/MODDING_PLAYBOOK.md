@@ -755,6 +755,7 @@ only.
 | Deploy auto-syncing a stale `local` map | Nearly clobbered the good deployed map | `-SyncLevels` is opt-in; verify the local build first |
 | Raw MapCompiler output with no GROUPS/SD/QUESTS patch (Exp 6) | Crashes immediately on Custom Quest start | GROUPS/SD/QUESTS/ints_raw patching is mandatory for load |
 | SVAERA baseline deployed unmodified (Exp 7) | Worked perfectly - proved the wall came from SV merging, not the base map | Baseline-compare when a whole-map regression appears |
+| Cap a DLC controller quest by storing a capped copy at the Quests.arc ROOT (basename) | Quest identity = `md5(FULL registry path)`, not `quests\<basename>`. The map registers `xquest_controlsbossdoors.qst` under `XPack/quests/...`, which resolves to the base game's UNCAPPED `xpack/Quests.arc`; the root copy is never consulted -> the IT-cap was 100% INERT and the post-Hades "Portal to the North" leaked to vanilla Act 5 (A5, 2026-07-11). Sibling of the build22 widow-letter inert fix | A "port a vanilla DLC controller with one action removed" fix MUST land in the matching mod `Resources/xpack/`/`XPack4/` Quests.arc, re-point the map QUESTS registry, or be done at the DB-record level (A5 = `RequireNoDLC` suppression + Victory-Portal un-gate). NEVER assume the engine strips a registry path to its basename |
 
 The Exp 1-7 sequence (`tools/MAP_MERGE_EXPERIMENTS.md`) chased "terrain edge mismatch"
 theories for the invisible wall before the TRUE root cause (`0x0a` never parsed) was

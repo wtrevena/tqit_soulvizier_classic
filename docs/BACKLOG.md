@@ -1,4 +1,52 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🛠️ **BUILD36 AMENDMENT (A1-A9) - DB IMPLEMENTED + GATED GREEN (2026-07-12, `feat/build36-amendment`,
+> off main `32a4967`, HEAD `5526bef`).** Nine-item final DB pass; all in `tools/apply_svc_patches.py`
+> (A5 also `tools/build_svc_database.py`; A5 doc corrections in `build_quest_files.py` +
+> `docs/QUEST_STATE_INJECT.md` + `docs/MODDING_PLAYBOOK.md` graveyard). Built arz + Text; the map lane
+> owns the deltas below. **Verified in the built arz + full gate battery GREEN** (5 invariants, 3 pet
+> gates, golem button, B-SUMMON-1, C6 Dorus, F1/F2/F3/F6, A9 render-chain w/ real art, golden w/ 5
+> flash-powder waivers, `_verify_boss_orbs` NEW + negative-test, naming gate negative-test, contracts
+> souls 0/summons 0P1/resources only the pre-existing `anm_dreamcopy` P1).
+> **A1 ENSLAVER WARBAND + B6 MARAUDER LAW** (`_create_enslaver_warband`, built between `_create_enslaver`
+>   and the roaming sweep; whitelisted in `_EN_YARD_POOLS`): Option-A championChance set-piece
+>   `q_enslaver_warband` pool/proxy = 1 leader + 4 "{^r}Enslaved Shadow Marauder" champions
+>   (spawnMax=5/championMin=Max=4/championChance=100, chanceToRun=100, limit_obsidianbosses [1..110]);
+>   name KEPT per Will. B6: marauder buffed to the DEPLOYED demon-Toxeus block ([13000,18000,24000],
+>   str480/dex660/int420, scale2.0, resists Life100/Pierce80/Phys30, KEEP dmg300/380); summon petLimit
+>   12->4 (WILL_DECISIONS); leader = 2.5x = [32500,45000,60000], dmg350/500, scale2.4, CC-immune;
+>   friendly soul-pet marauders match the demon ladder.
+> **A2 BOSS ORBS** (`_amend_boss_loot_orbs` + `_verify_boss_orbs`, after all uber builders): 12 boss
+>   records get `treasureProxyName=genericbossorb_04` (J1 Enslaver ON + J2 breadth: Blood Toxeus,
+>   Vashkarr, Broodmother, Dorus, 4 Obsidian wardens, Tantalus->`um_tantalus_unbound_99` TERMINAL,
+>   Mnemophage->core, Ephialtes; Charon already inherits; marauders/heroes excluded). Marauder stays
+>   orb-less.
+> **A3 MAKARIA** Venom Cloud `skillCooldownTime` 25->8 (`makaria_venomcloud.dbr`, edit-shared).
+> **A4 ANAPAEST** Earth Fury `skillCooldownTime` 16->5 on the PLAIN `earthfury_ring.dbr` pre-castability
+>   -wave so the pcsafe clone inherits 5.0 (shared x4 bruiser souls).
+> **A5 ACT-5 FIX C** (arz-only): `portal_hadesscandia` += RequireNoDLC=TQA2, IT->EE teleport +=TQX4,
+>   `endportal_hades` UN-gated (Victory Portal revealed for DLC owners -> Epic), redundant 2nd portal
+>   +=TQX4; `fixeditemtyphonportal` untouched. + doc corrections (quest identity = md5 of FULL registry
+>   path).
+> **A6 SOUL WIRES** (`_wire_missing_boss_souls`): `hellflower_soul` -> `us_hellflower_37` @66 (fresh);
+>   `limoslifeater_soul` -> `um_frost_36` @66 (UNCONDITIONAL REPLACE of the thin `um_frost_soul` husk).
+> **A7 21 HANDCRAFTED SOULS** (`_apply_dewired_hero_handcraft`, run FIRST in `apply_all_extended_patches`):
+>   owned-override table, evocative names + signature grants + amgoz downsides + per-tier itemLevel.
+> **A8 OBSIDIAN BALANCE (B1-B7)**: Voranthys (12/18/25k, scale2.5, freezingbreath signature + slot
+>   reshuffle, pet breath+scale); escort soul-flood fix (soul-less clones of permean+bonehallow);
+>   Ilsevar (10/15/21k, scale3.0, CC-immune, soul->manual-cast `ilsevar_drainnova` clone CD16, tier 3/5/8);
+>   Sarkoth (13/20/28k, regen40/70/100, scale3.0, CC-immune, `svc_sarkoth_whelp` blooddragon summons);
+>   TESTHUB yard chest -> golden poolchest tier; Vashkarr (shadow-shroud via charFxPakRunningNames on the
+>   monster + defensiveStun100 + scale3.0 + Wrath-of-the-Eldest enrage, stacks on C7); B7 Eldest soul
+>   physres 84/114.8/140 -> 30/45/60 + flat armor + HP + -8% runspeed (Gorrahk soul same).
+> **A9 EVOCATIVE-NAME RESTORATION**: `_HAND_DESIGNED_SOUL_TAGS` extended (Anapaest -> "{^F}Soul of
+>   Anapaest the Dishonored", etc.); the auto-transform in `_apply_soul_naming_standard` also exempts the
+>   whitelist so evocative names win end-to-end; naming gate stays green (negative-tested).
+> **MAP DELTAS (hand-off to the map lane, NOT touched here):** (1) A1 place `q_enslaver_warband` at one
+>   walkable shadow-touched coord (5-monster footprint, extents ~4.0); (2) A8/B5 re-verify the
+>   `q_vashkarr_lone` placement density at the new scale 3.0; (3) A8/B1-B3 in-game clipping/pathing
+>   check on the 3x guardians in the TESTHUB yard + Obsidian Halls. A5 is arz-only (no map change).
+> **Coupled ship set:** arz + Text.arc. NOT DEPLOYED (map deltas + Steam land in the coupled wave).
+
 > 🩸🐉 **BUILD36 CONTENT WAVE (C1-C7) - DB IMPLEMENTED (2026-07-11, `feat/build36-content-wave`,
 > round 1).** Four new uber bosses + the Ereban relic + Dorus amendments + uplift picks, all DB-side
 > (arz + Text; map lane owns the C1-C4 placements, already landed). Branch is off `feat/build36-fix-wave`.

@@ -1346,6 +1346,53 @@ def _wire_missing_boss_souls(db):
     print(f"  Undead Typhon soul wired: {wired} records")
     total += wired
 
+    # ── A6 (build36 AMENDMENT) Hellflower (us_hellflower_37): the us_ prefix +
+    #    quillvine(soul)/quilvine(monster) folder-spelling mismatch dropped the
+    #    fuzzy score below threshold (same class as Ormenos). Orient Hero
+    #    (charLevel 37/55/69), spawns via 12 proxies-orient plant pools. 66%.
+    #    FRESH wire (monster has no loot) -> the `if not existing` guard is OK.
+    HELLFLOWER_SOULS = [
+        r'records\item\equipmentring\soul\quillvine\hellflower_soul_n.dbr',
+        r'records\item\equipmentring\soul\quillvine\hellflower_soul_e.dbr',
+        r'records\item\equipmentring\soul\quillvine\hellflower_soul_l.dbr',
+    ]
+    for _p in HELLFLOWER_SOULS + [r'records\creature\monster\quilvine\us_hellflower_37.dbr']:
+        if _resolve_record(db, _p) is None:
+            raise SystemExit('A6 hellflower: missing record %r' % _p)
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower().replace('/', '\\')
+        if nl.endswith(r'\quilvine\us_hellflower_37.dbr'):
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, HELLFLOWER_SOULS, 66.0)   # Hero -> 66%
+                wired += 1
+    print(f"  Hellflower soul wired: {wired} records")
+    total += wired
+
+    # ── A6 (build36 AMENDMENT) Limos Lifeeater (um_frost_36): drops the thin
+    #    um_frost_soul husk instead of its COMPLETED namesake limoslifeater_soul
+    #    (internal record name 'frost' != soul name; same class as hellflower).
+    #    um_ Boss (charLevel 36/54/69), spawns via 54 Limos pools. 66%. This is a
+    #    REPLACE (um_frost_36 ALREADY carries loot) -> set UNCONDITIONALLY (no
+    #    `if not existing` guard, or it would no-op).
+    LIMOSLIFEATER_SOULS = [
+        r'records\item\equipmentring\soul\limos\limoslifeater_soul_n.dbr',
+        r'records\item\equipmentring\soul\limos\limoslifeater_soul_e.dbr',
+        r'records\item\equipmentring\soul\limos\limoslifeater_soul_l.dbr',
+    ]
+    for _p in LIMOSLIFEATER_SOULS + [r'records\creature\monster\limos\um_frost_36.dbr']:
+        if _resolve_record(db, _p) is None:
+            raise SystemExit('A6 limoslifeater: missing record %r' % _p)
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower().replace('/', '\\')
+        if nl.endswith(r'\limos\um_frost_36.dbr'):
+            _wire_soul(name, LIMOSLIFEATER_SOULS, 66.0)   # um_ Boss -> 66%, OVERWRITE
+            wired += 1
+    print(f"  Limos Lifeeater soul re-wired: {wired} records")
+    total += wired
+
     # ── xpack Yaoguai: wire soul from regular Yaoguai variants ──────────
     yaoguai_souls = _get_soul_paths('boss_daemonbull_yaoguai')
     if yaoguai_souls:
@@ -2909,6 +2956,128 @@ def _create_neanderthal_warband_souls(db):
     return [paths_mega, paths_emgiec, paths_vio]
 
 
+# A7 DE-WIRED HERO SOUL HANDCRAFT (build36 AMENDMENT, ROUTE A - owned override).
+# The 21 de-wired NAMED-hero souls create_uber_souls minted ship with the WRONG name
+# (make_display_name uses the filename stem, so 18 of 21 read e.g. "{^F}Shadowhero
+# Soul" not "Phantom Weaver"), a borrowed/element-default grant, and an off-family
+# downside. _apply_dewired_hero_handcraft (run FIRST in apply_all_extended_patches,
+# before overhaul_souls) owns the DECISION-BEARING overrides from the synthesis spec
+# §1 master table: the evocative NAME (owned tag -> auto-covered by F6), the signature
+# GRANTED SKILL (+controller, or MANUAL = stripped controller), the amgoz DOWNSIDE,
+# the per-tier itemLevel ladder, and the region FileDescription. It sets an explicit
+# grant so the enhancer skips it; the 3 stat-only souls delete their grant and are
+# excluded from the enhancer via _STAT_ONLY_SOULS. (Exact stat MAGNITUDES live in the
+# per-soul craft docs; this route keeps the auto stat block and applies the design
+# overrides on top - the highest-fidelity change available without fabricating
+# unverified numbers.)
+_STAT_ONLY_SOULS = frozenset({'steamcrawler', 'ubericeraptor', 'hero_junshan'})
+
+# controllers (all resolve in the post-fix arz; probed 2026-07-11)
+_HC_C_ATK = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr'
+_HC_C_LOWHP = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_lowhealth.dbr'
+_HC_C_ONEQUIP = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onequip.dbr'
+_HC_C_POISONBOMB = r'records\xpack\ai controllers\autocast_items\basetemplates\poisonbomb_onattack.dbr'
+_HC_C_THUNDER = r'records\xpack\ai controllers\autocast_items\basetemplates\thunderballnova_onattacked.dbr'
+_HC_C_UNDEAD = r'records\xpack\ai controllers\autocast_items\basetemplates\awakeneddeadsoul_onattack.dbr'
+# grant skills (all resolve; MANUAL = controller stripped; None grant = stat-only)
+_HC_ARARAT = r'records\skills\soulskills\ararat_corruption.dbr'          # shadowhero fallback (bespoke deferred)
+_HC_ARACHNEWEB = r'records\skills\soulskills\arachneshame_rangedweb.dbr'
+_HC_ALCESTIS = r'records\skills\soulskills\alcestis_batflurry.dbr'
+_HC_ICHTHIAN = r'records\skills\soulskills\ichthian_waterwave.dbr'
+_HC_VENOMBOLT = r'records\skills\scroll skills\arachnos_venombolt.dbr'
+_HC_KAZEPT = r'records\skills\sv\kazept\kazept_aura.dbr'
+_HC_BATTLESTD = r'records\skills\warfare\drxbattlestandard.dbr'
+_HC_CHILLAIR = r'records\skills\soulskills\chillingair.dbr'
+_HC_FIRESPRITE = r'records\skills\soulskills\summon_firesprite.dbr'
+_HC_THUNDERNOVA = r'records\skills\soulskills\thunderballnova.dbr'
+_HC_ENVENOM = r'records\skills\stealth\drxenvenomweapon.dbr'
+_HC_BLOODBOIL = r'records\skills\soulskills\melinoe_bloodboil.dbr'
+_HC_PUBOSGAS = r'records\skills\soulskills\pubos_poisongasball.dbr'
+_HC_CLUBSLAM = r'records\skills\soulskills\clubslam_ring.dbr'
+_HC_RINGLIGHT = r'records\skills\soulskills\ringoflightning.dbr'
+_HC_SQUALL = r'records\skills\storm\drxsquall.dbr'
+_HC_WRAITH = r'records\skills\soulskills\wraith_summon.dbr'                # koroush interim summon (bespoke deferred)
+
+# key -> (Display, region, grant|None, controller|None(=MANUAL), [(downsideField, L)], (ilN,ilE,ilL))
+_DEWIRED_HANDCRAFT = {
+    'shadowhero':          ('Phantom Weaver',                'Hades',  _HC_ARARAT,     _HC_C_LOWHP,     [('characterDefensiveAbility', -150.0)], (43, 58, 73)),
+    'blinkfang':           ('Spider Brooding',               'Greece', _HC_ARACHNEWEB, _HC_C_ATK,       [('characterDefensiveAbility', -16.0)],  (34, 45, 57)),
+    'frost':               ('Ice Mandible',                  'Egypt',  _HC_CHILLAIR,   _HC_C_ATK,       [('defensiveFire', -20.0)],              (19, 25, 32)),
+    'xhero_nightsmistress':('Alcestis',                      'Hades',  _HC_ALCESTIS,   _HC_C_POISONBOMB,[('characterStrength', -14.0)],          (27, 36, 46)),
+    'glittertail':         ('Glittertail the Conjurer',      'Orient', _HC_FIRESPRITE, _HC_C_UNDEAD,    [],                                      (43, 58, 72)),
+    'rebil':               ('Rebil Witfury',                 'Greece', _HC_BATTLESTD,  None,            [('characterSpellCastSpeedModifier', -15.0)], (34, 46, 58)),
+    'shockooth':           ('Shocktooth the Thunderbringer', 'Orient', _HC_THUNDERNOVA,_HC_C_THUNDER,   [('characterLifeModifier', -20.0)],      (42, 56, 71)),
+    'vileslash':           ('Vileslash the Uncatchable',     'Greece', _HC_ENVENOM,    _HC_C_ONEQUIP,   [('characterLife', -85.0)],              (34, 46, 58)),
+    'onyxspine':           ('Onyxspine the Dismemberer',     'Greece', _HC_VENOMBOLT,  None,            [('characterLife', -110.0)],             (35, 47, 59)),
+    'phlebas':             ('Phlebas the Tidebane',          'Greece', _HC_ICHTHIAN,   _HC_C_ATK,       [('characterLifeRegenModifier', -20.0)], (16, 41, 58)),
+    'bloodrunner':         ('Blood Hurdler',                 'Orient', _HC_BLOODBOIL,  _HC_C_ATK,       [('characterLife', -190.0)],             (40, 54, 68)),
+    'droolbog':            ('Chief Bullfrog Droolbog',       'Hades',  _HC_PUBOSGAS,   _HC_C_ATK,       [('characterRunSpeedModifier', -9.0)],   (43, 57, 72)),
+    'hero_junshan':        ('Jun Shan, Warrior-Monk',        'Orient', None,           None,            [('defensiveElementalResistance', -24.0)], (42, 56, 70)),
+    'kazept':              ('Kazept of the Flail Star',      'Egypt',  _HC_KAZEPT,     _HC_C_ONEQUIP,   [('defensiveCold', -20.0)],              (30, 50, 64)),
+    'koroush':             ('Koroush, Lurker of Samarkand',  'Orient', _HC_WRAITH,     _HC_C_ATK,       [('defensiveFire', -18.0)],              (23, 31, 39)),
+    'kydoimos':            ('Kydoimos',                      'Hades',  _HC_BATTLESTD,  None,            [('characterRunSpeedModifier', -10.0), ('characterSpellCastSpeedModifier', -25.0)], (45, 61, 73)),
+    'quest_celtheano':     ('Celtheano',                     'Greece', _HC_SQUALL,     _HC_C_POISONBOMB,[('characterStrength', -28.0)],          (18, 42, 59)),
+    'steamcrawler':        ('Steamcrawler',                  'Greece', None,           None,            [('characterTotalSpeedModifier', -13.0)],(13, 40, 58)),
+    'trachius':            ('Trachius',                      'Olympus',_HC_CLUBSLAM,   None,            [('characterTotalSpeedModifier', -12.0)],(45, 61, 73)),
+    'ubericeraptor':       ('Ice Raptor ~ Brood Mother',     'Orient', None,           None,            [('defensiveFire', -15.0)],              (16, 21, 27)),
+    'xix':                 ('Xix the Thunderclaw',           'Orient', _HC_RINGLIGHT,  None,            [('characterLifeModifier', -30.0)],      (40, 54, 68)),
+}
+
+
+def _hc_tag(key):
+    """Owned Text tag for a handcrafted de-wired soul (distinct from the auto
+    tagSoulSVC90NN so there is no collision; in `tags` -> F6-covered + Text-resolved)."""
+    return 'tagSVCSoulHC' + ''.join(p.capitalize() for p in key.split('_'))
+
+
+def _apply_dewired_hero_handcraft(db, tags):
+    """A7 ROUTE A: apply the owned handcraft overrides to all 21 de-wired hero souls.
+    Runs FIRST in apply_all_extended_patches (before overhaul_souls) so an explicit
+    grant is auto-skipped by the enhancer + the owned name lands inside the F6 scope.
+    Overwrites, per tier n/e/l: itemNameTag (owned) + name tag; itemSkillName +
+    controller (or strip for MANUAL) + itemSkillLevel; the signature downside (scaled
+    0.6/0.8/1.0); itemLevel; FileDescription = region. Stat-only souls delete their
+    grant (enhancer-excluded via _STAT_ONLY_SOULS)."""
+    _sc = {'n': 0.6, 'e': 0.8, 'l': 1.0}
+    _lv = {'n': 3, 'e': 5, 'l': 8}
+    done = 0
+    for key, (disp, region, grant, ctrl, downs, il) in _DEWIRED_HANDCRAFT.items():
+        tag = _hc_tag(key)
+        name = '{^F}%s Soul' % disp
+        present = False
+        for ti, t in enumerate(('n', 'e', 'l')):
+            rec = _resolve_record(db, rf'records\item\equipmentring\soul\svc_uber\{key}_soul_{t}.dbr')
+            if rec is None:
+                continue
+            present = True
+            db.set_field(rec, 'itemNameTag', tag, DATA_TYPE_STRING)
+            db.set_field(rec, 'FileDescription', region, DATA_TYPE_STRING)
+            db.set_field(rec, 'itemLevel', int(il[ti]), DATA_TYPE_INT)
+            ff = db.get_fields(rec) or {}
+            if grant is None:
+                # stat-only: delete the borrowed grant + its controller.
+                for k in list(ff):
+                    if k.split('###')[0] in ('itemSkillName', 'itemSkillAutoController'):
+                        del ff[k]
+            else:
+                db.set_field(rec, 'itemSkillName', grant, DATA_TYPE_STRING)
+                db.set_field(rec, 'itemSkillLevel', _lv[t], DATA_TYPE_INT)
+                if ctrl is None:
+                    for k in list(ff):   # MANUAL cast: strip the controller (never blank to '')
+                        if k.split('###')[0] == 'itemSkillAutoController':
+                            del ff[k]
+                else:
+                    db.set_field(rec, 'itemSkillAutoController', ctrl, DATA_TYPE_STRING)
+            for fld, lval in downs:      # signature downside, scaled per tier
+                db.set_field(rec, fld, round(float(lval) * _sc[t], 1), DATA_TYPE_FLOAT)
+            db._modified.add(rec)
+        if present:
+            tags[tag] = name
+            done += 1
+    print(f"  A7: handcrafted {done}/21 de-wired hero souls (evocative names + signature "
+          f"grants + amgoz downsides + per-tier itemLevel; stat-only souls grant-less)")
+
+
 def _find_auto_generated_souls(db):
     """Find svc_uber_ souls we auto-generated that could use skill enhancement."""
     results = []
@@ -2938,6 +3107,12 @@ def _find_auto_generated_souls(db):
             continue
 
         basename = nl.replace('\\', '/').split('/')[-1].replace('_soul_n.dbr', '')
+        # A7/§4.D: honor the "no borrowed proc" handcraft on the stat-only de-wired
+        # souls - do NOT element-default them (steamcrawler/ubericeraptor have fire/
+        # cold offense so _guess_element would re-stamp a proc; junshan is safe but
+        # listed for clarity). _apply_dewired_hero_handcraft deletes their grant.
+        if basename in _STAT_ONLY_SOULS:
+            continue
         monster_level = 0
         for key, tf in fields.items():
             rk = key.split('###')[0]
@@ -7836,7 +8011,10 @@ def _verify_soul_summon_identity(db, pairs):
 # get the trivial '<Name> Soul'; (SP) markers disambiguate SP-lineage duplicates.
 _SOUL_NAME_STANDARD = {
     'tagSVCSoulAinex': '{^F}Ainex, Queen of Crows Soul',
-    'tagSVCSoulAnapaest': '{^F}Gigantes - Anapaest Soul',
+    # A9 (build36 AMENDMENT): tagSVCSoulAnapaest INTENTIONALLY OMITTED here. The
+    # hand-authored evocative "{^F}Soul of Anapaest the Dishonored" (a bespoke uber-
+    # boss soul, like Tantalus/Ferryman/Mnemophage) WINS over the flat standard; it
+    # is exempted from the F6 "{^F}<Monster> Soul" gate via _HAND_DESIGNED_SOUL_TAGS.
     'tagSVCSoulAnklesickle': '{^F}Ankle Sickle Soul',
     'tagSVCSoulBWHighPriest': '{^F}Blood Cult - High Priest Soul',
     'tagSVCSoulCharsi': '{^F}Charsi Soul',
@@ -7946,16 +8124,23 @@ def _apply_soul_naming_standard(db, tags):
     (1) apply the curated explicit table (verifier-picked names for titled
     monsters / dev souls + the limoslifeater/xeiwang SV-name RESTORES); (2)
     auto-transform any remaining OURS-PATH soul whose authored name is still
-    '{^F}Soul of X' -> '{^F}X Soul' (covers souls outside the curated list, e.g.
-    tagSVCSoulBloodShaman, and any F1 de-wire newly generates). SV-ORIGINAL-PATH
-    souls are NEVER auto-transformed (law #2 - keep/restore amgoz1's name).
+    '{^F}Soul of X' -> '{^F}X Soul' (covers souls outside the curated list and
+    any F1 de-wire newly generates). SV-ORIGINAL-PATH souls are NEVER auto-
+    transformed (law #2 - keep/restore amgoz1's name).
+
+    A9 (build36 AMENDMENT): souls in _HAND_DESIGNED_SOUL_TAGS are ALSO exempt from
+    the auto-transform (not just the F6 gate). Without this, the auto-transform
+    flattened the deliberate hand-authored evocative "{^F}Soul of X" marquee names
+    (Anapaest, Tantalus/Insatiable, Ferryman/Unferried, Mnemophage, WakingDread,
+    BloodShaman) to "{^F}X Soul" BEFORE the gate saw them - defeating the whole
+    point of the whitelist. Now the hand-authored evocative names WIN end-to-end.
     Returns (curated_count, auto_count)."""
     n_curated = sum(1 for k in _SOUL_NAME_STANDARD if k in tags)
     tags.update(_SOUL_NAME_STANDARD)
     tag_sv = _soul_tag_sv_map(db, tags)
     n_auto = 0
     for t, is_sv in tag_sv.items():
-        if is_sv or t in _SOUL_NAME_STANDARD:
+        if is_sv or t in _SOUL_NAME_STANDARD or t in _HAND_DESIGNED_SOUL_TAGS:
             continue
         new = _standardize_soul_of(tags.get(t, ''))
         if new and new != tags.get(t):
@@ -9641,6 +9826,14 @@ _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakru
 _EN_SKELETON_DONOR = r'records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr'
 _EN_BOSS_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
 _EN_BOSS_TEX = r'Creatures\Monster\Skeleton\NewSkeleton_Charcoal.tex'
+# A1 WARBAND (build36 AMENDMENT, Option A championChance set-piece): a dedicated
+# proxy+pool that spawns 1 leader + 4 "Enslaved Shadow Marauder" champions present
+# at spawn (spawnMax=5 / championChance=100 / championMin=Max=4 -> 5-4=1 leader).
+# Built by _create_enslaver_warband between _create_enslaver and the roaming sweep;
+# whitelisted in _EN_YARD_POOLS (leak guard) + registered in _MOD_AUTHORED_SPAWN_
+# PROXIES. Map lane places the proxy at one coordinate (reported, not done here).
+_EN_WARBAND_POOL = r'records\drxmap\proxy\pools\q_enslaver_warband.dbr'
+_EN_WARBAND_PROXY = r'records\drxmap\proxy\q_enslaver_warband.dbr'
 _EN_SK_ATTACKSKILL = r'records\skills\monster skills\attack_melee\toxeus_attackskill.dbr'
 # Enslaver kit (Toxeus lineage; all existence-verified).
 _EN_SK_NETHERSTRIKE = r'records\skills\monster skills\attack_melee\netherstrike.dbr'
@@ -9698,33 +9891,49 @@ def _create_enslaver(db, tags):
                 del ff[k]
         db._modified.add(rec)
 
-    # ── 1. Hostile marauder (Champion, ~2x hand dmg, ShadowStalker rig + cloak). ──
+    # ── 1. Hostile marauder (Champion, ShadowStalker rig + cloak). ──
+    #    A1/B6 MARAUDER LAW (build36 AMENDMENT, Will 2026-07-11 verbatim): "the demon
+    #    version of toxeus should become the enslaved shadow marauder." Set the
+    #    marauder to the DEPLOYED demon-Toxeus block (um_toxeus_enslaver_99 @ build31)
+    #    so it matches what Will fought: HP [13000,18000,24000] (~2.6x the prior weak
+    #    5000), str 480/dex 660/int 420, scale 2.0/actorHeight 2.5, lifeRegen 12, the
+    #    demon resist wall (Life100/Pierce80/Phys30). KEEP its higher 300/380 hand dmg
+    #    (> the demon's 150/250 - Will: increase strength, never nerf). Name STAYS
+    #    "Enslaved Shadow Marauder" (Will's answer; WILL_DECISIONS 2026-07-11).
     db.clone_record(_EN_RIG_DONOR, _EN_MARAUDER)
     M = _EN_MARAUDER
     sf(M, 'description', 'tagSVCMonsterEnslaverMarauder')
     sf(M, 'monsterClassification', 'Champion')
     sf(M, 'characterRacialProfile', 'Demon')
     sf(M, 'charLevel', list(_EN_BAND))
-    # build36 A2 (super-strong shadow marauders, Will Option A): a 10-12 pack of
-    # these on top of the boss is a real AoE-or-die swarm.
-    sf(M, 'characterLife', [5000.0, 8500.0, 13000.0])
-    sf(M, 'characterStrength', 460.0)
-    sf(M, 'characterDexterity', 620.0)
-    sf(M, 'handHitDamageMin', 300.0)
-    sf(M, 'handHitDamageMax', 380.0)
+    sf(M, 'characterLife', [13000.0, 18000.0, 24000.0])   # = deployed demon Toxeus
+    sf(M, 'characterStrength', 480.0)
+    sf(M, 'characterDexterity', 660.0)
+    sf(M, 'characterIntelligence', 420.0)
+    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'handHitDamageMin', 300.0)                       # KEEP (> demon 150; never nerf)
+    sf(M, 'handHitDamageMax', 380.0)                       # KEEP (> demon 250)
+    sf(M, 'scale', 2.0)                                    # was 1.1 (demon silhouette)
+    sf(M, 'actorHeight', 2.5)
     sf(M, 'characterRunSpeed', 1.7)
+    sf(M, 'defensiveLife', 100.0)
+    sf(M, 'defensivePierce', 80.0)
+    sf(M, 'defensivePhysical', 30.0)
     sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], S)   # drxshadowcloakrunning_fx
     sf(M, 'dropItems', 0)
     db._modified.add(M)
 
-    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone). build36 A2: rapid
-    #    many-summon (burst 6 / cd 2.0s / petLimit 12) - he reaches ~12 marauders
-    #    within ~2s of aggro; all class-proven (donor is burst 5 / limit 15). ──
+    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone). A1/B6 DENSITY CUT
+    #    (build36 AMENDMENT): now that each marauder is a demon-tier bruiser (24000
+    #    HP, scale 2.0), petLimit drops 12 -> 4 so ~4 concurrent summoned + the 4
+    #    warband escorts = ~8 demon-strength marauders max (brutal, not absurd; the
+    #    12-swarm of bruisers would be a wall of giants). WILL_DECISIONS 2026-07-11:
+    #    "the summon petLimit cuts 12 -> 4." burst/cd kept (burst is capped by limit). ──
     db.clone_record(_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS)
     sf(_EN_SUMMON_MARAUDERS, 'spawnObjects', [_EN_MARAUDER])
     sf(_EN_SUMMON_MARAUDERS, 'petBurstSpawn', 6)
     sf(_EN_SUMMON_MARAUDERS, 'skillCooldownTime', 2.0)
-    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 12)
+    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 4)
     db._modified.add(_EN_SUMMON_MARAUDERS)
     _BOSS_KIT_CLONES.append((_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS))
 
@@ -9743,21 +9952,30 @@ def _create_enslaver(db, tags):
     sf(B, 'baseTexture', _EN_BOSS_TEX)                    # ALL-BLACK charcoal skin
     sf(B, 'characterRacialProfile', 'Undead')            # skeleton (was Demon)
     sf(B, 'charLevel', list(_EN_BAND))
-    sf(B, 'characterLife', [13000.0, 18000.0, 24000.0])
-    sf(B, 'characterStrength', 480.0)
-    sf(B, 'characterDexterity', 660.0)
+    # A1/B6.3 SKELETON LORD (build36 AMENDMENT): with the marauder now at the demon
+    # block [13000,18000,24000], the leader must TOWER. Will verbatim: "the skeleton
+    # version should be way stronger than his enslaved marauders." Leader = 2.5x the
+    # marauder HP = [32500,45000,60000] (extreme directive; flagged as a 60k roaming
+    # rare in the report). Out-hits them (350/500 > 300/380), visibly the master
+    # (scale 2.4 / height 2.9 over their 2.0), stronger attrs, and a lord is not
+    # lockable (defensiveStun/Freeze 100; Phys wall bumped 30 -> 40).
+    sf(B, 'characterLife', [32500.0, 45000.0, 60000.0])   # 2.5x the marauder
+    sf(B, 'characterStrength', 560.0)
+    sf(B, 'characterDexterity', 720.0)
     sf(B, 'characterIntelligence', 420.0)
     sf(B, 'characterLifeRegen', 12.0)
-    sf(B, 'handHitDamageMin', 150.0)
-    sf(B, 'handHitDamageMax', 250.0)
-    sf(B, 'scale', 2.0)
-    sf(B, 'actorHeight', 2.5)
+    sf(B, 'handHitDamageMin', 350.0)                       # clearly out-hits the 300-380 marauders
+    sf(B, 'handHitDamageMax', 500.0)
+    sf(B, 'scale', 2.4)                                    # visibly the master over his 2.0 soldiers
+    sf(B, 'actorHeight', 2.9)
     sf(B, 'characterRunSpeed', 1.5)
     # defensive wall (NO bleeding wall: expressed as flat resists, not the
-    # bloodwitch zpassive_resists_bleed record).
+    # bloodwitch zpassive_resists_bleed record). A1/B6.3: add CC immunity, bump Phys.
     sf(B, 'defensiveLife', 100.0)
     sf(B, 'defensivePierce', 80.0)
-    sf(B, 'defensivePhysical', 30.0)
+    sf(B, 'defensivePhysical', 40.0)                       # was 30 (lord's wall)
+    sf(B, 'defensiveStun', 100.0)
+    sf(B, 'defensiveFreeze', 100.0)
     # kit (clear the donor's trash passives 1..18 first, then author; the
     # specialAttack*SkillName slots are explicitly overwritten below).
     _clear_range(B, 'skillName', 1, 18)
@@ -9793,15 +10011,17 @@ def _create_enslaver(db, tags):
     #    marauder rig -> friendly pet + summon skill). isPetDisplayable off (the
     #    Enslaver PET auto-casts it, it is not a player button). ──
     marauder_pets = [rf'records\skills\soulskills\pets\enslaver_marauder_{i}.dbr' for i in (1, 2, 3)]
-    # build36 A2: the player's raised shadow pack matches the super-strong ladder
-    # (Will: "he raises his own shadow pack for you"). Gear/skills auto-mirror the
-    # marauder source (RightHand dyn_1h) via the A1 builder overhaul.
+    # build36 A2/B6.2: the player's raised shadow pack matches the demon ladder (the
+    # friendly pets are built separately by _build_boss_summon, so the marauder record
+    # buff does NOT reach them - pass the demon block here). Will: "he raises his own
+    # shadow pack for you." Gear/skills auto-mirror the marauder source (RightHand
+    # dyn_1h) via the A1 builder overhaul.
     _build_boss_summon(
         db, _EN_MARAUDER, marauder_pets, SUMMON_ENSLAVER_PETMARAUDERS,
         'tagSVCSummonEnslaverMarauders', 'tagSVCMonsterEnslaverMarauder',
-        char_level=list(_EN_BAND), life=[5000.0, 8500.0, 13000.0],
+        char_level=list(_EN_BAND), life=[13000.0, 18000.0, 24000.0],
         life_regen=[25.0, 45.0, 70.0],
-        dmg_min=[150.0, 230.0, 300.0], dmg_max=[220.0, 320.0, 420.0], scale=1.0)
+        dmg_min=[300.0, 340.0, 380.0], dmg_max=[380.0, 440.0, 500.0], scale=2.0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'isPetDisplayable', 0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petLimit', 3)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petBurstSpawn', 1)
@@ -9874,10 +10094,272 @@ def _create_enslaver(db, tags):
         'the Enslaver of Souls: a towering skeletal revenant robed all in black who '
         'binds the dead into a marauding warband. Its bearer may call him forth - and '
         'he raises his own shadow pack to fight beside you.')
-    print("  Enslaver (A2): boss = ALL-BLACK skeleton (RevenantPoison + charcoal, "
-          "um_toxeus_99 rig) scale 2.0 + rapid marauder summon (burst 6/cd 2/limit "
-          "12); super-strong ShadowStalker-demon marauders [5000/8500/13000]; "
-          "friendly pet-of-pet; summon soul (66% Finger2); tags set. Sweep runs next.")
+    print("  Enslaver (A1/B6): SKELETON LORD [32500/45000/60000] scale 2.4 (2.5x the "
+          "marauder, CC-immune) + marauder summon (burst 6/cd 2/limit 4); marauders = "
+          "DEPLOYED demon block [13000/18000/24000] scale 2.0 (name kept 'Enslaved "
+          "Shadow Marauder'); friendly pet-of-pet demon ladder; summon soul (66% "
+          "Finger2); tags set. Warband + sweep run next.")
+
+
+def _create_enslaver_warband(db):
+    """A1 (build36 AMENDMENT, Option A championChance set-piece warband): a dedicated
+    proxy+pool that spawns the LEADER + 4 "Enslaved Shadow Marauder" champions
+    PRESENT AT SPAWN (Will's "leader + his 4 enslaved soldiers"). Recipe = the proven
+    Vashkarr/yard no-crowd-out shape: spawnMax=5 / championChance=100 /
+    championMin=Max=4 -> 5-4 = 1 guaranteed main slot (the leader) + 4 guaranteed
+    champion slots (the marauder). The leader record + kit + summon + 66%/orb drop
+    are UNTOUCHED (referenced as name1..3). Registered in _MOD_AUTHORED_SPAWN_PROXIES
+    (crowd-out gate) + whitelisted in _EN_YARD_POOLS (roaming-sweep leak guard). The
+    single map placement is a map-lane hand-off (reported, not done here). Runs
+    between _create_enslaver and _sweep_inject_roaming_rare (leader + soldier exist;
+    before the sweep gate re-derives + whitelists enslaver-bearing pools)."""
+    S = DATA_TYPE_STRING
+    sf = db.set_field
+    if not (db.has_record(_YARD_POOL_DONOR) and db.has_record(_YARD_PROXY_DONOR)
+            and db.has_record(_EN_BOSS) and db.has_record(_EN_MARAUDER)):
+        print("  ENSLAVER WARBAND: donor/leader/soldier missing; skipped")
+        return
+
+    # ── pool: 1 guaranteed leader main + 4 guaranteed 'Enslaved Shadow Marauder'
+    #    champions (spawnMax=5, championChance=100, championMin=championMax=4). ──
+    db.clone_record(_YARD_POOL_DONOR, _EN_WARBAND_POOL)
+    PL = _EN_WARBAND_POOL
+    sf(PL, 'FileDescription', 'Toxeus the Enslaver (main) + 4 Enslaved Shadow Marauder escorts')
+    for i in (1, 2, 3):                      # the single main slot always rolls the leader
+        sf(PL, f'name{i}', _EN_BOSS, S); sf(PL, f'weight{i}', 100)
+    for i in (1, 2, 3, 4):                   # 4 champion slots, all the marauder (adds slot 4)
+        sf(PL, f'nameChampion{i}', _EN_MARAUDER, S); sf(PL, f'weightChampion{i}', 100)
+    sf(PL, 'spawnMin', 5); sf(PL, 'spawnMax', 5)
+    sf(PL, 'championChance', 100.0)
+    sf(PL, 'championMin', 4); sf(PL, 'championMax', 4)     # 5-4 = 1 leader (NO-CROWD-OUT holds)
+    db._modified.add(PL)
+
+    # ── proxy: chanceToRun=100, limit_obsidianbosses [1..110] (leader is L100),
+    #    preview silhouette = the leader's skeleton rig. ──
+    db.clone_record(_YARD_PROXY_DONOR, _EN_WARBAND_PROXY)
+    P = _EN_WARBAND_PROXY
+    sf(P, 'pool1', _EN_WARBAND_POOL, S)
+    sf(P, 'chanceToRun', 100.0)
+    sf(P, 'difficultyLimitsFile', _YARD_LIMIT, S)          # limit_obsidianbosses [1..110]
+    sf(P, 'difficultyEquationFile', _YARD_DIFFICULTY, S)   # difficulty_04 (as the yard; optional)
+    sf(P, 'mesh', _EN_BOSS_MESH, S)                        # RevenantPoison skeleton silhouette
+    sf(P, 'scale', 2.4)                                    # match the leader's silhouette
+    sf(P, 'placementExtents', 4.0)                         # 5-monster footprint; map lane re-verifies
+    db._modified.add(P)
+
+    # register in the spawn-eligibility gate (spawnMax-championMax = 5-4 = 1 >= 1;
+    # leader L100 <= limit [1..110] on N/E/L).
+    _MOD_AUTHORED_SPAWN_PROXIES.append({
+        'proxy': _EN_WARBAND_PROXY, 'pool': _EN_WARBAND_POOL,
+        'main_monster': _EN_BOSS,
+        'name': 'q_enslaver_warband (Enslaver + 4 Enslaved Shadow Marauder escorts)',
+    })
+    print("  Enslaver warband: 1 leader + 4 Enslaved Shadow Marauder champions "
+          "(spawn=5/champMin=Max=4/champChance=100); chanceToRun=100; limit [1..110]. "
+          "MAP LANE: place q_enslaver_warband at one walkable coord (map delta).")
+
+
+# ── A2 BOSS LOOT-ORB FIX (build36 AMENDMENT) ──────────────────────────────────
+# Give red (Boss) custom bosses the base-game on-death chest-orb the red act bosses
+# drop, via treasureProxyName -> genericbossorb_04 (the apex SV tier, class-agnostic,
+# proven in-family by um_toxeus_21). Will's directive: "all the versions of toxeus
+# the murder should drop a huge orb like a chest." J1 = the roaming Enslaver BOSS ON
+# (decided); J2 = breadth ON (all shipped custom Boss-class + the content-wave ubers,
+# terminal form only). The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0).
+# Charon EXCLUDED: um_charonform2_ferryman_99 already inherits BossChest02_Charon.
+# Monster records are NOT clone-shape-gated (Goldenbough deathEffect precedent).
+_APEX_ORB = r'records\item\containers\new\genericbossorb_04.dbr'
+_MN_ORB_SHELL = r'records\xpack\creatures\monster\epiales\um_mnemophage_99.dbr'  # shell: stay orb-less
+_BOSS_ORB_TARGETS = [
+    # --- CORE: Will's Toxeus directive ---
+    (r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr',        _APEX_ORB),
+    (r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr',      _APEX_ORB),  # J1 ON
+    # --- BREADTH (J2 ON): all shipped custom Boss-class ---
+    (r'records\creature\monster\dragonian\um_vashkarr_99.dbr',                 _APEX_ORB),
+    (r'records\creature\monster\sepulchralwyrm\um_broodmother_99.dbr',         _APEX_ORB),
+    (r'records\xpack\creatures\monster\lostsoul\um_dorus_99.dbr',              _APEX_ORB),
+    (r'records\creature\monster\abyssalliche\um_sarkoth_99.dbr',               _APEX_ORB),
+    (r'records\creature\monster\skeleton\um_gorrahk_99.dbr',                   _APEX_ORB),
+    (r'records\creature\monster\skeleton\um_ilsevar_99.dbr',                   _APEX_ORB),
+    (r'records\creature\monster\questbosses\um_voranthys_99.dbr',              _APEX_ORB),
+    # --- content-wave ubers (terminal form only; Charon EXCLUDED - inherits its orb) ---
+    (r'records\xpack\creatures\monster\lostsoul\um_tantalus_unbound_99.dbr',   _APEX_ORB),  # terminal
+    (r'records\xpack\creatures\monster\epiales\um_mnemophage_core_99.dbr',     _APEX_ORB),  # terminal
+    (r'records\xpack\creatures\monster\epiales\um_ephialtes_99.dbr',           _APEX_ORB),
+]
+
+
+def _amend_boss_loot_orbs(db):
+    """Wire treasureProxyName -> genericbossorb_04 on every red (Boss) custom boss so
+    it drops the base-game on-death chest-orb (Will's Toxeus directive + J1/J2 breadth).
+    Resolve every target through _resolve_record (case/slash tolerant) so an upstream
+    target with different casing can never be SILENTLY skipped. Skip-with-warning on
+    any absent record (matches the repo donor-guard idiom). Also DEFENSIVELY clears
+    treasureProxyName off the Mnemophage SHELL so the two-form boss never drops a
+    mid-fight orb (verified-unnecessary today - donor ur_overmind_46 is orb-less -
+    but coded as cheap insurance per the spec)."""
+    if _resolve_record(db, _APEX_ORB) is None:
+        print("  BOSS-ORB: WARNING apex orb proxy missing; pass skipped")
+        return
+    # shell-clear (delete the field entirely; never blank to '' - field-absence parity)
+    shell = _resolve_record(db, _MN_ORB_SHELL)
+    if shell is not None:
+        ff = db.get_fields(shell) or {}
+        removed = False
+        for k in list(ff):
+            if k.split('###')[0] == 'treasureProxyName':
+                del ff[k]; removed = True
+        if removed:
+            db._modified.add(shell)
+            print("  BOSS-ORB: cleared inherited orb off the Mnemophage shell")
+    n = 0
+    for rec, orb in _BOSS_ORB_TARGETS:
+        real = _resolve_record(db, rec)
+        if real is None:
+            print(f"  BOSS-ORB: skip (absent) {rec}")
+            continue
+        db.set_field(real, 'treasureProxyName', orb, DATA_TYPE_STRING)  # adds to _modified
+        n += 1
+    print(f"  BOSS-ORB: wired treasureProxyName on {n} boss record(s) -> {_APEX_ORB}")
+
+
+def _apply_b2_ilsevar_soul(db):
+    """A8/B2 (Will: the Ilsevar soul "doesnt state a cool down on the life drain ...
+    is there like a chain life drain version that would drain life from all guys close
+    in the area?"). The base grants `lifedrain` as an on-attack PROC (item procs never
+    surface a Recharge line -> "no CD shown"). Upgrade to a MANUAL-CAST AoE Life Drain
+    Nova: clone the shipped proseia_lifedrainnova (radius 6, life+mana leach; already
+    castability-proven via proseia_soul) into pcsafe/ilsevar_drainnova (cd 110 -> 16),
+    point every Ilsevar tier at it, set a per-tier level 3/5/8, and STRIP the auto-
+    controller (manual cast -> a skill-bar grant SHOWS its Recharge, fixing the display
+    AND making it feel like a real spell). Runs before the castability wave + the
+    soul-augment verify (which the new grant must resolve for)."""
+    NOVA_SRC = _resolve_record(db, r'records\skills\soulskills\proseia_lifedrainnova.dbr')
+    if NOVA_SRC is None:
+        print("  A8/B2: proseia_lifedrainnova donor missing; Ilsevar soul unchanged")
+        return
+    NOVA = r'records\skills\soulskills\pcsafe\ilsevar_drainnova.dbr'
+    db.clone_record(NOVA_SRC, NOVA)
+    db.set_field(NOVA, 'skillCooldownTime', 16.0)   # was 110 -> usable, not spammed
+    db._modified.add(NOVA)
+    lvl = {'n': 3, 'e': 5, 'l': 8}
+    done = 0
+    for t in ('n', 'e', 'l'):
+        soul = _resolve_record(db, rf'records\item\equipmentring\soul\svc_uber\ilsevar_soul_{t}.dbr')
+        if soul is None:
+            continue
+        db.set_field(soul, 'itemSkillName', NOVA, DATA_TYPE_STRING)
+        db.set_field(soul, 'itemSkillLevel', lvl[t], DATA_TYPE_INT)
+        # STRIP the auto-controller -> manual cast (delete the field; never blank to '').
+        ff = db.get_fields(soul) or {}
+        for k in list(ff):
+            if k.split('###')[0] == 'itemSkillAutoController':
+                del ff[k]
+        db._modified.add(soul)
+        done += 1
+    print(f"  A8/B2: Ilsevar soul -> manual-cast AoE Life Drain Nova (ilsevar_drainnova "
+          f"cd 16, radius 6, level 3/5/8; controller stripped -> shows Recharge) [{done} tiers]")
+
+
+def _apply_b5_vashkarr(db):
+    """A8/B5 (Will: "he just looks like a normal guy ... give him a different color
+    make him all black ... 100% resistance to stun ... twice as big ... some cool
+    skill"). STACKS on the C7 dragonfire uplift (runs AFTER _apply_content_uplift_picks;
+    removes no C7 field). Four asks:
+      (1) all-black = an FX shadow-shroud via charFxPakRunningNames ON THE MONSTER
+          record (the proven Enslaver route; NEVER charFxPak on a SpawnPet skill -
+          the build28 no-spawn trap) + repoint baseTexture to the darkest dragonian skin;
+      (2) 100% stun resist (+ freeze/petrify for good measure);
+      (3) twice as big (scale 1.55 -> 3.0, height -> 3.0);
+      (4) cool skill = "Wrath of the Eldest" - lowhealth_berserkerrage01
+          (Skill_PassiveOnLifeBuffSelf: a shipped boss-native low-health enrage
+          PASSIVE - zero cast/anim risk, self-triggers below a HP threshold), added
+          in the first free skillName slot (so it never collides with a C7 slot)."""
+    M = _resolve_record(db, _VK_MONSTER)
+    if M is None:
+        print("  A8/B5: Vashkarr record missing; skipped")
+        return
+    sf = db.set_field
+    sf(M, 'scale', 3.0)                     # twice as big (flag clipping at q_vashkarr_lone)
+    sf(M, 'actorHeight', 3.0)
+    sf(M, 'defensiveStun', 100.0)           # 100% stun resist
+    sf(M, 'defensiveFreeze', 100.0)
+    sf(M, 'defensivePetrify', 100.0)
+    sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], DATA_TYPE_STRING)   # all-black shroud (monster record)
+    sf(M, 'baseTexture', r'Creatures\Monster\Dragonian\DragonianDecayed01.tex')  # (dark skin kept; FX is the load-bearing black)
+    # cool skill: append the low-health enrage passive in the first free skillName slot
+    _ENRAGE = r'records\skills\skills\monster skills\lowhealth_berserkerrage01.dbr'
+    if _resolve_record(db, _ENRAGE) is not None:
+        ff = db.get_fields(M) or {}
+        used = set()
+        for k in ff:
+            b = k.split('###')[0]
+            if b.startswith('skillName'):
+                try:
+                    used.add(int(b[len('skillName'):]))
+                except ValueError:
+                    pass
+        slot = next(i for i in range(1, 40) if i not in used)
+        sf(M, f'skillName{slot}', _ENRAGE)
+        db._modified.add(M)
+        print(f"  A8/B5: Vashkarr all-black FX shroud + CC-immune + scale 3.0 + "
+              f"'Wrath of the Eldest' low-health enrage passive (skillName{slot})")
+    else:
+        db._modified.add(M)
+        print("  A8/B5: Vashkarr all-black FX shroud + CC-immune + scale 3.0 "
+              "(enrage passive donor missing; skipped cool skill)")
+
+
+def _apply_b7_eldest_soul_rebalance(db):
+    """A8/B7 (Will: "crazy on normal, 74% physical damage resistance? doesnt that make
+    you nearly unkillable by physical hits that arent piercing?"): the Vashkarr ("Soul
+    of the Eldest") + Gorrahk souls carry degenerate %-physical-resistance (84/114.8/
+    140 and 72/98.4/120 - E/L above 100% = physical IMMUNITY). Apply amgoz's own move
+    (V15 "Stone Skin: +%Armor removed, now adds flat armor"): cap the % resist at a
+    strong-but-not-immune 30/45/60 (below his Koios 75/84/96 ceiling), bank the rest
+    into FLAT armor (defensiveProtection +150/+260/+400) + ~25% more HP, and add an
+    amgoz character-through-tradeoff downside (-8% run speed: the Eldest is ancient
+    and heavy). Runs after _create_vashkarr + _create_obsidian_roulette. Stat-only
+    (no skill refs) -> touches no soul gate."""
+    PHYS = {'n': 30.0, 'e': 45.0, 'l': 60.0}
+    PROT = {'n': 150.0, 'e': 260.0, 'l': 400.0}
+    done = 0
+    for base in ('vashkarr', 'gorrahk'):
+        for t in ('n', 'e', 'l'):
+            rec = _resolve_record(db, rf'records\item\equipmentring\soul\svc_uber\{base}_soul_{t}.dbr')
+            if rec is None:
+                continue
+            db.set_field(rec, 'defensivePhysical', PHYS[t], DATA_TYPE_FLOAT)   # cap the % resist
+            db.set_field(rec, 'defensiveProtection', PROT[t], DATA_TYPE_FLOAT)  # flat armor (amgoz conversion)
+            life = db.get_field_value(rec, 'characterLife')
+            life = (life[0] if isinstance(life, list) else life)
+            if life:
+                db.set_field(rec, 'characterLife', round(float(life) * 1.25, 1), DATA_TYPE_FLOAT)
+            db.set_field(rec, 'characterRunSpeedModifier', -8.0, DATA_TYPE_FLOAT)  # amgoz downside
+            db._modified.add(rec)
+            done += 1
+    print(f"  A8/B7: Eldest+Gorrahk soul physres -> 30/45/60 + flat armor + HP + "
+          f"-8% run speed ({done} soul tier records; no longer physical-immune)")
+
+
+def _verify_boss_orbs(db):
+    """FAIL-LOUD: every PRESENT target carries a treasureProxyName that RESOLVES
+    (case/slash tolerant, consistent with _amend)."""
+    bad = []
+    for rec, orb in _BOSS_ORB_TARGETS:
+        real = _resolve_record(db, rec)
+        if real is None:
+            continue
+        f = db.get_fields(real) or {}
+        val = next((tf.values[0] for k, tf in f.items()
+                    if k.split('###')[0] == 'treasureProxyName' and tf.values), None)
+        if not val or _resolve_record(db, val) is None:
+            bad.append((rec, val))
+    if bad:
+        for rec, val in bad:
+            print(f"  BOSS-ORB OFFENDER: {rec} :: treasureProxyName={val!r} (missing/unresolved)")
+        raise SystemExit(f"Boss-orb invariant FAILED: {len(bad)} offender(s)")
+    print("  Boss-orb invariant OK: every present target boss drops a resolving orb.")
 
 
 def _sweep_inject_roaming_rare(db):
@@ -11300,8 +11782,43 @@ def _apply_flashpowder_rework(db):
             if isinstance(v, str) and v.lower().endswith('drxflashpowder.dbr'):
                 sf(DROOL, fld, BASE_FP, S)
         db._modified.add(DROOL)
+
+    # A3 (build36 AMENDMENT) - Will-authorized Makaria Machae High General Soul
+    # Venom Cloud cooldown 25s -> 8s. makaria_venomcloud is a dedicated single-soul
+    # skill (3 Makaria tiers, 0 non-soul referencers, no pcsafe clone -> no special-
+    # anim); the on-melee-hit retaliation proc's own skillCooldownTime is the sole
+    # re-fire gate, so this is a pure uptime buff. _find_record for slash-safety (it
+    # flows through from the SV098i base). Float, NO explicit dtype (dtype-preserve).
+    MVC = _find_record(db, r'records\skills\soulskills\makaria_venomcloud.dbr')
+    if MVC is None:
+        raise SystemExit('A3: makaria_venomcloud.dbr missing')
+    _mcd = db.get_field_value(MVC, 'skillCooldownTime')
+    _mcd = _mcd[0] if isinstance(_mcd, list) else _mcd
+    if abs(float(_mcd) - 25.0) > 0.01:
+        raise SystemExit('A3: makaria_venomcloud cd=%r != 25.0 (drift)' % _mcd)
+    sf(MVC, 'skillCooldownTime', 8.0)
+    db._modified.add(MVC)
+
+    # A4 (build36 AMENDMENT) - Will-authorized Anapaest/Gigantes Earth Fury cooldown
+    # 16s -> 5s. Edit the PLAIN soul skill earthfury_ring BEFORE the castability wave
+    # (:14330) so the freshly-minted pcsafe\earthfury_ring clone inherits 5.0 (the
+    # record that actually FIRES for the player). Shared by 4 melee-bruiser souls
+    # (Anapaest/Yerk/Minotaur Lord/Cinder Bone), 0 enemy referencers -> edit-shared
+    # per mandate. Do NOT touch skillCooldownReductionModifier (coincidental 16.0).
+    EF = _SS_EARTHFURY_RING   # records\skills\soulskills\earthfury_ring.dbr (plain source)
+    if not db.has_record(EF):
+        raise SystemExit('A4: soulskills\\earthfury_ring.dbr missing')
+    _efcd = db.get_field_value(EF, 'skillCooldownTime')
+    _efcd = _efcd[0] if isinstance(_efcd, list) else _efcd
+    if abs(float(_efcd) - 16.0) > 0.01:
+        raise SystemExit('A4: earthfury_ring cd=%r != 16.0 (drift)' % _efcd)
+    sf(EF, 'skillCooldownTime', 5.0)   # float, NO explicit dtype
+    db._modified.add(EF)
+
     print('  F5: Flame Nova cd 8->4; Occult Flash Powder cd 15->6 + pierce + '
           'ranged-blind; soul Flash Powder cd 20->10; droolbog -> base flashpowder')
+    print('  A3: Makaria Venom Cloud cd 25->8; A4: Anapaest Earth Fury cd 16->5 '
+          '(plain earthfury_ring pre-wave; pcsafe clone inherits)')
 
 
 def _apply_group3_tunes(db, tags):
@@ -12841,25 +13358,76 @@ def _create_obsidian_roulette(db, tags):
             sf(rec, f'specialAttack{suffix}SkillName', sk)
             sf(rec, f'specialAttack{suffix}Chance', float(ch))
 
+    # ── A8/B3: Sarkoth's whelp summon - the "miniature fire-breathing guys who spawn
+    #    next to esti's chest" = blooddragon01 (scale 0.25, blooddragon_puke fire
+    #    breath). Clone a soul-less Common whelp + a Skill_SpawnPetMonster (yaoguai
+    #    donor). Built BEFORE step 1 so Sarkoth's kit can reference the summon. ──
+    _OBS_SARKOTH_WHELP = r'records\creature\monster\svc\svc_sarkoth_whelp.dbr'
+    _OBS_SK_SARKOTH_SUMMONWHELPS = r'records\skills\boss skills\svc_sarkoth_summonwhelps.dbr'
+    _OBS_BLOODDRAGON_DONOR = r'records\drxcreatures\blooddragons\blooddragon01.dbr'
+    _OBS_WHELP_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
+    if db.has_record(_OBS_BLOODDRAGON_DONOR) and db.has_record(_OBS_WHELP_SUMMON_DONOR):
+        db.clone_record(_OBS_BLOODDRAGON_DONOR, _OBS_SARKOTH_WHELP)
+        W = _OBS_SARKOTH_WHELP
+        sf(W, 'monsterClassification', 'Common')   # Common -> no soul drop (flood-pool law)
+        sf(W, 'dropItems', 0)
+        sf(W, 'chanceToEquipFinger2', 0.0)          # defensive: never a soul
+        sf(W, 'charLevel', list(_OBS_BAND))
+        sf(W, 'scale', 0.3)                          # miniature (keeps blooddragon_puke)
+        # blooddragon01 carries specialAttack3/4 = blooddragon_freezingbreath/
+        # bloodshower whose .dbr do NOT resolve in the mod arz (dangling refs ->
+        # C-RES-DBR-1). Delete every specialAttack* slot (never blank to '', per
+        # B-TOXEUS-2), then re-point blooddragon_puke as the sole special so the
+        # whelp still breathes fire.
+        _wff = db.get_fields(W) or {}
+        for _wk in list(_wff):
+            if _wk.split('###')[0].startswith('specialAttack'):
+                del _wff[_wk]
+        _PUKE = r'records\drxcreatures\blooddragons\skills\blooddragon_puke.dbr'
+        sf(W, 'attackSkillName', _PUKE)
+        sf(W, 'specialAttackSkillName', _PUKE)
+        sf(W, 'specialAttackChance', 60.0)
+        db._modified.add(W)
+        db.clone_record(_OBS_WHELP_SUMMON_DONOR, _OBS_SK_SARKOTH_SUMMONWHELPS)
+        SW = _OBS_SK_SARKOTH_SUMMONWHELPS
+        sf(SW, 'spawnObjects', [_OBS_SARKOTH_WHELP])
+        sf(SW, 'petBurstSpawn', 3)
+        sf(SW, 'petLimit', 5)
+        sf(SW, 'skillCooldownTime', 9.0)
+        db._modified.add(SW)
+        _BOSS_KIT_CLONES.append((_OBS_WHELP_SUMMON_DONOR, _OBS_SK_SARKOTH_SUMMONWHELPS))
+    else:
+        # donor missing: fall back to a no-summon kit slot (drxvolcanicorb) so the
+        # kit reference below still resolves.
+        _OBS_SK_SARKOTH_SUMMONWHELPS = _OBS_SK_VOLCORB
+        print("  OBSIDIAN B3: blooddragon/summon donor missing; Sarkoth whelp summon skipped")
+
     # ── 1. SARKOTH, the Glasswright (flame-liche caster; obsidian drop + meteor). ──
+    # A8/B3 (Will: "super weak ... easily just stunned him ... way more health way more
+    # health regen ... 3x the size ... summon the miniature fire-breathing guys"): HP
+    # 13k/20k/28k, per-tier regen 40/70/100, scale 3.0/height 3.2, FULL CC immunity
+    # (stun/freeze/petrify 100 - he was stun-locked), + the blooddragon whelp summon.
     db.clone_record(_OBS_SARKOTH_DONOR, _OBS_SARKOTH)
     M = _OBS_SARKOTH
     sf(M, 'description', 'tagSVCMonsterSarkoth')
     sf(M, 'monsterClassification', 'Boss')
     sf(M, 'charLevel', list(_OBS_BAND))
-    sf(M, 'characterLife', [4500.0, 7000.0, 10500.0])
-    sf(M, 'characterLifeRegen', 10.0)
-    sf(M, 'scale', 1.35)
+    sf(M, 'characterLife', [13000.0, 20000.0, 28000.0])   # B3: "way more health"
+    sf(M, 'characterLifeRegen', [40.0, 70.0, 100.0])      # B3: "way more health regen" (per-tier)
+    sf(M, 'scale', 3.0)                                    # B3: "3x the size"
+    sf(M, 'actorHeight', 3.2)
     sf(M, 'defensiveFire', 80.0); sf(M, 'defensivePierce', 45.0)
     sf(M, 'defensiveLife', 60.0)
+    sf(M, 'defensiveStun', 100.0); sf(M, 'defensiveFreeze', 100.0)
+    sf(M, 'defensivePetrify', 100.0)                      # B3: "easily just stunned him" -> unlockable
     _set_kit(M, [
         _OBS_SK_DROPTELE, _OBS_SK_ARENAMETEOR, _OBS_SK_VOLCORB, _OBS_SK_VOLCFRAG,
         _OBS_SK_VOLCIMMO, _OBS_SK_RINGFLAME, _OBS_SK_ICESHARD, _OBS_SK_SQUALL,
-        _OBS_SK_SPELLBREAKER, _OBS_SK_ONDEATH_FROSTNOVA, _OBS_SK_ARMORPASSIVE,
-        _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
+        _OBS_SK_SPELLBREAKER, _OBS_SK_ONDEATH_FROSTNOVA, _OBS_SK_SARKOTH_SUMMONWHELPS,
+        _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
         _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
-    ], [(_OBS_SK_DROPTELE, 55.0), (_OBS_SK_ARENAMETEOR, 40.0),
-        (_OBS_SK_VOLCORB, 50.0), (_OBS_SK_SQUALL, 35.0)])
+    ], [(_OBS_SK_DROPTELE, 55.0), (_OBS_SK_SARKOTH_SUMMONWHELPS, 55.0),
+        (_OBS_SK_ARENAMETEOR, 40.0), (_OBS_SK_VOLCORB, 50.0), (_OBS_SK_SQUALL, 35.0)])
     db._modified.add(M)
 
     # ── 2. GORRAHK, the Tombsplitter (golden-skeleton bruiser; 16-knife death). ──
@@ -12886,12 +13454,18 @@ def _create_obsidian_roulette(db, tags):
     # ── 3. VORANTHYS, the Sepulchral (dragon-lich summon-storm; ondeath raise). ──
     db.clone_record(_OBS_VORANTHYS_DONOR, _OBS_VORANTHYS)
     M = _OBS_VORANTHYS
+    # A8/B1 (Will: "super weak ... not that big ... doesnt seem to have any skills ...
+    # breathe fire that isnt even a different color"): HP 12k/18k/25k (a summoner must
+    # survive to summon), regen 20, scale 2.5/height 2.0, and promote the cold-blue
+    # dragonliche_freezingbreath to his LOUD signature specialAttack1@70 (a visibly
+    # different-color breath) while KEEPING all 3 summon streams (55/45/40).
     sf(M, 'description', 'tagSVCMonsterVoranthys')
     sf(M, 'monsterClassification', 'Boss')
     sf(M, 'charLevel', list(_OBS_BAND))
-    sf(M, 'characterLife', [5000.0, 8000.0, 12000.0])
-    sf(M, 'characterLifeRegen', 12.0)
-    sf(M, 'scale', 1.3)
+    sf(M, 'characterLife', [12000.0, 18000.0, 25000.0])
+    sf(M, 'characterLifeRegen', 20.0)
+    sf(M, 'scale', 2.5)
+    sf(M, 'actorHeight', 2.0)
     sf(M, 'defensiveCold', 60.0); sf(M, 'defensiveLife', 80.0)
     _set_kit(M, [
         _OBS_SK_FIREBREATH, _OBS_SK_FREEZEBREATH, _OBS_SK_DECOMP,
@@ -12899,22 +13473,28 @@ def _create_obsidian_roulette(db, tags):
         _OBS_SK_SUMMONTOMB, _OBS_SK_ONDEATH_SPAWNSKEL, _OBS_SK_ONDEATH_NECRONOVA,
         _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
         _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
-    ], [(_OBS_SK_SUMMONWARRIOR, 60.0), (_OBS_SK_SUMMONARCHER, 55.0),
-        (_OBS_SK_SUMMONTOMB, 45.0), (_OBS_SK_FREEZEBREATH, 40.0)])
+    ], [(_OBS_SK_FREEZEBREATH, 70.0), (_OBS_SK_SUMMONWARRIOR, 55.0),
+        (_OBS_SK_SUMMONARCHER, 45.0), (_OBS_SK_SUMMONTOMB, 40.0)])
     db._modified.add(M)
 
     # ── 4. ILSEVAR, the Ashen Watch (blink-flicker poltergeist duelist). ──
     db.clone_record(_OBS_ILSEVAR_DONOR, _OBS_ILSEVAR)
     M = _OBS_ILSEVAR
+    # A8/B2 (Will: "needs to be like double or tripled in size, and he was super easy
+    # to kill"): HP 10k/15k/21k, regen 18, scale 3.0/height 2.6, and FULL CC immunity
+    # (a blink-flicker poltergeist should not be lockable).
     sf(M, 'description', 'tagSVCMonsterIlsevar')
     sf(M, 'monsterClassification', 'Boss')
     sf(M, 'charLevel', list(_OBS_BAND_ILS))
-    sf(M, 'characterLife', [5500.0, 8500.0, 13000.0])
-    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'characterLife', [10000.0, 15000.0, 21000.0])
+    sf(M, 'characterLifeRegen', 18.0)
     sf(M, 'characterStrength', 360.0); sf(M, 'characterDexterity', 340.0)
     sf(M, 'handHitDamageMin', 80.0); sf(M, 'handHitDamageMax', 130.0)
-    sf(M, 'scale', 1.45)
+    sf(M, 'scale', 3.0)
+    sf(M, 'actorHeight', 2.6)
     sf(M, 'defensiveLife', 70.0); sf(M, 'defensivePierce', 40.0)
+    sf(M, 'defensiveStun', 100.0); sf(M, 'defensiveFreeze', 100.0)
+    sf(M, 'defensivePetrify', 100.0)
     _set_kit(M, [
         _OBS_SK_PHANTOMSTRIKE, _OBS_SK_KIKASTRIKE, _OBS_SK_DISTORTWAVE,
         _OBS_SK_LIFEDRAIN, _OBS_SK_DEATHCHILLAURA, _OBS_SK_HALIROAR,
@@ -12925,13 +13505,55 @@ def _create_obsidian_roulette(db, tags):
     db._modified.add(M)
 
     # ── 5. Voranthys summon pet + skill (SepulchralWyrm01 rig, D19-hardened). ──
+    # A8/B1.2: bigger pet (scale 1.5) + swap its orange sepulchralwyrm_firebreath to
+    # the cold-blue dragonliche_freezingbreath so the summoned pet breathes the same
+    # signature as the wild boss (the ONE place the "mirror" is applied by hand;
+    # speed is ALREADY fixed by the content wave's pet-stat-mirror - no action).
     vor_pets = [rf'records\skills\soulskills\pets\voranthys_{i}.dbr' for i in (1, 2, 3)]
     _build_boss_summon(
         db, _OBS_VORANTHYS_PET_SRC, vor_pets, SUMMON_VORANTHYS_SKILL,
         'tagSVCSummonVoranthys', 'tagSVCMonsterVoranthys',
         char_level=[42, 60, 72], life=[5000.0, 8000.0, 12000.0],
         life_regen=[30.0, 60.0, 100.0],
-        dmg_min=[70.0, 110.0, 160.0], dmg_max=[115.0, 175.0, 250.0], scale=1.2)
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[115.0, 175.0, 250.0], scale=1.5)
+    _fire = _OBS_SK_FIREBREATH.replace('/', '\\').lower()
+    for _pp in vor_pets:
+        if not db.has_record(_pp):
+            continue
+        ff = db.get_fields(_pp) or {}
+        for _k, _tf in ff.items():
+            if _k.split('###')[0].startswith('skillName'):
+                for _j, _v in enumerate(list(_tf.values)):
+                    if isinstance(_v, str) and _v.replace('/', '\\').lower() == _fire:
+                        _tf.values[_j] = _OBS_SK_FREEZEBREATH   # cold-blue signature
+        db._modified.add(_pp)
+
+    # ── A8/B1.3 escort soul-flood fix (Will: "like 5 guys all dropped souls"). Of the
+    #    6-member warband, two keep a 66% soul drop: um_permean_35 (Boss) + um_bonehallow_37
+    #    (Hero). Clone both into SOUL-LESS Champion escorts (flood-pool law: the boss owns
+    #    the reward, escorts drop none) and swap them into _OBS_WARBAND at [3]/[5]. Mutating
+    #    the shared list fixes BOTH the roulette pool AND the yard (they share _OBS_WARBAND);
+    #    this runs before step 6 (roulette pool) and before _create_test_yard. ──
+    _OBS_ESCORTS = (
+        (r'records\creature\monster\dragonlich\um_permean_35.dbr',
+         r'records\creature\monster\dragonlich\svc_obs_escort_permean.dbr', 3),
+        (r'records\creature\monster\skeleton\um_bonehallow_37.dbr',
+         r'records\creature\monster\skeleton\svc_obs_escort_bonehallow.dbr', 5),
+    )
+    for _src, _esc, _idx in _OBS_ESCORTS:
+        if not db.has_record(_src):
+            continue
+        db.clone_record(_src, _esc)
+        sf(_esc, 'chanceToEquipFinger2', 0.0)          # no soul (kills the flood)
+        _eff = db.get_fields(_esc) or {}
+        for _k in list(_eff):                          # drop the soul loot ref entirely
+            if _k.split('###')[0] == 'lootFinger2Item1':
+                del _eff[_k]
+        sf(_esc, 'monsterClassification', 'Champion')  # reads as an escort (permean Boss->Champion)
+        db._modified.add(_esc)
+        _OBS_WARBAND[_idx] = _esc                       # swap into the shared warband roster
+    print("  OBSIDIAN B1.3: permean+bonehallow -> soul-less Champion escorts "
+          "(warband no longer floods souls; fixes roulette + yard)")
 
     # ── 6. Shared warband pool + no-cap limit. ──
     db.clone_record(_OBS_LIMIT_DONOR, _OBS_LIMIT)
@@ -13556,12 +14178,20 @@ _YARD_WYRM_POOL = r'records\proxies orient\pools\demon\svc_wyrmhorde_03.dbr'   #
 _YARD_WYRM_PROXY = r'records\drxmap\proxy\q_yard_wyrm.dbr'
 # Obsidian hoard accessory chest chain (existing GROUP F records) reused so the
 # yard obs fights also drop the Boss-locked hoard (no new container records).
-_YARD_OBS_ACC = {t: rf'records\drxitem\container\svc_obsidianhoard_pool_{t}.dbr'
-                 for t in ('01', '02', '03')}
-# The ONE yard pool that legitimately carries the Enslaver at weight > 1
-# (whitelisted out of the roaming-sweep derivation). EXACT record-path set (never
-# a loose substring), per the roaming-sweep leak-detection contract.
-_EN_YARD_POOLS = {_YARD_ENSLAVER_POOL}
+# A8/B4 (Will: yard chests have "way too much stuff ... pick a chest with lower
+# return for placing next to the monsters/hordes"): the TESTHUB yard obsidian fights
+# drop the DRX GOLDEN chest (the tier BELOW the Obsidian Hoard mega-chest), a real
+# ProxyAccessoryPool (fixedItemName1 -> goldenchest_0{1,2,3}). The CANONICAL roulette
+# corners keep the mega-hoard (the designed reward for the rare 25% event).
+_YARD_OBS_ACC = {'01': r'records\drxmap\quest\poolchest_01_normal.dbr',
+                 '02': r'records\drxmap\quest\poolchest_02_epic.dbr',
+                 '03': r'records\drxmap\quest\poolchest_03_legendary.dbr'}
+# Non-swept pools that legitimately carry the Enslaver at weight > 1 (whitelisted
+# out of the roaming-sweep derivation). EXACT record-path set (never a loose
+# substring), per the roaming-sweep leak-detection contract. = the TESTHUB yard
+# pool + the A1 canonical warband set-piece (both carry the leader as a guaranteed
+# main, not a swept weight-1 leak).
+_EN_YARD_POOLS = {_YARD_ENSLAVER_POOL, _EN_WARBAND_POOL}
 
 
 def _create_test_yard(db, tags):
@@ -13931,6 +14561,10 @@ _HAND_DESIGNED_SOUL_TAGS = frozenset({
     # here so the provenance gate keeps their evocative names (Will's ruling).
     'tagSVCSoulFrost',       # {^F}Soul of Frost
     'tagSVCSoulBloodShaman', # {^F}Soul of the Blood Shaman
+    # A9 (build36 AMENDMENT): the hand-authored uber-boss soul the standard flattened
+    # to "{^F}Gigantes - Anapaest Soul". Will's evocative-name-restoration directive
+    # gives the bespoke name back; removed from _SOUL_NAME_STANDARD so it WINS.
+    'tagSVCSoulAnapaest',    # {^F}Soul of Anapaest the Dishonored
 })
 
 # Shared donors (all DB-verified present, probe_build36_content_donors.py).
@@ -15225,7 +15859,14 @@ _BM_COLDBREATH = r'records\skills\svc\svc_broodmother_coldbreath.dbr'
 _BM_LASTBROOD_DON = r'records\skills\monster skills\ondeath_spawnskeleton.dbr'
 _BM_LASTBROOD = r'records\skills\svc\svc_broodnest_lastbrood.dbr'
 _BM_COMMON_WYRM = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr'
-_OBS_WARBAND = r'records\drxmap\proxy\pools\q_obs_warband.dbr'
+# A8/B1.3 FIX (build36 AMENDMENT): the Kravmoloch content builder used to define
+# `_OBS_WARBAND = <q_obs_warband pool path>` HERE, which SHADOWED the escort-roster
+# LIST `_OBS_WARBAND` (defined earlier) at module scope. Since _create_obsidian_
+# roulette + _create_test_yard run at call time, they saw the STRING and iterated its
+# characters -> garbage warband champions (a latent bug introduced by the content
+# wave; Will tested the pre-content deployed build where the list still worked). The
+# colliding def is REMOVED; the Kravmoloch builder below now references the identical
+# existing `_OBS_WARBAND_POOL`, so the escort LIST is un-shadowed and B1.3's swap works.
 _KV_DONOR = r'records\creature\monster\skeleton\um_gorrahk_99.dbr'
 _KV_BOSS = r'records\creature\monster\skeleton\um_kravmoloch_99.dbr'
 _KV_SUMMON_DON = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
@@ -15313,7 +15954,7 @@ def _apply_content_uplift_picks(db, tags):
         print("  C7 Broodmother death crescendo: ondeath frostnova + last-brood spawn.")
 
     # ── Obsidian Halls fifth pocket: Kravmoloch, Keeper of the Wheel (jackpot). ──
-    if db.has_record(_OBS_WARBAND) and db.has_record(_KV_DONOR):
+    if db.has_record(_OBS_WARBAND_POOL) and db.has_record(_KV_DONOR):
         db.clone_record(_KV_DONOR, _KV_BOSS)
         sf(_KV_BOSS, 'monsterClassification', 'Boss')
         sf(_KV_BOSS, 'description', 'tagSVCMonsterKravmoloch')
@@ -15369,9 +16010,9 @@ def _apply_content_uplift_picks(db, tags):
         # pool's spawn-eligibility is already guarded by the 4 corner proxies
         # (main=Ilsevar); Kravmoloch L74 fits their [1..110] limit, so it is
         # reliably spawnable at name5 without a separate registration.
-        sf(_OBS_WARBAND, 'name5', _KV_BOSS)
-        sf(_OBS_WARBAND, 'weight5', 4)
-        db._modified.add(_OBS_WARBAND)
+        sf(_OBS_WARBAND_POOL, 'name5', _KV_BOSS)
+        sf(_OBS_WARBAND_POOL, 'weight5', 4)
+        db._modified.add(_OBS_WARBAND_POOL)
         tags['tagSVCMonsterKravmoloch'] = '{^r}Kravmoloch, Keeper of the Wheel'
         tags['tagSVCSoulKravmoloch'] = '{^F}Kravmoloch, Keeper of the Wheel Soul'
         tags['tagSVCSoulKravmolochDESC'] = (
@@ -15401,6 +16042,11 @@ def apply_all_extended_patches(db, force_full_drops=True):
     """
     tags = {}
     _SUMMON_PET_BUILDS.clear()   # build36 A1: fresh per-run registry for the pet gates
+
+    # A7 (build36 AMENDMENT): de-wired hero soul handcraft - run FIRST (before
+    # overhaul_souls) so explicit grants are enhancer-skipped + owned names land in
+    # F6 scope. Fixes the 18 wrong names + wires signature grants/downsides/levels.
+    _apply_dewired_hero_handcraft(db, tags)
 
     tags['tagSVCSummonRakanizeus'] = 'Call of the Storm Tyrant'
     tags['tagSVCSummonRakanizeusDESC'] = (
@@ -15822,6 +16468,10 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # clone-shape gate (registers his hostile marauder-summon clone).
     print("\n=== GROUP B: Toxeus the Enslaver of Souls ===")
     _create_enslaver(db, tags)
+    # A1 (build36 AMENDMENT): the canonical warband set-piece (leader + 4 escorts at
+    # spawn). BETWEEN _create_enslaver and the sweep so the leader+marauder exist and
+    # the sweep gate re-derives + whitelists the warband pool (_EN_YARD_POOLS).
+    _create_enslaver_warband(db)
 
     # GROUP 1 (test yard): build the TESTHUB monster-yard pool/proxy records. MUST
     # sit AFTER every yard-referenced group (Vashkarr/wyrm/obsidian/enslaver all
@@ -15833,6 +16483,24 @@ def apply_all_extended_patches(db, force_full_drops=True):
 
     _enslaver_touched = _sweep_inject_roaming_rare(db)
     _verify_roaming_sweep(db, _enslaver_touched)
+
+    # A2 (build36 AMENDMENT): boss loot-orb fix. AFTER every uber builder (Tantalus/
+    # Charon/Mnemophage/Ephialtes above) + the Enslaver so every target record exists.
+    # Wires treasureProxyName -> genericbossorb_04 on Blood Toxeus + the roaming
+    # Enslaver (J1) + all shipped custom Boss-class + the content ubers (J2), then a
+    # fail-loud verify that every present target drops a resolving orb.
+    print("\n=== A2: boss loot-orb fix (Toxeus directive + J1/J2 breadth) ===")
+    _amend_boss_loot_orbs(db)
+    _verify_boss_orbs(db)
+
+    # A8 OBSIDIAN BALANCE post-passes (B2 Ilsevar soul, B5 Vashkarr, B7 Eldest/Gorrahk
+    # soul physres). Run here (after the boss/soul builders + C7 uplift, BEFORE the
+    # castability wave + soul-augment verify so B2's new grant resolves). B1/B3/B4/B6
+    # already applied inline in their builders above.
+    print("\n=== A8: Obsidian balance wave (B2 Ilsevar nova, B5 Vashkarr, B7 soul physres) ===")
+    _apply_b2_ilsevar_soul(db)
+    _apply_b5_vashkarr(db)
+    _apply_b7_eldest_soul_rebalance(db)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all

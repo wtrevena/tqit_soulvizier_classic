@@ -27,11 +27,26 @@
 
 ### 1.1 Quest identity = MD5 of the registration path
 
-- Input string: `quests\<basename>.qst`, lowercase, backslash separator, UTF-8.
-  (For quests the map registers under both `Quests/<name>` and
-  `XPack/Quests/<name>`, the engine instantiates the `Quests/` form; verified
-  via the doubled "grieving widow" registration, where only the `quests\`-form
-  hash exists in the save.)
+- Input string: the **FULL QUESTS-registry path**, lowercase, backslash separator,
+  UTF-8 -- NOT `quests\<basename>.qst`. It only *looks* like a basename for the
+  `Quests/`-prefixed majority, whose registry path already IS `quests\<name>.qst`.
+  A quest the map registers under a DLC namespace hashes its FULL path, e.g.
+  `xpack\quests\xquest_controlsbossdoors.qst` (md5 `59913a3d`) or
+  `xpack4\quests\x4_other_001_control_expansionportals.qst`, and its FILE is resolved
+  via that namespace (the base game's UNCAPPED `Resources/xpack/Quests.arc` /
+  `XPack4/Quests.arc`).
+  (For a quest registered under BOTH `Quests/<name>` and `XPack/Quests/<name>` the
+  engine instantiates the `Quests/` form -- verified via the doubled "grieving widow"
+  registration, where only the `quests\`-form hash exists in the save. But a quest
+  registered ONLY under `XPack/quests/...` uses that DLC-path hash, NOT a root
+  basename.)
+- ⚠️ **A5 CORRECTION (2026-07-11):** the older "input = `quests\<basename>.qst`"
+  wording made the IT-cap inert. A mod copy of a DLC controller placed at the plain
+  Quests.arc ROOT can NEVER override an `XPack/`-registered quest (different identity
+  AND different resolved file). This is the build22 widow-letter "inert fix" sibling;
+  it is why A5 (post-Hades Act-5 leak) was fixed at the DB-record level
+  (`RequireNoDLC` suppression) instead of more Quests.arc-root editing. See the
+  MODDING_PLAYBOOK failure graveyard.
 - The 16-byte MD5 digest is stored as four little-endian u32 `md5Chunk`
   values, and the per-quest state file is named
   `"%08x%08x%08x%08x.que" % (chunk0..chunk3)` (that format string is verbatim
