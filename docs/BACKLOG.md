@@ -2014,3 +2014,14 @@ to every subscriber right now; portals look rough (B-PORTAL-1). Prioritize those
   souls/summons/resources green (only pre-existing anm_dreamcopy P1).
 - SHIP MAP = CANONICAL to both Steam + DEV (TESTHUB rebuild skipped - quota; canonical carries all
   content, WILL_TEST_GUIDE.md gives the canonical path to every boss).
+
+## BL-AURA-RADIUS (Will 2026-07-12, design wave candidate for build38)
+Increase the effect radius of ALL auras in the game so a player's aura bonuses reach their
+pets in battle even when not standing adjacent, and reach allied players on screen in MP.
+Scope: every aura-class skill across masteries + soul-granted auras + pet auras.
+Design notes: TQ aura radius lives on the skill record (radius/targetRadius fields per
+aura template); approach = audit all aura records -> propose per-aura radii (a flat
+multiplier is the fallback; screen-scale ~= 30-45m world units) -> balance check vs
+always-on party-wide uptime -> H/O golden-freeze waivers where trees are touched ->
+implement as registry module (aura_radius.py) with a fail-loud audit gate listing every
+touched aura + old->new radius. NOT started (quota); spec-first per the vet law.
