@@ -55,7 +55,15 @@ import importlib
 #
 # NOTE: _smoke_example is the template/reference module. It is intentionally
 # NOT registered (it stays a copy-me template); see README S6.
-REGISTRY = []
+#
+# ORDERING NOTE (four_generals): this module enriches the three EXISTING general
+# souls (soul\machae\{dysnomion,makaria,trophonios}) with a light amgoz downside.
+# The granted-skill-quality wave may also touch those souls; four_generals must
+# run BEFORE skill_quality so the collision (S4b WARN) resolves later-wins in the
+# intended direction (skill_quality's skill-grant edits win; the downside sits on
+# a defensive stat neither touches). Keep 'four_generals' ahead of 'skill_quality'
+# when the fleet consolidates the manifest.
+REGISTRY = ['four_generals']
 
 
 def registry_order_hash(names):
