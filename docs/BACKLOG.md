@@ -1935,3 +1935,20 @@ to every subscriber right now; portals look rough (B-PORTAL-1). Prioritize those
   **Re-uploaded and verified LIVE (2026-07-08): a fresh steamcmd download of item 3759792705 shows the
   item root = a single SoulvizierClassic wrapper, so the "two mods" bug is resolved on the live item.**
   Scripts: scripts/package_workshop.ps1, scripts/upload_workshop.ps1.
+
+## build36 content wave ROUND-3 GATE RECORD (2026-07-12 ~00:00, supersedes the round-1 block)
+- Round-2 fixes all landed: Charon soul = S2 one-summon (ferryman allow entry); Kravmoloch soul
+  grants its summon; dedicated per-boss hoards (Tantalus/Charon/Ephialtes; Mnemophage chestless);
+  Dorus soul silent no-op FIXED (non-pcsafe source ref) + new _verify_dorus_soul_amendment gate.
+- Round-3 fix: oarsman pet tiers clear the donor's dangling ALL_DamageScaling_Passive (bfca9a5)
+  - the B-SUMMON-1 gate caught it on the written arz.
+- BUILT: arz md5 f5df1f05786439f6ec51c0fcf92e76c6 (55,184,822 B) local/build36c/Database/;
+  Text.arc md5 744b598100ef07cac3a3e023f77a1586.
+- GATES: all inline fail-loud gates GREEN in-run (5 invariants, 3 pet gates, golem button,
+  B-SUMMON-1, C6 Dorus gate, F1/F2[17 fam]/F3/F6[63+2158], clone-shape 12, spawn-eligibility 25,
+  roaming sweep, player-skill anims). A9 render chain PASS standalone vs real art arcs (28
+  upstream WARNs - the in-run FAIL was the missing-art environment artifact; Resources populated).
+  Golden PASS (5 F5 waivers, 0 other). validate_tags PASS. Contracts: souls 0/0/0, summons 0 P0/P1
+  (112 pre-existing P2), resources 0 P0 + ONLY the pre-existing anm_dreamcopy P1.
+- Determinism: round-1 proved byte-identical independent rebuild; the convergence rebuild on main
+  re-confirms for the final artifact.
