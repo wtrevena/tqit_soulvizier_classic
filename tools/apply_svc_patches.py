@@ -9688,6 +9688,14 @@ _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakru
 _EN_SKELETON_DONOR = r'records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr'
 _EN_BOSS_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
 _EN_BOSS_TEX = r'Creatures\Monster\Skeleton\NewSkeleton_Charcoal.tex'
+# A1 WARBAND (build36 AMENDMENT, Option A championChance set-piece): a dedicated
+# proxy+pool that spawns 1 leader + 4 "Enslaved Shadow Marauder" champions present
+# at spawn (spawnMax=5 / championChance=100 / championMin=Max=4 -> 5-4=1 leader).
+# Built by _create_enslaver_warband between _create_enslaver and the roaming sweep;
+# whitelisted in _EN_YARD_POOLS (leak guard) + registered in _MOD_AUTHORED_SPAWN_
+# PROXIES. Map lane places the proxy at one coordinate (reported, not done here).
+_EN_WARBAND_POOL = r'records\drxmap\proxy\pools\q_enslaver_warband.dbr'
+_EN_WARBAND_PROXY = r'records\drxmap\proxy\q_enslaver_warband.dbr'
 _EN_SK_ATTACKSKILL = r'records\skills\monster skills\attack_melee\toxeus_attackskill.dbr'
 # Enslaver kit (Toxeus lineage; all existence-verified).
 _EN_SK_NETHERSTRIKE = r'records\skills\monster skills\attack_melee\netherstrike.dbr'
@@ -9745,33 +9753,49 @@ def _create_enslaver(db, tags):
                 del ff[k]
         db._modified.add(rec)
 
-    # ── 1. Hostile marauder (Champion, ~2x hand dmg, ShadowStalker rig + cloak). ──
+    # ── 1. Hostile marauder (Champion, ShadowStalker rig + cloak). ──
+    #    A1/B6 MARAUDER LAW (build36 AMENDMENT, Will 2026-07-11 verbatim): "the demon
+    #    version of toxeus should become the enslaved shadow marauder." Set the
+    #    marauder to the DEPLOYED demon-Toxeus block (um_toxeus_enslaver_99 @ build31)
+    #    so it matches what Will fought: HP [13000,18000,24000] (~2.6x the prior weak
+    #    5000), str 480/dex 660/int 420, scale 2.0/actorHeight 2.5, lifeRegen 12, the
+    #    demon resist wall (Life100/Pierce80/Phys30). KEEP its higher 300/380 hand dmg
+    #    (> the demon's 150/250 - Will: increase strength, never nerf). Name STAYS
+    #    "Enslaved Shadow Marauder" (Will's answer; WILL_DECISIONS 2026-07-11).
     db.clone_record(_EN_RIG_DONOR, _EN_MARAUDER)
     M = _EN_MARAUDER
     sf(M, 'description', 'tagSVCMonsterEnslaverMarauder')
     sf(M, 'monsterClassification', 'Champion')
     sf(M, 'characterRacialProfile', 'Demon')
     sf(M, 'charLevel', list(_EN_BAND))
-    # build36 A2 (super-strong shadow marauders, Will Option A): a 10-12 pack of
-    # these on top of the boss is a real AoE-or-die swarm.
-    sf(M, 'characterLife', [5000.0, 8500.0, 13000.0])
-    sf(M, 'characterStrength', 460.0)
-    sf(M, 'characterDexterity', 620.0)
-    sf(M, 'handHitDamageMin', 300.0)
-    sf(M, 'handHitDamageMax', 380.0)
+    sf(M, 'characterLife', [13000.0, 18000.0, 24000.0])   # = deployed demon Toxeus
+    sf(M, 'characterStrength', 480.0)
+    sf(M, 'characterDexterity', 660.0)
+    sf(M, 'characterIntelligence', 420.0)
+    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'handHitDamageMin', 300.0)                       # KEEP (> demon 150; never nerf)
+    sf(M, 'handHitDamageMax', 380.0)                       # KEEP (> demon 250)
+    sf(M, 'scale', 2.0)                                    # was 1.1 (demon silhouette)
+    sf(M, 'actorHeight', 2.5)
     sf(M, 'characterRunSpeed', 1.7)
+    sf(M, 'defensiveLife', 100.0)
+    sf(M, 'defensivePierce', 80.0)
+    sf(M, 'defensivePhysical', 30.0)
     sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], S)   # drxshadowcloakrunning_fx
     sf(M, 'dropItems', 0)
     db._modified.add(M)
 
-    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone). build36 A2: rapid
-    #    many-summon (burst 6 / cd 2.0s / petLimit 12) - he reaches ~12 marauders
-    #    within ~2s of aggro; all class-proven (donor is burst 5 / limit 15). ──
+    # ── 2. Boss's HOSTILE marauder summon (yaoguai clone). A1/B6 DENSITY CUT
+    #    (build36 AMENDMENT): now that each marauder is a demon-tier bruiser (24000
+    #    HP, scale 2.0), petLimit drops 12 -> 4 so ~4 concurrent summoned + the 4
+    #    warband escorts = ~8 demon-strength marauders max (brutal, not absurd; the
+    #    12-swarm of bruisers would be a wall of giants). WILL_DECISIONS 2026-07-11:
+    #    "the summon petLimit cuts 12 -> 4." burst/cd kept (burst is capped by limit). ──
     db.clone_record(_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS)
     sf(_EN_SUMMON_MARAUDERS, 'spawnObjects', [_EN_MARAUDER])
     sf(_EN_SUMMON_MARAUDERS, 'petBurstSpawn', 6)
     sf(_EN_SUMMON_MARAUDERS, 'skillCooldownTime', 2.0)
-    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 12)
+    sf(_EN_SUMMON_MARAUDERS, 'petLimit', 4)
     db._modified.add(_EN_SUMMON_MARAUDERS)
     _BOSS_KIT_CLONES.append((_EN_SUMMON_DONOR, _EN_SUMMON_MARAUDERS))
 
@@ -9790,21 +9814,30 @@ def _create_enslaver(db, tags):
     sf(B, 'baseTexture', _EN_BOSS_TEX)                    # ALL-BLACK charcoal skin
     sf(B, 'characterRacialProfile', 'Undead')            # skeleton (was Demon)
     sf(B, 'charLevel', list(_EN_BAND))
-    sf(B, 'characterLife', [13000.0, 18000.0, 24000.0])
-    sf(B, 'characterStrength', 480.0)
-    sf(B, 'characterDexterity', 660.0)
+    # A1/B6.3 SKELETON LORD (build36 AMENDMENT): with the marauder now at the demon
+    # block [13000,18000,24000], the leader must TOWER. Will verbatim: "the skeleton
+    # version should be way stronger than his enslaved marauders." Leader = 2.5x the
+    # marauder HP = [32500,45000,60000] (extreme directive; flagged as a 60k roaming
+    # rare in the report). Out-hits them (350/500 > 300/380), visibly the master
+    # (scale 2.4 / height 2.9 over their 2.0), stronger attrs, and a lord is not
+    # lockable (defensiveStun/Freeze 100; Phys wall bumped 30 -> 40).
+    sf(B, 'characterLife', [32500.0, 45000.0, 60000.0])   # 2.5x the marauder
+    sf(B, 'characterStrength', 560.0)
+    sf(B, 'characterDexterity', 720.0)
     sf(B, 'characterIntelligence', 420.0)
     sf(B, 'characterLifeRegen', 12.0)
-    sf(B, 'handHitDamageMin', 150.0)
-    sf(B, 'handHitDamageMax', 250.0)
-    sf(B, 'scale', 2.0)
-    sf(B, 'actorHeight', 2.5)
+    sf(B, 'handHitDamageMin', 350.0)                       # clearly out-hits the 300-380 marauders
+    sf(B, 'handHitDamageMax', 500.0)
+    sf(B, 'scale', 2.4)                                    # visibly the master over his 2.0 soldiers
+    sf(B, 'actorHeight', 2.9)
     sf(B, 'characterRunSpeed', 1.5)
     # defensive wall (NO bleeding wall: expressed as flat resists, not the
-    # bloodwitch zpassive_resists_bleed record).
+    # bloodwitch zpassive_resists_bleed record). A1/B6.3: add CC immunity, bump Phys.
     sf(B, 'defensiveLife', 100.0)
     sf(B, 'defensivePierce', 80.0)
-    sf(B, 'defensivePhysical', 30.0)
+    sf(B, 'defensivePhysical', 40.0)                       # was 30 (lord's wall)
+    sf(B, 'defensiveStun', 100.0)
+    sf(B, 'defensiveFreeze', 100.0)
     # kit (clear the donor's trash passives 1..18 first, then author; the
     # specialAttack*SkillName slots are explicitly overwritten below).
     _clear_range(B, 'skillName', 1, 18)
@@ -9840,15 +9873,17 @@ def _create_enslaver(db, tags):
     #    marauder rig -> friendly pet + summon skill). isPetDisplayable off (the
     #    Enslaver PET auto-casts it, it is not a player button). ──
     marauder_pets = [rf'records\skills\soulskills\pets\enslaver_marauder_{i}.dbr' for i in (1, 2, 3)]
-    # build36 A2: the player's raised shadow pack matches the super-strong ladder
-    # (Will: "he raises his own shadow pack for you"). Gear/skills auto-mirror the
-    # marauder source (RightHand dyn_1h) via the A1 builder overhaul.
+    # build36 A2/B6.2: the player's raised shadow pack matches the demon ladder (the
+    # friendly pets are built separately by _build_boss_summon, so the marauder record
+    # buff does NOT reach them - pass the demon block here). Will: "he raises his own
+    # shadow pack for you." Gear/skills auto-mirror the marauder source (RightHand
+    # dyn_1h) via the A1 builder overhaul.
     _build_boss_summon(
         db, _EN_MARAUDER, marauder_pets, SUMMON_ENSLAVER_PETMARAUDERS,
         'tagSVCSummonEnslaverMarauders', 'tagSVCMonsterEnslaverMarauder',
-        char_level=list(_EN_BAND), life=[5000.0, 8500.0, 13000.0],
+        char_level=list(_EN_BAND), life=[13000.0, 18000.0, 24000.0],
         life_regen=[25.0, 45.0, 70.0],
-        dmg_min=[150.0, 230.0, 300.0], dmg_max=[220.0, 320.0, 420.0], scale=1.0)
+        dmg_min=[300.0, 340.0, 380.0], dmg_max=[380.0, 440.0, 500.0], scale=2.0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'isPetDisplayable', 0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petLimit', 3)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petBurstSpawn', 1)
@@ -9921,10 +9956,69 @@ def _create_enslaver(db, tags):
         'the Enslaver of Souls: a towering skeletal revenant robed all in black who '
         'binds the dead into a marauding warband. Its bearer may call him forth - and '
         'he raises his own shadow pack to fight beside you.')
-    print("  Enslaver (A2): boss = ALL-BLACK skeleton (RevenantPoison + charcoal, "
-          "um_toxeus_99 rig) scale 2.0 + rapid marauder summon (burst 6/cd 2/limit "
-          "12); super-strong ShadowStalker-demon marauders [5000/8500/13000]; "
-          "friendly pet-of-pet; summon soul (66% Finger2); tags set. Sweep runs next.")
+    print("  Enslaver (A1/B6): SKELETON LORD [32500/45000/60000] scale 2.4 (2.5x the "
+          "marauder, CC-immune) + marauder summon (burst 6/cd 2/limit 4); marauders = "
+          "DEPLOYED demon block [13000/18000/24000] scale 2.0 (name kept 'Enslaved "
+          "Shadow Marauder'); friendly pet-of-pet demon ladder; summon soul (66% "
+          "Finger2); tags set. Warband + sweep run next.")
+
+
+def _create_enslaver_warband(db):
+    """A1 (build36 AMENDMENT, Option A championChance set-piece warband): a dedicated
+    proxy+pool that spawns the LEADER + 4 "Enslaved Shadow Marauder" champions
+    PRESENT AT SPAWN (Will's "leader + his 4 enslaved soldiers"). Recipe = the proven
+    Vashkarr/yard no-crowd-out shape: spawnMax=5 / championChance=100 /
+    championMin=Max=4 -> 5-4 = 1 guaranteed main slot (the leader) + 4 guaranteed
+    champion slots (the marauder). The leader record + kit + summon + 66%/orb drop
+    are UNTOUCHED (referenced as name1..3). Registered in _MOD_AUTHORED_SPAWN_PROXIES
+    (crowd-out gate) + whitelisted in _EN_YARD_POOLS (roaming-sweep leak guard). The
+    single map placement is a map-lane hand-off (reported, not done here). Runs
+    between _create_enslaver and _sweep_inject_roaming_rare (leader + soldier exist;
+    before the sweep gate re-derives + whitelists enslaver-bearing pools)."""
+    S = DATA_TYPE_STRING
+    sf = db.set_field
+    if not (db.has_record(_YARD_POOL_DONOR) and db.has_record(_YARD_PROXY_DONOR)
+            and db.has_record(_EN_BOSS) and db.has_record(_EN_MARAUDER)):
+        print("  ENSLAVER WARBAND: donor/leader/soldier missing; skipped")
+        return
+
+    # ── pool: 1 guaranteed leader main + 4 guaranteed 'Enslaved Shadow Marauder'
+    #    champions (spawnMax=5, championChance=100, championMin=championMax=4). ──
+    db.clone_record(_YARD_POOL_DONOR, _EN_WARBAND_POOL)
+    PL = _EN_WARBAND_POOL
+    sf(PL, 'FileDescription', 'Toxeus the Enslaver (main) + 4 Enslaved Shadow Marauder escorts')
+    for i in (1, 2, 3):                      # the single main slot always rolls the leader
+        sf(PL, f'name{i}', _EN_BOSS, S); sf(PL, f'weight{i}', 100)
+    for i in (1, 2, 3, 4):                   # 4 champion slots, all the marauder (adds slot 4)
+        sf(PL, f'nameChampion{i}', _EN_MARAUDER, S); sf(PL, f'weightChampion{i}', 100)
+    sf(PL, 'spawnMin', 5); sf(PL, 'spawnMax', 5)
+    sf(PL, 'championChance', 100.0)
+    sf(PL, 'championMin', 4); sf(PL, 'championMax', 4)     # 5-4 = 1 leader (NO-CROWD-OUT holds)
+    db._modified.add(PL)
+
+    # ── proxy: chanceToRun=100, limit_obsidianbosses [1..110] (leader is L100),
+    #    preview silhouette = the leader's skeleton rig. ──
+    db.clone_record(_YARD_PROXY_DONOR, _EN_WARBAND_PROXY)
+    P = _EN_WARBAND_PROXY
+    sf(P, 'pool1', _EN_WARBAND_POOL, S)
+    sf(P, 'chanceToRun', 100.0)
+    sf(P, 'difficultyLimitsFile', _YARD_LIMIT, S)          # limit_obsidianbosses [1..110]
+    sf(P, 'difficultyEquationFile', _YARD_DIFFICULTY, S)   # difficulty_04 (as the yard; optional)
+    sf(P, 'mesh', _EN_BOSS_MESH, S)                        # RevenantPoison skeleton silhouette
+    sf(P, 'scale', 2.4)                                    # match the leader's silhouette
+    sf(P, 'placementExtents', 4.0)                         # 5-monster footprint; map lane re-verifies
+    db._modified.add(P)
+
+    # register in the spawn-eligibility gate (spawnMax-championMax = 5-4 = 1 >= 1;
+    # leader L100 <= limit [1..110] on N/E/L).
+    _MOD_AUTHORED_SPAWN_PROXIES.append({
+        'proxy': _EN_WARBAND_PROXY, 'pool': _EN_WARBAND_POOL,
+        'main_monster': _EN_BOSS,
+        'name': 'q_enslaver_warband (Enslaver + 4 Enslaved Shadow Marauder escorts)',
+    })
+    print("  Enslaver warband: 1 leader + 4 Enslaved Shadow Marauder champions "
+          "(spawn=5/champMin=Max=4/champChance=100); chanceToRun=100; limit [1..110]. "
+          "MAP LANE: place q_enslaver_warband at one walkable coord (map delta).")
 
 
 def _sweep_inject_roaming_rare(db):
@@ -13640,10 +13734,12 @@ _YARD_WYRM_PROXY = r'records\drxmap\proxy\q_yard_wyrm.dbr'
 # yard obs fights also drop the Boss-locked hoard (no new container records).
 _YARD_OBS_ACC = {t: rf'records\drxitem\container\svc_obsidianhoard_pool_{t}.dbr'
                  for t in ('01', '02', '03')}
-# The ONE yard pool that legitimately carries the Enslaver at weight > 1
-# (whitelisted out of the roaming-sweep derivation). EXACT record-path set (never
-# a loose substring), per the roaming-sweep leak-detection contract.
-_EN_YARD_POOLS = {_YARD_ENSLAVER_POOL}
+# Non-swept pools that legitimately carry the Enslaver at weight > 1 (whitelisted
+# out of the roaming-sweep derivation). EXACT record-path set (never a loose
+# substring), per the roaming-sweep leak-detection contract. = the TESTHUB yard
+# pool + the A1 canonical warband set-piece (both carry the leader as a guaranteed
+# main, not a swept weight-1 leak).
+_EN_YARD_POOLS = {_YARD_ENSLAVER_POOL, _EN_WARBAND_POOL}
 
 
 def _create_test_yard(db, tags):
@@ -15904,6 +16000,10 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # clone-shape gate (registers his hostile marauder-summon clone).
     print("\n=== GROUP B: Toxeus the Enslaver of Souls ===")
     _create_enslaver(db, tags)
+    # A1 (build36 AMENDMENT): the canonical warband set-piece (leader + 4 escorts at
+    # spawn). BETWEEN _create_enslaver and the sweep so the leader+marauder exist and
+    # the sweep gate re-derives + whitelists the warband pool (_EN_YARD_POOLS).
+    _create_enslaver_warband(db)
 
     # GROUP 1 (test yard): build the TESTHUB monster-yard pool/proxy records. MUST
     # sit AFTER every yard-referenced group (Vashkarr/wyrm/obsidian/enslaver all
