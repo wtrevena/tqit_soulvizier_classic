@@ -13988,10 +13988,67 @@ def _svc_boss_pool(db, pool, boss, champ, desc):
     db._modified.add(pool)
 
 
-def _svc_boss_proxy(db, proxy, pool, limit, mesh, scale, hoard=True):
+def _svc_build_dedicated_hoard(db, prefix, desc_tag):
+    """Build a DEDICATED Boss-locked hoard chain (loot table -> FixedItemContainer
+    chest -> ProxyAccessoryPool) per difficulty tier, cloned from the proven
+    hidden-bloodcave mega-chest donors (byte-for-byte the _create_obsidian_roulette
+    step-7 recipe). Returns {tier: accessory_pool_path} for the 3 tiers to wire onto
+    a boss proxy's accessory1/Epic1/Legendary1.
+
+    build36 round-2 vet P3: Tantalus/Charon/Ephialtes each got a Boss-locked chest
+    but all THREE drew from the single shared svc_obsidianhoard loot pool (a loot-
+    identity collision across thematically distinct bosses + no bespoke flavor). This
+    gives each new boss its OWN loot pool + chest + a bespoke chest name. Returns None
+    if a donor is missing so the caller can fall back to the shared pool (a boss still
+    gets a hoard rather than none)."""
+    for t in ('01', '02', '03'):
+        for don in (_OBS_HOARD_LOOT_DONOR[t], _OBS_CHEST_DONOR[t], _OBS_ACC_POOL_DONOR[t]):
+            if not db.has_record(don):
+                print(f"  SVC HOARD ({prefix}): donor missing {don}; "
+                      f"falling back to the shared Obsidian hoard pool")
+                return None
+    sf = db.set_field
+    base = r'records\drxitem\container'
+    pools = {}
+    for t in ('01', '02', '03'):
+        # loot table: clone the mega-chest table, reduce numSpawn below-mega, add a
+        # guaranteed high-value loot3 slot (identical tuning to the Obsidian hoard).
+        lt = rf'{base}\svc_{prefix}hoard_loot_{t}.dbr'
+        db.clone_record(_OBS_HOARD_LOOT_DONOR[t], lt)
+        sf(lt, 'numSpawnMinEquation', '(3+(1.8*numberOfPlayers))*2.4')
+        sf(lt, 'numSpawnMaxEquation', '(3+(1.8*numberOfPlayers))*2.8')
+        sf(lt, 'loot3Chance', 100.0)
+        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE); sf(lt, 'loot3Weight1', 100)
+        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC); sf(lt, 'loot3Weight2', 60)
+        db._modified.add(lt)
+        # chest: clone the blood-cave mega chest, retheme to this boss's Boss-locked hoard.
+        ch = rf'{base}\svc_{prefix}hoard_{t}.dbr'
+        db.clone_record(_OBS_CHEST_DONOR[t], ch)
+        sf(ch, 'description', desc_tag)
+        sf(ch, 'LockedClassification', 'Boss')
+        sf(ch, 'LockedRadius', 50.0)
+        sf(ch, 'locked', 1)
+        sf(ch, 'goldGeneratorChance', 100.0)
+        sf(ch, 'tables', lt)
+        db._modified.add(ch)
+        # accessory pool: clone the mega-chest accessory pool, point at OUR chest.
+        ap = rf'{base}\svc_{prefix}hoard_pool_{t}.dbr'
+        db.clone_record(_OBS_ACC_POOL_DONOR[t], ap)
+        sf(ap, 'fixedItemName1', ch)
+        sf(ap, 'fixedItemChance', 100)
+        sf(ap, 'fixedItemWeight1', 100)
+        db._modified.add(ap)
+        pools[t] = ap
+    return pools
+
+
+def _svc_boss_proxy(db, proxy, pool, limit, mesh, scale, hoard_pools=None):
     """Clone q_leinth_lone proxy -> a lone-boss placer (chanceToRun 100, preview
-    mesh/scale, no-cap limit). Wires the reused Obsidian hoard chest as the
-    accessory tiers when hoard=True (spawns WITH the boss, Boss-locked)."""
+    mesh/scale, no-cap limit). Wires the given per-boss accessory hoard pools (dict
+    {tier: pool_path} from _svc_build_dedicated_hoard) as the accessory1/Epic1/
+    Legendary1 tiers so the Boss-locked hoard chest spawns WITH the boss. Pass
+    hoard_pools=None for no chest (yard proxies + the Mnemophage, whose no-chest is
+    the deliberate spec differentiator)."""
     db.clone_record(_SVC_LEINTH_PROXY, proxy)
     sf = db.set_field
     sf(proxy, 'chanceToRun', 100.0)
@@ -14001,10 +14058,10 @@ def _svc_boss_proxy(db, proxy, pool, limit, mesh, scale, hoard=True):
     sf(proxy, 'mesh', mesh)
     sf(proxy, 'scale', float(scale))
     sf(proxy, 'placementExtents', 3.5)
-    if hoard and db.has_record(_SVC_HOARD_POOL['01']):
-        sf(proxy, 'accessory1', _SVC_HOARD_POOL['01'], DATA_TYPE_STRING)
-        sf(proxy, 'accessoryEpic1', _SVC_HOARD_POOL['02'], DATA_TYPE_STRING)
-        sf(proxy, 'accessoryLegendary1', _SVC_HOARD_POOL['03'], DATA_TYPE_STRING)
+    if hoard_pools and db.has_record(hoard_pools['01']):
+        sf(proxy, 'accessory1', hoard_pools['01'], DATA_TYPE_STRING)
+        sf(proxy, 'accessoryEpic1', hoard_pools['02'], DATA_TYPE_STRING)
+        sf(proxy, 'accessoryLegendary1', hoard_pools['03'], DATA_TYPE_STRING)
     db._modified.add(proxy)
 
 
@@ -14214,7 +14271,8 @@ def _create_tantalus_uberboss(db, tags):
     _svc_widen_limit(db, _SVC_LIMIT_DONOR, _TN_LIMIT)
     _svc_boss_pool(db, _TN_POOL, _TN_FORM1, _TN_ESCORT,
                    'Tantalus (main) + 2 Famished-Shade champion escorts')
-    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2)
+    _tn_hoard = _svc_build_dedicated_hoard(db, 'tantalus', 'tagSVCTantalusHoard') or _SVC_HOARD_POOL
+    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2, hoard_pools=_tn_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _TN_PROXY, 'pool': _TN_POOL, 'main_monster': _TN_FORM1,
          'name': 'q_tantalus_lone (Tantalus + 2 Famished-Shade escorts)'})
@@ -14222,7 +14280,7 @@ def _create_tantalus_uberboss(db, tags):
     # ── TESTHUB yard (REAL records; king + escorts @100%; map lane places it) ──
     _svc_boss_pool(db, _TN_YARD_POOL, _TN_FORM1, _TN_ESCORT,
                    'YARD: Tantalus + 2 escorts @100% (TESTHUB-only)')
-    _svc_boss_proxy(db, _TN_YARD_PROXY, _TN_YARD_POOL, _TN_LIMIT, _TN_MESH, 2.2, hoard=False)
+    _svc_boss_proxy(db, _TN_YARD_PROXY, _TN_YARD_POOL, _TN_LIMIT, _TN_MESH, 2.2)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _TN_YARD_PROXY, 'pool': _TN_YARD_POOL, 'main_monster': _TN_FORM1,
          'name': 'q_yard_tantalus (TESTHUB yard)'})
@@ -14264,6 +14322,7 @@ def _create_tantalus_uberboss(db, tags):
 
     tags['tagSVCMonsterTantalus'] = '{^r}Tantalus, the Insatiable'
     tags['tagSVCMonsterTantalusUnbound'] = '{^r}Tantalus, the Hunger Unbound'
+    tags['tagSVCTantalusHoard'] = "Tantalus's Hoard"
     tags['tagSVCMonsterFamishedShade'] = '{^G}Famished Shade'
     tags['tagSVCPetFamishedShade'] = 'Famished Shade'
     tags['tagSVCSummonTantalusShade'] = 'Summon the Famished Shade'
@@ -14275,7 +14334,7 @@ def _create_tantalus_uberboss(db, tags):
     print("  C1 Tantalus: 2 forms (Insatiable [15/20/27k] -> Hunger Unbound "
           "[9/12/16k] via actorToSpawnOnDeath, WraithLord FX, poison shroud, "
           "widened decay ring, shade-wave summon) + 2 escorts + pool/proxy/limit "
-          "+ hoard + S2 summon soul (form2, 66% Finger2) + yard; tags set.")
+          "+ dedicated hoard + S2 summon soul (form2, 66% Finger2) + yard; tags set.")
 
 
 def _svc_add_skill(db, monster, path, level=1):
@@ -14387,13 +14446,14 @@ def _create_goldenbough_boss(db, tags):
     _svc_widen_limit(db, _SVC_LIMIT_DONOR, _GB_LIMIT)
     _svc_boss_pool(db, _GB_POOL, _GB_FORM1, _GB_ESCORT,
                    'Charon (main) + 2 drowned-oarsman champion escorts')
-    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7)
+    _gb_hoard = _svc_build_dedicated_hoard(db, 'charon', 'tagSVCCharonHoard') or _SVC_HOARD_POOL
+    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7, hoard_pools=_gb_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _GB_PROXY, 'pool': _GB_POOL, 'main_monster': _GB_FORM1,
          'name': 'q_goldenbough_lone (Charon + 2 oarsman escorts)'})
     _svc_boss_pool(db, _GB_YARD_POOL, _GB_FORM1, _GB_ESCORT,
                    'YARD: Charon + 2 escorts @100% (TESTHUB-only)')
-    _svc_boss_proxy(db, _GB_YARD_PROXY, _GB_YARD_POOL, _GB_LIMIT, _GB_MESH, 1.7, hoard=False)
+    _svc_boss_proxy(db, _GB_YARD_PROXY, _GB_YARD_POOL, _GB_LIMIT, _GB_MESH, 1.7)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _GB_YARD_PROXY, 'pool': _GB_YARD_POOL, 'main_monster': _GB_FORM1,
          'name': 'q_yard_goldenbough (TESTHUB yard)'})
@@ -14470,6 +14530,7 @@ def _create_goldenbough_boss(db, tags):
 
     tags['tagSVCMonsterCharonFerryman'] = '{^r}Charon, the Unferried'
     tags['tagSVCMonsterCharonWraith'] = '{^G}Drowned Oarsman'
+    tags['tagSVCCharonHoard'] = "Ferryman's Toll-Hoard"
     tags['tagSVCitmGoldenBough'] = 'The Golden Bough'
     tags['tagSVCitmGoldenBoughDESC'] = (
         'The ferryman takes no coin, only the Golden Bough. Torn from Charon at '
@@ -14488,7 +14549,7 @@ def _create_goldenbough_boss(db, tags):
     tags['tagSVCPetOarsman'] = 'Drowned Oarsman'
     print("  C2 Charon: 2-phase (Unferried [22/28/34k] -> risen giant [24/30/36k] "
           "Charon02, deathchill shroud, form-2 final-kill burst) + 2 oarsman "
-          "escorts + pool/proxy/limit + hoard + THE GOLDEN BOUGH amulet (guaranteed) "
+          "escorts + pool/proxy/limit + dedicated hoard + THE GOLDEN BOUGH amulet (guaranteed) "
           "+ S2 ONE-SUMMON soul (raise a drowned oarsman, CharonGhost rig, manual-"
           "cast, form2, 'ferryman' in _SUMMON_IDENTITY_ALLOW) + yard; tags set.")
 
@@ -14619,13 +14680,13 @@ def _create_mnemophage_superboss(db, tags):
     _svc_widen_limit(db, _SVC_LIMIT_DONOR, _MN_LIMIT)
     _svc_boss_pool(db, _MN_POOL, _MN_SHELL, _MN_ESCORT,
                    'the Mnemophage (main) + 2 nightmare champion escorts')
-    _svc_boss_proxy(db, _MN_PROXY, _MN_POOL, _MN_LIMIT, _MN_MESH, 2.5, hoard=False)
+    _svc_boss_proxy(db, _MN_PROXY, _MN_POOL, _MN_LIMIT, _MN_MESH, 2.5)  # no chest = the Mnemophage spec differentiator
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _MN_PROXY, 'pool': _MN_POOL, 'main_monster': _MN_SHELL,
          'name': 'q_mnemophage_lone (Mnemophage + 2 nightmare escorts)'})
     _svc_boss_pool(db, _MN_YARD_POOL, _MN_SHELL, _MN_ESCORT,
                    'YARD: Mnemophage + 2 escorts @100% (TESTHUB-only)')
-    _svc_boss_proxy(db, _MN_YARD_PROXY, _MN_YARD_POOL, _MN_LIMIT, _MN_MESH, 2.5, hoard=False)
+    _svc_boss_proxy(db, _MN_YARD_PROXY, _MN_YARD_POOL, _MN_LIMIT, _MN_MESH, 2.5)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _MN_YARD_PROXY, 'pool': _MN_YARD_POOL, 'main_monster': _MN_SHELL,
          'name': 'q_yard_mnemophage (TESTHUB yard)'})
@@ -14794,13 +14855,14 @@ def _create_dreadhalls_uberboss(db, tags):
     _svc_widen_limit(db, _SVC_LIMIT_DONOR, _EP_LIMIT)
     _svc_boss_pool(db, _EP_POOL, _EP_BOSS, _EP_ESCORT,
                    'Ephialtes (main) + 2 nightmare champion escorts')
-    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2)
+    _ep_hoard = _svc_build_dedicated_hoard(db, 'ephialtes', 'tagSVCEphialtesHoard') or _SVC_HOARD_POOL
+    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2, hoard_pools=_ep_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _EP_PROXY, 'pool': _EP_POOL, 'main_monster': _EP_BOSS,
          'name': 'q_ephialtes_lone (Ephialtes + 2 nightmare escorts)'})
     _svc_boss_pool(db, _EP_YARD_POOL, _EP_BOSS, _EP_ESCORT,
                    'YARD: Ephialtes + 2 escorts @100% (TESTHUB-only)')
-    _svc_boss_proxy(db, _EP_YARD_PROXY, _EP_YARD_POOL, _EP_LIMIT, _EP_MESH, 2.2, hoard=False)
+    _svc_boss_proxy(db, _EP_YARD_PROXY, _EP_YARD_POOL, _EP_LIMIT, _EP_MESH, 2.2)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _EP_YARD_PROXY, 'pool': _EP_YARD_POOL, 'main_monster': _EP_BOSS,
          'name': 'q_yard_ephialtes (TESTHUB yard)'})
@@ -14854,6 +14916,7 @@ def _create_dreadhalls_uberboss(db, tags):
 
     tags['tagSVCMonsterEphialtes'] = '{^r}Ephialtes, the Waking Dread'
     tags['tagSVCMonsterEpialesNightmare'] = '{^G}Epiales ~ Nightmare'
+    tags['tagSVCEphialtesHoard'] = "Ephialtes's Dread-Hoard"
     tags['tagSVCMaskOfDread'] = 'Mask of the Waking Dread'
     tags['tagSVCMaskOfDreadDESC'] = (
         'The face the nightmare-lord wore when he walked the Dread Halls. Wear it '
@@ -14867,7 +14930,7 @@ def _create_dreadhalls_uberboss(db, tags):
     print("  C4 Ephialtes: single-form [58,78,97]/[15/20/27k], epiales_overlord "
           "skin, scale 2.2, Dread Shroud, fear spine (ixion_cry + Dreamstorm + "
           "Vision of Death on Skill_AttackRadius) + takedown chase + death nova + "
-          "pool/proxy/limit + hoard + Mask of the Waking Dread + S1 fear-nova soul "
+          "pool/proxy/limit + dedicated hoard + Mask of the Waking Dread + S1 fear-nova soul "
           "(mana-regen downside) + yard; tags set.")
 
 
@@ -15695,10 +15758,13 @@ def apply_all_extended_patches(db, force_full_drops=True):
     _create_propontis_superboss(db, tags)
 
     # ── build36 CONTENT WAVE (C1-C7) ─────────────────────────────────────────
-    # Four new uber bosses + Ereban relic + Dorus amendments + uplift picks. Runs
-    # AFTER _create_obsidian_roulette (the hoards reuse svc_obsidianhoard pools)
-    # and _create_propontis_superboss, BEFORE the build29 castability wave + the
-    # clone-shape / spawn-eligibility / soul gates. Map lane owns the placements.
+    # Four new uber bosses + Ereban relic + Dorus amendments + uplift picks. Each
+    # new boss builds its OWN dedicated Boss-locked hoard (clone of the upstream
+    # hidden-bloodcave mega-chest donors; round-2 vet P3 - no longer sharing the one
+    # Obsidian loot pool), with the shared svc_obsidianhoard pool kept only as a
+    # fallback. Runs AFTER _create_obsidian_roulette (fallback pool) and
+    # _create_propontis_superboss, BEFORE the build29 castability wave + the clone-
+    # shape / spawn-eligibility / soul gates. Map lane owns the placements.
     print("\n=== build36 C1: Tantalus, the Insatiable ===")
     _create_tantalus_uberboss(db, tags)
     print("\n=== build36 C2: Charon, the Unferried (Golden Bough) ===")
