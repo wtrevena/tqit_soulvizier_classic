@@ -888,6 +888,100 @@ BROODNEST_SPECS = {
     ],
 }  # WIRED (build35): APPENDED to INJECT_SPECS[tombobs02] after the roulette corners below
 
+# ── BUILD36 UBER/SUPER BOSS PLACEMENTS (CANONICAL, 2026-07-11) ─────────────────
+# Five new hand-designed apex bosses, each placed by ONE `q_*_lone` proxy in a
+# native base-game AE level. svaera_plus_portals.py's AE-inject loop dispatches by
+# the host's ACTUAL blob version: 4 hosts are v0x0f/v0x11 (SwampBorder/RiverEdge/
+# Mnemosyne01/StoneCity) -> inject_into_0x05_v11 (base-72), and Tomb01 (M4 Dorus) is
+# v0x0e -> the base-56 inject_into_sv_only_blob branch. BOTH branches are proven by
+# the shipped precedents on the same versions: the Obsidian roulette + Broodmother
+# nest inject into tombobs01/02 (also v0x0e, base-56), and maze03 (v0x0f) uses the
+# base-72 path. So each of the 5 hosts routes through an already-proven injector.
+# Each proxy is the proven `q_leinth_lone` byte-shape: flags=0, no 0x14, exemplar
+# rotation. Coords are LEVEL-LOCAL (world - grid-corner), surveyed on each host
+# level's own 0x0b (all 3 tilesets) by the design specs and re-verified on the
+# BUILT map by tools/debug/survey_uberboss_spots.py (the native 0x0b is byte-
+# identical base-vs-merged, so the survey holds). Each boss's Boss-locked hoard
+# chest rides as the proxy's DB-side accessory pool (spawns WITH the boss), so the
+# map lane places exactly ONE proxy per boss - no separate chest placement.
+#
+# DB coupling: the q_*_lone proxy records (+ pools + hoard chests + souls) are
+# authored by the parallel DB lanes against the SAME specs. Until the arz merges,
+# MAP-REF-1 flags these proxy paths as not-yet-in-arz (EXPECTED); the convergence
+# delta-vet cross-checks placement<->record-path parity before any deploy.
+# Specs: scratchpad/specs/{propontis,tantalus,goldenbough,mnemosyne,dreadhalls}_uberboss_spec.md
+#
+# M4 DORUS THE DROWNED KING  - Propontis tomb, Medea_TempleUG_Tomb01 [784], corner (260,0,-8522)
+DORUS_HOST_KEY = 'xpack/levels/area02_medea/undergrounds/medea_templeug_tomb01.lvl'
+Q_DORUS_LONE_DBR = b'records\\drxmap\\proxy\\q_dorus_lone.dbr'
+# M5 TANTALUS THE INSATIABLE - Den of Tantalus, Styx_SwampBorder_01 [755], corner (-396,0,-10209), v0x0f
+TANTALUS_HOST_KEY = 'xpack/levels/area04_styx/styx_swampborder_01.lvl'
+Q_TANTALUS_LONE_DBR = b'records\\drxmap\\proxy\\q_tantalus_lone.dbr'
+# M6 CHARON AT THE GOLDEN BOUGH - Styx_RiverEdge_01, corner (-524,0,-9697), v0x11
+GOLDENBOUGH_HOST_KEY = 'xpack/levels/area04_styx/styx_riveredge_01.lvl'
+Q_GOLDENBOUGH_LONE_DBR = b'records\\drxmap\\proxy\\q_goldenbough_lone.dbr'
+# M7 THE MNEMOPHAGE - Cave of Mnemosyne, Judgment_TempleUG_Mnemosyne01 [801], corner (127,-13,-11509), v0x11
+MNEMOPHAGE_HOST_KEY = 'xpack/levels/area05_judgment/undergrounds/judgment_templeug_mnemosyne01.lvl'
+Q_MNEMOPHAGE_LONE_DBR = b'records\\drxmap\\proxy\\q_mnemophage_lone.dbr'
+# M8 EPHIALTES, THE DREAD - Dread Halls back corner, Judgment_StoneCity_Exit01 [931], corner (-1844,0,-13320), v0x11
+DREAD_HOST_KEY = 'xpack/levels/area05_judgment/undergrounds/judgment_stonecity_exit01.lvl'
+Q_EPHIALTES_LONE_DBR = b'records\\drxmap\\proxy\\q_ephialtes_lone.dbr'
+
+UBERBOSS_SPECS = {
+    # R4 FRAME FIX: every boss placement is now the SPEC-PRIMARY coord. The R1-R3 "nudges" were
+    # ALL artifacts of a 16u frame bug in tools/debug/survey_uberboss_spots.py (fixed R4): the
+    # survey compared 0x05-local query coords directly against the 0x0b navmesh-cell frame, but
+    # the base-game XPack hosts carry a fixed (16,16) offset between the LEVELS-index grid corner
+    # (which 0x05 coords are relative to) and the 0x0b navmesh origin (center-dims). So the tool
+    # mis-read every spec-primary as off-mesh / near-wall / low-clearance and drove bogus nudges.
+    # Re-surveyed in the CORRECTED frame (grid_corner-anchored; floor-instance calibration reads
+    # ~0-1u; confirmed independently by the specs' own navlib survey): every spec-primary is
+    # ON-mesh in the main component at clr 100% all 3 tilesets. Reverting to the spec coords
+    # restores spec fidelity + clean map<->record convergence parity.
+    #
+    # M4 Dorus: PRIMARY hall-toward-vault. spec local (52.0,1.2,60.0) = world (312,1.2,-8462).
+    # Corrected-frame survey: d=0.14u, clr@4.0 100%/100%/100% (N/E/L), comp#1. (R3 shipped the
+    # bogus +4.2u nudge (49,63); reverted.)
+    DORUS_HOST_KEY: [
+        (Q_DORUS_LONE_DBR, 52.0, 1.2, 60.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+    # M5 Tantalus: PRIMARY den floor by the pj_denoftantalus POI. spec local (54.0,-15.2,114.3)
+    # = world (-342,-15.2,-10094.7). Corrected-frame survey: d=0.10u, clr@3.5 100%/100%/100%,
+    # comp#1. (R3 shipped the bogus +4.5u nudge (50,116); reverted.)
+    TANTALUS_HOST_KEY: [
+        (Q_TANTALUS_LONE_DBR, 54.0, -15.2, 114.3, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+    # M6 Charon: the Shrine of the Golden Bough. The spec's DEFAULT primary is the SUMMIT beside
+    # the eternal flame, with the temple FORECOURT as the mandated fallback if the boss+2-champion
+    # ring is non-walkable on the tight summit. Corrected-frame survey CONFIRMS the summit is
+    # genuinely tight - summit local (217.7,1.2,12.5) reads d=0.00 but clr@3.5 only 92%/91%/82%
+    # (N/E/L); 18% of the champion ring hangs off on Legendary (matches the spec's ~2.8u<3.5u-
+    # extents warning). So the spec FORECOURT is used: local (187.9,-7.0,46.9) = world
+    # (-336.1,-7.0,-9650.1), d=0.00u, clr@3.5 100%/100%/100%, comp#1, between the two colossal
+    # statues. (R3 shipped a +3u nudge (185,48) off the spec forecourt; reverted to the spec
+    # coord.) SUMMIT stays a viable in-game A/B if Will accepts the tighter champion ring.
+    GOLDENBOUGH_HOST_KEY: [
+        (Q_GOLDENBOUGH_LONE_DBR, 187.9, -7.0, 46.9, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        # SUMMIT alt (spec default, tight 82% Leg): (Q_GOLDENBOUGH_LONE_DBR, 217.7, 1.2, 12.5, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+    # M7 Mnemophage: PRIMARY north node of the machae boss-glyph ritual ring (the boss rises
+    # within the glyphs). spec local (43.0,3.0,71.0) = world (170,~-10,-11438); Charon torch ~31u
+    # SE. Corrected-frame survey: d=0.14u, clr@3.5 100%/100%/100%, comp#1. Already spec-exact in
+    # R3 (the one spot the frame bug happened not to move); UNCHANGED. ALT-B = local (41.0,3.0,61.0).
+    MNEMOPHAGE_HOST_KEY: [
+        (Q_MNEMOPHAGE_LONE_DBR, 43.0, 3.0, 71.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+    # M8 Ephialtes: PRIMARY SW deep back corner of the Dread Halls terminal reward vault. spec
+    # local (15.9,3.2,34.7) = world (-1828.1,3.2,-13285.3). The R3 report called this "off-mesh
+    # 7.2u" - that was the frame bug (it surveyed grid-local 15.9 = the wrong world point -1844.1;
+    # the true world point -1828.1 is on-mesh). Corrected-frame survey: d=0.00u, clr@3.5
+    # 100%/100%/100%, comp#1 = the spec-intended deepest-SW back corner per Will's "back corner"
+    # order. (R3 shipped the bogus +11.7u NE nudge (22,45) to a shallower spot; reverted.)
+    DREAD_HOST_KEY: [
+        (Q_EPHIALTES_LONE_DBR, 15.9, 3.2, 34.7, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+}  # WIRED (build36): merged into INJECT_SPECS collision-guarded below (native AE v0f/v11 branch)
+
 
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
@@ -1855,6 +1949,17 @@ for _bn_key, _bn_specs in BROODNEST_SPECS.items():
     INJECT_SPECS.setdefault(_bn_key, [])
     INJECT_SPECS[_bn_key] = list(INJECT_SPECS[_bn_key]) + list(_bn_specs)
 
+# UBERBOSS (build36, 2026-07-11): merge the 5 new apex-boss lone proxies into
+# INJECT_SPECS. Each host is a DISTINCT native AE level not touched by any other
+# injection (the roulette/broodnest live in tombobs01/02), so a plain collision-
+# guarded assignment is correct; a future collision must be resolved by explicit
+# list-merge, never silent clobber. Applies to BOTH map variants (canonical uses
+# INJECT_SPECS directly; TESTHUB layers hub extras on top) - these are shipped
+# content bosses, like the Broodmother nest.
+for _ub_key, _ub_specs in UBERBOSS_SPECS.items():
+    assert _ub_key not in INJECT_SPECS, f'build36 uberboss host key collision with INJECT_SPECS: {_ub_key}'
+    INJECT_SPECS[_ub_key] = list(_ub_specs)
+
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
 # The merge already places these records; move_0x05_instances rewrites ONLY their 12
 # position bytes (rotation/flags/string-index preserved), so the caravan scene composes
@@ -1954,6 +2059,10 @@ Q_YARD_WYRM_DBR          = b'records\\drxmap\\proxy\\q_yard_wyrm.dbr'
 # 1 um_broodmother_99 mother + 2 um_sepulchralwyrm_40 escorts @100%, placementExtents 3.5).
 Q_YARD_BROODMOTHER_DBR   = b'records\\drxmap\\proxy\\q_yard_broodmother.dbr'
 # VASHKARR_PROXY_DBR (records\drxmap\proxy\q_vashkarr_lone.dbr) is defined above (SPOT B reuse).
+# build36 (M1): the Dorus/Drowned-King yard proxy. DB lane (apply_svc_patches, q_yard_dorus)
+# created q_yard_dorus + its pool = 1 um_dorus_99 king + 2 royal-guard escorts @100%
+# (placementExtents 4.0) so Will can test the Propontis superboss fight at the hub.
+Q_YARD_DORUS_DBR         = b'records\\drxmap\\proxy\\q_yard_dorus.dbr'
 HV01_LVL_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
 
 # --- PORTAL TEST RIG (build34, TESTHUB-only; Model C boat-dialog NPCs) -----------------------
@@ -1977,8 +2086,16 @@ HV01_LVL_KEY = 'levels/world/orient/silkroad/hiddenvalley01.lvl'
 # (the q_vashkarr_lone byte-shape). Retiring the GridEntrance hub reverts TESTHUB random09a to the
 # canonical SV blood-cave swap blob (the normal INJECT_SPECS loop no longer overrides it), so the
 # blood-cave hub-master coord is valid against that SV navmesh (see the R09_LVL_KEY note below).
-SVC_TESTHUB_MASTER_DBR = b'records\\quests\\svc_testhub_master.dbr'
+SVC_TESTHUB_MASTER_DBR = b'records\\quests\\svc_testhub_master.dbr'  # RETIRED as a placement (build36 warden split); constant kept for reference
 SVC_TESTHUB_RETURN_DBR = b'records\\quests\\svc_testhub_return.dbr'
+# WARDEN SPLIT (build36, M3): the single svc_testhub_master was placed in TWO levels
+# (Helos + blood cave); Action_BoatDialog binds its menu to ONE entity per record
+# path, so the second placement rendered mute-but-visible (warden diagnosis H1). The
+# DB lane splits it into two singly-placed records (each clones the boatman, REUSES the
+# same name/chat tags -> no Text change). Point Helos at ..._helos and the cave at
+# ..._cave; each is now the proven single-placement Almyros configuration.
+SVC_TESTHUB_MASTER_HELOS_DBR = b'records\\quests\\svc_testhub_master_helos.dbr'
+SVC_TESTHUB_MASTER_CAVE_DBR  = b'records\\quests\\svc_testhub_master_cave.dbr'
 # Host-level keys (reuse the existing constants where defined).
 HELOS_HOST_KEY    = PORTAL_MASTER_HOST_KEY   # startingfarmland06d (AE v0x11); Almyros host
 R09_LVL_KEY       = 'levels/world/orient/underground/random09a.lvl'  # SV blood-cave swap blob
@@ -1994,9 +2111,10 @@ def build_hub_extra_specs():
     when SVC_TEST_HUB=1 (append-only -> canonical blobs byte-unchanged). Each is a 4-tuple
     (dbr, x, y, z) -> flags=0, no 0x14, identity rot. Two groups:
 
-    (1) MONSTER TEST YARD (build33): 8 proxy placements in HiddenValley01 (Silk Road), a
-        down-valley gauntlet from the blood-cave mouth (Enslaver + marauders, Vashkarr + 2 champs,
-        the 4 Obsidian guardians + warbands, the wyrm horde).
+    (1) MONSTER TEST YARD (build33; RESPACED build36 M1): 10 proxy placements in HiddenValley01
+        (Silk Road), a down-valley gauntlet from the blood-cave mouth (Enslaver + marauders,
+        Vashkarr + 2 champs, the NEW Drowned King Dorus, the 4 Obsidian guardians + warbands,
+        the broodmother apex, the wyrm horde). Respaced to min pairwise 32.2u (was ~1-11u).
 
     (2) PORTAL TEST RIG (build34, Model C): the 2 svc_testhub_master hub NPCs (Helos plaza +
         blood-cave mouth) and the 5 svc_testhub_return NPCs (one inside each restored SV area).
@@ -2007,35 +2125,51 @@ def build_hub_extra_specs():
         loop would inject into the discarded AE blob). It still lives in this dict as the single
         source of truth for the coord."""
     return {
+        # M1 (build36): RESPACED to de-crowd (Will: "pets too crowded"). The old layout packed
+        # 9 groups into ~1-11u clusters (the 3 gauntlet bosses within ~11u; the 4 Obsidian within
+        # ~11u). This spreads all 10 groups (the 9 build33/35 residents + the NEW q_yard_dorus)
+        # across HiddenValley01's full walkable valley at min pairwise 32.2u, every spot on-mesh in
+        # all 3 tilesets with clr@2.5 >= 91%, and every spot in the SAME walkable component as the
+        # cave-mouth/camp (flood-fill verified reachable on foot). Coords re-surveyed on the built
+        # HV01 0x0b; floor Y from the nearest ground instances (the engine snaps spawns to terrain).
+        #   GEOMETRIC LIMIT: Will asked for >=60u, but HV01's walkable footprint (a winding valley,
+        #   only ~23% of its bounding box is floor) physically cannot fit 10 (or even 9) spawn spots
+        #   at 60u - the absolute on-mesh ceiling for 10 points is ~45u, and ~32u once reachability +
+        #   a clear spawn disc are required. 32u still separates every group by ~a screen-width (vs
+        #   the old ~1-11u), which resolves the crowding. True 60u would need either fewer yard
+        #   groups or a larger FLAT host level - flagged for Will in docs/reports/build36_map_report.md.
         HV01_LVL_KEY: [
-            (Q_YARD_ENSLAVER_DBR,      23.0, 17.0,  33.0),   # A1 boss  clr@3.0=100%  dMouth 11.4u
-            (Q_YARD_MARAUDERS_DBR,     31.9, 16.2,  26.9),   # A2 pack  clr@3.0=100%  dMouth 17.9u
-            (VASHKARR_PROXY_DBR,       36.0, 16.0,  28.5),   # B  Vashkarr clr@3.5=100% dMouth 22.1u
-            (Q_YARD_OBS_SARKOTH_DBR,   42.0, 15.2,  91.0),   # C  clr@3.0=100%
-            (Q_YARD_OBS_GORRAHK_DBR,   36.0, 15.2,  90.0),   # C  clr@3.0=100%
-            (Q_YARD_OBS_VORANTHYS_DBR, 47.0, 15.4,  87.0),   # C  clr@3.0=100%
-            (Q_YARD_OBS_ILSEVAR_DBR,   47.0, 15.2,  95.0),   # C  clr@3.0=100%
-            (Q_YARD_WYRM_DBR,          30.0, 15.2, 113.0),   # D  clr@2.5=100%  dFount 30u
-            # build35: broodmother apex (mother + 2 escorts). Surveyed on-mesh against the
-            # canonical HV01 0x0b (single Silk Road tileset): local (89.0,6.6,100.0), on-mesh
-            # 0.14u, 6.5u-radius fully-clear disc, 100% clearance at placementExtents 3.5 in
-            # all 3 samples; 42.3u from the nearest existing yard group (obs_ilsevar at
-            # (47,95)) = well past the >=30u rule. floor local Y 6.6.
-            (Q_YARD_BROODMOTHER_DBR,   89.0,  6.6, 100.0),   # E  clr@3.5=100%  dYard 42.3u
+            (Q_YARD_ENSLAVER_DBR,      33.0,  15.9,  41.0),   # SW  clr@2.5=98%
+            (Q_YARD_MARAUDERS_DBR,     71.0,  13.5,  31.0),   # S   clr@2.5=100%
+            (VASHKARR_PROXY_DBR,      101.0,  -1.5,  43.0),   # SE  clr@2.5=96%  (Vashkarr + 2 champs)
+            (Q_YARD_DORUS_DBR,         65.0, -10.0,  63.0),   # NEW build36  clr@2.5=100%  (Drowned King)
+            (Q_YARD_OBS_SARKOTH_DBR,   63.0,   9.9,  97.0),   # C   clr@2.5=95%
+            (Q_YARD_OBS_GORRAHK_DBR,  127.0,  -2.3,  93.0),   # C   clr@2.5=92%
+            (Q_YARD_OBS_VORANTHYS_DBR,157.0,  -0.4, 111.0),   # C   clr@2.5=100%
+            (Q_YARD_BROODMOTHER_DBR,  107.0,   1.4, 123.0),   # apex  clr@2.5=100% clr@3.5=100% (roomiest)
+            (Q_YARD_OBS_ILSEVAR_DBR,   71.0,   0.0, 129.0),   # C   clr@2.5=91%
+            (Q_YARD_WYRM_DBR,          55.0,  17.6, 157.0),   # D horde  clr@2.5=100%
         ],
-        # -- PORTAL RIG: 2 HUB masters --
-        # Helos plaza: 3u E of canonical Almyros (76.5,0.6,189.5); world (-5968.5,1.8,917.5);
-        # on-mesh d2d=0.00, in-largest, clr@3.0=100%, floor 1.8.
+        # -- PORTAL RIG: 2 HUB masters (build36 warden split: each a distinct, singly-placed record) --
+        # Helos plaza: placed at local (72.0,0.8,184.0), SW of the canonical Almyros NPC
+        # (76.5,0.6,189.5), 7.1u away - clear click-separation for H5 insurance (the record split is
+        # the REAL muteness fix; the coord only needs both NPCs individually clickable).
+        # R5 MOVE (was (64.5,0.8,189.5)): once the survey FRAME BUG (a fixed 16u 0x05-vs-0x0b offset)
+        # was corrected, (64.5,189.5) read on-mesh but NEAR A WALL - clr 64/51/42% (N/E/L) at a 3.0u
+        # disc (the R3 "100%" was the raw-frame artifact). RE-SURVEYED on the built map with the
+        # corrected-frame tool: (72.0,184.0) reads d=0.14u / clr 100% in ALL 3 tilesets, comp#1 (the
+        # main reachable component). Points at the split ..._helos record. TESTHUB-only.
         HELOS_HOST_KEY: [
-            (SVC_TESTHUB_MASTER_DBR, 79.5, 0.8, 189.5),
+            (SVC_TESTHUB_MASTER_HELOS_DBR, 72.0, 0.8, 184.0),
         ],
         # Blood-cave mouth (random09a SV swap blob): the spec's cave-mouth approach band; world
         # (6011,19,3288); comp 0 (same as the cave-mouth entry corridor AND the return landing at
         # (6018,19,3293)); 8.6u from that return landing so the repeated test loop barely walks;
         # clr@3.0=100%. Yard is in HV01 (a different level) -> the >=40u-from-yard rule is moot.
         # APPLIED VIA THE SWAP PATH (see merge_hub_into_inject_specs + svaera_plus_portals.py).
+        # Points at the split ..._cave record (coords unchanged).
         R09_LVL_KEY: [
-            (SVC_TESTHUB_MASTER_DBR, 32.0, 1.0, 45.0),
+            (SVC_TESTHUB_MASTER_CAVE_DBR, 32.0, 1.0, 45.0),
         ],
         # -- PORTAL RIG: 5 RETURN NPCs (one per restored SV area, a few u from its landing) --
         # Garden of Merchants: 3u E of landing (1173,-39,-4001); comp 1 (= landing comp); clr@3.0=100%.

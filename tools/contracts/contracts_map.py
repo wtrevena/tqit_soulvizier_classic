@@ -899,23 +899,31 @@ def contract_doors(ctx):
             continue
         for m in re.finditer(rb'[ -~]{4,}\.dbr', data):
             unlock_refs.add(norm_rec(m.group(0)))
-    # 2. every LOCKED placed FixedItemDoor in OUR restored content (SV drxmap
-    # level or SV-namespace door record). Base/DLC locked doors are unlocked by
-    # base-game quest files / levers / keys not carried in the mod Quests.arc, so
-    # scoping to our content keeps this false-positive-free (the temple-door class,
-    # B-TEMPLE-DOOR-1, lives in the SV areas).
+    # 2. every LOCKED placed FixedItemDoor that is OUR restored content, scoped by
+    # the DOOR RECORD's SV namespace (records\drxmap\ / all_sv\ / \sv\ / svitems\),
+    # NOT by "the level blob contains 'drxmap'". This scope-by-record is deliberate
+    # and mirrors MAP-REF-1's _sv_scope guard: a base-game / DLC door record (e.g.
+    # records\xpack\quests\objects\xsq06_leverdoora) is unlocked by its own
+    # base-game lever/key/quest mechanic that the mod does not carry, so it must
+    # stay out of scope wherever it is placed. The old blob-level "drxmap present"
+    # heuristic misfired: injecting a lone drxmap proxy placement (a boss marker,
+    # records\drxmap\proxy\q_*_lone) into a base xpack host put 'drxmap' in that
+    # blob and reclassified its NATIVE xsq06 lever/key doors as "ours" -> false
+    # P1s. Every genuine SV door record is SV-namespace (records\drxmap\bloodcave\*
+    # / records\drxmap\xurder\*), so record-namespace scoping keeps the real
+    # temple-door class (B-TEMPLE-DOOR-1) fully covered while being robust to any
+    # placed-proxy injection into a base-game host level.
     door_records = {p for p, c in ctx.arz_class.items() if c == 'FixedItemDoor'}
     door_records |= {p for p, c in ctx.base_class.items() if c == 'FixedItemDoor'}
     seen = set()
     for lv in ctx.levels:
         blob = ctx.blob(lv)
-        drx = b'drxmap' in blob
         _s, insts = parse_0x05(blob)
         for it in insts:
             npath = norm_rec(it['dbr'])
             if npath not in door_records:
                 continue
-            if not _is_our_content(npath, drx):
+            if not any(m in npath for m in SV_NAMESPACE_MARKERS):
                 continue
             locked = ctx.arz.field(npath, 'locked')
             if locked is None and ctx.base_arz is not None:
