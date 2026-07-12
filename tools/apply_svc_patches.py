@@ -3211,6 +3211,48 @@ def _guess_element(basename, fields):
     return None
 
 
+def _fix_vort_red_skin(db):
+    """Vort the Red visual fix (Will 2026-07-11): the SVAERA-merged source
+    hero_tarthon_na'arak_40 ("Vort the Red", tagMonsterName1139) ships mesh
+    Dragonian01.msh + baseTexture MageB.tex - an OLIVE/yellow-green mage skin
+    (decoded mean hue 50 deg), so the wild hero AND his A10 soul-summon pets
+    (which copy the source's baseTexture) render green. Restore the canonical RED:
+    FiretalonA.tex (hue 24 deg red-brown) is the base-game "Vort the Red" skin and
+    the NATIVE texture for Dragonian01.msh (ar_firetalon_* use exactly this
+    mesh+tex pair -> proven-rendering). Resolves in base Creatures.arc (D5 union)
+    so the A9 render-chain gate stays green; mesh is UNCHANGED so mesh-internal
+    shader closure is identical. Precedent: Athens-Toxeus green->crimson (sec 7)."""
+    RED = r'Creatures\Monster\Dragonian\FiretalonA.tex'
+    for path in (
+        r"records\creature\monster\dragonian\hero_tarthon_na'arak_40.dbr",  # wild hero
+        r'records\skills\soulskills\pets\vort_1.dbr',                        # summon pet N
+        r'records\skills\soulskills\pets\vort_2.dbr',                        # summon pet E
+        r'records\skills\soulskills\pets\vort_3.dbr',                        # summon pet L
+    ):
+        if db.has_record(path):
+            db.set_field(path, 'baseTexture', RED)   # 3-arg string set; dtype STRING preserved; auto-marks _modified
+        else:
+            print(f"  WARNING Vort-skin: record missing {path}")
+    print("  Vort the Red skin: baseTexture -> FiretalonA.tex (wild + 3 summon pets)")
+
+
+def _mitigate_bloodbeast_summon_density(db):
+    """build36 CONVERGENCE crash MITIGATION (B-CRASH-1: P0 blood-cave hound-summoner
+    kill crash, 2x live repro). NOT a root-cause fix - the RCA checker REFUTED the
+    dangling-summon-ref theory. This is a load-reduction mitigation: it halves the max
+    simultaneous bloodhound pets the blood-witch disciple's summon holds, cutting the
+    summon-density load in the crash-correlated blood-cave rooms. petLimit 8 -> 4 on
+    the summon SKILL record only; spawnObjects / petBurstSpawn / cooldown all untouched.
+    Field name + INT dtype verified against the built arz first; 3-arg set_field so the
+    existing INT dtype is preserved (never pass an explicit dtype - dtype lesson)."""
+    SKILL = r'records\drxcreatures\bloodwitch\skills\disciple_summon_bloodbeast.dbr'
+    if db.has_record(SKILL):
+        db.set_field(SKILL, 'petLimit', 4)   # was 8 (single INT value); dtype INT preserved
+        print("  MITIGATION bloodbeast summon: petLimit 8 -> 4 (summon-density load cut)")
+    else:
+        print(f"  WARNING MITIGATION: record missing {SKILL}")
+
+
 def overhaul_souls(db):
     """Patch 13: Overhaul weak uber/boss souls with skills, summons, procs."""
     print("\n=== Patch 13: Overhaul weak souls with skills/procs ===")
@@ -3249,6 +3291,8 @@ def overhaul_souls(db):
     else:
         print("  Pet skills built: Rakanizeus, Boneash, Pharaoh's Honor Guard, "
               "Narok, Vort")
+
+    _fix_vort_red_skin(db)   # runs AFTER the A10 loop built+textured the pets (order-safe: pet write copies source baseTexture)
 
     _update_pharaoh_guard_drop_rate(db)
     _fix_low_boss_soul_drop_rates(db)
@@ -16472,6 +16516,12 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # spawn). BETWEEN _create_enslaver and the sweep so the leader+marauder exist and
     # the sweep gate re-derives + whitelists the warband pool (_EN_YARD_POOLS).
     _create_enslaver_warband(db)
+
+    # build36 CONVERGENCE crash MITIGATION (B-CRASH-1): blood-cave hound-summoner
+    # kill crash - halve the blood-witch disciple's bloodhound summon petLimit
+    # (8 -> 4) to cut summon-density load in the crash-correlated rooms. Load
+    # reduction only (RCA refuted the dangling-ref theory); no other field touched.
+    _mitigate_bloodbeast_summon_density(db)
 
     # GROUP 1 (test yard): build the TESTHUB monster-yard pool/proxy records. MUST
     # sit AFTER every yard-referenced group (Vashkarr/wyrm/obsidian/enslaver all
