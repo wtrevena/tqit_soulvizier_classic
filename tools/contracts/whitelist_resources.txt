@@ -24,3 +24,12 @@
 # the 8 orphaned tagSVCSoul* name strings). They are reported for triage but never block the
 # gate (P2), so they need no whitelist entry. If the owner deems a specific inherited P2 finding
 # permanently acceptable, add it here with a one-line justification.
+
+# OWNER-ACCEPTED inherited finding (build36 ship, 2026-07-12):
+#   C-RES-ASSET-1  records\xpack\skills\dream\pet\anm\anm_dreamcopy.dbr
+#     -> 5 unresolved DRX Dream-mastery pet anim clip paths, inherited VERBATIM from the base
+#        xpack/DRX Dream pet (dreamcopypet.dbr); referenced by ZERO build36-authored record
+#        (final vet byte-confirmed), IDENTICAL in the already-live Workshop build, never a
+#        runtime problem. The DB-build gate demotes it to P2 via --upstream-dir; the push-gate
+#        omits that flag so it surfaces as P1. Permanently acceptable inherited debt.
+C-RES-ASSET-1 records\xpack\skills\dream\pet\anm\anm_dreamcopy.dbr
