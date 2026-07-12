@@ -1346,6 +1346,53 @@ def _wire_missing_boss_souls(db):
     print(f"  Undead Typhon soul wired: {wired} records")
     total += wired
 
+    # ── A6 (build36 AMENDMENT) Hellflower (us_hellflower_37): the us_ prefix +
+    #    quillvine(soul)/quilvine(monster) folder-spelling mismatch dropped the
+    #    fuzzy score below threshold (same class as Ormenos). Orient Hero
+    #    (charLevel 37/55/69), spawns via 12 proxies-orient plant pools. 66%.
+    #    FRESH wire (monster has no loot) -> the `if not existing` guard is OK.
+    HELLFLOWER_SOULS = [
+        r'records\item\equipmentring\soul\quillvine\hellflower_soul_n.dbr',
+        r'records\item\equipmentring\soul\quillvine\hellflower_soul_e.dbr',
+        r'records\item\equipmentring\soul\quillvine\hellflower_soul_l.dbr',
+    ]
+    for _p in HELLFLOWER_SOULS + [r'records\creature\monster\quilvine\us_hellflower_37.dbr']:
+        if _resolve_record(db, _p) is None:
+            raise SystemExit('A6 hellflower: missing record %r' % _p)
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower().replace('/', '\\')
+        if nl.endswith(r'\quilvine\us_hellflower_37.dbr'):
+            existing = db.get_field_value(name, 'lootFinger2Item1')
+            if not existing or existing == '' or existing == 0:
+                _wire_soul(name, HELLFLOWER_SOULS, 66.0)   # Hero -> 66%
+                wired += 1
+    print(f"  Hellflower soul wired: {wired} records")
+    total += wired
+
+    # ── A6 (build36 AMENDMENT) Limos Lifeeater (um_frost_36): drops the thin
+    #    um_frost_soul husk instead of its COMPLETED namesake limoslifeater_soul
+    #    (internal record name 'frost' != soul name; same class as hellflower).
+    #    um_ Boss (charLevel 36/54/69), spawns via 54 Limos pools. 66%. This is a
+    #    REPLACE (um_frost_36 ALREADY carries loot) -> set UNCONDITIONALLY (no
+    #    `if not existing` guard, or it would no-op).
+    LIMOSLIFEATER_SOULS = [
+        r'records\item\equipmentring\soul\limos\limoslifeater_soul_n.dbr',
+        r'records\item\equipmentring\soul\limos\limoslifeater_soul_e.dbr',
+        r'records\item\equipmentring\soul\limos\limoslifeater_soul_l.dbr',
+    ]
+    for _p in LIMOSLIFEATER_SOULS + [r'records\creature\monster\limos\um_frost_36.dbr']:
+        if _resolve_record(db, _p) is None:
+            raise SystemExit('A6 limoslifeater: missing record %r' % _p)
+    wired = 0
+    for name in list(db.record_names()):
+        nl = name.lower().replace('/', '\\')
+        if nl.endswith(r'\limos\um_frost_36.dbr'):
+            _wire_soul(name, LIMOSLIFEATER_SOULS, 66.0)   # um_ Boss -> 66%, OVERWRITE
+            wired += 1
+    print(f"  Limos Lifeeater soul re-wired: {wired} records")
+    total += wired
+
     # ── xpack Yaoguai: wire soul from regular Yaoguai variants ──────────
     yaoguai_souls = _get_soul_paths('boss_daemonbull_yaoguai')
     if yaoguai_souls:
@@ -11300,8 +11347,43 @@ def _apply_flashpowder_rework(db):
             if isinstance(v, str) and v.lower().endswith('drxflashpowder.dbr'):
                 sf(DROOL, fld, BASE_FP, S)
         db._modified.add(DROOL)
+
+    # A3 (build36 AMENDMENT) - Will-authorized Makaria Machae High General Soul
+    # Venom Cloud cooldown 25s -> 8s. makaria_venomcloud is a dedicated single-soul
+    # skill (3 Makaria tiers, 0 non-soul referencers, no pcsafe clone -> no special-
+    # anim); the on-melee-hit retaliation proc's own skillCooldownTime is the sole
+    # re-fire gate, so this is a pure uptime buff. _find_record for slash-safety (it
+    # flows through from the SV098i base). Float, NO explicit dtype (dtype-preserve).
+    MVC = _find_record(db, r'records\skills\soulskills\makaria_venomcloud.dbr')
+    if MVC is None:
+        raise SystemExit('A3: makaria_venomcloud.dbr missing')
+    _mcd = db.get_field_value(MVC, 'skillCooldownTime')
+    _mcd = _mcd[0] if isinstance(_mcd, list) else _mcd
+    if abs(float(_mcd) - 25.0) > 0.01:
+        raise SystemExit('A3: makaria_venomcloud cd=%r != 25.0 (drift)' % _mcd)
+    sf(MVC, 'skillCooldownTime', 8.0)
+    db._modified.add(MVC)
+
+    # A4 (build36 AMENDMENT) - Will-authorized Anapaest/Gigantes Earth Fury cooldown
+    # 16s -> 5s. Edit the PLAIN soul skill earthfury_ring BEFORE the castability wave
+    # (:14330) so the freshly-minted pcsafe\earthfury_ring clone inherits 5.0 (the
+    # record that actually FIRES for the player). Shared by 4 melee-bruiser souls
+    # (Anapaest/Yerk/Minotaur Lord/Cinder Bone), 0 enemy referencers -> edit-shared
+    # per mandate. Do NOT touch skillCooldownReductionModifier (coincidental 16.0).
+    EF = _SS_EARTHFURY_RING   # records\skills\soulskills\earthfury_ring.dbr (plain source)
+    if not db.has_record(EF):
+        raise SystemExit('A4: soulskills\\earthfury_ring.dbr missing')
+    _efcd = db.get_field_value(EF, 'skillCooldownTime')
+    _efcd = _efcd[0] if isinstance(_efcd, list) else _efcd
+    if abs(float(_efcd) - 16.0) > 0.01:
+        raise SystemExit('A4: earthfury_ring cd=%r != 16.0 (drift)' % _efcd)
+    sf(EF, 'skillCooldownTime', 5.0)   # float, NO explicit dtype
+    db._modified.add(EF)
+
     print('  F5: Flame Nova cd 8->4; Occult Flash Powder cd 15->6 + pierce + '
           'ranged-blind; soul Flash Powder cd 20->10; droolbog -> base flashpowder')
+    print('  A3: Makaria Venom Cloud cd 25->8; A4: Anapaest Earth Fury cd 16->5 '
+          '(plain earthfury_ring pre-wave; pcsafe clone inherits)')
 
 
 def _apply_group3_tunes(db, tags):
