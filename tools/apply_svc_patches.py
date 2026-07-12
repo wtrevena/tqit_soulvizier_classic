@@ -2956,6 +2956,128 @@ def _create_neanderthal_warband_souls(db):
     return [paths_mega, paths_emgiec, paths_vio]
 
 
+# A7 DE-WIRED HERO SOUL HANDCRAFT (build36 AMENDMENT, ROUTE A - owned override).
+# The 21 de-wired NAMED-hero souls create_uber_souls minted ship with the WRONG name
+# (make_display_name uses the filename stem, so 18 of 21 read e.g. "{^F}Shadowhero
+# Soul" not "Phantom Weaver"), a borrowed/element-default grant, and an off-family
+# downside. _apply_dewired_hero_handcraft (run FIRST in apply_all_extended_patches,
+# before overhaul_souls) owns the DECISION-BEARING overrides from the synthesis spec
+# §1 master table: the evocative NAME (owned tag -> auto-covered by F6), the signature
+# GRANTED SKILL (+controller, or MANUAL = stripped controller), the amgoz DOWNSIDE,
+# the per-tier itemLevel ladder, and the region FileDescription. It sets an explicit
+# grant so the enhancer skips it; the 3 stat-only souls delete their grant and are
+# excluded from the enhancer via _STAT_ONLY_SOULS. (Exact stat MAGNITUDES live in the
+# per-soul craft docs; this route keeps the auto stat block and applies the design
+# overrides on top - the highest-fidelity change available without fabricating
+# unverified numbers.)
+_STAT_ONLY_SOULS = frozenset({'steamcrawler', 'ubericeraptor', 'hero_junshan'})
+
+# controllers (all resolve in the post-fix arz; probed 2026-07-11)
+_HC_C_ATK = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr'
+_HC_C_LOWHP = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_lowhealth.dbr'
+_HC_C_ONEQUIP = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onequip.dbr'
+_HC_C_POISONBOMB = r'records\xpack\ai controllers\autocast_items\basetemplates\poisonbomb_onattack.dbr'
+_HC_C_THUNDER = r'records\xpack\ai controllers\autocast_items\basetemplates\thunderballnova_onattacked.dbr'
+_HC_C_UNDEAD = r'records\xpack\ai controllers\autocast_items\basetemplates\awakeneddeadsoul_onattack.dbr'
+# grant skills (all resolve; MANUAL = controller stripped; None grant = stat-only)
+_HC_ARARAT = r'records\skills\soulskills\ararat_corruption.dbr'          # shadowhero fallback (bespoke deferred)
+_HC_ARACHNEWEB = r'records\skills\soulskills\arachneshame_rangedweb.dbr'
+_HC_ALCESTIS = r'records\skills\soulskills\alcestis_batflurry.dbr'
+_HC_ICHTHIAN = r'records\skills\soulskills\ichthian_waterwave.dbr'
+_HC_VENOMBOLT = r'records\skills\scroll skills\arachnos_venombolt.dbr'
+_HC_KAZEPT = r'records\skills\sv\kazept\kazept_aura.dbr'
+_HC_BATTLESTD = r'records\skills\warfare\drxbattlestandard.dbr'
+_HC_CHILLAIR = r'records\skills\soulskills\chillingair.dbr'
+_HC_FIRESPRITE = r'records\skills\soulskills\summon_firesprite.dbr'
+_HC_THUNDERNOVA = r'records\skills\soulskills\thunderballnova.dbr'
+_HC_ENVENOM = r'records\skills\stealth\drxenvenomweapon.dbr'
+_HC_BLOODBOIL = r'records\skills\soulskills\melinoe_bloodboil.dbr'
+_HC_PUBOSGAS = r'records\skills\soulskills\pubos_poisongasball.dbr'
+_HC_CLUBSLAM = r'records\skills\soulskills\clubslam_ring.dbr'
+_HC_RINGLIGHT = r'records\skills\soulskills\ringoflightning.dbr'
+_HC_SQUALL = r'records\skills\storm\drxsquall.dbr'
+_HC_WRAITH = r'records\skills\soulskills\wraith_summon.dbr'                # koroush interim summon (bespoke deferred)
+
+# key -> (Display, region, grant|None, controller|None(=MANUAL), [(downsideField, L)], (ilN,ilE,ilL))
+_DEWIRED_HANDCRAFT = {
+    'shadowhero':          ('Phantom Weaver',                'Hades',  _HC_ARARAT,     _HC_C_LOWHP,     [('characterDefensiveAbility', -150.0)], (43, 58, 73)),
+    'blinkfang':           ('Spider Brooding',               'Greece', _HC_ARACHNEWEB, _HC_C_ATK,       [('characterDefensiveAbility', -16.0)],  (34, 45, 57)),
+    'frost':               ('Ice Mandible',                  'Egypt',  _HC_CHILLAIR,   _HC_C_ATK,       [('defensiveFire', -20.0)],              (19, 25, 32)),
+    'xhero_nightsmistress':('Alcestis',                      'Hades',  _HC_ALCESTIS,   _HC_C_POISONBOMB,[('characterStrength', -14.0)],          (27, 36, 46)),
+    'glittertail':         ('Glittertail the Conjurer',      'Orient', _HC_FIRESPRITE, _HC_C_UNDEAD,    [],                                      (43, 58, 72)),
+    'rebil':               ('Rebil Witfury',                 'Greece', _HC_BATTLESTD,  None,            [('characterSpellCastSpeedModifier', -15.0)], (34, 46, 58)),
+    'shockooth':           ('Shocktooth the Thunderbringer', 'Orient', _HC_THUNDERNOVA,_HC_C_THUNDER,   [('characterLifeModifier', -20.0)],      (42, 56, 71)),
+    'vileslash':           ('Vileslash the Uncatchable',     'Greece', _HC_ENVENOM,    _HC_C_ONEQUIP,   [('characterLife', -85.0)],              (34, 46, 58)),
+    'onyxspine':           ('Onyxspine the Dismemberer',     'Greece', _HC_VENOMBOLT,  None,            [('characterLife', -110.0)],             (35, 47, 59)),
+    'phlebas':             ('Phlebas the Tidebane',          'Greece', _HC_ICHTHIAN,   _HC_C_ATK,       [('characterLifeRegenModifier', -20.0)], (16, 41, 58)),
+    'bloodrunner':         ('Blood Hurdler',                 'Orient', _HC_BLOODBOIL,  _HC_C_ATK,       [('characterLife', -190.0)],             (40, 54, 68)),
+    'droolbog':            ('Chief Bullfrog Droolbog',       'Hades',  _HC_PUBOSGAS,   _HC_C_ATK,       [('characterRunSpeedModifier', -9.0)],   (43, 57, 72)),
+    'hero_junshan':        ('Jun Shan, Warrior-Monk',        'Orient', None,           None,            [('defensiveElementalResistance', -24.0)], (42, 56, 70)),
+    'kazept':              ('Kazept of the Flail Star',      'Egypt',  _HC_KAZEPT,     _HC_C_ONEQUIP,   [('defensiveCold', -20.0)],              (30, 50, 64)),
+    'koroush':             ('Koroush, Lurker of Samarkand',  'Orient', _HC_WRAITH,     _HC_C_ATK,       [('defensiveFire', -18.0)],              (23, 31, 39)),
+    'kydoimos':            ('Kydoimos',                      'Hades',  _HC_BATTLESTD,  None,            [('characterRunSpeedModifier', -10.0), ('characterSpellCastSpeedModifier', -25.0)], (45, 61, 73)),
+    'quest_celtheano':     ('Celtheano',                     'Greece', _HC_SQUALL,     _HC_C_POISONBOMB,[('characterStrength', -28.0)],          (18, 42, 59)),
+    'steamcrawler':        ('Steamcrawler',                  'Greece', None,           None,            [('characterTotalSpeedModifier', -13.0)],(13, 40, 58)),
+    'trachius':            ('Trachius',                      'Olympus',_HC_CLUBSLAM,   None,            [('characterTotalSpeedModifier', -12.0)],(45, 61, 73)),
+    'ubericeraptor':       ('Ice Raptor ~ Brood Mother',     'Orient', None,           None,            [('defensiveFire', -15.0)],              (16, 21, 27)),
+    'xix':                 ('Xix the Thunderclaw',           'Orient', _HC_RINGLIGHT,  None,            [('characterLifeModifier', -30.0)],      (40, 54, 68)),
+}
+
+
+def _hc_tag(key):
+    """Owned Text tag for a handcrafted de-wired soul (distinct from the auto
+    tagSoulSVC90NN so there is no collision; in `tags` -> F6-covered + Text-resolved)."""
+    return 'tagSVCSoulHC' + ''.join(p.capitalize() for p in key.split('_'))
+
+
+def _apply_dewired_hero_handcraft(db, tags):
+    """A7 ROUTE A: apply the owned handcraft overrides to all 21 de-wired hero souls.
+    Runs FIRST in apply_all_extended_patches (before overhaul_souls) so an explicit
+    grant is auto-skipped by the enhancer + the owned name lands inside the F6 scope.
+    Overwrites, per tier n/e/l: itemNameTag (owned) + name tag; itemSkillName +
+    controller (or strip for MANUAL) + itemSkillLevel; the signature downside (scaled
+    0.6/0.8/1.0); itemLevel; FileDescription = region. Stat-only souls delete their
+    grant (enhancer-excluded via _STAT_ONLY_SOULS)."""
+    _sc = {'n': 0.6, 'e': 0.8, 'l': 1.0}
+    _lv = {'n': 3, 'e': 5, 'l': 8}
+    done = 0
+    for key, (disp, region, grant, ctrl, downs, il) in _DEWIRED_HANDCRAFT.items():
+        tag = _hc_tag(key)
+        name = '{^F}%s Soul' % disp
+        present = False
+        for ti, t in enumerate(('n', 'e', 'l')):
+            rec = _resolve_record(db, rf'records\item\equipmentring\soul\svc_uber\{key}_soul_{t}.dbr')
+            if rec is None:
+                continue
+            present = True
+            db.set_field(rec, 'itemNameTag', tag, DATA_TYPE_STRING)
+            db.set_field(rec, 'FileDescription', region, DATA_TYPE_STRING)
+            db.set_field(rec, 'itemLevel', int(il[ti]), DATA_TYPE_INT)
+            ff = db.get_fields(rec) or {}
+            if grant is None:
+                # stat-only: delete the borrowed grant + its controller.
+                for k in list(ff):
+                    if k.split('###')[0] in ('itemSkillName', 'itemSkillAutoController'):
+                        del ff[k]
+            else:
+                db.set_field(rec, 'itemSkillName', grant, DATA_TYPE_STRING)
+                db.set_field(rec, 'itemSkillLevel', _lv[t], DATA_TYPE_INT)
+                if ctrl is None:
+                    for k in list(ff):   # MANUAL cast: strip the controller (never blank to '')
+                        if k.split('###')[0] == 'itemSkillAutoController':
+                            del ff[k]
+                else:
+                    db.set_field(rec, 'itemSkillAutoController', ctrl, DATA_TYPE_STRING)
+            for fld, lval in downs:      # signature downside, scaled per tier
+                db.set_field(rec, fld, round(float(lval) * _sc[t], 1), DATA_TYPE_FLOAT)
+            db._modified.add(rec)
+        if present:
+            tags[tag] = name
+            done += 1
+    print(f"  A7: handcrafted {done}/21 de-wired hero souls (evocative names + signature "
+          f"grants + amgoz downsides + per-tier itemLevel; stat-only souls grant-less)")
+
+
 def _find_auto_generated_souls(db):
     """Find svc_uber_ souls we auto-generated that could use skill enhancement."""
     results = []
@@ -2985,6 +3107,12 @@ def _find_auto_generated_souls(db):
             continue
 
         basename = nl.replace('\\', '/').split('/')[-1].replace('_soul_n.dbr', '')
+        # A7/§4.D: honor the "no borrowed proc" handcraft on the stat-only de-wired
+        # souls - do NOT element-default them (steamcrawler/ubericeraptor have fire/
+        # cold offense so _guess_element would re-stamp a proc; junshan is safe but
+        # listed for clarity). _apply_dewired_hero_handcraft deletes their grant.
+        if basename in _STAT_ONLY_SOULS:
+            continue
         monster_level = 0
         for key, tf in fields.items():
             rk = key.split('###')[0]
@@ -7883,7 +8011,10 @@ def _verify_soul_summon_identity(db, pairs):
 # get the trivial '<Name> Soul'; (SP) markers disambiguate SP-lineage duplicates.
 _SOUL_NAME_STANDARD = {
     'tagSVCSoulAinex': '{^F}Ainex, Queen of Crows Soul',
-    'tagSVCSoulAnapaest': '{^F}Gigantes - Anapaest Soul',
+    # A9 (build36 AMENDMENT): tagSVCSoulAnapaest INTENTIONALLY OMITTED here. The
+    # hand-authored evocative "{^F}Soul of Anapaest the Dishonored" (a bespoke uber-
+    # boss soul, like Tantalus/Ferryman/Mnemophage) WINS over the flat standard; it
+    # is exempted from the F6 "{^F}<Monster> Soul" gate via _HAND_DESIGNED_SOUL_TAGS.
     'tagSVCSoulAnklesickle': '{^F}Ankle Sickle Soul',
     'tagSVCSoulBWHighPriest': '{^F}Blood Cult - High Priest Soul',
     'tagSVCSoulCharsi': '{^F}Charsi Soul',
@@ -14410,6 +14541,10 @@ _HAND_DESIGNED_SOUL_TAGS = frozenset({
     # here so the provenance gate keeps their evocative names (Will's ruling).
     'tagSVCSoulFrost',       # {^F}Soul of Frost
     'tagSVCSoulBloodShaman', # {^F}Soul of the Blood Shaman
+    # A9 (build36 AMENDMENT): the hand-authored uber-boss soul the standard flattened
+    # to "{^F}Gigantes - Anapaest Soul". Will's evocative-name-restoration directive
+    # gives the bespoke name back; removed from _SOUL_NAME_STANDARD so it WINS.
+    'tagSVCSoulAnapaest',    # {^F}Soul of Anapaest the Dishonored
 })
 
 # Shared donors (all DB-verified present, probe_build36_content_donors.py).
@@ -15880,6 +16015,11 @@ def apply_all_extended_patches(db, force_full_drops=True):
     """
     tags = {}
     _SUMMON_PET_BUILDS.clear()   # build36 A1: fresh per-run registry for the pet gates
+
+    # A7 (build36 AMENDMENT): de-wired hero soul handcraft - run FIRST (before
+    # overhaul_souls) so explicit grants are enhancer-skipped + owned names land in
+    # F6 scope. Fixes the 18 wrong names + wires signature grants/downsides/levels.
+    _apply_dewired_hero_handcraft(db, tags)
 
     tags['tagSVCSummonRakanizeus'] = 'Call of the Storm Tyrant'
     tags['tagSVCSummonRakanizeusDESC'] = (
