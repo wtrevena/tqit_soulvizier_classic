@@ -14987,7 +14987,17 @@ _DR_GRASP = r'records\skills\svc\svc_dorus_rottengrasp.dbr'
 _DR_DREADPALL = r'records\skills\monster skills\auras\dreadaura.dbr'
 _DR_MELEE = r'records\skills\monster skills\melee_slowdecaypoison.dbr'
 _DR_SOULS = [r'records\item\equipmentring\soul\svc_uber\drowned_king_soul_%s.dbr' % t for t in ('n', 'e', 'l')]
-_DR_ICHTHIAN = r'records\skills\soulskills\pcsafe\ichthian_tidalstrike.dbr'
+# C6 soul grant: reference the NON-pcsafe SOURCE skill (it IS upstream: verified
+# present as records\skills\soulskills\ichthian_tidalstrike.dbr, anim 'TidalStrike'
+# -> non-universal, so the wave WILL pcsafe-clone it). The build29 castability wave
+# (_fix_granted_skill_castability, dispatched AFTER this whole content wave) then
+# repoints the soul to its pcsafe clone, exactly as it does for the Charon soul's
+# melinoe_bloodboil. The OLD value pointed straight at the pcsafe CLONE path, which
+# does NOT exist at C6-apply-time (the wave mints pcsafe clones later), so the
+# has_record() guard below was always False and the entire soul-amendment block
+# silently no-opped with no gate coverage (build36 round-2 vet P2). _verify_dorus_
+# soul_amendment (run after the wave) is the fail-loud backstop for this bug class.
+_DR_ICHTHIAN = r'records\skills\soulskills\ichthian_tidalstrike.dbr'
 
 
 def _apply_dorus_amendments(db, tags):
@@ -15038,6 +15048,55 @@ def _apply_dorus_amendments(db, tags):
     print("  C6 Dorus: hold-and-drown re-theme (coral tsunami + rottengrasp root + "
           "Dread-Pall aura + slow-decay-poison touch; anim-blanked casts) + themed "
           "soul grant (ichthian tidal strike + fear + run-speed downside).")
+
+
+def _verify_dorus_soul_amendment(db):
+    """FAIL-LOUD (build36 C6, round-2 vet P2 + curiosity bug-class fix). Proves the
+    C6 Dorus soul amendment actually LANDED on the shipped drowned_king soul. The
+    amendment used to guard its whole soul block on has_record(a pcsafe CLONE) that
+    the build29 castability wave does not mint until AFTER the content wave, so the
+    guard was always False and the grant/fear/downside SILENTLY skipped - no gate
+    caught it and no dangling ref was created. Root fix references the non-pcsafe
+    SOURCE (the wave repoints it to pcsafe); this gate is the backstop so the class
+    of pre-castability-wave ordering bug can never silently no-op again. Runs AFTER
+    _fix_granted_skill_castability (by then itemSkillName is the pcsafe clone, which
+    MUST resolve). No-ops if the Dorus boss itself is absent (lane A not merged)."""
+    if not db.has_record(_DR_DORUS):
+        print("  C6 Dorus soul-amendment gate SKIPPED (um_dorus_99 absent; lane A "
+              "not merged - C6 legitimately did not run)")
+        return
+    fear = {'n': 2.0, 'e': 3.0, 'l': 4.0}
+    problems = []
+    for t, p in zip(('n', 'e', 'l'), _DR_SOULS):
+        if not db.has_record(p):
+            problems.append(f"{p}: soul record MISSING")
+            continue
+        isk = db.get_field_value(p, 'itemSkillName')
+        isk = isk[0] if isinstance(isk, list) else isk
+        if not (isinstance(isk, str) and isk.strip()):
+            problems.append(f"{p}: itemSkillName NOT set (C6 soul grant silently "
+                            f"skipped - the exact round-1 regression)")
+        elif not db.has_record(isk):
+            problems.append(f"{p}: granted skill {isk} does not resolve")
+        rs = db.get_field_value(p, 'characterRunSpeedModifier')
+        rs = rs[0] if isinstance(rs, list) else rs
+        if rs is None or float(rs) >= 0:
+            problems.append(f"{p}: greed run-speed downside missing (got {rs!r}; "
+                            f"expected a negative modifier)")
+        fr = db.get_field_value(p, 'offensiveFearMin')
+        fr = fr[0] if isinstance(fr, list) else fr
+        if fr is None or abs(float(fr) - fear[t]) > 0.01:
+            problems.append(f"{p}: offensiveFearMin {fr!r} != C6 tier value "
+                            f"{fear[t]} (still the A5 flat 2.0 baseline -> amendment "
+                            f"did not override it)")
+    if problems:
+        for m in problems:
+            print("  C6-DORUS-SOUL OFFENDER:", m)
+        raise SystemExit("build36 C6 Dorus soul-amendment gate FAILED: the themed "
+                         "soul grant did not land on the shipped drowned_king soul "
+                         "(see offenders above)")
+    print("  C6 Dorus soul-amendment gate OK: ichthian tidal-strike grant + greed "
+          "run-speed downside + tiered fear (2/3/4) present on all 3 soul tiers")
 
 
 # ── C7: UPLIFT PICKS (Vashkarr / wyrm cold tide / Broodmother / Obsidian) ─────
@@ -15761,6 +15820,11 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # fires - the Crommyonian Sow bug, 219 souls). Prove every granted-skill
     # soul has Class Skill_*, itemSkillLevel >= 1, and a live auto-controller.
     _verify_soul_itemskill_activation(db)
+
+    # ── build36 CONTENT WAVE C6 gate (fail-loud): the Dorus soul amendment must
+    # have LANDED on the shipped drowned_king soul (grant + greed downside + tiered
+    # fear). Backstop for the pre-castability-wave has_record(pcsafe) ordering bug.
+    _verify_dorus_soul_amendment(db)
 
     # ── build36 FIX WAVE gates (fail-loud) ────────────────────────────────────
     # F3: Ground Smash stays on its 6-soul roster (+ no new mass-assignment).
