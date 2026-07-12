@@ -14495,6 +14495,12 @@ def _create_goldenbough_boss(db, tags):
         char_level=list(_GB_BAND), life=[5500.0, 8000.0, 11000.0],
         life_regen=[18.0, 36.0, 60.0], dmg_min=[42.0, 72.0, 108.0],
         dmg_max=[66.0, 110.0, 160.0], scale=1.3)
+    # the donor's inherited boss-only ALL_DamageScaling_Passive is a dangling ref
+    # (resolves in neither mod nor base under the gate's key normalization) - clear
+    # it on the pet tiers exactly as the hostile escort clone does above (B-SUMMON-1).
+    for _gb_pet in _GB_OARSMAN_PETS:
+        sf(_gb_pet, 'skillName7', '')
+        db._modified.add(_gb_pet)
 
     def _gb_stats(t, il):
         m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
