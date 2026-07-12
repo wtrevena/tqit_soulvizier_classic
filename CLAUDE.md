@@ -365,7 +365,7 @@ reader/writer (89/89 round-trip) available for this.
   not in shipped `Text.arc` → raw tag text shows in-game. Structural: `build_text_arc.py` isn't
   coupled to `build_svc_database.py`, so this recurs on any soul-roster change. Fix + add a build
   validator that fails loud if any `.arz` name/desc tag is missing from `Text.arc`.
-- **Multiplayer never tested** (an explicit non-negotiable). Also SV's `RunEquation` MP spawn-scaling
+- **Multiplayer: TESTED AND WORKS** (Will confirmed 2026-07-12). Also SV's `RunEquation` MP spawn-scaling
   formulas fail to parse in AE → silently fewer spawns in MP.
 
 **P1/P2:** Super Caravan "respec items" never implemented; Lite build is OFF THE TABLE (Will

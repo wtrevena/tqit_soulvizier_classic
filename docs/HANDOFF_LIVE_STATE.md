@@ -1,3 +1,9 @@
+# HANDOFF LIVE STATE
+
+> **BUILD36 SHIPPED 2026-07-12** to Steam Workshop (item 3759792705, "Upload complete") AND the DEV entry (SoulvizierClassicDEV, hash-verified). Tag `build36` @ 9f96340. arz md5 63ca7cf8, canonical Levels_merged md5 b42be44f, Text 2af4ce38, Quests 56acee66 (reused, unchanged). CANONICAL map both targets (TESTHUB rebuild skipped - quota; canonical carries all content). What shipped: 5 uber bosses (Dorus/Tantalus/Charon/Mnemophage/Ephialtes) + Ereban relic + Enslaver rework (skeleton + 4 demon-strength marauders + orbs) + pet overhaul (4 summon-bug fixes) + 18 mastery grafts + Rune Golem + 6 soul RCA fixes + Shadow Stalker + Bloodcrow/Makaria/Anapaest CDs + Flash Powder rework + 21 handcrafted souls + Obsidian balance + Act-5->Epic fix + Vort red + crash mitigation. See docs/WILL_TEST_GUIDE.md (test menu + boss locations + SV areas) and docs/NEXT_STEPS_BUILD37.md (everything unfinished). MP TESTED+works.
+
+---
+
 # HANDOFF - LIVE PROJECT STATE (Soulvizier Classic)
 
 > **Trust level: LIVE - keep this current.** This is the single current-state board. A brand-new
