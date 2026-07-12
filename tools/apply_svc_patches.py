@@ -15225,6 +15225,13 @@ _KV_BOSS = r'records\creature\monster\skeleton\um_kravmoloch_99.dbr'
 _KV_SUMMON_DON = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
 _KV_SUMMON = r'records\skills\boss skills\svc_kravmoloch_summon.dbr'
 _KV_SHADOWSTALKER = r'records\creature\monster\shadowstalker\am_deathstalker_55.dbr'
+# C7 Kravmoloch player-pet SUMMON soul (uplift spec 3.4 "5th soul incl. a summon"):
+# a bound skeletal warden on the GoldenSkeleton01 rig. Source = _KV_DONOR (gorrahk),
+# whose mesh MATCHES the Kravmoloch dropper (both GoldenSkeleton01) -> F2-clean with
+# NO allow-set entry; verified D19-mobile (gorrahk equips a 1h weapon -> the sHanded
+# anm_skeleton01 row has table locomotion). NOT a Ground-Smash grant -> F3-clean.
+_KV_SOULSUMMON = r'records\skills\soulskills\summon_kravmoloch_warden.dbr'
+_KV_PETS = [r'records\skills\soulskills\pets\kravmoloch_warden_%d.dbr' % i for i in (1, 2, 3)]
 
 
 def _apply_content_uplift_picks(db, tags):
@@ -15318,14 +15325,28 @@ def _apply_content_uplift_picks(db, tags):
             sf(_KV_BOSS, 'specialAttack4SkillName', _KV_SUMMON)
             sf(_KV_BOSS, 'specialAttack4Chance', 35.0)
         db._modified.add(_KV_BOSS)
-        # 5th soul (dense stat soul; no summon -> F2-clean)
+        # 5th soul GRANTS a summon (uplift spec 3.4: "a 5th soul incl. a summon").
+        # Round 1 shipped it stat-only to dodge the F3 Ground-Smash roster gate; a
+        # non-Ground-Smash grant (this manual-cast player-pet summon) restores the
+        # spec's "incl. a summon" flavor while staying F3-clean (no cyclops_groundsmash)
+        # AND F2-clean (the warden pet's GoldenSkeleton01 body == the dropper's own
+        # body, so NO _SUMMON_IDENTITY_ALLOW entry is needed). D19/D21 manual-cast law:
+        # Skill_SpawnPet grant with NO itemSkillAutoController.
+        _build_boss_summon(
+            db, _KV_DONOR, _KV_PETS, _KV_SOULSUMMON,
+            'tagSVCSummonKravmolochWarden', 'tagSVCPetBoundWarden',
+            char_level=[74, 74, 74], life=[5000.0, 7000.0, 9500.0],
+            life_regen=[16.0, 30.0, 48.0], dmg_min=[60.0, 90.0, 130.0],
+            dmg_max=[95.0, 140.0, 200.0], scale=1.2)
+
         def _kv_stats(t, il):
             m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
             r = lambda v: round(v * m, 1)
-            # STAT soul (no itemSkillName grant): avoids the F3 Ground-Smash
-            # roster gate + the activation gate; the augment carries the theme.
+            # SUMMON soul: the manual-cast warden grant + the onslaught augment +
+            # physical/strength sheet carry the earth-warden theme.
             return {
                 **_bmp(t),
+                'itemSkillName': (S, _KV_SOULSUMMON), 'itemSkillLevel': (I, {'n': 1, 'e': 2, 'l': 3}[t]),
                 'augmentSkillName1': (S, _SK_ONSLAUGHT), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
                 'offensivePhysicalMin': (F, r(70.0)), 'offensivePhysicalMax': (F, r(110.0)),
                 'offensivePhysicalModifier': (F, r(30.0)),
@@ -15349,10 +15370,18 @@ def _apply_content_uplift_picks(db, tags):
         tags['tagSVCSoulKravmoloch'] = '{^F}Kravmoloch, Keeper of the Wheel Soul'
         tags['tagSVCSoulKravmolochDESC'] = (
             'The warden who turns the wheel of the Obsidian Halls and keeps its '
-            'greatest hoard. His soul grinds the earth under the bearer\'s blows.')
+            'greatest hoard. Speak his soul and a bound warden rises to grind the '
+            'earth at your side, as one once rose to turn the wheel for him.')
+        tags['tagSVCSummonKravmolochWarden'] = 'Raise a Bound Warden'
+        tags['tagSVCSummonKravmolochWardenDESC'] = (
+            'Kravmoloch bound lesser wardens to turn the wheel and keep the hoard. '
+            'Speak his soul and one answers to you instead, a bound skeletal warden '
+            'that grinds the earth beneath your enemies until it is broken.')
+        tags['tagSVCPetBoundWarden'] = 'Bound Warden'
         print("  C7 Obsidian Keeper of the Wheel: Kravmoloch jackpot boss "
               "[16/22/30k]@L74 (greatest-hits kit + call-the-table summon) + 5th "
-              "soul; added as name5 @ weight 4 to q_obs_warband.")
+              "soul (NOW grants a manual-cast Bound-Warden summon, F2/F3-clean); "
+              "added as name5 @ weight 4 to q_obs_warband.")
 
 
 def apply_all_extended_patches(db, force_full_drops=True):
