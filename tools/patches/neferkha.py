@@ -50,7 +50,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/ on path
 import apply_svc_patches as M  # the monolith: helpers + the gate-registry globals
 
-MODULE_NAME = 'neferkha'
+MODULE_NAME = 'Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)'
 
 # ── Bands / derivation ──────────────────────────────────────────────────────
 _NK_BAND = [32, 50, 64]              # Egypt-superboss band (a notch above khenti Hero [31,53,69])

@@ -55,7 +55,7 @@ import importlib
 #
 # NOTE: _smoke_example is the template/reference module. It is intentionally
 # NOT registered (it stays a copy-me template); see README S6.
-REGISTRY = []
+REGISTRY = ['neferkha']
 
 
 def registry_order_hash(names):
