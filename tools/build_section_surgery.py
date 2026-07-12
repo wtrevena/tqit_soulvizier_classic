@@ -807,6 +807,26 @@ VASHKARR_HOST_KEY = 'levels/world/orient/underground/random05a.lvl'
 VASHKARR_SPEC = (VASHKARR_PROXY_DBR, 24.00, 1.00, 31.70,
                  {'rot': Q_LEINTH_EXEMPLAR_ROT})  # WIRED (build32b)
 
+# ── A1 WIRED (build36 CONVERGENCE): Enslaver warband set-piece (amendment map delta) ──
+# The DB lane (_create_enslaver_warband, apply_svc_patches.py) shipped the championChance
+# set-piece in the arz: pool/proxy q_enslaver_warband -> 1 um_toxeus_enslaver_99 leader +
+# 4 "{^r}Enslaved Shadow Marauder" champions PRESENT AT SPAWN (spawnMax=5 / championMin=
+# Max=4 / championChance=100, chanceToRun=100, limit_obsidianbosses [1..110],
+# placementExtents 4.0 on the proxy). Registered in _MOD_AUTHORED_SPAWN_PROXIES + the
+# roaming-sweep leak-guard allow-set _EN_YARD_POOLS. This is the ONE map-lane step: place
+# the single proxy entity in a shadow-touched blood-cave pocket. HOST = drxFirstXistion_
+# connection (the FLAT widow-letter connection chamber - SAME level + inject path as
+# FINALLETTER above). SPOT LOCAL (21.1,10.0,-6.5) world (5680,10,3285) SURVEYED on the
+# canonical 0x0b (tools/debug/survey_uberboss_spots.py --base 56): on-mesh 0.00u, clr 100%
+# in ALL 3 tilesets (Normal/Epic/Legendary), MAIN component #1/109590; floor localY 10.00
+# (byte-matches the finalletter y=10.005 in this level); 11.5u from the nearest native (rock
+# dress), ~26.6u from the widow finalletter (no spawn-camping the quest letter). SV-only
+# v0x0e -> inject_into_sv_only_blob (56 B), flags=0, no 0x14, q_leinth_lone exemplar rot
+# (the q_vashkarr_lone byte-shape). COUPLED SHIP: needs the arz's q_enslaver_warband records.
+EN_WARBAND_PROXY_DBR = b'records\\drxmap\\proxy\\q_enslaver_warband.dbr'
+EN_WARBAND_HOST_KEY = 'levels/world/xbloodcave/drxfirstxistion_connection.lvl'
+EN_WARBAND_SPEC = (EN_WARBAND_PROXY_DBR, 21.1, 10.0, -6.5, {'rot': Q_LEINTH_EXEMPLAR_ROT})
+
 # ── M10 WIRED (build32b): Obsidian Halls treasure roulette corners (N6-DB) ───────────
 # 4 corner proxies (chanceToRun=25 each, shared warband pool q_obs_warband) in the Act-3
 # Obsidian Halls: tombobs01 + tombobs02 (Levels/World/Orient/TyphonUG/, base-game v0x0e
@@ -1568,6 +1588,11 @@ INJECT_SPECS = {
     # flags=0, no 0x14. Local = location_letterdrop's exact SV-local coord (on-mesh 0.10u).
     'levels/world/xbloodcave/drxfirstxistion_connection.lvl': [
         (FINALLETTER_DBR, 32.459, 10.005, 17.593),
+        # A1 (build36 CONVERGENCE): the Enslaver warband set-piece proxy (see the
+        # EN_WARBAND_SPEC block above for the full survey evidence). ONE proxy, flat floor
+        # (localY 10.0), ~26.6u from the finalletter above; SV-only v0e inject, flags=0,
+        # no 0x14, exemplar rot. COUPLED SHIP with the arz's q_enslaver_warband records.
+        EN_WARBAND_SPEC,
         # M15 (2026-07-09, Will mechanism change): the standalone ~50% parchment Toxeus proxy
         # (q_bloodtoxeus_lone_50 @ the finalletter's exact coords, the M5' build30 placement -
         # byte-verified d=0.0u ON the Tattered Parchment) is REMOVED. New mechanism = the DB
