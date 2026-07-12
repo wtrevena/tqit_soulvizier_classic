@@ -10021,6 +10021,90 @@ def _create_enslaver_warband(db):
           "MAP LANE: place q_enslaver_warband at one walkable coord (map delta).")
 
 
+# ── A2 BOSS LOOT-ORB FIX (build36 AMENDMENT) ──────────────────────────────────
+# Give red (Boss) custom bosses the base-game on-death chest-orb the red act bosses
+# drop, via treasureProxyName -> genericbossorb_04 (the apex SV tier, class-agnostic,
+# proven in-family by um_toxeus_21). Will's directive: "all the versions of toxeus
+# the murder should drop a huge orb like a chest." J1 = the roaming Enslaver BOSS ON
+# (decided); J2 = breadth ON (all shipped custom Boss-class + the content-wave ubers,
+# terminal form only). The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0).
+# Charon EXCLUDED: um_charonform2_ferryman_99 already inherits BossChest02_Charon.
+# Monster records are NOT clone-shape-gated (Goldenbough deathEffect precedent).
+_APEX_ORB = r'records\item\containers\new\genericbossorb_04.dbr'
+_MN_ORB_SHELL = r'records\xpack\creatures\monster\epiales\um_mnemophage_99.dbr'  # shell: stay orb-less
+_BOSS_ORB_TARGETS = [
+    # --- CORE: Will's Toxeus directive ---
+    (r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr',        _APEX_ORB),
+    (r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr',      _APEX_ORB),  # J1 ON
+    # --- BREADTH (J2 ON): all shipped custom Boss-class ---
+    (r'records\creature\monster\dragonian\um_vashkarr_99.dbr',                 _APEX_ORB),
+    (r'records\creature\monster\sepulchralwyrm\um_broodmother_99.dbr',         _APEX_ORB),
+    (r'records\xpack\creatures\monster\lostsoul\um_dorus_99.dbr',              _APEX_ORB),
+    (r'records\creature\monster\abyssalliche\um_sarkoth_99.dbr',               _APEX_ORB),
+    (r'records\creature\monster\skeleton\um_gorrahk_99.dbr',                   _APEX_ORB),
+    (r'records\creature\monster\skeleton\um_ilsevar_99.dbr',                   _APEX_ORB),
+    (r'records\creature\monster\questbosses\um_voranthys_99.dbr',              _APEX_ORB),
+    # --- content-wave ubers (terminal form only; Charon EXCLUDED - inherits its orb) ---
+    (r'records\xpack\creatures\monster\lostsoul\um_tantalus_unbound_99.dbr',   _APEX_ORB),  # terminal
+    (r'records\xpack\creatures\monster\epiales\um_mnemophage_core_99.dbr',     _APEX_ORB),  # terminal
+    (r'records\xpack\creatures\monster\epiales\um_ephialtes_99.dbr',           _APEX_ORB),
+]
+
+
+def _amend_boss_loot_orbs(db):
+    """Wire treasureProxyName -> genericbossorb_04 on every red (Boss) custom boss so
+    it drops the base-game on-death chest-orb (Will's Toxeus directive + J1/J2 breadth).
+    Resolve every target through _resolve_record (case/slash tolerant) so an upstream
+    target with different casing can never be SILENTLY skipped. Skip-with-warning on
+    any absent record (matches the repo donor-guard idiom). Also DEFENSIVELY clears
+    treasureProxyName off the Mnemophage SHELL so the two-form boss never drops a
+    mid-fight orb (verified-unnecessary today - donor ur_overmind_46 is orb-less -
+    but coded as cheap insurance per the spec)."""
+    if _resolve_record(db, _APEX_ORB) is None:
+        print("  BOSS-ORB: WARNING apex orb proxy missing; pass skipped")
+        return
+    # shell-clear (delete the field entirely; never blank to '' - field-absence parity)
+    shell = _resolve_record(db, _MN_ORB_SHELL)
+    if shell is not None:
+        ff = db.get_fields(shell) or {}
+        removed = False
+        for k in list(ff):
+            if k.split('###')[0] == 'treasureProxyName':
+                del ff[k]; removed = True
+        if removed:
+            db._modified.add(shell)
+            print("  BOSS-ORB: cleared inherited orb off the Mnemophage shell")
+    n = 0
+    for rec, orb in _BOSS_ORB_TARGETS:
+        real = _resolve_record(db, rec)
+        if real is None:
+            print(f"  BOSS-ORB: skip (absent) {rec}")
+            continue
+        db.set_field(real, 'treasureProxyName', orb, DATA_TYPE_STRING)  # adds to _modified
+        n += 1
+    print(f"  BOSS-ORB: wired treasureProxyName on {n} boss record(s) -> {_APEX_ORB}")
+
+
+def _verify_boss_orbs(db):
+    """FAIL-LOUD: every PRESENT target carries a treasureProxyName that RESOLVES
+    (case/slash tolerant, consistent with _amend)."""
+    bad = []
+    for rec, orb in _BOSS_ORB_TARGETS:
+        real = _resolve_record(db, rec)
+        if real is None:
+            continue
+        f = db.get_fields(real) or {}
+        val = next((tf.values[0] for k, tf in f.items()
+                    if k.split('###')[0] == 'treasureProxyName' and tf.values), None)
+        if not val or _resolve_record(db, val) is None:
+            bad.append((rec, val))
+    if bad:
+        for rec, val in bad:
+            print(f"  BOSS-ORB OFFENDER: {rec} :: treasureProxyName={val!r} (missing/unresolved)")
+        raise SystemExit(f"Boss-orb invariant FAILED: {len(bad)} offender(s)")
+    print("  Boss-orb invariant OK: every present target boss drops a resolving orb.")
+
+
 def _sweep_inject_roaming_rare(db):
     """Append the Enslaver at weight 1 to every ELIGIBLE hostile trash pool, with
     each existing member weight x60, so he stays rarer than 1/2400 per main-slot.
@@ -16015,6 +16099,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
 
     _enslaver_touched = _sweep_inject_roaming_rare(db)
     _verify_roaming_sweep(db, _enslaver_touched)
+
+    # A2 (build36 AMENDMENT): boss loot-orb fix. AFTER every uber builder (Tantalus/
+    # Charon/Mnemophage/Ephialtes above) + the Enslaver so every target record exists.
+    # Wires treasureProxyName -> genericbossorb_04 on Blood Toxeus + the roaming
+    # Enslaver (J1) + all shipped custom Boss-class + the content ubers (J2), then a
+    # fail-loud verify that every present target drops a resolving orb.
+    print("\n=== A2: boss loot-orb fix (Toxeus directive + J1/J2 breadth) ===")
+    _amend_boss_loot_orbs(db)
+    _verify_boss_orbs(db)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
