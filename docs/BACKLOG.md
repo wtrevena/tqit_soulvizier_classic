@@ -2000,3 +2000,17 @@ to every subscriber right now; portals look rough (B-PORTAL-1). Prioritize those
   (112 pre-existing P2), resources 0 P0 + ONLY the pre-existing anm_dreamcopy P1.
 - Determinism: round-1 proved byte-identical independent rebuild; the convergence rebuild on main
   re-confirms for the final artifact.
+
+## build36 CONVERGENCE GATE RECORD (2026-07-12, ready to deploy)
+- Convergence: Vort red skin (FiretalonA x4) + crash mitigation (bloodbeast petLimit 8->4) +
+  q_enslaver_warband placement (drxfirstxistion_connection, surveyed 100%).
+- Record-diff vs amendment 1b4a8835: EXACTLY 5 changed (4 Vort baseTexture + 1 petLimit), 0 add/rm.
+- arz md5 63ca7cf858e4f60f2f9bec8f9eb4ef8f; canonical Levels_merged.arc md5 b42be44f891775f110262da74d714b32; Text.arc md5 2af4ce386578ea144177a3227e07e048.
+- Quests.arc UNCHANGED in build36 (comment-only build_quest_files.py diff; A5 is DB-record-level) ->
+  reuse the deployed 194092 B Quests.arc (the pre-existing Rhodes-guard build failure is orthogonal).
+- GATES: DB inline all green; Text golden intact (5 waivers); canonical blob-diff = exactly 1 blob
+  (drxfirstxistion_connection, the warband); navmeshes 24/24 0x0a-stripped; contracts_map PASS
+  (0 P0/P1, 4 MAP-REF-1 cleared, warband resolves, 3 pre-existing native-portal P2); contracts
+  souls/summons/resources green (only pre-existing anm_dreamcopy P1).
+- SHIP MAP = CANONICAL to both Steam + DEV (TESTHUB rebuild skipped - quota; canonical carries all
+  content, WILL_TEST_GUIDE.md gives the canonical path to every boss).
