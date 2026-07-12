@@ -10085,6 +10085,125 @@ def _amend_boss_loot_orbs(db):
     print(f"  BOSS-ORB: wired treasureProxyName on {n} boss record(s) -> {_APEX_ORB}")
 
 
+def _apply_b2_ilsevar_soul(db):
+    """A8/B2 (Will: the Ilsevar soul "doesnt state a cool down on the life drain ...
+    is there like a chain life drain version that would drain life from all guys close
+    in the area?"). The base grants `lifedrain` as an on-attack PROC (item procs never
+    surface a Recharge line -> "no CD shown"). Upgrade to a MANUAL-CAST AoE Life Drain
+    Nova: clone the shipped proseia_lifedrainnova (radius 6, life+mana leach; already
+    castability-proven via proseia_soul) into pcsafe/ilsevar_drainnova (cd 110 -> 16),
+    point every Ilsevar tier at it, set a per-tier level 3/5/8, and STRIP the auto-
+    controller (manual cast -> a skill-bar grant SHOWS its Recharge, fixing the display
+    AND making it feel like a real spell). Runs before the castability wave + the
+    soul-augment verify (which the new grant must resolve for)."""
+    NOVA_SRC = _resolve_record(db, r'records\skills\soulskills\proseia_lifedrainnova.dbr')
+    if NOVA_SRC is None:
+        print("  A8/B2: proseia_lifedrainnova donor missing; Ilsevar soul unchanged")
+        return
+    NOVA = r'records\skills\soulskills\pcsafe\ilsevar_drainnova.dbr'
+    db.clone_record(NOVA_SRC, NOVA)
+    db.set_field(NOVA, 'skillCooldownTime', 16.0)   # was 110 -> usable, not spammed
+    db._modified.add(NOVA)
+    lvl = {'n': 3, 'e': 5, 'l': 8}
+    done = 0
+    for t in ('n', 'e', 'l'):
+        soul = _resolve_record(db, rf'records\item\equipmentring\soul\svc_uber\ilsevar_soul_{t}.dbr')
+        if soul is None:
+            continue
+        db.set_field(soul, 'itemSkillName', NOVA, DATA_TYPE_STRING)
+        db.set_field(soul, 'itemSkillLevel', lvl[t], DATA_TYPE_INT)
+        # STRIP the auto-controller -> manual cast (delete the field; never blank to '').
+        ff = db.get_fields(soul) or {}
+        for k in list(ff):
+            if k.split('###')[0] == 'itemSkillAutoController':
+                del ff[k]
+        db._modified.add(soul)
+        done += 1
+    print(f"  A8/B2: Ilsevar soul -> manual-cast AoE Life Drain Nova (ilsevar_drainnova "
+          f"cd 16, radius 6, level 3/5/8; controller stripped -> shows Recharge) [{done} tiers]")
+
+
+def _apply_b5_vashkarr(db):
+    """A8/B5 (Will: "he just looks like a normal guy ... give him a different color
+    make him all black ... 100% resistance to stun ... twice as big ... some cool
+    skill"). STACKS on the C7 dragonfire uplift (runs AFTER _apply_content_uplift_picks;
+    removes no C7 field). Four asks:
+      (1) all-black = an FX shadow-shroud via charFxPakRunningNames ON THE MONSTER
+          record (the proven Enslaver route; NEVER charFxPak on a SpawnPet skill -
+          the build28 no-spawn trap) + repoint baseTexture to the darkest dragonian skin;
+      (2) 100% stun resist (+ freeze/petrify for good measure);
+      (3) twice as big (scale 1.55 -> 3.0, height -> 3.0);
+      (4) cool skill = "Wrath of the Eldest" - lowhealth_berserkerrage01
+          (Skill_PassiveOnLifeBuffSelf: a shipped boss-native low-health enrage
+          PASSIVE - zero cast/anim risk, self-triggers below a HP threshold), added
+          in the first free skillName slot (so it never collides with a C7 slot)."""
+    M = _resolve_record(db, _VK_MONSTER)
+    if M is None:
+        print("  A8/B5: Vashkarr record missing; skipped")
+        return
+    sf = db.set_field
+    sf(M, 'scale', 3.0)                     # twice as big (flag clipping at q_vashkarr_lone)
+    sf(M, 'actorHeight', 3.0)
+    sf(M, 'defensiveStun', 100.0)           # 100% stun resist
+    sf(M, 'defensiveFreeze', 100.0)
+    sf(M, 'defensivePetrify', 100.0)
+    sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], DATA_TYPE_STRING)   # all-black shroud (monster record)
+    sf(M, 'baseTexture', r'Creatures\Monster\Dragonian\DragonianDecayed01.tex')  # (dark skin kept; FX is the load-bearing black)
+    # cool skill: append the low-health enrage passive in the first free skillName slot
+    _ENRAGE = r'records\skills\skills\monster skills\lowhealth_berserkerrage01.dbr'
+    if _resolve_record(db, _ENRAGE) is not None:
+        ff = db.get_fields(M) or {}
+        used = set()
+        for k in ff:
+            b = k.split('###')[0]
+            if b.startswith('skillName'):
+                try:
+                    used.add(int(b[len('skillName'):]))
+                except ValueError:
+                    pass
+        slot = next(i for i in range(1, 40) if i not in used)
+        sf(M, f'skillName{slot}', _ENRAGE)
+        db._modified.add(M)
+        print(f"  A8/B5: Vashkarr all-black FX shroud + CC-immune + scale 3.0 + "
+              f"'Wrath of the Eldest' low-health enrage passive (skillName{slot})")
+    else:
+        db._modified.add(M)
+        print("  A8/B5: Vashkarr all-black FX shroud + CC-immune + scale 3.0 "
+              "(enrage passive donor missing; skipped cool skill)")
+
+
+def _apply_b7_eldest_soul_rebalance(db):
+    """A8/B7 (Will: "crazy on normal, 74% physical damage resistance? doesnt that make
+    you nearly unkillable by physical hits that arent piercing?"): the Vashkarr ("Soul
+    of the Eldest") + Gorrahk souls carry degenerate %-physical-resistance (84/114.8/
+    140 and 72/98.4/120 - E/L above 100% = physical IMMUNITY). Apply amgoz's own move
+    (V15 "Stone Skin: +%Armor removed, now adds flat armor"): cap the % resist at a
+    strong-but-not-immune 30/45/60 (below his Koios 75/84/96 ceiling), bank the rest
+    into FLAT armor (defensiveProtection +150/+260/+400) + ~25% more HP, and add an
+    amgoz character-through-tradeoff downside (-8% run speed: the Eldest is ancient
+    and heavy). Runs after _create_vashkarr + _create_obsidian_roulette. Stat-only
+    (no skill refs) -> touches no soul gate."""
+    PHYS = {'n': 30.0, 'e': 45.0, 'l': 60.0}
+    PROT = {'n': 150.0, 'e': 260.0, 'l': 400.0}
+    done = 0
+    for base in ('vashkarr', 'gorrahk'):
+        for t in ('n', 'e', 'l'):
+            rec = _resolve_record(db, rf'records\item\equipmentring\soul\svc_uber\{base}_soul_{t}.dbr')
+            if rec is None:
+                continue
+            db.set_field(rec, 'defensivePhysical', PHYS[t], DATA_TYPE_FLOAT)   # cap the % resist
+            db.set_field(rec, 'defensiveProtection', PROT[t], DATA_TYPE_FLOAT)  # flat armor (amgoz conversion)
+            life = db.get_field_value(rec, 'characterLife')
+            life = (life[0] if isinstance(life, list) else life)
+            if life:
+                db.set_field(rec, 'characterLife', round(float(life) * 1.25, 1), DATA_TYPE_FLOAT)
+            db.set_field(rec, 'characterRunSpeedModifier', -8.0, DATA_TYPE_FLOAT)  # amgoz downside
+            db._modified.add(rec)
+            done += 1
+    print(f"  A8/B7: Eldest+Gorrahk soul physres -> 30/45/60 + flat armor + HP + "
+          f"-8% run speed ({done} soul tier records; no longer physical-immune)")
+
+
 def _verify_boss_orbs(db):
     """FAIL-LOUD: every PRESENT target carries a treasureProxyName that RESOLVES
     (case/slash tolerant, consistent with _amend)."""
@@ -13101,25 +13220,63 @@ def _create_obsidian_roulette(db, tags):
             sf(rec, f'specialAttack{suffix}SkillName', sk)
             sf(rec, f'specialAttack{suffix}Chance', float(ch))
 
+    # ── A8/B3: Sarkoth's whelp summon - the "miniature fire-breathing guys who spawn
+    #    next to esti's chest" = blooddragon01 (scale 0.25, blooddragon_puke fire
+    #    breath). Clone a soul-less Common whelp + a Skill_SpawnPetMonster (yaoguai
+    #    donor). Built BEFORE step 1 so Sarkoth's kit can reference the summon. ──
+    _OBS_SARKOTH_WHELP = r'records\creature\monster\svc\svc_sarkoth_whelp.dbr'
+    _OBS_SK_SARKOTH_SUMMONWHELPS = r'records\skills\boss skills\svc_sarkoth_summonwhelps.dbr'
+    _OBS_BLOODDRAGON_DONOR = r'records\drxcreatures\blooddragons\blooddragon01.dbr'
+    _OBS_WHELP_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
+    if db.has_record(_OBS_BLOODDRAGON_DONOR) and db.has_record(_OBS_WHELP_SUMMON_DONOR):
+        db.clone_record(_OBS_BLOODDRAGON_DONOR, _OBS_SARKOTH_WHELP)
+        W = _OBS_SARKOTH_WHELP
+        sf(W, 'monsterClassification', 'Common')   # Common -> no soul drop (flood-pool law)
+        sf(W, 'dropItems', 0)
+        sf(W, 'chanceToEquipFinger2', 0.0)          # defensive: never a soul
+        sf(W, 'charLevel', list(_OBS_BAND))
+        sf(W, 'scale', 0.3)                          # miniature (keeps blooddragon_puke)
+        db._modified.add(W)
+        db.clone_record(_OBS_WHELP_SUMMON_DONOR, _OBS_SK_SARKOTH_SUMMONWHELPS)
+        SW = _OBS_SK_SARKOTH_SUMMONWHELPS
+        sf(SW, 'spawnObjects', [_OBS_SARKOTH_WHELP])
+        sf(SW, 'petBurstSpawn', 3)
+        sf(SW, 'petLimit', 5)
+        sf(SW, 'skillCooldownTime', 9.0)
+        db._modified.add(SW)
+        _BOSS_KIT_CLONES.append((_OBS_WHELP_SUMMON_DONOR, _OBS_SK_SARKOTH_SUMMONWHELPS))
+    else:
+        # donor missing: fall back to a no-summon kit slot (drxvolcanicorb) so the
+        # kit reference below still resolves.
+        _OBS_SK_SARKOTH_SUMMONWHELPS = _OBS_SK_VOLCORB
+        print("  OBSIDIAN B3: blooddragon/summon donor missing; Sarkoth whelp summon skipped")
+
     # ── 1. SARKOTH, the Glasswright (flame-liche caster; obsidian drop + meteor). ──
+    # A8/B3 (Will: "super weak ... easily just stunned him ... way more health way more
+    # health regen ... 3x the size ... summon the miniature fire-breathing guys"): HP
+    # 13k/20k/28k, per-tier regen 40/70/100, scale 3.0/height 3.2, FULL CC immunity
+    # (stun/freeze/petrify 100 - he was stun-locked), + the blooddragon whelp summon.
     db.clone_record(_OBS_SARKOTH_DONOR, _OBS_SARKOTH)
     M = _OBS_SARKOTH
     sf(M, 'description', 'tagSVCMonsterSarkoth')
     sf(M, 'monsterClassification', 'Boss')
     sf(M, 'charLevel', list(_OBS_BAND))
-    sf(M, 'characterLife', [4500.0, 7000.0, 10500.0])
-    sf(M, 'characterLifeRegen', 10.0)
-    sf(M, 'scale', 1.35)
+    sf(M, 'characterLife', [13000.0, 20000.0, 28000.0])   # B3: "way more health"
+    sf(M, 'characterLifeRegen', [40.0, 70.0, 100.0])      # B3: "way more health regen" (per-tier)
+    sf(M, 'scale', 3.0)                                    # B3: "3x the size"
+    sf(M, 'actorHeight', 3.2)
     sf(M, 'defensiveFire', 80.0); sf(M, 'defensivePierce', 45.0)
     sf(M, 'defensiveLife', 60.0)
+    sf(M, 'defensiveStun', 100.0); sf(M, 'defensiveFreeze', 100.0)
+    sf(M, 'defensivePetrify', 100.0)                      # B3: "easily just stunned him" -> unlockable
     _set_kit(M, [
         _OBS_SK_DROPTELE, _OBS_SK_ARENAMETEOR, _OBS_SK_VOLCORB, _OBS_SK_VOLCFRAG,
         _OBS_SK_VOLCIMMO, _OBS_SK_RINGFLAME, _OBS_SK_ICESHARD, _OBS_SK_SQUALL,
-        _OBS_SK_SPELLBREAKER, _OBS_SK_ONDEATH_FROSTNOVA, _OBS_SK_ARMORPASSIVE,
-        _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
+        _OBS_SK_SPELLBREAKER, _OBS_SK_ONDEATH_FROSTNOVA, _OBS_SK_SARKOTH_SUMMONWHELPS,
+        _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
         _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
-    ], [(_OBS_SK_DROPTELE, 55.0), (_OBS_SK_ARENAMETEOR, 40.0),
-        (_OBS_SK_VOLCORB, 50.0), (_OBS_SK_SQUALL, 35.0)])
+    ], [(_OBS_SK_DROPTELE, 55.0), (_OBS_SK_SARKOTH_SUMMONWHELPS, 55.0),
+        (_OBS_SK_ARENAMETEOR, 40.0), (_OBS_SK_VOLCORB, 50.0), (_OBS_SK_SQUALL, 35.0)])
     db._modified.add(M)
 
     # ── 2. GORRAHK, the Tombsplitter (golden-skeleton bruiser; 16-knife death). ──
@@ -13146,12 +13303,18 @@ def _create_obsidian_roulette(db, tags):
     # ── 3. VORANTHYS, the Sepulchral (dragon-lich summon-storm; ondeath raise). ──
     db.clone_record(_OBS_VORANTHYS_DONOR, _OBS_VORANTHYS)
     M = _OBS_VORANTHYS
+    # A8/B1 (Will: "super weak ... not that big ... doesnt seem to have any skills ...
+    # breathe fire that isnt even a different color"): HP 12k/18k/25k (a summoner must
+    # survive to summon), regen 20, scale 2.5/height 2.0, and promote the cold-blue
+    # dragonliche_freezingbreath to his LOUD signature specialAttack1@70 (a visibly
+    # different-color breath) while KEEPING all 3 summon streams (55/45/40).
     sf(M, 'description', 'tagSVCMonsterVoranthys')
     sf(M, 'monsterClassification', 'Boss')
     sf(M, 'charLevel', list(_OBS_BAND))
-    sf(M, 'characterLife', [5000.0, 8000.0, 12000.0])
-    sf(M, 'characterLifeRegen', 12.0)
-    sf(M, 'scale', 1.3)
+    sf(M, 'characterLife', [12000.0, 18000.0, 25000.0])
+    sf(M, 'characterLifeRegen', 20.0)
+    sf(M, 'scale', 2.5)
+    sf(M, 'actorHeight', 2.0)
     sf(M, 'defensiveCold', 60.0); sf(M, 'defensiveLife', 80.0)
     _set_kit(M, [
         _OBS_SK_FIREBREATH, _OBS_SK_FREEZEBREATH, _OBS_SK_DECOMP,
@@ -13159,22 +13322,28 @@ def _create_obsidian_roulette(db, tags):
         _OBS_SK_SUMMONTOMB, _OBS_SK_ONDEATH_SPAWNSKEL, _OBS_SK_ONDEATH_NECRONOVA,
         _OBS_SK_ARMORPASSIVE, _OBS_SK_BOSSIMMUNITY, _OBS_SK_BOSSSCALING,
         _OBS_SK_GP_N, _OBS_SK_GP_E, _OBS_SK_GP_L,
-    ], [(_OBS_SK_SUMMONWARRIOR, 60.0), (_OBS_SK_SUMMONARCHER, 55.0),
-        (_OBS_SK_SUMMONTOMB, 45.0), (_OBS_SK_FREEZEBREATH, 40.0)])
+    ], [(_OBS_SK_FREEZEBREATH, 70.0), (_OBS_SK_SUMMONWARRIOR, 55.0),
+        (_OBS_SK_SUMMONARCHER, 45.0), (_OBS_SK_SUMMONTOMB, 40.0)])
     db._modified.add(M)
 
     # ── 4. ILSEVAR, the Ashen Watch (blink-flicker poltergeist duelist). ──
     db.clone_record(_OBS_ILSEVAR_DONOR, _OBS_ILSEVAR)
     M = _OBS_ILSEVAR
+    # A8/B2 (Will: "needs to be like double or tripled in size, and he was super easy
+    # to kill"): HP 10k/15k/21k, regen 18, scale 3.0/height 2.6, and FULL CC immunity
+    # (a blink-flicker poltergeist should not be lockable).
     sf(M, 'description', 'tagSVCMonsterIlsevar')
     sf(M, 'monsterClassification', 'Boss')
     sf(M, 'charLevel', list(_OBS_BAND_ILS))
-    sf(M, 'characterLife', [5500.0, 8500.0, 13000.0])
-    sf(M, 'characterLifeRegen', 12.0)
+    sf(M, 'characterLife', [10000.0, 15000.0, 21000.0])
+    sf(M, 'characterLifeRegen', 18.0)
     sf(M, 'characterStrength', 360.0); sf(M, 'characterDexterity', 340.0)
     sf(M, 'handHitDamageMin', 80.0); sf(M, 'handHitDamageMax', 130.0)
-    sf(M, 'scale', 1.45)
+    sf(M, 'scale', 3.0)
+    sf(M, 'actorHeight', 2.6)
     sf(M, 'defensiveLife', 70.0); sf(M, 'defensivePierce', 40.0)
+    sf(M, 'defensiveStun', 100.0); sf(M, 'defensiveFreeze', 100.0)
+    sf(M, 'defensivePetrify', 100.0)
     _set_kit(M, [
         _OBS_SK_PHANTOMSTRIKE, _OBS_SK_KIKASTRIKE, _OBS_SK_DISTORTWAVE,
         _OBS_SK_LIFEDRAIN, _OBS_SK_DEATHCHILLAURA, _OBS_SK_HALIROAR,
@@ -13185,13 +13354,55 @@ def _create_obsidian_roulette(db, tags):
     db._modified.add(M)
 
     # ── 5. Voranthys summon pet + skill (SepulchralWyrm01 rig, D19-hardened). ──
+    # A8/B1.2: bigger pet (scale 1.5) + swap its orange sepulchralwyrm_firebreath to
+    # the cold-blue dragonliche_freezingbreath so the summoned pet breathes the same
+    # signature as the wild boss (the ONE place the "mirror" is applied by hand;
+    # speed is ALREADY fixed by the content wave's pet-stat-mirror - no action).
     vor_pets = [rf'records\skills\soulskills\pets\voranthys_{i}.dbr' for i in (1, 2, 3)]
     _build_boss_summon(
         db, _OBS_VORANTHYS_PET_SRC, vor_pets, SUMMON_VORANTHYS_SKILL,
         'tagSVCSummonVoranthys', 'tagSVCMonsterVoranthys',
         char_level=[42, 60, 72], life=[5000.0, 8000.0, 12000.0],
         life_regen=[30.0, 60.0, 100.0],
-        dmg_min=[70.0, 110.0, 160.0], dmg_max=[115.0, 175.0, 250.0], scale=1.2)
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[115.0, 175.0, 250.0], scale=1.5)
+    _fire = _OBS_SK_FIREBREATH.replace('/', '\\').lower()
+    for _pp in vor_pets:
+        if not db.has_record(_pp):
+            continue
+        ff = db.get_fields(_pp) or {}
+        for _k, _tf in ff.items():
+            if _k.split('###')[0].startswith('skillName'):
+                for _j, _v in enumerate(list(_tf.values)):
+                    if isinstance(_v, str) and _v.replace('/', '\\').lower() == _fire:
+                        _tf.values[_j] = _OBS_SK_FREEZEBREATH   # cold-blue signature
+        db._modified.add(_pp)
+
+    # ── A8/B1.3 escort soul-flood fix (Will: "like 5 guys all dropped souls"). Of the
+    #    6-member warband, two keep a 66% soul drop: um_permean_35 (Boss) + um_bonehallow_37
+    #    (Hero). Clone both into SOUL-LESS Champion escorts (flood-pool law: the boss owns
+    #    the reward, escorts drop none) and swap them into _OBS_WARBAND at [3]/[5]. Mutating
+    #    the shared list fixes BOTH the roulette pool AND the yard (they share _OBS_WARBAND);
+    #    this runs before step 6 (roulette pool) and before _create_test_yard. ──
+    _OBS_ESCORTS = (
+        (r'records\creature\monster\dragonlich\um_permean_35.dbr',
+         r'records\creature\monster\dragonlich\svc_obs_escort_permean.dbr', 3),
+        (r'records\creature\monster\skeleton\um_bonehallow_37.dbr',
+         r'records\creature\monster\skeleton\svc_obs_escort_bonehallow.dbr', 5),
+    )
+    for _src, _esc, _idx in _OBS_ESCORTS:
+        if not db.has_record(_src):
+            continue
+        db.clone_record(_src, _esc)
+        sf(_esc, 'chanceToEquipFinger2', 0.0)          # no soul (kills the flood)
+        _eff = db.get_fields(_esc) or {}
+        for _k in list(_eff):                          # drop the soul loot ref entirely
+            if _k.split('###')[0] == 'lootFinger2Item1':
+                del _eff[_k]
+        sf(_esc, 'monsterClassification', 'Champion')  # reads as an escort (permean Boss->Champion)
+        db._modified.add(_esc)
+        _OBS_WARBAND[_idx] = _esc                       # swap into the shared warband roster
+    print("  OBSIDIAN B1.3: permean+bonehallow -> soul-less Champion escorts "
+          "(warband no longer floods souls; fixes roulette + yard)")
 
     # ── 6. Shared warband pool + no-cap limit. ──
     db.clone_record(_OBS_LIMIT_DONOR, _OBS_LIMIT)
@@ -13816,8 +14027,14 @@ _YARD_WYRM_POOL = r'records\proxies orient\pools\demon\svc_wyrmhorde_03.dbr'   #
 _YARD_WYRM_PROXY = r'records\drxmap\proxy\q_yard_wyrm.dbr'
 # Obsidian hoard accessory chest chain (existing GROUP F records) reused so the
 # yard obs fights also drop the Boss-locked hoard (no new container records).
-_YARD_OBS_ACC = {t: rf'records\drxitem\container\svc_obsidianhoard_pool_{t}.dbr'
-                 for t in ('01', '02', '03')}
+# A8/B4 (Will: yard chests have "way too much stuff ... pick a chest with lower
+# return for placing next to the monsters/hordes"): the TESTHUB yard obsidian fights
+# drop the DRX GOLDEN chest (the tier BELOW the Obsidian Hoard mega-chest), a real
+# ProxyAccessoryPool (fixedItemName1 -> goldenchest_0{1,2,3}). The CANONICAL roulette
+# corners keep the mega-hoard (the designed reward for the rare 25% event).
+_YARD_OBS_ACC = {'01': r'records\drxmap\quest\poolchest_01_normal.dbr',
+                 '02': r'records\drxmap\quest\poolchest_02_epic.dbr',
+                 '03': r'records\drxmap\quest\poolchest_03_legendary.dbr'}
 # Non-swept pools that legitimately carry the Enslaver at weight > 1 (whitelisted
 # out of the roaming-sweep derivation). EXACT record-path set (never a loose
 # substring), per the roaming-sweep leak-detection contract. = the TESTHUB yard
@@ -16108,6 +16325,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
     print("\n=== A2: boss loot-orb fix (Toxeus directive + J1/J2 breadth) ===")
     _amend_boss_loot_orbs(db)
     _verify_boss_orbs(db)
+
+    # A8 OBSIDIAN BALANCE post-passes (B2 Ilsevar soul, B5 Vashkarr, B7 Eldest/Gorrahk
+    # soul physres). Run here (after the boss/soul builders + C7 uplift, BEFORE the
+    # castability wave + soul-augment verify so B2's new grant resolves). B1/B3/B4/B6
+    # already applied inline in their builders above.
+    print("\n=== A8: Obsidian balance wave (B2 Ilsevar nova, B5 Vashkarr, B7 soul physres) ===")
+    _apply_b2_ilsevar_soul(db)
+    _apply_b5_vashkarr(db)
+    _apply_b7_eldest_soul_rebalance(db)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
