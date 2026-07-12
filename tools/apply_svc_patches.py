@@ -7722,6 +7722,15 @@ _SUMMON_IDENTITY_ALLOW = {
                  "(a Sepulchral Wyrm) - the epithet-matched themed form, a "
                  "registered design choice, NOT a Meritamen-class body conflation "
                  "(meritamen spec verifier false-positive list, section E).",
+    'ferryman': "Charon 'the Unferried' (C2 Golden Bough) drops from his risen-"
+                "giant form-2 body (Charon02.msh) but the {^F}Soul of the Unferried "
+                "S2 summon is deliberately built from charon_minion_30 (CharonGhost "
+                "oarsman) - Charon's OWN signature is calling the drowned dead to "
+                "row his boat (charon_summon is in his kit), so the raised oarsman "
+                "is the themed minion by design, NOT a Meritamen-class dropper/body "
+                "conflation. Same sanctioned pattern as voranthys; the round-1 vet "
+                "named this exact allow-set entry as the way to ship the EXTREME "
+                "default S2 while keeping the F2 identity gate green.",
 }
 
 
@@ -14290,6 +14299,11 @@ _GB_ESCORT_DONOR = r'records\xpack\creatures\monster\bosses\02_charon\charon_min
 _GB_FORM1 = r'records\xpack\creatures\monster\bosses\02_charon\um_charon_ferryman_99.dbr'
 _GB_FORM2 = r'records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99.dbr'
 _GB_ESCORT = r'records\xpack\creatures\monster\bosses\02_charon\svc_charon_wraith_99.dbr'
+# C2 S2 (the EXTREME-promoted default): the ONE summon - a permanent drowned oarsman
+# raised on the CharonGhost oarsman rig (source = the escort donor charon_minion_30,
+# CharonGhost.msh + anm_minion; verified D19-mobile: unarmed row has Ghost_Run).
+_GB_SUMMON = r'records\skills\soulskills\summon_charon_oarsman.dbr'
+_GB_OARSMAN_PETS = [r'records\skills\soulskills\pets\charon_oarsman_%d.dbr' % i for i in (1, 2, 3)]
 _GB_DEATHCHILL = r'records\xpack\skills\bossskills\charon_deathchillaura_minions.dbr'
 _GB_POOL = r'records\drxmap\proxy\pools\q_goldenbough_lone.dbr'
 _GB_PROXY = r'records\drxmap\proxy\q_goldenbough_lone.dbr'
@@ -14406,27 +14420,46 @@ def _create_goldenbough_boss(db, tags):
     _svc_guarantee_unique(db, _GB_FORM2, [_GB_AMULET['n'], _GB_AMULET['e'], _GB_AMULET['l']],
                           _GB_AMULET_LOOT)
 
-    # ── S1 dense cold/vitality stat soul: {^F}Soul of the Unferried (form 2) ──
+    # ── S2 THE ONE SUMMON (EXTREME-promoted default): {^F}Soul of the Unferried
+    #    raises a permanent drowned oarsman - Charon's own signature (calling the
+    #    dead to row his boat). Built on the proven _build_boss_summon (source =
+    #    the CharonGhost oarsman charon_minion_30). The summon body is DELIBERATELY
+    #    a themed minion different from the Charon02 form-2 dropper body, so
+    #    'ferryman' is registered in _SUMMON_IDENTITY_ALLOW (the voranthys precedent)
+    #    to keep the F2 soul-summon-identity gate green - the sanctioned workaround
+    #    the round-1 vet flagged as the way to ship the EXTREME default. The S1 dense
+    #    cold/vitality stat soul stays the documented alternate in the spec. ──
+    _build_boss_summon(
+        db, _GB_ESCORT_DONOR, _GB_OARSMAN_PETS, _GB_SUMMON,
+        'tagSVCSummonCharonOarsman', 'tagSVCPetOarsman',
+        char_level=list(_GB_BAND), life=[5500.0, 8000.0, 11000.0],
+        life_regen=[18.0, 36.0, 60.0], dmg_min=[42.0, 72.0, 108.0],
+        dmg_max=[66.0, 110.0, 160.0], scale=1.3)
+
     def _gb_stats(t, il):
         m = {'n': 0.55, 'e': 0.78, 'l': 1.0}[t]
-        lv = {'n': 4, 'e': 6, 'l': 8}[t]
         r = lambda v: round(v * m, 1)
         return {
             **_bmp(t),
-            'itemSkillName': (S, _SK_MELINOE_BLOODBOIL), 'itemSkillLevel': (I, lv),
-            'itemSkillAutoController': (S, _AC_ONHIT),
+            # manual-cast summon grant (Skill_SpawnPet): NO itemSkillAutoController
+            # (the D19/D21 manual-cast law); itemSkillLevel 1/2/3 within the summon
+            # skill's maxLevel 3.
+            'itemSkillName': (S, _GB_SUMMON), 'itemSkillLevel': (I, {'n': 1, 'e': 2, 'l': 3}[t]),
             'augmentSkillName1': (S, _SK_COLDAURA), 'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
             'augmentSkillName2': (S, _SK_RAVAGES_OF_TIME), 'augmentSkillLevel2': (I, {'n': 2, 'e': 3, 'l': 4}[t]),
-            'offensiveColdMin': (F, r(76.0)), 'offensiveColdMax': (F, r(124.0)),
-            'offensiveColdModifier': (F, r(25.0)),
-            'offensiveLifeMin': (F, r(85.0)), 'offensiveLifeMax': (F, r(133.0)),
-            'offensiveLifeModifier': (F, r(25.0)),
-            'offensiveLifeLeechMin': (F, r(90.0)), 'offensivePercentCurrentLifeMin': (F, r(8.0)),
-            'offensiveSlowColdMin': (F, r(48.0)), 'offensiveSlowColdDurationMin': (F, 3.0),
-            'characterLife': (F, r(240.0)), 'characterLifeModifier': (F, r(20.0)),
-            'characterDefensiveAbility': (F, r(90.0)),
-            'defensiveCold': (F, r(34.0)), 'defensiveLife': (F, r(34.0)),
-            'defensiveLifeLeech': (F, r(30.0)),
+            'offensiveColdMin': (F, r(60.0)), 'offensiveColdMax': (F, r(96.0)),
+            'offensiveColdModifier': (F, r(20.0)),
+            'offensiveLifeMin': (F, r(60.0)), 'offensiveLifeMax': (F, r(95.0)),
+            'offensiveLifeLeechMin': (F, r(50.0)), 'offensivePercentCurrentLifeMin': (F, r(5.0)),
+            'offensiveSlowColdMin': (F, r(35.0)), 'offensiveSlowColdDurationMin': (F, 2.5),
+            # cross-spec law: Ephialtes owns the fear NOVA; the Golden Bough soul
+            # keeps ONLY its fear STAT (the drowned dead make the living flee).
+            'offensiveFearMin': (F, {'n': 1.5, 'e': 2.0, 'l': 3.0}[t]),
+            'offensiveFearMax': (F, {'n': 2.5, 'e': 3.5, 'l': 5.0}[t]),
+            'characterLife': (F, r(220.0)), 'characterLifeModifier': (F, r(15.0)),
+            'characterDefensiveAbility': (F, r(80.0)),
+            'defensiveCold': (F, r(30.0)), 'defensiveLife': (F, r(30.0)),
+            'defensiveLifeLeech': (F, r(28.0)),
         }
     tiers = [{'diff': t, 'itemLevel': il, 'stats': _gb_stats(t, il)}
              for t, il in (('n', 48), ('e', 72), ('l', 100))]
@@ -14444,13 +14477,20 @@ def _create_goldenbough_boss(db, tags):
         'the drowned dead and come back across.')
     tags['tagSVCSoulFerryman'] = '{^F}Soul of the Unferried'
     tags['tagSVCSoulFerrymanDESC'] = (
-        'Charon became the toll he demands, and would ferry no one across. His '
-        'soul carries the cold of the deep and the patience of the drowned: every '
-        'wound the bearer opens drinks the life back out of the living.')
+        'Charon became the toll he demands, and would ferry no one across. Speak '
+        'his soul and the black water gives up one of its drowned to row at your '
+        'side, while the cold of the deep clings to every wound you open.')
+    tags['tagSVCSummonCharonOarsman'] = 'Raise a Drowned Oarsman'
+    tags['tagSVCSummonCharonOarsmanDESC'] = (
+        'Charon called the drowned out of the black water to row his boat. Speak '
+        'his soul and one rises for you, a spectral oarsman that fights and freezes '
+        'at your side until the cold of the Styx takes it back under.')
+    tags['tagSVCPetOarsman'] = 'Drowned Oarsman'
     print("  C2 Charon: 2-phase (Unferried [22/28/34k] -> risen giant [24/30/36k] "
           "Charon02, deathchill shroud, form-2 final-kill burst) + 2 oarsman "
           "escorts + pool/proxy/limit + hoard + THE GOLDEN BOUGH amulet (guaranteed) "
-          "+ S1 cold/vit soul (form2) + yard; tags set.")
+          "+ S2 ONE-SUMMON soul (raise a drowned oarsman, CharonGhost rig, manual-"
+          "cast, form2, 'ferryman' in _SUMMON_IDENTITY_ALLOW) + yard; tags set.")
 
 
 # ── C3: THE MNEMOPHAGE (Pools of Mnemosyne) ──────────────────────────────────
