@@ -55,7 +55,9 @@ import importlib
 #
 # NOTE: _smoke_example is the template/reference module. It is intentionally
 # NOT registered (it stays a copy-me template); see README S6.
-REGISTRY = []
+REGISTRY = [
+    'hunting_occult_ui',   # build37 backlog #35/#76: O/H mastery-screen UI fix
+]
 
 
 def registry_order_hash(names):
