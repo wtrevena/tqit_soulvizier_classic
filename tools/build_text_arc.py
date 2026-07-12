@@ -45,6 +45,30 @@ OCCULT_FIX_TAGS = {
     'tagMasteryDescription05': "The Occultist tempers an assassin's craft with powers drawn from the dark: envenomed blades and flurries of knives for the single kill, and torn-open breaches that grasp, drain, and wither whole packs. Those who walk deepest into the shadow no longer fight alone, for darklings and the shadow stalker answer their call.",
     'tagSkillName050': 'Occult Mastery',
     'tagNewSkill321DESC': 'Infusing the Breach with shadow energy, the Occultist reaches through and grasps enemies, immobilizing them as dark forces sap their life force.',
+    # ── B37 Hunting/Occult improvement wave (Will-approved 2026-07-12) ────────
+    # Single-definition tags for the H/O wave (DB repoints live in
+    # tools/patches/hunting_occult_improvements.py). Emitted once from the fix
+    # block; the SV per-file pass skips these keys (they are in _FIX_BLOCK_TAGS),
+    # so the golden gate + duplicate-tag gate stay happy. Golden drift on the
+    # tag definitions is waived per-key in occult_hunting_golden.json. No em dashes.
+    #
+    # H2: the two Hunting nodes both labelled "Eviscerate". The SQUARE-icon attack
+    # (drxtakedown_eviscerate) keeps "Eviscerate" (tagSkillName090) and gains the
+    # description it was missing; the CIRCLE-icon control spin (drxspear_tempest)
+    # is renamed "Tempest" (its own record name; its modifier one row up is already
+    # "Flayer") and gains a description that reads as the wide fear/confuse/slow
+    # control it is - "more like a buff" per Will.
+    'tagSVCTempestNAME': 'Tempest',
+    'tagSVCTempestDESC': 'A whirling spear storm lashes every enemy around you, filling them with fear, clouding their minds, and slowing their attacks. It is meant to break a crowd apart and hold it, not to kill. ^y(Spear)',
+    'tagSVCEviscerateDESC': 'A savage spear cleave that carves through up to three enemies at once, tearing open deep wounds that bleed them for several seconds. ^y(Spear)',
+    # H3: two SV authoring errors where the tooltip describes the wrong skill (a
+    # "Quillvine grove"). Rewritten to match what the skills actually do.
+    'tagSkillDescription171': 'Each shot splinters into a spread of fragmenting arrows that rake the target and nearby foes, adding piercing damage and leaving them bleeding. ^y(Bow)',
+    'tagSkillDescription172': 'Trains a barbed strike into your attacks: a chance for each hit to gouge deeper, piercing armor and opening a heavy bleeding wound. ^y(Spear or Bow)',
+    # H6: Nether Strike is flagged usable with Bow (the record sets Bow=1) but its
+    # tooltip read "^y(All Melee Weapons)", hiding the blink-shot from bow builds.
+    # Only the weapon line changes; amgoz's body copy is kept verbatim.
+    'tagDRXlethalstrikeDESC': 'Speed through the shadow realm unseen to deliver an attack with terrifying momentum that will greatly multiply damage and penetration. ^y(All Melee Weapons or Bow)',
 }
 
 # Non-Occult display-string corrections, same single-definition mechanism as
