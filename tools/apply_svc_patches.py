@@ -8124,16 +8124,23 @@ def _apply_soul_naming_standard(db, tags):
     (1) apply the curated explicit table (verifier-picked names for titled
     monsters / dev souls + the limoslifeater/xeiwang SV-name RESTORES); (2)
     auto-transform any remaining OURS-PATH soul whose authored name is still
-    '{^F}Soul of X' -> '{^F}X Soul' (covers souls outside the curated list, e.g.
-    tagSVCSoulBloodShaman, and any F1 de-wire newly generates). SV-ORIGINAL-PATH
-    souls are NEVER auto-transformed (law #2 - keep/restore amgoz1's name).
+    '{^F}Soul of X' -> '{^F}X Soul' (covers souls outside the curated list and
+    any F1 de-wire newly generates). SV-ORIGINAL-PATH souls are NEVER auto-
+    transformed (law #2 - keep/restore amgoz1's name).
+
+    A9 (build36 AMENDMENT): souls in _HAND_DESIGNED_SOUL_TAGS are ALSO exempt from
+    the auto-transform (not just the F6 gate). Without this, the auto-transform
+    flattened the deliberate hand-authored evocative "{^F}Soul of X" marquee names
+    (Anapaest, Tantalus/Insatiable, Ferryman/Unferried, Mnemophage, WakingDread,
+    BloodShaman) to "{^F}X Soul" BEFORE the gate saw them - defeating the whole
+    point of the whitelist. Now the hand-authored evocative names WIN end-to-end.
     Returns (curated_count, auto_count)."""
     n_curated = sum(1 for k in _SOUL_NAME_STANDARD if k in tags)
     tags.update(_SOUL_NAME_STANDARD)
     tag_sv = _soul_tag_sv_map(db, tags)
     n_auto = 0
     for t, is_sv in tag_sv.items():
-        if is_sv or t in _SOUL_NAME_STANDARD:
+        if is_sv or t in _SOUL_NAME_STANDARD or t in _HAND_DESIGNED_SOUL_TAGS:
             continue
         new = _standardize_soul_of(tags.get(t, ''))
         if new and new != tags.get(t):
