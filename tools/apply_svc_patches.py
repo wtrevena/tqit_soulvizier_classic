@@ -15390,7 +15390,7 @@ def _apply_content_uplift_picks(db, tags):
               "added as name5 @ weight 4 to q_obs_warband.")
 
 
-def apply_all_extended_patches(db, force_full_drops=True):
+def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     """Run all extended patches. Call after create_uber_souls.
 
     force_full_drops: when True (the current default for testing builds),
@@ -15833,6 +15833,38 @@ def apply_all_extended_patches(db, force_full_drops=True):
 
     _enslaver_touched = _sweep_inject_roaming_rare(db)
     _verify_roaming_sweep(db, _enslaver_touched)
+
+    # ── patches-registry BOOTSTRAP (build37) ─────────────────────────────────
+    # The finalization + fail-loud GATE BATTERY that used to run inline here was
+    # RELOCATED (with ZERO logic change) into run_registry_gates() just below,
+    # so build_svc_database.py can run the patches-registry content modules
+    # AFTER the monolith's content and BEFORE the gates - i.e. every gate below
+    # guards every module, nothing escapes. Direct callers of
+    # apply_all_extended_patches() still get a fully gated db by default
+    # (_defer_gates=False); build_svc_database.py passes _defer_gates=True, runs
+    # the registry, then calls run_registry_gates() itself.
+    if not _defer_gates:
+        run_registry_gates(db, tags, force_full_drops=force_full_drops)
+    return tags
+
+
+def run_registry_gates(db, tags, force_full_drops=True):
+    """Relocated finalization + fail-loud GATE BATTERY (patches-registry
+    bootstrap, build37).
+
+    This is the VERBATIM tail of apply_all_extended_patches - the build29/30/36
+    finalization fixes, the pet/boss/soul/portal/MP invariant gates, the soul
+    drop-rate forcer, and the soul-desc-itemtext wiring - only its LOCATION
+    moved. build_svc_database.py calls it AFTER the monolith content AND every
+    patches-registry module, so it runs over the FINAL assembled db: every
+    invariant that guarded the monolith now guards every module too.
+
+    Args mirror apply_all_extended_patches: db is the ArzDatabase, tags the
+    Text-tag dict (mutated in place), force_full_drops selects 100% testing vs
+    tuned release soul-drop rates. _SUMMON_PET_BUILDS (module global) is the
+    per-run pet registry populated during content authoring and read by the pet
+    gates. Returns tags.
+    """
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
