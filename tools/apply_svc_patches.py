@@ -13367,6 +13367,19 @@ def _create_obsidian_roulette(db, tags):
         sf(W, 'chanceToEquipFinger2', 0.0)          # defensive: never a soul
         sf(W, 'charLevel', list(_OBS_BAND))
         sf(W, 'scale', 0.3)                          # miniature (keeps blooddragon_puke)
+        # blooddragon01 carries specialAttack3/4 = blooddragon_freezingbreath/
+        # bloodshower whose .dbr do NOT resolve in the mod arz (dangling refs ->
+        # C-RES-DBR-1). Delete every specialAttack* slot (never blank to '', per
+        # B-TOXEUS-2), then re-point blooddragon_puke as the sole special so the
+        # whelp still breathes fire.
+        _wff = db.get_fields(W) or {}
+        for _wk in list(_wff):
+            if _wk.split('###')[0].startswith('specialAttack'):
+                del _wff[_wk]
+        _PUKE = r'records\drxcreatures\blooddragons\skills\blooddragon_puke.dbr'
+        sf(W, 'attackSkillName', _PUKE)
+        sf(W, 'specialAttackSkillName', _PUKE)
+        sf(W, 'specialAttackChance', 60.0)
         db._modified.add(W)
         db.clone_record(_OBS_WHELP_SUMMON_DONOR, _OBS_SK_SARKOTH_SUMMONWHELPS)
         SW = _OBS_SK_SARKOTH_SUMMONWHELPS
@@ -15839,7 +15852,14 @@ _BM_COLDBREATH = r'records\skills\svc\svc_broodmother_coldbreath.dbr'
 _BM_LASTBROOD_DON = r'records\skills\monster skills\ondeath_spawnskeleton.dbr'
 _BM_LASTBROOD = r'records\skills\svc\svc_broodnest_lastbrood.dbr'
 _BM_COMMON_WYRM = r'records\creature\monster\sepulchralwyrm\um_sepulchralwyrm_common_31.dbr'
-_OBS_WARBAND = r'records\drxmap\proxy\pools\q_obs_warband.dbr'
+# A8/B1.3 FIX (build36 AMENDMENT): the Kravmoloch content builder used to define
+# `_OBS_WARBAND = <q_obs_warband pool path>` HERE, which SHADOWED the escort-roster
+# LIST `_OBS_WARBAND` (defined earlier) at module scope. Since _create_obsidian_
+# roulette + _create_test_yard run at call time, they saw the STRING and iterated its
+# characters -> garbage warband champions (a latent bug introduced by the content
+# wave; Will tested the pre-content deployed build where the list still worked). The
+# colliding def is REMOVED; the Kravmoloch builder below now references the identical
+# existing `_OBS_WARBAND_POOL`, so the escort LIST is un-shadowed and B1.3's swap works.
 _KV_DONOR = r'records\creature\monster\skeleton\um_gorrahk_99.dbr'
 _KV_BOSS = r'records\creature\monster\skeleton\um_kravmoloch_99.dbr'
 _KV_SUMMON_DON = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
@@ -15927,7 +15947,7 @@ def _apply_content_uplift_picks(db, tags):
         print("  C7 Broodmother death crescendo: ondeath frostnova + last-brood spawn.")
 
     # ── Obsidian Halls fifth pocket: Kravmoloch, Keeper of the Wheel (jackpot). ──
-    if db.has_record(_OBS_WARBAND) and db.has_record(_KV_DONOR):
+    if db.has_record(_OBS_WARBAND_POOL) and db.has_record(_KV_DONOR):
         db.clone_record(_KV_DONOR, _KV_BOSS)
         sf(_KV_BOSS, 'monsterClassification', 'Boss')
         sf(_KV_BOSS, 'description', 'tagSVCMonsterKravmoloch')
@@ -15983,9 +16003,9 @@ def _apply_content_uplift_picks(db, tags):
         # pool's spawn-eligibility is already guarded by the 4 corner proxies
         # (main=Ilsevar); Kravmoloch L74 fits their [1..110] limit, so it is
         # reliably spawnable at name5 without a separate registration.
-        sf(_OBS_WARBAND, 'name5', _KV_BOSS)
-        sf(_OBS_WARBAND, 'weight5', 4)
-        db._modified.add(_OBS_WARBAND)
+        sf(_OBS_WARBAND_POOL, 'name5', _KV_BOSS)
+        sf(_OBS_WARBAND_POOL, 'weight5', 4)
+        db._modified.add(_OBS_WARBAND_POOL)
         tags['tagSVCMonsterKravmoloch'] = '{^r}Kravmoloch, Keeper of the Wheel'
         tags['tagSVCSoulKravmoloch'] = '{^F}Kravmoloch, Keeper of the Wheel Soul'
         tags['tagSVCSoulKravmolochDESC'] = (
