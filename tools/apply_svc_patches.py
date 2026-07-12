@@ -15843,6 +15843,15 @@ def apply_all_extended_patches(db, force_full_drops=True):
     # F5 (build36): Bloodcrow Flame Nova cd + Flash Powder rework (both lives) +
     # droolbog repoint. Before the castability wave so any pcsafe clone inherits it.
     _apply_flashpowder_rework(db)
+    # B37 (2026-07-12): Will-approved Hunting/Occult improvement wave. Module-
+    # scoped for the patches registry (tools/patches/hunting_occult_improvements.py,
+    # contract MODULE_NAME + apply(db, tags)); invoked directly here until the
+    # registry (feat/patches-registry) lands. Golden drift is waived per-field in
+    # occult_hunting_golden.json ("Will-authorized H/O improvement wave 2026-07-12"),
+    # the same mechanism the F5 rework above uses. The wave's TEXT (renamed/new/
+    # corrected skill descriptions) is authored in build_text_arc.OCCULT_FIX_TAGS.
+    from patches.hunting_occult_improvements import apply as _apply_ho_improvements
+    _apply_ho_improvements(db, tags)
     # F3 (build36): de-filler Ground Smash from every non-roster soul BEFORE the
     # castability wave, so camelbane's replacement tremor rides the pcsafe clone.
     _defiller_ground_smash(db)
