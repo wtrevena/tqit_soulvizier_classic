@@ -441,8 +441,14 @@ def _enrich_general_souls(db):
     _downside(db, 'dysnomion', 'characterDefensiveAbility', {'n': -25.0, 'e': -35.0, 'l': -45.0})
     # makaria (poison): the blessed-death soul saps the bearer's own vigor
     _downside(db, 'makaria', 'characterLife', {'n': -90.0, 'e': -130.0, 'l': -180.0})
-    # trophonios (flame): the oracle's fire runs hot -> the bearer burns more easily
-    _downside(db, 'trophonios', 'defensiveFire', {'n': -8.0, 'e': -10.0, 'l': -12.0})
+    # trophonios (flame): the oracle's fire runs hot and burns the bearer's own
+    # energy. NOTE the shipping soul ALREADY carries +fire resist (defensiveFire =
+    # 32/41/51 n/e/l, byte-verified) - writing a negative onto that field would
+    # OVERWRITE the signature upside, not ADD a downside (spec 5.1: "touch ONLY the
+    # one ADDED downside field", keep the upsides intact). So the downside rides
+    # characterMana (max energy; base 0.0 on the record -> purely additive), the
+    # spec's own "-characterEnergy" alternative. The +fire-res upside is preserved.
+    _downside(db, 'trophonios', 'characterMana', {'n': -40.0, 'e': -60.0, 'l': -80.0})
     print("  8. general-soul enrichment: light amgoz downsides on dysnomion/makaria/"
           "trophonios (name/skill/augments untouched)")
 
