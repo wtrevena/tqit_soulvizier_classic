@@ -1,4 +1,39 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🧪 **BUILD37-DEV GATE RECORD (2026-07-13, main HEAD `46bf0f2`) - FIRST FULL-REGISTRY DB BUILD GREEN + TESTHUB
+> map + Text + Quests.** First full-registry build after the gate-fix (relocated `skill_quality` diversity gate to a
+> post-finalization `run_registry_verifies` phase; 2 HC souls added to ALLOW). Everything staged to `work/` + `local/`,
+> NOT deployed; canonical build36a stays LIVE.
+> **ARTIFACT MD5s:** arz `56d6db22` (55,334,381 B), Text.arc `8c7229db` (377,150 B), Quests.arc `838bdc3a`
+> (194,581 B), TESTHUB Levels `841c56cd` (688,688,154 B). Canonical `Levels_merged.arc` UNCHANGED `60a62880`
+> (688,682,781 B; NOT rebuilt). Baseline for the diff: `baseline_build36.arz` `63ca7cf8` (== build36a canonical arz).
+> **DB BUILD** (PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1): exit 0; registry 9 modules order `7ed29402a38d`; RELOCATED
+> post-finalization diversity gate GREEN (8 family skills roster-locked; HC `ringoflightning`+`melinoe_bloodboil` now
+> rostered); pet gates PET-STAT-MIRROR/PET-GEAR-PARITY GREEN; internal contracts 0 P0/0 P1 (112 native P2); golden
+> Occult/Hunting PASS.
+> **RECORD-DIFF AUDIT** (baseline vs new arz): 124 ADDED / 0 REMOVED / 1394 CHANGED, ZERO unexplained, 0 clobbers.
+> ADDED = registry bosses (neferkha/toxeus_suite/polis_vault/diadochi/four_generals) + 17 Helos-hub quest records.
+> CHANGED breakdown: 1224 spawn-pool records = BL-ENSLAVER-SPAWNS `_EN_SWEEP_K` 60->300 (existing weights x5) +
+> toxeus_suite Endless-Hunt hades-only sweep (345 additive `um_toxeus_hunt_99` inserts at weight 1, old=None); 125
+> souls = skill_quality de-filler/roster reassignment; 21 UI = hunting_occult_ui all-8-mastery shape law; 6 bloodhound
+> `dyingFxPak` + enslaver smoke FX = lane-A; remainder = H/O improvement wave. (`um_toxeus_enslaver_99` present in
+> both builds, unchanged.)
+> **TEXT** golden A7 guard PASS (41 waived, 0 other); duplicate-tag gate OK; 351 uber tags added; `validate_tags`
+> PASS (all 308 referenced mod tags + 351 authoritative tags resolve in Text.arc).
+> **QUESTS** exactly 17 Helos-hub boat-dialog triggers appended to `sv_commonmechanics.qst`; entry-diff vs build36a
+> `56acee66` = ONLY `sv_commonmechanics.qst` changed (107 entries, 0 added/removed); quest-record contract PASS
+> (107 loadable); world01.map QUESTS section byte-identical canonical==TESTHUB (`226461e7`, 255 entries, NO new
+> registration, 256-window intact).
+> **TESTHUB MAP** (SVC_TEST_HUB=1 -> `Levels_merged_TESTHUB.arc`, canonical untouched): rig NPC into Random09A;
+> walk-through de-place M2 72inst/33lvl; `gate_travel_npc_invariants` T1-T6 PASS (17 hub records map==quests==arz,
+> each 1x TESTHUB / 0x canonical, 0 walk-throughs); contracts map 0 P0/0 P1 (3 native P2); contracts
+> souls/summons/resources 0 P0/0 P1 (4911 native P2).
+> **INPUTS RESTORED** (gitignored build deps absent on machine): `reference_mods/SVAERA_customquest/Resources/
+> Quests.arc` (from SVAERA workshop item 2076433374, `b786666c`) + `upstream/soulvizier_098i/Resources/XPack/
+> Quests.arc` (from in-repo `third_party/soulvizier098i.zip`, `a1b8020b`).
+> **OBSERVATIONS (non-blocking, for the tuning lane):** (1) pcsafe `earthfury_ring` `skillCooldownTime` is 5.0 in
+> build36a and 16.0 in this build (opposite the A4 "16->5" build-log narrative; sanctioned skill-domain change,
+> worth a human glance). (2) stale "x60" comment in `toxeus_suite._sweep_inject_legendary_stalker` (the Enslaver
+> monolith sweep is now x300, not x60; cosmetic).
 > ⛴️ **BUILD36a P0 HOTFIX SHIPPED (2026-07-12) - walk-through travel portals REMOVED (Will TRAVEL LAW).**
 > Fix for the LIVE Steam breakage (item 3759792705: "walk south in Helos -> teleported to Garden of Merchants,
 > no way back"). Every walk-through/proximity teleport we authored is stripped from the canonical map; ALL
