@@ -1,5 +1,36 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD37-dev DEPLOYED TO DEV (2026-07-13) - TESTHUB traveler hub + coupled arz/Text/Quests; STEAM UNTOUCHED
+> **The DEV entry `SoulvizierClassicDEV` now runs build37-dev** (local TESTHUB build for Will's
+> Helos-traveler-hub tour before anything more ships to Steam). All 4 coupled artifacts were copied to
+> `CustomMaps/SoulvizierClassicDEV` and md5-verified on disk (source + destination both hashed):
+> - `Resources/Levels.arc` = **`841c56cd2b6b8a87209327cb02529d23`** (688,688,154 B): TESTHUB map
+>   (`SVC_TEST_HUB=1`), 17 hub-gated traveler/return NPCs. Canonical `local/Levels_merged.arc` UNCHANGED
+>   (`60a62880`) - never rebuilt.
+> - `Database/SoulvizierClassicDEV.arz` = **`56d6db221466eb991804f001aa1a83a5`** (55,334,381 B): first
+>   full-registry DB build (9 modules, order hash `7ed29402a38d`) - registry bosses
+>   (neferkha/toxeus_suite/polis_vault/diadochi/four_generals) + skill_quality de-filler + H/O
+>   improvements + lane-A (BL-ENSLAVER-SPAWNS / smoke-FX / bloodhound). Record-diff vs build36 arz =
+>   124 ADDED / 0 REMOVED / 1394 CHANGED, 0 unexplained, 0 clobbers.
+> - `Resources/Text.arc` = **`8c7229db978fd5ecc24a94053c30306e`** (377,150 B): golden A7 guard PASS
+>   (41 waived / 0 other); validate_tags PASS.
+> - `Resources/Quests.arc` = **`838bdc3a3716b5e9028c076317e99608`** (194,581 B): exactly 17 Helos-hub
+>   travel triggers appended to `sv_commonmechanics.qst`; entry-diff vs build36a = ONLY that file.
+>   (Levels+Quests couple: the hub NPCs ride the map, their dialog triggers ride Quests; the 256-slot
+>   QUESTS window parity is preserved.)
+> - **STEAM = build36a canonical, UNTOUCHED** (Workshop item 3759792705: arz `63ca7cf8` /
+>   Levels `60a62880` / Text `2af4ce38` / Quests `56acee66`). TESTHUB is LOCAL-ONLY; never uploaded.
+> - **To see it, Will only needs to fully quit + restart TQ** (Steam was already restarted today;
+>   TQ was closed at deploy time). Tour: `docs/WILL_TEST_GUIDE.md` HELOS TRAVELER HUB section.
+> - **Rollback to build36a on DEV:** copy `local/Levels_merged.arc` (`60a62880`) -> DEV
+>   `Resources/Levels.arc`; rebuild the arz from git tag `build36` (or restore from `local/db_backups/`);
+>   `local/Text_deployed_prev.arc` (`2af4ce38`) + `local/Quests_deployed_prev.arc` (`56acee66`) -> DEV
+>   Text/Quests. Tag `build37-dev`; gate record at `efc1933` (`docs/BACKLOG.md`).
+> - **Two non-blocking tuning-lane notes** (not gate failures, for a human glance): (1) pcsafe
+>   `earthfury_ring` `skillCooldownTime` is 16.0 in this build vs 5.0 in build36a (opposite the A4
+>   "16->5" build-log narrative); (2) stale "x60" comment in
+>   `toxeus_suite._sweep_inject_legendary_stalker` (the Enslaver monolith sweep is now x300).
+
 > ## BUILD36a P0 HOTFIX (2026-07-12) - walk-through travel portals REMOVED; NPC-dialog travel only
 > **LIVE STEAM breakage fixed** (item 3759792705): "cant walk south in Helos - teleported to Garden of Merchants with no way back." Per Will's TRAVEL LAW every walk-through/proximity teleport we authored is stripped from the canonical map; ALL cross-area travel now routes through the NPC boat-dialog (Helos portal-master out; each area's `svc_testhub_return` NPC or an SV rift shrine back). Map tooling only (`tools/build_section_surgery.py`) - **arz/Text/Quests UNCHANGED from build36** (the return-NPC record + its dialog already shipped in the build36 arz/Quests, inert until the canonical map now places the NPC).
 > - **Fix commit `0f08297`; tag `build36a`.** Canonical `Levels_merged.arc` md5 **`60a628807c1746e7bbde14946de62107`** (was `b42be44f`; 688,682,781 B). arz **63ca7cf8** / Text **2af4ce38** / Quests **56acee66** = build36, reused byte-identical (no DB/Quests rebuild).

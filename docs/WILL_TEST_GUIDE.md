@@ -1,10 +1,20 @@
-# WILL'S TEST GUIDE - build36 bosses + SV areas (2026-07-12; Helos traveler hub added 2026-07-13)
+# WILL'S TEST GUIDE - build37-dev bosses + SV areas (Helos traveler hub; deployed to DEV 2026-07-13)
+
+> ## NOW LIVE ON DEV: build37-dev (2026-07-13)
+> The **SoulvizierClassicDEV** entry now runs **build37-dev** - the TESTHUB map with the full **Helos
+> traveler hub** (17 talk-to-travel NPCs / returns) over the first full-registry database (the build36
+> uber bosses PLUS the new registry bosses and the Occult/Hunting improvements). **Steam is untouched**
+> (still build36a canonical - this hub is DEV-only and is never uploaded). Deployed + md5-verified on
+> disk: `Levels.arc` `841c56cd`, `arz` `56d6db22`, `Text.arc` `8c7229db`, `Quests.arc` `838bdc3a`.
+> **To load it: fully quit TQ if it is open, then start TQ fresh** (Steam was already restarted today,
+> so no Steam restart is needed; the deploy landed while TQ was closed).
 
 > Fastest test path: play the **DEV entry** (Custom Quest -> SoulvizierClassicDEV). Its TESTHUB
 > map variant adds LOCAL-ONLY **traveler NPCs** (talk-to-travel, boat-dialog) - a **HELOS TRAVELER
 > HUB** with one named person per test target (see the next section) plus the **monster test yard**
 > in Hidden Valley where the custom bosses spawn at 100% for point-blank testing. The Steam build
-> has none of that (canonical map only). Kill TQ + restart Steam before testing (files lock).
+> has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
+> files (Steam was already restarted today, so no Steam restart is needed).
 
 ## HELOS TRAVELER HUB (DEV / TESTHUB map only) - one traveler per area
 
