@@ -86,6 +86,8 @@ REGISTRY = [
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
     'hunting_occult_improvements',  # build37: Will-approved H/O skill edits; runs late (was the
                                     # finalization-phase interim call) so it wins any collision
+    'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
+                            # gameengine (SV's pre-AE record lacks them; touches only gameengine)
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
