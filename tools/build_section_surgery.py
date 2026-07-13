@@ -2124,6 +2124,62 @@ UBER_LVL_KEY      = CRYPT_FLOOR1_LEVEL_KEY                                 # cry
 SPARTA_LVL_KEY    = 'levels/world/greece/minidungeons/spartacryptlevel2.lvl'  # SV-only v0e
 BOSSARENA_LVL_KEY = 'levels/world/bossarena/boss_arena.lvl'               # SV-only v0e
 
+# ── HELOS TRAVELER HUB (build37, Will 2026-07-13: "put teleport guys in helos, one person each") ─
+# 11 named per-area OUTBOUND travelers in the Helos plaza + 6 area-RETURN NPCs (one per new boss/
+# warband area with no existing return). Each is a DISTINCT record placed EXACTLY ONCE (WARDEN LAW:
+# a boat-dialog record placed in >1 level binds its menu to one entity and the rest go mute).
+# Records: apply_svc_patches _create_helos_traveler_hub; dialog: build_quest_files
+# _add_helos_traveler_hub_travel. TESTHUB-ONLY (folded into INJECT_SPECS by merge_hub_into_inject_
+# specs when SVC_TEST_HUB=1) -> canonical Levels.arc stays byte-identical (the canonical map places
+# NONE of these). This SUPERSEDES the single 7-port svc_testhub_master_helos: its Helos PLACEMENT
+# is retired below (record + Quests trigger kept, now inert); the cave master stays. flags=0,
+# identity rot, no 0x14 (the proven boat-dialog NPC byte-shape, same as svc_testhub_return).
+HELOS_TRAV_GARDEN_DBR     = b'records\\quests\\svc_helos_trav_garden.dbr'
+HELOS_TRAV_SECRET_DBR     = b'records\\quests\\svc_helos_trav_secret.dbr'
+HELOS_TRAV_SPARTA_DBR     = b'records\\quests\\svc_helos_trav_sparta.dbr'
+HELOS_TRAV_UBER_DBR       = b'records\\quests\\svc_helos_trav_uber.dbr'
+HELOS_TRAV_BOSSARENA_DBR  = b'records\\quests\\svc_helos_trav_bossarena.dbr'
+HELOS_TRAV_WARBAND_DBR    = b'records\\quests\\svc_helos_trav_warband.dbr'
+HELOS_TRAV_DORUS_DBR      = b'records\\quests\\svc_helos_trav_dorus.dbr'
+HELOS_TRAV_TANTALUS_DBR   = b'records\\quests\\svc_helos_trav_tantalus.dbr'
+HELOS_TRAV_CHARON_DBR     = b'records\\quests\\svc_helos_trav_charon.dbr'
+HELOS_TRAV_MNEMOPHAGE_DBR = b'records\\quests\\svc_helos_trav_mnemophage.dbr'
+HELOS_TRAV_EPHIALTES_DBR  = b'records\\quests\\svc_helos_trav_ephialtes.dbr'
+AREA_RETURN_DORUS_DBR      = b'records\\quests\\svc_area_return_dorus.dbr'
+AREA_RETURN_TANTALUS_DBR   = b'records\\quests\\svc_area_return_tantalus.dbr'
+AREA_RETURN_CHARON_DBR     = b'records\\quests\\svc_area_return_charon.dbr'
+AREA_RETURN_MNEMOPHAGE_DBR = b'records\\quests\\svc_area_return_mnemophage.dbr'
+AREA_RETURN_EPHIALTES_DBR  = b'records\\quests\\svc_area_return_ephialtes.dbr'
+AREA_RETURN_WARBAND_DBR    = b'records\\quests\\svc_area_return_warband.dbr'
+# The 11 Helos plaza placements: two rows S of the quest NPC (Starting_PortalMan @ 68.9,188.3),
+# the shrine (74.2,194.7) and canonical Almyros (76.5,189.5) - all kept >=5u clear. floor Y=0.6.
+# front row Z=181.5 = the 6 established areas; back row Z=184.0 = the 5 IT superbosses. ALL spots
+# surveyed d<=0.14u / clr 100% all 3 tilesets / comp#1 (survey_uberboss_spots.py 2026-07-13).
+HELOS_HUB_PLAZA_SPECS = [
+    (HELOS_TRAV_GARDEN_DBR,     66.5, 0.6, 181.5),
+    (HELOS_TRAV_SECRET_DBR,     69.0, 0.6, 181.5),
+    (HELOS_TRAV_SPARTA_DBR,     71.5, 0.6, 181.5),
+    (HELOS_TRAV_UBER_DBR,       74.0, 0.6, 181.5),
+    (HELOS_TRAV_BOSSARENA_DBR,  76.5, 0.6, 181.5),
+    (HELOS_TRAV_WARBAND_DBR,    79.0, 0.6, 181.5),
+    (HELOS_TRAV_DORUS_DBR,      71.5, 0.6, 184.0),
+    (HELOS_TRAV_TANTALUS_DBR,   74.0, 0.6, 184.0),
+    (HELOS_TRAV_CHARON_DBR,     76.5, 0.6, 184.0),
+    (HELOS_TRAV_MNEMOPHAGE_DBR, 79.0, 0.6, 184.0),
+    (HELOS_TRAV_EPHIALTES_DBR,  81.5, 0.6, 184.0),
+]
+# The 6 area-return placements: a few u off each new landing (so the player sees the return NPC on
+# arrival), on the boss host levels (reuse the UBERBOSS host-key constants) + the warband cave.
+# floor Y = the landing floor. ALL spots surveyed d<=0.14u / clr 100% / comp#1 (2026-07-13).
+HELOS_HUB_RETURN_SPECS = [
+    (DORUS_HOST_KEY,       (AREA_RETURN_DORUS_DBR,      49.0,   1.2,  63.0)),   # ~4.2u off (52,60) landing
+    (TANTALUS_HOST_KEY,    (AREA_RETURN_TANTALUS_DBR,   50.0, -15.2, 116.0)),   # ~4.4u off (54,114.3)
+    (GOLDENBOUGH_HOST_KEY, (AREA_RETURN_CHARON_DBR,    185.0,  -7.0,  48.0)),   # ~3.2u off (187.9,46.9)
+    (MNEMOPHAGE_HOST_KEY,  (AREA_RETURN_MNEMOPHAGE_DBR, 45.0,   3.0,  68.0)),   # ~3.6u off (43,71)
+    (DREAD_HOST_KEY,       (AREA_RETURN_EPHIALTES_DBR,  19.0,   3.2,  38.0)),   # ~4.4u off (15.9,34.7)
+    (EN_WARBAND_HOST_KEY,  (AREA_RETURN_WARBAND_DBR,    24.0,  10.0,  -6.5)),   # ~2.9u off (21.1,-6.5)
+]
+
 
 def build_hub_extra_specs():
     """TEST-HUB non-portal entity additions (level_key -> [specs]). Folded into INJECT_SPECS ONLY
@@ -2143,7 +2199,7 @@ def build_hub_extra_specs():
         svaera_plus_portals.py (random09a is rebuilt from the SV blood-cave blob there; the normal
         loop would inject into the discarded AE blob). It still lives in this dict as the single
         source of truth for the coord."""
-    return {
+    specs = {
         # M1 (build36): RESPACED to de-crowd (Will: "pets too crowded"). The old layout packed
         # 9 groups into ~1-11u clusters (the 3 gauntlet bosses within ~11u; the 4 Obsidian within
         # ~11u). This spreads all 10 groups (the 9 build33/35 residents + the NEW q_yard_dorus)
@@ -2169,18 +2225,13 @@ def build_hub_extra_specs():
             (Q_YARD_OBS_ILSEVAR_DBR,   71.0,   0.0, 129.0),   # C   clr@2.5=91%
             (Q_YARD_WYRM_DBR,          55.0,  17.6, 157.0),   # D horde  clr@2.5=100%
         ],
-        # -- PORTAL RIG: 2 HUB masters (build36 warden split: each a distinct, singly-placed record) --
-        # Helos plaza: placed at local (72.0,0.8,184.0), SW of the canonical Almyros NPC
-        # (76.5,0.6,189.5), 7.1u away - clear click-separation for H5 insurance (the record split is
-        # the REAL muteness fix; the coord only needs both NPCs individually clickable).
-        # R5 MOVE (was (64.5,0.8,189.5)): once the survey FRAME BUG (a fixed 16u 0x05-vs-0x0b offset)
-        # was corrected, (64.5,189.5) read on-mesh but NEAR A WALL - clr 64/51/42% (N/E/L) at a 3.0u
-        # disc (the R3 "100%" was the raw-frame artifact). RE-SURVEYED on the built map with the
-        # corrected-frame tool: (72.0,184.0) reads d=0.14u / clr 100% in ALL 3 tilesets, comp#1 (the
-        # main reachable component). Points at the split ..._helos record. TESTHUB-only.
-        HELOS_HOST_KEY: [
-            (SVC_TESTHUB_MASTER_HELOS_DBR, 72.0, 0.8, 184.0),
-        ],
+        # -- HELOS TRAVELER HUB (build37, Will 2026-07-13, "one person each") : 11 named travelers --
+        # SUPERSEDES the single 7-port svc_testhub_master_helos: its Helos PLACEMENT is RETIRED here
+        # (the (72.0,0.8,184.0) spot is now the dorus traveler). The record + its Quests trigger stay
+        # (inert - no placement); the blood-cave 7-port master (..._cave, below) is unchanged. The 11
+        # travelers stand in two rows in the plaza; all coords surveyed d<=0.14u / clr 100% all 3
+        # tilesets / comp#1 (survey_uberboss_spots.py 2026-07-13). See HELOS_HUB_PLAZA_SPECS.
+        HELOS_HOST_KEY: list(HELOS_HUB_PLAZA_SPECS),
         # Blood-cave mouth (random09a SV swap blob): the spec's cave-mouth approach band; world
         # (6011,19,3288); comp 0 (same as the cave-mouth entry corridor AND the return landing at
         # (6018,19,3293)); 8.6u from that return landing so the repeated test loop barely walks;
@@ -2204,6 +2255,16 @@ def build_hub_extra_specs():
             (SVC_TESTHUB_RETURN_DBR, 131.0, 0.0, 40.0),
         ],
     }
+    # Helos-hub area RETURN NPCs (build37): append one distinct return record per new boss/warband
+    # area. Appended (not assigned) because a boss host level already carries its q_*_lone proxy in
+    # the base INJECT_SPECS (via UBERBOSS_SPECS); merge_hub_into_inject_specs folds this on top, so
+    # the TESTHUB blob gets [boss proxy, return NPC]. None of these keys is R09_LVL_KEY, so all flow
+    # through the normal fold (the warband host drxfirstxistion_connection is a normal SV-only v0e
+    # level, not the swapped random09a). All coords surveyed on-mesh (see HELOS_HUB_RETURN_SPECS).
+    for _rk, _rspec in HELOS_HUB_RETURN_SPECS:
+        specs.setdefault(_rk, [])
+        specs[_rk] = list(specs[_rk]) + [_rspec]
+    return specs
 
 
 def patch_respawn_group_position(groups_data, shrine_uid, new_xyz, level_name=''):
