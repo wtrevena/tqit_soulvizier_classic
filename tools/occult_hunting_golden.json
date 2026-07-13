@@ -174392,7 +174392,6 @@
     }
   },
   "owner_approved_overrides": {
-<<<<<<< HEAD
     "field::records\\ingameui\\player skills\\mastery 5\\skill06.dbr::bitmapNameDown": "Will-authorized H/O UI fix 2026-07-12",
     "field::records\\ingameui\\player skills\\mastery 5\\skill06.dbr::bitmapNameInFocus": "Will-authorized H/O UI fix 2026-07-12",
     "field::records\\ingameui\\player skills\\mastery 5\\skill06.dbr::bitmapNameUp": "Will-authorized H/O UI fix 2026-07-12",
@@ -174429,7 +174428,6 @@
     "field::records\\ingameui\\player skills\\mastery 6\\skill23.dbr::isCircular": "Will-authorized H/O UI fix 2026-07-12",
     "field::records\\ingameui\\player skills\\mastery 6\\skillpanebasebitmap.dbr::bitmapName": "Will-authorized H/O UI fix 2026-07-12",
     "field::records\\ingameui\\player skills\\mastery 6\\skillpanereallocationbitmap.dbr::bitmapName": "Will-authorized H/O UI fix 2026-07-12",
-=======
     "field::records\\skills\\hunting\\drxhuntingmastery.dbr::characterMana": "Will-authorized H/O improvement wave 2026-07-12 (H4: mana ladder capping at 160 at ML40)",
     "field::records\\skills\\hunting\\drxmonsterlure_rapidconstruction.dbr::defensiveConvert": "Will-authorized H/O improvement wave 2026-07-12 (H1: strip copy-paste charm-resist penalty)",
     "field::records\\skills\\hunting\\drxspear_tempest.dbr::skillBaseDescription": "Will-authorized H/O improvement wave 2026-07-12 (H2/H3: add missing description to the control spin)",
@@ -174440,9 +174438,6 @@
     "field::records\\skills\\stealth\\drxflashpowder.dbr::offensivePierceMin": "Will-authorized Flash Powder rework 2026-07-11 (F5): add pierce damage verb",
     "field::records\\skills\\stealth\\drxflashpowder.dbr::offensiveProjectileFumbleDurationMin": "Will-authorized Flash Powder rework 2026-07-11 (F5): projectile-fumble duration",
     "field::records\\skills\\stealth\\drxflashpowder.dbr::offensiveProjectileFumbleMin": "Will-authorized Flash Powder rework 2026-07-11 (F5): blind ranged attackers too",
-<<<<<<< HEAD
-    "field::records\\skills\\stealth\\drxflashpowder.dbr::skillCooldownTime": "Will-authorized Flash Powder rework 2026-07-11 (F5): 15s->6s tempo"
-=======
     "field::records\\skills\\stealth\\drxflashpowder.dbr::skillCooldownTime": "Will-authorized Flash Powder rework 2026-07-11 (F5): 15s->6s tempo",
     "tag::tagDRXlethalstrikeDESC": "Will-authorized H/O improvement wave 2026-07-12 (H6: Nether Strike tooltip surfaces Bow compatibility)",
     "tag::tagSVCEviscerateDESC": "Will-authorized H/O improvement wave 2026-07-12 (H2/H3: new Eviscerate description)",
