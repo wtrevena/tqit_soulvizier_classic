@@ -1794,6 +1794,143 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
     return out
 
 
+# ── HELOS TRAVELER HUB (2026-07-13, Will) : per-area boat-dialog travel triggers ─────────────
+# Will: "put teleport guys in helos, one person each." ONE Condition_OnLevelLoad trigger per
+# traveler NPC (17 = 11 outbound in Helos + 6 area returns), each with a SINGLE Action_BoatDialog,
+# all appended to the always-loaded sv_commonmechanics refire step (registry law: no new QUESTS
+# registration). Mirrors _add_helos_portal_travel / _add_testhub_portal_travel exactly. Keys ONLY
+# on the DISTINCT svc_helos_trav_* / svc_area_return_* records (never Almyros/portal_master_helos)
+# - each record placed exactly once map-side (WARDEN LAW). Records ship in the arz
+# (apply_svc_patches _create_helos_traveler_hub); INERT on canonical (the canonical map places
+# NONE of these NPCs -> the boat-dialog has no entity to bind, a no-op). Landing coords = SIGNED-
+# INT world (grid_corner + level-local), ALL surveyed ON-MESH 100% clear vs the built map
+# (tools/debug/survey_uberboss_spots.py, 2026-07-13). Outbound reuse the proven Garden/Secret/
+# Uber/Sparta/BossArena landings; the 5 IT superboss landings = the build36 boss spec-primary
+# spots; the warband landing = the q_enslaver_warband set-piece (drxfirstxistion_connection);
+# returns land at the Helos plaza spot (same as TESTHUB_RETURN_DESTS).
+_HHUB = r'records\quests'
+HELOS_HUB_TRAVEL = [
+    # (npc record, (world x, y, z), boat-menu label tag)  -- OUTBOUND (all placed in Helos)
+    (_HHUB + r'\svc_helos_trav_garden.dbr',     (1173, -39, -4001),  'tagSVCHelosToGarden'),
+    (_HHUB + r'\svc_helos_trav_secret.dbr',     (-2396,   2, -5790), 'tagSVCHelosToSecret'),
+    (_HHUB + r'\svc_helos_trav_sparta.dbr',     (-5602,  -2, -1409), 'tagSVCHelosToSparta'),
+    (_HHUB + r'\svc_helos_trav_uber.dbr',       (-2438,  10, -2450), 'tagSVCHelosToUber'),
+    (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-433,    0, -3602), 'tagSVCTestHubToBossArena'),
+    (_HHUB + r'\svc_helos_trav_warband.dbr',    (5680,    1,  3285), 'tagSVCHelosToWarband'),
+    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (312,     1, -8462), 'tagSVCHelosToDorus'),
+    (_HHUB + r'\svc_helos_trav_tantalus.dbr',   (-342,  -15, -10095),'tagSVCHelosToTantalus'),
+    (_HHUB + r'\svc_helos_trav_charon.dbr',     (-336,   -7, -9650), 'tagSVCHelosToCharon'),
+    (_HHUB + r'\svc_helos_trav_mnemophage.dbr', (170,   -10, -11438),'tagSVCHelosToMnemophage'),
+    (_HHUB + r'\svc_helos_trav_ephialtes.dbr',  (-1828,   3, -13285),'tagSVCHelosToEphialtes'),
+    # RETURNS (each placed once inside its area; all travel back to the Helos plaza)
+    (_HHUB + r'\svc_area_return_dorus.dbr',      (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_tantalus.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_charon.dbr',     (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_mnemophage.dbr', (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_ephialtes.dbr',  (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_warband.dbr',    (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+]
+
+
+def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
+    """Append one Condition_OnLevelLoad boat-dialog trigger per Helos-hub NPC (17: 11 outbound +
+    6 returns) to the sv_commonmechanics refire step. Strictly additive (the step's trigger max is
+    bumped by len(HELOS_HUB_TRAVEL)). Fails loud if the host step is missing, the bytes do not
+    round-trip, or the reference-count deltas do not land exactly (one per distinct NPC record;
+    per-tag Counter deltas)."""
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    def _trigger(display, npc, xyz, tag):
+        x, y, z = xyz
+        header = ('block', [
+            ('field', 'displayTag', ('str', display)),
+            ('field', 'displayBitmap', ('int_or_empty', 0)),
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isActive', ('int', 0)),
+        ])
+        conditions = ('block', [
+            ('field', 'conditionCount', ('int', 1)),
+            ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'isNot', ('int', 0)),
+                ('field', 'isResettable', ('int', 1)),
+                ('field', 'isQuestCritical', ('int', 1)),
+            ]),
+        ])
+        actions = ('block', [
+            ('field', 'actionCount', ('int', 1)),
+            ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'delayTime', ('int', 0)),
+                ('field', 'npc', ('str', npc)),
+                ('field', 'onOff', ('int', 1)),
+                ('field', 'x', ('int', x & 0xFFFFFFFF)),
+                ('field', 'y', ('int', y & 0xFFFFFFFF)),
+                ('field', 'z', ('int', z & 0xFFFFFFFF)),
+                ('field', 'tag', ('str', tag)),
+            ]),
+        ])
+        return [header, conditions, actions]
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = [i for i, it in enumerate(steps_container) if it[0] == 'block']
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched = 0
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        if field_val(stepdef, 'name') != HELOS_PORTAL_HOST_STEP:
+            continue
+        trigcont = list(steps_container[trigcont_pos][1])
+        bumped = False
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + len(HELOS_HUB_TRAVEL)))
+                bumped = True
+                break
+        if not bumped:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: host step has no trigger max')
+        for i, (npc, xyz, tag) in enumerate(HELOS_HUB_TRAVEL):
+            trigcont.extend(_trigger(f'SVC: Helos Traveler Hub {i:02d}', npc, xyz, tag))
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched += 1
+
+    if patched != 1:
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: Helos hub expected to patch exactly 1 step '
+            f'({HELOS_PORTAL_HOST_STEP!r}), patched {patched}. Upstream changed; review.')
+
+    out = qst_format.serialize(tree)
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: Helos-hub-patched quest does not '
+                         f'round-trip stably')
+    low = out.replace(b'/', b'\\').lower()
+    low_in = data.replace(b'/', b'\\').lower()
+
+    def _delta(needle):
+        nd = needle.replace('/', '\\').lower().encode()
+        return low.count(nd) - low_in.count(nd)
+    from collections import Counter
+    npc_want = Counter(npc for npc, _xyz, _tag in HELOS_HUB_TRAVEL)
+    for npc, n in npc_want.items():
+        if _delta(npc) != n:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub NPC {npc} reference count must '
+                             f'increase by exactly {n} (got {_delta(npc)})')
+    tag_want = Counter(tag for _npc, _xyz, tag in HELOS_HUB_TRAVEL)
+    for tag, n in tag_want.items():
+        if _delta(tag) != n:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub label tag {tag} reference count '
+                             f'must increase by exactly {n} (got {_delta(tag)})')
+    return out
+
+
 # ── Q4 (build31, dead-content audit Lane D): surgical quest-ref fixes ────────
 # All three are string-value edits inside otherwise byte-faithful quests; each
 # helper walks the parse tree, replaces exactly the expected count of values,
@@ -2032,10 +2169,16 @@ def main():
     # triggers, chained onto the just-patched quest (same refire step). Keyed on
     # the DISTINCT rig NPC records only; INERT on canonical (no rig NPC placed).
     patched_cm = _add_testhub_portal_travel(patched_cm)
+    # Helos traveler hub (Will 2026-07-13): 17 per-area boat-dialog triggers (11 outbound + 6
+    # returns), chained onto the same refire step. Keyed on the DISTINCT svc_helos_trav_* /
+    # svc_area_return_* records only; INERT on canonical (no hub NPC placed there).
+    patched_cm = _add_helos_traveler_hub_travel(patched_cm)
     arc.set_file(HELOS_PORTAL_HOST_QUEST, patched_cm)
     print(f'Q2: Helos portal-master {len(HELOS_PORTAL_DESTS)}-destination '
           f'boat-dialog appended to {HELOS_PORTAL_HOST_QUEST} '
           f'({len(raw_cm)} -> {len(patched_cm)} bytes)')
+    print(f'Helos traveler hub: {len(HELOS_HUB_TRAVEL)} per-area boat-dialog triggers '
+          f'appended to {HELOS_PORTAL_HOST_QUEST}')
     print(f'Portal rig: TESTHUB hub ({len(TESTHUB_MASTER_DESTS)} ports) + return '
           f'({len(TESTHUB_RETURN_DESTS)} ports) boat-dialog appended to '
           f'{HELOS_PORTAL_HOST_QUEST}')

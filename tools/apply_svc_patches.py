@@ -10970,6 +10970,94 @@ def _create_testhub_portal_npcs(db, tags):
           "chat + 3 new menu tags set (Garden/Secret/Uber/Sparta reuse Almyros)")
 
 
+# ── HELOS TRAVELER HUB (2026-07-13, Will: "put teleport guys in helos, one person each") ─────
+# Will wants ONE clearly-named traveler NPC per restored/boss area, all standing in the Helos
+# starting-town plaza, each a talk-to-travel boat-dialog NPC (Model C - the ONLY approved travel
+# mechanism; walk-through/proximity teleports are BANNED per the 2026-07-12 P0). This SUPERSEDES
+# the single 7-port svc_testhub_master_helos menu with 11 individual travelers (its Helos
+# placement is retired map-side; its record/trigger stay inert). WARDEN LAW (build36 A6): a
+# boat-dialog record placed in >1 level binds its menu to ONE entity and the rest go mute -> so
+# EVERY traveler here is a DISTINCT record placed EXACTLY ONCE. All clone the proven boat-dialog
+# donor knossos_boatmantoegypt (Class=Npc + GreekSailor02 base art, render-safe per D5). Records
+# are added to the arz UNCONDITIONALLY but stay INERT on canonical/Steam (only the TESTHUB map
+# places them - build_section_surgery build_hub_extra_specs, SVC_TEST_HUB-gated; the canonical
+# map places NONE of them -> canonical Levels.arc stays byte-identical). Their boat-dialog
+# triggers ride sv_commonmechanics.qst (build_quest_files _add_helos_traveler_hub_travel), also
+# unconditional + inert-unless-placed. 11 outbound (Helos) + 6 return (one per new boss/warband
+# area that has no existing return traveler) NPCs. Names via the tags pipeline ("Traveler: X").
+_HELOS_TRAV_DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
+# Outbound travelers: (record, name_tag, name_text, dest_label_tag, dest_label_text|None-if-reused).
+# Garden/Secret/Uber/Sparta/BossArena reuse the labels set by _create_helos_portal_master +
+# _create_testhub_portal_npcs (both run just before this); the other 6 mint new labels.
+HELOS_HUB_OUTBOUND = [
+    (r'records\quests\svc_helos_trav_garden.dbr',     'tagSVCNpcTravGarden',     'Traveler: Garden of Merchants',   'tagSVCHelosToGarden',      None),
+    (r'records\quests\svc_helos_trav_secret.dbr',     'tagSVCNpcTravSecret',     'Traveler: The Secret Place',      'tagSVCHelosToSecret',      None),
+    (r'records\quests\svc_helos_trav_sparta.dbr',     'tagSVCNpcTravSparta',     'Traveler: The Sparta Crypt',      'tagSVCHelosToSparta',      None),
+    (r'records\quests\svc_helos_trav_uber.dbr',       'tagSVCNpcTravUber',       'Traveler: The Obsidian Halls',    'tagSVCHelosToUber',        None),
+    (r'records\quests\svc_helos_trav_bossarena.dbr',  'tagSVCNpcTravBossArena',  'Traveler: The Boss Arena',        'tagSVCTestHubToBossArena', None),
+    (r'records\quests\svc_helos_trav_warband.dbr',    'tagSVCNpcTravWarband',    'Traveler: Blood-Cave Warband',    'tagSVCHelosToWarband',     'The Blood-Cave Warband'),
+    (r'records\quests\svc_helos_trav_dorus.dbr',      'tagSVCNpcTravDorus',      'Traveler: Medea Tomb (Dorus)',    'tagSVCHelosToDorus',       'The Drowned King (Medea Tomb)'),
+    (r'records\quests\svc_helos_trav_tantalus.dbr',   'tagSVCNpcTravTantalus',   'Traveler: Den of Tantalus',       'tagSVCHelosToTantalus',    'The Den of Tantalus'),
+    (r'records\quests\svc_helos_trav_charon.dbr',     'tagSVCNpcTravCharon',     'Traveler: Golden Bough (Charon)', 'tagSVCHelosToCharon',      'The Golden Bough'),
+    (r'records\quests\svc_helos_trav_mnemophage.dbr', 'tagSVCNpcTravMnemophage', 'Traveler: Pools of Mnemosyne',    'tagSVCHelosToMnemophage',  'The Pools of Mnemosyne'),
+    (r'records\quests\svc_helos_trav_ephialtes.dbr',  'tagSVCNpcTravEphialtes',  'Traveler: Dread Halls (Ephialtes)','tagSVCHelosToEphialtes',  'The Dread Halls'),
+]
+# Return NPCs: one per new area that lacks an existing return traveler (Garden/Secret/Uber/
+# Sparta/BossArena already have svc_testhub_return placed). Distinct records (warden law) that
+# SHARE one name/chat tag (the warden-split precedent - shared Text is fine, only placement must
+# be single). Each carries a 1-port boat-dialog back to Helos (build_quest_files).
+HELOS_HUB_RETURNS = [
+    r'records\quests\svc_area_return_dorus.dbr',
+    r'records\quests\svc_area_return_tantalus.dbr',
+    r'records\quests\svc_area_return_charon.dbr',
+    r'records\quests\svc_area_return_mnemophage.dbr',
+    r'records\quests\svc_area_return_ephialtes.dbr',
+    r'records\quests\svc_area_return_warband.dbr',
+]
+
+
+def _create_helos_traveler_hub(db, tags):
+    """Clone the proven boat-dialog donor into 11 named Helos outbound travelers + 6 area
+    return NPCs (all distinct records, one placement each - warden law). Sets name/chat/menu
+    Text tags. Records ship in the arz unconditionally but are INERT until the TESTHUB map
+    places them. Fails loud on a duplicate record or a missing donor."""
+    donor = _find_record(db, _HELOS_TRAV_DONOR)
+    if not donor:
+        raise SystemExit(f"Helos hub: donor NPC missing: {_HELOS_TRAV_DONOR}")
+    # Shared greeting for the outbound travelers (each offers one destination).
+    tags['tagSVCHelosTravChat'] = ('I know the hidden road to one place, friend. '
+        'Speak the word and I will set you upon it.')
+    for path, name_tag, name_text, label_tag, label_text in HELOS_HUB_OUTBOUND:
+        if db.has_record(path):
+            raise SystemExit(f"Helos hub: {path} already exists")
+        db.clone_record(donor, path)
+        db.set_field(path, 'description', name_tag)
+        db.set_field(path, 'FileDescription',
+                     'SVC Helos traveler hub (Model C boat-dialog, 1 destination)')
+        db.set_field(path, 'messageDialogTag', 'tagSVCHelosTravChat')
+        db._modified.add(path)
+        tags[name_tag] = name_text
+        if label_text is not None:      # mint the new destination label (reused ones already set)
+            tags[label_tag] = label_text
+    # Return NPCs: distinct records, shared name/chat tags, one placement each.
+    tags['tagSVCNpcAreaReturn'] = 'Return Traveler'
+    tags['tagSVCAreaReturnChat'] = ('Seen enough here? I can set you back on the road '
+        'to Helos.')
+    tags['tagSVCAreaReturnToHelos'] = 'Helos (Return)'
+    for path in HELOS_HUB_RETURNS:
+        if db.has_record(path):
+            raise SystemExit(f"Helos hub: {path} already exists")
+        db.clone_record(donor, path)
+        db.set_field(path, 'description', 'tagSVCNpcAreaReturn')
+        db.set_field(path, 'FileDescription',
+                     'SVC Helos traveler hub: area return NPC (Model C boat-dialog, Helos)')
+        db.set_field(path, 'messageDialogTag', 'tagSVCAreaReturnChat')
+        db._modified.add(path)
+    print(f"  Helos traveler hub: {len(HELOS_HUB_OUTBOUND)} named outbound travelers + "
+          f"{len(HELOS_HUB_RETURNS)} area return NPCs cloned from the Knossos boatman; "
+          f"name/chat/menu tags set (INERT until the TESTHUB map places them)")
+
+
 # ── GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB) ──────────────
 # Will signed off (BACKLOG N4-DB): a lone Ancient-Dragonian warlord in the
 # Random05A cave east of Chang'an. Identity B - {^r}Vashkarr, Eldest of the
@@ -16445,6 +16533,7 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     _create_olympus_rhodes_herald(db, tags)   # Q3: Olympus->Rhodes boat-dialog herald (record path locked with the map lane)
     _create_helos_portal_master(db, tags)     # Q2 (Group A): Helos portal-master NPC -> 4 SV-area boat destinations (map lane places it)
     _create_testhub_portal_npcs(db, tags)     # Portal rig (GROUP 2 unblock): TESTHUB hub + return NPCs -> Model C travel (map lane places them; INERT on canonical)
+    _create_helos_traveler_hub(db, tags)      # Helos traveler hub (Will 2026-07-13): 11 named per-area travelers + 6 area returns (TESTHUB map places them; INERT on canonical)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs

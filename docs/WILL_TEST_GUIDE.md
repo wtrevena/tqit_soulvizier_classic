@@ -1,9 +1,61 @@
-# WILL'S TEST GUIDE - build36 bosses + SV areas (2026-07-12)
+# WILL'S TEST GUIDE - build36 bosses + SV areas (2026-07-12; Helos traveler hub added 2026-07-13)
 
 > Fastest test path: play the **DEV entry** (Custom Quest -> SoulvizierClassicDEV). Its TESTHUB
-> map variant adds LOCAL-ONLY portals at the blood-cave entrance to every test target, plus the
-> **monster test yard** where the custom bosses spawn at 100% for point-blank testing. The Steam
-> build has none of that (canonical map only). Kill TQ + restart Steam before testing (files lock).
+> map variant adds LOCAL-ONLY **traveler NPCs** (talk-to-travel, boat-dialog) - a **HELOS TRAVELER
+> HUB** with one named person per test target (see the next section) plus the **monster test yard**
+> in Hidden Valley where the custom bosses spawn at 100% for point-blank testing. The Steam build
+> has none of that (canonical map only). Kill TQ + restart Steam before testing (files lock).
+
+## HELOS TRAVELER HUB (DEV / TESTHUB map only) - one traveler per area
+
+In the **Helos starting-town plaza** (where you begin a Custom Quest char) stand **11 named
+travelers**, arranged in two rows just south of the town-portal shrine. Each is a "talk-to-travel"
+NPC: **walk up, talk, and a boat-dialog asks you to confirm the destination** - then it teleports
+you. This is the ONLY travel mechanism (the old walk-through teleport doors were removed 2026-07-12;
+**if you are EVER teleported just by walking, that is a bug - report it**).
+
+Front row (established areas):
+
+| Traveler NPC | Destination | What to verify on arrival |
+|---|---|---|
+| **Traveler: Garden of Merchants** | Garden of Merchants | land in the merchant hub by the caravan_rhodes Super-Caravan |
+| **Traveler: The Secret Place** | darkforestenter (forest cluster) | the crow-hero bosses (Murderbunny, Zilla) live in these interiors |
+| **Traveler: The Sparta Crypt** | SpartaCryptLevel2 | the invented Sparta crypt arena |
+| **Traveler: The Obsidian Halls** | crypt_floor1 (Uber Dungeon) | the Obsidian Halls roulette (4 corners) + the 4 wardens |
+| **Traveler: The Boss Arena** | boss_arena | the SV boss-arena (Satyr Shaman) questline area |
+| **Traveler: Blood-Cave Warband** | drxfirstxistion_connection | the Enslaver warband set-piece (Toxeus Enslaver leader + marauders) |
+
+Back row (the 5 new Immortal-Throne superbosses - build36):
+
+| Traveler NPC | Destination | Boss to test |
+|---|---|---|
+| **Traveler: Medea Tomb (Dorus)** | Medea_TempleUG_Tomb01 | **Dorus, the Drowned King** (Propontis) + Hoard |
+| **Traveler: Den of Tantalus** | Styx_SwampBorder_01 | **Tantalus, the Insatiable** + hoard |
+| **Traveler: Golden Bough (Charon)** | Styx_RiverEdge_01 (forecourt) | **Charon, the Unferried** (2-phase) + hoard |
+| **Traveler: Pools of Mnemosyne** | Judgment_TempleUG_Mnemosyne01 | **The Mnemophage** (2-phase) |
+| **Traveler: Dread Halls (Ephialtes)** | Judgment_StoneCity_Exit01 | **Ephialtes, the Waking Dread** (fear nova) |
+
+**Getting back:** every destination has a way back.
+- Garden / Secret Place / Uber / Sparta / Boss Arena: a **Return Warden** NPC stands a few steps
+  from where you land (talk -> back to Helos or the Blood Cave); the Garden and Secret Place also
+  keep their SV rift-shrines.
+- The 6 new areas (the 5 IT superbosses + the Blood-Cave Warband): a **Return Traveler** NPC stands
+  a few steps from where you land -> talk -> confirm -> back to the Helos plaza.
+
+**Hub verification checklist:** (1) all 11 travelers are present + individually clickable (no two
+stacked); (2) each teleport lands you standing on solid ground (on-mesh), not in a wall/void; (3)
+from each new boss area, the Return Traveler brings you back to Helos; (4) NO walk-through teleports
+anywhere - travel only happens after you talk + confirm.
+
+### Where the old walk-through doors were (removed 2026-07-12; reach these via the hub now)
+
+Will asked for the exact door walk-to spots. These invented walk-through doors were deleted by the
+P0 hotfix (a walk-through that yanked you to the Garden with no way back was a live Steam bug), so
+walking to these spots now does nothing - use the hub travelers above. For the record:
+- **Knossos -> Uber Dungeon door**: was in the **Minotaur's Labyrinth (maze03)**, beside the SV
+  Olympian-arena portal, at **world (-7783, 1, -3794)** = maze03-local (293.1, 1.2, 149.3).
+- **Athens -> Sparta Crypt door**: was in the **deepest Athens catacomb (CataCube02_FloorLast)**,
+  near the **stairs-down** landmark, at **world (-6583, 1, -3177)** = local (29.1, 1.2, 41.3).
 
 ## A. ALL NEW/CUSTOM BOSSES - where to find them (canonical path)
 
@@ -52,16 +104,16 @@ the Polis Daemonai vault Guardian (5 majestic chests); Neferkha, the Rimebound P
 TESTED BY WILL: the blood cave complex (walkable end-to-end; widow quest, exploding-wall secret
 area w/ mega chest, waterfall chamber, nest).
 
-NOT YET TESTED (canonical entrances exist - see docs/DOORS_HUB_LOG.md for exact door spots):
-1. **Uber Dungeon / Obsidian Halls** - the invented door in KNOSSOS (build24). The roulette +
-   wardens live here.
-2. **Sparta Crypt L2** - the invented door in the Athens-battlefield crypt (build25).
-3. **Garden of Merchants** - portal pair; the entrance NPC currently stands in the FIRST CAVE on
-   the way to the blood cave (⚠️ Will has ordered this NPC removed - test the area BEFORE the
-   removal ships, or via TESTHUB after).
-4. **Secret Place** - portal pair entrance (see DOORS_HUB_LOG). The crow-hero bosses (Murderbunny,
-   Zilla, etc. - big souls) are placed in these interiors.
-5. **Boss arena** (SV questline area inside the blood-cave complex questlines).
+NOT YET TESTED - reach all of these via the **HELOS TRAVELER HUB** above (DEV/TESTHUB map). The
+invented walk-through doors that used to enter them were REMOVED 2026-07-12 (walk-through teleports
+are banned; a walk-through to the Garden with no way back was a live Steam bug):
+1. **Uber Dungeon / Obsidian Halls** (roulette + 4 wardens) - "Traveler: The Obsidian Halls".
+2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt".
+3. **Garden of Merchants** - "Traveler: Garden of Merchants". (The old first-cave portal NPC is on
+   Will's removal list; the Garden is now reached via the hub, not that NPC.)
+4. **Secret Place** - "Traveler: The Secret Place". The crow-hero bosses (Murderbunny, Zilla, etc. -
+   big souls) are placed in these interiors.
+5. **Boss arena** (SV questline area) - "Traveler: The Boss Arena".
 
 NOT REACHABLE YET (no canonical entrance - the SV-areas campaign is the standing backlog item):
 several deep SV interiors whose bosses/souls are wired but unreachable canonically (Blood-Witch

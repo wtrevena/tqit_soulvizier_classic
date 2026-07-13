@@ -108,7 +108,14 @@ def main(argv):
                   f"(art dirs absent -> engine-scoping shader check SKIPPED)")
         print(f"  A: both rig NPCs share donor mesh={dmesh} tex={dtex}")
 
-    # ---- B: Steam-inertness against the canonical map ----
+    # ---- B: canonical placement invariants (UPDATED post-P0 2026-07-12 + build37 hub) ----
+    # The PRE-P0 assertion was "canonical places 0 of both rig NPCs". That is now WRONG: the P0
+    # hotfix PROMOTED svc_testhub_return into the 4 canonical areas (Garden/Secret/Uber/Sparta) as
+    # the NPC-dialog way back after the walk-through portals were deleted. Updated invariants:
+    #   - the hub MASTERS (svc_testhub_master / _helos / _cave) stay TESTHUB-only -> 0 canonical.
+    #   - svc_testhub_return is canonical in EXACTLY the 4 P0 areas.
+    #   - the build37 Helos traveler hub (svc_helos_trav_* / svc_area_return_*) is TESTHUB-only
+    #     -> 0 canonical (delegated in full to gate_travel_npc_invariants.py).
     canon = REPO / 'local' / 'Levels_merged.arc'
     if canon.exists():
         from arc_patcher import ArcArchive
@@ -118,7 +125,8 @@ def main(argv):
         data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
         sec = {s['type']: s for s in parse_sections(data)}
         levels = parse_level_index(data, sec[0x01])
-        needles = (b'svc_testhub_master', b'svc_testhub_return')
+        needles = (b'svc_testhub_master', b'svc_testhub_return',
+                   b'svc_helos_trav_', b'svc_area_return_')
         placements = {n: 0 for n in needles}
         for L in levels:
             blob = data[L['data_offset']:L['data_offset'] + L['data_length']]
@@ -131,14 +139,20 @@ def main(argv):
             low = s05['data'].lower()
             for n in needles:
                 placements[n] += low.count(n)
-        total = sum(placements.values())
-        print(f"  B inertness: canonical local/Levels_merged.arc "
-              f"places master={placements[needles[0]]} return={placements[needles[1]]}")
-        if total != 0:
-            fails.append(f'B: canonical map PLACES {total} rig NPC instance(s) - '
-                         f'the rig must be TESTHUB-only (flag broken)')
+        m, r, ht, hr = (placements[b'svc_testhub_master'], placements[b'svc_testhub_return'],
+                        placements[b'svc_helos_trav_'], placements[b'svc_area_return_'])
+        print(f"  B placement: canonical places master={m} return={r} "
+              f"helos_trav={ht} area_return={hr}")
+        if m != 0:
+            fails.append(f'B: canonical places {m} hub-MASTER instance(s) - masters are TESTHUB-only')
+        if r != 4:
+            fails.append(f'B: canonical must place svc_testhub_return in the 4 P0 areas '
+                         f'(Garden/Secret/Uber/Sparta); got {r}')
+        if ht or hr:
+            fails.append(f'B: canonical places {ht + hr} build37 Helos-hub instance(s) - the '
+                         f'hub is TESTHUB-only (see gate_travel_npc_invariants.py)')
     else:
-        print(f"  B inertness: SKIPPED (no {canon}); check once the map is built")
+        print(f"  B placement: SKIPPED (no {canon}); check once the map is built")
 
     if fails:
         print("\nGATE FAIL (TESTHUB portal rig):")
