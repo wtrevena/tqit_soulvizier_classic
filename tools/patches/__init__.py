@@ -30,13 +30,24 @@ EXECUTION ORDER (the load-bearing coherency requirement)
 --------------------------------------------------------
 build_svc_database.py runs, in this exact order:
     1. apply_all_extended_patches(db, ..., _defer_gates=True)   # monolith content
-    2. run_registry(db, tags)                                   # THESE modules, in order
+    2. run_registry(db, tags)                                   # THESE modules' apply(), in order
     3. apply_svc_patches.run_registry_gates(db, tags, ...)      # the whole gate battery
+    4. run_registry_verifies(db, tags)                          # THESE modules' verify(), in order
 So the monolith's entire fail-loud gate battery now runs over the FINAL
 assembled db (monolith + every module). Nothing a module does escapes the gates.
 
-Public API: REGISTRY, run_registry(db, tags), run_registry_gates lives in
-apply_svc_patches, registry_order_hash(names), selfcheck().
+A module's OPTIONAL verify(db, tags) hook (step 4) runs AFTER the gate battery's
+FINALIZATION (the Ground Smash de-filler, the wave29 placeholder-tag renames, the
+soul-naming standard, the MP-equation fix). So a roster/diversity check a module
+MUST run over the FINAL assembled db belongs in verify(), NEVER in apply(): an
+apply()-time gate (step 2) runs mid-registry, before step 3 clears the ordering
+artifacts (cyclops de-filler; satyrmagi/satyrspiritcaller placeholder-tag rename),
+and would fail loud on those transient artifacts - the build37 skill_quality
+blocker. Modules with no verify() are simply skipped in step 4.
+
+Public API: REGISTRY, run_registry(db, tags), run_registry_verifies(db, tags),
+run_registry_gates lives in apply_svc_patches, registry_order_hash(names),
+selfcheck().
 """
 import hashlib
 import importlib
@@ -246,6 +257,47 @@ def run_registry(db, tags, registry=None):
           % (len(executed), order_hash[:12]))
     print("=" * 70)
     return executed
+
+
+def run_registry_verifies(db, tags, registry=None):
+    """POST-FINALIZATION verify phase (step 4; see this package's EXECUTION ORDER).
+
+    Call each REGISTRY module's OPTIONAL `verify(db, tags)` hook, in manifest
+    order, AFTER apply_svc_patches.run_registry_gates has finalized the db (the
+    Ground Smash de-filler, the wave29 placeholder-tag renames, the soul-naming
+    standard, the MP-equation fix). A module puts here any roster/diversity/
+    coherency check that MUST see the FINAL assembled db - a check that would
+    trip on transient ordering artifacts if it ran at apply() time (step 2),
+    mid-registry, before the finalization clears them.
+
+    Fail-loud by construction: a module verify() raising SystemExit propagates
+    and aborts the build (exactly like an apply()-time gate would). This is the
+    ONLY thing that keeps the relocated gate live - a module that moves its gate
+    out of apply() and into verify() is disabled UNLESS this phase runs, so
+    build_svc_database.py MUST call it after run_registry_gates.
+
+    Modules with no `verify` attribute (or a non-callable one) are skipped.
+    Returns the list of module names whose verify() actually ran.
+    """
+    names = list(REGISTRY if registry is None else registry)
+    print("\n" + "=" * 70)
+    print("=== patches-registry: post-finalization verify() hooks ===")
+    print("=" * 70)
+    ran = []
+    for name in names:
+        mod, module_name, _apply_fn = _load_module(name)
+        verify_fn = getattr(mod, 'verify', None)
+        if not callable(verify_fn):
+            continue
+        print("  verify [%s] (%s) ..." % (name, module_name))
+        verify_fn(db, tags)
+        ran.append(name)
+    if not ran:
+        print("  (no registry module defines a verify() hook)")
+    else:
+        print("  verify hooks OK: %s" % ", ".join(ran))
+    print("=" * 70)
+    return ran
 
 
 def selfcheck():

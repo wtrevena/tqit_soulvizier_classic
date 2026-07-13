@@ -3481,10 +3481,19 @@ def main():
     # is byte-identical to the pre-registry build (tools/patches/README.md S5).
     extended_tags = apply_all_extended_patches(
         db, force_full_drops=force_full_drops, _defer_gates=True)
-    from patches import run_registry
+    from patches import run_registry, run_registry_verifies
     run_registry(db, extended_tags)
     from apply_svc_patches import run_registry_gates
     run_registry_gates(db, extended_tags, force_full_drops=force_full_drops)
+    # ── patches-registry POST-FINALIZATION verify() hooks (step 4) ─────────────
+    # A registry module's verify(db, tags) runs HERE, after run_registry_gates'
+    # finalization (Ground Smash de-filler + wave29 placeholder-tag renames +
+    # soul-naming standard + MP-equation fix), so a roster/diversity gate a module
+    # MUST run over the FINAL assembled db sees the cleared state - an apply()-time
+    # gate would trip on ordering artifacts the finalization later clears (the
+    # build37 skill_quality diversity blocker). Fail-loud: a verify() SystemExit
+    # aborts the build. Modules with no verify() hook are skipped.
+    run_registry_verifies(db, extended_tags)
 
     report_path = output_path.parent / 'uber_souls_report.md'
     with open(report_path, 'w', encoding='utf-8') as f:

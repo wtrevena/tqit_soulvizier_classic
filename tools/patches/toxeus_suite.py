@@ -118,9 +118,16 @@ _SOUL_AC = asp._AC_ON_HIT             # base_atself_onanyhit: a SELF controller 
 _AUG_ANATOMY = asp._EN_AUG_ANATOMY    # drxanatomy: Skill_Modifier (+%vit/pierce) - DB-verified
 _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on-attack) - DB-verified
 
-# ── Roaming sweep tuning (Hades-only; parallels the Enslaver sweep, reuses its ceiling + bad-subs) ──
+# ── Roaming sweep tuning (Hades-only; parallels the Enslaver sweep, reuses its bad-subs) ──
+# The Hunt uses its OWN 1/2400 per-slot ceiling (a findable Hades apex), matching this module's
+# inject threshold (a pool is populated only when its pre-append wtotal >= 2399, so post-append
+# p_slot = 1/(wtotal+1) <= 1/2400) and every docstring below. It does NOT reuse asp._EN_SWEEP_MAX_P:
+# build37 TIGHTENED the ENSLAVER ceiling from 1/2400 to 1/12000 (via _EN_SWEEP_CEIL); reusing it
+# here made the verify (1/12000) reject the very pools the inject (1/2400) legitimately populated -
+# the Enslaver reaches 1/12000 by x300'ing member weights, which the Hunt deliberately does NOT do
+# (it only appends weight 1 to the existing pool). Decoupled so inject and verify agree again.
 _LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # Hades trash pools ONLY (378 ProxyPools present)
-_LS_MAX_P = asp._EN_SWEEP_MAX_P                          # 1/2400 per-slot ceiling (a genuine rare)
+_LS_MAX_P = 1.0 / 2400.0                                 # the Hunt's own ceiling (matches the inject)
 
 
 # =============================================================================
@@ -669,13 +676,31 @@ def _gate(db, tags):
 # =============================================================================
 def apply(db, tags):
     """Registry entry point. db + tags are the SAME objects the monolith built; mutate them in
-    place. Order: ambush proxy -> rant scroll -> stalker (monster -> soul -> sweep -> verify) ->
-    experiment artifact -> self-gate."""
+    place. Order: ambush proxy -> rant scroll -> stalker (monster -> soul -> sweep -> internal
+    sweep verify) -> experiment artifact.
+
+    The champion-count-cap invariant (D) + the re-run of the monolith gates that guard this
+    suite's content live in verify() (the registry's POST-FINALIZATION phase), NOT here. Reason:
+    run_registry_gates has not yet de-filled Ground Smash, fixed the MP spawn equations, or
+    applied the soul-naming standard when apply() runs mid-registry - so re-running those monolith
+    gates here would trip on ordering artifacts the finalization later clears (e.g. the 8 dev-soul
+    cyclops_groundsmash grants -> _verify_granted_skill_diversity GS-roster failure). This is the
+    build37 gate-relocation law (see patches.run_registry_verifies + skill_quality)."""
     print("\n=== [toxeus_suite] build37 TOXEUS ENCOUNTER SUITE (backlog #32) ===")
     _create_ambush_proxy(db)             # A
     _create_rant_scroll(db, tags)        # B
-    _create_legendary_stalker(db, tags)  # C (monster -> soul -> Hades sweep -> sweep verify)
+    _create_legendary_stalker(db, tags)  # C (monster -> soul -> Hades sweep -> internal sweep verify)
     _author_legendary_only_limit(db)     # C experiment artifact (inert)
-    _gate(db, tags)                      # D + re-run every guarding invariant
-    print("=== [toxeus_suite] done ===\n")
+    print("=== [toxeus_suite] done (D + guarding gates run in verify(), post-finalization) ===\n")
+    return tags
+
+
+def verify(db, tags=None):
+    """POST-FINALIZATION registry verify hook (patches.run_registry_verifies). Runs D (the
+    champion-count-cap MP invariant) + re-runs the monolith gates that guard this suite's content
+    (spawn-eligibility, soul leak/augment/activation/diversity/naming, no-slash MP equations) over
+    the FINAL assembled db - AFTER run_registry_gates' finalization. Running them here rather than in
+    apply() is what keeps them from tripping on the mid-registry ordering artifacts the finalization
+    clears. Fail-loud (SystemExit) on any real violation, which run_registry_verifies propagates."""
+    _gate(db, tags if tags is not None else {})
     return tags

@@ -218,10 +218,14 @@ SUMMON_EXEMPT = {
     'summon_zombiesoldier.dbr', 'foulbeast_summon_soul.dbr',
 }
 ALLOW = {
-    'lifedrain.dbr': {  # undead / spirit / corpse / decay drain family (11, post bats/devour/leech)
+    'lifedrain.dbr': {  # undead / spirit / corpse / decay drain family (12, post bats/devour/leech)
         'tagSVCSoulSatyrSpiritcaller', 'tagSoulName25', 'tagSoulName456', 'tagSoulName313',
         'tagSoulName228', 'tagSoulName82', 'tagSoulName132', 'tagSoulName132B', 'tagSoulName70',
-        'tagSVCSoulBloodShaman', 'tagSVCSoulIlsevar'},
+        'tagSVCSoulBloodShaman', 'tagSVCSoulIlsevar',
+        # polis_vault's Alkyoneus the Soul-Gaoler (registry module runs AFTER this one, so its
+        # grant is only visible to this gate now that it runs POST-finalization): the giant IS a
+        # life-drinker (spirit\lifedrain grant + big ADCtH), family-appropriate.
+        'tagSVCSoulGaoler'},
     'firefragmentnova.dbr': {  # fire family (Bloodcrow spec governs the record CD; unchanged here) (14)
         'tagSVCSoulSatyrMagi', 'tagSoulName17', 'tagSoulName18', 'tagSoulName19', 'tagSoulName21',
         'tagSoulName24', 'tagSoulName465', 'tagSoulName112', 'tagSVCSoulDevCory', 'tagSVCSoulDevMorgan',
@@ -229,18 +233,30 @@ ALLOW = {
     'arachne_venomspray.dbr': {  # venomous family (ascacophus/epiales/gorgons/dagon removed) (8)
         'tagSoulName231', 'tagSoulName71', 'tagSoulName194', 'tagSoulName206',
         'tagSoulName332', 'tagSoulName418', 'tagSVCSoulNomnom', 'tagSoulSVC9023'},
-    'ringoflightning.dbr': {  # lightning / storm family (assassin + storm-fliers + caster removed) (9)
+    'ringoflightning.dbr': {  # lightning / storm family (assassin + storm-fliers + caster removed) (10)
         'tagSoulName553', 'tagSoulName602', 'tagSVCSoulDarkMonolith', 'tagSVCSoulJabarto',
         'tagSoulSVC9020', 'tagSoulSVC9016', 'tagSVCSoulGitar3', 'tagSVCSoulDevArthur',
-        'tagSVCSoulDevTildaV'},
-    'melinoe_bloodboil.dbr': {  # blood-demon family (sp_hades -> Star of Hades removed) (7)
+        'tagSVCSoulDevTildaV',
+        # HC uber Xix (svc_uber\xix_soul_{n,e,l}): a real lightning grantor shipped in
+        # build36a, family-appropriate (a ring-of-lightning storm soul); was the 2nd
+        # genuine roster gap the build37 full-registry gate surfaced.
+        'tagSVCSoulHCXix'},
+    'melinoe_bloodboil.dbr': {  # blood-demon family (sp_hades -> Star of Hades removed) (8)
         'tagSoulName178', 'tagSoulName410', 'tagSoulName151', 'tagSoulName607', 'tagSoulName426',
-        'tagSVCSoulDevTom', 'tagSVCSoulLeinth'},
+        'tagSVCSoulDevTom', 'tagSVCSoulLeinth',
+        # HC uber Bloodrunner (svc_uber\bloodrunner_soul_{n,e,l}): a real blood-boil
+        # grantor shipped in build36a, family-appropriate (a blood-demon soul); the 1st
+        # genuine roster gap the build37 full-registry gate surfaced.
+        'tagSVCSoulHCBloodrunner'},
     'harpy_lightningaura.dbr': {  # harpy / lightning-aura family (SV-authored, kept whole) (9)
         'tagSoulName56', 'tagSoulName57', 'tagSoulName58', 'tagSoulName216', 'tagSoulName314',
         'tagSoulName497', 'tagSVCSoulDevParnell', 'tagSVCSoulNEmgiec', 'tagSoulSVC9001'},
-    'toxeus_flashpowder.dbr': {  # rogue / assassin family (post 9-reassign; sp_toxeus -> Shadow Surge) (4)
-        'tagSoulName505', 'tagSVCSoulDevDavid', 'tagSVCSoulDevFrazier', 'tagSoulName4'},
+    'toxeus_flashpowder.dbr': {  # rogue / assassin family (post 9-reassign; sp_toxeus -> Shadow Surge) (5)
+        'tagSoulName505', 'tagSVCSoulDevDavid', 'tagSVCSoulDevFrazier', 'tagSoulName4',
+        # toxeus_suite's "the Endless Hunt" Toxeus stalker (registry module runs AFTER this one,
+        # so its grant is only visible to this gate now that it runs POST-finalization): the
+        # Toxeus family's own flash-powder shadow-burst signature, family-appropriate by design.
+        'tagSVCSoulToxeusHunt'},
     # cyclops_groundsmash.dbr roster is injected from the monolith's _GS_ROSTER_TAGS at gate time.
 }
 
@@ -452,8 +468,17 @@ def apply(db, tags=None):
     """Registry entry point. Reassign off-theme/over-shared filler -> identity-true procs
     (or stat-only), enrich the stat-only mooks with amgoz downsides, fix the dapoyan_harpoon
     cooldown, re-run the idempotent castability wave for the changed grants, then run the
-    fail-loud self-check + roster-locked diversity gate. `tags` is accepted for contract
-    parity but untouched (no Text.arc change - every pick reuses an existing display name)."""
+    fail-loud self-check of THIS wave's own reassignments. `tags` is accepted for contract
+    parity but untouched (no Text.arc change - every pick reuses an existing display name).
+
+    The roster-locked diversity GATE does NOT run here. It runs in verify() below,
+    which the registry calls in its POST-FINALIZATION verify phase (step 4), AFTER
+    apply_svc_patches.run_registry_gates has de-filled Ground Smash and renamed the
+    wave29 placeholder-tag souls (satyrmagi/satyrspiritcaller: tagSoul1 -> real tags).
+    Running the gate here (apply time, mid-registry) would fail loud on those ordering
+    artifacts before the finalization clears them - the build37 blocker. NOTE: the gate
+    is NOT disabled by this - it is RELOCATED; build_svc_database.py MUST call
+    patches.run_registry_verifies(db, tags) after run_registry_gates (it does)."""
     print(f"\n[patch:{MODULE_NAME}] granted-skill quality pass (build37 / BACKLOG #31)")
     n_re, n_stat = _apply_reassignments(db)
     n_enrich = _apply_enrichment(db)
@@ -468,12 +493,24 @@ def apply(db, tags=None):
     if _svc is not None:
         _svc._fix_granted_skill_castability(db)
 
+    # Scoped self-check of THIS wave's reassignments only (targets resolve, level >= 1,
+    # controller resolves). Valid at apply time (depends only on the reassign+castability
+    # just done, not on run_registry_gates finalization). The db-wide roster diversity
+    # gate is deferred to verify() (see the docstring).
     _self_check_reassignments(db)
-    verify_diversity(db)
     return tags
 
 
-# Registry may also invoke a module-level verify() during its gate phase.
 def verify(db, tags=None):
+    """POST-FINALIZATION registry verify hook (patches.run_registry_verifies, step 4).
+
+    Runs the fail-loud roster-locked granted-skill diversity gate over the FINAL
+    assembled db - AFTER run_registry_gates has de-filled Ground Smash (clearing the
+    8 dev-soul cyclops_groundsmash grants) and renamed the wave29 placeholder-tag
+    souls (satyrmagi -> tagSVCSoulSatyrMagi in the firefragmentnova roster;
+    satyrspiritcaller -> tagSVCSoulSatyrSpiritcaller in the lifedrain roster). Those
+    three offenders are ORDERING ARTIFACTS cleared by construction here; the genuine
+    family gaps are held by the ALLOW roster. Fail-loud (SystemExit) on any real
+    violation, which run_registry_verifies propagates to abort the build."""
     verify_diversity(db)
     return tags
