@@ -27,7 +27,7 @@ Upstream authors (for credits + permissions): **amgoz1** (SV 0.98i, on Munderbun
 
 ---
 
-## ⚡ SUCCESSOR AGENTS - READ ORDER: this file (CLAUDE.md) → **`docs/README.md`** (the doc index +
+## ⚡ SUCCESSOR AGENTS - READ ORDER: **docs/HANDOFF_MASTER_2026-07-12.md FIRST** (throttle handoff: live P0s, in-flight workflow resume command, full plan) → this file (CLAUDE.md) → **`docs/README.md`** (the doc index +
 trust levels) → **`docs/HANDOFF_LIVE_STATE.md`** (the current-state board: build27 sizes/MD5s, the
 TESTHUB-vs-canonical deploy asymmetry, standing rules). Then `docs/BACKLOG.md` (the single open
 bug/queue board) and `docs/PLAYBOOK.md` (how to add/change anything) as needed. This repo is
