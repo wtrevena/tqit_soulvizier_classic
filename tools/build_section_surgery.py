@@ -433,7 +433,14 @@ SC2_LEVEL_KEY = 'levels/world/greece/minidungeons/spartacryptlevel2.lvl'
 SC2_DANGLING_EXIT = bytes.fromhex('3593305c5f449ee852833aa3692aa72c')
 SC2_DANGLING_MOUTH = bytes.fromhex('04aea7af234f0eaedd5a3cbd30348aaa')
 # level_key -> list of 0x06 descriptor rewrites (see rewrite_0x06_descriptors)
-REWRITE_0X06_SPECS = {
+# P0 DISABLED (Will 2026-07-12): this repurposed SC2's dangling 0x06 descriptor into a native
+# WALK-THROUGH return door (catacube <- SpartaCryptLevel2). Will's TRAVEL LAW bans every
+# walk-through/proximity teleport we author, in BOTH directions of a pair. The catacube->SC2
+# entrance portal is removed (INJECT_SPECS) and this return is now the in-SC2 svc_testhub_return
+# NPC, so this rewrite is emptied - SC2's descriptor reverts to its SV-original dangling state
+# (harmless; it was dangling in SV upstream). The spec + constants are kept above for history.
+REWRITE_0X06_SPECS = {}
+_RETIRED_REWRITE_0X06_SPECS = {
     SC2_LEVEL_KEY: [{
         'match_exit': SC2_DANGLING_EXIT, 'match_mouth': SC2_DANGLING_MOUTH,
         'new_exit': SPARTA_X1, 'new_mouth': SPARTA_M1,
@@ -468,7 +475,12 @@ MAZE03_GUID = bytes.fromhex('cdef89ae834a4adf1214609306708c02')      # maze03 le
 UBER_RETURN_EXIT = bytes.fromhex('6e513e901549b1d558db968c61bda66a')  # == maze03 host mouth's exit
 UBER_RETURN_MOUTH = bytes.fromhex('58941143e04eb3c0d62dbd952143f05d')  # == maze03 host mouth's mouth
 # level_key -> list of 0x06 descriptors to APPEND (see append_0x06_descriptors)
-APPEND_0X06_SPECS = {
+# P0 DISABLED (Will 2026-07-12): this appended a native WALK-THROUGH return door
+# (maze03 <- crypt_floor1, the Uber Dungeon exit). The maze03->crypt entrance portal is removed
+# (INJECT_SPECS) and the Uber return is now the in-crypt svc_testhub_return NPC, so this append
+# is emptied - crypt reverts to its SV-baseline 0x06 (no invented return door). Kept for history.
+APPEND_0X06_SPECS = {}
+_RETIRED_APPEND_0X06_SPECS = {
     CRYPT_FLOOR1_LEVEL_KEY: [{
         'exit': UBER_RETURN_EXIT, 'mouth': UBER_RETURN_MOUTH, 'src': MAZE03_GUID,
         'cell': (17, 0, 28),
@@ -477,7 +489,13 @@ APPEND_0X06_SPECS = {
 # level_key -> list of 0x05-instance removals keyed by a uid inside the instance's 0x14
 # binding (see remove_0x05_instances_by_0x14_uid). The landing's 0x14 mouth == the new
 # descriptor's exit, so keying on that uid deletes exactly the duplicate-id landing.
-REMOVE_0X05_BY_0X14_UID_SPECS = {
+# P0 DISABLED (Will 2026-07-12): this deleted crypt_floor1's SV-native GridExitOneWay landing
+# portal_olympianarena2 (inst[192]) only because the now-retired APPEND_0X06 return door reused
+# its portal id. With that append gone the deletion is unnecessary AND would touch an SV-original
+# record (banned) - so it is emptied; the SV landing stays exactly as SV shipped it (inert,
+# GridExitOneWay does not teleport-on-touch). Kept for history.
+REMOVE_0X05_BY_0X14_UID_SPECS = {}
+_RETIRED_REMOVE_0X05_BY_0X14_UID_SPECS = {
     CRYPT_FLOOR1_LEVEL_KEY: [{
         'uid': UBER_RETURN_EXIT, 'uid_field': 'mouth',
         'expect_dbr': PORTAL_OLYMPIANARENA2_DBR, 'expect_0x14_size': 48,
@@ -1459,6 +1477,18 @@ def _hub_pair_0x14(dest_key):
     return cave_entrance, dest_landing, dest_ret_entrance, cave_ret_landing
 
 
+# --- P0 (Will 2026-07-12): the canonical NPC-dialog RETURN traveler --------------------------
+# svc_testhub_return.dbr is a Model C boat-dialog NPC (2-port menu: Helos + Blood Cave) cloned
+# from the proven Knossos boatman. apply_svc_patches._create_testhub_portal_npcs adds the RECORD
+# to the arz UNCONDITIONALLY, and build_quest_files._add_testhub_portal_travel adds its
+# Action_BoatDialog to sv_commonmechanics.qst UNCONDITIONALLY - both already ship in the LIVE
+# build36 arz/Quests, INERT only because the canonical map never PLACED the NPC. This P0 removes
+# every walk-through portal and PROMOTES this return NPC into the SV-only dest areas (Garden,
+# Secret Place, Uber, Sparta) so every area a player can reach via the Helos portal-master has a
+# talk-to-travel way back - NO map/arz/Quests rebuild coupling beyond the already-shipped records.
+# (Same record path as SVC_TESTHUB_RETURN_DBR, defined for the TESTHUB rig further below.)
+SVC_RETURN_NPC_DBR = b'records\\quests\\svc_testhub_return.dbr'
+
 # Injection specs: level name key -> list of specs (see INJECTION-SPEC FORMAT above).
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
 # crypt_floor1: minotaur statue at (139.73, 11.84, 212.30), existing arena portal at (139.94, 10.01, 231.94)
@@ -1557,30 +1587,14 @@ INJECT_SPECS = {
         (LIGHT_5M_DYN_ORANGE_DBR, 38.88533020019531, 15.425609588623047, 90.27568817138672,
          {'rot': HV01_5M_DYN_ORANGE_ROT}),
         (LIGHT_10M_SIMPLE_RED_DBR, 46.9508056640625, 25.032676696777344, 112.49130249023438),
-        # --- A1 GARDEN OF MERCHANTS door: HV01 host portals. G1 = entrance -> GardenofMerchants.
-        # M4 FIX (build30, "Chumbi Valley portal still broken" P0): the build28 B-PORTAL-2 move to
-        # the NE spur (51.00,17.80,142.00) KILLED the teleport - a born-open GridEntrance fires only
-        # when the player's movement SEGMENT CROSSES the portal PLANE (Region::FindCrossedPortal,
-        # plane-vs-segment, NOT touch/proximity); the spur is a Z-dead-end (walkable-both-sides Z=
-        # False) so the player stops AT the portal without crossing (scratchpad/m4_impl_analysis.py).
-        # It is ALSO invisible: the static portal mesh is a flat placeholder-textured pane (the swirl
-        # is a Dynamic-portal FX we lack), so Will saw only the engine's blue GridEntrance arrow.
-        # FIX (both proven-by-data): (a) MOVE G1 back to the build27 THROUGH-corridor spot
-        # (46.70,15.80,127.90) - walkable-both-sides X AND Z (crossable), on-mesh 0.00u, same
-        # walkable component #0, 16-19u from the moved fountain/caravan; it byte-proven teleported
-        # there on build27 (identity rot in BOTH builds, so rotation was never the cause). (b) add a
-        # co-located persistent portal-swirl FX (PORTAL_FX_MAP_AURA_DBR) so it is VISIBLE. Trade-off
-        # flagged for Will: this re-introduces the on-path position B-PORTAL-2 complained about, but
-        # the portal is now VISIBLE (glowing) so walking into it reads as intentional travel, not an
-        # invisible surprise-teleport; exact feel is WALK-TEST-GATED. The 0x14 binding
-        # (GARDEN_G1_0x14 = gM1+gX1+GoM GUID) is UNCHANGED - portal position lives purely in the
-        # 0x05 instance; the 0x14 mouth/exit/dest are position-independent UIDs. G4 = return landing
-        # (GridExitOneWay, invisible, does NOT teleport-on-touch) left in place. Born-open static
-        # GridEntrance/GridExitOneWay (see the A1 born-open block). v0x11 shared -> step-6/7
-        # x14_payload append. flags=0, identity rot. The FX is flags=0, no 0x14.
-        (PORTAL_OLYMPIANARENA1_DBR, 46.70, 15.80, 127.90, {'x14_payload': GARDEN_G1_0x14}),
-        (PORTAL_FX_MAP_AURA_DBR, 46.70, 15.80, 127.90),
-        (PORTAL_OLYMPIANARENA2_DBR, 56.90, 17.60, 138.10, {'x14_payload': GARDEN_G4_0x14}),
+        # --- P0 WALK-THROUGH-PORTAL REMOVAL (Will 2026-07-12): the A1 Garden-of-Merchants
+        # HV01 host door (G1 GridEntrance walk-through entrance + its map_portal_aura swirl +
+        # the G4 return landing) is REMOVED. Will's TRAVEL LAW: NO walk-through/proximity
+        # teleport anywhere we author - the ONLY approved travel is the proven NPC boat-dialog
+        # (talk -> confirm). The Garden is now reached ONLY via the Helos portal-master NPC
+        # (PORTAL_MASTER_SPEC, canonical) and left via the in-Garden svc_testhub_return NPC
+        # (promoted to canonical below) or the SV-wired teleportshrine_gom rift. The
+        # GARDEN_G1_0x14/GARDEN_G4_0x14 constants remain defined (unused) for history.
     ],
     # Static Widow Letter (BUG 2): finalletter placed at the location_letterdrop spot so it
     # is physically present for ALL characters (the quest spawn is neutralized in
@@ -1687,33 +1701,19 @@ INJECT_SPECS = {
         # 0.00u. flags=0, no 0x14 (Tile).
         (MC_HADES_ANOURANFIREPIT02_DBR, 50.70, 1.80, 34.30),
     ],
-    # A1: maze03 -> Uber Dungeon (+ Boss Arena) entrance. Restore SV's portal_olympianarena1
-    # (GridEntranceDynamic) at the AE-mesh-on secret-door spot with SV's exact 48-byte 0x14
-    # binding (mouth+exit+dest -> crypt_floor1). AE Maze03 is a SHARED v0x0f level -> routed
-    # through the (widened) step-6 v0f inject path; the x14_payload appends the binding at the
-    # injected instance index (maze03 has a 0x14 section of size 0). flags=0, IDENTITY rot.
-    # See the PORTAL_OLYMPIANARENA1 block above for the full mechanism + coord derivation.
-    'levels/world/greece/knossos/underground/maze03.lvl': [
-        (PORTAL_OLYMPIANARENA1_DBR, 290.70, 1.20, 152.50,
-         {'x14_payload': PORTAL_OLYMPIANARENA1_0x14}),
-    ],
-    # WORKSTREAM A: INVENTED Sparta Crypt L2 entrance (see the SPARTA_* block above).
-    # HOST = CataCube02_FloorLast (SHARED v0x0f, the deepest Athens catacomb). ONE instance:
-    #   P1 = portal_olympianarena1 (born-open GridEntrance) -> SpartaCryptLevel2.
-    # 2026-07-08 wave: P1 RELOCATED off the stairsdown funnel (the same teleport-on-touch
-    # walkway hazard class as the Garden G1 fix): the old spot (29.10,1.20,41.30) sat 6.0u
-    # from stairsdown01 (30.51,35.47) at the stairs-room east edge = the arrival lane. New
-    # spot (20.00,1.20,46.00) = the room's NE dead-end nook (recon_wave4_0708 cata): same
-    # walkable component #0, on-mesh 0.14u openNbr 8/8, 14.9u from the stairs, 7.4u from the
-    # nearest decor, opens SOUTH into the room only (no through-lane crosses it), visible
-    # from the stairs across the room = a deliberate spur, G1-style. The 0x14 binding is
-    # UNCHANGED (position lives purely in the 0x05 instance).
-    # P4 (the old return landing @ 39.70,1.20,67.50) is REMOVED: the SC2 return is now the
-    # native 0x06 descriptor door (REWRITE_0X06_SPECS above), whose landing side is the
-    # engine's own door pairing - the orphaned GridExitOneWay had no live partner.
-    'levels/world/greece/athens/underground/catacube02_floorlast.lvl': [
-        (PORTAL_OLYMPIANARENA1_DBR, 20.00, 1.20, 46.00, {'x14_payload': SPARTA_P1_0x14}),
-    ],
+    # A1: maze03 -> Uber Dungeon walk-through GridEntrance = REMOVED (P0, Will 2026-07-12).
+    # No walk-through/proximity teleport anywhere we author. The Uber Dungeon is now reached
+    # via the Helos portal-master NPC (its boat-dialog carries the Uber landing coord) and
+    # left via the in-crypt svc_testhub_return NPC (promoted to canonical below). The paired
+    # crypt-side APPEND_0X06 return door + REMOVE_0X05 landing-strip are DISABLED (see above).
+    # maze03 (base AE v0f) reverts to no injection.
+    # WORKSTREAM A: INVENTED Sparta Crypt L2 walk-through entrance = REMOVED (P0, Will
+    # 2026-07-12). The CataCube02_FloorLast -> SpartaCryptLevel2 born-open GridEntrance was a
+    # walk-through/proximity teleport; no such triggers anywhere we author. Sparta Crypt is now
+    # reached via the Helos portal-master NPC (its boat-dialog carries the SC2 landing coord)
+    # and left via the in-SC2 svc_testhub_return NPC (promoted to canonical below). The paired
+    # SC2-side REWRITE_0X06 return door is DISABLED (see above). catacube (base AE v0f) reverts
+    # to no injection.
     # DEST = SpartaCryptLevel2: NO 0x05 injections anymore (2026-07-08 wave). The old
     # P2 (inbound landing) + P3 (return entrance) are REMOVED: P3 was appended-host = never
     # fires (live-proven engine gate), and P2's mouth uid (SPARTA_X1) now belongs to the
@@ -1742,71 +1742,65 @@ INJECT_SPECS = {
     # needed map-side). ⚠️ COUPLED SHIP: this map (standalone removed) + the DB lane's pool
     # edit deploy TOGETHER - the map alone = no chest-room Toxeus at all. History: M5' spec
     # kept in git (build31e and earlier).
-    # ===== A2 SECRET PLACE door (this session): rhodes_secretvista_01 HOST (v0x0f shared) =====
-    # S1 = entrance -> darkforestenter (tucked-away east-edge nook, 17.8u from decor); S4 = return
-    # landing (10.1u from S1). See docs/DOORS_HUB_LOG.md A2. GridEntranceDynamic/GridExitOneWay,
-    # opened by bossarena.qst by record name. v0x0f shared -> step-6/7 x14_payload append.
-    'xpack/levels/area01_rhodes/rhodes_secretvista_01.lvl': [
-        (PORTAL_OLYMPIANARENA1_DBR, 138.50, 18.40, 33.10, {'x14_payload': SECRET_S1_0x14}),
-        (PORTAL_OLYMPIANARENA2_DBR, 137.10, 17.00, 43.10, {'x14_payload': SECRET_S4_0x14}),
-    ],
-    # ===== A2 SECRET PLACE door: darkforestenter DEST (v0x0e SV-only) =====
-    # S2 = inbound landing (central, mouth == S1.exit); S3 = return entrance -> vista (8u from S2).
-    # SV-only -> inject_into_sv_only_blob + x14_payload append (darkforestenter has a 0x14 section).
+    # ===== A2 SECRET PLACE door: rhodes_secretvista_01 HOST walk-through portals = REMOVED
+    # (P0, Will 2026-07-12). The vista-side S1 GridEntrance (walk-through entrance -> Secret
+    # Place) + S4 return landing are gone - no walk-through/proximity teleport anywhere we
+    # author. The Secret Place (darkforestenter) is reached via the Helos portal-master NPC
+    # and left via the in-area svc_testhub_return NPC (promoted to canonical below) + the
+    # SV-wired RogueEncampment teleportshrineorient01 rift (FLAG_UID_SPECS, kept). vista (base
+    # AE v0f) reverts to no injection.
+    # ===== A2 SECRET PLACE dest (darkforestenter, v0x0e SV-only): walk-through portals REMOVED,
+    # NPC RETURN promoted to canonical (P0, Will 2026-07-12). The S2 inbound landing + the S3
+    # walk-through return entrance are gone. In their place: svc_testhub_return (Model C
+    # boat-dialog NPC; records\quests\svc_testhub_return.dbr ships in the arz UNCONDITIONALLY -
+    # apply_svc_patches _create_testhub_portal_npcs - with a 2-port menu Helos + Blood Cave via
+    # sv_commonmechanics.qst _add_testhub_portal_travel). Placing its instance canonically
+    # activates the existing dialog (no arz/Quests rebuild). Coord = the build34 TESTHUB survey
+    # spot 3u E of the Helos-master boat-dialog landing (on-mesh, comp 0, clr 100%).
     'xpack/levels/secret_place/darkforestenter.lvl': [
-        (PORTAL_OLYMPIANARENA2_DBR, 23.90, 2.00, 30.50, {'x14_payload': SECRET_S2_0x14}),
-        (PORTAL_OLYMPIANARENA1_DBR, 17.90, 7.00, 38.50, {'x14_payload': SECRET_S3_0x14}),
+        (SVC_RETURN_NPC_DBR, 27.0, 1.0, 30.0),
     ],
-    # ===== A1 GARDEN OF MERCHANTS door: GardenofMerchants DEST (v0x0e SV-only) =====
-    # G2 = inbound landing (in the caravan_rhodes component #1 = the merchant hub, 6u from the
-    # caravan; mouth == G1.exit); G3 = return entrance -> HV01 (12u from G2). Unlocks the
-    # caravan_rhodes Super-Caravan region. SV-only -> inject_into_sv_only_blob + x14_payload.
-    # H2 (N1 build31) = inbound landing for the HELOS entrance: (130.30,-39.00,73.10) = 6.0u due
-    # -Z of G2, on-mesh, fully crossable 3u both axes, in the same caravan_rhodes component,
-    # 13.4u from the G3 return shrine, nearest decor 6u (scratchpad/n1_spot_pick.py L1).
-    # GridExitOneWay landing = invisible, no teleport-on-touch, no FX needed (same as G2/G4).
-    # R1 (N1b build31) = return entrance -> HELOS at (136.30,-39.00,71.10): 6.3u ESE of the H2
-    # landing ("the way you came in is the way back"), the ONLY probed spot near H2 fully
-    # crossable 3u on BOTH axes (plane-crossing rule), on-mesh, same caravan_rhodes component,
-    # 10.0u from both G2 and the G3 shrine (spatially distinct from the classic HV01 return),
-    # 6.0u from nearest decor (scratchpad/n1b_recon.py R1d). Co-located map_portal_aura swirl
-    # marks it as an active portal (G3 has none - extra visual distinction). Off the G2->G3 and
-    # H2->caravan walk lines (both run ~Z 76-79; R1 sits at Z 71.1), so no accidental crossing.
+    # ===== A1 GARDEN OF MERCHANTS dest (GardenofMerchants, v0x0e SV-only): walk-through portals
+    # REMOVED, NPC RETURN promoted to canonical (P0, Will 2026-07-12). ALL four Garden-side
+    # walk-through portals are gone: G2 (HV01 inbound landing), G3 (walk-through return -> HV01),
+    # H2 (Helos inbound landing), R1 (walk-through return -> Helos) + R1's map_portal_aura swirl.
+    # THIS is the far end of the LIVE Steam bug ("walk south in Helos -> yanked to the Garden with
+    # no way back"): both the HV01 and Helos walk-through entries into the Garden are now deleted.
+    # In their place: svc_testhub_return (Model C boat-dialog NPC, ships in the arz uncondition-
+    # ally, 2-port Helos + Blood Cave) placed 3u E of the boat-dialog landing. The SV-wired
+    # teleportshrine_gom rift (native, untouched) is the second way back. Coord = the build34
+    # TESTHUB survey spot (on-mesh, caravan_rhodes comp #1, clr 100%).
     'levels/world/olympus/gardenofmerchants.lvl': [
-        (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 79.10, {'x14_payload': GARDEN_G2_0x14}),
-        (PORTAL_OLYMPIANARENA1_DBR, 142.30, -39.00, 79.10, {'x14_payload': GARDEN_G3_0x14}),
-        (PORTAL_OLYMPIANARENA2_DBR, 130.30, -39.00, 73.10, {'x14_payload': HELOS_H2_0x14}),
-        (PORTAL_OLYMPIANARENA1_DBR, 136.30, -39.00, 71.10, {'x14_payload': HELOS_R1_0x14}),
-        (PORTAL_FX_MAP_AURA_DBR, 136.30, -39.00, 71.10),
+        (SVC_RETURN_NPC_DBR, 133.0, -39.0, 73.0),
     ],
-    # ===== N1 (build31): HELOS -> GARDEN OF MERCHANTS entrance (first town, Act 1) =====
-    # Will: "the portal to Duister should be put in the first town". HOST = startingfarmland06d
-    # (Helos village, v0x11 shared -> step-6/7 x14_payload append). H1 at (74.00,0.40,184.00) =
-    # the town-portal plaza: 10.65u due -Z of the base-game TeleportShrineHelios01 device
-    # (74.18,0.50,194.65) and 6.6u from Starting_PortalMan - the corner of town where portals
-    # already live, so a glowing second portal reads as intentional; 33u from the merchant-row
-    # through-path (main village flow does NOT cross it), nearest instance 5.6u (a shepherd
-    # wander marker, not decor). On-mesh (floor local Y=0.40), fully crossable 3u on BOTH axes
-    # (the M4 plane-crossing lesson: born-open GridEntrance only fires when the player's
-    # movement segment crosses the portal plane - dead-end spots kill the teleport), same
-    # walkable component as the merchants/fountain (comp 725,476 cells)
-    # (scratchpad/n1_spot_pick.py P5). Co-located map_portal_aura swirl = M4 visibility recipe.
-    # 0x14 = minted mouth/exit + GOM_GUID; landing = H2 in the Garden (above). Return = the
-    # Garden's EXISTING G3 shrine -> HV01 (Act 3) - flagged to Will, walk-test-gated.
-    # R2 (N1b build31) = return landing from the Garden at (68.00,-0.40,181.00): 6.7u W of H1
-    # (arrivals do not stack on the entrance; H1's teleport plane is 6.7u away so no accidental
-    # re-entry), fully crossable 3u both axes (open plaza), same walkable component, 7.3u from
-    # Starting_PortalMan, 4.8u from nearest decor (scratchpad/n1b_recon.py R2b). GridExitOneWay
-    # landing = invisible, no teleport-on-touch, no FX (same as G4/H2).
+    # ===== UBER DUNGEON (crypt_floor1, v0x0e SV-only): NPC RETURN promoted to canonical (P0,
+    # Will 2026-07-12). Replaces the disabled maze03<->crypt walk-through door + its APPEND_0X06
+    # native return. svc_testhub_return placed 3u S of the Helos-master boat-dialog Uber landing
+    # (-2438,10,-2450). SV-only v0e -> inject_into_sv_only_blob (same path as Vashkarr). On-mesh
+    # (build34 TESTHUB survey, single comp, clr 96%). flags=0, no 0x14.
+    'levels/world/uberdungeon/crypt_floor1.lvl': [
+        (SVC_RETURN_NPC_DBR, 140.0, 10.0, 229.0),
+    ],
+    # ===== SPARTA CRYPT (spartacryptlevel2, v0x0e SV-only): NPC RETURN promoted to canonical (P0,
+    # Will 2026-07-12). Replaces the disabled catacube<->SC2 walk-through door + its REWRITE_0X06
+    # native return. svc_testhub_return placed 3u E of the Helos-master boat-dialog Sparta landing
+    # (-5602,-2,-1409). SV-only v0e -> inject_into_sv_only_blob. On-mesh (build34 TESTHUB survey,
+    # comp 0, clr 100%). flags=0, no 0x14.
+    'levels/world/greece/minidungeons/spartacryptlevel2.lvl': [
+        (SVC_RETURN_NPC_DBR, 45.0, -1.6, 42.0),
+    ],
+    # ===== HELOS (startingfarmland06d, v0x11 shared): THE LIVE STEAM P0 (Will 2026-07-12) =====
+    # "you cant walk south in helios since you get teleported right to the garden of merchants
+    # with no way back." The N1/N1b Helos->Garden WALK-THROUGH door is DELETED: H1 (born-open
+    # GridEntrance @ (74.00,0.40,184.00), the portal Will walked into), its co-located
+    # map_portal_aura swirl, and the R2 return landing @ (68.00,-0.40,181.00) are ALL removed.
+    # The ONLY travel out of Helos is now the portal-master NPC below (talk -> boat-dialog ->
+    # confirm destination) - Will's approved pattern, no walk-through/proximity teleport.
     'levels/world/greece/startingtownver2/startingfarmland06d.lvl': [
-        (PORTAL_OLYMPIANARENA1_DBR, 74.00, 0.40, 184.00, {'x14_payload': HELOS_H1_0x14}),
-        (PORTAL_FX_MAP_AURA_DBR, 74.00, 0.40, 184.00),
-        (PORTAL_OLYMPIANARENA2_DBR, 68.00, -0.40, 181.00, {'x14_payload': HELOS_R2_0x14}),
-        # M8 Phase-1 (build32a): the Helos portal-master NPC (Model C pilot) at the
-        # town-portal plaza - 5.7u S of TeleportShrineHelios01, 6.0u NE of the H1 Garden
-        # portal (walking to the NPC cannot cross H1's teleport plane), 8.9u from the R2
-        # return landing. flags=0, no 0x14 (Starting_PortalMan NPC byte-shape). The
-        # boat-dialog quest rides the DB lane's Quests.arc 6ff23c29 (COUPLED deploy).
+        # M8 (build32a): the Helos portal-master NPC (Model C boat-dialog). KEPT - this is the
+        # proven "talk to travel" traveler and is now Helos's SOLE cross-area travel mechanism.
+        # Its 4-destination menu (Garden / Secret Place / Uber Dungeon / Sparta Crypt) rides
+        # sv_commonmechanics.qst (build_quest_files _add_helos_portal_travel). flags=0, no 0x14.
         PORTAL_MASTER_SPEC,
     ],
     # M9 (build32b): Vashkarr, Eldest of the Ancients - boss proxy guarding the Majestic
@@ -2196,23 +2190,14 @@ def build_hub_extra_specs():
         R09_LVL_KEY: [
             (SVC_TESTHUB_MASTER_CAVE_DBR, 32.0, 1.0, 45.0),
         ],
-        # -- PORTAL RIG: 5 RETURN NPCs (one per restored SV area, a few u from its landing) --
-        # Garden of Merchants: 3u E of landing (1173,-39,-4001); comp 1 (= landing comp); clr@3.0=100%.
-        GARDEN_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 133.0, -39.0, 73.0),
-        ],
-        # The Secret Place (darkforestenter): 3u E of landing (-2396,2,-5790); comp 0; clr@3.0=100%.
-        SECRET_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 27.0, 1.0, 30.0),
-        ],
-        # The Uber Dungeon (crypt_floor1): 3u S of landing (-2438,10,-2450); single comp; clr@3.0=96%.
-        UBER_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 140.0, 10.0, 229.0),
-        ],
-        # The Sparta Crypt (spartacryptlevel2): 3u E of landing (-5602,-2,-1409); comp 0; clr@3.0=100%.
-        SPARTA_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 45.0, -1.6, 42.0),
-        ],
+        # -- PORTAL RIG: RETURN NPCs --
+        # P0 (Will 2026-07-12): the Garden / Secret Place / Uber / Sparta return NPCs were PROMOTED
+        # into the BASE INJECT_SPECS (they became canonical when the walk-through portals were
+        # removed), so they are intentionally NO LONGER listed here - merge_hub_into_inject_specs
+        # appends hub-extra ON TOP of base, so listing them here too would DOUBLE-place them in the
+        # TESTHUB build. The TESTHUB build inherits all four from base. ONLY the Boss Arena return
+        # stays TESTHUB-only (Boss Arena is not in the canonical Helos portal-master's 4-dest menu;
+        # only the 7-port TESTHUB hub master reaches it).
         # The Boss Arena (boss_arena): 3u E of landing (-433,0,-3602); comp 0; clr@3.0=100%; the
         # landing is ~90u off volume_startolympianarena (DB lane), so this NPC stays well off it.
         BOSSARENA_LVL_KEY: [
