@@ -1,5 +1,42 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD38-dev DEPLOYED TO DEV (2026-07-13) - b38 arz + Text only (map/Quests stay build37-dev); STEAM UNTOUCHED
+> **The DEV entry `SoulvizierClassicDEV` now runs build38-dev.** Only the DB (`arz`) and `Text.arc`
+> advanced from build37-dev; the TESTHUB map and Quests are byte-identical to build37-dev (verified on
+> disk, deliberately NOT recopied, per the "verify unchanged, do not touch" deploy rule). All four
+> coupled artifacts were md5-verified source + destination:
+> - `Database/SoulvizierClassicDEV.arz` = **`fcd5dcab40359aa94b421dd8cef4b81e`** (55,339,563 B):
+>   11-module registry build (order hash `7c74a51f6ed8`, post-finalization `run_registry_verifies`
+>   phase GREEN), the 5 GO-vetted b38 branches folded in: mastery-UI audit (8 icon repoints + Earth
+>   Rupture de-dup via Flame Surge/Flame Arch relabel + Earth col-428 reflow + Dream bg), damage_display
+>   (7 missing AE FontStyle pointers bound on xpack gameengine.dbr), enslaver-v2 roam sweep (/10 vs
+>   build36a, structural limit=1 per pool slot), earthfury pcsafe cd restored 16.0 -> 5.0 (fixes the
+>   build37-dev regression). Record-diff vs build37-dev arz (`56d6db22`) = 1242 changed, 0 added,
+>   0 removed, ZERO unexplained.
+> - `Resources/Text.arc` = **`dff9ad01ec1d81064f426d9456470eaf`** (87,261 B): language de-clobber
+>   (dropped 10,600 SV tags that were byte-identical to base `Text_EN` so the base strings win;
+>   sanity-diff 0 not-in-base / 0 value-mismatch). Golden A7 PASS (41 waived / 0 other), validate_tags
+>   PASS. Size dropped from build37-dev's 377,150 B precisely because those base-identical tags are no
+>   longer duplicated in the mod arc.
+> - `Resources/Levels.arc` = **`841c56cd2b6b8a87209327cb02529d23`** (688,688,154 B) and
+>   `Resources/Quests.arc` = **`838bdc3a3716b5e9028c076317e99608`** (194,581 B): UNCHANGED from
+>   build37-dev (TESTHUB map, `SVC_TEST_HUB=1`, 17 Helos-hub travel triggers). Verified on disk, NOT
+>   recopied. Canonical `local/Levels_merged.arc` (`60a62880`) also untouched.
+> - **STEAM = build36a canonical, UNTOUCHED** (Workshop item 3759792705: arz `63ca7cf8` / Levels
+>   `60a62880` / Text `2af4ce38` / Quests `56acee66`). TESTHUB is LOCAL-ONLY; never uploaded.
+> - **To see it, Will only needs to fully quit + restart TQ.** Do NOT restart Steam (it stays
+>   build36a); TQ was not running at deploy time.
+> - **Will's in-game checks wanted (build38-dev):** (1) **DAMAGE NUMBERS** - floating damage numbers
+>   display with correct font styling (the 7 AE FontStyle binds); (2) **MASTERY PAGES** - the mastery
+>   selection screens look right (8 icon repoints, Earth Rupture no longer duplicated, Earth column
+>   reflow, Dream background); (3) **ENGLISH SANITY CHECK** - a quick read that skill/item/UI text still
+>   reads correctly after the language de-clobber (base-game strings now win for the 10,600 de-duped
+>   tags). Full step-by-step in `docs/WILL_TEST_GUIDE.md` (BUILD38 CHECKS).
+> - **Rollback to build37-dev on DEV:** copy `local/DEV_arz_deployed_prev.arz` (`56d6db22`) -> DEV
+>   `Database/SoulvizierClassicDEV.arz` and `local/DEV_Text_deployed_prev.arc` (`8c7229db`) -> DEV
+>   `Resources/Text.arc` (Levels/Quests need no change). Build gate record at `19f85da`
+>   (`docs/BACKLOG.md`); tag `build38-dev` at this deploy commit.
+
 > ## BUILD37-dev DEPLOYED TO DEV (2026-07-13) - TESTHUB traveler hub + coupled arz/Text/Quests; STEAM UNTOUCHED
 > **The DEV entry `SoulvizierClassicDEV` now runs build37-dev** (local TESTHUB build for Will's
 > Helos-traveler-hub tour before anything more ships to Steam). All 4 coupled artifacts were copied to
