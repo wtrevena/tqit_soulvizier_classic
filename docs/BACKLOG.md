@@ -2069,3 +2069,22 @@ proven dark/black smoke FX (the Long Nu-style dark_smoke chosen in WILL_DECISION
 Helepolis). LAW: FX go on the monster record (charFxPakRunningNames-style), NEVER charFxPak
 on SpawnPet skills (build28 crash trap). Verify in the built arz + A9 render chain; add to
 Will's next tour list.
+
+## ✅ CONFIRMED 2026-07-12: Victory Portal -> EPIC works in-game (Will: killed Hades, portal,
+## spawned into Epic). A5/Act-5 fix fully closed - no further action.
+
+## BL-ENSLAVER-SPAWNS (Will 2026-07-12, tour finding #2, P1 balance - post-tour fix round)
+In EPIC's first combat area Will met TWO side-by-side "Toxeus the Murderer, Enslaver of
+Souls", each with 4 Enslaved Shadow Marauders, and the marauders took ~0 damage.
+THREE fixes, one wave:
+(1) DUPLICATE SPAWN: the build36 roaming-rare sweep lets adjacent proxies both roll the
+    Enslaver. Audit every proxy/pool he was added to; prevent side-by-side duplicates
+    (spacing the pools he's in / removing him from adjacent proxies of the same area).
+(2) SPAWN RATE: reduce (Will explicit). He should be a RARE encounter, not a doorstep
+    greeter in the first Epic field. Consider act/area gating of the roam pools entirely.
+(3) MARAUDER TANKINESS: "deployed-demon strength" law + Epic difficulty scaling = near-
+    immune marauders. Rebalance so they are killable elites in Epic/Legendary (check
+    armor/resist/absorption stacking per-difficulty; they drop nothing, so sponge = pure
+    frustration). Keep their DPS threat; cut their effective-HP wall.
+Verify vs the warband placement too (the static blood-cave warband keeps its 4 marauders;
+these fixes target the ROAMING variant's pools + per-difficulty marauder defenses).
