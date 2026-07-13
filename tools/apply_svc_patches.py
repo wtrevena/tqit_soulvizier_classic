@@ -3253,6 +3253,36 @@ def _mitigate_bloodbeast_summon_density(db):
         print(f"  WARNING MITIGATION: record missing {SKILL}")
 
 
+def _fix_bloodhound_dyingfxpak(db):
+    """CRASH-DOSSIER HYGIENE (docs/crash/DEEP_DUMP_ANALYSIS_2026-07-12.md sec 7): the 6
+    summoned bloodhound records carry a DANGLING dyingFxPak - DRX upstream typo'd the path
+    with a stray leading 'x' (xrecords\\...\\fxpak_deathfx_burst.dbr). The real FX record
+    records\\drxcreatures\\bloodhound\\effects\\fxpak_deathfx_burst.dbr EXISTS, so REPOINT
+    (drop the 'x') rather than clear - it preserves the intended death-burst FX. The engine
+    null-checks dyingFxPak, so this is HYGIENE, NOT the P0 crash fix (that RCA is map-side
+    navmesh streaming; the dangling-ref theory was refuted). Minimal delta: dyingFxPak string
+    only; 3-arg set_field so the STRING dtype is preserved (never pass an explicit dtype)."""
+    GOOD = r'records\drxcreatures\bloodhound\effects\fxpak_deathfx_burst.dbr'
+    BAD = 'x' + GOOD   # the upstream typo: xrecords\...\fxpak_deathfx_burst.dbr
+    hounds = [rf'records\drxcreatures\bloodhound\{b}.dbr' for b in
+              ('b_bloodhound_33', 'b_bloodhound_34', 'b_bloodhound_35',
+               'c_bloodhound_40', 'c_bloodhound_42', 'c_bloodhound_44')]
+    if not db.has_record(GOOD):
+        print(f"  WARNING bloodhound dyingFxPak: target FX missing {GOOD}; skipped")
+        return
+    fixed = 0
+    for h in hounds:
+        if not db.has_record(h):
+            continue
+        cur = db.get_field_value(h, 'dyingFxPak')
+        cur = cur[0] if isinstance(cur, list) else cur
+        if cur is not None and str(cur).replace('/', '\\').lower() == BAD.lower():
+            db.set_field(h, 'dyingFxPak', GOOD)   # drop the stray 'x'; STRING dtype preserved
+            fixed += 1
+    print(f"  HYGIENE bloodhound dyingFxPak: repointed {fixed}/6 dangling refs "
+          f"(xrecords -> records; FX now resolves)")
+
+
 def overhaul_souls(db):
     """Patch 13: Overhaul weak uber/boss souls with skills, summons, procs."""
     print("\n=== Patch 13: Overhaul weak souls with skills/procs ===")
@@ -16566,6 +16596,10 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     # (8 -> 4) to cut summon-density load in the crash-correlated rooms. Load
     # reduction only (RCA refuted the dangling-ref theory); no other field touched.
     _mitigate_bloodbeast_summon_density(db)
+    # CRASH-DOSSIER HYGIENE (build37): repoint the 6 summoned-bloodhound dangling
+    # dyingFxPak refs (upstream "xrecords" typo -> the real "records" FX). Real defect,
+    # NOT the P0 crash (engine null-checks the field); minimal, explained delta.
+    _fix_bloodhound_dyingfxpak(db)
 
     # GROUP 1 (test yard): build the TESTHUB monster-yard pool/proxy records. MUST
     # sit AFTER every yard-referenced group (Vashkarr/wyrm/obsidian/enslaver all
