@@ -16593,15 +16593,14 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # F5 (build36): Bloodcrow Flame Nova cd + Flash Powder rework (both lives) +
     # droolbog repoint. Before the castability wave so any pcsafe clone inherits it.
     _apply_flashpowder_rework(db)
-    # B37 (2026-07-12): Will-approved Hunting/Occult improvement wave. Module-
-    # scoped for the patches registry (tools/patches/hunting_occult_improvements.py,
-    # contract MODULE_NAME + apply(db, tags)); invoked directly here until the
-    # registry (feat/patches-registry) lands. Golden drift is waived per-field in
-    # occult_hunting_golden.json ("Will-authorized H/O improvement wave 2026-07-12"),
-    # the same mechanism the F5 rework above uses. The wave's TEXT (renamed/new/
-    # corrected skill descriptions) is authored in build_text_arc.OCCULT_FIX_TAGS.
-    from patches.hunting_occult_improvements import apply as _apply_ho_improvements
-    _apply_ho_improvements(db, tags)
+    # B37 (2026-07-12): Will-approved Hunting/Occult improvement wave. It now runs
+    # as a REGISTRY module (tools/patches/hunting_occult_improvements.py) executed by
+    # run_registry() BEFORE this gate battery, so the interim direct call that used to
+    # sit here is GONE (build37 integration, NEXT_STEPS item 1.1 - registry-only H/O
+    # wiring). Its records are disjoint from the flashpowder rework above, and
+    # _fix_granted_skill_castability() below still finalizes every granted skill.
+    # Golden drift stays waived per-field in occult_hunting_golden.json; the wave's
+    # TEXT lives in build_text_arc.OCCULT_FIX_TAGS.
     # F3 (build36): de-filler Ground Smash from every non-roster soul BEFORE the
     # castability wave, so camelbane's replacement tremor rides the pcsafe clone.
     _defiller_ground_smash(db)

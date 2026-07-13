@@ -62,6 +62,8 @@ REGISTRY = [
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
+    'hunting_occult_improvements',  # build37: Will-approved H/O skill edits; runs late (was the
+                                    # finalization-phase interim call) so it wins any collision
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
