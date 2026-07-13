@@ -118,8 +118,11 @@ GATES PASS (naming, boss-kit clone-shape, spawn-eligibility [22 proxies], soul-l
 soul-augment, soul-itemskill-activation, F3 granted-skill diversity, PET-STAT-MIRROR,
 PET-GEAR-PARITY, PET-SKILL-KIT [no hostile spawner on a friendly pet], F2 soul-summon-identity).
 
-Full `build_svc_database.py` gate build (monolith + registry + full battery + post-write
-A9/container/B-SUMMON-1/F2, Resources-populated so A9+F2 run): <FILLED AFTER BUILD>.
+Full `build_svc_database.py` gate build (monolith + registry [four_generals] + full battery +
+post-write A9/container/B-SUMMON-1/F2, Resources-populated so A9+F2 run): PASS. Produced
+`SoulvizierClassic_b37fg.arz` (md5 4f69e9ab); the independent vet ground-truthed that artifact
+clean - all gates green through `db.write_arz` and every post-write validator (A9 render-chain,
+container-shape, B-SUMMON-1 summon-pets, F2 soul-summon-identity).
 
 ## Probes
 

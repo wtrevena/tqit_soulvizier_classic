@@ -35,17 +35,23 @@ Back row (the 5 new Immortal-Throne superbosses - build36):
 | **Traveler: Pools of Mnemosyne** | Judgment_TempleUG_Mnemosyne01 | **The Mnemophage** (2-phase) |
 | **Traveler: Dread Halls (Ephialtes)** | Judgment_StoneCity_Exit01 | **Ephialtes, the Waking Dread** (fear nova) |
 
-**Getting back:** every destination has a way back.
-- Garden / Secret Place / Uber / Sparta / Boss Arena: a **Return Warden** NPC stands a few steps
-  from where you land (talk -> back to Helos or the Blood Cave); the Garden and Secret Place also
-  keep their SV rift-shrines.
-- The 6 new areas (the 5 IT superbosses + the Blood-Cave Warband): a **Return Traveler** NPC stands
-  a few steps from where you land -> talk -> confirm -> back to the Helos plaza.
+**Getting back:** every destination has a way back, but note one TESTHUB limitation on the older areas.
+- The **6 NEW areas** (the 5 IT superbosses + the Blood-Cave Warband): each has its OWN **Return
+  Traveler** record placed a few steps from where you land -> talk -> confirm -> back to the Helos
+  plaza. These are distinct records, so every one binds and works.
+- **Garden / Secret Place / Uber / Sparta / Boss Arena**: these 5 established areas currently SHARE a
+  single `svc_testhub_return` record placed once in each. By the **WARDEN LAW** (only the FIRST
+  placement of a given record binds; the engine leaves the duplicates MUTE), expect only ONE of these
+  five return NPCs to actually respond - the others render but may do nothing. The Garden and Secret
+  Place also keep their SV rift-shrines. **Universal fallback: a TQ Town-Portal scroll returns you to
+  town from ANY area**, so use one if a return NPC is mute. Splitting these into one distinct return
+  record per area (so all five bind) is deferred to the b37 map pass.
 
 **Hub verification checklist:** (1) all 11 travelers are present + individually clickable (no two
 stacked); (2) each teleport lands you standing on solid ground (on-mesh), not in a wall/void; (3)
-from each new boss area, the Return Traveler brings you back to Helos; (4) NO walk-through teleports
-anywhere - travel only happens after you talk + confirm.
+from each of the 6 NEW boss areas the Return Traveler brings you back to Helos (the 5 established
+areas share one return record, so only one binds - keep a TQ Town-Portal scroll as the universal
+fallback); (4) NO walk-through teleports anywhere - travel only happens after you talk + confirm.
 
 ### Where the old walk-through doors were (removed 2026-07-12; reach these via the hub now)
 
@@ -98,6 +104,12 @@ New build36 uber bosses (mainline Act 4, all with hoards/orbs/souls; also reacha
 Coming in build37 (already built + vetted, shipping as small builds): The Helepolis, Taker of
 Cities (Fields of the Diadochi); Menoetes, Marshal of the Dead (+ the three general upgrades);
 the Polis Daemonai vault Guardian (5 majestic chests); Neferkha, the Rimebound Pharaoh (Egypt).
+
+**QA-WATCH (build37, four_generals):** when you fight Hades' three generals, confirm **Trophonios's
+archer-muster fires in-game** - he should periodically summon a small squad of crimson Machae
+archers (his `specialAttack4`; a redundant `specialAttack5` autocast slot is pre-wired as the
+fallback, and the muster is petLimit-3 / TTL-20 so it never swarms). If no archers ever appear
+while Trophonios is engaged, flag it (the muster slot did not fire).
 
 ## B. SV AREAS - what exists and how to get there
 

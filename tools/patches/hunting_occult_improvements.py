@@ -10,12 +10,14 @@ SUGGESTIONS.md, both checker-verified, and Will's verbatim approvals):
 
   H1  Rapid Construction: strip the copy-paste `defensiveConvert == skill
       CooldownTime` charm-resist penalty (S1). DB here; no tag.
-  H2  The two skills both named "Eviscerate" (S2): the SQUARE-icon attack
-      (drxtakedown_eviscerate, UI skill18 isCircular=0) keeps "Eviscerate";
-      the CIRCLE-icon control spin (drxspear_tempest, UI skill22 isCircular=1,
-      "more like a buff" per Will) is renamed "Tempest". Both get the base
+  H2  The two skills both named "Eviscerate" (S2): drxtakedown_eviscerate (UI
+      skill18, the CIRCLE-icon Takedown modifier per Will's shape law, isCircular=1)
+      keeps "Eviscerate"; drxspear_tempest (UI skill22, the SQUARE-icon cast active
+      per Will's shape law, isCircular=0) is renamed "Tempest". Both get the base
       descriptions they were missing. DB (skillDisplayName / skillBaseDescription
-      repoint) here; the tag TEXT is authored in build_text_arc.py.
+      repoint) here; the tag TEXT is authored in build_text_arc.py. The icon SHAPES
+      are owned by the hunting_occult_ui module (the shape-law owner); this wave only
+      renames + describes.
   H3  Descriptions: the two missing (H2) + the two inaccurate Hunting tooltips
       Scatter Shot (tagSkillDescription171) and Gouge (tagSkillDescription172),
       both cross-wired to a "Quillvine grove" in SV. TEXT in build_text_arc.py.
@@ -53,8 +55,8 @@ MODULE_NAME = "hunting_occult_improvements"
 
 # ── record paths ────────────────────────────────────────────────────────────
 _RAPID = r'records\skills\hunting\drxmonsterlure_rapidconstruction.dbr'
-_TEMPEST = r'records\skills\hunting\drxspear_tempest.dbr'           # CIRCLE (buff-like)
-_EVISCERATE = r'records\skills\hunting\drxtakedown_eviscerate.dbr'  # SQUARE (attack)
+_TEMPEST = r'records\skills\hunting\drxspear_tempest.dbr'           # SQUARE cast active (shape set by hunting_occult_ui)
+_EVISCERATE = r'records\skills\hunting\drxtakedown_eviscerate.dbr'  # CIRCLE Takedown modifier (shape set by hunting_occult_ui)
 _HUNT_MASTERY = r'records\skills\hunting\drxhuntingmastery.dbr'
 _DARKLINGS = r'records\skills\stealth\drxdarklings.dbr'
 _BOOM = r'records\skills\stealth\drxpet\drx_petskill_boom.dbr'
@@ -132,12 +134,12 @@ def _fix_rapid_construction(db):
 
 # ── H2: the two "Eviscerate" nodes + their missing descriptions ─────────────
 def _fix_eviscerate_dedup(db):
-    """S2 + Will's square/circle detail. drxtakedown_eviscerate = the SQUARE
-    attack (UI skill18 isCircular=0): keeps tagSkillName090 "Eviscerate", gains a
-    real base description. drxspear_tempest = the CIRCLE control spin (UI skill22
-    isCircular=1, "more like a buff"): renamed to "Tempest" (its own record name;
-    its modifier one row up is already "Flayer"), gains a description that reads as
-    the wide fear/confuse/slow control it is. Text-only intent; no mechanics."""
+    """S2 + Will's square/circle detail (shapes owned by hunting_occult_ui, the shape-law
+    owner). drxtakedown_eviscerate = the CIRCLE Takedown modifier (UI skill18 isCircular=1):
+    keeps tagSkillName090 "Eviscerate", gains a real base description. drxspear_tempest = the
+    SQUARE cast active (UI skill22 isCircular=0): renamed to "Tempest" (its own record name;
+    its modifier one row up is already "Flayer"), gains a description that reads as the wide
+    fear/confuse/slow control it is. Text-only intent; no mechanics."""
     S = DATA_TYPE_STRING
     _need(db, _TEMPEST, 'H2')
     _need(db, _EVISCERATE, 'H2')

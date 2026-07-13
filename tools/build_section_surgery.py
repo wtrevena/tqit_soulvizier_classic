@@ -109,7 +109,6 @@ DEFAULT_0x14_PAYLOAD = struct.pack('<IIIII', 2, 0, 1, 1, 0)
 
 
 ENTRANCE_NPC_DBR = b'records\\quests\\portal_uberdungeon_entrance.dbr'
-RETURN_NPC_DBR = b'records\\quests\\portal_uberdungeon_return.dbr'
 BLOODCAVE_ENTRANCE_NPC_DBR = b'records\\quests\\portal_bloodcave_entrance.dbr'
 BLOODCAVE_RETURN_NPC_DBR = b'records\\quests\\portal_bloodcave_return.dbr'
 
@@ -2155,22 +2154,29 @@ AREA_RETURN_CHARON_DBR     = b'records\\quests\\svc_area_return_charon.dbr'
 AREA_RETURN_MNEMOPHAGE_DBR = b'records\\quests\\svc_area_return_mnemophage.dbr'
 AREA_RETURN_EPHIALTES_DBR  = b'records\\quests\\svc_area_return_ephialtes.dbr'
 AREA_RETURN_WARBAND_DBR    = b'records\\quests\\svc_area_return_warband.dbr'
-# The 11 Helos plaza placements: two rows S of the quest NPC (Starting_PortalMan @ 68.9,188.3),
-# the shrine (74.2,194.7) and canonical Almyros (76.5,189.5) - all kept >=5u clear. floor Y=0.6.
-# front row Z=181.5 = the 6 established areas; back row Z=184.0 = the 5 IT superbosses. ALL spots
-# surveyed d<=0.14u / clr 100% all 3 tilesets / comp#1 (survey_uberboss_spots.py 2026-07-13).
+# The 11 Helos plaza placements: grouped S of the quest NPC (Starting_PortalMan @ 68.9,188.3),
+# the shrine (74.2,194.7) and canonical Almyros (76.5,189.5) - all kept >=3u clear. floor Y=0.6.
+# Established areas front (Z 181.5-182.6); the 5 IT superbosses back (Z=184.0; Ephialtes nudged N
+# to clear the E prop). RE-SURVEYED + NUDGED 2026-07-13 vs the build36a canonical map
+# (survey_uberboss_spots.py, ext=3.0): 10/11 read on-mesh d<=0.14u / comp#1 / clr 100% (Dorus 99%)
+# all 3 tilesets. Garden is an ACCEPTED CHECK (98/96/93% N/E/L): the plaza's west edge is genuinely
+# obstructed, but the spot is on-mesh in the main component and fully walkable for a talk NPC (any
+# further west/north nudge drops below 90% or crowds Secret). The earlier "clr 100% all 3 tilesets"
+# claim here was OVERSTATED: 5 front spots actually sat at 87-95% (BossArena 87% worst) near the
+# S/E plaza props; Uber/BossArena/Warband moved into the clean Z=182.6 interleave (100%) and
+# Ephialtes to Z=186.2 (100%); Garden is the documented residual CHECK.
 HELOS_HUB_PLAZA_SPECS = [
-    (HELOS_TRAV_GARDEN_DBR,     66.5, 0.6, 181.5),
-    (HELOS_TRAV_SECRET_DBR,     69.0, 0.6, 181.5),
-    (HELOS_TRAV_SPARTA_DBR,     71.5, 0.6, 181.5),
-    (HELOS_TRAV_UBER_DBR,       74.0, 0.6, 181.5),
-    (HELOS_TRAV_BOSSARENA_DBR,  76.5, 0.6, 181.5),
-    (HELOS_TRAV_WARBAND_DBR,    79.0, 0.6, 181.5),
-    (HELOS_TRAV_DORUS_DBR,      71.5, 0.6, 184.0),
-    (HELOS_TRAV_TANTALUS_DBR,   74.0, 0.6, 184.0),
-    (HELOS_TRAV_CHARON_DBR,     76.5, 0.6, 184.0),
-    (HELOS_TRAV_MNEMOPHAGE_DBR, 79.0, 0.6, 184.0),
-    (HELOS_TRAV_EPHIALTES_DBR,  81.5, 0.6, 184.0),
+    (HELOS_TRAV_GARDEN_DBR,     67.0,  0.6, 181.8),   # ACCEPTED CHECK 98/96/93% (west plaza edge; nudged from 66.5,181.5)
+    (HELOS_TRAV_SECRET_DBR,     69.0,  0.6, 181.5),   # OK 100%
+    (HELOS_TRAV_SPARTA_DBR,     71.5,  0.6, 181.5),   # OK 100%
+    (HELOS_TRAV_UBER_DBR,       72.75, 0.6, 182.6),   # OK 100% (was 74.0,181.5 @ ~95%)
+    (HELOS_TRAV_BOSSARENA_DBR,  75.25, 0.6, 182.6),   # OK 100% (was 76.5,181.5 @ 87% worst)
+    (HELOS_TRAV_WARBAND_DBR,    77.75, 0.6, 182.6),   # OK 100% (was 79.0,181.5 @ 91%)
+    (HELOS_TRAV_DORUS_DBR,      71.5,  0.6, 184.0),   # OK 99%
+    (HELOS_TRAV_TANTALUS_DBR,   74.0,  0.6, 184.0),   # OK 100%
+    (HELOS_TRAV_CHARON_DBR,     76.5,  0.6, 184.0),   # OK 100%
+    (HELOS_TRAV_MNEMOPHAGE_DBR, 79.0,  0.6, 184.0),   # OK 100%
+    (HELOS_TRAV_EPHIALTES_DBR,  81.5,  0.6, 186.2),   # OK 100% (was 81.5,184.0 @ 89%)
 ]
 # The 6 area-return placements: a few u off each new landing (so the player sees the return NPC on
 # arrival), on the boss host levels (reuse the UBERBOSS host-key constants) + the warband cave.
@@ -2233,8 +2239,10 @@ def build_hub_extra_specs():
         # SUPERSEDES the single 7-port svc_testhub_master_helos: its Helos PLACEMENT is RETIRED here
         # (the (72.0,0.8,184.0) spot is now the dorus traveler). The record + its Quests trigger stay
         # (inert - no placement); the blood-cave 7-port master (..._cave, below) is unchanged. The 11
-        # travelers stand in two rows in the plaza; all coords surveyed d<=0.14u / clr 100% all 3
-        # tilesets / comp#1 (survey_uberboss_spots.py 2026-07-13). See HELOS_HUB_PLAZA_SPECS.
+        # travelers cluster in the plaza; RE-SURVEYED + NUDGED 2026-07-13 (survey_uberboss_spots.py,
+        # ext=3.0): 10/11 on-mesh d<=0.14u / comp#1 / clr 100% (Dorus 99%) all 3 tilesets, Garden an
+        # accepted CHECK at 93% (obstructed west edge, still walkable). See HELOS_HUB_PLAZA_SPECS for
+        # the per-spot clearances + the before/after coords.
         HELOS_HOST_KEY: list(HELOS_HUB_PLAZA_SPECS),
         # Blood-cave mouth (random09a SV swap blob): the spec's cave-mouth approach band; world
         # (6011,19,3288); comp 0 (same as the cave-mouth entry corridor AND the return landing at
