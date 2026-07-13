@@ -10904,9 +10904,14 @@ def _create_testhub_portal_npcs(db, tags):
     tags['tagSVCNpcTestHubMaster'] = 'Waypoint Warden (Test Rig)'
     tags['tagSVCTestHubMasterChat'] = ('I hold every hidden road to the restored '
         'lands. Name your destination and I will set you upon the way.')
-    tags['tagSVCNpcTestHubReturn'] = 'Return Warden (Test Rig)'
-    tags['tagSVCTestHubReturnChat'] = ('Seen enough? I can set you back on the '
-        'road to Helos or to the Blood Cave.')
+    # build37 (Will tour): the return NPC is CANONICAL since build36a (real return
+    # travel), so drop the "(Test Rig)" and give it a lore-fitting ferryman identity.
+    # Nostos = the Greek homeward-return journey (root of "nostalgia") - fits a
+    # return-travel ferryman in the Greek setting. (The master hub stays "(Test Rig)":
+    # the TESTHUB portal-master is the LOCAL-ONLY test rig.)
+    tags['tagSVCNpcTestHubReturn'] = 'Nostos, the Homeward Ferryman'
+    tags['tagSVCTestHubReturnChat'] = ('Every road has its returning. Step aboard and '
+        'I will carry you home again - to Helos, or to the mouth of the Blood Cave.')
     # Boat-menu destination labels for the THREE new ports (Garden/Secret/Uber/
     # Sparta reuse the 4 Almyros labels set by _create_helos_portal_master, which
     # always runs just before this). These are referenced by the quest file only.
