@@ -3,8 +3,8 @@
 > clean, order hash `7ed29402a38d` -> `7c74a51f6ed8`, REGISTRY now 11 modules): `feat/b38-mastery-ui` @ `43611fc`,
 > `feat/b38-damage` @ `ab5f5ac`, `feat/b38-enslaver-v2` @ `e2f87ef`, `feat/b38-language` @ `e22c62a`,
 > `chore/b38-workshop-description` @ `475cfee`. Integration fixes commit `f1d53af` (+ reconcile `630bb9b`). NOT
-> deployed; canonical build36a stays LIVE. **Confirming full DB build + gate record is still pending (this pass ran
-> only fast gates + dry-run replays; NO heavy build).**
+> deployed; canonical build36a stays LIVE. **Full DB build + gate record DONE 2026-07-13 (see BUILD38-DEV GATE
+> RECORD below): arz `fcd5dcab`, Text `dff9ad01`, all gates green, record-diff ZERO unexplained.**
 > **FIXED this wave:**
 > - **Mastery UI** (`mastery_ui_audit` module, after `hunting_occult_ui`): 8 graft icon repoints (7 `_DRX_Textures`
 >   dead refs + 1 empty -> resolving XPack3/InGameUI arcs); Earth Rupture DE-DUP (graft `drxrupture`/`drxrupture_flare`
@@ -50,6 +50,38 @@
 > - **Will tour checks** (in-game, cannot be gate-verified here): damage numbers appear on normal/elemental/DoT hits;
 >   the 8 repointed mastery icons + Dream background render (no black pane, no missing icons); Earth Rupture chain
 >   shows ONE Rupture with the reflowed layout. Screenshots requested.
+>
+> 🧪 **BUILD38-DEV GATE RECORD (2026-07-13, main HEAD `39a11707`) - FULL-REGISTRY DB BUILD GREEN + de-clobbered
+> Text; DB+Text ONLY (map/Quests stay build37-dev).** First full heavy build of the b38 integration (mastery UI +
+> damage display + enslaver-v2 + language de-clobber + earthfury fix). Everything staged to `work/`, NOT deployed;
+> canonical build36a stays LIVE.
+> **ARTIFACT MD5s:** arz `fcd5dcab40359aa94b421dd8cef4b81e` (55,339,563 B), Text.arc `dff9ad01ec1d81064f426d9456470eaf`
+> (87,261 B). UNCHANGED (DB+Text-only pass, verified): Quests.arc `838bdc3a` (194,581 B), TESTHUB Levels `841c56cd`
+> (688,688,154 B, `local/Levels_merged_TESTHUB.arc`), canonical Levels `60a62880` (688,682,781 B). NOTE: `work/`
+> staged Levels = canonical `60a62880` (pre-existing staging; TESTHUB is local-only per standing rule). Baseline for
+> the diff: `baseline_build37.arz` `56d6db22` (== build37-dev arz).
+> **DB BUILD** (PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1): exit 0 in 346s; registry 11 modules order `7c74a51f6ed8`;
+> RELEASE drop rates (66% Hero/Quest, 25% Boss); `run_registry_verifies` post-finalization phase GREEN (verify hooks
+> skill_quality + toxeus_suite + damage_display OK); pet + container-shape + summon gates GREEN; golden Occult/Hunting
+> PASS (35 waived in-build, 0 other).
+> **RECORD-DIFF AUDIT** (baseline build37-dev vs new arz): 0 ADDED / 0 REMOVED / 1242 CHANGED, **ZERO unexplained**,
+> 0 clobbers. Every delta maps to exactly one lane: **15 MASTERY** UI records (UI/display fields ONLY - 0 design-field,
+> 0 dtype changes: 8 graft-icon repoints + Earth de-dup `drxrupture`->Flame Surge / `drxrupture_flare`->Flame Arch +
+> Earth col-428 reflow 4 slots [bitmapPositionY] + Dream m9 bg 2 + Nature `drx_nymph_petmodifier_rootwave`
+> skillDisplayName/Desc); **1 DAMAGE** `records\xpack\game\gameengine.dbr` (+7 FontStyle STRING fields, all ADDED);
+> **1 EARTHFURY** `pcsafe\earthfury_ring` `skillCooldownTime` 16.0->5.0 (RESTORES build36a canonical 5.0, fixes the
+> build37-dev regression flagged in that record's OBSERVATIONS); **1225 ENSLAVER** spawn-pool records =
+> `_EN_SWEEP_K` 300->600 (existing main weights x2, e.g. 3000->6000) + NEW per-slot `limitN=1` (all 1225 additions == 1;
+> `um_toxeus_enslaver_99` present in both builds). Mastery design-field changes: 0; dtype changes: 0.
+> **TEXT** i18n de-clobber ENABLED (17,541 base Text_EN tags loaded): dropped **10,600** SV tags byte-identical to
+> base-game Text_EN; 4,414 total tags emitted. `validate_tags` PASS (all 308 referenced mod tags + 351 authoritative
+> resolve); golden A7 PASS (41 waived, 0 other); duplicate-tag gate OK. SANITY-DIFF vs baseline Text `8c7229db`: 10,600
+> dropped / 0 added; **every dropped tag byte-identical to base Text_EN** (0 not-in-base, 0 value-mismatch); Nature
+> `x3tagSkillNatureSylvanProtection`(+Desc) resolve in base-game Text_EN.
+> **CONTRACTS:** souls/summons/resources 0 P0/0 P1 (4905 native P2); map (NEW arz + TESTHUB Levels `841c56cd`) 0 P0/0
+> P1 (3 native P2 = pre-existing base-game XPack portal reciprocity) - **hub NPCs resolve in the new arz**.
+> **QUESTS/LEVELS UNTOUCHED:** DB+Text-only pass wrote only the arz + Text.arc; Quests `838bdc3a` + TESTHUB Levels
+> `841c56cd` byte-identical to build37-dev (never rebuilt).
 >
 > 🧪 **BUILD37-DEV GATE RECORD (2026-07-13, main HEAD `46bf0f2`) - FIRST FULL-REGISTRY DB BUILD GREEN + TESTHUB
 > map + Text + Quests.** First full-registry build after the gate-fix (relocated `skill_quality` diversity gate to a
