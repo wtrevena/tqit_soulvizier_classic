@@ -122,10 +122,11 @@ _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on
 # The Hunt uses its OWN 1/2400 per-slot ceiling (a findable Hades apex), matching this module's
 # inject threshold (a pool is populated only when its pre-append wtotal >= 2399, so post-append
 # p_slot = 1/(wtotal+1) <= 1/2400) and every docstring below. It does NOT reuse asp._EN_SWEEP_MAX_P:
-# build37 TIGHTENED the ENSLAVER ceiling from 1/2400 to 1/12000 (via _EN_SWEEP_CEIL); reusing it
-# here made the verify (1/12000) reject the very pools the inject (1/2400) legitimately populated -
-# the Enslaver reaches 1/12000 by x300'ing member weights, which the Hunt deliberately does NOT do
-# (it only appends weight 1 to the existing pool). Decoupled so inject and verify agree again.
+# the ENSLAVER ceiling is far tighter (build38 BL-ENSLAVER-SPAWNS-V2: 1/2400 -> 1/24000 via
+# _EN_SWEEP_CEIL); reusing it here would make the verify (1/24000) reject the very pools the inject
+# (1/2400) legitimately populated - the Enslaver reaches 1/24000 by x600'ing (asp._EN_SWEEP_K) member
+# weights, which the Hunt deliberately does NOT do (it only appends weight 1 to the existing pool).
+# Decoupled so inject and verify agree again.
 _LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # Hades trash pools ONLY (378 ProxyPools present)
 _LS_MAX_P = 1.0 / 2400.0                                 # the Hunt's own ceiling (matches the inject)
 
@@ -418,11 +419,11 @@ def _sweep_inject_legendary_stalker(db):
     xpack\\proxieshades ONLY), so his per-slot probability stays <= 1/2400 (a genuine rare
     hunter). Parallels the Enslaver's _sweep_inject_roaming_rare with two deliberate differences:
       (1) Hades-only prefix (he only appears in Act-4/Hades -> "effectively Legendary" endgame);
-      (2) the Enslaver sweep ALREADY RAN (in the monolith) and x60'd these pools' member weights +
-          added itself at weight 1, so this sweep does NOT re-multiply (that would break the
-          Enslaver's weight-1 invariant + over-inflate); it simply appends the stalker at weight 1
-          into a free slot, which keeps BOTH rares at weight 1 with p_slot <= 1/2400 (a pool the
-          Enslaver already qualified has total >= 2400, so 1/(total+1) <= 1/2400).
+      (2) the Enslaver sweep ALREADY RAN (in the monolith) and x600'd (asp._EN_SWEEP_K) these pools'
+          member weights + added itself at weight 1, so this sweep does NOT re-multiply (that would
+          break the Enslaver's weight-1 invariant + over-inflate); it simply appends the stalker at
+          weight 1 into a free slot, which keeps BOTH rares at weight 1 with p_slot <= 1/2400 (a pool
+          the Enslaver already qualified has total >= 24000, so 1/(total+1) << 1/2400).
     Reuses the Enslaver's eligibility guards (skip q_/sq/xsq/mq/svc_ + boss/quest/hero/escort/
     summon/... basenames; all resolvable name members Class=Monster; a free name slot). Returns the
     list of touched pool record names. Deterministic (sorted iteration)."""
