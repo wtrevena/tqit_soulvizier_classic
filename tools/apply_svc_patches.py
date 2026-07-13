@@ -9878,10 +9878,11 @@ def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
 # racialProfile Demon, table-LESS inline anim block incl. unarmedRunAnim -
 # rig-safe + summon-safe by construction; the um_toxeus_99 SP-Toxeus lineage is
 # carried through the KIT + name, since the design mandates ShadowStalker.msh
-# which um_toxeus_99 does not use). The ROAMING SWEEP appends him at weight 1 to
-# every eligible hostile trash pool with each existing member weight x60 (so he
-# stays rarer than 1/12000 per main-slot; build37 BL-ENSLAVER-SPAWNS); a fail-loud gate proves ONLY eligible
-# (non boss/quest/hero) pools were touched. His soul is a MANUAL summon-the-boss
+# which um_toxeus_99 does not use). The ROAMING SWEEP appends him at weight 1 (with a
+# per-slot limit=1 cap = <=1 per pool per trigger) to every eligible hostile trash pool
+# with each existing member weight x_EN_SWEEP_K=600 (so he stays rarer than 1/24000 per
+# main-slot = /10 vs build36a; BL-ENSLAVER-SPAWNS-V2 Will 2026-07-13); a fail-loud gate
+# proves ONLY eligible (non boss/quest/hero) pools were touched. His soul is a MANUAL summon-the-boss
 # (pet-of-pet: the friendly Enslaver pet auto-casts a friendly marauder summon).
 _EN_BOSS = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
 _EN_RIG_DONOR = r'records\creature\monster\shadowstalker\am_deathstalker_55_ambush.dbr'  # ShadowStalker.msh, Demon, inline anim
@@ -9936,16 +9937,41 @@ _EN_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
 _EN_AUG_ANATOMY = r'records\skills\stealth\drxanatomy.dbr'
 _EN_AUG_DARKAPERTURE = r'records\skills\stealth\drxdarklings_darkaperture.dbr'
 # roaming sweep tuning.
-# BL-ENSLAVER-SPAWNS (Will 2026-07-12): make the roaming Enslaver a genuinely RARE
-# encounter (he was a "doorstep greeter", spawning two side-by-side). K 60 -> 300 (5x
-# rarer per main-slot) with the p_slot ceiling scaled the SAME 5x, so the ELIGIBILITY
-# floor (original pool weight-total >= _EN_SWEEP_MIN_WTOTAL) is UNCHANGED -> identical
-# pool breadth (the >= 500-pool sweep gate still holds) but each roll is 5x rarer, so
-# two adjacent rolls landing together is ~25x rarer (kills the side-by-side duplicates).
-_EN_SWEEP_K = 300          # existing-weight multiplier (build37: 60 -> 300)
+# BL-ENSLAVER-SPAWNS-V2 (Will 2026-07-13): "he is spawning like 2-3 of him at a time ...
+# to medusa i ran into him like 6 times. divide the current spawn rate by 10 ... make it
+# so he only spawns once max with a group of guys so you cant need to fight two or more of
+# him at the same time." Two independent knobs, both proven from the build36a arz (report
+# docs/reports/b38_enslaver_v2.md):
+#
+#   (1) FREQUENCY (divide by 10 vs BUILD36A). Will plays build36a, where K=60. The b37
+#       lane already set K=300 (5x) but that is UNSHIPPED, so "current" = build36a. The 10x
+#       is relative to build36a -> K = 600 (NOT 300*10; the 5x is superseded). Each per-draw
+#       probability p = 1/(K*W + 1) for a pool of original main-weight W, so K 60 -> 600
+#       scales every p by (60W+1)/(600W+1) ~= 0.1000 across ALL pools (W>=40) -> the whole
+#       encounter rate drops ~10x: Will's ~6 per Act 1 -> ~0.6 per act ("about once an act").
+#       Breadth is UNCHANGED (the eligibility floor keys off ORIGINAL W, not K -> the same
+#       ~1224-pool set), so frequency scales cleanly without disturbing the roaming feel.
+#
+#   (2) STRUCTURAL NO-DOUBLE ("once max ... not two or more at the same time"). RCA: the
+#       Enslaver was swept in as a plain weight-1 MAIN member with NO per-slot cap. Pool
+#       MAIN draws are independent WITH REPLACEMENT (PROVEN: 170 vanilla pools spawn more
+#       mains than they have name slots), so a single pack pool with spawnMax 3-8 could draw
+#       him 2+ times in ONE trigger. Vanilla NEVER does this: every rare hero sprinkled into
+#       a trash pack carries limitN=1 (a per-slot MAX-count cap; PROVEN by 2657 champion +
+#       454 main vanilla slots, e.g. as_venomancer_22 @ weight 2 / limit 1 inside a spawnMax=3
+#       jackalman pack, spiderblackwidow01 @ limit 1). The V2 sweep sets the Enslaver's slot
+#       limit = 1, so AT MOST ONE Enslaver spawns per pool per trigger -- STRUCTURALLY, at any
+#       party size, regardless of spawnMax/mains/replacement. (Multi-pool proxies pick exactly
+#       ONE pool per trigger -- weightN on the PROXY is a weighted pool CHOICE, PROVEN -- so
+#       the per-pool cap is also the per-spawn-point cap.) The residual "two independent spawn
+#       points visible together" case has no engine-level global cap; the 10x frequency cut
+#       makes it negligible (~1 per hundreds of acts). See the report for the full worst-case
+#       math and the hard-guarantee alternative (dedicated bounded placement) if Will wants 0.
+_EN_SWEEP_K = 600          # existing-weight multiplier (build36a 60 -> 600 = /10 vs build36a)
 _EN_SWEEP_MIN_WTOTAL = 40  # min ORIGINAL pool weight-total to qualify (unchanged -> same breadth)
-_EN_SWEEP_CEIL = _EN_SWEEP_K * _EN_SWEEP_MIN_WTOTAL   # 12000: per-slot rarity denominator
-_EN_SWEEP_MAX_P = 1.0 / _EN_SWEEP_CEIL   # per-pool enslaver p_slot ceiling (build37: 1/2400 -> 1/12000)
+_EN_SWEEP_CEIL = _EN_SWEEP_K * _EN_SWEEP_MIN_WTOTAL   # 24000: per-slot rarity denominator
+_EN_SWEEP_MAX_P = 1.0 / _EN_SWEEP_CEIL   # per-pool enslaver p_slot ceiling (build36a 1/2400 -> 1/24000)
+_EN_SWEEP_SLOT_LIMIT = 1   # per-slot MAX-count cap on the enslaver's name slot (structural no-double)
 _EN_SWEEP_ALLOW_PREFIX = (
     'records\\proxies orient\\pools',
     'records\\proxies egypt\\pools',
@@ -10476,12 +10502,16 @@ def _verify_boss_orbs(db):
 
 
 def _sweep_inject_roaming_rare(db):
-    """Append the Enslaver at weight 1 to every ELIGIBLE hostile trash pool, with
-    each existing member weight x300 (_EN_SWEEP_K), so he stays rarer than 1/12000 per main-slot.
-    Only touches act-trash pools (orient/egypt/greek/hades) whose basename carries
-    no boss/quest/hero/summon marker, whose resolvable name members are all
-    Class=Monster, that have a free name slot (< 18), and whose x60 name-weight
-    total reaches >= 2400 (so the weight-1 append satisfies the p_slot ceiling).
+    """Append the Enslaver at weight 1 (with a per-slot limit=1 MAX-count cap) to every
+    ELIGIBLE hostile trash pool, scaling each existing member weight x_EN_SWEEP_K (600), so
+    he stays rarer than 1/_EN_SWEEP_CEIL (1/24000) per main-slot -- 10x rarer than build36a
+    (K=60, 1/2400), per Will 2026-07-13 "divide the current spawn rate by 10". The limit=1
+    cap makes him spawn AT MOST ONCE per pool per trigger (structural no-double; see the
+    constants block). Only touches act-trash pools (orient/egypt/greek/hades) whose basename
+    carries no boss/quest/hero/summon marker, whose resolvable name members are all
+    Class=Monster, that have a free name slot (< 18), and whose x_EN_SWEEP_K name-weight
+    total reaches >= _EN_SWEEP_CEIL (so the weight-1 append satisfies the p_slot ceiling).
+    Breadth is identical to build36a (the floor keys off ORIGINAL weight, not K).
     Returns the list of touched pool record names."""
     if not db.has_record(_EN_BOSS):
         print("  ENSLAVER SWEEP: boss record missing; skipped")
@@ -10538,7 +10568,10 @@ def _sweep_inject_roaming_rare(db):
             continue
         if wtotal <= 0 or (_EN_SWEEP_K * wtotal + 1) < _EN_SWEEP_CEIL:
             continue                        # too small: would exceed the p_slot ceiling
-        # x60 the existing member weights, append the enslaver at weight 1
+        # x_EN_SWEEP_K the existing member weights, append the enslaver at weight 1
+        # WITH a per-slot MAX-count cap (limit=1): the enslaver can be DRAWN at most once
+        # per pool per spawn trigger, structurally (vanilla rare-hero idiom; mains draw
+        # with replacement so a bare weight-1 member could otherwise duplicate in a pack).
         for i in used:
             w = gv(n, 'weight%d' % i)
             try:
@@ -10548,6 +10581,7 @@ def _sweep_inject_roaming_rare(db):
             db.set_field(n, 'weight%d' % i, w * _EN_SWEEP_K, I)
         db.set_field(n, 'name%d' % free, _EN_BOSS, S)
         db.set_field(n, 'weight%d' % free, 1, I)
+        db.set_field(n, 'limit%d' % free, _EN_SWEEP_SLOT_LIMIT, I)   # structural: <=1 enslaver/trigger
         db._modified.add(n)
         touched.append(n)
     print("  ENSLAVER SWEEP: injected the roaming Enslaver into %d eligible hostile "
@@ -10559,8 +10593,9 @@ def _sweep_inject_roaming_rare(db):
 def _verify_roaming_sweep(db, touched):
     """FAIL-LOUD gate for the Enslaver roaming sweep: prove ONLY eligible
     (non boss/quest/hero) pools were touched, the enslaver is present at weight 1
-    with p_slot <= 1/12000 in each, his boss + marauder + summon resolve at the
-    right band, and no touched pool matches an exclusion marker. Re-derives the
+    with a per-slot limit=1 cap (STRUCTURAL no-double: <=1 enslaver per pool per
+    trigger) and p_slot <= 1/24000 in each, his boss + marauder + summon resolve at
+    the right band, and no touched pool matches an exclusion marker. Re-derives the
     touched set from the arz (verifies the actual diff, not a passed list)."""
     S = DATA_TYPE_STRING
     problems = []
@@ -10615,9 +10650,10 @@ def _verify_roaming_sweep(db, touched):
         if base.startswith(('q_', 'sq', 'xsq', 'mq', 'svc_')) or \
                 any(b in base for b in _EN_SWEEP_BAD_SUB):
             problems.append(f"TOUCHED BOSS/QUEST/HERO POOL: {n}")
-        # (3) enslaver at weight 1 + p_slot <= 1/12000
+        # (3) enslaver at weight 1, per-slot limit=1 (structural cap), p_slot <= 1/24000
         wtotal = 0
         enl_w = None
+        enl_idx = None
         for i in range(1, 19):
             nm = gv(n, 'name%d' % i)
             if not (nm and str(nm).strip()):
@@ -10630,11 +10666,26 @@ def _verify_roaming_sweep(db, touched):
             wtotal += w
             if str(nm).replace('/', '\\').lower() == enl:
                 enl_w = w
+                enl_idx = i
         if enl_w != 1:
             problems.append(f"{n}: enslaver weight {enl_w} != 1")
         elif wtotal <= 0 or (1.0 / wtotal) > _EN_SWEEP_MAX_P + 1e-9:
             problems.append(f"{n}: enslaver p_slot {1.0/max(wtotal,1):.5f} > "
                             f"{_EN_SWEEP_MAX_P:.5f} (too common)")
+        # (3b) STRUCTURAL NO-DOUBLE: the enslaver's name slot MUST carry limit=1 (a per-slot
+        # MAX-count cap) so the engine spawns at most ONE per pool per trigger. Pool mains
+        # draw with replacement, so without this a pack pool could surface 2+ enslavers in a
+        # single spawn -- the exact "2-3 of him at a time" Will reported.
+        enl_limit = None
+        if enl_idx is not None:
+            lv = gv(n, 'limit%d' % enl_idx)
+            try:
+                enl_limit = int(lv) if lv not in (None, '') else None
+            except (TypeError, ValueError):
+                enl_limit = None
+        if enl_limit != _EN_SWEEP_SLOT_LIMIT:
+            problems.append(f"{n}: enslaver slot limit{enl_idx}={enl_limit} != "
+                            f"{_EN_SWEEP_SLOT_LIMIT} (STRUCTURAL no-double cap missing)")
 
     # (4) LEAK GUARD (proves BOTH directions): EVERY pool carrying the Enslaver
     # must be either a swept eligible trash pool (in `touched`) OR the whitelisted
@@ -16669,8 +16720,8 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     _apply_content_uplift_picks(db, tags)
 
     # GROUP B (build32): Toxeus the Enslaver of Souls - a roaming rare mini-boss.
-    # Build the boss/marauder/soul, then the roaming sweep (append him at weight 1
-    # to eligible hostile trash pools, existing weights x60) + the fail-loud verify
+    # Build the boss/marauder/soul, then the roaming sweep (append him at weight 1 with a
+    # per-slot limit=1 cap, existing weights x_EN_SWEEP_K=600) + the fail-loud verify
     # gate. Before the build29 castability wave (processes his summon soul) and the
     # clone-shape gate (registers his hostile marauder-summon clone).
     print("\n=== GROUP B: Toxeus the Enslaver of Souls ===")
