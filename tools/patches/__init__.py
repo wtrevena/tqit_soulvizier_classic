@@ -56,7 +56,13 @@ import importlib
 # NOTE: _smoke_example is the template/reference module. It is intentionally
 # NOT registered (it stays a copy-me template); see README S6.
 REGISTRY = [
-    'hunting_occult_ui',   # build37 backlog #35/#76: O/H mastery-screen UI fix
+    'hunting_occult_ui',    # build37 backlog #35/#76: O/H mastery-screen UI (shapes/bitmaps)
+    'skill_quality',        # build37 backlog #31: granted-skill quality pass
+    'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
+    'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
+    'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
+    'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
+    'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
 
