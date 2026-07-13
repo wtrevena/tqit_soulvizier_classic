@@ -55,8 +55,16 @@ import importlib
 #
 # NOTE: _smoke_example is the template/reference module. It is intentionally
 # NOT registered (it stays a copy-me template); see README S6.
+# ORDERING NOTE (four_generals, build37 merge UNION resolution): four_generals
+# enriches the three EXISTING general souls (soul\machae\{dysnomion,makaria,
+# trophonios}) with a light amgoz downside. skill_quality may also touch those
+# souls, so four_generals MUST run BEFORE skill_quality: the S4b collision then
+# resolves later-wins in the intended direction (skill_quality's skill-grant edits
+# win; the four_generals downside sits on a defensive stat neither fully touches).
+# 'visuals' stays LAST (DB precondition invariant, writes nothing).
 REGISTRY = [
     'hunting_occult_ui',    # build37 backlog #35/#76: O/H mastery-screen UI (shapes/bitmaps)
+    'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
