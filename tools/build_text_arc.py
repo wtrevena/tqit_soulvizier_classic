@@ -137,10 +137,49 @@ def extract_tags(text: str) -> OrderedDict:
     return tags
 
 
+def load_base_en_tags(arc_path: Path) -> dict:
+    """Return {tag: value} for the player's base-game Text_EN.arc.
+
+    Union of every '.txt' entry in the arc (commonequipment/monsters/skills/ui/
+    x2*/x3*/x4* ...), first-definition-wins (engine semantics). Used by the B38
+    i18n de-clobber to detect SV tags that merely re-state the base-game value.
+    """
+    arc = ArcArchive.from_file(arc_path)
+    tags = {}
+    for entry in arc.entries:
+        name = (getattr(entry, 'name', '') or '')
+        if not name.lower().endswith('.txt'):
+            continue
+        text = arc.get_text(name)
+        if not text:
+            continue
+        for key, value in extract_tags(text).items():
+            if key not in tags:
+                tags[key] = value
+    return tags
+
+
 def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
-                     extra_tags: dict = None) -> str:
-    """Build modstrings.txt content from SV 0.98i Text_EN.arc."""
+                     extra_tags: dict = None, base_en_tags: dict = None,
+                     protected_tags: set = None) -> str:
+    """Build modstrings.txt content from SV 0.98i Text_EN.arc.
+
+    base_en_tags (B38 i18n de-clobber): when supplied (key->value for the
+    player's base-game Text_EN.arc), any SV per-file tag whose value is
+    byte-identical to the base-game value is NOT re-emitted. Re-emitting such a
+    tag is a no-op in English (the engine resolves the identical value from the
+    base Text_EN.arc it loads UNDERNEATH modStrings.txt) but OVERRIDES the
+    localized value in every non-English base Text_XX.arc, forcing that string
+    back to English - the Steam "cant change the language" defect.
+
+    protected_tags are the mod-authored tags the build gates require to be
+    present in Text.arc (collect_mod_authored_tags); they are NEVER dropped by
+    the de-clobber even when base-identical (e.g. xtagMysteriousPortal ==
+    'Mysterious Portal' in both, but validate_tags requires it).
+    """
     arc = ArcArchive.from_file(sv_arc_path)
+    protected = protected_tags or set()
+    i18n_skipped = 0
 
     text_files = [
         'commonequipment.txt',
@@ -169,6 +208,11 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
 
     all_tags = OrderedDict()
     sections = []
+    # First-wins claim set: the FIRST SV file to define a key owns the emit/drop
+    # decision for it. Tracked separately from all_tags so that an i18n-DROPPED
+    # first occurrence still blocks a later file's DIFFERENT value from leaking
+    # in and changing the effective English string (the tagGate01 trap).
+    seen_keys = set()
 
     for fname in text_files:
         text = arc.get_text(fname)
@@ -189,15 +233,30 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
             # appended fix block a dead letter.)
             if key in _FIX_BLOCK_TAGS:
                 continue
-            if key not in all_tags:
-                all_tags[key] = value
-                section_lines.append(f'{key}={value}')
-            # A later SV file may redefine a tag with a different value (12
-            # such cross-file redefinitions exist, e.g. xui.txt restyling
-            # ui.txt format strings). The engine keeps the FIRST definition,
-            # so re-emitting the later value is dead weight that would also
-            # trip the duplicate-tag gate; drop it. Effective in-game values
-            # are IDENTICAL to the previous build (first-wins either way).
+            # First-wins: a later SV file may redefine a tag with a different
+            # value (e.g. xuniqueequipment.txt tagGate01='Magnificent gate' vs
+            # commonequipment.txt tagGate01='Gate'). The engine keeps the FIRST
+            # definition, so any later definition is dead weight (and would trip
+            # the duplicate-tag gate). Skip it. CLAIMING the key here (before the
+            # i18n drop below) is what makes the drop safe: a dropped first
+            # occurrence still blocks the later value from being emitted, so the
+            # effective English value never changes.
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            # B38 i18n de-clobber: on this FIRST-WINS definition, drop the tag if
+            # its SV value is byte-identical to the base-game Text_EN value. It
+            # resolves to the SAME string in English from the base text loaded
+            # underneath modStrings.txt (zero English change) while, if
+            # re-emitted, it would clobber the localized value in every
+            # non-English base Text_XX.arc. Protected mod-owned tags
+            # (gate-required, e.g. xtagMysteriousPortal) are never dropped.
+            if (base_en_tags is not None and key not in protected
+                    and base_en_tags.get(key) == value):
+                i18n_skipped += 1
+                continue
+            all_tags[key] = value
+            section_lines.append(f'{key}={value}')
         section_lines.append(f'//{fname} - END')
         sections.append('\r\n'.join(section_lines))
 
@@ -259,6 +318,10 @@ def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
         print(f"  Added {len(extra_tags)} extra tags")
 
     print(f"  Total unique tags: {len(all_tags)}")
+    if base_en_tags is not None:
+        print(f"  i18n de-clobber: dropped {i18n_skipped} vanilla tags "
+              f"byte-identical to base-game Text_EN (localized base text now "
+              f"shows in non-English languages; English unchanged)")
 
     return '\r\n'.join(sections) + '\r\n'
 
@@ -367,6 +430,34 @@ def collect_mod_authored_tags(uber_tags_path: Path = None) -> set:
     return tags
 
 
+# Golden freeze protection for the i18n de-clobber. The Occult/Hunting golden
+# gate (tools/validate_mastery_golden.py) captures the exact Text.arc definition
+# of every name/desc tag referenced by the tuned Occult (mastery 5) + Hunting
+# (mastery 6) skill records. Those tags are Will's HAND-TUNED mastery text and a
+# frozen design contract - they must stay defined in Text.arc verbatim (else the
+# golden diff fails) and must NEVER be de-clobbered, even when a vanilla-style
+# name tag (e.g. tagSkillName090) happens to be byte-identical to the base game.
+GOLDEN_TAGS_JSON = 'occult_hunting_golden.json'
+
+
+def load_golden_protected_tags() -> set:
+    """Return the tag keys frozen by the Occult/Hunting golden snapshot."""
+    import json
+    path = Path(__file__).resolve().parent / GOLDEN_TAGS_JSON
+    if not path.exists():
+        print(f"  WARNING: golden {GOLDEN_TAGS_JSON} not found next to "
+              f"build_text_arc.py; Occult/Hunting tags are NOT protected from "
+              f"the i18n de-clobber (the golden gate may then fail).")
+        return set()
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+        return set((data.get('tags') or {}).keys())
+    except Exception as exc:  # pragma: no cover - guard against corruption
+        print(f"  WARNING: could not read golden tags from {GOLDEN_TAGS_JSON} "
+              f"({exc}); Occult/Hunting tags NOT protected from de-clobber.")
+        return set()
+
+
 def write_mod_tag_manifest(output_dir: Path, uber_tags_path: Path = None) -> Path:
     """Write the mod-authored-tag manifest next to Text.arc; return its path."""
     manifest_path = Path(output_dir) / MOD_AUTHORED_TAGS_MANIFEST
@@ -386,11 +477,42 @@ def write_mod_tag_manifest(output_dir: Path, uber_tags_path: Path = None) -> Pat
 
 
 def build_text_arc(sv_arc_path: Path, output_path: Path,
-                   uber_tags_path: Path = None):
+                   uber_tags_path: Path = None,
+                   base_en_arc_path: Path = None):
     """Build the final Text.arc file."""
     print(f"Building modstrings.txt from: {sv_arc_path}")
+
+    # B38 i18n de-clobber: load the player's base-game Text_EN.arc so the build
+    # can DROP every SV tag whose value is identical to the base game's. Those
+    # redundant re-definitions are no-ops in English but OVERRIDE the localized
+    # value in every non-English base Text_XX.arc (the Steam "cant change the
+    # language" defect). The mod-authored manifest is protected from the drop
+    # (gate-required tags such as xtagMysteriousPortal stay). Disable with
+    # SVC_NO_I18N_DECLOBBER=1 (reverts to the old clobbering behavior).
+    base_en_tags = None
+    if os.environ.get('SVC_NO_I18N_DECLOBBER') == '1':
+        print("  i18n de-clobber DISABLED via SVC_NO_I18N_DECLOBBER=1 "
+              "(modStrings.txt will re-emit + override non-English base text)")
+    elif base_en_arc_path and Path(base_en_arc_path).exists():
+        base_en_tags = load_base_en_tags(Path(base_en_arc_path))
+        print(f"  i18n de-clobber ENABLED: {len(base_en_tags)} base-game "
+              f"Text_EN tags loaded ({base_en_arc_path})")
+    else:
+        print("  WARNING: i18n de-clobber SKIPPED - no base-game Text_EN.arc "
+              "supplied. modStrings.txt will re-emit vanilla tags and OVERRIDE "
+              "non-English base text (the language-switch bug). Pass the base "
+              "Text_EN.arc as arg 4 or set SVC_BASE_TEXT_EN.")
+
+    # Protected from the de-clobber = the mod-authored manifest (validate_tags
+    # requires these in Text.arc) UNION the Occult/Hunting golden-frozen tags
+    # (validate_mastery_golden requires their exact Text.arc definitions; they
+    # are also Will's hand-tuned mastery text). Neither is ever dropped.
+    protected = collect_mod_authored_tags(uber_tags_path)
+    protected |= load_golden_protected_tags()
     modstrings = build_modstrings(sv_arc_path, uber_tags_path,
-                                  extra_tags=QUEST_INTEGRATION_TAGS)
+                                  extra_tags=QUEST_INTEGRATION_TAGS,
+                                  base_en_tags=base_en_tags,
+                                  protected_tags=protected)
 
     # ── Duplicate-tag gate (fail-loud, B-MASTERY-LABEL-1 hardening) ─────────
     # The engine keeps the FIRST definition of a duplicated tag, so a second
@@ -523,11 +645,22 @@ if __name__ == '__main__':
         sys.exit(subprocess.call([sys.executable, *sys.argv]))
 
     if len(sys.argv) < 3:
-        print("Usage: build_text_arc.py <sv_text_en.arc> <output_text.arc> [uber_tags.txt]")
+        print("Usage: build_text_arc.py <sv_text_en.arc> <output_text.arc> "
+              "[uber_tags.txt] [base_game_Text_EN.arc]")
+        print("  base_game_Text_EN.arc (or env SVC_BASE_TEXT_EN) enables the "
+              "i18n de-clobber (see build_text_arc docstring).")
         sys.exit(1)
 
     sv_path = Path(sys.argv[1])
     out_path = Path(sys.argv[2])
     uber_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+    # Base-game Text_EN.arc for the i18n de-clobber: 4th positional arg, else
+    # the SVC_BASE_TEXT_EN env var (bootstrap sets the env var). Optional - the
+    # build degrades to the old behavior with a loud warning if absent.
+    base_en_path = None
+    if len(sys.argv) > 4:
+        base_en_path = Path(sys.argv[4])
+    elif os.environ.get('SVC_BASE_TEXT_EN'):
+        base_en_path = Path(os.environ['SVC_BASE_TEXT_EN'])
 
-    build_text_arc(sv_path, out_path, uber_path)
+    build_text_arc(sv_path, out_path, uber_path, base_en_path)
