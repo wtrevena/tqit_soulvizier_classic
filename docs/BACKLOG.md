@@ -1,4 +1,36 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> ⛴️ **BUILD36a P0 HOTFIX SHIPPED (2026-07-12) - walk-through travel portals REMOVED (Will TRAVEL LAW).**
+> Fix for the LIVE Steam breakage (item 3759792705: "walk south in Helos -> teleported to Garden of Merchants,
+> no way back"). Every walk-through/proximity teleport we authored is stripped from the canonical map; ALL
+> cross-area travel is now NPC boat-dialog (Helos portal-master out; per-area `svc_testhub_return` NPC / SV rift
+> shrine back). Fix commit `0f08297`, tag `build36a`. **Map tooling only** (`tools/build_section_surgery.py`);
+> **arz/Text/Quests SHIP UNCHANGED from build36** (return NPC record + dialog already shipped inert). Canonical
+> `Levels_merged.arc` md5 `60a628807c1746e7bbde14946de62107` (was `b42be44f`, 688,682,781 B); arz `63ca7cf8` /
+> Text `2af4ce38` / Quests `56acee66` reused byte-identical. Blob-diff vs build36 = EXACTLY 9 changed level
+> blobs (7 portal levels + crypt_floor1 + spartacryptlevel2), 0 added/removed. Gates GREEN: navmeshes 24/24,
+> seam-lattice 24/0, entrance-landing PASS, map contracts 0 P0/0 P1 (3 native P2). **STEAM: SHIPPED 2026-07-12**
+> (SteamCMD "Upload complete", item 3759792705, Visibility 0/public, cached login; push-gates F9+F7 PASS after the
+> whitelist below). **DEV (SoulvizierClassicDEV): map STAGED to work/; the DEV `Resources/Levels.arc` copy is
+> DEFERRED while TQ.exe is running** (Will actively playing) - copy `local/Levels_merged.arc` over the DEV
+> `Resources/Levels.arc` when TQ exits; NEVER kill TQ.exe.
+> - **Removal inventory (20 authored teleports):** 16 walk-through GridEntrance/GridExitOneWay/map_portal_aura
+>   REMOVED from INJECT_SPECS (Helos H1/R2+swirl, HV01 G1/G4+swirl, Garden G2/G3/H2/R1+swirl, vista S1/S4,
+>   Secret S2/S3, maze03->Uber, catacube->Sparta) + 4 native 0x06/0x05 return doors DISABLED (SC2 REWRITE_0X06,
+>   crypt APPEND_0X06, crypt REMOVE_0X05 - SV-original untouched). KEPT: Helos + Olympus portal-master NPCs,
+>   rift shrines teleportshrine_gom + teleportshrineorient01. PROMOTED TESTHUB->canonical: 4 svc_testhub_return
+>   NPCs (Garden/Secret/Uber/Sparta).
+> - ⚠️ **PUSH-GATE WHITELIST ADDED (SHIP OPERATOR, 2026-07-12):** `tools/contracts/whitelist_quests.txt` gained
+>   ONE justified entry - `QST-DOOR-UNLOCK bossarena.qst :: records/quests/portal_olympianarena1.dbr`. Removing
+>   the portal left bossarena.qst's `Action_UnlockFixedItem` naming a now-unplaced door (engine name-lookup
+>   no-ops; harmless, travel is NPC-based). This is the intended consequence of the P0; the alternative (Quests
+>   rebuild) is barred by the ship-unchanged constraint. **FOLLOW-UP:** a future Quests.arc rebuild should drop
+>   the dead unlock action from bossarena.qst, then remove this whitelist line.
+> - ⚠️ **DEBUG GATE FOLLOW-UPS (out of P0 scope, per the fix commit's GATE IMPACT):** the standalone
+>   `tools/debug/gate_*.py` scripts that assert the removed portals (gate_doors_hub, gate_sparta_*,
+>   gate_portal_*, gate_openness_collateral, gate_portal_records_global, compare_gridentrance_0x14) +
+>   gate_testhub_inert (canonical now places 4 return NPCs) must be retired/updated before they are re-run.
+>   Also rename Text tags tagSVCNpcTestHubReturn/tagSVCTestHubReturnChat to drop "(Test Rig)".
+
 > 🛠️ **BUILD36 AMENDMENT (A1-A9) - DB IMPLEMENTED + GATED GREEN (2026-07-12, `feat/build36-amendment`,
 > off main `32a4967`, HEAD `5526bef`).** Nine-item final DB pass; all in `tools/apply_svc_patches.py`
 > (A5 also `tools/build_svc_database.py`; A5 doc corrections in `build_quest_files.py` +

@@ -17,3 +17,16 @@
 # vestigial item-upgrade crafting) are reported as INFORMATIONAL only and never
 # enter the returned violation list or affect the exit code, so they need no
 # whitelist entry.
+#
+# ── BUILD36a P0 HOTFIX (Will 2026-07-12): walk-through travel portals removed ──
+# Will's TRAVEL LAW stripped every walk-through/proximity teleport we authored from
+# the canonical map (fix commit 0f08297), portal_olympianarena1 among them -
+# bossarena.qst opened it by record name. The portal RECORD still ships in the
+# UNCHANGED build36 arz (arz/Quests ship byte-identical this P0 - no DB/Quests
+# rebuild), so the quest's Action_UnlockFixedItem now names a door no longer placed
+# in the map. INTENDED + harmless: the engine's fixedItem name-lookup finds nothing
+# and no-ops (the same inert-record pattern the fix relies on for the return NPC);
+# cross-area travel is NPC-dialog only now, and the Secret Place / boss arena stay
+# reachable via the Helos portal-master NPC. FOLLOW-UP (out of P0 scope): a future
+# Quests.arc rebuild should drop this dead unlock action from bossarena.qst.
+QST-DOOR-UNLOCK bossarena.qst :: records/quests/portal_olympianarena1.dbr
