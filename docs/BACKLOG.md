@@ -2025,3 +2025,20 @@ multiplier is the fallback; screen-scale ~= 30-45m world units) -> balance check
 always-on party-wide uptime -> H/O golden-freeze waivers where trees are touched ->
 implement as registry module (aura_radius.py) with a fail-loud audit gate listing every
 touched aura + old->new radius. NOT started (quota); spec-first per the vet law.
+
+## RCA RECORD 2026-07-12 evening: "quests blocked / doors closed" on _Toxeus = SAVE-SIDE, NOT a shipped bug
+Byte-level verdict (Opus RCA + Sonnet log check, wf_2c9d497c): Steam AND DEV both carry pure
+build36 (all 4 files == baselines; QUESTS registry 255 entries, zero add/remove/reorder vs
+build33/34/35, door controllers inside the load window). NO regression shipped; NO build36b.
+True cause: repeated crash-loop (ntdll 0xC0000005, SAME offset 0x00062a29 three times:
+07-09 20:14, 07-12 01:34, 07-12 16:41 = genuine heap-corruption family, NOT our taskkill)
+corrupting quest/door progress mid-save (backup folder shows 0-byte Quest.myw fingerprint).
+RECOVERY (Will): (1) close TQ fully, restart Steam, ONE clean reload -> door controllers
+re-evaluate tokens on level load, doors should reopen (save retains full 259-quest tree);
+leave the crash area immediately, save in town. (2) If progress truly lost: restore
+backups/characters/20260709_155432 (or local/save_backups/_Toxeus_2026-07-06_1.zip) with TQ
+CLOSED, guarding against Steam Cloud overwrite. NEVER touch a live save.
+STILL OPEN: the original Helos->Garden walk-through P0 (never shipped - the hotfix workflow
+was stopped pre-implementation twice); relaunched as wf_6f65899d with TQ-session guards
+(deploys wait for Will's game to exit rather than killing it). Crash deep-dump analysis
+running separately (wf_20582269).
