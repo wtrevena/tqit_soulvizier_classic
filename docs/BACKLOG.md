@@ -2042,3 +2042,21 @@ STILL OPEN: the original Helos->Garden walk-through P0 (never shipped - the hotf
 was stopped pre-implementation twice); relaunched as wf_6f65899d with TQ-session guards
 (deploys wait for Will's game to exit rather than killing it). Crash deep-dump analysis
 running separately (wf_20582269).
+
+## P0 CRASH PINNED 2026-07-12 (supersedes the hound-summoner framing) - BL-NAVLOAD-HEAP
+Deep minidump analysis (5 dumps, 32-bit re-decode): heap corruption detonates inside the
+NAVMESH-LOAD path - ProcessRLTD (Engine 0x101f4ba0) streaming deeper blood-cave chambers;
+identical ancestor chain in 5/5 dumps; two stable ntdll allocator offsets = delayed
+detonation. MAP-SIDE (Levels.arc): the arz petLimit mitigation was provably a no-op (dumps
+byte-identical across DB changes). All 39 injected navmeshes validate -> runtime condition;
+leading trigger = grid-seam-chain co-residency / dtTileCache tile-coordinate collision
+(CAVE_ENTRY_CHAIN_TRACE.md). Kill-events were coincidental timing.
+FIX WAVE (next P0, heavy - after build37-dev + Will's tour): confirm first (Frida live-probe
+names the culprit chamber, hooks documented in docs/crash/DEEP_DUMP_ANALYSIS_2026-07-12.md;
+or Page-Heap w/ Will's approval - registry change + OOM risk on 32-bit), then EITHER Fix B
+cluster relocation to XZ-disjoint space (GRID_SHIFT + donor regen; entrance-seam risk at
+Random09A/HiddenValley01 - preserve the abutment) OR interior GridEntrance transitions
+between deep chambers (native streaming doors - NOT banned teleports - caps co-resident
+navmeshes at 1-2). Player guidance meanwhile: save/portal-to-town often between chambers.
+HYGIENE (separate, next DB build): 6 summoned-bloodhound dyingFxPak dangling refs ->
+fxpak_deathfx_burst.dbr (real defect, NOT this crash).
