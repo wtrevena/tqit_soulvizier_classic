@@ -467,9 +467,11 @@ _RETIRED_REWRITE_0X06_SPECS = {
 #   (b) REMOVE the landing portal_olympianarena2 + its 0x14 so it does not register a
 #       SECOND portal with the same id 6e513e90 as the new descriptor (Random09A has NO
 #       landing entity, only the descriptor). See remove_0x05_instances_by_0x14_uid.
-# NOTE: crypt also has an INJECTED-but-inert portal_uberdungeon_return (0x05, no 0x14) at
-# (140,10,215), 13u from the door cell - out of M1 scope, harmless to the mechanism
-# (no 0x14 = registers no portal); flagged as a residual, not touched here.
+# NOTE: crypt_floor1's return traveler is the canonical svc_testhub_return NPC at
+# (140,10,229) (INJECT_SPECS "UBER DUNGEON" block, P0 2026-07-12 NPC-return promotion).
+# build37 P0-vet hygiene removed an old shadowed duplicate INJECT_SPECS key that had
+# placed the now-obsolete portal_uberdungeon_return at (140,10,215) (Python overrode it
+# with the canonical entry, so it never took effect).
 CRYPT_FLOOR1_LEVEL_KEY = 'levels/world/uberdungeon/crypt_floor1.lvl'
 MAZE03_GUID = bytes.fromhex('cdef89ae834a4adf1214609306708c02')      # maze03 level GUID (host)
 UBER_RETURN_EXIT = bytes.fromhex('6e513e901549b1d558db968c61bda66a')  # == maze03 host mouth's exit
@@ -1499,9 +1501,11 @@ INJECT_SPECS = {
     # (LEGACY note: that early failure used the old generate_default_0x14 path; the LIVE
     # v11 injector [inject_into_0x05_v11, step 6/7] is proven by the HV01 caravan/fountain
     # + the Helos H1/R2 portals, all v0x11 walk-verified.)
-    'levels/world/uberdungeon/crypt_floor1.lvl': [
-        (RETURN_NPC_DBR, 140.0, 10.0, 215.0),
-    ],
+    # (crypt_floor1 return NPC lives in the CANONICAL "UBER DUNGEON" block below at
+    #  (140,10,229) = svc_testhub_return. build37 P0-vet hygiene: removed the old
+    #  shadowed duplicate crypt_floor1.lvl key here - portal_uberdungeon_return at
+    #  (140,10,215) - which Python silently overrode with the canonical entry, so it
+    #  never took effect. One key now, unambiguous.)
     # M12/Q3 HERALD (build31g): the Olympus->Rhodes continuation NPC ("Hermes the herald"),
     # the Model-C boat-dialog teleporter that replaces the dead engine FixedItemTeleport as
     # the guaranteed post-Typhon path to Rhodes/Immortal Throne. Record + boat-dialog quest

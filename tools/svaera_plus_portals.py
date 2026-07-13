@@ -817,19 +817,16 @@ def main():
         else:
             print(f'  WARN: {lv_key} has unknown format v0x{blob_ver:02x}')
 
-    # --- 6c. SV-only structural patches (2026-07-08 wave) ---------------------------
-    # (a) FLAG_UID_SPECS: set flags=1 + UniqueId on an EXISTING 0x05 instance (the
-    #     inert RogueEncampment rift shrine; pairs the step-2c GROUPS record).
-    # (b) REWRITE_0X06_SPECS: repurpose SpartaCryptLevel2's dangling 0x06 portal
-    #     descriptor into the native return door to the catacube (in-place 60-byte
-    #     rewrite; count unchanged). See build_section_surgery.py for both mechanisms.
-    # (c) APPEND_0X06_SPECS + REMOVE_0X05_BY_0X14_UID_SPECS: the Uber Dungeon native
-    #     return door (M1) - APPEND a reciprocal 0x06 descriptor to crypt_floor1 (count
-    #     2->3) mirroring maze03's host mouth, and REMOVE crypt's GridExitOneWay landing
-    #     portal_olympianarena2 (0x05 inst + its 48B 0x14) so it does not duplicate the
-    #     descriptor's portal id. maze03 (base, host) is UNCHANGED. Both run AFTER step-6
-    #     injection so instance-index accounting (portal_uberdungeon_return at the tail) is
-    #     already settled.
+    # --- 6c. SV-only structural patches ---------------------------------------------
+    # (a) FLAG_UID_SPECS (ACTIVE): set flags=1 + UniqueId on an EXISTING 0x05 instance
+    #     (the inert RogueEncampment rift shrine; pairs the step-2c GROUPS record).
+    # (b)/(c) The 0x06 return-DOOR mechanisms are RETIRED (P0, Will 2026-07-12: no
+    #     walk-through/proximity travel anywhere). REWRITE_0X06_SPECS (SpartaCryptLevel2
+    #     ->catacube door), APPEND_0X06_SPECS + REMOVE_0X05_BY_0X14_UID_SPECS (the Uber
+    #     Dungeon crypt_floor1<->maze03 door) are now all EMPTY {} (kept as _RETIRED_*
+    #     companions in build_section_surgery.py). Every return is now the canonical
+    #     talk-to-travel svc_testhub_return NPC (INJECT_SPECS). The loops below iterate
+    #     these empty specs harmlessly; FLAG_UID_SPECS is the only SV-only patch left.
     print('\n=== SV-only structural patches (flags/uid + 0x06 rewrites/appends + removals) ===')
     for i, lv in enumerate(sv_only):
         lv_key = lv['fname'].replace('\\', '/').lower()
