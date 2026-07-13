@@ -2060,3 +2060,12 @@ between deep chambers (native streaming doors - NOT banned teleports - caps co-r
 navmeshes at 1-2). Player guidance meanwhile: save/portal-to-town often between chambers.
 HYGIENE (separate, next DB build): 6 summoned-bloodhound dyingFxPak dangling refs ->
 fxpak_deathfx_burst.dbr (real defect, NOT this crash).
+
+## BL-ENSLAVER-SMOKE (Will 2026-07-12, tour finding #1, P2 visual - ride the next DB build)
+Toxeus the Murderer, Enslaver of Souls (black skeleton leader) renders a GREEN smoke aura;
+Will: it must be BLACK. Fix: swap the shroud FX ref on the Enslaver monster record(s)
+(wild roamer + warband leader variants; check the Devourer variant is unaffected) to the
+proven dark/black smoke FX (the Long Nu-style dark_smoke chosen in WILL_DECISIONS for the
+Helepolis). LAW: FX go on the monster record (charFxPakRunningNames-style), NEVER charFxPak
+on SpawnPet skills (build28 crash trap). Verify in the built arz + A9 render chain; add to
+Will's next tour list.
