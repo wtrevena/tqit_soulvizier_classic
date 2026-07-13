@@ -102,3 +102,11 @@ Playing DEV (char _Toxeus). Told to: clean reload to fix doors, save in town, sa
 deep blood cave (crash), restore 7/9 backup only if progress truly lost (TQ closed).
 Awaiting from us: build36a on Steam, build37-dev + traveler hub on DEV, then his tour.
 Quota: ~5% weekly remaining; Opus agents preferred for all work.
+
+## 7. WORKING-TREE STRAYS (inventoried, deliberately NOT committed - inspect before using)
+Uncommitted at handoff: modified docs/blood_cave_walkin_entrance_plan.md, tools/fix_mc_output.py,
+tools/hybrid_merge.py (pre-existing dirty state from older agent work, provenance unverified -
+diff before trusting); untracked tools/_gate_quests.py (the RCA wave's QUESTS-section parser -
+USEFUL, candidate for the permanent QUESTS-parity gate in plan step 3), scratch_audit/ (RCA
+scratch), .claude/worktrees/* (the lane worktrees - DO NOT git add; gitlinks polluted a commit
+once already), err.tmp + records/ strays (older). None block any build.
