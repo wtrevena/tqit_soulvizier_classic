@@ -41,9 +41,13 @@
 >   repoint, or accept the harmless phantom button). SV-original, so out of a safe UI pass.
 > - **Enslaver residual**: the `limit=1` cap is per-pool-per-trigger (structural). Two INDEPENDENT spawn points
 >   surfacing an Enslaver close enough to fight together has no engine global cap; the /10 frequency cut makes it a
->   ~once-in-hundreds-of-acts event (also ~100x rarer cross-field). Endless-Hunt stalker (`toxeus_suite`) has the SAME
->   latent per-trigger-duplicate defect (Hades-only, rarer, UNSHIPPED b37) - flagged one-line follow-up (add
->   `limit{slot}=1` to `_sweep_inject_legendary_stalker` + assert in its verify).
+>   ~once-in-hundreds-of-acts event (also ~100x rarer cross-field). Endless-Hunt stalker (`toxeus_suite`) had the SAME
+>   latent per-trigger-duplicate defect (Hades-only, rarer, UNSHIPPED b37) - **FIXED-PENDING-BUILD**:
+>   `_sweep_inject_legendary_stalker` now stamps per-slot `limit%d=_LS_SLOT_LIMIT`(=1) on the Hunt's name slot
+>   (mirrors the Enslaver v2 cap) + `_verify_legendary_stalker_sweep` asserts weight==1 / limit==1 / p_slot<=1/2400
+>   on EVERY stalker slot, fail-loud on any miss. Negative test (missing/wrong limit -> gate fires; limit=1 -> passes)
+>   + dry-run replay vs `baseline_build37.arz` (all 345/345 Hunt pools re-stamped limit=1 at the same slot, 0
+>   collateral, extended verify PASS) both green. Confirming full DB build pending (fast gates only this wave).
 > - **Language in-game spot-check = HARD pre-Steam gate**: the de-clobber restores ~93% localization by construction,
 >   but an actual in-game language-switch test on a real non-English client MUST pass before any Steam push touching
 >   Text.arc. Also FAILBOAT debug junk (4 rewording tags, English-VISIBLE today) recommended for a follow-up cleanup.

@@ -129,6 +129,12 @@ _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on
 # Decoupled so inject and verify agree again.
 _LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # Hades trash pools ONLY (378 ProxyPools present)
 _LS_MAX_P = 1.0 / 2400.0                                 # the Hunt's own ceiling (matches the inject)
+_LS_SLOT_LIMIT = 1   # per-slot MAX-count cap on the Hunt's name slot (mirrors asp._EN_SWEEP_SLOT_LIMIT).
+                     # Pool MAIN draws are independent WITH REPLACEMENT (proven: vanilla pools spawn more
+                     # mains than they have name slots), so a plain weight-1 member in a pack pool with
+                     # spawnMax>1 could surface 2+ Hunts in ONE trigger -- the exact "two-in-one-trigger"
+                     # defect the Enslaver v2 sweep just fixed. Vanilla ALWAYS caps rare pack members at
+                     # limitN=1; this stamps the same cap so at most ONE Hunt spawns per pool per trigger.
 
 
 # =============================================================================
@@ -421,9 +427,13 @@ def _sweep_inject_legendary_stalker(db):
       (1) Hades-only prefix (he only appears in Act-4/Hades -> "effectively Legendary" endgame);
       (2) the Enslaver sweep ALREADY RAN (in the monolith) and x600'd (asp._EN_SWEEP_K) these pools'
           member weights + added itself at weight 1, so this sweep does NOT re-multiply (that would
-          break the Enslaver's weight-1 invariant + over-inflate); it simply appends the stalker at
+          break the Enslaver's weight-1 invariant + over-inflate); it appends the stalker at
           weight 1 into a free slot, which keeps BOTH rares at weight 1 with p_slot <= 1/2400 (a pool
           the Enslaver already qualified has total >= 24000, so 1/(total+1) << 1/2400).
+    Like the Enslaver v2 sweep, the appended slot carries a per-slot limit=1 (_LS_SLOT_LIMIT) MAX-count
+    cap: pool mains draw WITH REPLACEMENT, so without it a pack pool (spawnMax>1) could surface 2+ Hunts
+    in ONE trigger -- the exact "two-in-one-trigger" defect just fixed for the Enslaver. With limit=1 the
+    engine spawns AT MOST ONE Hunt per pool per spawn trigger, structurally, at any party size.
     Reuses the Enslaver's eligibility guards (skip q_/sq/xsq/mq/svc_ + boss/quest/hero/escort/
     summon/... basenames; all resolvable name members Class=Monster; a free name slot). Returns the
     list of touched pool record names. Deterministic (sorted iteration)."""
@@ -487,10 +497,12 @@ def _sweep_inject_legendary_stalker(db):
             continue
         db.set_field(n, 'name%d' % free, _HUNT_MONSTER, S)
         db.set_field(n, 'weight%d' % free, 1, I)
+        db.set_field(n, 'limit%d' % free, _LS_SLOT_LIMIT, I)   # structural: <=1 Hunt/trigger (mirrors enslaver v2)
         db._modified.add(n)
         touched.append(n)
     print("  [C] STALKER SWEEP: injected the roaming Hunt into %d eligible Hades trash pool(s) "
-          "(weight 1; existing weights untouched to preserve the Enslaver's invariant)"
+          "(weight 1, per-slot limit 1 = <=1 Hunt/trigger; existing weights untouched to preserve "
+          "the Enslaver's invariant)"
           % len(touched))
     return touched
 
@@ -498,9 +510,10 @@ def _sweep_inject_legendary_stalker(db):
 def _verify_legendary_stalker_sweep(db, touched):
     """FAIL-LOUD gate (parallels _verify_roaming_sweep, Hades-scoped): re-derive the touched set
     from the arz and prove ONLY eligible Hades trash pools carry the stalker, each at weight 1 with
-    p_slot <= 1/2400, the monster resolves at band [40,68,100], and there is no leak into a
-    non-Hades or boss/quest/hero pool (every stalker-bearing pool must be in `touched` - there is no
-    dedicated stalker pool, so no whitelist)."""
+    p_slot <= 1/2400 AND a per-slot limit=1 (_LS_SLOT_LIMIT) MAX-count cap (STRUCTURAL no-double:
+    <=1 Hunt per pool per trigger), the monster resolves at band [40,68,100], and there is no leak
+    into a non-Hades or boss/quest/hero pool (every stalker-bearing pool must be in `touched` - there
+    is no dedicated stalker pool, so no whitelist)."""
     problems = []
 
     def gv(n, f):
@@ -539,6 +552,7 @@ def _verify_legendary_stalker_sweep(db, touched):
             problems.append(f"STALKER LEAK boss/quest/hero pool: {n}")
         wtotal = 0
         hw = None
+        hidx = None
         for i in range(1, 19):
             nm = gv(n, 'name%d' % i)
             if not (nm and str(nm).strip()):
@@ -551,11 +565,26 @@ def _verify_legendary_stalker_sweep(db, touched):
             wtotal += w
             if str(nm).replace('/', '\\').lower() == hunt:
                 hw = w
+                hidx = i
         if hw != 1:
             problems.append(f"{n}: stalker weight {hw} != 1")
         elif wtotal <= 0 or (1.0 / wtotal) > _LS_MAX_P + 1e-9:
             problems.append(f"{n}: stalker p_slot {1.0 / max(wtotal, 1):.5f} > "
                             f"{_LS_MAX_P:.5f} (too common)")
+        # STRUCTURAL NO-DOUBLE: the Hunt's name slot MUST carry limit=1 (a per-slot MAX-count
+        # cap) so the engine spawns at most ONE per pool per trigger. Pool mains draw WITH
+        # REPLACEMENT, so without this a pack pool (spawnMax>1) could surface 2+ Hunts in a
+        # single spawn -- the exact "two-in-one-trigger" defect fixed for the Enslaver.
+        hlimit = None
+        if hidx is not None:
+            lv = gv(n, 'limit%d' % hidx)
+            try:
+                hlimit = int(lv) if lv not in (None, '') else None
+            except (TypeError, ValueError):
+                hlimit = None
+        if hlimit != _LS_SLOT_LIMIT:
+            problems.append(f"{n}: stalker slot limit{hidx}={hlimit} != "
+                            f"{_LS_SLOT_LIMIT} (STRUCTURAL no-double cap missing)")
 
     if not derived:
         problems.append("stalker sweep touched ZERO Hades pools (the Hunt would never appear)")
@@ -566,7 +595,8 @@ def _verify_legendary_stalker_sweep(db, touched):
         raise SystemExit(
             f"Legendary-stalker roaming-sweep gate FAILED: {len(problems)} problem(s)")
     print(f"  [C] stalker-sweep gate OK: {len(derived)} eligible Hades trash pools carry the Hunt "
-          f"at weight 1 (p_slot <= 1/2400); 0 non-Hades / boss / quest / hero leaks; band [40,68,100].")
+          f"at weight 1 + per-slot limit 1 (p_slot <= 1/2400, <=1 Hunt/trigger); 0 non-Hades / boss / "
+          f"quest / hero leaks; band [40,68,100].")
 
 
 def _author_legendary_only_limit(db):
