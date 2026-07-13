@@ -1,4 +1,56 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🧩 **BUILD38 INTEGRATION (2026-07-13, main) - 5 GO-vetted lanes merged + integration fixes.** Merges (all
+> clean, order hash `7ed29402a38d` -> `7c74a51f6ed8`, REGISTRY now 11 modules): `feat/b38-mastery-ui` @ `43611fc`,
+> `feat/b38-damage` @ `ab5f5ac`, `feat/b38-enslaver-v2` @ `e2f87ef`, `feat/b38-language` @ `e22c62a`,
+> `chore/b38-workshop-description` @ `475cfee`. Integration fixes commit `f1d53af` (+ reconcile `630bb9b`). NOT
+> deployed; canonical build36a stays LIVE. **Confirming full DB build + gate record is still pending (this pass ran
+> only fast gates + dry-run replays; NO heavy build).**
+> **FIXED this wave:**
+> - **Mastery UI** (`mastery_ui_audit` module, after `hunting_occult_ui`): 8 graft icon repoints (7 `_DRX_Textures`
+>   dead refs + 1 empty -> resolving XPack3/InGameUI arcs); Earth Rupture DE-DUP (graft `drxrupture`/`drxrupture_flare`
+>   relabelled to the freed base tags `tagSkillName113` "Flame Surge" / `tagSkillName103` "Flame Arch"; SV `drxflamesurge`
+>   stays the canonical Rupture) + Earth col-428 reflow (chains contiguous, base lower); Dream (xpack mastery 9)
+>   background repointed off the black `skillbackgrounddiablo.tex` to the Spirit backdrop. **Nature "Sylvan Protection"
+>   name wired in integration** (`drx_nymph_petmodifier_rootwave.skillDisplayName -> x3tagSkillNatureSylvanProtection`
+>   + `...Desc`; base-game x3 tags, resolve at runtime, no Text.arc entry). Dry-run replay vs `baseline_build36.arz`:
+>   15 records modified, 0 added, all asserts PASS.
+> - **Damage numbers** (`damage_display` module, before `visuals`): bound the 7 missing AE floating-combat-text
+>   FontStyle pointers (`DamageNormal/Elemental/OnPlayer/OverTime/Healing/HealingOnPlayer/PlayerImpairment`) on
+>   `records\xpack\game\gameengine.dbr` (SV's pre-AE record lacked them -> only crits showed). Dry-run replay: 1
+>   record, +7 STRING fields, 0 new records/tags, idempotent, verify() PASS.
+> - **Enslaver v2** (`apply_svc_patches.py`): `_EN_SWEEP_K` 300 -> 600 (= /10 vs build36a K=60), ceiling 1/24000,
+>   NEW per-slot `limit=1` = STRUCTURAL no-double (<=1 Enslaver per pool per trigger); fail-loud verify asserts it.
+>   Reconciled with the `toxeus_suite` Hades-Hunt `_LS_MAX_P=1/2400` decoupling (both survive; stale x60/x300 +
+>   1/12000 comments refreshed to x600 / 1/24000).
+> - **Language** (`build_text_arc.py`): i18n de-clobber drops SV tags byte-identical to base-game Text_EN (they were
+>   overriding non-English base text = the "cannot change language" Steam defect). **Integration hardened the
+>   DIRECT-RUN path**: when `SVC_BASE_TEXT_EN` + 4th arg are both absent, `build_text_arc.py` now self-resolves the
+>   base Text_EN.arc from the Steam install (doctor.sh discovery), warns loudly, falls back only if truly absent;
+>   `SVC_NO_I18N_DECLOBBER=1` still the kill switch.
+> - **Earthfury cd regression (Anapaest ruling)** FIXED in integration (`f1d53af`): player-cast `pcsafe\earthfury_ring`
+>   was 16.0 in build37-dev vs 5.0 in build36a. TRACE-PROVEN root cause: `skill_quality` (registry module) re-runs the
+>   castability wave during `run_registry`, minting the pcsafe clone from the still-16.0 plain BEFORE the deferred
+>   `run_registry_gates` phase where A4 lowers it; the idempotent monolith wave then preserved the stale 16.0. A4
+>   (`_apply_flashpowder_rework`) now also forces the pcsafe clone to 5.0 (guarded). Sole affected skill (Flame
+>   Nova/Flash Powder have no special anim -> never pcsafe-cloned). **Confirming gate: next full DB build must show
+>   `pcsafe\earthfury_ring` skillCooldownTime == 5.0.**
+> - **Workshop description**: `docs/WORKSHOP_DESCRIPTION.bbcode` merged (already pushed LIVE to Steam as metadata-only).
+> **RESIDUALS (open, recorded not fixed):**
+> - **Storm UI slot25** -> `drxspellbreaker_spellshock2.dbr` is a PRE-EXISTING SV-ORIGINAL dead reference (present in
+>   098i; the referenced skill never existed). DOCUMENTED, NOT TOUCHED - needs Will's design call (invent the skill,
+>   repoint, or accept the harmless phantom button). SV-original, so out of a safe UI pass.
+> - **Enslaver residual**: the `limit=1` cap is per-pool-per-trigger (structural). Two INDEPENDENT spawn points
+>   surfacing an Enslaver close enough to fight together has no engine global cap; the /10 frequency cut makes it a
+>   ~once-in-hundreds-of-acts event (also ~100x rarer cross-field). Endless-Hunt stalker (`toxeus_suite`) has the SAME
+>   latent per-trigger-duplicate defect (Hades-only, rarer, UNSHIPPED b37) - flagged one-line follow-up (add
+>   `limit{slot}=1` to `_sweep_inject_legendary_stalker` + assert in its verify).
+> - **Language in-game spot-check = HARD pre-Steam gate**: the de-clobber restores ~93% localization by construction,
+>   but an actual in-game language-switch test on a real non-English client MUST pass before any Steam push touching
+>   Text.arc. Also FAILBOAT debug junk (4 rewording tags, English-VISIBLE today) recommended for a follow-up cleanup.
+> - **Will tour checks** (in-game, cannot be gate-verified here): damage numbers appear on normal/elemental/DoT hits;
+>   the 8 repointed mastery icons + Dream background render (no black pane, no missing icons); Earth Rupture chain
+>   shows ONE Rupture with the reflowed layout. Screenshots requested.
+>
 > 🧪 **BUILD37-DEV GATE RECORD (2026-07-13, main HEAD `46bf0f2`) - FIRST FULL-REGISTRY DB BUILD GREEN + TESTHUB
 > map + Text + Quests.** First full-registry build after the gate-fix (relocated `skill_quality` diversity gate to a
 > post-finalization `run_registry_verifies` phase; 2 HC souls added to ALLOW). Everything staged to `work/` + `local/`,

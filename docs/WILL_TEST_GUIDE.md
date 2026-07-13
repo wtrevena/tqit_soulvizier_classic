@@ -16,6 +16,28 @@
 > has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
 > files (Steam was already restarted today, so no Steam restart is needed).
 
+## BUILD38 CHECKS (new this wave - verify once a build38 DB is deployed)
+
+These ride the DB/Text (not the map), so they apply on both DEV and, once shipped, Steam. Build38 is
+merged in git but NOT yet built/deployed; do these after the next DB build lands on DEV.
+
+- **Damage numbers.** Hit any monster with normal, elemental, and damage-over-time attacks and confirm
+  FLOATING damage numbers appear (before build38 only critical hits showed a number). Healing numbers too.
+- **Earth mastery layout.** Open the Earth skill tree: there should be exactly **ONE "Rupture"** (the
+  staff line), the graft chain now reads "Flame Surge / Burning Bolts / Flame Arch / Fire Nova", and the
+  Rupture chain should sit lower and read as a clean vertical chain (no interleaving, no floating icons).
+- **Repointed icons + Dream background.** Spot-check the masteries whose graft skills had missing icons
+  (Warfare Fissure, Defense Perfect Block, Earth Fire Nova / Burning Bolts / Flame Arch, Storm Frost Nova,
+  Dream Image, Nature "Sylvan Protection"): every button now shows an icon AND a name. The **Dream** mastery
+  screen should have a real background (not a black pane). Screenshots welcome.
+- **Earth Fury cooldown.** The Anapaest / Gigantes Earth Fury soul skill should recharge in **5 seconds**
+  (not 16). (Regression fix - it was 16s in build37-dev.)
+- **Enslaver frequency.** Toxeus the Enslaver should now appear roughly **once per act** (was ~6), and you
+  should **never see two of him in the same pack**. Report if you fight two side by side.
+- **Language switch (optional).** If you read a non-English language: switch the game language and confirm
+  vanilla menus/items localize (Soulvizier's own added content stays English by design). This is a HARD
+  gate before any Steam push that changes Text.arc.
+
 ## HELOS TRAVELER HUB (DEV / TESTHUB map only) - one traveler per area
 
 In the **Helos starting-town plaza** (where you begin a Custom Quest char) stand **11 named
