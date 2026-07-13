@@ -345,6 +345,20 @@ if (Test-Path $svTextEnArc) {
     Write-Host 'Building Text.arc (modstrings.txt with all SV text + Occult fix + uber soul tags)...' -ForegroundColor Yellow
     $buildTextScript = Join-Path $toolsDir 'build_text_arc.py'
 
+    # B38 i18n de-clobber: give build_text_arc the player's base-game Text_EN.arc
+    # so it drops vanilla tags whose value equals the base game's. Re-emitting
+    # those does nothing in English but OVERRIDES the localized value in every
+    # non-English base Text_XX.arc (the Steam "cant change the language" bug).
+    # Passed via env var (unambiguous vs positional args); build_text_arc also
+    # accepts it as the 4th positional. Absent -> build warns + keeps old behavior.
+    $baseTextEnArc = Join-Path $Config['TQAE_ROOT'] 'Text\Text_EN.arc'
+    if (Test-Path $baseTextEnArc) {
+        $env:SVC_BASE_TEXT_EN = $baseTextEnArc
+        Write-Host "  i18n de-clobber base text: $baseTextEnArc" -ForegroundColor DarkGray
+    } else {
+        Write-Host "  WARNING: base-game Text_EN.arc not found at $baseTextEnArc; i18n de-clobber will be skipped." -ForegroundColor Yellow
+    }
+
     $textArgs = @($buildTextScript, $svTextEnArc, $dstTextArc)
     if (Test-Path $uberTagsFile) {
         $textArgs += $uberTagsFile
