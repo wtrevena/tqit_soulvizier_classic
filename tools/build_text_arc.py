@@ -159,6 +159,43 @@ def load_base_en_tags(arc_path: Path) -> dict:
     return tags
 
 
+def discover_base_text_en():
+    """Best-effort discovery of the player's base-game Text_EN.arc from the Steam
+    install, so a DIRECT `py build_text_arc.py` run (no SVC_BASE_TEXT_EN env, no 4th
+    positional arg) still activates the i18n de-clobber instead of silently emitting
+    vanilla tags that override non-English base text. Mirrors scripts/doctor.sh (the
+    same discovery the bootstrap's $Config['TQAE_ROOT'] is derived from): honor
+    SVC_TQAE_ROOT if set, else the default Steam library, else parse
+    libraryfolders.vdf for alternate libraries. Returns an existing Path or None.
+    """
+    import re
+    candidates = []
+    root_env = os.environ.get('SVC_TQAE_ROOT')
+    if root_env and root_env.strip():
+        candidates.append(Path(root_env.strip()))
+    default_steam = Path(r'C:\Program Files (x86)\Steam')
+    candidates.append(default_steam / 'steamapps' / 'common' /
+                      'Titan Quest Anniversary Edition')
+    vdf = default_steam / 'steamapps' / 'libraryfolders.vdf'
+    if vdf.is_file():
+        try:
+            for m in re.finditer(r'"path"\s+"([^"]+)"',
+                                 vdf.read_text(encoding='utf-8', errors='ignore')):
+                lib = m.group(1).replace('\\\\', '\\')
+                candidates.append(Path(lib) / 'steamapps' / 'common' /
+                                  'Titan Quest Anniversary Edition')
+        except Exception:
+            pass  # a malformed vdf never blocks the build; fall through to None
+    for root in candidates:
+        arc = root / 'Text' / 'Text_EN.arc'
+        try:
+            if arc.is_file():
+                return arc
+        except OSError:
+            continue
+    return None
+
+
 def build_modstrings(sv_arc_path: Path, uber_tags_path: Path = None,
                      extra_tags: dict = None, base_en_tags: dict = None,
                      protected_tags: set = None) -> str:
@@ -662,5 +699,25 @@ if __name__ == '__main__':
         base_en_path = Path(sys.argv[4])
     elif os.environ.get('SVC_BASE_TEXT_EN'):
         base_en_path = Path(os.environ['SVC_BASE_TEXT_EN'])
+
+    # Direct-run safety net (B38 vet MEDIUM): neither the 4th arg nor SVC_BASE_TEXT_EN
+    # was given, so the de-clobber would silently no-op and modStrings.txt would
+    # override non-English base text. Self-resolve the base Text_EN.arc from the game
+    # install (same discovery the bootstrap uses) and warn LOUDLY. Skipped when the
+    # kill switch is set; only falls back to old behavior if the file truly is absent.
+    if base_en_path is None and os.environ.get('SVC_NO_I18N_DECLOBBER') != '1':
+        discovered = discover_base_text_en()
+        if discovered is not None:
+            base_en_path = discovered
+            print("  NOTE: no SVC_BASE_TEXT_EN / 4th arg given; auto-resolved base-game "
+                  f"Text_EN.arc from the game install for the i18n de-clobber:\n"
+                  f"        {discovered}\n"
+                  "        (set SVC_BASE_TEXT_EN to override, or SVC_NO_I18N_DECLOBBER=1 "
+                  "to disable the de-clobber).")
+        else:
+            print("  WARNING: no SVC_BASE_TEXT_EN / 4th arg AND could not auto-locate the "
+                  "base-game Text_EN.arc in the Steam install; the i18n de-clobber will be "
+                  "SKIPPED (modStrings.txt will override non-English base text). Set "
+                  "SVC_BASE_TEXT_EN to the base Text_EN.arc to enable it.")
 
     build_text_arc(sv_path, out_path, uber_path, base_en_path)

@@ -12071,6 +12071,20 @@ def _apply_flashpowder_rework(db):
         raise SystemExit('A4: earthfury_ring cd=%r != 16.0 (drift)' % _efcd)
     sf(EF, 'skillCooldownTime', 5.0)   # float, NO explicit dtype
     db._modified.add(EF)
+    # B38 (Anapaest ruling regression fix): the player casts the PCSAFE clone
+    # records\skills\soulskills\pcsafe\earthfury_ring.dbr, not this plain source. In
+    # build37 the skill_quality REGISTRY module RE-RUNS the castability wave during the
+    # run_registry phase, which mints that pcsafe clone from the STILL-16.0 plain BEFORE
+    # this deferred-gate phase lowers it here - so the idempotent monolith wave below
+    # preserves the stale 16.0 and Earth Fury fires at 16s in-game (proven vs build36a,
+    # where the wave ran once AFTER this edit and the clone inherited 5.0). Force the
+    # already-minted clone to 5.0 too, honoring Will's build36 amendment (Anapaest /
+    # Gigantes Earth Fury = 5s shared x4). Guarded: if the clone is not minted yet the
+    # wave below clones the now-5.0 plain, so it is 5.0 either way.
+    EF_PC = _PCSAFE_DIR + '\\earthfury_ring.dbr'
+    if db.has_record(EF_PC):
+        sf(EF_PC, 'skillCooldownTime', 5.0)
+        db._modified.add(EF_PC)
 
     print('  F5: Flame Nova cd 8->4; Occult Flash Powder cd 15->6 + pierce + '
           'ranged-blind; soul Flash Powder cd 20->10; droolbog -> base flashpowder')

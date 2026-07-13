@@ -194,6 +194,19 @@ def apply(db, tags):
         print("  icon  %-52s -> %s" % (skill.rsplit('\\', 1)[-1], up.rsplit('\\', 1)[-1]))
     print("  graft icons repointed: %d (7 _DRX_Textures + 1 empty) -> resolving arcs" % len(_ICON_FIXES))
 
+    # 5b: Nature "Sylvan Protection" (drx_nymph_petmodifier_rootwave) shipped with an
+    # EMPTY skillDisplayName -> a nameless mastery button (the residual graft defect the
+    # report deferred). The base game (Ragnarok / XPack3) already defines the exact
+    # display + description tags, so wire them: base-game tags resolve at runtime from the
+    # base Text arcs (validate_tags does not require base tags, identical to the Earth
+    # de-dup above), so no Text.arc entry is minted. Gives the button the name
+    # "Sylvan Protection" and a fitting nymph tooltip.
+    _rw = _resolve(_SK % r"nature\drx_nymph_petmodifier_rootwave.dbr")
+    db.set_field(_rw, "skillDisplayName", "x3tagSkillNatureSylvanProtection")
+    db.set_field(_rw, "skillBaseDescription", "x3tagSkillNatureSylvanProtectionDesc")
+    print("  Nature name: drx_nymph_petmodifier_rootwave -> Sylvan Protection "
+          "(x3tagSkillNatureSylvanProtection, base-game x3 tag)")
+
     # 2: Earth Rupture/Flare de-dup (relabel the GRAFT records only).
     for skill, name_tag, desc_tag, up, down in _RENAME_FIXES:
         rec = _resolve(skill)
