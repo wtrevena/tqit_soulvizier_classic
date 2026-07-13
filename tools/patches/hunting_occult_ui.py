@@ -7,9 +7,11 @@ should be squares, some of them don't line up properly, etc."
 Fixes two PROVEN, high-severity UI defects (see the implementable spec
 scratchpad/specs/hunting_occult_ui_fix_spec.md). All edits are UI-leaf field
 edits on `records\\ingameui\\player skills\\mastery {N}\\...`; NO skill VALUES
-change (the golden freeze stays intact - the 8 button + 4 background golden-
-tracked field edits on masteries 5/6 are Will-authorized owner_approved_overrides
-in tools/occult_hunting_golden.json, mirroring the F5 Flash Powder precedent).
+change (the golden freeze stays intact - the 5 drifting button + 4 background
+golden-tracked field edits on masteries 5/6 are Will-authorized
+owner_approved_overrides in tools/occult_hunting_golden.json, mirroring the F5
+Flash Powder precedent; the 3 passive buttons re-assert the golden-baseline circle
+and therefore need no waiver).
 
 DEFECT 1 - missing background (ROOT CAUSE #2 in the spec, PROVEN by D5).
   Our DRX BitmapSingle records for EVERY mastery point `bitmapName` at
@@ -28,13 +30,22 @@ DEFECT 1 - missing background (ROOT CAUSE #2 in the spec, PROVEN by D5).
   5/6 are golden-tracked (4 waived keys); 1-4,7,8 clear the identical latent bug
   with no waiver.
 
-DEFECT 2 - circles that should be squares (ROOT CAUSE #3, PROVEN three ways:
-  base-game isCircular for the same skill identity + the skill `Class` + the
-  modifier-sibling test). 8 O/H buttons carry the wrong `isCircular` flag; the 5
-  circle->square rows are exactly the "circles when they should be squares" Will
-  saw. Each fix flips `isCircular` AND swaps the 3 border bitmaps to the matching
-  base-consistent preset (square => SkillButtonBorder01 family; circle =>
-  SkillButtonBorderRound01 family). All 6 border textures are D5-confirmed present.
+DEFECT 2 - button shapes per Will's SHAPE LAW (2026-07-12, verbatim): "circles
+  are for passive buffs in the skill tree or passive abilities like % chance to
+  activate or an extension / enhancement to a lower level skill; a square is an
+  ability you have to CAST." So cast actives => SQUARE, passives / procs /
+  modifiers => CIRCLE. This wave sets 8 O/H buttons; 5 drift from the golden
+  baseline and are Will-authorized (waived): 2 cast actives squared
+  (drxpoisongasbomb, drxspear_tempest - Will's explicit Tempest-is-a-square call)
+  and 3 modifiers circled (drxcalculatedstrike_luckyhit,
+  drxlaytrap_petmodifier_multishotbolttrap, drxtakedown_eviscerate). The other 3
+  are STANDALONE PASSIVES (drx_dual_blade, drxherbalism, drxcorneredrage): an
+  earlier wave squared them by base-game precedent, but under Will's law passives
+  are CIRCLES, so this wave RE-ASSERTS their circle preset. That preset is
+  IDENTICAL to the golden baseline, so the 3 passives produce ZERO drift and carry
+  NO waiver (their now-vacuous waivers were removed from the golden). Each fix
+  writes isCircular AND the 3 matching border bitmaps (square => SkillButtonBorder01
+  family; circle => SkillButtonBorderRound01 family). All 6 textures D5-confirmed.
 
 ALIGNMENT ("don't line up") is deliberately NOT touched this wave: every O/H
 button is grid-valid + collision-free, and the perceived misalignment is chiefly
@@ -78,21 +89,26 @@ _CIRCLE = (
     ("bitmapNameInFocus", r"InGameUI\SkillButtonBorderRoundOver01.tex"),
 )
 
-# The 8 buttons whose isCircular disagrees with base convention. (slot, button,
-# preset, skill identity for logs). The 5 SQUARE rows are Will's "circles that
-# should be squares"; the 3 CIRCLE rows are the inverse (real modifiers drawn as
-# squares) - included for a convention-correct tree. m6 skill18
+# The 8 O/H buttons, set per Will's SHAPE LAW (cast active => SQUARE; passive /
+# proc / modifier => CIRCLE). (slot, button, preset, skill identity for logs).
+# 2 SQUARE = cast actives (drxpoisongasbomb, drxspear_tempest - Will's explicit
+# Tempest-is-a-square call); 6 CIRCLE = 3 modifiers (luckyhit, multishotbolttrap,
+# takedown_eviscerate) + 3 standalone passives (drx_dual_blade, drxherbalism,
+# drxcorneredrage). The 3 passives' CIRCLE preset is IDENTICAL to the golden
+# baseline, so they produce ZERO drift and carry NO waiver (an earlier wave
+# squared them by base-game precedent; Will's law reverts them to circle). The
+# other 5 buttons drift from the golden and are Will-waived. m6 skill18
 # (drxtakedown_eviscerate) pairs with the H/O improvements wave's Eviscerate
 # RENAME: the renamed buff becomes correctly circular.
 _SHAPE_FIXES = (
-    (5, "skill13", _SQUARE, "drxpoisongasbomb"),                        # [Will] main node (owns _shrapnel)
-    (5, "skill24", _SQUARE, "drx_dual_blade"),                          # [Will] Skill_Passive
-    (5, "skill06", _CIRCLE, "drxcalculatedstrike_luckyhit"),           # modifier of CalculatedStrike
-    (5, "skill18", _CIRCLE, "drxlaytrap_petmodifier_multishotbolttrap"),  # pet-modifier of LayTrap
-    (6, "skill09", _SQUARE, "drxherbalism"),                           # [Will] Skill_Passive
-    (6, "skill22", _SQUARE, "drxspear_tempest"),                       # [Will] main node (owns tempest_expose)
-    (6, "skill23", _SQUARE, "drxcorneredrage"),                        # [Will] PassiveOnLifeBuffSelf
-    (6, "skill18", _CIRCLE, "drxtakedown_eviscerate"),                # modifier of Takedown
+    (5, "skill13", _SQUARE, "drxpoisongasbomb"),                        # cast active (owns _shrapnel) -> SQUARE
+    (5, "skill24", _CIRCLE, "drx_dual_blade"),                          # Skill_Passive -> CIRCLE (Will shape law; == golden baseline)
+    (5, "skill06", _CIRCLE, "drxcalculatedstrike_luckyhit"),           # modifier of CalculatedStrike -> CIRCLE
+    (5, "skill18", _CIRCLE, "drxlaytrap_petmodifier_multishotbolttrap"),  # pet-modifier of LayTrap -> CIRCLE
+    (6, "skill09", _CIRCLE, "drxherbalism"),                           # Skill_Passive -> CIRCLE (Will shape law; == golden baseline)
+    (6, "skill22", _SQUARE, "drxspear_tempest"),                       # cast active (owns tempest_expose) -> SQUARE (Will's explicit call)
+    (6, "skill23", _CIRCLE, "drxcorneredrage"),                        # PassiveOnLifeBuffSelf -> CIRCLE (Will shape law; == golden baseline)
+    (6, "skill18", _CIRCLE, "drxtakedown_eviscerate"),                # modifier of Takedown -> CIRCLE
 )
 
 
@@ -143,7 +159,8 @@ def apply(db, tags):
         shape = "CIRCLE" if preset is _CIRCLE else "SQUARE"
         shapes += 1
         print("  m%d %-8s (%s) -> %s" % (slot, base, ident, shape))
-    print("  button shapes corrected: %d (5 circle->square, 3 square->circle)"
+    print("  button shapes set: %d (2 SQUARE cast-actives + 6 CIRCLE passives/procs/"
+          "modifiers, Will's shape law); 5 drift-waived, 3 re-assert baseline circle"
           % shapes)
     print("=== H/O UI fix done: %d bg + %d shape records ==="
           % (bg_records, shapes))
