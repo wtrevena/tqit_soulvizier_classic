@@ -64,6 +64,9 @@ import importlib
 # 'visuals' stays LAST (DB precondition invariant, writes nothing).
 REGISTRY = [
     'hunting_occult_ui',    # build37 backlog #35/#76: O/H mastery-screen UI (shapes/bitmaps)
+    'mastery_ui_audit',     # build38: cross-mastery skill-tree UI fix (graft icons, Earth
+                            # Rupture de-dup + reflow, Dream bg); disjoint from hunting_occult_ui
+                            # (which owns mastery 1-8 backgrounds + O/H button shapes)
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
