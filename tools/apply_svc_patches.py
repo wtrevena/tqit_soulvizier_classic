@@ -9850,7 +9850,7 @@ def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
 # carried through the KIT + name, since the design mandates ShadowStalker.msh
 # which um_toxeus_99 does not use). The ROAMING SWEEP appends him at weight 1 to
 # every eligible hostile trash pool with each existing member weight x60 (so he
-# stays rarer than 1/2400 per main-slot); a fail-loud gate proves ONLY eligible
+# stays rarer than 1/12000 per main-slot; build37 BL-ENSLAVER-SPAWNS); a fail-loud gate proves ONLY eligible
 # (non boss/quest/hero) pools were touched. His soul is a MANUAL summon-the-boss
 # (pet-of-pet: the friendly Enslaver pet auto-casts a friendly marauder summon).
 _EN_BOSS = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
@@ -9860,6 +9860,14 @@ _EN_SUMMON_MARAUDERS = r'records\skills\boss skills\svc_enslaver_summonmarauders
 _EN_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
 _EN_BAND = [40, 68, 100]
 _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
+# BL-ENSLAVER-SMOKE (Will 2026-07-12 tour): the black Skeleton Lord renders a GREEN
+# poison aura from the RevenantPoison rig - Will wants BLACK smoke. Dedicated dark-smoke
+# CharFxPak = charfxpak_leinth_aura recolored to amgoz's own 343_dark_smoke (the exact
+# dark_smoke WILL_DECISIONS 2026-07-11 chose for the Helepolis). Applied on the MONSTER
+# record via charFxPakRunningNames (never charFxPak on a SpawnPet skill - build28 trap).
+_EN_DARK_SMOKE_FX = r'records\effects\custom\343_dark_smoke.dbr'
+_EN_DARKSMOKE_FXPAK_DONOR = r'records\drxcreatures\bloodwitch\skills\skilleffects\charfxpak_leinth_aura.dbr'
+_EN_DARKSMOKE_FXPAK = r'records\skills\monster skills\buff_self\svc_enslaver_darksmoke_charfxpak.dbr'
 # build36 A2 (Enslaver rework, Will 2026-07-11: "black skeleton on the Blood-
 # Toxeus rig"): the BOSS now clones the skeleton kin um_toxeus_99 (the exact rig
 # the Devourer of Blood uses: RevenantPoison.msh + anm_skeleton01 + a full common
@@ -9898,8 +9906,16 @@ _EN_SK_GP_L = r'records\skills\monster skills\globalproperties_legendary01.dbr'
 _EN_AUG_ANATOMY = r'records\skills\stealth\drxanatomy.dbr'
 _EN_AUG_DARKAPERTURE = r'records\skills\stealth\drxdarklings_darkaperture.dbr'
 # roaming sweep tuning.
-_EN_SWEEP_K = 60          # existing-weight multiplier
-_EN_SWEEP_MAX_P = 1.0 / (40 * 60)   # per-pool enslaver p_slot ceiling (1/2400)
+# BL-ENSLAVER-SPAWNS (Will 2026-07-12): make the roaming Enslaver a genuinely RARE
+# encounter (he was a "doorstep greeter", spawning two side-by-side). K 60 -> 300 (5x
+# rarer per main-slot) with the p_slot ceiling scaled the SAME 5x, so the ELIGIBILITY
+# floor (original pool weight-total >= _EN_SWEEP_MIN_WTOTAL) is UNCHANGED -> identical
+# pool breadth (the >= 500-pool sweep gate still holds) but each roll is 5x rarer, so
+# two adjacent rolls landing together is ~25x rarer (kills the side-by-side duplicates).
+_EN_SWEEP_K = 300          # existing-weight multiplier (build37: 60 -> 300)
+_EN_SWEEP_MIN_WTOTAL = 40  # min ORIGINAL pool weight-total to qualify (unchanged -> same breadth)
+_EN_SWEEP_CEIL = _EN_SWEEP_K * _EN_SWEEP_MIN_WTOTAL   # 12000: per-slot rarity denominator
+_EN_SWEEP_MAX_P = 1.0 / _EN_SWEEP_CEIL   # per-pool enslaver p_slot ceiling (build37: 1/2400 -> 1/12000)
 _EN_SWEEP_ALLOW_PREFIX = (
     'records\\proxies orient\\pools',
     'records\\proxies egypt\\pools',
@@ -9950,7 +9966,7 @@ def _create_enslaver(db, tags):
     sf(M, 'monsterClassification', 'Champion')
     sf(M, 'characterRacialProfile', 'Demon')
     sf(M, 'charLevel', list(_EN_BAND))
-    sf(M, 'characterLife', [13000.0, 18000.0, 24000.0])   # = deployed demon Toxeus
+    sf(M, 'characterLife', [10000.0, 14000.0, 18000.0])   # BL-ENSLAVER-SPAWNS: trimmed from 13k/18k/24k (killable elite, not a sponge)
     sf(M, 'characterStrength', 480.0)
     sf(M, 'characterDexterity', 660.0)
     sf(M, 'characterIntelligence', 420.0)
@@ -9960,9 +9976,14 @@ def _create_enslaver(db, tags):
     sf(M, 'scale', 2.0)                                    # was 1.1 (demon silhouette)
     sf(M, 'actorHeight', 2.5)
     sf(M, 'characterRunSpeed', 1.7)
-    sf(M, 'defensiveLife', 100.0)
-    sf(M, 'defensivePierce', 80.0)
-    sf(M, 'defensivePhysical', 30.0)
+    # BL-ENSLAVER-SPAWNS (Will 2026-07-12): the marauders took ~0 damage in Epic. The
+    # near-immunity was this demon resist wall (defensiveLife 100 = FULL vitality
+    # immunity) AMPLIFIED by Epic/Legendary global scaling. Cut it to killable-elite
+    # levels; DPS (handHitDamage 300/380 below) is UNTOUCHED - they keep their threat,
+    # lose the wall. Shared with the friendly pet-of-pet (consistent demon-pet resists).
+    sf(M, 'defensiveLife', 40.0)                          # was 100 (no longer vitality-immune)
+    sf(M, 'defensivePierce', 40.0)                        # was 80
+    sf(M, 'defensivePhysical', 12.0)                      # was 30
     sf(M, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], S)   # drxshadowcloakrunning_fx
     sf(M, 'dropItems', 0)
     db._modified.add(M)
@@ -10050,6 +10071,24 @@ def _create_enslaver(db, tags):
         sf(B, f'specialAttack{suf}SkillName', sk)
         sf(B, f'specialAttack{suf}Chance', ch)
     db._modified.add(B)
+
+    # ── 3b. BL-ENSLAVER-SMOKE (Will 2026-07-12): green poison aura -> BLACK smoke.
+    #    The RevenantPoison rig renders a green poison shroud on the all-black skeleton;
+    #    Will wants black smoke. Give the boss a dark-SMOKE character shroud on the
+    #    MONSTER record via charFxPakRunningNames (the proven Enslaver/Vashkarr route;
+    #    NEVER charFxPak on a SpawnPet skill - build28 crash trap). Dedicated pak =
+    #    charfxpak_leinth_aura recolored to amgoz's own 343_dark_smoke (the exact FX
+    #    WILL_DECISIONS 2026-07-11 picked for the Helepolis). The Devourer variant
+    #    (um_bloodtoxeus_99) is a SEPARATE record and is untouched. P2 visual: VERIFY
+    #    in the built arz + A9 render chain + Will's next tour. ──
+    if db.has_record(_EN_DARKSMOKE_FXPAK_DONOR) and db.has_record(_EN_DARK_SMOKE_FX):
+        db.clone_record(_EN_DARKSMOKE_FXPAK_DONOR, _EN_DARKSMOKE_FXPAK)
+        sf(_EN_DARKSMOKE_FXPAK, 'particleEffectNames', _EN_DARK_SMOKE_FX)  # green mist -> 343_dark_smoke
+        db._modified.add(_EN_DARKSMOKE_FXPAK)
+        sf(B, 'charFxPakRunningNames', [_EN_DARKSMOKE_FXPAK], S)           # black smoke shroud (monster record)
+        db._modified.add(B)
+    else:
+        print("  ENSLAVER SMOKE: dark-smoke FX donor(s) missing; boss keeps the green rig aura")
 
     # ── 4. Friendly pet-of-pet marauders (reuse _build_boss_summon on the
     #    marauder rig -> friendly pet + summon skill). isPetDisplayable off (the
@@ -10408,7 +10447,7 @@ def _verify_boss_orbs(db):
 
 def _sweep_inject_roaming_rare(db):
     """Append the Enslaver at weight 1 to every ELIGIBLE hostile trash pool, with
-    each existing member weight x60, so he stays rarer than 1/2400 per main-slot.
+    each existing member weight x300 (_EN_SWEEP_K), so he stays rarer than 1/12000 per main-slot.
     Only touches act-trash pools (orient/egypt/greek/hades) whose basename carries
     no boss/quest/hero/summon marker, whose resolvable name members are all
     Class=Monster, that have a free name slot (< 18), and whose x60 name-weight
@@ -10467,7 +10506,7 @@ def _sweep_inject_roaming_rare(db):
         free = next((i for i in range(1, 19) if i not in used), None)
         if free is None:                    # at 18-slot cap
             continue
-        if wtotal <= 0 or (_EN_SWEEP_K * wtotal + 1) < (40 * 60):
+        if wtotal <= 0 or (_EN_SWEEP_K * wtotal + 1) < _EN_SWEEP_CEIL:
             continue                        # too small: would exceed the p_slot ceiling
         # x60 the existing member weights, append the enslaver at weight 1
         for i in used:
@@ -10490,7 +10529,7 @@ def _sweep_inject_roaming_rare(db):
 def _verify_roaming_sweep(db, touched):
     """FAIL-LOUD gate for the Enslaver roaming sweep: prove ONLY eligible
     (non boss/quest/hero) pools were touched, the enslaver is present at weight 1
-    with p_slot <= 1/2400 in each, his boss + marauder + summon resolve at the
+    with p_slot <= 1/12000 in each, his boss + marauder + summon resolve at the
     right band, and no touched pool matches an exclusion marker. Re-derives the
     touched set from the arz (verifies the actual diff, not a passed list)."""
     S = DATA_TYPE_STRING
@@ -10546,7 +10585,7 @@ def _verify_roaming_sweep(db, touched):
         if base.startswith(('q_', 'sq', 'xsq', 'mq', 'svc_')) or \
                 any(b in base for b in _EN_SWEEP_BAD_SUB):
             problems.append(f"TOUCHED BOSS/QUEST/HERO POOL: {n}")
-        # (3) enslaver at weight 1 + p_slot <= 1/2400
+        # (3) enslaver at weight 1 + p_slot <= 1/12000
         wtotal = 0
         enl_w = None
         for i in range(1, 19):
@@ -10596,7 +10635,7 @@ def _verify_roaming_sweep(db, touched):
             f"Enslaver roaming-sweep gate FAILED: {len(problems)} problem(s) "
             f"(see offenders above)")
     print(f"  Roaming-sweep gate OK: {len(derived)} eligible hostile trash pools "
-          f"carry the Enslaver at weight 1 (p_slot <= 1/2400), 0 dedicated "
+          f"carry the Enslaver at weight 1 (p_slot <= 1/{int(_EN_SWEEP_CEIL)}), 0 dedicated "
           f"(basename) boss/quest/hero/escort/friendly pools touched; 19 general "
           f"trash pools legitimately contain rare low-weight hero MEMBERS per "
           f"vanilla (the roaming rare walks among area heroes), boss+marauder at "
