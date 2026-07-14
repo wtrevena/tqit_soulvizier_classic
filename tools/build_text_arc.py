@@ -80,6 +80,14 @@ OCCULT_FIX_TAGS = {
 # sibling tagMPortalGoM still reads 'Duister Portal' - flagged for Will.
 TEXT_FIX_TAGS = {
     'tagMZoneGoM': 'Garden of Merchants',
+    # b46r2 (Will 2026-07-13): area-label region name for crypt_floor1 (the Uber Dungeon). Its
+    # 0x17 region GUID (59c096c3...) had no world-SD record, so the top-right banner retained the
+    # teleport-origin region "Village of Helos". svaera_plus_portals.add_sv_region_labels() adds
+    # the missing SD REGION record pointing its display tag here. Named "The Obsidian Halls" to
+    # match the build36 treasure-roulette content + the "Traveler: The Obsidian Halls" hub NPC.
+    # DEPLOY COUPLING: this Text tag + the map's new SD region ship together (contract_sd_tags
+    # fails loud if this tag is missing when the SD references it).
+    'tagSVCRegionObsidianHalls': 'The Obsidian Halls',
     # D7 (Will 2026-07-09): the hidden blood-cave chest is renamed from "Esti's
     # Chest" to "Toxeus the Murderer's Stash" (now guarded by the Toxeus the
     # Murderer, Devourer of Blood superboss). tagSQECTitle is the chest journal/
