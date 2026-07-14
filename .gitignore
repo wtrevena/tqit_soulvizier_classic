@@ -18,6 +18,9 @@ work/
 /tools/catalog_output.txt
 /scratchpad/
 
+# build-speed: prefix snapshot cache (regenerable, per-machine; never commit)
+.build_cache/
+
 # OS / editor
 .DS_Store
 Thumbs.db
