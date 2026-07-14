@@ -3436,13 +3436,14 @@ def main():
     base_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
 
 
-    # -- build-speed: PREFIX SNAPSHOT CACHE (default OFF; tools/prefix_cache.py) --
+    # -- build-speed: PREFIX SNAPSHOT CACHE (default ON; opt out with
+    # SVC_PREFIX_CACHE=0 or SVC_NO_CACHE=1; tools/prefix_cache.py) --
     # A HIT restores the assembled db + every prefix side-output, skipping the
     # 4-arz reload + ~77 s assembly (and the 4-DB memory co-residence). When the
-    # cache is disabled (the default) _run_prefix runs unconditionally, so the
-    # build stays byte-identical to the pre-cache version. Advisory: any
-    # miss/error falls back to the cold prefix. Enablement is gated on
-    # tools/verify_cache_determinism.py (cold-build md5 == warm-build md5).
+    # cache is disabled _run_prefix runs unconditionally, so the build stays
+    # byte-identical to the pre-cache version. Advisory: any miss/error falls
+    # back to the cold prefix. The default-ON flip was gated on
+    # tools/verify_cache_determinism.py (cold==warm==build40 golden, 2026-07-14).
     import prefix_cache
     _key = None
     _pfx = None
