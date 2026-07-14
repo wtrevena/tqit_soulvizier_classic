@@ -1022,6 +1022,122 @@ UBERBOSS_SPECS = {
 }  # WIRED (build36): merged into INJECT_SPECS collision-guarded below (native AE v0f/v11 branch)
 
 
+# ── B41 MAP-PASS (round 1, 2026-07-13): the 5 accumulated build37 DB-complete apex bosses
+# + their horde / chest / court set-pieces, placed on the CANONICAL map. Each record path
+# already ships in the build38a-dev arz (MAP-REF-1: scratchpad/b41_probe.py resolved all 47
+# map-placed + backing paths, exact-miss = 0). This is the map lane placing EXISTING
+# q_*_lone / container / proxy paths - it authors NO DB records. Every entry is a static
+# 0x05 append: it adds NO QUESTS(0x1b) registration, shifts NO 256-window slot, changes NO
+# navmesh (0x0b), and creates NO walk-through teleport. Byte-shape = the shipped
+# UBERBOSS / BROODNEST / ENSLAVER exemplar exactly (flags=0, Q_LEINTH_EXEMPLAR_ROT, no
+# 0x14). Coords are LEVEL-LOCAL (world = local + grid corner).
+#
+# HOST VERSIONS (direct blob-version read of the canonical map this pass): every
+# Area08_HadesPalace host + ThebesOptTombA + drxFirstRoom is v0x0e (base-56 ->
+# inject_into_sv_only_blob, the M4-Dorus / roulette / broodnest / enslaver branch);
+# Elysian_Fields_03 is v0x11 (base-72 -> inject_into_0x05_v11, the M5-M8 branch). The
+# svaera step-6 inject loop dispatches by the host's ACTUAL blob version, so each host
+# routes to the already-proven injector automatically. NOTE: this CORRECTS
+# four_generals_upgrade_spec.md, which claimed the Area08_HadesPalace hosts are v0x11 -
+# they are v0x0e. HOST-KEY NOTE: ThebesOptTombA is a BASE-game Egypt tomb keyed
+# levels/world/egypt/minidungeons/... (NOT xpack/levels/egypt/... as the plan sketch had it).
+#
+# ON-MESH SURVEY (scratchpad/b41_resurvey_all.py vs local/Levels_merged.arc md5 60a62880,
+# all 3 tilesets, main-component gate): all 23 placements are on-mesh (nearest walkable
+# d <= 0.14u) in component #1. The deliberately-crammed Polis cage (H2/H4/H6 + chests
+# C1/C5), the tight Neferkha sarco edges (B/C), and Guard-A's chamber read 74-93%
+# clearance - the "genuinely tight" cell polis_cage_uberboss_spec 2.4/8.4 flags for the
+# in-game clip check (the load-bearing final gate, run on the built map). Every one is
+# still on-mesh in comp#1 (not off-mesh, not an isolated island). Guardian / marshal /
+# diadochi / court / ambush are 100% clean in all 3 tilesets.
+#
+# FLOOR-Y (scratchpad/b41_floory.py nearest-native anchor + b41_elysian_y.py navmesh
+# calibration): Hades Ys confirmed to <0.1u by natives (marshal 11.49 ~= 11.5; guards
+# exact 27/15/27); Neferkha + Toxeus y=1.0 confirmed (Toxeus even has a native
+# bw_priest_lone 3.9u away at y=1.0). CORRECTION vs the plan sketch: the Elysian meadow
+# floor at (20.7,81.7) is y=4.0 (navmesh-calibrated over 74 natives + the nearest native
+# both read 4.0), NOT 1.0 - Helepolis is placed at y=4.0 so the scale-3.2 colossus is not
+# sunk ~3u below the meadow.
+#
+# GARDEN-NPC REMOVAL (map-pass item 6) is a NO-OP on the canonical map: a full first-cave
+# 0x05 dump (scratchpad/b41_firstcave.py: Random09A / BC_initialpathway / drxFirstRoom /
+# drxFirstxistion_connection / HiddenValley01) finds NO Garden / portal / traveler NPC -
+# the A1 walk-through Garden door was already removed 2026-07-12. Canonical Garden access
+# stays via portal_master_helos (Helos). So there is nothing to remove here, and no removal
+# spec is added (inventing one would risk stranding the Garden). See the b41 result report.
+B41_POLIS_KEY     = 'xpack/levels/area08_hadespalace/hadespalace_floor04_01.lvl'
+B41_MENOETES_KEY  = 'xpack/levels/area08_hadespalace/hadespalace_floor_03.lvl'
+B41_GUARDA_KEY    = 'xpack/levels/area08_hadespalace/hadespalace_crystal_03.lvl'
+B41_GUARDB_KEY    = 'xpack/levels/area08_hadespalace/hadespalace_floor04_04.lvl'
+B41_GUARDC_KEY    = 'xpack/levels/area08_hadespalace/hadespalace_crystal_04.lvl'
+B41_HELEPOLIS_KEY = 'xpack/levels/area06_elysian/elysian_fields_03.lvl'
+B41_NEFERKHA_KEY  = 'levels/world/egypt/minidungeons/thebesopttomba.lvl'
+B41_TOXEUS_KEY    = 'levels/world/xbloodcave/drxfirstroom.lvl'
+
+_B41_ROT = {'rot': Q_LEINTH_EXEMPLAR_ROT}
+B41_SPECS = {
+    # 1) POLIS DAEMONAI warden cage (Will's #1): {^r}Alkyoneus the Soul-Gaoler + a 6-body
+    #    daemon-jailer horde (2 native Behemoth jailers + Limos + Melinoe + Gigantes
+    #    Vindicator + Gigantes lieutenant) + 5 boss-locked Majestic Chests. 12 appends,
+    #    0x05 count 75 -> 87. Guardian y=3.2; horde/chests y=3.6. The native
+    #    z_wardenchestc (the old skeleton chest) is KEPT (zero native edits -> 6 chests
+    #    total); the exactly-5 removal is a gated option NOT taken in this pass.
+    B41_POLIS_KEY: [
+        (b'records\\drxmap\\proxy\\q_polisgaoler_lone.dbr',                     72.1, 3.2, 37.1, _B41_ROT),
+        (b'records\\xpack\\quests\\proxies\\scripted\\ss_warden_behemoth.dbr',  66.0, 3.6, 37.5, _B41_ROT),
+        (b'records\\xpack\\quests\\proxies\\scripted\\ss_warden_behemoth.dbr',  78.2, 3.6, 37.5, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_polis_limos.dbr',                          67.1, 3.6, 41.5, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_polis_bloodwitch.dbr',                     77.1, 3.6, 41.5, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_polis_vindicator.dbr',                     66.4, 3.6, 36.2, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_polis_lieutenant.dbr',                     77.5, 3.6, 36.2, _B41_ROT),
+        (b'records\\drxitem\\container\\svc_polisvault_chest_01.dbr',           65.2, 3.6, 32.6, _B41_ROT),
+        (b'records\\drxitem\\container\\svc_polisvault_chest_02.dbr',           68.5, 3.6, 30.5, _B41_ROT),
+        (b'records\\drxitem\\container\\svc_polisvault_chest_03.dbr',           72.1, 3.6, 29.5, _B41_ROT),
+        (b'records\\drxitem\\container\\svc_polisvault_chest_04.dbr',           75.5, 3.6, 30.5, _B41_ROT),
+        (b'records\\drxitem\\container\\svc_polisvault_chest_05.dbr',           78.8, 3.6, 32.6, _B41_ROT),
+    ],
+    # 2) MENOETES, Marshal of the Dead - central hall Floor_03 (Y=11.5, native-confirmed
+    #    to 0.01u). 1 marshal proxy (+2 machae grandmaster-archer champion escorts DB-side).
+    B41_MENOETES_KEY: [
+        (b'records\\drxmap\\proxy\\q_hadesmarshal_lone.dbr',                   155.7, 11.5, 102.3, _B41_ROT),
+    ],
+    # 2b) The 3 general honor-guard pairs, ~6u beside each general's own xsq27_namedhero.
+    #     The guards are SEPARATE proxies, invisible to xSQ27's Condition_KillAllCreatures
+    #     FromProxy (which tracks only the three namedhero proxies) -> killing the generals
+    #     still completes the quest. Guard Y = the general's own floor Y (A/C 27, B 15).
+    B41_GUARDA_KEY: [
+        (b'records\\drxmap\\proxy\\q_general_a_guardpair.dbr',                  27.83, 27.0, 44.39, _B41_ROT),
+    ],
+    B41_GUARDB_KEY: [
+        (b'records\\drxmap\\proxy\\q_general_b_guardpair.dbr',                  68.39, 15.0, 40.26, _B41_ROT),
+    ],
+    B41_GUARDC_KEY: [
+        (b'records\\drxmap\\proxy\\q_general_c_guardpair.dbr',                  72.46, 27.0, 55.98, _B41_ROT),
+    ],
+    # 3) THE HELEPOLIS (Diadochi Siege Strider) - Elysian_Fields_03 north Siege-Strider
+    #    field (v0x11 base-72). Y=4.0 (CORRECTED from the plan's 1.0 - navmesh floor +
+    #    nearest native both read 4.0). 1 proxy (boss + 2 strider-guard champion escorts).
+    B41_HELEPOLIS_KEY: [
+        (b'records\\drxmap\\proxy\\q_diadochi_lone.dbr',                        20.7, 4.0, 81.7, _B41_ROT),
+    ],
+    # 4) NEFERKHA, the Rimebound Pharaoh - frost court in ThebesOptTombA's north chamber
+    #    (Y=1.0). Court proxy (boss + 2 frozen-guardian escorts) + 4 sarcophagus-hatch
+    #    proxies ringing it.
+    B41_NEFERKHA_KEY: [
+        (b'records\\drxmap\\proxy\\q_neferkha_lone.dbr',                        32.0, 1.0, 85.0, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_sarcophagus_a.dbr',                        25.0, 1.0, 85.0, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_sarcophagus_b.dbr',                        39.0, 1.0, 85.0, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_sarcophagus_c.dbr',                        32.0, 1.0, 79.0, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_sarcophagus_d.dbr',                        32.0, 1.0, 91.0, _B41_ROT),
+    ],
+    # 5) TOXEUS entrance ambush - drxFirstRoom blood-cave first room (v0x0e fold, Y=1.0).
+    #    1 ambush proxy (chanceToRun=15 => a ~15% Blood-Toxeus + 2 blood-demon adds).
+    B41_TOXEUS_KEY: [
+        (b'records\\drxmap\\proxy\\q_bloodtoxeus_ambush.dbr',                  100.0, 1.0, 50.0, _B41_ROT),
+    ],
+}  # WIRED (b41): merged into INJECT_SPECS collision-guarded below.
+
+
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
 
@@ -1981,6 +2097,20 @@ for _bn_key, _bn_specs in BROODNEST_SPECS.items():
 for _ub_key, _ub_specs in UBERBOSS_SPECS.items():
     assert _ub_key not in INJECT_SPECS, f'build36 uberboss host key collision with INJECT_SPECS: {_ub_key}'
     INJECT_SPECS[_ub_key] = list(_ub_specs)
+
+# B41 MAP-PASS (2026-07-13): merge the 5 build37 apex-boss set-pieces (23 static 0x05
+# placements across 8 hosts) into INJECT_SPECS. Each host is a DISTINCT native level not
+# touched by any other injection (verified this pass: no key collision with the base
+# INJECT_SPECS or the roulette / broodnest / uberboss folds), so a plain collision-guarded
+# assignment is correct; a future collision must be resolved by explicit list-merge, never
+# silent clobber. Applies to BOTH map variants (canonical uses INJECT_SPECS directly;
+# TESTHUB layers hub extras on top) - these are shipped content bosses, like the Broodmother
+# nest + the build36 uberbosses. The TESTHUB yard proxies (q_yard_polisgaoler /
+# q_yard_hadesmarshal / q_yard_diadochi / q_yard_neferkha) are SVC_TEST_HUB-only and belong
+# in build_hub_extra_specs(), NOT this canonical fold - out of scope for this map pass.
+for _b41_key, _b41_specs in B41_SPECS.items():
+    assert _b41_key not in INJECT_SPECS, f'b41 host key collision with INJECT_SPECS: {_b41_key}'
+    INJECT_SPECS[_b41_key] = list(_b41_specs)
 
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
 # The merge already places these records; move_0x05_instances rewrites ONLY their 12
