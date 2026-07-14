@@ -1,7 +1,8 @@
 # b53 - Boss-orb "Charon's Essence" RCA (Dagon drop)
 
-**Status:** RCA COMPLETE - read-only, NO fix applied. Verdict + surgical fix plan below.
-**Branch:** `feat/b53-orb-essence` (base `d11d3c0`, build38a).
+**Status:** FIX APPLIED + VERIFIED (dry-run replay, no heavy build). See "IMPLEMENTED"
+section at the bottom. RCA + verdict + fix plan retained below.
+**Branch:** `feat/b53-orb-essence` (base `d11d3c0`, build38a). Fix commit `b52b6c5`.
 **Ground truth:** `scratchpad/baseline_build38.arz` (== DEV/Steam arz `6631f252` Will plays);
 base-game `database.arz`; upstream `soulvizier_098i/Database/database.arz`; deployed Workshop
 `Text.arc` (`2af4ce38`, item 3759792705) + base `Text_EN.arc`.
@@ -170,3 +171,49 @@ print "Boss-orb invariant OK"); `validate_tags` PASS.
 - `b53_probe5.py` - `xtagChest18` owner records + full essence family + all 30 bosschest droppers.
 - `b53_probe6.py` - generic orb has no name; `tagEndChest02 = Mystical Orb`.
 - `b53_prov.py` - provenance: Dagon absent in base game, present in SV 0.98i with the Charon proxy.
+
+---
+
+## IMPLEMENTED (2026-07-13, commit `b52b6c5`)
+
+### The change (one line, exactly the fix plan)
+`tools/apply_svc_patches.py`, `_BOSS_ORB_TARGETS` (after the content-wave ubers), added:
+```python
+(r'records\test\boss_dagon_66.dbr',   _APEX_ORB),   # b53: was inherited Charon chest ("Charon's Essence")
+```
+(+ a block comment attributing the b53 retarget). Diff = **9 insertions, 1 file, 0 deletions**;
+no other line touched. `_amend_boss_loot_orbs` (:10331) now sets Dagon's `treasureProxyName ->
+genericbossorb_04`; the fail-loud `_verify_boss_orbs` gate (:10484) auto-covers it. No rename, no
+Text/tag edit, no drop-rate or orb-content change.
+
+### Verification (no heavy build - dry-run replay on a COPY of `baseline_build38.arz`)
+`scratchpad/b53_replay.py` copies the baseline, runs the edited `_amend_boss_loot_orbs` +
+`_verify_boss_orbs` in memory, and diffs every `_modified` record's field VALUES vs the pristine
+baseline. Result: **ALL PASS**.
+- `_amend_boss_loot_orbs`: wired 13 present target bosses (the prior 12 + Dagon).
+- `_verify_boss_orbs`: **"Boss-orb invariant OK: every present target boss drops a resolving orb."**
+- **Scoped value diff = exactly ONE change in the whole 51,007-record arz:**
+  `records\test\boss_dagon_66.dbr` `treasureProxyName`:
+  `...proxies\bosschest02_charon.dbr` -> `records\item\containers\new\genericbossorb_04.dbr`.
+  (The other 12 targets are re-set to the value they already held -> no net change.)
+- **Preserved (asserted unchanged):** Dagon `chanceToEquipFinger2=66` + `lootFinger2Item1=
+  dagon_soul_{n,e,l}` (soul drop); Dagon `lootMisc2Item3=cthulhu_dagon` (relic) + `lootMisc2Item1`
+  (act4 relic table); `bosschest02_charon_01/02/03` `description=xtagChest18` (Charon chest
+  UNTOUCHED); Charon uber `um_charonform2_ferryman_99.treasureProxyName` still the Charon proxy
+  (its correct "Charon's Essence" drop is preserved by design).
+- **Name check:** `genericbossorb_04` has **no `description`** -> Dagon now drops the unnamed generic
+  apex orb (the "typical" orb the 12 other custom bosses drop), NOT "Charon's Essence". No new Text
+  tag required. `xtagChest18 = "Charon's Essence"` still resolves from base-game `Text_EN.arc`
+  (`xcommonequipment.txt`) for the Charon uber; the mod's de-clobbered `Text.arc` needs no edit.
+
+### Fast gates
+- `py -m py_compile tools/apply_svc_patches.py` -> OK.
+- `py tools/patches/_check_registry.py` -> selfcheck OK (11 modules, order hash **unchanged** -
+  the REGISTRY was not touched; the fix lives in the monolith beside the other 12 targets).
+
+### Cross-drop / family scope (re-confirmed on ground truth)
+`scratchpad/b53_family.py`: of the **30** monsters in `baseline_build38.arz` whose `treasureProxyName`
+points at any `bosschest*` proxy, exactly **2** are custom - Dagon (fixed here) and the mod Charon
+uber `...bosses\02_charon\um_charonform2_ferryman_99.dbr` (correct by design, left alone). Dagon was
+the **only** cross-wired custom boss; no other boss dropped a wrong-boss essence, so the fix is
+complete.
