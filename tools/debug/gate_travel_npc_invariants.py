@@ -15,15 +15,20 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
      placed in EITHER the canonical INJECT_SPECS or the TESTHUB merged specs.
   T2 HELOS HUB: the 17 Helos-hub records (11 travelers + 6 returns) appear 0x in canonical and
      EXACTLY 1x in the TESTHUB build (WARDEN LAW: one boat-dialog record == one placement).
-  T3 MASTER RETIRED: svc_testhub_master_helos has 0 placements (superseded by the 11 travelers);
-     the blood-cave master svc_testhub_master_cave keeps its single TESTHUB placement.
-  T4 CANONICAL TRAVELERS: Almyros (portal_master_helos) placed once canonically (Helos's sole
-     canonical travel); svc_testhub_return placed in the 4 P0 canonical areas (Garden/Secret/
-     Uber/Sparta) - NOT zero (that was the pre-P0 assertion, now retired).
-  T5 CROSS-FILE: map / quests / arz reference the SAME 17 hub records; every boat-menu label tag
-     the quests use is minted or reused in the arz.
+  T3 MASTERS RETIRED: BOTH split masters have 0 placements - svc_testhub_master_helos (superseded
+     by the 11 travelers) AND svc_testhub_master_cave (b48 round 3: it was a mute ORPHAN - placed at
+     the cave mouth with no boat trigger - now retired).
+  T4 RETURN TRAVELERS (b48 round 3 WARDEN-SPLIT): the single svc_testhub_return is retired from
+     placement; each of the 5 distinct per-area returns (svc_testhub_return_{garden,secret,uber,
+     sparta,bossarena}) is placed EXACTLY ONCE (Garden/Secret/Uber/Sparta canonical, Boss Arena
+     TESTHUB) so all 5 fire; Almyros (portal_master_helos) placed once canonically.
+  T5 CROSS-FILE: map / quests / arz reference the SAME 17 hub records AND the SAME 5 per-area return
+     records; every boat-menu label tag the quests use is minted or reused in the arz.
   T6 (built map, optional): a passed .arc's 0x05 sections contain ZERO walk-through portal
      instances; the canonical .arc places 0 hub records; the TESTHUB .arc places each once.
+  RESPONDS (b48 round 3): the gate_traveler_responds invariants (no mute/orphan/warden/beyond-
+     window traveler), derived build-free from the tooling tables. This is the wiring the brief asks
+     for - a mute traveler cannot pass this battery.
 
 Usage: py tools/debug/gate_travel_npc_invariants.py [<canonical.arc> [<testhub.arc>]]
 Exit 0 = PASS, non-zero = FAIL.
@@ -100,26 +105,48 @@ def check_specs(fails):
             fails.append(f'T2: hub record {nd} placed {t}x in TESTHUB (WARDEN LAW: exactly 1)')
     print(f'  T2 helos-hub: 17 records, canonical=0 each, TESTHUB=1 each (warden law)')
 
-    # T3: master retirement.
+    # T3: BOTH split masters retired (0 placements). b48 round 3 retires the cave master orphan.
+    # NOTE: the cave master is placed via build_hub_extra_specs()[R09_LVL_KEY], which
+    # merge_hub_into_inject_specs EXCLUDES (the swap path applies it) - so it never appears in
+    # `testhub`. It MUST be counted against `extra` (the raw hub-extra specs) to actually detect it.
     mh = _norm(bss.SVC_TESTHUB_MASTER_HELOS_DBR)
     mc = _norm(bss.SVC_TESTHUB_MASTER_CAVE_DBR)
-    if _count_in_specs(testhub, mh) != 0:
+    if _count_in_specs(testhub, mh) != 0 or _count_in_specs(extra, mh) != 0:
         fails.append('T3: svc_testhub_master_helos still placed - should be retired')
-    if _count_in_specs(extra, mc) != 1:
-        fails.append('T3: svc_testhub_master_cave should keep exactly 1 TESTHUB placement')
-    print('  T3 master-retired: helos master 0 placements; cave master 1 (TESTHUB)')
+    if _count_in_specs(extra, mc) != 0:
+        fails.append(f'T3: svc_testhub_master_cave still placed ({_count_in_specs(extra, mc)}x in the '
+                     f'hub-extra/R09 swap specs) - b48 round 3 RETIRED it (was a mute orphan; wire a '
+                     f'trigger or leave it unplaced)')
+    print('  T3 masters-retired: helos master + cave master both 0 placements (extra + testhub)')
 
-    # T4: canonical NPC travelers present (post-P0 reality).
+    # T4: return travelers (b48 round 3 WARDEN-SPLIT). The single svc_testhub_return is retired from
+    # placement; the 5 distinct per-area returns are placed exactly once each (4 canonical + 1 TESTHUB).
     almyros = _norm(bss.PORTAL_MASTER_NPC_DBR)
     if _count_in_specs(canonical, almyros) != 1:
         fails.append(f'T4: Almyros (portal_master_helos) must be placed once canonically '
                      f'(got {_count_in_specs(canonical, almyros)})')
-    ret = _norm(bss.SVC_RETURN_NPC_DBR)
-    ret_canon = _count_in_specs(canonical, ret)
-    if ret_canon != 4:
-        fails.append(f'T4: svc_testhub_return must be placed in the 4 P0 canonical areas '
-                     f'(Garden/Secret/Uber/Sparta); got {ret_canon}')
-    print(f'  T4 canonical-travelers: Almyros x1; svc_testhub_return x{ret_canon} (P0 areas)')
+    if _count_in_specs(testhub, _norm(bss.SVC_RETURN_NPC_DBR)) != 0:
+        fails.append('T4: the shared svc_testhub_return must be UNPLACED (retired; warden-split '
+                     'into 5 per-area records)')
+    canon_returns = {'garden': bss.SVC_RETURN_GARDEN_DBR, 'secret': bss.SVC_RETURN_SECRET_DBR,
+                     'uber': bss.SVC_RETURN_UBER_DBR, 'sparta': bss.SVC_RETURN_SPARTA_DBR}
+    for area, dbr in canon_returns.items():
+        nd = _norm(dbr)
+        if _count_in_specs(canonical, nd) != 1:
+            fails.append(f'T4: canonical return svc_testhub_return_{area} must be placed once '
+                         f'canonically (got {_count_in_specs(canonical, nd)})')
+        if _count_in_specs(testhub, nd) != 1:   # canonical placement is inherited by TESTHUB (warden law)
+            fails.append(f'T4: return svc_testhub_return_{area} must be placed once in TESTHUB '
+                         f'(warden law; got {_count_in_specs(testhub, nd)})')
+    bnd = _norm(bss.SVC_RETURN_BOSSARENA_DBR)
+    if _count_in_specs(canonical, bnd) != 0:
+        fails.append(f'T4: Boss Arena return must be TESTHUB-only (0 canonical; got '
+                     f'{_count_in_specs(canonical, bnd)})')
+    if _count_in_specs(testhub, bnd) != 1:
+        fails.append(f'T4: Boss Arena return must be placed once in TESTHUB (got '
+                     f'{_count_in_specs(testhub, bnd)})')
+    print('  T4 return-travelers: Almyros x1 canon; svc_testhub_return x0; 5 per-area returns x1 each '
+          '(Garden/Secret/Uber/Sparta canon + Boss Arena TESTHUB)')
 
     # T5: cross-file agreement.
     map_recs = {_norm(r) for r in hub_records}
@@ -139,6 +166,36 @@ def check_specs(fails):
     if missing:
         fails.append(f'T5: quest label tags not minted/reused in arz: {missing}')
     print(f'  T5 cross-file: map==quests==arz (17 records); {len(q_labels)} label tags resolve')
+
+    # T5b (b48 round 3): the 5 warden-split per-area return records agree across arz / quests / map.
+    ret_arz = {_norm(r) for r in asp.TESTHUB_AREA_RETURN_NPCS}
+    ret_q = {_norm(r) for r in bqf.TESTHUB_AREA_RETURN_NPCS}
+    ret_map = {_norm(d) for d in (bss.SVC_RETURN_GARDEN_DBR, bss.SVC_RETURN_SECRET_DBR,
+                                  bss.SVC_RETURN_UBER_DBR, bss.SVC_RETURN_SPARTA_DBR,
+                                  bss.SVC_RETURN_BOSSARENA_DBR)}
+    if not (len(ret_arz) == 5 and ret_arz == ret_q == ret_map):
+        fails.append(f'T5b: per-area return records disagree across files: arz={ret_arz}, '
+                     f'quests={ret_q}, map={ret_map}')
+    # the 2 return ports must resolve in the arz (both minted by _create_testhub_portal_npcs)
+    ret_ports = {t for _xyz, t in bqf.TESTHUB_RETURN_DESTS}
+    if ret_ports - {'tagSVCTestHubToHelos', 'tagSVCTestHubToBloodCave'}:
+        fails.append(f'T5b: unexpected per-area return port tags: {ret_ports}')
+    print(f'  T5b per-area returns: arz==quests==map (5 records); ports {sorted(ret_ports)} resolve')
+
+
+def check_responds(fails):
+    """b48 round 3 WIRING: run the gate_traveler_responds invariants build-free (spec-derived), so a
+    mute / orphan / warden / beyond-fired-window traveler cannot pass this battery. Faults every PLACED
+    hub boat NPC that would not RESPOND in-game. Uses the TESTHUB build (where every traveler exists)."""
+    import gate_traveler_responds as gtr
+    routes, placed = gtr.facts_from_specs(testhub=True)
+    resp = gtr.evaluate(routes, placed)
+    for cls, msg in resp:
+        fails.append(f'RESPONDS/{cls}: {msg}')
+    n_npcs = len({r["npc_short"] for r in routes})
+    print(f'  RESPONDS (spec-derived TESTHUB): {"PASS" if not resp else f"FAIL ({len(resp)})"} - '
+          f'{len(placed)} placed hub NPCs / {n_npcs} route owners; every placed traveler owns a '
+          f'bound, fire-able route (no mute/orphan/warden/dead)')
 
 
 def _scan_arc_walkthroughs_and_hub(arc_path, fails, is_testhub):
@@ -189,6 +246,7 @@ def main(argv):
     fails = []
     print('=== NPC-DIALOG TRAVEL INVARIANTS (post-P0 travel law + build37 Helos hub) ===')
     check_specs(fails)
+    check_responds(fails)
     if len(argv) > 1 and Path(argv[1]).exists():
         _scan_arc_walkthroughs_and_hub(argv[1], fails, is_testhub=False)
     if len(argv) > 2 and Path(argv[2]).exists():

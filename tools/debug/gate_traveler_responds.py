@@ -1,7 +1,9 @@
-"""gate_traveler_responds.py - TRAVEL-INVARIANTS FAMILY (b48 SPARTA-MUTE, round 2)
+"""gate_traveler_responds.py - TRAVEL-INVARIANTS FAMILY (b48 SPARTA-MUTE, round 3)
 
 Asserts every hub boat-dialog traveler NPC will actually RESPOND in-game (the talk-confirm
-boat dialog fires) - no MUTE traveler can ship.
+boat dialog fires) - no MUTE traveler can ship. Wired into the travel-invariants battery
+(gate_travel_npc_invariants.py) via the build-free facts_from_specs() path, so no future hub
+build can ship a mute/orphan/warden/beyond-window traveler.
 
 ROOT MECHANISM (proven b48 round 2, from the deployed set 838bdc3a/841c56cd + the base-game
 Quests.arc): the TQAE boat-dialog system is strictly **1 route : 1 NPC**. EVERY base-game / SV
@@ -35,7 +37,9 @@ freshly-built pair (wire into the build after Quests+TESTHUB-Levels are built).
 
 Usage:
   py tools/debug/gate_traveler_responds.py                 # gate the deployed DEV set
-  py tools/debug/gate_traveler_responds.py --quests Q.arc --levels L.arc
+  py tools/debug/gate_traveler_responds.py --quests Q.arc --levels L.arc   # gate a freshly-built pair
+  py tools/debug/gate_traveler_responds.py --specs         # BUILD-FREE: gate the TESTHUB tooling tables
+  py tools/debug/gate_traveler_responds.py --specs --canonical             # build-free canonical build
 """
 import sys, struct, argparse
 from pathlib import Path
@@ -46,9 +50,9 @@ sys.path.insert(0, str(REPO / "tools"))
 sys.path.insert(0, str(REPO / "tools" / "debug"))
 sys.path.insert(0, str(REPO / "tools" / "contracts"))
 import qst_format as qf
-from arc_patcher import ArcArchive
-import survey_uberboss_spots as S
-from contracts_map import parse_blob_sections
+# NOTE: the arc-loading deps (arc_patcher / survey_uberboss_spots / contracts_map) are imported
+# lazily INSIDE load_routes / load_placements / _instances so the build-free facts_from_specs()
+# path (used to wire this gate into gate_travel_npc_invariants) stays a lightweight import.
 
 BS = chr(92)
 VER_BASE = {0x0e: 56, 0x0f: 72, 0x11: 72, 0x10: 72, 0x0d: 56}
@@ -89,6 +93,7 @@ def _entries(container_items):
 def load_routes(quests_arc):
     """Ordered list of route dicts from sv_commonmechanics step 1, in registration order:
     {order, npc(lower), npc_short(lower), tag, dest(x,y,z)}."""
+    from arc_patcher import ArcArchive
     arc = ArcArchive.from_file(quests_arc)
     tree = qf.parse(arc.get_file(HOST_QST))
     sbl = _blocks(tree[1])
@@ -113,6 +118,7 @@ def load_routes(quests_arc):
 
 
 def _instances(blob, base):
+    from contracts_map import parse_blob_sections
     for t, d in parse_blob_sections(blob):
         if t != 0x05:
             continue
@@ -136,6 +142,7 @@ def _instances(blob, base):
 
 def load_placements(levels_arc):
     """{npc_short_lower -> set(level_fname_short)} for every boat-relevant placed NPC."""
+    import survey_uberboss_spots as S
     data, levels = S.load_world(levels_arc)
     per = defaultdict(set)
     for lv in levels:
@@ -153,6 +160,54 @@ def load_placements(levels_arc):
             if any(kw in dl for kw in HUB_KW):
                 per[dl.replace('/', BS).split(BS)[-1]].add(fname.replace('/', BS).split(BS)[-1])
     return per
+
+
+def facts_from_specs(testhub=True):
+    """BUILD-FREE (routes, placed) derived from the REAL tooling tables, so this gate can be wired
+    into gate_travel_npc_invariants WITHOUT a 1.3GB map build. Routes come from the build_quest_files
+    boat-dialog trigger tables in their sv_commonmechanics REGISTRATION ORDER (Almyros portal ->
+    per-area returns -> the 17-record Helos hub); placements come from build_section_surgery's REAL
+    specs (merge_hub_into_inject_specs(INJECT_SPECS) for the TESTHUB build, or INJECT_SPECS for
+    canonical). Mirrors the arc-based load_routes/load_placements the deployed gate uses. Whatever the
+    fix code does, this reflects it - so a PASS here proves the shipped tables are mute-free."""
+    import build_quest_files as bqf
+    import build_section_surgery as bss
+    routes, order = [], 0
+
+    def add(npc, dests):
+        nonlocal order
+        short = npc.replace('/', BS).split(BS)[-1].lower()
+        for xyz, tag in dests:
+            # DESTS tables already hold SIGNED world coords (the arc path stores them unsigned and
+            # s32-decodes on read; here they are native signed, so use them as-is).
+            routes.append(dict(order=order, step=0, npc=npc.lower(), npc_short=short,
+                               tag=tag, dest=tuple(int(v) for v in xyz)))
+            order += 1
+
+    add(bqf.HELOS_PORTAL_NPC, bqf.HELOS_PORTAL_DESTS)               # Almyros 4-dest (trig 1)
+    for npc in bqf.TESTHUB_AREA_RETURN_NPCS:                        # per-area returns (2 each)
+        add(npc, bqf.TESTHUB_RETURN_DESTS)
+    for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL:                      # the 17-record hub (1 each)
+        add(npc, [(xyz, tag)])
+
+    specs = dict(bss.merge_hub_into_inject_specs(bss.INJECT_SPECS) if testhub else bss.INJECT_SPECS)
+    if testhub:
+        # merge_hub_into_inject_specs EXCLUDES the R09 (random09a) swap key - svaera_plus_portals
+        # applies build_hub_extra_specs()[R09_LVL_KEY] to the SV blood-cave swap blob instead. Fold
+        # it in here so the build-free placement set matches what the arc-based gate sees for R09
+        # (otherwise a re-added blood-cave-mouth NPC would be invisible to this gate).
+        r09 = bss.build_hub_extra_specs().get(bss.R09_LVL_KEY, [])
+        if r09:
+            specs[bss.R09_LVL_KEY] = list(specs.get(bss.R09_LVL_KEY, [])) + list(r09)
+    placed = defaultdict(set)
+    for lvl, sl in specs.items():
+        fn = lvl.replace('/', BS).split(BS)[-1].lower()
+        for sp in sl:
+            raw = bytes(sp) if isinstance(sp, (bytes, bytearray)) else bytes(sp[0])
+            dl = raw.decode('latin1').lower()
+            if any(kw in dl for kw in HUB_KW):
+                placed[dl.replace('/', BS).split(BS)[-1]].add(fn)
+    return routes, dict(placed)
 
 
 def evaluate(routes, placed):
@@ -256,11 +311,22 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quests", default=str(DEP / "Quests.arc"))
     ap.add_argument("--levels", default=str(DEP / "Levels.arc"))
+    ap.add_argument("--specs", action="store_true",
+                    help="build-free: derive routes+placements from the REAL tooling tables "
+                         "(TESTHUB build) instead of reading built .arc files")
+    ap.add_argument("--canonical", action="store_true",
+                    help="with --specs: derive the CANONICAL build (INJECT_SPECS) not the TESTHUB one")
     args = ap.parse_args()
-    routes = load_routes(Path(args.quests))
-    placed = load_placements(Path(args.levels))
+    if args.specs:
+        routes, placed = facts_from_specs(testhub=not args.canonical)
+        which = "canonical" if args.canonical else "TESTHUB"
+        quests = levels = f"(spec-derived {which} tables, build-free)"
+    else:
+        routes = load_routes(Path(args.quests))
+        placed = load_placements(Path(args.levels))
+        quests, levels = args.quests, args.levels
     fails = evaluate(routes, placed)
-    report(fails, routes, placed, args.quests, args.levels)
+    report(fails, routes, placed, quests, levels)
     return 1 if fails else 0
 
 

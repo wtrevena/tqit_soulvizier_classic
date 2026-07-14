@@ -32,6 +32,15 @@ import validate_render_chain as vrc
 
 MASTER = r'records\quests\svc_testhub_master.dbr'
 RETURN = r'records\quests\svc_testhub_return.dbr'
+# b48 round 3 (WARDEN-SPLIT): the 5 distinct per-area return records that replaced the single
+# svc_testhub_return placement (each a byte-clone of the donor, same render chain).
+AREA_RETURNS = [
+    r'records\quests\svc_testhub_return_garden.dbr',
+    r'records\quests\svc_testhub_return_secret.dbr',
+    r'records\quests\svc_testhub_return_uber.dbr',
+    r'records\quests\svc_testhub_return_sparta.dbr',
+    r'records\quests\svc_testhub_return_bossarena.dbr',
+]
 DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
 SHIPPING = [r'records\quests\portal_master_helos.dbr',
             r'records\quests\portal_master_olympus.dbr']
@@ -66,7 +75,7 @@ def main(argv):
     fails = []
 
     # ---- A: render chain ----
-    for p in (MASTER, RETURN):
+    for p in (MASTER, RETURN, *AREA_RETURNS):
         if not rec(p):
             fails.append(f'A: rig NPC MISSING from arz: {p}')
     dn = rec(DONOR)
@@ -75,7 +84,7 @@ def main(argv):
 
     if not fails:
         dmesh, dtex = fld(dn, 'mesh'), fld(dn, 'baseTexture')
-        for p in (MASTER, RETURN):
+        for p in (MASTER, RETURN, *AREA_RETURNS):
             r = rec(p)
             m, t = fld(r, 'mesh'), fld(r, 'baseTexture')
             if _norm(m) != _norm(dmesh):
@@ -108,12 +117,15 @@ def main(argv):
                   f"(art dirs absent -> engine-scoping shader check SKIPPED)")
         print(f"  A: both rig NPCs share donor mesh={dmesh} tex={dtex}")
 
-    # ---- B: canonical placement invariants (UPDATED post-P0 2026-07-12 + build37 hub) ----
-    # The PRE-P0 assertion was "canonical places 0 of both rig NPCs". That is now WRONG: the P0
-    # hotfix PROMOTED svc_testhub_return into the 4 canonical areas (Garden/Secret/Uber/Sparta) as
-    # the NPC-dialog way back after the walk-through portals were deleted. Updated invariants:
-    #   - the hub MASTERS (svc_testhub_master / _helos / _cave) stay TESTHUB-only -> 0 canonical.
-    #   - svc_testhub_return is canonical in EXACTLY the 4 P0 areas.
+    # ---- B: canonical placement invariants (UPDATED b48 round 3 WARDEN-SPLIT) ----
+    # History: PRE-P0 = "canonical places 0 rig NPCs"; the P0 hotfix PROMOTED the single
+    # svc_testhub_return into the 4 canonical areas; b48 round 3 WARDEN-SPLIT that single record
+    # (which was mute in 3 of the 4) into 5 DISTINCT per-area records. Current invariants:
+    #   - the shared svc_testhub_return.dbr is RETIRED -> 0 canonical (and 0 TESTHUB).
+    #   - the 4 canonical per-area returns (svc_testhub_return_{garden,secret,uber,sparta}) are
+    #     placed once each -> 4 canonical; Boss Arena's return is TESTHUB-only.
+    #   - the hub MASTERS (svc_testhub_master / _helos / _cave) stay TESTHUB-only -> 0 canonical
+    #     (the cave master was RETIRED entirely in round 3).
     #   - the build37 Helos traveler hub (svc_helos_trav_* / svc_area_return_*) is TESTHUB-only
     #     -> 0 canonical (delegated in full to gate_travel_npc_invariants.py).
     canon = REPO / 'local' / 'Levels_merged.arc'
@@ -125,7 +137,7 @@ def main(argv):
         data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
         sec = {s['type']: s for s in parse_sections(data)}
         levels = parse_level_index(data, sec[0x01])
-        needles = (b'svc_testhub_master', b'svc_testhub_return',
+        needles = (b'svc_testhub_master', b'svc_testhub_return.dbr', b'svc_testhub_return_',
                    b'svc_helos_trav_', b'svc_area_return_')
         placements = {n: 0 for n in needles}
         for L in levels:
@@ -139,15 +151,21 @@ def main(argv):
             low = s05['data'].lower()
             for n in needles:
                 placements[n] += low.count(n)
-        m, r, ht, hr = (placements[b'svc_testhub_master'], placements[b'svc_testhub_return'],
-                        placements[b'svc_helos_trav_'], placements[b'svc_area_return_'])
-        print(f"  B placement: canonical places master={m} return={r} "
-              f"helos_trav={ht} area_return={hr}")
+        m, r0, rsplit, ht, hr = (placements[b'svc_testhub_master'],
+                                 placements[b'svc_testhub_return.dbr'],
+                                 placements[b'svc_testhub_return_'],
+                                 placements[b'svc_helos_trav_'], placements[b'svc_area_return_'])
+        print(f"  B placement: canonical places master={m} old_return={r0} "
+              f"per_area_return={rsplit} helos_trav={ht} area_return={hr}")
         if m != 0:
             fails.append(f'B: canonical places {m} hub-MASTER instance(s) - masters are TESTHUB-only')
-        if r != 4:
-            fails.append(f'B: canonical must place svc_testhub_return in the 4 P0 areas '
-                         f'(Garden/Secret/Uber/Sparta); got {r}')
+        if r0 != 0:
+            fails.append(f'B: the shared svc_testhub_return.dbr must be UNPLACED (retired; '
+                         f'warden-split); got {r0} canonical placement(s)')
+        if rsplit != 4:
+            fails.append(f'B: canonical must place the 4 per-area returns svc_testhub_return_'
+                         f'{{garden,secret,uber,sparta}} once each; got {rsplit} '
+                         f'(Boss Arena return is TESTHUB-only)')
         if ht or hr:
             fails.append(f'B: canonical places {ht + hr} build37 Helos-hub instance(s) - the '
                          f'hub is TESTHUB-only (see gate_travel_npc_invariants.py)')
