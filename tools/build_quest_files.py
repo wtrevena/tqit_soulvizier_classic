@@ -1682,12 +1682,21 @@ TESTHUB_RETURN_DESTS = [
 
 
 def _add_testhub_portal_travel(data: bytes) -> bytes:
-    """Append the TESTHUB portal-rig boat-dialog triggers (Model C) to the
-    sv_commonmechanics refire step: one Condition_OnLevelLoad trigger per rig NPC
-    (svc_testhub_master, 7 ports; svc_testhub_return, 2 ports). Strictly additive
-    (two trigger triples; the step's trigger max is bumped by 2). Fails loud if
-    the host step is missing, the bytes do not round-trip, or the reference-count
-    deltas do not land exactly."""
+    """Append the TESTHUB portal-rig RETURN boat-dialog trigger (Model C) to the
+    sv_commonmechanics refire step: one Condition_OnLevelLoad trigger for
+    svc_testhub_return (2 ports). Strictly additive (one trigger triple; the step's
+    trigger max is bumped by 1). Fails loud if the host step is missing, the bytes
+    do not round-trip, or the reference-count deltas do not land exactly.
+
+    b48 SPARTA-MUTE FIX (2026-07-13, docs/reports/b48_sparta_mute.md): the
+    svc_testhub_master 7-port trigger was DROPPED here. Its NPC is placed in NO level
+    (the map places svc_testhub_master_cave instead), so its 7 Action_BoatDialog offers
+    were DEAD - they attached to nothing yet still registered into the engine's bounded
+    boat-offer registry (base game never exceeds ~5 offers; the hub had 30). Those 7 dead
+    registrations sat AHEAD of the per-area travelers (svc_helos_trav_*, registration
+    #13+) and pushed them past the cap, so every dedicated traveler (incl. The Sparta
+    Crypt) went placed-but-MUTE. Removing the dead master frees the slots. See the report
+    for the still-open items (svc_testhub_return warden-split; portal_master redundancy)."""
     def field_val(items, key):
         for it in items:
             if it[0] == 'field' and it[1] == key:
@@ -1747,14 +1756,14 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
         bumped = False
         for idx, it in enumerate(trigcont):
             if it[0] == 'field' and it[1] == 'max':
-                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 2))
+                # b48: +1 (return trigger only); the dead svc_testhub_master trigger is dropped.
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 1))
                 bumped = True
                 break
         if not bumped:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: host step has no '
                              f'trigger max')
-        trigcont.extend(_trigger('SVC: TESTHUB Hub Portal-Master (Model C)',
-                                 TESTHUB_MASTER_NPC, TESTHUB_MASTER_DESTS))
+        # b48 SPARTA-MUTE FIX: svc_testhub_master trigger DROPPED (7 dead offers; NPC unplaced).
         trigcont.extend(_trigger('SVC: TESTHUB Return NPC (Model C)',
                                  TESTHUB_RETURN_NPC, TESTHUB_RETURN_DESTS))
         steps_container[trigcont_pos] = ('block', trigcont)
@@ -1776,15 +1785,17 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
     def _delta(needle):
         nd = needle.replace('/', '\\').lower().encode()
         return low.count(nd) - low_in.count(nd)
-    if _delta(TESTHUB_MASTER_NPC) != len(TESTHUB_MASTER_DESTS):
-        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub NPC reference count '
-                         f'must increase by exactly {len(TESTHUB_MASTER_DESTS)}')
+    # b48 SPARTA-MUTE FIX: the svc_testhub_master trigger is dropped, so its NPC ref count
+    # must NOT increase (assert it stays dead-inert), and only the return ports are added.
+    if _delta(TESTHUB_MASTER_NPC) != 0:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: svc_testhub_master must NOT be '
+                         f'referenced (b48: dead 7-port master dropped)')
     if _delta(TESTHUB_RETURN_NPC) != len(TESTHUB_RETURN_DESTS):
         raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: return NPC reference count '
                          f'must increase by exactly {len(TESTHUB_RETURN_DESTS)}')
     from collections import Counter
     want = Counter()
-    for _xyz, tag in TESTHUB_MASTER_DESTS + TESTHUB_RETURN_DESTS:
+    for _xyz, tag in TESTHUB_RETURN_DESTS:
         want[tag] += 1
     for tag, n in want.items():
         if _delta(tag) != n:
