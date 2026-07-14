@@ -14862,6 +14862,68 @@ def _svc_lock_authored_pool_counts(db):
           f"spawn/champion counts now hold -> no player-scaled boss dup).")
 
 
+# Boss-chest standardization (Will 2026-07-13: "reduce the chests, replace the
+# current chest with three large majestic chests ... each chest tuned based on
+# where it is in the game"). Every placed uber's bespoke hoard chest currently
+# drops a GUARANTEED unique 1h + tier-01 (Act1/Greece) statics regardless of the
+# boss's region -> under-leveled AND over-good. Repoint each to the base game's
+# own region/level-banded boss loot (boss_default_<lo>-<hi>) = the Cyclops chest
+# form/rarity (a normal boss chest, NOT an over-good hoard). Difficulty tier maps
+# to chest _01/_02/_03 (= the proxy's accessory1/Epic1/Legendary1). Region =
+# the boss's charLevel per difficulty -> nearest base bracket, capped at 63-65
+# (the top loot tier; the apex bosses out-level the L65 item ceiling on E/L).
+#
+# NOTE (mechanism): the reward mechanism the current chest uses (Proxy.tpl exposes
+# only accessory1/accessoryEpic1/accessoryLegendary1, and ProxyAccessoryPool is a
+# single weighted pick with NO spawn count) HARD-CAPS at ONE chest per difficulty
+# tier. So Will's literal "three chests" cannot come from this mechanism - it needs
+# WORLD-PLACEMENT (map lane). This pass delivers the reduced, region-tuned chest
+# CONTENT; the 3x count is a documented map-lane hand-off (see the b42 report).
+# HARD EXCLUSION: the Devourer / Blood-Toxeus "esti" chest (hidden_bloodcave_chest)
+# is deliberately NOT in this set and is never touched.
+_SVC_CHEST_STD = {
+    # chest_prefix:        (Normal,  Epic,    Legendary)   # boss charLevel N/E/L + region
+    'svc_tantalushoard':   ('51-53', '63-65', '63-65'),    # Tantalus  [52,74,90]  Styx swamp (Act4/Hades)
+    'svc_charonhoard':     ('47-49', '63-65', '63-65'),    # Charon    [48,72,100] Styx river (Act4/Hades)
+    'svc_ephialteshoard':  ('57-59', '63-65', '63-65'),    # Ephialtes [58,78,97]  Dread Halls (Act5/Judgment)
+    'svc_dorushoard':      ('41-43', '57-59', '63-65'),    # Dorus     [41,57,71]  Medea tomb (Act2)
+    'svc_obsidianhoard':   ('39-41', '57-59', '63-65'),    # Obsidian  [40,58,72]  Obsidian Halls (Act3/Orient)
+}
+_SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
+
+
+def _svc_standardize_boss_chests(db):
+    """Repoint every placed-uber bespoke hoard chest's loot to the base game's
+    region/level-tuned boss loot (boss_default_<bracket>) - the Cyclops chest form
+    (a normal boss chest, not an over-good guaranteed-unique hoard). Keeps the
+    large-majestic mesh + the Boss lock; only the loot table changes. Fail-loud if
+    a target base table is missing. The Devourer/Blood-Toxeus (esti) chest is not
+    in _SVC_CHEST_STD and is never touched. Runs at finalization."""
+    tiers = ('01', '02', '03')
+    fixed, skipped, problems = 0, 0, []
+    for prefix, brackets in _SVC_CHEST_STD.items():
+        for tier, bracket in zip(tiers, brackets):
+            chest = rf'records\drxitem\container\{prefix}_{tier}.dbr'
+            table = _SVC_BOSS_DEFAULT_TABLE % bracket
+            if not db.has_record(chest):
+                skipped += 1          # boss whose chest was never built (donor gap)
+                continue
+            if not db.has_record(table):
+                problems.append(f"{chest}: base loot table missing {table}")
+                continue
+            db.set_field(chest, 'tables', table)
+            db._modified.add(chest)
+            fixed += 1
+    if problems:
+        for p in problems:
+            print(f"    - CHEST-STD problem: {p}")
+        raise SystemExit(f"Boss-chest standardization: {len(problems)} missing base "
+                         f"boss loot table(s); cannot region-tune the reward.")
+    print(f"  Boss-chest standardization: repointed {fixed} bespoke hoard chest(s) "
+          f"to region-tuned base boss loot (Cyclops-grade, no guaranteed-unique; "
+          f"{skipped} tier(s) skipped for un-built chests).")
+
+
 # =============================================================================
 # build36 CONTENT WAVE (C1-C7): four new uber bosses (Tantalus, Charon/Golden
 # Bough, the Mnemophage, Ephialtes) + the Ereban Heartstone relic + Dorus
@@ -16985,6 +17047,10 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # counts hold at runtime, THEN the gate below fails loud if any pool still
     # carries the equation (the "two bosses side by side" root cause).
     _svc_lock_authored_pool_counts(db)
+    # CHEST STANDARDIZATION (2026-07-13): reduce + region-tune every placed-uber
+    # bespoke hoard chest to the base game's Cyclops-grade region loot (the "3x
+    # count" is a documented map-lane hand-off; see _svc_standardize_boss_chests).
+    _svc_standardize_boss_chests(db)
     _verify_mod_spawn_proxies_eligible(db)
 
     # ── Uber (DRX supra) craftable dead-reference repair ──────────────────────
