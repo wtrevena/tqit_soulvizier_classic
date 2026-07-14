@@ -9,6 +9,15 @@
 > `Text_EN.arc`, and the pristine upstream SV 0.98i map. Probes are regenerable (session
 > scratchpad `probe1..10_*.py`).
 
+> **⚠️ CORRECTION (b46 round 2, 2026-07-13) - read `b46_minimap_result.md` for the authoritative
+> mechanism.** This RCA framed both symptoms as "one root cause (missing map/region identity)" and
+> guessed the label was an SD-*spatial* lookup. Round-2 byte-analysis (489/489 levels) proved they
+> are **two distinct mechanisms** sharing only a theme: (1) the minimap "black void" = the empty
+> LEVELS-entry teleport-zone `dbr` (this RCA got that right); (2) the "Village of Helos" label =
+> the level's **`0x17` region[] GUID** (`59c096c3...` for crypt_floor1) having **no world-SD
+> record** - NOT a spatial lookup, and the region record does carry a resolvable identity once
+> added. Both are fixed additively (zone `dbr` + one appended SD region), no `0x17`/raster edit.
+
 ---
 
 ## 0. Verdict (TL;DR)
