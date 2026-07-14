@@ -1819,7 +1819,7 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_helos_trav_garden.dbr',     (1173, -39, -4001),  'tagSVCHelosToGarden'),
     (_HHUB + r'\svc_helos_trav_secret.dbr',     (-2396,   2, -5790), 'tagSVCHelosToSecret'),
     # RETARGET (v2): land at the in-game DOOR / entrance / travel-settlement, amid regular mobs.
-    (_HHUB + r'\svc_helos_trav_sparta.dbr',     (-6588,   1, -3180), 'tagSVCHelosToSparta'),      # Sparta-Crypt DOOR: deepest Athens catacomb (catacube02_floorlast stairs-down), amid beastmen
+    (_HHUB + r'\svc_helos_trav_sparta.dbr',     (-6587,   1, -3180), 'tagSVCHelosToSparta'),      # Sparta-Crypt DOOR: deepest Athens catacomb (catacube02_floorlast stairs-down), amid beastmen. b44 NUDGE: was (-6588,-3180), collided AG_Beastmen_Gorgon_02N @2.72u -> now 3.69u clr 100%
     (_HHUB + r'\svc_helos_trav_uber.dbr',       (-7793,   1, -3793), 'tagSVCHelosToUber'),        # Knossos->Uber DOOR: Minotaur secret door (maze03), amid the labyrinth
     (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-429,   27, -3538), 'tagSVCTestHubToBossArena'),  # b43-r2: ON the arena dais comp#2 (was (-433,0,-3602) comp#1, unreachable from the fight)
     (_HHUB + r'\svc_helos_trav_warband.dbr',    (5699,    1,  3315), 'tagSVCHelosToWarband'),     # blood-cave connection chamber, at the regular demon pack (~35u off the Enslaver horde)
@@ -1830,7 +1830,7 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_helos_trav_ephialtes.dbr',  (-1756,   3, -13198),'tagSVCHelosToEphialtes'),   # Dread Halls stairs-up ENTRANCE (~130u off the deep-SW boss vault)
     # NEW (v2 order-ii): map-placed bosses the original 11 did not cover. Land at the area entrance
     # amid regular mobs; walk to the boss.
-    (_HHUB + r'\svc_helos_trav_devourer.dbr',   (5345,    1,  3010), 'tagSVCHelosToDevourer'),    # drxbc2 blood-cave chamber, amid demon/hound packs (~92u off Toxeus the Devourer's egg-pack corner)
+    (_HHUB + r'\svc_helos_trav_devourer.dbr',   (5349,    1,  3009), 'tagSVCHelosToDevourer'),    # drxbc2 blood-cave chamber, amid demon/hound packs (~92u off Toxeus the Devourer's egg-pack corner). b44 NUDGE: was (5345,3010), collided burstvessle_01 @0.58u DEADLY -> now 3.16u clr 100%
     (_HHUB + r'\svc_helos_trav_vashkarr.dbr',   (-227,    1,  146),  'tagSVCHelosToVashkarr'),    # random05a Chang'an cave N end (~28u off Vashkarr)
     (_HHUB + r'\svc_helos_trav_obsidian.dbr',   (-1827, -74,  -462), 'tagSVCHelosToObsidian'),    # tombobs02 Obsidian Halls stairs-down entrance (covers 4 roulette wardens + the broodmother nest)
     # RETURNS (each placed once inside its area; all travel back to the Helos plaza)
