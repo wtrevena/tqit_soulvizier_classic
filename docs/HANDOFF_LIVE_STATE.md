@@ -1,5 +1,48 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD38A SHIPPED TO STEAM (2026-07-13) - canonical b37/b38 fixes; DEV traveler hub NOT shipped
+> **Workshop item 3759792705 is now build38a CANONICAL** (was build36a). Will explicitly
+> authorized the ship ("everything that has been fixed ship to steam ... the latest version ...
+> without the dev testing things"). Only the DB (`arz`) and `Text.arc` advanced from the published
+> build36a; the canonical `Levels.arc` and `Quests.arc` were re-uploaded BYTE-IDENTICAL to build36a
+> (no b37/b38 map or quest change is canonical - the Helos traveler hub is a TESTHUB/dev-only thing
+> and was deliberately kept OFF Steam). Shipped canonical md5s (each verified at stage, package, and
+> in the F9 dist==work push-gate):
+> - `Database/SoulvizierClassic.arz` = **`6631f25219be1b8f9874c95af68755c7`** (55,340,923 B) - the
+>   fixes: mastery-UI audit (8 icon repoints + Earth Rupture de-dup via Flame Surge/Flame Arch
+>   relabel + Earth col reflow + Dream bg) + cross-mastery skill-tree UI, damage-display (7 AE
+>   floating combat-text FontStyle binds on `records\xpack\game\gameengine.dbr`), Enslaver v2
+>   single-spawn/rate + Endless-Hunt legendary-stalker per-slot `limitN=1`, four generals + the b37
+>   registry bosses (diadochi / polis_vault / neferkha / toxeus_suite) + skill_quality + H/O
+>   improvements. 11-module registry, order hash `7c74a51f6ed8`, post-finalization
+>   `run_registry_verifies` GREEN.
+> - `Resources/Text.arc` = **`dff9ad01ec1d81064f426d9456470eaf`** (87,261 B) - language de-clobber
+>   (~10,600 base-identical SV tags dropped so the base `Text_EN` strings win).
+> - `Resources/Levels.arc` = **`60a628807c1746e7bbde14946de62107`** (688,682,781 B) = CANONICAL
+>   build36a map (NOT the TESTHUB `841c56cd`). The 17 Helos-hub traveler NPC records exist INERTLY in
+>   the arz but are NOT placed in this map.
+> - `Resources/Quests.arc` = **`56acee660e0c3dc7408f7d985231338c`** (194,092 B) = CANONICAL build36
+>   Quests (NOT the TESTHUB `838bdc3a`, which carries the 17 hub travel triggers). RESTAGED from
+>   `local/Quests_deployed_prev.arc` before packaging because work/ held the TESTHUB copy.
+> - **Push-gate (all against the exact dist payload): GATE PASS.** run_contracts 0 P0 / 0 P1 / 4910
+>   P2 across all 5 modules (every P2 is pre-existing SV/DLC-inherited debt - matches build36a's
+>   clean gate; anm_dreamcopy whitelist entry already present). F9 dist==work coupling PASS. Travel
+>   invariant gate (`gate_travel_npc_invariants` T6) PASS on the canonical `.arc`: 0 hub-record
+>   placements (each of the 17 travelers = 0x), 0 authored walk-throughs (SV-native baseline 3 only).
+>   The 7 damage FontStyle targets and the Enslaver/Diadochi `343_dark_smoke` FX all RESOLVE (no
+>   green fallback).
+> - **Upload:** steamcmd cached session (no re-auth), `-Update -Visibility 0`; SteamCMD "Committing
+>   update...Success" + "Upload complete", ManifestID `2737266903501499696`
+>   (steamcmd log 2026-07-13 19:30:44 -> 19:30:57 OK). The workshop description (bbcode) is already
+>   live and re-sent on every content upload.
+> - **DEV + local UNTOUCHED:** the DEV entry `SoulvizierClassicDEV` still runs build38a-dev with the
+>   TESTHUB map (`841c56cd`) + TESTHUB Quests (`838bdc3a`); that dev traveler hub is local-only and
+>   was NOT shipped. **Steam client NOT restarted and NOTHING killed** - TQ.exe was running (Will
+>   actively playing); the Workshop upload used steamcmd's separate cached session, which does not
+>   require the Steam client or TQ to be closed.
+> - **Rollback (Steam):** re-upload the build36a canonical set (arz `63ca7cf8` / Levels `60a62880` /
+>   Text `2af4ce38` / Quests `56acee66`). Tag `build38a-ship` at this doc commit.
+
 > ## BUILD38A-dev DEPLOYED TO DEV (2026-07-13) - DB-only Endless-Hunt stalker limit=1 fix (arz only; Text/map/Quests stay build38-dev); STEAM UNTOUCHED
 > **The DEV entry `SoulvizierClassicDEV` now runs build38a-dev.** ONLY the DB (`arz`) advanced from
 > build38-dev; `Text.arc`, the TESTHUB `Levels.arc`, and `Quests.arc` are byte-identical to build38-dev
