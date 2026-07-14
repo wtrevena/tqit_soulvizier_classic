@@ -1671,7 +1671,7 @@ TESTHUB_MASTER_DESTS = [
     ((-2396, 2, -5790), 'tagSVCHelosToSecret'),       # The Secret Place (DarkForestEnter.lvl)
     ((-2438, 10, -2450), 'tagSVCHelosToUber'),        # The Uber Dungeon (crypt_floor1.lvl)
     ((-5602, -2, -1409), 'tagSVCHelosToSparta'),      # The Sparta Crypt (SpartaCryptLevel2.lvl)
-    ((-433, 0, -3602), 'tagSVCTestHubToBossArena'),   # Boss Arena (boss_arena.lvl; 90u off boss volume)
+    ((-429, 27, -3538), 'tagSVCTestHubToBossArena'),  # Boss Arena (boss_arena.lvl; b43-r2: ON the raised arena dais comp#2 [world y~27], 26u S of the boss spawn / outside the r20 trigger. Was (-433,0,-3602) on comp#1 - the low floor, unreachable from the fight [28u cliff, isolated navmesh island])
     ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior (Random09A.lvl)
     ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza (StartingFarmland06D.lvl)
 ]
@@ -1815,7 +1815,7 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_helos_trav_secret.dbr',     (-2396,   2, -5790), 'tagSVCHelosToSecret'),
     (_HHUB + r'\svc_helos_trav_sparta.dbr',     (-5602,  -2, -1409), 'tagSVCHelosToSparta'),
     (_HHUB + r'\svc_helos_trav_uber.dbr',       (-2438,  10, -2450), 'tagSVCHelosToUber'),
-    (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-433,    0, -3602), 'tagSVCTestHubToBossArena'),
+    (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-429,   27, -3538), 'tagSVCTestHubToBossArena'),  # b43-r2: on the arena dais comp#2 (was (-433,0,-3602) comp#1, unreachable from the fight)
     (_HHUB + r'\svc_helos_trav_warband.dbr',    (5680,    1,  3285), 'tagSVCHelosToWarband'),
     (_HHUB + r'\svc_helos_trav_dorus.dbr',      (312,     1, -8462), 'tagSVCHelosToDorus'),
     (_HHUB + r'\svc_helos_trav_tantalus.dbr',   (-342,  -15, -10095),'tagSVCHelosToTantalus'),

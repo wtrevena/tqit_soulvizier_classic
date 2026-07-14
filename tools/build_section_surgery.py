@@ -2300,10 +2300,17 @@ def build_hub_extra_specs():
         # TESTHUB build. The TESTHUB build inherits all four from base. ONLY the Boss Arena return
         # stays TESTHUB-only (Boss Arena is not in the canonical Helos portal-master's 4-dest menu;
         # only the 7-port TESTHUB hub master reaches it).
-        # The Boss Arena (boss_arena): 3u E of landing (-433,0,-3602); comp 0; clr@3.0=100%; the
-        # landing is ~90u off volume_startolympianarena (DB lane), so this NPC stays well off it.
+        # The Boss Arena (boss_arena): b43-r2 REACHABILITY FIX. The fight sits on a raised-dais
+        # navmesh island (comp#2, world y~27) 28u above the low floor (comp#1, y~0) with no walkable
+        # bridge; the OLD landing+return at local(~131,0,40) were on comp#1 -> the whole encounter
+        # was unreachable (isolated island). Moved BOTH onto comp#2 with the outbound landing
+        # (build_quest_files: world(-429,27,-3538)=local(132,27,104), south dais, 26u S of the boss
+        # spawn / outside the r20 trigger). This return NPC = 4u E of that landing, on the dais
+        # (local(136,27,104); survey_uberboss_spots boss_arena.lvl --base 56: comp#2/92026, d=0.14,
+        # clr@3.0=100% all 3 tilesets, 2026-07-13). Reliable return (Model C boat-dialog to Helos);
+        # SV's own GridExitOneWay return portal on the dais is a vestigial extra.
         BOSSARENA_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 131.0, 0.0, 40.0),
+            (SVC_TESTHUB_RETURN_DBR, 136.0, 27.0, 104.0),
         ],
     }
     # Helos-hub area RETURN NPCs (build37): append one distinct return record per new boss/warband
