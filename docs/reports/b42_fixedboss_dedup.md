@@ -244,3 +244,45 @@ if either clips, drop that one scale ~0.2 and re-check. **Flagged, do not auto-p
    glyph-ring ceilings; confirm Ephialtes visibly casts the Dread Nova and it damages.
 3. **Will's call:** Obsidian roulette + Mnemophage chest scope (sec 3.6).
 4. Apply the equation neutralization to the unplaced other-module bosses before they are placed.
+
+---
+
+## 8. INDEPENDENT VET (round 2, adversarial) - VERDICT: GO (with 1 promote-blocker + scope flags)
+
+Re-derived from scratchpad `baseline_build38.arz` (md5 `fcd5dcab`) with own probes (not the
+implementer's scripts); MAIN + real map untouched; no heavy build. All CONFIRMED:
+
+- **DEDUP RCA + fix (structural).** proxypoolequation_02 = poolValue*(0.91+0.497143*nP-0.05*nP^2)
+  on all 4 count fields; every placed pool (ephialtes/mnemophage/tantalus/charon/dorus/vashkarr/
+  broodmother/bloodtoxeus/obsidian) carries it @ 3/2/100 -> floor 4/2 = 2 mains @1P (reproduced).
+  Neutralize -> literal 3-2 = 1. Every `_svc_boss_pool` neutralizes at creation; the registry sweep
+  covers the direct-clone pools; Mnemophage is double-covered. Negative test PROVES the gate (C)
+  raises on a re-injected equation (not blind). All placed bosses = 1.
+- **CHEST.** 4 fixed ubers carried an over-good guaranteed-unique accessory chest; all 4 converted -
+  boss accessory cleared (fresh-build sim -> [None,None,None]; fail-loud `_svc_verify_world_chests`
+  PASSES) + exactly 3 world chests each (INJECT_SPECS boss@idx0 + 3; triangle centre == boss
+  placement for all 4, r~2.6u inside the 3.5u ring). Region-tuning REAL: tables -> boss_default_
+  <bracket> tracking each boss's per-difficulty charLevel (Dorus 41-43 != Ephialtes 57-59 != Tantalus
+  51-53; E/L capped 63-65); boss_default tables exist + byte-distinct; large-majestic mesh + Boss-lock
+  kept. Enumeration COMPLETE (Vashkarr/Broodmother/Mnemophage/Hemorrheus/Enslaver carry NO chest).
+  DB<->map proxy paths match (no dangling refs). Loot TABLE records unchanged (only pointers repointed).
+- **ESTI chest** (um_bloodtoxeus_99 -> hidden_bloodcave_chest_{01,02,03} via proxy_hidden_bloodcave_
+  chest in drxBC2) POSITIVELY IDENTIFIED + PROVEN byte-untouched (not in _modified, bytes identical)
+  AND out of map scope (change hits only judgment/styx/medea hosts). **Polis vault untouched.**
+- **Ephialtes AOE** present (nova @ specialAttack 50%, kit lvl[12/16/20], 720/960/1200 life+phys
+  reproduced) + castable (Epiales01 mesh; proven-castable epiales_poisonorb - cast live by
+  as_nightmare_43 - carries NO skillSpecialAnimationName; clearing it on the clone = same default-clip
+  cast) + crash-safe (monster skill, FX verbatim).
+- **Scoped:** DB diff = intended records only (no HP/damage drift; SV-originals not neutralized -
+  registry-scoped); map diff = 0x05-only -> QUESTS 256-parity preserved. py_compile OK; _check_registry
+  OK (order 7c74a51f); commits clean (HEAD fa2dac4).
+
+**PROMOTE-BLOCKER (sole unverified item):** Ephialtes (2.7/2.4) + Mnemophage (2.9/2.4) ceiling/wall
+clip is NOT verifiable offline (navmesh is floor-only). Needs Will's in-game check at the Dread Halls
+vault + Mnemosyne glyph ring; if either clips, drop scale ~0.2 and re-check. Correctly flagged (sec 4b).
+
+**SCOPE (Will's call, not defects):** Obsidian roulette kept as 1 de-hoarded region-tuned chest per
+corner (not 3); Mnemophage stays chestless. **LATENT (not this wave):** unplaced four_generals/
+neferkha/polis share the equation dup - neutralize before placing. **Note:** integration lane still
+builds the arz + lands the 12 chest proxies (dry-run proven); the vet did not re-run the navmesh
+floor survey (chest centres coincide with already-on-mesh boss spots).
