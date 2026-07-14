@@ -1,176 +1,193 @@
-# B43 - Olympian Arena boss finish (RESULT)
+# B43 - Olympian Arena boss finish (RESULT, round 2)
 
-Branch `feat/b43-bossarena` (worktree). Follows the read-only RCA
-(`docs/reports/b43_bossarena_rca.md`, verdict: **NOT ported wrong; SV
-under-built / never finished it**). This wave implements case (B) + the polish
-(A): design + implement a worthy singular named Olympian arena boss, kill the
-green blob, add the reward + dressing, strip the debug mannequin.
+Branch `feat/b43-bossarena` (worktree). Round 2 = **fix ALL four prior-round vet
+findings, then re-verify**. Round-1 shipped the Aithon boss + map dressing but the
+adversarial vet found the encounter was **unreachable** (CRITICAL), plus 3 lesser
+issues. This round fixes every one and re-proves the whole wave by dry-run.
 
-Commits: `f2c349a` (arz DB module) + `14c8d4e` (map). RCA anchor `cba1b18`.
-Ground truth: `baseline_build38.arz` md5 **fcd5dcab** (my session snapshot; the
-RCA's "6631f252" was the transient `work/` arz other waves are actively
-rebuilding, now 10 min newer - I used the stable scratchpad snapshot per the
-task, NOT `work/`). No heavy build this wave (per the concurrency rules); every
-change is proven by dry-run replay into COPIES.
+RCA anchor `cba1b18` (`docs/reports/b43_bossarena_rca.md`). Ground truth: canonical
+map `local/Levels_merged.arc` md5 **60a62880**; DB snapshot `baseline_build38.arz`
+md5 **fcd5dcab**. **No heavy build** (blob parsing + dry-run inject into COPIES + DB
+replay only, per the concurrency rules - other waves own main + the build machine).
 
 ---
 
-## ⚑ DESIGN - FLAGGED FOR WILL'S DEV-TOUR VETO (read this first)
+## ⚑ DESIGN - STILL FLAGGED FOR WILL'S DEV-TOUR VETO (read first)
 
-The Olympian Arena's boss is now **"Aithon, the Ember-Crowned"** - a singular,
-named, boss-scale **fire-satyr arena champion**, wreathed in a ring of volcanic
-flame, flanked by 2 Ember Satyr Warden honor guard, dropping his own signature
-soul.
+The Olympian Arena boss is **"Aithon, the Ember-Crowned"** - a singular named
+boss-scale **fire-satyr arena champion** (scale 1.9, HP [42k,54k,66k], a fire/burn/
+phys resist wall, a persistent ring-of-flame shroud) flanked by **2 Ember Satyr
+Warden** honor guard, dropping his own signature `{^F}Aithon, the Ember-Crowned Soul`
+(fire-nova erupt-on-hit + volcanic/fire-enchant augments + Beastman racial + the
+amgoz downside). Built on SV's OWN bespoke arena fire kit (flame surge / volcanic orb
++ immolation/fragmentation / meteor / fire aura) + `controller_arenasatyrshaman` -
+zero new/untested mechanics, fully offline-verifiable. **Now that round 2 makes the
+arena reachable, this fight is LIVE - please veto/greenlight on the tour.**
 
-**Why a (named) satyr and not a Titan/Gigante.** SV's arena boss is its OWN
-`boss_satyrshaman` on a **bespoke, hand-built fire kit** (arena_flamesurge /
-volcanicorb + immolation + fragmentation / meteor / fire aura) + a bespoke
-`controller_arenasatyrshaman` - amgoz's own SV content. The mesh is literally
-`SatyrShamanStarterBoss.msh` (SV's placeholder "starter boss"). Elevating that
-proven rig to a **named** apex is faithful to amgoz, fully in-rig (the fire kit
-animates correctly - zero new/untested mechanics), and **fully offline-verifiable**
-(done: all gates green). A rig-swap to a grander donor is the creative upgrade,
-but it is **not** offline-verifiable (animation/assert risk, and you are playing),
-so per the mandate's "prefer creative WHEN feasibility-vetted" it is held for your
-in-game call, not shipped blind.
-
-**If you want it grander (one word on the DEV tour and I do it round 2):** the
-donor is pre-identified - **`um_clytius_44`** (Clytius, a Gigante of the
-Gigantomachy - the battle *for Olympus* - myth-slain by fire; a Hero already in
-the mod with its own `clytius.msh` + `clytius.tex`). The swap = clone it, carry
-the SAME arena fire kit + the Aithon soul/reward onto it, repoint the pool. The
-ONLY unknown is whether the arena cast/projectile skills animate cleanly on the
-cyclops rig - a 30-second in-game look answers it. Other grander donors surveyed:
-`um_emberoak_42` (ember treant), `am_colossusofkarnak_36` (Hephaestus-forged
-automaton), `bm_eldercyclops`. **Say the word and I build whichever you pick.**
-
-Also your call (trivial dials): lone apex vs the 1+2 honor-guard arena (currently
-1+2); HP band [42k,54k,66k]; the name/epithet.
+Grander-donor upgrade pre-identified if you want it (one word round 3): **`um_clytius_44`**
+(Clytius, a Gigante of the Gigantomachy - the battle *for Olympus*, myth-slain by fire;
+a Hero already in the mod with `clytius.msh`). Swap = clone it, carry the SAME fire kit +
+Aithon soul, repoint the pool; only unknown is whether the arena cast anims read clean on
+the cyclops rig (a 30-second in-game look). Trivial dials also yours: 1+2 vs a lone apex;
+HP band; the name.
 
 ---
 
-## What shipped (all verified by dry-run)
+## The four vet findings - ALL FIXED
 
-### DB - registry module `tools/patches/bossarena.py` (commit f2c349a)
-Registered in `tools/patches/__init__.py` REGISTRY (12 modules; order hash
-`525453c0...`). Disjoint: ref-scan proved `boss_satyrshaman_55` is referenced
-ONLY by the arena pool, the pool ONLY by the proxy, the proxy by NO record (only
-the untouched quest names it) - so every edit is "this arena's own restoration."
+### 1. [CRITICAL] Encounter was UNREACHABLE (isolated navmesh island) - FIXED
 
-1. **Green blob killed.** The quest-spawned Proxy `boss_satyrshaman.dbr` (which
-   rendered `satyrmage01.msh` + the translucent `Proxy01_Patrol.tex` marker at
-   0.5 alpha, mid-floor) is made non-rendering: `maxTransparency 1.0`,
-   `castsShadows 0`. Refs kept valid (no empty-ref abort). **Quest untouched** -
-   it still spawns this proxy by name; the proxy still pools the encounter.
-2. **The apex, in place.** `boss_satyrshaman_55` -> **Aithon, the Ember-Crowned**:
-   name (`tagSVCMonsterAithon`), `maxTransparency 0.0` (kills the "faint ghostly
-   boss" look - it was 0.5), `scale 1.9`, HP `[42k,54k,66k]`, a fire/burn/phys
-   resist wall (`defensiveBurn 100` = he IS fire, cannot be burned), a persistent
-   **ring-of-flame shroud** (`charFxPakRunningNames = [ringofflame_charfx]`, the
-   proven Enslaver/Marshal CharFxPak route). The whole fire kit + controller +
-   rich on-death loot (staff / caster armor / relics / heart / arcane formulae)
-   are **left intact** = the boss-tier reward AT the center, on clear.
-3. **Honor guard.** One new `ember_satyr_warden_55` (clone `am_champion_11`
-   SatyrBrute, rebanded `[50,64,72]`, given the arena fire aura + flame-surge
-   special, `defensiveFire/Burn`). Drops no soul (soul-leak law).
-4. **The pool.** `satyr_shaman_01`: `spawnMax 3`, `championMin=championMax 2`,
-   `name1 = the apex`, `nameChampion1 = the warden` -> **1 guaranteed apex + 2
-   champion honor guard** (`spawnMax - championMax = 1`; asserted inline - NOT
-   registered in the global spawn-eligibility gate because this quest boss
-   intentionally scales to player level via `limit_quest` [Normal 29-36] which is
-   BELOW his L55, so the gate's level<=window check would false-fail).
-5. **The soul** (amgoz's signature trophy): **`{^F}Aithon, the Ember-Crowned Soul`**
-   (`svc_uber\aithon_embercrown_soul_{n,e,l}`) - his own **fire-nova proc that
-   ERUPTS when he is struck** (`firefragmentnova` + `flamefragmentnova_onattacked`
-   controller = temperament-matched retaliation), **volcanic-orb + fire-enchant
-   augments** (his real Earth/fire moves), **Beastman racial** (satyr - mastery
-   over his own kind), a dense fire + ember-burn sheet, the **amgoz downside**
-   (reckless arena brawler: `-characterDefensiveAbilityModifier`) + the identity
-   resist (`defensiveBurn 100`). **No prose lore** (amgoz V5); `FileDescription =
-   "Olympus"` (region). Drops **66%** off the apex; the shared `darksatyrshaman`
-   soul stays on the 3 other satyrs that also drop it (untouched).
+**Confirmed independently** on the canonical map (`survey_uberboss_spots.py boss_arena.lvl`):
+the `boss_arena` 0x0b navmesh has **2 disconnected components** (engine climb model):
+- **comp#1** = 1,381,391 cells, the low floor, **world y ~0**.
+- **comp#2** = 92,026 cells, the raised **arena dais**, **world y ~27-31**, local x[93.9,169.7]
+  z[97.5,168.1]. It has **no comp#1 floor under it** (single-height cells), i.e. a true 28u
+  platform wall, not eroded ramp edges.
 
-### Map - `build_section_surgery.py` + `svaera_plus_portals.py` (commit 14c8d4e)
-Arena level ONLY. QUESTS section + every other level + all navmeshes untouched.
+EVERY fight element sits on comp#2: the arena floor tile `olympusarena01`, the trigger
+`volume_startolympianarena` (r=20 @ local 132,130, y27), the spawn `location_bossarenacenter`
+(y27), the center light, and round-1's 6 dressing lights. **The Helos-traveler landing and the
+in-arena return NPC were on comp#1** (local ~128-131,40) - so the player materialised on the low
+floor 28u below the fight with no walkable path up. Nothing this wave placed was experienceable.
 
-6. **Mannequin stripped.** New `REMOVE_ARENA_BLOCKOUT_SPECS` + an `M16` de-place
-   block (mirrors M2/M6/M14) removes the SV Player-class debug mannequin
-   `malepc01` (`boss_arena.lvl` inst 22, north edge, surveyed OFF-mesh / 0% clr =
-   a careless blockout leftover). Asserts exactly 1 de-placement.
-7. **Fire-glow dressing.** `INJECT_SPECS[boss_arena.lvl]` = a ring of **6 orange
-   dynamic lights** (`5mlight_dyn_orange`, shipped/proven record) framing the
-   central fight floor. Surveyed **on-mesh** on the fight component (comp#2) at
-   r~14u around local (132,130): every point d<=0.14u / 100% clear on all 3
-   tilesets. Pure light (no mesh / no collision / no 0x14) - never blocks the
-   fight; pairs with Aithon's shroud (fire vs the cold arena floor).
+**FIX (vet option b - land + return ON the dais; the vet's own hypothesis that SV's entry was
+directly onto the dais):**
+- Outbound Helos-traveler landing retargeted **`world (-433,0,-3602)` -> `(-429,27,-3538)`**
+  = local **(132,27,104)** on comp#2 (south dais), **26u S of the boss spawn**, **6u outside the
+  r=20 trigger** (so `Condition_EnterVolume` fires on the short walk-in), 6.5u clear of the south
+  dais edge. `build_quest_files.py` HELOS_HUB_TRAVEL + TESTHUB_MASTER_DESTS.
+- In-arena return NPC (`svc_testhub_return`) retargeted **local (131,0,40) comp#1 -> (136,27,104)
+  comp#2**, 4u E of the landing. `build_section_surgery.py` build_hub_extra_specs.
+- `gate_build32_parseback.py` expected return coord updated to match.
+
+**Survey proof** (canonical map, ext=3.0, all 3 tilesets): landing (132,104) = **comp#2/92026,
+d=0.14, clr 100%**; return (136,104) = **comp#2/92026, d=0.14, clr 100%**. The whole loop
+(land -> fight at center -> return NPC) is one connected component; landing y=27 snaps onto the
+dais (the only mesh at that x,z). Chosen the SOUTH dais, not the vet's "near portal @130,166"
+suggestion, because that portal is a GridExitOneWay (landing on it would teleport the player
+straight back out) and the south gives a natural walk-in toward the boss.
+
+### 2. [HIGH] "Giant gray untextured planes" left unaddressed - ADDRESSED (+ honest reframe)
+
+Re-probed the actual records. The 2 **placed** return portals `portal_olympianarena2`
+(GridExitOneWay) already ship **`invisibleInWorld=1`** - so they should NOT render, which
+*weakens* the round-1/vet premise that the placed return portals are the gray planes. The ONE
+portal that renders a mesh is **`portal_olympianarena1`** (GridEntrance, opened on level-load by
+the quest, Elysium_from_TOJ mesh + `flattexture01`/`flatbumptexture01` flat placeholder, **no
+invisibleInWorld**).
+
+**FIX (DB, this arena's own portals, disjoint - 0 other DB refs):** hide BOTH portal meshes -
+`invisibleInWorld=1` + `maxTransparency=1.0` + `castsShadows=0` - **without touching grid function**
+(the quest's `Action_OpenDynGridEntrance` still runs; GridExitOneWay still teleports if walked
+into). The player now travels via the hub + return NPC, so these SV portals are vestigial. This
+kills the leading portal-based gray plane.
+
+**Honest caveat (for the tour):** if gray planes PERSIST after this, the source is the Olympus
+**structures** (stoa/tholos/arena tile) not resolving `SceneryOlympus.arc` at runtime - a
+packaging question, not fixable by a record edit. **Unlikely**: the mod's other Olympus areas
+(Helos plaza `olympusfinal02`, Garden of Merchants) render textured, and the RCA index found 0
+unresolved art. **Will's 5-second tiebreaker: are the arena ring columns marble (art loads -> the
+planes were only the portals, now hidden) or all gray (escalate to a resource-path/packaging
+check)?**
+
+### 3. [MED] Green-blob "fixed" overclaimed on a maxTransparency misdiagnosis - REDIAGNOSED
+
+**The vet was right.** Base-DB proof: **1,003 base-game proxies carry the IDENTICAL config** as the
+arena proxy (mesh `satyrmage01` + `baseTexture Proxy01_Patrol.tex` + `maxTransparency 0.5` + no
+`invisibleInWorld`), and **none render as a blob** in normal play (the engine hides proxy meshes at
+runtime). So the arena spawn-proxy is a bog-standard invisible spawner and is **NOT** Will's "green
+FX blob" - round-1's core diagnosis was wrong.
+- The proxy hardening is **kept as cheap defensive belt-and-braces** (now `invisibleInWorld=1` on
+  top), but **no longer claimed as the fix**.
+- **Reverted** the round-1 boss `maxTransparency 0.0` (it was never ghostly at the 0.5 template
+  default, and 0.0 risked suppressing the `ambushDissolveTexture=cloud.tex` spawn-in fade - left at
+  0.5 per the vet).
+- **Leading true source, now mitigated:** an **OPEN Elysium grid-entrance glow** (portal_olympianarena1,
+  opened on level-load) - hidden by fix #2. Secondary: the satyrs' 2s dissolve-in seen from afar,
+  which round-1's unreachable-from-comp#1 state made a "ghost on a far platform"; option-b makes it
+  a proper in-arena boss appearance.
+- **Gate honesty:** `green_blob` is now **rediagnosed + mitigated (proxy hardened, Elysium glow
+  hidden, encounter now fires in-arena), pending in-game confirmation** - NOT "killed."
+
+### 4. [LOW] Report said "3 other satyrs" keep the shared soul - CORRECTED to 2
+
+Replay confirms exactly **3** monsters drop `darksatyrshaman_soul` in build38
+(`boss_satyrshaman_55` + `bs_shaman_10` + `bs_shaman_12`). After Aithon's Finger2 repoints to the
+Aithon soul, **2** remain: `bs_shaman_10`, `bs_shaman_12`. Fixed in the module docstring + this
+report. (Not orphaned; no functional impact.)
+
+---
+
+## What shipped (all verified by dry-run - see Verification)
+
+**DB - `tools/patches/bossarena.py`** (registry module, 12 modules, order hash `525453c0`):
+Aithon apex (name/scale/HP/resist wall/ring-of-flame shroud/kit+controller+loot intact,
+Finger2 -> Aithon soul), Ember Satyr Warden champion (no soul leak), pool 1 apex + 2 champions,
+the 3-tier Aithon soul, **proxy hardened invisible (defensive)**, **both Elysium portals hidden**,
+**boss maxTransparency reverted to 0.5**, tags set. `maxTransparency 0.0` line removed.
+
+**Map/Quest - `build_section_surgery.py` + `build_quest_files.py` + `gate_build32_parseback.py`:**
+the reachability relocation (landing + return NPC onto comp#2) + round-1's map dressing (strip the
+`malepc01` blockout mannequin + 6 orange fire-glow lights, unchanged). QUESTS 256-window + registry
+untouched (only the x/y/z ints of an existing boat-dialog trigger change - no new quest registration).
 
 ---
 
 ## Verification (no heavy build; dry-run into COPIES)
 
-- **py_compile**: `bossarena.py`, `build_section_surgery.py`,
-  `svaera_plus_portals.py` all OK.
-- **`_check_registry.py`**: OK, 12 modules, stable order hash.
-- **DB replay** (module applied to a load of `baseline_build38.arz`): every field
-  lands exactly (proxy invisible; apex renamed + shroud + HP + resist wall + kit
-  intact + Finger2 66% -> Aithon soul; champion has no soul leak; pool 1 apex + 2
-  champions, guaranteed_mains=1; all 3 soul tiers built with the full amgoz
-  payload; all refs resolve; the 3 other satyrs still drop the shared soul).
-- **DB gates** (monolith gate functions run over the replayed db): PASS -
-  `_verify_no_unclassified_soul_leaks`, `_gate_common_soul_leaks`,
-  `_verify_soul_augments_resolve`, `_verify_soul_itemskill_activation` (1390
-  souls), `_apply_soul_naming_standard` + `_verify_soul_naming` (name preserved).
-- **Map dry-run** (committed specs applied to a COPY of the `boss_arena` blob from
-  `local/Levels_merged.arc`, in pipeline order inject-then-remove): 0x05 30->35
-  instances, `malepc01` gone, 6 lights at the exact coords; **0x06 / 0x09 / 0x0b
-  (NAVMESH) / 0x17 BYTE-IDENTICAL**; 0x14 reindexed (portals 28/29 -> 27/28); blob
-  parses EXACT (LVL v0x0e). QUESTS 256-window untouched (no quest edits).
+- **py_compile** (bossarena.py, build_section_surgery.py, build_quest_files.py,
+  gate_build32_parseback.py): **OK**. **`_check_registry.py`**: **OK** (12 modules, order `525453c0`).
+- **DB replay** (module applied to a load of `baseline_build38.arz`): proxy `invisibleInWorld=1`
+  + maxT 1.0 + shadows 0; portal1 + portal2 `invisibleInWorld=1` + maxT 1.0 + shadows 0 + mesh
+  intact; **boss maxTransparency = 0.5 (reverted, not 0.0)**; boss description/scale 1.9/charFxPak
+  ring-of-flame/HP[42k,54k,66k]/defensiveBurn 100/ambush cloud.tex intact; **boss Finger2 -> Aithon
+  soul**; champion Champion + no Finger2 leak; pool spawnMax3/championMax2/name1=boss/nameChampion1=champ;
+  3 Aithon soul tiers built; **exactly 2 other darksatyrshaman droppers remain**; all modified records
+  re-encode cleanly (`write_arz` serialises from the modified cache).
+- **DB soul-gate battery** (over the replayed db): **PASS** - `_verify_no_unclassified_soul_leaks`,
+  `_gate_common_soul_leaks`, `_verify_soul_augments_resolve`, `_verify_soul_itemskill_activation`
+  (1390 souls), `_verify_soul_naming`.
+- **Map dry-run** (inject-then-remove into a COPY of the canonical `boss_arena` blob): 0x05
+  **30 -> 37 -> 36** (6 lights + return NPC injected, mannequin de-placed); return NPC lands at
+  exactly local **(136,27,104)**; 6 lights present; mannequin gone; **0x06 / 0x09 / 0x0b (NAVMESH) /
+  0x17 BYTE-IDENTICAL**; blob parses to exact end (1,286,233 B).
+- **Survey** (canonical 60a62880): landing (132,104) + return (136,104) both **comp#2/92026, clr 100%**;
+  landing 26u from the r20 trigger center (outside).
+- **Quest**: HELOS_HUB_TRAVEL + TESTHUB_MASTER_DESTS bossarena = `(-429,27,-3538)`; boat-dialog
+  signed-int packing round-trips; 17 distinct traveler NPCs (warden law).
+- **Portal disjointness**: 0 other DB records reference either portal (edit is contained).
 
-Evidence probes (session scratchpad): `b43_probe.py`, `b43_probe2.py`,
-`b43_probe3.py`, `b43_probe4.py` (recon), `b43_replay.py` (DB replay),
-`b43_gates.py` (gate battery), `b43_map_dryrun.py` (map surgery), plus the RCA's
-`probe_arena*.py` / `final_probe.py`.
+Evidence probes (session scratchpad): `b43r2_probe.py`, `b43r2_probe2.py` (comp#2 footprint +
+landing/return survey), `b43r2_db.py`, `b43r2_db2.py` (portal/proxy/volume records + the 1003-proxy
+proof), `b43r2_soul.py` (dropper count), `b43r2_replay.py` (DB replay + gate battery),
+`b43r2_mapdry.py` (map inject/remove + navmesh byte-identity).
 
 ---
 
-## OPEN ITEMS (surfaced, not dropped)
+## IN-GAME CHECKS for Will's DEV tour (restart Steam first)
 
-1. **[HIGH - reachability, verify in-game] The arena navmesh has TWO components.**
-   The south hub landing (local ~128,40) is on comp#1 (1.38M cells); the central
-   fight floor + boss spawn (local ~132,130) is on comp#2 (92k). If they are truly
-   disconnected the player cannot walk from the landing to the boss and the whole
-   encounter is unreachable. This is **PRE-EXISTING** (build23 navmesh gen of this
-   SV area), NOT introduced here, and likely an erosion artifact of the low-apron/
-   high-floor ramp (on-mesh cells exist 20u apart across the seam). **Needs a
-   30-second in-game reach-test** (walk landing -> center); if it walls, it is a
-   navmesh-lane re-stitch, not a content fix. Flagging because it gates everything.
-2. **[HIGH - the gray planes, portal lane] The "giant gray untextured planes" Will
-   saw are the return portals** (`portal_olympianarena2`, north edge, `flattexture01`
-   placeholder). NOT fixed here (portal art is out of the boss lane). The decided
-   fix is **B-PORTAL-1** (WILL_DECISIONS: co-locate the DRX swirl FX at flat portal
-   panels). Recommend the visuals/portal lane apply B-PORTAL-1 to the 2 arena
-   return portals (local (130,166) and (137,198)). Say the word and I fold it in.
-3. **[MED - proxy invisibility fallback]** The green blob is killed by
-   `maxTransparency 1.0` on the proxy. If any translucent marker still shows
-   in-game, the ref-safe fallbacks are: repoint the proxy mesh to an invisible
-   marker, or change the quest's `Action_SpawnEntityAtLocation` to spawn the pool
-   directly. Confirm on the tour.
-4. **[LOW - dressing polish, map lane] Physical Olympus braziers.** Round-1 dressing
-   is light-only (safe, guaranteed-resolve, no theme clash). Physical fire props
-   (donors identified: `hp_persephonebrazier01`, `hc_flamestatue01-03`, all resolve
-   via SceneryUnderground) would enrich the frame but carry a small Hades-vs-Olympus
-   theme-clash + exact-height risk - deferred to the map lane / your taste.
-5. **[LOW - reward flourish] Bespoke signature relic.** The round-1 reward is the
-   guaranteed named soul + the boss's rich on-death loot (already apex-tier). An
-   "Aithon's Ember" tiered relic (donor `svc_flameguard`, the neferkha idiom) is a
-   clean round-2 add if you want a named trophy item on top of the soul.
+1. **Reachability (the CRITICAL one):** Helos -> Boss arena traveler -> you now materialise **on the
+   marble arena dais** (not a low floor below it); walk N a few steps -> Aithon + 2 wardens spawn;
+   the fight is fully walkable; the return NPC is right beside the landing.
+2. **Gray planes:** gone? If any remain, are the ring **columns marble** (art loads) or gray
+   (packaging escalation)?
+3. **Green blob:** gone with the Elysium portal hidden + the encounter firing in-arena?
+4. **Boss feel / grander-donor call** (Aithon vs `um_clytius` Gigante); reward sufficiency.
+
+## Residual / coordination notes
+- The SV-native `portal_olympianarena2` GridExitOneWay on the dais is a vestigial bonus exit; its
+  destination is engine-grid-resolved and may be inert - the **return NPC is the reliable exit**.
+  Flagged for the tour.
+- `build_quest_files.py` is co-owned with the Helos-hub lane; this wave changes only the bossarena
+  landing tuple. `b44-landing-clearance`'s occupancy gate will pass (new landing is 100% clear).
+- Physical Olympus braziers + a bespoke "Aithon's Ember" relic remain optional round-3 enrichment
+  (round-1 open items 4-5), unchanged.
 
 ## Ban / law compliance
-Worked only in the worktree (never touched main); no heavy build (blob parsing +
-dry-run injection into copies + gate replay only); no git config mutation, no push;
-SV DESIGN mutations confined to this arena's own boss chain (its own restoration);
-no TQ/Steam interference; QUESTS 256-window + registry untouched; navmesh byte-
-identity proven for the arena's 0x0b (and every other level untouched); every placed
-light on-mesh; every referenced asset resolves; crash laws respected (no clone_record
-soul - used `_create_soul`; no dtype on the champion clone; no Pet.tpl equipment; FX
-via charFxPakRunningNames on the monster record, the proven route); no em dashes.
+Worktree only (never touched main); no heavy build (blob parse + dry-run inject into copies + DB
+replay); no git config mutation, no push; SV DESIGN mutations confined to this arena's own chain
+(boss/champion/pool/soul/proxy/portals - all disjoint, this arena's restoration); no TQ/Steam
+interference; QUESTS 256-window + registry untouched; navmesh byte-identity proven (arena 0x0b +
+every other level); every placement on-mesh (survey); every referenced asset resolves; crash laws
+respected (no clone_record soul, no dtype on the champion clone, no Pet.tpl equipment, FX via
+charFxPakRunningNames on the monster); no em dashes.
