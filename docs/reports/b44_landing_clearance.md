@@ -26,9 +26,19 @@
   placements so a wave can gate BEFORE building; `--nudge` emits the closest clear coord. Wired into
   the **travel-invariants family** in `docs/PLAYBOOK.md` §12.
 - **Cross-wave audit:** the incoming **b39 hub-v2** set (boss landings retargeted to area ENTRANCES)
-  FIXES all 5 deadly landings (they now PASS). Against current + b41 + b42-model placements, only **2**
+  FIXES all 5 deadly landings (they now PASS). Against current + b41 + b42-stress placements, only **2**
   v2 landings still collide (devourer, sparta) - concrete nudges emitted in
-  `docs/reports/b44_landing_nudges.md`.
+  `docs/reports/b44_landing_nudges.md`. Applying both nudges and re-gating -> **PASS = 25, 0 DEADLY / 0 FAIL**.
+
+> **Round 2 (2026-07-13) - nudge tool fix.** `find_nudge` now searches the **INTEGER-world lattice** and
+> validates clearance AT the exact integer coord it emits. Round 1 validated a FLOAT level-local point but
+> emitted its ROUNDED coord, so a nudge whose float optimum sat within ~0.2u of a class margin could round
+> back under it: the round-1 devourer coord `(5347,1,3008)` was reported "cleared to 2.57u" but its rounded
+> coord actually measured **2.40u < the 2.5u prop min** - a coord the gate itself rejects. The integer-lattice
+> search + a class-min + 0.5u robustness buffer + a fully-footed (>=95% disc) requirement close the gap.
+> The re-emitted devourer coord `(5349,1,3009)` and the unchanged sparta coord `(-6587,1,-3180)` both pass
+> at their exact emitted coord; the nudged v2 set re-gates PASS=25. Report labels below corrected
+> (gorgon = `proxy`, not `monster`; b42 re-characterized as DB-only).
 
 ## 1. RCA - the deadly landings TODAY (deployed map 841c56cd, v1 wiring)
 
@@ -102,8 +112,10 @@ Key features:
   its landings against entities **not on the map yet**.
 - **Landing sets:** `--wiring v1` (LIVE `build_quest_files.HELOS_HUB_TRAVEL`) | `v2` (b39 hub-v2,
   embedded w/ provenance) | `<file>` (a `LANDINGS = [(name,(x,y,z),tag)]` module).
-- **`--nudge`:** for every DEADLY/FAIL landing, spiral-searches the closest on-mesh coord that clears
-  all colliders and prints it (world = corner + nudged local).
+- **`--nudge`:** for every DEADLY/FAIL landing, searches the **INTEGER-world lattice** for the closest
+  on-mesh, fully-footed coord that clears every collidable entity by its class-min + a robustness buffer,
+  and prints it. Because the grid corner is an integer, the point validated is byte-for-byte the integer
+  coord emitted (world = corner + integer local) - no float->round drift (the round-1 bug).
 - Read-only, exit 0 = all clear. Robust across the 2282-level index (dual-base 0x05 walk verified to
   the section end).
 
@@ -112,7 +124,7 @@ Key features:
 ### 3.1 Current deployed map, v1 wiring
 `--wiring v1` -> **5 DEADLY + 1 FAIL + 11 PASS** (Section 1). This is the bug in production today.
 
-### 3.2 b39 hub-v2 landing set vs current + b41 + b42-model
+### 3.2 b39 hub-v2 landing set vs current + b41 + b42-stress
 `--wiring v2 --placements b41b42` -> **23 PASS + 1 DEADLY + 1 FAIL**.
 
 - **All 5 boss landings now PASS.** The b39-v2 retarget moves them to area ENTRANCES 20-130u off the
@@ -123,19 +135,22 @@ Key features:
   (200,264) is **236u** away = clear. All other b41 placements (polis cage + 5 chests in
   HadesPalace_Floor04_01, Menoetes/guards, Helepolis in Elysian, Neferkha + 4 sarcophagi in
   ThebesOptTombA) are in levels **no** hub landing targets = no interaction.
-- **b42 (3-chests-per-boss) model:** rings each build36 boss at r=5u (b42-waking-dread is an EMPTY
-  branch at da918c5 - no real coords authored yet; modeled synthetically). Nearest to any v2 landing
-  is the **mnemophage** entrance at ~15u from a modeled chest = clear. The v2 entrances are 20-130u
-  off the bosses, so the incoming chests do not threaten them. When b42 authors real coords, re-gate
-  with `--placements <b42_specs.py>`.
+- **b42 (waking-dread) interaction:** NONE. As built (`feat/b42-waking-dread` @ **4b3f2d7**) b42 is
+  **DB-only** - it de-dups boss pools (`proxyPoolEquation` neutralize) and re-tunes existing bespoke-hoard
+  LOOT; it adds NO new map placements, so it introduces no new collision sources. The gate still folds a
+  HYPOTHETICAL "3 majestic chests per boss" ring (r=5u around each build36 boss, `--placements b42`) as a
+  conservative stress test (NOT b42's actual output): even so, the nearest v2 landing (**mnemophage**
+  entrance, ~15u from a modeled chest) stays clear, because the v2 entrances are 20-130u off the bosses.
+  If a future wave ever co-locates real chests with a boss, re-gate with `--placements <b42_specs.py>`.
 - **2 residual v2 collisions** (both NEW v2 destinations, not boss-reuse):
 
-  | v2 landing | world | collides with | dist | nudge -> |
+  | v2 landing | world | collides with | dist | nudge -> (round 2) |
   |---|---|---|---|---|
-  | **devourer** | (5345,1,3010) | `burstvessle_01.dbr` (DRX destructible, solid) | 0.58u (DEADLY) | **(5347,1,3008)** clears to 2.57u |
-  | **sparta** | (-6588,1,-3180) | `AG_Beastmen_Gorgon_02N.dbr` (live gorgon) | 2.72u (FAIL) | **(-6587,1,-3180)** clears to 3.72u |
+  | **devourer** | (5345,1,3010) | `burstvessle_01.dbr` (DRX destructible, solid `prop`) | 0.58u (DEADLY) | **(5349,1,3009)** clears to 3.16u prop, 100% footing |
+  | **sparta** | (-6588,1,-3180) | `AG_Beastmen_Gorgon_02N.dbr` (live gorgon, class `proxy`) | 2.72u (FAIL) | **(-6587,1,-3180)** clears to 3.69u proxy, 100% footing |
 
-  Both nudged coords re-surveyed on-mesh 100%/100%/100%, main component. Full specs +
+  Both nudged coords re-surveyed on-mesh 100%/100%/100%, main component, and validated AT their exact
+  emitted integer coord (round-2 fix); applying both to the v2 set re-gates PASS=25. Full specs +
   apply/verify steps: `docs/reports/b44_landing_nudges.md` (for the consolidated-build integrator to
   apply to `feat/b39-hub-v2` `HELOS_HUB_TRAVEL`).
 
@@ -146,10 +161,12 @@ Key features:
 py tools/debug/gate_landing_clearance.py \
   --map "<...>/SoulvizierClassicDEV/Resources/Levels.arc" --wiring v1
 
-# the v2 fix + cross-wave audit + nudges (expect 2 residual, both nudgeable):
+# the v2 fix + cross-wave audit + nudges (expect 23 PASS + 1 DEADLY + 1 FAIL, both nudgeable):
 py tools/debug/gate_landing_clearance.py \
   --map "<...>/SoulvizierClassicDEV/Resources/Levels.arc" \
   --wiring v2 --placements b41b42 --nudge
+#   -> devourer (5345,1,3010) -> (5349,1,3009)  [nudge 4.1u, ROBUST]  nearest 3.16u prop  clr 100%/100%/100%
+#   -> sparta   (-6588,1,-3180) -> (-6587,1,-3180) [nudge 1.0u, ROBUST]  nearest 3.69u proxy  clr 100%/100%/100%
 ```
 
 ## 5. Recommendation
