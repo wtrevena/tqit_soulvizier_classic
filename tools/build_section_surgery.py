@@ -51,6 +51,93 @@ def rebuild_blob(magic, sections):
     return bytes(out)
 
 
+# --- 0x17 header: the three leading GUID lists (ENV / REGION / AUDIO) --------------------
+# The per-level 0x17 section (the baked detail/lighting layer) begins with three GUID
+# lists, then an opaque per-cell raster:
+#     u32 magic = 1
+#     u32 version
+#     ENV list   : u32 count; count x { u8 index(1-based); u8 guid[16] }   (env-zone refs)
+#     REGION list: u32 count; count x { u8 index(1-based); u8 guid[16] }   (world-SD region)
+#     AUDIO list : u32 count; count x { u8 index(1-based); u8 guid[16] }   (audio-zone refs)
+#     raster ...  (opaque; preserved verbatim)
+# The on-screen top-right AREA-NAME banner is the level's REGION-list guid resolved against
+# the world SD (0x18) REGION records. b46r3 proof (docs/reports/b46_minimap_result.md):
+#   * this parse/serialize round-trips BYTE-IDENTICAL across all 2282 deployed levels;
+#   * every level that shows a name carries exactly its SD-region guid in this REGION list
+#     (boss_arena->'Olympian Arena', startingcave01->'Natural Cave', spartacryptlevel2->
+#     'Ancient Tomb', GoM->'Duister'); a level with an EMPTY region list (crypt_floor1, the
+#     Uber Dungeon) resolves nothing and retains the previous region ("Village of Helos").
+# The AUDIO list is a SEPARATE binding (crypt_floor1's audio guid 59c096c3 is NOT a region
+# and appending an SD *region* for it does nothing - the round-2 no-op the vet caught).
+def parse_0x17_header(d):
+    """Parse the 0x17 leading ENV/REGION/AUDIO guid lists. Returns
+    (magic, version, env, region, audio, raster) where env/region/audio are lists of
+    (index:int, guid:bytes[16]) and raster is the opaque remainder (bytes)."""
+    if len(d) < 12:
+        raise ValueError('0x17 section too small to hold a header')
+    magic, version = struct.unpack_from('<II', d, 0)
+    if magic != 1:
+        raise ValueError(f'0x17 magic={magic} (expected 1)')
+    pos = 8
+    lists = []
+    for li in range(3):
+        cnt = struct.unpack_from('<I', d, pos)[0]; pos += 4
+        if cnt > 4096 or pos + cnt * 17 > len(d):
+            raise ValueError(f'0x17 implausible list[{li}] count {cnt} @ {pos-4}')
+        entries = []
+        for _i in range(cnt):
+            entries.append((d[pos], d[pos + 1:pos + 17])); pos += 17
+        lists.append(entries)
+    return magic, version, lists[0], lists[1], lists[2], d[pos:]
+
+
+def build_0x17_header(magic, version, env, region, audio, raster):
+    """Inverse of parse_0x17_header - byte-exact."""
+    out = bytearray(struct.pack('<II', magic, version))
+    for lst in (env, region, audio):
+        out += struct.pack('<I', len(lst))
+        for idx, guid in lst:
+            if len(guid) != 16:
+                raise ValueError('0x17 list guid must be 16 bytes')
+            out += bytes([idx & 0xFF]) + bytes(guid)
+    out += raster
+    return bytes(out)
+
+
+def inject_0x17_region(blob, region_guid, lv_key=''):
+    """Append a REGION-list entry (guid=region_guid) to the level's 0x17 section so the
+    area-name banner resolves that guid against the world SD (fixes the Uber Dungeon
+    reading "Village of Helos"). The new entry's per-list index = current region count + 1
+    (matches the 1-based index in shipped data). ENV + AUDIO lists and the raster stay
+    byte-identical; only the REGION list grows by one 17-byte entry. Idempotent (no-op if
+    the guid is already in the region list). Raises if the blob has no 0x17 section.
+
+    This makes a zero-region level structurally identical to a shipped single-region level
+    (e.g. startingcave01: env=1/region=1/audio=1), a configuration the engine loads
+    everywhere - so it is not a novel structure. Navmesh (0x0b) and every other section are
+    untouched."""
+    if len(region_guid) != 16:
+        raise ValueError('region_guid must be exactly 16 bytes')
+    secs, magic = parse_blob_sections(blob)
+    found = False
+    new_secs = []
+    for s in secs:
+        if s['type'] == 0x17 and not found:
+            found = True
+            m, ver, env, region, audio, raster = parse_0x17_header(s['data'])
+            if any(bytes(g) == region_guid for _idx, g in region):
+                new_secs.append(s)  # already present -> idempotent
+                continue
+            region = list(region) + [(len(region) + 1, region_guid)]
+            new_secs.append({'type': 0x17,
+                             'data': build_0x17_header(m, ver, env, region, audio, raster)})
+        else:
+            new_secs.append(s)
+    if not found:
+        raise ValueError(f'inject_0x17_region: {lv_key or "blob"} has no 0x17 section')
+    return rebuild_blob(magic, new_secs)
+
+
 def parse_0x05_strings(data):
     """Parse 0x05 section as flat list of length-prefixed DBR strings."""
     if len(data) < 4:
