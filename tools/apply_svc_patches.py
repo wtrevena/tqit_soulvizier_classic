@@ -11293,6 +11293,12 @@ def _create_vashkarr(db, tags):
         sf(P, 'chanceToRun', 100.0)
         sf(P, 'difficultyLimitsFile', _VK_LIMIT)             # no-cap [1..75] contains the band
         db._modified.add(P)
+        # register in the spawn-eligibility + pool-count-lock gate (was previously
+        # unregistered -> its 3/2 pool doubled Vashkarr like the other lone bosses).
+        _MOD_AUTHORED_SPAWN_PROXIES.append({
+            'proxy': _VK_PROXY, 'pool': _VK_POOL, 'main_monster': _VK_MONSTER,
+            'name': 'q_vashkarr_lone (Vashkarr + 2 dragonian champion escorts)',
+        })
         print("  Vashkarr proxy + pool: 1 boss + 2 dragonian champions "
               "(spawn=3/champMin=Max=2/champChance=100); chanceToRun=100")
     else:
@@ -14764,6 +14770,27 @@ def _verify_mod_spawn_proxies_eligible(db):
                 f"{label}: main monster {main} is not in any pool nameN slot "
                 f"(name1..6 = {[_base(str(n)) for n in name_slots if n]})")
 
+        # (C) NO INHERITED SPAWN-COUNT EQUATION (the 2026-07-13 "two bosses side
+        #     by side" dup). q_leinth_lone (every pool's clone donor) carries
+        #     proxyPoolEquation=proxypoolequation_02, which re-scales the literal
+        #     spawn/champion counts by poolValue*(0.91+0.497143*nP-0.05*nP^2),
+        #     FLOORED per field. So the (A) `spawnMax - championMax` main count is
+        #     NOT what spawns: the 3-spawn/2-champion shape floors to 4/2 = 2 mains
+        #     = two identical bosses at EVERY player count (Will fought two Waking
+        #     Dreads + two Mnemophages). Assert the equation is neutralized so the
+        #     literal counts (and (A)'s guarantee) actually hold at runtime.
+        eq = db.get_field_value(pool, 'proxyPoolEquation')
+        eq = (eq[0] if isinstance(eq, list) else eq) or ''
+        if eq:
+            problems.append(
+                f"{label}: SPAWN-COUNT EQUATION - pool still carries "
+                f"proxyPoolEquation={_base(str(eq))}; it re-scales the literal "
+                f"spawn/champion counts (poolValue*player-factor, floored) so "
+                f"spawnMax-championMax={guaranteed_mains} is NOT the runtime main "
+                f"count (a 3/2 lone-boss pool spawns 2 bosses at 1 player). Empty "
+                f"it via _svc_neutralize_pool_equation so exactly {guaranteed_mains} "
+                f"main(s) spawn deterministically.")
+
         # (B) limit-window containment (per difficulty)
         lim = db.get_field_value(proxy, 'difficultyLimitsFile')
         lim = lim[0] if isinstance(lim, list) else lim
@@ -14804,6 +14831,35 @@ def _verify_mod_spawn_proxies_eligible(db):
             f"is scaled below its level, must be fixed before shipping.")
     print(f"  Spawn-eligibility invariant OK: {len(_MOD_AUTHORED_SPAWN_PROXIES)} "
           f"mod-authored spawn proxy(ies) spawn their boss on N/E/L with adds.")
+
+
+def _svc_lock_authored_pool_counts(db):
+    """DEDUP FINALIZATION (Will 2026-07-13, "all the monsters we placed we placed
+    two side by side"). Neutralize the inherited proxyPoolEquation on EVERY
+    mod-authored spawn pool so the literal spawn/champion counts hold at runtime
+    (exactly spawnMax-championMax mains, deterministic at all player counts).
+
+    One choke point, driven by the same _MOD_AUTHORED_SPAWN_PROXIES registry the
+    spawn-eligibility gate uses, so every registered lone-boss / warband / yard
+    pool is fixed at once. _svc_boss_pool already neutralizes its own clones
+    (Tantalus/Charon/Mnemophage/Ephialtes); this additionally covers the
+    hand-rolled pools that clone q_leinth_lone directly (Hemorrheus, Vashkarr,
+    Dorus, Broodmother, the Enslaver + Obsidian warbands, and every TESTHUB yard
+    pool). Idempotent; runs just before _verify_mod_spawn_proxies_eligible, which
+    then FAILS LOUD if any authored pool still carries the equation."""
+    fixed = []
+    seen = set()
+    for spec in _MOD_AUTHORED_SPAWN_PROXIES:
+        pool = spec.get('pool')
+        if not pool or pool in seen or not db.has_record(pool):
+            continue
+        seen.add(pool)
+        if db.get_field_value(pool, 'proxyPoolEquation'):
+            _svc_neutralize_pool_equation(db, pool)
+            fixed.append(pool)
+    print(f"  Pool-count lock: neutralized the inherited spawn-count equation on "
+          f"{len(fixed)} of {len(seen)} mod-authored spawn pool(s) (literal "
+          f"spawn/champion counts now hold -> no player-scaled boss dup).")
 
 
 # =============================================================================
@@ -14876,10 +14932,44 @@ def _svc_widen_limit(db, donor, clone, hi=110):
     return True
 
 
+def _svc_neutralize_pool_equation(db, pool):
+    """DEDUP ROOT-CAUSE FIX (Will 2026-07-13, "two bosses side by side").
+
+    Every mod lone-boss pool is a clone of q_leinth_lone, which carries
+    `proxyPoolEquation = records\\proxies orient\\proxypoolequation_02.dbr`. That
+    equation OVERRIDES the pool's literal spawn/champion counts at spawn time with
+    `poolValue * (0.91 + 0.497143*nP - 0.05*nP^2)`, FLOORED per field (poolValue :=
+    the field's own static value; the pools carry no separate `poolValue`, proven).
+
+    For the "1 boss + 2 champion escorts" shape (spawnMax=3, championMax=2) at 1
+    player the factor is 1.357, so effective spawnMax = floor(3*1.357) = 4 while
+    effective championMax = floor(2*1.357) = 2 -> MAINS = 4-2 = 2 -> TWO identical
+    bosses spawn side by side. This holds at every player count (2 mains, 1..6P),
+    which is exactly what Will saw for the Waking Dread and the Mnemophage and is
+    deterministic/structural, not probabilistic. The `spawnMax - championMax = 1`
+    "LAW" the builders reason about is only true of the LITERAL counts; the
+    inherited equation silently breaks it.
+
+    Fix: empty proxyPoolEquation so the engine uses the literal spawnMin/Max +
+    championMin/Max verbatim -> exactly (spawnMax - championMax) mains at every
+    player count. This mirrors the base-game UNIQUE-boss pools (bosspool_*_cyclops
+    / _alastor / _telkine all carry NO proxyPoolEquation). '' is the idiomatic TQ
+    null .dbr ref (same mechanism as nameChampion3=''), read identically to the
+    field being absent. MONSTER difficulty/level scaling is UNAFFECTED - that lives
+    on the proxy's difficultyEquationFile/difficultyLimitsFile, not here; only the
+    spawn-COUNT scaler is removed."""
+    if db.get_field_value(pool, 'proxyPoolEquation'):
+        db.set_field(pool, 'proxyPoolEquation', '')
+        db._modified.add(pool)
+
+
 def _svc_boss_pool(db, pool, boss, champ, desc):
     """Clone q_leinth_lone pool -> the 1-boss + 2-guaranteed-champion recipe
     (spawnMax=3 / championChance=100 / championMin=Max=2 -> 3-2=1 guaranteed
-    boss; the LAW). Clears the leinth clone-leftover 3rd champion (Vashkarr fix)."""
+    boss; the LAW). Clears the leinth clone-leftover 3rd champion (Vashkarr fix).
+    Neutralizes the inherited proxyPoolEquation so the literal counts hold at
+    runtime (else the equation floors 3/2 to 4/2 = 2 mains = TWO bosses; see
+    _svc_neutralize_pool_equation)."""
     db.clone_record(_SVC_LEINTH_POOL, pool)
     sf = db.set_field
     sf(pool, 'FileDescription', desc)
@@ -14890,6 +14980,7 @@ def _svc_boss_pool(db, pool, boss, champ, desc):
     sf(pool, 'spawnMin', 3); sf(pool, 'spawnMax', 3)
     sf(pool, 'championChance', 100.0)
     sf(pool, 'championMin', 2); sf(pool, 'championMax', 2)
+    _svc_neutralize_pool_equation(db, pool)
     db._modified.add(pool)
 
 
@@ -16889,6 +16980,11 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # N/E/L so he is never scaled below his authored level. Guards BOTH placements
     # (this proxy record is injected at the TESTHUB HV01 mouth AND the canonical
     # secret area). A silent no-spawn boss can never ship past this.
+    # DEDUP (2026-07-13): first lock the spawn counts (neutralize the inherited
+    # proxyPoolEquation on every authored pool) so the literal spawn/champion
+    # counts hold at runtime, THEN the gate below fails loud if any pool still
+    # carries the equation (the "two bosses side by side" root cause).
+    _svc_lock_authored_pool_counts(db)
     _verify_mod_spawn_proxies_eligible(db)
 
     # ── Uber (DRX supra) craftable dead-reference repair ──────────────────────
