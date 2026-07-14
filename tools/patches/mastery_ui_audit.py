@@ -49,15 +49,14 @@ in docs/reports/b38_mastery_ui_audit.md):
      (the A7 golden covers only masteries 5/6), so no waiver is required; this is the
      ho-ui F5 UI-defect-fix precedent applied to Earth.
 
-  4. BLACK BACKGROUND - EVERY mastery's skillpanebasebitmap/reallocation points at
-     `SkillsPanel\\skillbackgrounddiablo.tex`, an arc that resolves in NO shipped or
-     base arc (proven). The b37-merged hunting_occult_ui already repoints masteries 1-8
-     to their base-game `InGameUI\\Skills\\<Class>SkillBackground01.tex` (all present).
-     The remaining black screen is the DREAM mastery (xpack mastery 9), which
-     hunting_occult_ui does not cover. No dedicated Dream backdrop ships (base AE has no
-     Dream bg override + no DreamSkillBackground texture exists), so we repoint Dream to
-     the resolving Spirit backdrop (Dream is the psionic/spirit-adjacent mastery) - a
-     best-effort fix that is strictly better than the black pane.
+  4. BLACK BACKGROUND - MOVED OUT of this module (build40). This module once
+     repointed the DREAM mastery's skillpanebasebitmap `bitmapName` (masteries 1-8
+     were handled by hunting_occult_ui). BOTH were the WRONG MECHANISM and rendered
+     black: the AE engine reads the skill-pane backdrop from a `BitmapUIAware`
+     record's PLURAL `bitmapNames`, and these records are the older `BitmapSingle`
+     template, so the value-repoint never displayed. ALL mastery backgrounds
+     (1-8 + Dream) are now fixed by the `mastery_bg_template` module, which converts
+     the records to BitmapUIAware. Full RCA: docs/reports/b40_mastery_bg_rca.md.
 
   5. Nature "Sylvan Protection" (drx_nymph_petmodifier_rootwave, a graft pet-modifier,
      absent from 098i) shipped with NO skillUpBitmapName at all -> iconless button. FIX:
@@ -76,19 +75,18 @@ NOT changed (documented in the report, deliberately out of scope for a safe UI p
     amgoz1 design and stay untouched.
 
 CONTRACT: patches-registry module - MODULE_NAME + apply(db, tags). Disjoint from every
-other b37/b38 module (hunting_occult_ui owns mastery 1-8 backgrounds + O/H button
-shapes; this owns the DREAM background, the seven graft icons, the Earth graft rename +
-reflow, and the Nature graft icon). Runs after the monolith graft so all target records
-exist. Fail-loud on any unexpectedly-absent target (an upstream structural change).
+other b37/b38/b40 module (hunting_occult_ui owns the O/H button shapes;
+mastery_bg_template owns ALL mastery-pane backgrounds; this owns the seven graft icons,
+the Earth graft rename + reflow, and the Nature graft icon). Runs after the monolith
+graft so all target records exist. Fail-loud on any unexpectedly-absent target.
 """
 
-MODULE_NAME = "Cross-mastery skill-tree UI fix (graft icons, Earth Rupture de-dup + reflow, Dream bg)"
+MODULE_NAME = "Cross-mastery skill-tree UI fix (graft icons, Earth Rupture de-dup + reflow)"
 
 # ---------------------------------------------------------------------------
 # Path helpers
 _SK = "records\\skills\\%s"                                   # + mastery\\name.dbr
 _UI = "records\\ingameui\\player skills\\mastery %d\\%s"      # + slot file
-_DREAM_UI = "records\\xpack\\ui\\skills\\mastery 9\\%s"
 
 # ---------------------------------------------------------------------------
 # 1 + 5: broken graft icons -> resolving equivalents.  (skill record, up.tex, down.tex)
@@ -152,23 +150,17 @@ _EARTH_REFLOW = [
     ("skill23.dbr", "drxspontaneouscombustion",   428,  93),   # was 155
 ]
 
-# 4: Dream (xpack mastery 9) background repoint (1-8 handled by hunting_occult_ui).
-_DREAM_BG = [
-    ("skillpanebasebitmap.dbr",         r"InGameUI\Skills\SpiritSkillBackground01.tex"),
-    ("skillpanereallocationbitmap.dbr", r"InGameUI\Skills\SpiritSkillReallocationBackground01.tex"),
-]
-
-
 def _first(v):
     return v[0] if isinstance(v, list) else v
 
 
 def apply(db, tags):
     """Repoint 7 broken graft icons + the Nature graft icon, de-duplicate the Earth
-    graft Rupture/Flare labels, reflow Earth column 428, and repoint the Dream
-    background. Fail-loud if any target record/field is unexpectedly absent. `tags` is
-    unused - every referenced text tag (tagSkillName113/103 + descriptions) is a
-    base-game tag that resolves at runtime (validate_tags does not require base tags)."""
+    graft Rupture/Flare labels, and reflow Earth column 428. (Mastery-pane
+    backgrounds, incl. Dream, are owned by mastery_bg_template.) Fail-loud if any
+    target record/field is unexpectedly absent. `tags` is unused - every referenced
+    text tag (tagSkillName113/103 + descriptions) is a base-game tag that resolves
+    at runtime (validate_tags does not require base tags)."""
     print("\n=== mastery_ui_audit: cross-mastery skill-tree UI fix (build38) ===")
 
     def _resolve(rec):
@@ -239,12 +231,10 @@ def apply(db, tags):
     print("  Earth col-428 reflow: Ring-of-Flame + graft Rupture chain now contiguous, "
           "base lower; standalones on top")
 
-    # 4: Dream (xpack mastery 9) background repoint.
-    for bg_file, tex in _DREAM_BG:
-        rec = _resolve(_DREAM_UI % bg_file)
-        _require_field(rec, "bitmapName")
-        db.set_field(rec, "bitmapName", tex)
-        print("  Dream bg %-34s -> %s" % (bg_file, tex.rsplit('\\', 1)[-1]))
+    # NOTE: the Dream (xpack mastery 9) background - like masteries 1-8 - is now
+    # fixed by the `mastery_bg_template` module (BitmapSingle -> BitmapUIAware).
+    # The old bitmapName repoint that lived here was the wrong mechanism (rendered
+    # black); see docs/reports/b40_mastery_bg_rca.md.
 
-    print("=== mastery_ui_audit done: %d icons, %d renames, %d reflow, %d Dream bg ==="
-          % (len(_ICON_FIXES), len(_RENAME_FIXES), len(_EARTH_REFLOW), len(_DREAM_BG)))
+    print("=== mastery_ui_audit done: %d icons, %d renames, %d reflow ==="
+          % (len(_ICON_FIXES), len(_RENAME_FIXES), len(_EARTH_REFLOW)))

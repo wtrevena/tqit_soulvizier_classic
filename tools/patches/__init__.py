@@ -74,10 +74,14 @@ import importlib
 # win; the four_generals downside sits on a defensive stat neither fully touches).
 # 'visuals' stays LAST (DB precondition invariant, writes nothing).
 REGISTRY = [
-    'hunting_occult_ui',    # build37 backlog #35/#76: O/H mastery-screen UI (shapes/bitmaps)
+    'hunting_occult_ui',    # build37 backlog #35/#76: O/H mastery-screen UI button shapes
     'mastery_ui_audit',     # build38: cross-mastery skill-tree UI fix (graft icons, Earth
-                            # Rupture de-dup + reflow, Dream bg); disjoint from hunting_occult_ui
-                            # (which owns mastery 1-8 backgrounds + O/H button shapes)
+                            # Rupture de-dup + reflow); disjoint from hunting_occult_ui + mastery_bg_template
+    'mastery_bg_template',  # build40 P1 (Will 3x): restore the mastery skill-tree BACKGROUND
+                            # image - convert the 18 skillpane*bitmap records from the SV-era
+                            # BitmapSingle template to the base-game BitmapUIAware shape the AE
+                            # engine actually renders (the b37/b38 bitmapName repoint was the wrong
+                            # mechanism + rendered black); sole owner of mastery-pane backgrounds
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
