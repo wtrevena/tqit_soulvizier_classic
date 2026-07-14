@@ -984,11 +984,24 @@ UBERBOSS_SPECS = {
     DORUS_HOST_KEY: [
         (Q_DORUS_LONE_DBR, 52.0, 1.2, 60.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-    # M5 Tantalus: PRIMARY den floor by the pj_denoftantalus POI. spec local (54.0,-15.2,114.3)
-    # = world (-342,-15.2,-10094.7). Corrected-frame survey: d=0.10u, clr@3.5 100%/100%/100%,
-    # comp#1. (R3 shipped the bogus +4.5u nudge (50,116); reverted.)
+    # M5 Tantalus: den-INTERIOR spot ~10u from the pj_denoftantalus POI marker.
+    # b45 RE-PLACEMENT (Will 2026-07-13 ground truth: "the den of tantalus monsters did not
+    # get placed inside of the den of tantalus, they got placed in the wrong location").
+    # RCA (docs/reports/b45_tantalus_placement.md): the old spec-PRIMARY local (54,-15.2,114.3)
+    # = world (-342,-15.2,-10094.7) is genuinely ON-MESH (R4 frame is correct) in the RIGHT host
+    # (blob [755] owns the den POI, and Area04_Styx is NOT grid-shifted) - but it sits 28.1u EAST
+    # of the den marker (world -370,-13,-10097), tucked in the SE corner of this LARGE open
+    # SwampBorder level, 34u from the b39 den-entrance landing (local 52,80) - out past the den
+    # mouth on the open Styx floor. So NOT a coordinate-frame bug and NOT a wrong host key: it was
+    # a BAD SPEC COORD that optimized a 9u clearance disc over proximity to the den. FIX = the
+    # closest full-clearance spot to the marker: local (34.0,-13.4,106.0) = world (-362,-13.4,
+    # -10103). Re-surveyed on the built map: 10.2u from the POI marker (unambiguously in the den),
+    # d=0.14u on-mesh, clr@3.5 100%/100%/100% + clr@6 97%/97%/97% (room for boss + 2 champion
+    # escorts + the DB-side hoard chest), comp#1, floor Y -13.4 (navmesh-validated to +/-0.2u),
+    # 31.6u clear of the b39 landing, >9u from every native monster proxy + poison geyser.
+    # (old spec-primary (54,114.3) and R3 nudge (50,116) both RETIRED - both read "wrong location".)
     TANTALUS_HOST_KEY: [
-        (Q_TANTALUS_LONE_DBR, 54.0, -15.2, 114.3, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_TANTALUS_LONE_DBR, 34.0, -13.4, 106.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
     # M6 Charon: the Shrine of the Golden Bough. The spec's DEFAULT primary is the SUMMIT beside
     # the eternal flame, with the temple FORECOURT as the mandated fallback if the boss+2-champion
