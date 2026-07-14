@@ -39,9 +39,14 @@ re-running an identical build) - and on every HIT also removes the 4-DB memory
 co-residence. Widening the hit set needs the module split (out of this scope).
 
 Controls (env):
-  SVC_PREFIX_CACHE=1   enable (default OFF - the integrator flips the default to ON
-                       after running verify_cache_determinism.py's cold-vs-warm
-                       full-build md5 gate on a clean machine).
+  SVC_PREFIX_CACHE=0   opt OUT (default is ON since 2026-07-14: the
+                       verify_cache_determinism.py full-build gate PASSed on main
+                       @ 7c38c9e - cold 209s and warm 134s both produced arz md5
+                       b33c5a447f3a8ca652c14f78d4ad1dd4 == build40 GOLDEN, tags
+                       md5 fe855a77324e99cc37ea3326c0cdc2b2 identical, warm HIT
+                       log-proven, graft-flip negative test forced a key MISS).
+                       Unset/empty = ON; 0/false/no/off = OFF; other values go
+                       through the same truthy parse (non-truthy = OFF).
   SVC_NO_CACHE=1       hard-disable read AND write even if enabled.
   SVC_CACHE_REFRESH=1  ignore any existing snapshot (force MISS) but still store.
 """
@@ -72,10 +77,15 @@ def _norm_bool_env(name: str, default: str) -> str:
 
 
 def enabled() -> bool:
-    """True iff the cache should read+write. Default OFF; SVC_NO_CACHE hard-wins."""
+    """True iff the cache should read+write. Default ON (flipped 2026-07-14 after
+    verify_cache_determinism.py PASSed cold==warm==GOLDEN on main @ 7c38c9e);
+    opt out with SVC_PREFIX_CACHE=0/off. SVC_NO_CACHE hard-wins."""
     if _truthy(os.environ.get('SVC_NO_CACHE')):
         return False
-    return _truthy(os.environ.get('SVC_PREFIX_CACHE'))
+    raw = os.environ.get('SVC_PREFIX_CACHE')
+    if raw is None or raw.strip() == '':
+        return True
+    return _truthy(raw)
 
 
 def graft_on() -> bool:

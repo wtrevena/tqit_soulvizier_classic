@@ -1,4 +1,19 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
+> `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
+> **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)
+> exit 0 in **209s**, arz md5 `b33c5a447f3a8ca652c14f78d4ad1dd4` == build40 GOLDEN (55,351,206 B), tags md5
+> `fe855a77324e99cc37ea3326c0cdc2b2`. **WARM** (same env, no refresh) exit 0 in **134s**, log-proven HIT on the
+> same snapshot, arz + tags md5s IDENTICAL. COLD == WARM == GOLDEN bit-for-bit; a HIT saves ~75s (36%).
+> Graft-flip negative test: SVC_GRAFT_SVAERA=0 changed the key and forced a MISS (wrong-hit class proven
+> guarded); the graft-OFF full build itself aborts in `mastery_ui_audit` on the absent graft record
+> `records/skills/warfare/drx_clubslam_fissure.dbr` - a pre-existing graft-OFF/registry incompatibility, NOT a
+> cache defect. On that PASS, `tools/prefix_cache.py enabled()` now defaults **ON**; opt out with
+> `SVC_PREFIX_CACHE=0` (or off/false/no), `SVC_NO_CACHE=1` still hard-disables, `SVC_CACHE_REFRESH=1` still
+> forces a fresh store. Key/fingerprint logic and the advisory miss-to-cold fallback are UNCHANGED - staleness
+> is always a MISS (the key covers input arz md5s + prefix env flags + the whole tools/ source tree), so the
+> flip cannot change output bytes, only time. NOTE: because tools/*.py content is in the key, committing or
+> reverting any tools file changes future keys (safe MISS, one cold rebuild).
 > ⚡ **BUILD-SPEED: RECORD-INDEX (2026-07-14, main) - biggest remaining DB win, BYTE-IDENTICAL.** The extended
 > phase re-scanned all ~51k records on every `_add_monster_to_pools` call (~28 calls) and on the substring
 > `_find_record`. New shared, mutation-invalidated `_RecordIndex` (in `apply_svc_patches.py`) computes the derived

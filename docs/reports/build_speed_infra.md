@@ -227,14 +227,16 @@ universal (every arz write - DB build, deploy-delta, dry-run replays).
   for the final `set_file`+`write` instead of a 2nd 688 MB `from_file`. **Proof** (`verify_map_pack.py` TEST B):
   reuse and fresh-load both write `md5 d8adb5b7cf23ae43bdb3843bd2dbca19`.
 
-### 3. DB prefix snapshot cache (HOTSPOT 2a) - SHIPPED default-OFF, byte-identical-gated
+### 3. DB prefix snapshot cache (HOTSPOT 2a) - SHIPPED, byte-identical-gated; DEFAULT-ON since 2026-07-14
 Caches the assembled prefix state (after `create_uber_souls`, before `apply_all_extended_patches`) keyed by
 every prefix input (see `prefix_cache.py` docstring: hashseed + prefix ENV flags + 5 arz md5s [svaera
 conditional on graft] + whole-`tools/` source fingerprint). The prefix was extracted VERBATIM into
 `_run_prefix()` (a sibling-function move with ZERO reindentation; the moved block's sha was asserted identical
-by the transform). `main()` gained a thin cache boundary. **Default OFF** -> `_run_prefix` runs
-unconditionally -> byte-identical to the pre-cache build; the integrator flips the default ON only after the
-full-build gate is green. **Proofs** (`verify_cache_roundtrip.py`, no full build):
+by the transform). `main()` gained a thin cache boundary. Shipped **default OFF**; the default was flipped to
+**ON 2026-07-14** after the full-build gate went green on main @ `7c38c9e` (cold 209s and warm 134s both md5
+`b33c5a447f3a8ca652c14f78d4ad1dd4` == build40 GOLDEN; tags identical; warm HIT log-proven; graft-flip negative
+test forced a key MISS). Opt out with `SVC_PREFIX_CACHE=0`; `SVC_NO_CACHE=1` hard-disables.
+**Proofs** (`verify_cache_roundtrip.py`, no full build):
 * static: direct `a9631b7b8b1dd7fdf70d3caa2a48aa56` == restore (IDENTICAL).
 * **CONTINUE-path** (the one a static probe cannot give): restored mid-state + identical further mutation
   writes `33b9b45bc0a794b4cc3dd04c904f3dee` == the never-pickled db (IDENTICAL).
@@ -243,8 +245,8 @@ full-build gate is green. **Proofs** (`verify_cache_roundtrip.py`, no full build
   matters only when graft on).
 
 The FINAL acceptance gate is `tools/verify_cache_determinism.py` (cold-vs-warm FULL-build md5 + tags + a
-graft-flip negative test); it runs full builds, so the INTEGRATOR runs it on a clean machine (not under
-build40), and on PASS flips the cache default to ON. **Honest hit-rate caveat:** the key includes the churny
+graft-flip negative test); it ran clean on main @ `7c38c9e` (2026-07-14) and the default is now ON (evidence
+above and in `docs/BACKLOG.md` build-speed entry). **Honest hit-rate caveat:** the key includes the churny
 `apply_svc_patches` (via the whole-`tools/` fingerprint - the sound choice absent the module split), so editing
 DB content is a MISS; the cache HITs on prefix-invariant rebuilds and always removes the 4-DB memory
 co-residence on a HIT. Widening the hit set needs the prior-spec module split (S3.6, out of this scope).
