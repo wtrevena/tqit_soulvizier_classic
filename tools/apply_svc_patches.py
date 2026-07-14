@@ -9879,10 +9879,12 @@ def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
 # rig-safe + summon-safe by construction; the um_toxeus_99 SP-Toxeus lineage is
 # carried through the KIT + name, since the design mandates ShadowStalker.msh
 # which um_toxeus_99 does not use). The ROAMING SWEEP appends him at weight 1 (with a
-# per-slot limit=1 cap = <=1 per pool per trigger) to every eligible hostile trash pool
-# with each existing member weight x_EN_SWEEP_K=600 (so he stays rarer than 1/24000 per
-# main-slot = /10 vs build36a; BL-ENSLAVER-SPAWNS-V2 Will 2026-07-13); a fail-loud gate
-# proves ONLY eligible (non boss/quest/hero) pools were touched. His soul is a MANUAL summon-the-boss
+# per-slot limit=1 cap = <=1 per pool per trigger) to every eligible `undead`-family
+# trash pool (b49 breadth restrict, Will 2026-07-13 "FEW deliberate places" -- 273 pools,
+# was ~1224) with each existing member weight x_EN_SWEEP_K=600 (so he stays rarer than
+# 1/24000 per main-slot = /10 vs build36a; BL-ENSLAVER-SPAWNS-V2 Will 2026-07-13); a
+# fail-loud gate proves ONLY eligible undead (non boss/quest/hero) pools were touched.
+# His soul is a MANUAL summon-the-boss
 # (pet-of-pet: the friendly Enslaver pet auto-casts a friendly marauder summon).
 _EN_BOSS = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
 _EN_RIG_DONOR = r'records\creature\monster\shadowstalker\am_deathstalker_55_ambush.dbr'  # ShadowStalker.msh, Demon, inline anim
@@ -9981,6 +9983,37 @@ _EN_SWEEP_ALLOW_PREFIX = (
 _EN_SWEEP_BAD_SUB = ('boss', 'quest', 'hero', 'escort', 'summon', 'minion',
                      'ambush', 'unique', 'spawner', 'shrine', 'chest',
                      'telkine', 'gorgon')
+# BREADTH RESTRICT (b49 -- BL-ENSLAVER-BREADTH, Will 2026-07-13). The roaming sweep
+# had smeared the Enslaver into ~1224 of 1433 hostile trash pools (85.6% of the whole
+# bestiary, every enemy family in every act) -> Will: "seeing him ALL OVER THE PLACE,
+# not just in fixed places ... [make him] RARE + memorable (~once per act, in FEW
+# deliberate places)." Will EXPLICITLY declined an extra rate cut ("no we dont need the
+# 4x rate cut on top"), so this is a BREADTH-ONLY change: K/weight/limit are UNCHANGED
+# (per-pool p stays <= 1/24000). The sweep now rides ONLY the Enslaver's own lineage --
+# the `undead` family pools (a black Skeleton-Lord "Enslaver of Souls" on the Blood-
+# Toxeus skeleton rig belongs among the dead) -- cutting 1224 -> 273 swept pools (a 78%
+# breadth cut: Act1 91 / Act2 64 / Act3 55 / Act4 63). He is now a thematic haunt of the
+# dead instead of a universal smear. The DEPENDABLE per-act encounter is the PLACED
+# warband set-piece (q_enslaver_warband), not this rare roam (a weight-1 / K=600 member
+# in few pools is mathematically a rare surprise, by design). Tighten _EN_SWEEP_FAMILIES
+# further (or add a per-act cap) if Will wants him even rarer after a fresh-char test.
+_EN_SWEEP_FAMILIES = ('undead',)   # only pools whose `...\pools\<family>\` folder is here
+_EN_SWEEP_MIN_POOLS = 200          # gate floor: undead restrict yields ~273 (regression < 200)
+_EN_SWEEP_MAX_POOLS = 400          # gate ceiling: > 400 => the breadth restrict did NOT apply
+
+
+def _en_pool_family(nl):
+    """Enemy-family folder of a proxypool path = the segment right after `pools`
+    (e.g. records\\proxies greek\\area001\\pools\\undead\\limos_03...dbr -> 'undead';
+    records\\xpack\\proxieshades\\pools\\beast\\hydradon...dbr -> 'beast'). Returns ''
+    when there is no family folder. `nl` MUST already be lower-cased + backslash-normed.
+    Used by both the sweep's eligible() and the fail-loud verify gate so they agree."""
+    parts = nl.split('\\')
+    if 'pools' in parts:
+        i = parts.index('pools')
+        if i + 1 < len(parts):
+            return parts[i + 1]
+    return ''
 
 
 def _create_enslaver(db, tags):
@@ -10503,15 +10536,18 @@ def _verify_boss_orbs(db):
 
 def _sweep_inject_roaming_rare(db):
     """Append the Enslaver at weight 1 (with a per-slot limit=1 MAX-count cap) to every
-    ELIGIBLE hostile trash pool, scaling each existing member weight x_EN_SWEEP_K (600), so
-    he stays rarer than 1/_EN_SWEEP_CEIL (1/24000) per main-slot -- 10x rarer than build36a
-    (K=60, 1/2400), per Will 2026-07-13 "divide the current spawn rate by 10". The limit=1
-    cap makes him spawn AT MOST ONCE per pool per trigger (structural no-double; see the
-    constants block). Only touches act-trash pools (orient/egypt/greek/hades) whose basename
-    carries no boss/quest/hero/summon marker, whose resolvable name members are all
-    Class=Monster, that have a free name slot (< 18), and whose x_EN_SWEEP_K name-weight
-    total reaches >= _EN_SWEEP_CEIL (so the weight-1 append satisfies the p_slot ceiling).
-    Breadth is identical to build36a (the floor keys off ORIGINAL weight, not K).
+    ELIGIBLE `undead`-family trash pool, scaling each existing member weight x_EN_SWEEP_K
+    (600), so he stays rarer than 1/_EN_SWEEP_CEIL (1/24000) per main-slot -- 10x rarer than
+    build36a (K=60, 1/2400), per Will 2026-07-13 "divide the current spawn rate by 10". The
+    limit=1 cap makes him spawn AT MOST ONCE per pool per trigger (structural no-double; see
+    the constants block). Only touches act-trash pools (orient/egypt/greek/hades) whose
+    `...\\pools\\<family>\\` folder is in _EN_SWEEP_FAMILIES (b49 BREADTH RESTRICT: `undead`
+    only -- his own lineage -- 273 pools, was ~1224; Will "FEW deliberate places", rate
+    UNCHANGED), whose basename carries no boss/quest/hero/summon marker, whose resolvable
+    name members are all Class=Monster, that have a free name slot (< 18), and whose
+    x_EN_SWEEP_K name-weight total reaches >= _EN_SWEEP_CEIL (so the weight-1 append
+    satisfies the p_slot ceiling). Frequency within those pools is identical to build36a
+    (the floor keys off ORIGINAL weight, not K); only BREADTH was cut.
     Returns the list of touched pool record names."""
     if not db.has_record(_EN_BOSS):
         print("  ENSLAVER SWEEP: boss record missing; skipped")
@@ -10535,6 +10571,11 @@ def _sweep_inject_roaming_rare(db):
         if base.startswith(('q_', 'sq', 'xsq', 'mq', 'svc_')):
             return False
         if any(b in base for b in _EN_SWEEP_BAD_SUB):
+            return False
+        # BREADTH RESTRICT (b49): ride ONLY the Enslaver's own lineage -- the `undead`
+        # family pools -- not all ~1224 hostile trash pools (see _EN_SWEEP_FAMILIES).
+        # Path-based, so it is independent of the K x-scaling; K/weight/limit unchanged.
+        if _en_pool_family(nl) not in _EN_SWEEP_FAMILIES:
             return False
         # all resolvable name members must be hostile Class=Monster
         names = [gv(n, 'name%d' % i) for i in range(1, 19)]
@@ -10584,9 +10625,10 @@ def _sweep_inject_roaming_rare(db):
         db.set_field(n, 'limit%d' % free, _EN_SWEEP_SLOT_LIMIT, I)   # structural: <=1 enslaver/trigger
         db._modified.add(n)
         touched.append(n)
-    print("  ENSLAVER SWEEP: injected the roaming Enslaver into %d eligible hostile "
-          "trash pool(s) (each existing weight x%d, him at weight 1)"
-          % (len(touched), _EN_SWEEP_K))
+    print("  ENSLAVER SWEEP: injected the roaming Enslaver into %d eligible %s-family "
+          "trash pool(s) (b49 breadth restrict, was ~1224; each existing weight x%d, him "
+          "at weight 1, limit 1)"
+          % (len(touched), '/'.join(_EN_SWEEP_FAMILIES), _EN_SWEEP_K))
     return touched
 
 
@@ -10650,6 +10692,13 @@ def _verify_roaming_sweep(db, touched):
         if base.startswith(('q_', 'sq', 'xsq', 'mq', 'svc_')) or \
                 any(b in base for b in _EN_SWEEP_BAD_SUB):
             problems.append(f"TOUCHED BOSS/QUEST/HERO POOL: {n}")
+        # (2b) BREADTH RESTRICT (b49): every swept pool must be an `undead`-family pool
+        # (the Enslaver's own lineage). Any other family = a breadth leak (he escaped
+        # back into the general bestiary "all over the place").
+        if _en_pool_family(nl) not in _EN_SWEEP_FAMILIES:
+            problems.append(f"NON-LINEAGE SWEPT POOL (breadth leak): {n} "
+                            f"(family={_en_pool_family(nl)!r}; b49 restricts the roaming "
+                            f"sweep to families {_EN_SWEEP_FAMILIES})")
         # (3) enslaver at weight 1, per-slot limit=1 (structural cap), p_slot <= 1/24000
         wtotal = 0
         enl_w = None
@@ -10705,9 +10754,15 @@ def _verify_roaming_sweep(db, touched):
 
     if not derived:
         problems.append("sweep touched ZERO pools (roaming Enslaver would never appear)")
-    elif len(derived) < 500:
-        problems.append(f"sweep touched only {len(derived)} pools (< 500 floor; "
-                        f"a regression likely narrowed eligibility)")
+    elif len(derived) < _EN_SWEEP_MIN_POOLS:
+        problems.append(f"sweep touched only {len(derived)} pools "
+                        f"(< {_EN_SWEEP_MIN_POOLS} floor; the b49 undead-family restrict "
+                        f"should yield ~273 -- a regression over-narrowed eligibility)")
+    elif len(derived) > _EN_SWEEP_MAX_POOLS:
+        problems.append(f"sweep touched {len(derived)} pools "
+                        f"(> {_EN_SWEEP_MAX_POOLS} ceiling; the b49 undead-family breadth "
+                        f"restrict did NOT apply -- the Enslaver is smearing across "
+                        f"non-undead pools again, the exact 'all over the place' bug)")
 
     if problems:
         for p in problems[:20]:
@@ -10715,14 +10770,15 @@ def _verify_roaming_sweep(db, touched):
         raise SystemExit(
             f"Enslaver roaming-sweep gate FAILED: {len(problems)} problem(s) "
             f"(see offenders above)")
-    print(f"  Roaming-sweep gate OK: {len(derived)} eligible hostile trash pools "
-          f"carry the Enslaver at weight 1 (p_slot <= 1/{int(_EN_SWEEP_CEIL)}), 0 dedicated "
-          f"(basename) boss/quest/hero/escort/friendly pools touched; 19 general "
-          f"trash pools legitimately contain rare low-weight hero MEMBERS per "
-          f"vanilla (the roaming rare walks among area heroes), boss+marauder at "
-          f"band {_EN_BAND}. Leak guard: all {len(all_enslaver_pools)} "
-          f"enslaver-bearing pools are swept-or-yard ({len(_EN_YARD_POOLS)} "
-          f"whitelisted yard pool(s) at weight 100 excluded from the weight-1 rule).")
+    print(f"  Roaming-sweep gate OK: {len(derived)} eligible "
+          f"{'/'.join(_EN_SWEEP_FAMILIES)}-family trash pools "
+          f"carry the Enslaver at weight 1 (p_slot <= 1/{int(_EN_SWEEP_CEIL)}), limit 1; "
+          f"b49 BREADTH RESTRICT holds (band {_EN_SWEEP_MIN_POOLS}-{_EN_SWEEP_MAX_POOLS}, "
+          f"was ~1224 all-family) -- 0 non-lineage / boss / quest / hero / escort / friendly "
+          f"pools touched; boss+marauder at band {_EN_BAND}. Leak guard: all "
+          f"{len(all_enslaver_pools)} enslaver-bearing pools are swept-or-yard "
+          f"({len(_EN_YARD_POOLS)} whitelisted yard/warband pool(s) at weight 100 excluded "
+          f"from the weight-1 rule).")
 
 
 def _apply_d8_d9_summon_souls(db, tags):

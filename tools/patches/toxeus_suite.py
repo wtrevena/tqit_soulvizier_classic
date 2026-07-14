@@ -425,11 +425,16 @@ def _sweep_inject_legendary_stalker(db):
     xpack\\proxieshades ONLY), so his per-slot probability stays <= 1/2400 (a genuine rare
     hunter). Parallels the Enslaver's _sweep_inject_roaming_rare with two deliberate differences:
       (1) Hades-only prefix (he only appears in Act-4/Hades -> "effectively Legendary" endgame);
-      (2) the Enslaver sweep ALREADY RAN (in the monolith) and x600'd (asp._EN_SWEEP_K) these pools'
-          member weights + added itself at weight 1, so this sweep does NOT re-multiply (that would
-          break the Enslaver's weight-1 invariant + over-inflate); it appends the stalker at
-          weight 1 into a free slot, which keeps BOTH rares at weight 1 with p_slot <= 1/2400 (a pool
-          the Enslaver already qualified has total >= 24000, so 1/(total+1) << 1/2400).
+      (2) the Enslaver sweep ALREADY RAN (in the monolith). Where the Enslaver is PRESENT (its
+          `undead` pools) it already x600'd (asp._EN_SWEEP_K) the member weights, so this sweep
+          does NOT re-multiply those (that would double-scale + break the weight-1 invariant); it
+          just appends the stalker at weight 1 into a free slot (total >= 24000 -> p_slot << 1/2400).
+          Where the Enslaver is ABSENT (b49: it now scales ONLY undead pools, so the ~282 non-undead
+          Hades pools it used to scale are back at original weights), this sweep TAKES OVER the same
+          x600 itself (same floor) so the Hunt keeps its FULL Hades breadth + identical 1/24000 rarity
+          instead of collapsing to the 63 undead pools. Behavior-neutral for those pools (a uniform
+          scale preserves relative spawn odds); the ONLY net arz change vs build38 is the Enslaver
+          leaving the non-undead pools.
     Like the Enslaver v2 sweep, the appended slot carries a per-slot limit=1 (_LS_SLOT_LIMIT) MAX-count
     cap: pool mains draw WITH REPLACEMENT, so without it a pack pool (spawnMax>1) could surface 2+ Hunts
     in ONE trigger -- the exact "two-in-one-trigger" defect just fixed for the Enslaver. With limit=1 the
@@ -470,19 +475,25 @@ def _sweep_inject_legendary_stalker(db):
                 return False
         return True
 
+    enl_lc = asp._EN_BOSS.replace('/', '\\').lower()
     touched = []
+    self_scaled = 0
     for n in sorted(db.record_names()):
         if not is_pool(n) or not eligible(n):
             continue
         used = []
         wtotal = 0
         already = False
+        has_enslaver = False
         for i in range(1, 19):
             nm = gv(n, 'name%d' % i)
             if nm and str(nm).strip():
                 used.append(i)
-                if str(nm).replace('/', '\\').lower() == hunt_lc:
+                nml = str(nm).replace('/', '\\').lower()
+                if nml == hunt_lc:
                     already = True
+                elif nml == enl_lc:
+                    has_enslaver = True
                 w = gv(n, 'weight%d' % i)
                 try:
                     wtotal += int(w) if w else 0
@@ -493,6 +504,30 @@ def _sweep_inject_legendary_stalker(db):
         free = next((i for i in range(1, 19) if i not in used), None)
         if free is None:                     # at 18-slot cap
             continue
+        # b49 BREADTH COUPLING (Will 2026-07-13): the Enslaver sweep now x600's ONLY the
+        # `undead` family pools ("FEW deliberate places"), so the non-undead Hades pools it
+        # used to scale no longer clear the Hunt's 1/2400 rarity floor. The Hunt's full Hades
+        # breadth was previously a SIDE EFFECT of the Enslaver x600'ing EVERY Hades pool; make
+        # it self-sufficient so the Hunt is PRESERVED EXACTLY (same ~345 pools, same 1/24000
+        # p_slot) instead of collapsing to the 63 undead Hades pools. When the Enslaver is
+        # ABSENT (pool not undead-scaled), take over the SAME x600 (asp._EN_SWEEP_K), gated by
+        # the Enslaver's OWN qualifier (asp._EN_SWEEP_CEIL over the original wtotal) so the
+        # Hades pool SET is identical. When the Enslaver IS present the pool is already x600'd
+        # -> do NOT re-scale (no double-scale). Net effect on the Enslaver: NONE (it already
+        # left these pools); this is behavior-neutral (a uniform scale preserves relative
+        # spawn odds) and just relocates the x600 from the Enslaver sweep to here.
+        if not has_enslaver:
+            if wtotal <= 0 or (asp._EN_SWEEP_K * wtotal + 1) < asp._EN_SWEEP_CEIL:
+                continue                     # below the Enslaver floor -> never x600'd -> skip
+            for i in used:
+                w = gv(n, 'weight%d' % i)
+                try:
+                    w = int(w) if w else 0
+                except (TypeError, ValueError):
+                    w = 0
+                db.set_field(n, 'weight%d' % i, w * asp._EN_SWEEP_K, I)
+            wtotal *= asp._EN_SWEEP_K
+            self_scaled += 1
         if wtotal < 2399:                    # weight-1 append must keep p_slot <= 1/2400
             continue
         db.set_field(n, 'name%d' % free, _HUNT_MONSTER, S)
@@ -501,9 +536,10 @@ def _sweep_inject_legendary_stalker(db):
         db._modified.add(n)
         touched.append(n)
     print("  [C] STALKER SWEEP: injected the roaming Hunt into %d eligible Hades trash pool(s) "
-          "(weight 1, per-slot limit 1 = <=1 Hunt/trigger; existing weights untouched to preserve "
-          "the Enslaver's invariant)"
-          % len(touched))
+          "(weight 1, per-slot limit 1 = <=1 Hunt/trigger); %d of them self-x600'd here "
+          "(non-undead pools the b49 Enslaver breadth-restrict no longer scales -- Hunt breadth "
+          "preserved, was ~345)"
+          % (len(touched), self_scaled))
     return touched
 
 

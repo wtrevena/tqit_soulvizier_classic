@@ -1,7 +1,8 @@
 # b49 - ENSLAVER BREADTH RCA (roaming smear, not rate)
 
-Branch `feat/b49-enslaver-rate` (base `d11d3c0`, current main w/ `_EN_SWEEP_K=600`). Read-only
-RCA; NO fixes. Report is the deliverable. Ground truth = `baseline_build38.arz`
+Branch `feat/b49-enslaver-rate` (base `d11d3c0`, current main w/ `_EN_SWEEP_K=600`).
+**RCA + BREADTH-CUT FIX (round 1) both DONE** (fix in the section directly below; RCA analysis
+follows it). Ground truth = `baseline_build38.arz`
 (MD5 `fcd5dcab40359aa94b421dd8cef4b81e`, == the DEV/Steam arz Will plays), probed with
 `tools/arz_patcher.ArzDatabase`. K comparison cross-checked against the base game
 `database.arz`.
@@ -12,6 +13,67 @@ RCA; NO fixes. Report is the deliverable. Ground truth = `baseline_build38.arz`
 > (`_EN_SWEEP_K` stays 600, per-pool p <= 1/24000 unchanged).
 
 Target monster = `um_toxeus_enslaver_99` (the roaming black Skeleton-Lord "Enslaver of Souls").
+
+---
+
+## IMPLEMENTATION (round 1, this branch) - BREADTH CUT DONE + verified (no heavy build)
+
+**Design decision:** BREADTH ONLY, rate untouched (Will: "no we dont need the 4x rate cut on
+top"). Restrict the roaming sweep to the Enslaver's own lineage - the **`undead` family pools**
+- so he stops being a universal smear and becomes a thematic haunt of the dead. `_EN_SWEEP_K`
+stays **600**, weight stays 1, limit stays 1, `_EN_SWEEP_CEIL`/`_EN_SWEEP_MAX_P` untouched.
+
+**Files changed (2; DB-lane only, no map/quest/navmesh touch):**
+
+1. **`tools/apply_svc_patches.py`** - the Enslaver roaming sweep now rides ONLY `undead`-family
+   pools. New `_EN_SWEEP_FAMILIES = ('undead',)` + `_en_pool_family()` helper; `eligible()`
+   gains a one-line family filter (`\pools\<family>\` == undead); `_verify_roaming_sweep()`
+   gains a per-pool family assertion **and a pool-count BAND** (`_EN_SWEEP_MIN_POOLS=200` ..
+   `_EN_SWEEP_MAX_POOLS=400`, replacing the now-stale `< 500` floor) so the gate FAILS LOUD if
+   the restrict silently no-ops (`> 400` = the smear came back) or over-narrows (`< 200`).
+   **Result: 1224 -> 273 swept pools (Act1 91 / Act2 64 / Act3 55 / Act4 63), a 78% cut.**
+
+2. **`tools/patches/toxeus_suite.py`** - the co-swept Hunter (`um_toxeus_hunt_99`,
+   `_sweep_inject_legendary_stalker`) made **self-sufficient to PREVENT COLLATERAL**. The Hunter
+   appended itself at weight 1 only where a pool's wtotal was already `>= 2399` - which it got
+   for free from the Enslaver sweep having x600'd EVERY Hades pool. Cutting the Enslaver to
+   undead-only would have collapsed the Hunter **345 -> 63** Hades pools (measured). Fix: when
+   the Enslaver is ABSENT from an eligible Hades pool, the Hunter now applies the SAME x600
+   itself (same floor), so it keeps its FULL 345-pool Hades breadth + identical 1/24000 rarity.
+   Behavior-neutral (a uniform scale preserves relative spawn odds); the x600 just moves from
+   the Enslaver sweep to the Hunter sweep. **Net arz change vs build38 = ONLY the Enslaver
+   leaving the 951 non-undead pools; the Hunter is byte-set-preserved.**
+
+**Verification** - dry-run replay on an in-memory COPY of `baseline_build38.arz` (disk arz
+untouched), executing the **REAL modified sweeps + both fail-loud gates**
+(`scratchpad/b49_dryrun2.py`; reconstructs the gate-time pre-sweep DB by reversing the x600 +
+stripping both rares, then re-runs the production code):
+
+| check | result |
+|---|---|
+| Enslaver breadth | `pools_before=1224 -> pools_after=273` (91/64/55/63) |
+| Enslaver gate `_verify_roaming_sweep` | **PASSED**; every touched pool undead / weight 1 / limit 1 / p_slot <= 1/24000 |
+| Hunter breadth | `345 -> 345, preserved=YES (added=0, lost=0)`; 282 self-x600'd |
+| Hunter gate `_verify_legendary_stalker_sweep` | **PASSED** |
+| scoped diff | 63 undead Hades = both rares; 282 non-undead Hades = Hunter+x600, NO enslaver; 669 de-listed non-Hades = 0 enslaver + 0 residual x600 (fully reverted) |
+| structural | enslaver + hunter both weight=1 / limit=1 (0 violations) |
+| rate | `_EN_SWEEP_K = 600` UNCHANGED (asserted); CEIL/MAX_P untouched |
+| static warband | `q_enslaver_warband` (placed in blood cave) + yard whitelist untouched |
+| gates | `py -m py_compile` both files OK; `tools/patches/_check_registry.py` OK (11 modules) |
+
+**AGGREGATE (undead-273, K=600):** roaming ~0.03-0.11 sightings/act on a thorough clear
+(Act3 lowest ~0.01-0.03) - a rare thematic surprise among the dead, **below once/act BY
+DESIGN** (a weight-1 / K=600 member in few pools is mathematically rare; Will forbade a rate
+change). The dependable per-encounter beat is the PLACED warband set-piece, not the roam.
+
+**Knob if Will wants him even rarer / in fewer haunts after a real test:** tighten
+`_EN_SWEEP_FAMILIES` or add a per-act zone cap (RCA Option B -> ~20-40 pools) and lower
+`_EN_SWEEP_MIN_POOLS` to match. One-line change; the gate band self-documents the target.
+
+> ⚠️ **PERSISTED-SAVE - Will MUST test on a FRESH Custom-Quest char or a never-visited area.**
+> His `_Toxeus` baked build36a-rate (K=60, 10x) Enslavers into every explored zone; NO arz or
+> code can rewrite those. Re-walking old Greece/Egypt will STILL show the old smear and is NOT
+> a valid test of this fix. See section 6 for the decisive in-game test.
 
 ---
 
