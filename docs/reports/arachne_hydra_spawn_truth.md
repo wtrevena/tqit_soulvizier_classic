@@ -5,6 +5,14 @@ claim below was re-computed from the build40 arz (`work/.../SoulvizierClassic.ar
 `b33c5a44...`), the base game arz/map, `upstream/soulvizier_098i`, the DEPLOYED DEV/DEV2/canonical
 maps, and Will's live `_Toxeus` character save. Worktree `feat/arachne-hydra-truth` @ `e993a33`.
 
+> **➡️ CAUSE ADJUDICATION (2026-07-14, independent second pass) is in [Section 7](#7-cause-adjudication-2026-07-14--second-independent-pass) at the bottom.**
+> It stress-tests the save-baking claim against the ACTUAL save topology (found + parsed), proves the
+> proxy is quest-UNCONDITIONAL, refutes the version and quest-window theories with evidence, ranks the
+> causes with honest confidence, and gives Will a plain-English WHAT WE KNOW / WHAT WE DON'T / HOW TO
+> PROVE IT plus the cheapest decisive in-game test. **Headline: there is no "baked" monster state
+> anywhere in the save to keep her away - the save-baking story has zero supporting artifact; her
+> absence was a per-visit/runtime condition on his old instance, not a build defect.**
+
 Will's question (paraphrased): "b51 + the E/L audit both say Arachne's spawn is byte-identical to
 SV098 and her placement is present, yet she did NOT appear on my Epic playthrough. How can she be
 intact yet absent? Did I test a wrong version? And check the HYDRA too (another Legendary-only
@@ -273,3 +281,154 @@ settled in-game:
   state (not monster bake), `map.dat` is 196 B, and that the save has no per-level monster record.
 - `ah_char.py` - Player.chr (level 52, ~65 h) + baked JG06/JG14/Tegea quest states (all lore triggers).
 - `ah_inv.py` - inventory soul scan (26 souls; no Arachne's Shame soul, no Hydra soul).
+- `ct_probe.py` / `ct_probe2.py` (adjudication pass) - FULL proxy field dump (proves `quest=0`, no gating);
+  `fowData.arz` ARC entry listing (pure fog); SV098-vs-build40 proxy field equality; deployed-arz md5s.
+
+---
+
+## 7. CAUSE ADJUDICATION (2026-07-14, second independent pass)
+
+This section does NOT assume "save-baking." It went back to the raw save and the raw proxy record and
+re-derived everything, specifically to answer Will's real question honestly: **how can she be intact
+yet absent, and is it a version thing or a real bug?**
+
+### 7.1 New hard evidence gathered this pass (all re-derived, read-only)
+
+1. **His save topology (found + fully parsed).** `SaveData/User/_Toxeus/` has THREE world-state trees:
+   - `Levels_world_world01.map/` **Epic** (map.dat `mapPath=Levels/world/world01.map`,
+     `modName=SoulvizierClassicDEV`) - 255 quest `.que`, `fowData.arz`, Quest/QuestToken. **This is the
+     Epic playthrough he is asking about.**
+   - `Levels_world_world01.map/` **Normal** - 259 `.que` + fow (his full Normal campaign).
+   - `Levels_merged_world_world01.map/` **Normal** only (map.dat `mapPath=Levels_merged/world/world01.map`,
+     `modName=SoulvizierClassic` - the PUBLIC workshop mod) - **0 `.que`, no fow**: a barely-touched
+     leftover from loading the public build once. Not the Epic instance.
+2. **He DID enter/explore the Epic Fetid Lair.** His **Epic** `fowData.arz` (134 explored levels, all
+   Greece) **contains `fow/.../ug_arachnosunderground/arachnosunderground01_floor0.fow`.** So the
+   "he never went in on Epic -> real bug" branch **does NOT fire.** He was in the cave.
+3. **There is NO per-level monster/kill state anywhere in the save.** Exhaustive file-type census of the
+   ENTIRE `_Toxeus` tree = only `chr` (character), `dat` (196 B position), `myw` (quest journal), `que`
+   (quest/trigger state), `arz`(=`fowData`, an ARC of fog bitmaps), `dxb/dxg` (UI). The `.que` files are
+   quest/trigger state machines (`crcFile`, `active`, `hasFired`, `conditionCount`, `isSatisfied`,
+   `actionCount`); count ~255-259 tracks the ~256 loadable QUESTS registry, NOT levels. `fowData.arz`
+   was confirmed to hold **ONLY `.fow` bitmaps (0 non-fow entries)**. **Conclusion: the save has no
+   sink that could store "Arachne's layout in ArachnosUnderground on Epic." There is nothing baked.**
+4. **The Arachne proxy is quest-UNCONDITIONAL.** Full field dump of
+   `records\proxies quest\greece\journal\jg06_arachnospool - poisonspring c.dbr` (build40 overlay):
+   `Class=Proxy`, `quest=0`, `DisplayAsQuestItem=0`, and **no** `questFile` / spawn-condition / token /
+   trigger field of any kind. On level load it simply rolls its per-difficulty pool when the player
+   nears it. **Epic -> `poolEpic1 = JG06_Arachnos_PoolB = spiderblackwidow01` (Boss, weight 10 / limit 1
+   = one guaranteed spawn); limits `HeroLimit_All [1,75]` do not clamp Epic.** This **refutes** a
+   widow-letter-style "quest registered past the 254 load window" bug for Arachne - her spawn does not
+   depend on any quest loading.
+5. **The Epic guarantee is a MOD override, and it is version-invariant.** The BASE proxy has only
+   `pool1` (orbweavers, no boss). The mod arz adds `poolEpic1`/`poolLegendary1-3 = PoolB` + swaps the
+   difficulty/limits files. That override is **inherited verbatim from SV098**: SV098-vs-build40 differ
+   ONLY by path lower-casing (`Records\` -> `records\`, `PoolB` -> `poolb`; same targets), and
+   `JG06_Arachnos_PoolB` is byte-identical. No build tool touches this proxy (grep of `tools/`).
+6. **Deployed = intact.** `SoulvizierClassicDEV.arz` **and** `SoulvizierClassicDEV2.arz` **and** canonical
+   `work/.../SoulvizierClassic.arz` are all **md5 `b33c5a44...` (55,351,206 B) - byte-identical.**
+
+### 7.2 The save-baking hypothesis - STRESS-TESTED, and it fails as told
+
+The claim we kept repeating was: *"TQ bakes the monster spawn into the save on first visit, so his
+already-visited Epic Fetid Lair keeps its original (empty) roll forever."* Tested against the actual
+save, **this specific mechanism is refuted: there is no artifact in the save that stores a monster
+roll or layout for any level** (7.1 #3). Whatever the engine does, it is **not** writing "Arachne is
+absent from ArachnosUnderground01 on Epic" to disk - there is no file that could hold it. The only
+per-region things persisted are fog (doesn't gate spawns) and quest/trigger state (and her proxy is
+`quest=0`, so it is not gated by any of it).
+
+The natural reading of "no monster state on disk" is that **the engine regenerates each region's
+monster population from the DB at load time** (which is also why non-quest heroes are farmable in TQ,
+and why "killed bosses stay dead" is enforced only for quest/token bosses - Arachne is NOT one). Under
+that model her absence on his single recorded pass was a **transient, per-visit condition**, and on any
+**fresh load of that cave with the current DEV arz she is guaranteed to (re)appear** - provided he
+paths into her proxy's activation radius. **Honesty caveat:** I cannot *prove* the engine's
+regenerate-vs-hold model from static files (the repo's own `B-SPRITE-1` shows one spawner class whose
+leave-and-return refill was never confirmed), so I do not claim it as fact - but every on-disk fact we
+have is consistent with regeneration and **none** supports a persisted empty bake.
+
+### 7.3 All causes, ranked by evidence (honest confidence)
+
+| # | Candidate cause | Verdict | Why |
+|---|---|---|---|
+| **A** | **Transient per-visit non-production of her proxy on his old Epic instance** (he never pathed to her exact spawn node on that pass, OR that pass ran with the mod's Epic override not in effect - e.g. an early/stale DEV deploy or a non-mod load - so the proxy fell back to base `pool1` orbweavers) | **LEADING** | Only explanation consistent with ALL facts: chain intact+guaranteed+version-invariant, no on-disk bake, proxy unconditional. Predicts she reappears on a fresh Epic entry now. NOT a build defect. |
+| B | Hidden/engine-side bake we cannot decode captured an empty first-visit roll | POSSIBLE (weak) | Can't be excluded from static files, but the exhaustive census found **no** candidate file; nothing supports it. |
+| C | He killed her and got no soul drop | UNLIKELY as a *permanent* cause | She is `quest=0` with NO token/persistence sink, so a kill cannot be recorded as permanent; under regeneration she'd be back. (A kill on a *prior* pass does not keep her away now.) |
+| D | Wrong difficulty | REFUTED | Epic fow proves he was on Epic; she is Epic-guaranteed. |
+| E | Wrong version / DEV build switch | REFUTED | mapPath + modName stable; DEV/DEV2/canonical arz byte-identical; override verbatim from SV098; every DEV build (38a/39/40) carries the same chain. |
+| F | Quest-window bug (like the widow letter) | REFUTED | Her proxy is `quest=0`, unconditional; her spawn does not depend on any quest loading. |
+
+**Overall confidence: MODERATE that this is a his-instance / per-visit artifact and NOT a current-build
+defect.** High confidence on the static facts (A's *predicate*: she is intact, guaranteed, unconditional,
+version-invariant, with no on-disk bake). The residual uncertainty is purely *runtime*: the exact reason
+her proxy produced no boss on that one pass, and the engine's regenerate-vs-hold model - neither
+decidable from files. That is what the in-game test settles.
+
+### 7.4 FOR WILL - plain English
+
+**WHAT WE KNOW (proven from your files):**
+- You were **on Epic**, and you **did go into the Fetid Lair on Epic** (your Epic map's fog-of-war has
+  that exact cave in it).
+- Arachne's Shame is **supposed to be there on Epic** - guaranteed, one spider, not a random chance -
+  and that is baked into the mod database you are running **right now** (DEV and DEV2 are the same file,
+  byte-for-byte, as the canonical build40).
+- It is **not a version problem.** Every DEV build you have run carries the identical, intact Arachne
+  data. Switching build38a/39/40 would change nothing about her.
+- It is **not** the widow-letter kind of bug: her appearance does **not** depend on any quest loading.
+- The Hydra is a **red herring**: she is **Legendary-only**, and you have **never played Legendary**
+  (your save has only Normal and Epic folders), and you never even reached Athens on Epic. You could not
+  have seen her. Nothing is wrong with her either.
+
+**WHAT WE DON'T KNOW (and I will not pretend to):**
+- Exactly **why her proxy produced no spider on your one Epic pass** through that cave. The save stores
+  **no** record of monster spawns/kills for any level, so the files literally cannot tell us whether
+  (a) you walked past without triggering her spot, or (b) that pass ran before/without the Epic boss
+  data being live, or (c) something at runtime we can't see.
+- Whether TQ **re-rolls** that cave's monsters when you leave and come back, or **freezes** your old
+  visit. The file evidence leans "re-rolls" (there is nothing frozen on disk), but I can't prove it
+  statically.
+
+**HOW TO PROVE IT (pick the cheapest that answers it):**
+
+1. **Cheapest, do this first - re-enter on your existing `_Toxeus` (Epic).** Restart Steam + TQ (so the
+   deploy is fresh and the cave isn't held in memory), load `_Toxeus`, **rebirth/portal to a town or walk
+   a few regions away** so the Fetid Lair unloads, then **walk back into it and cover the whole floor.**
+   - **She appears** -> the engine re-rolls the region; your earlier miss was transient; the mod is fine.
+     Case closed.
+   - **She does NOT appear** -> either your instance is frozen (then do test 2) or there's a runtime
+     factor (then do test 3). Either way it is still not a data/version defect - the data is proven good.
+2. **Clean fresh-instance test on DEV2** (removes any doubt about your old instance). On
+   `SoulvizierClassicDEV2` (arz identical to canonical), take a character that reaches **Epic** into a
+   Fetid Lair it has **never entered on Epic**, walk the whole floor. **She must appear.** (This needs an
+   Epic-capable character; your `_Toxeus` has already instanced the only Epic Fetid Lair, so a truly
+   "never-visited" Epic entry means a different/levelled test char.)
+3. **Instrumented run (settles a runtime-only factor).** If tests 1-2 disagree with the static proof,
+   attach the existing Frida harness and watch the spawn resolve as the cave loads (7.5).
+
+### 7.5 Frida spawn-probe plan (harness ready; one RE step to finish the hook)
+
+The attach/inject harness already exists and is proven: `scripts/crash_probe/rltd_crash_probe.js`,
+`scripts/crash_probe/run_crash_probe.py`, `docs/crash/WILL_CRASH_PROBE_GUIDE.md` (used for the
+navmesh/`ProcessRLTD` region work). Reuse that runner and guide verbatim; the ONLY new work is the hook
+target:
+- **What to hook:** the proxy-resolution / pool-roll / monster-instantiation path that fires when a
+  region streams in - i.e. where `jg06_arachnospool - poisonspring c` selects `poolEpic1` and
+  instantiates `spiderblackwidow01`. Log: which pool slot was chosen for the active difficulty, the
+  rolled member name, and the spawned monster's `monsterClassification`.
+- **Honest status:** only `ProcessRLTD` (navmesh, VA-identified) is RE'd so far; the spawn/proxy
+  function address is **not yet identified** in this repo, so this is a **ready plan, not a
+  ready-to-run script** - it needs the spawn-resolution routine located in `Engine.dll`/`Game.dll`
+  first (start from the proxy record read or the monster-factory call, same disassembly workflow the
+  crash probe used). Trigger point: attach, then walk a **freshly loaded** Fetid Lair on Epic (test 1
+  or 2 conditions) so the hook fires on entry.
+
+### 7.6 Bottom line
+
+Nothing in the current build is broken for Arachne or the Hydra. Arachne is intact, Epic-guaranteed,
+unconditional, and version-invariant; the Hydra is correct base-game Legendary-only content Will has
+never been able to reach. Arachne's absence on his old Epic save is a **per-instance / per-visit runtime
+artifact with no on-disk cause** - the "save-baking" story has **no supporting artifact** and is refuted
+as told. **No DB or map change is warranted** (editing her intact guarantee would be a forbidden
+rebalance). The one open item is empirical, and the cheapest way to close it is test 1 (re-enter on
+`_Toxeus` Epic).
