@@ -25,7 +25,7 @@ from build_section_surgery import (
     APPEND_0X06_SPECS, append_0x06_descriptors,
     REMOVE_0X05_BY_0X14_UID_SPECS, remove_0x05_instances_by_0x14_uid,
     REMOVE_BY_DBR_SPECS, remove_0x05_instances_by_dbr,
-    REMOVE_DANGLING_SHRINE_SPECS, REMOVE_STRAY_PROP_SPECS,
+    REMOVE_DANGLING_SHRINE_SPECS, REMOVE_STRAY_PROP_SPECS, REMOVE_ARENA_BLOCKOUT_SPECS,
     FLAG_UID_SPECS, set_0x05_flags_uid, build_teleport_shrine_group_record)
 
 # --- GROUPS parsing ---
@@ -1332,6 +1332,42 @@ def main():
          f'{len(REMOVE_STRAY_PROP_SPECS)} '
          f'(missing: {sorted(set(REMOVE_STRAY_PROP_SPECS) - set(_m14_per_level))})')
     assert _m14_total == 1, f'M14 expected 1 de-placement (tombstone), got {_m14_total}'
+
+    # --- M16: DE-PLACE the Boss Arena blockout mannequin (b43, 2026-07-13) ---------------
+    # Same mechanism as M2/M6/M14; distinct concern (an SV Player-class debug mannequin left
+    # on the bare Boss Arena floor). See build_section_surgery.REMOVE_ARENA_BLOCKOUT_SPECS for
+    # the RCA. boss_arena.lvl is an SV-only level -> only the converted_blobs branch matches.
+    print('\n=== M16: de-placing the Boss Arena blockout mannequin ===')
+    _m16_total = 0
+    _m16_per_level = {}
+    for i, lv in enumerate(ae_levels):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_ARENA_BLOCKOUT_SPECS:
+            if i in ae_patched_blobs:
+                _base = ae_patched_blobs[i]
+            elif _r09_swap and i == _r09_swap[0]:
+                _base = _r09_swap[1]
+            else:
+                _base = ae_data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+            newb, n = remove_0x05_instances_by_dbr(
+                _base, REMOVE_ARENA_BLOCKOUT_SPECS[lv_key], lv_key)
+            ae_patched_blobs[i] = newb
+            _m16_total += n
+            _m16_per_level[lv_key] = n
+    for i, lv in enumerate(sv_only):
+        lv_key = lv['fname'].replace('\\', '/').lower()
+        if lv_key in REMOVE_ARENA_BLOCKOUT_SPECS:
+            newb, n = remove_0x05_instances_by_dbr(
+                converted_blobs[i], REMOVE_ARENA_BLOCKOUT_SPECS[lv_key], lv_key)
+            converted_blobs[i] = newb
+            _m16_total += n
+            _m16_per_level[lv_key] = n
+    print(f'  M16: de-placed {_m16_total} instance(s) across {len(_m16_per_level)} level(s)')
+    assert len(_m16_per_level) == len(REMOVE_ARENA_BLOCKOUT_SPECS), \
+        (f'M16 touched {len(_m16_per_level)} levels, expected '
+         f'{len(REMOVE_ARENA_BLOCKOUT_SPECS)} '
+         f'(missing: {sorted(set(REMOVE_ARENA_BLOCKOUT_SPECS) - set(_m16_per_level))})')
+    assert _m16_total == 1, f'M16 expected 1 de-placement (malepc01 mannequin), got {_m16_total}'
 
     # DATA section: SVAERA blobs (with patches) + SV-only blobs
     print('  Building DATA section...')
