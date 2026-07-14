@@ -72,6 +72,61 @@
 >   the 8 repointed mastery icons + Dream background render (no black pane, no missing icons); Earth Rupture chain
 >   shows ONE Rupture with the reflowed layout. Screenshots requested.
 >
+> 🧪 **BUILD40 GATE RECORD (2026-07-14, main HEAD `32ea0e8` + this BACKLOG commit) - FULL coupled canonical + TESTHUB
+> build GREEN; 12 b40-integ lanes (b41-b53 minus b51 docs-only) at `d8485fe` + the warden P1 fix at `32ea0e8`.** First
+> build to ship the b41/b42/b43/b45/b46/b47 CANONICAL map changes + b48 established returns (canonical rebuild since
+> build36a); DB carries b42 chests/nova + b43 arena/Aithon + b49 enslaver/hunt + b50 pet-white + b52 Dagon + b53 orb.
+> Staged to `work/` + `local/`, NOT deployed; canonical Steam build36a stays LIVE; DEV deploy pending a TQ-exit window.
+> **ARTIFACT MD5s:** arz `b33c5a447f3a8ca652c14f78d4ad1dd4` (55,351,206 B, 51,029 records = build39 51,015 + 14) -
+> SUPERSEDES build39 `5bf7dac2`; Text.arc `c910da653f23ff84598b69833854d9db` (87,555 B) - SUPERSEDES `e1b73e05`;
+> Quests.arc `37cf867f3550f5031dba5cb1cf31f30f` (194,801 B) - SUPERSEDES `7655f17e`; canonical Levels
+> `9981085b78f1600cc0b31c3bec4cfd92` (688,691,745 B, `local/Levels_merged.arc`) - SUPERSEDES build36a `60a62880`
+> (FIRST canonical rebuild since build36a); TESTHUB Levels `d4965d298ee308a4e31ffd39802ce404` (688,677,830 B,
+> `local/Levels_merged_TESTHUB.arc`) - SUPERSEDES build39 `4fcc058c`. Baselines: `baseline_build39.arz` = build39 arz
+> `5bf7dac2`; `baseline_canonical_b39.arc` = build36a canonical `60a62880`.
+> **DB BUILD** (PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1): arz written (51,029 records); registry **13 modules order
+> `b82195e9551a`** (was 12 `4c688f58`; +bossarena b43 at pos 9/13); RELEASE drops (66% Hero/Quest, 25% Boss);
+> `run_registry_verifies` GREEN (4 verify hooks skill_quality + toxeus_suite + damage_display + boss_skill_fix all OK;
+> boss_skill_fix roster `um_*_99` clean of level-0 specials, all enables survived finalization); golden Occult/Hunting
+> PASS (35 waived). Collision gate: 2 records LATER-wins (legal registry semantics, logged), tags clean.
+> **WARDEN P1 FIX (C-RES-DBR-1, `32ea0e8`):** `bossarena.py` scrubs `ember_satyr_warden_55.lootLowerBodyItem1` (the 3
+> dangling `{N,E,L}_SatyrBrute` leg-loot refs, no explicit dtype per the cloned-record law). Fresh-arz probe: warden
+> record **0 unresolved .dbr fields** (was 3); `contracts_resources` **1 P1 -> 0 P1**. Zero gameplay change (slot
+> dropped nothing, same as the base donor).
+> **RECORD-DIFF AUDIT** (`baseline_build39` `5bf7dac2` vs new `b33c5a44`): **14 ADDED / 0 REMOVED / 1035 MODIFIED, ZERO
+> unexplained.** 14 ADDED = `ember_satyr_warden_55` (b43) + `svc_{charon,dorus,ephialtes,tantalus}_chest` (b42) +
+> `aithon_embercrown_soul_{n,e,l}` (b43) + `svc_testhub_return_{bossarena,garden,secret,sparta,uber}` (b48) +
+> `ephialtes_dread_nova` (b42). 1035 MODIFIED bucket 100% to lanes: **990** b49 undead+hades pool sweeps (273 enslaver +
+> 345 hunt + breadth-restrict), **18** b50 pet-white nameplates, **13** b42/b43/b47 boss records, **6** b49
+> shadowstalker rig, **3** b43 arena portals, **3** item/loot, **1** boss_skill_fix, **1** b52 dagon.
+> **TEXT** i18n de-clobber ENABLED (17,541 base Text_EN tags): dropped **10,600** SV tags byte-identical to base;
+> `validate_tags` PASS (all **321** referenced mod tags + **367** authoritative tags resolve in Text.arc; new b52 Dagon
+> `tagSVCMonsterDagon`, b47 Kroisos, b43 Aithon tags resolve); golden A7 PASS (41 waived, 0 other); 2 pre-existing base
+> monster-name WARN (`tagNewMonster66/46`, non-blocking backlog).
+> **QUESTS** (`build_quest_files`, exit 0): quest-record contract PASS (**107** entry_type==3 records); **25** hub
+> boat-dialog triggers + TESTHUB portal rig (7 hub + 2 return ports) appended to the always-loaded `sv_commonmechanics`
+> refire step (registry law: no new QUESTS-section registration -> map 256-window parity intact).
+> **CANONICAL MAP** (`SVC_TEST_HUB` unset -> `Levels_merged.arc`): mapdiff vs `baseline_canonical_b39` **PASS** - section
+> order identical, QUESTS(0x1b) byte-identical (11,460 B, **256-window parity**), navmesh(0x0b) **0 changed**
+> (byte-identical), 0 level add/remove, **18** intended blobs (b43 boss_arena, b47 Medea_TempleUG x2, b45 ThebesOptTombA,
+> b41 HadesPalace/Styx/Judgment/Elysian/GardenofMerchants/DarkForestEnter, b48 established returns); 2282 levels, 0 bad
+> offsets/magic/zero-ints. The b48 round-3 established returns (Garden/Secret/Uber/Sparta) are a deliberate CANONICAL
+> warden-mute bugfix (see `docs/reports/b48_sparta_mute_fix.md`) - hence the canonical rebuild.
+> **TESTHUB MAP** (`SVC_TEST_HUB=1` -> `Levels_merged_TESTHUB.arc`): mapdiff **PASS** - **27** changed blobs (18 canonical
+> + 9 hub placements: HiddenValley01 Helos plaza + 8 return landings), QUESTS 256-parity byte-identical, navmesh 0
+> changed, 0 add/remove; 2282 levels, 0 bad offsets/magic/zero-ints.
+> **CONTRACTS:** resources/souls/summons **0 P0/0 P1** (4904 native P2: resources 4792, summons 112, souls 0) - warden
+> `C-RES-DBR-1` P1 **GONE**; map vs canonical + map vs TESTHUB each **0 P0/0 P1** (3 native P2 = pre-existing base-game
+> XPack portal reciprocity) - hub travelers + boss portals resolve in the new arz.
+> **DEBUG GATES:** `gate_landing_clearance` HARD (TESTHUB v2 + b41b42) **25/25 PASS, 0 DEADLY/FAIL**;
+> `gate_travel_npc_invariants` **T1-T6 PASS** (0 walk-throughs canon+TESTHUB; 25 hub records 0x canonical / 1x TESTHUB;
+> 5 per-area returns; cross-file map==quests==arz 25+5 records; T6 scanned both fresh arcs); `gate_traveler_responds`
+> **0 mute** (G-COLLISION/WARDEN/ORPHAN/DEST PASS; 30 placed NPCs / 31 routes). In-build enslaver roaming-sweep OK (273)
+> + hunt stalker-sweep OK (345) + world-chest verify OK + collision legal.
+> **NOT DEPLOYED:** staged to `work/` (arz/Text/Quests) + `local/` (canonical + TESTHUB Levels); DEV deploy pending a
+> TQ-exit window; TESTHUB is local-only (never uploaded to Steam); canonical build36a untouched. Canonical rebuild + QA
+> required for the b48 established-return canonical change before promote.
+>
 > 🧪 **BUILD39-DEV GATE RECORD (2026-07-13, main HEAD `87b0cae` + this BACKLOG commit) - FULL-REGISTRY DB + Text +
 > Quests + TESTHUB-map build GREEN; both b39 DEV lanes integrated (boss-skill fix + Helos hub v2).** Merges:
 > `feat/b39-boss-skills` @ `95edf55` (boss_skill_fix registry module, pos 11/12) + `feat/b39-hub-v2` @ `87b0cae`
