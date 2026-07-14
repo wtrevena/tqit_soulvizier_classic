@@ -1,13 +1,15 @@
-# WILL'S TEST GUIDE - build37-dev bosses + SV areas (Helos traveler hub; deployed to DEV 2026-07-13)
+# WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> ## NOW LIVE ON DEV: build37-dev (2026-07-13)
-> The **SoulvizierClassicDEV** entry now runs **build37-dev** - the TESTHUB map with the full **Helos
-> traveler hub** (17 talk-to-travel NPCs / returns) over the first full-registry database (the build36
-> uber bosses PLUS the new registry bosses and the Occult/Hunting improvements). **Steam is untouched**
-> (still build36a canonical - this hub is DEV-only and is never uploaded). Deployed + md5-verified on
-> disk: `Levels.arc` `841c56cd`, `arz` `56d6db22`, `Text.arc` `8c7229db`, `Quests.arc` `838bdc3a`.
-> **To load it: fully quit TQ if it is open, then start TQ fresh** (Steam was already restarted today,
-> so no Steam restart is needed; the deploy landed while TQ was closed).
+> ## NOW LIVE ON DEV + DEV2: build40-dev (2026-07-14) - see BUILD40 CHECKS below
+> **BOTH `SoulvizierClassicDEV` and `SoulvizierClassicDEV2` now run build40-dev** - the TESTHUB map (full
+> Helos traveler hub) over the build40 DB/Text/Quests (12 b40 content lanes b41-b53 + the warden P1 fix).
+> **`SoulvizierClassicDEV2` is a fresh-char test surface** - start a BRAND-NEW Custom Quest character there
+> for the placement/spawn checks so TQ save-baking does not hide them (your main DEV char has world state
+> baked in). Deployed + md5-verified on disk (both entries): `Levels.arc` `d4965d29` (TESTHUB), `arz`
+> `b33c5a44`, `Text.arc` `c910da65`, `Quests.arc` `37cf867f`. **Steam is build40 canonical** (shipped
+> 2026-07-14; its map is the canonical `9981085b`, NOT this dev TESTHUB variant - the hub is never uploaded).
+> **To load it: fully quit TQ if it is open, then start TQ fresh** (Steam was already running and was not
+> restarted; the deploy landed while TQ was closed, so the files are current).
 
 > Fastest test path: play the **DEV entry** (Custom Quest -> SoulvizierClassicDEV). Its TESTHUB
 > map variant adds LOCAL-ONLY **traveler NPCs** (talk-to-travel, boat-dialog) - a **HELOS TRAVELER
@@ -15,6 +17,31 @@
 > in Hidden Valley where the custom bosses spawn at 100% for point-blank testing. The Steam build
 > has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
 > files (Steam was already restarted today, so no Steam restart is needed).
+
+## BUILD40 CHECKS (new this wave - both DEV entries are build40-dev, 2026-07-14)
+
+build40-dev is live on **both** `SoulvizierClassicDEV` and `SoulvizierClassicDEV2`. Two of these want a
+**FRESH Custom Quest character on DEV2** (TQ bakes world/spawn state into a save, so an existing char can
+hide a placement fix). The two size-clip items ride the DB and can be checked on any character.
+
+- **Ephialtes size-clip (EYEBALL - this is the Steam promote check).** Ephialtes, the Waking Dread was
+  scaled UP to **2.7** (was 2.2). In the **Dread Halls terminal vault** (Judgment), confirm his body does
+  NOT clip through the ceiling or walls and he still paths / can be meleed. This size shipped to Steam
+  sight-unseen at your "ship everything" call - if he clips, say so and we drop his scale ~0.2 in build41.
+- **Mnemophage size-clip (EYEBALL - this is the Steam promote check).** The Mnemophage shell was scaled UP
+  to **2.9**. In the **Pools of Mnemosyne glyph ring** (Act 4 Judgment), confirm no ceiling/wall clip. Same
+  drop-0.2 walk-back if it clips.
+- **Aithon arena - reachable + fights (FRESH DEV2 char).** Get to the **Olympian Arena** (boss_arena). Last
+  round the arena dais was an isolated navmesh island (you would land 28u BELOW the fight with no way up);
+  that was FIXED this wave. Confirm you can **walk up onto the dais** to **Aithon, the Ember-Crowned** (a
+  boss-scale fire-satyr champion, scale 1.9), the fight triggers, and his fire cast animations read clean.
+  He drops the `{^F}Aithon, the Ember-Crowned Soul`. This fight was greenlit sight-unseen - veto or bless it.
+- **Placement / spawn fixes (FRESH DEV2 char - dodge save-baking).** On a brand-new DEV2 char, spot-check the
+  b41-b48 map work via the plaza travelers: the **5 apex-boss set-pieces** on the map, **Tantalus inside the
+  Den of Tantalus** (b45), **Kroisos relocated to the Tomb of the Queens** (b47), the **boss/world chests**
+  (Charon / Dorus / Ephialtes / Tantalus, b42), the **Uber-Dungeon minimap alignment + region label** (b46),
+  and the **established-area returns** (Garden / Secret / Uber / Sparta) firing with a traveler that actually
+  talks (b48 mute-traveler fix). Anything mis-placed, silent, or unreachable = report.
 
 ## BUILD38 CHECKS (new this wave - verify once a build38 DB is deployed)
 

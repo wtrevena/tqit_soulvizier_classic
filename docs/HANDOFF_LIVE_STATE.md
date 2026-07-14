@@ -1,5 +1,29 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD40-DEV DEPLOYED TO DEV + DEV2 (2026-07-14, post-Steam-ship) - both DEV surfaces now build40-dev
+> **`SoulvizierClassicDEV` AND `SoulvizierClassicDEV2` both = build40-dev.** Deployed while TQ.exe was NOT
+> running (Steam client NOT restarted). Both DEV entries carry the **TESTHUB** Levels (the Helos traveler
+> hub) over the build40 DB/Text/Quests - identical artifacts, only the arz filename differs per the
+> folder-name convention. All 4 artifacts md5-verified source==dest on BOTH entries:
+> - **arz** = `b33c5a447f3a8ca652c14f78d4ad1dd4` (55,351,206 B) - the build40 DB (warden C-RES-DBR-1 P1 FIX
+>   `32ea0e8` included). DEV -> `Database/SoulvizierClassicDEV.arz`; DEV2 -> `Database/SoulvizierClassicDEV2.arz`.
+> - **Resources/Levels.arc** = `d4965d298ee308a4e31ffd39802ce404` (688,677,830 B) = the build40 **TESTHUB** map
+>   (NOT the canonical `9981085b` that shipped to Steam). This is the hub-enabled dev-only variant; it is never
+>   uploaded to Steam.
+> - **Resources/Quests.arc** = `37cf867f3550f5031dba5cb1cf31f30f` (194,801 B) = build40 canonical Quests.
+> - **Resources/Text.arc** = `c910da653f23ff84598b69833854d9db` (87,555 B) = build40 Text.
+> - **DEV2 is the fresh-char test surface:** deploy the placement/spawn fixes (b41-b48) and eyeball them on a
+>   BRAND-NEW Custom Quest character on DEV2 to dodge save-baking (Will's main DEV char has world state baked
+>   in). See the WILL_TEST_GUIDE BUILD40 CHECKS section.
+> - **Rollback (one step, build40-dev -> build39-dev):** the pre-deploy DEV/DEV2 artifacts (build39-dev: arz
+>   `5bf7dac2` / Levels `4fcc058c` TESTHUB hub v2 / Quests `7655f17e` / Text `e1b73e05`) are saved to
+>   `local/DEV_{arz,Levels,Quests,Text}_deployed_prev.*` and `local/DEV2_{arz,Levels,Quests,Text}_deployed_prev.*`
+>   (all 8 md5-verified). Copy them back over the DEV/DEV2 entries to revert.
+> - **Steam is build40 canonical** (shipped earlier today, ManifestID `6660459504081325574`, canonical Levels
+>   `9981085b`); this DEV deploy does NOT touch Steam. Tag `build40-dev` at this doc commit.
+> - **To load: fully quit TQ if open, then start TQ fresh** (Steam was already running and was NOT restarted;
+>   the deploy landed while TQ was closed, so the files are not locked).
+
 > ## BUILD40 SHIPPED TO STEAM (2026-07-14) - FIRST canonical map+quest advance since build36a; TESTHUB hub NOT shipped
 > **Workshop item 3759792705 is now build40 CANONICAL** (was build39). Will's standing directive: ship the FULL build40
 > to Steam including the Ephialtes/Mnemophage sizes AND the Aithon arena (sight-unseen, "ship everything, including the
