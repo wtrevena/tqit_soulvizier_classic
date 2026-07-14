@@ -1518,6 +1518,134 @@ def _add_dagon_to_ichthian_pools(db):
     return total
 
 
+# Dagon monster name tag (b52). Value authored in the apply_all_extended_patches
+# `tags` block ('Dagon, Lord of the Poisoned Deep'); this constant is the KEY that
+# couples _fix_dagon_kit's description repoint to that authored text.
+DAGON_NAME_TAG = 'tagSVCMonsterDagon'
+
+
+def _fix_dagon_kit(db):
+    r"""Make Dagon (records\test\boss_dagon_66.dbr) a functional, named boss (b52).
+
+    Will (2026-07-13, Megara Coast) fought a boss whose name rendered as the raw tag
+    'tagD2boss03' and who STOOD IMMOBILE, dropping the Dagon Soul. Dagon is an
+    unfinished SV 0.98i cut-content TEST boss the mod promotes into every ichthian
+    spawn pool (_add_dagon_to_ichthian_pools) WITHOUT the finishing pass its twin
+    Cold Worm got. Two record-level defects (RCA: docs/reports/b52_dagon.md):
+
+      (A) NAME: his `description` = tagD2Boss033, a placeholder defined in NEITHER
+          the mod Text.arc, SV 0.98i upstream, NOR base Text_EN -> TQ prints the raw
+          key. Repoint it at the mod-owned tagSVCMonsterDagon (authored in the tags
+          block). Cold Worm's identical case was fixed (tagD2Boss004='Cold Worm');
+          Dagon's was never added.
+      (B) IMMOBILITY: his primary specialAttack + 75% of his special-attack budget
+          point at records\skills\boss skills\d2custom\dagon_* skills that never
+          existed in the AE-merged DB (dead in SV upstream too). An IchthianMage
+          caster rig with no castable spell never completes its move-to-cast
+          engagement loop, so it stands. Repoint every dead offensive slot (and its
+          matching special) at an EXISTING, resolving ichthian/poison skill so the
+          caster AI engages, chases and fights. His one working skill
+          (hydra_superbite) is kept; the dead scaling-passive slots (D2GlobalProperties*)
+          are LEFT dead (a level-0 scaling passive is the vanilla convention; enabling
+          it would ADD difficulty scaling he is not built for = rebalance), and the
+          dead D2Boss_ConversionImmunity is repointed at the real AE passive (an apex
+          boss must not be player-convertible).
+
+    NO stat boost (unlike Cold Worm, whose base was slow/weak: runSpeed 0.4, life 10k):
+    Dagon is already boss-statted (runSpeed 1.1, life 27591, Int 211), and no donor sea
+    boss (reeflord/murklord) carries characterOffensiveAbility - the same-mesh mobile
+    shaman moves and casts at OA=0. The ONLY defects are the dead kit + the name.
+
+    Crash-safe (docs/MODDING_PLAYBOOK failure graveyard): references skill DBRs only -
+    no clone_record, no explicit dtype on a cloned record (this edits an EXISTING base
+    record in place, like _boost_coldworm_stats), no Pet.tpl equip copy, no FX fields
+    on the monster record (each referenced skill DBR carries its own FX). Idempotent:
+    keys every repoint off the dead marker, so a re-run (already-real refs) is a no-op.
+    Honors WILL_DECISIONS 'Dagon = Tidal Strike' by making Tidal Strike his primary.
+    """
+    import re
+    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
+    DAGON = r'records\test\boss_dagon_66.dbr'
+    if not db.has_record(DAGON):
+        print("  WARNING: Dagon record not found for kit fix")
+        return False
+
+    # EXISTING, resolving replacement skills (probe-verified in build38; classes +
+    # maxLevels checked). All are real ichthian/poison monster skills; hydra_superbite
+    # (his only working skill) is kept as the melee finisher.
+    TIDALSTRIKE = r'records\skills\monster skills\attack_radius\ichthian_tidalstrike.dbr'      # Tidal Strike  (AoE,  maxLvl 10)
+    VENOMNOVA   = r'records\skills\monster skills\attack_radius\venomnova.dbr'                 # Venom Nova    (poison ring, maxLvl 20)
+    TIDALORB    = r'records\skills\monster skills\attack_projectile\ichthian_tidalorb.dbr'     # Tidal Orb     (burst, maxLvl 20)
+    POISONBOMB  = r'records\skills\boss skills\nehebkau_poisongasbomb.dbr'                     # Poison Gas Bomb (projectile, maxLvl 12)
+    CONVIMMUNE  = r'records\skills\boss skills\boss_conversionimmunity.dbr'                    # boss conversion immunity (passive)
+
+    fields = db.get_fields(DAGON) or {}
+
+    def _skill_slot(marker):
+        """Index of the skillName<i> slot whose current value contains `marker`."""
+        for key, tf in fields.items():
+            b = key.split('###')[0]
+            if b.startswith('skillName') and b[9:].isdigit() and tf.values:
+                if marker in str(tf.values[0]).lower():
+                    return int(b[9:])
+        return None
+
+    def _special_suffix(marker):
+        """Suffix ('' for the primary, '2'..) of the specialAttack<suf> slot whose
+        current value contains `marker`."""
+        for key, tf in fields.items():
+            b = key.split('###')[0]
+            m = re.match(r'specialAttack(\d*)SkillName$', b)
+            if m and tf.values and marker in str(tf.values[0]).lower():
+                return m.group(1)
+        return None
+
+    # (dead-ref marker, replacement skill, new level, new special chance). Each dead
+    # offensive slot AND the specialAttack that casts it are repointed together, so a
+    # castable skill sits in a skillName slot at a working level with a live special.
+    plan = [
+        ('dagon_shadowstar', TIDALSTRIKE, 10, 30.0),   # primary special -> Tidal Strike [WILL]
+        ('dagon_tidalwave',  VENOMNOVA,    6, 20.0),   # specialAttack2   -> Venom Nova (poison)
+        ('dagon_summonwater', TIDALORB,    6, 15.0),   # specialAttack3   -> Tidal Orb
+        ('dagon_mudstorm',   POISONBOMB,   3, 30.0),   # specialAttack5   -> Poison Gas Bomb
+        # specialAttack4 / skillName4 = hydra_superbite (already resolves) -> KEPT.
+    ]
+    repointed = 0
+    for marker, skill, level, chance in plan:
+        si = _skill_slot(marker)
+        if si is not None:
+            db.set_field(DAGON, 'skillName%d' % si, skill, S)
+            db.set_field(DAGON, 'skillLevel%d' % si, level, I)
+            repointed += 1
+        su = _special_suffix(marker)
+        if su is not None:
+            db.set_field(DAGON, 'specialAttack%sSkillName' % su, skill, S)
+            db.set_field(DAGON, 'specialAttack%sChance' % su, chance, F)
+            # ensure the AI has the fields it needs to actually roll/fire the special
+            if db.get_field_value(DAGON, 'specialAttack%sRange' % su) in (None, ''):
+                db.set_field(DAGON, 'specialAttack%sRange' % su, 'AnyRange', S)
+            if db.get_field_value(DAGON, 'specialAttack%sDelay' % su) in (None, ''):
+                db.set_field(DAGON, 'specialAttack%sDelay' % su, 10.0, F)
+            if db.get_field_value(DAGON, 'specialAttack%sTimeout' % su) in (None, ''):
+                db.set_field(DAGON, 'specialAttack%sTimeout' % su, 1.0, F)
+
+    # Conversion immunity: dead Records\Game\D2Boss_ConversionImmunity.dbr -> real AE
+    # passive (keep its existing [1,2,3] difficulty level array untouched).
+    ci = _skill_slot('d2boss_conversionimmunity')
+    if ci is not None:
+        db.set_field(DAGON, 'skillName%d' % ci, CONVIMMUNE, S)
+        repointed += 1
+
+    # (A) NAME: repoint the raw placeholder description at the mod-owned name tag.
+    db.set_field(DAGON, 'description', DAGON_NAME_TAG, S)
+
+    db._modified.add(DAGON)
+    print(f"  Dagon fixed: name -> {DAGON_NAME_TAG}; {repointed} dead skill slot(s) "
+          f"repointed at real skills (Tidal Strike primary + Venom Nova, Tidal Orb, "
+          f"Poison Gas Bomb, kept Super Bite; conversion-immunity restored)")
+    return True
+
+
 def _add_coldworm_to_egypt_pools(db):
     """Add Cold Worm as a rare champion spawn in Act 2 Egypt underground/insect pools."""
     COLDWORM_RECORD = r'records\test\boss_coldworm50.dbr'
@@ -16780,6 +16908,12 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     tags['tagSVCSoulNVio'] = '{^F}Soul of the Neanderthal Wizard'
     # Monster name tag (Cold Worm's description tag was undefined)
     tags['tagD2Boss004'] = 'Cold Worm'
+    # Dagon monster name tag (b52). His base `description` was the raw placeholder
+    # tagD2Boss033 (defined nowhere: not mod, not SV upstream, not base Text_EN) ->
+    # in-game raw tag. _fix_dagon_kit repoints his description at this mod-owned tag.
+    # amgoz1 voice: a deep-sea poison lord (soul = "Soul of Dagon", "deep sea poison
+    # lord"); the "Name, Epithet" form matches shipped bosses (Toxeus the Murderer, ...).
+    tags['tagSVCMonsterDagon'] = 'Dagon, Lord of the Poisoned Deep'
 
     # Dev skeleton soul name tags (Task 3 — pink prefix)
     tags['tagSVCSoulDevArthur']  = '{^F}Soul of Arthur'
@@ -16977,6 +17111,7 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
 
     overhaul_souls(db)
     _add_dagon_to_ichthian_pools(db)
+    _fix_dagon_kit(db)               # b52: name (raw tagD2Boss033 -> tagSVCMonsterDagon) + castable kit (was immobile)
     _add_coldworm_to_egypt_pools(db)
     _boost_coldworm_stats(db)
     _create_coldworm_soul(db)
