@@ -25,15 +25,23 @@ proved boss_satyrshaman_55 is referenced ONLY by the arena pool, the pool ONLY b
 the proxy, the proxy by NO record - only the untouched quest names it).
 
 WHAT THIS DOES (all DB; the map lane owns the 0x05 floor changes, reported):
-  1. GREEN BLOB: make the quest-spawned Proxy invisible (maxTransparency 1.0,
-     castsShadows 0) so no translucent patrol-marker renders mid-floor. Quest
-     untouched (it still spawns this proxy by name; the proxy still pools the
-     encounter - it just no longer shows a mesh).
+  1. PROXY (defensive; NOT the blob): b43-r2 rediagnosis - the quest-spawned Proxy is
+     a STANDARD invisible spawner (1003 base proxies share its exact config), so it is
+     NOT Will's "green FX blob" (round-1 misdiagnosed it). Hardened to fully non-
+     rendering anyway (invisibleInWorld 1 + maxTransparency 1.0 + castsShadows 0); pool
+     function untouched.
+  1b. GRAY PLANES + GREEN GLOW (Will's other 2 arena complaints): hide the vestigial
+     Elysium arena portals. portal_olympianarena1 (GridEntrance, quest-opened) is the
+     only one that renders its Elysium mesh -> the gray flat-placeholder plane AND, when
+     opened, the green grid-entrance glow. Both portals hidden (invisibleInWorld 1 +
+     transparent + no shadow) WITHOUT touching grid function (player travels via the
+     hub/return-NPC now).
   2. THE APEX (in place; "this arena's own restoration"): boss_satyrshaman_55 ->
      "Aithon, the Ember-Crowned": name, boss scale, an apex HP/resist wall, a
      persistent RING-OF-FLAME shroud (the proven Enslaver/Marshal charFxPak
-     route - ringofflame_charfx is a shipped CharFxPak), maxTransparency 0.0 (kill
-     the "faint ghostly boss" look). KEEPS the whole vetted fire kit (flame surge,
+     route - ringofflame_charfx is a shipped CharFxPak). maxTransparency LEFT at the
+     0.5 template default (never ghostly; forcing 0.0 risked the dissolve-in - reverted
+     per the vet). KEEPS the whole vetted fire kit (flame surge,
      volcanic orb + immolation/fragmentation, meteor, fire aura, boss globals,
      conversion immunity) + the bespoke controller_arenasatyrshaman + the rich
      on-death loot (staff/caster armor/relics/heart/formulae) = the boss-tier
@@ -51,12 +59,20 @@ WHAT THIS DOES (all DB; the map lane owns the 0x05 floor changes, reported):
      brawler: -defensive ability) plus the identity resist (he IS fire: cannot
      burn). NO prose lore (amgoz V5); FileDescription = region "Olympus". Drops at
      66% off the apex (repoints the boss's Finger2 from the shared darksatyrshaman
-     soul, which 3 OTHER satyrs still drop).
+     soul, which 2 OTHER satyrs - bs_shaman_10 + bs_shaman_12 - still drop).
 
-MAP DELTA (reported, NOT here - build_section_surgery.py is the map lane's file,
-edited in THIS wave separately): remove the malepc01 mannequin (0x05 inst22) +
-a ring of fire dressing (orange glow lights + Hades-palace braziers) framing the
-fight floor, all on-mesh comp#2 (survey in the report).
+MAP + QUEST DELTA (reported, NOT here - build_section_surgery.py + build_quest_files.py,
+edited in THIS wave separately):
+  - REACHABILITY (b43-r2 CRITICAL fix): the arena fight sits on an isolated raised-dais
+    navmesh island (comp#2, world y~27) 28u above the low floor (comp#1, y~0) with no
+    walkable bridge. SV's Helos-traveler landing was on comp#1 (unreachable from the
+    fight). Retarget the outbound landing + the in-arena return NPC ONTO comp#2 (south
+    dais, local ~(132,104), 26u S of the boss spawn / outside the r20 trigger, surveyed
+    100% clear) so the player materialises on the arena floor and the encounter is
+    experienceable. Nothing here in the arz depends on it, but the landing is the whole
+    reason this boss is now reachable.
+  - remove the malepc01 mannequin (0x05 inst22) + a ring of 6 orange fire-glow lights
+    framing the fight floor, all on-mesh comp#2 (survey in the report).
 """
 import sys
 from pathlib import Path
@@ -69,9 +85,13 @@ MODULE_NAME = 'Aithon, the Ember-Crowned (Olympian Arena boss finish)'
 S, F, I = M.DATA_TYPE_STRING, M.DATA_TYPE_FLOAT, M.DATA_TYPE_INT
 
 # ── The arena chain (all present in build38; ref-scan proved the containment) ──
-_PROXY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'          # quest-spawned Proxy (the blob)
+_PROXY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'          # quest-spawned Proxy (standard invisible spawner)
 _POOL = r'records\proxies custom\bossarena\pools\satyr_shaman_01.dbr'      # ProxyPool (spawned 3 bosses)
 _BOSS = r'records\creature\monster\bossarena\boss_satyrshaman_55.dbr'      # the apex (upgraded in place)
+
+# ── The arena's own Elysium portals (SV-native; hidden this wave - see 1b) ─────
+_PORTAL_ENTRANCE = r'records\quests\portal_olympianarena1.dbr'             # GridEntrance (quest-opened; the ONE that renders a mesh)
+_PORTAL_RETURN = r'records\quests\portal_olympianarena2.dbr'              # GridExitOneWay (2 placed returns; already invisibleInWorld=1)
 
 # ── Honor-guard champion (new, our bossarena namespace) ───────────────────────
 _CHAMP = r'records\creature\monster\bossarena\ember_satyr_warden_55.dbr'
@@ -97,24 +117,53 @@ def apply(db, tags):
 
     # ── fail-loud donor/target existence (exact paths; has_record is exact) ──
     need = [_PROXY, _POOL, _BOSS, _CHAMP_DONOR, _SHROUD_FXPAK,
+            _PORTAL_ENTRANCE, _PORTAL_RETURN,
             _SK_FIRE_AURA, _SK_FLAMESURGE, _SK_ARMOR,
             M._SS_FIRE_NOVA, M._SK_VOLCANIC_ORB, M._SK_FIRE_ENCHANT, M._AC_FIRE_REACT]
     for p in need:
         if not db.has_record(p):
             raise SystemExit(f'BOSSARENA: required record missing (exact): {p}')
 
-    # ── 1. GREEN BLOB: make the quest-spawned Proxy non-rendering ─────────────
-    # Refs kept valid (no empty-ref loader-abort); the patrol-marker mesh simply
-    # renders fully transparent + throws no shadow. maxTransparency 1.0 == fully
-    # transparent (souls at 0.5 read half-ghostly; 1.0 = invisible).
+    # ── 1. PROXY (defensive hardening; NOT the confirmed blob) ────────────────
+    # b43 r2 rediagnosis: this proxy is a STANDARD invisible spawner. 1003 base-game
+    # proxies carry the identical mesh (satyrmage01) + baseTexture (Proxy01_Patrol.tex)
+    # + maxTransparency 0.5 + NO invisibleInWorld, and none render as a blob in play
+    # (the engine hides proxy meshes at runtime). So the proxy is NOT Will's "green FX
+    # blob" (round-1 misdiagnosed it; the vet was right). Kept as cheap belt-and-braces
+    # hardening only - add invisibleInWorld=1 (the definitive hide) on top of round-1's
+    # transparency/shadow off. Refs kept valid; the pool/spawn function is untouched.
+    sf(_PROXY, 'invisibleInWorld', 1)
     sf(_PROXY, 'maxTransparency', 1.0)
     sf(_PROXY, 'castsShadows', 0)
     db._modified.add(_PROXY)
 
+    # ── 1b. GRAY PLANES + GREEN GLOW: hide the vestigial Elysium arena portals ─
+    # Will's OTHER two arena complaints. The placed return portals (portal_olympianarena2,
+    # GridExitOneWay x2) already ship invisibleInWorld=1. portal_olympianarena1
+    # (GridEntrance, opened on level-load by bossarena.qst STEP-1) is the ONE portal that
+    # renders its Elysium_from_TOJ mesh (no invisibleInWorld) -> the leading suspect for
+    # BOTH the "giant gray untextured plane" (its flattexture01/flatbumptexture01 flat
+    # placeholder) AND the "green FX blob" (an OPEN Elysium grid-entrance glow). The player
+    # now arrives via the Helos traveler (b43-r2 dais landing) and leaves via the in-arena
+    # return NPC, so SV's own entrance/return portals are vestigial. Hide BOTH meshes
+    # (invisibleInWorld + fully transparent + no shadow) WITHOUT touching grid function
+    # (Action_OpenDynGridEntrance still runs; GridExitOneWay still teleports if walked in).
+    # DB-only; the arena's own portals = this arena's own restoration. (Caveat in the
+    # report: if gray planes persist, the source is the Olympus STRUCTURES / SceneryOlympus
+    # mount - unlikely, since the mod's Helos + Garden Olympus areas render textured -
+    # Will's in-game tiebreaker: are the ring columns marble?)
+    for _portal in (_PORTAL_ENTRANCE, _PORTAL_RETURN):
+        sf(_portal, 'invisibleInWorld', 1)
+        sf(_portal, 'maxTransparency', 1.0)
+        sf(_portal, 'castsShadows', 0)
+        db._modified.add(_portal)
+
     # ── 2. THE APEX: boss_satyrshaman_55 -> Aithon, the Ember-Crowned ─────────
     B = _BOSS
     sf(B, 'description', _MON_TAG)
-    sf(B, 'maxTransparency', 0.0)                 # kill the "faint ghostly boss" look (was 0.5)
+    # (b43 r2: maxTransparency LEFT at the template default 0.5 - it never rendered ghostly
+    #  [33k base records share 0.5]; forcing 0.0 fixed nothing and risked suppressing the
+    #  ambushDissolveTexture=cloud.tex spawn-in fade. Reverted per the vet.)
     sf(B, 'scale', 1.9)                           # visibly the apex (was 1.5)
     sf(B, 'actorHeight', 2.5)
     # apex HP wall (a singular showcase boss; still SCALES to player level via the
@@ -231,6 +280,7 @@ def apply(db, tags):
 
     print("  Olympian Arena: Aithon, the Ember-Crowned (satyr fire apex, scale 1.9, "
           "HP [42k,54k,66k], fire/burn wall, ring-of-flame shroud) + 2 Ember Satyr "
-          "Warden honor guard (pool 1 apex + 2 champions) + invisible spawn proxy "
-          "(green blob killed) + {^F}Aithon Soul (fire-nova erupt-on-hit, volcanic/"
-          "fire-enchant augments, Beastman racial, -def downside, 66% off the apex); tags set")
+          "Warden honor guard (pool 1 apex + 2 champions) + proxy hardened invisible "
+          "+ 2 Elysium portals hidden (gray-plane/green-glow) + {^F}Aithon Soul (fire-nova "
+          "erupt-on-hit, volcanic/fire-enchant augments, Beastman racial, -def downside, "
+          "66% off the apex, 2 satyrs keep the shared soul); tags set")
