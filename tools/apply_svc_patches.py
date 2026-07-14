@@ -15713,7 +15713,7 @@ def _create_mnemophage_superboss(db, tags):
     sf(_MN_SHELL, 'characterIntelligence', 460.0)
     sf(_MN_SHELL, 'characterDexterity', 300.0); sf(_MN_SHELL, 'characterStrength', 60.0)
     sf(_MN_SHELL, 'characterLifeRegen', 8.0)
-    sf(_MN_SHELL, 'scale', 2.5); sf(_MN_SHELL, 'actorHeight', 2.0)
+    sf(_MN_SHELL, 'scale', 2.9); sf(_MN_SHELL, 'actorHeight', 2.4)  # b42: BIGGER (was 2.5); headroom = Will's in-game check (Mnemosyne glyph ring)
     _mnem_resist(_MN_SHELL)
     sf(_MN_SHELL, 'initialSkillName', _MN_MINDSHROUD)
     sf(_MN_SHELL, 'actorToSpawnOnDeath', _MN_CORE)
@@ -15851,6 +15851,10 @@ _EP_SK_VISIONOFDEATH = r'records\skills\spirit\drxvisionofdeath.dbr'
 _EP_SK_TAKEDOWN = r'records\xpack\skills\monsterskills\activeattackmelee\monster_takedown.dbr'
 _EP_SK_ONDEATH = r'records\skills\monster skills\attack_radius\ondeath_zombienoxiousfumes.dbr'
 _EP_FX_DREADSHROUD = r'records\xpack\effects\particles\skilleffects\dreamskillfx\troubleddreamsdebuff_charfxpak01.dbr'
+# b42 (Will 2026-07-13): Ephialtes's fear kit dealt NO damage (ixion_cry/Dreamstorm/
+# VisionOfDeath are all pure fear/confusion/sleep). Give him a bespoke DAMAGE nova.
+_EP_SK_DREADNOVA = r'records\skills\monster skills\attack_radius\ephialtes_dread_nova.dbr'
+_EP_SK_NOVA_DONOR = r'records\skills\monster skills\attack_radius\ondeath_voidnova.dbr'  # life+phys ring [30..600], 24 shadow bolts; the Mnemophage casts it live (AI-castable)
 
 
 def _create_dreadhalls_uberboss(db, tags):
@@ -15862,7 +15866,8 @@ def _create_dreadhalls_uberboss(db, tags):
     scale 2.2 (split from the Mnemophage's overmind.tex + 2.5). Ephialtes OWNS the
     active fear NOVA (the soul grants Dreamstorm)."""
     for donor in (_EP_DONOR, _EP_ESCORT_DONOR, _EP_SK_IXION, _EP_SK_DREAMSTORM,
-                  _EP_SK_VISIONOFDEATH, _EP_SK_ONDEATH, _SVC_SK_ENVENOM_SHROUD,
+                  _EP_SK_VISIONOFDEATH, _EP_SK_ONDEATH, _EP_SK_NOVA_DONOR,
+                  _SVC_SK_ENVENOM_SHROUD,
                   _EP_MASK_DONOR, _SVC_LEINTH_POOL, _SVC_LIMIT_DONOR):
         if not db.has_record(donor):
             print("  C4 EPHIALTES: WARNING donor missing: %s; group skipped" % donor)
@@ -15879,6 +15884,17 @@ def _create_dreadhalls_uberboss(db, tags):
     db._modified.add(_EP_DREADSHROUD)
     _BOSS_KIT_CLONES.append((_SVC_SK_ENVENOM_SHROUD, _EP_DREADSHROUD))
 
+    # ── Dread Nova (b42, Will 2026-07-13 "Ephialtes ... MORE AOE damage skills"):
+    #    his whole fear kit dealt NO damage. Give him HIS own nightmare shadow-bolt
+    #    ring that DOES real AOE damage - clone the proven ondeath_voidnova (life +
+    #    physical [30..600] by level, 24 nightstalker_shadowbolt projectiles in a
+    #    360 deg ring; nightmare-themed already). The Mnemophage casts the same donor
+    #    as a live active skill, so it is AI-castable (the 'ondeath' name is legacy;
+    #    no death trigger). FX kept verbatim (skill-FX crash-safe). ──
+    db.clone_record(_EP_SK_NOVA_DONOR, _EP_SK_DREADNOVA)
+    db._modified.add(_EP_SK_DREADNOVA)
+    _BOSS_KIT_CLONES.append((_EP_SK_NOVA_DONOR, _EP_SK_DREADNOVA))
+
     # ── THE NIGHTMARE-LORD (single form; the boss_conversionimmunity donor passive
     #    at skillName17 carries fear/confusion/convert/taunt immunity for free). ──
     db.clone_record(_EP_DONOR, _EP_BOSS)
@@ -15889,21 +15905,22 @@ def _create_dreadhalls_uberboss(db, tags):
     sf(M, 'charLevel', list(_EP_BAND))
     sf(M, 'characterLife', [15000.0, 20000.0, 27000.0])
     sf(M, 'characterRunSpeed', 1.35)                        # the relentless hunter
-    sf(M, 'scale', 2.2); sf(M, 'actorHeight', 2.0)
+    sf(M, 'scale', 2.7); sf(M, 'actorHeight', 2.4)          # b42: BIGGER (was 2.2); headroom = Will's in-game check (Dread Halls vault)
     sf(M, 'defensiveLife', 80.0); sf(M, 'defensivePierce', 45.0)
     sf(M, 'defensivePhysical', 30.0); sf(M, 'defensiveSleep', 40.0); sf(M, 'defensiveStun', 40.0)
     sf(M, 'initialSkillName', _EP_DREADSHROUD)              # spawns wreathed
-    # ADD the fear spine + chase + death nova in free slots (keep the donor's
-    # boss_conversionimmunity + hero_scaling + resist passives verbatim).
-    for path, lvl in ((_EP_SK_IXION, [3, 4, 5]), (_EP_SK_DREAMSTORM, [3, 4, 5]),
+    # ADD his DAMAGE nova (primary) + fear spine + chase + death nova in free slots
+    # (keep the donor's boss_conversionimmunity + hero_scaling + resist passives).
+    for path, lvl in ((_EP_SK_DREADNOVA, [12, 16, 20]), (_EP_SK_IXION, [3, 4, 5]),
+                      (_EP_SK_DREAMSTORM, [3, 4, 5]),
                       (_EP_SK_VISIONOFDEATH, [4, 6, 8]), (_EP_SK_TAKEDOWN, [3, 4, 5]),
                       (_EP_SK_ONDEATH, [3, 4, 5]), (_SVC_SK_GLOBPROP_L, [1, 2, 3])):
         _svc_add_skill(db, M, path, lvl)
-    sf(M, 'specialAttackSkillName', _EP_SK_IXION)           # Dread Roar, often
-    sf(M, 'specialAttackChance', 45.0)
-    sf(M, 'specialAttack2SkillName', _EP_SK_DREAMSTORM)     # nightmare nova
-    sf(M, 'specialAttack2Chance', 25.0)
-    sf(M, 'specialAttack3SkillName', _EP_SK_VISIONOFDEATH)  # second dread pulse
+    sf(M, 'specialAttackSkillName', _EP_SK_DREADNOVA)       # b42: HIS dread nova - REAL AOE damage, cast often
+    sf(M, 'specialAttackChance', 50.0)
+    sf(M, 'specialAttack2SkillName', _EP_SK_IXION)          # Dread Roar (fear)
+    sf(M, 'specialAttack2Chance', 40.0)
+    sf(M, 'specialAttack3SkillName', _EP_SK_VISIONOFDEATH)  # dread pulse (fear)
     sf(M, 'specialAttack3Chance', 40.0)
     db._modified.add(M)
 
@@ -15992,10 +16009,10 @@ def _create_dreadhalls_uberboss(db, tags):
         'down. Every wound you open blooms into a waking terror, and your enemies '
         'run. But the Waking Dread does not sleep, and now neither do you.')
     print("  C4 Ephialtes: single-form [58,78,97]/[15/20/27k], epiales_overlord "
-          "skin, scale 2.2, Dread Shroud, fear spine (ixion_cry + Dreamstorm + "
-          "Vision of Death on Skill_AttackRadius) + takedown chase + death nova + "
-          "pool/proxy/limit + dedicated hoard + Mask of the Waking Dread + S1 fear-nova soul "
-          "(mana-regen downside) + yard; tags set.")
+          "skin, scale 2.7 (b42 BIGGER), Dread Shroud, HIS Dread Nova (b42: real "
+          "AOE life+phys ring @50% special, lvl [12/16/20]) + fear spine (ixion_cry "
+          "+ Vision of Death) + takedown chase + death nova + pool/proxy/limit + "
+          "region chest + Mask of the Waking Dread + S1 fear-nova soul + yard; tags set.")
 
 
 # ── C5: EREBAN HEARTSTONE relic (mirror _create_emberscale_charm) ────────────
