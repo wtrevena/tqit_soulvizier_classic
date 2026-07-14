@@ -1,5 +1,47 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD40 SHIPPED TO STEAM (2026-07-14) - FIRST canonical map+quest advance since build36a; TESTHUB hub NOT shipped
+> **Workshop item 3759792705 is now build40 CANONICAL** (was build39). Will's standing directive: ship the FULL build40
+> to Steam including the Ephialtes/Mnemophage sizes AND the Aithon arena (sight-unseen, "ship everything, including the
+> 3"). ALL 4 canonical artifacts advanced - the FIRST canonical Levels+Quests change since build36a. Shipped md5s (each
+> verified at gate-record, stage, package, dist, and the F9 dist==work push-gate):
+> - `Database/SoulvizierClassic.arz` = **`b33c5a447f3a8ca652c14f78d4ad1dd4`** (55,351,206 B, 51,029 records) - the
+>   build40 DB: record-diff vs build39 `5bf7dac2` = 14 ADDED / 0 REMOVED / 1035 MODIFIED, ZERO unexplained. Content: b42
+>   boss chests (Charon/Dorus/Ephialtes/Tantalus) + Ephialtes dread-nova, b43 boss_arena + Aithon Embercrown soul
+>   (n/e/l), b49 enslaver + Endless-Hunt undead/Hades pool sweeps (990 records) + shadowstalker rig, b50 pet-white
+>   nameplates, b52 Dagon, b53 orb, b47 Kroisos. 13-module registry (order `b82195e9551a`, +bossarena b43). Warden
+>   C-RES-DBR-1 P1 FIX (`32ea0e8`): `ember_satyr_warden_55.lootLowerBodyItem1` scrubbed (the 3 dangling
+>   {N,E,L}_SatyrBrute leg-loot refs gone; 0 gameplay change - the slot dropped nothing, same as the base donor);
+>   contracts_resources 1 P1 -> 0 P1.
+> - `Resources/Text.arc` = **`c910da653f23ff84598b69833854d9db`** (87,555 B) - i18n de-clobber (10,600 base-identical SV
+>   tags dropped); validate_tags PASS (321 referenced + 367 authoritative tags resolve, incl. b52 Dagon / b47 Kroisos /
+>   b43 Aithon); golden A7 PASS (41 waived).
+> - `Resources/Levels.arc` = **`9981085b78f1600cc0b31c3bec4cfd92`** (688,691,745 B) = build40 CANONICAL map (NOT the
+>   TESTHUB `d4965d298ee308a4e31ffd39802ce404`). FIRST canonical rebuild since build36a `60a62880`. 18 intended blobs
+>   (b41 Hades cluster / b42 / b43 boss_arena / b45 ThebesOptTombA / b46 / b47 Medea TempleUG x2 / b48 established
+>   returns); navmesh(0x0b) 0 changed (byte-identical); QUESTS(0x1b) byte-identical (256-window parity). The b48
+>   established returns (Garden/Secret/Uber/Sparta) are the deliberate CANONICAL warden-mute bugfix that motivated the
+>   rebuild (`docs/reports/b48_sparta_mute_fix.md`).
+> - `Resources/Quests.arc` = **`37cf867f3550f5031dba5cb1cf31f30f`** (194,801 B) = build40 CANONICAL Quests (SUPERSEDES
+>   the old TESTHUB `7655f17e`). The 25 hub boat-dialog triggers are appended to the always-loaded `sv_commonmechanics`
+>   refire step (NO new QUESTS-section registration -> map 256-window parity intact); they are INERT on canonical
+>   because the canonical map places 0 hub NPCs (T6 proven). 107 entry_type==3 quest records.
+> - **Push-gate (all against the exact dist payload): GATE PASS.** F9 dist==work coupling PASS (all 4 artifacts). F7
+>   run_contracts on the DIST payload: **0 P0 / 0 P1 / 4909 P2** across 5 modules (map 3 + quests 2 + resources 4792 +
+>   summons 112 + souls 0; every P2 is pre-existing SV/DLC/base-inherited debt; warden C-RES-DBR-1 P1 GONE). Contract
+>   whitelists UNMODIFIED, so the 0 P1 is genuine (the warden was FIXED, not whitelisted). `gate_travel_npc_invariants`
+>   T1-T6 PASS on the canonical `.arc`: **0 authored walk-throughs, 0 hub-record placements** (25 hub records 0x
+>   canonical / 1x TESTHUB), 5 per-area returns fire - proving the DEV hub did NOT leak. Package TESTHUB guard PASS
+>   (packaged `9981085b` differs from TESTHUB `d4965d29`).
+> - **Upload:** steamcmd cached session (no re-auth: "Logging in using cached credentials...OK"), `-Update -Visibility
+>   0`; "Committing update...Success" + "Upload complete", **ManifestID `6660459504081325574`** (steamcmd log 2026-07-14
+>   12:09:56 -> 12:10:29 OK). Steam client NOT restarted; TQ.exe was not running.
+> - **DEV + local UNTOUCHED by this ship:** the canonical build40 map is staged in `work/` + `local/Levels_merged.arc`;
+>   the TESTHUB variant (`local/Levels_merged_TESTHUB.arc` `d4965d29`) is local-only and was NOT uploaded. A build40 DEV
+>   CustomMaps deploy remains pending a TQ-exit window (separate from this Steam ship).
+> - **Rollback (Steam):** re-upload the build39 canonical set (arz `5bf7dac2` / Levels `60a62880` / Text `e1b73e05` /
+>   Quests `56acee66`). Tag `build40-ship` at this doc commit; gate record = BACKLOG.md BUILD40 GATE RECORD @ `9d74b1c`.
+
 > ## BUILD39 SHIPPED TO STEAM (2026-07-14) - boss-skill fixes; DEV traveler hub NOT shipped
 > **Workshop item 3759792705 is now build39 CANONICAL** (was build38a). Will explicitly ordered
 > "ship build 39 to steam." Only the DB (`arz`) and `Text.arc` advanced from published build38a; the
