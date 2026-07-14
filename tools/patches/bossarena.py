@@ -204,6 +204,12 @@ def apply(db, tags):
     # wardens are honor guard, not soul-droppers (soul-leak law: only the named
     # apex drops the arena soul). Clear any inherited finger-2 soul loot.
     sf(_CHAMP, 'chanceToEquipFinger2', 0.0)
+    # dangling donor ref (base P2 promoted to mod-authored P1, C-RES-DBR-1):
+    # the SatyrBrute Champion donor's leg-loot slot points at Legs\MasterTables\
+    # Monster\{N,E,L}_SatyrBrute.dbr, which do not exist (only the torso table
+    # does). The slot drops nothing either way - clear it so the clone carries
+    # no unresolved ref.
+    sf(_CHAMP, 'lootLowerBodyItem1', [])
     db._modified.add(_CHAMP)
 
     # ── 4. THE POOL: 1 guaranteed apex + 2 champion honor guard ───────────────
