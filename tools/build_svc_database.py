@@ -3208,17 +3208,15 @@ def _fix_storm_panel_icon_overlap(db: ArzDatabase):
           "(was overlapping Skill06 Static Charge)")
 
 
-def main():
-    if len(sys.argv) < 5:
-        print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
-        sys.exit(1)
-
-    sv098_path = Path(sys.argv[1])
-    sv09_path = Path(sys.argv[2])
-    sv041_path = Path(sys.argv[3])
-    output_path = Path(sys.argv[4])
-    base_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
-
+def _run_prefix(sv098_path, sv09_path, sv041_path, base_path):
+    """Build-speed: the INVARIANT PREFIX of the build (load the 4 upstream/base
+    arzs + assemble through create_uber_souls). Extracted VERBATIM from main() so
+    the prefix snapshot cache (tools/prefix_cache.py) can skip it on a HIT. When
+    the cache is disabled (default) main() calls this unconditionally -> the build
+    is byte-identical to the pre-cache version. Returns the payload main() needs
+    (the assembled db, the throwaway source dbs db09/db41, and every prefix
+    side-output: soul/tag dicts + base_names_low + the _SV098I_* provenance sets).
+    """
     print(f"Loading SV 0.98i: {sv098_path}")
     db = ArzDatabase.from_arz(sv098_path)
 
@@ -3413,6 +3411,69 @@ def main():
 
     from create_uber_souls import create_uber_souls
     souls, text_tags = create_uber_souls(db)
+
+    # ---- build-speed: payload for main()/the prefix cache (see prefix_cache.py) ----
+    import apply_svc_patches as _asp_final
+    return {
+        'db': db, 'db09': db09, 'db41': db41,
+        'souls': souls, 'text_tags': text_tags,
+        'legacy_tags': legacy_tags, 'thrown_tags': thrown_tags,
+        'graft_tags': graft_tags, 'base_names_low': _base_names_low,
+        'sv098i_all_paths': _asp_final._SV098I_ALL_PATHS,
+        'sv098i_soul_paths': _asp_final._SV098I_SOUL_PATHS,
+    }
+
+
+def main():
+    if len(sys.argv) < 5:
+        print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
+        sys.exit(1)
+
+    sv098_path = Path(sys.argv[1])
+    sv09_path = Path(sys.argv[2])
+    sv041_path = Path(sys.argv[3])
+    output_path = Path(sys.argv[4])
+    base_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
+
+
+    # -- build-speed: PREFIX SNAPSHOT CACHE (default OFF; tools/prefix_cache.py) --
+    # A HIT restores the assembled db + every prefix side-output, skipping the
+    # 4-arz reload + ~77 s assembly (and the 4-DB memory co-residence). When the
+    # cache is disabled (the default) _run_prefix runs unconditionally, so the
+    # build stays byte-identical to the pre-cache version. Advisory: any
+    # miss/error falls back to the cold prefix. Enablement is gated on
+    # tools/verify_cache_determinism.py (cold-build md5 == warm-build md5).
+    import prefix_cache
+    _key = None
+    _pfx = None
+    if prefix_cache.enabled():
+        try:
+            _key = prefix_cache.compute_key(
+                sv098_path, sv09_path, sv041_path, base_path)
+            _pfx = prefix_cache.load(_key)
+        except Exception as _cache_e:
+            print(f"  prefix-cache: disabled for this build ({_cache_e})")
+            _key = None
+            _pfx = None
+    if _pfx is None:
+        _pfx = _run_prefix(sv098_path, sv09_path, sv041_path, base_path)
+        if _key is not None:
+            prefix_cache.store(_key, _pfx)
+    db = _pfx['db']
+    db09 = _pfx['db09']
+    db41 = _pfx['db41']
+    souls = _pfx['souls']
+    text_tags = _pfx['text_tags']
+    legacy_tags = _pfx['legacy_tags']
+    thrown_tags = _pfx['thrown_tags']
+    graft_tags = _pfx['graft_tags']
+    _base_names_low = _pfx['base_names_low']
+    # re-arm the soul-provenance module globals the extended-phase gates read
+    # (empty defaults on a HIT would rename SV-original souls / crash the naming
+    # gate). On the MISS path this re-assigns the same objects _run_prefix set.
+    import apply_svc_patches as _asp_rearm
+    _asp_rearm._SV098I_ALL_PATHS = _pfx['sv098i_all_paths']
+    _asp_rearm._SV098I_SOUL_PATHS = _pfx['sv098i_soul_paths']
 
     from apply_svc_patches import apply_all_extended_patches
     # ── Soul drop-rate control (RELEASE is the DEFAULT for this repo) ──────────
