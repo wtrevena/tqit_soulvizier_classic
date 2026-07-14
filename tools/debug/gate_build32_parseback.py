@@ -347,7 +347,7 @@ def main():
             ('secret_place/darkforestenter.lvl',   56, b'svc_testhub_return.dbr', (27.0, 1.0, 30.0)),
             ('uberdungeon/crypt_floor1.lvl',       56, b'svc_testhub_return.dbr', (140.0, 10.0, 229.0)),
             ('minidungeons/spartacryptlevel2.lvl', 56, b'svc_testhub_return.dbr', (45.0, -1.6, 42.0)),
-            ('bossarena/boss_arena.lvl',           56, b'svc_testhub_return.dbr', (131.0, 0.0, 40.0)),
+            ('bossarena/boss_arena.lvl',           56, b'svc_testhub_return.dbr', (136.0, 27.0, 104.0)),  # b43-r2: moved onto the arena dais comp#2 (reachability fix)
         ]
         for suffix, base, bname, pos3 in RIG:
             print(f'--- RIG {suffix} ---')

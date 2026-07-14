@@ -701,6 +701,25 @@ REMOVE_STRAY_PROP_SPECS = {
     ],
 }
 
+# ── M16: DE-PLACE the Boss Arena blockout mannequin (b43, 2026-07-13) ─────────────────
+# Same de-place mechanism as M6/M14 (a record that RESOLVES but should not be placed).
+# records\creature\pc\malepc01.dbr = a Player-class actor (Class=Player, charLevel=1, no
+# controller/AI -> renders inert, never fights) placed ONCE in the SV Boss Arena
+# (boss_arena.lvl, instance [22], local (141.7,0.0,189.0), flags=0, no 0x14) at the far
+# NORTH edge next to the return portals. It is an SV blockout/debug leftover - a "lone
+# standing figure" the player sees on a bare arena floor (survey: off-mesh, 0% clearance,
+# d=2.77 - it sits in a wall corner, never meant to be shipped). SV under-built this arena
+# (docs/reports/b43_bossarena_rca.md); de-placing the mannequin removes the debug leftover
+# with ZERO gameplay change (a Player-class static does nothing). Placed EXACTLY ONCE in the
+# whole merged world (ref-scan), so the per-dbr removal is unambiguous. flags=0 + no 0x14,
+# so no 0x14 record is dropped; instances above [22] (incl. the two return portals at [28]/[29]
+# whose 0x14 bindings reindex) shift down by 1 - handled by remove_0x05_instances_by_dbr.
+REMOVE_ARENA_BLOCKOUT_SPECS = {
+    'levels/world/bossarena/boss_arena.lvl': [
+        b'records\\creature\\pc\\malepc01.dbr',
+    ],
+}
+
 # ── M8 PHASE-1 PILOT: the PORTAL-MASTER NPC (Model C, Will-approved 2026-07-09) ──────
 # Will chose Model C (an NPC you talk to who teleports you) as the portal model going
 # forward; Model B (FixedItemTeleport class-swap) is DEAD (its destination is encoded
@@ -1696,6 +1715,26 @@ INJECT_SPECS = {
     'levels/world/olympus/olympusfinal02.lvl': [
         OLYMPUS_RHODES_NPC_SPEC,
     ],
+    # ── b43 OLYMPIAN ARENA fire-glow dressing (2026-07-13) ────────────────────────────
+    # SV shipped the Boss Arena as a vast bare floor (docs/reports/b43_bossarena_rca.md).
+    # A ring of 6 orange dynamic point-lights frames the central fight floor with warm
+    # fire-glow (thematically the volcanic apex Aithon scorching the cold Olympus arena;
+    # pairs with his ring-of-flame shroud + fire kit). Pure light (EffectEntity, no mesh,
+    # no collision, flags=0, no 0x14 - never blocks the fight or navigation). Surveyed
+    # ON-MESH on the fight-floor component (comp#2) at radius ~14u around center local
+    # (132,130): every point read d<=0.14u / 100% clearance on all 3 tilesets
+    # (survey_uberboss_spots.py boss_arena.lvl --base 56). localY 28.0 = ~1u above the
+    # walk surface (spawn/volume sit at localY ~27). 5mlight_dyn_orange is a shipped,
+    # already-placed record (proven to resolve; used in the HV01 C4 dressing). SV-only
+    # v0x0e level -> inject_into_0x05 (56-byte records), same path as the finalletter.
+    'levels/world/bossarena/boss_arena.lvl': [
+        (LIGHT_5M_DYN_ORANGE_DBR, 146.0, 28.0, 130.0),   # E
+        (LIGHT_5M_DYN_ORANGE_DBR, 118.0, 28.0, 130.0),   # W
+        (LIGHT_5M_DYN_ORANGE_DBR, 132.0, 28.0, 144.0),   # N
+        (LIGHT_5M_DYN_ORANGE_DBR, 132.0, 28.0, 116.0),   # S
+        (LIGHT_5M_DYN_ORANGE_DBR, 142.0, 28.0, 120.0),   # SE
+        (LIGHT_5M_DYN_ORANGE_DBR, 122.0, 28.0, 140.0),   # NW
+    ],
     # Widow Letter questline (WAVE E): restore the 3 SV entities the widowletter.qst
     # conditions reference. widow_ling = the NPC (Condition_ConversationStart),
     # trg_foundzhidan = the trigger volume (Condition_EnterVolume), and
@@ -2491,10 +2530,17 @@ def build_hub_extra_specs():
         # TESTHUB build. The TESTHUB build inherits all four from base. ONLY the Boss Arena return
         # stays TESTHUB-only (Boss Arena is not in the canonical Helos portal-master's 4-dest menu;
         # only the 7-port TESTHUB hub master reaches it).
-        # The Boss Arena (boss_arena): 3u E of landing (-433,0,-3602); comp 0; clr@3.0=100%; the
-        # landing is ~90u off volume_startolympianarena (DB lane), so this NPC stays well off it.
+        # The Boss Arena (boss_arena): b43-r2 REACHABILITY FIX. The fight sits on a raised-dais
+        # navmesh island (comp#2, world y~27) 28u above the low floor (comp#1, y~0) with no walkable
+        # bridge; the OLD landing+return at local(~131,0,40) were on comp#1 -> the whole encounter
+        # was unreachable (isolated island). Moved BOTH onto comp#2 with the outbound landing
+        # (build_quest_files: world(-429,27,-3538)=local(132,27,104), south dais, 26u S of the boss
+        # spawn / outside the r20 trigger). This return NPC = 4u E of that landing, on the dais
+        # (local(136,27,104); survey_uberboss_spots boss_arena.lvl --base 56: comp#2/92026, d=0.14,
+        # clr@3.0=100% all 3 tilesets, 2026-07-13). Reliable return (Model C boat-dialog to Helos);
+        # SV's own GridExitOneWay return portal on the dais is a vestigial extra.
         BOSSARENA_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 131.0, 0.0, 40.0),
+            (SVC_TESTHUB_RETURN_DBR, 136.0, 27.0, 104.0),
         ],
     }
     # Helos-hub area RETURN NPCs (build37): append one distinct return record per new boss/warband
