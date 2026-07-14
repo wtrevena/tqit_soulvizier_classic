@@ -65,6 +65,7 @@ FOUGHT = [
     ('monolith', 'Vashkarr', M + r'creature\monster\dragonian\um_vashkarr_99.dbr'),
     ('monolith', 'Ilsevar', M + r'creature\monster\skeleton\um_ilsevar_99.dbr'),
     ('monolith', 'Sarkoth', M + r'creature\monster\abyssalliche\um_sarkoth_99.dbr'),
+    ('monolith', 'Voranthys (obsidian apex; donor boss_dragonliche_57)', M + r'creature\monster\questbosses\um_voranthys_99.dbr'),
 ]
 
 EXEMPLARS = [
