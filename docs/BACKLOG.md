@@ -1547,7 +1547,7 @@
   sealed = the proxy is not spawning its guardian (population wiring, sibling of B-SPRITE-1) or
   KillAllCreaturesFromProxy is not arming for an adopted control quest; investigate THAT, not the port.
 
-### B-SMOKE-1: Region smoke density far below SV (STILL - reconfirmed)
+### B-SMOKE-1: Region smoke density far below SV (DATA-DEFECT CLOSED 07-14; residual = install/render, not content)
 - **Symptom:** some smoke present, but SV had FAR more, starting the moment you enter the section.
 - **Cause:** the C4 atmosphere restore covered ENTITY emitters only; the REGION-WIDE ENVIRONMENT
   half (SD/0x18 or level 0x09 env params - volumetric fog) was never restored (vet hedge on record).
@@ -1561,6 +1561,29 @@
   audit fog_occult_fx01/pit_fx01/pit_fx02/bugcloud_smallfx emission values vs SV-era - in the
   2026-07-08 DB wave (item 9). If both come back SV-faithful, the residual gap is engine-era
   rendering, not data.
+- **2026-07-14 VERDICT (B54 RCA + implement/vet round 1 - BOTH levers refuted a 2nd time, from
+  deployed artifacts): DATA-DEFECT CLOSED. No map/DB fix ships.** Scope narrowed by Will (verbatim):
+  "just the two added occultist merchant areas" = hiddenvalley01 + hiddenvalleyborder04 (Greece) and
+  delphilowlands02/03/04 (Delphi); gardenofmerchants and all else OUT. Independently verified read-only
+  from the DEPLOYED build40 canonical AND the LIVE Workshop map (what Will plays):
+  (a) map lever REFUTED - **0 occult smoke/fog emitters dropped** across all 5 levels; all 17 emitter
+  instances (`fog_occult_fx01` x6, `pit_fx01` x3, `pit_fx02`, `occultistaura_fx01`, `cage_binding_fx01`,
+  `bugcloud_smallfx` x4) are PRESENT, ENABLED (flags=0), and identity-oriented (rotdet=1.0000);
+  `fog_occult_fx01` + `pit_fx01` are even ADDED beyond SV (C2/C4 emphasis). The Delphi entities the
+  07-08 note called "still dropped" are all present (restored by the SV->SVAERA merge; no INJECT_SPECS
+  needed). (b) DB lever REFUTED - all 8 occult FX EffectEntity records are BYTE-IDENTICAL deployed-vs-SV
+  (0 fields drifted); FX records matching SV are not touched. All 6 `.pfx` byte-identical to the
+  known-good SVAERA + live copies; all 11 textures resolve. The only in-scope drops are NON-smoke scene
+  props (debris/corpses/trees/rocks/`merchantvendortable01`/occult tome+scrolls/`blooddemon_medium01`/one
+  `buttfire.pfx` FIRE fx) = section B (do-not-auto-apply: scope creep + greenfield Delphi v0x11 crash
+  risk). **NOTHING injected, NOTHING patched, 0x09/0x17 untouched - injecting redundant smoke where the
+  data is SV-faithful is a fake-fix + vet NO-GO.** Residual is NOT data: either a STALE install (the
+  smoke IS in the live Workshop arc - restart Steam + hash-verify the loaded arc) or engine-era particle
+  rendering of the DRX occult fog on stock TQAE (particle budget / draw-distance culling). NEXT STEP =
+  Will's in-game render diagnosis, NOT a data edit. The ONLY data lever left = fog DENSITY emphasis
+  beyond SV via the proven v0x11 injector, and ONLY if Will explicitly asks for "smokier than SV" (a
+  deliberate scope expansion, not auto-applied). Full evidence: `docs/reports/b54_smoke_rca.md` (FIX
+  section). Branch `feat/occult-smoke-restore` is docs-only (no map/arz delta); does not gate any build.
 
 ### B-TEXT-TAGS-1: 8 Blood Toxeus / Crimson Verdict tags render as raw strings in-game
 - **Symptom:** on the PUBLIC item, Hemorrheus's name, the Crimson Verdict set name, its 4 set-piece

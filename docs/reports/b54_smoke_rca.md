@@ -194,3 +194,107 @@ Hades-debris/corpses/rocks/trees; none are occult-scene-defining - see full_enti
 - delphi_lever_ever_shipped = TRUE (the Delphi occult entities are present in build40 AND the
   live Workshop map, restored via the SV->SVAERA merge; the dedicated INJECT_SPECS lever was
   never added and is unnecessary)
+
+---
+
+## FIX (implementer round 1, 2026-07-14) - NO DATA CHANGE. Both levers refuted a SECOND time.
+
+Per the mandatory implement->vet loop, a fresh implementer independently RE-VERIFIED the RCA's
+three gate numbers from the DEPLOYED artifacts (not trusting the RCA prose) before deciding
+whether to inject anything. The verdict is unchanged and now doubly-sourced: **there is no
+occult-smoke DATA defect to fix.** No `SMOKE_SPECS` were added to `INJECT_SPECS`; no `tools/patches/`
+module was added; `0x09`/`0x17` were not touched (refuted lever). **The map/DB fix list is EMPTY.**
+
+### Independent re-verification (round 1), from deployed artifacts
+
+Read-only, no heavy build (concurrency honored). Harness: `tools/debug/full_entity_diff.py`,
+`fx_diff.py`, and a direct occult-emitter instance dump.
+
+**1. Exhaustive per-level 0x05 drop diff, SV vs DEPLOYED build40** (`work/.../Levels.arc`,
+`full_entity_diff.py build40`) - this is the SUPERSET check, every dbr, not just the is_atmo heuristic:
+
+| Level | SV inst | present | dropped | dropped = smoke emitter? |
+|---|---:|---:|---:|---|
+| hiddenvalley01 | 205 | 204 | 1 | NO (`orienttownsetdresstablegroup` - a table) |
+| hiddenvalleyborder04 | 51 | 50 | 1 | NO (`seen_ocv2_trigger` - a gardenofmerchants zone trigger) |
+| delphilowlands02 | 110 | 87 | 23 | NO (hades-debris/corpses/rocks/trees/`merchantvendortable01`/vase) |
+| delphilowlands03 | 40 | 32 | 8 | NO (bones/corpses/cliff scenery) |
+| delphilowlands04 | 219 | 204 | 15 | NO (trees/`blooddemon_medium01`/`qi_tomeofhealing01`/`scrolls`/satyr-proxies/cliff + one FIRE fx, see below) |
+
+**Occult smoke/fog emitters dropped across all 5 in-scope levels = 0.** `fog_occult_fx01`,
+`pit_fx01`, `pit_fx02`, `occultistaura_fx01`, `cage_binding_fx01`, `bugcloud_smallfx` are ALL
+present; `fog_occult_fx01` (+1 hiddenvalley01) and `pit_fx01` (+1 hiddenvalleyborder04) are even
+in the ADDED column (the C2/C4 emphasis beyond SV). The ~48 non-smoke drops are scene dressing,
+already covered by section B (OPTIONAL, do-not-auto-apply: Delphi 0x05 injection is greenfield +
+v0x11-crash-prone, and restoring non-smoke props is scope creep against Will's "just the smoke").
+
+**2. Same diff vs the LIVE Workshop map Will actually plays** (`3759792705/.../Levels.arc`,
+`full_entity_diff.py live`): byte-for-behaviour identical present/dropped counts; the occult
+emitters are present (fog + pit in the ADDED column). Will's installed map carries the smoke.
+
+**3. Direct occult-emitter instance dump, DEPLOYED build40** - proves the emitters are not merely
+present but ENABLED and correctly oriented (not silently disabled / zero-rotation degenerate):
+
+| level | emitter instances | all flags=0 (enabled)? | all rotdet=1.0000 (identity)? |
+|---|---:|---|---|
+| hiddenvalley01 | 1 (fog) | YES | YES |
+| hiddenvalleyborder04 | 5 (2 fog, 1 aura, 2 pit) | YES | YES |
+| delphilowlands02 | 6 (3 fog, pit_fx01, pit_fx02, bugcloud) | YES | YES |
+| delphilowlands03 | 2 (bugcloud) | YES | YES |
+| delphilowlands04 | 3 (2 fog, cage_binding) | YES | YES |
+| **total** | **17** | **17/17 enabled** | **17/17 identity** |
+
+**4. FX field-drift, DEPLOYED arz vs SV arz** (`fx_diff.py`): all 8 occult FX EffectEntity
+records (`fog_occult_fx01`, `pit_fx01`, `pit_fx02`, `bugcloud_smallfx`, `occultistaura_fx01`,
+`cage_binding_fx01`, both disciple auras) are **BYTE-IDENTICAL DEP vs SV - 0 fields drifted.**
+The DB-side lever (b) is refuted. Per the task rule, FX records that already match SV are NOT
+touched.
+
+### One thread the RCA's atmo heuristic did not name - checked and cleared
+
+`full_entity_diff.py` (the superset) flags `records\skills\stealth\drxeffects\drx_bladehoning_running_fx.dbr`
+dropped at delphilowlands04 (SV-local 14.160,10.121,6.250). The is_atmo heuristic missed it
+(path `\drxeffects\` != the `\effects\` substring). Probed directly: it is an `EffectEntity`
+whose `effectFile = DRXeffects\buttfire.pfx` - a **FIRE** particle, NOT the reported purple/black
+occult smoke (that is `fog_occult_fx01` -> `occultfog.pfx`, present + byte-identical). Its DB
+record resolves in the deployed arz. So it is a non-smoke fire prop, not the bug; restoring it
+would be non-smoke scene emphasis + a greenfield Delphi 0x05 injection (crash risk) - out of scope.
+
+### Why nothing was injected (this is the correct, DONE-means-DONE outcome, not a punt)
+
+- MAP: no occult smoke emitter is dropped (0/17 missing, all enabled + oriented; fog even added).
+  Injecting more `fog_occult_fx01` where the data is already SV-faithful is a FAKE-FIX (the entity
+  is invisible-in-game for a NON-data reason, so a duplicate would not render either) + scope creep
+  + a greenfield Delphi v0x11 injection with documented crash history. That is a vet NO-GO by
+  default, and the brief forbids it.
+- DB: 0 FX fields drifted; the brief says restore a field ONLY if drift was proven. None was.
+- `0x09`/`0x17`: not touched (the 2026-07-08 refuted region-env lever; framing mismatch corrupts).
+
+### The residual is NOT data - what to actually do next (no code lever without Will's go-ahead)
+
+1. **Confirm install freshness first** (per "restart Steam before every test"): the smoke IS in
+   the live Workshop `Levels.arc`. If Steam served a stale copy or Will tested a pre-build40
+   subscribe, that alone explains "still not there." Restart Steam + hash-verify the loaded arc.
+2. If current and still absent, the residual is **engine-era particle rendering** of the DRX
+   occult fog on stock TQAE (particle budget / draw-distance culling), NOT content. The 6 `.pfx`
+   are byte-identical to a shipping DRX mod (SVAERA) and our own live copy - they are the genuine
+   assets. Diagnose in-game (does ANY `occultfog.pfx` render at HVBorder04, where identical records
+   are present + enabled), a render probe - not a data edit.
+3. **Only if Will explicitly wants the areas "smokier than SV"** does a data lever exist: fog
+   DENSITY emphasis in the Delphi occult scenes via the proven v0x11 injector (the C2/C4 precedent).
+   This is emphasis-beyond-SV and a deliberate scope expansion; it is NOT auto-applied.
+
+### Deploy coupling
+
+Nothing to deploy for the smoke bug (no artifact changed). This branch is docs-only (RCA report +
+BACKLOG + read-only `tools/debug/` harness); it carries no map or arz delta and does not gate the
+next build.
+
+### Fix gates (round 1)
+
+- instances_restored = 0 (0 dropped smoke emitters; fix list empty - re-verified from build40 + live)
+- fx_fields_restored = 0 (0 FX fields drifted - all 8 records byte-identical)
+- dry_run_diff = N/A - no injection performed (a redundant-smoke inject would be a fake-fix + vet NO-GO)
+- dbr_resolution = all 6 occult-emitter records + `drx_bladehoning_running_fx` resolve in the deployed arz (0 new placements to resolve)
+- py_compile = PASS (harness + build_section_surgery.py + patches/__init__.py)
+- check_registry = PASS (`patches-registry selfcheck OK: 13 module(s)`, order b82195e9...; unchanged - no module added)
