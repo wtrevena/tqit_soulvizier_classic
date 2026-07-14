@@ -1,5 +1,5 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🗡️ **B39 BOSS-SKILL FIX (IN FLIGHT, `feat/b39-boss-skills`, round 2 - awaiting vet+integration).** Will
+> 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10
 > apex bosses**. New registry module `tools/patches/boss_skill_fix.py` (position 11, after every boss-creating
@@ -10,8 +10,9 @@
 > not in the fix table) so a missed/new boss can't ship silently. Round-2 fixed the round-1 miss of
 > **`um_voranthys_99`** (whole kit was level 0). Dry-run replay vs `baseline_build38.arz` (= build38-dev `fcd5dcab`):
 > 27 edits, verify OK, idempotent, all 10 bosses clean, roster 0 leftovers, pets untouched, negative test PASS.
-> Full RCA: `docs/reports/b39_boss_skills_rca.md`. NO heavy build (Will playing). Re-verify vs true build38a
-> `6631f252` on the next full build (the 345-proxieshades-pool delta is disjoint from all boss records).
+> Full RCA: `docs/reports/b39_boss_skills_rca.md`. **RE-VERIFIED in build39-dev** vs true build38a
+> `6631f252`: 10 bosses CHANGED (32 skill-field diffs only - skillLevelN/skillNameN/specialAttack3*, 0 design drift),
+> verify OK - see BUILD39-DEV GATE RECORD below.
 
 > 🧩 **BUILD38 INTEGRATION (2026-07-13, main) - 5 GO-vetted lanes merged + integration fixes.** Merges (all
 > clean, order hash `7ed29402a38d` -> `7c74a51f6ed8`, REGISTRY now 11 modules): `feat/b38-mastery-ui` @ `43611fc`,
@@ -70,6 +71,53 @@
 > - **Will tour checks** (in-game, cannot be gate-verified here): damage numbers appear on normal/elemental/DoT hits;
 >   the 8 repointed mastery icons + Dream background render (no black pane, no missing icons); Earth Rupture chain
 >   shows ONE Rupture with the reflowed layout. Screenshots requested.
+>
+> 🧪 **BUILD39-DEV GATE RECORD (2026-07-13, main HEAD `87b0cae` + this BACKLOG commit) - FULL-REGISTRY DB + Text +
+> Quests + TESTHUB-map build GREEN; both b39 DEV lanes integrated (boss-skill fix + Helos hub v2).** Merges:
+> `feat/b39-boss-skills` @ `95edf55` (boss_skill_fix registry module, pos 11/12) + `feat/b39-hub-v2` @ `87b0cae`
+> (8 new traveler NPC records + 25 quest triggers + TESTHUB placements + WILL_TEST_GUIDE); disjoint file sets,
+> 0 conflicts. Staged to `work/` + `local/` TESTHUB, NOT deployed; canonical build36a stays LIVE; DEV deploy pending
+> a TQ-exit window.
+> **ARTIFACT MD5s:** arz `5bf7dac29beb75757178179c363af2cf` (55,354,147 B, 51,015 records = build38a 51,007 + 8 hub) -
+> SUPERSEDES build38a `6631f252`; Text.arc `e1b73e050975b63521a30062c21e009b` (87,360 B) - SUPERSEDES `dff9ad01`;
+> Quests.arc `7655f17e5a5f8bf13956ef456ca10595` (194,754 B) - SUPERSEDES `838bdc3a`; TESTHUB Levels
+> `4fcc058c590ab0719e224940ba0b9266` (688,686,024 B, `local/Levels_merged_TESTHUB.arc`) - SUPERSEDES `841c56cd`.
+> UNCHANGED (never rebuilt): canonical Levels `60a628807c1746e7bbde14946de62107` (688,682,781 B). Baseline for the
+> diff: `baseline_build38a.arz` = build38a arz `6631f252`.
+> **DB BUILD** (PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1): exit 0; registry **12 modules order `4c688f58d1aa`** (was 11
+> `7c74a51f6ed8`; +boss_skill_fix at 11/12); RELEASE drops (66% Hero/Quest, 25% Boss); `run_registry_verifies` GREEN
+> (verify hooks skill_quality + toxeus_suite + damage_display + **boss_skill_fix** OK; `boss_skill_fix.verify` OK:
+> roster `um_*_99` clean of level-0 specials, all enables survived finalization); golden Occult/Hunting PASS (35
+> waived). Collision gate: 2 records (`um_toxeus_hunt_99` <- toxeus_suite+boss_skill_fix, `um_helepolis_99` <-
+> diadochi+boss_skill_fix) LATER-wins (legal registry semantics, logged) = boss_skill_fix repairs skill-wiring ON TOP
+> of the boss-creating modules.
+> **RECORD-DIFF AUDIT** (`baseline_build38a` `6631f252` vs new `5bf7dac2`): **8 ADDED / 0 REMOVED / 10 CHANGED, ZERO
+> unexplained**, 0 forbidden clobbers. 8 ADDED = hub-v2 traveler NPCs `svc_helos_trav_{devourer,vashkarr,obsidian}` +
+> `svc_area_return_{uber,sparta,devourer,vashkarr,obsidian}` (all `records\quests\svc_*`, mod namespace). 10 CHANGED =
+> the enumerated bosses (voranthys/helepolis/dorus/kravmoloch/gorrahk/ilsevar/toxeus_hunt/vashkarr/sarkoth/
+> broodmother_99); **32 field-diffs, every field in {skillLevelN, skillNameN, specialAttack3*}** (boss_skill_fix
+> skill-wiring/animation) - **0 life/damage/cost/HP/design-value drift, 0 dtype-forbidden** (programmatic allowlist
+> check: 0 fields outside the set, 0 forbidden-field hits).
+> **TEXT** i18n de-clobber ENABLED (17,541 base Text_EN tags loaded): dropped **10,600** SV tags byte-identical to
+> base-game Text_EN; `validate_tags` PASS (all **311** referenced mod tags resolve in Text.arc); golden A7 PASS (41
+> waived, 0 other); duplicate-tag gate OK. New hub-v2 tags (`tagSVCHelosToUber`="The Uber Dungeon" + `tagSVCNpcTrav*`/
+> `tagSVCHelosTo*` for devourer/vashkarr/obsidian) resolve.
+> **QUESTS** (`build_quest_files`, exit 0): quest-record contract PASS (**107** entry_type==3 records loadable); Helos
+> traveler hub = **25 per-area boat-dialog triggers** (14 outbound + 11 returns) appended to the always-loaded
+> `sv_commonmechanics` refire step (registry law: no new QUESTS-section registration); 6 area quests round-trip OK.
+> **TESTHUB MAP** (`SVC_TEST_HUB=1` -> `Levels_merged_TESTHUB.arc`, canonical untouched): world01.map QUESTS section
+> **255 entries** (4 SV quests spliced in-window, widowletter idx 99 -> **256-window parity intact**); 25 hub NPCs into
+> Helos (hiddenvalley01) + returns into boss landings (crypt_floor1/spartacryptlevel2/boss_arena/drxbc2/...); 2282
+> levels, **0 bad offsets / 0 bad magic / 0 zero-ints**.
+> **CONTRACTS:** souls/summons/resources 0 P0/0 P1 (**4905** native P2, == build38a); map (NEW arz + TESTHUB Levels
+> `4fcc058c`) 0 P0/0 P1 (**3** native P2 = pre-existing base-game XPack portal reciprocity) - **hub travelers + boss
+> portals resolve in the new arz**.
+> **GATE_TRAVEL_NPC_INVARIANTS PASS:** T1 **0 walk-throughs** (canonical + TESTHUB, SV-native baseline=3); T2 **25 hub
+> records 0x canonical / 1x TESTHUB** (warden law); T5 cross-file **map==quests==arz (25 records)** + 15 label tags
+> resolve; canonical byte-pure.
+> **NOT DEPLOYED:** staged to `work/` (arz/Text/Quests) + `local/Levels_merged_TESTHUB.arc`; DEV deploy pending a
+> TQ-exit window (Will playing build38a-dev); TESTHUB is local-only (never uploaded to Steam), canonical Steam
+> build36a untouched.
 >
 > 🧪 **BUILD38A GATE RECORD (2026-07-13, main HEAD `2073fe6`) - DB-ONLY rebuild of the Endless-Hunt stalker
 > per-slot `limit=1` cap (two-in-one-trigger fix); the ONLY delta vs build38-dev is 345 Hades pools gaining the cap.**
