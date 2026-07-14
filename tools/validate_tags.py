@@ -86,10 +86,19 @@ TAG_FIELDS = frozenset({
 #   tagDarkAperture* - build_svc_database.py legacy-skill tags
 #   xtagMysteriousPortal* - build_svc_database.py custom portal description tag
 #   tagD2Boss004     - apply_svc_patches.py boss rename (Cold Worm). EXACT, not
-#                      the tagD2Boss* prefix: the .arz also references base-game
-#                      tagD2Boss033 (records\test\boss_dagon_66.dbr) which
-#                      resolves from the base game and is absent from the mod
-#                      Text.arc - a tagD2Boss* prefix would false-positive on it.
+#                      the tagD2Boss* prefix.
+#                      HISTORICAL NOTE (b52, corrected): an earlier comment here
+#                      claimed the .arz's other tagD2Boss* ref, tagD2Boss033
+#                      (records\test\boss_dagon_66.dbr = Dagon), "resolves from the
+#                      base game". That was FACTUALLY WRONG: tagD2Boss033 is defined
+#                      in NEITHER the mod Text.arc, SV 0.98i upstream, NOR base
+#                      Text_EN.arc - so Dagon shipped with a RAW display name. This
+#                      mod-owned-only filter is exactly why the gate missed it (a
+#                      non-mod-owned tag was assumed base-resolved and never checked).
+#                      The blind spot is now closed by check_monster_name_tags()
+#                      below, which cross-checks every spawn-referenced monster's name
+#                      against the mod Text.arc AND base Text_EN.arc. Dagon's monster
+#                      is now named tagSVCMonsterDagon (mod-owned) by apply_svc_patches.
 #   tagSkillName050  - build_text_arc.py Occult mastery title (exact tag)
 #   tagNewSkill321DESC - build_text_arc.py Occult skill description (exact tag)
 #   tagbreachDESC    - build_svc_database.py MOD_DESC_FIX_TAGS (exact tag; the
@@ -104,6 +113,7 @@ MOD_TAG_PREFIXES = (
     'tagSoulSVC',
     'tagSVCSoul',
     'tagSVCSummon',
+    'tagSVCMonster',   # b52: mod-authored monster display names (tagSVCMonsterDagon)
     'tagDarkAperture',
     'xtagMysteriousPortal',
     'tagD2Boss004',
@@ -118,27 +128,93 @@ def is_mod_tag_by_prefix(tag):
     return tag.startswith(MOD_TAG_PREFIXES)
 
 
-def collect_arz_tag_refs(arz_path):
-    """Return {tag: [(record, field), ...]} for ALL string tag-field refs.
+# Spawn-pool fields: a monster record referenced through one of these (as a .dbr
+# value) can actually SPAWN in-game, so a raw/unresolved display name on it is
+# visible. Used to scope the monster-name gate to monsters that can appear.
+_SPAWN_FIELD_RE = __import__('re').compile(r'^(name|nameChampion|partyMember)\d*$')
 
-    Ownership filtering is applied by the caller (manifest membership or the
-    prefix fallback), so this returns every candidate reference.
+
+def _field_first(fields, field_name):
+    """First value of `field_name` in an already-fetched get_fields() dict (keys may
+    carry a '###n' suffix), or None."""
+    for key, tf in fields.items():
+        if key.split('###')[0] == field_name and tf.values:
+            return tf.values[0]
+    return None
+
+
+def collect_arz_tag_refs(arz_path):
+    """Single load of the .arz -> (all_refs, monster_names, spawn_referenced).
+
+    all_refs        : {tag: [(record, field), ...]} for ALL string tag-field refs
+                      (ownership filtering is applied by the caller).
+    monster_names   : [(record, description_tag), ...] for every Class==Monster
+                      record whose `description` is a tag-like string (its display
+                      name). Fed to the monster-name blind-spot cross-check.
+    spawn_referenced: set of lowercased .dbr paths referenced by any spawn-pool
+                      field (name*/nameChampion*/partyMember*) - i.e. monsters that
+                      can appear in-game.
     """
     db = ArzDatabase.from_arz(arz_path)
     refs = {}
+    monster_names = []
+    spawn_referenced = set()
     for name in db.record_names():
         fields = db.get_fields(name)
         if not fields:
             continue
+        is_monster = (_field_first(fields, 'Class') == 'Monster')
         for key, tf in fields.items():
             field_name = key.split('###')[0]
+            if tf.values and _SPAWN_FIELD_RE.match(field_name):
+                for val in tf.values:
+                    if isinstance(val, str) and val.lower().endswith('.dbr'):
+                        spawn_referenced.add(val.replace('/', '\\').lower())
             if field_name not in TAG_FIELDS or not tf.values:
                 continue
             for val in tf.values:
                 if not isinstance(val, str) or not val:
                     continue
                 refs.setdefault(val, []).append((name, field_name))
-    return refs
+                if is_monster and field_name == 'description' and val.startswith('tag'):
+                    monster_names.append((name, val))
+    return refs, monster_names, spawn_referenced
+
+
+def load_base_en_tag_set(base_text_en_path=None):
+    """Return the set of tag keys defined in the player's base-game Text_EN.arc, or
+    None if it cannot be located/loaded (the caller then SKIPS the base cross-check
+    rather than false-failing). Reuses build_text_arc's discovery + loader so the
+    gate reads exactly the base text the build's i18n de-clobber reads."""
+    try:
+        import build_text_arc as _bta
+    except Exception as exc:
+        print(f"  Base Text_EN: build_text_arc import failed ({exc})")
+        return None
+    arc = None
+    if base_text_en_path and Path(base_text_en_path).exists():
+        arc = Path(base_text_en_path)
+    else:
+        try:
+            arc = _bta.discover_base_text_en()
+        except Exception:
+            arc = None
+    if not arc or not Path(arc).exists():
+        return None
+    try:
+        return set(_bta.load_base_en_tags(Path(arc)).keys()), str(arc)
+    except Exception as exc:
+        print(f"  Base Text_EN: load failed ({exc})")
+        return None
+
+
+# Monster display names known to resolve NOWHERE (mod, SV upstream, base) as a
+# PRE-EXISTING base/SV affix-variant class (tagNewMonster*/tagMonsterNameSFM*), NOT
+# introduced by this mod. They are surfaced as WARNINGS (a separate backlog item),
+# never a hard build-fail - fixing ~90 base affix-variant names is out of scope for a
+# mod content gate. The HARD fail is scoped to records\test\ cut-content bosses the
+# mod PROMOTES into spawn pools (the Dagon blind-spot class).
+_MONSTER_NAME_HARD_FAIL_PREFIX = 'records\\test\\'
 
 
 def collect_text_arc_tags(arc_path):
@@ -199,7 +275,7 @@ def load_mod_manifest(manifest_path):
 
 
 def validate(arz_path, text_arc_path, authoritative_tags_path=None,
-             manifest_path=None):
+             manifest_path=None, base_text_en_path=None):
     """Validate mod tag references against Text.arc. Returns True if all pass."""
     arz_path = Path(arz_path)
     text_arc_path = Path(text_arc_path)
@@ -241,7 +317,7 @@ def validate(arz_path, text_arc_path, authoritative_tags_path=None,
         return None
     print(f"  Text.arc defines {len(defined)} tags")
 
-    all_refs = collect_arz_tag_refs(arz_path)
+    all_refs, monster_names, spawn_referenced = collect_arz_tag_refs(arz_path)
     refs = {t: r for t, r in all_refs.items() if is_mod_owned(t)}
     print(f"  .arz references {len(all_refs)} distinct tag values; "
           f"{len(refs)} are mod-owned (via {sorted(TAG_FIELDS)})")
@@ -262,6 +338,52 @@ def validate(arz_path, text_arc_path, authoritative_tags_path=None,
             print(f"    - {tag}   e.g. {first}{more}")
     else:
         print(f"  OK: all {len(refs)} referenced mod tags are present in Text.arc")
+
+    # ── MONSTER-NAME BLIND-SPOT CROSS-CHECK (b52) ──────────────────────────────
+    # The mod-owned filter above INTENTIONALLY skips non-mod-owned tags, assuming
+    # they resolve from the base game. That assumption shipped Dagon with a raw name
+    # (tagD2Boss033 resolves in NEITHER the mod Text.arc NOR base Text_EN.arc). Close
+    # it: a monster's display name is its `description` tag; require every
+    # SPAWN-REFERENCED monster's name to resolve in the mod Text.arc OR the base
+    # Text_EN.arc. HARD-FAIL for records\test\ cut-content bosses the mod promotes
+    # (the exact Dagon class); WARN for pre-existing base/SV affix variants so a
+    # ~90-record base-naming backlog never blocks a mod build.
+    base_loaded = load_base_en_tag_set(base_text_en_path)
+    if base_loaded is None:
+        print("")
+        print("  Monster-name cross-check: SKIPPED (base Text_EN.arc not found; set "
+              "SVC_TQAE_ROOT or pass it as arg 5). Non-fatal.")
+    else:
+        base_en, base_src = base_loaded
+        print("")
+        print(f"  Monster-name cross-check: base Text_EN {Path(base_src).name} "
+              f"({len(base_en)} tags); {len(spawn_referenced)} spawn-referenced "
+              f"records; {len(monster_names)} monster name tags")
+        hard, warn = [], []
+        for rec, tag in monster_names:
+            if rec.replace('/', '\\').lower() not in spawn_referenced:
+                continue  # inert record (never spawns) -> its raw name is never shown
+            if tag in defined or tag in base_en:
+                continue  # resolves in mod or base -> fine
+            if rec.replace('/', '\\').lower().startswith(_MONSTER_NAME_HARD_FAIL_PREFIX):
+                hard.append((rec, tag))
+            else:
+                warn.append((rec, tag))
+        if warn:
+            print(f"  WARN: {len(warn)} pre-existing base/SV monster name(s) resolve "
+                  f"in neither mod nor base Text_EN (backlog, non-blocking):")
+            for rec, tag in sorted(warn):
+                print(f"    ~ {tag}   {rec}")
+        if hard:
+            ok = False
+            print(f"  FAIL: {len(hard)} PROMOTED records\\test\\ monster(s) have a "
+                  f"display name resolving in NEITHER mod Text.arc NOR base Text_EN "
+                  f"(a RAW tag would show in-game):")
+            for rec, tag in sorted(hard):
+                print(f"    - {tag}   {rec}")
+        else:
+            print(f"  OK: every spawn-referenced records\\test\\ monster name resolves "
+                  f"in mod Text.arc or base Text_EN")
 
     # Optional authoritative cross-check: every tag the DB build claims to have
     # emitted must also be in Text.arc. Catches a stale Text.arc even for tags
@@ -289,15 +411,17 @@ def validate(arz_path, text_arc_path, authoritative_tags_path=None,
 def main():
     if len(sys.argv) < 3:
         print("Usage: validate_tags.py <final.arz> <final_text.arc> "
-              "[authoritative_tags.txt] [mod_authored_tags.txt]")
+              "[authoritative_tags.txt] [mod_authored_tags.txt] [base_Text_EN.arc]")
         sys.exit(2)
 
     arz_path = sys.argv[1]
     text_arc_path = sys.argv[2]
     auth_path = sys.argv[3] if len(sys.argv) > 3 else None
     manifest_path = sys.argv[4] if len(sys.argv) > 4 else None
+    base_text_en = sys.argv[5] if len(sys.argv) > 5 else None
 
-    result = validate(arz_path, text_arc_path, auth_path, manifest_path)
+    result = validate(arz_path, text_arc_path, auth_path, manifest_path,
+                      base_text_en)
     if result is None:
         sys.exit(2)
     sys.exit(0 if result else 1)
