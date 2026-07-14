@@ -68,7 +68,6 @@ NEVER on the SpawnPet skill (svc_enslaver_summonmarauders is untouched); no Mons
 equipment copy; new loot tables via _ensure_record; no em dashes.
 """
 
-import re as _re
 import sys as _sys
 from pathlib import Path as _Path
 
@@ -110,11 +109,6 @@ def _hoard_members(t):
 # =============================================================================
 # helpers
 # =============================================================================
-def _has(db, path):
-    return asp._resolve_record(db, path) is not None if hasattr(asp, '_resolve_record') \
-        else db.has_record(path)
-
-
 def _real(db, path):
     if hasattr(asp, '_resolve_record'):
         r = asp._resolve_record(db, path)
