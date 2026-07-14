@@ -1,5 +1,41 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD38A-dev DEPLOYED TO DEV (2026-07-13) - DB-only Endless-Hunt stalker limit=1 fix (arz only; Text/map/Quests stay build38-dev); STEAM UNTOUCHED
+> **The DEV entry `SoulvizierClassicDEV` now runs build38a-dev.** ONLY the DB (`arz`) advanced from
+> build38-dev; `Text.arc`, the TESTHUB `Levels.arc`, and `Quests.arc` are byte-identical to build38-dev
+> (verified on disk, deliberately NOT recopied, per the "verify unchanged, do not touch" deploy rule).
+> All four coupled artifacts were md5-verified at source + destination.
+> - `Database/SoulvizierClassicDEV.arz` = **`6631f25219be1b8f9874c95af68755c7`** (55,340,923 B):
+>   DB-only rebuild (registry 11 modules, order hash `7c74a51f6ed8`, post-finalization
+>   `run_registry_verifies` phase GREEN) that adds the missing per-slot `limitN=1` cap to the
+>   Endless-Hunt legendary stalker sweep in the Hades trash pools
+>   (`tools/patches/toxeus_suite.py` `_sweep_inject_legendary_stalker`). This closes the exact
+>   "two-in-one-trigger" defect class just fixed for the Enslaver: pool MAIN draws are with-replacement,
+>   so a weight-1 member with no limit could roll twice in one trigger; vanilla always caps rare pack
+>   members with `limitN=1`. Apply-time gate LIVE PASS: 345 eligible Hades trash pools carry the Hunt
+>   at weight 1 + per-slot limit 1 (p_slot <= 1/2400, <=1 Hunt per trigger); 0 non-Hades/boss/quest/hero
+>   leaks; Enslaver sweep unchanged. Record-diff vs build38-dev arz (`fcd5dcab`) = 0 ADDED / 0 REMOVED /
+>   345 CHANGED, ZERO unexplained: every delta is exactly one `records\xpack\proxieshades\` pool's Hunt
+>   name-slot gaining `limitN=1` (Int), 1 field/record, 0 collateral. +1,360 B vs build38-dev = 345 new
+>   int fields. validate_tags PASS (0 new tags authored); contracts(souls/summons/resources) +
+>   contracts(map vs TESTHUB Levels `841c56cd`) GATE PASS (0 P0 / 0 P1).
+> - `Resources/Text.arc` = **`dff9ad01ec1d81064f426d9456470eaf`** (87,261 B), `Resources/Levels.arc` =
+>   **`841c56cd2b6b8a87209327cb02529d23`** (688,688,154 B), and `Resources/Quests.arc` =
+>   **`838bdc3a3716b5e9028c076317e99608`** (194,581 B): ALL UNCHANGED from build38-dev (the fix authors
+>   no new tags and no map/quest edits, so none were rebuilt). Verified on disk, NOT recopied. Canonical
+>   `local/Levels_merged.arc` (`60a62880`) also untouched.
+> - **STEAM = build36a canonical, UNTOUCHED** (Workshop item 3759792705: arz `63ca7cf8` / Levels
+>   `60a62880` / Text `2af4ce38` / Quests `56acee66`). TESTHUB is LOCAL-ONLY; never uploaded.
+> - **To see it, Will only needs to fully quit + restart TQ.** Do NOT restart Steam (it stays
+>   build36a); TQ was not running at deploy time.
+> - **Will's in-game check wanted (build38a-dev):** the **Endless-Hunt legendary stalker** should now
+>   appear **at most once per Hades trash pack** (no more two-in-one-trigger doubles). Everything else
+>   is identical to build38-dev, so the build38-dev checks (damage numbers, mastery pages, English
+>   sanity) still hold.
+> - **Rollback to build38-dev on DEV:** copy `local/DEV_arz_deployed_prev.arz` (`fcd5dcab`) -> DEV
+>   `Database/SoulvizierClassicDEV.arz` (Text/Levels/Quests need no change). Build gate record at
+>   `261af9e` (`docs/BACKLOG.md`, BUILD38A GATE RECORD); tag `build38a-dev` at this deploy commit.
+
 > ## BUILD38-dev DEPLOYED TO DEV (2026-07-13) - b38 arz + Text only (map/Quests stay build37-dev); STEAM UNTOUCHED
 > **The DEV entry `SoulvizierClassicDEV` now runs build38-dev.** Only the DB (`arz`) and `Text.arc`
 > advanced from build37-dev; the TESTHUB map and Quests are byte-identical to build37-dev (verified on
