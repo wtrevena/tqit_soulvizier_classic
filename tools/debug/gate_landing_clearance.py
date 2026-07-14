@@ -83,6 +83,15 @@ HARD_FAIL = ('container', 'monster', 'proxy', 'prop')
 DEADLY_CLASSES = ('container', 'monster', 'proxy', 'prop', 'other')
 NOTE_DIST = 2.0         # npc/portal within this raises an informational note
 
+# Nudge robustness (--nudge only). The emitted coord clears each collidable class by
+# class_min PLUS this buffer and stands on solid footing, so the INTEGER-world coord
+# actually emitted (and a built map whose entity positions drift slightly) still clears
+# the GATE margin. Round 1 emitted a FLOAT-validated 2.57u spot whose rounded coord was
+# 2.40u < the 2.5u prop min; the integer-lattice search + this buffer close that gap.
+NUDGE_BUFFER = 0.5      # required clearance headroom over each class-min for a "robust" nudge
+NUDGE_CLR = 0.95        # required footing (walkable disc fraction) for a "robust" nudge -
+#                        prefers a fully-footed spot over a barely-robust pit/wall-edge one
+
 # on-mesh thresholds (mirror survey_uberboss_spots.survey_level, calibrated to avoid
 # false positives on big multi-region overworld hubs)
 LANDING_EXT = 1.5       # clearance disc radius for a player landing (footing)
@@ -363,45 +372,61 @@ def nearest_entities(entities, lx, lz, extra=None):
     return out
 
 
-def _clear_of_all(near_at, ext_ok_npc=True):
-    """near_at = [(dist,dbr,x,z,klass,is_extra)] relative to a candidate point.
-    Return True if the candidate clears every hard collider by its class-min, every
-    'other' by PIN, and (if ext_ok_npc) npc/portal by NOTE_DIST."""
+def _clearance_slack(near_at, strict_npc):
+    """Smallest signed clearance at a candidate point = min over colliders of
+    (dist - class threshold). >= 0 => clears the GATE; >= NUDGE_BUFFER => robust.
+    Thresholds: CLASS_MIN for hard classes, PIN_DIST for 'other', NOTE_DIST for
+    npc/portal when strict; soft never binds. near_at = [(dist,dbr,x,z,klass,ex)]."""
+    slack = 1e18
     for (dist, _dbr, _x, _z, klass, _ex) in near_at:
-        if klass in HARD_FAIL and dist < CLASS_MIN[klass]:
-            return False
-        if klass == 'other' and dist <= PIN_DIST:
-            return False
-        if ext_ok_npc and klass in ('npc', 'portal') and dist < NOTE_DIST:
-            return False
-    return True
+        if klass in HARD_FAIL:
+            thr = CLASS_MIN[klass]
+        elif klass == 'other':
+            thr = PIN_DIST
+        elif strict_npc and klass in ('npc', 'portal'):
+            thr = NOTE_DIST
+        else:
+            continue
+        slack = min(slack, dist - thr)
+    return slack
 
 
-def find_nudge(nav, entities, extra, lx, lz, max_r=14.0):
-    """Spiral-search outward from (lx,lz) for the CLOSEST level-local point that is
-    truly on-mesh (all tilesets, not a tiny island) AND clears every collidable
-    entity by its class margin. Returns (nlx, nlz, radius, near_at, onmesh) or None.
-    Two passes: first require npc/portal clearance too, then relax it (npc are soft)."""
-    radii = [r * 0.5 for r in range(2, int(max_r / 0.5) + 1)]   # 1.0, 1.5, ... max_r
-    dirs = [math.radians(a) for a in range(0, 360, 15)]
-    for require_npc in (True, False):
-        for r in radii:
-            best = None
-            for a in dirs:
-                nlx, nlz = lx + r * math.cos(a), lz + r * math.sin(a)
-                om = survey_onmesh(nav, nlx, nlz)
-                if om is None or om['onmesh_bad'] or om['min_clr'] < CLR_FLOOR:
-                    continue
-                near_at = nearest_entities(entities, nlx, nlz, extra)
-                if not _clear_of_all(near_at, ext_ok_npc=require_npc):
-                    continue
-                # prefer the candidate with the largest nearest-hard-collider margin
-                hard = [e for e in near_at if e[4] in DEADLY_CLASSES]
-                margin = hard[0][0] if hard else 99.0
-                if best is None or margin > best[3]:
-                    best = (nlx, nlz, r, margin, near_at, om)
-            if best is not None:
-                return best[0], best[1], best[2], best[4], best[5]
+def find_nudge(nav, entities, extra, lx, lz, max_r=16.0):
+    """Search the INTEGER-WORLD lattice outward from (lx,lz) for the closest point that
+    is on-mesh (all tilesets, not a tiny island), well-footed, AND clears every collidable
+    entity. The world grid corner is an integer, so an integer LEVEL-LOCAL offset is
+    exactly an integer WORLD coord - the point validated here is byte-for-byte the point
+    main() emits (corner + local). That closes the round-1 bug where the nudge validated a
+    FLOAT local (2.57u) but emitted its rounded coord (2.40u < the 2.5u prop min).
+
+    Prefers a ROBUST spot: clears every class by class_min + NUDGE_BUFFER AND footing
+    >= NUDGE_CLR, so the landing stays clear even if built-map entity positions drift.
+    Falls back to the closest merely-gate-passing spot (returned robust=False) if none is
+    robust within max_r. Two npc passes (strict then relaxed - npc/portal are soft).
+    Returns (nlx, nlz, radius, near_at, onmesh, robust) with INTEGER nlx,nlz, or None."""
+    ilx, ilz = int(round(lx)), int(round(lz))
+    R = int(math.ceil(max_r))
+    offs = [(math.hypot(dx, dz), dx, dz)
+            for dx in range(-R, R + 1) for dz in range(-R, R + 1)
+            if 1.0 <= math.hypot(dx, dz) <= max_r]
+    offs.sort(key=lambda o: o[0])                        # closest integer coord first
+    for strict_npc in (True, False):
+        passing = None     # closest gate-passing (slack >= 0) this pass = tight fallback
+        for (r, dx, dz) in offs:
+            nlx, nlz = ilx + dx, ilz + dz
+            om = survey_onmesh(nav, nlx, nlz)
+            if om is None or om['onmesh_bad'] or om['min_clr'] < CLR_FLOOR:
+                continue
+            near_at = nearest_entities(entities, nlx, nlz, extra)
+            slack = _clearance_slack(near_at, strict_npc)
+            if slack < 0:
+                continue
+            if passing is None:
+                passing = (nlx, nlz, r, near_at, om, False)
+            if slack >= NUDGE_BUFFER and om['min_clr'] >= NUDGE_CLR:
+                return (nlx, nlz, r, near_at, om, True)   # robust; closest-first
+        if passing is not None:
+            return passing                                # tight fallback (flagged)
     return None
 
 
@@ -573,7 +598,7 @@ B41_PLACEMENTS = {
     'xpack/levels/area08_hadespalace/hadespalace_crystal_04.lvl': [
         ('q_general_c_guardpair', 72.46, 27.0, 55.98)],
     'xpack/levels/area06_elysian/elysian_fields_03.lvl': [
-        ('q_diadochi_lone', 20.7, 1.0, 81.7)],
+        ('q_diadochi_lone', 20.7, 4.0, 81.7)],   # Y=4.0 matches b41 build_section_surgery.py:1121
     'xpack/levels/egypt/minidungeons/thebesopttomba.lvl': [
         ('q_neferkha_lone', 32.0, 1.0, 85.0), ('q_sarcophagus_a', 25.0, 1.0, 85.0),
         ('q_sarcophagus_b', 39.0, 1.0, 85.0), ('q_sarcophagus_c', 32.0, 1.0, 79.0),
@@ -582,13 +607,14 @@ B41_PLACEMENTS = {
         ('q_bloodtoxeus_ambush', 100.0, 1.0, 50.0)],
 }
 
-# B42 MODEL (b42-waking-dread is an EMPTY branch at da918c5 - no coords authored yet).
-# The concept: 3 majestic chests placed per build36 IT boss, adjacent to each boss'
-# q_<boss>_lone spot. Modeled here as 3 synthetic containers ringing each boss'
-# CURRENT-MAP local position (radius 5u), so the audit can prove the v2 ENTRANCE
-# landings stay clear even once the chests exist. Replace with real coords via
-# --extra <file> once b42 authors them. Boss local coords = surveyed from the
-# deployed map (explore_landings): the q_<boss>_lone positions.
+# B42 STRESS MODEL. As built (feat/b42-waking-dread @ 4b3f2d7) b42 is DB-ONLY: it
+# de-dups boss pools (proxyPoolEquation neutralize) and re-tunes existing bespoke-hoard
+# LOOT - it adds NO new map placements, hence no new collision sources. This ring is
+# therefore a HYPOTHETICAL conservative stress test (NOT b42's actual output): 3 synthetic
+# containers ringing each build36 IT boss' CURRENT-MAP local position at radius 5u, to
+# prove the v2 ENTRANCE landings keep clearance even if a FUTURE wave ever co-locates
+# chests with a boss. Replace with real coords via --extra <file> if one ever does.
+# Boss local coords = the q_<boss>_lone positions surveyed from the deployed map.
 _B42_BOSSES = {  # level_key: (boss_local_x, boss_local_z)
     'xpack/levels/area02_medea/undergrounds/medea_templeug_tomb01.lvl': (52.0, 60.0),
     'xpack/levels/area04_styx/styx_swampborder_01.lvl': (54.0, 114.3),
@@ -740,24 +766,25 @@ def main():
         todo = [r for r in results if r['verdict'] in ('DEADLY', 'FAIL')]
         if todo:
             print('\n' + '=' * 78)
-            print('NUDGE SPECS (closest clear on-mesh coord; world = corner + nudged local)')
+            print('NUDGE SPECS (closest clear INTEGER-world coord; validated AT the emitted coord)')
             for r in todo:
                 nav = cache.nav(r['lv'])
                 res = find_nudge(nav, r['entities'], r['extra'], r['local'][0], r['local'][1])
                 wx, wy, wz = r['world']
                 cx, _cy, cz = r['corner']
                 if res is None:
-                    print(f'  {r["name"]:14s} {tuple(r["world"])}  -> NO clear spot within 14u '
+                    print(f'  {r["name"]:14s} {tuple(r["world"])}  -> NO clear spot within range '
                           f'(hand-place; widen the search area)')
                     continue
-                nlx, nlz, rad, near_at, om = res
-                nwx, nwz = int(round(cx + nlx)), int(round(cz + nlz))
+                nlx, nlz, rad, near_at, om, robust = res
+                nwx, nwz = cx + nlx, cz + nlz     # integer corner + integer local = integer world
                 hard = [e for e in near_at if e[4] in DEADLY_CLASSES]
                 nearest_hard = f'{hard[0][0]:.2f}u {hard[0][4]} {hard[0][1].rsplit(chr(92),1)[-1]}' \
                     if hard else 'none within scan'
                 clr = '/'.join(f'{c*100:.0f}%' for _d, c, _o in om['per'])
+                tag = 'ROBUST' if robust else 'TIGHT - no robust spot in range, hand-verify'
                 print(f'  {r["name"]:14s} ({wx},{wy},{wz}) -> ({nwx},{wy},{nwz})  '
-                      f'[nudge {rad:.1f}u]  nearest collider now {nearest_hard}  clr {clr}')
+                      f'[nudge {rad:.1f}u, {tag}]  nearest collider now {nearest_hard}  clr {clr}')
     bad = bool(deadly or fails) or (args.strict_check and bool(checks))
     print(f'\nGATE G-LAND: {"FAIL" if bad else "PASS"}')
     return 1 if bad else 0
