@@ -1,4 +1,18 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🗡️ **B39 BOSS-SKILL FIX (IN FLIGHT, `feat/b39-boss-skills`, round 2 - awaiting vet+integration).** Will
+> (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
+> Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10
+> apex bosses**. New registry module `tools/patches/boss_skill_fix.py` (position 11, after every boss-creating
+> module, before `visuals`) makes 27 field edits at **per-skill donor-matched levels** (no clones/souls/pets, no
+> damage rebalance): enables level-0 summon/attack specials, dead passives (boss_conversionimmunity/scaling/
+> hero_scaling/toxeus_passiveproperties/armor_passive), auras, and restores Helepolis's displaced turret. `verify()`
+> is **roster-derived + fail-loud** (scans every `um_*_99`, aborts on ANY chance>0 level-0 special + flags a boss
+> not in the fix table) so a missed/new boss can't ship silently. Round-2 fixed the round-1 miss of
+> **`um_voranthys_99`** (whole kit was level 0). Dry-run replay vs `baseline_build38.arz` (= build38-dev `fcd5dcab`):
+> 27 edits, verify OK, idempotent, all 10 bosses clean, roster 0 leftovers, pets untouched, negative test PASS.
+> Full RCA: `docs/reports/b39_boss_skills_rca.md`. NO heavy build (Will playing). Re-verify vs true build38a
+> `6631f252` on the next full build (the 345-proxieshades-pool delta is disjoint from all boss records).
+
 > 🧩 **BUILD38 INTEGRATION (2026-07-13, main) - 5 GO-vetted lanes merged + integration fixes.** Merges (all
 > clean, order hash `7ed29402a38d` -> `7c74a51f6ed8`, REGISTRY now 11 modules): `feat/b38-mastery-ui` @ `43611fc`,
 > `feat/b38-damage` @ `ab5f5ac`, `feat/b38-enslaver-v2` @ `e2f87ef`, `feat/b38-language` @ `e22c62a`,
