@@ -1794,34 +1794,45 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
     return out
 
 
-# ── HELOS TRAVELER HUB (2026-07-13, Will) : per-area boat-dialog travel triggers ─────────────
-# Will: "put teleport guys in helos, one person each." ONE Condition_OnLevelLoad trigger per
-# traveler NPC (17 = 11 outbound in Helos + 6 area returns), each with a SINGLE Action_BoatDialog,
-# all appended to the always-loaded sv_commonmechanics refire step (registry law: no new QUESTS
-# registration). Mirrors _add_helos_portal_travel / _add_testhub_portal_travel exactly. Keys ONLY
-# on the DISTINCT svc_helos_trav_* / svc_area_return_* records (never Almyros/portal_master_helos)
-# - each record placed exactly once map-side (WARDEN LAW). Records ship in the arz
+# ── HELOS TRAVELER HUB v2 (2026-07-13, Will) : per-area boat-dialog travel triggers ──────────
+# Will v1: "put teleport guys in helos, one person each." Will v2 (this pass): (i) "instead of
+# teleporting me to the final destination area, teleport me next to the NPC/door you would talk
+# to/use in game to travel there, so I test those guys AND know where everything is at"; (ii) "add
+# travelers to all other new fixed-place bosses, at the AREA ENTRANCE amid regular mobs (not the
+# boss horde)." So each landing below = the NATURAL IN-GAME APPROACH POINT, NOT the interior/boss.
+# ONE Condition_OnLevelLoad trigger per traveler NPC (25 = 14 outbound + 11 area returns), each
+# with a SINGLE Action_BoatDialog, all appended to the always-loaded sv_commonmechanics refire
+# step (registry law: no new QUESTS registration). Mirrors _add_helos_portal_travel exactly. Keys
+# ONLY on the DISTINCT svc_helos_trav_* / svc_area_return_* records (never Almyros/portal_master_
+# helos) - each record placed exactly once map-side (WARDEN LAW). Records ship in the arz
 # (apply_svc_patches _create_helos_traveler_hub); INERT on canonical (the canonical map places
 # NONE of these NPCs -> the boat-dialog has no entity to bind, a no-op). Landing coords = SIGNED-
-# INT world (grid_corner + level-local), ALL surveyed ON-MESH 100% clear vs the built map
-# (tools/debug/survey_uberboss_spots.py, 2026-07-13). Outbound reuse the proven Garden/Secret/
-# Uber/Sparta/BossArena landings; the 5 IT superboss landings = the build36 boss spec-primary
-# spots; the warband landing = the q_enslaver_warband set-piece (drxfirstxistion_connection);
-# returns land at the Helos plaza spot (same as TESTHUB_RETURN_DESTS).
+# INT world (grid_corner + level-local), ALL surveyed ON-MESH in the main walkable component vs
+# the built TESTHUB map (tools/debug/survey_hub_v2_landings.py, 2026-07-13). Returns land at the
+# Helos plaza spot (same as TESTHUB_RETURN_DESTS).
 _HHUB = r'records\quests'
 HELOS_HUB_TRAVEL = [
     # (npc record, (world x, y, z), boat-menu label tag)  -- OUTBOUND (all placed in Helos)
+    # KEEP: Garden/Secret/BossArena already land at their natural approach (merchant hub w/ rift +
+    # return NPC / forest-cluster entry / arena forecourt 90u off the boss volume) - no boss to
+    # move away from.
     (_HHUB + r'\svc_helos_trav_garden.dbr',     (1173, -39, -4001),  'tagSVCHelosToGarden'),
     (_HHUB + r'\svc_helos_trav_secret.dbr',     (-2396,   2, -5790), 'tagSVCHelosToSecret'),
-    (_HHUB + r'\svc_helos_trav_sparta.dbr',     (-5602,  -2, -1409), 'tagSVCHelosToSparta'),
-    (_HHUB + r'\svc_helos_trav_uber.dbr',       (-2438,  10, -2450), 'tagSVCHelosToUber'),
+    # RETARGET (v2): land at the in-game DOOR / entrance / travel-settlement, amid regular mobs.
+    (_HHUB + r'\svc_helos_trav_sparta.dbr',     (-6588,   1, -3180), 'tagSVCHelosToSparta'),      # Sparta-Crypt DOOR: deepest Athens catacomb (catacube02_floorlast stairs-down), amid beastmen
+    (_HHUB + r'\svc_helos_trav_uber.dbr',       (-7793,   1, -3793), 'tagSVCHelosToUber'),        # Knossos->Uber DOOR: Minotaur secret door (maze03), amid the labyrinth
     (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-433,    0, -3602), 'tagSVCTestHubToBossArena'),
-    (_HHUB + r'\svc_helos_trav_warband.dbr',    (5680,    1,  3285), 'tagSVCHelosToWarband'),
-    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (312,     1, -8462), 'tagSVCHelosToDorus'),
-    (_HHUB + r'\svc_helos_trav_tantalus.dbr',   (-342,  -15, -10095),'tagSVCHelosToTantalus'),
-    (_HHUB + r'\svc_helos_trav_charon.dbr',     (-336,   -7, -9650), 'tagSVCHelosToCharon'),
-    (_HHUB + r'\svc_helos_trav_mnemophage.dbr', (170,   -10, -11438),'tagSVCHelosToMnemophage'),
-    (_HHUB + r'\svc_helos_trav_ephialtes.dbr',  (-1828,   3, -13285),'tagSVCHelosToEphialtes'),
+    (_HHUB + r'\svc_helos_trav_warband.dbr',    (5699,    1,  3315), 'tagSVCHelosToWarband'),     # blood-cave connection chamber, at the regular demon pack (~35u off the Enslaver horde)
+    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (330,     1, -8380), 'tagSVCHelosToDorus'),       # Medea tomb ENTRANCE (cryptentrance), amid the drowned court (~82u off Dorus)
+    (_HHUB + r'\svc_helos_trav_tantalus.dbr',   (-346,  -12, -10131),'tagSVCHelosToTantalus'),    # Styx swamp stairs ENTRANCE, amid anouran (~36u off Tantalus)
+    (_HHUB + r'\svc_helos_trav_charon.dbr',     (-480,  -12, -9591), 'tagSVCHelosToCharon'),      # Styx river Hades-CITY (boatman + storyteller + rift shrine), then walk E to the Golden Bough
+    (_HHUB + r'\svc_helos_trav_mnemophage.dbr', (169,   -10, -11418),'tagSVCHelosToMnemophage'),  # Mnemosyne cave stairs-up ENTRANCE (~20u off the boss glyph ring)
+    (_HHUB + r'\svc_helos_trav_ephialtes.dbr',  (-1756,   3, -13198),'tagSVCHelosToEphialtes'),   # Dread Halls stairs-up ENTRANCE (~130u off the deep-SW boss vault)
+    # NEW (v2 order-ii): map-placed bosses the original 11 did not cover. Land at the area entrance
+    # amid regular mobs; walk to the boss.
+    (_HHUB + r'\svc_helos_trav_devourer.dbr',   (5345,    1,  3010), 'tagSVCHelosToDevourer'),    # drxbc2 blood-cave chamber, amid demon/hound packs (~92u off Toxeus the Devourer's egg-pack corner)
+    (_HHUB + r'\svc_helos_trav_vashkarr.dbr',   (-227,    1,  146),  'tagSVCHelosToVashkarr'),    # random05a Chang'an cave N end (~28u off Vashkarr)
+    (_HHUB + r'\svc_helos_trav_obsidian.dbr',   (-1827, -74,  -462), 'tagSVCHelosToObsidian'),    # tombobs02 Obsidian Halls stairs-down entrance (covers 4 roulette wardens + the broodmother nest)
     # RETURNS (each placed once inside its area; all travel back to the Helos plaza)
     (_HHUB + r'\svc_area_return_dorus.dbr',      (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_tantalus.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
@@ -1829,6 +1840,11 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_area_return_mnemophage.dbr', (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_ephialtes.dbr',  (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_warband.dbr',    (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_uber.dbr',       (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_sparta.dbr',     (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_devourer.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_vashkarr.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_obsidian.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
 ]
 
 
@@ -2169,7 +2185,7 @@ def main():
     # triggers, chained onto the just-patched quest (same refire step). Keyed on
     # the DISTINCT rig NPC records only; INERT on canonical (no rig NPC placed).
     patched_cm = _add_testhub_portal_travel(patched_cm)
-    # Helos traveler hub (Will 2026-07-13): 17 per-area boat-dialog triggers (11 outbound + 6
+    # Helos traveler hub v2 (Will 2026-07-13): 25 per-area boat-dialog triggers (14 outbound + 11
     # returns), chained onto the same refire step. Keyed on the DISTINCT svc_helos_trav_* /
     # svc_area_return_* records only; INERT on canonical (no hub NPC placed there).
     patched_cm = _add_helos_traveler_hub_travel(patched_cm)

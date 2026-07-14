@@ -2128,8 +2128,8 @@ SPARTA_LVL_KEY    = 'levels/world/greece/minidungeons/spartacryptlevel2.lvl'  # 
 BOSSARENA_LVL_KEY = 'levels/world/bossarena/boss_arena.lvl'               # SV-only v0e
 
 # ── HELOS TRAVELER HUB (build37, Will 2026-07-13: "put teleport guys in helos, one person each") ─
-# 11 named per-area OUTBOUND travelers in the Helos plaza + 6 area-RETURN NPCs (one per new boss/
-# warband area with no existing return). Each is a DISTINCT record placed EXACTLY ONCE (WARDEN LAW:
+# b39 v2: 14 named per-area OUTBOUND travelers in the Helos plaza + 11 area-RETURN NPCs (one per
+# boss/door area). Each is a DISTINCT record placed EXACTLY ONCE (WARDEN LAW:
 # a boat-dialog record placed in >1 level binds its menu to one entity and the rest go mute).
 # Records: apply_svc_patches _create_helos_traveler_hub; dialog: build_quest_files
 # _add_helos_traveler_hub_travel. TESTHUB-ONLY (folded into INJECT_SPECS by merge_hub_into_inject_
@@ -2154,7 +2154,24 @@ AREA_RETURN_CHARON_DBR     = b'records\\quests\\svc_area_return_charon.dbr'
 AREA_RETURN_MNEMOPHAGE_DBR = b'records\\quests\\svc_area_return_mnemophage.dbr'
 AREA_RETURN_EPHIALTES_DBR  = b'records\\quests\\svc_area_return_ephialtes.dbr'
 AREA_RETURN_WARBAND_DBR    = b'records\\quests\\svc_area_return_warband.dbr'
-# The 11 Helos plaza placements: grouped S of the quest NPC (Starting_PortalMan @ 68.9,188.3),
+# b39 HUB v2 (Will 2026-07-13): 3 new order-(ii) outbound travelers + 5 new area returns (Uber +
+# Sparta now land at their in-game DOORS, not crypt_floor1/SpartaCryptLevel2; devourer/vashkarr/
+# obsidian are new). All distinct records placed once (WARDEN LAW).
+HELOS_TRAV_DEVOURER_DBR   = b'records\\quests\\svc_helos_trav_devourer.dbr'
+HELOS_TRAV_VASHKARR_DBR   = b'records\\quests\\svc_helos_trav_vashkarr.dbr'
+HELOS_TRAV_OBSIDIAN_DBR   = b'records\\quests\\svc_helos_trav_obsidian.dbr'
+AREA_RETURN_UBER_DBR       = b'records\\quests\\svc_area_return_uber.dbr'
+AREA_RETURN_SPARTA_DBR     = b'records\\quests\\svc_area_return_sparta.dbr'
+AREA_RETURN_DEVOURER_DBR   = b'records\\quests\\svc_area_return_devourer.dbr'
+AREA_RETURN_VASHKARR_DBR   = b'records\\quests\\svc_area_return_vashkarr.dbr'
+AREA_RETURN_OBSIDIAN_DBR   = b'records\\quests\\svc_area_return_obsidian.dbr'
+# New host-level keys for the v2 door landings (maze03/catacube = SVAERA v0f 72B hosts, proven
+# inject; drxbc2 = SV blood-cave v0e 56B, same path as drxfirstxistion_connection). random05a /
+# tombobs02 / drxfirstxistion already have VASHKARR_HOST_KEY / BROODNEST_HOST_KEY / EN_WARBAND_HOST_KEY.
+MAZE03_LVL_KEY             = 'levels/world/greece/knossos/underground/maze03.lvl'
+CATACUBE_FLOORLAST_LVL_KEY = 'levels/world/greece/athens/underground/catacube02_floorlast.lvl'
+DRXBC2_LVL_KEY            = 'levels/world/xbloodcave/drxbc2.lvl'
+# The 14 Helos plaza placements: grouped S of the quest NPC (Starting_PortalMan @ 68.9,188.3),
 # the shrine (74.2,194.7) and canonical Almyros (76.5,189.5) - all kept >=3u clear. floor Y=0.6.
 # Established areas front (Z 181.5-182.6); the 5 IT superbosses back (Z=184.0; Ephialtes nudged N
 # to clear the E prop). RE-SURVEYED + NUDGED 2026-07-13 vs the build36a canonical map
@@ -2177,17 +2194,30 @@ HELOS_HUB_PLAZA_SPECS = [
     (HELOS_TRAV_CHARON_DBR,     76.5,  0.6, 184.0),   # OK 100%
     (HELOS_TRAV_MNEMOPHAGE_DBR, 79.0,  0.6, 184.0),   # OK 100%
     (HELOS_TRAV_EPHIALTES_DBR,  81.5,  0.6, 186.2),   # OK 100% (was 81.5,184.0 @ 89%)
+    # b39 HUB v2 (order ii): 3 new travelers on the Z=186.2 back row, interleaved with the Z=184
+    # mid row (all OK 100% comp#1, surveyed 2026-07-13; >=2.5u from every neighbour + Almyros 76.5,189.5).
+    (HELOS_TRAV_DEVOURER_DBR,   72.75, 0.6, 186.2),   # OK 100%
+    (HELOS_TRAV_VASHKARR_DBR,   75.25, 0.6, 186.2),   # OK 100%
+    (HELOS_TRAV_OBSIDIAN_DBR,   77.75, 0.6, 186.2),   # OK 100%
 ]
-# The 6 area-return placements: a few u off each new landing (so the player sees the return NPC on
-# arrival), on the boss host levels (reuse the UBERBOSS host-key constants) + the warband cave.
-# floor Y = the landing floor. ALL spots surveyed d<=0.14u / clr 100% / comp#1 (2026-07-13).
+# The 11 area-return placements: a few u off each new v2 landing (so the player sees the return NPC
+# on arrival), on the boss/door host levels. floor Y = the landing floor. ALL spots surveyed
+# on-mesh comp#1 (2026-07-13; devourer return is an accepted CHECK at 75% clr, still on-mesh).
 HELOS_HUB_RETURN_SPECS = [
-    (DORUS_HOST_KEY,       (AREA_RETURN_DORUS_DBR,      49.0,   1.2,  63.0)),   # ~4.2u off (52,60) landing
-    (TANTALUS_HOST_KEY,    (AREA_RETURN_TANTALUS_DBR,   50.0, -15.2, 116.0)),   # ~4.4u off (54,114.3)
-    (GOLDENBOUGH_HOST_KEY, (AREA_RETURN_CHARON_DBR,    185.0,  -7.0,  48.0)),   # ~3.2u off (187.9,46.9)
-    (MNEMOPHAGE_HOST_KEY,  (AREA_RETURN_MNEMOPHAGE_DBR, 45.0,   3.0,  68.0)),   # ~3.6u off (43,71)
-    (DREAD_HOST_KEY,       (AREA_RETURN_EPHIALTES_DBR,  19.0,   3.2,  38.0)),   # ~4.4u off (15.9,34.7)
-    (EN_WARBAND_HOST_KEY,  (AREA_RETURN_WARBAND_DBR,    24.0,  10.0,  -6.5)),   # ~2.9u off (21.1,-6.5)
+    # b39 HUB v2: the 6 existing returns MOVED to the new approach-point landings (a few u off each,
+    # so the player sees the return NPC on arrival). All surveyed on-mesh comp#1 2026-07-13.
+    (DORUS_HOST_KEY,       (AREA_RETURN_DORUS_DBR,      73.0,   1.0, 139.0)),   # ~3.6u off (70,142) tomb-entrance landing
+    (TANTALUS_HOST_KEY,    (AREA_RETURN_TANTALUS_DBR,   52.0, -12.0,  80.0)),   # ~2.8u off (50,78) swamp-stairs landing
+    (GOLDENBOUGH_HOST_KEY, (AREA_RETURN_CHARON_DBR,     46.0, -12.0, 104.0)),   # ~2.8u off (44,106) Hades-city landing
+    (MNEMOPHAGE_HOST_KEY,  (AREA_RETURN_MNEMOPHAGE_DBR, 44.0,   3.0,  93.0)),   # ~2.8u off (42,91) stairs-up landing
+    (DREAD_HOST_KEY,       (AREA_RETURN_EPHIALTES_DBR,  90.0,   3.0, 120.0)),   # ~2.8u off (88,122) stairs-up landing
+    (EN_WARBAND_HOST_KEY,  (AREA_RETURN_WARBAND_DBR,    43.0,  10.0,  27.0)),   # ~4.2u off (40,24) demon-pack landing
+    # b39 HUB v2: 5 NEW returns at the new door / order-(ii) landings.
+    (MAZE03_LVL_KEY,             (AREA_RETURN_UBER_DBR,      285.0,  1.0, 148.0)),   # ~2.8u off (283,150) Uber-door landing (maze03)
+    (CATACUBE_FLOORLAST_LVL_KEY, (AREA_RETURN_SPARTA_DBR,     26.0,  1.0,  40.0)),   # ~2.8u off (24,38) Sparta-door landing (catacube)
+    (DRXBC2_LVL_KEY,             (AREA_RETURN_DEVOURER_DBR,   72.0, 28.0,  57.0)),   # ~2.8u off (70,55) devourer-chamber landing (accepted CHECK 75% clr, on-mesh comp#1)
+    (VASHKARR_HOST_KEY,          (AREA_RETURN_VASHKARR_DBR,   37.0,  1.0,  50.0)),   # ~2.8u off (35,52) Vashkarr-cave landing (random05a)
+    (BROODNEST_HOST_KEY,         (AREA_RETURN_OBSIDIAN_DBR,  148.0,  1.0,  31.0)),   # ~4.2u off (151,28) Obsidian-entrance landing (tombobs02)
 ]
 
 

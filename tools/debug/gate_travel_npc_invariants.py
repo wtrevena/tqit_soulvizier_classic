@@ -13,7 +13,7 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
 
   T1 NO WALK-THROUGHS: zero walk-through portal records (portal_olympianarena1/2, map_portal_aura)
      placed in EITHER the canonical INJECT_SPECS or the TESTHUB merged specs.
-  T2 HELOS HUB: the 17 Helos-hub records (11 travelers + 6 returns) appear 0x in canonical and
+  T2 HELOS HUB: the 25 Helos-hub records (14 travelers + 11 returns) appear 0x in canonical and
      EXACTLY 1x in the TESTHUB build (WARDEN LAW: one boat-dialog record == one placement).
   T3 MASTER RETIRED: svc_testhub_master_helos has 0 placements (superseded by the 11 travelers);
      the blood-cave master svc_testhub_master_cave keeps its single TESTHUB placement.
@@ -84,11 +84,11 @@ def check_specs(fails):
     print(f'  T1 no-walk-throughs: canonical + TESTHUB place 0 of '
           f'{[n.decode() for n in WALKTHROUGH_NEEDLES]}')
 
-    # T2: the 17 hub records: 0 canonical, exactly 1 TESTHUB.
+    # T2: the 25 hub records: 0 canonical, exactly 1 TESTHUB.
     hub_records = [s[0] for s in bss.HELOS_HUB_PLAZA_SPECS] + \
                   [sp[0] for _k, sp in bss.HELOS_HUB_RETURN_SPECS]
-    if len({_norm(r) for r in hub_records}) != 17:
-        fails.append(f'T2: expected 17 distinct hub records, got '
+    if len({_norm(r) for r in hub_records}) != 25:
+        fails.append(f'T2: expected 25 distinct hub records, got '
                      f'{len({_norm(r) for r in hub_records})}')
     for r in hub_records:
         nd = _norm(r)
@@ -98,7 +98,7 @@ def check_specs(fails):
             fails.append(f'T2: hub record {nd} present in CANONICAL ({c}x) - must be TESTHUB-only')
         if t != 1:
             fails.append(f'T2: hub record {nd} placed {t}x in TESTHUB (WARDEN LAW: exactly 1)')
-    print(f'  T2 helos-hub: 17 records, canonical=0 each, TESTHUB=1 each (warden law)')
+    print(f'  T2 helos-hub: 25 records, canonical=0 each, TESTHUB=1 each (warden law)')
 
     # T3: master retirement.
     mh = _norm(bss.SVC_TESTHUB_MASTER_HELOS_DBR)
@@ -138,7 +138,7 @@ def check_specs(fails):
     missing = q_labels - arz_labels
     if missing:
         fails.append(f'T5: quest label tags not minted/reused in arz: {missing}')
-    print(f'  T5 cross-file: map==quests==arz (17 records); {len(q_labels)} label tags resolve')
+    print(f'  T5 cross-file: map==quests==arz ({len(map_recs)} records); {len(q_labels)} label tags resolve')
 
 
 def _scan_arc_walkthroughs_and_hub(arc_path, fails, is_testhub):
