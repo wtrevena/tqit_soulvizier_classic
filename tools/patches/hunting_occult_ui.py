@@ -47,15 +47,59 @@ DEFECT 2 - button shapes per Will's SHAPE LAW (2026-07-12, verbatim): "circles
   writes isCircular AND the 3 matching border bitmaps (square => SkillButtonBorder01
   family; circle => SkillButtonBorderRound01 family). All 6 textures D5-confirmed.
 
-ALIGNMENT ("don't line up") is deliberately NOT touched this wave: every O/H
-button is grid-valid + collision-free, and the perceived misalignment is chiefly
-downstream of the shape bug (a main node wrongly drawn as an undersized circle).
-Per Will's mandate, residual nudges wait for an in-game screenshot pass after he
-tests; each would be a `bitmapPositionX/Y` edit + its own golden waiver.
+ALIGNMENT - OCCULT TREE REFLOW (build40, Will 2026-07-13). The deferred "don't
+line up" follow-up above is now DONE for Occult (mastery 5). Will's report
+(verbatim intent): the connector ARROWS still read wrong in some Occult skills
+"because there is not enough horizontal space"; specifically in the THIRD column
+(x=328) the bottom/middle/top skills read as one tree while the 2nd and 4th read
+as a separate tree, so the dependency lines cross/confuse. He asked to MOVE the
+offending skills to spread them out so the arrows read correctly.
+
+  ROOT CAUSE (proven vs the LIVE build38a arz; full evidence in
+  docs/reports/b40_occult_tree_rca.md): the skill panel is a FIXED 6-column
+  (x=128,228,328,428,528,628) x 7-row (y=31,93,155,217,279,341,403) grid on ALL
+  eight masteries - NO mastery uses x>628, so a literal "7th column on the right"
+  is off-panel and impossible. A column reads as a clean tree ONLY when each
+  dependency chain occupies a CONTIGUOUS vertical run (base at the bottom, higher
+  y; upgrades stacking up) with UNRELATED chains separated by an empty row - the
+  exact structure of the Will-accepted-clean column 6 (disarmtraps+dual_blade pair
+  / empty row / throwingknife+flurry pair). Two Occult columns violate this:
+    * col3 (x=328) INTERLEAVES three independent trees at alternating rows -
+      Darklings (darklings->darkaperture) at rows 2&4, Open Wound (openwound->
+      anatomy) at rows 3&5, plus standalone Blade Honing at row 1 - so the
+      darklings arrow (2->4) and the openwound arrow (3->5) overlap and cross.
+      This is Will's exact "2&4 vs 1-3-5" report.
+    * col1 (x=128) has the same class of defect: the Flash Powder chain
+      (flashpowder->poisongasbomb->shrapnel) is interleaved with standalone Scrap
+      and with an ORPHANED Lay Trap pet-branch (multishotbolttrap) whose parent
+      Lay Trap lives in col4 - so Scrap's straight up-connector currently points
+      at the unrelated poisongasbomb and the trap sits divorced from its tree.
+
+  FIX (position-only reflow; each moved skill is a bitmapPositionX/Y edit + its own
+  golden waiver in tools/occult_hunting_golden.json - NO skill VALUE/effect/dep
+  semantics touched, only the visual grid slot). De-interleave into contiguous,
+  non-crossing runs, mirroring the proven col6 structure, and reunite the orphan:
+    * col1 -> Flash Powder chain contiguous (flashpowder y403 base, poisongasbomb
+      y279, shrapnel y155) + standalone Scrap isolated at the top (y31, empty row
+      y93 below it); multishotbolttrap LEAVES col1 for col4.
+    * col3 -> two clean base+child pairs like col6: Darklings (y403) + darkaperture
+      (y341); empty divider row y279; Open Wound (y217, UNMOVED) + anatomy (y93,
+      UNMOVED); standalone Blade Honing relocated to the top (y31). Open Wound and
+      anatomy keep their exact cells, so only 3 col3 skills move.
+    * col4 -> multishotbolttrap reunited into the Lay Trap column at the bottom
+      (x428 y403), isolated by the empty row y341 below Lay Trap (y279); the Lay
+      Trap main chain (laytrap/rapidconstruction/summon/greaterpower) is UNMOVED.
+  Columns 2 (Envenom), 5 (Calculated Strike) and 6 (Disarm/Throwing Knife) already
+  read clean (Will did not flag them) and are left byte-for-byte untouched -> zero
+  drift, minimal risk. 8 skill buttons move (9 waiver keys: 7 y-only, multishot
+  x+y). Consistent with the Earth col-428 reflow approach in mastery_ui_audit
+  (UI-button records only; base is lower/high-y, modifiers stack up).
 
 Contract: patches-registry module - MODULE_NAME + apply(db, tags). Runs AFTER the
 monolith (incl. fix_mastery_panel_buttons, which only rewrites panectrl button
-LISTS - disjoint from these leaf records) and BEFORE the whole gate battery.
+LISTS - disjoint from these leaf records) and BEFORE the whole gate battery. The
+Occult reflow writes bitmapPositionX/Y on records disjoint from mastery_ui_audit's
+Earth (mastery 3) reflow, so the two layout fixes compose without a write-fight.
 """
 
 # Contract field 1 - human label (build logs + collision gate).
@@ -111,6 +155,35 @@ _SHAPE_FIXES = (
     (6, "skill18", _CIRCLE, "drxtakedown_eviscerate"),                # modifier of Takedown -> CIRCLE
 )
 
+# Occult (mastery 5) tree reflow (build40, Will 2026-07-13) - de-interleave the
+# crossed connector trees in columns 1 & 3 and reunite the Lay Trap orphan. Each
+# tuple = (slot file, expected skillName basename, new x, new y). We ASSERT the
+# slot still holds the expected skill before moving it (fail-loud if the Occult
+# layout drifted upstream). UI-button position ONLY; no skill VALUE changes. Every
+# target cell is on-panel (x in the base 128..628 set, y in 31..403) and, together
+# with the UNMOVED skills (openwound skill07 @328,217; anatomy skill08 @328,93; the
+# Lay Trap main chain in col4; all of cols 2/5/6), collision-free. Slot->skill map
+# verified against the build38a arz.
+_OCCULT_REFLOW = (
+    # col1 (x=128): Flash Powder chain contiguous + Scrap isolated at top.
+    ("skill12", "drxflashpowder",                              128, 403),  # base   (was 128,341)
+    ("skill13", "drxpoisongasbomb",                            128, 279),  # ->     (was 128,155)
+    ("skill14", "drxpoisongasbomb_shrapnel",                   128, 155),  # ->     (was 128,31)
+    ("skill21", "drx_scrap",                                   128,  31),  # lone   (was 128,217)
+    # reunite the Lay Trap pet-branch into col4 (x=428), isolated at the bottom.
+    ("skill18", "drxlaytrap_petmodifier_multishotbolttrap",    428, 403),  # (was 128,279 - orphaned in Flash Powder's col)
+    # col3 (x=328): two clean base+child pairs (col6 pattern) + Blade Honing to top.
+    ("skill25", "drxdarklings",                                328, 403),  # base   (was 328,279)
+    ("skill26", "drxdarklings_darkaperture",                   328, 341),  # branch (was 328,155)
+    ("skill09", "drxbladehoning",                              328,  31),  # lone   (was 328,341)
+    # NOTE: openwound (skill07 @328,217) and anatomy (skill08 @328,93) are the
+    # SECOND col3 pair and keep their exact cells (unmoved -> no drift).
+)
+
+
+def _first(v):
+    return v[0] if isinstance(v, list) else v
+
 
 def apply(db, tags):
     """Repoint all 8 mastery backgrounds + correct the 8 O/H button shapes.
@@ -162,5 +235,29 @@ def apply(db, tags):
     print("  button shapes set: %d (2 SQUARE cast-actives + 6 CIRCLE passives/procs/"
           "modifiers, Will's shape law); 5 drift-waived, 3 re-assert baseline circle"
           % shapes)
-    print("=== H/O UI fix done: %d bg + %d shape records ==="
-          % (bg_records, shapes))
+
+    # 5c - Occult (mastery 5) tree reflow: de-interleave the crossed connector
+    # trees in cols 1 & 3 and reunite the Lay Trap orphan (build40, Will 07-13).
+    # UI-button positions only; fail-loud if a slot drifted from its expected skill.
+    moved = 0
+    for slot_file, expect, x, y in _OCCULT_REFLOW:
+        rec = (_UI % 5) + slot_file + ".dbr"
+        _require(rec, "bitmapPositionX")
+        _require(rec, "bitmapPositionY")
+        sn = _first(db.get_field_value(rec, "skillName")) or ""
+        base = sn.rsplit("\\", 1)[-1].lower()
+        if base.endswith(".dbr"):
+            base = base[:-4]
+        if base != expect.lower():
+            raise SystemExit(
+                "hunting_occult_ui: Occult %s holds %r, expected %s - layout "
+                "drifted; reconcile the reflow before shipping" % (slot_file, sn, expect))
+        db.set_field(rec, "bitmapPositionX", x, 0)   # dtype 0 = INT (match existing)
+        db.set_field(rec, "bitmapPositionY", y, 0)
+        moved += 1
+        print("  reflow Occult %-8s (%-42s) -> (%d,%d)" % (slot_file, expect, x, y))
+    print("  Occult tree reflow: %d buttons moved (cols 1 & 3 de-interleaved, Lay "
+          "Trap orphan reunited to col4); cols 2/5/6 untouched" % moved)
+
+    print("=== H/O UI fix done: %d bg + %d shape + %d Occult-reflow records ==="
+          % (bg_records, shapes, moved))
