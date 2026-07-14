@@ -668,41 +668,120 @@ def _author_legendary_only_limit(db):
 # =============================================================================
 # PART D - MP champion-count cap invariant (fail-loud)
 # =============================================================================
+def _bt_pools(db):
+    """Derive the FULL roster of ProxyPools that reference Blood Toxeus (_BT_MONSTER =
+    um_bloodtoxeus_99) in ANY name slot or champion slot, straight from the assembled db.
+    Returns [(pool_name, has_toxeus_main, has_toxeus_champion), ...], sorted. Used by the
+    champion-count-cap gate so it covers EVERY Blood-Toxeus surface (the ambush _BT_POOL,
+    the deep-chest egg_blooddragon, the derived parchment demon_01_cluster_toxeus50, and any
+    future M-era pool) rather than just the ambush pool."""
+    mn = _BT_MONSTER.replace('/', '\\').lower()
+    roster = []
+    for n in db.record_names():
+        t = _gv1(db, n, 'templateName')
+        if not (t and 'proxypool.tpl' in str(t).lower()):
+            continue
+        has_main = any((v := _gv1(db, n, f'name{i}')) and
+                       str(v).replace('/', '\\').lower() == mn for i in range(1, 19))
+        has_champ = any((v := _gv1(db, n, f'nameChampion{i}')) and
+                        str(v).replace('/', '\\').lower() == mn for i in range(1, 19))
+        if has_main or has_champ:
+            roster.append((n, has_main, has_champ))
+    return sorted(roster)
+
+
 def _verify_toxeus_champion_cap(db):
-    """FAIL-LOUD MP invariant (§4.2.2): no Toxeus placement may surface >1 of him at any party
-    size. The entrance/chest/parchment single-boss placements ALL reuse _BT_POOL, so proving
-    _BT_POOL yields EXACTLY 1 guaranteed Toxeus main (spawnMax - championMax == 1, and every filled
-    name slot is Toxeus) makes "one Toxeus per encounter, any party size" a hard invariant (the
-    championMax cap is never per-player-multiplied). Complements the spawn-eligibility gate's LOWER
-    bound (>= 1 main) with this UPPER bound (== 1 main)."""
-    P, Mn = _BT_POOL, _BT_MONSTER
-    if not db.has_record(P):
-        raise SystemExit(f"[toxeus_suite] PART D: _BT_POOL missing ({P})")
+    """FAIL-LOUD MP invariant (Part D), ROSTER-DERIVED over every Blood-Toxeus pool.
 
-    def gi(f, d=0):
-        v = _gv1(db, P, f)
-        return d if v is None else v
+    ROUND-2 VET FIX (HIGH, 2026-07-14): the prior version proved "<= 1 Toxeus at any party
+    size" for _BT_POOL (the ambush pool) ALONE and MISSED the two other live/authored pools
+    that spawn um_bloodtoxeus_99: egg_blooddragon (the deep-chest Devourer, championChance=100,
+    placed live via the native egg_blooddragon_pack) and demon_01_cluster_toxeus50 (the derived
+    parchment pool, championChance=50). Both kept the base-game proxyPoolEquation
+    (proxypoolequation_02), which FLOORS championMax=1 up to 2 at 4-6 players = TWO Blood Toxeus
+    side by side (the exact 2026-07-13 dedup class the mandate centres on). The monolith M15
+    step now neutralizes those two pools; THIS gate makes the invariant self-enforcing so a
+    future pool that re-introduces the equation (or an over-count) fails the build LOUD.
 
-    sm = int(gi('spawnMax', 0))
-    cc = float(gi('championChance', 0.0) or 0.0)
-    cmax = int(gi('championMax', 0))
-    mains = sm if cc <= 0 else (sm - cmax)
-    names = [_gv1(db, P, f'name{i}') for i in range(1, 7)]
-    names = [str(n) for n in names if n and str(n).strip()]
+    For EVERY pool that references Blood Toxeus in a name or champion slot, assert:
+      (1) proxyPoolEquation is neutralized (empty) - else the literal counts do NOT hold and the
+          Toxeus count silently scales with party size (the double-spawn root cause); AND
+      (2) the LITERAL maximum number of Blood-Toxeus instances the pool can surface is <= 1
+          (Toxeus-as-main worst case = spawnMax - championMax mains; Toxeus-as-champion worst
+          case = championMax champions when championChance > 0; summed).
+    Complements the spawn-eligibility gate's LOWER bound (>= 1 main for _BT_POOL) with this UPPER
+    bound over the whole roster. (The roaming Hunt um_toxeus_hunt_99 is a DIFFERENT monster,
+    capped to <= 1 per pool per trigger by its own per-slot limit=1 sweep gate.)"""
+    Mn = _BT_MONSTER
+    mn_lc = Mn.replace('/', '\\').lower()
+    if not db.has_record(_BT_POOL):
+        raise SystemExit(f"[toxeus_suite] PART D: _BT_POOL missing ({_BT_POOL})")
+
+    def gi(rec, f, d=0):
+        v = _gv1(db, rec, f)
+        return d if v in (None, '') else v
+
+    def as_int(v, d=0):
+        try:
+            return int(float(v))
+        except (TypeError, ValueError):
+            return d
+
+    def as_float(v, d=0.0):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return d
+
+    roster = _bt_pools(db)
     problems = []
-    if not names or any(n.replace('/', '\\').lower() != Mn.replace('/', '\\').lower() for n in names):
-        problems.append(f"_BT_POOL name slots are not all Toxeus: "
-                        f"{[n.split(chr(92))[-1] for n in names]}")
-    if mains != 1:
-        problems.append(f"_BT_POOL guaranteed Toxeus mains = {mains} != 1 "
+
+    if not any(n.replace('/', '\\').lower() == _BT_POOL.replace('/', '\\').lower()
+               for n, _, _ in roster):
+        problems.append(f"_BT_POOL ({_BT_POOL.split(chr(92))[-1]}) not in the derived Blood-Toxeus "
+                        f"roster - the ambush pool must reference him; roster derivation is broken")
+
+    for n, has_main, has_champ in roster:
+        base = n.split('\\')[-1]
+        eq = gi(n, 'proxyPoolEquation', '')
+        if eq:
+            problems.append(f"{base}: carries proxyPoolEquation={str(eq).split(chr(92))[-1]} - it "
+                            f"FLOORS the literal spawn/champion counts UP with party size "
+                            f"(championMax 1 -> 2 at 4-6P = TWO Blood Toxeus). Neutralize it via "
+                            f"_svc_neutralize_pool_equation.")
+        sm = as_int(gi(n, 'spawnMax', 0))
+        cc = as_float(gi(n, 'championChance', 0.0))
+        cmax = as_int(gi(n, 'championMax', 0))
+        mains = sm if cc <= 0 else max(sm - cmax, 0)
+        bound = (mains if has_main else 0) + (cmax if (has_champ and cc > 0) else 0)
+        if bound > 1:
+            problems.append(f"{base}: can surface up to {bound} Blood Toxeus (spawnMax={sm}, "
+                            f"championChance={cc}, championMax={cmax}, Toxeus-as-main={has_main}, "
+                            f"Toxeus-as-champion={has_champ}); the MP invariant requires <= 1.")
+
+    # keep the ambush pool's EXACT guarantee (all name slots Toxeus + exactly 1 guaranteed main).
+    names = [_gv1(db, _BT_POOL, f'name{i}') for i in range(1, 7)]
+    names = [str(x) for x in names if x and str(x).strip()]
+    if not names or any(x.replace('/', '\\').lower() != mn_lc for x in names):
+        problems.append(f"_BT_POOL name slots are not all Blood Toxeus: "
+                        f"{[x.split(chr(92))[-1] for x in names]}")
+    sm = as_int(gi(_BT_POOL, 'spawnMax', 0))
+    cc = as_float(gi(_BT_POOL, 'championChance', 0.0))
+    cmax = as_int(gi(_BT_POOL, 'championMax', 0))
+    bt_mains = sm if cc <= 0 else (sm - cmax)
+    if bt_mains != 1:
+        problems.append(f"_BT_POOL guaranteed Toxeus mains = {bt_mains} != 1 "
                         f"(spawnMax={sm}, championChance={cc}, championMax={cmax}); a party could "
                         f"surface >1 Toxeus")
+
     if problems:
         for p in problems:
             print(f"  CHAMPION-CAP OFFENDER: {p}")
         raise SystemExit(f"Toxeus champion-count-cap invariant FAILED: {len(problems)} problem(s)")
-    print("  [D] champion-count-cap invariant OK: exactly 1 Toxeus per encounter (any party size); "
-          "the per-player scroll is the only new MP surface (live-test-gated).")
+    print(f"  [D] champion-count-cap invariant OK: {len(roster)} Blood-Toxeus pool(s) "
+          f"(ambush + deep-chest + parchment-derived) each surface <= 1 Toxeus at any party size "
+          f"1-6, all proxyPoolEquation-neutralized; the per-player scroll is the only new MP "
+          f"surface (live-test-gated).")
 
 
 # =============================================================================

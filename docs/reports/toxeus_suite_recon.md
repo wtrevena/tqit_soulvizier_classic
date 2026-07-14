@@ -10,6 +10,18 @@
 
 ## 0. HEADLINE (read this first)
 
+> **⚠️ ROUND-2 UPDATE (2026-07-14): this recon MISSED a real 4-6-player double-spawn.** An adversarial
+> vet of the shipped suite found that the deep-chest Devourer (`egg_blooddragon`) and the parchment
+> (`demon_01_cluster_toxeus50`) - the two M15 Toxeus pools, NOT reached by the recon's `_BT_POOL`-only
+> analysis in section 3 - both kept the base-game `proxyPoolEquation` (`proxypoolequation_02`), which
+> floors `championMax=1` up to **2 at 4-6 players** = TWO Blood Toxeus in the deep-chest room for a
+> 4-6-player party (`np<=3`, incl. Will's co-op, was clean). Round-2 FIX: `_apply_m15_toxeus_group_joins`
+> now neutralises the equation on both pools, and `toxeus_suite.py` Part D `_verify_toxeus_champion_cap`
+> is now ROSTER-DERIVED over EVERY `um_bloodtoxeus_99` pool (was `_BT_POOL`-only). So section 3's "no
+> change recommended" and item 6.1's "single-Toxeus" checklist were both incomplete - corrected in
+> `docs/MULTIPLAYER_COMPAT.md` §M4.2 and item 3 below. The rest of this recon (ambush mechanism, scroll,
+> stalker verdict) stands.
+
 **BACKLOG #32 is already built, registered, committed, and gate-GREEN on `main`.** The four
 mandated parts (entrance ambush, rant scroll, Legendary-leaning stalker, 6-player readiness) all
 ship as the registry module **`tools/patches/toxeus_suite.py`** (Parts A/B/C/D), registered at
@@ -274,14 +286,20 @@ treated as an unproven experiment, superseded by this proven pattern.
    `SVC_MP_SPAWN_LINEAR=1` fallback ready). Per the RESTART-STEAM-BEFORE-TEST law, any test ping must
    kill TQ+Steam, restart, and hash-verify the deploy landed first.
 
-3. **[DESIGN COHERENCE] The entrance corridor rolls Blood Toxeus TWICE.** Besides the 15% drxFirstRoom
-   ambush, the adjacent parchment room `drxfirstxistion_connection` rolls Toxeus at **50%** via
-   `demon_01_cluster_toxeus50` (a b30/M15 feature; the clone-not-shared-pool law was correctly
-   followed - `apply_svc_patches.py:12687-12748` clones the pool so the 24x drxFirstRoom + 6x drxBC2
-   shared demon clusters are NOT swarmed). Both are single-Toxeus, both drop the rant scroll (same
-   monster), so it is not a double-spawn BUG - but the aggregate "entrance Toxeus" experience is 50%
-   (parchment) + 15% (drxFirstRoom), not a single 10-25% roll. Confirm this is intended; if not, the
-   ambush is the lever to tune (or retire one).
+3. **[CORRECTED round-2 2026-07-14 - see below] The entrance corridor rolls Blood Toxeus TWICE.**
+   ~~Besides the 15% drxFirstRoom ambush, the adjacent parchment room `drxfirstxistion_connection`
+   rolls Toxeus at 50% via `demon_01_cluster_toxeus50`... aggregate 50% + 15%.~~
+   **CORRECTION (round-2 vet MEDIUM, ground-truth verified):** this was WRONG. The M15 parchment
+   feature is an ORPHAN - the DB lane authored `demon_01_cluster_toxeus50` (proxy+pool) but the MAP
+   lane NEVER injected the repoint of the parchment `demon_01_cluster` instance to it. The repoint is
+   only a COMMENT at `build_section_surgery.py` `drxfirstxistion_connection` (the injection list holds
+   just the finalletter + Enslaver-warband specs, no derived-proxy spec). So the parchment room still
+   spawns the plain `demon_01_cluster` (NO Toxeus), and the ONLY entrance Toxeus is the single ~15%
+   `drxFirstRoom` ambush - which cleanly matches the 10-25% mandate. The `demon_01_cluster_toxeus50`
+   pool was ALSO carrying the un-neutralised `proxypoolequation_02` (the 4-6P double-spawn class); it
+   is now equation-neutralised in round-2 (defense-in-depth) so it is MP-safe if/when the parchment
+   repoint ships. FLAG TO WILL: ship the map repoint (make the 50% parchment Toxeus real) or retire
+   the orphan `demon_01_cluster_toxeus50` (+ sibling orphan `q_bloodtoxeus_lone_50`).
 
 4. **[STALE INDEX] `docs/BACKLOG.md:2152` lists #32 as open.** It shipped (gate-GREEN build37-40).
    The ask-line should be moved to a SHIPPED section with the residuals above, so #32 is not

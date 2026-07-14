@@ -2155,17 +2155,24 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   on-mesh comp#1 Y=1.0); (B) per-player rant scroll on Blood Toxeus Misc4 @100% (`FixedItemLoot`
   `numSpawn='numberOfPlayers*1'`, AE-parse-safe item evaluator); (C) roaming "Endless Hunt" Hades-
   confined stalker (`um_toxeus_hunt_99`, ShadowStalker rig) + granted-MOVE soul; (D) fail-loud
-  champion-count cap (==1 Toxeus any party size). **6-player checklist DONE 2026-07-14 ->
+  champion-count cap (<=1 Toxeus any party size). **6-player checklist DONE 2026-07-14 ->
   `docs/MULTIPLAYER_COMPAT.md` §M4**, incl. the Legendary-stalker feasibility VERDICT (roaming +
   strictly-Legendary-only pure-data-gate is NOT cleanly feasible -> shipped as the Hades-confined
   "effectively Legendary/endgame" approximation; a FIXED Hydra-pattern Legendary-only stalker is a
-  clean Will OPTION, not a defect). RESIDUALS (not blockers, no code owed): launch-gated live checks
-  (ambush np>=2; scroll per-player Misc4 @np=2 else container fallback; Hunt co-op runaway; M1.5 np*np)
-  under the restart-Steam law; **amgoz1 creative-text VETO** (rant screed + scroll names + Hunt
-  name/desc) needs Will sign-off before public ship; design-coherence Q for Will = the entrance
-  corridor rolls Toxeus TWICE (~50% parchment `demon_01_cluster_toxeus50` + ~15% ambush; both single-
-  Toxeus, both drop the scroll); benign orphan `q_bloodtoxeus_lone_50` (map uses the cluster instead)
-  = out-of-scope cleanup.
+  clean Will OPTION, not a defect). **ROUND-2 FIX (2026-07-14, vet HIGH):** the deep-chest Devourer
+  (`egg_blooddragon`) + the derived parchment pool (`demon_01_cluster_toxeus50`) - the two M15 Toxeus
+  pools, NOT `_BT_POOL` - both kept the base-game `proxyPoolEquation` (`proxypoolequation_02`), which
+  floors `championMax=1` up to 2 at 4-6 players = TWO Blood Toxeus in the deep-chest room for a 4-6P
+  party (np<=3 incl. Will's co-op was clean). FIXED: `_apply_m15_toxeus_group_joins` now neutralises
+  the equation on both pools; Part D `_verify_toxeus_champion_cap` is now ROSTER-DERIVED over EVERY
+  `um_bloodtoxeus_99` pool (fail-loud on any equation or >1 count; negative-tested against the pre-fix
+  arz). RESIDUALS (not blockers, no code owed): launch-gated live checks (ambush np>=2; scroll
+  per-player Misc4 @np=2 else container fallback; Hunt co-op runaway; M1.5 np*np) under the
+  restart-Steam law; **amgoz1 creative-text VETO** (rant screed + scroll names + Hunt name/desc) needs
+  Will sign-off before public ship; **CORRECTED coherence FYI for Will** = the ~50% parchment Toxeus
+  (`demon_01_cluster_toxeus50`) is an ORPHAN, never wired to the map (repoint documented but no
+  injection spec), so the ONLY entrance Toxeus is the single ~15% ambush; ship the parchment repoint
+  OR retire the orphan pool + its sibling orphan `q_bloodtoxeus_lone_50` (out-of-scope cleanup).
 - Comprehensive dropped-visuals restoration (#28).
 - Cold Tombs (#36) - ON HOLD per Will.
 

@@ -338,27 +338,56 @@ So the shipped arz is unchanged (no redeploy needed) and the linear escape hatch
 | **B** rant scroll | `svc_toxeus_rant` (Parchment) <- `toxeus_rant_item` (`LootItemTable_FixedWeight`) <- `toxeus_rant_perplayer` (`FixedItemLoot.tpl`, `numSpawn*Equation='numberOfPlayers*1'`); wired `um_bloodtoxeus_99` Misc4 @100% | **N copies for N players** (one per player) | equation **AE-parse-safe** (M4.3); monster-equip-slot per-player expansion **LAUNCH-GATED** (container fallback authored) |
 | **C** Endless Hunt | `um_toxeus_hunt_99` (ShadowStalker rig) appended at weight 1 + per-slot `limit=1` into ~345 Hades trash pools | **At most 1** Hunt per Hades pool per spawn trigger, any party size | **STATIC-PROVEN** (per-slot `limit=1` + fail-loud sweep gate); confirm no co-op runaway |
 
+> These A/B/C are the #32 SUITE surfaces. Two ADJACENT Blood-Toxeus surfaces from the earlier M15
+> feature (Will 2026-07-09) also spawn `um_bloodtoxeus_99` and so share the single-Toxeus invariant:
+> the **deep-chest Devourer** (`egg_blooddragon` champion @100, LIVE via the native `egg_blooddragon_pack`
+> proxy) and the **parchment** (`demon_01_cluster_toxeus50` champion @50, currently UNPLACED). Both are
+> enumerated and neutralised in M4.2; the parchment orphan is flagged to Will in M4.7 note 5.
+
 ### M4.2 The single-Toxeus invariant (the double-spawn history, structurally closed)
 
-The load-bearing MP property: **no Toxeus placement surfaces >1 Toxeus at any party size.** All three
-Toxeus placements (entrance ambush, deep chest Hemorrheus, parchment) resolve to the SAME monster
-`um_bloodtoxeus_99`, and the ambush + chest reuse `_BT_POOL`, whose LITERAL counts are
-`spawnMin=spawnMax=3, championChance=100, championMin=championMax=2` -> exactly **1** main
-(`spawnMax - championMax = 3 - 2`) + 2 blood-demon champions, deterministically at ANY
-`numberOfPlayers` (`championMax` is a hard integer cap, never per-player-multiplied). Enforced
-fail-loud three ways, all GREEN in the build37-40 gate records:
+The load-bearing MP property: **no Toxeus placement surfaces >1 Blood Toxeus at any party size 1-6.**
+Ground truth (built arz, verified 2026-07-14): exactly **three** ProxyPools reference
+`um_bloodtoxeus_99`, and ALL THREE are neutralised so their LITERAL spawn/champion counts hold at every
+player count (`proxyPoolEquation` empty = the engine uses the literal `spawnMin/Max` + `championMin/Max`
+verbatim; `championMax` is then a hard integer cap, never per-player-multiplied):
 
-- **Upper bound (==1):** `toxeus_suite.py` Part D `_verify_toxeus_champion_cap` asserts `_BT_POOL`
-  yields exactly 1 guaranteed Toxeus main.
-- **No double-spawn equation:** `apply_svc_patches.py::_verify_mod_spawn_proxies_eligible` sub-check
-  C fails the build if `_BT_POOL` retains `proxyPoolEquation` (the `proxypoolequation_02`
-  "2-mains-at-1-player" class). Build green => neutralised => the literal counts hold.
-- **Lower bound (>=1):** sub-check A (champion crowd-out) + sub-check B (`limit_bloodtoxeus` `[1..110]`
-  all-difficulty window) guarantee the boss is not starved or scaled out.
+| Pool | Toxeus role | Placement | Literal Toxeus count |
+|---|---|---|---|
+| `q_bloodtoxeus_lone` (`_BT_POOL`) | 3 name slots (main) | the `drxFirstRoom` **ambush** proxy `q_bloodtoxeus_ambush` (canonical, `B41_SPECS` item 5) | `spawnMax - championMax = 3 - 2 = 1` main + 2 blood-demon champions |
+| `egg_blooddragon` | `nameChampion1` (champion @100) | the **deep-chest Devourer**, via the native `egg_blooddragon_pack` proxy in `drxBC2` (M15 in-place champion-join) | `championMax = 1` champion (+ 3 blood dragons) |
+| `demon_01_cluster_toxeus50` | `nameChampion1/2/3` (champion @50) | derived **parchment** pool - **currently UNPLACED** (repoint documented but never injected; see M4.7 note 5) | `championMax = 1` champion |
+
+**Round-2 correction (2026-07-14, vet HIGH).** The prior version of this section claimed "the ambush +
+chest reuse `_BT_POOL`" and that only `_BT_POOL` needed neutralising. Both were WRONG. The deep-chest
+Devourer is `egg_blooddragon` (the standalone chest proxy `q_bloodtoxeus_lone` was REMOVED by the M15
+mechanism change, `build_section_surgery.py`), and the parchment is the derived
+`demon_01_cluster_toxeus50` - **two distinct pools**, and BOTH inherited the base-game
+`proxyPoolEquation = proxypoolequation_02`, whose per-field floor `poolValue*(0.91 + 0.497143*np -
+0.05*np^2)` takes `championMax=1` up to **2 at np in {4,5,6}** (`floor(1*2.099)=floor(1*2.146)=
+floor(1*2.093)=2`) = **TWO Blood Toxeus side by side** in the deep-chest room for a 4-6-player party.
+`np<=3` (incl. Will's np<=2 co-op) was already clean; np=4-6 was a live double. **Fixed:**
+`_apply_m15_toxeus_group_joins` now calls `_svc_neutralize_pool_equation` on BOTH M15 pools right where
+it authors them, so each holds its literal `championMax=1` at every party size (exactly 1 Devourer;
+verified on the built arz - the neutralisation empties `proxyPoolEquation` on egg_blooddragon and
+demon_01_cluster_toxeus50 and changes nothing else).
+
+Enforced fail-loud, all re-verified after the fix:
+
+- **Upper bound (<=1), ROSTER-DERIVED:** `toxeus_suite.py` Part D `_verify_toxeus_champion_cap` now
+  derives EVERY pool referencing `um_bloodtoxeus_99` (name OR champion slot) straight from the arz and
+  asserts, per pool, (i) `proxyPoolEquation` is neutralised (empty) and (ii) the literal max Toxeus
+  count is `<= 1`. A future M-era pool that re-introduces the equation or an over-count fails the build
+  LOUD. (Round-2: the prior gate proved this for `_BT_POOL` alone and MISSED the two M15 pools - that
+  scoping gap is exactly what shipped the 4-6P double; it is now closed. A negative test confirms the
+  new gate FAILS on the pre-fix arz and PASSES after neutralisation.)
+- **Ambush lower bound (>=1):** `apply_svc_patches.py::_verify_mod_spawn_proxies_eligible` sub-checks A
+  (champion crowd-out) + B (`limit_bloodtoxeus [1..110]` all-difficulty window) guarantee the ambush
+  boss is not starved or scaled out; sub-check C fails the build if `_BT_POOL` retains the equation.
 
 `chanceToRun=15` is a `Proxy.tpl` field rolled **once per instance** at level-load = a single ~15%
-spawn-or-not roll (inside the mandated 10-25%), NOT a per-demon compounding roll. Net: 6 players see
-the same 1 Toxeus + 2 adds as a solo player.
+spawn-or-not roll (inside the mandated 10-25%), NOT a per-demon compounding roll. Net: a 6-player party
+sees the same 1 Toxeus per surface as a solo player.
 
 ### M4.3 Rant scroll per-player wiring - MP-safe path + the one launch-gated edge
 
@@ -428,12 +457,19 @@ the deploy landed BEFORE giving test instructions. Suite live checks:
 2. **[np=2]** Rant scroll drops 1 copy per player from Blood Toxeus's Misc4 (M4.3; else container fallback).
 3. **[co-op]** Endless Hunt appears rarely in Hades, never a runaway pack (M4.4).
 4. **[any]** The M1.5 `np*np` spawn-eq parse check (not suite-specific, but the standing launch check).
-5. **[DESIGN-COHERENCE, Will decision - not a bug]** The entrance corridor rolls Blood Toxeus **twice**:
-   ~50% at the adjacent parchment room (`drxfirstxistion_connection`, via `demon_01_cluster_toxeus50`,
-   championChance=50 Toxeus-only) + ~15% at the `drxFirstRoom` ambush. Both are single-Toxeus, both
-   drop the rant scroll (same `um_bloodtoxeus_99` record), so it is NOT a double-spawn bug - but the
-   aggregate "meet a Toxeus near the entrance" chance is ~57.5%, not a single 10-25% roll. Confirm
-   intended; the 15% ambush is the lever to tune or retire.
+5. **[PRE-EXISTING ORPHAN / Will FYI - not a #32 defect]** The M15 parchment feature (Will 2026-07-09:
+   "put toxeus devourer of blood there too with 50% spawn chance") is **incomplete / not wired**: the DB
+   lane authored the derived pool+proxy `demon_01_cluster_toxeus50` (championChance=50 Toxeus-only), but
+   the MAP lane never injected the repoint of the parchment `demon_01_cluster` instance to it (the repoint
+   is DOCUMENTED in `build_section_surgery.py` at `drxfirstxistion_connection` but there is NO corresponding
+   injection spec - only the finalletter + Enslaver-warband specs are in that level's list). So the
+   parchment room still spawns the plain `demon_01_cluster` (NO Toxeus), and the ONLY entrance Toxeus is
+   the single ~15% `drxFirstRoom` ambush (cleanly matching the 10-25% mandate). **Correction:** the prior
+   version of this note claimed the corridor rolls Toxeus twice (~50% parchment + ~15% ambush = ~57.5%
+   aggregate); that was WRONG - the parchment half never fires. The derived pool is now
+   equation-neutralised too, so it is MP-safe if/when Will wants the parchment repoint shipped. **Flag to
+   Will:** either ship the map repoint (make the 50% parchment Toxeus real) or retire the orphan
+   `demon_01_cluster_toxeus50` + its sibling orphan `q_bloodtoxeus_lone_50`.
 6. **[amgoz1 CREATIVE-TEXT VETO - WILL SIGN-OFF REQUIRED before public ship]** the rant screed
    (`_RANT_TEXT`, ~180 words, Toxeus's voice, treats the original murderer as the blood-cult
    progenitor), the scroll names (`{^r}The Murderer's Screed` / `A Parchment Slick with Blood`), and
@@ -441,9 +477,12 @@ the deploy landed BEFORE giving test instructions. Suite live checks:
    amgoz1 monster-identity-driven bar. Full text is in `toxeus_suite.py` (`_RANT_TEXT`, the tag
    assignments) and `docs/reports/toxeus_suite_recon.md` for review.
 
-**M4: PASS** (static invariants proven: single-Toxeus at any party size, per-slot Hunt cap, `/`-free
-per-player scroll equation on the item evaluator; live checks + Legendary verdict + creative-text veto
-enumerated).
+**M4: PASS** (static invariants proven after the round-2 fix: `<= 1` Blood Toxeus per pool at any
+party size 1-6 across ALL THREE Toxeus pools - ambush + deep-chest + parchment-derived - each
+`proxyPoolEquation`-neutralised and covered by the roster-derived Part D gate; per-slot Hunt cap;
+`/`-free per-player scroll equation on the item evaluator. Live checks + Legendary verdict +
+creative-text veto enumerated. Round-2 (2026-07-14) closed the 4-6-player deep-chest double the
+prior `_BT_POOL`-only gate missed.)
 
 ---
 
