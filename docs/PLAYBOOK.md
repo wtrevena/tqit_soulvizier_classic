@@ -305,6 +305,16 @@ powershell -ExecutionPolicy Bypass -File scripts/upload_workshop.ps1 -SteamUser 
 - **Map gates (per wave):** verify_merged_bc_navmeshes, entrance_landing_check --check-merged,
   engine_corridor_full, cluster_seam_check, overcoverage_check, gate_doors_hub, portal-openness,
   blob re-parse (2282 levels to exact stream end).
+- **Travel-invariants family (per wave, whenever a landing/teleport coord or a placement moves):**
+  entrance_landing_check (cave-mouth landing height) + **gate_landing_clearance.py** (hub teleport
+  LANDING occupancy: every boat-dialog landing must be on-mesh AND clear of every collidable placed
+  0x05 entity by a per-class margin - containers largest; it caught the 2026-07-13 "teleported inside
+  the chest, can't move, instantly killed" bug where the v1 hub boss landings sat 0.0-0.3u on the
+  `q_<boss>_lone` set-pieces). Run it against the BUILT map:
+  `py tools/debug/gate_landing_clearance.py --map local/Levels_merged.arc --wiring v1` (exit 0 = all
+  clear). It also accepts `--wiring <file>` (LANDINGS) + `--placements <file>` (SPECS, LEVEL-LOCAL) so
+  a wave can gate a NEW landing/placement set BEFORE building, and `--nudge` emits the closest clear
+  on-mesh coord for any DEADLY/FAIL landing.
 - **CONTRACT SUITE (built; run before every deploy):** `tools/contracts/` - one permanent,
   precedent-derived suite of 51 contracts across 5 lanes (souls, summons, resources, map, quests)
   that asserts every entity we ship carries EACH requirement a functioning base-game exemplar has.
