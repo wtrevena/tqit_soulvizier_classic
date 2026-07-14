@@ -1679,15 +1679,47 @@ TESTHUB_RETURN_DESTS = [
     ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza
     ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior
 ]
+# b48 SPARTA-MUTE round 3 (WARDEN-SPLIT of svc_testhub_return): svc_testhub_return was PLACED in 5
+# levels (Garden/Secret/Uber/Sparta canonical + Boss Arena TESTHUB) but a boat-dialog record binds
+# its menu to ONE entity, so 4 of the 5 returns spawned MUTE. It is split into these 5 DISTINCT
+# per-area records, each placed ONCE and given its OWN 2-port trigger below (records: apply_svc_
+# patches TESTHUB_AREA_RETURN_NPCS; placement: build_section_surgery). Names carry the area so the
+# trigger displayTag + the map placement + the arz record all read the same lineage.
+TESTHUB_AREA_RETURN_NPCS = [
+    r'records\quests\svc_testhub_return_garden.dbr',
+    r'records\quests\svc_testhub_return_secret.dbr',
+    r'records\quests\svc_testhub_return_uber.dbr',
+    r'records\quests\svc_testhub_return_sparta.dbr',
+    r'records\quests\svc_testhub_return_bossarena.dbr',
+]
 
 
 def _add_testhub_portal_travel(data: bytes) -> bytes:
-    """Append the TESTHUB portal-rig boat-dialog triggers (Model C) to the
-    sv_commonmechanics refire step: one Condition_OnLevelLoad trigger per rig NPC
-    (svc_testhub_master, 7 ports; svc_testhub_return, 2 ports). Strictly additive
-    (two trigger triples; the step's trigger max is bumped by 2). Fails loud if
-    the host step is missing, the bytes do not round-trip, or the reference-count
-    deltas do not land exactly."""
+    """Append the TESTHUB per-area RETURN boat-dialog triggers (Model C) to the
+    sv_commonmechanics refire step: one Condition_OnLevelLoad trigger per warden-split
+    per-area return record (len(TESTHUB_AREA_RETURN_NPCS) = 5), each carrying the same
+    2-port menu (Helos + Blood Cave) svc_testhub_return used. Strictly additive (the
+    step's trigger max is bumped by len(TESTHUB_AREA_RETURN_NPCS)). Fails loud if the host
+    step is missing, the bytes do not round-trip, or the reference-count deltas do not land
+    exactly.
+
+    b48 SPARTA-MUTE (round 3, docs/reports/b48_sparta_mute.md - WARDEN-SPLIT of the return):
+    svc_testhub_return was PLACED in 5 levels (Garden/Secret/Uber/Sparta canonical + Boss
+    Arena TESTHUB), but an Action_BoatDialog binds its menu to the ONE entity the record
+    resolves to, so only the first-bound return responded and the other 4 spawned MUTE
+    (the documented warden law - one record == one live placement). It is now split into 5
+    DISTINCT per-area records, each placed once and given its OWN 2-port trigger here, so
+    every return fires. The single svc_testhub_return trigger this function used to emit is
+    REPLACED by these 5; svc_testhub_return itself is retired (unplaced + untriggered = an
+    inert record kept in the arz).
+
+    NOTE (round-1 rationale RETRACTED in round 2): the svc_testhub_master 7-port trigger is
+    dropped elsewhere, but NOT because of any 'bounded boat-offer registry / past-the-cap
+    overflow' - that theory was debunked (the base game fires 20+ OnLevelLoad boat triggers
+    in one step, and the LATE unique-route travelers were exactly the ones that WORKED). The
+    real Sparta mute was an in-LEVEL route collision with the canonical Almyros (fixed by the
+    plaza de-dup in build_section_surgery.merge_hub_into_inject_specs); dropping the UNPLACED
+    svc_testhub_master is harmless cleanup under per-level route ownership, not a mute fix."""
     def field_val(items, key):
         for it in items:
             if it[0] == 'field' and it[1] == key:
@@ -1747,16 +1779,21 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
         bumped = False
         for idx, it in enumerate(trigcont):
             if it[0] == 'field' and it[1] == 'max':
-                trigcont[idx] = ('field', 'max', ('int', it[2][1] + 2))
+                # b48 round 3: +len(TESTHUB_AREA_RETURN_NPCS) (one 2-port trigger per warden-split
+                # per-area return). The single svc_testhub_return trigger + the dead
+                # svc_testhub_master trigger are both gone.
+                trigcont[idx] = ('field', 'max',
+                                 ('int', it[2][1] + len(TESTHUB_AREA_RETURN_NPCS)))
                 bumped = True
                 break
         if not bumped:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: host step has no '
                              f'trigger max')
-        trigcont.extend(_trigger('SVC: TESTHUB Hub Portal-Master (Model C)',
-                                 TESTHUB_MASTER_NPC, TESTHUB_MASTER_DESTS))
-        trigcont.extend(_trigger('SVC: TESTHUB Return NPC (Model C)',
-                                 TESTHUB_RETURN_NPC, TESTHUB_RETURN_DESTS))
+        # b48 SPARTA-MUTE round 3 (WARDEN-SPLIT): one 2-port return trigger per distinct per-area
+        # record (replaces the single svc_testhub_return trigger). svc_testhub_master stays dropped.
+        for npc in TESTHUB_AREA_RETURN_NPCS:
+            trigcont.extend(_trigger(f'SVC: TESTHUB Return NPC ({npc.split(chr(92))[-1]})',
+                                     npc, TESTHUB_RETURN_DESTS))
         steps_container[trigcont_pos] = ('block', trigcont)
         patched += 1
 
@@ -1776,16 +1813,24 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
     def _delta(needle):
         nd = needle.replace('/', '\\').lower().encode()
         return low.count(nd) - low_in.count(nd)
-    if _delta(TESTHUB_MASTER_NPC) != len(TESTHUB_MASTER_DESTS):
-        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub NPC reference count '
-                         f'must increase by exactly {len(TESTHUB_MASTER_DESTS)}')
-    if _delta(TESTHUB_RETURN_NPC) != len(TESTHUB_RETURN_DESTS):
-        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: return NPC reference count '
-                         f'must increase by exactly {len(TESTHUB_RETURN_DESTS)}')
+    # b48 round 3 (WARDEN-SPLIT): svc_testhub_master stays dead-inert (dropped), svc_testhub_return
+    # is now RETIRED here (its single trigger is replaced by the 5 per-area triggers), and each of
+    # the 5 distinct per-area records gains exactly one 2-port trigger.
+    if _delta(TESTHUB_MASTER_NPC) != 0:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: svc_testhub_master must NOT be '
+                         f'referenced (b48: dead 7-port master dropped)')
+    if _delta(TESTHUB_RETURN_NPC) != 0:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: svc_testhub_return must NOT be '
+                         f'referenced (b48 round 3: retired; warden-split into per-area records)')
+    for npc in TESTHUB_AREA_RETURN_NPCS:
+        if _delta(npc) != len(TESTHUB_RETURN_DESTS):
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: per-area return {npc} reference count '
+                             f'must increase by exactly {len(TESTHUB_RETURN_DESTS)} '
+                             f'(got {_delta(npc)})')
     from collections import Counter
     want = Counter()
-    for _xyz, tag in TESTHUB_MASTER_DESTS + TESTHUB_RETURN_DESTS:
-        want[tag] += 1
+    for _xyz, tag in TESTHUB_RETURN_DESTS:
+        want[tag] += len(TESTHUB_AREA_RETURN_NPCS)   # each of the 5 records emits every dest once
     for tag, n in want.items():
         if _delta(tag) != n:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: destination tag {tag} '
