@@ -64,6 +64,14 @@ class ArzDatabase:
         self._record_types: dict[str, str] = {}
         self._record_timestamps: dict[str, int] = {}
         self._modified: set[str] = set()
+        # Optional mutation observers: callbacks invoked with a record name on every
+        # field mutation (set_field) and record clone (clone_record). Empty by default,
+        # so this is a zero-cost no-op for every build/tool that never registers one.
+        # Used by apply_svc_patches' shared record-index to invalidate ONLY the records
+        # that actually changed. Never serialized (prefix_cache snapshots named fields
+        # only), so a cache HIT restores a fresh db with no listeners and the index
+        # simply re-registers against the restored state.
+        self._mutation_listeners: list = []
 
     def ensure_string(self, s: str) -> int:
         if s in self.string_to_id:
@@ -256,6 +264,9 @@ class ArzDatabase:
             fields[field_name] = TypedField(dtype, vals)
 
         self._modified.add(record_name)
+        if self._mutation_listeners:
+            for _cb in self._mutation_listeners:
+                _cb(record_name)
 
     def record_names(self):
         return list(self._raw_records.keys())
@@ -277,6 +288,9 @@ class ArzDatabase:
         if source_name in self._record_timestamps:
             self._record_timestamps[dest_name] = self._record_timestamps[source_name]
         self._modified.add(dest_name)
+        if self._mutation_listeners:
+            for _cb in self._mutation_listeners:
+                _cb(dest_name)
         return True
 
     def write_arz(self, output_path: Path):

@@ -291,22 +291,139 @@ def _set_soul_fields(db, record_path, field_dict):
     db._modified.add(record_path)
 
 
-def _find_record(db, path):
-    """Find a record by path, trying both slash conventions."""
-    if db.has_record(path):
-        return path
-    alt = path.replace('\\', '/')
-    if db.has_record(alt):
-        return alt
-    alt = path.replace('/', '\\')
-    if db.has_record(alt):
-        return alt
-    # Try case-insensitive search
-    lower = path.replace('\\', '/').lower()
-    for name in db.record_names():
-        if name.replace('\\', '/').lower() == lower:
-            return name
-    return None
+class _RecordIndex:
+    r"""Shared, mutation-invalidated index over a db's records, reused by the two
+    hot full-DB scanners in the extended phase - the substring ``_find_record``
+    lookup and ``_add_monster_to_pools`` pool discovery. Both previously rescanned
+    all ~51k records on every call (O(targets x records), ~240 s of the DB build);
+    the index computes the derived views ONCE and invalidates only what mutates.
+
+    Correctness (byte-identity is law; proven equivalent to the original scans by
+    scratchpad/ridx_proto.py across 25 randomized seeds + 5 edge classes):
+      * order      - db insertion order (== ``record_names()``). Records are
+                     append-only in this pipeline (never renamed/removed), so it
+                     only ever grows.
+      * name_lower - lowercased name per record, for the substring ``_find_record``.
+      * blob       - ``\n``-joined lowercased STRING field values. ``kw in blob`` is
+                     exactly ``any(kw in v.lower() for string v)`` because a keyword
+                     never contains ``\n``, so no match can span two values.
+      * has_name   - True iff the record has a ``name*`` field that is not
+                     ``nameChampion*`` (identifies spawn pools), matching the original.
+    Invalidation:
+      * new records     - detected structurally (name absent from ``blob``), covering
+                          both ``clone_record`` and ``_ensure_record`` creation paths.
+      * mutated records - ``db.set_field`` / ``clone_record`` notify ``_on_mutate`` via
+                          the ``ArzDatabase._mutation_listeners`` hook, marking the
+                          record dirty; ``sync_blobs`` recomputes only dirty records.
+    The blob is built lazily on first pool discovery (one unavoidable full scan that
+    replaces the ~28 the extended phase used to do).
+    """
+    __slots__ = ('db', 'order', 'name_lower', '_name_n',
+                 'blob', 'has_name', '_blob_built', '_blob_n', '_dirty')
+
+    def __init__(self, db):
+        self.db = db
+        self.order = []
+        self.name_lower = {}
+        self._name_n = -1
+        self.blob = {}
+        self.has_name = {}
+        self._blob_built = False
+        self._blob_n = -1
+        self._dirty = set()
+        db._mutation_listeners.append(self._on_mutate)
+
+    def _on_mutate(self, name):
+        self._dirty.add(name)
+
+    def _sync_names(self):
+        db = self.db
+        n = len(db._raw_records)
+        if n == self._name_n:
+            return
+        names = list(db._raw_records.keys())
+        nl = self.name_lower
+        if len(nl) != n:
+            for name in names:
+                if name not in nl:
+                    nl[name] = name.lower()
+        self.order = names
+        self._name_n = n
+
+    def find_first_substr(self, substr):
+        """First record whose lowercased NAME contains ``substr.lower()``, in db
+        order (identical to the historical substring ``_find_record``)."""
+        self._sync_names()
+        sl = substr.lower()
+        nl = self.name_lower
+        for name in self.order:
+            if sl in nl[name]:
+                return name
+        return None
+
+    def _recompute_blob(self, name):
+        fields = self.db.get_fields(name)
+        parts = []
+        hn = False
+        if fields:
+            for key, tf in fields.items():
+                base = key.split('###')[0]
+                if base.startswith('name') and not base.startswith('nameChampion'):
+                    hn = True
+                vals = tf.values
+                if vals:
+                    for v in vals:
+                        if isinstance(v, str):
+                            parts.append(v.lower())
+        self.blob[name] = '\n'.join(parts)
+        self.has_name[name] = hn
+
+    def sync_blobs(self):
+        self._sync_names()
+        db = self.db
+        if not self._blob_built:
+            for name in self.order:
+                self._recompute_blob(name)
+            self._blob_built = True
+            self._blob_n = len(self.order)
+            self._dirty.clear()
+            return
+        if len(db._raw_records) != self._blob_n:
+            for name in self.order:
+                if name not in self.blob:
+                    self._recompute_blob(name)
+            self._blob_n = len(self.order)
+        if self._dirty:
+            for name in self._dirty:
+                if name in self.blob:
+                    self._recompute_blob(name)
+            self._dirty.clear()
+
+
+def _get_ridx(db):
+    """Lazily create + attach the shared record index for ``db`` (per-db, so distinct
+    ArzDatabase instances - base_db etc. - never cross-contaminate)."""
+    idx = getattr(db, '_svc_ridx', None)
+    if idx is None:
+        idx = _RecordIndex(db)
+        db._svc_ridx = idx
+    return idx
+
+
+def _find_record(db, substr):
+    """Find the FIRST record whose name contains ``substr`` (case-insensitive), in db
+    insertion order.
+
+    DE-SHADOW NOTE: this module historically defined ``_find_record`` TWICE - an early
+    EXACT-path resolver (has_record + slash-convention + case-insensitive full-name
+    equality) and, ~3300 lines later, this SUBSTRING matcher. Because Python binds a
+    module global at call time, the later def shadowed the earlier one for EVERY call
+    at runtime, so the shipped behavior of every call site is this substring /
+    first-match lookup. It is now the single canonical impl (the dead exact-path twin
+    was removed); runtime behavior is byte-for-byte unchanged. Backed by the shared
+    index so repeated lookups do not each rebuild the lowercased name list.
+    """
+    return _get_ridx(db).find_first_substr(substr)
 
 
 def _copy_animation_fields(db, monster_path, pet_path):
@@ -3605,42 +3722,30 @@ def _add_monster_to_pools(db, monster_path, pool_keyword, weight=2, tag=None):
     pool_keyword is matched against ALL string field values in a record.
     tag: string to check if monster is already in pool (defaults to monster filename).
     Returns count of pools modified.
+
+    Uses the shared _RecordIndex to avoid rescanning all ~51k records on every call:
+    pool discovery and the per-pool "already present" test read the index's
+    precomputed lowercased-value blobs (mutation-invalidated via the db listener).
+    Byte-for-byte equivalent to the original full scans - pool_keyword / tag are
+    matched RAW against the lowercased blob, exactly as `pool_keyword in v.lower()`
+    and `tag in v.lower()` did (a newline value separator prevents cross-value hits).
     """
     if tag is None:
         tag = monster_path.rsplit('\\', 1)[-1].replace('.dbr', '').lower()
 
-    pools = []
-    for name in db.record_names():
-        fields = db.get_fields(name)
-        if not fields:
-            continue
-        has_kw = False
-        has_name = False
-        for key, tf in fields.items():
-            fn = key.split('###')[0]
-            if fn.startswith('name') and not fn.startswith('nameChampion'):
-                has_name = True
-            if tf.values:
-                for v in tf.values:
-                    if isinstance(v, str) and pool_keyword in v.lower():
-                        has_kw = True
-                        break
-        if has_kw and has_name:
-            pools.append(name)
+    idx = _get_ridx(db)
+    idx.sync_blobs()
+    blob = idx.blob
+    has_name = idx.has_name
+    pools = [name for name in idx.order
+             if has_name.get(name) and pool_keyword in blob[name]]
 
     total = 0
     for pool in pools:
+        if tag in blob[pool]:
+            continue
         fields = db.get_fields(pool)
         if not fields:
-            continue
-        already = False
-        for key, tf in fields.items():
-            if tf.values:
-                for v in tf.values:
-                    if isinstance(v, str) and tag in v.lower():
-                        already = True
-                        break
-        if already:
             continue
 
         max_idx = 0
@@ -3663,13 +3768,9 @@ def _add_monster_to_pools(db, monster_path, pool_keyword, weight=2, tag=None):
     return total
 
 
-def _find_record(db, substr):
-    """Find first record containing substr (case-insensitive)."""
-    sl = substr.lower()
-    for name in db.record_names():
-        if sl in name.lower():
-            return name
-    return None
+# NOTE: _find_record is defined ONCE, canonically, near the top of this module
+# (index-backed substring / first-match lookup). Its former duplicate lived here and
+# was removed in the de-shadow - see the DE-SHADOW NOTE on the canonical definition.
 
 
 def _wire_soul_to_monster(db, monster, soul_paths, drop_rate=66.0):

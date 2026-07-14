@@ -1,4 +1,18 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> ⚡ **BUILD-SPEED: RECORD-INDEX (2026-07-14, main) - biggest remaining DB win, BYTE-IDENTICAL.** The extended
+> phase re-scanned all ~51k records on every `_add_monster_to_pools` call (~28 calls) and on the substring
+> `_find_record`. New shared, mutation-invalidated `_RecordIndex` (in `apply_svc_patches.py`) computes the derived
+> views once: `name_lower` (for `_find_record`), lowercased-value `blob` + `has_name` (for pool discovery), invalidated
+> by a new zero-cost `ArzDatabase._mutation_listeners` hook (set_field/clone_record notify; empty for every other tool)
+> plus structural new-record detection. Also **de-shadowed the dual `_find_record`**: the early exact-path resolver was
+> DEAD (Python rebinds the later substring def at import, so every call already ran the substring/first-match version);
+> removed it, kept the substring impl as the single canonical (byte-identical behavior). **PROOF (both full DB builds
+> EXIT=0, SVC_RELEASE_DROPS=1, cache-refresh):** arz md5 `b33c5a447f3a8ca652c14f78d4ad1dd4` == build40 GOLDEN, bit-for-bit,
+> before AND after. Text/Levels(canonical+TESTHUB)/Quests unaffected by construction (their tooling imports neither
+> changed module). **DB build 330s -> 211s; extended phase 175.1s -> 50.6s (124.5s / 71% cut).** Equivalence unit-tested
+> (`scratchpad/ridx_proto.py`, 25 seeds + 5 edge classes) and real-ArzDatabase integration-tested vs a reference copy of
+> the original scans. Files: `tools/apply_svc_patches.py`, `tools/arz_patcher.py`.
+
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10
