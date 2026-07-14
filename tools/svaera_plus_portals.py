@@ -251,6 +251,84 @@ GRID_SHIFT = {
 }
 
 
+# --- b46 (2026-07-13): world-map / minimap identity for RELOCATED SV interiors -------------
+# Bug (Will 2026-07-13): in the Uber Dungeon the drawn minimap does not line up with the level
+# ("black void" under the player), and the top-right area label reads "Village of Helos".
+# ROOT CAUSE (docs/reports/b46_minimap_rca.md + b46_minimap_result.md): the SV-only interior
+# levels reached via the Helos traveler hub carry an EMPTY (or dangling) teleport-map-zone
+# pointer in their LEVELS-entry `dbr`. The in-game world map composites each level's minimap
+# TGA (DATA2 section) onto its continent PAGE, keyed by that zone's `mapIndex`; a zoneless
+# level's TGA is never composited, so the map keeps showing the teleport-ORIGIN page (Helos =
+# Greece, mapIndex 0) while the player marker sits at the dungeon's real grid corner, off the
+# drawn content = "black void". EVIDENCE (probes, deployed DEV map): 38 base levels share
+# greece/delphi.dbr and composite across X[-9399,-3130] Z[-3268,-320] -> a level's TGA is
+# placed by its OWN grid corner on the zone's mapIndex page, so ANY same-continent zone fixes
+# the composite (the page auto-sizes to include the level). We REUSE an existing, mapIndex-
+# correct, proven-good zone (zero new DB/Text records, lowest risk) rather than mint dedicated
+# zones: these fountain-less dungeons never appear as a named fast-travel node, and the
+# top-right area NAME is a SEPARATE mechanism (a region GUID embedded in the level's 0x17
+# section - un-RE'd, tracked as the round-2 label follow-up), so the reused zone name never
+# surfaces. This is map-side only: LEVELS `dbr` is a self-delimiting length-prefixed string,
+# so no other section/blob changes (QUESTS/navmesh/bitmaps/DATA2 stay byte-identical).
+# mapIndex per continent (base DB): Greece=0, Egypt=1, Olympus=4, Orient=7.
+_ZONE_GREECE_KNOSSOS = 'records/ingameui/teleportmap/zones/greece/knossos.dbr'   # mapIndex 0
+_ZONE_GREECE_SPARTA  = 'records/ingameui/teleportmap/zones/greece/sparta.dbr'    # mapIndex 0
+_ZONE_OLYMPUS        = 'records/ingameui/teleportmap/zones/olympus/olympus.dbr'  # mapIndex 4
+LEVEL_ZONE_DBR_OVERRIDES = {
+    # THE reported bug: Uber Dungeon (SV entrance was from Knossos maze03) -> Greek page.
+    'levels/world/uberdungeon/crypt_floor1.lvl': _ZONE_GREECE_KNOSSOS,
+    # Sparta Crypt (Helos-hub destination; a Sparta-area crypt) -> Greek page.
+    'levels/world/greece/minidungeons/spartacryptlevel2.lvl': _ZONE_GREECE_SPARTA,
+    # Garden of Merchants: its existing dbr points at olympus_gom.dbr, which is ABSENT from the
+    # DB (dangling) -> never composited. Repoint to the existing AE Olympus zone (mapIndex 4);
+    # GoM already carries its own region label ("Duister"), so only the map PAGE needed fixing.
+    'levels/world/olympus/gardenofmerchants.lvl': _ZONE_OLYMPUS,
+    # The Secret Place cluster (reached via the Helos hub landing in DarkForestEnter; parked in
+    # empty map space like the blood cave). Greek-act hidden area; each authored level already
+    # carries its own region label. mapIndex 0 (Greek) = the retained arrival page. Continent
+    # is inferred (these sit in empty map space with no zoned neighbour); see the result doc.
+    'xpack/levels/secret_place/behindthesp.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/darkforestenter.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/woodscorner.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/secretforest2.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/pillagedvillage.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/forestobsidiantransition.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/rogueencampment.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/rogue encampment forest entrance.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/rogueencampmentforestfiller.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/tfinale.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/murderbossroom.lvl': _ZONE_GREECE_KNOSSOS,
+}
+
+
+def apply_zone_dbr_overrides(merged_levels):
+    """b46: set the LEVELS-entry teleport-map-zone `dbr` for relocated SV interiors that
+    shipped with an empty/dangling zone pointer, so their minimap TGA composites onto the
+    correct continent page (fixes the Uber Dungeon "black void"). Map-side only - `dbr` is a
+    self-delimiting length-prefixed string, so build_level_index recomputes offsets and no
+    other section changes. Fails loud if any expected override level is missing from
+    merged_levels (a fname drift would otherwise silently no-op the fix)."""
+    remaining = dict(LEVEL_ZONE_DBR_OVERRIDES)
+    changed = []
+    for entry in merged_levels:
+        key = entry['fname'].replace('\\', '/').lower()
+        new = remaining.pop(key, None)
+        if new is not None:
+            old = entry.get('dbr', '')
+            entry['dbr'] = new
+            entry['dbr_raw'] = new.encode('ascii')
+            changed.append((key, old, new))
+    if remaining:
+        raise ValueError(
+            f'b46 zone-dbr overrides: {len(remaining)} target level(s) not found in '
+            f'merged_levels (fname drift?): {sorted(remaining)}')
+    print(f'\n=== b46: world-map zone assigned to {len(changed)} relocated SV interior(s) ===')
+    for key, old, new in changed:
+        old_disp = old if old else '<EMPTY>'
+        print(f'  {key.split("/")[-1][:36]:36s} dbr {old_disp:34s} -> {new.split("/")[-1]}')
+    return changed
+
+
 def shifted_ints_raw(lv):
     """Return a level's ints_raw with GRID_SHIFT applied to its grid corner.
 
@@ -1211,6 +1289,12 @@ def main():
 
     data2_raw = bytes(data2_raw)
     print(f'  SV-only DATA2: {sv_only_d2_count}/{len(sv_only)} levels, +{(len(data2_raw) - orig_data2_len)/(1024*1024):.1f} MB')
+
+    # b46: assign a world-map teleport-zone to relocated SV interiors so their minimap TGA
+    # composites onto the correct continent page (Uber Dungeon "black void" fix). Runs on the
+    # FINAL merged_levels (after the R09 swap) just before serialization; LEVELS entries are
+    # self-delimiting so this touches only the overridden entries' `dbr` field.
+    apply_zone_dbr_overrides(merged_levels)
 
     # Calculate pre-data section layout
     new_levels_data = build_level_index(merged_levels)
