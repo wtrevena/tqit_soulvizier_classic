@@ -8109,7 +8109,8 @@ _SOUL_NAME_STANDARD = {
     'tagSVCSoulDevShawn': '{^F}Shawn Soul',
     'tagSVCSoulDevTildaV': '{^F}~V~ Soul',
     'tagSVCSoulDevTom': '{^F}Tom Soul',
-    'tagSVCSoulDrownedKing': '{^F}Dorus, the Drowned King Soul',
+    # tagSVCSoulDrownedKing: MOVED to _HAND_DESIGNED_SOUL_TAGS (b47 rename) so the
+    # bespoke marquee "{^F}Soul of the Coin-Drowned" WINS (Anapaest precedent).
     'tagSVCSoulFeth': '{^F}Feth Thundertail Soul',
     'tagSVCSoulFireTrap': '{^F}The Trap Soul',
     'tagSVCSoulFleshrender': '{^F}Jungle Raptor ~ Fleshrender Soul',
@@ -11047,7 +11048,7 @@ HELOS_HUB_OUTBOUND = [
     (r'records\quests\svc_helos_trav_uber.dbr',       'tagSVCNpcTravUber',       'Traveler: The Obsidian Halls',    'tagSVCHelosToUber',        None),
     (r'records\quests\svc_helos_trav_bossarena.dbr',  'tagSVCNpcTravBossArena',  'Traveler: The Boss Arena',        'tagSVCTestHubToBossArena', None),
     (r'records\quests\svc_helos_trav_warband.dbr',    'tagSVCNpcTravWarband',    'Traveler: Blood-Cave Warband',    'tagSVCHelosToWarband',     'The Blood-Cave Warband'),
-    (r'records\quests\svc_helos_trav_dorus.dbr',      'tagSVCNpcTravDorus',      'Traveler: Medea Tomb (Dorus)',    'tagSVCHelosToDorus',       'The Drowned King (Medea Tomb)'),
+    (r'records\quests\svc_helos_trav_dorus.dbr',      'tagSVCNpcTravDorus',      'Traveler: Tomb of the Queens (Kroisos)', 'tagSVCHelosToDorus',    'Kroisos, the Coin-Drowned'),
     (r'records\quests\svc_helos_trav_tantalus.dbr',   'tagSVCNpcTravTantalus',   'Traveler: Den of Tantalus',       'tagSVCHelosToTantalus',    'The Den of Tantalus'),
     (r'records\quests\svc_helos_trav_charon.dbr',     'tagSVCNpcTravCharon',     'Traveler: Golden Bough (Charon)', 'tagSVCHelosToCharon',      'The Golden Bough'),
     (r'records\quests\svc_helos_trav_mnemophage.dbr', 'tagSVCNpcTravMnemophage', 'Traveler: Pools of Mnemosyne',    'tagSVCHelosToMnemophage',  'The Pools of Mnemosyne'),
@@ -11533,14 +11534,26 @@ def _create_propontis_superboss(db, tags):
     _dorus_pool(_DK_YARD_POOL, 'YARD: Dorus + 2 royal-guard escorts @100% (TESTHUB-only)')
     _dorus_proxy(_DK_YARD_PROXY, _DK_YARD_POOL)
 
-    tags['tagSVCMonsterDrownedKing'] = '{^r}Dorus, the Drowned King'
+    # ── b47 RENAME + RELOCATE (Will 2026-07-13): the boss was displayed as "Dorus,
+    #    the Drowned King" and PLACED in the Great Tomb of Dorus (Tomb01), standing
+    #    beside the base-game quest King Dorus (xsq06_king_dorus, a kill target of the
+    #    xSQ06 questline) - two "King Dorus" nameplates side by side. Re-identified as
+    #    a DISTINCT amgoz1 figure (Kroisos = the myth-byword for wealth; a greed/hoard
+    #    identity that fits the crowned drowned-royalty rig and the C6 water/greed kit)
+    #    and RELOCATED by the map lane to the Tomb of the Queens (Tomb03). The internal
+    #    record ids keep the `dorus`/`drowned_king` namespace (never player-visible);
+    #    ONLY the display text changes here. FLAGGED for Will's tour veto (see
+    #    docs/reports/b47_dorus.md); alt names: "Kroisos, the Sunken Miser" / the
+    #    impersonal "the Coin-Drowned".
+    tags['tagSVCMonsterDrownedKing'] = '{^r}Kroisos, the Coin-Drowned'
     tags['tagSVCMonsterDorusGuard'] = '{^r}Drowned Royal Guard'
-    tags['tagSVCSoulDrownedKing'] = '{^F}Soul of the Drowned King'
+    tags['tagSVCSoulDrownedKing'] = '{^F}Soul of the Coin-Drowned'
     tags['tagSVCSoulDrownedKingDESC'] = (
-        'Torn from Dorus, the last king of Propontis, who hoarded a fortune and '
-        'drowned with it. His soul is bloated with the coin he died clutching and '
-        'the cold patience of a corpse that never let go.')
-    print("  A5 Propontis: Dorus the Drowned King (Boss [41,57,71] HP 13.5/18.5/24k, "
+        'Torn from Kroisos the coin-drowned, whose greed for the gold of sunken '
+        'Propontis was so great that men remembered only his hoard. Sealed among the '
+        'drowned queens with the fortune he would not share, his soul is bloated still '
+        'with coin and the cold patience of a corpse that never let go.')
+    print("  A5 Propontis: Kroisos the Coin-Drowned [b47 rename] (Boss [41,57,71] HP 13.5/18.5/24k, "
           "royalty rig, ThunderClap/ball + raise-court summon burst3/petLimit20) + "
           "Common courtier fodder + Champion royal-guard escort + lone pool/proxy "
           "(1 king + 2 escorts) + Boss-locked hoard (Obsidian-chest reuse) + dense "
@@ -14836,6 +14849,10 @@ _HAND_DESIGNED_SOUL_TAGS = frozenset({
     # to "{^F}Gigantes - Anapaest Soul". Will's evocative-name-restoration directive
     # gives the bespoke name back; removed from _SOUL_NAME_STANDARD so it WINS.
     'tagSVCSoulAnapaest',    # {^F}Soul of Anapaest the Dishonored
+    # b47 (Will 2026-07-13): the RENAMED Propontis super-boss soul. Marquee
+    # "{^F}Soul of the Coin-Drowned" (was "{^F}Dorus, the Drowned King Soul" in
+    # _SOUL_NAME_STANDARD; removed there so this bespoke name WINS - Anapaest precedent).
+    'tagSVCSoulDrownedKing', # {^F}Soul of the Coin-Drowned
 })
 
 # Shared donors (all DB-verified present, probe_build36_content_donors.py).
