@@ -567,11 +567,13 @@ V1_LANDINGS = [
 
 # V2 = the b39 hub-v2 landing set (boss destinations RETARGETED to area ENTRANCES,
 # deliberately offset from the boss; + devourer/vashkarr/obsidian added).
-# Provenance: feat/b39-hub-v2 build_quest_files.HELOS_HUB_TRAVEL @ cf5a0e4.
+# Provenance: feat/b39-hub-v2 build_quest_files.HELOS_HUB_TRAVEL @ cf5a0e4, with the
+# b44 landing-clearance NUDGES folded in (sparta + devourer; see build_quest_files.py
+# HELOS_HUB_TRAVEL, the LIVE source read by --wiring v1) so this snapshot matches ship.
 V2_LANDINGS = [
     ('garden', (1173, -39, -4001), 'tagSVCHelosToGarden'),
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
-    ('sparta', (-6588, 1, -3180), 'tagSVCHelosToSparta'),        # Athens catacomb DOOR (retarget)
+    ('sparta', (-6587, 1, -3180), 'tagSVCHelosToSparta'),        # Athens catacomb DOOR (retarget); b44 NUDGE off AG_Beastmen_Gorgon (was -6588: 2.72u -> 3.69u clr)
     ('uber', (-7793, 1, -3793), 'tagSVCHelosToUber'),            # Knossos->Uber maze03 DOOR (retarget)
     ('bossarena', (-433, 0, -3602), 'tagSVCTestHubToBossArena'),
     ('warband', (5699, 1, 3315), 'tagSVCHelosToWarband'),
@@ -580,7 +582,7 @@ V2_LANDINGS = [
     ('charon', (-480, -12, -9591), 'tagSVCHelosToCharon'),       # Styx Hades-city (walk E to bough)
     ('mnemophage', (169, -10, -11418), 'tagSVCHelosToMnemophage'),  # Mnemosyne stairs (~20u off)
     ('ephialtes', (-1756, 3, -13198), 'tagSVCHelosToEphialtes'), # Dread Halls stairs (~130u off)
-    ('devourer', (5345, 1, 3010), 'tagSVCHelosToDevourer'),      # drxbc2 chamber (~92u off Toxeus)
+    ('devourer', (5349, 1, 3009), 'tagSVCHelosToDevourer'),      # drxbc2 chamber (~92u off Toxeus); b44 NUDGE off burstvessle_01 (was 5345/3010: 0.58u DEADLY -> 3.16u clr)
     ('vashkarr', (-227, 1, 146), 'tagSVCHelosToVashkarr'),       # random05a Chang'an cave (~28u off)
     ('obsidian', (-1827, -74, -462), 'tagSVCHelosToObsidian'),   # tombobs02 Obsidian Halls stairs
     ('ret_dorus', (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
