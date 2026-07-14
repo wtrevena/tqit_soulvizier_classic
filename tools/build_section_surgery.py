@@ -2353,13 +2353,38 @@ def merge_hub_into_inject_specs(base_specs):
     svaera_plus_portals.py; the normal INJECT_SPECS loop would inject into the DISCARDED AE blob
     (and, worse, leaving R09 in inject_specs makes ae_patched_blobs override the swap at compaction
     -> TESTHUB random09a would wrongly become the AE silkroad blob, the pre-existing build33 quirk).
-    The swap path applies build_hub_extra_specs()[R09_LVL_KEY] directly to the SV swap blob."""
+    The swap path applies build_hub_extra_specs()[R09_LVL_KEY] directly to the SV swap blob.
+
+    b48 SPARTA-MUTE FIX (2026-07-13): at the Helos plaza (HELOS_HOST_KEY / startingfarmland06d)
+    the canonical Almyros NPC (PORTAL_MASTER_SPEC) offers a 4-destination boat menu
+    (Garden/Secret/Uber/Sparta) whose routes are byte-for-byte the SAME (tag AND dest) as four of
+    the TESTHUB dedicated travelers (svc_helos_trav_{garden,secret,uber,sparta}). The engine's
+    boat-dialog system is strictly 1 route : 1 NPC (proven: EVERY base-game/SV boat NPC owns a
+    unique (npc,tag,dest) triple - no tag or dest is ever shared across two NPCs). When two placed
+    NPCs in the SAME level offer the same route, only the first-registered one (Almyros, trig1)
+    binds it; the dedicated traveler for that route goes MUTE (Will's Sparta report). The 6
+    unique-route dedicated travelers (warband/dorus/tantalus/charon/mnemophage/ephialtes) are the
+    sole owners of their routes and DO fire (Will hit them = the b44 land-in-chest class).
+    FIX: in the TESTHUB plaza, DROP the redundant canonical Almyros placement so the dedicated
+    'one person each' travelers are the sole route owners -> all fire. Canonical/Steam build is
+    UNTOUCHED (Almyros stays its SOLE cross-area mechanism there; flag-OFF never folds this in)."""
     out = {k: list(v) for k, v in base_specs.items()}
     for k, specs in build_hub_extra_specs().items():
         if k == R09_LVL_KEY:
             continue  # applied via the swap path (SV blood-cave blob), not the normal loop
-        out.setdefault(k, [])
-        out[k] = list(out[k]) + list(specs)
+        base_for_k = list(out.get(k, []))
+        if k == HELOS_HOST_KEY:
+            def _spec_npc(s):
+                return bytes(s) if isinstance(s, (bytes, bytearray)) else bytes(s[0])
+            before = len(base_for_k)
+            base_for_k = [s for s in base_for_k if _spec_npc(s) != PORTAL_MASTER_NPC_DBR]
+            if len(base_for_k) == before:
+                raise ValueError(
+                    'b48 SPARTA-MUTE FIX: expected the canonical Almyros placement '
+                    f'({PORTAL_MASTER_NPC_DBR!r}) in the Helos plaza base specs to de-dup, but '
+                    'none was found. The route-collision de-dup is now a no-op - review why '
+                    'PORTAL_MASTER_SPEC left HELOS_HOST_KEY before shipping the TESTHUB hub.')
+        out[k] = base_for_k + list(specs)
     return out
 
 
