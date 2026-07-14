@@ -10325,6 +10325,15 @@ _BOSS_ORB_TARGETS = [
     (r'records\xpack\creatures\monster\lostsoul\um_tantalus_unbound_99.dbr',   _APEX_ORB),  # terminal
     (r'records\xpack\creatures\monster\epiales\um_mnemophage_core_99.dbr',     _APEX_ORB),  # terminal
     (r'records\xpack\creatures\monster\epiales\um_ephialtes_99.dbr',           _APEX_ORB),
+    # --- b53 (Will 2026-07-13): Dagon is a custom Boss inherited VERBATIM from amgoz1 SV
+    # 0.98i with treasureProxyName = the base-game act-2 Charon boss chest proxy, so on death
+    # it dropped an orb named "Charon's Essence" (xtagChest18). Retarget it to the generic
+    # apex orb (unnamed) so it drops the typical boss orb, not another boss's named essence.
+    # NOT a rename of bosschest02_charon/xtagChest18 (shared base-game DESIGN record; the mod
+    # Charon uber um_charonform2_ferryman_99 legitimately keeps dropping Charon's Essence).
+    # Dagon soul (chanceToEquipFinger2/lootFinger2Item1) + relic (lootMisc2Item3) are on
+    # separate loot fields, untouched by this retarget.
+    (r'records\test\boss_dagon_66.dbr',                                        _APEX_ORB),
 ]
 
 
