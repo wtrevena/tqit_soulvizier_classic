@@ -17,7 +17,7 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
 from build_section_surgery import (
     INJECT_SPECS, MOVE_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
-    parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11,
+    parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11, inject_0x17_region,
     inject_into_sv_only_blob, inject_rec02_into_blob, move_0x05_instances,
     merge_hub_into_inject_specs, build_hub_extra_specs, patch_respawn_group_position,
     RESPAWNTEMPLEORIENT01_UNIQUEID,
@@ -346,51 +346,100 @@ def apply_zone_dbr_overrides(merged_levels):
     return changed
 
 
-# --- b46 round 2 (2026-07-13): AREA-LABEL region records for relocated SV interiors ----------
+# --- b46 round 3 (2026-07-13): AREA-LABEL fix for the Uber Dungeon (crypt_floor1) ------------
 # Bug (Will 2026-07-13, symptom 2): inside the Uber Dungeon the top-right area label reads
 # "Village of Helos" (the region where the Helos-plaza traveler stands) instead of the dungeon's
-# own name. MECHANISM (docs/reports/b46_minimap_result.md; PROVEN on 489/489 deployed levels): the
-# on-screen area name is a REGION GUID carried in each level's 0x17 section (its region[] slot).
-# The engine resolves that GUID against the world SD (0x18) REGION list and shows the region's
-# display tag. crypt_floor1's 0x17 ALREADY carries a region GUID (59c096c3...) but the SD has NO
-# record for it (an SV-original gap - byte-identical empty in SV 0.98i), so no name resolves and
-# the banner retains the last region entered ("Village of Helos", from the Helos teleport origin).
-# This is a DIFFERENT mechanism from the minimap "black void" (that is the LEVELS-entry zone `dbr`,
-# fixed by apply_zone_dbr_overrides above); the two share only the theme "the dungeon lacked map
-# identity". PROOF: across every cleanly-parseable level, the region[] slot GUIDs that resolve in
-# SD are EXACTLY the region GUIDs found by a whole-0x17 SD-scan, and layer[] slot GUIDs are never
-# SD regions (0 exceptions) - so region[] is where the displayed area name is bound.
+# own name. MECHANISM (docs/reports/b46_minimap_result.md; b46r3 ground-truth re-derivation): each
+# level's 0x17 section begins with THREE guid lists - [ENV][REGION][AUDIO] - and the on-screen
+# area-name banner is the level's REGION-list guid resolved against the world SD (0x18) REGION
+# records. Proven: this 3-list parse/serialize round-trips BYTE-IDENTICAL across all 2282 deployed
+# levels, and every level that shows a name carries exactly its SD-region guid in this REGION list
+# (boss_arena->'Olympian Arena', startingcave01->'Natural Cave', spartacryptlevel2->'Ancient Tomb',
+# GoM->'Duister'). crypt_floor1's REGION list is EMPTY (count 0) - it carries only an ENV guid
+# (UberDungeonLevel1) and an AUDIO guid (59c096c3, the "UberDungeon - Floor1" audio zone) - so no
+# name resolves and the banner retains the last region ("Village of Helos", the Helos teleport
+# origin). It is the ONE reachable interior entered DIRECTLY from Helos plaza, so it is the only one
+# that retains the Helos label (the secret_place cluster is entered from the DarkForestEnter landing,
+# which DOES resolve -> those sub-rooms retain "Dark Forest", never "Village of Helos").
 #
-# FIX (additive, proven-round-trip, ZERO 0x17/raster/navmesh/QUESTS/LEVELS edit): append the
-# missing SD REGION record whose guid == the level's existing 0x17 region GUID, so the banner
-# resolves. sd_format.py round-trips the SD byte-identically; regions are looked up by GUID, so an
-# APPEND leaves every existing region + index + the opaque audio/miniboss tail byte-identical.
-# The display name is a Text.arc tag (added to tools/build_text_arc.py TEXT_FIX_TAGS) => DEPLOY
-# COUPLING: Levels + Text ship together (the contract_sd_tags gate fails loud if the tag is
-# missing from Text.arc, so the coupling is guarded).
+# CORRECTS b46 ROUND 2 (vet HIGH): round 2 appended an SD REGION record for the AUDIO guid
+# (59c096c3) - a NO-OP, because the banner reads the REGION list, which is empty. The audio guid is
+# not a region; giving it an SD region record changes nothing on screen.
+#
+# FIX (round 3): give crypt_floor1 a real REGION identity, mirroring every shipped named dungeon:
+#   (1) inject_0x17_region() appends a freshly-minted region guid to crypt_floor1's 0x17 REGION list
+#       (map-side, via the proven parse_0x17_header/build_0x17_header round-trip; ENV+AUDIO lists +
+#       the raster stay byte-identical, navmesh 0x0b untouched). This makes crypt's 0x17 shape
+#       (env=1/region=1/audio=1) IDENTICAL to the shipped, working startingcave01 - not a novel
+#       structure. Wired into the SV-only structural-patch loop in main().
+#   (2) add_sv_region_labels() appends the matching SD (0x18) REGION record for that SAME minted
+#       guid (additive, GUID-keyed -> existing regions/indices + the audio/miniboss tail stay
+#       byte-identical). Its display name = a Text.arc tag.
+# The minted guid is used in BOTH places, so crypt's 0x17 region guid resolves to the new SD region.
+# A FRESH guid (not the audio guid) is minted so nothing is dual-defined across the audio+region
+# lists (clears the vet's LOW note). DEPLOY COUPLING: Levels + Text ship together (contract_sd_tags
+# fails loud if tagSVCRegionObsidianHalls is missing from Text.arc when the SD references it).
 #
 # NAME: crypt_floor1's build36 content is the "Obsidian Halls" treasure roulette (4 wardens +
-# Kravmoloch, Keeper of the Wheel of the Obsidian Halls); the hub traveler is "Traveler: The
-# Obsidian Halls". So the banner names the area "The Obsidian Halls" - matches the traveler the
-# player clicked and the content in the room. (To use the classic SV name instead, change both the
-# label below and the tagSVCRegionObsidianHalls value in build_text_arc.py to "The Uber Dungeon".)
-_OBSIDIAN_HALLS_REGION_GUID = bytes.fromhex('59c096c3efda75824a40d4f6483fb8bf')  # crypt_floor1 0x17 region[]
+# Kravmoloch, Keeper of the Wheel of the Obsidian Halls); the hub NPC the player clicks is
+# "Traveler: The Obsidian Halls". So the banner names the area "The Obsidian Halls" - matches the
+# traveler the player clicked, the room content, and the amgoz1 flavor bar. (The travel-arrival tag
+# tagSVCHelosToUber still reads "The Uber Dungeon"; to make the banner match that instead, change
+# both the label below and the tagSVCRegionObsidianHalls value in build_text_arc.py.)
+#
+# Minted, collision-checked against every guid in the map (SD env/region/tail + every level's 0x17
+# guids + level GUIDs = 32,110 guids, 0 collisions; scratchpad mint_guid.py):
+_OBSIDIAN_HALLS_REGION_GUID = bytes.fromhex('67a0a0fa76ed27fc22ed82d2636b3b81')
+_OBSIDIAN_HALLS_NAME = 'The Obsidian Halls'
+_OBSIDIAN_HALLS_TAG = 'tagSVCRegionObsidianHalls'
+# 0x17 REGION-list injection targets: level fname -> region guid to append. Only crypt_floor1
+# needs one (it is the sole reachable interior with an EMPTY region list that retains "Village of
+# Helos"); every other reachable SV interior already carries a resolving region guid (verified by
+# the b46r3 0x17 sweep - see result doc). Keyed on the lowercased forward-slash fname.
+SV_0X17_REGION_LABELS = {
+    'levels/world/uberdungeon/crypt_floor1.lvl': _OBSIDIAN_HALLS_REGION_GUID,
+}
 SV_REGION_LABELS = [
-    # (region GUID already present in the level's 0x17 region[] slot, internal name, display tag)
-    (_OBSIDIAN_HALLS_REGION_GUID, 'The Obsidian Halls', 'tagSVCRegionObsidianHalls'),
+    # (region GUID injected into the level's 0x17 REGION list above, internal name, display tag)
+    (_OBSIDIAN_HALLS_REGION_GUID, _OBSIDIAN_HALLS_NAME, _OBSIDIAN_HALLS_TAG),
 ]
 
 
+def apply_0x17_region_labels(sv_only, converted_blobs):
+    """b46r3: inject the minted area-label region guid into each target SV-only level's 0x17 REGION
+    list so its banner resolves against the SD region added by add_sv_region_labels() (fixes the
+    Uber Dungeon reading "Village of Helos"). Map-side, via the proven 0x17 parse/serialize; ENV +
+    AUDIO lists, the 0x17 raster, and every other section (incl. navmesh 0x0b) stay byte-identical.
+    Fails loud if a target level is missing (fname drift would silently no-op the fix)."""
+    remaining = dict(SV_0X17_REGION_LABELS)
+    changed = []
+    for i, lv in enumerate(sv_only):
+        key = lv['fname'].replace('\\', '/').lower()
+        guid = remaining.pop(key, None)
+        if guid is not None:
+            converted_blobs[i] = inject_0x17_region(converted_blobs[i], guid, key)
+            changed.append((key, guid.hex()))
+    if remaining:
+        raise ValueError(
+            f'b46r3 0x17 region-label: {len(remaining)} target level(s) not found in SV-only set '
+            f'(fname drift?): {sorted(remaining)}')
+    print(f'\n=== b46r3: 0x17 REGION-list area-label injected into {len(changed)} SV interior(s) ===')
+    for key, gh in changed:
+        print(f'  {key.split("/")[-1][:36]:36s} +region[{gh}] -> {_OBSIDIAN_HALLS_NAME!r}')
+    return changed
+
+
 def add_sv_region_labels(sv_sd):
-    """b46r2: append world-SD (0x18) REGION records so relocated SV interiors whose 0x17 carries a
-    region GUID absent from SD get a resolvable area-name banner (fixes the Uber Dungeon reading
-    "Village of Helos"). Additive + GUID-keyed => existing regions/indices + the SD tail stay
-    byte-identical (sd_format round-trip proven). Idempotent (skips a GUID already present); fails
-    loud on SD schema drift or a duplicate display tag."""
+    """b46r3: append world-SD (0x18) REGION records for the minted area-label region guid(s) that
+    apply_0x17_region_labels() injects into the target levels' 0x17 REGION lists, so the banner
+    resolves (fixes the Uber Dungeon reading "Village of Helos"). Additive + GUID-keyed => existing
+    regions/indices + the opaque audio/miniboss tail stay byte-identical (sd_format round-trip
+    proven). Idempotent (skips a GUID already present); fails loud on SD schema drift or a duplicate
+    display tag."""
     from sd_format import SDSection, RegionRecord
     sec = SDSection.parse(sv_sd)
     if sec.build() != sv_sd:
-        raise ValueError('b46r2: SD round-trip mismatch - refusing to edit SD (schema drift?)')
+        raise ValueError('b46r3: SD round-trip mismatch - refusing to edit SD (schema drift?)')
     existing = {bytes(r.guid) for r in sec.region_records}
     tags_used = {r.tag for r in sec.region_records if r.tag}
     # donor colors: an SV-authored interior/arena region (Olympian Arena, tagNewMZone1) so the
@@ -402,15 +451,15 @@ def add_sv_region_labels(sv_sd):
         if guid in existing:
             continue  # already named (idempotent - e.g. a future SD change adds it upstream)
         if tag in tags_used:
-            raise ValueError(f'b46r2: region tag {tag!r} already used in SD - would double-define')
+            raise ValueError(f'b46r3: region tag {tag!r} already used in SD - would double-define')
         sec.region_records.append(
             RegionRecord(1, name, guid, donor.color1, donor.color2, tag, 1, 1))
         added.append((name, tag, guid.hex()))
     if not added:
-        print('\n=== b46r2: SD area-label region(s): all already present (no-op) ===')
+        print('\n=== b46r3: SD area-label region(s): all already present (no-op) ===')
         return sv_sd
     new_sd = sec.build()
-    print(f'\n=== b46r2: SD area-label region(s) added: {len(added)} '
+    print(f'\n=== b46r3: SD area-label region(s) added: {len(added)} '
           f'(SD {len(sv_sd)} -> {len(new_sd)} B) ===')
     for name, tag, gh in added:
         print(f'  +region {name!r:22s} tag={tag} guid={gh}')
@@ -1025,6 +1074,14 @@ def main():
         if lv_key in REMOVE_0X05_BY_0X14_UID_SPECS:
             converted_blobs[i] = remove_0x05_instances_by_0x14_uid(
                 converted_blobs[i], REMOVE_0X05_BY_0X14_UID_SPECS[lv_key], lv_key)
+
+    # --- 6d. b46r3: 0x17 REGION-list area-label (Uber Dungeon "Village of Helos" fix) ---------
+    # Inject the minted "Obsidian Halls" region guid into crypt_floor1's 0x17 REGION list so the
+    # top-right banner resolves it against the SD region add_sv_region_labels() appended. Runs
+    # AFTER the structural patches and BEFORE the 0x0b navmesh inject (which preserves 0x17
+    # verbatim), so the label edit survives to the final blob. Map-side only; ENV/AUDIO lists +
+    # the 0x17 raster + every other section (incl. navmesh) stay byte-identical.
+    apply_0x17_region_labels(sv_only, converted_blobs)
 
     # --- 7. Append 0x14 entries ONLY for injected instances that need one (SV-faithful) ---
     # A 0x14 entry is per-instance engine BINDING metadata (e.g. a cave-mouth GridEntrance
