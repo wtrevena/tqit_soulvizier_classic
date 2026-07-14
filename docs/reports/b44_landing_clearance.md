@@ -165,8 +165,8 @@ py tools/debug/gate_landing_clearance.py \
 py tools/debug/gate_landing_clearance.py \
   --map "<...>/SoulvizierClassicDEV/Resources/Levels.arc" \
   --wiring v2 --placements b41b42 --nudge
-#   -> devourer (5345,1,3010) -> (5349,1,3009)  [nudge 4.1u, ROBUST]  nearest 3.16u prop  clr 100%/100%/100%
-#   -> sparta   (-6588,1,-3180) -> (-6587,1,-3180) [nudge 1.0u, ROBUST]  nearest 3.69u proxy  clr 100%/100%/100%
+#   -> devourer (5345,1,3010) -> (5349,1,3009)  [nudge 4.1u, ROBUST]  binding collider 3.16u prop rock_hc_pitboulder04.dbr (slack +0.66u vs 2.5u min)  clr 100%/100%/100%
+#   -> sparta   (-6588,1,-3180) -> (-6587,1,-3180) [nudge 1.0u, ROBUST]  binding collider 3.69u proxy AG_Beastmen_Gorgon_02N.dbr (slack +0.69u vs 3.0u min)  clr 100%/100%/100%
 ```
 
 ## 5. Recommendation

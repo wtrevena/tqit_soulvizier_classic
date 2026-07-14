@@ -391,6 +391,26 @@ def _clearance_slack(near_at, strict_npc):
     return slack
 
 
+def _binding_collider(near_at):
+    """The FAIL/DEADLY-determining collider at a point = the one with the smallest
+    (dist - threshold) over hard classes + 'other' (npc/portal are soft, never bind a
+    FAIL). Returns (slack, dist, klass, dbr, thr) or None. This is what CONSTRAINS the
+    landing - what --nudge reports (not merely the nearest entity, which may be a
+    low-threshold 'other' that is not the binding constraint)."""
+    best = None
+    for (dist, dbr, _x, _z, klass, _ex) in near_at:
+        if klass in HARD_FAIL:
+            thr = CLASS_MIN[klass]
+        elif klass == 'other':
+            thr = PIN_DIST
+        else:
+            continue
+        s = dist - thr
+        if best is None or s < best[0]:
+            best = (s, dist, klass, dbr, thr)
+    return best
+
+
 def find_nudge(nav, entities, extra, lx, lz, max_r=16.0):
     """Search the INTEGER-WORLD lattice outward from (lx,lz) for the closest point that
     is on-mesh (all tilesets, not a tiny island), well-footed, AND clears every collidable
@@ -778,13 +798,13 @@ def main():
                     continue
                 nlx, nlz, rad, near_at, om, robust = res
                 nwx, nwz = cx + nlx, cz + nlz     # integer corner + integer local = integer world
-                hard = [e for e in near_at if e[4] in DEADLY_CLASSES]
-                nearest_hard = f'{hard[0][0]:.2f}u {hard[0][4]} {hard[0][1].rsplit(chr(92),1)[-1]}' \
-                    if hard else 'none within scan'
+                b = _binding_collider(near_at)
+                binding = (f'{b[1]:.2f}u {b[2]} {b[3].rsplit(chr(92), 1)[-1].rsplit("/", 1)[-1]} '
+                           f'(slack {b[0]:+.2f}u vs {b[4]}u min)') if b else 'none within scan'
                 clr = '/'.join(f'{c*100:.0f}%' for _d, c, _o in om['per'])
                 tag = 'ROBUST' if robust else 'TIGHT - no robust spot in range, hand-verify'
                 print(f'  {r["name"]:14s} ({wx},{wy},{wz}) -> ({nwx},{wy},{nwz})  '
-                      f'[nudge {rad:.1f}u, {tag}]  nearest collider now {nearest_hard}  clr {clr}')
+                      f'[nudge {rad:.1f}u, {tag}]  binding collider {binding}  clr {clr}')
     bad = bool(deadly or fails) or (args.strict_check and bool(checks))
     print(f'\nGATE G-LAND: {"FAIL" if bad else "PASS"}')
     return 1 if bad else 0
