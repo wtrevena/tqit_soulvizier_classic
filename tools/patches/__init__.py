@@ -94,6 +94,11 @@ REGISTRY = [
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
                             # (four_generals/diadochi/polis_vault/neferkha/toxeus_suite + monolith).
+    'souls_quality',        # backlog #31 round1: fix the 3 DEFICIENT svc_uber souls (Legendary
+                            # weaker than Epic - tier-level inversion) + the 54-family svc_uber
+                            # e/l per-tier icon law. Disjoint from every module above (touches only
+                            # create_uber_souls-generated svc_uber rings; module-authored souls
+                            # already obey both invariants). verify() gates the class fail-loud.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

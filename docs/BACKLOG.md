@@ -28,6 +28,25 @@
 > (`scratchpad/ridx_proto.py`, 25 seeds + 5 edge classes) and real-ArzDatabase integration-tested vs a reference copy of
 > the original scans. Files: `tools/apply_svc_patches.py`, `tools/arz_patcher.py`.
 
+> 💠 **SOULS-QUALITY ROUND-1 (2026-07-14, `feat/souls-quality`, NOT yet integrated) - backlog #31.** New registry
+> module `tools/patches/souls_quality.py` (position 13, after `boss_skill_fix`, before `visuals`) fixes the audit's
+> (`docs/reports/souls_quality_audit.md`) real defects, all inside the mod-generated `svc_uber` namespace. **FIXED:**
+> (P1) the 3 DEFICIENT souls where Legendary was WEAKER than Epic - `crowboar`/`onyxspine`/`steamcrawler` `_soul_l`
+> augment levels (and crowboar's granted-skill level) raised 1 -> 3 so n/e/l = **1/2/3** (matches healthy
+> bloodrunner/xix); root cause = `_DIFF_SCALE` 0/0/1 + the B-SOUL-PROC-1 backstop bumping only n/e. (P2-b) the
+> svc_uber e/l per-tier icon law - 108 rings across **54 families** had `soul_n_icon` on Epic+Legendary; rewritten to
+> `soul_e/soul_l_icon` (textures already in SVItems.arc). `verify()` is fail-loud + roster-wide (tier monotonicity
+> n<=e<=l + per-tier icon), so the class can't silently regress. **DISJOINT** from every other module (module-authored
+> svc_uber souls already obey both laws; 0 touched records are Occult/Hunting/kallixenia/pharaoh). **VERIFY (no heavy
+> build):** dry-run replay `tools/debug/souls_quality_replay.py` vs build40 GOLDEN `b33c5a44` = intended-only diff
+> (exactly 108 records = 54 e + 54 l), field-minimal, correct, verify OK, idempotent, 2 negative tests PASS; soul
+> contracts on the patched arz `validate_soul_augments` + `validate_summon_pets` + `validate_tags` all **PASS** (== baseline,
+> zero regression); py_compile + `_check_registry` (14 modules, order `39d94e32`) OK. **NOT auto-applied (Will decisions):**
+> P2-a Tomb Guardian obtainability (ground truth: `um_tombguardian_26` is a genuine COMMON 609-HP Anubis Hound in mummy
+> packs, NOT a mis-set uber - reclassifying to Hero is a balance change), P2-c nymph icons (integrate `feat/b40-soul-icons`
+> 9db3f5f). **P2-d Soulfeeder pet = AUDIT FALSE POSITIVE** (bonepet20 already casts `bonescourge_spiritbreath`). Report:
+> `docs/reports/souls_quality_fix.md`. Ships in a later integration build.
+
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10
@@ -2148,7 +2167,14 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   tools/build_text_arc.py + add tagMasteryDescription05 Occult copy (Will signs off wording) + a
   fail-loud duplicate-tag gate. Owned by the 2026-07-08 DB wave. The in-tree name is correct;
   other masteries are unaffected (single definitions).
-- Souls quality pass vs SV originals (#31).
+- Souls quality pass vs SV originals (#31) - **ROUND 1 FIXED on `feat/souls-quality`** (module
+  `tools/patches/souls_quality.py`; see SOULS-QUALITY ROUND-1 record above + `docs/reports/souls_quality_fix.md`).
+  Fixed: the 3 DEFICIENT svc_uber souls (crowboar/onyxspine/steamcrawler - Legendary weaker than Epic; L-tier
+  augment/grant -> 3, now n/e/l=1/2/3) + the 54-family svc_uber e/l per-tier icon law (108 rings). Contracts +
+  dry-run replay green; ships in a later integration build. RESIDUAL (Will decisions, not auto-applied): P2-a Tomb
+  Guardian obtainability (reclassifying the Common um_tombguardian_26 to Hero is a pack-balance change), P2-c nymph
+  icons (integrate `feat/b40-soul-icons` 9db3f5f), P3-a/b/c/d design+hygiene. P2-d Soulfeeder pet = AUDIT FALSE
+  POSITIVE (pet already casts spiritbreath). No SV-drift/dead-augment/granted-skill defects existed to fix.
 - Toxeus encounter suite: 10-25% canonical entrance spawn, rant scroll (MP per-player), Legendary
   stalker feasibility, 6-player checklist (#32).
 - Comprehensive dropped-visuals restoration (#28).
