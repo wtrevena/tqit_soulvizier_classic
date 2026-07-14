@@ -1,5 +1,23 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD39-DEV DEPLOYED TO DEV (2026-07-13, post-Steam-ship) - boss skills + hub v2
+> **DEV entry `SoulvizierClassicDEV` = build39-dev** (deployed by the TQ-exit watcher ~570s after
+> Will's session ended; all 4 artifacts md5-verified source==dest):
+> - `Database/SoulvizierClassicDEV.arz` = `5bf7dac29beb75757178179c363af2cf` (55,354,147 B; 12-module
+>   registry order `4c688f58d1aa` incl. `boss_skill_fix` - every new boss casts in BOTH fought and
+>   soul-summoned forms; record-diff vs build38a: 8 added / 10 changed, zero unexplained, zero
+>   design-field drift).
+> - `Resources/Levels.arc` = `4fcc058c590ab0719e224940ba0b9266` (688,686,024 B, TESTHUB) - hub v2:
+>   travelers land at the in-game travel NPC / area entrance (NOT the boss set-piece; fixes the
+>   land-inside-the-chest insta-death), plus boss-entrance portals for every placed boss.
+> - `Resources/Text.arc` = `e1b73e050975b63521a30062c21e009b` (87,360 B); `Resources/Quests.arc` =
+>   `7655f17e5a5f8bf13956ef456ca10595` (194,754 B, 25 hub travel triggers).
+> - Rollback (one step, staged): `local/DEV_{arz,Text,Levels,Quests}_deployed_prev.*` = the
+>   build38a-dev set (6631f252 / dff9ad01 / 841c56cd / 838bdc3a).
+> - WILL: restart TQ only. KNOWN RESIDUAL: the Sparta traveler mute-click fix (b48) may not be in
+>   this hub build - lands in the b40 consolidation with the rest of the in-flight lanes.
+> - Steam is UNAFFECTED (still build38a canonical; TESTHUB never ships).
+
 > ## BUILD38A SHIPPED TO STEAM (2026-07-13) - canonical b37/b38 fixes; DEV traveler hub NOT shipped
 > **Workshop item 3759792705 is now build38a CANONICAL** (was build36a). Will explicitly
 > authorized the ship ("everything that has been fixed ship to steam ... the latest version ...
