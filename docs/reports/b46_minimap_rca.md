@@ -9,14 +9,17 @@
 > `Text_EN.arc`, and the pristine upstream SV 0.98i map. Probes are regenerable (session
 > scratchpad `probe1..10_*.py`).
 
-> **⚠️ CORRECTION (b46 round 2, 2026-07-13) - read `b46_minimap_result.md` for the authoritative
+> **⚠️ CORRECTION (b46 round 3, 2026-07-13) - read `b46_minimap_result.md` for the authoritative
 > mechanism.** This RCA framed both symptoms as "one root cause (missing map/region identity)" and
-> guessed the label was an SD-*spatial* lookup. Round-2 byte-analysis (489/489 levels) proved they
-> are **two distinct mechanisms** sharing only a theme: (1) the minimap "black void" = the empty
-> LEVELS-entry teleport-zone `dbr` (this RCA got that right); (2) the "Village of Helos" label =
-> the level's **`0x17` region[] GUID** (`59c096c3...` for crypt_floor1) having **no world-SD
-> record** - NOT a spatial lookup, and the region record does carry a resolvable identity once
-> added. Both are fixed additively (zone `dbr` + one appended SD region), no `0x17`/raster edit.
+> guessed the label was an SD-*spatial* lookup. They are **two distinct mechanisms** sharing only a
+> theme: (1) the minimap "black void" = the empty LEVELS-entry teleport-zone `dbr` (this RCA got
+> that right); (2) the "Village of Helos" label = crypt_floor1's **`0x17` REGION list being EMPTY**
+> so no region name resolves and the banner retains the prior region. The 0x17 header is three GUID
+> lists `[ENV][REGION][AUDIO]`; round 2 mistook the AUDIO-list GUID `59c096c3` for a region and
+> appended an SD region for it (a **no-op** - the banner reads the REGION list, which is empty).
+> Round 3 fixes it correctly: inject a minted region GUID into crypt's **0x17 REGION list** (making
+> it structurally identical to the shipped, working startingcave01 dungeon) + the matching SD region
+> record. Byte-exact-round-trip 0x17 tooling proven on all 2282 levels; navmesh/QUESTS untouched.
 
 ---
 

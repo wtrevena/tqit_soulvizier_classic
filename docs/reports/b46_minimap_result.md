@@ -1,178 +1,179 @@
-# b46 - Uber Dungeon minimap + area-label fix (ROUND 2, authoritative result)
+# b46 - Uber Dungeon minimap + area-label fix (ROUND 3, authoritative result)
 
 > Fix for Will's 2026-07-13 report: in the Uber Dungeon (1) the drawn minimap does not line up
 > with the level ("black void" under the player), and (2) the top-right area label reads
-> "Village of Helos". Branch `feat/b46-minimap`. **This round-2 doc supersedes the round-1 result**
-> and reconciles the RCA (`b46_minimap_rca.md`) imprecision the vet flagged. No heavy build;
-> all proofs are dry-runs on COPIES of the DEPLOYED DEV map (`SoulvizierClassicDEV/Resources/
-> Levels.arc`, MD5 `841c56cd` = what Will plays). Regenerable probes in the session scratchpad
-> (`p_label1..6.py`, `p_sd_inject.py`, `p_neighbors.py`, `p_verify.py`).
+> "Village of Helos". Branch `feat/b46-minimap`. **This round-3 doc supersedes round 1 and round 2.**
+> No heavy build; all proofs are dry-runs on COPIES of the canonical ground-truth map
+> (`local/Levels_merged.arc`, .arc MD5 `60a62880`) + the SV 0.98i upstream. Regenerable probes +
+> the verification harness are in the session scratchpad (`b46r3/probe_0x17*.py`, `verify_fix.py`,
+> `verify_gates2.py`, `probe_index.py`, `probe_dungeon_parity.py`, `mint_guid.py`).
 
 ---
 
-## 0. TL;DR - both symptoms fixed; ONE reported bug, TWO distinct mechanisms
+## 0. TL;DR - one reported bug, two mechanisms; round 3 CORRECTS the round-2 label no-op
 
-The Uber Dungeon report has two symptoms with **two independent mechanisms** that merely share a
-theme ("the relocated SV interior lacked world-map identity"). The RCA framed them as "one root
-cause"; that was imprecise. The truth, now proven byte-level:
+| symptom | mechanism (ground-truth, b46r3) | fix | status |
+|---|---|---|---|
+| **1. minimap "black void"** | crypt_floor1's LEVELS-entry teleport-zone `dbr` was EMPTY -> its minimap TGA never composites onto a world-map page | assign `greece/delphi.dbr` (mapIndex 0) so the TGA composites on the Greece page at the level's own grid corner | **retained from r1/r2** (vet said keep); mechanism inferred, needs Will's in-game check |
+| **2. "Village of Helos" label** | crypt_floor1's **0x17 REGION list is EMPTY** -> no region name resolves -> the banner retains the last region (Helos, the teleport origin) | inject a minted region GUID into crypt's 0x17 **REGION list** + add the matching SD (0x18) region record + Text tag | **CORRECTED in round 3** (r2 was a no-op) |
 
-| symptom | mechanism (structure) | fix | round | confidence |
-|---|---|---|---|---|
-| **1. minimap "black void"** | the level's **LEVELS-entry teleport-zone `dbr`** was empty -> its minimap TGA is never composited onto a world-map page | assign a `mapIndex`-correct zone `dbr` (its TGA then composites on the continent page at the level's own grid corner) | 1 (retained) + r2 refine | mechanism INFERRED; needs in-game composite check |
-| **2. "Village of Helos" label** | the level's **`0x17` region[] GUID** (`59c096c3...`) had **no world-SD (0x18) record**, so the area-name banner never resolves and retains the last region (Helos, the teleport origin) | append the missing SD REGION record for that exact GUID (+ its Text tag) | **2 (this round)** | mechanism **PROVEN on 489/489 levels**; needs only a visual confirm |
+**What round 2 got wrong (vet HIGH, confirmed):** the 0x17 section's three leading GUID lists are
+`[ENV][REGION][AUDIO]`, not `[layer][region]`. Round 2 read crypt's GUID `59c096c3...` as its
+"region" GUID and appended an SD *region* record for it - but `59c096c3` is crypt's **AUDIO**-list
+GUID (the "UberDungeon - Floor1" audio zone), and crypt's **REGION list is genuinely EMPTY** (count
+0). The banner reads the REGION list, so appending an SD region for the audio GUID changed nothing
+on screen. Round 3 targets the correct slot: it **adds a region entry to crypt's 0x17 REGION list**
+(a map-side level-blob edit round 2 avoided) plus the matching SD record.
 
-Both are additive, map-tooling-only, and respect every b46 LAW (QUESTS 256-window byte-identical;
-every `0x0b` navmesh byte-identical; no blob/raster/`0x17` edit). **18/18 verification gates PASS**
-(Section 5).
-
-**Residual (honest): neither symptom is in-game-confirmed** - static analysis cannot observe
-rendering and this agent (like the vet) is barred from launching TQ. The label mechanism is now
-*statically proven* (see Section 2), so its residual is small; the minimap composite still wants
-Will's eyes. See Section 6.
+**All 29 verification gates PASS** (24 in `verify_fix.py` + 5 in `verify_gates2.py`; Section 5).
+**Residual: neither symptom is in-game-confirmed** - static analysis cannot render, and no agent here
+may launch TQ. The label fix now makes crypt structurally IDENTICAL to a shipped working single-
+region dungeon (Section 2), so the static case is strong; both halves still want Will's eyes.
 
 ---
 
-## 1. Symptom 1 - the minimap (round 1, retained; one r2 refinement)
+## 1. Ground-truth re-derivation of the 0x17 section (the round-3 correction)
 
-Mechanism + fix are unchanged from round 1 and the vet RETAINED them as "clean and safe":
-the world map composites each level's minimap TGA (`DATA2`/`0x1a`, a bare positionless 24-bit
-TGA) onto its **continent page**, selected by the level's teleport-zone `dbr`'s `mapIndex`, at the
-level's **own grid corner**. A zoneless level's TGA is never composited -> the map keeps the
-teleport-origin page (Helos = Greece) while the player marker sits at the dungeon's real corner,
-off the drawn content = "black void". Fix: `apply_zone_dbr_overrides()` assigns each relocated
-zoneless interior a `mapIndex`-correct existing zone (14 levels; zero new DB records).
+Every level blob's `0x17` section (the baked detail/lighting layer) begins with three GUID lists,
+then an opaque per-cell raster:
 
-**Evidence the page is per-continent (auto-sizing), so any same-continent zone works:** the 38
-base levels sharing `greece/delphi.dbr` composite across grid X[-9399,-3130] Z[-3268,-320] - a
-huge span - proving the page auto-sizes to include each member at its own corner (probe
-`p_neighbors.py`). `delphi/knossos/sparta/megara` are all `mapIndex 0` (byte-verified from
-`database.arz`); `olympus` is `mapIndex 4`.
+```
+u32 magic = 1
+u32 version
+ENV list   : u32 count; count x { u8 index(1-based, per-level); u8 guid[16] }
+REGION list: u32 count; count x { u8 index(1-based, per-level); u8 guid[16] }
+AUDIO list : u32 count; count x { u8 index(1-based, per-level); u8 guid[16] }
+raster ... (opaque; preserved verbatim)
+```
 
-**Round-2 refinement (vet LOW):** crypt_floor1's zone changed **knossos -> delphi**. The Uber
-Dungeon's grid corner `(-2578,-2682)` sits inside Delphi map-space - its physically nearest
-already-composited neighbor is the Delphi-underground `entrance03` at **721u** (vs Knossos content
->1100u west). Both are `mapIndex 0`, so identical under the proven per-continent paging, but
-`delphi` is the correct nearest-content anchor and is robust to any per-zone paging component.
+**The on-screen top-right area-name banner is the level's REGION-list GUID resolved against the
+world SD (0x18) REGION records.** Proof (all on the canonical map):
 
-**Secret Place cluster (vet MEDIUM):** the 11 secret_place levels sit at Z~-5800..-6200, ~2000u
-from any composited content **either way** (Greek `megara` to the north, Orient `silkroad` to the
-south). That isolation is an inherent property of their SV-original grid position - the **same
-pattern every base-game cave uses** (interiors park ~1700u from their surface region) - NOT a
-zone-choice artifact, and no `mapIndex-0` zone de-isolates them. They keep `knossos` (Greek
-arrival page). Grid-relocating them to sit adjacent to Greek content is out of scope and high-risk
-(it would move navmeshes). This is strictly better than the current black-void and cannot crash.
+- **Byte-exact round-trip of this 3-list parse/serialize across ALL 2282 levels** (0 failures;
+  `probe_0x17_parser.py`). The parse boundary (where the raster begins) is validated for every level.
+- **Every level that shows a name carries exactly its SD-region GUID in this REGION list**
+  (`probe_0x17b.py`): boss_arena -> 'Olympian Arena', startingcave01 -> 'Natural Cave',
+  spartacryptlevel2 -> 'Ancient Tomb', gardenofmerchants -> 'Duister', darkforestenter -> 'Dark
+  Forest', tfinale -> 'JoLandia'.
+- **crypt_floor1's REGION list is EMPTY** (env=1 [UberDungeonLevel1], region=**0**, audio=1
+  [`59c096c3` = "UberDungeon - Floor1" audio zone]). Byte proof: at offset 29 in crypt's 0x17 the
+  region count is `00 00 00 00`; the `59c096c3` GUID sits in the AUDIO list at offset 38.
 
-## 2. Symptom 2 - the area label (round 2, the deferred half; now PROVEN)
+The index byte is a **per-level 1-based ordinal** (the SAME region GUID gets different indices in
+different levels - 'Laconia Hills' is 1/1/2/3 across levels; `probe_index.py`), so it is a local
+slot, not a global reference. A single region in an interior dungeon uses index 1: **1194 of 1195
+single-region levels use index 1** (the sole exception is a giant OUTDOOR terrain level,
+`3_1TheDunes09`, 0x06 = 1.09 MB). crypt is an interior dungeon, so index 1 is correct.
 
-### 2a. Mechanism (byte-proven; corrects the RCA)
+## 2. Symptom 2 - the area-label fix (round 3)
 
-The top-right area-name banner is **NOT** the teleport-zone name and **NOT** an SD-spatial
-lookup (the RCA's guess). It is a **region GUID carried in each level's `0x17` section**, in a
-`region[]` slot, resolved against the world **SD (0x18) REGION list** to a display tag.
+Give crypt_floor1 a real REGION identity, mirroring every shipped named dungeon:
 
-The `0x17` section begins `magic(=1), version, [layer-GUID table], [region-GUID table]` then a
-per-cell detail/lighting raster. **Proof of slot semantics** (`p_label6.py`, deployed map): across
-**every one of the 489 cleanly-parseable levels**, the `region[]`-slot GUIDs that resolve in SD
-are **EXACTLY** the region GUIDs found by an independent whole-`0x17` SD scan (0 mismatches), and
-`layer[]`-slot GUIDs are **never** SD regions (0 exceptions). So `region[]` is definitively where
-the displayed area name is bound. Cross-checks: `boss_arena.region[0]` = "Olympian Arena"
-(`tagNewMZone1`), `startingcave01` = "Natural Cave", `entrance03` = "Parnassus Caves", GoM =
-"Duister" - all match what the game shows.
+1. **`inject_0x17_region()`** (in `tools/build_section_surgery.py`) appends a minted region GUID to
+   crypt_floor1's 0x17 REGION list via the proven `parse_0x17_header`/`build_0x17_header` round-trip.
+   ENV + AUDIO lists, the 0x17 raster, and every other section (incl. navmesh 0x0b) stay
+   byte-identical; only the REGION list grows by one 17-byte entry (index 1). Wired into the SV-only
+   structural-patch step in `svaera_plus_portals.main()` (`apply_0x17_region_labels`), which runs
+   before the 0x0b navmesh injection (that injection preserves 0x17 verbatim - proven in Section 5).
+2. **`add_sv_region_labels()`** appends the matching SD (0x18) REGION record for the SAME minted GUID
+   (additive, GUID-keyed -> existing regions + the audio/miniboss tail byte-identical). Its display
+   name is a Text.arc tag.
 
-`crypt_floor1`'s `0x17` `region[0]` GUID = `59c096c3efda75824a40d4f6483fb8bf`, which is **absent
-from the SD** (probe1: 0 SD-region GUIDs anywhere in its `0x17`). So no name resolves and the
-banner retains the last region entered - "Village of Helos", from the Helos plaza where the
-traveler stands. This is an **SV-original gap**: SV 0.98i's `crypt_floor1` `0x17` is byte-identical
-(same `region[0]` = `59c096c3...`, no SD record either - `p_label5.py`). It became player-visible
-only because our mod made the dungeon reachable via the Helos traveler hub.
+**The airtight static argument:** crypt's post-fix 0x17 = env 1 / region 1 / audio 1, and its blob
+section set `[0x05, 0x14, 0x06, 0x0b, 0x17]` is **byte-for-byte the same shape as the WORKING
+startingcave01 and spartacryptlevel2** (single-region interior dungeons that display 'Natural Cave'
+/ 'Ancient Tomb' throughout, with no dedicated region-volume section). The fix makes crypt
+structurally identical to shipped, working dungeons - not a novel structure.
 
-### 2b. Fix (additive; proven-round-trip; zero `0x17`/raster edit)
+**Minted region GUID** `67a0a0fa76ed27fc22ed82d2636b3b81`, collision-checked against every GUID in
+the map (SD env/region/tail + every level's 0x17 GUIDs + level GUIDs = 32,110 GUIDs, 0 collisions;
+`mint_guid.py`). A FRESH GUID (not the audio `59c096c3`) is used so nothing is dual-defined across
+the audio + region lists - this also clears the round-2 vet's LOW note.
 
-`add_sv_region_labels(sv_sd)` (in `tools/svaera_plus_portals.py`) **appends** one SD REGION
-record whose `guid` == the level's existing `0x17` `region[0]` GUID, so the banner resolves. No
-`0x17`/blob edit is needed - the level already references the GUID; only its SD definition was
-missing (exactly analogous to the empty-`dbr` minimap case). `tools/sd_format.py` round-trips the
-SD byte-identically, and regions are looked up by **GUID** (not index), so an append leaves every
-existing region, every index, the ENV list, and the opaque audio/miniboss **tail** byte-identical
-(+111 B; `p_sd_inject.py` proves the exact surgical splice). Donor colors are copied from the
-SV-authored "Olympian Arena" region so the minimap-legend tint is dungeon-appropriate.
+**Name = "The Obsidian Halls"** (tag `tagSVCRegionObsidianHalls`): matches the hub NPC the player
+clicks ("Traveler: The Obsidian Halls"), the room content (Kravmoloch, Keeper of the Wheel of the
+Obsidian Halls), and the amgoz1 flavor bar. The travel-arrival tag `tagSVCHelosToUber` still reads
+"The Uber Dungeon"; to make the banner match that instead, change the label + the
+`tagSVCRegionObsidianHalls` Text value. (Flagged for Will - one-line either way.)
 
-**Name = "The Obsidian Halls"** (tag `tagSVCRegionObsidianHalls`, added to
-`tools/build_text_arc.py` `TEXT_FIX_TAGS`): crypt_floor1's build36 content **is** the Obsidian
-Halls treasure roulette (4 wardens + Kravmoloch, "Keeper of the Wheel of the Obsidian Halls"), and
-the hub NPC the player clicks is **"Traveler: The Obsidian Halls"** - so the banner matches both
-the traveler and the room. (The classic SV name "The Uber Dungeon" is the one-line alternative:
-change the label in `SV_REGION_LABELS` + the `TEXT_FIX_TAGS` value.)
+## 3. Symptom 1 - the minimap fix (retained from r1/r2)
 
-**Only crypt_floor1 needs a minted region.** Sweep of the reachable relocated interiors
-(`p_label6.py`): `spartacryptlevel2` already resolves to "Ancient Tomb", GoM to "Duister",
-`darkforestenter` to "Dark Forest", `rogueencampment` + `tfinale` ("JoLandia") are named; the
-secret_place SUB-rooms carry no region and inherit "Dark Forest" from the landing - thematically
-correct for a forest cluster, so no per-room label is minted (naming "woodscorner" etc. would be
-worse). `coldtombs` is vestigial (no navmesh, not reached) and skipped.
+Unchanged and vet-RETAINED: `apply_zone_dbr_overrides()` assigns each relocated zoneless SV interior
+a mapIndex-correct existing zone so its minimap TGA composites onto the continent page at the level's
+own grid corner. crypt_floor1: empty `dbr` -> `greece/delphi.dbr` (mapIndex 0; Delphi is the nearest
+already-composited content). 14 levels total; only the `dbr` field changes (LEVELS is self-
+delimiting). Georeference (numeric): crypt grid corner `(-2578,0,-2682)`, footprint X[-2578,-2258]
+Z[-2682,-2362] CONTAINS the boat-dialog teleport target `(-2438,-2450)`. Mechanism is inferred (the
+Helos-hub natural experiment: every zoneless destination is reported-broken, every zoned one is not);
+still wants Will's in-game composite check.
 
-## 3. What changed (implementation)
+## 4. Scope - why crypt_floor1 is the ONLY level needing the label fix
 
-- `tools/svaera_plus_portals.py`:
-  - `add_sv_region_labels(sv_sd)` + `SV_REGION_LABELS` table - appends the SD area-label region.
-    Wired in step 3 right after the SV SD is loaded. Idempotent; fails loud on SD schema drift or
-    a duplicate display tag.
-  - `apply_zone_dbr_overrides` (round 1, retained): crypt_floor1 `dbr` changed knossos -> delphi;
-    comments corrected (label mechanism is now solved, not a "follow-up"; secret_place isolation
-    explained).
-- `tools/build_text_arc.py`: `TEXT_FIX_TAGS['tagSVCRegionObsidianHalls'] = 'The Obsidian Halls'`
-  (emitted once to `modstrings.txt`; folded into the mod-authored tag manifest so `validate_tags`
-  and `contract_sd_tags` see it present).
+The Helos hub's direct teleport destinations (`build_quest_files.py`) all land in a level that
+already resolves a region name - EXCEPT the Uber Dungeon:
 
-**Deploy coupling: Levels + Text ship together** (the map's new SD region references the Text tag;
-`contract_sd_tags` fails loud if the map deploys without the Text tag). This is in addition to the
-existing Levels+Quests and arz+Text couplings.
+| hub destination | lands in | 0x17 region | banner |
+|---|---|---|---|
+| Uber `(-2438,10,-2450)` | crypt_floor1 | **EMPTY** | **"Village of Helos" (THE bug)** |
+| Garden | gardenofmerchants | 'Duister' | OK |
+| Secret `(-2396,2,-5790)` | darkforestenter | 'Dark Forest' | OK (landing resolves) |
+| Sparta | spartacryptlevel2 | 'Ancient Tomb' | OK |
+| BossArena | boss_arena | 'Olympian Arena' | OK |
+| Warband / Dorus / Tantalus / Charon / Mnemophage / Ephialtes | silkroad / medea / styx / judgment | (base regions) | OK |
 
-## 4. Georeference proof - crypt_floor1 (numeric)
+crypt_floor1 is the UNIQUE level entered directly from the Helos plaza whose region list is empty, so
+it is the only one that retains the Helos label. The secret_place SUB-rooms (behindthesp,
+forestobsidiantransition, murderbossroom, woodscorner, secretforest2, pillagedvillage) also have
+empty/unresolved region lists, but they are reached by WALKING from the "Dark Forest" landing, so
+they retain "Dark Forest" (thematically correct for a forest cluster), never "Village of Helos".
+coldtombs is vestigial (no navmesh, unreachable). None of these is the reported bug; minting per-room
+labels would be worse, and touching the shared forest region GUID risks regressing darkforest's
+working "Dark Forest" label. Documented as accepted residual (Section 6).
 
-- Grid corner `(-2578, 0, -2682)`, tile dims `(160,160,160)` -> footprint **X[-2578,-2258]
-  Z[-2682,-2362]**, which CONTAINS the boat-dialog teleport target `(-2438,-2450)` (the player
-  lands on the drawn tile). The 960x960 minimap TGA is present and unchanged; the level is NOT
-  grid-shifted (SV-original corner), so the TGA is internally correct.
-- Minimap: `dbr` now `greece/delphi.dbr`, `mapIndex 0` -> TGA composites on the Greece page at the
-  grid corner (before: empty `dbr` -> never composited = black void).
-- Label: `0x17` `region[0]` GUID `59c096c3...` -> new SD region "The Obsidian Halls" ->
-  `tagSVCRegionObsidianHalls` -> Text.arc "The Obsidian Halls" (before: GUID absent from SD ->
-  banner retained "Village of Helos").
+## 5. Verification - 29/29 gates PASS (dry-run on copies)
 
-## 5. Verification - 18/18 gates PASS (dry-run on copies; `p_verify.py`)
+`verify_fix.py` (24 gates):
+- **Label:** crypt 0x17 REGION list EMPTY before -> 1 entry (minted GUID) after; ENV+AUDIO lists
+  byte-identical; raster (30740 B) byte-identical; +17 bytes exactly; every non-0x17 section
+  byte-identical INCLUDING **navmesh 0x0b (320324 B) BYTE-IDENTICAL**; section set/order unchanged.
+- **Pipeline-order replay** on the SV-source crypt blob (0x0a): +region -> +0x0b -> 0x0a stripped,
+  0x0b present, **minted region SURVIVES the 0x0b injection** (label edit persists to final blob).
+- **SD:** round-trips byte-identical; +1 region (293->294); appended region = minted GUID, name
+  "The Obsidian Halls", tag `tagSVCRegionObsidianHalls`; ENV list + opaque tail (52762 B) + all prior
+  regions byte-identical; minted GUID not previously an SD region.
+- **Cross-resolve:** crypt's new 0x17 region GUID -> new SD region -> tag/name. PASS.
+- **Minimap:** crypt dbr EMPTY -> `greece/delphi.dbr`; 14 levels, only `dbr` field changes, 0
+  non-target changes; georeference footprint contains the teleport target.
+- **Untouched:** QUESTS(0x1b) not referenced by any edit (sha `226461e7`, 11460 B, byte-identical by
+  construction); 0x17 injection targets ONLY crypt_floor1.
 
-| gate | result |
-|---|---|
-| G1 LEVELS `build(parse(x))==x` | PASS (384,499 B byte-identical serializer) |
-| G2 dbr diff: exactly 14 entries, ONLY `dbr` field changed | PASS (0 non-dbr field changes on any entry) |
-| G2 crypt_floor1 `dbr` -> `greece/delphi.dbr` | PASS |
-| G3 SD round-trip byte-identical | PASS (116,299 B, v6) |
-| G3 SD region count +1 (293 -> 294); ENV + tail + all prior regions byte-identical | PASS |
-| G3 appended region = "The Obsidian Halls" @ GUID `59c096c3...` | PASS |
-| G4 QUESTS byte-identical (256-window untouched) | PASS (sha `7ad0f054`, 11,460 B - matches round-1 vet) |
-| G5 every level blob (navmesh `0x0b`, `0x17`, ...) untouched | PASS (blob offsets/lengths unchanged; passes never write blobs) |
-| G6 crypt georeference (minimap page + label GUID chain) | PASS |
-| G7 `contract_sd_tags`: all 295 SD display tags resolve in Text (mod+base) | PASS (0 unresolved; new tag resolves) |
-| py_compile both files | PASS |
+`verify_gates2.py` (5 gates): MAP-SD-1 (the new SD tag is extracted by the contract scanner and
+resolves in `build_text_arc` TEXT_FIX_TAGS = "The Obsidian Halls"); canonical SD has NO region for
+`59c096c3` (round-2 never leaked to main; final state collision-clean); single-region-index-1 is the
+convention (1194 at idx 1, non-1 = the one outdoor terrain level); **crypt POST-FIX section set ==
+working startingcave01 dungeon** `[0x05,0x14,0x06,0x0b,0x17]`.
 
-**Blob-diff summary:** the only changed map sections are **LEVELS** (14 `dbr` strings) and **SD**
-(+1 region record). No level blob is written at all - crypt's `0x17` is READ to locate the region
-GUID but never modified. QUESTS, GROUPS, BITMAPS, DATA2, and every `0x0b`/`0x17`/`0x05`/`0x06`
-level section are byte-identical.
+py_compile: PASS on all three changed files.
 
-## 6. Confidence + the one remaining step (in-game)
+**Blob-diff summary:** the only changed map sections are crypt_floor1's **0x17** (+17 B, one REGION
+entry) and the world **SD** (+1 region, +111 B) and the 14 LEVELS `dbr` fields. QUESTS, GROUPS,
+BITMAPS, DATA2, and every `0x0b`/`0x05`/`0x06`/`0x14` section (crypt's and every other level's) are
+byte-identical. The 256-window QUESTS parity is untouched; every navmesh is byte-identical.
 
-- **Label (symptom 2): HIGH static confidence.** The `region[] -> SD -> tag` mechanism is proven
-  on 489/489 levels with zero exceptions, and the fix makes crypt's already-referenced GUID
-  resolvable. The only thing static analysis cannot do is render the banner. Residual: small.
-- **Minimap (symptom 1): MEDIUM-HIGH.** The compositing mechanism is inferred (well-supported: the
-  Helos-hub natural experiment shows every *zoneless* destination is reported-broken and every
-  *zoned* one is not; delphi/knossos both `mapIndex 0`). The composite still wants a visual check.
-- **Remaining step (not doable by any agent here):** a DEV launch by Will - enter the Uber Dungeon
-  via "Traveler: The Obsidian Halls" and confirm (a) the drawn map appears under the player (no
-  black void) and (b) the banner reads "The Obsidian Halls", not "Village of Helos". Restart Steam
-  first (standing rule). This is the same in-game gate the vet named; it is Will's to run.
+## 6. Confidence + residuals (honest)
+
+- **Label (symptom 2): HIGH static confidence.** The region -> SD -> tag mechanism is proven on 2282
+  levels; the fix makes crypt's 0x17 IDENTICAL in shape to two shipped, working single-region
+  dungeons (startingcave01, spartacryptlevel2). The only thing static analysis cannot do is render.
+- **Minimap (symptom 1): MEDIUM-HIGH.** Compositing mechanism inferred (well-supported); wants a
+  visual check.
+- **In-game gate (Will's, not doable by any agent here):** DEV launch after a Steam restart, click
+  "Traveler: The Obsidian Halls", enter the Uber Dungeon, confirm (a) the drawn map appears under the
+  player (no black void) and (b) the banner reads "The Obsidian Halls", not "Village of Helos".
+- **Accepted residual:** the secret_place sub-rooms retain "Dark Forest" (correct theme, not the
+  reported bug); coldtombs is vestigial. The banner-name choice ("The Obsidian Halls" vs "The Uber
+  Dungeon") is flagged for Will (one-line change).
 
 Deploy: rebuild the map (`py tools/svaera_plus_portals.py`, canonical + TESTHUB) AND Text.arc
-together, then deploy both to `SoulvizierClassicDEV`.
+together (DEPLOY COUPLING: the SD region references `tagSVCRegionObsidianHalls`; `contract_sd_tags`
+fails loud if the map ships without the Text tag), then deploy both to `SoulvizierClassicDEV`.
