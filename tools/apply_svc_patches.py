@@ -9605,6 +9605,76 @@ def _mirror_source_skill_kit(db, source, path, tier=None):
     db._modified.add(path)
 
 
+# b40 (Will 2026-07-13): per-boss granted-SKILL icons for the summon-the-boss souls.
+# RCA: _build_boss_summon() clones summon_lyia.dbr for a crash-safe Skill_SpawnPet
+# baseline but never overrode skillUpBitmapName / skillDownBitmapName, so EVERY
+# boss-summon soul inherited Lyia's NYMPH icon (Will: "Summon Toxeus the Murderer"
+# showed a nymph-guy). This data-driven map gives each summon skill a FITTING icon
+# that resolves in the shipped Resources; any summon skill not listed falls back to
+# a neutral generic-summon glyph (NEVER the nymph). Keyed by the summon-skill record
+# basename (lower-case, no .dbr). summon_lyia itself is NOT built via
+# _build_boss_summon, so Lyia the nymph correctly keeps summonlyiaup.
+# Every path below is arc-verified against the shipped SoulvizierClassicDEV
+# Resources (tools/debug/_verify_icon_paths.py -> ALL RESOLVE, up + down).
+_DEFAULT_SUMMON_ICON = (
+    r'DRXtextures\skill icons\soul\summonproxyup.tex',
+    r'DRXtextures\skill icons\soul\summonproxydown.tex')
+_SUMMON_SKILL_ICON = {
+    # Toxeus family (Will's flagship examples) - distinct, on-identity.
+    'summon_bloodtoxeus':      (r'DRXtextures\skill icons\spirit\lichekingup.tex',
+                                r'DRXtextures\skill icons\spirit\lichekingdown.tex'),
+    'summon_toxeus_enslaver':  (r'DRXtextures\skill icons\stealth\stalkerup.tex',
+                                r'DRXtextures\skill icons\stealth\stalkerdown.tex'),
+    # New bosses - fitting existing summon/creature glyphs by monster family.
+    'summon_pygmalion':        (r'DRXtextures\skill icons\hunting\rapidconstructup.tex',
+                                r'DRXtextures\skill icons\hunting\rapidconstructdown.tex'),
+    'summon_meritamen':        (r'DRXtextures\skill icons\soul\phagiasummonup.tex',
+                                r'DRXtextures\skill icons\soul\phagiasummondown.tex'),
+    'summon_sarpedon':         (r'DRXtextures\skill icons\scroll\summonsatyrwarriorup.tex',
+                                r'DRXtextures\skill icons\scroll\summonsatyrwarriordown.tex'),
+    'summon_eaterofdays':      (r'SVTextures\skills\extinctionup.tex',
+                                r'SVTextures\skills\extinctiondown.tex'),
+    'summon_longnu':           (r'DRXtextures\skill icons\soul\summonhydraup.tex',
+                                r'DRXtextures\skill icons\soul\summonhydradown.tex'),
+    'summon_xeiwang':          (r'DRXtextures\skill icons\spirit\skellysummonup.tex',
+                                r'DRXtextures\skill icons\spirit\skellysummondown.tex'),
+    'summon_broodmother':      (r'DRXtextures\skill icons\soul\summonslimebroodup.tex',
+                                r'DRXtextures\skill icons\soul\summonslimebrooddown.tex'),
+    'summon_charon_oarsman':   (r'SVTextures\skills\drownedspiritup.tex',
+                                r'SVTextures\skills\drownedspiritdown.tex'),
+    'summon_hadesmarshal':     (r'DRXtextures\skill icons\soul\wrathofthestyxup.tex',
+                                r'DRXtextures\skill icons\soul\wrathofthestyxdown.tex'),
+    'summon_kravmoloch_warden':(r'DRXtextures\skill icons\spirit\bonefiendup.tex',
+                                r'DRXtextures\skill icons\spirit\bonefienddown.tex'),
+    'summon_mnemophage':       (r'DRXtextures\skill icons\dream\nightmareup.tex',
+                                r'DRXtextures\skill icons\dream\nightmaredown.tex'),
+    'summon_mountainblade':    (r'SVTextures\skills\bladecircleup.tex',
+                                r'SVTextures\skills\bladecircledown.tex'),
+    'summon_neferkha':         (r'DRXtextures\skill icons\soul\scarabswarmup.tex',
+                                r'DRXtextures\skill icons\soul\scarabswarmdown.tex'),
+    'summon_tantalus_shade':   (r'DRXtextures\skill icons\soul\specterstrikeup.tex',
+                                r'DRXtextures\skill icons\soul\specterstrikedown.tex'),
+    'summon_voranthys':        (r'DRXtextures\skill icons\soul\voidsnapup.tex',
+                                r'DRXtextures\skill icons\soul\voidsnapdown.tex'),
+}
+
+
+def _summon_skill_basename(summon_skill):
+    return (summon_skill or '').replace('/', '\\').lower().rsplit('\\', 1)[-1].replace('.dbr', '')
+
+
+def _set_summon_skill_icon(db, summon_skill):
+    """b40: point a boss-summon Skill_SpawnPet at a fitting granted-skill icon
+    instead of the inherited Lyia nymph. Data-driven (see _SUMMON_SKILL_ICON);
+    unmapped summons get a neutral generic-summon glyph. No explicit dtype: the
+    cloned summon already carries skillUp/DownBitmapName as strings, so set_field
+    preserves the string type (cloned-record dtype-safety law)."""
+    up, down = _SUMMON_SKILL_ICON.get(_summon_skill_basename(summon_skill),
+                                      _DEFAULT_SUMMON_ICON)
+    db.set_field(summon_skill, 'skillUpBitmapName', up)
+    db.set_field(summon_skill, 'skillDownBitmapName', down)
+
+
 def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, desc_tag,
                        char_level, life, life_regen, dmg_min, dmg_max, scale=None,
                        loadout=None):
@@ -9783,6 +9853,8 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
     sf(summon_skill, 'skillMaxLevel', 3)
     sf(summon_skill, 'petLimit', 1); sf(summon_skill, 'petBurstSpawn', 1)
     sf(summon_skill, 'spawnObjects', list(pet_paths))
+    # b40: override the inherited Lyia nymph icon with a fitting per-boss icon.
+    _set_summon_skill_icon(db, summon_skill)
     db._modified.add(summon_skill)
     return True
 
