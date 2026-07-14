@@ -16615,7 +16615,7 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     _create_olympus_rhodes_herald(db, tags)   # Q3: Olympus->Rhodes boat-dialog herald (record path locked with the map lane)
     _create_helos_portal_master(db, tags)     # Q2 (Group A): Helos portal-master NPC -> 4 SV-area boat destinations (map lane places it)
     _create_testhub_portal_npcs(db, tags)     # Portal rig (GROUP 2 unblock): TESTHUB hub + return NPCs -> Model C travel (map lane places them; INERT on canonical)
-    _create_helos_traveler_hub(db, tags)      # Helos traveler hub (Will 2026-07-13): 11 named per-area travelers + 6 area returns (TESTHUB map places them; INERT on canonical)
+    _create_helos_traveler_hub(db, tags)      # Helos traveler hub v2 (Will 2026-07-13): 14 named per-area travelers + 11 area returns (TESTHUB map places them; INERT on canonical)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs

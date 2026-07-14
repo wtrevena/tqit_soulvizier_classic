@@ -38,62 +38,65 @@ merged in git but NOT yet built/deployed; do these after the next DB build lands
   vanilla menus/items localize (Soulvizier's own added content stays English by design). This is a HARD
   gate before any Steam push that changes Text.arc.
 
-## HELOS TRAVELER HUB (DEV / TESTHUB map only) - one traveler per area
+## HELOS TRAVELER HUB v2 (DEV / TESTHUB map only) - drops you at the AREA ENTRANCE, not the boss
 
-In the **Helos starting-town plaza** (where you begin a Custom Quest char) stand **11 named
-travelers**, arranged in two rows just south of the town-portal shrine. Each is a "talk-to-travel"
-NPC: **walk up, talk, and a boat-dialog asks you to confirm the destination** - then it teleports
-you. This is the ONLY travel mechanism (the old walk-through teleport doors were removed 2026-07-12;
-**if you are EVER teleported just by walking, that is a bug - report it**).
+In the **Helos starting-town plaza** (where you begin a Custom Quest char) stand **14 named
+travelers** just south of the town-portal shrine. Each is a "talk-to-travel" NPC: **walk up, talk,
+and a boat-dialog asks you to confirm the destination** - then it teleports you. This is the ONLY
+travel mechanism (**if you are EVER teleported just by walking, that is a bug - report it**).
 
-Front row (established areas):
+**v2 change (this is what you asked for):** each traveler now drops you at the **natural in-game
+approach point** for its area - the **door / entrance / travel-NPC you would use in game**, standing
+**amid the regular mobs**, NOT on top of the boss. So you can test the real in-game travel guys,
+learn where everything is, and **walk in** to the boss yourself.
 
-| Traveler NPC | Destination | What to verify on arrival |
+### Original 11 areas - where v2 now drops you
+
+| Traveler NPC | Drops you at (v2) | What to walk to / test |
 |---|---|---|
-| **Traveler: Garden of Merchants** | Garden of Merchants | land in the merchant hub by the caravan_rhodes Super-Caravan |
-| **Traveler: The Secret Place** | darkforestenter (forest cluster) | the crow-hero bosses (Murderbunny, Zilla) live in these interiors |
-| **Traveler: The Sparta Crypt** | SpartaCryptLevel2 | the invented Sparta crypt arena |
-| **Traveler: The Obsidian Halls** | crypt_floor1 (Uber Dungeon) | the Obsidian Halls roulette (4 corners) + the 4 wardens |
-| **Traveler: The Boss Arena** | boss_arena | the SV boss-arena (Satyr Shaman) questline area |
-| **Traveler: Blood-Cave Warband** | drxfirstxistion_connection | the Enslaver warband set-piece (Toxeus Enslaver leader + marauders) |
+| **Traveler: Garden of Merchants** | the merchant hub by the caravan_rhodes Super-Caravan + the SV **rift-shrine** (teleportshrine_gom) that reaches the Garden in game | browse the merchants; the rift-shrine is the in-game way in |
+| **Traveler: The Secret Place** | the darkforestenter **forest-cluster entry** | walk in; the crow-hero bosses (Murderbunny, Zilla) live in the interiors |
+| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | this is the in-game entrance TO the Sparta crypt; the invented door itself is currently removed - report if you want it re-cut |
+| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east |
+| **Traveler: The Boss Arena** | the boss-arena forecourt (~90u south of the arena volume) | walk north into the Satyr-Shaman arena |
+| **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
+| **Traveler: Medea Tomb (Dorus)** | the tomb **entrance** (cryptentrance), amid the drowned court | walk ~82u to **Dorus, the Drowned King** + hoard |
+| **Traveler: Den of Tantalus** | the Styx swamp-**stairs entrance**, amid anouran | walk ~36u to **Tantalus, the Insatiable** (2 forms) + hoard |
+| **Traveler: Golden Bough (Charon)** | the Styx **Hades-city settlement** (the boatman, storyteller + a Styx rift-shrine) | test the settlement NPCs; walk east to **Charon, the Unferried** + the Golden Bough |
+| **Traveler: Pools of Mnemosyne** | the Mnemosyne cave **stairs-up entrance** | walk ~20u to **The Mnemophage** (boss-glyph ring) |
+| **Traveler: Dread Halls (Ephialtes)** | the Dread Halls **stairs-up entrance** | walk ~130u SW to **Ephialtes, the Waking Dread** in the deep vault |
 
-Back row (the 5 new Immortal-Throne superbosses - build36):
+### NEW travelers (order ii) - map-placed bosses the original 11 did not cover
 
-| Traveler NPC | Destination | Boss to test |
+| Traveler NPC | Drops you at | Boss(es) to walk to |
 |---|---|---|
-| **Traveler: Medea Tomb (Dorus)** | Medea_TempleUG_Tomb01 | **Dorus, the Drowned King** (Propontis) + Hoard |
-| **Traveler: Den of Tantalus** | Styx_SwampBorder_01 | **Tantalus, the Insatiable** + hoard |
-| **Traveler: Golden Bough (Charon)** | Styx_RiverEdge_01 (forecourt) | **Charon, the Unferried** (2-phase) + hoard |
-| **Traveler: Pools of Mnemosyne** | Judgment_TempleUG_Mnemosyne01 | **The Mnemophage** (2-phase) |
-| **Traveler: Dread Halls (Ephialtes)** | Judgment_StoneCity_Exit01 | **Ephialtes, the Waking Dread** (fear nova) |
+| **Traveler: Toxeus the Devourer** | the drxbc2 blood-cave chamber, amid demon/hound/acolyte packs | walk NW to the waterfall corner where **Toxeus the Murderer, Devourer of Blood** rises (the crimson superboss) |
+| **Traveler: Vashkarr the Eldest** | the Chang'an cave (random05a), north end | walk ~28u to **Vashkarr, Eldest of the Ancients** (all-black dragon warlord + 2 champions) |
+| **Traveler: The Obsidian Halls** | the tombobs02 Obsidian-Halls **stairs-down entrance**, amid Obsidian undead/demons | walk the halls: the **4 roulette wardens** (Sarkoth / Gorrahk / Voranthys / Ilsevar) + the **Broodmother nest** (deep south chamber) |
 
-**Getting back:** every destination has a way back, but note one TESTHUB limitation on the older areas.
-- The **6 NEW areas** (the 5 IT superbosses + the Blood-Cave Warband): each has its OWN **Return
-  Traveler** record placed a few steps from where you land -> talk -> confirm -> back to the Helos
-  plaza. These are distinct records, so every one binds and works.
-- **Garden / Secret Place / Uber / Sparta / Boss Arena**: these 5 established areas currently SHARE a
-  single `svc_testhub_return` record placed once in each. By the **WARDEN LAW** (only the FIRST
-  placement of a given record binds; the engine leaves the duplicates MUTE), expect only ONE of these
-  five return NPCs to actually respond - the others render but may do nothing. The Garden and Secret
-  Place also keep their SV rift-shrines. **Universal fallback: a TQ Town-Portal scroll returns you to
-  town from ANY area**, so use one if a return NPC is mute. Splitting these into one distinct return
-  record per area (so all five bind) is deferred to the b37 map pass.
+### Not portal-able yet - PENDING MAP PLACEMENT (b37 map pass)
 
-**Hub verification checklist:** (1) all 11 travelers are present + individually clickable (no two
-stacked); (2) each teleport lands you standing on solid ground (on-mesh), not in a wall/void; (3)
-from each of the 6 NEW boss areas the Return Traveler brings you back to Helos (the 5 established
-areas share one return record, so only one binds - keep a TQ Town-Portal scroll as the universal
-fallback); (4) NO walk-through teleports anywhere - travel only happens after you talk + confirm.
+These bosses are built in the DB but are **not placed on the map yet**, so there is no spot to
+portal to. They are listed here so nothing is silently missing; they get travelers once their map
+placement lands:
+- **The Polis Daemonai vault Guardian** (the caged Guardian + 5 majestic chests)
+- **The Helepolis, Taker of Cities** (Fields of the Diadochi)
+- **Menoetes, Marshal of the Dead** (+ the three Hades general upgrades)
+- **Neferkha, the Rimebound Pharaoh** (Egypt tomb)
 
-### Where the old walk-through doors were (removed 2026-07-12; reach these via the hub now)
+### Getting back
 
-Will asked for the exact door walk-to spots. These invented walk-through doors were deleted by the
-P0 hotfix (a walk-through that yanked you to the Garden with no way back was a live Steam bug), so
-walking to these spots now does nothing - use the hub travelers above. For the record:
-- **Knossos -> Uber Dungeon door**: was in the **Minotaur's Labyrinth (maze03)**, beside the SV
-  Olympian-arena portal, at **world (-7783, 1, -3794)** = maze03-local (293.1, 1.2, 149.3).
-- **Athens -> Sparta Crypt door**: was in the **deepest Athens catacomb (CataCube02_FloorLast)**,
-  near the **stairs-down** landmark, at **world (-6583, 1, -3177)** = local (29.1, 1.2, 41.3).
+Each of the **11 boss/door areas above has its own distinct Return Traveler** placed a few steps
+from where you land -> talk -> confirm -> back to the Helos plaza (distinct records, so each binds).
+The three "kept" areas (**Garden / Secret Place / Boss Arena**) have no dedicated hub return - use
+their in-game returns instead: the Garden/Secret **SV rift-shrines**, the Boss Arena's own arena
+portal, or the **universal fallback: a TQ Town-Portal scroll returns you to town from ANY area**.
+
+**Hub verification checklist:** (1) all 14 travelers present + individually clickable (no two
+stacked); (2) each teleport lands you on solid ground (on-mesh) at the area **entrance**, NOT on the
+boss; (3) you can walk from the entrance to the boss; (4) from each of the 11 boss/door areas the
+Return Traveler brings you back to Helos; (5) NO walk-through teleports anywhere - travel only after
+you talk + confirm.
 
 ## A. ALL NEW/CUSTOM BOSSES - where to find them (canonical path)
 
