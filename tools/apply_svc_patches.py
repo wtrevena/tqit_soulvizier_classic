@@ -11497,9 +11497,11 @@ def _create_propontis_superboss(db, tags):
         sf(proxy_path, 'placementExtents', 4.0)
         db._modified.add(proxy_path)
     _dorus_proxy(_DK_PROXY, _DK_POOL)
-    sf(_DK_PROXY, 'accessory1', _DK_HOARD_POOL['01'], S)
-    sf(_DK_PROXY, 'accessoryEpic1', _DK_HOARD_POOL['02'], S)
-    sf(_DK_PROXY, 'accessoryLegendary1', _DK_HOARD_POOL['03'], S)
+    # b42 r2 (Will "replace the current chest with three large majestic chests"): Dorus no
+    # longer carries his hoard as the boss accessory; it becomes 3 world-placed majestic
+    # chests near the tomb encounter (build_section_surgery INJECT_SPECS). The _DK_HOARD_POOL
+    # chain (region-tuned by _svc_standardize_boss_chests -> svc_dorushoard) rides verbatim.
+    _svc_build_world_chest_proxy(db, 'dorus', _DK_HOARD_POOL)
 
     # ── 8. S1 dense STAT soul (Vashkarr precedent: NO summon, a king's-ransom
     #    sheet; ONLY the king drops it at 66% Finger2). ──
@@ -14873,13 +14875,19 @@ def _svc_lock_authored_pool_counts(db):
 # the boss's charLevel per difficulty -> nearest base bracket, capped at 63-65
 # (the top loot tier; the apex bosses out-level the L65 item ceiling on E/L).
 #
-# NOTE (mechanism): the reward mechanism the current chest uses (Proxy.tpl exposes
-# only accessory1/accessoryEpic1/accessoryLegendary1, and ProxyAccessoryPool is a
-# single weighted pick with NO spawn count) HARD-CAPS at ONE chest per difficulty
-# tier. So Will's literal "three chests" cannot come from this mechanism - it needs
-# WORLD-PLACEMENT (map lane). This pass delivers the reduced, region-tuned chest
-# CONTENT; the 3x count is a documented map-lane hand-off (see the b42 report).
-# HARD EXCLUSION: the Devourer / Blood-Toxeus "esti" chest (hidden_bloodcave_chest)
+# NOTE (mechanism): the boss ACCESSORY reward mechanism (proxy.tpl exposes only
+# accessory1/accessoryEpic1/accessoryLegendary1, and ProxyAccessoryPool is a single
+# weighted pick with NO spawn count - both proven from Templates.arc) HARD-CAPS at ONE
+# chest per difficulty. So Will's literal "three chests" needs WORLD-PLACEMENT. b42
+# round-2 DELIVERS that count: this pass region-tunes the chest CONTENT (below), the 4
+# fixed ubers stop carrying the chest as a boss accessory (_svc_build_world_chest_proxy),
+# and each of these SAME region-tuned chests is world-placed 3x at the encounter via
+# build_section_surgery INJECT_SPECS (a Class=Proxy container placer, the proven "esti"
+# chest pattern). So the tuning here now applies to the WORLD chests, not a boss drop.
+# SCOPE: svc_obsidianhoard stays a single accessory chest on the rare 25% roulette
+# corners (a random mini-event in the set-piece tombs, NOT a fixed uber Will fought;
+# 4 corners x 3 = 12 chests would be clutter) - already de-hoarded here; flagged for Will.
+# HARD EXCLUSION: the Devourer / Blood-Toxeus "esti" chest (hidden_bloodcave_chest_01/02/03)
 # is deliberately NOT in this set and is never touched.
 _SVC_CHEST_STD = {
     # chest_prefix:        (Normal,  Epic,    Legendary)   # boss charLevel N/E/L + region
@@ -14922,6 +14930,45 @@ def _svc_standardize_boss_chests(db):
     print(f"  Boss-chest standardization: repointed {fixed} bespoke hoard chest(s) "
           f"to region-tuned base boss loot (Cyclops-grade, no guaranteed-unique; "
           f"{skipped} tier(s) skipped for un-built chests).")
+
+
+# The 4 FIXED apex ubers whose bespoke boss-accessory chest is REPLACED by 3 world-
+# placed majestic chests (b42 round-2). key = world-chest prefix; value = the boss
+# proxy record whose accessory1/Epic1/Legendary1 must now be EMPTY. (Mnemophage carries
+# no chest by design; the Obsidian roulette keeps its rare-event accessory chest.)
+_SVC_FIXED_UBER_CHESTS = {
+    'ephialtes': r'records\drxmap\proxy\q_ephialtes_lone.dbr',
+    'tantalus':  r'records\drxmap\proxy\q_tantalus_lone.dbr',
+    'charon':    r'records\drxmap\proxy\q_goldenbough_lone.dbr',
+    'dorus':     r'records\drxmap\proxy\q_dorus_lone.dbr',
+}
+
+
+def _svc_verify_world_chests(db):
+    """Fail-loud (b42 round-2, Will "replace the current chest with three ..."): prove
+    the 4 fixed ubers no longer CARRY a bespoke chest (their proxy accessory tiers are
+    empty) AND each has a world-chest proxy record built (which the map lane places 3x).
+    This makes 'boss no longer carries its old chest' a build invariant, not a hope."""
+    problems = []
+    built = {p for (p, _proxy) in _SVC_WORLD_CHEST_PROXIES}
+    for prefix, boss_proxy in _SVC_FIXED_UBER_CHESTS.items():
+        wc = _SVC_WORLD_CHEST_PROXY % prefix
+        if prefix not in built or not db.has_record(wc):
+            problems.append(f"{prefix}: world-chest proxy {wc} was NOT built")
+        if db.has_record(boss_proxy):
+            for slot in ('accessory1', 'accessoryEpic1', 'accessoryLegendary1'):
+                v = db.get_field_value(boss_proxy, slot)
+                v = v[0] if isinstance(v, list) and v else v
+                if v:
+                    problems.append(f"{prefix}: boss proxy {boss_proxy} STILL carries "
+                                    f"{slot}={v} (bespoke chest not removed)")
+    if problems:
+        for p in problems:
+            print(f"    - WORLD-CHEST problem: {p}")
+        raise SystemExit(f"World-chest verification: {len(problems)} issue(s); the "
+                         f"3-majestic-chest replacement is not structurally guaranteed.")
+    print(f"  World-chest verify: {len(_SVC_FIXED_UBER_CHESTS)} fixed ubers carry NO "
+          f"bespoke chest; {len(built)} world-chest prox/ies built (map lane places 3x each).")
 
 
 # =============================================================================
@@ -15121,6 +15168,52 @@ def _svc_boss_proxy(db, proxy, pool, limit, mesh, scale, hoard_pools=None):
         sf(proxy, 'accessoryEpic1', hoard_pools['02'], DATA_TYPE_STRING)
         sf(proxy, 'accessoryLegendary1', hoard_pools['03'], DATA_TYPE_STRING)
     db._modified.add(proxy)
+
+
+# World-placed majestic chest proxy (b42 round-2, Will 2026-07-13: "replace the
+# current chest with three large majestic chests"). The boss ACCESSORY mechanism
+# hard-caps at ONE chest per difficulty: proxy.tpl exposes only accessory1 /
+# accessoryEpic1 / accessoryLegendary1 (NO accessory2..N) and ProxyAccessoryPool is
+# a single weighted pick with no spawn count - both proven from Templates.arc. So 3
+# chests CANNOT come from the boss accessory; they need WORLD-placement. Rather than
+# invent a mechanism, clone the mod's OWN proven world-chest: proxy_hidden_bloodcave_
+# chest (the "esti" chest) is a bare Class=Proxy placed as a 0x05 world entity in
+# drxBC2 whose accessory1/Epic1/Legendary1 spawn the difficulty-appropriate
+# FixedItemContainer. Wiring a boss's OWN region-tuned hoard pools onto a standalone
+# clone of it makes a difficulty-scaled majestic chest that stands in the world;
+# placing that proxy 3x (build_section_surgery INJECT_SPECS) = exactly 3 region-tuned
+# majestic chests at the encounter. The boss's own accessory slots are left EMPTY so
+# its single bespoke chest no longer spawns WITH the boss (Will: "replace" not "add").
+_SVC_WORLD_CHEST_DONOR = r'records\drxitem\container\proxy_hidden_bloodcave_chest.dbr'
+_SVC_WORLD_CHEST_PROXY = r'records\drxmap\proxy\svc_%s_chest.dbr'   # %% prefix -> map-lane path
+
+
+def _svc_build_world_chest_proxy(db, prefix, hoard_pools):
+    """Clone the esti-chest world-placement proxy into a standalone majestic-chest
+    proxy for `prefix`, wiring the boss's region-tuned hoard accessory pools as its
+    difficulty tiers. Returns the proxy record path (for build_section_surgery to
+    place 3x at the encounter), or None if the donor/pools are missing (caller then
+    leaves no world chest). Difficulty scaling + the large-majestic chest form ride
+    verbatim on the reused hoard chain (region-tuned by _svc_standardize_boss_chests)."""
+    if not (hoard_pools and db.has_record(_SVC_WORLD_CHEST_DONOR)
+            and hoard_pools.get('01') and db.has_record(hoard_pools['01'])):
+        print(f"  SVC WORLD-CHEST ({prefix}): donor/pools missing; NO world chest built")
+        return None
+    proxy = _SVC_WORLD_CHEST_PROXY % prefix
+    db.clone_record(_SVC_WORLD_CHEST_DONOR, proxy)
+    sf = db.set_field
+    sf(proxy, 'accessory1', hoard_pools['01'], DATA_TYPE_STRING)
+    sf(proxy, 'accessoryEpic1', hoard_pools['02'], DATA_TYPE_STRING)
+    sf(proxy, 'accessoryLegendary1', hoard_pools['03'], DATA_TYPE_STRING)
+    db._modified.add(proxy)
+    _SVC_WORLD_CHEST_PROXIES.append((prefix, proxy))
+    return proxy
+
+
+# Registry of the world-chest proxies actually built (finalization gate reads this to
+# assert each is placed exactly 3x once the map lane lands the INJECT_SPECS; also lets
+# _check the boss accessory was cleared). Populated by _svc_build_world_chest_proxy.
+_SVC_WORLD_CHEST_PROXIES = []
 
 
 def _svc_set_kit(db, monster, kit, special):
@@ -15330,7 +15423,9 @@ def _create_tantalus_uberboss(db, tags):
     _svc_boss_pool(db, _TN_POOL, _TN_FORM1, _TN_ESCORT,
                    'Tantalus (main) + 2 Famished-Shade champion escorts')
     _tn_hoard = _svc_build_dedicated_hoard(db, 'tantalus', 'tagSVCTantalusHoard') or _SVC_HOARD_POOL
-    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2, hoard_pools=_tn_hoard)
+    # b42 r2: boss no longer carries the chest -> 3 world-placed majestic chests (INJECT_SPECS).
+    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2)
+    _svc_build_world_chest_proxy(db, 'tantalus', _tn_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _TN_PROXY, 'pool': _TN_POOL, 'main_monster': _TN_FORM1,
          'name': 'q_tantalus_lone (Tantalus + 2 Famished-Shade escorts)'})
@@ -15505,7 +15600,9 @@ def _create_goldenbough_boss(db, tags):
     _svc_boss_pool(db, _GB_POOL, _GB_FORM1, _GB_ESCORT,
                    'Charon (main) + 2 drowned-oarsman champion escorts')
     _gb_hoard = _svc_build_dedicated_hoard(db, 'charon', 'tagSVCCharonHoard') or _SVC_HOARD_POOL
-    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7, hoard_pools=_gb_hoard)
+    # b42 r2: boss no longer carries the chest -> 3 world-placed majestic chests (INJECT_SPECS).
+    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7)
+    _svc_build_world_chest_proxy(db, 'charon', _gb_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _GB_PROXY, 'pool': _GB_POOL, 'main_monster': _GB_FORM1,
          'name': 'q_goldenbough_lone (Charon + 2 oarsman escorts)'})
@@ -15888,10 +15985,22 @@ def _create_dreadhalls_uberboss(db, tags):
     #    his whole fear kit dealt NO damage. Give him HIS own nightmare shadow-bolt
     #    ring that DOES real AOE damage - clone the proven ondeath_voidnova (life +
     #    physical [30..600] by level, 24 nightstalker_shadowbolt projectiles in a
-    #    360 deg ring; nightmare-themed already). The Mnemophage casts the same donor
-    #    as a live active skill, so it is AI-castable (the 'ondeath' name is legacy;
-    #    no death trigger). FX kept verbatim (skill-FX crash-safe). ──
+    #    360 deg ring; nightmare-themed already). Kept as a Skill_AttackProjectileRing.
+    #
+    #    CASTABILITY (b42 round-2 vet HIGH fix): the donor carries
+    #    skillSpecialAnimationName='Nova'. When a special is cast via specialAttackN,
+    #    the engine's StartSkill aborts silently if the caster's mesh has no clip for
+    #    that special-animation name (this project's own crash-law RE). The Ephialtes
+    #    boss rides the Epiales01 mesh (epiales_overlord skin), which has NO 'Nova'
+    #    clip -> the round-1 nova was a SILENT no-op. The proven-castable epiales ring
+    #    is epiales_poisonorb (same Class, cast live as a specialAttack by every
+    #    epiales-mesh monster: as_nightmare / as_phantasm / um_vaekas / toxic_phantasm)
+    #    and it carries NO skillSpecialAnimationName -> it casts on the default attack
+    #    clip the mesh always has. So CLEAR the special-anim on our clone: the ring now
+    #    casts exactly like epiales_poisonorb (default clip) while keeping the voidnova
+    #    damage + 24-bolt shape. FX kept verbatim (skill-FX crash-safe). ──
     db.clone_record(_EP_SK_NOVA_DONOR, _EP_SK_DREADNOVA)
+    sf(_EP_SK_DREADNOVA, 'skillSpecialAnimationName', '')   # cast on default clip (Epiales01 has no 'Nova' clip)
     db._modified.add(_EP_SK_DREADNOVA)
     _BOSS_KIT_CLONES.append((_EP_SK_NOVA_DONOR, _EP_SK_DREADNOVA))
 
@@ -15937,7 +16046,11 @@ def _create_dreadhalls_uberboss(db, tags):
     _svc_boss_pool(db, _EP_POOL, _EP_BOSS, _EP_ESCORT,
                    'Ephialtes (main) + 2 nightmare champion escorts')
     _ep_hoard = _svc_build_dedicated_hoard(db, 'ephialtes', 'tagSVCEphialtesHoard') or _SVC_HOARD_POOL
-    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2, hoard_pools=_ep_hoard)
+    # b42 r2 (Will "replace the current chest with three large majestic chests"): the boss
+    # no longer CARRIES its bespoke chest; the region-tuned hoard is delivered as 3 world-
+    # placed majestic chests near the encounter (build_section_surgery INJECT_SPECS).
+    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2)
+    _svc_build_world_chest_proxy(db, 'ephialtes', _ep_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _EP_PROXY, 'pool': _EP_POOL, 'main_monster': _EP_BOSS,
          'name': 'q_ephialtes_lone (Ephialtes + 2 nightmare escorts)'})
@@ -16010,9 +16123,10 @@ def _create_dreadhalls_uberboss(db, tags):
         'run. But the Waking Dread does not sleep, and now neither do you.')
     print("  C4 Ephialtes: single-form [58,78,97]/[15/20/27k], epiales_overlord "
           "skin, scale 2.7 (b42 BIGGER), Dread Shroud, HIS Dread Nova (b42: real "
-          "AOE life+phys ring @50% special, lvl [12/16/20]) + fear spine (ixion_cry "
-          "+ Vision of Death) + takedown chase + death nova + pool/proxy/limit + "
-          "region chest + Mask of the Waking Dread + S1 fear-nova soul + yard; tags set.")
+          "AOE life+phys ring @50% special, lvl [12/16/20], special-anim cleared -> "
+          "castable) + fear spine (ixion_cry + Vision of Death) + takedown chase + "
+          "death nova + pool/proxy/limit + 3 world majestic chests (no boss-carried "
+          "chest) + Mask of the Waking Dread + S1 fear-nova soul + yard; tags set.")
 
 
 # ── C5: EREBAN HEARTSTONE relic (mirror _create_emberscale_charm) ────────────
@@ -17064,10 +17178,12 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # counts hold at runtime, THEN the gate below fails loud if any pool still
     # carries the equation (the "two bosses side by side" root cause).
     _svc_lock_authored_pool_counts(db)
-    # CHEST STANDARDIZATION (2026-07-13): reduce + region-tune every placed-uber
-    # bespoke hoard chest to the base game's Cyclops-grade region loot (the "3x
-    # count" is a documented map-lane hand-off; see _svc_standardize_boss_chests).
+    # CHEST STANDARDIZATION (2026-07-13): region-tune every placed-uber bespoke hoard
+    # chest to the base game's Cyclops-grade region loot; then (b42 round-2) VERIFY the
+    # 4 fixed ubers no longer carry a boss-accessory chest and each has a world-chest
+    # proxy the map lane places 3x (the "3 majestic chests" replacement).
     _svc_standardize_boss_chests(db)
+    _svc_verify_world_chests(db)
     _verify_mod_spawn_proxies_eligible(db)
 
     # ── Uber (DRX supra) craftable dead-reference repair ──────────────────────
