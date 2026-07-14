@@ -81,6 +81,10 @@ REGISTRY = [
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
+    'enslaver_fx_loot',     # build40: Enslaver all-black FX (boss+summoned marauders) + tiered
+                            # loot + marauder weapons (Will 2026-07-13). Disjoint from toxeus_suite
+                            # (that owns the Devourer/ambush/rant/Hunt; this owns um_toxeus_enslaver_99
+                            # + um_enslaver_marauder_99, which the MONOLITH builds).
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
