@@ -11311,6 +11311,12 @@ def _create_vashkarr(db, tags):
         sf(P, 'chanceToRun', 100.0)
         sf(P, 'difficultyLimitsFile', _VK_LIMIT)             # no-cap [1..75] contains the band
         db._modified.add(P)
+        # register in the spawn-eligibility + pool-count-lock gate (was previously
+        # unregistered -> its 3/2 pool doubled Vashkarr like the other lone bosses).
+        _MOD_AUTHORED_SPAWN_PROXIES.append({
+            'proxy': _VK_PROXY, 'pool': _VK_POOL, 'main_monster': _VK_MONSTER,
+            'name': 'q_vashkarr_lone (Vashkarr + 2 dragonian champion escorts)',
+        })
         print("  Vashkarr proxy + pool: 1 boss + 2 dragonian champions "
               "(spawn=3/champMin=Max=2/champChance=100); chanceToRun=100")
     else:
@@ -11509,9 +11515,11 @@ def _create_propontis_superboss(db, tags):
         sf(proxy_path, 'placementExtents', 4.0)
         db._modified.add(proxy_path)
     _dorus_proxy(_DK_PROXY, _DK_POOL)
-    sf(_DK_PROXY, 'accessory1', _DK_HOARD_POOL['01'], S)
-    sf(_DK_PROXY, 'accessoryEpic1', _DK_HOARD_POOL['02'], S)
-    sf(_DK_PROXY, 'accessoryLegendary1', _DK_HOARD_POOL['03'], S)
+    # b42 r2 (Will "replace the current chest with three large majestic chests"): Dorus no
+    # longer carries his hoard as the boss accessory; it becomes 3 world-placed majestic
+    # chests near the tomb encounter (build_section_surgery INJECT_SPECS). The _DK_HOARD_POOL
+    # chain (region-tuned by _svc_standardize_boss_chests -> svc_dorushoard) rides verbatim.
+    _svc_build_world_chest_proxy(db, 'dorus', _DK_HOARD_POOL)
 
     # ── 8. S1 dense STAT soul (Vashkarr precedent: NO summon, a king's-ransom
     #    sheet; ONLY the king drops it at 66% Finger2). ──
@@ -14794,6 +14802,27 @@ def _verify_mod_spawn_proxies_eligible(db):
                 f"{label}: main monster {main} is not in any pool nameN slot "
                 f"(name1..6 = {[_base(str(n)) for n in name_slots if n]})")
 
+        # (C) NO INHERITED SPAWN-COUNT EQUATION (the 2026-07-13 "two bosses side
+        #     by side" dup). q_leinth_lone (every pool's clone donor) carries
+        #     proxyPoolEquation=proxypoolequation_02, which re-scales the literal
+        #     spawn/champion counts by poolValue*(0.91+0.497143*nP-0.05*nP^2),
+        #     FLOORED per field. So the (A) `spawnMax - championMax` main count is
+        #     NOT what spawns: the 3-spawn/2-champion shape floors to 4/2 = 2 mains
+        #     = two identical bosses at EVERY player count (Will fought two Waking
+        #     Dreads + two Mnemophages). Assert the equation is neutralized so the
+        #     literal counts (and (A)'s guarantee) actually hold at runtime.
+        eq = db.get_field_value(pool, 'proxyPoolEquation')
+        eq = (eq[0] if isinstance(eq, list) else eq) or ''
+        if eq:
+            problems.append(
+                f"{label}: SPAWN-COUNT EQUATION - pool still carries "
+                f"proxyPoolEquation={_base(str(eq))}; it re-scales the literal "
+                f"spawn/champion counts (poolValue*player-factor, floored) so "
+                f"spawnMax-championMax={guaranteed_mains} is NOT the runtime main "
+                f"count (a 3/2 lone-boss pool spawns 2 bosses at 1 player). Empty "
+                f"it via _svc_neutralize_pool_equation so exactly {guaranteed_mains} "
+                f"main(s) spawn deterministically.")
+
         # (B) limit-window containment (per difficulty)
         lim = db.get_field_value(proxy, 'difficultyLimitsFile')
         lim = lim[0] if isinstance(lim, list) else lim
@@ -14834,6 +14863,177 @@ def _verify_mod_spawn_proxies_eligible(db):
             f"is scaled below its level, must be fixed before shipping.")
     print(f"  Spawn-eligibility invariant OK: {len(_MOD_AUTHORED_SPAWN_PROXIES)} "
           f"mod-authored spawn proxy(ies) spawn their boss on N/E/L with adds.")
+
+
+def _svc_lock_authored_pool_counts(db):
+    """DEDUP FINALIZATION (Will 2026-07-13, "all the monsters we placed we placed
+    two side by side"). Neutralize the inherited proxyPoolEquation on EVERY
+    mod-authored spawn pool so the literal spawn/champion counts hold at runtime
+    (exactly spawnMax-championMax mains, deterministic at all player counts).
+
+    One choke point, driven by the same _MOD_AUTHORED_SPAWN_PROXIES registry the
+    spawn-eligibility gate uses, so every registered lone-boss / warband / yard
+    pool is fixed at once. _svc_boss_pool already neutralizes its own clones
+    (Tantalus/Charon/Mnemophage/Ephialtes); this additionally covers the
+    hand-rolled pools that clone q_leinth_lone directly (Hemorrheus, Vashkarr,
+    Dorus, Broodmother, the Enslaver + Obsidian warbands, and every TESTHUB yard
+    pool). Idempotent; runs just before _verify_mod_spawn_proxies_eligible, which
+    then FAILS LOUD if any authored pool still carries the equation."""
+    fixed = []
+    seen = set()
+    for spec in _MOD_AUTHORED_SPAWN_PROXIES:
+        pool = spec.get('pool')
+        if not pool or pool in seen or not db.has_record(pool):
+            continue
+        seen.add(pool)
+        if db.get_field_value(pool, 'proxyPoolEquation'):
+            _svc_neutralize_pool_equation(db, pool)
+            fixed.append(pool)
+    print(f"  Pool-count lock: neutralized the inherited spawn-count equation on "
+          f"{len(fixed)} of {len(seen)} mod-authored spawn pool(s) (literal "
+          f"spawn/champion counts now hold -> no player-scaled boss dup).")
+
+
+# b40 INTEGRATION - cross-wave rule 2: the four build37 apex bosses that b41-map-pass
+# places on the CANONICAL map (records\drxmap\proxy\q_*_lone.dbr). Their pools live in
+# the registry MODULES (tools/patches/{polis_vault,four_generals,diadochi,neferkha}.py),
+# each a q_leinth_lone clone -> each INHERITS proxyPoolEquation_02, the same "two bosses
+# side by side" scaler b42 neutralizes on the monolith pools. Those module pools are NOT
+# in _MOD_AUTHORED_SPAWN_PROXIES, so _svc_lock_authored_pool_counts never reaches them.
+_B41_PLACED_APEX_POOLS = [
+    r'records\drxmap\proxy\pools\q_polisgaoler_lone.dbr',   # Alkyoneus the Soul-Gaoler (polis_vault)
+    r'records\drxmap\proxy\pools\q_hadesmarshal_lone.dbr',  # Menoetes, Marshal of the Dead (four_generals)
+    r'records\drxmap\proxy\pools\q_diadochi_lone.dbr',      # the Helepolis / Diadochi Siege Strider (diadochi)
+    r'records\drxmap\proxy\pools\svc_neferkha_lone.dbr',    # Neferkha, the Rimebound Pharaoh (neferkha)
+]
+
+
+def _svc_neutralize_b41_placed_pools(db):
+    """DEDUP RECONCILIATION (b40 integration, cross-wave rule 2). Extend b42's
+    proxyPoolEquation neutralization to the four apex-boss pools b41-map-pass places
+    on the canonical map. Without this a scaled pool spawns the apex boss TWICE
+    (deterministically for the 3/2 lone-boss shape, and at high player counts even a
+    1-spawn pool floors to 2) - exactly what b42 fixes for the monolith bosses. This
+    only clears the spawn-COUNT scaler (monster level/difficulty scaling is untouched);
+    _svc_neutralize_pool_equation is idempotent and a no-op if a pool is absent or
+    already clean. The Toxeus entrance ambush reuses _BT_POOL, which IS registered in
+    _MOD_AUTHORED_SPAWN_PROXIES (covered by _svc_lock_authored_pool_counts), so it is
+    not listed here. Runs alongside the monolith lock, before the fail-loud gate."""
+    fixed = []
+    for pool in _B41_PLACED_APEX_POOLS:
+        if db.has_record(pool) and db.get_field_value(pool, 'proxyPoolEquation'):
+            _svc_neutralize_pool_equation(db, pool)
+            fixed.append(pool)
+    print(f"  b41 apex-boss pool-count lock: neutralized the inherited spawn-count "
+          f"equation on {len(fixed)} of {len(_B41_PLACED_APEX_POOLS)} b41-placed apex "
+          f"pool(s) (canonical map: each apex boss now spawns exactly ONE).")
+
+
+# Boss-chest standardization (Will 2026-07-13: "reduce the chests, replace the
+# current chest with three large majestic chests ... each chest tuned based on
+# where it is in the game"). Every placed uber's bespoke hoard chest currently
+# drops a GUARANTEED unique 1h + tier-01 (Act1/Greece) statics regardless of the
+# boss's region -> under-leveled AND over-good. Repoint each to the base game's
+# own region/level-banded boss loot (boss_default_<lo>-<hi>) = the Cyclops chest
+# form/rarity (a normal boss chest, NOT an over-good hoard). Difficulty tier maps
+# to chest _01/_02/_03 (= the proxy's accessory1/Epic1/Legendary1). Region =
+# the boss's charLevel per difficulty -> nearest base bracket, capped at 63-65
+# (the top loot tier; the apex bosses out-level the L65 item ceiling on E/L).
+#
+# NOTE (mechanism): the boss ACCESSORY reward mechanism (proxy.tpl exposes only
+# accessory1/accessoryEpic1/accessoryLegendary1, and ProxyAccessoryPool is a single
+# weighted pick with NO spawn count - both proven from Templates.arc) HARD-CAPS at ONE
+# chest per difficulty. So Will's literal "three chests" needs WORLD-PLACEMENT. b42
+# round-2 DELIVERS that count: this pass region-tunes the chest CONTENT (below), the 4
+# fixed ubers stop carrying the chest as a boss accessory (_svc_build_world_chest_proxy),
+# and each of these SAME region-tuned chests is world-placed 3x at the encounter via
+# build_section_surgery INJECT_SPECS (a Class=Proxy container placer, the proven "esti"
+# chest pattern). So the tuning here now applies to the WORLD chests, not a boss drop.
+# SCOPE: svc_obsidianhoard stays a single accessory chest on the rare 25% roulette
+# corners (a random mini-event in the set-piece tombs, NOT a fixed uber Will fought;
+# 4 corners x 3 = 12 chests would be clutter) - already de-hoarded here; flagged for Will.
+# HARD EXCLUSION: the Devourer / Blood-Toxeus "esti" chest (hidden_bloodcave_chest_01/02/03)
+# is deliberately NOT in this set and is never touched.
+_SVC_CHEST_STD = {
+    # chest_prefix:        (Normal,  Epic,    Legendary)   # boss charLevel N/E/L + region
+    'svc_tantalushoard':   ('51-53', '63-65', '63-65'),    # Tantalus  [52,74,90]  Styx swamp (Act4/Hades)
+    'svc_charonhoard':     ('47-49', '63-65', '63-65'),    # Charon    [48,72,100] Styx river (Act4/Hades)
+    'svc_ephialteshoard':  ('57-59', '63-65', '63-65'),    # Ephialtes [58,78,97]  Dread Halls (Act5/Judgment)
+    'svc_dorushoard':      ('41-43', '57-59', '63-65'),    # Dorus     [41,57,71]  Medea tomb (Act2)
+    'svc_obsidianhoard':   ('39-41', '57-59', '63-65'),    # Obsidian  [40,58,72]  Obsidian Halls (Act3/Orient)
+}
+_SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
+
+
+def _svc_standardize_boss_chests(db):
+    """Repoint every placed-uber bespoke hoard chest's loot to the base game's
+    region/level-tuned boss loot (boss_default_<bracket>) - the Cyclops chest form
+    (a normal boss chest, not an over-good guaranteed-unique hoard). Keeps the
+    large-majestic mesh + the Boss lock; only the loot table changes. Fail-loud if
+    a target base table is missing. The Devourer/Blood-Toxeus (esti) chest is not
+    in _SVC_CHEST_STD and is never touched. Runs at finalization."""
+    tiers = ('01', '02', '03')
+    fixed, skipped, problems = 0, 0, []
+    for prefix, brackets in _SVC_CHEST_STD.items():
+        for tier, bracket in zip(tiers, brackets):
+            chest = rf'records\drxitem\container\{prefix}_{tier}.dbr'
+            table = _SVC_BOSS_DEFAULT_TABLE % bracket
+            if not db.has_record(chest):
+                skipped += 1          # boss whose chest was never built (donor gap)
+                continue
+            if not db.has_record(table):
+                problems.append(f"{chest}: base loot table missing {table}")
+                continue
+            db.set_field(chest, 'tables', table)
+            db._modified.add(chest)
+            fixed += 1
+    if problems:
+        for p in problems:
+            print(f"    - CHEST-STD problem: {p}")
+        raise SystemExit(f"Boss-chest standardization: {len(problems)} missing base "
+                         f"boss loot table(s); cannot region-tune the reward.")
+    print(f"  Boss-chest standardization: repointed {fixed} bespoke hoard chest(s) "
+          f"to region-tuned base boss loot (Cyclops-grade, no guaranteed-unique; "
+          f"{skipped} tier(s) skipped for un-built chests).")
+
+
+# The 4 FIXED apex ubers whose bespoke boss-accessory chest is REPLACED by 3 world-
+# placed majestic chests (b42 round-2). key = world-chest prefix; value = the boss
+# proxy record whose accessory1/Epic1/Legendary1 must now be EMPTY. (Mnemophage carries
+# no chest by design; the Obsidian roulette keeps its rare-event accessory chest.)
+_SVC_FIXED_UBER_CHESTS = {
+    'ephialtes': r'records\drxmap\proxy\q_ephialtes_lone.dbr',
+    'tantalus':  r'records\drxmap\proxy\q_tantalus_lone.dbr',
+    'charon':    r'records\drxmap\proxy\q_goldenbough_lone.dbr',
+    'dorus':     r'records\drxmap\proxy\q_dorus_lone.dbr',
+}
+
+
+def _svc_verify_world_chests(db):
+    """Fail-loud (b42 round-2, Will "replace the current chest with three ..."): prove
+    the 4 fixed ubers no longer CARRY a bespoke chest (their proxy accessory tiers are
+    empty) AND each has a world-chest proxy record built (which the map lane places 3x).
+    This makes 'boss no longer carries its old chest' a build invariant, not a hope."""
+    problems = []
+    built = {p for (p, _proxy) in _SVC_WORLD_CHEST_PROXIES}
+    for prefix, boss_proxy in _SVC_FIXED_UBER_CHESTS.items():
+        wc = _SVC_WORLD_CHEST_PROXY % prefix
+        if prefix not in built or not db.has_record(wc):
+            problems.append(f"{prefix}: world-chest proxy {wc} was NOT built")
+        if db.has_record(boss_proxy):
+            for slot in ('accessory1', 'accessoryEpic1', 'accessoryLegendary1'):
+                v = db.get_field_value(boss_proxy, slot)
+                v = v[0] if isinstance(v, list) and v else v
+                if v:
+                    problems.append(f"{prefix}: boss proxy {boss_proxy} STILL carries "
+                                    f"{slot}={v} (bespoke chest not removed)")
+    if problems:
+        for p in problems:
+            print(f"    - WORLD-CHEST problem: {p}")
+        raise SystemExit(f"World-chest verification: {len(problems)} issue(s); the "
+                         f"3-majestic-chest replacement is not structurally guaranteed.")
+    print(f"  World-chest verify: {len(_SVC_FIXED_UBER_CHESTS)} fixed ubers carry NO "
+          f"bespoke chest; {len(built)} world-chest prox/ies built (map lane places 3x each).")
 
 
 # =============================================================================
@@ -14910,10 +15110,44 @@ def _svc_widen_limit(db, donor, clone, hi=110):
     return True
 
 
+def _svc_neutralize_pool_equation(db, pool):
+    """DEDUP ROOT-CAUSE FIX (Will 2026-07-13, "two bosses side by side").
+
+    Every mod lone-boss pool is a clone of q_leinth_lone, which carries
+    `proxyPoolEquation = records\\proxies orient\\proxypoolequation_02.dbr`. That
+    equation OVERRIDES the pool's literal spawn/champion counts at spawn time with
+    `poolValue * (0.91 + 0.497143*nP - 0.05*nP^2)`, FLOORED per field (poolValue :=
+    the field's own static value; the pools carry no separate `poolValue`, proven).
+
+    For the "1 boss + 2 champion escorts" shape (spawnMax=3, championMax=2) at 1
+    player the factor is 1.357, so effective spawnMax = floor(3*1.357) = 4 while
+    effective championMax = floor(2*1.357) = 2 -> MAINS = 4-2 = 2 -> TWO identical
+    bosses spawn side by side. This holds at every player count (2 mains, 1..6P),
+    which is exactly what Will saw for the Waking Dread and the Mnemophage and is
+    deterministic/structural, not probabilistic. The `spawnMax - championMax = 1`
+    "LAW" the builders reason about is only true of the LITERAL counts; the
+    inherited equation silently breaks it.
+
+    Fix: empty proxyPoolEquation so the engine uses the literal spawnMin/Max +
+    championMin/Max verbatim -> exactly (spawnMax - championMax) mains at every
+    player count. This mirrors the base-game UNIQUE-boss pools (bosspool_*_cyclops
+    / _alastor / _telkine all carry NO proxyPoolEquation). '' is the idiomatic TQ
+    null .dbr ref (same mechanism as nameChampion3=''), read identically to the
+    field being absent. MONSTER difficulty/level scaling is UNAFFECTED - that lives
+    on the proxy's difficultyEquationFile/difficultyLimitsFile, not here; only the
+    spawn-COUNT scaler is removed."""
+    if db.get_field_value(pool, 'proxyPoolEquation'):
+        db.set_field(pool, 'proxyPoolEquation', '')
+        db._modified.add(pool)
+
+
 def _svc_boss_pool(db, pool, boss, champ, desc):
     """Clone q_leinth_lone pool -> the 1-boss + 2-guaranteed-champion recipe
     (spawnMax=3 / championChance=100 / championMin=Max=2 -> 3-2=1 guaranteed
-    boss; the LAW). Clears the leinth clone-leftover 3rd champion (Vashkarr fix)."""
+    boss; the LAW). Clears the leinth clone-leftover 3rd champion (Vashkarr fix).
+    Neutralizes the inherited proxyPoolEquation so the literal counts hold at
+    runtime (else the equation floors 3/2 to 4/2 = 2 mains = TWO bosses; see
+    _svc_neutralize_pool_equation)."""
     db.clone_record(_SVC_LEINTH_POOL, pool)
     sf = db.set_field
     sf(pool, 'FileDescription', desc)
@@ -14924,6 +15158,7 @@ def _svc_boss_pool(db, pool, boss, champ, desc):
     sf(pool, 'spawnMin', 3); sf(pool, 'spawnMax', 3)
     sf(pool, 'championChance', 100.0)
     sf(pool, 'championMin', 2); sf(pool, 'championMax', 2)
+    _svc_neutralize_pool_equation(db, pool)
     db._modified.add(pool)
 
 
@@ -15002,6 +15237,52 @@ def _svc_boss_proxy(db, proxy, pool, limit, mesh, scale, hoard_pools=None):
         sf(proxy, 'accessoryEpic1', hoard_pools['02'], DATA_TYPE_STRING)
         sf(proxy, 'accessoryLegendary1', hoard_pools['03'], DATA_TYPE_STRING)
     db._modified.add(proxy)
+
+
+# World-placed majestic chest proxy (b42 round-2, Will 2026-07-13: "replace the
+# current chest with three large majestic chests"). The boss ACCESSORY mechanism
+# hard-caps at ONE chest per difficulty: proxy.tpl exposes only accessory1 /
+# accessoryEpic1 / accessoryLegendary1 (NO accessory2..N) and ProxyAccessoryPool is
+# a single weighted pick with no spawn count - both proven from Templates.arc. So 3
+# chests CANNOT come from the boss accessory; they need WORLD-placement. Rather than
+# invent a mechanism, clone the mod's OWN proven world-chest: proxy_hidden_bloodcave_
+# chest (the "esti" chest) is a bare Class=Proxy placed as a 0x05 world entity in
+# drxBC2 whose accessory1/Epic1/Legendary1 spawn the difficulty-appropriate
+# FixedItemContainer. Wiring a boss's OWN region-tuned hoard pools onto a standalone
+# clone of it makes a difficulty-scaled majestic chest that stands in the world;
+# placing that proxy 3x (build_section_surgery INJECT_SPECS) = exactly 3 region-tuned
+# majestic chests at the encounter. The boss's own accessory slots are left EMPTY so
+# its single bespoke chest no longer spawns WITH the boss (Will: "replace" not "add").
+_SVC_WORLD_CHEST_DONOR = r'records\drxitem\container\proxy_hidden_bloodcave_chest.dbr'
+_SVC_WORLD_CHEST_PROXY = r'records\drxmap\proxy\svc_%s_chest.dbr'   # %% prefix -> map-lane path
+
+
+def _svc_build_world_chest_proxy(db, prefix, hoard_pools):
+    """Clone the esti-chest world-placement proxy into a standalone majestic-chest
+    proxy for `prefix`, wiring the boss's region-tuned hoard accessory pools as its
+    difficulty tiers. Returns the proxy record path (for build_section_surgery to
+    place 3x at the encounter), or None if the donor/pools are missing (caller then
+    leaves no world chest). Difficulty scaling + the large-majestic chest form ride
+    verbatim on the reused hoard chain (region-tuned by _svc_standardize_boss_chests)."""
+    if not (hoard_pools and db.has_record(_SVC_WORLD_CHEST_DONOR)
+            and hoard_pools.get('01') and db.has_record(hoard_pools['01'])):
+        print(f"  SVC WORLD-CHEST ({prefix}): donor/pools missing; NO world chest built")
+        return None
+    proxy = _SVC_WORLD_CHEST_PROXY % prefix
+    db.clone_record(_SVC_WORLD_CHEST_DONOR, proxy)
+    sf = db.set_field
+    sf(proxy, 'accessory1', hoard_pools['01'], DATA_TYPE_STRING)
+    sf(proxy, 'accessoryEpic1', hoard_pools['02'], DATA_TYPE_STRING)
+    sf(proxy, 'accessoryLegendary1', hoard_pools['03'], DATA_TYPE_STRING)
+    db._modified.add(proxy)
+    _SVC_WORLD_CHEST_PROXIES.append((prefix, proxy))
+    return proxy
+
+
+# Registry of the world-chest proxies actually built (finalization gate reads this to
+# assert each is placed exactly 3x once the map lane lands the INJECT_SPECS; also lets
+# _check the boss accessory was cleared). Populated by _svc_build_world_chest_proxy.
+_SVC_WORLD_CHEST_PROXIES = []
 
 
 def _svc_set_kit(db, monster, kit, special):
@@ -15211,7 +15492,9 @@ def _create_tantalus_uberboss(db, tags):
     _svc_boss_pool(db, _TN_POOL, _TN_FORM1, _TN_ESCORT,
                    'Tantalus (main) + 2 Famished-Shade champion escorts')
     _tn_hoard = _svc_build_dedicated_hoard(db, 'tantalus', 'tagSVCTantalusHoard') or _SVC_HOARD_POOL
-    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2, hoard_pools=_tn_hoard)
+    # b42 r2: boss no longer carries the chest -> 3 world-placed majestic chests (INJECT_SPECS).
+    _svc_boss_proxy(db, _TN_PROXY, _TN_POOL, _TN_LIMIT, _TN_MESH, 2.2)
+    _svc_build_world_chest_proxy(db, 'tantalus', _tn_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _TN_PROXY, 'pool': _TN_POOL, 'main_monster': _TN_FORM1,
          'name': 'q_tantalus_lone (Tantalus + 2 Famished-Shade escorts)'})
@@ -15386,7 +15669,9 @@ def _create_goldenbough_boss(db, tags):
     _svc_boss_pool(db, _GB_POOL, _GB_FORM1, _GB_ESCORT,
                    'Charon (main) + 2 drowned-oarsman champion escorts')
     _gb_hoard = _svc_build_dedicated_hoard(db, 'charon', 'tagSVCCharonHoard') or _SVC_HOARD_POOL
-    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7, hoard_pools=_gb_hoard)
+    # b42 r2: boss no longer carries the chest -> 3 world-placed majestic chests (INJECT_SPECS).
+    _svc_boss_proxy(db, _GB_PROXY, _GB_POOL, _GB_LIMIT, _GB_MESH, 1.7)
+    _svc_build_world_chest_proxy(db, 'charon', _gb_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _GB_PROXY, 'pool': _GB_POOL, 'main_monster': _GB_FORM1,
          'name': 'q_goldenbough_lone (Charon + 2 oarsman escorts)'})
@@ -15594,7 +15879,7 @@ def _create_mnemophage_superboss(db, tags):
     sf(_MN_SHELL, 'characterIntelligence', 460.0)
     sf(_MN_SHELL, 'characterDexterity', 300.0); sf(_MN_SHELL, 'characterStrength', 60.0)
     sf(_MN_SHELL, 'characterLifeRegen', 8.0)
-    sf(_MN_SHELL, 'scale', 2.5); sf(_MN_SHELL, 'actorHeight', 2.0)
+    sf(_MN_SHELL, 'scale', 2.9); sf(_MN_SHELL, 'actorHeight', 2.4)  # b42: BIGGER (was 2.5); headroom = Will's in-game check (Mnemosyne glyph ring)
     _mnem_resist(_MN_SHELL)
     sf(_MN_SHELL, 'initialSkillName', _MN_MINDSHROUD)
     sf(_MN_SHELL, 'actorToSpawnOnDeath', _MN_CORE)
@@ -15732,6 +16017,10 @@ _EP_SK_VISIONOFDEATH = r'records\skills\spirit\drxvisionofdeath.dbr'
 _EP_SK_TAKEDOWN = r'records\xpack\skills\monsterskills\activeattackmelee\monster_takedown.dbr'
 _EP_SK_ONDEATH = r'records\skills\monster skills\attack_radius\ondeath_zombienoxiousfumes.dbr'
 _EP_FX_DREADSHROUD = r'records\xpack\effects\particles\skilleffects\dreamskillfx\troubleddreamsdebuff_charfxpak01.dbr'
+# b42 (Will 2026-07-13): Ephialtes's fear kit dealt NO damage (ixion_cry/Dreamstorm/
+# VisionOfDeath are all pure fear/confusion/sleep). Give him a bespoke DAMAGE nova.
+_EP_SK_DREADNOVA = r'records\skills\monster skills\attack_radius\ephialtes_dread_nova.dbr'
+_EP_SK_NOVA_DONOR = r'records\skills\monster skills\attack_radius\ondeath_voidnova.dbr'  # life+phys ring [30..600], 24 shadow bolts; the Mnemophage casts it live (AI-castable)
 
 
 def _create_dreadhalls_uberboss(db, tags):
@@ -15743,7 +16032,8 @@ def _create_dreadhalls_uberboss(db, tags):
     scale 2.2 (split from the Mnemophage's overmind.tex + 2.5). Ephialtes OWNS the
     active fear NOVA (the soul grants Dreamstorm)."""
     for donor in (_EP_DONOR, _EP_ESCORT_DONOR, _EP_SK_IXION, _EP_SK_DREAMSTORM,
-                  _EP_SK_VISIONOFDEATH, _EP_SK_ONDEATH, _SVC_SK_ENVENOM_SHROUD,
+                  _EP_SK_VISIONOFDEATH, _EP_SK_ONDEATH, _EP_SK_NOVA_DONOR,
+                  _SVC_SK_ENVENOM_SHROUD,
                   _EP_MASK_DONOR, _SVC_LEINTH_POOL, _SVC_LIMIT_DONOR):
         if not db.has_record(donor):
             print("  C4 EPHIALTES: WARNING donor missing: %s; group skipped" % donor)
@@ -15760,6 +16050,29 @@ def _create_dreadhalls_uberboss(db, tags):
     db._modified.add(_EP_DREADSHROUD)
     _BOSS_KIT_CLONES.append((_SVC_SK_ENVENOM_SHROUD, _EP_DREADSHROUD))
 
+    # ── Dread Nova (b42, Will 2026-07-13 "Ephialtes ... MORE AOE damage skills"):
+    #    his whole fear kit dealt NO damage. Give him HIS own nightmare shadow-bolt
+    #    ring that DOES real AOE damage - clone the proven ondeath_voidnova (life +
+    #    physical [30..600] by level, 24 nightstalker_shadowbolt projectiles in a
+    #    360 deg ring; nightmare-themed already). Kept as a Skill_AttackProjectileRing.
+    #
+    #    CASTABILITY (b42 round-2 vet HIGH fix): the donor carries
+    #    skillSpecialAnimationName='Nova'. When a special is cast via specialAttackN,
+    #    the engine's StartSkill aborts silently if the caster's mesh has no clip for
+    #    that special-animation name (this project's own crash-law RE). The Ephialtes
+    #    boss rides the Epiales01 mesh (epiales_overlord skin), which has NO 'Nova'
+    #    clip -> the round-1 nova was a SILENT no-op. The proven-castable epiales ring
+    #    is epiales_poisonorb (same Class, cast live as a specialAttack by every
+    #    epiales-mesh monster: as_nightmare / as_phantasm / um_vaekas / toxic_phantasm)
+    #    and it carries NO skillSpecialAnimationName -> it casts on the default attack
+    #    clip the mesh always has. So CLEAR the special-anim on our clone: the ring now
+    #    casts exactly like epiales_poisonorb (default clip) while keeping the voidnova
+    #    damage + 24-bolt shape. FX kept verbatim (skill-FX crash-safe). ──
+    db.clone_record(_EP_SK_NOVA_DONOR, _EP_SK_DREADNOVA)
+    sf(_EP_SK_DREADNOVA, 'skillSpecialAnimationName', '')   # cast on default clip (Epiales01 has no 'Nova' clip)
+    db._modified.add(_EP_SK_DREADNOVA)
+    _BOSS_KIT_CLONES.append((_EP_SK_NOVA_DONOR, _EP_SK_DREADNOVA))
+
     # ── THE NIGHTMARE-LORD (single form; the boss_conversionimmunity donor passive
     #    at skillName17 carries fear/confusion/convert/taunt immunity for free). ──
     db.clone_record(_EP_DONOR, _EP_BOSS)
@@ -15770,21 +16083,22 @@ def _create_dreadhalls_uberboss(db, tags):
     sf(M, 'charLevel', list(_EP_BAND))
     sf(M, 'characterLife', [15000.0, 20000.0, 27000.0])
     sf(M, 'characterRunSpeed', 1.35)                        # the relentless hunter
-    sf(M, 'scale', 2.2); sf(M, 'actorHeight', 2.0)
+    sf(M, 'scale', 2.7); sf(M, 'actorHeight', 2.4)          # b42: BIGGER (was 2.2); headroom = Will's in-game check (Dread Halls vault)
     sf(M, 'defensiveLife', 80.0); sf(M, 'defensivePierce', 45.0)
     sf(M, 'defensivePhysical', 30.0); sf(M, 'defensiveSleep', 40.0); sf(M, 'defensiveStun', 40.0)
     sf(M, 'initialSkillName', _EP_DREADSHROUD)              # spawns wreathed
-    # ADD the fear spine + chase + death nova in free slots (keep the donor's
-    # boss_conversionimmunity + hero_scaling + resist passives verbatim).
-    for path, lvl in ((_EP_SK_IXION, [3, 4, 5]), (_EP_SK_DREAMSTORM, [3, 4, 5]),
+    # ADD his DAMAGE nova (primary) + fear spine + chase + death nova in free slots
+    # (keep the donor's boss_conversionimmunity + hero_scaling + resist passives).
+    for path, lvl in ((_EP_SK_DREADNOVA, [12, 16, 20]), (_EP_SK_IXION, [3, 4, 5]),
+                      (_EP_SK_DREAMSTORM, [3, 4, 5]),
                       (_EP_SK_VISIONOFDEATH, [4, 6, 8]), (_EP_SK_TAKEDOWN, [3, 4, 5]),
                       (_EP_SK_ONDEATH, [3, 4, 5]), (_SVC_SK_GLOBPROP_L, [1, 2, 3])):
         _svc_add_skill(db, M, path, lvl)
-    sf(M, 'specialAttackSkillName', _EP_SK_IXION)           # Dread Roar, often
-    sf(M, 'specialAttackChance', 45.0)
-    sf(M, 'specialAttack2SkillName', _EP_SK_DREAMSTORM)     # nightmare nova
-    sf(M, 'specialAttack2Chance', 25.0)
-    sf(M, 'specialAttack3SkillName', _EP_SK_VISIONOFDEATH)  # second dread pulse
+    sf(M, 'specialAttackSkillName', _EP_SK_DREADNOVA)       # b42: HIS dread nova - REAL AOE damage, cast often
+    sf(M, 'specialAttackChance', 50.0)
+    sf(M, 'specialAttack2SkillName', _EP_SK_IXION)          # Dread Roar (fear)
+    sf(M, 'specialAttack2Chance', 40.0)
+    sf(M, 'specialAttack3SkillName', _EP_SK_VISIONOFDEATH)  # dread pulse (fear)
     sf(M, 'specialAttack3Chance', 40.0)
     db._modified.add(M)
 
@@ -15801,7 +16115,11 @@ def _create_dreadhalls_uberboss(db, tags):
     _svc_boss_pool(db, _EP_POOL, _EP_BOSS, _EP_ESCORT,
                    'Ephialtes (main) + 2 nightmare champion escorts')
     _ep_hoard = _svc_build_dedicated_hoard(db, 'ephialtes', 'tagSVCEphialtesHoard') or _SVC_HOARD_POOL
-    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2, hoard_pools=_ep_hoard)
+    # b42 r2 (Will "replace the current chest with three large majestic chests"): the boss
+    # no longer CARRIES its bespoke chest; the region-tuned hoard is delivered as 3 world-
+    # placed majestic chests near the encounter (build_section_surgery INJECT_SPECS).
+    _svc_boss_proxy(db, _EP_PROXY, _EP_POOL, _EP_LIMIT, _EP_MESH, 2.2)
+    _svc_build_world_chest_proxy(db, 'ephialtes', _ep_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _EP_PROXY, 'pool': _EP_POOL, 'main_monster': _EP_BOSS,
          'name': 'q_ephialtes_lone (Ephialtes + 2 nightmare escorts)'})
@@ -15873,10 +16191,11 @@ def _create_dreadhalls_uberboss(db, tags):
         'down. Every wound you open blooms into a waking terror, and your enemies '
         'run. But the Waking Dread does not sleep, and now neither do you.')
     print("  C4 Ephialtes: single-form [58,78,97]/[15/20/27k], epiales_overlord "
-          "skin, scale 2.2, Dread Shroud, fear spine (ixion_cry + Dreamstorm + "
-          "Vision of Death on Skill_AttackRadius) + takedown chase + death nova + "
-          "pool/proxy/limit + dedicated hoard + Mask of the Waking Dread + S1 fear-nova soul "
-          "(mana-regen downside) + yard; tags set.")
+          "skin, scale 2.7 (b42 BIGGER), Dread Shroud, HIS Dread Nova (b42: real "
+          "AOE life+phys ring @50% special, lvl [12/16/20], special-anim cleared -> "
+          "castable) + fear spine (ixion_cry + Vision of Death) + takedown chase + "
+          "death nova + pool/proxy/limit + 3 world majestic chests (no boss-carried "
+          "chest) + Mask of the Waking Dread + S1 fear-nova soul + yard; tags set.")
 
 
 # ── C5: EREBAN HEARTSTONE relic (mirror _create_emberscale_charm) ────────────
@@ -16923,6 +17242,21 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # N/E/L so he is never scaled below his authored level. Guards BOTH placements
     # (this proxy record is injected at the TESTHUB HV01 mouth AND the canonical
     # secret area). A silent no-spawn boss can never ship past this.
+    # DEDUP (2026-07-13): first lock the spawn counts (neutralize the inherited
+    # proxyPoolEquation on every authored pool) so the literal spawn/champion
+    # counts hold at runtime, THEN the gate below fails loud if any pool still
+    # carries the equation (the "two bosses side by side" root cause).
+    _svc_lock_authored_pool_counts(db)
+    # b40 INTEGRATION (cross-wave rule 2): also neutralize the four apex-boss pools that
+    # b41-map-pass places on the canonical map (their pools live in the registry modules,
+    # not _MOD_AUTHORED_SPAWN_PROXIES, so the monolith lock above cannot reach them).
+    _svc_neutralize_b41_placed_pools(db)
+    # CHEST STANDARDIZATION (2026-07-13): region-tune every placed-uber bespoke hoard
+    # chest to the base game's Cyclops-grade region loot; then (b42 round-2) VERIFY the
+    # 4 fixed ubers no longer carry a boss-accessory chest and each has a world-chest
+    # proxy the map lane places 3x (the "3 majestic chests" replacement).
+    _svc_standardize_boss_chests(db)
+    _svc_verify_world_chests(db)
     _verify_mod_spawn_proxies_eligible(db)
 
     # ── Uber (DRX supra) craftable dead-reference repair ──────────────────────

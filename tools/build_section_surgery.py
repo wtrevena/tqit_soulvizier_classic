@@ -1160,6 +1160,45 @@ B41_SPECS = {
 }  # WIRED (b41): merged into INJECT_SPECS collision-guarded below.
 
 
+# ── UBER MAJESTIC CHESTS (b42 round-2, Will 2026-07-13: "replace the current chest
+# with three large majestic chests") ────────────────────────────────────────────────
+# The 4 fixed apex ubers no longer CARRY a bespoke boss-accessory chest (apply_svc_
+# patches _svc_build_world_chest_proxy cleared their accessory + built a standalone
+# container-proxy per boss = the proven "esti" chest pattern: a Class=Proxy 0x05 world
+# entity whose accessory1/Epic1/Legendary1 spawn the difficulty-appropriate region-
+# tuned FixedItemContainer). Placing that proxy 3x here = exactly 3 majestic chests at
+# each encounter. Offsets = a r=2.6u triangle around the boss spawn (A +x, B/-x+z,
+# C/-x-z), ALL surveyed on the deployed map at clr 100% in every tileset, comp#1 (the
+# main walkable component), d<=0.14u - see scratchpad/b42/survey_chests.py. Chest proxy
+# placementExtents=1.0, so a 2.6u triangle inside the boss's proven-clear 3.5u ring is
+# on-mesh with margin; the 3 spots sit 3.6-4.8u apart (chest mesh ~1.4u -> no overlap).
+# flags=0, identity rot, no 0x14 (the standard prop byte-shape; matches the esti chest
+# + the widow treasure chest). Y = the boss's own floor Y (flat arena).
+SVC_EPHIALTES_CHEST_DBR = b'records\\drxmap\\proxy\\svc_ephialtes_chest.dbr'
+SVC_TANTALUS_CHEST_DBR = b'records\\drxmap\\proxy\\svc_tantalus_chest.dbr'
+SVC_CHARON_CHEST_DBR = b'records\\drxmap\\proxy\\svc_charon_chest.dbr'
+SVC_DORUS_CHEST_DBR = b'records\\drxmap\\proxy\\svc_dorus_chest.dbr'
+
+
+def _chest_triangle(dbr, cx, cy, cz):
+    """3 chest placements in a r=2.6u triangle around a boss spawn (cx,cy,cz). Each
+    entry = (dbr, x, y, z) with identity rot / flags=0 / no 0x14 (default prop shape)."""
+    return [
+        (dbr, round(cx + 2.6, 2), cy, round(cz + 0.0, 2)),   # A: +x
+        (dbr, round(cx - 1.8, 2), cy, round(cz + 1.8, 2)),   # B: -x +z
+        (dbr, round(cx - 1.8, 2), cy, round(cz - 1.8, 2)),   # C: -x -z
+    ]
+
+
+# host key -> 3 chest placements (boss centres from UBERBOSS_SPECS above).
+UBER_CHEST_SPECS = {
+    DREAD_HOST_KEY:       _chest_triangle(SVC_EPHIALTES_CHEST_DBR, 15.9, 3.2, 34.7),
+    TANTALUS_HOST_KEY:    _chest_triangle(SVC_TANTALUS_CHEST_DBR, 34.0, -13.4, 106.0),  # b45 RELOCATE: den LOCAL (34,-13.4,106); chests ride the moved boss
+    GOLDENBOUGH_HOST_KEY: _chest_triangle(SVC_CHARON_CHEST_DBR, 187.9, -7.0, 46.9),
+    DORUS_HOST_KEY:       _chest_triangle(SVC_DORUS_CHEST_DBR, 83.0, 1.0, 51.0),   # b47 RELOCATE: Kroisos at Tomb03 LOCAL (83,1,51); chests ride the moved boss
+}
+
+
 def rewrite_0x06_descriptors(blob, specs, level_name=''):
     """Rewrite existing 60-byte portal descriptors at the tail of a level's 0x06.
 
@@ -2133,6 +2172,15 @@ for _ub_key, _ub_specs in UBERBOSS_SPECS.items():
 for _b41_key, _b41_specs in B41_SPECS.items():
     assert _b41_key not in INJECT_SPECS, f'b41 host key collision with INJECT_SPECS: {_b41_key}'
     INJECT_SPECS[_b41_key] = list(_b41_specs)
+
+# UBER MAJESTIC CHESTS (b42 round-2): APPEND the 3 world-placed majestic chests per
+# fixed uber to that boss's host-level list (the boss was just placed above, so this
+# host key ALREADY exists -> append, never clobber). Order-preserving: the boss keeps
+# index 0, the 3 chests land after it. Each chest host key MUST already be a boss host
+# (UBER_CHEST_SPECS keys are the same *_HOST_KEY constants), asserted below.
+for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
+    assert _uc_key in INJECT_SPECS, f'b42 uber-chest host {_uc_key} has no boss placement to append to'
+    INJECT_SPECS[_uc_key] = list(INJECT_SPECS[_uc_key]) + list(_uc_specs)
 
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
 # The merge already places these records; move_0x05_instances rewrites ONLY their 12
