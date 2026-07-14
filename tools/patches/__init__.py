@@ -88,6 +88,10 @@ REGISTRY = [
                                     # finalization-phase interim call) so it wins any collision
     'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
                             # gameengine (SV's pre-AE record lacks them; touches only gameengine)
+    'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
+                            # auras/passives + Helepolis displaced turret). Runs LAST among content
+                            # modules so it sees the FINAL boss records from every creating module
+                            # (four_generals/diadochi/polis_vault/neferkha/toxeus_suite + monolith).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
