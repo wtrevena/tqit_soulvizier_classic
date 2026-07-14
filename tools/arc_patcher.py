@@ -20,11 +20,71 @@ import struct
 import zlib
 import sys
 import time
+import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HEADER_SIZE = 28
 DATA_START = 0x800
 PART_SIZE = 262144  # 256KB
+
+# PERF (build-speed): packing world01.map (~2 GB -> 7993 x 256KB parts) at zlib
+# level 6 is the single dominant op of the map merge (~59 s serial). The parts
+# are independent and zlib.compress RELEASES THE GIL, so a ThreadPool over the
+# 256KB chunks parallelizes on multiple cores with BYTE-IDENTICAL output (same
+# fixed 256KB boundaries, same deterministic zlib L6, results reassembled in
+# input order). Threads (not processes) avoid Windows spawn + multi-GB IPC/pickle
+# cost entirely. Below the threshold (Text.arc/Quests.arc are tiny) the serial
+# path runs, so nothing but the big map changes behaviour. Env control:
+#   SVC_ARC_PARALLEL unset/auto -> parallel above threshold, min(cpu,8) workers
+#   SVC_ARC_PARALLEL=0/off      -> force serial (byte-identical safe fallback)
+#   SVC_ARC_PARALLEL=<N>        -> exactly N worker threads
+_PACK_PARALLEL_MIN_PARTS = 64   # ~16 MB; below this the pool overhead is not worth it
+_PACK_MAX_WORKERS = 8
+
+
+def _compress_part(chunk: bytes) -> bytes:
+    """Compress ONE ARC part exactly as the serial packer always has: zlib
+    level 6, but keep the raw chunk when compression would not shrink it. This
+    is the atom the ThreadPool maps over; it must stay byte-for-byte identical
+    to the inline logic it replaced."""
+    compressed = zlib.compress(chunk, 6)
+    if len(compressed) >= len(chunk):
+        compressed = chunk
+    return compressed
+
+
+def _resolve_pack_workers(n_parts: int) -> int:
+    """Decide the worker-thread count for packing `n_parts` parts. Returns 1
+    (serial) unless parallelism is both enabled and worth it."""
+    raw = os.environ.get('SVC_ARC_PARALLEL')
+    if raw is not None:
+        raw = raw.strip().lower()
+        if raw in ('', '0', 'off', 'false', 'no'):
+            return 1
+        if raw.isdigit():
+            return max(1, min(int(raw), n_parts))
+        # unrecognized value -> fall through to auto (never silently wrong bytes;
+        # parallel is byte-identical to serial regardless of worker count)
+    if n_parts < _PACK_PARALLEL_MIN_PARTS:
+        return 1
+    return max(1, min(os.cpu_count() or 1, _PACK_MAX_WORKERS, n_parts))
+
+
+def _pack_parts(data: bytes) -> list:
+    """Split `data` into fixed 256KB parts and compress each into a FilePart,
+    IN ORDER. Byte-identical whether run serial or thread-parallel (see the
+    module note above). Shared by set_file and add_file so both get the win and
+    there is a single packing code path."""
+    chunks = [data[pos:pos + PART_SIZE] for pos in range(0, len(data), PART_SIZE)]
+    workers = _resolve_pack_workers(len(chunks))
+    if workers > 1:
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            compressed = list(ex.map(_compress_part, chunks))  # order preserved
+    else:
+        compressed = [_compress_part(c) for c in chunks]
+    return [FilePart(0, len(c), len(chunk), c)
+            for chunk, c in zip(chunks, compressed)]
 
 # Fixed Windows FILETIME written into new ARC file-records (@20/@24). A constant,
 # not time.time(), so add_file output is byte-reproducible (build29 reproducibility
@@ -162,17 +222,9 @@ class ArcArchive:
                 struct.pack_into('<I', entry.raw_record, 16,
                                  zlib.adler32(data) & 0xFFFFFFFF)
 
-                # Recompress into parts
-                entry.parts = []
-                pos = 0
-                while pos < len(data):
-                    chunk = data[pos:pos + PART_SIZE]
-                    compressed = zlib.compress(chunk, 6)
-                    if len(compressed) >= len(chunk):
-                        compressed = chunk
-                    entry.parts.append(FilePart(
-                        0, len(compressed), len(chunk), compressed))
-                    pos += PART_SIZE
+                # Recompress into parts (thread-parallel above threshold; the
+                # serial and parallel paths are byte-identical - see _pack_parts)
+                entry.parts = _pack_parts(data)
 
                 entry.decomp_size = len(data)
                 entry.comp_size = sum(p.comp_size for p in entry.parts)
@@ -221,15 +273,7 @@ class ArcArchive:
         entry.entry_type = 3
         entry.modified_data = data
 
-        parts = []
-        pos = 0
-        while pos < len(data):
-            chunk = data[pos:pos + PART_SIZE]
-            compressed = zlib.compress(chunk, 6)
-            if len(compressed) >= len(chunk):
-                compressed = chunk
-            parts.append(FilePart(0, len(compressed), len(chunk), compressed))
-            pos += PART_SIZE
+        parts = _pack_parts(data)
         entry.parts = parts
         entry.decomp_size = len(data)
         entry.comp_size = sum(p.comp_size for p in parts)

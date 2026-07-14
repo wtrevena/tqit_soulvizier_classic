@@ -1698,9 +1698,16 @@ def main():
 
     # Package into ARC
     print('\nPackaging into ARC...')
-    arc = ArcArchive.from_file(svaera_path)
-    arc.set_file('world/world01.map', result)
-    arc.write(out_arc_path)
+    # PERF (build-speed): reuse the SVAERA base ARC already loaded at the top of
+    # main() (ae_arc, line ~814) instead of re-reading + re-parsing the 688 MB
+    # file a SECOND time. ae_arc was only decompressed (read-only) to get the
+    # base world01.map, so its entries are pristine; replacing world01.map and
+    # writing is byte-identical to a fresh ArcArchive.from_file(svaera_path), and
+    # it drops one 688 MB read + one full in-memory archive copy (memory-peak
+    # win). Proven byte-identical (reuse == fresh-load) in
+    # docs/reports/build_speed_probes/verify_map_pack.py.
+    ae_arc.set_file('world/world01.map', result)
+    ae_arc.write(out_arc_path)
     print(f'  Written: {out_arc_path.stat().st_size / (1024**2):.1f} MB')
 
     del ae_data, sv_data, result
