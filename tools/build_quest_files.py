@@ -1823,7 +1823,7 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_helos_trav_uber.dbr',       (-7793,   1, -3793), 'tagSVCHelosToUber'),        # Knossos->Uber DOOR: Minotaur secret door (maze03), amid the labyrinth
     (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-433,    0, -3602), 'tagSVCTestHubToBossArena'),
     (_HHUB + r'\svc_helos_trav_warband.dbr',    (5699,    1,  3315), 'tagSVCHelosToWarband'),     # blood-cave connection chamber, at the regular demon pack (~35u off the Enslaver horde)
-    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (330,     1, -8380), 'tagSVCHelosToDorus'),       # Medea tomb ENTRANCE (cryptentrance), amid the drowned court (~82u off Dorus)
+    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (428,     1, -8113), 'tagSVCHelosToDorus'),       # b47 RELOCATE: Tomb03 (Tomb of the Queens) landing ~8u NW of Kroisos (436,-8117); was tomb01 entrance
     (_HHUB + r'\svc_helos_trav_tantalus.dbr',   (-346,  -12, -10131),'tagSVCHelosToTantalus'),    # Styx swamp stairs ENTRANCE, amid anouran (~36u off Tantalus)
     (_HHUB + r'\svc_helos_trav_charon.dbr',     (-480,  -12, -9591), 'tagSVCHelosToCharon'),      # Styx river Hades-CITY (boatman + storyteller + rift shrine), then walk E to the Golden Bough
     (_HHUB + r'\svc_helos_trav_mnemophage.dbr', (169,   -10, -11418),'tagSVCHelosToMnemophage'),  # Mnemosyne cave stairs-up ENTRANCE (~20u off the boss glyph ring)

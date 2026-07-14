@@ -930,12 +930,12 @@ BROODNEST_SPECS = {
 # ── BUILD36 UBER/SUPER BOSS PLACEMENTS (CANONICAL, 2026-07-11) ─────────────────
 # Five new hand-designed apex bosses, each placed by ONE `q_*_lone` proxy in a
 # native base-game AE level. svaera_plus_portals.py's AE-inject loop dispatches by
-# the host's ACTUAL blob version: 4 hosts are v0x0f/v0x11 (SwampBorder/RiverEdge/
-# Mnemosyne01/StoneCity) -> inject_into_0x05_v11 (base-72), and Tomb01 (M4 Dorus) is
-# v0x0e -> the base-56 inject_into_sv_only_blob branch. BOTH branches are proven by
-# the shipped precedents on the same versions: the Obsidian roulette + Broodmother
-# nest inject into tombobs01/02 (also v0x0e, base-56), and maze03 (v0x0f) uses the
-# base-72 path. So each of the 5 hosts routes through an already-proven injector.
+# the host's ACTUAL blob version. After b47 all 5 hosts are v0x0f/v0x11 (SwampBorder/
+# RiverEdge/Mnemosyne01/StoneCity + Tomb03 for M4) -> inject_into_0x05_v11 (base-72).
+# (M4 was Tomb01 v0x0e/base-56 until b47 RELOCATED Kroisos to Tomb03, v0x11/base-72.)
+# BOTH injector branches remain proven by the shipped precedents on the same versions:
+# the Obsidian roulette + Broodmother nest inject into tombobs01/02 (v0x0e, base-56),
+# and maze03 (v0x0f) uses the base-72 path. So each host routes through a proven injector.
 # Each proxy is the proven `q_leinth_lone` byte-shape: flags=0, no 0x14, exemplar
 # rotation. Coords are LEVEL-LOCAL (world - grid-corner), surveyed on each host
 # level's own 0x0b (all 3 tilesets) by the design specs and re-verified on the
@@ -950,8 +950,14 @@ BROODNEST_SPECS = {
 # delta-vet cross-checks placement<->record-path parity before any deploy.
 # Specs: scratchpad/specs/{propontis,tantalus,goldenbough,mnemosyne,dreadhalls}_uberboss_spec.md
 #
-# M4 DORUS THE DROWNED KING  - Propontis tomb, Medea_TempleUG_Tomb01 [784], corner (260,0,-8522)
-DORUS_HOST_KEY = 'xpack/levels/area02_medea/undergrounds/medea_templeug_tomb01.lvl'
+# M4 KROISOS THE COIN-DROWNED (b47 rename+relocate, Will 2026-07-13) - was displayed as
+# "Dorus, the Drowned King" and placed in Medea_TempleUG_Tomb01 (the Great Tomb of Dorus),
+# standing beside the base-game QUEST King Dorus (a kill target of xSQ06) = two "King Dorus"
+# nameplates side by side. RELOCATED to the sibling Tomb of the Queens (Medea_TempleUG_Tomb03,
+# v0x11, corner (353,0,-8168)): a lost-soul court + golden treasure vault with NO named royal
+# to collide with (survey: docs/reports/b47_dorus.md). The internal record id q_dorus_lone
+# (-> um_dorus_99) is unchanged (never player-visible). No quest record is touched.
+DORUS_HOST_KEY = 'xpack/levels/area02_medea/undergrounds/medea_templeug_tomb03.lvl'
 Q_DORUS_LONE_DBR = b'records\\drxmap\\proxy\\q_dorus_lone.dbr'
 # M5 TANTALUS THE INSATIABLE - Den of Tantalus, Styx_SwampBorder_01 [755], corner (-396,0,-10209), v0x0f
 TANTALUS_HOST_KEY = 'xpack/levels/area04_styx/styx_swampborder_01.lvl'
@@ -978,11 +984,14 @@ UBERBOSS_SPECS = {
     # ON-mesh in the main component at clr 100% all 3 tilesets. Reverting to the spec coords
     # restores spec fidelity + clean map<->record convergence parity.
     #
-    # M4 Dorus: PRIMARY hall-toward-vault. spec local (52.0,1.2,60.0) = world (312,1.2,-8462).
-    # Corrected-frame survey: d=0.14u, clr@4.0 100%/100%/100% (N/E/L), comp#1. (R3 shipped the
-    # bogus +4.2u nudge (49,63); reverted.)
+    # M4 Kroisos the Coin-Drowned (b47 RELOCATE): deep SOUTH treasure vault of Tomb03,
+    # guarding the golden chests, ~128u from the north crypt entrance (a proper "boss at the
+    # far end" descent). LOCAL (83.0,1.0,51.0) = WORLD (436,1.0,-8117). Surveyed on the
+    # canonical map (Levels_merged 60a62880, survey_uberboss_spots.py --base 72): d=0.14u,
+    # clr@4.0 100%/100%/100% (N/E/L), clr@6.0 100% all sets, comp#1/259143; nearest floor
+    # instance ~11u, nearest golden chest ~18u -> room for boss + 2 champs + b42's 3 chests.
     DORUS_HOST_KEY: [
-        (Q_DORUS_LONE_DBR, 52.0, 1.2, 60.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_DORUS_LONE_DBR, 83.0, 1.0, 51.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
     # M5 Tantalus: den-INTERIOR spot ~10u from the pj_denoftantalus POI marker.
     # b45 RE-PLACEMENT (Will 2026-07-13 ground truth: "the den of tantalus monsters did not
@@ -2349,7 +2358,7 @@ HELOS_HUB_PLAZA_SPECS = [
 HELOS_HUB_RETURN_SPECS = [
     # b39 HUB v2: the 6 existing returns MOVED to the new approach-point landings (a few u off each,
     # so the player sees the return NPC on arrival). All surveyed on-mesh comp#1 2026-07-13.
-    (DORUS_HOST_KEY,       (AREA_RETURN_DORUS_DBR,      73.0,   1.0, 139.0)),   # ~3.6u off (70,142) tomb-entrance landing
+    (DORUS_HOST_KEY,       (AREA_RETURN_DORUS_DBR,      72.0,   1.0,  57.0)),   # b47 RELOCATE: Tomb03, ~11.7u from Kroisos (83,51); on-mesh d0.14/clr100%/comp#1 (was tomb01 73,1,139)
     (TANTALUS_HOST_KEY,    (AREA_RETURN_TANTALUS_DBR,   52.0, -12.0,  80.0)),   # ~2.8u off (50,78) swamp-stairs landing
     (GOLDENBOUGH_HOST_KEY, (AREA_RETURN_CHARON_DBR,     46.0, -12.0, 104.0)),   # ~2.8u off (44,106) Hades-city landing
     (MNEMOPHAGE_HOST_KEY,  (AREA_RETURN_MNEMOPHAGE_DBR, 44.0,   3.0,  93.0)),   # ~2.8u off (42,91) stairs-up landing
