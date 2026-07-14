@@ -10961,6 +10961,27 @@ _TESTHUB_NPC_DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegy
 # .md) emits a trigger per record + places each once.
 TESTHUB_MASTER_HELOS_NPC = r'records\quests\svc_testhub_master_helos.dbr'
 TESTHUB_MASTER_CAVE_NPC = r'records\quests\svc_testhub_master_cave.dbr'
+# ── b48 SPARTA-MUTE round 3 (WARDEN-SPLIT of svc_testhub_return) ──────────────
+# svc_testhub_return was PLACED in 5 levels (Garden/Secret/Uber/Sparta canonical +
+# Boss Arena TESTHUB), but an Action_BoatDialog binds its menu to the ONE entity the
+# record resolves to, so only the first-bound return NPC responded and the other 4
+# spawned MUTE-but-visible (the documented warden law: one record == one live
+# placement; the exact class of the A6 master double-placement). Split into 5 DISTINCT
+# per-area records, each placed EXACTLY ONCE. Every split record byte-mirrors
+# svc_testhub_return (same Nostos identity + 2-port Helos/Blood-Cave menu, all reused
+# tags -> zero new Text), so in-area behaviour is preserved and every return now fires.
+# Placement: build_section_surgery (Garden/Secret/Uber/Sparta = canonical INJECT_SPECS,
+# replacing SVC_RETURN_NPC_DBR; Boss Arena = TESTHUB build_hub_extra_specs). Triggers:
+# build_quest_files _add_testhub_portal_travel (one 2-port trigger per record). The
+# original svc_testhub_return record is KEPT in the arz but is now retired (unplaced +
+# untriggered = inert). Gate: tools/debug/gate_traveler_responds.py (G-WARDEN).
+TESTHUB_AREA_RETURN_NPCS = [
+    r'records\quests\svc_testhub_return_garden.dbr',
+    r'records\quests\svc_testhub_return_secret.dbr',
+    r'records\quests\svc_testhub_return_uber.dbr',
+    r'records\quests\svc_testhub_return_sparta.dbr',
+    r'records\quests\svc_testhub_return_bossarena.dbr',
+]
 
 
 def _create_testhub_portal_npcs(db, tags):
@@ -11019,6 +11040,24 @@ def _create_testhub_portal_npcs(db, tags):
     print("  Portal rig: svc_testhub_master + svc_testhub_return + A6 split masters "
           "(svc_testhub_master_helos/_cave) cloned from the Knossos boatman; name/"
           "chat + 3 new menu tags set (Garden/Secret/Uber/Sparta reuse Almyros)")
+    # ── b48 round 3 (WARDEN-SPLIT): 5 distinct per-area return records replacing the
+    #    single svc_testhub_return (placed x5 -> 4 mute). Each mirrors svc_testhub_return
+    #    EXACTLY (Nostos identity + 2-port menu, reused tags -> zero new Text); only the
+    #    record path differs so the warden law (one record == one live placement) holds and
+    #    ALL five returns fire. Placement + triggers are per-area (see the constant note). ──
+    for path in TESTHUB_AREA_RETURN_NPCS:
+        if db.has_record(path):
+            raise SystemExit(f"Portal rig warden-split: {path} already exists")
+        db.clone_record(donor, path)
+        db.set_field(path, 'description', 'tagSVCNpcTestHubReturn')
+        db.set_field(path, 'FileDescription',
+                     'SVC portal rig: per-area return NPC (warden-split of svc_testhub_return, '
+                     'Model C boat-dialog, Helos + Blood Cave)')
+        db.set_field(path, 'messageDialogTag', 'tagSVCTestHubReturnChat')
+        db._modified.add(path)
+    print(f"  Portal rig warden-split: {len(TESTHUB_AREA_RETURN_NPCS)} per-area return records "
+          "(svc_testhub_return_{garden,secret,uber,sparta,bossarena}) cloned from the Knossos "
+          "boatman; Nostos identity + 2-port menu reused (zero new Text)")
 
 
 # ── HELOS TRAVELER HUB (2026-07-13, Will: "put teleport guys in helos, one person each") ─────

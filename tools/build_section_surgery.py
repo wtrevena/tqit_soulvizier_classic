@@ -1489,6 +1489,18 @@ def _hub_pair_0x14(dest_key):
 # talk-to-travel way back - NO map/arz/Quests rebuild coupling beyond the already-shipped records.
 # (Same record path as SVC_TESTHUB_RETURN_DBR, defined for the TESTHUB rig further below.)
 SVC_RETURN_NPC_DBR = b'records\\quests\\svc_testhub_return.dbr'
+# b48 SPARTA-MUTE round 3 (WARDEN-SPLIT of svc_testhub_return): the single SVC_RETURN_NPC_DBR was
+# placed in 5 levels, so a boat-dialog record bound its menu to ONE entity and 4 of the 5 returns
+# went MUTE (documented warden law). Replaced by these 5 DISTINCT per-area records, each placed
+# EXACTLY ONCE. Garden/Secret/Uber/Sparta = CANONICAL (base INJECT_SPECS below); Boss Arena =
+# TESTHUB (build_hub_extra_specs). Each byte-mirrors svc_testhub_return (Nostos identity + 2-port
+# Helos/Blood-Cave menu). Records: apply_svc_patches TESTHUB_AREA_RETURN_NPCS; triggers:
+# build_quest_files _add_testhub_portal_travel. Gate: tools/debug/gate_traveler_responds (G-WARDEN).
+SVC_RETURN_GARDEN_DBR    = b'records\\quests\\svc_testhub_return_garden.dbr'
+SVC_RETURN_SECRET_DBR    = b'records\\quests\\svc_testhub_return_secret.dbr'
+SVC_RETURN_UBER_DBR      = b'records\\quests\\svc_testhub_return_uber.dbr'
+SVC_RETURN_SPARTA_DBR    = b'records\\quests\\svc_testhub_return_sparta.dbr'
+SVC_RETURN_BOSSARENA_DBR = b'records\\quests\\svc_testhub_return_bossarena.dbr'
 
 # Injection specs: level name key -> list of specs (see INJECTION-SPEC FORMAT above).
 # DelphiLowlands04: merchant tent at (12.88, 9.98, 2.52), quest NPC at (14.03, 10.16, 6.15)
@@ -1761,7 +1773,7 @@ INJECT_SPECS = {
     # activates the existing dialog (no arz/Quests rebuild). Coord = the build34 TESTHUB survey
     # spot 3u E of the Helos-master boat-dialog landing (on-mesh, comp 0, clr 100%).
     'xpack/levels/secret_place/darkforestenter.lvl': [
-        (SVC_RETURN_NPC_DBR, 27.0, 1.0, 30.0),
+        (SVC_RETURN_SECRET_DBR, 27.0, 1.0, 30.0),   # b48 r3 warden-split (was SVC_RETURN_NPC_DBR)
     ],
     # ===== A1 GARDEN OF MERCHANTS dest (GardenofMerchants, v0x0e SV-only): walk-through portals
     # REMOVED, NPC RETURN promoted to canonical (P0, Will 2026-07-12). ALL four Garden-side
@@ -1774,7 +1786,7 @@ INJECT_SPECS = {
     # teleportshrine_gom rift (native, untouched) is the second way back. Coord = the build34
     # TESTHUB survey spot (on-mesh, caravan_rhodes comp #1, clr 100%).
     'levels/world/olympus/gardenofmerchants.lvl': [
-        (SVC_RETURN_NPC_DBR, 133.0, -39.0, 73.0),
+        (SVC_RETURN_GARDEN_DBR, 133.0, -39.0, 73.0),   # b48 r3 warden-split (was SVC_RETURN_NPC_DBR)
     ],
     # ===== UBER DUNGEON (crypt_floor1, v0x0e SV-only): NPC RETURN promoted to canonical (P0,
     # Will 2026-07-12). Replaces the disabled maze03<->crypt walk-through door + its APPEND_0X06
@@ -1782,7 +1794,7 @@ INJECT_SPECS = {
     # (-2438,10,-2450). SV-only v0e -> inject_into_sv_only_blob (same path as Vashkarr). On-mesh
     # (build34 TESTHUB survey, single comp, clr 96%). flags=0, no 0x14.
     'levels/world/uberdungeon/crypt_floor1.lvl': [
-        (SVC_RETURN_NPC_DBR, 140.0, 10.0, 229.0),
+        (SVC_RETURN_UBER_DBR, 140.0, 10.0, 229.0),   # b48 r3 warden-split (was SVC_RETURN_NPC_DBR)
     ],
     # ===== SPARTA CRYPT (spartacryptlevel2, v0x0e SV-only): NPC RETURN promoted to canonical (P0,
     # Will 2026-07-12). Replaces the disabled catacube<->SC2 walk-through door + its REWRITE_0X06
@@ -1790,7 +1802,7 @@ INJECT_SPECS = {
     # (-5602,-2,-1409). SV-only v0e -> inject_into_sv_only_blob. On-mesh (build34 TESTHUB survey,
     # comp 0, clr 100%). flags=0, no 0x14.
     'levels/world/greece/minidungeons/spartacryptlevel2.lvl': [
-        (SVC_RETURN_NPC_DBR, 45.0, -1.6, 42.0),
+        (SVC_RETURN_SPARTA_DBR, 45.0, -1.6, 42.0),   # b48 r3 warden-split (was SVC_RETURN_NPC_DBR)
     ],
     # ===== HELOS (startingfarmland06d, v0x11 shared): THE LIVE STEAM P0 (Will 2026-07-12) =====
     # "you cant walk south in helios since you get teleported right to the garden of merchants
@@ -2244,15 +2256,16 @@ def build_hub_extra_specs():
         # accepted CHECK at 93% (obstructed west edge, still walkable). See HELOS_HUB_PLAZA_SPECS for
         # the per-spot clearances + the before/after coords.
         HELOS_HOST_KEY: list(HELOS_HUB_PLAZA_SPECS),
-        # Blood-cave mouth (random09a SV swap blob): the spec's cave-mouth approach band; world
-        # (6011,19,3288); comp 0 (same as the cave-mouth entry corridor AND the return landing at
-        # (6018,19,3293)); 8.6u from that return landing so the repeated test loop barely walks;
-        # clr@3.0=100%. Yard is in HV01 (a different level) -> the >=40u-from-yard rule is moot.
-        # APPLIED VIA THE SWAP PATH (see merge_hub_into_inject_specs + svaera_plus_portals.py).
-        # Points at the split ..._cave record (coords unchanged).
-        R09_LVL_KEY: [
-            (SVC_TESTHUB_MASTER_CAVE_DBR, 32.0, 1.0, 45.0),
-        ],
+        # Blood-cave mouth (random09a SV swap blob): svc_testhub_master_cave was placed here but had
+        # NO boat-dialog trigger targeting it (its 7-port menu was never wired; the round-1 change
+        # dropped the separate svc_testhub_master trigger, and the A6 cave master never got its own).
+        # So it was an ORPHAN - a clickable NPC that did NOTHING (gate_traveler_responds G-ORPHAN).
+        # b48 SPARTA-MUTE round 3: RETIRED (placement dropped). The blood-cave-mouth hub was
+        # superseded by the 11 "one person each" Helos-plaza travelers; a mute orphan at the cave
+        # mouth is worse than none (the player uses the warband return traveler / a Town-Portal scroll
+        # to leave). If a cave-mouth hub is wanted later, WIRE svc_testhub_master_cave with its own
+        # boat trigger (it is the sole boat NPC in random09a -> collision-free) - see the patch spec
+        # docs/reports/b48_sparta_mute_fix.md. No R09_LVL_KEY entry -> the swap path injects 0 rig NPCs.
         # -- PORTAL RIG: RETURN NPCs --
         # P0 (Will 2026-07-12): the Garden / Secret Place / Uber / Sparta return NPCs were PROMOTED
         # into the BASE INJECT_SPECS (they became canonical when the walk-through portals were
@@ -2263,8 +2276,11 @@ def build_hub_extra_specs():
         # only the 7-port TESTHUB hub master reaches it).
         # The Boss Arena (boss_arena): 3u E of landing (-433,0,-3602); comp 0; clr@3.0=100%; the
         # landing is ~90u off volume_startolympianarena (DB lane), so this NPC stays well off it.
+        # b48 round 3 (WARDEN-SPLIT): its own distinct record (was the shared SVC_TESTHUB_RETURN_DBR,
+        # placed x5 -> 4 mute); coords unchanged. Boss Arena is the sole TESTHUB-only established
+        # return (Garden/Secret/Uber/Sparta are canonical, in base INJECT_SPECS).
         BOSSARENA_LVL_KEY: [
-            (SVC_TESTHUB_RETURN_DBR, 131.0, 0.0, 40.0),
+            (SVC_RETURN_BOSSARENA_DBR, 131.0, 0.0, 40.0),
         ],
     }
     # Helos-hub area RETURN NPCs (build37): append one distinct return record per new boss/warband
