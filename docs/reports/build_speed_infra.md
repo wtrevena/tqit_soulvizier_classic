@@ -191,3 +191,97 @@ differing byte means the optimization is wrong.
   `uber_soul_tags.txt` identical.
 * Parallel pack: assert the parallel-compressed `Levels.arc` is byte-for-byte the serial output (the probe's
   DIFFERING=0 is the standing proof this holds).
+
+---
+
+# IMPLEMENTATION (round 1) - 2026-07-14, worktree `feat/build-speed-infra`
+
+All three optimizations from the RCA are implemented and EACH is proven byte-identical on COPIES of real
+artifacts (no full build was run - build40 owned the machine). Determinism (`PYTHONHASHSEED=0`), the QUESTS
+256-window, and navmesh byte-identity are untouched by every change. Reproducible harnesses live in
+`docs/reports/build_speed_probes/`.
+
+| # | Change | Files | Default | Byte-proof (md5) | Speedup (measured) | Commit |
+|---|---|---|---|---|---|---|
+| 1 | serializer O(n^2) -> `bytearray` | `arz_patcher.py` | ON (always) | full arz `6631f252...` OLD==NEW | write_arz **83.48s -> 0.31s** (267x) | `9089c15` |
+| 2a | parallel ARC pack (threads) | `arc_patcher.py` | ON above 64 parts | parts digest `a4f574dc...` serial==parallel | 75MB/300 parts **1.82s -> 0.30s = 6.08x** (8 thr); full map ~49s -> ~8s | `6c79e39` |
+| 2b | reuse loaded base ARC | `svaera_plus_portals.py` | ON (always) | arc `d8adb5b7...` reuse==fresh | -1x 688 MB read + one archive copy | `6c79e39` |
+| 3 | DB prefix snapshot cache | `prefix_cache.py`, `build_svc_database.py` | **OFF** (opt-in) | static `a9631b7b...` + CONTINUE `33b9b45b...` cold==warm | ~77 s prefix skipped on a HIT + lower mem peak | `44d69de` |
+
+### 1. Serializer (`arz_patcher.write_arz`, HOTSPOT 1) - SHIPPED, always on
+`st_data` was an immutable-`bytes` accumulator (`st_data += write_lp_string(s)`) over 143k strings = O(n^2);
+now a `bytearray` + `bytes()` at the end. **Proof** (`verify_serializer.py`, run against git-OLD `d8485fe`
+and the worktree-NEW module on `local/DEV_arz_deployed_prev.arz`, 51007 records / 143043 strings): both write
+`md5 6631f25219be1b8f9874c95af68755c7` (55,340,923 B); full `write_arz` **83.476 s -> 0.313 s**. Zero risk,
+universal (every arz write - DB build, deploy-delta, dry-run replays).
+
+### 2. Map pack (HOTSPOT 3) - SHIPPED, byte-identical
+* **Parallel pack:** `set_file`/`add_file` now compress the 256KB parts through `_pack_parts()`, which uses a
+  `ThreadPoolExecutor` above a 64-part threshold. `zlib.compress` **releases the GIL**, so threads give real
+  multi-core parallelism with byte-identical output and NO Windows spawn / multi-GB pickle cost (the reason
+  threads, not processes). `SVC_ARC_PARALLEL` = unset/auto (parallel, `min(cpu,8)` threads) | `0`/off (serial,
+  byte-identical fallback) | `N`. Text.arc/Quests.arc are below threshold -> unchanged serial path. **Proof**
+  (`verify_map_pack.py`, real world01.map data): serial and parallel part-digests both `a4f574dc62b6b9893ab874c9a09ba3be`,
+  75 MB/300 parts 1.822 s -> 0.300 s = 6.08x (8 threads).
+* **Reuse base ARC:** `svaera_plus_portals` reuses `ae_arc` (already loaded + only read at the top of `main()`)
+  for the final `set_file`+`write` instead of a 2nd 688 MB `from_file`. **Proof** (`verify_map_pack.py` TEST B):
+  reuse and fresh-load both write `md5 d8adb5b7cf23ae43bdb3843bd2dbca19`.
+
+### 3. DB prefix snapshot cache (HOTSPOT 2a) - SHIPPED default-OFF, byte-identical-gated
+Caches the assembled prefix state (after `create_uber_souls`, before `apply_all_extended_patches`) keyed by
+every prefix input (see `prefix_cache.py` docstring: hashseed + prefix ENV flags + 5 arz md5s [svaera
+conditional on graft] + whole-`tools/` source fingerprint). The prefix was extracted VERBATIM into
+`_run_prefix()` (a sibling-function move with ZERO reindentation; the moved block's sha was asserted identical
+by the transform). `main()` gained a thin cache boundary. **Default OFF** -> `_run_prefix` runs
+unconditionally -> byte-identical to the pre-cache build; the integrator flips the default ON only after the
+full-build gate is green. **Proofs** (`verify_cache_roundtrip.py`, no full build):
+* static: direct `a9631b7b8b1dd7fdf70d3caa2a48aa56` == restore (IDENTICAL).
+* **CONTINUE-path** (the one a static probe cannot give): restored mid-state + identical further mutation
+  writes `33b9b45bc0a794b4cc3dd04c904f3dee` == the never-pickled db (IDENTICAL).
+* real `store()`/`load()` disk round-trip (atomic write + key verify): db-identical, side-outputs OK.
+* key logic: 8/8 (env flags + input md5 + source fp all move the key; `SVC_RELEASE_DROPS` does NOT; svaera md5
+  matters only when graft on).
+
+The FINAL acceptance gate is `tools/verify_cache_determinism.py` (cold-vs-warm FULL-build md5 + tags + a
+graft-flip negative test); it runs full builds, so the INTEGRATOR runs it on a clean machine (not under
+build40), and on PASS flips the cache default to ON. **Honest hit-rate caveat:** the key includes the churny
+`apply_svc_patches` (via the whole-`tools/` fingerprint - the sound choice absent the module split), so editing
+DB content is a MISS; the cache HITs on prefix-invariant rebuilds and always removes the 4-DB memory
+co-residence on a HIT. Widening the hit set needs the prior-spec module split (S3.6, out of this scope).
+
+### Incremental map blob-injection - DESIGN ONLY (not shipped), and why
+The RCA reframed the task's "incremental map injection": true per-blob incremental injection into a cached
+merged map is byte-identical-PROVEN (RCA `probe_pack`: `recompress(decompress(part)) == part` for all
+7993/7993 parts) but **limited by an offset-shift cascade** - level blobs are variable-length and appended, so
+a size-CHANGING edit (entity injection, the common map wave) shifts every downstream byte -> every downstream
+256KB part boundary moves -> those parts miss a part-cache. It pays off only for size-PRESERVING edits and
+edits near the map's end. Rather than ship a cache that risks a differing byte on the common case, round 1
+ships the **parallel pack** (always byte-identical, always helps: ~49s -> ~8s) + **base-ARC reuse**, which
+capture the same wall-clock (the 59 s recompress was the dominant map-merge op) with zero byte-risk. A
+size-preserving part-cache is documented in the RCA (Hotspot 3 #2) as an optional follow-up after the pack.
+Note (RCA headline): the cited "~15 min map build" is dominated by navmesh generation (a separate ~213 s
+cached pre-step, NOT re-run by the merge) + the bootstrap resource/Text/Quests packaging - orchestration
+levers out of this serializer/pack scope.
+
+### Reproduce (benchmark note)
+All harnesses are read-only vs the repo (scratch outputs only), memory-light, and print their own md5s +
+timings. Run with `PYTHONHASHSEED=0 PYTHONIOENCODING=utf-8`; arz/arc inputs live in the MAIN repo `local/`
+(gitignored - not in the worktree), so pass absolute paths.
+```
+# 1. serializer: OLD vs NEW full-arz md5 (identical) + write time
+py docs/reports/build_speed_probes/verify_serializer.py <git-old arz_patcher.py> <a.arz> <out.arz>
+py docs/reports/build_speed_probes/verify_serializer.py tools/arz_patcher.py <a.arz> <out.arz>
+# 2. map: parallel==serial (byte-identical) + speedup, and reuse==fresh
+py docs/reports/build_speed_probes/verify_map_pack.py 300 <scratch_dir>
+# 3. DB cache: static + CONTINUE-path + store/load + key-logic byte proofs
+py docs/reports/build_speed_probes/verify_cache_roundtrip.py <a.arz> <scratch_dir>
+# 3b. INTEGRATOR full-build acceptance gate (cold==warm md5); NOT under build40:
+py tools/verify_cache_determinism.py <sv098.arz> <sv09.arz> <sv041.arz> <base.arz> <workdir>
+```
+
+### Integrator merge checklist (post-build40, one clean full build)
+1. `py_compile` all changed files (done here). 2. Full cold build -> assert `md5(arz)` == the build40 golden
+   arz md5 (serializer + parallel pack + base reuse are all byte-identical, so the golden must reproduce).
+   3. Full map build -> assert `md5(Levels.arc)` == the build40 golden (parallel pack default-on; set
+   `SVC_ARC_PARALLEL=0` to A/B the serial path if any doubt). 4. Run `verify_cache_determinism.py`; on PASS,
+   flip the cache default to ON (change `enabled()` default or set `SVC_PREFIX_CACHE=1` in the build scripts).
