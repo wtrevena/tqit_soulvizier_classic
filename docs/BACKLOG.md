@@ -2149,8 +2149,23 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   fail-loud duplicate-tag gate. Owned by the 2026-07-08 DB wave. The in-tree name is correct;
   other masteries are unaffected (single definitions).
 - Souls quality pass vs SV originals (#31).
-- Toxeus encounter suite: 10-25% canonical entrance spawn, rant scroll (MP per-player), Legendary
-  stalker feasibility, 6-player checklist (#32).
+- Toxeus encounter suite (#32): **SHIPPED build37** as registry module `tools/patches/toxeus_suite.py`
+  (Parts A-D), gate-GREEN build37-40. (A) 15% single-spawn entrance ambush `q_bloodtoxeus_ambush` @
+  drxFirstRoom (reuses `_BT_POOL` = 1 Toxeus + 2 blood-demon adds; map placement `B41_SPECS` item 5,
+  on-mesh comp#1 Y=1.0); (B) per-player rant scroll on Blood Toxeus Misc4 @100% (`FixedItemLoot`
+  `numSpawn='numberOfPlayers*1'`, AE-parse-safe item evaluator); (C) roaming "Endless Hunt" Hades-
+  confined stalker (`um_toxeus_hunt_99`, ShadowStalker rig) + granted-MOVE soul; (D) fail-loud
+  champion-count cap (==1 Toxeus any party size). **6-player checklist DONE 2026-07-14 ->
+  `docs/MULTIPLAYER_COMPAT.md` §M4**, incl. the Legendary-stalker feasibility VERDICT (roaming +
+  strictly-Legendary-only pure-data-gate is NOT cleanly feasible -> shipped as the Hades-confined
+  "effectively Legendary/endgame" approximation; a FIXED Hydra-pattern Legendary-only stalker is a
+  clean Will OPTION, not a defect). RESIDUALS (not blockers, no code owed): launch-gated live checks
+  (ambush np>=2; scroll per-player Misc4 @np=2 else container fallback; Hunt co-op runaway; M1.5 np*np)
+  under the restart-Steam law; **amgoz1 creative-text VETO** (rant screed + scroll names + Hunt
+  name/desc) needs Will sign-off before public ship; design-coherence Q for Will = the entrance
+  corridor rolls Toxeus TWICE (~50% parchment `demon_01_cluster_toxeus50` + ~15% ambush; both single-
+  Toxeus, both drop the scroll); benign orphan `q_bloodtoxeus_lone_50` (map uses the cluster instead)
+  = out-of-scope cleanup.
 - Comprehensive dropped-visuals restoration (#28).
 - Cold Tombs (#36) - ON HOLD per Will.
 

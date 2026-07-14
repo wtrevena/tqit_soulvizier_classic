@@ -1,9 +1,10 @@
 # Multiplayer Compatibility - Soulvizier Classic (TQAE)
 
 > Audit + fixes for playing the mod in **TQAE multiplayer co-op** (Will + a friend).
-> Scope of this pass: **database (`.arz`) lane only**. The map/navmesh/quest lane is
-> owned by a parallel workstream and is NOT touched here. Last updated: 2026-07-08
-> (arz hash/size refreshed to build27; original MP-fix pass was 2026-07-07).
+> Scope of the original pass (M1-M3): **database (`.arz`) lane only**; the map/navmesh/quest lane was
+> owned by a parallel workstream and NOT touched there. **§M4 (added 2026-07-14) extends this doc to
+> the build37 Toxeus Encounter Suite (#32), which spans BOTH lanes.** Last updated: 2026-07-14
+> (M4 added; arz hash/size below still reflect the build27 MP-fix pass, 2026-07-07/08).
 
 > **⚠️ CURRENT ARZ (build27, verified on disk 2026-07-08):**
 > `work/SoulvizierClassic/Database/SoulvizierClassic.arz` and the deployed
@@ -316,6 +317,133 @@ LINEAR rebuild (SVC_MP_SPAWN_LINEAR=1): built OK, size 54,526,702 B
 So the shipped arz is unchanged (no redeploy needed) and the linear escape hatch is proven to build a valid, `/`-free, `np*np`-free arz if ever required.
 
 **M3: PASS** (default build byte-identical to deployed + reproduced; validate_tags FAIL isolated as pre-existing/out-of-scope; full load 0 bad; delta fully explained; regressions intact; linear fallback validated).
+
+---
+
+## GATE M4 - Toxeus Encounter Suite (build37, backlog #32): 6-player checklist
+
+> Added 2026-07-14 for the build37 Toxeus Encounter Suite (registry module
+> `tools/patches/toxeus_suite.py`, Parts A-D). Unlike M1-M3 (`.arz` DB lane only), this section
+> spans BOTH lanes: the ambush's placement is map-lane (`world01.map` in `Levels.arc`), the rant
+> scroll + Endless Hunt + all pools are DB-lane. It is the whole-suite MP readiness checklist that
+> M2.3 (which covers only the deep Hemorrheus boss, item 3) did not have. All three new surfaces are
+> standard host-authoritative TQ mechanics; the hard MP requirement (byte-identical mod files, M2 +
+> the Determinism statement below) applies to the suite unchanged.
+
+### M4.1 The three suite surfaces + their party-size invariants
+
+| Surface | Record(s) | Party-size behaviour | Proof status |
+|---|---|---|---|
+| **A** entrance ambush | `q_bloodtoxeus_ambush` (clone of `q_bloodtoxeus_lone`, `chanceToRun=15`) -> `_BT_POOL`; placed in `drxFirstRoom` local `(100,1,50)` (`B41_SPECS` item 5) | **Exactly 1** Blood Toxeus + 2 blood-demon champion adds, at ANY party size | **STATIC-PROVEN** (M4.2); confirm live at np>=2 |
+| **B** rant scroll | `svc_toxeus_rant` (Parchment) <- `toxeus_rant_item` (`LootItemTable_FixedWeight`) <- `toxeus_rant_perplayer` (`FixedItemLoot.tpl`, `numSpawn*Equation='numberOfPlayers*1'`); wired `um_bloodtoxeus_99` Misc4 @100% | **N copies for N players** (one per player) | equation **AE-parse-safe** (M4.3); monster-equip-slot per-player expansion **LAUNCH-GATED** (container fallback authored) |
+| **C** Endless Hunt | `um_toxeus_hunt_99` (ShadowStalker rig) appended at weight 1 + per-slot `limit=1` into ~345 Hades trash pools | **At most 1** Hunt per Hades pool per spawn trigger, any party size | **STATIC-PROVEN** (per-slot `limit=1` + fail-loud sweep gate); confirm no co-op runaway |
+
+### M4.2 The single-Toxeus invariant (the double-spawn history, structurally closed)
+
+The load-bearing MP property: **no Toxeus placement surfaces >1 Toxeus at any party size.** All three
+Toxeus placements (entrance ambush, deep chest Hemorrheus, parchment) resolve to the SAME monster
+`um_bloodtoxeus_99`, and the ambush + chest reuse `_BT_POOL`, whose LITERAL counts are
+`spawnMin=spawnMax=3, championChance=100, championMin=championMax=2` -> exactly **1** main
+(`spawnMax - championMax = 3 - 2`) + 2 blood-demon champions, deterministically at ANY
+`numberOfPlayers` (`championMax` is a hard integer cap, never per-player-multiplied). Enforced
+fail-loud three ways, all GREEN in the build37-40 gate records:
+
+- **Upper bound (==1):** `toxeus_suite.py` Part D `_verify_toxeus_champion_cap` asserts `_BT_POOL`
+  yields exactly 1 guaranteed Toxeus main.
+- **No double-spawn equation:** `apply_svc_patches.py::_verify_mod_spawn_proxies_eligible` sub-check
+  C fails the build if `_BT_POOL` retains `proxyPoolEquation` (the `proxypoolequation_02`
+  "2-mains-at-1-player" class). Build green => neutralised => the literal counts hold.
+- **Lower bound (>=1):** sub-check A (champion crowd-out) + sub-check B (`limit_bloodtoxeus` `[1..110]`
+  all-difficulty window) guarantee the boss is not starved or scaled out.
+
+`chanceToRun=15` is a `Proxy.tpl` field rolled **once per instance** at level-load = a single ~15%
+spawn-or-not roll (inside the mandated 10-25%), NOT a per-demon compounding roll. Net: 6 players see
+the same 1 Toxeus + 2 adds as a solo player.
+
+### M4.3 Rant scroll per-player wiring - MP-safe path + the one launch-gated edge
+
+The per-player count uses the **loot-table** `numSpawn` path, which is a DIFFERENT evaluator from the
+proxy-spawn one that rejects `/` (M1.2). `toxeus_rant_perplayer` (`FixedItemLoot.tpl`) carries
+`numSpawnMin/MaxEquation = 'numberOfPlayers*1'`:
+
+- It is `/`-free and uses only `*`, with **no `np*np`** - so it does not even carry the M1.5
+  quadratic-parse risk. SV's own `numSpawn*Equation` values all use `+ - *` and PASS (M1.1 / R4);
+  this is the same operator class.
+- `numSpawn*Equation` lives only on `FixedItemLoot.tpl` (DB-verified), which is why the outer table
+  must be that template. The equation therefore parses in the item evaluator.
+
+**LAUNCH-GATED edge (honest status):** whether a MONSTER **equip slot** (Misc4) honours the
+sub-table's `numSpawn` per-player expansion is proven only for **containers**, not equip slots.
+Live check at np=2: kill Blood Toxeus, confirm **2** copies of `{^r}The Murderer's Screed` drop (one
+per player). If only 1 drops, flip to the documented fallback - a corpse/chest whose
+`loottable = toxeus_rant_perplayer` (the SAME already-authored per-player table), spawned on
+Blood-Toxeus death (a one-record + one-death-skill follow-up). Duplicates on repeat kills are
+accepted (Will).
+
+### M4.4 Endless Hunt in co-op
+
+The roaming Hunt is appended at weight 1 into ~345 eligible Hades trash pools (per-slot probability
+`<= 1/2400`), each appended slot carrying a per-slot `limit=1` **MAX-count cap**. This cap is the MP
+safety: pool mains draw WITH REPLACEMENT, so without it a pack pool (`spawnMax>1`) could surface 2+
+Hunts in ONE trigger (the "two-in-one-trigger" defect fixed for the Enslaver v2). With `limit=1` the
+engine spawns **at most 1** Hunt per pool per spawn trigger, structurally, at any party size. A
+fail-loud sweep gate (`_verify_legendary_stalker_sweep`) re-derives the touched set and proves 0
+leaks into non-Hades / boss / quest / hero pools. Live check (co-op): the Hunt appears rarely in
+Hades and never as a runaway pack.
+
+### M4.5 Host-authoritative + determinism (unchanged from M2)
+
+All three surfaces are standard host-authoritative TQ mechanics - placed proxies (ambush) and monster
+loot/pool membership (scroll, Hunt) resolve on the host and replicate to clients, exactly like every
+base-game boss and loot drop. **No host-only DB logic is added.** The M2 hard requirement stands: both
+players need byte-identical mod files. Note the suite spans BOTH artifacts - the ambush placement is
+in `Levels.arc` (`world01.map`), the scroll + Hunt + pools are in the `.arz` - so both must be
+re-synced together after any rebuild (any rebuild advances the hash; see the Determinism statement).
+
+### M4.6 Legendary-stalker feasibility VERDICT (mandate item c)
+
+**A ROAMING + strictly-Legendary-only stalker as a pure data gate is NOT cleanly feasible, so it is
+NOT shipped as such.** Roaming = appending the Hunt into many SHARED all-difficulty Hades trash pools,
+and TQAE has **no per-appended-member difficulty filter**: `difficultyLimitsFile` scales a monster's
+effective LEVEL toward a window, it does not suppress/filter the spawn. The shipped Endless Hunt
+confines the Hunt to **Hades** (Act-4/endgame) pools, which reads in practice as "effectively
+Legendary/endgame" - the honest closest approximation.
+
+A TRUE data-only Legendary-only gate **does** exist for **FIXED** placements: the base-game **Hydra
+pattern** (`pool1` empty + `poolLegendary1 = <boss pool>` spawns the boss on **Legendary only**;
+`docs/reports/el_boss_audit.md`). So if Will wants a guaranteed Legendary-only Toxeus stalker, the
+clean path is a FIXED-placement proxy using that PROVEN pattern (clone `q_bloodtoxeus_lone` ->
+`q_toxeus_hunt_lone`, `pool1` empty, `poolLegendary1` = a single-member `um_toxeus_hunt_99` pool,
+placed at one Hades/endgame spot) - trading "roaming but anywhere" for "findable but fixed." **This is
+a Will design decision, not a defect.** The module's inert `limit_legendary_only` min-player-level
+artifact is an UNPROVEN experiment (difficultyLimitsFile does not filter spawns) and must not be
+relied on.
+
+### M4.7 Launch-gated live checks (restart-Steam-before-test law) + creative-text veto
+
+Per the RESTART-STEAM-BEFORE-TEST law, any test ping must kill TQ + Steam, restart, and hash-verify
+the deploy landed BEFORE giving test instructions. Suite live checks:
+
+1. **[np>=2]** Ambush spawns exactly 1 Toxeus + 2 adds (M4.2 static-proven; confirm live).
+2. **[np=2]** Rant scroll drops 1 copy per player from Blood Toxeus's Misc4 (M4.3; else container fallback).
+3. **[co-op]** Endless Hunt appears rarely in Hades, never a runaway pack (M4.4).
+4. **[any]** The M1.5 `np*np` spawn-eq parse check (not suite-specific, but the standing launch check).
+5. **[DESIGN-COHERENCE, Will decision - not a bug]** The entrance corridor rolls Blood Toxeus **twice**:
+   ~50% at the adjacent parchment room (`drxfirstxistion_connection`, via `demon_01_cluster_toxeus50`,
+   championChance=50 Toxeus-only) + ~15% at the `drxFirstRoom` ambush. Both are single-Toxeus, both
+   drop the rant scroll (same `um_bloodtoxeus_99` record), so it is NOT a double-spawn bug - but the
+   aggregate "meet a Toxeus near the entrance" chance is ~57.5%, not a single 10-25% roll. Confirm
+   intended; the 15% ambush is the lever to tune or retire.
+6. **[amgoz1 CREATIVE-TEXT VETO - WILL SIGN-OFF REQUIRED before public ship]** the rant screed
+   (`_RANT_TEXT`, ~180 words, Toxeus's voice, treats the original murderer as the blood-cult
+   progenitor), the scroll names (`{^r}The Murderer's Screed` / `A Parchment Slick with Blood`), and
+   the Hunt name/desc (`{^r}Toxeus the Murderer, the Endless Hunt` + its `{^F}...Soul`). Held to the
+   amgoz1 monster-identity-driven bar. Full text is in `toxeus_suite.py` (`_RANT_TEXT`, the tag
+   assignments) and `docs/reports/toxeus_suite_recon.md` for review.
+
+**M4: PASS** (static invariants proven: single-Toxeus at any party size, per-slot Hunt cap, `/`-free
+per-player scroll equation on the item evaluator; live checks + Legendary verdict + creative-text veto
+enumerated).
 
 ---
 
