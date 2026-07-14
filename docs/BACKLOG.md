@@ -4,7 +4,9 @@
 > `feat/b38-damage` @ `ab5f5ac`, `feat/b38-enslaver-v2` @ `e2f87ef`, `feat/b38-language` @ `e22c62a`,
 > `chore/b38-workshop-description` @ `475cfee`. Integration fixes commit `f1d53af` (+ reconcile `630bb9b`). NOT
 > deployed; canonical build36a stays LIVE. **Full DB build + gate record DONE 2026-07-13 (see BUILD38-DEV GATE
-> RECORD below): arz `fcd5dcab`, Text `dff9ad01`, all gates green, record-diff ZERO unexplained.**
+> RECORD below): arz `fcd5dcab`, Text `dff9ad01`, all gates green, record-diff ZERO unexplained.** The Enslaver-residual
+> stalker `limit=1` follow-up is now BUILT+VERIFIED (build38a, HEAD `2073fe6`): DEV-staged arz advances to `6631f252`
+> (Text/Quests/map byte-identical); see BUILD38A GATE RECORD below.
 > **FIXED this wave:**
 > - **Mastery UI** (`mastery_ui_audit` module, after `hunting_occult_ui`): 8 graft icon repoints (7 `_DRX_Textures`
 >   dead refs + 1 empty -> resolving XPack3/InGameUI arcs); Earth Rupture DE-DUP (graft `drxrupture`/`drxrupture_flare`
@@ -42,18 +44,45 @@
 > - **Enslaver residual**: the `limit=1` cap is per-pool-per-trigger (structural). Two INDEPENDENT spawn points
 >   surfacing an Enslaver close enough to fight together has no engine global cap; the /10 frequency cut makes it a
 >   ~once-in-hundreds-of-acts event (also ~100x rarer cross-field). Endless-Hunt stalker (`toxeus_suite`) had the SAME
->   latent per-trigger-duplicate defect (Hades-only, rarer, UNSHIPPED b37) - **FIXED-PENDING-BUILD**:
+>   latent per-trigger-duplicate defect (Hades-only, rarer, UNSHIPPED b37) - **FIXED + BUILT+VERIFIED (build38a)**:
 >   `_sweep_inject_legendary_stalker` now stamps per-slot `limit%d=_LS_SLOT_LIMIT`(=1) on the Hunt's name slot
 >   (mirrors the Enslaver v2 cap) + `_verify_legendary_stalker_sweep` asserts weight==1 / limit==1 / p_slot<=1/2400
->   on EVERY stalker slot, fail-loud on any miss. Negative test (missing/wrong limit -> gate fires; limit=1 -> passes)
->   + dry-run replay vs `baseline_build37.arz` (all 345/345 Hunt pools re-stamped limit=1 at the same slot, 0
->   collateral, extended verify PASS) both green. Confirming full DB build pending (fast gates only this wave).
+>   on EVERY stalker slot, fail-loud on any miss. Full DB build GREEN (build38a, HEAD `2073fe6`): the apply-time gate
+>   asserted the cap LIVE on all 345/345 Hades pools; record-diff vs build38-dev = 345 CHANGED, each ONLY the Hunt slot
+>   gaining `limit=1`, ZERO unexplained, 0 collateral. See BUILD38A GATE RECORD below.
 > - **Language in-game spot-check = HARD pre-Steam gate**: the de-clobber restores ~93% localization by construction,
 >   but an actual in-game language-switch test on a real non-English client MUST pass before any Steam push touching
 >   Text.arc. Also FAILBOAT debug junk (4 rewording tags, English-VISIBLE today) recommended for a follow-up cleanup.
 > - **Will tour checks** (in-game, cannot be gate-verified here): damage numbers appear on normal/elemental/DoT hits;
 >   the 8 repointed mastery icons + Dream background render (no black pane, no missing icons); Earth Rupture chain
 >   shows ONE Rupture with the reflowed layout. Screenshots requested.
+>
+> 🧪 **BUILD38A GATE RECORD (2026-07-13, main HEAD `2073fe6`) - DB-ONLY rebuild of the Endless-Hunt stalker
+> per-slot `limit=1` cap (two-in-one-trigger fix); the ONLY delta vs build38-dev is 345 Hades pools gaining the cap.**
+> Staged to `work/`, NOT deployed; canonical build36a stays LIVE.
+> **ARTIFACT MD5s:** arz `6631f25219be1b8f9874c95af68755c7` (55,340,923 B) - SUPERSEDES build38-dev arz `fcd5dcab`
+> in DEV staging (+1,360 B = 345 added int fields). UNCHANGED + NOT REBUILT (the fix authors no tags/quests/map):
+> Text.arc `dff9ad01ec1d81064f426d9456470eaf` (87,261 B), Quests.arc `838bdc3a` (194,581 B), canonical Levels
+> `60a62880` (688,682,781 B), TESTHUB Levels `841c56cd` (688,688,154 B). Baseline for the diff: `baseline_build38.arz`
+> = build38-dev arz `fcd5dcab`.
+> **DB BUILD** (PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1): exit 0; registry 11 modules order `7c74a51f6ed8`; RELEASE drop
+> rates (66% Hero/Quest, 25% Boss); `run_registry_verifies` GREEN (verify hooks skill_quality + toxeus_suite +
+> damage_display OK); golden Occult/Hunting PASS (35 waived). **STALKER APPLY-TIME GATE LIVE PASS:**
+> `_verify_legendary_stalker_sweep` asserted 345 eligible Hades trash pools carry the Hunt at weight 1 + per-slot
+> limit 1 (p_slot <= 1/2400, <=1 Hunt/trigger); 0 non-Hades / boss / quest / hero leaks; band [40,68,100]. Enslaver
+> sweep unchanged (1224 pools; its own `limit=1` already shipped in build38-dev).
+> **RECORD-DIFF AUDIT** (build38-dev `fcd5dcab` vs new `6631f252`, 51,007 records both): 0 ADDED / 0 REMOVED /
+> **345 CHANGED, ZERO unexplained**, 0 clobbers. EVERY delta = one Hades stalker pool (`records\xpack\proxieshades\...`)
+> whose Hunt name slot gains exactly `limitN=1` (Int); 1 field/record, 0 other fields, 0 dtype changes, 0 collateral.
+> Cross-verified against the new arz (strict audit): the `limitN` index IS the Hunt's name slot
+> (`um_toxeus_hunt_99`) at weight 1 on all 345; the changed-set == the FULL set of Hunt-bearing pools (345); every
+> Hunt pool now carries the cap, none missed.
+> **VALIDATE_TAGS** PASS: all 308 referenced mod tags + 351 authoritative tags resolve in the UNCHANGED Text.arc (new
+> arz authored 0 new tags -> no Text rebuild needed/done).
+> **CONTRACTS:** souls/summons/resources 0 P0/0 P1 (4905 native P2); map (new arz + TESTHUB Levels `841c56cd`) 0 P0/0
+> P1 (3 native P2 = pre-existing base-game XPack portal reciprocity) - hub NPCs resolve in the new arz.
+> **UNTOUCHED:** DB-only pass wrote only the arz (+ its report/tags sidecars); Text `dff9ad01`, Quests `838bdc3a`,
+> canonical + TESTHUB Levels byte-identical to build38-dev (never rebuilt).
 >
 > 🧪 **BUILD38-DEV GATE RECORD (2026-07-13, main HEAD `39a11707`) - FULL-REGISTRY DB BUILD GREEN + de-clobbered
 > Text; DB+Text ONLY (map/Quests stay build37-dev).** First full heavy build of the b38 integration (mastery UI +
