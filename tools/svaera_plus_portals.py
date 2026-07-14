@@ -17,7 +17,7 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
 from build_section_surgery import (
     INJECT_SPECS, MOVE_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
-    parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11,
+    parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11, inject_0x17_region,
     inject_into_sv_only_blob, inject_rec02_into_blob, move_0x05_instances,
     merge_hub_into_inject_specs, build_hub_extra_specs, patch_respawn_group_position,
     RESPAWNTEMPLEORIENT01_UNIQUEID,
@@ -249,6 +249,221 @@ GRID_SHIFT = {
     # Levels/World/Orient/Underground/Random09A.lvl).
     'orient/underground/random09a': (7840, 0, 2030),
 }
+
+
+# --- b46 (2026-07-13): world-map / minimap identity for RELOCATED SV interiors -------------
+# Bug (Will 2026-07-13): in the Uber Dungeon the drawn minimap does not line up with the level
+# ("black void" under the player), and the top-right area label reads "Village of Helos".
+# ROOT CAUSE (docs/reports/b46_minimap_rca.md + b46_minimap_result.md): the SV-only interior
+# levels reached via the Helos traveler hub carry an EMPTY (or dangling) teleport-map-zone
+# pointer in their LEVELS-entry `dbr`. The in-game world map composites each level's minimap
+# TGA (DATA2 section) onto its continent PAGE, keyed by that zone's `mapIndex`; a zoneless
+# level's TGA is never composited, so the map keeps showing the teleport-ORIGIN page (Helos =
+# Greece, mapIndex 0) while the player marker sits at the dungeon's real grid corner, off the
+# drawn content = "black void". EVIDENCE (probes, deployed DEV map): 38 base levels share
+# greece/delphi.dbr and composite across X[-9399,-3130] Z[-3268,-320] -> a level's TGA is
+# placed by its OWN grid corner on the zone's mapIndex page, so ANY same-continent zone fixes
+# the composite (the page auto-sizes to include the level). We REUSE an existing, mapIndex-
+# correct, proven-good zone (zero new DB/Text records, lowest risk) rather than mint dedicated
+# zones: these fountain-less dungeons never appear as a named fast-travel node, and the
+# top-right area NAME is a SEPARATE mechanism (a region GUID in the level's 0x17 region[] slot
+# resolved against the world SD (0x18) - b46r2 fixes the Uber Dungeon's name via
+# add_sv_region_labels() below), so the reused zone name never surfaces. This dbr pass is map-
+# side only: LEVELS `dbr` is a self-delimiting length-prefixed string, so no other section/blob
+# changes (QUESTS/navmesh/bitmaps/DATA2 stay byte-identical).
+# mapIndex per continent (base DB, byte-verified from database.arz): Greece=0, Egypt=1,
+# Olympus=4, Orient=7. All Greek-act zones below are mapIndex 0 (delphi/knossos/sparta/megara
+# all confirmed mapIndex 0), so under the proven per-continent paging they are interchangeable;
+# we pick the one whose composited members sit NEAREST the interior's grid corner so the fix is
+# also robust to any per-zone paging component.
+_ZONE_GREECE_DELPHI  = 'records/ingameui/teleportmap/zones/greece/delphi.dbr'    # mapIndex 0
+_ZONE_GREECE_KNOSSOS = 'records/ingameui/teleportmap/zones/greece/knossos.dbr'   # mapIndex 0
+_ZONE_GREECE_SPARTA  = 'records/ingameui/teleportmap/zones/greece/sparta.dbr'    # mapIndex 0
+_ZONE_OLYMPUS        = 'records/ingameui/teleportmap/zones/olympus/olympus.dbr'  # mapIndex 4
+LEVEL_ZONE_DBR_OVERRIDES = {
+    # THE reported bug: Uber Dungeon (crypt_floor1) at grid corner (-2578,-2682). Its physically
+    # nearest already-composited level is the Delphi underground `entrance03` (@721u), so the
+    # dungeon lives in Delphi map-space -> delphi.dbr (mapIndex 0). (b46r2: changed from knossos
+    # -> delphi per the vet's nearest-content note; both are mapIndex 0 so identical under the
+    # proven per-continent paging, but delphi is the nearest-content anchor. The SV *entrance*
+    # door is themed from Knossos maze03; the minimap follows the grid position, not the door.)
+    'levels/world/uberdungeon/crypt_floor1.lvl': _ZONE_GREECE_DELPHI,
+    # Sparta Crypt (Helos-hub destination; a Sparta-area crypt) -> Greek page.
+    'levels/world/greece/minidungeons/spartacryptlevel2.lvl': _ZONE_GREECE_SPARTA,
+    # Garden of Merchants: its existing dbr points at olympus_gom.dbr, which is ABSENT from the
+    # DB (dangling) -> never composited. Repoint to the existing AE Olympus zone (mapIndex 4);
+    # GoM already carries its own region label ("Duister"), so only the map PAGE needed fixing.
+    'levels/world/olympus/gardenofmerchants.lvl': _ZONE_OLYMPUS,
+    # The Secret Place cluster (reached via the Helos hub landing DarkForestEnter; parked in empty
+    # map space at Z~-5800..-6200 like the blood cave). It is genuinely ISOLATED (~2000u from any
+    # composited content either way: Greek megara to the north, Orient silkroad to the south) - an
+    # inherent property of its SV-original grid position, NOT a zone-choice artifact, and the same
+    # normal pattern every base-game cave uses (they park ~1700u from their surface region). Greek-
+    # act hidden area -> mapIndex 0 (the Helos arrival page). Region LABELS: the landing (Dark
+    # Forest), rogueencampment, and tfinale (JoLandia) already carry their own region names; the
+    # sub-rooms carry no region and so inherit "Dark Forest" from the landing - thematically correct
+    # for a forest cluster, so no per-room label is minted. In-game confirmation of the composite
+    # is requested (see result doc); grid-relocation to de-isolate is out of scope + high-risk.
+    'xpack/levels/secret_place/behindthesp.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/darkforestenter.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/woodscorner.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/secretforest2.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/pillagedvillage.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/forestobsidiantransition.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/rogueencampment.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/rogue encampment forest entrance.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/rogueencampmentforestfiller.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/tfinale.lvl': _ZONE_GREECE_KNOSSOS,
+    'xpack/levels/secret_place/murderbossroom.lvl': _ZONE_GREECE_KNOSSOS,
+}
+
+
+def apply_zone_dbr_overrides(merged_levels):
+    """b46: set the LEVELS-entry teleport-map-zone `dbr` for relocated SV interiors that
+    shipped with an empty/dangling zone pointer, so their minimap TGA composites onto the
+    correct continent page (fixes the Uber Dungeon "black void"). Map-side only - `dbr` is a
+    self-delimiting length-prefixed string, so build_level_index recomputes offsets and no
+    other section changes. Fails loud if any expected override level is missing from
+    merged_levels (a fname drift would otherwise silently no-op the fix)."""
+    remaining = dict(LEVEL_ZONE_DBR_OVERRIDES)
+    changed = []
+    for entry in merged_levels:
+        key = entry['fname'].replace('\\', '/').lower()
+        new = remaining.pop(key, None)
+        if new is not None:
+            old = entry.get('dbr', '')
+            entry['dbr'] = new
+            entry['dbr_raw'] = new.encode('ascii')
+            changed.append((key, old, new))
+    if remaining:
+        raise ValueError(
+            f'b46 zone-dbr overrides: {len(remaining)} target level(s) not found in '
+            f'merged_levels (fname drift?): {sorted(remaining)}')
+    print(f'\n=== b46: world-map zone assigned to {len(changed)} relocated SV interior(s) ===')
+    for key, old, new in changed:
+        old_disp = old if old else '<EMPTY>'
+        print(f'  {key.split("/")[-1][:36]:36s} dbr {old_disp:34s} -> {new.split("/")[-1]}')
+    return changed
+
+
+# --- b46 round 3 (2026-07-13): AREA-LABEL fix for the Uber Dungeon (crypt_floor1) ------------
+# Bug (Will 2026-07-13, symptom 2): inside the Uber Dungeon the top-right area label reads
+# "Village of Helos" (the region where the Helos-plaza traveler stands) instead of the dungeon's
+# own name. MECHANISM (docs/reports/b46_minimap_result.md; b46r3 ground-truth re-derivation): each
+# level's 0x17 section begins with THREE guid lists - [ENV][REGION][AUDIO] - and the on-screen
+# area-name banner is the level's REGION-list guid resolved against the world SD (0x18) REGION
+# records. Proven: this 3-list parse/serialize round-trips BYTE-IDENTICAL across all 2282 deployed
+# levels, and every level that shows a name carries exactly its SD-region guid in this REGION list
+# (boss_arena->'Olympian Arena', startingcave01->'Natural Cave', spartacryptlevel2->'Ancient Tomb',
+# GoM->'Duister'). crypt_floor1's REGION list is EMPTY (count 0) - it carries only an ENV guid
+# (UberDungeonLevel1) and an AUDIO guid (59c096c3, the "UberDungeon - Floor1" audio zone) - so no
+# name resolves and the banner retains the last region ("Village of Helos", the Helos teleport
+# origin). It is the ONE reachable interior entered DIRECTLY from Helos plaza, so it is the only one
+# that retains the Helos label (the secret_place cluster is entered from the DarkForestEnter landing,
+# which DOES resolve -> those sub-rooms retain "Dark Forest", never "Village of Helos").
+#
+# CORRECTS b46 ROUND 2 (vet HIGH): round 2 appended an SD REGION record for the AUDIO guid
+# (59c096c3) - a NO-OP, because the banner reads the REGION list, which is empty. The audio guid is
+# not a region; giving it an SD region record changes nothing on screen.
+#
+# FIX (round 3): give crypt_floor1 a real REGION identity, mirroring every shipped named dungeon:
+#   (1) inject_0x17_region() appends a freshly-minted region guid to crypt_floor1's 0x17 REGION list
+#       (map-side, via the proven parse_0x17_header/build_0x17_header round-trip; ENV+AUDIO lists +
+#       the raster stay byte-identical, navmesh 0x0b untouched). This makes crypt's 0x17 shape
+#       (env=1/region=1/audio=1) IDENTICAL to the shipped, working startingcave01 - not a novel
+#       structure. Wired into the SV-only structural-patch loop in main().
+#   (2) add_sv_region_labels() appends the matching SD (0x18) REGION record for that SAME minted
+#       guid (additive, GUID-keyed -> existing regions/indices + the audio/miniboss tail stay
+#       byte-identical). Its display name = a Text.arc tag.
+# The minted guid is used in BOTH places, so crypt's 0x17 region guid resolves to the new SD region.
+# A FRESH guid (not the audio guid) is minted so nothing is dual-defined across the audio+region
+# lists (clears the vet's LOW note). DEPLOY COUPLING: Levels + Text ship together (contract_sd_tags
+# fails loud if tagSVCRegionObsidianHalls is missing from Text.arc when the SD references it).
+#
+# NAME: crypt_floor1's build36 content is the "Obsidian Halls" treasure roulette (4 wardens +
+# Kravmoloch, Keeper of the Wheel of the Obsidian Halls); the hub NPC the player clicks is
+# "Traveler: The Obsidian Halls". So the banner names the area "The Obsidian Halls" - matches the
+# traveler the player clicked, the room content, and the amgoz1 flavor bar. (The travel-arrival tag
+# tagSVCHelosToUber still reads "The Uber Dungeon"; to make the banner match that instead, change
+# both the label below and the tagSVCRegionObsidianHalls value in build_text_arc.py.)
+#
+# Minted, collision-checked against every guid in the map (SD env/region/tail + every level's 0x17
+# guids + level GUIDs = 32,110 guids, 0 collisions; scratchpad mint_guid.py):
+_OBSIDIAN_HALLS_REGION_GUID = bytes.fromhex('67a0a0fa76ed27fc22ed82d2636b3b81')
+_OBSIDIAN_HALLS_NAME = 'The Obsidian Halls'
+_OBSIDIAN_HALLS_TAG = 'tagSVCRegionObsidianHalls'
+# 0x17 REGION-list injection targets: level fname -> region guid to append. Only crypt_floor1
+# needs one (it is the sole reachable interior with an EMPTY region list that retains "Village of
+# Helos"); every other reachable SV interior already carries a resolving region guid (verified by
+# the b46r3 0x17 sweep - see result doc). Keyed on the lowercased forward-slash fname.
+SV_0X17_REGION_LABELS = {
+    'levels/world/uberdungeon/crypt_floor1.lvl': _OBSIDIAN_HALLS_REGION_GUID,
+}
+SV_REGION_LABELS = [
+    # (region GUID injected into the level's 0x17 REGION list above, internal name, display tag)
+    (_OBSIDIAN_HALLS_REGION_GUID, _OBSIDIAN_HALLS_NAME, _OBSIDIAN_HALLS_TAG),
+]
+
+
+def apply_0x17_region_labels(sv_only, converted_blobs):
+    """b46r3: inject the minted area-label region guid into each target SV-only level's 0x17 REGION
+    list so its banner resolves against the SD region added by add_sv_region_labels() (fixes the
+    Uber Dungeon reading "Village of Helos"). Map-side, via the proven 0x17 parse/serialize; ENV +
+    AUDIO lists, the 0x17 raster, and every other section (incl. navmesh 0x0b) stay byte-identical.
+    Fails loud if a target level is missing (fname drift would silently no-op the fix)."""
+    remaining = dict(SV_0X17_REGION_LABELS)
+    changed = []
+    for i, lv in enumerate(sv_only):
+        key = lv['fname'].replace('\\', '/').lower()
+        guid = remaining.pop(key, None)
+        if guid is not None:
+            converted_blobs[i] = inject_0x17_region(converted_blobs[i], guid, key)
+            changed.append((key, guid.hex()))
+    if remaining:
+        raise ValueError(
+            f'b46r3 0x17 region-label: {len(remaining)} target level(s) not found in SV-only set '
+            f'(fname drift?): {sorted(remaining)}')
+    print(f'\n=== b46r3: 0x17 REGION-list area-label injected into {len(changed)} SV interior(s) ===')
+    for key, gh in changed:
+        print(f'  {key.split("/")[-1][:36]:36s} +region[{gh}] -> {_OBSIDIAN_HALLS_NAME!r}')
+    return changed
+
+
+def add_sv_region_labels(sv_sd):
+    """b46r3: append world-SD (0x18) REGION records for the minted area-label region guid(s) that
+    apply_0x17_region_labels() injects into the target levels' 0x17 REGION lists, so the banner
+    resolves (fixes the Uber Dungeon reading "Village of Helos"). Additive + GUID-keyed => existing
+    regions/indices + the opaque audio/miniboss tail stay byte-identical (sd_format round-trip
+    proven). Idempotent (skips a GUID already present); fails loud on SD schema drift or a duplicate
+    display tag."""
+    from sd_format import SDSection, RegionRecord
+    sec = SDSection.parse(sv_sd)
+    if sec.build() != sv_sd:
+        raise ValueError('b46r3: SD round-trip mismatch - refusing to edit SD (schema drift?)')
+    existing = {bytes(r.guid) for r in sec.region_records}
+    tags_used = {r.tag for r in sec.region_records if r.tag}
+    # donor colors: an SV-authored interior/arena region (Olympian Arena, tagNewMZone1) so the
+    # minimap-legend tint is dungeon-appropriate; fall back to the first region if absent.
+    donor = next((r for r in sec.region_records if r.tag == 'tagNewMZone1'), None) \
+        or sec.region_records[0]
+    added = []
+    for guid, name, tag in SV_REGION_LABELS:
+        if guid in existing:
+            continue  # already named (idempotent - e.g. a future SD change adds it upstream)
+        if tag in tags_used:
+            raise ValueError(f'b46r3: region tag {tag!r} already used in SD - would double-define')
+        sec.region_records.append(
+            RegionRecord(1, name, guid, donor.color1, donor.color2, tag, 1, 1))
+        added.append((name, tag, guid.hex()))
+    if not added:
+        print('\n=== b46r3: SD area-label region(s): all already present (no-op) ===')
+        return sv_sd
+    new_sd = sec.build()
+    print(f'\n=== b46r3: SD area-label region(s) added: {len(added)} '
+          f'(SD {len(sv_sd)} -> {len(new_sd)} B) ===')
+    for name, tag, gh in added:
+        print(f'  +region {name!r:22s} tag={tag} guid={gh}')
+    return new_sd
 
 
 def shifted_ints_raw(lv):
@@ -692,6 +907,10 @@ def main():
     sv_sd = sv_data[sv_sec[SEC_SD]['data_offset']:
                     sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
     print(f'  Using SV SD: {len(sv_sd)} bytes')
+    # b46r2: append area-label region records for relocated SV interiors whose 0x17 references a
+    # region GUID with no SD entry (fixes the Uber Dungeon banner reading "Village of Helos").
+    # Additive + GUID-keyed; env list + audio/miniboss tail stay byte-identical.
+    sv_sd = add_sv_region_labels(sv_sd)
 
     # --- 4. QUESTS: 4 SV questlines spliced INSIDE the load window ---
     # See build_ordered_quest_list: the 4 primary `Quests/<name>.qst` forms are
@@ -855,6 +1074,14 @@ def main():
         if lv_key in REMOVE_0X05_BY_0X14_UID_SPECS:
             converted_blobs[i] = remove_0x05_instances_by_0x14_uid(
                 converted_blobs[i], REMOVE_0X05_BY_0X14_UID_SPECS[lv_key], lv_key)
+
+    # --- 6d. b46r3: 0x17 REGION-list area-label (Uber Dungeon "Village of Helos" fix) ---------
+    # Inject the minted "Obsidian Halls" region guid into crypt_floor1's 0x17 REGION list so the
+    # top-right banner resolves it against the SD region add_sv_region_labels() appended. Runs
+    # AFTER the structural patches and BEFORE the 0x0b navmesh inject (which preserves 0x17
+    # verbatim), so the label edit survives to the final blob. Map-side only; ENV/AUDIO lists +
+    # the 0x17 raster + every other section (incl. navmesh) stay byte-identical.
+    apply_0x17_region_labels(sv_only, converted_blobs)
 
     # --- 7. Append 0x14 entries ONLY for injected instances that need one (SV-faithful) ---
     # A 0x14 entry is per-instance engine BINDING metadata (e.g. a cave-mouth GridEntrance
@@ -1211,6 +1438,12 @@ def main():
 
     data2_raw = bytes(data2_raw)
     print(f'  SV-only DATA2: {sv_only_d2_count}/{len(sv_only)} levels, +{(len(data2_raw) - orig_data2_len)/(1024*1024):.1f} MB')
+
+    # b46: assign a world-map teleport-zone to relocated SV interiors so their minimap TGA
+    # composites onto the correct continent page (Uber Dungeon "black void" fix). Runs on the
+    # FINAL merged_levels (after the R09 swap) just before serialization; LEVELS entries are
+    # self-delimiting so this touches only the overridden entries' `dbr` field.
+    apply_zone_dbr_overrides(merged_levels)
 
     # Calculate pre-data section layout
     new_levels_data = build_level_index(merged_levels)
