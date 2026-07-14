@@ -1817,7 +1817,7 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_helos_trav_uber.dbr',       (-2438,  10, -2450), 'tagSVCHelosToUber'),
     (_HHUB + r'\svc_helos_trav_bossarena.dbr',  (-433,    0, -3602), 'tagSVCTestHubToBossArena'),
     (_HHUB + r'\svc_helos_trav_warband.dbr',    (5680,    1,  3285), 'tagSVCHelosToWarband'),
-    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (312,     1, -8462), 'tagSVCHelosToDorus'),
+    (_HHUB + r'\svc_helos_trav_dorus.dbr',      (428,     1, -8113), 'tagSVCHelosToDorus'),  # b47: Tomb03 landing ~8u NW of Kroisos (436,-8117)
     (_HHUB + r'\svc_helos_trav_tantalus.dbr',   (-342,  -15, -10095),'tagSVCHelosToTantalus'),
     (_HHUB + r'\svc_helos_trav_charon.dbr',     (-336,   -7, -9650), 'tagSVCHelosToCharon'),
     (_HHUB + r'\svc_helos_trav_mnemophage.dbr', (170,   -10, -11438),'tagSVCHelosToMnemophage'),
