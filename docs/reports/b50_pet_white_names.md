@@ -1,6 +1,7 @@
-# b50 RCA - Pet name color: Toxeus and his minions read RED as pets
+# b50 - Pet name color: Toxeus and his minions read RED as pets
 
-**Status:** RCA COMPLETE (read-only; NO fixes applied). Branch `feat/b50-pet-white-names` off `d11d3c0` (build38a).
+**Status:** FIX IMPLEMENTED + dry-run VERIFIED (round 1). Branch `feat/b50-pet-white-names` off `d11d3c0` (build38a).
+Fix commit `0cea96a` (RCA at `ddca8ed`). See the IMPLEMENTATION + VERIFICATION sections at the end.
 **Report (Will 2026-07-13):** "when toxeus and his minions are pets, there names should be white not red."
 **Ground truth:** `baseline_build38.arz` (== DEV/Steam arz `6631f252`) + shipped `work/SoulvizierClassic/Resources/Text.arc`.
 
@@ -221,4 +222,87 @@ def _whiten_pet_display_names(db, tags):
 Probe scripts: `scratchpad/probe_all_pet_colors.py`, `probe_shared_tags.py`, `probe_pet_names.py`,
 `probe_work_text.py` (session scratchpad).
 
-**No source was modified. No build was run. TQ.exe / Steam untouched.**
+**No source was modified. No build was run. TQ.exe / Steam untouched.** (RCA phase.)
+
+---
+
+## 5. IMPLEMENTATION (round 1, commit `0cea96a`)
+
+Exactly as the RCA recommended: ONE data-driven post-pass, no hand-list, `_build_boss_summon` untouched
+(so it composes cleanly with b40-soul-icons).
+
+**New function** `_whiten_pet_display_names(db, tags)` (tools/apply_svc_patches.py, just before
+`run_registry_gates`). Algorithm:
+
+```
+for rec in db.record_names():
+    if db.get_field_value(rec, 'Class') != 'Pet':      continue   # friendly-pet roster only
+    dtag = db.get_field_value(rec, 'description')                  # the pet's displayed NAME tag
+    text = tags.get(dtag)
+    if not text or '{^' not in text:                   continue   # plain -> already white -> skip
+    white_text = re.sub(r'\{\^.\}', '', text).strip()             # strip the color code -> plain
+    if not white_text or white_text == text:           continue
+    white_tag = dtag + 'Pet'                                       # deterministic white sibling
+    tags.setdefault(white_tag, white_text)                        # author into the tag manifest
+    db.set_field(rec, 'description', white_tag)                    # repoint ONLY the pet
+```
+
+**Wired** as the FIRST action in `run_registry_gates(db, tags, ...)` (one call line + comment). That
+location is decisive (confirmed against the pipeline):
+`build_svc_database.py` runs `apply_all_extended_patches` (monolith tags) -> `run_registry` (registry
+modules; four_generals authors `tags['tagSVCMonsterHadesMarshal']`) -> **`run_registry_gates`** ->
+writes `extended_tags.items()` to `uber_soul_tags.txt` -> `build_text_arc.py` folds those into
+`Text.arc` AND into the `mod_authored_tags.txt` manifest -> `validate_tags` gates it. So by the time
+the pass runs, all 6 red tags AND all 18 pet records are present, and every minted `*Pet` tag ships to
+Text.arc and passes `validate_tags`.
+
+**Design choices (all per RCA):**
+- **Roster = `Class=='Pet'`** (not `_SUMMON_PET_BUILDS`): the one fully data-driven roster that catches
+  the monolith builder, the registry modules, AND the separate A10 Narok/Vort builder. It is also the
+  correct SAFETY boundary - it never touches the hostile `Class=='Monster'` world records that share the
+  tag, so the world boss/minion stays `{^r}` red.
+- **Action keyed on "the name text embeds a color code"** -> a no-op on the ~1372 already-plain pets,
+  self-limits to exactly the 6 colored families. Base-game monster names are plain (the engine colors a
+  hostile red at runtime), so only the mod's own explicitly-`{^r}` tags are ever touched.
+- **White form = strip the color code to PLAIN** (matches the mod's own convention: the four newest
+  bosses' friendly forms - Famished Shade / Drowned Oarsman / Stolen Nightmare / Bound Warden - are all
+  plain and render white). Idempotent (deterministic key; minted text has no code, so a re-run skips).
+- **Laws respected:** no `clone_record`; `set_field` on the existing STRING `description` with NO dtype
+  (type preserved); pet stats (PET-STAT-MIRROR), gear, skill kits (PET-SKILL-KIT), and desc-tooltip tags
+  all untouched. Only the displayed NAME color changes.
+
+## 6. VERIFICATION (no heavy build - dry-run replay on a COPY of the baseline)
+
+`scratchpad/b50_dryrun_verify.py`: loaded a COPY of `baseline_build38.arz` (51,007 records; the built
+arz whose pet `description` fields are byte-identical to what the pass sees in-memory), built the `tags`
+manifest from the shipped `Text.arc` (all 6 red tags resolved verbatim to their source text), and ran
+`_whiten_pet_display_names`. Result **PASS**:
+
+- **All 18 red pet records whitened** (6 families x 3): `bloodtoxeus_{1,2,3}` (Devourer of Blood),
+  `toxeus_enslaver_{1,2,3}` (the Enslaver), `enslaver_marauder_{1,2,3}` (his minions),
+  `broodmother_{1,2,3}`, `voranthys_{1,2,3}`, `hadesmarshal_{1,2,3}`. Each pet's `description` is
+  repointed to a plain `*Pet` sibling that resolves (e.g. `tagSVCMonsterEnslaver` ->
+  `tagSVCMonsterEnslaverPet` = `Toxeus the Murderer, Enslaver of Souls`, no `{^r}`).
+- **All 6 hostile WORLD records STILL `{^r}` red** (unchanged, not in the whited set):
+  `um_bloodtoxeus_99`, `um_toxeus_enslaver_99`, `um_enslaver_marauder_99`, `um_broodmother_99`,
+  `um_voranthys_99`, `svc_um_hadesmarshal_80` (all `Class=Monster`; their shared red tag is untouched).
+- **Sample already-white pets UNTOUCHED:** broodmother wyrmling (pet-of-pet), Charon's Drowned Oarsman,
+  Eater of Days, Long Nu, Meritamen, Huo-ren Mountainblade - all unchanged.
+- **Global invariants:** whited-set == red-pet-set (exactly 18, no over/under-reach); all 6 minted white
+  tags resolve and are plain; all 6 hostile red tags still `{^r}` in the manifest. A whole-arz sweep
+  independently confirmed there are **exactly 6 colored pet families / 18 records** and zero other colored
+  pets - the fix covers 100% of the bug with zero collateral.
+
+**Gates:** `py -m py_compile tools/apply_svc_patches.py` OK; `tools/patches/_check_registry.py` selfcheck OK.
+
+**Scope notes (curiosity findings, NOT defects in this fix):**
+- **Kroisos:** no records in build38 at all (its boss-summon is not built in the ground truth). If a
+  future wave adds a Kroisos boss-summon Class==Pet with a `{^r}` name, this data-driven pass whitens it
+  automatically - no code change needed.
+- **Dorus (b47's lane):** exists but has **zero `Class==Pet` records** in build38. Its `{^r}` entries are
+  the hostile world monsters `um_dorus_99` and `svc_dorus_royalguard_71` (`Class=Monster`, correctly left
+  red). `svc_dorus_raisecourt` is a `Skill_SpawnPetMonster` boss COMBAT skill (the hostile Dorus raises
+  hostile adds), not a player pet. NOTE for integrators: a `Skill_SpawnPetMonster` that spawns a
+  Monster-class entity as a PLAYER pet-of-pet is a DIFFERENT mechanism this `Class=='Pet'` pass does not
+  cover (and must not, since the same record is hostile in the world). Not present in build38; flag for
+  b47 if Dorus's court is ever made a player pet with an embedded-color name.
