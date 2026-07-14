@@ -1,6 +1,13 @@
 # E/L Boss Integrity Audit - every Epic/Legendary-gated boss/hero (base + SV)
 
-Read-only audit. NO fixes applied. Worktree `feat/el-boss-audit` @ `e993a33` (build40-dev).
+> **UPDATE (round 2, 2026-07-14): FIX-1 (Aniketos) IMPLEMENTED + dry-run verified.** See
+> section 9. `docs_broken=0` still holds; `merge_dropped` is now `restored=1, still_broken=0`.
+> Map-side change only (`tools/build_section_surgery.py` `ANIKETOS_SPECS`), no DB-record touched,
+> no heavy build run (per standing concurrency constraint) - the integrator's next real map build
+> will carry this change; Will confirms in-game on a FRESH Epic DEV2 char per the save-baking
+> caveat (section 6).
+
+Read-only audit. NO fixes applied (round 1). Worktree `feat/el-boss-audit` @ `e993a33` (build40-dev).
 Builds on b51 (Arachne's Shame proved intact); extends it to (a) the freshest **build40** arz,
 (b) **base-game** E/L gates, and (c) the **map-placement-drop** dimension b51 did not cover.
 
@@ -26,10 +33,12 @@ Builds on b51 (Arachne's Shame proved intact); extends it to (a) the freshest **
 | metric | value |
 |---|---|
 | el_bosses_total (distinct E/L-gated boss identities: 3 SV-authored + 84 base/DLC) | 87 |
-| present (DB chain + map placement both intact) | 86 |
+| present (DB chain + map placement both intact) | 86 -> **87 after round-2 fix** |
 | db_broken | 0 |
-| merge_dropped | 1 (Aniketos) |
-| fix_list | 1 (Aniketos placement restore - map-side) |
+| merge_dropped (round 1) | 1 (Aniketos) |
+| **restored (round 2)** | **1 (Aniketos)** |
+| **still_broken (round 2)** | **0** |
+| fix_list | 1 (Aniketos placement restore - map-side) - **IMPLEMENTED, see sec 9** |
 
 > Placement-level counting: 108 source gate-placements (proxy x logical-boss) swept in the DB layer,
 > all 108 spawn-intact under the runtime overlay.
@@ -261,3 +270,123 @@ Area002 Connector04 on Epic. Arachne's earlier "absence" was this save-baking ar
 - `el_scope.py` - our-world region histogram (full AE campaign) + Aniketos deep-dive + SVAERA placement check.
 - `el_ani.py` - Aniketos identity (satyr Hero, qm_aniketos, tagNewHero33, guaranteed E/L pool) + base absence.
 - `el_split.py` - base classic-region (5) vs DLC (105) gate split.
+
+---
+
+## 9. FIX IMPLEMENTED (round 2, 2026-07-14) - Aniketos placement restored
+
+**Scope discipline:** ONLY the one merge-dropped item (Aniketos) was touched. Every PRESENT boss
+from section 2 (Arachne's Shame, Chromatic Liche, Talos, Manticore, Dragon Liche, Hydra, Boareater,
+all DLC gates) is byte-untouched - verified below (the change is confined to exactly one level
+blob's 0x05 section).
+
+### 9.1 Extraction (evidence, read-only)
+
+Parsed SV098's own `Levels/World/Greece/Area002/Connector04.LVL` blob (v0x0e) 0x05 section directly
+(`scratchpad/ani_extract.py`, byte-level, no tooling assumptions). Found exactly 1 aniketos
+instance:
+
+| field | value |
+|---|---|
+| dbr | `records\proxies boss\boss\minobossproxy_aniketos.dbr` |
+| local position (x,y,z) | `(85.79340362548828, 36.15501403808594, 113.24531555175781)` |
+| rotation (flat 3x3, SV-exact) | `(0.79155, 0, -0.61111, 0, 1, 0, 0.61111, 0, 0.79155)` (~-77.6deg yaw) |
+| flags | `0` (no UniqueId block) |
+
+**Grid-corner identity check (critical - determines whether the coordinate transposes directly):**
+Connector04's `ints_raw` grid corner is **`(-6740, -23, -200)`, IDENTICAL** across SV098, SVAERA,
+BASE, and both our maps (OUR_CANON/OUR_DEPLOY). The level is **not** in `svaera_plus_portals.GRID_SHIFT`
+(unshifted, native AE level) - so SV098's local coordinate applies verbatim to our world's copy of
+the level with no re-derivation or frame correction.
+
+**Blob version:** SV098's copy is v0x0e (56-byte records); SVAERA/BASE/our world's copy is **v0x11**
+(72-byte records, base=72) - matching the `inject_into_0x05_v11` path already proven by the build36
+uberboss placements (Dorus/Tantalus/GoldenBough/Mnemophage/Ephialtes all route through the same
+function on the same native-AE-v0x11 mechanism).
+
+### 9.2 On-mesh survey (built map's own 0x0b, `tools/debug/survey_uberboss_spots.py`)
+
+Point `local(85.79,113.25)` ext=3.5 on the deployed build40 `Connector04.lvl` navmesh:
+
+```
+N:d=0.10/clr=88%  E:d=0.10/clr=86%  L:d=0.10/clr=83%  comp#2/60617
+```
+
+On-mesh in all 3 tilesets (d=0.10u), good clearance (83-88%, in the same range as other shipped
+uberboss spots e.g. Golden Bough's accepted 82%-Legendary forecourt). The one flag: it lands in
+set-0 connected-component **rank 2** (60,617 cells), not rank 1 (148,438 cells) - the survey tool's
+default gate treats rank!=1 as a "CHECK" (isolated-island risk).
+
+**Investigated and cleared (`scratchpad/ani_comp_check.py`):** component #2 is NOT a tiny
+unreachable island - it is the level's second-largest walkable region, and it is **already home to
+a full native monster-camp cluster**: 6 native `MC_FortWal`/`MC_FortTor`/`MC_WeaponRack` instances
+(base-game content, untouched by any of our edits) sit in this exact same component, 5-20u from the
+Aniketos spot. A vanilla monster camp already thrives there, so the area is unambiguously reachable
+in-game; the rank-2 read is an artifact of this survey's simplified height-adjacency component model
+(elevation/ramp connectivity that the stock engine's real Detour navmesh polygons handle natively,
+which this offline height-delta approximation doesn't fully capture - the same caveat noted for
+other elevated outdoor sub-areas). Thematically fitting too: a lone satyr hero holed up near a
+fortified monster encampment. **No coordinate nudge applied** - this is SV's own exact placement,
+and there is no ground-truth reason to move it off SV's authored spot.
+
+### 9.3 Implementation
+
+`tools/build_section_surgery.py`: added `ANIKETOS_HOST_KEY`, `Q_ANIKETOS_PROXY_DBR`,
+`Q_ANIKETOS_ROT`, `ANIKETOS_SPECS = {ANIKETOS_HOST_KEY: [(Q_ANIKETOS_PROXY_DBR, x, y, z, {'rot':
+Q_ANIKETOS_ROT})]}`, merged into `INJECT_SPECS` with the same collision-guarded-assert pattern as
+every other canonical boss fold (UBERBOSS_SPECS/B41_SPECS/BROODNEST_SPECS). Because Connector04
+carries no `drxmap` content it is not an `sv_shared_drx` surgery pair; it is a plain native-AE host,
+so it flows through `svaera_plus_portals.py`'s generic `ae_inject_keys` loop (the same v0x11 branch
+already proven for the 5 build36 uberbosses) with **zero new wiring** required - the existing
+build pipeline picks up the new `INJECT_SPECS` entry automatically on the next map build. No DB
+record was created, modified, or touched (`minobossproxy_aniketos` + its pool + monster records
+already exist in the mod arz, confirmed intact in round 1).
+
+### 9.4 Verify (dry-run injection into a COPY of the blob, `scratchpad/ani_dryrun.py`)
+
+Ran the exact production code path (`bss.inject_into_0x05_v11`) against a COPY of the real
+Connector04.LVL blob pulled from BOTH the deployed (`work/SoulvizierClassic/Resources/Levels.arc`)
+and canonical (`local/Levels_merged.arc`) maps - no file on disk was written.
+
+| check | result |
+|---|---|
+| blob length delta | +128 B (55->56 strings table entry + 1 new 72-byte unflagged instance) |
+| section 0x05 (objects) | CHANGED (expected) |
+| section 0x06 (descriptors) | **byte-identical** |
+| section 0x0b (navmesh/RLTD) | **byte-identical** |
+| section 0x14 (metadata) | **byte-identical** |
+| section 0x17 (region/env header) | **byte-identical** |
+| 0x05 string count | 55 -> 56 (+1, the new dbr path) |
+| 0x05 instance count | 212 -> 213 (+1) |
+| new instance resolves to | `records\proxies boss\boss\minobossproxy_aniketos.dbr` at `(85.793,36.155,113.245)`, flags=0 |
+| append-only proof | the ENTIRE new instance-block byte string starts with the old one verbatim, +72 trailing bytes (the one new unflagged v0x11 record) - **every native instance byte-unchanged** |
+| result identical for OUR_DEPLOY and OUR_CANON | **yes** (same level, same fix) |
+
+Confirms: only the ONE intended level's 0x05 section changes; navmesh, descriptors, region header,
+and every other of the map's ~2282 level blobs are untouched; every pre-existing native instance in
+Connector04 (including the 5 monster-camp scenery/proxy anchors used for the frame calibration) is
+preserved byte-for-byte; the new instance is exactly the SV098-sourced Aniketos proxy at SV's exact
+coordinate and orientation. QUESTS(0x1b) 256-window parity is untouched (this is a pure per-level
+0x05 append; it does not reach the world-level QUESTS section at all).
+
+### 9.5 Gates
+
+- `py_compile tools/build_section_surgery.py`: PASS.
+- `tools/patches/_check_registry.py`: PASS (`13 module(s)`, unaffected - map-only change).
+- `python -c "import build_section_surgery"`: loads clean, `ANIKETOS_HOST_KEY in INJECT_SPECS` ==
+  True, no assertion/collision error (confirms the collision-guard passed for real, not just in
+  isolation).
+- Containment: the injected proxy is the ONLY new object in Connector04, placed at SV's own
+  in-bounds coordinate inside that level's own grid corner - no cross-level leakage possible (the
+  spec dict key IS the host level).
+
+### 9.6 Deploy note
+
+Map-side content change, one level blob (`Connector04.lvl`), zero DB delta. Ships in the wave that
+next runs `tools/svaera_plus_portals.py` (both canonical and TESTHUB variants pick it up
+automatically via the shared `INJECT_SPECS` dict - no TESTHUB-only gating needed, this is shipped
+content like the other uberbosses). Per the save-baking caveat (section 6), Will must confirm on a
+**FRESH Epic DEV2 character** that has never entered Greece Area002 Connector04 on Epic - restart
+Steam + TQ first, hash-verify the deploy landed, then walk to the fortified monster camp on the east
+side of Connector04 (Greece Act 1, past Helos) and confirm Aniketos the satyr hero now spawns
+guaranteed on Epic (and again on Legendary).

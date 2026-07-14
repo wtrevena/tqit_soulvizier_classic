@@ -2311,6 +2311,49 @@ for _b41_key, _b41_specs in B41_SPECS.items():
     assert _b41_key not in INJECT_SPECS, f'b41 host key collision with INJECT_SPECS: {_b41_key}'
     INJECT_SPECS[_b41_key] = list(_b41_specs)
 
+# ANIKETOS RESTORE (el-boss-audit, 2026-07-14): re-place SV 0.98i's guaranteed
+# Epic/Legendary Hero satyr Aniketos (`minobossproxy_aniketos`, pool1=none,
+# poolEpic1=poolLegendary1=minobosspool_02_aniketos -> qm_aniketos_9/10/11, Hero,
+# spawnMin=max=1 - the Arachne's-Shame mechanism), lost when SVAERA ported this base
+# level without carrying SV's injected proxy object (docs/reports/el_boss_audit.md
+# sec 4/7). The DB chain is fully present in the mod arz already (proxy+pool+monster+
+# tagNewHero33); only the map placement was missing. Coordinate is SV098's OWN
+# placement, extracted verbatim from `upstream/soulvizier_098i/Resources/Levels.arc`
+# Levels/World/Greece/Area002/Connector04.LVL (v0x0e, 0x05 inst#2): local
+# (85.79340362548828, 36.15501403808594, 113.24531555175781), rot = SV's exact
+# float32 orientation (a ~-77.6deg yaw about Y, non-identity - preserved so the
+# injected instance is byte-exact to SV's own placement bytes, not just position-
+# exact). Grid corner is IDENTICAL across SV098/SVAERA/BASE/OUR (-6740,-23,-200) -
+# Connector04 is UNSHIFTED, so the SV098 local coordinate transposes directly onto
+# our world's copy of the level with no re-derivation. Host is native AE (v0x11 in
+# our built map, base-72; goes through the generic ae_inject_keys loop in
+# svaera_plus_portals.py, NOT perform_section_surgery - Connector04 carries no
+# drxmap content so it is not an sv_shared_drx pair).
+# On-mesh proof (tools/debug/survey_uberboss_spots.py, deployed build40 map):
+# d=0.10u all 3 tilesets, clr@3.5 88%/86%/83% (N/E/L). Lands in set-0 component #2
+# (60,617 cells - the level's second-largest region, NOT a tiny island): this is a
+# real, populated native sub-area - a fortified fort/camp cluster (6 native
+# MC_FortWal/MC_FortTor/MC_WeaponRack monster-camp instances sit in this SAME
+# component, 5-20u from the Aniketos spot), split from the main component only by
+# this survey's simplified height-adjacency model (elevation/ramp connectivity the
+# stock engine's real navmesh polygons handle natively, as proven by the vanilla
+# camp already thriving there). Thematically apt: a lone satyr hero holed up near a
+# monster encampment. No nudge applied - this is SV's own exact coordinate.
+ANIKETOS_HOST_KEY = 'levels/world/greece/area002/connector04.lvl'
+Q_ANIKETOS_PROXY_DBR = b'records\\proxies boss\\boss\\minobossproxy_aniketos.dbr'
+Q_ANIKETOS_ROT = (0.7915461659431458, 0.0, -0.6111094355583191,
+                   0.0, 1.0, 0.0,
+                   0.6111094355583191, 0.0, 0.7915461659431458)
+ANIKETOS_SPECS = {
+    ANIKETOS_HOST_KEY: [
+        (Q_ANIKETOS_PROXY_DBR, 85.79340362548828, 36.15501403808594, 113.24531555175781,
+         {'rot': Q_ANIKETOS_ROT}),
+    ],
+}
+for _ani_key, _ani_specs in ANIKETOS_SPECS.items():
+    assert _ani_key not in INJECT_SPECS, f'aniketos host key collision with INJECT_SPECS: {_ani_key}'
+    INJECT_SPECS[_ani_key] = list(_ani_specs)
+
 # UBER MAJESTIC CHESTS (b42 round-2): APPEND the 3 world-placed majestic chests per
 # fixed uber to that boss's host-level list (the boss was just placed above, so this
 # host key ALREADY exists -> append, never clobber). Order-preserving: the boss keeps
