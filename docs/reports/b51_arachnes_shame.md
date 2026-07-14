@@ -202,3 +202,89 @@ is a **test on a FRESH instance**, sequenced as:
 - `b51_map.py` - the proxy is placed only in `ArachnosUnderground01_Floor0.lvl`, present in all 5 maps incl. OUR_DEPLOYED.
 - `b51_level.py` -> `b51_level.out` - that level byte-identical base/SVAERA/deployed; 0 placed-object drift vs SVAERA.
 - `b51_curious.py` -> `b51_curious.out` - 811 E/L proxies swept; poisonspring c OK; 261 diffs all trash-pack Enslaver/coldworm adds.
+
+---
+
+# ROUND 1 IMPLEMENTER - independent re-verification + fix decision (2026-07-13)
+
+Per the mandatory implement->vet discipline, the implementer did NOT take the RCA on trust. The
+guaranteed-spawn chain was re-derived clean-room from the raw arz bytes (fresh scripts, independent
+of the RCA out-files) and the "restore the broken link" instruction was tested against the evidence.
+
+## Independent clean-room dry-run replay (`b51_replay.py`)
+
+Loaded BASE / SV098 / BUILD38 arz and resolved the proxy -> pool(s) -> limits -> monster chain
+exactly as the engine does, per difficulty. Results (nothing taken on trust):
+
+- **PART A - full field dumps.**
+  - `JG06_Arachnos_PoolB` SV098 == BUILD38: `spawnMin=1 spawnMax=1 championChance=0.0`, members =
+    exactly one `spiderblackwidow01` (weight 10, limit 1), **zero champions, no Enslaver appended**.
+  - `spiderblackwidow01` SV098 == BUILD38: `Class=Monster`, `monsterClassification=Boss`,
+    `charLevel=(45,60,73)`, `description=tagBlackWidow`. NOT declassed, NOT dtype-zeroed. (BASE is the
+    unused stub: classification=None, charLevel 1, "Eight Legged Fiend".)
+- **PART B - path-casing-insensitive functional diff SV098 -> BUILD38, all 5 chain links:**
+  proxy = 0, normal pool = 0, boss pool = 0, limits = 0, monster = 1 diff and that one diff is
+  `chanceToEquipFinger2` 3.0 -> 25.0 (soul-drop LOOT rate, non-spawn). **Spawn-relevant diffs across
+  the entire chain = 0.**
+- **PART C - per-difficulty replay yields IDENTICAL verdicts on SV098 and BUILD38:**
+  - Normal: **ABSENT** (proxy uses `pool1` = regular orbweaver pool, no boss).
+  - Epic: **GUARANTEED (exactly 1 Arachne's Shame)** (proxy uses `poolEpic1` = PoolB; limits window
+    [1,75] always covers an Epic player).
+  - Legendary: **GUARANTEED (exactly 1 Arachne's Shame)** (`poolLegendary1..3` = PoolB).
+  - `OVERALL: chain SV098->BUILD38 spawn-functionally INTACT = True`. This matches Will's report
+    verbatim: guaranteed on Epic + Legendary, none on Normal, not a chance/hero-roll.
+
+## Code-ownership grep (who could have broken it)
+
+`grep -niE "spiderblackwidow|jg06_arachnos|poisonspring|arachnos_poolb"` over `tools/` finds her spawn
+identifiers ONLY in (a) a comment in the Enslaver sweep citing `spiderblackwidow01 @ limit 1` as a
+*vanilla precedent* for the limit=1 idiom, (b) her SOUL design in `create_uber_souls.py` (loot), and
+(c) a `boss_skill_fix.py` comment (not in its apply roster). `herolimit_all` appears many times but
+only as a **donor path** that other mod bosses (Blood Toxeus, Wyrmhorde, obsidian, neferkha,
+polis_vault, toxeus_suite) CLONE to a new record; none mutate the base `herolimit_all.dbr` (PART B: it
+is 0-diff). **No code owns or edits her spawn chain**, so there is no "owning code" break to repair.
+
+## Curious-QA sibling sweep (same edit class)
+
+- `b51_siblings.py`: of all 809 SV098 E/L proxies, exactly **1** points at a strict single-member
+  guaranteed Boss/Hero/Quest pool (Arachne's `poisonspring c` -> PoolB). It is GUARANTEED-INTACT in
+  BUILD38.
+- `b51_siblings2.py` (broader): across all 809 E/L proxies, collect every Boss/Hero/Quest-classified
+  member in their Epic+Legendary pools, then confirm BUILD38 still contains each. **0 proxies lost a
+  boss/hero/quest member.** No sibling guaranteed boss was crowded-out, removed, declassed, or
+  unwired by our global spawn edits (the Enslaver x600 sweep / coldworm-champion injection only ADD to
+  trash packs). Arachne's Shame is essentially the unique boss of this exact class, and it is intact.
+
+## FIX DECISION - no arz/map/code change (evidence-driven)
+
+The brief's round-1 premise ("restore the broken link the RCA found") does **not** hold: the RCA
+found no broken link, and the implementer's independent replay confirms the E/L guarantee is already
+present, correct, and byte-functionally identical to classic SV 0.98i. Therefore:
+
+- **No fix is applied.** "Restoring" an already-correct guarantee is a no-op; altering the intact
+  pool/proxy/limits/monster would be a forbidden **rebalance / SV-design mutation beyond restoration**
+  and would violate the no-rebalance law. The minimal, evidence-driven action is **zero change**.
+- **guarantee_restored = already-intact** (verified, not modified): Epic and Legendary each yield
+  exactly one guaranteed Arachne's Shame; Normal yields none - as base/SV intended.
+- **siblings_fixed = 0**: none broken, none needed fixing.
+
+## The real decider = a FRESH-INSTANCE test (persisted save)
+
+Her absence in Will's **already-visited** Epic Fetid Lair is a persisted-save / baked-instance
+artifact (non-resetting Act-1 cave; she spawned guaranteed at first Epic entry and is almost certainly
+already killed). No DB/map edit can un-bake a save. **Decider:** on Epic, restart Steam + TQ, then
+enter a Fetid Lair the character has NOT yet visited (or a new Custom Quest character on Epic).
+- She appears -> confirmed working-as-designed; close.
+- She does NOT appear on a fresh Epic entry -> escalate to runtime diagnosis (Frida spawn probe;
+  `HeroLimit_All` engine behaviour), since the static chain proves she must spawn.
+
+## Gates (round 1)
+
+`tools/patches/_check_registry.py` -> selfcheck OK (12 modules, order 4c688f58...). `py_compile` of
+`apply_svc_patches.py` / `boss_skill_fix.py` / `create_uber_souls.py` -> OK. Working tree carries only
+this report edit (no arz/map/tool change). No heavy build (arz probes + replay on read-only copies).
+
+## Round-1 evidence artifacts (scratchpad)
+
+- `b51_replay.py` - clean-room per-difficulty replay; PART A/B/C above.
+- `b51_siblings.py` / `b51_siblings2.py` - E/L guaranteed-boss sibling sweeps (0 broken).
