@@ -1,5 +1,33 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD39 SHIPPED TO STEAM (2026-07-14) - boss-skill fixes; DEV traveler hub NOT shipped
+> **Workshop item 3759792705 is now build39 CANONICAL** (was build38a). Will explicitly ordered
+> "ship build 39 to steam." Only the DB (`arz`) and `Text.arc` advanced from published build38a; the
+> canonical `Levels.arc` and `Quests.arc` were re-uploaded BYTE-IDENTICAL to build38a/build36a (the
+> build39 map/quest change is the TESTHUB Helos hub v2, dev-only, deliberately kept OFF Steam).
+> Shipped md5s (each verified at snapshot, stage, package, and in the F9 dist==work push-gate):
+> - `Database/SoulvizierClassic.arz` = **`5bf7dac29beb75757178179c363af2cf`** (55,354,147 B) = the
+>   build39-dev arz. Fix on top of build38a's b37/b38 fixes: `boss_skill_fix`, so every new boss
+>   casts its skills in BOTH fought and soul-summoned forms. 12-module registry (order
+>   `4c688f58d1aa`); record-diff vs build38a 8 added / 10 changed, zero unexplained.
+> - `Resources/Text.arc` = **`e1b73e050975b63521a30062c21e009b`** (87,360 B) = build39-dev Text.
+> - `Resources/Levels.arc` = **`60a628807c1746e7bbde14946de62107`** (688,682,781 B) = CANONICAL
+>   build36a map (NOT the TESTHUB `4fcc058c590ab0719e224940ba0b9266`). Byte-identical to build38a.
+> - `Resources/Quests.arc` = **`56acee660e0c3dc7408f7d985231338c`** (194,092 B) = CANONICAL build36
+>   Quests (NOT the TESTHUB `7655f17e5a5f8bf13956ef456ca10595` with 25 hub triggers). Byte-identical
+>   to build38a. Both canonical artifacts staged from `local/` because work/ held the TESTHUB copy.
+> - **Push-gate (all against the exact dist payload): GATE PASS.** run_contracts 0 P0 / 0 P1 / 4910
+>   P2 across all 5 modules (every P2 pre-existing SV/DLC-inherited debt; anm_dreamcopy whitelist
+>   entry present). F9 dist==work coupling PASS. Travel-invariant gate (`gate_travel_npc_invariants`
+>   T6) PASS on the canonical `.arc`: 0 hub-record placements, 0 authored walk-throughs (SV-native
+>   baseline 3 only), which proves the DEV hub did NOT leak. Package TESTHUB guard PASS (packaged
+>   Levels `60a62880` differs from TESTHUB `4fcc058c`).
+> - **Upload:** steamcmd cached session (no re-auth), `-Update -Visibility 0`; SteamCMD "Committing
+>   update...Success" + "Upload complete", ManifestID `4886001279629433633` (steamcmd log
+>   2026-07-14 08:14:48 -> 08:14:57 OK). Delta-only: Levels/Quests unchanged from build38a were
+>   skipped. Tagged `build39-ship`. Shipped concurrently with the build40 lane consolidation on main
+>   (build40's in-flight merge/index left undisturbed; doc committed path-scoped).
+
 > ## BUILD39-DEV DEPLOYED TO DEV (2026-07-13, post-Steam-ship) - boss skills + hub v2
 > **DEV entry `SoulvizierClassicDEV` = build39-dev** (deployed by the TQ-exit watcher ~570s after
 > Will's session ended; all 4 artifacts md5-verified source==dest):
