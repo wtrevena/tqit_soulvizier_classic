@@ -1,4 +1,14 @@
-# b52 DAGON RCA (read-only; no fixes applied)
+# b52 DAGON — RCA + FIX (round 1)
+
+> **STATUS: FIXED (round 1, dry-run verified; awaiting build + Will's in-game test).**
+> Name, movement/kit, and the gate blind spot are all implemented and verified without a
+> heavy build (arz probes + dry-run replay on a baseline copy + real-`validate_tags` gate
+> proof). The implementation + verification + sibling sweep are in the **"IMPLEMENTATION &
+> VERIFICATION"** section near the bottom; the RCA that follows is the original diagnosis.
+
+---
+
+## RCA (original diagnosis; read-only)
 
 **Boss:** `records\test\boss_dagon_66.dbr` (Class=Monster, monsterClassification=Boss,
 Monster.tpl, charLevel 50/65/80, mesh `Creatures\Monster\Ichthian\IchthianMage01.msh`).
@@ -176,6 +186,93 @@ natural home.
 `Text_EN.arc`** (the build already loads base Text_EN for the de-clobber, so the data is on hand).
 This catches any promoted/new monster whose name tag resolves nowhere. Correct the false comment
 at lines 88-102 (Dagon's tag does **not** resolve from the base game).
+
+---
+
+## IMPLEMENTATION & VERIFICATION (round 1 fix wave)
+
+All three defects fixed; every claim below is dry-run verified against the ground-truth
+`baseline_build38.arz` (md5 `fcd5dcab`) with the REAL code, no heavy build.
+
+### (A) NAME + (B) KIT — `tools/apply_svc_patches.py`
+New helper `_fix_dagon_kit(db)` (beside `_add_dagon_to_ichthian_pools`), called from
+`apply_all_extended_patches` right after the pool promotion; the name value is authored in
+the `tags` block (`tags['tagSVCMonsterDagon'] = 'Dagon, Lord of the Poisoned Deep'`, beside
+Cold Worm's `tagD2Boss004`). It:
+
+- **(A)** repoints `boss_dagon_66.description` from the raw placeholder `tagD2Boss033` to the
+  mod-owned **`tagSVCMonsterDagon`** = *"Dagon, Lord of the Poisoned Deep"* (amgoz1 voice: the
+  deep-sea poison lord of his soul; the "Name, Epithet" form matches shipped bosses). The tag
+  flows `tags` -> `uber_soul_tags.txt` -> `Text.arc` + `mod_authored_tags.txt` manifest, so it
+  resolves in-game and is gate-validated as mod-owned.
+- **(B)** repoints every dead offensive slot (and the `specialAttack` that casts it) at an
+  EXISTING, resolving ichthian/poison skill, keeping his one working skill:
+
+  | slot / special | was (DEAD) | now (resolves) | lvl | chance |
+  |----|----|----|----|----|
+  | skillName1 / specialAttackSkillName (primary) | `d2custom\dagon_shadowstar_single` | `monster skills\attack_radius\ichthian_tidalstrike` (Tidal Strike, AoE) **[WILL]** | 10 | 30 |
+  | skillName3 / specialAttack2 | `d2custom\dagon_tidalwave` | `monster skills\attack_radius\venomnova` (Venom Nova, poison ring) | 6 | 20 |
+  | skillName2 / specialAttack3 | `d2custom\dagon_summonwater` | `monster skills\attack_projectile\ichthian_tidalorb` (Tidal Orb, burst) | 6 | 15 |
+  | skillName4 / specialAttack4 | `hydra_superbite` (already OK) | **KEPT** (Super Bite, melee poison) | 3 | 45 |
+  | skillName5 / specialAttack5 | `d2custom\dagon_mudstorm` | `boss skills\nehebkau_poisongasbomb` (Poison Gas Bomb) | 3 | 30 |
+  | skillName14 | `D2Boss_ConversionImmunity` (dead) | `boss skills\boss_conversionimmunity` (real passive) | [1,2,3] kept | — |
+
+  **Why this cures immobility:** the IchthianMage caster rig engages by "move to cast range ->
+  cast"; with every ranged skill a dead ref the loop never completed, so he stood. Now his
+  primary + three specials are live castable ranged attacks (a same-mesh mobile shaman is the
+  proven control), so the AI closes, casts, and fights.
+
+  **Deliberately minimal (no rebalance):** `characterRunSpeed` (1.1), `characterLife` (27591),
+  `characterOffensiveAbility`/`DefensiveAbility` (0/0), and every damage field are UNTOUCHED —
+  unlike Cold Worm (slow/weak base needing a boost), Dagon was already boss-statted; the only
+  defect was the dead kit. The vestigial `D2GlobalProperties_*` scaling passives + `pcloudpet`
+  slot are LEFT dead (never cast as specials; enabling them would ADD difficulty scaling he is
+  not built for). Crash-safe: skill DBRs referenced only — no `clone_record`, no dtype-on-clone,
+  no FX on the monster record; idempotent (keyed off the dead-ref markers). Soul drop untouched.
+
+**Dry-run replay (`scratchpad/dagon_dryrun.py`, real `_fix_dagon_kit` on the baseline copy):**
+`description -> tagSVCMonsterDagon`; primary = Tidal Strike @30; **0 dead offensive special
+refs remain**; all 5 specials + all offensive skillName slots resolve; conversion-immunity real
+with `[1,2,3]` preserved; runSpeed/OA/DA/life untouched; **idempotent** (2nd run = no-op). **PASS.**
+
+### (C) GATE — `tools/validate_tags.py`
+Closed the blind spot: a new **monster-name cross-check** (`collect_arz_tag_refs` now one-pass
+returns monster `description` tags + the spawn-referenced set; `validate` loads base `Text_EN.arc`
+via `build_text_arc.discover_base_text_en`/`load_base_en_tags`). Every **spawn-referenced**
+monster's display name must resolve in the mod `Text.arc` **OR** base `Text_EN.arc`:
+- **HARD FAIL** for `records\test\` cut-content bosses the mod promotes (the exact Dagon class).
+- **WARN** (non-blocking) for pre-existing base/SV affix variants, so a ~90-record base-naming
+  backlog never blocks a mod build.
+- Base `Text_EN` unavailable -> the whole cross-check SKIPS with a warning (build-safe).
+- The false comment at lines 88-102 (which claimed `tagD2Boss033` "resolves from the base game")
+  is corrected; `tagSVCMonster` added to the mod-owned prefix fallback.
+
+**Gate proof (`scratchpad/gate_proof.py`, REAL `validate()` end-to-end):**
+- **PRE-FIX** (baseline arz + current work `Text.arc`): `RESULT: FAIL` — `FAIL: 1 PROMOTED
+  records\test\ monster ... tagD2Boss033 records\test\boss_dagon_66.dbr`. **The gate would have
+  caught Dagon.**
+- **POST-FIX** (baseline+`_fix_dagon_kit` arz + `Text.arc`+`tagSVCMonsterDagon`): `RESULT: PASS`
+  — `OK: every spawn-referenced records\test\ monster name resolves`.
+- Both runs WARN the same 2 pre-existing non-test names (below) without failing. **PASS.**
+
+### Sibling sweep (the gate IS the detector; `scratchpad/sibling_sweep.py` + `gate_scope_final.py`)
+
+| record | class | name state | mobility | verdict |
+|---|---|---|---|---|
+| `records\test\boss_dagon_66` (Dagon) | promoted boss | raw `tagD2Boss033` | immobile (dead caster kit) | **FIXED** (this wave) |
+| `records\test\boss_coldworm50` (Cold Worm) | promoted boss | named `tagD2Boss004` | **mobile** (CryptWorm melee crawler + boosted stats; dead spell slots harmless) | OK — functional, out of scope |
+| `mutated_bm_plaguelord_12` (`tagNewMonster66`), `savage_bm_marauder_10` (`tagNewMonster46`) | base/SV affix variants | raw name, **spawn-referenced** | mobile | pre-existing base/SV raw-name; **gate WARNs**; separate backlog (not ours) |
+| 9 `records\test\` SFM monsters (`am_raptor_thunderlizard_33`, `as_lightning_magi_06`, `cm_vileravager_17`, `cs_icemagi_13`, `outsider_hero_*_46`, `bm_bladeflinger_15`, `ar_slinger_06`) | cut-content test | raw `tagMonsterNameSFM*` | n/a | **inert** (NOT spawn-referenced) -> never appears -> no fix needed |
+| ~88 more `tagNewMonster*`/`tagMonsterNameSFM*` | base/SV affix variants | raw name | n/a | **inert** (not spawn-referenced) -> backlog |
+
+**Verdict:** Dagon was the ONLY spawned, player-visible defect (raw name AND immobile). Cold
+Worm is functional. The remaining raw-name records are either inert (never appear) or a
+pre-existing base/SV affix-variant naming class (2 spawn-referenced, surfaced as gate WARNs)
+that predates this mod and is out of scope for the Dagon fix — flagged for a separate wave.
+
+### Gates
+`py_compile` OK (`apply_svc_patches.py`, `validate_tags.py`); `_check_registry.py` OK (11
+modules, order hash unchanged — the monolith + gate edits touch no REGISTRY entry).
 
 ---
 
