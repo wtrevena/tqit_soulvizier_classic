@@ -84,6 +84,8 @@ REGISTRY = [
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
+    'bossarena',            # b43: Aithon, the Ember-Crowned (Olympian Arena boss finish);
+                            # disjoint - upgrades the bossarena chain in place + adds 1 champion + 1 soul
     'hunting_occult_improvements',  # build37: Will-approved H/O skill edits; runs late (was the
                                     # finalization-phase interim call) so it wins any collision
     'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
