@@ -256,8 +256,11 @@ def main(argv):
         for f in fails:
             print('  ' + f)
         return 1
-    print('\nGATE PASS: NPC-dialog travel invariants hold (0 walk-throughs; hub warden-clean; '
-          'canonical byte-pure).')
+    print('\nGATE PASS: NPC-dialog travel invariants hold (0 walk-throughs; the 17-record Helos hub '
+          'is warden-clean + TESTHUB-only; the 5 per-area returns are warden-split + fire). NOTE: the '
+          'b48 round-3 return-split intentionally CHANGES the canonical map/quests - the 4 established '
+          'returns are canonical (a deliberate warden-mute bugfix), so a canonical rebuild + QA is '
+          'required (see docs/reports/b48_sparta_mute_fix.md).')
     return 0
 
 
