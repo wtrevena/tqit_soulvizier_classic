@@ -226,10 +226,15 @@ ALLOW = {
         # grant is only visible to this gate now that it runs POST-finalization): the giant IS a
         # life-drinker (spirit\lifedrain grant + big ADCtH), family-appropriate.
         'tagSVCSoulGaoler'},
-    'firefragmentnova.dbr': {  # fire family (Bloodcrow spec governs the record CD; unchanged here) (14)
+    'firefragmentnova.dbr': {  # fire family (Bloodcrow spec governs the record CD; unchanged here) (15)
         'tagSVCSoulSatyrMagi', 'tagSoulName17', 'tagSoulName18', 'tagSoulName19', 'tagSoulName21',
         'tagSoulName24', 'tagSoulName465', 'tagSoulName112', 'tagSVCSoulDevCory', 'tagSVCSoulDevMorgan',
-        'tagSVCSoulDevScott', 'tagSVCSoulFireTrap', 'tagSoulSVC9019', 'tagSoulName98'},
+        'tagSVCSoulDevScott', 'tagSVCSoulFireTrap', 'tagSoulSVC9019', 'tagSoulName98',
+        # bossarena's Aithon the Ember-Crowned (registry module runs AFTER this one, so its grant
+        # is only visible to this gate now that it runs POST-finalization): a fire boss (volcanic-orb
+        # + fire-enchant kit, "he IS fire" identity resist) reusing the fire-family nova proc,
+        # family-appropriate by design - mirrors the Gaoler/ToxeusHunt late-registry roster entries.
+        'tagSVCSoulAithon'},
     'arachne_venomspray.dbr': {  # venomous family (ascacophus/epiales/gorgons/dagon removed) (8)
         'tagSoulName231', 'tagSoulName71', 'tagSoulName194', 'tagSoulName206',
         'tagSoulName332', 'tagSoulName418', 'tagSVCSoulNomnom', 'tagSoulSVC9023'},
