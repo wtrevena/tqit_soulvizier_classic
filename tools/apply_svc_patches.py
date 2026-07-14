@@ -17151,6 +17151,79 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     return tags
 
 
+def _whiten_pet_display_names(db, tags):
+    """b50 (Will 2026-07-13, "when toxeus and his minions are pets, their names
+    should be white not red"): a summoned pet's floating / target-frame name is
+    its OWN `description` field (a Text tag name; _build_boss_summon writes it at
+    the `sf(path, 'description', desc_tag)` line). Six boss-summon pet families
+    point that field at the SAME name tag as the hostile world boss they were
+    cloned from, and those shared tags embed a literal {^r} (red) color code in
+    their TEXT, so the FRIENDLY pet's name renders red exactly like the enemy -
+    even though the pet is monsterClassification=Common.
+
+    This is the data-driven fix (no family hand-list): give EVERY Class=='Pet'
+    record whose name tag carries an embedded color code a PLAIN (white) sibling
+    tag, and repoint ONLY the pet's `description`. The shared hostile tag is never
+    edited, so the world boss / minion keeps its {^r} red. The action keys on "the
+    name text embeds a color code", which is a no-op on the ~200 already-plain
+    pets and self-limits to exactly the colored ones, so it scales to any future
+    boss-summon family automatically. This mirrors the mod's own convention: the
+    four newest bosses (Tantalus/Charon/Mnemophage/Kravmoloch) already give their
+    friendly forms a dedicated plain tagSVCPet* name, separate from the hostile
+    {^r} tagSVCMonster* world tag; this generalizes that split to the older six.
+
+    Why the `tags` manifest is the right (and sufficient) source: base-game
+    monster names are PLAIN - the engine colors a hostile red at runtime from its
+    relationship to the player, so a friendly pet cloned from a base boss already
+    reads white. Only the mod's own tags EXPLICITLY embed {^r}, and every such tag
+    is authored into this `tags` dict, so scanning it catches exactly the buggy
+    families and nothing else.
+
+    Runs at the top of run_registry_gates over the FINAL assembled db (monolith +
+    registry modules) with the fully-populated `tags` manifest, so it also covers
+    the registry-module Hades Marshal pet (four_generals.py). Minted tags are
+    authored into `tags`, which build_svc_database writes to uber_soul_tags.txt ->
+    Text.arc (and into mod_authored_tags.txt), so they ship and pass validate_tags.
+    Idempotent: the sibling key is deterministic and the minted white text carries
+    no color code, so a re-run skips the already-whitened pet.
+
+    Laws respected: no clone_record; set_field on the EXISTING string `description`
+    field with NO dtype (type preserved, per the dtype-preservation law); pet stats
+    (PET-STAT-MIRROR), gear, skill kits (PET-SKILL-KIT) and desc-tooltip tags are
+    all left untouched - only the pet's displayed NAME color changes.
+    """
+    whited = []
+    for rec in db.record_names():
+        if db.get_field_value(rec, 'Class') != 'Pet':
+            continue
+        dtag = db.get_field_value(rec, 'description')
+        if not dtag:
+            continue
+        text = tags.get(dtag)
+        # Skip plain names (already render white) and any name tag whose text is
+        # not mod-authored into this manifest (base-game tags -> engine-default
+        # friendly white for a pet). Only mod tags that EMBED a color code are red.
+        if not text or '{^' not in text:
+            continue
+        white_text = _re.sub(r'\{\^.\}', '', text).strip()
+        if not white_text or white_text == text:
+            continue
+        white_tag = dtag + 'Pet'                        # deterministic white sibling
+        tags.setdefault(white_tag, white_text)          # author into the manifest
+        db.set_field(rec, 'description', white_tag)      # repoint ONLY the pet
+        whited.append((rec, dtag, white_tag, white_text))
+    if whited:
+        print(f"  b50 pet-name whiten: {len(whited)} colored pet name(s) -> plain "
+              f"white sibling tag (shared hostile world tag left red):")
+        for rec, dtag, white_tag, white_text in whited:
+            print(f"    {rec.rsplit(chr(92), 1)[-1]}: {dtag} -> {white_tag} "
+                  f"({white_text!r})")
+    else:
+        print("  b50 pet-name whiten: no colored pet names found "
+              "(every pet already renders white)")
+    return whited
+
+
 def run_registry_gates(db, tags, force_full_drops=True):
     """Relocated finalization + fail-loud GATE BATTERY (patches-registry
     bootstrap, build37).
@@ -17168,6 +17241,13 @@ def run_registry_gates(db, tags, force_full_drops=True):
     per-run pet registry populated during content authoring and read by the pet
     gates. Returns tags.
     """
+
+    # ── b50 PET-NAME-COLOR (Will 2026-07-13): friendly summoned pets must read
+    #    WHITE, not the hostile boss's {^r} red. Runs FIRST, over the final db +
+    #    fully-populated tags (every pet family, incl. registry-module pets), so
+    #    each colored pet name gets a plain white sibling tag before the tag
+    #    manifest is written. The shared hostile world tag is never touched.
+    _whiten_pet_display_names(db, tags)
 
     # ── build29 wave: B-SOUL-PROC-2 + contract-suite DB fixes ────────────────
     # MUST run after EVERY soul-authoring pass above (it post-processes all
