@@ -1,4 +1,32 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🏛️ **ATHENS-CRYPT-L2-REACH (Will report 2026-07-14 + RCA; awaiting Will's design pick).** Will: "I thought
+> the path to Athens crypt level 2 was in the ancient tomb in Athens battleground - I went through the tomb and
+> never saw the guy that asks if you want to travel." **RCA (read-only vs deployed DEV `d4965d29` / Quests
+> `37cf867f`; probe `scratch_audit/athens_traveler_probe.py`): NOT a mute / NOT a lost-placement bug - the
+> Sparta traveler SURVIVED the b48->14-roster port and RESPONDS** (`gate_traveler_responds` + `gate_landing_clearance`
+> both PASS). Ground truth: (a) the OUTBOUND `svc_helos_trav_sparta` is in the **Helos plaza** (StartingFarmland06D
+> @ ~-5976,1.6,910); its route tagSVCHelosToSparta -> **(-6587,1,-3180) = the Athens CATACOMB** (CataCube02_FloorLast),
+> on-mesh, amid beastmen; (b) the only hub NPC IN the tomb is the **return** traveler `svc_area_return_sparta`
+> @ (-6586,1,-3178) (deepest chamber by stairs-down) - it only offers "back to Helos", so it is NOT the "guy that
+> takes you to Crypt L2"; (c) **spartacryptlevel2 (Athens Crypt L2) is UNREACHABLE** - the build25 invented
+> catacomb->crypt door was removed 2026-07-12 (CataCube02_FloorLast 0x14 section now empty; ZERO inbound portal to
+> the crypt GUID `797c7859...` anywhere in the 2282-level map), and the one route that lands INSIDE the crypt
+> (`portal_master_helos`/Almyros tagSVCHelosToSparta -> (-5602,-2,-1409)) is DORMANT because Almyros is de-duped/
+> **UNPLACED** in the TESTHUB map (b48). The crypt's own return NPC `svc_testhub_return_sparta` @ (-5599,-1.6,-1409)
+> is stranded (nothing reaches it). So "no travel guy in the tomb" = by design the outbound guy sits in Helos, and
+> the crypt was never re-cut after the door removal (WILL_TEST_GUIDE:86 said "report if you want it re-cut" - Will
+> just did). **WILL DECISION (pick one, then main session builds coupled + fresh-char QA; TESTHUB-only):**
+> - **Opt-A (recommended, matches Will's mental model):** give the already-placed tomb NPC `svc_area_return_sparta`
+>   a 2nd boat-dialog offer "Descend to the Sparta Crypt" -> (-5602,-2,-1409). Reuses the existing crypt landing +
+>   the stranded return NPC. `build_quest_files` route + 1 Text label only; **NO new arz record, NO new map placement.**
+> - **Opt-B (one-line, minimal):** repoint `svc_helos_trav_sparta` dest (-6587,1,-3180) -> (-5602,-2,-1409) so the
+>   Helos "Sparta Crypt" traveler lands you IN the crypt instead of the catacomb. Quests-only. (Abandons b39's
+>   "drop at the door / learn geography" intent; traveler still in Helos not the tomb.)
+> - **Opt-C: re-cut a walk-in door = BANNED** (walk-through teleports are out per the 2026-07-12 directive).
+> Note: `SoulvizierClassicDEV2` is NOT on disk (only `SoulvizierClassicDEV`); deploy DEV2 or use a fresh DEV char
+> for a save-bake-free confirm. Latent cleanup (not urgent): Almyros's crypt dest (-5602,-2,-1409) and the dedicated
+> Sparta traveler's catacomb dest (-6587,1,-3180) DIVERGED under the same tagSVCHelosToSparta - benign today (Almyros
+> unplaced in TESTHUB) but reconcile whichever option is chosen.
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has

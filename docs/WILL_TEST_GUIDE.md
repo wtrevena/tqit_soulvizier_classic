@@ -83,7 +83,7 @@ learn where everything is, and **walk in** to the boss yourself.
 |---|---|---|
 | **Traveler: Garden of Merchants** | the merchant hub by the caravan_rhodes Super-Caravan + the SV **rift-shrine** (teleportshrine_gom) that reaches the Garden in game | browse the merchants; the rift-shrine is the in-game way in |
 | **Traveler: The Secret Place** | the darkforestenter **forest-cluster entry** | walk in; the crow-hero bosses (Murderbunny, Zilla) live in the interiors |
-| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | this is the in-game entrance TO the Sparta crypt; the invented door itself is currently removed - report if you want it re-cut |
+| **Traveler: The Sparta Crypt** (stands in the **Helos plaza**, NOT in the tomb) | the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen; the **return** traveler stands right where you land | this traveler drops you at the catacomb, NOT inside the crypt. **Athens Crypt L2 (spartacryptlevel2) is NOT enterable right now** - the invented door was removed 2026-07-12 and no traveler routes IN. See the SPARTA note just below this table |
 | **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east |
 | **Traveler: The Boss Arena** | the boss-arena forecourt (~90u south of the arena volume) | walk north into the Satyr-Shaman arena |
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
@@ -92,6 +92,26 @@ learn where everything is, and **walk in** to the boss yourself.
 | **Traveler: Golden Bough (Charon)** | the Styx **Hades-city settlement** (the boatman, storyteller + a Styx rift-shrine) | test the settlement NPCs; walk east to **Charon, the Unferried** + the Golden Bough |
 | **Traveler: Pools of Mnemosyne** | the Mnemosyne cave **stairs-up entrance** | walk ~20u to **The Mnemophage** (boss-glyph ring) |
 | **Traveler: Dread Halls (Ephialtes)** | the Dread Halls **stairs-up entrance** | walk ~130u SW to **Ephialtes, the Waking Dread** in the deep vault |
+
+> ### SPARTA CRYPT - where the travel guy is, and why Athens Crypt L2 has none in the tomb (2026-07-14 RCA)
+> **Your report:** "I thought the path to Athens crypt level 2 was in the ancient tomb in Athens
+> battleground - I went through the tomb and never saw the guy that asks if you want to travel."
+> **Ground truth on the map you play (deployed DEV `d4965d29` / Quests `37cf867f`):**
+> - The **"The Sparta Crypt" travel guy is in the HELOS starting-town plaza** (standing with the other
+>   13 travelers), **NOT inside the Athens tomb**. Talk to him there and he drops you in the **deepest
+>   Athens catacomb** (CataCube02_FloorLast, by the stairs-down, amid beastmen). A **return** guy is
+>   right at that landing to bring you back. Both work (gates green - not mute).
+> - **Athens Crypt L2 (spartacryptlevel2) itself is NOT enterable yet.** The invented catacomb->crypt
+>   door was removed 2026-07-12, and **no traveler routes INTO the crypt** - so the "guy in the tomb who
+>   takes you down to Crypt L2" you were looking for **doesn't exist yet** (by design). The Sparta travel
+>   guy only reaches the catacomb; the crypt beyond it is currently sealed.
+> - **Save-baking check:** if you first walked the Athens catacomb on your *existing* DEV char before
+>   these travelers deployed, TQ can hide newly-added NPCs. Re-check on a **brand-new Custom Quest char**.
+>   (Note: `SoulvizierClassicDEV2` is not on disk right now - only `SoulvizierClassicDEV` - so a fresh
+>   char on DEV is the way to dodge save-baking until DEV2 is deployed.)
+> - **Want Crypt L2 reachable?** It's a queued decision (`docs/BACKLOG.md` -> ATHENS-CRYPT-L2-REACH).
+>   Cheapest = give the tomb's return guy a 2nd offer "Descend to the Sparta Crypt" -> lands you inside
+>   spartacryptlevel2 at (-5602,-2,-1409), where a return traveler already waits. Say the word.
 
 ### NEW travelers (order ii) - map-placed bosses the original 11 did not cover
 
@@ -182,7 +202,10 @@ NOT YET TESTED - reach all of these via the **HELOS TRAVELER HUB** above (DEV/TE
 invented walk-through doors that used to enter them were REMOVED 2026-07-12 (walk-through teleports
 are banned; a walk-through to the Garden with no way back was a live Steam bug):
 1. **Uber Dungeon / Obsidian Halls** (roulette + 4 wardens) - "Traveler: The Obsidian Halls".
-2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt".
+2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt" (the travel guy is in the **Helos plaza**, not the
+   tomb) drops you in the deepest Athens catacomb. **The crypt itself (spartacryptlevel2) is NOT enterable
+   yet** - invented door removed 2026-07-12, no traveler routes in. See the SPARTA note in the HELOS
+   TRAVELER HUB section + BACKLOG "ATHENS-CRYPT-L2-REACH".
 3. **Garden of Merchants** - "Traveler: Garden of Merchants". (The old first-cave portal NPC is on
    Will's removal list; the Garden is now reached via the hub, not that NPC.)
 4. **Secret Place** - "Traveler: The Secret Place". The crow-hero bosses (Murderbunny, Zilla, etc. -
