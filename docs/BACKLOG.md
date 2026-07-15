@@ -2154,6 +2154,27 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
 - Comprehensive dropped-visuals restoration (#28).
 - Cold Tombs (#36) - ON HOLD per Will.
 
+## QUEUED FEATURE: NEW-HERO-PARNASSUS-HOUND (APPROVED by Will 2026-07-14, not yet scheduled)
+Will (verbatim): "add a new uber hero to the back corner of the parnassus caves. he could be a
+massive fire breathing dog one of the black hounds that breathe fire and he could have other
+crazy skills too."
+- **Identity:** a massive black hound of the fire-breathing hound family (use the base/SV black
+  hound rig that already carries a breath attack as the donor; scale up per the Ephialtes/Mnemophage
+  size precedent, watch ceiling clearance in the cave interior). Name/lore to the amgoz1 bar
+  (amgoz1_design_voice.md): monster-identity-driven - a hound of Parnassus's depths, fire/ash
+  themes; name flagged for Will veto.
+- **Kit:** signature fire breath + 2-3 "crazy" donor-based skills at the amgoz1 bar (e.g. leaping
+  pounce, ember howl/summon ash-pups, flame trail - designer picks proven-shape donors; boss_skill_fix
+  discipline: skills must actually cast, donor-matched levels).
+- **Placement:** the BACK CORNER (deepest dead-end) of the Parnassus Caves (Greece Act 1) -
+  implementation surveys the level's 0x0b navmesh for the deepest on-mesh pocket with boss+adds
+  clearance (survey_uberboss_spots.py), q_<boss>_lone single-spawn proxy (chance TBD by Will -
+  default guaranteed like other placed ubers), landing-clearance + containment gates.
+- **Rewards:** 3-tier soul ({^F} tags, per-tier icons, granted skill = his identity e.g. the fire
+  breath); 3 region-tuned Majestic Chests per the b42 standard.
+- **Standard lanes:** DB records via registry module; tags via manifest; INJECT_SPECS placement;
+  full gate battery; Will fresh-char verify on DEV after ship.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
