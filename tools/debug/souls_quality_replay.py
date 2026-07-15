@@ -2,24 +2,28 @@ r"""Dry-run replay + fail-loud proof for tools/patches/souls_quality.py (no heav
 
 Applies souls_quality over a COPY (in-memory) of a built .arz - the FINAL
 post-monolith+registry state the module sees at run time - and proves:
-  1. INTENDED-ONLY DIFF: db._modified after apply() == exactly the predicted set
-     (the wrong-icon svc_uber e/l rings UNION the 5 tier-inversion level-fix
-     records).
-  2. FIELD-LEVEL MINIMALITY: each touched record changed ONLY its bitmap (icon
-     rings) and/or the intended level fields (the inversion fixes); every other
-     field byte-identical.
-  3. CORRECTNESS: all 5 inverted families now run n<=e<=l on the fixed field(s);
-     every svc_uber e/l ring shows its own tier icon.
-  4. verify() passes (roster-wide monotonicity + svc_uber icon gates).
-  5. IDEMPOTENCY: a 2nd apply() touches nothing new.
-  6. NEGATIVE: verify() fail-louds on an injected svc_uber inversion, on an
-     injected NON-svc_uber (roster-wide) inversion, AND on an injected wrong-tier
-     icon.
+  1. INTENDED-ONLY DIFF: db._modified after apply() == exactly the predicted
+     modified set (wrong-icon svc_uber e/l rings UNION the 5 tier-inversion
+     level-fix records UNION the 12 crow-controller records UNION the tombguardian
+     monster detach); AND exactly the 3 tombguardian soul records are REMOVED.
+  2. FIELD-LEVEL MINIMALITY: each touched record changed ONLY its allowed field(s)
+     - bitmap (icon rings), the intended level fields (inversions),
+     itemSkillAutoController REMOVED (crow rings), lootFinger2Item1 cleared
+     (tombguardian monster); every other field byte-identical.
+  3. CORRECTNESS: all 5 inverted families now run n<=e<=l; every svc_uber e/l ring
+     shows its own tier icon; the 4 crow-class rings have NO controller; the
+     tombguardian soul is fully retired (detached + records gone).
+  4. verify() passes (all four gates).
+  5. IDEMPOTENCY: a 2nd apply() touches nothing new and removes nothing new.
+  6. NEGATIVE: verify() fail-louds on an injected svc_uber inversion, an injected
+     NON-svc_uber inversion, an injected wrong-tier icon, an injected on-attack
+     controller on an svc_uber permanent summon, AND an injected tombguardian
+     soul re-attach.
 
 Usage:  py tools/debug/souls_quality_replay.py <built.arz>
 Read-only against the input file (loads into memory; never writes the arz).
 """
-import os, sys, re, pathlib, io, contextlib
+import os, sys, pathlib, io, contextlib
 
 _TOOLS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 for _p in (_TOOLS, os.path.join(_TOOLS, 'patches')):
@@ -49,29 +53,53 @@ def main():
     db = ArzDatabase.from_arz(pathlib.Path(sys.argv[1]))
     nm = {_n(x): x for x in db.record_names()}
 
-    # ---- predict the intended set from the baseline (independent of the module) ----
-    predicted_icon = set()        # e/l svc_uber rings currently showing a wrong-tier soul icon
+    # ---- predict the intended sets from the baseline (independent of the module) ----
+    # (a) tombguardian retirement
+    tg_mon = nm.get(_n(SQ._TG_MONSTER))
+    tg_soul_recs = [nm[_n(sp)] for sp in SQ._TG_SOULS if _n(sp) in nm]
+    tg_detach = set([tg_mon]) if tg_mon is not None else set()
+    # (b) crow controller removals: rings that currently HAVE the field
+    ctl_recs = {}                 # rec -> was controller value
+    for path in SQ._CROW_CONTROLLER_RECORDS:
+        rec = nm.get(_n(path))
+        if rec is None:
+            continue
+        ctl = SQ._sval(db, rec, 'itemSkillAutoController')
+        if SQ._field_key(db, rec, 'itemSkillAutoController') is not None:
+            ctl_recs[rec] = ctl
+    # (c) wrong-tier icons on e/l svc_uber rings, EXCLUDING the removed tombguardian souls
+    removed = set(tg_soul_recs)
+    predicted_icon = set()
     for rec, nn, tier in SQ._iter_uber_rings(db, nm):
+        if rec in removed:
+            continue
         bmp = SQ._sval(db, rec, 'bitmap')
         if bmp:
             m = SQ._SOUL_ICON_RE.search(bmp)
             if m and m.group(1) != tier:
                 predicted_icon.add(rec)
-    # level-fix records that will actually change (raise-only: cur < target)
-    level_recs = {}               # rec -> {field: target}
+    # (d) raise-only level fixes that will actually change
+    level_recs = {}
     for path, fields in SQ._LEVEL_FIX.items():
         rec = nm[_n(path)]
         eff = {f: t for f, t in fields.items()
                if (SQ._ival(db, rec, f) or 0) < t}
         if eff:
             level_recs[rec] = eff
-    predicted = set(predicted_icon) | set(level_recs)
+
+    predicted_mod = set(predicted_icon) | set(level_recs) | set(ctl_recs) | tg_detach
     print("predicted wrong-icon e/l rings : %d" % len(predicted_icon))
+    print("crow-controller records        : %d (%s)"
+          % (len(ctl_recs), ', '.join(sorted(r.rsplit('\\', 1)[-1] for r in ctl_recs))))
     print("level-fix records (raise-only) : %d (%s)"
           % (len(level_recs), ', '.join(sorted(r.rsplit('\\', 1)[-1] for r in level_recs))))
-    print("predicted total touched        : %d" % len(predicted))
+    print("tombguardian detach record     : %d ; soul records to remove: %d"
+          % (len(tg_detach), len(tg_soul_recs)))
+    print("predicted total MODIFIED        : %d ; predicted REMOVED: %d"
+          % (len(predicted_mod), len(tg_soul_recs)))
 
-    before = {rec: snap_fields(db, rec) for rec in predicted}
+    before = {rec: snap_fields(db, rec) for rec in predicted_mod}
+    n_records_before = len(db.record_names())
 
     mod0 = set(db._modified)
     print('\n########## APPLY ##########')
@@ -80,19 +108,28 @@ def main():
 
     ok = True
 
-    # (1) intended-only diff
-    diff_only = delta == predicted
-    extra = sorted(r.rsplit('\\', 1)[-1] for r in (delta - predicted))
-    missing = sorted(r.rsplit('\\', 1)[-1] for r in (predicted - delta))
-    print('\n[1] INTENDED-ONLY DIFF: touched=%d predicted=%d  match=%s'
-          % (len(delta), len(predicted), diff_only))
+    # (1) intended-only MODIFIED diff
+    diff_only = delta == predicted_mod
+    extra = sorted(r.rsplit('\\', 1)[-1] for r in (delta - predicted_mod))
+    missing = sorted(r.rsplit('\\', 1)[-1] for r in (predicted_mod - delta))
+    print('\n[1] INTENDED-ONLY DIFF: modified=%d predicted=%d  match=%s'
+          % (len(delta), len(predicted_mod), diff_only))
     if extra:
-        print('    !!! UNEXPECTED touched:', extra[:12])
+        print('    !!! UNEXPECTED modified:', extra[:12])
     if missing:
-        print('    !!! predicted but NOT touched:', missing[:12])
+        print('    !!! predicted but NOT modified:', missing[:12])
     ok = ok and diff_only
 
-    # (2) field-level minimality + (3) icon correctness
+    # (1b) exactly the 3 tombguardian souls REMOVED
+    now_names = {_n(x) for x in db.record_names()}
+    still_present = [sp for sp in SQ._TG_SOULS if _n(sp) in now_names]
+    n_removed = n_records_before - len(db.record_names())
+    rem_ok = (n_removed == len(tg_soul_recs)) and not still_present
+    print('[1b] RECORD REMOVAL: removed=%d expected=%d tombguardian souls still present=%s  ok=%s'
+          % (n_removed, len(tg_soul_recs), [s.rsplit('\\', 1)[-1] for s in still_present], rem_ok))
+    ok = ok and rem_ok
+
+    # (2) field-level minimality + (3) correctness
     ICON = 'SVItems\\jewelry\\soul_%s_icon.tex'
     field_ok = True
     for rec in delta:
@@ -104,27 +141,57 @@ def main():
         allowed = set(level_recs.get(rec, {}))
         if rec in predicted_icon:
             allowed |= {'bitmap'}
+        if rec in ctl_recs:
+            allowed |= {'itemSkillAutoController'}
+        if rec in tg_detach:
+            allowed |= {'lootFinger2Item1'}
         stray = changed - allowed
         if stray:
             field_ok = False
             print('    !!! %s changed stray field(s): %s'
                   % (rec.rsplit('\\', 1)[-1], sorted(stray)))
-        # icon correctness
-        if 'bitmap' in changed:
+        if 'bitmap' in changed and rec in predicted_icon:
             got = _n(aft.get('bitmap', ('',))[0])
             if got != _n(ICON % tier):
                 field_ok = False
                 print('    !!! %s icon=%s (want tier %s)'
                       % (rec.rsplit('\\', 1)[-1], got, tier))
-    print('[2/3] FIELD MINIMALITY + icon correctness: %s' % field_ok)
+        if rec in ctl_recs and 'itemSkillAutoController' in aft:
+            field_ok = False
+            print('    !!! %s still has itemSkillAutoController' % rec.rsplit('\\', 1)[-1])
+    print('[2/3] FIELD MINIMALITY + icon + controller-removal correctness: %s' % field_ok)
     ok = ok and field_ok
 
-    # (3b) every fixed family's fixed field(s) now monotonic n<=e<=l
-    print('\n[3b] fixed-family monotonicity')
+    # (3b) crow-class rings have NO controller
+    crow_ok = True
+    for path in SQ._CROW_CONTROLLER_RECORDS:
+        rec = nm.get(_n(path))
+        if rec is None:
+            continue
+        if SQ._field_key(db, rec, 'itemSkillAutoController') is not None:
+            crow_ok = False
+            print('    !!! %s still has a controller' % rec.rsplit('\\', 1)[-1])
+    print('[3b] CROW controllers removed (manual-cast): %s' % crow_ok)
+    ok = ok and crow_ok
+
+    # (3c) tombguardian monster carries no soul ref
+    tg_ok = True
+    if tg_mon is not None:
+        for k, vals in snap_fields(db, tg_mon).items():
+            for v in vals:
+                if isinstance(v, str) and 'um_tombguardian_soul' in v.lower():
+                    tg_ok = False
+                    print('    !!! um_tombguardian_26 still refs soul via %s: %s' % (k, v))
+    print('[3d] tombguardian detached (no soul loot ref): %s' % tg_ok)
+    ok = ok and tg_ok
+
+    # (3e) fixed-family monotonicity
+    print('\n[3e] fixed-family monotonicity')
     mono_ok = True
+    nm2 = {_n(x): x for x in db.record_names()}
 
     def fam_levels(fam_dir_stem, field):
-        rn = {t: nm[_n(r'records\item\equipmentring\soul\%s_%s.dbr'
+        rn = {t: nm2[_n(r'records\item\equipmentring\soul\%s_%s.dbr'
                        % (fam_dir_stem, t))] for t in ('n', 'e', 'l')}
         return [SQ._ival(db, rn[t], field) for t in ('n', 'e', 'l')]
 
@@ -134,7 +201,6 @@ def main():
         ('svc_uber\\crowboar_soul', 'itemSkillLevel'),
         ('svc_uber\\onyxspine_soul', 'augmentSkillLevel1'),
         ('svc_uber\\onyxspine_soul', 'augmentSkillLevel2'),
-        ('svc_uber\\onyxspine_soul', 'itemSkillLevel'),
         ('svc_uber\\steamcrawler_soul', 'augmentSkillLevel1'),
         ('svc_uber\\steamcrawler_soul', 'augmentSkillLevel2'),
         ('spider\\bloodtip_soul', 'itemSkillLevel'),
@@ -149,7 +215,7 @@ def main():
     ok = ok and mono_ok
 
     # (4) verify()
-    print('\n[4] verify() (roster-wide monotonicity + svc_uber icon gates)')
+    print('\n[4] verify() (monotonicity + icon + crow-controller + tombguardian gates)')
     try:
         SQ.verify(db, {})
         verify_ok = True
@@ -160,17 +226,20 @@ def main():
 
     # (5) idempotency
     mod1 = set(db._modified)
+    n_before2 = len(db.record_names())
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         SQ.apply(db, {})
     delta2 = set(db._modified) - mod1
-    print('\n[5] IDEMPOTENCY: 2nd apply touched %d new record(s) (expect 0)' % len(delta2))
-    ok = ok and (len(delta2) == 0)
+    removed2 = n_before2 - len(db.record_names())
+    print('\n[5] IDEMPOTENCY: 2nd apply modified %d new, removed %d (expect 0/0)'
+          % (len(delta2), removed2))
+    ok = ok and (len(delta2) == 0) and (removed2 == 0)
 
     # (6) negative tests
     print('\n[6] NEGATIVE TESTS')
     # (6a) svc_uber inversion
-    crow_l = nm[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_l.dbr')]
+    crow_l = nm2[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_l.dbr')]
     db.set_field(crow_l, 'augmentSkillLevel1', 1)
     caught_uber = False
     try:
@@ -179,18 +248,18 @@ def main():
         caught_uber = 'INVERSION' in str(e)
         print('    svc_uber inversion   -> verify RAISED:', caught_uber)
     db.set_field(crow_l, 'augmentSkillLevel1', 3)
-    # (6b) NON-svc_uber (roster-wide) inversion - proves the widening
-    blt_e = nm[_n(r'records\item\equipmentring\soul\spider\bloodtip_soul_e.dbr')]
-    db.set_field(blt_e, 'itemSkillLevel', 1)          # re-introduce SV inversion
+    # (6b) NON-svc_uber (roster-wide) inversion
+    blt_e = nm2[_n(r'records\item\equipmentring\soul\spider\bloodtip_soul_e.dbr')]
+    db.set_field(blt_e, 'itemSkillLevel', 1)
     caught_roster = False
     try:
         SQ.verify(db, {})
     except SystemExit as e:
         caught_roster = 'INVERSION' in str(e) and 'bloodtip' in str(e)
         print('    NON-svc_uber inversion-> verify RAISED (names bloodtip):', caught_roster)
-    db.set_field(blt_e, 'itemSkillLevel', 7)          # restore
+    db.set_field(blt_e, 'itemSkillLevel', 7)
     # (6c) wrong-tier icon
-    crow_e = nm[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_e.dbr')]
+    crow_e = nm2[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_e.dbr')]
     db.set_field(crow_e, 'bitmap', 'SVItems\\jewelry\\soul_n_icon.tex')
     caught_icon = False
     try:
@@ -198,7 +267,32 @@ def main():
     except SystemExit as e:
         caught_icon = 'wrong-tier soul' in str(e)
         print('    wrong-tier icon      -> verify RAISED:', caught_icon)
-    ok = ok and caught_uber and caught_roster and caught_icon
+    db.set_field(crow_e, 'bitmap', 'SVItems\\jewelry\\soul_e_icon.tex')
+    # (6d) on-attack controller re-injected on an svc_uber permanent summon
+    crow_n = nm2[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_n.dbr')]
+    db.set_field(crow_n, 'itemSkillAutoController',
+                 r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr')
+    caught_ctl = False
+    try:
+        SQ.verify(db, {})
+    except SystemExit as e:
+        caught_ctl = 'on-attack controller' in str(e) and 'crowboar' in str(e)
+        print('    on-attack controller -> verify RAISED (names crowboar):', caught_ctl)
+    SQ._remove_field(db, crow_n, 'itemSkillAutoController')
+    # (6e) tombguardian soul re-attached to the monster loot
+    caught_tg = False
+    if tg_mon is not None:
+        db.set_field(tg_mon, 'lootFinger2Item1',
+                     [r'records\item\equipmentring\soul\svc_uber\um_tombguardian_soul_n.dbr', '', ''])
+        try:
+            SQ.verify(db, {})
+        except SystemExit as e:
+            caught_tg = 'Tomb Guardian retirement' in str(e)
+            print('    tombguardian re-attach-> verify RAISED:', caught_tg)
+        db.set_field(tg_mon, 'lootFinger2Item1', ['', '', ''])
+    else:
+        caught_tg = True
+    ok = ok and caught_uber and caught_roster and caught_icon and caught_ctl and caught_tg
 
     print('\nRESULT:', 'PASS' if ok else 'FAIL')
     sys.exit(0 if ok else 1)

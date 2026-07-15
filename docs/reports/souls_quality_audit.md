@@ -107,7 +107,9 @@ ring. Both are **byte-identical to SV 0.98i** (`upstream/soulvizier_098i`), so f
 deliberate divergence from SV-original data - judged an **amgoz1 data-entry oversight**, not intent:
 every OTHER field on both rings tiers upward correctly n->e->l (bloodtip characterLife 120/218/318, its
 own leech 20/34/50; gustleech deflect 5/7/9, offensiveLifeMin 12/21/29). Both are obtainable Hero souls
-(66% finger2). Flagged for Will in `souls_quality_fix.md` WILL VETO.
+(66% finger2). **RATIFIED by Will 2026-07-14** ("bloodtip 5/7/9 + gustleech 10/12/14 ship as-is") - the
+WILL-VETO flag is CLEARED; the fix ships (historical revert path kept in the module). See
+`souls_quality_fix.md` D1.
 
 | Soul | Records (exact) | Defect (ground truth) | Fix (raise-only; grant NAME untouched) |
 |---|---|---|---|
@@ -124,12 +126,16 @@ remains a good belt-and-suspenders follow-up for the mod-generated arm.
 
 ### P2 (should fix before the next content build)
 
-**P2-a. Tomb Guardian uber soul is unobtainable.**
+**P2-a. Tomb Guardian uber soul is unobtainable. -> RESOLVED (FIX-WAVE-2 D2 / FIX 5).**
 `svc_uber\um_tombguardian_soul_{n,e,l}` ('Tomb Guardian ~ Hound of Anubis Soul') is carried ONLY by
-`records\creature\monster\tombguardian\um_tombguardian_26.dbr`, which is `monsterClassification=Common`
-with `chanceToEquipFinger2=0.0` - the wire gate (Hero/Boss/Quest only) zeroed it. Every other svc_uber
-soul has a live dropper (verified 103/104). Fix: reclassify `um_tombguardian_26` to Hero (the pattern of
-its neighbors, e.g. `um_foulbeast_28` = Hero + chance 66) or point an existing Hero/Boss at the soul.
+`records\creature\monster\tombguardian\um_tombguardian_26.dbr` (`monsterClassification=Common`), which -
+the audit missed this - STILL attaches the soul via `lootFinger2Item1`, only gated off by
+`chanceToEquipFinger2=0.0` (a referenced-but-unobtainable ghost, wired by `_place_orphan_monsters`
+"against the Hero/Boss/Quest design"). **Will directed 2026-07-14: "Do not promote tomb guardian and do
+not have him drop a soul."** So instead of reclassifying to Hero, FIX 5 keeps it Common, DETACHES the
+soul (`lootFinger2Item1` cleared), RETIRES the 3 now-unreferenced soul records, and DROPS the
+`tagSVCSoulTombguardian` tag. Verified: 0 residual references, no dangling ref. See `souls_quality_fix.md`
+sec 3 (P2-a).
 
 **P2-b. Uber souls: Epic/Legendary rings show the Normal-tier icon (54 families, ~108 records).**
 Every `svc_uber\*_soul_e/_l.dbr` carries `bitmap=SVItems\jewelry\soul_n_icon.tex`. The icon law is
