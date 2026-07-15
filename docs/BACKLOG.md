@@ -1,4 +1,23 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🗡️ **B58 THROWN-WIELDER AUDIT (2026-07-14, `feat/thrown-enemies`) - Will's "we have throwing weapons but no
+> enemy uses them" is CONFIRMED; arming proposal awaits Will's veto.** Verified read-only from golden arz
+> `b33c5a44` + canonical Levels `9981085b` (+ stock TQAE / SVAERA cross-check): thrown weapons =
+> `Class WeaponHunting_RangedOneHand` (191 recs, ALL xpack2/3/4 - a Ragnarok+ item class). Of **74** monsters
+> whose weapon slot resolves to a thrown weapon, **0 are base Act1-Hades and 0 are SV/mod** - every one is a DLC
+> (Aesir/slinger/skulk/thrower/skirmisher/monkeyman/potamoi/titan) or `zz_dev` monster. Per-level spawn
+> attribution: **0 throwers spawn in the reachable campaign.** The sole campaign-namespace vector (greekbandit-
+> slinger proxy in `Greece/Area003/PineForest05.LVL`) is a **charLevel-37 Ragnarok Act-5 Corinthia overlay** our
+> Act1-Hades campaign never reaches (byte-identical in stock TQAE; the base Act-1 pop there is lvl-3-9 harpies/
+> crows). Throwing weapons DO drop as loot (what Will sees), but no reachable enemy wields one. Donor pattern +
+> rig whitelist + candidate families (Greek bandit peltast = LOW risk on the proven `bandit_greek02` rig; satyr
+> trickster on `libyansatyr01` = follow-up) + the **proposed armed-roster table (the veto artifact)** +
+> Will-veto questions: `docs/reports/b58_thrown_wielders.md`. Scaffold module `tools/patches/thrown_wielders.py`
+> (3 Greek-bandit-peltast tiers + minority pool) is **UNREGISTERED** (golden build stays byte-identical); dry-run
+> PASS (intended-only +4 record delta, `verify()` OK - all throw-proven rig + equip + drop-band + no soul leak,
+> `_negtest()` rejects 3 broken shapes, py_compile clean). **Rides the NEXT integration build** after Will vetoes
+> the roster (report C6) + the coupled MAP lane places the pool proxy among reachable Act-1/2 Greek bandit packs.
+> INTEGRATION PREREQ (reported): the monolith must import base donor `ar_slinger_37` into the overlay first (like
+> `import_base_game_bosses`), since a registry `apply(db,tags)` only sees the mod overlay.
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
 > `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
 > **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)
