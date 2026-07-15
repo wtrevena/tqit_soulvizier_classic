@@ -1,0 +1,3125 @@
+{
+  "masteries": {
+    "1": {
+      "name": "Warfare",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\WarfareSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drxdualwieldtechnique_wardance",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            6
+          ],
+          "skill": "drxdualwieldtechnique_tumult",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            4
+          ],
+          "skill": "drxdualwieldtechnique_crosscut",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            3
+          ],
+          "skill": "drxdualwieldtechnique_jumpslash",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxdodge attack",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            1
+          ],
+          "skill": "drxdualweapontraining",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            2,
+            6
+          ],
+          "skill": "drxbattlerage_counterattack",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            4
+          ],
+          "skill": "drxbattlerage_crushingblow",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            2
+          ],
+          "skill": "drxbattlerage",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            7
+          ],
+          "skill": "drx_clubslam",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxbattlestandard_petmodifier_triumph",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            5
+          ],
+          "skill": "drxbattlestandard_petmodifier_glory",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drx_clubslam_fissure",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxbattlestandard",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            2
+          ],
+          "skill": "drx_ancestralmod",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drxonslaught_ardor",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            5
+          ],
+          "skill": "drxonslaught_craven",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxhamstring",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxonslaught_ignorepain",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            1
+          ],
+          "skill": "drxonslaught",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxwarwind_refinement",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            4
+          ],
+          "skill": "drxwarwind_lacerate",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            2
+          ],
+          "skill": "drxwarwind",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            7
+          ],
+          "skill": "drxancestralhorn",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            6
+          ],
+          "skill": "drxwarhorn_doomhorn",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            4
+          ],
+          "skill": "drxonslaught_hamstring",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            3
+          ],
+          "skill": "drxwarhorn",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxweapontraining",
+          "connector": null
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxdualweapontraining",
+          "src_cell": [
+            1,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxdodge attack",
+          "tgt_cell": [
+            1,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxbattlerage",
+          "src_cell": [
+            2,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxbattlerage_crushingblow",
+          "tgt_cell": [
+            2,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drx_clubslam",
+          "src_cell": [
+            3,
+            7
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": null,
+          "tgt_cell": null,
+          "genuine": false,
+          "kind": "void"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxbattlestandard",
+          "src_cell": [
+            3,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": "drx_clubslam_fissure",
+          "tgt_cell": [
+            3,
+            4
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxonslaught",
+          "src_cell": [
+            4,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxonslaught_ignorepain",
+          "tgt_cell": [
+            4,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxwarwind",
+          "src_cell": [
+            5,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxwarwind_lacerate",
+          "tgt_cell": [
+            5,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxonslaught_hamstring",
+          "src_cell": [
+            6,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxwarhorn_doomhorn",
+          "tgt_cell": [
+            6,
+            6
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        }
+      ],
+      "counts": {
+        "connectors": 7,
+        "genuine": 4,
+        "spurious": 2,
+        "void": 1
+      }
+    },
+    "2": {
+      "name": "Defense",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\DefenseSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drxheave",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            5
+          ],
+          "skill": "drxheave_cleave",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxaxepassive",
+          "connector": "R"
+        },
+        {
+          "cell": [
+            1,
+            1
+          ],
+          "skill": "drxconcussiveblow",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            2,
+            6
+          ],
+          "skill": "drxadrenaline_defensivereaction",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            4
+          ],
+          "skill": "drxadrenaline_resilience",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxquickrecovery",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            2
+          ],
+          "skill": "drxadrenaline",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxshieldcharge_disruption",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxshieldcharge",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxbatter_rendarmor",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            1
+          ],
+          "skill": "drxbatter",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drx_activeblock",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            6
+          ],
+          "skill": "drxbattleawareness_ironwill",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            5
+          ],
+          "skill": "drx_summonphalanx",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            4
+          ],
+          "skill": "drxbattleawareness_focus",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxbattleawareness",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            7
+          ],
+          "skill": "drxcolossusform",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxrally_defiance",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            3
+          ],
+          "skill": "drxrally_inspiration",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxrally",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            7
+          ],
+          "skill": "drxweaponpool_pulverize",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            5
+          ],
+          "skill": "drxweaponpool_disable",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            3
+          ],
+          "skill": "drxweaponpool_shieldsmash",
+          "connector": "R"
+        },
+        {
+          "cell": [
+            6,
+            2
+          ],
+          "skill": "drxshieldpassive",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxarmorhandling",
+          "connector": null
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "R",
+          "src_skill": "drxaxepassive",
+          "src_cell": [
+            1,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxquickrecovery",
+          "tgt_cell": [
+            2,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxconcussiveblow",
+          "src_cell": [
+            1,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxaxepassive",
+          "tgt_cell": [
+            1,
+            2
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxadrenaline",
+          "src_cell": [
+            2,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxquickrecovery",
+          "tgt_cell": [
+            2,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxshieldcharge",
+          "src_cell": [
+            3,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxshieldcharge_disruption",
+          "tgt_cell": [
+            3,
+            6
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxbatter",
+          "src_cell": [
+            3,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxbatter_rendarmor",
+          "tgt_cell": [
+            3,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "R",
+          "src_skill": "drxweaponpool_shieldsmash",
+          "src_cell": [
+            6,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": null,
+          "tgt_cell": null,
+          "genuine": false,
+          "kind": "void"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxshieldpassive",
+          "src_cell": [
+            6,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxweaponpool_shieldsmash",
+          "tgt_cell": [
+            6,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        }
+      ],
+      "counts": {
+        "connectors": 7,
+        "genuine": 3,
+        "spurious": 3,
+        "void": 1
+      }
+    },
+    "3": {
+      "name": "Earth",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\EarthSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drxvolatility",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            4
+          ],
+          "skill": "drxfireenchantment_stoneskin",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxfireenchantment_brimstone",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            1
+          ],
+          "skill": "drxfireenchantment",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            7
+          ],
+          "skill": "drxmeteor",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            6
+          ],
+          "skill": "drxstoneform_moltenrock",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            4
+          ],
+          "skill": "drxstoneformbuffself",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxheatshield_burn",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            2
+          ],
+          "skill": "drxheatshield",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxcoredweller_petmodifier_metamorphosis",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            5
+          ],
+          "skill": "drxcoredweller_petmodifier_wildfire",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxcoredweller_petmodifier_innerfire",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxcoredweller",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drx_firenova",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            6
+          ],
+          "skill": "drxspontaneouscombustion",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            5
+          ],
+          "skill": "drxrupture_flare",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            4
+          ],
+          "skill": "drxrupture_burning",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxrupture",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxringofflame_softenmetal",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            1
+          ],
+          "skill": "drxringofflame",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxflamesurge_flamearch",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            3
+          ],
+          "skill": "drxflamesurge_barrage",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxflamesurge",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            7
+          ],
+          "skill": "drxeruption_moltenlava",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            6
+          ],
+          "skill": "drxeruption",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            5
+          ],
+          "skill": "drxvolcanicorb_fragmentation",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            4
+          ],
+          "skill": "drxvolcanicorb_immolation",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            2
+          ],
+          "skill": "drxvolcanicorb",
+          "connector": "C"
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxstoneformbuffself",
+          "src_cell": [
+            2,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxstoneform_moltenrock",
+          "tgt_cell": [
+            2,
+            6
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxcoredweller",
+          "src_cell": [
+            3,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": "drxcoredweller_petmodifier_innerfire",
+          "tgt_cell": [
+            3,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxrupture",
+          "src_cell": [
+            4,
+            3
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxrupture_burning",
+          "tgt_cell": [
+            4,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxringofflame",
+          "src_cell": [
+            4,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxringofflame_softenmetal",
+          "tgt_cell": [
+            4,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxflamesurge",
+          "src_cell": [
+            5,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxflamesurge_barrage",
+          "tgt_cell": [
+            5,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxeruption",
+          "src_cell": [
+            6,
+            6
+          ],
+          "src_tier_field": 6,
+          "tgt_skill": "drxeruption_moltenlava",
+          "tgt_cell": [
+            6,
+            7
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxvolcanicorb",
+          "src_cell": [
+            6,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxvolcanicorb_immolation",
+          "tgt_cell": [
+            6,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        }
+      ],
+      "counts": {
+        "connectors": 7,
+        "genuine": 6,
+        "spurious": 1,
+        "void": 0
+      }
+    },
+    "4": {
+      "name": "Storm",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\StormSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drxstormwisp_petmodifier_eyeofthestorm",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            5
+          ],
+          "skill": "drxstormwispsummoning",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            1,
+            4
+          ],
+          "skill": "drxstormnimbus_staticcharge",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            3
+          ],
+          "skill": "drxspellbreaker_spellshock2",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxstormnimbus_spellbreaker",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            1
+          ],
+          "skill": "drxstormnimbus",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            2,
+            7
+          ],
+          "skill": "drxlightningbolt_chainlightning",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            4
+          ],
+          "skill": "drxlightningbolt",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxthunderball_concussiveblast",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            1
+          ],
+          "skill": "drxthunderball",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxsquall_obscuredvisibility",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            5
+          ],
+          "skill": "drxsquall_hail",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxsquall",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            2
+          ],
+          "skill": "drxstormsurge",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drx_lightningdash",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            6
+          ],
+          "skill": "drxspellbreaker_spellshock",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            5
+          ],
+          "skill": "drxfrostnova",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxspellbreaker",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxfreezingblast",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            7
+          ],
+          "skill": "drxiceshard_torrent",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            3
+          ],
+          "skill": "drxiceshard_velocity",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxiceshard",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            6
+          ],
+          "skill": "drxenergyshield_reflection",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            5
+          ],
+          "skill": "drxenergyshield",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            4
+          ],
+          "skill": "drxcoldaura_synergy",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            2
+          ],
+          "skill": "drxstormnimbus_heartoffrost",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxcoldaura",
+          "connector": "C"
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxstormwispsummoning",
+          "src_cell": [
+            1,
+            5
+          ],
+          "src_tier_field": 5,
+          "tgt_skill": "drxstormwisp_petmodifier_eyeofthestorm",
+          "tgt_cell": [
+            1,
+            7
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxstormnimbus",
+          "src_cell": [
+            1,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxstormnimbus_spellbreaker",
+          "tgt_cell": [
+            1,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxlightningbolt",
+          "src_cell": [
+            2,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxlightningbolt_chainlightning",
+          "tgt_cell": [
+            2,
+            7
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxthunderball",
+          "src_cell": [
+            2,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxthunderball_concussiveblast",
+          "tgt_cell": [
+            2,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxsquall",
+          "src_cell": [
+            3,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxsquall_hail",
+          "tgt_cell": [
+            3,
+            5
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxspellbreaker",
+          "src_cell": [
+            4,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": "drxfrostnova",
+          "tgt_cell": [
+            4,
+            5
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxiceshard",
+          "src_cell": [
+            5,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxiceshard_velocity",
+          "tgt_cell": [
+            5,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxcoldaura",
+          "src_cell": [
+            6,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxstormnimbus_heartoffrost",
+          "tgt_cell": [
+            6,
+            2
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        }
+      ],
+      "counts": {
+        "connectors": 8,
+        "genuine": 6,
+        "spurious": 2,
+        "void": 0
+      }
+    },
+    "5": {
+      "name": "Occult(Rogue)",
+      "golden_tracked": true,
+      "effective_background_tex": "InGameUI\\Skills\\StealthSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drxpoisongasbomb_shrapnel",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            5
+          ],
+          "skill": "drxpoisongasbomb",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            4
+          ],
+          "skill": "drx_scrap",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            1,
+            3
+          ],
+          "skill": "drxlaytrap_petmodifier_multishotbolttrap",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxflashpowder",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            6
+          ],
+          "skill": "drxtoxindistillation",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            5
+          ],
+          "skill": "drxenvenomweapon_delirium",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxenvenomweapon_neurotoxin",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            1
+          ],
+          "skill": "drxenvenomweapon",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxanatomy",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            5
+          ],
+          "skill": "drxdarklings_darkaperture",
+          "connector": "R"
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxopenwound",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxdarklings",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            2
+          ],
+          "skill": "drxbladehoning",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drx_petmodifier_greaterpower",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            6
+          ],
+          "skill": "drx_summon_shadow_stalker",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            5
+          ],
+          "skill": "drxlaytrap_rapidconstruction",
+          "connector": "R"
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxlaytrap",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            7
+          ],
+          "skill": "drxlethalstrike_mortalwound",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxlethalstrike",
+          "connector": "R"
+        },
+        {
+          "cell": [
+            5,
+            3
+          ],
+          "skill": "drxcalculatedstrike_luckyhit",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxcalculatedstrike",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            6
+          ],
+          "skill": "drxthrowingknife_flurryofknives",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            4
+          ],
+          "skill": "drxthrowingknife",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            2
+          ],
+          "skill": "drx_dual_blade",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxdisarmtraps",
+          "connector": "C"
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drx_scrap",
+          "src_cell": [
+            1,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxpoisongasbomb",
+          "tgt_cell": [
+            1,
+            5
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxenvenomweapon",
+          "src_cell": [
+            2,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxenvenomweapon_neurotoxin",
+          "tgt_cell": [
+            2,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "R",
+          "src_skill": "drxdarklings_darkaperture",
+          "src_cell": [
+            3,
+            5
+          ],
+          "src_tier_field": 5,
+          "tgt_skill": "drx_summon_shadow_stalker",
+          "tgt_cell": [
+            4,
+            6
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxdarklings",
+          "src_cell": [
+            3,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": "drxopenwound",
+          "tgt_cell": [
+            3,
+            4
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drx_summon_shadow_stalker",
+          "src_cell": [
+            4,
+            6
+          ],
+          "src_tier_field": 6,
+          "tgt_skill": "drx_petmodifier_greaterpower",
+          "tgt_cell": [
+            4,
+            7
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "R",
+          "src_skill": "drxlaytrap_rapidconstruction",
+          "src_cell": [
+            4,
+            5
+          ],
+          "src_tier_field": 5,
+          "tgt_skill": "drxlethalstrike_mortalwound",
+          "tgt_cell": [
+            5,
+            7
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxlaytrap",
+          "src_cell": [
+            4,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": "drxlaytrap_rapidconstruction",
+          "tgt_cell": [
+            4,
+            5
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "R",
+          "src_skill": "drxlethalstrike",
+          "src_cell": [
+            5,
+            5
+          ],
+          "src_tier_field": 5,
+          "tgt_skill": "drxthrowingknife_flurryofknives",
+          "tgt_cell": [
+            6,
+            6
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxcalculatedstrike",
+          "src_cell": [
+            5,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxcalculatedstrike_luckyhit",
+          "tgt_cell": [
+            5,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxthrowingknife",
+          "src_cell": [
+            6,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxthrowingknife_flurryofknives",
+          "tgt_cell": [
+            6,
+            6
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxdisarmtraps",
+          "src_cell": [
+            6,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drx_dual_blade",
+          "tgt_cell": [
+            6,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        }
+      ],
+      "counts": {
+        "connectors": 11,
+        "genuine": 5,
+        "spurious": 6,
+        "void": 0
+      }
+    },
+    "6": {
+      "name": "Hunting",
+      "golden_tracked": true,
+      "effective_background_tex": "InGameUI\\Skills\\HuntingSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drxstudyprey_flushout",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            5
+          ],
+          "skill": "drxstudyprey",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            3
+          ],
+          "skill": "drxensnare_barbednetting",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            1
+          ],
+          "skill": "drxensnare",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            6
+          ],
+          "skill": "drxcorneredrage",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            5
+          ],
+          "skill": "drxcallofthehunt_cunning",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxcallofthehunt",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            7
+          ],
+          "skill": "drxweaponskill_volley",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxmarksmanship_scattershotarrows",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxmarksmanship_punctureshotarrows",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            2
+          ],
+          "skill": "drxmarksmanship",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            1
+          ],
+          "skill": "drxweaponskill_gouge",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            6
+          ],
+          "skill": "drxtempest_expose",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxspear_tempest",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxtakedown_eviscerate",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            1
+          ],
+          "skill": "drxtakedown",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxartofthehunt_trailblazing",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            4
+          ],
+          "skill": "drxartofthehunt_findcover",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            2
+          ],
+          "skill": "drxartofthehunt",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            7
+          ],
+          "skill": "drxmonsterlure_petmodifier_detonate",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            5
+          ],
+          "skill": "drxmonsterlure_rapidconstruction",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            4
+          ],
+          "skill": "drxmonsterlure",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            2
+          ],
+          "skill": "drxherbalism",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxwoodlore",
+          "connector": "C"
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxmarksmanship",
+          "src_cell": [
+            3,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxmarksmanship_punctureshotarrows",
+          "tgt_cell": [
+            3,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxtakedown_eviscerate",
+          "src_cell": [
+            4,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxspear_tempest",
+          "tgt_cell": [
+            4,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxmonsterlure",
+          "src_cell": [
+            6,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxmonsterlure_rapidconstruction",
+          "tgt_cell": [
+            6,
+            5
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxwoodlore",
+          "src_cell": [
+            6,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxherbalism",
+          "tgt_cell": [
+            6,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        }
+      ],
+      "counts": {
+        "connectors": 4,
+        "genuine": 3,
+        "spurious": 1,
+        "void": 0
+      }
+    },
+    "7": {
+      "name": "Spirit",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\SpiritSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            6
+          ],
+          "skill": "drxdeathward",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            4
+          ],
+          "skill": "drxternion_arcanelore",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            3
+          ],
+          "skill": "drxsandsofsleep_troubleddreams",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxternion",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            1,
+            1
+          ],
+          "skill": "drxsandsofsleep",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            2,
+            6
+          ],
+          "skill": "drxcircleofpower",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            4
+          ],
+          "skill": "drxwraithlord_petmodifier_arcaneblast",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxspiritward_spiritbane",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            1
+          ],
+          "skill": "drxdeathchillaura",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            7
+          ],
+          "skill": "drxoutsidersummons",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxdistortionwave_psionicimmolation",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            5
+          ],
+          "skill": "drxdeathchillaura_necrosis",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxdistortionwave_chaoticresonance",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxdeathchillaura_ravagesoftime",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            2
+          ],
+          "skill": "drxspiritward",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            1
+          ],
+          "skill": "drxdistortionwave",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drxdarkcovenant_unearthlypower",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            4
+          ],
+          "skill": "drxdarkcovenant",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxsoulsiphontotem",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            1
+          ],
+          "skill": "drxvisionofdeath",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            7
+          ],
+          "skill": "drxwraithlord_petmodifier_wraithshell",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            6
+          ],
+          "skill": "drxwraithlord_petmodifier_deathnova",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxwraithlordsummons",
+          "connector": "R"
+        },
+        {
+          "cell": [
+            5,
+            4
+          ],
+          "skill": "drxbonepetsummons",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            3
+          ],
+          "skill": "drxlifedrain",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxskellysummons",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            5
+          ],
+          "skill": "drxenergydrain_cascade",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            3
+          ],
+          "skill": "drxlifedrain_cascade",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxenslavespirit",
+          "connector": "C"
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxternion",
+          "src_cell": [
+            1,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxsandsofsleep_troubleddreams",
+          "tgt_cell": [
+            1,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxsandsofsleep",
+          "src_cell": [
+            1,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxternion",
+          "tgt_cell": [
+            1,
+            2
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxdistortionwave",
+          "src_cell": [
+            3,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxspiritward",
+          "tgt_cell": [
+            3,
+            2
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "R",
+          "src_skill": "drxwraithlordsummons",
+          "src_cell": [
+            5,
+            5
+          ],
+          "src_tier_field": 5,
+          "tgt_skill": null,
+          "tgt_cell": null,
+          "genuine": false,
+          "kind": "void"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxbonepetsummons",
+          "src_cell": [
+            5,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxwraithlordsummons",
+          "tgt_cell": [
+            5,
+            5
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxskellysummons",
+          "src_cell": [
+            5,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxlifedrain",
+          "tgt_cell": [
+            5,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxenslavespirit",
+          "src_cell": [
+            6,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxlifedrain_cascade",
+          "tgt_cell": [
+            6,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        }
+      ],
+      "counts": {
+        "connectors": 7,
+        "genuine": 1,
+        "spurious": 5,
+        "void": 1
+      }
+    },
+    "8": {
+      "name": "Nature",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\NatureSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            6
+          ],
+          "skill": "drxheartofoak_permanence",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            5
+          ],
+          "skill": "drxheartofoak_tranquility",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxheartofoak",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            7
+          ],
+          "skill": "drxnaturesblessing_treeskin",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            5
+          ],
+          "skill": "drxnaturesblessing",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            4
+          ],
+          "skill": "drxregrowth_dissemination",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            2
+          ],
+          "skill": "drxregrowth_acceleratedgrowth",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            1
+          ],
+          "skill": "drxregrowth",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            7
+          ],
+          "skill": "drx_earthbind",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxbriarward_sanctuary",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            5
+          ],
+          "skill": "drx_nymph_petmodifier_rootwave",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxbriarward_petmodifier_stingingnettle",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxbriarward",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            7
+          ],
+          "skill": "drxforceofnature",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            5
+          ],
+          "skill": "drxwolf_petmodifier_strengthofthepack",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxwolf_petmodifer_maul",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxwolf_petmodifer_survivalinstinct",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            1
+          ],
+          "skill": "drxwolfsummons",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            7
+          ],
+          "skill": "drxsylvannymph_petmodifier_overgrowth",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxsylvannymph_petmodifier_nature'swrath",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            4
+          ],
+          "skill": "drxsylvannymphsummons",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            3
+          ],
+          "skill": "drxrenewal",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxsprite_summons",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            6
+          ],
+          "skill": "drxplague_susceptibility",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            4
+          ],
+          "skill": "drxplague_fatigue",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            2
+          ],
+          "skill": "drxplague",
+          "connector": null
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxregrowth",
+          "src_cell": [
+            2,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxregrowth_acceleratedgrowth",
+          "tgt_cell": [
+            2,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxbriarward",
+          "src_cell": [
+            3,
+            3
+          ],
+          "src_tier_field": 3,
+          "tgt_skill": "drxbriarward_petmodifier_stingingnettle",
+          "tgt_cell": [
+            3,
+            4
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxwolfsummons",
+          "src_cell": [
+            4,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxwolf_petmodifer_survivalinstinct",
+          "tgt_cell": [
+            4,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxsylvannymphsummons",
+          "src_cell": [
+            5,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxsylvannymph_petmodifier_nature'swrath",
+          "tgt_cell": [
+            5,
+            5
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxsprite_summons",
+          "src_cell": [
+            5,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxrenewal",
+          "tgt_cell": [
+            5,
+            3
+          ],
+          "genuine": false,
+          "kind": "spurious"
+        }
+      ],
+      "counts": {
+        "connectors": 5,
+        "genuine": 4,
+        "spurious": 1,
+        "void": 0
+      }
+    },
+    "9": {
+      "name": "Dream",
+      "golden_tracked": false,
+      "effective_background_tex": "InGameUI\\Skills\\SpiritSkillBackground01.tex",
+      "occupied_cells": [
+        {
+          "cell": [
+            1,
+            7
+          ],
+          "skill": "drx_summoncopy",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            6
+          ],
+          "skill": "drxtranceofwrath",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            4
+          ],
+          "skill": "drxtranceofconvalescence",
+          "connector": null
+        },
+        {
+          "cell": [
+            1,
+            2
+          ],
+          "skill": "drxtranceofempathy",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            7
+          ],
+          "skill": "drxluciddream",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            5
+          ],
+          "skill": "drxluciddream_temporalflux",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            3
+          ],
+          "skill": "drxdistortionfield",
+          "connector": null
+        },
+        {
+          "cell": [
+            2,
+            1
+          ],
+          "skill": "drxluciddream_premonition",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            7
+          ],
+          "skill": "drxphantasm",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            6
+          ],
+          "skill": "drxnightmare_petmodifier_dreamsurge",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            4
+          ],
+          "skill": "drxnightmare",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            3,
+            3
+          ],
+          "skill": "drxsandsofsleep_troubleddreams",
+          "connector": null
+        },
+        {
+          "cell": [
+            3,
+            1
+          ],
+          "skill": "drxsandsofsleep",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            6
+          ],
+          "skill": "drxphantomstrike_dreamstealer",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            4
+          ],
+          "skill": "drxphantomstrike",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            4,
+            3
+          ],
+          "skill": "drxspellbreaker_spellshock",
+          "connector": null
+        },
+        {
+          "cell": [
+            4,
+            2
+          ],
+          "skill": "drxspellbreaker",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            7
+          ],
+          "skill": "drxdistortreality_temporalrift",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            5
+          ],
+          "skill": "drxdistortreality",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            5,
+            4
+          ],
+          "skill": "drxpsionictouch_psionicburn",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            2
+          ],
+          "skill": "drxpsionictouch_multihit",
+          "connector": null
+        },
+        {
+          "cell": [
+            5,
+            1
+          ],
+          "skill": "drxpsionictouch",
+          "connector": "C"
+        },
+        {
+          "cell": [
+            6,
+            5
+          ],
+          "skill": "drxdistortionwave_psionicimmolation",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            3
+          ],
+          "skill": "drxdistortionwave_chaoticresonance",
+          "connector": null
+        },
+        {
+          "cell": [
+            6,
+            1
+          ],
+          "skill": "drxdistortionwave",
+          "connector": "C"
+        }
+      ],
+      "connector_edges": [
+        {
+          "variant": "C",
+          "src_skill": "drxluciddream_premonition",
+          "src_cell": [
+            2,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxdistortionfield",
+          "tgt_cell": [
+            2,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxnightmare",
+          "src_cell": [
+            3,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxnightmare_petmodifier_dreamsurge",
+          "tgt_cell": [
+            3,
+            6
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxsandsofsleep",
+          "src_cell": [
+            3,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxsandsofsleep_troubleddreams",
+          "tgt_cell": [
+            3,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxphantomstrike",
+          "src_cell": [
+            4,
+            4
+          ],
+          "src_tier_field": 4,
+          "tgt_skill": "drxphantomstrike_dreamstealer",
+          "tgt_cell": [
+            4,
+            6
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxspellbreaker",
+          "src_cell": [
+            4,
+            2
+          ],
+          "src_tier_field": 2,
+          "tgt_skill": "drxspellbreaker_spellshock",
+          "tgt_cell": [
+            4,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxdistortreality",
+          "src_cell": [
+            5,
+            5
+          ],
+          "src_tier_field": 5,
+          "tgt_skill": "drxdistortreality_temporalrift",
+          "tgt_cell": [
+            5,
+            7
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxpsionictouch",
+          "src_cell": [
+            5,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxpsionictouch_multihit",
+          "tgt_cell": [
+            5,
+            2
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        },
+        {
+          "variant": "C",
+          "src_skill": "drxdistortionwave",
+          "src_cell": [
+            6,
+            1
+          ],
+          "src_tier_field": 1,
+          "tgt_skill": "drxdistortionwave_chaoticresonance",
+          "tgt_cell": [
+            6,
+            3
+          ],
+          "genuine": true,
+          "kind": "genuine"
+        }
+      ],
+      "counts": {
+        "connectors": 8,
+        "genuine": 8,
+        "spurious": 0,
+        "void": 0
+      }
+    }
+  },
+  "_meta": {
+    "generator": "tools/build_connection_maps.py",
+    "golden_arz": "C:\\Users\\willi\\repos\\tqit_soulvizier_classic\\work\\SoulvizierClassic\\Database\\SoulvizierClassic.arz",
+    "connector_texture_geometry": {
+      "straight": {
+        "field_value": "InGameUI\\Icons\\Skills\\SkillBars\\SkillBarBottomOn01.tex",
+        "arc": "base InGameUI.arc",
+        "size": [
+          15,
+          62
+        ],
+        "format": "uncompressed 32-bit BGRA",
+        "geometry": "vertical riser, same column, reaches the nearest occupied cell above",
+        "flag": "C"
+      },
+      "right": {
+        "field_value": "DRXtextures\\Skill Icons\\SkillBarBottomOn01_right.tex",
+        "arc": "mod DRXtextures.arc",
+        "size": [
+          80,
+          62
+        ],
+        "format": "uncompressed 32-bit BGRA",
+        "geometry": "diagonal riser up-and-right, reaches the nearest occupied cell above in the column to the RIGHT",
+        "flag": "R"
+      },
+      "spacing_px": 62,
+      "note": "spacing is the render tile pitch (one tier row), NOT the connector reach"
+    },
+    "background_tier_shelf_y_px": [
+      397,
+      335,
+      273,
+      211,
+      149,
+      87
+    ],
+    "background_format": "uncompressed 32-bit BGRA, 919x540, no baked connectors",
+    "reach_rule": "skillConnectionOn draws to the NEAREST OCCUPIED cell above in the same column (straight) or column-right (right); spans gaps",
+    "grid": {
+      "cols_px": [
+        128,
+        228,
+        328,
+        428,
+        528,
+        628
+      ],
+      "row_tier_y": {
+        "403": 1,
+        "341": 2,
+        "279": 3,
+        "217": 4,
+        "155": 5,
+        "93": 6,
+        "31": 7
+      }
+    }
+  }
+}

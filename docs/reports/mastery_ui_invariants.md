@@ -33,6 +33,15 @@ These are the two laws Will mandated (2026-07-14) plus the select-screen mechani
 >
 > The operative CONNECTOR-LAW check (section 2c positional rules) is unchanged and remains valid; only
 > the *mechanism* description (2a) and the row set were wrong.
+>
+> **UPDATE (2026-07-14, TEXTURE DECODER):** the pixels are now decoded and confirm the correction.
+> The 919x540 backgrounds bake only the 6 tier *shelves* (62 px pitch), **no connector lines**; the
+> connector is the runtime `skillConnectionOn` bar, which reaches the **nearest occupied cell above**
+> (same column for the straight `SkillBarBottomOn01.tex`, column-right for the DRX
+> `SkillBarBottomOn01_right.tex`). The authoritative per-mastery CONNECTION MAP + the exact legal cells
+> for the reflow live in **`docs/reports/mastery_connection_maps.md`** + `tools/mastery_connection_maps.json`
+> (built by `tools/build_connection_maps.py`, decoded by `tools/tex_decode.py`). Section 2a's
+> "lines baked into the background" wording is formally **refuted** there.
 
 ---
 
