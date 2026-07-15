@@ -1,4 +1,21 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - IMPLEMENTED,
+> dry-run verified vs golden b33c5a44, awaiting vet + a real finalization build.** Branch `feat/soul-drop-50`.
+> `tools/build_svc_database.py::wire_souls_to_monsters` now SPLITS the old single Hero/Quest `rare_chance=66`
+> class by **roster-derived spawn provenance** (no hardcoded names): **RANDOM** roaming hero roster (in a
+> base-game `records\proxies*` `name*/nameChampion*` slot - the SV uber tier `um_*` + `hero_*/us_*/u_*`) ->
+> **50**; **PLACED** apex ubers (module-authored + `drxmap\proxy*` placement) + **QUEST** story bosses ->
+> **66** UNCHANGED; **FARMABLE act Boss** -> **25** UNCHANGED; unreferenced -> 66 (safe default, never
+> over-cut). **Dry-run replay (`tools/verify_soul_drop_rates.py --gate`, EXIT 0): exactly 377 records go
+> 66->50, nothing else moves** (270 `um_`, 48 `hero_`, 32 `us_`, ...). **TESTING mode byte-unchanged**
+> (real `_force_100_pct_soul_drops` over both states: 854 soul-droppers->100, 426 gated stay 0 incl. Legion
+> zeroed stages) - split is RELEASE-ONLY. **Build-order-stable:** all 383 in-pool candidates referenced by
+> >=1 BASE-GAME pool (present at wire-time), 0 module-only. **ZERO placed apex uber over-cut** (Vashkarr/
+> Broodmother/Enslaver=66, BloodToxeus=25, Tantalus=0, HadesMarshal=66). ⚠️ **WILL-VETO knobs**
+> `_SOUL_PLACED_OVERRIDE`/`_SOUL_RANDOM_OVERRIDE` (empty=pure roster verdict). ⚠️ **Sensitive cuts flagged
+> for veto:** `um_legion_28` (directive OKs it), `um_toxeus_21` ("Main Toxeus"; superboss `um_bloodtoxeus_99`
+> untouched at 25), `qm_aniketos_9/10/11`. souls contract GATE PASS (0 viol). Report:
+> `docs/reports/b59_drop_rate_50.md`. **Finalization build (both modes, record-diff vs golden) deferred to vet/merge (no heavy build this lane).**
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has
