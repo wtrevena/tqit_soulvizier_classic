@@ -1,5 +1,6 @@
-r"""enslaver_pet_fx - make the SOUL-SUMMONED Enslaver (and the marauders he raises)
-wear the same dedicated ALL-BLACK rig as their encounter-monster twins (b55).
+r"""enslaver_pet_fx - make the SOUL-SUMMONED Enslaver (and the marauders he raises),
+plus every other soul-summon pet whose encounter twin we retinted dark, wear the
+same dedicated ALL-BLACK/dark rig as that twin (b55; b55r2 adds the Hades Marshal).
 
 WHY THIS EXISTS (RCA in docs/reports/b55_enslaver_pet_fx.md)
 ------------------------------------------------------------
@@ -51,9 +52,11 @@ chaos-beam, knives) - consistent with Will confirming the ENCOUNTER is now black
 So the green is 100% pet-specific Lyia residue; the fix lives entirely on the PET
 records.
 
-WHAT THIS MODULE DOES  (FX field edits on 6 PET records only - no clones, no new
-records, no textures authored; reuses b38's own dark-smoke pak + the ShadowStalker
-shadow-cloak pak the marauder MONSTER already wears)
+WHAT THIS MODULE DOES  (FX field edits on 9 PET records only - no clones, no new
+records, no textures authored; reuses each source monster's OWN existing shroud:
+b38's dark-smoke pak for the Enslaver, the ShadowStalker shadow-cloak pak the
+marauder MONSTER already wears, and the hades2_shadowcloud pak the Hades Marshal
+MONSTER already wears)
 -----------------------------------------------------------------------------------
 For each Enslaver-family pet, per PET SAFETY LAW (only animation/skill/FX fields
 are touched; no equipment/loot field is copied Monster.tpl->Pet.tpl; no explicit
@@ -63,37 +66,63 @@ TypedField so the pet's field is byte-identical to the monster it mirrors):
   1. STRIP the green Lyia residue (marker-matched, so only the known-green value is
      removed - never a legit field): buffSelfSkillName(envenom), buffSelf2SkillName
      (heartofoak), healSkillName(regrowth), deathEffect(natureswrath), and (marauder
-     only) specialAttackSkillName(sylvannymph nature'swrath) + baseTexture(maenad).
-     Stripping baseTexture=maenad on the marauder pet falls the ShadowStalker mesh
-     back to its OWN default demon skin - exactly what the marauder MONSTER renders
-     (it defines no baseTexture). The enslaver soul-pet's baseTexture is already the
-     boss's NewSkeleton_Charcoal (marker does not match), so it is untouched.
+     only) specialAttackSkillName(sylvannymph nature'swrath) + the dormant kit slot
+     skillName8(sylvannymph) + baseTexture(maenad). Stripping baseTexture=maenad on
+     the marauder + Hades-Marshal pets falls the ShadowStalker / MachaeHero01 mesh
+     back to its OWN default skin - exactly what those MONSTERS render (they define no
+     baseTexture). The enslaver soul-pet's baseTexture is already the boss's
+     NewSkeleton_Charcoal (marker does not match), so it is untouched. The Hades
+     Marshal pet's specialAttack + kit are its source's own hades/spirit combat kit
+     (hero_hadesbolt etc. - RCA'd, not green), so no green marker matches them.
   2. INHERIT the source monster's shroud: copy the SOURCE's charFxPakRunningNames
      TypedField onto the pet -> enslaver pets get svc_enslaver_darksmoke (the b38
      black smoke), marauder pets get drxshadowcloakrunning_fx_pak (the shadow cloak
-     the marauder monster already wears). This is the "pet inherits its monster's
-     shroud" fix and is the same charFxPakRunningNames-on-a-pet route already proven
-     safe by the Vashkarr/marauder-monster shrouds.
+     the marauder monster already wears), Hades Marshal pets get hades2_shadowcloud
+     (the dark shadow-cloud the Marshal monster already wears). Each pet ends up
+     with EXACTLY its own source monster's shroud (verbatim TypedField copy).
+     SAFETY: this is crash-safe (charFxPakRunningNames is a pure string FX-path
+     field, not the equipment/loot class that crashes a Pet.tpl; Pet.tpl is a strict
+     Character superset of Monster.tpl; the field is copied verbatim with no explicit
+     dtype). It reuses each source monster's OWN existing shroud - no new record, no
+     texture authored. NOTE (honest scope): no in-mod PET currently carries
+     charFxPakRunningNames (0 of 51,029 golden records; only 5 MONSTERs do), so
+     whether the dark smoke actually RENDERS on a pet is confirmable only in Will's
+     in-game test - the pet is non-green regardless (charcoal/mesh-default skin +
+     green stripped), which already satisfies "green not black"; the smoke is the
+     upgrade to confirm.
 
-The soul-pet's specialAttackSkillName is NOT stripped: it is the FRIENDLY
+The enslaver soul-pet's specialAttackSkillName is NOT stripped: it is the FRIENDLY
 pet-of-pet marauder summon (svc_enslaver_petmarauders, wired in _create_enslaver
 step 5), which does not match any green marker.
 
-WHY ONLY THESE 6 (scope + sibling sweep)
-----------------------------------------
-The green Lyia residue is SYSTEMIC: 82 of 222 soul pets carry it (every
-_build_boss_summon pet whose source lacks the field). But this module deliberately
-fixes ONLY the Enslaver family, because the sibling sweep's precise same-class
-criterion - "a monster we RETINTED with a dedicated custom FX shroud whose pet
-still wears the old rig" - matches EXACTLY these two source monsters and no other:
-`um_toxeus_enslaver_99` (custom svc_enslaver_darksmoke shroud) and
-`um_enslaver_marauder_99` (custom drxshadowcloak shroud). Every other
-_build_boss_summon source has NO custom charFxPakRunningNames, so its green pet
-residue is the broader systemic artifact, not a contradiction of a deliberate
-non-green identity. In particular the Devourer of Blood (`bloodtoxeus_1..3`,
-crimson RevenantPoison) is EXPLICITLY EXCLUDED: the original Toxeus green poison
-rig is intentional there and STAYS (Will 2026-07-14). The systemic 82-pet finding
-is reported in the RCA as a separate, larger design call for Will, not mass-fixed
+WHY THESE 9 (scope + sibling sweep, corrected in b55r2)
+-------------------------------------------------------
+The green Lyia residue is SYSTEMIC: 82 of 222 soul pets carry the 4-field buff
+residue (envenom/heartofoak/regrowth/natureswrath); 89 carry the module's full
+marker set (adding the maenad_lyia skin + green kit slots). It is an artifact of
+EVERY _build_boss_summon pet whose source lacks the field. But this module fixes
+ONLY the pets whose source we DELIBERATELY retinted dark, per the sibling sweep's
+precise same-class criterion: "a monster we RETINTED with a dedicated custom FX
+shroud whose pet still wears the old green rig."
+
+Ground-truth sweep of the golden arz: EXACTLY 5 records carry a custom
+charFxPakRunningNames, and all 5 are MONSTERs. Of those 5, EXACTLY 3 are
+_build_boss_summon soul sources whose pets kept the green rig (the three families
+here): um_toxeus_enslaver_99 (svc_enslaver_darksmoke), um_enslaver_marauder_99
+(drxshadowcloak), svc_um_hadesmarshal_80 (hades2_shadowcloud). The other 2 shroud
+monsters have NO soul-summon pet, so nothing diverges: um_vashkarr_99
+(drxshadowcloak) - its soul is a STAT _create_soul, not a summon, and its
+summonhorde raises separate fodder, not a vashkarr pet; boss_satyrshaman_55
+(ringofflame) - an arena APEX, referenced only by the arena pool, no soul.
+=> 3 families / 9 pets. (b55r1 fixed only 2 families / 6 pets and asserted "exactly
+two ... and no other"; that was FALSE - it missed the Hades Marshal. Corrected here.)
+
+The Devourer of Blood (`bloodtoxeus_1..3`, crimson RevenantPoison) is NOT a
+same-class divergence even though it SHARES the RevenantPoison mesh with the
+Enslaver: its source is `um_bloodtoxeus_99` (NO custom shroud), so it was never
+retinted, and its green poison is INTENTIONAL and STAYS (Will 2026-07-14). The
+module never touches it. The remaining ~77 systemic green pets (source never
+retinted) are FLAGGED for Will as a separate, larger design call - not mass-fixed
 in this crash-history pet round.
 
 ITEM vs PET record: the summon FX rides entirely on the PET records (resolved LIVE
@@ -110,17 +139,35 @@ MODULE_NAME = 'enslaver_pet_fx'
 
 _R = 'records\\'
 
-# ── the two Enslaver-family summon-pet groups: (label, source monster, [pets]) ──
-# source monster = the retinted encounter twin whose shroud the pet must inherit.
+# ── the three same-class summon-pet groups: (label, source monster, [pets]) ──
+# source monster = the retinted encounter twin whose custom dark shroud the pet
+# must inherit. The complete universe of "retinted-dark" monsters is the FIVE
+# records that carry a custom charFxPakRunningNames in the golden arz; EXACTLY
+# THREE of them are _build_boss_summon soul sources whose pets kept the old green
+# Lyia rig (this list). The other two shroud monsters have NO soul pet: um_vashkarr_99
+# (its soul is a STAT _create_soul, not a summon; its summonhorde raises separate
+# fodder, not a vashkarr pet) and boss_satyrshaman_55 (an arena APEX, no soul).
+# See the sibling-sweep section below + docs/reports/b55_enslaver_pet_fx.md.
 _BOSS_MON     = _R + r'creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
 _MARAUDER_MON = _R + r'creature\monster\shadowstalker\um_enslaver_marauder_99.dbr'
+# b55r2 (sibling-sweep completion): the Hades Marshal soul-summon (Menoetes,
+# Marshal of the Dead - four_generals module) is the THIRD same-class divergence.
+# Source svc_um_hadesmarshal_80 carries a dedicated dark hades2_shadowcloud shroud,
+# but its 3 soul pets carry the IDENTICAL green Lyia residue (envenom/heartofoak/
+# regrowth/natureswrath + maenad_lyia skin over the MachaeHero01 mesh) and NO shroud.
+# Its combat kit (hero_hadesbolt / hero_slowspiritbolt_ring / gigantes_groundbreaker
+# / lifedrain / summonarchers) is dark/spectral/physical - RCA'd, no green - so the
+# existing _GREEN_MARKERS cover its every green field with no new marker needed.
+_HADESMARSHAL_MON = _R + r'xpack\creatures\monster\machae\svc_um_hadesmarshal_80.dbr'
 _ENSLAVER_PETS = [_R + r'skills\soulskills\pets\toxeus_enslaver_%d.dbr' % i for i in (1, 2, 3)]
 _MARAUDER_PETS = [_R + r'skills\soulskills\pets\enslaver_marauder_%d.dbr' % i for i in (1, 2, 3)]
+_HADESMARSHAL_PETS = [_R + r'skills\soulskills\pets\hadesmarshal_%d.dbr' % i for i in (1, 2, 3)]
 _FAMILIES = [
     ('Enslaver soul-pet', _BOSS_MON,     _ENSLAVER_PETS),
     ('Enslaved Marauder pet', _MARAUDER_MON, _MARAUDER_PETS),
+    ('Hades Marshal soul-pet', _HADESMARSHAL_MON, _HADESMARSHAL_PETS),
 ]
-_ALL_PETS = _ENSLAVER_PETS + _MARAUDER_PETS
+_ALL_PETS = _ENSLAVER_PETS + _MARAUDER_PETS + _HADESMARSHAL_PETS
 
 # ── green Lyia-clone residue markers: field base (lower) -> substrings that mark
 #    the value as the known green residue. A field is stripped IFF its value
@@ -218,7 +265,8 @@ def _inherit_shroud(db, pet, source):
 def apply(db, tags):
     assert hasattr(db, 'record_names') and hasattr(db, 'set_field'), \
         'enslaver_pet_fx.apply: db is not an ArzDatabase'
-    print('\n=== b55 enslaver_pet_fx: black-rig the soul-summoned Enslaver + marauders ===')
+    print('\n=== b55 enslaver_pet_fx: black-rig the soul-summoned Enslaver + marauders '
+          '+ Hades Marshal (b55r2) ===')
     touched = 0
     for label, source, pets in _FAMILIES:
         if not db.has_record(source):
@@ -241,13 +289,15 @@ def apply(db, tags):
 
 
 def verify(db, tags=None):
-    """POST-FINALIZATION fail-loud gate (run_registry_verifies). Over EVERY
-    Enslaver-family pet that exists in the FINAL assembled db, assert:
+    """POST-FINALIZATION fail-loud gate (run_registry_verifies). Over EVERY pet in
+    the three families (Enslaver soul-pet, Enslaved Marauder, Hades Marshal soul-pet)
+    that exists in the FINAL assembled db, assert:
       (1) NO green Lyia-residue field survives (marker-matched), and
-      (2) the pet carries the matching black shroud in charFxPakRunningNames
-          (svc_enslaver_darksmoke for the soul-pet, drxshadowcloak for the marauder
-          pet - each == its source monster's shroud).
-    Negative-tested: planting envenomweapon back on any pet, or clearing the
+      (2) the pet carries the matching dark shroud in charFxPakRunningNames
+          (svc_enslaver_darksmoke for the enslaver soul-pet, drxshadowcloak for the
+          marauder pet, hades2_shadowcloud for the Hades Marshal pet - each == its
+          OWN source monster's shroud).
+    Negative-tested: planting envenomweapon back on any pet, or clearing/altering the
     shroud, fails this gate."""
     problems = []
     for label, source, pets in _FAMILIES:

@@ -29,7 +29,8 @@
 > the original scans. Files: `tools/apply_svc_patches.py`, `tools/arz_patcher.py`.
 
 > 🖤 **B55 ENSLAVER PET FX (branch `feat/enslaver-pet-fx`, dry-run vetted vs build40 golden `b33c5a44`; awaiting
-> integration build).** Will (2026-07-14): "toxeus the murderer enslaver of souls has green glow not black like we
+> integration build). b55r2 (2026-07-14): sibling sweep corrected - added the missed Hades Marshal family; now 3
+> families / 9 pets.** Will (2026-07-14): "toxeus the murderer enslaver of souls has green glow not black like we
 > said ... this is when i summon him from his soul" + "his poison effect is still green, it is not the custom black
 > one." **RCA (`docs/reports/b55_enslaver_pet_fx.md`):** b38 black-rigged the ENCOUNTER monster `um_toxeus_enslaver_99`
 > (charcoal skin + `charFxPakRunningNames=svc_enslaver_darksmoke` + deleted its green weapon glow) - VERIFIED present in
@@ -40,18 +41,25 @@
 > `deathEffect=343_natureswrath` (+ marauder-only `specialAttackSkillName=sylvannymph nature'swrath`/`skillName8` +
 > `baseTexture=maenad_lyia`), AND the pet was MISSING the boss's black-smoke shroud entirely. The shared boss/pet KIT
 > skills (netherstrike/bladestorm/lifedrain/dream chain) are NOT green (encounter stays black - matches Will). **FIX:**
-> new registry module `tools/patches/enslaver_pet_fx.py` (pos 12, before `visuals`): strips the green residue (marker-
+> registry module `tools/patches/enslaver_pet_fx.py` (pos 13, before `visuals`): strips the green residue (marker-
 > matched) + inherits each pet's SOURCE-monster shroud (enslaver pets <- svc_enslaver_darksmoke, marauder pets <-
-> drxshadowcloak); PET FX fields only, no clones/new records/textures. **SIBLING SWEEP:** 82/222 soul pets carry the
-> SAME systemic Lyia green residue, but the precise same-class case ("a monster we RETINTED with a custom FX shroud whose
-> pet still wears the old rig") is EXACTLY these 2 families and no other; the Devourer `bloodtoxeus_1..3` (crimson) is
-> EXCLUDED - its green poison is intentional and STAYS (Will). The broader 82-pet finding is flagged for Will as a
-> separate design call, NOT mass-fixed in this crash-history pet round. **ITEM vs PET:** FX rides on the PET records
-> (live-resolved when the summon fires), NOT the soul ITEM - so Will's EXISTING Enslaver soul gets the fix after a Steam
-> restart; no fresh drop needed. **VERIFY (no heavy build):** dry-run replay vs golden = EXACTLY 6 pets modified,
-> intended FX fields only, Devourer byte-identical; module `verify()` fail-loud (4 negatives all abort); summons
-> contract golden-vs-fixed = 0 new violations (exit 0 both); all 3 pet gates (STAT-MIRROR/GEAR-PARITY/SKILL-KIT 222
-> pets) + soul-summon-identity PASS on the fixed arz; py_compile + `_check_registry` (14 modules) green.
+> drxshadowcloak, Hades Marshal pets <- hades2_shadowcloud); PET FX fields only, no clones/new records/textures.
+> Added-shroud is crash-safe (string FX field, Pet.tpl superset of Monster.tpl, verbatim TypedField, no dtype) but has
+> NO on-a-pet render precedent (0 of 51,029 golden records is a Pet w/ charFxPakRunningNames) -> non-green is guaranteed,
+> black-SMOKE render to confirm in Will's test. **SIBLING SWEEP (corrected b55r2, ground truth):** EXACTLY 5 records
+> carry a custom charFxPakRunningNames, ALL Monsters; EXACTLY 3 are `_build_boss_summon` soul sources whose pets kept the
+> green rig = `um_toxeus_enslaver_99`/`um_enslaver_marauder_99`/`svc_um_hadesmarshal_80` (3 families / 9 pets). The other
+> 2 shroud monsters have NO soul pet: `um_vashkarr_99` (STAT `_create_soul`, its summonhorde raises fodder not a
+> vashkarr pet) + `boss_satyrshaman_55` (arena APEX, no soul). r1 asserted "exactly two ... and no other" - FALSE (missed
+> Hades Marshal), corrected. Devourer `bloodtoxeus_1..3` (crimson) EXCLUDED - shares RevenantPoison mesh but its source
+> `um_bloodtoxeus_99` has NO shroud (never retinted); its green poison is intentional and STAYS (Will). Broader ~77 pets
+> (source never retinted) + the Maenad audio/AI/loot residue flagged for Will as a separate design call, NOT mass-fixed
+> here. **ITEM vs PET:** FX rides on the PET records (live-resolved when the summon fires), NOT the soul ITEM - so Will's
+> EXISTING Enslaver + Hades Marshal souls get the fix after a Steam restart; no fresh drop needed. **VERIFY (no heavy
+> build):** dry-run replay vs golden = EXACTLY 9 pets modified, intended FX fields only, Devourer byte-identical; module
+> `verify()` fail-loud (5 negatives on the Hades Marshal family all abort); summons + resources + souls contracts
+> golden-vs-fixed = BYTE-IDENTICAL violation output (0 new violations; resources confirms the hades shroud ref resolves);
+> py_compile + `_check_registry` (14 modules, order e64bc6e6 unchanged) green.
 
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
