@@ -214,7 +214,8 @@ _RANT_TEXT = (
     "because every heartbeat in this cave is a debt, and I have come to collect all of them at "
     "once. You feel it already: the itch beneath the skin, the small wounds that will not close. "
     "That is only me, reading you the way you are reading me. ^n^nWhen you bleed, I am taking back what "
-    "was always mine. Come to the deep door. Bring your friends. I will open every one of you at "
+    "was always mine. Come to the deep door. Bring your friends. Bring all of them. There is room "
+    "in me. I will open every one of you at "
     "once, and drink the room dry, and leave this page for the next fool who mistakes an ending for "
     "a stop."
 )
