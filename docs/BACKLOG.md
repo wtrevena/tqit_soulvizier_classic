@@ -8,13 +8,17 @@
 > class:** SVAERA re-templated + rebalanced ~every common record (sampled monsters 120/120, weapons 120/120, every
 > mastery 100% diverge from BOTH base and SV098 - the "Steam fork with nerfs"; no surgical-fix subset to lift;
 > contradicts amgoz1 classic + Will's mastery hand-tuning). **The good vein is ADDITIVE content.**
-> **HEADLINE ADOPT (S effort, ZERO art coupling, verified droppable, art already in our shipped `drx.arc`/
-> `DRXtextures.arc`/base):** 5 thematic Greek/Egyptian sets = 13 legendary/epic items -
-> **Thoth's Favor** (`drxset049`, Egyptian, 2×Leg), **Hector's Bronze Armor** (`drxset051`, Trojan, 3×Epic),
-> **Robes of the Pythia** (`drxset052`, Delphi, 2×Epic), **Patroclus' Disguise** (`drxset053`, Achilles, 3×Leg),
-> **Might of Hephaestus** (`drxset058`, 3×Leg). All byte-present + functional (60-71 loot refs each) + absent from
-> ours. Adopt via the EXISTING `build_svc_database.py::_graft_import_closure()` + Text-tag port + one SVC loot
-> wire; no map, no new art arc. **Tier 2 (M, flavorful):** The Hunting Paradox (`newset002`, Laelaps+Teumessian
+> **HEADLINE ADOPT (S effort - ⚠️ CORRECTED by independent verifier 2026-07-14):** 5 thematic Greek/Egyptian
+> sets - **Thoth's Favor** (`drxset049`), **Hector's Bronze Armor** (`drxset051`), **Robes of the Pythia**
+> (`drxset052`), **Patroclus' Disguise** (`drxset053`), **Might of Hephaestus** (`drxset058`).
+> **VERIFIER CORRECTION: the 13 member ITEMS are NOT absent - all 13 already ship in OUR mod, droppable via
+> our loot tables, functioning as STANDALONE uniques** (itemSetName stripped; several re-tiered/re-tagged by
+> our build, e.g. Hector pieces Epic->Legendary). Only the 5 SET-grouping records are absent. TRUE adoption
+> recipe (smaller than originally stated): (a) add the 5 set records, (b) re-add itemSetName on the 13 shipped
+> items (matches how our working sets drxset001/047 link), (c) port 5 set-name Text tags. NO item import, NO
+> loot wire needed. ⚠️ OPEN QUESTION for Will/history: a PRIOR build deliberately stripped these set links
+> (107 of SVAERA's 123 set records ARE in ours; these 5 + unused ones are the exceptions) - confirm the cut
+> was not intentional + reconcile tiers (Hector Epic-in-SVAERA vs our Legendary) before shipping. **Tier 2 (M, flavorful):** The Hunting Paradox (`newset002`, Laelaps+Teumessian
 > fox), The Elephantine Triad (`newset005`, Khnum/Anuket/Satis), curated Greek/Egyptian legendary uniques bundle
 > (Meteorite, Scepter of Lamashtu, Stormcrack, Nature's Revenge, Sickle of Kronos, Osiris' Atef, Vengeance of
 > Sekhmet, Symbol of Hathor - filter OUT Norse/Chinese) - gated by the **`_DRX_Meshes.arc` art lever** (we ship a
