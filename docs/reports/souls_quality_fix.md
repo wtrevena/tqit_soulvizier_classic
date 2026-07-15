@@ -20,9 +20,11 @@
 >   revert path). See sec 5.
 > - **D2 Tomb Guardian orphan-soul retirement** (FIX 5): keep Common, detach + retire the
 >   referenced-but-unobtainable `um_tombguardian_soul` cleanly with its tag. See sec 3 + the module.
-> - **D3 crowboar summoned-crow bug** (FIX 4): the crow (and 3 same-shape svc_uber siblings) reset
->   every attack because the ring auto-cast its summon on-attack; fix to manual-cast (the Lyia
->   convention). See sec 3.5.
+> - **D3 crowboar summoned-crow bug** (FIX 4): the crow reset every attack because the ring auto-cast its
+>   summon on-attack. Round-2 widens the fix from 4 svc_uber families to **8 families / 24 rings**,
+>   roster-derived vs the SV098 design bible (adds Category B: `carrionlord` + the obtainable `komara`/
+>   `melalos` + `oythroneus` that round-1 MISSED); amgoz1's 52 SV-original on-attack SWARM souls are left
+>   intact and surfaced to Will. See sec 3.5.
 > - **D4 nymph icons:** `feat/b40-soul-icons` (`9db3f5f`) VERIFIED to merge cleanly onto current main
 >   (merge-tree, 0 conflicts) -> a REQUIRED member of the integration merge set (sec 5).
 > - **D5 blatant-error sweep** of the 155 MINOR-GAP list: classified; every blatant DATA error is the
@@ -96,16 +98,17 @@ n-tier rings were already correct and are untouched. The 47 module-authored `svc
 (hadesmarshal, diadochi, neferkha, ...) already carry correct per-tier icons and are NOT in the fixed
 set, so this module stays disjoint from every other registry module.
 
-**Total intended diff (FIX-WAVE-2): 114 records MODIFIED + 3 REMOVED** (dry-run replay, exact match).
-= 106 icon rings (108 wrong-icon svc_uber e/l MINUS the 2 removed tombguardian e/l rings) + 12
-crow-controller records (crowboar/glittertail/koroush/nkac n/e/l) + 6 level-fix records + 1 tombguardian
-monster detach, unioned (overlaps: crowboar e/l are in both icon + controller; crowboar_l in
-icon+controller+level; glittertail/koroush/nkac e/l in icon+controller). REMOVED = the 3
-`um_tombguardian_soul_{n,e,l}` records. Record count 51,029 -> 51,026.
+**Total intended diff (FIX-WAVE-2 round-2): 126 records MODIFIED + 3 REMOVED** (dry-run replay, exact
+match). = 106 icon rings (108 wrong-icon svc_uber e/l MINUS the 2 removed tombguardian e/l rings) + 24
+summon-controller records (8 families A+B n/e/l) + 6 level-fix records + 1 tombguardian monster detach,
+unioned. Overlaps: the 4 svc_uber Category-A families' e/l rings are in both icon + controller (and
+crowboar_l in icon+controller+level); the 4 Category-B families (`carrionlord`, `komara`, `melalos`,
+`oythroneus`) are non-svc_uber, so their 12 controller records are NEW to the diff (114 -> 126). REMOVED =
+the 3 `um_tombguardian_soul_{n,e,l}` records. Record count 51,029 -> 51,026.
 
 ## 2. The `verify()` gate (fail-loud regression guard) - now ROSTER-WIDE
 
-Runs post-finalization over the FINAL assembled db (step 4, after the backstop + drop forcer). Two
+Runs post-finalization over the FINAL assembled db (step 4, after the backstop + drop forcer). Four
 invariants:
 
 - **Tier monotonicity (ROSTER-WIDE).** For **EVERY** soul equipmentring family with all 3 tiers,
@@ -120,10 +123,18 @@ invariants:
   today, so the guard adds zero false negatives now and prevents false positives on future content.
 - **Per-tier icon law (svc_uber).** No `svc_uber` e/l/n ring may carry a `soul_{n,e,l}_icon` whose tier
   letter != the ring's tier. (The audit found 0 non-svc_uber icon defects, so this stays svc_uber-scoped.)
+- **Manual-cast summon law (ROSTER-WIDE, SV098-derived).** No soul ring may carry a MOD-INTRODUCED
+  on-attack controller on a permanent companion summon - judged against the SV098 design bible, so
+  amgoz1's designed on-attack swarms are ALLOWED but a controller the mod added (or a mod-only summon
+  soul's controller) fail-louds, on ANY soul svc_uber or not. This is the round-2 widening the vet MEDIUM
+  asked for (round-1's gate was svc_uber-scoped and could not catch a non-svc_uber Category-B soul).
+- **Tomb Guardian retirement.** `um_tombguardian_26` carries no soul loot ref and none of the 3
+  `um_tombguardian_soul_{n,e,l}` records exist.
 
-All three negative-tested (sec 4): the gate fail-louds on an injected **svc_uber** inversion, on an
-injected **NON-svc_uber** (bloodtip) inversion - proving the widening bites - AND on an injected
-wrong-tier icon.
+All negative-tested (sec 4): the gate fail-louds on an injected **svc_uber** inversion, on an injected
+**NON-svc_uber** (bloodtip) inversion, on an injected wrong-tier icon, on a mod-introduced on-attack
+controller re-injected on a **svc_uber** (crowboar) AND on a **NON-svc_uber** (komara) summon - proving the
+summon gate is roster-wide - and on a re-attached tombguardian soul.
 
 ### Correction to the round-1 report's completeness claim
 
@@ -173,61 +184,94 @@ The mod's `bonepet20` already casts `bonescourge_spiritbreath.dbr` (wired at BOT
 + the `drxplaceholder.dbr` marker. "Restoring" the SV path would add a dangling/duplicate skill = a
 regression. Correctly left untouched.
 
-### FIX 4 / D3 - crowboar summoned-crow "resets before acting" (+ 3 same-shape siblings)
+### FIX 4 / D3 - summon souls whose worn summon "resets before acting" (crowboar + roster sweep)
 
-Will (2026-07-14): "fix the crowboar soul's summoned crow bug". Ground truth (gt_probe / gt_sweep over
-the GOLDEN arz):
+Will (2026-07-14): "fix the crowboar soul's summoned crow bug ... sweep the roster for any OTHER summon
+soul with the same broken on-attack+petLimit=1 shape and fix those too (same bug = same wave)."
 
-- `crowboar_soul_{n,e,l}` grants the SHARED mook skill `records\skills\soulskills\carrioncrow_summon.dbr`
-  (Skill_SpawnPet, `petBurstSpawn=1`, `petLimit=10`, permanent, `isPetDisplayable=0`) via `itemSkillName`,
-  with `itemSkillAutoController = base_atenemy_onattack`. So every wearer attack re-casts Summon Carrion
-  Crow; the burst+limit re-spawns the whole flock, resetting the crows before they can act (the reported
-  bug). The crow PETS themselves (`carrioncrow_1/2/3`) are valid Pet.tpl aggressive friendlies - the bug
-  is the summon WIRING, not the pet.
-- The mod's worn companion-summon convention is **UNANIMOUS (18/18)**: Lyia Leafsong + the 17 boss-summon
-  souls (blood_toxeus, enslaver, hadesmarshal, neferkha, tantalus, mnemophage, kravmoloch, voranthys,
-  broodmother, mountainblade, ferryman, pygmalion, sarpedon, eaterofdays, xeiwang, palai, phagia) carry
-  **NO `itemSkillAutoController`** (manual-cast) + `petLimit=1` + a permanent pet. Cast once, the pet
-  persists and fights.
+**Round-2 correction of the round-1 scope (the vet HIGH).** Round-1 fixed only 4 svc_uber families on the
+justification "Exactly 4 families qualify roster-wide ... the SV swarm souls, most drop-gated/unobtainable."
+An independent SV098-authorship re-sweep of the GOLDEN arz proves BOTH claims were wrong: 76 permanent-summon
+rings carry an on-attack controller, and the true fix set is **8 families / 24 rings** (not 4), while the
+"most drop-gated" framing was false (8 of the amgoz swarms drop from obtainable Heroes/Bosses). The scope is
+now **ROSTER-DERIVED vs the SV 0.98i design bible**, not a namespace.
 
-**FIX (match the convention; per-soul; ZERO shared-skill collateral):** REMOVE `itemSkillAutoController`
-from the deviant svc_uber companion-summon rings, so the summon becomes manual-cast (exactly the Lyia
-model) and the flock persists instead of resetting. The shared summon SKILLS are NOT touched, so the
-SV-original on-attack SWARM souls that share them (carrionlord + direflock share carrioncrow_summon; 6
-skeleton-raiser souls share skeleton_summon; aphiastas shares summon_firesprite; graklos shares
-wraith_summon - all designed "raise-a-swarm-on-attack" identities, most drop-gated) are 100% unaffected.
+**Ground truth (crowboar).** `crowboar_soul_{n,e,l}` grants `carrioncrow_summon.dbr` (Skill_SpawnPet,
+`petLimit=10`, `petBurstSpawn=1`, permanent no-TTL, `isPetDisplayable=0`) via `itemSkillName` WITH
+`itemSkillAutoController = base_atenemy_onattack`. Every wearer attack re-casts Summon Carrion Crow; the
+flock re-bursts/resets before it can act. The mod's worn companion-summon convention is Lyia Leafsong
+(`summon_lyia`, `petLimit 1`, permanent, NO controller = manual-cast) + the 17 boss-summon souls. Will's
+brief said "petLimit=1"; ground truth shows **NO** on-attack summon ring is petLimit 1 (crowboar is 10, the
+siblings 3..10) - "petLimit=1" is Will's mental model of a single persistent companion, not a DB value. The
+real signature is an on-attack controller on a PERMANENT companion summon at ANY petLimit.
 
-**Sweep (same bug = same wave):** the exact defect class = an **svc_uber** companion-summon soul granting
-a **PERMANENT (no-TTL)** SpawnPet skill that carries an **on-attack** auto-controller. Exactly 4 families
-qualify roster-wide (the brief's "petLimit=1" was imprecise - crowboar is petLimit 10; the true signature
-is the on-attack-controller-on-a-permanent-companion-summon deviation). All fixed, all 3 tiers each = 12
-records:
+**The discriminator (SV098 authorship).** Of the 76 permanent-summon rings carrying an on-attack controller:
 
-| Family | grant (shared skill, NOT edited) | controller removed | petLimit |
-|---|---|---|---|
-| `svc_uber\crowboar_soul` | carrioncrow_summon | base_atenemy_onattack | 10 |
-| `svc_uber\glittertail_soul` | summon_firesprite | awakeneddeadsoul_onattack | 5 |
-| `svc_uber\koroush_soul` | wraith_summon | base_atenemy_onattack | 5 |
-| `svc_uber\nkac_soul` | skeleton_summon | base_atenemy_onattack | 5 |
+- **52 rings / 18 families are amgoz1 SV-ORIGINALS shipped WITH the controller** = deliberate
+  "raise-a-swarm-as-you-attack" identities (direflock IS a flock; the skeleton/dead-raisers raise the dead;
+  nebtaan, senusnet, menzus, bonelord, fenuku, frostmarrow, graklos, xiao, feira, aphiastas, ...). **SV =
+  the design bible -> LEFT UNTOUCHED**, and surfaced to Will as a design decision (below), NOT shipped as a
+  defect. Correct obtainability (contra round-1's "most drop-gated"): direflock/nebtaan/senusnet/menzus/
+  bonelord/fenuku/frostmarrow/graklos drop from obtainable **Heroes at 66**, xiao from a **Boss at 25**; the
+  rest are gated. (The vet's HIGH named 10 "obtainable same-bug" rings - **8 of them are these amgoz designs**
+  where SV shipped the controller; the other 2 are Category B below.)
+- **24 rings / 8 families carry a MOD-INTRODUCED controller and ARE fixed** (remove `itemSkillAutoController`
+  -> manual-cast, the Lyia model; the shared summon SKILLS are never touched, so amgoz's swarm souls that
+  share them keep their behavior):
 
-(mountainblade was probe-flagged then cleared: its controller field is already empty = manual-cast; NOT
-touched.) **Pet.tpl safety:** touches only the item ring controller field - no pet record, no
-Monster.tpl->Pet.tpl copy, no `spawnObjectsTimeToLive` change. `verify()` fail-louds if any svc_uber
-permanent-summon soul carries an on-attack controller (regression guard). **Known minor residual** (NOT
-the reported bug; optional future polish): `carrioncrow_summon` ships `isPetDisplayable=0`, so the
-manual-cast crow fights but shows no pet-window health bar; a fully clean companion would need a dedicated
-per-soul summon skill (the convention) rather than the shared mook skill - left for a content pass since
-the skill is shared with the SV souls. `validate_summon_pets` stays **PASS** (pets unchanged).
+| Cat | Family | grant (shared skill, NOT edited) | petLimit | provenance of the controller | obtainability |
+|---|---|---|---|---|---|
+| A | `svc_uber\crowboar_soul` | carrioncrow_summon | 10 | MOD-ONLY (no SV original; Will named it) | mod uber |
+| A | `svc_uber\glittertail_soul` | summon_firesprite | 5 | MOD-ONLY | mod uber |
+| A | `svc_uber\koroush_soul` | wraith_summon | 5 | MOD-ONLY | mod uber |
+| A | `svc_uber\nkac_soul` | skeleton_summon | 5 | MOD-ONLY | mod uber |
+| B | `zombie\komara_soul` | summon_zombiesoldier | 6 | monolith `_AC_ON_ATTACK` on a summon; SV manual-cast | **Hero 66 (obtainable)** |
+| B | `zombie\melalos_soul` | summon_zombiesoldier | 6 | monolith `_AC_ON_ATTACK` on a summon; SV manual-cast | **Boss 66 (obtainable)** |
+| B | `zombie\oythroneus_soul` | summon_zombiesoldier | 6 | monolith `_AC_ON_ATTACK` on a summon; SV manual-cast | gated |
+| B | `carrionbird\carrionlord_soul` | carrioncrow_summon | 10 | `skill_quality` REASSIGN (tagSoulName49) generic ON_ATTACK | gated (Champion) |
+
+**komara (Hero 66) + melalos (Boss 66) are exactly the obtainable same-bug rings round-1 MISSED** - they
+"reset before acting" identically to crowboar, and round-1 asserted they could not be obtained. Fixed.
+
+**carrionlord - FLAGGED FOR WILL.** Its on-attack Carrion Crow summon is set by `skill_quality`'s REASSIGN
+map (`toxeus_flashpowder.dbr` -> `tagSoulName49 = (CROWSUMMON, ON_ATTACK)`), which used ON_ATTACK generically
+(right for the offense reassigns like Arrow Nova / Petrify, wrong for a summon). souls_quality runs after
+skill_quality (registry pos 13 vs 4) and removes the controller -> a documented later-wins collision (the
+S4b gate will WARN, intended). carrionlord is mechanically identical to crowboar, so it is fixed to
+manual-cast. **If you meant carrionlord as an on-attack crow-SWARM like its sibling direflock, say so and it
+goes into `_SUMMON_CONTROLLER_WAIVER` (one line) instead.**
+
+**Root cause (documented follow-ups for those lanes; NOT rewritten here to keep this a disjoint soul-ring
+patch):** `apply_svc_patches` reuses `_AC_ON_ATTACK` for summon-granting souls (correct for on-attack PROCS
+like Ground Smash, wrong for summons), and `skill_quality` REASSIGN applies ON_ATTACK generically incl. the
+carrionlord summon.
+
+**How it is roster-derived (both apply + verify).** `souls_quality._summon_controller_fix_records` loads the
+pristine SV098 arz (design bible) and yields every soul ring that grants a permanent SpawnPet + carries an
+on-attack controller + is NOT waived + is NOT one amgoz1 shipped with an on-attack controller. `apply()`
+removes the controller from that set; `verify()` fail-louds if the SAME set is non-empty over the FINAL db
+(so a future mod-added controller on ANY soul - svc_uber or not - trips the gate). The SV098 arz is a
+required build input; the module resolves it (env `SVC_SV098_ARZ` or an upward search from the repo tree)
+and fail-louds if absent - never a silent skip.
+
+**Pet.tpl safety:** touches only the item ring controller field - no pet record, no Monster.tpl->Pet.tpl
+copy, no `spawnObjectsTimeToLive` change. **Known minor residual** (NOT the reported bug): `carrioncrow_summon`
+ships `isPetDisplayable=0`, so the manual-cast crow fights but shows no pet-window bar - a shared-skill
+content-pass item, unchanged. `validate_summon_pets` stays **PASS** (byte-identical baseline vs patched;
+pets unchanged).
 
 ### P2-c boss-summon nymph icons (17 souls) -> D4: REQUIRED integration merge-set member
 
 Fixed on `feat/b40-soul-icons` (commit `9db3f5f`; overrides `skillUpBitmapName`/`skillDownBitmapName` on
-the 17 lyia-cloned boss-summon skills). VERIFIED it still applies to current main: `git merge-tree
---write-tree main feat/b40-soul-icons` returns a clean tree (`c64ee9a`) with **0 conflicts** (auto-merges
-`tools/apply_svc_patches.py`). So per the directive it stays its own branch and is a **REQUIRED member of
-the integration merge set** - NOT duplicated here (would collide). It is disjoint from this module and
-from FIX 4 (the 4 FIX-4 souls grant mook summons with their own mook icons, not the nymph icon; the b40
-branch edits the 17 nymph-iconed lyia-cloned skills).
+the lyia-cloned boss-summon skills). RE-VERIFIED against CURRENT main (`15f0e45e`): `git merge-tree
+--write-tree main feat/b40-soul-icons` = **exit 0, clean tree `24753ca3`, 0 conflicts** (auto-merges
+`tools/apply_svc_patches.py`). (The round-1 report's `c64ee9a` was stale - main has advanced.) So per the
+directive it stays its own branch and is a **REQUIRED member of the integration merge set** - NOT
+duplicated here (would collide). It is disjoint from this module and from FIX 4 (the FIX-4 souls grant mook
+summons with their own mook icons, not the nymph icon; the b40 branch edits the nymph-iconed lyia-cloned
+skills). **Integration-time check (vet LOW):** an independent scan found **19** non-Lyia summon skills
+sharing Lyia's `summonlyiaup.tex` (the audit/b40 cite 17); at integration, confirm b40 covers the 2 extra
+(or documents why not) before promoting.
 
 ### P3 items -> Will design decisions (unchanged; see the audit)
 
@@ -245,32 +289,36 @@ pharaohshonorguard, and 0 on `corpsemanager` (skill_quality reassigns corpsemana
 ## 4. Verification record (no heavy build; dry-run replay + patched-arz contracts)
 
 Replay `tools/debug/souls_quality_replay.py <build40 arz>` over the build40 GOLDEN arz (`b33c5a44`, the
-artifact the audit graded) - **RESULT: PASS** (FIX-WAVE-2, all 5 fixes):
+artifact the audit graded) - **RESULT: PASS** (FIX-WAVE-2 round-2, all 5 fixes):
 
-1. **Intended-only diff** - `db._modified` after `apply()` == exactly the predicted **114** modified
-   records; AND exactly **3** records REMOVED (the tombguardian souls). 0 unexpected, 0 missing.
+1. **Intended-only diff** - `db._modified` after `apply()` == exactly the predicted **126** modified
+   records; AND exactly **3** records REMOVED (the tombguardian souls). 0 unexpected, 0 missing. The
+   24-record summon-controller set is re-derived INDEPENDENTLY in the replay from the SV098 bible and
+   asserted equal to `souls_quality._summon_controller_fix_records` (the module cannot self-certify).
 2. **Field minimality** - each modified record changed ONLY its allowed field(s): `bitmap` (icon rings),
-   the intended level field(s), `itemSkillAutoController` REMOVED (crow rings), or `lootFinger2Item1`
+   the intended level field(s), `itemSkillAutoController` REMOVED (summon rings), or `lootFinger2Item1`
    cleared (tombguardian monster); every other field byte-identical.
-3. **Correctness** - all 5 families run non-decreasing (crowboar aug+grant 1/2/3; onyxspine aug 1/2/3,
-   grant 3/5/8 untouched; steamcrawler aug 1/2/3; bloodtip grant 5/7/9; gustleech grant 10/12/14); every
-   e/l ring shows its own tier icon; the 4 crow-class rings (12 records) have NO controller (grants
-   intact); um_tombguardian_26 carries no soul ref (Common + chance 0 preserved) and the 3 tombguardian
-   soul records are gone with 0 residual references.
-4. **`verify()` passes** - all four gates green (monotonicity + svc_uber icon + crow-controller +
-   tombguardian-retired).
+3. **Correctness** - all 5 inverted families run non-decreasing (crowboar aug+grant 1/2/3; onyxspine aug
+   1/2/3, grant 3/5/8 untouched; steamcrawler aug 1/2/3; bloodtip grant 5/7/9; gustleech grant 10/12/14);
+   every e/l ring shows its own tier icon; all **24** mod-introduced summon rings (8 families A+B, incl.
+   non-svc_uber komara/melalos/oythroneus/carrionlord) have NO controller while amgoz1's designed swarm
+   `direflock` KEEPS its controller (no over-reach; 51 amgoz swarms untouched); um_tombguardian_26 carries
+   no soul ref (Common + chance 0 preserved) and the 3 tombguardian soul records are gone with 0 residual
+   references.
+4. **`verify()` passes** - all four gates green (monotonicity + svc_uber icon + roster-wide manual-cast
+   summon + tombguardian-retired).
 5. **Idempotency** - a 2nd `apply()` modifies 0 new records and removes 0 more.
-6. **Negative tests (5)** - `verify()` fail-louds on: an injected svc_uber inversion; an injected
-   NON-svc_uber (bloodtip) inversion (names the family); an injected wrong-tier icon; an injected
-   on-attack controller on an svc_uber permanent summon (names crowboar); and a re-attached tombguardian
-   soul on the monster loot.
+6. **Negative tests (6)** - `verify()` fail-louds on: an injected svc_uber inversion; an injected
+   NON-svc_uber (bloodtip) inversion (names the family); an injected wrong-tier icon; a mod-introduced
+   on-attack controller re-injected on a **svc_uber** permanent summon (crowboar); the same on a
+   **NON-svc_uber** permanent summon (komara) - proving the gate is roster-wide, the exact vet MEDIUM;
+   and a re-attached tombguardian soul on the monster loot.
 
 **Contracts on the patched arz (build40 GOLDEN + this module, written via `write_arz`):**
-- `validate_soul_augments <patched>` = **PASS** (0 dangling, 0 inactive; 4,926 skill refs / 1,390
-  activation chains).
+- `validate_soul_augments <patched>` = **PASS** (0 dangling, 0 inactive).
 - `validate_summon_pets <patched> <base> <sv098>` = **PASS** ("every mod-authored soul-granted summon
-  spawns a complete, renderable, usable pet"; only the pre-existing kaets_soul engine-clamp WARN - the
-  crow-controller removal touches no pet).
+  spawns a complete, renderable, usable pet"; only the pre-existing kaets_soul engine-clamp WARN, byte-
+  identical to baseline - the controller removal touches no pet).
 - **Resource dangling-ref check (targeted, patched arz):** the 3 tombguardian soul records are GONE and
   **0** records anywhere still reference `um_tombguardian_soul` - so the removal introduces no dangling
   `.dbr` ref; the detached loot slot is `['','','']` (empty, not a path). `validate_tags` is PASS by
@@ -279,10 +327,15 @@ artifact the audit graded) - **RESULT: PASS** (FIX-WAVE-2, all 5 fixes):
 - Fast gates: `py -m py_compile` (module + replay + `__init__`) OK; `py tools/patches/_check_registry.py`
   OK (14 modules, order `39d94e3201684246...`).
 
-**Namespace safety** (`probe_ns_safety_r2.py`): all 111 touched records are under
-`records\item\equipmentring\soul\`; the 3 NON-svc_uber records are exactly `spider\bloodtip_soul_e`,
-`vulture\gustleech_soul_e`, `vulture\gustleech_soul_l`; **0** hits on any LAW namespace; **0**
-corpsemanager records.
+**Namespace safety** (verified on the patched db's exact modified set): of the 126 modified records, 125
+are under `records\item\equipmentring\soul\` and 1 is the tombguardian MONSTER
+(`records\creature\monster\tombguardian\um_tombguardian_26.dbr`, loot-slot detach). The 15 NON-svc_uber
+soul records are exactly `spider\bloodtip_soul_e`, `vulture\gustleech_soul_{e,l}`, plus the FIX-4
+Category-B rings `carrionbird\carrionlord_soul_{n,e,l}`, `zombie\komara_soul_{n,e,l}`,
+`zombie\melalos_soul_{n,e,l}`, `zombie\oythroneus_soul_{n,e,l}`. **0** hits on any LAW namespace
+(Occult/Hunting/mastery/kallixenia/pharaohshonorguard/abyssalliche); **0** corpsemanager records.
+One INTENDED cross-module collision: `skill_quality` (pos 4) sets carrionlord's controller; souls_quality
+(pos 13) removes it - later-wins, the S4b gate WARNs (documented in FIX 4).
 
 **Soul contracts** (patched temp arz = build40 GOLDEN + this module, written via `write_arz`; run vs
 baseline GOLDEN too to prove no regression). Base = TQAE `database.arz`; upstream = SV 0.98i
@@ -321,7 +374,13 @@ tools/debug/souls_quality_replay.py tools/debug/_souls_quality_audit.py` OK;
   exact numbers (the svc_uber trio + icon + crow + tombguardian fixes stand independently).
 - **D2 - APPLIED: Tomb Guardian** (sec 3, FIX 5) - kept Common, soul detached + retired with its tag, per
   Will's directive. No promotion.
-- **D3 - APPLIED: crowboar crow + 3 siblings** (sec 3.5, FIX 4) - manual-cast, per the Lyia convention.
+- **D3 - APPLIED (round-2, widened): crowboar crow + a roster-derived 8-family set** (sec 3.5, FIX 4) -
+  manual-cast per the Lyia convention. Round-2 fixes the vet HIGH: the set is now SV098-derived, adds
+  Category B (`carrionlord` + the OBTAINABLE `komara`/`melalos` + `oythroneus`) round-1 missed, and leaves
+  amgoz1's 52 SV-original on-attack swarm souls intact. **`carrionlord` is FLAGGED FOR WILL** (its
+  on-attack summon is a `skill_quality` reassignment; if you intended an on-attack crow-SWARM, one line in
+  `_SUMMON_CONTROLLER_WAIVER` reverts it). **The 52 amgoz SWARM souls are a design decision surfaced for
+  you** - they keep amgoz's on-attack behavior; say the word if any should become manual-cast companions.
 - **D4 - REQUIRED merge-set member: `feat/b40-soul-icons`** (`9db3f5f`) - merges cleanly onto main
   (0 conflicts); must be in the integration merge set for the 17 nymph-iconed boss-summon skills.
 - **Creative renames: NONE.** No soul name/description text changed (the only tag touched is the DROPPED
@@ -344,16 +403,18 @@ polish documented"):
 
 **Conclusion:** the only blatant DATA errors in the 155-item list are the two icon classes, both now
 covered (FIX 3 + the D4 branch). The DEFICIENT tier inversions (5, FIX 1+2) are the audit's separate P1
-set, also fixed. The two blatant errors NOT in the audit's MINOR-GAP list but detected during
-ground-truthing (crowboar crow controller, tombguardian orphan soul) are fixed by FIX 4 + FIX 5. All
-remaining MINOR-GAP items are design decisions / a false positive, left documented untouched.
+set, also fixed. The blatant errors NOT in the audit's MINOR-GAP list but detected during ground-truthing
+- the mod-introduced on-attack summon controllers (8 families A+B, FIX 4) and the tombguardian orphan soul
+(FIX 5) - are fixed. All remaining MINOR-GAP items are design decisions / a false positive, left documented
+untouched.
 
 ## 6. Files
 
 - `tools/patches/souls_quality.py` - the fix module (apply + roster-wide verify).
 - `tools/patches/__init__.py` - REGISTRY includes `souls_quality` (position 13, before `visuals`).
-- `tools/debug/souls_quality_replay.py` - the dry-run replay + fail-loud proof (reusable; updated for
-  the 5-family fix + the roster-wide negative test).
+- `tools/debug/souls_quality_replay.py` - the dry-run replay + fail-loud proof (reusable; round-2 adds an
+  INDEPENDENT SV098-derivation of the 24-record controller fix set + a roster-wide non-svc_uber negative
+  test + an amgoz-swarm no-over-reach positive control).
 - `tools/debug/_souls_quality_audit.py` - the round-0 audit probe; its inversion detector now also
   catches `itemSkillLevel`-only inversions (`GRANT-LEVEL-TIER-INVERSION`) so a re-run is self-correcting.
 - `docs/reports/souls_quality_audit.md` - the audit this fixes (round-2 corrections: DEFICIENT 3->5,

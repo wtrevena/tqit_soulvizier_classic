@@ -76,46 +76,76 @@ already matches their tier (the 47 module-authored svc_uber souls: hadesmarshal,
 diadochi, neferkha, ...) are left untouched, so this module stays disjoint.
 
 --------------------------------------------------------------------------------
-FIX 4 (FIX-WAVE-2 D3, P1) - crowboar summoned-crow "resets before acting"
+FIX 4 (FIX-WAVE-2 D3, P1) - summon souls whose worn summon "resets before acting"
 --------------------------------------------------------------------------------
-Will (2026-07-14): "fix the crowboar soul's summoned crow bug". Ground truth
-(gt_probe): crowboar_soul_{n,e,l} grants the SHARED mook skill
-records\skills\soulskills\carrioncrow_summon.dbr (Skill_SpawnPet, petBurstSpawn=1,
-petLimit=10, permanent, isPetDisplayable=0) via itemSkillName, with
-itemSkillAutoController = base_atenemy_onattack. So every time the wearer attacks,
-the item re-casts Summon Carrion Crow; the burst+limit re-spawns the whole flock,
-resetting the crows before they can act. The mod's PROVEN-WORKING convention for a
-worn companion-summon soul is UNANIMOUS (18/18: Lyia Leafsong + blood_toxeus,
-enslaver, hadesmarshal, neferkha, tantalus, mnemophage, kravmoloch, voranthys,
-broodmother, mountainblade, ferryman, pygmalion, sarpedon, eaterofdays, xeiwang,
-palai, phagia): NO itemSkillAutoController at all (manual-cast) + a permanent pet.
-Cast once, the pet persists and fights.
+Will (2026-07-14): "fix the crowboar soul's summoned crow bug ... sweep the roster
+for any OTHER summon soul with the same broken on-attack+petLimit=1 shape and fix
+those too (same bug = same wave)." Ground truth (SV098-authorship sweep over the
+GOLDEN arz; regenerable by tools/debug/souls_quality_replay.py):
 
-FIX (match the convention; per-soul, ZERO shared-skill collateral): REMOVE
-itemSkillAutoController from the deviant svc_uber companion-summon rings, so the
-summon becomes manual-cast (exactly the Lyia model) and the flock persists instead
-of resetting every attack. We do NOT touch the shared summon skills
-(carrioncrow_summon etc.), so the SV-original on-attack SWARM souls that share them
-(carrionlord, direflock, the 6 skeleton-raiser souls, aphiastas, graklos - all
-designed "raise-a-swarm-on-attack" identities, most drop-gated/unobtainable) are
-100% unaffected. Sweep (gt_sweep): the crowboar bug class = an svc_uber
-companion-summon soul granting a PERMANENT (no-TTL) SpawnPet skill that carries an
-on-attack auto-controller (deviating from the manual-cast convention). Exactly 4
-families qualify roster-wide, all fixed here:
+crowboar_soul_{n,e,l} grants the SHARED skill carrioncrow_summon.dbr (Skill_SpawnPet,
+petLimit=10, petBurstSpawn=1, PERMANENT no-TTL, isPetDisplayable=0) via itemSkillName
+WITH itemSkillAutoController = base_atenemy_onattack. So every wearer attack re-casts
+Summon Carrion Crow; the flock re-bursts/resets before the crows can act. The mod's
+PROVEN worn companion-summon convention is UNANIMOUS: Lyia Leafsong (summon_lyia,
+petLimit 1, permanent, NO controller = manual-cast) and the 17 boss-summon souls -
+cast once, the pet persists and fights.
 
-  svc_uber\crowboar_soul     grant carrioncrow_summon  ctl base_atenemy_onattack   (petLimit 10)
-  svc_uber\glittertail_soul  grant summon_firesprite   ctl awakeneddeadsoul_onattack(petLimit 5)
-  svc_uber\koroush_soul      grant wraith_summon       ctl base_atenemy_onattack   (petLimit 5)
-  svc_uber\nkac_soul         grant skeleton_summon     ctl base_atenemy_onattack   (petLimit 5)
+BRIEF-vs-GROUND-TRUTH: Will's "petLimit=1" is a mental model of a single persistent
+companion, NOT a DB value - NO on-attack summon ring in the roster is petLimit 1
+(crowboar is 10; the siblings 3..10). The real signature is an on-attack-family
+controller on a PERMANENT companion summon, at ANY petLimit.
 
-Pet.tpl safety: this touches ONLY the item (ring) controller field - no pet
-record, no Monster.tpl->Pet.tpl field copy, no spawnObjectsTimeToLive change. The
-crow/sprite/wraith/skeleton pets are already valid Pet.tpl aggressive friendlies
-(verified). Known minor residual (NOT the reported bug, optional future polish):
-carrioncrow_summon ships isPetDisplayable=0, so the manual-cast crow fights but
-does not show a pet-window health bar; fixing that cleanly needs a dedicated
-per-soul summon skill (the convention) rather than the shared mook skill - left
-for a content pass since it is shared with the SV souls.
+FIX (remove itemSkillAutoController -> manual-cast, the Lyia model; ZERO shared-skill
+collateral - we never touch the summon SKILLS the SV swarm souls share). SCOPE IS
+ROSTER-DERIVED against the SV 0.98i design bible (upstream/soulvizier_098i), NOT a
+namespace: a permanent-summon soul ring is fixed iff its on-attack controller was
+introduced BY THE MOD - i.e. SV098 does NOT ship that same ring with an on-attack
+controller (apply() + verify() both compute this; _summon_controller_fix_records).
+Roster-wide sweep of the 76 permanent-summon rings carrying an on-attack controller:
+
+* 52 rings / 18 families are amgoz1 SV-ORIGINALS shipped WITH the on-attack controller
+  = deliberate "raise-a-swarm-as-you-attack" identities (direflock IS a flock; the
+  skeleton-raisers raise skeletons; nebtaan/senusnet/menzus/bonelord/fenuku/frostmarrow/
+  graklos/xiao/feira/aphiastas/dead-soldier+dead-archer raisers). SV = design bible ->
+  LEFT UNTOUCHED and flagged for Will as a design decision, NOT a defect (report 3.5).
+  Correct obtainability (contra a prior "most drop-gated" claim): direflock/nebtaan/
+  senusnet/menzus/bonelord/fenuku/frostmarrow/graklos drop from obtainable Heroes at 66,
+  xiao from a Boss at 25; the rest are gated.
+
+* 24 rings / 8 families carry a MOD-INTRODUCED on-attack controller and ARE fixed:
+    Category A - MOD-ONLY svc_uber (no SV original; mod-generated deviants of the
+      unanimous manual-cast convention; Will named crowboar):
+        crowboar    carrioncrow_summon  petLimit 10  base_atenemy_onattack
+        glittertail summon_firesprite   petLimit 5   awakeneddeadsoul_onattack
+        koroush     wraith_summon       petLimit 5   base_atenemy_onattack
+        nkac        skeleton_summon     petLimit 5   base_atenemy_onattack
+    Category B - SV-ORIGINAL ring the MOD gave an on-attack controller SV never shipped
+      (removing it RESTORES amgoz's manual-cast design):
+        komara / melalos / oythroneus  summon_zombiesoldier  petLimit 6  base_atenemy_onattack
+          (the monolith's generic _AC_ON_ATTACK on a SUMMON; SV098 shipped all three
+           manual-cast). komara (um_komara_38, Hero 66) + melalos (um_melalos_19, Boss 66)
+           are OBTAINABLE - the exact same-bug obtainable rings a prior svc_uber-only
+           scope MISSED (the round-1 vet HIGH); oythroneus is currently drop-gated.
+        carrionlord  carrioncrow_summon  petLimit 10  base_atenemy_onattack
+          - REASSIGNED to Summon Carrion Crow + ON_ATTACK by skill_quality (REASSIGN
+            'toxeus_flashpowder.dbr' tagSoulName49). souls_quality runs after skill_quality
+            (registry pos 13 vs 4) and removes the controller -> a documented later-wins
+            collision. FLAGGED FOR WILL: if carrionlord was meant as an on-attack crow-
+            SWARM like its sibling direflock, add it to _SUMMON_CONTROLLER_WAIVER.
+
+Root cause (documented follow-ups for those lanes; NOT rewritten here to keep this a
+disjoint soul-ring patch): apply_svc_patches reuses _AC_ON_ATTACK for summon-granting
+souls (right for on-attack PROCS like Ground Smash, wrong for summons), and
+skill_quality REASSIGN applies ON_ATTACK generically incl. the carrionlord summon.
+
+Pet.tpl safety: touches ONLY the item ring's controller field - no pet record, no
+Monster.tpl->Pet.tpl copy, no spawnObjectsTimeToLive change; the pets are already valid
+Pet.tpl aggressive friendlies. validate_summon_pets stays PASS. Known minor residual
+(NOT the reported bug): carrioncrow_summon ships isPetDisplayable=0, so the manual-cast
+crow fights but shows no pet-window bar - a shared-skill content-pass item, unchanged.
+A future intentional mod on-attack swarm goes in _SUMMON_CONTROLLER_WAIVER (fail-loud
+forces the decision to be explicit).
 
 --------------------------------------------------------------------------------
 FIX 5 (FIX-WAVE-2 D2) - Tomb Guardian orphan-soul retirement
@@ -151,9 +181,13 @@ NOT fixed here (see the report's FIX-LIST + WILL-DECISION sections)
   feat/b40-soul-icons branch (commit 9db3f5f) - VERIFIED it merges CLEANLY onto
   current main (merge-tree, 0 conflicts), so it is a REQUIRED member of the
   integration merge set (no duplicate work here; it edits apply_svc_patches.py,
-  disjoint from this module and from the FIX 4 mook-summon souls).
+  disjoint from this module and from the FIX 4 summon souls).
 * P2-d Soulfeeder pet spirit-breath: verified an AUDIT FALSE POSITIVE - the mod's
   bonepet20 already casts bonescourge_spiritbreath. Nothing to restore.
+* 52 amgoz1 SV-original on-attack SWARM souls (direflock, the skeleton/dead-raisers,
+  nebtaan, senusnet, menzus, bonelord, fenuku, frostmarrow, graklos, xiao, feira,
+  aphiastas, ...): amgoz1 shipped these WITH the on-attack controller = deliberate
+  design (SV = the design bible). LEFT UNTOUCHED and flagged for Will (report 3.5).
 * P3-a 79 SV drop-gated souls / P3-b 5 formula-only souls / P3-c SV pet-equip
   dangles / P3-d SV DB hygiene: SUBJECTIVE / design decisions for Will, left
   documented untouched (souls_quality_audit.md sec 5). These carry correct data
@@ -161,10 +195,12 @@ NOT fixed here (see the report's FIX-LIST + WILL-DECISION sections)
 
 Module contract (tools/patches/README.md): MODULE_NAME + apply(db, tags), plus a
 post-finalization verify(db, tags) that fail-louds the tier-monotonicity (roster-
-wide), the svc_uber icon law, the no-on-attack-controller law for svc_uber
-companion summons, and the Tomb Guardian retirement, over the FINAL assembled db
-so none of these classes can silently regress.
+wide), the svc_uber icon law, the ROSTER-WIDE no-mod-introduced-on-attack-controller
+law for permanent companion summons (judged vs the SV098 design bible), and the Tomb
+Guardian retirement, over the FINAL assembled db so none of these classes can
+silently regress.
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -217,31 +253,36 @@ _LEVEL_FIX.update(_SV_INVERSION_FIX)
 # soul_{n,e,l}_icon.tex family (the tier-icon standard). Case-insensitive match.
 _SOUL_ICON_RE = re.compile(r'(?i)soul_([nel])_icon\.tex$')
 
-# ── FIX 4 (D3): svc_uber companion-summon souls that deviate from the unanimous
-# manual-cast convention by auto-casting their PERMANENT summon on attack. The
-# fix removes the ring's itemSkillAutoController (-> manual-cast). Family stems;
-# all three tiers (n/e/l) of each are fixed. The shared summon SKILLS are NOT
-# touched (SV swarm souls that share them keep their designed on-attack behavior).
-_CROW_CONTROLLER_FAMILIES = [
-    r'records\item\equipmentring\soul\svc_uber\crowboar_soul',     # carrioncrow_summon (petLimit 10)
-    r'records\item\equipmentring\soul\svc_uber\glittertail_soul',  # summon_firesprite  (petLimit 5)
-    r'records\item\equipmentring\soul\svc_uber\koroush_soul',      # wraith_summon      (petLimit 5)
-    r'records\item\equipmentring\soul\svc_uber\nkac_soul',         # skeleton_summon    (petLimit 5)
-]
-_CROW_CONTROLLER_RECORDS = [
-    '%s_%s.dbr' % (stem, t) for stem in _CROW_CONTROLLER_FAMILIES for t in 'nel'
-]
-# on-attack-family controllers (fire when the WEARER attacks) - the defect signature
-# for the verify() regression guard. 'onattacked'/'onattack-ed' (when the wearer IS
-# attacked) are deliberately NOT here: those are reactive procs, not the re-summon bug.
-_ONATTACK_CONTROLLERS = set(_norm(x) for x in [
-    r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr',
-    r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onattack.dbr',
-    r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onmeleehit.dbr',
-    r'records\xpack\ai controllers\autocast_items\basetemplates\base_atself_onrangedhit.dbr',
-    r'records\xpack\ai controllers\autocast_items\basetemplates\poisonbomb_onattack.dbr',
-    r'records\xpack\ai controllers\autocast_items\basetemplates\awakeneddeadsoul_onattack.dbr',
+# ── FIX 4 (D3): mod-introduced on-attack controllers on PERMANENT companion-summon
+# soul rings (the "resets before acting" bug). The fix set is ROSTER-DERIVED against
+# the SV 0.98i design bible - NOT a hardcoded family list - so a future mod-added
+# controller is caught by the same predicate (apply() removes it, verify() fail-louds).
+# A ring is fixed iff it grants a PERMANENT (no-TTL) Skill_SpawnPet AND carries an
+# on-attack-family controller AND that controller was NOT shipped by amgoz1 (SV098
+# does NOT ship the SAME ring path with an on-attack controller). See _summon_controller_fix_records.
+
+# On-attack-family controllers fire when the WEARER attacks (the re-summon bug).
+# 'onattacked'/'lowhealth' (when the wearer IS attacked / is hurt) are REACTIVE, not
+# the bug, and are deliberately excluded. Curated known set + a suffix heuristic so a
+# novel offensive-trigger template is still recognised (future-proofing the gate).
+_KNOWN_ONATTACK_CTL = frozenset([
+    'base_atenemy_onattack.dbr', 'base_atself_onattack.dbr', 'base_atself_onmeleehit.dbr',
+    'base_atself_onrangedhit.dbr', 'poisonbomb_onattack.dbr', 'awakeneddeadsoul_onattack.dbr',
+    'asorissoul_onmeleehit.dbr', 'bonelordsoul_onattack.dbr', 'monolithessence_onattack.dbr',
 ])
+
+# Intentional-design escape hatch: exact ring paths (normalized) that MAY keep a
+# mod-authored on-attack summon controller as a deliberate design. EMPTY today (all 8
+# mod-introduced families are genuine bugs per Will + the manual-cast convention). If
+# Will confirms e.g. carrionlord as an intentional on-attack crow-SWARM, add its 3
+# tier paths here (verify() then stops flagging it). Kept explicit so the decision is
+# never silent.
+_SUMMON_CONTROLLER_WAIVER = frozenset()
+
+# SV 0.98i design-bible arz (the authorship oracle). Resolved lazily at apply()/verify()
+# time (never at import, so _check_registry stays cheap) and cached module-wide.
+_SV098_REL = os.path.join('upstream', 'soulvizier_098i', 'Database', 'database.arz')
+_sv098_cache = {}
 
 # ── FIX 5 (D2): Tomb Guardian orphan-soul retirement ────────────────────────
 _TG_MONSTER = r'records\creature\monster\tombguardian\um_tombguardian_26.dbr'
@@ -360,22 +401,114 @@ def _remove_record(db, exact_name):
     return existed
 
 
-def _summon_grant(db, nm, rec):
-    """If the ring grants a Skill_SpawnPet resolvable IN db, return
-    (skill_exact, is_permanent) where is_permanent = no spawnObjectsTimeToLive.
-    Else (None, None). db-only (base-arz grants are not judged by the guard)."""
+def _grants_permanent_summon(db, nm, rec):
+    """True iff the ring's itemSkillName resolves (in db) to a PERMANENT (no
+    spawnObjectsTimeToLive) Skill_SpawnPet. This is the worn companion-summon shape
+    (Lyia / crowboar); a TTL'd summon is a temporary proc, not a companion, and is
+    out of scope."""
     isn = _sval(db, rec, 'itemSkillName')
     if not isn:
-        return (None, None)
+        return False
     sk = nm.get(_norm(isn))
-    if sk is None:
-        return (None, None)
-    cls = _sval(db, sk, 'Class')
-    if cls != 'Skill_SpawnPet':
-        return (None, None)
+    if sk is None or _sval(db, sk, 'Class') != 'Skill_SpawnPet':
+        return False
     ttl = db.get_field_value(sk, 'spawnObjectsTimeToLive')
-    is_perm = not (ttl if isinstance(ttl, list) else ([ttl] if ttl not in (None, '') else []))
-    return (sk, is_perm)
+    ttl_list = ttl if isinstance(ttl, list) else ([ttl] if ttl not in (None, '') else [])
+    return not ttl_list
+
+
+def _ctl_base(db, rec):
+    """Basename (normalized) of the ring's itemSkillAutoController, or None."""
+    c = _sval(db, rec, 'itemSkillAutoController')
+    return _norm(c).rsplit('\\', 1)[-1] if c else None
+
+
+def _is_on_attack_controller(base):
+    """True iff a controller basename is an OFFENSIVE on-attack-family trigger (fires
+    when the wearer attacks) - the re-summon defect signature. Curated known set plus
+    a suffix heuristic; 'onattacked' (wearer IS attacked) and 'lowhealth' are REACTIVE
+    and excluded."""
+    if not base:
+        return False
+    b = base.lower()
+    if b in _KNOWN_ONATTACK_CTL:
+        return True
+    if 'onattacked' in b:
+        return False
+    return ('onattack' in b) or ('onmeleehit' in b) or ('onrangedhit' in b) or ('onanyhit' in b)
+
+
+def _load_sv098():
+    """Load + cache the pristine SV 0.98i design-bible arz (authorship oracle for the
+    summon-controller fix set). Resolution order: env SVC_SV098_ARZ, else the canonical
+    upstream/ path walking UP from this module's dir and from cwd (so it resolves from a
+    linked worktree whose own upstream/ is unpopulated). Fail-loud if absent - SV098 is
+    a required build input (build_svc_database takes it as argv), so this never silently
+    skips the roster-wide gate."""
+    if 'db' in _sv098_cache:
+        return _sv098_cache['db'], _sv098_cache['nm']
+    from arz_patcher import ArzDatabase
+    cand = None
+    env = os.environ.get('SVC_SV098_ARZ')
+    if env and os.path.isfile(env):
+        cand = env
+    else:
+        for base in (Path(__file__).resolve().parent, Path.cwd().resolve()):
+            d = base
+            for _ in range(10):
+                p = d / _SV098_REL
+                if p.is_file():
+                    cand = str(p)
+                    break
+                if d.parent == d:
+                    break
+                d = d.parent
+            if cand:
+                break
+    if cand is None:
+        raise SystemExit(
+            "souls_quality: cannot locate the SV 0.98i design-bible arz (%s) - needed to "
+            "roster-derive the mod-introduced on-attack summon-controller fix set. Set "
+            "SVC_SV098_ARZ or run from the repo tree." % _SV098_REL)
+    sdb = ArzDatabase.from_arz(Path(cand))
+    snm = {_norm(x): x for x in sdb.record_names()}
+    _sv098_cache['db'] = sdb
+    _sv098_cache['nm'] = snm
+    _sv098_cache['path'] = cand
+    return sdb, snm
+
+
+def _sv_has_onattack_summon(sv_db, sv_nm, norm_ring):
+    """True iff SV 0.98i ships THIS ring path WITH an on-attack controller = amgoz1's
+    deliberate on-attack swarm design (leave it). False if SV lacks the ring (mod-only)
+    or ships it without an on-attack controller (mod added one)."""
+    sv = sv_nm.get(norm_ring)
+    if sv is None:
+        return False
+    return _is_on_attack_controller(_ctl_base(sv_db, sv))
+
+
+def _summon_controller_fix_records(db, nm=None):
+    """ROSTER-DERIVED fix set: every soul equipmentring path whose on-attack summon
+    controller was introduced BY THE MOD. A ring qualifies iff it grants a PERMANENT
+    Skill_SpawnPet AND carries an on-attack-family controller AND is not waived AND
+    amgoz1 did NOT ship that same ring with an on-attack controller (SV098 oracle).
+    Used identically by apply() (records to fix) and verify() (must be empty post-fix),
+    so the two can never drift. Returns a set of exact record names."""
+    nm = nm if nm is not None else _name_map(db)
+    sv_db, sv_nm = _load_sv098()
+    out = set()
+    for rec, nn, tier in _iter_soul_rings(db, nm):
+        if nn in _SUMMON_CONTROLLER_WAIVER:
+            continue
+        if not _is_on_attack_controller(_ctl_base(db, rec)):
+            continue
+        if not _grants_permanent_summon(db, nm, rec):
+            continue
+        if _sv_has_onattack_summon(sv_db, sv_nm, nn):
+            continue  # amgoz1 designed this on-attack swarm - leave it
+        out.add(rec)
+    return out
 
 
 def apply(db, tags):
@@ -406,13 +539,13 @@ def apply(db, tags):
         del tags[_TG_TAG]
         tg_tag_dropped = 1
 
-    # ── FIX 4 (D3): remove the on-attack auto-controller from the deviant
-    #    svc_uber companion-summon rings -> manual-cast (the Lyia convention) ─────
+    # ── FIX 4 (D3): remove the MOD-INTRODUCED on-attack controller from every
+    #    permanent companion-summon ring -> manual-cast (the Lyia convention). The
+    #    set is roster-derived vs the SV098 design bible (Category A mod-only svc_uber
+    #    + Category B SV-original rings the mod gave a controller SV never shipped),
+    #    so amgoz1's designed on-attack swarms are left untouched. ─────────────────
     ctl_removed = 0
-    for path in _CROW_CONTROLLER_RECORDS:
-        rec = nm.get(_norm(path))
-        if rec is None:
-            continue
+    for rec in _summon_controller_fix_records(db, nm):
         if _remove_field(db, rec, 'itemSkillAutoController'):
             ctl_removed += 1
 
@@ -454,8 +587,8 @@ def apply(db, tags):
 
     print("    souls_quality: raised %d tier-inversion level(s) (crowboar/onyxspine/"
           "steamcrawler/bloodtip/gustleech); fixed %d svc_uber e/l tier-icon(s); "
-          "removed %d crow-summon on-attack controller(s); tombguardian "
-          "detached=%d retired=%d/3 tag_dropped=%d"
+          "removed %d mod-introduced on-attack summon-controller(s) [SV098-derived, "
+          "8 families A+B]; tombguardian detached=%d retired=%d/3 tag_dropped=%d"
           % (lvl_edits, icon_edits, ctl_removed, tg_detached, tg_removed, tg_tag_dropped))
 
 
@@ -509,20 +642,17 @@ def _icon_violations(db, nm=None):
 
 
 def _crow_controller_violations(db, nm=None):
-    """ROSTER-WIDE (svc_uber): no svc_uber soul ring that grants a PERMANENT
-    (no-TTL) Skill_SpawnPet may carry an on-attack-family auto-controller. This is
-    the mod's unanimous manual-cast companion-summon convention; an on-attack
-    controller re-bursts/resets the flock every attack (the crowboar bug). Returns
-    [(record, controller)]."""
+    """ROSTER-WIDE (every soul equipmentring, NOT just svc_uber): no soul ring may
+    carry a MOD-INTRODUCED on-attack controller on a PERMANENT companion summon. The
+    residual set is the SAME roster-derived predicate apply() removes
+    (_summon_controller_fix_records: permanent SpawnPet + on-attack controller + not
+    amgoz-designed vs the SV098 bible + not waived), so post-fix it MUST be empty. A
+    ring amgoz1 shipped with an on-attack controller (its designed swarm) is NOT a
+    violation. Returns [(record, controller)] for anything still mod-broken."""
     nm = nm if nm is not None else _name_map(db)
     bad = []
-    for rec, nn, tier in _iter_uber_rings(db, nm):
-        ctl = _sval(db, rec, 'itemSkillAutoController')
-        if not ctl or _norm(ctl) not in _ONATTACK_CONTROLLERS:
-            continue
-        sk, is_perm = _summon_grant(db, nm, rec)
-        if sk is not None and is_perm:
-            bad.append((rec, ctl))
+    for rec in _summon_controller_fix_records(db, nm):
+        bad.append((rec, _sval(db, rec, 'itemSkillAutoController') or '?'))
     return bad
 
 
@@ -549,9 +679,11 @@ def _tombguardian_violations(db, nm=None):
 def verify(db, tags):
     """POST-FINALIZATION fail-loud gates (run over the FINAL assembled db, after
     run_registry_gates' backstop + drop forcer). Proves the tier-inversion class
-    holds roster-wide, the per-tier icon law holds across svc_uber, the svc_uber
-    companion-summon manual-cast law holds (no on-attack re-summon), and the Tomb
-    Guardian soul is fully retired - so none of these classes can silently regress."""
+    holds roster-wide, the per-tier icon law holds across svc_uber, the ROSTER-WIDE
+    manual-cast summon law holds (no MOD-INTRODUCED on-attack controller on any
+    permanent companion summon, judged vs the SV098 design bible - so amgoz's designed
+    swarms are allowed but a new mod-added controller on ANY soul, svc_uber or not,
+    fail-louds), and the Tomb Guardian soul is fully retired - none can silently regress."""
     nm = _name_map(db)
 
     mono = _monotonicity_violations(db, nm)
@@ -575,9 +707,10 @@ def verify(db, tags):
         lines = '\n'.join("      %s auto-casts its permanent summon on attack (%s)"
                           % (r.rsplit('\\', 1)[-1], c.rsplit('\\', 1)[-1]) for r, c in crow)
         raise SystemExit(
-            "souls_quality verify: %d svc_uber companion-summon ring(s) still "
-            "carry an on-attack controller (crow-reset bug - must be manual-cast "
-            "per the Lyia convention):\n%s" % (len(crow), lines))
+            "souls_quality verify: %d companion-summon ring(s) carry a MOD-INTRODUCED "
+            "on-attack controller (crow-reset bug - must be manual-cast per the Lyia "
+            "convention; if an intentional amgoz-style on-attack swarm, add to "
+            "_SUMMON_CONTROLLER_WAIVER):\n%s" % (len(crow), lines))
 
     tgbad = _tombguardian_violations(db, nm)
     if tgbad:
@@ -586,6 +719,6 @@ def verify(db, tags):
             + "\n      ".join(tgbad))
 
     print("    souls_quality verify OK: roster tiers monotonic (n<=e<=l) across "
-          "every soul family + per-tier svc_uber icons correct + svc_uber "
-          "companion summons manual-cast (no on-attack re-summon) + tombguardian "
-          "soul retired")
+          "every soul family + per-tier svc_uber icons correct + roster-wide "
+          "companion summons manual-cast (no mod-introduced on-attack re-summon, "
+          "SV098-derived) + tombguardian soul retired")

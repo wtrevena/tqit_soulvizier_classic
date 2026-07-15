@@ -3,22 +3,27 @@ r"""Dry-run replay + fail-loud proof for tools/patches/souls_quality.py (no heav
 Applies souls_quality over a COPY (in-memory) of a built .arz - the FINAL
 post-monolith+registry state the module sees at run time - and proves:
   1. INTENDED-ONLY DIFF: db._modified after apply() == exactly the predicted
-     modified set (wrong-icon svc_uber e/l rings UNION the 5 tier-inversion
-     level-fix records UNION the 12 crow-controller records UNION the tombguardian
-     monster detach); AND exactly the 3 tombguardian soul records are REMOVED.
+     modified set (wrong-icon svc_uber e/l rings UNION the tier-inversion level-fix
+     records UNION the 24 mod-introduced summon-controller records [8 families A+B,
+     independently re-derived here vs the SV098 design bible and cross-checked
+     against the module] UNION the tombguardian monster detach); AND exactly the 3
+     tombguardian soul records are REMOVED.
   2. FIELD-LEVEL MINIMALITY: each touched record changed ONLY its allowed field(s)
      - bitmap (icon rings), the intended level fields (inversions),
-     itemSkillAutoController REMOVED (crow rings), lootFinger2Item1 cleared
+     itemSkillAutoController REMOVED (summon rings), lootFinger2Item1 cleared
      (tombguardian monster); every other field byte-identical.
-  3. CORRECTNESS: all 5 inverted families now run n<=e<=l; every svc_uber e/l ring
-     shows its own tier icon; the 4 crow-class rings have NO controller; the
+  3. CORRECTNESS: all inverted families now run n<=e<=l; every svc_uber e/l ring
+     shows its own tier icon; every mod-introduced summon ring (svc_uber A +
+     non-svc_uber B: carrionlord/komara/melalos/oythroneus) has NO controller while
+     amgoz1's designed swarm (direflock) KEEPS its controller (no over-reach); the
      tombguardian soul is fully retired (detached + records gone).
   4. verify() passes (all four gates).
   5. IDEMPOTENCY: a 2nd apply() touches nothing new and removes nothing new.
   6. NEGATIVE: verify() fail-louds on an injected svc_uber inversion, an injected
-     NON-svc_uber inversion, an injected wrong-tier icon, an injected on-attack
-     controller on an svc_uber permanent summon, AND an injected tombguardian
-     soul re-attach.
+     NON-svc_uber inversion, an injected wrong-tier icon, a mod-introduced on-attack
+     controller re-injected on a svc_uber (crowboar) AND on a NON-svc_uber (komara)
+     permanent summon - proving the gate is roster-wide, not svc_uber-scoped - AND an
+     injected tombguardian soul re-attach.
 
 Usage:  py tools/debug/souls_quality_replay.py <built.arz>
 Read-only against the input file (loads into memory; never writes the arz).
@@ -58,15 +63,56 @@ def main():
     tg_mon = nm.get(_n(SQ._TG_MONSTER))
     tg_soul_recs = [nm[_n(sp)] for sp in SQ._TG_SOULS if _n(sp) in nm]
     tg_detach = set([tg_mon]) if tg_mon is not None else set()
-    # (b) crow controller removals: rings that currently HAVE the field
-    ctl_recs = {}                 # rec -> was controller value
-    for path in SQ._CROW_CONTROLLER_RECORDS:
-        rec = nm.get(_n(path))
-        if rec is None:
+    # (b) MOD-INTRODUCED on-attack summon controllers - INDEPENDENTLY re-derived here
+    #     from the SV098 design bible (NOT via SQ's own function), then cross-checked
+    #     against SQ._summon_controller_fix_records so the module can't self-certify.
+    sv_db, sv_nm = SQ._load_sv098()
+
+    def _ctlbase(d, r):
+        c = SQ._sval(d, r, 'itemSkillAutoController')
+        return _n(c).rsplit('\\', 1)[-1] if c else None
+
+    def _perm_summon(d, dnm, r):
+        isn = SQ._sval(d, r, 'itemSkillName')
+        if not isn:
+            return False
+        sk = dnm.get(_n(isn))
+        if sk is None or SQ._sval(d, sk, 'Class') != 'Skill_SpawnPet':
+            return False
+        ttl = d.get_field_value(sk, 'spawnObjectsTimeToLive')
+        tl = ttl if isinstance(ttl, list) else ([ttl] if ttl not in (None, '') else [])
+        return not tl
+
+    def _onatk(b):   # independent heuristic (module uses a curated set + heuristic)
+        if not b:
+            return False
+        b = b.lower()
+        return ('onattacked' not in b) and (
+            'onattack' in b or 'onmeleehit' in b or 'onrangedhit' in b or 'onanyhit' in b)
+
+    ctl_recs = {}                 # rec -> was controller value (mod-introduced only)
+    amgoz_kept = 0
+    for rec, nn, tier in SQ._iter_soul_rings(db, nm):
+        cb = _ctlbase(db, rec)
+        if not _onatk(cb) or not _perm_summon(db, nm, rec):
             continue
-        ctl = SQ._sval(db, rec, 'itemSkillAutoController')
-        if SQ._field_key(db, rec, 'itemSkillAutoController') is not None:
-            ctl_recs[rec] = ctl
+        sv = sv_nm.get(nn)
+        if sv is not None and _onatk(_ctlbase(sv_db, sv)):
+            amgoz_kept += 1        # amgoz1 shipped this on-attack swarm - leave it
+            continue
+        ctl_recs[rec] = SQ._sval(db, rec, 'itemSkillAutoController')
+    # the module MUST agree with this independent derivation (no drift)
+    module_fix = SQ._summon_controller_fix_records(db, nm)
+    assert set(ctl_recs) == module_fix, (
+        "controller fix-set mismatch: independent=%d module=%d symdiff=%s"
+        % (len(ctl_recs), len(module_fix), sorted(r.rsplit('\\', 1)[-1]
+                                                   for r in (set(ctl_recs) ^ module_fix))))
+    # positive control: an amgoz1 SV-original on-attack swarm (direflock) is NOT fixed
+    _dire = nm.get(_n(r'records\item\equipmentring\soul\carrionbird\direflock_soul_n.dbr'))
+    assert _dire is not None and _dire not in module_fix, \
+        "amgoz-designed direflock_soul_n must NOT be in the fix set"
+    print("controller fix-set: %d mod-introduced (independent==module); %d amgoz swarms kept"
+          % (len(ctl_recs), amgoz_kept))
     # (c) wrong-tier icons on e/l svc_uber rings, EXCLUDING the removed tombguardian souls
     removed = set(tg_soul_recs)
     predicted_icon = set()
@@ -162,16 +208,24 @@ def main():
     print('[2/3] FIELD MINIMALITY + icon + controller-removal correctness: %s' % field_ok)
     ok = ok and field_ok
 
-    # (3b) crow-class rings have NO controller
+    # (3b) every mod-introduced summon ring (A+B, incl. non-svc_uber komara/melalos/
+    #      oythroneus/carrionlord) now has NO controller; the module's residual set is
+    #      empty; and no amgoz swarm was stripped (direflock keeps its controller).
     crow_ok = True
-    for path in SQ._CROW_CONTROLLER_RECORDS:
-        rec = nm.get(_n(path))
-        if rec is None:
-            continue
+    for rec in ctl_recs:
         if SQ._field_key(db, rec, 'itemSkillAutoController') is not None:
             crow_ok = False
             print('    !!! %s still has a controller' % rec.rsplit('\\', 1)[-1])
-    print('[3b] CROW controllers removed (manual-cast): %s' % crow_ok)
+    resid = SQ._summon_controller_fix_records(db)
+    if resid:
+        crow_ok = False
+        print('    !!! module residual fix-set non-empty after apply: %s'
+              % sorted(r.rsplit('\\', 1)[-1] for r in resid))
+    if SQ._field_key(db, _dire, 'itemSkillAutoController') is None:
+        crow_ok = False
+        print('    !!! amgoz direflock_soul_n lost its on-attack controller (over-reach)')
+    print('[3b] mod-introduced summon controllers removed roster-wide (manual-cast), '
+          'amgoz swarms intact: %s' % crow_ok)
     ok = ok and crow_ok
 
     # (3c) tombguardian monster carries no soul ref
@@ -268,17 +322,29 @@ def main():
         caught_icon = 'wrong-tier soul' in str(e)
         print('    wrong-tier icon      -> verify RAISED:', caught_icon)
     db.set_field(crow_e, 'bitmap', 'SVItems\\jewelry\\soul_e_icon.tex')
-    # (6d) on-attack controller re-injected on an svc_uber permanent summon
+    # (6d) mod-introduced on-attack controller re-injected on an svc_uber (Category A) summon
+    _ONATK = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr'
     crow_n = nm2[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_n.dbr')]
-    db.set_field(crow_n, 'itemSkillAutoController',
-                 r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr')
+    db.set_field(crow_n, 'itemSkillAutoController', _ONATK)
     caught_ctl = False
     try:
         SQ.verify(db, {})
     except SystemExit as e:
         caught_ctl = 'on-attack controller' in str(e) and 'crowboar' in str(e)
-        print('    on-attack controller -> verify RAISED (names crowboar):', caught_ctl)
+        print('    on-attack ctl (svc_uber A) -> verify RAISED (names crowboar):', caught_ctl)
     SQ._remove_field(db, crow_n, 'itemSkillAutoController')
+    # (6f) ROSTER-WIDE proof: re-inject on a NON-svc_uber (Category B) SV-original summon
+    #      whose SV098 original is controller-free (komara). A svc_uber-scoped gate would
+    #      MISS this - the exact vet MEDIUM. Must fail-loud AND name komara.
+    komara_n = nm2[_n(r'records\item\equipmentring\soul\zombie\komara_soul_n.dbr')]
+    db.set_field(komara_n, 'itemSkillAutoController', _ONATK)
+    caught_nonsvc_ctl = False
+    try:
+        SQ.verify(db, {})
+    except SystemExit as e:
+        caught_nonsvc_ctl = 'on-attack controller' in str(e) and 'komara' in str(e)
+        print('    on-attack ctl (non-svc B) -> verify RAISED (names komara):', caught_nonsvc_ctl)
+    SQ._remove_field(db, komara_n, 'itemSkillAutoController')
     # (6e) tombguardian soul re-attached to the monster loot
     caught_tg = False
     if tg_mon is not None:
@@ -292,7 +358,8 @@ def main():
         db.set_field(tg_mon, 'lootFinger2Item1', ['', '', ''])
     else:
         caught_tg = True
-    ok = ok and caught_uber and caught_roster and caught_icon and caught_ctl and caught_tg
+    ok = (ok and caught_uber and caught_roster and caught_icon and caught_ctl
+          and caught_nonsvc_ctl and caught_tg)
 
     print('\nRESULT:', 'PASS' if ok else 'FAIL')
     sys.exit(0 if ok else 1)

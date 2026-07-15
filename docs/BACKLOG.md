@@ -1,10 +1,12 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🩶 **SOULS FIX-WAVE-2 (2026-07-14, `feat/souls-quality` @ souls_quality module, dry-run replay GREEN vs
-> build40 GOLDEN arz `b33c5a44`; NOT built/deployed - ships in the next integration build).** Extends the
-> `souls_quality` registry module (pos 13) per Will's directives; all fixes proven by
-> `tools/debug/souls_quality_replay.py` (114 modified + 3 removed, exact intended-only diff, field
-> minimality, idempotent, 5 negative tests) + `validate_soul_augments` PASS + `validate_summon_pets` PASS
-> + targeted dangling-ref scan (0 residual refs to removed souls) + `_check_registry` OK (14 modules).
+> 🩶 **SOULS FIX-WAVE-2 ROUND-2 (2026-07-14, `feat/souls-quality` @ souls_quality module, dry-run replay
+> GREEN vs build40 GOLDEN arz `b33c5a44`; NOT built/deployed - ships in the next integration build).**
+> Extends the `souls_quality` registry module (pos 13) per Will's directives + the round-1 vet feedback;
+> all fixes proven by `tools/debug/souls_quality_replay.py` (**126 modified + 3 removed**, exact
+> intended-only diff, field minimality, idempotent, **6 negative tests** incl. a roster-wide non-svc_uber
+> one) + `validate_soul_augments` PASS + `validate_summon_pets` 3-arg PASS (byte-identical baseline vs
+> patched) + targeted dangling-ref scan (0 residual refs) + `_check_registry` OK (14 modules, order
+> `39d94e32`). **ROUND-2 = the crow-sweep HIGH + gate-scope MEDIUM from the round-1 vet (D3 below).**
 > - **D1 RATIFIED - WILL-VETO CLEARED:** `bloodtip 5/7/9` + `gustleech 10/12/14` ship as-is (Will
 >   verbatim). `_SV_INVERSION_FIX` block kept as the documented historical revert path.
 > - **D2 Tomb Guardian (FIX 5):** `um_tombguardian_26` kept **Common** (NOT promoted, per Will); the
@@ -12,23 +14,33 @@
 >   records RETIRED, and the `tagSVCSoulTombguardian` tag dropped. 0 dangling refs. (Root cause:
 >   `_place_orphan_monsters` wired it "against the Hero/Boss/Quest design"; future cleanup = skip soul
 >   creation for deny-listed records, at which point FIX 5 no-ops.)
-> - **D3 crowboar crow bug (FIX 4):** the crow reset every attack because the ring auto-cast its summon
->   on-attack (`base_atenemy_onattack`) while the mod's 18/18 worn-summon convention is manual-cast (no
->   controller, Lyia model). FIX = REMOVE `itemSkillAutoController` from the 4 svc_uber deviant families
->   (crowboar/glittertail/koroush/nkac, all tiers = 12 records) -> manual-cast, summon persists + fights.
->   SHARED summon skills NOT touched (SV swarm souls carrionlord/direflock/skeleton-raisers unaffected).
->   Pet.tpl-safe (touches only the ring controller field). Known minor residual: `carrioncrow_summon`
->   `isPetDisplayable=0` (crow fights but no pet-window bar) - optional future dedicated-summon polish.
+> - **D3 crow bug (FIX 4) - ROUND-2 WIDENED (resolves the round-1 vet HIGH+MEDIUM):** the crow reset every
+>   attack because the ring auto-casts its permanent summon on-attack (`base_atenemy_onattack`) vs the Lyia
+>   manual-cast (no-controller) convention. FIX = REMOVE `itemSkillAutoController`, now over a **ROSTER-
+>   DERIVED 8-family / 24-ring set** computed vs the SV098 design bible (`_summon_controller_fix_records`),
+>   NOT the round-1 svc_uber-only 4 families: **Category A** mod-only svc_uber `crowboar/glittertail/koroush/
+>   nkac`; **Category B** SV-original rings the MOD gave a controller SV never shipped - `zombie\komara`
+>   (Hero 66, OBTAINABLE), `zombie\melalos` (Boss 66, OBTAINABLE), `zombie\oythroneus` (gated),
+>   `carrionbird\carrionlord` (skill_quality REASSIGN, gated). komara/melalos are the exact obtainable
+>   same-bug rings round-1 MISSED (its "exactly 4 qualify / most drop-gated" claim was false). The **52
+>   amgoz1 SV-original on-attack SWARM souls** (direflock, the skeleton/dead-raisers, nebtaan, senusnet,
+>   menzus, bonelord, fenuku, frostmarrow, graklos, xiao, feira, aphiastas, ...) are amgoz DESIGN (SV
+>   shipped the controller) -> LEFT INTACT, surfaced to Will. **carrionlord FLAGGED FOR WILL** (its
+>   on-attack summon is a skill_quality reassignment; `_SUMMON_CONTROLLER_WAIVER` reverts it in one line if
+>   it was meant as an on-attack crow-swarm). Shared summon SKILLS never touched; Pet.tpl-safe. Root causes
+>   (follow-ups): `apply_svc_patches._AC_ON_ATTACK` on summons; `skill_quality` REASSIGN generic ON_ATTACK.
 > - **D4 nymph icons:** `feat/b40-soul-icons` (`9db3f5f`) VERIFIED merges CLEANLY onto main (`git
 >   merge-tree`, 0 conflicts, tree `c64ee9a`) -> **REQUIRED integration merge-set member** (fixes the 17
 >   boss-summon skills sharing Lyia's nymph icon; disjoint from this module + FIX 4).
 > - **D5 blatant-error sweep (155 MINOR-GAP):** only blatant DATA errors = the 2 icon classes (54 uniform
 >   -> FIX 3 here; 17 nymph -> D4 branch), both covered. The 79 drop-gated + 5 formula-only + 2 pet-equip
 >   dangles + 1 soulfeeder(false positive) = design decisions / upstream-faithful, LEFT documented.
-> - `verify()` now fail-louds 4 classes (tier monotonicity roster-wide, svc_uber icon, no-on-attack
->   controller on svc_uber permanent summons, tombguardian retired). Report: `docs/reports/
->   souls_quality_fix.md` (+ audit round-2 corrections). **INTEGRATION MERGE SET = feat/souls-quality +
->   feat/b40-soul-icons** (both required; disjoint file sets, non-conflicting).
+> - `verify()` now fail-louds 4 classes (tier monotonicity roster-wide, svc_uber icon, **ROSTER-WIDE
+>   no-mod-introduced-on-attack-controller on any permanent companion summon [SV098-derived, catches
+>   non-svc_uber souls - the vet MEDIUM]**, tombguardian retired). One INTENDED cross-module collision:
+>   skill_quality (pos 4) sets carrionlord's controller, souls_quality (pos 13) removes it (later-wins, S4b
+>   WARN). Report: `docs/reports/souls_quality_fix.md` (+ audit round-2 corrections). **INTEGRATION MERGE
+>   SET = feat/souls-quality + feat/b40-soul-icons** (both required; disjoint file sets, non-conflicting).
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
 > `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
 > **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)
