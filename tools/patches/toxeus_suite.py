@@ -165,7 +165,7 @@ def _gv1(db, rec, f):
 
 
 # =============================================================================
-# PART A - entrance ambush proxy (chanceToRun=15, drxFirstRoom)
+# PART A - entrance ambush proxy (chanceToRun=33, drxFirstRoom; Will retuned 15->33 2026-07-14)
 # =============================================================================
 def _create_ambush_proxy(db):
     """Clone the gate-proven chest proxy q_bloodtoxeus_lone -> q_bloodtoxeus_ambush and set

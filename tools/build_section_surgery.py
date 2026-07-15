@@ -1255,7 +1255,7 @@ B41_SPECS = {
         (b'records\\drxmap\\proxy\\q_sarcophagus_d.dbr',                        32.0, 1.0, 91.0, _B41_ROT),
     ],
     # 5) TOXEUS entrance ambush - drxFirstRoom blood-cave first room (v0x0e fold, Y=1.0).
-    #    1 ambush proxy (chanceToRun=15 => a ~15% Blood-Toxeus + 2 blood-demon adds).
+    #    1 ambush proxy (chanceToRun=33 => a ~33% Blood-Toxeus + 2 blood-demon adds; Will retuned 15->33 2026-07-14).
     B41_TOXEUS_KEY: [
         (b'records\\drxmap\\proxy\\q_bloodtoxeus_ambush.dbr',                  100.0, 1.0, 50.0, _B41_ROT),
     ],
