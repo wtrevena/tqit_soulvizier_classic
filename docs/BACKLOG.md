@@ -2416,6 +2416,18 @@ multiplier is the fallback; screen-scale ~= 30-45m world units) -> balance check
 always-on party-wide uptime -> H/O golden-freeze waivers where trees are touched ->
 implement as registry module (aura_radius.py) with a fail-loud audit gate listing every
 touched aura + old->new radius. NOT started (quota); spec-first per the vet law.
+> **AUDIT STAGE DONE 2026-07-14 (feat/aura-radius):** full template-driven enumeration of the
+> effective DB (build40 golden `b33c5a44` over base) shipped as `docs/reports/b57_aura_radius.md`
+> + machine roster `tools/aura_radius_roster.json` (generator `tools/audit_aura_radius.py`,
+> read-only, re-runnable). 546 aura-class rows: 49 mastery / 66 soul-granted / 71 pet /
+> 136 item-granted / 143 monster-only / 227 unreferenced dev copies; 86 rows carry NEGATIVE
+> payload fields (aura-wide by template - widening spreads the malus; HOLD-flagged for Will).
+> Player-reachable radii today span 0-23u; nothing reaches the 30-45u screen scale.
+> Key mechanism: BuffRadiusToggled radius lives on the buffSkillName PAYLOAD record
+> (Shadow Link payload drxbladehoningbuff = 3.0 vs vanilla bladehoningbuff 16.0, and it
+> carries defensiveLife -5..-X, the malus Will asked about - CONFIRMED aura-wide, not
+> self-only). 7 Hunting/Occult rows listed in the report's WILL VETO section.
+> NEXT stage of this entry: the aura_radius.py module + H/O golden waivers + dry-run replay.
 
 ## RCA RECORD 2026-07-12 evening: "quests blocked / doors closed" on _Toxeus = SAVE-SIDE, NOT a shipped bug
 Byte-level verdict (Opus RCA + Sonnet log check, wf_2c9d497c): Steam AND DEV both carry pure
