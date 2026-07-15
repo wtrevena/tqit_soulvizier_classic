@@ -2302,6 +2302,28 @@ Will (verbatim): "emberteeth soul should let you summon him."
   green; dry-run replay intended-records-only; Will fresh-drop verify (TQ bakes item properties
   at pickup - test with a freshly dropped soul).
 
+## QUEUED FEATURES BATCH 2026-07-14b (ALL APPROVED by Will, not yet scheduled)
+All follow the standard uber-hero lanes (amgoz1-bar identity + name for Will veto; donor-based
+proven-shape kits that actually cast; navmesh survey + q_<boss>_lone single-spawn + landing/
+containment gates; 3-tier {^F} soul + 3 region-tuned Majestic Chests; exclamation-point map
+marker per the b63 mechanism; registry module + tag manifest + full gate battery):
+1. **NEW-HERO-LOOKOUT-CAVE** - uber monster at the BACK of Lookout Cave (Egypt). Identity open
+   (fit the cave's native population; designer proposes).
+2. **NEW-HERO-HATHOR-CROC** - crocodile-man uber hero at the VERY END of the Hathor Basin cave
+   (the back chest room with all the chests). Croc-man rig family; guard-of-the-hoard concept.
+3. **NEW-HERO-NILE-CROC** - a second crocodile uber hero in the Nile Floodplain at the spot where
+   the 'Plight of the Nile Farmers' side quest completes (verify quest-collision safety like the
+   Kroisos/King-Dorus lesson: NEAR the quest spot, never colliding with quest actors/kill credits).
+4. **NEW-BOSS-BEGGARS-QUARTER-DEMON** - uber DEMON boss in the Beggars Quarter (ground-truth the
+   exact level; demon identity to the amgoz1 bar).
+5. **NEW-RELIC-DUNE-FIEND** - Dune Fiend monsters drop a unique relic IF THEY DON'T ALREADY
+   (ground-truth first; if none, clone the magenta-turtle-shell pattern exactly like
+   NEW-RELIC-DIONYSUS-TRICKSTER; desert/sand-terror identity).
+6. **NEW-BOSS-ROAMING-GHOST** - an undead GHOST uber boss that can spawn ANYWHERE (roaming =
+   the Endless Hunt trash-pool-sweep pattern with per-slot limit=1 + fail-loud verify, NOT
+   unvetted proxy equations; rarity tuned like the Hunt's 1/2400 class; all-difficulty or
+   tiered - designer proposes, Will vetoes).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
