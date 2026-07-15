@@ -87,9 +87,11 @@ just `Class == Monster*`. After the fix, false ORPHAN_UNREACH collapsed from 169
 | Curated candidates | 14 (+8 axe bench) |
 | Sample verified end-to-end (independent) | 5 |
 
-Weapon-class breakdown (effective DB): Axe 517, Staff 503, Shield 475, Sword 443, Mace 407,
-Bow 316, Spear 298, Thrown (RangedOneHand) 13. Orphan-hard **named** origin split:
-base/IT 344, xpack1 7, xpack2 6, DRX 6, xpack4 3, xpack3 1.
+Weapon-class breakdown (effective DB, by Class, sums to the 4,360 total): Staff 859, Axe 654,
+Shield 621, Sword 610, Mace 543, Spear 447, Bow 435, Thrown (RangedOneHand) 191. (The mod's own
+BUILT arz contributes Axe 517, Staff 503, Shield 475, Sword 443, Mace 407, Bow 316, Spear 298,
+Thrown 13 = 2,972 of those records; the remainder come from BASE.) Orphan-hard **named** origin
+split: base/IT 344, xpack1 7, xpack2 6, DRX 6, xpack4 3, xpack3 1.
 
 ---
 
