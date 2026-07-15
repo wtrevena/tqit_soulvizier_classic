@@ -22,6 +22,7 @@ import io
 import contextlib
 import hashlib
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -155,6 +156,25 @@ def _grantor(p):
     return '+'.join(k for k in ('MASTERY', 'SOUL', 'ITEM', 'PET') if k in p['cat'])
 
 
+def _label(display, record):
+    """A readable aura label: the display name when it reads like a proper skill
+    NAME (letters/spaces/apostrophes/hyphens, not a sentence/stat/ALLCAPS/dev-note),
+    else the record basename. Cosmetic only - the record path is authoritative."""
+    base = record.rsplit('\\', 1)[-1]
+    if base.endswith('.dbr'):
+        base = base[:-4]
+    d = (display or '').strip()
+    if d and len(d) <= 28 and not d.isupper() and re.match(r"^[A-Za-z][A-Za-z '\-]+$", d):
+        return d
+    return base
+
+
+def _off_effects(r):
+    """Short offensive-effect summary for a debuf payload (proves it is enemy-facing)."""
+    hits = [e for e in (r.get('effects_positive') or []) if e.startswith('offensive')]
+    return '; '.join(hits[:3]) + (' ...' if len(hits) > 3 else '')
+
+
 def _write_report(path, arz, md5, plan):
     """Emit the full old->new widen table + held/deferred lists (the Will veto)."""
     changed = sorted((p for p in plan['widen'] if p['old'] < p['target'] - 1e-6),
@@ -166,22 +186,36 @@ def _write_report(path, arz, md5, plan):
     L.append('|---|---|---|---|---|---|---|---|---|\n')
     for i, p in enumerate(changed, 1):
         L.append('| %d | %s | `%s` | %s | %g | %g | %s | %s | %s |\n'
-                 % (i, p['display'], p['edit'], p['field'], p['old'], p['target'],
+                 % (i, _label(p['display'], p['edit']), p['edit'], p['field'],
+                    p['old'], p['target'],
                     _grantor(p), 'Y' if p['ho'] else '', 'Y' if p['negative'] else ''))
     L.append('\n### HELD - negative-payload friendly auras (ally malus would spread; Will decides) (%d)\n\n'
              % len(plan['hold_neg']))
     L.append('| aura | record | class | grant |\n|---|---|---|---|\n')
     for r in sorted(plan['hold_neg'], key=lambda r: r['norm']):
         L.append('| %s | `%s` | %s | %s |\n'
-                 % (r['display'], r['record'], r['cls'],
+                 % (_label(r['display'], r['record']), r['record'], r['cls'],
                     '+'.join(k for k in ('MASTERY', 'SOUL', 'ITEM', 'PET') if k in r['category'])))
     L.append('\n### HELD - offensive-radius auras (combat-power change; Will decides) (%d)\n\n'
              % len(plan['hold_off']))
-    L.append('| aura | record | class | grant |\n|---|---|---|---|\n')
+    L.append("Two kinds: (a) offensive DELIVERY class (`Skill_BuffAttackRadius*` / "
+             "`Skill_AttackBuffRadius` - radius sits on the attack skill), and (b) offensive "
+             "PAYLOAD (round-2 guard) - a friendly-looking `Skill_BuffRadius`/`Toggled` "
+             "delivery whose `buffSkillName` payload is an enemy debuf (`SkillBuff_Debuf` / "
+             "`debufSkill=1`); its `skillTargetRadius` is DAMAGE/DEBUF reach. Both = combat "
+             "power; widened only if Will asks.\n\n")
+    L.append('| aura | delivery record | delivery class | grant | held because |\n'
+             '|---|---|---|---|---|\n')
     for r in sorted(plan['hold_off'], key=lambda r: r['norm']):
-        L.append('| %s | `%s` | %s | %s |\n'
-                 % (r['display'], r['record'], r['cls'],
-                    '+'.join(k for k in ('MASTERY', 'SOUL', 'ITEM', 'PET') if k in r['category'])))
+        reason = r.get('_hold_reason', 'offensive delivery class')
+        if reason.startswith('payload'):
+            eff = _off_effects(r)
+            if eff:
+                reason = '%s (%s)' % (reason, eff)
+        L.append('| %s | `%s` | %s | %s | %s |\n'
+                 % (_label(r['display'], r['record']), r['record'], r['cls'],
+                    '+'.join(k for k in ('MASTERY', 'SOUL', 'ITEM', 'PET') if k in r['category']),
+                    reason))
     L.append('\n### DEFERRED - base-only (needs an override-clone; round 2) (%d)\n\n'
              % len(plan['defer_base']))
     for r in sorted(plan['defer_base'], key=lambda r: r['norm']):

@@ -217,16 +217,27 @@ def load_template_defaults():
 
 
 def main(argv):
-    mod_arz = Path(argv[1]) if len(argv) > 1 else None
-    base_arz = Path(argv[2]) if len(argv) > 2 else GAME / 'Database' / 'database.arz'
+    # --json / --md override the output paths (per the module docstring); default to
+    # the committed artifacts. Parse them out so a regeneration can target scratch
+    # files without clobbering the real roster/report (the defaults are destructive).
+    md_out = REPO / 'docs' / 'reports' / 'b57_aura_radius.md'
+    json_out = REPO / 'tools' / 'aura_radius_roster.json'
+    positional, i = [], 1
+    while i < len(argv):
+        a = argv[i]
+        if a == '--json' and i + 1 < len(argv):
+            json_out = Path(argv[i + 1]); i += 2; continue
+        if a == '--md' and i + 1 < len(argv):
+            md_out = Path(argv[i + 1]); i += 2; continue
+        positional.append(a); i += 1
+    mod_arz = Path(positional[0]) if len(positional) > 0 else None
+    base_arz = Path(positional[1]) if len(positional) > 1 else GAME / 'Database' / 'database.arz'
     if mod_arz is None:
         for cand in (REPO / 'work' / 'SoulvizierClassic' / 'Database' / 'SoulvizierClassic.arz',
                      MAIN_REPO / 'work' / 'SoulvizierClassic' / 'Database' / 'SoulvizierClassic.arz'):
             if cand.exists():
                 mod_arz = cand
                 break
-    md_out = REPO / 'docs' / 'reports' / 'b57_aura_radius.md'
-    json_out = REPO / 'tools' / 'aura_radius_roster.json'
 
     print(f"mod arz : {mod_arz}")
     print(f"base arz: {base_arz}")
@@ -550,6 +561,31 @@ def main(argv):
     # ---- draft per-aura proposal (RULE ONLY - Will decides; nothing applied) --
     OFFENSIVE_CLASSES = {'Skill_BuffAttackRadiusToggled',
                          'Skill_BuffAttackRadiusDuration', 'Skill_AttackBuffRadius'}
+
+    def _payload_offensive(r):
+        """The record we would edit (effect_record) is an ENEMY debuf, so its
+        skillTargetRadius is DAMAGE/DEBUF reach - widening it is a combat-power
+        change, not a friendly-bonus reach. Detected by payload Class
+        SkillBuff_Debuf* / SkillBuff_Contageous, or debufSkill=1. Note the offensive
+        fields are stored POSITIVE (offensiveXxxMin), so effects_negative never sees
+        them and the delivery class is friendly - this is the guard that catches
+        friendly-looking Skill_BuffRadius(Toggled) deliveries of a debuf payload."""
+        pn = _norm(r['effect_record'])
+        if not eff.has(pn):
+            return False
+        c = eff.rclass(pn)
+        if c.startswith('SkillBuff_Debuf') or c == 'SkillBuff_Contageous':
+            return True
+        f = eff.fields(pn)
+        for key, tf in (f or {}).items():
+            if key.split('###')[0] == 'debufSkill' and tf.values:
+                try:
+                    if int(tf.values[0]) == 1:
+                        return True
+                except (TypeError, ValueError):
+                    pass
+        return False
+
     for r in rows:
         cur = max(r['radius']) if r['radius'] else None
         player_facing = any(c in r['category'] for c in
@@ -560,6 +596,9 @@ def main(argv):
             r['proposal'] = 'HOLD - malus is aura-wide; widening spreads it (Will decision)'
         elif r['cls'] in OFFENSIVE_CLASSES:
             r['proposal'] = 'REVIEW - offensive radius component; widening changes combat power'
+        elif _payload_offensive(r):
+            r['proposal'] = ('HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); '
+                             'widening = damage/debuf reach (Will decision)')
         elif cur is None:
             r['proposal'] = 'RESOLVE radius first (no value found)'
         elif 'PET' in r['category'] and not ('MASTERY' in r['category'] or

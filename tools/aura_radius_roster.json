@@ -5558,7 +5558,7 @@
     "PET"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 3)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\skills\\monster skills\\auras\\kaublasia_firebonus.dbr",
@@ -15669,7 +15669,7 @@
     "SOUL"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 15)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\skills\\sv\\kazept\\kazept_aura.dbr",
@@ -19489,7 +19489,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 4)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack4\\skills\\item skills\\gatesofhell_quillvine_rootaura.dbr",
@@ -19530,7 +19530,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 3)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack4\\skills\\item skills\\hawklegionswarkhopehs_twisteraura.dbr",
@@ -19568,7 +19568,7 @@
     "PET"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 10)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack4\\skills\\item skills\\kheprersresistance_dragonian_reflection_toggle.dbr",
@@ -20967,7 +20967,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 10)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack4\\skills\\scroll skills\\scrollskill_tricksterfox_provoke.dbr",
@@ -23255,7 +23255,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 10)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack\\skills\\scroll skills\\01_unbreakablealliance.dbr",
@@ -23327,7 +23327,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 10)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack\\skills\\scroll skills\\02_unbreakablealliance.dbr",
@@ -23398,7 +23398,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 23)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack\\skills\\scroll skills\\03_crushingvortex.dbr",
@@ -23435,7 +23435,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 10)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack\\skills\\scroll skills\\03_unbreakablealliance.dbr",
@@ -23506,7 +23506,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 10)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack\\skills\\scroll skills\\pets\\03x_maddenedgod_aura.dbr",
@@ -23538,7 +23538,7 @@
     "ITEM"
    ],
    "hunting_occult": false,
-   "proposal": "party aura: >= 36 (cur 7)"
+   "proposal": "HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision)"
   },
   {
    "record": "records\\xpack\\skills\\testskill02.dbr",

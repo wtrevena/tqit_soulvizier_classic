@@ -1,14 +1,14 @@
 # BL-AURA-RADIUS - every aura-class skill in the effective DB (b57)
 
-> **STATUS: implemented-awaiting-build (round 1) - 2026-07-14.** The round-1 IMPLEMENTATION is documented immediately below (the Will-veto artifact: full old->new table + held/deferred/H-O). The original template-driven AUDIT (the enumeration this was built against) is preserved unchanged further down under "AUDIT (enumeration)".
+> **STATUS: implemented-awaiting-build (round 2) - 2026-07-14.** Round 2 corrects the round-1 over-reach flagged in adversarial vet: 8 records whose FRIENDLY-looking delivery (`Skill_BuffRadius` / `Skill_BuffRadiusToggled`) carries an ENEMY-debuf payload (Class `SkillBuff_Debuf`) were widened in round 1 as if they were friendly auras. Their `skillTargetRadius` governs DAMAGE/DEBUF reach, so widening them is a combat-power change the mandate says to HOLD for Will. Round 2 adds a payload-offensive guard and moves those 8 from WIDENED to HELD-offensive: the wave now widens **72** friendly (non-offensive) auras, not 80. The IMPLEMENTATION is documented immediately below (the Will-veto artifact: full old->new table + held/deferred/H-O). The template-driven AUDIT enumeration this was built against is preserved further down under "AUDIT (enumeration)".
 
 ---
 
-## IMPLEMENTATION (round 1) - `tools/patches/aura_radius.py`
+## IMPLEMENTATION (round 2) - `tools/patches/aura_radius.py`
 
 **Will mandate (BL-AURA-RADIUS, 2026-07-12, re-chased 2026-07-14 citing Shadow Link):** increase aura effect radius so a player's aura BONUSES reach their PETS in battle (even when not adjacent) and reach ALLIED PLAYERS on screen in MP.
 
-**What shipped:** a registry module (runs after `boss_skill_fix`, before `visuals`) that grows the **RADIUS FIELD ONLY** (`skillTargetRadius`) of **80 player-facing, positive-only friendly auras** to **36u** party screen-scale (spec: 30-45u). No effect/damage/value field is touched (discipline #3) - proven radius-only + intended-records-only by the dry-run replay.
+**What shipped:** a registry module (runs after `boss_skill_fix`, before `visuals`) that grows the **RADIUS FIELD ONLY** (`skillTargetRadius`) of **72 player-facing, friendly (non-offensive) auras** to **36u** party screen-scale (spec: 30-45u). No effect/damage/value field is touched (discipline #3) - proven radius-only + intended-records-only by the dry-run replay. Every one of the 72 edited payloads is a `SkillBuff_Passive` (70) or `SkillBuff_PassiveShield` (2) friendly buff; zero enemy-debuf payloads are in the wave.
 
 ### Policy (roster-derived from `tools/aura_radius_roster.json`)
 | target | value | applies to |
@@ -18,61 +18,84 @@
 
 Only GROWS (never shrinks an aura already at/above target). Mechanism (audit ground truth): for `Skill_BuffRadiusToggled` the radius lives on the `buffSkillName` **payload** record, which applies to every friendly in radius (no self-only channel).
 
-### Round-1 dispositions (546 aura rows)
+### Round-2 dispositions (546 aura rows)
 | disposition | n | rule |
 |---|---|---|
-| **WIDENED** | 80 | player-facing, positive-only friendly aura with a radius field in the mod arz -> grow to 36u |
+| **WIDENED** | 72 | player-facing friendly aura, friendly (`SkillBuff_Passive`/`Shield`) payload with a radius field in the mod arz -> grow to 36u |
 | HELD - negative | 40 | friendly-buff payload carries a NEGATIVE (ally malus would spread) - flag, Will decides |
-| HELD - offensive | 34 | `Skill_BuffAttackRadius*` / `Skill_AttackBuffRadius` (widening = combat-power change) - Will decides |
-| DEFERRED - base-only | 13 | aura record not in the mod arz (base AE); needs an override-clone + base-arz wiring (round 2) |
-| DEFERRED - field-creation | 4 | radius-0 self-buff; adding a radius field is a self->party SCOPE change (round 2) |
+| HELD - offensive | 42 | offensive DELIVERY class `Skill_BuffAttackRadius*`/`Skill_AttackBuffRadius` (34) **OR** offensive PAYLOAD `SkillBuff_Debuf`/`debufSkill=1` behind a friendly-looking delivery (8) - widening = combat-power change, Will decides |
+| DEFERRED - base-only | 13 | aura record not in the mod arz (base AE); needs an override-clone + base-arz wiring (round 3) |
+| DEFERRED - field-creation | 4 | radius-0 self-buff; adding a radius field is a self->party SCOPE change (round 3) |
 | SKIP - non-player | 375 | monster-only / unreferenced / indirect (widening would buff enemies or touch dead dev records) |
 
+72 + 40 + 42 + 13 + 4 + 375 = 546.
+
+### Round-2 fix - why 8 records moved from WIDENED to HELD-offensive
+Adversarial vet found that round 1 widened 8 records whose Class is `SkillBuff_Debuf` (enemy-facing damage/debuf payloads), delivered by a FRIENDLY-looking `Skill_BuffRadius` / `Skill_BuffRadiusToggled` skill. Widening their `skillTargetRadius` enlarges OFFENSIVE reach (the delivery record carries no own radius, so the payload radius is the governing reach). That is a combat-power balance change the mandate HOLDs ("HOLD offensive-radius auras... flag, do not nerf - Will decides") and the audit's own Method/exclusions section excludes.
+
+Root cause (`tools/patches/aura_radius.py` `_decision` + `build_plan`): the round-1 offensive-hold keyed only off the DELIVERY class (`_OFFENSIVE_CLASSES`), and the negative-detector only flags value<0 - but offensive damage is stored POSITIVE (`offensiveXxxMin`). So a friendly-delivery + debuf-payload row passed both guards.
+
+Round-2 guard (`_payload_offensive`, checked on the LIVE record actually being edited): HOLD any widen candidate whose edited (payload) record Class is `SkillBuff_Debuf*` / `SkillBuff_Contageous`, or whose payload carries `debufSkill=1`. The 8 held:
+
+| # | delivery record | old->target | offensive payload |
+|---|---|---|---|
+| 1 | `records\xpack\skills\scroll skills\01_crushingvortexbuff.dbr` | 10 -> HELD | elemental + 70 physical nova |
+| 2 | `records\xpack\skills\scroll skills\02_crushingvortexbuff.dbr` | 10 -> HELD | elemental + 150 physical nova |
+| 3 | `records\xpack\skills\scroll skills\03_crushingvortexbuff.dbr` | 10 -> HELD | elemental + 225 physical nova |
+| 4 | `records\xpack\skills\scroll skills\02x_earthquakedebuf.dbr` | 23 -> HELD | offensivePhysicalMin=375 + offensiveStunChance=25 |
+| 5 | `records\xpack\skills\scroll skills\03x_magebanebuff.dbr` | 10 -> HELD | offensiveManaBurn (drain + ratio 200) |
+| 6 | `records\xpack\skills\scroll skills\pets\03x_maddenedgod_aurabuff.dbr` | 7 -> HELD | offensiveLifeMin=350 |
+| 7 | `records\skills\sv\haronomi\liferot_buff_soul.dbr` | 15 -> HELD | SOUL-granted DoT: offensiveLifeMin=20/40/60/80 + offensiveSlowLife |
+| 8 | `records\skills\monster skills\auras\ixion_aurabuff.dbr` | 3 -> HELD | ITEM+PET life-drain aura: offensiveLifeLeechMin=50 |
+
+Note the friendly `ixion_battlestandard_aurabuff.dbr` (a `SkillBuff_Passive` damage-grant banner, NOT a debuf) stays correctly in WIDENED - the guard keys off the payload Class, not the name.
+
 ### WILL VETO - Hunting / Occult (Will's HAND-TUNED trees)
-5 H/O auras widened, 2 held. Golden-freeze waivers were added to `tools/occult_hunting_golden.json` `owner_approved_overrides` for the 3 whose payloads are frozen there (RADIUS FIELD ONLY - nothing else on those records):
+Per the mandate, every H/O touch is listed here. 5 H/O auras are widened, 2 are held (unchanged from round 1 - none of the 8 newly-held records are H/O). Golden-freeze waivers were added to `tools/occult_hunting_golden.json` `owner_approved_overrides` for the 3 whose payloads are frozen there (RADIUS FIELD ONLY - nothing else on those records):
 
 | H/O aura | tree | edit record (payload) | old->new | golden waiver |
 |---|---|---|---|---|
-| Art of the Hunt | Hunting | `records\skills\hunting\drxartofthehuntbuff.dbr` | 15 -> 36 | YES (waiver added) |
-| Call of the Hunt | Hunting | `records\skills\hunting\drxcallofthehuntbuff.dbr` | 15 -> 36 | YES (waiver added) |
-| **Shadow Link** | Occult | `records\skills\stealth\drxbladehoningbuff.dbr` | 3 -> 36 | YES (waiver added) |
-| drx_petskill_cloak_01 (Demon Regen) | Occult (pet) | `records\skills\stealth\drxpet\drx_demon_regen_buff.dbr` | 5 -> 36 | not golden-captured |
-| Shadow Form (Stalker) | Occult (pet) | `records\skills\stealth\drxpet\drx_stalker_skills\skill_shadowformbuff.dbr` | 5 -> 36 | not golden-captured |
+| Art of the Hunt | Hunting | `records\skills\hunting\drxartofthehuntbuff.dbr` | 15 -> 36 | YES (waiver present) |
+| Call of the Hunt | Hunting | `records\skills\hunting\drxcallofthehuntbuff.dbr` | 15 -> 36 | YES (waiver present) |
+| **Shadow Link** | Occult | `records\skills\stealth\drxbladehoningbuff.dbr` | 3 -> 36 | YES (waiver present) |
+| Demon Regen (pet) | Occult (pet) | `records\skills\stealth\drxpet\drx_demon_regen_buff.dbr` | 5 -> 36 | not golden-captured |
+| Shadow Form (Stalker pet) | Occult (pet) | `records\skills\stealth\drxpet\drx_stalker_skills\skill_shadowformbuff.dbr` | 5 -> 36 | not golden-captured |
 | Study Prey | Hunting | `records\skills\hunting\drxstudyprey.dbr` | HELD (negative payload) | - |
-| Smoke Screen | Occult | `records\skills\stealth\drxpet\drx_smokescreen_petskill_defaultbuff2.dbr` | HELD (offensive class) | - |
+| Smoke Screen | Occult | `records\skills\stealth\drxpet\drx_smokescreen_petskill_defaultbuff2.dbr` | HELD (offensive delivery class) | - |
 
-**Shadow Link malus analysis (Will's motivating case).** Its payload `drxbladehoningbuff.dbr` carries an aura-wide `defensiveLife = -5/-8/-11/-14` (Vitality-Resistance reduction) with NO self-only channel. Will explicitly named Shadow Link as the case to fix, so it IS widened 3->36 despite the malus. A radius-only edit cannot split the positive half (mana-regen / life-leech / pierce-ratio) from the negative half by radius, and discipline #3 forbids touching the effect values, so **the -Vitality-Resist now also reaches pets/MP allies within 36u** alongside the bonuses. Flagged so Will can veto if unintended (round-2 options: leave as-is, tune the radius, or hand-author a self-only negative channel - a values change needing sign-off).
+**Shadow Link malus analysis (Will's motivating case).** Its payload `drxbladehoningbuff.dbr` carries an aura-wide `defensiveLife = -5/-8/-11/-14` (Vitality-Resistance reduction) with NO self-only channel. Will explicitly named Shadow Link as the case to fix, so it IS widened 3->36 despite the malus. A radius-only edit cannot split the positive half (mana-regen / life-leech / pierce-ratio) from the negative half by radius, and discipline #3 forbids touching the effect values, so **the -Vitality-Resist now also reaches pets/MP allies within 36u** alongside the bonuses. Flagged so Will can veto if unintended (round-3 options: leave as-is, tune the radius, or hand-author a self-only negative channel - a values change needing sign-off).
 
 ### Balance note (flag, do NOT nerf - Will decides)
-These auras become **always-on and party-wide** at 36u where many were near-adjacent-only (3-20u). Real uptime buff for pet/summon and MP builds: Rally, Battle Awareness, Heart of Oak, Sanctuary, Dark Covenant, Earth/Fire Enchantment, Trance of Convalescence/Empathy, Battle Standard, Art/Call of the Hunt, plus dozens of soul auras and pet auras (wolf pack-strength, sylvan nymph overgrowth, storm-wisp eye-of-the-storm, spirit-lure, nightmare mastermind). No value nerfed; Will decides whether any target should be tuned down.
+These auras become **always-on and party-wide** at 36u where many were near-adjacent-only (3-20u). Real uptime buff for pet/summon and MP builds: Rally, Battle Awareness, Heart of Oak, Sanctuary, Dark Covenant, Earth/Fire Enchantment, Trance of Convalescence/Empathy, Battle Standard, Art/Call of the Hunt, plus dozens of soul auras and pet auras (wolf pack-strength, sylvan nymph overgrowth, storm-wisp eye-of-the-storm, spirit-lure, nightmare mastermind). No value nerfed; Will decides whether any target should be tuned down. The 8 offensive-payload scrolls/auras and 34 offensive-delivery auras are NOT widened - their reach is damage reach.
 
 ### Verification (no heavy build; dry-run replay vs build40 golden `b33c5a44`)
 | gate | result |
 |---|---|
 | dry-run replay (`tools/debug/b57_aura_radius_replay.py`) | **PASS** |
-| radius-only + intended-records-only diff | 80 modified, 0 records added/removed, ONLY `skillTargetRadius` changed |
+| plan | widen 72, hold 40 neg + 42 off, defer 13 base-only + 4 field-add, skip 375 |
+| radius-only + intended-records-only diff | 72 modified, 0 records added/removed, ONLY `skillTargetRadius` changed |
+| widen edit-class breakdown | 70 `SkillBuff_Passive` + 2 `SkillBuff_PassiveShield`; **0** `SkillBuff_Debuf` (no offensive leak) |
 | idempotency (2nd apply) | 0 SET |
-| module `verify()` (roster-derived, fail-loud) | 80 widened auras all >= target |
+| module `verify()` (roster-derived, fail-loud) | 72 widened auras all >= target |
 | negative test (plant small radius on Shadow Link) | `verify()` correctly FAILS loud |
-| A7 Occult/Hunting golden gate WITH the 3 waivers | **PASS** (38 waived, 0 unapproved) |
-| A7 golden gate WITHOUT the 3 waivers | correctly FAILS on exactly the 3 H/O drifts |
+| A7 Occult/Hunting golden gate WITH the 3 waivers | **PASS** |
 | `py tools/patches/_check_registry.py` | PASS (14 modules) |
-| py_compile (module + replay) | PASS |
+| py_compile (module + replay + audit) | PASS |
 | contracts / `validate_tags` | structurally unaffected (radius-only on existing skill payloads; 0 records/tags/souls/summons added or removed) |
 
-Artifacts: module `tools/patches/aura_radius.py`; replay `tools/debug/b57_aura_radius_replay.py`; roster `tools/aura_radius_roster.json`; golden `tools/occult_hunting_golden.json` (+3 waivers). Rides the next integration build; the module runs in `build_svc_database.py` and its `verify()` + the A7 gate re-prove it on every build.
+Artifacts: module `tools/patches/aura_radius.py`; replay `tools/debug/b57_aura_radius_replay.py`; audit `tools/audit_aura_radius.py`; roster `tools/aura_radius_roster.json`; golden `tools/occult_hunting_golden.json` (+3 waivers). Rides the next integration build; the module runs in `build_svc_database.py` and its `verify()` + the A7 gate re-prove it on every build.
 
-### Full old->new widen table (80 records, radius field only)
+### Full widen table (72 records, radius field only)
 
 | # | aura | edit record (payload) | field | old | new | grant | H/O | neg |
 |---|---|---|---|---|---|---|---|---|
 | 1 | Art of the Hunt | `records\skills\hunting\drxartofthehuntbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET | Y |  |
 | 2 | Call of the Hunt | `records\skills\hunting\drxcallofthehuntbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM | Y |  |
 | 3 | Shadow Link | `records\skills\stealth\drxbladehoningbuff.dbr` | skillTargetRadius | 3 | 36 | MASTERY+SOUL+ITEM | Y | Y |
-| 4 | drx_petskill_cloak_01 | `records\skills\stealth\drxpet\drx_demon_regen_buff.dbr` | skillTargetRadius | 5 | 36 | MASTERY+PET | Y |  |
-| 5 | Shadow Form (pointer) | `records\skills\stealth\drxpet\drx_stalker_skills\skill_shadowformbuff.dbr` | skillTargetRadius | 5 | 36 | MASTERY+ITEM+PET | Y |  |
-| 6 | disciple_aura (bloodwitch pet) | `records\drxcreatures\bloodwitch\skills\disciple_aura_buff.dbr` | skillTargetRadius | 3 | 36 | ITEM+PET |  |  |
-| 7 | gigantes_healthregenaura | `records\drxcreatures\drxdishonorguard\skills\gigantes_healthregenaurabuff.dbr` | skillTargetRadius | 20 | 36 | ITEM+PET |  |  |
+| 4 | drx_demon_regen_buff | `records\skills\stealth\drxpet\drx_demon_regen_buff.dbr` | skillTargetRadius | 5 | 36 | MASTERY+PET | Y |  |
+| 5 | skill_shadowformbuff | `records\skills\stealth\drxpet\drx_stalker_skills\skill_shadowformbuff.dbr` | skillTargetRadius | 5 | 36 | MASTERY+ITEM+PET | Y |  |
+| 6 | disciple_aura_buff | `records\drxcreatures\bloodwitch\skills\disciple_aura_buff.dbr` | skillTargetRadius | 3 | 36 | ITEM+PET |  |  |
+| 7 | gigantes_healthregenaurabuff | `records\drxcreatures\drxdishonorguard\skills\gigantes_healthregenaurabuff.dbr` | skillTargetRadius | 20 | 36 | ITEM+PET |  |  |
 | 8 | battleawareness | `records\skills\defensive\battleawarenessbuff.dbr` | skillTargetRadius | 16 | 36 | SOUL+ITEM+PET |  |  |
 | 9 | Battle Awareness | `records\skills\defensive\drxbattleawarenessbuff.dbr` | skillTargetRadius | 16 | 36 | MASTERY+SOUL+ITEM |  |  |
 | 10 | Rally | `records\skills\defensive\drxrallybuff.dbr` | skillTargetRadius | 10 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
@@ -81,71 +104,63 @@ Artifacts: module `tools/patches/aura_radius.py`; replay `tools/debug/b57_aura_r
 | 13 | fireenchantment | `records\skills\earth\fireenchantmentbuff.dbr` | skillTargetRadius | 6 | 36 | SOUL+ITEM+PET |  |  |
 | 14 | artofthehunt | `records\skills\hunting\artofthehuntbuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
 | 15 | callofthehunt | `records\skills\hunting\callofthehuntbuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
-| 16 | Clarity Aura | `records\skills\item skills\clarityaurabuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
-| 17 | Growth Aura | `records\skills\item skills\growthaurabuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
+| 16 | clarityaurabuff | `records\skills\item skills\clarityaurabuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
+| 17 | growthaurabuff | `records\skills\item skills\growthaurabuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
 | 18 | leadership | `records\skills\item skills\leadership_buff.dbr` | skillTargetRadius | 10 | 36 | MASTERY+SOUL+ITEM |  |  |
-| 19 | starofhope_courage | `records\skills\item skills\starofhope_couragebuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 20 | battlestandard_petskill_default | `records\skills\monster skills\auras\battlestandard_petskill_defaultbuff.dbr` | skillTargetRadius | 12 | 36 | ITEM+PET |  |  |
+| 19 | starofhope_couragebuff | `records\skills\item skills\starofhope_couragebuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
+| 20 | battlestandard_petskill_defaultbuff | `records\skills\monster skills\auras\battlestandard_petskill_defaultbuff.dbr` | skillTargetRadius | 12 | 36 | ITEM+PET |  |  |
 | 21 | bloodpact | `records\skills\monster skills\auras\bloodpact_buff.dbr` | skillTargetRadius | 4 | 36 | SOUL+PET |  |  |
-| 22 | character_speedall | `records\skills\monster skills\auras\character_speedallbuff.dbr` | skillTargetRadius | 8 | 36 | ITEM+PET |  |  |
-| 23 | damage_firebonus | `records\skills\monster skills\auras\damage_firebonusbuff.dbr` | skillTargetRadius | 4 | 36 | SOUL+ITEM+PET |  |  |
-| 24 | damage_lightningbonus | `records\skills\monster skills\auras\damage_lightningbonusbuff.dbr` | skillTargetRadius | 6 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 25 | ixion_aura | `records\skills\monster skills\auras\ixion_aurabuff.dbr` | skillTargetRadius | 3 | 36 | ITEM+PET |  |  |
-| 26 | skoneros_aura | `records\skills\monster skills\auras\skoneros_aurabuff.dbr` | skillTargetRadius | 10 | 36 | ITEM+PET |  |  |
-| 27 | drxenergyshield_aoe | `records\skills\monster skills\buff_other\drxenergyshieldbuff_aoe.dbr` | skillTargetRadius | 8 | 36 | SOUL+PET |  |  |
-| 28 | drxrally | `records\skills\monster skills\buff_other\drxrallybuff.dbr` | skillTargetRadius | 10 | 36 | SOUL+PET |  |  |
-| 29 | ixion_battlestandard_aura | `records\skills\monster skills\buff_other\ixion_battlestandard_aurabuff.dbr` | skillTargetRadius | 12 | 36 | ITEM+PET |  |  |
-| 30 | monster_callofthehunt | `records\skills\monster skills\buff_self\monster_callofthehuntbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM+PET |  |  |
-| 31 | buffradiustoggled_speed | `records\skills\monster skills\buffradiustoggled_speedbuff.dbr` | skillTargetRadius | 10 | 36 | SOUL+ITEM+PET |  |  |
-| 32 | buffself_frenzyaura | `records\skills\monster skills\buffself_frenzyaurabuff.dbr` | skillTargetRadius | 6 | 36 | SOUL+PET |  |  |
-| 33 | briarward_sanctuary | `records\skills\nature\briarward_sanctuarybuff.dbr` | skillTargetRadius | 3 | 36 | ITEM+PET |  |  |
-| 34 | Sanctuary | `records\skills\nature\drxbriarward_sanctuarybuff.dbr` | skillTargetRadius | 3 | 36 | MASTERY+SOUL |  |  |
-| 35 | Heart of Oak | `records\skills\nature\drxheartofoakbuff.dbr` | skillTargetRadius | 18 | 36 | MASTERY+SOUL+ITEM |  |  |
-| 36 | drxsylvannymph_petskill_overgrowth | `records\skills\nature\drxsylvannymph_petskill_overgrowthbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 37 | drxwolf_petskill_strengthofthepack | `records\skills\nature\drxwolf_petskill_strengthofthepackbuff.dbr` | skillTargetRadius | 10 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 38 | heartofoak | `records\skills\nature\heartofoakbuff.dbr` | skillTargetRadius | 18 | 36 | SOUL+PET |  |  |
-| 39 | wolf_petskill_strengthofthepack | `records\skills\nature\wolf_petskill_strengthofthepackbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 40 | blazingweapons | `records\skills\soulskills\blazingweaponsbuff.dbr` | skillTargetRadius | 6 | 36 | SOUL |  |  |
-| 41 | character_speedall (soul) | `records\skills\soulskills\character_speedallbuff.dbr` | skillTargetRadius | 8 | 36 | SOUL |  |  |
-| 42 | Harpy Lightning Aura | `records\skills\soulskills\harpy_lightningaurabuff.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
-| 43 | kika_distortionaura | `records\skills\soulskills\kika_distortionaurabuff.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
-| 44 | morth_bloodaura | `records\skills\soulskills\morth_bloodaurabuff.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
-| 45 | nessus_enduranceaura | `records\skills\soulskills\nessus_enduranceaurabuff.dbr` | skillTargetRadius | 18 | 36 | SOUL |  |  |
-| 46 | nishoba_heal | `records\skills\soulskills\nishoba_healbuff.dbr` | skillTargetRadius | 5 | 36 | SOUL |  |  |
-| 47 | sajaki_poison | `records\skills\soulskills\sajaki_poisonbuff.dbr` | skillTargetRadius | 8 | 36 | SOUL |  |  |
-| 48 | scirtus_fireaura | `records\skills\soulskills\scirtus_fireaurabuff.dbr` | skillTargetRadius | 7 | 36 | SOUL |  |  |
-| 49 | darkcovenant | `records\skills\spirit\darkcovenantbuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
-| 50 | Dark Covenant | `records\skills\spirit\drxdarkcovenantbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM |  |  |
-| 51 | drxspiritlure_skill | `records\skills\spirit\drxpet\drxspiritlure_skill_buff.dbr` | skillTargetRadius | 8 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 52 | spiritward | `records\skills\spirit\spiritwardbuff.dbr` | skillTargetRadius | 6 | 36 | ITEM |  |  |
-| 53 | bladehoning (base/SV) | `records\skills\stealth\bladehoningbuff.dbr` | skillTargetRadius | 16 | 36 | SOUL+ITEM |  |  |
-| 54 | drxstormwisp_petskill_eyeofthestorm | `records\skills\storm\drxstormwisp_petskill_eyeofthestormbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 55 | liferot_soul | `records\skills\sv\haronomi\liferot_buff_soul.dbr` | skillTargetRadius | 15 | 36 | SOUL |  |  |
-| 56 | sunblessing_soul | `records\skills\sv\manetho\sunblessing_buff_soul.dbr` | skillTargetRadius | 8 | 36 | SOUL |  |  |
-| 57 | menkare_shield_soul | `records\skills\sv\menkare\menkare_shieldbuff_soul.dbr` | skillTargetRadius | 16 | 36 | SOUL |  |  |
-| 58 | spiritenhancement_soul | `records\skills\sv\refnat\spiritenhancement_buff_soul.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
-| 59 | elementalshield_soul | `records\skills\sv\regnok\elementalshield_buff_soul.dbr` | skillTargetRadius | 10 | 36 | SOUL |  |  |
-| 60 | shodema_heal | `records\skills\sv\shodema\shodema_healbuff.dbr` | skillTargetRadius | 4 | 36 | SOUL+PET |  |  |
-| 61 | shodema_heal_soul | `records\skills\sv\shodema\shodema_healbuff_soul.dbr` | skillTargetRadius | 4 | 36 | SOUL+PET |  |  |
-| 62 | battlestandard_petskill_default (warfare) | `records\skills\warfare\battlestandard_petskill_defaultbuff.dbr` | skillTargetRadius | 12 | 36 | ITEM+PET |  |  |
-| 63 | drxbattlestandard_petskill_default | `records\skills\warfare\drxbattlestandard_petskill_defaultbuff.dbr` | skillTargetRadius | 12 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 64 | Knot of Isis - Healing Cascade | `records\xpack\skills\artifactskills\e_da_knotofisis_healingcascadebuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
-| 65 | Lionheart - Lion's Roar | `records\xpack\skills\artifactskills\e_ga_lionheart_lionsroarbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 66 | Jade Emperor - MauDuyhn | `records\xpack\skills\artifactskills\l_da_talismanofthejadeemperor_mauduyhnbuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
-| 67 | Trance of Convalescence | `records\xpack\skills\dream\drxtranceofconvalescencebuff.dbr` | skillTargetRadius | 12 | 36 | MASTERY+SOUL+ITEM |  |  |
-| 68 | Trance of Empathy | `records\xpack\skills\dream\drxtranceofempathybuff.dbr` | skillTargetRadius | 12 | 36 | MASTERY+SOUL+ITEM |  |  |
-| 69 | nightmare_petskill_mastermind | `records\xpack\skills\dream\nightmare_petskill_mastermindbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
-| 70 | tranceofempathy | `records\xpack\skills\dream\tranceofempathybuff.dbr` | skillTargetRadius | 12 | 36 | ITEM |  |  |
-| 71 | ascacophus_roar | `records\xpack\skills\monsterskills\buffs and healing\ascacophus_roarbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM+PET |  |  |
-| 72 | 01_crushingvortex | `records\xpack\skills\scroll skills\01_crushingvortexbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 73 | 01_unbreakablealliance | `records\xpack\skills\scroll skills\01_unbreakablealliancebuff.dbr` | skillTargetRadius | 16 | 36 | ITEM |  |  |
-| 74 | 02_crushingvortex | `records\xpack\skills\scroll skills\02_crushingvortexbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 75 | 02_unbreakablealliance | `records\xpack\skills\scroll skills\02_unbreakablealliancebuff.dbr` | skillTargetRadius | 16 | 36 | ITEM |  |  |
-| 76 | 02x_earthquake (buff half) | `records\xpack\skills\scroll skills\02x_earthquakedebuf.dbr` | skillTargetRadius | 23 | 36 | ITEM |  |  |
-| 77 | 03_crushingvortex | `records\xpack\skills\scroll skills\03_crushingvortexbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 78 | 03_unbreakablealliance | `records\xpack\skills\scroll skills\03_unbreakablealliancebuff.dbr` | skillTargetRadius | 16 | 36 | ITEM |  |  |
-| 79 | 03x_magebane | `records\xpack\skills\scroll skills\03x_magebanebuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
-| 80 | 03x_maddenedgod_aura | `records\xpack\skills\scroll skills\pets\03x_maddenedgod_aurabuff.dbr` | skillTargetRadius | 7 | 36 | ITEM |  |  |
+| 22 | character_speedallbuff | `records\skills\monster skills\auras\character_speedallbuff.dbr` | skillTargetRadius | 8 | 36 | ITEM+PET |  |  |
+| 23 | damage_firebonusbuff | `records\skills\monster skills\auras\damage_firebonusbuff.dbr` | skillTargetRadius | 4 | 36 | SOUL+ITEM+PET |  |  |
+| 24 | damage_lightningbonusbuff | `records\skills\monster skills\auras\damage_lightningbonusbuff.dbr` | skillTargetRadius | 6 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 25 | skoneros_aurabuff | `records\skills\monster skills\auras\skoneros_aurabuff.dbr` | skillTargetRadius | 10 | 36 | ITEM+PET |  |  |
+| 26 | drxenergyshieldbuff_aoe | `records\skills\monster skills\buff_other\drxenergyshieldbuff_aoe.dbr` | skillTargetRadius | 8 | 36 | SOUL+PET |  |  |
+| 27 | drxrally | `records\skills\monster skills\buff_other\drxrallybuff.dbr` | skillTargetRadius | 10 | 36 | SOUL+PET |  |  |
+| 28 | ixion_battlestandard_aurabuff | `records\skills\monster skills\buff_other\ixion_battlestandard_aurabuff.dbr` | skillTargetRadius | 12 | 36 | ITEM+PET |  |  |
+| 29 | monster_callofthehuntbuff | `records\skills\monster skills\buff_self\monster_callofthehuntbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM+PET |  |  |
+| 30 | buffradiustoggled_speedbuff | `records\skills\monster skills\buffradiustoggled_speedbuff.dbr` | skillTargetRadius | 10 | 36 | SOUL+ITEM+PET |  |  |
+| 31 | buffself_frenzyaurabuff | `records\skills\monster skills\buffself_frenzyaurabuff.dbr` | skillTargetRadius | 6 | 36 | SOUL+PET |  |  |
+| 32 | briarward_sanctuarybuff | `records\skills\nature\briarward_sanctuarybuff.dbr` | skillTargetRadius | 3 | 36 | ITEM+PET |  |  |
+| 33 | Sanctuary | `records\skills\nature\drxbriarward_sanctuarybuff.dbr` | skillTargetRadius | 3 | 36 | MASTERY+SOUL |  |  |
+| 34 | Heart of Oak | `records\skills\nature\drxheartofoakbuff.dbr` | skillTargetRadius | 18 | 36 | MASTERY+SOUL+ITEM |  |  |
+| 35 | drxsylvannymph_petskill_overgrowthbuff | `records\skills\nature\drxsylvannymph_petskill_overgrowthbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 36 | drxwolf_petskill_strengthofthepackbuff | `records\skills\nature\drxwolf_petskill_strengthofthepackbuff.dbr` | skillTargetRadius | 10 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 37 | heartofoakbuff | `records\skills\nature\heartofoakbuff.dbr` | skillTargetRadius | 18 | 36 | SOUL+PET |  |  |
+| 38 | wolf_petskill_strengthofthepackbuff | `records\skills\nature\wolf_petskill_strengthofthepackbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
+| 39 | blazingweapons | `records\skills\soulskills\blazingweaponsbuff.dbr` | skillTargetRadius | 6 | 36 | SOUL |  |  |
+| 40 | character_speedallbuff | `records\skills\soulskills\character_speedallbuff.dbr` | skillTargetRadius | 8 | 36 | SOUL |  |  |
+| 41 | Harpy Lightning Aura | `records\skills\soulskills\harpy_lightningaurabuff.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
+| 42 | kika_distortionaurabuff | `records\skills\soulskills\kika_distortionaurabuff.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
+| 43 | morth_bloodaurabuff | `records\skills\soulskills\morth_bloodaurabuff.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
+| 44 | nessus_enduranceaurabuff | `records\skills\soulskills\nessus_enduranceaurabuff.dbr` | skillTargetRadius | 18 | 36 | SOUL |  |  |
+| 45 | nishoba_healbuff | `records\skills\soulskills\nishoba_healbuff.dbr` | skillTargetRadius | 5 | 36 | SOUL |  |  |
+| 46 | sajaki_poisonbuff | `records\skills\soulskills\sajaki_poisonbuff.dbr` | skillTargetRadius | 8 | 36 | SOUL |  |  |
+| 47 | scirtus_fireaurabuff | `records\skills\soulskills\scirtus_fireaurabuff.dbr` | skillTargetRadius | 7 | 36 | SOUL |  |  |
+| 48 | darkcovenant | `records\skills\spirit\darkcovenantbuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
+| 49 | Dark Covenant | `records\skills\spirit\drxdarkcovenantbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM |  |  |
+| 50 | drxspiritlure_skill_buff | `records\skills\spirit\drxpet\drxspiritlure_skill_buff.dbr` | skillTargetRadius | 8 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 51 | spiritward | `records\skills\spirit\spiritwardbuff.dbr` | skillTargetRadius | 6 | 36 | ITEM |  |  |
+| 52 | bladehoning | `records\skills\stealth\bladehoningbuff.dbr` | skillTargetRadius | 16 | 36 | SOUL+ITEM |  |  |
+| 53 | drxstormwisp_petskill_eyeofthestormbuff | `records\skills\storm\drxstormwisp_petskill_eyeofthestormbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 54 | sunblessing_buff_soul | `records\skills\sv\manetho\sunblessing_buff_soul.dbr` | skillTargetRadius | 8 | 36 | SOUL |  |  |
+| 55 | menkare_shieldbuff_soul | `records\skills\sv\menkare\menkare_shieldbuff_soul.dbr` | skillTargetRadius | 16 | 36 | SOUL |  |  |
+| 56 | spiritenhancement_buff_soul | `records\skills\sv\refnat\spiritenhancement_buff_soul.dbr` | skillTargetRadius | 12 | 36 | SOUL |  |  |
+| 57 | elementalshield_buff_soul | `records\skills\sv\regnok\elementalshield_buff_soul.dbr` | skillTargetRadius | 10 | 36 | SOUL |  |  |
+| 58 | shodema_healbuff | `records\skills\sv\shodema\shodema_healbuff.dbr` | skillTargetRadius | 4 | 36 | SOUL+PET |  |  |
+| 59 | shodema_healbuff_soul | `records\skills\sv\shodema\shodema_healbuff_soul.dbr` | skillTargetRadius | 4 | 36 | SOUL+PET |  |  |
+| 60 | battlestandard_petskill_defaultbuff | `records\skills\warfare\battlestandard_petskill_defaultbuff.dbr` | skillTargetRadius | 12 | 36 | ITEM+PET |  |  |
+| 61 | drxbattlestandard_petskill_defaultbuff | `records\skills\warfare\drxbattlestandard_petskill_defaultbuff.dbr` | skillTargetRadius | 12 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 62 | e_da_knotofisis_healingcascadebuff | `records\xpack\skills\artifactskills\e_da_knotofisis_healingcascadebuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
+| 63 | e_ga_lionheart_lionsroarbuff | `records\xpack\skills\artifactskills\e_ga_lionheart_lionsroarbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM |  |  |
+| 64 | l_da_talismanofthejadeemperor_mauduyhnbuff | `records\xpack\skills\artifactskills\l_da_talismanofthejadeemperor_mauduyhnbuff.dbr` | skillTargetRadius | 15 | 36 | ITEM |  |  |
+| 65 | Trance of Convalescence | `records\xpack\skills\dream\drxtranceofconvalescencebuff.dbr` | skillTargetRadius | 12 | 36 | MASTERY+SOUL+ITEM |  |  |
+| 66 | Trance of Empathy | `records\xpack\skills\dream\drxtranceofempathybuff.dbr` | skillTargetRadius | 12 | 36 | MASTERY+SOUL+ITEM |  |  |
+| 67 | nightmare_petskill_mastermindbuff | `records\xpack\skills\dream\nightmare_petskill_mastermindbuff.dbr` | skillTargetRadius | 15 | 36 | MASTERY+SOUL+ITEM+PET |  |  |
+| 68 | tranceofempathy | `records\xpack\skills\dream\tranceofempathybuff.dbr` | skillTargetRadius | 12 | 36 | ITEM |  |  |
+| 69 | ascacophus_roarbuff | `records\xpack\skills\monsterskills\buffs and healing\ascacophus_roarbuff.dbr` | skillTargetRadius | 10 | 36 | ITEM+PET |  |  |
+| 70 | 01_unbreakablealliancebuff | `records\xpack\skills\scroll skills\01_unbreakablealliancebuff.dbr` | skillTargetRadius | 16 | 36 | ITEM |  |  |
+| 71 | 02_unbreakablealliancebuff | `records\xpack\skills\scroll skills\02_unbreakablealliancebuff.dbr` | skillTargetRadius | 16 | 36 | ITEM |  |  |
+| 72 | 03_unbreakablealliancebuff | `records\xpack\skills\scroll skills\03_unbreakablealliancebuff.dbr` | skillTargetRadius | 16 | 36 | ITEM |  |  |
 
 ### HELD - negative-payload friendly auras (ally malus would spread; Will decides) (40)
 
@@ -160,7 +175,7 @@ Artifacts: module `tools/patches/aura_radius.py`; replay `tools/debug/b57_aura_r
 | heraclesshrinebuffer06 | `records\item\heraclesway\heraclesshrinebuffer06.dbr` | FixedItemSkill_Buff | ITEM |
 | heraclesshrinebuffer07 | `records\item\heraclesway\heraclesshrinebuffer07.dbr` | FixedItemSkill_Buff | ITEM |
 | heraclesshrinebuffer08 | `records\item\heraclesway\heraclesshrinebuffer08.dbr` | FixedItemSkill_Buff | ITEM |
-| Study Prey **[H/O]** | `records\skills\hunting\drxstudyprey.dbr` | Skill_AttackBuffRadius | MASTERY+SOUL+ITEM |
+| Study Prey | `records\skills\hunting\drxstudyprey.dbr` | Skill_AttackBuffRadius | MASTERY+SOUL+ITEM |
 | studyprey | `records\skills\hunting\studyprey.dbr` | Skill_AttackBuffRadius | SOUL+ITEM+PET |
 | overflow | `records\skills\item skills\overflow.dbr` | Skill_BuffRadiusToggled | ITEM |
 | rustaura | `records\skills\item skills\rustaura.dbr` | Skill_BuffRadiusToggled | ITEM |
@@ -192,73 +207,83 @@ Artifacts: module `tools/patches/aura_radius.py`; replay `tools/debug/b57_aura_r
 | drxconfuse_aura_10 | `records\xpack\skills\dream\drxpet\drxconfuse_aura_10.dbr` | Skill_BuffRadiusToggled | MASTERY+ITEM+PET |
 | drxconfuse_aura_11 | `records\xpack\skills\dream\drxpet\drxconfuse_aura_11.dbr` | Skill_BuffRadiusToggled | MASTERY+ITEM+PET |
 
-### HELD - offensive-radius auras (combat-power change; Will decides) (34)
+### HELD - offensive-radius auras (combat-power change; Will decides) (42)
 
-| aura | record | class | grant |
-|---|---|---|---|
-| seductress_bloodpuddle_aura | `records\drxcreatures\bloodwitch\skills\seductress_bloodpuddle_aura.dbr` | Skill_BuffAttackRadiusDuration | ITEM+PET |
-| Trance of Wrath (seductress) | `records\drxcreatures\bloodwitch\skills\seductress_conversionaura.dbr` | Skill_BuffAttackRadiusToggled | ITEM+PET |
-| Storm Soul | `records\drxitem\supra\skills\hunter_helm_galefury.dbr` | Skill_BuffAttackRadiusToggled | ITEM |
-| Ring of Flame (alastor) | `records\skills\boss skills\alastor_circleofdecay.dbr` | Skill_BuffAttackRadiusToggled | SOUL+PET |
-| Ring of Flame | `records\skills\earth\drxringofflame.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM |
-| Provoke (coredweller) | `records\skills\earth\pet\coredwellerskill_provoke.dbr` | Skill_BuffAttackRadiusToggled | ITEM+PET |
-| Provoke | `records\skills\earth\pet\drxcoredwellerskill_provoke.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM+PET |
-| Ring of Flame (base) | `records\skills\earth\ringofflame.dbr` | Skill_BuffAttackRadiusToggled | ITEM |
-| Provoke (monsterlure) | `records\skills\hunting\pet\drxmonsterlure_skill_attractmonsters.dbr` | Skill_BuffAttackRadiusToggled | ITEM+PET |
-| freezingblast | `records\skills\item skills\freezingblast.dbr` | Skill_AttackBuffRadius | MASTERY+SOUL+ITEM |
-| Thunderclap (lamprey) | `records\skills\item skills\lamprey_aura.dbr` | Skill_BuffAttackRadiusToggled | ITEM |
-| Ring of Flame (palai) | `records\skills\monster skills\buff_self\palai_ringofflame.dbr` | Skill_BuffAttackRadiusToggled | SOUL+PET |
-| Blade Circle (ecunis) | `records\skills\soulskills\ecunis_bladering.dbr` | Skill_BuffAttackRadiusToggled | SOUL |
-| rimepuck_freezingblast | `records\skills\soulskills\rimepuck_freezingblast.dbr` | Skill_AttackBuffRadius | SOUL |
-| Ring of Lightning | `records\skills\soulskills\ringoflightning.dbr` | Skill_BuffAttackRadiusToggled | SOUL |
-| Rock Shield (rockhorn) | `records\skills\soulskills\rockhorn_rockshield.dbr` | Skill_BuffAttackRadiusToggled | SOUL |
-| yeti_freezingblast | `records\skills\soulskills\yeti_freezingblast.dbr` | Skill_AttackBuffRadius | SOUL |
-| Smoke Screen **[H/O]** | `records\skills\stealth\drxpet\drx_smokescreen_petskill_defaultbuff2.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM+PET |
-| freezingblast (storm) | `records\skills\storm\freezingblast.dbr` | Skill_AttackBuffRadius | ITEM+PET |
-| Trance of Wrath (nuying) | `records\skills\sv\nuying\tranceofwrath.dbr` | Skill_BuffAttackRadiusToggled | SOUL+PET |
-| kornwyf_tornado | `records\xpack2\skills\boss skills\kornwyf_tornado.dbr` | Skill_BuffAttackRadiusDuration | ITEM+PET |
-| thrym1_freezeaura | `records\xpack2\skills\boss skills\thrym1_freezeaura.dbr` | Skill_BuffAttackRadiusDuration | ITEM+PET |
-| Thousand Cuts | `records\xpack2\skills\item skills\radius_thousandcuts.dbr` | Skill_BuffAttackRadiusDuration | ITEM |
-| Tornado | `records\xpack2\skills\item skills\radius_tornado.dbr` | Skill_BuffAttackRadiusDuration | ITEM |
-| Scroll of Persuasion | `records\xpack2\skills\scroll skills\01_ogmios.dbr` | Skill_BuffAttackRadiusDuration | ITEM |
-| Greater Scroll of Persuasion | `records\xpack2\skills\scroll skills\02_ogmios.dbr` | Skill_BuffAttackRadiusDuration | ITEM |
-| Divine Scroll of Persuasion | `records\xpack2\skills\scroll skills\03_ogmios.dbr` | Skill_BuffAttackRadiusDuration | ITEM |
-| Rune Storm | `records\xpack3\skills\allmasteries\rune_magicmaelstrom.dbr` | Skill_BuffAttackRadiusDuration | MASTERY+ITEM |
-| Soul Vortex | `records\xpack3\skills\allmasteries\spirit_soulvortex.dbr` | Skill_BuffAttackRadiusDuration | ITEM |
-| Circe's Charm | `records\xpack3\skills\item skills\aura_circe.dbr` | Skill_BuffAttackRadiusToggled | ITEM |
-| Slow Decay (01) | `records\xpack3\skills\scroll skills\01_deathcurse.dbr` | Skill_AttackBuffRadius | ITEM |
-| Slow Decay (02) | `records\xpack3\skills\scroll skills\02_deathcurse.dbr` | Skill_AttackBuffRadius | ITEM |
-| Slow Decay (03) | `records\xpack3\skills\scroll skills\03_deathcurse.dbr` | Skill_AttackBuffRadius | ITEM |
-| Trance of Wrath | `records\xpack\skills\dream\drxtranceofwrath.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM |
+Two kinds: (a) offensive DELIVERY class (`Skill_BuffAttackRadius*` / `Skill_AttackBuffRadius` - radius sits on the attack skill), and (b) offensive PAYLOAD (round-2 guard) - a friendly-looking `Skill_BuffRadius`/`Toggled` delivery whose `buffSkillName` payload is an enemy debuf (`SkillBuff_Debuf` / `debufSkill=1`); its `skillTargetRadius` is DAMAGE/DEBUF reach. Both = combat power; widened only if Will asks.
 
-### DEFERRED - base-only (aura record not in the mod arz; needs an override-clone; round 2) (13)
+| aura | delivery record | delivery class | grant | held because |
+|---|---|---|---|---|
+| Storm Nimbus | `records\drxcreatures\bloodwitch\skills\seductress_bloodpuddle_aura.dbr` | Skill_BuffAttackRadiusDuration | ITEM+PET | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Trance of Wrath | `records\drxcreatures\bloodwitch\skills\seductress_conversionaura.dbr` | Skill_BuffAttackRadiusToggled | ITEM+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Storm Soul | `records\drxitem\supra\skills\hunter_helm_galefury.dbr` | Skill_BuffAttackRadiusToggled | ITEM | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Ring of Flame | `records\skills\boss skills\alastor_circleofdecay.dbr` | Skill_BuffAttackRadiusToggled | SOUL+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Ring of Flame | `records\skills\earth\drxringofflame.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Provoke | `records\skills\earth\pet\coredwellerskill_provoke.dbr` | Skill_BuffAttackRadiusToggled | ITEM+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Provoke | `records\skills\earth\pet\drxcoredwellerskill_provoke.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Ring of Flame | `records\skills\earth\ringofflame.dbr` | Skill_BuffAttackRadiusToggled | ITEM | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Provoke | `records\skills\hunting\pet\drxmonsterlure_skill_attractmonsters.dbr` | Skill_BuffAttackRadiusToggled | ITEM+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| freezingblast | `records\skills\item skills\freezingblast.dbr` | Skill_AttackBuffRadius | MASTERY+SOUL+ITEM | offensive delivery class Skill_AttackBuffRadius |
+| Thunderclap | `records\skills\item skills\lamprey_aura.dbr` | Skill_BuffAttackRadiusToggled | ITEM | offensive delivery class Skill_BuffAttackRadiusToggled |
+| ixion_aura | `records\skills\monster skills\auras\ixion_aura.dbr` | Skill_BuffRadiusToggled | ITEM+PET | payload Class SkillBuff_Debuf (offensiveLifeLeechMin=50; offensivePercentCurrentLifeMax=10; offensivePercentCurrentLifeMin=7) |
+| Ring of Flame | `records\skills\monster skills\buff_self\palai_ringofflame.dbr` | Skill_BuffAttackRadiusToggled | SOUL+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Blade Circle | `records\skills\soulskills\ecunis_bladering.dbr` | Skill_BuffAttackRadiusToggled | SOUL | offensive delivery class Skill_BuffAttackRadiusToggled |
+| rimepuck_freezingblast | `records\skills\soulskills\rimepuck_freezingblast.dbr` | Skill_AttackBuffRadius | SOUL | offensive delivery class Skill_AttackBuffRadius |
+| Ring of Lightning | `records\skills\soulskills\ringoflightning.dbr` | Skill_BuffAttackRadiusToggled | SOUL | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Rock Shield | `records\skills\soulskills\rockhorn_rockshield.dbr` | Skill_BuffAttackRadiusToggled | SOUL | offensive delivery class Skill_BuffAttackRadiusToggled |
+| yeti_freezingblast | `records\skills\soulskills\yeti_freezingblast.dbr` | Skill_AttackBuffRadius | SOUL | offensive delivery class Skill_AttackBuffRadius |
+| Smoke Screen | `records\skills\stealth\drxpet\drx_smokescreen_petskill_defaultbuff2.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| freezingblast | `records\skills\storm\freezingblast.dbr` | Skill_AttackBuffRadius | ITEM+PET | offensive delivery class Skill_AttackBuffRadius |
+| liferot_soul | `records\skills\sv\haronomi\liferot_soul.dbr` | Skill_BuffRadiusToggled | SOUL | payload Class SkillBuff_Debuf (offensiveLifeMin=20/40/60/80..; offensiveSlowLifeDurationMin=3; offensiveSlowLifeMin=10/20/30/40..) |
+| Trance of Wrath | `records\skills\sv\nuying\tranceofwrath.dbr` | Skill_BuffAttackRadiusToggled | SOUL+PET | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Ring of Flame | `records\xpack2\skills\boss skills\kornwyf_tornado.dbr` | Skill_BuffAttackRadiusDuration | ITEM+PET | offensive delivery class Skill_BuffAttackRadiusDuration |
+| thrym1_freezeaura | `records\xpack2\skills\boss skills\thrym1_freezeaura.dbr` | Skill_BuffAttackRadiusDuration | ITEM+PET | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Thousand Cuts | `records\xpack2\skills\item skills\radius_thousandcuts.dbr` | Skill_BuffAttackRadiusDuration | ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Tornado | `records\xpack2\skills\item skills\radius_tornado.dbr` | Skill_BuffAttackRadiusDuration | ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Scroll of Persuasion | `records\xpack2\skills\scroll skills\01_ogmios.dbr` | Skill_BuffAttackRadiusDuration | ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Greater Scroll of Persuasion | `records\xpack2\skills\scroll skills\02_ogmios.dbr` | Skill_BuffAttackRadiusDuration | ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Divine Scroll of Persuasion | `records\xpack2\skills\scroll skills\03_ogmios.dbr` | Skill_BuffAttackRadiusDuration | ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Rune Storm | `records\xpack3\skills\allmasteries\rune_magicmaelstrom.dbr` | Skill_BuffAttackRadiusDuration | MASTERY+ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Soul Vortex | `records\xpack3\skills\allmasteries\spirit_soulvortex.dbr` | Skill_BuffAttackRadiusDuration | ITEM | offensive delivery class Skill_BuffAttackRadiusDuration |
+| Circe's Charm | `records\xpack3\skills\item skills\aura_circe.dbr` | Skill_BuffAttackRadiusToggled | ITEM | offensive delivery class Skill_BuffAttackRadiusToggled |
+| Slow Decay | `records\xpack3\skills\scroll skills\01_deathcurse.dbr` | Skill_AttackBuffRadius | ITEM | offensive delivery class Skill_AttackBuffRadius |
+| Slow Decay | `records\xpack3\skills\scroll skills\02_deathcurse.dbr` | Skill_AttackBuffRadius | ITEM | offensive delivery class Skill_AttackBuffRadius |
+| Slow Decay | `records\xpack3\skills\scroll skills\03_deathcurse.dbr` | Skill_AttackBuffRadius | ITEM | offensive delivery class Skill_AttackBuffRadius |
+| Trance of Wrath | `records\xpack\skills\dream\drxtranceofwrath.dbr` | Skill_BuffAttackRadiusToggled | MASTERY+SOUL+ITEM | offensive delivery class Skill_BuffAttackRadiusToggled |
+| 01_crushingvortex | `records\xpack\skills\scroll skills\01_crushingvortex.dbr` | Skill_BuffRadius | ITEM | payload Class SkillBuff_Debuf (offensiveColdMin=10; offensiveFireMin=10; offensiveLightningMin=10 ...) |
+| 02_crushingvortex | `records\xpack\skills\scroll skills\02_crushingvortex.dbr` | Skill_BuffRadius | ITEM | payload Class SkillBuff_Debuf (offensiveColdMin=20; offensiveFireMin=20; offensiveLightningMin=20 ...) |
+| 02x_earthquake | `records\xpack\skills\scroll skills\02x_earthquake.dbr` | Skill_BuffRadius | ITEM | payload Class SkillBuff_Debuf (offensivePhysicalMin=375; offensiveStunChance=25; offensiveStunMin=3) |
+| 03_crushingvortex | `records\xpack\skills\scroll skills\03_crushingvortex.dbr` | Skill_BuffRadius | ITEM | payload Class SkillBuff_Debuf (offensiveColdMin=30; offensiveFireMin=30; offensiveLightningMin=30 ...) |
+| 03x_magebane | `records\xpack\skills\scroll skills\03x_magebane.dbr` | Skill_BuffRadius | ITEM | payload Class SkillBuff_Debuf (offensiveManaBurnDamageRatio=200; offensiveManaBurnDrainMin=30) |
+| 03x_maddenedgod_aura | `records\xpack\skills\scroll skills\pets\03x_maddenedgod_aura.dbr` | Skill_BuffRadiusToggled | ITEM | payload Class SkillBuff_Debuf (offensiveLifeMin=350) |
 
-- `records\sandbox\chris\fixeditemskillbuff_poison.dbr` (FixedItemSkill_Buff) - dev/sandbox record; do NOT ship
-- `records\xpack2\quests\rewards\skills\nixieblessing.dbr` (FixedItemSkill_Buff)
-- `records\xpack2\skills\item skills\aura_totalspeed.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack2\skills\monster skills\buff_self\infernal_enchantment.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\artifact skills\servantofanubis_mummifiedpriest_aura.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\item skills\bloodoath_bloodpact.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\item skills\gatesofhell_quillvine_rootaura.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\item skills\hawklegionswarkhopehs_twisteraura.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\monster skills\buff_self\enchantment_chaosblade.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\monster skills\buff_self\enchantment_spiritblade.dbr` (Skill_BuffRadiusToggled)
-- `records\xpack4\skills\neidan\auraoftranquility.dbr` (Skill_BuffRadiusToggled) - Neidan mastery aura
-- `records\xpack4\skills\neidan\weakestchakrabuff.dbr` (Skill_BuffRadius) - Neidan mastery aura
-- `records\xpack4\skills\scroll skills\scrollskill_ancestralfavor.dbr` (Skill_BuffRadius)
+### DEFERRED - base-only (needs an override-clone; round 2) (13)
 
-### DEFERRED - field-creation (radius-0 self-buff; adding a radius field is a self->party scope change; round 2) (4)
+- `records\sandbox\chris\fixeditemskillbuff_poison.dbr` (FixedItemSkill_Buff, fixeditemskillbuff_poison)
+- `records\xpack2\quests\rewards\skills\nixieblessing.dbr` (FixedItemSkill_Buff, FixedItemSkill_Buff)
+- `records\xpack2\skills\item skills\aura_totalspeed.dbr` (Skill_BuffRadiusToggled, 15% Total Speed + 5% per level for 10 levels.)
+- `records\xpack2\skills\monster skills\buff_self\infernal_enchantment.dbr` (Skill_BuffRadiusToggled, infernal_enchantment)
+- `records\xpack4\skills\artifact skills\servantofanubis_mummifiedpriest_aura.dbr` (Skill_BuffRadiusToggled, servantofanubis_mummifiedpriest_aura)
+- `records\xpack4\skills\item skills\bloodoath_bloodpact.dbr` (Skill_BuffRadiusToggled, bloodoath_bloodpact)
+- `records\xpack4\skills\item skills\gatesofhell_quillvine_rootaura.dbr` (Skill_BuffRadiusToggled, gatesofhell_quillvine_rootaura)
+- `records\xpack4\skills\item skills\hawklegionswarkhopehs_twisteraura.dbr` (Skill_BuffRadiusToggled, hawklegionswarkhopehs_twisteraura)
+- `records\xpack4\skills\monster skills\buff_self\enchantment_chaosblade.dbr` (Skill_BuffRadiusToggled, enchantment_chaosblade)
+- `records\xpack4\skills\monster skills\buff_self\enchantment_spiritblade.dbr` (Skill_BuffRadiusToggled, enchantment_spiritblade)
+- `records\xpack4\skills\neidan\auraoftranquility.dbr` (Skill_BuffRadiusToggled, auraoftranquility)
+- `records\xpack4\skills\neidan\weakestchakrabuff.dbr` (Skill_BuffRadius, -- ADDED)
+- `records\xpack4\skills\scroll skills\scrollskill_ancestralfavor.dbr` (Skill_BuffRadius, scrollskill_ancestralfavor)
 
-- `records\drxitem\eggs\skills\battlestandard_petskill_default.dbr` (Skill_BuffRadiusToggled) - Battle Standard's aura is the separate `triumphbuffradius`; this defaultbuff is intentionally radius-0
-- `records\skills\monster skills\buff_self\tykos_buff_cast.dbr` (Skill_BuffRadius)
-- `records\skills\spirit\drxpet\drxpet_equipment\skelly_uniquehelm_fx_pointer.dbr` (Skill_BuffRadiusToggled) - skeleton unique-helm FX self-buff
-- `records\xpack4\item\miscellaneous\oneshot\potion_of_mastery_applier.dbr` (Skill_BuffRadius)
+### DEFERRED - field-creation (radius-0 self-buff; scope change; round 2) (4)
+
+- `records\drxitem\eggs\skills\battlestandard_petskill_default.dbr` (Skill_BuffRadiusToggled, battlestandard_petskill_default)
+- `records\skills\monster skills\buff_self\tykos_buff_cast.dbr` (Skill_BuffRadius, tykos_buff_cast)
+- `records\skills\spirit\drxpet\drxpet_equipment\skelly_uniquehelm_fx_pointer.dbr` (Skill_BuffRadiusToggled, skelly_uniquehelm_fx_pointer)
+- `records\xpack4\item\miscellaneous\oneshot\potion_of_mastery_applier.dbr` (Skill_BuffRadius, Currently links to shrine buff which lasts 60s)
 
 ---
 
 ## AUDIT (enumeration)
 
-> Template-driven enumeration of every aura-class skill in the effective DB - the ground truth the implementation above was built against. No records were modified by the audit. Draft-proposal column applies the BL-AURA-RADIUS spec rule (party auras -> screen-scale 30-45u, pet auras -> >=15-20u); Will decides.
+> Template-driven enumeration of every aura-class skill in the effective DB - the ground truth the implementation above was built against. No records were modified by the audit. Draft-proposal column applies the BL-AURA-RADIUS spec rule (party auras -> screen-scale 30-45u, pet auras -> >=15-20u), and (round 2) HOLDs offensive PAYLOAD rows (`SkillBuff_Debuf`/`debufSkill=1` behind a friendly delivery); Will decides.
 
 - Effective DB = mod arz OVER base arz (per-record overlay, case-insensitive)
 - mod arz: `C:\Users\willi\repos\tqit_soulvizier_classic\work\SoulvizierClassic\Database\SoulvizierClassic.arz` md5 `b33c5a447f3a8ca652c14f78d4ad1dd4` (build40 GOLDEN)
@@ -506,7 +531,7 @@ Granted by soul rings via itemSkillName/augment.
 | scirtus_fireaura | `records\skills\soulskills\scirtus_fireaura.dbr` | Skill_BuffRadiusToggled (toggle) | 7 (payload) | offensiveSlowFireDurationMax=3; offensiveSlowFireDurationMin=1; offensiveSlowFireMax=15/18/21/24..; offensiveSlowFireMin=9/11/13/15..; offensiveSlowFireModifier=15/24/32/41..<br>_skillCooldownTime=4_ | souls(3): scirtus_soul_e, scirtus_soul_l, scirtus_soul_n | party aura: >= 36 (cur 7) |
 | yeti_freezingblast | `records\skills\soulskills\yeti_freezingblast.dbr` | Skill_AttackBuffRadius (one-shot) | 0 (default-0 (no explicit radius field)) | damageAbsorptionPercent=70; offensiveColdMin=20/30/40<br>_skillActiveDuration=2/2.5/3; skillCooldownTime=0.3/0.2/0.1; skillManaCost=4/5/6_ | souls(3): gargantuanyeti_soul_e, gargantuanyeti_soul_l, gargantuanyeti_soul_n | REVIEW - offensive radius component; widening changes combat power |
 | bladehoning | `records\skills\stealth\bladehoning.dbr` | Skill_BuffRadiusToggled (toggle) | 16 (payload) | offensivePierceMin=4/6/8/10..; offensivePierceRatioModifier=16/24/32/40..<br>_characterManaLimitReserve=50_ | souls(3): qian-zi_soul_e, qian-zi_soul_l, qian-zi_soul_n; items: n_scroll_bladehoning_lvl_1, n_scroll_bladehoning_lvl_10, n_scroll_bladehoning_lvl_11, n_scroll_bladehoning_lvl_12 ...; monster cast x9 | party aura: >= 36 (cur 16) |
-| liferot_soul | `records\skills\sv\haronomi\liferot_soul.dbr` | Skill_BuffRadiusToggled (toggle) | 15 (payload) | offensiveLifeMin=20/40/60/80..; offensiveSlowLifeDurationMin=3; offensiveSlowLifeMin=10/20/30/40..<br>_skillCooldownTime=5_ | souls(3): haronomi_soul_e, haronomi_soul_l, haronomi_soul_n | party aura: >= 36 (cur 15) |
+| liferot_soul | `records\skills\sv\haronomi\liferot_soul.dbr` | Skill_BuffRadiusToggled (toggle) | 15 (payload) | offensiveLifeMin=20/40/60/80..; offensiveSlowLifeDurationMin=3; offensiveSlowLifeMin=10/20/30/40..<br>_skillCooldownTime=5_ | souls(3): haronomi_soul_e, haronomi_soul_l, haronomi_soul_n | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | sunblessing_soul | `records\skills\sv\manetho\sunblessing_soul.dbr` | Skill_BuffRadius (one-shot) | 8 (payload) | damageAbsorption=20; defensiveFear=80; defensiveFire=33/36/39/42..; offensiveFireMax=22/28/34/40..; offensiveFireMin=20/24/28/32..; offensiveFireModifier=24/28/32/36.. +1 more<br>_skillActiveDuration=10; skillCooldownTime=80; skillManaCost=124/128/132/136.._ | souls(3): manetho_soul_e, manetho_soul_l, manetho_soul_n | party aura: >= 36 (cur 8) |
 | menkare_shield_soul | `records\skills\sv\menkare\menkare_shield_soul.dbr` | Skill_BuffRadius (one-shot) | 16 (payload) | damageAbsorptionPercent=30/40/50<br>_petBonusName=records\skills\petbonus\menkare_shield.dbr; skillActiveDuration=10; skillCooldownTime=240; skillManaCost=200/250/300_ | souls(3): menkare_soul_e, menkare_soul_l, menkare_soul_n | party aura: >= 36 (cur 16) |
 | Trance of Wrath | `records\skills\sv\nuying\tranceofwrath.dbr` | Skill_BuffAttackRadiusToggled (toggle) | 2.8-6 | offensiveDisruptionMin=1; offensiveLifeMin=12/24/36/48..; offensiveTotalResistanceReductionPercentDurationMin=1; offensiveTotalResistanceReductionPercentMin=20/22/24/26..<br>_skillCooldownTime=6_ | souls(3): nuying_soul_e, nuying_soul_l, nuying_soul_n; pet cast: nuying_1, nuying_2, nuying_3; monster cast x3 | REVIEW - offensive radius component; widening changes combat power |
@@ -530,7 +555,7 @@ The aura is on the PET's own skill list; the pet is reachable via a mastery/soul
 | Provoke | `records\skills\hunting\pet\drxmonsterlure_skill_attractmonsters.dbr` | Skill_BuffAttackRadiusToggled (toggle) | 5-14 | offensiveTauntMin=10/12/14/16..<br>_skillManaCost=15_ | items: u_l_02, um_n_01; pet cast: monsterlure_01, monsterlure_02, monsterlure_03, monsterlure_04, monsterlure_05 ...; monster cast x10 | REVIEW - offensive radius component; widening changes combat power |
 | battlestandard_petskill_default | `records\skills\monster skills\auras\battlestandard_petskill_default.dbr` | Skill_BuffRadius (one-shot) | 12 (payload) | characterOffensiveAbilityModifier=25; damageAbsorptionPercent=23/26/29/32..; offensiveTotalDamageModifier=35/36/37/38..<br>_skillActiveDuration=20/26/32/38.._ | items: zzz_pandorasbox; pet cast: battlestandard_01, battlestandard_02, battlestandard_03, battlestandard_04, battlestandard_05 ... | party aura: >= 36 (cur 12) |
 | 20% Total Speed + 5% per level for 10 levels. | `records\skills\monster skills\auras\character_speedall.dbr` | Skill_BuffRadiusToggled (toggle) | 8 (payload) | characterTotalSpeedModifier=15/20/25/30..<br>_skillCooldownTime=6_ | items: zzz_pandorasbox; pet cast: bm_deathlance_32, am_champion_29, am_captain_09_ambush, bm_captain_24_ambush, 03_ravager_40; monster cast x142 | party aura: >= 36 (cur 8) |
-| ixion_aura | `records\skills\monster skills\auras\ixion_aura.dbr` | Skill_BuffRadiusToggled (toggle) | 3 (payload) | offensiveLifeLeechMin=50; offensivePercentCurrentLifeMax=10; offensivePercentCurrentLifeMin=7<br>_skillActiveDuration=1; skillCooldownTime=4_ | items: n_mercscroll_ixion; pet cast: merc_ixion; monster cast x1 | party aura: >= 36 (cur 3) |
+| ixion_aura | `records\skills\monster skills\auras\ixion_aura.dbr` | Skill_BuffRadiusToggled (toggle) | 3 (payload) | offensiveLifeLeechMin=50; offensivePercentCurrentLifeMax=10; offensivePercentCurrentLifeMin=7<br>_skillActiveDuration=1; skillCooldownTime=4_ | items: n_mercscroll_ixion; pet cast: merc_ixion; monster cast x1 | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | 20% Total Speed + 5% per level for 10 levels. | `records\skills\monster skills\auras\skoneros_aura.dbr` | Skill_BuffRadiusToggled (toggle) | 10 (payload) | characterLifeRegen=4/5/6/7..; offensiveFireMin=12/18/24/30..; offensiveSlowPoisonDurationMin=3; offensiveSlowPoisonMin=9/14/19/24..<br>_skillCooldownTime=6_ | items: n_mercscroll_skoneros; pet cast: merc_skoneros | party aura: >= 36 (cur 10) |
 | ixion_battlestandard_aura | `records\skills\monster skills\buff_other\ixion_battlestandard_aura.dbr` | Skill_BuffRadius (one-shot) | 12 (payload) | offensiveLifeLeechMin=10; offensiveLifeMin=50<br>_skillActiveDuration=20/26/32/38.._ | items: n_mercscroll_ixion; pet cast: ixion_standard | party aura: >= 36 (cur 12) |
 | monster_callofthehunt | `records\skills\monster skills\buff_self\monster_callofthehunt.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | characterAttackSpeedModifier=33<br>_skillCooldownTime=180; skillManaCost=110_ | items: u_l_summonerstrinket; pet cast: summonerstrinket_mummyguardian_19; monster cast x11 | party aura: >= 36 (cur 10) |
@@ -543,7 +568,7 @@ The aura is on the PET's own skill list; the pet is reachable via a mastery/soul
 | 5/lvl | `records\xpack2\skills\boss skills\thrym1_freezeaura.dbr` | Skill_BuffAttackRadiusDuration (one-shot) | 10 | offensiveFearChance=3; offensiveFearMin=1; offensiveSlowColdDurationMin=2; offensiveSlowColdMin=5/10/15/20..; offensiveSlowTotalSpeedDurationMin=2; offensiveSlowTotalSpeedMin=22/24/26/28..<br>_skillActiveDuration=6_ | items: dev_bow, dev_staff, dev_sword; pet cast: x2q05_thrym_a_49, x2q05_thrym_b_49; monster cast x6 | REVIEW - offensive radius component; widening changes combat power |
 | infernal_enchantment | `records\xpack2\skills\monster skills\buff_self\infernal_enchantment.dbr` | Skill_BuffRadiusToggled (toggle) | 6-15 (payload) | offensiveFireMax=8; offensiveFireMin=5; offensiveFireModifier=12/20/28/36..; offensiveSlowFireModifier=12/20/28/36..<br>_characterManaLimitReserve=75; skillCooldownTime=4_ | items: dev_bow, dev_staff, dev_sword; pet cast: x2q07_surtrmistress_52; monster cast x5 | party aura: >= 36 (cur 15) |
 | servantofanubis_mummifiedpriest_aura | `records\xpack4\skills\artifact skills\servantofanubis_mummifiedpriest_aura.dbr` | Skill_BuffRadiusToggled (toggle) | 12 (payload) | offensiveFearChance=5; offensiveFearMax=2; offensiveFearMin=1; offensiveSlowColdDurationMin=3; offensiveSlowColdMax=40; offensiveSlowColdMin=20 +6 more | items: l_da_essenceofanubishaste; pet cast: servantofanubis_mummifiedpriest | party aura: >= 36 (cur 12) |
-| hawklegionswarkhopehs_twisteraura | `records\xpack4\skills\item skills\hawklegionswarkhopehs_twisteraura.dbr` | Skill_BuffRadiusToggled (toggle) | 10 (payload) | offensivePhysicalMax=160; offensivePhysicalMin=125; offensiveSlowTotalSpeedDurationMin=3; offensiveSlowTotalSpeedMin=30 | items: u_l_hawklegionswarkhopesh; pet cast: hawklegionswarkhopesh_twister_pet | party aura: >= 36 (cur 10) |
+| hawklegionswarkhopehs_twisteraura | `records\xpack4\skills\item skills\hawklegionswarkhopehs_twisteraura.dbr` | Skill_BuffRadiusToggled (toggle) | 10 (payload) | offensivePhysicalMax=160; offensivePhysicalMin=125; offensiveSlowTotalSpeedDurationMin=3; offensiveSlowTotalSpeedMin=30 | items: u_l_hawklegionswarkhopesh; pet cast: hawklegionswarkhopesh_twister_pet | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | enchantment_chaosblade | `records\xpack4\skills\monster skills\buff_self\enchantment_chaosblade.dbr` | Skill_BuffRadiusToggled (toggle) | 6-15 (payload) | offensiveFireMax=8; offensiveFireMin=5; offensiveFireModifier=50; offensiveLightningMax=8; offensiveLightningMin=5; offensiveLightningModifier=145 +5 more<br>_characterManaLimitReserve=75; skillCooldownTime=4_ | items: medusa_staff_skilltest, u_l_medusasanguish; pet cast: medusa'sanguish_gorgonguard_summonedpet; monster cast x4 | party aura: >= 36 (cur 15) |
 | enchantment_spiritblade | `records\xpack4\skills\monster skills\buff_self\enchantment_spiritblade.dbr` | Skill_BuffRadiusToggled (toggle) | 6-15 (payload) | offensiveColdMax=8; offensiveColdMin=5; offensiveColdModifier=50; offensiveFireModifier=50; offensivePoisonMax=8; offensivePoisonMin=5 +5 more<br>_characterManaLimitReserve=75; skillCooldownTime=4_ | items: u_l_summonerstrinket; pet cast: summonerstrinket_mummyguardian_19; monster cast x5 | party aura: >= 36 (cur 15) |
 | ascacophus_roar | `records\xpack\skills\monsterskills\buffs and healing\ascacophus_roar.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | characterAttackSpeedModifier=33; offensivePhysicalModifier=80/82/84/86..<br>_skillActiveDuration=12_ | items: zzz_pandorasbox; pet cast: am_ascacophus_36; monster cast x13 | party aura: >= 36 (cur 10) |
@@ -595,22 +620,22 @@ The aura is on the PET's own skill list; the pet is reachable via a mastery/soul
 | Currently links to shrine buff which lasts 60s | `records\xpack4\item\miscellaneous\oneshot\potion_of_mastery_applier.dbr` | Skill_BuffRadius (one-shot) | 0 (default-0 (no explicit radius field)) | _skillActiveDuration=60_ | items: x4pot_stoneofmastery01 | party aura: >= 36 (cur 0) |
 | abdicate | `records\xpack4\skills\artifact skills\abdicate.dbr` | Skill_BuffRadiusToggled (toggle) | 10 (payload) | offensivePercentCurrentLifeMin=10; offensiveSlowRunSpeedDurationMin=2; offensiveSlowRunSpeedMin=35<br>**NEG: defensivePhysical=-30**<br>_skillActiveDuration=1_ | items: l_da_envyofsett | HOLD - malus is aura-wide; widening spreads it (Will decision) |
 | Ares' Retreat | `records\xpack4\skills\item skills\aresretreat_aura.dbr` | Skill_BuffAttackRadiusToggled (toggle) | 2.8-6 | characterTotalSpeedModifier=20; offensiveSlowBleedingDurationMin=4; offensiveSlowBleedingMin=106/112/120/130..<br>**NEG: characterLifeRegen=-10** | items: ares'weakness_shield_skilltest, u_l_aresweakness | HOLD - malus is aura-wide; widening spreads it (Will decision) |
-| bloodoath_bloodpact | `records\xpack4\skills\item skills\bloodoath_bloodpact.dbr` | Skill_BuffRadiusToggled (toggle) | 4 (payload) | offensiveSlowBleedingDurationMax=3; offensiveSlowBleedingDurationMin=1; offensiveSlowBleedingMax=150; offensiveSlowBleedingMin=75<br>_characterManaLimitReserve=150; skillCooldownTime=15_ | items: u_l_bloodoath | party aura: >= 36 (cur 4) |
-| gatesofhell_quillvine_rootaura | `records\xpack4\skills\item skills\gatesofhell_quillvine_rootaura.dbr` | Skill_BuffRadiusToggled (toggle) | 3 (payload) | characterDeflectProjectile=5; offensiveSlowLifeLeachChance=10; offensiveSlowLifeLeachDurationMin=1; offensiveSlowLifeLeachMin=40; offensiveSlowManaLeachChance=10; offensiveSlowManaLeachDurationMin=1 +2 more<br>_skillCooldownTime=5_ | items: u_l_gatesofhell | party aura: >= 36 (cur 3) |
-| scrollskill_ancestralfavor | `records\xpack4\skills\scroll skills\scrollskill_ancestralfavor.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveSlowColdDurationMin=4; offensiveSlowColdMin=80<br>_skillActiveDuration=4_ | items: 03_ancestralfavour | party aura: >= 36 (cur 10) |
+| bloodoath_bloodpact | `records\xpack4\skills\item skills\bloodoath_bloodpact.dbr` | Skill_BuffRadiusToggled (toggle) | 4 (payload) | offensiveSlowBleedingDurationMax=3; offensiveSlowBleedingDurationMin=1; offensiveSlowBleedingMax=150; offensiveSlowBleedingMin=75<br>_characterManaLimitReserve=150; skillCooldownTime=15_ | items: u_l_bloodoath | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
+| gatesofhell_quillvine_rootaura | `records\xpack4\skills\item skills\gatesofhell_quillvine_rootaura.dbr` | Skill_BuffRadiusToggled (toggle) | 3 (payload) | characterDeflectProjectile=5; offensiveSlowLifeLeachChance=10; offensiveSlowLifeLeachDurationMin=1; offensiveSlowLifeLeachMin=40; offensiveSlowManaLeachChance=10; offensiveSlowManaLeachDurationMin=1 +2 more<br>_skillCooldownTime=5_ | items: u_l_gatesofhell | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
+| scrollskill_ancestralfavor | `records\xpack4\skills\scroll skills\scrollskill_ancestralfavor.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveSlowColdDurationMin=4; offensiveSlowColdMin=80<br>_skillActiveDuration=4_ | items: 03_ancestralfavour | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | Redirects to the Healing Cascade Buff | `records\xpack\skills\artifactskills\e_da_knotofisis_healingcascade.dbr` | Skill_BuffRadius (one-shot) | 15 (payload) | skillLifeBonus=10000<br>_skillActiveDuration=1; skillCooldownTime=240_ | items: e_da_knotofisis | party aura: >= 36 (cur 15) |
 | Buff Radius to reference Lion's Roar Buff | `records\xpack\skills\artifactskills\e_ga_lionheart_lionsroar.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | characterAttackSpeedModifier=50; characterDefensiveAbility=150; characterLifeRegen=100; defensiveProtection=50; offensiveTotalDamageModifier=50<br>_skillActiveDuration=10; skillCooldownTime=120_ | items: e_ga_lionheart | party aura: >= 36 (cur 10) |
 | Redirects to the MauDuyhn Buff | `records\xpack\skills\artifactskills\l_da_talismanofthejadeemperor_mauduyhn.dbr` | Skill_BuffRadius (one-shot) | 15 (payload) | characterDeflectProjectile=100; defensiveElementalResistance=300<br>_skillActiveDuration=10; skillCooldownTime=200_ | items: l_da_talismanofthejadeemperor | party aura: >= 36 (cur 15) |
 | tranceofempathy | `records\xpack\skills\dream\tranceofempathy.dbr` | Skill_BuffRadiusToggled (toggle) | 12 (payload) | defensiveReflect=15/18/21/24..; offensiveLifeLeechMax=10; offensiveLifeLeechMin=3 | items: u_e_01; monster cast x8 | party aura: >= 36 (cur 12) |
-| 01_crushingvortex | `records\xpack\skills\scroll skills\01_crushingvortex.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveColdMin=10; offensiveFireMin=10; offensiveLightningMin=10; offensivePhysicalMin=70<br>_skillActiveDuration=45_ | items: 01_crushingvortex | party aura: >= 36 (cur 10) |
+| 01_crushingvortex | `records\xpack\skills\scroll skills\01_crushingvortex.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveColdMin=10; offensiveFireMin=10; offensiveLightningMin=10; offensivePhysicalMin=70<br>_skillActiveDuration=45_ | items: 01_crushingvortex | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | 01_unbreakablealliance | `records\xpack\skills\scroll skills\01_unbreakablealliance.dbr` | Skill_BuffRadius (one-shot) | 16 (payload) | defensiveProtection=35; offensivePhysicalMin=35<br>_skillActiveDuration=90_ | items: 01_unbreakablealliance | party aura: >= 36 (cur 16) |
-| 02_crushingvortex | `records\xpack\skills\scroll skills\02_crushingvortex.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveColdMin=20; offensiveFireMin=20; offensiveLightningMin=20; offensivePhysicalMin=150<br>_skillActiveDuration=45_ | items: 02_crushingvortex | party aura: >= 36 (cur 10) |
+| 02_crushingvortex | `records\xpack\skills\scroll skills\02_crushingvortex.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveColdMin=20; offensiveFireMin=20; offensiveLightningMin=20; offensivePhysicalMin=150<br>_skillActiveDuration=45_ | items: 02_crushingvortex | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | 02_unbreakablealliance | `records\xpack\skills\scroll skills\02_unbreakablealliance.dbr` | Skill_BuffRadius (one-shot) | 16 (payload) | defensiveProtection=90; offensivePhysicalMin=90<br>_skillActiveDuration=90_ | items: 02_unbreakablealliance | party aura: >= 36 (cur 16) |
-| 02x_earthquake | `records\xpack\skills\scroll skills\02x_earthquake.dbr` | Skill_BuffRadius (one-shot) | 23 (payload) | offensivePhysicalMin=375; offensiveStunChance=25; offensiveStunMin=3<br>_skillActiveDuration=10_ | items: 02x_earthquake | party aura: >= 36 (cur 23) |
-| 03_crushingvortex | `records\xpack\skills\scroll skills\03_crushingvortex.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveColdMin=30; offensiveFireMin=30; offensiveLightningMin=30; offensivePhysicalMin=225<br>_skillActiveDuration=45_ | items: 03_crushingvortex | party aura: >= 36 (cur 10) |
+| 02x_earthquake | `records\xpack\skills\scroll skills\02x_earthquake.dbr` | Skill_BuffRadius (one-shot) | 23 (payload) | offensivePhysicalMin=375; offensiveStunChance=25; offensiveStunMin=3<br>_skillActiveDuration=10_ | items: 02x_earthquake | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
+| 03_crushingvortex | `records\xpack\skills\scroll skills\03_crushingvortex.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveColdMin=30; offensiveFireMin=30; offensiveLightningMin=30; offensivePhysicalMin=225<br>_skillActiveDuration=45_ | items: 03_crushingvortex | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 | 03_unbreakablealliance | `records\xpack\skills\scroll skills\03_unbreakablealliance.dbr` | Skill_BuffRadius (one-shot) | 16 (payload) | defensiveProtection=150; offensivePhysicalMin=150<br>_skillActiveDuration=90_ | items: 03_unbreakablealliance | party aura: >= 36 (cur 16) |
-| 03x_magebane | `records\xpack\skills\scroll skills\03x_magebane.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveManaBurnDamageRatio=200; offensiveManaBurnDrainMin=30<br>_skillActiveDuration=60; skillCooldownTime=8_ | items: 03x_magebane | party aura: >= 36 (cur 10) |
-| 03x_maddenedgod_aura | `records\xpack\skills\scroll skills\pets\03x_maddenedgod_aura.dbr` | Skill_BuffRadiusToggled (toggle) | 7 (payload) | offensiveLifeMin=350 | items: 03x_maddenedgod | party aura: >= 36 (cur 7) |
+| 03x_magebane | `records\xpack\skills\scroll skills\03x_magebane.dbr` | Skill_BuffRadius (one-shot) | 10 (payload) | offensiveManaBurnDamageRatio=200; offensiveManaBurnDrainMin=30<br>_skillActiveDuration=60; skillCooldownTime=8_ | items: 03x_magebane | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
+| 03x_maddenedgod_aura | `records\xpack\skills\scroll skills\pets\03x_maddenedgod_aura.dbr` | Skill_BuffRadiusToggled (toggle) | 7 (payload) | offensiveLifeMin=350 | items: 03x_maddenedgod | HOLD - offensive PAYLOAD (SkillBuff_Debuf/debufSkill); widening = damage/debuf reach (Will decision) |
 
 ## Monster-only auras (enemy power - default NO CHANGE) (143)
 
