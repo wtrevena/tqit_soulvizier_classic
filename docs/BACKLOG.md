@@ -2192,6 +2192,29 @@ turtle shell."
   validate_tags + contracts green; dry-run replay intended-records-only; Will fresh-drop verify
   (TQ bakes item properties at pickup - test with a freshly dropped relic).
 
+## QUEUED FEATURE: NEW-HERO-WARCAMP-SKELETON (APPROVED by Will 2026-07-14, not yet scheduled)
+Will (verbatim): "add a new uber hero (new skeleton staged uber hero (kill him multiple times like
+the legion monster) each time he respawns he gets bigger and stronger and new skills, give him 3
+stages. this new uber hero will go in the back corner of the Upper War-Camp before Medusa."
+- **Mechanism donor:** the Legion multi-stage death-transform chain - ground-truth it from
+  docs/reports/b56_legion_soul_stages.md (the 2026-07-14 Legion lane mapped the exact stage-chain
+  wiring) and clone that proven shape. THREE stages: each death spawns the next form.
+- **Escalation per stage:** bigger (scale, mind interior ceiling-clip headroom per the
+  Ephialtes/Mnemophage lesson), stronger (HP/damage stepped up), and NEW skills each stage
+  (donor-based, proven-shape, boss_skill_fix discipline: must actually cast; stage 3 = the full
+  crazy kit). Skeleton rig family; amgoz1-bar identity (a thrice-risen war-camp revenant class
+  concept; name/lore flagged for Will veto).
+- **SOUL LAW (hard):** soul drops ONLY on the FINAL (3rd) stage - must pass the
+  legion_soul_stages verify gate (no chain with >1 soul-bearing stage). 3-tier soul, granted
+  skill = his identity.
+- **Placement:** the BACK CORNER of the Upper War-Camp (Greece, before Medusa/the Gorgons) -
+  navmesh survey for the deepest on-mesh pocket with clearance for the LARGEST (stage 3) form,
+  q_<boss>_lone single-spawn proxy, landing-clearance + containment gates; verify the stage
+  respawns happen in place (the chain spawns at death location - confirm clearance holds).
+- **Rewards:** 3-tier soul + 3 region-tuned Majestic Chests (b42 standard, Greece-tuned).
+- **Standard lanes:** DB registry module; tags via manifest; INJECT_SPECS; full gate battery;
+  Will fresh-char verify on DEV.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
