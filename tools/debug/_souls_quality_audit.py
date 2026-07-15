@@ -582,6 +582,7 @@ def main():
 
         F['tiers'][tier] = {'ev': ev, 'problems': problems, 'minors': minors,
                             'infos': infos,
+                            'item_level': nval(fd, 'itemSkillLevel'),
                             'aug_levels': [nval(fd, f'augmentSkillLevel{k}')
                                            for k in (1, 2, 3, 4)
                                            if sval(fd, f'augmentSkillName{k}')]}
@@ -668,6 +669,22 @@ def main():
                         fam_problems.append(
                             f'AUGMENT-LEVEL-TIER-INVERSION:n/e/l={vals}')
                         break
+        except Exception:
+            pass
+        # itemSkillLevel (granted-skill) tier inversion - only meaningful when the
+        # SAME grant is present in all 3 tiers (a per-level-scaled skill granted at
+        # a LOWER level on the higher-rarity ring). This class is separate from the
+        # augment-level inversion above; the v1 detector missed itemSkillLevel-only
+        # inversions (e.g. spider\bloodtip_soul 5/1/9, vulture\gustleech_soul 10/4/7).
+        try:
+            if all(t in F['tiers'] for t in ('n', 'e', 'l')):
+                grants = [_norm(F['tiers'][t]['ev'].get('granted') or '')
+                          for t in ('n', 'e', 'l')]
+                ilv = [F['tiers'][t].get('item_level') for t in ('n', 'e', 'l')]
+                if all(grants) and len(set(grants)) == 1 and None not in ilv \
+                        and not (ilv[0] <= ilv[1] <= ilv[2]):
+                    fam_problems.append(
+                        f'GRANT-LEVEL-TIER-INVERSION:n/e/l={ilv}')
         except Exception:
             pass
 

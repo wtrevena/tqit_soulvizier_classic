@@ -28,24 +28,34 @@
 > (`scratchpad/ridx_proto.py`, 25 seeds + 5 edge classes) and real-ArzDatabase integration-tested vs a reference copy of
 > the original scans. Files: `tools/apply_svc_patches.py`, `tools/arz_patcher.py`.
 
-> 💠 **SOULS-QUALITY ROUND-1 (2026-07-14, `feat/souls-quality`, NOT yet integrated) - backlog #31.** New registry
+> 💠 **SOULS-QUALITY ROUND-1+2 (2026-07-14, `feat/souls-quality`, NOT yet integrated) - backlog #31.** New registry
 > module `tools/patches/souls_quality.py` (position 13, after `boss_skill_fix`, before `visuals`) fixes the audit's
-> (`docs/reports/souls_quality_audit.md`) real defects, all inside the mod-generated `svc_uber` namespace. **FIXED:**
-> (P1) the 3 DEFICIENT souls where Legendary was WEAKER than Epic - `crowboar`/`onyxspine`/`steamcrawler` `_soul_l`
-> augment levels (and crowboar's granted-skill level) raised 1 -> 3 so n/e/l = **1/2/3** (matches healthy
-> bloodrunner/xix); root cause = `_DIFF_SCALE` 0/0/1 + the B-SOUL-PROC-1 backstop bumping only n/e. (P2-b) the
-> svc_uber e/l per-tier icon law - 108 rings across **54 families** had `soul_n_icon` on Epic+Legendary; rewritten to
-> `soul_e/soul_l_icon` (textures already in SVItems.arc). `verify()` is fail-loud + roster-wide (tier monotonicity
-> n<=e<=l + per-tier icon), so the class can't silently regress. **DISJOINT** from every other module (module-authored
-> svc_uber souls already obey both laws; 0 touched records are Occult/Hunting/kallixenia/pharaoh). **VERIFY (no heavy
-> build):** dry-run replay `tools/debug/souls_quality_replay.py` vs build40 GOLDEN `b33c5a44` = intended-only diff
-> (exactly 108 records = 54 e + 54 l), field-minimal, correct, verify OK, idempotent, 2 negative tests PASS; soul
-> contracts on the patched arz `validate_soul_augments` + `validate_summon_pets` + `validate_tags` all **PASS** (== baseline,
-> zero regression); py_compile + `_check_registry` (14 modules, order `39d94e32`) OK. **NOT auto-applied (Will decisions):**
-> P2-a Tomb Guardian obtainability (ground truth: `um_tombguardian_26` is a genuine COMMON 609-HP Anubis Hound in mummy
-> packs, NOT a mis-set uber - reclassifying to Hero is a balance change), P2-c nymph icons (integrate `feat/b40-soul-icons`
-> 9db3f5f). **P2-d Soulfeeder pet = AUDIT FALSE POSITIVE** (bonepet20 already casts `bonescourge_spiritbreath`). Report:
-> `docs/reports/souls_quality_fix.md`. Ships in a later integration build.
+> (`docs/reports/souls_quality_audit.md`) real defects. **FIXED - ALL 5 tier inversions** (higher rarity strictly weaker
+> than a lower rarity on the SAME skill), all raise-only: (P1, 3 mod-generated svc_uber) `crowboar`/`onyxspine`/
+> `steamcrawler` `_soul_l` augment levels (+ crowboar's grant level) raised 1 -> 3 so n/e/l = **1/2/3** (matches healthy
+> bloodrunner/xix); root cause = `_DIFF_SCALE` 0/0/1 + the B-SOUL-PROC-1 backstop bumping only n/e. (P1, round-2, 2
+> SV-inherited that the round-0 audit MISSED - v1 detector only checked augment levels, never itemSkillLevel)
+> `spider\bloodtip_soul` grant `bloodtip_devour` 5/**1**/9 -> **5/7/9** and `vulture\gustleech_soul` grant
+> `leechstrike_soul` 10/**4**/**7** -> **10/12/14**; both obtainable Hero souls (66% finger2), grant NAMES preserved.
+> (P2-b) svc_uber e/l per-tier icon law - 108 rings / **54 families** had `soul_n_icon` on Epic+Legendary; rewritten to
+> `soul_e/soul_l_icon`. `verify()` is fail-loud + **ROSTER-WIDE** (tier monotonicity n<=e<=l on augment AND grant levels,
+> same-skill-name-guarded, EVERY soul family - widened from round-1's svc_uber-only scope so the class can't recur
+> anywhere; + svc_uber per-tier icon). **DISJOINT**: 0 of the 111 touched records hit Occult/Hunting/mastery/kallixenia/
+> pharaoh/abyssalliche, 0 hit `corpsemanager` (skill_quality reassigns corpsemanager's GRANT to the `bloodtip_devour`
+> *skill*, a different record from our `bloodtip_soul` *ring*). **⚠️ WILL VETO:** bloodtip/gustleech itemSkillLevel arrays
+> are byte-identical to SV 0.98i - fixing them diverges from SV data (judged amgoz1 oversight: every OTHER field tiers
+> upward correctly); revert `_SV_INVERSION_FIX` if SV numbers are sacrosanct. **VERIFY (no heavy build):** dry-run replay
+> `tools/debug/souls_quality_replay.py` vs build40 GOLDEN `b33c5a44` = intended-only diff **exactly 111** (108 icons + 3
+> new SV level records), field-minimal, all 5 families monotonic, verify OK, idempotent, **3 negative tests** PASS
+> (svc_uber + NON-svc_uber inversion + wrong icon); patched-arz contracts `validate_soul_augments` PASS(0/0),
+> `validate_summon_pets` 3-arg PASS (single-arg exit=1 is pre-existing noise, byte-identical baseline-vs-patched),
+> `validate_tags` PASS-by-construction - all == baseline, zero regression; py_compile + `_check_registry` (14 modules,
+> order `39d94e32`) OK. Audit re-graded DEFICIENT 3 -> 5; the audit probe's detector now catches itemSkillLevel-only
+> inversions (`GRANT-LEVEL-TIER-INVERSION`). **NOT auto-applied (Will decisions):** P2-a Tomb Guardian obtainability
+> (`um_tombguardian_26` = genuine COMMON 609-HP Anubis Hound, reclassifying to Hero is a balance change), P2-c nymph icons
+> (integrate `feat/b40-soul-icons` 9db3f5f). **P2-d Soulfeeder pet = AUDIT FALSE POSITIVE** (bonepet20 already casts
+> `bonescourge_spiritbreath`). Reports: `docs/reports/souls_quality_fix.md` + `souls_quality_audit.md`. Ships in a later
+> integration build.
 
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
@@ -2167,8 +2177,9 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   tools/build_text_arc.py + add tagMasteryDescription05 Occult copy (Will signs off wording) + a
   fail-loud duplicate-tag gate. Owned by the 2026-07-08 DB wave. The in-tree name is correct;
   other masteries are unaffected (single definitions).
-- Souls quality pass vs SV originals (#31) - **ROUND 1 FIXED on `feat/souls-quality`** (module
-  `tools/patches/souls_quality.py`; see SOULS-QUALITY ROUND-1 record above + `docs/reports/souls_quality_fix.md`).
+- Souls quality pass vs SV originals (#31) - **ROUND 1+2 FIXED on `feat/souls-quality`** (module
+  `tools/patches/souls_quality.py`; all 5 roster tier inversions + svc_uber icons; roster-wide verify;
+  see SOULS-QUALITY ROUND-1+2 record above + `docs/reports/souls_quality_fix.md`). Awaiting integration.
   Fixed: the 3 DEFICIENT svc_uber souls (crowboar/onyxspine/steamcrawler - Legendary weaker than Epic; L-tier
   augment/grant -> 3, now n/e/l=1/2/3) + the 54-family svc_uber e/l per-tier icon law (108 rings). Contracts +
   dry-run replay green; ships in a later integration build. RESIDUAL (Will decisions, not auto-applied): P2-a Tomb

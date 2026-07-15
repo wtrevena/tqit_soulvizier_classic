@@ -3,16 +3,18 @@ r"""Dry-run replay + fail-loud proof for tools/patches/souls_quality.py (no heav
 Applies souls_quality over a COPY (in-memory) of a built .arz - the FINAL
 post-monolith+registry state the module sees at run time - and proves:
   1. INTENDED-ONLY DIFF: db._modified after apply() == exactly the predicted set
-     (the wrong-icon svc_uber e/l rings; the 3 DEFICIENT _l souls are a subset).
+     (the wrong-icon svc_uber e/l rings UNION the 5 tier-inversion level-fix
+     records).
   2. FIELD-LEVEL MINIMALITY: each touched record changed ONLY its bitmap (icon
-     rings) and/or the intended L-tier level fields (the 3 deficient souls);
-     every other field byte-identical.
-  3. CORRECTNESS: the 3 deficient souls now run n<=e<=l; every e/l ring shows its
-     own tier icon.
-  4. verify() passes (roster-wide monotonicity + icon gates).
+     rings) and/or the intended level fields (the inversion fixes); every other
+     field byte-identical.
+  3. CORRECTNESS: all 5 inverted families now run n<=e<=l on the fixed field(s);
+     every svc_uber e/l ring shows its own tier icon.
+  4. verify() passes (roster-wide monotonicity + svc_uber icon gates).
   5. IDEMPOTENCY: a 2nd apply() touches nothing new.
-  6. NEGATIVE: verify() fail-louds on an injected inversion AND on an injected
-     wrong-tier icon.
+  6. NEGATIVE: verify() fail-louds on an injected svc_uber inversion, on an
+     injected NON-svc_uber (roster-wide) inversion, AND on an injected wrong-tier
+     icon.
 
 Usage:  py tools/debug/souls_quality_replay.py <built.arz>
 Read-only against the input file (loads into memory; never writes the arz).
@@ -55,16 +57,21 @@ def main():
             m = SQ._SOUL_ICON_RE.search(bmp)
             if m and m.group(1) != tier:
                 predicted_icon.add(rec)
-    deficient_recs = {nm[_n(p)] for p in SQ._DEFICIENT_L_FIX}
-    predicted = set(predicted_icon)          # deficient _l are a subset of the wrong-icon set
+    # level-fix records that will actually change (raise-only: cur < target)
+    level_recs = {}               # rec -> {field: target}
+    for path, fields in SQ._LEVEL_FIX.items():
+        rec = nm[_n(path)]
+        eff = {f: t for f, t in fields.items()
+               if (SQ._ival(db, rec, f) or 0) < t}
+        if eff:
+            level_recs[rec] = eff
+    predicted = set(predicted_icon) | set(level_recs)
     print("predicted wrong-icon e/l rings : %d" % len(predicted_icon))
-    print("deficient _l records           : %d (%s)"
-          % (len(deficient_recs), ', '.join(sorted(r.rsplit('\\', 1)[-1] for r in deficient_recs))))
-    print("deficient subset of icon set   : %s" % deficient_recs.issubset(predicted_icon))
+    print("level-fix records (raise-only) : %d (%s)"
+          % (len(level_recs), ', '.join(sorted(r.rsplit('\\', 1)[-1] for r in level_recs))))
+    print("predicted total touched        : %d" % len(predicted))
 
     before = {rec: snap_fields(db, rec) for rec in predicted}
-    for rec in deficient_recs:
-        before.setdefault(rec, snap_fields(db, rec))
 
     mod0 = set(db._modified)
     print('\n########## APPLY ##########')
@@ -85,7 +92,7 @@ def main():
         print('    !!! predicted but NOT touched:', missing[:12])
     ok = ok and diff_only
 
-    # (2) field-level minimality + (3) correctness
+    # (2) field-level minimality + (3) icon correctness
     ICON = 'SVItems\\jewelry\\soul_%s_icon.tex'
     field_ok = True
     for rec in delta:
@@ -94,10 +101,9 @@ def main():
         aft = snap_fields(db, rec)
         bef = before.get(rec, {})
         changed = {f for f in set(aft) | set(bef) if aft.get(f) != bef.get(f)}
-        allowed = {'bitmap'}
-        if rec in deficient_recs:
-            allowed |= set(SQ._DEFICIENT_L_FIX[
-                next(p for p in SQ._DEFICIENT_L_FIX if _n(p) == nn)])
+        allowed = set(level_recs.get(rec, {}))
+        if rec in predicted_icon:
+            allowed |= {'bitmap'}
         stray = changed - allowed
         if stray:
             field_ok = False
@@ -113,28 +119,37 @@ def main():
     print('[2/3] FIELD MINIMALITY + icon correctness: %s' % field_ok)
     ok = ok and field_ok
 
-    # (3b) deficient monotonicity now holds
+    # (3b) every fixed family's fixed field(s) now monotonic n<=e<=l
+    print('\n[3b] fixed-family monotonicity')
     mono_ok = True
-    for rec in sorted(deficient_recs):
-        fam = re.search(r'\\svc_uber\\(.+?)_soul_l\.dbr$', _n(rec)).group(1)
-        rn = {t: nm[_n(r'records\item\equipmentring\soul\svc_uber\%s_soul_%s.dbr' % (fam, t))]
-              for t in ('n', 'e', 'l')}
-        for k in (1, 2):
-            lv = [SQ._ival(db, rn[t], 'augmentSkillLevel%d' % k) for t in ('n', 'e', 'l')]
-            good = lv[0] <= lv[1] <= lv[2] and lv[2] >= 3
-            mono_ok = mono_ok and good
-            print('    %-14s augmentSkillLevel%d n/e/l=%s  %s'
-                  % (fam, k, lv, 'OK' if good else 'FAIL'))
-        if SQ._sval(db, rn['l'], 'itemSkillName'):
-            lv = [SQ._ival(db, rn[t], 'itemSkillLevel') for t in ('n', 'e', 'l')]
-            good = lv[0] <= lv[1] <= lv[2]
-            mono_ok = mono_ok and good
-            print('    %-14s itemSkillLevel     n/e/l=%s  %s'
-                  % (fam, lv, 'OK' if good else 'FAIL'))
+
+    def fam_levels(fam_dir_stem, field):
+        rn = {t: nm[_n(r'records\item\equipmentring\soul\%s_%s.dbr'
+                       % (fam_dir_stem, t))] for t in ('n', 'e', 'l')}
+        return [SQ._ival(db, rn[t], field) for t in ('n', 'e', 'l')]
+
+    checks = [
+        ('svc_uber\\crowboar_soul', 'augmentSkillLevel1'),
+        ('svc_uber\\crowboar_soul', 'augmentSkillLevel2'),
+        ('svc_uber\\crowboar_soul', 'itemSkillLevel'),
+        ('svc_uber\\onyxspine_soul', 'augmentSkillLevel1'),
+        ('svc_uber\\onyxspine_soul', 'augmentSkillLevel2'),
+        ('svc_uber\\onyxspine_soul', 'itemSkillLevel'),
+        ('svc_uber\\steamcrawler_soul', 'augmentSkillLevel1'),
+        ('svc_uber\\steamcrawler_soul', 'augmentSkillLevel2'),
+        ('spider\\bloodtip_soul', 'itemSkillLevel'),
+        ('vulture\\gustleech_soul', 'itemSkillLevel'),
+    ]
+    for stem, field in checks:
+        lv = fam_levels(stem, field)
+        good = None not in lv and lv[0] <= lv[1] <= lv[2]
+        mono_ok = mono_ok and good
+        print('    %-28s %-20s n/e/l=%s  %s'
+              % (stem, field, lv, 'OK' if good else 'FAIL'))
     ok = ok and mono_ok
 
     # (4) verify()
-    print('\n[4] verify() (roster-wide monotonicity + icon gates)')
+    print('\n[4] verify() (roster-wide monotonicity + svc_uber icon gates)')
     try:
         SQ.verify(db, {})
         verify_ok = True
@@ -154,24 +169,36 @@ def main():
 
     # (6) negative tests
     print('\n[6] NEGATIVE TESTS')
+    # (6a) svc_uber inversion
     crow_l = nm[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_l.dbr')]
-    db.set_field(crow_l, 'augmentSkillLevel1', 1)          # re-introduce inversion
-    caught_inv = False
+    db.set_field(crow_l, 'augmentSkillLevel1', 1)
+    caught_uber = False
     try:
         SQ.verify(db, {})
     except SystemExit as e:
-        caught_inv = 'INVERSION' in str(e)
-        print('    inversion -> verify RAISED:', caught_inv)
-    db.set_field(crow_l, 'augmentSkillLevel1', 3)          # restore
+        caught_uber = 'INVERSION' in str(e)
+        print('    svc_uber inversion   -> verify RAISED:', caught_uber)
+    db.set_field(crow_l, 'augmentSkillLevel1', 3)
+    # (6b) NON-svc_uber (roster-wide) inversion - proves the widening
+    blt_e = nm[_n(r'records\item\equipmentring\soul\spider\bloodtip_soul_e.dbr')]
+    db.set_field(blt_e, 'itemSkillLevel', 1)          # re-introduce SV inversion
+    caught_roster = False
+    try:
+        SQ.verify(db, {})
+    except SystemExit as e:
+        caught_roster = 'INVERSION' in str(e) and 'bloodtip' in str(e)
+        print('    NON-svc_uber inversion-> verify RAISED (names bloodtip):', caught_roster)
+    db.set_field(blt_e, 'itemSkillLevel', 7)          # restore
+    # (6c) wrong-tier icon
     crow_e = nm[_n(r'records\item\equipmentring\soul\svc_uber\crowboar_soul_e.dbr')]
-    db.set_field(crow_e, 'bitmap', 'SVItems\\jewelry\\soul_n_icon.tex')  # wrong-tier icon
+    db.set_field(crow_e, 'bitmap', 'SVItems\\jewelry\\soul_n_icon.tex')
     caught_icon = False
     try:
         SQ.verify(db, {})
     except SystemExit as e:
         caught_icon = 'wrong-tier soul' in str(e)
-        print('    wrong icon -> verify RAISED:', caught_icon)
-    ok = ok and caught_inv and caught_icon
+        print('    wrong-tier icon      -> verify RAISED:', caught_icon)
+    ok = ok and caught_uber and caught_roster and caught_icon
 
     print('\nRESULT:', 'PASS' if ok else 'FAIL')
     sys.exit(0 if ok else 1)

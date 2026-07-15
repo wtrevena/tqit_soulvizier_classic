@@ -50,10 +50,18 @@ fidelity evidence, soul still fully functional. GOOD = clean on all six axes.
 | **Gradeable souls (REAL)** | **708** |
 | ... with an SV 0.98i original | 608 |
 | ... mod-new (judged on amgoz1 bar + internal consistency) | 100 |
-| **GOOD** | **550** |
+| **GOOD** | **548** |
 | **MINOR-GAP** | **155** |
-| **DEFICIENT** | **3** |
+| **DEFICIENT** | **5** |
 | Non-graded scaffolding families (appendix, sec 8) | 163 |
+
+> **Round-2 correction (2026-07-14).** The original audit reported DEFICIENT = 3 and graded
+> `spider\bloodtip_soul` and `vulture\gustleech_soul` GOOD. A roster-wide monotonicity re-scan
+> found both carry a granted-skill tier inversion (`itemSkillLevel` weaker at a higher rarity)
+> the v1 inversion detector missed - it keyed only on `augmentSkillLevel`, never on
+> `itemSkillLevel`. Both are re-graded **DEFICIENT** below (sec 4). DEFICIENT is now 5 (the same
+> single class, not a new defect type); GOOD drops 550->548. The detector is fixed in
+> `tools/debug/_souls_quality_audit.py` (adds `GRANT-LEVEL-TIER-INVERSION`).
 
 MINOR-GAP breakdown (family-level, one family can carry several):
 
@@ -69,28 +77,48 @@ MINOR-GAP breakdown (family-level, one family can carry several):
 **The port is faithful.** Across the 608 SV-inherited souls, stat fidelity findings are 2 families
 (both LAW hand-edits, noted not fixable), zero dead augments, zero broken proc chains, zero lost granted
 skills, zero lost SV flavor text, zero unresolved name tags, and every icon texture resolves in the
-shipped arcs. The defect surface is concentrated in the mod-new svc_uber generation (3 tier inversions,
-uniform icons) and in obtainability wiring.
+shipped arcs. The defect surface is the tier-inversion class (a higher-rarity ring strictly weaker than
+a lower-rarity ring on the SAME named skill): 3 in the mod-new svc_uber generation (augment levels,
+uniform icons) plus 2 SV-inherited grant-level inversions (`bloodtip`, `gustleech`) that are byte-
+identical to SV 0.98i - amgoz1 data-entry oversights the mod faithfully carried forward (sec 4).
+Obtainability wiring is the other surface (sec 5).
 
-## 4. DEFICIENT souls (all 3) - the P1 fix items
+## 4. DEFICIENT souls (all 5) - the P1 fix items
 
-All three are svc_uber (mod-generated) souls with the same generator artifact: the **Legendary tier is
-WEAKER than Epic** (augment levels, and for Crowboar also the granted-skill level, run n/e/l = 1/2/1).
-Healthy siblings from the same generator (bloodrunner, xix) run augments 1/2/3 and itemSkillLevel 3/5/8,
-so the intended progression is unambiguous. This is the residual of the B-SOUL-PROC-1 `_DIFF_SCALE`
-level-floor backstop (create_uber_souls floored n/e to 1 but the L re-derive clamped back to 1).
-A player who farms the Legendary ring gets a strictly worse item than the Epic - the classic
-'DONE means DONE' repeat-report shape once someone notices.
+All five share ONE class: a **higher-rarity ring is strictly WEAKER than a lower-rarity ring on the
+SAME named skill**. A player who farms the Epic/Legendary gets a worse item than the tier below - the
+classic 'DONE means DONE' repeat-report shape once someone notices. Two provenances:
 
-| Soul | Records (exact) | Defect (ground truth) | Proposed change (class: data fix in the uber-soul generator output) |
+**4a. The 3 mod-generated svc_uber souls** (Legendary augment levels run n/e/l = 1/2/1, and for
+Crowboar the granted-skill level too). Healthy siblings from the same generator (bloodrunner, xix) run
+augments 1/2/3 and itemSkillLevel 3/5/8, so the intended progression is unambiguous. Residual of the
+B-SOUL-PROC-1 `_DIFF_SCALE` level-floor backstop (create_uber_souls floored n/e to 1 but the L
+re-derive clamped back to 1).
+
+| Soul | Records (exact) | Defect (ground truth) | Fix (raise-only; keep Will's skill picks) |
 |---|---|---|---|
-| Crowboar Soul (LAW-adjacent: hand novelty, improve around it) | `records\item\equipmentring\soul\svc_uber\crowboar_soul_{n,e,l}.dbr` | augments drxonslaught + drxlethalstrike at n/e/l = 1/2/**1**; itemSkillLevel (Summon Carrion Crow) 1/2/**1** | on `_l`: augmentSkillLevel1=3, augmentSkillLevel2=3, itemSkillLevel=3 (bloodrunner/xix progression); keep Will's skill picks untouched |
-| Onyxspine the Dismemberer Soul | `records\item\equipmentring\soul\svc_uber\onyxspine_soul_{n,e,l}.dbr` | augments drxonslaught + drxlightningbolt_chainlightning at n/e/l = 1/2/**1** (itemSkillLevel 3/5/8 is healthy) | on `_l`: augmentSkillLevel1=3, augmentSkillLevel2=3 |
+| Crowboar Soul (LAW-adjacent: hand novelty, improve around it) | `records\item\equipmentring\soul\svc_uber\crowboar_soul_{n,e,l}.dbr` | augments drxonslaught + drxlethalstrike at n/e/l = 1/2/**1**; itemSkillLevel (Summon Carrion Crow) 1/2/**1** | on `_l`: augmentSkillLevel1=3, augmentSkillLevel2=3, itemSkillLevel=3 (bloodrunner/xix progression) |
+| Onyxspine the Dismemberer Soul | `records\item\equipmentring\soul\svc_uber\onyxspine_soul_{n,e,l}.dbr` | augments drxonslaught + drxlightningbolt_chainlightning at n/e/l = 1/2/**1** (grant arachnos_venombolt at itemSkillLevel 3/5/8 is healthy) | on `_l`: augmentSkillLevel1=3, augmentSkillLevel2=3 |
 | Steamcrawler Soul | `records\item\equipmentring\soul\svc_uber\steamcrawler_soul_{n,e,l}.dbr` | augments drxfireenchantment + drxarmorhandling at n/e/l = 1/2/**1** (no granted skill; the iskLvl 0/0/1 residue is inert) | on `_l`: augmentSkillLevel1=3, augmentSkillLevel2=3 |
 
-Root-cause hardening (same change wave): clamp the L-tier scale in `tools/create_uber_souls.py` to
-`max(l_level, e_level)` and extend the family-level tier-monotonicity check (n<=e<=l on augment levels)
-into a build gate so the class cannot regress. No SV originals involved (all three are mod-new).
+**4b. The 2 SV-inherited souls** (round-2 finding; the v1 detector missed these because it never
+checked `itemSkillLevel`). Both grant a per-level-scaled skill at a LOWER level on the higher-rarity
+ring. Both are **byte-identical to SV 0.98i** (`upstream/soulvizier_098i`), so fixing them is a
+deliberate divergence from SV-original data - judged an **amgoz1 data-entry oversight**, not intent:
+every OTHER field on both rings tiers upward correctly n->e->l (bloodtip characterLife 120/218/318, its
+own leech 20/34/50; gustleech deflect 5/7/9, offensiveLifeMin 12/21/29). Both are obtainable Hero souls
+(66% finger2). Flagged for Will in `souls_quality_fix.md` WILL VETO.
+
+| Soul | Records (exact) | Defect (ground truth) | Fix (raise-only; grant NAME untouched) |
+|---|---|---|---|
+| Bloodtip the Devourer Soul (SV) | `records\item\equipmentring\soul\spider\bloodtip_soul_{n,e,l}.dbr` | grants `soulskills\bloodtip_devour.dbr` (Devour, per-level leech, maxLvl 20) at itemSkillLevel n/e/l = 5/**1**/9 - Epic (leech 14) weaker than Normal (leech 30). Carrier `um_bloodtip_18` (Hero, 66%) | on `_e`: itemSkillLevel 1->7 => 5/7/9 (leech 30/42/46) |
+| Gustleech Soul (SV) | `records\item\equipmentring\soul\vulture\gustleech_soul_{n,e,l}.dbr` | grants `sv\gustleech\leechstrike_soul.dbr` (per-level leech, maxLvl 20) at itemSkillLevel n/e/l = 10/**4**/**7** - Epic (leech 26) AND Legendary (leech 38) weaker than Normal (leech 50). Carrier `um_gustleech_28` (Hero, 66%) | on `_e`: itemSkillLevel 4->12; on `_l`: 7->14 => 10/12/14 (leech 50/58/66) |
+
+Root-cause hardening (shipped in `tools/patches/souls_quality.py` round-2): the module fixes all 5
+raise-only, and its `verify()` extends the tier-monotonicity check (n<=e<=l on augment AND grant levels,
+same-skill-name-guarded) to **EVERY** soul equipmentring family, not just svc_uber, so the class cannot
+regress anywhere. A durable generator clamp in `tools/create_uber_souls.py` (`max(l_level, e_level)`)
+remains a good belt-and-suspenders follow-up for the mod-generated arm.
 
 ## 5. Prioritized FIX LIST (after the P1 trio)
 
@@ -175,6 +203,8 @@ consistency. `Tiers` lists the ring variants found. Family key = `<type-dir>\<so
 | `svc_uber\crowboar_soul` | {^F}Crowboar Soul | e/l/n | mod-new | DEFICIENT | !AUGMENT-LEVEL-TIER-INVERSION:n/e/l=[1.0, 2.0, 1.0]; E/L tiers show the N-tier icon |
 | `svc_uber\onyxspine_soul` | {^F}Onyxspine the Dismemberer Soul | e/l/n | mod-new | DEFICIENT | !AUGMENT-LEVEL-TIER-INVERSION:n/e/l=[1.0, 2.0, 1.0]; E/L tiers show the N-tier icon |
 | `svc_uber\steamcrawler_soul` | {^F}Steamcrawler Soul | e/l/n | mod-new | DEFICIENT | !AUGMENT-LEVEL-TIER-INVERSION:n/e/l=[1.0, 2.0, 1.0]; E/L tiers show the N-tier icon |
+| `spider\bloodtip_soul` | {^F}Bloodtip the Devourer Soul | e/l/n | SV | DEFICIENT | !GRANT-LEVEL-TIER-INVERSION:itemSkillLevel(bloodtip_devour) n/e/l=[5,1,9] - Epic weaker than Normal (SV-inherited oversight; round-2 fix 5/7/9) |
+| `vulture\gustleech_soul` | {^F}Gustleech Soul | e/l/n | SV | DEFICIENT | !GRANT-LEVEL-TIER-INVERSION:itemSkillLevel(leechstrike_soul) n/e/l=[10,4,7] - Epic+Legendary weaker than Normal (SV-inherited oversight; round-2 fix 10/12/14) |
 | `\darksatyrelitearcher_soul` | {^F}Dark Satyr Elite Skirmisher Soul | e/l/n | SV | MINOR-GAP | drop-gated: only Common/Champion monsters carry it (design gate zeroes them) |
 | `\darksatyrelitepeltast_soul` | {^F}Dark Satyr Elite Soul | e/l/n | SV | MINOR-GAP | drop-gated: only Common/Champion monsters carry it (design gate zeroes them) |
 | `\darksatyrelitesoldier_soul` | {^F}Dark Satyr Elite Warrior Soul | e/l/n | SV | MINOR-GAP | drop-gated: only Common/Champion monsters carry it (design gate zeroes them) |
@@ -778,7 +808,6 @@ consistency. `Tiers` lists the ring variants found. Family key = `<type-dir>\<so
 | `spider\akumozon_soul` | {^F}Akumozon Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `spider\arachnesshame_soul` | {^F}Arachne's Shame Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `spider\ararat_soul` | {^F}Ararat the Corrupter Soul | e/l/n | SV | GOOD | clean on all 6 axes |
-| `spider\bloodtip_soul` | {^F}Bloodtip the Devourer Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `spider\gardenhorror_soul` | {^F}Garden Horror Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `spider\thebloatedone_soul` | {^F}The Bloated One Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `spider\venombane_soul` | {^F}Venom Bane Soul | e/l/n | SV | GOOD | clean on all 6 axes |
@@ -848,7 +877,6 @@ consistency. `Tiers` lists the ring variants found. Family key = `<type-dir>\<so
 | `typhon\typhon_soul` | {^F}Typhon Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `typhon\undeadtyphon_soul` | {^F}Undead Typhon Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `vulture\diseasedvulture_soul` | {^F}Diseased Vulture Soul | e/l/n | SV | GOOD | clean on all 6 axes |
-| `vulture\gustleech_soul` | {^F}Gustleech Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `vulture\sandbeak_soul` | {^F}Sandbeak Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `vulture\shadowfeather_soul` | {^F}Shadowfeather Soul | e/l/n | SV | GOOD | clean on all 6 axes |
 | `vulture\wraithwing_soul` | {^F}Wrathwing Soul | e/l/n | SV | GOOD | clean on all 6 axes |
