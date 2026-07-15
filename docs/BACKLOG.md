@@ -2175,6 +2175,23 @@ crazy skills too."
 - **Standard lanes:** DB records via registry module; tags via manifest; INJECT_SPECS placement;
   full gate battery; Will fresh-char verify on DEV after ship.
 
+## QUEUED FEATURE: NEW-RELIC-DIONYSUS-TRICKSTER (APPROVED by Will 2026-07-14, not yet scheduled)
+Will (verbatim): "dionysus trickster archers should get a custom relic they drop like the magneta
+turtle shell."
+- **Pattern to follow (ground-truth it first):** the mod's magenta turtle shell custom relic -
+  locate its records in the effective arz (relic/charm item class, shard vs complete mechanics,
+  completion bonus table, {^F}/magenta name coloring, icon) and its DROP wiring (which monsters,
+  which loot slot/table, what rate). Clone that exact shape - do not invent a new mechanism.
+- **Identity:** a custom relic themed to the Dionysus trickster archers (wine/revelry/madness/
+  trickery - e.g. intoxicating shot, maddening draught themes). Name + flavor + completion
+  bonuses to the amgoz1 bar (amgoz1_design_voice.md); name flagged for Will veto.
+- **Drop wiring:** dropped by the Dionysus trickster archer monster family (identify the exact
+  records - the satyr trickster archers of the Dionysus cult area; wire ALL family variants/tiers
+  N/E/L like the turtle-shell precedent, matching its rate).
+- **Standard lanes:** DB records via registry module; tags via manifest ({^F} discipline);
+  validate_tags + contracts green; dry-run replay intended-records-only; Will fresh-drop verify
+  (TQ bakes item properties at pickup - test with a freshly dropped relic).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
