@@ -1,21 +1,32 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🗡️ **B58 THROWN-WIELDER AUDIT (2026-07-14, `feat/thrown-enemies`) - Will's "we have throwing weapons but no
-> enemy uses them" is CONFIRMED; arming proposal awaits Will's veto.** Verified read-only from golden arz
-> `b33c5a44` + canonical Levels `9981085b` (+ stock TQAE / SVAERA cross-check): thrown weapons =
-> `Class WeaponHunting_RangedOneHand` (191 recs, ALL xpack2/3/4 - a Ragnarok+ item class). Of **74** monsters
-> whose weapon slot resolves to a thrown weapon, **0 are base Act1-Hades and 0 are SV/mod** - every one is a DLC
-> (Aesir/slinger/skulk/thrower/skirmisher/monkeyman/potamoi/titan) or `zz_dev` monster. Per-level spawn
-> attribution: **0 throwers spawn in the reachable campaign.** The sole campaign-namespace vector (greekbandit-
-> slinger proxy in `Greece/Area003/PineForest05.LVL`) is a **charLevel-37 Ragnarok Act-5 Corinthia overlay** our
-> Act1-Hades campaign never reaches (byte-identical in stock TQAE; the base Act-1 pop there is lvl-3-9 harpies/
-> crows). Throwing weapons DO drop as loot (what Will sees), but no reachable enemy wields one. Donor pattern +
-> rig whitelist + candidate families (Greek bandit peltast = LOW risk on the proven `bandit_greek02` rig; satyr
-> trickster on `libyansatyr01` = follow-up) + the **proposed armed-roster table (the veto artifact)** +
-> Will-veto questions: `docs/reports/b58_thrown_wielders.md`. Scaffold module `tools/patches/thrown_wielders.py`
-> (3 Greek-bandit-peltast tiers + minority pool) is **UNREGISTERED** (golden build stays byte-identical); dry-run
-> PASS (intended-only +4 record delta, `verify()` OK - all throw-proven rig + equip + drop-band + no soul leak,
-> `_negtest()` rejects 3 broken shapes, py_compile clean). **Rides the NEXT integration build** after Will vetoes
-> the roster (report C6) + the coupled MAP lane places the pool proxy among reachable Act-1/2 Greek bandit packs.
+> 🗡️ **B58 THROWN-WIELDER ARMING (2026-07-14, `feat/thrown-enemies`) - Will's "we have throwing weapons but no
+> enemy uses them" is CONFIRMED; 3-family arming built + fully verified, awaits Will's veto.** Verified read-only
+> from golden arz `b33c5a44` + canonical Levels `9981085b` (+ stock TQAE / SVAERA cross-check): thrown weapons =
+> `Class WeaponHunting_RangedOneHand` (191 recs, ALL xpack2/3/4 - a Ragnarok+ item class); **0 of the 74 monsters
+> whose weapon slot resolves to a thrown weapon spawn in the reachable Act1-Hades+SV campaign** (per-level
+> attribution; the sole campaign-namespace vector is a charLevel-37 Ragnarok Act-5 Corinthia slinger overlay our
+> campaign never reaches). Throwing weapons DO drop as loot (the mod's `_restore_thrown_weapon_drops` - what Will
+> sees), but no reachable enemy wields one.
+> **ROOT CAUSE (ground-truth, corrects the first-pass audit): the base game DID ship genuine throwers on three
+> REACHABLE-campaign rigs** - Maenad02 (`maenad\ar_archer_06`/`br_archer_10`, RIGHT=1h_ranged@100 / LEFT bow@0),
+> DuneRaider01 (`duneraider\am_assassin_15`/`_21`, dual 1h_ranged@100), TigerMan01 (`tigerman\ar_archer_27`/`_33`,
+> RIGHT=1h_ranged@100 / LEFT bow@0) - **but the SV/mod overlay DISARMS every one** (maenad/tigerman -> bow;
+> duneraider -> melee) because the SV-classic roster predates thrown weapons. So the design gap is not "no rig
+> exists" (the audit's HIGH-risk read of maenad); it is "the overlay disarmed the throwers that already existed."
+> **FIX** `tools/patches/thrown_wielders.py` (registry module, **UNREGISTERED** so golden stays byte-identical):
+> arms 3 identity-fit families x 2 tiers = **6 Common thrown-wielders** (Maenad Javelineer / Dune Raider Skirmisher
+> / Tigerman Hunter) by cloning each family's base thrower (keeps mesh + full rangedOneHand/dualRanged anim block +
+> ranged AI) then RE-AUTHORING the RIGHT hand with that family's exact VANILLA thrown block (static+monster+unique
+> tiered N/E/L loot arrays at vanilla weights) + `chanceToEquipLeftHand=0` so the offhand bow/melee can't beat the
+> throw. Drops banded to bow-wielders BY CONSTRUCTION (unique-thrown slot weight 4-5 = the same monster's bow-drop
+> slot). +3 minority-flavor ProxyPools for the MAP lane. **Verification (dry-run vs golden b33c5a44 + adversarial
+> vet): intended-only +9 record delta (6 monsters + 3 pools), 0 existing records mutated, all 6 = Common throwers
+> on whitelisted rigs w/ anim block retained + no soul leak, base donors untouched, 0 INT/FLOAT round-trip
+> corruption; `verify()` OK, `_negtest()` rejects 7 broken shapes (incl. left-hand-re-enabled), py_compile +
+> `_check_registry` clean.** The veto artifact (verdict + evidence chain + armed-roster table + amgoz naming +
+> open questions) = `docs/reports/b58_thrown_wielders.md`. **Rides the NEXT integration build** after Will vetoes
+> the roster (report C) + the coupled MAP lane places the pool proxies among reachable Act-1/2/3 maenad/raider/
+> tigerman packs at minority weight. Names are amgoz-pass + Will-veto pending (working copy).
 > INTEGRATION PREREQ (reported): the monolith must import base donor `ar_slinger_37` into the overlay first (like
 > `import_base_game_bosses`), since a registry `apply(db,tags)` only sees the mod overlay.
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
