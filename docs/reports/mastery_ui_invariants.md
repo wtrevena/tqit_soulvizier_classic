@@ -13,13 +13,13 @@ the LAWS the mod must honor; it does **not** audit the mod (that is the next lan
 These are the two laws Will mandated (2026-07-14) plus the select-screen mechanics, each reduced to a
 **field-level, machine-checkable invariant** an auditor can run against any arz.
 
-> ### ⚠️ CORRECTION (2026-07-14, MASTERY UI AUDITOR — supersedes section 2 below)
+> ### ⚠️ CORRECTION (2026-07-14, MASTERY UI AUDITOR - supersedes section 2 below)
 > The build40 mod-audit lane found this document's **connector mechanism is wrong** and its **grid is
 > one row short**. Corrected against the base game (see `docs/reports/mastery_ui_vet_audit.md` §1):
 > 1. **The connector is a real skill-record field, NOT baked background art.** Every base/chain skill
 >    carries `skillConnectionOn` = `InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex`,
 >    `skillConnectionOff`, and `skillConnectionSpacing` = **62** (one row pitch). 43 vanilla skills set
->    it. Section 2a missed it because it searched textures for `connect` — the connector texture is
+>    it. Section 2a missed it because it searched textures for `connect` - the connector texture is
 >    named `SkillBar**Bottom**On`, not `skillbarconnect` (that 15x62 asset is the mastery-level bar).
 > 2. **Direction:** `skillConnectionOn` sits on the **base** (bottom of a chain, high Y) and the bar
 >    draws **upward** to the modifier(s) stacked directly above in the same column. Modifiers carry no
@@ -77,7 +77,7 @@ The **icon** lives on the *skill* record (`skillName` target), not the button:
 
 ---
 
-## 1. TIER LAW  — vertical row == mastery-tier == "how many points is needed"
+## 1. TIER LAW  - vertical row == mastery-tier == "how many points is needed"
 
 > Will: *"every skill is on the right level vertically on the page based on how many points is
 > needed for it."*
@@ -93,12 +93,12 @@ Y = 465 - 62 * tier          (row pitch = 62 px)
  tier 1  -> Y 403      tier 4 -> Y 217
  tier 2  -> Y 341      tier 5 -> Y 155
  tier 3  -> Y 279      tier 6 -> Y  93
- (mastery button: Y 459, the base row — see Exceptions)
+ (mastery button: Y 459, the base row - see Exceptions)
 ```
 
 The distinct skill-button Y values in vanilla are **exactly** `{403, 341, 279, 217, 155, 93}` and the
 distinct X values are **exactly** `{128, 228, 328, 428, 528, 628}` (column pitch = 100 px, first
-column at 128) — a fixed **6-column x 6-row grid**. No vanilla skill button sits off this grid.
+column at 128) - a fixed **6-column x 6-row grid**. No vanilla skill button sits off this grid.
 
 **Proof.** Every base skill/modifier record carries a `skillTier` field (the tier index). Across
 **all 9 masteries**, **142** buttons whose `skillName` target has `skillTier` set were checked against
@@ -113,12 +113,12 @@ Dream (mastery 9 uses the same grid and `xtag*` tags). Zero off-grid skill butto
 
 Two different fields live on the skill record:
 
-- **`skillTier`** — the **row index** (1..6). This is the authoritative "vertical level" signal and is
+- **`skillTier`** - the **row index** (1..6). This is the authoritative "vertical level" signal and is
   what must agree with `bitmapPositionY`. It is set on every "primary" skill and every named modifier.
-- **`skillMasteryLevelRequired`** — the **per-skill mastery-level gate** (the actual number of points
+- **`skillMasteryLevelRequired`** - the **per-skill mastery-level gate** (the actual number of points
   you must have in the mastery to put the FIRST point in *that specific* skill). It is **not** constant
   within a row and is **not** the row determinant. Example (Warfare tier-3 row, Y=279):
-  `BattleRage_CrushingBlow` req=10, `WarWind` req=15, `BattleStandard` req=0 — same row, different gates.
+  `BattleRage_CrushingBlow` req=10, `WarWind` req=15, `BattleStandard` req=0 - same row, different gates.
   It broadly rises with tier (Warfare per-tier max req: 1, 5, 15, 24, 25, 30) but is not monotonic
   per-skill and must **not** be used to derive the row.
 
@@ -128,14 +128,14 @@ mismatch = a skill on the wrong vertical level = a TIER-LAW violation. *(This is
 defect the Earth "Rupture" graft produced: a base skill sitting at Y=93/tier-6 above its own
 modifiers.)*
 
-Some buttons have **no `skillTier`** (toggled auras/buffs, pet-modifiers, chain/fork secondaries —
+Some buttons have **no `skillTier`** (toggled auras/buffs, pet-modifiers, chain/fork secondaries -
 classes `Skill_Buff*`, `Skill_AttackBuff*`, `SkillSecondary_*`). They are still placed by Y onto a
 valid grid row; the check simply skips the `skillTier` comparison for them and relies on the grid +
 column rules.
 
 ---
 
-## 2. CONNECTOR LAW — a drawn connection == a genuine base<->modifier augment
+## 2. CONNECTOR LAW - a drawn connection == a genuine base<->modifier augment
 
 > Will: *"the only skills that should be connected together should be ones that genuinely augment one
 > another."*
@@ -144,17 +144,17 @@ column rules.
 
 **There is NO connection/dependency field on any UI record.** Exhaustive field dumps of `panectrl.dbr`,
 `mastery.dbr`, and the `skillNN.dbr` buttons show the SkillButton schema is
-`{skillName, bitmapPositionX/Y, isCircular, 3 border bitmaps, skillOffsetX/Y, soundNameDown}` — nothing
+`{skillName, bitmapPositionX/Y, isCircular, 3 border bitmaps, skillOffsetX/Y, soundNameDown}` - nothing
 that references another button or draws a line.
 
 **The visual connecting lines are baked into the per-mastery background art.** Evidence:
 
 1. `skillpanebasebitmap.dbr::bitmapName` -> `<Class>SkillBackground01.tex`, which is a single
-   **919 x 540** DDS (base `InGameUI.arc`) — i.e. the **entire skill pane** (skill grid occupies
+   **919 x 540** DDS (base `InGameUI.arc`) - i.e. the **entire skill pane** (skill grid occupies
    X 128..~692 / Y 93..~523; the decorative mastery art sits at X 718+; 919x540 covers both). The lines
    between skill slots are part of this one image.
 2. There is **no skill-to-skill connector or "arrow" texture** anywhere in `InGameUI.arc`. The only
-   `*connect*` assets are `icons\skills\skillbars\skillbarconnect{on,off}01.tex` — **15 x 62** tiles
+   `*connect*` assets are `icons\skills\skillbars\skillbarconnect{on,off}01.tex` - **15 x 62** tiles
    (62 px = one row pitch) that build the segmented **mastery-level bar** (`masterybar.dbr`), with
    on/off states for bar fill. The `arrow` textures are all quest / NPC / tutorial / compass art, none
    for the skill tree.
@@ -162,8 +162,8 @@ that references another button or draws a line.
    background wires to its neighbor. Move a skill off its intended cell and it either loses its line or
    lands on a line meant for a different skill -> the "wrong connections / arrows" Will reports.
 
-*(Certainty note: the elimination is exhaustive — no connection record, no connector/arrow texture,
-`skillDependancy` disproven below — so the lines are in the 919x540 background OR the "connection" is
+*(Certainty note: the elimination is exhaustive - no connection record, no connector/arrow texture,
+`skillDependancy` disproven below - so the lines are in the 919x540 background OR the "connection" is
 pure visual grouping of a modifier stacked on its base. **Both readings yield the identical operational
 invariant in 2c.** The one thing not eyeball-verified here is rendering the DDS to see the painted
 lines; it does not change the invariant.)*
@@ -208,21 +208,21 @@ In vanilla the augment relationship is encoded structurally and honored position
    its top modifier should not be occupied by an *unrelated* line's skill (that stray skill inherits a
    spurious painted connection). Violation = a spurious connection.
 3. A pair that is **not** a genuine augment (different base prefix, non-modifier class, and no
-   `skillDependancy` between them) must **not** be column-stacked as if it were — that is the "connected
+   `skillDependancy` between them) must **not** be column-stacked as if it were - that is the "connected
    things that don't augment each other" Will forbids.
 
 **Negative control (adjacent-but-unconnected):** vanilla routinely puts *independent* skills in the
 same column with NO connection between them, and they are always the low rows of the column, never
 interleaved into another line. e.g. Warfare column 128: `WeaponTraining` (tier1, standalone passive)
 and `DualWeaponTraining` (tier2, an independent weapon-pool base) sit at the bottom, then the
-`DualWieldTechnique_*` chain above — `WeaponTraining` is adjacent to but not connected to
+`DualWieldTechnique_*` chain above - `WeaponTraining` is adjacent to but not connected to
 `DualWeaponTraining`. This is legal precisely because neither is named `<other>_...` and the chain that
 owns the connections (`DualWieldTechnique_*`) is contiguous above its own base. Adjacency alone never
 implies a connection; the connection is the base+`_suffix` column stack.
 
 ---
 
-## 3. SELECT-MASTERY SCREEN — which records/tags drive each slot
+## 3. SELECT-MASTERY SCREEN - which records/tags drive each slot
 
 Two distinct surfaces, two distinct tag families. **Do not confuse them** (this is the root of backlog
 B-MASTERY-LABEL-1: the Occult label bug is a `tagMasteryBrief0N` / `tagMasteryTitle0N` /
@@ -235,8 +235,8 @@ list fields are indexed by mastery slot N (1..8; the Dream/xpack pane extends to
 
 | field | per-slot target | drives |
 |---|---|---|
-| `masteryMasteryButtons[N]` | `select mastery\mastery{N}button.dbr` (`ButtonStatic.tpl`) | the clickable mastery **icon** — its `bitmapNameUp/Down/InFocus/Disabled` -> `<Class>Button{Up,Down,Over,Disabled}01.tex` |
-| `masteryMasteryText[N]` | `select mastery\mastery{N}text.dbr` (`TextStaticString.tpl`) | the short **label** under the icon — its `textTag` -> **`tagMasteryBrief0N`** |
+| `masteryMasteryButtons[N]` | `select mastery\mastery{N}button.dbr` (`ButtonStatic.tpl`) | the clickable mastery **icon** - its `bitmapNameUp/Down/InFocus/Disabled` -> `<Class>Button{Up,Down,Over,Disabled}01.tex` |
+| `masteryMasteryText[N]` | `select mastery\mastery{N}text.dbr` (`TextStaticString.tpl`) | the short **label** under the icon - its `textTag` -> **`tagMasteryBrief0N`** |
 | `masteryMasterySelectedDescriptionTags[N]` | (inline tag) | the **description** shown when that mastery is selected -> **`tagMasteryDescription0N`** |
 | `masteryMasterySelectedBitmapNames[N]` | (inline tex) | the large **preview panel** art -> `<Class>PanelLarge01.tex` |
 | `masteryTabTitle` | (inline tag) | the screen title -> `tagSkillMasterySelect` |
@@ -260,7 +260,7 @@ Driven by that mastery's `panectrl.dbr`:
 And the **mastery skill** record itself (e.g. `Records\Skills\Warfare\WarfareMastery.dbr`,
 Class `Skill_Mastery`) supplies:
 
-- `skillDisplayName` -> **`tagSkillName00N`** (the mastery NAME, e.g. "Warfare" — shown on the mastery
+- `skillDisplayName` -> **`tagSkillName00N`** (the mastery NAME, e.g. "Warfare" - shown on the mastery
   button tooltip / pane).
 - `skillBaseDescription` -> `tagSkillDescription00N`.
 - `MasteryEnumeration` -> `Mastery<Class>` (engine mastery id).
@@ -268,8 +268,8 @@ Class `Skill_Mastery`) supplies:
   node icon).
 
 **Takeaway for B-MASTERY-LABEL-1:** a single mastery's on-screen text is fed by **three independent
-tags** — `tagMasteryBrief0N` (select label), `tagMasteryTitle0N` (tree title), `tagSkillName00N`
-(mastery name) — each resolved from `Text.arc`. A duplicate/first-wins definition in the text pipeline
+tags** - `tagMasteryBrief0N` (select label), `tagMasteryTitle0N` (tree title), `tagSkillName00N`
+(mastery name) - each resolved from `Text.arc`. A duplicate/first-wins definition in the text pipeline
 mislabels the mastery on whichever surface reads the shadowed tag. Any label fix must set all three
 consistently and guard against duplicate tag emission.
 
@@ -278,7 +278,7 @@ consistently and guard against duplicate tag emission.
 ## 4. EXCEPTIONS & edge cases (must be encoded in any gate)
 
 1. **The mastery button** (`mastery.dbr`): at `(X=29, Y=459)`, `isCircular=1`, its skill's
-   `skillTier=0`. X=29 is left of column-0 (128) and Y=459 is below tier-1 (403) — it is the special
+   `skillTier=0`. X=29 is left of column-0 (128) and Y=459 is below tier-1 (403) - it is the special
    base node in the mastery-bar lane, **off** the 6x6 skill grid. Exclude it from TIER/grid/column
    checks.
 2. **Tier-less skills** (toggled auras/buffs, pet-modifiers, chain/fork secondaries): no `skillTier`
