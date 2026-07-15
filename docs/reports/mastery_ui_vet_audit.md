@@ -319,3 +319,38 @@ occupied cell, and it is a non-relative), but the exact pixel rendering across g
 diagonal targets are not visually confirmable here (TQ is not runnable in this environment) - Will's
 screenshot pass is the final check, per the standing UI-on-device rule. No fix is auto-shipped: the P0
 TIER-vs-CONNECTOR decision is Will's, and every touched tree needs his eye.
+
+---
+
+## 9. IMPLEMENTATION STATUS (FIXER round 1, 2026-07-14, `feat/mastery-ui-vet`)
+
+The 66 findings above were triaged into **fix-now** vs **Will-gated**, then implemented:
+
+**Shipped (this branch):**
+- **Permanent gate** `tools/gate_mastery_ui.py` (+ ledger `tools/mastery_ui_waivers.json`), **wired into the
+  DB gate battery** in `build_svc_database.py` right after the A7 golden guard. It reuses
+  `audit_mastery_ui.py`'s exact math, keys every finding (`<CATEGORY>::m<slot>::<skill>`), and FAILS the
+  build on any finding not in the waiver ledger. Proven: PASS on the patched arz (58 waived, 0 unwaived, 0
+  stale), FAIL on the unpatched arz (8 unwaived), and a negative test (fresh off-grid button ->
+  `GRID::m1::drxonslaught` unwaived -> FAIL). This is the "can never ship again" enforcement + the precise
+  machine-checked spec of every remaining defect.
+- **4 clean relocations** `tools/patches/mastery_ui_vet.py` (registry, after `mastery_ui_audit`), clearing
+  **8 of 66** findings with **0 regression** (dry-run replay vs build40 `b33c5a44`), all non-golden, each
+  target cell proven free + tier-correct + non-interleaving:
+  - m1 `drxonslaught_hamstring` (628,217)->(428,217): clears OFFCOL + INTERLEAVE + CONN
+  - m2 `drxquickrecovery` (228,279)->(128,279): clears INTERLEAVE + Adrenaline CONN
+  - m2 `drx_summonphalanx` (428,155)->(228,31): clears TIER + INTERLEAVE
+  - m9 `drxdistortionfield` (228,279)->(128,279): clears INTERLEAVE
+- **B-MASTERY-LABEL-1** confirmed FIXED + held (text dry-run: dup-tag gate GREEN, `tagMasteryBrief05`=Occult
+  single-def); the Occult select-desc wording stays flagged for Will (sec 5).
+
+**Waived = deferred to Will (58 findings, each justified in `mastery_ui_waivers.json`):** the P0
+TIER-vs-CONNECTOR overcrowding (Earth/Storm/Spirit have more families than the 6-col grid holds at
+tier-correct cells), graft-broken skillTiers (Warfare Club Slam family, structurally impossible), the
+Storm Nimbus same-tier-modifier collision, the Storm `spellshock2` dead-ref (delete-vs-repoint = Will's
+call), the **golden** Occult (m5, the crossed tree Will reported - the unmerged `feat/b40-occult-tree`
+reflow is the starting point but must be re-derived to the TIER mandate) and Hunting (m6) trees, the
+Spirit 4-family holistic reflow, and two connector items that are false-positives-or-screenshot-only.
+Each needs Will's per-mastery design decision + in-game screenshot (standing UI-on-device rule); golden
+moves also need `occult_hunting_golden.json` `owner_approved_overrides`. As each is resolved, its key is
+removed from the ledger (the gate flags stale waivers), shrinking 58 -> 0 over subsequent rounds.

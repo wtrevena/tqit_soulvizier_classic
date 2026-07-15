@@ -28,6 +28,31 @@
 > (`scratchpad/ridx_proto.py`, 25 seeds + 5 edge classes) and real-ArzDatabase integration-tested vs a reference copy of
 > the original scans. Files: `tools/apply_svc_patches.py`, `tools/arz_patcher.py`.
 
+> 📐 **MASTERY-UI VET (FIXER round 1, 2026-07-14, `feat/mastery-ui-vet`).** Will's mandate (verbatim): "every
+> skill on the right level vertically based on how many points is needed" (TIER LAW = row == skillTier) + "the
+> only skills that should be connected together should be ones that genuinely augment one another" (CONNECTOR
+> LAW). The build40 audit (`docs/reports/mastery_ui_vet_audit.md`) found **66 findings** (14 TIER, 23 CONN, 19
+> INTERLEAVE, 9 OFFCOL, 1 ICON) across all 9 masteries. **SHIPPED this wave:** (1) a **PERMANENT fail-loud gate**
+> `tools/gate_mastery_ui.py` (reuses `audit_mastery_ui` math; keys every finding) + waiver ledger
+> `tools/mastery_ui_waivers.json`, **wired into the DB gate battery** right after the A7 golden guard - a NEW or
+> regressed TIER/CONNECTOR/layout defect can never silently ship (negative test PASS: a fresh off-grid button
+> fails the build). (2) A new registry module `tools/patches/mastery_ui_vet.py` (position after `mastery_ui_audit`,
+> disjoint) with **4 clean, no-regression, non-golden relocations** clearing **8 of the 66** findings, dry-run
+> replay-PROVEN vs build40 (`b33c5a44`): m1 `drxonslaught_hamstring` (628,217)->(428,217) [OFFCOL+INTERLEAVE+CONN];
+> m2 `drxquickrecovery` (228,279)->(128,279) [INTERLEAVE+CONN]; m2 `drx_summonphalanx` (428,155)->(228,31)
+> [TIER+INTERLEAVE]; m9 `drxdistortionfield` (228,279)->(128,279) [INTERLEAVE] - exactly 8 cleared, **0 new**.
+> **The remaining 58 are WAIVED (each with a justification)** because they are genuinely Will-gated: the
+> SVAERA/DRX graft added MORE families than the 6-column grid holds at tier-correct cells (Earth col428 = 4
+> families with tier collisions + no free tier-1 column; Storm/Spirit full), some grafts have contradictory
+> skillTiers (Warfare Club Slam = tier-2 base above tier-7 mods), Storm Nimbus has two tier-2 modifiers
+> (same-tier collision), Storm has an SV-original dead-ref button (`drxspellbreaker_spellshock2`), Occult (m5)
+> is Will's GOLDEN + the crossed-tree he reported 2026-07-13, Hunting (m6) is GOLDEN, and Spirit is a
+> 4-family knot needing a holistic reflow. Each is a Will design-decision (per-mastery TIER-vs-CONNECTOR
+> trade-off + in-game screenshot; golden moves also need `occult_hunting_golden.json` waivers). **No golden
+> mastery touched** (A7 gate PASS, m5/m6 untouched). Verify: gate PASS on fixed arz (58 waived, 0 unwaived, 0
+> stale) + FAIL on unfixed (8 unwaived) + negative test PASS; `_check_registry` OK (14 modules); py_compile OK;
+> **arz/Text ship together** (deploy coupling). NOT yet integration-built (next wave rebuilds the arz).
+>
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10
@@ -2140,14 +2165,19 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   ACTIVATION 219->0 = B-SOUL-PROC-1; SUMMON-PET-NAKED 6->0; C-RES-TAGDUP-1 5->0 = B-MASTERY-LABEL-1;
   B-TEXT-TAGS-1 Crimson-Verdict tags now resolve). B-TEMPLE-DOOR/B-PORTAL coverage is already in
   (MAP-DOOR-1, MAP-PORTAL-1/2/3).
-- Occult/Hunting mastery UI recheck (#35) - PARTIALLY ROOT-CAUSED 2026-07-08 (B-MASTERY-LABEL-1):
-  the mastery SELECT screen shows 'Rogue' because modstrings.txt defines tagSkillName050 /
-  tagMasteryBrief05 / tagMasteryTitle05 TWICE (SV's Rogue lines first, the Occult fix block appended
-  later; the engine keeps the FIRST definition) and tagMasteryDescription05 still carries vanilla
-  Rogue flavor text. Fix = suppress OCCULT_FIX_TAGS keys during per-file emission in
-  tools/build_text_arc.py + add tagMasteryDescription05 Occult copy (Will signs off wording) + a
-  fail-loud duplicate-tag gate. Owned by the 2026-07-08 DB wave. The in-tree name is correct;
-  other masteries are unaffected (single definitions).
+- Occult/Hunting mastery UI recheck (#35) - **B-MASTERY-LABEL-1 FIXED + VERIFIED HELD (2026-07-14 vet).**
+  Root cause (2026-07-08): the mastery SELECT screen showed 'Rogue' because modstrings.txt defined
+  tagSkillName050 / tagMasteryBrief05 / tagMasteryTitle05 TWICE (SV's Rogue lines first; the engine
+  keeps the FIRST) and tagMasteryDescription05 carried vanilla Rogue flavor. FIX SHIPPED in
+  tools/build_text_arc.py: OCCULT_FIX_TAGS (single-definition block, keys skipped during per-file SV
+  emission via _FIX_BLOCK_TAGS) sets tagMasteryBrief05='Occult' / tagMasteryTitle05 / tagSkillName050
+  / tagMasteryDescription05, guarded by the fail-loud check_duplicate_tags gate. 2026-07-14 text
+  dry-run RE-CONFIRMED: "Applied fix-block tags (11 Occult + 11 text)", "Duplicate-tag gate OK",
+  tagMasteryBrief05='Occult' single-def, 0 sibling conflicts; gate_mastery_ui.py --text cross-check
+  finds 0 SELECT-tag conflicts. ⚠️ **STILL FLAGGED FOR WILL:** the tagMasteryDescription05 Occult
+  select-screen wording is a DRAFT explicitly marked "NEEDS WILL'S SIGN-OFF" (Occult is his hand-tuned
+  mastery); it also differs from the tree-pane blurb tagOccultTitleDESC - reconcile the copy (audit sec 5).
+  Other masteries unaffected (single definitions).
 - Souls quality pass vs SV originals (#31).
 - Toxeus encounter suite: 10-25% canonical entrance spawn, rant scroll (MP per-player), Legendary
   stalker feasibility, 6-player checklist (#32).
