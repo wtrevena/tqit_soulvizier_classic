@@ -6,8 +6,8 @@
 > (`chanceToEquipFinger2=66` + `legion_soul`) -> up to 4 souls per encounter; the 3 non-terminal stages even point
 > _n at the broken "conflicted copy" path, only terminal `_28c` uses the clean `legion_soul_n.dbr`. Root cause:
 > `wire_souls_to_monsters` arms every Hero stage independently (SV-original records; contradicts the uber-boss law
-> = soul on FINAL form only). **FIX:** new registry module `tools/patches/legion_soul_stages.py` (pos 12/14, after
-> `boss_skill_fix`, before `visuals`): for any soul dropped by 2+ forward-reachable stages, keep the drop on the
+> = soul on FINAL form only). **FIX:** new registry module `tools/patches/legion_soul_stages.py` (after
+> `boss_skill_fix`, before the no-op `visuals`): for any soul dropped by 2+ forward-reachable stages, keep the drop on the
 > terminal-most stage and zero `chanceToEquipFinger2` on the shallower ones (loot refs kept inert, `_apply_aphiastas_
 > finger2_zero` house pattern; dtype-safe). ORPHAN-PROOF (soul stays on a deeper stage). Runs before the drop-rate
 > forcer (chance>0 gate) so the zeros survive release AND testing. `verify()` = no chain drops the SAME soul from

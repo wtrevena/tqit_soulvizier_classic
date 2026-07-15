@@ -38,9 +38,9 @@ form only and clear the inherited Finger2 soul on every non-terminal form.
 
 ## The fix
 
-New registry module `tools/patches/legion_soul_stages.py` (position 12/14, after
-`boss_skill_fix`, before `visuals`). Algorithm, applied over the FINAL assembled
-db:
+New registry module `tools/patches/legion_soul_stages.py` (after `boss_skill_fix`,
+before the no-op `visuals`, which stays last). Algorithm, applied over the FINAL
+assembled db:
 
 > For each soul item dropped by 2+ stages where one stage is forward-reachable
 > from another via `actorToSpawnOnDeath`, keep the drop on the **deepest
