@@ -13,6 +13,27 @@ the LAWS the mod must honor; it does **not** audit the mod (that is the next lan
 These are the two laws Will mandated (2026-07-14) plus the select-screen mechanics, each reduced to a
 **field-level, machine-checkable invariant** an auditor can run against any arz.
 
+> ### ⚠️ CORRECTION (2026-07-14, MASTERY UI AUDITOR — supersedes section 2 below)
+> The build40 mod-audit lane found this document's **connector mechanism is wrong** and its **grid is
+> one row short**. Corrected against the base game (see `docs/reports/mastery_ui_vet_audit.md` §1):
+> 1. **The connector is a real skill-record field, NOT baked background art.** Every base/chain skill
+>    carries `skillConnectionOn` = `InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex`,
+>    `skillConnectionOff`, and `skillConnectionSpacing` = **62** (one row pitch). 43 vanilla skills set
+>    it. Section 2a missed it because it searched textures for `connect` — the connector texture is
+>    named `SkillBar**Bottom**On`, not `skillbarconnect` (that 15x62 asset is the mastery-level bar).
+> 2. **Direction:** `skillConnectionOn` sits on the **base** (bottom of a chain, high Y) and the bar
+>    draws **upward** to the modifier(s) stacked directly above in the same column. Modifiers carry no
+>    connector. Not every base sets it (vanilla `rally`, `battleawareness` don't), so a *missing*
+>    connector is not a defect. The mod adds a side variant `skillbarbottomon01_right.tex` for a
+>    modifier that connects diagonally to an adjacent column.
+> 3. Section 2b is still correct that `skillDependancy` is a gameplay prereq, not the visual link; the
+>    error was concluding the lines are therefore baked art.
+> 4. **GRID:** vanilla uses 6 rows (tiers 1-6, Y {403..93}). The **mod adds a 7th row Y=31 = tier 7**
+>    (`Y = 465 - 62*tier`). The auditor ladder is `{403:1,341:2,279:3,217:4,155:5,93:6,31:7}`.
+>
+> The operative CONNECTOR-LAW check (section 2c positional rules) is unchanged and remains valid; only
+> the *mechanism* description (2a) and the row set were wrong.
+
 ---
 
 ## 0. Record topology (how a mastery's UI is assembled)
