@@ -2281,6 +2281,23 @@ curated candidate detail + design sketch + reproduce steps: **`docs/reports/orph
   dry-run replay intended-records-only vs baseline; validate_tags + supra dead-ref invariant green;
   Will fresh-drop verify on DEV (TQ bakes item props at pickup - test a freshly crafted item).
 
+## QUEUED FEATURE: SOUL-EMBERTEETH-SUMMON (APPROVED by Will 2026-07-14, not yet scheduled)
+Will (verbatim): "emberteeth soul should let you summon him."
+- **Ground-truth first:** locate Emberteeth (monster record + soul item family, all tiers) in the
+  effective arz and document what the soul CURRENTLY grants (non-summon skill? augments only?) -
+  then convert/extend so the soul summons Emberteeth himself.
+- **Summon pattern:** clone a proven working summon-soul shape (post-crowboar-controller-fix
+  references; Lyia Leafsong for permanence semantics). Pet = Emberteeth's own rig/kit scaled to
+  pet balance, tiered N/E/L like other summon souls. HARD SAFETY LAWS: never copy Monster.tpl
+  equipment/loot fields onto Pet.tpl (crash); animation/skill/FX fields only;
+  spawnObjectsTimeToLive [] only if permanence is the design; no explicit dtype on set_field;
+  bare _ensure_record for soul items, never clone_record.
+- **Keep existing value:** if the soul currently grants useful augments/stats, ADD the summon
+  alongside (the standard augments+summon stack) - do not strip visible benefits silently.
+- **Standard lanes:** registry module; {^F} tag manifest; soul contracts + validate_summon_pets
+  green; dry-run replay intended-records-only; Will fresh-drop verify (TQ bakes item properties
+  at pickup - test with a freshly dropped soul).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
