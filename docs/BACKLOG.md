@@ -1,4 +1,33 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
+> SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
+> SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has
+> NO Database arz, only Levels/Quests - the `docs/reference_mods.md` "0 MB DB" line is wrong). **30,714** SVAERA
+> records absent from our effective DB (OURS∪BASE=92,259); **all 30,714 are SVAERA-authored-new, 0 are SV098
+> content we dropped** (clean proof our overlay covers 100% of SV 0.98i). **Finding (2) divergence = SKIP as a
+> class:** SVAERA re-templated + rebalanced ~every common record (sampled monsters 120/120, weapons 120/120, every
+> mastery 100% diverge from BOTH base and SV098 - the "Steam fork with nerfs"; no surgical-fix subset to lift;
+> contradicts amgoz1 classic + Will's mastery hand-tuning). **The good vein is ADDITIVE content.**
+> **HEADLINE ADOPT (S effort, ZERO art coupling, verified droppable, art already in our shipped `drx.arc`/
+> `DRXtextures.arc`/base):** 5 thematic Greek/Egyptian sets = 13 legendary/epic items -
+> **Thoth's Favor** (`drxset049`, Egyptian, 2×Leg), **Hector's Bronze Armor** (`drxset051`, Trojan, 3×Epic),
+> **Robes of the Pythia** (`drxset052`, Delphi, 2×Epic), **Patroclus' Disguise** (`drxset053`, Achilles, 3×Leg),
+> **Might of Hephaestus** (`drxset058`, 3×Leg). All byte-present + functional (60-71 loot refs each) + absent from
+> ours. Adopt via the EXISTING `build_svc_database.py::_graft_import_closure()` + Text-tag port + one SVC loot
+> wire; no map, no new art arc. **Tier 2 (M, flavorful):** The Hunting Paradox (`newset002`, Laelaps+Teumessian
+> fox), The Elephantine Triad (`newset005`, Khnum/Anuket/Satis), curated Greek/Egyptian legendary uniques bundle
+> (Meteorite, Scepter of Lamashtu, Stormcrack, Nature's Revenge, Sickle of Kronos, Osiris' Atef, Vengeance of
+> Sekhmet, Symbol of Hathor - filter OUT Norse/Chinese) - gated by the **`_DRX_Meshes.arc` art lever** (we ship a
+> GUTTED 858KB vs SVAERA's 430MB; un-gutting or a subset-arc unlocks ~146 Leg + ~3,077 Epic `u_mod_*` at once).
+> **Tier 3 (M-L):** `sv_ew` Artemis bestiary (Moon Wolf ~ Hound of Artemis + Artemisian Oceanid nymphs) - fits
+> amgoz1 monster-identity bible; art in unshipped `N66_Mods.arc`+`SV_NewSkins.arc` + needs map placement.
+> **Tier 4 (QoL):** `NpcItemUpgrader` free-upgrade town NPCs (54); blood weapon-enchant FX (Toxeus theme).
+> **DELIBERATELY-SKIP families:** all xpack2/3/4 (Ragnarok/Atlantis/EE DLC), `item\formulas` (11,364 economy),
+> the §3 stat-override rebalance, SVAERA's own souls model (`\soul\*`+`soulskills`, conflicts with ours),
+> `OneShot_Dye` dyes, `mod_allcaravans` (we have Super Caravan), `sv_endgame` crystal-hub, mercenary-scroll system,
+> `game\svic` economy. **Permission precedent:** the SVAERA mastery graft (below, 2026-07-10) recorded soa's verbal
+> OK for additive SVAERA use - confirm it covers items/monsters before ship. Verified 8/8 candidates end-to-end
+> (truly absent + functional, not cut). **Recommended first wave: the 5 clean sets as one drop-pack.**
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
 > `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
 > **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)
