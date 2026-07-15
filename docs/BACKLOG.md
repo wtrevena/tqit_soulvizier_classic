@@ -28,6 +28,31 @@
 > (`scratchpad/ridx_proto.py`, 25 seeds + 5 edge classes) and real-ArzDatabase integration-tested vs a reference copy of
 > the original scans. Files: `tools/apply_svc_patches.py`, `tools/arz_patcher.py`.
 
+> 🖤 **B55 ENSLAVER PET FX (branch `feat/enslaver-pet-fx`, dry-run vetted vs build40 golden `b33c5a44`; awaiting
+> integration build).** Will (2026-07-14): "toxeus the murderer enslaver of souls has green glow not black like we
+> said ... this is when i summon him from his soul" + "his poison effect is still green, it is not the custom black
+> one." **RCA (`docs/reports/b55_enslaver_pet_fx.md`):** b38 black-rigged the ENCOUNTER monster `um_toxeus_enslaver_99`
+> (charcoal skin + `charFxPakRunningNames=svc_enslaver_darksmoke` + deleted its green weapon glow) - VERIFIED present in
+> the golden arz. But the SOUL-SUMMON PET (`toxeus_enslaver_1..3`) + the friendly marauders it raises
+> (`enslaver_marauder_1..3`) are built separately by `_build_boss_summon` (Lyia-clone base) and inherited Lyia's GREEN
+> residue that no builder field-copy overwrites: `buffSelfSkillName=envenomweapon` (skillWeaponTintGreen=1.0 + green
+> poison-weapon charFxPak = Will's "poison effect is still green"), `buffSelf2=heartofoak`, `healSkillName=regrowth_lyia`,
+> `deathEffect=343_natureswrath` (+ marauder-only `specialAttackSkillName=sylvannymph nature'swrath`/`skillName8` +
+> `baseTexture=maenad_lyia`), AND the pet was MISSING the boss's black-smoke shroud entirely. The shared boss/pet KIT
+> skills (netherstrike/bladestorm/lifedrain/dream chain) are NOT green (encounter stays black - matches Will). **FIX:**
+> new registry module `tools/patches/enslaver_pet_fx.py` (pos 12, before `visuals`): strips the green residue (marker-
+> matched) + inherits each pet's SOURCE-monster shroud (enslaver pets <- svc_enslaver_darksmoke, marauder pets <-
+> drxshadowcloak); PET FX fields only, no clones/new records/textures. **SIBLING SWEEP:** 82/222 soul pets carry the
+> SAME systemic Lyia green residue, but the precise same-class case ("a monster we RETINTED with a custom FX shroud whose
+> pet still wears the old rig") is EXACTLY these 2 families and no other; the Devourer `bloodtoxeus_1..3` (crimson) is
+> EXCLUDED - its green poison is intentional and STAYS (Will). The broader 82-pet finding is flagged for Will as a
+> separate design call, NOT mass-fixed in this crash-history pet round. **ITEM vs PET:** FX rides on the PET records
+> (live-resolved when the summon fires), NOT the soul ITEM - so Will's EXISTING Enslaver soul gets the fix after a Steam
+> restart; no fresh drop needed. **VERIFY (no heavy build):** dry-run replay vs golden = EXACTLY 6 pets modified,
+> intended FX fields only, Devourer byte-identical; module `verify()` fail-loud (4 negatives all abort); summons
+> contract golden-vs-fixed = 0 new violations (exit 0 both); all 3 pet gates (STAT-MIRROR/GEAR-PARITY/SKILL-KIT 222
+> pets) + soul-summon-identity PASS on the fixed arz; py_compile + `_check_registry` (14 modules) green.
+
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10

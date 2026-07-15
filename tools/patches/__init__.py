@@ -94,6 +94,10 @@ REGISTRY = [
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
                             # (four_generals/diadochi/polis_vault/neferkha/toxeus_suite + monolith).
+    'enslaver_pet_fx',      # b55: black-rig the SOUL-SUMMONED Enslaver + the marauders he raises
+                            # (strip Lyia-clone green residue: envenom/heartofoak/regrowth/natureswrath;
+                            # inherit each pet's source-monster black shroud). PET FX fields only;
+                            # runs after every pet-building module so it edits the FINAL pet records.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
