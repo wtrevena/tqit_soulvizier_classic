@@ -196,22 +196,24 @@ def _create_ambush_proxy(db):
 # =============================================================================
 # PART B - the rant scroll (per-player Misc4 @100%)
 # =============================================================================
-# The rant body (spec §2.3): a single flowing paragraph led by the ^r colour code (the
-# finalletter format, DB-verified - the scroll window word-wraps; no newline tokens). Villain
+# The rant body (spec §2.3): led by the ^r blood-red colour code and broken into 4 beats with ^n^n
+# paragraph breaks - matching the finalletter donor (which itself leads ^r and breaks with ^n^n,
+# DB-verified) and the vanilla parchment paragraph convention (see docs/reports/rant_scroll_corpus.md;
+# the scroll window also word-wraps). Villain
 # monologue in Toxeus's own voice, mythically grounded in the established cauldron/drowned-blood
 # lore, MP-aware ("bring your friends"), no memes/anachronism, no em dashes. LORE LAW: it treats
 # the original murderer as the eternal progenitor whom the blood form merely continues.
 _RANT_TEXT = (
     "^rYou found the wet page. Good. Read it aloud, so the walls remember your voice too. They "
     "called me a murderer as if the word were an insult, as if it were not a crown. I opened "
-    "Athens throat by throat, and the city thanked me with its silence. Then your heroes came and "
+    "Athens throat by throat, and the city thanked me with its silence. ^n^nThen your heroes came and "
     "cut me down in the dark and called that the end of the sentence. It was not even the comma. "
     "The cult drowned me in the cauldron beneath the falls and boiled the poison out of my marrow, "
     "and they poured the blood of the drowned back into my dry veins until I was full, fuller than "
-    "any living thing has the right to be. I do not kill for coin now, nor for quiet. I kill "
+    "any living thing has the right to be. ^n^nI do not kill for coin now, nor for quiet. I kill "
     "because every heartbeat in this cave is a debt, and I have come to collect all of them at "
     "once. You feel it already: the itch beneath the skin, the small wounds that will not close. "
-    "That is only me, reading you the way you are reading me. When you bleed, I am taking back what "
+    "That is only me, reading you the way you are reading me. ^n^nWhen you bleed, I am taking back what "
     "was always mine. Come to the deep door. Bring your friends. I will open every one of you at "
     "once, and drink the room dry, and leave this page for the next fool who mistakes an ending for "
     "a stop."
