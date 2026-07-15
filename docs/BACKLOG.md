@@ -2428,6 +2428,28 @@ touched aura + old->new radius. NOT started (quota); spec-first per the vet law.
 > carries defensiveLife -5..-X, the malus Will asked about - CONFIRMED aura-wide, not
 > self-only). 7 Hunting/Occult rows listed in the report's WILL VETO section.
 > NEXT stage of this entry: the aura_radius.py module + H/O golden waivers + dry-run replay.
+>
+> **IMPLEMENTED-AWAITING-BUILD (round 1) 2026-07-14 (feat/aura-radius):** registry module
+> `tools/patches/aura_radius.py` (runs after `boss_skill_fix`, before `visuals`) grows the RADIUS
+> FIELD ONLY (`skillTargetRadius`) of **80 player-facing, positive-only friendly auras -> 36u**
+> party screen-scale. No effect/damage/value touched. Roster-derived plan (546 rows):
+> WIDENED 80, HELD 40 negative + 34 offensive (flag, Will decides), DEFERRED 13 base-only
+> (need override-clone) + 4 field-creation (radius-0 self-buffs), SKIP 375 non-player.
+> Pet-only target is 18u but 0 rows qualified this round (every positive pet aura also has a
+> player-facing grant -> party 36u). H/O: 5 widened (Art of the Hunt, Call of the Hunt, Shadow
+> Link, drx_demon_regen/cloak, shadowform), 2 held (Study Prey neg, Smoke Screen off). Shadow
+> Link (Will's motivating case) widened 3->36 DESPITE its aura-wide defensiveLife malus, which
+> now also reaches pets/MP allies within 36u - flagged in the report WILL VETO for Will's veto.
+> Golden-freeze: 3 owner_approved_overrides waivers added to `tools/occult_hunting_golden.json`
+> (drxartofthehuntbuff/drxcallofthehuntbuff 15->36, drxbladehoningbuff 3->36; radius field only).
+> VERIFY (no heavy build): dry-run replay `tools/debug/b57_aura_radius_replay.py` PASS
+> (80 modified, radius-only + intended-records-only diff, idempotent, verify() OK, negative test
+> fails loud on Shadow Link); A7 golden gate PASS with the 3 waivers + correctly FAILS without
+> them on exactly those 3 drifts; _check_registry 14 modules; py_compile green. Contracts/
+> validate_tags structurally unaffected (0 records/tags/souls/summons added/removed).
+> Report old->new table + held/deferred lists in `docs/reports/b57_aura_radius.md` (IMPLEMENTATION).
+> Rides the next integration build. Round-2 candidates (Will-gated): the 74 HELD auras + the 17
+> DEFERRED (base-only override-clone + field-creation scope decisions).
 
 ## RCA RECORD 2026-07-12 evening: "quests blocked / doors closed" on _Toxeus = SAVE-SIDE, NOT a shipped bug
 Byte-level verdict (Opus RCA + Sonnet log check, wf_2c9d497c): Steam AND DEV both carry pure
