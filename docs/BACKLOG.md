@@ -2215,6 +2215,43 @@ stages. this new uber hero will go in the back corner of the Upper War-Camp befo
 - **Standard lanes:** DB registry module; tags via manifest; INJECT_SPECS; full gate battery;
   Will fresh-char verify on DEV.
 
+## QUEUED FEATURE: NEW-UBER-FORMULAS-FROM-ORPHANS (status: approved-concept-by-Will-2026-07-14, awaiting his candidate selection)
+Will (verbatim): "are there any cool orphaned weapon records that we could use to make new uber
+weapons behind? some uber forge formula weapons. add this to the backlog." Full audit +
+curated candidate detail + design sketch + reproduce steps: **`docs/reports/orphaned_weapons_curation.md`**.
+- **Finding:** the effective DB holds 4,360 weapon records - 3,007 obtainable, **1,069 orphaned**
+  (1,054 referenced by nothing; verified across 3 independent vectors), 284 junk. Plenty of "cool"
+  orphans (proper name + distinctive art and/or granted skill + lore) to reskin into supra ubers.
+- **Proven template (already in-repo):** SVC already added 3 thrown ubers this exact way -
+  `svc_thrown_charonstoll/lastword/sanguineorbit` formulas -> `svc_wep_*` results, wired into BOTH
+  `records\xpack\item\loottables\arcaneformulae\supra.dbr` + `supra_special.dbr`. Clone that path.
+- **Per-candidate build (each pick):** buff/author the result at `records\drxitem\supra\svc_wep_<name>.dbr`
+  (lvl-65 Legendary, `numRelicSlots=1`, supra-tier stats, identity-themed `itemSkillName` proc +
+  `weaponTrail`; KEEP the orphan's mesh/skin/bitmap - add a bespoke DRX trail for shared-mesh picks,
+  Blood Whisper style; picks already at L70-79 usable near as-is). Formula = new `zrecipes\svc_<class>_<name>_formula.dbr`
+  OR **reuse one of the 24 orphaned `zrecipes\` duplicate formula shells** (repoint `artifactName` +
+  reagents + `description`; the live `recipes\` twin still crafts the original). Recipe name to the
+  amgoz1 bar (amgoz1_design_voice.md): **"Mythic Formula - <name>"**; reagents = **2 Legendary + 1 Rare
+  thematically matched** to the weapon (per-candidate themes in the report). Add the formula to BOTH
+  supra drop tables; add tags via manifest (validate_tags green; arz + Text.arc ship together).
+- **Curated menu (14 + 8-axe bench; Will picks which to build - see report for pitches/paths/reagents):**
+  Ripulsar & Aquimae (Sword, bespoke lost DRX blades, 0-twin); Helona (Staff, grants a summon);
+  Hati (Thrown, Norse moon-wolf, bespoke, 0-twin); Sword Fish (Mace, the joke secret uber, 0-twin);
+  Phoenix (Axe, has a live Heat Shield skill); Erysichthon's Hunger / The Furies (Axe, Greek lore);
+  Scylla + Charybdis (paired sea-terror Axes); Heartpierce & Doom Herald (DRX cursed-egg Sword/Mace);
+  The Munderizer (Staff, the Munderbunny insider egg, magenta name); Di Jun's Pride (Bow, solar,
+  rename). Bench: 8 more Greek Legendary axes (Acheron's Touch, Axe of Tereus, Persephone's Caress,
+  Torment, Shai'tan, Atropos' Assistant, Enkidu's Stand, Theogenes' Onslaught).
+- **Honest gaps:** NO quality orphan Spear (Blood Whisper already the supra spear) or Shield - a new
+  spear/shield uber must be authored fresh, not sourced from an orphan.
+- **Twin caveat:** shared-mesh Greek axes + the DRX eggs have a live name-twin (droppable item of the
+  same name) - the orphan RECORD is still unreferenced/safe, but rename the uber (or frame it as an
+  "ascended" variant) and give it distinctive art. 0-twin picks (Ripulsar, Aquimae, Hati, Sword Fish,
+  Munderizer) have a fully free identity.
+- **Standard lanes:** DB records via registry module; tags via manifest ({^F}/{^r} discipline);
+  dry-run replay intended-records-only vs baseline; validate_tags + supra dead-ref invariant green;
+  Will fresh-drop verify on DEV (TQ bakes item props at pickup - test a freshly crafted item).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
