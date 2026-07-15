@@ -53,6 +53,29 @@
 > stale) + FAIL on unfixed (8 unwaived) + negative test PASS; `_check_registry` OK (14 modules); py_compile OK;
 > **arz/Text ship together** (deploy coupling). NOT yet integration-built (next wave rebuilds the arz).
 >
+> 📐 **MASTERY-UI REFLOW (round 2, 2026-07-14, `feat/mastery-ui-vet`, `docs/reports/mastery_ui_reflow_round2.md`).**
+> Cleared the 58 waived findings: **every wrong/crossed arrow (the CONNECTOR LAW, Will's actual complaint) is
+> gone - 0 unwaived CONN/INTERLEAVE/OFFCOL across all 9 masteries** - shrinking the waiver ledger **58 -> 17**
+> (each surviving one an irreducible tier collision / graft-broken skillTier / missing-record phantom with a
+> one-line "no law-compliant placement exists" reason). Non-golden reflow in `tools/patches/mastery_ui_vet.py`
+> (m1/m2/m4/m7/m8/m9: ~30 button moves + 9 connector fixes - reunite off-column modifiers, split interleaved
+> families, tier-correct chains, drop spurious base/leaf connectors, flip `[R]` side-connectors that pointed
+> nowhere); golden reflow in `tools/patches/hunting_occult_ui.py` (m5 Occult crossed tree Will reported 07-13,
+> re-derived to the laws + connection map; m6 Hunting connector moved from the Eviscerate modifier onto the Take
+> Down base). **Detector fix:** `audit_mastery_ui.canon()` now strips `buffself` so `stoneformbuffself` links to
+> `stoneform_moltenrock` - settles the Earth Stone-Form CONNECTOR false-positive in the detector (surgical: the
+> ONLY skill ending in `buffself`). **Golden:** 9 new `owner_approved_overrides` in `occult_hunting_golden.json`
+> (3 Occult positions + 4 Occult connectors + 2 Hunting connectors) + a `_WILL_VETO_2026_07_14` section (Will's
+> mastery-fix mandate authorizes the UI-only fixes; freeze prevents SILENT reversion, not vetted fixes). **Verify
+> (dry-run replay of the REAL modules onto build40 `b33c5a44`):** record-diff is **UI-only** (every changed field
+> is `bitmapPositionX/Y` or `skillConnectionOn` on a mastery-UI/skill record - ZERO gameplay-value drift);
+> `gate_mastery_ui` **PASS** (17 waived, 0 unwaived, 0 stale); A7 golden **PASS** (all drift covered); py_compile
+> + `_check_registry` OK; negative test PASS. Earth NOT moved (its b38 contiguous Rupture packing is Will's
+> explicit ask; arrows already correct, 5 TIER waived). **Round-2-for-Will candidates** (would shrink waivers
+> toward zero, need his data/design call): delete the Storm Spell Shock 2 phantom (-2), confirm Warfare
+> `drxhamstring` is a dead graft to delete (-1), authorise editing graft-broken `skillTier` values (-several).
+> **arz/Text ship together**; NOT yet integration-built. **UI-on-device: needs Will's in-game screenshot before promote.**
+>
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10

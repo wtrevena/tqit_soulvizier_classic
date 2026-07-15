@@ -354,3 +354,19 @@ Spirit 4-family holistic reflow, and two connector items that are false-positive
 Each needs Will's per-mastery design decision + in-game screenshot (standing UI-on-device rule); golden
 moves also need `occult_hunting_golden.json` `owner_approved_overrides`. As each is resolved, its key is
 removed from the ledger (the gate flags stale waivers), shrinking 58 -> 0 over subsequent rounds.
+
+## 10. IMPLEMENTATION STATUS (REFLOW round 2, 2026-07-14) - see `mastery_ui_reflow_round2.md`
+
+Round 2 cleared the 58 waivers down to **17**: **every wrong/crossed arrow (CONNECTOR LAW) is gone -
+0 unwaived CONN/INTERLEAVE/OFFCOL across all 9 masteries**. The non-golden reflow lives in
+`tools/patches/mastery_ui_vet.py` (m1/m2/m4/m7/m8/m9: ~30 moves + 9 connector fixes) and the golden
+Occult (5) + Hunting (6) reflow in `tools/patches/hunting_occult_ui.py` (9 new
+`occult_hunting_golden.json` overrides + a `_WILL_VETO_2026_07_14` section). The **b40 Occult reflow is
+SUPERSEDED, not merged**: it packed the crossed trees CONTIGUOUSLY (which would introduce fresh TIER
+violations under the 2026-07-14 mandate), so the Occult de-interleave was re-derived from the
+texture-decoded connection map to satisfy both laws. The Earth Stone-Form CONNECTOR false-positive
+(section 3) is settled in the detector (`audit_mastery_ui.canon()` now strips `buffself`), not waived.
+The 17 survivors are irreducible graft collisions / graft-broken skillTiers / the Storm `spellshock2`
+missing-record phantom - each with a one-line reason in `mastery_ui_waivers.json`. Verified by a
+dry-run replay of the real modules onto build40 `b33c5a44`: UI-only record-diff, `gate_mastery_ui`
+PASS, A7 golden PASS, select-screen text gate PASS, negative test PASS.

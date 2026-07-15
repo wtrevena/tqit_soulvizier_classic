@@ -1,72 +1,121 @@
-"""mastery_ui_vet - clean, no-regression mastery skill-tree UI relocations (round 1).
+"""mastery_ui_vet - law-compliant mastery skill-tree UI reflow (rounds 1+2, non-golden).
 
 Will's mandate (2026-07-14): every skill on the RIGHT VERTICAL LEVEL (row ==
-skillTier = TIER LAW) and only GENUINE augments connected (no interleave / no
-off-column modifier = CONNECTOR LAW). The full build40 audit
-(docs/reports/mastery_ui_vet_audit.md) found 66 findings across 9 masteries.
+skillTier = TIER LAW) and only GENUINE augments connected (no interleave, no
+off-column modifier, no spurious drawn connector = CONNECTOR LAW). The connector
+is the skill-record field `skillConnectionOn`; its bar draws UP to the NEAREST
+occupied cell above (same column for the straight `SkillBarBottomOn01.tex`,
+column-right for the DRX `..._right.tex`). Full ground truth:
+docs/reports/mastery_connection_maps.md + mastery_ui_vet_audit.md.
 
-Most of them cannot be fixed without Will's design decision: the SVAERA/DRX graft
-added MORE skill families than the 6-column grid can hold at tier-correct cells
-(Earth col428 = 4 families with tier collisions; Storm/Spirit are full), some
-grafted modifiers carry contradictory skillTier values (Warfare clubslam: a tier-2
-base above tier-7 modifiers), Storm stormnimbus has TWO tier-2 modifiers that
-cannot both stack on its column, one Storm button is an SV-original DEAD reference,
-and Occult (m5) + Hunting (m6) are Will's GOLDEN hand-tuned trees. Those are tracked
-in tools/mastery_ui_waivers.json (each with a justification) and gated by
-tools/gate_mastery_ui.py so no NEW defect can ship while the backlog is visible.
+This module owns the SIX NON-GOLDEN masteries (1 Warfare, 2 Defense, 4 Storm,
+7 Spirit, 8 Nature, 9 Dream). Every wrong arrow (CONN), off-column modifier
+(OFFCOL) and crossed tree (INTERLEAVE) in them is cleared here; the residual
+findings are only irreducible graft collisions tracked (with a one-line
+"no law-compliant placement exists" reason each) in tools/mastery_ui_waivers.json
+and enforced by tools/gate_mastery_ui.py. Golden Occult (5) + Hunting (6) are
+owned by tools/patches/hunting_occult_ui.py (with occult_hunting_golden.json
+owner_approved_overrides). Earth (3) needs no move (its b38 contiguous Rupture
+packing is Will's explicit 2026-07-13 ask; arrows are correct, the 5 TIER
+findings are waived - no free column exists for a tier-correct grafted-Rupture
+placement without displacing the intact Ring of Flame family).
 
-This module applies ONLY the relocations that PROVABLY satisfy BOTH laws with a
-FREE target cell and ZERO new finding (verified by re-running gate_mastery_ui.py
-on the patched arz). Each moves exactly one UI button (bitmapPositionX/Y, dtype 0
-INT) - no skill VALUE / effect / tier / dependency change, no golden-tracked
-mastery touched (m1/m2/m9 only, so the A7 Occult/Hunting golden stays untouched):
+ALL edits are UI fields only (button `bitmapPositionX/Y`, dtype 0 INT, on the
+`records\\ingameui\\player skills\\mastery N\\skillNN.dbr` records; the visual-only
+`skillConnectionOn` on the skill record). NO skill VALUE / effect / tier /
+dependency change. Every move was proven on the build40 golden (`b33c5a44`) to
+leave ZERO unwaived finding via a dry-run replay of gate_mastery_ui.
 
-  m1 Warfare  skill08 drxonslaught_hamstring   (628,217) -> (428,217)
-     the Onslaught modifier was stranded in Warhorn's column 628 (OFFCOL) and
-     trapped in Warhorn's span (INTERLEAVE) and its connector drew up at the
-     unrelated Warhorn Doomhorn (CONN). 428 is Onslaught's own column and t4
-     (y217) == its skillTier 4 and the cell is free -> all three findings clear,
-     connector now lands on Onslaught Craven (same family). Fixes 3.
+What each mastery does (see the audit for the per-skill rationale):
+  m1 Warfare - reunite Onslaught Hamstring into col4 (r1); de-interleave col3's
+     three grafted families (Club Slam, Battle Standard, Ancestral Mod) into clean
+     non-crossing blocks; Ancestral Mod -> its tier-7 row.
+  m2 Defense - Quick Recovery -> col1, Summon Phalanx -> its tier-7 row (r1); drop
+     3 spurious base connectors (Concussive Blow, Axe Training, Weapon Pool
+     Shield Smash) that had no modifier to point at.
+  m4 Storm  - reunite Storm Nimbus Heart of Frost into col1; move the two grafted
+     standalones (Frost Nova, Lightning Dash) + the phantom Spell Shock 2 out of
+     the Spellbreaker/Storm Nimbus spans so Cold Aura + Spellbreaker reach their
+     own modifiers.
+  m7 Spirit - holistic de-interleave (the worst tree): return Death Chill Aura /
+     Life Drain / Wraith Lord / Spirit Ward modifiers to their base columns, split
+     the interleaved Ternion + Sands of Sleep families into separate columns,
+     tier-correct the Distortion Wave chain, flip Wraith Lord's connector from the
+     [R] side-variant to straight, and drop 3 spurious summon connectors.
+  m8 Nature - reunite the Sylvan Nymph pet-modifier (Sylvan Protection) into the
+     nymph column; drop Sprite's spurious base connector.
+  m9 Dream  - Distortion Field out of the Lucid Dream span (r1).
 
-  m2 Defense  skill15 drxquickrecovery         (228,279) -> (128,279)
-     Quick Recovery (standalone tier-3) sat inside Adrenaline's column-228 span
-     (INTERLEAVE) and stole Adrenaline's connector (CONN). 128 t3 (y279) == its
-     tier and is free and lands in no family span -> both clear; Adrenaline's
-     connector now reaches its own Resilience. Fixes 2.
-
-  m2 Defense  skill26 drx_summonphalanx        (428,155) -> (228,31)
-     Summon Phalanx has skillTier 7 but sat on row 5 (TIER) inside Battle
-     Awareness's column-428 span (INTERLEAVE). 228 t7 (y31) == its tier 7, is
-     free, and sits below every family span in that column -> both clear. Fixes 2.
-
-  m9 Dream    skill11 drxdistortionfield       (228,279) -> (128,279)
-     Distortion Field (standalone tier-3) was trapped inside the Lucid Dream span
-     in column 228 (INTERLEAVE). 128 t3 (y279) == its tier 3 and is free and in
-     no family span in that column -> clears. Fixes 1.
-
-Total: 4 moves, 8 findings cleared, 0 new. Every target cell was proven free +
-tier-correct + non-interleaving against the build40 per-skill table before landing;
-the coupled tools/gate_mastery_ui.py re-proves it every build.
-
-Contract: patches-registry module (MODULE_NAME + apply(db, tags)). Disjoint from
-mastery_ui_audit (m3 Earth reflow + graft icons + m9 Dream background) and
-hunting_occult_ui (m5/m6 + backgrounds); runs after both. Fail-loud if any slot no
-longer holds its expected skill (upstream layout drift) rather than moving a
-different button. `tags` unused (record-only; no Text tags).
+Contract: patches-registry module (MODULE_NAME + apply/verify). Runs after
+mastery_ui_audit (Earth reflow + graft icons) and hunting_occult_ui (m5/m6);
+disjoint slots. Fail-loud if any slot no longer holds its expected skill.
 """
 
-MODULE_NAME = "Mastery skill-tree UI vet: clean tier/connector relocations (round 1)"
+MODULE_NAME = "Mastery skill-tree UI vet: law-compliant reflow (non-golden 1/2/4/7/8/9)"
 
 _UI = "records\\ingameui\\player skills\\mastery %d\\%s"
 _DREAM_UI = "records\\xpack\\ui\\skills\\mastery 9\\%s"
 
-# (mastery slot, ui slot file, expected skillName basename, new X, new Y). The
-# expected-basename assertion fails the build loud if the slot drifted upstream.
+# straight connector texture (bar draws up in the same column).
+_STRAIGHT = r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex"
+
+_COLX = {1: 128, 2: 228, 3: 328, 4: 428, 5: 528, 6: 628}   # column -> bitmapPositionX
+_ROWY = {1: 403, 2: 341, 3: 279, 4: 217, 5: 155, 6: 93, 7: 31}   # tier row -> bitmapPositionY
+
+# (mastery, ui slot file, expected skillName basename, column 1-6, tier row 1-7).
+# The expected-basename assertion fails the build loud if a slot drifted upstream.
 _MOVES = [
-    (1, "skill08.dbr", "drxonslaught_hamstring", 428, 217),
-    (2, "skill15.dbr", "drxquickrecovery",       128, 279),
-    (2, "skill26.dbr", "drx_summonphalanx",      228,  31),
-    (9, "skill11.dbr", "drxdistortionfield",     128, 279),
+    # m1 Warfare
+    (1, "skill08", "drxonslaught_hamstring", 4, 4),   # reunite into Onslaught col4 (r1)
+    (1, "skill26", "drx_clubslam", 3, 1),             # Club Slam block bottom
+    (1, "skill27", "drx_clubslam_fissure", 3, 2),     # Club Slam mod above base
+    (1, "skill20", "drxbattlestandard_petmodifier_triumph", 3, 4),
+    (1, "skill25", "drxhamstring", 3, 6),             # graft standalone, span-free cell
+    (1, "skill28", "drx_ancestralmod", 3, 7),         # -> its tier-7 row (fixes TIER)
+    # m2 Defense (r1 moves)
+    (2, "skill15", "drxquickrecovery", 1, 3),
+    (2, "skill26", "drx_summonphalanx", 2, 7),
+    # m4 Storm
+    (4, "skill05", "drxstormnimbus_heartoffrost", 1, 3),   # reunite into Storm Nimbus col1
+    (4, "skill10", "drxstormwisp_petmodifier_eyeofthestorm", 1, 6),
+    (4, "skill25", "drxspellbreaker_spellshock2", 1, 7),   # phantom out of Storm Nimbus span
+    (4, "skill27", "drxfrostnova", 3, 7),                  # graft standalone, top of Squall col
+    # m7 Spirit (holistic de-interleave)
+    (7, "skill04", "drxdarkcovenant", 1, 4),
+    (7, "skill05", "drxdarkcovenant_unearthlypower", 1, 7),
+    (7, "skill07", "drxdeathchillaura_ravagesoftime", 2, 3),   # reunite to Death Chill col2
+    (7, "skill08", "drxdeathchillaura_necrosis", 2, 5),
+    (7, "skill28", "drxdistortionwave_chaoticresonance", 3, 3),  # tier-correct
+    (7, "skill29", "drxdistortionwave_psionicimmolation", 3, 5),
+    (7, "skill01", "drxspiritward", 4, 2),
+    (7, "skill02", "drxspiritward_spiritbane", 4, 3),          # reunite with Spirit Ward col4
+    (7, "skill22", "drxbonepetsummons", 4, 4),
+    (7, "skill21", "drxsoulsiphontotem", 4, 5),
+    (7, "skill13", "drxdeathward", 4, 6),             # out of the Dark Covenant span (was col1)
+    (7, "skill12", "drxlifedrain_cascade", 5, 2),             # reunite with Life Drain col5
+    (7, "skill20", "drxwraithlord_petmodifier_arcaneblast", 5, 4),  # reunite with Wraith Lord col5
+    (7, "skill15", "drxternion", 6, 2),                       # split Ternion out of col1
+    (7, "skill16", "drxternion_arcanelore", 6, 4),
+    # m8 Nature
+    (8, "skill18", "drxsylvannymph_petmodifier_overgrowth", 5, 6),
+    (8, "skill26", "drx_nymph_petmodifier_rootwave", 5, 7),   # reunite into the Sylvan Nymph col
+    # m9 Dream (r1)
+    (9, "skill11", "drxdistortionfield", 1, 3),
+]
+
+# (mastery, ui slot file, expected skillName basename, action). action:
+#   'drop'     - clear skillConnectionOn (a base with no modifier must not draw a bar)
+#   'straight' - set the straight same-column connector (move a bar from a modifier
+#                to its base, or flip a mis-pointed [R] side-connector to straight)
+_CONN = [
+    (2, "skill20", "drxconcussiveblow", 'drop'),              # standalone passive, no modifier
+    (2, "skill21", "drxaxepassive", 'drop'),                  # standalone passive, spurious [R]
+    (2, "skill07", "drxweaponpool_shieldsmash", 'drop'),      # spurious [R] pointing off-grid
+    (7, "skill23", "drxskellysummons", 'drop'),               # summon, no modifier
+    (7, "skill09", "drxenslavespirit", 'drop'),               # no modifier
+    (7, "skill22", "drxbonepetsummons", 'drop'),              # summon, no modifier
+    (7, "skill17", "drxwraithlordsummons", 'straight'),       # [R]->straight; reaches Death Nova
+    (8, "skill22", "drxsprite_summons", 'drop'),              # summon, no Sprite modifier
 ]
 
 
@@ -74,57 +123,72 @@ def _first(v):
     return v[0] if isinstance(v, list) else v
 
 
-def _slot_path(slot, ui_file):
-    return _DREAM_UI % ui_file if slot == 9 else _UI % (slot, ui_file)
+def _slot_path(mastery, ui_file):
+    return _DREAM_UI % (ui_file + ".dbr") if mastery == 9 else _UI % (mastery, ui_file + ".dbr")
+
+
+def _resolve(db, rec):
+    if db.has_record(rec):
+        return rec
+    low = rec.lower().replace('/', '\\')
+    for n in db.record_names():
+        if n.lower().replace('/', '\\') == low:
+            return n
+    raise SystemExit("mastery_ui_vet: expected UI record missing: %s "
+                     "(upstream structure changed?)" % rec)
+
+
+def _assert_skill(db, rec, ui_file, mastery, expect):
+    sn = _first(db.get_field_value(rec, "skillName")) or ""
+    base = sn.rsplit('\\', 1)[-1].lower()
+    if base.endswith('.dbr'):
+        base = base[:-4]
+    if base != expect.lower():
+        raise SystemExit(
+            "mastery_ui_vet: m%d %s holds %r, expected %s - the mastery-UI layout "
+            "drifted upstream; reconcile the reflow (and its gate waiver ledger) "
+            "before shipping" % (mastery, ui_file, sn, expect))
+    return sn
 
 
 def apply(db, tags):
-    """Relocate the 4 clean-win mastery UI buttons. Fail-loud on any drift."""
-    print("\n=== mastery_ui_vet: clean tier/connector relocations (round 1) ===")
+    """Relocate the non-golden UI buttons + fix their connectors. Fail-loud on drift.
+    `tags` unused (record-only; no Text tags)."""
+    print("\n=== mastery_ui_vet: law-compliant reflow (non-golden 1/2/4/7/8/9) ===")
 
-    def _resolve(rec):
-        if db.has_record(rec):
-            return rec
-        low = rec.lower().replace('/', '\\')
-        for n in db.record_names():
-            if n.lower().replace('/', '\\') == low:
-                return n
-        raise SystemExit("mastery_ui_vet: expected UI record missing: %s "
-                         "(upstream structure changed?)" % rec)
+    for mastery, ui_file, expect, col, tier in _MOVES:
+        rec = _resolve(db, _slot_path(mastery, ui_file))
+        _assert_skill(db, rec, ui_file, mastery, expect)
+        db.set_field(rec, "bitmapPositionX", _COLX[col], 0)   # dtype 0 = INT (match existing)
+        db.set_field(rec, "bitmapPositionY", _ROWY[tier], 0)
+        print("  m%d %-9s (%-42s) -> col%d row%d" % (mastery, ui_file, expect, col, tier))
 
-    for slot, ui_file, expect, x, y in _MOVES:
-        rec = _resolve(_slot_path(slot, ui_file))
-        sn = _first(db.get_field_value(rec, "skillName")) or ""
-        base = sn.rsplit('\\', 1)[-1].lower()
-        if base.endswith('.dbr'):
-            base = base[:-4]
-        if base != expect.lower():
-            raise SystemExit(
-                "mastery_ui_vet: m%d %s holds %r, expected %s - the mastery-UI "
-                "layout drifted upstream; reconcile the relocation (and its gate "
-                "waiver ledger) before shipping" % (slot, ui_file, sn, expect))
-        db.set_field(rec, "bitmapPositionX", x, 0)   # dtype 0 = INT (match existing)
-        db.set_field(rec, "bitmapPositionY", y, 0)
-        print("  m%d %-12s (%s) -> (%d,%d)" % (slot, ui_file, expect, x, y))
+    for mastery, ui_file, expect, action in _CONN:
+        rec = _resolve(db, _slot_path(mastery, ui_file))
+        sn = _assert_skill(db, rec, ui_file, mastery, expect)
+        srec = _resolve(db, sn)
+        db.set_field(srec, "skillConnectionOn", "" if action == 'drop' else _STRAIGHT)
+        print("  m%d %-9s (%-42s) connector -> %s" % (mastery, ui_file, expect, action))
 
-    print("=== mastery_ui_vet done: %d clean relocations "
-          "(8 audit findings cleared, 0 new; gate_mastery_ui re-proves) ===" % len(_MOVES))
+    print("=== mastery_ui_vet done: %d relocations + %d connector fixes "
+          "(0 unwaived finding; gate_mastery_ui re-proves) ==="
+          % (len(_MOVES), len(_CONN)))
 
 
 def verify(db, tags):
-    """Post-finalization self-check: assert the 4 buttons landed on their target
-    cells (a cheap invariant; the full law re-proof is gate_mastery_ui.py, wired
-    into the build battery after the A7 golden guard)."""
-    for slot, ui_file, expect, x, y in _MOVES:
-        rec = _slot_path(slot, ui_file)
+    """Post-finalization self-check: assert every moved button landed on its cell
+    (the full law re-proof is gate_mastery_ui.py, wired into the build battery)."""
+    for mastery, ui_file, expect, col, tier in _MOVES:
+        rec = _slot_path(mastery, ui_file)
         if not db.has_record(rec):
             low = rec.lower().replace('/', '\\')
             rec = next((n for n in db.record_names()
                         if n.lower().replace('/', '\\') == low), rec)
-        gx = _first(db.get_field_value(rec, "bitmapPositionX"))
-        gy = _first(db.get_field_value(rec, "bitmapPositionY"))
-        if (int(gx), int(gy)) != (x, y):
+        gx = int(_first(db.get_field_value(rec, "bitmapPositionX")))
+        gy = int(_first(db.get_field_value(rec, "bitmapPositionY")))
+        if (gx, gy) != (_COLX[col], _ROWY[tier]):
             raise SystemExit(
-                "mastery_ui_vet.verify: m%d %s at (%s,%s), expected (%d,%d) - a "
-                "later module moved it; reconcile the layout" % (slot, ui_file, gx, gy, x, y))
-    print("  mastery_ui_vet.verify: 4 relocations intact")
+                "mastery_ui_vet.verify: m%d %s at (%s,%s), expected col%d row%d "
+                "(%d,%d) - a later module moved it; reconcile the layout"
+                % (mastery, ui_file, gx, gy, col, tier, _COLX[col], _ROWY[tier]))
+    print("  mastery_ui_vet.verify: %d relocations intact" % len(_MOVES))

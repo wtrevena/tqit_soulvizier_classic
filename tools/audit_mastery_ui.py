@@ -114,12 +114,19 @@ def collect(gold, slot):
 
 def canon(name):
     """Normalise a skill basename for family grouping: fix the 'petmodifer'
-    misspelling and collapse the summon-suffix so a pet-modifier `X_petmodifier_*`
-    shares a root with its summon skill `Xsummons`/`Xsummoning`."""
+    misspelling and collapse a trailing self-cast/summon suffix so a variant of a
+    base shares a root with the base. Handles:
+      - `Xsummons`/`Xsummoning` -> `X`  (pet-modifier `X_petmodifier_*` links to the
+        summon skill), and
+      - `Xbuffself` -> `X`  (a self-buff variant links to the base's modifier, e.g.
+        `stoneformbuffself` <-> `stoneform_moltenrock`; base-name prefix matching that
+        settles the documented Earth Stone-Form connector false-positive - the ONLY
+        skill ending in 'buffself' across all 9 masteries, so this is surgical).
+    """
     if not name:
         return name
     c = name.lower().replace('petmodifer', 'petmodifier')
-    for suf in ('summoning', 'summons'):
+    for suf in ('summoning', 'summons', 'buffself'):
         if c.endswith(suf) and len(c) > len(suf) + 2:
             c = c[:-len(suf)]
     return c
