@@ -147,6 +147,12 @@ def _gather(db):
 # rationale). A waived record still prints (visible, tracked) and is never
 # silently absorbed into a passing count; it only stops counting as a FAIL.
 _KNOWN_EXCEPTIONS = {
+    # legion_soul_stages (build41 lane, vetted GO): non-terminal death-transform
+    # stages zeroed so Legion drops ONE soul from the terminal form only.
+    'um_legion_28': (0.0, 'legion_soul_stages zeroed non-terminal stage (66->0 intended)'),
+    'um_legion_28a': (0.0, 'legion_soul_stages zeroed non-terminal stage (66->0 intended)'),
+    'um_legion_28b': (0.0, 'legion_soul_stages zeroed non-terminal stage (66->0 intended)'),
+
     # Pharaoh's Honor Guard: hand-tuned 2.25%->10% (a THIRD tier outside the
     # 25/50/66 model, predates 2026-07-14).
     **{f'boss_pharaohshonorguard{n}_{lv}': (10.0,
@@ -382,7 +388,8 @@ def main(argv):
         'hero_junshan_39':        ('RANDOM', 50.0),   # <- NO-GO record (create_uber_souls)
         'hero_grom_28':           ('RANDOM', 50.0),   # plain hero roster
         'u_bloodwing_12':         ('RANDOM', 50.0),   # u_ unique, random pool
-        'um_legion_28':           ('RANDOM', 50.0),   # in RANDOM eurynomus pools
+        'um_legion_28':           (None, 0.0),        # legion_soul_stages: non-terminal, zeroed (one soul/encounter)
+        'um_legion_28c':          (None, 66.0),       # legion TERMINAL: spawned by actorToSpawnOnDeath (no pool) -> UNREFERENCED/66 safe-default; WILL Q: inherit chain-head's RANDOM 50?
         'um_vashkarr_99':         ('PLACED', 66.0),   # q_vashkarr_lone
         'um_broodmother_99':      ('PLACED', 66.0),
         # svc_um_hadesmarshal_80: module-authored placed boss (four_generals sets
