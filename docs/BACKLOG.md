@@ -2936,6 +2936,25 @@ of those two specifically, that's pre-existing intentional shape-law behavior, n
 built to canonical map/Text.arc pair or deployed - DB-lane-only revert; full deploy needs the map
 lane's own text/quests build to be re-run against this arz before shipping.
 
+## BUILD44 GATE RECORD (2026-07-16, DEV-only; Steam HELD for Will's word)
+Contents: the b68 mastery-reflow revert ONLY (merge `2408d9a` of fix/mastery-reflow-revert
+`1b2676e`; all 9 trees back to build41 layout; b60/b67 pane fixes kept) + the b69 SV ground-truth
+docs commit (`f16f4c5`, docs/tools data only, no build effect). Artifacts: arz
+`439a9279a7c5cf94b02074fd00981dd2` (canonical work/ build reproduced the revert-lane scratch build
+byte-identical = determinism proof, so the Opus vet's proof-diffs carry over); Text.arc UNCHANGED
+from build43 (`3e576581`, validate_tags PASS vs the new arz); Levels (canonical `62868eec` /
+TESTHUB variant) + Quests (`5e664c7b`) UNCHANGED from build43, not redeployed. Gates: A7 golden
+freeze PASS (66 waived: build41's 35 + the 28 b60 + b67/aura keys the revert reconstructed),
+summon validator PASS (0 strict), 16 module verifies OK, registry selfcheck 25 modules
+(mastery_ui_vet removed), contracts GATE PASS 0 P0 / 0 P1 / 4909 P2 (pre-existing count,
+no new). DEV deploy hash-verified: SoulvizierClassicDEV.arz == `439a9279` (TQ not running).
+Known-persisting after revert (pre-b42 shape-law, queued for build45 vs SV ground truth +
+Will rulings): Poisonous Gas square (should be circle), Blade Fury circle (should be square),
+Smoke Screen shape, Eviscerate -> SQUARE (Will ruling 2026-07-16), emblem-circle black hole x9
+(masterybitmap.dbr BitmapSingle->BitmapUIAware conversion), Earth Soften Metal row, Occult
+pre-0.98i family placement (Darklings/Dark Aperture/Toxic Concoction/Shadow Stalker - Will
+correction: sourced from SV 0.9/0.41, NOT hand-authored; extraction lane in flight).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
