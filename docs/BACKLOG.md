@@ -198,6 +198,82 @@
 >   skill_quality (pos 4) sets carrionlord's controller, souls_quality (pos 13) removes it (later-wins, S4b
 >   WARN). Report: `docs/reports/souls_quality_fix.md` (+ audit round-2 corrections). **INTEGRATION MERGE
 >   SET = feat/souls-quality + feat/b40-soul-icons** (both required; disjoint file sets, non-conflicting).
+> 🗡️ **B64 THROWN-WIELDER RESTORE (2026-07-15, `feat/thrown-enemies`) - SUPERSEDES B58 below.**
+> Will's design law: *"instead of us wiring them back into spawn pools and us deciding which pools
+> to wire them into, cant we just restore them into the existing pools that they previously spawned
+> in?"* + *"restore the ones that are in the expansions and then scale up them to match SV
+> difficulty"* (DLC dependency confirmed acceptable). Independently re-derived the b58 "74 wielders"
+> from scratch (b58's own probe scripts were session-ephemeral, never committed) via loot-table
+> chase + a slot-1/3/5-identity filter (excludes ~49 incidental alternate-weapon monsters e.g.
+> skeletons/dvergr) -> 75 records, minus 1 scripted non-wielder prop (`ss_porcusroh2_die.dbr`,
+> zero pool membership anywhere) = **74, exactly reproducing b58**. Classified all 74:
+> **(a) OVERLAY-DISARMED, restored in place, 10 records / 4 rigs** - Maenad02/DuneRaider01/
+> TigerMan01 (b58's 3) PLUS **Machae{01,02,03}A.msh** (a b58 correction: filed as "DLC/unreachable"
+> under the "xpack" no-digit Immortal Throne namespace without checking WHERE - ground truth: its
+> own base `ProxyPool`s place it in Elysian Fields + Plains of Judgement, core reachable Hades-arc
+> content, not a DLC bonus act). Restored the family's exact vanilla right(+left, dual duneraider)-
+> hand equip/loot fields VERBATIM on the SAME overlay record (no clone, no new namespace, no new
+> pool) - every one already sits in a real, unchanged base `ProxyPool` a real reachable level
+> already places, so restoring the fields is the entire fix. **(b) POOL-MEMBERSHIP-LOST: NONE** -
+> every DLC pool is `in_golden=False` (pure base pass-through), our mod never dropped a wielder from
+> a pool. **(c) INTACT-BUT-UNREACHABLE: 64 records, NOT restored/placed** - Ragnarok Scandia/
+> Corinthia/Germany/Asgard/Dvergr-Lands (46: aesir/troll/yerren/mercenary/celticbandit/greekbandit,
+> incl. resolving b58's "Corinthia" residual - it's Ragnarok's OWN zone, nothing to do with reachable
+> Greece) or Atlantis Outer-Atlantis (18: potamoi/monkeyman), both outside the standing IT-cap +
+> A5-fix reachable set - reported with 3 options for Will, nothing invented. **SV-difficulty
+> scaling**: ground-truthed Common-rank golden/base `characterLife` median = x1.20 (n=258 SV-touched
+> monsters, wide per-monster spread 0.18-3.33x) vs Champion x1.26-1.30 (n=423); the 7 restored Common
+> records (maenad/tigerman/machae) were verified UNTOUCHED since raw base AE (ratio 1.0, confirming
+> the "under-tuned" premise) -> scaled x1.20 on `characterLife` (their only per-record stat field;
+> OA/DA/STR/DEX/INT are template-inherited, absent on these records). The 3 Champion duneraider
+> variants are ALREADY SV-scaled by a prior wave (golden/base ratio exactly 1.4x, all three,
+> untouched by this module). Drop safety: exact vanilla N/E/L loot bands preserved; `chanceToEquip
+> Finger2` verified 0.0 in base AND golden for all 10 (no soul leak). Orphan flagged:
+> `am_assassin_15` is itself overlay-disarmed like its 21/27 siblings but has ZERO base ProxyPool
+> membership anywhere (dead in vanilla TQ itself, not an SV regression) - restored for identity
+> consistency, zero player-visible effect alone. **Module `tools/patches/thrown_restore.py`,
+> REGISTERED** (unlike b58's `thrown_wielders.py`, which stays UNREGISTERED/kept-for-reference,
+> docstring updated to point here) - in-place edits only, 0 new records (dry-run vs golden `eb8bc377`
+> proves `db._modified` == exactly the 10 roster paths). Verified: `verify()`/`_negtest()` (8 broken
+> shapes rejected) OK, `py_compile` + `_check_registry` (14 modules) clean, 0 collision risk
+> (full-tree grep - only the unregistered old module also references these records, read-only as
+> clone donors), contracts souls 0/0/0 clean (summons domain shows 652 PRE-EXISTING violations, 0 of
+> which reference any roster record - confirmed by JSON search - caused by this worktree lacking the
+> full `Resources/` art tree, not this module; map/resources/quests contracts need the 688MB Levels
+> arc and were not run per the no-heavy-build constraint - this module makes zero map/Quests changes).
+> Full per-wielder table + reachability options for Will = `docs/reports/b64_thrown_restore.md`.
+> 🗡️ **B58 THROWN-WIELDER ARMING (2026-07-14, `feat/thrown-enemies`) - SUPERSEDED BY B64 ABOVE.**
+> Kept for history (the invented-family approach; `tools/patches/thrown_wielders.py` stays
+> unregistered). Original entry follows unchanged. Will's "we have throwing weapons but no
+> enemy uses them" is CONFIRMED; 3-family arming built + fully verified, awaits Will's veto.** Verified read-only
+> from golden arz `b33c5a44` + canonical Levels `9981085b` (+ stock TQAE / SVAERA cross-check): thrown weapons =
+> `Class WeaponHunting_RangedOneHand` (191 recs, ALL xpack2/3/4 - a Ragnarok+ item class); **0 of the 74 monsters
+> whose weapon slot resolves to a thrown weapon spawn in the reachable Act1-Hades+SV campaign** (per-level
+> attribution; the sole campaign-namespace vector is a charLevel-37 Ragnarok Act-5 Corinthia slinger overlay our
+> campaign never reaches). Throwing weapons DO drop as loot (the mod's `_restore_thrown_weapon_drops` - what Will
+> sees), but no reachable enemy wields one.
+> **ROOT CAUSE (ground-truth, corrects the first-pass audit): the base game DID ship genuine throwers on three
+> REACHABLE-campaign rigs** - Maenad02 (`maenad\ar_archer_06`/`br_archer_10`, RIGHT=1h_ranged@100 / LEFT bow@0),
+> DuneRaider01 (`duneraider\am_assassin_15`/`_21`, dual 1h_ranged@100), TigerMan01 (`tigerman\ar_archer_27`/`_33`,
+> RIGHT=1h_ranged@100 / LEFT bow@0) - **but the SV/mod overlay DISARMS every one** (maenad/tigerman -> bow;
+> duneraider -> melee) because the SV-classic roster predates thrown weapons. So the design gap is not "no rig
+> exists" (the audit's HIGH-risk read of maenad); it is "the overlay disarmed the throwers that already existed."
+> **FIX** `tools/patches/thrown_wielders.py` (registry module, **UNREGISTERED** so golden stays byte-identical):
+> arms 3 identity-fit families x 2 tiers = **6 Common thrown-wielders** (Maenad Javelineer / Dune Raider Skirmisher
+> / Tigerman Hunter) by cloning each family's base thrower (keeps mesh + full rangedOneHand/dualRanged anim block +
+> ranged AI) then RE-AUTHORING the RIGHT hand with that family's exact VANILLA thrown block (static+monster+unique
+> tiered N/E/L loot arrays at vanilla weights) + `chanceToEquipLeftHand=0` so the offhand bow/melee can't beat the
+> throw. Drops banded to bow-wielders BY CONSTRUCTION (unique-thrown slot weight 4-5 = the same monster's bow-drop
+> slot). +3 minority-flavor ProxyPools for the MAP lane. **Verification (dry-run vs golden b33c5a44 + adversarial
+> vet): intended-only +9 record delta (6 monsters + 3 pools), 0 existing records mutated, all 6 = Common throwers
+> on whitelisted rigs w/ anim block retained + no soul leak, base donors untouched, 0 INT/FLOAT round-trip
+> corruption; `verify()` OK, `_negtest()` rejects 7 broken shapes (incl. left-hand-re-enabled), py_compile +
+> `_check_registry` clean.** The veto artifact (verdict + evidence chain + armed-roster table + amgoz naming +
+> open questions) = `docs/reports/b58_thrown_wielders.md`. **Rides the NEXT integration build** after Will vetoes
+> the roster (report C) + the coupled MAP lane places the pool proxies among reachable Act-1/2/3 maenad/raider/
+> tigerman packs at minority weight. Names are amgoz-pass + Will-veto pending (working copy).
+> INTEGRATION PREREQ (reported): the monolith must import base donor `ar_slinger_37` into the overlay first (like
+> `import_base_game_bosses`), since a registry `apply(db,tags)` only sees the mod overlay.
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
 > `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
 > **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)

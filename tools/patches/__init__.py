@@ -94,6 +94,10 @@ REGISTRY = [
                                     # finalization-phase interim call) so it wins any collision
     'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
                             # gameengine (SV's pre-AE record lacks them; touches only gameengine)
+    'thrown_restore',       # b64: restore base+IT thrown-wielders (maenad/duneraider/tigerman/
+                            # machae) our own overlay disarmed, back into their EXISTING pools
+                            # in place (no clone, no new pool); disjoint namespace (monster
+                            # records only, none touched by any other module) - order-independent.
     'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
