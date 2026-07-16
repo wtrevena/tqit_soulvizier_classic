@@ -82,6 +82,13 @@ REGISTRY = [
                             # non-golden); runs after mastery_ui_audit (disjoint slots); the rest
                             # of the 66 findings are Will-gated (tools/mastery_ui_waivers.json,
                             # enforced by tools/gate_mastery_ui.py)
+    'mastery_bg_render',    # b60 wave (ships build42): mastery pane BLACK-BACKGROUND true render
+                            # fix - upgrades the 9 pane records hunting_occult_ui/mastery_ui_audit
+                            # repointed from the broken BitmapSingle+bitmapName to the vanilla
+                            # BitmapUIAware+bitmapNames (+ controller sibling) the pane slot
+                            # actually renders; + chrome repoint (undo buttons/cost/gold numbers
+                            # off the dead SkillsPanel arc). MUST run after those two (it reads
+                            # the texture they set).
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite

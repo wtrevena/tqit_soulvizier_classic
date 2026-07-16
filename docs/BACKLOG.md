@@ -131,6 +131,28 @@
 > all PASS on the combined db; `validate_soul_augments` exit 0 clean; `validate_summon_pets`'s
 > BROKEN-entry list is byte-identical to the pristine golden baseline (0 new regressions, all
 > pre-existing). `_check_registry.py` OK (20 modules). Rides the next integration build.
+> 🖤 **B60 MASTERY PANE BLACK-BACKGROUND - FIXED (branch `fix/mastery-bg-render`, ships build42).**
+> Will 2026-07-14: "the mastery skill selection screens STILL have a black background." RCA
+> (per Will's directive: compare base game/SVAERA's render chain to ours - full detail
+> `docs/reports/b60_mastery_bg_render.md`): the b37/b38 waves repointed each pane's *texture path*
+> off the dead `SkillsPanel\...diablo` arc onto a real base-game `InGameUI\Skills\...tex`, but left
+> the record's widget class as `BitmapSingle.tpl` (writes singular `bitmapName`) instead of vanilla's
+> `BitmapUIAware.tpl` (reads plural `bitmapNames`) - the pane slot never reads `bitmapName`, so the
+> texture resolves in the arc but nothing ever draws -> BLACK. Confirmed the SAME defect in both
+> `local/baseline_build40.arz` (shipped Steam build) and the in-flight build41-work arz - a standing
+> defect, not a regression. FIX: `tools/patches/mastery_bg_render.py` (registered after
+> `hunting_occult_ui`+`mastery_ui_audit`) restructures all 18 live pane records (masteries 1-8 +
+> Dream/9, base+reallocation) to `BitmapUIAware`+`bitmapNames=[mouse,controller]`, and repoints the
+> 4 shared chrome records (undo buttons, cost/gold numbers) off the completely-unshipped
+> `SkillsPanel.arc` onto their base-game `InGameUI\Skills\...` equivalents. New build-gate
+> `tools/gate_mastery_bg_render.py` (resolution + BitmapUIAware structure, scoped to the 9 LIVE
+> player masteries). Verified via isolated dry-run (no full DB/map build - build41 map building
+> elsewhere): gate FAILS on the unmodified golden (46 defects, negative test), `apply()+verify()`
+> touch EXACTLY the intended 22 records (18 pane + 4 chrome, zero collateral), gate PASSES on the
+> patched copy (848/848 refs resolve, 18/18 panes BitmapUIAware). DB-record-only fix, no arc/Text/
+> map change needed (every texture already resolves in base `InGameUI.arc`). Deliberately excluded
+> (unreachable, still carry the dead ref): the `mastery 9\11-15-06\` ArtManager backup + the
+> `scroll skills\masteries\earth\` DRX dev-leftover tree.
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has
