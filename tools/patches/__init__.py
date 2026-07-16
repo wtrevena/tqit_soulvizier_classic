@@ -94,6 +94,10 @@ REGISTRY = [
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
                             # (four_generals/diadochi/polis_vault/neferkha/toxeus_suite + monolith).
+    'legion_soul_stages',   # b56: one soul per death-transform encounter (Legion + any same-soul
+                            # actorToSpawnOnDeath chain drops its soul at the FINAL stage only).
+                            # Runs after every soul-wiring + boss-creating module so it sees the
+                            # FINAL chains; before the drop-rate forcer (run_registry_gates).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

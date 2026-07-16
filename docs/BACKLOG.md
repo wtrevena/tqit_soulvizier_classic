@@ -32,6 +32,28 @@
 > `game\svic` economy. **Permission precedent:** the SVAERA mastery graft (below, 2026-07-10) recorded soa's verbal
 > OK for additive SVAERA use - confirm it covers items/monsters before ship. Verified 8/8 candidates end-to-end
 > (truly absent + functional, not cut). **Recommended first wave: the 5 clean sets as one drop-pack.**
+> 👑 **B56 LEGION SOUL-STAGES - one soul per death-transform encounter (2026-07-14, `feat/legion-soul-stages`,
+> off main `f816ca6`).** Will: "the hero monster legion is dropping souls at multiple stages of his life as he
+> dies and gets bigger." RCA (golden `b33c5a44`): **Legion is a 4-stage `actorToSpawnOnDeath` chain**
+> (`um_legion_28 -> _28a -> _28b -> _28c`, all Hero L14) and **every stage** carries the identical soul drop
+> (`chanceToEquipFinger2=66` + `legion_soul`) -> up to 4 souls per encounter; the 3 non-terminal stages even point
+> _n at the broken "conflicted copy" path, only terminal `_28c` uses the clean `legion_soul_n.dbr`. Root cause:
+> `wire_souls_to_monsters` arms every Hero stage independently (SV-original records; contradicts the uber-boss law
+> = soul on FINAL form only). **FIX:** new registry module `tools/patches/legion_soul_stages.py` (after
+> `boss_skill_fix`, before the no-op `visuals`): for any soul dropped by 2+ forward-reachable stages, keep the drop on the
+> terminal-most stage and zero `chanceToEquipFinger2` on the shallower ones (loot refs kept inert, `_apply_aphiastas_
+> finger2_zero` house pattern; dtype-safe). ORPHAN-PROOF (soul stays on a deeper stage). Runs before the drop-rate
+> forcer (chance>0 gate) so the zeros survive release AND testing. `verify()` = no chain drops the SAME soul from
+> >1 stage (fail-loud); negative test (re-arm `_28b`) trips it. **CLASS SWEEP:** 7 chains carry >=2 soul drops -
+> ONLY Legion drops the SAME soul (FIXED); the other 6 drop 2 DISTINCT souls per encounter (possessedboar,
+> base-Charon x3, base-Hades, lillued) and are **reported, NOT auto-fixed** (zeroing would orphan a distinct
+> collectible / touch base-game story bosses = design ruling; see report). Inverse defect (empty chain): **0**.
+> **VERIFY (dry-run replay vs golden, no heavy build):** record-diff = EXACTLY 3 records (`um_legion_28/_28a/_28b`
+> Finger2 66->0), terminal + 6 distinct chains byte-identical, 51,029 records 0 add/remove; `verify()` PASS +
+> idempotent + negative FAIL; `validate_soul_augments` golden==postapply PASS (0 dangling/0 inactive); contracts
+> souls golden **0P0/0P1/0P2** == postapply **0P0/0P1/0P2**; py_compile + `_check_registry` (14 modules, order
+> `fabf2d33cc81`). Report: `docs/reports/b56_legion_soul_stages.md`. NOT built/deployed; rides the next integration
+> build (expected arz diff vs build40 golden = these 3 records only).
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
 > `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
 > **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)
