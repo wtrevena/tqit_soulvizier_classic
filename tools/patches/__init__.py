@@ -98,6 +98,10 @@ REGISTRY = [
                             # actorToSpawnOnDeath chain drops its soul at the FINAL stage only).
                             # Runs after every soul-wiring + boss-creating module so it sees the
                             # FINAL chains; before the drop-rate forcer (run_registry_gates).
+    'enslaver_pet_fx',      # b55: black-rig the SOUL-SUMMONED Enslaver + the marauders he raises
+                            # (strip Lyia-clone green residue: envenom/heartofoak/regrowth/natureswrath;
+                            # inherit each pet's source-monster black shroud). PET FX fields only;
+                            # runs after every pet-building module so it edits the FINAL pet records.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

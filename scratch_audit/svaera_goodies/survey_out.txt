@@ -1,0 +1,444 @@
+
+======================================================================
+### FAMILY 'all_sv\item': 1532 records absent-from-ours
+  Class histogram: {'OneShot_Dye': 561, 'LootItemTable_DynWeight': 504, 'LootMasterTable': 153, 'ItemArtifactFormula': 134, 'LootItemTable_FixedWeight': 128, '?': 52}
+  xpack-coupled: 203/1532   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_bloodofares_formula_reroll.dbr
+        description=xtagFormulaDescription063
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_crescentmoonofartemis_formula_reroll.dbr
+        description=xtagFormulaDescription059
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_crosierofosiris_formula_reroll.dbr
+        description=xtagFormulaDescription064
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_demetersbounty_formula_reroll.dbr
+        description=xtagFormulaDescription061
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_gleipnir_formula_reroll.dbr
+        description=tagSVAE_ArtifactFormula_030
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_jade_idol_formula_reroll.dbr
+        description=xtagFormulaDescription021
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_knotofisis_formula_reroll.dbr
+        description=xtagFormulaDescription065
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_krakens_embrace_formula_reroll.dbr
+        description=tagSVAE_ArtifactFormula_003
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_mightofhephaestus_formula_reroll.dbr
+        description=xtagFormulaDescription062
+    ItemArtifactFormula  itemartifactformula.tpl  XPACK records\all_sv\item\formulas\artifact_reroll\e_da_poseidonsnet_formula_reroll.dbr
+        description=xtagFormulaDescription060
+
+======================================================================
+### FAMILY 'all_sv\skills': 769 records absent-from-ours
+  Class histogram: {'Skill_Passive': 129, 'Pet': 94, 'Monster': 73, 'Skill_SpawnPet': 44, 'SkillBuff_Passive': 38, 'Skill_AttackWave': 37, 'Skill_AttackRadius': 35, 'Skill_AttackProjectileAreaEffect': 30}
+  xpack-coupled: 277/769   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\mi_gigantes_h_hatred.dbr
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\mi_gigantes_h_kineticblast.dbr
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\my_artifact_002_autocast.dbr
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\my_bow_001_autocast.dbr
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\my_head_002_autocast.dbr
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\my_head_003_autocast.dbr
+    ?                    skillautocastcontroller.tpl       records\all_sv\skills\aicontrollers\soul_silvenal_be.dbr
+    Skill_AttackRadius   skill_attackradius.tpl         records\all_sv\skills\crea\att_aoe\-_elementalchaos.dbr
+        skillDisplayName=xtagSkillArtifactName010
+    Skill_AttackRadius   skill_attackradius.tpl   XPACK records\all_sv\skills\crea\att_aoe\-_hungerpulse.dbr
+        skillDisplayName=tagNewSkill620
+    Skill_AttackRadius   skill_attackradius.tpl   XPACK records\all_sv\skills\crea\att_aoe\-_jadewave.dbr
+        skillDisplayName=tagNewSkill579
+
+======================================================================
+### FAMILY 'all_sv\creature': 83 records absent-from-ours
+  Class histogram: {'NpcMerchant': 57, 'Monster': 23, '?': 3}
+  xpack-coupled: 22/83   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_00_flameimp-juvenile_01.dbr
+        description=tagNewMonster261
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_00_flameimp-juvenile_02.dbr
+        description=tagNewMonster261
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_00_flameimp-juvenile_03.dbr
+        description=tagNewMonster261
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_01_chaosimp-hunter_01.dbr
+        description=tagNewMonster262
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_01_chaosimp-hunter_02.dbr
+        description=tagNewMonster262
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_01_chaosimp-hunter_03.dbr
+        description=tagNewMonster262
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_02_chaosfiend-lord_01.dbr
+        description=tagNewMonster264
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_02_chaosfiend-lord_02.dbr
+        description=tagNewMonster264
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_02_chaosfiend-lord_03.dbr
+        description=tagNewMonster264
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_as_01_chaosimp-screecher_01.dbr
+        description=tagNewMonster263
+
+======================================================================
+### FAMILY 'skills\soulskills': 210 records absent-from-ours
+  Class histogram: {'Pet': 80, 'Skill_SpawnPet': 19, 'Skill_AttackWave': 7, 'Skill_AttackProjectileAreaEffect': 7, 'Skill_AttackProjectileBurst': 6, 'Skill_AttackRadius': 6, 'SkillBuff_Debuf': 6, 'Skill_WPAttack_BasicAttack': 6}
+  xpack-coupled: 135/210   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    Skill_AttackProjectileBurst skill_attackprojectileburst.tpl       records\skills\soulskills\childsnatcher_throwingknife.dbr
+        skillDisplayName=tagSkillName052
+    Skill_SpawnPet       skill_spawnpet.tpl             records\skills\soulskills\mummy_summon_senusnet.dbr
+        skillDisplayName=tagNewSkill161
+    Skill_SpawnPet       skill_spawnpet.tpl             records\skills\soulskills\mummy_summon_senusnet_02.dbr
+        skillDisplayName=tagNewSkill161
+    Skill_SpawnPet       skill_spawnpet.tpl             records\skills\soulskills\mummy_summon_senusnet_03.dbr
+        skillDisplayName=tagNewSkill161
+    Pet                  pet.tpl                        records\skills\soulskills\pets\mummy_soldier_25.dbr
+        description=tagMonsterName347
+    Pet                  pet.tpl                        records\skills\soulskills\pets\mummy_soldier_47.dbr
+        description=tagMonsterName347
+    Pet                  pet.tpl                        records\skills\soulskills\pets\mummy_soldier_62.dbr
+        description=tagMonsterName347
+    Pet                  pet.tpl                        records\skills\soulskills\pets\skeleton_archer_6.dbr
+        description=tagMonsterName029
+    Pet                  pet.tpl                        records\skills\soulskills\pets\skeleton_soldier_6.dbr
+        description=tagMonsterName027
+    Skill_AttackRadius   skill_attackradius.tpl         records\skills\soulskills\pets\skills\chimera_deathring.dbr
+        skillDisplayName=tagNewSkill148E
+
+======================================================================
+### FAMILY 'item\sets': 39 records absent-from-ours
+  Class histogram: {'?': 39}
+  xpack-coupled: 24/39   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    itemset.tpl              XPACK records\item\sets\drxset048_unused.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset049.dbr
+    ?                    itemset.tpl              XPACK records\item\sets\drxset050.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset051.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset052.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset053.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset054.dbr
+    ?                    itemset.tpl              XPACK records\item\sets\drxset055_unused.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset056.dbr
+    ?                    itemset.tpl                    records\item\sets\drxset057.dbr
+
+======================================================================
+### FAMILY 'item\equipmentring': 843 records absent-from-ours
+  Class histogram: {'ArmorJewelry_Ring': 825, 'LootRandomizerTable': 6, 'LootItemTable_FixedWeight': 6, 'LootRandomizer': 6}
+  xpack-coupled: 422/843   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act01_anysoul.dbr
+        itemNameTag=tagSoulNormalGreece
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act02_anysoul.dbr
+        itemNameTag=tagSoulNormalEgypt
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act03_anysoul.dbr
+        itemNameTag=tagSoulNormalOrient
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act03a_oly_anysoul.dbr
+        itemNameTag=tagSoulNormalOlympus
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act03b_anysoul.dbr
+        itemNameTag=tagSoulNormalAtlantis
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act04_anysoul.dbr
+        itemNameTag=tagSoulNormalHades
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\01_act05_anysoul.dbr
+        itemNameTag=tagSoulNormalNorth
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\02_act01_anysoul.dbr
+        itemNameTag=tagSoulEpicGreece
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\02_act02_anysoul.dbr
+        itemNameTag=tagSoulEpicEgypt
+    ArmorJewelry_Ring    jewelry_ring.tpl               records\item\equipmentring\soul\02_act03_anysoul.dbr
+        itemNameTag=tagSoulEpicOrient
+
+======================================================================
+### FAMILY 'item\equipmentweapon': 455 records absent-from-ours
+  Class histogram: {'WeaponMagical_Staff': 302, 'WeaponHunting_RangedOneHand': 51, 'WeaponArmor_Shield': 27, 'ProjectileArrowLike': 22, 'WeaponMelee_Mace': 18, 'WeaponMelee_Sword': 14, 'WeaponHunting_Bow': 9, 'WeaponHunting_Spear': 9}
+  xpack-coupled: 193/455   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_acidshards.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_amenhotepiisjavelin.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_amhehsdevourer.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_anathema.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_anchialesheat.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_arcanitereapers.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_bennusshine.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_daimonesguidance.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_dea.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl  XPACK records\item\equipmentweapon\1hranged\projectiles\u_mod_deus.dbr
+
+======================================================================
+### FAMILY 'creature\monster': 315 records absent-from-ours
+  Class histogram: {'Monster': 70, '?': 35, 'ProjectileArrowLike': 26, 'WeaponEnchantmentPak': 25, 'LootItemTable_FixedWeight': 23, 'ArmorProtective_Head': 20, 'ArmorProtective_UpperBody': 14, 'EffectEntity': 12}
+  xpack-coupled: 34/315   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_00_flameimp-juvenile_01.dbr
+        description=tagNewMonster261
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_00_flameimp-juvenile_02.dbr
+        description=tagNewMonster261
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_00_flameimp-juvenile_03.dbr
+        description=tagNewMonster261
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_01_chaosimp-hunter_01.dbr
+        description=tagNewMonster262
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_01_chaosimp-hunter_02.dbr
+        description=tagNewMonster262
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_01_chaosimp-hunter_03.dbr
+        description=tagNewMonster262
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_02_chaosfiend-lord_01.dbr
+        description=tagNewMonster264
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_02_chaosfiend-lord_02.dbr
+        description=tagNewMonster264
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_am_02_chaosfiend-lord_03.dbr
+        description=tagNewMonster264
+    Monster              monster.tpl              XPACK records\all_sv\creature\monster\fireimp\a05_as_01_chaosimp-screecher_01.dbr
+        description=tagNewMonster263
+
+======================================================================
+### FAMILY 'creature\npc': 260 records absent-from-ours
+  Class histogram: {'NpcMerchant': 199, 'NpcItemUpgrader': 54, '?': 3, 'Decoration': 2, 'ArmorProtective_Head': 1, 'NpcSkillReallocator': 1}
+  xpack-coupled: 93/260   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_02a_sparta.dbr
+        description=tagNewMerchantName88
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_02b_sparta.dbr
+        description=tagNewMerchantName89
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_04a_megara.dbr
+        description=tagNewMerchantName88
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_04b_megara.dbr
+        description=tagNewMerchantName89
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_07a_delphi.dbr
+        description=tagNewMerchantName88
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_07b_delphi.dbr
+        description=tagNewMerchantName89
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_10a_athens_.dbr
+        description=tagNewMerchantName88
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_10b_athens.dbr
+        description=tagNewMerchantName89
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_12a_herakleion.dbr
+        description=tagNewMerchantName88
+    NpcMerchant          npcmerchant.tpl                records\all_sv\creature\npc\dyer\01_greece_dyer_12b_herakleion.dbr
+        description=tagNewMerchantName89
+
+======================================================================
+### FAMILY 'creature\hero': 0 records absent-from-ours
+  Class histogram: {}
+  xpack-coupled: 0/0   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+
+======================================================================
+### FAMILY 'sv_endgame': 21 records absent-from-ours
+  Class histogram: {'Decoration': 17, 'FixedItemTeleport': 2, 'SoundObject': 2}
+  xpack-coupled: 2/21   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    FixedItemTeleport    fixeditemteleport.tpl    XPACK records\sv_endgame\portals\portalcorinthtocrystalhub.dbr
+        description=tagSVAERA_portal01
+    SoundObject          soundobject.tpl                records\sv_endgame\portals\portalcorinthtocrystalhub_target.dbr
+    FixedItemTeleport    fixeditemteleport.tpl    XPACK records\sv_endgame\portals\portalhelostocrystalhub.dbr
+        description=tagSVAERA_portal01
+    SoundObject          soundobject.tpl                records\sv_endgame\portals\portalhelostocrystalhub_target.dbr
+    Decoration           decoration.tpl                 records\sv_endgame\scenery\egyptcitybuildinggatewide01.dbr
+    Decoration           decoration.tpl                 records\sv_endgame\scenery\energyshield_barrier.dbr
+    Decoration           decoration.tpl                 records\sv_endgame\scenery\energyshield_barrier01.dbr
+    Decoration           decoration.tpl                 records\sv_endgame\scenery\energyshield_barrier02.dbr
+    Decoration           decoration.tpl                 records\sv_endgame\scenery\energyshield_barrier03.dbr
+    Decoration           decoration.tpl                 records\sv_endgame\scenery\energyshield_barrier04.dbr
+
+======================================================================
+### FAMILY 'game\svic': 108 records absent-from-ours
+  Class histogram: {'?': 108}
+  xpack-coupled: 0/108   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    itemcost.tpl                   records\game\svic\cm_1_d.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_dih.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_h.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_l.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_m.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_p.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_pd.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_1_r.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_2_d.dbr
+    ?                    itemcost.tpl                   records\game\svic\cm_2_dih.dbr
+
+======================================================================
+### FAMILY 'sv_ew': 232 records absent-from-ours
+  Class histogram: {'ProjectileArrowLike': 26, 'WeaponEnchantmentPak': 25, 'LootItemTable_FixedWeight': 23, 'ArmorProtective_Head': 18, 'Monster': 14, 'ArmorProtective_UpperBody': 14, '?': 12, 'EffectEntity': 12}
+  xpack-coupled: 5/232   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    charanimationtable.tpl         sv_ew\creature\monster\moonwolf\anm\anm_wolf.dbr
+    Monster              monster.tpl                    sv_ew\creature\monster\moonwolf\bm_moonwolf_10.dbr
+        description=tagMonsterMoonWolf01
+    EffectEntity         effect.tpl                     sv_ew\creature\monster\moonwolf\effects\moonwolf_glow_fx01.dbr
+    Skill_BuffRadius     skill_buffradius.tpl           sv_ew\creature\monster\moonwolf\skills\moonwolf_callofthehunt.dbr
+    SkillBuff_Passive    skillbuff_passive.tpl          sv_ew\creature\monster\moonwolf\skills\moonwolf_callofthehuntbuff.dbr
+        skillDisplayName=tagArtemisSkill07
+    Skill_BuffRadiusToggled skill_buffradiustoggled.tpl       sv_ew\creature\monster\moonwolf\skills\moonwolf_howl.dbr
+    SkillBuff_Passive    skillbuff_passive.tpl          sv_ew\creature\monster\moonwolf\skills\moonwolf_howlbuff.dbr
+        skillDisplayName=tagSkillArtemis05
+    Skill_AttackWeapon   skill_attackweapon.tpl         sv_ew\creature\monster\moonwolf\skills\moonwolf_maul.dbr
+        skillDisplayName=tagSkillName177
+    Skill_AttackWeaponBlink skill_attackweaponblink.tpl XPACK sv_ew\creature\monster\moonwolf\skills\moonwolf_spiritstrike.dbr
+        skillDisplayName=tagArtemisPetSkill01b
+    Skill_PassiveOnLifeBuffSelf skill_passiveonlifebuffself.tpl       sv_ew\creature\monster\moonwolf\skills\moonwolf_survivalinstinct.dbr
+        skillDisplayName=tagSkillArtemis06
+
+======================================================================
+### FAMILY 'item\artifacts': 108 records absent-from-ours
+  Class histogram: {'ItemArtifact': 62, 'ItemArtifactFormula': 46}
+  xpack-coupled: 108/108   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ItemArtifactFormula  ItemArtifactFormula.tpl  XPACK records\item\artifacts\arcaneformulae\blank_arcane_formula.dbr
+        description=xtagFormulaDescription001
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_amenetem_01.dbr
+        description=tagMercScroll11_01
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_eldrstikla_01.dbr
+        description=tagMercScroll12_01
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_enegea_01.dbr
+        description=tagMercScroll13_01
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_euanthe_bloodupgrade_01.dbr
+        description=tagMercScroll1b
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_iaera_02.dbr
+        description=tagMercScroll3_02
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_iaera_03.dbr
+        description=tagMercScroll3_03
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_ittak_01.dbr
+        description=tagMercScroll14_01
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_jadewall_01.dbr
+        description=tagMercScroll15_01
+    ItemArtifact         itemartifact.tpl         XPACK records\item\artifacts\n_mercscroll_kholundr_01.dbr
+        description=tagMercScroll16_01
+
+======================================================================
+### FAMILY 'item\relics': 13 records absent-from-ours
+  Class histogram: {'ItemRelic': 13}
+  xpack-coupled: 13/13   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ItemRelic            itemrelic.tpl            XPACK records\item\relics\03_hc_essenceofchaos.dbr
+        description=x4tagU_Relic_06
+    ItemRelic            itemrelic.tpl            XPACK records\item\relics\03_hc_essenceoforder.dbr
+        description=x4tagU_Relic_07
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_01.dbr
+        description=x4tagU_Relic_04
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_02.dbr
+        description=x4tagU_Relic_03
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_03.dbr
+        description=tagNewItem313
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_04.dbr
+        description=tagNewItem314
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_05.dbr
+        description=tagNewItem315
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_06.dbr
+        description=tagNewItem316
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_china_07.dbr
+        description=tagNewItem317
+    ItemRelic            itemrelic.tpl            XPACK records\xpack4\item\relics\03_x4_incarnation_egypt_01.dbr
+        description=x4tagU_Relic_02
+
+======================================================================
+### FAMILY 'item\animalrelics': 3 records absent-from-ours
+  Class histogram: {'ItemRelic': 3}
+  xpack-coupled: 3/3   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ItemRelic            itemrelic.tpl            XPACK records\item\animalrelics\01_act2+ee_goldenscarab.dbr
+        description=x4tag_N_GoldenScarab
+    ItemRelic            itemrelic.tpl            XPACK records\item\animalrelics\02_act2+ee_goldenscarab.dbr
+        description=x4tag_E_GoldenScarab
+    ItemRelic            itemrelic.tpl            XPACK records\item\animalrelics\03_act2+ee_goldenscarab.dbr
+        description=x4tag_L_GoldenScarab
+
+======================================================================
+### FAMILY 'item\charms': 6 records absent-from-ours
+  Class histogram: {'ItemCharm': 6}
+  xpack-coupled: 6/6   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ItemCharm            itemcharm.tpl            XPACK records\xpack4\item\charms\03_x4_jadeheart.dbr
+        description=tagNewItem321
+    ItemCharm            itemcharm.tpl            XPACK records\xpack4\item\charms\03_x4_mogwaiskin.dbr
+        description=tagNewItem322
+    ItemCharm            itemcharm.tpl            XPACK records\xpack4\item\charms\03_x4_monstrousspikeshell.dbr
+        description=tagNewItem323
+    ItemCharm            itemcharm.tpl            XPACK records\xpack4\item\charms\03_x4_sandraptorclaw.dbr
+        description=tagNewItem324
+    ItemCharm            itemcharm.tpl            XPACK records\xpack4\item\charms\03_x4_taotiesessence.dbr
+        description=tagNewItem312
+    ItemCharm            itemcharm.tpl            XPACK records\xpack4\item\charms\03_x4_viperscales.dbr
+        description=tagNewItem325
+
+======================================================================
+### FAMILY 'skills\item skills': 481 records absent-from-ours
+  Class histogram: {'Pet': 74, '?': 67, 'Skill_AttackRadius': 31, 'Skill_AttackProjectileAreaEffect': 29, 'SkillBuff_Passive': 24, 'Skill_AttackWave': 21, 'Skill_SpawnPet': 21, 'Skill_Passive': 17}
+  xpack-coupled: 173/481   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    skillautocastcontroller.tpl       records\skills\item skills\ai controllers\manaregain_controller.dbr
+    ?                    skillautocastcontroller.tpl       records\skills\item skills\ai controllers\onanyhitenemy07_14m.dbr
+    ?                    skillautocastcontroller.tpl       records\skills\item skills\ai controllers\rotzone_bouncingplague_controller.dbr
+    ?                    skillautocastcontroller.tpl       records\skills\item skills\ai controllers\sacralwind_controller.dbr
+    ?                    skillautocastcontroller.tpl       records\skills\item skills\ai controllers\shockpulse_controller.dbr
+    ?                    skillautocastcontroller.tpl       records\skills\item skills\ai controllers\ut_controller.dbr
+    Skill_BuffAttackRadiusDuration skill_buffattackradiusduration.tpl XPACK records\skills\item skills\aoe_blood_in_the_water.dbr
+        skillDisplayName=tagNewSkill546
+    Skill_AttackRadius   skill_attackradius.tpl   XPACK records\skills\item skills\aoe_deathnova_va.dbr
+        skillDisplayName=tagSkillName207
+    Skill_AttackRadius   skill_attackradius.tpl   XPACK records\skills\item skills\aoe_deathnova_va_8perc.dbr
+        skillDisplayName=tagSkillName207
+    Skill_AttackRadius   skill_attackradius.tpl   XPACK records\skills\item skills\aoe_distortreality_sv_6perc.dbr
+        skillDisplayName=xtagSkillDreamName008
+
+======================================================================
+### FAMILY 'item\petbonus': 194 records absent-from-ours
+  Class histogram: {'?': 194}
+  xpack-coupled: 0/194   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    petbonus.tpl                   records\item\petbonus\01_protectionofsobekra.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\02_protectionofsobekra.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\03_protectionofsobekra.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\_template.dbr
+    ?                    PetBonus.tpl                   records\item\petbonus\artifact_broma_theon.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\artifact_crimson_viper.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\artifact_halo_of_eos.dbr
+    ?                    PetBonus.tpl                   records\item\petbonus\artifact_savagery_of_the_beast.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\artifact_tongue_of_flame.dbr
+    ?                    petbonus.tpl                   records\item\petbonus\artifact_wheel_of_taranis.dbr
+
+======================================================================
+### FAMILY 'effects\weaponenchantments': 42 records absent-from-ours
+  Class histogram: {'EffectEntity': 27, 'WeaponEnchantmentPak': 8, '?': 6, 'ProjectileArrowLike': 1}
+  xpack-coupled: 0/42   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ?                    charfxpak.tpl                  records\effects\weaponenchantments\343_weapon_stonecharfxpak.dbr
+    EffectEntity         effect.tpl                     records\effects\weaponenchantments\343_weapon_stonefx.dbr
+    EffectEntity         effect.tpl                     records\effects\weaponenchantments\343_weapon_waterfx.dbr
+    ProjectileArrowLike  projectilearrowlike.tpl        records\effects\weaponenchantments\arrowblood01.dbr
+    EffectEntity         effect.tpl                     records\effects\weaponenchantments\blood_active_weapon_fx.dbr
+    ?                    charfxpak.tpl                  records\effects\weaponenchantments\bloodpact_weaponenchantment_charfxpak.dbr
+    EffectEntity         effect.tpl                     records\effects\weaponenchantments\bloodpact_weaponenchantment_fx.dbr
+    EffectEntity         effect.tpl                     records\effects\weaponenchantments\bloodweapon_fx.dbr
+    WeaponEnchantmentPak weaponenchantmentpak.tpl       records\effects\weaponenchantments\bloodweaponenchantment.dbr
+    EffectEntity         effect.tpl                     records\effects\weaponenchantments\heartofoak_weapon_fx.dbr
+
+======================================================================
+### FAMILY 'item\attachitems': 95 records absent-from-ours
+  Class histogram: {'ArmorProtective_UpperBody': 20, 'ArmorProtective_Head': 19, 'ArmorProtective_Forearm': 14, 'Decoration': 13, 'ArmorProtective_LowerBody': 10, 'WeaponArmor_Shield': 6, 'WeaponMelee_Mace': 3, 'WeaponMelee_Sword': 2}
+  xpack-coupled: 21/95   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    ArmorProtective_Forearm armor_forearm.tpl              records\item\attachitems\amenetem_armbands.dbr
+    ArmorProtective_UpperBody armor_upperbody.tpl            records\item\attachitems\amenetem_armor.dbr
+    ArmorProtective_LowerBody armor_lowerbody.tpl            records\item\attachitems\amenetem_greaves.dbr
+    ArmorProtective_Head armor_head.tpl                 records\item\attachitems\amenetem_helm.dbr
+    WeaponMelee_Sword    weapon_sword.tpl               records\item\attachitems\amenetem_sword.dbr
+    ArmorProtective_Forearm armor_forearm.tpl              records\item\attachitems\anapaest_arms.dbr
+        itemNameTag=tagArms1_SVAER
+    ArmorProtective_Head armor_head.tpl                 records\item\attachitems\anapaest_head.dbr
+        itemNameTag=tagHead1_SVAER
+    ArmorProtective_LowerBody armor_lowerbody.tpl            records\item\attachitems\anapaest_legs.dbr
+        itemNameTag=tagLegs1_SVAER
+    WeaponArmor_Shield   weaponarmor_shield.tpl         records\item\attachitems\anapaest_shield.dbr
+        itemNameTag=tagShield1_SVAER
+    ArmorProtective_UpperBody armor_upperbody.tpl            records\item\attachitems\anapaest_torso.dbr
+        itemNameTag=tagTorso1_SVAER
+
+======================================================================
+### FAMILY 'item\questitems': 2 records absent-from-ours
+  Class histogram: {'LootItemTable_FixedWeight': 2}
+  xpack-coupled: 0/2   also-in-SV098(same path): 0
+  --- sample (up to 10) ---
+    LootItemTable_FixedWeight lootitemtable_fixedweight.tpl       records\item\questitems\loottables\satyr_tutorial_torche.dbr
+    LootItemTable_FixedWeight lootitemtable_fixedweight.tpl       records\item\questitems\loottables\satyr_tutorial_torchl.dbr
+
+======================================================================
+### PROVENANCE CHECK: all_sv leaf-name overlap with SV098
+  all_sv\item: 1532 recs; leaf-name matches SV098=0, matches OURS=0
+  all_sv\skills: 769 recs; leaf-name matches SV098=25, matches OURS=25
+     DUPE? records\all_sv\skills\crea\att_wp\charge_concussivedamage.dbr  <->  records\skills\monster skills\attack_melee\charge_concussivedamage.dbr
+     DUPE? records\all_sv\skills\item\summon\pet\anm\anm_avatarofbast.dbr  <->  records\xpack\skills\artifactskills\pets\anm\anm_avatarofbast.dbr
+     DUPE? records\all_sv\skills\item\summon\pet\anm\anm_scimitarspirit.dbr  <->  records\xpack\skills\artifactskills\pets\anm\anm_scimitarspirit.dbr
+     DUPE? records\all_sv\skills\trees\nature\pet\wolf_01.dbr  <->  records\skills\skills\nature\pet\wolf_01.dbr
+     DUPE? records\all_sv\skills\trees\nature\pet\wolf_02.dbr  <->  records\skills\nature\pet\wolf_02.dbr
+  all_sv\creature: 83 recs; leaf-name matches SV098=1, matches OURS=1
+     DUPE? records\all_sv\creature\monster\wolf\anm\anm_wolf.dbr  <->  records\skills\nature\pet\anm\anm_wolf.dbr
