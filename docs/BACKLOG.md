@@ -2497,6 +2497,26 @@ marker per the b63 mechanism; registry module + tag manifest + full gate battery
    unvetted proxy equations; rarity tuned like the Hunt's 1/2400 class; all-difficulty or
    tiered - designer proposes, Will vetoes).
 
+
+## BUILD41 GATE RECORD (2026-07-14, integration/build41)
+Contents: Aniketos E/L restore (map), Legion final-stage-only soul, Enslaver+HadesMarshal pet
+black-rig (9 pets), ambush 33% + parchment retire, rant scroll (dial A), souls-quality wave
+(5 tier inversions ratified, 106+ per-tier icons, crow manual-cast x8 families/24 rings,
+Tomb Guardian de-souled Common), b40 nymph soul icons. md5s: arz eb8bc377 / Text e74672fd /
+Quests 37cf867f (UNCHANGED from b40) / CANON Levels 3f05c227 / TESTHUB Levels 6490ddce.
+Gates: registry 16 modules + all verify hooks OK; record-diff vs b40 = 162 modified + 6 removed
+(intended-only); validate_tags PASS; navmesh verify PASS; contracts GATE PASS (0 P0/0 P1/4910 P2
+pre-existing). Deployed DEV (TESTHUB). NOT pushed to Steam (Will's word required).
+
+## APPROACH CHANGE: THROWN-WIELDERS (Will 2026-07-14, supersedes B58 invented families)
+Will verbatim: "instead of us inventing guys who use thrown weapons, we should just restore the
+ones that are in the expansions and then scale up them to match SV difficulty. We can hold this
+in our backlog, but this is the approach we should take."
+-> feat/thrown-enemies (3 invented families) SHELVED - do not register/ship.
+-> QUEUED: THROWN-WIELDERS-RESTORE: port the 74 DLC thrown-wielders (b58 audit: xpack2/3/4
+rosters, rigs already throw-proven) - curate identity-fit subset into campaign spawn pools,
+re-tier charLevel/stats to SV-difficulty bands per act, drops banded per b58 findings.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
