@@ -101,6 +101,36 @@
 > `gate_landing_clearance --wiring v1` (now also derives the 2 enter-offer landings live; 27/27 PASS
 > against the TESTHUB map). Dry-run qst round-trip proof against the clean SVAERA
 > `sv_commonmechanics.qst` in the report.
+> 🧺 **B65 LOW-LIFT BATCH (round 1, 2026-07-15, `feat/lowlift-wave`, off main `c8883d6`) -
+> 5/5 DONE, dry-run verified, NOT built/deployed.** Full detail: `docs/reports/b65_lowlift_wave.md`.
+> **(1) SVAERA-ADOPT 5-set re-link** (`tools/patches/svaera_sets.py`): git-blame gate cleared (NOT
+> an intentional strip - the 13 items ship straight from SV098i upstream, never had `itemSetName`;
+> the 5 `drxset0{49,51,52,53,058}` grouping records are SVAERA's own invention, never grafted).
+> Authored the 5 sets (SVAERA's exact bonus fields ported verbatim), minted `tagSetName049/051/
+> 052/053/058` (our own numbering convention), re-linked `itemSetName` on the 13 shipped items.
+> **(2) Two relics**: ground-truthed "the magenta turtle shell" = the proven Common `ItemCharm`
+> Turtle Shell donor pattern (already cloned twice: D10 Emberscale, C5 Ereban Heartstone); "magenta"
+> = the engine's Class=ItemCharm tooltip color, not a `{^F}` tag. Cloned it a third time for
+> **"The Reveler's Ruse"** (Satyr Archer family `ar_archer_01-06`, bow-only, attack-speed+%pierce,
+> `tools/patches/turtleshell_relics.py`). Dune Fiend **already has one** (Fiend Carapace, amgoz1
+> SV098i-original) - verified FIRST per the backlog's own conditional; nothing new authored, a
+> regression guard added instead. **(3) B-TOXEUS-STALKER-1**: Legendary-only fixed Endless Hunt
+> (`tools/patches/toxeus_legendary_stalker.py`, the proven Hydra pool1/poolEpic1-empty +
+> poolLegendary1 pattern, ground-truthed against `minobossproxy_aniketos`) reusing `um_toxeus_
+> hunt_99` verbatim (same monster/soul as the roaming Hunt); map-placed in Hades Palace
+> `hadespalace_floor04_04.lvl` local(38,45) (the least-crowded floor), surveyed on-mesh
+> clr=100%/comp#1, dry-run-injected into a copy (navmesh byte-identical, +1 instance).
+> **(4) Double-soul rulings**: Possessed Boar + Lillued fixed terminal-only (typo-twin dup /
+> empty-husk soul retired, `tools/patches/double_soul_rulings.py`); Charon 39/41/43 + Hades 54
+> left UNTOUCHED (byte-identical snapshot asserted); `legion_soul_stages`'s distinct-soul roster
+> shrank 6->4 as designed. **(5) carrionlord**: `skill_quality.py`'s REASSIGN now sets
+> controller=None directly (was ON_ATTACK, silently overridden later by souls_quality's manual-
+> cast law) - both modules agree at the source now, zero collision, output byte-identical.
+> Combined verification: aggregate record-diff +16/-6/~21 across the 4 DB modules; every module's
+> `verify()` + the monolith's `_verify_mod_spawn_proxies_eligible` + `legion_soul_stages.verify()`
+> all PASS on the combined db; `validate_soul_augments` exit 0 clean; `validate_summon_pets`'s
+> BROKEN-entry list is byte-identical to the pristine golden baseline (0 new regressions, all
+> pre-existing). `_check_registry.py` OK (20 modules). Rides the next integration build.
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has
@@ -2590,7 +2620,12 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   "you are good to ship the rant scroll" - screed + scroll names ship as-is; only the Part C Endless
   Hunt name/desc remain under the standing amgoz1 sign-off). Parchment orphan RESOLVED (retired).
 - **B-TOXEUS-STALKER-1 - Legendary-only Toxeus stalker (fixed placement, Hydra pattern) -
-  APPROVED-BY-WILL-2026-07-14, QUEUED (not scheduled).** Will greenlit a proper strictly-Legendary-only
+  IMPLEMENTED 2026-07-15 on `feat/lowlift-wave` (`tools/patches/toxeus_legendary_stalker.py` +
+  `build_section_surgery.py` B65_TOXEUS_STALKER_SPECS; see `docs/reports/b65_lowlift_wave.md`
+  item 3). Placed at Hades Palace `hadespalace_floor04_04.lvl` local(38,45); dry-run verified
+  (DB spawn-eligibility gate + map injection into a copy, navmesh byte-identical); NOT yet built/
+  deployed - rides the next integration build. Historical spec below.**
+  Will greenlit a proper strictly-Legendary-only
   Toxeus stalker as a distinct FIXED encounter (verbatim: "lets add that to the backlog tho"). Ship it
   via the PROVEN base-game **Hydra pattern** (`docs/reports/el_boss_audit.md`): a Legendary-gated proxy
   whose pool has `pool1` EMPTY + `poolLegendary1 = <a single-member um_toxeus_hunt_99 pool>` so the
@@ -2676,6 +2711,54 @@ stages. this new uber hero will go in the back corner of the Upper War-Camp befo
 - **Rewards:** 3-tier soul + 3 region-tuned Majestic Chests (b42 standard, Greece-tuned).
 - **Standard lanes:** DB registry module; tags via manifest; INJECT_SPECS; full gate battery;
   Will fresh-char verify on DEV.
+
+## B66 UBER FORMULA EXPANSION - round 2 FIXED+RE-VERIFIED (status: vet's HIGH/MEDIUM/3xLOW all resolved, awaiting Will's WILL-VETO review + DB build/deploy)
+Round 1 of NEW-UBER-FORMULAS-FROM-ORPHANS: all 14 curated candidates below are BUILT (not
+just designed) - `tools/patches/uber_orphan_weapons.py` (registry module) + donor data
+`tools/patches/data/b66_orphan_donor_fields.json`. Full detail, per-weapon stat/reagent
+tables, the WILL VETO naming section, the ROUND 2 CHANGELOG, and the Part-2 non-weapon gap
+analysis (surprise finding: 16 non-weapon supra pieces across 7/8 equip slots ALREADY exist
+and are ALREADY wired/obtainable; the one gap, Bracelet, has zero curatable orphans
+anywhere in TQ and is SKIPPED per the efficiency law) are in
+**`docs/reports/b66_uber_formulas.md`**.
+
+Round 1 got an independent adversarial vet: NO-GO (one HIGH - Ten Suns' Wrath was ~2.3x its
+bow sibling and the tier's single highest-damage weapon, contradicting the report's "none
+exceed the strongest sibling" claim; one MEDIUM - donor combat stats weren't cleared before
+the retune, so a grab-bag of orphan riders bled through uncontrolled; three LOW/nit - an
+inaccurate "verbatim" donor-JSON claim, 2 swords a few % over the class band ceiling, a
+hidePrefixName/hideSuffixName inconsistency on 2 weapons). **Round 2 fixes all 6**, re-runs
+the same real dry-run harness against the same build41 baseline, and re-verifies clean:
+- Ten Suns' Wrath retuned to tie (not exceed) its bow sibling (phys 145-160, was 340-390);
+  measured tier-wide rank confirms it's no longer an outlier (sits at the bow/sword floor
+  of 160, nowhere near the tier's actual top of 360).
+- `_clear_inherited_combat_stats` added (mirrors the N5 template exactly) - wipes donor
+  combat-stat bleed-through on all 14 before the retune; Aquimae/Furies' 2 riders that
+  legitimately depended on an inherited `offensiveGlobalChance` now set it explicitly.
+- Donor JSON's `dijunspride` entry restored to genuinely byte-verbatim; the sun-projectile
+  retheme is now an explicit, documented override.
+- Heartpierce/Ripulsar physical max trimmed to the documented 160 sword ceiling.
+- Munderizer/Sword Fish `hidePrefixName`/`hideSuffixName` aligned to 1/1 (matches the other
+  12 + every existing supra weapon).
+- `verify()` hardened with 3 new regression guards (band cap, GlobalChance non-zero,
+  hidePrefix/hideSuffix==1).
+- **Verified (dry-run, no heavy build):** py_compile + `_check_registry.py` green (21
+  modules, unchanged order hash); `patches.run_registry()` (real harness) over a fresh
+  build41-baseline load (md5 confirmed `eb8bc377...`) -> still 21 new + 9 modified records
+  (7 repointed zrecipes shells + both supra tables), 28 tags, zero collisions; `verify()`
+  (real `run_registry_verifies` harness) green incl. the 3 new guards; direct field-probe
+  confirms every flagged stray rider is now cleared while every intended stat is
+  unaffected; resolves-in-arc (BUILT union BASE) green; supra dead-ref invariant green;
+  container loot-shape gate green; negative test (missing clone donor) fails loud as
+  expected.
+- **NOT YET DONE:** a real DB build (`build_svc_database.py`) + Text.arc build + the full
+  gate battery + Will's in-game fresh-drop verify (TQ bakes item props at pickup - test
+  freshly crafted items) - deferred per "NO heavy builds" for this implementer round; next
+  step for whoever picks this up.
+- **Awaiting Will:** the WILL VETO section in the report (9 renamed twin-affected weapons +
+  the Munderizer magenta-tag question) - ships as default if he doesn't object.
+- **Deferred to round 3:** the 8-axe Greek bench, a fresh Spear/Shield uber, the supra
+  Bracelet, diversifying the 5-way shared axe reagent trio.
 
 ## QUEUED FEATURE: NEW-UBER-FORMULAS-FROM-ORPHANS (status: approved-concept-by-Will-2026-07-14, awaiting his candidate selection)
 Will (verbatim): "are there any cool orphaned weapon records that we could use to make new uber

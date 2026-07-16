@@ -85,6 +85,9 @@ REGISTRY = [
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
+    'toxeus_legendary_stalker',  # B-TOXEUS-STALKER-1: fixed Legendary-only Endless Hunt placement
+                                 # (Hydra pool-gate pattern). Reuses toxeus_suite PART C's
+                                 # um_toxeus_hunt_99 verbatim - MUST run after toxeus_suite.
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
@@ -106,6 +109,11 @@ REGISTRY = [
                             # actorToSpawnOnDeath chain drops its soul at the FINAL stage only).
                             # Runs after every soul-wiring + boss-creating module so it sees the
                             # FINAL chains; before the drop-rate forcer (run_registry_gates).
+    'double_soul_rulings',  # Will's double-soul rulings (delegated to the b56 standing
+                            # recommendation): Possessed Boar + Lillued fixed terminal-only
+                            # (typo-twin dup / empty-husk soul retired); Charon 39/41/43 +
+                            # Hades 54 explicitly UNTOUCHED. verify() also cross-checks that
+                            # legion_soul_stages' distinct-soul roster shrinks 6 -> 4.
     'enslaver_pet_fx',      # b55: black-rig the SOUL-SUMMONED Enslaver + the marauders he raises
                             # (strip Lyia-clone green residue: envenom/heartofoak/regrowth/natureswrath;
                             # inherit each pet's source-monster black shroud). PET FX fields only;
@@ -119,6 +127,20 @@ REGISTRY = [
                             # pet->18u) so aura bonuses reach pets/MP allies. Runs late so a radius
                             # edit wins any collision on the aura payloads (none observed). Disjoint
                             # from every other module (touches only skillTargetRadius on buff payloads).
+    'svaera_sets',          # SVAERA-ADOPT: re-link the 5 SVAERA Greek/Egyptian item sets onto
+                            # the 13 already-shipped standalone-unique members (itemSetName only;
+                            # no item/loot/map change). Disjoint from every module above.
+    'turtleshell_relics',   # NEW-RELIC-DIONYSUS-TRICKSTER + NEW-RELIC-DUNE-FIEND: The Reveler's
+                            # Ruse (Satyr Archer family, turtle-shell pattern) + a regression
+                            # guard confirming Dune Fiend's pre-existing Fiend Carapace relic
+                            # (no duplicate authored). Disjoint from every module above.
+    'uber_orphan_weapons',  # B66 UBER FORMULA EXPANSION: 14 orphaned weapons (docs/reports/
+                            # orphaned_weapons_curation.md) buffed to the supra uber-forge tier,
+                            # cloning the proven svc_thrown_* template; 7 reuse an orphaned
+                            # zrecipes\ formula shell (repointed in place), 7 author fresh
+                            # zrecipes\svc_<class>_<name>_formula.dbr. Disjoint from every module
+                            # above (new records only; touches supra.dbr/supra_special.dbr
+                            # lootName slots, additive).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

@@ -2354,6 +2354,49 @@ for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
     assert _uc_key in INJECT_SPECS, f'b42 uber-chest host {_uc_key} has no boss placement to append to'
     INJECT_SPECS[_uc_key] = list(INJECT_SPECS[_uc_key]) + list(_uc_specs)
 
+# TOXEUS LEGENDARY-ONLY STALKER (b65 lowlift wave, B-TOXEUS-STALKER-1): place the fixed
+# `q_toxeus_hunt_lone` proxy (tools/patches/toxeus_legendary_stalker.py - pool1/poolEpic1
+# EMPTY, poolLegendary1 = a single-member um_toxeus_hunt_99 pool, so the encounter resolves
+# ONLY on Legendary) into the LEAST-crowded Hades Palace floor, `hadespalace_floor04_04.lvl`
+# (already B41_GUARDB_KEY - the single `q_general_b_guardpair` honor-guard encounter lives
+# here; every OTHER Hades Palace floor already carries its own distinct set-piece: Menoetes
+# in floor_03, the Polis Vault jailer horde in floor04_01, the other 2 generals' guard pairs
+# in crystal_03/crystal_04). APPENDS to the existing host list (never clobbers the general's
+# guard placement).
+#
+# On-mesh survey (tools/debug/survey_uberboss_spots.py --level hadespalace_floor04_04.lvl,
+# deployed CANONICAL Levels.arc, md5 3f05c227 == the recorded build41 CANON Levels md5):
+#   local(38.0, 45.0)  clr=100% on ALL THREE tilesets (Normal/Epic/Legendary - the navmesh
+#   itself is shared; only the DB pool gate decides which difficulty actually spawns him),
+#   d<=0.14u on every tileset, reachable component #1 (76,499 cells - the main walkable
+#   mass, same component the tool proves the SHIPPED q_general_b_guardpair sits in at
+#   local(68.39,40.26), cross-calibrated to d=0.10u with the SAME tool/frame). Nearest
+#   existing encounter is q_general_b_guardpair, ~29u away (no collision); nearest static
+#   set-dressing (hp_prisoncorner01/hp_urn01 decoration meshes) is 7-17u away (non-blocking
+#   clearance, already reflected in the clr=100% navmesh read); 0 collision with any
+#   functional entity (the level's quest NPCs/gate objects/proxies all cluster at x>=44
+#   with z>=58 or z<=23 - this corner, x in [33,44] z in [35,52], is a genuinely quiet
+#   back pocket). Y=15.0 matches every other placement on this floor (the general's guard
+#   pair, the warden-of-souls gate objects). Full survey transcript + collision-guard
+#   instance dump: docs/reports/b65_lowlift_wave.md.
+#
+# Rotation reuses the standard B41-wave identity-ish orientation (_B41_ROT) - a lone fixed
+# stalker has no facing requirement toward a specific quest actor, unlike the general's
+# guard pair. Dry-run injection into a COPY of the deployed map + blob-diff proof (proving
+# only this level's 0x05/0x14 sections change, navmesh 0x0b byte-identical) is recorded in
+# the same report; NOT yet built/deployed (DB+map both ride the next integration build).
+B65_TOXEUS_STALKER_HOST_KEY = B41_GUARDB_KEY
+Q_TOXEUS_STALKER_PROXY_DBR = b'records\\drxmap\\proxy\\q_toxeus_hunt_lone.dbr'
+B65_TOXEUS_STALKER_SPECS = {
+    B65_TOXEUS_STALKER_HOST_KEY: [
+        (Q_TOXEUS_STALKER_PROXY_DBR, 38.0, 15.0, 45.0, _B41_ROT),
+    ],
+}
+for _b65_key, _b65_specs in B65_TOXEUS_STALKER_SPECS.items():
+    assert _b65_key in INJECT_SPECS, (
+        f'b65 toxeus-stalker host {_b65_key} must already exist as a boss host (append-only)')
+    INJECT_SPECS[_b65_key] = list(INJECT_SPECS[_b65_key]) + list(_b65_specs)
+
 # --- MOVE_SPECS: reposition EXISTING (native) instances in place (Workstream B) -----------
 # The merge already places these records; move_0x05_instances rewrites ONLY their 12
 # position bytes (rotation/flags/string-index preserved), so the caravan scene composes

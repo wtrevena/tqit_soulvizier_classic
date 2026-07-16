@@ -152,7 +152,23 @@ REASSIGN = {
     },
     # 4.8 toxeus_flashpowder 13 -> 4 (the 9 off-theme reassigns; keep Toxeus + 2 dev rogues + Satyr Scout).
     'toxeus_flashpowder.dbr': {
-        'tagSoulName49':  (CROWSUMMON, ON_ATTACK),         # carrionlord (bird boss) -> Summon Carrion Crow
+        # carrionlord (bird boss) -> Summon Carrion Crow, MANUAL-CAST (controller=None).
+        # RESOLVED (lowlift wave item 5, was ON_ATTACK): a mod-generated permanent
+        # Skill_SpawnPet ring must be manual-cast, per the SAME class-wide convention
+        # souls_quality.py's roster-derived summon-controller fix already enforces for
+        # the other 8 mod-touched families (crowboar/glittertail/koroush/nkac + komara/
+        # melalos/oythroneus) - ON_ATTACK on a PERMANENT summon is the exact reset-on-
+        # attack bug class (D3), not a deliberate "swarm" identity (contrast the 18
+        # amgoz1 SV-ORIGINAL swarm souls that SV098 itself ships with the controller -
+        # carrionlord is NOT one of those; it is a mod REASSIGN target, so there is no
+        # upstream design to defer to). Previously this line set ON_ATTACK, which
+        # souls_quality (registry pos 13, running after skill_quality's pos 4) then
+        # stripped again as a mod-introduced controller on a permanent summon - a
+        # documented but confusing "later-wins" cross-module collision (S4b WARN).
+        # Setting None here directly makes BOTH modules agree at the source: no
+        # collision, no WARN, and the FINAL db is BYTE-IDENTICAL (souls_quality was
+        # already producing manual-cast as the effective, shipped behavior).
+        'tagSoulName49':  (CROWSUMMON, None),
         'tagSoulName29':  (STAT_ONLY, None),               # carrioncrow (mook bleed bird)
         'tagSoulName40':  (STAT_ONLY, None),               # bloodwing (mook bleed bird)
         'tagSoulName223': (ARROWSTORM, ON_ATTACK),         # pandarus (archer hero) -> Arrow Nova
