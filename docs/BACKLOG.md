@@ -2913,6 +2913,29 @@ kit (burrow/frost skills that actually cast), massive total-speed boost, exclama
 mechanism -> all placed ubers, and the 3-tier soul + loot-triple fix + roster drop-slot sweep.
 All Cold Worm items ship as ONE lane when resumed (worktree coldworm-markers has partials).
 
+## b68 MASTERY REFLOW REVERT (Will 2026-07-16, build43 playtest)
+Will played build43 and reported the build42 mastery reflow introduced huge skill-tree errors
+(skills wrong rows/columns, wrong connections, circle/square frame flips). Directive: REVERT the
+reflow. Surgically reverted `tools/patches/hunting_occult_ui.py` + the `occult_hunting_golden.json`
+body to build41 (Will's hand-tuned state); deleted `mastery_ui_vet.py` / `gate_mastery_ui.py` /
+`mastery_ui_waivers.json` + the mastery-UI-law gate wiring in `build_svc_database.py`; KEPT the two
+Will-mandated waves that shipped on top (b60 `mastery_bg_render` pane-render fix, b67 `oh_pane_art`
+pane-art fix) + every unrelated build42-59 content change. A7 golden-freeze gate-driven override
+reconstruction: re-added the 28 b60/b67-sanctioned keys + 3 BL-AURA-RADIUS (b57) keys a blanket
+build41 golden.json revert had collaterally wiped (unrelated feature, still active - see
+docs/reports/b68_mastery_reflow_revert.md). arz md5 `439a9279a7c5cf94b02074fd00981dd2` (scratch
+build); Text.arc byte-identical to build43 (`3e576581`). Proof diffs: vs build43 = 56 modified
+records, 100% UI position/connector fields, 0 non-UI deltas; vs build41 = 41 add/6 rm/509 mod, the
+21 `ingameui` deltas 100% accounted for by the 2 kept waves, the rest the known build42-59 content
+wave (drop rates, souls quality, legion stages, thrown restore, aura radii, uber orphan weapons,
+turtleshell relics, SVAERA sets, double-soul rulings) - zero surprise records either diff.
+Contracts GATE PASS (0 P0/0 P1/4903 P2 pre-existing). PERSISTING (not reflow damage, Will's own
+2026-07-12 SHAPE LAW, unchanged by this revert): Poisonous Gas (`drxpoisongasbomb`) stays SQUARE,
+Blade Fury (`drxcalculatedstrike_luckyhit`) stays CIRCLE - if Will's build43 complaint names either
+of those two specifically, that's pre-existing intentional shape-law behavior, not a bug. NOT yet
+built to canonical map/Text.arc pair or deployed - DB-lane-only revert; full deploy needs the map
+lane's own text/quests build to be re-run against this arz before shipping.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
