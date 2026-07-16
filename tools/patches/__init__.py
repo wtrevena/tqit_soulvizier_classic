@@ -101,6 +101,11 @@ REGISTRY = [
                             # actorToSpawnOnDeath chain drops its soul at the FINAL stage only).
                             # Runs after every soul-wiring + boss-creating module so it sees the
                             # FINAL chains; before the drop-rate forcer (run_registry_gates).
+    'double_soul_rulings',  # Will's double-soul rulings (delegated to the b56 standing
+                            # recommendation): Possessed Boar + Lillued fixed terminal-only
+                            # (typo-twin dup / empty-husk soul retired); Charon 39/41/43 +
+                            # Hades 54 explicitly UNTOUCHED. verify() also cross-checks that
+                            # legion_soul_stages' distinct-soul roster shrinks 6 -> 4.
     'enslaver_pet_fx',      # b55: black-rig the SOUL-SUMMONED Enslaver + the marauders he raises
                             # (strip Lyia-clone green residue: envenom/heartofoak/regrowth/natureswrath;
                             # inherit each pet's source-monster black shroud). PET FX fields only;
