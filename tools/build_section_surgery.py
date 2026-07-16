@@ -369,16 +369,12 @@ FINALLETTER_DBR = b'records\\drxmap\\quest\\finalletter.dbr'
 # The Proxy visual (mesh/scale/texture) lives on the DB record; the real spawn is the
 # um_bloodtoxeus_99 monster via the pool.
 Q_BLOODTOXEUS_LONE_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone.dbr'
-# M5' (build30): the ~50%-spawn variant proxy for the parchment placement (chanceToRun=50).
-# COUPLED WITH DB LANE: this record is created by the DB lane; until it lands in the shipped
-# arz, the parchment placement below shows as a MAP-REF-1 (placed record absent from arz) and
-# the map+arz must ship together. Same proxy dir as q_bloodtoxeus_lone.
-# ⚠️ M15 (2026-07-09): BOTH standalone placements are RETIRED (specs removed from
-# INJECT_SPECS) - Will's mechanism change joins Toxeus to the EXISTING chest-area
-# egg_blooddragon_pack pool (100%, in-place edit, single placement) and a CLONE of the
-# parchment demon_01_cluster pool (50%, DB lane clones; see the M15 notes at both former
-# spec sites). The constants stay for history/greps; the records remain in the arz unplaced.
-Q_BLOODTOXEUS_LONE_50_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone_50.dbr'
+# M5'/M15 parchment 50% proxy (q_bloodtoxeus_lone_50): FULLY RETIRED (Will FINAL DESIGN
+# 2026-07-14). The DB lane no longer authors that record (nor the derived demon_01_cluster_
+# toxeus50 pool it fed), and it was never placed on the map. Will's final call is EXACTLY ONE
+# Blood-Toxeus chance in the entrance corridor - the drxFirstRoom ambush (q_bloodtoxeus_ambush,
+# chanceToRun retuned 15 -> 33 in the DB lane). The dead Q_BLOODTOXEUS_LONE_50_DBR constant is
+# removed with it. The chest-area egg_blooddragon_pack Toxeus join (100%) is unaffected.
 # q_leinth_lone's EXACT float32 rotation (from its SV-upstream bossfight 0x05 record bytes);
 # carried verbatim so the Hemorrheus proxy's byte-shape matches the exemplar's rotation too.
 Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
@@ -1259,7 +1255,7 @@ B41_SPECS = {
         (b'records\\drxmap\\proxy\\q_sarcophagus_d.dbr',                        32.0, 1.0, 91.0, _B41_ROT),
     ],
     # 5) TOXEUS entrance ambush - drxFirstRoom blood-cave first room (v0x0e fold, Y=1.0).
-    #    1 ambush proxy (chanceToRun=15 => a ~15% Blood-Toxeus + 2 blood-demon adds).
+    #    1 ambush proxy (chanceToRun=33 => a ~33% Blood-Toxeus + 2 blood-demon adds; Will retuned 15->33 2026-07-14).
     B41_TOXEUS_KEY: [
         (b'records\\drxmap\\proxy\\q_bloodtoxeus_ambush.dbr',                  100.0, 1.0, 50.0, _B41_ROT),
     ],
@@ -1925,21 +1921,16 @@ INJECT_SPECS = {
         # (localY 10.0), ~26.6u from the finalletter above; SV-only v0e inject, flags=0,
         # no 0x14, exemplar rot. COUPLED SHIP with the arz's q_enslaver_warband records.
         EN_WARBAND_SPEC,
-        # M15 (2026-07-09, Will mechanism change): the standalone ~50% parchment Toxeus proxy
-        # (q_bloodtoxeus_lone_50 @ the finalletter's exact coords, the M5' build30 placement -
-        # byte-verified d=0.0u ON the Tattered Parchment) is REMOVED. New mechanism = the DB
-        # lane adds um_bloodtoxeus_99 at 50% to the pool of the 'little demon guys' group ON
-        # the parchment: records\drxmap\proxy\demon_01_cluster.dbr, THIS level inst [25] @
-        # local (37.16,10.01,20.46), 5.5u from the letter. ⚠️ demon_01_cluster is placed 30x
-        # across the blood cave (24x drxFirstRoom, 6x drxBC2, 1x here) - the DB lane MUST
-        # CLONE the proxy+pool (never edit the shared pool in place, or Toxeus rolls 50% at
-        # all 30 spawn points); the map then repoints ONLY inst [25] to the clone (de-place
-        # by dbr in this level [single instance here] + re-inject the clone at the exact
-        # original bytes: pos (37.158714,10.005000,20.461723), identity rot, flags=1,
-        # uniqueid 00ec9e28d14b2ca6f287fb8ed314ffe9 [verified NOT GROUPS-bound], no 0x14).
-        # Keeping the standalone alongside the group-add = two independent 50% rolls = 25%
-        # double-Toxeus (the old bug reborn) - hence the removal. ⚠️ COUPLED SHIP with the
-        # DB lane's arz. History: M5' spec kept in git (build31e and earlier).
+        # M15 PARCHMENT TOXEUS: RETIRED (Will FINAL DESIGN 2026-07-14). This block formerly
+        # DOCUMENTED (never implemented as a spec) a repoint of the parchment demon_01_cluster
+        # inst [25] to a derived ~50% Toxeus pool. Will's final call: EXACTLY ONE Blood-Toxeus
+        # chance in the entrance corridor - the drxFirstRoom ambush (q_bloodtoxeus_ambush,
+        # chanceToRun retuned 15 -> 33 in the DB lane) - so he cannot spawn twice. The DB lane
+        # no longer authors the derived demon_01_cluster_toxeus50 pool/proxy nor the sibling
+        # q_bloodtoxeus_lone_50; the parchment room keeps its plain demon_01_cluster (no Toxeus).
+        # NO MAP CHANGE was ever made here and none is made now (this level's real specs =
+        # FINALLETTER + EN_WARBAND_SPEC only). See docs/MULTIPLAYER_COMPAT.md M4. History: the
+        # full repoint recon is in git (build31e and earlier).
     ],
     # HiddenValleyBorder04 = the cave-mouth "occultist" scene (the Hades merchant
     # Merchant_HiddenValley_General + wagon, which SV dressed with occult FX). The merge kept
@@ -2431,11 +2422,12 @@ _HUB_DESTS = [
 ]
 
 # --- TEST-HUB EXTRA (M5', build30): NO extra Toxeus -----------------------------------------
-# M15 (2026-07-09) UPDATE: the Blood Toxeus now has ZERO standalone INJECT_SPECS placements.
-# Both M5' standalones (chest room q_bloodtoxeus_lone + parchment q_bloodtoxeus_lone_50) are
-# RETIRED - Toxeus joins the pools of the EXISTING chest-area egg_blooddragon_pack (100%) and
-# a clone of the parchment demon_01_cluster (50%), both DB-lane arz edits (see the M15 notes
-# at the former spec sites). The old TESTHUB-only cave-mouth spawn stays retired too.
+# M15 (2026-07-09) UPDATE + Will FINAL DESIGN (2026-07-14): the Blood Toxeus has ZERO standalone
+# INJECT_SPECS placements. Both M5' standalones (chest room q_bloodtoxeus_lone + parchment
+# q_bloodtoxeus_lone_50) are RETIRED. The chest-area egg_blooddragon_pack Toxeus join (100%,
+# DB-lane arz edit) stays. The parchment ~50% pool-join is now ALSO RETIRED (Will's final call:
+# exactly ONE corridor Blood-Toxeus chance = the drxFirstRoom ambush @33%); the DB lane no longer
+# clones demon_01_cluster into a Toxeus pool. The old TESTHUB-only cave-mouth spawn stays retired.
 #
 # --- MONSTER TEST YARD (build33, TESTHUB-only) ----------------------------------------------
 # Will (mod author) wants to fight+tune every new hostile monster from build31/32 in one place.

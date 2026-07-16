@@ -9071,11 +9071,15 @@ _BT_DONOR_POOL = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
 # ProxyLimits.tpl shape). See the eligibility math in docs/BLOOD_TOXEUS_DESIGN.md.
 _BT_DONOR_LIMIT = r'records\proxies boss\herolimit_all.dbr'   # N/E/L [1..75] no-cap shape donor
 _BT_LIMIT = r'records\proxies orient\limit_bloodtoxeus.dbr'   # NEW: window contains [40,68,100]
-# D7 (Will 2026-07-09): the summon-the-boss pets + the 2nd (parchment, 50%) proxy.
+# D7 (Will 2026-07-09): the summon-the-boss pets.
 _BT_PET_PATHS = [r'records\skills\soulskills\pets\bloodtoxeus_1.dbr',
                  r'records\skills\soulskills\pets\bloodtoxeus_2.dbr',
                  r'records\skills\soulskills\pets\bloodtoxeus_3.dbr']
-_BT_PROXY_50 = r'records\drxmap\proxy\q_bloodtoxeus_lone_50.dbr'  # parchment @ chanceToRun=50
+# RETIRED (Will FINAL DESIGN 2026-07-14): the 2nd (parchment, 50%) proxy q_bloodtoxeus_lone_50
+# is removed. There must be EXACTLY ONE Blood-Toxeus chance in the entrance corridor; it is the
+# drxFirstRoom ambush (q_bloodtoxeus_ambush), retuned 15 -> 33 in tools/patches/toxeus_suite.py.
+# The never-wired parchment feature (this proxy + demon_01_cluster_toxeus50, see M15 below) is
+# retired so he cannot spawn twice. _create_blood_toxeus_proxy_50 + its registry entry deleted.
 
 # Blood-demon champions + exploding blood sprites (the phase adds) - all EXIST.
 _BT_BLOODDEMON = [
@@ -10120,21 +10124,9 @@ def _create_blood_toxeus_summon(db):
     return ok
 
 
-def _create_blood_toxeus_proxy_50(db):
-    """D7 (Will 2026-07-09): the 2nd Toxeus spawn proxy for the parchment placement
-    at chanceToRun=50 (the chest proxy q_bloodtoxeus_lone stays chanceToRun=100).
-    Same pool (_BT_POOL = same boss + 2 blood-demon adds). Map lane: place the record
-    q_bloodtoxeus_lone_50 (records/drxmap/proxy/q_bloodtoxeus_lone_50.dbr) at the
-    parchment placement."""
-    if not db.has_record(_BT_PROXY):
-        print("  WARNING D7: q_bloodtoxeus_lone missing; 50% proxy skipped")
-        return None
-    db.clone_record(_BT_PROXY, _BT_PROXY_50)
-    db.set_field(_BT_PROXY_50, 'chanceToRun', 50.0)
-    db._modified.add(_BT_PROXY_50)
-    print("  D7 Toxeus 2nd proxy: q_bloodtoxeus_lone_50 @ chanceToRun=50 "
-          "(same pool/boss; chest proxy stays 100%)")
-    return _BT_PROXY_50
+# RETIRED (Will FINAL DESIGN 2026-07-14): _create_blood_toxeus_proxy_50 removed. The parchment
+# 50% proxy q_bloodtoxeus_lone_50 was never wired to the map; the corridor now has exactly ONE
+# Blood-Toxeus surface (the drxFirstRoom ambush @33%). See the _BT_PROXY_50 note above.
 
 
 def _wire_summon_soul(db, soul_paths, summon_skill, name_tag=None):
@@ -12743,23 +12735,21 @@ def _apply_group3_tunes(db, tags):
 #     PLACE: guaranteed-boss construction, championChance=100/championMax=1,
 #     Toxeus the only champion entry; spawnMax(4)-championMax(1)>=1 law holds
 #     (3 blood dragons + Toxeus every run).
-#   PARCHMENT (drxFirstxistion_connection): proxy demon_01_cluster @ local
-#     (37.16,10,20.46), 5.5u from the letter; its pool is proxy-exclusive but
-#     the PROXY has 19 placements across 3 levels -> DERIVE copies
-#     (demon_01_cluster_toxeus50 proxy + pool) with the champion list replaced
-#     by Toxeus-only @50 (the 3-8 small demons stay; the other 18 placements
-#     keep the original 40% med-demon champion). spawnMax(8)-championMax(1)>=1.
-# COUPLED SHIP (map lane): repoint the ONE parchment instance to the derived
-# proxy record + REMOVE both standalone proxies (q_bloodtoxeus_lone in drxBC2
-# + q_bloodtoxeus_lone_50 on the letter) or the old double-spawn returns.
+#   PARCHMENT (drxFirstxistion_connection): RETIRED (Will FINAL DESIGN 2026-07-14).
+#     The parchment ~50% Toxeus was NEVER wired to the map - the derived pool+proxy
+#     (demon_01_cluster_toxeus50) were authored here, but the map repoint of the
+#     demon_01_cluster instance to them was never injected (it existed only as a prose
+#     comment in build_section_surgery.py, now annotated RETIRED). Will's final call:
+#     EXACTLY ONE Blood-Toxeus chance in the entrance corridor - the drxFirstRoom ambush,
+#     retuned 15 -> 33 (tools/patches/toxeus_suite.py) - so he cannot spawn twice. The
+#     derived demon_01_cluster_toxeus50 proxy+pool and the sibling proxy q_bloodtoxeus_
+#     lone_50 are therefore NO LONGER AUTHORED; the parchment room keeps its plain
+#     demon_01_cluster (no Toxeus). Only the chest-room egg join below remains. See
+#     docs/MULTIPLAYER_COMPAT.md M4.
 # Champion field shapes mirror the demon pool's own live shape verbatim
 # (championChance FLOAT / championMax INT / nameChampionN / weightChampionN;
 # no championMin - zero-precedent in this pool family).
 _M15_EGG_POOL = r'records\drxmap\proxy\pools\egg_blooddragon.dbr'
-_M15_DEMON_PROXY = r'records\drxmap\proxy\demon_01_cluster.dbr'
-_M15_DEMON_POOL = r'records\drxmap\proxy\pools\demon_01_cluster.dbr'
-_M15_DERIVED_PROXY = r'records\drxmap\proxy\demon_01_cluster_toxeus50.dbr'
-_M15_DERIVED_POOL = r'records\drxmap\proxy\pools\demon_01_cluster_toxeus50.dbr'
 _M15_TOXEUS = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
 
 
@@ -12800,41 +12790,16 @@ def _apply_m15_toxeus_group_joins(db):
           f"(spawnMax {smax}, {smax - 1} dragons + the Devourer every run; "
           f"proxyPoolEquation neutralized -> exactly 1 Devourer at any party size 1-6)")
 
-    # ── parchment: derive proxy+pool copies (@50); map lane repoints ──
-    for rec in (_M15_DERIVED_PROXY, _M15_DERIVED_POOL):
-        if db.has_record(rec):
-            raise SystemExit(f"M15: derived record already exists: {rec}")
-    if not db.has_record(_M15_DEMON_POOL) or not db.has_record(_M15_DEMON_PROXY):
-        raise SystemExit("M15: demon_01_cluster proxy/pool missing")
-    if float(val(_M15_DEMON_POOL, 'championChance', 0)) != 40.0:
-        raise SystemExit("M15: demon pool championChance != 40 - pre-shape "
-                         "changed, reconcile")
-    db.clone_record(_M15_DEMON_POOL, _M15_DERIVED_POOL)
-    # pure VALUE edits on the clone (no field-shape change; empty-string .dbr
-    # refs are the B-TOXEUS-2 loader-abort class, so all three existing
-    # champion entries are repointed at Toxeus instead of blanked - any
-    # champion roll yields him; weights keep their native 34/33/33 values).
-    sf(_M15_DERIVED_POOL, 'championChance', 50.0)
-    sf(_M15_DERIVED_POOL, 'nameChampion1', _M15_TOXEUS)
-    sf(_M15_DERIVED_POOL, 'nameChampion2', _M15_TOXEUS)
-    sf(_M15_DERIVED_POOL, 'nameChampion3', _M15_TOXEUS)
-    # DEDUP (round-2 vet HIGH 2026-07-14): same proxypoolequation_02 floor risk (the clone
-    # inherits it from demon_01_cluster) -> championMax 1 floors to 2 at 4-6P = two Blood
-    # Toxeus if the champion rolls. Neutralize so the derived pool is MP-safe if/when the map
-    # lane ships the parchment repoint. (Currently the derived proxy is unplaced - the repoint
-    # at build_section_surgery.py drxfirstxistion_connection is documented but not injected -
-    # so this is defense-in-depth, behavior-neutral until the parchment placement lands.)
-    _svc_neutralize_pool_equation(db, _M15_DERIVED_POOL)
-    db._modified.add(_M15_DERIVED_POOL)
-    db.clone_record(_M15_DEMON_PROXY, _M15_DERIVED_PROXY)
-    sf(_M15_DERIVED_PROXY, 'pool1', _M15_DERIVED_POOL)
-    db._modified.add(_M15_DERIVED_PROXY)
-    smax2 = int(float(val(_M15_DERIVED_POOL, 'spawnMax', 0)))
-    if smax2 - 1 < 1:
-        raise SystemExit(f"M15: derived pool spawnMax {smax2} law violation")
-    print(f"  M15 parchment: derived demon_01_cluster_toxeus50 proxy+pool "
-          f"(Toxeus only champion @50; {smax2} max small demons). MAP LANE: "
-          f"repoint the parchment instance + remove both standalone proxies.")
+    # ── parchment: RETIRED (Will FINAL DESIGN 2026-07-14) ──
+    # The derived demon_01_cluster_toxeus50 proxy+pool (Toxeus champion @50) are NO LONGER
+    # authored. The map repoint of the parchment demon_01_cluster instance to them was never
+    # injected (documented only as a prose comment in build_section_surgery.py, now RETIRED),
+    # and Will's final call is EXACTLY ONE Blood-Toxeus chance in the entrance corridor - the
+    # drxFirstRoom ambush retuned 15 -> 33 (tools/patches/toxeus_suite.py). Removing this
+    # derivation SHRINKS the Part D champion-cap roster from 3 Toxeus pools to 2 (ambush
+    # _BT_POOL + this chest-room egg_blooddragon); the roster-derived _verify_toxeus_champion_
+    # cap gate handles the smaller roster and still fails loud on any over-count. The parchment
+    # room keeps its plain demon_01_cluster (no Toxeus). See docs/MULTIPLAYER_COMPAT.md M4.
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -14861,7 +14826,8 @@ def _create_blood_toxeus(db):
     _create_blood_toxeus_fx(db)   # B-TOXEUS-1: blood shroud skills BEFORE the monster refs them
     _create_blood_toxeus_monster(db)
     _create_blood_toxeus_proxy(db)
-    _create_blood_toxeus_proxy_50(db)   # D7: 2nd (50%) proxy for the parchment placement
+    # D7 parchment 50% proxy RETIRED (Will FINAL DESIGN 2026-07-14): exactly ONE corridor
+    # Blood-Toxeus surface (the drxFirstRoom ambush @33% in toxeus_suite.py).
     _create_blood_toxeus_summon(db)     # D7: pets + summon skill (needs the monster; before the soul)
     _create_crimsonverdict_set(db)
     _create_crimsonverdict_loot(db)
@@ -15057,14 +15023,11 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'main_monster': _BT_MONSTER,   # the boss that must not be crowded out
         'name': 'q_bloodtoxeus_lone (Hemorrheus, chest @100%)',
     },
-    {
-        # D7: the 2nd (parchment) proxy shares the SAME pool/boss, so the same
-        # spawn-eligibility math must hold. chanceToRun only gates WHETHER it fires.
-        'proxy': _BT_PROXY_50,
-        'pool': _BT_POOL,
-        'main_monster': _BT_MONSTER,
-        'name': 'q_bloodtoxeus_lone_50 (Hemorrheus, parchment @50%)',
-    },
+    # RETIRED (Will FINAL DESIGN 2026-07-14): the 2nd (parchment @50%) proxy q_bloodtoxeus_lone_50
+    # is removed (never wired to the map). The entrance corridor's single Blood-Toxeus surface is
+    # the drxFirstRoom ambush q_bloodtoxeus_ambush (@33%), registered by tools/patches/
+    # toxeus_suite.py. _BT_POOL stays covered here via the q_bloodtoxeus_lone entry above (so its
+    # equation neutralization in _svc_lock_authored_pool_counts is unaffected by this removal).
 ] + [
     {
         # GROUP F: the 4 obsidian-roulette corner proxies all share the ONE

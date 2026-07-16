@@ -10,6 +10,16 @@
 
 ## 0. HEADLINE (read this first)
 
+> **✅ FINAL DESIGN (2026-07-14, supersedes the parchment discussion below): the corridor has EXACTLY
+> ONE Blood-Toxeus chance.** Will's call ("retire the one we are adding and just update the 15% one to
+> 33%"): the never-wired ~50% parchment feature is RETIRED - the monolith no longer authors
+> `demon_01_cluster_toxeus50` (pool+proxy) or `q_bloodtoxeus_lone_50` - and the drxFirstRoom entrance
+> ambush `q_bloodtoxeus_ambush` is retuned `chanceToRun` 15 -> 33. So the roster of `um_bloodtoxeus_99`
+> pools is now TWO (ambush `_BT_POOL` + deep-chest `egg_blooddragon`), the roster-derived Part D gate
+> follows the shrink and stays GREEN (DB-replay verified), and there is NO map change. Everywhere below
+> that treats the parchment as a live-but-orphaned surface is HISTORY. The Legendary-only stalker
+> verdict (section on §3.1 / M4.6) is now APPROVED + QUEUED (Hydra pattern; `BACKLOG` B-TOXEUS-STALKER-1).
+>
 > **⚠️ ROUND-2 UPDATE (2026-07-14): this recon MISSED a real 4-6-player double-spawn.** An adversarial
 > vet of the shipped suite found that the deep-chest Devourer (`egg_blooddragon`) and the parchment
 > (`demon_01_cluster_toxeus50`) - the two M15 Toxeus pools, NOT reached by the recon's `_BT_POOL`-only

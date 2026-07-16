@@ -2183,29 +2183,44 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   other masteries are unaffected (single definitions).
 - Souls quality pass vs SV originals (#31).
 - Toxeus encounter suite (#32): **SHIPPED build37** as registry module `tools/patches/toxeus_suite.py`
-  (Parts A-D), gate-GREEN build37-40. (A) 15% single-spawn entrance ambush `q_bloodtoxeus_ambush` @
-  drxFirstRoom (reuses `_BT_POOL` = 1 Toxeus + 2 blood-demon adds; map placement `B41_SPECS` item 5,
-  on-mesh comp#1 Y=1.0); (B) per-player rant scroll on Blood Toxeus Misc4 @100% (`FixedItemLoot`
+  (Parts A-D), gate-GREEN build37-40. (A) **~33%** single-spawn entrance ambush `q_bloodtoxeus_ambush` @
+  drxFirstRoom (Will FINAL DESIGN 2026-07-14 retuned 15 -> 33; reuses `_BT_POOL` = 1 Toxeus + 2 blood-
+  demon adds; map placement `B41_SPECS` item 5, on-mesh comp#1 Y=1.0) - the **ONLY** Blood-Toxeus chance
+  in the entrance corridor; (B) per-player rant scroll on Blood Toxeus Misc4 @100% (`FixedItemLoot`
   `numSpawn='numberOfPlayers*1'`, AE-parse-safe item evaluator); (C) roaming "Endless Hunt" Hades-
   confined stalker (`um_toxeus_hunt_99`, ShadowStalker rig) + granted-MOVE soul; (D) fail-loud
   champion-count cap (<=1 Toxeus any party size). **6-player checklist DONE 2026-07-14 ->
   `docs/MULTIPLAYER_COMPAT.md` §M4**, incl. the Legendary-stalker feasibility VERDICT (roaming +
   strictly-Legendary-only pure-data-gate is NOT cleanly feasible -> shipped as the Hades-confined
   "effectively Legendary/endgame" approximation; a FIXED Hydra-pattern Legendary-only stalker is a
-  clean Will OPTION, not a defect). **ROUND-2 FIX (2026-07-14, vet HIGH):** the deep-chest Devourer
-  (`egg_blooddragon`) + the derived parchment pool (`demon_01_cluster_toxeus50`) - the two M15 Toxeus
-  pools, NOT `_BT_POOL` - both kept the base-game `proxyPoolEquation` (`proxypoolequation_02`), which
-  floors `championMax=1` up to 2 at 4-6 players = TWO Blood Toxeus in the deep-chest room for a 4-6P
-  party (np<=3 incl. Will's co-op was clean). FIXED: `_apply_m15_toxeus_group_joins` now neutralises
-  the equation on both pools; Part D `_verify_toxeus_champion_cap` is now ROSTER-DERIVED over EVERY
-  `um_bloodtoxeus_99` pool (fail-loud on any equation or >1 count; negative-tested against the pre-fix
-  arz). RESIDUALS (not blockers, no code owed): launch-gated live checks (ambush np>=2; scroll
-  per-player Misc4 @np=2 else container fallback; Hunt co-op runaway; M1.5 np*np) under the
-  restart-Steam law; **amgoz1 creative-text VETO** (rant screed + scroll names + Hunt name/desc) needs
-  Will sign-off before public ship; **CORRECTED coherence FYI for Will** = the ~50% parchment Toxeus
-  (`demon_01_cluster_toxeus50`) is an ORPHAN, never wired to the map (repoint documented but no
-  injection spec), so the ONLY entrance Toxeus is the single ~15% ambush; ship the parchment repoint
-  OR retire the orphan pool + its sibling orphan `q_bloodtoxeus_lone_50` (out-of-scope cleanup).
+  clean Will OPTION - now APPROVED + QUEUED, see the next entry). **FINAL DESIGN (2026-07-14, Will:
+  "retire the one we are adding and just update the 15% one to 33%"):** the never-wired ~50% parchment
+  feature is RETIRED so the corridor has EXACTLY ONE Toxeus roll. The monolith no longer authors the
+  derived parchment pool/proxy `demon_01_cluster_toxeus50` or its sibling `q_bloodtoxeus_lone_50`; the
+  `_verify_toxeus_champion_cap` roster shrank 3 -> 2 (ambush `_BT_POOL` + deep-chest `egg_blooddragon`),
+  gate still GREEN + still fail-loud (DB-replay verified: retired records ABSENT, only ambush
+  `chanceToRun` changed 15 -> 33, egg/`_BT_POOL`/boss byte-identical; NEG tests fail on planted
+  over-count + the pre-r2 double). NO MAP CHANGE this lane. **ROUND-2 (historical):** before the final
+  design there were 3 Toxeus pools; the 2 M15 pools kept `proxyPoolEquation` (`proxypoolequation_02`)
+  which floored `championMax=1` to 2 at 4-6P = a deep-chest double; `_apply_m15_toxeus_group_joins`
+  neutralises the surviving `egg_blooddragon` pool. RESIDUALS (not blockers, no code owed): launch-gated
+  live checks (ambush np>=2; scroll per-player Misc4 @np=2 else container fallback; Hunt co-op runaway;
+  M1.5 np*np) under the restart-Steam law. **RANT-SCROLL creative-text VETO CLEARED** (Will 2026-07-14:
+  "you are good to ship the rant scroll" - screed + scroll names ship as-is; only the Part C Endless
+  Hunt name/desc remain under the standing amgoz1 sign-off). Parchment orphan RESOLVED (retired).
+- **B-TOXEUS-STALKER-1 - Legendary-only Toxeus stalker (fixed placement, Hydra pattern) -
+  APPROVED-BY-WILL-2026-07-14, QUEUED (not scheduled).** Will greenlit a proper strictly-Legendary-only
+  Toxeus stalker as a distinct FIXED encounter (verbatim: "lets add that to the backlog tho"). Ship it
+  via the PROVEN base-game **Hydra pattern** (`docs/reports/el_boss_audit.md`): a Legendary-gated proxy
+  whose pool has `pool1` EMPTY + `poolLegendary1 = <a single-member um_toxeus_hunt_99 pool>` so the
+  stalker spawns **only on Legendary** - NOT the inert `limit_legendary_only` min-player-level artifact
+  (difficultyLimitsFile scales level, it does NOT filter spawns; see M4.6). Recipe: clone
+  `q_bloodtoxeus_lone` -> `q_toxeus_hunt_lone` (pool1 empty, poolLegendary1 = new single-member
+  `um_toxeus_hunt_99` pool), place at ONE Hades/endgame spot (map INJECT_SPECS), register in
+  `_MOD_AUTHORED_SPAWN_PROXIES`. Trades "roaming but anywhere" for "findable but fixed + truly
+  Legendary-only". Held to the amgoz1 creative bar (name/lore). Coexists with the already-shipped
+  roaming Endless Hunt (Part C). **NOT built** in the 2026-07-14 corridor lane. Owner: a future DB+map
+  wave.
 - Comprehensive dropped-visuals restoration (#28).
 - Cold Tombs (#36) - ON HOLD per Will.
 

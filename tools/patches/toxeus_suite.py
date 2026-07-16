@@ -12,11 +12,16 @@ so the suite is self-validating whether or not the registry re-runs gates last.
 WHAT THIS SHIPS (spec: scratchpad/specs/toxeus_encounter_suite_spec.md; decisions:
 WILL_DECISIONS_2026-07-11.md; laws: docs/PLAYBOOK.md, amgoz1_design_voice.md):
 
-  PART A - Entrance ambush.  A lone Blood-Toxeus proxy at chanceToRun=15 (Will: 15% in
-    drxFirstRoom), a clone of the gate-proven chest proxy q_bloodtoxeus_lone reusing its
-    exact pool (_BT_POOL = 1 Toxeus + 2 blood-demon adds). Registered in the monolith's
-    _MOD_AUTHORED_SPAWN_PROXIES. MAP DELTA (map lane owns the placement): inject
-    q_bloodtoxeus_ambush into levels/world/xbloodcave/drxFirstRoom.lvl.
+  PART A - Entrance ambush.  A lone Blood-Toxeus proxy at chanceToRun=33 (Will FINAL DESIGN
+    2026-07-14: the ONE Blood-Toxeus chance in the entrance corridor), a clone of the
+    gate-proven chest proxy q_bloodtoxeus_lone reusing its exact pool (_BT_POOL = 1 Toxeus +
+    2 blood-demon adds - the entourage requirement is inherently satisfied). Registered in the
+    monolith's _MOD_AUTHORED_SPAWN_PROXIES. The map placement ALREADY SHIPPED (the map lane
+    injected q_bloodtoxeus_ambush into levels/world/xbloodcave/drxFirstRoom.lvl, B41_SPECS item
+    5); this lane only retunes the DB chanceToRun field, no map change. Will retuned 15 -> 33
+    when he retired the never-wired parchment ~50% feature (demon_01_cluster_toxeus50 +
+    q_bloodtoxeus_lone_50, removed from the monolith) so the corridor rolls Blood Toxeus exactly
+    ONCE - a single ~33% ambush - instead of the old (never-fired) parchment 50% + ambush 15%.
 
   PART B - The rant scroll.  A readable Parchment (finalletter chassis) carrying Toxeus's
     blood-cult screed, wired one-per-player onto Blood Toxeus's FREE Misc4 slot @100%
@@ -160,22 +165,26 @@ def _gv1(db, rec, f):
 
 
 # =============================================================================
-# PART A - entrance ambush proxy (chanceToRun=15, drxFirstRoom)
+# PART A - entrance ambush proxy (chanceToRun=33, drxFirstRoom; Will retuned 15->33 2026-07-14)
 # =============================================================================
 def _create_ambush_proxy(db):
     """Clone the gate-proven chest proxy q_bloodtoxeus_lone -> q_bloodtoxeus_ambush and set
-    chanceToRun=15 (Will's default; a single clean roll per room-load = a reliable 15% spawn
-    probability, unlike championChance which would compound across the pool's 8 demon slots).
-    Reuses _BT_POOL verbatim (1 Toxeus + 2 blood-demon adds) - no new pool, no new monster.
-    Registers the proxy in _MOD_AUTHORED_SPAWN_PROXIES so the spawn-eligibility gate covers it.
-    MAP DELTA: the map lane injects this proxy into drxFirstRoom (byte-shape = q_leinth_lone;
-    coord derived on-mesh at build time)."""
+    chanceToRun=33 (Will FINAL DESIGN 2026-07-14, retuned 15 -> 33; a single clean roll per
+    room-load = a reliable ~33% spawn probability, unlike championChance which would compound
+    across the pool's demon slots). Reuses _BT_POOL verbatim (1 Toxeus + 2 blood-demon adds) -
+    no new pool, no new monster. Registers the proxy in _MOD_AUTHORED_SPAWN_PROXIES so the
+    spawn-eligibility gate covers it. This is the ONLY Blood-Toxeus chance in the entrance
+    corridor: Will retired the never-wired ~50% parchment feature (demon_01_cluster_toxeus50 +
+    q_bloodtoxeus_lone_50) and bumped this single ambush to 33 so he cannot spawn twice.
+    NO MAP CHANGE this lane - the placement already shipped (map lane injected q_bloodtoxeus_
+    ambush into drxFirstRoom, B41_SPECS item 5); this is a pure DB chanceToRun retune."""
     if not (db.has_record(_BT_PROXY) and db.has_record(_BT_POOL)):
         raise SystemExit("[toxeus_suite] PART A: q_bloodtoxeus_lone proxy/pool missing "
                          "(monolith must build Blood Toxeus before this module runs)")
     db.clone_record(_BT_PROXY, _AMBUSH_PROXY)
     # chanceToRun exists on the donor (=100.0, FLOAT); override value only (preserve dtype).
-    db.set_field(_AMBUSH_PROXY, 'chanceToRun', 15.0)
+    # Will retuned 15 -> 33 (final design 2026-07-14): the single entrance Blood-Toxeus roll.
+    db.set_field(_AMBUSH_PROXY, 'chanceToRun', 33.0)
     db.set_field(_AMBUSH_PROXY, 'pool1', _BT_POOL)   # explicit (the clone already points here)
     db._modified.add(_AMBUSH_PROXY)
 
@@ -186,11 +195,11 @@ def _create_ambush_proxy(db):
             'proxy': _AMBUSH_PROXY,
             'pool': _BT_POOL,
             'main_monster': _BT_MONSTER,
-            'name': 'q_bloodtoxeus_ambush (Toxeus entrance ambush @ chanceToRun=15)',
+            'name': 'q_bloodtoxeus_ambush (Toxeus entrance ambush @ chanceToRun=33)',
         })
-    print("  [A] entrance ambush: q_bloodtoxeus_ambush @ chanceToRun=15 (reuses _BT_POOL = "
-          "1 Toxeus + 2 blood demons); registered for spawn-eligibility. "
-          "MAP DELTA -> drxFirstRoom.lvl")
+    print("  [A] entrance ambush: q_bloodtoxeus_ambush @ chanceToRun=33 (reuses _BT_POOL = "
+          "1 Toxeus + 2 blood demons); registered for spawn-eligibility. The ONLY corridor "
+          "Blood-Toxeus roll (parchment 50% feature retired). NO MAP CHANGE (placement shipped).")
 
 
 # =============================================================================
@@ -675,9 +684,11 @@ def _bt_pools(db):
     """Derive the FULL roster of ProxyPools that reference Blood Toxeus (_BT_MONSTER =
     um_bloodtoxeus_99) in ANY name slot or champion slot, straight from the assembled db.
     Returns [(pool_name, has_toxeus_main, has_toxeus_champion), ...], sorted. Used by the
-    champion-count-cap gate so it covers EVERY Blood-Toxeus surface (the ambush _BT_POOL,
-    the deep-chest egg_blooddragon, the derived parchment demon_01_cluster_toxeus50, and any
-    future M-era pool) rather than just the ambush pool."""
+    champion-count-cap gate so it covers EVERY Blood-Toxeus surface (the ambush _BT_POOL and
+    the deep-chest egg_blooddragon = the TWO live pools after Will retired the parchment
+    demon_01_cluster_toxeus50, plus any future M-era pool) rather than just the ambush pool.
+    Being roster-DERIVED, the gate self-adjusts when a pool is added or removed (e.g. the
+    2026-07-14 parchment retirement shrank this roster 3 -> 2 with no gate code change)."""
     mn = _BT_MONSTER.replace('/', '\\').lower()
     roster = []
     for n in db.record_names():
@@ -702,9 +713,15 @@ def _verify_toxeus_champion_cap(db):
     placed live via the native egg_blooddragon_pack) and demon_01_cluster_toxeus50 (the derived
     parchment pool, championChance=50). Both kept the base-game proxyPoolEquation
     (proxypoolequation_02), which FLOORS championMax=1 up to 2 at 4-6 players = TWO Blood Toxeus
-    side by side (the exact 2026-07-13 dedup class the mandate centres on). The monolith M15
-    step now neutralizes those two pools; THIS gate makes the invariant self-enforcing so a
-    future pool that re-introduces the equation (or an over-count) fails the build LOUD.
+    side by side (the exact 2026-07-13 dedup class the mandate centres on). THIS gate makes the
+    invariant self-enforcing so a future pool that re-introduces the equation (or an over-count)
+    fails the build LOUD.
+
+    WILL FINAL DESIGN (2026-07-14): the parchment pool demon_01_cluster_toxeus50 is now RETIRED
+    (never wired to the map; the monolith no longer authors it), so the roster is TWO pools -
+    the ambush _BT_POOL (neutralized via _svc_lock_authored_pool_counts) and the deep-chest
+    egg_blooddragon (neutralized in _apply_m15_toxeus_group_joins). Being roster-DERIVED, this
+    gate follows the shrink automatically and still fails loud on any planted over-count.
 
     For EVERY pool that references Blood Toxeus in a name or champion slot, assert:
       (1) proxyPoolEquation is neutralized (empty) - else the literal counts do NOT hold and the
@@ -782,9 +799,9 @@ def _verify_toxeus_champion_cap(db):
             print(f"  CHAMPION-CAP OFFENDER: {p}")
         raise SystemExit(f"Toxeus champion-count-cap invariant FAILED: {len(problems)} problem(s)")
     print(f"  [D] champion-count-cap invariant OK: {len(roster)} Blood-Toxeus pool(s) "
-          f"(ambush + deep-chest + parchment-derived) each surface <= 1 Toxeus at any party size "
-          f"1-6, all proxyPoolEquation-neutralized; the per-player scroll is the only new MP "
-          f"surface (live-test-gated).")
+          f"(ambush + deep-chest; the parchment pool was retired 2026-07-14) each surface <= 1 "
+          f"Toxeus at any party size 1-6, all proxyPoolEquation-neutralized; the per-player "
+          f"scroll is the only new MP surface (live-test-gated).")
 
 
 # =============================================================================
