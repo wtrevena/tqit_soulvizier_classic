@@ -421,6 +421,21 @@ def create_uber_souls(db: ArzDatabase):
     """Identify uber monsters without souls and create thematic ones."""
     print("\n=== Creating uber monster souls ===")
 
+    # Release soul drop-rate split (Will 2026-07-14 cut; single source of truth
+    # lives in build_svc_database.py: soul_drop_rate() + soul_spawn_provenance_
+    # sets()). NO-GO FIX (vet round 1): this pass runs AFTER wire_souls_to_
+    # monsters and creates BRAND-NEW souls for uber/hero monsters that had none
+    # at wire-time (so wire_souls never rated them). It used to hardcode
+    # chanceToEquipFinger2=66.0 unconditionally, silently re-widening 21 of the
+    # 377 intended 66->50 cuts (roaming ubers whose soul is auto-generated here:
+    # um_crowboar_09, um_xix_36, um_frost_32, hero_junshan_39, ...). Route
+    # through the shared classifier instead so RANDOM roamers land at 50,
+    # PLACED/farmable-boss stay 66/25 - no duplicated classifier.
+    from build_svc_database import soul_drop_rate, soul_spawn_provenance_sets
+    _random_pool_members, _placed_proxy_members = soul_spawn_provenance_sets(db)
+    print(f"  Release drop-rate split: {len(_random_pool_members)} random-pool "
+          f"members, {len(_placed_proxy_members)} placed-proxy members")
+
     boss_indicators = [
         'boss', 'hero', 'uber', 'named', 'quest',
         'um_',
@@ -636,7 +651,9 @@ def create_uber_souls(db: ArzDatabase):
         soul_e = f'records\\item\\equipmentring\\soul\\svc_uber\\{clean}_soul_e.dbr'
         soul_l = f'records\\item\\equipmentring\\soul\\svc_uber\\{clean}_soul_l.dbr'
         db.set_field(name, 'lootFinger2Item1', [soul_n, soul_e, soul_l], DATA_TYPE_STRING)
-        db.set_field(name, 'chanceToEquipFinger2', 66.0, DATA_TYPE_FLOAT)
+        _rate = soul_drop_rate(name, classification, _random_pool_members,
+                               _placed_proxy_members)
+        db.set_field(name, 'chanceToEquipFinger2', _rate, DATA_TYPE_FLOAT)
         db.set_field(name, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
         db.set_field(name, 'dropItems', 1, DATA_TYPE_INT)
 

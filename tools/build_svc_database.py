@@ -472,8 +472,163 @@ def parse_soul_name(soul_path):
     return monster_type, name, diff
 
 
-def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
-    """Wire orphaned soul items to matching monster records."""
+# ── Soul drop-rate split helpers (Will 2026-07-14) ────────────────────────────
+# Will's directive (verbatim): "Cut all soul drop rates for randomly spawning
+# monsters to 50% from current 66%." The historical release model gave the whole
+# non-boss Hero/Quest class ONE rate (rare_chance=66). We SPLIT that class by
+# spawn provenance, DERIVED FROM THE ROSTER (no hardcoded monster names):
+#
+#   RANDOM  (roaming hero roster)  -> 50%  [Will's cut]
+#       Any Hero/uber-Hero referenced by a base-game population pool under
+#       records\proxies* via a name*/nameChampion* slot (the "random hero slot"
+#       mechanism). This is exactly the roster the SV uber tier (um_camelbane,
+#       um_morth, ...) and the plain hero roster (hero_*, us_*, u_*) spawn from -
+#       verified: they sit in records\proxies {egypt,greek,orient}\pools\*.
+#   PLACED  (dedicated encounters) -> 66%  [UNCHANGED]
+#       Quest/story bosses (monsterClassification == Quest) AND our um_* apex
+#       ubers placed behind records\drxmap\proxy* q_*_lone / warband / svc_*_pool
+#       proxies (Vashkarr, Broodmother, Voranthys, Ephialtes, Mnemophage, Dorus,
+#       Neferkha, Hades Marshal, Helepolis, Enslaver, ...). NOTE most of these are
+#       AUTHORED by apply_svc_patches AFTER this pass, so wire_souls never rates
+#       them (they carry their module's 66/25/0); the PLACED check here only
+#       matters when this classifier is replayed over a fully-assembled db.
+#   FARMABLE ACT BOSS              -> 25%  [UNCHANGED]  (Boss-class, non-um_).
+#
+# GROUND-TRUTH VERIFICATION (vs build40 golden b33c5a44, docs/reports/
+# b59_drop_rate_50.md): 377 records go 66->50; every one is referenced by >=1
+# BASE-GAME proxy pool (present at wire_souls call-time, BEFORE any module runs),
+# so the actual build cuts exactly this set - the golden dry-run replay is
+# faithful, NOT dependent on a module-authored pool that appears only later. The
+# named PLACED apex ubers (Vashkarr/Broodmother/Enslaver/Tantalus/BloodToxeus/
+# Four Generals/Hades Marshal) all keep their module rate; ZERO placed apex uber
+# is over-cut.
+#
+# SAFETY / completeness: a monster that spawns randomly MUST be referenced by a
+# spawn pool (that is the only spawn mechanism), so "not in a random pool" means
+# placed-in-level or dead/unreferenced - both keep 66 here, so a placed or quest
+# encounter is NEVER over-cut. Under-cut is limited to dead records (drop moot).
+#
+# ⚠️ WILL'S VETO KNOBS (per-record, one line each - THIS is the documented veto):
+#   * _SOUL_PLACED_OVERRIDE : basenames FORCED to 66 (treat as placed) even if a
+#     random pool references them. Use this to spare a signature encounter.
+#   * _SOUL_RANDOM_OVERRIDE : basenames FORCED to 50 (treat as roaming).
+#   Both are EMPTY by default = the pure roster verdict ships. To keep the whole
+#   SV uber tier at 66, instead raise random_chance at the wire_souls call site.
+# ⚠️ NOTABLE / SENSITIVE records the roster rule CUTS to 50 (flagged for veto -
+#   they sit in base-game random pools, so by Will's own rule they ARE randomly
+#   spawning; add a basename to _SOUL_PLACED_OVERRIDE to spare it):
+#     um_legion_28  - Legion; directive EXPLICITLY OKs the RANDOM->50 verdict
+#                     (spawns via random eurynomus champion pools). The
+#                     feat/legion-soul-stages lane owns Legion per-record and
+#                     reconciles at merge; its ZEROED stages stay 0 in both modes.
+#     um_toxeus_21  - "Main / green Athens Toxeus" (a module boosts its SOUL ITEM
+#                     stats but NOT its drop chance, so wire_souls still owns the
+#                     rate); in random pools -> 50. The apex superboss
+#                     um_bloodtoxeus_99 is module-owned and stays 25 (untouched).
+#     qm_aniketos_9/10/11 - Aniketos; map-injected AND in random pools -> 50.
+def _soul_record_basename(record_name):
+    return record_name.lower().replace('\\', '/').split('/')[-1].replace('.dbr', '')
+
+
+def _soul_is_farmable_boss(record_name, classification):
+    """Fixed-location act bosses that can be farmed repeatedly (the lower 25%
+    rate). Heroes, champions, quest monsters, random spawns, and um_ Boss uber
+    encounters are NOT farmable. Single source of truth for the Boss/25 gate."""
+    fn = _soul_record_basename(record_name)
+    if str(classification).lower() == 'boss':
+        if fn.startswith('um_'):
+            return False
+        return True
+    nl = record_name.lower()
+    if nl.startswith('boss_') or '\\boss_' in nl or '/boss_' in nl:
+        return True
+    return False
+
+
+_SOUL_CREATURE_PATH_MARKERS = ('\\creature\\', '/creature/', '\\creatures\\', '/creatures/')
+_SOUL_POOL_NAME_FIELD_RE = re.compile(r'^name(?:champion)?\d+$', re.I)
+
+
+def soul_spawn_provenance_sets(db):
+    """Return (random_pool_members, placed_proxy_members): monster basenames read
+    from the db AT CALL TIME (roster-derived, no hardcoded names).
+
+    random_pool_members = referenced via a name*/nameChampion* slot by a base-game
+        population pool under records\\proxies* (the roaming "random hero slot").
+    placed_proxy_members = referenced (any creature-path field) by a mod PLACEMENT
+        record under records\\drxmap\\proxy* (q_*_lone / warband / svc_*_pool).
+    """
+    random_members = set()
+    placed_members = set()
+    for name in db.record_names():
+        nl = name.lower().replace('\\', '/')
+        is_generic_pool = nl.startswith('records/proxies')
+        is_placement = 'drxmap/proxy' in nl
+        if not is_generic_pool and not is_placement:
+            continue
+        fields = db.get_fields(name)
+        if not fields:
+            continue
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            for v in tf.values:
+                if not isinstance(v, str) or not v:
+                    continue
+                vl = v.lower()
+                if not any(m in vl for m in _SOUL_CREATURE_PATH_MARKERS):
+                    continue
+                mb = _soul_record_basename(v)
+                if is_placement:
+                    placed_members.add(mb)
+                if is_generic_pool and _SOUL_POOL_NAME_FIELD_RE.match(fn):
+                    random_members.add(mb)
+    return random_members, placed_members
+
+
+# ⚠️ WILL'S PER-RECORD VETO (see block comment). EMPTY by default = pure roster
+# verdict ships. Add a soul-dropper's basename (lower-case, no .dbr, e.g.
+# 'um_toxeus_21') to force its release rate regardless of pool membership.
+_SOUL_PLACED_OVERRIDE = frozenset()   # FORCE 66 (treat as placed/dedicated)
+_SOUL_RANDOM_OVERRIDE = frozenset()   # FORCE 50 (treat as roaming/random)
+
+
+def soul_drop_rate(record_name, classification, random_pool_members,
+                   placed_proxy_members, boss_chance=25.0,
+                   random_chance=50.0, placed_chance=66.0):
+    """THE release soul drop-rate split (Will 2026-07-14). See the block comment
+    above. Returns the chance for a Hero/Boss/Quest soul-dropping monster."""
+    mb = _soul_record_basename(record_name)
+    # Will's explicit per-record veto wins over everything (incl. the Boss/25
+    # gate) so he can pin any single record's rate by one line.
+    if mb in _SOUL_PLACED_OVERRIDE:
+        return placed_chance
+    if mb in _SOUL_RANDOM_OVERRIDE:
+        return random_chance
+    if _soul_is_farmable_boss(record_name, classification):
+        return boss_chance
+    if str(classification).lower() == 'quest':
+        return placed_chance
+    if mb in placed_proxy_members:
+        return placed_chance
+    if mb in random_pool_members:
+        return random_chance
+    # Not proven to spawn randomly (placed-in-level, or dead/unreferenced): keep
+    # the release rate so a placed/quest encounter is never over-cut.
+    return placed_chance
+
+
+def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, random_chance=50.0,
+                           placed_chance=66.0, rare_chance=None):
+    """Wire orphaned soul items to matching monster records.
+
+    Drop-rate split (Will 2026-07-14): the roaming RANDOM hero roster drops souls
+    at random_chance (50%); dedicated PLACED ubers + quest/story bosses keep
+    placed_chance (66%); farmable act bosses keep boss_chance (25%). See the
+    soul_drop_rate() block comment. Legacy callers may still pass rare_chance
+    (the old single 66 rate); it is honored as placed_chance for back-compat.
+    """
+    if rare_chance is not None:
+        placed_chance = rare_chance
     print("\n=== Patch 2: Wire souls to monsters ===")
 
     soul_dir = 'equipmentring\\soul\\'
@@ -498,25 +653,19 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
     fixed_chance = 0
     zeroed_common = 0
 
-    def _is_farmable_boss(record_name, fields_dict):
-        """True only for fixed-location act bosses that can be farmed repeatedly.
-        Heroes, champions, quest monsters, and random spawns get the higher
-        66% rate. Only Boss-class monsters get the lower 25% rate.
-        Exception: um_ Boss monsters still get 66% since they're uber encounters."""
-        fn = record_name.lower().replace('\\', '/').split('/')[-1]
-        classification = ''
-        for key, tf in fields_dict.items():
-            if key.split('###')[0] == 'monsterClassification' and tf.values:
-                classification = str(tf.values[0]).lower()
-                break
-        if classification == 'boss':
-            if fn.startswith('um_'):
-                return False
-            return True
-        nl = record_name.lower()
-        if nl.startswith('boss_') or '\\boss_' in nl or '/boss_' in nl:
-            return True
-        return False
+    # Spawn-provenance sets for the RANDOM (roaming, 50%) vs PLACED (dedicated,
+    # 66%) split, read from the db so nothing is hardcoded. See soul_drop_rate().
+    _random_pool_members, _placed_proxy_members = soul_spawn_provenance_sets(db)
+    print(f"  Spawn provenance: {len(_random_pool_members)} random-pool members, "
+          f"{len(_placed_proxy_members)} placed-proxy members")
+
+    def _soul_target(record_name, classification):
+        """Release drop chance for a soul-dropping Hero/Boss/Quest monster (the
+        RANDOM 50 / PLACED 66 / BOSS 25 split, module-level single source)."""
+        return soul_drop_rate(record_name, classification,
+                              _random_pool_members, _placed_proxy_members,
+                              boss_chance=boss_chance, random_chance=random_chance,
+                              placed_chance=placed_chance)
 
     def _set_soul_drop(name, fields_dict, chance):
         """Set the AE-compatible equipment fields for soul drops.
@@ -601,8 +750,7 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
                     monster_cls = str(tf.values[0])
                     break
             if monster_cls in ('Hero', 'Boss', 'Quest'):
-                is_boss = _is_farmable_boss(name, fields)
-                target = boss_chance if is_boss else rare_chance
+                target = _soul_target(name, monster_cls)
                 _set_soul_drop(name, fields, target)
                 fixed_chance += 1
             else:
@@ -687,8 +835,7 @@ def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, rare_chance=66.0):
                 else:
                     continue
 
-            is_boss = _is_farmable_boss(name, fields)
-            _set_soul_drop(name, fields, boss_chance if is_boss else rare_chance)
+            _set_soul_drop(name, fields, _soul_target(name, classification))
             wired += 1
 
     print(f"  Newly wired: {wired}")

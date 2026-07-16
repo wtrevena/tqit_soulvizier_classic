@@ -1339,6 +1339,17 @@ def _wire_missing_boss_souls(db):
     """Wire soul drops onto boss variants that are missing them."""
     total = 0
 
+    # Release soul drop-rate split (Will 2026-07-14; single source of truth is
+    # _soul_release_rate() above -> build_svc_database.soul_drop_rate()). NO-GO
+    # FIX (vet round 1): this function runs AFTER wire_souls_to_monsters and
+    # hardcodes chance=66.0 ("placed/dedicated") on several calls below (e.g.
+    # Hellflower/us_hellflower_37, Limos Lifeeater/um_frost_36) whose own
+    # comments document they spawn via ordinary base-game population pools -
+    # i.e. they are RANDOM roamers by Will's own rule and should be 50, not 66.
+    # _wire_soul() below routes every call through the shared classifier so
+    # any such record is caught, no matter which call site set it; chance=25.0
+    # (farmable Act boss) calls pass through untouched (see _soul_release_rate).
+
     # ── Helper: find lootFinger2Item1 values from a donor record ────────
     def _get_soul_paths(tag):
         """Find lootFinger2Item1 [N, E, L] from any record matching tag."""
@@ -1355,7 +1366,9 @@ def _wire_missing_boss_souls(db):
         return None
 
     def _wire_soul(name, soul_paths, chance):
-        """Set lootFinger2Item1 and chanceToEquipFinger2 on a record."""
+        """Set lootFinger2Item1 and chanceToEquipFinger2 on a record, routed
+        through the shared _soul_release_rate() split (see its docstring)."""
+        chance = _soul_release_rate(db, name, chance)
         db.set_field(name, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
         db.set_field(name, 'chanceToEquipFinger2', chance, DATA_TYPE_FLOAT)
         db.set_field(name, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
@@ -1537,7 +1550,24 @@ def _wire_missing_boss_souls(db):
                 if not existing or existing == '' or existing == 0:
                     _wire_soul(name, charon_souls, 66.0)
                     wired += 1
-        print(f"  Charon Form 1 (41/43) soul wired: {wired} records (soul: {charon_souls[0].split(chr(92))[-1]})")
+        # boss_charon_39 itself (vet round 2 NO-GO): create_uber_souls.py mints
+        # this record's own soul via MANUAL_OVERRIDES['boss_charon'] BEFORE this
+        # function runs, but its rate call there is NOT routed through the
+        # pinned _soul_release_rate choke point (only this module's helpers
+        # are) - it calls soul_drop_rate() with the bare function defaults, so
+        # _soul_is_farmable_boss()'s naive "\boss_" path heuristic misclassifies
+        # this PLACED/dedicated Golden Bough encounter as a farmable Act boss
+        # and cuts it 66->25. The 41/43 loop above only ever re-wires the OTHER
+        # two variants, so _39 was never re-asserted and shipped at 25 - a
+        # last-writer desync against 41/43 (which this same block explicitly
+        # forces to 66). REPLACE unconditionally (no `if not existing` guard -
+        # _39 already carries its create_uber_souls-minted loot every time).
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if 'boss_charon_39' in nl:
+                _wire_soul(name, charon_souls, 66.0)
+                wired += 1
+        print(f"  Charon Form 1 (39/41/43) soul wired: {wired} records (soul: {charon_souls[0].split(chr(92))[-1]})")
         total += wired
     else:
         print("  WARNING: Could not find Charon_39 soul paths to wire Charon 41/43")
@@ -1975,9 +2005,12 @@ def _create_coldworm_soul(db):
         }
         _set_soul_fields(db, path, stats)
 
-    # ── Wire soul to monster record with 66% drop rate ──────────────────
+    # ── Wire soul to monster record with 66% (PLACED-default) drop rate,
+    #    routed through the shared split so a RANDOM-classified roamer would
+    #    correctly land at 50 (see _soul_release_rate) ─────────────────────
     db.set_field(COLDWORM_MONSTER, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
-    db.set_field(COLDWORM_MONSTER, 'chanceToEquipFinger2', 66.0, DATA_TYPE_FLOAT)
+    db.set_field(COLDWORM_MONSTER, 'chanceToEquipFinger2',
+                _soul_release_rate(db, COLDWORM_MONSTER, 66.0), DATA_TYPE_FLOAT)
     db.set_field(COLDWORM_MONSTER, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
     db._modified.add(COLDWORM_MONSTER)
 
@@ -2022,6 +2055,55 @@ _SOUL_DIR = r'records\item\equipmentring\soul\svc_uber'
 _SOUL_CLONE_SOURCE = r'records\item\equipmentring\soul\skeleton\boneash_soul_n.dbr'
 
 
+def _soul_release_rate(db, record_name, chance):
+    """Release soul drop-rate split (Will 2026-07-14; single source of truth
+    is build_svc_database.soul_drop_rate() + soul_spawn_provenance_sets()).
+
+    THE shared choke point every soul-wiring helper in this module (and
+    create_uber_souls.py) routes its PLACED-default chance through, so a
+    hand-authored call can never silently re-widen a monster the roster
+    proves is a RANDOM roamer back up to 66 - the NO-GO bug class (vet round
+    1): create_uber_souls.py:639 did this unconditionally for 21 records;
+    this module's own _create_soul/_wire_soul_to_monster/_wire_soul (all
+    default chance=66.0) had the SAME bug for the orphan-monster, difficulty-
+    variant, and IT-expansion-orphan roamers (Feth, Mountainblade,
+    Anklesickle, Phagia, Frost/Limos, Yama, Inkeyes2, the ichthian/
+    neanderthal/scorpion/shadowstalker difficulty variants, the Blood
+    Sisters) - all placed into base-game population pools by THIS SAME build
+    stage (_add_monster_to_pools), so they are provably RANDOM by Will's own
+    rule and must ship at 50, not 66.
+
+    Only chance==66.0 (the PLACED/dedicated default) is ever routed through
+    the classifier; any other value (25.0 farmable, 0.0 gated, a genuine
+    per-record override) passes straight through untouched. Routing pins
+    boss_chance/placed_chance to the SAME incoming chance, so even a
+    coincidental 'boss_' path-heuristic hit is a no-op passthrough - the ONLY
+    branch that can change the outcome is the roster-proven RANDOM(50) one.
+    Pool membership is re-scanned FRESH on every call (soul_spawn_provenance_
+    sets is a cheap single-pass scan) so a monster THIS SAME build stage just
+    placed into a pool is seen correctly, not from a stale snapshot.
+
+    Reads the record's REAL, current `monsterClassification` (round-1-
+    continuation fix) instead of assuming blank: soul_drop_rate()'s own
+    precedence puts a `Quest` classification AHEAD of pool membership (a
+    quest-tied encounter stays PLACED even if it happens to sit in a shared
+    population pool), and the verify gate checks that same real
+    classification. Passing '' unconditionally made this helper a partial
+    proxy for the gate's classifier - it could cut a Quest-classified,
+    pool-referenced record (e.g. the zzdev Neanderthal warband souls
+    n_mega/n_emgiec/n_vio) to RANDOM(50) that the gate expects to stay at 66,
+    a mismatch class distinct from (but sibling to) the routing-order bug
+    this function exists to close.
+    """
+    if abs(chance - 66.0) > 0.01:
+        return chance
+    from build_svc_database import soul_drop_rate, soul_spawn_provenance_sets
+    rmem, pmem = soul_spawn_provenance_sets(db)
+    cls = db.get_field_value(record_name, 'monsterClassification') or ''
+    return soul_drop_rate(record_name, cls, rmem, pmem,
+                          boss_chance=chance, random_chance=50.0, placed_chance=chance)
+
+
 def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
     """Create a hand-crafted soul with N/E/L difficulty scaling.
 
@@ -2047,7 +2129,8 @@ def _create_soul(db, base_name, tag, tiers, monster=None, drop_rate=66.0):
 
     if monster and db.has_record(monster):
         db.set_field(monster, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
-        db.set_field(monster, 'chanceToEquipFinger2', drop_rate, DATA_TYPE_FLOAT)
+        db.set_field(monster, 'chanceToEquipFinger2',
+                    _soul_release_rate(db, monster, drop_rate), DATA_TYPE_FLOAT)
         db.set_field(monster, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
         db.set_field(monster, 'dropItems', 1, DATA_TYPE_INT)
         db._modified.add(monster)
@@ -2466,11 +2549,13 @@ def _create_leinth_soul(db):
     ]
 
     paths = _create_soul(db, 'leinth', TAG, tiers)
-    # Wire to all 3 Leinth variants
+    # Wire to all 3 Leinth variants (PLACED-default rate, routed through the
+    # shared split so a RANDOM-classified variant would correctly land at 50)
     for m in MONSTERS:
         if db.has_record(m):
             db.set_field(m, 'lootFinger2Item1', paths, DATA_TYPE_STRING)
-            db.set_field(m, 'chanceToEquipFinger2', 66.0, DATA_TYPE_FLOAT)
+            db.set_field(m, 'chanceToEquipFinger2',
+                        _soul_release_rate(db, m, 66.0), DATA_TYPE_FLOAT)
             db.set_field(m, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
             db._modified.add(m)
     print(f"  Leinth soul created (blood witch — life/bleed, 66% drop, 3 variants)")
@@ -3778,7 +3863,8 @@ def _wire_soul_to_monster(db, monster, soul_paths, drop_rate=66.0):
     if not db.has_record(monster):
         return False
     db.set_field(monster, 'lootFinger2Item1', soul_paths, DATA_TYPE_STRING)
-    db.set_field(monster, 'chanceToEquipFinger2', drop_rate, DATA_TYPE_FLOAT)
+    db.set_field(monster, 'chanceToEquipFinger2',
+                _soul_release_rate(db, monster, drop_rate), DATA_TYPE_FLOAT)
     db.set_field(monster, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
     db.set_field(monster, 'dropItems', 1, DATA_TYPE_INT)
     db._modified.add(monster)
@@ -4137,6 +4223,23 @@ def _place_orphan_monsters(db):
                 print(f"    {desc}: promoted classification {_mc!r} -> 'Hero' "
                       f"(soul-dropper gate)")
 
+        # Place into pools BEFORE creating/wiring the soul (Will 2026-07-14 drop-
+        # rate routing fix, round-1 continuation). _create_soul() below routes
+        # chanceToEquipFinger2 through the shared RANDOM/PLACED classifier
+        # (_soul_release_rate -> build_svc_database.soul_spawn_provenance_sets),
+        # which does a FRESH scan of nameChampion* slots in records\proxies*
+        # pools AT CALL TIME. If pool placement ran AFTER soul creation (the
+        # original order), the classifier would see this monster in NO pool yet
+        # and default it to PLACED(66) even though _add_monster_to_pools is
+        # about to make it a genuine roaming RANDOM pool member (e.g.
+        # um_inkeyes2_45 via the 'ratman' pool) - a second instance of the
+        # round-1 NO-GO bug class, just via ordering instead of a hardcoded
+        # value. Placing FIRST makes the classifier see the correct, final pool
+        # membership before it ever computes a rate.
+        ct = _add_monster_to_pools(db, rec, pool_kw, 2, substr)
+        print(f"    {desc}: {ct} pools")
+        total_placed += ct
+
         # Create soul if needed
         if not _has_soul(db, rec):
             clean = soul_base if soul_base else _re.sub(r'_\d+$', '', substr)
@@ -4165,10 +4268,23 @@ def _place_orphan_monsters(db):
             ]
             _create_soul(db, clean, tag_name, tiers, rec, 66.0)
             total_souled += 1
-
-        ct = _add_monster_to_pools(db, rec, pool_kw, 2, substr)
-        print(f"    {desc}: {ct} pools")
-        total_placed += ct
+        else:
+            # Already had a soul BEFORE this function ran (e.g. wired earlier
+            # in the pipeline by _wire_missing_boss_souls/an A-series patch, or
+            # inherited from SV upstream data itself) - the _create_soul path
+            # above never fires for it, so its chanceToEquipFinger2 was set by
+            # a writer that ran before THIS pool placement existed and
+            # therefore could not classify it RANDOM (e.g. um_frost_36, wired
+            # 66% by the A6 Limos Lifeeater patch long before this function
+            # ever places it in the 'limos' pool). Re-derive the rate now that
+            # pool membership is final so a proven RANDOM roamer is not left
+            # at a stale PLACED-default from an earlier, pool-blind writer.
+            # Guarded to only correct an already-ENABLED rate (never un-gates
+            # a deliberately-zeroed record such as the tombguardian deny-list).
+            _cur = db.get_field_value(rec, 'chanceToEquipFinger2')
+            if _cur is not None and float(_cur) > 0:
+                db.set_field(rec, 'chanceToEquipFinger2',
+                            _soul_release_rate(db, rec, 66.0), DATA_TYPE_FLOAT)
 
     print(f"  Orphan monsters: {total_placed} pool entries, {total_souled} new souls")
 
@@ -4202,6 +4318,15 @@ def _wire_difficulty_variants(db):
         db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
         db._modified.add(rec)
 
+        # Place into pools BEFORE wiring the soul (see the matching comment in
+        # _place_orphan_monsters: _wire_soul_to_monster below routes the drop
+        # rate through the shared RANDOM/PLACED classifier, which must see this
+        # variant's final pool membership - not a pre-placement snapshot -
+        # or it defaults these RANDOM roamers to PLACED(66)).
+        ct = _add_monster_to_pools(db, rec, pool_kw, 2, var_sub)
+        print(f"    {var_sub}: {ct} pools")
+        total += ct
+
         # Copy soul from sibling if variant lacks one
         if not _has_soul(db, rec):
             sib = _find_record(db, sibling_sub)
@@ -4210,9 +4335,28 @@ def _wire_difficulty_variants(db):
                 if sib_souls:
                     _wire_soul_to_monster(db, rec, sib_souls, 66.0)
 
-        ct = _add_monster_to_pools(db, rec, pool_kw, 2, var_sub)
-        print(f"    {var_sub}: {ct} pools")
-        total += ct
+        # Re-derive the FULL release rate now that pool membership is final
+        # (covers both branches above: a soul just wired at the 66.0 default,
+        # or one this variant already carried before this function ran, e.g.
+        # inherited from a clone/template or wired earlier in the pipeline by
+        # a writer blind to this variant's pool membership). Unlike the
+        # RANDOM-only _soul_release_rate wrapper used elsewhere in this file,
+        # this call site uses the FULL classifier (real boss_chance=25) since
+        # a difficulty variant can legitimately be a farmable-Boss sibling,
+        # not only a Hero roamer - e.g. boss_terracottamage_bandari_40 is
+        # Boss-classified + boss_-pathed (a farmable Act boss per
+        # _soul_is_farmable_boss), so it must land at 25, not get stuck at
+        # whatever RANDOM/PLACED(50/66) _soul_release_rate would pick. Guarded
+        # to only correct an already-ENABLED rate (never un-gates a
+        # deliberately-zeroed record).
+        _cur = db.get_field_value(rec, 'chanceToEquipFinger2')
+        if _cur is not None and float(_cur) > 0:
+            from build_svc_database import soul_drop_rate, soul_spawn_provenance_sets
+            _rmem, _pmem = soul_spawn_provenance_sets(db)
+            _cls = db.get_field_value(rec, 'monsterClassification') or ''
+            _rate = soul_drop_rate(rec, _cls, _rmem, _pmem,
+                                   boss_chance=25.0, random_chance=50.0, placed_chance=66.0)
+            db.set_field(rec, 'chanceToEquipFinger2', _rate, DATA_TYPE_FLOAT)
 
     print(f"  Difficulty variants: {total} pool entries added")
 
@@ -4248,14 +4392,19 @@ def _wire_it_expansion_orphans(db):
             while len(soul_paths) < 3:
                 soul_paths.append(soul_n)
 
-        # Find and wire all monster variants
+        # Find and wire all monster variants. Pool placement runs BEFORE the
+        # soul wire (see the matching comment in _place_orphan_monsters):
+        # _wire_soul_to_monster routes chanceToEquipFinger2 through the shared
+        # RANDOM/PLACED classifier, which must see this variant's final
+        # 'djinn'-pool membership - not a pre-placement snapshot - or the
+        # Blood Sisters default to PLACED(66) instead of their proven RANDOM(50).
         wired = 0
         for name in list(db.record_names()):
             nl = name.lower()
             if f'bloodsister{sister}' in nl and 'creature' in nl and '.dbr' in nl:
                 if 'soul' not in nl:
-                    _wire_soul_to_monster(db, name, soul_paths, 66.0)
                     ct = _add_monster_to_pools(db, name, 'djinn', 2, f'bloodsister{sister}')
+                    _wire_soul_to_monster(db, name, soul_paths, 66.0)
                     wired += 1
         print(f"    Blood Sister {sister.title()}: {wired} variants wired + pooled")
 
@@ -4268,6 +4417,16 @@ def _wire_it_expansion_orphans(db):
         if not rec:
             print(f"    WARNING: {hero_sub} not found")
             continue
+
+        # Add to bonescourge pools BEFORE creating/wiring the soul, same
+        # ordering discipline as the other orphan-wiring functions (see
+        # _place_orphan_monsters): the classifier that _create_soul/
+        # _wire_soul_to_monster route through must see final pool membership,
+        # not a pre-placement snapshot. (Currently these xsq18 quest-proxy
+        # pools live outside the classifier's recognized records\proxies*
+        # namespace, so this hero stays PLACED(66) either way - reordered
+        # anyway so behavior does not silently depend on call order.)
+        ct = _add_monster_to_pools(db, rec, 'bonescourge', 2, hero_sub.split('_')[0] + '_' + hero_sub.split('_')[1])
 
         if not _has_soul(db, rec):
             tiers = [
@@ -4321,14 +4480,16 @@ def _wire_it_expansion_orphans(db):
                     _wire_soul_to_monster(db, dest, soul_p, 66.0)
                 db._modified.add(dest)
 
-        # Add all variants to bonescourge pools
-        ct = _add_monster_to_pools(db, rec, 'bonescourge', 2, hero_sub.split('_')[0] + '_' + hero_sub.split('_')[1])
         print(f"    {hero_sub}: soul created, {ct} pools, 2 lower variants")
 
     # ── Hydradon hero (needs soul) ──
     hero_sub = 'xhero_rottingdevourer_41'
     rec = _find_record(db, hero_sub)
     if rec:
+        # Pool placement before soul creation (same ordering discipline as
+        # the bonescourge loop above and _place_orphan_monsters).
+        ct = _add_monster_to_pools(db, rec, 'hydradon', 2, 'rottingdevourer')
+
         if not _has_soul(db, rec):
             tiers = [
                 {'diff': 'n', 'itemLevel': 27, 'stats': {
@@ -4378,7 +4539,6 @@ def _wire_it_expansion_orphans(db):
                     _wire_soul_to_monster(db, dest, soul_p, 66.0)
                 db._modified.add(dest)
 
-        ct = _add_monster_to_pools(db, rec, 'hydradon', 2, 'rottingdevourer')
         print(f"    xhero_rottingdevourer_41: soul created, {ct} pools, 2 lower variants")
     else:
         print(f"    WARNING: xhero_rottingdevourer_41 not found")
