@@ -78,10 +78,6 @@ REGISTRY = [
     'mastery_ui_audit',     # build38: cross-mastery skill-tree UI fix (graft icons, Earth
                             # Rupture de-dup + reflow, Dream bg); disjoint from hunting_occult_ui
                             # (which owns mastery 1-8 backgrounds + O/H button shapes)
-    'mastery_ui_vet',       # build40 vet: 4 clean tier/connector button relocations (m1/m2/m9,
-                            # non-golden); runs after mastery_ui_audit (disjoint slots); the rest
-                            # of the 66 findings are Will-gated (tools/mastery_ui_waivers.json,
-                            # enforced by tools/gate_mastery_ui.py)
     'mastery_bg_render',    # b60 wave (ships build42): mastery pane BLACK-BACKGROUND true render
                             # fix - upgrades the 9 pane records hunting_occult_ui/mastery_ui_audit
                             # repointed from the broken BitmapSingle+bitmapName to the vanilla
