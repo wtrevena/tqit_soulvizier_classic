@@ -78,6 +78,13 @@ REGISTRY = [
     'mastery_ui_audit',     # build38: cross-mastery skill-tree UI fix (graft icons, Earth
                             # Rupture de-dup + reflow, Dream bg); disjoint from hunting_occult_ui
                             # (which owns mastery 1-8 backgrounds + O/H button shapes)
+    'mastery_bg_render',    # b60 wave (ships build42): mastery pane BLACK-BACKGROUND true render
+                            # fix - upgrades the 9 pane records hunting_occult_ui/mastery_ui_audit
+                            # repointed from the broken BitmapSingle+bitmapName to the vanilla
+                            # BitmapUIAware+bitmapNames (+ controller sibling) the pane slot
+                            # actually renders; + chrome repoint (undo buttons/cost/gold numbers
+                            # off the dead SkillsPanel arc). MUST run after those two (it reads
+                            # the texture they set).
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
