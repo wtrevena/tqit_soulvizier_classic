@@ -127,12 +127,24 @@ Roster-wide sweep of the 76 permanent-summon rings carrying an on-attack control
            manual-cast). komara (um_komara_38, Hero 66) + melalos (um_melalos_19, Boss 66)
            are OBTAINABLE - the exact same-bug obtainable rings a prior svc_uber-only
            scope MISSED (the round-1 vet HIGH); oythroneus is currently drop-gated.
-        carrionlord  carrioncrow_summon  petLimit 10  base_atenemy_onattack
-          - REASSIGNED to Summon Carrion Crow + ON_ATTACK by skill_quality (REASSIGN
-            'toxeus_flashpowder.dbr' tagSoulName49). souls_quality runs after skill_quality
-            (registry pos 13 vs 4) and removes the controller -> a documented later-wins
-            collision. FLAGGED FOR WILL: if carrionlord was meant as an on-attack crow-
-            SWARM like its sibling direflock, add it to _SUMMON_CONTROLLER_WAIVER.
+        carrionlord  carrioncrow_summon  petLimit 10  (RESOLVED - see below)
+          - REASSIGNED to Summon Carrion Crow by skill_quality (REASSIGN
+            'toxeus_flashpowder.dbr' tagSoulName49). RESOLVED (lowlift wave item 5,
+            2026-07-15): skill_quality's REASSIGN entry previously set ON_ATTACK, which
+            souls_quality (registry pos 13, after skill_quality's pos 4) then stripped
+            again as a mod-introduced controller on a permanent summon - a documented
+            but confusing later-wins collision (the FINAL db was already correct;
+            only the intermediate state and the code's own honesty about it were not).
+            Ground-truthed: carrionlord is a mod REASSIGN target (Track B, off-theme
+            toxeus_flashpowder -> its own identity-true crow-summon), NOT one of the 18
+            amgoz1 SV-ORIGINAL on-attack swarm souls above - there is no upstream design
+            to defer to, so the class-wide manual-cast convention applies cleanly, same
+            as crowboar/glittertail/koroush/nkac/komara/melalos/oythroneus. skill_quality
+            now sets controller=None directly (tools/patches/skill_quality.py, REASSIGN
+            'toxeus_flashpowder.dbr' tagSoulName49) - BOTH modules agree at the source,
+            no collision, no S4b WARN, and the FINAL db is byte-identical to before this
+            reconciliation (souls_quality's roster-derived sweep simply finds nothing
+            left to remove for this ring - a harmless no-op, not a functional change).
 
 Root cause (documented follow-ups for those lanes; NOT rewritten here to keep this a
 disjoint soul-ring patch): apply_svc_patches reuses _AC_ON_ATTACK for summon-granting
@@ -273,10 +285,11 @@ _KNOWN_ONATTACK_CTL = frozenset([
 
 # Intentional-design escape hatch: exact ring paths (normalized) that MAY keep a
 # mod-authored on-attack summon controller as a deliberate design. EMPTY today (all 8
-# mod-introduced families are genuine bugs per Will + the manual-cast convention). If
-# Will confirms e.g. carrionlord as an intentional on-attack crow-SWARM, add its 3
-# tier paths here (verify() then stops flagging it). Kept explicit so the decision is
-# never silent.
+# mod-introduced families, INCLUDING carrionlord - RESOLVED lowlift wave item 5, see
+# the class-sweep comment above - are genuine bugs per Will + the manual-cast
+# convention, not deliberate swarm identities). A future intentional mod on-attack
+# swarm goes here (add its tier paths; verify() then stops flagging it). Kept
+# explicit so the decision is never silent.
 _SUMMON_CONTROLLER_WAIVER = frozenset()
 
 # SV 0.98i design-bible arz (the authorship oracle). Resolved lazily at apply()/verify()
