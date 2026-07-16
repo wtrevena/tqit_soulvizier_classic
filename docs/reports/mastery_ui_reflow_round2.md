@@ -137,3 +137,84 @@ A7 golden PASS. The connector mechanism (nearest-occupied-above) is the texture-
 validated rule from `mastery_connection_maps.md`. The one thing not confirmable in this environment is
 the in-game pixel render (TQ is not runnable here) - Will's screenshot pass is the final check, per the
 standing UI-on-device rule.
+
+## 7. Round 3 (2026-07-15): connOn/connOff ARRAY fix (round-1 vet HIGH)
+
+The round-1 vet loop caught a real defect in round 2's connector edits: both `mastery_ui_vet.py` and
+`hunting_occult_ui.py` wrote a single-element `skillConnectionOn` string (`db.set_field(srec,
+"skillConnectionOn", "" if action == 'drop' else _STRAIGHT)`) and never touched the paired
+`skillConnectionOff` array at all. Two real bugs followed: (1) `'drop'` cleared `skillConnectionOn`
+but left a STALE multi-tile `skillConnectionOff` in place, so the dimmed (un-invested) planning tree
+still drew a bar the invested tree no longer had; (2) `'straight'` wrote a single `BottomOn01` tile
+regardless of how many rows the bar needed to span, so any bar longer than one tile under-drew.
+
+**Ground truth** (`tools/mastery_conn_model.py`, decoded from vanilla): a skill-tree connector is a
+PARALLEL PAIR of texture arrays, `skillConnectionOn` (invested) and `skillConnectionOff` (dimmed
+planning view) - both always the same length. The array spans tier-rows from the family's own BASE
+(bottom) to its own TOP member (inclusive); the bottom/top tiles are fixed (`SkillBar{Bottom,Top}
+{On,Off}01.tex`); every tile in between is `SkillBarConnect{On,Off}01.tex` if that row is OCCUPIED by
+ANY skill in the column (family or not - proven on 2 independent multi-gap vanilla bars, Warfare's
+`dualweapontraining`->`dualwieldtechnique_tumult` and Occult's `envenomweapon`->`envenomweapon_
+delirium`, the latter drawing a CONNECT tile over the wholly-unrelated `toxindistillation` sitting
+mid-span) or `SkillBarMiddle{On,Off}01.tex` if the row is truly empty. `validate(db, label)` self-checks
+this rule against every bar-carrying skill in a database; on the base game it reproduces 42/43 authored
+bars exactly - the sole residual (`dualweapontraining`) is a vanilla, mod-untouched Warfare chain whose
+SPAN crosses a naming boundary the family-root detector can't bridge (`dualweapontraining` vs
+`dualwieldtechnique_*`); confirmed absent from every basename either module's reflow touches, so it does
+not affect the fix below (documented limitation, not a build-blocking defect).
+
+**Fix**: `mastery_conn_model.rebuild_into(db, slot, seed_skills, drops)` is the single writer both
+`mastery_ui_vet.apply()` and `hunting_occult_ui.apply()` now call after their position moves. For every
+TOUCHED family (any moved skill + any skill named in a `'straight'`/`'drop'` connector edit) that HAD an
+authored bar in the baseline, it recomputes the geometry-correct `(skillConnectionOn, skillConnectionOff)`
+pair for the family's base and clears both arrays on every other member; `'drop'`-listed standalone/leaf
+skills are force-cleared on both arrays regardless. Families with no baseline bar are left untouched (no
+connector is spuriously invented, e.g. Hunting's `studyprey`). Parity (`len(on) == len(off)`) holds by
+construction.
+
+One real, previously-invisible bug surfaced by the correct rebuild: Occult's Lay Trap base
+(`drxlaytrap.dbr`) never carried a bar at all in round 2, even after Multishot Bolt Trap
+(`drxlaytrap_petmodifier_multishotbolttrap`) was reunited into its column - the modifier sat in the
+right cell with nothing visually connecting it. The family-level rebuild now correctly draws Lay Trap's
+own 3-tile bar up to it. 2 new `owner_approved_overrides` cover this (`drxlaytrap.dbr::skillConnectionOn/
+Off`); the other 6 new overrides are the `skillConnectionOff` parity companions of round 2's existing
+`skillConnectionOn` golden entries (58 total, up from 50).
+
+**Gate extended** (`tools/gate_mastery_ui.py`): two new finding categories reuse
+`mastery_conn_model.find_defects()`, pure geometry, no family assumption -
+- `CONNPARITY` - `skillConnectionOn`/`Off` must be equal length, or both `<= 1` (the vanilla "no bar"
+  state, which permits a single vestigial `SkillBarBottomOff01` leftover);
+- `CONNSPAN` - a drawn bar's TOP tile must land exactly on an occupied cell in the target column
+  (same column for a straight bar, `x+100` for a DRX `_right` bar) - catches under/over-draws.
+
+Both run across all 9 masteries on every gate invocation (build-time and standalone); the mastery-UI
+waiver ledger is UNCHANGED at 17 entries (TIER/CONN/OFFCOL/ICON) because 0 CONNPARITY/CONNSPAN
+findings exist post-fix.
+
+**Verify** (dry-run replay of the current `mastery_ui_vet.py` + `hunting_occult_ui.py` directly onto
+`local/baseline_build40.arz`, md5 `b33c5a44...`):
+- record-diff vs baseline: 53 records changed, every touched field is `bitmapPositionX`,
+  `bitmapPositionY`, `skillConnectionOn` or `skillConnectionOff` - UI-only, 0 gameplay drift.
+- `mastery_conn_model.find_defects()` on the replayed state: **0 CONNPARITY/CONNSPAN defects**.
+- `gate_mastery_ui.validate()` on the written arz: **PASS** (17 waived, 0 unwaived, 0 stale) - identical
+  waiver profile to round 2, now additionally proving the connector-array invariants.
+- `validate_mastery_golden` (A7): **PASS** (52 waived, 0 other) after the 8 new
+  `owner_approved_overrides` above.
+- Negative test 1 (off-grid button, `bitmapPositionX=977` on a real `mastery 1/skill01.dbr`): gate
+  FAILS (1 unwaived GRID finding) - caught.
+- Negative test 2 (broken parity: double a bar-carrying skill's `skillConnectionOff` so it no longer
+  matches `skillConnectionOn`'s length): gate FAILS (1 unwaived CONNPARITY finding,
+  `drxbattlerage skillConnectionOn len=5 != skillConnectionOff len=10`) - caught. This is the exact
+  defect class the round-1 vet flagged; the new gate now blocks it structurally, not just for this
+  wave's edits.
+- `py_compile` on every changed file: OK. `tools/patches/_check_registry.py`: OK (14 modules, order
+  hash `211fd8fe...` unchanged - no registry reordering).
+
+Files: `tools/mastery_conn_model.py` (new - the connOn/connOff geometry model + `find_defects`),
+`tools/audit_mastery_ui.py` (`DB.from_db()` classmethod so the model can wrap an in-flight
+`ArzDatabase` mid-`apply()`; `first()` treats an empty list as "no value" instead of raising),
+`tools/gate_mastery_ui.py` (wires in `find_defects`), `tools/patches/mastery_ui_vet.py` +
+`tools/patches/hunting_occult_ui.py` (call `rebuild_into` instead of writing a bare string),
+`tools/occult_hunting_golden.json` (+8 overrides). NOT yet integration-built; still needs Will's
+in-game screenshot before promote (standing UI-on-device rule) - this round changes ONLY the
+connector-array correctness, not the visual layout round 2 already showed him conceptually.

@@ -74,6 +74,15 @@ reflow writes bitmapPositionX/Y on records disjoint from mastery_ui_audit's Eart
 compose without a write-fight.
 """
 
+import os
+import sys
+
+# tools/ is the parent of tools/patches/ - reach the shared connector model + node math
+# (same source of truth as mastery_ui_vet + gate_mastery_ui).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import mastery_conn_model as CM  # noqa: E402
+import audit_mastery_ui as A  # noqa: E402
+
 # Contract field 1 - human label (build logs + collision gate).
 MODULE_NAME = "Hunting/Occult mastery-screen UI fix (backgrounds + button shapes)"
 
@@ -133,8 +142,8 @@ _SHAPE_FIXES = (
 # (straight = same column; DRX `_right` = column to the right). Golden tree: every
 # field below is a Will-authorized owner_approved_overrides entry in
 # tools/occult_hunting_golden.json (see the WILL VETO section there). UI-only:
-# button `bitmapPositionX/Y` + the visual `skillConnectionOn`; NO skill VALUE change.
-_STRAIGHT = r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex"
+# button `bitmapPositionX/Y` + the visual `skillConnectionOn/Off`; NO skill VALUE change.
+# (The connector textures are chosen by mastery_conn_model, not hard-coded here.)
 _COLX = {1: 128, 2: 228, 3: 328, 4: 428, 5: 528, 6: 628}
 _ROWY = {1: 403, 2: 341, 3: 279, 4: 217, 5: 155, 6: 93, 7: 31}
 
@@ -243,18 +252,26 @@ def apply(db, tags):
         moved += 1
         print("  reflow Occult %-8s (%-42s) -> col%d row%d" % (slot_file, expect, col, tier))
 
-    # 5d - connector fixes on Occult (5) + Hunting (6) skill records (visual only).
-    conns = 0
-    for mastery, slot_file, expect, action in _OCCULT_HUNTING_CONN:
+    # 5d - geometry-correct connector rebuild on Occult (5) + Hunting (6). Writes BOTH
+    #      skillConnectionOn AND skillConnectionOff, always length-matched, spanning each
+    #      touched family from base to top (mastery_conn_model.rebuild_into). Round-1 vet
+    #      HIGH fix: 'drop' clears BOTH arrays (no stale dimmed bar); a moved member or a
+    #      'straight' skill reshapes its whole family bar (no single-element under-draw).
+    for mastery, slot_file, expect, action in _OCCULT_HUNTING_CONN:   # fail-loud assert
         rec = (_UI % mastery) + slot_file + ".dbr"
         _require(rec, "skillName")
         sn = _assert_skill(db, rec, "m%d %s" % (mastery, slot_file), expect)
         if not db.has_record(sn):
             raise SystemExit("hunting_occult_ui: skill record missing for %s (%s)"
                              % (slot_file, sn))
-        db.set_field(sn, "skillConnectionOn", "" if action == 'drop' else _STRAIGHT)
-        conns += 1
-        print("  m%d %-8s (%-42s) connector -> %s" % (mastery, slot_file, expect, action))
+    wrap = A.DB.from_db(db)
+    conns = 0
+    for slot in (5, 6):
+        moved_seeds = [e.lower() for _sf, e, _c, _t in _OCCULT_MOVES] if slot == 5 else []
+        seeds = [e.lower() for m, sf, e, a in _OCCULT_HUNTING_CONN if m == slot and a != 'drop']
+        drops = [e.lower() for m, sf, e, a in _OCCULT_HUNTING_CONN if m == slot and a == 'drop']
+        changed = CM.rebuild_into(wrap, slot, seed_skills=moved_seeds + seeds, drops=drops, log=print)
+        conns += len(changed)
 
-    print("=== H/O UI fix done: %d bg + %d shape + %d Occult-reflow + %d connector "
-          "records ===" % (bg_records, shapes, moved, conns))
+    print("=== H/O UI fix done: %d bg + %d shape + %d Occult-reflow + %d connector-array "
+          "writes ===" % (bg_records, shapes, moved, conns))

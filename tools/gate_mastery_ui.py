@@ -12,6 +12,13 @@ Will's mandate (2026-07-14, verbatim laws):
                   base's column (OFFCOL).
 Plus the layout hygiene the same audit proved: on-grid, no duplicate cell, icon
 resolves, no duplicate/empty display-name, select-screen tag wiring intact.
+Plus the connector-ARRAY invariants ground-truthed in tools/mastery_conn_model.py
+(round-1 vet HIGH/MEDIUM): CONNPARITY (skillConnectionOn and skillConnectionOff
+must be the same length, or both <= 1 - a real bar sets BOTH arrays; a stale
+skillConnectionOff surviving a cleared skillConnectionOn is a dimmed-bar-under-
+draw bug) and CONNSPAN (a drawn bar's top tile must land exactly on an occupied
+cell - straight bars in the same column, DRX `_right` bars one column over; a
+bar that tops out on empty space under/over-draws).
 
 This gate re-uses the EXACT analysis functions of tools/audit_mastery_ui.py (one
 source of truth for the math, so gate and audit never drift), keys every finding
@@ -42,6 +49,7 @@ sys.path.insert(0, str(_TOOLS))
 
 # ONE source of truth for the UI math: reuse the audit module's helpers verbatim.
 import audit_mastery_ui as A  # noqa: E402
+import mastery_conn_model as CM  # noqa: E402
 from arc_patcher import ArcArchive  # noqa: E402
 
 WAIVERS_DEFAULT = _TOOLS / "mastery_ui_waivers.json"
@@ -151,6 +159,11 @@ def analyze(gold):
                 sev = " (HAS CONNECTOR)" if A.conn_flag(n) != "." else ""
                 add(slot, "OFFCOL", bn,
                     "%s (col %d) base %s in col %d%s" % (bn, n["x"], r, nodes[r]["x"], sev))
+
+    # CONNPARITY + CONNSPAN (round-1 vet HIGH/MEDIUM: connOn/connOff array-level
+    # invariants, pure geometry, ground-truthed in tools/mastery_conn_model.py).
+    for slot, category, ident, msg in CM.find_defects(gold):
+        add(slot, category, ident, msg)
 
     return findings
 

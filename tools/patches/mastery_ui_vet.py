@@ -51,16 +51,22 @@ mastery_ui_audit (Earth reflow + graft icons) and hunting_occult_ui (m5/m6);
 disjoint slots. Fail-loud if any slot no longer holds its expected skill.
 """
 
+import os
+import sys
+from collections import defaultdict
+
 MODULE_NAME = "Mastery skill-tree UI vet: law-compliant reflow (non-golden 1/2/4/7/8/9)"
 
 _UI = "records\\ingameui\\player skills\\mastery %d\\%s"
 _DREAM_UI = "records\\xpack\\ui\\skills\\mastery 9\\%s"
 
-# straight connector texture (bar draws up in the same column).
-_STRAIGHT = r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex"
-
 _COLX = {1: 128, 2: 228, 3: 328, 4: 428, 5: 528, 6: 628}   # column -> bitmapPositionX
 _ROWY = {1: 403, 2: 341, 3: 279, 4: 217, 5: 155, 6: 93, 7: 31}   # tier row -> bitmapPositionY
+
+# tools/ is the parent of tools/patches/ - reach the shared connector model + node math.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import mastery_conn_model as CM  # noqa: E402
+import audit_mastery_ui as A  # noqa: E402
 
 # (mastery, ui slot file, expected skillName basename, column 1-6, tier row 1-7).
 # The expected-basename assertion fails the build loud if a slot drifted upstream.
@@ -104,9 +110,12 @@ _MOVES = [
 ]
 
 # (mastery, ui slot file, expected skillName basename, action). action:
-#   'drop'     - clear skillConnectionOn (a base with no modifier must not draw a bar)
-#   'straight' - set the straight same-column connector (move a bar from a modifier
-#                to its base, or flip a mis-pointed [R] side-connector to straight)
+#   'drop'     - clear BOTH skillConnectionOn AND skillConnectionOff (a base with no
+#                modifier, or a leaf/standalone, must not draw a bar)
+#   'straight' - reshape the family so its base carries a geometry-correct straight bar
+#                spanning to the family top (moves a bar off a modifier onto its base, or
+#                flips a mis-pointed [R] side-connector to straight). Both connOn+connOff
+#                are rebuilt length-matched by mastery_conn_model.rebuild_into.
 _CONN = [
     (2, "skill20", "drxconcussiveblow", 'drop'),              # standalone passive, no modifier
     (2, "skill21", "drxaxepassive", 'drop'),                  # standalone passive, spurious [R]
@@ -152,10 +161,12 @@ def _assert_skill(db, rec, ui_file, mastery, expect):
 
 
 def apply(db, tags):
-    """Relocate the non-golden UI buttons + fix their connectors. Fail-loud on drift.
+    """Relocate the non-golden UI buttons + rebuild their connectors. Fail-loud on drift.
     `tags` unused (record-only; no Text tags)."""
     print("\n=== mastery_ui_vet: law-compliant reflow (non-golden 1/2/4/7/8/9) ===")
 
+    # 1) position moves - MUST run before the connector rebuild so the geometry the
+    #    connector shapes are derived from is final.
     for mastery, ui_file, expect, col, tier in _MOVES:
         rec = _resolve(db, _slot_path(mastery, ui_file))
         _assert_skill(db, rec, ui_file, mastery, expect)
@@ -163,16 +174,34 @@ def apply(db, tags):
         db.set_field(rec, "bitmapPositionY", _ROWY[tier], 0)
         print("  m%d %-9s (%-42s) -> col%d row%d" % (mastery, ui_file, expect, col, tier))
 
+    # 2) fail-loud assertion that every connector-edit slot still holds its expected skill.
     for mastery, ui_file, expect, action in _CONN:
         rec = _resolve(db, _slot_path(mastery, ui_file))
-        sn = _assert_skill(db, rec, ui_file, mastery, expect)
-        srec = _resolve(db, sn)
-        db.set_field(srec, "skillConnectionOn", "" if action == 'drop' else _STRAIGHT)
-        print("  m%d %-9s (%-42s) connector -> %s" % (mastery, ui_file, expect, action))
+        _assert_skill(db, rec, ui_file, mastery, expect)
 
-    print("=== mastery_ui_vet done: %d relocations + %d connector fixes "
-          "(0 unwaived finding; gate_mastery_ui re-proves) ==="
-          % (len(_MOVES), len(_CONN)))
+    # 3) geometry-correct connector rebuild. Writes BOTH skillConnectionOn AND
+    #    skillConnectionOff, always length-matched, spanning each touched family from its
+    #    base to its top member (mastery_conn_model.rebuild_into). This is the round-1 vet
+    #    HIGH fix: 'drop' clears BOTH arrays (no stale dimmed bar survives); 'straight' /
+    #    a moved member reshapes the whole family bar (no single-element under-draw). Seeds
+    #    = every moved skill + every 'straight' skill (reshape their family); drops = every
+    #    'drop' skill (force-clear a standalone/leaf spurious bar no family reshape covers).
+    wrap = A.DB.from_db(db)
+    moved_by_slot, seeds_by_slot, drops_by_slot = defaultdict(list), defaultdict(list), defaultdict(list)
+    for mastery, ui_file, expect, col, tier in _MOVES:
+        moved_by_slot[mastery].append(expect.lower())
+    for mastery, ui_file, expect, action in _CONN:
+        (drops_by_slot if action == 'drop' else seeds_by_slot)[mastery].append(expect.lower())
+    nconn = 0
+    for slot in sorted(set(moved_by_slot) | set(seeds_by_slot) | set(drops_by_slot)):
+        changed = CM.rebuild_into(wrap, slot,
+                                  seed_skills=moved_by_slot[slot] + seeds_by_slot[slot],
+                                  drops=drops_by_slot[slot], log=print)
+        nconn += len(changed)
+
+    print("=== mastery_ui_vet done: %d relocations + %d connector-array writes "
+          "(0 unwaived finding; gate_mastery_ui + connector parity/span re-prove) ==="
+          % (len(_MOVES), nconn))
 
 
 def verify(db, tags):

@@ -41,7 +41,9 @@ MASTERY_BTN_XY = (29, 459)
 
 
 def first(v):
-    return v[0] if isinstance(v, list) else v
+    if isinstance(v, list):
+        return v[0] if v else None   # empty list (a cleared connector) -> no value
+    return v
 
 
 def base_of(p):
@@ -61,6 +63,15 @@ class DB:
     def __init__(self, path):
         self.db = ArzDatabase.from_arz(path)
         self.idx = {n.lower().replace('/', '\\'): n for n in self.db.record_names()}
+
+    @classmethod
+    def from_db(cls, arzdb):
+        """Wrap an already-loaded ArzDatabase (e.g. mid-build in a patch module's
+        apply()) without re-reading the arz.  Reflects in-flight mutations."""
+        self = cls.__new__(cls)
+        self.db = arzdb
+        self.idx = {n.lower().replace('/', '\\'): n for n in arzdb.record_names()}
+        return self
 
     def resolve(self, rec):
         return self.idx.get(rec.lower().replace('/', '\\')) if rec else None

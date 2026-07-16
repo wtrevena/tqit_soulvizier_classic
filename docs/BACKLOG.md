@@ -76,6 +76,31 @@
 > `drxhamstring` is a dead graft to delete (-1), authorise editing graft-broken `skillTier` values (-several).
 > **arz/Text ship together**; NOT yet integration-built. **UI-on-device: needs Will's in-game screenshot before promote.**
 >
+> 📐 **MASTERY-UI CONNECTOR-ARRAY FIX (round 3, 2026-07-15, `feat/mastery-ui-vet`, addendum in
+> `docs/reports/mastery_ui_reflow_round2.md` S7).** Round-1 vet caught a real HIGH: round 2's connector
+> edits wrote a bare single-element `skillConnectionOn` string and never touched `skillConnectionOff` -
+> `'drop'` left a STALE multi-tile dimmed bar behind, and `'straight'` under-drew any bar longer than one
+> tile. **Ground-truthed the true mechanism** (`tools/mastery_conn_model.py`, new): `skillConnectionOn`/
+> `Off` are a length-matched PAIR spanning a family's own base->top row; an in-between tile is CONNECT if
+> that row is occupied by ANY skill in the column (family or not - proven on 2 vanilla multi-gap bars,
+> including Occult's `envenomweapon` drawing a CONNECT tile over the unrelated `toxindistillation`) or
+> MIDDLE if truly empty; `validate()` self-checks the rule at 42/43 vanilla bars (the 1 residual,
+> Warfare's native `dualweapontraining` chain, is untouched by either module's reflow - documented, not a
+> defect). **Fix:** `rebuild_into()` is now the single writer both `mastery_ui_vet.py` and
+> `hunting_occult_ui.py` call after their position moves, reshaping every TOUCHED family's bar with
+> matched connOn/connOff and clearing both arrays on non-base members and drop-listed leaves. Surfaced 1
+> previously-invisible bug: Occult's Lay Trap base never actually drew the bar reaching its reunited
+> Multishot Bolt Trap modifier in round 2 - now fixed (2 new golden overrides); the other 6 new overrides
+> are the `skillConnectionOff` parity companions of round 2's existing entries (golden overrides 50 -> 58).
+> **Gate extended:** `gate_mastery_ui.py` now also runs `mastery_conn_model.find_defects()` - CONNPARITY
+> (on/off length mismatch) + CONNSPAN (a bar's top tile must land on an occupied cell) - pure geometry,
+> 0 findings post-fix, waiver ledger UNCHANGED at 17. **Verify** (dry-run replay of the actual modules onto
+> `local/baseline_build40.arz` b33c5a44): 53 records changed, UI-only (bitmapPosition/skillConnection* only);
+> 0 CONNPARITY/CONNSPAN defects; `gate_mastery_ui` PASS (17/0/0); A7 golden PASS (52 waived, 0 other); 2
+> negative tests (off-grid button; broken connOff parity on `drxbattlerage`) both correctly FAIL the gate;
+> py_compile + `_check_registry` (14 modules) OK. NOT yet integration-built; still needs Will's in-game
+> screenshot before promote (layout unchanged from round 2 - this wave is connector-array correctness only).
+>
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
 > Surface B (soul-summoned pets) HEALTHY; Surface A (fought bosses) had a level-0 skill-wiring defect on **10
