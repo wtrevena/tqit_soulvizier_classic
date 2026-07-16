@@ -2456,6 +2456,30 @@ stages. this new uber hero will go in the back corner of the Upper War-Camp befo
 - **Standard lanes:** DB registry module; tags via manifest; INJECT_SPECS; full gate battery;
   Will fresh-char verify on DEV.
 
+## B66 UBER FORMULA EXPANSION - round 1 SHIPPED (status: 14 weapons built+verified, awaiting Will's WILL-VETO review + DB build/deploy)
+Round 1 of NEW-UBER-FORMULAS-FROM-ORPHANS: all 14 curated candidates below are BUILT (not
+just designed) - `tools/patches/uber_orphan_weapons.py` (registry module) + donor data
+`tools/patches/data/b66_orphan_donor_fields.json`. Full detail, per-weapon stat/reagent
+tables, the WILL VETO naming section, and the Part-2 non-weapon gap analysis (surprise
+finding: 16 non-weapon supra pieces across 7/8 equip slots ALREADY exist and are ALREADY
+wired/obtainable; the one gap, Bracelet, has zero curatable orphans anywhere in TQ and is
+SKIPPED per the efficiency law) are in **`docs/reports/b66_uber_formulas.md`**.
+- **Verified (dry-run, no heavy build):** py_compile + `_check_registry.py` green (21
+  modules); `patches.run_registry()` (real harness) over a fresh build41-baseline load ->
+  21 new + 9 modified records (7 repointed zrecipes shells + both supra tables), 28 tags,
+  zero collisions; `verify()` (real `run_registry_verifies` harness) green; resolves-in-arc
+  (BUILT union BASE) green for every mesh/skill/reagent/formula reference; supra dead-ref
+  invariant green; container loot-shape gate green; negative test (missing clone donor)
+  fails loud as expected.
+- **NOT YET DONE:** a real DB build (`build_svc_database.py`) + Text.arc build + the full
+  gate battery + Will's in-game fresh-drop verify (TQ bakes item props at pickup - test
+  freshly crafted items) - deferred per "NO heavy builds" for this implementer round; next
+  step for whoever picks this up.
+- **Awaiting Will:** the WILL VETO section in the report (9 renamed twin-affected weapons +
+  the Munderizer magenta-tag question) - ships as default if he doesn't object.
+- **Deferred to round 2:** the 8-axe Greek bench, a fresh Spear/Shield uber, the supra
+  Bracelet, diversifying the 5-way shared axe reagent trio.
+
 ## QUEUED FEATURE: NEW-UBER-FORMULAS-FROM-ORPHANS (status: approved-concept-by-Will-2026-07-14, awaiting his candidate selection)
 Will (verbatim): "are there any cool orphaned weapon records that we could use to make new uber
 weapons behind? some uber forge formula weapons. add this to the backlog." Full audit +

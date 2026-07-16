@@ -122,6 +122,13 @@ REGISTRY = [
                             # Ruse (Satyr Archer family, turtle-shell pattern) + a regression
                             # guard confirming Dune Fiend's pre-existing Fiend Carapace relic
                             # (no duplicate authored). Disjoint from every module above.
+    'uber_orphan_weapons',  # B66 UBER FORMULA EXPANSION: 14 orphaned weapons (docs/reports/
+                            # orphaned_weapons_curation.md) buffed to the supra uber-forge tier,
+                            # cloning the proven svc_thrown_* template; 7 reuse an orphaned
+                            # zrecipes\ formula shell (repointed in place), 7 author fresh
+                            # zrecipes\svc_<class>_<name>_formula.dbr. Disjoint from every module
+                            # above (new records only; touches supra.dbr/supra_special.dbr
+                            # lootName slots, additive).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
