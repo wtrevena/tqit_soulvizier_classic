@@ -81,6 +81,9 @@ REGISTRY = [
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
+    'toxeus_legendary_stalker',  # B-TOXEUS-STALKER-1: fixed Legendary-only Endless Hunt placement
+                                 # (Hydra pool-gate pattern). Reuses toxeus_suite PART C's
+                                 # um_toxeus_hunt_99 verbatim - MUST run after toxeus_suite.
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
