@@ -182,6 +182,28 @@ def check_specs(fails):
         fails.append(f'T5b: unexpected per-area return port tags: {ret_ports}')
     print(f'  T5b per-area returns: arz==quests==map (5 records); ports {sorted(ret_ports)} resolve')
 
+    # T5c (b62 TRAVELERS-INTO-AREAS): the enter-offer + return-to-origin wiring introduces ZERO new
+    # arz records (both TRAVELER_ENTER_OFFERS npcs are already in the 25-record hub set) and exactly
+    # 4 new label tags, all minted by _create_traveler_enter_offers.
+    enter_npcs = {_norm(npc) for npc, _xyz, _tag in bqf.TRAVELER_ENTER_OFFERS}
+    if not enter_npcs <= map_recs:
+        fails.append(f'T5c: enter-offer NPC(s) not in the existing 25-record hub set (would be a '
+                     f'NEW placement): {enter_npcs - map_recs}')
+    enter_tags = {t for _npc, _xyz, t in bqf.TRAVELER_ENTER_OFFERS}
+    origin_tags = {t for dests in bqf.TESTHUB_RETURN_DESTS_BY_NPC.values() for _xyz, t in dests}
+    minted_enter = {asp.TAG_ENTER_SPARTA_CRYPT, asp.TAG_ENTER_UBER_DUNGEON,
+                    asp.TAG_RETURN_TO_ATHENS_CATACOMB, asp.TAG_RETURN_TO_LABYRINTH_DOOR}
+    missing_enter = (enter_tags | origin_tags) - minted_enter - {'tagSVCTestHubToHelos'}
+    if missing_enter:
+        fails.append(f'T5c: enter-offer/return-to-origin tags not minted in arz: {missing_enter}')
+    # both enter-offer NPCs must be placed EXACTLY ONCE in TESTHUB and NOT AT ALL in canonical -
+    # they ride the same TESTHUB-only records the hub already places (T2 covers the placement
+    # count; this just confirms the enter-offer table only names those two).
+    if len(enter_npcs) != 2:
+        fails.append(f'T5c: expected exactly 2 enter-offer NPCs, got {len(enter_npcs)}: {enter_npcs}')
+    print(f'  T5c enter-offers: {len(enter_npcs)} NPC(s) reuse existing hub records (0 new '
+          f'placements); {len(minted_enter)} new label tags resolve')
+
 
 def check_responds(fails):
     """b48 round 3 WIRING: run the gate_traveler_responds invariants build-free (spec-derived), so a

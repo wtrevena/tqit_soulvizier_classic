@@ -1543,6 +1543,28 @@ HELOS_PORTAL_DESTS = [
     ((-2438, 10, -2450), 'tagSVCHelosToUber'),     # Uber Dungeon (SV-native A1 arrival)
     ((-5602, -2, -1409), 'tagSVCHelosToSparta'),   # Sparta Crypt (hub landing)
 ]
+# RECONCILIATION NOTE (b62 TRAVELERS-INTO-AREAS, Will 2026-07-14 final - "reconcile the Almyros
+# divergent tagSVCHelosToSparta dest"): tagSVCHelosToUber/tagSVCHelosToSparta above land INSIDE
+# the interior (crypt_floor1 / spartacryptlevel2), while the SAME tags on the live hub traveler
+# (svc_helos_trav_uber/_sparta, HELOS_HUB_TRAVEL below) land at the OUTER door/catacomb approach
+# point instead. Investigated and DELIBERATELY LEFT AS-IS - this is NOT a bug to unify, because the
+# two NPCs serve genuinely different roles on genuinely different builds:
+#   - portal_master_helos (Almyros) is placed ONLY on canonical/Steam (0x in TESTHUB - de-duped by
+#     merge_hub_into_inject_specs). On canonical there is NO outer-door traveler at all
+#     (svc_area_return_sparta/_uber are TESTHUB-only, per T2), so Almyros's interior landing IS the
+#     sole live mechanism canonical/Steam players use to reach these two areas today. Redirecting
+#     it to the door coordinate would silently STRAND every canonical player who currently reaches
+#     the crypt/dungeon this way (no traveler exists at the door on canonical to compensate) - a
+#     live regression, not a fix.
+#   - svc_helos_trav_sparta/_uber are TESTHUB-only (per Will's v2 hub design: "teleport me next to
+#     the door you'd use in game, not the final destination") and are correctly paired with the
+#     TESTHUB-only svc_area_return_sparta/_uber (which now carry the enter-offer into the interior;
+#     see TRAVELER_ENTER_OFFERS below) - a deliberately different, richer round trip for the dev/
+#     test surface.
+# Reusing the SAME menu-label tag across the two builds for the SAME area name is intentional and
+# harmless (never the same level in either build, so gate_traveler_responds' same-level route-
+# collision check never sees both at once - verified: canonical places Almyros but not the hub
+# traveler; TESTHUB places the hub traveler but not Almyros). Left BOTH tables byte-unchanged.
 
 
 def _add_helos_portal_travel(data: bytes) -> bytes:
@@ -1679,6 +1701,25 @@ TESTHUB_RETURN_DESTS = [
     ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza
     ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior
 ]
+# TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final, item 2): per-NPC override of the shared 2-port
+# TESTHUB_RETURN_DESTS. Sparta's + Uber's interior return NPC (already stranded there) now returns
+# to WHERE THE PLAYER TRAVELED FROM: primary = the paired ORIGIN entrance (the outer landing where
+# the area's enter-offer traveler stands - see TRAVELER_ENTER_OFFERS below), secondary = Helos. A
+# static 2-option dialog (the engine has no dynamic "where you came from" state - this is the best
+# static approximation of Will's ask; flagged for him in the report). Garden/Secret/Boss-Arena are
+# NOT overridden here and keep the existing Helos+BloodCave menu unchanged: they are single-hop
+# from Helos already (their "origin" already IS Helos), so touching them isn't required by this
+# design and would only widen this wave's blast radius.
+TESTHUB_RETURN_DESTS_BY_NPC = {
+    r'records\quests\svc_testhub_return_sparta.dbr': [
+        ((-6587, 1, -3180), 'tagSVCReturnToAthensCatacomb'),  # origin: Athens catacomb door (primary)
+        ((-5980, 1, 909),   'tagSVCTestHubToHelos'),          # Helos plaza (secondary)
+    ],
+    r'records\quests\svc_testhub_return_uber.dbr': [
+        ((-7793, 1, -3793), 'tagSVCReturnToLabyrinthDoor'),   # origin: Knossos maze03 Minotaur door (primary)
+        ((-5980, 1, 909),   'tagSVCTestHubToHelos'),          # Helos plaza (secondary)
+    ],
+}
 # b48 SPARTA-MUTE round 3 (WARDEN-SPLIT of svc_testhub_return): svc_testhub_return was PLACED in 5
 # levels (Garden/Secret/Uber/Sparta canonical + Boss Arena TESTHUB) but a boat-dialog record binds
 # its menu to ONE entity, so 4 of the 5 returns spawned MUTE. It is split into these 5 DISTINCT
@@ -1791,9 +1832,12 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
                              f'trigger max')
         # b48 SPARTA-MUTE round 3 (WARDEN-SPLIT): one 2-port return trigger per distinct per-area
         # record (replaces the single svc_testhub_return trigger). svc_testhub_master stays dropped.
+        # b62 TRAVELERS-INTO-AREAS: Sparta/Uber use TESTHUB_RETURN_DESTS_BY_NPC (return-to-origin);
+        # every other per-area return keeps the shared TESTHUB_RETURN_DESTS (Helos + Blood Cave).
         for npc in TESTHUB_AREA_RETURN_NPCS:
+            dests = TESTHUB_RETURN_DESTS_BY_NPC.get(npc, TESTHUB_RETURN_DESTS)
             trigcont.extend(_trigger(f'SVC: TESTHUB Return NPC ({npc.split(chr(92))[-1]})',
-                                     npc, TESTHUB_RETURN_DESTS))
+                                     npc, dests))
         steps_container[trigcont_pos] = ('block', trigcont)
         patched += 1
 
@@ -1823,14 +1867,17 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
         raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: svc_testhub_return must NOT be '
                          f'referenced (b48 round 3: retired; warden-split into per-area records)')
     for npc in TESTHUB_AREA_RETURN_NPCS:
-        if _delta(npc) != len(TESTHUB_RETURN_DESTS):
+        dests = TESTHUB_RETURN_DESTS_BY_NPC.get(npc, TESTHUB_RETURN_DESTS)
+        if _delta(npc) != len(dests):
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: per-area return {npc} reference count '
-                             f'must increase by exactly {len(TESTHUB_RETURN_DESTS)} '
+                             f'must increase by exactly {len(dests)} '
                              f'(got {_delta(npc)})')
     from collections import Counter
     want = Counter()
-    for _xyz, tag in TESTHUB_RETURN_DESTS:
-        want[tag] += len(TESTHUB_AREA_RETURN_NPCS)   # each of the 5 records emits every dest once
+    for npc in TESTHUB_AREA_RETURN_NPCS:
+        dests = TESTHUB_RETURN_DESTS_BY_NPC.get(npc, TESTHUB_RETURN_DESTS)
+        for _xyz, tag in dests:
+            want[tag] += 1
     for tag, n in want.items():
         if _delta(tag) != n:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: destination tag {tag} '
@@ -1989,6 +2036,132 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
         if _delta(tag) != n:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub label tag {tag} reference count '
                              f'must increase by exactly {n} (got {_delta(tag)})')
+    return out
+
+
+# ── TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final, item 1): ENTER-OFFERS ────────────────────
+# The in-world traveler standing NEAR a sealed SV area also offers to take the player INTO it.
+# Ground-truthed (docs/reports/travelers_into_areas_sweep.md): of every in-world return NPC, only
+# TWO gate a truly SEALED separate deep area with an EXISTING placed NPC on both the outer AND
+# inner end - spartacryptlevel2 (outer: svc_area_return_sparta @ CataCube02_FloorLast; inner:
+# svc_testhub_return_sparta) and crypt_floor1/Uber Dungeon (outer: svc_area_return_uber @ Maze03;
+# inner: svc_testhub_return_uber). Each outer NPC gets ONE extra Condition_OnLevelLoad trigger
+# (its own boat menu ALREADY carries the Helos-return route via HELOS_HUB_TRAVEL above; "multiple
+# triggers on one NPC accumulate boat-menu ports" is the same proven mechanism Almyros's dormant
+# 4-port menu and every multi-dest hub NPC already rely on). Landings verified on-mesh +
+# collision-clear (tools/debug/gate_landing_clearance.py PASS): enter_sparta_crypt is a 2u NUDGE
+# off Almyros's dormant (-5602,-2,-1409) landing (2.38u from a sarcophagus there) to a clean spot
+# still 3.16u from the existing svc_testhub_return_sparta; enter_uber_dungeon reuses Almyros's
+# dormant (-2438,10,-2450) unchanged (clean, 3.00u off svc_testhub_return_uber).
+#
+# The Secret Place's murderbossroom (the sweep's third sealed area) is NOT wired here - it has NO
+# placed NPC on either end (box-adjacency-proven isolated from the rest of the Secret_Place
+# cluster), so an enter-offer without a paired return would strand the player with no way back
+# (the P0-A "no way back" class of bug). It needs a new map-lane NPC placement first; flagged as a
+# BACKLOG follow-up.
+TRAVELER_ENTER_OFFERS = [
+    (r'records\quests\svc_area_return_sparta.dbr', (-5596, -2, -1410), 'tagSVCEnterSpartaCrypt'),
+    (r'records\quests\svc_area_return_uber.dbr',   (-2438, 10, -2450), 'tagSVCEnterUberDungeon'),
+]
+
+
+def _add_traveler_enter_offers(data: bytes) -> bytes:
+    """Append one extra Condition_OnLevelLoad boat-dialog trigger per TRAVELER_ENTER_OFFERS entry
+    to the sv_commonmechanics refire step (strictly additive: bumps the step's trigger max by
+    len(TRAVELER_ENTER_OFFERS)). Mirrors _add_helos_traveler_hub_travel exactly. Fails loud if the
+    host step is missing, the bytes do not round-trip, or the reference-count deltas do not land
+    exactly (both NPCs already carry a route from HELOS_HUB_TRAVEL, so their reference count rises
+    by 1 more here, not from 0)."""
+    def field_val(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    def _trigger(display, npc, xyz, tag):
+        x, y, z = xyz
+        header = ('block', [
+            ('field', 'displayTag', ('str', display)),
+            ('field', 'displayBitmap', ('int_or_empty', 0)),
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isActive', ('int', 0)),
+        ])
+        conditions = ('block', [
+            ('field', 'conditionCount', ('int', 1)),
+            ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'isNot', ('int', 0)),
+                ('field', 'isResettable', ('int', 1)),
+                ('field', 'isQuestCritical', ('int', 1)),
+            ]),
+        ])
+        actions = ('block', [
+            ('field', 'actionCount', ('int', 1)),
+            ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'delayTime', ('int', 0)),
+                ('field', 'npc', ('str', npc)),
+                ('field', 'onOff', ('int', 1)),
+                ('field', 'x', ('int', x & 0xFFFFFFFF)),
+                ('field', 'y', ('int', y & 0xFFFFFFFF)),
+                ('field', 'z', ('int', z & 0xFFFFFFFF)),
+                ('field', 'tag', ('str', tag)),
+            ]),
+        ])
+        return [header, conditions, actions]
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = [i for i, it in enumerate(steps_container) if it[0] == 'block']
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    patched = 0
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        stepdef = steps_container[stepdef_pos][1]
+        if field_val(stepdef, 'name') != HELOS_PORTAL_HOST_STEP:
+            continue
+        trigcont = list(steps_container[trigcont_pos][1])
+        bumped = False
+        for idx, it in enumerate(trigcont):
+            if it[0] == 'field' and it[1] == 'max':
+                trigcont[idx] = ('field', 'max', ('int', it[2][1] + len(TRAVELER_ENTER_OFFERS)))
+                bumped = True
+                break
+        if not bumped:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: host step has no trigger max')
+        for i, (npc, xyz, tag) in enumerate(TRAVELER_ENTER_OFFERS):
+            trigcont.extend(_trigger(f'SVC: Traveler Enter-Offer {i:02d}', npc, xyz, tag))
+        steps_container[trigcont_pos] = ('block', trigcont)
+        patched += 1
+
+    if patched != 1:
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: enter-offers expected to patch exactly 1 step '
+            f'({HELOS_PORTAL_HOST_STEP!r}), patched {patched}. Upstream changed; review.')
+
+    out = qst_format.serialize(tree)
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: enter-offer-patched quest does not '
+                         f'round-trip stably')
+    low = out.replace(b'/', b'\\').lower()
+    low_in = data.replace(b'/', b'\\').lower()
+
+    def _delta(needle):
+        nd = needle.replace('/', '\\').lower().encode()
+        return low.count(nd) - low_in.count(nd)
+    from collections import Counter
+    npc_want = Counter(npc for npc, _xyz, _tag in TRAVELER_ENTER_OFFERS)
+    for npc, n in npc_want.items():
+        if _delta(npc) != n:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: enter-offer NPC {npc} reference count '
+                             f'must increase by exactly {n} (got {_delta(npc)})')
+    tag_want = Counter(tag for _npc, _xyz, tag in TRAVELER_ENTER_OFFERS)
+    for tag, n in tag_want.items():
+        if _delta(tag) != n:
+            raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: enter-offer label tag {tag} reference '
+                             f'count must increase by exactly {n} (got {_delta(tag)})')
     return out
 
 
@@ -2234,6 +2407,12 @@ def main():
     # returns), chained onto the same refire step. Keyed on the DISTINCT svc_helos_trav_* /
     # svc_area_return_* records only; INERT on canonical (no hub NPC placed there).
     patched_cm = _add_helos_traveler_hub_travel(patched_cm)
+    # TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final): 2 enter-offer triggers (Sparta Crypt +
+    # Uber Dungeon), chained onto the same refire step. Keyed on the ALREADY-PLACED
+    # svc_area_return_sparta / svc_area_return_uber only; INERT on canonical (neither is placed
+    # there). The paired return-to-origin destinations are wired inside _add_testhub_portal_travel
+    # above via TESTHUB_RETURN_DESTS_BY_NPC.
+    patched_cm = _add_traveler_enter_offers(patched_cm)
     arc.set_file(HELOS_PORTAL_HOST_QUEST, patched_cm)
     print(f'Q2: Helos portal-master {len(HELOS_PORTAL_DESTS)}-destination '
           f'boat-dialog appended to {HELOS_PORTAL_HOST_QUEST} '
@@ -2243,6 +2422,9 @@ def main():
     print(f'Portal rig: TESTHUB hub ({len(TESTHUB_MASTER_DESTS)} ports) + return '
           f'({len(TESTHUB_RETURN_DESTS)} ports) boat-dialog appended to '
           f'{HELOS_PORTAL_HOST_QUEST}')
+    print(f'Traveler enter-offers: {len(TRAVELER_ENTER_OFFERS)} enter-offer triggers appended to '
+          f'{HELOS_PORTAL_HOST_QUEST} (Sparta Crypt + Uber Dungeon); return-to-origin wired via '
+          f'TESTHUB_RETURN_DESTS_BY_NPC on svc_testhub_return_{{sparta,uber}}')
 
     # Q4-3: chimera chest double-extension retarget (arz records renamed by
     # fix_chimera_chest_double_ext in build_svc_database.py, same wave).
