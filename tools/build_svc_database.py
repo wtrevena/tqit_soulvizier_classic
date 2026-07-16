@@ -3794,6 +3794,30 @@ def main():
             "Occult/Hunting golden freeze guard FAILED on the written .arz; "
             "this build does not ship (A7 gate)")
 
+    # ── Mastery/skill-tree UI law gate (fail-loud, Will's 2026-07-14 mandate):
+    # TIER LAW (button row == skillTier) + CONNECTOR LAW (only genuine augments
+    # connect: no off-column modifier, no foreign family interleave, no spurious
+    # drawn connector) + layout hygiene (on-grid, no duplicate cell, icon
+    # resolves, no duplicate/empty display-name) must hold on the written .arz.
+    # The known Will-gated backlog (graft overcrowding with no free tier column,
+    # graft-broken skillTiers, the golden Occult/Hunting trees, the Storm
+    # dead-ref, the Spirit holistic-reflow knot) is tracked - each with a
+    # justification - in tools/mastery_ui_waivers.json; a NEW or regressed
+    # TIER/CONNECTOR/layout defect is NOT waived and fails the build here, so
+    # the class of defect Will reported (wrong rows / crossed arrows) can never
+    # silently ship again. Select-screen tag uniqueness (B-MASTERY-LABEL-1) is
+    # gated separately by build_text_arc.py check_duplicate_tags, so this
+    # arz-only run skips the Text.arc cross-check (same pattern as the A7 gate).
+    from gate_mastery_ui import validate as _validate_mastery_ui
+    if _validate_mastery_ui(str(output_path)) != 0:
+        raise SystemExit(
+            "Mastery/skill-tree UI law gate FAILED on the written .arz: an "
+            "unwaived TIER/CONNECTOR/layout defect. Fix the button placement in "
+            "tools/patches/mastery_ui_vet.py so the finding clears, or - only "
+            "with Will's design sign-off - add the exact key to "
+            "tools/mastery_ui_waivers.json with a justification. This build does "
+            "not ship.")
+
     # ── F2 contract gate (build30, post-vet): the summons contract lane
     # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build
     # is contract-clean by construction (the vet proved the validators above

@@ -47,16 +47,41 @@ DEFECT 2 - button shapes per Will's SHAPE LAW (2026-07-12, verbatim): "circles
   writes isCircular AND the 3 matching border bitmaps (square => SkillButtonBorder01
   family; circle => SkillButtonBorderRound01 family). All 6 textures D5-confirmed.
 
-ALIGNMENT ("don't line up") is deliberately NOT touched this wave: every O/H
-button is grid-valid + collision-free, and the perceived misalignment is chiefly
-downstream of the shape bug (a main node wrongly drawn as an undersized circle).
-Per Will's mandate, residual nudges wait for an in-game screenshot pass after he
-tests; each would be a `bitmapPositionX/Y` edit + its own golden waiver.
+ALIGNMENT + CONNECTORS (the "don't line up" / "wrong arrows" follow-up, DONE
+build40-r2 for the two golden trees, re-derived to Will's 2026-07-14 TIER +
+CONNECTOR laws + the texture-decoded connection map):
+  Occult (5) - de-interleave the crossed trees Will reported 2026-07-13: reunite
+    the orphaned Lay Trap pet-branch (Multishot Bolt Trap) into Lay Trap's column,
+    move Open Wound out of the Darklings->Darkaperture span so Darklings' bar
+    reaches its own modifier, drop 3 spurious base/leaf connectors, and flip Lethal
+    Strike's mis-pointed [R] side-connector to straight (it reaches its own Mortal
+    Wound). See _OCCULT_MOVES + _OCCULT_HUNTING_CONN below.
+  Hunting (6) - move Take Down's connector from the Eviscerate modifier onto the
+    Take Down base (vanilla pattern) so Take Down->Eviscerate reads instead of the
+    spurious Eviscerate->Tempest arrow.
+Every one of those field edits is a Will-authorized owner_approved_overrides entry
+in tools/occult_hunting_golden.json (see its _WILL_VETO_2026_07_14 section); UI
+button bitmapPosition + visual skillConnectionOn only, NO skill VALUE change. The
+2 residual findings (a Lay-Trap tier-3 collision + a summon->pet-modifier detector
+false-positive) are tracked in tools/mastery_ui_waivers.json. Standing UI-on-device
+rule: these still need Will's in-game screenshot before promote.
 
 Contract: patches-registry module - MODULE_NAME + apply(db, tags). Runs AFTER the
 monolith (incl. fix_mastery_panel_buttons, which only rewrites panectrl button
-LISTS - disjoint from these leaf records) and BEFORE the whole gate battery.
+LISTS - disjoint from these leaf records) and BEFORE the whole gate battery. The
+reflow writes bitmapPositionX/Y on records disjoint from mastery_ui_audit's Earth
+(mastery 3) reflow and mastery_ui_vet's non-golden moves, so the layout fixes
+compose without a write-fight.
 """
+
+import os
+import sys
+
+# tools/ is the parent of tools/patches/ - reach the shared connector model + node math
+# (same source of truth as mastery_ui_vet + gate_mastery_ui).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import mastery_conn_model as CM  # noqa: E402
+import audit_mastery_ui as A  # noqa: E402
 
 # Contract field 1 - human label (build logs + collision gate).
 MODULE_NAME = "Hunting/Occult mastery-screen UI fix (backgrounds + button shapes)"
@@ -111,6 +136,57 @@ _SHAPE_FIXES = (
     (6, "skill18", _CIRCLE, "drxtakedown_eviscerate"),                # modifier of Takedown -> CIRCLE
 )
 
+# ── Occult (mastery 5) tree reflow + connector fixes (Will's 2026-07-13 crossed-tree
+# report, re-derived to the 2026-07-14 TIER + CONNECTOR laws + the texture-decoded
+# connection map). The connector bar draws UP to the NEAREST occupied cell above
+# (straight = same column; DRX `_right` = column to the right). Golden tree: every
+# field below is a Will-authorized owner_approved_overrides entry in
+# tools/occult_hunting_golden.json (see the WILL VETO section there). UI-only:
+# button `bitmapPositionX/Y` + the visual `skillConnectionOn/Off`; NO skill VALUE change.
+# (The connector textures are chosen by mastery_conn_model, not hard-coded here.)
+_COLX = {1: 128, 2: 228, 3: 328, 4: 428, 5: 528, 6: 628}
+_ROWY = {1: 403, 2: 341, 3: 279, 4: 217, 5: 155, 6: 93, 7: 31}
+
+# (ui slot file, expected skillName basename, column 1-6, tier row 1-7).
+_OCCULT_MOVES = (
+    # reunite the orphaned Lay Trap pet-branch into Lay Trap's column 4 (was col1,
+    # OFFCOL). Lay Trap + this mod are both tier3, so it sits at row4 (TIER-waived);
+    # Lay Trap's straight bar reaches it (nearest above).
+    ("skill18", "drxlaytrap_petmodifier_multishotbolttrap", 4, 4),
+    # Open Wound OUT of the Darklings span (it interleaved Darklings->Darkaperture and
+    # stole Darklings' arrow); col5 row4 is tier-correct (tier4) and span-free.
+    ("skill07", "drxopenwound", 5, 4),
+)
+
+# (mastery, ui slot file, expected skillName basename, action) - action 'drop' clears
+# skillConnectionOn (a base with no modifier, or a leaf mod, must not draw a bar);
+# 'straight' sets the same-column bar (flip a mis-pointed [R] side-connector, or move
+# a bar from a modifier onto its base so the pair reads as a genuine augment).
+_OCCULT_HUNTING_CONN = (
+    (5, "skill21", "drx_scrap", 'drop'),                        # standalone, no modifier
+    (5, "skill26", "drxdarklings_darkaperture", 'drop'),        # leaf mod; Darklings' bar reaches it
+    (5, "skill17", "drxlaytrap_rapidconstruction", 'drop'),     # leaf mod; spurious [R]
+    (5, "skill19", "drxlethalstrike", 'straight'),             # [R]->straight; reaches Mortal Wound
+    (6, "skill17", "drxtakedown", 'straight'),                 # base gets the bar (vanilla pattern)
+    (6, "skill18", "drxtakedown_eviscerate", 'drop'),          # modifier drops the spurious up-bar
+)
+
+
+def _first(v):
+    return v[0] if isinstance(v, list) else v
+
+
+def _assert_skill(db, rec, ident, expect):
+    sn = _first(db.get_field_value(rec, "skillName")) or ""
+    base = sn.rsplit("\\", 1)[-1].lower()
+    if base.endswith(".dbr"):
+        base = base[:-4]
+    if base != expect.lower():
+        raise SystemExit(
+            "hunting_occult_ui: %s holds %r, expected %s - the golden Occult/Hunting "
+            "layout drifted; reconcile the reflow before shipping" % (ident, sn, expect))
+    return sn
+
 
 def apply(db, tags):
     """Repoint all 8 mastery backgrounds + correct the 8 O/H button shapes.
@@ -162,5 +238,40 @@ def apply(db, tags):
     print("  button shapes set: %d (2 SQUARE cast-actives + 6 CIRCLE passives/procs/"
           "modifiers, Will's shape law); 5 drift-waived, 3 re-assert baseline circle"
           % shapes)
-    print("=== H/O UI fix done: %d bg + %d shape records ==="
-          % (bg_records, shapes))
+
+    # 5c - Occult (mastery 5) tree reflow: de-interleave the crossed trees + reunite
+    # the Lay Trap orphan (Will 07-13, re-derived to the TIER + CONNECTOR laws).
+    moved = 0
+    for slot_file, expect, col, tier in _OCCULT_MOVES:
+        rec = (_UI % 5) + slot_file + ".dbr"
+        _require(rec, "bitmapPositionX")
+        _require(rec, "bitmapPositionY")
+        _assert_skill(db, rec, "Occult %s" % slot_file, expect)
+        db.set_field(rec, "bitmapPositionX", _COLX[col], 0)   # dtype 0 = INT (match existing)
+        db.set_field(rec, "bitmapPositionY", _ROWY[tier], 0)
+        moved += 1
+        print("  reflow Occult %-8s (%-42s) -> col%d row%d" % (slot_file, expect, col, tier))
+
+    # 5d - geometry-correct connector rebuild on Occult (5) + Hunting (6). Writes BOTH
+    #      skillConnectionOn AND skillConnectionOff, always length-matched, spanning each
+    #      touched family from base to top (mastery_conn_model.rebuild_into). Round-1 vet
+    #      HIGH fix: 'drop' clears BOTH arrays (no stale dimmed bar); a moved member or a
+    #      'straight' skill reshapes its whole family bar (no single-element under-draw).
+    for mastery, slot_file, expect, action in _OCCULT_HUNTING_CONN:   # fail-loud assert
+        rec = (_UI % mastery) + slot_file + ".dbr"
+        _require(rec, "skillName")
+        sn = _assert_skill(db, rec, "m%d %s" % (mastery, slot_file), expect)
+        if not db.has_record(sn):
+            raise SystemExit("hunting_occult_ui: skill record missing for %s (%s)"
+                             % (slot_file, sn))
+    wrap = A.DB.from_db(db)
+    conns = 0
+    for slot in (5, 6):
+        moved_seeds = [e.lower() for _sf, e, _c, _t in _OCCULT_MOVES] if slot == 5 else []
+        seeds = [e.lower() for m, sf, e, a in _OCCULT_HUNTING_CONN if m == slot and a != 'drop']
+        drops = [e.lower() for m, sf, e, a in _OCCULT_HUNTING_CONN if m == slot and a == 'drop']
+        changed = CM.rebuild_into(wrap, slot, seed_skills=moved_seeds + seeds, drops=drops, log=print)
+        conns += len(changed)
+
+    print("=== H/O UI fix done: %d bg + %d shape + %d Occult-reflow + %d connector-array "
+          "writes ===" % (bg_records, shapes, moved, conns))

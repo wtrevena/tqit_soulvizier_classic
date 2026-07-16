@@ -78,6 +78,10 @@ REGISTRY = [
     'mastery_ui_audit',     # build38: cross-mastery skill-tree UI fix (graft icons, Earth
                             # Rupture de-dup + reflow, Dream bg); disjoint from hunting_occult_ui
                             # (which owns mastery 1-8 backgrounds + O/H button shapes)
+    'mastery_ui_vet',       # build40 vet: 4 clean tier/connector button relocations (m1/m2/m9,
+                            # non-golden); runs after mastery_ui_audit (disjoint slots); the rest
+                            # of the 66 findings are Will-gated (tools/mastery_ui_waivers.json,
+                            # enforced by tools/gate_mastery_ui.py)
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
