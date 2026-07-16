@@ -107,6 +107,9 @@ REGISTRY = [
                             # e/l per-tier icon law. Disjoint from every module above (touches only
                             # create_uber_souls-generated svc_uber rings; module-authored souls
                             # already obey both invariants). verify() gates the class fail-loud.
+    'svaera_sets',          # SVAERA-ADOPT: re-link the 5 SVAERA Greek/Egyptian item sets onto
+                            # the 13 already-shipped standalone-unique members (itemSetName only;
+                            # no item/loot/map change). Disjoint from every module above.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
