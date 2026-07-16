@@ -164,3 +164,115 @@ Four Generals quest hero `xsq27_namedhero_a_machae_45`=66. **ZERO placed apex ub
 - Cross-lane: `feat/legion-soul-stages` (zeroed 3 Legion stages) and `feat/souls-quality` edit per-record
   fields; this change is the RATE constant/wiring only. No record collision (Legion zeroed stages stay 0
   under this split; souls-quality edits soul-item stats, not monster drop chance).
+
+---
+
+## 10. ROUND 2 - vet NO-GO fix (2026-07-15/16, `create_uber_souls.py` + post-wire writers)
+
+**Vet finding (round 1 NO-GO):** the dry-run replay above only modeled `wire_souls_to_monsters`' own
+delta. It could not see `create_uber_souls.py` (called AFTER `wire_souls_to_monsters`, BEFORE
+`apply_all_extended_patches`), which creates brand-new souls for uber/hero monsters that had none at
+wire-time and unconditionally hardcoded `chanceToEquipFinger2=66.0` - silently re-widening 21 of the 377
+intended cuts (`um_crowboar_09`, `um_xix_36`, `um_frost_32`, `hero_junshan_39`, ... ). Same bug class in
+every other post-wire soul-rate writer in `apply_svc_patches.py` (`_wire_missing_boss_souls`,
+`_create_soul`, `_wire_soul_to_monster`, COLDWORM, Leinth - all default `chance=66.0`).
+
+**Fix, part A (single choke point):** `apply_svc_patches._soul_release_rate(db, record_name, chance)` -
+every soul-wiring helper in `apply_svc_patches.py` and `create_uber_souls.py` now routes its
+PLACED-default chance through this ONE function (imports `build_svc_database.soul_drop_rate` +
+`soul_spawn_provenance_sets` - the same single source of truth the gate uses). Only `chance==66.0` (the
+PLACED/dedicated default) is ever routed through the classifier; 25.0/0.0/overrides pass straight
+through untouched.
+
+**Fix, part B (rewritten gate, LAST-WRITER semantics):** `verify_soul_drop_rates.py` no longer replays
+one function's model - it loads a REAL BUILT arz (asserted via `_require_real_build`, which fails loud
+on a bare golden/upstream arz lacking `create_uber_souls.py`'s exclusive output dir) and checks the
+FINAL, ACTUAL `chanceToEquipFinger2` on every soul-dropping creature against `soul_drop_rate()`,
+whichever writer ran last. A negative test plants a post-wire 50->66 stomp on a live record and proves
+the gate still catches it (this is the exact regression class the rewrite exists to close).
+`_KNOWN_EXCEPTIONS` visibly waives ~15 pre-existing hand-tunings that predate and are orthogonal to this
+directive (Pharaoh's Honor Guard @10%, `svc_um_hadesmarshal_80`/`um_bloodtoxeus_99`/`um_toxeus_hunt_99`
+module-owned rates, `boss_satyrshaman_55`/`boss_charon_41`/`boss_charon_43` module-set Boss@66) - printed
+but never silently absorbed into a passing count.
+
+**Two FURTHER bugs found and fixed while finishing the routing (this session, round 2 continuation),
+both caught only by the real-arz gate above, never by a replay:**
+
+1. **Routing-order bug** in `_place_orphan_monsters`, `_wire_difficulty_variants`, and the Blood Sisters
+   loop of `_wire_it_expansion_orphans`: each called `_add_monster_to_pools` (which is what proves a
+   record RANDOM, by writing its `nameChampionN` slot into a `records\proxies*` population pool) AFTER
+   the soul-creation/wiring call that reads pool membership - so the classifier always saw the record in
+   NO pool yet and defaulted it to PLACED(66), a second instance of the round-1 bug class via ordering
+   instead of a hardcoded value. Proven with a standalone probe (`soul_spawn_provenance_sets` before/after
+   a live `_add_monster_to_pools` call on `um_inkeyes2_45`/`hero_bloodsistersafiya_34`/`um_rong_40`:
+   `in random` flips `False -> True`). Fixed by moving every `_add_monster_to_pools` call to run BEFORE
+   the soul-rate write in all three functions, and by re-deriving the rate (guarded to only correct an
+   already-ENABLED value, never un-gating a deliberately-zeroed record) even when the soul PRE-EXISTED
+   (the `if not _has_soul` gate meant a record wired earlier in the pipeline - e.g. `um_frost_36`, wired
+   66% by the A6 Limos Lifeeater patch long before ever being pooled - never got its rate reconsidered).
+2. **Blank-classification bug** in `_soul_release_rate` itself: it passed `classification=''` to
+   `soul_drop_rate()` instead of the record's real, current `monsterClassification`. `soul_drop_rate`'s
+   own precedence puts a `Quest` classification AHEAD of pool membership (a quest-tied encounter stays
+   PLACED even if it happens to sit in a shared pool) - passing blank skipped that branch, so a
+   Quest-classified, pool-referenced record could be wrongly cut to RANDOM(50). Caught 3 records: the
+   zzdev Neanderthal warband souls `n_mega`/`n_emgiec`/`n_vio` (Quest-classified, incidentally in a
+   'neanderthal' pool via `_create_neanderthal_warband_monsters`). Fixed by reading the record's real
+   classification via `db.get_field_value(record_name, 'monsterClassification')`.
+3. **Farmable-boss variant edge case:** `_wire_difficulty_variants`'s `boss_terracottamage_bandari_40`
+   entry is Boss-classified + `boss_`-pathed (a farmable Act boss per `_soul_is_farmable_boss`, real rate
+   25%), not a roaming Hero - the RANDOM-only `_soul_release_rate` wrapper (which pins `boss_chance` to
+   the passed-in 66 default so a coincidental path match is a no-op) can never resolve it to 25. Fixed by
+   having `_wire_difficulty_variants` call the FULL classifier directly (`soul_drop_rate` with the real
+   `boss_chance=25/random_chance=50/placed_chance=66`) instead of the conservative wrapper, for every
+   variant it wires - correct for both this Boss/25 case and the 8 Hero/RANDOM(50) siblings (unaffected,
+   verified below).
+
+**THE DECISIVE VERIFICATION (2026-07-16):** one real full DB build to scratch output (never touched
+`work/`), `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, from the upstream sources + the real Steam base game
+install:
+```
+py tools/build_svc_database.py <sv098i> <sv09> <sv041> <scratch>/Database/SoulvizierClassic.arz <base game database.arz>
+```
+Result: **55,351,210 B, md5 `fd538e0c5f80e5a5212d70d544bb29d3`.**
+`py tools/verify_soul_drop_rates.py <built.arz> --gate` -> **EXIT 0**:
+- **0 unwaived LAST-WRITER mismatches** (18 pre-existing exceptions visibly waived, matching
+  `_KNOWN_EXCEPTIONS` exactly).
+- **RANDOM_HERO records actually shipping at 50%: 377** - the EXACT intended count from section 3 above,
+  now true of the real build's OUTPUT (not a replayed model).
+- **TESTING mode (real forcer over the real arz): 854 enabled soul-droppers -> 100, 426 gated stay 0: OK**
+  - byte-identical proof the release/testing knobs stay independent.
+- 16/16 negative/spot tests + override-veto negtest (5/5) + the planted post-wire-stomp negative test all
+  **OK** (the stomp negtest is the proof the gate catches the round-1 regression class on THIS arz).
+- **souls contract**: `run_contracts.py --only souls --arz <built.arz>` -> **GATE PASS, 0 violations**
+  (10 contracts).
+
+**Record-diff, isolating THIS SESSION's fix (before this session's routing/classification/bandari fixes
+vs the final decisive build, both built from the identical upstream+base inputs):** exactly **16
+records** changed, **every one a single-field `chanceToEquipFinger2` change, nothing else**:
+- **13 corrected 66 -> 50** (previously-mis-timed RANDOM roamers, bug #1 above): `um_phagia_34`,
+  `um_phagia_44`, `um_dapoyan_42`, `um_indrajit_42`, `um_vidja_43`, `um_frost_36`, `um_rong_40`,
+  `um_vuji_41`, `um_yama_38`, `um_inkeyes2_45`, `um_rocksting_29`, `hero_sehr'tunkah_30`,
+  `hero_sehr'tunkah_36`.
+- **3 corrected 50 -> 66** (bug #2 above, the blank-classification regression): `n_mega`, `n_emgiec`,
+  `n_vio`.
+- `boss_terracottamage_bandari_40` (bug #3) confirmed **unchanged end-to-end at 25%** in both the
+  before-this-session and final builds (a transient regression appeared and was fixed WITHIN this
+  session's own intermediate builds, never in a build anyone else saw).
+
+**Record-diff vs the last pre-b59 baseline (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+md5 `eb8bc377...`, build41, predates the entire soul-drop-50 feature):** 539 modified + 6 added. Of the
+539, **380 touch ONLY `chanceToEquipFinger2`** (the 377 intended RANDOM cuts plus a small number of
+farmable/placed records whose rate is set by this same feature's code paths but whose value coincides
+with their pre-existing rate under the naive path heuristic - not a regression, see section 6/`_KNOWN_
+EXCEPTIONS`); the remaining ~159 modified records + 6 added touch UNRELATED fields entirely (`bitmap`,
+`itemSkillAutoController`, `skillUpBitmapName`/`skillDownBitmapName`, granted-skill/FX fields, new
+`um_tombguardian_soul_*`/`q_bloodtoxeus_lone_50` records) - build41 predates several other,
+already-merged content waves (Tomb Guardian de-soul, Toxeus encounter suite, mastery UI/damage-display
+fixes, etc.), so this comparison is a general content diff, not an isolated soul-drop-50 diff; the
+isolated diff above (16 records, all `chanceToEquipFinger2`) is the one that actually bounds THIS
+session's change.
+
+**Files touched this round:** `tools/create_uber_souls.py` (routes through the shared split),
+`tools/apply_svc_patches.py` (`_soul_release_rate` choke point + real-classification fix + every
+soul-wiring helper routed + the 3 pool-ordering fixes + the difficulty-variant full-classifier fix),
+`tools/verify_soul_drop_rates.py` (LAST-WRITER rewrite + `_KNOWN_EXCEPTIONS` + stomp negative test).

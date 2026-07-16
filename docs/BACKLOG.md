@@ -1,21 +1,40 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - IMPLEMENTED,
-> dry-run verified vs golden b33c5a44, awaiting vet + a real finalization build.** Branch `feat/soul-drop-50`.
-> `tools/build_svc_database.py::wire_souls_to_monsters` now SPLITS the old single Hero/Quest `rare_chance=66`
-> class by **roster-derived spawn provenance** (no hardcoded names): **RANDOM** roaming hero roster (in a
-> base-game `records\proxies*` `name*/nameChampion*` slot - the SV uber tier `um_*` + `hero_*/us_*/u_*`) ->
-> **50**; **PLACED** apex ubers (module-authored + `drxmap\proxy*` placement) + **QUEST** story bosses ->
-> **66** UNCHANGED; **FARMABLE act Boss** -> **25** UNCHANGED; unreferenced -> 66 (safe default, never
-> over-cut). **Dry-run replay (`tools/verify_soul_drop_rates.py --gate`, EXIT 0): exactly 377 records go
-> 66->50, nothing else moves** (270 `um_`, 48 `hero_`, 32 `us_`, ...). **TESTING mode byte-unchanged**
-> (real `_force_100_pct_soul_drops` over both states: 854 soul-droppers->100, 426 gated stay 0 incl. Legion
-> zeroed stages) - split is RELEASE-ONLY. **Build-order-stable:** all 383 in-pool candidates referenced by
-> >=1 BASE-GAME pool (present at wire-time), 0 module-only. **ZERO placed apex uber over-cut** (Vashkarr/
-> Broodmother/Enslaver=66, BloodToxeus=25, Tantalus=0, HadesMarshal=66). ⚠️ **WILL-VETO knobs**
-> `_SOUL_PLACED_OVERRIDE`/`_SOUL_RANDOM_OVERRIDE` (empty=pure roster verdict). ⚠️ **Sensitive cuts flagged
-> for veto:** `um_legion_28` (directive OKs it), `um_toxeus_21` ("Main Toxeus"; superboss `um_bloodtoxeus_99`
-> untouched at 25), `qm_aniketos_9/10/11`. souls contract GATE PASS (0 viol). Report:
-> `docs/reports/b59_drop_rate_50.md`. **Finalization build (both modes, record-diff vs golden) deferred to vet/merge (no heavy build this lane).**
+> 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 2 FIX
+> COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. Round-1 NO-GO (vet):
+> `create_uber_souls.py` (called AFTER `wire_souls_to_monsters`) hardcoded `chanceToEquipFinger2=66.0`
+> unconditionally for its brand-new souls, silently re-widening 21 of the 377 intended cuts - the dry-run
+> replay gate couldn't see a DIFFERENT function clobbering wire_souls' output. **FIX:** every soul-wiring
+> helper in `apply_svc_patches.py` + `create_uber_souls.py` now routes its PLACED-default chance through
+> ONE choke point (`_soul_release_rate` -> `build_svc_database.soul_drop_rate()`/`soul_spawn_provenance_
+> sets()`, the same single source of truth); `verify_soul_drop_rates.py` REWRITTEN to LAST-WRITER
+> semantics (loads a REAL BUILT arz, checks the FINAL actual rate against the classifier, fails loud if
+> pointed at a bare golden arz, `_KNOWN_EXCEPTIONS` visibly waives ~15 pre-existing hand-tunings, a
+> planted post-wire-stomp negative test proves the gate catches the round-1 regression class). **Round-2
+> continuation (this session) found + fixed 2 more instances of the SAME bug class, both invisible to any
+> replay:** (1) `_place_orphan_monsters`/`_wire_difficulty_variants`/Blood-Sisters-loop called
+> `_add_monster_to_pools` (which proves RANDOM) AFTER reading pool membership to set the rate - reordered
+> to pool-first, and made the reassert unconditional (not just on newly-created souls) so a
+> pre-existing-soul record (e.g. `um_frost_36`, wired by an earlier patch before ever being pooled) also
+> gets reconsidered; (2) `_soul_release_rate` passed a blank classification instead of the record's real
+> `monsterClassification`, so a `Quest`-classified pool-referenced record (the zzdev warband souls
+> `n_mega`/`n_emgiec`/`n_vio`) could be wrongly cut to RANDOM(50) - fixed to read the real field; (3)
+> `_wire_difficulty_variants`'s farmable-Boss variant (`boss_terracottamage_bandari_40`, real rate 25)
+> now uses the FULL classifier (real boss/random/placed chances) instead of the RANDOM-only wrapper.
+> **THE DECISIVE VERIFICATION:** one real full DB build (scratch output, `PYTHONHASHSEED=0
+> SVC_RELEASE_DROPS=1`, upstream sources + real Steam base game) -> **55,351,210 B, md5
+> `fd538e0c5f80e5a5212d70d544bb29d3`**. `verify_soul_drop_rates.py --gate` on that real arz -> **EXIT 0,
+> 0 unwaived mismatches** (18 documented pre-existing waived), **RANDOM_HERO records shipping at 50%:
+> 377** (the exact intended count, now true of the real OUTPUT not a model), **TESTING mode unchanged**
+> (854 soul-droppers->100, 426 gated stay 0), all spot/override/stomp negative tests OK. **souls contract
+> GATE PASS (0 viol).** Isolated record-diff of THIS session's fix (before-fix vs final build, same
+> inputs): **exactly 16 records, all single-field `chanceToEquipFinger2`** - 13 corrected 66->50
+> (`um_phagia_34/44`, `um_dapoyan_42`, `um_indrajit_42`, `um_vidja_43`, `um_frost_36`, `um_rong_40`,
+> `um_vuji_41`, `um_yama_38`, `um_inkeyes2_45`, `um_rocksting_29`, `hero_sehr'tunkah_30/36`), 3 corrected
+> 50->66 (`n_mega`/`n_emgiec`/`n_vio`), `boss_terracottamage_bandari_40` confirmed unchanged at 25
+> end-to-end. ⚠️ **WILL-VETO knobs** `_SOUL_PLACED_OVERRIDE`/`_SOUL_RANDOM_OVERRIDE` (empty=pure roster
+> verdict). ⚠️ **Sensitive cuts flagged for veto:** `um_legion_28` (directive OKs it), `um_toxeus_21`
+> ("Main Toxeus"; superboss `um_bloodtoxeus_99` untouched at 25), `qm_aniketos_9/10/11`. Report:
+> `docs/reports/b59_drop_rate_50.md` section 10. Ready for integration/merge.
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has
