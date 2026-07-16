@@ -1,6 +1,42 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 2 FIX
-> COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. Round-1 NO-GO (vet):
+> 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
+> COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
+> session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction
+> confirmed) found ONE more unintended regression of the SAME bug class: `boss_charon_39` (Charon Form 1
+> donor) shipped at **25%** instead of its true, both-baselines-confirmed **66%** (build40 golden AND the
+> build41 pre-b59 baseline both show 66) - the round-2 report's "0 records changed in any other class or
+> direction" / "coincides with pre-existing rate, not a regression" claims were FALSE for this one record.
+> **Root cause:** `create_uber_souls.py` mints `boss_charon_39`'s own soul via
+> `MANUAL_OVERRIDES['boss_charon']` but its rate call (`soul_drop_rate(...)`, ~line 654) is NOT routed
+> through the `_soul_release_rate` choke point (only `apply_svc_patches.py`'s helpers are, despite that
+> function's docstring claiming create_uber_souls.py routes through it too) - so the naive `"\boss_"`
+> path heuristic misclassifies this PLACED encounter as a farmable Act boss and cuts it to 25. The
+> pre-existing Charon block in `_wire_missing_boss_souls` only ever re-asserted `_41`/`_43` to 66, never
+> `_39` itself (never needed before, since pre-drop-50 `create_uber_souls` hardcoded 66 unconditionally).
+> Swept all ~27 other `boss_`-prefixed `create_uber_souls.py` `MANUAL_OVERRIDES` entries against the
+> golden: Charon is the ONLY regression (every genuine farmable-boss entry already has its real upstream
+> soul wired before `create_uber_souls` runs, so its unpinned call never executes for them; the other 2
+> `svc_uber`+`boss_`-path matches, Aithon/`bossarena.py` and Menoetes/`four_generals.py`, are later
+> REGISTRY modules that correctly route `_create_soul(..., drop_rate=66.0)` through the pinned choke
+> point regardless of any earlier miscalculation). **FIX:** re-assert `boss_charon_39` to 66 alongside
+> `_41`/`_43` in the same block (unconditional, no `existing` guard); added the matching
+> `_KNOWN_EXCEPTIONS` waiver. **GATE HARDENING (closes the MEDIUM finding mechanically):** new
+> `_check_intended_diff_vs_golden()` in `verify_soul_drop_rates.py`, wired into `main()`, diffs the real
+> built arz directly against the build40 golden and asserts every `chanceToEquipFinger2` delta is EITHER
+> the intended 66->50 RANDOM cut OR a documented `_KNOWN_EXCEPTIONS` waiver - closes the "classifier
+> itself produces the wrong value so LAST-WRITER never flags it" blind spot permanently, not just for
+> Charon. **RE-VERIFICATION:** new decisive build (scratch, `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1
+> SVC_NO_CACHE=1`) -> **55,351,216 B, md5 `e11ef4738f955fccadcde8353e3e2933`**.
+> `verify_soul_drop_rates.py --gate` -> **EXIT 0, 0 unwaived mismatches** (19 documented, incl. the new
+> `boss_charon_39` waiver), `boss_charon_39/_41/_43` all 66. **NEW hardening check:
+> intended-diff-vs-golden = exactly 377 deltas, 377 intended, 0 UNINTENDED** (the literal proof the vet
+> demanded). RANDOM_HERO@50 still exactly 377 (unchanged by this fix). TESTING mode unchanged (854->100,
+> 426 gated stay 0). souls contract GATE PASS (0 viol). Cross-checked directly against build41
+> (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, md5 `eb8bc377...`):
+> `boss_charon_39/_41/_43` all read 66 there too. Report: `docs/reports/b59_drop_rate_50.md` section 11
+> (+ corrections to sections 3/10). Ready for re-vet/integration.
+>
+> **ROUND 2 (superseded by round 3 above, kept for history):** Round-1 NO-GO (vet):
 > `create_uber_souls.py` (called AFTER `wire_souls_to_monsters`) hardcoded `chanceToEquipFinger2=66.0`
 > unconditionally for its brand-new souls, silently re-widening 21 of the 377 intended cuts - the dry-run
 > replay gate couldn't see a DIFFERENT function clobbering wire_souls' output. **FIX:** every soul-wiring
@@ -34,7 +70,7 @@
 > end-to-end. ⚠️ **WILL-VETO knobs** `_SOUL_PLACED_OVERRIDE`/`_SOUL_RANDOM_OVERRIDE` (empty=pure roster
 > verdict). ⚠️ **Sensitive cuts flagged for veto:** `um_legion_28` (directive OKs it), `um_toxeus_21`
 > ("Main Toxeus"; superboss `um_bloodtoxeus_99` untouched at 25), `qm_aniketos_9/10/11`. Report:
-> `docs/reports/b59_drop_rate_50.md` section 10. Ready for integration/merge.
+> `docs/reports/b59_drop_rate_50.md` section 10 (superseded by round 3 above - see top of this entry).
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has

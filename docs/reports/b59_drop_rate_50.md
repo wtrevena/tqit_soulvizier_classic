@@ -276,3 +276,100 @@ session's change.
 `tools/apply_svc_patches.py` (`_soul_release_rate` choke point + real-classification fix + every
 soul-wiring helper routed + the 3 pool-ordering fixes + the difficulty-variant full-classifier fix),
 `tools/verify_soul_drop_rates.py` (LAST-WRITER rewrite + `_KNOWN_EXCEPTIONS` + stomp negative test).
+
+---
+
+## 11. ROUND 3 - vet NO-GO fix (2026-07-16, `boss_charon_39` 66->25 regression)
+
+**CORRECTION to section 10 above:** the round-2 report's claims "**380 touch ONLY `chanceToEquipFinger2`**
+... whose value coincides with their pre-existing rate under the naive path heuristic - **not a
+regression**" and section 3's "**nothing else moves**" / "**0 records changed in any other class or
+direction**" were **FALSE for one record**: `boss_charon_39` (Charon Form 1 donor) went **66.0% -> 25.0%**
+in the round-2 decisive build (md5 `fd538e0c...`), an unintended, undocumented, silent regression - it
+did NOT "coincide with its pre-existing rate" (66, not 25) and it was never a farmable Act boss. An
+independent adversarial re-vet reproduced the round-2 build byte-identically and caught it by diffing
+against BOTH the build40 golden (`b33c5a44...`) and the build41 pre-b59 baseline
+(`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, md5 `eb8bc377...`) - both show `boss_charon_39`
+at 66, only this feature's code changes it.
+
+**Root cause:** `create_uber_souls.py` mints `boss_charon_39`'s own soul via `MANUAL_OVERRIDES['boss_charon']`
+(this record has no fuzzy-matchable upstream soul at `wire_souls_to_monsters` time, so `create_uber_souls`
+creates a fresh one under `svc_uber/boss_charon_soul_{n,e,l}.dbr`). Its rate-setting call
+(`soul_drop_rate(name, classification, ...)`, `create_uber_souls.py` ~line 654) is **NOT** routed through
+the `_soul_release_rate` choke point that every helper *in `apply_svc_patches.py`* uses (the round-2
+report's own docstring for `_soul_release_rate` claims create_uber_souls.py routes through it too - it
+does not; that claim was aspirational, not code). It calls `soul_drop_rate()` with the bare function
+defaults (`boss_chance=25.0`), so `_soul_is_farmable_boss()`'s naive `"\boss_"` path-substring heuristic
+misclassifies this **PLACED/dedicated** Golden Bough encounter as a **farmable Act boss** and cuts it to
+25 - the same failure genus as the round-1 NO-GO (an unaccounted last-writer drop-rate value), just one
+call site deeper. The pre-existing Charon block in `apply_svc_patches._wire_missing_boss_souls` (which
+runs AFTER `create_uber_souls`) only ever re-wires the **other two** variants (`boss_charon_41`/`_43`) to
+66 using `boss_charon_39` as the soul donor - it never re-asserted `_39`'s OWN rate, because in the
+pre-drop-50 code `create_uber_souls` hardcoded 66 unconditionally so `_39` never needed correcting. The
+LAST-WRITER gate could not catch this because it uses `soul_drop_rate()` as its own oracle: for
+`boss_charon_39` the (buggy) last writer set 25 and the naive classifier ALSO says 25 - no mismatch, a
+structurally invisible false-green (vet MEDIUM finding).
+
+**A full sweep of every OTHER `boss_`-prefixed `MANUAL_OVERRIDES` entry in `create_uber_souls.py` (~27
+names: Hydra, Typhon, Gorgons, Manticore, Scarabaeus, Talos, Xiao, Minotaurlord, Spartacentaur, Alastor,
+Gargantuanyeti, Barmanu, Yaoguai, Aktaios, Ormenos, Megalesios, Deino/Enyo/Pemphredo, Skeletaltyphon,
+Arachne, Sandwraithlord, Cyclops, Chimaera, Scorposking, Dragonliche) against the build40 golden confirmed
+**Charon is the only regression**: every genuinely-farmable Act boss in that list already carries its
+real, upstream-named soul (wired earlier by `wire_souls_to_monsters`'s fuzzy match or an explicit
+`_wire_missing_boss_souls` block) BEFORE `create_uber_souls` runs, so `create_uber_souls`'s own
+soul-creation code never executes for them (the `names_with_souls` pre-scan skips them) and its
+unpinned rate call is moot. The two other `svc_uber`-sourced + `boss_`-path-matching records
+(`boss_satyrshaman_55`/"Aithon, the Ember-Crowned" and `svc_um_hadesmarshal_80`/"Menoetes") are both
+module-authored apex encounters (`tools/patches/bossarena.py`, `tools/patches/four_generals.py`) that run
+as REGISTRY modules - genuinely the LAST writer, AFTER `create_uber_souls` - and both call `_create_soul`
+with `drop_rate=66.0`, which correctly routes through the pinned `_soul_release_rate` choke point; any
+wrong intermediate value `create_uber_souls` might set for them is overwritten by their own module
+regardless. `boss_charon_39` has no such later module - it is uniquely exposed.
+
+**Fix (small, targeted, per the vet's own suggestion):** `apply_svc_patches.py`'s Charon block now
+re-asserts `boss_charon_39`'s own rate to 66 alongside `_41`/`_43`, unconditionally (no `if not existing`
+guard - `_39` always already carries its `create_uber_souls`-minted loot), routed through the same
+`_wire_soul`/`_soul_release_rate` pinned path the 41/43 loop already used. `verify_soul_drop_rates.py`'s
+`_KNOWN_EXCEPTIONS` gained a `boss_charon_39: 66.0` waiver (matching the pre-existing `_41`/`_43`
+entries) so the LAST-WRITER gate's own naive-classifier oracle does not newly flag the correct value.
+
+**Gate hardening (closes the MEDIUM finding mechanically, not just for this one record):**
+`verify_soul_drop_rates.py` gained `_check_intended_diff_vs_golden()` - a NEW invariant, wired into
+`main()`, that diffs the real built arz's `chanceToEquipFinger2` directly against the pre-drop-50 golden
+build40 arz (`local/baseline_build40.arz` if present locally; SKIPS with a printed note, not a failure,
+if the local build artifact is absent on the running machine) and asserts every delta is EITHER the
+intended 66->50 RANDOM_HERO cut OR a documented `_KNOWN_EXCEPTIONS` waiver - anything else now fails the
+gate loud, mechanically, instead of requiring a human to re-derive and hand-diff against the golden the
+way this round's vet did. This is the permanent fix for "the classifier itself produces the wrong value
+so no LAST-WRITER mismatch is ever raised" class of bug.
+
+**THE DECISIVE RE-VERIFICATION (2026-07-16, round 3):** one real full DB build to scratch output (never
+touched `work/`), `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_NO_CACHE=1`, identical upstream+base inputs:
+
+Result: **55,351,216 B, md5 `e11ef4738f955fccadcde8353e3e2933`** (differs from round 2's `fd538e0c...`
+by exactly the Charon fix, as expected).
+
+`py tools/verify_soul_drop_rates.py <built.arz> --gate` -> **EXIT 0**:
+- **0 unwaived LAST-WRITER mismatches** (19 documented exceptions visibly waived - the prior 18 plus the
+  new `boss_charon_39` entry - none silently absorbed).
+- **`boss_charon_39` now ships at 66.0%**, matching `_41`/`_43` (both baselines - build40 golden AND
+  build41 - also show 66; no other value was ever intended).
+- **Intended-diff-vs-golden (the new hardening check, run explicitly against `local/baseline_build40.arz`
+  since this session's worktree has no local copy of its own): exactly 377 `chanceToEquipFinger2` deltas
+  vs the build40 golden, 377 intended (the RANDOM_HERO 66->50 cut), 0 UNINTENDED.** This is the literal
+  "intended-only diff, exactly the 377 66->50 set, 0 other transitions" the vet mandated - now proven, not
+  asserted.
+- **RANDOM_HERO records shipping at 50%: 377** (unchanged from round 2 - this fix touches zero RANDOM
+  records).
+- **TESTING mode (real forcer over the real arz): 854 enabled soul-droppers -> 100, 426 gated stay 0: OK**
+  - identical to round 2, proving the release/testing knobs stayed independent through this fix too.
+- 16/16 negative/spot tests + override-veto negtest (5/5) + the planted post-wire-stomp negative test all
+  **OK**.
+- Cross-checked directly against the build41 baseline (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+  md5 `eb8bc377...`): `boss_charon_39/_41/_43` all read 66.0 there too, confirming 66 (not 25) was always
+  the intended, shipped value this fix restores.
+
+**Files touched this round:** `tools/apply_svc_patches.py` (Charon block re-asserts `boss_charon_39` to
+66 alongside `_41`/`_43`), `tools/verify_soul_drop_rates.py` (`boss_charon_39` `_KNOWN_EXCEPTIONS` entry +
+new `_check_intended_diff_vs_golden()` hardening check wired into `main()`), this report (section 11 +
+corrections above).

@@ -177,7 +177,84 @@ _KNOWN_EXCEPTIONS = {
     'boss_charon_43': (66.0,
         'pre-existing module-set Boss@66 (Charon Form1/3), orthogonal to '
         'the RANDOM/PLACED split'),
+    'boss_charon_39': (66.0,
+        'pre-existing module-set Boss@66 (Charon Form1 donor; round-2 vet '
+        'NO-GO fix re-asserts 66 alongside 41/43 - create_uber_souls mints '
+        'this record\'s own soul via an unpinned soul_drop_rate() call, so '
+        'the naive "\\boss_" path heuristic would otherwise misclassify this '
+        'PLACED Golden Bough encounter as a farmable Act boss and cut it to '
+        '25, desyncing it from 41/43), orthogonal to the RANDOM/PLACED split'),
 }
+
+
+# ── GOLDEN pre-drop-50 build (build40, md5 b33c5a44), used ONLY by the
+# intended-diff hardening check below. This is a big local build artifact
+# (gitignored, like every other .arz) - the check degrades to a printed
+# SKIP (not a failure) when it is not present on the machine running the
+# gate, so the gate battery still runs standalone/CI-clean elsewhere.
+_GOLDEN_MD5 = 'b33c5a447f3a8ca652c14f78d4ad1dd4'
+_GOLDEN_CANDIDATES = [HERE.parent / 'local' / 'baseline_build40.arz']
+
+
+def _find_golden():
+    for p in _GOLDEN_CANDIDATES:
+        if p.exists():
+            return p
+    return None
+
+
+def _check_intended_diff_vs_golden(recs, golden_path):
+    """HARDENING for the MEDIUM gate-blindness finding (vet round 2 on
+    feat/soul-drop-50): _check_last_writer() above uses soul_drop_rate()
+    itself as its own oracle, so it is structurally BLIND to a value the
+    classifier produces that is nonetheless an unintended regression against
+    the shipped baseline - e.g. boss_charon_39 66->25: the naive "\\boss_"
+    path heuristic says farmable-boss/25, the arz also has 25, so no
+    LAST-WRITER mismatch is ever raised, even though the golden (and the
+    design) says this PLACED encounter should stay 66. That bug shipped once
+    already (the round-1 create_uber_souls.py NO-GO) and was only caught by a
+    human diffing the build against golden by hand - this makes that diff a
+    permanent, mechanical part of the gate.
+
+    Diffs the REAL built arz's chanceToEquipFinger2 directly against the
+    pre-drop-50 golden build40 arz (which already ran the full pipeline, so
+    it is a fair record-for-record comparison). Every delta must be EITHER
+    the intended 66->50 RANDOM_HERO cut, OR a documented _KNOWN_EXCEPTIONS
+    divergence (the same waiver list _check_last_writer uses) - anything
+    else is an unintended, silent regression and fails loud."""
+    if golden_path is None:
+        print("\n  (intended-diff-vs-golden check SKIPPED: no local golden arz "
+              f"found - looked for {[str(p) for p in _GOLDEN_CANDIDATES]})")
+        return []
+    golden_db = ArzDatabase.from_arz(golden_path)
+    golden_recs, _, _ = _gather(golden_db)
+    golden_chance = {name: cur for name, cls, cur, exp, k in golden_recs}
+    cur_chance = {name: cur for name, cls, cur, exp, k in recs}
+    cur_klass = {name: k for name, cls, cur, exp, k in recs}
+
+    fails = []
+    diffs = 0
+    for name, gcur in golden_chance.items():
+        ccur = cur_chance.get(name)
+        if ccur is None or abs(gcur - ccur) < 0.01:
+            continue
+        diffs += 1
+        is_intended_cut = (abs(gcur - 66.0) < 0.01 and abs(ccur - 50.0) < 0.01
+                           and cur_klass.get(name) == 'RANDOM_HERO(50)')
+        bn = bsd._soul_record_basename(name)
+        exc = _KNOWN_EXCEPTIONS.get(bn)
+        is_documented = exc is not None and abs(ccur - exc[0]) < 0.01
+        if is_intended_cut or is_documented:
+            continue
+        fails.append(
+            f"UNINTENDED golden-diff: {name} golden(build40)={gcur}% -> "
+            f"built={ccur}% - not the intended 66->50 RANDOM cut and not a "
+            f"documented _KNOWN_EXCEPTIONS waiver: a silent regression "
+            f"against the pre-drop-50 baseline")
+    print(f"\n  Intended-diff-vs-golden ({golden_path.name}, md5 expected "
+          f"{_GOLDEN_MD5}): {diffs} chanceToEquipFinger2 deltas vs golden, "
+          f"{diffs - len(fails)} intended/documented, {len(fails)} UNINTENDED")
+    return fails
 
 
 def _check_last_writer(recs):
@@ -247,6 +324,13 @@ def main(argv):
 
     # ---- INVARIANT: LAST-WRITER check on the real arz ----
     failures, waived = _check_last_writer(recs)
+
+    # ---- INVARIANT (MEDIUM hardening, vet round 2): intended-only diff vs golden ----
+    print("\n" + "=" * 78)
+    print("INTENDED-DIFF-VS-GOLDEN (hardens the LAST-WRITER check's blind spot)")
+    print("=" * 78)
+    failures.extend(_check_intended_diff_vs_golden(recs, _find_golden()))
+
     if waived:
         print("\n" + "=" * 78)
         print(f"WAIVED (documented pre-existing exceptions, not this directive's scope): {len(waived)}")

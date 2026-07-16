@@ -1550,7 +1550,24 @@ def _wire_missing_boss_souls(db):
                 if not existing or existing == '' or existing == 0:
                     _wire_soul(name, charon_souls, 66.0)
                     wired += 1
-        print(f"  Charon Form 1 (41/43) soul wired: {wired} records (soul: {charon_souls[0].split(chr(92))[-1]})")
+        # boss_charon_39 itself (vet round 2 NO-GO): create_uber_souls.py mints
+        # this record's own soul via MANUAL_OVERRIDES['boss_charon'] BEFORE this
+        # function runs, but its rate call there is NOT routed through the
+        # pinned _soul_release_rate choke point (only this module's helpers
+        # are) - it calls soul_drop_rate() with the bare function defaults, so
+        # _soul_is_farmable_boss()'s naive "\boss_" path heuristic misclassifies
+        # this PLACED/dedicated Golden Bough encounter as a farmable Act boss
+        # and cuts it 66->25. The 41/43 loop above only ever re-wires the OTHER
+        # two variants, so _39 was never re-asserted and shipped at 25 - a
+        # last-writer desync against 41/43 (which this same block explicitly
+        # forces to 66). REPLACE unconditionally (no `if not existing` guard -
+        # _39 already carries its create_uber_souls-minted loot every time).
+        for name in list(db.record_names()):
+            nl = name.lower()
+            if 'boss_charon_39' in nl:
+                _wire_soul(name, charon_souls, 66.0)
+                wired += 1
+        print(f"  Charon Form 1 (39/41/43) soul wired: {wired} records (soul: {charon_souls[0].split(chr(92))[-1]})")
         total += wired
     else:
         print("  WARNING: Could not find Charon_39 soul paths to wire Charon 41/43")
