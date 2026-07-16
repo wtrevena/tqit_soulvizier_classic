@@ -1,4 +1,34 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🧺 **B65 LOW-LIFT BATCH (round 1, 2026-07-15, `feat/lowlift-wave`, off main `c8883d6`) -
+> 5/5 DONE, dry-run verified, NOT built/deployed.** Full detail: `docs/reports/b65_lowlift_wave.md`.
+> **(1) SVAERA-ADOPT 5-set re-link** (`tools/patches/svaera_sets.py`): git-blame gate cleared (NOT
+> an intentional strip - the 13 items ship straight from SV098i upstream, never had `itemSetName`;
+> the 5 `drxset0{49,51,52,53,058}` grouping records are SVAERA's own invention, never grafted).
+> Authored the 5 sets (SVAERA's exact bonus fields ported verbatim), minted `tagSetName049/051/
+> 052/053/058` (our own numbering convention), re-linked `itemSetName` on the 13 shipped items.
+> **(2) Two relics**: ground-truthed "the magenta turtle shell" = the proven Common `ItemCharm`
+> Turtle Shell donor pattern (already cloned twice: D10 Emberscale, C5 Ereban Heartstone); "magenta"
+> = the engine's Class=ItemCharm tooltip color, not a `{^F}` tag. Cloned it a third time for
+> **"The Reveler's Ruse"** (Satyr Archer family `ar_archer_01-06`, bow-only, attack-speed+%pierce,
+> `tools/patches/turtleshell_relics.py`). Dune Fiend **already has one** (Fiend Carapace, amgoz1
+> SV098i-original) - verified FIRST per the backlog's own conditional; nothing new authored, a
+> regression guard added instead. **(3) B-TOXEUS-STALKER-1**: Legendary-only fixed Endless Hunt
+> (`tools/patches/toxeus_legendary_stalker.py`, the proven Hydra pool1/poolEpic1-empty +
+> poolLegendary1 pattern, ground-truthed against `minobossproxy_aniketos`) reusing `um_toxeus_
+> hunt_99` verbatim (same monster/soul as the roaming Hunt); map-placed in Hades Palace
+> `hadespalace_floor04_04.lvl` local(38,45) (the least-crowded floor), surveyed on-mesh
+> clr=100%/comp#1, dry-run-injected into a copy (navmesh byte-identical, +1 instance).
+> **(4) Double-soul rulings**: Possessed Boar + Lillued fixed terminal-only (typo-twin dup /
+> empty-husk soul retired, `tools/patches/double_soul_rulings.py`); Charon 39/41/43 + Hades 54
+> left UNTOUCHED (byte-identical snapshot asserted); `legion_soul_stages`'s distinct-soul roster
+> shrank 6->4 as designed. **(5) carrionlord**: `skill_quality.py`'s REASSIGN now sets
+> controller=None directly (was ON_ATTACK, silently overridden later by souls_quality's manual-
+> cast law) - both modules agree at the source now, zero collision, output byte-identical.
+> Combined verification: aggregate record-diff +16/-6/~21 across the 4 DB modules; every module's
+> `verify()` + the monolith's `_verify_mod_spawn_proxies_eligible` + `legion_soul_stages.verify()`
+> all PASS on the combined db; `validate_soul_augments` exit 0 clean; `validate_summon_pets`'s
+> BROKEN-entry list is byte-identical to the pristine golden baseline (0 new regressions, all
+> pre-existing). `_check_registry.py` OK (20 modules). Rides the next integration build.
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has
@@ -2334,7 +2364,12 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   "you are good to ship the rant scroll" - screed + scroll names ship as-is; only the Part C Endless
   Hunt name/desc remain under the standing amgoz1 sign-off). Parchment orphan RESOLVED (retired).
 - **B-TOXEUS-STALKER-1 - Legendary-only Toxeus stalker (fixed placement, Hydra pattern) -
-  APPROVED-BY-WILL-2026-07-14, QUEUED (not scheduled).** Will greenlit a proper strictly-Legendary-only
+  IMPLEMENTED 2026-07-15 on `feat/lowlift-wave` (`tools/patches/toxeus_legendary_stalker.py` +
+  `build_section_surgery.py` B65_TOXEUS_STALKER_SPECS; see `docs/reports/b65_lowlift_wave.md`
+  item 3). Placed at Hades Palace `hadespalace_floor04_04.lvl` local(38,45); dry-run verified
+  (DB spawn-eligibility gate + map injection into a copy, navmesh byte-identical); NOT yet built/
+  deployed - rides the next integration build. Historical spec below.**
+  Will greenlit a proper strictly-Legendary-only
   Toxeus stalker as a distinct FIXED encounter (verbatim: "lets add that to the backlog tho"). Ship it
   via the PROVEN base-game **Hydra pattern** (`docs/reports/el_boss_audit.md`): a Legendary-gated proxy
   whose pool has `pool1` EMPTY + `poolLegendary1 = <a single-member um_toxeus_hunt_99 pool>` so the
