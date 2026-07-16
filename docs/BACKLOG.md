@@ -2894,6 +2894,15 @@ byte-identical across the two build42 DB runs). Deployed DEV. NOT pushed to Stea
 OPEN WILL Qs: legion terminal 66-vs-50, Munderizer over-band, Shadow Link malus veto,
 murderbossroom return NPC (map lane).
 
+
+## WILL RULINGS 2026-07-16 (post-build42)
+- LEGION TERMINAL @66: fine for now. QUEUED: fold 'death-transform terminals of RANDOM chains
+  inherit the 50 rate' into the NEXT SOULS PASS (with the 155 documented minor gaps + 79
+  drop-gated souls + crowboar summon controller polish).
+- MUNDERIZER: over-band 350 life damage BLESSED as intentional (joke item, forgoes utility);
+  keep; extend the verify() band-cap carve-out note.
+- SHADOW LINK: large radius (36) KEPT incl. the malus spread; Will-approved final.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
