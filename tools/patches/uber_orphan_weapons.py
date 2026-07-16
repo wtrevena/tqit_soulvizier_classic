@@ -1,4 +1,27 @@
-"""uber_orphan_weapons - B66 UBER FORMULA EXPANSION (round 1).
+"""uber_orphan_weapons - B66 UBER FORMULA EXPANSION (round 2).
+
+ROUND 2 (independent adversarial vet, commit d754359): fixes the vet's one HIGH +
+one MEDIUM + three LOW/nit findings. (1) HIGH - Ten Suns' Wrath (Di Jun's Pride)
+was ~2.3x its only bow sibling (Stormbringer, 145-160 phys) and the single
+highest raw-damage weapon in the entire supra tier, contradicting the report's
+"none exceed the strongest sibling" claim; RETUNED to the sibling's own band
+(145-160 phys, modest flat pierce, fire raised to lean into the sun-god
+identity) rather than waiting on a live design call, since it is a straight
+band-compliance fix with no loss of identity. (2) MEDIUM - donor fields were
+copied verbatim then overridden WITHOUT clearing inherited combat stats (unlike
+the N5 template this cites), so a grab-bag of the orphan's original riders
+(negative characterLifeRegen, stray characterStrength/OA, an undocumented
+total-speed slow, etc) bled through; fixed via `_clear_inherited_combat_stats`
+(same offensive*/retaliation*/character* prefix wipe N5 uses), run right after
+build and before `_apply_overrides` on all 14. Two riders (Aquimae, The
+Furies) that legitimately depended on an inherited `offensiveGlobalChance` now
+set it explicitly. (3) LOW - the "verbatim" donor JSON snapshot for Di Jun's
+Pride actually differed from the real base record on 3 fields (a retheme +
+a zeroed modifier + an extra field); the JSON is now genuinely verbatim and the
+intentional sun-projectile retheme is an explicit, documented override instead.
+(4) LOW - Heartpierce/Ripulsar trimmed to the documented supra sword max (160).
+(5) LOW/nit - Munderizer/Sword Fish hidePrefixName/hideSuffixName aligned to 1
+(matches the other 12; no reason for a fixed-name Legendary to differ).
 
 Buffs 14 curated ORPHANED weapon records (docs/reports/orphaned_weapons_curation.md)
 to the DRX "supra" uber-forge tier, cloning the proven `svc_thrown_*` template
@@ -141,7 +164,9 @@ _WEAPONS = [
             'hideSuffixName': 1, 'augmentAllLevel': 1,
             'FileDescription': 'B66 supra sword: Ripulsar',
             'itemNameTag': 'tagSVCwpnRipulsar',
-            'offensivePhysicalMin': 140.0, 'offensivePhysicalMax': 165.0,
+            # ROUND 2 (vet LOW): max trimmed 165->160 - the documented supra
+            # sword ceiling (wep_sword.dbr, 135-160); was +3% over.
+            'offensivePhysicalMin': 140.0, 'offensivePhysicalMax': 160.0,
             'offensivePhysicalModifier': 50.0, 'offensivePierceRatioMin': 25.0,
             'offensiveLifeLeechMin': 60.0, 'offensiveLifeLeechChance': 100.0,
             'offensiveSlowLightningMin': 80.0, 'offensiveSlowLightningModifier': 150.0,
@@ -177,6 +202,12 @@ _WEAPONS = [
             'offensiveSlowManaLeachMin': 90.0, 'offensiveSlowManaLeachDurationMin': 4.0,
             'offensiveSlowManaLeachChance': 100.0, 'offensiveSlowManaLeachGlobal': 1,
             'offensiveSlowManaLeachXOR': 1,
+            # ROUND 2 (vet MEDIUM): the 2 Global-flagged riders above proc off
+            # a shared offensiveGlobalChance - round 1 left this unset and
+            # relied on the donor's inherited value (100, worked by
+            # coincidence); now cleared+re-added explicitly (see
+            # `_clear_inherited_combat_stats`).
+            'offensiveGlobalChance': 100.0,
             'offensiveTotalResistanceReductionPercentMin': 20.0,
             'offensiveTotalResistanceReductionPercentDurationMin': 4.0,
             'characterDexterity': 55.0, 'characterLife': 150.0, 'characterMana': 150.0,
@@ -199,7 +230,9 @@ _WEAPONS = [
             'hideSuffixName': 1, 'augmentAllLevel': 1,
             'FileDescription': 'B66 supra sword: The Unholy Heartpiercer (Heartpierce, ascended)',
             'itemNameTag': 'tagSVCwpnHeartpierce',
-            'offensivePhysicalMin': 150.0, 'offensivePhysicalMax': 175.0,
+            # ROUND 2 (vet LOW): max trimmed 175->160 - the documented supra
+            # sword ceiling (wep_sword.dbr, 135-160); was +9% over.
+            'offensivePhysicalMin': 150.0, 'offensivePhysicalMax': 160.0,
             'offensivePhysicalModifier': 50.0,
             'offensivePierceMin': 40.0, 'offensivePierceMax': 60.0, 'offensivePierceRatioMin': 30.0,
             'offensivePercentCurrentLifeMin': 25.0, 'offensivePercentCurrentLifeGlobal': 1,
@@ -247,8 +280,12 @@ _WEAPONS = [
         tag='tagSVCwpnMunderizer', formula_tag='tagSVCRecipeMunderizer',
         overrides={
             'itemClassification': 'Legendary', 'itemLevel': 65, 'levelRequirement': 65,
-            'itemCostName': _COST, 'numRelicSlots': 1, 'hidePrefixName': 0,
-            'hideSuffixName': 0, 'augmentAllLevel': 1,
+            'itemCostName': _COST, 'numRelicSlots': 1,
+            # ROUND 2 (vet nit): aligned to 1/1 like the other 12 - a
+            # fixed-name Legendary should hide the rolled affix regardless of
+            # whether the name itself changed; no reason found for the
+            # round-1 exception.
+            'hidePrefixName': 1, 'hideSuffixName': 1, 'augmentAllLevel': 1,
             'FileDescription': 'B66 supra staff: The Munderizer (insider egg, unchanged name)',
             'itemNameTag': 'tagSVCwpnMunderizer',
             'offensiveBaseLifeMin': 350.0,
@@ -391,6 +428,11 @@ _WEAPONS = [
             'offensiveSlowPoisonMin': 200.0, 'offensiveSlowPoisonMax': 230.0,
             'offensiveSlowPoisonDurationMin': 4.0, 'offensiveSlowPoisonGlobal': 1,
             'offensiveSlowPoisonXOR': 1,
+            # ROUND 2 (vet MEDIUM): the 2 Global-flagged slows above proc off
+            # a shared offensiveGlobalChance - round 1 left this unset and
+            # relied on the donor's inherited value (100, worked by
+            # coincidence); now cleared+re-added explicitly.
+            'offensiveGlobalChance': 100.0,
             'characterLife': 150.0,
         },
     ),
@@ -406,8 +448,10 @@ _WEAPONS = [
         tag='tagSVCwpnSwordFish', formula_tag='tagSVCRecipeSwordFish',
         overrides={
             'itemClassification': 'Legendary', 'itemLevel': 65, 'levelRequirement': 65,
-            'itemCostName': _COST, 'numRelicSlots': 1, 'hidePrefixName': 0,
-            'hideSuffixName': 0, 'augmentAllLevel': 1,
+            'itemCostName': _COST, 'numRelicSlots': 1,
+            # ROUND 2 (vet nit): aligned to 1/1 like the other 12 (see
+            # Munderizer's note above - same reasoning).
+            'hidePrefixName': 1, 'hideSuffixName': 1, 'augmentAllLevel': 1,
             'FileDescription': 'B66 supra mace: Sword Fish (unchanged name - the joke stands)',
             'itemNameTag': 'tagSVCwpnSwordFish',
             'offensivePhysicalMin': 260.0, 'offensivePhysicalMax': 300.0,
@@ -491,17 +535,39 @@ _WEAPONS = [
             'hideSuffixName': 1, 'augmentAllLevel': 1,
             'FileDescription': "B66 supra bow: Ten Suns' Wrath (Di Jun's Pride, RENAMED - 2 twins)",
             'itemNameTag': 'tagSVCwpnTenSunsWrath',
-            'offensivePhysicalMin': 340.0, 'offensivePhysicalMax': 390.0,
+            # ROUND 2 RETUNE (vet HIGH): the round-1 block (340-390 phys, FLAT
+            # 220-300 pierce, 40-60 fire) made this the single highest raw-
+            # damage weapon in the entire supra tier at ~2.3x the bow class's
+            # only other sibling (Stormbringer, wep_bow.dbr, 145-160 phys),
+            # contradicting the "none exceed the strongest sibling" claim.
+            # Capped physical to the sibling's own band ceiling (145-160 -
+            # matches exactly, does not exceed) and cut the flat pierce rider
+            # down to a modest accent (matching Heartpierce's own pierce
+            # block); fire raised to lean into the "Ten Suns" identity as the
+            # elemental-caster component (matches Phoenix's already-vetted
+            # fire block exactly: 60-90, +70%). Max total flat damage
+            # (160+60+90=310) now sits alongside Phoenix (230+90=320), well
+            # below Omega (292-315) and Last Word (300-360) - no longer the
+            # tier's damage outlier.
+            'offensivePhysicalMin': 145.0, 'offensivePhysicalMax': 160.0,
             'offensivePhysicalModifier': 30.0,
-            'offensivePierceMin': 220.0, 'offensivePierceMax': 300.0, 'offensivePierceRatioMin': 30.0,
-            'offensiveFireMin': 40.0, 'offensiveFireMax': 60.0, 'offensiveFireModifier': 40.0,
-            'characterOffensiveAbility': 100.0, 'characterDexterity': 60.0,
+            'offensivePierceMin': 40.0, 'offensivePierceMax': 60.0, 'offensivePierceRatioMin': 20.0,
+            'offensiveFireMin': 60.0, 'offensiveFireMax': 90.0, 'offensiveFireModifier': 70.0,
+            'characterOffensiveAbility': 80.0, 'characterDexterity': 55.0,
             # Di Jun's Pride's OWN base-game record carries a dead dropSoundWater
             # ref ('Records\Sounds\SoundPak\ItemsWaterMdDropPak.dbr', resolves
             # nowhere - a pre-existing vanilla data slip, cosmetically inert,
             # same category as the 2 documented supra dead-refs). Not propagated:
             # repointed to the resolving base-game water-drop sound instead.
             'dropSoundWater': r'records\sounds\soundpak\items\watersmdroppak.dbr',
+            # ROUND 2 (vet LOW): the donor JSON snapshot is now genuinely
+            # verbatim (round 1 silently baked this retheme + a zeroed
+            # offensivePhysicalModifier into the "verbatim" capture - the JSON
+            # is fixed to hold the real base values, and this retheme is now
+            # an explicit, documented override instead). Themed sun-projectile
+            # (resolves; matches the Houyi/ten-suns myth the bow mesh already
+            # depicts) replacing the donor's stock ArrowDefault01.
+            'basicProjectileName': r'records\XPack4\Effects\Projectiles\TheSuns_Bow_Projectile.dbr',
         },
     ),
 ]
@@ -582,6 +648,35 @@ def _build_result_from_clone(db, spec):
     db.clone_record(src, spec['result'])
 
 
+# ROUND 2 (vet MEDIUM): prefixes whose donor-inherited values must be wiped
+# before the supra retune is applied - mirrors N5's `_add_supra_thrown_weapons`
+# in apply_svc_patches.py exactly ("...then CLEAR the donor's offensive/
+# retaliation/character bonus stats so its native element does not bleed into
+# the retheme"). Without this, the orphan's original combat stats bleed
+# through uncontrolled (round-1 examples: erysichthon's negative
+# characterLifeRegen, furies'/scylla's stray characterStrength, charybdis'
+# stray characterOffensiveAbility, doomherald's stray Str/Dex/Int, furies'
+# undocumented total-speed slow). Fields a weapon is meant to KEEP (identity
+# skills: itemSkillName, augmentSkillName1/Level1) do not match any of these
+# prefixes and are set independently via `overrides`, so they are never
+# touched by this clear. Any rider that legitimately depends on an inherited
+# value cleared here (Aquimae/Furies' shared offensiveGlobalChance) is
+# re-added explicitly in that weapon's `overrides` dict.
+_CLEAR_PREFIXES = (
+    'offensive', 'retaliation', 'characterDexterity', 'characterStrength',
+    'characterIntelligence', 'characterLife', 'characterOffensiveAbility',
+    'characterAttackSpeedModifier',
+)
+
+
+def _clear_inherited_combat_stats(db, dest):
+    ff = db.get_fields(dest)
+    if not ff:
+        return
+    for k in [k for k in list(ff) if k.split('###')[0].startswith(_CLEAR_PREFIXES)]:
+        del ff[k]
+
+
 def _apply_overrides(db, spec):
     dest = spec['result']
     if spec.get('trail'):
@@ -640,6 +735,9 @@ def apply(db, tags):
             _build_result_from_clone(db, spec)
         else:
             _build_result_from_donor_json(db, spec)
+        # ROUND 2 (vet MEDIUM): wipe donor-inherited combat stats before the
+        # retune so orphan riders never bleed through uncontrolled.
+        _clear_inherited_combat_stats(db, spec['result'])
         _apply_overrides(db, spec)
         fpath = _build_formula(db, spec)
         _wire_drop_tables(db, fpath)
@@ -705,6 +803,32 @@ def verify(db, tags):
         got = db.get_field_value(by_key[key]['result'], field)
         if _norm(got) != _norm(expect):
             errors.append('%s lost its identity skill on %s: got %r' % (key, field, got))
+
+    # ROUND 2 guards (regression protection for the vet's HIGH/MEDIUM/LOW fixes):
+    # (a) no weapon's overrides-declared physical max exceeds its class band
+    #     ceiling (bow/sword capped this round at 160 - see the retune notes
+    #     on tensunswrath/heartpierce/ripulsar above).
+    _BAND_CAP = {'tensunswrath': 160.0, 'heartpierce': 160.0, 'ripulsar': 160.0}
+    for key, cap in _BAND_CAP.items():
+        got = db.get_field_value(by_key[key]['result'], 'offensivePhysicalMax')
+        if got is None or float(got) > cap:
+            errors.append('%s: offensivePhysicalMax %r exceeds band cap %.1f'
+                           % (key, got, cap))
+    # (b) the 2 riders whose Global-flagged effects depend on a shared
+    #     offensiveGlobalChance (round-1 relied on donor-inherited luck; round
+    #     2 clears then re-adds it explicitly) must actually be non-zero.
+    for key in ('aquimae', 'furies'):
+        got = db.get_field_value(by_key[key]['result'], 'offensiveGlobalChance')
+        if not got:
+            errors.append('%s: offensiveGlobalChance missing/zero after clear - '
+                           'its Global-flagged riders cannot proc' % key)
+    # (c) every result hides rolled prefix/suffix (fixed-name Legendary
+    #     convention - round 1 left Munderizer/Sword Fish at 0/0 by oversight).
+    for spec in _WEAPONS:
+        for f in ('hidePrefixName', 'hideSuffixName'):
+            got = db.get_field_value(spec['result'], f)
+            if got not in (1, 1.0, '1'):
+                errors.append('%s: %s = %r (expected 1)' % (spec['key'], f, got))
 
     if errors:
         raise SystemExit(

@@ -1,4 +1,4 @@
-# B66 - Uber Formula Expansion (round 1): 14 orphan weapons + non-weapon gap analysis
+# B66 - Uber Formula Expansion (round 2): 14 orphan weapons + non-weapon gap analysis
 
 > Implements BACKLOG "QUEUED FEATURE: NEW-UBER-FORMULAS-FROM-ORPHANS" Part 1 (the 14
 > curated weapons) and the Part 2 non-weapon survey/gap/wiring analysis Will asked for
@@ -16,6 +16,58 @@
 > below follow the voice as documented secondhand in CLAUDE.md/BACKLOG.md ("monster/myth-
 > identity-driven, flavorful, never generic filler") - **flagging this gap so a future
 > wave creates the actual reference doc.**
+
+## ROUND 2 CHANGELOG (independent adversarial vet of round 1, commit `d754359`)
+
+Round 1's vet verdict was **NO-GO** on one HIGH (a false band-compliance claim), with one
+MEDIUM and three LOW/nit findings. The implementation itself was called "functionally
+excellent" - every fix below is a targeted correction, not a rework. Re-verified via the
+same real dry-run replay harness against the same build41 baseline (still 21 new + 9
+modified records, both gate-battery checks green, `verify()` green - see Verification).
+
+1. **HIGH fixed - Ten Suns' Wrath was ~2.3x its bow sibling and the tier's single highest-
+   damage weapon.** RETUNED (not left for a live design call, since this is a
+   straightforward band-compliance fix with zero loss of identity): physical capped to
+   145-160 (was 340-390) - now **exactly ties** its only bow sibling Stormbringer
+   (`wep_bow.dbr`, 145-160) rather than exceeding it; flat pierce cut to a modest 40-60
+   accent (was a tier-topping 220-300 FLAT); fire raised to 60-90 (+70%) to carry the
+   "Ten Suns"/sun-god identity as the elemental-caster component - this is Phoenix's own
+   already-vetted fire block verbatim, so it's a proven-safe number, not a new invention.
+   Measured post-fix (all 27 supra weapons, sorted by physical max): Ten Suns' Wrath now
+   sits at 160, tied with the bow/sword-class ceiling, nowhere near the tier's actual top
+   (Last Word thrown 360, Omega/wep_club 315, Doom Herald 310). **The "none exceed the
+   strongest sibling" claim below is now true, not aspirational.**
+2. **MEDIUM fixed - donor combat stats weren't cleared before the retune, so orphan
+   riders bled through uncontrolled.** `uber_orphan_weapons.py` now clears every
+   `offensive*`/`retaliation*`/`characterDexterity`/`characterStrength`/
+   `characterIntelligence`/`characterLife*`/`characterOffensiveAbility`/
+   `characterAttackSpeedModifier` field on the built result BEFORE applying overrides
+   (`_clear_inherited_combat_stats`, mirroring N5's `_add_supra_thrown_weapons` exactly),
+   for all 14 weapons regardless of build path (clone or donor-JSON). This removes every
+   round-1-flagged stray rider (Erysichthon's negative `characterLifeRegen`, Furies'/
+   Scylla's stray `characterStrength`, Charybdis' stray `characterOffensiveAbility`, Doom
+   Herald's stray Str/Dex/Int, Furies' undocumented total-speed slow) - verified gone by
+   direct field probe post-fix. The 2 riders that legitimately depended on an inherited
+   `offensiveGlobalChance` (Aquimae's dual life/mana-leach slows, Furies' bleed/poison
+   slows) now set it explicitly (`100.0`, matching what was previously inherited by
+   coincidence) instead of relying on the donor happening to carry it.
+3. **LOW fixed - the donor JSON's "verbatim" claim was inaccurate for Di Jun's Pride.**
+   `b66_orphan_donor_fields.json`'s `dijunspride` entry is now genuinely byte-verbatim
+   against the real base-game `unique_houyi_bow.dbr` (restored `basicProjectileName` to
+   the base `ArrowDefault01`, `offensivePhysicalModifier` to the base `55.0`, removed an
+   extra `baseTexture` field the snapshot never should have carried). The intentional
+   sun-projectile retheme is now an explicit, documented override in the module instead of
+   a silent donor-snapshot drift.
+4. **LOW fixed - Heartpierce/Ripulsar exceeded the documented supra sword ceiling.**
+   Both trimmed to `offensivePhysicalMax=160` (was 175/165 respectively) - matches
+   `wep_sword.dbr`'s own ceiling exactly.
+5. **LOW/nit fixed - Munderizer/Sword Fish's `hidePrefixName`/`hideSuffixName` were 0/0**
+   while the other 12 (and every existing supra weapon) use 1/1. Aligned to 1/1 - no
+   design reason found for a fixed-name Legendary to show a rolled affix.
+6. **`verify()` hardened** with 3 new round-2 regression guards: a physical-max band cap
+   on the 3 retuned weapons, a non-zero `offensiveGlobalChance` check on Aquimae/Furies,
+   and a `hidePrefixName`/`hideSuffixName`==1 check on all 14 - so any future edit that
+   reintroduces one of these defects fails the build loud.
 
 ---
 
@@ -92,7 +144,12 @@ Read directly off the shipped build41 arz (not estimated):
 | Shield | Agathodaemon | 290, 50% | DA/OA 200 (+15% mod), life 350 |
 
 All 14 candidates land inside their class's band (documented per-weapon in the module's
-`overrides` dicts); none exceed the strongest existing sibling in that class.
+`overrides` dicts); none exceed the strongest existing sibling in that class. **(Round 2
+correction: this claim was false for Ten Suns' Wrath and imprecise for Heartpierce/
+Ripulsar in round 1 - all 3 were retuned/trimmed to make it true; see the ROUND 2
+CHANGELOG above. Verified directly, not asserted: ranking all 27 supra weapons by
+`offensivePhysicalMax` post-fix puts Ten Suns' Wrath at 160 - tied with the bow/sword
+ceiling, nowhere near the tier's actual top of 360.)**
 
 ### Identity preserved (the "keep its identity skills/procs" mandate)
 
@@ -149,6 +206,17 @@ dropped). Not propagated: repointed to the resolving
 `records\sounds\soundpak\items\watersmdroppak.dbr` instead - same category as the 2
 already-documented supra dead-ref fixes (`_SUPRA_DEAD_REF_FIXES` in apply_svc_patches.py),
 cosmetically inert either way, fixed here since the correct value was already at hand.
+
+**Round 2 correction - the donor JSON is now genuinely verbatim.** Round 1's
+`b66_orphan_donor_fields.json` `dijunspride` entry silently differed from the real base
+`unique_houyi_bow.dbr` on 3 fields while the module/report described the snapshot as
+"verbatim": `basicProjectileName` had already been rethemed to the sun-projectile,
+`offensivePhysicalModifier` had been zeroed (55.0 -> 0.0), and an extra empty-ish
+`baseTexture` field was present that the base record doesn't carry. The JSON is now fixed
+to hold the true base values (verified against a fresh read of the base game
+`database.arz`), and the sun-projectile retheme is applied as an explicit, documented
+`overrides['basicProjectileName']` in the module instead - same visible in-game result,
+now honestly attributed.
 
 ---
 
@@ -255,19 +323,45 @@ existing mesh). Flagged, not built, this round.
 
 ## Verification
 
+**Round 2 re-verification** (same real harness, same build41 baseline arz, re-run after
+every fix above):
+
 - **Fast gates:** `py -m py_compile tools/patches/uber_orphan_weapons.py tools/patches/
   __init__.py` - PASS. `py tools/patches/_check_registry.py` - PASS (21 modules, order
-  hash `479c97788384d28b5c16d0f391ed8914b72c6e14bfca3230b0d0e88c53d19ef8`).
-- **Dry-run replay** (fresh load of build41 baseline arz, `patches.run_registry(db, tags,
+  hash `479c97788384d28b5c16d0f391ed8914b72c6e14bfca3230b0d0e88c53d19ef8` - unchanged from
+  round 1, since no module was added/removed/reordered).
+- **Dry-run replay** (fresh load of build41 baseline arz, md5 confirmed
+  `eb8bc37775540f872003f873abf8e8be`, `patches.run_registry(db, tags,
   registry=['uber_orphan_weapons'])` - the REAL harness, not a hand-rolled call):
-  21 new records + 9 existing records modified (the 7 repointed shells + `supra.dbr` +
-  `supra_special.dbr`) - **intended-only**, zero incidental diffs. 28 tags added. S4a/S4b
-  collision gates: clean (0 collisions).
+  **still exactly 21 new records + 9 existing records modified** (the 7 repointed shells +
+  `supra.dbr` + `supra_special.dbr`) - **intended-only**, zero incidental diffs, unchanged
+  shape from round 1 (round 2 only changed field VALUES on existing spec entries, not the
+  record/formula roster). 28 tags added. S4a/S4b collision gates: clean (0 collisions).
 - **verify() hook** (run via `run_registry_verifies`, the real post-finalization harness):
   all 14 results + 14 formulas resolve; every formula's `artifactName`/3 reagents are
   non-empty and correct; every formula is listed in BOTH `supra.dbr` and `supra_special.
   dbr`; every tag referenced is present in `tags`; both `itemSkillName`-preservation
-  spot-checks (Helona, Phoenix) pass. PASS.
+  spot-checks (Helona, Phoenix) pass; **3 new round-2 guards** also pass: (a) physical-max
+  band cap on Ten Suns' Wrath/Heartpierce/Ripulsar (all <=160), (b) non-zero
+  `offensiveGlobalChance` on Aquimae/Furies post-clear, (c) `hidePrefixName`==
+  `hideSuffixName`==1 on all 14. PASS.
+- **Direct field probe** (post-`apply()`, read back off the in-memory db - not asserted,
+  measured): Ten Suns' Wrath = phys 145-160/+30%, pierce 40-60/ratio20, fire 60-90/+70%,
+  `basicProjectileName`=the themed sun projectile (explicit override, not donor drift);
+  Heartpierce/Ripulsar phys max = 160/160; Aquimae/Furies `offensiveGlobalChance`=100
+  explicit; Erysichthon `characterLifeRegen`/Furies `characterStrength`+total-speed-slow/
+  Scylla `characterStrength`/Charybdis `characterOffensiveAbility`/Doom Herald Str-Dex-Int
+  all now `None` (cleared, no longer bleeding through) while every weapon's INTENDED
+  `characterLife`/`characterDefensiveAbility`/`characterMana`/`characterOffensiveAbility`
+  stat (the ones actually in `overrides`) is unaffected; Munderizer/Sword Fish
+  `hidePrefixName`/`hideSuffixName`=1/1; Helona/Phoenix `itemSkillName` and Hati's
+  bonus-vs-large-prey proc all still intact.
+- **Tier-rank sanity check** (all 27 supra weapons, sorted by `offensivePhysicalMax`,
+  measured post-fix): Last Word 360, Omega 315, Doom Herald 310, Sword Fish 300, Blood
+  Whisper 265, Hati 260, Darkflame Devourer/Phoenix/Furies/Erysichthon 230, Scylla/
+  Charybdis 225, Sanguine Orbit 215, Charon's Toll 210, **wep_sword/wep_bow/Ten Suns'
+  Wrath/Ripulsar/Heartpierce/Aquimae all tied at 160**, wep_dagger 122. Ten Suns' Wrath is
+  no longer the tier's outlier - it sits at the bow/sword floor, tied with its own sibling.
 - **Resolves-in-arc** (the lesson from prior waves - resolution must be checked against
   BUILT-arz **union** BASE-arz, matching how the TQ engine actually overlays a mod over
   the stock database, not BUILT alone): every `mesh`/`bitmap`/`baseTexture`/`bumpTexture`/
@@ -281,7 +375,9 @@ existing mesh). Flagged, not built, this round.
 - **Container loot-shape gate** (`build_svc_database._validate_container_loot_shapes`, run
   directly against the post-apply db): PASS.
 - **Negative test:** deleting the clone-source donor for Ripulsar and re-running `apply()`
-  raises `SystemExit` with a clear message (fail-loud, not a silent skip). PASS.
+  raises `SystemExit` with a clear message (fail-loud, not a silent skip). PASS (re-run
+  round 2, unaffected by the clear-step change since the SystemExit fires before any
+  clear/override runs).
 - **Text-tag manifest:** every `itemNameTag` and formula `description` tag the 14
   records/formulas reference is present in the `tags` dict the module returns (checked in
   `verify()`); a full `validate_tags.py` pass needs a real `Text.arc` build (heavy - out of
@@ -301,7 +397,7 @@ existing mesh). Flagged, not built, this round.
 - `docs/reports/b66_uber_formulas.md` (this report)
 - `docs/BACKLOG.md` (status update on the NEW-UBER-FORMULAS-FROM-ORPHANS entry)
 
-## Handoff to round 2
+## Handoff to round 3
 
 Not built this round (out of scope / awaiting Will):
 - The 8-axe Greek bench (Acheron's Touch, Axe of Tereus, Persephone's Caress, Torment,
