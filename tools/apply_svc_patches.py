@@ -12788,9 +12788,17 @@ def _apply_m15_toxeus_group_joins(db):
     if smax - 1 < 1:
         raise SystemExit(f"M15: egg pool spawnMax {smax} - championMax 1 < 1 "
                          f"(champion crowd-out law)")
+    # DEDUP (2026-07-13 "two side by side"; round-2 vet HIGH 2026-07-14): egg_blooddragon
+    # carries the base-game proxyPoolEquation (proxypoolequation_02), which FLOORS each
+    # count up by poolValue*(0.91+0.497143*nP-0.05*nP^2). On championMax=1 that floors to
+    # 2 at 4-6 players -> TWO Blood Toxeus in the deep-chest room. Neutralize so the
+    # LITERAL championMax=1 holds at every party size (exactly ONE Devourer, 1..6P). This
+    # pool is NOT in _MOD_AUTHORED_SPAWN_PROXIES, so the finalization lock never reaches it.
+    _svc_neutralize_pool_equation(db, _M15_EGG_POOL)
     db._modified.add(_M15_EGG_POOL)
     print(f"  M15 chest room: egg_blooddragon pool += Toxeus champion @100 "
-          f"(spawnMax {smax}, {smax - 1} dragons + the Devourer every run)")
+          f"(spawnMax {smax}, {smax - 1} dragons + the Devourer every run; "
+          f"proxyPoolEquation neutralized -> exactly 1 Devourer at any party size 1-6)")
 
     # ── parchment: derive proxy+pool copies (@50); map lane repoints ──
     for rec in (_M15_DERIVED_PROXY, _M15_DERIVED_POOL):
@@ -12810,6 +12818,13 @@ def _apply_m15_toxeus_group_joins(db):
     sf(_M15_DERIVED_POOL, 'nameChampion1', _M15_TOXEUS)
     sf(_M15_DERIVED_POOL, 'nameChampion2', _M15_TOXEUS)
     sf(_M15_DERIVED_POOL, 'nameChampion3', _M15_TOXEUS)
+    # DEDUP (round-2 vet HIGH 2026-07-14): same proxypoolequation_02 floor risk (the clone
+    # inherits it from demon_01_cluster) -> championMax 1 floors to 2 at 4-6P = two Blood
+    # Toxeus if the champion rolls. Neutralize so the derived pool is MP-safe if/when the map
+    # lane ships the parchment repoint. (Currently the derived proxy is unplaced - the repoint
+    # at build_section_surgery.py drxfirstxistion_connection is documented but not injected -
+    # so this is defense-in-depth, behavior-neutral until the parchment placement lands.)
+    _svc_neutralize_pool_equation(db, _M15_DERIVED_POOL)
     db._modified.add(_M15_DERIVED_POOL)
     db.clone_record(_M15_DEMON_PROXY, _M15_DERIVED_PROXY)
     sf(_M15_DERIVED_PROXY, 'pool1', _M15_DERIVED_POOL)
