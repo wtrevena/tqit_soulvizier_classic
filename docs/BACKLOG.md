@@ -2790,6 +2790,64 @@ multiplier is the fallback; screen-scale ~= 30-45m world units) -> balance check
 always-on party-wide uptime -> H/O golden-freeze waivers where trees are touched ->
 implement as registry module (aura_radius.py) with a fail-loud audit gate listing every
 touched aura + old->new radius. NOT started (quota); spec-first per the vet law.
+> **AUDIT STAGE DONE 2026-07-14 (feat/aura-radius):** full template-driven enumeration of the
+> effective DB (build40 golden `b33c5a44` over base) shipped as `docs/reports/b57_aura_radius.md`
+> + machine roster `tools/aura_radius_roster.json` (generator `tools/audit_aura_radius.py`,
+> read-only, re-runnable). 546 aura-class rows: 49 mastery / 66 soul-granted / 71 pet /
+> 136 item-granted / 143 monster-only / 227 unreferenced dev copies; 86 rows carry NEGATIVE
+> payload fields (aura-wide by template - widening spreads the malus; HOLD-flagged for Will).
+> Player-reachable radii today span 0-23u; nothing reaches the 30-45u screen scale.
+> Key mechanism: BuffRadiusToggled radius lives on the buffSkillName PAYLOAD record
+> (Shadow Link payload drxbladehoningbuff = 3.0 vs vanilla bladehoningbuff 16.0, and it
+> carries defensiveLife -5..-X, the malus Will asked about - CONFIRMED aura-wide, not
+> self-only). 7 Hunting/Occult rows listed in the report's WILL VETO section.
+> NEXT stage of this entry: the aura_radius.py module + H/O golden waivers + dry-run replay.
+>
+> **IMPLEMENTED-AWAITING-BUILD (round 1) 2026-07-14 (feat/aura-radius):** registry module
+> `tools/patches/aura_radius.py` (runs after `boss_skill_fix`, before `visuals`) grows the RADIUS
+> FIELD ONLY (`skillTargetRadius`) of **80 player-facing, positive-only friendly auras -> 36u**
+> party screen-scale. No effect/damage/value touched. Roster-derived plan (546 rows):
+> WIDENED 80, HELD 40 negative + 34 offensive (flag, Will decides), DEFERRED 13 base-only
+> (need override-clone) + 4 field-creation (radius-0 self-buffs), SKIP 375 non-player.
+> Pet-only target is 18u but 0 rows qualified this round (every positive pet aura also has a
+> player-facing grant -> party 36u). H/O: 5 widened (Art of the Hunt, Call of the Hunt, Shadow
+> Link, drx_demon_regen/cloak, shadowform), 2 held (Study Prey neg, Smoke Screen off). Shadow
+> Link (Will's motivating case) widened 3->36 DESPITE its aura-wide defensiveLife malus, which
+> now also reaches pets/MP allies within 36u - flagged in the report WILL VETO for Will's veto.
+> Golden-freeze: 3 owner_approved_overrides waivers added to `tools/occult_hunting_golden.json`
+> (drxartofthehuntbuff/drxcallofthehuntbuff 15->36, drxbladehoningbuff 3->36; radius field only).
+> VERIFY (no heavy build): dry-run replay `tools/debug/b57_aura_radius_replay.py` PASS
+> (80 modified, radius-only + intended-records-only diff, idempotent, verify() OK, negative test
+> fails loud on Shadow Link); A7 golden gate PASS with the 3 waivers + correctly FAILS without
+> them on exactly those 3 drifts; _check_registry 14 modules; py_compile green. Contracts/
+> validate_tags structurally unaffected (0 records/tags/souls/summons added/removed).
+> Report old->new table + held/deferred lists in `docs/reports/b57_aura_radius.md` (IMPLEMENTATION).
+> Rides the next integration build. Round-2 candidates (Will-gated): the 74 HELD auras + the 17
+> DEFERRED (base-only override-clone + field-creation scope decisions).
+>
+> **IMPLEMENTED-AWAITING-BUILD (round 2) 2026-07-14 (feat/aura-radius) - SUPERSEDES round 1:**
+> adversarial vet caught that round 1 widened **8 offensive-payload records** as if friendly:
+> a FRIENDLY-looking delivery (`Skill_BuffRadius`/`Toggled`) carrying an ENEMY-debuf payload
+> (Class `SkillBuff_Debuf`) whose `skillTargetRadius` is DAMAGE/DEBUF reach (offensive fields are
+> stored POSITIVE `offensiveXxxMin`, so the negative-detector missed them and the delivery class
+> looked friendly). The 8: crushing vortex x3, earthquake (375 phys+stun), magebane (mana-burn),
+> maddened-god aura (350 life), haronomi liferot SOUL DoT, ixion life-drain aura. Widening those
+> enlarges combat power - a HOLD per the mandate. FIX: `aura_radius.py` `_payload_offensive`
+> guard HOLDs any widen candidate whose edited payload Class is `SkillBuff_Debuf*`/
+> `SkillBuff_Contageous` or carries `debufSkill=1` (checked live on the record being edited).
+> New dispositions (546): **WIDENED 72** (down from 80; all 72 payloads are `SkillBuff_Passive`
+> 70 + `SkillBuff_PassiveShield` 2, zero debuf), HELD 40 negative + **42 offensive** (34 delivery
+> + 8 payload), DEFERRED 13 base-only + 4 field-creation, SKIP 375. The friendly
+> `ixion_battlestandard_aurabuff` banner correctly STAYS widened (payload is `SkillBuff_Passive`,
+> not a debuf). H/O UNCHANGED (none of the 8 are H/O): 5 widened + 2 held, same 3 golden waivers.
+> VERIFY (dry-run replay vs golden `b33c5a44`): PASS - widen 72, radius-only + intended-records-only
+> (72 modified, 0 added/removed, only `skillTargetRadius`), idempotent, `verify()` OK, negative test
+> fails loud on Shadow Link; widen edit-class breakdown 70 Passive + 2 PassiveShield + 0 Debuf;
+> `_check_registry` 14 modules; py_compile green (module + replay + audit). Roster regenerated
+> (12 `proposal` fields updated to HOLD-offensive-PAYLOAD, ZERO structural drift vs the vetted
+> round-1 roster); report `docs/reports/b57_aura_radius.md` rewritten (round 2, "positive-only"
+> claim removed, the 8 moved into the HELD-offensive table with their offensive effect lists).
+> Rides the next integration build.
 
 ## RCA RECORD 2026-07-12 evening: "quests blocked / doors closed" on _Toxeus = SAVE-SIDE, NOT a shipped bug
 Byte-level verdict (Opus RCA + Sonnet log check, wf_2c9d497c): Steam AND DEV both carry pure

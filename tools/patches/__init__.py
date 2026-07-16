@@ -107,6 +107,10 @@ REGISTRY = [
                             # e/l per-tier icon law. Disjoint from every module above (touches only
                             # create_uber_souls-generated svc_uber rings; module-authored souls
                             # already obey both invariants). verify() gates the class fail-loud.
+    'aura_radius',          # b57 BL-AURA-RADIUS: widen friendly aura RADIUS FIELDS ONLY (party->36u,
+                            # pet->18u) so aura bonuses reach pets/MP allies. Runs late so a radius
+                            # edit wins any collision on the aura payloads (none observed). Disjoint
+                            # from every other module (touches only skillTargetRadius on buff payloads).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
