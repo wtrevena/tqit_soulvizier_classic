@@ -2522,6 +2522,103 @@ def fix_broken_mastery_skills(db: ArzDatabase):
     return patched
 
 
+# ── OH PANE ART round 1 (build43, backlog b67): select-mastery-screen preview
+# repoint for Occult (mastery slot 5). Will's directive (verbatim): "you may
+# need to go into SV files to find the appropriate background image for the
+# occult mastery skill selection page." SV/DRX authored a bespoke Occult witch
+# portrait (DRXtextures\masterybackdrops\occultpanellarge.tex, 250x250,
+# D5-confirmed) that already backs the mastery-TREE pane's decorative circle
+# art (masterybitmap.dbr -> ...newstealthpanel01.tex, the SAME witch cropped
+# to 175x175 - wired since SV 0.98i, both in SV098i's own database and ours)
+# but was NEVER wired into the SELECT-MASTERY screen's larger preview slot -
+# confirmed 0 references anywhere (SV098i's own database.arz, our build, and
+# every other DRX/SVTextures arc). That screen is not overridden by this mod
+# at all before this fix (0 "select mastery" records in our arz - it is 100%
+# inherited from the base game's own database.arz, which shows the vanilla
+# tan/purple Rogue portrait under the "Occult" label; the B-MASTERY-LABEL-1
+# text fix already retitles the tag, but the ART stayed vanilla).
+#
+# TQAE ships FOUR versioned copies of the shared select-mastery screen
+# (records\ingameui\..., records\xpack\..., records\xpack2\..., records\
+# xpack4\..., one per DLC tier: 8/9/10/11 masteries respectively); which one
+# the engine actually renders for a given Custom Quest is not independently
+# provable from the DB alone (no engine doc/gate pins it), so ALL FOUR are
+# repointed identically here for safety - harmless no-op on any tier the
+# engine does not render, correct on whichever it does.
+#
+# SIZE NOTE (flagged for Will, docs/reports/b67_oh_pane_art.md): occultpanellarge
+# .tex is 250x250 (D5-confirmed), an EXACT match for the oldest "ingameui"
+# tier's PanelLarge01 class (also 250x250, base game) but ~24px larger than
+# the xpack/xpack2/xpack4 tiers' PanelMedium01 class (226x226, D5-confirmed
+# via xpack\UI.arc's stealthpanelmedium01.tex). The widget is a plain
+# BitmapSingle-style, top-left-anchored bitmap (no stretch-to-fit field -
+# confirmed via selectedmasterybitmap.dbr's field list: only bitmapPositionX/
+# Y, no width/height), so it draws at native texture size; on the 3
+# PanelMedium tiers the art renders ~24px wider/taller than the vanilla
+# footprint - a modest, low-risk cosmetic overflow with clear headroom versus
+# the nearest positioned button/text field. Needs Will's in-game screenshot
+# per standing UI-on-device convention (this doc/docs/reports/b38_mastery_ui_
+# audit.md and others use the same convention for prior mastery-UI waves).
+def import_occult_select_mastery_art(db: ArzDatabase, base_db):
+    """Repoint the Occult (select-mastery slot 5) preview art on all 4 DLC-
+    tier copies of the shared select-mastery screen to the bespoke SV/DRX
+    witch portrait. Imports each masterypane.dbr wholesale from base_db
+    (idempotent - `_import_base_game_record` no-ops if already present) then
+    overwrites ONLY the Stealth/Occult array entry; every other mastery's
+    entry is left byte-identical to the base game (arc-diff proof: re-run
+    with an unmodified base_db and diff the OTHER 7-10 array entries against
+    this function's own before/after log). Fail-loud if a tier's array does
+    not contain exactly one Stealth-class entry (guards a future TQAE patch
+    reshaping this array silently instead of mis-repointing the wrong slot)."""
+    if base_db is None:
+        print("  OH pane art: base_db unavailable; select-mastery screen "
+              "repoint SKIPPED (Occult select-screen preview stays vanilla)")
+        return 0
+    field = 'masteryMasterySelectedBitmapNames'
+    new_tex = r'DRXtextures\masterybackdrops\occultpanellarge.tex'
+    tiers = (
+        r'records\ingameui\player skills\select mastery\masterypane.dbr',
+        r'records\xpack\ui\skills\select mastery\masterypane.dbr',
+        r'records\xpack2\ui\skills\select mastery\masterypane.dbr',
+        r'records\xpack4\ui\skills\select mastery\masterypane.dbr',
+    )
+    print("\n=== OH pane art: Occult select-mastery preview repoint (4 DLC tiers) ===")
+    n_tiers = 0
+    for rec in tiers:
+        imported = _import_base_game_record(db, base_db, rec)
+        if not db.has_record(rec):
+            raise SystemExit(
+                "OH pane art: select-mastery masterypane missing + import "
+                "failed: %s (upstream structure changed?)" % rec)
+        fields = db.get_fields(rec) or {}
+        target_key = None
+        for key in fields:
+            if key.split('###')[0] == field:
+                target_key = key
+                break
+        if target_key is None:
+            raise SystemExit(
+                "OH pane art: %s lacks the expected %s array" % (rec, field))
+        tf = fields[target_key]
+        vals = list(tf.values)
+        hits = [i for i, v in enumerate(vals) if 'stealthpanel' in str(v).lower()]
+        if len(hits) != 1:
+            raise SystemExit(
+                "OH pane art: %s :: %s expected exactly 1 Stealth-class entry, "
+                "found %d (%r) - the Occult select-art repoint needs "
+                "reconciling before shipping" % (rec, field, len(hits), vals))
+        old_tex = vals[hits[0]]
+        vals[hits[0]] = new_tex
+        db.set_field(rec, field, vals, tf.dtype)
+        n_tiers += 1
+        tag = "imported+repointed" if imported else "already-present, repointed"
+        print("  %s (%s) idx%d: %s -> %s"
+              % (rec, tag, hits[0], old_tex, new_tex))
+    print("  OH pane art: select-mastery Occult preview repointed on %d/%d "
+          "DLC tiers" % (n_tiers, len(tiers)))
+    return n_tiers
+
+
 def add_dlc_mastery_trees(db: ArzDatabase):
     """Add Ragnarok (RuneMaster) and Atlantis (Neidan) skill trees to the PC.
 
@@ -3440,6 +3537,17 @@ def _run_prefix(sv098_path, sv09_path, sv041_path, base_path):
     # (the player-anim gate below still passes) and NO Occult/Hunting records
     # (the golden-freeze gate stays green).
     apply_mastery_wave2_boosts(db, base_db)
+
+    # OH PANE ART round 1 (build43, backlog b67): Occult select-mastery-screen
+    # preview repoint. Needs base_db (still alive here) to import the 4 DLC-tier
+    # masterypane.dbr records (0 of which our mod overrides today) so the one
+    # Stealth/Occult array entry can be repointed. Touches ONLY the "select
+    # mastery" namespace (sibling of, never inside, "mastery {5,6}\" - outside
+    # the A7 golden guard's captured scope) and only the field.dtype the base
+    # game already carries (STRING array) - no skill VALUE, no golden-guarded
+    # tree-pane record touched here (that repoint is the separate
+    # oh_pane_art.py registry module, run later over the finished db).
+    import_occult_select_mastery_art(db, base_db)
 
     # ── BUILD36 LANE B: graft the 18 SVAERA mastery skills + Runemaster buffs.
     # Runs AFTER all mastery tuning (so it is purely additive on the final trees)

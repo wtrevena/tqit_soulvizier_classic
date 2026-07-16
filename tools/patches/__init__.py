@@ -89,6 +89,12 @@ REGISTRY = [
                             # actually renders; + chrome repoint (undo buttons/cost/gold numbers
                             # off the dead SkillsPanel arc). MUST run after those two (it reads
                             # the texture they set).
+    'oh_pane_art',          # b67 wave (ships build43): Occult (m5) tree-pane BACKGROUND ART fix -
+                            # upgrades the texture CHOICE mastery_bg_render's BitmapUIAware
+                            # structure fix left as vanilla Stealth (tan) to a bespoke DRX dark
+                            # tablet (DRXtextures\masterybackdrops\standardskillbackground_
+                            # joanna_ver_dark.tex); verifies Hunting (m6) needs no change. MUST
+                            # run after mastery_bg_render (reads/proves its bitmapNames state).
     'four_generals',        # build37: Hades' Generals upgrade (3 general souls); keep ahead of skill_quality
     'skill_quality',        # build37 backlog #31: granted-skill quality pass
     'toxeus_suite',         # build37 backlog #32: Toxeus Encounter Suite
