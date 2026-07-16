@@ -2878,6 +2878,22 @@ in our backlog, but this is the approach we should take."
 rosters, rigs already throw-proven) - curate identity-fit subset into campaign spawn pools,
 re-tier charLevel/stats to SV-difficulty bands per act, drops banded per b58 findings.
 
+
+## BUILD42 GATE RECORD (2026-07-16, integration/build42)
+Contents: drop-rate 50% for 377 random-spawn heroes (last-writer gate), 72 auras widened (Shadow
+Link 3->36), full 9-mastery reflow (tier+connector laws, 17 waivers), mastery pane render fix
+(BitmapUIAware, 28 sanctioned golden overrides), travelers v3 (enter-offers into SV areas +
+return-to-origin primary/Helos secondary; crypt unsealed), 10 thrown-wielders restored (SV-scaled),
+5 SVAERA sets re-linked, Dionysus+DuneFiend relics, Legendary-only Toxeus stalker placed,
+double-soul rulings (boar merge/lillued retire), 14 orphan-weapon uber formulas (7 shell reuses).
+md5s: arz f8ef904d / Text 3e576581 / Quests 5e664c7b / CANON Levels 62868eec / TESTHUB 0c10343b.
+Gates: A7 golden PASS (83 waived) / mastery-UI gate PASS (17 waived) / drop-rate last-writer gate
+PASS / validate_tags PASS / navmesh PASS / contracts GATE PASS (0 P0/0 P1/4909 P2). Record-diff
+vs build41: ~565 mod +37 add -6 rm, intended-only classes. Deterministic rebuild proof (arz
+byte-identical across the two build42 DB runs). Deployed DEV. NOT pushed to Steam (Will's word).
+OPEN WILL Qs: legion terminal 66-vs-50, Munderizer over-band, Shadow Link malus veto,
+murderbossroom return NPC (map lane).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
