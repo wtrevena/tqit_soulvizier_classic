@@ -1,6 +1,23 @@
 r"""tools/patches/thrown_wielders.py - arm identity-appropriate enemy families
 with thrown (RangedOneHand) weapons so players SEE enemies throw (registry module).
 
+SUPERSEDED (b64, kept for reference/history only - do NOT register this file).
+Will's design law overruled the "invent a new family + a new pool" approach
+this module takes: "instead of us wiring them back into spawn pools and us
+deciding which pools to wire them into, cant we just restore them into the
+existing pools that they previously spawned in?" The live module is
+`tools/patches/thrown_restore.py`, which restores the SAME base donor records
+this file clones (ar_archer_06/br_archer_10/am_assassin_15/21/27/ar_archer_27/
+ar_archer_33) in place - no clone, no new SVC namespace, no new ProxyPool -
+plus a 4th rig (Machae, Immortal Throne) this file's audit had filed as
+DLC/unreachable but is actually core Hades-arc content (docs/reports/
+b64_thrown_restore.md). This file stays UNREGISTERED and disjoint (it only
+CLONES these donors into new `records\creature\monster\svc\thrown\*` records;
+it never mutates the donors themselves), so it has zero interaction with
+thrown_restore.py. Retained as the design-history record of the invented-
+family approach, in case a future wave wants BOTH the restore AND additional
+invented flavor variants.
+
 WHY (audit -> docs/reports/b58_thrown_wielders.md): thrown weapons are a
 Ragnarok/Atlantis/EE item class (Class = WeaponHunting_RangedOneHand, 191 recs,
 all xpack2/3/4). VERIFIED ground truth: of the monsters that wield a thrown
