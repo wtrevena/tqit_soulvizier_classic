@@ -2845,9 +2845,12 @@ marker per the b63 mechanism; registry module + tag manifest + full gate battery
    (fit the cave's native population; designer proposes).
 2. **NEW-HERO-HATHOR-CROC** - crocodile-man uber hero at the VERY END of the Hathor Basin cave
    (the back chest room with all the chests). Croc-man rig family; guard-of-the-hoard concept.
-3. **NEW-HERO-NILE-CROC** - a second crocodile uber hero in the Nile Floodplain at the spot where
-   the 'Plight of the Nile Farmers' side quest completes (verify quest-collision safety like the
-   Kroisos/King-Dorus lesson: NEAR the quest spot, never colliding with quest actors/kill credits).
+3. **NEW-HERO-NILE-SCORPION** (Will 2026-07-16: replaced the second crocodile - 'choose something
+   we dont have an uber hero for yet') - an uber SCORPION (scorpos family, no uber scorpion exists
+   in the roster; Egypt-native rig) in the Nile Floodplain at the spot where the 'Plight of the
+   Nile Farmers' side quest completes (quest-collision safety per the Kroisos/King-Dorus lesson:
+   NEAR the quest spot, never colliding with quest actors/kill credits). Alternates if the scorpos
+   rig disappoints: giant scarab, plague swarm host.
 4. **NEW-BOSS-BEGGARS-QUARTER-DEMON** - uber DEMON boss in the Beggars Quarter (ground-truth the
    exact level; demon identity to the amgoz1 bar).
 5. **NEW-RELIC-DUNE-FIEND** - Dune Fiend monsters drop a unique relic IF THEY DON'T ALREADY
@@ -2902,6 +2905,13 @@ murderbossroom return NPC (map lane).
 - MUNDERIZER: over-band 350 life damage BLESSED as intentional (joke item, forgoes utility);
   keep; extend the verify() band-cap carve-out note.
 - SHADOW LINK: large radius (36) KEPT incl. the malus spread; Will-approved final.
+
+
+## COLD WORM BUFFS (Will 2026-07-16, joins the interrupted coldworm-markers lane)
+Cold Worm needs ~3x characterLife and +20% armor (defensiveProtection) ON TOP of the already-queued
+kit (burrow/frost skills that actually cast), massive total-speed boost, exclamation-marker
+mechanism -> all placed ubers, and the 3-tier soul + loot-triple fix + roster drop-slot sweep.
+All Cold Worm items ship as ONE lane when resumed (worktree coldworm-markers has partials).
 
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
