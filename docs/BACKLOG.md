@@ -54,6 +54,48 @@
 > souls golden **0P0/0P1/0P2** == postapply **0P0/0P1/0P2**; py_compile + `_check_registry` (14 modules, order
 > `fabf2d33cc81`). Report: `docs/reports/b56_legion_soul_stages.md`. NOT built/deployed; rides the next integration
 > build (expected arz diff vs build40 golden = these 3 records only).
+> 🩶 **SOULS FIX-WAVE-2 ROUND-2 (2026-07-14, `feat/souls-quality` @ souls_quality module, dry-run replay
+> GREEN vs build40 GOLDEN arz `b33c5a44`; NOT built/deployed - ships in the next integration build).**
+> Extends the `souls_quality` registry module (pos 13) per Will's directives + the round-1 vet feedback;
+> all fixes proven by `tools/debug/souls_quality_replay.py` (**126 modified + 3 removed**, exact
+> intended-only diff, field minimality, idempotent, **6 negative tests** incl. a roster-wide non-svc_uber
+> one) + `validate_soul_augments` PASS + `validate_summon_pets` 3-arg PASS (byte-identical baseline vs
+> patched) + targeted dangling-ref scan (0 residual refs) + `_check_registry` OK (14 modules, order
+> `39d94e32`). **ROUND-2 = the crow-sweep HIGH + gate-scope MEDIUM from the round-1 vet (D3 below).**
+> - **D1 RATIFIED - WILL-VETO CLEARED:** `bloodtip 5/7/9` + `gustleech 10/12/14` ship as-is (Will
+>   verbatim). `_SV_INVERSION_FIX` block kept as the documented historical revert path.
+> - **D2 Tomb Guardian (FIX 5):** `um_tombguardian_26` kept **Common** (NOT promoted, per Will); the
+>   referenced-but-unobtainable `um_tombguardian_soul` DETACHED from its `lootFinger2Item1`, the 3 soul
+>   records RETIRED, and the `tagSVCSoulTombguardian` tag dropped. 0 dangling refs. (Root cause:
+>   `_place_orphan_monsters` wired it "against the Hero/Boss/Quest design"; future cleanup = skip soul
+>   creation for deny-listed records, at which point FIX 5 no-ops.)
+> - **D3 crow bug (FIX 4) - ROUND-2 WIDENED (resolves the round-1 vet HIGH+MEDIUM):** the crow reset every
+>   attack because the ring auto-casts its permanent summon on-attack (`base_atenemy_onattack`) vs the Lyia
+>   manual-cast (no-controller) convention. FIX = REMOVE `itemSkillAutoController`, now over a **ROSTER-
+>   DERIVED 8-family / 24-ring set** computed vs the SV098 design bible (`_summon_controller_fix_records`),
+>   NOT the round-1 svc_uber-only 4 families: **Category A** mod-only svc_uber `crowboar/glittertail/koroush/
+>   nkac`; **Category B** SV-original rings the MOD gave a controller SV never shipped - `zombie\komara`
+>   (Hero 66, OBTAINABLE), `zombie\melalos` (Boss 66, OBTAINABLE), `zombie\oythroneus` (gated),
+>   `carrionbird\carrionlord` (skill_quality REASSIGN, gated). komara/melalos are the exact obtainable
+>   same-bug rings round-1 MISSED (its "exactly 4 qualify / most drop-gated" claim was false). The **52
+>   amgoz1 SV-original on-attack SWARM souls** (direflock, the skeleton/dead-raisers, nebtaan, senusnet,
+>   menzus, bonelord, fenuku, frostmarrow, graklos, xiao, feira, aphiastas, ...) are amgoz DESIGN (SV
+>   shipped the controller) -> LEFT INTACT, surfaced to Will. **carrionlord FLAGGED FOR WILL** (its
+>   on-attack summon is a skill_quality reassignment; `_SUMMON_CONTROLLER_WAIVER` reverts it in one line if
+>   it was meant as an on-attack crow-swarm). Shared summon SKILLS never touched; Pet.tpl-safe. Root causes
+>   (follow-ups): `apply_svc_patches._AC_ON_ATTACK` on summons; `skill_quality` REASSIGN generic ON_ATTACK.
+> - **D4 nymph icons:** `feat/b40-soul-icons` (`9db3f5f`) VERIFIED merges CLEANLY onto main (`git
+>   merge-tree`, 0 conflicts, tree `c64ee9a`) -> **REQUIRED integration merge-set member** (fixes the 17
+>   boss-summon skills sharing Lyia's nymph icon; disjoint from this module + FIX 4).
+> - **D5 blatant-error sweep (155 MINOR-GAP):** only blatant DATA errors = the 2 icon classes (54 uniform
+>   -> FIX 3 here; 17 nymph -> D4 branch), both covered. The 79 drop-gated + 5 formula-only + 2 pet-equip
+>   dangles + 1 soulfeeder(false positive) = design decisions / upstream-faithful, LEFT documented.
+> - `verify()` now fail-louds 4 classes (tier monotonicity roster-wide, svc_uber icon, **ROSTER-WIDE
+>   no-mod-introduced-on-attack-controller on any permanent companion summon [SV098-derived, catches
+>   non-svc_uber souls - the vet MEDIUM]**, tombguardian retired). One INTENDED cross-module collision:
+>   skill_quality (pos 4) sets carrionlord's controller, souls_quality (pos 13) removes it (later-wins, S4b
+>   WARN). Report: `docs/reports/souls_quality_fix.md` (+ audit round-2 corrections). **INTEGRATION MERGE
+>   SET = feat/souls-quality + feat/b40-soul-icons** (both required; disjoint file sets, non-conflicting).
 > ⚡ **BUILD-SPEED: PREFIX CACHE DEFAULT-ON (2026-07-14, main) - harness gate PASSED, default flipped.**
 > `tools/verify_cache_determinism.py` ran on main @ `7c38c9e` (clean machine, no build contention, serial):
 > **COLD** (SVC_PREFIX_CACHE=1 SVC_CACHE_REFRESH=1 SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0, forced MISS+STORE)
@@ -115,6 +157,34 @@
 > `verify()` fail-loud (5 negatives on the Hades Marshal family all abort); summons + resources + souls contracts
 > golden-vs-fixed = BYTE-IDENTICAL violation output (0 new violations; resources confirms the hades shroud ref resolves);
 > py_compile + `_check_registry` (14 modules, order e64bc6e6 unchanged) green.
+> 💠 **SOULS-QUALITY ROUND-1+2 (2026-07-14, `feat/souls-quality`, NOT yet integrated) - backlog #31.** New registry
+> module `tools/patches/souls_quality.py` (position 13, after `boss_skill_fix`, before `visuals`) fixes the audit's
+> (`docs/reports/souls_quality_audit.md`) real defects. **FIXED - ALL 5 tier inversions** (higher rarity strictly weaker
+> than a lower rarity on the SAME skill), all raise-only: (P1, 3 mod-generated svc_uber) `crowboar`/`onyxspine`/
+> `steamcrawler` `_soul_l` augment levels (+ crowboar's grant level) raised 1 -> 3 so n/e/l = **1/2/3** (matches healthy
+> bloodrunner/xix); root cause = `_DIFF_SCALE` 0/0/1 + the B-SOUL-PROC-1 backstop bumping only n/e. (P1, round-2, 2
+> SV-inherited that the round-0 audit MISSED - v1 detector only checked augment levels, never itemSkillLevel)
+> `spider\bloodtip_soul` grant `bloodtip_devour` 5/**1**/9 -> **5/7/9** and `vulture\gustleech_soul` grant
+> `leechstrike_soul` 10/**4**/**7** -> **10/12/14**; both obtainable Hero souls (66% finger2), grant NAMES preserved.
+> (P2-b) svc_uber e/l per-tier icon law - 108 rings / **54 families** had `soul_n_icon` on Epic+Legendary; rewritten to
+> `soul_e/soul_l_icon`. `verify()` is fail-loud + **ROSTER-WIDE** (tier monotonicity n<=e<=l on augment AND grant levels,
+> same-skill-name-guarded, EVERY soul family - widened from round-1's svc_uber-only scope so the class can't recur
+> anywhere; + svc_uber per-tier icon). **DISJOINT**: 0 of the 111 touched records hit Occult/Hunting/mastery/kallixenia/
+> pharaoh/abyssalliche, 0 hit `corpsemanager` (skill_quality reassigns corpsemanager's GRANT to the `bloodtip_devour`
+> *skill*, a different record from our `bloodtip_soul` *ring*). **⚠️ WILL VETO:** bloodtip/gustleech itemSkillLevel arrays
+> are byte-identical to SV 0.98i - fixing them diverges from SV data (judged amgoz1 oversight: every OTHER field tiers
+> upward correctly); revert `_SV_INVERSION_FIX` if SV numbers are sacrosanct. **VERIFY (no heavy build):** dry-run replay
+> `tools/debug/souls_quality_replay.py` vs build40 GOLDEN `b33c5a44` = intended-only diff **exactly 111** (108 icons + 3
+> new SV level records), field-minimal, all 5 families monotonic, verify OK, idempotent, **3 negative tests** PASS
+> (svc_uber + NON-svc_uber inversion + wrong icon); patched-arz contracts `validate_soul_augments` PASS(0/0),
+> `validate_summon_pets` 3-arg PASS (single-arg exit=1 is pre-existing noise, byte-identical baseline-vs-patched),
+> `validate_tags` PASS-by-construction - all == baseline, zero regression; py_compile + `_check_registry` (14 modules,
+> order `39d94e32`) OK. Audit re-graded DEFICIENT 3 -> 5; the audit probe's detector now catches itemSkillLevel-only
+> inversions (`GRANT-LEVEL-TIER-INVERSION`). **NOT auto-applied (Will decisions):** P2-a Tomb Guardian obtainability
+> (`um_tombguardian_26` = genuine COMMON 609-HP Anubis Hound, reclassifying to Hero is a balance change), P2-c nymph icons
+> (integrate `feat/b40-soul-icons` 9db3f5f). **P2-d Soulfeeder pet = AUDIT FALSE POSITIVE** (bonepet20 already casts
+> `bonescourge_spiritbreath`). Reports: `docs/reports/souls_quality_fix.md` + `souls_quality_audit.md`. Ships in a later
+> integration build.
 
 > 🗡️ **B39 BOSS-SKILL FIX (MERGED+BUILT+GATED in build39-dev, `feat/b39-boss-skills` @ `95edf55`).** Will
 > (2026-07-13): the new bosses "not using skills when you fight them / when summoned". Audit (both surfaces):
@@ -2276,6 +2346,17 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   Legendary-only". Held to the amgoz1 creative bar (name/lore). Coexists with the already-shipped
   roaming Endless Hunt (Part C). **NOT built** in the 2026-07-14 corridor lane. Owner: a future DB+map
   wave.
+- Souls quality pass vs SV originals (#31) - **ROUND 1+2 FIXED on `feat/souls-quality`** (module
+  `tools/patches/souls_quality.py`; all 5 roster tier inversions + svc_uber icons; roster-wide verify;
+  see SOULS-QUALITY ROUND-1+2 record above + `docs/reports/souls_quality_fix.md`). Awaiting integration.
+  Fixed: the 3 DEFICIENT svc_uber souls (crowboar/onyxspine/steamcrawler - Legendary weaker than Epic; L-tier
+  augment/grant -> 3, now n/e/l=1/2/3) + the 54-family svc_uber e/l per-tier icon law (108 rings). Contracts +
+  dry-run replay green; ships in a later integration build. RESIDUAL (Will decisions, not auto-applied): P2-a Tomb
+  Guardian obtainability (reclassifying the Common um_tombguardian_26 to Hero is a pack-balance change), P2-c nymph
+  icons (integrate `feat/b40-soul-icons` 9db3f5f), P3-a/b/c/d design+hygiene. P2-d Soulfeeder pet = AUDIT FALSE
+  POSITIVE (pet already casts spiritbreath). No SV-drift/dead-augment/granted-skill defects existed to fix.
+- Toxeus encounter suite: 10-25% canonical entrance spawn, rant scroll (MP per-player), Legendary
+  stalker feasibility, 6-player checklist (#32).
 - Comprehensive dropped-visuals restoration (#28).
 - Cold Tombs (#36) - ON HOLD per Will.
 

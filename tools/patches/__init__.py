@@ -102,6 +102,11 @@ REGISTRY = [
                             # (strip Lyia-clone green residue: envenom/heartofoak/regrowth/natureswrath;
                             # inherit each pet's source-monster black shroud). PET FX fields only;
                             # runs after every pet-building module so it edits the FINAL pet records.
+    'souls_quality',        # backlog #31 round1: fix the 3 DEFICIENT svc_uber souls (Legendary
+                            # weaker than Epic - tier-level inversion) + the 54-family svc_uber
+                            # e/l per-tier icon law. Disjoint from every module above (touches only
+                            # create_uber_souls-generated svc_uber rings; module-authored souls
+                            # already obey both invariants). verify() gates the class fail-loud.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
