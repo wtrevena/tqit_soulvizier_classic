@@ -11460,6 +11460,63 @@ def _create_helos_traveler_hub(db, tags):
           f"name/chat/menu tags set (INERT until the TESTHUB map places them)")
 
 
+# ── TRAVELERS-INTO-AREAS (b62, Will 2026-07-14 FINAL DESIGN) ──────────────────────────────────
+# Will: (1) the in-world traveler NEAR a sealed SV area must be able to take the player INTO
+# that area (today everything only returns to Helos) - e.g. the Athens-catacomb "tomb guy"
+# (svc_area_return_sparta) should ALSO offer descent into spartacryptlevel2 (the previously-
+# dormant Almyros landing, nudged on-mesh); the maze03 "post-minotaur guy" (svc_area_return_uber)
+# should ALSO offer entry into crypt_floor1 (Uber Dungeon interior, the SV-native arrival spot -
+# clean, no nudge needed). Sweep-all found exactly 3 truly SEALED SV areas (0 inbound 0x14 AND 0
+# boat-route: docs/reports/travelers_into_areas_sweep.md) - spartacryptlevel2, crypt_floor1, and
+# the Secret Place's murderbossroom (crow-hero bosses). ONLY the first two are wired here: they
+# already have an EXISTING PLACED NPC on BOTH ends of the round trip (outer catacomb/maze03 door +
+# inner crypt/dungeon interior), so the whole feature reuses existing records - no new map
+# placement, no new QUESTS registry entry (both triggers ride the already-registered
+# sv_commonmechanics host step, the proven boat-dialog pattern every other hub route uses).
+# murderbossroom has NO placed NPC at all and is box-adjacency-proven ISOLATED (shares no boundary
+# with any other Secret_Place level) - an enter-offer without a paired return NPC inside it would
+# strand the player with no way back (the exact P0-A "no way back" bug, 2026-07-12). That needs a
+# NEW map-lane placement first; flagged in the report + BACKLOG as a follow-up, NOT wired here.
+#
+# (2) Each area's interior RETURN NPC (svc_testhub_return_sparta / _uber, already stranded there)
+# now takes the player back to WHERE THEY TRAVELED FROM: primary = the paired ORIGIN entrance (the
+# outer landing where the enter-offer traveler stands), secondary = Helos - a static 2-option
+# dialog (the engine has no dynamic "where you came from" state; this is the best static
+# approximation of Will's ask, documented here for him). Garden/Secret/Boss-Arena stay on their
+# existing Helos+BloodCave menu (unchanged) - they are single-hop from Helos already, so their
+# "origin" already IS Helos; changing them isn't required by this design and isn't touched, to
+# keep this wave's blast radius minimal.
+#
+# Landings verified on-mesh + collision-clear (tools/debug/gate_landing_clearance.py, PASS on all
+# 4 points against the TESTHUB map): enter_sparta_crypt (-5596,-2,-1410) 3.16u off the existing
+# svc_testhub_return_sparta; enter_uber_dungeon (-2438,10,-2450) 3.00u off svc_testhub_return_uber
+# (0.09u from the SV-native portal_olympianarena2 pad - non-colliding, informational only, already
+# T6-allowlisted for crypt_floor1); the two origin re-checks (-6587,1,-3180) / (-7793,1,-3793) land
+# 2.24u/2.83u off their respective enter-offer traveler, on-mesh comp#1 100% clearance all 3
+# tilesets. No new arz RECORDS here - build_quest_files.py adds a second Action_BoatDialog trigger
+# to the already-placed svc_area_return_sparta/_uber (enter-offer) and swaps the destination list
+# on the already-placed svc_testhub_return_sparta/_uber (return-to-origin). This function only
+# mints the 4 new boat-menu label tags validate_tags requires to resolve.
+TAG_ENTER_SPARTA_CRYPT = 'tagSVCEnterSpartaCrypt'
+TAG_ENTER_UBER_DUNGEON = 'tagSVCEnterUberDungeon'
+TAG_RETURN_TO_ATHENS_CATACOMB = 'tagSVCReturnToAthensCatacomb'
+TAG_RETURN_TO_LABYRINTH_DOOR = 'tagSVCReturnToLabyrinthDoor'
+
+
+def _create_traveler_enter_offers(db, tags):
+    """Mint the 4 boat-menu label tags for the enter-offer / return-to-origin round trip (Sparta
+    Crypt + Uber Dungeon). Zero new arz records - build_quest_files.py wires these tags onto the
+    ALREADY-PLACED svc_area_return_sparta/_uber (new enter-offer trigger) and
+    svc_testhub_return_sparta/_uber (replaced destination list)."""
+    tags[TAG_ENTER_SPARTA_CRYPT] = 'Descend into the Sparta Crypt'
+    tags[TAG_ENTER_UBER_DUNGEON] = 'Enter the Uber Dungeon'
+    tags[TAG_RETURN_TO_ATHENS_CATACOMB] = 'Athens Catacomb (Return)'
+    tags[TAG_RETURN_TO_LABYRINTH_DOOR] = 'The Labyrinth Door (Return)'
+    print("  Traveler enter-offers: 4 boat-menu labels minted (Sparta Crypt + Uber Dungeon "
+          "enter-offers; Athens Catacomb + Labyrinth Door return-to-origin) - zero new arz "
+          "records, reuses the existing placed return NPCs on both ends of each round trip")
+
+
 # ── GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB) ──────────────
 # Will signed off (BACKLOG N4-DB): a lone Ancient-Dragonian warlord in the
 # Random05A cave east of Chang'an. Identity B - {^r}Vashkarr, Eldest of the
@@ -17292,6 +17349,7 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     _create_helos_portal_master(db, tags)     # Q2 (Group A): Helos portal-master NPC -> 4 SV-area boat destinations (map lane places it)
     _create_testhub_portal_npcs(db, tags)     # Portal rig (GROUP 2 unblock): TESTHUB hub + return NPCs -> Model C travel (map lane places them; INERT on canonical)
     _create_helos_traveler_hub(db, tags)      # Helos traveler hub v2 (Will 2026-07-13): 14 named per-area travelers + 11 area returns (TESTHUB map places them; INERT on canonical)
+    _create_traveler_enter_offers(db, tags)   # TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final): 4 boat-menu labels for the Sparta Crypt + Uber Dungeon enter-offer/return-to-origin round trip (zero new records, reuses existing placed NPCs)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs

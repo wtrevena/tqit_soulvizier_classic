@@ -186,8 +186,13 @@ def facts_from_specs(testhub=True):
 
     add(bqf.HELOS_PORTAL_NPC, bqf.HELOS_PORTAL_DESTS)               # Almyros 4-dest (trig 1)
     for npc in bqf.TESTHUB_AREA_RETURN_NPCS:                        # per-area returns (2 each)
-        add(npc, bqf.TESTHUB_RETURN_DESTS)
-    for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL:                      # the 17-record hub (1 each)
+        # b62 TRAVELERS-INTO-AREAS: sparta/uber override to return-to-origin; the rest keep the
+        # shared Helos+BloodCave menu (see build_quest_files.TESTHUB_RETURN_DESTS_BY_NPC).
+        dests = bqf.TESTHUB_RETURN_DESTS_BY_NPC.get(npc, bqf.TESTHUB_RETURN_DESTS)
+        add(npc, dests)
+    for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL:                      # the 25-record hub (1 each)
+        add(npc, [(xyz, tag)])
+    for npc, xyz, tag in bqf.TRAVELER_ENTER_OFFERS:                 # b62 enter-offers (registered last)
         add(npc, [(xyz, tag)])
 
     specs = dict(bss.merge_hub_into_inject_specs(bss.INJECT_SPECS) if testhub else bss.INJECT_SPECS)

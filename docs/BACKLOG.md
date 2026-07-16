@@ -1,4 +1,34 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🚪 **TRAVELERS-INTO-AREAS b62 SHIPPED (Will 2026-07-14 final design; quest/text-only, no map build) -
+> report `docs/reports/b62_travelers_into_areas.md`.** Reachability sweep (read-only vs
+> `local/Levels_merged_TESTHUB.arc`, Will's actual play surface right now per HANDOFF_LIVE_STATE) found
+> exactly 3 truly SEALED SV areas: spartacryptlevel2 (Sparta Crypt), crypt_floor1 (Uber Dungeon), and
+> the Secret Place's murderbossroom (crow bosses). **2 of 3 wired** (both already have a placed NPC on
+> BOTH ends of the round trip): `svc_area_return_sparta`/`_uber` (outer, Athens catacomb / Maze03) each
+> gained a SECOND boat-dialog trigger offering entry into their interior (new tags `tagSVCEnterSpartaCrypt`
+> / `tagSVCEnterUberDungeon`, landings `(-5596,-2,-1410)` / `(-2438,10,-2450)`, both gate-verified on-mesh
+> + collision-clear); `svc_testhub_return_sparta`/`_uber` (interior, already stranded there) had their
+> destination list swapped from Helos+BloodCave to **origin** (the outer landing, primary) + Helos
+> (secondary) - new tags `tagSVCReturnToAthensCatacomb` / `tagSVCReturnToLabyrinthDoor`. Zero new arz
+> records, zero new map placements, zero new QUESTS registry entries (both ride the existing
+> sv_commonmechanics host step). ⚠️ **CANONICAL NOTE:** the 2 interior return NPCs are ALREADY placed on
+> canonical/Steam too (promoted during the build40 P0-A hotfix) and Quests.arc is NOT SVC_TEST_HUB-gated,
+> so this return-to-origin change will also apply to canonical/Steam the next time canonical Quests.arc is
+> shipped (a separate deliberate ship step) - judged a net improvement (more coherent than the vestigial
+> Blood-Cave jump, still on-mesh/safe) but flagging since it touches shipped NPCs. **Investigated but
+> DELIBERATELY DID NOT unify** the pre-existing Almyros/`portal_master_helos` divergent
+> `tagSVCHelosToSparta`/`tagSVCHelosToUber` destinations (interior vs the hub traveler's outer door) -
+> Almyros is canonical-only and IS the sole live canonical mechanism into these interiors today (no outer
+> door exists there); redirecting him would have stranded canonical players (see report for the full
+> analysis). **FOLLOW-UP QUEUED (not done): unseal murderbossroom** - it has NO placed NPC on either end
+> (box-adjacency-proven isolated from the rest of Secret_Place), so an enter-offer without a paired return
+> would repeat the 2026-07-12 P0 "no way back" bug; needs a map-lane NPC placement first, then the same
+> quest-lane pattern applies. Gates extended: `gate_traveler_responds.facts_from_specs` (per-NPC dest
+> override + enter-offer routes; `--specs` and `--specs --canonical` both PASS),
+> `gate_travel_npc_invariants` (new T5c: 0 new records, 4 new tags resolve; full battery PASS),
+> `gate_landing_clearance --wiring v1` (now also derives the 2 enter-offer landings live; 27/27 PASS
+> against the TESTHUB map). Dry-run qst round-trip proof against the clean SVAERA
+> `sv_commonmechanics.qst` in the report.
 > 🏺 **SVAERA-ADOPT (APPROVED-CONCEPT recon, 2026-07-14, awaiting Will's picks).** Full audit of "what
 > SVAERA has that we don't": `docs/reports/svaera_goodies_audit.md` (repro `scratch_audit/svaera_goodies/*.py`).
 > SVAERA arz = **110,495 records** (live workshop install `2076433374`; NB the in-repo `reference_mods` copy has

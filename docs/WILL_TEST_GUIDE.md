@@ -83,8 +83,8 @@ learn where everything is, and **walk in** to the boss yourself.
 |---|---|---|
 | **Traveler: Garden of Merchants** | the merchant hub by the caravan_rhodes Super-Caravan + the SV **rift-shrine** (teleportshrine_gom) that reaches the Garden in game | browse the merchants; the rift-shrine is the in-game way in |
 | **Traveler: The Secret Place** | the darkforestenter **forest-cluster entry** | walk in; the crow-hero bosses (Murderbunny, Zilla) live in the interiors |
-| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | this is the in-game entrance TO the Sparta crypt; the invented door itself is currently removed - report if you want it re-cut |
-| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east |
+| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | 🆕 the return traveler standing right there (`svc_area_return_sparta`) now has a SECOND option too: "Descend into the Sparta Crypt" - takes you straight into `spartacryptlevel2` (the interior itself), where its own return traveler now sends you back to THIS catacomb door (primary) or Helos (secondary) |
+| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east. 🆕 the return traveler standing right there (`svc_area_return_uber`) now has a SECOND option too: "Enter the Uber Dungeon" - takes you straight into `crypt_floor1` (the interior itself), where its own return traveler now sends you back to THIS door (primary) or Helos (secondary) |
 | **Traveler: The Boss Arena** | the boss-arena forecourt (~90u south of the arena volume) | walk north into the Satyr-Shaman arena |
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
 | **Traveler: Medea Tomb (Dorus)** | the tomb **entrance** (cryptentrance), amid the drowned court | walk ~82u to **Dorus, the Drowned King** + hoard |
@@ -182,7 +182,12 @@ NOT YET TESTED - reach all of these via the **HELOS TRAVELER HUB** above (DEV/TE
 invented walk-through doors that used to enter them were REMOVED 2026-07-12 (walk-through teleports
 are banned; a walk-through to the Garden with no way back was a live Steam bug):
 1. **Uber Dungeon / Obsidian Halls** (roulette + 4 wardens) - "Traveler: The Obsidian Halls".
-2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt".
+   🆕 The interior itself (`crypt_floor1`) is now ENTERABLE: at the Knossos->Uber door, talk to
+   the return traveler standing there (`svc_area_return_uber`) and pick "Enter the Uber Dungeon".
+2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt". 🆕 The crypt itself (`spartacryptlevel2`) is
+   now ENTERABLE: at the Athens catacomb door, talk to the return traveler standing there
+   (`svc_area_return_sparta`) and pick "Descend into the Sparta Crypt". Its own return traveler
+   inside sends you back to this same catacomb door (primary) or Helos (secondary).
 3. **Garden of Merchants** - "Traveler: Garden of Merchants". (The old first-cave portal NPC is on
    Will's removal list; the Garden is now reached via the hub, not that NPC.)
 4. **Secret Place** - "Traveler: The Secret Place". The crow-hero bosses (Murderbunny, Zilla, etc. -

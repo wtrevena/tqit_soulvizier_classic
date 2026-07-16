@@ -673,14 +673,21 @@ def placements_to_extra(specs):
 def load_landings_arg(wiring):
     if wiring == 'v1':
         try:
-            from build_quest_files import HELOS_HUB_TRAVEL
+            from build_quest_files import HELOS_HUB_TRAVEL, TRAVELER_ENTER_OFFERS
             # HELOS_HUB_TRAVEL rows are (npc_dbr, (x,y,z), tag) - derive a name from the npc
             out = []
             for (npc, xyz, tag) in HELOS_HUB_TRAVEL:
                 nm = npc.rsplit('\\', 1)[-1].replace('svc_helos_trav_', '').replace(
                     'svc_area_return_', 'ret_').replace('.dbr', '')
                 out.append((nm, tuple(xyz), tag))
-            return out, 'v1 (LIVE build_quest_files.HELOS_HUB_TRAVEL)'
+            # b62 TRAVELERS-INTO-AREAS: the 2 enter-offer landings ride the SAME NPCs as their
+            # HELOS_HUB_TRAVEL 'ret_sparta'/'ret_uber' entries above (extra trigger, same record) -
+            # gate them too so a future landing tweak can't silently skip the enter-offer coord.
+            for (npc, xyz, tag) in TRAVELER_ENTER_OFFERS:
+                nm = 'enter_' + npc.rsplit('\\', 1)[-1].replace('svc_area_return_', '').replace(
+                    '.dbr', '')
+                out.append((nm, tuple(xyz), tag))
+            return out, 'v1 (LIVE build_quest_files.HELOS_HUB_TRAVEL + TRAVELER_ENTER_OFFERS)'
         except Exception as e:
             print(f'  (live import failed: {e}; using embedded V1 fallback)')
             return V1_LANDINGS, 'v1 (embedded fallback)'
