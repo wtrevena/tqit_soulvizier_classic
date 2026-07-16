@@ -110,6 +110,10 @@ REGISTRY = [
     'svaera_sets',          # SVAERA-ADOPT: re-link the 5 SVAERA Greek/Egyptian item sets onto
                             # the 13 already-shipped standalone-unique members (itemSetName only;
                             # no item/loot/map change). Disjoint from every module above.
+    'turtleshell_relics',   # NEW-RELIC-DIONYSUS-TRICKSTER + NEW-RELIC-DUNE-FIEND: The Reveler's
+                            # Ruse (Satyr Archer family, turtle-shell pattern) + a regression
+                            # guard confirming Dune Fiend's pre-existing Fiend Carapace relic
+                            # (no duplicate authored). Disjoint from every module above.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
