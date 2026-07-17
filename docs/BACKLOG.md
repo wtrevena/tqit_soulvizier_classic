@@ -1,5 +1,40 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## B87 FIX A round 1 SHIPPED-TO-DEV (2026-07-17, branch `fix/navok-mapfix`, tag `build48-dev`)
+**Fix A (single-own-GUID) implemented in the PIPELINE for `new_secretdoor_transitionhallway` ONLY
+this round (one variable for Will's walk test).** Fix-upstream (BL-103): `gen_bc_navmeshes.py` gains
+a per-cluster `own_guid_only_keys` config; the blood-cave cluster lists `new_secretdoor`. The FULL
+multi-GUID donor is generated + self-verified UNCHANGED (identical geometry/carve/cross-tag), then its
+GUID list is collapsed to `[own 415c9c33]` and every walkable cell retagged to own (area 1). Only the
+container GUID list + the tile `areas` plane change; heights + cons are carried byte-for-byte and the
+walkable footprint (incl. the 63-127u seam overlap) is preserved, so it loads in isolation (own GUID
+always resident) - no navOK=0 null-deref. Every rebuild reproduces it; NOT a hand-patched arc.
+**PROOFS (all green):**
+- Donor blob-diff vs build47 donors: EXACTLY `new_secretdoor` differs (158011->157898 B); gc 3->1;
+  heights+cons byte-identical across all 192 tiles; unwalkable-cell count identical; 103332 seam cells
+  retagged own; walkable total preserved (479328==479328).
+- Canonical + TESTHUB rebuilt to scratch. Section-diff vs build47 (both variants): DATA differs by
+  exactly -113 B, LEVELS is a pure offset cascade (0 metadata/GUID/corner changes, 24 data_offset
+  pointers shifted -113 from idx 2258), and QUESTS/GROUPS/SD/BITMAPS/DATA2/0x10 all BYTE-IDENTICAL;
+  exactly ONE level blob differs = `new_secretdoor` in each variant.
+- `verify_merged_bc_navmeshes` 24/24 on BOTH variants (count unchanged - new_secretdoor still has a
+  donor, now single-GUID).
+- `MAP-NAV-4` standalone gate + negtest: PASS; on the fixed map it now checks 4 SV-custom respawn
+  chambers and flags **exactly 2** (`drxBC3` gc=6, `RogueEncampment` gc=3) - `new_secretdoor` CLEARS.
+- Full map battery `--only map` on BOTH variants: GATE PASS (0 P0 / 0 P1; 3 pre-existing base-game P2
+  portal-noise only - XPack4 Dunes + Styx). Whitelist shrinks to the 2 remaining debt chambers.
+- **DEPLOYED to DEV** (`SoulvizierClassicDEV/Resources/Levels.arc` = the TESTHUB variant,
+  md5 `c1e814e499fafcf02725549f918fa89b`, == built artifact); arz/Text/Quests md5 IDENTICAL
+  before+after (arz `5a3c016b`, Text `fcca4927`, Quests `5e664c7b`). NO Steam packaging (walk-test-gated).
+- **HASHES:** canonical `Levels_merged.arc` md5 `0be919da2a0aae17ec6186405384ff43` (688,691,589 B);
+  TESTHUB `Levels_merged_TESTHUB.arc` md5 `c1e814e499fafcf02725549f918fa89b` (688,679,775 B);
+  fix-A donor `new_secretdoor_transitionhallway.lvl.0b.bin` 157898 B (build47 donor was 158011 B,
+  md5 `c4cc1e6e`).
+**REMAINING DEBT (still whitelisted):** `drxBC3` + `RogueEncampment` - extend fix A to each only after
+Will confirms new_secretdoor's walk test (crash gone AND west/east seams still walk). If A walls a
+seam, escalate that chamber to option C (interior portals). Walk steps: `docs/WILL_TEST_GUIDE.md`
+BLOOD-CAVE CRASH section. Report: `docs/reports/b87_bloodcave_navok_rca.md` sec 10 (fix-A addendum).
+
 ## B87 BLOOD-CAVE CRASH - RCA PROVEN via runtime probe (2026-07-17), branch `fix/bloodcave-navok`
 **The 2026-07-17 Frida probe caught the crash LIVE and pinned it.** Crash chamber =
 `new_secretdoor_transitionhallway` (idx 2257), the MID-CAVE respawn fountain
@@ -129,12 +164,15 @@ along automatically when the structural cluster-relocation fix lands.
   bespoke one - WILL-CONFIRM, a future art pass. Source: docs/reports/b71_enslaver_chain_rca.md.
 
 **World / placement**
-- B87 blood-cave isolated-load navmesh crash (MAP-NAV-4) - THREE SV-custom respawn+multi-GUID
-  chambers whitelisted as OPEN DEBT until each is single-own-GUID'd + Will walk-tests:
-  `new_secretdoor_transitionhallway` (P0, Frida-probe-PROVEN crash), `drxBC3` (P0, latent),
-  `XPack\Levels\Secret_Place\RogueEncampment.lvl` (P0, latent - Secret Place / Duister). The gate
+- B87 blood-cave isolated-load navmesh crash (MAP-NAV-4) - SV-custom respawn+multi-GUID chambers.
+  `new_secretdoor_transitionhallway` (P0, Frida-probe-PROVEN crash) is **FIXED to DEV (build48-dev,
+  fix A single-own-GUID)** and REMOVED from the whitelist - PENDING Will's in-game walk test (crash
+  gone AND west/east seams still walk); if the walk test fails a seam, escalate it to option C.
+  Still OPEN DEBT (whitelisted) until each is single-own-GUID'd + Will walk-tests: `drxBC3` (P0,
+  latent, respawn_hades_shrine01), `XPack\Levels\Secret_Place\RogueEncampment.lvl` (P0, latent -
+  Secret Place / Duister). Extend fix A to each only after new_secretdoor verifies in-game. The gate
   (`MAP-NAV-4`, provenance-scoped) fails loud on any NEW SV-custom respawn+multiGUID chamber.
-  Source: B87 above + docs/reports/b87_bloodcave_navok_rca.md sec 6-8; WILL_RULINGS walk-test law.
+  Source: B87 above + docs/reports/b87_bloodcave_navok_rca.md sec 6+10; WILL_RULINGS walk-test law.
 - Lower-Olympus dead respawn shrine (`respawn_olympus_new.dbr`, `olympusfinal02`) - Will asked to
   REMOVE it [paraphrased; origin instruction not located in docs/ this sweep]; the de-place fix was
   coded but as of the 2026-07-10 dead-content audit was STILL live in the shipped map (needs a map

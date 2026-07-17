@@ -110,6 +110,25 @@ class ClusterConfig:
                                     #   meet a FIXED external landing we never regenerate).
                                     #   '' => no external anchor beyond override levels
                                     #   (component root falls to the deterministic min).
+    own_guid_only_keys: tuple = ()  # SV path keys (lowercased, '/'-normalized) whose donor
+                                    #   must ship a SINGLE-own-GUID navmesh (fix A, b87). The
+                                    #   walkable geometry - including the neighbour-strip
+                                    #   overlap at every seam - is generated IDENTICALLY to a
+                                    #   normal multi-GUID donor (same tiles, same heights, same
+                                    #   cons, same carve), then the GUID list is collapsed to
+                                    #   [own] and every walkable cell is retagged to own (area
+                                    #   id 1). This makes the navmesh loadable in ISOLATION
+                                    #   (the own GUID is always stream-resident), so a save /
+                                    #   respawn on this chamber cannot trip ProcessRLTD's
+                                    #   live-residency gate on the (not-yet-resident) grid
+                                    #   neighbours -> no navOK=0 null-deref (the deterministic
+                                    #   blood-cave crash). The seam still carries 63-127u of
+                                    #   walkable OVERLAP and the neighbour meshes still list this
+                                    #   level's GUID from their side, so the cross-level region
+                                    #   flip is provided from the neighbour - whether the seam
+                                    #   still WALKS is a runtime walk-test question (b87 sec 6-8).
+                                    #   Membership must resolve to a generated cluster level
+                                    #   (asserted in run_cluster) so a typo fails loud.
 
     def matches(self, key):
         """True if a lowercased '/'-normalized SV level path belongs to this cluster."""
@@ -120,12 +139,22 @@ class ClusterConfig:
 
 # The blood-cave cluster - reproduces the prior hardcoded behaviour exactly.
 R09_KEY = 'levels/world/orient/underground/random09a.lvl'
+# fix A (b87): new_secretdoor_transitionhallway hosts the mid-cave respawn shrine
+# respawn_hadescave01 (a save/respawn point loadable in ISOLATION). Its 3-GUID grid-seam
+# navmesh (own 415c9c33 + drxbc_finale_transitionconnector + temple_entrance_clean) is the
+# Frida-probe-PROVEN crash: on an isolated respawn the two seam neighbours are not resident,
+# ProcessRLTD's live-residency gate fails, navOK stays 0 and the region code null-derefs the
+# absent navmesh (Engine RVA 0x20e270). Collapsing it to a single-own-GUID navmesh makes it
+# load in isolation. Round 1 fixes THIS chamber only (one variable for Will's walk test);
+# drxBC3 + RogueEncampment stay registered debt until fix A verifies in-game.
+NEW_SECRETDOOR_KEY = 'levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl'
 BLOODCAVE = ClusterConfig(
     name='bloodcave',
     tokens=('xbloodcave',),
     extra_level_keys=(R09_KEY,),
     own_guid_override_keys=(R09_KEY,),
     anchor_key=R09_KEY,
+    own_guid_only_keys=(NEW_SECRETDOOR_KEY,),
 )
 
 # --- Wave 1: single-level, isolated-island areas (navmesh only, no entrance yet) ---
@@ -262,6 +291,30 @@ def resolve_guids(guids_0a, own_guid, merged_guids, shared_remap):
         else:
             dropped.append(g.hex())
     return out, dropped
+
+
+def collapse_to_own_guid(doc, own_guid):
+    """fix A (b87): return a copy of a DECOMPRESSED rec02 doc with its GUID list
+    collapsed to [own_guid] and every walkable cell retagged to own (area id 1).
+
+    Only the container GUID list and the per-tile `areas` plane change: heights and
+    cons are carried byte-for-byte, and a cell stays walkable iff it was walkable
+    before (area 0 <-> 0, area >0 -> 1), so the walkable FOOTPRINT - including the
+    rasterised neighbour-strip overlap at every seam - is preserved exactly; the
+    navmesh simply no longer names its grid neighbours, so it loads in isolation.
+    `doc` must be a parse_rec02(..., decompress=True) doc (records carry raw
+    heights/areas/cons, not 'comp'). Does not mutate `doc`."""
+    new_sets = []
+    for s in doc['sets']:
+        recs = []
+        for r in s['records']:
+            areas = bytes(1 if b else 0 for b in r['areas'])
+            recs.append(dict(hdr=r['hdr'], trail_tx=r['trail_tx'],
+                             trail_ty=r['trail_ty'], heights=r['heights'],
+                             areas=areas, cons=r['cons']))
+        new_sets.append(dict(params=s['params'], records=recs))
+    return dict(version=doc['version'], guids=[own_guid], center=doc['center'],
+                dims=doc['dims'], sets=new_sets)
 
 
 def shift_center(center, shift):
@@ -542,6 +595,21 @@ def run_cluster(cfg, dry_run=False):
           f'anchor {_anchor_bn or "(none)"} shift={yshift.get(_anchor_bn, 0) if _anchor_bn is not None else "n/a"}; '
           f'shifts: {_sh_note}')
 
+    # fix A (b87): validate every own_guid_only key resolves to a GENERATED cluster
+    # level (has 0x0a geometry -> gets a 0x0b donor), so a typo or a key naming an
+    # ocean-scenery / non-member level fails loud instead of silently not collapsing.
+    own_only = set(cfg.own_guid_only_keys)
+    if own_only:
+        _entry_keys = {_key_of[e['basename']] for e in entries}
+        _missing = own_only - _entry_keys
+        if _missing:
+            raise SystemExit(
+                f'{cfg.name}: own_guid_only_keys not among generated cluster levels: '
+                f'{sorted(_missing)} (known: {sorted(_entry_keys)}). A single-own-GUID '
+                f'collapse only applies to a level this cluster actually generates a 0x0b '
+                f'for - fix the key or add the level to the cluster.')
+        print(f'  SINGLE-OWN-GUID (fix A) levels: {sorted(own_only)}')
+
     generated = []
     print('\n=== Generating ===')
     for ent in entries:
@@ -700,6 +768,55 @@ def run_cluster(cfg, dry_run=False):
                 f'neighbour toks are not reaching past this level\'s boundary into '
                 f'the padded grid; check the neighbour bbox prefilter / pad.')
         area_note = ' areas={' + ','.join(f'{k}:{ahist[k]}' for k in sorted(ahist)) + '}'
+
+        # fix A (b87): SINGLE-OWN-GUID COLLAPSE. The FULL multi-GUID donor above is
+        # generated and self-verified UNCHANGED (same geometry/carve/cross-tag as any
+        # build47 donor); then, for a flagged save/respawn chamber, its GUID list is
+        # collapsed to [own] and every walkable cell retagged to own. This is applied
+        # AFTER the multi-GUID cross-tag verify so the underlying generation is proven
+        # identical, and the collapse touches ONLY the container GUID list + the tile
+        # `areas` plane (heights + cons carried byte-for-byte, walkable footprint
+        # unchanged). Result loads in isolation (own GUID always resident) so a spawn
+        # on this chamber cannot hit the ProcessRLTD residency null-deref crash.
+        if key in own_only:
+            collapsed = collapse_to_own_guid(doc2, own_guid)
+            cdata = serialize_rec02(collapsed)
+            cdoc = parse_rec02(cdata, decompress=True)
+            # container invariants
+            assert cdoc['guids'] == [own_guid], \
+                f'{basename}: collapse did not yield single own GUID ({cdoc["guids"]})'
+            assert own_guid in merged_guids, \
+                f'{basename}: own GUID unresolved in merged world after collapse'
+            assert tuple(cdoc['center']) == tuple(doc2['center']) and \
+                tuple(cdoc['dims']) == tuple(doc2['dims']), \
+                f'{basename}: collapse moved the container center/dims'
+            assert len(cdoc['sets']) == len(doc2['sets']) == 3, \
+                f'{basename}: collapse changed the set count'
+            assert serialize_rec02(cdoc) == cdata, f'{basename}: collapsed round-trip mismatch'
+            # tile-payload invariants: heights + cons byte-identical to the multi-GUID
+            # donor; walkable footprint identical (0<->0); every retag is exactly own (1).
+            cah = Counter()
+            for s_old, s_new in zip(doc2['sets'], cdoc['sets']):
+                assert len(s_old['records']) == len(s_new['records']), \
+                    f'{basename}: collapse changed tile count'
+                for r_old, r_new in zip(s_old['records'], s_new['records']):
+                    assert r_new['heights'] == r_old['heights'], \
+                        f'{basename}: collapse altered tile heights'
+                    assert r_new['cons'] == r_old['cons'], \
+                        f'{basename}: collapse altered tile connectivity'
+                    assert all((a == 0) == (b == 0)
+                               for a, b in zip(r_old['areas'], r_new['areas'])), \
+                        f'{basename}: collapse changed the walkable footprint'
+                    for b in r_new['areas']:
+                        if b:
+                            assert b == 1, f'{basename}: residual multi-region tag {b} after collapse'
+                            cah[b] += 1
+            _retagged = sum(v for k, v in ahist.items() if k > 1)
+            area_note = (f' COLLAPSED gc={len(guid_list)}->1 areas'
+                         f'{{' + ','.join(f'{k}:{ahist[k]}' for k in sorted(ahist)) + '}'
+                         f'->own{{1:{cah.get(1, 0)}}} retagged={_retagged}')
+            data = cdata
+            guid_list = [own_guid]
 
         if not dry_run:
             (OUT_DIR / f'{basename}.0b.bin').write_bytes(data)

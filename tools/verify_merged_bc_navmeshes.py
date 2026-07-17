@@ -16,9 +16,15 @@ from arc_patcher import ArcArchive
 from merge_levels_binary import parse_sections, parse_level_index, SEC_LEVELS
 from build_section_surgery import parse_blob_sections
 
+import os
 REPO = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic')
-MAP_ARC = REPO / 'local' / 'Levels_merged.arc'
-DONOR_DIR = REPO / 'local' / 'editor_normalized'
+# Overridable so a scratch/worktree build (SVC_OUT_DIR + SVC_DONOR_DIR) can be verified
+# without touching the live local/ build47 artifact; defaults preserve prior behaviour.
+# SVC_MERGED_ARC names the exact merged arc to check (canonical OR TESTHUB); if unset it
+# falls back to <SVC_OUT_DIR or local>/Levels_merged.arc.
+_OUT_DIR = Path(os.environ.get('SVC_OUT_DIR', str(REPO / 'local')))
+MAP_ARC = Path(os.environ.get('SVC_MERGED_ARC', str(_OUT_DIR / 'Levels_merged.arc')))
+DONOR_DIR = Path(os.environ.get('SVC_DONOR_DIR', str(REPO / 'local' / 'editor_normalized')))
 STUB_SIZE = 148
 
 # The 7 ocean-scenery BC levels have no 0x0a geometry -> get the stub by design.

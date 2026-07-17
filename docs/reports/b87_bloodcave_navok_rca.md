@@ -258,3 +258,60 @@ chamber fails loud.
   (own GUID absent from stock TQAE) on both variants; base/XPack excluded name-free.
 - `tools/contracts/gate_navmesh_coresidency.py --negtest` - the gate + planted negative test
   (incl. the base-provenance false-positive control, case D).
+
+---
+
+## 10. FIX A round 1 - IMPLEMENTED + SHIPPED TO DEV (2026-07-17, branch `fix/navok-mapfix`, `build48-dev`)
+
+Fix A (sec 6) was built in the PIPELINE for `new_secretdoor_transitionhallway` ONLY this round -
+one variable for Will's walk test. `drxBC3` + `RogueEncampment` stay registered debt (sec 4) until
+fix A verifies in-game.
+
+**Implementation (fix-upstream, BL-103 - every rebuild reproduces it, no hand-patched arc).**
+`tools/gen_bc_navmeshes.py` `ClusterConfig` gains `own_guid_only_keys`; the blood-cave cluster lists
+`levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl`. In `run_cluster`, the FULL multi-GUID
+donor is generated and self-verified UNCHANGED first (same neighbour raster, carve, Y-align,
+cross-tag as any build47 donor), THEN - for a flagged level only - `collapse_to_own_guid()` sets the
+container GUID list to `[own 415c9c33]` and retags every walkable cell to own (area id 1). Only the
+container GUID list and the tile `areas` plane change; the tile heights and cons are carried
+byte-for-byte and a cell stays walkable iff it was before, so the walkable footprint - including the
+63-127u seam overlap that keeps the seam from being a stops-at-the-plane wall - is preserved exactly.
+The neighbour meshes (`drxbc_finale_transitionconnector`, `temple_entrance_clean`) still list
+`new_secretdoor`'s GUID from THEIR side, so the cross-level region flip is provided from the
+neighbour. Whether the seam still WALKS is the runtime question this round defers to Will.
+
+**Why this stops the crash (sec 3 mechanism):** ProcessRLTD's live-residency gate runs, for every
+listed GUID, `cmp [reg+0x50 + idx*4], 0` (region must be stream-resident). With the list collapsed
+to `[own]`, the only checked region is the chamber's own, which is by definition resident when the
+chamber loads. So on an isolated save-load / respawn at `respawn_hadescave01` the navmesh now loads
+(navOK=1) and the region code never null-derefs an absent navmesh.
+
+**Proofs (green; artifacts under the worktree scratch, gitignored).**
+- Donor blob-diff vs the build47 donors: EXACTLY `new_secretdoor` differs (158011 -> 157898 B);
+  decoded gc 3 -> 1 (own `415c9c33`); heights + cons BYTE-IDENTICAL across all 192 tiles (3 sets x
+  64); unwalkable-cell count identical; 103332 seam cells (area 2/3) retagged to own (1); walkable
+  total preserved (479328 == 479328).
+- Both variants rebuilt to scratch (canonical `Levels_merged.arc` md5 `0be919da...` 688,691,589 B;
+  TESTHUB `Levels_merged_TESTHUB.arc` md5 `c1e814e4...` 688,679,775 B). Full section-diff vs build47
+  (both variants): DATA(0x02) differs by exactly -113 B; LEVELS(0x01) is a PURE offset cascade (0
+  metadata/GUID/corner changes; 24 `data_offset` pointers shifted -113 from idx 2258 onward);
+  QUESTS(0x1b)/GROUPS/SD/BITMAPS/DATA2/0x10 all BYTE-IDENTICAL; exactly ONE level blob differs =
+  `new_secretdoor` in each variant.
+- `tools/verify_merged_bc_navmeshes.py`: 24/24 real navmeshes on BOTH variants (no count change -
+  the chamber still has a donor, now single-GUID; its 0x0b in the map == the new donor bytes).
+- `MAP-NAV-4` standalone gate + negtest PASS; on the fixed map it checks 4 SV-custom respawn chambers
+  and flags EXACTLY 2 (`drxBC3` gc=6, `RogueEncampment` gc=3) - `new_secretdoor` CLEARS. Whitelist
+  shrunk to those 2. Full `--only map` battery GREEN on both variants (0 P0/0 P1; 3 pre-existing
+  base-game P2 portal-noise only).
+- DEPLOYED to DEV: `SoulvizierClassicDEV/Resources/Levels.arc` = the TESTHUB variant, md5
+  `c1e814e4...` == built artifact; arz/Text/Quests md5 IDENTICAL before+after (untouched). No Steam
+  packaging (walk-test-gated).
+
+**Pipeline isolation note:** `svaera_plus_portals.py` and `verify_merged_bc_navmeshes.py` gained
+default-preserving env overrides (`SVC_OUT_DIR`, `SVC_MERGED_ARC`; `SVC_DONOR_DIR` already existed) so
+a worktree fix-wave builds to a scratch dir without clobbering the live `local/` build47 artifact.
+
+**What only Will's walk test can settle (sec 8, unchanged):** does the crash stop AND do the west
+seam (to `drxbc_finale_transitionconnector`) and east seam (to `temple_entrance_clean`) still walk?
+If a seam walls, escalate `new_secretdoor` to option C (interior GridEntrance portal). If clean,
+extend fix A to `drxBC3` and `RogueEncampment`.
