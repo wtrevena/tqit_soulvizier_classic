@@ -267,6 +267,23 @@ _CHAIN = [
         'sub_source': None,
         'sub_pets': [],
     },
+    # R-43 (b85, Will 2026-07-16): "the high priest soul should allow you to
+    # summon the high priest" - bwpriest_1/2/3 are now the Blood Cult High
+    # Priest HIMSELF (source c_disciple_miniboss), with the Melinoe blade-dancer
+    # he casts in combat rebuilt as a tamed, non-player-facing pet-of-pet
+    # (bwpriest_attendant_1/2/3, mirroring this exact Enslaver/marauder shape).
+    # No bespoke party portrait ships for the Priest -> neutral proxy_party
+    # (same convention as 10 other unmapped bosses, incl. Hades Marshal above).
+    {
+        'label': 'Blood Cult High Priest',
+        'souls': [_R2 + r'item\equipmentring\soul\svc_uber\bwpriest_soul_%s.dbr' % t for t in ('n', 'e', 'l')],
+        'skill': _R2 + r'skills\soulskills\summon_bwpriest.dbr',
+        'icon_stem': 'bloodbathup',
+        'portrait_stem': 'proxy_party_up',
+        'pets': [_R2 + r'skills\soulskills\pets\bwpriest_%d.dbr' % i for i in (1, 2, 3)],
+        'sub_skill': _R2 + r'skills\soulskills\svc_bwpriest_summonmelinoe.dbr',
+        'sub_pets': [_R2 + r'skills\soulskills\pets\bwpriest_attendant_%d.dbr' % i for i in (1, 2, 3)],
+    },
 ]
 
 
@@ -659,3 +676,7 @@ def verify(db, tags=None):
           'race + voice paks match each pet\'s own source, b81; second-lineage '
           'race/voice gate OK: %d pets across %d families, b81r2)'
           % (second_builder_checked, len(_SECOND_BUILDER_ROSTER)))
+=======
+          'black shroud, zero green Lyia residue; chain icon+portrait on-identity '
+          'across all %d rostered families incl. R-43 Blood Cult High Priest)'
+          % len(_CHAIN))

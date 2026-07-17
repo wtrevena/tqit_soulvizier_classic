@@ -7360,7 +7360,176 @@ def _create_anapaest_soul(db):
     paths = _create_soul(db, 'anapaest', 'tagSVCSoulAnapaest', tiers, MONSTER, 66.0)
     print(f"  Anapaest soul: gigantes ground-breaker tank ({len(paths)} paths)")
     return paths
-# ── 2.2 Blood Witch High Priest - SUMMON (Melinoe blade-dancer pet from Lyia) ──
+# ── 2.2 Blood Cult High Priest - SUMMON (R-43: summon the High Priest HIMSELF) ──
+# GROUND TRUTH (b85 RCA, docs/reports/b85_highpriest_summon.md): the soul drops
+# from c_disciple_miniboss.dbr ("Blood Cult High Priest", tag tagBWHighPriest,
+# God racial profile; mesh DRX\meshes\disciple.msh; anim anm_seductress.dbr;
+# controller controller_disciple.dbr). The PRE-R-43 code (below, replaced) pointed
+# the granted summon at a Melinoe blade-dancer identity (discipleboss_bladedancer)
+# - which is the monster's OWN signature combat SUMMON (specialAttackSkillName =
+# discipleboss_summon_melinoe.dbr, Skill_SpawnPet, petLimit 18 / petBurstSpawn 6 -
+# a raw hostile-monster-scale swarm), never the High Priest's own body. Will's
+# ruling (R-43, verbatim): "the high priest soul should allow you to summon the
+# high priest."
+#
+# Fix mirrors the b71 Enslaver "boss pet + pet-of-pet sub-summon" pattern exactly
+# (docs/reports/b71_enslaver_chain_rca.md step 4/5):
+#   1. bwpriest_1/2/3 = the High Priest HIMSELF (source c_disciple_miniboss), built
+#      via the shared _build_boss_summon pipeline (mesh/tex/anim/controller/gear/
+#      skill-kit auto-mirror + D19 mobility assert + b40 icon + b71 portrait).
+#   2. bwpriest_attendant_1/2/3 = the Melinoe blade-dancer HE casts in combat
+#      (source discipleboss_bladedancer), rebuilt as a tamed, non-player-facing
+#      pet-of-pet (player_facing=False, isPetDisplayable=0) - his real signature
+#      summon stays present, but tamed to the PROVEN pet-of-pet depth (the
+#      Enslaver's svc_enslaver_petmarauders: petLimit<=4, small burst, 0 mana,
+#      the friendly-pet-of-pet numbers - not the raw boss-scale 18-pet/burst-6
+#      swarm). The raw discipleboss_summon_melinoe reference that
+#      _build_boss_summon's _update_existing_fields would otherwise copy verbatim
+#      onto bwpriest_1/2/3's specialAttackSkillName is swept and repointed to the
+#      tamed sub-summon (same technique as the Enslaver's marauder repoint).
+#   3. The monster's own disciple_bloodrain_bleedx50_vitx10 (specialAttack3) is
+#      flagged isPetDisplayable=0 on the SOURCE RECORD ITSELF (the game's own
+#      "not for pets" marker - an AOE with a ragdoll push); it is swept off
+#      bwpriest_1/2/3 after the kit-mirror places it, and never granted to a pet.
+#   4. Race ('God' for the Priest, 'Demon' for the attendant - each source's own),
+#      and core identity sounds (voice/alert/death/crit/stun/bodyfall/attack/
+#      impact) are copied explicitly from each source monster (_build_boss_summon
+#      does not auto-copy either) - R-11's general law: "boss-summon pets inherit
+#      race/sounds/distress from their SOURCE monster."
+#   5. Any Lyia-clone green-residue markers (envenom/heartofoak/regrowth/
+#      natureswrath) surviving on either pet family are stripped (a systemic
+#      _build_boss_summon gap outside the b55/b71 "retinted-dark" family set;
+#      this family is now on the b71 CHAIN gate roster, enslaver_pet_fx._CHAIN).
+_BWP_MONSTER = r'records\drxcreatures\bloodwitch\c_disciple_miniboss.dbr'
+_BWP_BD_MONSTER = r'records\drxcreatures\bloodwitch\skills\discipleboss_bladedancer.dbr'
+_BWP_PET_PATHS = [r'records\skills\soulskills\pets\bwpriest_%d.dbr' % i for i in (1, 2, 3)]
+_BWP_ATTENDANT_PET_PATHS = [r'records\skills\soulskills\pets\bwpriest_attendant_%d.dbr' % i for i in (1, 2, 3)]
+SUMMON_BWPRIEST_SKILL = r'records\skills\soulskills\summon_bwpriest.dbr'
+_BWP_ATTENDANT_SKILL = r'records\skills\soulskills\svc_bwpriest_summonmelinoe.dbr'
+_BWP_RAW_SUMMON_MELINOE = r'records\drxcreatures\bloodwitch\skills\discipleboss_summon_melinoe.dbr'
+_BWP_BLOODRAIN_AOE = r'records\drxcreatures\bloodwitch\skills\disciple_bloodrain_bleedx50_vitx10.dbr'
+# Same Lyia-clone green-residue class enslaver_pet_fx._GREEN_MARKERS polices,
+# scoped to the two fields this family can actually inherit undefined from the
+# source (neither c_disciple_miniboss nor discipleboss_bladedancer sets
+# buffSelf2SkillName/healSkillName, so _update_existing_fields never overwrites
+# whatever the Lyia clone brought).
+_BWP_GREEN_MARKERS = {
+    'buffselfskillname':  ('envenom',),
+    'buffself2skillname': ('heartofoak',),
+    'healskillname':      ('regrowth',),
+    'deatheffect':        ('natureswrath',),
+}
+_BWP_SOUND_FIELDS = (
+    'voiceSound1', 'voiceSound1Chance', 'voiceSound2Chance', 'voiceSound3Chance',
+    'alertSound', 'alertSoundChance', 'deathSound1', 'criticalHitSound',
+    'stunSound', 'bodyFallSound', 'bodyFallSoundChance', 'attackSound',
+    'swipeSound', 'impactSound', 'impactSoundChance',
+)
+# D19 pet-mobility (build-proven, b85): discipleboss_bladedancer DUAL-WIELDS
+# wep_bladedancersword (proven B-SUMMON-1 loadout, the pre-R-43 code's own hand-
+# transcribed table); _mirror_source_loadout's strict auto-derive reads it as a
+# SINGLE-hand ('sHanded') equip, and anm_melinoe.dbr has no sHandedRunAnim row
+# (only dHanded/spear/staff/unarmed) -> the D19 assert correctly refuses an
+# immobile pet. Pass the proven table explicitly instead of auto-deriving.
+_BWP_BD_SWORDS = [
+    r'records\drxcreatures\bloodwitch\skills\skilleffects\wep_bladedancersword01.dbr',
+    r'records\drxcreatures\bloodwitch\skills\skilleffects\wep_bladedancersword02.dbr',
+    r'records\drxcreatures\bloodwitch\skills\skilleffects\wep_bladedancersword03.dbr',
+]
+_BWP_BD_LOADOUT = [
+    ('LeftHand', 100.0, 1000, _BWP_BD_SWORDS),
+    ('RightHand', 100.0, 1000, _BWP_BD_SWORDS),
+]
+
+
+def _bwp_strip_green(db, pet):
+    """Strip Lyia-clone green-residue fields (see _BWP_GREEN_MARKERS) that
+    _build_boss_summon's copy set does not reach when the source monster leaves
+    the field undefined. Marker-matched (never touches a legitimate value)."""
+    fields = db.get_fields(pet)
+    if not fields:
+        return 0
+    n = 0
+    for key in list(fields):
+        base = key.split('###')[0].lower()
+        needles = _BWP_GREEN_MARKERS.get(base)
+        if not needles:
+            continue
+        tf = fields[key]
+        val = str(tf.values[0]) if tf.values else ''
+        if any(nd in val.lower() for nd in needles):
+            del fields[key]
+            n += 1
+    if n:
+        db._modified.add(pet)
+    return n
+
+
+def _bwp_repoint_raw_refs(db, pet, raw_ref, tamed_ref):
+    """Sweep every field on `pet` for a verbatim reference to `raw_ref` and
+    repoint it to `tamed_ref` (case/slash-insensitive). Mirrors the Enslaver's
+    marauder-summon repoint (_create_enslaver step 5)."""
+    fields = db.get_fields(pet)
+    if not fields:
+        return 0
+    want = raw_ref.replace('/', '\\').lower()
+    n = 0
+    for tf in fields.values():
+        for j, v in enumerate(list(tf.values)):
+            if isinstance(v, str) and v.replace('/', '\\').lower() == want:
+                tf.values[j] = tamed_ref
+                n += 1
+    if n:
+        db._modified.add(pet)
+    return n
+
+
+def _bwp_strip_skill_ref(db, pet, ref):
+    """Delete every field on `pet` whose value matches `ref` (case/slash-
+    insensitive), plus its paired Chance/Level companion field - used to fully
+    remove the isPetDisplayable=0 AOE the monster itself flags as not-for-pets,
+    wherever the kit-mirror placed + registered it (never blanks to '' - the
+    B-TOXEUS-2 empty-ref law; deletes the key so it is ABSENT in the built
+    record)."""
+    fields = db.get_fields(pet)
+    if not fields:
+        return 0
+    want = ref.replace('/', '\\').lower()
+    hit_bases = []
+    for key in list(fields):
+        tf = fields[key]
+        if any(isinstance(v, str) and v.replace('/', '\\').lower() == want for v in tf.values):
+            hit_bases.append(key.split('###')[0])
+            del fields[key]
+    for base in hit_bases:
+        companion = None
+        bl = base.lower()
+        if bl.startswith('specialattack') and bl.endswith('skillname'):
+            companion = base[:-len('SkillName')] + 'Chance'
+        elif bl.startswith('skillname') and base[len('skillName'):].isdigit():
+            companion = 'skillLevel' + base[len('skillName'):]
+        if companion:
+            for k in list(fields):
+                if k.split('###')[0] == companion:
+                    del fields[k]
+    n = len(hit_bases)
+    if n:
+        db._modified.add(pet)
+    return n
+
+
+def _bwp_mirror_identity(db, pet, source, race):
+    """R-11 general law ('boss-summon pets inherit race/sounds/distress from
+    their SOURCE monster') - not auto-applied by _build_boss_summon (race/sound
+    fields sit outside its _SKILL_PREFIXES / anim-copy sets). Explicit,
+    source-faithful; only writes a sound field the source itself defines."""
+    sf = db.set_field
+    sf(pet, 'characterRacialProfile', race)
+    for f in _BWP_SOUND_FIELDS:
+        v = db.get_field_value(source, f)
+        if v not in (None, '', []):
+            sf(pet, f, v)
+
 
 def _create_bwpriest_pet_skill(db):
     """Blood Witch High Priest summon: 3 Melinoe blade-dancer pets cloned from
@@ -7469,14 +7638,64 @@ def _create_bwpriest_pet_skill(db):
     else:
         _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
         db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
+=======
+    """R-43 (Will 2026-07-16 verbatim: 'the high priest soul should allow you to
+    summon the high priest'). bwpriest_1/2/3 = the Blood Cult High Priest
+    HIMSELF (source c_disciple_miniboss); bwpriest_attendant_1/2/3 = the Melinoe
+    blade-dancer he casts in combat (source discipleboss_bladedancer), rebuilt as
+    a tamed, non-player-facing pet-of-pet (proven Enslaver-marauder depth, not
+    the raw 18-pet/burst-6 hostile swarm). See the module-header block above for
+    the full RCA/design. Permanent (no TTL, via the Lyia-base _build_boss_summon
+    convention)."""
     sf = db.set_field
-    sf(summon_path, 'isPetDisplayable', 1)
-    sf(summon_path, 'skillDisplayName', 'tagSVCSummonBWHighPriest')
-    sf(summon_path, 'skillManaCost', [250.0, 300.0, 350.0])
-    sf(summon_path, 'spawnObjects', pet_paths)
-    sf(summon_path, 'skillUpBitmapName', r'DRXtextures\skill icons\spirit\bonefiendup.tex')
-    sf(summon_path, 'skillDownBitmapName', r'DRXtextures\skill icons\spirit\bonefienddown.tex')
-    print("  Blood High Priest summon: 3 Melinoe blade-dancer pets + summon skill")
+
+    # ── 1. Attendant sub-pets: HIS own signature summon, tamed to proven depth.
+    ok_att = _build_boss_summon(
+        db, _BWP_BD_MONSTER, _BWP_ATTENDANT_PET_PATHS, _BWP_ATTENDANT_SKILL,
+        'tagSVCSummonBWAttendant', 'tagBWHighPriestAttendant',
+        char_level=[40, 56, 71], life=[3000.0, 4300.0, 5700.0],
+        life_regen=[16.0, 29.0, 43.0],
+        dmg_min=[40.0, 62.0, 88.0], dmg_max=[62.0, 95.0, 132.0], scale=1.4,
+        loadout=_BWP_BD_LOADOUT,   # proven dual-wield table (D19 fix, see above)
+        player_facing=False)   # pet-of-pet: never shows in the pet bar (b71 law)
+    if not ok_att:
+        print("  WARNING R-43: bwpriest attendant (blade-dancer) build failed")
+        return False
+    sf(_BWP_ATTENDANT_SKILL, 'isPetDisplayable', 0)
+    sf(_BWP_ATTENDANT_SKILL, 'petLimit', 2)          # proven pet-of-pet depth (<= Enslaver's petLimit 3-4)
+    sf(_BWP_ATTENDANT_SKILL, 'petBurstSpawn', 1)
+    sf(_BWP_ATTENDANT_SKILL, 'skillCooldownTime', 10.0)
+    sf(_BWP_ATTENDANT_SKILL, 'skillManaCost', 0.0)
+    db._modified.add(_BWP_ATTENDANT_SKILL)
+    for p in _BWP_ATTENDANT_PET_PATHS:
+        _bwp_mirror_identity(db, p, _BWP_BD_MONSTER, 'Demon')
+        _bwp_strip_green(db, p)
+
+    # ── 2. Main pets: the High Priest HIMSELF.
+    ok = _build_boss_summon(
+        db, _BWP_MONSTER, _BWP_PET_PATHS, SUMMON_BWPRIEST_SKILL,
+        'tagSVCSummonBWHighPriest', 'tagBWHighPriest',
+        char_level=[39, 56, 71], life=[4800.0, 6800.0, 9000.0],
+        life_regen=[24.0, 44.0, 64.0],
+        dmg_min=[60.0, 92.0, 130.0], dmg_max=[95.0, 145.0, 200.0], scale=2.5)
+    if not ok:
+        print("  WARNING R-43: bwpriest (High Priest) build failed")
+        return False
+    for p in _BWP_PET_PATHS:
+        # HIS real signature summon (discipleboss_summon_melinoe) leaks in
+        # verbatim via _update_existing_fields (raw Skill_SpawnPet, petLimit 18 /
+        # burst 6) - repoint every reference to the tamed pet-of-pet attendant.
+        _bwp_repoint_raw_refs(db, p, _BWP_RAW_SUMMON_MELINOE, _BWP_ATTENDANT_SKILL)
+        sf(p, 'specialAttackSkillName', _BWP_ATTENDANT_SKILL)
+        sf(p, 'specialAttackChance', 40.0)
+        # the source's own bloodrain AOE is flagged isPetDisplayable=0 on ITS
+        # OWN record (not for pets) - strip wherever the kit-mirror placed it.
+        _bwp_strip_skill_ref(db, p, _BWP_BLOODRAIN_AOE)
+        _bwp_mirror_identity(db, p, _BWP_MONSTER, 'God')
+        _bwp_strip_green(db, p)
+    print(f"  R-43 Blood Cult High Priest summon: {len(_BWP_PET_PATHS)} "
+          f"source-faithful High-Priest pets + {len(_BWP_ATTENDANT_PET_PATHS)} "
+          f"tamed blade-dancer attendant pet-of-pet + summon skill")
     return True
 
 
@@ -10343,6 +10562,13 @@ _SUMMON_SKILL_ICON = {
                                 r'DRXtextures\skill icons\soul\specterstrikedown.tex'),
     'summon_voranthys':        (r'DRXtextures\skill icons\soul\voidsnapup.tex',
                                 r'DRXtextures\skill icons\soul\voidsnapdown.tex'),
+    # R-43 (b85): Blood Cult High Priest - distinct from kravmoloch's bonefiend
+    # (the pre-R-43 bespoke build hardcoded that exact icon, a collision) and
+    # from bloodtoxeus's licheking/enslaver's deathwalker. "Bloodbath" fits the
+    # Blood Cult theme; verified UNCLAIMED by any other _SUMMON_SKILL_ICON entry
+    # and arc-resolves (DRXtextures.arc skill icons/soul/bloodbathup.tex).
+    'summon_bwpriest':         (r'DRXtextures\skill icons\soul\bloodbathup.tex',
+                                r'DRXtextures\skill icons\soul\bloodbathdown.tex'),
 }
 
 
@@ -17761,14 +17987,23 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
         'into this ring, her essence lends the bearer her uncanny evasion and the '
         'killing lance of her gaze.')
     tags['tagSVCSoulBWHighPriest'] = '{^F}Soul of the Blood High Priest'
+    # R-43 (Will 2026-07-16, b85): the soul must summon the HIGH PRIEST HIMSELF,
+    # not the Melinoe blade-dancer he casts. DESC rewritten; the blade-dancer is
+    # now a minor attendant detail, not the headline.
     tags['tagSVCSoulBWHighPriestDESC'] = (
         'High Priest of the Blood Witch cult, who tore living demons from the '
-        'blood of his victims. His soul, released, calls forth a Melinoe '
-        'blade-dancer to fight at your side until it is cut down.')
-    tags['tagSVCSummonBWHighPriest'] = 'Call the Blood Blade-Dancer'
+        'blood of his victims. His soul, released, calls the High Priest '
+        'himself back from the dead to fight at your side, his bound Melinoe '
+        'blade-dancer still answering his call.')
+    tags['tagSVCSummonBWHighPriest'] = 'Summon the Blood Cult High Priest'
     tags['tagSVCSummonBWHighPriestDESC'] = (
-        'Release the imprisoned Melinoe blade-dancer, a synergy demon torn from '
-        'blood, to dance her killing dance at your side.')
+        'Call the Blood Cult High Priest himself back from beyond, staff and '
+        'dark rites intact, to fight at your side.')
+    tags['tagBWHighPriestAttendant'] = 'Blood-Bound Blade-Dancer'
+    tags['tagSVCSummonBWAttendant'] = 'Call the Blood Blade-Dancer'
+    tags['tagSVCSummonBWAttendantDESC'] = (
+        'The High Priest calls the blade-dancer he tore from living demons to '
+        'dance her killing dance at his side.')
     tags['tagSVCSoulLimosLifeeater'] = '{^F}Soul of the Lifeeater'
     tags['tagSVCSoulLimosLifeeaterDESC'] = (
         'The Lifeeater knows only endless hunger. Its soul drains the vitality of '

@@ -259,6 +259,55 @@
 > `docs/reports/b75_runtime_green_rca.md`. Will test: restart Steam, DISMISS + RE-SUMMON the Enslaver.
 >
 
+=======
+> 🎯 **B85 - HIGH PRIEST SUMMON (R-43, Will 2026-07-16 verbatim: "the high priest soul should allow
+> you to summon the high priest") - IMPLEMENTED, awaiting independent vet.** Branch `fix/soul-tiers`
+> (extends b78 tip `50d4bdfc`). RCA: the granted summon spawned a Melinoe blade-dancer (Demon race,
+> `discipleboss_bladedancer.dbr`) - the monster HE casts as his OWN combat summon
+> (`discipleboss_summon_melinoe`, petLimit 18/burst 6) - never his own body (`c_disciple_miniboss.dbr`,
+> God race, `disciple.msh`/`anm_seductress`/`snd_highpriest_vox/alertpak`). **FIX** (mirrors the b71
+> Enslaver boss-pet + tamed-pet-of-pet pattern exactly): `bwpriest_1/2/3` rebuilt via
+> `_build_boss_summon(source=c_disciple_miniboss)` = the High Priest himself, strictly tier-scaled
+> (life 4800/6800/9000, charLevel 39/56/71); his real signature blade-dancer summon survives as a
+> NEW tamed non-player-facing pet-of-pet (`bwpriest_attendant_1/2/3` +
+> `svc_bwpriest_summonmelinoe.dbr`, petLimit 2/burst 1/mana 0 - inside the Enslaver's proven pet-of-pet
+> depth, not the raw 18-pet swarm); the source's own AOE (`disciple_bloodrain`, flagged
+> `isPetDisplayable=0` on ITS OWN record) is swept off, never granted to a pet; race/sounds copied
+> explicitly (R-11 general law, not auto-applied by `_build_boss_summon`); Lyia-clone green residue
+> stripped; granted-skill icon `bonefiendup` (a DUPLICATE of kravmoloch's icon) -> `bloodbathup`
+> (distinct); pet-bar portrait -> neutral `proxy_party` (no bespoke art ships); 3 text tags rewritten
+> + 3 minted. Soul RING records (`bwpriest_soul_{n,e,l}`) UNTOUCHED - byte-identical, b78's
+> strict-progress gate still governs them. Family added to the b71 CHAIN gate roster
+> (`enslaver_pet_fx._CHAIN`, NOT `_FAMILIES` - that list requires a shroud this family doesn't have).
+> **Verified:** full scratch build EXIT 0, all 17 registry verifies green incl.
+> `enslaver_pet_fx.verify` + `souls_quality.verify` ("b78 Blood Cult High Priest gate"); record-diff
+> vs golden `917d9047` = intended-only (4 ADDED + 4 MODIFIED, 0 REMOVED, soul rings absent from the
+> diff); `validate_summon_pets.py` PASS; `validate_tags.py` PASS (all 349 mod tags + 409 authoritative
+> resolve); `run_contracts.py --only souls,summons` GATE PASS (0 P0/P1); 4/4 negative tests (Lyia
+> portrait, green residue, re-pointed grant, x2 more) all CAUGHT by the chain gate; idempotent (2
+> independent builds, arz md5 `47964fdd` both). Epic-spawns-epic answered with a 3-row stat table
+> (docs/reports/b85_highpriest_summon.md sec 5). `docs/WILL_RULINGS.md` is absent on this branch's
+> base (predates the ledger's creation on `main`); the R-43 status line to apply at merge time is in
+> the report's \S9. Report: `docs/reports/b85_highpriest_summon.md`.
+> 🎯 **b78 SOUL TIER SCALING (Will 2026-07-16, "Blood Cult High Priest epic == normal?") - RCA:
+> FALSE ALARM, roster CLEAN, GATE TIGHTENED.** Branch `fix/soul-tiers`. RCA: `svc_uber\bwpriest_soul_
+> {n,e,l}` is correctly scaled on every dimension (augments 2/3/4, itemSkillLevel 1/2/3 with 3 real
+> summon pet tiers, Int 6/9/12, Life 10/14/19, leech 20/30/42) AND its loot triple on
+> `c_disciple_miniboss.lootFinger2Item1` = `[_n,_e,_l]` drops the right tier per difficulty. Will's
+> perception = the item NAME + DESC tags are byte-identical across tiers + TQ bakes item stats at
+> pickup (drop a FRESH epic to see the scaling). ROSTER SWEEP over golden `917d9047`: 775 tier
+> families, 706 full-3-tier, **0 flat, 0 wrong-tier-loot, 0 real missing tiers**;
+> `soul_strict_progress.py` = **706/706 strictly progress**. The first-pass "28 flat / 69 missing" were
+> probe artifacts (curated stat subset missed fields like defensivePhysical/racialBonusPercentDamage;
+> SV098 ships all 28 scaled) + noise (soultemplate / test\ / any*soul formula pools / malformed
+> double-suffix dupes). **CHANGE = GATE-ONLY (zero record edits):** `souls_quality.py` gains a
+> roster-wide STRICT-progress gate (`_flat_tier_violations` + `_power_vec` + `_tier_progresses`, wired
+> into `verify()`) - every full-3-tier family must get strictly stronger n->e AND e->l on some scaled
+> stat/skill-level field, closing the old non-strict `n<=e<=l` blind spot (a byte-identical epic USED
+> to pass). `_FLAT_TIER_WAIVER` EMPTY (nothing needs waiving). Negative test
+> (`souls_quality.py --negtest`) plants epic==normal -> flags n->e -> PASS. `flat_tier_count=0`. WILL-
+> CONFIRM: none. Out-of-lane flags: malformed cyclops/vulture duplicate soul records (hygiene);
+> Cold Worm = its own lane. Report: `docs/reports/b78_soul_tier_scaling.md`.
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction
