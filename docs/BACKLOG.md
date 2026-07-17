@@ -3274,6 +3274,24 @@ SmokeScreen/Eviscerate squares), emblem circle filled x9, col6 ladder 10/16/24/3
 DarkInvigoration bar to ShadowLink; ENSLAVER: DISMISS + RE-SUMMON -> black bodies, deathwalker
 skill icon + pet-bar portraits (pets resolve DB at summon time).
 
+## BUILD46 GATE RECORD (2026-07-16 night, DEV-only INTERIM ship; Steam untouched)
+P0 unblock ship: main @ merge `4c8f128` (fix/chumbi-lag b76 only - the other GO branches integrate
+in the next wave). Contents: Monster Test Yard REMOVED from the TESTHUB map builder (the 10-boss
+QA cluster in HiddenValley01/"Chumbi Valley" around the Rebirth Fountain - the freeze + death-loop
+root cause, TESTHUB-only so Steam was never affected) + sepulcher-chain summon TTLs restored
+(aktaios_summontombguardians 5.0s, alastor skeleton warrior/archer + recursive undeadmelee 20.0s,
+matching SV's own values; side effect: base Aktaios + Alastor bosses' minions now despawn -
+disclosed, Will may veto values). Artifacts: arz `7fb879ac9c346280cdaf3610e7d53dad` (canonical
+build reproduced the lane's vetted scratch byte-identical); TESTHUB Levels
+`0925043a4c4c50a7bb76f02b7f73667b` (chumbi vet proved: exactly ONE level blob changed vs deployed,
+navmesh 0x0b byte-identical, QUESTS byte-identical); canonical Levels UNCHANGED `62868eec` (yard
+was TESTHUB-only); Text UNCHANGED `3e576581`; Quests UNCHANGED. Gates: A7 PASS (84 waived), summon
+validator PASS, registry 27 modules, chain gates green (contracts = byte-identical inputs to the
+lane's green run). DEV deploy hash-verified both artifacts (TQ not running). DEBT: promote the
+uncapped-summon sweep to a carefully-scoped build gate (NOT petLimit-no-TTL blanket - 140 healthy
+skills have that shape); placement spacing/clearance gate follow-through; census_placements.py v0e
+stride fix; stale gate_build32_parseback refresh.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
