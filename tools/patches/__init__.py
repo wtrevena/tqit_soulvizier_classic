@@ -97,6 +97,14 @@ REGISTRY = [
     'toxeus_legendary_stalker',  # B-TOXEUS-STALKER-1: fixed Legendary-only Endless Hunt placement
                                  # (Hydra pool-gate pattern). Reuses toxeus_suite PART C's
                                  # um_toxeus_hunt_99 verbatim - MUST run after toxeus_suite.
+    'toxeus_champion_kits', # b73 (Will 2026-07-16): signature kits for the FOUGHT Toxeus champions -
+                            # Devourer of Blood (um_bloodtoxeus_99) gets Tears of Blood (weak,10s) +
+                            # Blood Frenzy; Enslaver of Souls (um_toxeus_enslaver_99) gets Soul-Rip +
+                            # Chains of Servitude + Unholy Dominion. Edits the two monster records +
+                            # 4 NEW skill records; NO pets/souls/pools/map. MUST run after toxeus_suite
+                            # (expected S4b collision on um_bloodtoxeus_99 - Misc4 vs skill slots,
+                            # later-wins, benign) and BEFORE boss_skill_fix (whose roster scan then
+                            # sees these champions' final specials - all level>=1 by construction).
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
@@ -182,6 +190,22 @@ REGISTRY = [
                             # among mastery-UI writers so it is the ratified final writer on
                             # skillTier/skillMasteryLevelRequired/bitmapPosition/connOn-Off for
                             # its masteries. Golden (m5/m6) untouched -> A7 stays green.
+=======
+    'black_poison',         # b83 (Will 2026-07-16, R-1): THE DEVOURER'S BLACK POISON - a new
+                            # envenom-lineage svc_black_poison (dark shadow-enchant tint +
+                            # dark-smoke weapon pak, poison+vitality) replaces the crimson
+                            # bloodtoxeus_envenomweapon on the Devourer fought-monster + his 3
+                            # soul pets. MUST run after toxeus_champion_kits (b73 Devourer kit)
+                            # and BEFORE toxeus_endofallthings (whose _BLACK_POISON const names
+                            # svc_black_poison for the EoAT pet buff). Green-marker safe (name has
+                            # no 'envenom'); his crimson identity (skin/bloodboil/aura) untouched.
+    'toxeus_endofallthings',# b72 (Will 2026-07-16): TOXEUS, END OF ALL THINGS - the supra
+                            # soul crafted from the 3 LEGENDARY Toxeus souls (green-Greece +
+                            # Enslaver + Devourer) summoning one apotheosis pet. Clones the
+                            # PROVEN Devourer pets; authors summon + soul ring + uber formula +
+                            # kit skills + disciple thralls. Runs after enslaver_pet_fx (extends
+                            # its b71 chain-gate roster) + uber_orphan_weapons (equips supra
+                            # pieces); before visuals. New records only (+ soul-naming exemption).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

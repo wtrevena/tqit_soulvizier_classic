@@ -331,6 +331,101 @@
 > **no new P0/P1** (baseline == wave: 0 P0 / 576 P1 / 10717 P2); validate_tags PASS; idempotent.
 > Every judgment is a WILL-VETO line in `docs/reports/b77_unlock_alignment_fix.md` (the two ladder
 > diagrams, the E decision, the waiver list) for Will's DEV visual pass. DB-only wave (no map/quest).
+=======
+> 🖤 **b83 ROUND 2 (vet HIGH/MEDIUM/LOW RESOLVED).** The adversarial vet found the Devourer's
+> player-summonable soul-pets `bloodtoxeus_1/2/3` still carried `buffSelfSkillName =
+> records\skills\stealth\envenomweapon.dbr` (base GREEN, tint (0.25,1.0,0.25)) - a LIVE auto-self-buff
+> that round 1's rewire (skillName3 only) missed, so the summoned Devourer still glowed green (defeats
+> R-1 on the summon). **FIX:** `_rewire_devourer` now also repoints the 3 pets' `buffSelfSkillName`
+> (base-green -> `svc_black_poison`), and `black_poison.verify` now asserts `buffSelfSkillName` on all
+> 3 pets (fails on either crimson OR a surviving base-green envenom - the blind spot is closed, proven
+> by a targeted negative test). MEDIUM: corrected the overstated "proven/confirmed-dark" 343_dark_smoke
+> wording in the docstring + report to the honest BP-SMOKE-1 hedge (rule 3 - the particle render is NOT
+> colour-confirmed; the tint is the load-bearing black). LOW: corrected the "~2%" supra-formula
+> drop-weight to the decoded per-act table (weight 1-5 by act/difficulty). **ROUND-2 VERIFY:** changed
+> arz md5 **`497073d10041a9d38e553a2ab708f206`**; diff vs round-1 changed = EXACTLY the 3 pets'
+> `buffSelfSkillName` (nothing else); diff vs clean baseline = exactly 17 delta (intended-only);
+> 29 registry verifies GREEN incl. extended `black_poison.verify`; contracts identical (0 new);
+> negative tests PASS (incl. the new pet-buffSelf blind-spot test); idempotent (2nd build byte-identical).
+>
+> 🖤 **b83 BLACK POISON + RITE DROP (Will ruled 2026-07-16, R-1/R-9/R-13) - ROUND 1 IMPLEMENTED +
+> FULLY VERIFIED.** Branch `feat/black-poison` (merge of vetted `feat/toxeus-champions` +
+> `feat/toxeus-undivided`, merge `2f52507`). Report: `docs/reports/b83_black_poison_rite_drop.md`.
+> **(R-1) BLACK POISON:** new registry module `tools/patches/black_poison.py` (slot before
+> `toxeus_endofallthings`) builds `svc_black_poison` (envenom lineage, cloned from the Devourer's
+> crimson `bloodtoxeus_envenomweapon`): weapon tint (0.1,0.1,0.1) = the shadow-enchant-proven darkest
+> RENDERABLE tint (empirical model: tint is additive-emissive, (0,0,0)=no-tint on 195 records, so
+> black-LIGHT is unreachable -> (0.1,0.1,0.1) is the darkest black, identical to shipped
+> `hero_shadowenchantmentbuff`); dark-smoke weapon pak `svc_black_poison_charfxpak` (343_dark_smoke on
+> R/L Hand); poison (90/5s) + added vitality-decay (60/5s). Rewired onto the Devourer poison surface
+> (`um_bloodtoxeus_99` initialSkillName+skillName3; `bloodtoxeus_1/2/3` skillName3) + the EoAT pet buff
+> (`toxeus_endofallthings._BLACK_POISON` const, flowing to 3 EoAT + 3 disciple pets). His crimson
+> identity (skin/bloodboil/aura) untouched. **(R-9) RITE POOL:** the Rite formula added to
+> `supra.dbr` + `supra_special.dbr` (b66 next-free-slot @ w100) -> drops wherever any supra weapon
+> formula drops, at the rarest ~2% tier. **(R-13) RITE BOSS KILLS:** GUARANTEED 100% on-kill on BOTH
+> Toxeus bosses via Misc4 (Enslaver free slot -> `svc_rite_guaranteed`; Devourer -> `svc_devourer_
+> misc4_master` LootMasterTable yielding rant w100 + Rite w100, rant preserved); soul drops (Finger2)
+> untouched. **CROSS-BRANCH FIX:** the first merged build crashed the shared record-index
+> (`_RecordIndex._sync_names` append-only `name_lower` cache count-coincidence -> KeyError on
+> `eoat_disciple_1`); fixed in `apply_svc_patches.py` (reconcile-on-count-change + self-healing lookup,
+> ZERO output-record change). **VERIFY:** changed arz md5 `32e0f2f709de1ba6954c4a6362ecbf0c` (all
+> gates + 29 registry verifies GREEN, golden guard PASS); clean baseline `532003ec...`; record-diff =
+> exactly 17 records (4 added / 13 changed), zero collateral; contracts souls/summons/resources
+> IDENTICAL clean-vs-changed (0 new violations); negative test PASS (green tint -> verify fails);
+> idempotent (2nd build byte-identical). **DEBT (registered):** BP-SMOKE-1 (P2, Will in-game check -
+> the 343_dark_smoke particle's final black-vs-green render per the rule-3 caution; tint-black is
+> grounded + independent, one-line fallback); BP-RITE-VETO (100% on-kill on farmable roaming-rare
+> bosses - confirm vs first-kill-only/reduced). Ready for independent vet.
+
+> 🩸 **b73 TOXEUS CHAMPIONS KIT WAVE (Will 2026-07-16) - ROUND 1 IMPLEMENTED + SCRATCH-BUILD GREEN.**
+> Branch `feat/toxeus-champions`. Registry module `tools/patches/toxeus_champion_kits.py` (apply+verify,
+> slot 9/27, after `toxeus_suite`, before `boss_skill_fix`). Gives the FOUGHT Toxeus champions signature
+> kits from EXISTING DB skills (no pets/souls/pools/map). **DEVOURER OF BLOOD** (`um_bloodtoxeus_99`):
+> Tears of Blood (weak, 10s cd) = new `svc_devourer_tearsofblood` (clone of the Blood-of-Ares artifact
+> skill, dmg cut + cd 120->10) REPLACING the off-identity `flashpowder` @ specialAttack2; + Blood Frenzy
+> (`quak_bloodfrenzy` low-health passive). **ENSLAVER OF SOULS** (`um_toxeus_enslaver_99`): the 3 generic
+> specials become Soul-Rip (new `svc_enslaver_soulrip`, healing soul-drain), Chains of Servitude (new
+> `svc_enslaver_dominate` (+`_buff`), short confusion+fumble+slow), Unholy Dominion (`unholy_rally`
+> ally-buff); `summonmarauders` + `lethalstrike` kept. **GROUND TRUTH:** the corridor ambush AND the deep
+> waterfall boss share ONE record + ONE pool (`pools\q_bloodtoxeus_lone`), so both get the one (weak-10s)
+> Tears; a distinct full-strength corridor version = a monster+pool split, deferred as WILL-VETO #1. All
+> new skills have `specialAnim=None` (castable on the shared anm_skeleton01 skeleton rig - the
+> Ephialtes/boss_skill_fix law). **VERIFY (scratch arz md5 `0218d8127b8d8e0c8faa19498412315a`, EXIT=0):**
+> module verify GREEN; record-diff vs build45 (917d9047) CLEAN (only the 4 new skills + 2 champions,
+> 0 removed); `_verify_toxeus_champion_cap` GREEN (no pool touched); boss_skill_fix roster scan GREEN;
+> all 18 registry verify hooks GREEN; souls contract 0 viol; summons contract 96P0/556P2 = IDENTICAL to
+> the build45 baseline (0 of my 6 records in any violation = zero new P0/P1); negative test ALL PASS
+> (4 planted regressions caught). Report: `docs/reports/b73_toxeus_champion_kits.md` (WILL-VETO list of
+> 8 items + weakening math + balance). Ready for vet/integration; Will DEV-tests the fights + FX colour.
+
+> 🐉 **b72 TOXEUS, END OF ALL THINGS (Will ruled 2026-07-16) - IMPLEMENTER ROUND 1 COMPLETE + FULLY
+> VERIFIED (awaits independent vet + the ONE open Will decision).** Branch `feat/toxeus-undivided`,
+> module `tools/patches/toxeus_endofallthings.py` (REGISTRY, after `enslaver_pet_fx`, before
+> `visuals`). A supra soul ring `{^F}Soul of Toxeus, End of All Things` crafted from the LEGENDARY tier
+> of the 3 Toxeus souls (green-Greece + Enslaver + Devourer) summoning ONE permanent apotheosis pet
+> `Toxeus the Murderer, End of All Things` (cloned from the proven Devourer pet). All 11 ruled kit items
+> shipped: unlimited energy, max Nether Strike @0.5s, max Smoke Screen, the Galefury skill
+> (`hunter_helm_galefury`), Tears of Blood (Blood-of-Ares nova @3s), Murderer's Edge + the Devourer's
+> CRIMSON blood-poison (no literal black exists - flagged), Entropy aura, Blood Feast (leech +
+> `melinoe_bloodboil`), "There is room in me" (Blood-Witch Disciple `c_disciple_42` thralls that summon
+> bloodhounds - 3-DEEP chain flagged), "The Ending" (Manetho light-of-Ra flash + authored cataclysm
+> damage; SunGaze anim cleared for castability), and Arrat's Corruption AOE (`um_ararat_36` mana-burn
+> debuff nova). Stat ceiling = the Enslaver (60000 life / 500 handHit); EoAT Legendary EXCEEDS it
+> (82000 / 620 / STR640 / DEX800). **TWO round-0-draft bugs fixed:** (a) formula was uncraftable (spear
+> donor's reagent3 affix constraints left in -> a soul ring cannot match a weapon prefix; cleared them +
+> the random artifact bonus so the 3 souls craft a deterministic soul); (b) equipment used invalid Pet
+> slot field names AND direct player-unique pet-equip HARD-FAILS the B-SUMMON-1 shipping gate (uniques
+> render naked on pets) -> supra pieces are NOT worn (kept the Devourer loadout), power baked as direct
+> stats, all 8 pieces reported SKIPPED. **Scratch arz md5 `a6b896bd8d05673b8cfc37eecd6cfb4a`**
+> (deterministic, built twice identical). Record-diff vs build45 (`917d9047`): exactly 16 NEW records, 0
+> removed, 0 modified existing. Verification ALL GREEN: full build EXIT=0, all 27 registry verifies
+> (incl the b71 enslaver chain gate now walking the EoAT chain), B-SUMMON-1 0 strict failures,
+> validate_tags PASS, contracts souls/summons/resources 0 P0/0 P1 (no EoAT violation), negative test
+> 4/4 caught. Report: `docs/reports/b72_toxeus_endofallthings.md`. **THE ONE OPEN WILL DECISION: how the
+> player OBTAINS the `Rite of the Undivided` formula** (formula is craft-ready but its DROP is unwired;
+> recommended = a Boss-locked drop from the Devourer superboss). FEASIBILITY FLAGS: depth-3 thrall chain
+> (needs in-game confirm; fallback documented), crimson-not-black poison, Tears-of-Blood-as-specialAttack
+> (not a true retaliation trigger), supra equipment engine-unsupported on pets.
 >
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this

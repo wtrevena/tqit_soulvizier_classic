@@ -226,6 +226,19 @@ _GREEN_MARKERS = {
 # soul-pet's kit is the toxeus melee/summon kit (no green slot).
 _GREEN_KIT_NEEDLES = ('sylvannymph', "nature'swrath", 'natureswrath')
 _SHROUD_FIELD = 'charFxPakRunningNames'
+# b72: substrings that mark an otherwise-needle-matching value as a KNOWN NON-green
+# variant that must NOT be flagged/stripped. 'envenom' matches both the GREEN base
+# envenom (stealth\envenomweapon) AND the CRIMSON bloodtoxeus_envenomweapon (weapon
+# tint red=1.0 - the Devourer's / Toxeus-EoAT's intentional dark blood poison). The
+# Enslaver/marauder/HadesMarshal families never carry bloodtoxeus_envenomweapon, so
+# this exclude is a no-op for them and only spares the crimson EoAT poison.
+_GREEN_EXCLUDE = ('bloodtoxeus',)
+
+
+def _is_green_val(val, needles):
+    """True iff val matches a green needle AND is not a known non-green variant."""
+    v = str(val).lower()
+    return any(n in v for n in needles) and not any(x in v for x in _GREEN_EXCLUDE)
 
 # ── b71 CHAIN GATE (anti-oscillation) ────────────────────────────────────────
 # The b55 verify() only asserted the pet FX FIELDS in isolation, so it stayed
@@ -318,7 +331,7 @@ def _strip_green(db, pet):
         for key in _iter_field_keys(fields, base_lower):
             tf = fields[key]
             val = str(tf.values[0]) if tf.values else ''
-            if any(n in val.lower() for n in needles):
+            if _is_green_val(val, needles):
                 del fields[key]
                 stripped.append((key.split('###')[0], val.rsplit('\\', 1)[-1].rsplit('/', 1)[-1]))
     # dormant green kit slots: strip skillName<N> (+ its paired skillLevel<N>) that
@@ -380,7 +393,7 @@ def _green_residue_on(db, pet):
     for base_lower, needles in _GREEN_MARKERS.items():
         for key in _iter_field_keys(fields, base_lower):
             val = str(fields[key].values[0]) if fields[key].values else ''
-            if any(n in val.lower() for n in needles):
+            if _is_green_val(val, needles):
                 out.append('%s: GREEN residue %s=%s' % (pet.rsplit('\\', 1)[-1], base_lower, val.rsplit('\\', 1)[-1]))
     for base, val in _green_kit_slots(fields):
         out.append('%s: GREEN kit slot %s=%s' % (pet.rsplit('\\', 1)[-1], base, val.rsplit('\\', 1)[-1]))
@@ -629,7 +642,7 @@ def verify(db, tags=None):
             for base_lower, needles in _GREEN_MARKERS.items():
                 for key in _iter_field_keys(fields, base_lower):
                     val = str(fields[key].values[0]) if fields[key].values else ''
-                    if any(n in val.lower() for n in needles):
+                    if _is_green_val(val, needles):
                         problems.append('%s: GREEN residue survived %s=%s'
                                         % (pet.rsplit('\\', 1)[-1], base_lower, val.rsplit('\\', 1)[-1]))
             for base, val in _green_kit_slots(fields):
