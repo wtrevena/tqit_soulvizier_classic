@@ -1,5 +1,22 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## b86 BLOOD-CAVE CRASH BISECT (2026-07-17) - NO STRUCTURAL DELTA; probe is the residual
+Will named the chamber: "the area immediately after the first respawn fountain inside the blood
+cave, right behind the first door you open." Mapped it (docs/reports/b86_bloodcave_bisect.md): the
+cave-entry streaming chain past the HiddenValley01 camp fountain + SilkRdDngEntrance mouth =
+Random09A -> xPassageTransitionStart -> BC_initialpathway -> drxFirstRoom (drxFirstxistion_connection
+co-resident). BISECT RESULT: those crash chambers are BYTE-FROZEN build25 (Jul 7) -> build47 (live)
+while crash dumps span 07-05 -> build36 -> build41; every navmesh neighbor GUID resolves; the b46
+minimap-wave hypothesis is REFUTED 3 ways (timeline predates b46 by a week; b46 zone/0x17 tables
+contain ZERO blood-cave levels; chamber bytes identical across the b46 boundary). H1 (co-residency)
+XZ-overlap fingerprint tested + RULED OUT vs base game (314/314 base cave pairs overlap identically).
+STEAM AFFECTED (canonical == TESTHUB for the crash chambers) = P0 public. NO speculative fix shipped;
+RESIDUAL = the Frida/Page-Heap probe (docs/crash/WILL_CRASH_PROBE_GUIDE.md) aimed at the named chain.
+GATE added: MAP-ZONE-1 (every b46 zone-override dbr resolves) green + planted negative test.
+b79 note: the relocated 33% Blood-Toxeus encounter (drxFirstxistion_connection @36,10,19.5) sits in
+the crash chain but is NOT implicated (crash predates b79; DB spawn doesn't touch navmesh); it rides
+along automatically when the structural cluster-relocation fix lands.
+
 ## DEBT REGISTER (open deferred/unproven/launch-gated items)
 
 > Compiled by the b84 rulings-backfill sweep (round 1, 2026-07-16) of docs/reports/*.md, this file,
