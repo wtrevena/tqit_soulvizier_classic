@@ -10,6 +10,23 @@
 > **`docs/MODDING_PLAYBOOK.md`** - the durable playbook distilled from everything learned
 > fixing the map. This file (CLAUDE.md) is the STATUS board; the playbook is the MANUAL.
 
+> ⚖️ **`docs/WILL_RULINGS.md` = THE DESIGN LAW OF RECORD (2026-07-16).** Four standing process
+> laws, born from the 07-16 regression day:
+> 1. **RULINGS LEDGER:** every implementer brief checks the ledger for its domain; every vet
+>    checks the change against it; rulings are never silently dropped (IMPLEMENTED/PENDING/
+>    SUPERSEDED only). New Will decisions get appended VERBATIM the turn they are made.
+> 2. **RETIREMENT PROTOCOL:** deleting/retiring any record requires checking the ledger + wave
+>    reports for design intent naming it. "Unreferenced in code" is NOT sufficient (the
+>    q_bloodtoxeus_lone_50 lesson - it WAS the 100% chest spawn). Deletions default to WILL-VETO.
+> 3. **PLAYER-SURFACE CHECKLIST:** every content lane enumerates and verifies every player-visible
+>    surface of what it builds (name, icon, portrait, race, sounds, tooltip, drop, unlock,
+>    in-game color) - never silently deferred (the b40 deferred-portraits lesson). Colors may
+>    only be claimed from in-game-CONFIRMED assets (the 343_dark_smoke renders-green lesson).
+> 4. **NO NEW SURFACE WITHOUT A GATE + DEBT REGISTER:** a lane creating a new content CLASS ships
+>    its invariant gate with it (the boss-placement spacing/clearance lesson). Every
+>    "deferred/unproven/launch-gated/needs-Will-check" item in any report is registered in the
+>    BACKLOG DEBT section at commit time; integration gate records print the open debt list.
+
 ---
 
 ## What this mod is
