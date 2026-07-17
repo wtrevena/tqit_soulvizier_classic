@@ -1,4 +1,25 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🩸 **b73 TOXEUS CHAMPIONS KIT WAVE (Will 2026-07-16) - ROUND 1 IMPLEMENTED + SCRATCH-BUILD GREEN.**
+> Branch `feat/toxeus-champions`. Registry module `tools/patches/toxeus_champion_kits.py` (apply+verify,
+> slot 9/27, after `toxeus_suite`, before `boss_skill_fix`). Gives the FOUGHT Toxeus champions signature
+> kits from EXISTING DB skills (no pets/souls/pools/map). **DEVOURER OF BLOOD** (`um_bloodtoxeus_99`):
+> Tears of Blood (weak, 10s cd) = new `svc_devourer_tearsofblood` (clone of the Blood-of-Ares artifact
+> skill, dmg cut + cd 120->10) REPLACING the off-identity `flashpowder` @ specialAttack2; + Blood Frenzy
+> (`quak_bloodfrenzy` low-health passive). **ENSLAVER OF SOULS** (`um_toxeus_enslaver_99`): the 3 generic
+> specials become Soul-Rip (new `svc_enslaver_soulrip`, healing soul-drain), Chains of Servitude (new
+> `svc_enslaver_dominate` (+`_buff`), short confusion+fumble+slow), Unholy Dominion (`unholy_rally`
+> ally-buff); `summonmarauders` + `lethalstrike` kept. **GROUND TRUTH:** the corridor ambush AND the deep
+> waterfall boss share ONE record + ONE pool (`pools\q_bloodtoxeus_lone`), so both get the one (weak-10s)
+> Tears; a distinct full-strength corridor version = a monster+pool split, deferred as WILL-VETO #1. All
+> new skills have `specialAnim=None` (castable on the shared anm_skeleton01 skeleton rig - the
+> Ephialtes/boss_skill_fix law). **VERIFY (scratch arz md5 `0218d8127b8d8e0c8faa19498412315a`, EXIT=0):**
+> module verify GREEN; record-diff vs build45 (917d9047) CLEAN (only the 4 new skills + 2 champions,
+> 0 removed); `_verify_toxeus_champion_cap` GREEN (no pool touched); boss_skill_fix roster scan GREEN;
+> all 18 registry verify hooks GREEN; souls contract 0 viol; summons contract 96P0/556P2 = IDENTICAL to
+> the build45 baseline (0 of my 6 records in any violation = zero new P0/P1); negative test ALL PASS
+> (4 planted regressions caught). Report: `docs/reports/b73_toxeus_champion_kits.md` (WILL-VETO list of
+> 8 items + weakening math + balance). Ready for vet/integration; Will DEV-tests the fights + FX colour.
+
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction

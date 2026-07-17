@@ -97,6 +97,14 @@ REGISTRY = [
     'toxeus_legendary_stalker',  # B-TOXEUS-STALKER-1: fixed Legendary-only Endless Hunt placement
                                  # (Hydra pool-gate pattern). Reuses toxeus_suite PART C's
                                  # um_toxeus_hunt_99 verbatim - MUST run after toxeus_suite.
+    'toxeus_champion_kits', # b73 (Will 2026-07-16): signature kits for the FOUGHT Toxeus champions -
+                            # Devourer of Blood (um_bloodtoxeus_99) gets Tears of Blood (weak,10s) +
+                            # Blood Frenzy; Enslaver of Souls (um_toxeus_enslaver_99) gets Soul-Rip +
+                            # Chains of Servitude + Unholy Dominion. Edits the two monster records +
+                            # 4 NEW skill records; NO pets/souls/pools/map. MUST run after toxeus_suite
+                            # (expected S4b collision on um_bloodtoxeus_99 - Misc4 vs skill slots,
+                            # later-wins, benign) and BEFORE boss_skill_fix (whose roster scan then
+                            # sees these champions' final specials - all level>=1 by construction).
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
