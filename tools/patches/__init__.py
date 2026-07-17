@@ -165,6 +165,13 @@ REGISTRY = [
                             # hunting_occult_ui + mastery_ui_audit + mastery_bg_render +
                             # oh_pane_art + hunting_occult_improvements so it is the ratified
                             # last writer on isCircular/positions/connOn-Off + masterybitmap.
+    'toxeus_endofallthings',# b72 (Will 2026-07-16): TOXEUS, END OF ALL THINGS - the supra
+                            # soul crafted from the 3 LEGENDARY Toxeus souls (green-Greece +
+                            # Enslaver + Devourer) summoning one apotheosis pet. Clones the
+                            # PROVEN Devourer pets; authors summon + soul ring + uber formula +
+                            # kit skills + disciple thralls. Runs after enslaver_pet_fx (extends
+                            # its b71 chain-gate roster) + uber_orphan_weapons (equips supra
+                            # pieces); before visuals. New records only (+ soul-naming exemption).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
