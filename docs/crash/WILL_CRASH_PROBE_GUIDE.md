@@ -103,7 +103,8 @@ tail names the culprit with no further decoding.
 - **If it crashed:** nothing to do - the probe already printed the suspect and saved the
   log. Close the window when you have copied the path.
 - **To stop early / it did not crash:** press **Ctrl+C** in the probe window. The game keeps
-  running untouched; the probe just detaches and saves whatever it captured.
+  running untouched; the probe just detaches and saves whatever it captured. Windows may then
+  ask `Terminate batch job (Y/N)?` - answer either way, the log is already saved by that point.
 
 ---
 

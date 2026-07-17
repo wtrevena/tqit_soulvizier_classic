@@ -13,7 +13,7 @@ READ-ONLY and NON-INVASIVE:
     memory and logs. It patches nothing.
 
 WHAT YOU GET
-  A timestamped log under local/crash_probes/. For every navmesh load the engine
+  A timestamped log under local/crash_probe/. For every navmesh load the engine
   performs it records: which blood-cave chamber (GUID -> name), the co-resident
   chambers at that instant (tests hypothesis H1), ENTER/LEAVE of ProcessRLTD, and
   (optionally) the per-tile allocation / memcpy sizes. If TQ.exe CRASHES, the
