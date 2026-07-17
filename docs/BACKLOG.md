@@ -1,28 +1,37 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🩸 **b79 BLOOD-TOXEUS SPAWN PATHS (Will 2026-07-16) - ROUND 1 IMPLEMENTED + SCRATCH-BUILD GREEN.**
+> 🩸 **b79 BLOOD-TOXEUS SPAWN PATHS (Will 2026-07-16) - ROUND 2 (R-4 rename completed + report nits).**
 > Branch `fix/bloodtoxeus-spawns` (off `feat/toxeus-champions` b73). Closes rulings R-1/R-2/R-3/R-4.
 > **CHEST 100% RCA (R-3):** the "Esti's Hidden Chest" guard (drxBC2 `egg_blooddragon_pack`, 4.2u from
 > chest) was re-architected at M15 to spawn Toxeus as the CHAMPION of `pools\egg_blooddragon.dbr` with
 > `championChance=100 championMax=1` but `championMin` LEFT at 0. Because he is the champion (not a main),
 > a zero floor does NOT guarantee him - the base game's proven guaranteed-escort pools (`xsq22_wave2`
-> min=max=1, `xsq17_keres` min=max=2) all set championMin=championMax; `duneraider_03_general03` (random
-> escort) keeps min=0. So the pool rolled 4 blood dragons + NO Devourer most runs. Born broken at M15
-> (2026-07-09); NOT the q_bloodtoxeus_lone_50 retirement (that was the parchment @50, never the chest
-> chain). **FIX:** `apply_svc_patches.py` `_apply_m15_toxeus_group_joins` sets `championMin=1` ->
+> min=max=1, `xsq17_keres` min=max=2) all set championMin=championMax, whereas `arachnos_01_overseer04`
+> (base, verified championChance=100 / championMin=0 / championMax=1 = the egg pool's exact shape minus
+> the floor) still spawns its champion only SOMETIMES - the "occasional zone-trash champion" pattern (33
+> base pools run championChance=100 with championMin=0; 148 guaranteed-escort pools set min==max). So the
+> egg pool rolled 4 blood dragons + NO Devourer most runs. Born broken at M15 (2026-07-09); NOT the
+> q_bloodtoxeus_lone_50 retirement (that was the parchment @50, never the chest chain). **FIX:**
+> `apply_svc_patches.py` `_apply_m15_toxeus_group_joins` sets `championMin=1` ->
 > exactly 1 Devourer + 3 dragons, 100%, every party size (proxyPoolEquation already neutralized). **PARCHMENT
 > (R-1/R-2):** the single 33% `q_bloodtoxeus_ambush` (reuses `_BT_POOL` = Toxeus + 2 blood-demon guys)
 > was placed in drxFirstRoom - a DIFFERENT room from the tattered parchment (finalletter @ drxFirstxistion_
 > connection amid the native demon swarm). RELOCATED the placement (map lane, `build_section_surgery.py`)
 > to drxFirstxistion_connection @ (36.0,10.005,19.5) next to the parchment; EXACTLY ONE 33% roll (moved,
-> not added). **RENAMES (R-4):** `build_text_arc.py` tagSQECTitle + tagTitleTagTESTER ->
-> "Toxeus the Murderer, Devourer of Blood's Stash"; new override tagHiddenChestNAME (only the 3 chest
-> tiers use it) -> "Toxeus the Murderer, Devourer of Blood's Hidden Chest". **VERIFY:** base scratch arz
-> `5a8947ff`, fix scratch arz `fcc8b46e`, EXIT=0 (champion-cap gate + all registry verifies GREEN);
+> not added). **RENAMES (R-4, ROUND 2 COMPLETE):** `build_text_arc.py` tagSQECTitle + tagTitleTagTESTER ->
+> "Toxeus the Murderer, Devourer of Blood's Stash"; tagHiddenChestNAME (only the 3 chest
+> tiers use it) -> "Toxeus the Murderer, Devourer of Blood's Hidden Chest"; **round-2 added tagSQECFullText**
+> (the reward-popup body, which round 1 missed - it still read "You found Esti's hidden chest.") ->
+> "You found Toxeus the Murderer, Devourer of Blood's Hidden Chest." (suffix "^n^W&BRewarded : ^n&S^rMythic
+> Formula" byte-preserved). Built-Text.arc sweep: ZERO "Esti" occurrences in the shipped modstrings.txt
+> (the only "Esti" substring anywhere in the SV source is the unrelated base word "Estimated time left"
+> in install.txt, which the build does not emit). **VERIFY:** base scratch arz `5a8947ff`, fix scratch arz `fcc8b46e`
+> (unchanged - round 2 touched Text only), EXIT=0 (champion-cap gate + all registry verifies GREEN);
 > record-diff base->fix = EXACTLY 1 record `pools\egg_blooddragon.dbr` championMin 0->1 (0 added/removed,
 > nothing else); contracts = pre-existing baseline only (championMin = no new P0/P1); static INJECT_SPECS
-> = exactly one ambush placement, relocated. Report `docs/reports/b79_bloodtoxeus_spawns.md`.
+> = exactly one ambush placement, relocated; Text.arc duplicate-tag gate + A7 golden + validate_tags GREEN
+> (tagSQECFullText resolves as mod-owned). Report `docs/reports/b79_bloodtoxeus_spawns.md`.
 > **DEBT:** full canonical+TESTHUB map build + blob-diff (drxfirstroom + drxfirstxistion only, navmesh
-> 24/24 identity, QUESTS untouched) + Text.arc validate_tags = integration-gate step. Parchment coord
+> 24/24 identity, QUESTS untouched) = integration-gate step. Parchment coord
 > (36.0,10.005,19.5) sits 1.5u from a proven native on-mesh spawn; final on-mesh = Will's walk test.
 
 > 🩸 **b73 TOXEUS CHAMPIONS KIT WAVE (Will 2026-07-16) - ROUND 1 IMPLEMENTED + SCRATCH-BUILD GREEN.**

@@ -36,8 +36,12 @@ guarded by the NATIVE `egg_blooddragon_pack` proxy placed 4.2u away @ (13.17,28,
 Because Toxeus is the CHAMPION here (not a main), a zero champion-FLOOR does not guarantee him: ground
 truth from the base game's own "boss + guaranteed champion escort" pools proves the floor must be set -
 `xsq22_wave2` ships championMin=championMax=1 and `xsq17_keres_escortparty` ships championMin=championMax=2,
-while `duneraider_03_general03` (a RANDOM escort) keeps championMin=0 and only sometimes spawns its
-champion. So the egg pool with championMin=0 frequently rolled 4 blood dragons and NO Devourer - he was
+while `arachnos_01_overseer04` (base game, verified championChance=100, championMin=0, championMax=1 - the
+EXACT same shape as the egg pool except the floor) still only SOMETIMES spawns its champion, because a
+100% champion-CHANCE with a 0 champion-FLOOR is base-game "occasional zone-trash champion", not a
+guaranteed escort. (33 base-game pools run championChance=100 with championMin=0 this way -
+cryptworm_03_general02/general03/ranged02, keres_03_melee02, ...; 148 guaranteed-escort pools set
+championMin==championMax.) So the egg pool with championMin=0 frequently rolled 4 blood dragons and NO Devourer - he was
 never the 100% guardian; this was born broken at M15 (nothing "retired" it later - the map placement,
 the pool, and `nameChampion1=um_bloodtoxeus_99` are all intact in build45; `q_bloodtoxeus_lone_50`'s
 retirement never touched this egg chain).
@@ -82,9 +86,22 @@ instance-repoint.
 - `tagTitleTagTESTER` (reward-popup mirror): same, kept in sync.
 - `tagHiddenChestNAME` (the CHEST's in-world container name; NEW override): "Esti's Hidden Chest" ->
   **"Toxeus the Murderer, Devourer of Blood's Hidden Chest"**. DB-verified this tag is used by ONLY the
-  3 chest tiers (`hidden_bloodcave_chest_01/02/03`), so the rename is scoped to this one chest; no other
-  surface says "Esti" in the mod-authored text sources. Possessive matches the monster name tag
-  `tagMonsterHemorrheus` = "{^r}Toxeus the Murderer, Devourer of Blood".
+  3 chest tiers (`hidden_bloodcave_chest_01/02/03`), so the rename is scoped to this one chest. Possessive
+  matches the monster name tag `tagMonsterHemorrheus` = "{^r}Toxeus the Murderer, Devourer of Blood".
+- `tagSQECFullText` (the chest REWARD-QUEST full-text popup body; round-2 override): SV source
+  "You found Esti's hidden chest. ^n^W&BRewarded : ^n&S^rMythic Formula" ->
+  **"You found Toxeus the Murderer, Devourer of Blood's Hidden Chest. ^n^W&BRewarded : ^n&S^rMythic Formula"**.
+  Round 1 renamed the title (`tagSQECTitle` -> "...'s Stash") and the container name but MISSED this body
+  tag, so the reward panel showed title "Toxeus..." over body "You found Esti's hidden chest." The
+  `^n^W&BRewarded : ^n&S^rMythic Formula` suffix is preserved byte-exact; the possessive matches the
+  container-name capitalization. Single-definition fix-block override (skipped during SV emission via
+  `_FIX_BLOCK_TAGS`, so its two identical SV defs cannot trip the duplicate-tag gate).
+- **Esti sweep (round 2):** after all four overrides, a full sweep of the BUILT Text.arc modstrings.txt
+  (local scratch, A7 golden + de-clobber active) finds ZERO "Esti" occurrences of any kind - the string is
+  gone entirely from the shipped text. (The only "Esti" substring anywhere in the SV SOURCE is the unrelated
+  base word "Estimated time left:" in install.txt, `tagInstallerText01`, which the build does not emit.)
+  Round 1's "no other surface says Esti" claim was WRONG - it had missed `tagSQECFullText`; that is now
+  fixed and the claim is verified true against the actual built Text.arc.
 
 ## 5. Will test instructions (full blood-cave run)
 1. RESTART Steam + TQ (mod files lock in memory); confirm the deploy landed.

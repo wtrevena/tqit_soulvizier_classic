@@ -106,6 +106,21 @@ TEXT_FIX_TAGS = {
     # the override rides this sanctioned block. Only THIS chest renames; "Esti" as a separate SV
     # character elsewhere (if any) is untouched.
     'tagHiddenChestNAME': "Toxeus the Murderer, Devourer of Blood's Hidden Chest",
+    # b79 round 2 (Will 2026-07-16): the chest REWARD-QUEST full-text popup. When the
+    # player opens the chest the reward panel shows tagSQECTitle (the quest title, renamed
+    # above to "Toxeus the Murderer, Devourer of Blood's Stash") over this body line. Round 1
+    # renamed the title + container name but MISSED this body tag, so the panel read title
+    # "Toxeus..." over body "You found Esti's hidden chest." tagSQECFullText is the LAST
+    # residual "Esti" string in the whole Text.arc (the only other "Esti" match is the
+    # unrelated base word "Estimated time left" in install.txt). SV source (xuniqueequipment.txt,
+    # defined twice, both identical) = "You found Esti's hidden chest. ^n^W&BRewarded :
+    # ^n&S^rMythic Formula". Retag the possessive to the boss (matching tagHiddenChestNAME's
+    # exact capitalization "Toxeus the Murderer, Devourer of Blood's Hidden Chest") and keep
+    # the "^n^W&BRewarded : ^n&S^rMythic Formula" suffix byte-exact. Single-definition override
+    # (skipped during SV emission via _FIX_BLOCK_TAGS, so the two identical SV defs cannot trip
+    # the duplicate-tag gate); folded into the mod-tag manifest via TEXT_FIX_TAGS.keys().
+    'tagSQECFullText': ("You found Toxeus the Murderer, Devourer of Blood's Hidden "
+                        "Chest. ^n^W&BRewarded : ^n&S^rMythic Formula"),
     # B-SUPRA-NOTIFY-1: the tester-tag notification strings are ALREADY
     # resolved by QUEST_INTEGRATION_TAGS below (tagLOCATIONTAGTESTER /
     # tagTitleTagTESTER); do not redefine them here or the duplicate-tag gate
