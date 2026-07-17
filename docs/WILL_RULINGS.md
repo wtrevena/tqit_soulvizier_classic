@@ -148,7 +148,7 @@
   attached-but-undroppable `um_tombguardian_soul_{n,e,l}` rings were detached then retired (removed
   from the arz) along with their orphaned name tag. Source: docs/reports/souls_quality_fix.md sec 3
   (P2-a).
-  - R-44 [2026-07-14] IMPLEMENTED (D3/FIX 4) Will's directive, verbatim: "fix the crowboar soul's
+- R-44 [2026-07-14] IMPLEMENTED (D3/FIX 4) Will's directive, verbatim: "fix the crowboar soul's
   summoned crow bug ... sweep the roster for any OTHER summon soul with the same broken
   on-attack+petLimit=1 shape and fix those too (same bug = same wave)." Round-2 widened this from 4 to
   a roster-derived 8-family set (manual-cast per the Lyia Leafsong convention). Source: docs/reports/
