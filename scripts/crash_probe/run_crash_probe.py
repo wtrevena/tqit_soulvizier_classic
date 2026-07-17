@@ -1,4 +1,4 @@
-#!/usr/bin/env py
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """run_crash_probe.py - attach the RLTD navmesh crash probe to a RUNNING TQ.exe.
 
@@ -42,7 +42,7 @@ except Exception:
 
 REPO = Path(__file__).resolve().parents[2]
 JS_PATH = REPO / 'scripts' / 'crash_probe' / 'rltd_crash_probe.js'
-OUT_DIR = REPO / 'local' / 'crash_probes'
+OUT_DIR = REPO / 'local' / 'crash_probe'
 sys.path.insert(0, str(REPO / 'tools'))
 
 # Tiers -> which hot hooks the agent installs. The chamber-identity signal (the
@@ -137,6 +137,18 @@ class Probe:
     def fileonly(self, s):
         self.logf.write('           ' + s + '\n')
         self.logf.flush()
+
+    def tail_lines(self, n):
+        """Return the last n lines of the log (flushes first so the crash tail is included)."""
+        try:
+            self.logf.flush()
+        except Exception:
+            pass
+        try:
+            with open(self.logf.name, 'r', encoding='utf-8') as f:
+                return f.read().splitlines()[-n:]
+        except Exception:
+            return []
 
     def on_message(self, msg, _data):
         if msg.get('type') == 'error':
@@ -280,7 +292,7 @@ def main():
 
     import frida  # imported here so --self-test works even if frida were absent
 
-    logname = OUT_DIR / f"crash_probe_{datetime.now():%Y%m%d_%H%M%S}.log"
+    logname = OUT_DIR / f"probe_{datetime.now():%Y%m%d_%H%M%S}.log"
     logf = open(logname, 'w', encoding='utf-8')
     probe = Probe(logf)
     probe.out(f"crash probe starting. tier={args.tier} cfg={cfg}")
@@ -289,7 +301,8 @@ def main():
     probe.out(f"frida {frida.__version__}. target='{args.process}'. ATTACH ONLY - the game is never killed.")
 
     # Poll for an already-running TQ.exe. We only ATTACH; we never spawn it.
-    probe.out(f"waiting for '{args.process}' (launch/continue the game; polling up to {args.wait_min:.0f} min) ...")
+    probe.out(f"Waiting for {args.process} - launch the game normally via Steam "
+              f"(polling up to {args.wait_min:.0f} min) ...")
     session = None
     deadline = time.time() + args.wait_min * 60
     i = 0
@@ -299,14 +312,14 @@ def main():
             break
         except Exception:
             if i % 15 == 0:
-                probe.out(f"  ... still waiting for '{args.process}'")
+                probe.out(f"  ... still waiting for {args.process} (launch it via Steam) ...")
             i += 1
             time.sleep(2)
     if session is None:
-        probe.out(f"'{args.process}' never appeared within {args.wait_min:.0f} min; stopping.")
+        probe.out(f"{args.process} never appeared within {args.wait_min:.0f} min; stopping.")
         logf.close()
         return 2
-    probe.out(f"ATTACHED to '{args.process}' (read-only).")
+    probe.out(f"ATTACHED - play to the crash area now.")
 
     def on_detached(reason, *rest):
         probe.detached = reason or 'unknown'
@@ -325,6 +338,15 @@ def main():
         # (the crashing ENTER, last allocs) drain before summarising the suspect.
         time.sleep(0.4)
         probe.crash_summary(probe.detached)
+        if probe.detached == 'process-terminated':
+            probe.out('')
+            probe.out('*** CRASH CAPTURED ***')
+            probe.out('--- last 15 log lines -------------------------------------------------')
+            for ln in probe.tail_lines(15):
+                print(ln, flush=True)
+            probe.out('---------------------------------------------------------------------')
+            probe.out(f"FULL LOG: {logname}")
+            probe.out("Send me (Claude) that FULL LOG path and I will pin the crashing chamber.")
     except KeyboardInterrupt:
         probe.out("Ctrl+C - detaching (the game keeps running).")
         if probe.open:
