@@ -191,6 +191,44 @@ _GREEN_MARKERS = {
 _GREEN_KIT_NEEDLES = ('sylvannymph', "nature'swrath", 'natureswrath')
 _SHROUD_FIELD = 'charFxPakRunningNames'
 
+# ── b71 CHAIN GATE (anti-oscillation) ────────────────────────────────────────
+# The b55 verify() only asserted the pet FX FIELDS in isolation, so it stayed
+# green while the LIVE chain diverged (Will's build44 report: wrong summon-skill
+# icon, Lyia pet-bar portrait). This gate walks the FULL live chain on the FINAL
+# assembled arz - soul item -> granted summon skill -> skill icon -> spawnObjects
+# -> pet records -> pet-bar portrait -> zero green markers -> marauder sub-summon
+# -> pets - and fails loud if ANY link drifts. The "resolves in shipped arcs" leg
+# is covered by contracts_resources (which has the arc index this DB-only verify
+# does not). Values below are the b71 intended end-state; keep them in lock-step
+# with apply_svc_patches _SUMMON_SKILL_ICON / _SUMMON_PET_PORTRAIT.
+_LYIA_PORTRAIT = 'lyia_party'  # the Lyia-clone residue portrait that must NOT survive
+# (soul-item stem, granted summon skill, expected skill-icon stem, expected
+#  pet-bar portrait stem, [pet records], optional (special-attack sub-summon skill,
+#  [sub-pet records], expected sub-pet shroud stem))
+_R2 = 'records\\'
+_CHAIN = [
+    {
+        'label': 'Enslaver',
+        'souls': [_R2 + r'item\equipmentring\soul\svc_uber\enslaver_soul_%s.dbr' % t for t in ('n', 'e', 'l')],
+        'skill': _R2 + r'skills\soulskills\summon_toxeus_enslaver.dbr',
+        'icon_stem': 'deathwalkersummonup',
+        'portrait_stem': 'deathwalker_party_up',
+        'pets': _ENSLAVER_PETS,
+        'sub_skill': _R2 + r'skills\soulskills\svc_enslaver_petmarauders.dbr',
+        'sub_pets': _MARAUDER_PETS,
+    },
+    {
+        'label': 'Hades Marshal',
+        'souls': [_R2 + r'item\equipmentring\soul\svc_uber\hadesmarshal_soul_%s.dbr' % t for t in ('n', 'e', 'l')],
+        'skill': _R2 + r'skills\soulskills\summon_hadesmarshal.dbr',
+        'icon_stem': 'wrathofthestyxup',
+        'portrait_stem': 'proxy_party_up',   # neutral (no bespoke hades portrait ships)
+        'pets': _HADESMARSHAL_PETS,
+        'sub_skill': None,
+        'sub_pets': [],
+    },
+]
+
 
 def _iter_field_keys(fields, base_lower):
     """All raw keys (incl. ###N suffix variants) whose base name == base_lower."""
@@ -260,6 +298,88 @@ def _inherit_shroud(db, pet, source):
     pet_fields[_SHROUD_FIELD] = TypedField(src_tf.dtype, list(src_tf.values))
     db._modified.add(pet)
     return shroud_val.rsplit('\\', 1)[-1]
+
+
+def _field1(db, rec, base):
+    """First value of field `base` on `rec` (case-insensitive, ###-suffix aware), or None."""
+    if not db.has_record(rec):
+        return None
+    fields = db.get_fields(rec) or {}
+    for k in fields:
+        if k.split('###')[0].lower() == base.lower() and fields[k].values:
+            return str(fields[k].values[0])
+    return None
+
+
+def _stem(path):
+    return (path or '').replace('/', '\\').rsplit('\\', 1)[-1].replace('.dbr', '').replace('.tex', '').lower()
+
+
+def _green_residue_on(db, pet):
+    """Return a list of green-residue problem strings for a single pet record
+    (FX-field markers + dormant green kit slots). Empty == clean."""
+    out = []
+    fields = db.get_fields(pet) or {}
+    for base_lower, needles in _GREEN_MARKERS.items():
+        for key in _iter_field_keys(fields, base_lower):
+            val = str(fields[key].values[0]) if fields[key].values else ''
+            if any(n in val.lower() for n in needles):
+                out.append('%s: GREEN residue %s=%s' % (pet.rsplit('\\', 1)[-1], base_lower, val.rsplit('\\', 1)[-1]))
+    for base, val in _green_kit_slots(fields):
+        out.append('%s: GREEN kit slot %s=%s' % (pet.rsplit('\\', 1)[-1], base, val.rsplit('\\', 1)[-1]))
+    return out
+
+
+def _verify_chain(db, problems):
+    """b71 anti-oscillation: walk the LIVE soul->skill->icon->pets->portrait->green
+    ->marauder chain on the FINAL db for each family in _CHAIN. Appends to problems."""
+    for spec in _CHAIN:
+        lbl = spec['label']
+        skill = spec['skill']
+        # (a) every soul tier grants the expected summon skill
+        for soul in spec['souls']:
+            if not db.has_record(soul):
+                continue  # an absent soul tier is a separate upstream failure
+            gs = (_field1(db, soul, 'itemSkillName') or '').replace('/', '\\').lower()
+            if gs != skill.lower():
+                problems.append('%s CHAIN: %s grants %s, expected %s'
+                                % (lbl, soul.rsplit('\\', 1)[-1], gs or '<none>', skill.rsplit('\\', 1)[-1]))
+        if not db.has_record(skill):
+            problems.append('%s CHAIN: granted skill absent: %s' % (lbl, skill))
+            continue
+        # (b) skill icon == expected skeleton/identity (never the Lyia nymph)
+        up = _stem(_field1(db, skill, 'skillUpBitmapName'))
+        if up != spec['icon_stem']:
+            problems.append('%s CHAIN: skill icon %s != expected %s' % (lbl, up or '<none>', spec['icon_stem']))
+        # (c) spawnObjects == the expected pet set
+        so = db.get_field_value(skill, 'spawnObjects')
+        so_list = [str(x).replace('/', '\\').lower() for x in (so if isinstance(so, list) else [so] if so else [])]
+        want = [p.lower() for p in spec['pets']]
+        if so_list != want:
+            problems.append('%s CHAIN: spawnObjects %s != expected pets %s'
+                            % (lbl, [s.rsplit('\\', 1)[-1] for s in so_list], [w.rsplit('\\', 1)[-1] for w in want]))
+        # (d) each pet: portrait == expected (never Lyia) AND zero green residue
+        for pet in spec['pets']:
+            if not db.has_record(pet):
+                continue
+            si = _stem(_field1(db, pet, 'StatusIcon'))
+            if _LYIA_PORTRAIT in (si or ''):
+                problems.append('%s CHAIN: %s pet-bar portrait still Lyia (%s)' % (lbl, pet.rsplit('\\', 1)[-1], si))
+            elif si != spec['portrait_stem']:
+                problems.append('%s CHAIN: %s portrait %s != expected %s'
+                                % (lbl, pet.rsplit('\\', 1)[-1], si or '<none>', spec['portrait_stem']))
+            problems.extend(_green_residue_on(db, pet))
+        # (e) marauder sub-summon: subchain pets also zero-green
+        if spec['sub_skill'] and db.has_record(spec['sub_skill']):
+            sub_so = db.get_field_value(spec['sub_skill'], 'spawnObjects')
+            sub_list = [str(x).replace('/', '\\') for x in (sub_so if isinstance(sub_so, list) else [sub_so] if sub_so else [])]
+            want_sub = [p.lower() for p in spec['sub_pets']]
+            if [s.lower() for s in sub_list] != want_sub:
+                problems.append('%s CHAIN: sub-summon spawnObjects %s != expected %s'
+                                % (lbl, [s.rsplit('\\', 1)[-1] for s in sub_list], [w.rsplit('\\', 1)[-1] for w in want_sub]))
+            for spet in spec['sub_pets']:
+                if db.has_record(spet):
+                    problems.extend(_green_residue_on(db, spet))
 
 
 def apply(db, tags):
@@ -337,7 +457,11 @@ def verify(db, tags=None):
                     problems.append('%s: shroud %s != source shroud %s'
                                     % (pet.rsplit('\\', 1)[-1], pv.rsplit('\\', 1)[-1],
                                        src_shroud.rsplit('\\', 1)[-1]))
+    # b71 anti-oscillation CHAIN GATE: walk the full live soul->skill->icon->pets
+    # ->portrait->green->marauder chain (catches the record-level-vs-chain-level gap
+    # that let build44 ship the wrong summon icon + Lyia pet-bar portrait).
+    _verify_chain(db, problems)
     if problems:
         raise SystemExit('enslaver_pet_fx.verify FAILED:\n  ' + '\n  '.join(problems))
     print('  enslaver_pet_fx.verify: OK (Enslaver + marauder soul-pets carry the '
-          'black shroud, zero green Lyia residue)')
+          'black shroud, zero green Lyia residue; chain icon+portrait on-identity)')
