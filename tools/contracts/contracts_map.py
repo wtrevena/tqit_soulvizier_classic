@@ -1081,6 +1081,48 @@ def contract_bloodcave_placed(ctx):
     return v
 
 
+def _zone_override_targets():
+    """The authoritative set of b46 LEVELS-entry teleport-map zone `dbr` override
+    targets, read live from tools/svaera_plus_portals.py so this gate cannot drift
+    from the map builder. Lazy import (heavy module) - only touched when the
+    contract runs. Fails loud if the source table is gone."""
+    import importlib
+    tools_dir = str(Path(__file__).resolve().parent.parent)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    spp = importlib.import_module('svaera_plus_portals')
+    table = getattr(spp, 'LEVEL_ZONE_DBR_OVERRIDES', None)
+    if not table:
+        raise RuntimeError('svaera_plus_portals.LEVEL_ZONE_DBR_OVERRIDES missing/empty')
+    return sorted(set(table.values()))
+
+
+def contract_zone_overrides(ctx, _inject_targets=None):
+    """(9) b46 minimap zone-override RESOLUTION gate (MAP-ZONE-1).
+
+    Every b46 LEVELS-entry teleport-map zone `dbr` override target must EXIST in
+    the arz union (mod over base). A LEVELS entry whose `dbr` points at a zone
+    record absent from the DB has its minimap TGA composited against a null zone
+    (the Uber Dungeon "black void" class the b46 wave fixed), and the b82/b86 crash
+    hypothesis specifically feared a b46 zone-override target that the engine
+    region/minimap path dereferences null on. This gate proves that class cannot
+    exist for any override target. Extends MAP-NAV-1 (navmesh-GUID resolution) to
+    the zone-dbr surface. (`_inject_targets`: test-only override for the negative
+    test; production runs read the live override table.)"""
+    v = []
+    targets = _inject_targets if _inject_targets is not None else _zone_override_targets()
+    for dbr in targets:
+        npath = norm_rec(dbr)
+        if not ctx.rec_resolves(npath):
+            v.append(V('MAP-ZONE-1', 'P1', npath,
+                       'b46 LEVELS-entry zone-override `dbr` target does NOT exist in the '
+                       'arz union (minimap composites against a null zone; the region/minimap '
+                       'null-deref class the b82/b86 crash hypothesis flagged)',
+                       f'zone dbr {npath} not in mod arz ({len(ctx.arz_names)}) nor base '
+                       f'arz ({len(ctx.base_arz_names)})'))
+    return v
+
+
 # ============================================================================
 # Section 7: metadata, whitelist, runner, CLI
 # ============================================================================
@@ -1137,12 +1179,19 @@ CONTRACTS = [
                      'dereferenced on zone teardown -> the deterministic 0xc0000005 blood-cave '
                      'crash (docs/reports/b82_bloodcave_crash_rca.md; the placed-record '
                      'NON-EXISTENCE class).'},
+    {'id': 'MAP-ZONE-1', 'name': 'b46 zone-override targets resolve',
+     'asserts': 'every b46 LEVELS-entry teleport-map zone `dbr` override target '
+                '(svaera_plus_portals.LEVEL_ZONE_DBR_OVERRIDES) exists in the arz union.',
+     'derived_from': 'a LEVELS zone `dbr` pointing at an absent record composites the minimap '
+                     'against a null zone (the Uber Dungeon black-void class the b46 wave fixed; '
+                     'the region/minimap null-deref the b82/b86 crash hypothesis flagged and '
+                     'the b86 bisect ruled out - docs/reports/b86_bloodcave_bisect.md).'},
 ]
 
 _CONTRACT_FUNCS = [
     contract_quests, contract_portals, contract_navmesh, contract_groups,
     contract_doors, contract_sd_tags, contract_placed_refs,
-    contract_bloodcave_placed,
+    contract_bloodcave_placed, contract_zone_overrides,
 ]
 
 
