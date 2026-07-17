@@ -13582,20 +13582,35 @@ def _apply_group3_tunes(db, tags):
 #     PLACE: guaranteed-boss construction, championChance=100/championMax=1,
 #     Toxeus the only champion entry; spawnMax(4)-championMax(1)>=1 law holds
 #     (3 blood dragons + Toxeus every run).
-#   PARCHMENT (drxFirstxistion_connection): RETIRED (Will FINAL DESIGN 2026-07-14).
-#     The parchment ~50% Toxeus was NEVER wired to the map - the derived pool+proxy
-#     (demon_01_cluster_toxeus50) were authored here, but the map repoint of the
-#     demon_01_cluster instance to them was never injected (it existed only as a prose
-#     comment in build_section_surgery.py, now annotated RETIRED). Will's final call:
-#     EXACTLY ONE Blood-Toxeus chance in the entrance corridor - the drxFirstRoom ambush,
-#     retuned 15 -> 33 (tools/patches/toxeus_suite.py) - so he cannot spawn twice. The
-#     derived demon_01_cluster_toxeus50 proxy+pool and the sibling proxy q_bloodtoxeus_
-#     lone_50 are therefore NO LONGER AUTHORED; the parchment room keeps its plain
-#     demon_01_cluster (no Toxeus). Only the chest-room egg join below remains. See
-#     docs/MULTIPLAYER_COMPAT.md M4.
+#   PARCHMENT (drxFirstxistion_connection): the derived-pool approach
+#     (demon_01_cluster_toxeus50) stays RETIRED - the derived pool+proxy and the sibling
+#     proxy q_bloodtoxeus_lone_50 are NO LONGER AUTHORED. The parchment Toxeus is instead
+#     delivered by the SINGLE 33% q_bloodtoxeus_ambush proxy (chanceToRun retuned to 33 in
+#     tools/patches/toxeus_suite.py; reuses _BT_POOL = 1 Devourer + 2 blood-demon guys).
+#     b79 (Will 2026-07-16) RELOCATED that ambush's MAP placement from drxFirstRoom to
+#     drxFirstxistion_connection - next to the tattered parchment + the native demon swarm -
+#     so he spawns WITH his guys ON the parchment (map lane: build_section_surgery.py). Still
+#     exactly ONE 33% roll (relocated, not added). Only the chest-room egg join below is a DB
+#     edit here. See docs/MULTIPLAYER_COMPAT.md M4 + docs/reports/b79_bloodtoxeus_spawns.md.
 # Champion field shapes mirror the demon pool's own live shape verbatim
-# (championChance FLOAT / championMax INT / nameChampionN / weightChampionN;
-# no championMin - zero-precedent in this pool family).
+# (championChance FLOAT / championMax INT / championMin INT / nameChampionN /
+# weightChampionN).
+# ── b79 CHEST-RCA FIX (Will 2026-07-16: "he was supposed to spawn next to Esti's
+# Hidden Chest 100% of the time"). The M15 wiring set championChance=100 +
+# championMax=1 but LEFT championMin at its inherited 0. Because Toxeus is the
+# CHAMPION here (nameChampion1), a zero champion-FLOOR does NOT guarantee him:
+# championChance/Max govern the CEILING of champion slots, championMin the FLOOR.
+# Ground truth (b79): every proven "boss + guaranteed champion escort" pool in the
+# base game sets championMin == championMax to force the escort - xsq22_wave2
+# (min=max=1) and xsq17_keres_escortparty (min=max=2). With championMin=0 the egg
+# pool frequently rolled 4 blood dragons and NO Devourer, so the deep-chest guard
+# was never the 100% guardian Will designed (born broken at M15 2026-07-09; nothing
+# retired it - q_bloodtoxeus_lone_50's retirement never touched this egg chain). FIX:
+# set championMin=1 == championMax=1 -> exactly 1 Devourer + 3 dragons, every run,
+# every party size (the xsq22 guaranteed-escort shape). This chest guard is a
+# deliberate adjacent-to-chest encounter (4.2u from the mega chest) and is therefore
+# EXEMPT from generic spacing/clearance laws by design - it is a one-shot guardian,
+# not a respawn fountain.
 _M15_EGG_POOL = r'records\drxmap\proxy\pools\egg_blooddragon.dbr'
 _M15_TOXEUS = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
 
@@ -13619,6 +13634,10 @@ def _apply_m15_toxeus_group_joins(db):
     sf = db.set_field
     sf(_M15_EGG_POOL, 'championChance', 100.0)
     sf(_M15_EGG_POOL, 'championMax', 1)
+    # b79: championMin == championMax = 1 GUARANTEES the Devourer champion (the
+    # proven xsq22/xsq17 escort shape). Without this floor Toxeus (a CHAMPION, not
+    # a main) spawned only sometimes -> the chest bug Will re-reported 2026-07-16.
+    sf(_M15_EGG_POOL, 'championMin', 1)
     sf(_M15_EGG_POOL, 'nameChampion1', _M15_TOXEUS)
     sf(_M15_EGG_POOL, 'weightChampion1', 100)
     smax = int(float(val(_M15_EGG_POOL, 'spawnMax', 0)))
@@ -13633,9 +13652,10 @@ def _apply_m15_toxeus_group_joins(db):
     # pool is NOT in _MOD_AUTHORED_SPAWN_PROXIES, so the finalization lock never reaches it.
     _svc_neutralize_pool_equation(db, _M15_EGG_POOL)
     db._modified.add(_M15_EGG_POOL)
-    print(f"  M15 chest room: egg_blooddragon pool += Toxeus champion @100 "
-          f"(spawnMax {smax}, {smax - 1} dragons + the Devourer every run; "
-          f"proxyPoolEquation neutralized -> exactly 1 Devourer at any party size 1-6)")
+    print(f"  M15 chest room: egg_blooddragon pool += Toxeus GUARANTEED champion "
+          f"(championMin=championMax=1 @100; spawnMax {smax}, {smax - 1} dragons + "
+          f"exactly 1 Devourer every run; proxyPoolEquation neutralized -> exactly 1 "
+          f"Devourer at any party size 1-6)")
 
     # ── parchment: RETIRED (Will FINAL DESIGN 2026-07-14) ──
     # The derived demon_01_cluster_toxeus50 proxy+pool (Toxeus champion @50) are NO LONGER

@@ -12,16 +12,17 @@ so the suite is self-validating whether or not the registry re-runs gates last.
 WHAT THIS SHIPS (spec: scratchpad/specs/toxeus_encounter_suite_spec.md; decisions:
 WILL_DECISIONS_2026-07-11.md; laws: docs/PLAYBOOK.md, amgoz1_design_voice.md):
 
-  PART A - Entrance ambush.  A lone Blood-Toxeus proxy at chanceToRun=33 (Will FINAL DESIGN
-    2026-07-14: the ONE Blood-Toxeus chance in the entrance corridor), a clone of the
-    gate-proven chest proxy q_bloodtoxeus_lone reusing its exact pool (_BT_POOL = 1 Toxeus +
-    2 blood-demon adds - the entourage requirement is inherently satisfied). Registered in the
-    monolith's _MOD_AUTHORED_SPAWN_PROXIES. The map placement ALREADY SHIPPED (the map lane
-    injected q_bloodtoxeus_ambush into levels/world/xbloodcave/drxFirstRoom.lvl, B41_SPECS item
-    5); this lane only retunes the DB chanceToRun field, no map change. Will retuned 15 -> 33
-    when he retired the never-wired parchment ~50% feature (demon_01_cluster_toxeus50 +
-    q_bloodtoxeus_lone_50, removed from the monolith) so the corridor rolls Blood Toxeus exactly
-    ONCE - a single ~33% ambush - instead of the old (never-fired) parchment 50% + ambush 15%.
+  PART A - Parchment ambush.  A lone Blood-Toxeus proxy at chanceToRun=33 (the ONE
+    Blood-Toxeus chance in the entrance corridor), a clone of the gate-proven chest proxy
+    q_bloodtoxeus_lone reusing its exact pool (_BT_POOL = 1 Toxeus + 2 blood-demon adds - the
+    entourage / "his guys" requirement is inherently satisfied). Registered in the monolith's
+    _MOD_AUTHORED_SPAWN_PROXIES. This lane only sets the DB chanceToRun field (33), no map
+    change here. The map placement is in build_section_surgery.py: b79 (Will 2026-07-16)
+    RELOCATED it from drxFirstRoom to drxFirstxistion_connection - right next to the tattered
+    parchment + the native demon swarm - because Will's design is that he spawns WITH his guys
+    ON the parchment, and drxFirstRoom was a different room. Still exactly ONE ~33% roll
+    (relocated, not added); the retired ~50% parchment feature (demon_01_cluster_toxeus50 +
+    q_bloodtoxeus_lone_50) stays removed so he cannot spawn twice.
 
   PART B - The rant scroll.  A readable Parchment (finalletter chassis) carrying Toxeus's
     blood-cult screed, wired one-per-player onto Blood Toxeus's FREE Misc4 slot @100%
@@ -176,8 +177,9 @@ def _create_ambush_proxy(db):
     spawn-eligibility gate covers it. This is the ONLY Blood-Toxeus chance in the entrance
     corridor: Will retired the never-wired ~50% parchment feature (demon_01_cluster_toxeus50 +
     q_bloodtoxeus_lone_50) and bumped this single ambush to 33 so he cannot spawn twice.
-    NO MAP CHANGE this lane - the placement already shipped (map lane injected q_bloodtoxeus_
-    ambush into drxFirstRoom, B41_SPECS item 5); this is a pure DB chanceToRun retune."""
+    NO MAP CHANGE this lane - the placement lives in the map lane (build_section_surgery.py);
+    b79 relocated it from drxFirstRoom into drxFirstxistion_connection next to the tattered
+    parchment so the Devourer spawns WITH his guys ON the parchment. This is a pure DB retune."""
     if not (db.has_record(_BT_PROXY) and db.has_record(_BT_POOL)):
         raise SystemExit("[toxeus_suite] PART A: q_bloodtoxeus_lone proxy/pool missing "
                          "(monolith must build Blood Toxeus before this module runs)")

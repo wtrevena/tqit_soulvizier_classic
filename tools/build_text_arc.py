@@ -90,12 +90,37 @@ TEXT_FIX_TAGS = {
     # DEPLOY COUPLING: this Text tag + the map's new SD region ship together (contract_sd_tags
     # fails loud if this tag is missing when the SD references it).
     'tagSVCRegionObsidianHalls': 'The Obsidian Halls',
-    # D7 (Will 2026-07-09): the hidden blood-cave chest is renamed from "Esti's
-    # Chest" to "Toxeus the Murderer's Stash" (now guarded by the Toxeus the
-    # Murderer, Devourer of Blood superboss). tagSQECTitle is the chest journal/
-    # name tag; single-definition here (skipped during SV emission, dup-gated). The
-    # reward-popup mirror tagTitleTagTESTER is updated to match below. No em dashes.
-    'tagSQECTitle': "Toxeus the Murderer's Stash",
+    # D7 (Will 2026-07-09) + b79 (Will 2026-07-16): the hidden blood-cave chest reward
+    # quest is renamed to "Toxeus the Murderer, Devourer of Blood's Stash" (the exact
+    # boss-name possessive; matches tagMonsterHemorrheus = "Toxeus the Murderer, Devourer
+    # of Blood"). tagSQECTitle is the chest quest journal/reward title; single-definition
+    # here (skipped during SV emission, dup-gated). The reward-popup mirror tagTitleTagTESTER
+    # is updated to match below; the chest's in-world container NAME (tagHiddenChestNAME) is
+    # renamed just below. No em dashes.
+    'tagSQECTitle': "Toxeus the Murderer, Devourer of Blood's Stash",
+    # b79 (Will 2026-07-16): the CHEST's in-world display name. The D7 rename only touched
+    # the quest title (tagSQECTitle) - the container itself (hidden_bloodcave_chest_01/02/03,
+    # all 3 tiers, description=tagHiddenChestNAME, DB-verified as the ONLY 3 records using this
+    # tag) still read "Esti's Hidden Chest". Retag it to the boss's possessive. Single-definition
+    # override (skipped during SV emission, dup-gated); tagHiddenChestNAME is a DRX/base tag so
+    # the override rides this sanctioned block. Only THIS chest renames; "Esti" as a separate SV
+    # character elsewhere (if any) is untouched.
+    'tagHiddenChestNAME': "Toxeus the Murderer, Devourer of Blood's Hidden Chest",
+    # b79 round 2 (Will 2026-07-16): the chest REWARD-QUEST full-text popup. When the
+    # player opens the chest the reward panel shows tagSQECTitle (the quest title, renamed
+    # above to "Toxeus the Murderer, Devourer of Blood's Stash") over this body line. Round 1
+    # renamed the title + container name but MISSED this body tag, so the panel read title
+    # "Toxeus..." over body "You found Esti's hidden chest." tagSQECFullText is the LAST
+    # residual "Esti" string in the whole Text.arc (the only other "Esti" match is the
+    # unrelated base word "Estimated time left" in install.txt). SV source (xuniqueequipment.txt,
+    # defined twice, both identical) = "You found Esti's hidden chest. ^n^W&BRewarded :
+    # ^n&S^rMythic Formula". Retag the possessive to the boss (matching tagHiddenChestNAME's
+    # exact capitalization "Toxeus the Murderer, Devourer of Blood's Hidden Chest") and keep
+    # the "^n^W&BRewarded : ^n&S^rMythic Formula" suffix byte-exact. Single-definition override
+    # (skipped during SV emission via _FIX_BLOCK_TAGS, so the two identical SV defs cannot trip
+    # the duplicate-tag gate); folded into the mod-tag manifest via TEXT_FIX_TAGS.keys().
+    'tagSQECFullText': ("You found Toxeus the Murderer, Devourer of Blood's Hidden "
+                        "Chest. ^n^W&BRewarded : ^n&S^rMythic Formula"),
     # B-SUPRA-NOTIFY-1: the tester-tag notification strings are ALREADY
     # resolved by QUEST_INTEGRATION_TAGS below (tagLOCATIONTAGTESTER /
     # tagTitleTagTESTER); do not redefine them here or the duplicate-tag gate
@@ -407,9 +432,10 @@ def check_duplicate_tags(modstrings: str):
 # the same strings the quest's real journal entry uses (tagSQECLocation/tagSQECTitle).
 QUEST_INTEGRATION_TAGS = {
     'tagLOCATIONTAGTESTER': 'The Blood Cave',
-    # D7 (Will 2026-07-09): mirror the renamed chest title (tagSQECTitle ->
-    # "Toxeus the Murderer's Stash") so the reward-popup title matches the journal.
-    'tagTitleTagTESTER': "Toxeus the Murderer's Stash",
+    # D7 (Will 2026-07-09) + b79 (Will 2026-07-16): mirror the renamed chest title
+    # (tagSQECTitle -> "Toxeus the Murderer, Devourer of Blood's Stash") so the
+    # reward-popup title matches the journal.
+    'tagTitleTagTESTER': "Toxeus the Murderer, Devourer of Blood's Stash",
 }
 
 
