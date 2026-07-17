@@ -35,16 +35,24 @@ Random09A            (idx 703, west tunnel; own d840e7ae, neighbor xPTS)
   --> drxBC_Connector1 -> drxBC2 -> ... deeper
 ```
 
-**Chamber identification.** There is exactly ONE SV rebirth fountain in the whole map
-(`respawntempleorient01`, uid `feeb4bc6`, bound to `Shrine_Respawn_Orient`;
-`docs/DEAD_CONTENT_AUDIT_2026-07-10.md`), and it sits in the HiddenValley01 cave-mouth camp - the
-"first respawn fountain" Will means. "The first door you open" is the native SilkRdDngEntrance cave
-mouth in HiddenValley01. So **"the area immediately after the fountain, behind the first door" =
-the first interior chambers streamed on cave entry: Random09A -> xPassageTransitionStart ->
-BC_initialpathway -> drxFirstRoom** (with drxFirstxistion_connection co-resident). This is exactly
-the "streaming a deeper blood-cave chamber past the first door" region the b82/DEEP_DUMP forensics
-pinned as the ProcessRLTD crash site - Will's words and the dump forensics converge on the same
-chambers. `docs/LETTER_SPAWN_DIAGNOSIS.md` independently records that Will's `_Toxeus` char "has
+**Chamber identification.** The blood-cave cluster actually places THREE functional respawn shrines
+(all Class=`StrategicMovementRespawnShrine`, verified against `local/baseline_build47.arz`):
+`respawntempleorient01` (uid `feeb4bc6`) in the HiddenValley01 cave-mouth camp;
+`records\drxmap\bloodcave\respawn_hades_shrine01.dbr` deep in drxbc3; and
+`records\drxmap\bloodcave\respawn_hadescave01.dbr` mid-cave in new_secretdoor_transitionhallway.
+(An earlier draft claimed feeb4bc6 was the ONLY one - that was wrong; corrected here.) The referent
+is nonetheless `feeb4bc6`, established by GEOGRAPHY + Will's phrase "right behind the first door,"
+NOT by uniqueness: the "first door you open" is the native SilkRdDngEntrance cave mouth in
+HiddenValley01, whose 60-byte GridEntrance `0x14` payload holds Random09A's GUID `d840e7ae` as its
+destination RegionId (byte-proven), and the SilkRdDngEntrance_C01_Ext door sits at `0x05` idx 20.
+The two deep fountains do NOT fit "right behind the first door" (grid corners drxbc3 X~4186 and
+new_secretdoor X~4932, vs the first-chambers X~5500-5819), so they are ruled out as the referent.
+So **"the area immediately after the fountain, behind the first door" = the first interior chambers
+streamed on cave entry: Random09A -> xPassageTransitionStart -> BC_initialpathway -> drxFirstRoom**
+(with drxFirstxistion_connection co-resident). This is exactly the "streaming a deeper blood-cave
+chamber past the first door" region the b82/DEEP_DUMP forensics pinned as the ProcessRLTD crash site
+- Will's words and the dump forensics converge on the same chambers. RESIDUAL: which of these four
+first-chain blobs is the exact detonating load is what the runtime probe (sec 5) resolves. `docs/LETTER_SPAWN_DIAGNOSIS.md` independently records that Will's `_Toxeus` char "has
 walked the blood cave before," consistent with an intermittent streaming-order heap detonation
 (sometimes he crosses, sometimes it crashes) rather than a hard per-record wall.
 
@@ -116,11 +124,22 @@ drxFirstxistion_connection differs (the TESTHUB letter/hub variant). The canonic
 build47 payload carries the identical crash chain. **Steam is AFFECTED (P0 public).** The defect is
 not TESTHUB-only.
 
+NOTE (build25->build47 entity-section deltas near the chain, NOT crash-relevant): drxFirstxistion_connection
+changed via b79 (parchment relocation), and `new_secretdoor_transitionhallway.lvl` also changed its
+`0x05` entity section over this span (it hosts the mid-cave respawn_hadescave01 shrine). BOTH keep a
+byte-identical `0x0b` navmesh (new_secretdoor = c4cc1e6e) with all GUIDs resolving, so neither bears on
+the streaming crash - noted only for completeness so the "only drxfirstxistion changed" wording is not
+read as exhaustive.
+
 ## 5. FIX / RESIDUAL
 No structural delta was found at the chamber, so per the brief NO speculative fix is shipped. The
-decisive next step is a runtime probe on the now-named chamber (harness already exists:
-`docs/crash/WILL_CRASH_PROBE_GUIDE.md`, `tools/debug/frida_test13.py` / `frida_probe.py`;
-`tools/debug/run_crash_probe.py`). Run plan, aimed at the named chain:
+decisive next step is a runtime probe on the now-named chamber. TURNKEY KIT (07-17, shipped on main
+8adbf79/6e88388): Will double-clicks `scripts/RUN_CRASH_PROBE.bat` -> it waits for TQ.exe, auto-attaches,
+and logs each streamed level to `local/crash_probe/probe_*.log`; on crash the last ENTER-without-LEAVE
+names the corrupting chamber. Kit files: `scripts/crash_probe/run_crash_probe.py` +
+`scripts/crash_probe/rltd_crash_probe.js` + guide `docs/crash/WILL_CRASH_PROBE_GUIDE.md` (the older
+low-level harnesses `tools/debug/frida_test13.py` / `frida_probe.py` remain for manual/disasm work).
+What the hook does, aimed at the named chain:
 1. Hook the 0x0b nav-load gate `Engine+0x1b4158`: on enter read `edi`=Level*, log its GUID + name.
    Wrap ProcessRLTD `Engine+0x1f4ba0` ENTER/LEAVE. Snapshot the region-manager live-instance array
    `[[Engine+0x3743f0]+0x34]+0x50]` at entry. Walk from the HiddenValley01 camp fountain into the
