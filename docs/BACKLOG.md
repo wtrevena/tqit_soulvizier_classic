@@ -2984,6 +2984,119 @@ still green, residue is asset/save-level (pfx or already-summoned permanent pet)
 next round; (b) 10 bosses on neutral proxy portrait could get bespoke portraits (future
 art); (c) the ~77-pet systemic Lyia green (24 families) remains b55's flagged design call.
 NOT deployed/committed to main.
+=======
+## BUILD45 MASTERY SV-ALIGNMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
+
+Fixes the residual Occult/Hunting mastery-tree defects Will enumerated from his build43 screenshot
+plus everything the two SV ground-truth extractions prove wrong vs Soulvizier. ONE new registry
+module `tools/patches/mastery_sv_alignment.py` (apply+verify), registered LAST content module (before
+`visuals`) = ratified last writer on every Occult(m5)/Hunting(m6)/emblem UI field; the 4 shape flips
+also fixed UPSTREAM in `hunting_occult_ui.py` (BL-103). Report: `docs/reports/b70_mastery_sv_alignment.md`.
+
+FIXES (all UI fields, zero gameplay/stat delta): **A** shapes - Poisonous Gas SQUARE->CIRCLE, Blade
+Fury CIRCLE->SQUARE, Smoke Screen CIRCLE->SQUARE (m5), Eviscerate CIRCLE->SQUARE (m6, Will ruling
+2026-07-16); these REVERT to the golden baseline (SV098-correct) so zero net golden drift. **B**
+emblem-circle x9: `masterybitmap.dbr` BitmapSingle->BitmapUIAware (bitmapNames=[tex,tex], pos
+[718,748]/[31,31]) so the mastery portrait renders over the pane's black hole (SV098 GT sec 4; mirrors
+b60 pane fix; all 9 textures resolve, 18/18). **C** Darklings (skill25) + Dark Aperture (skill26)
+moved col3->col6 (t3/t5, only m5 column with both free), canonical base@t3/augment@t5; Dark Aperture
+stray `_right` bar cleared (pre-098i GT 8.5). **D** Shadow Link (drxbladehoning c3t2) straight bar
+UP to Dark Invigoration (c3t4) - WILL-INTENT visual wire (drxopenwound has NO gameplay ref to
+drxbladehoning - flagged). **E** Earth Soften Metal: NO-OP (build44 already c4t2 = brief's literal
+target; SV098's c4t3 is now occupied by build41's intentional Flame Surge restoration - documented).
+**F** Toxic Concoction + Shadow Stalker chains: verify-only, build44 already correct. **G** roster
+audit: report-only, no further unambiguous non-golden GT mismatch beyond A-E.
+
+RESIDUALS / WILL-CONFIRM (flagged in report, unchanged): (1) Item C column-6 t4 holds the CANONICAL
+SV098 Throwing Knife, so Darklings' bar passes behind it as an empty-row passthrough - a fully "t4
+EMPTY" canonical column needs Will's ruling to move Throwing Knife or a holistic m5 reflow (the
+build42 reflow that wrecked trees was reverted in build44). (2) ~~Item D wire is visual-only, no
+mechanics relation~~ **SUPERSEDED 2026-07-16 (Item D true-augment round, below)**. (3) Item E: SV098
+exact c4t3 slot restore would need a holistic Earth col-4 reflow displacing the Flame Surge line.
+
+## BUILD45 ITEM-D TRUE-AUGMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
+
+Will ruling 2026-07-16: *"so how does dark invigoration work? I think it should augment shadow link."*
+FINDING (corrects the build45 vet): Dark Invigoration (drxopenwound) **ALREADY** augments Shadow Link
+(drxbladehoning) - it is a true `Skill_Modifier` bound by the LIVE occult SkillTree
+`records\skills\stealth\drxstealthskilltree.dbr` (PC `skillTree5`) tree-order **drxbladehoning@6 (base,
+Skill_BuffRadiusToggled) -> drxopenwound@7 -> drxanatomy@8 (modifiers)**. TQ binds a Skill_Modifier to
+its base **purely by SkillTree numeric order** (nearest preceding non-modifier); PROVEN from vanilla
+TQAE (Storm Nimbus/Heart of Frost/Static Charge + Warfare WarWind/Onslaught/BattleRage + Defense
+Rally/**BattleAwareness (Skill_BuffRadiusToggled) + Focus/IronWill**) - zero record/UI back-reference
+exists in vanilla either. The build45 "no gameplay relation" line was a VET ERROR (it checked
+skillDependancy/buffSkillName, not the SkillTree). Dark Invig's `offensiveLifeMin` (flat vitality dmg)
++ bleed fold into the character while Shadow Link's aura is toggled, mirroring Heart of Frost/Storm
+Nimbus; pairs with Shadow Link's -VitRes enemy debuff. Functional, not dead weight.
+
+CHANGE: `tools/patches/mastery_sv_alignment.py` item D upgraded visual-wire -> TRUE-augment: apply()
+**asserts** the tree-order binding fail-loud (module = ratified guarantor); verify() re-asserts at
+**mechanism level** (walks live SkillTree, `nearest-preceding-non-modifier(drxopenwound) ==
+drxbladehoning`) + negative test. build45 UI wire (c3 column: Shadow Link t2 square / Dark Invig t4
+circle / Shadow Lore t6 circle + upward bar = the vanilla Storm Nimbus column shape) KEPT. Doubled
+namespace: the twin `records\skills\skills\stealth\drxstealthskilltree.dbr` is referenced by NO PC
+(dead orphan) -> no live/dead split; binding holds on the live tree; twin untouched.
+
+VERIFICATION: **ZERO arz change** - mirroring Heart of Frost needs only tree-order (already present) +
+the already-waived UI wire, so NO new golden override. Full scratch build EXIT 0, in-build apply
+assert + registry verify OK, A7 golden gate PASS (74 waived / 0 hard), arz md5
+`a659594ed85f8f5609bcab57fa7b757b` **byte-identical to build45**; record-diff vs a659594e = **0/0/0**;
+verify() negative test FAILS as required; contracts souls+summons GATE PASS (0 P0 / 0 P1 / 112 P2, no
+new); validate_tags PASS. Report: `docs/reports/b70_mastery_sv_alignment.md` item D. NOT deployed
+(awaiting vet + Will test).
+
+GOLDEN: +22 owner_approved_overrides (16 emblem m5/m6, 2 family positions, 2 Dark-Aperture-conn-clear,
+2 Shadow-Link-conn-wire), each citing 'b70 mastery SV-alignment build45' + the GT file/Will ruling.
+A7 golden freeze gate GREEN (74 waived / 0 hard) via the standalone build code path.
+
+VERIFICATION: py_compile OK; registry selfcheck 26 modules (order 2493977b); record-diff dry-run vs
+build44 (`439a9279`) = EXACTLY 17 modified records, ALL UI/connector fields, ZERO gameplay/stat delta,
+every delta maps to a fix-list item; verify() negative test (flip Poisonous Gas back to square) FAILS
+as required; full scratch DB build EXIT 0, all 17 registry verifies OK (incl mastery_sv_alignment),
+A7 golden gate GREEN, arz md5 `a659594ed85f8f5609bcab57fa7b757b` (deterministic PYTHONHASHSEED=0
+SVC_RELEASE_DROPS=1). NOT deployed (awaiting vet + Will iPhone/desktop test).
+
+## OCCULT COLUMN-6 RESTACK (b70 item C2, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
+
+Will ruling 2026-07-16 (verbatim): *"lets have darklings be in the same lane as throwing knife, but we
+will have darklings unlock at 10, dark aperture unlock at 16, and then above it we will have throwing
+knife at 24 and the augment to throwing knife at 32 so we wont have lines behind one another."*
+FIXES the build45 item-C interleave (Darklings' t3->t5 bar crossed ThrowingKnife@t4; ThrowingKnife's
+t4->t6 bar crossed DarkAperture@t5). RESTACK col6 (x=628) as a clean ladder: Darklings t3 (unlock 10,
+stays) / Dark Aperture t4 (unlock 16, moves DOWN from t5) / Throwing Knife t5 (unlock 24, moves UP
+from t4) / Flurry t6 (unlock 32, stays). Both augment bars now 1-tier ADJACENT (Darklings->DarkAperture
+t3->t4; ThrowingKnife->Flurry t5->t6), drawn as the vanilla Shadow-Stalker len2 `[Bottom,Top]` bar.
+ZERO crossings.
+
+CHANGE (`tools/patches/mastery_sv_alignment.py` item C->C2, apply()+verify()): 5-record restack -
+`skill26` button y 155->217; `skill10` button y 217->155; `drxdarklings` connOn/Off len3->len2;
+`drxthrowingknife` connOn/Off len3->len2 + skillTier 4->5 + skillMasteryLevelRequired 5->24;
+`drxdarklings_darkaperture` skillTier 5->4 + skillMasteryLevelRequired 24->16. Darklings(t3,gate10) +
+Flurry(t6,gate32) already correct - asserted, not written. BOTH skillTier AND skillMasteryLevelRequired
+are set == the row threshold so the unlock matches Will's number under EVERY gate-semantics (proof:
+vanilla modifiers rainoffire_brimstone t6/req15, dream_slowtime t7/req16, nature_wildhunt t7/req1 sit
+below their base tier -> req is NOT the sole gate; skillTier is; but DarkAperture's leftover req=24
+could bind under max() -> set both). TIER LAW confirmed empirically (skillTier==row across 27 col +
+142 vanilla buttons, ladder {1,4,10,16,24,32,40}). MECHANISM LAW: SkillTree slot ORDER UNTOUCHED -
+DarkAperture@27 still binds Darklings@26, Flurry@10 still binds ThrowingKnife@9 (apply() asserts +
+verify() re-asserts both bindings; a reorder fails the build). 0 external skillDependancy/buffSkillName/
+petSkillName refs to either moved skill. Save-safe (tier gates resolve live).
+
+GOLDEN: +10 owner_approved_overrides (2 button y, 2 drxdarklings conn, 4 drxthrowingknife
+{conn,conn,tier,gate}, 2 drxdarklings_darkaperture {tier,gate}), each citing the Will 2026-07-16 ruling
+verbatim. Item-C round-1 Dark-Aperture-conn-clear overrides retained.
+
+VERIFICATION: py_compile + registry selfcheck 26 (order 2493977b) OK; dry-run replay vs `a659594e` =
+EXACTLY the 5-record restack (2 button y + 2x len2 conn pairs + 2 skillTier + 2 gate), ZERO other
+deltas; verify() PASS incl mechanism-level bindings + TIER-LAW + adjacent-bar; 3 NEGATIVE tests FAIL as
+required (len3 crossing bar on ThrowingKnife; DarkAperture over-gate 24 on t4; ThrowingKnife button
+misrow t4). Full scratch build EXIT 0 (all 26 registry verifies OK incl mastery_sv_alignment), A7
+golden gate GREEN (84 waived / 0 hard), arz md5 `a7d46b532a5dcf4732e7f951ee695f2d` (deterministic
+PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1); record-diff vs a659594e = 0 ADDED / 0 REMOVED / 5 MODIFIED
+(EXACTLY: skill10.y, skill26.y, drxdarklings connOn/Off, drxthrowingknife connOn/Off+skillTier+gate,
+drxdarklings_darkaperture skillTier+gate - ZERO other deltas); contracts souls+summons GATE PASS (no
+new P0/P1); validate_tags PASS (2 pre-existing base monster-name WARNs, non-blocking; 0 mod-tag miss).
+Report: `docs/reports/b70_mastery_sv_alignment.md` item C2. NOT deployed (awaiting vet + Will test).
 
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
