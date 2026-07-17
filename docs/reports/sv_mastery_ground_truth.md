@@ -571,3 +571,143 @@ t1 .             (Premonition)*[Sands of Slee]*.             [Psionic Touch]*[Di
 The **added** column is dominated by intentional Soulvizier legacy-skill restorations (Meteor, Force of Nature, Skeletal Soldier, Sands of Sleep, Distortion Wave, Cleave, Cold Aura, Bone Fiend, ...); those are **NOT** errors. The actionable regressions are the **shape/move fixes** column plus the emblem circle (section 4) and the Occult anchor-6 column placement (section 5).
 
 Full per-skill diff lists are in `tools/sv_mastery_ground_truth.json` -> `deviations_vs_build41`.
+
+
+---
+
+## 8. PRE-0.98i SV OCCULT (Will correction 2026-07-16)
+
+**Correction to sections 0/5/7.** Will confirmed that Darklings / Dark Aperture / Toxic
+Concoction / Shadow Stalker were **NOT hand-authored** by him: they come from an **older SV**
+(pre-0.98i). Ground-truth recon over `upstream/soulvizier_041/Database/database.arz` (md5
+verify at runtime) and `upstream/soulvizier_0.9/Database/database.arz` proves it. Machine-readable
+companion: **`tools/sv_pre098i_occult_ground_truth.json`**.
+
+**Method note (supersedes the section-0/5 "absent from SV098" claim).** The authoritative list of
+DISPLAYED skills in a mastery is the pane's **`panectrl.dbr::tabSkillButtons`** array, NOT the mere
+existence of a `skillNN.dbr` button record. SV 0.41 / 0.9 / 0.98i all list `Mastery + Skill01..20`
+(20 displayed); build41 lists `Skill01..26` (26). The 098i extraction counted only displayed
+buttons - correct - but concluded the four were "absent". In fact **their button records exist in
+all three SV versions** (`Skill21..24`), just OUTSIDE `tabSkillButtons` (latent/hidden). build41
+re-enabled them by extending `tabSkillButtons`.
+
+### 8.1 The lineage (proven)
+
+- **Occult = mastery 5** (`records\ingameui\player skills\mastery 5`) in EVERY SV version; the
+  DRX namespace (`drx*`) already exists in 0.41. **SV 0.41 and SV 0.9 are byte-identical** for all
+  four skills (same positions, shapes, tiers, connectors) - so the source is **BOTH 0.41 and 0.9**.
+- **Toxic Concoction** (`drx_scrap`, tag `tagScrapNAME`) and **Shadow Stalker**
+  (`drx_summon_shadow_stalker`, tag `tagStalkerSummonsNAME`) exist as **hidden buttons** at their
+  final positions in 0.41/0.9/0.98i. build41 only re-enabled them; **positions unchanged**.
+- **Darklings** and **Dark Aperture** are build41 records (`drxdarklings`,
+  `drxdarklings_darkaperture`) that **clone the older-SV `drxlaytrap` family identity**. In SV
+  0.41/0.9, `drxlaytrap` (Class `AttackProjectileSpawnPet`, tag `tagirregulardemonNAME`, which 098i
+  text resolves to **"Darklings"**) is the **"irregular-demon / Darklings" summon** displayed at
+  **col4 tier3**, and `drxlaytrap_rapidconstruction` (Class `Modifier`, tag `tagbreachNAME`, circle,
+  req24) is its augment at **col4 tier5**. **SV 0.98i REPURPOSED those same records** into
+  **Breach** (`drxlaytrap` -> `AttackProjectileAreaEffect`, `tagbreachNAME`) and **Shadow Grasp**
+  (`drxlaytrap_rapidconstruction` -> `ProjectileModifier`, `tagNewSkill321`). Will wanted BOTH the
+  098i Breach/Shadow Grasp AND the old Darklings summon, so he re-recorded the old identity as new
+  `drxdarklings*` records (same tags/shapes/tiers/connectors, byte-copied) - but **placed them in
+  Shadow Link's column 3** instead of the family's own column.
+
+### 8.2 Authoritative older-SV layout (SV 0.41 == SV 0.9) - Occult col3/col4 context
+
+7-row grid **confirmed identical** to 098i (Y=465-62*tier; rows t1-7 Y={403,341,279,217,155,93,31};
+cols {128,228,328,428,528,628}; thresholds 1/4/10/16/24/32/40). `(name)`=circle, `[name]`=square,
+`*`=carries a connector bar. Names via 098i `Text_EN.arc` (older SV ships no Resources).
+
+```
+OLDER SV (0.41/0.9) DISPLAYED Occult - col3 & col4:
+        col3 (328)              col4 (428)
+t7 .                        (Channel)          <- drx_petmodifier_greaterpower  [HIDDEN in older SV]
+t6 (Shadow Lore)            [Shadow Stalker]   <- drx_summon_shadow_stalker      [HIDDEN in older SV]
+t5 .                        (Dark-Aperture-ancestor)*  <- drxlaytrap_rapidconstruction (tagbreachNAME, circle, req24, _right bar->void)
+t4 (Dark Invigoration)      .                  <- (col4 t4 EMPTY)
+t3 .                        [Darklings]*       <- drxlaytrap (tagirregulardemonNAME='Darklings', square, straight bar len3 up to t5)
+t2 [Shadow Link]            .
+t1 .                        .
+```
+
+The Darklings family = **column 4**: summon base at **t3**, augment modifier at **t5**, **t4 EMPTY**
+between -> a clean straight 3-tile bar t3->t5. Column 3 is Shadow Link's clean passive column (t2/t4/t6).
+
+### 8.3 The four skills - authoritative (row, col, shape, connects_to)
+
+| skill | build41 record | older-SV source | row | col | shape | tier_req | connects_to |
+|---|---|---|---|---|---|---|---|
+| Toxic Concoction | `drx_scrap` | own hidden button (0.41/0.9/0.98i) | t4 | **1** | square | 0 | straight bar len4 UP through Poisonous Gas (t5) to **Aphotic Ichor** (c1t7) = the poison chain |
+| Shadow Stalker | `drx_summon_shadow_stalker` | own hidden button (0.41/0.9/0.98i) | t6 | **4** | square | 0 | straight bar len2 UP to **Channel** (`drx_petmodifier_greaterpower`, c4t7) |
+| Darklings | `drxdarklings` (<- `drxlaytrap`) | ancestor displayed 0.41/0.9 | t3 | **4** (authoritative) | square | 0 | straight bar len3 UP to its modifier at t5 (t4 empty) |
+| Dark Aperture | `drxdarklings_darkaperture` (<- `drxlaytrap_rapidconstruction`) | ancestor displayed 0.41/0.9 | t5 | **4** (authoritative) | circle | 24 | augment ABOVE Darklings; drawn by Darklings' bar. Carries an inherited `_right` (BRTR) bar that tops on VOID (older-SV artifact) |
+
+**Shapes - all four CONFIRMED against older SV (no shape flip needed for these four):** Toxic
+Concoction square, Shadow Stalker square, Darklings square, Dark Aperture **circle** (matches Will's
+"Dark Aperture augments Darklings = circle"). Connectors are **record-driven** (`skillConnectionOn`/
+`Off` string arrays; byte-copied from the older-SV `drxlaytrap` family), NOT baked into the pane
+`.tex` - consistent with section 3.
+
+### 8.4 Connection graph (build41 Occult, the four + neighbours)
+
+- **Toxic Concoction** (c1t4) `--straight len4-->` **Aphotic Ichor** (c1t7), passing a CONNECT tile
+  over **Poisonous Gas** (c1t5). This reproduces Will's anchor-3 chain **Toxic Concoction - Poisonous
+  Gas - Aphotic Ichor** and it is AUTHENTIC older-SV (the `drx_scrap` bar is identical in 0.41/0.9/098i).
+- **Shadow Stalker** (c4t6) `--straight len2-->` **Channel** (c4t7, its pet modifier).
+- **Darklings** (c3t3 in build41) `--straight len3-->` **Dark Aperture** (c3t5) - but the bar draws
+  through **Dark Invigoration** (c3t4, FOREIGN) with a stale MIDDLE tile (should be CONNECT).
+- **Dark Aperture** (c3t5) carries a spurious inherited **`_right` BRTR** bar pointing at (c4t6) =
+  Shadow Stalker's cell - a cross-column artifact from its `drxlaytrap_rapidconstruction` clone origin
+  (that record's `_right` bar historically tops on void). The real Darklings<->Dark Aperture link is
+  drawn by Darklings' straight bar, so Dark Aperture's own bar should be CLEARED.
+
+### 8.5 build41 vs authoritative - DEVIATION TABLE (the fix lane's Occult work list)
+
+| # | skill | build41 (x,y,row,col,shape,conn) | authoritative older-SV | deviation |
+|---|---|---|---|---|
+| 1 | Toxic Concoction `drx_scrap` | (128,217) t4 c1 square, bar->AphoticIchor | (128,217) t4 c1 square, same | **NONE** (position/shape/connector byte-identical; only re-enabled in `tabSkillButtons`) |
+| 2 | Shadow Stalker `drx_summon_shadow_stalker` | (428,93) t6 c4 square, bar->Channel | (428,93) t6 c4 square, same | **NONE** (byte-identical; re-enabled with Channel + Blade Mastery) |
+| 3 | Darklings `drxdarklings` | (328,279) **t3 c3** square, straight bar | **t3 c4** (drxlaytrap slot), t4 empty | **WRONG COLUMN** (col3 = Shadow Link's) -> interleaves Shadow Link family; bar draws stale MIDDLE over occupied Dark Invigoration |
+| 4 | Dark Aperture `drxdarklings_darkaperture` | (328,155) **t5 c3** circle req24, BRTR bar | **t5 c4**, circle req24 | **WRONG COLUMN** (with Darklings) + spurious inherited `_right` bar (clear it; augment link is Darklings' bar) |
+
+**Deviation count for the four: 2** (Darklings + Dark Aperture; Toxic Concoction + Shadow Stalker are
+clean). Both deviations are the SAME root cause: the Darklings family sits in Shadow Link's column 3.
+
+### 8.6 Corrected Darklings-family column (answers section 5 anchor 6)
+
+- **CONFIRMED:** build41 wrongly parked Darklings + Dark Aperture in **Shadow Link's column 3**.
+- **CORRECTION to the 098i note** ("their own overlay column, no canonical layout"): the family HAS a
+  canonical older-SV layout - **column 4**, summon-base at t3 + augment at t5 with t4 EMPTY (the
+  `drxlaytrap` "Darklings" summon slot in SV 0.41/0.9).
+- **Constraint for the fix lane:** build41's literal col4 is now occupied by the **repurposed SAME
+  records** `drxlaytrap`=**Breach** (t3) + `drxlaytrap_rapidconstruction`=**Shadow Grasp** (t5), plus
+  Shadow Stalker (t6) + Channel (t7). The family cannot literally return to col4. So: **move the
+  Darklings family OUT of col3** into a clean column preserving **base@t3 / empty@t4 / augment@t5**
+  (Dark Aperture directly above Darklings), and **drop Dark Aperture's stray `_right` bar**. No column
+  in build41 m5 is perfectly free, so a small holistic m5 reflow is likely required (ties into the
+  build42-reflow revert + Occult rebuild lane).
+
+### 8.7 Broader sweep - other pre-0.98i-sourced content in build41 (lighter pass)
+
+Per mastery: skills DISPLAYED in build41 but NOT displayed in SV 0.98i, classified by their SV 0.9
+status. **"hidden_button" = a latent older-SV button re-enabled** (has canonical older-SV identity);
+**"build41-new record" = no 0.9/0.41 record** (may still clone an older-SV identity, as Darklings does).
+Full lists in `tools/sv_pre098i_occult_ground_truth.json -> broader_sweep`.
+
+| mastery | added-in-b41 (not shown in 098i) | pre-0.98i-sourced (hidden older-SV button) | build41-new record |
+|---|---|---|---|
+| m1 Warfare | 8 | 4 | 4 |
+| m2 Defense | 6 | 4 | 2 |
+| m3 Earth | 8 | 4 | 4 |
+| m4 Storm | 7 | 5 | 2 |
+| m5 Occult | 6 | 4 (Toxic Concoction, Shadow Stalker, Channel, Blade Mastery) | 2 (Darklings, Dark Aperture) |
+| m6 Hunting | 4 | 4 (Cornered, Rapid Construction, Tempest, Flayer) | 0 |
+| m7 Spirit | 9 | 4 | 5 |
+| m8 Nature | 6 | 4 | 2 |
+| m9 Dream | 1 | 0 | 1 |
+
+**Takeaway for the fix lane:** the "pre-0.98i-sourced" column is content with genuine older-SV ground
+truth (their button records + positions exist in SV 0.9) - do NOT treat these as "Will overlay with no
+canonical layout". Notably m6 Hunting's entire build41 addition set (Cornered, Rapid Construction,
+Tempest, Flayer) is older-SV latent content, matching the standing "Occult + Hunting hand-tuning"
+note. The "build41-new record" column still may clone older-SV identities (Darklings is the proven
+case); it is not enumerated deeply here.

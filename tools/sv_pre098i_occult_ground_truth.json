@@ -1,0 +1,1094 @@
+{
+  "_meta": {
+    "purpose": "Pre-0.98i SV ground truth for the four Occult skills Darklings / Dark Aperture / Toxic Concoction / Shadow Stalker (Will correction 2026-07-16: these came from an OLDER SV, not hand-authored).",
+    "sources": {
+      "sv041": "C:\\Users\\willi\\repos\\tqit_soulvizier_classic\\upstream\\soulvizier_041\\Database\\database.arz",
+      "sv09": "C:\\Users\\willi\\repos\\tqit_soulvizier_classic\\upstream\\soulvizier_0.9\\Database\\database.arz",
+      "sv098": "C:\\Users\\willi\\repos\\tqit_soulvizier_classic\\upstream\\soulvizier_098i\\Database\\database.arz",
+      "b41": "C:\\Users\\willi\\repos\\tqit_soulvizier_classic\\local\\baseline_build41.arz"
+    },
+    "source_md5": {
+      "sv041": "056d6f4e321790d1c9723b5bcbb10f45",
+      "sv09": "b31951df8cf80fa6eb97eb14f593b192",
+      "sv098": "11773cdc9bffd9a1b9753beab718843c",
+      "b41": "eb8bc37775540f872003f873abf8e8be"
+    },
+    "text_resolver": "upstream/soulvizier_098i/Resources/Text_EN.arc (older SV ships NO Resources; 098i text is the closest tag->English source)",
+    "method": "pure-python arz_patcher/arc_patcher read; tabSkillButtons = authoritative DISPLAYED-skill list per mastery",
+    "occult_mastery": "mastery 5 (records\\ingameui\\player skills\\mastery 5) in every SV version = the Occult/Rogue tree",
+    "key_finding": "SV0.41 and SV0.9 are IDENTICAL for these skills. drx_scrap(Toxic Concoction)+drx_summon_shadow_stalker(Shadow Stalker) exist as HIDDEN buttons in SV0.41/0.9/0.98i (not in tabSkillButtons); build41 re-enabled them at their UNCHANGED older-SV positions. drxlaytrap in SV0.41/0.9 = the 'irregular demon/Darklings' summon (col4 t3) + drxlaytrap_rapidconstruction its modifier (col4 t5); SV0.98i REPURPOSED those same records into Breach/Shadow Grasp. build41's drxdarklings/drxdarklings_darkaperture are NEW records cloning that older-SV Darklings-summon identity (same tags/shapes/tiers/connectors) but MISPLACED into Shadow Link's column 3."
+  },
+  "row_geometry": {
+    "note": "Older SV uses the SAME 7-row / 6-col grid as 098i.",
+    "Y_of_tier": {
+      "1": 403,
+      "2": 341,
+      "3": 279,
+      "4": 217,
+      "5": 155,
+      "6": 93,
+      "7": 31
+    },
+    "X_of_col": {
+      "1": 128,
+      "2": 228,
+      "3": 328,
+      "4": 428,
+      "5": 528,
+      "6": 628
+    },
+    "point_thresholds": {
+      "1": 1,
+      "2": 4,
+      "3": 10,
+      "4": 16,
+      "5": 24,
+      "6": 32,
+      "7": 40
+    },
+    "older_sv_grid_check": {
+      "sv041": {
+        "violations": [],
+        "same_as_098i_grid": true
+      },
+      "sv09": {
+        "violations": [],
+        "same_as_098i_grid": true
+      }
+    }
+  },
+  "target_skills": [
+    {
+      "skill": "Toxic Concoction",
+      "build41_record": "drx_scrap",
+      "name_tag": "tagScrapNAME",
+      "english_098i_text": "Toxic Concoction",
+      "older_sv": {
+        "sv041": {
+          "source": "own_record",
+          "record": "records\\skills\\stealth\\drx_scrap.dbr",
+          "x": 128,
+          "y": 217,
+          "col": 1,
+          "row": 4,
+          "isCircular": 0,
+          "shape": "square",
+          "skillTier": 4,
+          "tier_req": 0,
+          "tier_point_threshold": 16,
+          "Class": "Skill_AttackProjectile",
+          "name_tag": "tagScrapNAME",
+          "english": "Toxic Concoction",
+          "conn_on": [
+            "B",
+            "C",
+            "M",
+            "T"
+          ],
+          "conn_off": [
+            "B",
+            "C",
+            "M",
+            "T"
+          ],
+          "displayed": false,
+          "connects_to": {
+            "kind": "straight",
+            "length": 4,
+            "top_x": 128,
+            "top_y": 31,
+            "top_col": 1,
+            "top_row": 7,
+            "target": "drxpoisongasbomb_shrapnel"
+          }
+        },
+        "sv09": {
+          "source": "own_record",
+          "record": "records\\skills\\stealth\\drx_scrap.dbr",
+          "x": 128,
+          "y": 217,
+          "col": 1,
+          "row": 4,
+          "isCircular": 0,
+          "shape": "square",
+          "skillTier": 4,
+          "tier_req": 0,
+          "tier_point_threshold": 16,
+          "Class": "Skill_AttackProjectile",
+          "name_tag": "tagScrapNAME",
+          "english": "Toxic Concoction",
+          "conn_on": [
+            "B",
+            "C",
+            "M",
+            "T"
+          ],
+          "conn_off": [
+            "B",
+            "C",
+            "M",
+            "T"
+          ],
+          "displayed": false,
+          "connects_to": {
+            "kind": "straight",
+            "length": 4,
+            "top_x": 128,
+            "top_y": 31,
+            "top_col": 1,
+            "top_row": 7,
+            "target": "drxpoisongasbomb_shrapnel"
+          }
+        }
+      },
+      "build41": {
+        "record": "records\\skills\\stealth\\drx_scrap.dbr",
+        "x": 128,
+        "y": 217,
+        "col": 1,
+        "row": 4,
+        "isCircular": 0,
+        "shape": "square",
+        "skillTier": 4,
+        "tier_req": 0,
+        "tier_point_threshold": 16,
+        "Class": "Skill_AttackProjectile",
+        "name_tag": "tagScrapNAME",
+        "english": "Toxic Concoction",
+        "conn_on": [
+          "B",
+          "C",
+          "M",
+          "T"
+        ],
+        "conn_off": [
+          "B",
+          "C",
+          "M",
+          "T"
+        ],
+        "displayed": true,
+        "connects_to": {
+          "kind": "straight",
+          "length": 4,
+          "top_x": 128,
+          "top_y": 31,
+          "top_col": 1,
+          "top_row": 7,
+          "target": "drxpoisongasbomb_shrapnel"
+        }
+      },
+      "sv098_button": {
+        "record": "records\\skills\\stealth\\drx_scrap.dbr",
+        "x": 128,
+        "y": 217,
+        "col": 1,
+        "row": 4,
+        "isCircular": 0,
+        "shape": "square",
+        "skillTier": 4,
+        "tier_req": 0,
+        "tier_point_threshold": 16,
+        "Class": "Skill_AttackProjectile",
+        "name_tag": "tagScrapNAME",
+        "english": "Toxic Concoction",
+        "conn_on": [
+          "B",
+          "C",
+          "M",
+          "T"
+        ],
+        "conn_off": [
+          "B",
+          "C",
+          "M",
+          "T"
+        ],
+        "displayed": false,
+        "connects_to": {
+          "kind": "straight",
+          "length": 4,
+          "top_x": 128,
+          "top_y": 31,
+          "top_col": 1,
+          "top_row": 7,
+          "target": "drxpoisongasbomb_shrapnel"
+        }
+      }
+    },
+    {
+      "skill": "Shadow Stalker",
+      "build41_record": "drx_summon_shadow_stalker",
+      "name_tag": "tagStalkerSummonsNAME",
+      "english_098i_text": "Shadow Stalker",
+      "older_sv": {
+        "sv041": {
+          "source": "own_record",
+          "record": "records\\skills\\stealth\\drx_summon_shadow_stalker.dbr",
+          "x": 428,
+          "y": 93,
+          "col": 4,
+          "row": 6,
+          "isCircular": 0,
+          "shape": "square",
+          "skillTier": 6,
+          "tier_req": 0,
+          "tier_point_threshold": 32,
+          "Class": "Skill_SpawnPet",
+          "name_tag": "tagStalkerSummonsNAME",
+          "english": "Shadow Stalker",
+          "conn_on": [
+            "B",
+            "T"
+          ],
+          "conn_off": [
+            "B",
+            "T"
+          ],
+          "displayed": false,
+          "connects_to": {
+            "kind": "straight",
+            "length": 2,
+            "top_x": 428,
+            "top_y": 31,
+            "top_col": 4,
+            "top_row": 7,
+            "target": "drx_petmodifier_greaterpower"
+          }
+        },
+        "sv09": {
+          "source": "own_record",
+          "record": "records\\skills\\stealth\\drx_summon_shadow_stalker.dbr",
+          "x": 428,
+          "y": 93,
+          "col": 4,
+          "row": 6,
+          "isCircular": 0,
+          "shape": "square",
+          "skillTier": 6,
+          "tier_req": 0,
+          "tier_point_threshold": 32,
+          "Class": "Skill_SpawnPet",
+          "name_tag": "tagStalkerSummonsNAME",
+          "english": "Shadow Stalker",
+          "conn_on": [
+            "B",
+            "T"
+          ],
+          "conn_off": [
+            "B",
+            "T"
+          ],
+          "displayed": false,
+          "connects_to": {
+            "kind": "straight",
+            "length": 2,
+            "top_x": 428,
+            "top_y": 31,
+            "top_col": 4,
+            "top_row": 7,
+            "target": "drx_petmodifier_greaterpower"
+          }
+        }
+      },
+      "build41": {
+        "record": "records\\skills\\stealth\\drx_summon_shadow_stalker.dbr",
+        "x": 428,
+        "y": 93,
+        "col": 4,
+        "row": 6,
+        "isCircular": 0,
+        "shape": "square",
+        "skillTier": 6,
+        "tier_req": 0,
+        "tier_point_threshold": 32,
+        "Class": "Skill_SpawnPet",
+        "name_tag": "tagStalkerSummonsNAME",
+        "english": "Shadow Stalker",
+        "conn_on": [
+          "B",
+          "T"
+        ],
+        "conn_off": [
+          "B",
+          "T"
+        ],
+        "displayed": true,
+        "connects_to": {
+          "kind": "straight",
+          "length": 2,
+          "top_x": 428,
+          "top_y": 31,
+          "top_col": 4,
+          "top_row": 7,
+          "target": "drx_petmodifier_greaterpower"
+        }
+      },
+      "sv098_button": {
+        "record": "records\\skills\\stealth\\drx_summon_shadow_stalker.dbr",
+        "x": 428,
+        "y": 93,
+        "col": 4,
+        "row": 6,
+        "isCircular": 0,
+        "shape": "square",
+        "skillTier": 6,
+        "tier_req": 0,
+        "tier_point_threshold": 32,
+        "Class": "Skill_SpawnPet",
+        "name_tag": "tagStalkerSummonsNAME",
+        "english": "Shadow Stalker",
+        "conn_on": [
+          "B",
+          "T"
+        ],
+        "conn_off": [
+          "B",
+          "T"
+        ],
+        "displayed": false,
+        "connects_to": {
+          "kind": "straight",
+          "length": 2,
+          "top_x": 428,
+          "top_y": 31,
+          "top_col": 4,
+          "top_row": 7,
+          "target": "drx_petmodifier_greaterpower"
+        }
+      }
+    },
+    {
+      "skill": "Darklings",
+      "build41_record": "drxdarklings",
+      "name_tag": "tagirregulardemonNAME",
+      "english_098i_text": "Darklings",
+      "older_sv": {
+        "sv041": {
+          "source": "ancestor:drxlaytrap",
+          "record": "records\\skills\\stealth\\drxlaytrap.dbr",
+          "x": 428,
+          "y": 279,
+          "col": 4,
+          "row": 3,
+          "isCircular": 0,
+          "shape": "square",
+          "skillTier": 3,
+          "tier_req": 0,
+          "tier_point_threshold": 10,
+          "Class": "Skill_AttackProjectileSpawnPet",
+          "name_tag": "tagirregulardemonNAME",
+          "english": "Darklings",
+          "conn_on": [
+            "B",
+            "M",
+            "T"
+          ],
+          "conn_off": [
+            "B",
+            "M",
+            "T"
+          ],
+          "displayed": true,
+          "connects_to": {
+            "kind": "straight",
+            "length": 3,
+            "top_x": 428,
+            "top_y": 155,
+            "top_col": 4,
+            "top_row": 5,
+            "target": "drxlaytrap_rapidconstruction"
+          }
+        },
+        "sv09": {
+          "source": "ancestor:drxlaytrap",
+          "record": "records\\skills\\stealth\\drxlaytrap.dbr",
+          "x": 428,
+          "y": 279,
+          "col": 4,
+          "row": 3,
+          "isCircular": 0,
+          "shape": "square",
+          "skillTier": 3,
+          "tier_req": 0,
+          "tier_point_threshold": 10,
+          "Class": "Skill_AttackProjectileSpawnPet",
+          "name_tag": "tagirregulardemonNAME",
+          "english": "Darklings",
+          "conn_on": [
+            "B",
+            "M",
+            "T"
+          ],
+          "conn_off": [
+            "B",
+            "M",
+            "T"
+          ],
+          "displayed": true,
+          "connects_to": {
+            "kind": "straight",
+            "length": 3,
+            "top_x": 428,
+            "top_y": 155,
+            "top_col": 4,
+            "top_row": 5,
+            "target": "drxlaytrap_rapidconstruction"
+          }
+        }
+      },
+      "build41": {
+        "record": "records\\skills\\stealth\\drxdarklings.dbr",
+        "x": 328,
+        "y": 279,
+        "col": 3,
+        "row": 3,
+        "isCircular": 0,
+        "shape": "square",
+        "skillTier": 3,
+        "tier_req": 0,
+        "tier_point_threshold": 10,
+        "Class": "Skill_AttackProjectileSpawnPet",
+        "name_tag": "tagirregulardemonNAME",
+        "english": "Darklings",
+        "conn_on": [
+          "B",
+          "M",
+          "T"
+        ],
+        "conn_off": [
+          "B",
+          "M",
+          "T"
+        ],
+        "displayed": true,
+        "connects_to": {
+          "kind": "straight",
+          "length": 3,
+          "top_x": 328,
+          "top_y": 155,
+          "top_col": 3,
+          "top_row": 5,
+          "target": "drxdarklings_darkaperture"
+        }
+      },
+      "sv098_button": null
+    },
+    {
+      "skill": "Dark Aperture",
+      "build41_record": "drxdarklings_darkaperture",
+      "name_tag": "tagDarkApertureNAME",
+      "english_098i_text": null,
+      "older_sv": {
+        "sv041": {
+          "source": "ancestor:drxlaytrap_rapidconstruction",
+          "record": "records\\skills\\stealth\\drxlaytrap_rapidconstruction.dbr",
+          "x": 428,
+          "y": 155,
+          "col": 4,
+          "row": 5,
+          "isCircular": 1,
+          "shape": "circle",
+          "skillTier": 5,
+          "tier_req": 24,
+          "tier_point_threshold": 24,
+          "Class": "Skill_Modifier",
+          "name_tag": "tagbreachNAME",
+          "english": "Breach",
+          "conn_on": [
+            "BR",
+            "TR"
+          ],
+          "conn_off": [
+            "BR",
+            "TR"
+          ],
+          "displayed": true,
+          "connects_to": {
+            "kind": "right",
+            "length": 2,
+            "top_x": 528,
+            "top_y": 93,
+            "top_col": 5,
+            "top_row": 6,
+            "target": null
+          }
+        },
+        "sv09": {
+          "source": "ancestor:drxlaytrap_rapidconstruction",
+          "record": "records\\skills\\stealth\\drxlaytrap_rapidconstruction.dbr",
+          "x": 428,
+          "y": 155,
+          "col": 4,
+          "row": 5,
+          "isCircular": 1,
+          "shape": "circle",
+          "skillTier": 5,
+          "tier_req": 24,
+          "tier_point_threshold": 24,
+          "Class": "Skill_Modifier",
+          "name_tag": "tagbreachNAME",
+          "english": "Breach",
+          "conn_on": [
+            "BR",
+            "TR"
+          ],
+          "conn_off": [
+            "BR",
+            "TR"
+          ],
+          "displayed": true,
+          "connects_to": {
+            "kind": "right",
+            "length": 2,
+            "top_x": 528,
+            "top_y": 93,
+            "top_col": 5,
+            "top_row": 6,
+            "target": null
+          }
+        }
+      },
+      "build41": {
+        "record": "records\\skills\\stealth\\drxdarklings_darkaperture.dbr",
+        "x": 328,
+        "y": 155,
+        "col": 3,
+        "row": 5,
+        "isCircular": 1,
+        "shape": "circle",
+        "skillTier": 5,
+        "tier_req": 24,
+        "tier_point_threshold": 24,
+        "Class": "Skill_Modifier",
+        "name_tag": "tagDarkApertureNAME",
+        "english": null,
+        "conn_on": [
+          "BR",
+          "TR"
+        ],
+        "conn_off": [
+          "BR",
+          "TR"
+        ],
+        "displayed": true,
+        "connects_to": {
+          "kind": "right",
+          "length": 2,
+          "top_x": 428,
+          "top_y": 93,
+          "top_col": 4,
+          "top_row": 6,
+          "target": "drx_summon_shadow_stalker"
+        }
+      },
+      "sv098_button": null
+    }
+  ],
+  "deviation_flags": [
+    {
+      "skill": "Toxic Concoction",
+      "record": "drx_scrap",
+      "authoritative": "col1 tier4 (128,217) square, straight bar len4 -> Aphotic Ichor (128,31) via CONNECT over Poisonous Gas; identical in SV0.41/0.9/0.98i button",
+      "build41": "col1 tier4 (128,217) square, same bar",
+      "deviation": "NONE (position/shape/connector byte-identical; build41 only re-enabled it in tabSkillButtons)"
+    },
+    {
+      "skill": "Shadow Stalker",
+      "record": "drx_summon_shadow_stalker",
+      "authoritative": "col4 tier6 (428,93) square, straight bar len2 -> Channel/drx_petmodifier_greaterpower (428,31); identical across SV0.41/0.9/0.98i button",
+      "build41": "col4 tier6 (428,93) square, same bar",
+      "deviation": "NONE (position/shape/connector byte-identical; build41 only re-enabled it + Channel + Blade Mastery in tabSkillButtons)"
+    },
+    {
+      "skill": "Darklings",
+      "record": "drxdarklings",
+      "ancestor": "drxlaytrap (SV0.41/0.9 'irregular demon' summon, tag tagirregulardemonNAME='Darklings')",
+      "authoritative": "COLUMN 4 tier3 (428,279) square, straight bar len3 -> modifier at col4 tier5, tier4 EMPTY between (clean)",
+      "build41": "COLUMN 3 tier3 (328,279) square, straight bar len3 -> Dark Aperture (328,155) tier5, but tier4 (328,217) occupied by FOREIGN Dark Invigoration (drxopenwound)",
+      "deviation": "WRONG COLUMN: col3 (Shadow Link's column) instead of the family's own column; interleaves Shadow Link family; bar draws a stale MIDDLE tile over the occupied Dark Invigoration cell. FIX: move Darklings family out of col3."
+    },
+    {
+      "skill": "Dark Aperture",
+      "record": "drxdarklings_darkaperture",
+      "ancestor": "drxlaytrap_rapidconstruction (SV0.41/0.9 modifier, tag tagbreachNAME='Breach', circle, req24)",
+      "authoritative": "COLUMN 4 tier5 (428,155) circle req24; augment sitting directly above the Darklings summon in the SAME column; carries an inherited _right (BRTR) bar that tops on VOID (a longstanding older-SV artifact)",
+      "build41": "COLUMN 3 tier5 (328,155) circle req24, conn_on=BRTR (_right) -> points at (428,93)=Shadow Stalker cell (spurious cross-column artifact)",
+      "deviation": "WRONG COLUMN (col3) with Darklings; the augment link to Darklings is drawn by Darklings' own straight bar, so Dark Aperture's inherited _right BRTR bar is spurious and should be CLEARED. FIX: relocate with Darklings (Dark Aperture directly above Darklings) + drop the stray _right bar."
+    }
+  ],
+  "darklings_family_column": {
+    "question": "Where SHOULD the Darklings/Dark Aperture family column be?",
+    "older_sv_ground_truth": "COLUMN 4 (x=428): the drxlaytrap 'irregular demon/Darklings' summon at tier3 (428,279) + its modifier drxlaytrap_rapidconstruction at tier5 (428,155), tier4 EMPTY between, clean straight 3-tile bar. This is the authoritative home in BOTH SV 0.41 and SV 0.9.",
+    "build41_state": "build41 placed the family in COLUMN 3 (x=328) = Shadow Link's column (Shadow Link t2 / Dark Invigoration t4 / Shadow Lore t6), interleaving it.",
+    "constraint": "build41's literal col4 is now occupied by the REPURPOSED SAME records drxlaytrap='Breach' (t3) + drxlaytrap_rapidconstruction='Shadow Grasp' (t5) plus Shadow Stalker (t6) + Channel (t7). The family cannot return to its literal old col4 because that record lineage now IS Breach/Shadow Grasp.",
+    "corrected_answer": "NOT column 3. The Darklings family belongs in its OWN clean column with the older-SV geometry: summon-base at tier3 + augment-modifier at tier5, tier4 EMPTY, Dark Aperture directly above Darklings, straight 3-tile bar. Since col4 is taken by the repurposed Breach line, the fix lane must pick a free column preserving that tier3-base/empty-tier4/tier5-modifier structure (no column in build41 m5 is perfectly free -> a small holistic reflow of m5 is likely needed).",
+    "confirms_098i_extraction_anchor6": "CONFIRMED: build41 wrongly parked Darklings+Dark Aperture in Shadow Link's column 3. CORRECTION to the 098i note: their authoritative column is 4 (the drxlaytrap summon slot), not merely 'their own overlay column with no canonical layout' - the layout is canonical older-SV."
+  },
+  "broader_sweep": {
+    "m1": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 28,
+      "added_in_b41_count": 8,
+      "pre098i_sourced": [
+        {
+          "record": "drxbattlestandard_petmodifier_glory",
+          "col": 3,
+          "row": 5,
+          "english": "Glory",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxdualwieldtechnique_wardance",
+          "col": 1,
+          "row": 7,
+          "english": "Double Helix",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxonslaught_craven",
+          "col": 4,
+          "row": 5,
+          "english": "Heart of War",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxwarwind_refinement",
+          "col": 5,
+          "row": 5,
+          "english": "Finesse",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drx_ancestralmod",
+          "col": 3,
+          "row": 2,
+          "english": "x3tagSkillWarfareLastingLegacy",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drx_clubslam",
+          "col": 3,
+          "row": 7,
+          "english": "tagSlam_NAME",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drx_clubslam_fissure",
+          "col": 3,
+          "row": 4,
+          "english": "tagSlam_FissureNAME",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxhamstring",
+          "col": 4,
+          "row": 3,
+          "english": "Hamstring",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m2": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 26,
+      "added_in_b41_count": 6,
+      "pre098i_sourced": [
+        {
+          "record": "drxaxepassive",
+          "col": 1,
+          "row": 2,
+          "english": "Hack",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxheave",
+          "col": 1,
+          "row": 7,
+          "english": "Heave",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxheave_cleave",
+          "col": 1,
+          "row": 5,
+          "english": "Cleave",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxshieldpassive",
+          "col": 6,
+          "row": 2,
+          "english": "Shield Training",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drx_activeblock",
+          "col": 4,
+          "row": 7,
+          "english": "x3tagSkillDefenseActiveBlock",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drx_summonphalanx",
+          "col": 4,
+          "row": 5,
+          "english": "x3tagSkillDefenseSummonPhalanx",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m3": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 28,
+      "added_in_b41_count": 8,
+      "pre098i_sourced": [
+        {
+          "record": "drxeruption_moltenlava",
+          "col": 6,
+          "row": 7,
+          "english": "Molten Lava",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxheatshield_burn",
+          "col": 2,
+          "row": 3,
+          "english": "Heat Accretion",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxmeteor",
+          "col": 2,
+          "row": 7,
+          "english": "Meteor",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxspontaneouscombustion",
+          "col": 4,
+          "row": 6,
+          "english": "Spontaneous Combustion",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drx_firenova",
+          "col": 4,
+          "row": 7,
+          "english": "x3tagSkillEarthFireNova",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxrupture",
+          "col": 4,
+          "row": 3,
+          "english": "Flame Surge",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxrupture_burning",
+          "col": 4,
+          "row": 4,
+          "english": "tagBurningBoltsNAME",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxrupture_flare",
+          "col": 4,
+          "row": 5,
+          "english": "Flame Arch",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m4": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 27,
+      "added_in_b41_count": 7,
+      "pre098i_sourced": [
+        {
+          "record": "drxcoldaura",
+          "col": 6,
+          "row": 1,
+          "english": "Arctic Shell",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxcoldaura_synergy",
+          "col": 6,
+          "row": 4,
+          "english": "Ice Song",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxspellbreaker_spellshock2",
+          "col": 1,
+          "row": 3,
+          "english": null,
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxsquall_hail",
+          "col": 3,
+          "row": 5,
+          "english": "Hail",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxstormnimbus_spellbreaker",
+          "col": 1,
+          "row": 2,
+          "english": "Static Charge",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drx_lightningdash",
+          "col": 4,
+          "row": 7,
+          "english": "x3tagSkillStormFlash",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxfrostnova",
+          "col": 4,
+          "row": 5,
+          "english": "tagSVAERSkillStorm001",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m5": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 26,
+      "added_in_b41_count": 6,
+      "pre098i_sourced": [
+        {
+          "record": "drx_dual_blade",
+          "col": 6,
+          "row": 2,
+          "english": "Blade Mastery",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drx_petmodifier_greaterpower",
+          "col": 4,
+          "row": 7,
+          "english": "Channel",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drx_scrap",
+          "col": 1,
+          "row": 4,
+          "english": "Toxic Concoction",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drx_summon_shadow_stalker",
+          "col": 4,
+          "row": 6,
+          "english": "Shadow Stalker",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drxdarklings",
+          "col": 3,
+          "row": 3,
+          "english": "Darklings",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxdarklings_darkaperture",
+          "col": 3,
+          "row": 5,
+          "english": "tagDarkApertureNAME",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m6": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 24,
+      "added_in_b41_count": 4,
+      "pre098i_sourced": [
+        {
+          "record": "drxcorneredrage",
+          "col": 2,
+          "row": 6,
+          "english": "Cornered",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxmonsterlure_rapidconstruction",
+          "col": 6,
+          "row": 5,
+          "english": "Rapid Construction",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxspear_tempest",
+          "col": 4,
+          "row": 3,
+          "english": "tagSVCTempestNAME",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxtempest_expose",
+          "col": 4,
+          "row": 6,
+          "english": "Flayer",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": []
+    },
+    "m7": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 29,
+      "added_in_b41_count": 9,
+      "pre098i_sourced": [
+        {
+          "record": "drxbonepetsummons",
+          "col": 5,
+          "row": 4,
+          "english": "Bone Fiend",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxenergydrain_cascade",
+          "col": 6,
+          "row": 5,
+          "english": "Dire Barrage",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxskellysummons",
+          "col": 5,
+          "row": 1,
+          "english": "Skeletal Soldier",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxsoulsiphontotem",
+          "col": 4,
+          "row": 2,
+          "english": "Spirit Lure",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drxdistortionwave",
+          "col": 3,
+          "row": 1,
+          "english": "Distortion Wave",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxdistortionwave_chaoticresonance",
+          "col": 3,
+          "row": 4,
+          "english": "Chaotic Resonance",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxdistortionwave_psionicimmolation",
+          "col": 3,
+          "row": 6,
+          "english": "Psionic Immolation",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxsandsofsleep",
+          "col": 1,
+          "row": 1,
+          "english": "Sands of Sleep",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drxsandsofsleep_troubleddreams",
+          "col": 1,
+          "row": 3,
+          "english": "Troubled Dreams",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m8": {
+      "n_displayed_sv098": 20,
+      "n_displayed_b41": 26,
+      "added_in_b41_count": 6,
+      "pre098i_sourced": [
+        {
+          "record": "drxforceofnature",
+          "col": 4,
+          "row": 7,
+          "english": "Force of Nature",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxnaturesblessing",
+          "col": 2,
+          "row": 5,
+          "english": "Nature's Blessing",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxnaturesblessing_treeskin",
+          "col": 2,
+          "row": 7,
+          "english": "Serenity",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        },
+        {
+          "record": "drxsprite_summons",
+          "col": 5,
+          "row": 1,
+          "english": "Thorn Sprites",
+          "older_sv_status": "hidden_button_in_SV0.9 (pre-098i latent, re-enabled)"
+        }
+      ],
+      "build41_new_records": [
+        {
+          "record": "drx_earthbind",
+          "col": 3,
+          "row": 7,
+          "english": "x3tagSkillNatureEarthbind",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        },
+        {
+          "record": "drx_nymph_petmodifier_rootwave",
+          "col": 3,
+          "row": 5,
+          "english": "x3tagSkillNatureSylvanProtection",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    },
+    "m9": {
+      "n_displayed_sv098": 24,
+      "n_displayed_b41": 25,
+      "added_in_b41_count": 1,
+      "pre098i_sourced": [],
+      "build41_new_records": [
+        {
+          "record": "drx_summoncopy",
+          "col": 1,
+          "row": 7,
+          "english": "x3tagSkillDreamSummonDoppelganger",
+          "older_sv_status": "NOT_in_SV0.9/0.41 (build41-new record)"
+        }
+      ]
+    }
+  }
+}
