@@ -89,6 +89,89 @@ column is impossible without either relocating the canonical Throwing Knife (nee
 a holistic m5 reflow (the build42 reflow that "wrecked the trees" was reverted in build44). This is
 the best available column and resolves Will's stated complaint (family OUT of Shadow Link's column).
 
+### C2. Occult COLUMN-6 RESTACK (Will ruling 2026-07-16) - SUPERSEDES the item-C residual
+
+> **Will (2026-07-16, verbatim):** *"lets have darklings be in the same lane as throwing knife, but we
+> will have darklings unlock at 10, dark aperture unlock at 16, and then above it we will have throwing
+> knife at 24 and the augment to throwing knife at 32 so we wont have lines behind one another."*
+
+The item-C round-1 move put Darklings@t3 + Dark Aperture@t5 into column 6, which already held Throwing
+Knife@t4 and Flurry@t6. That INTERLEAVED two 2-tier bars: Darklings' t3->t5 bar crossed Throwing
+Knife's button @t4, and Throwing Knife's t4->t6 bar crossed Dark Aperture's button @t5 (the "lines
+behind one another" Will called out). Will's fix restacks column 6 (X=628) into a clean
+bottom-to-top ladder so each augment sits DIRECTLY above its base and every bar is a 1-tier adjacent
+segment:
+
+```
+      col 6 (x=628)          BEFORE (build45, interleaved)   AFTER (C2 restack, Will 07-16)
+ t6 (y93)   Flurry              Flurry            unlock 32   Flurry            unlock 32  STAYS
+ t5 (y155)  ...                 Dark Aperture     unlock 24   Throwing Knife    unlock 24  UP from t4
+ t4 (y217)  ...                 Throwing Knife    unlock 16   Dark Aperture     unlock 16  DOWN from t5
+ t3 (y279)  ...                 Darklings         unlock 10   Darklings         unlock 10  STAYS
+```
+
+Bars become adjacent and parallel-free: **Darklings -> Dark Aperture** spans t3->t4; **Throwing Knife
+-> Flurry** spans t5->t6. ZERO crossings.
+
+**What changed (record-diff vs build45 scratch `a659594e`, 5 records):**
+| record | field | build45 | -> C2 | why |
+|---|---|---|---|---|
+| `mastery 5\skill26.dbr` (Dark Aperture button) | bitmapPositionY | 155 (t5) | **217 (t4)** | moves down one row |
+| `mastery 5\skill10.dbr` (Throwing Knife button) | bitmapPositionY | 217 (t4) | **155 (t5)** | moves up one row |
+| `drxdarklings.dbr` | skillConnectionOn/Off | len3 `[Bottom,Middle,Top]` | **len2 `[Bottom,Top]`** | 2-tier bar -> 1-tier adjacent |
+| `drxthrowingknife.dbr` | skillConnectionOn/Off | len3 `[Bottom,Middle,Top]` | **len2 `[Bottom,Top]`** | 2-tier bar -> 1-tier adjacent |
+| `drxthrowingknife.dbr` | skillTier | 4 | **5** | new row t5 (TIER LAW) |
+| `drxthrowingknife.dbr` | skillMasteryLevelRequired | 5 | **24** | unlock gate == t5 threshold (Will "at 24") |
+| `drxdarklings_darkaperture.dbr` | skillTier | 5 | **4** | new row t4 (TIER LAW) |
+| `drxdarklings_darkaperture.dbr` | skillMasteryLevelRequired | 24 | **16** | unlock gate == t4 threshold (Will "at 16") |
+
+Darklings (tier 3, gate 10 via req 0 -> tier default) and Flurry (tier 6, gate 32) were already
+correct - verified fail-loud, not written. The len2 `[Bottom,Top]` bar is byte-identical to the
+vanilla Shadow-Stalker -> Channel adjacent bar (probed from the live occult tree).
+
+**TIER LAW confirmed empirically** (not assumed): `skillTier` == the button's row across all 27
+column-6 lattice skills AND 142 vanilla mastery buttons (0 violations). The row<->unlock ladder is
+`tier {1:1, 2:4, 3:10, 4:16, 5:24, 6:32, 7:40}`. So t3=unlock 10, t4=16, t5=24, t6=32 - exactly the
+numbers Will named.
+
+**GATE MECHANISM (why BOTH `skillTier` and `skillMasteryLevelRequired` are written).** `skillTier` is
+the effective mastery-investment gate; `skillMasteryLevelRequired` is at most a `max()`-gate. Proof
+that req is NOT the sole gate: vanilla player modifiers sit FAR below their base tier -
+`rainoffire_brimstone` tier6(thr32)/req15, `dream_slowtime` tier7(thr40)/req16, `nature_wildhunt`
+tier7/req1 - a modifier physically cannot unlock before its base, so the engine must gate on
+`skillTier`, not req. But Dark Aperture's leftover req=24 (== its OLD t5 threshold) could still bind
+it at 24 under `max()`-semantics, contradicting Will's "unlock at 16." Setting **both** fields ==
+the new-row threshold makes the unlock unambiguous under skillTier-only, `max()`, or req-only
+semantics alike (this is also how 206 vanilla skills set req == tier threshold). This is required to
+honor Will's explicit unlock numbers - it is not scope creep. (The build45 record-diff shape "skillTier
+only" did not anticipate the leftover req; leaving it would leave Dark Aperture gated at 24.)
+
+**MECHANISM LAW (modifier binding) - untouched + proven intact.** The engine binds a `Skill_Modifier`
+to its base PURELY by the mastery SkillTree's numeric `skillName{N}` ORDER (nearest preceding
+non-modifier; item D). This restack changes ONLY UI button positions + the skill records' skillTier /
+gate / connector fields - it does **NOT** reorder or renumber ANY `drxstealthskilltree.dbr` slot. The
+live occult tree still orders `drxdarklings@26 -> drxdarklings_darkaperture@27` and `drxthrowingknife@9
+-> drxthrowingknife_flurryofknives@10`, so **Dark Aperture still augments Darklings and Flurry still
+augments Throwing Knife** after the restack (apply() asserts + verify() re-asserts both bindings at
+mechanism level; a SkillTree reorder would fail the build). No skill has a `skillDependancy` /
+`buffSkillName` / `petSkillName` pointing at either moved skill (swept: 0 external refs), so the moves
+have no downstream wiring impact. Save-safe: mastery-tier gates resolve live from the record at load;
+no persisted per-character state encodes a skill's row.
+
+**Golden (A7):** +10 owner_approved_overrides, each citing Will's 2026-07-16 ruling verbatim - 2 button
+`bitmapPositionY`, 2 `drxdarklings` connectors, `drxthrowingknife` {connOn, connOff, skillTier,
+skillMasteryLevelRequired}, `drxdarklings_darkaperture` {skillTier, skillMasteryLevelRequired}. (Dark
+Aperture's connectors were already waived in item C round 1; they stay cleared.)
+
+**Verification (C2 round):** py_compile + registry selfcheck (26 modules) OK; dry-run replay vs
+`a659594e` = EXACTLY the 5-record restack above (2 button Y + 2x len2 connector pairs + 2 skillTier +
+2 gate), ZERO other deltas; verify() PASS incl. the mechanism-level binding assertions + TIER-LAW +
+adjacent-bar checks; three NEGATIVE tests FAIL as required (plant a len3 crossing bar on Throwing
+Knife; over-gate Dark Aperture to 24 on t4; misrow the Throwing Knife button to t4). Full scratch
+build EXIT 0 (26 registry verifies OK), arz md5 `a7d46b532a5dcf4732e7f951ee695f2d`; A7 golden gate PASS
+(84 waived / 0 hard); record-diff vs `a659594e` = 0/0/5 (exactly this restack, ZERO other deltas);
+contracts souls+summons GATE PASS; validate_tags PASS. See the C2 gate record in BACKLOG.
+
 ### D. Dark Invigoration = TRUE modifier of Shadow Link (Will ruling 2026-07-16)
 > **Will (2026-07-16, verbatim):** *"so how does dark invigoration work? I think it should augment
 > shadow link."* Build45 drew the visual connector but the vet concluded "no gameplay relation exists."

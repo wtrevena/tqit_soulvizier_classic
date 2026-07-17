@@ -40,19 +40,38 @@ B. EMBLEM CIRCLE x9 (the black disc top-right of every skill window): convert ea
    bitmapName/bitmapPositionX/Y). Mirrors the proven b60 pane conversion applied to
    the emblem slot it missed. SV098 GT emblem RCA (section 4). All 9 textures resolve.
 
-C. OCCULT FAMILY PLACEMENT (m5): move Darklings (skill25/drxdarklings) + Dark
-   Aperture (skill26/drxdarklings_darkaperture) OUT of column 3 (Shadow Link's
-   column) into column 6 - the ONLY build44 m5 column with BOTH t3 (y279) and t5
-   (y155) free (occupancy map in the report). Darklings base -> c6 t3, Dark Aperture
-   augment -> c6 t5, preserving the canonical pre-098i base@t3 / augment@t5 pattern
-   (Dark Aperture directly above Darklings, its req 24 == t5). Darklings keeps its
-   canonical straight [Bottom,Middle,Top] bar (re-asserted); Dark Aperture's stray
-   inherited `_right` bar is CLEARED (pre-098i GT flags it as an artifact topping on
-   void). Pre-098i GT deviation table 8.5. RESIDUAL (flagged, WILL-CONFIRM): c6 t4
-   holds the CANONICAL SV098 Throwing Knife (drxthrowingknife) - immovable without a
-   golden waiver - so Darklings' bar passes BEHIND it as an empty-row (Middle)
-   passthrough; a fully "t4 EMPTY" column needs a holistic m5 reflow (previously
-   reverted) or Will's ruling to relocate Throwing Knife. UI fields only.
+C. OCCULT COLUMN-6 RESTACK (m5). Darklings + Dark Aperture were moved into column 6
+   by the build45 wave (item C round 1), which already held Throwing Knife (t4) and
+   Flurry (t6); that layout INTERLEAVED (Darklings' t3->t5 bar crossed Throwing
+   Knife@t4; Throwing Knife's t4->t6 bar crossed Dark Aperture@t5).
+   WILL RULING 2026-07-16 (verbatim): "lets have darklings be in the same lane as
+   throwing knife, but we will have darklings unlock at 10, dark aperture unlock at
+   16, and then above it we will have throwing knife at 24 and the augment to throwing
+   knife at 32 so we wont have lines behind one another."
+   FIX (C2 = this round): restack column 6 (X=628) as a clean bottom-to-top ladder -
+     Darklings   t3 (y279, unlock 10) - STAYS
+     Dark Aperture t4 (y217, unlock 16) - moves DOWN from t5 (y155)
+     Throwing Knife t5 (y155, unlock 24) - moves UP  from t4 (y217)
+     Flurry      t6 (y93,  unlock 32) - STAYS
+   The two augment bars are now ADJACENT (1-tier), drawn as the vanilla Shadow-Stalker
+   len2 [Bottom,Top] straight: Darklings->Dark Aperture spans t3->t4; Throwing Knife->
+   Flurry spans t5->t6. ZERO crossings. Dark Aperture's stray inherited `_right` bar
+   stays CLEARED (build45). GAMEPLAY (Will explicit): each moved skill's skillTier is
+   set to its new row (Dark Aperture 5->4, Throwing Knife 4->5) AND its
+   skillMasteryLevelRequired (the actual unlock gate) is set == the row threshold
+   (Dark Aperture 24->16, Throwing Knife 5->24) so the real unlock matches Will's
+   stated number under EVERY engine gate-semantics (see below). Darklings (tier 3,
+   gate 10) + Flurry (tier 6, gate 32) already correct - verified, not written.
+   TIER LAW (proven: skillTier == button row across all 27 col skills + 142 vanilla
+   buttons): threshold ladder = tier {1:1,2:4,3:10,4:16,5:24,6:32,7:40}.
+   GATE MECHANISM: skillTier is the effective unlock gate; skillMasteryLevelRequired
+   is at most a max()-gate (proven: vanilla modifiers rainoffire_brimstone tier6/req15,
+   dream_slowtime tier7/req16, nature_wildhunt tier7/req1 all sit FAR below their base
+   tier - req cannot be the sole gate or a modifier would precede its base). Setting
+   both fields == the target threshold makes the unlock unambiguous under skillTier-,
+   max()-, or req-semantics alike. MECHANISM LAW: the SkillTree slot ORDER (the ONLY
+   modifier<->base binding surface) is UNTOUCHED - Dark Aperture@27 still binds to
+   Darklings@26, Flurry@10 still binds to Throwing Knife@9 (verify() proves both).
 
 D. DARK INVIGORATION = TRUE MODIFIER OF SHADOW LINK (m5). WILL RULING 2026-07-16
    verbatim: "so how does dark invigoration work? I think it should augment shadow link."
@@ -109,7 +128,8 @@ Contract: patches-registry module - MODULE_NAME + apply(db, tags) + verify(db, t
 """
 
 MODULE_NAME = ("BUILD45 mastery SV-alignment (Occult/Hunting shapes + emblem x9 + "
-               "Darklings family move + Dark Invigoration TRUE-augments Shadow Link)")
+               "col6 restack [Darklings/DarkAp/ThrowKnife/Flurry, adjacent bars] + "
+               "Dark Invigoration TRUE-augments Shadow Link)")
 
 # ---------------------------------------------------------------------------
 # dtype ids (mirror arz_patcher.DATA_TYPE_*): 0 = INT, 2 = STRING, 3 = BOOL.
@@ -149,15 +169,44 @@ _EMBLEM_DIRS = [(_UI % n, "m%d" % n) for n in range(1, 9)] + [(_DREAM, "m9")]
 _EMBLEM_POS_X = [718, 748]
 _EMBLEM_POS_Y = [31, 31]
 
-# --- C. Darklings family relocation (column 3 -> column 6). --------------------
-_DARK_COL_X = 628          # column 6 (only build44 m5 column with t3+t5 both free)
-_DARKLINGS_BTN = "skill25"          # drxdarklings   (base, t3 y279)
-_DARKAP_BTN = "skill26"             # drxdarklings_darkaperture (augment, t5 y155)
+# --- C2. Occult column-6 restack (Will ruling 2026-07-16). ---------------------
+_DARK_COL_X = 628          # column 6 (the shared Darklings/Throwing-Knife lane)
+_ROW_Y = {1: 403, 2: 341, 3: 279, 4: 217, 5: 155, 6: 93, 7: 31}   # Y = 465 - 62*tier
+_TIER_THRESHOLD = {1: 1, 2: 4, 3: 10, 4: 16, 5: 24, 6: 32, 7: 40}  # mastery pts / tier
+
+_DARKLINGS_BTN = "skill25"          # drxdarklings              (base,   t3 y279)
+_DARKAP_BTN = "skill26"             # drxdarklings_darkaperture (augment, t4 y217 NEW)
+_THROWKNIFE_BTN = "skill10"         # drxthrowingknife          (base,   t5 y155 NEW)
+_FLURRY_BTN = "skill11"             # drxthrowingknife_flurryofknives (augment, t6 y93)
 _DARKLINGS_SKILL = "records\\skills\\stealth\\drxdarklings.dbr"
 _DARKAP_SKILL = "records\\skills\\stealth\\drxdarklings_darkaperture.dbr"
+_THROWKNIFE_SKILL = "records\\skills\\stealth\\drxthrowingknife.dbr"
+_FLURRY_SKILL = "records\\skills\\stealth\\drxthrowingknife_flurryofknives.dbr"
 
-# canonical straight 3-tile bar (Bottom/Middle/Top) - matches the golden drxdarklings
-# and the pre-098i drxlaytrap family byte-for-byte.
+# Final col-6 ladder: (button, skill path, expected skillName tail, tier, label).
+_COL6_STACK = (
+    (_DARKLINGS_BTN, _DARKLINGS_SKILL, "drxdarklings.dbr", 3, "Darklings"),
+    (_DARKAP_BTN, _DARKAP_SKILL, "drxdarklings_darkaperture.dbr", 4, "Dark Aperture"),
+    (_THROWKNIFE_BTN, _THROWKNIFE_SKILL, "drxthrowingknife.dbr", 5, "Throwing Knife"),
+    (_FLURRY_BTN, _FLURRY_SKILL, "drxthrowingknife_flurryofknives.dbr", 6, "Flurry"),
+)
+# The two skills that MOVE get an explicit gate write (== new-tier threshold) so the
+# real unlock matches Will's number regardless of engine gate-semantics (skillMastery
+# LevelRequired keyed by skill tail -> target threshold).
+_GATE_WRITE = {
+    "drxdarklings_darkaperture.dbr": (4, 16),   # tier 4, unlock 16
+    "drxthrowingknife.dbr": (5, 24),            # tier 5, unlock 24
+}
+# The augment base that OWNS each adjacent straight bar (base is the larger-Y row).
+_BAR_OWNERS = (_DARKLINGS_SKILL, _THROWKNIFE_SKILL)
+# Modifier -> base bindings that MUST survive the restack (SkillTree tree-order).
+_BIND_PAIRS = (
+    ("drxdarklings_darkaperture.dbr", "drxdarklings.dbr", "Dark Aperture", "Darklings"),
+    ("drxthrowingknife_flurryofknives.dbr", "drxthrowingknife.dbr", "Flurry", "Throwing Knife"),
+)
+
+# canonical straight 3-tile bar (Bottom/Middle/Top) - the 2-tier span bar; retained
+# for the item-D Shadow Link wire (c3 t2->t4).
 _STRAIGHT_ON = [
     r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex",
     r"InGameUI\Icons\Skills\SkillBars\SkillBarMiddleOn01.tex",
@@ -166,6 +215,16 @@ _STRAIGHT_ON = [
 _STRAIGHT_OFF = [
     r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOff01.tex",
     r"InGameUI\Icons\Skills\SkillBars\SkillBarMiddleOff01.tex",
+    r"InGameUI\Icons\Skills\SkillBars\SkillBarTopOff01.tex",
+]
+# adjacent 1-tier straight bar (Bottom/Top, no Middle) - the col-6 augment bars.
+# Byte-identical to the vanilla Shadow-Stalker->Channel len2 bar (probed live).
+_STRAIGHT2_ON = [
+    r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOn01.tex",
+    r"InGameUI\Icons\Skills\SkillBars\SkillBarTopOn01.tex",
+]
+_STRAIGHT2_OFF = [
+    r"InGameUI\Icons\Skills\SkillBars\SkillBarBottomOff01.tex",
     r"InGameUI\Icons\Skills\SkillBars\SkillBarTopOff01.tex",
 ]
 
@@ -317,25 +376,55 @@ def apply(db, tags):
         print("  [B] %s masterybitmap -> BitmapUIAware [%s x2 @718/748,31]"
               % (lbl, tex.rsplit('\\', 1)[-1]))
 
-    # ---- C. Darklings family -> column 6 (base@t3, augment@t5) ----
-    dk_btn = _resolve(db, (_UI % 5) + _DARKLINGS_BTN + ".dbr")
-    da_btn = _resolve(db, (_UI % 5) + _DARKAP_BTN + ".dbr")
-    if _skillname_tail(db, dk_btn) != "drxdarklings.dbr":
-        raise SystemExit("mastery_sv_alignment[C]: m5 %s is not Darklings" % _DARKLINGS_BTN)
-    if _skillname_tail(db, da_btn) != "drxdarklings_darkaperture.dbr":
-        raise SystemExit("mastery_sv_alignment[C]: m5 %s is not Dark Aperture" % _DARKAP_BTN)
-    db.set_field(dk_btn, "bitmapPositionX", _DARK_COL_X, _DT_INT)   # y (t3=279) unchanged
-    db.set_field(da_btn, "bitmapPositionX", _DARK_COL_X, _DT_INT)   # y (t5=155) unchanged
-    # Darklings straight bar (re-assert canonical B/M/T); Dark Aperture bar CLEARED.
+    # ---- C2. Occult column-6 restack (Will ruling 2026-07-16) ----
+    # Bottom-to-top ladder: Darklings t3 / Dark Aperture t4 / Throwing Knife t5 /
+    # Flurry t6, all X=628. Buttons carry the row (bitmapPositionY); skill records
+    # carry the tier + gate. SkillTree slot order UNTOUCHED (binding preserved).
+    for btn_const, skill_path, expect_tail, tier, label in _COL6_STACK:
+        btn = _resolve(db, (_UI % 5) + btn_const + ".dbr")
+        got = _skillname_tail(db, btn)
+        if got != expect_tail:
+            raise SystemExit("mastery_sv_alignment[C]: m5 %s targets %r, expected %s "
+                             "(%s) - button roster reshuffled upstream"
+                             % (btn_const, got, expect_tail, label))
+        db.set_field(btn, "bitmapPositionX", _DARK_COL_X, _DT_INT)
+        db.set_field(btn, "bitmapPositionY", _ROW_Y[tier], _DT_INT)
+        # skillTier == row (TIER LAW). Write only where it changes (Dark Aperture,
+        # Throwing Knife); assert the unchanged bases (Darklings, Flurry) fail-loud.
+        sk = _resolve(db, skill_path)
+        if expect_tail in _GATE_WRITE:
+            wtier, wgate = _GATE_WRITE[expect_tail]
+            if wtier != tier:
+                raise SystemExit("mastery_sv_alignment[C]: gate-write tier mismatch for %s" % label)
+            db.set_field(sk, "skillTier", tier, _DT_INT)
+            db.set_field(sk, "skillMasteryLevelRequired", wgate, _DT_INT)
+        else:
+            cur = _first(db.get_field_value(sk, "skillTier"))
+            if str(cur) != str(tier):
+                raise SystemExit("mastery_sv_alignment[C]: %s skillTier=%s expected %d "
+                                 "(unlock %d) - upstream drift"
+                                 % (label, cur, tier, _TIER_THRESHOLD[tier]))
+    # Adjacent augment bars (len2 [Bottom,Top]) on the two family BASES; Dark Aperture
+    # stray `_right` bar stays CLEARED. Flurry (top of its chain) owns no bar.
     dk_skill = _resolve(db, _DARKLINGS_SKILL)
+    tk_skill = _resolve(db, _THROWKNIFE_SKILL)
     da_skill = _resolve(db, _DARKAP_SKILL)
-    db.set_field(dk_skill, "skillConnectionOn", list(_STRAIGHT_ON), _DT_STR)
-    db.set_field(dk_skill, "skillConnectionOff", list(_STRAIGHT_OFF), _DT_STR)
+    for base in (dk_skill, tk_skill):
+        db.set_field(base, "skillConnectionOn", list(_STRAIGHT2_ON), _DT_STR)
+        db.set_field(base, "skillConnectionOff", list(_STRAIGHT2_OFF), _DT_STR)
     db.set_field(da_skill, "skillConnectionOn", [], _DT_STR)        # clear stray _right bar
     db.set_field(da_skill, "skillConnectionOff", [], _DT_STR)
-    print("  [C] Darklings %s + Dark Aperture %s -> column 6 (x=628, t3/t5); "
-          "Darklings straight bar re-asserted; Dark Aperture _right bar CLEARED"
-          % (_DARKLINGS_BTN, _DARKAP_BTN))
+    # GUARANTEE the modifier<->base bindings survive (SkillTree tree-order, untouched).
+    for mod_tail, base_tail, mlabel, blabel in _BIND_PAIRS:
+        bind = _modifier_binding_base(db, _OCCULT_SKILLTREE, mod_tail)
+        if bind != base_tail:
+            raise SystemExit(
+                "mastery_sv_alignment[C]: %s (%s) no longer binds to %s (%s) in the LIVE "
+                "occult SkillTree - nearest preceding non-modifier is %r. The restack must "
+                "NOT reorder SkillTree slots." % (mlabel, mod_tail, blabel, base_tail, bind))
+    print("  [C2] col6 restack: Darklings t3 / Dark Aperture t4 (unlock 16) / Throwing "
+          "Knife t5 (unlock 24) / Flurry t6; adjacent len2 bars, ZERO crossings; "
+          "bindings DarkAp->Darklings + Flurry->ThrowKnife preserved (tree untouched)")
 
     # ---- D. Dark Invigoration = TRUE modifier of Shadow Link ----
     # D1. GUARANTEE the gameplay binding (SkillTree tree-order). Fail-loud if an upstream
@@ -362,7 +451,7 @@ def apply(db, tags):
 
     print("  [E] Earth Soften Metal: NO-OP (build44 already c4t2; SV c4t3 blocked by "
           "build41 Flame Surge restoration - see report)")
-    print("=== mastery_sv_alignment done: A(4 shapes) B(9 emblems) C(family move) "
+    print("=== mastery_sv_alignment done: A(4 shapes) B(9 emblems) C(col6 restack) "
           "D(wire) ===")
 
 
@@ -485,27 +574,55 @@ def verify(db, tags):
                 else:
                     n_res += 1
 
-    # C. Darklings family in column 6, canonical bar; Dark Aperture bar cleared
-    dk_btn = _resolve(db, (_UI % 5) + _DARKLINGS_BTN + ".dbr")
-    da_btn = _resolve(db, (_UI % 5) + _DARKAP_BTN + ".dbr")
-    for btn, lbl, wy in ((dk_btn, "Darklings", 279), (da_btn, "Dark Aperture", 155)):
+    # C2. Column-6 restack: the full bottom-to-top ladder (positions + tiers + gates),
+    #     adjacent len2 bars on the two bases, Dark Aperture bar cleared, and the
+    #     modifier<->base bindings intact. This is the make-or-break negative surface:
+    #     a planted crossing bar (len>2) or a misrowed skill fails right here.
+    for btn_const, skill_path, expect_tail, tier, label in _COL6_STACK:
+        btn = _resolve(db, (_UI % 5) + btn_const + ".dbr")
         gx = _first(db.get_field_value(btn, "bitmapPositionX"))
         gy = _first(db.get_field_value(btn, "bitmapPositionY"))
         if str(gx) != str(_DARK_COL_X):
-            bad.append("[C] %s (%s) x=%s want %s" % (btn, lbl, gx, _DARK_COL_X))
-        if str(gy) != str(wy):
-            bad.append("[C] %s (%s) y=%s want %s" % (btn, lbl, gy, wy))
-    dk_skill = _resolve(db, _DARKLINGS_SKILL)
-    if _list_of(db, dk_skill, "skillConnectionOn") != _STRAIGHT_ON:
-        bad.append("[C] Darklings skillConnectionOn not canonical straight bar")
-    if _list_of(db, dk_skill, "skillConnectionOff") != _STRAIGHT_OFF:
-        bad.append("[C] Darklings skillConnectionOff not canonical straight bar")
+            bad.append("[C] %s (%s) x=%s want %s" % (btn, label, gx, _DARK_COL_X))
+        if str(gy) != str(_ROW_Y[tier]):
+            bad.append("[C] %s (%s) y=%s want %s (t%d)" % (btn, label, gy, _ROW_Y[tier], tier))
+        # TIER LAW: the skill's skillTier must equal the button's row tier.
+        sk = _resolve(db, skill_path)
+        st = _first(db.get_field_value(sk, "skillTier"))
+        if str(st) != str(tier):
+            bad.append("[C] %s skillTier=%s want %d (row t%d) - TIER-LAW break"
+                       % (label, st, tier, tier))
+        # Effective unlock gate (max of tier threshold and any explicit req) must equal
+        # the tier threshold == Will's stated unlock number for that row.
+        req = _first(db.get_field_value(sk, "skillMasteryLevelRequired"))
+        try:
+            reqn = int(req) if req is not None else 0
+        except (TypeError, ValueError):
+            reqn = 0
+        eff = max(_TIER_THRESHOLD[tier], reqn)
+        if eff != _TIER_THRESHOLD[tier]:
+            bad.append("[C] %s effective unlock gate=%d want %d (req=%s over-gates the row)"
+                       % (label, eff, _TIER_THRESHOLD[tier], req))
+    # adjacent len2 [Bottom,Top] bars on Darklings + Throwing Knife (ZERO crossings).
+    for base_path, blabel in ((_DARKLINGS_SKILL, "Darklings"), (_THROWKNIFE_SKILL, "Throwing Knife")):
+        base = _resolve(db, base_path)
+        if _list_of(db, base, "skillConnectionOn") != _STRAIGHT2_ON:
+            bad.append("[C] %s skillConnectionOn not the adjacent len2 bar: %s"
+                       % (blabel, _list_of(db, base, "skillConnectionOn")))
+        if _list_of(db, base, "skillConnectionOff") != _STRAIGHT2_OFF:
+            bad.append("[C] %s skillConnectionOff not the adjacent len2 bar" % blabel)
     da_skill = _resolve(db, _DARKAP_SKILL)
     if _list_of(db, da_skill, "skillConnectionOn") not in (None, []):
         bad.append("[C] Dark Aperture stray _right skillConnectionOn NOT cleared: %s"
                    % _list_of(db, da_skill, "skillConnectionOn"))
     if _list_of(db, da_skill, "skillConnectionOff") not in (None, []):
         bad.append("[C] Dark Aperture stray _right skillConnectionOff NOT cleared")
+    # bindings survive the restack (SkillTree tree-order untouched).
+    for mod_tail, base_tail, mlabel, blabel in _BIND_PAIRS:
+        b = _modifier_binding_base(db, _OCCULT_SKILLTREE, mod_tail)
+        if b != base_tail:
+            bad.append("[C] %s tree-order binding base=%r want %r (SkillTree reordered?)"
+                       % (mlabel, b, base_tail))
 
     # D. Dark Invigoration TRUE-augments Shadow Link. MECHANISM-LEVEL assert (not just
     #    field-present): walk the LIVE occult SkillTree and prove drxbladehoning is the
@@ -537,7 +654,8 @@ def verify(db, tags):
             print("  FAIL:", b)
         raise SystemExit("mastery_sv_alignment.verify: %d defect(s) survived "
                          "finalization" % len(bad))
-    print("  OK: A(4 shapes) B(9 emblems, %d tex resolved%s) C(family@col6 + bars) "
-          "D(Dark Invig TRUE-augments Shadow Link: tree-order binding + UI wire) "
+    print("  OK: A(4 shapes) B(9 emblems, %d tex resolved%s) C(col6 restack: "
+          "Darklings t3/DarkAp t4/ThrowKnife t5/Flurry t6 + adjacent bars + tiers + "
+          "gates + bindings) D(Dark Invig TRUE-augments Shadow Link: tree-order + wire) "
           "F(TC + Stalker chains intact)"
           % (n_res, "" if resolve is not None else "; resolution SKIPPED - arcs absent"))

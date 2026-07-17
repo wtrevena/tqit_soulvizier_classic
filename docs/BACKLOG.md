@@ -3026,6 +3026,48 @@ as required; full scratch DB build EXIT 0, all 17 registry verifies OK (incl mas
 A7 golden gate GREEN, arz md5 `a659594ed85f8f5609bcab57fa7b757b` (deterministic PYTHONHASHSEED=0
 SVC_RELEASE_DROPS=1). NOT deployed (awaiting vet + Will iPhone/desktop test).
 
+## OCCULT COLUMN-6 RESTACK (b70 item C2, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
+
+Will ruling 2026-07-16 (verbatim): *"lets have darklings be in the same lane as throwing knife, but we
+will have darklings unlock at 10, dark aperture unlock at 16, and then above it we will have throwing
+knife at 24 and the augment to throwing knife at 32 so we wont have lines behind one another."*
+FIXES the build45 item-C interleave (Darklings' t3->t5 bar crossed ThrowingKnife@t4; ThrowingKnife's
+t4->t6 bar crossed DarkAperture@t5). RESTACK col6 (x=628) as a clean ladder: Darklings t3 (unlock 10,
+stays) / Dark Aperture t4 (unlock 16, moves DOWN from t5) / Throwing Knife t5 (unlock 24, moves UP
+from t4) / Flurry t6 (unlock 32, stays). Both augment bars now 1-tier ADJACENT (Darklings->DarkAperture
+t3->t4; ThrowingKnife->Flurry t5->t6), drawn as the vanilla Shadow-Stalker len2 `[Bottom,Top]` bar.
+ZERO crossings.
+
+CHANGE (`tools/patches/mastery_sv_alignment.py` item C->C2, apply()+verify()): 5-record restack -
+`skill26` button y 155->217; `skill10` button y 217->155; `drxdarklings` connOn/Off len3->len2;
+`drxthrowingknife` connOn/Off len3->len2 + skillTier 4->5 + skillMasteryLevelRequired 5->24;
+`drxdarklings_darkaperture` skillTier 5->4 + skillMasteryLevelRequired 24->16. Darklings(t3,gate10) +
+Flurry(t6,gate32) already correct - asserted, not written. BOTH skillTier AND skillMasteryLevelRequired
+are set == the row threshold so the unlock matches Will's number under EVERY gate-semantics (proof:
+vanilla modifiers rainoffire_brimstone t6/req15, dream_slowtime t7/req16, nature_wildhunt t7/req1 sit
+below their base tier -> req is NOT the sole gate; skillTier is; but DarkAperture's leftover req=24
+could bind under max() -> set both). TIER LAW confirmed empirically (skillTier==row across 27 col +
+142 vanilla buttons, ladder {1,4,10,16,24,32,40}). MECHANISM LAW: SkillTree slot ORDER UNTOUCHED -
+DarkAperture@27 still binds Darklings@26, Flurry@10 still binds ThrowingKnife@9 (apply() asserts +
+verify() re-asserts both bindings; a reorder fails the build). 0 external skillDependancy/buffSkillName/
+petSkillName refs to either moved skill. Save-safe (tier gates resolve live).
+
+GOLDEN: +10 owner_approved_overrides (2 button y, 2 drxdarklings conn, 4 drxthrowingknife
+{conn,conn,tier,gate}, 2 drxdarklings_darkaperture {tier,gate}), each citing the Will 2026-07-16 ruling
+verbatim. Item-C round-1 Dark-Aperture-conn-clear overrides retained.
+
+VERIFICATION: py_compile + registry selfcheck 26 (order 2493977b) OK; dry-run replay vs `a659594e` =
+EXACTLY the 5-record restack (2 button y + 2x len2 conn pairs + 2 skillTier + 2 gate), ZERO other
+deltas; verify() PASS incl mechanism-level bindings + TIER-LAW + adjacent-bar; 3 NEGATIVE tests FAIL as
+required (len3 crossing bar on ThrowingKnife; DarkAperture over-gate 24 on t4; ThrowingKnife button
+misrow t4). Full scratch build EXIT 0 (all 26 registry verifies OK incl mastery_sv_alignment), A7
+golden gate GREEN (84 waived / 0 hard), arz md5 `a7d46b532a5dcf4732e7f951ee695f2d` (deterministic
+PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1); record-diff vs a659594e = 0 ADDED / 0 REMOVED / 5 MODIFIED
+(EXACTLY: skill10.y, skill26.y, drxdarklings connOn/Off, drxthrowingknife connOn/Off+skillTier+gate,
+drxdarklings_darkaperture skillTier+gate - ZERO other deltas); contracts souls+summons GATE PASS (no
+new P0/P1); validate_tags PASS (2 pre-existing base monster-name WARNs, non-blocking; 0 mod-tag miss).
+Report: `docs/reports/b70_mastery_sv_alignment.md` item C2. NOT deployed (awaiting vet + Will test).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
