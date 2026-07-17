@@ -150,6 +150,13 @@ REGISTRY = [
                             # zrecipes\svc_<class>_<name>_formula.dbr. Disjoint from every module
                             # above (new records only; touches supra.dbr/supra_special.dbr
                             # lootName slots, additive).
+    'mastery_sv_alignment', # b70 (build45): FINAL writer on Occult(m5)/Hunting(m6)/emblem
+                            # mastery-UI fields - Occult/Hunting SV-alignment (shape flips,
+                            # emblem x9 BitmapSingle->BitmapUIAware, Darklings/Dark Aperture
+                            # column move + connectors, Dark Invigoration wire). MUST run after
+                            # hunting_occult_ui + mastery_ui_audit + mastery_bg_render +
+                            # oh_pane_art + hunting_occult_improvements so it is the ratified
+                            # last writer on isCircular/positions/connOn-Off + masterybitmap.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

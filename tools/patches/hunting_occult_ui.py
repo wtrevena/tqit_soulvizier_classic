@@ -34,18 +34,23 @@ DEFECT 2 - button shapes per Will's SHAPE LAW (2026-07-12, verbatim): "circles
   are for passive buffs in the skill tree or passive abilities like % chance to
   activate or an extension / enhancement to a lower level skill; a square is an
   ability you have to CAST." So cast actives => SQUARE, passives / procs /
-  modifiers => CIRCLE. This wave sets 8 O/H buttons; 5 drift from the golden
-  baseline and are Will-authorized (waived): 2 cast actives squared
-  (drxpoisongasbomb, drxspear_tempest - Will's explicit Tempest-is-a-square call)
-  and 3 modifiers circled (drxcalculatedstrike_luckyhit,
-  drxlaytrap_petmodifier_multishotbolttrap, drxtakedown_eviscerate). The other 3
-  are STANDALONE PASSIVES (drx_dual_blade, drxherbalism, drxcorneredrage): an
-  earlier wave squared them by base-game precedent, but under Will's law passives
-  are CIRCLES, so this wave RE-ASSERTS their circle preset. That preset is
-  IDENTICAL to the golden baseline, so the 3 passives produce ZERO drift and carry
-  NO waiver (their now-vacuous waivers were removed from the golden). Each fix
-  writes isCircular AND the 3 matching border bitmaps (square => SkillButtonBorder01
+  modifiers => CIRCLE. This wave sets 8 O/H buttons.
+  UPDATE 2026-07-16 (b70 mastery SV-alignment): Will's per-skill rulings + the SV
+  0.98i ground-truth extraction (tools/sv_mastery_ground_truth.json) SUPERSEDE the
+  2026-07-12 law for FOUR buttons, which are set to their SV098 ground-truth shapes
+  here (BL-103 fix-upstream): Poisonous Gas (drxpoisongasbomb) => CIRCLE (SV098 anchor
+  4; owns _shrapnel yet a circle), Blade Fury (drxcalculatedstrike_luckyhit) => SQUARE
+  (SV098 anchor 8), Smoke Screen (drxlaytrap_petmodifier_multishotbolttrap) => SQUARE
+  (SV098 c1t3 standalone square), Eviscerate (m6 drxtakedown_eviscerate) => SQUARE
+  (Will ruling 2026-07-16 verbatim "Hunting eviscerate should be a square"). These
+  four now MATCH the golden baseline (which froze the SV-correct shapes), so they
+  produce ZERO net golden drift. Tempest (drxspear_tempest) stays SQUARE (Will's
+  explicit call). The 3 STANDALONE PASSIVES (drx_dual_blade, drxherbalism,
+  drxcorneredrage) keep their CIRCLE preset (== golden baseline, ZERO drift). Each
+  fix writes isCircular AND the 3 matching border bitmaps (square => SkillButtonBorder01
   family; circle => SkillButtonBorderRound01 family). All 6 textures D5-confirmed.
+  b70's tools/patches/mastery_sv_alignment.py is the ratified LAST writer + verify()
+  on the four superseded shapes.
 
 ALIGNMENT ("don't line up") is deliberately NOT touched this wave: every O/H
 button is grid-valid + collision-free, and the perceived misalignment is chiefly
@@ -100,15 +105,30 @@ _CIRCLE = (
 # other 5 buttons drift from the golden and are Will-waived. m6 skill18
 # (drxtakedown_eviscerate) pairs with the H/O improvements wave's Eviscerate
 # RENAME: the renamed buff becomes correctly circular.
+#
+# WILL RULINGS 2026-07-16 (b70 mastery SV-alignment) SUPERSEDE the 2026-07-12
+# shape law for FOUR of these buttons - restoring the SV 0.98i ground-truth shapes
+# (BL-103 fix-upstream, so the source of truth lives here, not an override layer):
+#   skill13 drxpoisongasbomb (Poisonous Gas) SQUARE -> CIRCLE  (SV098 GT anchor 4: Poisonous
+#           Gas is a circle; build41 regressed it. Owns _shrapnel yet is a circle.)
+#   skill06 drxcalculatedstrike_luckyhit (Blade Fury) CIRCLE -> SQUARE  (SV098 GT anchor 8:
+#           Blade Fury is a square standalone attack though a name-modifier of Calc. Strike.)
+#   skill18 drxlaytrap_petmodifier_multishotbolttrap (Smoke Screen) CIRCLE -> SQUARE
+#           (SV098 GT: Smoke Screen c1t3 is a square standalone.)
+#   m6 skill18 drxtakedown_eviscerate (Eviscerate) CIRCLE -> SQUARE  (WILL RULING 2026-07-16
+#           verbatim: "Hunting eviscerate should be a square".)
+# The b70 module tools/patches/mastery_sv_alignment.py RE-ASSERTS these four as the
+# ratified LAST writer + verify()s them on the final arz; this upstream edit keeps the
+# monolith/registry self-consistent (no stale shape that a later reader would trust).
 _SHAPE_FIXES = (
-    (5, "skill13", _SQUARE, "drxpoisongasbomb"),                        # cast active (owns _shrapnel) -> SQUARE
+    (5, "skill13", _CIRCLE, "drxpoisongasbomb"),                        # SV098 circle (Will 2026-07-16; was square)
     (5, "skill24", _CIRCLE, "drx_dual_blade"),                          # Skill_Passive -> CIRCLE (Will shape law; == golden baseline)
-    (5, "skill06", _CIRCLE, "drxcalculatedstrike_luckyhit"),           # modifier of CalculatedStrike -> CIRCLE
-    (5, "skill18", _CIRCLE, "drxlaytrap_petmodifier_multishotbolttrap"),  # pet-modifier of LayTrap -> CIRCLE
+    (5, "skill06", _SQUARE, "drxcalculatedstrike_luckyhit"),           # Blade Fury SV098 square (Will 2026-07-16; was circle)
+    (5, "skill18", _SQUARE, "drxlaytrap_petmodifier_multishotbolttrap"),  # Smoke Screen SV098 square (Will 2026-07-16; was circle)
     (6, "skill09", _CIRCLE, "drxherbalism"),                           # Skill_Passive -> CIRCLE (Will shape law; == golden baseline)
     (6, "skill22", _SQUARE, "drxspear_tempest"),                       # cast active (owns tempest_expose) -> SQUARE (Will's explicit call)
     (6, "skill23", _CIRCLE, "drxcorneredrage"),                        # PassiveOnLifeBuffSelf -> CIRCLE (Will shape law; == golden baseline)
-    (6, "skill18", _CIRCLE, "drxtakedown_eviscerate"),                # modifier of Takedown -> CIRCLE
+    (6, "skill18", _SQUARE, "drxtakedown_eviscerate"),                # Eviscerate SQUARE (Will ruling 2026-07-16; was circle)
 )
 
 

@@ -2955,6 +2955,46 @@ Smoke Screen shape, Eviscerate -> SQUARE (Will ruling 2026-07-16), emblem-circle
 pre-0.98i family placement (Darklings/Dark Aperture/Toxic Concoction/Shadow Stalker - Will
 correction: sourced from SV 0.9/0.41, NOT hand-authored; extraction lane in flight).
 
+## BUILD45 MASTERY SV-ALIGNMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
+
+Fixes the residual Occult/Hunting mastery-tree defects Will enumerated from his build43 screenshot
+plus everything the two SV ground-truth extractions prove wrong vs Soulvizier. ONE new registry
+module `tools/patches/mastery_sv_alignment.py` (apply+verify), registered LAST content module (before
+`visuals`) = ratified last writer on every Occult(m5)/Hunting(m6)/emblem UI field; the 4 shape flips
+also fixed UPSTREAM in `hunting_occult_ui.py` (BL-103). Report: `docs/reports/b70_mastery_sv_alignment.md`.
+
+FIXES (all UI fields, zero gameplay/stat delta): **A** shapes - Poisonous Gas SQUARE->CIRCLE, Blade
+Fury CIRCLE->SQUARE, Smoke Screen CIRCLE->SQUARE (m5), Eviscerate CIRCLE->SQUARE (m6, Will ruling
+2026-07-16); these REVERT to the golden baseline (SV098-correct) so zero net golden drift. **B**
+emblem-circle x9: `masterybitmap.dbr` BitmapSingle->BitmapUIAware (bitmapNames=[tex,tex], pos
+[718,748]/[31,31]) so the mastery portrait renders over the pane's black hole (SV098 GT sec 4; mirrors
+b60 pane fix; all 9 textures resolve, 18/18). **C** Darklings (skill25) + Dark Aperture (skill26)
+moved col3->col6 (t3/t5, only m5 column with both free), canonical base@t3/augment@t5; Dark Aperture
+stray `_right` bar cleared (pre-098i GT 8.5). **D** Shadow Link (drxbladehoning c3t2) straight bar
+UP to Dark Invigoration (c3t4) - WILL-INTENT visual wire (drxopenwound has NO gameplay ref to
+drxbladehoning - flagged). **E** Earth Soften Metal: NO-OP (build44 already c4t2 = brief's literal
+target; SV098's c4t3 is now occupied by build41's intentional Flame Surge restoration - documented).
+**F** Toxic Concoction + Shadow Stalker chains: verify-only, build44 already correct. **G** roster
+audit: report-only, no further unambiguous non-golden GT mismatch beyond A-E.
+
+RESIDUALS / WILL-CONFIRM (flagged in report, unchanged): (1) Item C column-6 t4 holds the CANONICAL
+SV098 Throwing Knife, so Darklings' bar passes behind it as an empty-row passthrough - a fully "t4
+EMPTY" canonical column needs Will's ruling to move Throwing Knife or a holistic m5 reflow (the
+build42 reflow that wrecked trees was reverted in build44). (2) Item D wire is visual-only, no
+mechanics relation. (3) Item E: SV098 exact c4t3 slot restore would need a holistic Earth col-4 reflow
+displacing the Flame Surge line.
+
+GOLDEN: +22 owner_approved_overrides (16 emblem m5/m6, 2 family positions, 2 Dark-Aperture-conn-clear,
+2 Shadow-Link-conn-wire), each citing 'b70 mastery SV-alignment build45' + the GT file/Will ruling.
+A7 golden freeze gate GREEN (74 waived / 0 hard) via the standalone build code path.
+
+VERIFICATION: py_compile OK; registry selfcheck 26 modules (order 2493977b); record-diff dry-run vs
+build44 (`439a9279`) = EXACTLY 17 modified records, ALL UI/connector fields, ZERO gameplay/stat delta,
+every delta maps to a fix-list item; verify() negative test (flip Poisonous Gas back to square) FAILS
+as required; full scratch DB build EXIT 0, all 17 registry verifies OK (incl mastery_sv_alignment),
+A7 golden gate GREEN, arz md5 `a659594ed85f8f5609bcab57fa7b757b` (deterministic PYTHONHASHSEED=0
+SVC_RELEASE_DROPS=1). NOT deployed (awaiting vet + Will iPhone/desktop test).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
