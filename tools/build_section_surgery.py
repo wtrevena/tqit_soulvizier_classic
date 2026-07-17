@@ -2669,18 +2669,27 @@ def build_hub_extra_specs():
         #   a clear spawn disc are required. 32u still separates every group by ~a screen-width (vs
         #   the old ~1-11u), which resolves the crowding. True 60u would need either fewer yard
         #   groups or a larger FLAT host level - flagged for Will in docs/reports/build36_map_report.md.
-        HV01_LVL_KEY: [
-            (Q_YARD_ENSLAVER_DBR,      33.0,  15.9,  41.0),   # SW  clr@2.5=98%
-            (Q_YARD_MARAUDERS_DBR,     71.0,  13.5,  31.0),   # S   clr@2.5=100%
-            (VASHKARR_PROXY_DBR,      101.0,  -1.5,  43.0),   # SE  clr@2.5=96%  (Vashkarr + 2 champs)
-            (Q_YARD_DORUS_DBR,         65.0, -10.0,  63.0),   # NEW build36  clr@2.5=100%  (Drowned King)
-            (Q_YARD_OBS_SARKOTH_DBR,   63.0,   9.9,  97.0),   # C   clr@2.5=95%
-            (Q_YARD_OBS_GORRAHK_DBR,  127.0,  -2.3,  93.0),   # C   clr@2.5=92%
-            (Q_YARD_OBS_VORANTHYS_DBR,157.0,  -0.4, 111.0),   # C   clr@2.5=100%
-            (Q_YARD_BROODMOTHER_DBR,  107.0,   1.4, 123.0),   # apex  clr@2.5=100% clr@3.5=100% (roomiest)
-            (Q_YARD_OBS_ILSEVAR_DBR,   71.0,   0.0, 129.0),   # C   clr@2.5=91%
-            (Q_YARD_WYRM_DBR,          55.0,  17.6, 157.0),   # D horde  clr@2.5=100%
-        ],
+        # ── b76 CHUMBI-FREEZE P0 UNSTACK (2026-07-16, Will "the game is frozen"): the MONSTER
+        # TEST YARD is REMOVED. RCA docs/reports/b76_chumbi_freeze_rca.md. Will's verbatim P0:
+        # "so much lag with the monsters you placed the game is unplayable ... you put every boss
+        # in the game that you created all in one spot ... a bunch of guys right next to the
+        # respawn fountain you placed in chumbi valley next to the occultist ... death loop".
+        # This 10-boss gauntlet stacked Enslaver+marauders, Vashkarr+2 champs, Drowned King Dorus,
+        # the 4 Obsidian guardians (incl. um_voranthys_99 = the sepulcher/tomb-guardian summoner)
+        # + broodmother apex + wyrm horde in ONE level (HiddenValley01, the blood-cave surface =
+        # "Chumbi Valley"), ~30u apart around the Rebirth Fountain + occultist merchant. Each proxy
+        # resolves a POOL (boss + 100% escorts) whose summoners (broodmother broodlings, Voranthys'
+        # tomb guardians + skeletons, the recursive skeleton-priest zombie summon) compound into
+        # hundreds of live entities + auras/FX => the freeze + the fountain-respawn death loop.
+        # EVERY yard boss is ALREADY placed at its own CANONICAL home (Enslaver@warband,
+        # Vashkarr@FotA/random05a, Dorus@Medea Tomb03, Broodmother@tombobs02, the 4 Obsidian@the
+        # tombobs02 roulette + questbosses hosts), so removing the redundant QA copy DISPERSES them
+        # back to their intended spread-out locations - the "space these out" fix Will demanded.
+        # The yard proxy RECORDS stay in the shared arz (inert - nothing places them now); if a
+        # single-boss tuning yard is wanted later, re-add ONE proxy at a time to a FLAT host, never
+        # 10 pools next to a respawn fountain. HELOS_HOST_KEY plaza travelers + BOSSARENA return
+        # stay (they are NPCs, not hostiles). The Rebirth Fountain + occultist merchant are the
+        # legit HV01 residents and are now clear of hostiles (death loop resolved).
         # -- HELOS TRAVELER HUB (build37, Will 2026-07-13, "one person each") : 11 named travelers --
         # SUPERSEDES the single 7-port svc_testhub_master_helos: its Helos PLACEMENT is RETIRED here
         # (the (72.0,0.8,184.0) spot is now the dorus traveler). The record + its Quests trigger stay
