@@ -1,4 +1,33 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🎯 **B85 - HIGH PRIEST SUMMON (R-43, Will 2026-07-16 verbatim: "the high priest soul should allow
+> you to summon the high priest") - IMPLEMENTED, awaiting independent vet.** Branch `fix/soul-tiers`
+> (extends b78 tip `50d4bdfc`). RCA: the granted summon spawned a Melinoe blade-dancer (Demon race,
+> `discipleboss_bladedancer.dbr`) - the monster HE casts as his OWN combat summon
+> (`discipleboss_summon_melinoe`, petLimit 18/burst 6) - never his own body (`c_disciple_miniboss.dbr`,
+> God race, `disciple.msh`/`anm_seductress`/`snd_highpriest_vox/alertpak`). **FIX** (mirrors the b71
+> Enslaver boss-pet + tamed-pet-of-pet pattern exactly): `bwpriest_1/2/3` rebuilt via
+> `_build_boss_summon(source=c_disciple_miniboss)` = the High Priest himself, strictly tier-scaled
+> (life 4800/6800/9000, charLevel 39/56/71); his real signature blade-dancer summon survives as a
+> NEW tamed non-player-facing pet-of-pet (`bwpriest_attendant_1/2/3` +
+> `svc_bwpriest_summonmelinoe.dbr`, petLimit 2/burst 1/mana 0 - inside the Enslaver's proven pet-of-pet
+> depth, not the raw 18-pet swarm); the source's own AOE (`disciple_bloodrain`, flagged
+> `isPetDisplayable=0` on ITS OWN record) is swept off, never granted to a pet; race/sounds copied
+> explicitly (R-11 general law, not auto-applied by `_build_boss_summon`); Lyia-clone green residue
+> stripped; granted-skill icon `bonefiendup` (a DUPLICATE of kravmoloch's icon) -> `bloodbathup`
+> (distinct); pet-bar portrait -> neutral `proxy_party` (no bespoke art ships); 3 text tags rewritten
+> + 3 minted. Soul RING records (`bwpriest_soul_{n,e,l}`) UNTOUCHED - byte-identical, b78's
+> strict-progress gate still governs them. Family added to the b71 CHAIN gate roster
+> (`enslaver_pet_fx._CHAIN`, NOT `_FAMILIES` - that list requires a shroud this family doesn't have).
+> **Verified:** full scratch build EXIT 0, all 17 registry verifies green incl.
+> `enslaver_pet_fx.verify` + `souls_quality.verify` ("b78 Blood Cult High Priest gate"); record-diff
+> vs golden `917d9047` = intended-only (4 ADDED + 4 MODIFIED, 0 REMOVED, soul rings absent from the
+> diff); `validate_summon_pets.py` PASS; `validate_tags.py` PASS (all 349 mod tags + 409 authoritative
+> resolve); `run_contracts.py --only souls,summons` GATE PASS (0 P0/P1); 4/4 negative tests (Lyia
+> portrait, green residue, re-pointed grant, x2 more) all CAUGHT by the chain gate; idempotent (2
+> independent builds, arz md5 `47964fdd` both). Epic-spawns-epic answered with a 3-row stat table
+> (docs/reports/b85_highpriest_summon.md sec 5). `docs/WILL_RULINGS.md` is absent on this branch's
+> base (predates the ledger's creation on `main`); the R-43 status line to apply at merge time is in
+> the report's \S9. Report: `docs/reports/b85_highpriest_summon.md`.
 > 🎯 **b78 SOUL TIER SCALING (Will 2026-07-16, "Blood Cult High Priest epic == normal?") - RCA:
 > FALSE ALARM, roster CLEAN, GATE TIGHTENED.** Branch `fix/soul-tiers`. RCA: `svc_uber\bwpriest_soul_
 > {n,e,l}` is correctly scaled on every dimension (augments 2/3/4, itemSkillLevel 1/2/3 with 3 real
