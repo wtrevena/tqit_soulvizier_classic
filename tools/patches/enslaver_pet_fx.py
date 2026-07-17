@@ -195,7 +195,10 @@ _SECOND_BUILDER_ROSTER = [
      [_R + r'skills\soulskills\pets\vort_%d.dbr' % i for i in (1, 2, 3)]),
     ("Pharaoh's Honor Guard", _R + r'creature\monster\questbosses\boss_pharaohshonorguard1_31.dbr',
      [_R + r'skills\soulskills\pets\pharaohguard_%d.dbr' % i for i in (1, 2, 3)]),
-    ('Blood Witch High Priest', _R + r'drxcreatures\bloodwitch\skills\discipleboss_bladedancer.dbr',
+    # R-43 (b85): bwpriest_1/2/3 are now the HIGH PRIEST HIMSELF (c_disciple_miniboss,
+    # race God per amgoz1's own record), no longer the blade-dancer (Demon) - the
+    # blade-dancer survives as his attendant pet-of-pet, gated separately in _CHAIN.
+    ('Blood Witch High Priest', _R + r'drxcreatures\bloodwitch\c_disciple_miniboss.dbr',
      [_R + r'skills\soulskills\pets\bwpriest_%d.dbr' % i for i in (1, 2, 3)]),
     ("Lil'Lued the Elder Djinn", _R + r'drxcreatures\crowheroes\lillued_big.dbr',
      [_R + r'skills\soulskills\pets\lillued_%d.dbr' % i for i in (1, 2, 3)]),
