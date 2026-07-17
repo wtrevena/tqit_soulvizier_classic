@@ -1,4 +1,124 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+
+## DEBT REGISTER (open deferred/unproven/launch-gated items)
+
+> Compiled by the b84 rulings-backfill sweep (round 1, 2026-07-16) of docs/reports/*.md, this file,
+> WILL_TEST_GUIDE*.md, HANDOFF*.md, MULTIPLAYER_COMPAT.md, and CHANGELOG.md. One line each: item -
+> source - owner/trigger. Verified against later reports where possible; items with no later
+> resolution found are listed as OPEN. UNKNOWN-STATUS noted where the sweep could not confirm either
+> way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
+> Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
+> PROTOCOL, CLAUDE.md law #2).
+
+**Toxeus / MP-compat**
+- np-equation per-player expansion (rant scroll) unproven on a monster EQUIP slot (proven only for
+  containers) - owner/trigger: live check at np=2, kill Blood Toxeus, confirm 2 scroll copies drop;
+  fallback (corpse/chest with `toxeus_rant_perplayer`) already authored if it fails. Source: docs/
+  MULTIPLAYER_COMPAT.md M4.3/M4.7.
+- Legendary-only Toxeus stalker (Hydra fixed-placement pattern) - APPROVED + QUEUED (R-16), NOT
+  scheduled/built. Source: docs/MULTIPLAYER_COMPAT.md M4.6-M4.7.
+- Corridor full-strength (non-10s-cooldown) Blood-Toxeus Tears-of-Blood variant - OPEN Will decision
+  (R-5). Source: docs/WILL_RULINGS.md R-5.
+- `svc_black_poison` skill (Devourer poison + End of All Things strike-buff asset) - PENDING build,
+  in-flight per the active session's own task tracker (recon done, module/wiring/verify not yet
+  landed). Source: docs/WILL_RULINGS.md R-7.
+- Rite of the Undivided drop-pool wiring (ship wherever supra/uber formulas can drop) - PENDING.
+  Source: docs/WILL_RULINGS.md R-9.
+- dark_smoke Diadochi-generals/Helepolis green-render swap - pending Will's in-game black-confirm of
+  the Enslaver (R-10). Source: docs/WILL_RULINGS.md R-10.
+- Enslaver DISMISS + RE-SUMMON green-residue check - WILL-CONFIRM after a full Steam restart; if
+  still green after re-summon, residue is asset/pfx-level, chased next round. Source: docs/BACKLOG.md
+  ~line 2982; docs/reports/b71_enslaver_chain_rca.md.
+
+**End of All Things (EoAT, feat/toxeus-undivided branch, not yet on main)**
+- EoAT depth-3 thrall chain ("there is room in me": pet -> disciple pets -> hound sub-summons) -
+  engine-UNVERIFIED whether a pet's own spawn-pet skill fires while itself a pet; shipped at proven
+  depth-2 with the depth-3 attempt attached; needs Will's in-game confirmation. Fallback documented
+  (disciples summon hounds directly, both depth-2). Source: `git show feat/toxeus-undivided:docs/
+  reports/b72_toxeus_endofallthings.md` FLAG #1 (not yet merged to main).
+- EoAT supra-stats bake option - the 8 ruled supra-tier equipment pieces cannot be worn by a summoned
+  pet on this engine (proven: 0 of 25,000+ equip slots auto-equip a player unique; B-SUMMON-1 gate
+  fails the build on direct-equip). Shipped as a DIRECT stat block instead of worn items; flagged in
+  case Will wants a different resolution. Source: same report, FLAG #2.
+- disciple Neck-slot hygiene - named in a prior session's task tracker; NOT located in any committed
+  doc or branch this sweep (only the EoAT report's unrelated "Neck: Paragon of Violence - SKIPPED"
+  equip-slot line was found). UNKNOWN-STATUS; re-verify against whatever session originated it before
+  treating as real. Source: not found this sweep - included per the backfill brief only.
+
+**Masteries / UI**
+- Occult pane aesthetic (`standardskillbackground_joanna_ver_dark.tex`) + the wired-but-unconfirmed
+  select-screen preview (`occultpanellarge.tex`) - flagged for Will's veto / in-game screenshot per
+  the standing UI-on-device rule; not yet confirmed on-device. Source: docs/reports/b67_oh_pane_art.md
+  sec "Flagged for Will's veto".
+- Controller-mode Occult pane - the 919x540 chosen asset doesn't match the 980x540 gamepad-mode
+  canvas; gamepad play keeps the vanilla tan backdrop (still renders, just not reskinned). Out of
+  round-1 scope; needs a Will decision if gamepad parity matters (stretch existing asset vs. author a
+  wider one). Source: docs/reports/b67_oh_pane_art.md sec "Residual: controller-mode canvas".
+- Occult select-description wording (`tagMasteryDescription05`) vs `tagOccultTitleDESC` - Will's veto
+  pending, unreconciled. Source: docs/reports/mastery_ui_reflow_round2.md.
+- `drxlethalstrike` `_right` bar rises toward the empty c6t7 slot, passing Flurry - pre-existing,
+  flagged for a future holistic m5 reflow pass (byte-identical since before b70, not a regression).
+  Source: docs/BACKLOG.md ~line 3113.
+- 10 bosses (pygmalion, eaterofdays, xeiwang, charon, hadesmarshal, mnemophage, mountainblade,
+  neferkha, tantalus, voranthys) ship on the neutral `proxy_party` pet-bar portrait instead of a
+  bespoke one - WILL-CONFIRM, a future art pass. Source: docs/reports/b71_enslaver_chain_rca.md.
+
+**World / placement**
+- Lower-Olympus dead respawn shrine (`respawn_olympus_new.dbr`, `olympusfinal02`) - Will asked to
+  REMOVE it [paraphrased; origin instruction not located in docs/ this sweep]; the de-place fix was
+  coded but as of the 2026-07-10 dead-content audit was STILL live in the shipped map (needs a map
+  rebuild + redeploy + re-verify). No later doc confirms this shipped - OPEN. Source: docs/
+  DEAD_CONTENT_AUDIT_2026-07-10.md LANE B; docs/WILL_RULINGS.md R-35.
+- `respawn_towerofjudgement01.dbr` dangling GROUPS-binding shrine (judgment_towerug_floor04) - needs
+  a `REMOVE_DANGLING_SHRINE_SPECS` entry (only `olympusfinal02` is currently listed) or a GROUPS
+  re-bind; MAJOR, mandatory-path-adjacent. Source: docs/DEAD_CONTENT_AUDIT_2026-07-10.md LANE B.
+- `respawntemplegreeceug02.dbr` missing respawn point (Hercynian Forest underground, Ragnarok act) -
+  MINOR, lower confidence this is unintended vs a deliberate SVAERA cut. Source: docs/
+  DEAD_CONTENT_AUDIT_2026-07-10.md LANE B.
+- murderbossroom (Secret Place crow bosses) has no placed NPC on either end - the ONLY one of the 3
+  sealed SV areas still fully sealed (Sparta Crypt L2 + Uber Dungeon crypt_floor1 were wired); needs a
+  map-lane NPC placement before the quest-lane enter-offer pattern can apply. Source: docs/
+  reports/b62_travelers_into_areas.md; docs/BACKLOG.md ~line 2898 "OPEN WILL Qs".
+- M1 (HV01) pet-test yard spacing: shipped at 32.25u vs the original >=60u ask - geometrically
+  infeasible in HV01's ~4,470 sq-unit floor at 10 groups; Will's decision open between (a) accept
+  32.25u [recommended], (b) cut group count to fit 60u, (c) relocate the yard to a larger host.
+  Source: docs/reports/b41_map_pass_result.md OPEN ITEMS #1; docs/reports/b41_map_pass_plan.md.
+- Obsidian-roulette apex charm (Emberscale-pattern "Obsidian Shard") - optional, NOT built; chest +
+  soul already judged a sufficient double reward. Source: docs/OBSIDIAN_ROULETTE_DESIGN.md sec 5.
+- b47 Dorus: rename to a distinct amgoz1-worthy identity + relocate near a Medea tomb/dungeon interior
+  - RCA'd, not yet renamed/relocated per the report's own open items. Source: docs/reports/b47_dorus.md.
+- b51 Arachne's Shame / Fetid Lair spawn-chain RCA - identification + baseline diff + git-blame not
+  yet fully closed out in a committed report this sweep found. Source: cross-check vs docs/BACKLOG.md
+  el/soul-audit threads; UNKNOWN-STATUS, re-verify before treating as still open.
+- Sparta Crypt L2 binder: no proven SV binding exists; if shipping, needs either a blob-patch restore
+  or a quest teleport (Will decision) - recommended default is defer/drop unless Will wants
+  completeness. Source: docs/WALL_INVESTIGATION_STATE.md (or equivalent Sparta-area report).
+
+**Souls / items**
+- Legion-terminal-stage 66%-vs-50% drop-rate reconciliation - queued for the NEXT souls pass (folds in
+  with the 155 documented minor gaps + 79 drop-gated souls + Crowboar summon-controller polish).
+  Source: docs/BACKLOG.md "WILL RULINGS 2026-07-16 (post-build42)".
+- Cold Worm buffs (3x life / +20% armor / kit / speed / marker mechanism / 3-tier soul + loot-triple
+  fix) - PENDING, interrupted lane with partials on worktree `coldworm-markers` (R-39). Source: docs/
+  WILL_RULINGS.md R-39.
+- Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal" defect
+  class) - PENDING, `fix/soul-tiers` branch. Source: docs/WILL_RULINGS.md R-40.
+- Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
+  Galefury" class) - PENDING, `fix/formula-names` branch. Source: docs/WILL_RULINGS.md R-41.
+- Uber axe reagent trio reuses the same 2 Legendary reagents across the whole 5-member family (a
+  resolving-but-undiversified choice) - flagged for Will's veto if he wants more variety; not built.
+  Source: docs/reports/b66_uber_formulas.md.
+- No quality orphan exists for a second Spear or a Shield uber - would need fresh authoring, not
+  sourced from an orphan. Source: docs/reports/orphaned_weapons_curation.md "Honest gaps".
+
+**Explicitly checked and EXCLUDED (resolved, not open debt)**
+- Eviscerate shape / adjacent occult-column items - RESOLVED (R-21 square-shape fix b70; R-22 column-6
+  restack b70, which the report states SUPERSEDES the earlier "needs Will's ruling" residual). Listed
+  here only so a future sweep does not re-flag it as open.
+- bloodtip/gustleech `itemSkillLevel` WILL-VETO - RESOLVED, ratified ship-as-is (R-45).
+- Tomb Guardian soul leak - RESOLVED (R-43).
+- Rant-scroll creative-text veto - RESOLVED, cleared to ship (R-15).
+
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction
