@@ -1,4 +1,20 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🖤 **b83 ROUND 2 (vet HIGH/MEDIUM/LOW RESOLVED).** The adversarial vet found the Devourer's
+> player-summonable soul-pets `bloodtoxeus_1/2/3` still carried `buffSelfSkillName =
+> records\skills\stealth\envenomweapon.dbr` (base GREEN, tint (0.25,1.0,0.25)) - a LIVE auto-self-buff
+> that round 1's rewire (skillName3 only) missed, so the summoned Devourer still glowed green (defeats
+> R-1 on the summon). **FIX:** `_rewire_devourer` now also repoints the 3 pets' `buffSelfSkillName`
+> (base-green -> `svc_black_poison`), and `black_poison.verify` now asserts `buffSelfSkillName` on all
+> 3 pets (fails on either crimson OR a surviving base-green envenom - the blind spot is closed, proven
+> by a targeted negative test). MEDIUM: corrected the overstated "proven/confirmed-dark" 343_dark_smoke
+> wording in the docstring + report to the honest BP-SMOKE-1 hedge (rule 3 - the particle render is NOT
+> colour-confirmed; the tint is the load-bearing black). LOW: corrected the "~2%" supra-formula
+> drop-weight to the decoded per-act table (weight 1-5 by act/difficulty). **ROUND-2 VERIFY:** changed
+> arz md5 **`497073d10041a9d38e553a2ab708f206`**; diff vs round-1 changed = EXACTLY the 3 pets'
+> `buffSelfSkillName` (nothing else); diff vs clean baseline = exactly 17 delta (intended-only);
+> 29 registry verifies GREEN incl. extended `black_poison.verify`; contracts identical (0 new);
+> negative tests PASS (incl. the new pet-buffSelf blind-spot test); idempotent (2nd build byte-identical).
+>
 > 🖤 **b83 BLACK POISON + RITE DROP (Will ruled 2026-07-16, R-1/R-9/R-13) - ROUND 1 IMPLEMENTED +
 > FULLY VERIFIED.** Branch `feat/black-poison` (merge of vetted `feat/toxeus-champions` +
 > `feat/toxeus-undivided`, merge `2f52507`). Report: `docs/reports/b83_black_poison_rite_drop.md`.

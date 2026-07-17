@@ -196,8 +196,9 @@ _ING_DEVOURER = r'records\item\equipmentring\soul\svc_uber\blood_toxeus_soul_l.d
 #   b83_black_poison_rite_drop.md): the supra weapon/armor formulas are pooled in
 #   arcaneformulae\supra.dbr + supra_special.dbr (the b66 uber_orphan_weapons module
 #   wires EVERY new supra formula into BOTH at weight 100 - the exact precedent). Those
-#   two pools are reached by the 0X_actY_arcaneformulae LootMasterTables at weight 2 (the
-#   rarest formula tier). Adding the Rite to BOTH pools => it drops wherever ANY supra
+#   two pools are reached by the 0X_actY_arcaneformulae LootMasterTables as the low-weight
+#   supra tail (weight varies 1-5 by act/difficulty, decoded from the arz - the rarest
+#   formula tier, ~1-5%). Adding the Rite to BOTH pools => it drops wherever ANY supra
 #   weapon formula drops, at that same rarest tier.
 _SUPRA_POOL = r'records\xpack\item\loottables\arcaneformulae\supra.dbr'
 _SUPRA_SPECIAL = r'records\xpack\item\loottables\arcaneformulae\supra_special.dbr'
