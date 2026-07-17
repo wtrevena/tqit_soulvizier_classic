@@ -565,6 +565,11 @@ class Ctx:
         self.base_arz_names = set()
         self.base_class = {}
         self.base_quests = None
+        # Own-GUID set of every level in the STOCK base-game Levels.arc. Used by
+        # MAP-NAV-4 to tell SV-custom (grid-shifted, our-generated) levels from
+        # inherited base/IT/XPack levels by PROVENANCE (a base level's GUID is in
+        # this set); empty if the base map could not be loaded.
+        self.base_level_guids = set()
         bg = cfg.get('base_game_dir')
         if bg:
             bg = Path(bg)
@@ -579,6 +584,9 @@ class Ctx:
                     bmap = Arc.from_file(blv).world_map()
                     bsecs = parse_top_sections(bmap)
                     self.base_quests = parse_quests(sec_bytes(bmap, bsecs, SEC_QUESTS))
+                    self.base_level_guids = set(
+                        lv['guid'] for lv in parse_level_index(
+                            sec_bytes(bmap, bsecs, SEC_LEVELS)))
                 except Exception:
                     self.base_quests = None
         # text keys (mod union base)
@@ -1123,6 +1131,112 @@ def contract_zone_overrides(ctx, _inject_targets=None):
     return v
 
 
+# The record class the engine treats as a save/respawn point. A level hosting one
+# can be loaded in ISOLATION (fresh save-load / respawn) before its grid neighbours
+# stream in - the exact condition that detonates a multi-GUID navmesh (b87).
+RESPAWN_SHRINE_CLASS = 'StrategicMovementRespawnShrine'
+
+
+def _respawn_shrines_in_blob(class_of, blob):
+    """Set of placed StrategicMovementRespawnShrine record refs in a level blob.
+    Class-resolved via `class_of` (arz union; robust, not a name heuristic)."""
+    out = set()
+    for m in _DBR_BLOB_RE.finditer(blob):
+        npath = norm_rec(m.group(0))
+        if class_of(npath) == RESPAWN_SHRINE_CLASS:
+            out.add(npath)
+    return out
+
+
+def scan_isolated_load_risk(levels, blob_of, class_of, base_level_guids):
+    """SHARED classifier for the b87 isolated-load navmesh crash class. Used by BOTH
+    the battery contract (contract_navmesh_coresidency) and the standalone gate
+    (gate_navmesh_coresidency.py) so their scope can never drift apart.
+
+    A chamber is flagged iff ALL of:
+      (1) it hosts a StrategicMovementRespawnShrine  -> can be loaded in ISOLATION
+          (a fresh save-load / death-respawn instantiates the player's current level
+          before its grid-neighbour levels stream in), AND
+      (2) its 0x0b RLTD navmesh is MULTI-GUID (own + grid-seam neighbours), AND
+      (3) it is SV-CUSTOM: its own level GUID is ABSENT from the stock base-game
+          Levels.arc index (`base_level_guids`).
+
+    Why (3) is the true discriminator (not "respawn + multi-GUID"): the stock game
+    ships 264 respawn chambers with multi-GUID navmeshes (DelphiTownStart gc=12,
+    Memphis gc=13, ...) that save/reload fine, because a base region keeps its
+    navmesh-neighbour levels co-RESIDENT (region-packed) so ProcessRLTD's live-
+    residency gate (Engine 0x101f4ba0) completes on isolated load. The SV blood-cave
+    / secret-place clusters are grid-shifted into empty world space with offline-
+    generated navmeshes, so on an isolated respawn their listed neighbours are NOT
+    resident -> the navmesh load fails (Level+0x6a48 stays 0) and the region code
+    dereferences the absent navmesh (near-null 0xc0000005; RVA 0x20e270). Provenance
+    by own-GUID cleanly excludes every inherited base/IT/XPack respawn chamber
+    (incl. the byte-identical Silk Road HiddenValley01 spawn hub) name-free, and
+    surfaces exactly the SV-custom respawn chambers our pipeline generates.
+    Static GUID resolution (MAP-NAV-1) is GREEN for these - every listed GUID resolves
+    in the LEVELS index - so this is the RESIDENCY half MAP-NAV-1 cannot see.
+    docs/reports/b87_bloodcave_navok_rca.md.
+
+    Returns list of dicts {level, guid, shrines, guid_count, neighbours}."""
+    out = []
+    for lv in levels:
+        blob = blob_of(lv)
+        shrines = _respawn_shrines_in_blob(class_of, blob)
+        if not shrines:
+            continue
+        if lv['guid'] in base_level_guids:
+            continue                       # base/IT/XPack provenance -> region-packed, safe
+        types = {t: sd for t, sd in parse_blob_sections(blob)}
+        d0b = types.get(0x0b)
+        if not d0b:
+            continue
+        try:
+            h = rec02_header(d0b)
+        except Exception:
+            continue
+        if h['guid_count'] > 1:
+            nbrs = [g.hex()[:8] for g in h['guids'] if g != lv['guid']]
+            out.append({'level': lv['fname'], 'guid': lv['guid'],
+                        'shrines': sorted(shrines), 'guid_count': h['guid_count'],
+                        'neighbours': nbrs})
+    return out
+
+
+def contract_navmesh_coresidency(ctx):
+    """(10) MAP-NAV-4: isolated-load navmesh co-residency safety (b87, runtime-proven).
+
+    Every SV-CUSTOM level (own GUID absent from the stock base-game Levels.arc) that
+    hosts a StrategicMovementRespawnShrine MUST carry a navmesh loadable in isolation
+    (guid_count == 1). A multi-GUID navmesh there re-arms ProcessRLTD's LIVE-residency
+    gate on a fresh spawn (the grid neighbours are not resident), so the navmesh load
+    fails (navOK=0) and the region code null-derefs the absent navmesh (Engine RVA
+    0x20e270) - the crash the 2026-07-17 Frida probe pinned live at
+    new_secretdoor_transitionhallway (respawn_hadescave01). See scan_isolated_load_risk
+    for the full mechanism + why base/IT/XPack respawn chambers (region-packed, GUID in
+    stock) are the proven-safe control. Run the battery against BOTH the canonical and
+    TESTHUB arc for runtime parity. docs/reports/b87_bloodcave_navok_rca.md."""
+    if not ctx.base_level_guids:
+        # Fail loud, never pass blind: the provenance exclusion needs the stock
+        # base-game Levels.arc (cfg base_game_dir). run_contracts supplies it by default.
+        return [V('MAP-NAV-4', 'P1', '(base-game Levels.arc unavailable)',
+                  'cannot verify isolated-load navmesh safety: the stock base-game '
+                  'Levels.arc was not loaded, so SV-custom vs base/XPack level provenance '
+                  'cannot be established - failing loud rather than passing blind',
+                  'set cfg base_game_dir to the TQAE install (Resources/Levels.arc)')]
+    v = []
+    for c in scan_isolated_load_risk(ctx.levels, ctx.blob, ctx.class_of, ctx.base_level_guids):
+        v.append(V('MAP-NAV-4', 'P0', c['level'],
+                   'SV-custom save/respawn chamber has a MULTI-GUID navmesh: it can load '
+                   'in isolation on spawn, but ProcessRLTD\'s live-residency gate needs '
+                   'grid-neighbour levels resident that are NOT loaded on a fresh spawn '
+                   '-> navmesh load fails (navOK=0) and the region code null-derefs the '
+                   'absent navmesh = the deterministic blood-cave crash (b87)',
+                   f'shrine(s)={c["shrines"]}; navmesh guid_count={c["guid_count"]} '
+                   f'neighbour-deps={c["neighbours"]}; own GUID {c["guid"].hex()[:8]} absent '
+                   f'from stock base-game Levels.arc (SV-custom, not region-packed)'))
+    return v
+
+
 # ============================================================================
 # Section 7: metadata, whitelist, runner, CLI
 # ============================================================================
@@ -1179,6 +1293,21 @@ CONTRACTS = [
                      'dereferenced on zone teardown -> the deterministic 0xc0000005 blood-cave '
                      'crash (docs/reports/b82_bloodcave_crash_rca.md; the placed-record '
                      'NON-EXISTENCE class).'},
+    {'id': 'MAP-NAV-4', 'name': 'SV-custom respawn chamber navmesh is isolated-load-safe (crash class)',
+     'asserts': 'every SV-CUSTOM level (own GUID absent from the stock base-game Levels.arc) '
+                'that hosts a StrategicMovementRespawnShrine (a save/respawn point loadable in '
+                'isolation) has a single-own-GUID navmesh (guid_count == 1). Inherited base/IT/'
+                'XPack respawn chambers (GUID present in stock, region-packed so neighbours stay '
+                'co-resident) are the proven-safe control and are excluded by provenance.',
+     'derived_from': 'the 2026-07-17 Frida probe pinned the recurring blood-cave crash at '
+                     'new_secretdoor_transitionhallway (respawn_hadescave01): its 3-GUID '
+                     'grid-seam navmesh fails ProcessRLTD\'s live-residency gate on isolated '
+                     'load (navOK=0) and the region code null-derefs the absent navmesh '
+                     '(Engine RVA 0x20e270) - docs/reports/b87_bloodcave_navok_rca.md. The stock '
+                     'game ships 264 respawn+multi-GUID chambers that reload fine (region-packed, '
+                     'co-resident), so "respawn + multi-GUID" is NOT the crash law; the SV-custom '
+                     'grid-shifted provenance is. This is the RESIDENCY half MAP-NAV-1 (static '
+                     'GUID resolution) cannot see.'},
     {'id': 'MAP-ZONE-1', 'name': 'b46 zone-override targets resolve',
      'asserts': 'every b46 LEVELS-entry teleport-map zone `dbr` override target '
                 '(svaera_plus_portals.LEVEL_ZONE_DBR_OVERRIDES) exists in the arz union.',
@@ -1192,6 +1321,7 @@ _CONTRACT_FUNCS = [
     contract_quests, contract_portals, contract_navmesh, contract_groups,
     contract_doors, contract_sd_tags, contract_placed_refs,
     contract_bloodcave_placed, contract_zone_overrides,
+    contract_navmesh_coresidency,
 ]
 
 
