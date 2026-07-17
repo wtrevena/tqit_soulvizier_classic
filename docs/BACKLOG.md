@@ -1,4 +1,33 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🐉 **b72 TOXEUS, END OF ALL THINGS (Will ruled 2026-07-16) - IMPLEMENTER ROUND 1 COMPLETE + FULLY
+> VERIFIED (awaits independent vet + the ONE open Will decision).** Branch `feat/toxeus-undivided`,
+> module `tools/patches/toxeus_endofallthings.py` (REGISTRY, after `enslaver_pet_fx`, before
+> `visuals`). A supra soul ring `{^F}Soul of Toxeus, End of All Things` crafted from the LEGENDARY tier
+> of the 3 Toxeus souls (green-Greece + Enslaver + Devourer) summoning ONE permanent apotheosis pet
+> `Toxeus the Murderer, End of All Things` (cloned from the proven Devourer pet). All 11 ruled kit items
+> shipped: unlimited energy, max Nether Strike @0.5s, max Smoke Screen, the Galefury skill
+> (`hunter_helm_galefury`), Tears of Blood (Blood-of-Ares nova @3s), Murderer's Edge + the Devourer's
+> CRIMSON blood-poison (no literal black exists - flagged), Entropy aura, Blood Feast (leech +
+> `melinoe_bloodboil`), "There is room in me" (Blood-Witch Disciple `c_disciple_42` thralls that summon
+> bloodhounds - 3-DEEP chain flagged), "The Ending" (Manetho light-of-Ra flash + authored cataclysm
+> damage; SunGaze anim cleared for castability), and Arrat's Corruption AOE (`um_ararat_36` mana-burn
+> debuff nova). Stat ceiling = the Enslaver (60000 life / 500 handHit); EoAT Legendary EXCEEDS it
+> (82000 / 620 / STR640 / DEX800). **TWO round-0-draft bugs fixed:** (a) formula was uncraftable (spear
+> donor's reagent3 affix constraints left in -> a soul ring cannot match a weapon prefix; cleared them +
+> the random artifact bonus so the 3 souls craft a deterministic soul); (b) equipment used invalid Pet
+> slot field names AND direct player-unique pet-equip HARD-FAILS the B-SUMMON-1 shipping gate (uniques
+> render naked on pets) -> supra pieces are NOT worn (kept the Devourer loadout), power baked as direct
+> stats, all 8 pieces reported SKIPPED. **Scratch arz md5 `a6b896bd8d05673b8cfc37eecd6cfb4a`**
+> (deterministic, built twice identical). Record-diff vs build45 (`917d9047`): exactly 16 NEW records, 0
+> removed, 0 modified existing. Verification ALL GREEN: full build EXIT=0, all 27 registry verifies
+> (incl the b71 enslaver chain gate now walking the EoAT chain), B-SUMMON-1 0 strict failures,
+> validate_tags PASS, contracts souls/summons/resources 0 P0/0 P1 (no EoAT violation), negative test
+> 4/4 caught. Report: `docs/reports/b72_toxeus_endofallthings.md`. **THE ONE OPEN WILL DECISION: how the
+> player OBTAINS the `Rite of the Undivided` formula** (formula is craft-ready but its DROP is unwired;
+> recommended = a Boss-locked drop from the Devourer superboss). FEASIBILITY FLAGS: depth-3 thrall chain
+> (needs in-game confirm; fallback documented), crimson-not-black poison, Tears-of-Blood-as-specialAttack
+> (not a true retaliation trigger), supra equipment engine-unsupported on pets.
+>
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction
