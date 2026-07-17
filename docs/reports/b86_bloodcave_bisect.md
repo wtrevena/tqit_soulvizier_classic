@@ -1,5 +1,23 @@
 # b86 - Blood Cave crash BISECT (round 1, chamber-named)
 
+> ⚠️ **SUPERSEDED IN PART BY THE RUNTIME CAPTURE (2026-07-17) - see
+> `docs/reports/b87_bloodcave_navok_rca.md`.** The Frida probe caught the crash live and
+> resolved the fountain/chamber ambiguity this bisect flagged as its residual:
+> - **CORRECTED:** the crash chamber is **`new_secretdoor_transitionhallway`** (the MID-CAVE
+>   chamber hosting the respawn fountain **`respawn_hadescave01`**), NOT the first-interior
+>   chambers (Random09A / xPTS / BC_initialpathway / drxFirstRoom) this report guessed from
+>   Will's "right behind the first door" phrasing. b86 chose the WRONG fountain: Will's
+>   "fountain" is the mid-cave `respawn_hadescave01`, not the cave-mouth `feeb4bc6`. The sec-1
+>   chamber-mapping below is therefore the wrong region; treat it as a superseded hypothesis.
+> - **CONFIRMED right by b86:** the entry chain IS clean (no broken portal/record), the crash
+>   chambers are byte-frozen build25->build47, every navmesh GUID resolves statically (MAP-NAV-1
+>   green), and the b46-minimap-wave hypothesis is refuted - all of which b87 relies on.
+> - **WHAT b86 MISSED:** the defect is the RUNTIME co-residency RESIDENCY gate on ISOLATED load
+>   of a respawn/save chamber, which no static bisect or GUID-resolution check can see. b87 proves
+>   the full chain (navOK=0 -> region null-deref at Engine RVA 0x20e270) on the binaries and ships
+>   the residency gate MAP-NAV-4.
+
+
 Branch: `fix/bloodcave-bisect` (worktree). Base: main `07db9dc` = build47 (LIVE on Steam + DEV).
 Datum this round (Will, 2026-07-17, verbatim): *"the game crashes in the area immediately after
 the first respawn fountain inside the blood cave, the one that is right behind the first door

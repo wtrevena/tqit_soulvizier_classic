@@ -1,6 +1,40 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## b86 BLOOD-CAVE CRASH BISECT (2026-07-17) - NO STRUCTURAL DELTA; probe is the residual
+## B87 BLOOD-CAVE CRASH - RCA PROVEN via runtime probe (2026-07-17), branch `fix/bloodcave-navok`
+**The 2026-07-17 Frida probe caught the crash LIVE and pinned it.** Crash chamber =
+`new_secretdoor_transitionhallway` (idx 2257), the MID-CAVE respawn fountain
+`respawn_hadescave01` - NOT the first-interior chambers b86 guessed (b86 picked the wrong
+fountain; corrected in both docs). MECHANISM (proven on the binaries,
+`docs/reports/b87_bloodcave_navok_rca.md`): the chamber's 3-GUID grid-seam navmesh
+(own + drxbc_finale_transitionconnector + temple_entrance_clean, ALL resolving in BOTH variants,
+all live reciprocal seams) fails ProcessRLTD's LIVE-residency gate (`Engine 0x101f4ba0`:
+`[reg+0x50][idx]` must be a stream-RESIDENT region, not merely resolve in the GUID map) when the
+chamber loads in ISOLATION - a save-load / death-respawn at the fountain instantiates only the
+current level before its grid neighbours stream. navmesh load fails (navOK=0); the region code
+null-derefs the absent navmesh (native dump EIP Engine RVA `0x20e270`, EDI=0). The Blood Cult
+Disciple kill is the incidental query trigger (DEEP_DUMP proved the arz mitigation was a no-op =
+map-side). The probe's `08c4c32f` GATE guid is a red herring (a `Level+0x14` field, not a navmesh
+dep). MAP-NAV-1 (static GUID resolution) is correctly GREEN - this is the RESIDENCY half it cannot
+see. STEAM AFFECTED (canonical == TESTHUB, byte-identical). Works everywhere else because the
+design is deliberately multi-GUID + grid-stream co-residency (proven-walkable R09 entrance is
+itself multi-GUID); it breaks ONLY at a respawn/save chamber that loads in isolation.
+GATE SHIPPED: `MAP-NAV-4` (`tools/contracts/gate_navmesh_coresidency.py` + `contract_navmesh_coresidency`
+in the battery) - every blood-cave `StrategicMovementRespawnShrine` chamber must have a
+single-own-GUID navmesh; planted negtest (respawn+multiGUID FLAG, respawn+singleGUID CLEAR,
+no-shrine+multiGUID CLEAR); flags exactly `new_secretdoor` (gc=3) + `drxBC3` (gc=6) on BOTH variants.
+**FIX = WILL DECISION + WALK TEST (map-structural, not blind-shipped):** the map-levers all trade
+crash-safety against seam walkability and the repo law requires a walk test for navmesh/streaming
+changes. Ranked: (A) single-own-GUID the respawn chambers (cheapest; RISK = the documented
+invisible-wall failure mode, mitigated by 63-127u seam overlap + unchanged neighbour meshes;
+DEV-walk-testable); (B) relocate the whole cluster to XZ-disjoint space (heavy, base-game-shaped);
+(C) interior GridEntrance portals (`inject_interior_portals.py`); (D) move the respawn shrine.
+Recommend building A for `new_secretdoor` on a DEV map for Will to walk-test (crash gone? seams
+still walk?), extend to `drxBC3` if clean, escalate to C if A walls.
+**DEBT (registered, whitelisted in `whitelist_map.txt` until the fix lands):**
+`MAP-NAV-4 new_secretdoor_transitionhallway` (P0, the proven crash) + `MAP-NAV-4 drxBC3` (P0,
+same-class latent, respawn_hades_shrine01). REMOVE the whitelist entries when the sec-6 fix ships.
+
+## b86 BLOOD-CAVE CRASH BISECT (2026-07-17) - SUPERSEDED by B87 runtime capture (wrong fountain)
 Will named the chamber: "the area immediately after the first respawn fountain inside the blood
 cave, right behind the first door you open." Mapped it (docs/reports/b86_bloodcave_bisect.md): the
 cave-entry streaming chain past the HiddenValley01 camp fountain + SilkRdDngEntrance mouth =

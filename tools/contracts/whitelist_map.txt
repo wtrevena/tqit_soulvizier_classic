@@ -12,3 +12,17 @@
 #    (never reachable in play). Both are base-inherited, not port regressions.
 MAP-GROUPS-1 GROUPS/Scandia01_02 [TeleportShrine]
 MAP-GROUPS-1 GROUPS/X4RespawnTestWorld [RespawnShrine]
+
+# --- MAP-NAV-4 (b87 blood-cave isolated-load co-residency crash) -------------
+# OPEN P0 crash, DEBT-registered (docs/BACKLOG.md B87), structural fix PENDING
+# Will's in-game walk test (the map-lever choices - single-own-GUID vs cluster
+# relocation vs interior portals - all trade crash-safety against seam
+# walkability and must be walk-tested; see docs/reports/b87_bloodcave_navok_rca.md).
+# These two DRX respawn/save chambers carry a multi-GUID grid-seam navmesh that
+# fails ProcessRLTD's live-residency gate on isolated load (respawn/save-in-place).
+# new_secretdoor_transitionhallway = the 2026-07-17 Frida-probe-PROVEN crash spot
+# (respawn_hadescave01). drxBC3 = the same-class latent risk (respawn_hades_shrine01).
+# Suppressed here so the battery stays green for other map work; the gate still
+# fails loud on any NEW respawn+multi-GUID chamber. REMOVE when the fix lands.
+MAP-NAV-4 Levels\World\xBloodCave\new_secretdoor_transitionhallway.lvl
+MAP-NAV-4 Levels/World/xBloodCave/drxBC3.lvl

@@ -1123,6 +1123,75 @@ def contract_zone_overrides(ctx, _inject_targets=None):
     return v
 
 
+# The record class the engine treats as a save/respawn point. A level hosting one
+# can be loaded in ISOLATION (fresh save-load / respawn) before its grid neighbours
+# stream in - the exact condition that detonates a multi-GUID navmesh (b87).
+RESPAWN_SHRINE_CLASS = 'StrategicMovementRespawnShrine'
+
+
+def _respawn_shrines_in_blob(ctx, blob):
+    """Set of placed StrategicMovementRespawnShrine record refs in a level blob.
+    Class-resolved via the arz union (robust; not a name heuristic)."""
+    out = set()
+    for m in _DBR_BLOB_RE.finditer(blob):
+        npath = norm_rec(m.group(0))
+        if ctx.class_of(npath) == RESPAWN_SHRINE_CLASS:
+            out.add(npath)
+    return out
+
+
+def contract_navmesh_coresidency(ctx):
+    """(10) MAP-NAV-4: isolated-load navmesh co-residency safety (b87, runtime-proven).
+
+    A blood-cave chamber that hosts a StrategicMovementRespawnShrine is a SAVE /
+    RESPAWN point: the engine can instantiate it in ISOLATION (a fresh save-load or a
+    death-respawn loads the player's current level before its grid neighbours stream).
+    Such a chamber MUST carry a navmesh loadable in isolation - guid_count == 1 (own
+    GUID only, which is always resident because it is the level being loaded).
+
+    A MULTI-GUID navmesh at a respawn chamber re-arms ProcessRLTD's LIVE-residency
+    gate (Engine 0x101f4ba0: for every GUID in the navmesh's list, [reg+0x50][idx]
+    must be a stream-RESIDENT region instance, not merely resolve in the world GUID
+    map). On isolated load the neighbour levels are NOT resident, so the gate cannot
+    complete, the navmesh load fails (Level+0x6a48 stays 0), and the region code
+    dereferences the absent navmesh (Engine RVA 0x20e270, EDI=0) = the deterministic
+    near-null 0xc0000005 the 2026-07-17 Frida probe pinned live at
+    new_secretdoor_transitionhallway (respawn_hadescave01), ENTER-with-no-LEAVE,
+    navOK=0, co-resident alone. Static GUID resolution (MAP-NAV-1) is GREEN here -
+    every listed GUID resolves in the LEVELS index of BOTH variants - so this is the
+    residency half MAP-NAV-1 structurally cannot see. Run the battery against BOTH
+    the canonical and TESTHUB arc for full runtime parity.
+    docs/reports/b87_bloodcave_navok_rca.md."""
+    v = []
+    for lv in ctx.levels:
+        fn = lv['fname'].lower()
+        if not any(s in fn for s in BLOODCAVE_SUBSTRINGS):
+            continue
+        blob = ctx.blob(lv)
+        shrines = _respawn_shrines_in_blob(ctx, blob)
+        if not shrines:
+            continue
+        types = {t: sd for t, sd in parse_blob_sections(blob)}
+        d0b = types.get(0x0b)
+        if not d0b:
+            continue
+        try:
+            h = rec02_header(d0b)
+        except Exception:
+            continue
+        if h['guid_count'] > 1:
+            nbrs = [g.hex()[:8] for g in h['guids'] if g != lv['guid']]
+            v.append(V('MAP-NAV-4', 'P0', lv['fname'],
+                       'blood-cave save/respawn chamber has a MULTI-GUID navmesh: it loads '
+                       'in isolation on spawn, but ProcessRLTD\'s live-residency gate needs '
+                       'grid-neighbour levels resident that are NOT loaded on a fresh spawn '
+                       '-> navmesh load fails (navOK=0) and the region code null-derefs the '
+                       'absent navmesh = the deterministic blood-cave crash (b87)',
+                       f'shrine(s)={sorted(shrines)}; navmesh guid_count={h["guid_count"]} '
+                       f'neighbour-deps={nbrs}'))
+    return v
+
+
 # ============================================================================
 # Section 7: metadata, whitelist, runner, CLI
 # ============================================================================
@@ -1179,6 +1248,17 @@ CONTRACTS = [
                      'dereferenced on zone teardown -> the deterministic 0xc0000005 blood-cave '
                      'crash (docs/reports/b82_bloodcave_crash_rca.md; the placed-record '
                      'NON-EXISTENCE class).'},
+    {'id': 'MAP-NAV-4', 'name': 'respawn chamber navmesh is isolated-load-safe (crash class)',
+     'asserts': 'every blood-cave chamber hosting a StrategicMovementRespawnShrine (a '
+                'save/respawn point loadable in isolation) has a single-own-GUID navmesh '
+                '(guid_count == 1); a multi-GUID navmesh there needs neighbour levels '
+                'resident that are not loaded on a fresh spawn.',
+     'derived_from': 'the 2026-07-17 Frida probe pinned the recurring blood-cave crash at '
+                     'new_secretdoor_transitionhallway (respawn_hadescave01): its 3-GUID '
+                     'grid-seam navmesh fails ProcessRLTD\'s live-residency gate on isolated '
+                     'load (navOK=0) and the region code null-derefs the absent navmesh '
+                     '(Engine RVA 0x20e270) - docs/reports/b87_bloodcave_navok_rca.md. '
+                     'This is the RESIDENCY half MAP-NAV-1 (static GUID resolution) cannot see.'},
     {'id': 'MAP-ZONE-1', 'name': 'b46 zone-override targets resolve',
      'asserts': 'every b46 LEVELS-entry teleport-map zone `dbr` override target '
                 '(svaera_plus_portals.LEVEL_ZONE_DBR_OVERRIDES) exists in the arz union.',
@@ -1192,6 +1272,7 @@ _CONTRACT_FUNCS = [
     contract_quests, contract_portals, contract_navmesh, contract_groups,
     contract_doors, contract_sd_tags, contract_placed_refs,
     contract_bloodcave_placed, contract_zone_overrides,
+    contract_navmesh_coresidency,
 ]
 
 
