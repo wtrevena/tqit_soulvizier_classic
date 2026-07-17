@@ -1,4 +1,23 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🎯 **b78 SOUL TIER SCALING (Will 2026-07-16, "Blood Cult High Priest epic == normal?") - RCA:
+> FALSE ALARM, roster CLEAN, GATE TIGHTENED.** Branch `fix/soul-tiers`. RCA: `svc_uber\bwpriest_soul_
+> {n,e,l}` is correctly scaled on every dimension (augments 2/3/4, itemSkillLevel 1/2/3 with 3 real
+> summon pet tiers, Int 6/9/12, Life 10/14/19, leech 20/30/42) AND its loot triple on
+> `c_disciple_miniboss.lootFinger2Item1` = `[_n,_e,_l]` drops the right tier per difficulty. Will's
+> perception = the item NAME + DESC tags are byte-identical across tiers + TQ bakes item stats at
+> pickup (drop a FRESH epic to see the scaling). ROSTER SWEEP over golden `917d9047`: 775 tier
+> families, 706 full-3-tier, **0 flat, 0 wrong-tier-loot, 0 real missing tiers**;
+> `soul_strict_progress.py` = **706/706 strictly progress**. The first-pass "28 flat / 69 missing" were
+> probe artifacts (curated stat subset missed fields like defensivePhysical/racialBonusPercentDamage;
+> SV098 ships all 28 scaled) + noise (soultemplate / test\ / any*soul formula pools / malformed
+> double-suffix dupes). **CHANGE = GATE-ONLY (zero record edits):** `souls_quality.py` gains a
+> roster-wide STRICT-progress gate (`_flat_tier_violations` + `_power_vec` + `_tier_progresses`, wired
+> into `verify()`) - every full-3-tier family must get strictly stronger n->e AND e->l on some scaled
+> stat/skill-level field, closing the old non-strict `n<=e<=l` blind spot (a byte-identical epic USED
+> to pass). `_FLAT_TIER_WAIVER` EMPTY (nothing needs waiving). Negative test
+> (`souls_quality.py --negtest`) plants epic==normal -> flags n->e -> PASS. `flat_tier_count=0`. WILL-
+> CONFIRM: none. Out-of-lane flags: malformed cyclops/vulture duplicate soul records (hygiene);
+> Cold Worm = its own lane. Report: `docs/reports/b78_soul_tier_scaling.md`.
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction

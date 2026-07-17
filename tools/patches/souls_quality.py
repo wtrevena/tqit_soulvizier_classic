@@ -265,6 +265,49 @@ _LEVEL_FIX.update(_SV_INVERSION_FIX)
 # soul_{n,e,l}_icon.tex family (the tier-icon standard). Case-insensitive match.
 _SOUL_ICON_RE = re.compile(r'(?i)soul_([nel])_icon\.tex$')
 
+# ── STRICT TIER-PROGRESS gate (b78) ─────────────────────────────────────────
+# Will (2026-07-16, Blood Cult High Priest report): a byte-identical epic soul
+# passes the old non-strict monotonicity gate (n<=e<=l allows EQUAL). This gate
+# closes that blind spot: every full-3-tier soul family must STRICTLY progress -
+# at least one numeric 'power' field strictly greater at Epic than Normal, AND at
+# least one strictly greater at Legendary than Epic. (Non-strict monotonicity
+# above still independently bars INVERSIONS on the named skill/augment levels.)
+#
+# POWER VECTOR = every numeric field EXCEPT cosmetic / structural / requirement /
+# tag / skill-NAME fields. Load-bearing breadth: many healthy families (e.g. the
+# satyr/boar soldier souls) hold their augment LEVELS flat (2/2/2) and scale ONLY
+# stat fields (defensivePhysical, racialBonusPercentDamage, ...). A skill-level-
+# only strict check would false-positive those legitimately-scaling souls, so the
+# gate reasons over the full stat vector - exactly the fields my b78 sweep used to
+# prove 706/706 full-tier families already strictly progress (0 waivers needed).
+_POWER_IGNORE = frozenset({
+    'itemlevel', 'levelrequirement', 'bitmap', 'mesh', 'filedescription',
+    'itemnametag', 'itemtext', 'itemcostname', 'itemclassification',
+    'strengthrequirement', 'dexterityrequirement', 'intelligencerequirement',
+    'class', 'templatename', 'numrelicslots', 'quest', 'scale', 'maxtransparency',
+    'shadowbias', 'castsshadows', 'cannotpickup', 'cannotpickupmultiple',
+    'hideprefixname', 'hidesuffixname', 'characterbaseattackspeedtag',
+    'itemqualitytag', 'dropsound', 'dropsound3d', 'dropsoundwater',
+    'augmentskillname1', 'augmentskillname2', 'augmentskillname3',
+    'augmentskillname4', 'itemskillname',
+})
+# skill-LEVEL field -> its paired skill-NAME field (a level is only comparable
+# across tiers when the granted skill NAME is identical - a retiered skill is a
+# different power, not a scaled one).
+_LEVEL_TO_NAME = {
+    'itemskilllevel': 'itemskillname',
+    'augmentskilllevel1': 'augmentskillname1',
+    'augmentskilllevel2': 'augmentskillname2',
+    'augmentskilllevel3': 'augmentskillname3',
+    'augmentskilllevel4': 'augmentskillname4',
+}
+# Intentional-design escape hatch: family keys (from _family_key, normalized) that
+# are genuinely FLAT-BY-DESIGN and may skip the strict-progress requirement. EMPTY
+# today - the b78 roster sweep proved every full-3-tier family strictly progresses.
+# A future deliberately-flat soul goes here (kept explicit so the decision is never
+# silent; fail-loud forces it to be justified in the report).
+_FLAT_TIER_WAIVER = frozenset()
+
 # ── FIX 4 (D3): mod-introduced on-attack controllers on PERMANENT companion-summon
 # soul rings (the "resets before acting" bug). The fix set is ROSTER-DERIVED against
 # the SV 0.98i design bible - NOT a hardcoded family list - so a future mod-added
@@ -639,6 +682,69 @@ def _monotonicity_violations(db, nm=None):
     return bad
 
 
+def _power_vec(db, rec):
+    """field(lower) -> float for every NUMERIC field on the ring except the
+    cosmetic/structural/requirement/tag/skill-NAME fields in _POWER_IGNORE. This is
+    the 'is Epic stronger than Normal' surface: stat modifiers + skill LEVELS."""
+    out = {}
+    for k, tf in (db.get_fields(rec) or {}).items():
+        kk = k.split('###')[0].lower()
+        if kk in _POWER_IGNORE:
+            continue
+        v = _first(tf.values)
+        try:
+            out[kk] = float(v)
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+def _skill_name_at(db, rec, level_field_lower):
+    """Normalized granted-skill NAME paired with a skill-LEVEL field (for the
+    same-name comparability guard)."""
+    nf = _LEVEL_TO_NAME.get(level_field_lower)
+    return _norm(_sval(db, rec, nf) or '') if nf else ''
+
+
+def _tier_progresses(db, lo, hi):
+    """True iff at least one power field is STRICTLY greater on `hi` than on `lo`.
+    A skill-LEVEL field only counts when the paired granted-skill NAME is identical
+    on both tiers (a retiered skill is a different power, not a scaled one)."""
+    plo, phi = _power_vec(db, lo), _power_vec(db, hi)
+    for f, lv in plo.items():
+        if f not in phi:
+            continue
+        if f in _LEVEL_TO_NAME and _skill_name_at(db, lo, f) != _skill_name_at(db, hi, f):
+            continue
+        if phi[f] > lv:
+            return True
+    return False
+
+
+def _flat_tier_violations(db, nm=None):
+    """ROSTER-WIDE STRICT-progress gate (b78): every soul equipmentring family with
+    all 3 tiers must STRICTLY progress - some power field greater at Epic than Normal
+    AND some power field greater at Legendary than Epic - unless the family is on the
+    _FLAT_TIER_WAIVER (genuinely flat by design). Closes the byte-identical-epic blind
+    spot the non-strict monotonic gate (n<=e<=l) allowed. Returns
+    [(family, 'n->e'|'e->l')] for each tier step that fails to progress."""
+    nm = nm if nm is not None else _name_map(db)
+    fam = {}
+    for rec, nn, tier in _iter_soul_rings(db, nm):
+        fam.setdefault(_family_key(nn), {})[tier] = rec
+    bad = []
+    for clean, tiers in sorted(fam.items()):
+        if not all(t in tiers for t in ('n', 'e', 'l')):
+            continue
+        if clean in _FLAT_TIER_WAIVER:
+            continue
+        if not _tier_progresses(db, tiers['n'], tiers['e']):
+            bad.append((clean, 'n->e'))
+        if not _tier_progresses(db, tiers['e'], tiers['l']):
+            bad.append((clean, 'e->l'))
+    return bad
+
+
 def _icon_violations(db, nm=None):
     """Every svc_uber ring whose bitmap is a soul_{n,e,l}_icon must match its tier.
     Returns [(record, tier, bitmap)]."""
@@ -692,7 +798,10 @@ def _tombguardian_violations(db, nm=None):
 def verify(db, tags):
     """POST-FINALIZATION fail-loud gates (run over the FINAL assembled db, after
     run_registry_gates' backstop + drop forcer). Proves the tier-inversion class
-    holds roster-wide, the per-tier icon law holds across svc_uber, the ROSTER-WIDE
+    holds roster-wide, the b78 STRICT tier-progress law holds (every full-3-tier
+    family gets strictly stronger n->e AND e->l on some scaled stat/skill-level
+    field - Will's Blood Cult High Priest 'epic == normal' blind spot, which the old
+    non-strict n<=e<=l gate allowed), the per-tier icon law holds across svc_uber, the ROSTER-WIDE
     manual-cast summon law holds (no MOD-INTRODUCED on-attack controller on any
     permanent companion summon, judged vs the SV098 design bible - so amgoz's designed
     swarms are allowed but a new mod-added controller on ANY soul, svc_uber or not,
@@ -706,6 +815,18 @@ def verify(db, tags):
             "souls_quality verify: soul augment/grant tier INVERSION "
             "(higher rarity weaker than lower) on %d field(s):\n%s"
             % (len(mono), lines))
+
+    flat = _flat_tier_violations(db, nm)
+    if flat:
+        lines = '\n'.join("      %s (%s tier step does not get stronger)" % (c, step)
+                          for c, step in flat)
+        raise SystemExit(
+            "souls_quality verify: %d soul tier step(s) FLAT - a higher-rarity ring "
+            "is not strictly stronger than the lower on any scaled stat/skill-level "
+            "field (Will's Blood Cult High Priest blind spot: a byte-identical epic "
+            "passes non-strict monotonicity). Scale the tier, or if it is genuinely "
+            "flat-by-design add its family to _FLAT_TIER_WAIVER with justification:\n%s"
+            % (len(flat), lines))
 
     icons = _icon_violations(db, nm)
     if icons:
@@ -731,7 +852,41 @@ def verify(db, tags):
             "souls_quality verify: Tomb Guardian retirement incomplete:\n      "
             + "\n      ".join(tgbad))
 
-    print("    souls_quality verify OK: roster tiers monotonic (n<=e<=l) across "
-          "every soul family + per-tier svc_uber icons correct + roster-wide "
-          "companion summons manual-cast (no mod-introduced on-attack re-summon, "
-          "SV098-derived) + tombguardian soul retired")
+    print("    souls_quality verify OK: roster tiers monotonic (n<=e<=l) AND "
+          "strictly progressing (epic>normal, legendary>epic on some scaled field; "
+          "b78 Blood Cult High Priest gate) across every soul family + per-tier "
+          "svc_uber icons correct + roster-wide companion summons manual-cast (no "
+          "mod-introduced on-attack re-summon, SV098-derived) + tombguardian soul retired")
+
+
+def _negtest():
+    """Negative test for the strict-progress gate: build a tiny 3-tier family whose
+    Epic ring is a byte-identical clone of Normal (the exact Blood Cult High Priest
+    shape Will reported) and prove _flat_tier_violations flags it. Run standalone:
+    py tools/patches/souls_quality.py --negtest
+    Returns True on success (gate correctly fails the planted flat pair)."""
+    from collections import OrderedDict
+    from arz_patcher import ArzDatabase
+    db = ArzDatabase()
+    P = _SOUL_PREFIX + 'negtest\\planted_soul_%s.dbr'
+    # Normal + Epic identical on every power field; Legendary strictly stronger.
+    for t, life in (('n', 10.0), ('e', 10.0), ('l', 20.0)):
+        rec = P % t
+        # seed an empty in-memory record so record_names()/get_fields() see it
+        db._raw_records[rec] = (0, b'')
+        db._decoded_cache[rec] = OrderedDict()
+        db.set_field(rec, 'Class', ['ArmorJewelry_Ring'])
+        db.set_field(rec, 'templateName', ['database\\Templates\\Jewelry_Ring.tpl'])
+        db.set_field(rec, 'characterLifeModifier', [life])
+    nm = _name_map(db)
+    bad = _flat_tier_violations(db, nm)
+    flat_steps = {step for fam, step in bad if fam.endswith('planted_soul')}
+    ok = 'n->e' in flat_steps and 'e->l' not in flat_steps
+    print("souls_quality _negtest: planted epic==normal -> flagged steps=%s -> %s"
+          % (sorted(flat_steps), 'PASS' if ok else 'FAIL'))
+    return ok
+
+
+if __name__ == '__main__':
+    if '--negtest' in sys.argv:
+        raise SystemExit(0 if _negtest() else 1)
