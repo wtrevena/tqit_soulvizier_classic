@@ -9,8 +9,9 @@ REM  culprit. It NEVER launches, kills, or restarts TQ or Steam; it only
 REM  watches an already-running game and detaches cleanly.
 REM
 REM  Just double-click this file. Then launch TQ via Steam and play to
-REM  the crash. The window stays open at the end - copy the FULL LOG path
-REM  it prints and send it to Claude.
+REM  the crash. It RE-ARMS automatically after each crash, so you can keep
+REM  relaunching and playing - every crash is logged. Press Ctrl+C in this
+REM  window to stop. Logs land in local\crash_probe\ (one file per crash).
 REM ====================================================================
 setlocal
 set "PYTHONIOENCODING=utf-8"
@@ -34,7 +35,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-py scripts\crash_probe\run_crash_probe.py %*
+py scripts\crash_probe\run_crash_probe.py --loop %*
 set "RC=%ERRORLEVEL%"
 
 echo.

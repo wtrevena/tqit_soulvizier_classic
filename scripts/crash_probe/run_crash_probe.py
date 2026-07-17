@@ -268,6 +268,10 @@ def main():
                          "identifies the crashing chamber. Use only if the gate hook seems to destabilise the game.")
     ap.add_argument('--self-test', action='store_true',
                     help="validate map parse + render the agent JS and EXIT. Does NOT attach to any process.")
+    ap.add_argument('--loop', action='store_true',
+                    help="after each crash capture, RE-ARM automatically and wait for the next TQ.exe launch "
+                         "(a fresh timestamped log per crash). Ctrl+C stops. Lets Will keep relaunching/playing "
+                         "and every crash is captured without re-running this script.")
     args = ap.parse_args()
 
     cfg = dict(TIERS[args.tier])
@@ -292,77 +296,106 @@ def main():
 
     import frida  # imported here so --self-test works even if frida were absent
 
-    logname = OUT_DIR / f"probe_{datetime.now():%Y%m%d_%H%M%S}.log"
-    logf = open(logname, 'w', encoding='utf-8')
-    probe = Probe(logf)
-    probe.out(f"crash probe starting. tier={args.tier} cfg={cfg}")
-    probe.out(f"deployed map: {map_path}")
-    probe.out(f"log file: {logname}")
-    probe.out(f"frida {frida.__version__}. target='{args.process}'. ATTACH ONLY - the game is never killed.")
+    def run_session():
+        """Attach to one TQ.exe lifetime and capture until it crashes/exits.
+        Returns 'captured' (process-terminated crash), 'detached' (other reason),
+        'timeout' (no TQ.exe in the window), or 'interrupt' (Ctrl+C)."""
+        logname = OUT_DIR / f"probe_{datetime.now():%Y%m%d_%H%M%S}.log"
+        logf = open(logname, 'w', encoding='utf-8')
+        probe = Probe(logf)
+        probe.out(f"crash probe starting. tier={args.tier} cfg={cfg}")
+        probe.out(f"deployed map: {map_path}")
+        probe.out(f"log file: {logname}")
+        probe.out(f"frida {frida.__version__}. target='{args.process}'. ATTACH ONLY - the game is never killed.")
 
-    # Poll for an already-running TQ.exe. We only ATTACH; we never spawn it.
-    probe.out(f"Waiting for {args.process} - launch the game normally via Steam "
-              f"(polling up to {args.wait_min:.0f} min) ...")
-    session = None
-    deadline = time.time() + args.wait_min * 60
-    i = 0
-    while time.time() < deadline:
+        # Poll for an already-running TQ.exe. We only ATTACH; we never spawn it.
+        probe.out(f"Waiting for {args.process} - launch the game normally via Steam "
+                  f"(polling up to {args.wait_min:.0f} min) ...")
+        session = None
+        deadline = time.time() + args.wait_min * 60
+        i = 0
+        while time.time() < deadline:
+            try:
+                session = frida.attach(args.process)
+                break
+            except Exception:
+                if i % 15 == 0:
+                    probe.out(f"  ... still waiting for {args.process} (launch it via Steam) ...")
+                i += 1
+                time.sleep(2)
+        if session is None:
+            probe.out(f"{args.process} never appeared within {args.wait_min:.0f} min; stopping.")
+            logf.close()
+            return 'timeout'
+        probe.out(f"ATTACHED - play to the crash area now.")
+
+        def on_detached(reason, *rest):
+            probe.detached = reason or 'unknown'
+
+        session.on('detached', on_detached)
+        script = session.create_script(full_js)
+        script.on('message', probe.on_message)
+        script.load()
+        probe.out(">>> agent loaded. In-game: progress DEEPER into the blood cave (successive chambers) "
+                  "until it crashes or ~15 min. Ctrl+C here detaches (game keeps running).")
+
         try:
-            session = frida.attach(args.process)
-            break
-        except Exception:
-            if i % 15 == 0:
-                probe.out(f"  ... still waiting for {args.process} (launch it via Steam) ...")
-            i += 1
-            time.sleep(2)
-    if session is None:
-        probe.out(f"{args.process} never appeared within {args.wait_min:.0f} min; stopping.")
-        logf.close()
-        return 2
-    probe.out(f"ATTACHED - play to the crash area now.")
+            while probe.detached is None:
+                time.sleep(0.5)
+            # session detached (very likely a crash). Let any final buffered agent messages
+            # (the crashing ENTER, last allocs) drain before summarising the suspect.
+            time.sleep(0.4)
+            probe.crash_summary(probe.detached)
+            if probe.detached == 'process-terminated':
+                probe.out('')
+                probe.out('*** CRASH CAPTURED ***')
+                probe.out('--- last 15 log lines -------------------------------------------------')
+                for ln in probe.tail_lines(15):
+                    print(ln, flush=True)
+                probe.out('---------------------------------------------------------------------')
+                probe.out(f"FULL LOG: {logname}")
+                probe.out("Send me (Claude) that FULL LOG path and I will pin the crashing chamber.")
+                logf.close()
+                print(f"log saved: {logname}")
+                return 'captured'
+            logf.close()
+            print(f"log saved: {logname}")
+            return 'detached'
+        except KeyboardInterrupt:
+            probe.out("Ctrl+C - detaching (the game keeps running).")
+            if probe.open:
+                probe.out(f"note: {len(probe.open)} navmesh load(s) were still in-flight when you stopped: "
+                          + ', '.join(f"#{s}:{probe.open[s]['lvl']}" for s in sorted(probe.open)))
+            for fn in (getattr(script, 'unload', lambda: None), getattr(session, 'detach', lambda: None)):
+                try:
+                    fn()
+                except Exception:
+                    pass
+            logf.close()
+            return 'interrupt'
 
-    def on_detached(reason, *rest):
-        probe.detached = reason or 'unknown'
+    if not args.loop:
+        r = run_session()
+        return 2 if r == 'timeout' else 0
 
-    session.on('detached', on_detached)
-    script = session.create_script(full_js)
-    script.on('message', probe.on_message)
-    script.load()
-    probe.out(">>> agent loaded. In-game: progress DEEPER into the blood cave (successive chambers) "
-              "until it crashes or ~15 min. Ctrl+C here detaches (game keeps running).")
-
+    # --loop: re-arm automatically after each capture so Will can relaunch/play
+    # repeatedly and every crash is captured (a fresh log per crash). Ctrl+C stops.
+    print("[LOOP MODE] After each crash the probe RE-ARMS automatically. "
+          "Relaunch TQ as many times as you like; Ctrl+C here to stop.", flush=True)
+    n = 0
     try:
-        while probe.detached is None:
-            time.sleep(0.5)
-        # session detached (very likely a crash). Let any final buffered agent messages
-        # (the crashing ENTER, last allocs) drain before summarising the suspect.
-        time.sleep(0.4)
-        probe.crash_summary(probe.detached)
-        if probe.detached == 'process-terminated':
-            probe.out('')
-            probe.out('*** CRASH CAPTURED ***')
-            probe.out('--- last 15 log lines -------------------------------------------------')
-            for ln in probe.tail_lines(15):
-                print(ln, flush=True)
-            probe.out('---------------------------------------------------------------------')
-            probe.out(f"FULL LOG: {logname}")
-            probe.out("Send me (Claude) that FULL LOG path and I will pin the crashing chamber.")
+        while True:
+            r = run_session()
+            if r == 'interrupt':
+                break
+            if r == 'timeout':
+                print("[LOOP MODE] no TQ.exe within the wait window; stopping.", flush=True)
+                break
+            n += 1
+            print(f"[LOOP MODE] capture #{n} saved. RE-ARMED - relaunch TQ whenever ready "
+                  "(Ctrl+C here to stop).", flush=True)
     except KeyboardInterrupt:
-        probe.out("Ctrl+C - detaching (the game keeps running).")
-        if probe.open:
-            probe.out(f"note: {len(probe.open)} navmesh load(s) were still in-flight when you stopped: "
-                      + ', '.join(f"#{s}:{probe.open[s]['lvl']}" for s in sorted(probe.open)))
-        try:
-            script.unload()
-        except Exception:
-            pass
-        try:
-            session.detach()
-        except Exception:
-            pass
-    finally:
-        logf.close()
-    print(f"log saved: {logname}")
+        print("[LOOP MODE] stopped.", flush=True)
     return 0
 
 
