@@ -308,6 +308,30 @@
 > (`souls_quality.py --negtest`) plants epic==normal -> flags n->e -> PASS. `flat_tier_count=0`. WILL-
 > CONFIRM: none. Out-of-lane flags: malformed cyclops/vulture duplicate soul records (hygiene);
 > Cold Worm = its own lane. Report: `docs/reports/b78_soul_tier_scaling.md`.
+=======
+> 🎯 **b77 MASTERY UNLOCK-ALIGNMENT FIX WAVE (round 1, Will 2026-07-16 greenlight) - IMPLEMENTED +
+> FULL-BUILD VERIFIED GREEN, AWAITING VET + WILL DEV PASS.** Branch `fix/mastery-unlock`. Implements
+> the confirmed b74 audit: every mastery button's real unlock gate (skillTier threshold) now matches
+> the row it is drawn on. New registry module `tools/patches/mastery_unlock_alignment.py` (apply+verify,
+> registered LAST among mastery-UI writers after `mastery_sv_alignment`) + permanent gate
+> `tools/gate_unlock_alignment.py` (wired into `build_svc_database.py` after the A7 golden guard; 13
+> SV-faithful REQ-EXCEEDS-ROW waivers; negative test passes). Fixes all 14 tier-drifts + the 1 broken
+> button across m1/m2/m3/m4/m7 (Occult m5 + Hunting m6 golden UNTOUCHED). Scope: A Spirit Distortion-Wave
+> GT-rows (shared Dream records -> FIX-ROW; Death Chill Aura mods relocated col3->col4); B Defense/Storm
+> gate leans (summonphalanx t7->5, frostnova t6->5, lightningdash t5->7); C Warfare col3 restack
+> (ClubSlam+Fissure adjacent bottom pair, Lasting Legacy ultimate @r7, Hamstring aligned in col4 r4) +
+> ClubSlam off-grid-bar repair; D Earth col4 in-place re-tier (SoftenMetal t2 / Rupture-restored t3 /
+> Burning t4 / SpontCombust t6 / FireNova t7) + 2 bar repairs; E Storm skill25 broken button RETIRED
+> (dangling `drxspellbreaker_spellshock2`; sole variant already live as Inversion). **Build:** scratch
+> DB build SUCCESS, **arz md5 `7718d5841810034e73e7c1dfdc68788a`** (vs build45 ref `917d9047`).
+> **Verification:** A7 golden PASS (84 waived/0 other); unlock-alignment gate PASS (238 live buttons, 0
+> drift, 13/13 waivers) + negtest PASS; record-diff vs 917d9047 = **exactly 22 records** (positions /
+> skillTier / connOn-Off / 3 panectrls), 0 added/removed, NO gameplay stat fields, NO SkillTree records;
+> 9 live SkillTree records slot-order identical (bindings intact); contracts souls/summons/resources
+> **no new P0/P1** (baseline == wave: 0 P0 / 576 P1 / 10717 P2); validate_tags PASS; idempotent.
+> Every judgment is a WILL-VETO line in `docs/reports/b77_unlock_alignment_fix.md` (the two ladder
+> diagrams, the E decision, the waiver list) for Will's DEV visual pass. DB-only wave (no map/quest).
+>
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction

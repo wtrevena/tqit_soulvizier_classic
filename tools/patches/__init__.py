@@ -165,6 +165,16 @@ REGISTRY = [
                             # boss_skill_fix (which ENABLED those previously level-0 summon specials)
                             # so it caps the final, active skill records. verify() fails loud if any
                             # target survives uncapped.
+=======
+    'mastery_unlock_alignment',  # b77 (build45): UNLOCK-ALIGNMENT fix wave - make every
+                            # mastery button's real unlock gate (skillTier threshold) match
+                            # the row it is drawn on (b74 audit). Touches ONLY m1/m2/m3/m4/m7
+                            # (Spirit DW GT-rows, Warfare col3 restack, Earth col4 re-tier,
+                            # Defense/Storm gate leans, Storm broken-button retire); disjoint
+                            # from mastery_sv_alignment's m5/m6/emblem scope. Registered LAST
+                            # among mastery-UI writers so it is the ratified final writer on
+                            # skillTier/skillMasteryLevelRequired/bitmapPosition/connOn-Off for
+                            # its masteries. Golden (m5/m6) untouched -> A7 stays green.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
