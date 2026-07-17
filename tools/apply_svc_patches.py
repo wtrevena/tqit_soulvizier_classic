@@ -10085,6 +10085,109 @@ def _strip_lyia_clone_green(db, path, source):
     return stripped
 
 
+# b81 (Will 2026-07-16, 3rd repeat report - RACE this time; portrait then Maenad
+# sound-controller residue were the first two): "Toxeus the murderer, enslaver of
+# souls is a beastman not a skeleton." Ground truth (characterRacialProfile field,
+# decoded off 6+ vanilla monsters + Lyia's own record): skeletons/zombies read
+# Undead, satyrs/centaurs/maenads read Beastman, shadowstalker demons read Demon,
+# constructs read Construct, sand-magic hybrids read Magical - the field IS the
+# +damage-vs-race / racial-resist mechanism gear checks. Every _build_boss_summon
+# pet is a Lyia Leafsong clone; Lyia's OWN monster record (um_lyialeafsong_18, a
+# Maenad) carries characterRacialProfile=Beastman, distressCallGroup=Maenad, and
+# Maenad alert/criticalHit/death/rally/rampage/stun/vox SOUND paks. None of these
+# is in `_SKILL_PREFIXES`, so `_update_existing_fields` never overwrites them and
+# they survive on every pet as residue - exactly the b75 green-FX shape, one layer
+# over: Toxeus the Enslaver (source um_toxeus_enslaver_99 = Undead/Skeleton) reads
+# Beastman/Maenad on the pet, wrongly eligible for +damage-vs-beastman gear and
+# wrongly immune to +damage-vs-undead gear (and a dark skeleton screaming in a
+# Maenad woman's voice on alert/death/stun - the sound half of the b71 vet's
+# residue enumeration). Fixed AT THE BUILDER (BL-103) so every pet, present and
+# future, inherits ITS OWN source's race/distress-group/voice identity - never
+# Lyia's - across the whole `_build_boss_summon` class in one place.
+_PET_IDENTITY_SCALAR_FIELDS = ('characterracialprofile', 'distresscallgroup')
+# Sound-pak STEMS (prefix match so e.g. alertSound + alertSoundChance both align
+# together): alert/criticalHit/death/rally/rampage/stun/vox - exactly the b55r2
+# vet's "AUDIO residue" enumeration (alertSound/deathSound1/rallySound/stunSound/
+# voxSound + criticalHitSound + the paired rampageSound this pass also closes).
+# Deliberately EXCLUDES combat-generic sounds every Pet.tpl shares regardless of
+# race (attackSound/swipeSound/bodyFallSound/splashSound/impactSound/genericSound*
+# /specialAttackSound*/voiceSound* - none of these stems match, so they are never
+# touched) and the AI CONTROLLER (controllerAggressive/Defensive =
+# controller_maenadmerc_normal/defensive on every Lyia-clone pet): that field pair
+# is the PET-BEHAVIOR controller (Pet.tpl AI logic), NOT a race/identity field -
+# source MONSTERs carry a MONSTER controller with a different field/class
+# contract (single `controller`, already correctly repointed to
+# controller_skelly_aggressive by `_build_boss_summon` above), so a pet-vs-monster
+# controller swap is not a like-for-like copy and risks AI/behavior regressions.
+# Deliberately out of scope for this identity pass (documented, not touched).
+_PET_IDENTITY_SOUND_STEMS = ('alertsound', 'criticalhitsound', 'deathsound',
+                              'rallysound', 'rampagesound', 'stunsound', 'voxsound')
+
+
+def _is_pet_identity_field(base_lower):
+    return (base_lower in _PET_IDENTITY_SCALAR_FIELDS
+            or any(base_lower.startswith(stem) for stem in _PET_IDENTITY_SOUND_STEMS))
+
+
+def _align_pet_identity(db, path, source):
+    """Align a summon pet's race/distress-call-group/voice-pak identity fields to
+    its SOURCE monster's OWN values, SOURCE-FAITHFUL field-by-field (mirrors
+    `_strip_lyia_clone_green`'s philosophy, generalized to a whole-field copy
+    instead of a needle-match strip): a field the source DEFINES is copied
+    verbatim (TypedField dtype + values, so e.g. a Magical/Demon/Construct race or
+    a non-Maenad distressCallGroup lands byte-identical to the source, never
+    hard-coded to any one value); a field the source does NOT define at all is
+    STRIPPED from the pet (never left as foreign Lyia/Maenad residue - e.g. a
+    source with no rallySound path drops the pet's inherited maenadrallypak, while
+    a source-defined rallySoundChance=0.0 sibling still copies over verbatim).
+    SAFE: only the identity STRING/FLOAT fields in `_is_pet_identity_field` are
+    touched (never equipment/loot; never the AI controller, see above). Idempotent
+    (a no-op once the pet already matches its source). Returns the list of
+    (field, new-value-or-STRIP(old)) changes made."""
+    from arz_patcher import TypedField
+    pet_fields = db.get_fields(path)
+    if pet_fields is None:
+        return []
+    src_fields = db.get_fields(source) or {}
+    src_by_base = {}
+    for k, tf in src_fields.items():
+        base_lower = k.split('###')[0].lower()
+        if _is_pet_identity_field(base_lower) and tf.values:
+            src_by_base[base_lower] = (k.split('###')[0], tf)
+
+    changed = []
+    pet_identity_keys = [k for k in list(pet_fields)
+                         if _is_pet_identity_field(k.split('###')[0].lower())]
+    for key in pet_identity_keys:
+        base_lower = key.split('###')[0].lower()
+        hit = src_by_base.get(base_lower)
+        old_tf = pet_fields[key]
+        old_val = str(old_tf.values[0]) if old_tf.values else ''
+        if hit is None:
+            del pet_fields[key]
+            changed.append((key.split('###')[0],
+                            'STRIP(%s)' % (old_val.rsplit('\\', 1)[-1] or 'empty')))
+        else:
+            _, src_tf = hit
+            new_val = str(src_tf.values[0]) if src_tf.values else ''
+            if new_val != old_val or src_tf.dtype != old_tf.dtype:
+                pet_fields[key] = TypedField(src_tf.dtype, list(src_tf.values))
+                changed.append((key.split('###')[0], new_val.rsplit('\\', 1)[-1] or new_val))
+    # a source-defined identity field the Lyia-clone pet carries NO slot for at
+    # all (e.g. a source's own criticalHitSound the Lyia base never had a key
+    # for) - add it too, so the pet is never PARTIALLY mirrored.
+    have_bases = {k.split('###')[0].lower() for k in pet_fields}
+    for base_lower, (base_name, src_tf) in src_by_base.items():
+        if base_lower in have_bases:
+            continue
+        new_val = str(src_tf.values[0]) if src_tf.values else ''
+        pet_fields[base_name] = TypedField(src_tf.dtype, list(src_tf.values))
+        changed.append((base_name, new_val.rsplit('\\', 1)[-1] or new_val))
+    if changed:
+        db._modified.add(path)
+    return changed
+
+
 # b40 (Will 2026-07-13): per-boss granted-SKILL icons for the summon-the-boss souls.
 # RCA: _build_boss_summon() clones summon_lyia.dbr for a crash-safe Skill_SpawnPet
 # baseline but never overrode skillUpBitmapName / skillDownBitmapName, so EVERY
@@ -10355,6 +10458,18 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
             if _stripped_green:
                 print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped Lyia green residue "
                       f"({', '.join('%s=%s' % (f, v) for f, v in _stripped_green)})")
+
+        # ── b81 (Will 2026-07-16): align race/distress-group/voice-pak identity to
+        #    THIS pet's own source monster (never Lyia's Beastman/Maenad) - runs for
+        #    EVERY pet, including protect_green=True lineages (the Devourer's green
+        #    FX is a separate, intentionally-protected concern from its race/voice
+        #    identity, which still needs to read its own skeleton/Undead source, not
+        #    Maenad). See `_align_pet_identity` docstring for the AI-controller
+        #    carve-out (documented, not touched).
+        _aligned_identity = _align_pet_identity(db, path, source)
+        if _aligned_identity:
+            print(f"    {path.rsplit(chr(92), 1)[-1]}: aligned identity "
+                  f"({', '.join('%s<-%s' % (f, v) for f, v in _aligned_identity)})")
 
         # ── D19 PET-MOBILITY assert (fail-loud; bone-proven 2026-07-09): the
         # pet's PRIMARY anim row must have TABLE locomotion. Foreign-family

@@ -217,8 +217,10 @@ _CHAIN = [
         'skill': _R2 + r'skills\soulskills\summon_toxeus_enslaver.dbr',
         'icon_stem': 'deathwalkersummonup',
         'portrait_stem': 'deathwalker_party_up',
+        'source': _BOSS_MON,           # b81: race/voice gate needs the pet's OWN source
         'pets': _ENSLAVER_PETS,
         'sub_skill': _R2 + r'skills\soulskills\svc_enslaver_petmarauders.dbr',
+        'sub_source': _MARAUDER_MON,
         'sub_pets': _MARAUDER_PETS,
     },
     {
@@ -227,8 +229,10 @@ _CHAIN = [
         'skill': _R2 + r'skills\soulskills\summon_hadesmarshal.dbr',
         'icon_stem': 'wrathofthestyxup',
         'portrait_stem': 'proxy_party_up',   # neutral (no bespoke hades portrait ships)
+        'source': _HADESMARSHAL_MON,
         'pets': _HADESMARSHAL_PETS,
         'sub_skill': None,
+        'sub_source': None,
         'sub_pets': [],
     },
 ]
@@ -331,6 +335,51 @@ def _green_residue_on(db, pet):
                 out.append('%s: GREEN residue %s=%s' % (pet.rsplit('\\', 1)[-1], base_lower, val.rsplit('\\', 1)[-1]))
     for base, val in _green_kit_slots(fields):
         out.append('%s: GREEN kit slot %s=%s' % (pet.rsplit('\\', 1)[-1], base, val.rsplit('\\', 1)[-1]))
+    return out
+
+
+# ── b81 RACE/VOICE CHAIN-GATE LEG (Will 2026-07-16, "Toxeus...is a beastman not
+# a skeleton") ──────────────────────────────────────────────────────────────
+# Every _build_boss_summon pet is source-faithfully aligned to its OWN source
+# monster's race/distress-group/voice-pak identity by `_align_pet_identity`
+# (apply_svc_patches.py, upstream at the builder). This chain-gate leg asserts
+# the end-state for the 3 GATED families (Enslaver/Marauder/Hades Marshal) so a
+# future regression at the builder is caught here too, not just at the source:
+# the pet's characterRacialProfile must equal ITS OWN source's race, and no
+# alert/criticalHit/death/rally/rampage/stun/vox pak or distressCallGroup may
+# still say "Maenad" unless the source itself is a Maenad (source-faithful,
+# mirrors the green sweep - Meritamen's real source IS a Maenad-tagged
+# distressCallGroup, so a blanket "never Maenad" rule would be wrong).
+_IDENTITY_VOICE_STEMS = ('alertsound', 'criticalhitsound', 'deathsound',
+                         'rallysound', 'rampagesound', 'stunsound', 'voxsound')
+
+
+def _race_and_voice_problems(db, pet, source):
+    """b81 chain-gate leg: pet race == source race; no Maenad voice/distress-group
+    residue survives unless the SOURCE itself is Maenad. Empty == clean."""
+    out = []
+    if source is None or not db.has_record(source):
+        return out
+    pet_race = _field1(db, pet, 'characterRacialProfile')
+    src_race = _field1(db, source, 'characterRacialProfile')
+    if src_race is not None and (pet_race or '').lower() != src_race.lower():
+        out.append('%s: race %s != source race %s'
+                    % (pet.rsplit('\\', 1)[-1], pet_race or '<none>', src_race))
+    src_fields = db.get_fields(source) or {}
+    src_is_maenad = any(
+        isinstance(v, str) and 'maenad' in v.lower()
+        for k, tf in src_fields.items()
+        if k.split('###')[0].lower() == 'distresscallgroup'
+        for v in tf.values)
+    if not src_is_maenad:
+        fields = db.get_fields(pet) or {}
+        for k, tf in fields.items():
+            base = k.split('###')[0].lower()
+            if base == 'distresscallgroup' or any(base.startswith(s) for s in _IDENTITY_VOICE_STEMS):
+                for v in tf.values:
+                    if isinstance(v, str) and 'maenad' in v.lower():
+                        out.append('%s: Maenad voice/distress residue survives %s=%s'
+                                   % (pet.rsplit('\\', 1)[-1], base, v.rsplit('\\', 1)[-1]))
     return out
 
 
@@ -450,6 +499,8 @@ def _verify_chain(db, problems):
                 problems.append('%s CHAIN: %s StatusIconRed %s not identity %s'
                                 % (lbl, pet.rsplit('\\', 1)[-1], sir or '<none>', ident))
             problems.extend(_green_residue_on(db, pet))
+            # b81: race == own source's race; no Maenad voice/distress residue.
+            problems.extend(_race_and_voice_problems(db, pet, spec.get('source')))
         # (e) marauder sub-summon: subchain pets also zero-green
         if spec['sub_skill'] and db.has_record(spec['sub_skill']):
             sub_so = db.get_field_value(spec['sub_skill'], 'spawnObjects')
@@ -461,6 +512,9 @@ def _verify_chain(db, problems):
             for spet in spec['sub_pets']:
                 if db.has_record(spet):
                     problems.extend(_green_residue_on(db, spet))
+                    # b81: sub-pets (marauders) race/voice-gate against THEIR OWN
+                    # source (sub_source), not the parent family's source.
+                    problems.extend(_race_and_voice_problems(db, spet, spec.get('sub_source')))
 
 
 def apply(db, tags):
@@ -499,9 +553,13 @@ def verify(db, tags=None):
           hades2_shadowcloud for the Hades Marshal pet - each == its OWN source
           monster's shroud), and
       (3) b75 TRANSITIVE gate: no skill reachable from the pet references a green
-          tint/pak/nature-poison marker.
-    Negative-tested: planting envenomweapon back on any pet, or clearing/altering the
-    shroud, fails this gate."""
+          tint/pak/nature-poison marker, and
+      (4) b81 RACE/VOICE gate (via _verify_chain): pet characterRacialProfile ==
+          its OWN source monster's race, and no Maenad voice-pak/distressCallGroup
+          residue survives unless the source itself is Maenad.
+    Negative-tested: planting envenomweapon back on any pet, clearing/altering the
+    shroud, or planting a Beastman race / Maenad voice pak on a non-Maenad-sourced
+    pet, fails this gate."""
     problems = []
     for label, source, pets in _FAMILIES:
         src_shroud = None
@@ -554,4 +612,5 @@ def verify(db, tags=None):
     if problems:
         raise SystemExit('enslaver_pet_fx.verify FAILED:\n  ' + '\n  '.join(problems))
     print('  enslaver_pet_fx.verify: OK (Enslaver + marauder soul-pets carry the '
-          'black shroud, zero green Lyia residue; chain icon+portrait on-identity)')
+          'black shroud, zero green Lyia residue; chain icon+portrait on-identity; '
+          'race + voice paks match each pet\'s own source, b81)')
