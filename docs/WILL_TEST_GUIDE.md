@@ -18,6 +18,36 @@
 > has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
 > files (Steam was already restarted today, so no Steam restart is needed).
 
+## 🩸 BLOOD-CAVE CRASH FIX - build48-dev on DEV (2026-07-17) - THE walk test (do this first)
+
+**What changed:** the recurring blood-cave crash at the **first respawn fountain inside the cave**
+(the mid-cave fountain, `new_secretdoor_transitionhallway` / `respawn_hadescave01`) is now fixed on
+`SoulvizierClassicDEV` (fix A: that chamber's navmesh no longer waits on its neighbours to be loaded,
+so it can't null-deref on a fresh spawn). Only that ONE chamber changed; nothing else in the map.
+Deployed to `SoulvizierClassicDEV/Resources/Levels.arc` (md5 `c1e814e4`); DB/Text/Quests untouched.
+This is the one thing static analysis cannot settle - it needs your run. Not on Steam yet
+(walk-test-gated).
+
+**Restart first (standing law):** fully quit **TQ AND Steam**, restart Steam, then start TQ fresh, so
+it loads the new file (the running game holds the map in memory). Then, on **DEV**:
+
+1. **Load your `_Toxeus` save that sits at the fountain** (Custom Quest -> SoulvizierClassicDEV). It
+   loads at the mid-cave respawn fountain where it used to crash.
+2. **Kill a Blood Cult Disciple** near the fountain. **Expected: NO crash** (before, this deterministically
+   crashed to desktop). If it still crashes, stop and say so - that's fix A failing and we escalate.
+3. **Walk the two seams and back** (this is the part only you can confirm - fix A could leave an
+   invisible wall at a seam even though the crash is gone):
+   - **WEST seam** -> toward `drxbc_finale_transitionconnector` (the connector chamber back toward the
+     cave mouth). Walk across the seam and back. Does the player cross, or stop at an invisible wall?
+   - **EAST seam** -> toward `temple_entrance_clean` (the temple side, deeper). Walk across and back.
+     Same question.
+4. **Report:** (a) did the Disciple-kill crash stop? (b) does the WEST seam still walk both ways?
+   (c) does the EAST seam still walk both ways?
+
+If the crash is gone AND both seams walk, we extend the same fix to the two remaining latent respawn
+chambers (`drxBC3` deep in the cave, `RogueEncampment` in the Secret Place/Duister) and ship. If a
+seam walls, we swap that chamber to a doorway-portal instead. (Detail: `docs/reports/b87_bloodcave_navok_rca.md` sec 10.)
+
 ## BUILD40 CHECKS (new this wave - both DEV entries are build40-dev, 2026-07-14)
 
 build40-dev is live on **both** `SoulvizierClassicDEV` and `SoulvizierClassicDEV2`. Two of these want a

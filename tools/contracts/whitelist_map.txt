@@ -23,9 +23,13 @@ MAP-GROUPS-1 GROUPS/X4RespawnTestWorld [RespawnShrine]
 # live-residency gate on isolated load (respawn/save-in-place). Base/IT/XPack
 # respawn chambers (region-packed, GUID in stock, incl. the byte-identical Silk
 # Road HiddenValley01 spawn hub) are excluded by provenance - they are NOT bugs.
-# The three flagged SV-custom chambers, all whitelisted as OPEN DEBT:
-#  - new_secretdoor_transitionhallway = the 2026-07-17 Frida-probe-PROVEN crash spot
-#    (respawn_hadescave01, gc=3).
+# FIXED (build48-dev, fix A): new_secretdoor_transitionhallway - the 2026-07-17
+# Frida-probe-PROVEN crash spot (respawn_hadescave01) - is now single-own-GUID
+# (guid_count == 1) via gen_bc_navmeshes own_guid_only_keys, so it CLEARS the gate
+# and is REMOVED from this whitelist. Its walk test (crash gone? seams still walk?)
+# is Will's; drxBC3 + RogueEncampment stay registered debt until fix A verifies
+# in-game and is extended to each. The two remaining flagged SV-custom chambers,
+# whitelisted as OPEN DEBT:
 #  - drxBC3 = same-class latent (respawn_hades_shrine01, gc=6).
 #  - RogueEncampment (Secret Place / Duister) = same-class latent (respawntempleorient01,
 #    gc=3); our SECRET_PLACE navmesh-generator cluster produced its grid-seam mesh, the
@@ -34,6 +38,5 @@ MAP-GROUPS-1 GROUPS/X4RespawnTestWorld [RespawnShrine]
 # Suppressed here so the battery stays green for other map work; the gate still
 # fails loud on any NEW SV-custom respawn+multi-GUID chamber. REMOVE each when its
 # fix lands + Will confirms the walk test.
-MAP-NAV-4 Levels\World\xBloodCave\new_secretdoor_transitionhallway.lvl
 MAP-NAV-4 Levels/World/xBloodCave/drxBC3.lvl
 MAP-NAV-4 XPack\Levels\Secret_Place\RogueEncampment.lvl

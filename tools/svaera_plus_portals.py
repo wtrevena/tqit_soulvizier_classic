@@ -806,7 +806,15 @@ def main():
     USE_HUB = os.environ.get('SVC_TEST_HUB') == '1'
     inject_specs = merge_hub_into_inject_specs(INJECT_SPECS) if USE_HUB else INJECT_SPECS
     out_name = 'Levels_merged_TESTHUB.arc' if USE_HUB else 'Levels_merged.arc'
-    out_arc_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\local') / out_name
+    # Output dir override (SVC_OUT_DIR): default = the canonical local/ build location
+    # (behaviour preserved). Set it to build the merged map into an isolated scratch dir
+    # (e.g. a worktree fix-wave that must not clobber the live local/ build47 artifact
+    # nor race a concurrent build). The .0b.bin donor dir is likewise overridable via
+    # SVC_DONOR_DIR (see DONOR_DIR) so a scratch build reads its own donors.
+    _out_dir = Path(os.environ.get(
+        'SVC_OUT_DIR', r'c:\Users\willi\repos\tqit_soulvizier_classic\local'))
+    _out_dir.mkdir(parents=True, exist_ok=True)
+    out_arc_path = _out_dir / out_name
     print(f'BUILD MODE: {"TEST HUB (SVC_TEST_HUB=1)" if USE_HUB else "canonical"} -> {out_name}')
 
     # --- Load maps ---
