@@ -2955,6 +2955,36 @@ Smoke Screen shape, Eviscerate -> SQUARE (Will ruling 2026-07-16), emblem-circle
 pre-0.98i family placement (Darklings/Dark Aperture/Toxic Concoction/Shadow Stalker - Will
 correction: sourced from SV 0.9/0.41, NOT hand-authored; extraction lane in flight).
 
+## B71 - ENSLAVER CHAIN (Will P1 REPEAT "oscillating", 2026-07-16) - FIX_STAGED (branch fix/enslaver-chain)
+RCA `docs/reports/b71_enslaver_chain_rca.md`. Ground truth build44 `439a9279`.
+**RCA verdict:** the whole Enslaver chain (soul->skill->pets->marauders + Hades Marshal)
+is BYTE-IDENTICAL build41(b55 GO)->build44; roster-wide chain diff = 0 icon changes /
+0 spawnObjects changes. The feared "build42 regression" is REFUTED. Will's 3 symptoms are
+longstanding state: (#2) b40's deliberate `stalkerup` skill icon; (#3) the Lyia
+`StatusIcon` pet-bar residue b40 explicitly deferred; (#1 green) NOT reproducible from any
+current DB field (the b55-fixed Enslaver/marauder pets carry zero green markers and are
+field-identical to the confirmed-BLACK encounter monster; charcoal skin resolves; the
+proven green source `envenomweapon` is absent). The prior gates missed it because b55's
+verify asserted pet FX FIELDS in isolation (record-level), never the live chain.
+**FIX (upstream, `apply_svc_patches._build_boss_summon`):** enslaver skill icon
+stalker->`deathwalkersummonup`; NEW `_SUMMON_PET_PORTRAIT` map + `_set_summon_pet_portrait`
+overwrites the Lyia pet-bar portrait on ALL 17 player-facing boss summons (enslaver ->
+`deathwalker_party` = one skeleton identity across button+pet-bar; 6 more on-identity;
+10 neutral `proxy_party`). Pet-of-pet marauders/wyrmlings untouched (`player_facing=False`,
+Will 2026-07-16: they never display). Hades Marshal portrait Lyia->proxy (no hades party
+portrait ships).
+**CHAIN GATE (anti-oscillation):** `enslaver_pet_fx.verify()` extended with `_verify_chain`
+walking soul->skill->icon->pets->portrait->green->marauder on the FINAL arz; 5 negatives
+proven to fail (incl. re-pointed skill + Lyia portrait + green marauder).
+**Verified:** full build EXIT 0, registry+chain-gate green, A7 golden intact (66 waived);
+record-diff intended-only 52 records (51 portraits + 1 icon, 0 marauder/wyrmling collateral);
+contracts GATE PASS 0 P0/P1; validate_tags PASS; idempotent (arz `f0a58c1c` x2).
+**WILL-CONFIRM after restart:** (a) DISMISS + RE-SUMMON the Enslaver from the soul - if
+still green, residue is asset/save-level (pfx or already-summoned permanent pet), chased
+next round; (b) 10 bosses on neutral proxy portrait could get bespoke portraits (future
+art); (c) the ~77-pet systemic Lyia green (24 families) remains b55's flagged design call.
+NOT deployed/committed to main.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled

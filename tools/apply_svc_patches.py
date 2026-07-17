@@ -10017,8 +10017,14 @@ _SUMMON_SKILL_ICON = {
     # Toxeus family (Will's flagship examples) - distinct, on-identity.
     'summon_bloodtoxeus':      (r'DRXtextures\skill icons\spirit\lichekingup.tex',
                                 r'DRXtextures\skill icons\spirit\lichekingdown.tex'),
-    'summon_toxeus_enslaver':  (r'DRXtextures\skill icons\stealth\stalkerup.tex',
-                                r'DRXtextures\skill icons\stealth\stalkerdown.tex'),
+    # b71 (Will 2026-07-16): the b40 stalker icon read as "the shadow-stalker
+    # summon's icon" to Will - he wants a SKELETON identity (the Enslaver is a
+    # skeletal revenant lord who raises skeleton marauders). deathwalker = an
+    # undead soul-walker glyph (distinct from the sibling Devourer's licheking
+    # and from kravmoloch's bonefiend), paired 1:1 with the deathwalker pet-bar
+    # portrait below so the summon-skill icon + party portrait tell ONE story.
+    'summon_toxeus_enslaver':  (r'DRXtextures\skill icons\soul\deathwalkersummonup.tex',
+                                r'DRXtextures\skill icons\soul\deathwalkersummondown.tex'),
     # New bosses - fitting existing summon/creature glyphs by monster family.
     'summon_pygmalion':        (r'DRXtextures\skill icons\hunting\rapidconstructup.tex',
                                 r'DRXtextures\skill icons\hunting\rapidconstructdown.tex'),
@@ -10069,9 +10075,69 @@ def _set_summon_skill_icon(db, summon_skill):
     db.set_field(summon_skill, 'skillDownBitmapName', down)
 
 
+# ── b71 (Will 2026-07-16): the PET-BAR PORTRAIT (top-left party widget) ──
+# RCA: _build_boss_summon clones summon_lyia's PET (lyialeafsong_1..3), which
+# carries StatusIcon/StatusIconRed = the LYIA nymph party portrait
+# (lyia_party_up/red). b40 fixed the granted-SKILL button icon but left the
+# PET-BAR portrait as Lyia residue on EVERY boss summon pet (b40 report flagged
+# it as "a separate surface ... left for a future pass"). So every summoned
+# boss shows Lyia's face in the top-left pet bar (Will's symptom #3). This map
+# gives each PLAYER-FACING boss summon pet a party portrait that MATCHES its
+# b40 skill-icon family (one identity across the summon button + the pet bar);
+# any unmapped boss falls back to the neutral summon-proxy portrait (NEVER the
+# nymph). Keyed by the summon-skill basename (same key space as _SUMMON_SKILL_ICON).
+# Every path arc-verified against the shipped Resources (b71 resolves gate).
+_DEFAULT_SUMMON_PORTRAIT = (
+    r'DRXtextures\skill icons\soul\proxy_party_up.tex',
+    r'DRXtextures\skill icons\soul\proxy_party_red.tex')
+_SUMMON_PET_PORTRAIT = {
+    # Enslaver (Will's flagship): deathwalker skeleton identity == its new skill icon.
+    'summon_toxeus_enslaver':  (r'DRXtextures\skill icons\soul\deathwalker_party_up.tex',
+                                r'DRXtextures\skill icons\soul\deathwalker_party_red.tex'),
+    # bosses whose b40 skill icon has a matching *_party_ portrait (same family).
+    'summon_bloodtoxeus':      (r'DRXtextures\skill icons\spirit\licheking_party_up.tex',
+                                r'DRXtextures\skill icons\spirit\licheking_party_red.tex'),
+    'summon_meritamen':        (r'DRXtextures\skill icons\soul\phagia_party_up.tex',
+                                r'DRXtextures\skill icons\soul\phagia_party_red.tex'),
+    'summon_sarpedon':         (r'DRXtextures\skill icons\scroll\satyr_party_up.tex',
+                                r'DRXtextures\skill icons\scroll\satyr_party_red.tex'),
+    'summon_longnu':           (r'DRXtextures\skill icons\soul\hydra_party_up.tex',
+                                r'DRXtextures\skill icons\soul\hydra_party_red.tex'),
+    'summon_broodmother':      (r'DRXtextures\skill icons\soul\slimebrood_party_up.tex',
+                                r'DRXtextures\skill icons\soul\slimebrood_party_red.tex'),
+    'summon_kravmoloch_warden':(r'DRXtextures\skill icons\spirit\bonefiend_party_up.tex',
+                                r'DRXtextures\skill icons\spirit\bonefiend_party_red.tex'),
+    # pygmalion, eaterofdays, xeiwang, charon_oarsman, hadesmarshal, mnemophage,
+    # mountainblade, neferkha, tantalus_shade, voranthys: no matching *_party_
+    # portrait ships, so they take the neutral proxy portrait (removes the Lyia
+    # nymph). A bespoke per-boss portrait for these is a future art call (WILL-CONFIRM).
+}
+
+
+def _set_summon_pet_portrait(db, summon_skill, pet_paths):
+    """b71: overwrite the inherited Lyia party portrait on each PLAYER-FACING boss
+    summon pet with a portrait matching its summon-skill identity (default = neutral
+    summon-proxy, never the nymph). Only the main summon pets are built by
+    _build_boss_summon (isPetDisplayable=1 summons); the pet-of-pet marauders are
+    built elsewhere and are intentionally NOT touched (Will 2026-07-16: they do not
+    show in the pet bar). No explicit dtype: StatusIcon/StatusIconRed already exist
+    as strings on the Lyia clone, so set_field preserves the string type."""
+    up, red = _SUMMON_PET_PORTRAIT.get(_summon_skill_basename(summon_skill),
+                                       _DEFAULT_SUMMON_PORTRAIT)
+    for path in pet_paths:
+        db.set_field(path, 'StatusIcon', up)
+        db.set_field(path, 'StatusIconRed', red)
+
+
 def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, desc_tag,
                        char_level, life, life_regen, dmg_min, dmg_max, scale=None,
-                       loadout=None):
+                       loadout=None, player_facing=True):
+    # player_facing (b71): True for the player-granted boss summons whose pet SHOWS
+    # in the top-left party widget - these get an on-identity pet-bar portrait
+    # (never the Lyia nymph). False for pet-of-pet summons (enslaver marauders,
+    # broodmother wyrmlings) that are auto-cast and NEVER display - per Will
+    # (2026-07-16) their portrait field is left untouched (no forced field on a
+    # record that never displays).
     """D7/D8/D9 shared summon-the-boss builder (3 permanent pets + manual-cast
     summon skill from a source boss's OWN rig). Same crash-safe contract as A10
     Narok/Vort: clone Lyia pets for a Pet.tpl baseline; copy ONLY anim + skill refs
@@ -10249,6 +10315,12 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
     sf(summon_skill, 'spawnObjects', list(pet_paths))
     # b40: override the inherited Lyia nymph icon with a fitting per-boss icon.
     _set_summon_skill_icon(db, summon_skill)
+    # b71: override the inherited Lyia party portrait on the pet-bar (top-left
+    # widget) with a portrait matching this summon's identity - ONLY for
+    # player-facing summons (pet-of-pet marauders/wyrmlings never display, so
+    # their portrait field is intentionally left as-is per Will 2026-07-16).
+    if player_facing:
+        _set_summon_pet_portrait(db, summon_skill, pet_paths)
     db._modified.add(summon_skill)
     return True
 
@@ -10647,7 +10719,8 @@ def _create_enslaver(db, tags):
         'tagSVCSummonEnslaverMarauders', 'tagSVCMonsterEnslaverMarauder',
         char_level=list(_EN_BAND), life=[13000.0, 18000.0, 24000.0],
         life_regen=[25.0, 45.0, 70.0],
-        dmg_min=[300.0, 340.0, 380.0], dmg_max=[380.0, 440.0, 500.0], scale=2.0)
+        dmg_min=[300.0, 340.0, 380.0], dmg_max=[380.0, 440.0, 500.0], scale=2.0,
+        player_facing=False)   # b71: pet-of-pet marauders never display -> no portrait touch
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'isPetDisplayable', 0)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petLimit', 3)
     sf(SUMMON_ENSLAVER_PETMARAUDERS, 'petBurstSpawn', 1)
@@ -13741,7 +13814,8 @@ def _create_broodmother_nest(db, tags):
             char_level=[31, 51, 66], life=[1200.0, 2000.0, 3000.0],
             life_regen=[10.0, 20.0, 30.0],
             dmg_min=[40.0, 70.0, 110.0], dmg_max=[70.0, 110.0, 160.0], scale=1.0,
-            loadout=_mirror_source_loadout(db, _BM_COMMON)):
+            loadout=_mirror_source_loadout(db, _BM_COMMON),
+            player_facing=False):   # b71: pet-of-pet wyrmlings never display -> no portrait touch
         raise SystemExit('BROODMOTHER: wyrmling pet-of-pet _build_boss_summon failed')
     sf(_BM_WYRMLING_SUMMON, 'isPetDisplayable', 0)
     sf(_BM_WYRMLING_SUMMON, 'petLimit', 6)
