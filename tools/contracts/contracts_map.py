@@ -992,6 +992,19 @@ def _sv_scope(npath, blob_has_drxmap):
     return blob_has_drxmap or any(m in npath for m in SV_NAMESPACE_MARKERS)
 
 
+# --- blood-cave crash cluster (b82): the SV blood-cave levels + entrance/host ---
+# Substring match on the level fname. Kept in sync with
+# tools/contracts/gate_placed_record_resolution.py (the standalone diagnostic).
+BLOODCAVE_SUBSTRINGS = (
+    'xbloodcave', 'bloodcave', 'bossarena', 'secret_place',
+    'hiddenvalley01', 'hiddenvalleyborder04',
+)
+# ArtManager-format record path embedded anywhere in a level blob. NON-space body
+# ([!-~]) so the non-greedy match cannot bridge a length-prefix byte between two
+# adjacent strings and fabricate a phantom ref (TQ record paths never contain spaces).
+_DBR_BLOB_RE = re.compile(rb'records[\\/][!-~]*?\.dbr', re.IGNORECASE)
+
+
 def contract_placed_refs(ctx):
     """(7) Placed-entity record references resolve: every 0x05 instance .dbr
     exists in the arz (mod or base). Scoped to SV/restored content so
@@ -1023,6 +1036,48 @@ def contract_placed_refs(ctx):
                        '(entity silently fails to spawn; naked/missing content)',
                        f'record {npath} not in mod arz ({len(ctx.arz_names)}) nor base arz '
                        f'({len(ctx.base_arz_names)})'))
+    return v
+
+
+def contract_bloodcave_placed(ctx):
+    """(8) BLOOD-CAVE crash-class gate (b82): every SV/restored record referenced
+    ANYWHERE in a blood-cave-cluster level blob EXISTS in the arz union.
+
+    MAP-REF-1 covers SV 0x05 PLACED instances map-wide; this contract adds a
+    WHOLE-BLOB scan (every embedded records\\...\\.dbr, not only 0x05 instances)
+    over the blood-cave cluster. Rationale (docs/reports/b82_bloodcave_crash_rca.md):
+    a placed/referenced record that does NOT exist is instantiated with a null
+    record pointer and dereferenced on zone/region teardown -> the near-null READ
+    access violation (0xc0000005) in every blood-cave crash dump (the placed-record
+    NON-EXISTENCE crash class). Scoped to SV-namespace records so base/DLC engine-
+    tolerated refs are not false-positived. Dangling ASSET / transitive CHILD refs
+    (skills/effects/loot/mesh/tex) are deliberately OUT of scope here: the engine
+    logs-and-continues on those (proven by the crash dump's own log tail), so they
+    are enumerated only by the standalone gate's --chain diagnostic, never gated."""
+    v = []
+    seen = set()
+    for lv in ctx.levels:
+        fn = lv['fname'].lower()
+        if not any(s in fn for s in BLOODCAVE_SUBSTRINGS):
+            continue
+        blob = ctx.blob(lv)
+        for m in _DBR_BLOB_RE.finditer(blob):
+            npath = norm_rec(m.group(0))
+            if ctx.rec_resolves(npath):
+                continue
+            if not any(mk in npath for mk in SV_NAMESPACE_MARKERS):
+                continue   # base/DLC ref: engine-tolerated, out of scope
+            key = (lv['fname'], npath)
+            if key in seen:
+                continue
+            seen.add(key)
+            v.append(V('MAP-BCREF-1', 'P1',
+                       f'{lv["fname"]} -> {npath}',
+                       'SV/restored record referenced in a blood-cave-cluster level blob '
+                       'does NOT exist in the arz (null instantiation pointer; near-null '
+                       'deref on zone teardown = the deterministic blood-cave crash class)',
+                       f'record {npath} not in mod arz ({len(ctx.arz_names)}) nor base '
+                       f'arz ({len(ctx.base_arz_names)})'))
     return v
 
 
@@ -1075,11 +1130,19 @@ CONTRACTS = [
     {'id': 'MAP-REF-1', 'name': 'placed SV records resolve',
      'asserts': 'every SV/restored placed 0x05 instance .dbr resolves in the arz (mod or base).',
      'derived_from': 'a placed record absent from the DB silently fails to spawn (the naked-summon/missing-entity class).'},
+    {'id': 'MAP-BCREF-1', 'name': 'blood-cave placed records exist (crash class)',
+     'asserts': 'every SV/restored record referenced ANYWHERE in a blood-cave-cluster level '
+                'blob exists in the arz union (whole-blob scan, superset of the 0x05 check).',
+     'derived_from': 'a non-existent placed record is instantiated with a null pointer and '
+                     'dereferenced on zone teardown -> the deterministic 0xc0000005 blood-cave '
+                     'crash (docs/reports/b82_bloodcave_crash_rca.md; the placed-record '
+                     'NON-EXISTENCE class).'},
 ]
 
 _CONTRACT_FUNCS = [
     contract_quests, contract_portals, contract_navmesh, contract_groups,
     contract_doors, contract_sd_tags, contract_placed_refs,
+    contract_bloodcave_placed,
 ]
 
 
