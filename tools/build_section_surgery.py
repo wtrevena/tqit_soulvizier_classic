@@ -371,10 +371,13 @@ FINALLETTER_DBR = b'records\\drxmap\\quest\\finalletter.dbr'
 Q_BLOODTOXEUS_LONE_DBR = b'records\\drxmap\\proxy\\q_bloodtoxeus_lone.dbr'
 # M5'/M15 parchment 50% proxy (q_bloodtoxeus_lone_50): FULLY RETIRED (Will FINAL DESIGN
 # 2026-07-14). The DB lane no longer authors that record (nor the derived demon_01_cluster_
-# toxeus50 pool it fed), and it was never placed on the map. Will's final call is EXACTLY ONE
-# Blood-Toxeus chance in the entrance corridor - the drxFirstRoom ambush (q_bloodtoxeus_ambush,
-# chanceToRun retuned 15 -> 33 in the DB lane). The dead Q_BLOODTOXEUS_LONE_50_DBR constant is
-# removed with it. The chest-area egg_blooddragon_pack Toxeus join (100%) is unaffected.
+# toxeus50 pool it fed). Will's call is EXACTLY ONE Blood-Toxeus chance in the entrance
+# corridor - the q_bloodtoxeus_ambush proxy (chanceToRun=33, DB lane). b79 (Will 2026-07-16)
+# RELOCATED that single ambush from drxFirstRoom to drxFirstxistion_connection (next to the
+# tattered parchment + the native demon swarm) so the Devourer spawns WITH his guys on the
+# parchment - see the drxfirstxistion_connection INJECT_SPECS block. The dead
+# Q_BLOODTOXEUS_LONE_50_DBR constant is removed with it. The chest-area egg_blooddragon_pack
+# Toxeus join (now championMin=championMax=1, GUARANTEED 100%) is unaffected.
 # q_leinth_lone's EXACT float32 rotation (from its SV-upstream bossfight 0x05 record bytes);
 # carried verbatim so the Hemorrheus proxy's byte-shape matches the exemplar's rotation too.
 Q_LEINTH_EXEMPLAR_ROT = (-0.03390489146113396, 0.0, -0.9994250535964966,
@@ -1196,7 +1199,10 @@ B41_GUARDB_KEY    = 'xpack/levels/area08_hadespalace/hadespalace_floor04_04.lvl'
 B41_GUARDC_KEY    = 'xpack/levels/area08_hadespalace/hadespalace_crystal_04.lvl'
 B41_HELEPOLIS_KEY = 'xpack/levels/area06_elysian/elysian_fields_03.lvl'
 B41_NEFERKHA_KEY  = 'levels/world/egypt/minidungeons/thebesopttomba.lvl'
-B41_TOXEUS_KEY    = 'levels/world/xbloodcave/drxfirstroom.lvl'
+# (b79: the former B41_TOXEUS_KEY drxFirstRoom ambush host is retired - the single
+#  33% Blood-Toxeus roll now lives in the drxFirstxistion_connection INJECT_SPECS
+#  block, next to the tattered parchment. See item 5 of B41_SPECS + the parchment
+#  block below.)
 
 _B41_ROT = {'rot': Q_LEINTH_EXEMPLAR_ROT}
 B41_SPECS = {
@@ -1254,11 +1260,14 @@ B41_SPECS = {
         (b'records\\drxmap\\proxy\\q_sarcophagus_c.dbr',                        32.0, 1.0, 79.0, _B41_ROT),
         (b'records\\drxmap\\proxy\\q_sarcophagus_d.dbr',                        32.0, 1.0, 91.0, _B41_ROT),
     ],
-    # 5) TOXEUS entrance ambush - drxFirstRoom blood-cave first room (v0x0e fold, Y=1.0).
-    #    1 ambush proxy (chanceToRun=33 => a ~33% Blood-Toxeus + 2 blood-demon adds; Will retuned 15->33 2026-07-14).
-    B41_TOXEUS_KEY: [
-        (b'records\\drxmap\\proxy\\q_bloodtoxeus_ambush.dbr',                  100.0, 1.0, 50.0, _B41_ROT),
-    ],
+    # 5) TOXEUS parchment ambush - RELOCATED b79 (Will 2026-07-16: "he didn't spawn
+    #    with his guys next to the tattered parchment"). The single 33% Blood-Toxeus
+    #    corridor roll used to be placed here in drxFirstRoom (@ 100,1,50) - a DIFFERENT
+    #    room from the tattered parchment, which lives one level over in
+    #    drxFirstxistion_connection. Will expects the Devourer at the parchment. The
+    #    placement is now moved into the drxFirstxistion_connection INJECT_SPECS block
+    #    (next to finalletter + the native demon_01_cluster swarm) so he spawns WITH his
+    #    guys right on the parchment. Still EXACTLY ONE 33% roll (relocated, not added).
 }  # WIRED (b41): merged into INJECT_SPECS collision-guarded below.
 
 
@@ -1921,16 +1930,19 @@ INJECT_SPECS = {
         # (localY 10.0), ~26.6u from the finalletter above; SV-only v0e inject, flags=0,
         # no 0x14, exemplar rot. COUPLED SHIP with the arz's q_enslaver_warband records.
         EN_WARBAND_SPEC,
-        # M15 PARCHMENT TOXEUS: RETIRED (Will FINAL DESIGN 2026-07-14). This block formerly
-        # DOCUMENTED (never implemented as a spec) a repoint of the parchment demon_01_cluster
-        # inst [25] to a derived ~50% Toxeus pool. Will's final call: EXACTLY ONE Blood-Toxeus
-        # chance in the entrance corridor - the drxFirstRoom ambush (q_bloodtoxeus_ambush,
-        # chanceToRun retuned 15 -> 33 in the DB lane) - so he cannot spawn twice. The DB lane
-        # no longer authors the derived demon_01_cluster_toxeus50 pool/proxy nor the sibling
-        # q_bloodtoxeus_lone_50; the parchment room keeps its plain demon_01_cluster (no Toxeus).
-        # NO MAP CHANGE was ever made here and none is made now (this level's real specs =
-        # FINALLETTER + EN_WARBAND_SPEC only). See docs/MULTIPLAYER_COMPAT.md M4. History: the
-        # full repoint recon is in git (build31e and earlier).
+        # b79 PARCHMENT TOXEUS (Will 2026-07-16: "he didn't spawn with his guys next to the
+        # tattered parchment"). The single 33% Blood-Toxeus corridor roll is RELOCATED here
+        # from drxFirstRoom (it never sat next to the parchment - the parchment lives in THIS
+        # level). q_bloodtoxeus_ambush @ chanceToRun=33 (DB lane) reuses _BT_POOL = 1 Devourer
+        # + 2 blood-demon adds, so he spawns WITH his guys, right on the tattered parchment,
+        # amid the native demon_01_cluster swarm ([25] @ (37.16,10.005,20.46)). Coord = the
+        # walkable pocket between the parchment (finalletter @ (32.46,10.005,17.59)) and that
+        # demon swarm - both on-mesh anchors; the interpolated point sits squarely in the
+        # pocket at the shared flat floor Y=10.005. STILL EXACTLY ONE 33% roll (relocated, not
+        # added): the drxFirstRoom placement is removed, and the champion-cap gate is unchanged
+        # (no DB pool edit here). SV-only v0e inject, flags=0, no 0x14, exemplar rot (byte-shape
+        # identical to EN_WARBAND_SPEC / the widow letter). See docs/reports/b79_bloodtoxeus_spawns.md.
+        (b'records\\drxmap\\proxy\\q_bloodtoxeus_ambush.dbr', 36.0, 10.005, 19.5, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
     # HiddenValleyBorder04 = the cave-mouth "occultist" scene (the Hades merchant
     # Merchant_HiddenValley_General + wagon, which SV dressed with occult FX). The merge kept
@@ -2465,12 +2477,13 @@ _HUB_DESTS = [
 ]
 
 # --- TEST-HUB EXTRA (M5', build30): NO extra Toxeus -----------------------------------------
-# M15 (2026-07-09) UPDATE + Will FINAL DESIGN (2026-07-14): the Blood Toxeus has ZERO standalone
-# INJECT_SPECS placements. Both M5' standalones (chest room q_bloodtoxeus_lone + parchment
-# q_bloodtoxeus_lone_50) are RETIRED. The chest-area egg_blooddragon_pack Toxeus join (100%,
-# DB-lane arz edit) stays. The parchment ~50% pool-join is now ALSO RETIRED (Will's final call:
-# exactly ONE corridor Blood-Toxeus chance = the drxFirstRoom ambush @33%); the DB lane no longer
-# clones demon_01_cluster into a Toxeus pool. The old TESTHUB-only cave-mouth spawn stays retired.
+# M15 (2026-07-09) UPDATE + b79 (Will 2026-07-16): the Blood Toxeus has TWO placements, both in
+# the canonical blood cave (not the TESTHUB): (1) the deep chest-area egg_blooddragon_pack join
+# in drxBC2 (championMin=championMax=1 -> GUARANTEED 100%, DB-lane arz edit), and (2) the single
+# 33% q_bloodtoxeus_ambush proxy, RELOCATED b79 from drxFirstRoom to drxFirstxistion_connection
+# next to the tattered parchment (see that level's INJECT_SPECS block). The old M5' standalones
+# (q_bloodtoxeus_lone + q_bloodtoxeus_lone_50) stay RETIRED; the DB lane no longer clones
+# demon_01_cluster into a Toxeus pool. The old TESTHUB-only cave-mouth spawn stays retired.
 #
 # --- MONSTER TEST YARD (build33, TESTHUB-only) ----------------------------------------------
 # Will (mod author) wants to fight+tune every new hostile monster from build31/32 in one place.
