@@ -368,6 +368,15 @@ def _verify_chain(db, problems):
             elif si != spec['portrait_stem']:
                 problems.append('%s CHAIN: %s portrait %s != expected %s'
                                 % (lbl, pet.rsplit('\\', 1)[-1], si or '<none>', spec['portrait_stem']))
+            # StatusIconRed is the down-variant texture of the SAME identity
+            # (vanilla convention), so assert identity prefix, not the up-stem.
+            sir = _stem(_field1(db, pet, 'StatusIconRed'))
+            ident = spec['portrait_stem'][:-2] if spec['portrait_stem'].endswith('up') else spec['portrait_stem']
+            if _LYIA_PORTRAIT in (sir or ''):
+                problems.append('%s CHAIN: %s StatusIconRed still Lyia (%s)' % (lbl, pet.rsplit('\\', 1)[-1], sir))
+            elif not (sir or '').startswith(ident):
+                problems.append('%s CHAIN: %s StatusIconRed %s not identity %s'
+                                % (lbl, pet.rsplit('\\', 1)[-1], sir or '<none>', ident))
             problems.extend(_green_residue_on(db, pet))
         # (e) marauder sub-summon: subchain pets also zero-green
         if spec['sub_skill'] and db.has_record(spec['sub_skill']):
