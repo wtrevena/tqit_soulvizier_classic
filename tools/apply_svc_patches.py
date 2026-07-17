@@ -9999,6 +9999,92 @@ def _mirror_source_skill_kit(db, source, path, tier=None):
     db._modified.add(path)
 
 
+# b75 (Will 2026-07-16, 3rd "still green" report): Lyia-clone GREEN residue FX FIELDS
+# every _build_boss_summon pet inherits from the Lyia Leafsong base. The builder copies
+# only a NARROW skill set from the source (_SKILL_PREFIXES) and `_update_existing_fields`
+# overwrites ONLY a field the SOURCE monster also defines, so on a non-nature/non-poison
+# source the Lyia green fields survive as residue: an always-on GREEN weapon-poison glow
+# (buffSelfSkillName=envenomweapon -> skillWeaponTintGreen=1.0 + 343_Weapon_PoisonFX),
+# green FeralSpirit aura (heartofoak), green Regrowth heal, green natureswrath death, the
+# Lyia default-ARROW basic attack (a melee demon firing arrows), and the wrong maenad
+# skin. b55 stripped these on only 3 families (enslaver/marauder/hades); b75 strips them
+# for EVERY boss summon AT THE BUILDER so the WHOLE CLASS is green-clean (anti-oscillation
+# leg the b55/b71 record-level + chain-level gates never reached). field -> residue-value
+# needle. SOURCE-FAITHFUL (BL-103, mirrors _strip_foreign_anim_overrides): a field is
+# stripped IFF its value matches the needle AND the SOURCE does not itself reference an
+# equivalent skill, so a genuinely nature/poison-themed source keeps its intended green.
+_LYIA_GREEN_RESIDUE = {
+    'buffSelfSkillName':  'envenomweapon',
+    'buffSelf2SkillName': 'heartofoak',
+    'healSkillName':      'regrowth_lyia',
+    'deathEffect':        'natureswrath',
+    'attackSkillName':    'maenadsummon_attack_default',
+    'baseTexture':        'maenad_lyia',
+}
+_LYIA_GREEN_KIT_NEEDLES = ('sylvannymph', "nature'swrath", 'natureswrath')
+# Source-slot prefixes scanned for the source-faithful keep-check (skill refs + the two
+# non-skill FX fields deatheffect/basetexture are handled by value match, not this set).
+_GREEN_SRC_SLOT_PREFIXES = ('skillname', 'attackskillname', 'specialattack',
+                            'buffself', 'initialskillname', 'healskillname')
+
+
+def _source_references_needle(db, source, needle):
+    """True if the SOURCE monster references any skill/FX value containing `needle`
+    (its own intended green). Keeps a source-faithful strip from removing a green the
+    source DEFINES (e.g. a nature summon whose source really casts heartofoak)."""
+    if source is None:
+        return False
+    ff = db.get_fields(source) or {}
+    for k, tf in ff.items():
+        base = k.split('###')[0].lower()
+        if any(base.startswith(p) for p in _GREEN_SRC_SLOT_PREFIXES) or base == 'deatheffect':
+            for v in tf.values:
+                if isinstance(v, str) and needle in v.lower():
+                    return True
+    return False
+
+
+def _strip_lyia_clone_green(db, path, source):
+    """Strip Lyia-clone GREEN residue FX from a summon pet, SOURCE-FAITHFULLY: a residue
+    field is removed ONLY when the SOURCE monster does not itself reference an equivalent
+    skill (so an intended nature/poison source keeps its green). Also strips a dormant
+    green nature'swrath skillName<N> kit slot (+ its paired skillLevel<N>) so no
+    controller can fire it. Returns the list of stripped (field, value). SAFE: only
+    FX/skill/skin STRING fields are removed (never equipment/loot Monster.tpl fields);
+    a removed field is simply absent when the record is re-encoded. Generalizes the b55
+    enslaver_pet_fx strip to every _build_boss_summon pet."""
+    fields = db.get_fields(path)
+    if not fields:
+        return []
+    stripped = []
+    for base, needle in _LYIA_GREEN_RESIDUE.items():
+        if _source_references_needle(db, source, needle):
+            continue  # source intends this (or an equivalent) - keep it
+        for key in [k for k in list(fields) if k.split('###')[0].lower() == base.lower()]:
+            tf = fields[key]
+            val = str(tf.values[0]) if tf.values else ''
+            if needle in val.lower():
+                del fields[key]
+                stripped.append((base, val.rsplit('\\', 1)[-1].rsplit('/', 1)[-1]))
+    # dormant green nature'swrath kit slot(s): strip skillName<N> + paired skillLevel<N>
+    if not (_source_references_needle(db, source, 'sylvannymph')
+            or _source_references_needle(db, source, 'natureswrath')):
+        for key in [k for k in list(fields)
+                    if k.split('###')[0].lower().startswith('skillname')
+                    and k.split('###')[0][9:].isdigit() and fields[k].values]:
+            base = key.split('###')[0]
+            val = str(fields[key].values[0])
+            if any(n in val.lower() for n in _LYIA_GREEN_KIT_NEEDLES):
+                idx = base[9:]
+                for k in [kk for kk in list(fields)
+                          if kk.split('###')[0].lower() in (base.lower(), ('skilllevel' + idx).lower())]:
+                    del fields[k]
+                stripped.append((base, val.rsplit('\\', 1)[-1]))
+    if stripped:
+        db._modified.add(path)
+    return stripped
+
+
 # b40 (Will 2026-07-13): per-boss granted-SKILL icons for the summon-the-boss souls.
 # RCA: _build_boss_summon() clones summon_lyia.dbr for a crash-safe Skill_SpawnPet
 # baseline but never overrode skillUpBitmapName / skillDownBitmapName, so EVERY
@@ -10131,7 +10217,7 @@ def _set_summon_pet_portrait(db, summon_skill, pet_paths):
 
 def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, desc_tag,
                        char_level, life, life_regen, dmg_min, dmg_max, scale=None,
-                       loadout=None, player_facing=True):
+                       loadout=None, player_facing=True, protect_green=False):
     # player_facing (b71): True for the player-granted boss summons whose pet SHOWS
     # in the top-left party widget - these get an on-identity pet-bar portrait
     # (never the Lyia nymph). False for pet-of-pet summons (enslaver marauders,
@@ -10257,6 +10343,19 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         #    source's per-tier level (replicate 1/2/3 -> petLimit 3/4/5).
         _mirror_source_skill_kit(db, source, path, tier=i + 1)
 
+        # ── b75 (Will 2026-07-16): strip Lyia-clone GREEN residue FX (envenom weapon
+        #    glow, heartofoak/regrowth/natureswrath nature FX, Lyia default-arrow attack,
+        #    maenad skin) SOURCE-FAITHFULLY so the whole boss-summon CLASS is green-clean.
+        #    protect_green=True skips it for a lineage whose green is intended + owned by
+        #    another lane (the Devourer of Blood - Will 2026-07-14 "green stays", + the
+        #    EoAT/undivided lane reworking its poison). Runs AFTER the kit mirror so a
+        #    source-defined green (kept by the source-faithful check) is already present.
+        if not protect_green:
+            _stripped_green = _strip_lyia_clone_green(db, path, source)
+            if _stripped_green:
+                print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped Lyia green residue "
+                      f"({', '.join('%s=%s' % (f, v) for f, v in _stripped_green)})")
+
         # ── D19 PET-MOBILITY assert (fail-loud; bone-proven 2026-07-09): the
         # pet's PRIMARY anim row must have TABLE locomotion. Foreign-family
         # per-record RunAnim overrides do NOT play (CrocMan_Run binds 2/19 bone
@@ -10335,7 +10434,11 @@ def _create_blood_toxeus_summon(db):
         'tagSVCSummonBloodToxeus', 'tagMonsterHemorrheus',
         char_level=[40, 68, 100], life=[12000.0, 18000.0, 26000.0],
         life_regen=[30.0, 60.0, 100.0],
-        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1)
+        dmg_min=[70.0, 110.0, 160.0], dmg_max=[120.0, 180.0, 260.0], scale=2.1,
+        # b75: protect the Devourer's INTENDED poison green (Will 2026-07-14 "green
+        # stays"); its poison identity is owned by the EoAT/undivided lane. Its pets
+        # keep their green Lyia envenom rig - the class green-strip skips this family.
+        protect_green=True)
         # build36 A1 (pet-gear-parity): loadout OMITTED -> auto-derive the STRICT
         # source mirror of um_bloodtoxeus_99. BUILD-ORDER matters (round-2 comment
         # fix): this summon reads the source HERE, and at this point um_bloodtoxeus_
@@ -10419,14 +10522,16 @@ _EN_SUMMON_MARAUDERS = r'records\skills\boss skills\svc_enslaver_summonmarauders
 _EN_SUMMON_DONOR = r'records\skills\boss skills\yaoguai_summonshadowstalkers.dbr'
 _EN_BAND = [40, 68, 100]
 _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
-# BL-ENSLAVER-SMOKE (Will 2026-07-12 tour): the black Skeleton Lord renders a GREEN
-# poison aura from the RevenantPoison rig - Will wants BLACK smoke. Dedicated dark-smoke
-# CharFxPak = charfxpak_leinth_aura recolored to amgoz's own 343_dark_smoke (the exact
-# dark_smoke WILL_DECISIONS 2026-07-11 chose for the Helepolis). Applied on the MONSTER
-# record via charFxPakRunningNames (never charFxPak on a SpawnPet skill - build28 trap).
-_EN_DARK_SMOKE_FX = r'records\effects\custom\343_dark_smoke.dbr'
-_EN_DARKSMOKE_FXPAK_DONOR = r'records\drxcreatures\bloodwitch\skills\skilleffects\charfxpak_leinth_aura.dbr'
-_EN_DARKSMOKE_FXPAK = r'records\skills\monster skills\buff_self\svc_enslaver_darksmoke_charfxpak.dbr'
+# BL-ENSLAVER-SMOKE-V2 (b75, Will 2026-07-16, 3rd green report): the boss now wears
+# the SAME proven-black shroud as his marauders (_EN_SHADOWCLOAK_FX above). The prior
+# b38/b55 shroud - svc_enslaver_darksmoke_charfxpak -> 343_dark_smoke (SVEffects/
+# ambient/dark_smoke.pfx) - does NOT read as BLACK smoke in-game: 343_dark_smoke's
+# EffectEntity attaches to the WEAPON bones (Bone_R_Weapon/Bone_L_Weapon) with NO
+# emitterType=Standard, so it never envelops the body as a clean whole-body shroud,
+# and its .pfx reads GREEN (the asset's baked particle tint - one layer BELOW the DB,
+# which is why b55 fields + b71 chain + b75 transitive skill-list all came back
+# green-free). drxshadowcloakrunning_fx_pak is emitterType=Standard (whole-body) and
+# is Will-confirmed black on the marauders. See docs/reports/b75_runtime_green_rca.md.
 # build36 A2 (Enslaver rework, Will 2026-07-11: "black skeleton on the Blood-
 # Toxeus rig"): the BOSS now clones the skeleton kin um_toxeus_99 (the exact rig
 # the Devourer of Blood uses: RevenantPoison.msh + anm_skeleton01 + a full common
@@ -10687,23 +10792,23 @@ def _create_enslaver(db, tags):
         sf(B, f'specialAttack{suf}Chance', ch)
     db._modified.add(B)
 
-    # ── 3b. BL-ENSLAVER-SMOKE (Will 2026-07-12): green poison aura -> BLACK smoke.
-    #    The RevenantPoison rig renders a green poison shroud on the all-black skeleton;
-    #    Will wants black smoke. Give the boss a dark-SMOKE character shroud on the
-    #    MONSTER record via charFxPakRunningNames (the proven Enslaver/Vashkarr route;
-    #    NEVER charFxPak on a SpawnPet skill - build28 crash trap). Dedicated pak =
-    #    charfxpak_leinth_aura recolored to amgoz's own 343_dark_smoke (the exact FX
-    #    WILL_DECISIONS 2026-07-11 picked for the Helepolis). The Devourer variant
-    #    (um_bloodtoxeus_99) is a SEPARATE record and is untouched. P2 visual: VERIFY
-    #    in the built arz + A9 render chain + Will's next tour. ──
-    if db.has_record(_EN_DARKSMOKE_FXPAK_DONOR) and db.has_record(_EN_DARK_SMOKE_FX):
-        db.clone_record(_EN_DARKSMOKE_FXPAK_DONOR, _EN_DARKSMOKE_FXPAK)
-        sf(_EN_DARKSMOKE_FXPAK, 'particleEffectNames', _EN_DARK_SMOKE_FX)  # green mist -> 343_dark_smoke
-        db._modified.add(_EN_DARKSMOKE_FXPAK)
-        sf(B, 'charFxPakRunningNames', [_EN_DARKSMOKE_FXPAK], S)           # black smoke shroud (monster record)
+    # ── 3b. BL-ENSLAVER-SMOKE-V2 (b75, Will 2026-07-16, 3rd "still green" report):
+    #    give the boss the marauders' PROVEN-BLACK whole-body shroud instead of the
+    #    green-reading dark-smoke pak. Will verbatim: "steal the black smoke around his
+    #    Enslaved Shadow Marauders and add that black smoke around him." The marauders
+    #    wear drxshadowcloakrunning_fx_pak (_EN_SHADOWCLOAK_FX) - emitterType=Standard,
+    #    whole-body, Will-confirmed black in-game. The prior svc_enslaver_darksmoke ->
+    #    343_dark_smoke shroud renders GREEN (weapon-bone attach, no whole-body emitter,
+    #    green .pfx tint - RCA in docs/reports/b75_runtime_green_rca.md). Applied on the
+    #    MONSTER record via charFxPakRunningNames (never charFxPak on a SpawnPet skill -
+    #    build28 crash trap); the soul PETS inherit it (enslaver_pet_fx copies the source
+    #    monster's shroud). The Devourer (um_bloodtoxeus_99) is a SEPARATE record and is
+    #    untouched (its poison identity is owned by the EoAT/undivided lane). ──
+    if db.has_record(_EN_SHADOWCLOAK_FX):
+        sf(B, 'charFxPakRunningNames', [_EN_SHADOWCLOAK_FX], S)   # proven-black whole-body smoke
         db._modified.add(B)
     else:
-        print("  ENSLAVER SMOKE: dark-smoke FX donor(s) missing; boss keeps the green rig aura")
+        print("  ENSLAVER SMOKE: drxshadowcloak FX missing; boss keeps the rig default aura")
 
     # ── 4. Friendly pet-of-pet marauders (reuse _build_boss_summon on the
     #    marauder rig -> friendly pet + summon skill). isPetDisplayable off (the

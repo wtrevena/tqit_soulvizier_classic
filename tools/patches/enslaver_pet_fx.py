@@ -75,9 +75,12 @@ TypedField so the pet's field is byte-identical to the monster it mirrors):
      Marshal pet's specialAttack + kit are its source's own hades/spirit combat kit
      (hero_hadesbolt etc. - RCA'd, not green), so no green marker matches them.
   2. INHERIT the source monster's shroud: copy the SOURCE's charFxPakRunningNames
-     TypedField onto the pet -> enslaver pets get svc_enslaver_darksmoke (the b38
-     black smoke), marauder pets get drxshadowcloakrunning_fx_pak (the shadow cloak
-     the marauder monster already wears), Hades Marshal pets get hades2_shadowcloud
+     TypedField onto the pet -> enslaver pets get the boss's shroud (b75: now
+     drxshadowcloakrunning_fx_pak, the SAME proven-black whole-body smoke the
+     marauders wear - the b38/b55 svc_enslaver_darksmoke -> 343_dark_smoke pak read
+     GREEN in-game, see docs/reports/b75_runtime_green_rca.md), marauder pets get
+     drxshadowcloakrunning_fx_pak (the shadow cloak the marauder monster already
+     wears), Hades Marshal pets get hades2_shadowcloud
      (the dark shadow-cloud the Marshal monster already wears). Each pet ends up
      with EXACTLY its own source monster's shroud (verbatim TypedField copy).
      SAFETY: this is crash-safe (charFxPakRunningNames is a pure string FX-path
@@ -108,8 +111,9 @@ shroud whose pet still wears the old green rig."
 Ground-truth sweep of the golden arz: EXACTLY 5 records carry a custom
 charFxPakRunningNames, and all 5 are MONSTERs. Of those 5, EXACTLY 3 are
 _build_boss_summon soul sources whose pets kept the green rig (the three families
-here): um_toxeus_enslaver_99 (svc_enslaver_darksmoke), um_enslaver_marauder_99
-(drxshadowcloak), svc_um_hadesmarshal_80 (hades2_shadowcloud). The other 2 shroud
+here): um_toxeus_enslaver_99 (b75: now drxshadowcloak, was svc_enslaver_darksmoke
+which read green), um_enslaver_marauder_99 (drxshadowcloak), svc_um_hadesmarshal_80
+(hades2_shadowcloud). The other 2 shroud
 monsters have NO soul-summon pet, so nothing diverges: um_vashkarr_99
 (drxshadowcloak) - its soul is a STAT _create_soul, not a summon, and its
 summonhorde raises separate fodder, not a vashkarr pet; boss_satyrshaman_55
@@ -330,6 +334,74 @@ def _green_residue_on(db, pet):
     return out
 
 
+# ── b75 TRANSITIVE SKILL-LIST GREEN SWEEP (anti-oscillation leg 3) ────────────
+# The b55 verify asserted the pet's own FX FIELDS; the b71 chain gate walked the
+# soul->skill->icon->portrait chain. Neither followed the pet's SKILL LIST into the
+# skills it actually CASTS. This leg enumerates every skill reference reachable from
+# a gated pet (attackSkill / skillName* / specialAttack* / buffSelf* / heal / init /
+# buffSkillName / petSkillName) and TRANSITIVELY decodes each, failing loud on any
+# green render marker (skillWeaponTintGreen>0, or an FX/skill/pak ref whose name is a
+# known green nature/poison effect). Negative-tested: planting an envenomweapon ref on
+# a gated pet makes this fail. Bounded-depth, cycle-safe.
+_GREEN_NAME_NEEDLES = ('envenom', 'natureswrath', "nature'swrath", 'heartofoak',
+                       'regrowth_lyia', 'sylvannymph', 'poisoncharfx', 'weapon_poison',
+                       'poisonweaponenchant')
+_SKILL_REF_SUBSTR = ('skillname', 'attackskill', 'buffself', 'healskill',
+                     'petskill', 'buffskillname', 'petskillname', 'petbonusname')
+_FX_REF_SUBSTR = _SKILL_REF_SUBSTR + ('charfxpak', 'particleeffect', 'skilleffect',
+                                      'deatheffect', 'initialskill')
+
+
+def _skill_refs(fields):
+    out = []
+    for k, tf in (fields or {}).items():
+        base = k.split('###')[0].lower()
+        if any(s in base for s in _FX_REF_SUBSTR):
+            for v in tf.values:
+                if isinstance(v, str) and v.lower().endswith('.dbr'):
+                    out.append(v)
+    return out
+
+
+def _transitive_green_problems(db, pet, maxdepth=6):
+    """Walk the pet's full skill/FX closure; return green-render findings. Empty=clean."""
+    problems = []
+    seen = set()
+
+    def norm(s):
+        return str(s).replace('/', '\\').lower()
+
+    def walk(name, depth, path):
+        key = norm(name)
+        if key in seen or depth > maxdepth:
+            return
+        seen.add(key)
+        if not db.has_record(name):
+            return
+        fields = db.get_fields(name) or {}
+        for k, tf in fields.items():
+            base = k.split('###')[0].lower()
+            # explicit green weapon tint
+            if base == 'skillweapontintgreen':
+                try:
+                    if float(tf.values[0]) > 0.0:
+                        problems.append('%s: skillWeaponTintGreen=%s via %s'
+                                        % (pet.rsplit('\\', 1)[-1], tf.values[0], path))
+                except (TypeError, ValueError, IndexError):
+                    pass
+            # green FX/skill ref by name
+            if any(s in base for s in _FX_REF_SUBSTR):
+                for v in tf.values:
+                    if isinstance(v, str) and any(n in v.lower() for n in _GREEN_NAME_NEEDLES):
+                        problems.append('%s: green ref %s=%s via %s'
+                                        % (pet.rsplit('\\', 1)[-1], base, v.rsplit('\\', 1)[-1], path))
+        for ref in _skill_refs(fields):
+            walk(ref, depth + 1, path + '->' + ref.rsplit('\\', 1)[-1])
+
+    walk(pet, 0, pet.rsplit('\\', 1)[-1])
+    return problems
+
+
 def _verify_chain(db, problems):
     """b71 anti-oscillation: walk the LIVE soul->skill->icon->pets->portrait->green
     ->marauder chain on the FINAL db for each family in _CHAIN. Appends to problems."""
@@ -423,9 +495,11 @@ def verify(db, tags=None):
     that exists in the FINAL assembled db, assert:
       (1) NO green Lyia-residue field survives (marker-matched), and
       (2) the pet carries the matching dark shroud in charFxPakRunningNames
-          (svc_enslaver_darksmoke for the enslaver soul-pet, drxshadowcloak for the
-          marauder pet, hades2_shadowcloud for the Hades Marshal pet - each == its
-          OWN source monster's shroud).
+          (b75: drxshadowcloak for the enslaver soul-pet AND the marauder pet,
+          hades2_shadowcloud for the Hades Marshal pet - each == its OWN source
+          monster's shroud), and
+      (3) b75 TRANSITIVE gate: no skill reachable from the pet references a green
+          tint/pak/nature-poison marker.
     Negative-tested: planting envenomweapon back on any pet, or clearing/altering the
     shroud, fails this gate."""
     problems = []
@@ -470,6 +544,13 @@ def verify(db, tags=None):
     # ->portrait->green->marauder chain (catches the record-level-vs-chain-level gap
     # that let build44 ship the wrong summon icon + Lyia pet-bar portrait).
     _verify_chain(db, problems)
+    # b75 anti-oscillation leg 3: TRANSITIVE SKILL-LIST green sweep. For every gated
+    # pet (the 3 families + the marauder/hades sub-pets), no skill reachable from the
+    # pet record may reference a green tint/pak/nature-poison marker. Closes the
+    # fields->chain->RUNTIME-SKILL blind spot (a green the pet CASTS, not just carries).
+    for pet in _ALL_PETS:
+        if db.has_record(pet):
+            problems.extend(_transitive_green_problems(db, pet))
     if problems:
         raise SystemExit('enslaver_pet_fx.verify FAILED:\n  ' + '\n  '.join(problems))
     print('  enslaver_pet_fx.verify: OK (Enslaver + marauder soul-pets carry the '

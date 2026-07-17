@@ -1,4 +1,24 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🟢 **B75 RUNTIME-GREEN (Will 2026-07-16, 3rd "still green" report) - FIX COMPLETE + SCRATCH-VERIFIED.**
+> Branch `fix/runtime-green`. RCA: the Enslaver's green is NOT a DB field/chain/skill (all three scans
+> green-free) - it is the SHROUD ASSET. The boss + soul pets wore `svc_enslaver_darksmoke -> 343_dark_smoke
+> (SVEffects/ambient/dark_smoke.pfx)`, which attaches to the WEAPON bones with NO `emitterType=Standard`
+> (not a whole-body shroud) and whose `.pfx` reads GREEN - one layer BELOW the DB, the last blind spot after
+> fields (b55) + chain (b71). **FIX:** boss `um_toxeus_enslaver_99` shroud -> the marauders' PROVEN-black
+> `drxshadowcloakrunning_fx_pak` (emitterType=Standard, Will-confirmed black; the soul pets inherit it);
+> dead `svc_enslaver_darksmoke_charfxpak` clone removed. **CLASS FIX:** new upstream
+> `_strip_lyia_clone_green` in `_build_boss_summon` strips Lyia-clone green residue
+> (envenom/heartofoak/regrowth/natureswrath/Lyia-arrow/maenad-skin) SOURCE-FAITHFULLY from EVERY boss
+> summon (54 pets / 15 families) - anti-oscillation. **PROTECTED:** the Devourer `bloodtoxeus_1-3`
+> (`protect_green=True`, Will "green stays" + EoAT lane owns its poison). **GATE:** `enslaver_pet_fx.verify`
+> extended with a TRANSITIVE skill-list green sweep (leg 3) + negative-tested. Scratch md5 `baa76edb`
+> (idempotent x2); record-diff vs build45 `917d9047` = 1 removed + 55 modified, all intended, 0 collateral;
+> contracts 0 new P0/P1/P2; B-SUMMON + render-chain + validate_tags + A7 golden all PASS. **FLAGGED:**
+> (a) diadochi generals use the same 343_dark_smoke shroud - may read green too (other lane);
+> (b) EoAT lane to decide the Devourer pet's green->black poison. Report:
+> `docs/reports/b75_runtime_green_rca.md`. Will test: restart Steam, DISMISS + RE-SUMMON the Enslaver.
+>
+
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction
