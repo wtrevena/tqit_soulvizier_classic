@@ -3902,6 +3902,18 @@ def main():
             "Occult/Hunting golden freeze guard FAILED on the written .arz; "
             "this build does not ship (A7 gate)")
 
+    # ── UNLOCK-ALIGNMENT gate (b77, fail-loud): every live mastery button's real
+    # unlock gate (skillTier threshold) must match the row it is drawn on, and no
+    # secondary skillMasteryLevelRequired floor may lift it above that row (13
+    # SV-faithful REQ-EXCEEDS-ROW waivers). Guards the b74/b77 fix wave against any
+    # future re-drift. See tools/gate_unlock_alignment.py + docs/reports/
+    # b77_unlock_alignment_fix.md.
+    from gate_unlock_alignment import validate as _validate_unlock
+    if _validate_unlock(str(output_path)) != 0:
+        raise SystemExit(
+            "Unlock-alignment gate FAILED on the written .arz; a mastery button's "
+            "skillTier no longer matches its drawn row (b77 gate)")
+
     # ── F2 contract gate (build30, post-vet): the summons contract lane
     # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build
     # is contract-clean by construction (the vet proved the validators above
