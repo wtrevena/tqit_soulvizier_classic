@@ -2980,9 +2980,40 @@ audit: report-only, no further unambiguous non-golden GT mismatch beyond A-E.
 RESIDUALS / WILL-CONFIRM (flagged in report, unchanged): (1) Item C column-6 t4 holds the CANONICAL
 SV098 Throwing Knife, so Darklings' bar passes behind it as an empty-row passthrough - a fully "t4
 EMPTY" canonical column needs Will's ruling to move Throwing Knife or a holistic m5 reflow (the
-build42 reflow that wrecked trees was reverted in build44). (2) Item D wire is visual-only, no
-mechanics relation. (3) Item E: SV098 exact c4t3 slot restore would need a holistic Earth col-4 reflow
-displacing the Flame Surge line.
+build42 reflow that wrecked trees was reverted in build44). (2) ~~Item D wire is visual-only, no
+mechanics relation~~ **SUPERSEDED 2026-07-16 (Item D true-augment round, below)**. (3) Item E: SV098
+exact c4t3 slot restore would need a holistic Earth col-4 reflow displacing the Flame Surge line.
+
+## BUILD45 ITEM-D TRUE-AUGMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
+
+Will ruling 2026-07-16: *"so how does dark invigoration work? I think it should augment shadow link."*
+FINDING (corrects the build45 vet): Dark Invigoration (drxopenwound) **ALREADY** augments Shadow Link
+(drxbladehoning) - it is a true `Skill_Modifier` bound by the LIVE occult SkillTree
+`records\skills\stealth\drxstealthskilltree.dbr` (PC `skillTree5`) tree-order **drxbladehoning@6 (base,
+Skill_BuffRadiusToggled) -> drxopenwound@7 -> drxanatomy@8 (modifiers)**. TQ binds a Skill_Modifier to
+its base **purely by SkillTree numeric order** (nearest preceding non-modifier); PROVEN from vanilla
+TQAE (Storm Nimbus/Heart of Frost/Static Charge + Warfare WarWind/Onslaught/BattleRage + Defense
+Rally/**BattleAwareness (Skill_BuffRadiusToggled) + Focus/IronWill**) - zero record/UI back-reference
+exists in vanilla either. The build45 "no gameplay relation" line was a VET ERROR (it checked
+skillDependancy/buffSkillName, not the SkillTree). Dark Invig's `offensiveLifeMin` (flat vitality dmg)
++ bleed fold into the character while Shadow Link's aura is toggled, mirroring Heart of Frost/Storm
+Nimbus; pairs with Shadow Link's -VitRes enemy debuff. Functional, not dead weight.
+
+CHANGE: `tools/patches/mastery_sv_alignment.py` item D upgraded visual-wire -> TRUE-augment: apply()
+**asserts** the tree-order binding fail-loud (module = ratified guarantor); verify() re-asserts at
+**mechanism level** (walks live SkillTree, `nearest-preceding-non-modifier(drxopenwound) ==
+drxbladehoning`) + negative test. build45 UI wire (c3 column: Shadow Link t2 square / Dark Invig t4
+circle / Shadow Lore t6 circle + upward bar = the vanilla Storm Nimbus column shape) KEPT. Doubled
+namespace: the twin `records\skills\skills\stealth\drxstealthskilltree.dbr` is referenced by NO PC
+(dead orphan) -> no live/dead split; binding holds on the live tree; twin untouched.
+
+VERIFICATION: **ZERO arz change** - mirroring Heart of Frost needs only tree-order (already present) +
+the already-waived UI wire, so NO new golden override. Full scratch build EXIT 0, in-build apply
+assert + registry verify OK, A7 golden gate PASS (74 waived / 0 hard), arz md5
+`a659594ed85f8f5609bcab57fa7b757b` **byte-identical to build45**; record-diff vs a659594e = **0/0/0**;
+verify() negative test FAILS as required; contracts souls+summons GATE PASS (0 P0 / 0 P1 / 112 P2, no
+new); validate_tags PASS. Report: `docs/reports/b70_mastery_sv_alignment.md` item D. NOT deployed
+(awaiting vet + Will test).
 
 GOLDEN: +22 owner_approved_overrides (16 emblem m5/m6, 2 family positions, 2 Dark-Aperture-conn-clear,
 2 Shadow-Link-conn-wire), each citing 'b70 mastery SV-alignment build45' + the GT file/Will ruling.

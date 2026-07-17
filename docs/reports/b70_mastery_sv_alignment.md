@@ -24,7 +24,7 @@ SV098 source verified directly: `upstream/soulvizier_098i/Database/database.arz`
 | 6 | Eviscerate should be a square | `drxtakedown_eviscerate` m6 skill18 | **fixed-here**: CIRCLE -> SQUARE | WILL RULING 2026-07-16 verbatim |
 | 7 | Dark Aperture should be a circle | `drxdarklings_darkaperture` m5 skill26 | verified-already-correct (isCircular=1 in build44) + moved column (C) | pre-098i GT 8.3 + Will |
 | 8 | Darklings + Dark Aperture in Shadow Link's column | m5 skill25/skill26 | **fixed-here (C)**: moved col3 -> col6 (t3/t5), canonical base@t3/augment@t5; Dark Aperture stray `_right` bar cleared | pre-098i GT 8.5/8.6 + Will |
-| 9 | Dark Invigoration should be connected at the 16 row | `drxopenwound` m5 skill07 (c3t4) | **fixed-here (D)**: added straight bar Shadow Link(c3t2)->Dark Invigoration(c3t4). WILL-INTENT visual wire | WILL directive 2026-07-16 |
+| 9 | Dark Invigoration should augment Shadow Link | `drxopenwound` m5 skill07 (c3t4) | **PROVEN-ALREADY-TRUE + hardened (D)**: the LIVE occult SkillTree already binds drxopenwound@7 to drxbladehoning@6 by tree-order (TQ's real modifier mechanism); apply() now asserts it fail-loud + verify() re-asserts at mechanism level; build45 UI wire kept. build45's "no gameplay relation" was a VET ERROR (checked record fields, not the SkillTree). Zero arz change. | WILL ruling 2026-07-16 + vanilla TQAE mechanism |
 | 10 | Breach / Shadow Grasp | `drxlaytrap`(Breach c4t3) / `drxlaytrap_rapidconstruction`(Shadow Grasp c4t5) | verified-already-correct (build44 = SV098: c4t3 straight bar to c4t5) | SV098 GT m5 |
 | 11 | Toxic Concoction - Poisonous Gas - Aphotic Ichor chain | `drx_scrap` c1t4 straight len4 bar up through PoisonGas to Aphotic Ichor | verified-already-correct (build44 byte-matches pre-098i GT) | pre-098i GT 8.4 |
 | 12 | Row misalignment | (row geometry Y=465-62*tier) | verified-already-correct: build44 = build41 layout; all buttons grid-valid on the 7-row lattice; the perceived misalignment was downstream of the shape bug (main node drawn as an undersized circle) - resolved by the shape flips (A) | SV098 GT sec 1 |
@@ -89,17 +89,73 @@ column is impossible without either relocating the canonical Throwing Knife (nee
 a holistic m5 reflow (the build42 reflow that "wrecked the trees" was reverted in build44). This is
 the best available column and resolves Will's stated complaint (family OUT of Shadow Link's column).
 
-### D. Dark Invigoration connector (WILL-INTENT wire)
-Dark Invigoration (`drxopenwound`, c3t4/y217) stays put (already correct). Added a straight
-`[Bottom,Middle,Top]` bar to **Shadow Link (`drxbladehoning`, c3t2/y341)** so its bar draws UP
-through the now-vacated c3t3 to Dark Invigoration at c3t4 (the 16-point row). Per the conn model the
-LOWER skill owns the bar and draws upward, so the bar lives on Shadow Link.
-**GAMEPLAY-RELATION FINDING (flagged):** `drxopenwound` has NO
-`skillDependancy`/`buffSkillName`/modifier reference to `drxbladehoning` (its only skill-ref is a
-`charFxPakSelfNames` effect). SV098 col3 is bare (no bars in any SV). So this connector is a **purely
-VISUAL Will-intent wire** - there is no underlying gameplay augment relation between Dark Invigoration
-and Shadow Link. Wired per Will's directive; flagged so Will knows the visual implies a relation the
-mechanics do not have.
+### D. Dark Invigoration = TRUE modifier of Shadow Link (Will ruling 2026-07-16)
+> **Will (2026-07-16, verbatim):** *"so how does dark invigoration work? I think it should augment
+> shadow link."* Build45 drew the visual connector but the vet concluded "no gameplay relation exists."
+> This round proves that conclusion was **WRONG** and that the augment is **already real**.
+
+**THE MECHANISM (proven from vanilla TQAE `database.arz`, make-or-break step).** The engine binds a
+`Skill_Modifier` to its base skill **purely by the mastery SkillTree record's numeric `skillName{N}`
+ordering** - a modifier attaches to the **nearest lower-indexed non-modifier** skill. There is **no
+back-reference anywhere else**: not on the modifier record, not on the base record, not on the UI
+button. Proof by elimination + genuine pairs:
+
+- Vanilla **Heart of Frost** (`stormnimbus_heartoffrost`) and **Static Charge**
+  (`stormnimbus_staticcharge`) - the canonical toggled-aura modifiers - carry **zero** reference to
+  Storm Nimbus (dumped every field: only their own icons/stats; no `skillDependancy`, no `buffSkillName`
+  pointing at the base). Storm Nimbus carries no reference to them. Their UI buttons
+  (`mastery 4/skill05,06`) carry only their own `skillName` + position. **The ONLY datum linking them
+  to Storm Nimbus is `stormskilltree.dbr` slot order: StormNimbus@8 -> HeartofFrost@9 -> StaticCharge@10.**
+  Since the game demonstrably links them, tree-order is the mechanism (nothing else could be).
+- Confirmed on **6+ vanilla base+modifier groups across 3 masteries**: Warfare `WarWind@3 ->
+  WarWind_Lacerate@4`, `Onslaught@10 -> IgnorePain/Hamstring/Ardor@11-13` (3 modifiers, all bind to
+  Onslaught - proving "nearest **preceding non-modifier**", since @12/@13's immediate predecessor is
+  itself a modifier), `BattleRage@14 -> CrushingBlow/CounterAttack@15-16`; Defense `Rally@6 ->
+  Inspiration/Defiance@7-8`, and **decisively `BattleAwareness@13 (Skill_BuffRadiusToggled - Shadow
+  Link's EXACT class) -> Focus/IronWill@14-15`** (a toggled aura modified by `Skill_Modifier`s - the
+  precise vanilla precedent for Shadow Link). Negative: mastery/passive skills (`WeaponTraining`,
+  `Skill_Mastery`) are non-modifiers and bind nothing.
+
+**CURRENT-BINDING FINDING (corrects the build45 vet).** The **LIVE** occult SkillTree
+`records\skills\stealth\drxstealthskilltree.dbr` (referenced by both PCs' `skillTree5` field =
+`records\xpack\creatures\pc\{male,female}pc01.dbr` = mastery 5) already orders:
+
+```
+  6  drxbladehoning.dbr   Skill_BuffRadiusToggled   (Shadow Link  - BASE, valid modifier base)
+  7  drxopenwound.dbr     Skill_Modifier            (Dark Invigoration - MODIFIER)  <- binds to @6
+  8  drxanatomy.dbr       Skill_Modifier            (Shadow Lore  - MODIFIER)       <- binds to @6
+```
+
+So **Dark Invigoration ALREADY binds to (augments) Shadow Link** - exactly like StormNimbus@8 ->
+HeartofFrost@9 -> StaticCharge@10. Its `offensiveLifeMin` (flat vitality/Life damage 3..42) +
+`offensiveSlowBleeding` (bleed DoT) fold into the character while Shadow Link's toggled aura is up, the
+**same way** Heart of Frost's `offensiveColdModifier` folds in while Storm Nimbus is toggled - and it
+pairs thematically with Shadow Link's aura (a `-Vitality Resistance` debuff on nearby enemies, b57).
+**It is functional, not dead weight.** The build45 "no gameplay relation exists" line checked record
+cross-references (`skillDependancy`/`buffSkillName`), which is **not** TQ's modifier-binding surface -
+a vet error.
+
+**What this round changes.** *Nothing in the arz* (the augment was already present in build44 AND
+build45 - the scratch rebuild is **byte-identical, md5 `a659594e`**). Mirroring Heart of Frost requires
+**only** tree-order + the UI shape - adding any record-level field would **deviate** from the vanilla
+shape, so no new golden override is needed. This round: (1) `apply()` now **asserts** the tree-order
+binding **fail-loud** (the module is the ratified GUARANTOR - a future reshuffle that put a non-modifier
+between Shadow Link and Dark Invigoration would fail the build); (2) `verify()` re-asserts it at
+**mechanism level** (walks the live SkillTree, proves `nearest-preceding-non-modifier(drxopenwound) ==
+drxbladehoning`) + negative test; (3) the build45 UI wire is **kept** - it now correctly depicts the
+real augment.
+
+**UI shape (kept from build45, already the vanilla Storm Nimbus column shape).** All in **column 3**:
+Shadow Link (skill09, t2/y341, **square** base) -> Dark Invigoration (skill07, t4/y217, **circle**
+modifier) -> Shadow Lore (skill08, t6/y93, **circle** modifier), Shadow Link owning the straight
+`[Bottom,Middle,Top]` bar drawing UP. Identical stacked base-square + modifier-circles + bar as vanilla
+StormNimbus/HeartofFrost/StaticCharge.
+
+**Doubled-namespace resolution.** A twin SkillTree exists at
+`records\skills\skills\stealth\drxstealthskilltree.dbr` but is referenced by **no PC/record** (dead
+orphan; ends at slot 25, lacks the Darklings entries). Gameplay reads the **live** stealth tree only,
+so there is **no live/dead split** - the binding holds on the record the mastery actually uses. The
+twin is left untouched (editing it would be inert); its order happens to match anyway.
 
 ### E. Earth Soften Metal - NO-OP (documented)
 The task brief's literal target is "c4t3 -> c4t2 (SV=c4t2)". **Direct read of SV098
@@ -139,6 +195,9 @@ calls (Item C residual, Item D gameplay-relation, Item E) are documented above r
 - **2x** `field::...drxdarklings_darkaperture.dbr::skillConnection{On,Off}` (_right bar -> cleared) - Item C (pre-098i GT).
 - **2x** `field::...drxbladehoning.dbr::skillConnection{On,Off}` (straight wire added) - Item D (WILL directive 2026-07-16).
 Item-A shape fields need NO new override (they revert to the frozen golden baseline = zero drift).
+**Item-D true-augment round (2026-07-16) adds NO new override**: the gameplay binding is SkillTree
+tree-order (already present, zero arz change); mirroring Heart of Frost requires only tree-order + the
+already-waived UI wire, so there is no new golden-frozen field to sanction.
 
 ## Verification (all GREEN)
 - `py_compile` (module + hunting_occult_ui + __init__) + registry selfcheck (26 modules) + golden JSON valid.
@@ -148,3 +207,25 @@ Item-A shape fields need NO new override (they revert to the frozen golden basel
 - A7 golden freeze gate: **PASS (74 waived, 0 hard)** via the exact build code path.
 - `verify()` negative test: flipping Poisonous Gas back to square -> `verify()` FAILS as required.
 - Full DB build + in-build gate battery: see BUILD45 gate record in BACKLOG (arz md5 recorded there).
+
+### Item-D true-augment verification round (2026-07-16, `feat/mastery-sv-fix`)
+- **Mechanism proof:** decoded vanilla TQAE `database.arz` - Storm Nimbus/Heart of Frost/Static Charge
+  (toggled-aura precedent) + Warfare (WarWind, Onslaught x3, BattleRage) + Defense (Rally,
+  **BattleAwareness = Skill_BuffRadiusToggled + Focus/IronWill**) - proving modifier<->base binding is
+  the SkillTree numeric `skillName{N}` order (nearest preceding non-modifier), with zero record/UI
+  back-reference. Negative: `Skill_Mastery`/`Skill_Passive` bind nothing.
+- **Current binding:** live occult tree `drxstealthskilltree.dbr` (PC `skillTree5`) already orders
+  drxbladehoning@6 -> drxopenwound@7 -> drxanatomy@8; `_modifier_binding_base(occult, drxopenwound) ==
+  drxbladehoning.dbr`. Dead twin `...skills\skills\stealth\...` referenced by nobody.
+- **apply() assertion** (fail-loud tree-order guarantor) + **verify() mechanism-level assertion** pass
+  on the final assembled arz during the full build (registry verify `mastery_sv_alignment` OK).
+- **Negative test:** planting a non-modifier into base slot 6 -> `verify()` FAILS with the exact
+  `[D] ... tree-order binding base=... want drxbladehoning.dbr` message.
+- **Full scratch DB build** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`) EXIT 0, all 26 registry verifies
+  OK, A7 golden gate **PASS (74 waived, 0 hard)**, arz md5 **`a659594ed85f8f5609bcab57fa7b757b`**
+  (BYTE-IDENTICAL to build45 -> the true augment was already present; this round is verify + docs only).
+- **record-diff vs build45 scratch `a659594e`** = **0 ADDED / 0 REMOVED / 0 MODIFIED** (exactly this
+  change: nothing in the arz).
+- **contracts** (souls+summons, full resources+Text.arc) **GATE PASS** (0 P0 / 0 P1 / 112 P2, no new;
+  map/quests unchanged - DB-only wave). **validate_tags PASS** (2 pre-existing base monster-name WARNs,
+  non-blocking).

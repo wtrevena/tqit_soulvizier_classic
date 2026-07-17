@@ -54,14 +54,33 @@ C. OCCULT FAMILY PLACEMENT (m5): move Darklings (skill25/drxdarklings) + Dark
    passthrough; a fully "t4 EMPTY" column needs a holistic m5 reflow (previously
    reverted) or Will's ruling to relocate Throwing Knife. UI fields only.
 
-D. DARK INVIGORATION CONNECTOR (m5): Dark Invigoration (skill07/drxopenwound) stays
-   at c3 t4 (y217, already correct). ADD a straight [Bottom,Middle,Top] bar to Shadow
-   Link (skill09/drxbladehoning, c3 t2 y341) so its bar draws UP through the now-empty
-   c3 t3 to Dark Invigoration at t4. WILL directive ("Dark Invigoration should be
-   there connected ... at the 16 row mark"). WILL-INTENT wire, NOT ground truth (SV098
-   col3 is bare). GAMEPLAY-RELATION FINDING (flagged): drxopenwound has NO
-   skillDependancy/buffSkillName/modifier reference to drxbladehoning - the connector
-   is purely VISUAL; no augment relation exists.
+D. DARK INVIGORATION = TRUE MODIFIER OF SHADOW LINK (m5). WILL RULING 2026-07-16
+   verbatim: "so how does dark invigoration work? I think it should augment shadow link."
+   MECHANISM (proven from vanilla TQAE, see report item D + docstring below): the engine
+   binds a Skill_Modifier to its base skill PURELY by the mastery SkillTree's numeric
+   skillName{N} ORDERING - a modifier attaches to the nearest LOWER-indexed non-modifier
+   skill. There is NO back-reference on the modifier record, the base record, or the UI
+   button (proven: vanilla Heart of Frost / Static Charge carry zero reference to Storm
+   Nimbus; the ONLY linking datum is StormSkillTree slot order Nimbus@8 -> HeartofFrost@9
+   -> StaticCharge@10). CURRENT-BINDING FINDING: the LIVE occult tree
+   (records\skills\stealth\drxstealthskilltree.dbr, referenced by malepc01/femalepc01
+   skillTree5 = mastery 5) ALREADY orders drxbladehoning@6 (Shadow Link, Skill_BuffRadius-
+   Toggled - a valid modifier base, exactly like vanilla BattleAwareness) -> drxopenwound@7
+   (Dark Invigoration, Skill_Modifier) -> drxanatomy@8 (Shadow Lore, Skill_Modifier). So
+   Dark Invigoration ALREADY binds to (augments) Shadow Link - its offensiveLifeMin flat
+   vitality damage + bleeding fold into the character while Shadow Link's toggled aura is
+   up, the SAME way Heart of Frost's cold modifier folds into Storm Nimbus. The build45
+   "no gameplay relation exists" line was a VET ERROR: it checked record cross-references
+   (skillDependancy/buffSkillName), which is NOT TQ's modifier-binding surface. This module
+   now (a) ASSERTS that tree-order binding fail-loud in apply() (module = ratified guarantor;
+   idempotent - the arz already satisfies it), and (b) re-asserts it at MECHANISM level in
+   verify(). The build45 UI wire (Shadow Link straight bar UP through c3t3 to Dark
+   Invigoration at c3t4, plus the c3-column stack Shadow Link t2 square base / Dark Invig
+   t4 circle / Shadow Lore t6 circle) is KEPT unchanged - it now correctly DEPICTS a real
+   augment, exactly mirroring the vanilla Storm Nimbus column (base square + modifier
+   circles stacked, connected by a bar). Zero arz field change vs build45 (the augment was
+   already present); no new golden override needed (mirroring Heart of Frost requires ONLY
+   tree-order + UI - adding any record field would DEVIATE from the vanilla shape).
 
 E. EARTH Soften Metal (m3): NO-OP. The task brief's literal target (c4t2) already
    holds in build44 (drxringofflame_softenmetal @ x428 y341 = c4t2). SV098's authoritative
@@ -90,7 +109,7 @@ Contract: patches-registry module - MODULE_NAME + apply(db, tags) + verify(db, t
 """
 
 MODULE_NAME = ("BUILD45 mastery SV-alignment (Occult/Hunting shapes + emblem x9 + "
-               "Darklings family move + Dark Invigoration wire)")
+               "Darklings family move + Dark Invigoration TRUE-augments Shadow Link)")
 
 # ---------------------------------------------------------------------------
 # dtype ids (mirror arz_patcher.DATA_TYPE_*): 0 = INT, 2 = STRING, 3 = BOOL.
@@ -150,9 +169,20 @@ _STRAIGHT_OFF = [
     r"InGameUI\Icons\Skills\SkillBars\SkillBarTopOff01.tex",
 ]
 
-# --- D. Shadow Link -> Dark Invigoration wire. ---------------------------------
+# --- D. Shadow Link -> Dark Invigoration wire + TRUE modifier binding. ----------
 _SHADOWLINK_SKILL = "records\\skills\\stealth\\drxbladehoning.dbr"
 _DARKINVIG_SKILL = "records\\skills\\stealth\\drxopenwound.dbr"
+# The LIVE occult (mastery 5) SkillTree - referenced by both PCs' skillTree5 field
+# (records\xpack\creatures\pc\{male,female}pc01.dbr). This is the record whose numeric
+# skillName{N} ORDER is the engine's modifier<->base binding surface. NB: a doubled-
+# namespace TWIN exists at records\skills\skills\stealth\drxstealthskilltree.dbr but is
+# referenced by NO PC/record (dead orphan) - editing it would be inert, so we assert on
+# the LIVE tree only and merely NOTE the twin (no live/dead split: gameplay reads the LIVE
+# one, and its @6->@7 order already binds Dark Invigoration to Shadow Link).
+_OCCULT_SKILLTREE = "records\\skills\\stealth\\drxstealthskilltree.dbr"
+_OCCULT_SKILLTREE_TWIN = "records\\skills\\skills\\stealth\\drxstealthskilltree.dbr"
+_DARKINVIG_TAIL = "drxopenwound.dbr"
+_SHADOWLINK_TAIL = "drxbladehoning.dbr"
 
 # --- F. verify-only chains. ----------------------------------------------------
 _TC_SKILL = "records\\skills\\stealth\\drx_scrap.dbr"                    # Toxic Concoction
@@ -186,6 +216,51 @@ def _drop_field(fields, name):
 def _skillname_tail(db, rec):
     sn = _first(db.get_field_value(rec, "skillName"))
     return str(sn).replace('/', '\\').lower().rsplit('\\', 1)[-1] if sn else ""
+
+
+def _class_of(db, rec):
+    """Case-insensitive Class lookup for a skill record path; '' if unresolved."""
+    low = str(rec).lower().replace('/', '\\')
+    if db.has_record(rec):
+        c = _first(db.get_field_value(rec, "Class"))
+        return str(c) if c is not None else ""
+    for n in db.record_names():
+        if n.lower().replace('/', '\\') == low:
+            c = _first(db.get_field_value(n, "Class"))
+            return str(c) if c is not None else ""
+    return ""
+
+
+def _skilltree_pairs(db, tree_rec):
+    """[(idx, skillName_value_str)] for the SkillTree, sorted by numeric skillName index.
+    The engine reads these in numeric order; the arz stores them lexically."""
+    rec = _resolve(db, tree_rec)
+    fields = db.get_fields(rec)
+    pairs = []
+    for k in fields:
+        base = k.split('###')[0]
+        if base.lower().startswith("skillname") and base[9:].isdigit():
+            sn = _first(db.get_field_value(rec, base))
+            if sn and str(sn).strip():
+                pairs.append((int(base[9:]), str(sn)))
+    pairs.sort(key=lambda p: p[0])
+    return pairs
+
+
+def _modifier_binding_base(db, tree_rec, target_tail):
+    """TQ modifier<->base binding = SkillTree numeric ORDER: a Skill_Modifier attaches to
+    the nearest LOWER-indexed NON-modifier skill. Return the basename (lowercased) of the
+    base that the modifier `target_tail` binds to in `tree_rec`, or None if target absent /
+    no preceding base. This is the *mechanism-level* binding, not a field cross-reference."""
+    last_base = None
+    tgt = target_tail.lower()
+    for _idx, sn in _skilltree_pairs(db, tree_rec):
+        tail = sn.replace('/', '\\').lower().rsplit('\\', 1)[-1]
+        if tail == tgt:
+            return last_base
+        if _class_of(db, sn) != "Skill_Modifier":
+            last_base = tail
+    return None
 
 
 def _set_shape(db, slot, button, preset, expect_tail, label):
@@ -262,12 +337,28 @@ def apply(db, tags):
           "Darklings straight bar re-asserted; Dark Aperture _right bar CLEARED"
           % (_DARKLINGS_BTN, _DARKAP_BTN))
 
-    # ---- D. Shadow Link -> Dark Invigoration straight wire ----
+    # ---- D. Dark Invigoration = TRUE modifier of Shadow Link ----
+    # D1. GUARANTEE the gameplay binding (SkillTree tree-order). Fail-loud if an upstream
+    #     reshuffle ever puts a non-modifier between Shadow Link and Dark Invigoration.
+    #     This is the REAL augment (Will 2026-07-16); it is already satisfied in build44/45,
+    #     so this is an idempotent, read-only assertion (zero arz change) - the module is
+    #     merely the ratified GUARANTOR of the binding.
+    bind = _modifier_binding_base(db, _OCCULT_SKILLTREE, _DARKINVIG_TAIL)
+    if bind != _SHADOWLINK_TAIL:
+        raise SystemExit(
+            "mastery_sv_alignment[D]: Dark Invigoration (%s) does NOT bind to Shadow Link "
+            "in the LIVE occult SkillTree %s - nearest preceding non-modifier is %r, expected "
+            "%r. TQ binds a Skill_Modifier by tree-order; Will's ruling requires this. Re-order "
+            "the tree so drxbladehoning is the nearest preceding non-modifier of drxopenwound."
+            % (_DARKINVIG_TAIL, _OCCULT_SKILLTREE, bind, _SHADOWLINK_TAIL))
+    # D2. UI wire (KEEP build45): Shadow Link straight bar UP through c3t3 to Dark
+    #     Invigoration at c3t4 - now correctly depicting the real augment (mirrors the
+    #     vanilla Storm Nimbus column: base square + modifier circles stacked + bar).
     sl_skill = _resolve(db, _SHADOWLINK_SKILL)
     db.set_field(sl_skill, "skillConnectionOn", list(_STRAIGHT_ON), _DT_STR)
     db.set_field(sl_skill, "skillConnectionOff", list(_STRAIGHT_OFF), _DT_STR)
-    print("  [D] Shadow Link (drxbladehoning c3t2) straight bar UP to Dark "
-          "Invigoration (c3t4) - WILL-INTENT visual wire")
+    print("  [D] Dark Invigoration TRUE-augments Shadow Link: SkillTree tree-order binding "
+          "confirmed (drxbladehoning -> drxopenwound), Shadow Link straight bar UP to c3t4 kept")
 
     print("  [E] Earth Soften Metal: NO-OP (build44 already c4t2; SV c4t3 blocked by "
           "build41 Flame Surge restoration - see report)")
@@ -416,7 +507,14 @@ def verify(db, tags):
     if _list_of(db, da_skill, "skillConnectionOff") not in (None, []):
         bad.append("[C] Dark Aperture stray _right skillConnectionOff NOT cleared")
 
-    # D. Shadow Link straight wire to Dark Invigoration
+    # D. Dark Invigoration TRUE-augments Shadow Link. MECHANISM-LEVEL assert (not just
+    #    field-present): walk the LIVE occult SkillTree and prove drxbladehoning is the
+    #    nearest preceding non-modifier of drxopenwound (== the engine's modifier binding).
+    dbind = _modifier_binding_base(db, _OCCULT_SKILLTREE, _DARKINVIG_TAIL)
+    if dbind != _SHADOWLINK_TAIL:
+        bad.append("[D] Dark Invigoration tree-order binding base=%r want %r (occult SkillTree "
+                   "does NOT bind drxopenwound to Shadow Link)" % (dbind, _SHADOWLINK_TAIL))
+    # D. UI wire (build45) still present + correctly depicting the augment
     sl = _resolve(db, _SHADOWLINK_SKILL)
     if _list_of(db, sl, "skillConnectionOn") != _STRAIGHT_ON:
         bad.append("[D] Shadow Link skillConnectionOn not the straight wire")
@@ -440,5 +538,6 @@ def verify(db, tags):
         raise SystemExit("mastery_sv_alignment.verify: %d defect(s) survived "
                          "finalization" % len(bad))
     print("  OK: A(4 shapes) B(9 emblems, %d tex resolved%s) C(family@col6 + bars) "
-          "D(Shadow Link wire) F(TC + Stalker chains intact)"
+          "D(Dark Invig TRUE-augments Shadow Link: tree-order binding + UI wire) "
+          "F(TC + Stalker chains intact)"
           % (n_res, "" if resolve is not None else "; resolution SKIPPED - arcs absent"))
