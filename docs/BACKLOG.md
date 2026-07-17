@@ -1,4 +1,32 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🧊 **b76 CHUMBI VALLEY P0 FREEZE - RCA + FIX (round 1) ON `fix/chumbi-lag` (2026-07-16).** Will (P0):
+> DEV "chumbi valley" frozen by "every boss you created all in one spot" + "the infinite summon of the
+> skeleton dog guys tomb guardian ... the uber boss whos name has sepulcher in it." **RCA (two
+> co-primary defects):** (1) PLACEMENT PILEUP = the TESTHUB-only **Monster Test Yard** (10 boss pools
+> stacked in HiddenValley01 around the Rebirth Fountain + occultist = the death loop) - a QA cluster
+> that grew one boss per wave (build33 7 -> build36 10); TESTHUB-ONLY (canonical places each boss on
+> its own host, so only DEV freezes). (2) UNBOUNDED SUMMONS = `um_voranthys_99` (the "sepulcher" boss,
+> fires `sepulchralwyrm_firebreath`) whose 3 summon skills (aktaios tomb guardians + alastor skeleton
+> warrior/archer, enabled by b39 boss_skill_fix) carry a single-digit petLimit but **NO
+> spawnObjectsTimeToLive** -> minions permanent, re-summoned forever. **FIX 1 (map):** removed the yard
+> block from `build_section_surgery.build_hub_extra_specs()` (yard 10->0; TESTHUB HV01 now == canonical
+> HV01; bosses disperse to their canonical homes). **FIX 2 (DB):** NEW registry module
+> `tools/patches/summon_caps.py` additively restores the SV-convention TTL (tomb guardians 5.0 = SV
+> shodema; skeletons 20.0 = four_generals) on the 4 unbounded boss-summon skills; petLimit untouched
+> (already a single-digit concurrent cap). ⚠️ WILL-VETO on the TTL seconds. **CHEST:** HV01 has no
+> static boss chest; the "Dead Adventurer's Chest" = the widowletter QUEST chest (quest-spawned, sealed
+> by the widow buff), byte-untouched; the yard had no reward container - removing it clears the false
+> association (bosses' canonical homes carry their own svc_*_chest majestic chests). **VERIFY:** DB
+> scratch build EXIT 0 (`local/SoulvizierClassic_b76.arz` md5 `7fb879ac9c346280cdaf3610e7d53dad`,
+> 55,382,493 B); record-diff vs build45 `917d9047` = EXACTLY 4 MODIFIED (single spawnObjectsTimeToLive
+> each), 0 collateral; summon_caps.verify + --negtest PASS; summons contract violation set
+> BYTE-IDENTICAL to reference (0 new/removed, 96 pre-existing whitelisted P0); registry selfcheck 27
+> modules; map fix proven at spec level (yard gone from TESTHUB inject set). **NOT DEPLOYED** (Levels+
+> Quests integration coupling; TESTHUB rebuild + blob-diff/navmesh-24 is the ship-operator gate). Class
+> sweep: 8 truly-unbounded records are all base/dead/test (none placed-boss); round-2 = promote the
+> sweep to a build gate + refresh stale `gate_build32_parseback.py`. Report:
+> `docs/reports/b76_chumbi_freeze_rca.md`.
+
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction

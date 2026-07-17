@@ -157,6 +157,14 @@ REGISTRY = [
                             # hunting_occult_ui + mastery_ui_audit + mastery_bg_render +
                             # oh_pane_art + hunting_occult_improvements so it is the ratified
                             # last writer on isCircular/positions/connOn-Off + masterybitmap.
+    'summon_caps',          # b76 CHUMBI-FREEZE P0: restore the missing spawnObjectsTimeToLive on
+                            # the unbounded boss-summon skills of the sepulcher/tomb-guardian chain
+                            # (aktaios_summontombguardians + alastor_summonskeleton{warrior,archer}
+                            # + the recursive summonpet_undeadmelee01) that um_voranthys_99 fires.
+                            # ADDITIVE (one field; petLimit/spawnObjects untouched). MUST run after
+                            # boss_skill_fix (which ENABLED those previously level-0 summon specials)
+                            # so it caps the final, active skill records. verify() fails loud if any
+                            # target survives uncapped.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
