@@ -3098,6 +3098,24 @@ drxdarklings_darkaperture skillTier+gate - ZERO other deltas); contracts souls+s
 new P0/P1); validate_tags PASS (2 pre-existing base monster-name WARNs, non-blocking; 0 mod-tag miss).
 Report: `docs/reports/b70_mastery_sv_alignment.md` item C2. NOT deployed (awaiting vet + Will test).
 
+## BUILD45 GATE RECORD (2026-07-16, DEV-only; STEAM BLOCKED until Will's in-game tree + summon check)
+Contents: merges `ed1a197` (fix/enslaver-chain `831d9e7` = b71 skeleton identity + StatusIconRed
+gate hardening) + `61d3459` (feat/mastery-sv-fix `16283c13` = b70 shapes/emblem/Darklings + DI
+mechanism gate + col6 restack). Artifacts: arz `917d9047d2281284f5fd5e9a163b9c5c`; Text UNCHANGED
+(`3e576581`); Levels/Quests UNCHANGED from build43. Registry 26 modules (+mastery_sv_alignment).
+Gates: A7 PASS (84 waived incl col6 Will-ruling waivers), summon validators PASS, chain gate green,
+contracts GATE PASS 0 P0/0 P1/4909 P2 (pre-existing count). Proof-diff vs build44 (439a9279):
+72 modified / 0 added / 0 removed = exactly the union of the two vetted deltas (52 soulskills
+portraits+icon, 15+1 mastery-UI emblem/shape/position, 4 stealth col6 tiers+connectors), zero
+strays. NOTE: col6 restack surfaced that Throwing Knife's real unlock was 5 pts while drawn on the
+16-row (pre-existing misalignment class) - now 24 pts matching its t5 row per Will's ruling.
+DEV deploy hash-verified 917d9047 (TQ not running). Pre-existing flagged for future holistic m5
+pass: drxlethalstrike _right bar rises toward empty c6t7 passing Flurry (byte-identical since
+before b70). WILL TESTS on DEV: Occult/Hunting tree shapes (PoisonousGas circle, BladeFury/
+SmokeScreen/Eviscerate squares), emblem circle filled x9, col6 ladder 10/16/24/32 no crossed bars,
+DarkInvigoration bar to ShadowLink; ENSLAVER: DISMISS + RE-SUMMON -> black bodies, deathwalker
+skill icon + pet-bar portraits (pets resolve DB at summon time).
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
