@@ -173,6 +173,38 @@ _FAMILIES = [
 ]
 _ALL_PETS = _ENSLAVER_PETS + _MARAUDER_PETS + _HADESMARSHAL_PETS
 
+# ── b81r2 RACE/VOICE GATE, second lineage (Will 2026-07-16 vet NO-GO on b81) ──
+# b81 wired _align_pet_identity into _build_boss_summon only, so its chain-gate
+# leg above (_race_and_voice_problems via _CHAIN) only ever asserted over the 3
+# formally-gated _build_boss_summon families. The vet proved a SECOND, older
+# Lyia-cloning lineage exists - apply_svc_patches.py's own standalone
+# `_create_X_pet_skill` builders (Boneash/Narok/Vort/Pharaoh's Honor Guard/
+# Blood Witch High Priest/Lil'Lued/Rakanizeus) plus one live upstream-native SV
+# 0.98i family (Helike) - that b81 never reached. b81r2 wires
+# `_align_pet_identity`/a hand-equivalent call into every one of those builders
+# (apply_svc_patches.py); this roster gives that fix its OWN permanent gate leg
+# here, reusing `_race_and_voice_problems` unchanged (source-faithful: a source
+# that itself defines Maenad distressCallGroup, e.g. none in this roster today,
+# is correctly exempted, same as the _CHAIN leg above).
+_SECOND_BUILDER_ROSTER = [
+    ('Boneash', _R + r'creature\monster\skeleton\um_boneash_30.dbr',
+     [_R + r'skills\soulskills\pets\boneash_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Narok the Rockskin', _R + r'creature\monster\dragonian\um_rockskin_42.dbr',
+     [_R + r'skills\soulskills\pets\narok_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Vort the Red', "records\\creature\\monster\\dragonian\\hero_tarthon_na'arak_40.dbr",
+     [_R + r'skills\soulskills\pets\vort_%d.dbr' % i for i in (1, 2, 3)]),
+    ("Pharaoh's Honor Guard", _R + r'creature\monster\questbosses\boss_pharaohshonorguard1_31.dbr',
+     [_R + r'skills\soulskills\pets\pharaohguard_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Blood Witch High Priest', _R + r'drxcreatures\bloodwitch\skills\discipleboss_bladedancer.dbr',
+     [_R + r'skills\soulskills\pets\bwpriest_%d.dbr' % i for i in (1, 2, 3)]),
+    ("Lil'Lued the Elder Djinn", _R + r'drxcreatures\crowheroes\lillued_big.dbr',
+     [_R + r'skills\soulskills\pets\lillued_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Rakanizeus', _R + r'creature\monster\satyr\um_rakanizeus_17.dbr',
+     [_R + r'skills\soulskills\pets\rakanizeus_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Helike', _R + r'xpack\creatures\monster\empusa\xhero_helike_46.dbr',
+     [_R + r'skills\soulskills\pets\helike_%d.dbr' % i for i in (1, 2, 3)]),
+]
+
 # ── green Lyia-clone residue markers: field base (lower) -> substrings that mark
 #    the value as the known green residue. A field is stripped IFF its value
 #    contains one of these substrings, so a legitimately-black field is never
@@ -609,8 +641,21 @@ def verify(db, tags=None):
     for pet in _ALL_PETS:
         if db.has_record(pet):
             problems.extend(_transitive_green_problems(db, pet))
+    # b81r2: RACE/VOICE gate leg 2, over the second Lyia-cloning lineage (the
+    # standalone _create_X_pet_skill builders + upstream-native Helike) the b81
+    # vet found unfixed. Only asserts over pets that exist (an absent family is
+    # a separate upstream build failure, not this gate's to catch).
+    second_builder_checked = 0
+    for label, source, pets in _SECOND_BUILDER_ROSTER:
+        for pet in pets:
+            if not db.has_record(pet):
+                continue
+            second_builder_checked += 1
+            problems.extend(_race_and_voice_problems(db, pet, source))
     if problems:
         raise SystemExit('enslaver_pet_fx.verify FAILED:\n  ' + '\n  '.join(problems))
     print('  enslaver_pet_fx.verify: OK (Enslaver + marauder soul-pets carry the '
           'black shroud, zero green Lyia residue; chain icon+portrait on-identity; '
-          'race + voice paks match each pet\'s own source, b81)')
+          'race + voice paks match each pet\'s own source, b81; second-lineage '
+          'race/voice gate OK: %d pets across %d families, b81r2)'
+          % (second_builder_checked, len(_SECOND_BUILDER_ROSTER)))

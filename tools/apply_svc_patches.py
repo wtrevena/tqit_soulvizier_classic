@@ -660,6 +660,11 @@ def _create_rakanizeus_pet_skill(db):
             ns = _update_existing_fields(db, rakan_monster, path, _SKILL_PREFIXES)
             if i == 0:
                 print(f"  Copied from Rakanizeus monster: {na} anim, {ns} skill fields")
+            # b81r2 (Will 2026-07-16 vet NO-GO): align distressCallGroup + sound
+            # paks to the same source monster - um_rakanizeus_17 defines its own
+            # Satyr distress-group + satyr*.dbr paks; the pet kept Lyia's Maenad
+            # residue on every one of those fields (race was already correct).
+            _align_pet_identity(db, path, rakan_monster)
 
         sf = db.set_field
 
@@ -817,6 +822,13 @@ def _create_boneash_pet_skill(db):
             ns = _update_existing_fields(db, boneash_monster, path, _SKILL_PREFIXES)
             if i == 0:
                 print(f"  Copied from Boneash monster: {na} anim, {ns} skill fields")
+            # b81r2 (Will 2026-07-16 vet NO-GO): this second, older Lyia-cloning
+            # builder never called _align_pet_identity - Boneash kept Lyia's
+            # Maenad distressCallGroup + alert/crit/death/rally/rampage/stun/vox
+            # paks even though characterRacialProfile was already hand-corrected
+            # to Undead above. Align the whole identity surface to the SAME
+            # source monster used for anim/skill (source-faithful, idempotent).
+            _align_pet_identity(db, path, boneash_monster)
 
         sf = db.set_field
 
@@ -1029,6 +1041,12 @@ def _create_boss_summon_from_source(db, spec):
         # rig + skill refs from the SOURCE boss (values only, never new fields)
         _copy_animation_fields(db, source, path)
         _update_existing_fields(db, source, path, _SKILL_PREFIXES)
+        # b81r2 (Will 2026-07-16 vet NO-GO): this second, older Lyia-cloning
+        # builder never called _align_pet_identity - Narok/Vort kept Lyia's
+        # Maenad distressCallGroup + alert/crit/death/rally/rampage/stun/vox
+        # paks. Align the whole identity surface to the same SOURCE boss used
+        # for anim/skill above (source-faithful, idempotent).
+        _align_pet_identity(db, path, source)
 
         sf = db.set_field
         # Equipment: the source is a staff caster (staff_dyn_*03 = its OWN
@@ -1197,6 +1215,11 @@ def _create_pharaoh_guard_pet_skill(db):
             ns = _update_existing_fields(db, guard_monster, path, _SKILL_PREFIXES)
             if i == 0:
                 print(f"  Copied from Honor Guard monster: {na} anim, {ns} skill fields")
+            # b81r2 (Will 2026-07-16 vet NO-GO): align the identity surface
+            # (distressCallGroup + sound paks) to the same source monster used
+            # for anim/skill above - the construct kept Lyia's Maenad residue
+            # even though characterRacialProfile was already hand-corrected.
+            _align_pet_identity(db, path, guard_monster)
 
         sf = db.set_field
 
@@ -7382,6 +7405,12 @@ def _create_bwpriest_pet_skill(db):
         if n_stripped:
             print(f"  {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} "
                   f"foreign .anm overrides (anm_melinoe now drives the body)")
+        # b81r2 (Will 2026-07-16 vet NO-GO): align distressCallGroup + sound
+        # paks to the same source monster - discipleboss_bladedancer defines
+        # its own DuneRaider distress-group + melinoe*.dbr paks; the pet kept
+        # Lyia's Maenad residue on every one of those fields.
+        if src_monster:
+            _align_pet_identity(db, path, src_monster)
         sf = db.set_field
         # ── Equipment: mirror the SOURCE monster (discipleboss_bladedancer)
         #    proven loadout (B-SUMMON-1). The prior player-unique swords
@@ -7526,6 +7555,12 @@ def _create_lillued_pet_skill(db):
         if n_stripped:
             print(f"  {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} "
                   f"foreign .anm overrides (anm_djinn + Bat now drive the body)")
+        # b81r2 (Will 2026-07-16 vet NO-GO): align distressCallGroup + sound
+        # paks to the same source monster - lillued_big defines its own
+        # Sprite distress-group + djinn*.dbr paks; the pet kept Lyia's Maenad
+        # residue on every one of those fields.
+        if src_monster:
+            _align_pet_identity(db, path, src_monster)
         sf = db.set_field
         # ── Equipment: mirror the SOURCE monster (lillued_big) proven
         #    loot-table loadout (B-SUMMON-1). Player-unique staves/gear never
@@ -10186,6 +10221,69 @@ def _align_pet_identity(db, path, source):
     if changed:
         db._modified.add(path)
     return changed
+
+
+# b81r2 (Will 2026-07-16 vet NO-GO on b81): the vet proved a SECOND, older
+# Lyia-cloning summon-pet lineage exists that b81's _align_pet_identity wiring
+# never reached - not just our OWN _create_X_pet_skill builders (fixed above,
+# each now calls _align_pet_identity at its anim/skill-copy site), but three
+# summon-pet families that ship UPSTREAM in raw SV 0.98i itself (present
+# verbatim in upstream/soulvizier_098i/Database/database.arz, never built by
+# any function in this file): Helike (records\skills\soulskills\pets\helike_1
+# ..3, granted by helike_soul_{n,e,l} under \soul\empusa\), Aletha Darkclaw
+# (alethadarkclaw_{1,2,3}, granted by alethadarkclaw_soul_{n,e,l} under
+# \soul\maenad\), and Phagia (phagia_{1,2,3,34}, nominally granted by
+# summon_phagia - see below). Audited each against its own SOURCE monster
+# (same method as _align_pet_identity, applied by hand here since there is no
+# shared builder to hook):
+#   - Aletha Darkclaw's source IS a Maenad (records\creature\monster\maenad\
+#     um_alethadarkclaw.dbr: characterRacialProfile=Beastman,
+#     distressCallGroup=Maenad, every alert/crit/death/rally/stun/vox pak =
+#     maenad*.dbr) - her pet already matches byte-for-byte. LEGITIMATELY
+#     Maenad; not touched (a blanket strip would be WRONG here, same
+#     Meritamen-precedent logic as _align_pet_identity's docstring).
+#   - Phagia's only live grant path is broken independently of this bug: the
+#     build36 F2 fix (search "Meritamen the Shadowcaller" in this file)
+#     REPOINTS phagia_soul_{n,e,l}'s itemSkillName from summon_phagia to
+#     summon_meritamen (a name/summon conflation fix), and no other item in
+#     the shipped database grants summon_phagia. So phagia_{1,2,3,34} are
+#     ORPHANED - unreachable by any player action - confirmed by a full
+#     itemSkillName sweep of the built .arz finding zero live grants. Left
+#     untouched (no player-visible symptom to fix; not deleted per the
+#     RETIREMENT PROTOCOL - dead-but-present, registered as BACKLOG debt).
+#   - Helike IS live (helike_soul_{n,e,l} grants summon_helike -> spawns
+#     helike_1..3) and DOES carry residue: her source
+#     (records\xpack\creatures\monster\empusa\xhero_helike_46.dbr) is Demon
+#     with its own empusa_alert/death/stun/vox paks, but distressCallGroup=
+#     Maenad is a genuine SV-authorial choice ON THE SOURCE ITSELF (same
+#     shape as Meritamen's sandspirit source) - so the fix below correctly
+#     KEEPS Maenad there (source-faithful) while aligning the sound paks the
+#     pet still had as Lyia-clone residue. (helike_46, an unreferenced 4th
+#     pet record, is orphaned like phagia and left untouched for the same
+#     reason.)
+def _align_helike_identity(db):
+    """Player-summonable Helike (upstream SV 0.98i, no builder function of our
+    own to hook) still carried Lyia-clone Maenad sound-pak residue despite her
+    OWN source (xhero_helike_46) being Demon with empusa sound paks. Same
+    source-faithful _align_pet_identity mechanism as every other summon-pet
+    family; safe/idempotent - a no-op once aligned."""
+    source = _find_record(
+        db, r'records\xpack\creatures\monster\empusa\xhero_helike_46.dbr')
+    if not source:
+        print("  WARNING: Helike source monster (xhero_helike_46) not found!")
+        return 0
+    total_changed = 0
+    for i in (1, 2, 3):
+        path = r'records\skills\soulskills\pets\helike_%d.dbr' % i
+        if not _find_record(db, path):
+            print(f"  WARNING: Helike pet {path} not found!")
+            continue
+        changed = _align_pet_identity(db, path, source)
+        total_changed += len(changed)
+    print(f"  Helike identity align: {total_changed} fields aligned to "
+          f"xhero_helike_46 across 3 pets (distressCallGroup kept Maenad - "
+          f"the source itself defines it)")
+    return total_changed
 
 
 # b40 (Will 2026-07-13): per-boss granted-SKILL icons for the summon-the-boss souls.
@@ -18009,6 +18107,12 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     # dyingFxPak refs (upstream "xrecords" typo -> the real "records" FX). Real defect,
     # NOT the P0 crash (engine null-checks the field); minimal, explained delta.
     _fix_bloodhound_dyingfxpak(db)
+    # b81r2 (Will 2026-07-16 vet NO-GO): Helike is the one LIVE upstream-native
+    # Lyia-clone summon pet still carrying Maenad sound-pak residue (Aletha
+    # Darkclaw audited legitimately Maenad; Phagia audited orphaned/unreachable
+    # - see _align_helike_identity's docstring). helike_1..3 already exist by
+    # this point (upstream SV 0.98i content, present since the base merge).
+    _align_helike_identity(db)
 
     # GROUP 1 (test yard): build the TESTHUB monster-yard pool/proxy records. MUST
     # sit AFTER every yard-referenced group (Vashkarr/wyrm/obsidian/enslaver all

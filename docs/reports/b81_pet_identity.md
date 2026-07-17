@@ -224,3 +224,146 @@ interactions now apply correctly. Every summon's alert/hit/death/stun/vox cry no
 own body instead of a Maenad woman's voice coming out of a skeleton or a machae. No visual
 (mesh/skin/shroud/portrait/icon) or stat change - this is purely the race/audio identity
 layer, verified byte-for-byte against the untouched b75 baseline.
+
+---
+
+# ROUND 2 (b81r2): the second Lyia-cloning lineage the round-1 vet caught
+
+**VERDICT on round 1: NO-GO** (independently re-verified by a vet, all claims above about the
+57 `_build_boss_summon` pets stood up byte-for-byte) - but the "What Will will see" claim above
+that "**every** summon's ... vox cry now matches its own body" was **FALSE**. `_align_pet_identity`
+was wired into `_build_boss_summon` only. A **second, older** Lyia-cloning summon-pet lineage
+exists in `apply_svc_patches.py`: six standalone `_create_X_pet_skill` builders
+(`_create_boneash_pet_skill`, `_create_pharaoh_guard_pet_skill`, `_create_bwpriest_pet_skill`,
+`_create_lillued_pet_skill`, `_create_rakanizeus_pet_skill`) plus the generic
+`_create_boss_summon_from_source` (`_A10_BOSS_SUMMONS` = Narok the Rockskin + Vort the Red) -
+7 families / 21 pets - clone `lyialeafsong_{1,2,3}` exactly like `_build_boss_summon` does, but
+`_align_pet_identity` was never called from any of them. Every one of the 21 pets still carried
+Lyia's Maenad `distressCallGroup` + alert/criticalHit/death/rally/rampage/stun/vox sound paks
+(race happened to already be hand-corrected by the original authors in all 7 cases, so only the
+distress-group/sound layer was residue - the same class of bug, one layer down).
+
+**Ground-truthed independently** (not assumed from the round-1 pattern): decoded each of the 7
+families' own SOURCE monster (the record each builder already names for anim/skill copying) for
+`characterRacialProfile` + `distressCallGroup` + the 7 sound-pak stems, confirming exactly what
+each pet's post-fix state must be:
+
+| Family (pets) | Source monster | Race (unchanged) | distressCallGroup (fixed) | Sound-pak family (fixed) |
+|---|---|---|---|---|
+| Boneash (3) | `um_boneash_30.dbr` | Undead | Skeleton | skeleton*pak |
+| Narok the Rockskin (3) | `um_rockskin_42.dbr` | Beastman | STRIPPED (source: none) | dragonianshortvoxpak |
+| Vort the Red (3) | `hero_tarthon_na'arak_40.dbr` | Beastman | STRIPPED (source: none) | dragonianshortvoxpak |
+| Pharaoh's Honor Guard (3) | `boss_pharaohshonorguard1_31.dbr` | Construct | STRIPPED (source: none) | guardian*pak (egypt) |
+| Blood Witch High Priest (3) | `discipleboss_bladedancer.dbr` | Demon | DuneRaider | melinoe_*pak |
+| Lil'Lued the Elder Djinn (3) | `lillued_big.dbr` | Demon | Sprite | djinn*pak |
+| Rakanizeus (3) | `um_rakanizeus_17.dbr` | Beastman | Satyr | satyr*pak |
+
+**Fix (same mechanism, extended to the second builder, per the vet's remedy option (a)):** each
+of the 7 functions now calls the SAME `_align_pet_identity(db, path, source)` from round 1,
+immediately after its existing anim/skill copy, against the SAME source record it already names.
+Zero new code paths; the proven-safe, already-vetted mechanism is simply reached from 7 more
+call sites. `_create_boss_summon_from_source` (Narok/Vort) already had `source` in scope from its
+existing anim/skill-copy call; the other 6 gained the call inside their existing
+`if <source>_monster:` guard.
+
+**Third category audited, not code-changed (per the vet's remedy option (a): "auditing
+lyialeafsong/alethadarkclaw/phagia as legitimately Maenad"):** a full sweep of all 222 records
+under `records\skills\soulskills\pets\` in the round-1 arz (not assumed from the vet's list -
+independently re-derived) found 43 records still flagging `distressCallGroup=Maenad` or a Maenad
+sound pak. After the 7-family/21-pet fix above, 22 remain, in 5 accounted-for buckets, NONE of
+which is our own Lyia-clone bug:
+- **`lyialeafsong_{1,2,3,18}` (4)** - Lyia herself, the clone DONOR. Correctly Maenad (nothing to
+  fix; this is the source of the residue, not an instance of it).
+- **`meritamen_{1,2,3}` (3)** - already handled correctly in round 1 (her real source
+  `us_meritamen_34` itself defines `distressCallGroup=Maenad`; source-faithful, not a miss).
+- **`alethadarkclaw_*` (7: `alethadarkclaw`, `_1`, `_2`, `_3`, `_e`, `_l`, `_n`)** - NOT built by
+  any function in this file. Present verbatim in the raw upstream SV 0.98i database (confirmed
+  by loading `upstream/soulvizier_098i/Database/database.arz` directly and finding the exact same
+  record names) - genuine SV-authored content, not a Lyia-clone artifact of ours. Her own source
+  monster is `records\creature\monster\maenad\um_alethadarkclaw.dbr` - she literally IS a Maenad
+  (`characterRacialProfile=Beastman`, `distressCallGroup=Maenad`, every sound-pak stem =
+  `maenad*.dbr`). Decoded field-by-field: her pet already matches the source byte-for-byte.
+  LEGITIMATELY Maenad; correctly left untouched. Player-reachable (`alethadarkclaw_soul_{n,e,l}`
+  under `\soul\maenad\` and `\soul\test\` grant `summon_aletha` -> spawns `alethadarkclaw_{1,2,3}`).
+- **`helike_{1,2,3,46}` (4)** - also NOT built by any function in this file; also genuine upstream
+  SV 0.98i content. Her source is `records\xpack\creatures\monster\empusa\xhero_helike_46.dbr`
+  (Demon, with its OWN `empusa_alert/death/stun/vox` paks) - but the source monster ITSELF
+  defines `distressCallGroup=Maenad` (an SV-authorial choice on the empusa, same shape as
+  Meritamen's sandspirit source). New `_align_helike_identity(db)` (called once, standalone,
+  from the same place `_fix_bloodhound_dyingfxpak` runs, since there is no shared builder to hook
+  for upstream-native content) runs the SAME `_align_pet_identity` against `helike_1..3`: result
+  is **0 fields changed** - Helike was ALREADY correctly sourced (SV 0.98i itself used the real
+  empusa paks, not a Lyia clone, for this one) - confirmed, not fixed, and now permanently
+  gated so a future regression here is caught. (`helike_46` is a 4th pet record referenced by
+  nothing - orphaned, same as `phagia` below - left untouched.)
+- **`phagia_{1,2,3,34}` (4)** - built upstream in SV 0.98i, but **orphaned**: a full sweep of
+  every `itemSkillName` in the built .arz found zero live grants of `summon_phagia` (the only
+  skill that would spawn these pets). The build36 F2 fix ("Meritamen the Shadowcaller", searched
+  above in this same file) intentionally repoints the only souls that ever granted it
+  (`phagia_soul_{n,e,l}`) to `summon_meritamen` instead (a documented SV name/summon
+  conflation fix, not a regression). No player action can currently summon a Phagia pet. Left
+  untouched (not deleted, per the RETIREMENT PROTOCOL - dead-but-present); registered as BACKLOG
+  debt below rather than silently dropped.
+
+**Chain-gate extension** (`tools/patches/enslaver_pet_fx.py`): new `_SECOND_BUILDER_ROSTER` (the
+7 fixed families + Helike, 8 families / 24 pets total by their own source monster) and a new leg
+in `verify()` that calls the SAME `_race_and_voice_problems` (round-1, unchanged) over every pet
+in the roster - reusing proven code rather than duplicating gate logic. 2 new negative tests in
+`scratchpad/negtest_gate.py` (plant Beastman race on `boneash_1`; plant Maenad voxSound on
+`narok_1`) both FAIL the gate as required; all 5 round-1 negatives + the positive control still
+pass unchanged (7/7 total).
+
+**Verified** (independent full scratch build, `local/scratch_b81r2.arz`):
+- Build EXIT 0; all 17 registry verifies OK incl. `enslaver_pet_fx.verify: ... second-lineage
+  race/voice gate OK: 24 pets across 8 families, b81r2`; A7 golden PASS (84 waived, 0 other,
+  unchanged).
+- **Idempotent**: two independent full builds -> arz md5 `e77846c3a43cadbfc5af0720ce0fa8ef` BOTH
+  times.
+- **Record-diff vs the round-1 baseline** (`local/scratch_b81.arz`, `f639ba409562a334add231956637ac71`):
+  **0 added / 0 removed / 21 modified** - exactly the 7 families x 3 pets, each modification
+  confined to `distressCallGroup` + the sound-pak stems (`alertSound`/`criticalHitSound`/
+  `deathSound1`/`rallySound`/`rampageSound*`/`stunSound`/`voxSound` + their `Chance`/`Delay`
+  siblings) - `characterRacialProfile` unchanged on all 21 (it was already correct pre-existing,
+  confirmed field-by-field in the diff: the field never appears in any of the 21 changed-field
+  lists). 0 collateral on the 57 round-1 pets, 0 collateral anywhere else in the 51,057-record db.
+- **B-SUMMON-1** (`validate_summon_pets.py`, run with base-game + upstream args for accurate
+  rig-proven resolution): 279 soul summon chains, 253 pets checked, **STRICT failures: 0**
+  (134 pre-existing upstream-proven WARNs, identical count to round 1, unrelated to this pass).
+- **Contracts** (souls/summons/resources, `--only souls,summons,resources`): run identically
+  against both the round-1 baseline and this round's build in this worktree (the worktree has no
+  `Resources/` dir, so absolute counts run inflated/uncomparable to a live deploy - a pre-existing
+  environmental gap, not introduced here) - **IDENTICAL totals both runs**: `TOTAL: 19168
+  violations (96 P0, 7244 P1, 11828 P2)` => **0 new P0/P1/P2** from this pass.
+- **Negative tests**: 7/7 (5 round-1 + 2 new) planted defects FAIL the gate; clean arz PASSES.
+- Map/Quests/Text: untouched (DB-only change, same as round 1).
+
+### Files changed (round 2, additive to the round-1 list above)
+- `tools/apply_svc_patches.py` - `_create_boneash_pet_skill`, `_create_boss_summon_from_source`
+  (Narok/Vort), `_create_pharaoh_guard_pet_skill`, `_create_bwpriest_pet_skill`,
+  `_create_lillued_pet_skill`, `_create_rakanizeus_pet_skill` each gain one
+  `_align_pet_identity(db, path, source)` call at their existing anim/skill-copy site; new
+  `_align_helike_identity(db)` (standalone, upstream-native Helike) + one call site next to
+  `_fix_bloodhound_dyingfxpak(db)`.
+- `tools/patches/enslaver_pet_fx.py` - new `_SECOND_BUILDER_ROSTER` roster constant; `verify()`
+  gains the second-lineage race/voice gate leg (reuses `_race_and_voice_problems` unchanged).
+- `scratchpad/negtest_gate.py` (gitignored) - 2 new negative tests
+  (`plant_beastman_race_second_lineage`, `plant_maenad_vox_second_lineage`).
+- `docs/reports/b81_pet_identity.md` - this section. `docs/BACKLOG.md` - B81r2 entry.
+
+### BACKLOG DEBT registered (per "NO NEW SURFACE WITHOUT A GATE + DEBT REGISTER")
+- **Phagia orphan** - `phagia_{1,2,3,34}` pet records + `summon_phagia.dbr` are dead upstream SV
+  content with zero live grant path (the only souls that ever granted it were intentionally
+  repointed to Meritamen in build36). No player-visible symptom today (unreachable), so not
+  fixed; if Will ever wants a standalone Phagia summon restored, it needs its OWN soul/grant
+  wiring decision, not an identity-pass fix. Zero urgency.
+
+### What Will will additionally see (after a full Steam restart; DISMISS + RE-SUMMON any active pet)
+Boneash, Narok the Rockskin, Vort the Red, Pharaoh's Honor Guard, the Blood Witch High Priest,
+Lil'Lued the Elder Djinn, and Rakanizeus - the 7 summon-the-boss souls built by the OLDER
+standalone builders (distinct from the 19 `_build_boss_summon` families round 1 already fixed) -
+now alert/crit/death/rally/vox in their OWN voice (a fire skeleton, two dragonians, a stone
+guardian, a blade-dancer demon, a storm djinn, a satyr warlord) instead of every one of them
+screaming in Lyia's Maenad-woman voice. Helike (an existing, correctly-sourced summon) is
+unchanged in-game but now permanently gated. Aletha Darkclaw is unchanged (she is genuinely a
+Maenad). No visual/stat change on any of the 8 families - purely the same race/audio identity
+layer as round 1, now covering both Lyia-cloning lineages.
