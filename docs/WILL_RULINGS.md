@@ -40,7 +40,7 @@
 
 ## Souls & items
 - R-40 [2026-07-16] PENDING (fix/soul-tiers) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate.
-- R-41 [2026-07-16] PENDING (fix/formula-names) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury).
+- R-41 [2026-07-16] IMPLEMENTED fix/formula-names (b80) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
 - R-42 [earlier, STANDING] Munderizer over-band damage BLESSED; Shadow Link large radius KEPT; legion terminal drop 66 fine for now (revisit next souls pass); soul drop rates: random 50 / placed 66 / boss 25.
 
 ## Process (meta-rulings)

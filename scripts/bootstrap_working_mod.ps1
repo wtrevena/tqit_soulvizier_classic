@@ -405,6 +405,27 @@ if (Test-Path $svTextEnArc) {
         }
         Write-Host '  Tag validation passed.' -ForegroundColor Green
     }
+
+    # --- Step 4b-2: Gate on formula-name text (B80) ---
+    # Every obtainable DRX supra craft formula's rendered display name must
+    # reference its crafted result's own rendered name (the "Mythic Formula -
+    # <Result>" convention). Guards against a formula shell's description tag
+    # being left pointed at (or repointed to) a DIFFERENT formula's donor tag -
+    # the Galefury/Crystalline-Mask bug (Will 2026-07-16, b80, ledger R-41). See
+    # tools/validate_formula_names.py + docs/reports/b80_formula_names.md.
+    $validateFormulaNamesScript = Join-Path $toolsDir 'validate_formula_names.py'
+    if ((Test-Path $validateFormulaNamesScript) -and (Test-Path $dstArz) -and (Test-Path $dstTextArc)) {
+        Write-Host ''
+        Write-Host 'Validating supra formula display names (.arz -> Text.arc)...' -ForegroundColor Yellow
+        & $pythonExe $validateFormulaNamesScript $dstArz $dstTextArc
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ''
+            Write-Host 'ERROR: Formula-name validation FAILED. A supra craft formula displays the wrong name.' -ForegroundColor Red
+            Write-Host '       See tools/validate_formula_names.py output above and docs/reports/b80_formula_names.md.' -ForegroundColor Red
+            exit 1
+        }
+        Write-Host '  Formula-name validation passed.' -ForegroundColor Green
+    }
 } else {
     Write-Host 'WARNING: SV Text_EN.arc not found for text build' -ForegroundColor Yellow
 }
