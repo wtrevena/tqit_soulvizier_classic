@@ -21,6 +21,19 @@ the defect is the RESIDENCY half it cannot see). Steam is AFFECTED (byte-identic
 `08c4c32f` GATE guid in the probe log is a red herring (a `Level+0x14` struct field, not a
 navmesh dependency).
 
+> **ROUND 2 (2026-07-17, post-vet).** The crash diagnosis above is unchanged and independently
+> re-derived. Round 2 fixed the SHIPPED GATE, which round 1 had turned the map contract battery
+> RED: the battery contract reused the BROAD b82 `BLOODCAVE_SUBSTRINGS` scope while the standalone
+> gate used a narrow blood-cave pair, so the battery flagged `HiddenValley01` (a base-game Silk
+> Road spawn hub whose navmesh is byte-identical to stock TQAE - a FALSE POSITIVE) and
+> `RogueEncampment` (a real, un-whitelisted third SV-custom respawn chamber) and failed the gate.
+> The fix replaces the fragile name scope with a name-free PROVENANCE invariant (own level GUID
+> absent from stock TQAE Levels.arc = SV-custom), shared by both the gate and the battery via one
+> classifier; excludes all 264 base/IT/XPack respawn+multi-GUID chambers (which ship and reload
+> fine - so "respawn + multi-GUID" is NOT the crash law); flags exactly the THREE SV-custom
+> respawn chambers (`new_secretdoor`, `drxBC3`, `RogueEncampment`); whitelists all three as OPEN
+> DEBT; and the real map battery now runs GREEN on both variants. See sec 4, 6, 7.
+
 ---
 
 ## 1. THE PROBE EVIDENCE, READ VERBATIM (`rltd_crash_probe.js` semantics)
@@ -101,20 +114,34 @@ engine instantiates ONLY the player's current level - `new_secretdoor` - before 
 streaming populates. So when `new_secretdoor`'s navmesh loads, `[reg+0x50][2251]`
 (drxbc_finale_transitionconnector) and `[reg+0x50][2275]` (temple_entrance_clean) are still
 null. The residency gate cannot complete -> ProcessRLTD does not set `[Level+0x6a48]`
-(navOK stays 0). Then the region/zone code that assumes a loaded navmesh dereferences the
-absent one: the Jul-13 native dump faults at Engine RVA **`0x20e270`** (~0x196d0 past
-ProcessRLTD, same subsystem), **EDI=0** (null), EDX=`0x400` (the near-null 0xc0000005 the WER
-dumps show). The **Blood Cult Disciple kill is the incidental trigger** - a pathfinding/region
-query against the un-loaded navmesh - not the cause: the DEEP_DUMP proved the build36 .arz
-mitigation changed the dump signatures by ZERO (map-side, not DB/monster driven).
+(navOK stays 0), and the fault occurs INSIDE ProcessRLTD's own load call-tree, not after a
+clean return: the DEEP_DUMP shows ProcessRLTD's frame still LIVE at the fault (its internal
+return `0x1f4ff2`, past the `dtTileCache` init, is on the faulting stack; ENTER-with-no-LEAVE
+in the probe confirms it never returned). The Jul-13 native dump faults at Engine RVA
+**`0x20e270`** (~0x196d0 past the ProcessRLTD entry, same subsystem). The faulting instruction
+(disassembled from `Engine.dll.original`, `local/vet_disasm.py`) is
+`mov eax, dword ptr [ebx + edi*4]` with **EDI=0**, so the near-null base is **EBX** (an absent
+navmesh/array pointer being indexed at [0]), not EDX - the `0x400` seen in the WER register
+dump is incidental, not the faulting address. The **Blood Cult Disciple kill is the incidental
+trigger** - a pathfinding/region query against the un-loaded navmesh - not the cause: the
+DEEP_DUMP proved the build36 .arz mitigation changed the dump signatures by ZERO (map-side, not
+DB/monster driven).
 
-**Why it works everywhere else but crashes here:** the team's deliberate design (confirmed:
-`gen_bc_navmeshes.py` lines 588-599) is MULTI-GUID navmeshes + reliance on grid-streaming
-co-residency. That works for chambers you ARRIVE AT BY WALKING (walking co-streams the
-neighbourhood - e.g. the proven-walkable Random09A entrance is itself multi-GUID, gc=2). It
-breaks ONLY at a chamber that can load in ISOLATION - a respawn/save shrine - which is exactly
-`new_secretdoor`. This is the CAVE_ENTRY_CHAIN_TRACE "residency knife-edge", now pinned to the
-save/respawn class.
+**Why it works everywhere else but crashes here (the true discriminator - NOT a universal law):**
+"respawn + multi-GUID navmesh" is NOT itself the crash condition. The stock game ships **264
+respawn chambers with multi-GUID navmeshes** (e.g. `DelphiTownStart` gc=12, `256x256MemphisCityArea`
+gc=13, Utgard/Muspelheim/Jotunheim) that save and reload fine (`local/vet_basegame.py` /
+`local/vet_provenance.py`). They are safe because a base region keeps its navmesh-neighbour levels
+**CO-RESIDENT (region-packed)**, so ProcessRLTD's live-residency gate completes even on an isolated
+respawn. The SV blood-cave / secret-place chambers are the opposite: grid-shifted into empty world
+space (`gen_bc_navmeshes.py` `GRID_SHIFT`), with OFFLINE-generated multi-GUID navmeshes whose seam
+neighbours are NOT co-resident on isolated load. So the crash-relevant property is the SV-custom
+**co-residency structure**, not the respawn+multiGUID pair; single-own-GUID is a SUFFICIENT fix for
+these chambers, not a proven-necessary universal invariant. This also works for chambers you ARRIVE
+AT BY WALKING (walking co-streams the neighbourhood - the proven-walkable Random09A entrance is
+itself multi-GUID, gc=2). It breaks ONLY at an SV-custom chamber that can load in ISOLATION - a
+respawn/save shrine - which is exactly `new_secretdoor`. This is the CAVE_ENTRY_CHAIN_TRACE
+"residency knife-edge", now pinned to the SV-custom save/respawn class.
 
 ## 4. ONSET (why it recurs, unchanged since the cave became walkable)
 `new_secretdoor`'s blob + its 0x0b + its LEVELS entry are byte-frozen build25->build47 (b86 sec
@@ -124,10 +151,25 @@ NOT a regression from any content wave, and is not save-specific beyond "the sav
 fountain." `drxBC3` (idx 2253, gc=6) hosts the OTHER interior respawn shrine
 (`respawn_hades_shrine01`) and is the identical latent class (see the gate + BACKLOG B87).
 
+**Same-class latent chambers (the complete set, `local/vet_provenance.py`).** The gate's
+provenance scan (sec 7) surfaces exactly THREE SV-custom respawn+multi-GUID chambers on both
+variants - the proven crash plus two latents:
+- `new_secretdoor_transitionhallway` (gc=3, `respawn_hadescave01`) - the PROVEN crash spot.
+- `drxBC3` (gc=6, `respawn_hades_shrine01`) - blood-cave interior latent.
+- `XPack\Levels\Secret_Place\RogueEncampment.lvl` (gc=3, `respawntempleorient01`) - the Secret
+  Place / Duister latent (round-2 addition). Its multi-GUID navmesh is produced by OUR pipeline's
+  `SECRET_PLACE` cluster (`gen_bc_navmeshes.py`, neighbours `Rogue Encampment Forest Entrance` +
+  `RogueEncampmentForestFiller`), it is NOT a stock level (own GUID `f31e50a1` absent from stock
+  TQAE Levels.arc), and the Duister area is reachable (a rift-shrine return is wired in
+  `svaera_plus_portals.py` step 2c), so its respawn temple can load in isolation exactly like the
+  blood-cave chambers. Whether a save actually rests on it (and thus whether it crashes in
+  practice) is a runtime/walk question, same epistemics as `drxBC3`; DEBT-registered pending Will.
+
 ## 5. VARIANT SCOPE - STEAM AFFECTED (yes)
 `new_secretdoor`'s blob, 0x0b, GUID list, and the `respawn_hadescave01` placement are
 byte-identical between canonical (`Levels_merged.arc`, the Steam build47 payload) and TESTHUB.
-The MAP-NAV-4 gate (sec 7) flags the identical 2 chambers on BOTH. The crash is not TESTHUB-only.
+The MAP-NAV-4 gate (sec 7) flags the identical THREE SV-custom chambers on BOTH variants. The
+crash is not TESTHUB-only.
 
 ## 6. THE FIX - a design tradeoff that needs Will's walk test (NOT blind-shipped)
 The brief's suggested minimal fixes (add a missing level / fix a GUID / strip a dead dep) all
@@ -157,27 +199,48 @@ walk-tested (build13 lattice, R09 swap). The candidates, ranked:
   not move an EXISTING save already sitting on the fountain.
 
 Recommendation: build **A** for `new_secretdoor` on a DEV map and have Will walk-test (does the
-crash stop? do the west/east seams still walk?). If A walks clean, extend to `drxBC3` and it is
-the shippable minimal fix; if A walls a seam, escalate to **C** (portals) for the two respawn
-chambers. This round ships the RCA + gate + docs; the map change is the walk-test-gated next step.
+crash stop? do the west/east seams still walk?). If A walks clean, extend to the two latents
+`drxBC3` and `RogueEncampment` (each re-checked against its own seams) and it is the shippable
+minimal fix; if A walls a seam, escalate to **C** (portals) for the affected respawn chambers.
+This round ships the RCA + gate + docs; the map change is the walk-test-gated next step.
 
 ## 7. GATE (permanent) + planted negative test
 `tools/contracts/gate_navmesh_coresidency.py` + `MAP-NAV-4` in the map contract battery
-(`contracts_map.py` `contract_navmesh_coresidency`, added to CONTRACTS + `_CONTRACT_FUNCS`).
-Invariant: **every blood-cave chamber that hosts a `StrategicMovementRespawnShrine` (a save/
-respawn point loadable in isolation) must carry a single-own-GUID navmesh** (guid_count == 1).
-This is the RESIDENCY half MAP-NAV-1 structurally cannot see. Class-resolved from the arz (not a
-name heuristic); run against BOTH variant arcs for runtime parity. Planted negative test
-(`--negtest`): respawn+multi-GUID is FLAGGED, respawn+single-GUID CLEARS, no-shrine+multi-GUID
-CLEARS. On build47 it flags exactly `new_secretdoor_transitionhallway` (gc=3) and `drxBC3`
-(gc=6) on BOTH variants; these are whitelisted as OPEN DEBT (B87) pending the sec-6 walk-test
-fix, so any NEW respawn+multi-GUID chamber fails loud while the battery stays green.
+(`contracts_map.py` `contract_navmesh_coresidency`, in `CONTRACTS` + `_CONTRACT_FUNCS`). Both
+call ONE shared classifier `contracts_map.scan_isolated_load_risk` so the standalone gate and the
+battery can never drift apart (the round-1 defect: the gate used a NARROW blood-cave substring set
+while the battery reused the BROAD b82 `BLOODCAVE_SUBSTRINGS`, so the battery flagged extra
+chambers the whitelist did not cover and turned RED).
+
+Invariant (round 2): **every SV-CUSTOM level (own level GUID ABSENT from the stock base-game
+Levels.arc index) that hosts a `StrategicMovementRespawnShrine` must carry a single-own-GUID
+navmesh** (guid_count == 1). The provenance test is the true, name-free discriminator: it EXCLUDES
+all 264 inherited base/IT/XPack respawn+multi-GUID chambers (region-packed, proven-safe - including
+the byte-identical Silk Road `HiddenValley01` spawn hub that the round-1 broad scope false-flagged),
+and surfaces exactly the SV-custom respawn chambers our navmesh pipeline generates. This is the
+RESIDENCY half MAP-NAV-1 structurally cannot see; shrine class-resolved from the arz union (not a
+name heuristic); provenance from the base game's `Resources/Levels.arc` (cfg `base_game_dir`, which
+`run_contracts` supplies by default - the contract fails loud if it is unavailable rather than
+passing blind); run against BOTH variant arcs for runtime parity.
+
+Planted negative test (`--negtest`): SV-custom respawn+multi-GUID is FLAGGED, SV-custom
+respawn+single-GUID CLEARS, SV-custom no-shrine+multi-GUID CLEARS, and **base-provenance
+respawn+multi-GUID CLEARS** (the false-positive class round 2 fixed). On build47 the gate flags
+exactly THREE SV-custom chambers on BOTH variants - `new_secretdoor_transitionhallway` (gc=3),
+`drxBC3` (gc=6), and `RogueEncampment` (gc=3) - all whitelisted as OPEN DEBT (B87) pending the
+sec-6 walk-test fix, so the real map battery (`py tools/contracts/run_contracts.py --only map`)
+runs GREEN (0 non-whitelisted P0/P1 on both variants) while any NEW SV-custom respawn+multi-GUID
+chamber fails loud.
 
 ## 8. What only an in-game run can confirm (needs Will)
 - That fix A (single-own-GUID `new_secretdoor`) STOPS the crash AND keeps the west/east seams
   walkable (the one thing static analysis cannot settle - the residency/streaming timing and the
   seam stitch behaviour are runtime).
-- Which chamber the deeper cave crashes at NEXT, if any (drxBC3 respawn is the predicted latent).
+- Which chamber the deeper cave crashes at NEXT, if any (`drxBC3` respawn is the predicted latent).
+- Whether the two static-only latents actually detonate in play: `drxBC3` (blood-cave interior)
+  and `RogueEncampment` (Secret Place / Duister). Both are SV-custom respawn+multi-GUID chambers
+  flagged by the gate; whether a save/respawn ever rests on either - and thus whether it crashes -
+  is runtime, not statically decidable. Fix A extends to each if Will hits them.
 
 ## 9. Artifacts / repro (all under the worktree `local/` = gitignored scratch)
 - `local/b87_navok.py` - decode new_secretdoor's 0x0b GUID list + resolve `08c4c32f`/`415c9c33`
@@ -187,4 +250,11 @@ fix, so any NEW respawn+multi-GUID chamber fails loud while the battery stays gr
 - `local/b87_overlap.py` - world-space walkable overlap at the seams (127u / 63u).
 - `local/b87_scope.py` - every blood-cave chamber's GUID count + portal binding.
 - `local/b87_shrines.py` / `local/b87_r09.py` - respawn-shrine placement + R09 is multi-GUID.
-- `tools/contracts/gate_navmesh_coresidency.py --negtest` - the gate + planted negative test.
+- `local/vet_disasm.py` - Engine.dll disasm: ProcessRLTD residency gate + fault-site
+  `mov eax,[ebx+edi*4]` at RVA 0x20e270 (EDI=0, near-null base = EBX).
+- `local/vet_basegame.py` - 264 base-game respawn+multi-GUID chambers ship+work; HiddenValley01
+  navmesh byte-identical to stock (the round-1 false positive).
+- `local/vet_provenance.py` - the provenance invariant yields EXACTLY the 3 SV-custom chambers
+  (own GUID absent from stock TQAE) on both variants; base/XPack excluded name-free.
+- `tools/contracts/gate_navmesh_coresidency.py --negtest` - the gate + planted negative test
+  (incl. the base-provenance false-positive control, case D).

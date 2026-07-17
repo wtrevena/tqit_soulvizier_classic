@@ -13,16 +13,27 @@
 MAP-GROUPS-1 GROUPS/Scandia01_02 [TeleportShrine]
 MAP-GROUPS-1 GROUPS/X4RespawnTestWorld [RespawnShrine]
 
-# --- MAP-NAV-4 (b87 blood-cave isolated-load co-residency crash) -------------
-# OPEN P0 crash, DEBT-registered (docs/BACKLOG.md B87), structural fix PENDING
+# --- MAP-NAV-4 (b87 SV-custom respawn-chamber isolated-load co-residency crash) --
+# OPEN P0 crash class, DEBT-registered (docs/BACKLOG.md B87), structural fix PENDING
 # Will's in-game walk test (the map-lever choices - single-own-GUID vs cluster
-# relocation vs interior portals - all trade crash-safety against seam
-# walkability and must be walk-tested; see docs/reports/b87_bloodcave_navok_rca.md).
-# These two DRX respawn/save chambers carry a multi-GUID grid-seam navmesh that
-# fails ProcessRLTD's live-residency gate on isolated load (respawn/save-in-place).
-# new_secretdoor_transitionhallway = the 2026-07-17 Frida-probe-PROVEN crash spot
-# (respawn_hadescave01). drxBC3 = the same-class latent risk (respawn_hades_shrine01).
+# relocation vs interior portals - all trade crash-safety against seam walkability
+# and must be walk-tested; see docs/reports/b87_bloodcave_navok_rca.md).
+# The gate flags every SV-CUSTOM (own GUID absent from stock TQAE Levels.arc)
+# respawn/save chamber whose multi-GUID grid-seam navmesh fails ProcessRLTD's
+# live-residency gate on isolated load (respawn/save-in-place). Base/IT/XPack
+# respawn chambers (region-packed, GUID in stock, incl. the byte-identical Silk
+# Road HiddenValley01 spawn hub) are excluded by provenance - they are NOT bugs.
+# The three flagged SV-custom chambers, all whitelisted as OPEN DEBT:
+#  - new_secretdoor_transitionhallway = the 2026-07-17 Frida-probe-PROVEN crash spot
+#    (respawn_hadescave01, gc=3).
+#  - drxBC3 = same-class latent (respawn_hades_shrine01, gc=6).
+#  - RogueEncampment (Secret Place / Duister) = same-class latent (respawntempleorient01,
+#    gc=3); our SECRET_PLACE navmesh-generator cluster produced its grid-seam mesh, the
+#    Duister area is reachable (a rift-shrine return is wired), so its respawn temple can
+#    load in isolation exactly like the blood-cave chambers.
 # Suppressed here so the battery stays green for other map work; the gate still
-# fails loud on any NEW respawn+multi-GUID chamber. REMOVE when the fix lands.
+# fails loud on any NEW SV-custom respawn+multi-GUID chamber. REMOVE each when its
+# fix lands + Will confirms the walk test.
 MAP-NAV-4 Levels\World\xBloodCave\new_secretdoor_transitionhallway.lvl
 MAP-NAV-4 Levels/World/xBloodCave/drxBC3.lvl
+MAP-NAV-4 XPack\Levels\Secret_Place\RogueEncampment.lvl
