@@ -47,3 +47,138 @@
 
 ## Process (meta-rulings)
 - R-50 [2026-07-16] "what do you need to do to manage your tasks better so we dont end up with stuff like this happening over and over" -> THIS LEDGER + retirement protocol + player-surface checklist + no-new-surface-without-a-gate + debt register. See CLAUDE.md standing rules.
+
+---
+
+## HISTORICAL BACKFILL (b84 sweep, round 1, 2026-07-16) - see docs/BACKLOG.md DEBT REGISTER for the
+## open-item counterpart of this sweep. Numbering continues each section's existing range; sections
+## reserve a decade (Toxeus 1-19, Masteries 20-29, World 30-39, Souls 40-49, Process 50-59); new
+## topics get a fresh decade (Legal 60-69).
+
+### Toxeus arc (continued)
+- R-13 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
+  "we need to retire the one we are adding and just update the 15% one to 33%." Retires the never-wired
+  ~50% parchment-room Toxeus feature (`demon_01_cluster_toxeus50` pool+proxy, `q_bloodtoxeus_lone_50`)
+  entirely; the sole corridor Blood-Toxeus roll stays the `drxFirstRoom` ambush, `chanceToRun` retuned
+  15->33. SUPERSEDES R-14. Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 5; docs/reports/
+  toxeus_suite_recon.md sec 0.
+- R-14 [2026-07-09] SUPERSEDED by R-13 (2026-07-14) "put toxeus devourer of blood there too with 50%
+  spawn chance" - the original ask for a second parchment-room Toxeus spawn; never wired to the map,
+  then explicitly retired. Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 5.
+- R-15 [2026-07-14] IMPLEMENTED "you are good to ship the rant scroll" - amgoz1 creative-text veto
+  cleared for `{^r}The Murderer's Screed` / `A Parchment Slick with Blood` + the ~180-word rant text
+  (Toxeus's voice). Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 6.
+- R-16 [2026-07-14] PENDING (BACKLOG entry "approved-by-Will-2026-07-14", NOT scheduled) Legendary-only
+  Toxeus stalker via the proven Hydra fixed-placement pattern (`pool1` empty + `poolLegendary1` = boss
+  pool) - APPROVED, QUEUED, not built; the already-shipped roaming Endless Hunt (Hades-confined) stays
+  as-is alongside it, Will's call whether it is additive or a replacement. Source: docs/
+  MULTIPLAYER_COMPAT.md M4.6-M4.7; docs/reports/toxeus_suite_recon.md sec 5.3.
+- R-17 [pre-M4, STANDING] Duplicate rant-scroll drops on repeat Blood-Toxeus kills are ACCEPTED (Will)
+  - the per-player Misc4 fallback (corpse/chest with `loottable=toxeus_rant_perplayer`) need not dedupe
+  across kills. Source: docs/MULTIPLAYER_COMPAT.md M4.3.
+- R-18 [pre-build40, STANDING] "Will forbade a rate change" [paraphrased] on the Enslaver's roaming
+  warband encounter frequency - the weight-1/K=600 rarity (~once per several hundred acts) is
+  deliberate design; the dependable per-encounter beat is the PLACED warband set-piece, not the roam.
+  Do not tighten/loosen without new Will approval. Source: docs/reports/b49_enslaver_rate.md.
+
+### Masteries (continued)
+- R-26 [2026-07-09] STANDING (binding on ALL mastery work), verbatim: "editing skills is probably
+  preferred, but we can add new skills, i just dont want to arbitrarily delete things for cleanliness,
+  i want to be very careful about preserving much of the original work and intent of the original
+  devs." NEVER REMOVE SKILLS FROM MASTERIES: (1) EDIT existing skill fields = preferred; (2) ADD new
+  skills/tree slots = allowed; (3) REMOVE a skill or tree slot = FORBIDDEN without per-item Will
+  approval (proposal list only, never a build); (4) re-enabling DISABLED original content = ENCOURAGED;
+  (5) dangling-ref field cleanup INSIDE a record = allowed, but treat as (3) if in doubt whether it
+  removes player-facing content. Source: docs/MASTERY_AUDIT_2026-07-09.md header.
+- R-27 [2026-07-09] IMPLEMENTED (Wave 1 + Wave 2) Will approved BOTH WAVES of the 11-agent mastery
+  audit + boost plan: Wave 1 = 6 broken fixes + Defense/Earth/Storm boosts; Wave 2 = the rest
+  (Warfare/Nature/Spirit/Dream/RuneMaster/Neidan). Occult + Hunting = FROZEN benchmarks, never
+  modified. Source: docs/MASTERY_AUDIT_2026-07-09.md.
+- R-28 [2026-07-10] IMPLEMENTED (build36 Lane B) "yes make them" - Will approved the additive SVAERA
+  mastery graft (`docs/SVAERA_MASTERY_COMPARISON.md`: graft #0 PC anim-row completion + 14 additive
+  skill grafts + the Rune Golem follow-up). Wholesale SVAERA adoption was REJECTED on all 12 trees per
+  the same audit judgment - only additive hybrid grafts taken, never a tree replacement. Source: docs/
+  BACKLOG.md ~line 1210; docs/MASTERY_DEVIATIONS_LEDGER.md sec 4/5.
+- R-29 [build43] IMPLEMENTED (b67), verbatim: "Go ahead and fix the occultist and hunting mastery
+  black-background fixes. You may need to go into SV files to find the appropriate background image
+  for the occult mastery skill selection page." Occult tree-pane background repointed to an SV-sourced
+  texture (`standardskillbackground_joanna_ver_dark.tex`); Hunting audited already-correct, no action
+  needed. Gamepad-parity variant of the art is OUT of round-1 scope (mouse/keyboard only). Source:
+  docs/reports/b67_oh_pane_art.md.
+
+### World / placement (continued)
+- R-33 [build25, IMPLEMENTED] [paraphrased - DOORS_HUB_LOG.md's author-phrasing of Will's intent,
+  line ~162, not a first-person quote] Will wants the wagon on the driver's RIGHT-HAND (screen-right
+  = +X = East) side - the Hidden Valley caravan cluster wagon was on the wrong (west/screen-left) side;
+  recomposed east of the driver, horse hitched south of the wagon, all >=3.5u apart. Shipped in the
+  build25 "C1-C4 fixes" canonical bundle. Source: docs/DOORS_HUB_LOG.md sec C3.
+- R-34 [build24/25, IMPLEMENTED per the C1-C4 bundle] Will's C2 feedback wants a SOLID "purple occult
+  pyre/volcano-style visual anchor" at the HVBorder04 sprite-spawner site - the bare `pit_fx01` FX
+  alone read as insufficient; co-located with a solid Hades firepit/woodpyre mesh
+  (`mc_hades_anouranfirepit02` + `mc_hades_woodpyre01`). Shipped in the build25 canonical bundle per
+  the doc's deploy-summary line ("A1/A2 doors + C1-C4 fixes"); not independently re-confirmed this
+  sweep - UNKNOWN-STATUS beyond that bundle note. Source: docs/DOORS_HUB_LOG.md sec C2.
+- R-35 [origin report not located this sweep, STATUS: STILL OPEN as of 2026-07-10] "The Lower Olympus
+  respawn trophy Will asked to REMOVE" [paraphrased quote of Will's original instruction; the
+  instruction's own source doc was not found in docs/ during this sweep] - `respawn_olympus_new.dbr`
+  in `olympusfinal02` was meant to be de-placed (fix already coded) but as of the 2026-07-10 dead-
+  content audit was STILL live in the shipped map (needs a map rebuild + redeploy + re-verify it is
+  gone). No later doc confirms this shipped. Source: docs/DEAD_CONTENT_AUDIT_2026-07-10.md LANE B.
+  Also see the DEBT REGISTER in docs/BACKLOG.md.
+- R-36 [2026-07-07ish, IMPLEMENTED per BACKLOG merge] "Polis vault cage interior (Guardian + horde + 5
+  majestic chests)" [paraphrased] - Will asked about the Polis Vault cage interior explicitly; the
+  `polis_vault` DB module + its map placement merged (b37 map pass). Source: docs/
+  HANDOFF_MASTER_2026-07-12.md; docs/BACKLOG.md (polis_vault merge note).
+- R-37 [pre-build41, STANDING] The Legendary Warden-of-Souls cage: aggro-through-bars is native to this
+  cell's neighbours and was APPROVED by Will (not a defect to fix). Source: docs/reports/
+  b42_fixedboss_dedup.md.
+- R-38 [2026-07-16] IMPLEMENTED (backlog swap) "Will 2026-07-16: replaced the second crocodile -
+  'choose something we dont have an uber hero for yet'" - NEW-HERO-NILE-CROC renamed/retargeted to
+  NEW-HERO-NILE-SCORPION (scorpos family; no uber scorpion existed in the roster); alternates if the
+  rig disappoints: giant scarab, plague swarm host. Same Nile Floodplain / 'Plight of the Nile
+  Farmers' quest-completion spot, same quest-collision-safety requirement. Source: git commit
+  `edd30b6` (docs/BACKLOG.md).
+- R-39 [2026-07-16] PENDING (worktree `coldworm-markers` has partials; interrupted lane, joins when
+  resumed) Cold Worm needs ~3x characterLife and +20% armor (`defensiveProtection`) ON TOP of the
+  already-queued kit (burrow/frost skills that actually cast), a massive total-speed boost, the
+  exclamation-marker mechanism extended to all placed ubers, and the 3-tier soul + loot-triple fix +
+  roster drop-slot sweep - ships as ONE lane, not piecemeal. Source: git commit `edd30b6` (docs/
+  BACKLOG.md "COLD WORM BUFFS").
+
+### Souls & items (continued)
+- R-43 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
+  and do not have him drop a soul." `um_tombguardian_26` kept Common / `chanceToEquipFinger2=0.0`; the
+  attached-but-undroppable `um_tombguardian_soul_{n,e,l}` rings were detached then retired (removed
+  from the arz) along with their orphaned name tag. Source: docs/reports/souls_quality_fix.md sec 3
+  (P2-a).
+- R-44 [2026-07-14] IMPLEMENTED (D3/FIX 4) Will's directive, verbatim: "fix the crowboar soul's
+  summoned crow bug ... sweep the roster for any OTHER summon soul with the same broken
+  on-attack+petLimit=1 shape and fix those too (same bug = same wave)." Round-2 widened this from 4 to
+  a roster-derived 8-family set (manual-cast per the Lyia Leafsong convention). Source: docs/reports/
+  souls_quality_fix.md sec 3 (FIX 4/D3).
+- R-45 [2026-07-14] IMPLEMENTED (D1, was WILL-VETO, now RATIFIED) "yes fix any blatant errors that you
+  detect ... bloodtip 5/7/9 + gustleech 10/12/14 ship as-is" - clears the earlier WILL-VETO flag on
+  these two SV-098i-identical `itemSkillLevel` arrays (judged amgoz1 data-entry oversights, not intent;
+  fixed raise-only, grant names untouched). The `_SV_INVERSION_FIX` code block is kept as a documented
+  historical revert path only. Source: docs/reports/souls_quality_fix.md sec 5 (D1); docs/BACKLOG.md
+  ~line 404.
+- R-46 [2026-07-14] IMPLEMENTED (D5) Will's directive, verbatim (partial): "classify each ... fix every
+  blatant error via the module ... leave polish documented" - every MINOR-GAP class in the 155-item
+  souls-quality audit list was classified BLATANT DATA ERROR (fixed) vs SUBJECTIVE POLISH/DESIGN (left
+  documented, untouched). Source: docs/reports/souls_quality_fix.md sec 5.5.
+- R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class
+  encounters (Blood Toxeus, Enslaver, Vashkarr, Broodmother, Dorus, Sarkoth, Gorrahk, Ilsevar,
+  Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb
+  (`genericbossorb_04`, no bespoke "X's Essence" name) as the established convention - NOT a bespoke
+  named essence per boss. Source: docs/reports/b53_orb_essence.md sec 4.
+
+### Legal / permissions (new section)
+- R-60 [2026-07-04] STANDING "Will's decision, 2026-07-04 - no Lite build" - KEEP DRX (Dragonlord's
+  visual overhaul) in the shipped mod; `-LiteMode` is off the table (it strips assets the blood cave
+  itself needs). Keeping DRX keeps Dragonlord's permission on the Workshop-publish critical path.
+  Source: docs/STEAM_RELEASE.md:33 (the verbatim string); docs/SHARE_AND_PLAY.md; docs/PERMISSIONS.md; CLAUDE.md content-gaps section (same ruling,
+  multiply cited).
+- R-61 [2026-07-10] STANDING "he said it was cool" (Will relaying soa's verbal permission) - soa
+  (SVAERA author) granted verbal permission for the additive mastery-graft reuse (R-28); a written
+  confirmation is still an open standing obligation, as is amgoz1's and Dragonlord's written
+  permission (neither captured in writing as of 2026-07-10). Source: docs/PERMISSIONS.md.
