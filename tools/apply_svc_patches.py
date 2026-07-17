@@ -7651,7 +7651,6 @@ def _create_bwpriest_pet_skill(db):
     else:
         _ensure_record(db, summon_path, r'database\Templates\Skill_SpawnPet.tpl')
         db.set_field(summon_path, 'Class', 'Skill_SpawnPet', DATA_TYPE_STRING)
-=======
     """R-43 (Will 2026-07-16 verbatim: 'the high priest soul should allow you to
     summon the high priest'). bwpriest_1/2/3 = the Blood Cult High Priest
     HIMSELF (source c_disciple_miniboss); bwpriest_attendant_1/2/3 = the Melinoe

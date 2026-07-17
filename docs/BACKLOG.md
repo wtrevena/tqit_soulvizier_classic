@@ -128,7 +128,6 @@
 - bloodtip/gustleech `itemSkillLevel` WILL-VETO - RESOLVED, ratified ship-as-is (R-45).
 - Tomb Guardian soul leak - RESOLVED (R-43).
 - Rant-scroll creative-text veto - RESOLVED, cleared to ship (R-15).
-=======
 > 🧊 **b76 CHUMBI VALLEY P0 FREEZE - RCA + FIX (round 1) ON `fix/chumbi-lag` (2026-07-16).** Will (P0):
 > DEV "chumbi valley" frozen by "every boss you created all in one spot" + "the infinite summon of the
 > skeleton dog guys tomb guardian ... the uber boss whos name has sepulcher in it." **RCA (two
@@ -157,7 +156,6 @@
 > sweep to a build gate + refresh stale `gate_build32_parseback.py`. Report:
 > `docs/reports/b76_chumbi_freeze_rca.md`.
 
-=======
 > 🩸 **b82 BLOOD-CAVE DETERMINISTIC CRASH - RCA round 2 (2026-07-16), branch `fix/bloodcave-crash`.**
 > Will (P0): "some item in the blood cave is not wired right; every time I go to that same area the
 > game crashes." **VERDICT (unchanged): no single broken-wiring offender found in this lane; forensics
@@ -185,7 +183,6 @@
 > ENTER/LEAVE run (docs/crash/WILL_CRASH_PROBE_GUIDE.md) OR full Page-Heap on TQ.exe to pin the corrupting
 > co-resident navmesh load; if H1 confirmed the remedy is CAVE_ENTRY_CHAIN_TRACE.md Fix B (map-structural
 > cluster relocation, map lane).
-=======
 > 🟢 **B81r2 PET IDENTITY PASS round 2 (vet NO-GO on round 1) - FIX COMPLETE + SCRATCH-VERIFIED,
 > SUPERSEDES round 1 below.** Round-1 vet: the 57 `_build_boss_summon` pets were clean, but the
 > round-1 report's "every summon's vox cry now matches its own body" claim was FALSE - a SECOND,
@@ -259,7 +256,6 @@
 > `docs/reports/b75_runtime_green_rca.md`. Will test: restart Steam, DISMISS + RE-SUMMON the Enslaver.
 >
 
-=======
 > 🎯 **B85 - HIGH PRIEST SUMMON (R-43, Will 2026-07-16 verbatim: "the high priest soul should allow
 > you to summon the high priest") - IMPLEMENTED, awaiting independent vet.** Branch `fix/soul-tiers`
 > (extends b78 tip `50d4bdfc`). RCA: the granted summon spawned a Melinoe blade-dancer (Demon race,
@@ -308,7 +304,6 @@
 > (`souls_quality.py --negtest`) plants epic==normal -> flags n->e -> PASS. `flat_tier_count=0`. WILL-
 > CONFIRM: none. Out-of-lane flags: malformed cyclops/vulture duplicate soul records (hygiene);
 > Cold Worm = its own lane. Report: `docs/reports/b78_soul_tier_scaling.md`.
-=======
 > 🎯 **b77 MASTERY UNLOCK-ALIGNMENT FIX WAVE (round 1, Will 2026-07-16 greenlight) - IMPLEMENTED +
 > FULL-BUILD VERIFIED GREEN, AWAITING VET + WILL DEV PASS.** Branch `fix/mastery-unlock`. Implements
 > the confirmed b74 audit: every mastery button's real unlock gate (skillTier threshold) now matches
@@ -331,7 +326,6 @@
 > **no new P0/P1** (baseline == wave: 0 P0 / 576 P1 / 10717 P2); validate_tags PASS; idempotent.
 > Every judgment is a WILL-VETO line in `docs/reports/b77_unlock_alignment_fix.md` (the two ladder
 > diagrams, the E decision, the waiver list) for Will's DEV visual pass. DB-only wave (no map/quest).
-=======
 > 🖤 **b83 ROUND 2 (vet HIGH/MEDIUM/LOW RESOLVED).** The adversarial vet found the Devourer's
 > player-summonable soul-pets `bloodtoxeus_1/2/3` still carried `buffSelfSkillName =
 > records\skills\stealth\envenomweapon.dbr` (base GREEN, tint (0.25,1.0,0.25)) - a LIVE auto-self-buff
@@ -376,7 +370,6 @@
 > the 343_dark_smoke particle's final black-vs-green render per the rule-3 caution; tint-black is
 > grounded + independent, one-line fallback); BP-RITE-VETO (100% on-kill on farmable roaming-rare
 > bosses - confirm vs first-kill-only/reduced). Ready for independent vet.
-=======
 > 🩸 **b79 BLOOD-TOXEUS SPAWN PATHS (Will 2026-07-16) - ROUND 2 (R-4 rename completed + report nits).**
 > Branch `fix/bloodtoxeus-spawns` (off `feat/toxeus-champions` b73). Closes rulings R-1/R-2/R-3/R-4.
 > **CHEST 100% RCA (R-3):** the "Esti's Hidden Chest" guard (drxBC2 `egg_blooddragon_pack`, 4.2u from
@@ -3447,7 +3440,6 @@ still green, residue is asset/save-level (pfx or already-summoned permanent pet)
 next round; (b) 10 bosses on neutral proxy portrait could get bespoke portraits (future
 art); (c) the ~77-pet systemic Lyia green (24 families) remains b55's flagged design call.
 NOT deployed/committed to main.
-=======
 ## B80 - FORMULA NAME AUDIT round 1 (Will 2026-07-16, R-41) - FIX_STAGED (branch fix/formula-names)
 
 Report `docs/reports/b80_formula_names.md`. Will: "Mythic Formula - Crystalline Mask is
@@ -3492,7 +3484,6 @@ landed on the arz without a matching Resources restage). Not caused by, and unaf
 by, this branch (proven via the identical-before/after diff). Flagged for whichever
 lane owns the next full integration: fresh bootstrap + restage + re-run
 `run_contracts.py` to re-establish ground truth.
-=======
 ## BUILD45 MASTERY SV-ALIGNMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
 
 Fixes the residual Occult/Hunting mastery-tree defects Will enumerated from his build43 screenshot

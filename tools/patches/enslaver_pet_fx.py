@@ -685,11 +685,8 @@ def verify(db, tags=None):
     if problems:
         raise SystemExit('enslaver_pet_fx.verify FAILED:\n  ' + '\n  '.join(problems))
     print('  enslaver_pet_fx.verify: OK (Enslaver + marauder soul-pets carry the '
-          'black shroud, zero green Lyia residue; chain icon+portrait on-identity; '
+          'black shroud, zero green Lyia residue; chain icon+portrait on-identity '
+          'across all %d rostered families incl. R-43 Blood Cult High Priest; '
           'race + voice paks match each pet\'s own source, b81; second-lineage '
           'race/voice gate OK: %d pets across %d families, b81r2)'
-          % (second_builder_checked, len(_SECOND_BUILDER_ROSTER)))
-=======
-          'black shroud, zero green Lyia residue; chain icon+portrait on-identity '
-          'across all %d rostered families incl. R-43 Blood Cult High Priest)'
-          % len(_CHAIN))
+          % (len(_CHAIN), second_builder_checked, len(_SECOND_BUILDER_ROSTER)))
