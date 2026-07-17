@@ -75,9 +75,12 @@ TypedField so the pet's field is byte-identical to the monster it mirrors):
      Marshal pet's specialAttack + kit are its source's own hades/spirit combat kit
      (hero_hadesbolt etc. - RCA'd, not green), so no green marker matches them.
   2. INHERIT the source monster's shroud: copy the SOURCE's charFxPakRunningNames
-     TypedField onto the pet -> enslaver pets get svc_enslaver_darksmoke (the b38
-     black smoke), marauder pets get drxshadowcloakrunning_fx_pak (the shadow cloak
-     the marauder monster already wears), Hades Marshal pets get hades2_shadowcloud
+     TypedField onto the pet -> enslaver pets get the boss's shroud (b75: now
+     drxshadowcloakrunning_fx_pak, the SAME proven-black whole-body smoke the
+     marauders wear - the b38/b55 svc_enslaver_darksmoke -> 343_dark_smoke pak read
+     GREEN in-game, see docs/reports/b75_runtime_green_rca.md), marauder pets get
+     drxshadowcloakrunning_fx_pak (the shadow cloak the marauder monster already
+     wears), Hades Marshal pets get hades2_shadowcloud
      (the dark shadow-cloud the Marshal monster already wears). Each pet ends up
      with EXACTLY its own source monster's shroud (verbatim TypedField copy).
      SAFETY: this is crash-safe (charFxPakRunningNames is a pure string FX-path
@@ -108,8 +111,9 @@ shroud whose pet still wears the old green rig."
 Ground-truth sweep of the golden arz: EXACTLY 5 records carry a custom
 charFxPakRunningNames, and all 5 are MONSTERs. Of those 5, EXACTLY 3 are
 _build_boss_summon soul sources whose pets kept the green rig (the three families
-here): um_toxeus_enslaver_99 (svc_enslaver_darksmoke), um_enslaver_marauder_99
-(drxshadowcloak), svc_um_hadesmarshal_80 (hades2_shadowcloud). The other 2 shroud
+here): um_toxeus_enslaver_99 (b75: now drxshadowcloak, was svc_enslaver_darksmoke
+which read green), um_enslaver_marauder_99 (drxshadowcloak), svc_um_hadesmarshal_80
+(hades2_shadowcloud). The other 2 shroud
 monsters have NO soul-summon pet, so nothing diverges: um_vashkarr_99
 (drxshadowcloak) - its soul is a STAT _create_soul, not a summon, and its
 summonhorde raises separate fodder, not a vashkarr pet; boss_satyrshaman_55
@@ -169,6 +173,38 @@ _FAMILIES = [
 ]
 _ALL_PETS = _ENSLAVER_PETS + _MARAUDER_PETS + _HADESMARSHAL_PETS
 
+# ── b81r2 RACE/VOICE GATE, second lineage (Will 2026-07-16 vet NO-GO on b81) ──
+# b81 wired _align_pet_identity into _build_boss_summon only, so its chain-gate
+# leg above (_race_and_voice_problems via _CHAIN) only ever asserted over the 3
+# formally-gated _build_boss_summon families. The vet proved a SECOND, older
+# Lyia-cloning lineage exists - apply_svc_patches.py's own standalone
+# `_create_X_pet_skill` builders (Boneash/Narok/Vort/Pharaoh's Honor Guard/
+# Blood Witch High Priest/Lil'Lued/Rakanizeus) plus one live upstream-native SV
+# 0.98i family (Helike) - that b81 never reached. b81r2 wires
+# `_align_pet_identity`/a hand-equivalent call into every one of those builders
+# (apply_svc_patches.py); this roster gives that fix its OWN permanent gate leg
+# here, reusing `_race_and_voice_problems` unchanged (source-faithful: a source
+# that itself defines Maenad distressCallGroup, e.g. none in this roster today,
+# is correctly exempted, same as the _CHAIN leg above).
+_SECOND_BUILDER_ROSTER = [
+    ('Boneash', _R + r'creature\monster\skeleton\um_boneash_30.dbr',
+     [_R + r'skills\soulskills\pets\boneash_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Narok the Rockskin', _R + r'creature\monster\dragonian\um_rockskin_42.dbr',
+     [_R + r'skills\soulskills\pets\narok_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Vort the Red', "records\\creature\\monster\\dragonian\\hero_tarthon_na'arak_40.dbr",
+     [_R + r'skills\soulskills\pets\vort_%d.dbr' % i for i in (1, 2, 3)]),
+    ("Pharaoh's Honor Guard", _R + r'creature\monster\questbosses\boss_pharaohshonorguard1_31.dbr',
+     [_R + r'skills\soulskills\pets\pharaohguard_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Blood Witch High Priest', _R + r'drxcreatures\bloodwitch\skills\discipleboss_bladedancer.dbr',
+     [_R + r'skills\soulskills\pets\bwpriest_%d.dbr' % i for i in (1, 2, 3)]),
+    ("Lil'Lued the Elder Djinn", _R + r'drxcreatures\crowheroes\lillued_big.dbr',
+     [_R + r'skills\soulskills\pets\lillued_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Rakanizeus', _R + r'creature\monster\satyr\um_rakanizeus_17.dbr',
+     [_R + r'skills\soulskills\pets\rakanizeus_%d.dbr' % i for i in (1, 2, 3)]),
+    ('Helike', _R + r'xpack\creatures\monster\empusa\xhero_helike_46.dbr',
+     [_R + r'skills\soulskills\pets\helike_%d.dbr' % i for i in (1, 2, 3)]),
+]
+
 # ── green Lyia-clone residue markers: field base (lower) -> substrings that mark
 #    the value as the known green residue. A field is stripped IFF its value
 #    contains one of these substrings, so a legitimately-black field is never
@@ -213,8 +249,10 @@ _CHAIN = [
         'skill': _R2 + r'skills\soulskills\summon_toxeus_enslaver.dbr',
         'icon_stem': 'deathwalkersummonup',
         'portrait_stem': 'deathwalker_party_up',
+        'source': _BOSS_MON,           # b81: race/voice gate needs the pet's OWN source
         'pets': _ENSLAVER_PETS,
         'sub_skill': _R2 + r'skills\soulskills\svc_enslaver_petmarauders.dbr',
+        'sub_source': _MARAUDER_MON,
         'sub_pets': _MARAUDER_PETS,
     },
     {
@@ -223,8 +261,10 @@ _CHAIN = [
         'skill': _R2 + r'skills\soulskills\summon_hadesmarshal.dbr',
         'icon_stem': 'wrathofthestyxup',
         'portrait_stem': 'proxy_party_up',   # neutral (no bespoke hades portrait ships)
+        'source': _HADESMARSHAL_MON,
         'pets': _HADESMARSHAL_PETS,
         'sub_skill': None,
+        'sub_source': None,
         'sub_pets': [],
     },
 ]
@@ -330,6 +370,119 @@ def _green_residue_on(db, pet):
     return out
 
 
+# ── b81 RACE/VOICE CHAIN-GATE LEG (Will 2026-07-16, "Toxeus...is a beastman not
+# a skeleton") ──────────────────────────────────────────────────────────────
+# Every _build_boss_summon pet is source-faithfully aligned to its OWN source
+# monster's race/distress-group/voice-pak identity by `_align_pet_identity`
+# (apply_svc_patches.py, upstream at the builder). This chain-gate leg asserts
+# the end-state for the 3 GATED families (Enslaver/Marauder/Hades Marshal) so a
+# future regression at the builder is caught here too, not just at the source:
+# the pet's characterRacialProfile must equal ITS OWN source's race, and no
+# alert/criticalHit/death/rally/rampage/stun/vox pak or distressCallGroup may
+# still say "Maenad" unless the source itself is a Maenad (source-faithful,
+# mirrors the green sweep - Meritamen's real source IS a Maenad-tagged
+# distressCallGroup, so a blanket "never Maenad" rule would be wrong).
+_IDENTITY_VOICE_STEMS = ('alertsound', 'criticalhitsound', 'deathsound',
+                         'rallysound', 'rampagesound', 'stunsound', 'voxsound')
+
+
+def _race_and_voice_problems(db, pet, source):
+    """b81 chain-gate leg: pet race == source race; no Maenad voice/distress-group
+    residue survives unless the SOURCE itself is Maenad. Empty == clean."""
+    out = []
+    if source is None or not db.has_record(source):
+        return out
+    pet_race = _field1(db, pet, 'characterRacialProfile')
+    src_race = _field1(db, source, 'characterRacialProfile')
+    if src_race is not None and (pet_race or '').lower() != src_race.lower():
+        out.append('%s: race %s != source race %s'
+                    % (pet.rsplit('\\', 1)[-1], pet_race or '<none>', src_race))
+    src_fields = db.get_fields(source) or {}
+    src_is_maenad = any(
+        isinstance(v, str) and 'maenad' in v.lower()
+        for k, tf in src_fields.items()
+        if k.split('###')[0].lower() == 'distresscallgroup'
+        for v in tf.values)
+    if not src_is_maenad:
+        fields = db.get_fields(pet) or {}
+        for k, tf in fields.items():
+            base = k.split('###')[0].lower()
+            if base == 'distresscallgroup' or any(base.startswith(s) for s in _IDENTITY_VOICE_STEMS):
+                for v in tf.values:
+                    if isinstance(v, str) and 'maenad' in v.lower():
+                        out.append('%s: Maenad voice/distress residue survives %s=%s'
+                                   % (pet.rsplit('\\', 1)[-1], base, v.rsplit('\\', 1)[-1]))
+    return out
+
+
+# ── b75 TRANSITIVE SKILL-LIST GREEN SWEEP (anti-oscillation leg 3) ────────────
+# The b55 verify asserted the pet's own FX FIELDS; the b71 chain gate walked the
+# soul->skill->icon->portrait chain. Neither followed the pet's SKILL LIST into the
+# skills it actually CASTS. This leg enumerates every skill reference reachable from
+# a gated pet (attackSkill / skillName* / specialAttack* / buffSelf* / heal / init /
+# buffSkillName / petSkillName) and TRANSITIVELY decodes each, failing loud on any
+# green render marker (skillWeaponTintGreen>0, or an FX/skill/pak ref whose name is a
+# known green nature/poison effect). Negative-tested: planting an envenomweapon ref on
+# a gated pet makes this fail. Bounded-depth, cycle-safe.
+_GREEN_NAME_NEEDLES = ('envenom', 'natureswrath', "nature'swrath", 'heartofoak',
+                       'regrowth_lyia', 'sylvannymph', 'poisoncharfx', 'weapon_poison',
+                       'poisonweaponenchant')
+_SKILL_REF_SUBSTR = ('skillname', 'attackskill', 'buffself', 'healskill',
+                     'petskill', 'buffskillname', 'petskillname', 'petbonusname')
+_FX_REF_SUBSTR = _SKILL_REF_SUBSTR + ('charfxpak', 'particleeffect', 'skilleffect',
+                                      'deatheffect', 'initialskill')
+
+
+def _skill_refs(fields):
+    out = []
+    for k, tf in (fields or {}).items():
+        base = k.split('###')[0].lower()
+        if any(s in base for s in _FX_REF_SUBSTR):
+            for v in tf.values:
+                if isinstance(v, str) and v.lower().endswith('.dbr'):
+                    out.append(v)
+    return out
+
+
+def _transitive_green_problems(db, pet, maxdepth=6):
+    """Walk the pet's full skill/FX closure; return green-render findings. Empty=clean."""
+    problems = []
+    seen = set()
+
+    def norm(s):
+        return str(s).replace('/', '\\').lower()
+
+    def walk(name, depth, path):
+        key = norm(name)
+        if key in seen or depth > maxdepth:
+            return
+        seen.add(key)
+        if not db.has_record(name):
+            return
+        fields = db.get_fields(name) or {}
+        for k, tf in fields.items():
+            base = k.split('###')[0].lower()
+            # explicit green weapon tint
+            if base == 'skillweapontintgreen':
+                try:
+                    if float(tf.values[0]) > 0.0:
+                        problems.append('%s: skillWeaponTintGreen=%s via %s'
+                                        % (pet.rsplit('\\', 1)[-1], tf.values[0], path))
+                except (TypeError, ValueError, IndexError):
+                    pass
+            # green FX/skill ref by name
+            if any(s in base for s in _FX_REF_SUBSTR):
+                for v in tf.values:
+                    if isinstance(v, str) and any(n in v.lower() for n in _GREEN_NAME_NEEDLES):
+                        problems.append('%s: green ref %s=%s via %s'
+                                        % (pet.rsplit('\\', 1)[-1], base, v.rsplit('\\', 1)[-1], path))
+        for ref in _skill_refs(fields):
+            walk(ref, depth + 1, path + '->' + ref.rsplit('\\', 1)[-1])
+
+    walk(pet, 0, pet.rsplit('\\', 1)[-1])
+    return problems
+
+
 def _verify_chain(db, problems):
     """b71 anti-oscillation: walk the LIVE soul->skill->icon->pets->portrait->green
     ->marauder chain on the FINAL db for each family in _CHAIN. Appends to problems."""
@@ -378,6 +531,8 @@ def _verify_chain(db, problems):
                 problems.append('%s CHAIN: %s StatusIconRed %s not identity %s'
                                 % (lbl, pet.rsplit('\\', 1)[-1], sir or '<none>', ident))
             problems.extend(_green_residue_on(db, pet))
+            # b81: race == own source's race; no Maenad voice/distress residue.
+            problems.extend(_race_and_voice_problems(db, pet, spec.get('source')))
         # (e) marauder sub-summon: subchain pets also zero-green
         if spec['sub_skill'] and db.has_record(spec['sub_skill']):
             sub_so = db.get_field_value(spec['sub_skill'], 'spawnObjects')
@@ -389,6 +544,9 @@ def _verify_chain(db, problems):
             for spet in spec['sub_pets']:
                 if db.has_record(spet):
                     problems.extend(_green_residue_on(db, spet))
+                    # b81: sub-pets (marauders) race/voice-gate against THEIR OWN
+                    # source (sub_source), not the parent family's source.
+                    problems.extend(_race_and_voice_problems(db, spet, spec.get('sub_source')))
 
 
 def apply(db, tags):
@@ -423,11 +581,17 @@ def verify(db, tags=None):
     that exists in the FINAL assembled db, assert:
       (1) NO green Lyia-residue field survives (marker-matched), and
       (2) the pet carries the matching dark shroud in charFxPakRunningNames
-          (svc_enslaver_darksmoke for the enslaver soul-pet, drxshadowcloak for the
-          marauder pet, hades2_shadowcloud for the Hades Marshal pet - each == its
-          OWN source monster's shroud).
-    Negative-tested: planting envenomweapon back on any pet, or clearing/altering the
-    shroud, fails this gate."""
+          (b75: drxshadowcloak for the enslaver soul-pet AND the marauder pet,
+          hades2_shadowcloud for the Hades Marshal pet - each == its OWN source
+          monster's shroud), and
+      (3) b75 TRANSITIVE gate: no skill reachable from the pet references a green
+          tint/pak/nature-poison marker, and
+      (4) b81 RACE/VOICE gate (via _verify_chain): pet characterRacialProfile ==
+          its OWN source monster's race, and no Maenad voice-pak/distressCallGroup
+          residue survives unless the source itself is Maenad.
+    Negative-tested: planting envenomweapon back on any pet, clearing/altering the
+    shroud, or planting a Beastman race / Maenad voice pak on a non-Maenad-sourced
+    pet, fails this gate."""
     problems = []
     for label, source, pets in _FAMILIES:
         src_shroud = None
@@ -470,7 +634,28 @@ def verify(db, tags=None):
     # ->portrait->green->marauder chain (catches the record-level-vs-chain-level gap
     # that let build44 ship the wrong summon icon + Lyia pet-bar portrait).
     _verify_chain(db, problems)
+    # b75 anti-oscillation leg 3: TRANSITIVE SKILL-LIST green sweep. For every gated
+    # pet (the 3 families + the marauder/hades sub-pets), no skill reachable from the
+    # pet record may reference a green tint/pak/nature-poison marker. Closes the
+    # fields->chain->RUNTIME-SKILL blind spot (a green the pet CASTS, not just carries).
+    for pet in _ALL_PETS:
+        if db.has_record(pet):
+            problems.extend(_transitive_green_problems(db, pet))
+    # b81r2: RACE/VOICE gate leg 2, over the second Lyia-cloning lineage (the
+    # standalone _create_X_pet_skill builders + upstream-native Helike) the b81
+    # vet found unfixed. Only asserts over pets that exist (an absent family is
+    # a separate upstream build failure, not this gate's to catch).
+    second_builder_checked = 0
+    for label, source, pets in _SECOND_BUILDER_ROSTER:
+        for pet in pets:
+            if not db.has_record(pet):
+                continue
+            second_builder_checked += 1
+            problems.extend(_race_and_voice_problems(db, pet, source))
     if problems:
         raise SystemExit('enslaver_pet_fx.verify FAILED:\n  ' + '\n  '.join(problems))
     print('  enslaver_pet_fx.verify: OK (Enslaver + marauder soul-pets carry the '
-          'black shroud, zero green Lyia residue; chain icon+portrait on-identity)')
+          'black shroud, zero green Lyia residue; chain icon+portrait on-identity; '
+          'race + voice paks match each pet\'s own source, b81; second-lineage '
+          'race/voice gate OK: %d pets across %d families, b81r2)'
+          % (second_builder_checked, len(_SECOND_BUILDER_ROSTER)))
