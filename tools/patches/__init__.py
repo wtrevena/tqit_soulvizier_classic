@@ -150,6 +150,13 @@ REGISTRY = [
                             # zrecipes\svc_<class>_<name>_formula.dbr. Disjoint from every module
                             # above (new records only; touches supra.dbr/supra_special.dbr
                             # lootName slots, additive).
+    'formula_names',        # b80 (Will 2026-07-16, R-41): formula-name audit round 1 - Galefury's
+                            # Mythic Formula was mislabeled "Crystalline Mask" (a shared donor
+                            # tag, pre-b66 SV/DRX authoring debt); repoints ar_hunter_helm_
+                            # formula.dbr's description onto its own already-correct, previously-
+                            # orphaned SV098i tag. Disjoint from uber_orphan_weapons (touches a
+                            # single pre-existing recipes\ record, not any b66 zrecipes\ formula);
+                            # placed after it since both live in the supra formula-name domain.
     'mastery_sv_alignment', # b70 (build45): FINAL writer on Occult(m5)/Hunting(m6)/emblem
                             # mastery-UI fields - Occult/Hunting SV-alignment (shape flips,
                             # emblem x9 BitmapSingle->BitmapUIAware, Darklings/Dark Aperture

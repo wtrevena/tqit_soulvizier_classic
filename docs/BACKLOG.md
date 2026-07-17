@@ -3318,6 +3318,51 @@ next round; (b) 10 bosses on neutral proxy portrait could get bespoke portraits 
 art); (c) the ~77-pet systemic Lyia green (24 families) remains b55's flagged design call.
 NOT deployed/committed to main.
 =======
+## B80 - FORMULA NAME AUDIT round 1 (Will 2026-07-16, R-41) - FIX_STAGED (branch fix/formula-names)
+
+Report `docs/reports/b80_formula_names.md`. Will: "Mythic Formula - Crystalline Mask is
+the formula name for the formula which makes Galefury. the Mythic Formula has the wrong
+name." **Root cause:** `records\drxitem\supra\recipes\ar_hunter_helm_formula.dbr`
+(crafts Galefury) had `description=tagRecipe_ar_caster_helm` - the tag the REAL
+Crystalline Mask formula pair (`recipes\`+`zrecipes\ar_caster_helm_formula.dbr`)
+legitimately uses. Inherited SV098i/DRX authoring debt, NOT a b66 defect (b66 never
+touches this record; Galefury predates b66's 14 weapons). SV 0.98i's own `Text_EN.arc`
+already ships the fix, unused: `tagRecipe_ar_helm_fix=^rMythic Formula - Galefury`
+(orphaned, zero references anywhere before this fix). **Fix:** repoint the field to
+that tag - zero Text-pipeline change, the shared donor tag left untouched (still
+correctly used by the 2 real Crystalline Mask formulas).
+**SWEEP:** all 245 `ItemArtifactFormula` records (42 obtainable + 203 orphaned shells)
+checked name-text-vs-result; exactly this ONE mismatch found, wired or unwired. Two
+self-consistent naming sub-conventions confirmed empirically (original 25 `^rMythic
+Formula - <Name>` vs b66's 14 `zrecipes\` formulas' unprefixed `Mythic|Arcane Formula -
+<Name>`) - convention check compares name TEXT only, not color/prefix style, to avoid
+false positives. WILL-CONFIRM list: empty (the one mismatch was unambiguously a bug).
+**GATE (new, permanent):** `tools/patches/formula_names.py` verify() - supra-scoped
+structural check (no Text.arc dependency): any `records\drxitem\supra\*` formula
+`description` tag shared by 2+ formulas crafting DIFFERENT results fails the build
+loud. PLUS a standalone text-resolved sweep `tools/validate_formula_names.py` (matches
+`validate_tags.py`'s pattern), wired into `bootstrap_working_mod.ps1` right after the
+tag-validation step. Both negative-tested (planted mismatch + the real pre-fix bug)
+via `tools/debug/negtest_formula_names.py` (4/4 subtests correct).
+**Verified:** full scratch build EXIT 0 (arz `9e3c1ad0`); record-diff vs reference
+`917d9047` = exactly 1 record / 1 field (`description` repoint), 0 added/removed/other;
+`validate_tags.py` PASS; new `validate_formula_names.py` PASS (40 checked, 0
+mismatches); A7 golden PASS at both DB+Text stages (84/90 waived, all pre-existing);
+chain gate + every other registry verify() green; idempotent (proven). Contracts
+(souls/summons/resources) run twice (reference arz vs fixed arz, identical staged
+Text/Levels/Quests/Resources) - **byte-identical violation set both times** (4904;
+0 P0/1252 P1/3652 P2), proving zero regression from this change. Map/quests contracts
+not re-run (this branch touches zero map/quest files). NOT deployed/committed to main.
+
+**BACKLOG DEBT (new, per WILL_RULINGS law #4):** the 1252 P1 above does not match the
+0 P1 the B71/BUILD45 gate records above claim for a similar reference-arz snapshot.
+Likely `work/SoulvizierClassic/Resources/{Text.arc,Levels.arc}` staleness (mtimes
+01:59/09:09 Jul-16 vs the reference arz's 19:47 Jul-16 - hours of other waves may have
+landed on the arz without a matching Resources restage). Not caused by, and unaffected
+by, this branch (proven via the identical-before/after diff). Flagged for whichever
+lane owns the next full integration: fresh bootstrap + restage + re-run
+`run_contracts.py` to re-establish ground truth.
+=======
 ## BUILD45 MASTERY SV-ALIGNMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
 
 Fixes the residual Occult/Hunting mastery-tree defects Will enumerated from his build43 screenshot
