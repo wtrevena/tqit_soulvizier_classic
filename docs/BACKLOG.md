@@ -98,6 +98,16 @@
 - Legion-terminal-stage 66%-vs-50% drop-rate reconciliation - queued for the NEXT souls pass (folds in
   with the 155 documented minor gaps + 79 drop-gated souls + Crowboar summon-controller polish).
   Source: docs/BACKLOG.md "WILL RULINGS 2026-07-16 (post-build42)".
+- Legion DISTINCT-souls-per-stage canonical/orphan decision - 6 chains (possessedboar / hades /
+  lillued / charon families) each drop TWO souls; Will must pick the canonical soul per chain and
+  orphan the other (explicitly deferred as "design ruling required"). Source: docs/reports/
+  b56_legion_soul_stages.md section (B). Owner: next souls pass. [added round-2 per vet]
+- Shadow Link malus party-spread veto flag - the defensiveLife malus (-5/-8/-11/-14) now reaches the
+  whole party at 36u; "Flagged so Will can veto if unintended". Source: docs/reports/b57_aura_radius.md.
+  Owner: Will DEV pass. [added round-2 per vet]
+- 36u party-wide aura balance note - b57's "Balance note (flag, do NOT nerf - Will decides)" on the
+  widened radii remains an open Will decision. Source: docs/reports/b57_aura_radius.md. Owner: Will
+  DEV pass. [added round-2 per vet]
 - Cold Worm buffs (3x life / +20% armor / kit / speed / marker mechanism / 3-tier soul + loot-triple
   fix) - PENDING, interrupted lane with partials on worktree `coldworm-markers` (R-39). Source: docs/
   WILL_RULINGS.md R-39.

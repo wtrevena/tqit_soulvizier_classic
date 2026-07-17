@@ -105,8 +105,9 @@
   docs/reports/b67_oh_pane_art.md.
 
 ### World / placement (continued)
-- R-33 [build25, IMPLEMENTED] "Will wants the wagon on the driver's RIGHT-HAND (screen-right = +X =
-  East) side" - the Hidden Valley caravan cluster wagon was on the wrong (west/screen-left) side;
+- R-33 [build25, IMPLEMENTED] [paraphrased - DOORS_HUB_LOG.md's author-phrasing of Will's intent,
+  line ~162, not a first-person quote] Will wants the wagon on the driver's RIGHT-HAND (screen-right
+  = +X = East) side - the Hidden Valley caravan cluster wagon was on the wrong (west/screen-left) side;
   recomposed east of the driver, horse hitched south of the wagon, all >=3.5u apart. Shipped in the
   build25 "C1-C4 fixes" canonical bundle. Source: docs/DOORS_HUB_LOG.md sec C3.
 - R-34 [build24/25, IMPLEMENTED per the C1-C4 bundle] Will's C2 feedback wants a SOLID "purple occult
@@ -173,7 +174,7 @@
 - R-60 [2026-07-04] STANDING "Will's decision, 2026-07-04 - no Lite build" - KEEP DRX (Dragonlord's
   visual overhaul) in the shipped mod; `-LiteMode` is off the table (it strips assets the blood cave
   itself needs). Keeping DRX keeps Dragonlord's permission on the Workshop-publish critical path.
-  Source: docs/SHARE_AND_PLAY.md; docs/PERMISSIONS.md; CLAUDE.md content-gaps section (same ruling,
+  Source: docs/STEAM_RELEASE.md:33 (the verbatim string); docs/SHARE_AND_PLAY.md; docs/PERMISSIONS.md; CLAUDE.md content-gaps section (same ruling,
   multiply cited).
 - R-61 [2026-07-10] STANDING "he said it was cool" (Will relaying soa's verbal permission) - soa
   (SVAERA author) granted verbal permission for the additive mastery-graft reuse (R-28); a written
