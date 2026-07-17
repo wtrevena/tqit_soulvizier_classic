@@ -180,7 +180,6 @@ REGISTRY = [
                             # boss_skill_fix (which ENABLED those previously level-0 summon specials)
                             # so it caps the final, active skill records. verify() fails loud if any
                             # target survives uncapped.
-=======
     'mastery_unlock_alignment',  # b77 (build45): UNLOCK-ALIGNMENT fix wave - make every
                             # mastery button's real unlock gate (skillTier threshold) match
                             # the row it is drawn on (b74 audit). Touches ONLY m1/m2/m3/m4/m7
@@ -190,7 +189,6 @@ REGISTRY = [
                             # among mastery-UI writers so it is the ratified final writer on
                             # skillTier/skillMasteryLevelRequired/bitmapPosition/connOn-Off for
                             # its masteries. Golden (m5/m6) untouched -> A7 stays green.
-=======
     'black_poison',         # b83 (Will 2026-07-16, R-1): THE DEVOURER'S BLACK POISON - a new
                             # envenom-lineage svc_black_poison (dark shadow-enchant tint +
                             # dark-smoke weapon pak, poison+vitality) replaces the crimson
