@@ -103,7 +103,14 @@ def _free_skillname_slot(db, rec, lo=1, hi=24):
 
 def _add_kit_skill(db, rec, skillpath, level):
     """Add skillpath into the lowest free skillName slot with the given level (so it is a KNOWN,
-    non-level-0 kit skill). Returns the slot index. Fail-loud if no slot free."""
+    non-level-0 kit skill). Returns the slot index. Fail-loud if no slot free.
+    Already-present guard: a re-apply over a patched db must not duplicate kit slots."""
+    want = skillpath.replace('/', '\\').lower()
+    for i in range(1, 33):
+        cur = db.get_field_value(rec, f'skillName{i}')
+        cur1 = cur[0] if isinstance(cur, list) and cur else cur
+        if cur1 and str(cur1).replace('/', '\\').lower() == want:
+            return i
     slot = _free_skillname_slot(db, rec)
     if slot is None:
         raise SystemExit(f"[toxeus_champion_kits] no free skillName slot on {rec}")
@@ -137,6 +144,7 @@ def _build_tears_weak(db):
     db.set_field(T, 'skillCooldownTime', 10.0)      # base 120.0
     db.set_field(T, 'skillActiveDuration', 5.0)     # base 8.0 (shorter rain)
     db.set_field(T, 'skillMaxLevel', 3)             # base 1 (so tier levels resolve)
+    db.set_field(T, 'FileDescription', 'SVC Devourer: weakened Tears of Blood (Will 2026-07-16)')
     db._modified.add(T)
 
 
