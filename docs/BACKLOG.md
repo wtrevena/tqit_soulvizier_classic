@@ -1,4 +1,33 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+> 🖤 **b83 BLACK POISON + RITE DROP (Will ruled 2026-07-16, R-1/R-9/R-13) - ROUND 1 IMPLEMENTED +
+> FULLY VERIFIED.** Branch `feat/black-poison` (merge of vetted `feat/toxeus-champions` +
+> `feat/toxeus-undivided`, merge `2f52507`). Report: `docs/reports/b83_black_poison_rite_drop.md`.
+> **(R-1) BLACK POISON:** new registry module `tools/patches/black_poison.py` (slot before
+> `toxeus_endofallthings`) builds `svc_black_poison` (envenom lineage, cloned from the Devourer's
+> crimson `bloodtoxeus_envenomweapon`): weapon tint (0.1,0.1,0.1) = the shadow-enchant-proven darkest
+> RENDERABLE tint (empirical model: tint is additive-emissive, (0,0,0)=no-tint on 195 records, so
+> black-LIGHT is unreachable -> (0.1,0.1,0.1) is the darkest black, identical to shipped
+> `hero_shadowenchantmentbuff`); dark-smoke weapon pak `svc_black_poison_charfxpak` (343_dark_smoke on
+> R/L Hand); poison (90/5s) + added vitality-decay (60/5s). Rewired onto the Devourer poison surface
+> (`um_bloodtoxeus_99` initialSkillName+skillName3; `bloodtoxeus_1/2/3` skillName3) + the EoAT pet buff
+> (`toxeus_endofallthings._BLACK_POISON` const, flowing to 3 EoAT + 3 disciple pets). His crimson
+> identity (skin/bloodboil/aura) untouched. **(R-9) RITE POOL:** the Rite formula added to
+> `supra.dbr` + `supra_special.dbr` (b66 next-free-slot @ w100) -> drops wherever any supra weapon
+> formula drops, at the rarest ~2% tier. **(R-13) RITE BOSS KILLS:** GUARANTEED 100% on-kill on BOTH
+> Toxeus bosses via Misc4 (Enslaver free slot -> `svc_rite_guaranteed`; Devourer -> `svc_devourer_
+> misc4_master` LootMasterTable yielding rant w100 + Rite w100, rant preserved); soul drops (Finger2)
+> untouched. **CROSS-BRANCH FIX:** the first merged build crashed the shared record-index
+> (`_RecordIndex._sync_names` append-only `name_lower` cache count-coincidence -> KeyError on
+> `eoat_disciple_1`); fixed in `apply_svc_patches.py` (reconcile-on-count-change + self-healing lookup,
+> ZERO output-record change). **VERIFY:** changed arz md5 `32e0f2f709de1ba6954c4a6362ecbf0c` (all
+> gates + 29 registry verifies GREEN, golden guard PASS); clean baseline `532003ec...`; record-diff =
+> exactly 17 records (4 added / 13 changed), zero collateral; contracts souls/summons/resources
+> IDENTICAL clean-vs-changed (0 new violations); negative test PASS (green tint -> verify fails);
+> idempotent (2nd build byte-identical). **DEBT (registered):** BP-SMOKE-1 (P2, Will in-game check -
+> the 343_dark_smoke particle's final black-vs-green render per the rule-3 caution; tint-black is
+> grounded + independent, one-line fallback); BP-RITE-VETO (100% on-kill on farmable roaming-rare
+> bosses - confirm vs first-kill-only/reduced). Ready for independent vet.
+
 > 🩸 **b73 TOXEUS CHAMPIONS KIT WAVE (Will 2026-07-16) - ROUND 1 IMPLEMENTED + SCRATCH-BUILD GREEN.**
 > Branch `feat/toxeus-champions`. Registry module `tools/patches/toxeus_champion_kits.py` (apply+verify,
 > slot 9/27, after `toxeus_suite`, before `boss_skill_fix`). Gives the FOUGHT Toxeus champions signature

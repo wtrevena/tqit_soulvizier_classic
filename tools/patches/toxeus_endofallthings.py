@@ -50,12 +50,11 @@ kit table + feasibility flags):
      pet cannot carry; here it is a frequent specialAttack (3.0s cd) so it fires
      reactively in melee. Flagged.
   6. MURDERER'S EDGE: high characterOffensiveAbility on the pets + svc_eoat_
-     murderersedge passive (offensive/crit). NO green poison - his weapon buff is
-     the DEVOURER'S crimson blood-poison bloodtoxeus_envenomweapon (weapon tint
-     R=1.0,G=0.25,B=0.25 + the leinth blood-aura charfx). FEASIBILITY: the
-     Devourer has NO literally-black poison; bloodtoxeus_envenomweapon is the
-     closest DARK/blood poison in his own lineage (his signature crimson envenom).
-     Flagged (crimson, not literally black).
+     murderersedge passive (offensive/crit). His weapon buff is now the DEVOURER'S
+     BLACK POISON svc_black_poison (b83, Will R-1: the literal black poison asset,
+     built by the black_poison module - dark shadow-enchant tint (0.1,0.1,0.1) +
+     dark-smoke weapon pak + poison/vitality payload). REPLACES the crimson
+     bloodtoxeus_envenomweapon this round-1 module originally carried.
   7. ENTROPY AURA: svc_eoat_entropyaura (clone of the shadowlink weapon-
      enchantment aura Skill_BuffRadiusToggled) -> svc_eoat_entropybuff with a
      vitality-decay + resistance-shred payload, radius 36 (the b57 party-radius
@@ -140,7 +139,7 @@ _NETHERSTRIKE = r'records\skills\monster skills\attack_melee\netherstrike.dbr'
 _SMOKESCREEN_PET = r'records\skills\stealth\drxpet\drx_smokescreen_petskill_default.dbr'
 _GALEFURY = r'records\drxitem\supra\skills\hunter_helm_galefury.dbr'
 _TEARSOFBLOOD = r'records\xpack\skills\artifactskills\e_da_bloodofares_tearsofblood.dbr'
-_BLACK_POISON = r'records\skills\monster skills\buff_self\bloodtoxeus_envenomweapon.dbr'  # crimson (see flag)
+_BLACK_POISON = r'records\skills\monster skills\buff_self\svc_black_poison.dbr'  # b83 R-1: the black poison (built by the black_poison module, runs before this one)
 _SHADOWLINK_AURA = r'records\skills\monster skills\auras\shadowlink.dbr'
 _SHADOWLINK_BUFF = r'records\skills\monster skills\auras\shadowlinkbuff.dbr'
 _TOXEUS_PASSIVE = r'records\skills\monster skills\passive_buffs\toxeus_passiveproperties.dbr'
@@ -190,6 +189,31 @@ _SK_MURDER = r'records\skills\soulskills\svc_eoat_murderersedge.dbr'
 _ING_GREECE = r'records\item\equipmentring\soul\skeleton\toxeus_soul_l.dbr'         # green Greece base
 _ING_ENSLAVER = r'records\item\equipmentring\soul\svc_uber\enslaver_soul_l.dbr'     # Enslaver
 _ING_DEVOURER = r'records\item\equipmentring\soul\svc_uber\blood_toxeus_soul_l.dbr' # Devourer
+
+# ── b83 RITE DROP (Will R-9 + R-13, 2026-07-16) ──────────────────────────────
+# R-9 (verbatim): "let the Rite of the Undivided drop wherever else any supra / uber
+#   weapons formulas have a chance to drop". Ground truth (docs/reports/
+#   b83_black_poison_rite_drop.md): the supra weapon/armor formulas are pooled in
+#   arcaneformulae\supra.dbr + supra_special.dbr (the b66 uber_orphan_weapons module
+#   wires EVERY new supra formula into BOTH at weight 100 - the exact precedent). Those
+#   two pools are reached by the 0X_actY_arcaneformulae LootMasterTables at weight 2 (the
+#   rarest formula tier). Adding the Rite to BOTH pools => it drops wherever ANY supra
+#   weapon formula drops, at that same rarest tier.
+_SUPRA_POOL = r'records\xpack\item\loottables\arcaneformulae\supra.dbr'
+_SUPRA_SPECIAL = r'records\xpack\item\loottables\arcaneformulae\supra_special.dbr'
+# R-13 (verbatim): "also make it so if you kill either toxeus the devourer of blood of
+#   toxeus the enslaver of souls you also get the formula". GUARANTEED (100%) on-kill
+#   via the boss loot-table convention (Misc slot + chanceToEquip=100 + a table that
+#   always yields the Rite), NOT disturbing the soul drop (Finger2) or other loot.
+_ENSLAVER_MON = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
+_DEVOURER_MON = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
+_RANT_TABLE = r'records\item\loottables\svc\toxeus_rant_perplayer.dbr'  # Devourer Misc4 (kept)
+# new guaranteed loot tables (collision-checked ABSENT vs build45)
+_RITE_GUARANTEED = r'records\item\loottables\svc\svc_rite_guaranteed.dbr'          # FixedWeight, 100% Rite
+_DEV_MISC4_MASTER = r'records\item\loottables\svc\svc_devourer_misc4_master.dbr'   # rant + Rite (both 100%)
+# donors for the loot tables
+_FIXEDWEIGHT_DONOR = r'records\item\loottables\svc\crimsonverdict_guaranteed_l.dbr'  # LootItemTable_FixedWeight
+_MASTER_DONOR = r'records\xpack\item\loottables\arcaneformulae\03_act1_arcaneformulae.dbr'  # LootMasterTable
 
 # ── b71-consistent identity (skill icon + pet-bar portrait; every tex resolves
 #    in the shipped arcs - the licheking apocalyptic-lich family the Devourer
@@ -554,6 +578,115 @@ def _build_formula(db):
 
 
 # =============================================================================
+# b83 RITE DROP wiring (R-9 pool + R-13 guaranteed boss kills)
+# =============================================================================
+def _next_loot_slot(db, table):
+    """First free lootName index (1-based) - identical to the b66 uber_orphan_weapons
+    convention so the Rite lands in the same next-free slot semantics."""
+    i = 1
+    while db.get_field_value(table, 'lootName%d' % i) not in (None, '', 0):
+        i += 1
+    return i
+
+
+def _wire_rite_pool(db):
+    """R-9: add the Rite formula to BOTH supra formula pools at the next free slot,
+    weight 100 (the b66 precedent - the rarest existing supra-formula tier)."""
+    for table in (_SUPRA_POOL, _SUPRA_SPECIAL):
+        if not _has(db, table):
+            raise SystemExit("[toxeus_endofallthings] supra pool missing: %s" % table)
+        # idempotent: skip if already listed
+        i = 1
+        listed = set()
+        while True:
+            v = db.get_field_value(table, 'lootName%d' % i)
+            if v in (None, '', 0):
+                break
+            listed.add(str(v).replace('/', '\\').lower())
+            i += 1
+        if _EOAT_FORMULA.lower() in listed:
+            continue
+        slot = _next_loot_slot(db, table)
+        db.set_field(table, 'lootName%d' % slot, _EOAT_FORMULA)
+        db.set_field(table, 'lootWeight%d' % slot, 100)
+        db._modified.add(table)
+
+
+def _wire_rite_boss_kills(db):
+    """R-13: GUARANTEED (100%) on-kill Rite drop on BOTH Toxeus bosses, via the boss
+    loot-table convention, without disturbing the soul drop (Finger2) or other loot.
+      - svc_rite_guaranteed  = FixedWeight table, 100% the Rite.
+      - Enslaver: free Misc4 slot -> svc_rite_guaranteed (proven Misc-slot drop; Misc4
+        is used by 29 monsters).
+      - Devourer: Misc4 is taken by the rant. Wrap the rant in a LootMasterTable
+        (svc_devourer_misc4_master) that yields BOTH the rant (w100) AND the Rite
+        (w100) - a LootMasterTable rolls each child independently at weight-as-percent,
+        so both always drop. The rant is preserved verbatim."""
+    # svc_rite_guaranteed: clone a FixedWeight, keep only lootName1 = the Rite @ 100.
+    if not _has(db, _FIXEDWEIGHT_DONOR):
+        raise SystemExit("[toxeus_endofallthings] fixedweight donor missing: %s" % _FIXEDWEIGHT_DONOR)
+    db.clone_record(_FIXEDWEIGHT_DONOR, _RITE_GUARANTEED)
+    db.set_field(_RITE_GUARANTEED, 'lootName1', _EOAT_FORMULA)
+    db.set_field(_RITE_GUARANTEED, 'lootWeight1', 100)
+    for j in range(2, 8):   # drop the donor's extra crimsonverdict entries
+        db.set_field(_RITE_GUARANTEED, 'lootName%d' % j, [])
+        db.set_field(_RITE_GUARANTEED, 'lootWeight%d' % j, [])
+    db._modified.add(_RITE_GUARANTEED)
+
+    # svc_devourer_misc4_master: LootMasterTable yielding rant (w100) + Rite (w100).
+    if not _has(db, _MASTER_DONOR):
+        raise SystemExit("[toxeus_endofallthings] master donor missing: %s" % _MASTER_DONOR)
+    if not _has(db, _RANT_TABLE):
+        raise SystemExit("[toxeus_endofallthings] Devourer rant table missing: %s" % _RANT_TABLE)
+    db.clone_record(_MASTER_DONOR, _DEV_MISC4_MASTER)
+    db.set_field(_DEV_MISC4_MASTER, 'lootName1', _RANT_TABLE)
+    db.set_field(_DEV_MISC4_MASTER, 'lootWeight1', 100)
+    db.set_field(_DEV_MISC4_MASTER, 'lootName2', _RITE_GUARANTEED)
+    db.set_field(_DEV_MISC4_MASTER, 'lootWeight2', 100)
+    # zero any inherited child slots >2 so only rant+rite roll
+    k = 3
+    while db.get_field_value(_DEV_MISC4_MASTER, 'lootName%d' % k) not in (None, '', 0) or \
+            db.get_field_value(_DEV_MISC4_MASTER, 'lootWeight%d' % k) not in (None, '', 0):
+        db.set_field(_DEV_MISC4_MASTER, 'lootName%d' % k, [])
+        db.set_field(_DEV_MISC4_MASTER, 'lootWeight%d' % k, [])
+        k += 1
+        if k > 40:
+            break
+    db._modified.add(_DEV_MISC4_MASTER)
+
+    # Enslaver: free Misc4 slot -> guaranteed Rite (3 per-difficulty entries).
+    if not _has(db, _ENSLAVER_MON):
+        raise SystemExit("[toxeus_endofallthings] Enslaver boss missing: %s" % _ENSLAVER_MON)
+    if db.get_field_value(_ENSLAVER_MON, 'lootMisc4Item1') not in (None, '', 0):
+        raise SystemExit("[toxeus_endofallthings] Enslaver Misc4 unexpectedly occupied "
+                         "(would disturb existing loot) - abort")
+    db.set_field(_ENSLAVER_MON, 'chanceToEquipMisc4', 100.0)
+    db.set_field(_ENSLAVER_MON, 'chanceToEquipMisc4Item1', 100)
+    db.set_field(_ENSLAVER_MON, 'lootMisc4Item1', [_RITE_GUARANTEED, _RITE_GUARANTEED, _RITE_GUARANTEED])
+    db._modified.add(_ENSLAVER_MON)
+
+    # Devourer: repoint the EXISTING guaranteed Misc4 (chance already 100) at the
+    # rant+rite master; the rant is preserved inside it. Do NOT touch its chance.
+    if not _has(db, _DEVOURER_MON):
+        raise SystemExit("[toxeus_endofallthings] Devourer boss missing: %s" % _DEVOURER_MON)
+    cur = db.get_field_value(_DEVOURER_MON, 'lootMisc4Item1')
+    cur0 = (cur[0] if isinstance(cur, list) else cur) or ''
+    if str(cur0).replace('/', '\\').lower() != _RANT_TABLE.lower():
+        raise SystemExit("[toxeus_endofallthings] Devourer Misc4 is not the rant table "
+                         "(got %r) - refuse to clobber unexpected loot" % cur0)
+    db.set_field(_DEVOURER_MON, 'lootMisc4Item1',
+                 [_DEV_MISC4_MASTER, _DEV_MISC4_MASTER, _DEV_MISC4_MASTER])
+    db._modified.add(_DEVOURER_MON)
+
+
+def _wire_rite_drops(db):
+    _wire_rite_pool(db)
+    _wire_rite_boss_kills(db)
+    print("  [eoat] Rite drops wired: supra.dbr + supra_special.dbr (R-9, w100) + "
+          "GUARANTEED on-kill on both Toxeus bosses (R-13, Misc4 100%; Devourer rant preserved).")
+
+
+# =============================================================================
 # tags
 # =============================================================================
 def _mint_tags(tags):
@@ -588,6 +721,7 @@ def apply(db, tags):
     _build_summon_skill(db)
     _build_soul_ring(db, tags)
     _build_formula(db)
+    _wire_rite_drops(db)          # b83 R-9 (supra pools) + R-13 (guaranteed boss kills)
     _mint_tags(tags)
     # extend the b71 anti-oscillation chain-gate roster (brief) so the shared
     # enslaver_pet_fx gate also walks the EoAT chain on the final db.
@@ -701,12 +835,12 @@ def verify(db, tags=None):
                 v = str(ff[k].values[0]).lower() if ff[k].values else ''
                 if any(n in v for n in needles):
                     P.append('%s: GREEN residue survived %s=%s' % (pet.rsplit(chr(92), 1)[-1], base_lower, v))
-        # crimson black poison (not the base green envenom)
-        bp = (_gv1(db, pet, 'buffSelfSkillName') or '').lower()
-        if 'bloodtoxeus_envenomweapon' not in bp:
-            P.append('%s: weapon poison != crimson bloodtoxeus_envenomweapon (%r)' % (pet.rsplit(chr(92), 1)[-1], bp))
-        if bp.endswith('stealth\\envenomweapon.dbr'):
-            P.append('%s: base GREEN envenom present' % pet.rsplit(chr(92), 1)[-1])
+        # b83 R-1: the BLACK poison (svc_black_poison), not crimson, not green envenom
+        bp = (_gv1(db, pet, 'buffSelfSkillName') or '').replace('/', '\\').lower()
+        if bp != _BLACK_POISON.lower():
+            P.append('%s: weapon poison != svc_black_poison (%r)' % (pet.rsplit(chr(92), 1)[-1], bp))
+        if 'envenom' in bp:
+            P.append('%s: still an envenom variant (green/crimson), not the black poison' % pet.rsplit(chr(92), 1)[-1])
         # portrait identity (never Lyia)
         if 'lyia' in (_gv1(db, pet, 'StatusIcon') or '').lower():
             P.append('%s: pet-bar portrait still Lyia' % pet.rsplit(chr(92), 1)[-1])
@@ -758,11 +892,59 @@ def verify(db, tags=None):
         if v not in (None, [], '') and not (isinstance(v, list) and len(v) == 0):
             P.append('formula %s not cleared (recipe would be uncraftable/nondeterministic): %r' % (rf, v))
 
+    # (i) b83 RITE DROP: the formula ITEM is obtainable via ALL THREE sources -
+    #     (1) supra.dbr pool, (2) supra_special.dbr pool [R-9], (3) both Toxeus boss
+    #     kills [R-13, guaranteed], end-to-end decode-proven on the final db.
+    def _in_table(table):
+        i = 1
+        while True:
+            v = db.get_field_value(table, 'lootName%d' % i)
+            if v in (None, '', 0):
+                return False
+            if str(v).replace('/', '\\').lower() == _EOAT_FORMULA.lower():
+                return True
+            i += 1
+    if not _in_table(_SUPRA_POOL):
+        P.append('R-9: Rite not in supra.dbr pool')
+    if not _in_table(_SUPRA_SPECIAL):
+        P.append('R-9: Rite not in supra_special.dbr pool')
+    # R-13: svc_rite_guaranteed -> the Rite @ 100
+    if (_gv1(db, _RITE_GUARANTEED, 'lootName1') or '').replace('/', '\\').lower() != _EOAT_FORMULA.lower():
+        P.append('R-13: svc_rite_guaranteed does not yield the Rite')
+    # Enslaver Misc4 -> svc_rite_guaranteed @ 100%
+    em = db.get_field_value(_ENSLAVER_MON, 'lootMisc4Item1')
+    em = [str(x).replace('/', '\\').lower() for x in (em if isinstance(em, list) else [em] if em else [])]
+    if not em or any(x != _RITE_GUARANTEED.lower() for x in em):
+        P.append('R-13: Enslaver Misc4 not the guaranteed Rite table: %r' % em)
+    if float(_gv1(db, _ENSLAVER_MON, 'chanceToEquipMisc4') or 0) < 100:
+        P.append('R-13: Enslaver Misc4 chance != 100 (not guaranteed)')
+    # Enslaver soul drop UNDISTURBED (Finger2 still the enslaver soul)
+    ef2 = db.get_field_value(_ENSLAVER_MON, 'lootFinger2Item1')
+    ef2 = [str(x).lower() for x in (ef2 if isinstance(ef2, list) else [ef2] if ef2 else [])]
+    if not any('enslaver_soul' in x for x in ef2):
+        P.append('R-13: Enslaver soul drop (Finger2) was disturbed: %r' % ef2)
+    # Devourer Misc4 -> the rant+rite master; master yields BOTH rant + Rite
+    dm = db.get_field_value(_DEVOURER_MON, 'lootMisc4Item1')
+    dm = [str(x).replace('/', '\\').lower() for x in (dm if isinstance(dm, list) else [dm] if dm else [])]
+    if not dm or any(x != _DEV_MISC4_MASTER.lower() for x in dm):
+        P.append('R-13: Devourer Misc4 not the rant+rite master: %r' % dm)
+    mk = {(_gv1(db, _DEV_MISC4_MASTER, 'lootName%d' % i) or '').replace('/', '\\').lower() for i in (1, 2)}
+    if _RANT_TABLE.lower() not in mk:
+        P.append('R-13: Devourer master dropped the rant (would disturb existing loot)')
+    if _RITE_GUARANTEED.lower() not in mk:
+        P.append('R-13: Devourer master does not yield the Rite')
+    # Devourer soul drop UNDISTURBED (Finger2 still the blood_toxeus soul)
+    df2 = db.get_field_value(_DEVOURER_MON, 'lootFinger2Item1')
+    df2 = [str(x).lower() for x in (df2 if isinstance(df2, list) else [df2] if df2 else [])]
+    if not any('blood_toxeus_soul' in x for x in df2):
+        P.append('R-13: Devourer soul drop (Finger2) was disturbed: %r' % df2)
+
     if P:
         raise SystemExit('toxeus_endofallthings.verify FAILED:\n  ' + '\n  '.join(P))
     print('  toxeus_endofallthings.verify OK: soul->formula(3 legendary souls, craftable)'
           '->summon->3 pets (full kit incl Ararat corruption @ levels, unlimited energy,'
-          ' crimson poison, zero green, stats exceed Enslaver ceiling, licheking identity,'
-          ' EoAT name) + disciple thralls (hound summon attached) + NO supra unique worn'
-          ' (B-SUMMON-1-safe; supra pieces engine-unsupported on pets).')
+          ' BLACK poison [b83 svc_black_poison], zero green, stats exceed Enslaver ceiling,'
+          ' licheking identity, EoAT name) + disciple thralls (hound summon attached) + NO'
+          ' supra unique worn (B-SUMMON-1-safe) + Rite obtainable via supra pools + both boss'
+          ' kills (R-9/R-13).')
     return tags

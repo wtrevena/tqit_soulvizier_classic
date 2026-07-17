@@ -343,10 +343,17 @@ class _RecordIndex:
             return
         names = list(db._raw_records.keys())
         nl = self.name_lower
-        if len(nl) != n:
-            for name in names:
-                if name not in nl:
-                    nl[name] = name.lower()
+        # b83 cross-branch integration fix: `name_lower` is an append-only cache that
+        # is never pruned, so len(nl) can COINCIDE with the current record count while
+        # the name SET differs (records deleted by finalization, then an equal number
+        # added by later modules - the merged EoAT+champions build hits this). The old
+        # `if len(nl) != n:` guard then skipped reconciling nl while `order` was set to
+        # the NEW names, so find_first_substr would KeyError on a name absent from nl
+        # (observed: eoat_disciple_1.dbr). Always reconcile every current name into nl
+        # on a count change (cheap: `not in` skips the ones already cached).
+        for name in names:
+            if name not in nl:
+                nl[name] = name.lower()
         self.order = names
         self._name_n = n
 
@@ -357,7 +364,13 @@ class _RecordIndex:
         sl = substr.lower()
         nl = self.name_lower
         for name in self.order:
-            if sl in nl[name]:
+            # self-healing: a name can be missing from the append-only cache in the
+            # count-coincidence window (see _sync_names) - resolve + cache on miss so
+            # the lookup can never KeyError.
+            nlname = nl.get(name)
+            if nlname is None:
+                nlname = nl[name] = name.lower()
+            if sl in nlname:
                 return name
         return None
 

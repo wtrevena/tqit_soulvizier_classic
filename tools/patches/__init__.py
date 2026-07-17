@@ -165,6 +165,14 @@ REGISTRY = [
                             # hunting_occult_ui + mastery_ui_audit + mastery_bg_render +
                             # oh_pane_art + hunting_occult_improvements so it is the ratified
                             # last writer on isCircular/positions/connOn-Off + masterybitmap.
+    'black_poison',         # b83 (Will 2026-07-16, R-1): THE DEVOURER'S BLACK POISON - a new
+                            # envenom-lineage svc_black_poison (dark shadow-enchant tint +
+                            # dark-smoke weapon pak, poison+vitality) replaces the crimson
+                            # bloodtoxeus_envenomweapon on the Devourer fought-monster + his 3
+                            # soul pets. MUST run after toxeus_champion_kits (b73 Devourer kit)
+                            # and BEFORE toxeus_endofallthings (whose _BLACK_POISON const names
+                            # svc_black_poison for the EoAT pet buff). Green-marker safe (name has
+                            # no 'envenom'); his crimson identity (skin/bloodboil/aura) untouched.
     'toxeus_endofallthings',# b72 (Will 2026-07-16): TOXEUS, END OF ALL THINGS - the supra
                             # soul crafted from the 3 LEGENDARY Toxeus souls (green-Greece +
                             # Enslaver + Devourer) summoning one apotheosis pet. Clones the
