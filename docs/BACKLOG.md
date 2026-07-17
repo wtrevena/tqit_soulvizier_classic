@@ -1,24 +1,31 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
-> 🩸 **b82 BLOOD-CAVE DETERMINISTIC CRASH - RCA round 1 (2026-07-16), branch `fix/bloodcave-crash`.**
+> 🩸 **b82 BLOOD-CAVE DETERMINISTIC CRASH - RCA round 2 (2026-07-16), branch `fix/bloodcave-crash`.**
 > Will (P0): "some item in the blood cave is not wired right; every time I go to that same area the
-> game crashes." **VERDICT: no single broken-wiring offender found in this lane; forensics point at a
-> MAP-STRUCTURAL Engine.dll navmesh-load condition, not a dangling item.** (1) The Jul-13 native dump's
-> `GAME::RegionId::Write / ZoneManager::~ZoneManager` labels are WRONG - address math (EIP 0x5fe4e270 -
-> Engine.dll base 0x5fc40000 = RVA 0x1020e270, inside Engine near ProcessRLTD 0x101f4ba0; Game.dll base
-> 0x5f6a0000 is nowhere near) proves the fault is Engine.dll navmesh code, corroborating the prior
-> WER-based `ProcessRLTD` co-residency RCA (docs/crash/DEEP_DUMP_ANALYSIS_2026-07-12.md). (2) The
-> parchment `numberOfPlayers*1` loot-equation suspect is REFUTED: RunEquation parse-fails are BENIGN
-> (engine falls back; game logs confirm), they reduce spawns, not crash. (3) NEW GATE
-> `tools/contracts/gate_placed_record_resolution.py` rules out the "placed record with unresolvable
-> asset" offender class: 1096 placed-record refs across 44 blood-cave-cluster level blobs ALL resolve in
-> mod+base arz (PASS; negtest green). Concrete candidate fix-surfaces (q_bloodtoxeus proxies/pools/chest
-> + Toxeus kit; boss placements/co-residency) are RESERVED to `fix/bloodtoxeus-spawns` + `fix/chumbi-lag`
-> -> HANDOFF, no edit. NO .arz/.map change (arz md5 917d9047 unchanged). Report:
-> `docs/reports/b82_bloodcave_crash_rca.md`. **DEBT / NEXT ROUND (blocked on Will):** needs Will to name
-> the exact chamber OR a Frida ProcessRLTD ENTER/LEAVE run (docs/crash/WILL_CRASH_PROBE_GUIDE.md) OR full
-> Page-Heap on TQ.exe to pin the corrupting co-resident navmesh load; if H1 confirmed the remedy is
-> CAVE_ENTRY_CHAIN_TRACE.md Fix B (map-structural cluster relocation, map lane). Recommend wiring the new
-> gate into the map-contracts family.
+> game crashes." **VERDICT (unchanged): no single broken-wiring offender found in this lane; forensics
+> point at a MAP-STRUCTURAL Engine.dll navmesh-load condition, not a dangling item.** (1) The Jul-13
+> native dump's `GAME::RegionId::Write / ZoneManager::~ZoneManager` labels are WRONG - the faulting EIP
+> 0x5fe4e270 is inside Engine.dll (base 0x5fc40000, size 0x39b000): runtime RVA = 0x5fe4e270 - 0x5fc40000
+> = **0x20e270** (equivalently preferred-image VA 0x1020e270 = default base 0x10000000 + RVA 0x20e270;
+> round-1 mislabelled the preferred-VA as the RVA); ~0x196d0 past ProcessRLTD (RVA 0x1f4ba0). Game.dll
+> (base 0x5f6a0000, size 0x591000) ends at 0x5fc31000, BELOW the fault, so the Game symbols are
+> misattributed. Corroborates the prior WER `ProcessRLTD` co-residency RCA
+> (docs/crash/DEEP_DUMP_ANALYSIS_2026-07-12.md). (2) The parchment `numberOfPlayers*1` loot-equation
+> suspect is REFUTED: RunEquation parse-fails are BENIGN (engine falls back; game logs confirm), they
+> reduce spawns, not crash. (3) GATE `tools/contracts/gate_placed_record_resolution.py` rules out the
+> placed-record **NON-EXISTENCE** class (narrowed from round-1's overstated "unresolvable asset"): **743
+> globally-distinct** placed-record refs (1096 counting per-blob duplicates) across 44 blood-cave-cluster
+> level blobs ALL EXIST in mod+base arz (PASS). NEW: transitive `--chain` walk (16,487 records, 13,627
+> asset refs, 189 dangling child refs) proves every dangle is the engine-log-and-continue class (67
+> skills / 6 effects / 40 loot / 12 disabled / 64 base; the lone SV dangle = cosmetic
+> `effects\sv\refnat\spirit_arrow` projectileWeaponTrail, not the crash). WIRED into the map-contracts
+> battery as **MAP-BCREF-1** (contracts_map.py, green). Negtest HARDENED to a real planted-blob
+> end-to-end test. Concrete candidate fix-surfaces (q_bloodtoxeus proxies/pools/chest + Toxeus kit; boss
+> placements/co-residency) RESERVED to `fix/bloodtoxeus-spawns` + `fix/chumbi-lag` -> HANDOFF, no edit.
+> NO .arz/.map change (arz md5 917d9047 unchanged). Report: `docs/reports/b82_bloodcave_crash_rca.md`.
+> **DEBT / NEXT ROUND (blocked on Will):** needs Will to name the exact chamber OR a Frida ProcessRLTD
+> ENTER/LEAVE run (docs/crash/WILL_CRASH_PROBE_GUIDE.md) OR full Page-Heap on TQ.exe to pin the corrupting
+> co-resident navmesh load; if H1 confirmed the remedy is CAVE_ENTRY_CHAIN_TRACE.md Fix B (map-structural
+> cluster relocation, map lane).
 > 🎯 **b59 SOUL DROP-RATE CUT 66->50 for RANDOMLY SPAWNING monsters (Will 2026-07-14) - ROUND 3 FIX
 > COMPLETE + REAL-BUILD VERIFIED GREEN (2026-07-16).** Branch `feat/soul-drop-50`. **ROUND 3 (this
 > session):** independent re-vet of the round-2 build (md5 `fd538e0c...`, byte-identical reproduction
