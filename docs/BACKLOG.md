@@ -3754,6 +3754,25 @@ uncapped-summon sweep to a carefully-scoped build gate (NOT petLimit-no-TTL blan
 skills have that shape); placement spacing/clearance gate follow-through; census_placements.py v0e
 stride fix; stale gate_build32_parseback refresh.
 
+## BUILD47 GATE RECORD (2026-07-17, DEV-only; Steam untouched - Will's in-game pass required)
+INTEGRATION WAVE 2: main merges fix/runtime-green (b75+b81 identity) + fix/soul-tiers (b78 gate +
+b85 High Priest) + fix/mastery-unlock (b77) + fix/formula-names (b80) + feat/black-poison (b73
+champions + b72 EoAT + b83 black poison/Rite drops) + fix/bloodtoxeus-spawns (b79). Cross-branch
+collision caught by fail-loud verify + fixed: enslaver_pet_fx b81r2 gate roster still mapped
+bwpriest pets to the blade-dancer (Demon) after R-43 rebuilt them from the High Priest (race God
+per amgoz1's own c_disciple_miniboss) - roster repointed. CRLF-masked union-marker lesson: union
+conflict resolution must strip markers with strip()-compare (CRLF files hid '=======\r'), and code
+conflicts need hand reconciliation (enslaver_pet_fx verify print). Artifacts: arz
+`5a3c016baae8f136b8b801ea871b71ba` (19 in-build verifies green incl the merged-state re-assert of
+every lane's gate; A7 golden PASS; registry 32 modules); Text `fcca49277b9d31ed451e4a6843898843`
+(renames + 417-tag file emitted by THIS build - lesson: never feed a stale uber_soul_tags.txt;
+validate_tags PASS); canonical Levels `17bed65f` + TESTHUB `42d83885` (blob-diff BOTH variants =
+exactly drxFirstRoom + drxFirstxistion_connection changed [the parchment encounter relocation],
+QUESTS byte-identical, navmesh 24/24 both); Quests unchanged. Contracts GATE PASS 0 P0/0 P1
+(4910 P2; +1 = the new formula record's known idiom slot). Record-diff vs build43 baseline:
+28 added / 1 removed / 172 modified across the whole 44-47 arc. DEV deploy hash-verified all
+three artifacts (TQ not running). baseline_build47.arz snapshotted.
+
 ## FIX-ROUND BATCHING NOTE
 All the P0/P1 map items (B-PORTAL-1/2/3, B-SPRITE-1, B-SMOKE-1, B-TEMPLE-DOOR-1) share the map
 lane → batch into one implement→vet wave, rebuild BOTH artifacts (canonical + TESTHUB), coupled
