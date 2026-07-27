@@ -498,6 +498,74 @@ def rec02_header(d):
             'guid_count': guid_count, 'guids': guids, 'total': len(d)}
 
 
+# --- REC\x02 (0x0b) FULL container structure walk (MAP-NAV-5) ------------------
+# A header-only parse cannot see the defect that killed two runtime sessions on
+# 2026-07-27 (b89): the dead Approach-22 148-byte stub had a perfectly valid header
+# (version 1, correct payload_size, guid_count 3, every GUID resolving) but a BODY
+# holding ONE TRUNCATED tileset instead of the three complete ones the engine parses,
+# so ProcessRLTD ran off the end of the section into the heap. This walk covers the
+# body the same way tools/rec02_format.parse_rec02 does (that parser is proven by
+# byte-identical round-trips over 670 real sections) but never raises on bad input.
+REC02_PARAMS_LEN = 52          # dtTileCacheParams
+REC02_TILESET_HDR = REC02_PARAMS_LEN + 4   # + int32 numTiles
+REC02_N_SETS = 3               # Normal / Epic / Legendary - engine requires all three
+REC02_TILE_MAGIC = b'RLTD'     # dtTileCacheLayerHeader magic ('DTLR' as int32)
+
+
+def rec02_structure(d):
+    """Walk a whole REC\\x02 section. Returns (errors, sets) - errors is a list of
+    human-readable structural defects, empty iff the container is well-formed."""
+    errs = []
+    if len(d) < 16 or d[:4] != b'REC\x02':
+        return (['bad REC\\x02 magic'], [])
+    guid_count = struct.unpack_from('<I', d, 12)[0]
+    pos = 16 + guid_count * 16 + 24                     # guids + center + dims
+    if guid_count > 64 or pos > len(d):
+        return ([f'guid_count={guid_count} does not fit in a {len(d)}-byte section'], [])
+    sets = []
+    while pos < len(d):
+        if pos + REC02_TILESET_HDR > len(d):
+            errs.append(f'tileset #{len(sets) + 1} TRUNCATED: {len(d) - pos} bytes '
+                        f'left, a tileset header needs {REC02_TILESET_HDR}')
+            break
+        num_tiles = struct.unpack_from('<i', d, pos + REC02_PARAMS_LEN)[0]
+        max_tiles, max_obstacles = struct.unpack_from('<2i', d, pos + 44)
+        sets.append({'numTiles': num_tiles, 'maxTiles': max_tiles,
+                     'maxObstacles': max_obstacles})
+        pos += REC02_TILESET_HDR
+        if not (0 <= num_tiles <= 100000):
+            errs.append(f'tileset #{len(sets)} has an out-of-range numTiles={num_tiles}')
+            break
+        broke = False
+        for t in range(num_tiles):
+            if pos + 4 > len(d):
+                errs.append(f'tileset #{len(sets)} tile {t}: truncated dataSize')
+                broke = True
+                break
+            dsize = struct.unpack_from('<i', d, pos)[0]
+            pos += 4
+            if dsize < 56 or pos + dsize + 8 > len(d):
+                errs.append(f'tileset #{len(sets)} tile {t}: bad dataSize={dsize} '
+                            f'({len(d) - pos} bytes remain)')
+                broke = True
+                break
+            if d[pos:pos + 4] != REC02_TILE_MAGIC:
+                errs.append(f'tileset #{len(sets)} tile {t}: bad dtTileCacheLayerHeader '
+                            f'magic {d[pos:pos + 4]!r} (expected {REC02_TILE_MAGIC!r})')
+                broke = True
+                break
+            pos += dsize + 8                            # data + trailing tx,ty
+        if broke:
+            break
+    if not errs:
+        if len(sets) != REC02_N_SETS:
+            errs.append(f'{len(sets)} tileset(s); the engine loads exactly '
+                        f'{REC02_N_SETS} (Normal/Epic/Legendary)')
+        if pos != len(d):
+            errs.append(f'{len(d) - pos} trailing byte(s) after the last tileset')
+    return (errs, sets)
+
+
 # --- SD(0x18) tag scan ---------------------------------------------------------
 def sd_tag_refs(sd):
     """Length-prefixed ASCII strings in the SD section that are display-tag
@@ -801,7 +869,14 @@ def contract_portals(ctx):
 
 def contract_navmesh(ctx):
     """(3) Every walkable restored level carries a valid 0x0b RLTD navmesh whose
-    GUID list resolves in the merged world; no level keeps a stale 0x0a."""
+    GUID list resolves in the merged world; no level keeps a stale 0x0a.
+
+    NAV-1 header sanity + GUID resolvability, NAV-2 no stale 0x0a beside a 0x0b,
+    NAV-3 restored SV level must have a navmesh, NAV-5 the container BODY is exactly
+    three complete tilesets (b89), NAV-6 the GUID list is not self-duplicated (b89).
+    NAV-5/NAV-6 apply to EVERY level including declared-cut ones: the engine streams a
+    level by grid proximity whether or not the design calls it reachable, so a
+    malformed container in a "cut" level is still a live crash."""
     v = []
     for lv in ctx.levels:
         blob = ctx.blob(lv)
@@ -841,6 +916,27 @@ def contract_navmesh(ctx):
                                    'navmesh GUID list has entries that resolve to no loaded '
                                    'level; engine GUID-gate rejects the whole navmesh (invisible wall)',
                                    f'{len(bad)} unresolved of {h["guid_count"]}: {bad[:4]}'))
+                    # NAV-6: DEGENERATE list - >1 entry, every entry the same GUID.
+                    # Stock TQAE ships ZERO of these in 2235 levels; ours were the
+                    # fingerprint of the malformed 148-byte stub (b89 crash).
+                    if h['guid_count'] > 1 and len(set(h['guids'])) == 1:
+                        v.append(V('MAP-NAV-6', 'P0', fname,
+                                   'navmesh GUID list is DEGENERATE (every entry is the same '
+                                   'GUID); stock ships no such list and ours only ever came '
+                                   'from a malformed generated container',
+                                   f'guid_count={h["guid_count"]} all == '
+                                   f'{h["guids"][0].hex()}'))
+            # NAV-5: the container BODY must be exactly 3 complete tilesets and end
+            # cleanly. A valid header over a truncated body is what ProcessRLTD reads
+            # past the end of (b89: two Frida sessions died entering ocean_extension05).
+            serrs, _sets = rec02_structure(d)
+            if serrs:
+                v.append(V('MAP-NAV-5', 'P0', fname,
+                           'navmesh REC\\x02 container body is structurally invalid; '
+                           'ProcessRLTD parses tilesets until the section ends, so a short '
+                           'or malformed body makes it read past the section (crash on '
+                           'stream-in)',
+                           f'size={len(d)}: ' + '; '.join(serrs[:3])))
         # NAV-2: no level keeps both 0x0a and 0x0b (stale legacy not stripped)
         if has_0a and has_0b:
             v.append(V('MAP-NAV-2', 'P1', fname,

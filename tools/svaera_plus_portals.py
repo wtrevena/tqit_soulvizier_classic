@@ -17,6 +17,7 @@ from merge_levels_binary import (parse_sections, parse_level_index, parse_quests
     MAP_MAGIC, SEC_LEVELS, SEC_DATA, SEC_DATA2, SEC_QUESTS, SEC_GROUPS, SEC_SD, SEC_BITMAPS)
 from build_section_surgery import (
     INJECT_SPECS, MOVE_SPECS, ALL_CUSTOM_QUEST_NAMES, inject_into_0x05_v11,
+    EMPTY_REC02_SIZE,
     parse_blob_sections, rebuild_blob, convert_v0e_blob_to_v11, inject_0x17_region,
     inject_into_sv_only_blob, inject_rec02_into_blob, move_0x05_instances,
     merge_hub_into_inject_specs, build_hub_extra_specs, patch_respawn_group_position,
@@ -527,8 +528,10 @@ def extract_0x0b_body(lvl_path):
 #   2. <basename>.lvl     = a full baked .lvl donor (e.g. from a future TQAE
 #      Editor bake). Its 0x0b is extracted and REPOSITIONED via transplant_rec02
 #      to the level's shifted grid.
-# If neither exists we fall back to the dead 148-byte stub so the build stays
-# green (used by the 7 ocean-scenery levels with no walkable geometry).
+# If neither exists we fall back to build_minimal_rec02's 224-byte structurally
+# valid EMPTY container (used by the 7 ocean-scenery levels + coldtombs, none of
+# which has 0x0a geometry to rasterize). See b89: the old 148-byte stub there was a
+# malformed container the engine crashed on when it streamed the level.
 DONOR_DIR = Path(os.environ.get(
     'SVC_DONOR_DIR',
     r'c:\Users\willi\repos\tqit_soulvizier_classic\local\editor_normalized'))
@@ -794,8 +797,23 @@ def build_ordered_quest_list(ae_quests, sv_quests):
 def main():
     """Build the merged Levels.arc (heavy: multi-GB). Not run on import."""
     # --- Paths ---
-    svaera_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc')
-    sv_path = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc')
+    # The two merge INPUTS. Defaults are the historical in-repo cache locations
+    # (reference_mods/ + upstream/, both gitignored); SVC_SVAERA_ARC / SVC_SV_ARC
+    # override them so the build still runs when those caches are absent - e.g. the
+    # SVAERA base lives in the Steam Workshop content dir (item 2076433374) and SV
+    # 0.98i in another checkout. Fail LOUD naming the env var rather than dying deep
+    # inside ArcArchive with a bare FileNotFoundError (b89 lost time to exactly that).
+    svaera_path = Path(os.environ.get(
+        'SVC_SVAERA_ARC',
+        r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc'))
+    sv_path = Path(os.environ.get(
+        'SVC_SV_ARC',
+        r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc'))
+    for label, p, env in (('SVAERA base', svaera_path, 'SVC_SVAERA_ARC'),
+                          ('SV 0.98i', sv_path, 'SVC_SV_ARC')):
+        if not p.is_file():
+            raise SystemExit(f'FATAL: {label} Levels.arc not found at {p}\n'
+                             f'       set {env} to its location and re-run.')
 
     # --- TEST HUB flag (SVC_TEST_HUB=1) ---
     # OFF (default): canonical build -> local/Levels_merged.arc (A1/A2 doors + C1-C4 fixes, hub-free).
@@ -1177,9 +1195,17 @@ def main():
     #   2. LVL donor        <basename>.lvl      - a full baked .lvl (e.g. future
     #      Editor bake). Its 0x0b is extracted and REPOSITIONED to this level's
     #      SHIFTED grid via transplant_rec02.
-    #   3. STUB             - no donor: inject the (dead) 148-byte stub so the
-    #      build stays green. Used by the 7 ocean-scenery BC levels + anything
-    #      still missing a donor.
+    #   3. EMPTY CONTAINER  - no donor (the level has no 0x0a geometry to rasterize):
+    #      inject build_minimal_rec02's 224-byte STRUCTURALLY VALID empty REC\x02
+    #      (own GUID once, 3 complete tilesets, 0 tiles) - the shape stock TQAE ships
+    #      for its own 60 walkable-floor-less border/vista levels. Used by the 7
+    #      ocean-scenery BC levels + coldtombs.
+    #      b89 (2026-07-27): this used to be the dead 148-byte Approach-22 stub, whose
+    #      body was ONE TRUNCATED tileset. "Cut/unreachable" does NOT mean "not
+    #      streamed" - the engine streams by grid proximity, ocean_extension05 sits
+    #      inside the walkable drxBC3 block, and ProcessRLTD read straight off the end
+    #      of that 148-byte section: two Frida sessions died there. Never emit a
+    #      partially-formed container for a level that is in the LEVELS index.
     #
     # inject_rec02_into_blob always strips the 0x0a section so ProcessRLTD reinit
     # cannot clobber the 0x0b handler state. The SHIFTED ints_raw (grid corner +
@@ -1212,9 +1238,11 @@ def main():
                                                 use_stub=False)
                 kind, donor_path, donor_len = 'lvl', lvl_path, len(lvl_0x0b)
             else:
-                # Tier 3: no donor - stub fallback.
+                # Tier 3: no donor (no 0x0a geometry) - structurally valid EMPTY
+                # container. NOT a placeholder: this section IS parsed by the engine
+                # whenever the level streams in (b89).
                 result = inject_rec02_into_blob(blob, target_ints, use_stub=True)
-                kind, donor_path, donor_len = 'stub', None, 0
+                kind, donor_path, donor_len = 'empty', None, EMPTY_REC02_SIZE
 
         if result != blob:
             converted_blobs[i] = result
@@ -1226,11 +1254,12 @@ def main():
                 print(f'  LVL donor: {basename} <- {donor_path.name} ({donor_len} B 0x0b)')
             else:
                 stub_ok += 1
+                print(f'  EMPTY container: {basename} ({donor_len} B 0x0b, no 0x0a geometry)')
         else:
             inject_fail += 1
             print(f'  {kind}: {basename} -> NO CHANGE (already has 0x0b or empty)')
-    print(f'  Injected: {gen_ok} generated-donor / {lvl_ok} lvl-donor / {stub_ok} stub  '
-          f'(of {len(sv_only)} SV-only)')
+    print(f'  Injected: {gen_ok} generated-donor / {lvl_ok} lvl-donor / '
+          f'{stub_ok} empty-container  (of {len(sv_only)} SV-only)')
     if inject_fail:
         print(f'  Failed/skipped: {inject_fail}')
 

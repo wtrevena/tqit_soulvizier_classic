@@ -8,6 +8,7 @@ This keeps all existing objects and their per-object metadata (0x14) in sync.
 
 Also appends 46 SV-only levels and patches DATA2 count.
 """
+import math
 import sys, struct
 from pathlib import Path
 
@@ -3222,33 +3223,73 @@ def transplant_rec02(donor_0x0b_data, target_ints_raw):
     return bytes(data)
 
 
+# --- Empty-navmesh container geometry (stock-derived; see build_minimal_rec02) ---
+EMPTY_REC02_SIZE = 224          # 16 hdr + 1*16 guid + 24 center/dims + 3*56 tilesets
+_TILE_WORLD = 64 * 0.2          # 12.8 world units per navmesh tile (TILE cells * cs)
+
+
 def build_minimal_rec02(ints_raw):
-    """Build a minimal valid 0x0b (REC\\x02) section body.
+    """Build a STRUCTURALLY VALID, EMPTY 0x0b (REC\\x02) section for a level that has
+    no walkable geometry to rasterize (no 0x0a tok mesh -> no generatable donor).
 
-    Contains the REC\\x02 header with correct level coords plus the standard
-    44-byte Recast parameter header and zero tile counts.  This is enough for
-    ProcessRLTD to initialize the RLTD handler with valid Recast build
-    parameters.  Level::CreatePathMesh / ProcessRLTD_flow can then generate
-    the actual navigation mesh from the level's entity geometry at runtime.
+    ### Why this function exists at all
+    `svaera_plus_portals` step 7b tier-3 calls this for every SV-only level with no
+    `.0b.bin` donor: the 7 ocean-scenery blood-cave backdrops + `coldtombs` (8 levels).
+    The engine still STREAMS those levels - they sit inside the walkable grid block
+    (ocean_extension05's 240x240 box abuts drxBC3, ocean_extension02 and
+    ocean_extension03) - so whatever section we put here IS parsed by ProcessRLTD.
 
-    REC\\x02 format:
-      [0-3]:   'REC\\x02' magic
-      [4-7]:   uint32 version = 1
-      [8-11]:  uint32 payload_size (everything after first 12 bytes)
-      [12-15]: uint32 diff_count (3 = Normal/Epic/Legendary)
-      [16-63]: 3 x 16-byte GUID blocks
-      [64-75]: center coords (3 x int32)
-      [76-87]: dimensions (3 x uint32)
-      --- Body ---
-      [88-131]:  44-byte Recast parameter header (standard values)
-      [132-147]: 4 x uint32 tile counts = 0 (no pre-built tiles)
+    ### The b89 defect this replaces (2026-07-27, runtime-proven)
+    The previous body was written against a WRONG model of the format: it read +12 as a
+    "diff_count = 3 (Normal/Epic/Legendary)" and emitted ONE 44-byte parameter block +
+    four zero uint32s = 148 bytes total. Measured against the real (RE-proven, see
+    tools/rec02_format.py) layout that is:
+      * a GUID LIST of 3 entries, all the level's OWN guid (a DEGENERATE list stock
+        TQAE never ships - 0 occurrences in 2235 base levels),
+      * ONE TRUNCATED tileset: `dtTileCacheParams` is 52 bytes (the 44 written here are
+        missing maxTiles + maxObstacles) and each tileset needs a trailing int32
+        numTiles, so a tileset record is 56 bytes and the engine reads THREE of them.
+    Result: after consuming set 1 the parser sits 4 bytes from the end of the section
+    and keeps reading sets 2 and 3 out of whatever follows in the heap - garbage
+    maxTiles/numTiles, then a tile loop that walks arbitrary dataSize values. Two
+    independent Frida sessions (local/crash_probe/probe_20260727_1558*.log) caught
+    exactly this: ENTER ocean_extension05 inside ProcessRLTD, NO LEAVE, process dead.
+
+    ### The shape written now (matched to stock)
+    Stock TQAE ships 60 levels whose navmesh is legitimately EMPTY (all 3 sets have
+    numTiles == 0) - borders, vistas and backdrops with terrain but no walkable floor,
+    i.e. exactly our case. They are 240..304 bytes = 208 + 16*guid_count, always 3
+    COMPLETE tilesets. Their maxTiles reproduces exactly as
+    `2 * ceil(2*dims_x / 12.8) * ceil(2*dims_z / 12.8)` (verified: Rhodes_OceanBorder_01
+    dims=(80,46,80) -> 2*13*13 = 338 = the shipped value), which is also what
+    gen_rec02.generate() computes for a real mesh, so the two producers agree.
+
+    GUID list = the own GUID exactly ONCE:
+      * non-degenerate (the b89 signature is structurally impossible now);
+      * stock-normal - 251 base levels ship a single-own-GUID list;
+      * runtime-proven - new_secretdoor_transitionhallway (gc == 1 since build48)
+        ENTERs and LEAVEs ProcessRLTD cleanly in probe session B;
+      * residency-proof - an empty mesh tags no cells, so no area id is ever resolved
+        against the list, and the only GUID it names is the level being loaded, which
+        is by definition stream-resident when its own navmesh loads.
+
+    Layout (all little-endian), total EMPTY_REC02_SIZE == 224 bytes:
+      [0-3]    b'REC\\x02'
+      [4-7]    uint32 version = 1
+      [8-11]   uint32 payload_size = total - 12
+      [12-15]  uint32 guid_count = 1
+      [16-31]  own 16-byte GUID
+      [32-43]  center (3 x int32)
+      [44-55]  dims   (3 x uint32)
+      [56-223] 3 x (52-byte dtTileCacheParams + int32 numTiles = 0)
     """
     vals = struct.unpack_from('<13i', ints_raw, 0)
     uvals = struct.unpack_from('<13I', ints_raw, 0)
     guid = ints_raw[36:52]  # ints_raw[9..12]
 
-    diff_count = 3
-    # Center = grid_corner + half_dimensions
+    # Center = grid_corner + half_dimensions (UNCHANGED from the previous body, so the
+    # container stays positioned exactly where verify_merged_bc_navmeshes.center_consistent
+    # expects it: mesh corner == the level's padded corner).
     center_x = vals[6] + vals[3]
     center_y = vals[7] + vals[1]
     center_z = vals[8] + vals[5]
@@ -3257,31 +3298,42 @@ def build_minimal_rec02(ints_raw):
     dim_y = max(uvals[4] - 4, 1) if uvals[4] >= 5 else uvals[4] + 12
     dim_z = uvals[5] + 16
 
+    # maxTiles: the same formula gen_rec02.generate() uses (2 * tw * th), reproduced
+    # bit-for-bit from stock empty containers.
+    tw = int(math.ceil(2 * dim_x / _TILE_WORLD))
+    th = int(math.ceil(2 * dim_z / _TILE_WORLD))
+    max_tiles = 2 * tw * th
+
     data = bytearray()
-    data += b'REC\x02'                              # magic
+    data += b'REC\x02'                               # magic
     data += struct.pack('<I', 1)                     # version
     data += struct.pack('<I', 0)                     # payload_size (patched below)
-    data += struct.pack('<I', diff_count)            # diff_count
-    for _ in range(diff_count):
-        data += guid                                 # GUID blocks
+    data += struct.pack('<I', 1)                     # guid_count = 1 (own only)
+    data += guid                                     # the own GUID
     data += struct.pack('<3i', center_x, center_y, center_z)  # center
     data += struct.pack('<3I', dim_x, dim_y, dim_z)  # dimensions
 
-    # 44-byte Recast parameter header (identical across all TQAE levels)
-    data += struct.pack('<3f', 0.0, 0.0, 0.0)        # 3x zero
-    data += struct.pack('<2f', 0.2, 0.2)              # cellSize, cellHeight
-    data += struct.pack('<2I', 64, 64)                # tileSize (cells)
-    data += struct.pack('<f', 2.0)                    # agentHeight
-    data += struct.pack('<f', 0.4)                    # agentMaxClimb
-    data += struct.pack('<f', 1.0)                    # agentRadius
-    data += struct.pack('<f', 1.3)                    # unknown param
-
-    # 4 x uint32 tile counts = 0 (no pre-built tiles)
-    data += struct.pack('<4I', 0, 0, 0, 0)
+    # THREE complete tilesets (Normal / Epic / Legendary). The engine requires all
+    # three; each is a full 52-byte dtTileCacheParams + int32 numTiles.
+    for _ in range(3):
+        data += struct.pack(
+            '<3f2f2i4f2i',
+            0.0, 0.0, 0.0,        # orig
+            0.2, 0.2,             # cs, ch
+            64, 64,               # width, height (cells per tile)
+            2.0,                  # walkableHeight
+            0.4,                  # walkableRadius
+            1.0,                  # walkableClimb
+            1.3,                  # maxSimplificationError
+            max_tiles,            # maxTiles
+            128,                  # maxObstacles (engine forces 256 at load)
+        )
+        data += struct.pack('<i', 0)                 # numTiles = 0 (no walkable floor)
 
     # Patch payload_size = total - 12 (magic + version + payload_size field)
     struct.pack_into('<I', data, 8, len(data) - 12)
 
+    assert len(data) == EMPTY_REC02_SIZE, (len(data), EMPTY_REC02_SIZE)
     return bytes(data)
 
 

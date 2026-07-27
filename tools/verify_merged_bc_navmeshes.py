@@ -4,9 +4,16 @@ navmeshes at the blood-cave levels - not the dead 148-byte stub - before deploy.
 
 For every xBloodCave level:
   - real navmesh expected: 0x0b size == the generated donor's .0b.bin size, 0x0a stripped.
-  - ocean-scenery (no walkable geometry): 148-byte stub, 0x0a stripped.
+  - ocean-scenery (no walkable geometry): the 224-byte EMPTY container, 0x0a stripped.
 
-Exits non-zero if any walkable BC level is missing its navmesh or still carries 0x0a.
+Exits non-zero if any walkable BC level is missing its navmesh or still carries 0x0a,
+or if any 0x0b (real OR empty) is structurally malformed.
+
+b89 (2026-07-27): the empty container used to be the dead 148-byte Approach-22 stub,
+whose body held one TRUNCATED tileset instead of three complete ones - ProcessRLTD read
+past the end of the section and killed the game on stream-in (two Frida sessions, both
+at ocean_extension05). This verifier only ever compared SIZES, so it happily reported
+'ok ocean-stub' for eight landmines. It now walks the container structure too.
 """
 import sys
 from pathlib import Path
@@ -14,7 +21,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from arc_patcher import ArcArchive
 from merge_levels_binary import parse_sections, parse_level_index, SEC_LEVELS
-from build_section_surgery import parse_blob_sections
+from build_section_surgery import parse_blob_sections, EMPTY_REC02_SIZE
+sys.path.insert(0, str(Path(__file__).parent / 'contracts'))
+from contracts_map import rec02_structure
 
 import os
 REPO = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic')
@@ -25,9 +34,9 @@ REPO = Path(r'c:\Users\willi\repos\tqit_soulvizier_classic')
 _OUT_DIR = Path(os.environ.get('SVC_OUT_DIR', str(REPO / 'local')))
 MAP_ARC = Path(os.environ.get('SVC_MERGED_ARC', str(_OUT_DIR / 'Levels_merged.arc')))
 DONOR_DIR = Path(os.environ.get('SVC_DONOR_DIR', str(REPO / 'local' / 'editor_normalized')))
-STUB_SIZE = 148
+STUB_SIZE = EMPTY_REC02_SIZE   # 224 since b89 (was the malformed 148-byte Approach-22 stub)
 
-# The 7 ocean-scenery BC levels have no 0x0a geometry -> get the stub by design.
+# The 7 ocean-scenery BC levels have no 0x0a geometry -> get the empty container by design.
 OCEAN_STUB = {
     'ocean_extension05', 'ocean_extensionx01', 'ocean_extensionx03',
     'ocean_extensionx05', 'ocean_extensionx04', 'ocean_extensionx06',
@@ -130,10 +139,16 @@ def main():
         exp = donor_size.get(base.lower())
         is_ocean = base.lower() in OCEAN_STUB
         verdict = 'OK'
+        # b89: EVERY 0x0b here (real donor or empty container) must be structurally
+        # walkable end-to-end, not merely the right size. This is the check whose
+        # absence let 8 malformed containers ship.
+        struct_errs = rec02_structure(sec_0b)[0] if sec_0b is not None else ['no 0x0b']
         if size_0b is None:
             verdict = 'FAIL: no 0x0b'; fails.append(base)
         elif has_0a:
             verdict = 'FAIL: 0x0a not stripped'; fails.append(base)
+        elif struct_errs:
+            verdict = f'FAIL: malformed container - {struct_errs[0]}'; fails.append(base)
         elif exp_bytes is not None:
             if sec_0b != exp_bytes:
                 verdict = ('FAIL: bytes!=donor' if size_0b == exp
@@ -150,14 +165,15 @@ def main():
                 verdict = 'OK real navmesh (bytes+center)'; real_ok += 1
         elif is_ocean:
             if size_0b == STUB_SIZE:
-                verdict = 'ok ocean-stub'; stub_ok += 1
+                verdict = 'ok ocean empty-container (valid)'; stub_ok += 1
             else:
-                verdict = f'? ocean but 0x0b={size_0b}'
+                verdict = f'FAIL: ocean but 0x0b={size_0b} (expect {STUB_SIZE})'
+                fails.append(base)
         else:
-            verdict = f'? no donor, 0x0b={size_0b} (non-BC-walkable stub)'
+            verdict = f'? no donor, 0x0b={size_0b} (non-BC-walkable empty)'
             if size_0b == STUB_SIZE:
                 stub_ok += 1
-        exp_s = str(exp) if exp is not None else ('stub' if is_ocean else '-')
+        exp_s = str(exp) if exp is not None else (str(STUB_SIZE) if is_ocean else '-')
         print(f'  {base:40s} {str(size_0b):>10s}  {exp_s:>10s}  {str(has_0a):>5s}  {verdict}')
 
     print('\n  ' + '=' * 60)

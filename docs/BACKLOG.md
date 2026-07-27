@@ -1,5 +1,79 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD49 GATE RECORD - b89 ocean_extension05 crash hotfix (2026-07-27, branch `fix/ocean05-hotfix`, tag `build49-dev`)
+
+**P0, Will: "this area is literally right in the beginning of this section of the blood cave, we have
+to fix this bug to make the blood cave even playable."** Two independent Frida sessions
+(`probe_20260727_155800.log`, `probe_20260727_155845.log`) died at the SAME chamber -
+`ocean_extension05` (idx 2266, guid `e11908536840dc7e50d5a88221b17b22`), ENTER inside ProcessRLTD
+with NO LEAVE - at 5-loads-in-6s and at 11-loads-over-4min, with 10 vs 9 co-resident. Different pace,
+different residency, same chamber: it is the section, not memory pressure.
+
+**ROOT DEFECT:** its `0x0b` was the dead Approach-22 **148-byte stub**
+(`build_section_surgery.build_minimal_rec02`, injected by `svaera_plus_portals` step 7b tier-3).
+The stub was written against a WRONG format model - it read `+12` as `diff_count = 3
+(Normal/Epic/Legendary)` when `+12` is `guid_count`, and it emitted ONE **44-byte** parameter block
+(missing `maxTiles`+`maxObstacles`, which make `dtTileCacheParams` 52 B) + 4 stray zero uint32s
+instead of the **three complete 56-byte tilesets** the engine parses. Consequences:
+(1) a DEGENERATE GUID list `[own, own, own]` - the exact `deps` the probe printed;
+(2) after consuming "set 1" the parser sits **4 bytes from the end of a 148-byte section** and still
+needs sets 2 and 3, so it reads them out of the heap - garbage `numTiles`, then a tile loop walking
+arbitrary `dataSize`. That is the ENTER-with-no-LEAVE.
+"Cut" bought nothing: the engine streams by grid proximity and `ocean_extension05`'s 240x240 box
+abuts `drxBC3`/`ocean_extension02`/`ocean_extension03`; the probe shows 01, 02, 03 streaming cleanly
+immediately before 05 detonates.
+**WHY EVERY GATE MISSED IT:** the stub's HEADER is impeccable (version 1, `payload_size` 136 == 148-12,
+`guid_count` 3 in range, all GUIDs resolve - they are the level's own). `MAP-NAV-1` only parsed the
+header; `verify_merged_bc_navmeshes` only compared SIZES and printed `ok ocean-stub`; `is_cut()`
+exempted `ocean_extension*` from `MAP-NAV-3` anyway. Nothing had ever walked a container BODY.
+
+**SWEEP (`tools/audit_navmesh_guid_lists.py`, new):** stock TQAE `Levels.arc` = 2235 levels,
+**0 structurally invalid, 0 degenerate**, 251 own-only, 21 with NO `0x0b`. Our maps (deployed DEV,
+canonical, TESTHUB - all three) = **8 structurally invalid == 8 degenerate**, and they are exactly
+the 8 tier-3 (no-`0x0a`-geometry) levels: `ocean_extension05`, `ocean_extensionx01`, `x03`, `x04`,
+`x05`, `x06`, `x07`, and **`coldtombs`** (Egypt/MiniDungeons - the same landmine parked elsewhere).
+Will would have hit the next one minutes later. **ALL 8 FIXED.**
+
+**CALL ON own-only (build47/48 fix A):** NOT the same defect class, left untouched. Stock ships
+**251** own-only lists (`Crypt01`, `SlavePits`, `SerketCaves01`, `DevMaze01..14`, ...) - it is the
+normal form for a self-contained interior - and `new_secretdoor_transitionhallway` (gc=1 since
+build48, 157,898 B, 3 complete tilesets) ENTERs and LEAVEs cleanly (`al=1`) in probe session B.
+`MAP-NAV-6` fires on SELF-DUPLICATION only and its negative test asserts silence on own-only.
+
+**FIX CHOSEN = (c)** - emit what the engine actually parses. `build_minimal_rec02` now produces a
+**structurally valid EMPTY** container: **224 B** = 16 hdr + 1x16 GUID (own, once) + 24 center/dims +
+**3 complete tilesets** (52 B `dtTileCacheParams` + `int32 numTiles = 0`), `maxTiles = 2 *
+ceil(2*dims_x/12.8) * ceil(2*dims_z/12.8)`, `maxObstacles = 128`; center/dims UNCHANGED so the
+positioning gate is untouched. Every choice is copied from stock, not invented: stock ships **60**
+all-sets-`numTiles==0` levels (240..304 B == `208 + 16*guid_count`, always 3 tilesets); the
+`maxTiles` formula reproduces `Rhodes_OceanBorder_01`'s shipped 338 exactly; 166 stock meshes list an
+empty-navmesh level as a neighbour. Option (b) "don't stream it" was RULED OUT (grid-proximity
+streaming + Will is standing there + `ocean_extension01/02/03/04` and `x02/x08` carry REAL navmeshes
+and are area-owners inside `drxBC3`/`drxBC_Finale`'s lists, so the family is NOT uniformly cut).
+Pipeline-level (BL-103), deterministic, no hand-patched arc.
+
+**NEW GATE (fails the build):**
+- `MAP-NAV-5` (P0) - `0x0b` body must be exactly 3 complete tilesets, every tile record carrying the
+  `RLTD` header magic, section ending cleanly. Backed by new `contracts_map.rec02_structure`.
+- `MAP-NAV-6` (P0) - GUID list must not be self-duplicated.
+Both apply to EVERY level including declared-cut ones. Neither whitelisted.
+`verify_merged_bc_navmeshes` now walks structure (not just sizes), expects the 224-B container, and
+FAILS instead of printing `?` on a wrong-size ocean section.
+**PLANTED NEGATIVE TEST:** `_negtest_map.py` reconstructs the real 148-byte stub byte-for-byte
+(`make_b89_stub`) and asserts it trips BOTH new gates at P0 **and** passes every pre-existing
+`MAP-NAV-1` header check (the regression-proof that the old gates were blind), plus 2-/4-tileset,
+trailing-junk, lying-`numTiles`, distinct-multi-GUID and own-only cases. Also repaired the harness
+itself: `test_doors` pointed at a deleted session scratchpad path, so the whole file crashed for
+everyone; it now resolves a live `Quests.arc` (or `SVC_QUESTS_ARC`) and skips loudly.
+
+**PIPELINE UNBLOCK:** `svaera_plus_portals.main` + `gen_bc_navmeshes` had the two merge inputs
+hard-coded to `reference_mods/` + `upstream/`; both caches were ABSENT on this machine, so the map
+could not be rebuilt at all (bare `FileNotFoundError` deep in `ArcArchive`). Both now honour
+`SVC_SVAERA_ARC` / `SVC_SV_ARC` (defaults unchanged) and fail loud naming the variable. SVAERA base
+found at Steam Workshop item `2076433374`.
+
+**REPORT:** `docs/reports/b89_ocean_ext05_hotfix.md`.
+
 ## B87 FIX A round 1 SHIPPED-TO-DEV (2026-07-17, branch `fix/navok-mapfix`, tag `build48-dev`)
 **Fix A (single-own-GUID) implemented in the PIPELINE for `new_secretdoor_transitionhallway` ONLY
 this round (one variable for Will's walk test).** Fix-upstream (BL-103): `gen_bc_navmeshes.py` gains
@@ -109,6 +183,31 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b89 ocean_extension05 hotfix (2026-07-27, build49-dev) - NEW**
+- **BL-b89-DEBT-1 (P0-gated):** the 224-byte valid-EMPTY container is unproven IN-GAME. Owner/trigger:
+  Will's walk test into the `drxBC3`/`drxBC_Finale` ocean block. If an ocean chamber still kills the
+  game, the next move is the OTHER stock-precedented form - **no `0x0b` section at all** (stock ships
+  21 such levels: `ConvergenceBossRoomBackdrop`, `TiamatArenaVista`, `WaterEdge05`,
+  `PineForest04Border02`, ...; 43 stock meshes list one as a neighbour, and `gen_bc_navmeshes`'s own
+  docstring says these levels "legitimately get no `0x0b`"). That change also needs a strip-only path
+  in `inject_rec02_into_blob` (today it returns the blob UNCHANGED, leaving `0x0a` in place, when it
+  has nothing to inject). Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 5.
+- **BL-b89-DEBT-2 (P1):** **Steam/canonical map is NOT shipped this wave.** The canonical
+  `Levels_merged.arc` carries the same 8 malformed containers, so the LIVE Workshop build
+  (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
+  uploaded (walk-test-gated, same policy as build48). Owner/trigger: Will confirms the DEV walk test,
+  then package+upload the canonical variant.
+- **BL-b89-DEBT-3 (P2):** `contracts_map.CUT_LEVEL_MARKERS` still marks the whole `ocean_extension*`
+  family cut, but 6 of them (`01`-`04`, `x02`, `x08`) carry REAL generated navmeshes and are
+  area-owners inside `drxBC3`/`drxBC_Finale`'s GUID lists - i.e. live walked-on content.
+  `docs/CUT_CONTENT.md`'s "never intended to be entered / permanently cut" is wrong for those 6.
+  Owner/trigger: a map-docs pass; harmless today because `MAP-NAV-5`/`-6` deliberately ignore
+  cut-ness. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 4.
+- **BL-b89-DEBT-4 (P2):** `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
+  EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
+  (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
+  that rebuilds the map needs those set. Owner/trigger: restore the caches or bake the fallbacks in.
 
 **Toxeus / MP-compat**
 - np-equation per-player expansion (rant scroll) unproven on a monster EQUIP slot (proven only for
