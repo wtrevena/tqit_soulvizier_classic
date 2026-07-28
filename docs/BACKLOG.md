@@ -327,6 +327,43 @@ along automatically when the structural cluster-relocation fix lands.
     not extend fix A on the b87 rationale. Documentation-only change, no map rebuild. Proofs:
     `_negtest_map.py` 49/49 PASS; `run_contracts.py --only map` = 0 P0 / 0 P1 / 3 P2 (pre-existing
     base-game portal noise), GATE PASS.
+- **BL-DEBT-EMPTYLVL-1 (P2, NEW 2026-07-28, debt-map lane - donor-inherited, GATED, needs
+  `SVC_SVAERA_ARC` to close):** **34 levels ship with their entire placed-entity set gone.** Found
+  while re-verifying `RESPAWN-GREECEUG02`, whose "missing respawn shrine" turned out to be 1 of 257
+  entities lost in a wholly depopulated level. A full vanilla-vs-ours census of all 2,282 shipped
+  levels finds 34 that vanilla populates and our map ships with an **empty `0x05` placed-instance
+  section** while the `0x0b` navmesh survives intact - geometry and walkability, zero monsters, props,
+  containers or NPCs:
+  - **XPack2 (3):** `hercynianforest03_cave` (vanilla 257), `primrosegrid01` (vanilla **1,778**),
+    `delphiactorstemple` (24).
+  - **XPack4 (31):** `devcave01-09/12/13`, `devmaze01-14`, `dathq01-06`.
+  - **NOT systemic:** 268 of 287 shared XPack2 levels keep their entities (`birchforest01` 2,846,
+    `suebilakelands02` 2,359, `jarnvidja02` 2,077, ...), so this is specific to those 34 donor blobs.
+  - **NOT our regression:** the emptied set is **set-identical and blob-size-identical in every map
+    we have ever built** - `build19-baseline`, `build30-canonical`, `Levels_deployed_prev` and the
+    current `Levels_merged.arc` each carry exactly the same 34 levels at the same blob sizes, zero
+    set difference. It is present from our earliest build, so it arrives with the SVAERA AE donor
+    map rather than from any pipeline change of ours (the 3 XPack2 members also change version
+    `LVL\x0e`/`\x0f` -> `LVL\x11`, the signature of a re-authored/re-saved donor blob).
+  - **WHY IT IS ONLY *RECORDED*, NOT CLOSED:** proving the donor attribution directly requires
+    diffing the SVAERA arc itself, and `SVC_SVAERA_ARC`/`SVC_SV_ARC` are **unset in this environment**
+    (see BL-b89-DEBT-4 / BL-b90-DEBT-2). Everything provable without the donor arc is proved above.
+  - **Owner/trigger:** a lane with `SVC_SVAERA_ARC` set confirms these 34 blobs are byte-identical to
+    the SVAERA donor. If they are, this is an accepted upstream property and closes as WONTFIX
+    (player impact is plausibly nil - XPack4 `devcave`/`devmaze`/`dathq` are developer/test level
+    names and XPack2 is Ragnarok, which the campaign never enters - but `primrosegrid01` at 1,778
+    entities deserves a look before that is assumed). If they are NOT, it is a real merge defect and
+    becomes P1. **WILL-DECISION either way before anything is restored** - restoring donor-cut
+    content is exactly what the RESPAWN-GREECEUG02 verdict declined to do.
+  - **GATE SHIPPED (same commit):** `MAP-EMPTY-1` in `tools/contracts/contracts_map.py` freezes the
+    inventory as `DONOR_DEPOPULATED_LEVELS` and fires **P1** on any level outside it that ships empty
+    while vanilla populates it, so our build can never silently depopulate a level again. It fires
+    **P2** if a frozen level regains its entities, so the inventory is re-frozen deliberately rather
+    than drifting silently (retirement protocol: do NOT delete entries to make the gate green). Fails
+    loud if the stock base map is unavailable. 8 planted negative tests in `_negtest_map.py`, incl.
+    the two scope guards (frozen-level silence, and levels that are empty in vanilla too - 202 such
+    border/filler levels exist and must never fire). Source:
+    `docs/DEAD_CONTENT_AUDIT_2026-07-10.md` LANE B AMENDMENT 2026-07-28.
 - **BL-b89-DEBT-2 (P1):** **Steam/canonical map is NOT shipped this wave.** The canonical
   `Levels_merged.arc` carries the same 8 malformed containers, so the LIVE Workshop build
   (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
@@ -429,6 +466,13 @@ along automatically when the structural cluster-relocation fix lands.
   that cave. The 07-10 audit's "the merge dropped both the instance and its binding" is REFUTED and
   corrected in place. Source: docs/DEAD_CONTENT_AUDIT_2026-07-10.md LANE B (now carries the
   RESOLVED block + the evidence table).
+  **AMENDED 2026-07-28 (re-verification pass, verdict UNCHANGED and better supported):** the shrine
+  is not a de-placed device in an otherwise normal cave - the level ships with an **empty `0x05`
+  section entirely** (vanilla 257 placed instances + 50 `.dbr` strings; ours **0 instances, 1 `.dbr`
+  string** in 276,839 B, navmesh byte-identical at 140,138 B, version `LVL\x0e` -> `LVL\x11`). The
+  shrine is 1 of 257 entities lost, which rules out a targeted merge de-placement. This is a CLASS of
+  34 donor-depopulated levels, now tracked as **BL-DEBT-EMPTYLVL-1** and guarded by the new
+  **MAP-EMPTY-1** contract.
 - murderbossroom (Secret Place crow bosses) has no placed NPC on either end - the ONLY one of the 3
   sealed SV areas still fully sealed (Sparta Crypt L2 + Uber Dungeon crypt_floor1 were wired); needs a
   map-lane NPC placement before the quest-lane enter-offer pattern can apply. Source: docs/
@@ -448,6 +492,11 @@ along automatically when the structural cluster-relocation fix lands.
     as a PLANNED placement so the landing is gated against an entity not yet on the map: nearest
     neighbours 3.61u (planned NPC) / 6.00u (archway prop) / 7.24u (urn) / 16.00u (the boss); every
     per-class threshold cleared, nothing inside the 1.5u PIN radius. `SUMMARY PASS=1`.
+    **INDEPENDENTLY RE-RUN 2026-07-28** from the committed fixture against
+    `local/Levels_merged.arc` (2,282 levels indexed): `GATE G-LAND: PASS`, `SUMMARY PASS=1`,
+    `nav: N:d=0.14/clr=100% E:d=0.14/clr=100% L:d=0.14/clr=100% comp#1/80608 on-mesh`, neighbour
+    ladder reproduced exactly (3.61u planned NPC, 6.00u archway + portcullis, 7.22u underlord egg,
+    7.24u urn, 16.00u murderbunny, 37.00u trigger, 54.00u far archway) - `=> clear + on-mesh`.
   - **NOT shipped, and deliberately nothing half-wired:** no enter-offer exists without its paired
     return because neither was written. Remaining work is a cross-lane wave, enumerated step by step
     (DB record + 2 Text tags + 1 `INJECT_SPECS` line + the `TRAVELER_ENTER_OFFERS` entry + gates)
@@ -2743,6 +2792,12 @@ along automatically when the structural cluster-relocation fix lands.
   a deliberate conversation and cannot teleport on proximity - a different (non-)class from Will's
   complaint ("I can't walk past it without being teleported"). Live map contracts re-run on the
   same artifacts: 0 P0 / 0 P1 / 3 P2 (pre-existing base-game portal noise), GATE PASS.
+  **INDEPENDENTLY RE-VERIFIED 2026-07-28** (second pass, re-derived from the artifacts and hardened
+  against a vacuous pass): `CataCube02_FloorLast.lvl` is blob version **v0x0f** in both variants with
+  sections `[0x05, 0x06, 0x0b, 0x14, 0x17]` present; the `0x14` section **exists and parses** but
+  holds **0 instance records**, while the same parser reads **190** (canonical) / **191** (TESTHUB)
+  live `0x05` instances from the same blob. So the zero is a genuine empty binding table, not a
+  parser failure on an unread blob - the distinction the original proof did not rule out.
 
 ### B-PORTAL-3: Return/back teleport doesn't work (one-way trip)
 - **Symptom:** Will teleported to "Duister" (Secret Place) via the panel, could walk around, but
@@ -2904,6 +2959,13 @@ along automatically when the structural cluster-relocation fix lands.
     identical. Any remaining perceived density gap is the TQAE renderer vs the TQIT-era renderer,
     which no data edit in this repo can change. Evidence scripts: session scratchpad
     `debtmap/smoke_map_proof.py` + `debtmap/smoke_fx_audit.py` (read-only).
+  - **INDEPENDENTLY RE-VERIFIED 2026-07-28** (second pass, re-derived from the built map rather than
+    trusted): the restored families are present in `local/Levels_merged.arc` with the exact per-record
+    multiplicities `INJECT_SPECS` declares - `DelphiLowlands02` **164** `0x05` instances carrying
+    pitspawner x3, lildude x6, bigobsidian x1, cageglow x1, fog_occult_fx01 x3, pit_fx01 x1,
+    pit_fx02 x1, bugcloud_smallfx x1; `DelphiLowlands03` **36** instances carrying
+    `drxmap/dress/t1_lildude_02` **x2**, `drxmap/dress/vitstaff_01` **x3**, bugcloud_smallfx x2;
+    `DelphiLowlands04` **241** instances. Map lever confirmed shipped.
 
 ### B-TEXT-TAGS-1: 8 Blood Toxeus / Crimson Verdict tags render as raw strings in-game
 - **Symptom:** on the PUBLIC item, Hemorrheus's name, the Crimson Verdict set name, its 4 set-piece
@@ -3048,6 +3110,16 @@ along automatically when the structural cluster-relocation fix lands.
     all green); `run_contracts.py --only map` against the live artifacts = 17 contracts, **0 P0 /
     0 P1 / 3 P2** (the 3 are pre-existing base-game `MAP-PORTAL-1`/`-3` noise, unchanged from the
     pre-change baseline run), **GATE: PASS**.
+  - **INDEPENDENTLY RE-VERIFIED 2026-07-28** (second pass, claims re-derived from the artifacts
+    rather than trusted): the shipped `Text.arc` (4,481 keys) resolves `tagMZoneGoM` = **"Garden of
+    Merchants"**, and all **10/10** oracle tags resolve and name their own area under the same
+    substring rule `MAP-SD-2` applies (`tagBCXcave`="Blood Cave", `tagBCXpassage`="Mysterious
+    Passage", `tagBCXtemple`="Temple of Eternal Love", `tagBCXwalkway`="Sanctuary of the Bloodborn",
+    `tagJoLandia`="Jolandia", `tagNewMZone1`="Olympian Arena", `tagSPDarkForest`="Dark Forest",
+    `tagSPRogueEncampment`="Rogue Encampment", `tagSVCRegionObsidianHalls`="The Obsidian Halls"),
+    0 unresolved. Residual `tagMPortalGoM` = **"Duister Portal"** confirmed still live and still a
+    Will decision. Counts move to **57/57 negtest** and **18 contracts** after this lane added
+    `MAP-EMPTY-1`; GATE still PASS at 0 P0 / 0 P1 / 3 P2.
   - **RESIDUAL, WILL DECISION (not shipped, evidence now complete):** the sibling tag
     `tagMPortalGoM` still reads **"Duister Portal"**. Arz-wide scan resolves it to exactly ONE record,
     `records\item\shrines\teleport\teleportshrine_gom.dbr` (Class `StrategicMovementTeleportShrine`,

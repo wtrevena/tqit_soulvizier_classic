@@ -469,8 +469,71 @@ def test_refs():
           not has(C.contract_placed_refs(ctx_b), 'MAP-REF-1'))
 
 
+def test_depopulated():
+    print('CONTRACT 8: DEPOPULATED LEVELS')
+    rec = b'records\\creature\\monster\\boar.dbr'
+    populated = make_blob([(0x05, make_0x05([rec, rec, rec]))])
+    empty = make_blob([(0x05, make_0x05([]))])
+
+    def lvl(fname, blob):
+        return {'fname': fname, '_blob': blob, 'guid': GUID_A}
+
+    NEW = 'levels/world/greece/testtown.lvl'
+    KNOWN = sorted(C.DONOR_DEPOPULATED_LEVELS)[0]
+
+    # compliant: a level populated in vanilla is still populated in ours
+    ctx = FakeCtx(levels=[lvl('Levels/World/Greece/TestTown.lvl', populated)],
+                  base_level_pop={NEW: 3})
+    check('EMPTY compliant -> no violation',
+          len(C.contract_depopulated_levels(ctx)) == 0)
+
+    # PLANTED DEFECT: our build empties a level vanilla populates, and it is NOT in
+    # the frozen donor inventory -> must fire P1.
+    ctx_bad = FakeCtx(levels=[lvl('Levels/World/Greece/TestTown.lvl', empty)],
+                      base_level_pop={NEW: 3})
+    viols = C.contract_depopulated_levels(ctx_bad)
+    check('EMPTY-1 fires on a newly depopulated level', has(viols, 'MAP-EMPTY-1'))
+    check('EMPTY-1 rates a new depopulation P1',
+          any(v['contract'] == 'MAP-EMPTY-1' and v['severity'] == 'P1' for v in viols))
+
+    # scope guard: the 34 donor-inherited levels are known and must stay silent
+    ctx_known = FakeCtx(levels=[lvl(KNOWN, empty)],
+                        base_level_pop={KNOWN: C.DONOR_DEPOPULATED_LEVELS[KNOWN]})
+    check('EMPTY-1 does NOT fire on a frozen donor-inherited level (scope guard)',
+          not any(v['severity'] == 'P1'
+                  for v in C.contract_depopulated_levels(ctx_known)))
+
+    # scope guard: a level EMPTY IN VANILLA TOO (border/filler) must never fire -
+    # 202 such levels exist in the shipped map, so this is the noise floor.
+    ctx_filler = FakeCtx(levels=[lvl('Levels/World/Egypt/Memphis/Filler02.lvl', empty)],
+                         base_level_pop={'levels/world/egypt/memphis/filler02.lvl': 0})
+    check('EMPTY-1 does NOT fire on a level empty in vanilla too (scope guard)',
+          len(C.contract_depopulated_levels(ctx_filler)) == 0)
+
+    # drift guard: a frozen level that REGAINED entities must be reported (P2), never
+    # silently dropped - the retirement-protocol half of the gate.
+    ctx_back = FakeCtx(levels=[lvl(KNOWN, populated)],
+                       base_level_pop={KNOWN: C.DONOR_DEPOPULATED_LEVELS[KNOWN]})
+    vb = C.contract_depopulated_levels(ctx_back)
+    check('EMPTY-1 reports a frozen level that regained entities (re-freeze prompt)',
+          any(v['contract'] == 'MAP-EMPTY-1' and v['severity'] == 'P2' for v in vb))
+
+    # fail-loud: no base map -> must NOT pass blind
+    ctx_nobase = FakeCtx(levels=[lvl('Levels/World/Greece/TestTown.lvl', empty)],
+                         base_level_pop={})
+    check('EMPTY-1 fails loud when the base map is unavailable',
+          has(C.contract_depopulated_levels(ctx_nobase), 'MAP-EMPTY-1'))
+
+    # the frozen inventory must stay non-empty and well-formed
+    check('EMPTY-1 frozen inventory is intact (34 levels, all lowercased)',
+          len(C.DONOR_DEPOPULATED_LEVELS) == 34
+          and all(k == k.lower() and '\\' not in k for k in C.DONOR_DEPOPULATED_LEVELS),
+          'got %d entries' % len(C.DONOR_DEPOPULATED_LEVELS))
+
+
 if __name__ == '__main__':
-    for t in (test_quests, test_portals, test_navmesh, test_groups, test_doors, test_sd, test_refs):
+    for t in (test_quests, test_portals, test_navmesh, test_groups, test_doors, test_sd,
+              test_refs, test_depopulated):
         t()
     npass = sum(1 for _n, ok, _d in RESULTS if ok)
     print(f'\n{npass}/{len(RESULTS)} checks PASS')

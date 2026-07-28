@@ -46,6 +46,34 @@
   session scratchpad `debtmap/respawn_probe.py` + `respawn_probe2.py` (read-only, reproducible from
   the three arcs named above).
 
+- **AMENDMENT 2026-07-28 (same lane, re-verification pass): the verdict above STANDS, but the table
+  understates the scope and that mattered.** Re-deriving the probe from the artifacts showed the
+  shrine is not one de-placed device in an otherwise normal cave: **the whole level ships with an
+  EMPTY `0x05` placed-instance section**. Vanilla `HercynianForest03_Cave` carries **257** placed
+  instances and 50 distinct `.dbr` strings; ours carries **0 instances and exactly one `.dbr` string
+  in the entire 276,839 B blob**, while the `0x0b` navmesh is byte-identical to vanilla (140,138 B in
+  both) and the blob version moves `LVL\x0e` -> `LVL\x11`. So `respawntemplegreeceug02` is **1 of 257
+  entities lost**, not a targeted GROUPS de-placement - which makes "our merge dropped the binding"
+  even less tenable and **strengthens** the upstream-cut conclusion (a re-authored/re-saved donor
+  blob, not a member edit).
+  **This is a CLASS, not a one-off.** A full vanilla-vs-ours census of all 2,282 shipped levels finds
+  **34 levels populated in vanilla but empty in ours**: 3 XPack2 (`hercynianforest03_cave` 257,
+  `primrosegrid01` **1,778**, `delphiactorstemple` 24) and 31 XPack4 (`devcave01-13`, `devmaze01-14`,
+  `dathq01-06`). It is **not systemic** - 268 of 287 shared XPack2 levels still carry their entities
+  (`birchforest01` 2,846, `suebilakelands02` 2,359, ...) - so it is specific to those 34 donor blobs.
+  **It is also not a regression of ours:** the emptied set is **set-identical and blob-size-identical
+  across every map we have ever built** (`build19-baseline`, `build30-canonical`,
+  `Levels_deployed_prev`, current `Levels_merged.arc` - 34 levels in each, zero set difference), so
+  the depopulation is present from our earliest build and arrives with the SVAERA AE donor rather
+  than from any pipeline change. Proving that against the donor arc itself needs `SVC_SVAERA_ARC`,
+  which is **unset in this environment**, so the attribution is *recorded, not closed*: tracked as
+  **BL-DEBT-EMPTYLVL-1** in `docs/BACKLOG.md`.
+  **Gate shipped in the same commit:** `MAP-EMPTY-1` (`tools/contracts/contracts_map.py`) freezes the
+  34-level inventory as `DONOR_DEPOPULATED_LEVELS` and fires **P1** on any level outside it that
+  ships empty while vanilla populates it, so our build can never silently depopulate a level again;
+  it also fires P2 if a frozen level regains its entities, so the inventory is re-frozen deliberately
+  instead of drifting (retirement protocol). 8 planted negative tests in `_negtest_map.py`.
+
 ### CLEAN BILL (this lane)
 Coverage is strong: 372 of 375 placed flagged binding-devices (318 StrategicMovementRespawnShrine + 57 StrategicMovementTeleportShrine; 0 device instances had an unresolved Class, so nothing was missed) are correctly bound to their GROUPS record. The ONLY dead visible devices are the 3 in the Hades act, fully accounted for by the merge's binding-member deltas (Shrine_Respawn_Hades 53->51, Shrine_Teleport_Hades 5->4); no other region lost a bound device. Specifically CLEAN: Greece, Egypt, Orient, Ragnarok (except the one Hercynian cave note), Atlantis, and Eternal Embers respawn/teleport shrines are all intact vs base. SV-added content is healthy: the build18 rebirth fountain (respawntempleorient01, uid feeb4bc6) IS bound to Shrine_Respawn_Orient (that fix is live in the shipped map); the Garden-of-Merchants teleport shrine (teleportshrine_gom, uid e08e87ff) is bound to DRXShrineTeleport_Duister; helios + sparta teleport shrines bound; the SV 'New Group' 20-member respawn network, Greece_Maze_Respawn01, zRespawnSanctuary and DRXShrineTeleport_RogueEncampment are all healthy. The Bandari nomad teleport network is 4/4 groups byte-identical to base. Inverse danglers (group members whose uid matches no placed instance) are NOT a crash risk and NOT a bug: the base game itself ships ~60 such leftover respawn members + ~13 teleport ones and runs fine - the engine simply has nothing to bind for them (ours' handful of extra leftovers, uids 000ce281/be95996c/dbbd704c, follow the same harmless base precedent). NOTE (per instruction, not re-reported as a finding): the known sibling teleportshrineolympus01 (uid 3c007d48, olympusfinal02, world 1304.17,21.7,-2743) is CONFIRMED still placed + dangling (dropped from Shrine_Teleport_Hades) - which is why Lower Olympus also lacks a working rift/teleport gate; and the known Duister teleportshrineorient01 is out of this scan's scope because it is flags=0 with no UniqueId (never a GROUPS member; a different inert-device class, already tracked as B-PORTAL-3). FixedItemTeleport/FixedItemTeleportWithHitBox portals (69 instances incl. the Typhon->Rhodes gate) are correctly excluded - they bind via 0x14/engine hooks, not GROUPS, and belong to the portal lane.
 
