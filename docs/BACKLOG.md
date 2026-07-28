@@ -276,6 +276,43 @@ along automatically when the structural cluster-relocation fix lands.
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
 
+**b91 Cold Worm buffs lane / R-39 (2026-07-28, branch `fix/debt-mixed`) - NEW**
+- **BL-b91-DEBT-1 (P1, BLOCKED - the one R-39 sub-item NOT delivered):** the **exclamation-point map
+  marker on placed ubers**. Two independent blockers. (a) The cited "b63 mechanism" **does not exist
+  in this repo**: no `docs/reports/b63*` (the reports jump b62 -> b64), no commit, no marker code in
+  `tools/`/`scripts/`; the only `b63` string anywhere is the unrelated workflow id `wf_87586bbf-b63`.
+  There is nothing to "extend" - it must be designed from scratch. (b) It is **map-side**: a DB-wide
+  scan finds `miniMapEntity` on 72 scenery/structure records and **0 Monster records**, and the only
+  other marker fields belong to the quest-log UI, so placing a marker means editing level blobs in
+  `Levels.arc` - which needs `SVC_SVAERA_ARC`/`SVC_SV_ARC` (unset here, `reference_mods/` empty; see
+  BL-b89-DEBT-4 / BL-b90-DEBT-2). R-39 is therefore **PARTIAL**, not IMPLEMENTED. Owner/trigger:
+  a map-capable lane once the SVAERA/SV arc caches are restored, plus a Will decision on whether the
+  clause survives at all.
+- **BL-b91-DEBT-2 (P0, WILL DECISION - found by the new roster drop-slot sweep, deliberately NOT
+  fixed):** 4 records wire a soul at a real rate that **provably cannot drop**, because
+  `dropItems=0` suppresses every equipped item on the record:
+  `records\drxcreatures\bloodwitch\q_leinth_{47,49,50}.dbr` (Boss, `leinth_soul_{n,e,l}` @66) and
+  `records\xpack\creatures\monster\karkinos\xhero_spinebreaker_42.dbr` (Hero, `spinebreaker_soul_*`
+  @66). The signal is unambiguous - **881 of the 888 active soul droppers set `dropItems=1`**, 5 set
+  0, 2 leave it absent. NOT fixed here because flipping it also releases Leinth's `lenithsveil`
+  unique at 100% and Spinebreaker's rare-misc/parchment/potion tables: a real content change, which
+  defaults to WILL-VETO. Owner/trigger: Will says yes/no; then a one-line module + wire
+  `tools/sweep_soul_drop_slots.py --gate` into the build.
+- **BL-b91-DEBT-3 (P2, open question):** `boss_titan_typhon_45` and `boss_daemonbull_yaoguai_38`
+  carry a soul at chance>0 with `dropItems` **ABSENT** (inheriting the Monster.tpl default, which is
+  not established in this repo). Either establish the template default or set it explicitly like the
+  other 881. Owner/trigger: same lane as BL-b91-DEBT-2.
+- **BL-b91-DEBT-4 (launch-gated):** the whole Cold Worm lane is unproven IN-GAME. The burrow
+  (`giantkarkinos_flightofthekondor`) is the one **cross-rig graft** in the kit: it is bound to the
+  worm's own `CryptWorm_AttGamma` dive animation via the repurposed ref4 `'Dive'` -> `'Kondor'`, which
+  is correct by the anim-binding invariant but has no in-game precedent on this rig. Owner/trigger:
+  Will, fresh character on DEV after a full Steam restart - does Cold Worm cast freezing blast / ice
+  blasts / the burrow / the poison cloud, does the dive read as a burrow, and is the new speed
+  profile (run 0.75 -> 1.8) fun rather than unfair?
+- **BL-b91-DEBT-5 (P2, hygiene):** `tools/sweep_soul_drop_slots.py` is shipped as a diagnostic, NOT
+  wired into the build as a hard gate, precisely because it currently FAILs on the pre-existing
+  content in BL-b91-DEBT-2/3. Wire it in as soon as those are ruled on. Owner/trigger: same lane.
+
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
   `C-RES-ASSET-1` 484). Proven PRE-EXISTING - the identical command over the pre-change baseline arz
@@ -437,9 +474,22 @@ along automatically when the structural cluster-relocation fix lands.
 - 36u party-wide aura balance note - b57's "Balance note (flag, do NOT nerf - Will decides)" on the
   widened radii remains an open Will decision. Source: docs/reports/b57_aura_radius.md. Owner: Will
   DEV pass. [added round-2 per vet]
-- Cold Worm buffs (3x life / +20% armor / kit / speed / marker mechanism / 3-tier soul + loot-triple
-  fix) - PENDING, interrupted lane with partials on worktree `coldworm-markers` (R-39). Source: docs/
-  WILL_RULINGS.md R-39.
+- ~~Cold Worm buffs (3x life / +20% armor / kit / speed / 3-tier soul + loot-triple fix / roster
+  drop-slot sweep)~~ - **CLOSED b91** (branch `fix/debt-mixed`, `tools/patches/coldworm_buffs.py`).
+  RCA: Cold Worm's ENTIRE kit pointed at the `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace,
+  which exists in NEITHER the mod arz, NOR upstream SV 098i, NOR the base game - 8/8 active skill
+  slots dead, the worst record in the whole DB (next-worst: 2/2). Every dead slot repointed at an
+  EXISTING donor at that donor's own level (CryptWorm-rig `um_coldcreep_29` / `am_devourer_27` +
+  nearest-tier insectoid bosses); life 3x; +20% armor via the `armor_passive` level (the only layer
+  where monsters carry `defensiveProtection` - 0 non-zero carriers of the raw field DB-wide, and the
+  passive's array is exactly linear); rig-proven speed profile incl. the 0.15-0.4 anim speeds and the
+  0.3/0.1 rotation speeds. Ships a NEW invariant gate (an active skill slot must be CASTABLE: skill
+  resolves AND its `skillSpecialAnimationName` is bound by an `unarmedSpecialAnimRef` - the
+  monster-side twin of B-SOUL-PROC-2) with a planted negative test, plus
+  `tools/sweep_soul_drop_slots.py`. The 3-tier soul + loot triple were already correct and are now
+  asserted, not rewritten. Record-diff = EXACTLY 1 record / 70 intended-class fields; arz md5
+  `461c54f95480f6c331f25ce7ab64c6f4`. **The marker sub-item is NOT done** - see BL-b91-DEBT-1;
+  R-39 stays PARTIAL. Report: `docs/reports/b91_coldworm_buffs.md`.
 - Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal" defect
   class) - PENDING, `fix/soul-tiers` branch. Source: docs/WILL_RULINGS.md R-40.
 - Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
@@ -3692,11 +3742,31 @@ murderbossroom return NPC (map lane).
 - SHADOW LINK: large radius (36) KEPT incl. the malus spread; Will-approved final.
 
 
-## COLD WORM BUFFS (Will 2026-07-16, joins the interrupted coldworm-markers lane)
+## COLD WORM BUFFS (Will 2026-07-16) - SHIPPED b91 EXCEPT THE MARKER
 Cold Worm needs ~3x characterLife and +20% armor (defensiveProtection) ON TOP of the already-queued
 kit (burrow/frost skills that actually cast), massive total-speed boost, exclamation-marker
 mechanism -> all placed ubers, and the 3-tier soul + loot-triple fix + roster drop-slot sweep.
 All Cold Worm items ship as ONE lane when resumed (worktree coldworm-markers has partials).
+
+> **b91 (2026-07-28, branch `fix/debt-mixed`): 5 of 6 sub-items DONE + build-verified; the
+> exclamation marker is BLOCKED and is NOT claimed (BL-b91-DEBT-1). R-39 = PARTIAL.**
+> CORRECTION to this section's premise: the `coldworm-markers` worktree had **NO partials** -
+> `feat/coldworm-uber-markers` @ `75110bd` is an ANCESTOR of `main` (0 ahead, clean tree, empty
+> `main...` diff). The lane was abandoned before anything landed; b91 was built from ground truth.
+> Owner: `tools/patches/coldworm_buffs.py` (registry module, apply+verify, after `boss_skill_fix`,
+> before `visuals`). RCA: the ENTIRE kit referenced `boss skills\d2custom\coldworm_*` +
+> `Game\D2*`, absent from the mod arz AND upstream SV 098i AND the base game - **8/8 active slots
+> dead, the worst record in the DB**; so Cold Worm cast nothing, had no difficulty globals and was
+> player-convertible. Fixed at the record layer with EXISTING donors at their own levels. "+20%
+> armor (defensiveProtection)" applied as `armor_passive` level `[60,174,360] -> [72,209,432]`,
+> because the raw field is inert on monsters (0 non-zero carriers DB-wide) and the passive's
+> `defensiveProtection` array is exactly linear. Ships its own gate (active slots must be CASTABLE:
+> resolve + `skillSpecialAnimationName` bound by an `unarmedSpecialAnimRef`) + planted negative test
+> (`py tools/patches/coldworm_buffs.py --negtest` PASS) + `tools/sweep_soul_drop_slots.py`. The
+> 3-tier soul + loot triple were ALREADY correct: asserted in verify(), not rewritten. Record-diff
+> = **exactly 1 record / 70 intended-class fields**; arz md5 `461c54f95480f6c331f25ce7ab64c6f4`.
+> NOT deployed, NOT packaged, NOT pushed to Steam. Open: BL-b91-DEBT-1..5. Report:
+> `docs/reports/b91_coldworm_buffs.md`.
 
 ## b68 MASTERY REFLOW REVERT (Will 2026-07-16, build43 playtest)
 Will played build43 and reported the build42 mastery reflow introduced huge skill-tree errors

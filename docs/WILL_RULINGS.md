@@ -138,12 +138,45 @@
   rig disappoints: giant scarab, plague swarm host. Same Nile Floodplain / 'Plight of the Nile
   Farmers' quest-completion spot, same quest-collision-safety requirement. Source: git commit
   `edd30b6` (docs/BACKLOG.md).
-- R-39 [2026-07-16] PENDING (worktree `coldworm-markers` has partials; interrupted lane, joins when
-  resumed) Cold Worm needs ~3x characterLife and +20% armor (`defensiveProtection`) ON TOP of the
-  already-queued kit (burrow/frost skills that actually cast), a massive total-speed boost, the
-  exclamation-marker mechanism extended to all placed ubers, and the 3-tier soul + loot-triple fix +
-  roster drop-slot sweep - ships as ONE lane, not piecemeal. Source: git commit `edd30b6` (docs/
-  BACKLOG.md "COLD WORM BUFFS").
+- R-39 [2026-07-16] **PARTIAL (b91, branch `fix/debt-mixed`) - 5 of 6 sub-items IMPLEMENTED, the
+  exclamation marker BLOCKED.** Ruling text (unchanged): Cold Worm needs ~3x characterLife and +20%
+  armor (`defensiveProtection`) ON TOP of the already-queued kit (burrow/frost skills that actually
+  cast), a massive total-speed boost, the exclamation-marker mechanism extended to all placed ubers,
+  and the 3-tier soul + loot-triple fix + roster drop-slot sweep - ships as ONE lane, not piecemeal.
+  Source: git commit `edd30b6` (docs/BACKLOG.md "COLD WORM BUFFS").
+  - CORRECTION to this entry's own premise: the worktree `coldworm-markers` had **NO partials**.
+    `feat/coldworm-uber-markers` @ `75110bd` is an ANCESTOR of `main` (0 commits ahead, clean tree,
+    empty `main...` diff), so the lane was abandoned before anything landed. b91 was built from
+    ground truth, not resumed.
+  - IMPLEMENTED by `tools/patches/coldworm_buffs.py` (registry module, apply+verify, registered
+    after `boss_skill_fix` and immediately before `visuals`): 3x life `[14000,18000,22000] ->
+    [42000,54000,66000]`; +20% armor; the rig-proven `um_coldcreep_29` total-speed profile; and a
+    kit that actually casts. RCA: Cold Worm's ENTIRE kit pointed at the
+    `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace, absent from the mod arz AND upstream
+    SV 098i AND the base game - 8/8 active slots dead, the worst record in the whole DB.
+  - RECONCILIATION on "+20% armor (`defensiveProtection`)": that field is INERT on monsters
+    (0 non-zero carriers of `defensiveProtection` or `defensiveProtectionModifier` DB-wide); monster
+    armor comes only from `armor_passive`, whose `defensiveProtection` array is exactly linear
+    (level N == N armor). +20% is therefore applied as `armor_passive` level `[60,174,360] ->
+    [72,209,432]` - Will's field, at the only layer where the number does anything.
+  - The "3-tier soul + loot-triple fix" was ALREADY CORRECT on `main` (3 tiers, strict progression,
+    per-tier b40 icons, pcsafe grant, `[n,e,l]` triple @66 PLACED_UBER rate). b91 asserts it in
+    `verify()` and rewrites nothing.
+  - NEW GATE shipped with the lane: an active skill slot must be CASTABLE, not merely wired - the
+    skill must resolve AND its `skillSpecialAnimationName` must be bound by an
+    `unarmedSpecialAnimRef` on the caster (the monster-side twin of B-SOUL-PROC-2). Planted negative
+    test: `py tools/patches/coldworm_buffs.py --negtest` -> PASS.
+  - Roster drop-slot sweep shipped as `tools/sweep_soul_drop_slots.py` (read-only diagnostic,
+    encodes rank-gating + terminal-form-chain design rules). Cold Worm is clean; it surfaced 6
+    unwaived PRE-EXISTING findings (Leinth x3 + Spinebreaker `dropItems=0`; Typhon + Yaoguai
+    `dropItems` absent) which are REPORTED, NOT FIXED - fixing them changes placed-content drop
+    behaviour and defaults to WILL-VETO. In the BACKLOG DEBT register.
+  - **STILL OPEN (the 6th sub-item): the exclamation-point map marker.** Two independent blockers:
+    the cited "b63 mechanism" DOES NOT EXIST in this repo (no b63 report, no commit, no code - the
+    reports jump b62 -> b64), and it is map-side (`miniMapEntity` has 72 scenery carriers and 0
+    Monster carriers), so it needs a `Levels.arc` build, which needs `SVC_SVAERA_ARC`/`SVC_SV_ARC`
+    (unset; `reference_mods/` empty - BL-b89-DEBT-4 / BL-b90-DEBT-2). Report:
+    `docs/reports/b91_coldworm_buffs.md`.
 
 ### Souls & items (continued)
 - R-43 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian

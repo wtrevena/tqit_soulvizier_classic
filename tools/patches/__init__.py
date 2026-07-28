@@ -215,6 +215,26 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
+    'coldworm_buffs',       # b91 (Will 2026-07-16, R-39): THE COLD WORM BUFFS LANE - 3x
+                            # characterLife, +20% armor (defensiveProtection, delivered at the only
+                            # layer where monsters carry it: the armor_passive level, whose
+                            # defensiveProtection array is exactly linear), the rig-proven
+                            # um_coldcreep_29 total-speed profile, and a casting kit that ACTUALLY
+                            # CASTS. RCA: boss_coldworm50's entire kit pointed at the
+                            # `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace, which exists
+                            # in NEITHER the mod arz, NOR upstream SV 098i, NOR the base game - 8/8
+                            # active slots dead, the worst record in the whole DB (next-worst: 2).
+                            # Every dead slot is repointed at a donor that exists, at that donor's
+                            # own level (CryptWorm-rig donors um_coldcreep_29 / am_devourer_27 +
+                            # nearest-tier insectoid bosses). Ships its own NEW invariant gate: an
+                            # active skill slot must resolve AND, if the skill declares a
+                            # skillSpecialAnimationName, the caster must bind that ref (the
+                            # monster-side twin of the B-SOUL-PROC-2 StartSkill anim abort) -
+                            # negative test `py tools/patches/coldworm_buffs.py --negtest`.
+                            # Registered after boss_skill_fix (scoped to um_*_99, disjoint) and
+                            # immediately before visuals, so it is the ratified final registry
+                            # writer of Cold Worm's kit. Touches exactly ONE record; the 3-tier
+                            # soul + loot triple are asserted, never rewritten.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
