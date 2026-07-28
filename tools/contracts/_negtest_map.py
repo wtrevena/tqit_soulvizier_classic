@@ -415,6 +415,38 @@ def test_sd():
                    text_values={'tagRegionName01': 'Helos', 'tagMZoneGoM': 'Duister'})
     check('SD-2 fires on mislabelled restored zone (GoM->Duister)',
           has(C.contract_sd_tags(ctx2), 'MAP-SD-2'))
+    # B-AREA-NAME-1 close-out (2026-07-28): the oracle now covers EVERY restored SV area,
+    # not just the Garden. Plant the same inherited-name defect on each of the other 9 tags
+    # in turn (each one relabelled to "Duister", the exact bug Will hit) and assert MAP-SD-2
+    # fires for each - i.e. the gate protects the CLASS. Then assert the whole real set is
+    # clean when each tag carries its own label.
+    good = {
+        'tagMZoneGoM': 'Garden of Merchants', 'tagBCXcave': 'Blood Cave',
+        'tagBCXpassage': 'Mysterious Passage', 'tagBCXtemple': 'Temple of Eternal Love',
+        'tagBCXwalkway': 'Sanctuary of the Bloodborn', 'tagSPDarkForest': 'Dark Forest',
+        'tagSPRogueEncampment': 'Rogue Encampment', 'tagJoLandia': 'Jolandia',
+        'tagNewMZone1': 'Olympian Arena',
+        'tagSVCRegionObsidianHalls': 'The Obsidian Halls',
+    }
+    assert set(good) == set(C.RESTORED_ZONE_LABEL_EXPECT), (
+        'negtest label fixture out of sync with RESTORED_ZONE_LABEL_EXPECT: '
+        f'{set(good) ^ set(C.RESTORED_ZONE_LABEL_EXPECT)}')
+    all_sd = make_sd(sorted(good))
+    all_map = make_top_map([(C.SEC_SD, all_sd)])
+    all_secs = C.parse_top_sections(all_map)
+    ctx_all = FakeCtx(map_data=all_map, secs=all_secs,
+                      text_keys=set(good), text_values=dict(good))
+    ok_all = C.contract_sd_tags(ctx_all)
+    check('SD-2 clean on the full correctly-labelled restored-area set',
+          len(ok_all) == 0, f'{ok_all}')
+    for tag in sorted(good):
+        bad = dict(good)
+        bad[tag] = 'Duister'
+        ctxb = FakeCtx(map_data=all_map, secs=all_secs,
+                       text_keys=set(good), text_values=bad)
+        vs = C.contract_sd_tags(ctxb)
+        check(f'SD-2 fires when {tag} inherits another area name',
+              has(vs, 'MAP-SD-2') and any(tag in v['subject'] for v in vs), f'{vs}')
 
 
 def test_refs():

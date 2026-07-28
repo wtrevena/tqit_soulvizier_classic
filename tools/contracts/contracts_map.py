@@ -729,8 +729,35 @@ def _is_our_content(npath, blob_has_drxmap):
 # the oracle for the "restored area mislabeled with another zone's name" defect
 # (B-AREA-NAME-1). Derived from the shipped restored-area zone-tag families
 # (tagMZone*/tagBCX*/tagSP*/tagNewMZone*); extend when a new restored area is added.
+#
+# B-AREA-NAME-1 CLOSE-OUT AUDIT (2026-07-28, debt-map lane): the whole restored-area
+# label set was dumped out of the SHIPPED SD region list (tools/sd_format.py, round-trip
+# True on local/Levels_merged.arc: SD v6, env=213, region=294) and resolved against the
+# built Text.arc + base Text_EN.arc. All 10 restored-area regions resolve, and each one
+# names its OWN area - the Garden fix (tagMZoneGoM -> "Garden of Merchants", shipped in
+# build_text_arc.TEXT_FIX_TAGS) is live and no sibling inherited the same defect:
+#   BCXpassage/tagBCXpassage -> 'Mysterious Passage'      BCXcave/tagBCXcave -> 'Blood Cave'
+#   BCXtemple/tagBCXtemple  -> 'Temple of Eternal Love'   BCXwalkway -> 'Sanctuary of the Bloodborn'
+#   Duister/tagMZoneGoM     -> 'Garden of Merchants'      Dark Forest/tagSPDarkForest -> 'Dark Forest'
+#   tagSPRogueEncampment    -> 'Rogue Encampment'         JoLandia/tagJoLandia -> 'Jolandia'
+#   Olympian Arena/tagNewMZone1 -> 'Olympian Arena'
+#   The Obsidian Halls/tagSVCRegionObsidianHalls -> 'The Obsidian Halls'
+# Every one of them is registered below so the oracle covers the CLASS, not just the one
+# instance Will hit. NOTE the internal region NAME is SV's own (e.g. the Garden region is
+# internally called 'Duister'); only the DISPLAY tag is player-visible, so the oracle keys
+# on the tag. Also note 'The Obsidian Halls' is reachable through two tags (the b46r3
+# minted tagSVCRegionObsidianHalls plus the base tagRegionName144 slot) - both are asserted.
 RESTORED_ZONE_LABEL_EXPECT = {
-    'tagMZoneGoM': ('garden', 'merchant'),   # Garden of Merchants (currently -> "Duister")
+    'tagMZoneGoM': ('garden', 'merchant'),          # Garden of Merchants (was "Duister" - the bug)
+    'tagBCXcave': ('blood', 'cave'),                # Blood Cave
+    'tagBCXpassage': ('passage',),                  # Mysterious Passage
+    'tagBCXtemple': ('temple',),                    # Temple of Eternal Love
+    'tagBCXwalkway': ('sanctuary', 'bloodborn'),    # Sanctuary of the Bloodborn
+    'tagSPDarkForest': ('dark forest', 'forest'),   # Dark Forest (the Secret Place)
+    'tagSPRogueEncampment': ('rogue', 'encampment'),  # Rogue Encampment
+    'tagJoLandia': ('jolandia',),                   # JoLandia
+    'tagNewMZone1': ('olympian', 'arena'),          # Olympian Arena (Boss Arena)
+    'tagSVCRegionObsidianHalls': ('obsidian',),     # The Obsidian Halls (Uber Dungeon, b46r3)
 }
 
 

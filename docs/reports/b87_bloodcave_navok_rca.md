@@ -315,3 +315,57 @@ a worktree fix-wave builds to a scratch dir without clobbering the live `local/`
 seam (to `drxbc_finale_transitionconnector`) and east seam (to `temple_entrance_clean`) still walk?
 If a seam walls, escalate `new_secretdoor` to option C (interior GridEntrance portal). If clean,
 extend fix A to `drxBC3` and `RogueEncampment`.
+
+---
+
+## 10a. FIX A - KEEP DECISION (BL-b89-DEBT-4B, CLOSED 2026-07-28, debt-map lane)
+
+**Question this section settles (from `docs/BACKLOG.md` BL-b89-DEBT-4, second paragraph):**
+build48's fix A collapsed `new_secretdoor_transitionhallway` to a single-own-GUID navmesh on a
+theory that the 2026-07-27 runtime captures later REFUTED. Should the delta be re-justified or
+reverted for provenance hygiene?
+
+**DECISION: KEEP. Do not revert. Do not extend.**
+
+**Why the original premise is dead.** Sec 10 above (and sec 3) argued that `navOK=0` on an
+isolated respawn was a rejection signal produced by ProcessRLTD's live-residency gate failing on
+the two not-yet-resident seam neighbours. The 2026-07-27 blood-cave captures refuted that:
+`navOK=0` is the NORMAL in-progress state during load, not a rejection. The real deterministic
+blood-cave crash was a malformed container BODY (`ocean_extension05`'s 148-byte stub), root-caused
+and fixed in `docs/reports/b89_ocean_ext05_hotfix.md`, gated permanently by `MAP-NAV-5`/`MAP-NAV-6`,
+and **confirmed in-game by Will on 2026-07-27, verbatim: "the blood cave crash that was occurring
+is fixed, i was able to advance past that area."**
+
+**Why the delta stays anyway (three independent reasons).**
+1. **It is stock-normal, not an invention.** A single-own-GUID `0x0b` GUID list is the shape 251
+   base-game levels ship. `MAP-NAV-6`'s own negative test asserts this explicitly ("NAV-6 silent on
+   a single-own-GUID list (stock-normal, 251 base levels)"), so the chamber is not carrying an
+   exotic form the engine has never seen.
+2. **It is structurally verified and walk-test-confirmed.** The sec-10 proofs stand on their own
+   merits regardless of the motivating theory: heights + cons BYTE-IDENTICAL across all 192 tiles,
+   unwalkable-cell count identical, walkable total preserved (479,328 == 479,328), only the
+   container GUID list and the tile `areas` plane changed, and the 63-127u seam overlap survives.
+   It then shipped in build48/49 and was walked without a seam-wall report.
+3. **Reverting costs more than it buys.** A revert means a full two-variant map rebuild plus a
+   FRESH walk test of both `new_secretdoor` seams, for zero player-visible benefit. That is exactly
+   the trade the retirement protocol says not to take on a cosmetic-provenance basis.
+
+**Recorded provenance (the thing that was actually missing).** The delta is now annotated in
+`tools/gen_bc_navmeshes.py` at both sites - the `ClusterConfig.own_guid_only_keys` field docstring
+(a "KEEP DECISION, DO NOT 'FIX' THIS AWAY" block) and the `NEW_SECRETDOOR_KEY` premise comment (a
+STATUS block marking the b87 theory SUPERSEDED). Wording of record: **retained as stock-normal,
+originally motivated by a since-refuted premise; harmless, walk-test-confirmed at build48/49.**
+Any future map lane that reads the old b87 rationale and concludes the collapse is an unjustified
+delta must stop here: the decision is taken.
+
+**Explicitly NOT closed by this section.** The FIRST half of `BL-b89-DEBT-4` - re-justify or retire
+`MAP-NAV-4` and its 2-chamber whitelist (`drxBC3`, `RogueEncampment`), which were flagged on the
+same refuted premise - remains OPEN. Fix A must NOT be extended to those two chambers on the b87
+rationale (sec 10's closing "If clean, extend fix A to drxBC3 and RogueEncampment" is
+**SUPERSEDED**: the premise that made extension desirable is gone).
+
+**Proofs re-run for this close-out (no rebuild required - documentation-only change):**
+`tools/contracts/_negtest_map.py` 49/49 PASS (including "NAV-6 silent on a single-own-GUID list
+(stock-normal, 251 base levels)"); `run_contracts.py --only map` against the live artifacts
+(`local/Levels_merged.arc`, `work/.../Text.arc`, `work/.../SoulvizierClassic.arz`) = 17 contracts,
+0 P0 / 0 P1 / 3 P2 (pre-existing base-game portal noise only), GATE: PASS.
