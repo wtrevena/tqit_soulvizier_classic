@@ -17,7 +17,25 @@
 | DEPLOYED DEV `Quests.arc` (at wave start) | `5e664c7b190965fd69f6ff15d77d85e4` | matches the brief; PART C changes exactly one entry inside it |
 
 Every record-level fact in this report was read out of the DEPLOYED arz, and every
-build-level fact out of the two builds this wave produced.
+build-level fact out of the builds this wave produced.
+
+**MERGE NOTE (for the integrator).** This branch is based on `main` @ `8c3445c`, which was `main`'s
+HEAD when the wave started and whose build IS the brief's stated ground truth (`1c27d5fa`). While
+the wave ran, `main` advanced to `770bc35` (the `fix/debt-gate` + `fix/debt-mixed` debt-clearance
+merges). Every diff and hash in this report is therefore stated against `8c3445c`, which is the
+correct baseline for judging what this wave changed. The overlap with the newer `main` is three
+files, all append-shaped and trivially resolvable:
+
+| file | this wave | newer `main` |
+|---|---|---|
+| `docs/BACKLOG.md` | prepends the BUILD55-DEV gate record + 6 debt entries | prepends its own gate records + debt entries |
+| `docs/WILL_RULINGS.md` | appends a NEW section (decade 70-79) at the end | edits/appends in the existing sections |
+| `tools/patches/__init__.py` | appends `leinth_wave` + `uber_apex_orb` before `visuals` | appends `coldworm_buffs` + `uber_quest_markers` before `visuals` |
+
+No source file this wave authored or edited collides with anything on the newer `main`, and the
+REGISTRY modules are provably disjoint (no other module names a `bloodwitch` record, and only
+`toxeus_souls_100` co-writes the two champion records, on a DIFFERENT field). A rebuild after the
+merge picks up both waves.
 
 ---
 
