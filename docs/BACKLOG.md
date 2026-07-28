@@ -297,14 +297,23 @@ along automatically when the structural cluster-relocation fix lands.
   Owner/trigger: Will, if he wants the Stalker at 100 too.
 
 **b89 ocean_extension05 hotfix (2026-07-27, build49-dev) - NEW**
-- **BL-b89-DEBT-1 (P0-gated):** the 224-byte valid-EMPTY container is unproven IN-GAME. Owner/trigger:
-  Will's walk test into the `drxBC3`/`drxBC_Finale` ocean block. If an ocean chamber still kills the
-  game, the next move is the OTHER stock-precedented form - **no `0x0b` section at all** (stock ships
-  21 such levels: `ConvergenceBossRoomBackdrop`, `TiamatArenaVista`, `WaterEdge05`,
-  `PineForest04Border02`, ...; 43 stock meshes list one as a neighbour, and `gen_bc_navmeshes`'s own
-  docstring says these levels "legitimately get no `0x0b`"). That change also needs a strip-only path
-  in `inject_rec02_into_blob` (today it returns the blob UNCHANGED, leaving `0x0a` in place, when it
-  has nothing to inject). Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 5.
+- ~~**BL-b89-DEBT-1 (P0-gated):** the 224-byte valid-EMPTY container is unproven IN-GAME.~~
+  **✅ CLOSED 2026-07-27 - WILL CONFIRMED IN-GAME (verbatim): "the blood cave crash that was
+  occurring is fixed, i was able to advance past that area".** The 224-byte stock-form empty
+  container WORKS; the malformed-148-byte-stub root cause is CONFIRMED CORRECT and the build50
+  Steam ship (item 3759792705) is VALIDATED. The fallback (no `0x0b` section at all + a strip-only
+  path in `inject_rec02_into_blob`) is NOT needed and is retired unless a future ocean/empty
+  chamber regresses. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 5.
+- **BL-b89-DEBT-4 (P2, NEW - stale gate on a refuted premise):** `MAP-NAV-4` (respawn-shrine +
+  multi-GUID + SV-custom provenance) was authored from the **b87 theory that the 2026-07-27 runtime
+  captures REFUTED** (`navOK=0` is the normal in-progress state, not a rejection signal). Its two
+  whitelisted "latent" chambers (`drxBC3`, `RogueEncampment`) were therefore flagged on a dead
+  premise, and the REAL defect class (malformed container BODIES) is now gated properly by
+  `MAP-NAV-5`/`MAP-NAV-6`. ACTION: re-justify `MAP-NAV-4` on current evidence or retire it with the
+  whitelist (retirement protocol applies - check the ledger first). Also review whether build48's
+  fix A (`new_secretdoor` collapsed to own-only, shipped on the refuted theory) should stay: it is
+  structurally valid and stock-normal, so it is harmless, but it is an unjustified delta from
+  build47 and should be either re-justified or reverted for provenance hygiene.
 - **BL-b89-DEBT-2 (P1):** **Steam/canonical map is NOT shipped this wave.** The canonical
   `Levels_merged.arc` carries the same 8 malformed containers, so the LIVE Workshop build
   (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
