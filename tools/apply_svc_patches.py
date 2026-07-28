@@ -9629,6 +9629,15 @@ def _create_blood_toxeus_monster(db):
     # rig is engine-valid and renders red. (The donor um_toxeus_99 SP variant uses
     # revenantstorm.msh, a DIFFERENT rig from the Athens boss Will pointed at; the
     # clone brought revenantstorm across, so we override it back to the Athens mesh.)
+    # ⚠️ b92: RevenantPoison.msh embeds a CreateEntity block that hangs a GREEN
+    # particle aura (RevenantPoison_FX -> RevenantPoison.pfx, green channel 1.0)
+    # off the Waist bone of EVERY wearer - which is exactly the green Will kept
+    # reporting, and is invisible to any .arz scan (b55/b71/b75/b81 all missed
+    # it). The registry module `toxeus_mesh_aura` is the ratified FINAL writer of
+    # `mesh` here and repoints this record to Skeleton01.msh (same shader +
+    # textures, so the crimson skin below still lands; no CreateEntity). Do NOT
+    # "restore" the Athens mesh here without reading docs/reports/
+    # b92_green_differential.md - it will re-green the Devourer.
     db.set_field(M, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')
     db.set_field(M, 'baseTexture', r'Creatures\monster\skeleton\newskeleton_crimson.tex')
 
@@ -10991,6 +11000,10 @@ _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakru
 # inherits the black-skeleton rig automatically. The MARAUDERS stay ShadowStalker
 # demons (Will: "keep the form he looks like now"), only super-strong.
 _EN_SKELETON_DONOR = r'records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr'
+# ⚠️ b92: this mesh embeds a Waist-attached GREEN aura (RevenantPoison_FX). The
+# registry module `toxeus_mesh_aura` is the ratified FINAL writer of `mesh` on the
+# Enslaver boss + his soul pets and repoints them to Skeleton01.msh. See
+# docs/reports/b92_green_differential.md before changing this constant.
 _EN_BOSS_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
 _EN_BOSS_TEX = r'Creatures\Monster\Skeleton\NewSkeleton_Charcoal.tex'
 # A1 WARBAND (build36 AMENDMENT, Option A championChance set-piece): a dedicated

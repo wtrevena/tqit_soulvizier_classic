@@ -1,5 +1,57 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD53-DEV GATE RECORD - b92 GREEN GLOW root cause (5th attempt, SOLVED) (2026-07-28, branch `fix/green-diff`, tag `build53-dev`)
+
+**Will's lead, 2026-07-27, verbatim - correct in every particular:** "i am pretty sure it is a skill
+or ability or something that is causing the green glow. i think this was inherited from the Toxeus
+the Murderer uber boss base monster that we created these monsters off of. If you compare the visuals
+to the secret passage toxeus the murderer who doesnt have the green glow, you may be able to find the
+difference"
+
+**ROOT CAUSE (PROVEN from asset bytes): the `mesh` field.** A TQ `.msh` can attach an entity to a
+bone. `Creatures\Monster\Skeleton\RevenantPoison.msh` ends with
+`CreateEntity { attach = "Waist"; entity = "Records\Effects\MonsterFX\Buffs\RevenantPoison_FX.dbr" }`
+-> `Effects\MonsterFX\Buffs\RevenantPoison.pfx`, whose three colour keyframe tracks decode to
+**R 0.534 / G 1.000 / B 0.591 = GREEN** (the same decoder reproduces fire=orange, frost=ice-blue,
+storm=blue-violet, which is what validates the channel assignment). The Devourer + Enslaver inherited
+that mesh from the green-by-design Greece Toxeus `um_toxeus_21`; **Will's clean secret-passage control
+`um_toxeus_99` wears `RevenantStorm.msh`** (green is its LOWEST channel). Corroboration: every other
+`RevenantPoison.msh` wearer in the DB also wears `newskeleton_grean.tex` - vanilla pairs that mesh
+with the green skin on purpose; our two bosses were the only wearers given a crimson/charcoal skin.
+
+**WHY b55/b71/b75/b81 ALL MISSED IT:** all four are database fixes; the attachment is compiled into
+the MESH FILE and is invisible to any `.arz` scan. b75 even opened `RevenantPoison.msh`, read its
+texture strings, and cleared it as "innocent" - it never read the trailing entity script. Decisive:
+the Devourer has **no `charFxPakRunningNames` at all**, so no shroud theory could ever explain his
+green. Also explains b75's unsolved "marauders look green": they fight inside the boss's Waist cloud.
+
+**FIX:** `mesh` -> `Creatures\Monster\Skeleton\Skeleton01.msh` on **12 records** (2 bosses + 6 soul
+pets + 4 spawn proxies). Chosen by byte-scanning every skeleton mesh in `Creatures.arc` for
+`CreateEntity`: Skeleton01 has the **same shader + same textures** as RevenantPoison (so each boss's
+`baseTexture` override still lands), the closest geometry (94.8% byte-identical), is canonical for the
+`anm_skeleton01` table both bosses already use, has **no CreateEntity at all**, and is already worn by
+721 shipped records. Owner: registry module `tools/patches/toxeus_mesh_aura.py` (registered after
+`toxeus_endofallthings`/`toxeus_souls_100`, before `visuals`). Both monolith sites that chose the
+green mesh now carry ⚠️ pointers so it cannot be "restored".
+
+**GATE:** `toxeus_mesh_aura.verify()` fails the build in BOTH directions - any target on an
+aura-bearing or unaudited mesh, AND `um_toxeus_21` losing its intentional green or `um_toxeus_99`
+(the control) being altered. Negative test **17/17**, including the decisive leg: **the deployed DEV
+arz `1c27d5fa` as-is FAILS the gate** (the gate reproduces exactly what Will is looking at).
+
+**VERIFICATION:** build EXIT 0; 25/25 registry verifies green; A7 golden freeze PASS (84 waived, 0
+other). Record-diff vs deployed DEV arz = **0 added / 0 removed / 12 modified, 1 field each, zero
+collateral**. Text.arc rebuilt **byte-identical**. Contracts (souls/summons/resources) **PASS 0 P0 /
+0 P1 / 4905 P2 - identical totals to the same run on the deployed arz => 0 new violations**.
+
+**DEPLOYED (DEV):** arz `1c27d5fa650b5c076696db4ad379672f` -> **`5143ad1a44a9964c22578e00613f3e14`**;
+Text `fcca49277b9d31ed451e4a6843898843` (unchanged); **Levels `943d0ab9516d332db79bd7f9fd2d3ffe`
+UNTOUCHED**, **Quests `5e664c7b190965fd69f6ff15d77d85e4` UNTOUCHED**. Rollback:
+`local/DEV_arz_deployed_prev.arz`. Report: `docs/reports/b92_green_differential.md`.
+
+**OPEN DEBT:** BL-b92-DEBT-1..4 (see DEBT REGISTER). **AWAITING WILL'S IN-GAME CONFIRMATION** (restart
+Steam first; dismiss + re-summon both soul packs; also please confirm the Greece Toxeus is STILL green).
+
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 
 **R-49, Will 2026-07-27, verbatim (REPEAT of R-3):** "toxeus the murderer devourer of blood is not
@@ -355,6 +407,29 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b92 green-glow root cause (2026-07-28, build53-dev) - NEW**
+- **BL-b92-DEBT-1 (P1, WILL-DECISION / EoAT lane):** `toxeus_eoat_1..3` (End of All Things pets)
+  still wear `RevenantPoison.msh` and therefore still carry the inherited green Waist aura. They are
+  cloned from the Devourer pets and owned by the `toxeus_endofallthings` lane, whose R-8 identity is
+  an **ash-pale body** - so green is wrong there too. `toxeus_mesh_aura` is deliberately registered
+  AFTER that lane so the b92 record-diff stays exactly 12. Fix = add the 3 records to
+  `toxeus_mesh_aura.TARGETS`, or set the mesh in the EoAT lane.
+- **BL-b92-DEBT-2 (P2, WILL-DECISION):** Devourer soul pets still carry Lyia nature residue -
+  `buffSelf2SkillName=heartofoak`, `healSkillName=regrowth_lyia`,
+  `deathEffect=343_natureswrath_low_fx`. b75 skipped the Devourer on purpose (`protect_green=True`,
+  "Devourer green stays" 2026-07-14); R-7 (2026-07-16) later asked for black poison and b83 replaced
+  the envenom, but these three were never revisited. **Two are functional** (a heal + a health buff),
+  so stripping them is a balance call, not a visual one.
+- **BL-b92-DEBT-3 (P2, carried from b75/R-10):** the other `343_dark_smoke` users (Diadochi generals'
+  `svc_ashsmoke_charfxpak`, Helepolis) still ride the green-rendering pak. Unrelated to the mesh aura,
+  still open pending Will confirming the Enslaver now reads black.
+- **BL-b92-DEBT-4 (P3, tooling):** the in-build **F2 summons-contract** gate self-skips when no
+  `Resources` dir sits beside the build output, and its fallback discovery resolved to an unrelated
+  worktree's path. Cosmetic; the contract was run standalone in b92 and passed (0 P0 / 0 P1).
+- **BL-b92-DEBT-5 (P1, launch-gate):** b92 is **data+gate-proven only**. In-game confirmation from
+  Will is still required (restart Steam; dismiss + re-summon both packs; confirm the Greece Toxeus is
+  still green and the secret-passage control is untouched).
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
@@ -2828,17 +2903,26 @@ along automatically when the structural cluster-relocation fix lands.
   Equipment-side (naked/floating) remains as build28 authored it; needs Will's walk verdict on
   freshly summoned pets (saved-item baking does not affect pets, they spawn from the DB).
 
-### B-TOXEUS-1: Blood Toxeus shroud is still GREEN, not RED
+### B-TOXEUS-1: Blood Toxeus shroud is still GREEN, not RED - ✅ **FIXED b92 (build53-dev), awaiting Will's in-game confirmation**
 - **Symptom (Will, screenshot 2):** the new Toxeus the Murderer, Devourer of Blood boss fights, but
-  the **aura/shroud around him is GREEN** (the Athens-Toxeus poison shroud), not red.
-- **Cause:** the rename+reskin (toxeus-devourer-rename) changed the MESH to the Athens rig +
-  the crimson skin TEXTURE, but the SHROUD is a separate attached FX/skill (the Athens Toxeus has a
-  green poison-cloud aura skill or a bound FX). We changed body color but not the aura FX color.
-- **Fix approach:** find the aura/shroud FX on um_bloodtoxeus_99 (a skill in its skill list, or a
-  charFX/bound-effect field) - it's inherited from the Athens Toxeus (green poison theme). Swap it
-  to a red/blood-themed FX (there are red/blood FX in the DRX effects - trail_wep_spear uses blood;
-  look for a red aura/cloud). Files: apply_svc_patches _create_blood_toxeus, the monster's FX/skill
-  fields. Keep his Blood Boil kit; just recolor the ambient shroud.
+  the **aura/shroud around him is GREEN** (the Athens-Toxeus poison shroud), not red. Re-reported
+  four more times (b55, b71, b75, b81 rounds) - the longest-running visual defect in the mod.
+- **The old "Cause" below was the WRONG HYPOTHESIS and is what cost four rounds.** It sent every
+  attempt hunting for "a skill in its skill list, or a charFX/bound-effect field" - i.e. hunting in
+  the DATABASE. There is no such field: the Devourer carries **no `charFxPakRunningNames` at all**.
+- **TRUE CAUSE (b92, proven from asset bytes):** the `mesh` field itself. `RevenantPoison.msh`
+  embeds `CreateEntity { attach = "Waist"; entity = "...\RevenantPoison_FX.dbr" }`, so the MESH FILE
+  hangs a permanent green particle aura (`RevenantPoison.pfx`, green channel peaked at 1.0) off the
+  Waist bone of every wearer. Compiled into the `.msh`, therefore **invisible to any `.arz` scan** -
+  which is precisely why b55 (FX fields), b71 (chain), b75 (shroud pak) and b81 (pet identity) all
+  came back clean. Will's own 2026-07-27 lead (compare against the secret-passage Toxeus, who wears
+  `RevenantStorm.msh`) is what cracked it.
+- **FIX (b92):** `mesh` -> `Skeleton01.msh` (same shader/textures, no `CreateEntity`) on 12 records.
+  Gated by `tools/patches/toxeus_mesh_aura.py` `verify()`. The green is REMOVED, not recoloured red:
+  R-7 asks for black poison on the Devourer and R-10 for black smoke on the Enslaver, so an ambient
+  coloured aura is no longer wanted. **If Will still wants a RED ambient shroud on the Devourer**,
+  that is now a clean one-field follow-up (give him the Enslaver's black `drxshadowcloak`, or a
+  crimson pak) - the green no longer fights it. See `docs/reports/b92_green_differential.md`.
 
 ## 🟠 P1 - confirmed broken, non-blocking
 

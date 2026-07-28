@@ -215,6 +215,22 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
+    'toxeus_mesh_aura',     # b92 (Will 2026-07-27): THE GREEN GLOW ROOT CAUSE. Will's own lead
+                            # ("inherited from the Toxeus the Murderer uber boss base monster...
+                            # compare to the secret passage toxeus who doesnt have the green glow")
+                            # resolved: RevenantPoison.msh embeds a CreateEntity block that hangs
+                            # Records\Effects\MonsterFX\Buffs\RevenantPoison_FX (RevenantPoison.pfx,
+                            # green channel peaked at 1.0 - decoded from the shipped .pfx bytes) off
+                            # the Waist bone of every wearer. The Devourer + Enslaver inherited that
+                            # mesh from the green Greece Toxeus; the clean secret-passage control
+                            # wears RevenantStorm.msh. Invisible to the .arz, which is why b55/b71/
+                            # b75/b81 all missed it. Repoints 12 records (2 bosses + 6 soul pets +
+                            # 4 spawn proxies) to Skeleton01.msh - same shader/textures, closest
+                            # geometry, canonical for their anm_skeleton01 table, NO CreateEntity.
+                            # Registered after toxeus_endofallthings so the EoAT pets it clones are
+                            # provably unchanged, and after toxeus_souls_100 so nothing re-writes
+                            # mesh afterwards. verify() gates it fail-loud in BOTH directions
+                            # (targets clean AND um_toxeus_21's intended green + the control kept).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
