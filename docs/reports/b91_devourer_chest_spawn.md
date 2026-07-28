@@ -79,7 +79,7 @@ chain. The only difficulty-sensitive element is the proxy's `difficultyLimitsFil
 
 **b79 fixed a FIELD inside the wrong SHAPE.** The chain was wired end to end, but the Devourer sat in
 the pool's CHAMPION slot, and the shipped data proves that is not how a guaranteed boss is built: of
-the 1,845 ProxyPools in the DB, **537 put a `monsterClassification=Boss` monster in a MAIN (`nameN`)
+the 1,845 ProxyPools in the DB, **624 put a `monsterClassification=Boss` monster in a MAIN (`nameN`)
 slot** - that is the shape every guaranteed boss uses, including this mod's own `q_leinth_lone`,
 `q_vashkarr_lone`, the whole `q_yard_*` set, and `q_bloodtoxeus_lone` (`_BT_POOL`) for this very
 monster - while all **90 Boss-in-champion pools are the base game's rare "uber monster" lottery**
@@ -112,7 +112,7 @@ Devourer surface still on the trash limit.
 | TESTHUB-only / canonical-only placement | **KILLED** | the placement is in the canonical `drxBC2`, present in the deployed DEV TESTHUB map |
 | `proxyPoolEquation` rescaling the counts | **KILLED** | `proxyPoolEquation = ''` in the shipped bytes |
 | act / quest / difficulty / one-shot gate | **KILLED** | `quest=0`, no quest condition or spawned-flag on the chain |
-| pool math: the champion slot is not reachable for a Boss at 100% | **THE CAUSE (defect 1)** | the shipped DB never guarantees a boss from a champion slot (537 vs 0 precedent; see above) |
+| pool math: the champion slot is not reachable for a Boss at 100% | **SUSPECTED (defect 1) - precedent, NOT proven mechanism** | no shipped pool uses this shape (28 sole-champion-Boss pools, exactly 1 with championMin>=1 = ours); under the repo's own documented semantics the old shape SHOULD have worked, and this report does not explain why it did not |
 | the proxy's limit window sits below the boss's level | **THE CAUSE (defect 2)** | `limit_area002` max `26/51/65` vs `charLevel [40,68,100]`; the repo's own eligibility gate treats this as a fail |
 | Will's SAVE has the area baked | see section 6 - not the cause, but it does gate what he will see |
 

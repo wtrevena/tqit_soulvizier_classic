@@ -11,7 +11,7 @@ before vs after. Full report: `docs/reports/b91_devourer_chest_spawn.md`.
 
 **ROOT CAUSE:** b79 fixed a FIELD inside the wrong SHAPE. The chain was intact in the deployed bytes
 (chest x1 + guard proxy x1 in `drxBC2`, 4.20u apart; `championMin=1` present), but the Devourer sat in
-the pool's CHAMPION slot. Of 1,845 shipped ProxyPools, **537 guarantee a boss by putting him in a MAIN
+the pool's CHAMPION slot. Of 1,845 shipped ProxyPools, **624 guarantee a boss by putting him in a MAIN
 `nameN` slot** (every guaranteed boss in the game and in this mod, incl. `_BT_POOL` for this exact
 monster), while all **90 Boss-in-champion pools are the base-game rare uber-monster lottery** (73 at
 `championMin=0`; the 17 with `championMin>=1` always list non-boss champions alongside).
