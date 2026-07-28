@@ -286,8 +286,10 @@ along automatically when the structural cluster-relocation fix lands.
 >   CANDIDATE list (a proposal awaiting Will's batch approval) and in-game re-verification of the Q4
 >   dead-content one-liners. Read the table before scheduling anything from that section.
 > - **`docs/WILL_RULINGS.md` had a ledger-hygiene pass:** 2 colliding R-numbers renumbered
->   (backfill R-13 -> R-19, backfill R-43 -> R-49), 6 stale PENDING statuses flipped to IMPLEMENTED
->   against the BUILD47 merge, and the remaining PENDINGs re-verified and annotated. Nothing deleted.
+>   (backfill R-13 -> R-19, backfill R-43 -> **R-70** in the new Souls overflow decade 70-79 - R-49
+>   was already claimed by the parallel `fix/devourer-chest` lane on 2026-07-27), 6 stale PENDING
+>   statuses flipped to IMPLEMENTED against the BUILD47 merge, and the remaining PENDINGs re-verified
+>   and annotated. Nothing deleted.
 > - **`contracts_map.CUT_LEVEL_MARKERS` -> `CUT_LEVELS`** (BL-b89-DEBT-3): the cut exemption is now
 >   an exact-basename list of 8 levels instead of a substring tuple that swallowed 14.
 > - **A duplicate debt id was resolved:** the second `BL-b89-DEBT-4` is now `BL-b89-DEBT-5`.
@@ -536,7 +538,7 @@ along automatically when the structural cluster-relocation fix lands.
   restack b70, which the report states SUPERSEDES the earlier "needs Will's ruling" residual). Listed
   here only so a future sweep does not re-flag it as open.
 - bloodtip/gustleech `itemSkillLevel` WILL-VETO - RESOLVED, ratified ship-as-is (R-45).
-- Tomb Guardian soul leak - RESOLVED (R-49; filed by the b84 backfill as a colliding second "R-43", renumbered 2026-07-28).
+- Tomb Guardian soul leak - RESOLVED (R-70; filed by the b84 backfill as a colliding second "R-43", renumbered 2026-07-28 into the new Souls overflow decade 70-79 - R-49 was already claimed by the fix/devourer-chest lane).
 - Rant-scroll creative-text veto - RESOLVED, cleared to ship (R-15).
 > 🧊 **b76 CHUMBI VALLEY P0 FREEZE - RCA + FIX (round 1) ON `fix/chumbi-lag` (2026-07-16).** Will (P0):
 > DEV "chumbi valley" frozen by "every boss you created all in one spot" + "the infinite summon of the

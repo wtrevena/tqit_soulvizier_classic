@@ -53,7 +53,8 @@
 ## HISTORICAL BACKFILL (b84 sweep, round 1, 2026-07-16) - see docs/BACKLOG.md DEBT REGISTER for the
 ## open-item counterpart of this sweep. Numbering continues each section's existing range; sections
 ## reserve a decade (Toxeus 1-19, Masteries 20-29, World 30-39, Souls 40-49, Process 50-59); new
-## topics get a fresh decade (Legal 60-69).
+## topics get a fresh decade (Legal 60-69). **2026-07-28: Souls & items 40-49 is FULL (R-49 was
+## claimed 2026-07-27 by the fix/devourer-chest lane) - its OVERFLOW decade is 70-79.**
 
 ### Toxeus arc (continued)
 - R-19 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
@@ -156,15 +157,20 @@
   BACKLOG.md "COLD WORM BUFFS").
 
 ### Souls & items (continued)
-- R-49 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
+- R-70 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
   and do not have him drop a soul." `um_tombguardian_26` kept Common / `chanceToEquipFinger2=0.0`; the
   attached-but-undroppable `um_tombguardian_soul_{n,e,l}` rings were detached then retired (removed
   from the arz) along with their orphaned name tag. Source: docs/reports/souls_quality_fix.md sec 3
   (P2-a).
   > ⚠️ **ID CORRECTED 2026-07-28** (`fix/debt-docs` ledger-hygiene pass). The b84 backfill filed this
-  > as a SECOND `R-43`, colliding with the live Souls R-43 (Blood Cult High Priest summon). Renumbered
-  > into the next free slot of the Souls decade (40-49); the live R-43 keeps its number. The DEBT
-  > REGISTER line "Tomb Guardian soul leak - RESOLVED (R-43)" now reads R-49.
+  > as a SECOND `R-43`, colliding with the live Souls R-43 (Blood Cult High Priest summon). The live
+  > R-43 keeps its number; this backfill entry moved. **It moved to R-70, not to R-49**: the Souls
+  > decade 40-49 is FULL because the parallel `fix/devourer-chest` lane claimed **R-49** on
+  > 2026-07-27 for a live Will ruling (the Devourer chest-spawn repeat, IMPLEMENTED b91, cited from
+  > R-3's body and from `docs/reports/b91_devourer_chest_spawn.md`). That number was in use first and
+  > is load-bearing, so this pass allocated the **Souls & items OVERFLOW decade 70-79** (see the
+  > header) rather than take it. The DEBT REGISTER line "Tomb Guardian soul leak - RESOLVED (R-43)"
+  > now reads R-70.
 - R-44 [2026-07-14] IMPLEMENTED (D3/FIX 4) Will's directive, verbatim: "fix the crowboar soul's
   summoned crow bug ... sweep the roster for any OTHER summon soul with the same broken
   on-attack+petLimit=1 shape and fix those too (same bug = same wave)." Round-2 widened this from 4 to
@@ -229,9 +235,14 @@ of its own reserved decade:
 - backfill "R-13" (parchment-room Toxeus retirement) -> **R-19** (Toxeus decade 1-19). The live
   R-13 is the Rite-of-the-Undivided on-kill drop. R-14's `SUPERSEDED by` pointer and the
   `docs/reports/b90_toxeus_souls_100pct.md` cross-reference were updated with it.
-- backfill "R-43" (tomb-guardian de-soul) -> **R-49** (Souls decade 40-49). The live R-43 is the
-  Blood Cult High Priest summon. The DEBT REGISTER line "Tomb Guardian soul leak - RESOLVED" was
-  updated with it.
+- backfill "R-43" (tomb-guardian de-soul) -> **R-70**. The live R-43 is the Blood Cult High Priest
+  summon. It did NOT go to R-49: the parallel `fix/devourer-chest` lane claimed R-49 on 2026-07-27
+  for a live Will ruling (the Devourer chest-spawn repeat, IMPLEMENTED b91), which fills the Souls
+  decade 40-49 - so this pass allocated the **Souls & items OVERFLOW decade 70-79** and took R-70.
+  Checked against that branch before choosing: it uses nothing in 70-79, so the two ledgers merge
+  without a new collision. The DEBT REGISTER line "Tomb Guardian soul leak - RESOLVED" was updated
+  with it. **NOTE for whoever merges the two lanes:** `fix/devourer-chest` still carries the OLD
+  duplicate `R-13` pair, since it branched before this pass - take this branch's R-19 renumber.
 
 **STATUS FLIPS.** The BUILD47 GATE RECORD (docs/BACKLOG.md, 2026-07-17) merged `feat/black-poison`,
 `fix/soul-tiers`, `fix/formula-names`, `fix/mastery-unlock`, `fix/runtime-green` and
