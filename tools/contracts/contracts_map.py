@@ -1185,6 +1185,250 @@ def contract_bloodcave_placed(ctx):
     return v
 
 
+# ---------------------------------------------------------------------------
+# b91 DEEP-CHEST DEVOURER GUARD (MAP-CHESTGUARD-1)
+# ---------------------------------------------------------------------------
+CHESTGUARD_CHEST = r'records\drxitem\container\proxy_hidden_bloodcave_chest.dbr'
+CHESTGUARD_PROXY = r'records\drxmap\proxy\egg_blooddragon_pack.dbr'
+CHESTGUARD_MONSTER = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
+CHESTGUARD_MAX_DIST = 12.0     # the shipped guard sits 4.2u from the chest
+
+
+def _cg_instances(blob):
+    """0x05 instances WITH world positions: [{dbr(bytes), pos(x,y,z)}]. parse_0x05
+    deliberately drops positions; the chest-guard contract needs adjacency."""
+    ver = blob[3]
+    base = 72 if ver in (0x11, 0x0f) else 56
+    d = None
+    for t, sd in parse_blob_sections(blob):
+        if t == 0x05:
+            d = sd
+            break
+    if d is None:
+        return []
+    sc = struct.unpack_from('<I', d, 0)[0]
+    pos = 4
+    strings = []
+    for _ in range(sc):
+        if pos + 4 > len(d):
+            return []
+        sl = struct.unpack_from('<I', d, pos)[0]
+        pos += 4
+        strings.append(d[pos:pos + sl])
+        pos += sl
+    if pos + 4 > len(d):
+        return []
+    ic = struct.unpack_from('<I', d, pos)[0]
+    pos += 4
+    out = []
+    for _ in range(ic):
+        if pos + base > len(d):
+            break
+        sidx = struct.unpack_from('<I', d, pos)[0]
+        flags = struct.unpack_from('<I', d, pos + 52)[0]
+        p = struct.unpack_from('<3f', d, pos + 40)
+        out.append({'dbr': strings[sidx] if sidx < len(strings) else b'?', 'pos': p})
+        pos += base + (16 if flags != 0 else 0)
+    return out
+
+
+def _cg_field(ctx, rec, field):
+    """Case-insensitive arz field read over the mod arz then the base arz."""
+    for arz in (ctx.arz, getattr(ctx, 'base_arz', None)):
+        if arz is None:
+            continue
+        v = arz.field(rec, field)
+        if v is not None:
+            return v
+        for name in getattr(arz, 'record_names', lambda: [])():
+            if norm_rec(name) == norm_rec(rec):
+                v = arz.field(name, field)
+                if v is not None:
+                    return v
+                break
+    return None
+
+
+def _cg_num(v, default=0.0):
+    if isinstance(v, list):
+        v = v[0] if v else None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _cg_lim_max(v):
+    """ProxyLimits equations are strings like '110 * 1' / '38* 1'."""
+    if isinstance(v, list):
+        v = v[0] if v else None
+    if v is None:
+        return None
+    m = re.match(r'\s*(-?\d+(?:\.\d+)?)', str(v))
+    return float(m.group(1)) if m else None
+
+
+def contract_chest_guard(ctx):
+    """(11) b91 DEEP-CHEST DEVOURER GUARD - whole-chain 100% spawn gate.
+
+    Will re-reported (2026-07-16 b79, again 2026-07-27 b91) that "Toxeus the
+    Murderer, Devourer of Blood" does not spawn next to his hidden chest in the
+    blood cave despite a designed 100% rate. Both rounds the chain was wired and
+    the DEFECT was one hop nobody asserted end to end. This contract asserts the
+    WHOLE chain over the SHIPPED artifacts (map + arz), not one field:
+
+      1. the hidden chest is placed EXACTLY once;
+      2. the guard proxy is placed EXACTLY once, in the SAME level, within
+         CHESTGUARD_MAX_DIST of the chest;
+      3. proxy + its pool1 + the Devourer record all RESOLVE in the arz;
+      4. the pool GUARANTEES the Devourer: he is in a nameN MAIN slot with
+         weight > 0, and guaranteed mains = spawnMax - championMax == 1
+         (championChance > 0), i.e. effective spawn probability 100%, exactly one;
+      5. proxyPoolEquation is neutralized, so those LITERAL counts hold at every
+         party size (else the count scales and the guarantee is fiction);
+      6. the proxy's difficultyLimitsFile window CONTAINS the Devourer's charLevel
+         on Normal/Epic/Legendary, so the guard is not diluted to the area-trash
+         level band.
+
+    Derived from the shipped DB itself: 537 pools put a Boss in a MAIN slot (how
+    every guaranteed boss in the game is built, including this mod's own
+    q_bloodtoxeus_lone / q_vashkarr_lone / q_yard_*), while the 90 Boss-in-champion
+    pools are the base-game rare "uber monster" lottery (73 at championMin=0, and
+    every one of the 17 with championMin>=1 lists the boss alongside non-boss
+    champions so the floor guarantees A champion, never THAT boss). Before b91 the
+    chest guard was the ONLY pool in 51k records making a Boss the SOLE champion
+    entry - the one shape the data never uses to guarantee a boss."""
+    v = []
+    cid = 'MAP-CHESTGUARD-1'
+    chest_n, proxy_n = norm_rec(CHESTGUARD_CHEST), norm_rec(CHESTGUARD_PROXY)
+    mon_n = norm_rec(CHESTGUARD_MONSTER)
+    chests, guards = [], []
+    for lv in ctx.levels:
+        blob = ctx.blob(lv)
+        if b'egg_blooddragon_pack' not in blob and b'proxy_hidden_bloodcave_chest' not in blob:
+            continue
+        for it in _cg_instances(blob):
+            n = norm_rec(it['dbr'])
+            if n == chest_n:
+                chests.append((lv['fname'], it['pos']))
+            elif n == proxy_n:
+                guards.append((lv['fname'], it['pos']))
+
+    if len(chests) != 1:
+        v.append(V(cid, 'P0', CHESTGUARD_CHEST,
+                   'the Devourer\'s hidden chest is not placed exactly once',
+                   f'{len(chests)} placement(s): {chests}'))
+    if len(guards) != 1:
+        v.append(V(cid, 'P0', CHESTGUARD_PROXY,
+                   'the deep-chest Devourer guard proxy is not placed exactly once '
+                   '(0 = no guard at all; >1 = duplicate Devourers)',
+                   f'{len(guards)} placement(s): {guards}'))
+    if len(chests) == 1 and len(guards) == 1:
+        (clv, cp), (glv, gp) = chests[0], guards[0]
+        if clv != glv:
+            v.append(V(cid, 'P0', CHESTGUARD_PROXY,
+                       'the guard proxy is not in the same level as the chest',
+                       f'chest in {clv}, guard in {glv}'))
+        else:
+            dist = sum((a - b) ** 2 for a, b in zip(cp, gp)) ** 0.5
+            if dist > CHESTGUARD_MAX_DIST:
+                v.append(V(cid, 'P0', CHESTGUARD_PROXY,
+                           'the guard is not adjacent to the chest (Will: "spawning '
+                           'at the proper location next to his chest")',
+                           f'{dist:.2f}u apart, max {CHESTGUARD_MAX_DIST}u '
+                           f'(chest {cp}, guard {gp})'))
+
+    if not ctx.rec_resolves(proxy_n):
+        v.append(V(cid, 'P0', CHESTGUARD_PROXY,
+                   'the guard proxy record does not resolve in the arz', 'record absent'))
+        return v
+    if not ctx.rec_resolves(mon_n):
+        v.append(V(cid, 'P0', CHESTGUARD_MONSTER,
+                   'the Devourer monster record does not resolve in the arz', 'record absent'))
+        return v
+
+    pool = _cg_field(ctx, CHESTGUARD_PROXY, 'pool1')
+    pool = pool[0] if isinstance(pool, list) else pool
+    if not pool or not ctx.rec_resolves(norm_rec(pool)):
+        v.append(V(cid, 'P0', CHESTGUARD_PROXY,
+                   'the guard proxy\'s pool1 is missing or does not resolve',
+                   f'pool1={pool!r}'))
+        return v
+
+    mains, champs = [], []
+    for i in range(1, 9):
+        nm = _cg_field(ctx, pool, f'name{i}')
+        nm = nm[0] if isinstance(nm, list) else nm
+        if nm:
+            mains.append((i, norm_rec(nm), _cg_num(_cg_field(ctx, pool, f'weight{i}'), 0.0)))
+        ch = _cg_field(ctx, pool, f'nameChampion{i}')
+        ch = ch[0] if isinstance(ch, list) else ch
+        if ch:
+            champs.append((i, norm_rec(ch)))
+    spawn_max = _cg_num(_cg_field(ctx, pool, 'spawnMax'), 0.0)
+    champ_chance = _cg_num(_cg_field(ctx, pool, 'championChance'), 0.0)
+    champ_max = _cg_num(_cg_field(ctx, pool, 'championMax'), 0.0)
+    eq = _cg_field(ctx, pool, 'proxyPoolEquation')
+    eq = (eq[0] if isinstance(eq, list) else eq) or ''
+
+    main_hit = [m for m in mains if m[1] == mon_n and m[2] > 0]
+    if not main_hit:
+        champ_only = any(c[1] == mon_n for c in champs)
+        v.append(V(cid, 'P0', pool,
+                   'the Devourer is not a weighted MAIN (nameN) entry of the guard '
+                   'pool, so his spawn is NOT guaranteed' +
+                   (' - he is only a nameChampionN entry, the base-game rare '
+                    '"uber monster" lottery shape, which never guarantees a '
+                    'specific boss (the b79/b91 defect)' if champ_only else ''),
+                   f'name slots={[(i, p.split(chr(92))[-1], w) for i, p, w in mains]}, '
+                   f'champion slots={[(i, p.split(chr(92))[-1]) for i, p in champs]}'))
+    else:
+        wrong_main = [m for m in mains if m[1] != mon_n]
+        if wrong_main:
+            v.append(V(cid, 'P0', pool,
+                       'the guard pool mixes non-Devourer monsters into the MAIN slots, '
+                       'so the guaranteed main slot can be filled by something else',
+                       f'foreign mains={[m[1].split(chr(92))[-1] for m in wrong_main]}'))
+        guaranteed = spawn_max if champ_chance <= 0 else (spawn_max - champ_max)
+        if guaranteed != 1:
+            v.append(V(cid, 'P0', pool,
+                       'the guard pool does not yield EXACTLY ONE guaranteed Devourer '
+                       '(0 = he never spawns; >1 = duplicate bosses at the chest)',
+                       f'guaranteed mains = spawnMax({spawn_max:g}) - championMax'
+                       f'({champ_max:g}) = {guaranteed:g}, championChance={champ_chance:g}'))
+    if eq:
+        v.append(V(cid, 'P0', pool,
+                   'the guard pool still carries a proxyPoolEquation - it rescales the '
+                   'literal spawn/champion counts with party size, so the 100% guarantee '
+                   'does not hold at runtime',
+                   f'proxyPoolEquation={str(eq).split(chr(92))[-1]}'))
+
+    lim = _cg_field(ctx, CHESTGUARD_PROXY, 'difficultyLimitsFile')
+    lim = lim[0] if isinstance(lim, list) else lim
+    lv_ = _cg_field(ctx, CHESTGUARD_MONSTER, 'charLevel')
+    levels = lv_ if isinstance(lv_, list) else ([lv_] if lv_ is not None else [])
+    if not lim or not ctx.rec_resolves(norm_rec(lim)):
+        v.append(V(cid, 'P0', CHESTGUARD_PROXY,
+                   'the guard proxy\'s difficultyLimitsFile is missing or unresolved',
+                   f'difficultyLimitsFile={lim!r}'))
+    elif levels:
+        for mode, fld, idx in (('Normal', 'maxPlayerLevelEquationNormal', 0),
+                               ('Epic', 'maxPlayerLevelEquationEpic', 1),
+                               ('Legendary', 'maxPlayerLevelEquationLegendary', 2)):
+            if idx >= len(levels):
+                continue
+            wmax = _cg_lim_max(_cg_field(ctx, lim, fld))
+            mlvl = _cg_num(levels[idx], 0.0)
+            if wmax is not None and mlvl > wmax:
+                v.append(V(cid, 'P1', CHESTGUARD_PROXY,
+                           f'{mode}: the guard proxy\'s limit window tops out below the '
+                           f'Devourer\'s authored level, so he is scaled DOWN to the '
+                           f'area-trash band',
+                           f'charLevel {mlvl:g} > window max {wmax:g} '
+                           f'({str(lim).split(chr(92))[-1]})'))
+    return v
+
+
 def _zone_override_targets():
     """The authoritative set of b46 LEVELS-entry teleport-map zone `dbr` override
     targets, read live from tools/svaera_plus_portals.py so this gate cannot drift
@@ -1411,13 +1655,29 @@ CONTRACTS = [
                      'against a null zone (the Uber Dungeon black-void class the b46 wave fixed; '
                      'the region/minimap null-deref the b82/b86 crash hypothesis flagged and '
                      'the b86 bisect ruled out - docs/reports/b86_bloodcave_bisect.md).'},
+    {'id': 'MAP-CHESTGUARD-1', 'name': 'deep-chest Devourer guard spawns at 100%',
+     'asserts': 'the WHOLE chest-guard chain on the shipped artifacts: the hidden chest and '
+                'the guard proxy are each placed exactly once, in the same level, within '
+                '12u of each other; proxy -> pool1 -> monster all resolve; the Devourer is a '
+                'weighted MAIN (nameN) pool entry; guaranteed mains = spawnMax - championMax '
+                '== 1 with championChance > 0 (effective spawn probability 100%, exactly one '
+                'Devourer); proxyPoolEquation is neutralized so those literal counts hold at '
+                'every party size; and the proxy limit window contains his charLevel on N/E/L.',
+     'derived_from': 'Will re-reported the chest Devourer missing twice (b79 2026-07-16, b91 '
+                     '2026-07-27). The shipped DB shows 537 pools guarantee a boss by putting '
+                     'him in a MAIN slot, while all 90 Boss-in-champion pools are the rare '
+                     '"uber monster" lottery (73 at championMin=0; the 17 with championMin>=1 '
+                     'always list non-boss champions alongside, so the floor guarantees A '
+                     'champion, never THAT boss). egg_blooddragon was the only pool in 51k '
+                     'records making a Boss the SOLE champion entry - docs/reports/'
+                     'b91_devourer_chest_spawn.md.'},
 ]
 
 _CONTRACT_FUNCS = [
     contract_quests, contract_portals, contract_navmesh, contract_groups,
     contract_doors, contract_sd_tags, contract_placed_refs,
     contract_bloodcave_placed, contract_zone_overrides,
-    contract_navmesh_coresidency,
+    contract_navmesh_coresidency, contract_chest_guard,
 ]
 
 

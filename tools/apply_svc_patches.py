@@ -13596,21 +13596,73 @@ def _apply_group3_tunes(db, tags):
 # weightChampionN).
 # ── b79 CHEST-RCA FIX (Will 2026-07-16: "he was supposed to spawn next to Esti's
 # Hidden Chest 100% of the time"). The M15 wiring set championChance=100 +
-# championMax=1 but LEFT championMin at its inherited 0. Because Toxeus is the
-# CHAMPION here (nameChampion1), a zero champion-FLOOR does NOT guarantee him:
-# championChance/Max govern the CEILING of champion slots, championMin the FLOOR.
-# Ground truth (b79): every proven "boss + guaranteed champion escort" pool in the
-# base game sets championMin == championMax to force the escort - xsq22_wave2
-# (min=max=1) and xsq17_keres_escortparty (min=max=2). With championMin=0 the egg
-# pool frequently rolled 4 blood dragons and NO Devourer, so the deep-chest guard
-# was never the 100% guardian Will designed (born broken at M15 2026-07-09; nothing
-# retired it - q_bloodtoxeus_lone_50's retirement never touched this egg chain). FIX:
-# set championMin=1 == championMax=1 -> exactly 1 Devourer + 3 dragons, every run,
-# every party size (the xsq22 guaranteed-escort shape). This chest guard is a
-# deliberate adjacent-to-chest encounter (4.2u from the mega chest) and is therefore
-# EXEMPT from generic spacing/clearance laws by design - it is a one-shot guardian,
-# not a respawn fountain.
+# championMax=1 but LEFT championMin at its inherited 0. b79 set championMin=1.
+#
+# ── b91 CHEST-RCA ROUND 2 (Will 2026-07-27, REPEAT REPORT: "toxeus the murderer
+# devourer of blood is not spawning at the proper location next to his chest in the
+# blood cave even though we said he should have a 100% spawn rate there in the
+# existing spawn pool that is there"). b79's championMin=1 SHIPPED (proven in the
+# deployed DEV arz c1a8fa2a: championChance=100, championMin=championMax=1,
+# nameChampion1=um_bloodtoxeus_99, weightChampion1=100) and the map placement is
+# intact (deployed DEV Levels.arc 943d0ab9, drxBC2 instance [1084]
+# egg_blooddragon_pack @ (13.17,28.00,136.06), 4.2u from the chest instance [1067]
+# proxy_hidden_bloodcave_chest @ (9.13,28.00,137.14); whole-map scan = EXACTLY 1
+# placement of each). So the chain is wired and the Devourer STILL does not appear:
+# b79 fixed a FIELD inside the wrong SHAPE.
+#
+# THE SHAPE IS THE DEFECT. Toxeus sat in the pool's CHAMPION slot. Ground truth from
+# the shipped DB (51,085 records, 1,845 ProxyPools):
+#   * 537 pools put a monsterClassification=Boss monster in a MAIN (nameN) slot -
+#     that is how every guaranteed boss in this game (and in this mod: q_leinth_lone,
+#     q_vashkarr_lone, q_yard_*, and _BT_POOL itself) is built.
+#   * 90 pools put a Boss in a CHAMPION slot; 73 of them run championMin=0 (the
+#     base-game "rare uber-monster lottery" shape: um_uber_45, um_frost_36,
+#     um_toxeus_21, um_permean_35 ...). Of the 17 with championMin>=1, EVERY ONE
+#     lists the boss ALONGSIDE 3-4 non-boss champions, so the floor guarantees
+#     *a* champion, never *that* boss.
+#   * egg_blooddragon was the ONLY pool in the entire DB making a Boss the SOLE
+#     champion entry with championMin=championMax=1. That shape has no precedent
+#     anywhere in the shipped data, and it is not how a guaranteed boss is authored.
+# The mod's OWN fail-loud gate already encodes this law: _verify_mod_spawn_proxies_
+# eligible asserts the boss "must actually be in a name-slot" and that the proxy's
+# difficultyLimitsFile window contains his charLevel. The chest guard was never
+# REGISTERED in _MOD_AUTHORED_SPAWN_PROXIES, so that gate never looked at it - had it
+# been registered, the build would have failed LOUD on BOTH counts since M15:
+#   (1) um_bloodtoxeus_99 is in no nameN slot (champion-only), and
+#   (2) egg_blooddragon_pack carries difficultyLimitsFile=limit_area002, the area-TRASH
+#       window (N[23-26] E[38-51] L[60-65]) that tops out BELOW his charLevel
+#       [40,68,100] on EVERY difficulty - exactly the condition docs/BLOOD_TOXEUS_
+#       DESIGN.md section 5 says forces a no-cap boss limits file (limit_bloodtoxeus,
+#       N/E/L [1..110]) on every proxy that spawns him. The chest guard was the one
+#       Devourer surface still on the trash limit.
+#
+# b91 FIX (both layers, at the pipeline, BL-103):
+#   POOL  -> the PROVEN guaranteed-boss shape, identical in kind to _BT_POOL and to
+#            the 537 boss-as-main pools: name1..3 = um_bloodtoxeus_99 (MAIN), the
+#            native blood dragons MOVE to nameChampion1..3, championChance=100 with
+#            championMin=championMax=(spawnMax-1) -> exactly spawnMax-championMax = 1
+#            guaranteed Devourer + 3 blood-dragon champion escorts. The ROSTER Will
+#            designed is unchanged (1 Devourer + 3 dragons, the same existing group,
+#            the same single native proxy 4.2u from the chest); only which slot the
+#            Devourer occupies changes, from the never-guaranteed champion slot to
+#            the guaranteed main slot.
+#   PROXY -> difficultyLimitsFile limit_area002 -> _BT_LIMIT (limit_bloodtoxeus,
+#            [1..110] on N/E/L) so the chest Devourer fights at his authored level
+#            instead of being diluted to the L26/51/65 trash window. Scoped: the
+#            whole-map scan proves egg_blooddragon_pack is placed EXACTLY ONCE and is
+#            the ONLY proxy referencing this pool, so both edits touch this one
+#            encounter and nothing else.
+#   GATE  -> the chest guard is now REGISTERED in _MOD_AUTHORED_SPAWN_PROXIES so the
+#            pre-existing fail-loud spawn-eligibility gate (main-in-name-slot +
+#            champion-crowd-out + limit-window + equation-neutralized) covers it
+#            forever, and a whole-chain shipped-artifact contract (MAP-CHESTGUARD-1,
+#            tools/contracts/contracts_map.py) asserts placement -> proxy -> pool ->
+#            monster end to end on the built map+arz.
+# This chest guard is a deliberate adjacent-to-chest encounter (4.2u from the mega
+# chest) and is therefore EXEMPT from generic spacing/clearance laws by design - it
+# is a one-shot guardian, not a respawn fountain.
 _M15_EGG_POOL = r'records\drxmap\proxy\pools\egg_blooddragon.dbr'
+_M15_EGG_PROXY = r'records\drxmap\proxy\egg_blooddragon_pack.dbr'
 _M15_TOXEUS = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
 
 
@@ -13627,34 +13679,80 @@ def _apply_m15_toxeus_group_joins(db):
     # ── chest room: edit the exclusive egg pool in place (@100) ──
     if not db.has_record(_M15_EGG_POOL):
         raise SystemExit(f"M15: pool missing: {_M15_EGG_POOL}")
+    if not db.has_record(_M15_EGG_PROXY):
+        raise SystemExit(f"M15: proxy missing: {_M15_EGG_PROXY}")
     if val(_M15_EGG_POOL, 'championChance') not in (None, 0, 0.0):
         raise SystemExit("M15: egg pool already has champion fields - "
                          "pre-shape changed, reconcile")
     sf = db.set_field
-    sf(_M15_EGG_POOL, 'championChance', 100.0)
-    sf(_M15_EGG_POOL, 'championMax', 1)
-    # b79: championMin == championMax = 1 GUARANTEES the Devourer champion (the
-    # proven xsq22/xsq17 escort shape). Without this floor Toxeus (a CHAMPION, not
-    # a main) spawned only sometimes -> the chest bug Will re-reported 2026-07-16.
-    sf(_M15_EGG_POOL, 'championMin', 1)
-    sf(_M15_EGG_POOL, 'nameChampion1', _M15_TOXEUS)
-    sf(_M15_EGG_POOL, 'weightChampion1', 100)
     smax = int(float(val(_M15_EGG_POOL, 'spawnMax', 0)))
-    if smax - 1 < 1:
-        raise SystemExit(f"M15: egg pool spawnMax {smax} - championMax 1 < 1 "
+    smin = int(float(val(_M15_EGG_POOL, 'spawnMin', 0)))
+    if smax < 2 or smin != smax:
+        raise SystemExit(f"M15: egg pool spawn shape changed (spawnMin={smin} "
+                         f"spawnMax={smax}); the b91 guaranteed-boss construction "
+                         f"needs a fixed group of >= 2 - reconcile")
+
+    # b91: capture the pool's NATIVE mains (the blood dragons) BEFORE overwriting
+    # them - they become the champion ESCORTS, so the encounter roster is preserved
+    # exactly (spawnMax-1 dragons + 1 Devourer) instead of being invented here.
+    native_mains = []
+    for i in range(1, 7):
+        v = val(_M15_EGG_POOL, f'name{i}')
+        if v:
+            native_mains.append(str(v))
+    if not native_mains:
+        raise SystemExit("M15: egg pool has no nameN entries to promote to "
+                         "champion escorts - pre-shape changed, reconcile")
+    if any(m.lower() == _M15_TOXEUS.lower() for m in native_mains):
+        raise SystemExit("M15: egg pool already carries Toxeus in a main slot - "
+                         "pre-shape changed, reconcile")
+
+    cmax = smax - 1                      # -> exactly 1 guaranteed main = the Devourer
+    # MAIN slots = the Devourer (the guaranteed-boss shape; mirrors _BT_POOL, which
+    # sets name1..3 all to um_bloodtoxeus_99 with championMin=championMax=spawnMax-1).
+    for i in range(1, 4):
+        sf(_M15_EGG_POOL, f'name{i}', _M15_TOXEUS)
+        sf(_M15_EGG_POOL, f'weight{i}', 100)
+    # CHAMPION slots = the native blood dragons (cycled so all cmax escort slots are
+    # fillable even when the native pool listed fewer distinct dragons than cmax).
+    for i in range(1, cmax + 1):
+        sf(_M15_EGG_POOL, f'nameChampion{i}', native_mains[(i - 1) % len(native_mains)])
+        sf(_M15_EGG_POOL, f'weightChampion{i}', 100)
+    sf(_M15_EGG_POOL, 'championChance', 100.0)
+    sf(_M15_EGG_POOL, 'championMin', cmax)
+    sf(_M15_EGG_POOL, 'championMax', cmax)
+    sf(_M15_EGG_POOL, 'FileDescription',
+       'Deep-chest guard: Toxeus the Murderer, Devourer of Blood (guaranteed main) '
+       '+ blood-dragon champion escorts', DATA_TYPE_STRING)
+    if smax - cmax < 1:
+        raise SystemExit(f"M15: egg pool spawnMax {smax} - championMax {cmax} < 1 "
                          f"(champion crowd-out law)")
+    # b91: the proxy's limits file must CONTAIN the Devourer's charLevel on N/E/L, or
+    # the level-100 superboss is scaled down toward the area-trash window
+    # (limit_area002 tops out at 26/51/65 vs his [40,68,100]). _BT_LIMIT is the no-cap
+    # boss window [1..110] every other Devourer surface already uses. Authored by the
+    # Blood-Toxeus wave (_create_blood_toxeus_*); assert rather than silently skip.
+    if not db.has_record(_BT_LIMIT):
+        raise SystemExit(f"M15: {_BT_LIMIT} missing - the chest guard cannot be "
+                         f"repointed off the area-trash limit window")
+    sf(_M15_EGG_PROXY, 'difficultyLimitsFile', _BT_LIMIT, DATA_TYPE_STRING)
+    db._modified.add(_M15_EGG_PROXY)
     # DEDUP (2026-07-13 "two side by side"; round-2 vet HIGH 2026-07-14): egg_blooddragon
     # carries the base-game proxyPoolEquation (proxypoolequation_02), which FLOORS each
-    # count up by poolValue*(0.91+0.497143*nP-0.05*nP^2). On championMax=1 that floors to
-    # 2 at 4-6 players -> TWO Blood Toxeus in the deep-chest room. Neutralize so the
-    # LITERAL championMax=1 holds at every party size (exactly ONE Devourer, 1..6P). This
-    # pool is NOT in _MOD_AUTHORED_SPAWN_PROXIES, so the finalization lock never reaches it.
+    # count up by poolValue*(0.91+0.497143*nP-0.05*nP^2) -> more than one Devourer at
+    # 4-6 players. Neutralize so the LITERAL counts hold at every party size (exactly
+    # ONE Devourer, 1..6P). The chest guard is now ALSO in _MOD_AUTHORED_SPAWN_PROXIES,
+    # so _svc_lock_authored_pool_counts + the eligibility gate re-assert this at
+    # finalization.
     _svc_neutralize_pool_equation(db, _M15_EGG_POOL)
     db._modified.add(_M15_EGG_POOL)
-    print(f"  M15 chest room: egg_blooddragon pool += Toxeus GUARANTEED champion "
-          f"(championMin=championMax=1 @100; spawnMax {smax}, {smax - 1} dragons + "
-          f"exactly 1 Devourer every run; proxyPoolEquation neutralized -> exactly 1 "
-          f"Devourer at any party size 1-6)")
+    print(f"  M15/b91 chest room: egg_blooddragon pool -> GUARANTEED-BOSS shape "
+          f"(name1..3 = um_bloodtoxeus_99 MAIN, {cmax} blood-dragon champion escorts, "
+          f"championChance=100 championMin=championMax={cmax}, spawnMax={smax} -> "
+          f"exactly {smax - cmax} Devourer + {cmax} dragons every run, 1..6P); "
+          f"proxy difficultyLimitsFile -> limit_bloodtoxeus [1..110] (was the "
+          f"area-trash limit_area002 N[23-26]/E[38-51]/L[60-65] that diluted a "
+          f"charLevel[40,68,100] superboss)")
 
     # ── parchment: RETIRED (Will FINAL DESIGN 2026-07-14) ──
     # The derived demon_01_cluster_toxeus50 proxy+pool (Toxeus champion @50) are NO LONGER
@@ -15888,7 +15986,24 @@ _MOD_AUTHORED_SPAWN_PROXIES = [
         'proxy': _BT_PROXY,
         'pool': _BT_POOL,
         'main_monster': _BT_MONSTER,   # the boss that must not be crowded out
-        'name': 'q_bloodtoxeus_lone (Hemorrheus, chest @100%)',
+        'name': 'q_bloodtoxeus_lone (Hemorrheus lone-boss pool; live via the '
+                'q_bloodtoxeus_ambush proxy @33%)',
+    },
+    {
+        # b91 (Will 2026-07-27 REPEAT REPORT): the DEEP-CHEST guard. This is a
+        # mod-authored spawn construction on a NATIVE DRX proxy/pool pair (the M15
+        # "join the existing spawn group" mechanism), and it was the ONE Blood-Toxeus
+        # surface never registered here - so this gate never checked it and never
+        # failed the build on the two defects that kept the Devourer from spawning:
+        # (1) he was in nameChampion1 and in NO nameN main slot, and (2) the proxy
+        # carried difficultyLimitsFile=limit_area002 (N[23-26]/E[38-51]/L[60-65]),
+        # below his charLevel [40,68,100] on every difficulty. Registering it makes
+        # the pre-existing main-in-name-slot + champion-crowd-out + limit-window +
+        # equation-neutralized invariants permanent for the chest guard.
+        'proxy': _M15_EGG_PROXY,
+        'pool': _M15_EGG_POOL,
+        'main_monster': _M15_TOXEUS,
+        'name': 'egg_blooddragon_pack (deep-chest Devourer guard @100%, drxBC2)',
     },
     # RETIRED (Will FINAL DESIGN 2026-07-14): the 2nd (parchment @50%) proxy q_bloodtoxeus_lone_50
     # is removed (never wired to the map). The entrance corridor's single Blood-Toxeus surface is

@@ -437,8 +437,91 @@ def test_refs():
           not has(C.contract_placed_refs(ctx_b), 'MAP-REF-1'))
 
 
+# ===========================================================================
+def _cg_ctx(pool_fields, proxy_fields=None, insts=None, extra_names=()):
+    """Build a FakeCtx for MAP-CHESTGUARD-1: one blood-cave level holding the chest
+    + guard instances (make_0x05 zeroes positions, so they sit 0u apart = adjacent),
+    an arz carrying the proxy/pool/monster/limits fields the contract reads."""
+    chest = C.CHESTGUARD_CHEST.encode('latin-1')
+    proxy = C.CHESTGUARD_PROXY.encode('latin-1')
+    mon = C.CHESTGUARD_MONSTER
+    pool = r'records\drxmap\proxy\pools\egg_blooddragon.dbr'
+    lim = r'records\proxies orient\limit_bloodtoxeus.dbr'
+    dbrs = insts if insts is not None else [chest, proxy]
+    blob = make_blob([(0x05, make_0x05(dbrs))])
+    lv = {'fname': 'Levels/World/xBloodCave/drxBC2.lvl', '_blob': blob, 'guid': GUID_A}
+    f = {(C.CHESTGUARD_PROXY, 'pool1'): pool,
+         (C.CHESTGUARD_PROXY, 'difficultyLimitsFile'): lim,
+         (mon, 'charLevel'): [40, 68, 100],
+         (lim, 'maxPlayerLevelEquationNormal'): '110 * 1',
+         (lim, 'maxPlayerLevelEquationEpic'): '110 * 1',
+         (lim, 'maxPlayerLevelEquationLegendary'): '110 * 1'}
+    for k, val in (proxy_fields or {}).items():
+        f[(C.CHESTGUARD_PROXY, k)] = val
+    for k, val in pool_fields.items():
+        f[(pool, k)] = val
+    names = {C.norm_rec(x) for x in (chest, proxy, mon, pool, lim)} | set(extra_names)
+    return FakeCtx(levels=[lv], arz=FakeArz(f), _names=names)
+
+
+def test_chest_guard():
+    print('CONTRACT 11: DEEP-CHEST DEVOURER GUARD')
+    mon = C.CHESTGUARD_MONSTER
+    dragon = r'records\drxcreatures\blooddragons\blooddragon01.dbr'
+    # COMPLIANT = the b91 shipped shape: Devourer MAIN x3, 3 dragon champion escorts,
+    # spawnMax 4 - championMax 3 = exactly 1 guaranteed Devourer, no pool equation.
+    good = {'name1': mon, 'name2': mon, 'name3': mon,
+            'weight1': 100, 'weight2': 100, 'weight3': 100,
+            'nameChampion1': dragon, 'nameChampion2': dragon, 'nameChampion3': dragon,
+            'spawnMin': 4, 'spawnMax': 4, 'championChance': 100.0,
+            'championMin': 3, 'championMax': 3, 'proxyPoolEquation': ''}
+    check('CHESTGUARD compliant (b91 shape) -> no violation',
+          len(C.contract_chest_guard(_cg_ctx(good))) == 0)
+
+    # BREAK 1 - THE ACTUAL b79/b91 DEFECT: the Devourer demoted to the sole champion
+    # entry with championMin=championMax=1 (the shape that shipped and did not spawn).
+    broken_shape = {'name1': dragon, 'name2': dragon, 'name3': dragon,
+                    'weight1': 100, 'weight2': 100, 'weight3': 100,
+                    'nameChampion1': mon, 'weightChampion1': 100,
+                    'spawnMin': 4, 'spawnMax': 4, 'championChance': 100.0,
+                    'championMin': 1, 'championMax': 1, 'proxyPoolEquation': ''}
+    check('CHESTGUARD-1 fires when the Devourer is champion-only (the shipped defect)',
+          has(C.contract_chest_guard(_cg_ctx(broken_shape)), 'MAP-CHESTGUARD-1'))
+
+    # BREAK 2 - champion crowd-out: no main slot left for the boss.
+    crowded = dict(good, championMin=4, championMax=4)
+    check('CHESTGUARD-1 fires on champion crowd-out (0 guaranteed mains)',
+          has(C.contract_chest_guard(_cg_ctx(crowded)), 'MAP-CHESTGUARD-1'))
+
+    # BREAK 3 - duplicate Devourers (2 guaranteed mains).
+    dup = dict(good, championMin=2, championMax=2)
+    check('CHESTGUARD-1 fires on >1 guaranteed Devourer',
+          has(C.contract_chest_guard(_cg_ctx(dup)), 'MAP-CHESTGUARD-1'))
+
+    # BREAK 4 - the party-size rescaler is back, so the literal counts are fiction.
+    eqd = dict(good, proxyPoolEquation=r'records\proxies orient\proxypoolequation_02.dbr')
+    check('CHESTGUARD-1 fires when proxyPoolEquation is not neutralized',
+          has(C.contract_chest_guard(_cg_ctx(eqd)), 'MAP-CHESTGUARD-1'))
+
+    # BREAK 5 - the guard proxy is not placed at all (b79 map-lane class).
+    chest_only = [C.CHESTGUARD_CHEST.encode('latin-1')]
+    check('CHESTGUARD-1 fires when the guard proxy is not placed',
+          has(C.contract_chest_guard(_cg_ctx(good, insts=chest_only)), 'MAP-CHESTGUARD-1'))
+
+    # BREAK 6 - the area-trash limit window that dilutes the level-100 superboss.
+    trash = r'records\proxies orient\limit_area002.dbr'
+    ctx = _cg_ctx(good, proxy_fields={'difficultyLimitsFile': trash},
+                  extra_names={C.norm_rec(trash)})
+    ctx.arz._f[(trash, 'maxPlayerLevelEquationNormal')] = '26 * 1'
+    ctx.arz._f[(trash, 'maxPlayerLevelEquationEpic')] = '51 * 1'
+    ctx.arz._f[(trash, 'maxPlayerLevelEquationLegendary')] = '65 * 1'
+    check('CHESTGUARD-1 fires on a limit window below the Devourer charLevel',
+          has(C.contract_chest_guard(ctx), 'MAP-CHESTGUARD-1'))
+
+
 if __name__ == '__main__':
-    for t in (test_quests, test_portals, test_navmesh, test_groups, test_doors, test_sd, test_refs):
+    for t in (test_quests, test_portals, test_navmesh, test_groups, test_doors, test_sd, test_refs,
+              test_chest_guard):
         t()
     npass = sum(1 for _n, ok, _d in RESULTS if ok)
     print(f'\n{npass}/{len(RESULTS)} checks PASS')
