@@ -2984,13 +2984,55 @@ along automatically when the structural cluster-relocation fix lands.
   particleEffectAttachPoint2/3 on the 3 pcsafe skills; supra wep_spear.dbr's bumpTexture
   (harmless on the base RSpear14B mesh).
 
-### B-GATE-HARDEN-1: build gates SKIP (not FAIL) outside the work/ layout (build30 delta vet)
-- The A9 render-chain + F2 summons-contract gates skip loudly when the game dir / staged
+### ~~B-GATE-HARDEN-1: build gates SKIP (not FAIL) outside the work/ layout (build30 delta vet)~~
+- ~~The A9 render-chain + F2 summons-contract gates skip loudly when the game dir / staged
   Resources are absent (scratch determinism builds). Optional hardening: an env flag
   (SVC_REQUIRE_GATES=1 -> FAIL instead of SKIP) so a mis-pathed work build can never
   silently skip its gates. Also: persist stage-baseline arz copies (e.g. the D10 0e70ffe6
   baseline) under local/db_backups/ so intermediate record-diffs stay reproducible after
-  session scratchpads are cleaned.
+  session scratchpads are cleaned.~~
+- **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`). BOTH halves shipped.**
+  - **HALF 1 - `SVC_REQUIRE_GATES`.** It had never been implemented (`grep SVC_REQUIRE_GATES tools/`
+    returned nothing). Now: `build_svc_database._require_gates()` reads the flag (accepts
+    `1/true/yes/on`, case-insensitive) and `_gate_unavailable(gate, reason, remedy)` is the single
+    handler for "this gate cannot run here" - it prints the historical WARNING and continues when
+    the flag is off (scratch / determinism rebuilds writing outside `work/` are unchanged), and
+    raises `SystemExit` when it is on. Wired into **three** call sites, not two: **A9**
+    render-chain, **F2** summons-contract, and **A5** Act-5 leak fix (`base_db is None` silently
+    shipped an arz MISSING the post-Hades portal suppression - same blind-spot class, so it is
+    covered rather than left as the next surprise).
+  - **Second line of defence:** `validate_render_chain.validate()` now checks its OWN inputs and
+    returns **2 (load error), never 0**, when `mod_resources` or `game_dir` is missing/unusable -
+    so a direct CLI invocation that bypasses the caller's skip decision cannot produce a
+    meaningless PASS either.
+  - **Wired into the gate of record:** `scripts/bootstrap_working_mod.ps1` sets
+    `SVC_REQUIRE_GATES=1` before invoking the build (respecting a pre-set value), because the
+    work/-layout build is exactly the path that must never ship ungated. This is the blind spot
+    that let the b89 malformed 148-byte navmesh stub survive every gate for 20+ builds.
+  - **HALF 2 - stage-baseline persistence.** `build_svc_database._persist_stage_baseline()` runs
+    immediately before `db.write_arz()` and copies the OUTGOING arz to
+    `local/db_backups/<stem>_pre-<md5-8>.arz`. **Content-keyed**, so it is idempotent (rebuilding
+    the same baseline twice writes one file) and self-labelling (the filename IS the hash a gate
+    record cites). Every record-diff proof in this repo ("exactly 2 of 3629 records moved") needs
+    the baseline it diffed against, and those had been living in session scratchpads that get
+    cleaned - so a proof written last week could no longer be re-derived. `local/` is gitignored,
+    so this costs the repo nothing. **Never fatal** (any error degrades to a printed note - a
+    backup must not break a build); opt out with `SVC_NO_STAGE_BASELINE=1`.
+  - **PLANTED NEGATIVE TEST** (new): `py tools/debug/negtest_require_gates.py` - **PASS**. Plants
+    the exact "gate cannot run" condition both ways without a ~15-minute build: (1) flag OFF ->
+    WARN + continue, historical behaviour preserved; (2) flag ON -> `SystemExit` naming the gate
+    and the flag; (3) flag parsing, 6 truthy / 8 falsy spellings; (4)
+    `validate_render_chain.validate` on missing dirs -> `rc=2`, never 0.
+  - **PROOF (stage baseline):** direct exercise - first call persists
+    `_smoke_stage_pre-99ebc56f.arz` with the md5 printed, second call is a no-op ("already
+    persisted", same destination), a missing output (first-ever build) returns `None` cleanly, and
+    `SVC_NO_STAGE_BASELINE=1` opts out. Smoke artifacts removed afterwards.
+  - **NOT re-run this lane:** a full `build_svc_database.py` run (~15 min, and a parallel lane was
+    actively rebuilding `work/.../SoulvizierClassic.arz` during this session - its size/mtime moved
+    mid-lane). The changes are additive and confined to the skip branches plus a pre-write backup;
+    both were exercised directly by the planted test above. The next real work/-layout build will
+    exercise them end to end, and will now also drop its first stage baseline into
+    `local/db_backups/`.
 
 ### B-AREA-NAME-1: Garden of Merchants minimap label reads 'Duister' (NEW 2026-07-08)
 - **Symptom (Will, public build):** he teleported from the fountain camp into a garden/courtyard
