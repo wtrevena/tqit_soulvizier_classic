@@ -392,10 +392,21 @@ along automatically when the structural cluster-relocation fix lands.
   pet on this engine (proven: 0 of 25,000+ equip slots auto-equip a player unique; B-SUMMON-1 gate
   fails the build on direct-equip). Shipped as a DIRECT stat block instead of worn items; flagged in
   case Will wants a different resolution. Source: same report, FLAG #2.
-- disciple Neck-slot hygiene - named in a prior session's task tracker; NOT located in any committed
-  doc or branch this sweep (only the EoAT report's unrelated "Neck: Paragon of Violence - SKIPPED"
-  equip-slot line was found). UNKNOWN-STATUS; re-verify against whatever session originated it before
-  treating as real. Source: not found this sweep - included per the backfill brief only.
+- ~~disciple Neck-slot hygiene - named in a prior session's task tracker; NOT located in any
+  committed doc or branch this sweep. UNKNOWN-STATUS.~~ **CLOSED 2026-07-28 (`fix/debt-docs`) as
+  UNSUBSTANTIATED-BUT-PROBABLY-ALREADY-DONE.** Both findings recorded, neither silently dropped:
+  **(1) No antecedent exists.** `git log --all -S` for "Neck-slot" / "neck slot" / "neckslot" /
+  "disciple neck" returns exactly ONE commit across every ref: `103409d` "docs: rulings ledger
+  backfill round 1 + BACKLOG debt register" - i.e. the commit that created THIS entry. The phrase has
+  no origin anywhere in the repository's history; it entered via the backfill brief alone. A
+  repo-wide grep confirms the only other "Neck" hits are the EoAT report's unrelated equip-slot table
+  row ("Neck | Paragon of Violence | SKIPPED"). **(2) The only plausible referent is already
+  shipped.** `tools/patches/toxeus_endofallthings.py:_build_disciple_thralls` (b72, on main via the
+  BUILD47 GATE RECORD) zeroes EVERY equip slot on the EoAT disciple thralls - `RightHand`, `LeftHand`,
+  `Head`, `Torso`, `Forearm`, `LowerBody`, `Finger1`, `Finger2` **and `Neck`** - under the comment
+  "weaponless caster: clear every equip slot (no Monster.tpl field copy)". If the tracker line meant
+  anything concrete, that is it, and it is done. **ACTION: none.** Re-file with a concrete symptom if
+  a real defect ever surfaces; do not carry an unverifiable ghost in this register.
 
 **Masteries / UI**
 - Occult pane aesthetic (`standardskillbackground_joanna_ver_dark.tex`) + the wired-but-unconfirmed
@@ -448,9 +459,23 @@ along automatically when the structural cluster-relocation fix lands.
   soul already judged a sufficient double reward. Source: docs/OBSIDIAN_ROULETTE_DESIGN.md sec 5.
 - b47 Dorus: rename to a distinct amgoz1-worthy identity + relocate near a Medea tomb/dungeon interior
   - RCA'd, not yet renamed/relocated per the report's own open items. Source: docs/reports/b47_dorus.md.
-- b51 Arachne's Shame / Fetid Lair spawn-chain RCA - identification + baseline diff + git-blame not
-  yet fully closed out in a committed report this sweep found. Source: cross-check vs docs/BACKLOG.md
-  el/soul-audit threads; UNKNOWN-STATUS, re-verify before treating as still open.
+- ~~b51 Arachne's Shame / Fetid Lair spawn-chain RCA - identification + baseline diff + git-blame not
+  yet fully closed out in a committed report this sweep found. UNKNOWN-STATUS.~~ **CLOSED 2026-07-28
+  (`fix/debt-docs`).** The RCA WAS completed - it just never reached main. It lived on the unmerged
+  branch `feat/b51-arachne` (commits `74f1eac` "b51 RCA: Arachne's Shame (Fetid Lair guaranteed hero)
+  - chain INTACT, no systemic break" + `9a72610` "independent replay confirms Arachne's Shame E/L
+  guarantee INTACT - no fix (banned rebalance)"), whose entire diff vs main is the single file
+  `docs/reports/b51_arachnes_shame.md`. That report is now MERGED to this branch. **VERDICT:** the
+  guaranteed Epic/Legendary chain (`jg06_arachnospool - poisonspring c` proxy ->
+  `JG06_Arachnos_PoolB`, `spiderblackwidow01` at `spawnMin=spawnMax=1`, `HeroLimit_All`) is
+  byte-functionally identical to classic SV 0.98i in BOTH the arz and the deployed map; all five
+  brief hypotheses refuted; the sibling sweep over all 809 SV098 E/L proxies found **0** that lost a
+  boss/hero/quest member. **NO FIX APPLIED and none warranted** - altering an intact guarantee would
+  be a forbidden rebalance. RESIDUAL (a test, not a debt item): Will enters a Fetid Lair his Epic
+  character has NOT yet visited (baked non-resetting Act-1 instance = the real explanation for her
+  absence); if she still fails to appear there, escalate to a runtime spawn probe. Note the branch
+  named `feat/b51-fetid-spider` carries NO b51 content - its tip is a build38a commit and it is
+  already an ancestor of main; do not look for the fix there.
 - Sparta Crypt L2 binder: no proven SV binding exists; if shipping, needs either a blob-patch restore
   or a quest teleport (Will decision) - recommended default is defer/drop unless Will wants
   completeness. Source: docs/WALL_INVESTIGATION_STATE.md (or equivalent Sparta-area report).
@@ -3208,8 +3233,22 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
     Quests.arc and it is INERT (failed in-game). Once the map lane makes the portal born-open it
     is fully redundant. RECOMMEND reverting 'quest that controls bosses and their doors.qst' to
     byte-identical SVAERA (drop _add_typhon_rhodes_unlock) for fidelity; harmless if kept.
-    DECISION DEFERRED to coordinator + map-lane mechanism report. If kept, it must remain a
+    ~~DECISION DEFERRED to coordinator + map-lane mechanism report.~~ If kept, it must remain a
     byte-superset (the survival gate-assert still holds).
+  - ✅ **DECISION MADE 2026-07-28 (`fix/debt-docs`): KEEP.** Written into the code at
+    `tools/build_quest_files.py:_add_typhon_rhodes_unlock` (a FIDELITY DECISION docstring block), so
+    the survival gate-asserts now have a stated owner instead of guarding an undecided delta.
+    Rationale: (1) it is a byte-SUPERSET, not a mutation - the only touched file is the
+    already-registered, never-completing controller quest, +804 B of pure append, every SVAERA
+    behaviour preserved verbatim; (2) reverting would NOT restore SVAERA fidelity, because Q3's
+    kill-gated instant unlock builds on the SAME host step, SAME `Action_UnlockFixedItem`, SAME
+    portal record - dropping Q1 only deletes the token + OnLevelLoad RELOAD path, i.e. the thing
+    that gives an EXISTING Typhon-slayer (Will's main) the portal without re-killing the boss;
+    (3) `canReFire=1` + OnLevelLoad makes it idempotent and retroactive, and an unlock on an
+    engine-locked fixed item is a no-op - exactly the observed build30.3 outcome, so keeping it
+    costs nothing at runtime; (4) reverting costs a Quests.arc rebuild + a coupled Levels+Quests
+    redeploy for zero player-visible benefit. IF a future lane reverts it, it must delete the
+    survival asserts with it and record the reversal in `docs/WILL_RULINGS.md`.
   - COUPLED SHIP: map(born-open portal) is the load-bearing change; arz/Quests/Text unchanged on
     the DB lane for Q3.
 - **Q2 QUEUED: PORTAL-MASTER NPC for SV-area travel (Will chose model C; map lane M8b has the
@@ -3393,13 +3432,38 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   they never drop in Acts 1-4 because vanilla loot tables only place them in Act 5. Wire thrown
   weapons into the campaign loot tables (and consider a thrown-weapon soul or two). Will: "we dont
   even have the throwing objects in the game (although I wish we did)".
-- **DESCRIPTION CORRECTIONS for next metadata push (2026-07-09):** (1) known-issues still says the
-  Uber Dungeon return is not wired - build30's M1 wired the crypt_floor1 native return door, remove
-  that line; (2) requirements: state that MULTIPLAYER (joining a session) requires ALL expansions
-  (Ragnarok + Atlantis + Eternal Embers) because the merged world declares all-DLC content
-  (server-join "get DLC" bounce, confirmed by a real player 2026-07-09); single-player hard
-  requirement stays Eternal Embers. Also warn the Steam "get DLC" redirect lands in an empty cart
-  (Steam deep-link bug) - buy from the store pages directly.
+- ~~**DESCRIPTION CORRECTIONS for next metadata push (2026-07-09):** (1) known-issues still says the
+  Uber Dungeon return is not wired ...; (2) requirements: state that MULTIPLAYER requires ALL
+  expansions ... Also warn the Steam "get DLC" redirect lands in an empty cart.~~
+  **✅ BOTH ALREADY SHIPPED - entry was STALE. Verified + closed 2026-07-28 (`fix/debt-docs`).**
+  Commit `02ce3e5` ("Workshop description: MP requires all expansions (byte-verified: 288 XPack2 +
+  258 XPack3 + 726 XPack4 levels indexed in the shipped world), empty-cart Steam bug warning, Uber
+  return door now wired (stale known-issue), condense 07-08 entry for the 8000-char cap") applied
+  both. Present in `docs/WORKSHOP_DESCRIPTION.bbcode` on main today: the requirements list carries
+  the full MP all-DLC line INCLUDING the empty-cart warning, and the Uber Dungeon is described as
+  HAVING a return door.
+  **RESIDUALS FOUND AND FIXED IN THE SAME PASS** (description-as-code only - the metadata PUSH is
+  still Will's/the orchestrator's step, NOT this lane's):
+  - The return-route guidance (GoM/Secret Place shrine + Uber return door) was still sitting under
+    the "Known issues / work in progress" heading even though it describes WORKING behaviour.
+    Moved to the end of "Restored Soulvizier areas" as a "Getting back out" note.
+  - Known-issue "Toxeus the Enslaver ... currently spawns far too often. A big reduction to his
+    spawn rate is coming" is now WRONG on both halves. It is FIXED, and it was NOT fixed by a rate
+    cut: Will's verbatim directive was "no we dont need the 4x rate cut on top" (R-18 STANDING:
+    the weight-1/K=600 rarity is deliberate design), so b49 shipped a BREADTH cut instead
+    (`_EN_SWEEP_FAMILIES = ('undead',)`, 1224 -> 273 pools), merged as `79478c2` into **build40**,
+    which is the canonical build live on Workshop item 3759792705. Rewritten as a FIXED line that
+    also stops promising a rate cut that will never happen.
+  Char budget re-checked: 7,858 of Steam's 8,000 (142 headroom); BBCode tags balanced (5 list /
+  7 h1 / 1 b, all closed).
+  **DO NOT REMOVE on the next push:** the "rare crash deep in the Blood Cave" known-issue is STILL
+  TRUE for the live Workshop build. Will confirmed the crash fixed IN-GAME on 2026-07-27, but that
+  was the DEV map - per BL-b89-DEBT-2 the canonical `Levels_merged.arc` was deliberately NOT
+  packaged or uploaded, so the LIVE item still carries the malformed containers. That line comes
+  out only when the canonical map ships.
+  **STILL TO AUDIT before the next push (not done here, no evidence gathered):** the remaining four
+  known-issues - black mastery-page backgrounds, misplaced/missing mastery skill icons, damage
+  numbers not displaying, language switching - each need a shipped-vs-live check of their own.
 
 - Contract suite - **BUILT + committed** (`tools/contracts/`, branch `feat/contract-suite`). One
   unified 51-contract, 5-lane suite (souls/summons/resources/map/quests) that subsumes BOTH the
