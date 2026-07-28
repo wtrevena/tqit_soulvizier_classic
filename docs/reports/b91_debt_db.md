@@ -372,7 +372,155 @@ cut a one-line change.
 
 ## 6. BUILD + GATES
 
-*(filled in from the wave-2 build; see the BUILD RECORD section appended below)*
+Build: `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 py tools/build_svc_database.py <098i> <0.9> <041>
+work/SoulvizierClassic/Database/SoulvizierClassic.arz <TQAE base>` - **exit 0**, every fail-loud gate
+green. Registry `_check_registry.py` OK, **35 modules**, order hash
+`2675f461554ec2593dc1f8588f22d8644cd68581bd6722bc999f8d1998b31b10`.
+
+### Baseline provenance (determinism proof)
+
+The lane's baseline arz was rebuilt from THIS worktree at `main` @ `89d3e52` before any change, and
+came out at md5 **`c1a8fa2aee5e6eb88b641b28d7dc6ae4`** - **byte-identical to the arz b90 shipped**
+(`docs/reports/b90_toxeus_souls_100pct.md` section 4). So the whole pipeline reproduces exactly here,
+and every diff below is attributable to this lane alone.
+
+### RECORD-DIFF vs `local/baseline_debtdb.arz` - intended-only
+
+```
+ADDED   : 4        REMOVED : 0        MODIFIED: 184
+
+-- ADDED (4) --
+  + records\skills\soulskills\pets\emberteeth_1.dbr
+  + records\skills\soulskills\pets\emberteeth_2.dbr
+  + records\skills\soulskills\pets\emberteeth_3.dbr
+  + records\skills\soulskills\summon_emberteeth.dbr
+
+-- CHANGED FIELDS, complete histogram (184 records) --
+  177  particleEffectName2      B-FX-DANGLING-1 strip
+  176  particleEffectName3      B-FX-DANGLING-1 strip      = 353 slots, the filed count
+    3  itemSkillName            emberteeth_soul_{n,e,l} -> summon_emberteeth
+    3  itemSkillLevel           emberteeth_soul_{n,e,l} -> 1 / 2 / 3
+    2  chanceToEquipFinger2     um_legion_28c 66->50, um_possessedboar_spirit 66->50 (R-42)
+    1  skillName1               um_emberteeth bare-filename repoint (BL-103)
+    1  bumpTexture              supra wep_spear DRX skin strip (finishes F3)
+```
+
+**Seven field names, zero surprises, 0 records removed.** 184 = 177 Chris records + `wep_spear` +
+`um_legion_28c` + `um_possessedboar_spirit` + `um_emberteeth` + 3 soul tiers.
+
+### In-build module output
+
+```
+Roaming-sweep gate OK: 273 eligible undead-family trash pools carry the Enslaver at weight 1
+  (p_slot <= 1/24000), limit 1; b49 BREADTH RESTRICT holds (band 200-400, was ~1224 all-family)
+  -- 0 non-lineage / boss / quest / hero / escort / friendly pools touched; boss+marauder at
+  band [40, 68, 100]. Leak guard: all 275 enslaver-bearing pools are swept-or-yard.
+      ^ this run also passes the NEW check 0b (marauder defensive ceilings + DPS floors)
+        and the NEW check 3c (adjacency assertion: exactly one enslaver slot per swept pool)
+
+emberteeth_summon [BL-103]: repointed 1 dead BARE-filename skill ref on um_emberteeth
+  (retaliation_1fireperlevelx100levels.dbr -> the canonical monster-skills path); his
+  fire-retaliation passive has never resolved on the WILD hero either - this fixes both.
+emberteeth_summon: 3 permanent pets from um_emberteeth's own rig (Hero band [18, 43, 58],
+  life [2400.0, 6000.0, 9500.0]) + manual-cast summon button; all 3 soul tiers wired 1/2/3
+  with every pre-existing fire stat intact
+    emberteeth_summon: modified 8 record(s), 1 tag(s)
+
+fx_dangling_cleanup: 3/3 build30-F7a pcsafe record(s) had been RE-MINTED with the dangling ref
+  by the B-SOUL-PROC-2 clone step after F7a ran; this sweep re-strips them.
+fx_dangling_cleanup: stripped 359 dangling UnarmedProjectile_FX01 particleEffectName slot(s)
+  across 180 record(s) (base-game absence parity; paired particleEffectAttachPoint slots
+  deliberately KEPT - vanilla ships them orphaned); stripped 1 leftover DRX skin field(s) on
+  wep_spear (finishes build30 F3). Scope proof: exactly 181/51089 records changed, all intended.
+```
+
+> The in-build 359/180 vs the diff's 353/177 is the 3 `pcsafe` clones: they exist WITH the ref at
+> registry time and end up without it in the final arz in BOTH builds, so they net to zero in the
+> diff. `verify()` re-checks the post-clone state and reports 0 survivors.
+
+### Module verify hooks (step 4, over the FINAL merged db)
+
+```
+emberteeth_summon.verify OK: 3 permanent Emberteeth pets on his own mesh + race, manual-cast
+  summon button (non-nymph icon), all 3 soul tiers at itemSkillLevel 1/2/3 with their fire
+  payload intact
+fx_dangling_cleanup.verify OK: 0 Chris particle refs remain; 34 dyingFxPak ref(s) all resolve
+  [union(mod+base)]; 6/6 summoned bloodhounds on fxpak_deathfx_burst; wep_spear DRX skin
+  fields absent
+```
+
+### Gate battery
+
+| Gate | Result |
+|---|---|
+| `tools/patches/_check_registry.py` | **OK** - 35 modules |
+| B-SUMMON-1 summon-pet validator (in-build) | **PASS** - caught the real `um_emberteeth` defect on round 3, green after the BL-103 repoint |
+| A7 Occult/Hunting golden | **PASS** (84 waived, 0 other) |
+| A9 render chain | **PASS** (22 upstream WARNs, unchanged) |
+| b77 unlock-alignment | **PASS** - 238 live buttons, 13/13 waivers |
+| F2 summons contract (in-build) | **GATE: PASS** - 112 violations, 0 P0 / 0 P1 |
+| `tools/validate_tags.py` | **PASS** - 357/357 referenced mod tags present, 418/418 authoritative tags present (2 pre-existing base/SV `tagNewMonster` WARNs, unchanged, non-blocking) |
+| `tools/verify_soul_drop_rates.py --gate` | **PASS (exit 0)** - see below |
+
+### `verify_soul_drop_rates.py --gate` (the R-42 fold-in's own gate)
+
+```
+OK  um_legion_28c              Hero  RANDOM_HERO(50)   arz= 50.0%  (want 50%)     <- the ruling
+OK  um_possessedboar_spirit    Hero  RANDOM_HERO(50)   arz= 50.0%  (want 50%)     <- its only sibling
+OK  um_charonform2_ferryman_99 Boss  PLACED_UBER(66)   arz= 66.0%  (want 66%)     <- never over-cut
+OK  um_polisgaoler_unbound_99  Boss  PLACED_UBER(66)   arz= 66.0%  (want 66%)
+OK  um_tantalus_unbound_99     Boss  PLACED_UBER(66)   arz= 66.0%  (want 66%)
+OK  um_toxeus_enslaver_99      Boss  PLACED_UBER(66)   arz=100.0%  (want 100%)    <- R-48 intact
+OK  um_bloodtoxeus_99          Boss  PLACED_UBER(66)   arz=100.0%  (want 100%)    <- R-48 intact
+... every other named record unchanged (camelbane/morth/crowboar/xix/frost/junshan/grom/
+    bloodwing 50, legion_28 0, vashkarr/broodmother 66, hadesmarshal 66, tantalus 0)
+
+NEGATIVE TEST: R-42 death-transform provenance closure
+  OK  closure ON  : legion terminal -> RANDOM 50                        50.0 (want 50)
+  OK  closure OFF : legion terminal falls back to 66 (planted regression) 66.0 (want 66)
+  OK  closure ON  : PLACED chain terminal STAYS 66 (never over-cut)      66.0 (want 66)
+  OK  no backward flow: head stays out of the terminal-seeded closure     1.0 (want 1)
+  OK  cycle safety: a self-loop terminates                               2.0 (want 2)
+
+NEGATIVE TEST: per-record veto override knobs                    -> 6/6 OK
+NEGATIVE TEST: planted post-wire writer                          -> gate CAUGHT it
+
+PASS
+```
+
+### Contract suite - the STRICTLY NEGATIVE delta B-FX-DANGLING-1 required
+
+Identical command over the pre-change baseline arz vs the built arz:
+
+| module | BASELINE | BUILT | delta |
+|---|---|---|---|
+| `contracts_souls` | 0 P0 / 0 P1 / 0 P2 | 0 P0 / 0 P1 / 0 P2 | 0 |
+| `contracts_summons` | 0 P0 / 0 P1 / 112 P2 | 0 P0 / 0 P1 / 112 P2 | 0 |
+| `contracts_resources` | 0 P0 / **1252 P1** / **3541 P2** | 0 P0 / **1157 P1** / **3461 P2** | **-95 P1, -80 P2** |
+| **TOTAL** | **4905** (0 P0, 1252 P1, 3653 P2) | **4730** (0 P0, 1157 P1, 3573 P2) | **-175, all negative** |
+
+`C-RES-DBR-1` alone drops **768 -> 673** (-95) - the dangling `.dbr` refs this lane removed. **0 P0
+in both, and not a single violation class went UP.** The residual `contracts_resources` FAIL is the
+pre-existing volume already registered as BL-b90-DEBT-1; this lane reduced it and did not cause it.
+
+### Hashes
+
+| artifact | md5 |
+|---|---|
+| `work/.../Database/SoulvizierClassic.arz` (NEW) | `22cf6b6e7acb940e5a4698d079ab1955` |
+| `work/.../Resources/Text.arc` (NEW - carries `tagSVCSummonEmberteeth`) | `cec3194e615fa4fb00488203a901eff3` |
+| `work/.../Database/uber_soul_tags.txt` (build-emitted) | `db91b80c6c6f656ed7cb015781a81b92` |
+| baseline arz (pre-change; == the b90 shipped arz) | `c1a8fa2aee5e6eb88b641b28d7dc6ae4` |
+| baseline Text.arc (pre-change) | `fcca49277b9d31ed451e4a6843898843` |
+
+**arz + Text are a COUPLED PAIR** - the new `tagSVCSummonEmberteeth` means the arz must never ship
+without this Text.arc.
+
+### NO-MAP proof
+
+`Quests.arc` = `5e664c7b190965fd69f6ff15d77d85e4` - byte-identical to the main repo's staged copy,
+untouched. `Levels.arc` in this worktree is a hardlink of the main repo's staged map and was never
+written (no map tool ran in this lane). **Nothing was deployed; nothing was uploaded to Steam.**
 
 ## 7. DEBT REGISTER (standing law 4)
 

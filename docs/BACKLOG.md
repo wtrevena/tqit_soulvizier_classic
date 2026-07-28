@@ -2,9 +2,42 @@
 
 ## b91 DEBT-CLEARANCE LANE (domain `db`, 2026-07-28, branch `fix/debt-db`) - 5 items CLOSED
 
-DB-ONLY lane (arz + Text). **NO map rebuild, NO deploy, NO Steam.** Full report:
+DB-ONLY lane (arz + Text COUPLED PAIR - the new `tagSVCSummonEmberteeth` means the arz must never
+ship without the new Text.arc). **NO map rebuild, NO deploy, NO Steam.** Full report:
 `docs/reports/b91_debt_db.md`. Registry order hash
 `2675f461554ec2593dc1f8588f22d8644cd68581bd6722bc999f8d1998b31b10` (35 modules).
+
+**RECORD-DIFF vs the pre-change baseline: 4 added / 0 removed / 184 modified, intended-only.**
+Seven changed field names in total: `particleEffectName2` x177 + `particleEffectName3` x176 (= the
+353 filed slots), `itemSkillName`/`itemSkillLevel` x3 each (the Emberteeth soul tiers),
+`chanceToEquipFinger2` x2 (`um_legion_28c` + `um_possessedboar_spirit`, 66 -> 50),
+`skillName1` x1 (the BL-103 Emberteeth repoint), `bumpTexture` x1 (wep_spear, finishes F3). The 4
+added records are the 3 Emberteeth pets + his summon skill.
+
+**BASELINE PROVENANCE / DETERMINISM PROOF:** the lane's baseline arz, rebuilt from this worktree at
+`main` @ `89d3e52` before any change, came out at md5 `c1a8fa2aee5e6eb88b641b28d7dc6ae4` -
+**byte-identical to the arz b90 shipped**. The whole pipeline reproduces exactly, so every diff is
+attributable to this lane alone.
+
+**GATES:** registry OK (35 modules) | B-SUMMON-1 summon-pet validator PASS | A7 golden PASS (84
+waived) | A9 render chain PASS | b77 unlock-alignment PASS | F2 summons contract GATE PASS (0 P0 /
+0 P1 / 112 P2) | `validate_tags` PASS (357/357 referenced, 418/418 authoritative) |
+`verify_soul_drop_rates --gate` PASS incl. a NEW planted-regression test for the R-42 closure.
+
+**CONTRACT DELTA (the strictly-negative gate B-FX-DANGLING-1 required):** identical command over the
+baseline vs the built arz - souls 0/0/0 both; summons 0 P0 / 0 P1 / 112 P2 both; **resources
+1252 P1 -> 1157 P1 and 3541 P2 -> 3461 P2**; total **4905 -> 4730**. `C-RES-DBR-1` alone drops
+768 -> 673. **0 P0 in both and not a single violation class went UP.** The residual
+`contracts_resources` FAIL is the pre-existing volume already filed as BL-b90-DEBT-1 - this lane
+reduced it, it did not cause it.
+
+| artifact | md5 |
+|---|---|
+| `work/.../Database/SoulvizierClassic.arz` NEW | `22cf6b6e7acb940e5a4698d079ab1955` |
+| `work/.../Resources/Text.arc` NEW (carries `tagSVCSummonEmberteeth`) | `cec3194e615fa4fb00488203a901eff3` |
+| `work/.../Database/uber_soul_tags.txt` (build-emitted) | `db91b80c6c6f656ed7cb015781a81b92` |
+| baseline arz (pre-change; == the b90 shipped arz) | `c1a8fa2aee5e6eb88b641b28d7dc6ae4` |
+| `Resources/Quests.arc` BEFORE == AFTER | `5e664c7b190965fd69f6ff15d77d85e4` |
 
 | item | verdict |
 |---|---|
