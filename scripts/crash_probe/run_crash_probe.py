@@ -43,7 +43,50 @@ except Exception:
 REPO = Path(__file__).resolve().parents[2]
 JS_PATH = REPO / 'scripts' / 'crash_probe' / 'rltd_crash_probe.js'
 OUT_DIR = REPO / 'local' / 'crash_probe'
+LOCK_PATH = OUT_DIR / 'probe.lock'
 sys.path.insert(0, str(REPO / 'tools'))
+
+
+def _pid_alive(pid):
+    """True if a process with this pid exists (Windows: tasklist filter)."""
+    try:
+        import subprocess
+        out = subprocess.run(['tasklist', '/FI', f'PID eq {pid}', '/NH'],
+                             capture_output=True, text=True, timeout=15).stdout
+        return str(pid) in out
+    except Exception:
+        return True   # cannot tell -> assume alive (fail safe: refuse to start a second probe)
+
+
+def acquire_single_instance_lock():
+    """Refuse to run if another probe is already live.
+
+    Two probes attaching to the same TQ.exe install duplicate Interceptor hooks at
+    the same engine addresses. That destabilises a 32-bit target and can crash the
+    game on startup - it did on 2026-07-27, when stale waiting probes from earlier
+    launches all attached at once. One probe, always.
+    """
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if LOCK_PATH.exists():
+        try:
+            holder = int(LOCK_PATH.read_text(encoding='utf-8').split()[0])
+        except Exception:
+            holder = None
+        if holder and holder != os.getpid() and _pid_alive(holder):
+            raise SystemExit(
+                f"ANOTHER CRASH PROBE IS ALREADY RUNNING (pid {holder}).\n"
+                f"Two probes hooking the same TQ.exe can crash the game. Stop that one first\n"
+                f"(taskkill /PID {holder} /F), or delete {LOCK_PATH} if it is stale.")
+        LOCK_PATH.unlink(missing_ok=True)   # stale lock from a dead probe
+    LOCK_PATH.write_text(f"{os.getpid()}\n", encoding='utf-8')
+
+
+def release_single_instance_lock():
+    try:
+        if LOCK_PATH.exists() and LOCK_PATH.read_text(encoding='utf-8').split()[0] == str(os.getpid()):
+            LOCK_PATH.unlink()
+    except Exception:
+        pass
 
 # Tiers -> which hot hooks the agent installs. The chamber-identity signal (the
 # decisive datum) is captured at every tier; the tiers differ only in the
@@ -258,14 +301,19 @@ class Probe:
 
 def main():
     ap = argparse.ArgumentParser(description="Attach the RLTD navmesh crash probe to a RUNNING TQ.exe (read-only).")
-    ap.add_argument('--tier', choices=list(TIERS), default='allocs',
-                    help="how much to capture (default: allocs). chambers=lightest; full=+memcpy (hot).")
+    ap.add_argument('--tier', choices=list(TIERS), default='chambers',
+                    help="how much to capture (DEFAULT: chambers = SAFEST: only ProcessRLTD enter/leave, "
+                         "no hot-path hooks). 'allocs'/'full' add per-tile alloc/memcpy hooks that fire on "
+                         "hot paths and add real overhead in the 32-bit target - opt in only when the "
+                         "chamber identity alone is not enough.")
     ap.add_argument('--map', default=None, help="override deployed Levels.arc (else auto-discover, DEV preferred).")
     ap.add_argument('--process', default='TQ.exe', help="target process name (default TQ.exe).")
     ap.add_argument('--wait-min', type=float, default=60.0, help="minutes to poll for the process (default 60).")
-    ap.add_argument('--no-gate', action='store_true',
-                    help="skip the mid-function gate hook (Engine+0x1b4158). ProcessRLTD enter/leave still "
-                         "identifies the crashing chamber. Use only if the gate hook seems to destabilise the game.")
+    ap.add_argument('--gate', action='store_true',
+                    help="ALSO hook the mid-function nav gate (Engine+0x1b4158). OFF BY DEFAULT: it is the "
+                         "riskiest hook (mid-function trampoline in a hot streaming path) and its 'load=?' "
+                         "guid field proved to be a transient value, not chamber identity. ProcessRLTD "
+                         "enter/leave alone identifies the crashing chamber.")
     ap.add_argument('--self-test', action='store_true',
                     help="validate map parse + render the agent JS and EXIT. Does NOT attach to any process.")
     ap.add_argument('--loop', action='store_true',
@@ -275,7 +323,7 @@ def main():
     args = ap.parse_args()
 
     cfg = dict(TIERS[args.tier])
-    cfg['gate'] = not args.no_gate
+    cfg['gate'] = bool(args.gate)
     map_path = discover_map(args.map)
     print(f"deployed map: {map_path}", flush=True)
     print("parsing LEVELS section (index/GUID -> chamber name) ...", flush=True)
@@ -295,6 +343,8 @@ def main():
         return 0
 
     import frida  # imported here so --self-test works even if frida were absent
+
+    acquire_single_instance_lock()   # never let two probes hook the same TQ.exe
 
     def run_session():
         """Attach to one TQ.exe lifetime and capture until it crashes/exits.
@@ -400,4 +450,7 @@ def main():
 
 
 if __name__ == '__main__':
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    finally:
+        release_single_instance_lock()
