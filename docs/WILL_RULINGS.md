@@ -297,7 +297,7 @@
   touch the Hero/Boss/Quest soul-drop gate in `wire_souls_to_monsters` (the yeti Common/Champion
   lesson): both champions are `monsterClassification=Boss`, so the gate never applied to them and
   no Common/Champion is re-enabled. See docs/reports/b90_toxeus_souls_100pct.md.
-- R-49 [2026-07-14] IMPLEMENTED b91 (fix/debt-db, 2026-07-28), verbatim: "emberteeth soul should let
+- R-71 [2026-07-14] IMPLEMENTED b91 (fix/debt-db, 2026-07-28) *(appended by the debt-db lane as a THIRD colliding R-49; renumbered into the Souls overflow decade 70-79 by the debt-wave integration - R-49 belongs to the fix/devourer-chest lane, 2026-07-27)*, verbatim: "emberteeth soul should let
   you summon him." Ground truth first: `emberteeth_soul_{n,e,l}` granted NO skill at all (a pure
   fire-stat ring), so the feature was genuinely unbuilt. Built via the standard boss-summon recipe -
   3 permanent pets from `um_emberteeth`'s OWN rig through the shared `_build_boss_summon` pipeline
@@ -310,8 +310,8 @@
   `tools/patches/emberteeth_summon.py` (registry module + `verify()` hook). Life band derived from
   the roster's lesser-summon life-per-charLevel cluster rather than invented. Player-surface
   checklist in `docs/reports/b91_debt_db.md` sec 3; the pet-bar portrait falls back to the neutral
-  summon-proxy (no `chimera_party_*` art ships) - a bespoke portrait is registered as BL-b91-DEBT-2,
-  NOT silently deferred. In-game confirmation is launch-gated (BL-b91-DEBT-4): test on a FRESHLY
+  summon-proxy (no `chimera_party_*` art ships) - a bespoke portrait is registered as BL-b91-DEBT-8,
+  NOT silently deferred. In-game confirmation is launch-gated (BL-b91-DEBT-10): test on a FRESHLY
   DROPPED soul, since TQ bakes item properties at pickup. Source: docs/BACKLOG.md "QUEUED FEATURE:
   SOUL-EMBERTEETH-SUMMON (APPROVED by Will 2026-07-14)".
 - R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class

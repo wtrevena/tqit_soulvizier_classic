@@ -356,6 +356,18 @@ def placed_uber_roster(db):
                           if f.lower() not in seen)
     shared_forms = [(f, ps) for f, ps in shared_forms if ps]
 
+    # ...and, for the same reason, a record that rule A filed as a soul-less
+    # "add" is NOT an add if rule B ultimately claimed it as a DEDICATED chain
+    # form. A transform stage pays no soul of its own, so rule A always sees it
+    # that way; only the fixpoint knows whether it belongs to the roster.
+    # This became reachable in the 2026-07-28 debt-wave integration: fix/debt-db
+    # closes soul_spawn_provenance_sets() forward over actorToSpawnOnDeath
+    # (the R-42 legion fold-in), so placed provenance now reaches transform
+    # stages and rule A sees forms it never used to. Marking output is
+    # unaffected (roster stays 25 / 23 newly marked); this keeps the REPORT and
+    # the plant-3 invariant ("no add is also a target") honest.
+    excluded_adds = [a for a in excluded_adds if a.lower() not in seen]
+
     return targets, excluded_adds, shared_forms, mesh_noise
 
 
