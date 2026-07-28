@@ -16,6 +16,10 @@
 >   of a respawn/save chamber, which no static bisect or GUID-resolution check can see. b87 proves
 >   the full chain (navOK=0 -> region null-deref at Engine RVA 0x20e270) on the binaries and ships
 >   the residency gate MAP-NAV-4.
+> - **CORRECTION 2026-07-28 (BL-b89-DEBT-4A):** the b87 chain quoted on the line above is
+>   **REFUTED** - `navOK=0` at ENTER is the normal in-progress state, not a rejection
+>   (`docs/reports/b89_ocean_ext05_hotfix.md` sec 1). The real crash class was the malformed
+>   148-byte REC02 body (MAP-NAV-5/MAP-NAV-6); MAP-NAV-4 is now a P2 shape advisory only.
 
 
 Branch: `fix/bloodcave-bisect` (worktree). Base: main `07db9dc` = build47 (LIVE on Steam + DEV).

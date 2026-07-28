@@ -304,16 +304,50 @@ along automatically when the structural cluster-relocation fix lands.
   Steam ship (item 3759792705) is VALIDATED. The fallback (no `0x0b` section at all + a strip-only
   path in `inject_rec02_into_blob`) is NOT needed and is retired unless a future ocean/empty
   chamber regresses. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 5.
-- **BL-b89-DEBT-4 (P2, NEW - stale gate on a refuted premise):** `MAP-NAV-4` (respawn-shrine +
-  multi-GUID + SV-custom provenance) was authored from the **b87 theory that the 2026-07-27 runtime
-  captures REFUTED** (`navOK=0` is the normal in-progress state, not a rejection signal). Its two
-  whitelisted "latent" chambers (`drxBC3`, `RogueEncampment`) were therefore flagged on a dead
-  premise, and the REAL defect class (malformed container BODIES) is now gated properly by
-  `MAP-NAV-5`/`MAP-NAV-6`. ACTION: re-justify `MAP-NAV-4` on current evidence or retire it with the
-  whitelist (retirement protocol applies - check the ledger first). Also review whether build48's
-  fix A (`new_secretdoor` collapsed to own-only, shipped on the refuted theory) should stay: it is
-  structurally valid and stock-normal, so it is harmless, but it is an unjustified delta from
-  build47 and should be either re-justified or reverted for provenance hygiene.
+- ~~**BL-b89-DEBT-4A (P2, was "BL-b89-DEBT-4 - stale gate on a refuted premise"):** `MAP-NAV-4`
+  (respawn-shrine + multi-GUID + SV-custom provenance) was authored from the **b87 theory that the
+  2026-07-27 runtime captures REFUTED** (`navOK=0` is the normal in-progress state, not a rejection
+  signal). Its two whitelisted "latent" chambers (`drxBC3`, `RogueEncampment`) were therefore
+  flagged on a dead premise, and the REAL defect class (malformed container BODIES) is now gated
+  properly by `MAP-NAV-5`/`MAP-NAV-6`.~~
+  **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`) - MAP-NAV-4 RE-SCOPED TO A P2 ADVISORY, WHITELIST
+  ENTRIES REMOVED, FIX A RE-JUSTIFIED AND KEPT.** Chose re-scope over retirement (nothing deleted).
+  - **RETIREMENT PROTOCOL, done first:** swept `docs/WILL_RULINGS.md` R-1..R-61 for any ruling
+    naming MAP-NAV-4, isolated-load, co-residency, respawn-chamber navmeshes or `drxBC3` /
+    `RogueEncampment` - **none**. No Will design intent is attached to this gate, so re-scoping it
+    needs no ruling change; `WILL_RULINGS.md` is deliberately left untouched by this item.
+  - **Severity demoted P0 -> P2** in `contracts_map.contract_navmesh_coresidency` (both the finding
+    and the cannot-run guard) and in the `CONTRACTS` registry entry, whose `name`/`asserts`/
+    `derived_from` now state the refutation instead of the dead crash law. `scan_isolated_load_risk`
+    carries a boxed EVIDENCE STATUS header separating what is refuted (navOK=0 as a rejection
+    signal; the "SV-custom multi-GUID respawn chamber crashes" inference) from what survives
+    (ProcessRLTD's per-GUID residency check is still disasm-proven; `guid_count == 1` is
+    stock-normal in 251 base levels AND runtime-proven on our map, so it is residency-proof by
+    construction). It is now an honest **hardening preference**, not a demonstrated defect class.
+  - **Both whitelist entries REMOVED** from `tools/contracts/whitelist_map.txt` (`drxBC3`,
+    `XPack\Levels\Secret_Place\RogueEncampment.lvl`). They were suppressed as "latent P0 crashes" -
+    the exact false claim this debt item flagged. A P2 never gates, so suppression was both
+    unnecessary and a hiding place; the replacement comment block forbids re-adding MAP-NAV-4
+    suppressions. Both chambers now appear in the battery as visible P2 advisories.
+  - `gate_navmesh_coresidency.py` is now an **advisory reporter**: exits 0 by default, `--strict`
+    restores fail-on-finding. Its negtest gained **case E** (the battery contract MUST emit P2 - a
+    regression back to P0 fails the test) and **case F** (a cannot-run advisory must still report,
+    at P2, never silently pass).
+  - **build48 fix A (`new_secretdoor` collapsed to own-only): KEPT, re-justified on CURRENT
+    evidence.** `guid_count == 1` is independently stock-normal (251 base levels) and runtime-proven
+    on our own map - probe session B shows `new_secretdoor_transitionhallway` at gc=1 with a clean
+    ENTER+LEAVE `al=1` (`docs/reports/b89_ocean_ext05_hotfix.md` sec 5). Its walkable footprint was
+    preserved byte-for-byte, so reverting would churn the map (and the live DEV deploy) for no
+    benefit. **Not reverted.**
+  - `docs/reports/b87_bloodcave_navok_rca.md` gained a ⛔ REFUTED-PREMISE status header naming which
+    sections are now historical and which conclusion survives; the body is preserved verbatim as the
+    decision record.
+  - **PROOF:** `gate_navmesh_coresidency.py --negtest` **PASS** (A/B/C/D scope + E/F severity).
+    `_negtest_map.py` **38/38 PASS**. Standalone reporter on `work/.../Levels.arc` (build49
+    canonical): 4 SV-custom respawn chambers checked, 2 advisories (`RogueEncampment` gc=3,
+    `drxBC3` gc=6), **exit 0**. Full `--only map` battery: **0 P0 / 0 P1 / 5 P2, GATE PASS** - the
+    2 now-unsuppressed MAP-NAV-4 advisories plus the 3 pre-existing base-game portal-noise P2s
+    (XPack4 Dunes, Styx). No map rebuild: this item is contract-side only.
 - **BL-b89-DEBT-2 (P1):** **Steam/canonical map is NOT shipped this wave.** The canonical
   `Levels_merged.arc` carries the same 8 malformed containers, so the LIVE Workshop build
   (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
@@ -325,7 +359,9 @@ along automatically when the structural cluster-relocation fix lands.
   `docs/CUT_CONTENT.md`'s "never intended to be entered / permanently cut" is wrong for those 6.
   Owner/trigger: a map-docs pass; harmless today because `MAP-NAV-5`/`-6` deliberately ignore
   cut-ness. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 4.
-- **BL-b89-DEBT-4 (P2):** `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
+- **BL-b89-DEBT-5 (P2)** *(renumbered 2026-07-28: this entry was filed as a SECOND "BL-b89-DEBT-4",
+  colliding with the MAP-NAV-4 item above - two different debts under one id)***:**
+  `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
   EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
   (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
   that rebuilds the map needs those set. Owner/trigger: restore the caches or bake the fallbacks in.
