@@ -433,6 +433,28 @@ along automatically when the structural cluster-relocation fix lands.
   sealed SV areas still fully sealed (Sparta Crypt L2 + Uber Dungeon crypt_floor1 were wired); needs a
   map-lane NPC placement before the quest-lane enter-offer pattern can apply. Source: docs/
   reports/b62_travelers_into_areas.md; docs/BACKLOG.md ~line 2898 "OPEN WILL Qs".
+  **STATUS 2026-07-28 (MURDERBOSSROOM-NPC, debt-map lane): MAP-SIDE BLOCKER RESOLVED, FEATURE NOT
+  SHIPPED - still OPEN, now UNBLOCKED and fully specced.** The thing this item was actually stuck on
+  (a navmesh-verified interior landing in a box-isolated level) now exists and is gated:
+  - Surveyed `XPack/Levels/Secret_Place/murderbossroom.lvl` (v0x0e, corner `(-3592,0,-5955)`, 16
+    `0x05` instances, `0x14`=0, `0x0b` 70,910 B): **80,608 walkable cells in exactly ONE component**
+    across all 3 tilesets - no partition risk.
+  - **LANDING = level-local `(54.0, 3.0, 18.0)` = world `(-3538, 3, -5937)`;
+    interior RETURN NPC = level-local `(51.0, 3.0, 16.0)` = world `(-3541, 3, -5939)`**, 3.61u apart
+    (the proven `svc_testhub_return_sparta`/`_uber` ~3u pattern) and **16-18u clear of the
+    `murderbunny` crow boss** at local `(54,3,34)` - deliberately outside the set-piece per the b44
+    deadly-landing lesson. Both on-mesh d=0.14u, clearance 100% at ext=3.0, component #1.
+  - **`tools/debug/gate_landing_clearance.py` (G-LAND) = PASS**, run with the interior NPC supplied
+    as a PLANNED placement so the landing is gated against an entity not yet on the map: nearest
+    neighbours 3.61u (planned NPC) / 6.00u (archway prop) / 7.24u (urn) / 16.00u (the boss); every
+    per-class threshold cleared, nothing inside the 1.5u PIN radius. `SUMMARY PASS=1`.
+  - **NOT shipped, and deliberately nothing half-wired:** no enter-offer exists without its paired
+    return because neither was written. Remaining work is a cross-lane wave, enumerated step by step
+    (DB record + 2 Text tags + 1 `INJECT_SPECS` line + the `TRAVELER_ENTER_OFFERS` entry + gates)
+    in `docs/reports/b62_travelers_into_areas.md` under "UPDATE 2026-07-28". Hard constraints for
+    whoever picks it up: **WARDEN LAW** (the new boat-dialog record must be placed exactly once),
+    **the map placement and the enter-offer must land in the SAME commit** (P0-A "no way back"), and
+    **Will's walk test gates the canonical/Steam ship**. Owner/trigger: a combined DB+map+quest wave.
 - M1 (HV01) pet-test yard spacing: shipped at 32.25u vs the original >=60u ask - geometrically
   infeasible in HV01's ~4,470 sq-unit floor at 10 groups; Will's decision open between (a) accept
   32.25u [recommended], (b) cut group count to fit 60u, (c) relocate the yard to a larger host.
