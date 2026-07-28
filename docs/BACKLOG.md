@@ -72,7 +72,38 @@ could not be rebuilt at all (bare `FileNotFoundError` deep in `ArcArchive`). Bot
 `SVC_SVAERA_ARC` / `SVC_SV_ARC` (defaults unchanged) and fail loud naming the variable. SVAERA base
 found at Steam Workshop item `2076433374`.
 
-**REPORT:** `docs/reports/b89_ocean_ext05_hotfix.md`.
+**PROOFS (all green):**
+- **Donor reproduction:** all 39 `.0b.bin` regenerated at HEAD (`--cluster all`) come out
+  byte-size-identical to the deployed build48 map's `0x0b` sections, incl. `new_secretdoor` 157,898 B
+  (`COLLAPSED gc=3->1`). So the rebuild reproduces build48 and any map delta is this fix.
+- **Blob-diff, new TESTHUB vs DEPLOYED build48 (`c1e814e4`): EXACTLY 8 level blobs changed**
+  (`EXPECT-SET MATCH`), each `0x0b 148->224`, `struct TRUNCATED->OK`, `gc=3 distinct=1 -> gc=1`.
+  `DATA` `+608` B exactly (8 x 76, the predicted delta); `LEVELS` same size (pure offset cascade);
+  **QUESTS byte-identical**, as are GROUPS/SD/BITMAPS/DATA2/0x10.
+- `verify_merged_bc_navmeshes`: **24/24 real (bytes+center) + 7 `ok ocean empty-container (valid)`**
+  on BOTH variants, exit 0.
+- `audit_navmesh_guid_lists` both variants: **0 structurally invalid / 0 degenerate / 0 unresolvable**;
+  own-only 260 -> 268.
+- Full map battery `--only map` BOTH variants: **GATE PASS (0 P0 / 0 P1)**; only the 3 pre-existing
+  base-game P2 portal-noise items (XPack4 Dunes + Styx) build48 also had.
+- **END-TO-END GATE PROOF:** the same battery against the CURRENTLY DEPLOYED (broken) map **FAILS**
+  with **16 P0 = MAP-NAV-5 x8 + MAP-NAV-6 x8**, exit 1.
+- `MAP-NAV-4` negtest PASS; on both rebuilt variants it flags **exactly the 2 whitelisted debt
+  chambers** (`drxBC3`, `RogueEncampment`) - unchanged vs build48, no regression.
+- `_negtest_map.py` **38/38 PASS**.
+- **HASHES:** canonical `Levels_merged.arc` md5 `fc0adcc0713839a685b32d6e122653be` (688,691,547 B);
+  TESTHUB `Levels_merged_TESTHUB.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe` (688,679,840 B).
+  Rollback copy of the live build48 DEV map: `local/build_b89/DEV_Levels_deployed_prev.arc`
+  (`c1e814e4...`, 688,679,775 B).
+**DEPLOY:** Will's **TQ.exe (pid 30076) was RUNNING** and holding `SoulvizierClassicDEV/Resources/
+Levels.arc` exclusively open, and killing his game is never an option - so the copy could not land
+in-session. Armed instead via the new `scripts/deploy_dev_levels.ps1 -WaitForTQ`: waits for TQ to
+exit, re-checks after a settle (returns to waiting if the game reappears), copies to a temp IN the
+target dir, md5-verifies it, then atomically replaces - an interrupted run can never leave a
+half-written map - then verifies deployed==built and re-hashes siblings. DEV siblings before (this
+lane changes none): arz `5a3c016b`, Text `fcca4927`, Quests `5e664c7b`. **NO Steam packaging**
+(walk-test-gated; canonical carries the same defect - BL-b89-DEBT-2).
+**REPORT:** `docs/reports/b89_ocean_ext05_hotfix.md`. Walk test: `docs/WILL_TEST_GUIDE.md` top section.
 
 ## B87 FIX A round 1 SHIPPED-TO-DEV (2026-07-17, branch `fix/navok-mapfix`, tag `build48-dev`)
 **Fix A (single-own-GUID) implemented in the PIPELINE for `new_secretdoor_transitionhallway` ONLY

@@ -45,7 +45,7 @@ sys.path.insert(0, str(REPO / 'tools' / 'debug'))
 
 from arc_patcher import ArcArchive                                    # noqa: E402
 from merge_levels_binary import parse_sections, parse_level_index, SEC_LEVELS  # noqa: E402
-from build_section_surgery import parse_blob_sections                 # noqa: E402
+from build_section_surgery import parse_blob_sections, EMPTY_REC02_SIZE  # noqa: E402
 from rec02_format import parse_rec02                                  # noqa: E402
 from gen_rec02 import load_tok_mesh, rasterize, erode, stamp_obstacles, \
     PAD, CS, ERODE_CELLS                                              # noqa: E402
@@ -259,8 +259,11 @@ def main():
     msec, _ = parse_blob_sections(mblob)
     m0b = next((s['data'] for s in msec if s['type'] == 0x0b), None)
     has0a = any(s['type'] == 0x0a for s in msec)
-    if m0b is None or len(m0b) == 148:
-        print(f'  MERGED {stem}: 0x0b {"absent" if m0b is None else "= 148B stub"} '
+    # b89: the no-geometry fallback container is 224 B since 2026-07-27 (was the
+    # malformed 148-byte Approach-22 stub). Accept BOTH so this diagnostic still
+    # recognises "no real donor injected" on an older arc.
+    if m0b is None or len(m0b) in (148, EMPTY_REC02_SIZE):
+        print(f'  MERGED {stem}: 0x0b {"absent" if m0b is None else f"= {len(m0b)}B empty container"} '
               f'(not injected){"" if not args.check_merged else " - FAIL"}')
         if args.check_merged:
             ok = False

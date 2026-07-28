@@ -22,8 +22,9 @@ md5 `c1e814e499fafcf02725549f918fa89b`) both died the same way:
 | chamber GUID | `e11908536840dc7e50d5a88221b17b22` (LEVELS idx 2266) | same |
 | reported `deps` | `[ocean_extension05, ocean_extension05, ocean_extension05]` | same |
 
-Different pace, different residency, same chamber. 20+ other chamber loads across both
-sessions completed cleanly (LEAVE, `al=1`), including every blood-cave neighbour and
+Different pace, different residency, same chamber. Every other navmesh load across the two
+sessions - 4 in A, 10 in B - completed cleanly (LEAVE, `al=1`), including every blood-cave
+neighbour, `ocean_extension01/02/03` immediately before the death, and
 `new_secretdoor_transitionhallway`. So this is **not** memory/co-residency pressure - it is
 that one section.
 
@@ -231,8 +232,66 @@ for anyone. It now resolves a live `Quests.arc` (or `SVC_QUESTS_ARC`) and skips 
 
 ## 7. Build, verification and deploy
 
-See the BUILD49 gate record in `docs/BACKLOG.md` for the full proof list (hashes, blob-diff,
-contract battery, deploy verification).
+**Donors first (the reproduction proof).** All 39 `.0b.bin` donors were regenerated from the
+pristine upstream `0x0a` at this HEAD (`py tools/gen_bc_navmeshes.py --cluster all`, ~6 clusters,
+into a worktree-local `SVC_DONOR_DIR`). **All 39 come out byte-size-identical to the corresponding
+`0x0b` sections in the currently deployed build48 map**, including `new_secretdoor_transitionhallway`
+at 157,898 B (fix A's collapsed donor, `COLLAPSED gc=3->1` in the log). So the rebuild reproduces
+build48 exactly and any map difference must be mine. The generator's own log confirms the tier-3
+population: `no-0x0a (no 0x0b, by design): ocean_extension05, ocean_extensionx01, x03, x05, x04,
+x06, x07`.
+
+**Both variants rebuilt to scratch** (`SVC_OUT_DIR`, never touching `local/Levels_merged*.arc`):
+
+| artifact | bytes | md5 |
+|---|---|---|
+| canonical `Levels_merged.arc` | 688,691,547 | `fc0adcc0713839a685b32d6e122653be` |
+| TESTHUB `Levels_merged_TESTHUB.arc` | 688,679,840 | `943d0ab9516d332db79bd7f9fd2d3ffe` |
+
+Both logged `Injected: 38 generated-donor / 0 lvl-donor / 8 empty-container (of 46 SV-only)` with
+each of the 8 printed as `EMPTY container: <lvl> (224 B 0x0b, no 0x0a geometry)`.
+
+**Blob diff, new TESTHUB vs the DEPLOYED build48 map** (`c1e814e499fafcf02725549f918fa89b`),
+`tools/diff_merged_maps.py --expect <the 8>`:
+- **exactly 8 level blobs changed** - `EXPECT-SET MATCH`, nothing else in 2282 levels;
+- each: `0x0b 148 -> 224`, `struct: tileset #2 TRUNCATED ... -> OK`, `gc=3 distinct=1 -> gc=1
+  distinct=1`;
+- `DATA` `+608` bytes exactly (8 x 76, the predicted delta); `LEVELS` same size (pure offset
+  cascade); **`QUESTS` byte-identical**, as are `GROUPS`, `SD`, `BITMAPS`, `DATA2` and `0x10`.
+
+**Gates:**
+- `verify_merged_bc_navmeshes`: **24/24 real navmeshes (bytes+center) + 7 `ok ocean
+  empty-container (valid)`** on BOTH variants, exit 0.
+- `audit_navmesh_guid_lists` on both variants: **0 structurally invalid, 0 degenerate, 0
+  unresolvable**; own-only 260 -> 268 (the 8 fixed levels), matching stock's normal form.
+- Full map contract battery (`run_contracts.py --only map`) on BOTH variants: **GATE PASS,
+  0 P0 / 0 P1**, only the 3 pre-existing base-game P2 portal-noise items (XPack4 Dunes + Styx) that
+  build48 also carried.
+- **End-to-end gate proof:** the same battery run against the **currently deployed (broken)** map
+  **FAILS** with `16 P0 = MAP-NAV-5 x8 + MAP-NAV-6 x8`, exit 1. The gate catches the real shipped
+  defect and clears on the fix.
+- `MAP-NAV-4` (b87 co-residency gate) negtest PASS; on both rebuilt variants it flags **exactly the
+  2 whitelisted debt chambers** (`drxBC3`, `RogueEncampment`) - identical to build48, no regression.
+- `_negtest_map.py`: **38/38 PASS** (36/36 when no `Quests.arc` is reachable and DOORS skips).
+
+**Deploy.** Rollback copy of the live build48 DEV map taken first:
+`local/build_b89/DEV_Levels_deployed_prev.arc` (688,679,775 B, `c1e814e4...`).
+At the time of writing **Will's TQ.exe (pid 30076) was running and holding
+`SoulvizierClassicDEV/Resources/Levels.arc` exclusively open** - and killing his game is never an
+option - so the copy could not be made in-session. The deploy is armed instead:
+`scripts/deploy_dev_levels.ps1 -WaitForTQ` (new) waits for TQ to exit, re-checks after a settle (and
+goes back to waiting if the game reappears), copies to a temp **in the target directory**,
+md5-verifies the temp against the source, then atomically replaces the live file - so an interrupted
+run can never leave a half-written map. It then verifies deployed-md5 == built-md5 and re-hashes the
+siblings, failing loudly if any changed.
+DEV sibling hashes recorded before the deploy (this lane changes none of them):
+`SoulvizierClassicDEV.arz 5a3c016baae8f136b8b801ea871b71ba`, `Text.arc
+fcca49277b9d31ed451e4a6843898843`, `Quests.arc 5e664c7b190965fd69f6ff15d77d85e4`.
+
+**Steam.** The canonical map carries the identical 8 malformed containers, so the LIVE Workshop
+build (item 3759792705) has the same latent crash. The fixed canonical artifact is built and green
+but **deliberately NOT packaged or uploaded** - walk-test-gated, same policy as build48
+(BL-b89-DEBT-2).
 
 ---
 
