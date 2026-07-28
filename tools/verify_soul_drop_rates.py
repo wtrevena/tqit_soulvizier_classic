@@ -164,9 +164,21 @@ _KNOWN_EXCEPTIONS = {
     'svc_um_hadesmarshal_80': (66.0,
         'module-authored placed boss (four_generals); basename svc_um_ not '
         'recognized by the naive classifier, module keeps its own 66'),
-    'um_bloodtoxeus_99': (25.0,
-        'module-owned superboss deliberately capped at 25 (Enslaver/Toxeus '
-        'apex), not the naive dual-membership PLACED verdict'),
+    # R-48 (Will 2026-07-27, b90): "increase the drop rate for the souls of
+    # toxeus the murderer, enslaver of souls and toxeus the murderer, devourer
+    # of blood to 100%". These two FOUGHT champions are carved out of the
+    # RANDOM-50 / PLACED-66 / BOSS-25 split (R-42) BY NAME; the classifier is
+    # untouched, so it still says 25 (Devourer) / 66 (Enslaver) and both are
+    # waived here. Owned by tools/patches/toxeus_souls_100.py, whose verify()
+    # re-asserts 100 on the final merged arz.
+    'um_bloodtoxeus_99': (100.0,
+        'R-48 (Will 2026-07-27): Toxeus the Murderer, Devourer of Blood drops '
+        'his soul 100% of the time (was the module-owned superboss cap of 25); '
+        'patches/toxeus_souls_100.py owns it'),
+    'um_toxeus_enslaver_99': (100.0,
+        'R-48 (Will 2026-07-27): Toxeus the Murderer, Enslaver of Souls drops '
+        'his soul 100% of the time (was the PLACED_UBER 66); '
+        'patches/toxeus_souls_100.py owns it'),
     'um_toxeus_hunt_99': (25.0,
         'Toxeus Hunt / Legendary Stalker (patches/toxeus_suite.py + '
         'boss_skill_fix.py) deliberately capped at 25, a farmable-style superboss'),
@@ -397,10 +409,13 @@ def main(argv):
         # labels it FARMABLE, but wire_souls never rates it (module-owned) and the
         # module keeps it at its own 66 -> outcome UNCHANGED. Assert the outcome.
         'svc_um_hadesmarshal_80': (None, 66.0),
-        'um_toxeus_enslaver_99':  ('PLACED', 66.0),   # dual-membership -> placed wins
+        # R-48 (Will 2026-07-27): both fought Toxeus champions ship at 100%.
+        # klass still reads PLACED (the classifier is deliberately untouched);
+        # the ACTUAL arz value is the carve-out.
+        'um_toxeus_enslaver_99':  ('PLACED', 100.0),
         'xsq27_namedhero_a_machae_45': ('QUEST', 66.0),  # Four Generals (quest)
         'um_tantalus_99':         (None, 0.0),        # placed but gated -> stays 0
-        'um_bloodtoxeus_99':      (None, 25.0),        # module-owned superboss, stays 25
+        'um_bloodtoxeus_99':      (None, 100.0),       # R-48: 25 -> 100 (Will 2026-07-27)
     }
     for bn, (want_k, want_actual) in EXPECT.items():
         if bn not in idx:

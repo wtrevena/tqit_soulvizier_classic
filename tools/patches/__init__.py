@@ -204,6 +204,17 @@ REGISTRY = [
                             # kit skills + disciple thralls. Runs after enslaver_pet_fx (extends
                             # its b71 chain-gate roster) + uber_orphan_weapons (equips supra
                             # pieces); before visuals. New records only (+ soul-naming exemption).
+    'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48): "increase the drop rate for the souls
+                            # of toxeus the murderer, enslaver of souls and toxeus the murderer,
+                            # devourer of blood to 100%". Sets chanceToEquipFinger2=100 on EXACTLY
+                            # um_toxeus_enslaver_99 (was 66) + um_bloodtoxeus_99 (was 25); every
+                            # other soul rate untouched (apply() proves it roster-wide). Registered
+                            # LAST among content modules so it is the ratified final registry writer
+                            # of that field on the two champions - after toxeus_suite /
+                            # toxeus_champion_kits / black_poison / toxeus_endofallthings and the
+                            # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
+                            # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
+                            # loud on the FINAL merged db if either drops below 100.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

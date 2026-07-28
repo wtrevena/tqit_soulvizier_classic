@@ -1,0 +1,232 @@
+r"""toxeus_souls_100 - R-48 (Will 2026-07-27): the two FOUGHT Toxeus champions
+drop their soul 100% of the time.
+
+WILL'S RULING (verbatim, 2026-07-27):
+    "increase the drop rate for the souls of toxeus the murderer, enslaver of
+     souls and toxeus the murderer, devourer of blood to 100%"
+
+SCOPE - EXACTLY TWO MONSTER RECORDS, NOTHING ELSE:
+  * Toxeus the Murderer, Enslaver of Souls
+        records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr
+        soul family: records\item\equipmentring\soul\svc_uber\enslaver_soul_{n,e,l}.dbr
+        release rate BEFORE this module: 66.0  (PLACED/dedicated uber, R-42 split)
+  * Toxeus the Murderer, Devourer of Blood
+        records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr
+        soul family: records\item\equipmentring\soul\svc_uber\blood_toxeus_soul_{n,e,l}.dbr
+        release rate BEFORE this module: 25.0  (module-owned superboss cap)
+Every other soul-dropper in the roster keeps the rate its own writer gave it.
+apply() proves that mechanically: it snapshots chanceToEquipFinger2 across every
+creature record before and after its own writes and fails loud if the changed set
+is anything other than these two records.
+
+WHY A REGISTRY MODULE AND NOT A ONE-OFF PATCH
+---------------------------------------------
+The pre-existing 100% machinery is `apply_svc_patches._force_100_pct_soul_drops`
+- a TESTING-only forcer that run_registry_gates calls ONLY when the build is in
+testing mode (SVC_TESTING_DROPS=1 / SVC_RELEASE_DROPS=0). The shipped build runs
+RELEASE (SVC_RELEASE_DROPS=1), where that forcer never runs at all, so it cannot
+carry Will's ruling. This module is mode-independent: it writes 100.0 in step 2
+of the registry, and in TESTING mode the forcer later re-writes the same 100.0
+(a no-op on these two). The ruling therefore holds in the mode that ships.
+
+It also does NOT go through `_soul_release_rate()` / `soul_drop_rate()`: that
+classifier is the RANDOM-50 / PLACED-66 / BOSS-25 split (R-42) and has no 100
+branch. R-48 carves these two records out of that split by name; the classifier
+is left completely untouched so no other record's verdict can move.
+
+ORDERING
+--------
+Registered LAST among content modules (immediately before 'visuals', which writes
+nothing) so this module is the ratified FINAL registry writer of
+chanceToEquipFinger2 on the two champions - after toxeus_suite,
+toxeus_champion_kits, black_poison, toxeus_endofallthings and legion_soul_stages
+/ double_soul_rulings (the other drop-rate writers). Nothing in
+run_registry_gates (step 3) lowers a non-keres, non-gated soul rate, so the
+value survives to the shipped arz in both modes.
+
+WHAT IT DOES NOT TOUCH
+----------------------
+No soul ITEM records, no pets, no skills, no pools/proxies, no loot tables, no
+map, no Text tags. Only three loot-wiring fields on two monster records:
+chanceToEquipFinger2 (the drop roll), chanceToEquipFinger2Item1 (the weight of
+the soul in the Finger2 slot) and dropItems (equipped items drop on death) - the
+exact triple every other soul-wiring call site in this repo sets together.
+
+GATE
+----
+verify() runs in step 4 over the FINAL merged db (after the whole gate battery,
+including the testing forcer) and fails the BUILD loud if either champion is not
+sitting at exactly 100.0 with its soul family intact and dropItems=1.
+See docs/reports/b90_toxeus_souls_100pct.md.
+"""
+import apply_svc_patches as asp
+from arz_patcher import DATA_TYPE_FLOAT, DATA_TYPE_INT
+
+MODULE_NAME = "toxeus champion souls -> 100% drop (R-48)"
+
+# ── THE TWO TARGETS (module-local constants, sourced from the monolith so a
+# record rename upstream can never silently desync this module's scope) ──────
+_ENSLAVER = asp._EN_BOSS      # records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr
+_DEVOURER = asp._BT_MONSTER   # records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr
+
+# label -> (record, required soul-path fragment)
+_TARGETS = (
+    ('Toxeus the Murderer, Enslaver of Souls', _ENSLAVER, 'enslaver_soul_'),
+    ('Toxeus the Murderer, Devourer of Blood', _DEVOURER, 'blood_toxeus_soul_'),
+)
+
+_CHANCE = 'chanceToEquipFinger2'
+_WEIGHT = 'chanceToEquipFinger2Item1'
+_LOOT = 'lootFinger2Item1'
+_DROP = 'dropItems'
+
+TARGET_RATE = 100.0
+
+# Release rates these two carried BEFORE R-48 (documentation + the apply()-time
+# sanity print; NOT asserted, so a legitimate upstream retune cannot wedge the
+# build - the only asserted invariant is the 100 end-state).
+_PRIOR_RATE = {_ENSLAVER: 66.0, _DEVOURER: 25.0}
+
+
+def _scalar(v):
+    if isinstance(v, list):
+        return v[0] if v else None
+    return v
+
+
+def _chance_of(db, rec):
+    try:
+        return float(_scalar(db.get_field_value(rec, _CHANCE)) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _is_creature(name):
+    nl = name.lower()
+    return ('\\creature\\' in nl or '/creature/' in nl
+            or '\\creatures\\' in nl or '/creatures/' in nl)
+
+
+def _snapshot_all_chances(db):
+    """chanceToEquipFinger2 on EVERY creature record, for the scope proof."""
+    snap = {}
+    for name in db.record_names():
+        if not _is_creature(name):
+            continue
+        f = db.get_fields(name)
+        if not f:
+            continue
+        for key, tf in f.items():
+            if key.split('###')[0] == _CHANCE and tf.values:
+                try:
+                    snap[name] = float(tf.values[0])
+                except (TypeError, ValueError):
+                    pass
+                break
+    return snap
+
+
+def _soul_paths(db, rec):
+    v = db.get_field_value(rec, _LOOT)
+    if v is None:
+        return []
+    return [s for s in (v if isinstance(v, list) else [v]) if isinstance(s, str) and s]
+
+
+def apply(db, tags):
+    print(f"\n=== patches-registry: {MODULE_NAME} ===")
+    before = _snapshot_all_chances(db)
+
+    for label, rec, frag in _TARGETS:
+        if not db.has_record(rec):
+            raise SystemExit(
+                f"[toxeus_souls_100] R-48 target MISSING from the db: {label} "
+                f"({rec}). The ruling cannot be applied; refusing to ship a "
+                f"build that silently drops it.")
+
+        paths = _soul_paths(db, rec)
+        if not paths:
+            raise SystemExit(
+                f"[toxeus_souls_100] {label} ({rec}) has NO {_LOOT} soul loot - "
+                f"setting {_CHANCE}=100 would roll an empty slot. Refusing.")
+        non_soul = [p for p in paths if 'soul' not in p.lower()]
+        if non_soul:
+            raise SystemExit(
+                f"[toxeus_souls_100] {label} ({rec}) {_LOOT} is NOT souls-only "
+                f"(non-soul refs: {non_soul}); a 100% roll would guarantee a "
+                f"non-soul reward. Refusing.")
+        if not any(frag in p.lower() for p in paths):
+            raise SystemExit(
+                f"[toxeus_souls_100] {label} ({rec}) {_LOOT} does not carry the "
+                f"expected soul family {frag!r} (got {paths}) - the record this "
+                f"module targets is not the one Will's ruling names. Refusing.")
+
+        prev = _chance_of(db, rec)
+        # dtype-explicit on all three: these are the same field/dtype triple every
+        # soul-wiring call site in apply_svc_patches sets (FLOAT/INT/INT).
+        db.set_field(rec, _CHANCE, TARGET_RATE, DATA_TYPE_FLOAT)
+        db.set_field(rec, _WEIGHT, 100, DATA_TYPE_INT)
+        db.set_field(rec, _DROP, 1, DATA_TYPE_INT)
+        db._modified.add(rec)
+        print(f"  {label}: {_CHANCE} {prev:g} -> {TARGET_RATE:g} "
+              f"(pre-R-48 release rate {_PRIOR_RATE.get(rec, float('nan')):g}); "
+              f"{len(paths)} soul tier(s) {frag}n/e/l intact")
+
+    # ── SCOPE PROOF: exactly the two targets moved, roster-wide ──────────────
+    after = _snapshot_all_chances(db)
+    changed = sorted(n for n in set(before) | set(after)
+                     if abs(before.get(n, -1.0) - after.get(n, -1.0)) > 0.001)
+    expected = sorted(rec for _l, rec, _f in _TARGETS)
+    if changed != expected:
+        raise SystemExit(
+            f"[toxeus_souls_100] SCOPE VIOLATION: apply() changed "
+            f"{_CHANCE} on {len(changed)} record(s) {changed}, expected exactly "
+            f"the 2 R-48 targets {expected}. Every other soul's rate must be "
+            f"untouched.")
+    print(f"  scope proof: exactly {len(changed)}/{len(after)} creature records' "
+          f"{_CHANCE} changed (the 2 R-48 targets); every other soul rate untouched")
+
+
+def verify(db, tags):
+    """Step-4 gate over the FINAL merged db (post gate-battery, post testing
+    forcer). Fails the build loud if either champion is below 100%."""
+    problems = []
+    for label, rec, frag in _TARGETS:
+        if not db.has_record(rec):
+            problems.append(f"{label}: record {rec} MISSING from the final db")
+            continue
+        cur = _chance_of(db, rec)
+        if abs(cur - TARGET_RATE) > 0.001:
+            problems.append(
+                f"{label} ({rec}): {_CHANCE}={cur} but R-48 requires exactly "
+                f"{TARGET_RATE} - some later writer lowered the Toxeus champion "
+                f"soul drop")
+        paths = _soul_paths(db, rec)
+        if not any(frag in p.lower() for p in paths):
+            problems.append(
+                f"{label} ({rec}): {_LOOT} lost its {frag!r} soul family "
+                f"(got {paths}) - a 100% roll on an empty/foreign slot")
+        try:
+            drop = int(_scalar(db.get_field_value(rec, _DROP)) or 0)
+        except (TypeError, ValueError):
+            drop = 0
+        if drop != 1:
+            problems.append(
+                f"{label} ({rec}): {_DROP}={drop} (must be 1, or the equipped "
+                f"soul never drops on death)")
+        try:
+            w = int(_scalar(db.get_field_value(rec, _WEIGHT)) or 0)
+        except (TypeError, ValueError):
+            w = 0
+        if w != 100:
+            problems.append(
+                f"{label} ({rec}): {_WEIGHT}={w} (must be 100)")
+
+    if problems:
+        raise SystemExit(
+            "[toxeus_souls_100] R-48 VERIFY FAILED (Will 2026-07-27, "
+            "\"increase the drop rate for the souls of toxeus the murderer, "
+            "enslaver of souls and toxeus the murderer, devourer of blood to "
+            "100%\"):\n  - " + "\n  - ".join(problems))
+    print(f"  [toxeus_souls_100] verify OK: both Toxeus champions at "
+          f"{TARGET_RATE:g}% soul drop with their soul families + dropItems intact")
