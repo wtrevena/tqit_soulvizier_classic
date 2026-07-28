@@ -18,12 +18,12 @@
 - R-4 [2026-07-16] PENDING (fix/bloodtoxeus-spawns) quest rename "Toxeus the Murderer, Devourer of Blood's Stash"; chest rename "Toxeus the Murderer, Devourer of Blood's Hidden Chest" (was Esti's Hidden Chest).
 - R-5 [2026-07-16] IMPLEMENTED feat/toxeus-champions (b73) "the blood toxeus should have the Tears of Blood ability granted by the Arcane Formula - Blood of Ares" + "The toxeus devourer of blood should have maybe a 10 second cool down on a weaker version" - NOTE ground truth: corridor + deep boss share ONE record; both currently weak-10s; full-strength corridor variant = OPEN Will decision.
 - R-6 [2026-07-16] IMPLEMENTED feat/toxeus-champions (b73) Enslaver + Devourer get unique identity kits ("his abilities are pretty generic") - Soul-Rip / Chains of Servitude / Unholy Dominion; Blood Frenzy. Per-ability veto open on DEV.
-- R-7 [2026-07-16] PENDING (feat/black-poison) "we have wanted the devourer to have a literal black poison asset from the beginning and use that all along" - CREATE svc_black_poison; it is the Devourer's poison AND End of All Things' strike buff. Colors may only be claimed from in-game-confirmed assets.
+- R-7 [2026-07-16] IMPLEMENTED b83 (feat/black-poison, merged to main in the BUILD47 GATE RECORD 2026-07-17) "we have wanted the devourer to have a literal black poison asset from the beginning and use that all along" - CREATE svc_black_poison; it is the Devourer's poison AND End of All Things' strike buff. Colors may only be claimed from in-game-confirmed assets. Owner: `tools/patches/black_poison.py` (registry module, runs after toxeus_champion_kits and before toxeus_endofallthings, whose `_BLACK_POISON` const names it); verify() asserts `buffSelfSkillName` on all 3 Devourer soul-pets and fails on crimson OR base-green. See `docs/reports/b83_black_poison_rite_drop.md`.
 - R-8 [2026-07-16] IMPLEMENTED feat/toxeus-undivided (b72) End of All Things: name "Toxeus the Murderer, End of All Things"; ring "Soul of Toxeus, End of All Things"; formula demands LEGENDARY tier of the 3 Toxeus souls; 11-item kit per verbatim rulings (unlimited energy; NetherStrike max 0.5s; max SmokeScreen; max Galefury-granted skill; Tears of Blood 3s; Murderer's Edge + black poison (R-7); Entropy aura; Blood Feast; thralls = blood-cave tall casters w/ bloodhounds; The Ending w/ Light-of-Helios flash visual; Arrat the Corruptor AOE); ash-pale body + per-skill fragment colors; stronger than every Toxeus champion.
-- R-9 [2026-07-16] PENDING (feat/black-poison) "let the Rite of the Undivided drop wherever else any supra / uber weapons formulas have a chance to drop".
-- R-13 [2026-07-16] PENDING (feat/black-poison) "also make it so if you kill either toxeus the devourer of blood of toxeus the enslaver of souls you also get the formula" - Rite of the Undivided ALSO drops on killing the Devourer OR the Enslaver (read as guaranteed on-kill; implementer flags if convention argues for a chance instead). Extends R-9 (both sources coexist).
+- R-9 [2026-07-16] IMPLEMENTED b83 (feat/black-poison, merged to main in the BUILD47 GATE RECORD 2026-07-17) "let the Rite of the Undivided drop wherever else any supra / uber weapons formulas have a chance to drop" - the Rite is wired into BOTH `arcaneformulae\supra.dbr` and `supra_special.dbr` (the same two pools the b66 uber_orphan_weapons module wires every new supra formula into), so it drops wherever ANY supra weapon formula drops, at that same rarest tier. See `docs/reports/b83_black_poison_rite_drop.md`.
+- R-13 [2026-07-16] IMPLEMENTED b83 (feat/black-poison, merged to main in the BUILD47 GATE RECORD 2026-07-17) "also make it so if you kill either toxeus the devourer of blood of toxeus the enslaver of souls you also get the formula" - Rite of the Undivided ALSO drops on killing the Devourer OR the Enslaver (read as guaranteed on-kill; implementer flags if convention argues for a chance instead). Extends R-9 (both sources coexist). Shipped via `svc_rite_guaranteed` (FixedWeight 100% Rite) folded into each champion's Misc4 master table, leaving the Finger2 soul drop and the rant-scroll slot undisturbed. See `docs/reports/b83_black_poison_rite_drop.md`.
 - R-10 [2026-07-16] IMPLEMENTED fix/runtime-green (b75) + PENDING follow-up: Enslaver summon = BLACK (steal the marauders' shadowcloak smoke). Diadochi generals + Helepolis share the green-rendering 343_dark_smoke - swap after Will confirms the Enslaver reads black.
-- R-11 [2026-07-16] PENDING (fix/runtime-green pet-identity commit) "Toxeus the murderer, enslaver of souls is a beastman not a skeleton" - Enslaver family race = skeleton/Undead; all boss-summon pets inherit race/sounds/distress from their SOURCE monster.
+- R-11 [2026-07-16] IMPLEMENTED b81 (fix/runtime-green pet-identity commit, merged to main in the BUILD47 GATE RECORD 2026-07-17; `docs/reports/b81_pet_identity.md` closes with the explicit instruction "whoever integrates this branch should mark R-11" - done here) "Toxeus the murderer, enslaver of souls is a beastman not a skeleton" - Enslaver family race = skeleton/Undead; all boss-summon pets inherit race/sounds/distress from their SOURCE monster.
 - R-12 [2026-07-16] IMPLEMENTED b71 skeleton identity: Enslaver summon-skill icon + pet-bar portrait = one consistent skeleton (deathwalker) identity; marauders do NOT show in the pet bar (no portrait requirement).
 
 ## Masteries
@@ -31,19 +31,19 @@
 - R-21 [2026-07-16] IMPLEMENTED b70 "Hunting eviscerate should be a square".
 - R-22 [2026-07-16] IMPLEMENTED b70 (C2) col6 restack verbatim: "lets have darklings be in the same lane as throwing knife, but we will have darklings unlock at 10, dark aperture unlock at 16, and then above it we will have throwing knife at 24 and the augment to throwing knife at 32 so we wont have lines behind one another".
 - R-23 [2026-07-16] IMPLEMENTED feat/mastery-sv-fix "so how does dark invigoration work? I think it should augment shadow link" - genuinely augments via SkillTree slot order (proven mechanism); NEVER reorder skillName{N} slots (binding surface).
-- R-24 [2026-07-16] PENDING (fix/mastery-unlock) "Proceed with fixing the masteries as appropriate" - b74 audit implementation: every button's real unlock == its drawn row (Warfare col3 + Earth col4 ladders as WILL-VETO).
+- R-24 [2026-07-16] IMPLEMENTED b77 (fix/mastery-unlock, merged to main in the BUILD47 GATE RECORD 2026-07-17) "Proceed with fixing the masteries as appropriate" - b74 audit implementation: every button's real unlock == its drawn row (Warfare col3 + Earth col4 ladders as WILL-VETO). Owner: `tools/patches/mastery_unlock_alignment.py` (m1/m2/m3/m4/m7 only; registered LAST among mastery-UI writers; m5/m6 golden untouched so A7 stays green). RESIDUAL, NOT a status blocker: the WILL-VETO ladder designs in `docs/reports/b77_unlock_alignment_fix.md` sec 2 still await Will's DEV pass - they are shipped defaults, vetoable in place.
 - R-25 [2026-07-16] STANDING Darklings/DarkAperture/ToxicConcoction/ShadowStalker are PRE-0.98i SV content ("I did not create these by hand") - their canonical layout authority = SV 0.9/0.41 extractions.
 
 ## World / placement
-- R-30 [2026-07-16] PENDING (fix/chumbi-lag) verbatim: "you need to space these monsters out instead of putting them all on top of one another" + fountain death-loop = never again: SPACING LAW (fountain/NPC clearance + min inter-encounter distance, permanent placement gate).
-- R-31 [2026-07-16] PENDING (fix/chumbi-lag) boss pileup unstacked to intended locations; the summon issue is CO-PRIMARY ("both are making the game freeze"): tomb-guardian dogs hard-capped + TTL, sepulcher fight playable standing alone.
-- R-32 [2026-07-16] PENDING (fix/chumbi-lag) boss reward containers are NEVER quest-gated chests (the widow-quest Dead Adventurer's Chest reuse).
+- R-30 [2026-07-16] PENDING (fix/chumbi-lag; STATUS RE-VERIFIED 2026-07-28: `fix/chumbi-lag` IS merged to main via the BUILD46 GATE RECORD, but build46 shipped only b76 round 1 [yard removal + summon TTLs] and its own DEBT line still names "placement spacing/clearance gate follow-through" - the permanent SPACING-LAW gate this ruling demands is NOT built, so PENDING stands) verbatim: "you need to space these monsters out instead of putting them all on top of one another" + fountain death-loop = never again: SPACING LAW (fountain/NPC clearance + min inter-encounter distance, permanent placement gate).
+- R-31 [2026-07-16] PENDING (fix/chumbi-lag; STATUS RE-VERIFIED 2026-07-28: b76/build46 DID land both halves in code - the TESTHUB Monster Test Yard was removed [HV01 now == canonical] and the sepulcher-chain summon TTLs were restored via `tools/patches/summon_caps.py` - but "sepulcher fight playable standing alone" is an IN-GAME claim nobody has confirmed, and build46 disclosed a side effect Will may veto [base Aktaios + Alastor minions now despawn]. Kept PENDING on Will's confirmation, not on missing code) boss pileup unstacked to intended locations; the summon issue is CO-PRIMARY ("both are making the game freeze"): tomb-guardian dogs hard-capped + TTL, sepulcher fight playable standing alone.
+- R-32 [2026-07-16] PENDING (fix/chumbi-lag; STATUS RE-VERIFIED 2026-07-28: nothing in the b76/build46 contents addresses the widow-quest Dead Adventurer's Chest reuse - genuinely unbuilt) boss reward containers are NEVER quest-gated chests (the widow-quest Dead Adventurer's Chest reuse).
 
 ## Souls & items
-- R-40 [2026-07-16] PENDING (fix/soul-tiers) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate.
-- R-41 [2026-07-16] IMPLEMENTED fix/formula-names (b80) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
+- R-40 [2026-07-16] IMPLEMENTED b78 (fix/soul-tiers, merged to main in the BUILD47 GATE RECORD 2026-07-17) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate. OUTCOME: the roster-wide sweep found **0 flat-tier families / 0 wrong-tier loot triples / 0 real missing tiers** - Will's specific observation was a save-bake + shared-name perception artifact, so the wave made NO data change. The deliverable is the permanent strict-progress gate that closes the blind spot (a genuinely-flat epic now fails the build). See `docs/reports/b78_soul_tier_scaling.md`.
+- R-41 [2026-07-16] IMPLEMENTED b80 (fix/formula-names, merged to main in the BUILD47 GATE RECORD 2026-07-17) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
 - R-42 [earlier, STANDING - PARTIALLY SUPERSEDED by R-48 (2026-07-27) for the two fought Toxeus champions ONLY; every other record's rate stands unchanged] Munderizer over-band damage BLESSED; Shadow Link large radius KEPT; legion terminal drop 66 fine for now (revisit next souls pass); soul drop rates: random 50 / placed 66 / boss 25.
-- R-43 [2026-07-16] IMPLEMENTED fix/soul-tiers @ d9353e4 (b85, pending merge) "the high priest soul should allow you to summon the high priest" - the Blood Cult High Priest soul's summon = the HIGH PRIEST himself (his identity/mesh/kit as the pet, all 3 tiers scaled), per boss-summon conventions + the b71/b81 identity laws (icon/portrait/race/sounds = High Priest). Companion check: epic soul must spawn the epic-tier pet (verified true roster-wide in b78, re-proven for this family).
+- R-43 [2026-07-16] IMPLEMENTED b85 (fix/soul-tiers, MERGED to main in the BUILD47 GATE RECORD 2026-07-17 - the earlier "pending merge" qualifier is now stale) "the high priest soul should allow you to summon the high priest" - the Blood Cult High Priest soul's summon = the HIGH PRIEST himself (his identity/mesh/kit as the pet, all 3 tiers scaled), per boss-summon conventions + the b71/b81 identity laws (icon/portrait/race/sounds = High Priest). Companion check: epic soul must spawn the epic-tier pet (verified true roster-wide in b78, re-proven for this family).
 
 ## Process (meta-rulings)
 - R-50 [2026-07-16] "what do you need to do to manage your tasks better so we dont end up with stuff like this happening over and over" -> THIS LEDGER + retirement protocol + player-surface checklist + no-new-surface-without-a-gate + debt register. See CLAUDE.md standing rules.
@@ -56,13 +56,21 @@
 ## topics get a fresh decade (Legal 60-69).
 
 ### Toxeus arc (continued)
-- R-13 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
+- R-19 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
   "we need to retire the one we are adding and just update the 15% one to 33%." Retires the never-wired
   ~50% parchment-room Toxeus feature (`demon_01_cluster_toxeus50` pool+proxy, `q_bloodtoxeus_lone_50`)
   entirely; the sole corridor Blood-Toxeus roll stays the `drxFirstRoom` ambush, `chanceToRun` retuned
   15->33. SUPERSEDES R-14. Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 5; docs/reports/
   toxeus_suite_recon.md sec 0.
-- R-14 [2026-07-09] SUPERSEDED by R-13 (2026-07-14) "put toxeus devourer of blood there too with 50%
+  > ⚠️ **ID CORRECTED 2026-07-28** (`fix/debt-docs` ledger-hygiene pass). The b84 backfill filed this
+  > as a SECOND `R-13`, colliding with the live Toxeus-arc R-13 (Rite of the Undivided on-kill drop).
+  > Renumbered into the next free slot of the Toxeus decade (1-19). The live R-13 keeps its number -
+  > a number in use is NEVER reused or reassigned. Nothing about the ruling itself changed.
+  > ⚠️ RETIREMENT-PROTOCOL CROSS-REFERENCE: this ruling is the origin of the `q_bloodtoxeus_lone_50`
+  > "orphan" retirement that R-3 records as having broken the 100% hidden-chest spawn. Read R-3
+  > before acting on this one; the `fix/devourer-chest` lane owns that repair.
+- R-14 [2026-07-09] SUPERSEDED by R-19 (2026-07-14; filed by the b84 backfill as "R-13", renumbered
+  2026-07-28 - see the ID CORRECTED note on R-19) "put toxeus devourer of blood there too with 50%
   spawn chance" - the original ask for a second parchment-room Toxeus spawn; never wired to the map,
   then explicitly retired. Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 5.
 - R-15 [2026-07-14] IMPLEMENTED "you are good to ship the rant scroll" - amgoz1 creative-text veto
@@ -139,18 +147,24 @@
   Farmers' quest-completion spot, same quest-collision-safety requirement. Source: git commit
   `edd30b6` (docs/BACKLOG.md).
 - R-39 [2026-07-16] PENDING (worktree `coldworm-markers` has partials; interrupted lane, joins when
-  resumed) Cold Worm needs ~3x characterLife and +20% armor (`defensiveProtection`) ON TOP of the
+  resumed. STATUS RE-VERIFIED 2026-07-28: `feat/coldworm-uber-markers` IS an ancestor of main, but its
+  tip carries only BACKLOG doc commits - none of the Cold Worm buff work. The branch being "merged"
+  is NOT evidence this shipped; it did not.) Cold Worm needs ~3x characterLife and +20% armor (`defensiveProtection`) ON TOP of the
   already-queued kit (burrow/frost skills that actually cast), a massive total-speed boost, the
   exclamation-marker mechanism extended to all placed ubers, and the 3-tier soul + loot-triple fix +
   roster drop-slot sweep - ships as ONE lane, not piecemeal. Source: git commit `edd30b6` (docs/
   BACKLOG.md "COLD WORM BUFFS").
 
 ### Souls & items (continued)
-- R-43 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
+- R-49 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
   and do not have him drop a soul." `um_tombguardian_26` kept Common / `chanceToEquipFinger2=0.0`; the
   attached-but-undroppable `um_tombguardian_soul_{n,e,l}` rings were detached then retired (removed
   from the arz) along with their orphaned name tag. Source: docs/reports/souls_quality_fix.md sec 3
   (P2-a).
+  > ⚠️ **ID CORRECTED 2026-07-28** (`fix/debt-docs` ledger-hygiene pass). The b84 backfill filed this
+  > as a SECOND `R-43`, colliding with the live Souls R-43 (Blood Cult High Priest summon). Renumbered
+  > into the next free slot of the Souls decade (40-49); the live R-43 keeps its number. The DEBT
+  > REGISTER line "Tomb Guardian soul leak - RESOLVED (R-43)" now reads R-49.
 - R-44 [2026-07-14] IMPLEMENTED (D3/FIX 4) Will's directive, verbatim: "fix the crowboar soul's
   summoned crow bug ... sweep the roster for any OTHER summon soul with the same broken
   on-attack+petLimit=1 shape and fix those too (same bug = same wave)." Round-2 widened this from 4 to
@@ -200,3 +214,45 @@
   (SVAERA author) granted verbal permission for the additive mastery-graft reuse (R-28); a written
   confirmation is still an open standing obligation, as is amgoz1's and Dragonlord's written
   permission (neither captured in writing as of 2026-07-10). Source: docs/PERMISSIONS.md.
+
+---
+
+## LEDGER HYGIENE PASS (2026-07-28, branch `fix/debt-docs`)
+
+One-line summary: **two colliding R-numbers renumbered, six stale statuses flipped to IMPLEMENTED,
+zero records deleted.** No ruling text was altered; every change is a status/id correction with the
+evidence named inline.
+
+**ID COLLISIONS (the b84 backfill reused two live numbers).** A number in use is NEVER reused or
+reassigned, so the LIVE ruling kept its number and the BACKFILL entry moved into the next free slot
+of its own reserved decade:
+- backfill "R-13" (parchment-room Toxeus retirement) -> **R-19** (Toxeus decade 1-19). The live
+  R-13 is the Rite-of-the-Undivided on-kill drop. R-14's `SUPERSEDED by` pointer and the
+  `docs/reports/b90_toxeus_souls_100pct.md` cross-reference were updated with it.
+- backfill "R-43" (tomb-guardian de-soul) -> **R-49** (Souls decade 40-49). The live R-43 is the
+  Blood Cult High Priest summon. The DEBT REGISTER line "Tomb Guardian soul leak - RESOLVED" was
+  updated with it.
+
+**STATUS FLIPS.** The BUILD47 GATE RECORD (docs/BACKLOG.md, 2026-07-17) merged `feat/black-poison`,
+`fix/soul-tiers`, `fix/formula-names`, `fix/mastery-unlock`, `fix/runtime-green` and
+`fix/bloodtoxeus-spawns` into main - re-verified here with `git branch --merged main` (all six
+present) plus the shipped owner module for each. PENDING -> IMPLEMENTED: **R-7** (b83), **R-9**
+(b83), **R-13** (b83), **R-11** (b81), **R-24** (b77), **R-40** (b78). Status clarified without a
+state change: **R-41** (b80) and **R-43** (b85) were already IMPLEMENTED but carried branch-only /
+"pending merge" qualifiers that the build47 merge made stale. The matching DEBT REGISTER lines were
+struck through in the same commit.
+
+**DELIBERATELY NOT TOUCHED (owned by the parallel `fix/devourer-chest` lane):** **R-1**, **R-3**,
+**R-4** - the Blood-Toxeus entourage, the 100% hidden-chest spawn and the chest/quest renames. Their
+statuses stay exactly as that lane left them. Note R-19 above is the ruling whose
+`q_bloodtoxeus_lone_50` retirement R-3 blames for the lost chest spawn; read both together.
+
+**RE-VERIFIED AND LEFT PENDING (with the evidence recorded inline on each ruling):** **R-30**,
+**R-31**, **R-32** (`fix/chumbi-lag` IS merged, but build46 shipped only b76 round 1 - the spacing
+gate is unbuilt, the quest-chest reuse is untouched, and R-31's remaining blocker is Will's in-game
+confirmation, not missing code) and **R-39** (`feat/coldworm-uber-markers` is an ancestor of main but
+its tip carries only BACKLOG doc commits - "branch merged" is NOT evidence the Cold Worm work
+shipped). **R-10** and **R-16** were re-read and are correctly PENDING as written.
+
+**RETIREMENT PROTOCOL:** nothing was deleted, retired, or dropped in this pass. Every superseded /
+renumbered record is still present with a pointer to its replacement.

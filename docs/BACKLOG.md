@@ -346,9 +346,12 @@ along automatically when the structural cluster-relocation fix lands.
   `local/Levels_merged.arc` (Jul 27) was refreshed by the b89 wave. Nothing ships from `local/`, so
   this is an artifact-hygiene issue, not a player-facing one - but any lane that reaches for the
   TESTHUB variant will gate-FAIL on b89 defects that are already fixed. Owner/trigger: the next map
-  lane rebuilds it (needs `SVC_SVAERA_ARC`/`SVC_SV_ARC` per BL-b89-DEBT-4/BL-b90-DEBT-2).
+  lane rebuilds it (needs `SVC_SVAERA_ARC`/`SVC_SV_ARC` per BL-b89-DEBT-5/BL-b90-DEBT-2).
   Found by: the BL-b89-DEBT-3 both-variants proof run.
-- **BL-b89-DEBT-4 (P2):** `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
+- **BL-b89-DEBT-5 (P2)** *(id corrected 2026-07-28 by the `fix/debt-docs` ledger-hygiene pass - this
+  entry was filed as a SECOND `BL-b89-DEBT-4`, colliding with the MAP-NAV-4 entry above; the
+  MAP-NAV-4 one keeps the original id because it is the one the b89 wave notes cite)*:
+  `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
   EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
   (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
   that rebuilds the map needs those set. Owner/trigger: restore the caches or bake the fallbacks in.
@@ -362,11 +365,17 @@ along automatically when the structural cluster-relocation fix lands.
   scheduled/built. Source: docs/MULTIPLAYER_COMPAT.md M4.6-M4.7.
 - Corridor full-strength (non-10s-cooldown) Blood-Toxeus Tears-of-Blood variant - OPEN Will decision
   (R-5). Source: docs/WILL_RULINGS.md R-5.
-- `svc_black_poison` skill (Devourer poison + End of All Things strike-buff asset) - PENDING build,
-  in-flight per the active session's own task tracker (recon done, module/wiring/verify not yet
-  landed). Source: docs/WILL_RULINGS.md R-7.
-- Rite of the Undivided drop-pool wiring (ship wherever supra/uber formulas can drop) - PENDING.
-  Source: docs/WILL_RULINGS.md R-9.
+- ~~`svc_black_poison` skill (Devourer poison + End of All Things strike-buff asset) - PENDING
+  build.~~ **CLOSED 2026-07-28 (ledger-hygiene pass):** SHIPPED as b83 on `feat/black-poison`, which
+  the BUILD47 GATE RECORD (2026-07-17) merged to main; module `tools/patches/black_poison.py` is in
+  the registry with a fail-loud verify(). Source: docs/WILL_RULINGS.md R-7;
+  docs/reports/b83_black_poison_rite_drop.md.
+- ~~Rite of the Undivided drop-pool wiring (ship wherever supra/uber formulas can drop) -
+  PENDING.~~ **CLOSED 2026-07-28 (ledger-hygiene pass):** SHIPPED as b83 (both `supra.dbr` and
+  `supra_special.dbr` pools + the guaranteed on-kill table for R-13), merged to main in the BUILD47
+  GATE RECORD. Source: docs/WILL_RULINGS.md R-9/R-13; docs/reports/b83_black_poison_rite_drop.md.
+  RESIDUAL (still open, different question): the 100% on-kill rate is flagged WILL-VETO in the b83
+  report - the champions are repeat-killable, so Will may want a chance instead of a guarantee.
 - dark_smoke Diadochi-generals/Helepolis green-render swap - pending Will's in-game black-confirm of
   the Enslaver (R-10). Source: docs/WILL_RULINGS.md R-10.
 - Enslaver DISMISS + RE-SUMMON green-residue check - WILL-CONFIRM after a full Steam restart; if
@@ -463,10 +472,18 @@ along automatically when the structural cluster-relocation fix lands.
 - Cold Worm buffs (3x life / +20% armor / kit / speed / marker mechanism / 3-tier soul + loot-triple
   fix) - PENDING, interrupted lane with partials on worktree `coldworm-markers` (R-39). Source: docs/
   WILL_RULINGS.md R-39.
-- Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal" defect
-  class) - PENDING, `fix/soul-tiers` branch. Source: docs/WILL_RULINGS.md R-40.
-- Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
-  Galefury" class) - PENDING, `fix/formula-names` branch. Source: docs/WILL_RULINGS.md R-41.
+- ~~Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal"
+  defect class) - PENDING, `fix/soul-tiers` branch.~~ **CLOSED 2026-07-28 (ledger-hygiene pass):**
+  SHIPPED as b78 on `fix/soul-tiers`, merged to main in the BUILD47 GATE RECORD. The roster sweep
+  found 0 flat-tier families / 0 wrong-tier loot triples / 0 real missing tiers (Will's observation
+  was a save-bake artifact), so the deliverable is the permanent strict-progress gate, not a data
+  change. Source: docs/WILL_RULINGS.md R-40; docs/reports/b78_soul_tier_scaling.md.
+- ~~Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
+  Galefury" class) - PENDING, `fix/formula-names` branch.~~ **CLOSED 2026-07-28 (ledger-hygiene
+  pass):** SHIPPED as b80, merged to main in the BUILD47 GATE RECORD; the 245-formula sweep found no
+  other instance and the permanent gate (`tools/patches/formula_names.py` verify() +
+  `tools/validate_formula_names.py`) is in the build. Source: docs/WILL_RULINGS.md R-41;
+  docs/reports/b80_formula_names.md.
 - Uber axe reagent trio reuses the same 2 Legendary reagents across the whole 5-member family (a
   resolving-but-undiversified choice) - flagged for Will's veto if he wants more variety; not built.
   Source: docs/reports/b66_uber_formulas.md.
@@ -478,7 +495,7 @@ along automatically when the structural cluster-relocation fix lands.
   restack b70, which the report states SUPERSEDES the earlier "needs Will's ruling" residual). Listed
   here only so a future sweep does not re-flag it as open.
 - bloodtip/gustleech `itemSkillLevel` WILL-VETO - RESOLVED, ratified ship-as-is (R-45).
-- Tomb Guardian soul leak - RESOLVED (R-43).
+- Tomb Guardian soul leak - RESOLVED (R-49; filed by the b84 backfill as a colliding second "R-43", renumbered 2026-07-28).
 - Rant-scroll creative-text veto - RESOLVED, cleared to ship (R-15).
 > 🧊 **b76 CHUMBI VALLEY P0 FREEZE - RCA + FIX (round 1) ON `fix/chumbi-lag` (2026-07-16).** Will (P0):
 > DEV "chumbi valley" frozen by "every boss you created all in one spot" + "the infinite summon of the
