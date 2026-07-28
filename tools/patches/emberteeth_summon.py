@@ -106,6 +106,20 @@ _DESC_TAG = 'tagNewHero12'
 _ICON = (r'DRXtextures\skill icons\soul\summonchimeraup.tex',
          r'DRXtextures\skill icons\soul\summonchimeradown.tex')
 
+# ── BL-103 fix-upstream, surfaced by the B-SUMMON-1 gate on round 3 ─────────
+# `um_emberteeth.skillName1` shipped as the BARE FILENAME
+# 'retaliation_1fireperlevelx100levels.dbr' instead of a record PATH, so it has
+# never resolved - Emberteeth's own fire-retaliation passive has been dead on the
+# WILD hero since the port. Exactly ONE record in the whole arz carries this bare
+# ref (proven by a roster-wide scan), and the real record exists at the canonical
+# monster-skills path below - the same path shape his skillName2/3/5/6/7 already
+# use. Repointing the SOURCE (not just the pets copied off it) is the fix-upstream
+# call: it restores the hero's passive AND makes the pets correct by construction.
+# Same defect CLASS as build30's F7b Melee_Poison sweep.
+_BAD_SKILL_REF = 'retaliation_1fireperlevelx100levels.dbr'
+_GOOD_SKILL_REF = (r'records\skills\monster skills\passive_buffs'
+                   r'\retaliation_1fireperlevelx100levels.dbr')
+
 _CHAR_LEVEL = [18, 43, 58]                       # == the source's own band
 _LIFE = [2400.0, 6000.0, 9500.0]                 # lower cluster, ~133-164/level
 _LIFE_REGEN = [10.0, 25.0, 45.0]
@@ -155,6 +169,24 @@ def apply(db, tags):
     before = {s: {k: list(db.get_field_value(s, k) or []) if
                   isinstance(db.get_field_value(s, k), list)
                   else db.get_field_value(s, k) for k in KEEP} for s in _SOULS}
+
+    # ── BL-103: repoint the source's dead bare-filename skill ref FIRST, so the
+    #    pets are built from a correct source instead of inheriting the defect ──
+    if not db.has_record(_GOOD_SKILL_REF):
+        raise SystemExit(f"emberteeth_summon: repoint target missing: {_GOOD_SKILL_REF}")
+    repointed = 0
+    ff = db.get_fields(_SRC) or {}
+    for k, tf in ff.items():
+        for j, v in enumerate(list(tf.values)):
+            if isinstance(v, str) and _norm(v) == _norm(_BAD_SKILL_REF):
+                tf.values[j] = _GOOD_SKILL_REF
+                repointed += 1
+    if repointed:
+        db._modified.add(_SRC)
+        print(f"  emberteeth_summon [BL-103]: repointed {repointed} dead BARE-filename "
+              f"skill ref on um_emberteeth ({_BAD_SKILL_REF} -> the canonical "
+              f"monster-skills path); his fire-retaliation passive has never "
+              f"resolved on the WILD hero either - this fixes both.")
 
     # ── register the icon BEFORE building (the builder reads the map) ────────
     key = M._summon_skill_basename(_SUMMON)
@@ -206,6 +238,13 @@ def verify(db, tags):
     import apply_svc_patches as M   # noqa: F401 - kept for symmetry/debugging
 
     problems = []
+    # BL-103: the source's own skill refs must all RESOLVE (the defect this lane
+    # surfaced). Checked on the source, since the pets copy from it.
+    for i in range(1, 13):
+        v = _one(db, _SRC, f'skillName{i}', '')
+        if v and not db.has_record(str(v)) and '\\' not in str(v):
+            problems.append(f"um_emberteeth skillName{i}={v!r} is a BARE FILENAME "
+                            f"(cannot resolve) - the BL-103 repoint regressed")
     if not db.has_record(_SUMMON):
         problems.append(f"summon skill missing: {_SUMMON}")
     else:

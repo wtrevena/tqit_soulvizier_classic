@@ -56,14 +56,33 @@ as REJECTED-BY-EVIDENCE, not silently dropped.**
 A repoint was rejected too: it would invent an FX layer vanilla does not have, and an empty-string
 ref is the B-TOXEUS-2 zero-precedent loader-abort class.
 
-### F7a is superseded (BL-103 fix-upstream)
+### F7a is superseded (BL-103 fix-upstream) - and was measurably a NO-OP
 
 Round 1 of this lane asserted that the 3 `pcsafe` records F7a already fixed should NOT still carry the
-ref, and **the build failed on that assert** - which turned out to be the useful finding: those 3
-records are B-SOUL-PROC-2 `pcsafe` *clones*, and the clone step re-mints them from their
-still-dangling PLAIN sources **after** F7a runs. F7a was a symptom patch the pipeline immediately
-undid. The new sweep runs last, over the FINAL assembled db, and fixes the class at the source. F7a is
-left in place as a documented harmless no-op and the re-mint count is printed every build.
+ref, and **the build failed on that assert** - which turned out to be the useful finding. Those 3
+records are B-SOUL-PROC-2 `pcsafe` *clones*, minted LATER in the pipeline from their PLAIN sources,
+which still carry the dangling ref. The build log proves both halves:
+
+```
+F7a pcsafe souls: stripped 0 dangling UnarmedProjectile_FX01 particle refs (3 records)
+...
+fx_dangling_cleanup: 3/3 build30-F7a pcsafe record(s) had been RE-MINTED with the dangling ref
+by the B-SOUL-PROC-2 clone step after F7a ran; this sweep re-strips them
+```
+
+F7a therefore **never actually stripped anything** - it ran before its targets existed in their final
+form. The new sweep runs last, over the FINAL assembled db, and fixes the class at its source. F7a is
+left in place as a documented harmless no-op and the re-mint count prints every build so a future
+reordering is never silent.
+
+### A second round-2 finding: the scope proof was comparing the wrong thing
+
+Round 2 failed with "148 unintended records changed" - all false positives. `_encode_fields` omits a
+field whose `values` list is empty, so a key that already carries no values is ALREADY absent from the
+built record. The before-snapshot counted every key while the after-snapshot counted only emitted
+keys, so any record merely *carrying* an empty key read as changed. Both sides now use the emitted-key
+predicate (`_emitted_keys`). Worth recording: a scope proof over arz records must compare EMITTED
+shape, not raw key sets.
 
 ### Implementation
 
@@ -157,6 +176,28 @@ into two clean life-per-charLevel clusters: flagship uber bosses at ~250-296/lev
 `tagNewHero` Hero, so he takes the LOWER cluster: `[2400, 6000, 9500]` (~133/level rising to
 ~164/level) - strictly progressing, above his wild form at every tier, nowhere near the uber band.
 Damage/regen scaled off Mountainblade's L43 numbers by the same charLevel ratio.
+
+### BONUS FIX the gate surfaced: Emberteeth's own passive was dead (BL-103)
+
+Round 3 failed the **B-SUMMON-1** summon-pet gate:
+
+```
+[BROKEN] ...\soul\orthus\emberteeth_soul_n.dbr -> ...\summon_emberteeth.dbr
+    pet ...\pets\emberteeth_1.dbr skill ref <skillName1> does not resolve (mod or base):
+    retaliation_1fireperlevelx100levels.dbr
+```
+
+`um_emberteeth.skillName1` ships as a **bare filename** instead of a record path, so it has
+**never resolved** - his fire-retaliation passive has been dead on the WILD hero since the port,
+and the gate only sees it now because a mod-authored summon chain finally copied it. A roster-wide
+scan proves **exactly one record** in the arz carries that bare ref, and the real record exists at
+`records\skills\monster skills\passive_buffs\retaliation_1fireperlevelx100levels.dbr` - the same
+path shape his `skillName2/3/5/6/7` already use.
+
+Fixed on the **SOURCE** monster, not just on the copied pets (BL-103 fix-upstream): it restores the
+hero's own passive AND makes the pets correct by construction. Same defect class as build30's F7b
+`Melee_Poison` sweep. `verify()` re-asserts that no `skillName{1..12}` on the source is a bare
+filename.
 
 ### Player-surface checklist (standing law 3)
 

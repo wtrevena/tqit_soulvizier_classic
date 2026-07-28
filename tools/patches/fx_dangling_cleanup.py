@@ -45,13 +45,17 @@ fix on the 3 pcsafe clones stripped `particleEffectName2/3` and nothing else
 (`apply_svc_patches._fix_wave30_render_and_refs`). The BACKLOG's attach-point
 sub-item is therefore closed as REJECTED-BY-EVIDENCE, not silently dropped.
 
-**F7a is superseded (BL-103 fix-upstream).** The 3 `pcsafe` records build30's F7a
-strips are B-SOUL-PROC-2 CLONES, and the clone step re-mints them from their
-still-dangling PLAIN sources *after* F7a runs - measured in the b91 round-1 build,
-where all 3 arrive at this module carrying the ref again. F7a was a symptom patch
-the pipeline immediately undid; this sweep runs last over the FINAL assembled db
-and fixes the whole class at once, sources included. F7a is left in place as a
-documented, harmless no-op safety net and the re-mint count is printed every build.
+**F7a is superseded (BL-103 fix-upstream), and was measurably a no-op.** The 3
+`pcsafe` records build30's F7a targets are B-SOUL-PROC-2 CLONES minted LATER in
+the pipeline from their PLAIN sources - which still carry the dangling ref. The
+build log proves both halves: F7a itself reports
+`F7a pcsafe souls: stripped 0 dangling UnarmedProjectile_FX01 particle refs
+(3 records)` (nothing to strip at its point in the run), and by the time the
+registry reaches this module all 3 clones carry the ref. F7a therefore never
+actually fixed anything; this sweep runs LAST over the FINAL assembled db and
+fixes the whole class at its source. F7a is left in place as a documented,
+harmless no-op safety net, and the re-mint count is printed every build so a
+future reordering is never silent.
 
 --- ITEM 2: BLOODHOUND-DYINGFX (6 summoned-bloodhound dyingFxPak refs) --------
 
@@ -127,8 +131,13 @@ def _norm(s):
     return str(s).replace('/', '\\').lower().strip()
 
 
-def _base_keys(fields):
-    return {k.split('###')[0] for k in fields}
+def _emitted_keys(fields):
+    """Field bases this record will actually EMIT. `_encode_fields` omits a field
+    whose `values` list is empty, so a key with no values is already absent from
+    the built record - it must NOT count as present, or the scope proof compares
+    two different things and every record that merely CARRIES an empty key reads
+    as changed (the round-2 false-positive: 148 phantom 'unintended' records)."""
+    return {k.split('###')[0] for k, tf in (fields or {}).items() if tf.values}
 
 
 def _strip(db, rec, field_bases):
@@ -171,11 +180,8 @@ def _chris_name_slots(db, rec):
 def apply(db, tags):
     names = list(db.record_names())
 
-    # ── scope-proof snapshot: every record's field-key set, before ──────────
-    before = {}
-    for n in names:
-        ff = db.get_fields(n)
-        before[n] = _base_keys(ff) if ff else set()
+    # ── scope-proof snapshot: every record's EMITTED field-key set, before ──
+    before = {n: _emitted_keys(db.get_fields(n)) for n in names}
 
     # ── ITEM 1: strip the dangling Chris particleEffectName<N> slots ────────
     targets = {}
@@ -221,14 +227,10 @@ def apply(db, tags):
         expected.add(_norm(_SPEAR))
     moved = set()
     for n in names:
-        ff = db.get_fields(n)
-        now = _base_keys(ff) if ff else set()
-        # A stripped field keeps its KEY with values=[]; compare emitted shape.
-        emitted = {k.split('###')[0] for k, tf in (ff or {}).items() if tf.values}
-        was_emitted = before[n]
-        if emitted != was_emitted:
+        # A stripped field keeps its KEY with values=[]; compare EMITTED shape
+        # (what _encode_fields will actually write), on both sides.
+        if _emitted_keys(db.get_fields(n)) != before[n]:
             moved.add(_norm(n))
-        del now
     unexpected = sorted(moved - expected)
     missing = sorted(expected - moved)
     if unexpected or missing:
