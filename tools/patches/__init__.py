@@ -204,6 +204,17 @@ REGISTRY = [
                             # kit skills + disciple thralls. Runs after enslaver_pet_fx (extends
                             # its b71 chain-gate roster) + uber_orphan_weapons (equips supra
                             # pieces); before visuals. New records only (+ soul-naming exemption).
+    'sargoth_soul_summon',  # b95 (Will 2026-07-27, R-51): "backlog item sargath manbane soul
+                            # should let you summon him". Same ruling class as R-43 (High Priest),
+                            # same SECOND-BUILDER pattern: builds sargoth_1/2/3 + summon_sargoth
+                            # from hero_tarthon_na'arak_37 (DISPLAY name "Sargoth Manbane",
+                            # tagMonsterName1138) via _build_boss_summon, and wires itemSkillName
+                            # onto all 3 SV-original sargoth_soul_{n,e,l} tiers (levels 1/2/3,
+                            # manual-cast). Registered LATE among content modules so the builder
+                            # mirrors the FINAL source-monster record. New records + 3 soul-field
+                            # writes only; disjoint from every other module. Its full
+                            # item->skill->icon->spawnObjects->pet->portrait chain is asserted by
+                            # the EXISTING enslaver_pet_fx._CHAIN gate (which carries R-43 too).
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48): "increase the drop rate for the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
                             # devourer of blood to 100%". Sets chanceToEquipFinger2=100 on EXACTLY

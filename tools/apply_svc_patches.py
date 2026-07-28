@@ -10581,6 +10581,18 @@ _SUMMON_SKILL_ICON = {
     # and arc-resolves (DRXtextures.arc skill icons/soul/bloodbathup.tex).
     'summon_bwpriest':         (r'DRXtextures\skill icons\soul\bloodbathup.tex',
                                 r'DRXtextures\skill icons\soul\bloodbathdown.tex'),
+    # R-51 (b95): Sargoth Manbane (hero_tarthon_na'arak_37) - a LIGHTNING dragonian
+    # mage (Lightning Ball / Thunderball / lightning-bonus aura), so a lightning-orb
+    # glyph. Verified UNCLAIMED by any other _SUMMON_SKILL_ICON entry and arc-resolving
+    # (DRXtextures.arc "skill icons\soul\thunderorb{up,down}.tex", both present).
+    # Deliberately NOT the base-game Thunderball icon his sibling Vort the Red uses
+    # (summon_vort), so the two dragonian summons never read as the same skill.
+    # No dragonian *_party_ portrait ships in any arc (34 swept, none dragonian), so
+    # the pet-bar portrait falls through to the neutral proxy_party - the established
+    # convention for unmapped bosses (Hades Marshal, R-43's High Priest) and never
+    # the Lyia nymph.
+    'summon_sargoth':          (r'DRXtextures\skill icons\soul\thunderorbup.tex',
+                                r'DRXtextures\skill icons\soul\thunderorbdown.tex'),
 }
 
 
