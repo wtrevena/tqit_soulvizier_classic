@@ -319,12 +319,35 @@ along automatically when the structural cluster-relocation fix lands.
   (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
   uploaded (walk-test-gated, same policy as build48). Owner/trigger: Will confirms the DEV walk test,
   then package+upload the canonical variant.
-- **BL-b89-DEBT-3 (P2):** `contracts_map.CUT_LEVEL_MARKERS` still marks the whole `ocean_extension*`
-  family cut, but 6 of them (`01`-`04`, `x02`, `x08`) carry REAL generated navmeshes and are
-  area-owners inside `drxBC3`/`drxBC_Finale`'s GUID lists - i.e. live walked-on content.
-  `docs/CUT_CONTENT.md`'s "never intended to be entered / permanently cut" is wrong for those 6.
-  Owner/trigger: a map-docs pass; harmless today because `MAP-NAV-5`/`-6` deliberately ignore
-  cut-ness. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 4.
+- ~~**BL-b89-DEBT-3 (P2):** `contracts_map.CUT_LEVEL_MARKERS` still marks the whole
+  `ocean_extension*` family cut, but 6 of them (`01`-`04`, `x02`, `x08`) carry REAL generated
+  navmeshes and are area-owners inside `drxBC3`/`drxBC_Finale`'s GUID lists - i.e. live walked-on
+  content.~~ **✅ CLOSED 2026-07-28 (`fix/debt-docs`).** FIX AT THE CORRECT LAYER: the substring
+  tuple `CUT_LEVEL_MARKERS = ('ocean_extension', 'coldtombs')` is replaced by an EXACT-BASENAME
+  `CUT_LEVELS` frozenset of the 8 genuinely geometry-less levels (`ocean_extension05`,
+  `ocean_extensionx01/x03/x04/x05/x06/x07`, `coldtombs`) plus a `level_basename()` helper, so a
+  level can no longer be exempted by an accident of substring matching. `docs/CUT_CONTENT.md`
+  rewritten: the 6 live levels are moved to a "NOT cut - live walked-on content" table with their
+  real navmesh sizes / tile counts / owning meshes, and a standing warning that CUT exempts
+  MAP-NAV-3 **only** (streaming is by grid proximity, so a cut level's container must still be
+  structurally valid - the whole b89 lesson). **PROOF (no contract loses coverage):**
+  (a) `_negtest_map.py` gains `test_cut_levels()` - 8 cut-TRUE + 6 live-FALSE assertions, a
+  substring-regression assertion, and a PLANTED NEGATIVE proving MAP-NAV-3 now FIRES on a live
+  `ocean_extension02` with no `0x0b` (pre-fix: silently exempt) while staying silent on a genuinely
+  cut one. Suite: **53/53 checks PASS**. (b) exemption-delta probe over BOTH shipped variants
+  (`local/Levels_merged.arc` + `local/Levels_merged_TESTHUB.arc`, 2282 levels each): exempted
+  14 -> 8, all 6 moves are CUT -> NOT-CUT (coverage gained, never lost), and **0** of them would
+  newly violate MAP-NAV-3 (every one has a `0x0b`). (c) `run_contracts --only map` on the canonical
+  map: **0 P0 / 0 P1 / 3 P2**, byte-identical violation set to the pre-change baseline.
+  Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 3-4.
+- **BL-b90-DEBT-5 (P2, NEW 2026-07-28 - stale local artifact):** `local/Levels_merged_TESTHUB.arc`
+  is dated **Jul 17 (pre-b89)** and still carries all **8 malformed 148-byte stubs**
+  (`run_contracts --only map` against it: 16 P0 = MAP-NAV-5 x8 + MAP-NAV-6 x8). Only the canonical
+  `local/Levels_merged.arc` (Jul 27) was refreshed by the b89 wave. Nothing ships from `local/`, so
+  this is an artifact-hygiene issue, not a player-facing one - but any lane that reaches for the
+  TESTHUB variant will gate-FAIL on b89 defects that are already fixed. Owner/trigger: the next map
+  lane rebuilds it (needs `SVC_SVAERA_ARC`/`SVC_SV_ARC` per BL-b89-DEBT-4/BL-b90-DEBT-2).
+  Found by: the BL-b89-DEBT-3 both-variants proof run.
 - **BL-b89-DEBT-4 (P2):** `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
   EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
   (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
