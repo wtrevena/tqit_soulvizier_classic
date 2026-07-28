@@ -1,5 +1,94 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD58-DEV GATE RECORD - b97 SOUL-vs-MONSTER IDENTITY AUDIT round 1 (2026-07-28, branch `fix/soul-identity`, tag `build58-dev`)
+
+**R-49a, Will 2026-07-27, verbatim:** "we also need to do an audit of the hero monsters vs the souls
+that they drop since i can see that some of the heroes are dropping the wrong souls or souls for
+other boss monsters i think" - **CONFIRMED, 18 records.**
+
+DB-ONLY lane (arz + Text coupled pair). **NO map rebuild, NO deploy** (several lanes are editing the
+arz concurrently; the orchestrator merges and deploys once). Full report + the 850-row table:
+`docs/reports/b97_soul_identity_audit.md` + `docs/reports/b97_soul_identity_table.md`.
+
+**AUDIT SCOPE:** 850 creature records with a LIVE soul drop (Hero 583 / Boss 166 / Quest 101),
+591 distinct soul families, 605 distinct monster display names, all difficulty variants + ranks.
+Verdicts: **MATCH 808 / MISMATCH 18 / SHARED-ARCHETYPE 13 / NAME-DRIFT 11**.
+
+**ROOT CAUSE (two layers):** a monster's identity is its `description` tag, NOT its .dbr filename.
+The base game reuses ONE hero filename across several named heroes -
+`ratman\hero_wheedletongue_{39,41,43}` = Wheedletongue the Magnificent / **Fesil the Quick** /
+**Sinnet Patchfur** (verified in the TQAE base arz) - and `wire_souls_to_monsters` matches by
+FILENAME. SV 0.98i made the same assumption upstream; our build's "already had souls" branch then
+ACTIVATED the mis-pairings SV shipped DEAD at chance 0 (**8 of 18 were 0.0 upstream, 9 were 5.0** and
+got raised to 50, **1** had no SV/base precedent at all and is our own fuzzy wire). The pre-existing F1 gate `_verify_no_fuzzy_cross_wire` cannot see this:
+it scores the soul name against the FILENAME (the wrong axis) and whitelists SV-authored pairings.
+The 2026-07-05 yeti fix closed the RANK dimension; this closes the IDENTITY dimension.
+
+**RECORDS TOUCHED (exactly 18, one field each - record-diff vs baseline: 0 added, 0 removed,
+18 changed, every change `chanceToEquipFinger2 -> 0.0`):** Fesil the Quick + Sinnet Patchfur +
+Blood-Eyes x2 (Wheedletongue soul), Errak Bonecarver + Sartt Soulrender (Kaalt Speartail), Korat
+Bearkin (Grom), Raghd Bloatworm (Adara the Lovely), Prince Ch'kik't (Z'kar Flamespinner), Wahr'Ner
+Shadowpaw + Nazur the Shrouded (Nephi'tek), Masai-yin + Xuannu the Twilight Matron (Syrinx), Morbi
+(Venemurax), Mormo (Storm Crow), Daechalcos (Scarabaeus), Thelxiepeia Venomlip (Aquardia), Colossal
+Scorpion (Rocksting). `lootFinger2Item1` deliberately KEPT on all 18 (detach the roll, keep the data
+- the A4 Aphiastas-zero / R-45 tombguardian shape): reviewable and reversible.
+
+**IMPLEMENTATION:** new registry module `tools/patches/soul_identity.py`, registered LAST among
+content modules (after `toxeus_souls_100`, before `visuals`) so it sees the FINAL carrier set.
+Registry order hash `86570c075c72a85ca5f63f018da7a0894371362e389b966c206df8752084253a` (34 modules).
+THE RULE is data-derived, not a hand-list: *if some carrier of a soul identity-matches it, every
+other carrier that does not is an identity thief; if NO carrier matches, nothing is touched.* The
+second clause is why the by-design families are preserved **with no whitelist** and why orphaning a
+soul is structurally impossible. Identity is judged on DISPLAY TEXT only; the .dbr filename is never
+consulted. Supporting change: `build_svc_database.main()` stashes the display-name table (SV 0.98i
+`Text_EN.arc` + `text_tags`/`legacy`/`thrown`/`graft`) on `apply_svc_patches._SV098I_NAME_TAGS`,
+outside the prefix cache. A carrier whose monster OR soul name does not resolve is SKIPPED as
+unjudgeable, never convicted (this guard alone spared `boss_charon_39` - an R-42/double-soul-ruling
+record - in the first build, before the tag table was widened).
+
+**GATES:** three in the module - `verify()` (step 4, over the FINAL merged db post gate-battery and
+post drop-rate forcer; LIST-FREE: re-runs the rule and requires an empty answer - the permanent
+regression gate), the REVIEW GATE (`apply()` asserts the rule's verdict equals the 18 rows a human
+classified; content drift fails loud asking for review), and the ORPHAN GUARD (every affected family
+must still have a live matching carrier or the build aborts). Planted negative test
+`tools/contracts/tests_soul_identity_negative.py` (T1 clean-db passes, **T2 re-arms the REAL Fesil
+the Quick mismatch and proves verify() FIRES**, T3 synthetic cross-wire fires, T4 archetype family
+NOT flagged, T5 filename-is-not-identity). Reproducible audit tool `tools/audit_soul_identity.py`
+shares the gate's identity function, so tool and gate can never disagree.
+
+**LEDGER:** `docs/WILL_RULINGS.md` **R-49a** IMPLEMENTED b97. **No ruling overturned:** R-48's two
+champions are SOLE carriers (untouched; this module's verify() re-proves both at 100.0), R-45 tomb
+guardian still 0.0, R-42's 50/66/25 classifier NOT modified (all 18 zeroes carried as documented
+per-name waivers in `tools/verify_soul_drop_rates.py` `_KNOWN_EXCEPTIONS`, the legion_soul_stages
+shape), R-43 / R-44 / bloodtip / gustleech / legion double-soul chains untouched.
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`; BUILD ONLY, **NOT deployed** - the
+orchestrator merges + deploys once):
+
+| artifact | md5 |
+|---|---|
+| **built arz FOR THE ORCHESTRATOR** | **`fcc6fad38d9b8a0fd54a337e23e5ffa8`** (55,424,089 B) |
+| baseline arz (main `8c3445c`) | `1c27d5fa650b5c076696db4ad379672f` (55,424,142 B) |
+| `Text.arc` (rebuilt from build-emitted `uber_soul_tags.txt`) | `fcca49277b9d31ed451e4a6843898843` - **byte-identical to baseline**, 0 tags authored |
+| `uber_soul_tags.txt` | **byte-identical to baseline** |
+
+Two independent full builds produced the SAME arz md5 (determinism proof).
+
+**GATES:** DB build **exit 0**; every fail-loud invariant green (soul-leak 0 / soul-augment /
+soul-itemskill 1388 / F1 cross-wire / F2 summon-identity 21 families / F6 naming / spawn-eligibility /
+A7 golden 84 waived 0 other / b77 unlock-alignment). Registry `[33/34] soul_identity -> modified 18
+record(s), 0 tag(s)`, **0 unjudgeable carriers**; step-4 hook **`[soul_identity] verify OK`**.
+`validate_tags` **PASS** (417/417 authoritative). `verify_soul_drop_rates --gate` **PASS** (exit 0;
+testing-forcer survival **832 enabled -> 100 / 446 gated stay 0** vs baseline 850/428 = exactly the 18;
+planted post-wire-stomp negtest still CAUGHT). Contracts `--only souls,summons`: **0 P0 / 0 P1 /
+112 P2, GATE PASS**, and the baseline yields the **byte-identical violation set** (0 only-in-final,
+0 only-in-baseline). **A9 render-chain PASS** (22 upstream WARNs) on the final build AND standalone on
+the baseline arz - identical. Planted negative test **ALL 13 ASSERTIONS HELD**. Ruling spot-checks on
+the final arz: R-48 Enslaver **100.0** / Devourer **100.0**; R-45 `um_tombguardian_26` **0.0**.
+
+**OPEN DEBT:** BL-b97-DEBT-1..6 (see DEBT REGISTER). Headline: **18 creatures now drop no soul at
+all** - inventing one for each is new content (amgoz1 creative bar) and is a WILL DECISION.
+
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 
 **R-49, Will 2026-07-27, verbatim (REPEAT of R-3):** "toxeus the murderer devourer of blood is not
@@ -355,6 +444,39 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b97 soul-vs-monster identity audit (2026-07-28, build58-dev) - NEW**
+- **BL-b97-DEBT-1 (WILL DECISION, content):** the 18 detached creatures now drop **no soul at all**
+  (Fesil the Quick, Sinnet Patchfur, Blood-Eyes, Errak Bonecarver, Sartt Soulrender, Korat Bearkin,
+  Raghd Bloatworm, Prince Ch'kik't, Wahr'Ner Shadowpaw, Nazur the Shrouded, Masai-yin the
+  Grovekeeper, Xuannu the Twilight Matron, Morbi, Mormo, Daechalcos, Thelxiepeia Venomlip, Colossal
+  Scorpion). No soul was INVENTED for them - new content is a design call under the amgoz1 creative
+  bar. Two are **Boss**-classified and most likely to be missed: **Xuannu the Twilight Matron** and
+  **Blood-Eyes**. Owner/trigger: Will approves bespoke souls (or accepts them soulless).
+- **BL-b97-DEBT-2 (P2, upstream):** `wire_souls_to_monsters`'s NEW-wire matcher still keys on the
+  .dbr FILENAME. The b97 gate catches the consequence roster-wide, but the matcher itself is
+  unchanged - fixing it would move records the F1 gate currently blesses and is its own wave.
+  Owner/trigger: the next souls pass.
+- **BL-b97-DEBT-3 (WILL DECISION, retirement protocol):** the Iron Lore **zzdev dev-dummy** creatures
+  (`xpack\creatures\monster\zzdev\z_{arthur,ben,chooch,cory,dave,david,frazier,josh,morgan,nate,
+  parnell,scott,shawn,tom,~v~}`) are Quest-classified at **66% soul drop**, and the build authored
+  real soul items for three (`soul\svc_uber\z_ben_soul_{n,e,l}`, `z_tom_soul_{n,e,l}`, a `~V~` soul).
+  They are identity-CORRECT so the gate does not touch them, and they are almost certainly
+  unreachable - but "Ben Soul" ships in the roster. Zeroing the drops and/or retiring the items are
+  both retirement-protocol calls (WILL-VETO by default) and the souls may sit in `svc_uber` formula
+  chains. Recommend: zero the zzdev drops, leave the items. Owner/trigger: Will.
+- **BL-b97-DEBT-4 (WILL DECISION, text-only):** NAME-DRIFT renames - cheapest real win is the
+  **misspelling** `"The Etheral One Soul"` -> "The Ethereal One Soul"; also Crowboar -> Clazomenaeus,
+  Grimshell -> Shriekbrood, Spinebone -> Skull Spine, Vilerotter -> Vile Crawl. Owner/trigger: Will
+  picks (or "typos only").
+- **BL-b97-DEBT-5 (P3, process):** the WILL_RULINGS **Souls decade (40-49) is EXHAUSTED** (R-49 went
+  to b91), so this wave's ruling is filed as **R-49a**. The next soul ruling should continue the
+  letter series or be allocated a fresh decade. Owner/trigger: whoever files the next soul ruling.
+- **BL-b97-DEBT-6 (environment, not this lane):** the A9 render-chain gate SKIPS unless a populated
+  `Resources/` sits beside the build output; a scratchpad build with an EMPTY `Resources/` makes it
+  FAIL with ~197 bogus "unrenderable" refs. b97 ran it standalone against the real resource arcs on
+  BOTH the baseline and the fixed arz: **PASS / PASS, 22 upstream WARNs each, identical**.
+  Owner/trigger: consider making the gate distinguish "no Resources dir" from "empty Resources dir".
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,

@@ -215,6 +215,20 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
+    'soul_identity',        # b97 (Will 2026-07-27): "some of the heroes are dropping the wrong
+                            # souls or souls for other boss monsters". A creature must not drop a
+                            # soul whose IDENTITY belongs to a DIFFERENT named creature that also
+                            # drops it. Data-derived rule (display-name identity, never the .dbr
+                            # filename - the axis that caused the defect); zeroes ONLY
+                            # chanceToEquipFinger2, only downward, on the 18 identity thieves,
+                            # leaving lootFinger2Item1 intact. Structurally cannot orphan a soul:
+                            # a family with NO identity-owning carrier (archetype souls,
+                            # name-drift 1:1, mod-themed "Soul of the X") is never touched.
+                            # Registered after EVERY soul-wiring + drop-rate module (incl.
+                            # toxeus_souls_100, whose two 100% champions are sole carriers and
+                            # thus untouched) so apply() sees the FINAL carrier set; verify()
+                            # re-runs the rule over the final merged db as the permanent,
+                            # list-free regression gate. See docs/reports/b97_soul_identity_audit.md.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

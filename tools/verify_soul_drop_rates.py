@@ -202,6 +202,53 @@ _KNOWN_EXCEPTIONS = {
         'the naive "\\boss_" path heuristic would otherwise misclassify this '
         'PLACED Golden Bough encounter as a farmable Act boss and cut it to '
         '25, desyncing it from 41/43), orthogonal to the RANDOM/PLACED split'),
+
+    # ── b97 SOUL-IDENTITY (Will 2026-07-27): "some of the heroes are dropping
+    # the wrong souls or souls for other boss monsters". Each record below was
+    # dropping a soul whose NAMED OWNER is a different creature that also drops
+    # it, so tools/patches/soul_identity.py detached the roll
+    # (chanceToEquipFinger2 -> 0; lootFinger2Item1 left intact). The RANDOM/
+    # PLACED/BOSS classifier is deliberately NOT modified - it still says
+    # 50/25 for these - so all 18 are waived here BY NAME, exactly like the
+    # legion_soul_stages non-terminal zeroes above. Every soul involved is
+    # still dropped by its rightful owner (soul_identity's ORPHAN GUARD proves
+    # it every build). Full table: docs/reports/b97_soul_identity_audit.md.
+    **{bn: (0.0,
+            f'b97 soul-identity: {who} was dropping the {soul} soul, which '
+            f'belongs to {owner}; patches/soul_identity.py detached the roll '
+            f'(loot ref kept)')
+       for bn, who, soul, owner in (
+           ('hero_wheedletongue_41', 'Fesil the Quick', 'Wheedletongue',
+            'Wheedletongue the Magnificent'),
+           ('hero_wheedletongue_43', 'Sinnet Patchfur', 'Wheedletongue',
+            'Wheedletongue the Magnificent'),
+           ('um_inkeyes_45', 'Blood-Eyes', 'Wheedletongue',
+            'Wheedletongue the Magnificent'),
+           ('um_inkeyes2_45', 'Blood-Eyes', 'Wheedletongue',
+            'Wheedletongue the Magnificent'),
+           ('hero_kaaltspeartail_30', 'Errak Bonecarver', 'Kaalt Speartail',
+            'Kaalt Speartail'),
+           ('hero_kaaltspeartail_33', 'Sartt Soulrender', 'Kaalt Speartail',
+            'Kaalt Speartail'),
+           ('hero_grom_31', 'Korat Bearkin', 'Grom', 'Grom'),
+           ('hero_adarathelovely_43', 'Raghd Bloatworm', 'Adara the Lovely',
+            'Adara the Lovely'),
+           ("hero_princech'kik't_37", "Prince Ch'kik't the Horrible",
+            "Z'kar Flamespinner", "Z'kar Flamespinner"),
+           ('um_wahr_33', "Wahr'Ner Shadowpaw", "Nephi'tek", "Nephi'tek the Lasher"),
+           ('us_nazur_34', 'Nazur the Shrouded', "Nephi'tek", "Nephi'tek the Lasher"),
+           ('ur_masai_43', 'Masai-yin the Grovekeeper', 'Syrinx',
+            'Syrinx of the Tainted Meadow'),
+           ('ur_uber_45', 'Xuannu the Twilight Matron', 'Syrinx',
+            'Syrinx of the Tainted Meadow'),
+           ('um_morbi_17', 'Morbi', 'Venemurax', 'Venemurax'),
+           ('us_mormo_16', 'Mormo', 'Storm Crow', 'Storm Crow'),
+           ('us_frostscarab_35', 'Daechalcos', 'Scarabaeus',
+            'Scarabaeus the Desert King'),
+           ('us_poisonsiren_14', 'Thelxiepeia Venomlip', 'Aquardia the Coral Queen',
+            'Aquardia, the Coral Queen'),
+           ('um_rocksting_29', 'Colossal Scorpion', 'Rocksting', 'Rock Sting'),
+       )},
 }
 
 

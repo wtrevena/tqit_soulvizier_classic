@@ -185,6 +185,33 @@
   touch the Hero/Boss/Quest soul-drop gate in `wire_souls_to_monsters` (the yeti Common/Champion
   lesson): both champions are `monsterClassification=Boss`, so the gate never applied to them and
   no Common/Champion is re-enabled. See docs/reports/b90_toxeus_souls_100pct.md.
+- R-49a [2026-07-27] IMPLEMENTED b97 (fix/soul-identity), verbatim: "we also need to do an audit of
+  the hero monsters vs the souls that they drop since i can see that some of the heroes are dropping
+  the wrong souls or souls for other boss monsters i think" - CONFIRMED. **A creature must not drop a
+  soul whose identity belongs to a DIFFERENT named creature that also drops it.** 18 records were
+  detached (`chanceToEquipFinger2 -> 0`; `lootFinger2Item1` deliberately KEPT, the A4/R-45 shape).
+  ROOT CAUSE: a monster's identity is its `description` tag, NOT its .dbr filename - the base game
+  reuses ONE hero filename across several named heroes (`hero_wheedletongue_{39,41,43}` =
+  Wheedletongue / **Fesil the Quick** / **Sinnet Patchfur**), and `wire_souls_to_monsters` matches by
+  filename; our build then ACTIVATED the resulting mis-pairings that SV 0.98i shipped dead at
+  chance 0. Owner: `tools/patches/soul_identity.py` (registry module, registered after every
+  soul-wiring/drop-rate module). The rule is DATA-DERIVED, not a hand-list, and structurally cannot
+  orphan a soul: a family with NO identity-owning carrier (archetype souls like Satyr Fire Magi /
+  Sandwraith, name-drift 1:1 like Wither Mound <-> Speckled Jim, mod-themed "Soul of the X") is never
+  touched. verify() re-runs the rule over the FINAL merged db as a permanent LIST-FREE gate; planted
+  negative test `tools/contracts/tests_soul_identity_negative.py`.
+  RECONCILIATION: does NOT overturn any ruling. R-48's two champions are SOLE carriers of their souls
+  (untouched, re-proven at 100 by this module's verify()); R-45 tomb guardian stays 0.0; R-42's
+  50/66/25 classifier is NOT modified, so all 18 zeroes are carried as documented per-name waivers in
+  `tools/verify_soul_drop_rates.py` `_KNOWN_EXCEPTIONS` (the same shape as the legion_soul_stages
+  non-terminal zeroes); R-43 / R-44 / bloodtip / gustleech / the legion double-soul chains untouched.
+  NOT DONE ON PURPOSE (Will decisions, see report sec 8): no soul was INVENTED for the 18 now-soulless
+  creatures (new content = amgoz1 creative bar), no NAME-DRIFT rename (incl. the "The Etheral One
+  Soul" misspelling), and the Iron Lore zzdev dev-dummy soul drops were left alone (retirement
+  protocol). See docs/reports/b97_soul_identity_audit.md.
+  > NUMBERING NOTE: the Souls decade (40-49) is EXHAUSTED (R-49 went to the b91 devourer-chest fix),
+  > hence the `a` suffix. The next soul ruling should either continue the letter series (R-49b) or be
+  > allocated a fresh decade by whoever files it. Registered as BL-b97-DEBT-5.
 - R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class
   encounters (Blood Toxeus, Enslaver, Vashkarr, Broodmother, Dorus, Sarkoth, Gorrahk, Ilsevar,
   Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb
