@@ -356,6 +356,91 @@ along automatically when the structural cluster-relocation fix lands.
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
 
+**b91 Cold Worm buffs lane / R-39 (2026-07-28, branch `fix/debt-mixed`) - NEW**
+- ~~**BL-b91-DEBT-1 (P1, BLOCKED - the one R-39 sub-item NOT delivered):** the exclamation-point map
+  marker on placed ubers ... it is map-side ... needs `SVC_SVAERA_ARC`/`SVC_SV_ARC`.~~
+  **✅ CLOSED 2026-07-28 (b91 round 2, same branch) - AND THE BLOCKER ITSELF WAS WRONG.**
+  Only half of round 1's finding survives: (a) is TRUE - there is no "b63 mechanism" anywhere in
+  this repo (the reports jump b62 -> b64; the only `b63` string is the workflow id
+  `wf_87586bbf-b63`), so it genuinely had to be designed from ground truth. **(b) is FALSE.** The
+  marker is **not** map-side: it is the DB-side Monster field **`DisplayAsQuestItem`**, present on
+  **all 4,601 Monster records** and set to 1 on **124** of them - every base-game quest boss, every
+  `xsq` named quest hero, the escort/rescue NPCs, the quest chests/doors/objects, and the whole
+  `records\poi\**` `AreaOfInterest` map-marker namespace. It is **already LIVE in this mod on the
+  very boss R-39 is about**: `records\test\boss_coldworm50.dbr` = 1 on `main`. Round 1 scanned only
+  for `miniMapEntity`, found 0 Monster carriers, and generalised from that one field. (The
+  secondary claim that the map arcs are unavailable is also stale - SVAERA is at Steam Workshop item
+  `2076433374` and SV 0.98i's `Levels.arc` is in the `build36-map` worktree, per BL-b89-DEBT-4 - but
+  nothing in this fix ever needed them.)
+  **SHIPPED** as `tools/patches/uber_quest_markers.py` (registry module, apply+verify, after
+  `coldworm_buffs`, before `visuals`). Roster is DERIVED, never hardcoded:
+  `soul_spawn_provenance_sets()`'s `placed_members` (the same source of truth as the PLACED_UBER 66%
+  soul rate, R-42), narrowed by **rule A** (it, or a form in its `actorToSpawnOnDeath` chain,
+  actually pays a soul out) and widened by **rule B** (mark every DEDICATED chain form - one whose
+  spawners are ALL in the roster). Both rules are derived from shipped content: the single placed
+  uber already marked on `main` is `um_polisgaoler_99` AND its dedicated `um_polisgaoler_unbound_99`
+  - exactly rule A + rule B. Rule B's exclusivity test is load-bearing: `as_ghosthero_32` is
+  Neferkha's terminal form AND five ROAMING mummy heroes' (`um_tath_27`, `um_khenti_31`,
+  `um_nebtaan_32`, `um_radementes_31`, `us_menkare_33`), so a naive whole-chain walk would spam the
+  marker across the map. **Roster = 25 records (21 encounters + 4 dedicated forms), 23 newly
+  marked**; 26 retinue/adds excluded - and independently corroborating the cut, all 26 excluded are
+  rank=Champion while all 25 kept are Boss/Hero. Ships its own gate (every roster member marked, no
+  SHARED form marked, 3 pre-existing anchors intact) + a 4-plant negative test
+  (`py tools/patches/uber_quest_markers.py --negtest` -> PASS). ONE field, 0 new records, 0 tags,
+  0 map bytes. **PROOF:** full DB build exit 0 under `SVC_RELEASE_DROPS=1 PYTHONHASHSEED=0`, whole
+  gate battery green; `uber_quest_markers: modified 23 record(s), 0 tag(s)`; module verify over the
+  final merged db = `25/25 ... 26 retinue/add records correctly unmarked; 1 shared transform form
+  correctly left alone; 3 pre-existing anchors intact`; **record-diff vs the round-1 arz
+  `461c54f95480f6c331f25ce7ab64c6f4` = 0 added / 0 removed / 23 modified, every one exactly
+  `DisplayAsQuestItem: [0] -> [1]`, 1 field each, nothing else moved**; FOUR independent builds
+  byte-identical at md5 `1526fbc4dbf3d5b21d551ef1fb9d3505` (55,424,905 B); registry selfcheck 35
+  modules, order hash `0afd6ce08a6b...`. Report: `docs/reports/b91_coldworm_buffs.md` sec 9 (sec 7
+  kept, marked SUPERSEDED, as the error record). **R-39 is now IMPLEMENTED, not PARTIAL.**
+- **BL-b91-DEBT-2 (P0, WILL DECISION - found by the new roster drop-slot sweep, deliberately NOT
+  fixed):** 4 records wire a soul at a real rate that **provably cannot drop**, because
+  `dropItems=0` suppresses every equipped item on the record:
+  `records\drxcreatures\bloodwitch\q_leinth_{47,49,50}.dbr` (Boss, `leinth_soul_{n,e,l}` @66) and
+  `records\xpack\creatures\monster\karkinos\xhero_spinebreaker_42.dbr` (Hero, `spinebreaker_soul_*`
+  @66). The signal is unambiguous - **881 of the 888 active soul droppers set `dropItems=1`**, 5 set
+  0, 2 leave it absent. NOT fixed here because flipping it also releases Leinth's `lenithsveil`
+  unique at 100% and Spinebreaker's rare-misc/parchment/potion tables: a real content change, which
+  defaults to WILL-VETO. Owner/trigger: Will says yes/no; then a one-line module + wire
+  `tools/sweep_soul_drop_slots.py --gate` into the build.
+- **BL-b91-DEBT-3 (P2, open question):** `boss_titan_typhon_45` and `boss_daemonbull_yaoguai_38`
+  carry a soul at chance>0 with `dropItems` **ABSENT** (inheriting the Monster.tpl default, which is
+  not established in this repo). Either establish the template default or set it explicitly like the
+  other 881. Owner/trigger: same lane as BL-b91-DEBT-2.
+- **BL-b91-DEBT-4 (launch-gated):** the whole Cold Worm lane is unproven IN-GAME. The burrow
+  (`giantkarkinos_flightofthekondor`) is the one **cross-rig graft** in the kit: it is bound to the
+  worm's own `CryptWorm_AttGamma` dive animation via the repurposed ref4 `'Dive'` -> `'Kondor'`, which
+  is correct by the anim-binding invariant but has no in-game precedent on this rig. Owner/trigger:
+  Will, fresh character on DEV after a full Steam restart - does Cold Worm cast freezing blast / ice
+  blasts / the burrow / the poison cloud, does the dive read as a burrow, and is the new speed
+  profile (run 0.75 -> 1.8) fun rather than unfair?
+  **EXTENDED 2026-07-28 (round 2, the marker):** also unproven in-game is the quest marker itself.
+  `DisplayAsQuestItem` rendering is engine-side; it is proven live by 124 base-game carriers plus
+  Cold Worm and Polis Gaoler inside this mod, so this is an EXISTING engine feature being extended
+  rather than a new player surface being invented - but no agent has SEEN it (launching TQ was out
+  of scope for the lane, and the player-surface checklist forbids claiming a visual from anything
+  but an in-game-confirmed asset). Two questions for Will: (1) do the placed ubers now show the
+  marker; (2) is **25 markers** the right density, or does it read as map clutter? If it is clutter,
+  the roster narrows by editing rule A/B in one module - **no map rebuild** either way.
+- **BL-b91-DEBT-5 (P2, hygiene):** `tools/sweep_soul_drop_slots.py` is shipped as a diagnostic, NOT
+  wired into the build as a hard gate, precisely because it currently FAILs on the pre-existing
+  content in BL-b91-DEBT-2/3. Wire it in as soon as those are ruled on. Owner/trigger: same lane.
+- **BL-b91-DEBT-6 (P2, honest scope boundary of the new marker roster - round 2):**
+  `uber_quest_markers`'s roster is the `records\drxmap\proxy*` PLACEMENT surface (via
+  `soul_spawn_provenance_sets`). That is deliberate - it is the SAME definition of "placed" the
+  PLACED_UBER 66% soul rate uses (R-42), so the two can never disagree - but it means an uber placed
+  by any OTHER mechanism is outside the roster and would not be auto-marked. There is one such case
+  today and it is already fine: **Cold Worm** (`records\test\boss_coldworm50.dbr`) is not proxy-placed
+  and is not in the roster, but it already carries `DisplayAsQuestItem = 1` and the module asserts
+  that as a pinned anchor. The residual risk is a FUTURE uber placed outside `drxmap\proxy*` being
+  silently unmarked. Related known class: the drop-rate gate's own `UNREFERENCED(66)` bucket
+  (`tools/verify_soul_drop_rates.py`), which is the same "pays a soul but no placement provenance"
+  set. Owner/trigger: whoever widens the placement-provenance definition - widen it in
+  `soul_spawn_provenance_sets` (one place, both consumers) rather than adding a second roster.
+
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - ~~**BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
   `C-RES-ASSET-1` 484). Proven PRE-EXISTING - the identical command over the pre-change baseline arz
@@ -600,9 +685,26 @@ along automatically when the structural cluster-relocation fix lands.
 - 36u party-wide aura balance note - b57's "Balance note (flag, do NOT nerf - Will decides)" on the
   widened radii remains an open Will decision. Source: docs/reports/b57_aura_radius.md. Owner: Will
   DEV pass. [added round-2 per vet]
-- Cold Worm buffs (3x life / +20% armor / kit / speed / marker mechanism / 3-tier soul + loot-triple
-  fix) - PENDING, interrupted lane with partials on worktree `coldworm-markers` (R-39). Source: docs/
-  WILL_RULINGS.md R-39.
+- ~~Cold Worm buffs (3x life / +20% armor / kit / speed / 3-tier soul + loot-triple fix / roster
+  drop-slot sweep)~~ - **CLOSED b91** (branch `fix/debt-mixed`, `tools/patches/coldworm_buffs.py`).
+  RCA: Cold Worm's ENTIRE kit pointed at the `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace,
+  which exists in NEITHER the mod arz, NOR upstream SV 098i, NOR the base game - 8/8 active skill
+  slots dead, the worst record in the whole DB (next-worst: 2/2). Every dead slot repointed at an
+  EXISTING donor at that donor's own level (CryptWorm-rig `um_coldcreep_29` / `am_devourer_27` +
+  nearest-tier insectoid bosses); life 3x; +20% armor via the `armor_passive` level (the only layer
+  where monsters carry `defensiveProtection` - 0 non-zero carriers of the raw field DB-wide, and the
+  passive's array is exactly linear); rig-proven speed profile incl. the 0.15-0.4 anim speeds and the
+  0.3/0.1 rotation speeds. Ships a NEW invariant gate (an active skill slot must be CASTABLE: skill
+  resolves AND its `skillSpecialAnimationName` is bound by an `unarmedSpecialAnimRef` - the
+  monster-side twin of B-SOUL-PROC-2) with a planted negative test, plus
+  `tools/sweep_soul_drop_slots.py`. The 3-tier soul + loot triple were already correct and are now
+  asserted, not rewritten. Record-diff = EXACTLY 1 record / 70 intended-class fields; arz md5
+  `461c54f95480f6c331f25ce7ab64c6f4`. ~~**The marker sub-item is NOT done** - see BL-b91-DEBT-1;
+  R-39 stays PARTIAL.~~ **UPDATE 2026-07-28 (round 2): the marker sub-item IS done** -
+  `tools/patches/uber_quest_markers.py` sets the DB-side Monster field `DisplayAsQuestItem=1` on the
+  25-record derived placed-uber roster (23 newly marked). Round 1's "map-side, blocked" verdict was
+  wrong: the field is on Monster.tpl and was already live on Cold Worm himself. **R-39 is
+  IMPLEMENTED.** Report: `docs/reports/b91_coldworm_buffs.md` (sec 9; sec 7 SUPERSEDED).
 - Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal" defect
   class) - PENDING, `fix/soul-tiers` branch. Source: docs/WILL_RULINGS.md R-40.
 - Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
@@ -3897,11 +3999,59 @@ murderbossroom return NPC (map lane).
 - SHADOW LINK: large radius (36) KEPT incl. the malus spread; Will-approved final.
 
 
-## COLD WORM BUFFS (Will 2026-07-16, joins the interrupted coldworm-markers lane)
+## COLD WORM BUFFS (Will 2026-07-16) - ✅ FULLY SHIPPED b91 (all 6 sub-items)
 Cold Worm needs ~3x characterLife and +20% armor (defensiveProtection) ON TOP of the already-queued
 kit (burrow/frost skills that actually cast), massive total-speed boost, exclamation-marker
 mechanism -> all placed ubers, and the 3-tier soul + loot-triple fix + roster drop-slot sweep.
 All Cold Worm items ship as ONE lane when resumed (worktree coldworm-markers has partials).
+
+> **b91 (2026-07-28, branch `fix/debt-mixed`): 5 of 6 sub-items DONE + build-verified; the
+> exclamation marker is BLOCKED and is NOT claimed (BL-b91-DEBT-1). R-39 = PARTIAL.**
+> CORRECTION to this section's premise: the `coldworm-markers` worktree had **NO partials** -
+> `feat/coldworm-uber-markers` @ `75110bd` is an ANCESTOR of `main` (0 ahead, clean tree, empty
+> `main...` diff). The lane was abandoned before anything landed; b91 was built from ground truth.
+> Owner: `tools/patches/coldworm_buffs.py` (registry module, apply+verify, after `boss_skill_fix`,
+> before `visuals`). RCA: the ENTIRE kit referenced `boss skills\d2custom\coldworm_*` +
+> `Game\D2*`, absent from the mod arz AND upstream SV 098i AND the base game - **8/8 active slots
+> dead, the worst record in the DB**; so Cold Worm cast nothing, had no difficulty globals and was
+> player-convertible. Fixed at the record layer with EXISTING donors at their own levels. "+20%
+> armor (defensiveProtection)" applied as `armor_passive` level `[60,174,360] -> [72,209,432]`,
+> because the raw field is inert on monsters (0 non-zero carriers DB-wide) and the passive's
+> `defensiveProtection` array is exactly linear. Ships its own gate (active slots must be CASTABLE:
+> resolve + `skillSpecialAnimationName` bound by an `unarmedSpecialAnimRef`) + planted negative test
+> (`py tools/patches/coldworm_buffs.py --negtest` PASS) + `tools/sweep_soul_drop_slots.py`. The
+> 3-tier soul + loot triple were ALREADY correct: asserted in verify(), not rewritten. Record-diff
+> = **exactly 1 record / 70 intended-class fields**; arz md5 `461c54f95480f6c331f25ce7ab64c6f4`.
+> NOT deployed, NOT packaged, NOT pushed to Steam. Open: BL-b91-DEBT-1..5. Report:
+> `docs/reports/b91_coldworm_buffs.md`.
+
+> **b91 ROUND 2 (2026-07-28, same branch): THE 6th SUB-ITEM SHIPPED. R-39 = IMPLEMENTED, and the
+> round-1 "BLOCKED" verdict on the marker was itself WRONG.** The exclamation marker is NOT map-side:
+> it is the DB-side Monster field **`DisplayAsQuestItem`** (present on all 4,601 Monster records,
+> set to 1 on 124 - every base-game quest boss, every `xsq` named quest hero, the escort NPCs, the
+> quest chests/doors/objects, and the whole `records\poi\**` AreaOfInterest map-marker namespace),
+> and it was **already live in this mod on Cold Worm himself** (`records\test\boss_coldworm50.dbr`
+> = 1 on `main`) - which is exactly the marker Will saw when he asked to "extend" it. Round 1
+> scanned only `miniMapEntity` and generalised from that one field's absence. No `Levels.arc`
+> build, no `SVC_SVAERA_ARC`/`SVC_SV_ARC`, zero map bytes. (Round 1's other blocker - "there is no
+> b63 mechanism in this repo" - is TRUE and stands: it had to be found from ground truth.)
+> Owner: `tools/patches/uber_quest_markers.py` (registry module, apply+verify, after
+> `coldworm_buffs`, before `visuals`). Roster DERIVED, never hardcoded:
+> `soul_spawn_provenance_sets()`'s `placed_members` (the same source of truth as the PLACED_UBER
+> 66% soul rate, R-42), narrowed by RULE A (it, or a form in its `actorToSpawnOnDeath` chain,
+> actually pays a soul out - excludes the boss RETINUE mechanically) and widened by RULE B (mark
+> every DEDICATED chain form, i.e. one whose spawners are ALL in the roster). Both rules are
+> derived from shipped content: the ONE placed uber already marked on `main` is `um_polisgaoler_99`
+> AND its dedicated `um_polisgaoler_unbound_99` - literally rule A + rule B. Rule B's exclusivity
+> test is load-bearing: `as_ghosthero_32` is Neferkha's terminal form AND five ROAMING mummy
+> heroes', so a naive whole-chain walk would spam markers across the map.
+> **Roster = 25 records (21 encounters + 4 dedicated forms), 23 newly marked; 26 retinue/adds
+> excluded** - and every excluded record is rank=Champion while every kept one is Boss/Hero (two
+> independent signals, same cut). Ships its own gate + a 4-plant negative test
+> (`py tools/patches/uber_quest_markers.py --negtest` PASS). ONE field, 0 new records, 0 tags,
+> 0 map bytes. Still NOT deployed, NOT packaged, NOT pushed to Steam. Launch-gated residual folded
+> into BL-b91-DEBT-4 (nobody has SEEN the marker in-game; Will judges marker density).
+> Report: `docs/reports/b91_coldworm_buffs.md` sec 9 (sec 7 kept, marked SUPERSEDED).
 
 ## b68 MASTERY REFLOW REVERT (Will 2026-07-16, build43 playtest)
 Will played build43 and reported the build42 mastery reflow introduced huge skill-tree errors

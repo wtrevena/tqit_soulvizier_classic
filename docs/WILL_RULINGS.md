@@ -141,12 +141,76 @@
   rig disappoints: giant scarab, plague swarm host. Same Nile Floodplain / 'Plight of the Nile
   Farmers' quest-completion spot, same quest-collision-safety requirement. Source: git commit
   `edd30b6` (docs/BACKLOG.md).
-- R-39 [2026-07-16] PENDING (worktree `coldworm-markers` has partials; interrupted lane, joins when
-  resumed) Cold Worm needs ~3x characterLife and +20% armor (`defensiveProtection`) ON TOP of the
-  already-queued kit (burrow/frost skills that actually cast), a massive total-speed boost, the
-  exclamation-marker mechanism extended to all placed ubers, and the 3-tier soul + loot-triple fix +
-  roster drop-slot sweep - ships as ONE lane, not piecemeal. Source: git commit `edd30b6` (docs/
-  BACKLOG.md "COLD WORM BUFFS").
+- R-39 [2026-07-16] **IMPLEMENTED (b91, branch `fix/debt-mixed`) - all 6 sub-items shipped
+  + build-verified.** (Round 1 recorded this as PARTIAL with the exclamation marker BLOCKED; round 2,
+  2026-07-28, shipped the marker and PROVED THE BLOCKER ITSELF WRONG - see the last bullet.)
+  Ruling text (unchanged): Cold Worm needs ~3x characterLife and +20%
+  armor (`defensiveProtection`) ON TOP of the already-queued kit (burrow/frost skills that actually
+  cast), a massive total-speed boost, the exclamation-marker mechanism extended to all placed ubers,
+  and the 3-tier soul + loot-triple fix + roster drop-slot sweep - ships as ONE lane, not piecemeal.
+  Source: git commit `edd30b6` (docs/BACKLOG.md "COLD WORM BUFFS").
+  - CORRECTION to this entry's own premise: the worktree `coldworm-markers` had **NO partials**.
+    `feat/coldworm-uber-markers` @ `75110bd` is an ANCESTOR of `main` (0 commits ahead, clean tree,
+    empty `main...` diff), so the lane was abandoned before anything landed. b91 was built from
+    ground truth, not resumed.
+  - IMPLEMENTED by `tools/patches/coldworm_buffs.py` (registry module, apply+verify, registered
+    after `boss_skill_fix` and immediately before `visuals`): 3x life `[14000,18000,22000] ->
+    [42000,54000,66000]`; +20% armor; the rig-proven `um_coldcreep_29` total-speed profile; and a
+    kit that actually casts. RCA: Cold Worm's ENTIRE kit pointed at the
+    `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace, absent from the mod arz AND upstream
+    SV 098i AND the base game - 8/8 active slots dead, the worst record in the whole DB.
+  - RECONCILIATION on "+20% armor (`defensiveProtection`)": that field is INERT on monsters
+    (0 non-zero carriers of `defensiveProtection` or `defensiveProtectionModifier` DB-wide); monster
+    armor comes only from `armor_passive`, whose `defensiveProtection` array is exactly linear
+    (level N == N armor). +20% is therefore applied as `armor_passive` level `[60,174,360] ->
+    [72,209,432]` - Will's field, at the only layer where the number does anything.
+  - The "3-tier soul + loot-triple fix" was ALREADY CORRECT on `main` (3 tiers, strict progression,
+    per-tier b40 icons, pcsafe grant, `[n,e,l]` triple @66 PLACED_UBER rate). b91 asserts it in
+    `verify()` and rewrites nothing.
+  - NEW GATE shipped with the lane: an active skill slot must be CASTABLE, not merely wired - the
+    skill must resolve AND its `skillSpecialAnimationName` must be bound by an
+    `unarmedSpecialAnimRef` on the caster (the monster-side twin of B-SOUL-PROC-2). Planted negative
+    test: `py tools/patches/coldworm_buffs.py --negtest` -> PASS.
+  - Roster drop-slot sweep shipped as `tools/sweep_soul_drop_slots.py` (read-only diagnostic,
+    encodes rank-gating + terminal-form-chain design rules). Cold Worm is clean; it surfaced 6
+    unwaived PRE-EXISTING findings (Leinth x3 + Spinebreaker `dropItems=0`; Typhon + Yaoguai
+    `dropItems` absent) which are REPORTED, NOT FIXED - fixing them changes placed-content drop
+    behaviour and defaults to WILL-VETO. In the BACKLOG DEBT register.
+  - **THE 6th SUB-ITEM (exclamation marker): IMPLEMENTED in round 2 (2026-07-28), and round 1's
+    "BLOCKED" verdict was WRONG.** Round 1 claimed two blockers; only the first survives.
+    (a) TRUE: the cited "b63 mechanism" does not exist in this repo (no b63 report/commit/code - the
+    reports jump b62 -> b64; the only `b63` string is the workflow id `wf_87586bbf-b63`), so the
+    mechanism had to be found from ground truth rather than "extended".
+    (b) **FALSE**: it is NOT map-side. The exclamation marker is the DB-side Monster field
+    **`DisplayAsQuestItem`** - present on all 4,601 Monster records, set to 1 on 124 of them (every
+    base-game quest boss, every `xsq` named quest hero, the escort/rescue NPCs, the quest
+    chests/doors/objects, and the whole `records\poi\**` `AreaOfInterest` map-marker namespace) -
+    and it was **ALREADY LIVE in this mod on Cold Worm himself** (`records\test\boss_coldworm50.dbr`
+    = 1 on `main`). That is the marker Will saw. Round 1 scanned only for `miniMapEntity`, found 0
+    Monster carriers, and generalised from that one field. No `Levels.arc` build, no
+    `SVC_SVAERA_ARC`/`SVC_SV_ARC` dependency, zero map bytes.
+    IMPLEMENTED by `tools/patches/uber_quest_markers.py` (registry module, apply+verify, after
+    `coldworm_buffs`, before `visuals`). "All placed ubers" is DERIVED, never hardcoded:
+    `soul_spawn_provenance_sets()`'s `placed_members` - the same source of truth as the PLACED_UBER
+    66% soul rate (R-42) - narrowed by RULE A (the record, or a form in its `actorToSpawnOnDeath`
+    chain, actually pays a soul out, which excludes the boss RETINUE mechanically) and widened by
+    RULE B (mark every DEDICATED chain form, i.e. one whose spawners are ALL in the roster).
+    **Both rules are derived from shipped content:** the one placed uber already marked on `main`
+    is `um_polisgaoler_99` AND its dedicated `um_polisgaoler_unbound_99` - literally rule A + rule B.
+    Rule B's exclusivity test is load-bearing: `as_ghosthero_32` is Neferkha's terminal form AND
+    five ROAMING mummy heroes' (`um_tath_27`/`um_khenti_31`/`um_nebtaan_32`/`um_radementes_31`/
+    `us_menkare_33`), so a naive whole-chain walk would spam markers across the map.
+    Roster = 25 records (21 encounters + 4 dedicated forms), 23 newly marked; 26 retinue/adds
+    excluded - and every excluded record is rank=Champion while every kept record is Boss/Hero, two
+    independent signals agreeing on the same cut. NEW GATE (a new content class ships its gate):
+    every roster member + dedicated chain form carries `DisplayAsQuestItem=1`, no SHARED form does,
+    and 3 pre-existing anchors stay intact; 4-plant negative test
+    `py tools/patches/uber_quest_markers.py --negtest` -> PASS. ONE field, 0 new records, 0 tags.
+    Report: `docs/reports/b91_coldworm_buffs.md` sec 9 (sec 7 kept, marked SUPERSEDED, as the error
+    record). LAUNCH-GATED residual in BL-b91-DEBT-4: nobody has SEEN the marker in-game (the
+    player-surface checklist forbids claiming a visual from a non-in-game-confirmed source), and
+    Will should judge whether 25 markers is the right density or reads as clutter - narrowing it is
+    a two-rule edit in one module, with no map rebuild.
 
 ### Souls & items (continued)
 - R-43 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
