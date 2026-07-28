@@ -1,5 +1,85 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
+
+**R-49, Will 2026-07-27, verbatim (REPEAT of R-3):** "toxeus the murderer devourer of blood is not
+spawning at the proper location next to his chest in the blood cave even though we said he should
+have a 100% spawn rate there in the existing spawn pool that is there"
+
+DB-ONLY lane (arz + Text coupled pair). **NO map rebuild** - `Levels.arc` + `Quests.arc` byte-identical
+before vs after. Full report: `docs/reports/b91_devourer_chest_spawn.md`.
+
+**ROOT CAUSE:** b79 fixed a FIELD inside the wrong SHAPE. The chain was intact in the deployed bytes
+(chest x1 + guard proxy x1 in `drxBC2`, 4.20u apart; `championMin=1` present), but the Devourer sat in
+the pool's CHAMPION slot. Of 1,845 shipped ProxyPools, **537 guarantee a boss by putting him in a MAIN
+`nameN` slot** (every guaranteed boss in the game and in this mod, incl. `_BT_POOL` for this exact
+monster), while all **90 Boss-in-champion pools are the base-game rare uber-monster lottery** (73 at
+`championMin=0`; the 17 with `championMin>=1` always list non-boss champions alongside).
+`egg_blooddragon` was the **only pool in 51,085 records making a Boss the SOLE champion entry**.
+Second defect on the same chain: the guard proxy still carried `difficultyLimitsFile=limit_area002`
+(`N[23-26] E[38-51] L[60-65]`), below his `charLevel [40,68,100]` on every difficulty. **The repo's own
+`_verify_mod_spawn_proxies_eligible` gate already forbids both** - the chest guard was simply never
+registered in `_MOD_AUTHORED_SPAWN_PROXIES`, so the gate never looked at it.
+
+**RECORDS TOUCHED (exactly 2 - record-diff vs the deployed `c1a8fa2a`: 0 added, 0 removed, 2 changed):**
+- `records\drxmap\proxy\pools\egg_blooddragon.dbr` (11 fields): `name1/2/3` -> `um_bloodtoxeus_99`
+  (MAIN), `nameChampion1/2/3` -> `blooddragon01` (escorts), `weightChampion2/3`=100,
+  `championMin` 1->3, `championMax` 1->3, `FileDescription`. `spawnMin/Max`=4 and
+  `proxyPoolEquation=''` untouched -> **exactly 1 Devourer + 3 blood dragons every run, 1..6P.**
+- `records\drxmap\proxy\egg_blooddragon_pack.dbr` (1 field): `difficultyLimitsFile`
+  `limit_area002` -> `limit_bloodtoxeus` (`[1..110]` N/E/L).
+
+Scope proof: that proxy is placed EXACTLY ONCE map-wide and is the ONLY proxy referencing that pool,
+so both edits touch this one encounter. The encounter Will designed is unchanged (same native proxy,
+same spot, same roster); only which slot the Devourer occupies changed.
+
+**GATE (no-new-surface law):** new **`MAP-CHESTGUARD-1`** (P0) in `tools/contracts/contracts_map.py`
+asserts the WHOLE chain on the shipped artifacts - chest placed once, guard placed once in the same
+level within 12u, proxy->pool1->monster resolve, Devourer is a weighted MAIN, guaranteed mains =
+`spawnMax - championMax` == exactly 1 with `championChance>0`, equation neutralized, limit window
+contains his charLevel on N/E/L. 7 planted negative tests (`_negtest_map.py::test_chest_guard`,
+suite **43/43 PASS**), including the exact champion-only shape that shipped. **Real-world negative
+proof:** the same contract run against the pre-b91 DEPLOYED artifacts exits 1 with
+`MAP-CHESTGUARD-1` P0 + 3x P1; against the b91 build it PASSES. The chest guard is also now
+registered in `_MOD_AUTHORED_SPAWN_PROXIES` (44, was 43).
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`):
+
+| artifact | md5 |
+|---|---|
+| `work/.../Database/SoulvizierClassic.arz` NEW | `1c27d5fa650b5c076696db4ad379672f` |
+| `work/.../Resources/Text.arc` (rebuilt from the BUILD-EMITTED manifest; bytes unchanged) | `fcca49277b9d31ed451e4a6843898843` |
+| `work/.../Database/uber_soul_tags.txt` (build-emitted) | `49b6d85ba15236aa5df60f610e3a7bf0` |
+| baseline arz (pre-change = what was deployed) | `c1a8fa2aee5e6eb88b641b28d7dc6ae4` |
+| `work/.../Resources/Levels.arc` BEFORE == AFTER | `fc0adcc0713839a685b32d6e122653be` |
+| `work/.../Resources/Quests.arc` BEFORE == AFTER | `5e664c7b190965fd69f6ff15d77d85e4` |
+
+**GATES:** DB build **exit 0**, every fail-loud invariant green (spawn-eligibility **44 proxies OK**,
+Part D champion cap **<= 1 Toxeus per pool at 1..6P**, soul-leak / soul-augment / supra-ref / tags /
+A7 golden 84 waived 0 other / A9 render-chain / b77 unlock-alignment). `validate_tags` **PASS**
+(356/356 referenced, 417/417 authoritative). `_negtest_map.py` **43/43 PASS**. Contracts `--only map`
+on the b91 build + the DEV map: **GATE PASS** (0 P0 / 0 P1 / 3 pre-existing portal P2).
+
+**DEPLOYED to DEV** (`CustomMaps\SoulvizierClassicDEV`), coupled arz + Text pair only; backups
+`local/db_backups/SoulvizierClassicDEV_pre-b91_c1a8fa2a.arz` + `local/b91_work_arz_prev.arz`:
+- `Database/SoulvizierClassicDEV.arz` = `1c27d5fa650b5c076696db4ad379672f` (**== built**)
+- `Resources/Text.arc` = `fcca49277b9d31ed451e4a6843898843` (**== built**, bytes unchanged, verified in place)
+- `Resources/Levels.arc` = `943d0ab9516d332db79bd7f9fd2d3ffe` (**UNTOUCHED**, still build49 TESTHUB)
+- `Resources/Quests.arc` = `5e664c7b190965fd69f6ff15d77d85e4` (**UNTOUCHED**)
+
+Deployed-arz re-probe confirms the whole chain. TQ was NOT running at deploy time.
+**Will must kill TQ + Steam and restart before testing** - and see the SAVE note: a chest room already
+visited on a given character+difficulty can keep its previously resolved group, so test on a
+difficulty (or character) that has not cleared that room yet. Report section 6 has the discriminator.
+
+**LEDGER:** `docs/WILL_RULINGS.md` **R-3 PENDING -> IMPLEMENTED b91** (cause corrected), **R-49**
+appended verbatim. Parchment axis (R-1/R-2/R-13) untouched and verified un-regressed
+(`q_bloodtoxeus_ambush` still placed once at `drxFirstxistion_connection` 4u from `finalletter`).
+
+**OPEN DEBT:** BL-b91-DEBT-1..4 (in-game confirmation launch-gated; Steam/canonical not shipped; the
+guard's blood dragons now scale on the `[1..110]` window; a sweep is owed for other native proxies
+carrying mod-authored spawns that are still unregistered).
+
 ## BUILD50-DEV GATE RECORD - b90 Toxeus champion souls -> 100% drop (2026-07-27, branch `feat/toxeus-souls-100`, tag `build50-dev`)
 
 **R-48, Will 2026-07-27, verbatim:** "increase the drop rate for the souls of toxeus the murderer,
