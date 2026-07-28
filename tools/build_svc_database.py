@@ -3768,11 +3768,39 @@ def main():
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
         sys.exit(1)
 
-    sv098_path = Path(sys.argv[1])
-    sv09_path = Path(sys.argv[2])
-    sv041_path = Path(sys.argv[3])
     output_path = Path(sys.argv[4])
-    base_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
+
+    # --- BUILD-INPUT PREFLIGHT (tools/check_build_inputs.py, BL-b90-DEBT-2) -------
+    # argv wins whenever the file is actually there, so every existing invocation is
+    # byte-identical to the pre-preflight build. When an argv path is missing (the
+    # normal case in a fresh worktree - upstream/ is gitignored, so `git worktree add`
+    # hands the lane an EMPTY cache) the shared resolver walks $SVC_* -> in-repo cache
+    # -> the MAIN checkout's cache -> the install/Workshop location -> third_party/,
+    # md5-pinning every fallback. A miss fails LOUD naming the exact env var instead of
+    # dying deep inside ArzDatabase with a bare FileNotFoundError.
+    # sv098i + sv09 are MANDATORY (the build cannot run without them) -> hard fail.
+    # sv041 and the base-game arz keep their existing OPTIONAL semantics exactly
+    # (main() already tolerated a blank/absent path for both), so an unresolvable one
+    # warns loudly and the build continues as it did before - no behaviour change.
+    import check_build_inputs
+    _inputs = check_build_inputs.preflight(
+        'sv098i_arz', 'sv09_arz',
+        given={'sv098i_arz': sys.argv[1], 'sv09_arz': sys.argv[2]})
+    sv098_path = _inputs['sv098i_arz']
+    sv09_path = _inputs['sv09_arz']
+
+    def _optional_input(key, argv_val):
+        if argv_val is not None and not str(argv_val).strip():
+            return None                      # explicitly blank = deliberately skipped
+        try:
+            return check_build_inputs.resolve(key, argv_val)
+        except check_build_inputs.MissingInput as _e:
+            print(f'  PREFLIGHT WARNING: optional input unresolved - '
+                  f'the build continues WITHOUT it:\n{_e}')
+            return None
+
+    sv041_path = _optional_input('sv041_arz', sys.argv[3])
+    base_path = _optional_input('base_arz', sys.argv[5]) if len(sys.argv) > 5 else None
 
 
     # -- build-speed: PREFIX SNAPSHOT CACHE (default ON; opt out with

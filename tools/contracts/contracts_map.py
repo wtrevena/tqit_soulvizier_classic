@@ -364,15 +364,24 @@ def blob_section_types(blob):
     return set(t for t, _ in parse_blob_sections(blob))
 
 
+def blob_0x05_base(blob):
+    """The 0x05 BASE record size for this level blob: 72 for v0x11/v0x0f, else 56.
+
+    THE canonical stride rule - every 0x05 walker in the repo must derive its base
+    size from here, never hardcode one (BUILD46 debt: tools/debug/census_placements.py
+    hardcoded 72 and so desynced on all 496 v0x0e levels).
+    """
+    return 72 if blob[3] in (0x11, 0x0f) else 56
+
+
 def parse_0x05(blob):
     """0x05 placed-instance section. Returns (strings, instances).
 
-    instance = {i, dbr(bytes), flags, uid(bytes|None)}. Record size = 72 for
-    blob version 0x11/0x0f, else 56; a flagged (flags!=0) record carries a
-    trailing 16-byte UniqueId.
+    instance = {i, dbr(bytes), flags, uid(bytes|None), pos(x,y,z)}. Record size =
+    72 for blob version 0x11/0x0f, else 56 (see blob_0x05_base); a flagged
+    (flags!=0) record carries a trailing 16-byte UniqueId.
     """
-    ver = blob[3]
-    base = 72 if ver in (0x11, 0x0f) else 56
+    base = blob_0x05_base(blob)
     d = None
     for t, sd in parse_blob_sections(blob):
         if t == 0x05:
@@ -400,10 +409,12 @@ def parse_0x05(blob):
         if pos + base > len(d):
             break
         sidx = struct.unpack_from('<I', d, pos)[0]
+        # measured layout: str_idx(4) + rot 3x3(36) + position(12) + flags(4)
+        xyz = struct.unpack_from('<3f', d, pos + 40)
         flags = struct.unpack_from('<I', d, pos + 52)[0]
         uid = d[pos + 56:pos + 72] if flags != 0 else None
         insts.append({'i': i, 'dbr': strings[sidx] if sidx < len(strings) else b'?',
-                      'flags': flags, 'uid': uid})
+                      'flags': flags, 'uid': uid, 'pos': xyz})
         pos += base + (16 if flags != 0 else 0)
     return strings, insts
 

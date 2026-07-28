@@ -33,7 +33,13 @@ sys.path.insert(0, str(REPO / 'tools' / 'debug'))
 from arc_patcher import ArcArchive
 from merge_levels_binary import parse_sections, parse_level_index, SEC_LEVELS, SEC_GROUPS
 from svaera_plus_portals import _parse_groups, M13A_MUST_BIND
-from arz_lookup import load_arz
+# BUILD46 fix-upstream: this used to `from arz_lookup import load_arz`, but
+# `arz_lookup.py` was NEVER committed (only a stale .pyc survives in
+# tools/debug/__pycache__/) - so this gate, and everything importing it (notably
+# tools/debug/gate_build32_parseback.py), died at IMPORT time with
+# ModuleNotFoundError on any clean checkout. `arz_converter.read_arz` is the
+# committed reader and already exposes the record 'type' string this gate needs.
+from arz_converter import read_arz
 
 DEVICE_CLASSES = {
     'StrategicMovementRespawnShrine': 'RespawnShrine',
@@ -52,9 +58,12 @@ def class_index():
         if not arz.exists():
             print(f'  !! arz missing: {arz}')
             continue
-        _, _, records = load_arz(str(arz))
-        for k, rec in records.items():
-            idx[k.replace('/', '\\')] = rec['type']
+        parsed = read_arz(Path(arz))
+        strings = parsed['strings']
+        for rec in parsed['records']:
+            nid = rec['name_id']
+            if 0 <= nid < len(strings):
+                idx[strings[nid].replace('/', '\\').lower()] = rec['record_type']
     return idx
 
 

@@ -388,7 +388,7 @@ along automatically when the structural cluster-relocation fix lands.
   very boss R-39 is about**: `records\test\boss_coldworm50.dbr` = 1 on `main`. Round 1 scanned only
   for `miniMapEntity`, found 0 Monster carriers, and generalised from that one field. (The
   secondary claim that the map arcs are unavailable is also stale - SVAERA is at Steam Workshop item
-  `2076433374` and SV 0.98i's `Levels.arc` is in the `build36-map` worktree, per BL-b89-DEBT-4 - but
+  `2076433374` and SV 0.98i's `Levels.arc` is in the `build36-map` worktree, per BL-b89-DEBT-5 - but
   nothing in this fix ever needed them.)
   **SHIPPED** as `tools/patches/uber_quest_markers.py` (registry module, apply+verify, after
   `coldworm_buffs`, before `visuals`). Roster is DERIVED, never hardcoded:
@@ -512,14 +512,56 @@ along automatically when the structural cluster-relocation fix lands.
   - **RESIDUAL (not this lane):** the 4793 P2 are genuine inherited drx/sv/base third-party debt,
     unchanged in count and membership by this work. They are reported and never block. Whether any
     subset is worth fixing upstream is a separate content decision.
-- **BL-b90-DEBT-2 (P1, environment):** `upstream/` and `reference_mods/` were **EMPTY** on this machine,
+- ~~**BL-b90-DEBT-2 (P1, environment):** `upstream/` and `reference_mods/` were **EMPTY** on this machine,
   and `CustomMaps\SoulvizierClassic` (the canonical, non-DEV deploy) is **gone**. The DB build cannot
   run without `upstream/`, so b90 re-extracted **only the 4 files the build needs** from the archives
   still in `third_party/` (098i `Database/database.arz` md5 `11773cdc...` + `Resources/Text_EN.arc` md5
   `29505ac2...`; 0.9 `database.arz` md5 `b31951df...`; 0.41 `database.arz` md5 `056d6f4e...`). Correctness
   is proven by the record-diff (the rebuild reproduced `baseline_build47.arz` exactly apart from the 2
   intended fields). Owner/trigger: whoever next needs a MAP or Workshop build - decide whether the full
-  `upstream/` + `reference_mods/` + canonical `CustomMaps\SoulvizierClassic` trees get restored.
+  `upstream/` + `reference_mods/` + canonical `CustomMaps\SoulvizierClassic` trees get restored.~~
+  **✅ CLOSED 2026-07-28 (branch `fix/debt-tooling`). Closes BL-b89-DEBT-5 too (same defect, filed twice).**
+  FIX-UPSTREAM: **ONE** preflight resolver, `tools/check_build_inputs.py`, owns every upstream build
+  input. It was never really "the caches are empty" - it was that each entrypoint carried its own
+  ad-hoc default path, so a missing input surfaced as a bare `FileNotFoundError` deep inside
+  `ArzDatabase`/`ArcArchive`. Resolution ladder, first hit wins, per input:
+  `$SVC_*` env var -> the in-repo cache -> **the MAIN checkout's cache** (gitignored caches never
+  propagate into a linked worktree, and nearly every lane runs in one - this was the real gap) ->
+  the install location (Steam TQAE / Workshop item `2076433374`) -> a sibling worktree -> a
+  `third_party/` archive (reported as EXTRACTABLE; `--extract` unpacks `.zip`s). Every FALLBACK is
+  md5-pinned (`EXPECTED_MD5`), so auto-resolution can never quietly feed the build a different
+  upstream; a caller-supplied argv path that EXISTS is used as-is and unhashed, so existing
+  invocations are byte-identical to the pre-preflight build. A miss fails LOUD once, naming the exact
+  env var and every rung searched. Wired into `tools/build_svc_database.py` (sv098i+sv09 hard-fail;
+  sv041 + base-game keep their previous OPTIONAL semantics and only warn) and
+  `tools/svaera_plus_portals.py` (both merge inputs).
+  **PROOFS** (all run from `.claude/worktrees/debt-tooling`, whose `upstream/` + `reference_mods/`
+  are EMPTY and with NO `SVC_*` env var set):
+  * `py tools/check_build_inputs.py --all --verify-hashes` -> **PASS (8 inputs resolvable)**; the 4 DB
+    md5s match the b90-recorded prefixes exactly, plus SVAERA Levels `a1e13e48...`, SV 0.98i Levels
+    `0b575c9d...`, SVAERA arz `7bad8804...`.
+  * `py tools/check_build_inputs.py --selftest` -> **PASS**, 4 planted negatives + 1 positive
+    (unresolvable input fails loud naming `$SVC_*`; a hash-mismatched fallback is REJECTED and the
+    ladder keeps walking; an all-mismatched input fails instead of returning junk; an existing argv
+    path is used as-is).
+  * FULL DB BUILD from that worktree: `py tools/build_svc_database.py upstream/... work/.../SoulvizierClassic.arz "<TQAE>/database.arz"` -> **exit 0**, log opens with
+    `PREFLIGHT: ... OK via main-checkout cache` for all three SV arzs; A7 golden gate PASS (84
+    waived), unlock-alignment gate PASS.
+  * FULL MAP MERGE from that worktree with `SVC_OUT_DIR` pointed at scratch -> exit 0; preflight
+    resolved `SVAERA Levels.arc` via the Workshop item and `SV 0.98i Levels.arc` via the
+    `build36-map` worktree cache, with no env vars set.
+  * **OUTPUT-NEUTRALITY (the load-bearing proof):** both builds were re-run from the MAIN checkout
+    (unmodified code, `SVC_*` set by hand) into scratch and compared byte-for-byte -
+    map `Levels_merged.arc` md5 **`718abad63e7813dc78c4b169df969fd5`** (688,692,225 B) and arz
+    `SoulvizierClassic.arz` md5 **`c1a8fa2aee5e6eb88b641b28d7dc6ae4`** (55,424,816 B) are
+    **IDENTICAL** worktree-vs-main. The preflight changes what the build LOOKS UP, never what it
+    builds.
+  * `tools/contracts/run_contracts.py --only map` before vs after the `contracts_map` change:
+    violation sets **IDENTICAL** (3 P2: MAP-PORTAL-1 x1, MAP-PORTAL-3 x2), GATE PASS both runs.
+  DELIBERATELY NOT DONE (cheap-decision outcome): the full `upstream/` + `reference_mods/` trees were
+  **not** re-extracted. Every input now resolves without them, `third_party/` still holds the
+  archives, and re-extracting ~1.5 GB of gitignored duplicates buys nothing. Still open and NOT this
+  lane: the missing canonical `CustomMaps\SoulvizierClassic` deploy dir (deploy-side, not build-side).
 - **BL-b90-DEBT-3 (launch-gated):** the 100% drop is unproven IN-GAME. Owner/trigger: Will kills a
   Devourer and an Enslaver on DEV after a full Steam restart.
 - **BL-b90-DEBT-4 (open question):** the third Toxeus champion `um_toxeus_hunt_99` (Legendary Stalker)
@@ -614,7 +656,7 @@ along automatically when the structural cluster-relocation fix lands.
     `LVL\x0e`/`\x0f` -> `LVL\x11`, the signature of a re-authored/re-saved donor blob).
   - **WHY IT IS ONLY *RECORDED*, NOT CLOSED:** proving the donor attribution directly requires
     diffing the SVAERA arc itself, and `SVC_SVAERA_ARC`/`SVC_SV_ARC` are **unset in this environment**
-    (see BL-b89-DEBT-4 / BL-b90-DEBT-2). Everything provable without the donor arc is proved above.
+    (see BL-b89-DEBT-5 / BL-b90-DEBT-2). Everything provable without the donor arc is proved above.
   - **Owner/trigger:** a lane with `SVC_SVAERA_ARC` set confirms these 34 blobs are byte-identical to
     the SVAERA donor. If they are, this is an accepted upstream property and closes as WONTFIX
     (player impact is plausibly nil - XPack4 `devcave`/`devmaze`/`dathq` are developer/test level
@@ -665,13 +707,18 @@ along automatically when the structural cluster-relocation fix lands.
   TESTHUB variant will gate-FAIL on b89 defects that are already fixed. Owner/trigger: the next map
   lane rebuilds it (needs `SVC_SVAERA_ARC`/`SVC_SV_ARC` per BL-b89-DEBT-5/BL-b90-DEBT-2).
   Found by: the BL-b89-DEBT-3 both-variants proof run.
-- **BL-b89-DEBT-5 (P2)** *(id corrected 2026-07-28 by the `fix/debt-docs` ledger-hygiene pass - this
-  entry was filed as a SECOND `BL-b89-DEBT-4`, colliding with the MAP-NAV-4 entry above; the
-  MAP-NAV-4 one keeps the original id because it is the one the b89 wave notes cite)*:
+- ~~**BL-b89-DEBT-5 (P2)** *(id corrected 2026-07-28 - this entry was filed as a SECOND
+  `BL-b89-DEBT-4`, colliding with the MAP-NAV-4 entry above, which the `fix/debt-gate` lane
+  renumbered to `BL-b89-DEBT-4A`/`-4B` when it closed it. The `fix/debt-docs` and `fix/debt-tooling`
+  lanes each resolved the collision independently and in OPPOSITE directions; the debt-wave
+  integration keeps 4A/4B = the MAP-NAV-4 item and 5 = this upstream-cache item.)*:
   `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
   EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
   (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
-  that rebuilds the map needs those set. Owner/trigger: restore the caches or bake the fallbacks in.
+  that rebuilds the map needs those set. Owner/trigger: restore the caches or bake the fallbacks in.~~
+  **✅ CLOSED 2026-07-28 (debt-tooling lane) - the fallbacks are BAKED IN.** Same fix as
+  BL-b90-DEBT-2 below: `tools/check_build_inputs.py` resolves both merge inputs through the shared
+  ladder and `tools/svaera_plus_portals.py` calls it at startup. Proof in the BL-b90-DEBT-2 entry.
 
 **Toxeus / MP-compat**
 - np-equation per-player expansion (rant scroll) unproven on a monster EQUIP slot (proven only for
@@ -4871,8 +4918,62 @@ was TESTHUB-only); Text UNCHANGED `3e576581`; Quests UNCHANGED. Gates: A7 PASS (
 validator PASS, registry 27 modules, chain gates green (contracts = byte-identical inputs to the
 lane's green run). DEV deploy hash-verified both artifacts (TQ not running). DEBT: promote the
 uncapped-summon sweep to a carefully-scoped build gate (NOT petLimit-no-TTL blanket - 140 healthy
-skills have that shape); placement spacing/clearance gate follow-through; census_placements.py v0e
-stride fix; stale gate_build32_parseback refresh.
+skills have that shape); placement spacing/clearance gate follow-through; ~~census_placements.py v0e
+stride fix; stale gate_build32_parseback refresh~~ **-> both ✅ CLOSED 2026-07-28, see
+BUILD46-TOOLING-DEBT below.**
+
+### BUILD46-TOOLING-DEBT - ✅ CLOSED 2026-07-28 (branch `fix/debt-tooling`)
+**(a) `tools/debug/census_placements.py` v0e stride.** The walker hardcoded `BASE = 72`. The 0x05
+record stride is VERSION-dependent - 72 only for blob v0x11/v0x0f, **56 for v0x0e** - so on a v0e
+level the walk desynced after the first record and ran off the section end; `main()` swallowed the
+resulting `struct.error` in a bare `except: continue`, so those levels vanished from the census
+without a word. MEASURED on `local/Levels_merged.arc` (2282 levels; 1417 v0x11 / 369 v0x0f / 496
+v0x0e): **418 of the 496 v0x0e levels were silently dropped**, and the census reported **1705 custom
+encounters across 282 levels instead of 3446 across 368** - it was hiding half the world's boss/proxy
+placements, which is exactly the "wrong census is worse than none" failure the debt item names.
+FIX-UPSTREAM: there is now ONE stride rule, `contracts_map.blob_0x05_base(blob)`, and
+`contracts_map.parse_0x05` carries the instance `pos` so `census_placements.instances()` delegates to
+it instead of keeping a second, wrong copy of the walk. The bare `except: continue` is replaced by an
+explicit unparsed-levels report.
+PROOFS:
+* `py tools/debug/census_placements.py local/Levels_merged.arc --verify-stride` (NEW gate, with a
+  PLANTED NEGATIVE) -> **PASS**: version-aware stride walks every 0x05 section to its EXACT end on
+  all 2282 levels (v0x0e 496, v0x0f 369, v0x11 1417); the pre-fix hardcoded base-72 stride desyncs on
+  **437 / 496** v0x0e levels and **0 / 369** v0x0f and **0 / 1417** v0x11 - i.e. the gate provably
+  discriminates.
+* before/after census on the same map: 282 levels / 1705 custom -> **368 levels / 3446 custom**.
+
+**(b) `tools/debug/gate_build32_parseback.py`.** REFRESHED, not retired. It was broken three ways:
+(i) it died at IMPORT time - it pulled `ArcArchive`/`parse_sections` through
+`verify_groups_bindings`, which `from arz_lookup import load_arz`, and **`arz_lookup.py` was never
+committed** (only a stale `.pyc` in `tools/debug/__pycache__/` survives). That also meant
+`tools/verify_groups_bindings.py` itself could not run on any clean checkout - fixed upstream by
+switching it to the committed `arz_converter.read_arz` (it now runs: **PASS**, 371 devices checked /
+371 bound / 0 dead, 5/5 must-binds OK). (ii) M8 froze absolute counts and indices ("995 -> 996",
+`insts[995]`); farmland06d is now **993** instances because b44/b46 removed
+`portal_olympianarena1/2` + `map_portal_aura`, so the gate crashed with `IndexError`. (iii) The
+`--testhub` MYARD block asserted the HiddenValley01 Monster Test Yard that **b76 removed** as the
+chumbi-freeze P0 (`docs/reports/b76_chumbi_freeze_rca.md`, R-30/R-31), and the RIG block asserted the
+build34 Model-C rig coords that the `svc_helos_trav_*` traveller hub superseded.
+The frozen constants WERE the defect, so the gate is now DELTA-based (declared appended/removed sets,
+matched on dbr basename + position) and STRUCTURAL (tail placement, flags=0, exact-end walk at the
+version-derived stride, collateral byte-identity incl. the 0x0b navmesh). RETIREMENT PROTOCOL: no
+record or placement was deleted - the two obsolete blocks were REPLACED by invariants that still
+describe live design: MYARD is INVERTED into a b76 guard (TESTHUB HiddenValley01 must be
+byte-identical to canonical, i.e. the yard must never come back), and RIG became a namespace/shape
+invariant (every TESTHUB-only host = canonical PLUS tail-appended flags=0 NPCs in the
+`records\quests\svc_` hub namespace) that does not rot when the hub roster changes. The one canonical
+placement the TESTHUB build legitimately DROPS (the b48 SPARTA-MUTE Almyros de-dup) is declared
+explicitly in `HUB_DECLARED_DROPS` rather than waived by loosening the check.
+PROOFS:
+* `--selftest` (4 planted negatives + 1 positive) -> **PASS**: an undeclared extra append, a silent
+  removal, a moved pre-existing instance and a NON-tail insertion are each rejected; an honest tail
+  append passes clean.
+* canonical: `--map local/Levels_merged.arc --baseline ...build31g... --m10-baseline ...build32a...`
+  -> **RESULT: PASS (M8 + M9 + M10 parse-back clean)**.
+* TESTHUB: same plus `--testhub --canonical local/Levels_merged.arc` -> **RESULT: PASS (M8 + M9 +
+  M10 + HV01-b76-guard + HUB parse-back clean)**, 133 checks, 0 FAIL, including
+  `TESTHUB HiddenValley01 is byte-identical to canonical (no yard) (697207 -> 697207 bytes)`.
 
 ### ~~B76-R2-SUMMON-GATE: promote the uncapped-summon sweep from diagnostic to a build gate~~
 - ~~`tools/patches/summon_caps.py` `sweep_uncapped`'s docstring literally said "DIAGNOSTIC (not a
