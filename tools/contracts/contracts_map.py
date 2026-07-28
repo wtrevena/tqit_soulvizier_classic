@@ -598,12 +598,51 @@ def norm_rec(p):
     return p.replace('/', '\\').strip().lower()
 
 
-CUT_LEVEL_MARKERS = ('ocean_extension', 'coldtombs')  # docs/CUT_CONTENT.md
+# Declared-unreachable-by-design levels: EXACT basenames, never substrings.
+# See docs/CUT_CONTENT.md for the per-level justification.
+#
+# HISTORY (BL-b89-DEBT-3, corrected 2026-07-28): this used to be a SUBSTRING tuple
+# ('ocean_extension', 'coldtombs'), which swept the WHOLE ocean_extension family into
+# the exemption. That was factually wrong and it is how the malformed-container class
+# hid for weeks: `ocean_extension01`-`04`, `x02` and `x08` carry REAL generated
+# navmeshes (397KB/232KB/238KB/165KB/106KB/56KB, 531/318/294/237/141/75 tiles) and are
+# listed as area-owners inside `drxBC3`'s and `drxBC_Finale`'s navmesh GUID lists -
+# i.e. the player walks on cells those meshes own. Only the 8 genuinely geometry-less
+# members below (0 tiles in all three tilesets, and no other mesh lists their GUID)
+# are cut. Proven on the shipped map by tools/audit_navmesh_guid_lists.py; the
+# live-vs-dead split is asserted by _negtest_map.test_cut_levels().
+#
+# NOTE this exemption is deliberately NARROW and is only consulted by MAP-NAV-3.
+# MAP-NAV-1/-4/-5/-6 ignore cut-ness BY DESIGN: a cut level still streams in by grid
+# proximity, so its container must still be structurally valid (that is the whole b89
+# lesson - "declared cut" buys nothing at runtime).
+CUT_LEVELS = frozenset({
+    # Ocean scenery tiles with no walkable floor (no 0x0a geometry to rasterize).
+    'ocean_extension05',
+    'ocean_extensionx01',
+    'ocean_extensionx03',
+    'ocean_extensionx04',
+    'ocean_extensionx05',
+    'ocean_extensionx06',
+    'ocean_extensionx07',
+    # Cold Tombs: SV shipped it with no 0x0a pathing layer at all (ON HOLD per Will,
+    # task #36 - do NOT retire the level, the hold is a design question not a deletion).
+    'coldtombs',
+})
+
+
+def level_basename(fname):
+    """'Levels\\World\\xBloodCave\\ocean_extension05.lvl' -> 'ocean_extension05'."""
+    if isinstance(fname, bytes):
+        fname = fname.decode('latin-1')
+    b = fname.replace('\\', '/').split('/')[-1]
+    if b.lower().endswith('.lvl'):
+        b = b[:-4]
+    return b.lower()
 
 
 def is_cut(fname):
-    low = fname.lower()
-    return any(m in low for m in CUT_LEVEL_MARKERS)
+    return level_basename(fname) in CUT_LEVELS
 
 
 def V(cid, sev, subject, message, evidence):

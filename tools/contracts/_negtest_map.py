@@ -519,9 +519,46 @@ def test_chest_guard():
           has(C.contract_chest_guard(ctx), 'MAP-CHESTGUARD-1'))
 
 
+def test_cut_levels():
+    """BL-b89-DEBT-3: the CUT exemption must cover ONLY the genuinely geometry-less
+    levels. The 6 live ocean_extension members are walked-on content (real navmeshes,
+    area-owners inside drxBC3/drxBC_Finale's GUID lists) and MUST stay under MAP-NAV-3.
+    Ground truth: tools/audit_navmesh_guid_lists.py over local/Levels_merged.arc."""
+    print('CONTRACT 3b: CUT-LEVEL EXEMPTION SCOPE')
+    dead = ['ocean_extension05', 'ocean_extensionx01', 'ocean_extensionx03',
+            'ocean_extensionx04', 'ocean_extensionx05', 'ocean_extensionx06',
+            'ocean_extensionx07', 'coldtombs']
+    live = ['ocean_extension01', 'ocean_extension02', 'ocean_extension03',
+            'ocean_extension04', 'ocean_extensionx02', 'ocean_extensionx08']
+    for n in dead:
+        check(f'is_cut TRUE for geometry-less {n}',
+              C.is_cut(f'Levels\\World\\xBloodCave\\{n}.lvl'))
+    for n in live:
+        check(f'is_cut FALSE for LIVE walked-on {n} (the b89 blind spot)',
+              not C.is_cut(f'Levels\\World\\xBloodCave\\{n}.lvl'))
+    # substring-vs-basename: the old marker tuple matched on substrings, so any level
+    # merely CONTAINING a marker was exempted. Basenames only, now.
+    check('is_cut FALSE for a level whose name merely contains a marker',
+          not C.is_cut('Levels\\World\\xBloodCave\\drx_ocean_extension_hall.lvl'))
+    # PLANTED NEGATIVE: a LIVE ocean level that lost its navmesh must now trip NAV-3.
+    drxblob = make_blob([(0x05, make_0x05([b'records\\drxmap\\bloodcave\\x.dbr']))])
+    ctx_live = FakeCtx(
+        levels=[{'fname': 'Levels\\World\\xBloodCave\\ocean_extension02.lvl',
+                 '_blob': drxblob, 'guid': GUID_A}], level_guids={GUID_A})
+    check('NAV-3 now fires on a LIVE ocean_extension level with no 0x0b '
+          '(pre-fix this was silently exempted)',
+          has(C.contract_navmesh(ctx_live), 'MAP-NAV-3'))
+    # ...and a genuinely cut one stays exempt (the exemption still works).
+    ctx_cut = FakeCtx(
+        levels=[{'fname': 'Levels\\World\\xBloodCave\\ocean_extension05.lvl',
+                 '_blob': drxblob, 'guid': GUID_A}], level_guids={GUID_A})
+    check('NAV-3 still silent on a genuinely cut level with no 0x0b',
+          not has(C.contract_navmesh(ctx_cut), 'MAP-NAV-3'))
+
+
 if __name__ == '__main__':
-    for t in (test_quests, test_portals, test_navmesh, test_groups, test_doors, test_sd, test_refs,
-              test_chest_guard):
+    for t in (test_quests, test_portals, test_navmesh, test_cut_levels, test_groups,
+              test_doors, test_sd, test_refs, test_chest_guard):
         t()
     npass = sum(1 for _n, ok, _d in RESULTS if ok)
     print(f'\n{npass}/{len(RESULTS)} checks PASS')

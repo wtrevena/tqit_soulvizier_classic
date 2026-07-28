@@ -356,6 +356,24 @@ along automatically when the structural cluster-relocation fix lands.
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
 
+> 🧹 **2026-07-28 DOCS DEBT-CLEARANCE PASS (`fix/debt-docs`).** Six deferred items closed; the four
+> that changed this register are marked inline below. Also in that pass, and recorded here because
+> they change what a fix lane should trust:
+> - **The BUILD31/BUILD32 TRAIN + STANDING PENDING WORK section is now headed by a STATUS SWEEP
+>   table** (DOCBOARD-STALE-QUEUES). That whole queue read as unbuilt and was almost entirely
+>   SHIPPED (build31/31g/32/32a/36) - every item re-probed against the shipped arz at VALUE level,
+>   not report level. Only two things out of that queue are genuinely open: the boss-summon-soul
+>   CANDIDATE list (a proposal awaiting Will's batch approval) and in-game re-verification of the Q4
+>   dead-content one-liners. Read the table before scheduling anything from that section.
+> - **`docs/WILL_RULINGS.md` had a ledger-hygiene pass:** 2 colliding R-numbers renumbered
+>   (backfill R-13 -> R-19, backfill R-43 -> **R-70** in the new Souls overflow decade 70-79 - R-49
+>   was already claimed by the parallel `fix/devourer-chest` lane on 2026-07-27), 6 stale PENDING
+>   statuses flipped to IMPLEMENTED against the BUILD47 merge, and the remaining PENDINGs re-verified
+>   and annotated. Nothing deleted.
+> - **`contracts_map.CUT_LEVEL_MARKERS` -> `CUT_LEVELS`** (BL-b89-DEBT-3): the cut exemption is now
+>   an exact-basename list of 8 levels instead of a substring tuple that swallowed 14.
+> - **A duplicate debt id was resolved:** the second `BL-b89-DEBT-4` is now `BL-b89-DEBT-5`.
+
 **b91 Cold Worm buffs lane / R-39 (2026-07-28, branch `fix/debt-mixed`) - NEW**
 - ~~**BL-b91-DEBT-1 (P1, BLOCKED - the one R-39 sub-item NOT delivered):** the exclamation-point map
   marker on placed ubers ... it is map-side ... needs `SVC_SVAERA_ARC`/`SVC_SV_ARC`.~~
@@ -565,14 +583,38 @@ along automatically when the structural cluster-relocation fix lands.
   (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
   uploaded (walk-test-gated, same policy as build48). Owner/trigger: Will confirms the DEV walk test,
   then package+upload the canonical variant.
-- **BL-b89-DEBT-3 (P2):** `contracts_map.CUT_LEVEL_MARKERS` still marks the whole `ocean_extension*`
-  family cut, but 6 of them (`01`-`04`, `x02`, `x08`) carry REAL generated navmeshes and are
-  area-owners inside `drxBC3`/`drxBC_Finale`'s GUID lists - i.e. live walked-on content.
-  `docs/CUT_CONTENT.md`'s "never intended to be entered / permanently cut" is wrong for those 6.
-  Owner/trigger: a map-docs pass; harmless today because `MAP-NAV-5`/`-6` deliberately ignore
-  cut-ness. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 4.
-- **BL-b89-DEBT-5 (P2)** *(renumbered 2026-07-28: this entry was filed as a SECOND "BL-b89-DEBT-4",
-  colliding with the MAP-NAV-4 item above - two different debts under one id)***:**
+- ~~**BL-b89-DEBT-3 (P2):** `contracts_map.CUT_LEVEL_MARKERS` still marks the whole
+  `ocean_extension*` family cut, but 6 of them (`01`-`04`, `x02`, `x08`) carry REAL generated
+  navmeshes and are area-owners inside `drxBC3`/`drxBC_Finale`'s GUID lists - i.e. live walked-on
+  content.~~ **✅ CLOSED 2026-07-28 (`fix/debt-docs`).** FIX AT THE CORRECT LAYER: the substring
+  tuple `CUT_LEVEL_MARKERS = ('ocean_extension', 'coldtombs')` is replaced by an EXACT-BASENAME
+  `CUT_LEVELS` frozenset of the 8 genuinely geometry-less levels (`ocean_extension05`,
+  `ocean_extensionx01/x03/x04/x05/x06/x07`, `coldtombs`) plus a `level_basename()` helper, so a
+  level can no longer be exempted by an accident of substring matching. `docs/CUT_CONTENT.md`
+  rewritten: the 6 live levels are moved to a "NOT cut - live walked-on content" table with their
+  real navmesh sizes / tile counts / owning meshes, and a standing warning that CUT exempts
+  MAP-NAV-3 **only** (streaming is by grid proximity, so a cut level's container must still be
+  structurally valid - the whole b89 lesson). **PROOF (no contract loses coverage):**
+  (a) `_negtest_map.py` gains `test_cut_levels()` - 8 cut-TRUE + 6 live-FALSE assertions, a
+  substring-regression assertion, and a PLANTED NEGATIVE proving MAP-NAV-3 now FIRES on a live
+  `ocean_extension02` with no `0x0b` (pre-fix: silently exempt) while staying silent on a genuinely
+  cut one. Suite: **53/53 checks PASS**. (b) exemption-delta probe over BOTH shipped variants
+  (`local/Levels_merged.arc` + `local/Levels_merged_TESTHUB.arc`, 2282 levels each): exempted
+  14 -> 8, all 6 moves are CUT -> NOT-CUT (coverage gained, never lost), and **0** of them would
+  newly violate MAP-NAV-3 (every one has a `0x0b`). (c) `run_contracts --only map` on the canonical
+  map: **0 P0 / 0 P1 / 3 P2**, byte-identical violation set to the pre-change baseline.
+  Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 3-4.
+- **BL-b90-DEBT-5 (P2, NEW 2026-07-28 - stale local artifact):** `local/Levels_merged_TESTHUB.arc`
+  is dated **Jul 17 (pre-b89)** and still carries all **8 malformed 148-byte stubs**
+  (`run_contracts --only map` against it: 16 P0 = MAP-NAV-5 x8 + MAP-NAV-6 x8). Only the canonical
+  `local/Levels_merged.arc` (Jul 27) was refreshed by the b89 wave. Nothing ships from `local/`, so
+  this is an artifact-hygiene issue, not a player-facing one - but any lane that reaches for the
+  TESTHUB variant will gate-FAIL on b89 defects that are already fixed. Owner/trigger: the next map
+  lane rebuilds it (needs `SVC_SVAERA_ARC`/`SVC_SV_ARC` per BL-b89-DEBT-5/BL-b90-DEBT-2).
+  Found by: the BL-b89-DEBT-3 both-variants proof run.
+- **BL-b89-DEBT-5 (P2)** *(id corrected 2026-07-28 by the `fix/debt-docs` ledger-hygiene pass - this
+  entry was filed as a SECOND `BL-b89-DEBT-4`, colliding with the MAP-NAV-4 entry above; the
+  MAP-NAV-4 one keeps the original id because it is the one the b89 wave notes cite)*:
   `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
   EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
   (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
@@ -587,11 +629,17 @@ along automatically when the structural cluster-relocation fix lands.
   scheduled/built. Source: docs/MULTIPLAYER_COMPAT.md M4.6-M4.7.
 - Corridor full-strength (non-10s-cooldown) Blood-Toxeus Tears-of-Blood variant - OPEN Will decision
   (R-5). Source: docs/WILL_RULINGS.md R-5.
-- `svc_black_poison` skill (Devourer poison + End of All Things strike-buff asset) - PENDING build,
-  in-flight per the active session's own task tracker (recon done, module/wiring/verify not yet
-  landed). Source: docs/WILL_RULINGS.md R-7.
-- Rite of the Undivided drop-pool wiring (ship wherever supra/uber formulas can drop) - PENDING.
-  Source: docs/WILL_RULINGS.md R-9.
+- ~~`svc_black_poison` skill (Devourer poison + End of All Things strike-buff asset) - PENDING
+  build.~~ **CLOSED 2026-07-28 (ledger-hygiene pass):** SHIPPED as b83 on `feat/black-poison`, which
+  the BUILD47 GATE RECORD (2026-07-17) merged to main; module `tools/patches/black_poison.py` is in
+  the registry with a fail-loud verify(). Source: docs/WILL_RULINGS.md R-7;
+  docs/reports/b83_black_poison_rite_drop.md.
+- ~~Rite of the Undivided drop-pool wiring (ship wherever supra/uber formulas can drop) -
+  PENDING.~~ **CLOSED 2026-07-28 (ledger-hygiene pass):** SHIPPED as b83 (both `supra.dbr` and
+  `supra_special.dbr` pools + the guaranteed on-kill table for R-13), merged to main in the BUILD47
+  GATE RECORD. Source: docs/WILL_RULINGS.md R-9/R-13; docs/reports/b83_black_poison_rite_drop.md.
+  RESIDUAL (still open, different question): the 100% on-kill rate is flagged WILL-VETO in the b83
+  report - the champions are repeat-killable, so Will may want a chance instead of a guarantee.
 - dark_smoke Diadochi-generals/Helepolis green-render swap - pending Will's in-game black-confirm of
   the Enslaver (R-10). Source: docs/WILL_RULINGS.md R-10.
 - Enslaver DISMISS + RE-SUMMON green-residue check - WILL-CONFIRM after a full Steam restart; if
@@ -608,10 +656,21 @@ along automatically when the structural cluster-relocation fix lands.
   pet on this engine (proven: 0 of 25,000+ equip slots auto-equip a player unique; B-SUMMON-1 gate
   fails the build on direct-equip). Shipped as a DIRECT stat block instead of worn items; flagged in
   case Will wants a different resolution. Source: same report, FLAG #2.
-- disciple Neck-slot hygiene - named in a prior session's task tracker; NOT located in any committed
-  doc or branch this sweep (only the EoAT report's unrelated "Neck: Paragon of Violence - SKIPPED"
-  equip-slot line was found). UNKNOWN-STATUS; re-verify against whatever session originated it before
-  treating as real. Source: not found this sweep - included per the backfill brief only.
+- ~~disciple Neck-slot hygiene - named in a prior session's task tracker; NOT located in any
+  committed doc or branch this sweep. UNKNOWN-STATUS.~~ **CLOSED 2026-07-28 (`fix/debt-docs`) as
+  UNSUBSTANTIATED-BUT-PROBABLY-ALREADY-DONE.** Both findings recorded, neither silently dropped:
+  **(1) No antecedent exists.** `git log --all -S` for "Neck-slot" / "neck slot" / "neckslot" /
+  "disciple neck" returns exactly ONE commit across every ref: `103409d` "docs: rulings ledger
+  backfill round 1 + BACKLOG debt register" - i.e. the commit that created THIS entry. The phrase has
+  no origin anywhere in the repository's history; it entered via the backfill brief alone. A
+  repo-wide grep confirms the only other "Neck" hits are the EoAT report's unrelated equip-slot table
+  row ("Neck | Paragon of Violence | SKIPPED"). **(2) The only plausible referent is already
+  shipped.** `tools/patches/toxeus_endofallthings.py:_build_disciple_thralls` (b72, on main via the
+  BUILD47 GATE RECORD) zeroes EVERY equip slot on the EoAT disciple thralls - `RightHand`, `LeftHand`,
+  `Head`, `Torso`, `Forearm`, `LowerBody`, `Finger1`, `Finger2` **and `Neck`** - under the comment
+  "weaponless caster: clear every equip slot (no Monster.tpl field copy)". If the tracker line meant
+  anything concrete, that is it, and it is done. **ACTION: none.** Re-file with a concrete symptom if
+  a real defect ever surfaces; do not carry an unverifiable ghost in this register.
 
 **Masteries / UI**
 - Occult pane aesthetic (`standardskillbackground_joanna_ver_dark.tex`) + the wired-but-unconfirmed
@@ -664,9 +723,23 @@ along automatically when the structural cluster-relocation fix lands.
   soul already judged a sufficient double reward. Source: docs/OBSIDIAN_ROULETTE_DESIGN.md sec 5.
 - b47 Dorus: rename to a distinct amgoz1-worthy identity + relocate near a Medea tomb/dungeon interior
   - RCA'd, not yet renamed/relocated per the report's own open items. Source: docs/reports/b47_dorus.md.
-- b51 Arachne's Shame / Fetid Lair spawn-chain RCA - identification + baseline diff + git-blame not
-  yet fully closed out in a committed report this sweep found. Source: cross-check vs docs/BACKLOG.md
-  el/soul-audit threads; UNKNOWN-STATUS, re-verify before treating as still open.
+- ~~b51 Arachne's Shame / Fetid Lair spawn-chain RCA - identification + baseline diff + git-blame not
+  yet fully closed out in a committed report this sweep found. UNKNOWN-STATUS.~~ **CLOSED 2026-07-28
+  (`fix/debt-docs`).** The RCA WAS completed - it just never reached main. It lived on the unmerged
+  branch `feat/b51-arachne` (commits `74f1eac` "b51 RCA: Arachne's Shame (Fetid Lair guaranteed hero)
+  - chain INTACT, no systemic break" + `9a72610` "independent replay confirms Arachne's Shame E/L
+  guarantee INTACT - no fix (banned rebalance)"), whose entire diff vs main is the single file
+  `docs/reports/b51_arachnes_shame.md`. That report is now MERGED to this branch. **VERDICT:** the
+  guaranteed Epic/Legendary chain (`jg06_arachnospool - poisonspring c` proxy ->
+  `JG06_Arachnos_PoolB`, `spiderblackwidow01` at `spawnMin=spawnMax=1`, `HeroLimit_All`) is
+  byte-functionally identical to classic SV 0.98i in BOTH the arz and the deployed map; all five
+  brief hypotheses refuted; the sibling sweep over all 809 SV098 E/L proxies found **0** that lost a
+  boss/hero/quest member. **NO FIX APPLIED and none warranted** - altering an intact guarantee would
+  be a forbidden rebalance. RESIDUAL (a test, not a debt item): Will enters a Fetid Lair his Epic
+  character has NOT yet visited (baked non-resetting Act-1 instance = the real explanation for her
+  absence); if she still fails to appear there, escalate to a runtime spawn probe. Note the branch
+  named `feat/b51-fetid-spider` carries NO b51 content - its tip is a build38a commit and it is
+  already an ancestor of main; do not look for the fix there.
 - Sparta Crypt L2 binder: no proven SV binding exists; if shipping, needs either a blob-patch restore
   or a quest teleport (Will decision) - recommended default is defer/drop unless Will wants
   completeness. Source: docs/WALL_INVESTIGATION_STATE.md (or equivalent Sparta-area report).
@@ -705,10 +778,18 @@ along automatically when the structural cluster-relocation fix lands.
   25-record derived placed-uber roster (23 newly marked). Round 1's "map-side, blocked" verdict was
   wrong: the field is on Monster.tpl and was already live on Cold Worm himself. **R-39 is
   IMPLEMENTED.** Report: `docs/reports/b91_coldworm_buffs.md` (sec 9; sec 7 SUPERSEDED).
-- Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal" defect
-  class) - PENDING, `fix/soul-tiers` branch. Source: docs/WILL_RULINGS.md R-40.
-- Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
-  Galefury" class) - PENDING, `fix/formula-names` branch. Source: docs/WILL_RULINGS.md R-41.
+- ~~Souls scaling gate across normal/epic/legendary (the "Blood Cult High Priest epic==normal"
+  defect class) - PENDING, `fix/soul-tiers` branch.~~ **CLOSED 2026-07-28 (ledger-hygiene pass):**
+  SHIPPED as b78 on `fix/soul-tiers`, merged to main in the BUILD47 GATE RECORD. The roster sweep
+  found 0 flat-tier families / 0 wrong-tier loot triples / 0 real missing tiers (Will's observation
+  was a save-bake artifact), so the deliverable is the permanent strict-progress gate, not a data
+  change. Source: docs/WILL_RULINGS.md R-40; docs/reports/b78_soul_tier_scaling.md.
+- ~~Formula display names matching what they craft (the "Mythic Formula - Crystalline Mask crafts
+  Galefury" class) - PENDING, `fix/formula-names` branch.~~ **CLOSED 2026-07-28 (ledger-hygiene
+  pass):** SHIPPED as b80, merged to main in the BUILD47 GATE RECORD; the 245-formula sweep found no
+  other instance and the permanent gate (`tools/patches/formula_names.py` verify() +
+  `tools/validate_formula_names.py`) is in the build. Source: docs/WILL_RULINGS.md R-41;
+  docs/reports/b80_formula_names.md.
 - Uber axe reagent trio reuses the same 2 Legendary reagents across the whole 5-member family (a
   resolving-but-undiversified choice) - flagged for Will's veto if he wants more variety; not built.
   Source: docs/reports/b66_uber_formulas.md.
@@ -720,7 +801,7 @@ along automatically when the structural cluster-relocation fix lands.
   restack b70, which the report states SUPERSEDES the earlier "needs Will's ruling" residual). Listed
   here only so a future sweep does not re-flag it as open.
 - bloodtip/gustleech `itemSkillLevel` WILL-VETO - RESOLVED, ratified ship-as-is (R-45).
-- Tomb Guardian soul leak - RESOLVED (R-43).
+- Tomb Guardian soul leak - RESOLVED (R-70; filed by the b84 backfill as a colliding second "R-43", renumbered 2026-07-28 into the new Souls overflow decade 70-79 - R-49 was already claimed by the fix/devourer-chest lane).
 - Rant-scroll creative-text veto - RESOLVED, cleared to ship (R-15).
 > 🧊 **b76 CHUMBI VALLEY P0 FREEZE - RCA + FIX (round 1) ON `fix/chumbi-lag` (2026-07-16).** Will (P0):
 > DEV "chumbi valley" frozen by "every boss you created all in one spot" + "the infinite summon of the
@@ -3326,6 +3407,64 @@ apply_svc_patches _fix_wave29_contract_items:
 
 ## 🔵 STANDING PENDING WORK (from the master queue - not new bugs)
 
+> ## ⚠️ STATUS SWEEP 2026-07-28 (`fix/debt-docs`, DOCBOARD-STALE-QUEUES) - **READ THIS BEFORE
+> ## IMPLEMENTING ANYTHING BELOW.** The BUILD31/BUILD32 queue text below is the ORIGINAL 2026-07-09
+> ## brief and still reads as an unbuilt work list. **It is not.** Almost the entire train shipped
+> ## across build31/build31g/build32/build32a/build36. This block is the authoritative status; the
+> ## prose below is kept verbatim as the DESIGN RECORD (what Will approved and why), per the
+> ## retirement protocol - it is not deleted, it is superseded by this table.
+>
+> Method: every named record probed against the SHIPPED arz
+> (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, 51,085 records, the build50-dev artifact)
+> with `tools/arz_patcher.ArzDatabase`, cross-checked against the owning code in
+> `tools/apply_svc_patches.py` / `build_svc_database.py` / `build_section_surgery.py` and the
+> BUILD31-BUILD47 gate records. Values below are read out of the arz, not out of a report.
+>
+> | item | status | proof (from the SHIPPED arz / build path) |
+> |---|---|---|
+> | Q1 Typhon->Rhodes unlock | **SHIPPED build30.3** (+ KEEP decision 2026-07-28) | `_add_typhon_rhodes_unlock`; INERT in-game, kept as a byte-superset - see the Q3 archive block below |
+> | MASTERY WAVE 1 (B1-B6) | **SHIPPED build31** | gate log below, arz `06a9a24a`, 28-record bucketed diff |
+> | D19 Huo-ren immobile summon | **SHIPPED build31** | arz `95e816d3`; pet-mobility assert now permanent |
+> | Q3 herald + kill-gated unlock | **SHIPPED build31 (DEV)** | `portal_master_olympus.dbr` PRESENT; `OLYMPUS_RHODES_NPC_SPEC` WIRED build31g |
+> | **Q2 portal-master NPC** | **SHIPPED build32/32a** | `records\quests\portal_master_helos.dbr` PRESENT; `PORTAL_MASTER_SPEC` LIVE in INJECT_SPECS @ startingfarmland06d (76.50,0.60,189.50); dialog on the sv_commonmechanics refire step. All three artifacts landed. |
+> | D11 Rally | **SHIPPED build31 (G3)** | `drxrallybuff.skillCooldownTime` = **30.0** (was 45) |
+> | D12 Ichthian Myrmidon soul | **SHIPPED build31 (G3)** | `coastalichthianmyrmidon_soul_l.characterLife` = **650.0**; 13 myrmidon records present |
+> | D13 Eater of Days summon | **SHIPPED build31 (Group 4)** | `eaterofdays_soul_l.itemSkillName` = `summon_eaterofdays.dbr`, level 3; pets `eaterofdays_1..3` |
+> | D14 Pygmalion replicator summon | **SHIPPED build31 (Group 4)** | `pygmalion_soul_l.itemSkillName` = `summon_pygmalion.dbr`, level 3; pets `pygmalion_1..3` |
+> | D15 reward-potion name colors | **SHIPPED (Text lane)** | `build_text_arc.TEXT_FIX_TAGS` carries all four `^M` overrides (`tagNewItem3/70/4/69`) |
+> | **D16 Shadow Stalker overhaul** | **SHIPPED build31 (G3) + build36 (D16b)** | all 20 tiers: `skillName7` = `shadowstalker_distortionfield.dbr` (the suicide shadowstrike is GONE), `characterLife` **500 -> 2210** (was flat 297), hit **120-150 -> 386-492** (was flat 83-98). D16b added the AoE-petrify shadowzap. |
+> | **D17 Core Dweller** | **SHIPPED build31 (G3)** | all 20 tiers x1.75 life: t1 **1367.1**, t20 **3937.5** (were 781 / 2250); str t1 **293.8**, t20 **531.2**; taunt kit untouched |
+> | D18a/D18b Emberscale | **SHIPPED build31 (G3)** | `03_flameguardslayer.relicBitmap` = `AnimalPart13B_L.tex` (de-turtled), `offensiveFireModifier` `[8,16,24,32,40]`, burn `[14,28,42,56,70]`, armor-melt cleared |
+> | D20 War-King Sarpedon summon | **SHIPPED build31 (Group 4)** | `sarpedon_soul_l.itemSkillName` = `summon_sarpedon.dbr`, level 3; `um_sarpedon_41` + pets 1..3 |
+> | D21 Long Nu the Flame Mother | **SHIPPED build31 (Group 4)** | `summon_longnu.dbr` spawns `longnu_1/2/3` |
+> | Enslaver (item 5) | **SHIPPED build31/32**, later refined | `um_toxeus_enslaver_99`; b49 breadth cut (build40), b71/b81 identity, R-48 100% soul (b90) |
+> | N4-DB Vashkarr | **SHIPPED build32 + build32a map** | `um_vashkarr_99` + `svc_vashkarr_{fodder,lance,warlock}` + `svc_vashkarr_summonhorde` + `q_vashkarr_lone` (proxy AND pool) + `vashkarr_soul_{n,e,l}`; `VASHKARR_SPEC` LIVE @ random05a (24.00,1.00,31.70). No summon soul - correct, that was Will's ruling. |
+> | N5 thrown weapons | **SHIPPED build32 (Group E)** | 4 `svc_thrown_*_formula` records; `_restore_thrown_weapon_drops` 198/198 restored |
+> | N6-DB Obsidian roulette | **SHIPPED build32 (Group F)** | 68 records incl. `svc_obsidianhoard_01/02/03`, `um_sarkoth_99`, `um_ilsevar_99`; `voranthys_soul_l.itemSkillName` = `summon_voranthys.dbr` |
+> | N7 sepulchral-wyrm hordes | **SHIPPED build32 (Group G)** | 25 sepulchralwyrm records + the Sepulchral Scale charm chain |
+> | **MASTERY WAVE 2** | **SHIPPED build32 (Group D)** | `drxforceofnature` cd **180.0** (was 360), `drxoutsidersummons` cd **120.0** (was 360), `drxdeathward` cd **180.0** (was 300) - read out of the shipped arz |
+> | FEATURE: throwing weapons in the campaign | **SHIPPED** - same work as N5 | duplicate entry of N5, not a second item |
+> | DESCRIPTION CORRECTIONS | **SHIPPED** `02ce3e5` | see that entry above for the full closeout + the residuals fixed 2026-07-28 |
+> | N2 Typhon-gate mesh swap | **CANCELLED** by Will (portal-master model C) | as the queue text already says |
+>
+> **STILL GENUINELY OPEN out of this queue (the short list a fix lane should actually work from):**
+> - **Boss-summon-soul candidates remaining** - the ranked 578-soul candidate list below is a
+>   PROPOSAL awaiting Will's batch approval, not a build queue. Standing ruling: only convert
+>   summon-souls Will EXPLICITLY names. UNCHANGED, still open.
+> - **Q4 dead-content one-liners** - the individual sub-items (bossarena EnterVolume, widowletter
+>   honor-branch chest, chimera double-extension rename, q15 reconciliation) were folded into the
+>   Quests rebuilds; each is implemented in `build_quest_files.py`
+>   (`_fix_widowletter_chest_branch`, `_fix_chimera_chest_typo`, the volume rename) but this sweep
+>   did NOT re-verify them in-game.
+> - Everything on the DEBT REGISTER above, which is the maintained list.
+>
+> **CORRECTION to the triage that opened this item:** it cited "Emberteeth" as an example of a
+> genuinely-unbuilt item that "greps to nothing". **That is wrong** - `um_emberteeth.dbr` plus
+> `emberteeth_soul_{n,e,l}` are all PRESENT in the shipped arz. The genuinely-absent grep was
+> "emberscale", and only because D18's records are named `svc_flameguard\0N_flameguardslayer.dbr`
+> (the Emberscale charm is a turtle-shell-pattern clone, so the display name and the record path
+> differ). Both are shipped.
+
 ### BUILD31 DB WAVE QUEUE (Will via coordinator, 2026-07-09; batch as one wave)
 Train contents (commit-group order per coordinator 2026-07-09): (0) Q1 Typhon->Rhodes portal
 unlock (URGENT, Quests.arc lane - SHIPPED as build30.3, live on Steam 2026-07-09; the unlock
@@ -3344,7 +3483,7 @@ redesign**, (4) D13 + D14 + **D20 War King Sarpedon summon soul** + **D21 Long N
 Mother summon soul (Will 2026-07-09: 'her soul needs to be able to summon her'; standard
 recipe + the D19 mobility law from birth; find her records via 'Long Nu'/'Flame Mother' tags;
 keep existing augments unless conflicting, report)**, (5) Enslaver (approved),
-(6) N4-DB Vashkarr, (7) Q2 portal-master NPC (arz + Quests + Text coupled). N2 Typhon-gate mesh
+(6) N4-DB Vashkarr, (7) Q2 portal-master NPC (arz + Quests + Text coupled) - ✅ SHIPPED build32/32a, all three artifacts. N2 Typhon-gate mesh
 swap = CANCELLED (Will chose the portal-master model C; existing walk-through portals stay
 transitionally, retire in phase 2). BUILD32 additions (Will blanket sign-off 2026-07-09):
 **N5 THROWING WEAPONS APPROVED** at ALL designer recommendations (faithful base drop weights
@@ -3475,11 +3614,29 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
     Quests.arc and it is INERT (failed in-game). Once the map lane makes the portal born-open it
     is fully redundant. RECOMMEND reverting 'quest that controls bosses and their doors.qst' to
     byte-identical SVAERA (drop _add_typhon_rhodes_unlock) for fidelity; harmless if kept.
-    DECISION DEFERRED to coordinator + map-lane mechanism report. If kept, it must remain a
+    ~~DECISION DEFERRED to coordinator + map-lane mechanism report.~~ If kept, it must remain a
     byte-superset (the survival gate-assert still holds).
+  - ✅ **DECISION MADE 2026-07-28 (`fix/debt-docs`): KEEP.** Written into the code at
+    `tools/build_quest_files.py:_add_typhon_rhodes_unlock` (a FIDELITY DECISION docstring block), so
+    the survival gate-asserts now have a stated owner instead of guarding an undecided delta.
+    Rationale: (1) it is a byte-SUPERSET, not a mutation - the only touched file is the
+    already-registered, never-completing controller quest, +804 B of pure append, every SVAERA
+    behaviour preserved verbatim; (2) reverting would NOT restore SVAERA fidelity, because Q3's
+    kill-gated instant unlock builds on the SAME host step, SAME `Action_UnlockFixedItem`, SAME
+    portal record - dropping Q1 only deletes the token + OnLevelLoad RELOAD path, i.e. the thing
+    that gives an EXISTING Typhon-slayer (Will's main) the portal without re-killing the boss;
+    (3) `canReFire=1` + OnLevelLoad makes it idempotent and retroactive, and an unlock on an
+    engine-locked fixed item is a no-op - exactly the observed build30.3 outcome, so keeping it
+    costs nothing at runtime; (4) reverting costs a Quests.arc rebuild + a coupled Levels+Quests
+    redeploy for zero player-visible benefit. IF a future lane reverts it, it must delete the
+    survival asserts with it and record the reversal in `docs/WILL_RULINGS.md`.
   - COUPLED SHIP: map(born-open portal) is the load-bearing change; arz/Quests/Text unchanged on
     the DB lane for Q3.
-- **Q2 QUEUED: PORTAL-MASTER NPC for SV-area travel (Will chose model C; map lane M8b has the
+- ✅ **SHIPPED build32 (DB+Quests) + build32a (map M8)**: `records\quests\portal_master_helos.dbr` is
+  in the arz, `PORTAL_MASTER_SPEC` is LIVE in `INJECT_SPECS` @ startingfarmland06d local
+  (76.50,0.60,189.50), and the boat dialog rides the `sv_commonmechanics` refire step per the
+  registry law (no new registration). Design record follows.
+  **Q2 QUEUED: PORTAL-MASTER NPC for SV-area travel (Will chose model C; map lane M8b has the
   mechanism analysis).** DB+Quests+Text triple: (a) friendly quest-NPC record (base boatman
   class pattern, render-safe mesh per D5 law, amgoz1-voice name e.g. 'Almyros the Wayfarer' +
   'Portal Master' title tag); (b) boat-dialog quest offering the 4 SV destinations (Garden of
@@ -3490,7 +3647,11 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   qst_format; (c) confirmation-dialog text tags (validate_tags). All three artifacts couple;
   map lane places the NPC after the record lands. Old boat-dialog failure predated B2 (quests
   now load); pilot walk-test proves it.
-- **D16 QUEUED (Will, verbatim: the swap skill 'is basically suicide... make him stronger,
+- ✅ **SHIPPED build31 (G3) + build36 (D16b)** - all 20 tiers: `skillName7` is now
+  `shadowstalker_distortionfield.dbr` (the suicide shadowstrike is GONE), `characterLife` **500 ->
+  2210** (was flat 297), hit **120-150 -> 386-492** (was flat 83-98); D16b added the AoE-petrify
+  shadowzap. Design record follows.
+  **D16 QUEUED (Will, verbatim: the swap skill 'is basically suicide... make him stronger,
   much stronger'): SHADOW STALKER OVERHAUL - EXPLICIT OCCULT-FREEZE EXCEPTION.** (1) find the
   Stalker's position-swap first ability (teleport-exchange into packs) in the Occult pet kit
   and REMOVE it from the PET kit (Will explicitly sanctioned; pet skill slot, not a player
@@ -3501,7 +3662,10 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   changed records/fields, commit documents the Will-ordered exception verbatim; gate keeps
   guarding all other Occult records. Pets spawn fresh per cast = retroactive for existing
   characters.
-- **D17 QUEUED (Will: 'make the volcano guy much stronger in earth mastery'): CORE DWELLER.**
+- ✅ **SHIPPED build31 (G3)** - all 20 `coredweller_NN` tiers at x1.75 life: t1 **1367.1**, t20
+  **3937.5** (were 781 / 2250); strength t1 **293.8**, t20 **531.2**; taunt kit untouched, as ruled.
+  Design record follows.
+  **D17 QUEUED (Will: 'make the volcano guy much stronger in earth mastery'): CORE DWELLER.**
   The Earth magma golem (audit: 781/1940/2250 HP, STR 425, taunt+boulder+stonehand+wildfire).
   Buff substantially ON TOP of the Wave 1 Earth boosts: ~1.5-2x life, meaningful damage
   scaling, armor up, keep the taunt identity (Earth's ONLY pet vs Occult's 5-body package).
@@ -3509,7 +3673,11 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   Volcanic Orb, the Wave 1 cd 4->1.5 boost already covers it - flagged in the report.)
 
 ### BUILD32 TRAIN (queued 2026-07-09; implement AFTER build31 ships)
-- **N6-DB: Obsidian Halls treasure roulette - WILL SIGNED OFF (2026-07-09).** Full approved
+> ⚠️ **EVERY ENTRY IN THIS TRAIN SHIPPED** (build31/31g/32/32a/36) - see the STATUS SWEEP table at
+> the top of this section for the per-item arz proof. Kept verbatim as the design record.
+- ✅ **SHIPPED build32 (Group F)** - 68 records incl. `svc_obsidianhoard_01/02/03`, `um_sarkoth_99`,
+  `um_ilsevar_99`, `voranthys_soul_l` granting `summon_voranthys.dbr`. Design record follows.
+  **N6-DB: Obsidian Halls treasure roulette - WILL SIGNED OFF (2026-07-09).** Full approved
   design + locked decisions: docs/OBSIDIAN_ROULETTE_DESIGN.md (chanceToRun 25.0/corner;
   Voranthys = the one summon-soul via _build_boss_summon on the SepulchralWyrm01 rig; all
   designer defaults incl. locked Boss-classification mega-chest, 5-elite warbands, no charm,
@@ -3524,7 +3692,9 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   In-game confirm item for Will's DEV pass: DropProjectileTelekinesis anim on the liche rig.
   MAP-REF-1 ordering: DB records land in the build32 arz BEFORE map lane M10 injects
   (4 INJECT_SPECS + shared v0e branch).
-- **MASTERY WAVE 2** per docs/MASTERY_AUDIT_2026-07-09.md §3 Wave 2: Warfare (horn/standard
+- ✅ **SHIPPED build32 (Group D)** - proven in the shipped arz: `drxforceofnature` cd 360 -> **180.0**,
+  `drxoutsidersummons` cd 360 -> **120.0**, `drxdeathward` cd 300 -> **180.0**. Design record follows.
+  **MASTERY WAVE 2** per docs/MASTERY_AUDIT_2026-07-09.md §3 Wave 2: Warfare (horn/standard
   uptime, armband path fix, optional warwind), Nature (force-of-nature 360->180, petBonus ML1-40
   ramp w/ overshoot check, defensiveConvert artifact zeroing, wolf FX hygiene), remaining Spirit
   (outsider 360->120 + TTL 60, deathward 300->180, bonepet xxx-spiritbreath re-enable +
@@ -3538,7 +3708,10 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   Dream boosts block from Part III (the Dream lane's boosts array) for exact targets before
   writing. ⚠️ Golden-freeze expansion decision (doc §5): freeze the tuned trees AFTER each
   wave's QA, regenerating the snapshot in the same step.
-- **N4-DB: Forest of the Ancients cave boss - WILL SIGNED OFF w/ amendments (2026-07-09).**
+- ✅ **SHIPPED build32 (DB) + build32a (map)** - `um_vashkarr_99`, `svc_vashkarr_{fodder,lance,warlock}`,
+  `svc_vashkarr_summonhorde`, `q_vashkarr_lone` (proxy AND pool), `vashkarr_soul_{n,e,l}` (no summon,
+  per Will's ruling); `VASHKARR_SPEC` LIVE @ random05a (24.00,1.00,31.70). Design record follows.
+  **N4-DB: Forest of the Ancients cave boss - WILL SIGNED OFF w/ amendments (2026-07-09).**
   Full design = the FotA design agent's final report (coordinator-held). Placement: Random05A.lvl
   cave via ToTomb02 east of Chang'an; Majestic Chest at local (24.01,1.00,28.70) stays UNTOUCHED.
   Band/HP APPROVED: charLevel [38,56,71], HP [12000,16500,21000].
@@ -3579,9 +3752,14 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   skill + soul + tags (validate_tags). MAP-SIDE DEPENDENCY: these records MUST land in the
   build31 arz BEFORE the map lane injects the placement (MAP-REF-1); the map lane adds the v0e
   routing case + INJECT_SPECS in its next wave. All gates + bucketed record-diff.
-- **D11: Rally** (coordinator holds the brief).
-- **D12: Coastal Ichthian Myrmidon soul boost** (coordinator brief 2026-07-09).
-- **D15: reward-potion name colors** (Will: Fortitude + skill-point potions should be the same
+- ✅ **SHIPPED build31 (G3): D11 Rally** - `drxrallybuff.skillCooldownTime` 45 -> **30.0** in the
+  shipped arz. (The coordinator's original brief was never committed to the repo; the implemented
+  change is the record of what was done.)
+- ✅ **SHIPPED build31 (G3): D12 Coastal Ichthian Myrmidon soul boost** - `coastalichthianmyrmidon_soul_l.characterLife` = **650.0** (life 250/450/650, OA 60/120/180, cold ladders).
+- ✅ **SHIPPED (Text lane): D15 reward-potion name colors** - `tools/build_text_arc.TEXT_FIX_TAGS`
+  carries all four `^M` overrides (`tagNewItem3`, `tagNewItem70`, `tagNewItem4`, `tagNewItem69`).
+  Design record follows.
+  **D15: reward-potion name colors** (Will: Fortitude + skill-point potions should be the same
   dark red as the experience potions). RECON COMPLETE - ready to implement, pure Text-side:
   the dark red is the leading **`^M` color code** in the tag VALUE (shipped Text.arc:
   `tagNewItem6=^MPotion of Experience`, shared by ALL 48 potionexp_NN records). The four
@@ -3594,7 +3772,9 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   during SV emission, duplicate-tag gate stays green): add the four keys with the same values
   prefixed `^M`. No arz change; itemText desc tags untouched; check_duplicate_tags +
   validate_tags must PASS; Text.arc ships coupled with the build31 arz push as always.
-- **D14: Phygmalian Replicator summon soul** (Will: "Phygmalian replicator soul should summon the
+- ✅ **SHIPPED build31 (Group 4): D14** - `pygmalion_soul_l.itemSkillName` = `summon_pygmalion.dbr`
+  (level 3), pets `pygmalion_1..3`. Design record follows.
+  **D14: Phygmalian Replicator summon soul** (Will: "Phygmalian replicator soul should summon the
   soul" = the soul summons the Replicator). Records identified on the build30.2 arz (spelled
   PYGMALION in-data): monster `records\creature\monster\automatoi\um_pygmalion_41.dbr` (Hero,
   single tier, charLevel 41, tag tagNewHero262, mesh `Creatures\Monster\Automatoi\Automatoi01.msh`
@@ -3626,7 +3806,9 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   charLevel [41,58,71] = the ladder's power curve comes free from the skill itself.
   (`copy of replicate.dbr` = Skill_AktaiosMirage upstream junk; ignore.) Full D13 recipe +
   gates; the summon-skill ladder tiers map 1:1 onto replicate's existing 3 levels.
-- **D13: Eater of Days summon soul** (Will: "The Eater of Days soul should let you summon him").
+- ✅ **SHIPPED build31 (Group 4): D13** - `eaterofdays_soul_l.itemSkillName` = `summon_eaterofdays.dbr`
+  (level 3), pets `eaterofdays_1..3`. Design record follows.
+  **D13: Eater of Days summon soul** (Will: "The Eater of Days soul should let you summon him").
   Records identified on the build30.2 arz: monster
   `records\creature\monster\sepulchralwyrm\um_eaterofdays_45.dbr` (Hero-classified, single tier
   L45, tag tagNewHero91, mesh `DRX\meshes\eaterofdaysmesh.msh`, texture
@@ -3641,7 +3823,10 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   hardcoded if armor is needed), 'Summon <full name>' tag + {^F} law + uber_soul_tags, gates:
   validate_summon_pets + render_chain + soul_augments + summons contract 0 P1 + bucketed
   record-diff.
-- **Boss-summon-soul candidates remaining (for Will's batch approval):** regenerated ranked on
+- 🟡 **STILL OPEN (unchanged): Boss-summon-soul candidates remaining (for Will's batch approval)** -
+  this is a PROPOSAL list, not a build queue; Will's standing ruling is that only EXPLICITLY named
+  souls get converted.
+  **Boss-summon-soul candidates remaining (for Will's batch approval):** regenerated ranked on
   the build30.2 arz via the real wiring join (lootFinger2Item1): 643 souls wired to monsters,
   61 already summon, 578 do not. Top Boss-class by level: dragonliche L63, manticore L56,
   darksatyrshaman L55, hades L54, bloodcrow + talos L50, antaeus L49, typhon + undeadtyphon +
@@ -3655,18 +3840,46 @@ Will's standing ruling: only convert summon-souls he EXPLICITLY names.
   Regeneration script (re-runnable on any arz): session scratchpad `rank_summon_candidates.py`;
   full dump `summon_candidates_ranked.txt`.
 
-- **FEATURE (Will 2026-07-09): throwing weapons in the campaign.** The mod already requires
+- ✅ **SHIPPED build32 (Group E)** - this is the SAME work as N5, not a second item:
+  `_restore_thrown_weapon_drops` restored 198/198 eligible base loot twins, and the 3 supra thrown
+  weapons + their `svc_thrown_*_formula` records are in the shipped arz. Design record follows.
+  **FEATURE (Will 2026-07-09): throwing weapons in the campaign.** The mod already requires
   Ragnarok (Runemaster mastery, XPack2 world levels), so throwing weapons are available engine-side;
   they never drop in Acts 1-4 because vanilla loot tables only place them in Act 5. Wire thrown
   weapons into the campaign loot tables (and consider a thrown-weapon soul or two). Will: "we dont
   even have the throwing objects in the game (although I wish we did)".
-- **DESCRIPTION CORRECTIONS for next metadata push (2026-07-09):** (1) known-issues still says the
-  Uber Dungeon return is not wired - build30's M1 wired the crypt_floor1 native return door, remove
-  that line; (2) requirements: state that MULTIPLAYER (joining a session) requires ALL expansions
-  (Ragnarok + Atlantis + Eternal Embers) because the merged world declares all-DLC content
-  (server-join "get DLC" bounce, confirmed by a real player 2026-07-09); single-player hard
-  requirement stays Eternal Embers. Also warn the Steam "get DLC" redirect lands in an empty cart
-  (Steam deep-link bug) - buy from the store pages directly.
+- ~~**DESCRIPTION CORRECTIONS for next metadata push (2026-07-09):** (1) known-issues still says the
+  Uber Dungeon return is not wired ...; (2) requirements: state that MULTIPLAYER requires ALL
+  expansions ... Also warn the Steam "get DLC" redirect lands in an empty cart.~~
+  **✅ BOTH ALREADY SHIPPED - entry was STALE. Verified + closed 2026-07-28 (`fix/debt-docs`).**
+  Commit `02ce3e5` ("Workshop description: MP requires all expansions (byte-verified: 288 XPack2 +
+  258 XPack3 + 726 XPack4 levels indexed in the shipped world), empty-cart Steam bug warning, Uber
+  return door now wired (stale known-issue), condense 07-08 entry for the 8000-char cap") applied
+  both. Present in `docs/WORKSHOP_DESCRIPTION.bbcode` on main today: the requirements list carries
+  the full MP all-DLC line INCLUDING the empty-cart warning, and the Uber Dungeon is described as
+  HAVING a return door.
+  **RESIDUALS FOUND AND FIXED IN THE SAME PASS** (description-as-code only - the metadata PUSH is
+  still Will's/the orchestrator's step, NOT this lane's):
+  - The return-route guidance (GoM/Secret Place shrine + Uber return door) was still sitting under
+    the "Known issues / work in progress" heading even though it describes WORKING behaviour.
+    Moved to the end of "Restored Soulvizier areas" as a "Getting back out" note.
+  - Known-issue "Toxeus the Enslaver ... currently spawns far too often. A big reduction to his
+    spawn rate is coming" is now WRONG on both halves. It is FIXED, and it was NOT fixed by a rate
+    cut: Will's verbatim directive was "no we dont need the 4x rate cut on top" (R-18 STANDING:
+    the weight-1/K=600 rarity is deliberate design), so b49 shipped a BREADTH cut instead
+    (`_EN_SWEEP_FAMILIES = ('undead',)`, 1224 -> 273 pools), merged as `79478c2` into **build40**,
+    which is the canonical build live on Workshop item 3759792705. Rewritten as a FIXED line that
+    also stops promising a rate cut that will never happen.
+  Char budget re-checked: 7,858 of Steam's 8,000 (142 headroom); BBCode tags balanced (5 list /
+  7 h1 / 1 b, all closed).
+  **DO NOT REMOVE on the next push:** the "rare crash deep in the Blood Cave" known-issue is STILL
+  TRUE for the live Workshop build. Will confirmed the crash fixed IN-GAME on 2026-07-27, but that
+  was the DEV map - per BL-b89-DEBT-2 the canonical `Levels_merged.arc` was deliberately NOT
+  packaged or uploaded, so the LIVE item still carries the malformed containers. That line comes
+  out only when the canonical map ships.
+  **STILL TO AUDIT before the next push (not done here, no evidence gathered):** the remaining four
+  known-issues - black mastery-page backgrounds, misplaced/missing mastery skill icons, damage
+  numbers not displaying, language switching - each need a shipped-vs-live check of their own.
 
 - Contract suite - **BUILT + committed** (`tools/contracts/`, branch `feat/contract-suite`). One
   unified 51-contract, 5-lane suite (souls/summons/resources/map/quests) that subsumes BOTH the

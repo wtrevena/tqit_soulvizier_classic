@@ -22,7 +22,7 @@ Appended to `docs/WILL_RULINGS.md` as **R-48** (Souls & items section), status I
 | **R-42** "soul drop rates: random 50 / placed 66 / boss 25" | the whole roster | Marked **PARTIALLY SUPERSEDED by R-48 for these two records ONLY**. Every other record's rate stands and is proven unchanged in the record-diff (section 4). |
 | **R-47** generic apex orb for custom Boss encounters | Blood Toxeus / Enslaver loot | Untouched - this lane changes only `chanceToEquipFinger2`, no `lootMisc*` / orb slot. |
 | **R-5 / R-6 / R-7 / R-11 / R-12** Toxeus champion kits, black poison, identity | same two monster records | Untouched - no skill, mesh, texture, race, FX or pet field is written. |
-| **R-13** "retire the one we are adding and just update the 15% one to 33%" | Blood-Toxeus SPAWN chance | **Not the same axis.** `chanceToRun` (33% corridor ambush spawn) is untouched; R-48 raises the SOUL DROP roll once the champion is actually killed. |
+| **R-13** [renumbered **R-19** on 2026-07-28 by the `fix/debt-docs` ledger-hygiene pass; the live R-13 is the Rite on-kill drop] "retire the one we are adding and just update the 15% one to 33%" | Blood-Toxeus SPAWN chance | **Not the same axis.** `chanceToRun` (33% corridor ambush spawn) is untouched; R-48 raises the SOUL DROP roll once the champion is actually killed. |
 | Yeti Common/Champion lesson (CLAUDE.md) | `wire_souls_to_monsters` Hero/Boss/Quest gate | **Gate NOT modified.** Both champions are `monsterClassification=Boss`, so the gate never applied to them; no Common/Champion is re-enabled. Post-build proof: the testing-forcer survival check still reports **428 gated records stay 0**. |
 
 No other ledger entry touches these two souls' drop rates.
