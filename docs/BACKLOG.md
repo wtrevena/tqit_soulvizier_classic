@@ -1,5 +1,135 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD54-DEV GATE RECORD - b93 death-XP penalty -90% (2026-07-28, branch `feat/death-xp-penalty`, tag `build54-dev`)
+
+> DEPLOY NOT PERFORMED - the DEV entry was taken by a CONCURRENT lane mid-build. See "DEPLOY" below.
+> Everything else (build, gates, record-diff, contracts, ledger, report) is GREEN and complete.
+
+**R-70, Will 2026-07-27, verbatim:** "also i want to drastically reduce the xp penalty for dying. at
+high levels the penalty is way too crazy, it needs to be cut by like 90%"
+
+DB-ONLY lane (arz + Text coupled pair). **NO map rebuild** - `Levels.arc` + `Quests.arc` byte-identical
+before vs after. Full report: `docs/reports/b93_death_xp_penalty.md`.
+
+**MECHANISM (found in the deployed bytes, not assumed):** `Game.dll` hard-codes exactly ONE GameEngine
+path in the whole install - the literal `Records/XPack/Game/GameEngine.dbr` (TQ.exe and Editor.exe
+contain none) - and reads three fields off it: `deathPenaltyEquation`, `deathPenaltyMin`,
+`deathPenaltyMax`, evaluated as `clamp(equation, min, max)`. Difficulty enters ONLY through the
+`gameDifficultyDV` term (0/1/2) inside the one equation: there is no flat-vs-percentage split and no
+per-difficulty variant record. **FIVE lookalike records carry `deathPenalty*` and the engine loads
+none of them** (`xpack\game\drxgameengine`, `xpack\game\copy of gameengine`, `xpack\game\xxxgameengine`,
+`game\gameengine`, `game\cost backup\gameengine` - the last carrying a DIFFERENT formula
+`^2.95 * (1+2*DV)/3`, a decoy). Corroborated by shipped precedent: `damage_display` (b38) fixed the
+combat-text FontStyles on this same xpack record because base TQAE keeps them only there.
+
+**PROVENANCE:** the before-values are pure vanilla TQAE - byte-identical in base TQAE, SV 0.98i,
+SV 0.9, SV 0.41 and the pre-change deployed arz `1c27d5fa`. No prior ruling and no pipeline writer
+ever touched a `deathPenalty*` field.
+
+**RECORDS TOUCHED (exactly 1, two fields - record-diff vs `local/baseline_b93.arz`: 0 added, 0 removed,
+1 changed):**
+- `records\xpack\game\gameengine.dbr`
+  - `deathPenaltyEquation` (STR) `...(1+ (3 * gameDifficultyDV)) / 9)` -> `... / 90)` (exactly x0.1, no new parser token)
+  - `deathPenaltyMax` (INT) `500000` -> `50000`
+  - `deathPenaltyMin` (INT) `0` **UNTOUCHED**
+
+The cap moves in lockstep because the penalty is cubic: the old 500000 cap already bit above ~L86 on
+Legendary, so scaling the equation alone would have delivered only **-84.4% at L100 / -73.1% at L120**
+- less than the ruled 90% in exactly the high-level regime Will named. Both scaled means **exactly
+-90.0% at every level on every difficulty.**
+
+**WORKED EXAMPLE** (shipped curve `E(L)=65*(L+1)^3.25`; kills = solo, same-level, `experiencePoints`
+medians Common 0 / Hero 500 / Boss 750):
+
+| L / difficulty | level band XP | BEFORE lost | % band | trash kills | AFTER lost | % band | trash kills |
+|---|---|---|---|---|---|---|---|
+| 40 Legendary | 874,181 | 49,778 | 5.7% | 83 | **4,978** | 0.6% | **8** |
+| 60 Legendary | 2,156,553 | 168,000 | 7.8% | 187 | **16,800** | 0.8% | **19** |
+| 85 Legendary | 4,695,993 | 477,653 | 10.2% | 375 | **47,765** | 1.0% | **37** |
+| 85 Epic | 4,695,993 | 272,944 | 5.8% | 214 | **27,294** | 0.6% | **21** |
+| 100 Legendary (old cap bit) | 6,755,778 | 500,000 | 7.4% | 333 | **50,000** | 0.7% | **33** |
+
+**IMPLEMENTATION:** new registry module `tools/patches/death_xp_penalty.py`, registered at position
+16/34 immediately after `damage_display` (the only other writer of that record; their field sets are
+disjoint). Deterministic + idempotent; `apply()` carries five layered fail-loud scope proofs
+(vanilla-or-already-ruled pre-state, dtype before/after, exactly-two-fields-moved on the record,
+`db._modified` delta subset of {that record}, all five dead lookalikes unmoved); `verify()` re-asserts
+the values + dtypes on the FINAL merged arz, re-derives the reduction numerically over **L1..1000 x
+N/E/L** (worst ratio deviation < 1e-9) and re-checks the lookalikes. **S4b collision gate: 78 -> 79
+records, the single new line being `records\xpack\game\gameengine.dbr  <-  damage_display,
+death_xp_penalty`** - expected, documented in the REGISTRY comment, and diff-proven to be the ONLY
+new collision.
+
+**GATE (no-new-surface law):** new contract domain **`tools/contracts/contracts_balance.py`** (domain
+`balance`, auto-discovered) with `whitelist_balance.txt` (no suppressions):
+`BAL-DEATHXP-1` (P0, ruled values + STR/INT dtypes), `BAL-DEATHXP-2` (P0, the reduction really is
+0.10x vanilla at every level 1..maxPlayerLevel on N/E/L - catches the "divisor fixed, cap forgotten"
+regression), `BAL-DEATHXP-3` (P1, the 5 dead lookalikes untouched - catches the wrong-record fix),
+`BAL-XPGAIN-1` (P1, XP gain + level curve + level cap unmoved). **26/26 planted negative tests PASS**
+(`tools/contracts/tests_balance_negative.py`), incl. a cross-check that every gate constant equals
+the build module's. **Real-world negative proof:** the same contract against the PRE-change arz exits
+1 with 3 P0; against the b93 build: **0 violations**.
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`):
+
+| artifact | md5 |
+|---|---|
+| `work/.../Database/SoulvizierClassic.arz` NEW | `de589633d06a62d92afcd29b8701b74c` (55,424,420 B) |
+| `work/.../Resources/Text.arc` (rebuilt from the BUILD-EMITTED `uber_soul_tags.txt`; bytes unchanged, no tag changed) | `fcca49277b9d31ed451e4a6843898843` |
+| `work/.../Database/uber_soul_tags.txt` (build-emitted) | `49b6d85ba15236aa5df60f610e3a7bf0` |
+| `work/.../Resources/mod_authored_tags.txt` | `7836504539e3a4776b60a58c7cb1d0bb` |
+| baseline arz (pre-change; rebuilt from `main` @ `8c3445c` and **== the deployed `1c27d5fa` byte-for-byte**) | `1c27d5fa650b5c076696db4ad379672f` |
+| `work/.../Resources/Levels.arc` BEFORE == AFTER | `fc0adcc0713839a685b32d6e122653be` |
+| `work/.../Resources/Quests.arc` BEFORE == AFTER | `5e664c7b190965fd69f6ff15d77d85e4` |
+
+> The baseline rebuild reproducing the deployed `1c27d5fa` exactly is the determinism proof for this
+> lane: the ONLY delta between `1c27d5fa` and `de589633` is the two intended fields.
+
+**GATES:** DB build **exit 0**, every fail-loud invariant green (soul-leak / soul-augment / soul
+item-skill activation / supra-ref / tags / spawn-eligibility 44 proxies / A7 Occult-Hunting golden 84
+waived 0 other / A9 render-chain / F2 summons + soul-summon identity / F3 diversity / F6 naming / b77
+unlock-alignment). Registry verify hook **`death_xp_penalty.verify OK`**. `validate_tags` **PASS**
+(417/417 authoritative). `tests_balance_negative` **26/26 PASS**. Contracts
+`--only balance,souls,summons,resources` on the b93 build: **0 P0 / 1252 P1 / 3653 P2**; on the
+pre-change baseline arz: **3 P0 / 1252 P1 / 3653 P2**. Violation-set diff: **2 keys only-in-baseline
+(the BAL-DEATHXP P0s), 0 only-in-built, 4905 common - i.e. ZERO new violations of any severity.** The
+1252 P1 are the known pre-existing `contracts_resources` set (BL-b90-DEBT-1), **count identical on both
+arz**, so they are provably untouched by this lane.
+
+**DEPLOY: NOT PERFORMED (BLOCKED, needs orchestrator sequencing).** At 13:29 the DEV entry held
+`1c27d5fa` (the documented ground truth, and what this lane's baseline reproduces). At **13:55:19,
+mid-build, a CONCURRENT lane deployed a different arz to the same DEV entry**:
+`SoulvizierClassicDEV.arz` = **`5143ad1a44a9964c22578e00613f3e14`** (55,424,139 B). Record-diff of that
+deployed arz vs this lane's baseline shows **12 records changed, all one field**: `mesh`
+`Creatures\Monster\Skeleton\RevenantPoison.msh` -> `Creatures\Monster\Skeleton\Skeleton01.msh` on
+`um_toxeus_enslaver_99`, `um_bloodtoxeus_99`, 4 Toxeus proxies and 6 Toxeus soul-pets (a Toxeus mesh
+lane; `fix/green-diff` "b92 GREEN GLOW root cause: the mesh attaches the aura" is the likely owner).
+
+That change is **entirely DISJOINT from this lane** (12 creature/pet/proxy `mesh` fields vs 1
+gameengine record), so a merged build carries both cleanly. But this lane's arz was built from `main`
+and does NOT contain it, so **copying `de589633` onto DEV would silently revert all 12 mesh fields** -
+exactly the last-writer-wins clobber the b90 lesson and the standing code discipline forbid. **The
+deploy was therefore deliberately NOT performed.** Backups of the pre-existing DEV state were taken
+first: `local/db_backups/SoulvizierClassicDEV_pre-b93_1c27d5fa.arz` (which actually captured the
+concurrent lane's `5143ad1a` - the filename records the intent, the hash records the truth) and
+`local/db_backups/DEV_Text_pre-b93_fcca4927.arc`.
+
+**REQUIRED NEXT STEP (orchestrator):** merge `feat/death-xp-penalty` with the Toxeus-mesh branch, run
+ONE rebuild off the merged tree, and do ONE coupled arz+Text deploy. Do not hand-patch either
+artifact. `Text.arc` needs no change either way (byte-identical). `Levels.arc`
+(`943d0ab9516d332db79bd7f9fd2d3ffe`) and `Quests.arc` (`5e664c7b190965fd69f6ff15d77d85e4`) on DEV are
+UNTOUCHED by this lane and were re-hashed after all work to prove it. **TQ.exe was RUNNING throughout
+(started 13:31) and was NOT killed** (standing ban); Will must kill TQ + Steam and restart before any
+test.
+
+**LEDGER:** `docs/WILL_RULINGS.md` **R-70** appended VERBATIM in a new "Global balance & progression"
+section (decade 70-79), status IMPLEMENTED b93, with the exact before/after values recorded.
+
+**OPEN DEBT:** BL-b93-DEBT-1..5 (see DEBT REGISTER): in-game confirmation launch-gated; Steam/canonical
+not shipped; **the DEV deploy is blocked on the concurrent-lane merge above**; SV's
+`experienceLevelEquation` ships with an unbalanced parenthesis (inherited, untouched, affects only the
+"% of a level" framing, not the XP-lost numbers); MULTIPLAYER_COMPAT.md quotes a stale build27 arz hash.
+
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 
 **R-49, Will 2026-07-27, verbatim (REPEAT of R-3):** "toxeus the murderer devourer of blood is not
@@ -355,6 +485,29 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b93 death-XP penalty -90% (2026-07-28, build54-dev) - NEW**
+- **BL-b93-DEBT-1 (launch-gated):** the -90% death penalty is unproven IN-GAME. Owner/trigger: Will
+  kills TQ + Steam, restarts, and dies once on a high-level Legendary character on DEV.
+- **BL-b93-DEBT-2 (P0, BLOCKS THE DEPLOY):** the b93 arz `de589633d06a62d92afcd29b8701b74c` was NOT
+  deployed. A concurrent lane wrote `5143ad1a44a9964c22578e00613f3e14` to the same DEV entry at
+  13:55:19 (12 Toxeus `mesh` fields, `RevenantPoison.msh` -> `Skeleton01.msh`; likely
+  `fix/green-diff` b92). The two changes are disjoint but the b93 build does not contain theirs, so
+  deploying it would revert them. Owner/trigger: orchestrator merges `feat/death-xp-penalty` with
+  the Toxeus-mesh branch, ONE rebuild, ONE coupled arz+Text deploy. Do not hand-patch.
+- **BL-b93-DEBT-3 (not shipped):** Steam / canonical `CustomMaps\SoulvizierClassic` not touched by
+  this lane; DEV only.
+- **BL-b93-DEBT-4 (inherited, out of scope):** SV's `experienceLevelEquation` on
+  `records\creature\pc\playerlevels.dbr` ships with an UNBALANCED parenthesis (one `)` short),
+  inherited verbatim from SV 0.98i and present in every deployed arz. Nobody has established whether
+  the engine's parser accepts it or silently falls back - which decides whether the live XP curve is
+  really `65*(L+1)^3.25`. It affects only the "% of a level" framing in the b93 worked example, never
+  the XP-LOST numbers (different, well-formed equation). Owner/trigger: a progression/XP lane.
+- **BL-b93-DEBT-5 (doc hygiene):** `docs/MULTIPLAYER_COMPAT.md`'s determinism statement quotes a
+  stale build27 arz hash. Owner/trigger: the next MP-facing pass.
+- **BL-b93-DEBT-6 (cleanup candidate, WILL-VETO by default):** the five dead `deathPenalty*`-bearing
+  gameengine lookalikes are now gated as "must stay vanilla" but remain unmanaged dead weight. Any
+  retirement is subject to the RETIREMENT PROTOCOL.
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,

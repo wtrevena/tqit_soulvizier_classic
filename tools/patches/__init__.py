@@ -114,6 +114,17 @@ REGISTRY = [
                                     # finalization-phase interim call) so it wins any collision
     'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
                             # gameengine (SV's pre-AE record lacks them; touches only gameengine)
+    'death_xp_penalty',     # b93 (Will R-70 2026-07-27): on-death XP loss cut by exactly 90% -
+                            # deathPenaltyEquation divisor 9 -> 90 and deathPenaltyMax
+                            # 500000 -> 50000 on records\xpack\game\gameengine.dbr (the ONE
+                            # GameEngine record Game.dll loads). MUST sit adjacent to
+                            # damage_display: they are the only two modules that write that
+                            # record, so the S4b collision WARN naming exactly this pair is
+                            # EXPECTED and benign - their field sets are disjoint
+                            # (Damage*/Healing*/PlayerImpairment styles vs deathPenalty*), and
+                            # neither reads the other's fields, so order between them is
+                            # immaterial. A collision WARN naming any THIRD module on this
+                            # record is a real finding: investigate before shipping.
     'thrown_restore',       # b64: restore base+IT thrown-wielders (maenad/duneraider/tigerman/
                             # machae) our own overlay disarmed, back into their EXISTING pools
                             # in place (no clone, no new pool); disjoint namespace (monster
