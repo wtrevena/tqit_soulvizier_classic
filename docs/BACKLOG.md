@@ -277,11 +277,58 @@ along automatically when the structural cluster-relocation fix lands.
 > PROTOCOL, CLAUDE.md law #2).
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
-- **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
+- ~~**BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
   `C-RES-ASSET-1` 484). Proven PRE-EXISTING - the identical command over the pre-change baseline arz
   yields the byte-identical violation set (0 only-in-built, 0 only-in-baseline). This BACKLOG records
   the lane at **0 P0 / 1 P1** at an earlier date, so it regressed by ~1251 P1 BEFORE b90. Suspected
-  environmental (see BL-b90-DEBT-2), not content. Owner/trigger: its own triage lane.
+  environmental (see BL-b90-DEBT-2), not content. Owner/trigger: its own triage lane.~~
+  **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`). MERGED with its duplicate - the "BACKLOG DEBT (new,
+  per WILL_RULINGS law #4)" block under the B80 gate record (~line 3808) filed the SAME 1252 P1
+  independently. That block now points here; this is the single entry of record.**
+  - **ROOT CAUSE (proven, and NOT the b80 stale-staging theory):** `contracts_resources.
+    load_upstream_names()` returns an **empty set** when `upstream/soulvizier_098i/Database/
+    database.arz` is absent, and `make_provenance` then falls through its last rule
+    ("in neither upstream nor base => a mod invention") to **`'authored'` -> P1** for every
+    SV-INHERITED subject. The severity CLASSIFIER degraded silently; no content moved.
+  - **REPRODUCED EXACTLY, both directions, on one unchanged arz** (`work/.../SoulvizierClassic.arz`,
+    `--only resources`, everything else identical, only `--upstream-dir` varied):
+
+    | upstream_dir | total | P0 | P1 | P2 | gate |
+    |---|---|---|---|---|---|
+    | `upstream/` (present) | 4793 | 0 | **0** | 4793 | **PASS** |
+    | `C:/nonexistent_upstream_repro` | 4793 | 0 | **1252** | 3541 | FAIL |
+
+    Identical violation SET both runs - only the severity split moved, and the 1252 matches the
+    b80 note's 1252 exactly. Note also that `upstream/` was EMPTY on this machine for the whole
+    b80->b90 window and was only re-extracted on 2026-07-27 (BL-b90-DEBT-2), which is precisely
+    when the phantom P1s appeared. The b80 hypothesis (stale `work/.../Resources/{Text,Levels}.arc`
+    mtimes) is **refuted**: `C-RES-DBR-1` resolves against the arz + base arz only and never reads
+    a staged Resources arc at all.
+  - **FIX-UPSTREAM (BL-103), not a whitelist:** `make_provenance` now returns **`'unknown'`
+    (-> P2)** instead of guessing `'authored'` when the provenance source was never loaded, and a
+    new contract **`C-RES-INPUT-1`** raises **ONE loud P1** naming the missing input. A checker that
+    cannot classify must say so, not guess. Mod-team-namespaced subjects (`AUTHORED_TOKENS`) stay
+    `'authored'`/P1 with or without upstream - they are ours by name, no lookup needed.
+  - **AFTER THE FIX** (same arz): upstream present -> **0 P0 / 0 P1 / 4793 P2, GATE PASS**;
+    upstream absent -> **0 P0 / 1 P1 / 4793 P2, GATE FAIL** where the single P1 *is*
+    `C-RES-INPUT-1` pointing at the missing arz. Failing for the right reason, with an actionable
+    subject, instead of 1252 phantom content regressions.
+  - **PLANTED NEGATIVE TEST:** `py tools/contracts/contracts_resources.py --negtest` - 5 cases
+    (A healthy inputs classify sv/base/authored and a true invention is P1; B missing upstream
+    yields `unknown`/P2, not the P1 phantom; C missing input raises exactly one `C-RES-INPUT-1` P1;
+    D healthy input raises none; E namespaced subjects stay authored/P1 regardless). Self-contained,
+    needs no artifacts. **PASS.**
+  - **STAGE-FRESHNESS INSTRUMENTATION** added to `run_contracts.py` anyway (the b80 theory was
+    wrong, but staleness was a real un-instrumented risk to the suite's ground truth): the report
+    now prints a `stage freshness` panel comparing the staged `text_arc`/`levels_arc`/`quests_arc`
+    mtimes against the `.arz` and names anything more than an hour behind. **Informational only** -
+    it never changes the exit code, because a blocking rule would need a real coupling model
+    (Levels+Quests ship together, arz+Text ship together) and mtimes alone would fire constantly on
+    a healthy tree. On the current work/ tree it correctly flags Text -15.7h, Levels -16.7h,
+    Quests -12.3d.
+  - **RESIDUAL (not this lane):** the 4793 P2 are genuine inherited drx/sv/base third-party debt,
+    unchanged in count and membership by this work. They are reported and never block. Whether any
+    subset is worth fixing upstream is a separate content decision.
 - **BL-b90-DEBT-2 (P1, environment):** `upstream/` and `reference_mods/` were **EMPTY** on this machine,
   and `CustomMaps\SoulvizierClassic` (the canonical, non-DEV deploy) is **gone**. The DB build cannot
   run without `upstream/`, so b90 re-extracted **only the 4 files the build needs** from the archives
@@ -3841,14 +3888,22 @@ Text/Levels/Quests/Resources) - **byte-identical violation set both times** (490
 0 P0/1252 P1/3652 P2), proving zero regression from this change. Map/quests contracts
 not re-run (this branch touches zero map/quest files). NOT deployed/committed to main.
 
-**BACKLOG DEBT (new, per WILL_RULINGS law #4):** the 1252 P1 above does not match the
+~~**BACKLOG DEBT (new, per WILL_RULINGS law #4):** the 1252 P1 above does not match the
 0 P1 the B71/BUILD45 gate records above claim for a similar reference-arz snapshot.
 Likely `work/SoulvizierClassic/Resources/{Text.arc,Levels.arc}` staleness (mtimes
 01:59/09:09 Jul-16 vs the reference arz's 19:47 Jul-16 - hours of other waves may have
 landed on the arz without a matching Resources restage). Not caused by, and unaffected
 by, this branch (proven via the identical-before/after diff). Flagged for whichever
 lane owns the next full integration: fresh bootstrap + restage + re-run
-`run_contracts.py` to re-establish ground truth.
+`run_contracts.py` to re-establish ground truth.~~
+**✅ CLOSED 2026-07-28 - DUPLICATE of BL-b90-DEBT-1 (same 1252 P1, filed twice
+independently). MERGED INTO BL-b90-DEBT-1 in the DEBT REGISTER; read it there.**
+The staleness hypothesis above is **REFUTED**: `C-RES-DBR-1` resolves against the arz +
+base arz only and never reads a staged Resources arc. The real cause was the missing
+`upstream/soulvizier_098i/Database/database.arz`, which made `make_provenance` silently
+reclassify every SV-inherited dangling ref from `sv`/P2 to `authored`/P1. Fixed upstream
+(`'unknown'` -> P2 + the new fail-loud `C-RES-INPUT-1`); reproduced both directions on one
+arz (upstream present 0 P1, absent 1252 P1, identical violation set).
 ## BUILD45 MASTERY SV-ALIGNMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
 
 Fixes the residual Occult/Hunting mastery-tree defects Will enumerated from his build43 screenshot

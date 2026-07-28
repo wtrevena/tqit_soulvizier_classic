@@ -170,6 +170,59 @@ def build_cfg(args):
     return cfg, source
 
 
+def stage_freshness(cfg):
+    """Report the STAGE FRESHNESS of the artifacts being gated (BL-b90-DEBT-1).
+
+    The suite gates a set of separately-built artifacts that are only meaningful
+    together: the .arz, the Text.arc built from its tags, the staged Levels/Quests
+    arcs, and the resource arcs. A staged companion that is OLDER than the .arz means
+    the run is measuring a mix of two builds, and its ground truth cannot be trusted -
+    exactly the failure the b80 debt note suspected. (The 1252-P1 case turned out to be
+    a missing provenance INPUT instead, now gated fail-loud by C-RES-INPUT-1; staleness
+    remained a real, un-instrumented risk either way, so it is surfaced here.)
+
+    Informational only - it never changes the exit code. A build-blocking rule would
+    need a real coupling model (Levels+Quests ship together, arz+Text ship together,
+    and the DRX/SV resource arcs are legitimately frozen months old), and inventing one
+    from mtimes would fire constantly on a healthy tree. Returns list of (key, path,
+    mtime, delta_vs_arz_seconds, flag)."""
+    rows = []
+    arz = cfg.get('arz')
+    arz_mtime = None
+    if arz and Path(arz).is_file():
+        arz_mtime = Path(arz).stat().st_mtime
+    # Only the artifacts this repo REBUILDS per wave; the third-party resource arcs
+    # (drx.arc, SVMesh.arc, ...) are imported once and never restaged, so comparing
+    # their mtimes to the arz would be pure noise.
+    for key in ('arz', 'text_arc', 'levels_arc', 'quests_arc'):
+        v = cfg.get(key)
+        if not v or not Path(v).is_file():
+            rows.append((key, v, None, None, 'MISSING' if v else 'unset'))
+            continue
+        m = Path(v).stat().st_mtime
+        d = None if arz_mtime is None else (m - arz_mtime)
+        flag = ''
+        if key != 'arz' and d is not None and d < -_STALE_SECONDS:
+            flag = 'OLDER THAN ARZ by %s' % _human_dt(-d)
+        rows.append((key, v, m, d, flag))
+    return rows
+
+
+# A staged companion more than this far behind the .arz is worth naming in the report.
+# One hour: shorter than any real wave gap, longer than the minutes a single
+# build+restage sequence takes.
+_STALE_SECONDS = 3600
+
+
+def _human_dt(seconds):
+    seconds = int(abs(seconds))
+    if seconds < 3600:
+        return '%dm' % (seconds // 60)
+    if seconds < 86400:
+        return '%.1fh' % (seconds / 3600.0)
+    return '%.1fd' % (seconds / 86400.0)
+
+
 def validate_cfg(cfg):
     """The .arz is mandatory for every domain. Missing companions are the module's
     business (they degrade gracefully), but we surface which inputs are missing."""
@@ -344,6 +397,23 @@ def print_report(results, cfg, source, present, out_path, elapsed, show_examples
         val = cfg.get(k) or '(unset)'
         sz = ('  [%s, %s]' % (kind, _human(size))) if size is not None else ('  [%s]' % kind)
         p('   %-17s %s%s' % (k, val, sz))
+    p('')
+
+    # STAGE FRESHNESS (informational; BL-b90-DEBT-1). A staged companion older than the
+    # .arz means this run is measuring a mix of two builds - the ground truth the whole
+    # suite rests on. Never affects the exit code; see stage_freshness().
+    rows = stage_freshness(cfg)
+    flagged = [r for r in rows if r[4] and r[4] not in ('unset',)]
+    p(' stage freshness (vs the .arz; informational, does not gate):')
+    for key, path, m, d, flag in rows:
+        when = time.strftime('%Y-%m-%d %H:%M', time.localtime(m)) if m else '-'
+        rel = '' if d is None else ('same' if abs(d) < 60 else
+                                    ('+%s' % _human_dt(d) if d > 0 else '-%s' % _human_dt(d)))
+        p('   %-17s %-16s %-8s %s' % (key, when, rel, flag))
+    if flagged:
+        p('   NOTE: %d artifact(s) flagged above - re-stage (scripts/bootstrap_working_mod.ps1)'
+          % len(flagged))
+        p('         before trusting this run as ground truth.')
     p('')
 
     total_contracts = sum(len(r['contracts']) for r in results)
