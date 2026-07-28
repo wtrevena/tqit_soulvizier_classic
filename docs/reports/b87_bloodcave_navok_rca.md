@@ -1,5 +1,40 @@
 # b87 - Blood-Cave crash RCA: the runtime capture (navOK=0 co-residency), PROVEN
 
+> # ⛔ STATUS 2026-07-28: THE CENTRAL PREMISE OF THIS REPORT IS **REFUTED**. READ THIS FIRST.
+>
+> This report's whole mechanism rests on reading the Frida probe's **`navOK=0`** at ENTER as
+> *"ProcessRLTD REJECTED the navmesh"* (sec 1, sec 3). The **2026-07-27 runtime captures
+> refuted that reading**: `navOK=0` at ENTER is the **NORMAL in-progress state** - every ENTER
+> shows it and LEAVE flips it to 1. See `docs/reports/b89_ocean_ext05_hotfix.md` sec 1.
+>
+> The ENTER-with-no-LEAVE signature this report attributed to a residency-gate rejection was in
+> fact the **malformed 148-byte REC02 container body** (the dead Approach-22 stub), which is now
+> gated at P0 by **MAP-NAV-5** (container body structure) and **MAP-NAV-6** (self-duplicated GUID
+> list). Will **confirmed in-game 2026-07-27** that fixing those containers fixed the crash
+> ("the blood cave crash that was occurring is fixed, i was able to advance past that area").
+>
+> **What this means for each part of this document:**
+> * **Sec 1-3 (mechanism), sec 4 (latents), sec 6 (the ranked A/B/C/D fix menu), sec 8** -
+>   HISTORICAL. The disasm facts they cite are still correct (ProcessRLTD does run a per-GUID
+>   live-residency check at `Engine 0x101f4ba0`), but the inference "therefore an SV-custom
+>   multi-GUID respawn chamber crashes" is **unproven and no longer the working theory**. No
+>   runtime capture has ever shown a well-formed multi-GUID SV-custom navmesh failing to load;
+>   probe session B loaded ten navmeshes cleanly, blood-cave neighbours included.
+> * **Sec 7 (the MAP-NAV-4 gate)** - the gate still exists but was **DEMOTED from P0 to a P2
+>   SHAPE ADVISORY on 2026-07-28** (BL-b89-DEBT-4A) and its two whitelist entries (`drxBC3`,
+>   `RogueEncampment`) were **removed**: they were suppressed as "latent P0 crashes" on this
+>   dead premise. Both chambers are still reported, now as honest P2 advisories. Retirement
+>   protocol was followed - nothing was deleted, and no ruling in `docs/WILL_RULINGS.md` names
+>   MAP-NAV-4 or isolated-load co-residency (checked R-1..R-61, 2026-07-28).
+> * **Sec 10 (fix A on `new_secretdoor`) - KEPT, and now re-justified on CURRENT evidence.**
+>   It was shipped on the refuted theory, but `guid_count == 1` is independently **stock-normal**
+>   (251 base levels) and **runtime-proven on our own map**: probe session B shows
+>   `new_secretdoor_transitionhallway` at gc=1 with a clean ENTER+LEAVE `al=1`. It is a valid,
+>   healthy container shape, its walkable footprint was preserved byte-for-byte, and reverting it
+>   would churn the map for no benefit. **Not reverted.**
+>
+> Everything below is preserved verbatim as the decision record.
+
 Branch: `fix/bloodcave-navok` (worktree). Base: main `19d0aac` (build47, LIVE on Steam + DEV).
 Datum: the 2026-07-17 Frida probe caught the crash LIVE
 (`local/crash_probe/probe_20260717_084445.log`) while Will played to his recurring crash spot

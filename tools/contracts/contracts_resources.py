@@ -48,6 +48,11 @@ veinrender, bloodtoxeus, hemorrheus) OR is absent from BOTH SV 0.98i AND the bas
 pure mod invention); else 'sv' if present in SV 0.98i; else 'base'. (See caveats: an SV
 record we MODIFIED so as to break a ref is labelled 'sv'/P2 here, not P1, because this
 module does not field-diff against upstream; it is still reported.)
+⚠️ That "absent from BOTH => authored" fallthrough is only sound when the SV 0.98i upstream
+arz was ACTUALLY LOADED. If it is missing, every SV-inherited subject would fall through to
+'authored'/P1 - the proven cause of the phantom "1252 P1" (BL-b90-DEBT-1). So when the
+provenance source is unavailable the classifier returns 'unknown' (-> P2) and C-RES-INPUT-1
+raises ONE loud P1 naming the missing input. Never guess a severity blind.
 
 INTERFACE (composes with the other four domain modules without shared files):
   run(cfg: dict) -> list[dict]
@@ -175,6 +180,21 @@ CONTRACTS = [
                 'Toolset/Templates.arc (editor/toolset completeness; runtime-tolerant -> P2).',
      'derived_from': '50,353/50,353 records carry templateName; 566 base templates; 15 custom '
                      '*2/*3.tpl DRX/SV templates are absent from the base toolset.'},
+    {'id': 'C-RES-INPUT-1',
+     'name': 'The severity classifier\'s own inputs are loaded (no silent misclassification)',
+     'asserts': 'The SV 0.98i upstream database.arz that make_provenance needs to tell an '
+                'inherited-SV subject from a mod-authored one is actually loaded. If it is '
+                'not, this contract raises ONE P1 naming the missing input and every dangling '
+                'reference is classified "unknown" -> P2, instead of being guessed "authored" '
+                '-> P1.',
+     'derived_from': 'BL-b90-DEBT-1, proven 2026-07-28: the same arz measured 0 P0 / 0 P1 / '
+                     '4793 P2 (GATE PASS) with upstream/soulvizier_098i present and 0 P0 / '
+                     '1252 P1 / 3541 P2 (GATE FAIL) with it absent - an IDENTICAL violation '
+                     'set, only the severity split moved. That silent degradation was carried '
+                     'as a "1252 P1 content regression" through two waves (b80 + b90) and '
+                     'mis-diagnosed as stale work/.../Resources staging, so the resources lane '
+                     'had no trustworthy ground truth and a real regression could have hidden '
+                     'in the noise. A checker that cannot classify must say so, not guess.'},
 ]
 
 
@@ -574,6 +594,28 @@ def scan_arz_refs(arz_path):
 # PROVENANCE / SEVERITY
 # ============================================================================
 def make_provenance(up_names, base_names):
+    """Build the subject -> provenance classifier.
+
+    ⚠️ INPUT-INTEGRITY (BL-b90-DEBT-1, proven 2026-07-28). The final fallthrough
+    ("in neither upstream nor base => a mod invention => 'authored' => P1") is only
+    sound when `up_names` was actually LOADED. If `upstream/soulvizier_098i/Database/
+    database.arz` is absent, `load_upstream_names()` returns an EMPTY set and every
+    SV-inherited subject falls through to 'authored' - silently converting inherited
+    third-party debt into P1 "regressions we own" and turning the gate red.
+
+    That is exactly what produced the phantom "1252 P1 regression" recorded twice in
+    the DEBT REGISTER (b80 + BL-b90-DEBT-1) and mis-diagnosed as stale
+    work/.../Resources staging. Reproduced exactly on 2026-07-28 against ONE arz:
+      upstream present -> 4793 violations, 0 P0 / 0 P1 / 4793 P2, GATE PASS
+      upstream absent  -> 4793 violations, 0 P0 / 1252 P1 / 3541 P2, GATE FAIL
+    Identical violation SET, only the severity split moved.
+
+    So when the provenance source is unavailable we return 'unknown' (-> P2) instead
+    of guessing 'authored', and `evaluate()` raises ONE loud, actionable P1 naming the
+    missing input. One true P1 about a broken checker beats 1252 false P1s about
+    content that never changed."""
+    have_upstream = bool(up_names)
+
     def prov(subject_orig):
         low = subject_orig.lower().replace('\\', '/')
         if 'drx' in low:
@@ -584,12 +626,98 @@ def make_provenance(up_names, base_names):
             return 'sv'
         if low in base_names:
             return 'base'
-        return 'authored'   # present in neither upstream nor base => a mod invention
+        # present in neither upstream nor base => a mod invention ... but ONLY if we
+        # actually had an upstream to check against. Never guess 'authored' blind.
+        return 'authored' if have_upstream else 'unknown'
     return prov
 
 
 def _sev_for_prov(p):
+    """'authored' = a dangling ref we own = P1 (blocks). Everything else - inherited
+    drx/sv/base debt, or 'unknown' because the provenance source was unavailable - is
+    P2 (reported, never blocks). See make_provenance for why 'unknown' exists."""
     return 'P1' if p == 'authored' else 'P2'
+
+
+def provenance_input_violations(cfg, up_names):
+    """C-RES-INPUT-1: the severity classifier's OWN inputs must be loaded.
+
+    FAIL LOUD, NEVER SILENTLY MISCLASSIFY (BL-b90-DEBT-1). Without the SV 0.98i upstream
+    arz, every SV-inherited subject falls through make_provenance to 'authored' and its
+    dangling refs are reported as P1 regressions we own - the proven cause of the phantom
+    "1252 P1" this module carried through two waves. One loud, actionable P1 naming the
+    missing input beats 1252 false P1s about content that never changed.
+
+    Split out of evaluate() so the planted negative test can exercise it without a full
+    54 MB arz scan (`py tools/contracts/contracts_resources.py --negtest`)."""
+    if up_names:
+        return []
+    return [{
+        'contract': 'C-RES-INPUT-1', 'severity': 'P1',
+        'subject': 'upstream_dir=%s' % (cfg.get('upstream_dir') or '(unset)'),
+        'message': 'provenance source NOT LOADED - SV-vs-authored severity cannot be '
+                   'established, so every dangling reference this module reports is '
+                   'classified "unknown" and demoted to P2 rather than guessed at P1',
+        'evidence': 'need <upstream_dir>/soulvizier_098i/Database/database.arz (or '
+                    '<upstream_dir>/Database/database.arz). Without it make_provenance '
+                    'falls through to "authored" for every SV-inherited record: measured '
+                    '2026-07-28 on one arz, upstream present = 0 P1 / 4793 P2 (GATE PASS), '
+                    'upstream absent = 1252 P1 / 3541 P2 (GATE FAIL), identical violation '
+                    'set. See BL-b90-DEBT-1 / BL-b89-DEBT-5.',
+    }]
+
+
+def negtest():
+    """Planted negative test for C-RES-INPUT-1 + the provenance fallthrough it guards.
+    Self-contained: needs no artifacts, so it runs on any machine/worktree."""
+    print('=== contracts_resources planted negative test (C-RES-INPUT-1) ===')
+    SV_ONLY = r'records/creature/monster/sv_inherited_thing.dbr'   # in SV, not in base
+    BASE_ONLY = r'records/creature/monster/base_thing.dbr'
+    MOD_NEW = r'records/creature/monster/svc_invented_thing.dbr'
+    up = {SV_ONLY}
+    base = {BASE_ONLY}
+    ok = True
+
+    # A: HEALTHY inputs - the classifier is trusted, so a true mod invention is P1.
+    prov_ok = make_provenance(up, base)
+    a = (prov_ok(SV_ONLY), prov_ok(BASE_ONLY), prov_ok(MOD_NEW))
+    hit = a == ('sv', 'base', 'authored') and _sev_for_prov(a[2]) == 'P1'
+    print(f'  A upstream LOADED  -> {a}, invention severity '
+          f'{_sev_for_prov(a[2])}: {"correct" if hit else "BUG"}')
+    ok &= hit
+
+    # B: MISSING upstream - the SV-inherited record must NOT be guessed 'authored'/P1.
+    prov_no = make_provenance(set(), base)
+    b = (prov_no(SV_ONLY), prov_no(BASE_ONLY), prov_no(MOD_NEW))
+    hit = b == ('unknown', 'base', 'unknown') and _sev_for_prov(b[0]) == 'P2'
+    print(f'  B upstream MISSING -> {b}, severity {_sev_for_prov(b[0])} (was P1 = the '
+          f'1252-P1 phantom): {"correct" if hit else "BUG"}')
+    ok &= hit
+
+    # C: and the missing input must be reported LOUD, exactly once, at P1.
+    v = provenance_input_violations({'upstream_dir': 'C:/nope'}, set())
+    hit = len(v) == 1 and v[0]['severity'] == 'P1' and v[0]['contract'] == 'C-RES-INPUT-1'
+    print(f'  C missing input raises 1x C-RES-INPUT-1 P1: '
+          f'{[(x["contract"], x["severity"]) for x in v]} {"correct" if hit else "BUG"}')
+    ok &= hit
+
+    # D: healthy inputs must NOT raise it (no false alarm on every clean run).
+    v2 = provenance_input_violations({'upstream_dir': 'C:/real'}, up)
+    hit = v2 == []
+    print(f'  D loaded input raises nothing: {v2} {"correct" if hit else "BUG"}')
+    ok &= hit
+
+    # E: the AUTHORED_TOKENS namespace path must stay P1 even with no upstream - a
+    #    mod-team-namespaced record is ours by name, no provenance lookup needed.
+    tok = next(iter(AUTHORED_TOKENS))
+    named = f'records/creature/monster/{tok}_thing.dbr'
+    hit = prov_no(named) == 'authored' and _sev_for_prov(prov_no(named)) == 'P1'
+    print(f'  E namespaced "{tok}" stays authored/P1 without upstream: '
+          f'{prov_no(named)} {"correct" if hit else "BUG"}')
+    ok &= hit
+
+    print('  NEGTEST', 'PASS' if ok else 'FAIL')
+    return 0 if ok else 1
 
 
 # ============================================================================
@@ -651,7 +779,7 @@ def evaluate(cfg, notes):
     if not all_tags:
         notes.append("no text tags loaded (text_arc/base_game_dir missing) - tag checks limited.")
 
-    out = []
+    out = list(provenance_input_violations(cfg, up_names))
 
     # ---- C-RES-DBR-1: every .dbr reference resolves in mod UNION base -----------
     # Aggregate per referencing subject: list its dangling targets.
@@ -868,6 +996,8 @@ def _cfg_from_argv(argv):
 
 
 def main(argv):
+    if '--negtest' in argv[1:]:
+        sys.exit(negtest())
     cfg = _cfg_from_argv(argv)
     if not cfg['arz'] or not Path(cfg['arz']).is_file():
         print(f"ERROR: .arz not found: {cfg['arz']}", file=sys.stderr)

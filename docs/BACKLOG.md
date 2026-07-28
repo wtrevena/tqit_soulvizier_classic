@@ -357,11 +357,58 @@ along automatically when the structural cluster-relocation fix lands.
 > PROTOCOL, CLAUDE.md law #2).
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
-- **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
+- ~~**BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
   `C-RES-ASSET-1` 484). Proven PRE-EXISTING - the identical command over the pre-change baseline arz
   yields the byte-identical violation set (0 only-in-built, 0 only-in-baseline). This BACKLOG records
   the lane at **0 P0 / 1 P1** at an earlier date, so it regressed by ~1251 P1 BEFORE b90. Suspected
-  environmental (see BL-b90-DEBT-2), not content. Owner/trigger: its own triage lane.
+  environmental (see BL-b90-DEBT-2), not content. Owner/trigger: its own triage lane.~~
+  **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`). MERGED with its duplicate - the "BACKLOG DEBT (new,
+  per WILL_RULINGS law #4)" block under the B80 gate record (~line 3808) filed the SAME 1252 P1
+  independently. That block now points here; this is the single entry of record.**
+  - **ROOT CAUSE (proven, and NOT the b80 stale-staging theory):** `contracts_resources.
+    load_upstream_names()` returns an **empty set** when `upstream/soulvizier_098i/Database/
+    database.arz` is absent, and `make_provenance` then falls through its last rule
+    ("in neither upstream nor base => a mod invention") to **`'authored'` -> P1** for every
+    SV-INHERITED subject. The severity CLASSIFIER degraded silently; no content moved.
+  - **REPRODUCED EXACTLY, both directions, on one unchanged arz** (`work/.../SoulvizierClassic.arz`,
+    `--only resources`, everything else identical, only `--upstream-dir` varied):
+
+    | upstream_dir | total | P0 | P1 | P2 | gate |
+    |---|---|---|---|---|---|
+    | `upstream/` (present) | 4793 | 0 | **0** | 4793 | **PASS** |
+    | `C:/nonexistent_upstream_repro` | 4793 | 0 | **1252** | 3541 | FAIL |
+
+    Identical violation SET both runs - only the severity split moved, and the 1252 matches the
+    b80 note's 1252 exactly. Note also that `upstream/` was EMPTY on this machine for the whole
+    b80->b90 window and was only re-extracted on 2026-07-27 (BL-b90-DEBT-2), which is precisely
+    when the phantom P1s appeared. The b80 hypothesis (stale `work/.../Resources/{Text,Levels}.arc`
+    mtimes) is **refuted**: `C-RES-DBR-1` resolves against the arz + base arz only and never reads
+    a staged Resources arc at all.
+  - **FIX-UPSTREAM (BL-103), not a whitelist:** `make_provenance` now returns **`'unknown'`
+    (-> P2)** instead of guessing `'authored'` when the provenance source was never loaded, and a
+    new contract **`C-RES-INPUT-1`** raises **ONE loud P1** naming the missing input. A checker that
+    cannot classify must say so, not guess. Mod-team-namespaced subjects (`AUTHORED_TOKENS`) stay
+    `'authored'`/P1 with or without upstream - they are ours by name, no lookup needed.
+  - **AFTER THE FIX** (same arz): upstream present -> **0 P0 / 0 P1 / 4793 P2, GATE PASS**;
+    upstream absent -> **0 P0 / 1 P1 / 4793 P2, GATE FAIL** where the single P1 *is*
+    `C-RES-INPUT-1` pointing at the missing arz. Failing for the right reason, with an actionable
+    subject, instead of 1252 phantom content regressions.
+  - **PLANTED NEGATIVE TEST:** `py tools/contracts/contracts_resources.py --negtest` - 5 cases
+    (A healthy inputs classify sv/base/authored and a true invention is P1; B missing upstream
+    yields `unknown`/P2, not the P1 phantom; C missing input raises exactly one `C-RES-INPUT-1` P1;
+    D healthy input raises none; E namespaced subjects stay authored/P1 regardless). Self-contained,
+    needs no artifacts. **PASS.**
+  - **STAGE-FRESHNESS INSTRUMENTATION** added to `run_contracts.py` anyway (the b80 theory was
+    wrong, but staleness was a real un-instrumented risk to the suite's ground truth): the report
+    now prints a `stage freshness` panel comparing the staged `text_arc`/`levels_arc`/`quests_arc`
+    mtimes against the `.arz` and names anything more than an hour behind. **Informational only** -
+    it never changes the exit code, because a blocking rule would need a real coupling model
+    (Levels+Quests ship together, arz+Text ship together) and mtimes alone would fire constantly on
+    a healthy tree. On the current work/ tree it correctly flags Text -15.7h, Levels -16.7h,
+    Quests -12.3d.
+  - **RESIDUAL (not this lane):** the 4793 P2 are genuine inherited drx/sv/base third-party debt,
+    unchanged in count and membership by this work. They are reported and never block. Whether any
+    subset is worth fixing upstream is a separate content decision.
 - **BL-b90-DEBT-2 (P1, environment):** `upstream/` and `reference_mods/` were **EMPTY** on this machine,
   and `CustomMaps\SoulvizierClassic` (the canonical, non-DEV deploy) is **gone**. The DB build cannot
   run without `upstream/`, so b90 re-extracted **only the 4 files the build needs** from the archives
@@ -384,16 +431,50 @@ along automatically when the structural cluster-relocation fix lands.
   Steam ship (item 3759792705) is VALIDATED. The fallback (no `0x0b` section at all + a strip-only
   path in `inject_rec02_into_blob`) is NOT needed and is retired unless a future ocean/empty
   chamber regresses. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 5.
-- **BL-b89-DEBT-4 (P2, NEW - stale gate on a refuted premise):** `MAP-NAV-4` (respawn-shrine +
-  multi-GUID + SV-custom provenance) was authored from the **b87 theory that the 2026-07-27 runtime
-  captures REFUTED** (`navOK=0` is the normal in-progress state, not a rejection signal). Its two
-  whitelisted "latent" chambers (`drxBC3`, `RogueEncampment`) were therefore flagged on a dead
-  premise, and the REAL defect class (malformed container BODIES) is now gated properly by
-  `MAP-NAV-5`/`MAP-NAV-6`. ACTION: re-justify `MAP-NAV-4` on current evidence or retire it with the
-  whitelist (retirement protocol applies - check the ledger first). Also review whether build48's
-  fix A (`new_secretdoor` collapsed to own-only, shipped on the refuted theory) should stay: it is
-  structurally valid and stock-normal, so it is harmless, but it is an unjustified delta from
-  build47 and should be either re-justified or reverted for provenance hygiene.
+- ~~**BL-b89-DEBT-4A (P2, was "BL-b89-DEBT-4 - stale gate on a refuted premise"):** `MAP-NAV-4`
+  (respawn-shrine + multi-GUID + SV-custom provenance) was authored from the **b87 theory that the
+  2026-07-27 runtime captures REFUTED** (`navOK=0` is the normal in-progress state, not a rejection
+  signal). Its two whitelisted "latent" chambers (`drxBC3`, `RogueEncampment`) were therefore
+  flagged on a dead premise, and the REAL defect class (malformed container BODIES) is now gated
+  properly by `MAP-NAV-5`/`MAP-NAV-6`.~~
+  **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`) - MAP-NAV-4 RE-SCOPED TO A P2 ADVISORY, WHITELIST
+  ENTRIES REMOVED, FIX A RE-JUSTIFIED AND KEPT.** Chose re-scope over retirement (nothing deleted).
+  - **RETIREMENT PROTOCOL, done first:** swept `docs/WILL_RULINGS.md` R-1..R-61 for any ruling
+    naming MAP-NAV-4, isolated-load, co-residency, respawn-chamber navmeshes or `drxBC3` /
+    `RogueEncampment` - **none**. No Will design intent is attached to this gate, so re-scoping it
+    needs no ruling change; `WILL_RULINGS.md` is deliberately left untouched by this item.
+  - **Severity demoted P0 -> P2** in `contracts_map.contract_navmesh_coresidency` (both the finding
+    and the cannot-run guard) and in the `CONTRACTS` registry entry, whose `name`/`asserts`/
+    `derived_from` now state the refutation instead of the dead crash law. `scan_isolated_load_risk`
+    carries a boxed EVIDENCE STATUS header separating what is refuted (navOK=0 as a rejection
+    signal; the "SV-custom multi-GUID respawn chamber crashes" inference) from what survives
+    (ProcessRLTD's per-GUID residency check is still disasm-proven; `guid_count == 1` is
+    stock-normal in 251 base levels AND runtime-proven on our map, so it is residency-proof by
+    construction). It is now an honest **hardening preference**, not a demonstrated defect class.
+  - **Both whitelist entries REMOVED** from `tools/contracts/whitelist_map.txt` (`drxBC3`,
+    `XPack\Levels\Secret_Place\RogueEncampment.lvl`). They were suppressed as "latent P0 crashes" -
+    the exact false claim this debt item flagged. A P2 never gates, so suppression was both
+    unnecessary and a hiding place; the replacement comment block forbids re-adding MAP-NAV-4
+    suppressions. Both chambers now appear in the battery as visible P2 advisories.
+  - `gate_navmesh_coresidency.py` is now an **advisory reporter**: exits 0 by default, `--strict`
+    restores fail-on-finding. Its negtest gained **case E** (the battery contract MUST emit P2 - a
+    regression back to P0 fails the test) and **case F** (a cannot-run advisory must still report,
+    at P2, never silently pass).
+  - **build48 fix A (`new_secretdoor` collapsed to own-only): KEPT, re-justified on CURRENT
+    evidence.** `guid_count == 1` is independently stock-normal (251 base levels) and runtime-proven
+    on our own map - probe session B shows `new_secretdoor_transitionhallway` at gc=1 with a clean
+    ENTER+LEAVE `al=1` (`docs/reports/b89_ocean_ext05_hotfix.md` sec 5). Its walkable footprint was
+    preserved byte-for-byte, so reverting would churn the map (and the live DEV deploy) for no
+    benefit. **Not reverted.**
+  - `docs/reports/b87_bloodcave_navok_rca.md` gained a ⛔ REFUTED-PREMISE status header naming which
+    sections are now historical and which conclusion survives; the body is preserved verbatim as the
+    decision record.
+  - **PROOF:** `gate_navmesh_coresidency.py --negtest` **PASS** (A/B/C/D scope + E/F severity).
+    `_negtest_map.py` **38/38 PASS**. Standalone reporter on `work/.../Levels.arc` (build49
+    canonical): 4 SV-custom respawn chambers checked, 2 advisories (`RogueEncampment` gc=3,
+    `drxBC3` gc=6), **exit 0**. Full `--only map` battery: **0 P0 / 0 P1 / 5 P2, GATE PASS** - the
+    2 now-unsuppressed MAP-NAV-4 advisories plus the 3 pre-existing base-game portal-noise P2s
+    (XPack4 Dunes, Styx). No map rebuild: this item is contract-side only.
 - **BL-b89-DEBT-2 (P1):** **Steam/canonical map is NOT shipped this wave.** The canonical
   `Levels_merged.arc` carries the same 8 malformed containers, so the LIVE Workshop build
   (item 3759792705) has the same latent crash. Rebuilt+verified here but deliberately NOT packaged or
@@ -405,7 +486,9 @@ along automatically when the structural cluster-relocation fix lands.
   `docs/CUT_CONTENT.md`'s "never intended to be entered / permanently cut" is wrong for those 6.
   Owner/trigger: a map-docs pass; harmless today because `MAP-NAV-5`/`-6` deliberately ignore
   cut-ness. Source: `docs/reports/b89_ocean_ext05_hotfix.md` sec 4.
-- **BL-b89-DEBT-4 (P2):** `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
+- **BL-b89-DEBT-5 (P2)** *(renumbered 2026-07-28: this entry was filed as a SECOND "BL-b89-DEBT-4",
+  colliding with the MAP-NAV-4 item above - two different debts under one id)***:**
+  `reference_mods/SVAERA_customquest/` and `upstream/soulvizier_098i/` are
   EMPTY in the main checkout; the merge only runs via the new `SVC_SVAERA_ARC`/`SVC_SV_ARC` overrides
   (SVAERA from Steam Workshop item `2076433374`, SV 0.98i from the `build36-map` worktree). Any lane
   that rebuilds the map needs those set. Owner/trigger: restore the caches or bake the fallbacks in.
@@ -2981,13 +3064,55 @@ along automatically when the structural cluster-relocation fix lands.
   particleEffectAttachPoint2/3 on the 3 pcsafe skills; supra wep_spear.dbr's bumpTexture
   (harmless on the base RSpear14B mesh).
 
-### B-GATE-HARDEN-1: build gates SKIP (not FAIL) outside the work/ layout (build30 delta vet)
-- The A9 render-chain + F2 summons-contract gates skip loudly when the game dir / staged
+### ~~B-GATE-HARDEN-1: build gates SKIP (not FAIL) outside the work/ layout (build30 delta vet)~~
+- ~~The A9 render-chain + F2 summons-contract gates skip loudly when the game dir / staged
   Resources are absent (scratch determinism builds). Optional hardening: an env flag
   (SVC_REQUIRE_GATES=1 -> FAIL instead of SKIP) so a mis-pathed work build can never
   silently skip its gates. Also: persist stage-baseline arz copies (e.g. the D10 0e70ffe6
   baseline) under local/db_backups/ so intermediate record-diffs stay reproducible after
-  session scratchpads are cleaned.
+  session scratchpads are cleaned.~~
+- **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`). BOTH halves shipped.**
+  - **HALF 1 - `SVC_REQUIRE_GATES`.** It had never been implemented (`grep SVC_REQUIRE_GATES tools/`
+    returned nothing). Now: `build_svc_database._require_gates()` reads the flag (accepts
+    `1/true/yes/on`, case-insensitive) and `_gate_unavailable(gate, reason, remedy)` is the single
+    handler for "this gate cannot run here" - it prints the historical WARNING and continues when
+    the flag is off (scratch / determinism rebuilds writing outside `work/` are unchanged), and
+    raises `SystemExit` when it is on. Wired into **three** call sites, not two: **A9**
+    render-chain, **F2** summons-contract, and **A5** Act-5 leak fix (`base_db is None` silently
+    shipped an arz MISSING the post-Hades portal suppression - same blind-spot class, so it is
+    covered rather than left as the next surprise).
+  - **Second line of defence:** `validate_render_chain.validate()` now checks its OWN inputs and
+    returns **2 (load error), never 0**, when `mod_resources` or `game_dir` is missing/unusable -
+    so a direct CLI invocation that bypasses the caller's skip decision cannot produce a
+    meaningless PASS either.
+  - **Wired into the gate of record:** `scripts/bootstrap_working_mod.ps1` sets
+    `SVC_REQUIRE_GATES=1` before invoking the build (respecting a pre-set value), because the
+    work/-layout build is exactly the path that must never ship ungated. This is the blind spot
+    that let the b89 malformed 148-byte navmesh stub survive every gate for 20+ builds.
+  - **HALF 2 - stage-baseline persistence.** `build_svc_database._persist_stage_baseline()` runs
+    immediately before `db.write_arz()` and copies the OUTGOING arz to
+    `local/db_backups/<stem>_pre-<md5-8>.arz`. **Content-keyed**, so it is idempotent (rebuilding
+    the same baseline twice writes one file) and self-labelling (the filename IS the hash a gate
+    record cites). Every record-diff proof in this repo ("exactly 2 of 3629 records moved") needs
+    the baseline it diffed against, and those had been living in session scratchpads that get
+    cleaned - so a proof written last week could no longer be re-derived. `local/` is gitignored,
+    so this costs the repo nothing. **Never fatal** (any error degrades to a printed note - a
+    backup must not break a build); opt out with `SVC_NO_STAGE_BASELINE=1`.
+  - **PLANTED NEGATIVE TEST** (new): `py tools/debug/negtest_require_gates.py` - **PASS**. Plants
+    the exact "gate cannot run" condition both ways without a ~15-minute build: (1) flag OFF ->
+    WARN + continue, historical behaviour preserved; (2) flag ON -> `SystemExit` naming the gate
+    and the flag; (3) flag parsing, 6 truthy / 8 falsy spellings; (4)
+    `validate_render_chain.validate` on missing dirs -> `rc=2`, never 0.
+  - **PROOF (stage baseline):** direct exercise - first call persists
+    `_smoke_stage_pre-99ebc56f.arz` with the md5 printed, second call is a no-op ("already
+    persisted", same destination), a missing output (first-ever build) returns `None` cleanly, and
+    `SVC_NO_STAGE_BASELINE=1` opts out. Smoke artifacts removed afterwards.
+  - **NOT re-run this lane:** a full `build_svc_database.py` run (~15 min, and a parallel lane was
+    actively rebuilding `work/.../SoulvizierClassic.arz` during this session - its size/mtime moved
+    mid-lane). The changes are additive and confined to the skip branches plus a pre-write backup;
+    both were exercised directly by the planted test above. The next real work/-layout build will
+    exercise them end to end, and will now also drop its first stage baseline into
+    `local/db_backups/`.
 
 ### B-AREA-NAME-1: Garden of Merchants minimap label reads 'Duister' (NEW 2026-07-08)
 - **Symptom (Will, public build):** he teleported from the fountain camp into a garden/courtyard
@@ -3885,14 +4010,22 @@ Text/Levels/Quests/Resources) - **byte-identical violation set both times** (490
 0 P0/1252 P1/3652 P2), proving zero regression from this change. Map/quests contracts
 not re-run (this branch touches zero map/quest files). NOT deployed/committed to main.
 
-**BACKLOG DEBT (new, per WILL_RULINGS law #4):** the 1252 P1 above does not match the
+~~**BACKLOG DEBT (new, per WILL_RULINGS law #4):** the 1252 P1 above does not match the
 0 P1 the B71/BUILD45 gate records above claim for a similar reference-arz snapshot.
 Likely `work/SoulvizierClassic/Resources/{Text.arc,Levels.arc}` staleness (mtimes
 01:59/09:09 Jul-16 vs the reference arz's 19:47 Jul-16 - hours of other waves may have
 landed on the arz without a matching Resources restage). Not caused by, and unaffected
 by, this branch (proven via the identical-before/after diff). Flagged for whichever
 lane owns the next full integration: fresh bootstrap + restage + re-run
-`run_contracts.py` to re-establish ground truth.
+`run_contracts.py` to re-establish ground truth.~~
+**✅ CLOSED 2026-07-28 - DUPLICATE of BL-b90-DEBT-1 (same 1252 P1, filed twice
+independently). MERGED INTO BL-b90-DEBT-1 in the DEBT REGISTER; read it there.**
+The staleness hypothesis above is **REFUTED**: `C-RES-DBR-1` resolves against the arz +
+base arz only and never reads a staged Resources arc. The real cause was the missing
+`upstream/soulvizier_098i/Database/database.arz`, which made `make_provenance` silently
+reclassify every SV-inherited dangling ref from `sv`/P2 to `authored`/P1. Fixed upstream
+(`'unknown'` -> P2 + the new fail-loud `C-RES-INPUT-1`); reproduced both directions on one
+arz (upstream present 0 P1, absent 1252 P1, identical violation set).
 ## BUILD45 MASTERY SV-ALIGNMENT (b70, 2026-07-16, feat/mastery-sv-fix - status: implemented+self-verified, awaiting independent vet)
 
 Fixes the residual Occult/Hunting mastery-tree defects Will enumerated from his build43 screenshot
@@ -4162,6 +4295,54 @@ lane's green run). DEV deploy hash-verified both artifacts (TQ not running). DEB
 uncapped-summon sweep to a carefully-scoped build gate (NOT petLimit-no-TTL blanket - 140 healthy
 skills have that shape); placement spacing/clearance gate follow-through; census_placements.py v0e
 stride fix; stale gate_build32_parseback refresh.
+
+### ~~B76-R2-SUMMON-GATE: promote the uncapped-summon sweep from diagnostic to a build gate~~
+- ~~`tools/patches/summon_caps.py` `sweep_uncapped`'s docstring literally said "DIAGNOSTIC (not a
+  build gate)". `verify()` only re-asserted the 4 known sepulcher-chain targets, so a NEW unbounded
+  fast summoner (the Chumbi-Valley freeze class Will hit as a P0) would ship unnoticed.~~
+- **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`). The sweep is now a scoped build gate.**
+  - **WIRED INTO THE REGISTRY VERIFY HOOK.** `summon_caps.verify()` now asserts TWO invariants:
+    (1) the original targeted one (the 4 sepulcher-chain skills carry a positive TTL in the final
+    arz), and (2) the new CLASS one - no unbounded fast summoner anywhere in the arz that is not
+    an evidenced waiver. `summon_caps` is registered in `tools/patches/__init__.py`, and
+    `run_registry_verifies()` propagates a module `verify()`'s `SystemExit`, so this aborts the
+    build. `sweep_uncapped`'s "DIAGNOSTIC (not a build gate)" docstring is gone.
+  - **NOT A BLANKET petLimit-no-TTL RULE** (the build46 debt line's explicit constraint). The
+    gated shape is the genuinely unbounded one: `Skill_*SpawnPet*` **AND** no positive `petLimit`
+    **AND** no positive `spawnObjectsTimeToLive` **AND** cooldown < 10s. The ~140 healthy skills
+    that carry a petLimit without a TTL are untouched - and that is now enforced by test, not just
+    asserted (negtest D1).
+  - **WAIVER seeded with EXACTLY the 8 records the sweep finds on the shipped arz** (2026-07-28
+    re-run: still exactly 8, no drift since b76), each with per-record evidence in
+    `_UNCAPPED_WAIVERS` - provenance, referencing records, and placement:
+
+    | record | evidence |
+    |---|---|
+    | `records\skills\boss skills\telkine_projectilespawnpet.dbr` | **BASE-GAME** (in the stock database.arz); spawns the E3-demo `GoldenSkeleton`; 0 referencing records; not placed |
+    | `records\skills\skills\boss skills\telkine_projectilespawnpet.dbr` | duplicate-path twin of the above (upstream `records\skills\skills\` namespace duplication); 0 refs; not placed |
+    | `records\skills\nature\old\oldnaturemastery_animalcompanion.dbr` | **BASE-GAME**; `\old\` = the retired pre-release Nature mastery; 0 refs; not placed |
+    | `records\skills\skills\nature\old\oldnaturemastery_animalcompanion.dbr` | duplicate-path twin of the above; 0 refs; not placed |
+    | `records\events\summoning\01_skill_zombiemelee_swarm_a.dbr` | upstream event content (absent from the stock arz); ttl=0.0; 0 refs; not placed |
+    | `records\events\summoning\01_skill_zombiemelee_swarm_a_1sec_cd.dbr` | upstream event content; the **only** waived record with a live reference (`01_spawner_zombiemelee_swarm_a.dbr` `buffSelfSkillName` + `skillName2`) - but a **whole-world-blob scan of the 2.09 GB `Levels.arc`** finds **0 hits** for the spawner, the skill, or the substring `zombiemelee_swarm`, so nothing shipped can instantiate it |
+    | `records\skills\nature\copy (2) of drxregrowth.dbr` | DRX authoring leftover (the filename is literally "copy (2) of"); 0 refs; not placed |
+    | `records\skills\earth\test\stoneform_spawn_bait.dbr` | `\test\` namespace bait record; 0 refs; not placed |
+
+    Adding a waiver requires the same three pieces of evidence; the failure message says so.
+  - **WAIVER HYGIENE:** a waived record the sweep no longer flags is reported as STALE and
+    **never auto-removed** - RETIREMENT PROTOCOL applies to the evidence attached to a waiver just
+    as it does to a record. Never fatal.
+  - **PLANTED NEGATIVE TEST** (`py tools/patches/summon_caps.py --negtest`) - **PASS**, 14 checks.
+    Half 1 (original classifier): uncapped fast summoner flagged, TTL-capped clears. Half 2 (the
+    new gate): **A** a new unbounded fast summoner is an offender; **B** `verify()` raises
+    `SystemExit` naming it (the gate actually kills the build, not just reports); **C/C2** a waived
+    record does not trip it and `verify()` passes with only waived offenders present; **D1-D5** the
+    false-positive guards - petLimit-without-TTL, a 60s-cooldown uncapped summoner, TTL-without-
+    petLimit and a non-SpawnPet class are each NOT flagged, and a healthy db flags nothing at all;
+    **E** absent waivers report stale, never fatal.
+  - **PROOF ON THE SHIPPED ARZ:** `summon_caps.verify()` against
+    `work/.../SoulvizierClassic.arz` -> `4 sepulcher-chain summon skills all carry a finite
+    spawn-TTL` + `no new unbounded fast summoners (8 waived: base/dead/test, each evidenced)`,
+    returns cleanly, **0 offenders / 0 stale**.
 
 ## BUILD47 GATE RECORD (2026-07-17, DEV-only; Steam untouched - Will's in-game pass required)
 INTEGRATION WAVE 2: main merges fix/runtime-green (b75+b81 identity) + fix/soul-tiers (b78 gate +

@@ -13,30 +13,16 @@
 MAP-GROUPS-1 GROUPS/Scandia01_02 [TeleportShrine]
 MAP-GROUPS-1 GROUPS/X4RespawnTestWorld [RespawnShrine]
 
-# --- MAP-NAV-4 (b87 SV-custom respawn-chamber isolated-load co-residency crash) --
-# OPEN P0 crash class, DEBT-registered (docs/BACKLOG.md B87), structural fix PENDING
-# Will's in-game walk test (the map-lever choices - single-own-GUID vs cluster
-# relocation vs interior portals - all trade crash-safety against seam walkability
-# and must be walk-tested; see docs/reports/b87_bloodcave_navok_rca.md).
-# The gate flags every SV-CUSTOM (own GUID absent from stock TQAE Levels.arc)
-# respawn/save chamber whose multi-GUID grid-seam navmesh fails ProcessRLTD's
-# live-residency gate on isolated load (respawn/save-in-place). Base/IT/XPack
-# respawn chambers (region-packed, GUID in stock, incl. the byte-identical Silk
-# Road HiddenValley01 spawn hub) are excluded by provenance - they are NOT bugs.
-# FIXED (build48-dev, fix A): new_secretdoor_transitionhallway - the 2026-07-17
-# Frida-probe-PROVEN crash spot (respawn_hadescave01) - is now single-own-GUID
-# (guid_count == 1) via gen_bc_navmeshes own_guid_only_keys, so it CLEARS the gate
-# and is REMOVED from this whitelist. Its walk test (crash gone? seams still walk?)
-# is Will's; drxBC3 + RogueEncampment stay registered debt until fix A verifies
-# in-game and is extended to each. The two remaining flagged SV-custom chambers,
-# whitelisted as OPEN DEBT:
-#  - drxBC3 = same-class latent (respawn_hades_shrine01, gc=6).
-#  - RogueEncampment (Secret Place / Duister) = same-class latent (respawntempleorient01,
-#    gc=3); our SECRET_PLACE navmesh-generator cluster produced its grid-seam mesh, the
-#    Duister area is reachable (a rift-shrine return is wired), so its respawn temple can
-#    load in isolation exactly like the blood-cave chambers.
-# Suppressed here so the battery stays green for other map work; the gate still
-# fails loud on any NEW SV-custom respawn+multi-GUID chamber. REMOVE each when its
-# fix lands + Will confirms the walk test.
-MAP-NAV-4 Levels/World/xBloodCave/drxBC3.lvl
-MAP-NAV-4 XPack\Levels\Secret_Place\RogueEncampment.lvl
+# --- MAP-NAV-4 --------------------------------------------------------------
+# NO ENTRIES (removed 2026-07-28, BL-b89-DEBT-4A). MAP-NAV-4 was demoted from a P0
+# crash gate to a P2 SHAPE ADVISORY: it had been authored from the b87 reading that
+# the Frida probe's `navOK=0` at ENTER meant ProcessRLTD had REJECTED the navmesh,
+# and the 2026-07-27 runtime captures REFUTED that (navOK=0 at ENTER is the normal
+# in-progress state; LEAVE flips it to 1). The real crash class was the malformed
+# 148-byte REC02 body, now gated at P0 by MAP-NAV-5 / MAP-NAV-6.
+# Its two former entries - `Levels/World/xBloodCave/drxBC3.lvl` and
+# `XPack\Levels\Secret_Place\RogueEncampment.lvl` - were suppressed here as "latent P0
+# crashes"; that claim rested on the dead premise, so the entries are removed rather
+# than re-justified. Both chambers still SHOW UP in the battery, now as P2 advisories
+# with honest wording, so nothing is hidden and nothing blocks a build (P2 never gates).
+# Do NOT re-add MAP-NAV-4 suppressions: whitelisting an advisory only buries it.

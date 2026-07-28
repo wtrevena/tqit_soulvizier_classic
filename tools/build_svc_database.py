@@ -141,7 +141,14 @@ def apply_act5_leak_fix(db: ArzDatabase, base_db):
     """
     print("\n=== A5: Act-5 leak fix (post-Hades portal suppression + Victory-Portal un-gate) ===")
     if base_db is None:
-        print("  A5: base_db unavailable; SKIPPED (cannot import portal records)")
+        # Same blind-spot class as A9/F2 (B-GATE-HARDEN-1): without the base DB this
+        # silently ships an arz MISSING the Act-5 leak fix, and nothing downstream
+        # notices. Under SVC_REQUIRE_GATES=1 that is a build failure.
+        _gate_unavailable(
+            'A5 Act-5 leak fix',
+            'base_db unavailable, so the four portal records cannot be imported - the '
+            'arz would ship WITHOUT the post-Hades portal suppression',
+            'pass the base-game database.arz as argv[5]')
         return 0
 
     base_names = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
@@ -3679,6 +3686,83 @@ def _run_prefix(sv098_path, sv09_path, sv041_path, base_path):
     }
 
 
+def _require_gates():
+    """SVC_REQUIRE_GATES=1 -> a gate that cannot run is a BUILD FAILURE, not a SKIP.
+
+    B-GATE-HARDEN-1. The A9 render-chain and F2 summons-contract gates need the game dir
+    AND the mod's staged Resources beside the output; without both, mod-side art cannot
+    resolve and every ref would false-FAIL, so they skip loudly (correct for scratch /
+    determinism rebuilds that write to a temp dir). The hazard is the OTHER case: a
+    MIS-PATHED work build silently ships ungated, which is exactly the blind spot that
+    let the b89 148-byte stub survive every gate for 20+ builds. Any path that claims to
+    be the gate of record (scripts/bootstrap_working_mod.ps1, integration, deploy) sets
+    SVC_REQUIRE_GATES=1 so a missing input fails loud instead of printing a WARNING
+    nobody reads. Accepts 1/true/yes/on, case-insensitive."""
+    return str(os.environ.get('SVC_REQUIRE_GATES', '')).strip().lower() in (
+        '1', 'true', 'yes', 'on')
+
+
+def _gate_unavailable(gate_name, reason, remedy):
+    """Uniform handling for 'this gate cannot run here' (B-GATE-HARDEN-1).
+    FAILS the build under SVC_REQUIRE_GATES=1; otherwise prints the same text as a
+    WARNING and returns, preserving the historical scratch-build behaviour exactly."""
+    msg = (f"{gate_name} gate DID NOT RUN - {reason}\n"
+           f"    remedy: {remedy}")
+    if _require_gates():
+        raise SystemExit(
+            f"  FAIL: {msg}\n"
+            f"    (SVC_REQUIRE_GATES=1 is set, so a gate that cannot run is a build "
+            f"failure - B-GATE-HARDEN-1. Unset it only for scratch/determinism "
+            f"rebuilds that deliberately write outside the work/ layout.)")
+    print(f"  WARNING: {msg}\n"
+          f"    (set SVC_REQUIRE_GATES=1 to make this a hard failure - B-GATE-HARDEN-1)")
+
+
+def _persist_stage_baseline(output_path):
+    """Snapshot the PRE-BUILD arz into local/db_backups/ before it is overwritten
+    (B-GATE-HARDEN-1, second half).
+
+    Every record-diff proof in this repo ("exactly 2 of 3629 records moved") needs the
+    baseline the new arz is diffed against. Those baselines have been living in session
+    scratchpads, which are cleaned - so a proof written last week can no longer be
+    re-derived. Copy the outgoing arz to local/db_backups/<stem>_pre-<md5-8>.arz, keyed
+    by CONTENT so it is idempotent (rebuilding the same baseline twice writes one file)
+    and self-labelling (the name IS the hash a gate record cites).
+
+    local/ is gitignored working scratch, so this costs repo nothing. Never fatal: a
+    backup failure must not break a build, so every error degrades to a printed note.
+    Opt out with SVC_NO_STAGE_BASELINE=1."""
+    if str(os.environ.get('SVC_NO_STAGE_BASELINE', '')).strip().lower() in (
+            '1', 'true', 'yes', 'on'):
+        return None
+    try:
+        out = Path(output_path)
+        if not out.is_file():
+            return None                      # first build: nothing to preserve
+        import hashlib
+        import shutil
+        h = hashlib.md5()
+        with open(out, 'rb') as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b''):
+                h.update(chunk)
+        digest = h.hexdigest()
+        dest_dir = Path(__file__).resolve().parent.parent / 'local' / 'db_backups'
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / f'{out.stem}_pre-{digest[:8]}.arz'
+        if dest.is_file():
+            print(f"  stage baseline already persisted: {dest.name} (md5 {digest})")
+            return dest
+        shutil.copy2(out, dest)
+        print(f"  stage baseline persisted: {dest} (md5 {digest}, {dest.stat().st_size:,} B)")
+        print(f"    -> record-diffs against this build stay reproducible after session "
+              f"scratchpads are cleaned (B-GATE-HARDEN-1)")
+        return dest
+    except Exception as ex:                  # noqa: BLE001 - never break a build over a backup
+        print(f"  NOTE: could not persist the stage-baseline arz ({type(ex).__name__}: {ex}); "
+              f"continuing - the build is unaffected.")
+        return None
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
@@ -3851,6 +3935,10 @@ def main():
     _validate_container_loot_shapes(db, base_names=_base_names_low)
 
     print(f"\nWriting output...")
+    # B-GATE-HARDEN-1: preserve the outgoing arz as a content-keyed stage baseline
+    # BEFORE it is overwritten, so intermediate record-diffs stay reproducible after
+    # session scratchpads are cleaned. Never fatal.
+    _persist_stage_baseline(output_path)
     db.write_arz(output_path)
 
     # ── B-SUMMON-1 gate (fail-loud): validate every soul-granted summon chain
@@ -3885,10 +3973,15 @@ def main():
         # Without BOTH the game dir and the mod's staged Resources beside the
         # output (the standard work/ layout), mod-side art cannot be resolved
         # and every mod ref would false-FAIL (seen on isolated determinism
-        # rebuilds writing to a scratch dir). Skip loudly instead.
-        print(f"  WARNING: A9 render-chain gate SKIPPED - needs the game dir "
-              f"AND a Resources dir beside the output "
-              f"(game={_game_dir}, mod_resources={_mod_resources})")
+        # rebuilds writing to a scratch dir). Skip loudly - or FAIL loudly under
+        # SVC_REQUIRE_GATES=1, so a mis-pathed work build can never ship ungated
+        # (B-GATE-HARDEN-1).
+        _gate_unavailable(
+            'A9 render-chain',
+            f'needs the game dir AND a Resources dir beside the output '
+            f'(game={_game_dir}, mod_resources={_mod_resources})',
+            'build into the work/ layout (work/<mod>/Database/<mod>.arz with '
+            'work/<mod>/Resources beside it) and pass the base-game database.arz as argv[5]')
 
     # ── A7 golden freeze guard (fail-loud): the owner's hand-tuned Occult (UI
     # slot 5) + Hunting (UI slot 6) state must match tools/occult_hunting_golden
@@ -3933,9 +4026,12 @@ def main():
                 f"Summons contract lane FAILED on the written .arz (exit {_rc}); "
                 f"this build does not ship (F2 gate)")
     else:
-        print(f"  WARNING: F2 summons-contract gate SKIPPED - needs the game dir, "
-              f"a Resources dir beside the output, and tools/contracts "
-              f"(game={_game_dir}, mod_resources={_mod_resources})")
+        _gate_unavailable(
+            'F2 summons-contract',
+            f'needs the game dir, a Resources dir beside the output, and tools/contracts '
+            f'(game={_game_dir}, mod_resources={_mod_resources}, contracts={_contracts})',
+            'build into the work/ layout (work/<mod>/Database/<mod>.arz with '
+            'work/<mod>/Resources beside it) and pass the base-game database.arz as argv[5]')
     print("Done.")
 
 
