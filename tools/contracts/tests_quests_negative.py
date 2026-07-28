@@ -268,9 +268,141 @@ def test_widow_letter():
               for x in C.check_widow_letter(none)))
 
 
+# ===========================================================================
+# QST-LEINTH-EXIT  (b94 PART C)
+# ===========================================================================
+# This contract walks REAL .qst bytes structurally (per-trigger, not a flat action
+# census), so its negative test synthesises real bytes with the repo's own qst
+# serializer rather than the flat fakes above.
+import qst_format as _QF   # noqa: E402  (tools/ is on sys.path via the header)
+
+
+def _trigger(display, cond_cls, cond_fields, actions):
+    """One (header, conditions, actions) trigger triple in qst tree form.
+    actions = [(action_class, {field: ('str'|'int', value)})]."""
+    header = ('block', [
+        ('field', 'displayTag', ('str', display)),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+        ('field', 'bRatchet', ('int', 0)),
+    ])
+    cond_items = [('field', 'conditionCount', ('int', 1)),
+                  ('field', 'conditionClassName', ('str', cond_cls)),
+                  ('block', [('field', k, v) for k, v in cond_fields.items()])]
+    act_items = [('field', 'actionCount', ('int', len(actions)))]
+    for cls, fields in actions:
+        act_items.append(('field', 'actionClassName', ('str', cls)))
+        act_items.append(('block', [('field', k, v) for k, v in fields.items()]))
+    return [header, ('block', cond_items), ('block', act_items)]
+
+
+_NPC = C.LEINTH_EXIT_NPC
+_DOOR = C.LEINTH_EXIT_DOOR
+_FULL_SET = [
+    ('Action_OpenDoor', {'comments': ('int_or_empty', 0), 'delayTime': ('int', 0),
+                         'door': ('str', _DOOR), 'canReFire': ('int', 0)}),
+    ('Action_ShowNpc', {'comments': ('int_or_empty', 0), 'delayTime': ('int', 0),
+                        'npc': ('str', _NPC), 'canReFire': ('int', 1),
+                        'fadeTime': ('int', 0), 'fade': ('int', 0)}),
+    ('Action_UpdateNPCDialog', {'comments': ('int_or_empty', 0),
+                                'delayTime': ('int', 0), 'npc': ('str', _NPC),
+                                'dialogFile': ('str', 'Records\\Dialog\\Story\\Dialog Needed.dbr')}),
+    ('Action_BoatDialog', {'comments': ('int_or_empty', 0), 'delayTime': ('int', 0),
+                           'npc': ('str', _NPC), 'onOff': ('int', 1),
+                           'x': ('int', 4294967206), 'y': ('int', 4294967193),
+                           'z': ('int', 2321), 'tag': ('str', C.LEINTH_EXIT_TAG)}),
+]
+_DOOR_ONLY = _FULL_SET[:1]
+
+
+def _leinth_quest_bytes(primary_actions, fallback_actions, *, primary_resettable=1,
+                        variants=None, boat_tag=None, npc=None):
+    variants = sorted(C.LEINTH_VARIANTS) if variants is None else variants
+
+    def _tweak(actions):
+        if boat_tag is None and npc is None:
+            return actions
+        out = []
+        for cls, f in actions:
+            f = dict(f)
+            if boat_tag is not None and 'tag' in f:
+                f['tag'] = ('str', boat_tag)
+            if npc is not None and 'npc' in f:
+                f['npc'] = ('str', npc)
+            out.append((cls, f))
+        return out
+
+    triggers = [_trigger('Open door on Leinth defeat',
+                         'Condition_KillAllCreaturesFromProxy',
+                         {'comments': ('int_or_empty', 0), 'isNot': ('int', 0),
+                          'isResettable': ('int', primary_resettable),
+                          'isQuestCritical': ('int', 0),
+                          'proxyRecord': ('str', C.LEINTH_PROXY)},
+                         _tweak(primary_actions))]
+    for v in variants:
+        triggers.append(_trigger('Open Boss Trap Door Fallback',
+                                 'Condition_KillCreature',
+                                 {'comments': ('int_or_empty', 0), 'isNot': ('int', 0),
+                                  'isResettable': ('int', 1),
+                                  'isQuestCritical': ('int', 0),
+                                  'creatureRecord': ('str', v)},
+                                 _tweak(fallback_actions)))
+    trigcont = [('field', 'max', ('int', len(triggers)))]
+    for t in triggers:
+        trigcont.extend(t)
+    steps = [('block', [('field', 'name', ('str', C.LEINTH_STEP))]),
+             ('block', trigcont),
+             ('block', [('field', 'comments', ('int_or_empty', 0))])]
+    header = [('field', 'questName', ('str', 'open_bloodcave_portal'))]
+    return _QF.serialize([header, steps])
+
+
+def _leinth_ctx(raw):
+    return new_ctx(quests={C.LEINTH_QUEST: []}, raw={C.LEINTH_QUEST: raw})
+
+
+def test_leinth_exit():
+    print('CONTRACT: QST-LEINTH-EXIT')
+    # compliant: primary + all 3 fallbacks carry the FULL exit action set
+    ok = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET))
+    check('QST-LEINTH-EXIT silent when every Leinth-death trigger shows the portal',
+          not fires(C.check_leinth_exit(ok), 'QST-LEINTH-EXIT'))
+    # break (THE SHIPPED BUG, P0): fallbacks carry Action_OpenDoor only
+    bug = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _DOOR_ONLY, primary_resettable=0))
+    v = C.check_leinth_exit(bug)
+    check('QST-LEINTH-EXIT fires (P0) on door-only Leinth kill fallbacks',
+          sum(1 for x in v if x['contract'] == 'QST-LEINTH-EXIT'
+              and x['severity'] == 'P0') == 3)
+    # break (P1): the primary proxy trigger is one-shot again
+    oneshot = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET,
+                                              primary_resettable=0))
+    check('QST-LEINTH-EXIT fires (P1) when the primary trigger is one-shot',
+          any(x['contract'] == 'QST-LEINTH-EXIT' and x['severity'] == 'P1'
+              for x in C.check_leinth_exit(oneshot)))
+    # break (P0): the exit actions point at some OTHER npc
+    wrongnpc = _leinth_ctx(_leinth_quest_bytes(
+        _FULL_SET, _FULL_SET, npc='records\\drxmap\\bloodcave\\portals\\other.dbr'))
+    check('QST-LEINTH-EXIT fires (P0) when the exit actions target the wrong NPC',
+          any(x['contract'] == 'QST-LEINTH-EXIT' and x['severity'] == 'P0'
+              for x in C.check_leinth_exit(wrongnpc)))
+    # break (P0): the boat-dialog offer tag regressed to a raw/other tag
+    wrongtag = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET,
+                                               boat_tag='tagSomethingElse'))
+    check('QST-LEINTH-EXIT fires (P0) when the exit offer tag regresses',
+          any(x['contract'] == 'QST-LEINTH-EXIT' and x['severity'] == 'P0'
+              for x in C.check_leinth_exit(wrongtag)))
+    # break (P1): a whole variant fallback is missing (a death path with no exit)
+    missing = _leinth_ctx(_leinth_quest_bytes(
+        _FULL_SET, _FULL_SET, variants=sorted(C.LEINTH_VARIANTS)[:2]))
+    check('QST-LEINTH-EXIT fires (P1) when a per-variant fallback is missing',
+          any(x['contract'] == 'QST-LEINTH-EXIT' and x['severity'] == 'P1'
+              for x in C.check_leinth_exit(missing)))
+
+
 if __name__ == '__main__':
     for t in (test_rec_exists, test_proxy_placed, test_door_unlock, test_giveitem,
-              test_tags, test_load_window, test_widow_letter):
+              test_tags, test_load_window, test_widow_letter, test_leinth_exit):
         t()
     npass = sum(1 for _n, ok, _d in RESULTS if ok)
     print('\n%d/%d checks PASS' % (npass, len(RESULTS)))

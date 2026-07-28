@@ -215,6 +215,26 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
+    'leinth_wave',          # b94 PART B (R-71): Leinth the Blood Witch buff + 3 cult abilities
+                            # (Crimson Tithe / Choir of the Bloodborn / Sanguine Mire, every donor
+                            # from her OWN records\drxcreatures\bloodwitch family) + the b76
+                            # summon-density cut on leinth_summon_uglies. Touches ONLY the 3
+                            # q_leinth_* records, her 2 own skill records and 3 NEW skill records -
+                            # disjoint from every module above (no other module names a bloodwitch
+                            # record). Placed here so it is the ratified final writer on her stats;
+                            # verify() re-asserts every target on the FINAL merged db, including
+                            # that her loot wiring never moved.
+    'uber_apex_orb',        # b94 PART A (R-70): champion orb CALIBRE parity with Leinth's chest -
+                            # authors a new un-named generic apex tier (genericbossorb_05 + 3 pools
+                            # + 3 chests + 3 loot tables cloned from the orb04 chain, with Leinth's
+                            # four calibre knobs) and repoints treasureProxyName on EXACTLY
+                            # um_toxeus_enslaver_99 + um_bloodtoxeus_99. genericbossorb_04 and its
+                            # other 19 consumers stay byte-unchanged (apply() proves it). MUST run
+                            # after toxeus_souls_100: EXPECTED S4b record collision on the two
+                            # champions (souls_100 writes chanceToEquipFinger2, this writes
+                            # treasureProxyName - DIFFERENT fields, later-wins is a no-op on both),
+                            # and this module's apply() additionally proves the R-48 soul wiring did
+                            # not move. Before 'visuals'.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

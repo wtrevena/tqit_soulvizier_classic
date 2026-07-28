@@ -386,7 +386,47 @@ CONTRACTS = [
                         'own spawn action is removed (build_quest_files.py). '
                         'Baseline: 0 spawn actions, letter placed.',
     },
+    {
+        'id': 'QST-LEINTH-EXIT',
+        'name': 'Every Leinth death opens the Sanctuary exit portal',
+        'asserts': 'In open_bloodcave_portal.qst step "Boss Room Crystal Gate", '
+                   'EVERY trigger whose condition fires on Leinth dying (the '
+                   'Condition_KillAllCreaturesFromProxy(q_leinth_lone) primary AND '
+                   'each Condition_KillCreature(q_leinth_47/49/50) fallback) carries '
+                   'the FULL exit action set - Action_OpenDoor(door_bossroom_trap) + '
+                   'Action_ShowNpc(vortexportal_exit) + Action_UpdateNPCDialog('
+                   'vortexportal_exit) + Action_BoatDialog(vortexportal_exit, '
+                   'tagReturnFromLeinthBattle) - and the primary is isResettable=1. '
+                   'A trigger that opens the door WITHOUT showing the portal strands '
+                   'the player in the boss room.',
+        'derived_from': 'b94 PART C: the shipped build had the rich action set ONLY '
+                        'on the one-shot proxy primary, while the three b48 '
+                        'Condition_KillCreature fallbacks carried Action_OpenDoor '
+                        'alone - so whenever the proxy-wide condition did not '
+                        'satisfy the door opened and no exit portal ever appeared '
+                        '(Will\'s live report). vortexportal_exit is placed exactly '
+                        'once (bossfight.lvl) and its destination already lands '
+                        '9.8u from the occultist merchant, so this is a '
+                        'Quests.arc-only invariant.',
+    },
 ]
+
+# ── QST-LEINTH-EXIT constants ───────────────────────────────────────────────
+# NOTE: norm() lowercases and converts to FORWARD slashes, so every constant
+# compared through norm() is stored in that form (same convention as LETTER_RECORD).
+LEINTH_QUEST = 'open_bloodcave_portal.qst'
+LEINTH_STEP = 'Boss Room Crystal Gate'
+LEINTH_EXIT_NPC = 'records/drxmap/bloodcave/portals/vortexportal_exit.dbr'
+LEINTH_EXIT_TAG = 'tagReturnFromLeinthBattle'
+LEINTH_EXIT_DOOR = 'records/drxmap/bloodcave/triggers/door_bossroom_trap.dbr'
+LEINTH_PROXY = 'records/drxmap/proxy/q_leinth_lone.dbr'
+LEINTH_VARIANTS = {
+    'records/drxcreatures/bloodwitch/q_leinth_47.dbr',
+    'records/drxcreatures/bloodwitch/q_leinth_49.dbr',
+    'records/drxcreatures/bloodwitch/q_leinth_50.dbr',
+}
+LEINTH_EXIT_ACTIONS = ('Action_OpenDoor', 'Action_ShowNpc',
+                       'Action_UpdateNPCDialog', 'Action_BoatDialog')
 
 
 # =============================================================================
@@ -900,6 +940,151 @@ def check_widow_letter(ctx):
     return viols
 
 
+def _leinth_step_triggers(raw_bytes):
+    """[(display_tag, condition_class, [condition_field_dicts], [action_class],
+    {action_class: [field_dicts]})] for every trigger in the Leinth boss-room step.
+
+    Walks the qst tree structurally (steps container -> flat (stepdef, trigger
+    container, sentinel) triples -> flat (header, conditions, actions) triples)
+    so the check is per-TRIGGER, not a flat action census: the whole defect class
+    is a trigger that has SOME of the actions.
+    """
+    def bpos(items):
+        return [i for i, it in enumerate(items) if it[0] == 'block']
+
+    def fval(items, key):
+        for it in items:
+            if it[0] == 'field' and it[1] == key:
+                return it[2][1]
+        return None
+
+    tree = qst_parse(raw_bytes)
+    if len(tree) < 2:
+        return None
+    steps = tree[1]
+    sp = bpos(steps)
+    for sd, tc, _sn in [sp[i:i + 3] for i in range(0, len(sp), 3)]:
+        if fval(steps[sd][1], 'name') != LEINTH_STEP:
+            continue
+        trig = steps[tc][1]
+        tp = bpos(trig)
+        out = []
+        for (h, c, a) in [tp[i:i + 3] for i in range(0, len(tp), 3)]:
+            conds = trig[c][1]
+            acts = trig[a][1]
+            cond_blocks = [dict((f[1], f[2]) for f in it[1] if f[0] == 'field')
+                           for it in conds if it[0] == 'block']
+            act_classes = [it[2][1] for it in acts
+                           if it[0] == 'field' and it[1] == 'actionClassName']
+            act_blocks = {}
+            cur = None
+            for it in acts:
+                if it[0] == 'field' and it[1] == 'actionClassName':
+                    cur = it[2][1]
+                elif it[0] == 'block' and cur:
+                    act_blocks.setdefault(cur, []).append(
+                        dict((f[1], f[2]) for f in it[1] if f[0] == 'field'))
+                    cur = None
+            out.append((fval(trig[h][1], 'displayTag'),
+                        fval(conds, 'conditionClassName'),
+                        cond_blocks, act_classes, act_blocks))
+        return out
+    return None
+
+
+def check_leinth_exit(ctx):
+    """QST-LEINTH-EXIT. Every Leinth-death trigger must ALSO show the exit portal."""
+    viols = []
+    raw = (ctx.raw or {}).get(LEINTH_QUEST)
+    if raw is None:
+        return viols
+    try:
+        triggers = _leinth_step_triggers(raw)
+    except Exception as ex:                      # pragma: no cover - malformed blob
+        return [_v('QST-LEINTH-EXIT', 'P1', LEINTH_QUEST,
+                   'could not parse the boss-room step to verify the exit portal',
+                   repr(ex))]
+    if triggers is None:
+        return [_v('QST-LEINTH-EXIT', 'P1', LEINTH_QUEST,
+                   'step %r not found; the Leinth exit portal cannot be verified'
+                   % LEINTH_STEP, 'step missing from the shipped quest')]
+
+    death_triggers = 0
+    for tag, cls, cond_blocks, act_classes, act_blocks in triggers:
+        is_primary = any(
+            norm(b['proxyRecord'][1]) == LEINTH_PROXY
+            for b in cond_blocks
+            if isinstance(b.get('proxyRecord'), tuple) and b['proxyRecord'][0] == 'str')
+        is_kill = any(
+            norm(b['creatureRecord'][1]) in LEINTH_VARIANTS
+            for b in cond_blocks
+            if isinstance(b.get('creatureRecord'), tuple) and b['creatureRecord'][0] == 'str')
+        if not (is_primary or is_kill):
+            continue
+        death_triggers += 1
+        subject = '%s :: %s' % (LEINTH_QUEST, tag or cls)
+
+        missing = [a for a in LEINTH_EXIT_ACTIONS if a not in act_classes]
+        if missing:
+            viols.append(_v(
+                'QST-LEINTH-EXIT', 'P0', subject,
+                'a Leinth-death trigger is missing %s, so this death path opens the '
+                'boss door but never shows the Sanctuary exit portal - the player is '
+                'stranded in the boss room' % ', '.join(missing),
+                'carries %s' % (act_classes or '[]')))
+            continue
+
+        for cls_name in ('Action_ShowNpc', 'Action_UpdateNPCDialog', 'Action_BoatDialog'):
+            for blk in act_blocks.get(cls_name, []):
+                npc = blk.get('npc')
+                if not (isinstance(npc, tuple) and npc[0] == 'str'
+                        and norm(npc[1]) == LEINTH_EXIT_NPC):
+                    viols.append(_v(
+                        'QST-LEINTH-EXIT', 'P0', subject,
+                        '%s targets %r, not the placed exit NPC vortexportal_exit'
+                        % (cls_name, npc), 'expected %s' % LEINTH_EXIT_NPC))
+        for blk in act_blocks.get('Action_BoatDialog', []):
+            tagv = blk.get('tag')
+            if not (isinstance(tagv, tuple) and tagv[0] == 'str'
+                    and tagv[1] == LEINTH_EXIT_TAG):
+                viols.append(_v(
+                    'QST-LEINTH-EXIT', 'P0', subject,
+                    'the exit BoatDialog offer tag is %r, not %s - the player gets a '
+                    'raw tag or no prompt' % (tagv, LEINTH_EXIT_TAG),
+                    'expected tag %s' % LEINTH_EXIT_TAG))
+        for blk in act_blocks.get('Action_OpenDoor', []):
+            d = blk.get('door')
+            if not (isinstance(d, tuple) and d[0] == 'str'
+                    and norm(d[1]) == LEINTH_EXIT_DOOR):
+                viols.append(_v(
+                    'QST-LEINTH-EXIT', 'P1', subject,
+                    'the Leinth-death OpenDoor targets %r, not the boss-room trap door'
+                    % (d,), 'expected %s' % LEINTH_EXIT_DOOR))
+        if is_primary:
+            for b in cond_blocks:
+                pr = b.get('proxyRecord')
+                if isinstance(pr, tuple) and pr[0] == 'str' and norm(pr[1]) == LEINTH_PROXY:
+                    rs = b.get('isResettable')
+                    val = rs[1] if isinstance(rs, tuple) else rs
+                    if int(val or 0) != 1:
+                        viols.append(_v(
+                            'QST-LEINTH-EXIT', 'P1', subject,
+                            'the primary proxy trigger is one-shot (isResettable=%r), '
+                            'so a character who already latched it never re-arms the '
+                            'exit portal on a revisit' % (val,),
+                            'isResettable must be 1'))
+
+    want = 1 + len(LEINTH_VARIANTS)
+    if death_triggers < want:
+        viols.append(_v(
+            'QST-LEINTH-EXIT', 'P1', LEINTH_QUEST,
+            'only %d Leinth-death trigger(s) found in step %r, expected %d (the proxy '
+            'primary + one Condition_KillCreature fallback per variant); a missing '
+            'fallback is a death path with no exit' % (death_triggers, LEINTH_STEP, want),
+            '%d of %d' % (death_triggers, want)))
+    return viols
+
+
 # =============================================================================
 # whitelist + orchestration
 # =============================================================================
@@ -942,6 +1127,7 @@ def run_detailed(cfg):
     viols += check_tags(ctx)
     viols += check_load_window(ctx)
     viols += check_widow_letter(ctx)
+    viols += check_leinth_exit(ctx)
 
     wl = load_whitelist()
     if wl:

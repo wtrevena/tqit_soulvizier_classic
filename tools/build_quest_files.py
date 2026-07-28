@@ -593,8 +593,11 @@ def _neutralize_widowletter_spawn(data: bytes) -> bytes:
 #   step "Boss Room Crystal Gate":
 #     kill q_leinth_47|49|50 (3 triggers) -> OpenDoor(door_bossroom_trap)
 #       [door-open ONLY: prevents the locked-in-boss-room trap if the same defect hits
-#        Leinth's trigger; the vortex ShowNpc/dialog actions are NOT duplicated -- the
-#        boat-dialog idiom is fragile and double-firing it is riskier than the residual]
+#        Leinth's trigger; the vortex ShowNpc/dialog actions were NOT duplicated -- the
+#        boat-dialog idiom was judged fragile and double-firing it riskier than the
+#        residual. ** SUPERSEDED by b94: see _promote_leinth_exit_fallbacks below. That
+#        residual IS the live bug (door opens, no exit portal ever appears), so the three
+#        Leinth fallbacks now carry the primary's FULL action set. **]
 # Both trigger families can fire (original + redundant): the second unlock/open of an
 # already-unlocked/open item is a no-op, so double-firing is harmless.
 HARDEN_STEP0_NAME = 'BloodCave Doors and Portals'
@@ -760,6 +763,286 @@ def _harden_guardian_door_unlocks(data: bytes) -> bytes:
         if p not in proxies:
             raise ValueError(f'hardening dropped the ORIGINAL proxy trigger for {p}; '
                              f'the change must be strictly additive')
+    return out
+
+
+# ── b94 PART C: the POST-KILL EXIT to the occultist merchant ────────────────────
+# WILL'S REPORT (paraphrase; ledgered R-72): after killing Leinth there is no way out
+# of the Sanctuary of the Bloodborn - "after you kill her, a portal should open".
+#
+# THE MACHINERY IS ALREADY BUILT, PLACED AND AIMED. Nothing new is needed:
+#   * records\drxmap\bloodcave\portals\vortexportal_exit.dbr is Class=Npc (AIType
+#     generic, ActorName "Ioannes", description tagLeinthExitPortal, mesh
+#     XPack\Items\shrines\teleport\credits_portal.msh + the DRX vortexportal01
+#     texture - it LOOKS like a vortex but IS an NPC, which is exactly what the
+#     boat-dialog traveler pattern needs). Its own FileDescription reads verbatim
+#     "Exits the player after the Leinth boss fight."
+#   * It is PLACED exactly ONCE across all 2,282 levels: bossfight.lvl local
+#     (15.00, 3.26, 66.00) = world (3441, 3.26, 3178), 6.2u from Leinth's proxy,
+#     on-navmesh (0.14u to the nearest walkable cell, component #0).
+#   * Text already resolves tagLeinthExitPortal = "Mystical Vortex" and
+#     tagReturnFromLeinthBattle = "Leave the Sanctuary of the Bloodborn?".
+#   * The primary trigger "Open door on Leinth defeat" already carries the whole
+#     4-action set: OpenDoor(door_bossroom_trap) + ShowNpc(vortexportal_exit) +
+#     UpdateNPCDialog(vortexportal_exit, "Dialog Needed") + BoatDialog(
+#     vortexportal_exit, x/y/z, tagReturnFromLeinthBattle).
+#   * Its destination decodes signed to world (-90, -103, 2321) = inside
+#     HiddenValleyBorder04, 9.79u from the OCCULTIST MERCHANT
+#     (Merchant_HiddenValley_General) outside the blood-cave entrance, on the SAME
+#     walkable component as the merchant and his wagon. So the shipped destination
+#     ALREADY IS "the occultist merchant outside the cave".
+#
+# THE DEFECT - A TRIGGER ASYMMETRY. The rich primary trigger is keyed on
+# Condition_KillAllCreaturesFromProxy(q_leinth_lone) with isResettable=0 (one-shot),
+# and that pool ALSO carries nameChampion1-3 = b_med_blooddemon_30/31/32, so the
+# condition needs EVERY creature the proxy produced dead. Meanwhile the three
+# Condition_KillCreature fallbacks this file added in b48 (isResettable=1, one per
+# q_leinth_47/49/50) carry ONLY Action_OpenDoor. So whenever the proxy-wide condition
+# does not satisfy - an unaccounted champion blood demon, a character that did not
+# have the quest tracked at kill time (the widow-letter class of bug, same quest
+# family), or the one-shot having already latched - the player gets exactly what Will
+# reports: the boss door opens and no exit portal ever appears.
+#
+# THE FIX (Quests.arc ONLY - Levels.arc is BYTE-UNCHANGED, no new quest entry, so the
+# ~254-entry load-window law in docs/QUEST_STATE_INJECT.md is NOT engaged and the
+# QUESTS section stays at exactly its current count):
+#   1. Give each of the three isResettable=1 Leinth fallbacks the primary trigger's
+#      OWN action block, copied VERBATIM out of the parsed tree. Copying rather than
+#      re-authoring means the npc, the destination ints and the tag are byte-identical
+#      to the shipped primary by construction - there is no hand-transcription risk.
+#   2. Flip the primary's Condition_KillAllCreaturesFromProxy isResettable 0 -> 1 so a
+#      revisit re-arms it.
+# Net: the portal appears on ANY Leinth death, on any difficulty, for fresh AND
+# existing characters, however the proxy resolves. Double-firing is harmless - ShowNpc
+# on an already-shown NPC and a second identical BoatDialog offer are both no-ops, the
+# same reasoning b48 used for the redundant door opens.
+#
+# WARDEN "1 route : 1 NPC" LAW: not engaged. All four triggers bind the SAME record to
+# the SAME tag and the SAME destination, vortexportal_exit is placed exactly once
+# across all 2,282 levels, and bossfight.lvl contains no other NPC.
+#
+# CANONICAL, NOT TESTHUB-ONLY: bossfight.lvl is an SV-native level present in both map
+# variants, vortexportal_exit is an SV-NATIVE placement inside SV's own bossfight blob
+# (NOT one of our INJECT_SPECS / build_hub_extra_specs additions), and Quests.arc is
+# variant-independent. Because the fix places nothing, there is no TESTHUB-only risk at
+# all: Workshop subscribers on canonical get the identical fix.
+EXIT_NPC = r'records/drxmap/bloodcave/portals/vortexportal_exit.dbr'
+EXIT_TAG = 'tagReturnFromLeinthBattle'
+EXIT_PRIMARY_TRIGGER = 'Open door on Leinth defeat'
+EXIT_FALLBACK_TRIGGER = 'Open Boss Trap Door Fallback'
+EXIT_PROXY = r'records/drxmap/proxy/q_leinth_lone.dbr'
+# The four action classes the primary carries, in order. The promoted fallbacks must
+# end up with exactly this multiset.
+EXIT_ACTION_CLASSES = ('Action_OpenDoor', 'Action_ShowNpc',
+                       'Action_UpdateNPCDialog', 'Action_BoatDialog')
+
+
+def _qst_block_positions(items):
+    return [i for i, it in enumerate(items) if it[0] == 'block']
+
+
+def _qst_field(items, key):
+    for it in items:
+        if it[0] == 'field' and it[1] == key:
+            return it[2][1]
+    return None
+
+
+def _qst_set_field(items, key, value_tuple):
+    """Replace field `key` in a block's item list IN PLACE. Returns True if found."""
+    for idx, it in enumerate(items):
+        if it[0] == 'field' and it[1] == key:
+            items[idx] = ('field', key, value_tuple)
+            return True
+    return False
+
+
+def _promote_leinth_exit_fallbacks(data: bytes) -> bytes:
+    """Give the 3 Leinth kill fallbacks the primary trigger's FULL action set, and
+    make the primary re-armable. See the block comment above.
+
+    Strictly a REPLACEMENT of the three fallbacks' action blocks with a deep copy of
+    the primary's, plus one isResettable flip. No trigger is added or removed, no
+    condition is retargeted, no other step is touched. Fails loud if the primary or
+    any fallback is missing, if the primary does not carry the expected 4 actions, or
+    if the emitted bytes do not re-parse into exactly the intended shape.
+    """
+    import copy
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = _qst_block_positions(steps_container)
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    target_step = None
+    for stepdef_pos, trigcont_pos, _sentinel_pos in step_triples:
+        if _qst_field(steps_container[stepdef_pos][1], 'name') == HARDEN_STEP2_NAME:
+            target_step = (stepdef_pos, trigcont_pos)
+            break
+    if target_step is None:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: step {HARDEN_STEP2_NAME!r} not found; the '
+            f'Leinth exit-portal fix cannot be applied.')
+    _stepdef_pos, trigcont_pos = target_step
+    trigcont = list(steps_container[trigcont_pos][1])
+    tpos = _qst_block_positions(trigcont)
+    triples = [tpos[i:i + 3] for i in range(0, len(tpos), 3)]
+
+    # ── locate the primary (proxy-wide) trigger and harvest its action block ──
+    primary = None
+    for (hpos, cpos, apos) in triples:
+        conds = trigcont[cpos][1]
+        if _qst_field(conds, 'conditionClassName') != 'Condition_KillAllCreaturesFromProxy':
+            continue
+        for it in conds:
+            if it[0] != 'block':
+                continue
+            pr = _qst_field(it[1], 'proxyRecord')
+            if isinstance(pr, str) and pr.replace('\\', '/').lower() == EXIT_PROXY:
+                primary = (hpos, cpos, apos)
+                break
+        if primary:
+            break
+    if primary is None:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: the primary '
+            f'Condition_KillAllCreaturesFromProxy({EXIT_PROXY}) trigger is gone; '
+            f'refusing to guess the exit-portal action set.')
+    p_h, p_c, p_a = primary
+
+    if _qst_field(trigcont[p_h][1], 'displayTag') != EXIT_PRIMARY_TRIGGER:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: the proxy trigger is labelled '
+            f'{_qst_field(trigcont[p_h][1], "displayTag")!r}, expected '
+            f'{EXIT_PRIMARY_TRIGGER!r}; upstream changed, review before shipping.')
+
+    primary_actions = trigcont[p_a][1]
+    got_classes = tuple(it[2][1] for it in primary_actions
+                        if it[0] == 'field' and it[1] == 'actionClassName')
+    if got_classes != EXIT_ACTION_CLASSES:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: the primary Leinth trigger carries actions '
+            f'{got_classes}, expected {EXIT_ACTION_CLASSES}. The exit-portal action '
+            f'set moved; review before shipping.')
+    if int(_qst_field(primary_actions, 'actionCount') or 0) != len(EXIT_ACTION_CLASSES):
+        raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: primary actionCount != '
+                         f'{len(EXIT_ACTION_CLASSES)}')
+    # prove the harvested block really targets the placed exit NPC + the offer tag
+    npcs = [it[2][1] for blk in primary_actions if blk[0] == 'block'
+            for it in blk[1] if it[0] == 'field' and it[1] == 'npc']
+    if not npcs or any(n.replace('\\', '/').lower() != EXIT_NPC for n in npcs):
+        raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: primary trigger npc targets '
+                         f'{npcs}, expected only {EXIT_NPC}')
+    tagvals = [it[2][1] for blk in primary_actions if blk[0] == 'block'
+               for it in blk[1] if it[0] == 'field' and it[1] == 'tag']
+    if tagvals != [EXIT_TAG]:
+        raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: primary BoatDialog tag is '
+                         f'{tagvals}, expected [{EXIT_TAG!r}]')
+
+    # ── 1. promote every Leinth kill fallback ────────────────────────────────
+    leinths = {s.lower() for s in GUARDIAN_LEINTHS}
+    promoted = 0
+    for (hpos, cpos, apos) in triples:
+        if (hpos, cpos, apos) == primary:
+            continue
+        conds = trigcont[cpos][1]
+        if _qst_field(conds, 'conditionClassName') != 'Condition_KillCreature':
+            continue
+        hit = False
+        for it in conds:
+            if it[0] != 'block':
+                continue
+            cr = _qst_field(it[1], 'creatureRecord')
+            if isinstance(cr, str) and cr.replace('\\', '/').lower() in leinths:
+                hit = True
+        if not hit:
+            continue
+        trigcont[apos] = ('block', copy.deepcopy(primary_actions))
+        promoted += 1
+
+    if promoted != len(GUARDIAN_LEINTHS):
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: promoted {promoted} Leinth kill fallback(s), '
+            f'expected exactly {len(GUARDIAN_LEINTHS)} (one per q_leinth_47/49/50). '
+            f'_harden_guardian_door_unlocks must run FIRST.')
+
+    # ── 2. re-arm the primary (one-shot -> resettable) ───────────────────────
+    rearmed = 0
+    for it in trigcont[p_c][1]:
+        if it[0] != 'block':
+            continue
+        blk = list(it[1])
+        if _qst_field(blk, 'proxyRecord') is None:
+            continue
+        if int(_qst_field(blk, 'isResettable') or 0) != 1:
+            if not _qst_set_field(blk, 'isResettable', ('int', 1)):
+                raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: primary condition has '
+                                 f'no isResettable field')
+            rearmed += 1
+        idx = trigcont[p_c][1].index(it)
+        trigcont[p_c][1][idx] = ('block', blk)
+
+    steps_container[trigcont_pos] = ('block', trigcont)
+    out = qst_format.serialize(tree)
+
+    # ── fail-loud verification on the EMITTED bytes ──────────────────────────
+    reparsed = qst_format.parse(out)
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError('promoted quest does not round-trip stably')
+
+    steps2 = reparsed[1]
+    pos2 = _qst_block_positions(steps2)
+    trip2 = [pos2[i:i + 3] for i in range(0, len(pos2), 3)]
+    found_step = False
+    exit_triggers = 0
+    for sd, tc, _sn in trip2:
+        if _qst_field(steps2[sd][1], 'name') != HARDEN_STEP2_NAME:
+            continue
+        found_step = True
+        tc_items = steps2[tc][1]
+        tp2 = _qst_block_positions(tc_items)
+        for (h, c, a) in [tp2[i:i + 3] for i in range(0, len(tp2), 3)]:
+            conds = tc_items[c][1]
+            cls = _qst_field(conds, 'conditionClassName')
+            is_leinth_kill = False
+            is_primary = False
+            for it in conds:
+                if it[0] != 'block':
+                    continue
+                cr = _qst_field(it[1], 'creatureRecord')
+                pr = _qst_field(it[1], 'proxyRecord')
+                if isinstance(cr, str) and cr.replace('\\', '/').lower() in leinths:
+                    is_leinth_kill = True
+                if isinstance(pr, str) and pr.replace('\\', '/').lower() == EXIT_PROXY:
+                    is_primary = True
+                    if int(_qst_field(it[1], 'isResettable') or 0) != 1:
+                        raise ValueError('exit-portal fix: the primary Leinth trigger '
+                                         'is still one-shot (isResettable != 1)')
+            if not (is_leinth_kill or is_primary):
+                continue
+            acts = tc_items[a][1]
+            classes = tuple(it[2][1] for it in acts
+                            if it[0] == 'field' and it[1] == 'actionClassName')
+            if classes != EXIT_ACTION_CLASSES:
+                raise ValueError(
+                    f'exit-portal fix: a Leinth trigger ({cls}) carries {classes}, '
+                    f'expected {EXIT_ACTION_CLASSES} - every Leinth death must open '
+                    f'the door AND show the exit portal')
+            if int(_qst_field(acts, 'actionCount') or 0) != len(EXIT_ACTION_CLASSES):
+                raise ValueError('exit-portal fix: actionCount does not match the '
+                                 'promoted action list')
+            exit_triggers += 1
+    if not found_step:
+        raise ValueError(f'exit-portal fix: step {HARDEN_STEP2_NAME!r} vanished')
+    want = len(GUARDIAN_LEINTHS) + 1
+    if exit_triggers != want:
+        raise ValueError(
+            f'exit-portal fix: {exit_triggers} Leinth-death trigger(s) carry the exit '
+            f'action set, expected {want} (the proxy primary + one per variant)')
+    print(f'  {BLOODCAVE_INTERIOR_QUEST}: exit portal promoted onto {promoted} '
+          f'Condition_KillCreature fallback(s) + primary re-armed '
+          f'({rearmed} isResettable flip); {exit_triggers}/{want} Leinth-death '
+          f'triggers now ShowNpc+BoatDialog {EXIT_NPC.rsplit("/", 1)[-1]}')
     return out
 
 
@@ -1292,10 +1575,15 @@ def _build_area_quests() -> dict:
     # engine-impossible to make exactly-1 (FixedItemContainer lootNChance are roulette weights,
     # disasm-proven in Lane A A4), so the DB lane correctly left the chest tables untouched.
     # Keeping the quest grant + NOT touching the chest = the authentic mechanism, restored by B2.
+    # b94 PART C: after the b48 hardening has added the 3 Leinth kill fallbacks,
+    # PROMOTE them to carry the primary trigger's FULL exit-portal action set and
+    # re-arm the primary (see _promote_leinth_exit_fallbacks). Order is load-bearing:
+    # the promotion asserts the 3 fallbacks exist, so hardening must run first.
     bc = _upstream_quest_bytes(arc, BLOODCAVE_INTERIOR_QUEST)
     _assert_roundtrip(BLOODCAVE_INTERIOR_QUEST, bc)
-    out[BLOODCAVE_INTERIOR_QUEST] = _harden_guardian_door_unlocks(
-        _neutralize_bloodcave_entry_step(bc))
+    out[BLOODCAVE_INTERIOR_QUEST] = _promote_leinth_exit_fallbacks(
+        _harden_guardian_door_unlocks(
+            _neutralize_bloodcave_entry_step(bc)))
 
     # Immortal-Throne endpoint hard-cap: port the VANILLA base-game expansion-portals
     # controller (from XPack4/Quests.arc, NOT upstream SV) with the single IT->Eternal-
@@ -2342,7 +2630,136 @@ def _add_typhon_rhodes_unlock(data: bytes) -> bytes:
     return out
 
 
+def rebuild_sv_area_quests_only(quests_arc_path: Path, out_path: Path = None):
+    """SURGICAL mode: re-derive ONLY the 4 SV area questlines into an EXISTING
+    Quests.arc, leaving every other entry byte-identical.
+
+    WHY THIS EXISTS (b94). `main()` restores a pristine
+    `reference_mods\\SVAERA_customquest\\Resources\\Quests.arc` first because its
+    Q1/Q2/Q3/testhub steps APPEND triggers to native SVAERA quests and are therefore
+    not idempotent - re-running them over an already-built arc would double them. On
+    a machine where the (gitignored) reference_mods checkout is absent, that restore
+    is silently skipped and a full `main()` run would corrupt those native quests.
+
+    The 4 SV area questlines have no such problem: each is re-derived from the
+    UPSTREAM SV bytes and written with `add_file`/`set_file`, so re-deriving them is
+    idempotent by construction. This entry point does exactly that and nothing else,
+    which is also the right shape for a Quests-only wave (b94 PART C): the emitted
+    arc differs from its input in EXACTLY the entries listed below, which is directly
+    provable with an entry-by-entry blob diff.
+
+    Returns (changed, unchanged) entry-name lists.
+    """
+    out_path = out_path or quests_arc_path
+    arc = ArcArchive.from_file(quests_arc_path)
+    before = {e.name: arc.get_file(e.name) for e in arc.entries}
+
+    area_quests = _build_area_quests()
+    for name, data in area_quests.items():
+        arc.add_file(name, data)
+    arc.write(out_path)
+
+    arc2 = ArcArchive.from_file(out_path)
+    after = {e.name: arc2.get_file(e.name) for e in arc2.entries}
+    changed = sorted(n for n in set(before) | set(after)
+                     if before.get(n) != after.get(n))
+    unchanged = sorted(n for n in set(before) & set(after)
+                       if before.get(n) == after.get(n))
+    print(f'  SV-area-only rebuild: {len(changed)} entry/entries changed, '
+          f'{len(unchanged)} byte-identical')
+    for n in changed:
+        print(f'    CHANGED  {n}  ({len(before.get(n) or b"")} -> '
+              f'{len(after.get(n) or b"")} bytes)')
+    for name, data in area_quests.items():
+        back = arc2.get_file(name)
+        if back != data:
+            raise SystemExit(f'{name} did not round-trip through Quests.arc')
+    _assert_quest_records_loadable(arc2)
+    return changed, unchanged
+
+
+def promote_leinth_exit_in_arc(quests_arc_path: Path, out_path: Path = None):
+    """SURGICAL mode (b94 PART C): apply _promote_leinth_exit_fallbacks to the
+    open_bloodcave_portal.qst entry ALREADY inside an existing Quests.arc.
+
+    WHY A SECOND SURGICAL MODE. rebuild_sv_area_quests_only() re-derives the SV area
+    quests from the UPSTREAM SV archive; on a machine where the (gitignored)
+    `upstream/soulvizier_098i/Resources/XPack/Quests.arc` extraction is absent that is
+    impossible. The shipped entry, however, is by construction exactly
+    `_harden_guardian_door_unlocks(_neutralize_bloodcave_entry_step(<upstream bytes>))`
+    - the input the promotion step expects - so applying the promotion to the shipped
+    entry produces byte-for-byte what a full pipeline run produces. The promotion also
+    asserts that shape (primary proxy trigger + exactly 3 Leinth kill fallbacks + the
+    4-action set) and refuses otherwise, so it cannot be applied to the wrong bytes.
+
+    IDEMPOTENT: re-running replaces each fallback's action block with the same copy of
+    the primary's and finds isResettable already 1, so a second run is a no-op.
+
+    Returns (changed, unchanged) entry-name lists.
+    """
+    out_path = out_path or quests_arc_path
+    arc = ArcArchive.from_file(quests_arc_path)
+    before = {e.name: arc.get_file(e.name) for e in arc.entries}
+
+    target = None
+    for e in arc.entries:
+        if e.name.lower().endswith(BLOODCAVE_INTERIOR_QUEST):
+            target = e.name
+            break
+    if target is None:
+        raise SystemExit(f'{BLOODCAVE_INTERIOR_QUEST} is not in {quests_arc_path}; '
+                         f'the blood-cave questline must be ported first.')
+    src = arc.get_file(target)
+    _assert_roundtrip(target, src)
+    arc.set_file(target, _promote_leinth_exit_fallbacks(src))
+    arc.write(out_path)
+
+    arc2 = ArcArchive.from_file(out_path)
+    after = {e.name: arc2.get_file(e.name) for e in arc2.entries}
+    changed = sorted(n for n in set(before) | set(after)
+                     if before.get(n) != after.get(n))
+    unchanged = sorted(n for n in set(before) & set(after)
+                       if before.get(n) == after.get(n))
+    # EXACTLY the blood-cave entry may move. `[]` is the idempotent re-run (the arc was
+    # already promoted, so the same bytes came back out); anything else is a leak.
+    if changed not in ([target], []):
+        raise SystemExit(
+            f'exit-portal fix: {len(changed)} entry/entries changed {changed}, '
+            f'expected EXACTLY [{target!r}] (or [] on an already-promoted arc) - a '
+            f'Quests-only wave must not disturb any other quest.')
+    print(f'  Leinth-exit promotion: {len(changed)} entry changed ({target}: '
+          f'{len(before[target])} -> {len(after[target])} bytes'
+          f'{" - IDEMPOTENT no-op, already promoted" if not changed else ""}), '
+          f'{len(unchanged)} entries byte-identical')
+    _assert_quest_records_loadable(arc2)
+    return changed, unchanged
+
+
 def main():
+    # SURGICAL mode (b94 PART C): --promote-leinth-exit <in.arc> [out.arc]
+    if '--promote-leinth-exit' in sys.argv:
+        i = sys.argv.index('--promote-leinth-exit')
+        rest = sys.argv[i + 1:]
+        if not rest:
+            raise SystemExit('usage: build_quest_files.py --promote-leinth-exit '
+                             '<in.arc> [out.arc]')
+        src = Path(rest[0])
+        dst = Path(rest[1]) if len(rest) > 1 else src
+        promote_leinth_exit_in_arc(src, dst)
+        return
+
+    # SURGICAL mode (b94): --sv-areas-only <in.arc> [out.arc] re-derives ONLY the 4 SV
+    # area questlines into an existing arc. See rebuild_sv_area_quests_only.
+    if '--sv-areas-only' in sys.argv:
+        i = sys.argv.index('--sv-areas-only')
+        rest = sys.argv[i + 1:]
+        if not rest:
+            raise SystemExit('usage: build_quest_files.py --sv-areas-only <in.arc> [out.arc]')
+        src = Path(rest[0])
+        dst = Path(rest[1]) if len(rest) > 1 else src
+        rebuild_sv_area_quests_only(src, dst)
+        return
+
     # Start from SVAERA's original Quests.arc (clean)
     svaera_quests = Path(r'reference_mods\SVAERA_customquest\Resources\Quests.arc')
     quests_arc_path = Path(r'work\SoulvizierClassic\Resources\Quests.arc')
@@ -2351,6 +2768,14 @@ def main():
     if svaera_quests.exists():
         shutil.copy2(svaera_quests, quests_arc_path)
         print(f'Restored clean Quests.arc from SVAERA ({quests_arc_path.stat().st_size / 1024:.1f} KB)')
+    else:
+        # FAIL LOUD: without the pristine base the Q1/Q2/Q3/testhub APPEND steps below
+        # would double-append onto an already-built arc (they are not idempotent).
+        raise SystemExit(
+            f'build_quest_files: the pristine SVAERA base {svaera_quests} is MISSING. '
+            f'A full rebuild would double-append the Q1/Q2/Q3/testhub triggers onto an '
+            f'already-built Quests.arc. Run scripts/sync_reference_mods.ps1 first, or '
+            f'use --sv-areas-only <arc> for a Quests-only SV-area wave.')
 
     # Replace sv_commonmechanics.qst with our combined portal quest ONLY if any
     # portals are defined. The blood-cave portal hack was removed (walk-in entry),

@@ -201,3 +201,101 @@
   (SVAERA author) granted verbal permission for the additive mastery-graft reuse (R-28); a written
   confirmation is still an open standing obligation, as is amgoz1's and Dragonlord's written
   permission (neither captured in writing as of 2026-07-10). Source: docs/PERMISSIONS.md.
+
+### Encounter economy / blood cave (new section, decade 70-79)
+
+> ⚠️ PROVENANCE NOTE (honesty, per the ledger's own "quote rulings VERBATIM" law): the three
+> entries below were relayed to the b94 implementer through a design brief, NOT captured as a
+> first-person Will quote. They are therefore marked `[paraphrased]` in the same way R-33/R-34/
+> R-35 are, and each records exactly what the brief asserted plus what the implementer proved
+> against the shipped bytes. If Will's original wording surfaces, replace the paraphrase with the
+> verbatim text in place and drop the marker.
+
+- R-70 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "the orb the two Toxeus
+  champions drop is not the same calibre as the one Leinth drops" - CONFIRMED against the deployed
+  bytes, and by a wide margin, though not by the mechanism the wording assumes. Neither side drops
+  "an orb" in the same sense: Leinth drops a BESPOKE DRX CHEST
+  (`records\drxitem\container\bosschestproxy_leinth.dbr`, in-game "Leinth's Essense"), while BOTH
+  champions drop the R-47 shared generic apex orb `genericbossorb_04`. The delivery field is
+  `treasureProxyName`, the only field in all 51,085 records that ever references an orb. Tracing
+  both chains proxy -> ProxyAccessoryPool -> FixedItemContainer -> FixedItemLoot on all three
+  difficulties, the raw knobs are: numSpawnMin/Max `(3+1.6P)*2.2 / *2.4` (Leinth) vs `*0.9 / *1.3`
+  (orb04); loot4Chance 100.0 vs 12.7; unique-entry lootWeight 50 vs 27. Modelled expected items at
+  1 player: Leinth 18.5 vs orb04 5.7 (3.25x) with roughly twice the unique share. HONEST
+  COUNTER-AXIS, stated because it cuts the other way: orb04 rolls the HIGHER item tier (the xpack
+  Act-4 statics at goldGeneratorLevel 88, plus LockedClassification=Boss) while Leinth's tables are
+  the Act-3 63-65 band at gold level 64. FIX: do NOT nerf Leinth (explicit instruction) and do NOT
+  edit `genericbossorb_04` in place (it is shared by TWENTY-ONE boss records, so an in-place edit
+  would silently buff the mod's whole endgame). Instead author a NEW un-named generic apex TIER
+  `genericbossorb_05` (+ 3 pools + 3 chests + 3 loot tables, every one a clone of the orb04 chain)
+  carrying Leinth's four calibre knobs on the champions' EXISTING higher Act-4 tables, and repoint
+  `treasureProxyName` on EXACTLY `um_toxeus_enslaver_99` + `um_bloodtoxeus_99`. Net: champion orb
+  goes from ~5.7 to ~18.5 expected items at 1P on a strictly better item pool. Owner:
+  `tools/patches/uber_apex_orb.py` (apply() proves roster-wide that orb04 and its other 19
+  consumers are byte-unchanged and that the R-48 soul wiring never moved; verify() re-asserts the
+  whole chain on the FINAL merged arz). Planted negative test
+  `tools/debug/negtest_uber_apex_orb.py`.
+  RECONCILIATION WITH R-47: R-47's substance is intact (still un-named, still generic, still
+  shared, still not a bespoke "X's Essence"); R-70 ADDS a tier R-47 does not mention. R-47 is NOT
+  superseded. ⚠️ OPEN WILL QUESTION carried in docs/reports/b94_leinth_wave.md: "same calibre" is
+  implemented as SAME VOLUME on a BETTER item pool; the alternative reading (strictly identical to
+  Leinth) would DOWN-tier the champions to the Act-3 band, which is not recommended.
+  See docs/reports/b94_leinth_wave.md.
+
+- R-71 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "Leinth is too easy and her
+  fight has nothing to react to; make her stronger and give her more abilities" - all three
+  variants (`q_leinth_47/49/50`) get characterLife +60% (32,481/35,703/38,924 ->
+  52,000/57,000/62,000), defensivePhysical 10 -> 35 and defensivePierce 20 -> 45 (THE REAL LEVER:
+  her two passive packages already give her bleed 100 / life 160 / convert 100 / elemental 50 /
+  stun 100, so physical and pierce were the only damage that touched her), characterAttackSpeed
+  0.8 -> 1.0, characterRunSpeed 1.0 -> 1.15, characterLifeRegen 2 -> 10, and her EXISTING poison
+  geysers (`cerberus_crackfire`) raised 1;4;7 -> 4;7;9. DELIBERATELY KEPT: defensivePoison stays
+  -15 (her amgoz1 identity and the fight's counter-play) and charLevel stays 47-76 (she is the
+  blood cave's main-path terminal boss, NOT an uber; pushing her to the champions' 100 would break
+  the cave's curve). THREE new abilities, every donor an already-shipping rig from her OWN
+  `records\drxcreatures\bloodwitch` cult family, so zero new art/FX/sound: CRIMSON TITHE (the
+  Disciple blood-rain -> specialAttack5, the fight's first telegraphed phase moment), CHOIR OF THE
+  BLOODBORN (the Disciple-boss Melinoe summon, cut to burst 2;3;4 / petLimit 6 with a finite TTL ->
+  buffSelfSkillName) and SANGUINE MIRE (her own SpawnPet rig spawning the Seductress blood puddle
+  -> dyingSkillName). WHY THREE AND NOT FOUR (engine ceiling, not a cut): Monster.tpl exposes
+  exactly five castable specialAttack slots and Leinth already used four with her own bespoke DRX
+  kit, so there was ONE free attack slot plus the two non-attack AI mechanisms with class
+  precedent (buffSelf: 9 SpawnPet users; dying: 18 Boss users). A fourth would have had to displace
+  one of her own DRX skills, which the retirement protocol forbids without Will.
+  ALSO: `leinth_summon_uglies` cut from petBurstSpawn 4;6;8 / petLimit 16 (permanent) to 2;3;4 /
+  petLimit 6 with a 45s TTL - the b76 chumbi-freeze density law; the skill is NOT removed and stays
+  wired at specialAttack2. NOT TOUCHED: every loot field (her 100% `lenithsveil` head drop, her 66%
+  soul at the R-42 PLACED rate, and `bosschestproxy_leinth`), proven field-by-field in apply().
+  Owner: `tools/patches/leinth_wave.py`; planted negative test
+  `tools/debug/negtest_leinth_wave.py`. ⚠️ OPEN WILL QUESTIONS in the wave report: the two staged
+  poison rigs DRX left unwired in her own folder (`cerberus_acidpuddle_summon/attack`) were
+  REJECTED as off-identity (poison, on the one boss with a poison weakness), and the Normal-band
+  difficulty of the +60% life needs a play check.
+
+- R-72 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "after you kill Leinth a
+  portal should open that takes you back to the occultist merchant outside the blood cave" - the
+  machinery was ALREADY built, placed and correctly aimed; one trigger asymmetry stopped it firing.
+  `records\drxmap\bloodcave\portals\vortexportal_exit.dbr` is Class=Npc (the traveler/boat-dialog
+  pattern) whose own FileDescription reads "Exits the player after the Leinth boss fight", placed
+  exactly ONCE across all 2,282 levels (bossfight.lvl, 6.2u from Leinth's proxy, on-navmesh); Text
+  already resolves tagLeinthExitPortal = "Mystical Vortex" and tagReturnFromLeinthBattle = "Leave
+  the Sanctuary of the Bloodborn?"; and its shipped BoatDialog destination decodes signed to world
+  (-90,-103,2321), which is 9.79u from the OCCULTIST MERCHANT outside the cave, on the same
+  walkable component as the merchant and his wagon. THE DEFECT: only the ONE-SHOT
+  `Condition_KillAllCreaturesFromProxy(q_leinth_lone)` primary carried the full
+  OpenDoor+ShowNpc+UpdateNPCDialog+BoatDialog set, while the three `Condition_KillCreature`
+  fallbacks added in b48 carried Action_OpenDoor ALONE. So whenever the proxy-wide condition did not
+  satisfy (an unaccounted champion blood demon in that pool, a character that did not have the quest
+  tracked at kill time, or the one-shot already latched) the boss door opened and no exit portal
+  ever appeared. FIX (Quests.arc ONLY, `tools/build_quest_files.py::_promote_leinth_exit_fallbacks`):
+  copy the primary's action block VERBATIM onto all three resettable fallbacks and flip the
+  primary's isResettable 0 -> 1. No new quest entry, so the ~254-entry load window is NOT engaged
+  and the QUESTS section is unchanged; Levels.arc is BYTE-UNCHANGED. Lands in CANONICAL, not
+  TESTHUB-only: bossfight.lvl is SV-native in both map variants, the NPC is an SV-native placement,
+  and Quests.arc is variant-independent. The Typhon FixedItemTeleport alternative was evaluated and
+  REJECTED (it would need two new records plus two new PLACEMENTS and a two-blob Levels rebuild, and
+  re-enters the map-portal firing-risk class this project left behind). Permanent gate:
+  contract `QST-LEINTH-EXIT` in `tools/contracts/contracts_quests.py` + 6 planted negative tests in
+  `tools/contracts/tests_quests_negative.py`. ⚠️ OPEN WILL QUESTIONS in the wave report: the offer
+  is one-way (recommended), and a character who already killed her while the one-shot was latched
+  and never kills her again is still stranded until a re-kill.
