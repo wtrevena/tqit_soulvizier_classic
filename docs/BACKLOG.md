@@ -4216,6 +4216,54 @@ uncapped-summon sweep to a carefully-scoped build gate (NOT petLimit-no-TTL blan
 skills have that shape); placement spacing/clearance gate follow-through; census_placements.py v0e
 stride fix; stale gate_build32_parseback refresh.
 
+### ~~B76-R2-SUMMON-GATE: promote the uncapped-summon sweep from diagnostic to a build gate~~
+- ~~`tools/patches/summon_caps.py` `sweep_uncapped`'s docstring literally said "DIAGNOSTIC (not a
+  build gate)". `verify()` only re-asserted the 4 known sepulcher-chain targets, so a NEW unbounded
+  fast summoner (the Chumbi-Valley freeze class Will hit as a P0) would ship unnoticed.~~
+- **✅ CLOSED 2026-07-28 (branch `fix/debt-gate`). The sweep is now a scoped build gate.**
+  - **WIRED INTO THE REGISTRY VERIFY HOOK.** `summon_caps.verify()` now asserts TWO invariants:
+    (1) the original targeted one (the 4 sepulcher-chain skills carry a positive TTL in the final
+    arz), and (2) the new CLASS one - no unbounded fast summoner anywhere in the arz that is not
+    an evidenced waiver. `summon_caps` is registered in `tools/patches/__init__.py`, and
+    `run_registry_verifies()` propagates a module `verify()`'s `SystemExit`, so this aborts the
+    build. `sweep_uncapped`'s "DIAGNOSTIC (not a build gate)" docstring is gone.
+  - **NOT A BLANKET petLimit-no-TTL RULE** (the build46 debt line's explicit constraint). The
+    gated shape is the genuinely unbounded one: `Skill_*SpawnPet*` **AND** no positive `petLimit`
+    **AND** no positive `spawnObjectsTimeToLive` **AND** cooldown < 10s. The ~140 healthy skills
+    that carry a petLimit without a TTL are untouched - and that is now enforced by test, not just
+    asserted (negtest D1).
+  - **WAIVER seeded with EXACTLY the 8 records the sweep finds on the shipped arz** (2026-07-28
+    re-run: still exactly 8, no drift since b76), each with per-record evidence in
+    `_UNCAPPED_WAIVERS` - provenance, referencing records, and placement:
+
+    | record | evidence |
+    |---|---|
+    | `records\skills\boss skills\telkine_projectilespawnpet.dbr` | **BASE-GAME** (in the stock database.arz); spawns the E3-demo `GoldenSkeleton`; 0 referencing records; not placed |
+    | `records\skills\skills\boss skills\telkine_projectilespawnpet.dbr` | duplicate-path twin of the above (upstream `records\skills\skills\` namespace duplication); 0 refs; not placed |
+    | `records\skills\nature\old\oldnaturemastery_animalcompanion.dbr` | **BASE-GAME**; `\old\` = the retired pre-release Nature mastery; 0 refs; not placed |
+    | `records\skills\skills\nature\old\oldnaturemastery_animalcompanion.dbr` | duplicate-path twin of the above; 0 refs; not placed |
+    | `records\events\summoning\01_skill_zombiemelee_swarm_a.dbr` | upstream event content (absent from the stock arz); ttl=0.0; 0 refs; not placed |
+    | `records\events\summoning\01_skill_zombiemelee_swarm_a_1sec_cd.dbr` | upstream event content; the **only** waived record with a live reference (`01_spawner_zombiemelee_swarm_a.dbr` `buffSelfSkillName` + `skillName2`) - but a **whole-world-blob scan of the 2.09 GB `Levels.arc`** finds **0 hits** for the spawner, the skill, or the substring `zombiemelee_swarm`, so nothing shipped can instantiate it |
+    | `records\skills\nature\copy (2) of drxregrowth.dbr` | DRX authoring leftover (the filename is literally "copy (2) of"); 0 refs; not placed |
+    | `records\skills\earth\test\stoneform_spawn_bait.dbr` | `\test\` namespace bait record; 0 refs; not placed |
+
+    Adding a waiver requires the same three pieces of evidence; the failure message says so.
+  - **WAIVER HYGIENE:** a waived record the sweep no longer flags is reported as STALE and
+    **never auto-removed** - RETIREMENT PROTOCOL applies to the evidence attached to a waiver just
+    as it does to a record. Never fatal.
+  - **PLANTED NEGATIVE TEST** (`py tools/patches/summon_caps.py --negtest`) - **PASS**, 14 checks.
+    Half 1 (original classifier): uncapped fast summoner flagged, TTL-capped clears. Half 2 (the
+    new gate): **A** a new unbounded fast summoner is an offender; **B** `verify()` raises
+    `SystemExit` naming it (the gate actually kills the build, not just reports); **C/C2** a waived
+    record does not trip it and `verify()` passes with only waived offenders present; **D1-D5** the
+    false-positive guards - petLimit-without-TTL, a 60s-cooldown uncapped summoner, TTL-without-
+    petLimit and a non-SpawnPet class are each NOT flagged, and a healthy db flags nothing at all;
+    **E** absent waivers report stale, never fatal.
+  - **PROOF ON THE SHIPPED ARZ:** `summon_caps.verify()` against
+    `work/.../SoulvizierClassic.arz` -> `4 sepulcher-chain summon skills all carry a finite
+    spawn-TTL` + `no new unbounded fast summoners (8 waived: base/dead/test, each evidenced)`,
+    returns cleanly, **0 offenders / 0 stale**.
+
 ## BUILD47 GATE RECORD (2026-07-17, DEV-only; Steam untouched - Will's in-game pass required)
 INTEGRATION WAVE 2: main merges fix/runtime-green (b75+b81 identity) + fix/soul-tiers (b78 gate +
 b85 High Priest) + fix/mastery-unlock (b77) + fix/formula-names (b80) + feat/black-poison (b73
