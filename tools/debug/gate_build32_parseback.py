@@ -1,36 +1,61 @@
-"""build32 parse-back gate: M8 (farmland06d v11) + M9 (random05a v0e FIRST LIVE v0e-branch use).
+"""Map APPEND parse-back gate (historically "build32"; REFRESHED 2026-07-28, BUILD46 debt).
 
-Asserts, against a freshly built map arc:
-  M9 random05a (v0x0e):
-    - 0x05 instance count == 60 (was 59)
-    - the appended instance references q_vashkarr_lone.dbr at local (24.00,1.00,31.70)
-    - blob re-parses flag-aware to the EXACT 0x05 stream end (no desync)
-    - blob section walk reaches the exact blob end (no trailing garbage)
-    - spot is on the level's own 0x0b navmesh (container present, cell walkable per
-      the same simple bbox check used at survey time is NOT re-run here; we assert the
-      0x0b section survived byte-identical instead - the spec was navmesh-verified at
-      survey time and injection never touches 0x0b)
-  M8 farmland06d (v0x11):
-    - 0x05 instance count == 996 (was 995)
-    - the appended instance references portal_master_helos.dbr at local (76.50,0.60,189.50)
-    - 0x14 entry count UNCHANGED (NPC spec appends no 0x14)
+WHAT IT PROVES
+Every entity the map build injects into a level's 0x05 section must land as a clean
+APPEND: the blob still parses to its exact end, the 0x05 section walks flag-aware to
+its exact end at the VERSION-DERIVED stride, the new instances sit at the tail with
+flags=0, no pre-existing instance moved, and no other section (navmesh 0x0b included)
+changed except where a delta is explicitly declared.
 
-Usage: py tools/debug/gate_build32_parseback.py [--map local/Levels_merged.arc] [--baseline local/Levels_merged.build31g-baseline.arc]
+WHY IT WAS REFRESHED (docs/BACKLOG.md "BUILD46 GATE RECORD DEBT")
+The build32-era gate froze absolute instance COUNTS and INDICES ("count 995 -> 996",
+`insts[995]`). Four builds of legitimate map work later every one of those constants
+was wrong, so the gate could not run at all:
+  * it died at IMPORT time - it pulled ArcArchive/parse_sections through
+    `verify_groups_bindings`, which imports the never-committed `arz_lookup`;
+  * M8 farmland06d is now 993 instances, not 996 (b44/b46 removed the two
+    portal_olympianarena entities + their aura, and Almyros is at index 992);
+  * the MYARD block asserted the HiddenValley01 Monster Test Yard, which b76 REMOVED
+    as the chumbi-freeze P0 root cause (docs/reports/b76_chumbi_freeze_rca.md, Will's
+    verbatim "the game is frozen" report, R-30/R-31);
+  * the RIG block asserted the build34 Model-C rig's exact per-host coords, which the
+    traveller hub (svc_helos_trav_* / svc_testhub_return_<area>) superseded.
+The frozen constants were the defect: a parse-back gate should assert the SHAPE of an
+append, not a snapshot of the world's instance count. So the checks are now DELTA-based
+(what changed vs the baseline) and STRUCTURAL (tail, flags, exact-end, collateral), and
+the two obsolete blocks are replaced by invariants that still describe live design:
+  * MYARD -> INVERTED: TESTHUB HiddenValley01 must be IDENTICAL to canonical, i.e. the
+    b76-removed monster yard must never come back (retirement protocol: the yard's
+    removal is recorded in the b76 RCA + BACKLOG BUILD46; nothing is deleted here).
+  * RIG   -> namespace/shape invariant: every TESTHUB-only host is canonical PLUS
+    tail-appended flags=0 instances in the `records\\quests\\svc_` hub namespace, with
+    every other section byte-identical. It no longer freezes the hub roster.
+
+Usage:
+  py tools/debug/gate_build32_parseback.py [--map local/Levels_merged.arc]
+      [--baseline local/Levels_merged.build31g-baseline.arc]
+      [--m10-baseline local/Levels_merged.build32a-baseline.arc]
+      [--skip-m10] [--testhub --canonical local/Levels_merged.arc]
+  py tools/debug/gate_build32_parseback.py --selftest    # planted negative tests
 """
 import argparse
 import struct
 import sys
+from collections import Counter
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'tools'))
 sys.path.insert(0, str(REPO / 'tools' / 'contracts'))
 
-import importlib
-vg = importlib.import_module('verify_groups_bindings')
-ArcArchive = vg.ArcArchive
-parse_sections = vg.parse_sections
-from contracts_map import parse_level_index, parse_blob_sections, SEC_LEVELS
+# BUILD46: this used to reach ArcArchive/parse_sections through
+# `verify_groups_bindings` - a gate module that itself imports the never-committed
+# `arz_lookup`, so THIS gate died at import time with ModuleNotFoundError on any clean
+# checkout. Import them from their real homes instead.
+from arc_patcher import ArcArchive
+from merge_levels_binary import parse_sections
+from contracts_map import (parse_level_index, parse_blob_sections, blob_0x05_base,
+                           SEC_LEVELS)
 
 BS = chr(92)
 
@@ -42,15 +67,23 @@ def check(name, cond, detail=''):
     print(f'  [{tag}] {name}' + (f'  ({detail})' if detail else ''))
     if not cond:
         FAIL.append(name)
+    return bool(cond)
+
+
+_WORLDS = {}
 
 
 def load_world(path):
-    arc = ArcArchive.from_file(Path(path))
-    data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
-    secs = {s['type']: s for s in parse_sections(data)}
-    lsec = secs[SEC_LEVELS]
-    levels = parse_level_index(data[lsec['data_offset']:lsec['data_offset'] + lsec['size']])
-    return data, levels
+    path = str(path)
+    if path not in _WORLDS:
+        arc = ArcArchive.from_file(Path(path))
+        data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
+        secs = {s['type']: s for s in parse_sections(data)}
+        lsec = secs[SEC_LEVELS]
+        levels = parse_level_index(
+            data[lsec['data_offset']:lsec['data_offset'] + lsec['size']])
+        _WORLDS[path] = (data, levels)
+    return _WORLDS[path]
 
 
 def get_blob(data, levels, suffix):
@@ -62,7 +95,12 @@ def get_blob(data, levels, suffix):
 
 
 def walk_0x05(sd, base):
-    """Walk the 0x05 payload flag-aware. Returns (strings, [instances], end_pos_exact)."""
+    """Walk the 0x05 payload flag-aware at `base`. Returns (strings, insts, end, count).
+
+    `base` MUST come from contracts_map.blob_0x05_base(blob) - 72 for v0x11/v0x0f,
+    56 for v0x0e. Passing the wrong one desyncs after the first record (the same
+    class of bug as the census_placements hardcoded-72 stride).
+    """
     pos = 0
     nstr = struct.unpack_from('<I', sd, pos)[0]; pos += 4
     strings = []
@@ -72,25 +110,16 @@ def walk_0x05(sd, base):
     ninst = struct.unpack_from('<I', sd, pos)[0]; pos += 4
     insts = []
     for _ in range(ninst):
-        rec = sd[pos:pos + base]
-        sid = struct.unpack_from('<I', rec, 0)[0]
-        # measured layout (_build_0x05_record): str_idx(4) + rot 3x3(36) + position(12) + flags(4)
-        x, y, z = struct.unpack_from('<fff', rec, 40)
-        flags = struct.unpack_from('<I', rec, 52)[0]
-        sz = base + (16 if flags != 0 else 0)
-        if base == 72:
-            # v11 flagged records ALSO carry a 16B zero pad after the UniqueId
-            # (v0e->v11 conversion rule); SHARED v11/v0f levels use base-72 + 16 if flagged
-            # (no extra pad) per the audit parser. base=72 handled by caller choice.
-            pass
+        if pos + base > len(sd):
+            break
+        sid = struct.unpack_from('<I', sd, pos)[0]
+        # measured layout: str_idx(4) + rot 3x3(36) + position(12) + flags(4)
+        x, y, z = struct.unpack_from('<fff', sd, pos + 40)
+        flags = struct.unpack_from('<I', sd, pos + 52)[0]
         insts.append({'sid': sid, 'dbr': strings[sid] if sid < len(strings) else b'?',
                       'pos': (x, y, z), 'flags': flags})
-        pos += sz
+        pos += base + (16 if flags != 0 else 0)
     return strings, insts, pos, ninst
-
-
-def section_sizes(blob):
-    return {t: len(d) for t, d in parse_blob_sections(blob)}
 
 
 def blob_walk_exact(blob):
@@ -104,281 +133,364 @@ def blob_walk_exact(blob):
     return pos == len(blob), pos
 
 
+def _key(inst):
+    return (inst['dbr'].replace(b'/', BS.encode()).lower(),
+            tuple(round(v, 3) for v in inst['pos']))
+
+
+def _fmt(k):
+    return f'{k[0].decode("latin-1")} @ {k[1]}'
+
+
+def compare_level(label, blob, bblob, appended, removed=(), allow_sections=(),
+                  require_tail=True):
+    """The one delta+shape check every block below uses.
+
+    appended / removed = iterables of (dbr_basename_bytes, (x, y, z)) the build is
+    EXPECTED to add / drop vs `bblob`. Anything else in the delta fails.
+    """
+    base = blob_0x05_base(blob)
+    bbase = blob_0x05_base(bblob)
+    check(f'{label}: blob version stable v0x{bblob[3]:02x}', blob[3] == bblob[3],
+          f'v0x{blob[3]:02x} vs v0x{bblob[3]:02x}')
+    ok, end = blob_walk_exact(blob)
+    check(f'{label}: blob section walk reaches exact blob end', ok,
+          f'end={end} len={len(blob)}')
+
+    secs = dict(parse_blob_sections(blob))
+    bsecs = dict(parse_blob_sections(bblob))
+    sd = secs[0x05]
+    _s, insts, endpos, ninst = walk_0x05(sd, base)
+    _bs, binsts, _be, bninst = walk_0x05(bsecs[0x05], bbase)
+    check(f'{label}: 0x05 flag-aware walk lands at exact section end (stride {base})',
+          endpos == len(sd), f'end={endpos} len={len(sd)}')
+    check(f'{label}: every declared instance was walked', len(insts) == ninst,
+          f'{len(insts)}/{ninst}')
+
+    cur = Counter(_key(i) for i in insts)
+    bas = Counter(_key(i) for i in binsts)
+    got_added = cur - bas
+    got_removed = bas - cur
+
+    def want(pairs):
+        c = Counter()
+        for name, pos3 in pairs:
+            c[(name.lower(), tuple(round(v, 3) for v in pos3))] += 1
+        return c
+
+    # expectations are given by BASENAME; match the delta on basename+pos.
+    def by_basename(counter):
+        out = Counter()
+        for (dbr, pos3), n in counter.items():
+            out[(dbr.split(BS.encode())[-1], pos3)] += n
+        return out
+
+    check(f'{label}: appended set is exactly as declared ({len(list(appended))})',
+          by_basename(got_added) == want(appended),
+          f'got {[_fmt(k) for k in got_added]}')
+    check(f'{label}: removed set is exactly as declared ({len(list(removed))})',
+          by_basename(got_removed) == want(removed),
+          f'got {[_fmt(k) for k in got_removed]}')
+
+    # every appended instance sits at the TAIL, flags=0 (append-only byte-shape)
+    n_add = sum(got_added.values())
+    if require_tail and n_add:
+        tail = insts[-n_add:]
+        check(f'{label}: the {n_add} appended instance(s) are the LAST instances',
+              by_basename(Counter(_key(i) for i in tail)) == want(appended),
+              f'tail={[i["dbr"].decode("latin-1").split(BS)[-1] for i in tail]}')
+        check(f'{label}: every appended instance has flags == 0 (proxy/NPC byte-shape)',
+              all(i['flags'] == 0 for i in tail),
+              f'flags={[i["flags"] for i in tail]}')
+
+    # the surviving pre-existing instances kept their order AND position
+    surviving = [i for i in binsts if _key(i) not in got_removed]
+    kept = insts[:len(insts) - n_add] if n_add else insts
+    check(f'{label}: all {len(surviving)} pre-existing instances unchanged (dbr+pos)',
+          [_key(i) for i in kept] == [_key(i) for i in surviving])
+
+    # collateral: every OTHER section byte-identical unless declared
+    for t in sorted(set(bsecs) | set(secs)):
+        if t == 0x05 or t in allow_sections:
+            continue
+        check(f'{label}: section 0x{t:02x} byte-identical to baseline',
+              secs.get(t) == bsecs.get(t),
+              f'{len(bsecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
+    if 0x0b in bsecs or 0x0b in secs:
+        check(f'{label}: 0x0b navmesh byte-identical (injection never touches it)',
+              secs.get(0x0b) == bsecs.get(0x0b))
+    check(f'{label}: no stale 0x0a alongside 0x0b',
+          0x0a not in secs or 0x0b not in secs)
+    return insts
+
+
+# ---------------------------------------------------------------------------
+# The declared deltas. Each entry: level suffix -> (appended, removed, allow_sections).
+# APPENDED/REMOVED are (dbr basename, (x, y, z)) - basenames, so a namespace move does
+# not silently pass. Sources: the INJECT_SPECS / removal tables in
+# tools/build_section_surgery.py; see the module notes there for the design rationale.
+# ---------------------------------------------------------------------------
+
+# M9: random05a (v0x0e) - the FIRST live use of the v0e SVAERA-host inject branch.
+M9 = ('orient/underground/random05a.lvl',
+      [(b'q_vashkarr_lone.dbr', (24.0, 1.0, 31.7))], [], ())
+
+# M8: startingfarmland06d (v0x11) - the Almyros portal master. The two
+# portal_olympianarena entities + their aura were REMOVED after build31g
+# (remove_0x05_instances_by_0x14_uid / _by_dbr; the 0x14 binding table changes with
+# them, hence 0x14 is a DECLARED delta rather than a silent one).
+M8 = ('startingtownver2/startingfarmland06d.lvl',
+      [(b'portal_master_helos.dbr', (76.5, 0.6, 189.5))],
+      [(b'portal_olympianarena1.dbr', (74.0, 0.4, 184.0)),
+       (b'map_portal_aura.dbr', (74.0, 0.4, 184.0)),
+       (b'portal_olympianarena2.dbr', (68.0, -0.4, 181.0))],
+      (0x14,))
+
+# M10: the Obsidian roulette corners + the Broodmother nest (v0x0e branch), vs build32a.
+M10 = [
+    ('orient/typhonug/tombobs02.lvl',
+     [(b'q_obs_roulette_a.dbr', (50.4, 1.0, 143.6)),
+      (b'q_obs_roulette_c.dbr', (200.4, 1.0, 97.6)),
+      (b'q_broodmother_lone.dbr', (184.0, 1.2, 192.0)),
+      (b'q_broodnest_egg_a.dbr', (184.0, 1.2, 202.0)),
+      (b'q_broodnest_egg_b.dbr', (175.3, 1.2, 197.0)),
+      (b'q_broodnest_egg_c.dbr', (175.3, 1.2, 187.0)),
+      (b'q_broodnest_egg_d.dbr', (184.0, 1.2, 182.0)),
+      (b'q_broodnest_egg_e.dbr', (192.7, 1.2, 187.0)),
+      (b'q_broodnest_egg_f.dbr', (192.7, 1.2, 197.0))], [], ()),
+    ('orient/typhonug/tombobs01.lvl',
+     [(b'q_obs_roulette_b.dbr', (220.8, 1.0, 89.6)),
+      (b'q_obs_roulette_d.dbr', (92.8, 1.0, 47.6))], [], ()),
+]
+
+# TESTHUB hosts: every one must be canonical PLUS tail-appended hub NPCs, and nothing
+# else. HiddenValley01 is the b76 guard - it must be IDENTICAL (no monster yard).
+HUB_NAMESPACE = b'records' + BS.encode() + b'quests' + BS.encode()
+HUB_PREFIXES = (b'svc_testhub', b'svc_helos_trav')
+HV01 = 'orient/silkroad/hiddenvalley01.lvl'
+# The ONLY canonical placement the TESTHUB build is allowed to drop: the b48
+# SPARTA-MUTE FIX deliberately removes the canonical Almyros master from the Helos
+# plaza so the dedicated one-route-each travellers own their routes (the engine's
+# boat dialog is strictly 1 route : 1 NPC). See merge_hub_into_inject_specs in
+# tools/build_section_surgery.py - the canonical/Steam build is untouched.
+HUB_DECLARED_DROPS = {
+    'startingtownver2/startingfarmland06d.lvl': {
+        (b'records' + BS.encode() + b'quests' + BS.encode() + b'portal_master_helos.dbr',
+         (76.5, 0.6, 189.5)),
+    },
+}
+HUB_HOSTS = [
+    'startingtownver2/startingfarmland06d.lvl',
+    'orient/underground/random09a.lvl',
+    'olympus/gardenofmerchants.lvl',
+    'secret_place/darkforestenter.lvl',
+    'uberdungeon/crypt_floor1.lvl',
+    'minidungeons/spartacryptlevel2.lvl',
+    'bossarena/boss_arena.lvl',
+]
+
+
+def run_hub_checks(map_path, canonical_path):
+    data, levels = load_world(map_path)
+    cdata, clevels = load_world(canonical_path)
+
+    print('--- HV01 b76 GUARD: the removed Monster Test Yard must NOT come back ---')
+    _lv, blob = get_blob(data, levels, HV01)
+    _clv, cblob = get_blob(cdata, clevels, HV01)
+    check('TESTHUB HiddenValley01 is byte-identical to canonical (no yard)',
+          blob == cblob, f'{len(cblob)} -> {len(blob)} bytes')
+    if blob != cblob:
+        base = blob_0x05_base(blob)
+        _s, ins, _e, _n = walk_0x05(dict(parse_blob_sections(blob))[0x05], base)
+        _s, cin, _e, _n = walk_0x05(dict(parse_blob_sections(cblob))[0x05], base)
+        extra = Counter(_key(i) for i in ins) - Counter(_key(i) for i in cin)
+        for k in extra:
+            print(f'      !! TESTHUB-only HV01 placement: {_fmt(k)}')
+
+    for suffix in HUB_HOSTS:
+        print(f'--- HUB {suffix} (canonical + tail-appended hub NPCs only) ---')
+        _lv, blob = get_blob(data, levels, suffix)
+        _clv, cblob = get_blob(cdata, clevels, suffix)
+        base = blob_0x05_base(blob)
+        secs = dict(parse_blob_sections(blob))
+        csecs = dict(parse_blob_sections(cblob))
+        _s, insts, endpos, ninst = walk_0x05(secs[0x05], base)
+        _s, cinsts, _ce, cninst = walk_0x05(csecs[0x05], base)
+        ok, end = blob_walk_exact(blob)
+        check(f'{suffix}: blob walk reaches exact end', ok, f'end={end} len={len(blob)}')
+        check(f'{suffix}: 0x05 walk lands at exact section end (stride {base})',
+              endpos == len(secs[0x05]), f'end={endpos} len={len(secs[0x05])}')
+        added = Counter(_key(i) for i in insts) - Counter(_key(i) for i in cinsts)
+        dropped = Counter(_key(i) for i in cinsts) - Counter(_key(i) for i in insts)
+        n_add = sum(added.values())
+        # Some hub NPCs have since been promoted into the CANONICAL map; a host with a
+        # zero delta is legitimate. What must NEVER happen is an UNDECLARED drop, a
+        # non-hub addition, or a non-tail insertion.
+        allowed_drops = HUB_DECLARED_DROPS.get(suffix, set())
+        undeclared = [k for k in dropped if k not in allowed_drops]
+        check(f'{suffix}: TESTHUB drops nothing beyond the declared '
+              f'{len(allowed_drops)} exception(s)', not undeclared,
+              f'undeclared drops {[_fmt(k) for k in undeclared]}')
+        bad_ns = [k for k in added
+                  if not (k[0].startswith(HUB_NAMESPACE)
+                          and any(k[0].split(BS.encode())[-1].startswith(p)
+                                  for p in HUB_PREFIXES))]
+        check(f'{suffix}: all {n_add} TESTHUB-only addition(s) are in the '
+              f'records{BS}quests{BS}svc_ hub namespace', not bad_ns,
+              f'offenders {[_fmt(k) for k in bad_ns]}')
+        surviving = [_key(i) for i in cinsts if _key(i) not in dropped]
+        head = [_key(i) for i in (insts[:-n_add] if n_add else insts)]
+        if n_add:
+            tail = insts[-n_add:]
+            check(f'{suffix}: the {n_add} hub NPC(s) are the LAST instances',
+                  Counter(_key(i) for i in tail) == added,
+                  f'tail={[i["dbr"].decode("latin-1").split(BS)[-1] for i in tail]}')
+            check(f'{suffix}: every hub NPC has flags == 0',
+                  all(i['flags'] == 0 for i in tail))
+        check(f'{suffix}: all {len(surviving)} surviving canonical instances unchanged '
+              f'(dbr+pos, order)', head == surviving)
+        for t in sorted(set(csecs) | set(secs)):
+            if t == 0x05:
+                continue
+            check(f'{suffix}: section 0x{t:02x} byte-identical to canonical',
+                  secs.get(t) == csecs.get(t),
+                  f'{len(csecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
+
+
+def selftest():
+    """PLANTED NEGATIVE TESTS: the checks must FAIL on a deliberately broken input.
+
+    A gate nobody has seen fail is not a gate. These mutate an in-memory blob and
+    assert the comparison rejects it - no artifact is written or read.
+    """
+    global FAIL
+    print('=== gate_build32_parseback SELFTEST (planted negatives) ===')
+    results = []
+
+    def mk_section_0x05(entries, base=56):
+        """Build a synthetic 0x05 section: entries = [(dbr, (x,y,z))]."""
+        strings = []
+        for dbr, _p in entries:
+            if dbr not in strings:
+                strings.append(dbr)
+        out = struct.pack('<I', len(strings))
+        for s in strings:
+            out += struct.pack('<I', len(s)) + s
+        out += struct.pack('<I', len(entries))
+        for dbr, (x, y, z) in entries:
+            rec = struct.pack('<I', strings.index(dbr))
+            rec += struct.pack('<9f', 1, 0, 0, 0, 1, 0, 0, 0, 1)
+            rec += struct.pack('<3f', x, y, z)
+            rec += struct.pack('<I', 0)
+            if base == 72:
+                rec += b'\x00' * 16
+            out += rec
+        return out
+
+    def mk_blob(entries, ver=0x0e):
+        sd = mk_section_0x05(entries, 72 if ver in (0x11, 0x0f) else 56)
+        return (b'LVL' + bytes([ver]) + struct.pack('<II', 0x05, len(sd)) + sd)
+
+    base_entries = [(b'records' + BS.encode() + b'a.dbr', (1.0, 2.0, 3.0)),
+                    (b'records' + BS.encode() + b'b.dbr', (4.0, 5.0, 6.0))]
+    appended = (b'records' + BS.encode() + b'new.dbr', (7.0, 8.0, 9.0))
+
+    scenarios = [
+        ('NEG-1 undeclared extra append is rejected',
+         base_entries + [appended, (b'records' + BS.encode() + b'sneak.dbr', (1., 1., 1.))],
+         [(b'new.dbr', (7.0, 8.0, 9.0))]),
+        ('NEG-2 silent removal of a pre-existing instance is rejected',
+         [base_entries[0], appended],
+         [(b'new.dbr', (7.0, 8.0, 9.0))]),
+        ('NEG-3 a moved pre-existing instance is rejected',
+         [base_entries[0], (b'records' + BS.encode() + b'b.dbr', (4.0, 5.0, 99.0)), appended],
+         [(b'new.dbr', (7.0, 8.0, 9.0))]),
+        ('NEG-4 a NON-tail insertion is rejected',
+         [base_entries[0], appended, base_entries[1]],
+         [(b'new.dbr', (7.0, 8.0, 9.0))]),
+    ]
+    bblob = mk_blob(base_entries)
+    for name, entries, declared in scenarios:
+        FAIL = []
+        compare_level('SELFTEST', mk_blob(entries), bblob, declared)
+        ok = bool(FAIL)
+        results.append((name, ok, f'{len(FAIL)} sub-check(s) failed as intended'))
+
+    # POS-1: the honest append must PASS cleanly.
+    FAIL = []
+    compare_level('SELFTEST', mk_blob(base_entries + [appended]), bblob,
+                  [(b'new.dbr', (7.0, 8.0, 9.0))])
+    results.append(('POS-1 an honest tail append passes', not FAIL, str(FAIL)))
+
+    FAIL = []
+    print()
+    bad = []
+    for name, ok, detail in results:
+        print(f'  [{"PASS" if ok else "FAIL"}] {name}  ({detail})')
+        if not ok:
+            bad.append(name)
+    print()
+    print(f'RESULT: {"FAIL " + str(bad) if bad else "PASS (selftest clean)"}')
+    return 1 if bad else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--map', default=str(REPO / 'local' / 'Levels_merged.arc'))
-    ap.add_argument('--baseline', default=str(REPO / 'local' / 'Levels_merged.build31g-baseline.arc'))
+    ap.add_argument('--baseline',
+                    default=str(REPO / 'local' / 'Levels_merged.build31g-baseline.arc'),
+                    help='baseline for the M8/M9 deltas')
     ap.add_argument('--m10-baseline',
                     default=str(REPO / 'local' / 'Levels_merged.build32a-baseline.arc'),
-                    help='baseline for the M10 tombobs checks (the pre-M10 build32a map)')
+                    help='baseline for the M10 tombobs deltas (the pre-M10 build32a map)')
     ap.add_argument('--skip-m10', action='store_true',
                     help='skip the M10 tombobs checks (to gate a pre-M10 build)')
     ap.add_argument('--testhub', action='store_true',
-                    help='expect the TESTHUB variant (same M8/M9 assertions; farmland/random05a '
-                         'counts are hub-independent) PLUS the MYARD HiddenValley01 monster-yard '
-                         'checks (8 TESTHUB-only proxy placements)')
-    ap.add_argument('--yard-baseline', default=str(REPO / 'local' / 'Levels_merged.arc'),
-                    help='canonical map (no yard) baseline for the TESTHUB HV01 yard collateral')
+                    help='--map is the TESTHUB variant: run the HV01 b76 guard + the '
+                         'hub-host append/namespace invariants against --canonical')
+    ap.add_argument('--canonical', default=str(REPO / 'local' / 'Levels_merged.arc'),
+                    help='with --testhub: the canonical map to diff against')
+    ap.add_argument('--selftest', action='store_true',
+                    help='run the planted negative tests and exit')
     args = ap.parse_args()
 
-    print(f'=== GATE build32 parse-back: {args.map} ===')
-    data, levels = load_world(args.map)
+    if args.selftest:
+        return selftest()
+
+    print(f'=== GATE map append parse-back: {args.map} ===')
+    # The M8/M9/M10 deltas describe the CANONICAL build. Under --testhub the map under
+    # test carries the hub NPCs on top, so those blocks run against --canonical and the
+    # TESTHUB map is judged by the hub invariants below (this is what the old gate got
+    # wrong by patching a single `exp_count = 997 if args.testhub`).
+    m_map = args.canonical if args.testhub else args.map
+    if args.testhub:
+        print(f'    (--testhub: M8/M9/M10 evaluated against the canonical map {m_map})')
+    data, levels = load_world(m_map)
     bdata, blevels = load_world(args.baseline)
 
-    # ---------------- M9: random05a (v0x0e) ----------------
-    print('--- M9 random05a (v0x0e, FIRST LIVE v0e-branch use) ---')
-    lv, blob = get_blob(data, levels, 'orient/underground/random05a.lvl')
-    blv, bblob = get_blob(bdata, blevels, 'orient/underground/random05a.lvl')
-    check('blob version v0x0e', blob[3] == 0x0e, f'v0x{blob[3]:02x}')
-    ok, end = blob_walk_exact(blob)
-    check('blob section walk reaches exact blob end', ok, f'end={end} len={len(blob)}')
+    print('--- M9 random05a (v0x0e host inject branch) ---')
+    suffix, appended, removed, allow = M9
+    _lv, blob = get_blob(data, levels, suffix)
+    _blv, bblob = get_blob(bdata, blevels, suffix)
+    compare_level('M9 random05a', blob, bblob, appended, removed, allow)
 
-    secs = dict(parse_blob_sections(blob))
-    bsecs = dict(parse_blob_sections(bblob))
-    sd = secs[0x05]
-    strings, insts, endpos, ninst = walk_0x05(sd, 56)
-    check('0x05 instance count 59 -> 60', ninst == 60, f'count={ninst}')
-    check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
-          f'end={endpos} len={len(sd)}')
-    last = insts[-1]
-    check('appended instance is q_vashkarr_lone.dbr',
-          last['dbr'].lower() == b'records' + BS.encode() + b'drxmap' + BS.encode() + b'proxy'
-          + BS.encode() + b'q_vashkarr_lone.dbr',
-          last['dbr'].decode('latin-1'))
-    check('appended instance at local (24.00,1.00,31.70)',
-          abs(last['pos'][0] - 24.0) < 1e-4 and abs(last['pos'][1] - 1.0) < 1e-4
-          and abs(last['pos'][2] - 31.7) < 1e-4, str(last['pos']))
-    check('appended instance flags == 0 (proxy byte-shape)', last['flags'] == 0,
-          f"flags={last['flags']}")
-    # collateral: every OTHER section byte-identical to baseline
-    for t in sorted(set(bsecs) | set(secs)):
-        if t == 0x05:
-            continue
-        check(f'section 0x{t:02x} byte-identical to baseline',
-              secs.get(t) == bsecs.get(t),
-              f'{len(bsecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
-    # baseline instances 0..58 byte-stable (prefix of 0x05 unchanged up to the count field)
-    bsd = bsecs[0x05]
-    _, binsts, bend, bninst = walk_0x05(bsd, 56)
-    check('baseline instance count was 59', bninst == 59, f'count={bninst}')
-    same = all(insts[i]['dbr'] == binsts[i]['dbr'] and insts[i]['pos'] == binsts[i]['pos']
-               for i in range(bninst))
-    check('all 59 pre-existing instances unchanged (dbr+pos)', same)
-    check('0x0b navmesh section survived byte-identical', secs.get(0x0b) == bsecs.get(0x0b),
-          f'{len(bsecs.get(0x0b, b""))} bytes')
-    check('no stale 0x0a alongside 0x0b', 0x0a not in secs or 0x0b not in secs)
+    print('--- M8 startingfarmland06d (v0x11 host inject branch) ---')
+    suffix, appended, removed, allow = M8
+    _lv, blob = get_blob(data, levels, suffix)
+    _blv, bblob = get_blob(bdata, blevels, suffix)
+    compare_level('M8 farmland06d', blob, bblob, appended, removed, allow)
 
-    # ---------------- M8: startingfarmland06d (v0x11) ----------------
-    print('--- M8 startingfarmland06d (v0x11) ---')
-    lv, blob = get_blob(data, levels, 'startingtownver2/startingfarmland06d.lvl')
-    blv, bblob = get_blob(bdata, blevels, 'startingtownver2/startingfarmland06d.lvl')
-    check('blob version v0x11', blob[3] == 0x11, f'v0x{blob[3]:02x}')
-    ok, end = blob_walk_exact(blob)
-    check('blob section walk reaches exact blob end', ok, f'end={end} len={len(blob)}')
-    secs = dict(parse_blob_sections(blob))
-    bsecs = dict(parse_blob_sections(bblob))
-    sd = secs[0x05]
-    strings, insts, endpos, ninst = walk_0x05(sd, 72)
-    # canonical appends only Almyros (portal_master_helos) at [995] -> count 996. The build34
-    # TESTHUB rig ALSO appends svc_testhub_master AFTER Almyros -> Almyros at [995], hub master at
-    # [996] -> count 997. Both are flags=0 NPCs (no 0x14).
-    exp_count = 997 if args.testhub else 996
-    check(f'0x05 instance count 995 -> {exp_count}', ninst == exp_count, f'count={ninst}')
-    check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
-          f'end={endpos} len={len(sd)}')
-    helos = insts[995]
-    check('instance[995] is portal_master_helos.dbr (Almyros)',
-          helos['dbr'].lower() == b'records' + BS.encode() + b'quests' + BS.encode()
-          + b'portal_master_helos.dbr', helos['dbr'].decode('latin-1'))
-    check('Almyros at local (76.50,0.60,189.50)',
-          abs(helos['pos'][0] - 76.5) < 1e-4 and abs(helos['pos'][1] - 0.6) < 1e-4
-          and abs(helos['pos'][2] - 189.5) < 1e-4, str(helos['pos']))
-    check('Almyros flags == 0 (NPC byte-shape, no UniqueId)', helos['flags'] == 0,
-          f"flags={helos['flags']}")
-    if args.testhub:
-        master = insts[996]
-        check('instance[996] is svc_testhub_master.dbr (rig hub master)',
-              master['dbr'].lower() == b'records' + BS.encode() + b'quests' + BS.encode()
-              + b'svc_testhub_master.dbr', master['dbr'].decode('latin-1'))
-        check('rig hub master at local (79.50,0.80,189.50)',
-              abs(master['pos'][0] - 79.5) < 1e-4 and abs(master['pos'][1] - 0.8) < 1e-4
-              and abs(master['pos'][2] - 189.5) < 1e-4, str(master['pos']))
-        check('rig hub master flags == 0', master['flags'] == 0, f"flags={master['flags']}")
-    # 0x14 must be UNCHANGED (NPC appends no 0x14)
-    check('0x14 section byte-identical to baseline (no 0x14 for the NPC)',
-          secs.get(0x14) == bsecs.get(0x14),
-          f'{len(bsecs.get(0x14, b""))} -> {len(secs.get(0x14, b""))} bytes')
-    _, binsts, _, bninst = walk_0x05(bsecs[0x05], 72)
-    check('baseline instance count was 995', bninst == 995, f'count={bninst}')
-    same = all(insts[i]['dbr'] == binsts[i]['dbr'] and insts[i]['pos'] == binsts[i]['pos']
-               for i in range(bninst))
-    check('all 995 pre-existing instances unchanged (dbr+pos)', same)
-
-    # ---------------- M10: tombobs01/02 Obsidian roulette corners (v0x0e) ----------------
     if not args.skip_m10:
         mdata, mlevels = load_world(args.m10_baseline)
-        # tombobs02 carries the 2 roulette corners (build32b) AND, since build35, the 7
-        # Broodmother Nest proxies APPENDED after them (mother + 6 eggs, Y=1.2). tombobs01
-        # carries only the 2 roulette corners. The M10 baseline (build32a) predates BOTH, so
-        # the tombobs02 delta vs build32a is +9 and tombobs01 is +2. The nest proxies are
-        # canonical, so this holds identically for the canonical AND TESTHUB variants.
-        M10 = {
-            'orient/typhonug/tombobs02.lvl': [
-                (b'q_obs_roulette_a.dbr', (50.4, 1.0, 143.6)),
-                (b'q_obs_roulette_c.dbr', (200.4, 1.0, 97.6)),
-                (b'q_broodmother_lone.dbr', (184.0, 1.2, 192.0)),
-                (b'q_broodnest_egg_a.dbr', (184.0, 1.2, 202.0)),
-                (b'q_broodnest_egg_b.dbr', (175.3, 1.2, 197.0)),
-                (b'q_broodnest_egg_c.dbr', (175.3, 1.2, 187.0)),
-                (b'q_broodnest_egg_d.dbr', (184.0, 1.2, 182.0)),
-                (b'q_broodnest_egg_e.dbr', (192.7, 1.2, 187.0)),
-                (b'q_broodnest_egg_f.dbr', (192.7, 1.2, 197.0)),
-            ],
-            'orient/typhonug/tombobs01.lvl': [
-                (b'q_obs_roulette_b.dbr', (220.8, 1.0, 89.6)),
-                (b'q_obs_roulette_d.dbr', (92.8, 1.0, 47.6)),
-            ],
-        }
-        for suffix, expect in M10.items():
+        for suffix, appended, removed, allow in M10:
             print(f'--- M10 {suffix} (v0x0e branch) ---')
-            lv, blob = get_blob(data, levels, suffix)
-            blv, bblob = get_blob(mdata, mlevels, suffix)
-            check('blob version v0x0e', blob[3] == 0x0e, f'v0x{blob[3]:02x}')
-            ok, end = blob_walk_exact(blob)
-            check('blob section walk reaches exact blob end', ok, f'end={end} len={len(blob)}')
-            secs = dict(parse_blob_sections(blob))
-            bsecs = dict(parse_blob_sections(bblob))
-            sd = secs[0x05]
-            strings, insts, endpos, ninst = walk_0x05(sd, 56)
-            _, binsts, _, bninst = walk_0x05(bsecs[0x05], 56)
-            check(f'0x05 instance count {bninst} -> {bninst + len(expect)}',
-                  ninst == bninst + len(expect), f'count={ninst}')
-            check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
-                  f'end={endpos} len={len(sd)}')
-            for k, (base, pos3) in enumerate(expect):
-                inst = insts[bninst + k]
-                check(f'appended[{k}] is {base.decode()}',
-                      inst['dbr'].lower().endswith(BS.encode() + base),
-                      inst['dbr'].decode('latin-1'))
-                check(f'appended[{k}] at local {pos3}',
-                      all(abs(inst['pos'][i] - pos3[i]) < 1e-3 for i in range(3)),
-                      str(inst['pos']))
-                check(f'appended[{k}] flags == 0 (proxy byte-shape)', inst['flags'] == 0,
-                      f"flags={inst['flags']}")
-            for t in sorted(set(bsecs) | set(secs)):
-                if t == 0x05:
-                    continue
-                check(f'section 0x{t:02x} byte-identical to M10 baseline',
-                      secs.get(t) == bsecs.get(t),
-                      f'{len(bsecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
-            same = all(insts[i]['dbr'] == binsts[i]['dbr'] and insts[i]['pos'] == binsts[i]['pos']
-                       for i in range(bninst))
-            check(f'all {bninst} pre-existing instances unchanged (dbr+pos)', same)
-            check('0x0b navmesh section survived byte-identical',
-                  secs.get(0x0b) == bsecs.get(0x0b), f'{len(bsecs.get(0x0b, b""))} bytes')
+            _lv, blob = get_blob(data, levels, suffix)
+            _blv, bblob = get_blob(mdata, mlevels, suffix)
+            compare_level(f'M10 {suffix.split("/")[-1]}', blob, bblob,
+                          appended, removed, allow)
 
-    # ---------------- MYARD: HiddenValley01 monster test yard (TESTHUB-only, v0x11) ------------
-    # The yard is 8 proxy placements appended to HV01 ONLY in the TESTHUB build (build_hub_extra_
-    # specs). Baseline = the canonical map (no yard); TESTHUB HV01 must equal canonical HV01 plus
-    # exactly these 8 appended flags=0 instances, with every other section (incl. 0x0b navmesh)
-    # byte-identical (append-only -> the byte-identity + hub-identity guarantees hold).
     if args.testhub:
-        ydata, ylevels = load_world(args.yard_baseline)
-        print('--- MYARD HiddenValley01 (v0x11, TESTHUB-only monster yard) ---')
-        lv, blob = get_blob(data, levels, 'orient/silkroad/hiddenvalley01.lvl')
-        blv, bblob = get_blob(ydata, ylevels, 'orient/silkroad/hiddenvalley01.lvl')
-        check('blob version v0x11', blob[3] == 0x11, f'v0x{blob[3]:02x}')
-        ok, end = blob_walk_exact(blob)
-        check('blob section walk reaches exact blob end', ok, f'end={end} len={len(blob)}')
-        secs = dict(parse_blob_sections(blob))
-        bsecs = dict(parse_blob_sections(bblob))
-        sd = secs[0x05]
-        strings, insts, endpos, ninst = walk_0x05(sd, 72)
-        _, binsts, _, bninst = walk_0x05(bsecs[0x05], 72)
-        # build35: the yard grew from 8 to 9 with the broodmother apex (q_yard_broodmother).
-        check(f'0x05 instance count {bninst} -> {bninst + 9}', ninst == bninst + 9, f'count={ninst}')
-        check('0x05 flag-aware walk lands at exact section end', endpos == len(sd),
-              f'end={endpos} len={len(sd)}')
-        YARD = [
-            (b'q_yard_enslaver.dbr',      (23.0, 17.0, 33.0)),
-            (b'q_yard_marauders.dbr',     (31.9, 16.2, 26.9)),
-            (b'q_vashkarr_lone.dbr',      (36.0, 16.0, 28.5)),
-            (b'q_yard_obs_sarkoth.dbr',   (42.0, 15.2, 91.0)),
-            (b'q_yard_obs_gorrahk.dbr',   (36.0, 15.2, 90.0)),
-            (b'q_yard_obs_voranthys.dbr', (47.0, 15.4, 87.0)),
-            (b'q_yard_obs_ilsevar.dbr',   (47.0, 15.2, 95.0)),
-            (b'q_yard_wyrm.dbr',          (30.0, 15.2, 113.0)),
-            (b'q_yard_broodmother.dbr',   (89.0,  6.6, 100.0)),
-        ]
-        for k, (bname, pos3) in enumerate(YARD):
-            inst = insts[bninst + k]
-            check(f'yard[{k}] is {bname.decode()}',
-                  inst['dbr'].lower().endswith(BS.encode() + bname), inst['dbr'].decode('latin-1'))
-            check(f'yard[{k}] at local {pos3}',
-                  all(abs(inst['pos'][i] - pos3[i]) < 1e-3 for i in range(3)), str(inst['pos']))
-            check(f'yard[{k}] flags == 0 (proxy byte-shape)', inst['flags'] == 0,
-                  f"flags={inst['flags']}")
-        for t in sorted(set(bsecs) | set(secs)):
-            if t == 0x05:
-                continue
-            check(f'section 0x{t:02x} byte-identical to canonical HV01',
-                  secs.get(t) == bsecs.get(t),
-                  f'{len(bsecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
-        same = all(insts[i]['dbr'] == binsts[i]['dbr'] and insts[i]['pos'] == binsts[i]['pos']
-                   for i in range(bninst))
-        check(f'all {bninst} pre-existing HV01 instances unchanged (dbr+pos)', same)
-        check('0x0b navmesh section survived byte-identical', secs.get(0x0b) == bsecs.get(0x0b),
-              f'{len(bsecs.get(0x0b, b""))} bytes')
-        check('no stale 0x0a alongside 0x0b', 0x0a not in secs or 0x0b not in secs)
-
-    # ---------------- RIG: portal test rig (build34, TESTHUB-only, Model C boat-dialog NPCs) ------
-    # The Model C rig appends ONE flags=0 NPC to each of 6 hosts (the Helos hub master is checked by
-    # the M8 block above). Each TESTHUB host must equal its CANONICAL blob (yard_baseline) PLUS
-    # exactly that one appended NPC, with every OTHER section (incl the 0x0b navmesh, and the 0x06/
-    # 0x14 sections that the Uber/Sparta native-door patches touch) BYTE-IDENTICAL. random09a is the
-    # decisive one: retiring the GridEntrance hub reverts TESTHUB random09a to the canonical SV
-    # blood-cave swap blob, so its 0x0b/0x06/0x17 must now match canonical exactly.
-    if args.testhub:
-        cdata, clevels = load_world(args.yard_baseline)
-        print('--- RIG portal test rig (TESTHUB = canonical + 1 appended NPC per host) ---')
-        RIG = [
-            ('orient/underground/random09a.lvl',   56, b'svc_testhub_master.dbr', (32.0, 1.0, 45.0)),
-            ('olympus/gardenofmerchants.lvl',      56, b'svc_testhub_return.dbr', (133.0, -39.0, 73.0)),
-            ('secret_place/darkforestenter.lvl',   56, b'svc_testhub_return.dbr', (27.0, 1.0, 30.0)),
-            ('uberdungeon/crypt_floor1.lvl',       56, b'svc_testhub_return.dbr', (140.0, 10.0, 229.0)),
-            ('minidungeons/spartacryptlevel2.lvl', 56, b'svc_testhub_return.dbr', (45.0, -1.6, 42.0)),
-            ('bossarena/boss_arena.lvl',           56, b'svc_testhub_return.dbr', (136.0, 27.0, 104.0)),  # b43-r2: moved onto the arena dais comp#2 (reachability fix)
-        ]
-        for suffix, base, bname, pos3 in RIG:
-            print(f'--- RIG {suffix} ---')
-            lv, blob = get_blob(data, levels, suffix)
-            clv, cblob = get_blob(cdata, clevels, suffix)
-            ok, end = blob_walk_exact(blob)
-            check(f'{suffix}: blob walk reaches exact end', ok, f'end={end} len={len(blob)}')
-            secs = dict(parse_blob_sections(blob))
-            csecs = dict(parse_blob_sections(cblob))
-            _, insts, endpos, ninst = walk_0x05(secs[0x05], base)
-            _, cinsts, _, cninst = walk_0x05(csecs[0x05], base)
-            check(f'{suffix}: 0x05 count {cninst} -> {cninst + 1}', ninst == cninst + 1,
-                  f'count={ninst}')
-            check(f'{suffix}: 0x05 walk lands at exact section end', endpos == len(secs[0x05]),
-                  f'end={endpos} len={len(secs[0x05])}')
-            last = insts[-1]
-            check(f'{suffix}: appended is {bname.decode()}',
-                  last['dbr'].lower().endswith(BS.encode() + bname), last['dbr'].decode('latin-1'))
-            check(f'{suffix}: appended at local {pos3}',
-                  all(abs(last['pos'][i] - pos3[i]) < 1e-3 for i in range(3)), str(last['pos']))
-            check(f'{suffix}: appended flags == 0 (NPC byte-shape)', last['flags'] == 0,
-                  f"flags={last['flags']}")
-            same = all(insts[i]['dbr'] == cinsts[i]['dbr'] and insts[i]['pos'] == cinsts[i]['pos']
-                       for i in range(cninst))
-            check(f'{suffix}: all {cninst} canonical instances unchanged (dbr+pos)', same)
-            for t in sorted(set(csecs) | set(secs)):
-                if t == 0x05:
-                    continue
-                check(f'{suffix}: section 0x{t:02x} byte-identical to canonical',
-                      secs.get(t) == csecs.get(t),
-                      f'{len(csecs.get(t, b""))} -> {len(secs.get(t, b""))} bytes')
+        run_hub_checks(args.map, args.canonical)
 
     print()
     if FAIL:
@@ -386,7 +498,7 @@ def main():
         return 1
     scope = 'M8 + M9' if args.skip_m10 else 'M8 + M9 + M10'
     if args.testhub:
-        scope += ' + MYARD + RIG'
+        scope += ' + HV01-b76-guard + HUB'
     print(f'RESULT: PASS ({scope} parse-back clean)')
     return 0
 

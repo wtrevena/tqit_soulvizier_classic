@@ -429,6 +429,43 @@ Workshop (auto-update) + moddb/Nexus zip (GOG/non-Steam, CustomMaps install).
 ## 🛠️ Build & deploy commands
 
 - **Python:** use the `py` launcher (not `python`/`python3`); set `PYTHONIOENCODING=utf-8`.
+
+### 🔎 Build inputs - check these FIRST (`tools/check_build_inputs.py`)
+
+`upstream/`, `reference_mods/` and `third_party/` are **gitignored**, so `git worktree add` hands
+every lane an **EMPTY** cache. Both build entrypoints therefore run one shared preflight before
+touching anything. Resolution order per input, **first hit wins**:
+
+1. the input's `$SVC_*` env var
+2. the **in-repo** cache (`upstream/...`, `reference_mods/...`)
+3. the **MAIN checkout's** cache (found via the worktree's `.git` file - this is what makes a
+   worktree build work at all)
+4. the installed location: Steam TQAE, or Steam Workshop item `2076433374` (SVAERA)
+5. a sibling worktree that already has the cache (e.g. `build36-map` for SV 0.98i `Levels.arc`)
+6. a `third_party/` archive - reported as EXTRACTABLE, never silently unpacked
+
+Every **fallback** is md5-pinned, so auto-resolution can never quietly feed the build a different
+upstream; a path you pass on the command line is used **as-is** when it exists. A miss fails LOUD,
+once, naming the exact env var and every place searched (no more bare `FileNotFoundError` from deep
+inside `ArzDatabase`/`ArcArchive`).
+
+| input | env var | needed by |
+| --- | --- | --- |
+| SV 0.98i `database.arz` | `SVC_SV098I_ARZ` | DB build |
+| SV 0.9 `database.arz` | `SVC_SV09_ARZ` | DB build |
+| SV 0.4.1 `database.arz` | `SVC_SV041_ARZ` | DB build (optional) |
+| base-game TQAE `database.arz` | `SVC_BASE_ARZ` | DB build (optional) |
+| SV 0.98i `Text_EN.arc` | `SVC_SV098I_TEXT_ARC` | text build |
+| SVAERA `Levels.arc` | `SVC_SVAERA_ARC` | map merge |
+| SV 0.98i `Levels.arc` | `SVC_SV_ARC` | map merge |
+| `SVAERA_customquest.arz` | `SVC_SVAERA_ARZ` | build36 mastery graft (`SVC_GRAFT_SVAERA=0` to skip) |
+
+```
+py tools/check_build_inputs.py --all --verify-hashes   # inventory + integrity
+py tools/check_build_inputs.py --all --extract         # populate upstream/ from third_party/ zips
+py tools/check_build_inputs.py --selftest              # planted negative tests for the resolver
+```
+
 - **Build database (`.arz`):**
   ```
   py tools/build_svc_database.py \

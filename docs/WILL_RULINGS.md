@@ -36,7 +36,7 @@
 
 ## World / placement
 - R-30 [2026-07-16] PENDING (fix/chumbi-lag) verbatim: "you need to space these monsters out instead of putting them all on top of one another" + fountain death-loop = never again: SPACING LAW (fountain/NPC clearance + min inter-encounter distance, permanent placement gate).
-- R-31 [2026-07-16] PENDING (fix/chumbi-lag) boss pileup unstacked to intended locations; the summon issue is CO-PRIMARY ("both are making the game freeze"): tomb-guardian dogs hard-capped + TTL, sepulcher fight playable standing alone.
+- R-31 [2026-07-16] PENDING (fix/chumbi-lag) boss pileup unstacked to intended locations; the summon issue is CO-PRIMARY ("both are making the game freeze"): tomb-guardian dogs hard-capped + TTL, sepulcher fight playable standing alone. **[2026-07-28, fix/debt-tooling: the b76 HiddenValley01 Monster Test Yard removal now has a PERMANENT REGRESSION GUARD - `tools/debug/gate_build32_parseback.py --testhub` asserts the TESTHUB HiddenValley01 blob is byte-identical to canonical, so the yard cannot silently come back. This does NOT implement R-30's spacing law or R-31's summon caps; both stay PENDING.]**
 - R-32 [2026-07-16] PENDING (fix/chumbi-lag) boss reward containers are NEVER quest-gated chests (the widow-quest Dead Adventurer's Chest reuse).
 
 ## Souls & items
