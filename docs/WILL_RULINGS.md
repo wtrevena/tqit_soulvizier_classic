@@ -48,6 +48,28 @@
 - R-40 [2026-07-16] IMPLEMENTED b78 (fix/soul-tiers, merged to main in the BUILD47 GATE RECORD 2026-07-17) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate. OUTCOME: the roster-wide sweep found **0 flat-tier families / 0 wrong-tier loot triples / 0 real missing tiers** - Will's specific observation was a save-bake + shared-name perception artifact, so the wave made NO data change. The deliverable is the permanent strict-progress gate that closes the blind spot (a genuinely-flat epic now fails the build). See `docs/reports/b78_soul_tier_scaling.md`.
 - R-41 [2026-07-16] IMPLEMENTED b80 (fix/formula-names, merged to main in the BUILD47 GATE RECORD 2026-07-17) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
 - R-42 [earlier, STANDING - PARTIALLY SUPERSEDED by R-48 (2026-07-27) for the two fought Toxeus champions ONLY; every other record's rate stands unchanged] Munderizer over-band damage BLESSED; Shadow Link large radius KEPT; legion terminal drop 66 fine for now (revisit next souls pass); soul drop rates: random 50 / placed 66 / boss 25.
+  - **R-42 FOLD-IN: IMPLEMENTED b91 (fix/debt-db, 2026-07-28).** The queued half of R-42 - Will
+    2026-07-16 post-build42, verbatim: *"LEGION TERMINAL @66: fine for now. QUEUED: fold 'death-
+    transform terminals of RANDOM chains inherit the 50 rate' into the NEXT SOULS PASS"* - is now
+    built. Fixed UPSTREAM in the shared classifier, not per record:
+    `build_svc_database.soul_spawn_provenance_sets()` closes BOTH membership sets forward over the
+    `actorToSpawnOnDeath` graph (`_soul_transform_edges` + `_propagate_transform_provenance`), so a
+    death-transform stage inherits its chain HEAD's spawn provenance instead of falling through
+    `soul_drop_rate()`'s "not proven to spawn randomly -> keep the PLACED rate" safe-default. Fixing
+    it at the provenance source is the b59 `boss_charon_39` lesson: `_soul_release_rate()`,
+    `wire_souls_to_monsters()` and `create_uber_souls.py` all route through these sets, so no caller
+    can bypass it. Propagation is FORWARD-ONLY and `placed_proxy_members` is still checked before
+    `random_pool_members`, so a PLACED chain's terminal can never be over-cut. **Roster-wide proof:
+    exactly 2 LIVE movers** - `um_legion_28c` (Will's named case) and `um_possessedboar_spirit`
+    (the only sibling; `double_soul_rulings` deliberately keeps it as the surviving dropper), both
+    66 -> 50, both terminals of RANDOM chains. 7 other classifier verdicts move but are inert
+    (`chanceToEquipFinger2 = 0`). PLACED-chain terminals `um_charonform2_ferryman_99` /
+    `um_polisgaoler_unbound_99` / `um_tantalus_unbound_99` correctly stay 66 - now for the right
+    reason instead of by fall-through. The R-48 100% carve-outs are untouched (both Boss-class, off
+    this graph, and `toxeus_souls_100` remains the final writer). Gated in
+    `tools/verify_soul_drop_rates.py` (updated spot tests + the PLACED never-over-cut negative half
+    + a planted-regression test that goes red if the closure is deleted). See
+    `docs/reports/b91_debt_db.md` sec 4.
 - R-43 [2026-07-16] IMPLEMENTED b85 (fix/soul-tiers, MERGED to main in the BUILD47 GATE RECORD 2026-07-17 - the earlier "pending merge" qualifier is now stale) "the high priest soul should allow you to summon the high priest" - the Blood Cult High Priest soul's summon = the HIGH PRIEST himself (his identity/mesh/kit as the pet, all 3 tiers scaled), per boss-summon conventions + the b71/b81 identity laws (icon/portrait/race/sounds = High Priest). Companion check: epic soul must spawn the epic-tier pet (verified true roster-wide in b78, re-proven for this family).
 
 ## Process (meta-rulings)
@@ -94,6 +116,10 @@
   warband encounter frequency - the weight-1/K=600 rarity (~once per several hundred acts) is
   deliberate design; the dependable per-encounter beat is the PLACED warband set-piece, not the roam.
   Do not tighten/loosen without new Will approval. Source: docs/reports/b49_enslaver_rate.md.
+  **HONOURED b91 (2026-07-28):** the debt-clearance lane closed BL-ENSLAVER-SPAWNS without touching
+  frequency or breadth. Sub-fix (2) "reduce the spawn rate" is CLOSED BY THIS RULING - no action is
+  the correct action. (A per-area pool cap was considered and REJECTED for the same reason: cutting
+  the 273 swept pools would be a de-facto frequency cut R-18 forbids.)
 
 ### Masteries (continued)
 - R-26 [2026-07-09] STANDING (binding on ALL mastery work), verbatim: "editing skills is probably
@@ -271,6 +297,23 @@
   touch the Hero/Boss/Quest soul-drop gate in `wire_souls_to_monsters` (the yeti Common/Champion
   lesson): both champions are `monsterClassification=Boss`, so the gate never applied to them and
   no Common/Champion is re-enabled. See docs/reports/b90_toxeus_souls_100pct.md.
+- R-49 [2026-07-14] IMPLEMENTED b91 (fix/debt-db, 2026-07-28), verbatim: "emberteeth soul should let
+  you summon him." Ground truth first: `emberteeth_soul_{n,e,l}` granted NO skill at all (a pure
+  fire-stat ring), so the feature was genuinely unbuilt. Built via the standard boss-summon recipe -
+  3 permanent pets from `um_emberteeth`'s OWN rig through the shared `_build_boss_summon` pipeline
+  (mesh/anim table/attack skill/attribute cadence/skill kit; race + orthrus vox/alert/death/stun paks
+  per the b81 identity law and R-11; gear mirrored through `_set_pet_equipment`, never Monster.tpl
+  equipment/loot copies; D19 pet-mobility assert; permanent, no TTL) plus a manual-cast summon
+  button, souls wired at `itemSkillLevel` 1/2/3 so the epic soul spawns the epic-tier pet (the R-43
+  companion check). Every pre-existing fire benefit is KEPT and proven field-by-field in `apply()`;
+  the soul's display name is deliberately NOT renamed (a summon was asked for, not a rename). Owner:
+  `tools/patches/emberteeth_summon.py` (registry module + `verify()` hook). Life band derived from
+  the roster's lesser-summon life-per-charLevel cluster rather than invented. Player-surface
+  checklist in `docs/reports/b91_debt_db.md` sec 3; the pet-bar portrait falls back to the neutral
+  summon-proxy (no `chimera_party_*` art ships) - a bespoke portrait is registered as BL-b91-DEBT-2,
+  NOT silently deferred. In-game confirmation is launch-gated (BL-b91-DEBT-4): test on a FRESHLY
+  DROPPED soul, since TQ bakes item properties at pickup. Source: docs/BACKLOG.md "QUEUED FEATURE:
+  SOUL-EMBERTEETH-SUMMON (APPROVED by Will 2026-07-14)".
 - R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class
   encounters (Blood Toxeus, Enslaver, Vashkarr, Broodmother, Dorus, Sarkoth, Gorrahk, Ilsevar,
   Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb

@@ -554,6 +554,77 @@ def _soul_is_farmable_boss(record_name, classification):
 
 _SOUL_CREATURE_PATH_MARKERS = ('\\creature\\', '/creature/', '\\creatures\\', '/creatures/')
 _SOUL_POOL_NAME_FIELD_RE = re.compile(r'^name(?:champion)?\d+$', re.I)
+_SOUL_TRANSFORM_FIELD = 'actorToSpawnOnDeath'
+
+
+def _soul_transform_edges(db):
+    """basename -> set(basename) forward edges of the engine's death-transform
+    graph (`actorToSpawnOnDeath`). A stage on this graph is NEVER spawned by a
+    pool or a placement record - it is spawned by the death of the stage before
+    it - so it carries no spawn provenance of its own. See
+    `_propagate_transform_provenance` for why that matters."""
+    edges = {}
+    for name in db.record_names():
+        v = db.get_field_value(name, _SOUL_TRANSFORM_FIELD)
+        if isinstance(v, list):
+            v = v[0] if v else None
+        if not v or not str(v).strip():
+            continue
+        vl = str(v).lower()
+        # same creature-path discipline the pool scan uses
+        if not any(m in vl for m in _SOUL_CREATURE_PATH_MARKERS):
+            continue
+        edges.setdefault(_soul_record_basename(name), set()).add(
+            _soul_record_basename(str(v)))
+    return edges
+
+
+def _propagate_transform_provenance(members, edges):
+    """Return `members` closed forward over the death-transform graph.
+
+    R-42 FOLD-IN (Will 2026-07-16, post-build42, verbatim): "LEGION TERMINAL @66:
+    fine for now. QUEUED: fold 'death-transform terminals of RANDOM chains inherit
+    the 50 rate' into the NEXT SOULS PASS". This is that fold-in.
+
+    WHY IT IS A CLASSIFIER BUG, NOT A PER-RECORD TWEAK. A death-transform chain
+    (`um_legion_28 -> _28a -> _28b -> _28c`) is ONE encounter: only the HEAD is
+    ever referenced by a spawn pool or a placement proxy; every later stage is
+    spawned by the previous stage's death. `soul_spawn_provenance_sets` scans
+    pools/placements only, so every non-head stage came back in NEITHER set and
+    fell through `soul_drop_rate`'s final "not proven to spawn randomly -> keep
+    the PLACED release rate" clause. That fall-through is correct for a genuinely
+    placed-in-level monster; it is WRONG for a transform stage, whose spawn
+    provenance is definitionally its chain head's. The visible symptom was the
+    Legion terminal shipping at 66 while the Legion himself - the record the
+    random pools actually name - ships at 50.
+
+    Fixing it HERE (the shared provenance source) rather than at a call site is
+    the b59 `boss_charon_39` lesson: `_soul_release_rate` routes through
+    `soul_drop_rate`, which routes through these sets, and so does
+    `create_uber_souls.py`. A per-record override or a call-site patch would be
+    bypassable; closing the set is not.
+
+    DIRECTION + PRECEDENCE. Membership only ever propagates FORWARD (head ->
+    later stages), never backward, and both sets are closed independently, so a
+    stage reachable from a PLACED head keeps 66 (`soul_drop_rate` checks
+    `placed_proxy_members` before `random_pool_members`) - the "never over-cut a
+    placed encounter" invariant is preserved. Cycles are safe (visited set).
+    """
+    if not edges:
+        return members
+    out = set(members)
+    frontier = [m for m in members if m in edges]
+    seen = set(frontier)
+    while frontier:
+        cur = frontier.pop()
+        for nxt in edges.get(cur, ()):  # noqa: SIM118 - dict.get on a set-valued map
+            if nxt in seen:
+                continue
+            seen.add(nxt)
+            out.add(nxt)
+            if nxt in edges:
+                frontier.append(nxt)
+    return out
 
 
 def soul_spawn_provenance_sets(db):
@@ -561,9 +632,14 @@ def soul_spawn_provenance_sets(db):
     from the db AT CALL TIME (roster-derived, no hardcoded names).
 
     random_pool_members = referenced via a name*/nameChampion* slot by a base-game
-        population pool under records\\proxies* (the roaming "random hero slot").
+        population pool under records\\proxies* (the roaming "random hero slot"),
+        PLUS every death-transform stage reachable from such a member.
     placed_proxy_members = referenced (any creature-path field) by a mod PLACEMENT
-        record under records\\drxmap\\proxy* (q_*_lone / warband / svc_*_pool).
+        record under records\\drxmap\\proxy* (q_*_lone / warband / svc_*_pool),
+        PLUS every death-transform stage reachable from such a member.
+
+    The death-transform closure is the R-42 fold-in; see
+    `_propagate_transform_provenance` for the full rationale.
     """
     random_members = set()
     placed_members = set()
@@ -589,6 +665,9 @@ def soul_spawn_provenance_sets(db):
                     placed_members.add(mb)
                 if is_generic_pool and _SOUL_POOL_NAME_FIELD_RE.match(fn):
                     random_members.add(mb)
+    edges = _soul_transform_edges(db)
+    random_members = _propagate_transform_provenance(random_members, edges)
+    placed_members = _propagate_transform_provenance(placed_members, edges)
     return random_members, placed_members
 
 

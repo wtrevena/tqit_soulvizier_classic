@@ -80,6 +80,56 @@ appended verbatim. Parchment axis (R-1/R-2/R-13) untouched and verified un-regre
 guard's blood dragons now scale on the `[1..110]` window; a sweep is owed for other native proxies
 carrying mod-authored spawns that are still unregistered).
 
+## b91 DEBT-CLEARANCE LANE (domain `db`, 2026-07-28, branch `fix/debt-db`) - 5 items CLOSED
+
+DB-ONLY lane (arz + Text COUPLED PAIR - the new `tagSVCSummonEmberteeth` means the arz must never
+ship without the new Text.arc). **NO map rebuild, NO deploy, NO Steam.** Full report:
+`docs/reports/b91_debt_db.md`. Registry order hash
+`2675f461554ec2593dc1f8588f22d8644cd68581bd6722bc999f8d1998b31b10` (35 modules).
+
+**RECORD-DIFF vs the pre-change baseline: 4 added / 0 removed / 184 modified, intended-only.**
+Seven changed field names in total: `particleEffectName2` x177 + `particleEffectName3` x176 (= the
+353 filed slots), `itemSkillName`/`itemSkillLevel` x3 each (the Emberteeth soul tiers),
+`chanceToEquipFinger2` x2 (`um_legion_28c` + `um_possessedboar_spirit`, 66 -> 50),
+`skillName1` x1 (the BL-103 Emberteeth repoint), `bumpTexture` x1 (wep_spear, finishes F3). The 4
+added records are the 3 Emberteeth pets + his summon skill.
+
+**BASELINE PROVENANCE / DETERMINISM PROOF:** the lane's baseline arz, rebuilt from this worktree at
+`main` @ `89d3e52` before any change, came out at md5 `c1a8fa2aee5e6eb88b641b28d7dc6ae4` -
+**byte-identical to the arz b90 shipped**. The whole pipeline reproduces exactly, so every diff is
+attributable to this lane alone.
+
+**DETERMINISM:** two independent full builds -> byte-identical arz `22cf6b6e7acb940e5a4698d079ab1955`.
+
+**GATES:** registry OK (35 modules) | B-SUMMON-1 summon-pet validator PASS | A7 golden PASS (84
+waived) | A9 render chain PASS | b77 unlock-alignment PASS | F2 summons contract GATE PASS (0 P0 /
+0 P1 / 112 P2) | `validate_tags` PASS (357/357 referenced, 418/418 authoritative) |
+`verify_soul_drop_rates --gate` PASS incl. a NEW planted-regression test for the R-42 closure.
+
+**CONTRACT DELTA (the strictly-negative gate B-FX-DANGLING-1 required):** identical command over the
+baseline vs the built arz - souls 0/0/0 both; summons 0 P0 / 0 P1 / 112 P2 both; **resources
+4794 -> 4618 (1252 P1 -> 1157 P1, 3542 P2 -> 3461 P2)**; total **4906 -> 4730 (-176)**.
+**0 P0 in both and not a single violation class went UP.** The residual
+`contracts_resources` FAIL is the pre-existing volume already filed as BL-b90-DEBT-1 - this lane
+reduced it, it did not cause it.
+
+| artifact | md5 |
+|---|---|
+| `work/.../Database/SoulvizierClassic.arz` NEW | `22cf6b6e7acb940e5a4698d079ab1955` |
+| `work/.../Resources/Text.arc` NEW (carries `tagSVCSummonEmberteeth`) | `cec3194e615fa4fb00488203a901eff3` |
+| `work/.../Database/uber_soul_tags.txt` (build-emitted) | `db91b80c6c6f656ed7cb015781a81b92` |
+| baseline arz (pre-change; == the b90 shipped arz) | `c1a8fa2aee5e6eb88b641b28d7dc6ae4` |
+| `Resources/Quests.arc` BEFORE == AFTER | `5e664c7b190965fd69f6ff15d77d85e4` |
+
+| item | verdict |
+|---|---|
+| **B-FX-DANGLING-1** | **CLOSED - FIXED.** New module `tools/patches/fx_dangling_cleanup.py` strips the 353 dangling `Records\SandBox\Chris\UnarmedProjectile_FX01.dbr` `particleEffectName2/3` slots off 177 records (incl. the player Earth mastery `drxflamesurge`/`drxvolcanicorb`). STRIP not repoint, on proven **base-game absence parity**: of the 69 records that also exist in the stock TQAE DB, **69/69** have `particleEffectName2` ABSENT and **68/68** have `particleEffectName3` ABSENT (0 carry the ref, 0 carry anything else). The BACKLOG's paired "strip the orphaned `particleEffectAttachPoint2/3`" sub-item is **CLOSED as REJECTED-BY-EVIDENCE**: the same 69 base records carry those attach points PRESENT while the name slots are absent, so orphaned attach points ARE the vanilla shape (731 exist arz-wide, inherited from the base game) - stripping them would deviate from parity, not restore it. The `wep_spear.dbr` `bumpTexture` sub-item is **CLOSED - FIXED** (finishes build30 F3's DRX-skin strip). Also supersedes F7a, which the B-SOUL-PROC-2 `pcsafe` clone step was silently undoing every build (BL-103 fix-upstream). |
+| **BLOODHOUND-DYINGFX** | **CLOSED - ALREADY RESOLVED, no change needed.** All 6 summoned-bloodhound bodies (`b_bloodhound_33/34/35`, `c_bloodhound_40/42/44`) already carry `dyingFxPak = records\drxcreatures\bloodhound\effects\fxpak_deathfx_burst.dbr` - exactly the repoint target the P0-block HYGIENE line names - and it resolves. **0 dangling `dyingFxPak` refs roster-wide.** Instead of a no-op fix the lane ships the invariant the debt never had: `fx_dangling_cleanup.verify()` fails the build loud if any `dyingFxPak` stops resolving. ⚠️ **TRAP RECORDED:** a mod-arz-ONLY scan reports **7 false positives** here (4 `boss_daemonbull_yaoguai_*`, 3 `crowheroes\zilla*`); all resolve in the base-game DB. Any dangling-ref audit MUST resolve against the UNION of the mod arz and `<TQAE>\Database\database.arz`. |
+| **SOUL-EMBERTEETH-SUMMON** | **CLOSED - BUILT.** See the QUEUED FEATURE section below (updated in place). |
+| **LEGION-TERMINAL-50 (R-42 fold-in)** | **CLOSED - FIXED UPSTREAM.** `build_svc_database.soul_spawn_provenance_sets()` now closes both membership sets forward over the `actorToSpawnOnDeath` graph, so a death-transform stage inherits its chain HEAD's spawn provenance instead of falling through `soul_drop_rate()`'s PLACED safe-default. Roster-wide simulation over all 51,085 records: **exactly 2 LIVE movers** - `um_legion_28c` and `um_possessedboar_spirit`, both terminals of RANDOM chains = precisely the ruled class (7 other verdicts move but are inert at `chanceToEquipFinger2 = 0`). PLACED-chain terminals correctly stay 66 (`um_charonform2_ferryman_99`, `um_polisgaoler_unbound_99`, `um_tantalus_unbound_99`) and the two R-48 100% carve-outs are untouched. |
+| **BL-ENSLAVER-SPAWNS** | **CLOSED - all 3 sub-fixes were ALREADY SHIPPED; the entry was simply never updated.** See the entry below (updated in place). Two genuinely-missing gates were added. |
+
+**OPEN DEBT:** BL-b91-DEBT-7..10 (see DEBT REGISTER; filed as 1..4, renumbered by the debt-wave integration).
 ## BUILD50-DEV GATE RECORD - b90 Toxeus champion souls -> 100% drop (2026-07-27, branch `feat/toxeus-souls-100`, tag `build50-dev`)
 
 **R-48, Will 2026-07-27, verbatim:** "increase the drop rate for the souls of toxeus the murderer,
@@ -458,6 +508,26 @@ along automatically when the structural cluster-relocation fix lands.
   (`tools/verify_soul_drop_rates.py`), which is the same "pays a soul but no placement provenance"
   set. Owner/trigger: whoever widens the placement-provenance definition - widen it in
   `soul_spawn_provenance_sets` (one place, both consumers) rather than adding a second roster.
+
+**b91 debt-clearance lane, domain `db` (2026-07-28, branch `fix/debt-db`) - NEW** *(these four were filed as BL-b91-DEBT-1..4; RENUMBERED to 7..10 by the debt-wave integration because the parallel `fix/debt-mixed` Cold Worm lane above had already claimed 1..6 for different items.)*
+- **BL-b91-DEBT-7 (P3, new item):** 69 OTHER dangling FX `.dbr` refs across 24 distinct missing
+  targets, measured while closing B-FX-DANGLING-1 (which named only the Chris ref). Several look
+  like path typos that want a REPOINT, not a strip (a leading space, an `xxx` prefix, a `#`
+  comment left as a value), so they are NOT one base-parity class. Full breakdown in the
+  B-FX-DANGLING-2 entry above. Owner/trigger: its own small lane.
+- **BL-b91-DEBT-8 (art call, WILL-CONFIRM):** the Emberteeth summon's PET-BAR PORTRAIT is the
+  neutral summon-proxy - no `chimera_party_*` art ships. Same documented position as pygmalion /
+  eaterofdays / xeiwang / mountainblade. A bespoke portrait is an art decision.
+- **BL-b91-DEBT-9 (needs Will, playtest call):** the BL-ENSLAVER-SPAWNS marauder tankiness fix
+  (`defensiveLife 100->40`, life `13k/18k/24k -> 10k/14k/18k`) landed AFTER Will's 2026-07-12
+  report and has never been confirmed in-game. At 14000 Epic life the marauder is still the 99.9th
+  percentile of the Champion roster, four spawn at once, and they drop nothing. b91 refused to
+  invent a second cut on top of an unjudged fix. Owner/trigger: Will fights an Enslaver warband on
+  DEV after a full Steam restart and says whether they are killable now.
+- **BL-b91-DEBT-10 (launch-gated):** the Emberteeth summon is unproven IN-GAME - the button, its
+  icon, the pet's mobility on the orthrus rig and the 3-tier scaling. Owner/trigger: Will, on a
+  **FRESHLY DROPPED** soul (TQ bakes item properties at pickup, so a soul already in a bag will
+  not carry the new grant).
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - ~~**BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
@@ -3446,15 +3516,52 @@ along automatically when the structural cluster-relocation fix lands.
 
 ## 🟡 P2 - pending answers / smaller
 
-### B-FX-DANGLING-1: ~353 pre-existing dangling Chris\UnarmedProjectile_FX01 particle refs (build30 delta vet)
-- **Symptom:** arz-wide, ~353 records (incl. player Earth skills drxflamesurge/drxvolcanicorb)
-  reference the nonexistent `Records\SandBox\Chris\UnarmedProjectile_FX01.dbr` in
-  particleEffectNameN slots. Cosmetic only (the engine skips the missing layer; no crash).
-  The 3 pcsafe soul-skill copies were fixed in the build30 F-wave (F7a); the rest are upstream
-  SV debt. Fix approach: an F7b-style sweep (strip or repoint) if Will wants the fx layers
-  back; else leave. Also inert leftovers to strip in the same pass: orphaned
-  particleEffectAttachPoint2/3 on the 3 pcsafe skills; supra wep_spear.dbr's bumpTexture
-  (harmless on the base RSpear14B mesh).
+### ✅ B-FX-DANGLING-1 (CLOSED b91, 2026-07-28): dangling Chris\UnarmedProjectile_FX01 particle refs
+- **Symptom (as filed):** arz-wide, ~353 dangling refs to the nonexistent
+  `Records\SandBox\Chris\UnarmedProjectile_FX01.dbr` in particleEffectNameN slots, incl. player
+  Earth skills drxflamesurge/drxvolcanicorb. Cosmetic only (the engine skips the missing layer).
+- **MEASURED:** the "~353" is **177 records x 353 field slots** (`particleEffectName2` 177 +
+  `particleEffectName3` 176). The target exists nowhere in the UNION of the mod arz + the stock
+  TQAE DB (0 of 92,311 names), though `records\sandbox\` itself ships 536 other records.
+- **FIXED (b91)** by `tools/patches/fx_dangling_cleanup.py`: all 353 slots STRIPPED. Strip, not
+  repoint, on **base-game absence parity** - of the 69 affected records that also exist in the
+  stock DB, 69/69 have `particleEffectName2` ABSENT and 68/68 have `particleEffectName3` ABSENT.
+  A repoint would invent a layer vanilla lacks; an empty-string ref is the B-TOXEUS-2
+  loader-abort class.
+- **`particleEffectAttachPoint2/3` sub-item: REJECTED-BY-EVIDENCE, deliberately NOT stripped.**
+  Those same 69 base-game records carry the attach points PRESENT while the name slots are
+  ABSENT, so an orphaned attach point IS the vanilla shape (731 exist arz-wide, inherited from
+  the base game). Stripping them would deviate from parity. This also matches build30 F7a, which
+  stripped only the name slots.
+- **`wep_spear.dbr` bumpTexture sub-item: FIXED** - stripped, finishing build30 F3 (which
+  repointed the mesh to base `RSpear14B.msh` and stripped the DRX `baseTexture` but left this
+  sibling DRX skin field).
+- **F7a superseded (BL-103):** the 3 `pcsafe` records F7a fixes are B-SOUL-PROC-2 CLONES that the
+  clone step re-mints from their still-dangling PLAIN sources AFTER F7a runs - measured in the
+  b91 round-1 build, where all 3 arrive carrying the ref again. F7a was a symptom patch the
+  pipeline undid every build; the new sweep runs last over the final db and fixes the sources.
+- **Gate:** `fx_dangling_cleanup.verify()` fails the build loud if any Chris ref survives.
+- Report: `docs/reports/b91_debt_db.md` sec 1. **Residual (NEW ITEM):** 69 OTHER dangling FX
+  `.dbr` refs to 24 distinct missing targets remain - see B-FX-DANGLING-2 below.
+
+### B-FX-DANGLING-2 (NEW, opened b91 2026-07-28, P3): 69 other dangling FX .dbr refs
+- Measured while closing B-FX-DANGLING-1 (which named only the Chris ref). 69 dangling slots
+  across 24 distinct missing targets, by field: `particleEffectNames` 13, `targetFxPakName` 13,
+  `particleEffectName1` 12, `skillBonusEffectName` 10, `warmUpEffectName` 8, `radiusEffectName` 7,
+  `charFxPakSelfNames` 2, `waveEffectName`/`charFxPakOtherNames`/`warmupFxPakName`/
+  `confusionDamageFxPak` 1 each.
+- Top targets: `records\skills\nature\renewalfx.dbr` (10),
+  `records\effects\combat\skill_charge_strike01.dbr` (8),
+  `records\effects\combat\skill_lethal_strike01.dbr` (6),
+  `records\effects\petfx\ summonpet_wisp_fxpak.dbr` (6 - note the stray LEADING SPACE in the
+  path, likely the whole defect for that one), `records\effects\combat\skill_charge_trail01.dbr`
+  (5), 4 `xxxrecords\...` typo-prefixed refs, 2 `records\sandbox\chris\fxpak02/03.dbr`, and one
+  `# records\effects\default\buff04.dbr` (a commented-out ref left as a value).
+- **NOT base-parity-provable as one class** the way the Chris slots were: several look like
+  simple path typos that should be REPOINTED (the leading space, the `xxx` prefix, the `#`), not
+  stripped. Each needs its own absent-vs-repoint call. Do NOT blanket-strip.
+- Fix approach: reuse `tools/patches/fx_dangling_cleanup.py`'s mechanism, per-target decision
+  table, base-parity check per record, record-diff intended-only.
 
 ### ~~B-GATE-HARDEN-1: build gates SKIP (not FAIL) outside the work/ layout (build30 delta vet)~~
 - ~~The A9 render-chain + F2 summons-contract gates skip loudly when the game dir / staged
@@ -4386,8 +4493,36 @@ curated candidate detail + design sketch + reproduce steps: **`docs/reports/orph
   dry-run replay intended-records-only vs baseline; validate_tags + supra dead-ref invariant green;
   Will fresh-drop verify on DEV (TQ bakes item props at pickup - test a freshly crafted item).
 
-## QUEUED FEATURE: SOUL-EMBERTEETH-SUMMON (APPROVED by Will 2026-07-14, not yet scheduled)
+## ✅ SOUL-EMBERTEETH-SUMMON - BUILT b91 (2026-07-28, branch `fix/debt-db`)
 Will (verbatim): "emberteeth soul should let you summon him."
+
+**SHIPPED** in `tools/patches/emberteeth_summon.py`. Ground truth confirmed the feature was
+genuinely unbuilt: `emberteeth_soul_{n,e,l}` (tag `tagSoulName331`, itemLevel 18/42/59) granted
+**no skill at all** - a pure fire-stat ring. Source `records\creature\monster\orthrus\
+um_emberteeth.dbr` = `Hero`, `charLevel [18,43,58]` (the lowest-level summon source in the
+roster), race `Demon`, skin `brimstoneorthus01.tex`, soul drop 50% (RANDOM roamer, untouched).
+
+What shipped: 3 permanent pets `...\soulskills\pets\emberteeth_{1,2,3}.dbr` + manual-cast button
+`...\soulskills\summon_emberteeth.dbr`, built through the shared `_build_boss_summon` pipeline so
+the pet IS Emberteeth (his own mesh/anim table/attack skill/attribute cadence/skill kit; race +
+orthrus vox/alert/death/stun paks via the b81 `_align_pet_identity` law, R-11; gear mirrored
+through the sanctioned `_set_pet_equipment` loot-table path, never Monster.tpl copies; D19
+pet-mobility assert; permanent, no TTL). All 3 soul tiers wired at `itemSkillLevel` 1/2/3 so the
+epic soul spawns the epic-tier pet (R-43 companion check), with any inherited
+`itemSkillAutoController` stripped (pet BUTTON, never an on-attack proc - D21 / R-44).
+**Every pre-existing fire benefit kept** - `apply()` snapshots 16 fields per tier and fails loud
+if any moved. Soul name deliberately NOT renamed (a summon was asked for, not a rename).
+
+Life band `[2400, 6000, 9500]` is **derived, not invented**: the shipped player-facing boss-summon
+pets split into an uber cluster (~250-296 life/charLevel) and a lesser cluster (~119-167); a
+mid-tier `tagNewHero` Hero takes the lesser one. Icon = `DRXtextures\skill icons\soul\
+summonchimera{up,down}.tex` (fire-breathing multi-headed beast = closest on-identity glyph for a
+two-headed brimstone orthrus), arc-verified present and verified UNCLAIMED by any other summon
+(`apply()` fails loud on a collision - the b85 bwpriest lesson). Pet-bar portrait = neutral
+summon-proxy (no `chimera_party_*` art ships) - never the Lyia nymph; a bespoke portrait is
+registered as debt BL-b91-DEBT-2. Report: `docs/reports/b91_debt_db.md` sec 3.
+
+**ORIGINAL SPEC (kept for the record):**
 - **Ground-truth first:** locate Emberteeth (monster record + soul item family, all tiers) in the
   effective arz and document what the soul CURRENTLY grants (non-summon skill? augments only?) -
   then convert/extend so the soul summons Emberteeth himself.
@@ -5334,8 +5469,18 @@ cluster relocation to XZ-disjoint space (GRID_SHIFT + donor regen; entrance-seam
 Random09A/HiddenValley01 - preserve the abutment) OR interior GridEntrance transitions
 between deep chambers (native streaming doors - NOT banned teleports - caps co-resident
 navmeshes at 1-2). Player guidance meanwhile: save/portal-to-town often between chambers.
-HYGIENE (separate, next DB build): 6 summoned-bloodhound dyingFxPak dangling refs ->
-fxpak_deathfx_burst.dbr (real defect, NOT this crash).
+~~HYGIENE (separate, next DB build): 6 summoned-bloodhound dyingFxPak dangling refs ->
+fxpak_deathfx_burst.dbr (real defect, NOT this crash).~~ **✅ CLOSED b91 (2026-07-28) - ALREADY
+RESOLVED, no change was needed.** All 6 bodies (`b_bloodhound_33/34/35`, `c_bloodhound_40/42/44`)
+already carry `dyingFxPak = records\drxcreatures\bloodhound\effects\fxpak_deathfx_burst.dbr` -
+exactly this line's named target - and it resolves. **0 dangling `dyingFxPak` refs roster-wide.**
+⚠️ The original report was almost certainly a MOD-ARZ-ONLY scan artefact: such a scan reports 7
+false positives (4 `boss_daemonbull_yaoguai_*`, 3 `crowheroes\zilla*`) that all resolve in the
+base-game DB. **Any dangling-ref audit MUST resolve against the UNION of the mod arz and
+`<TQAE>\Database\database.arz`.** b91 ships the permanent invariant this debt never had:
+`tools/patches/fx_dangling_cleanup.py` `verify()` fails the build loud if ANY record's
+`dyingFxPak` stops resolving, and re-asserts the 6 bloodhound bodies specifically. See
+`docs/reports/b91_debt_db.md` sec 2.
 
 ## BL-ENSLAVER-SMOKE (Will 2026-07-12, tour finding #1, P2 visual - ride the next DB build)
 Toxeus the Murderer, Enslaver of Souls (black skeleton leader) renders a GREEN smoke aura;
@@ -5348,6 +5493,52 @@ Will's next tour list.
 
 ## ✅ CONFIRMED 2026-07-12: Victory Portal -> EPIC works in-game (Will: killed Hades, portal,
 ## spawned into Epic). A5/Act-5 fix fully closed - no further action.
+
+## ✅ BL-ENSLAVER-SPAWNS - CLOSED b91 (2026-07-28). All 3 sub-fixes were ALREADY SHIPPED; the
+## entry was simply never updated. Verified against the b90 golden arz + gated.
+
+- **(1) DUPLICATE SPAWN - CLOSED, fixed by the b49 sweep.** Verified: **275** pool records name
+  the Enslaver; **273 of 273** roaming pools carry him at `weight = 1` **and `limit = 1`** (the
+  per-slot MAX-count cap = at most one per pool per trigger, structurally, at any party size
+  regardless of `spawnMax` / draw-with-replacement). The other 2 are the whitelisted
+  `q_enslaver_warband` / `q_yard_enslaver` set-piece pools (weight 100, multi-slot BY DESIGN).
+  Breadth = the b49 `undead`-family restrict (273 pools, was ~1224); `_EN_SWEEP_K = 600` puts
+  per-pool per-slot probability at `<= 1/24000`. The existing roaming-sweep gate already enforced
+  weight/limit/probability/breadth/leak.
+  **NEW GATE ADDED (the genuinely missing piece), `_verify_enslaver_roaming_sweep` check 3c -
+  ADJACENCY ASSERTION:** `limitN` caps a **SLOT**, not a **RECORD**. If the Enslaver ever occupied
+  TWO name slots of the same pool, each would independently honour `limit=1` and the pool could
+  still surface him twice in one trigger - exactly Will's symptom, and invisible to every prior
+  check (they all read a single `enl_idx`). Each swept pool must now name him **exactly once**
+  across `name1..18` + `nameChampion1..18`.
+  **Not DB-expressible:** two *independent proxies* placed near each other. Proxy placement lives
+  in `Levels.arc`, and a multi-pool proxy picks exactly ONE pool per trigger (b38-proven), so pool
+  reachability says nothing about spatial adjacency. Post-b49 probability ~1e-7 per adjacent pair.
+- **(2) SPAWN RATE - CLOSED BY RULING R-18** (Will forbade a rate change on the roaming
+  frequency). Untouched. No action is the correct action.
+- **(3) MARAUDER TANKINESS - CLOSED, already fixed in `_create_enslaver`** with Will's report
+  quoted in the code: `defensiveLife 100 -> 40` (the named root cause - FULL vitality immunity),
+  `defensivePierce 80 -> 40`, `defensivePhysical 30 -> 12`, `characterLife 13k/18k/24k ->
+  10k/14k/18k`, **DPS deliberately untouched** (`handHitDamage` 300/380 - "increase strength,
+  never nerf"). Confirmed present in the shipped arz.
+  **Roster measurement** (`um_enslaver_marauder_99`, Champion, `charLevel [40,68,100]`): his
+  `armor_passive` ladder `78/226/468` is **level-appropriate and in-band** (78.9th / 78.5th /
+  91.6th percentile of 881 Champions; compare `svc_vashkarr_lance` at `charLevel 38/56/71` ->
+  `75/204/405`). The outlier is `characterLife` (**99.9th percentile** at Epic: 14000 vs Champion
+  median 584 / p90 2512) - the one axis the fix already cut.
+  **NEW GATE ADDED, `_verify_enslaver_roaming_sweep` check 0b:** nothing gated any of it, so a
+  later wave could quietly restore the wall. CEILINGS on `defensiveLife`/`defensivePierce`/
+  `defensivePhysical`/`characterLife` **and FLOORS** on `handHitDamageMin/Max`, so the two halves
+  of Will's ruling cannot drift apart (no re-walling, and no paying for a cut by gutting threat).
+- **⚠️ HONEST OPEN QUESTION -> BL-b91-DEBT-3 (needs Will, not code):** the sub-fix (3) change
+  landed AFTER Will's 2026-07-12 report and has **never been confirmed in-game**. At 14000 Epic
+  life he is still the 99.9th percentile Champion, four spawn at once, and they drop nothing.
+  Whether that now reads as "a killable elite" or still "a sponge" is a **playtest call, not a
+  data call** - b91 deliberately did NOT invent a second cut on top of a fix Will has not judged.
+  The new ceilings make any future cut a one-line change.
+- Report: `docs/reports/b91_debt_db.md` sec 5.
+
+**ORIGINAL REPORT (kept for the record):**
 
 ## BL-ENSLAVER-SPAWNS (Will 2026-07-12, tour finding #2, P1 balance - post-tour fix round)
 In EPIC's first combat area Will met TWO side-by-side "Toxeus the Murderer, Enslaver of
