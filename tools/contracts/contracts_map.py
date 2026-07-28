@@ -677,6 +677,12 @@ class Ctx:
         # inherited base/IT/XPack levels by PROVENANCE (a base level's GUID is in
         # this set); empty if the base map could not be loaded.
         self.base_level_guids = set()
+        # Per-level 0x05 placed-instance COUNT in the stock base map, keyed on the
+        # lowercased '/'-normalized level path. Feeds MAP-EMPTY-1 (a level that is
+        # populated in vanilla but ships EMPTY in ours = a depopulated level). Built
+        # in the SAME base-map pass that already runs here, so it costs the ~3s 0x05
+        # scan and NOT a second 30s decompress of the 685 MB base map.
+        self.base_level_pop = {}
         bg = cfg.get('base_game_dir')
         if bg:
             bg = Path(bg)
@@ -691,9 +697,14 @@ class Ctx:
                     bmap = Arc.from_file(blv).world_map()
                     bsecs = parse_top_sections(bmap)
                     self.base_quests = parse_quests(sec_bytes(bmap, bsecs, SEC_QUESTS))
-                    self.base_level_guids = set(
-                        lv['guid'] for lv in parse_level_index(
-                            sec_bytes(bmap, bsecs, SEC_LEVELS)))
+                    base_levels = parse_level_index(
+                        sec_bytes(bmap, bsecs, SEC_LEVELS))
+                    self.base_level_guids = set(lv['guid'] for lv in base_levels)
+                    for lv in base_levels:
+                        bb = bmap[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+                        _s, binsts = parse_0x05(bb)
+                        self.base_level_pop[
+                            lv['fname'].lower().replace('\\', '/')] = len(binsts)
                 except Exception:
                     self.base_quests = None
         # text keys (mod union base)
@@ -768,8 +779,35 @@ def _is_our_content(npath, blob_has_drxmap):
 # the oracle for the "restored area mislabeled with another zone's name" defect
 # (B-AREA-NAME-1). Derived from the shipped restored-area zone-tag families
 # (tagMZone*/tagBCX*/tagSP*/tagNewMZone*); extend when a new restored area is added.
+#
+# B-AREA-NAME-1 CLOSE-OUT AUDIT (2026-07-28, debt-map lane): the whole restored-area
+# label set was dumped out of the SHIPPED SD region list (tools/sd_format.py, round-trip
+# True on local/Levels_merged.arc: SD v6, env=213, region=294) and resolved against the
+# built Text.arc + base Text_EN.arc. All 10 restored-area regions resolve, and each one
+# names its OWN area - the Garden fix (tagMZoneGoM -> "Garden of Merchants", shipped in
+# build_text_arc.TEXT_FIX_TAGS) is live and no sibling inherited the same defect:
+#   BCXpassage/tagBCXpassage -> 'Mysterious Passage'      BCXcave/tagBCXcave -> 'Blood Cave'
+#   BCXtemple/tagBCXtemple  -> 'Temple of Eternal Love'   BCXwalkway -> 'Sanctuary of the Bloodborn'
+#   Duister/tagMZoneGoM     -> 'Garden of Merchants'      Dark Forest/tagSPDarkForest -> 'Dark Forest'
+#   tagSPRogueEncampment    -> 'Rogue Encampment'         JoLandia/tagJoLandia -> 'Jolandia'
+#   Olympian Arena/tagNewMZone1 -> 'Olympian Arena'
+#   The Obsidian Halls/tagSVCRegionObsidianHalls -> 'The Obsidian Halls'
+# Every one of them is registered below so the oracle covers the CLASS, not just the one
+# instance Will hit. NOTE the internal region NAME is SV's own (e.g. the Garden region is
+# internally called 'Duister'); only the DISPLAY tag is player-visible, so the oracle keys
+# on the tag. Also note 'The Obsidian Halls' is reachable through two tags (the b46r3
+# minted tagSVCRegionObsidianHalls plus the base tagRegionName144 slot) - both are asserted.
 RESTORED_ZONE_LABEL_EXPECT = {
-    'tagMZoneGoM': ('garden', 'merchant'),   # Garden of Merchants (currently -> "Duister")
+    'tagMZoneGoM': ('garden', 'merchant'),          # Garden of Merchants (was "Duister" - the bug)
+    'tagBCXcave': ('blood', 'cave'),                # Blood Cave
+    'tagBCXpassage': ('passage',),                  # Mysterious Passage
+    'tagBCXtemple': ('temple',),                    # Temple of Eternal Love
+    'tagBCXwalkway': ('sanctuary', 'bloodborn'),    # Sanctuary of the Bloodborn
+    'tagSPDarkForest': ('dark forest', 'forest'),   # Dark Forest (the Secret Place)
+    'tagSPRogueEncampment': ('rogue', 'encampment'),  # Rogue Encampment
+    'tagJoLandia': ('jolandia',),                   # JoLandia
+    'tagNewMZone1': ('olympian', 'arena'),          # Olympian Arena (Boss Arena)
+    'tagSVCRegionObsidianHalls': ('obsidian',),     # The Obsidian Halls (Uber Dungeon, b46r3)
 }
 
 
@@ -1647,6 +1685,131 @@ def contract_navmesh_coresidency(ctx):
     return v
 
 
+# --- MAP-EMPTY-1: depopulated-level regression guard ------------------------
+# A level that is POPULATED in the stock base game but ships with an EMPTY 0x05
+# placed-instance section in our map has lost every monster, prop, container and
+# NPC it ever had: geometry and navmesh intact, world empty. Nothing in the build
+# should ever produce that, so any NEW member of this set is a build regression.
+#
+# The 34 entries below are the DONOR-INHERITED baseline, frozen 2026-07-28 from a
+# three-way census (vanilla vs ours vs our own build history). They are NOT ours to
+# fix here and are NOT a regression: the identical 34 levels, at byte-identical blob
+# sizes, are empty in EVERY map we have ever built (build19-baseline, build30-
+# canonical, Levels_deployed_prev and current are set-identical), so the depopulation
+# arrives in the SVAERA AE base map our merge takes as its donor - our pipeline never
+# touches these levels. Confirming that against the donor arc needs SVC_SVAERA_ARC
+# (unset in this environment), so attribution is recorded, not closed: see
+# BL-DEBT-EMPTYLVL-1 in docs/BACKLOG.md.
+#
+# RETIREMENT PROTOCOL: do NOT delete entries to make the gate green. An entry leaving
+# this set means a level GAINED its entities back, which is a real change that must be
+# reviewed and re-frozen deliberately (the gate reports it rather than silently passing).
+DONOR_DEPOPULATED_LEVELS = {
+    # level path (lowercased, '/'-normalized)                       : vanilla 0x05 count
+    'xpack2/levels/celticheartlands/underground/hercynianforest03_cave.lvl': 257,
+    'xpack2/levels/primrose/delphiactorstemple.lvl': 24,
+    'xpack2/levels/primrose/primrosegrid01.lvl': 1778,
+    'xpack4/levels/act1/underground/devcave01.lvl': 314,
+    'xpack4/levels/act1/underground/devcave02.lvl': 221,
+    'xpack4/levels/act1/underground/devcave03.lvl': 245,
+    'xpack4/levels/act1/underground/devcave04.lvl': 215,
+    'xpack4/levels/act1/underground/devcave05.lvl': 117,
+    'xpack4/levels/act1/underground/devcave06.lvl': 8,
+    'xpack4/levels/act1/underground/devcave07.lvl': 9,
+    'xpack4/levels/act1/underground/devcave08.lvl': 7,
+    'xpack4/levels/act1/underground/devcave09.lvl': 13,
+    'xpack4/levels/act1/underground/devcave12.lvl': 1,
+    'xpack4/levels/act1/underground/devcave13.lvl': 11,
+    'xpack4/levels/act2/12thqlandia/dathq01.lvl': 25,
+    'xpack4/levels/act2/12thqlandia/dathq02.lvl': 24,
+    'xpack4/levels/act2/12thqlandia/dathq03.lvl': 31,
+    'xpack4/levels/act2/12thqlandia/dathq04.lvl': 23,
+    'xpack4/levels/act2/12thqlandia/dathq05.lvl': 233,
+    'xpack4/levels/act2/12thqlandia/dathq06.lvl': 175,
+    'xpack4/levels/act4/underground/devmaze01.lvl': 145,
+    'xpack4/levels/act4/underground/devmaze02.lvl': 147,
+    'xpack4/levels/act4/underground/devmaze03.lvl': 145,
+    'xpack4/levels/act4/underground/devmaze04.lvl': 144,
+    'xpack4/levels/act4/underground/devmaze05.lvl': 157,
+    'xpack4/levels/act4/underground/devmaze06.lvl': 147,
+    'xpack4/levels/act4/underground/devmaze07.lvl': 144,
+    'xpack4/levels/act4/underground/devmaze08.lvl': 171,
+    'xpack4/levels/act4/underground/devmaze09.lvl': 169,
+    'xpack4/levels/act4/underground/devmaze10.lvl': 135,
+    'xpack4/levels/act4/underground/devmaze11.lvl': 145,
+    'xpack4/levels/act4/underground/devmaze12.lvl': 134,
+    'xpack4/levels/act4/underground/devmaze13.lvl': 148,
+    'xpack4/levels/act4/underground/devmaze14.lvl': 169,
+}
+
+
+def scan_depopulated_levels(levels, blob_of, base_pop):
+    """Levels populated in the stock base map but EMPTY in ours.
+
+    Returns [{'level','base_count'}, ...] for every shared level whose base 0x05
+    instance count is > 0 and whose count in OUR map is 0. Pure function so the
+    negative test can drive it with synthetic inputs.
+    """
+    out = []
+    for lv in levels:
+        key = lv['fname'].lower().replace('\\', '/')
+        bc = base_pop.get(key, 0)
+        if bc <= 0:
+            continue
+        _s, insts = parse_0x05(blob_of(lv))
+        if not insts:
+            out.append({'level': key, 'base_count': bc})
+    return out
+
+
+def contract_depopulated_levels(ctx):
+    """(11) MAP-EMPTY-1: no level may ship with its entire placed-entity set gone.
+
+    A level present in both the stock base game and our map, populated there and
+    EMPTY here, has lost every monster / prop / container / NPC while keeping its
+    geometry and navmesh - a silently empty world the player can still walk into.
+    34 such levels are inherited from the SVAERA AE donor map and are frozen in
+    DONOR_DEPOPULATED_LEVELS; ANY level outside that inventory is a build regression
+    introduced by our own pipeline. Discovered 2026-07-28 while closing
+    RESPAWN-GREECEUG02, whose "missing respawn shrine" turned out to be one entity of
+    257 lost in a wholly depopulated level."""
+    if not ctx.base_level_pop:
+        # Fail loud, never pass blind (same law as MAP-NAV-4): without the stock map
+        # there is no baseline to compare against.
+        return [V('MAP-EMPTY-1', 'P1', '(base-game Levels.arc unavailable)',
+                  'cannot verify depopulated levels: the stock base-game Levels.arc was '
+                  'not loaded, so the vanilla population baseline is unknown - failing '
+                  'loud rather than passing blind',
+                  'set cfg base_game_dir to the TQAE install (Resources/Levels.arc)')]
+    v = []
+    found = scan_depopulated_levels(ctx.levels, ctx.blob, ctx.base_level_pop)
+    found_keys = set(c['level'] for c in found)
+    for c in sorted(found, key=lambda c: -c['base_count']):
+        if c['level'] in DONOR_DEPOPULATED_LEVELS:
+            continue
+        v.append(V('MAP-EMPTY-1', 'P1', c['level'],
+                   'level ships with an EMPTY 0x05 placed-instance section but is '
+                   'populated in the stock base game: every monster, prop, container '
+                   'and NPC is gone while the geometry and navmesh remain (a silently '
+                   'empty world the player can still enter)',
+                   f'base-game 0x05 instances={c["base_count"]}, ours=0; not in the '
+                   f'frozen DONOR_DEPOPULATED_LEVELS inventory of '
+                   f'{len(DONOR_DEPOPULATED_LEVELS)} donor-inherited levels, so this is '
+                   f'a regression introduced by our build'))
+    # The inventory is a frozen baseline, not a mute button: a level that RECOVERED its
+    # entities must be re-frozen deliberately rather than drifting silently.
+    for key in sorted(set(DONOR_DEPOPULATED_LEVELS) - found_keys):
+        if key not in ctx.base_level_pop:
+            continue
+        v.append(V('MAP-EMPTY-1', 'P2', key,
+                   'level is in the frozen DONOR_DEPOPULATED_LEVELS inventory but is no '
+                   'longer depopulated: it regained its placed entities. This is likely '
+                   'good news, but the inventory must be re-frozen deliberately',
+                   'remove it from DONOR_DEPOPULATED_LEVELS in the same commit that '
+                   'explains why it came back'))
+    return v
+
+
 # ============================================================================
 # Section 7: metadata, whitelist, runner, CLI
 # ============================================================================
@@ -1746,6 +1909,19 @@ CONTRACTS = [
                      'champion, never THAT boss). egg_blooddragon was the only pool in 51k '
                      'records making a Boss the SOLE champion entry - docs/reports/'
                      'b91_devourer_chest_spawn.md.'},
+    {'id': 'MAP-EMPTY-1', 'name': 'no silently depopulated levels',
+     'asserts': 'no level that is populated in the stock base game ships with an EMPTY '
+                '0x05 placed-instance section, except the 34 donor-inherited levels '
+                'frozen in DONOR_DEPOPULATED_LEVELS.',
+     'derived_from': 'every playable base-game level carries placed entities; an empty '
+                     '0x05 with an intact 0x0b navmesh is a level whose monsters, props, '
+                     'containers and NPCs were all dropped while the geometry survived '
+                     '(found 2026-07-28 closing RESPAWN-GREECEUG02: the "missing respawn '
+                     'shrine" was 1 of 257 entities lost in a fully depopulated '
+                     'HercynianForest03_Cave). The 34-level baseline is set-identical and '
+                     'blob-size-identical across build19 / build30 / deployed_prev / '
+                     'current, so it is inherited from the SVAERA AE donor, not produced '
+                     'by our build - see BL-DEBT-EMPTYLVL-1.'},
 ]
 
 _CONTRACT_FUNCS = [
@@ -1753,6 +1929,7 @@ _CONTRACT_FUNCS = [
     contract_doors, contract_sd_tags, contract_placed_refs,
     contract_bloodcave_placed, contract_zone_overrides,
     contract_navmesh_coresidency, contract_chest_guard,
+    contract_depopulated_levels,
 ]
 
 

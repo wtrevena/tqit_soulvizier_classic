@@ -187,6 +187,78 @@ return-to-origin on the new interior NPC) can be applied identically. Not attemp
 it requires a map placement, out of scope for a quest/text-only lane and risky to attempt without
 a paired return (the exact P0-A "no way back" bug class).
 
+### UPDATE 2026-07-28 (MURDERBOSSROOM-NPC, debt-map lane): the MAP-SIDE BLOCKER IS RESOLVED
+
+**Status: the navmesh-verified landing this follow-up was waiting on now EXISTS and is gated.
+The feature itself is NOT shipped** - it still needs a cross-lane wave (new arz record + new Text
+tags + quest wiring + a two-variant map rebuild) and Will's walk test. Nothing was half-wired: no
+enter-offer exists without its paired return, because neither was written yet.
+
+**Survey (read-only, against the canonical build `local/Levels_merged.arc`).**
+`XPack/Levels/Secret_Place/murderbossroom.lvl`, v0x0e SV-only, blob 111,817 B, grid corner
+`(-3592, 0, -5955)`, `0x05` = 16 instances, `0x14` count = 0, `0x0b` present (70,910 B).
+The navmesh is healthy and trivially simple: cs=0.2, **80,608 walkable cells, exactly ONE connected
+component in all 3 tilesets** (Normal/Epic/Legendary identical), so there is no
+reachability-partition risk at all. The level is a single N-S corridor with everything on the
+x≈48-60 band: urn + `zzz_theunderlord` egg at local z=10.8, archway + `tj_portcullis02` at z=24,
+the `murderbunny` crow boss at z=34, the `trg_portcullis01_trizzappedbiatch` trigger at z=55,
+archway + `tj_portcullis01` at z=72, statues at z=79-91.
+
+**Chosen pair (both surveyed on-mesh d=0.14u, clearance 100% at ext=3.0, component #1 of 1, all 3
+tilesets):**
+
+| role | level-local | world | notes |
+|---|---|---|---|
+| enter-offer LANDING | `(54.0, 3.0, 18.0)` | `(-3538, 3, -5937)` | arrival point, entrance end |
+| interior RETURN NPC | `(51.0, 3.0, 16.0)` | `(-3541, 3, -5939)` | 3.61u off the landing |
+
+3.61u reproduces the proven `svc_testhub_return_sparta`/`_uber` "~3u off the landing so the player
+sees the return NPC on arrival" pattern, and **both sit 16-18u from the murderbunny boss set-piece**
+- deliberately outside it, which is the whole point of the b44 deadly-landing lesson.
+
+**GATE PROOF - `tools/debug/gate_landing_clearance.py` (G-LAND), run with the interior NPC supplied
+as a PLANNED placement so the landing is gated against an entity that is not on the map yet:**
+
+```
+[PASS] enter_murderbossroom world=(-3538, 3, -5937) tag=tagSVCEnterMurderBossRoom
+    -> XPack/Levels/Secret_Place/murderbossroom.lvl v0x0e local=(54.0,18.0) (+1 planned)
+    nav: N:d=0.14/clr=100%  E:d=0.14/clr=100%  L:d=0.14/clr=100%  comp#1/80608  on-mesh
+      d=  3.61u  npc       svc_area_return_murder.dbr    local=(51.0,16.0) [PLANNED]
+      d=  6.00u  prop      tj_archway01.dbr              local=(54.0,24.0)
+      d=  7.24u  prop      tj_urngrounded01.dbr          local=(53.9,10.8)
+      d= 16.00u  other     murderbunny.dbr               local=(54.0,34.0)
+    => clear + on-mesh
+SUMMARY  PASS=1        GATE G-LAND: PASS
+```
+
+Every per-class threshold is cleared with margin (`prop>=2.5u`, `npc>=2.0u`, `monster/proxy>=3.0u`,
+`container>=4.0u`; nothing is inside the 1.5u PIN radius).
+
+**Remaining work to actually ship it (mechanical, but genuinely cross-lane + walk-test-gated):**
+1. **DB lane** - `apply_svc_patches.py`: clone one new boat-dialog NPC record
+   `records\quests\svc_area_return_murder.dbr` from the Knossos boatman donor, exactly as
+   `_create_helos_traveler_hub` does for the other area returns. **WARDEN LAW: it must be a
+   DISTINCT record placed EXACTLY ONCE** (a boat-dialog record placed in >1 level binds its menu
+   to one entity and the rest go mute).
+2. **Text** - mint `tagSVCEnterMurderBossRoom` (enter-offer menu label, e.g. "Enter the Secret
+   Place bosses' room" - final wording is Will's, amgoz1 creative bar applies) and
+   `tagSVCReturnToDarkForest` (return-to-origin label), alongside the existing 4 b62 tags.
+3. **Map lane** - one `INJECT_SPECS` entry:
+   `'xpack/levels/secret_place/murderbossroom.lvl': [(SVC_AREA_RETURN_MURDER_DBR, 51.0, 3.0, 16.0)]`.
+   Host is v0x0e SV-only -> routes through `inject_into_sv_only_blob`, flags=0, identity rot, no
+   `0x14` - the same path `svc_testhub_return_sparta` (spartacryptlevel2) already uses. This applies
+   to BOTH variants (canonical uses `INJECT_SPECS` directly).
+4. **Quest lane** - `build_quest_files.py`: add
+   `(r'records\quests\svc_testhub_return_secret.dbr', (-3538, 3, -5937), 'tagSVCEnterMurderBossRoom')`
+   to `TRAVELER_ENTER_OFFERS` (the darkforestenter-side traveler, placed at local `(27,1,30)`),
+   and give the new interior NPC a return-to-origin menu pointing back at the Secret Place origin
+   `(-2396, 2, -5790)` plus Helos - identical to the sparta/uber round trip.
+   **NEVER commit step 4 without step 3 in the same commit** (the P0-A "no way back" class).
+5. **Gates + build** - `gate_doors_hub`, `gate_travel_npc_invariants` T1-T6,
+   `verify_merged_bc_navmeshes` 24/24, `run_contracts.py --only map`, re-run G-LAND against the
+   REBUILT map, and a blob-diff proving exactly `murderbossroom` changed (+1 instance) with every
+   navmesh byte-identical. Then Will's walk test **before** the canonical/Steam ship.
+
 ## Canonical-ship note for Will
 
 `svc_testhub_return_sparta`/`_uber` are placed on **both** canonical and TESTHUB (they were

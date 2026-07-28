@@ -133,6 +133,24 @@ class ClusterConfig:
                                     #   level's GUID from their side, so the cross-level region
                                     #   flip is provided from the neighbour - whether the seam
                                     #   still WALKS is a runtime walk-test question (b87 sec 6-8).
+                                    #
+                                    #   ** PROVENANCE - KEEP DECISION, DO NOT "FIX" THIS AWAY **
+                                    #   (BL-b89-DEBT-4B, 2026-07-28). The b87 THEORY that motivated
+                                    #   this collapse (navOK=0 as a rejection signal) was later
+                                    #   REFUTED by the 2026-07-27 runtime captures - navOK=0 is the
+                                    #   normal in-progress state, and the real crash class was
+                                    #   malformed container BODIES (now gated by MAP-NAV-5/-6, and
+                                    #   the ocean_extension05 hotfix that Will CONFIRMED in-game
+                                    #   2026-07-27). The single-own-GUID form is nevertheless
+                                    #   RETAINED as stock-normal (251 base-game levels ship exactly
+                                    #   this shape; MAP-NAV-6 explicitly treats it as compliant),
+                                    #   harmless, and walk-test-confirmed at build48/49. Reverting
+                                    #   would cost a full map rebuild plus a fresh walk test for
+                                    #   ZERO player benefit, so it stays: originally motivated by a
+                                    #   since-refuted premise, kept on its own merits. A future map
+                                    #   lane must NOT remove this entry as "unjustified" - that is
+                                    #   the decision, already taken.
+                                    #
                                     #   Membership must resolve to a generated cluster level
                                     #   (asserted in run_cluster) so a typo fails loud.
 
@@ -153,6 +171,16 @@ R09_KEY = 'levels/world/orient/underground/random09a.lvl'
 # absent navmesh (Engine RVA 0x20e270). Collapsing it to a single-own-GUID navmesh makes it
 # load in isolation. Round 1 fixes THIS chamber only (one variable for Will's walk test);
 # drxBC3 + RogueEncampment stay registered debt until fix A verifies in-game.
+#
+# STATUS 2026-07-28 (BL-b89-DEBT-4B, debt-map lane): the "Frida-probe-PROVEN crash" premise
+# above is SUPERSEDED - the 2026-07-27 runtime captures refuted navOK=0 as a rejection signal,
+# and the real blood-cave crash was the malformed 148-byte ocean_extension05 container (b89,
+# Will confirmed the fix in-game: "the blood cave crash that was occurring is fixed"). The
+# collapse below is RETAINED anyway as stock-normal + walk-test-confirmed at build48/49; see
+# the own_guid_only_keys KEEP DECISION block above and docs/reports/b87_bloodcave_navok_rca.md
+# sec 10a. Do not revert it. Do NOT extend fix A to drxBC3 / RogueEncampment on the old
+# premise either - that half of BL-b89-DEBT-4 (re-justify or retire MAP-NAV-4 + its
+# 2-chamber whitelist) is still OPEN and is a separate decision.
 NEW_SECRETDOOR_KEY = 'levels/world/xbloodcave/new_secretdoor_transitionhallway.lvl'
 BLOODCAVE = ClusterConfig(
     name='bloodcave',
