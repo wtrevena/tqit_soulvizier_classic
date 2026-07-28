@@ -369,3 +369,19 @@ rationale (sec 10's closing "If clean, extend fix A to drxBC3 and RogueEncampmen
 (stock-normal, 251 base levels)"); `run_contracts.py --only map` against the live artifacts
 (`local/Levels_merged.arc`, `work/.../Text.arc`, `work/.../SoulvizierClassic.arz`) = 17 contracts,
 0 P0 / 0 P1 / 3 P2 (pre-existing base-game portal noise only), GATE: PASS.
+
+**Independent confirmation that fix A is genuinely LIVE in the shipped map** (i.e. this section is
+describing reality, not intent): the `0x0b` section of
+`Levels\World\xBloodCave\new_secretdoor_transitionhallway.lvl` inside `local/Levels_merged.arc`
+measures **157,898 B** with magic `REC\x02` - exactly the post-collapse size sec 10 recorded
+("158011 -> 157898 B").
+
+**Incidental finding, pre-existing, NOT introduced here - stale local donor cache.**
+`tools/verify_merged_bc_navmeshes.py` currently reports **23/24** with
+`FAIL (1): ['new_secretdoor_transitionhallway']` on this machine. That is a **stale-donor-cache
+artifact, not a map defect**: `local/editor_normalized/new_secretdoor_transitionhallway.lvl.0b.bin`
+on disk is the **158,011 B build47 (PRE-collapse) donor dated Jul 7**, so the verifier's
+map-vs-donor byte compare is measuring the map's correct build48 navmesh against a superseded
+cached donor. `tools/gen_bc_navmeshes.py` regenerates the donor WITH the collapse applied, so a
+normal rebuild self-corrects; the cache on this machine simply predates build48. A map lane that
+sees this 23/24 should refresh the donor cache first and not "fix" the map.
