@@ -1,6 +1,16 @@
 # b91 - DEBT CLEARANCE LANE: domain `db` (5 deferred backlog items)
 
 **Branch** `fix/debt-db` (worktree `.claude/worktrees/debt-db`, base `main` @ `89d3e52` = post-b90/build49)
+
+> **INTEGRATION NOTE (verification pass, 2026-07-28).** `main` has since advanced 8 commits past this
+> lane's base (workshop cover/changenote, PERMISSIONS amgoz1 grant, crash-probe hardening, and the
+> parallel **devourer-chest** lane's merge `afaabb0`). A `git merge-tree main fix/debt-db` test-merge
+> reports **exactly one conflict, and it is docs-only: `docs/BACKLOG.md`** (both lanes appended to the
+> top status block). `tools/apply_svc_patches.py`, `docs/WILL_RULINGS.md` and everything else
+> **auto-merge cleanly** - the two lanes touch disjoint regions of `apply_svc_patches.py`. This lane
+> deliberately did NOT merge main in, so that every number in this report stays attributable to it
+> alone against the `c1a8fa2a` baseline. The orchestrator should expect that single BACKLOG.md
+> conflict at integration and re-run the build after resolving it.
 **Date** 2026-07-28
 **Scope** DB only (`.arz` + `Text.arc`). NO map rebuild, NO deploy, NO Steam. `Levels.arc` /
 `Quests.arc` untouched and hash-proven.
@@ -490,18 +500,47 @@ PASS
 
 ### Contract suite - the STRICTLY NEGATIVE delta B-FX-DANGLING-1 required
 
-Identical command over the pre-change baseline arz vs the built arz:
+Identical command over the pre-change baseline arz vs the built arz
+(`py tools/contracts/run_contracts.py --only resources,souls,summons --arz <arz> --in-process`):
 
 | module | BASELINE | BUILT | delta |
 |---|---|---|---|
-| `contracts_souls` | 0 P0 / 0 P1 / 0 P2 | 0 P0 / 0 P1 / 0 P2 | 0 |
-| `contracts_summons` | 0 P0 / 0 P1 / 112 P2 | 0 P0 / 0 P1 / 112 P2 | 0 |
-| `contracts_resources` | 0 P0 / **1252 P1** / **3541 P2** | 0 P0 / **1157 P1** / **3461 P2** | **-95 P1, -80 P2** |
-| **TOTAL** | **4905** (0 P0, 1252 P1, 3653 P2) | **4730** (0 P0, 1157 P1, 3573 P2) | **-175, all negative** |
+| `contracts_souls` | 0 (0 P0 / 0 P1 / 0 P2) | 0 (0 P0 / 0 P1 / 0 P2) | 0 |
+| `contracts_summons` | 112 (0 P0 / 0 P1 / 112 P2) | 112 (0 P0 / 0 P1 / 112 P2) | 0 |
+| `contracts_resources` | **4794** (0 P0 / **1252 P1** / **3542 P2**) | **4618** (0 P0 / **1157 P1** / **3461 P2**) | **-176** (-95 P1, -81 P2) |
+| **TOTAL** | **4906** (0 P0, 1252 P1, 3654 P2) | **4730** (0 P0, 1157 P1, 3573 P2) | **-176, all negative** |
 
-`C-RES-DBR-1` alone drops **768 -> 673** (-95) - the dangling `.dbr` refs this lane removed. **0 P0
-in both, and not a single violation class went UP.** The residual `contracts_resources` FAIL is the
-pre-existing volume already registered as BL-b90-DEBT-1; this lane reduced it and did not cause it.
+**0 P0 in both, and not a single violation class went UP.** The residual `contracts_resources` FAIL is
+the pre-existing volume already registered as BL-b90-DEBT-1; this lane reduced it and did not cause it.
+
+> Figures above are the INDEPENDENTLY RE-MEASURED ones (verification pass, 2026-07-28). An earlier
+> draft of this report recorded the baseline as 4905 / 3653 P2 and the delta as -175; the re-run
+> measures the baseline at **4906 / 3654 P2** and the delta at **-176**. The built-arz side and the
+> direction of every class are unchanged; the one-count baseline correction is recorded rather than
+> quietly overwritten.
+
+### DETERMINISM PROOF
+
+**Three** independent full builds of the same tree, same env (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`),
+produced a **byte-identical** arz - the third from a cold process in a separate verification pass:
+
+```
+22cf6b6e7acb940e5a4698d079ab1955  run 1
+22cf6b6e7acb940e5a4698d079ab1955  run 2
+22cf6b6e7acb940e5a4698d079ab1955  run 3  (independent verification pass, exit 0)
+```
+
+The verification pass also re-derived, from scratch, the record-diff histogram (4 added / 0 removed /
+184 modified; 177 `particleEffectName2` + 176 `particleEffectName3` + 3 `itemSkillName` + 3
+`itemSkillLevel` + 2 `chanceToEquipFinger2` + 1 `skillName1` + 1 `bumpTexture` = 363 field changes,
+**7 field names, zero surprises**), the two live R-42 movers (`um_legion_28c`,
+`um_possessedboar_spirit`, both `[66.0] -> [50.0]`), both new `verify()` hooks, the registry order
+hash, `verify_soul_drop_rates --gate` (incl. all 5 R-42 negative-test cases), and the contract delta.
+
+Combined with the baseline reproducing b90's shipped arz exactly, the whole pipeline is
+reproducible on this machine and both new modules are fixed points (no wall-clock, no `random`, no
+hash-ordered iteration; a re-run of `fx_dangling_cleanup` finds 0 remaining Chris slots and
+`emberteeth_summon` fails loud rather than double-wiring).
 
 ### Hashes
 

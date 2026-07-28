@@ -1,7 +1,7 @@
 """fx_dangling_cleanup - B-FX-DANGLING-1 + BLOODHOUND-DYINGFX hygiene sweep.
 
 WHY THIS EXISTS (docs/BACKLOG.md P2 "B-FX-DANGLING-1", P0 CRASH PINNED block
-"HYGIENE" line; docs/reports/b91_fx_dangling.md)
+"HYGIENE" line; docs/reports/b91_debt_db.md)
 ----------------------------------------------------------------------------
 Two dangling-reference debts were filed off the build30 delta vet and the
 2026-07-12 crash triage and then orphaned when their parent lanes moved on.
@@ -72,8 +72,10 @@ positives of a mod-only scan).
 Since there is nothing left to repoint, this module ships the **permanent gate**
 the debt never had: `verify()` fails the build loud if ANY record's `dyingFxPak`
 stops resolving against the union. That converts a one-shot cleanup into an
-invariant, so the class cannot silently return. A planted-regression negative
-test lives in `tools/verify_fx_refs.py --self-test`.
+invariant, so the class cannot silently return: it resolves against the UNION
+of the mod arz and the base-game DB, and where the base DB is unavailable
+(scratch/determinism layouts) it DOWNGRADES to a mod-only check with a loud note
+rather than skipping (cf. B-GATE-HARDEN-1 - no silent skip).
 
 --- ITEM 3: supra wep_spear bumpTexture (finishing build30 F3) ----------------
 
@@ -92,10 +94,13 @@ dangling Chris slots and strips nothing - the module is a fixed point.
 
 SCOPE PROOF
 -----------
-`apply()` snapshots every record's full field-key set before and after its own
-writes and `SystemExit`s unless the changed set is exactly the intended one
-(the Chris-bearing records + wep_spear) and the only keys that changed are the
-whitelisted ones. Nothing else in the arz can move under this module.
+`apply()` snapshots every record's EMITTED field-key set (the keys
+`_encode_fields` will actually write - a key whose `values` list is empty is
+already absent from the built record) before and after its own writes, and
+`SystemExit`s unless the changed set is exactly the intended one (the
+Chris-bearing records + wep_spear). Nothing else in the arz can move under this
+module. Comparing raw key sets instead of emitted ones is what produced 148
+phantom "unintended" records in round 2 - the predicate must match both sides.
 """
 import sys
 from pathlib import Path
@@ -111,8 +116,9 @@ _CHRIS_REF = r'records\sandbox\chris\unarmedprojectile_fx01.dbr'
 # Only these field families are ever touched.
 _NAME_PREFIX = 'particleEffectName'
 
-# build30 F7a already stripped these three; listed so apply() can assert the two
-# fixes agree instead of silently double-handling them.
+# build30 F7a targets these three. They are B-SOUL-PROC-2 clones re-minted AFTER
+# F7a runs, so they arrive here carrying the ref again; apply() reports the
+# re-mint count loudly every build (see the F7a note in the module docstring).
 _F7A_RECORDS = (
     r'records\skills\soulskills\pcsafe\arachne_venomspray.dbr',
     r'records\skills\soulskills\pcsafe\hero_sonicwave.dbr',
@@ -129,6 +135,14 @@ _FX_REF_FIELDS = ('dyingFxPak',)
 
 def _norm(s):
     return str(s).replace('/', '\\').lower().strip()
+
+
+def _one(db, rec, field):
+    """First value of a field, '' when absent/empty (arz fields are value LISTS)."""
+    v = db.get_field_value(rec, field)
+    if isinstance(v, list):
+        return v[0] if v else ''
+    return v or ''
 
 
 def _emitted_keys(fields):
@@ -319,18 +333,15 @@ def verify(db, tags):
                     if 'drxcreatures\\bloodhound\\' in _norm(n)
                     and _norm(n).split('\\')[-1].startswith(('b_bloodhound_',
                                                              'c_bloodhound_')))
-    bad = [h for h in hounds if _norm(db.get_field_value(h, 'dyingFxPak')
-                                      if not isinstance(
-                                          db.get_field_value(h, 'dyingFxPak'), list)
-                                      else (db.get_field_value(h, 'dyingFxPak')
-                                            or [''])[0]) != _norm(BURST)]
+    bad = [(h, _one(db, h, 'dyingFxPak')) for h in hounds
+           if _norm(_one(db, h, 'dyingFxPak')) != _norm(BURST)]
     if len(hounds) != 6 or bad:
         raise SystemExit(
             "fx_dangling_cleanup.verify FAIL: expected exactly 6 summoned-"
             f"bloodhound bodies all on {BURST}; found {len(hounds)} "
             f"({[Path(h).name for h in hounds]}), off-target: {bad}")
 
-    if _norm(db.get_field_value(_SPEAR, 'bumpTexture') or ''):
+    if _one(db, _SPEAR, 'bumpTexture'):
         raise SystemExit(
             "fx_dangling_cleanup.verify FAIL: wep_spear.bumpTexture came back "
             "(build30 F3 DRX-skin strip).")

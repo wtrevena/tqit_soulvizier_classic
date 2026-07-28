@@ -19,6 +19,8 @@ added records are the 3 Emberteeth pets + his summon skill.
 **byte-identical to the arz b90 shipped**. The whole pipeline reproduces exactly, so every diff is
 attributable to this lane alone.
 
+**DETERMINISM:** two independent full builds -> byte-identical arz `22cf6b6e7acb940e5a4698d079ab1955`.
+
 **GATES:** registry OK (35 modules) | B-SUMMON-1 summon-pet validator PASS | A7 golden PASS (84
 waived) | A9 render chain PASS | b77 unlock-alignment PASS | F2 summons contract GATE PASS (0 P0 /
 0 P1 / 112 P2) | `validate_tags` PASS (357/357 referenced, 418/418 authoritative) |
@@ -26,8 +28,8 @@ waived) | A9 render chain PASS | b77 unlock-alignment PASS | F2 summons contract
 
 **CONTRACT DELTA (the strictly-negative gate B-FX-DANGLING-1 required):** identical command over the
 baseline vs the built arz - souls 0/0/0 both; summons 0 P0 / 0 P1 / 112 P2 both; **resources
-1252 P1 -> 1157 P1 and 3541 P2 -> 3461 P2**; total **4905 -> 4730**. `C-RES-DBR-1` alone drops
-768 -> 673. **0 P0 in both and not a single violation class went UP.** The residual
+4794 -> 4618 (1252 P1 -> 1157 P1, 3542 P2 -> 3461 P2)**; total **4906 -> 4730 (-176)**.
+**0 P0 in both and not a single violation class went UP.** The residual
 `contracts_resources` FAIL is the pre-existing volume already filed as BL-b90-DEBT-1 - this lane
 reduced it, it did not cause it.
 
