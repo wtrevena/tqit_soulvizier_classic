@@ -1,5 +1,66 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD50-DEV GATE RECORD - b90 Toxeus champion souls -> 100% drop (2026-07-27, branch `feat/toxeus-souls-100`, tag `build50-dev`)
+
+**R-48, Will 2026-07-27, verbatim:** "increase the drop rate for the souls of toxeus the murderer,
+enslaver of souls and toxeus the murderer, devourer of blood to 100%"
+
+DB-ONLY lane (arz + Text coupled pair). **NO map rebuild** - `Levels.arc` + `Quests.arc` byte-identical
+before vs after. Full report: `docs/reports/b90_toxeus_souls_100pct.md`.
+
+**RECORDS TOUCHED (exactly 2, one field each - record-diff vs `local/baseline_build47.arz`: 0 added,
+0 removed, 2 changed):**
+- `records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr` `chanceToEquipFinger2` **66.0 -> 100.0**
+- `records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr` `chanceToEquipFinger2` **25.0 -> 100.0**
+
+**IMPLEMENTATION:** new registry module `tools/patches/toxeus_souls_100.py`, registered LAST among
+content modules (before `visuals`) so it is the ratified final registry writer of that field on the
+two champions. Deterministic + idempotent; `apply()` carries a roster-wide SCOPE PROOF (fails loud
+unless exactly those 2 of 3629 creature records moved); `verify()` re-asserts 100 on the FINAL merged
+arz in `run_registry_verifies()` and fails the build loud otherwise. Holds under
+`SVC_RELEASE_DROPS=1` (what ships) - it does NOT rely on `_force_100_pct_soul_drops` (testing-only).
+The shared classifier `soul_drop_rate()` and the Hero/Boss/Quest gate in `wire_souls_to_monsters` are
+**untouched** (yeti Common/Champion lesson respected; both champions are `Boss`). Gate ground-truth
+updated in `tools/verify_soul_drop_rates.py` (`_KNOWN_EXCEPTIONS` + spot tests, both -> 100.0 with the
+R-48 rationale). Registry order hash `9bca0f20fd87c7dade8562c27914f73372e38aab13cb4c08dd93fba44d5624fe`
+(33 modules).
+
+**LEDGER:** `docs/WILL_RULINGS.md` R-48 IMPLEMENTED b90; **R-42** ("random 50 / placed 66 / boss 25")
+marked PARTIALLY SUPERSEDED for these two records only - every other rate proven unchanged.
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`):
+
+| artifact | md5 |
+|---|---|
+| `work/.../Database/SoulvizierClassic.arz` NEW | `c1a8fa2aee5e6eb88b641b28d7dc6ae4` |
+| `work/.../Resources/Text.arc` (rebuilt from the BUILD-EMITTED `uber_soul_tags.txt`; bytes unchanged, no tag changed) | `fcca49277b9d31ed451e4a6843898843` |
+| `work/.../Database/uber_soul_tags.txt` (build-emitted) | `49b6d85ba15236aa5df60f610e3a7bf0` |
+| baseline arz (pre-change, `local/baseline_build47.arz`) | `5a3c016baae8f136b8b801ea871b71ba` |
+| `work/.../Resources/Levels.arc` BEFORE == AFTER | `17bed65ff9299a3398131025b4bfcfb3` |
+| `work/.../Resources/Quests.arc` BEFORE == AFTER | `5e664c7b190965fd69f6ff15d77d85e4` |
+
+**GATES:** DB build exit 0, every fail-loud invariant green (soul-leak / soul-augment / supra-ref /
+tags / spawn-eligibility / A7 golden 84 waived 0 other / A9 render-chain / b77 unlock-alignment / F2
+summons contract). `validate_tags` **PASS** (356/356 referenced, 417/417 authoritative).
+`verify_soul_drop_rates --gate` **PASS** (exit 0; spot tests both champions arz=100.0;
+intended-diff-vs-golden 380 deltas / 380 documented / **0 UNINTENDED**; testing-forcer survival 850
+enabled -> 100, **428 gated stay 0**; planted-stomp negtest CAUGHT). Registry verify hook
+**`toxeus_souls_100 verify OK`**. Contracts `--only souls,summons,resources`: souls **0 P0/0 P1/0 P2**,
+summons **0 P0/0 P1**, resources 1252 P1 **PRE-EXISTING** (identical violation set on the pre-change
+baseline arz: 4904 both, 0 only-in-built, 0 only-in-baseline) - see BL-b90-DEBT-1.
+
+**DEPLOYED to DEV** (`CustomMaps\SoulvizierClassicDEV`), coupled arz + Text pair only; backup
+`local/db_backups/SoulvizierClassicDEV_pre-b90_5a3c016b.arz`:
+- `Database/SoulvizierClassicDEV.arz` = `c1a8fa2aee5e6eb88b641b28d7dc6ae4` (**== built**)
+- `Resources/Text.arc` = `fcca49277b9d31ed451e4a6843898843` (**== built**)
+- `Resources/Levels.arc` = `943d0ab9516d332db79bd7f9fd2d3ffe` (**UNTOUCHED**, still build49)
+- `Resources/Quests.arc` = `5e664c7b190965fd69f6ff15d77d85e4` (**UNTOUCHED**)
+
+Deployed-arz re-probe: both champions cls=Boss chance=**100.0** with their 3 soul tiers;
+`um_enslaver_marauder_99` still 0.0. **Will must kill TQ + Steam and restart before testing.**
+
+**OPEN DEBT:** BL-b90-DEBT-1..4 (see DEBT REGISTER).
+
 ## BUILD49 GATE RECORD - b89 ocean_extension05 crash hotfix (2026-07-27, branch `fix/ocean05-hotfix`, tag `build49-dev`)
 
 **P0, Will: "this area is literally right in the beginning of this section of the blood cave, we have
@@ -214,6 +275,26 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
+- **BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,
+  `C-RES-ASSET-1` 484). Proven PRE-EXISTING - the identical command over the pre-change baseline arz
+  yields the byte-identical violation set (0 only-in-built, 0 only-in-baseline). This BACKLOG records
+  the lane at **0 P0 / 1 P1** at an earlier date, so it regressed by ~1251 P1 BEFORE b90. Suspected
+  environmental (see BL-b90-DEBT-2), not content. Owner/trigger: its own triage lane.
+- **BL-b90-DEBT-2 (P1, environment):** `upstream/` and `reference_mods/` were **EMPTY** on this machine,
+  and `CustomMaps\SoulvizierClassic` (the canonical, non-DEV deploy) is **gone**. The DB build cannot
+  run without `upstream/`, so b90 re-extracted **only the 4 files the build needs** from the archives
+  still in `third_party/` (098i `Database/database.arz` md5 `11773cdc...` + `Resources/Text_EN.arc` md5
+  `29505ac2...`; 0.9 `database.arz` md5 `b31951df...`; 0.41 `database.arz` md5 `056d6f4e...`). Correctness
+  is proven by the record-diff (the rebuild reproduced `baseline_build47.arz` exactly apart from the 2
+  intended fields). Owner/trigger: whoever next needs a MAP or Workshop build - decide whether the full
+  `upstream/` + `reference_mods/` + canonical `CustomMaps\SoulvizierClassic` trees get restored.
+- **BL-b90-DEBT-3 (launch-gated):** the 100% drop is unproven IN-GAME. Owner/trigger: Will kills a
+  Devourer and an Enslaver on DEV after a full Steam restart.
+- **BL-b90-DEBT-4 (open question):** the third Toxeus champion `um_toxeus_hunt_99` (Legendary Stalker)
+  is still at **25%**. R-48 names only the Enslaver and the Devourer, so it was deliberately left alone.
+  Owner/trigger: Will, if he wants the Stalker at 100 too.
 
 **b89 ocean_extension05 hotfix (2026-07-27, build49-dev) - NEW**
 - **BL-b89-DEBT-1 (P0-gated):** the 224-byte valid-EMPTY container is unproven IN-GAME. Owner/trigger:

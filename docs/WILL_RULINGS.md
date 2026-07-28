@@ -42,7 +42,7 @@
 ## Souls & items
 - R-40 [2026-07-16] PENDING (fix/soul-tiers) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate.
 - R-41 [2026-07-16] IMPLEMENTED fix/formula-names (b80) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
-- R-42 [earlier, STANDING] Munderizer over-band damage BLESSED; Shadow Link large radius KEPT; legion terminal drop 66 fine for now (revisit next souls pass); soul drop rates: random 50 / placed 66 / boss 25.
+- R-42 [earlier, STANDING - PARTIALLY SUPERSEDED by R-48 (2026-07-27) for the two fought Toxeus champions ONLY; every other record's rate stands unchanged] Munderizer over-band damage BLESSED; Shadow Link large radius KEPT; legion terminal drop 66 fine for now (revisit next souls pass); soul drop rates: random 50 / placed 66 / boss 25.
 - R-43 [2026-07-16] IMPLEMENTED fix/soul-tiers @ d9353e4 (b85, pending merge) "the high priest soul should allow you to summon the high priest" - the Blood Cult High Priest soul's summon = the HIGH PRIEST himself (his identity/mesh/kit as the pet, all 3 tiers scaled), per boss-summon conventions + the b71/b81 identity laws (icon/portrait/race/sounds = High Priest). Companion check: epic soul must spawn the epic-tier pet (verified true roster-wide in b78, re-proven for this family).
 
 ## Process (meta-rulings)
@@ -166,6 +166,24 @@
   blatant error via the module ... leave polish documented" - every MINOR-GAP class in the 155-item
   souls-quality audit list was classified BLATANT DATA ERROR (fixed) vs SUBJECTIVE POLISH/DESIGN (left
   documented, untouched). Source: docs/reports/souls_quality_fix.md sec 5.5.
+- R-48 [2026-07-27] IMPLEMENTED b90 (feat/toxeus-souls-100), verbatim: "increase the drop rate for
+  the souls of toxeus the murderer, enslaver of souls and toxeus the murderer, devourer of blood to
+  100%" - `chanceToEquipFinger2 = 100.0` on EXACTLY two monster records:
+  `records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr` (66 -> 100, the PLACED_UBER
+  rate) and `records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr` (25 -> 100, the
+  module-owned superboss cap). Owner: `tools/patches/toxeus_souls_100.py` (registry module,
+  registered last among content modules; deterministic + idempotent; apply() proves roster-wide that
+  ONLY these two records moved; verify() re-asserts 100 on the FINAL merged arz and fails the build
+  loud otherwise). Holds in RELEASE mode (`SVC_RELEASE_DROPS=1`), which is what ships - it does NOT
+  rely on `_force_100_pct_soul_drops`, the TESTING-only forcer that never runs in a release build.
+  RECONCILIATION: PARTIALLY SUPERSEDES R-42's "random 50 / placed 66 / boss 25" split for these two
+  records by name only (every other soul rate is untouched, proven in the record-diff); the shared
+  classifier `build_svc_database.soul_drop_rate()` is deliberately NOT modified, so both records are
+  carried as documented waivers + spot-tests in `tools/verify_soul_drop_rates.py`
+  (`_KNOWN_EXCEPTIONS` 25.0 -> 100.0 for the Devourer, new 100.0 entry for the Enslaver). Does NOT
+  touch the Hero/Boss/Quest soul-drop gate in `wire_souls_to_monsters` (the yeti Common/Champion
+  lesson): both champions are `monsterClassification=Boss`, so the gate never applied to them and
+  no Common/Champion is re-enabled. See docs/reports/b90_toxeus_souls_100pct.md.
 - R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class
   encounters (Blood Toxeus, Enslaver, Vashkarr, Broodmother, Dorus, Sarkoth, Gorrahk, Ilsevar,
   Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb
