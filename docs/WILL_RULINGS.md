@@ -201,3 +201,60 @@
   (SVAERA author) granted verbal permission for the additive mastery-graft reuse (R-28); a written
   confirmation is still an open standing obligation, as is amgoz1's and Dragonlord's written
   permission (neither captured in writing as of 2026-07-10). Source: docs/PERMISSIONS.md.
+
+### Souls & items (overflow decade 70-79)
+> The Souls & items decade 40-49 is EXHAUSTED (R-40 through R-49 all issued). Rather than
+> re-use a number (the file already carries two accidental duplicates, R-13 and R-43, which
+> make those rulings ambiguous to cite), Souls & items continues in a fresh reserved decade
+> 70-79. Cite souls rulings as R-4x OR R-7x; both are this section.
+
+- R-70 [2026-07-27] IMPLEMENTED b96 (feat/vashkarr-soul). Will's directive, VERBATIM:
+  "Vashkarr, Eldest of the Ancients soul should get +% pierce damage and =% penetration  since he is a spear and shield guy and the soul should give +% boost to movement not have a penalty for speed, this guy should be fast. also he needs to do more damage. we can have the penalty be something like -6-8% reduction in elemental damage or something like that"
+  and, on field selection, VERBATIM: "see spawn of chi soul for how to add +% penetration and
+  pierce damage"
+
+  READ AS (the "=%" is a typo for "+%"): (a) ADD +% pierce damage and +% pierce PENETRATION;
+  (b) the existing movement-speed PENALTY becomes a movement-speed BONUS; (c) raise the soul's
+  overall damage; (d) introduce a -6% to -8% elemental-damage drawback in its place. Net: the
+  soul trades elemental power for speed and piercing lethality.
+
+  SCOPE: the three tiers of `records\item\equipmentring\soul\svc_uber\vashkarr_soul_{n,e,l}.dbr`
+  (name tag `tagSVCSoulVashkarr` = "{^F}Vashkarr, Eldest of the Ancients Soul"), dropped by
+  `records\creature\monster\dragonian\um_vashkarr_99.dbr` at 66%.
+
+  IMPLEMENTED AS (`apply_svc_patches._create_vashkarr._vk_stats`), n/e/l:
+  - `offensivePierceModifier` 40 / 58 / 78 (was absent) - donor: Spawn of Chi soul, Will's own
+    named reference (30/42/58 there).
+  - `offensivePierceRatioModifier` 35 / 50 / 65 (was absent) - same donor (40/54/62 there).
+    This is TQ's armour-bypass "penetration": it converts part of the ring's large physical
+    package into pierce, so the two fields compound into the lancer identity.
+  - `characterRunSpeedModifier` +12 / +17 / +22 (WAS -8 / -8 / -8) - donors: sandbeak /
+    sandprowler / rakanizeus souls, which carry positive run speed in the same slot.
+  - `offensiveElementalModifier` -8 / -7 / -6 - donor: `u_n_ringofzakalwe` (an Epic ring that
+    ships +25% physical / -25% elemental: the same trade, larger). The drawback deliberately
+    SHRINKS with rarity so every tier stays inside Will's -6..-8% band AND no higher tier is
+    strictly worse than the one below it on any power axis.
+  - Damage raised: `offensivePhysicalMin/Max` 60-95 -> 78-124, `offensivePhysicalModifier`
+    35 -> 46, `characterOffensiveAbility` 90 -> 110, `characterAttackSpeedModifier` 16 -> 18,
+    `offensiveSlowBleedingMin` 120 -> 150, `offensiveLifeLeechMin` 25 -> 30 (Legendary anchors;
+    n/e follow the existing 0.6 / 0.82 tier ramp). The FIRE package is held FLAT (nothing
+    retired, nothing grown) so the soul's centre of gravity shifts off the elemental axis
+    without deleting his dragonian heritage.
+
+  PARTIALLY SUPERSEDES the A8/B7 "Eldest+Gorrahk" rebalance
+  (`apply_svc_patches._apply_b7_eldest_soul_rebalance`), which is an UNLEDGERED Will decision -
+  its only record is the verbatim quote in that function's docstring, "crazy on normal, 74%
+  physical damage resistance? doesnt that make you nearly unkillable by physical hits that
+  arent piercing?", never assigned an R-number (registered as debt by this lane). That pass ran
+  AFTER `_create_vashkarr` and stamped `characterRunSpeedModifier = -8.0` onto both soul
+  families as an "ancient and heavy" downside. Its run-speed clause is now scoped to GORRAHK
+  ONLY; leaving it in place would have silently clobbered this ruling back out. Superseded for
+  VASHKARR ONLY and on the run-speed axis ONLY: the physical-resistance cap (30/45/60), the
+  flat-armour conversion (150/260/400) and the +25% HP of that pass are UNCHANGED for both
+  families, and Gorrahk keeps its -8% run speed untouched.
+
+  GATE: `contracts_souls.SOUL-IDENTITY-SHAPE` + the declarative `SOUL_IDENTITY_SHAPES` registry
+  assert this shape against the FINAL built .arz every run (fields present and in-band, run
+  speed positive not negative, mandated tier ordering). `tests_souls_negative.py` case 11b
+  plants the pre-R-70 state (-8% run speed on all three tiers) and requires the contract to
+  FIRE. Source: docs/reports/b96_vashkarr_soul.md.
