@@ -1,0 +1,20 @@
+[h2]Build 51 - blood cave crash fix[/h2]
+
+[b]FIXED: hard crash to desktop in the blood cave.[/b] Eight levels shipped with a malformed navigation-mesh container left over from an early build. When the engine streamed one of them it read past the end of the data and crashed. This was reproducible every time in the deep blood cave (the flooded section past the finale chamber) and was latent in one Egypt mini-dungeon as well. All eight are rebuilt in the format the base game uses for its own empty-navmesh levels, and the build now validates the inside of every navmesh container instead of only its header.
+
+[b]Blood cave - Toxeus the Murderer, Devourer of Blood[/b]
+[list]
+[*]He now guards his hidden chest reliably - he was in a spawn slot that never guaranteed him, and his encounter was tagged with a low-level area band that excluded him outright. Both corrected. He appears with his three blood dragons.
+[*]His soul now drops at 100%.
+[/list]
+
+[b]Toxeus the Murderer, Enslaver of Souls[/b]
+[list]
+[*]His soul now drops at 100%.
+[/list]
+
+[b]Notes[/b]
+[list]
+[*]Existing characters: monster groups are remembered per area once you have entered them, so a chest room you already cleared keeps what it rolled. Enter it on a difficulty you have not played yet, or on a new character, to see the corrected encounter.
+[*]This is the first update with a change log attached. Earlier updates shipped without one - apologies, that is fixed going forward.
+[/list]

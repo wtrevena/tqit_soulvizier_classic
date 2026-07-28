@@ -22,7 +22,15 @@ param(
     # First upload defaults to friends-only so the item can be verified (and
     # coop-tested by a friend) before flipping public with -Update -Visibility 0.
     [ValidateSet('0','1','2','3')]
-    [string]$Visibility = '1'
+    [string]$Visibility = '1',
+    # Steam Change Notes entry for THIS update. Defaults to docs/WORKSHOP_CHANGENOTE.bbcode.
+    # Upload FAILS if neither is supplied - a silent empty change log is not acceptable.
+    [string]$ChangeNote,
+    # Workshop COVER IMAGE (the thumbnail shown in browse/subscribed lists). Defaults to
+    # assets/workshop_preview.jpg if present. Will 2026-07-27: "right now our mod shows up on
+    # steam without any cover image" - the VDF never carried a previewfile key, so the item has
+    # had no thumbnail since launch. Steam: JPG/PNG, under 1 MB, square-ish (600x600+ ideal).
+    [string]$PreviewFile
 )
 
 Set-StrictMode -Version Latest
@@ -179,6 +187,59 @@ if ($description.Length -lt 100 -or $description.Length -gt 8000) {
 
 $contentFullPath = (Resolve-Path $contentDir).Path
 
+# CHANGE NOTE (Will 2026-07-27: "are we updating the change notes on steam as we go?" - we were
+# NOT; every update before build51 posted with an empty change log). Source of truth is
+# docs/WORKSHOP_CHANGENOTE.bbcode: write the note for THIS update there before uploading, or pass
+# -ChangeNote to override. Same VDF-safety rules as the description (no double-quotes, no
+# backslashes - KeyValues treats them as escapes).
+if (-not $ChangeNote) {
+    $noteFile = Join-Path $RepoRoot 'docs\WORKSHOP_CHANGENOTE.bbcode'
+    if (Test-Path $noteFile) { $ChangeNote = (Get-Content $noteFile -Raw).TrimEnd() }
+}
+if (-not $ChangeNote) {
+    Write-Host 'ERROR: no change note. Write docs/WORKSHOP_CHANGENOTE.bbcode or pass -ChangeNote "..."' -ForegroundColor Red
+    Write-Host '       (subscribers see this in the Change Notes tab; shipping blind is how we lost the log for builds 27-50.)' -ForegroundColor Red
+    exit 1
+}
+if ($ChangeNote.Contains('"') -or $ChangeNote.Contains('\')) {
+    Write-Host 'ERROR: change note contains a double-quote or backslash (VDF-unsafe). Use single quotes and forward slashes.' -ForegroundColor Red
+    exit 1
+}
+if ($ChangeNote.Length -gt 8000) {
+    Write-Host "ERROR: change note length $($ChangeNote.Length) exceeds the 8000-char Steam cap." -ForegroundColor Red
+    exit 1
+}
+Write-Host "Change note ($($ChangeNote.Length) chars):" -ForegroundColor Cyan
+Write-Host $ChangeNote
+
+# PREVIEW / COVER IMAGE. Optional but strongly wanted: without it the item shows a blank tile.
+if (-not $PreviewFile) {
+    $defaultPreview = Join-Path $RepoRoot 'assets\workshop_preview.jpg'
+    if (Test-Path $defaultPreview) { $PreviewFile = $defaultPreview }
+}
+$previewLine = ''
+if ($PreviewFile) {
+    if (-not (Test-Path $PreviewFile)) {
+        Write-Host "ERROR: preview file not found: $PreviewFile" -ForegroundColor Red
+        exit 1
+    }
+    $previewFull = (Resolve-Path $PreviewFile).Path
+    $previewSize = (Get-Item $previewFull).Length
+    if ($previewSize -gt 1MB) {
+        Write-Host "ERROR: preview image is $([math]::Round($previewSize/1MB,2)) MB; Steam caps the preview at 1 MB. Recompress it." -ForegroundColor Red
+        exit 1
+    }
+    if ($previewFull -notmatch '\.(jpg|jpeg|png)$') {
+        Write-Host "ERROR: preview must be .jpg/.jpeg/.png (got $previewFull)" -ForegroundColor Red
+        exit 1
+    }
+    $previewLine = "`n  `"previewfile`"     `"$($previewFull -replace '\\', '\\')`""
+    Write-Host "Preview image: $previewFull ($([math]::Round($previewSize/1KB)) KB)" -ForegroundColor Cyan
+} else {
+    Write-Host 'WARNING: no preview image - the Workshop item will show a BLANK tile.' -ForegroundColor Yellow
+    Write-Host '         Put one at assets/workshop_preview.jpg or pass -PreviewFile.' -ForegroundColor Yellow
+}
+
 $vdfContent = @"
 "workshopitem"
 {
@@ -187,6 +248,7 @@ $vdfContent = @"
   "contentfolder"   "$($contentFullPath -replace '\\', '\\')"
   "title"           "$title"
   "description"     "$description"
+  "changenote"      "$ChangeNote"$previewLine
   "visibility"      "$Visibility"
 }
 "@
