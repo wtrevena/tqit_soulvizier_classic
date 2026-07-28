@@ -215,6 +215,26 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
+    'emberteeth_summon',    # b91 DEBT / QUEUED FEATURE (Will 2026-07-14, verbatim "emberteeth
+                            # soul should let you summon him"): converts the 3 pure-fire-stat
+                            # emberteeth_soul_{n,e,l} rings into summon-the-boss souls - 3
+                            # permanent pets built from um_emberteeth's OWN rig via the shared
+                            # _build_boss_summon pipeline + a manual-cast summon button, wired
+                            # 1/2/3 so the epic soul spawns the epic pet (R-43 companion check).
+                            # Every pre-existing fire benefit is kept (apply() proves it field by
+                            # field). Registered after every soul-wiring + drop-rate module so it
+                            # sees the FINAL soul records, and before fx_dangling_cleanup so its
+                            # new skill records are still swept by the FX hygiene pass.
+    'fx_dangling_cleanup',  # b91 DEBT: B-FX-DANGLING-1 (strip the 353 dangling
+                            # Chris\UnarmedProjectile_FX01 particleEffectName2/3 slots off 177
+                            # records - base-game ABSENCE parity, the same operation build30 F7a
+                            # ran on 3 pcsafe clones) + BLOODHOUND-DYINGFX (already resolved in
+                            # the arz; this module ships the permanent resolve-or-fail gate the
+                            # debt never had) + the F3 leftover DRX skin field on supra wep_spear.
+                            # Registered LAST among content modules (before the no-op 'visuals')
+                            # so it sweeps the FINAL assembled db and no later module can
+                            # reintroduce the class. Deletes only whitelisted field slots; apply()
+                            # proves roster-wide that nothing else moved.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

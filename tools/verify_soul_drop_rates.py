@@ -401,7 +401,25 @@ def main(argv):
         'hero_grom_28':           ('RANDOM', 50.0),   # plain hero roster
         'u_bloodwing_12':         ('RANDOM', 50.0),   # u_ unique, random pool
         'um_legion_28':           (None, 0.0),        # legion_soul_stages: non-terminal, zeroed (one soul/encounter)
-        'um_legion_28c':          (None, 66.0),       # legion TERMINAL: spawned by actorToSpawnOnDeath (no pool) -> UNREFERENCED/66 safe-default; WILL Q: inherit chain-head's RANDOM 50?
+        # R-42 FOLD-IN (b91): the Legion TERMINAL now INHERITS its chain head's
+        # RANDOM provenance through the actorToSpawnOnDeath closure in
+        # build_svc_database.soul_spawn_provenance_sets, so it classifies RANDOM
+        # and ships 50 - closing Will's queued "death-transform terminals of
+        # RANDOM chains inherit the 50 rate". Was (None, 66.0) + an open Will Q.
+        'um_legion_28c':          ('RANDOM', 50.0),
+        # Same fold-in, the only other LIVE mover roster-wide: the Possessed
+        # Boar's death-transform spirit (head um_possessedboar IS a random-pool
+        # member; double_soul_rulings deliberately leaves this terminal as the
+        # surviving dropper, so its rate must follow its chain).
+        'um_possessedboar_spirit': ('RANDOM', 50.0),
+        # NEGATIVE half of the same fold-in: terminals of PLACED chains must NOT
+        # move (placed_proxy_members is checked before random_pool_members, so a
+        # placed head's stages stay 66 - the "never over-cut a placed encounter"
+        # invariant). These three are now RIGHT for the right reason instead of
+        # falling through the classifier's unreferenced-default.
+        'um_charonform2_ferryman_99': ('PLACED', 66.0),
+        'um_polisgaoler_unbound_99':  ('PLACED', 66.0),
+        'um_tantalus_unbound_99':     ('PLACED', 66.0),
         'um_vashkarr_99':         ('PLACED', 66.0),   # q_vashkarr_lone
         'um_broodmother_99':      ('PLACED', 66.0),
         # svc_um_hadesmarshal_80: module-authored placed boss (four_generals sets
@@ -465,6 +483,46 @@ def main(argv):
                         f"placed={sorted(_save_p)} random={sorted(_save_r)}")
     print(f"  {'OK ' if (len(_save_p)==0 and len(_save_r)==0) else 'XX '} "
           f"override sets empty by default -> shipped rates == pure roster verdict")
+
+    # ---- NEGATIVE TEST: the R-42 death-transform provenance closure ----
+    # Proves (a) the closure is what makes the Legion terminal RANDOM/50, and
+    # (b) it only ever propagates FORWARD, so a PLACED chain's terminal cannot
+    # be cut to 50. Planted regression: run the classifier with the closure
+    # DISABLED (empty edge map) and assert the terminal falls back to 66 - i.e.
+    # if someone deletes _propagate_transform_provenance, this test goes red.
+    print("\n" + "=" * 78)
+    print("NEGATIVE TEST: R-42 death-transform provenance closure")
+    print("=" * 78)
+    LEG_HEAD, LEG_TERM = 'um_legion_28', 'um_legion_28c'
+    PLACED_HEAD, PLACED_TERM = 'um_tantalus_99', 'um_tantalus_unbound_99'
+    edges = {LEG_HEAD: {'um_legion_28a'}, 'um_legion_28a': {'um_legion_28b'},
+             'um_legion_28b': {LEG_TERM}, PLACED_HEAD: {PLACED_TERM}}
+    r_seed, p_seed = {LEG_HEAD}, {PLACED_HEAD}
+    r_closed = bsd._propagate_transform_provenance(r_seed, edges)
+    p_closed = bsd._propagate_transform_provenance(p_seed, edges)
+    r_off = bsd._propagate_transform_provenance(r_seed, {})   # planted regression
+    p_off = bsd._propagate_transform_provenance(p_seed, {})
+    term_path = r'records\creature\monster\eurynomus\um_legion_28c.dbr'
+    placed_path = r'records\xpack\creatures\monster\lostsoul\um_tantalus_unbound_99.dbr'
+    cases = [
+        ('closure ON  : legion terminal -> RANDOM 50',
+         bsd.soul_drop_rate(term_path, 'Hero', r_closed, p_closed), 50.0),
+        ('closure OFF : legion terminal falls back to 66 (planted regression)',
+         bsd.soul_drop_rate(term_path, 'Hero', r_off, p_off), 66.0),
+        ('closure ON  : PLACED chain terminal STAYS 66 (never over-cut)',
+         bsd.soul_drop_rate(placed_path, 'Boss', r_closed, p_closed), 66.0),
+        ('no backward flow: head stays out of the terminal-seeded closure',
+         0.0 if LEG_HEAD in bsd._propagate_transform_provenance({LEG_TERM}, edges)
+         else 1.0, 1.0),
+        ('cycle safety: a self-loop terminates',
+         float(len(bsd._propagate_transform_provenance({'a'}, {'a': {'b'},
+                                                              'b': {'a'}}))), 2.0),
+    ]
+    for label, got, want in cases:
+        ok = abs(got - want) < 0.01
+        if not ok:
+            failures.append(f"transform-closure negtest {label}: got {got}, want {want}")
+        print(f"  {'OK ' if ok else 'XX '} {label:62s} {got:6.1f} (want {want:.0f})")
 
     # ---- NEGATIVE TEST: plant a post-wire writer stomp, confirm the gate CATCHES it ----
     # This is the regression this whole rewrite exists to guarantee against:
