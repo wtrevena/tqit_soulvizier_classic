@@ -317,9 +317,17 @@ along automatically when the structural cluster-relocation fix lands.
   * FULL DB BUILD from that worktree: `py tools/build_svc_database.py upstream/... work/.../SoulvizierClassic.arz "<TQAE>/database.arz"` -> **exit 0**, log opens with
     `PREFLIGHT: ... OK via main-checkout cache` for all three SV arzs; A7 golden gate PASS (84
     waived), unlock-alignment gate PASS.
-  * FULL MAP MERGE from that worktree with `SVC_OUT_DIR` pointed at scratch -> preflight resolved
-    `SVAERA Levels.arc` via the Workshop item and `SV 0.98i Levels.arc` via the `build36-map`
-    worktree cache, with no env vars set.
+  * FULL MAP MERGE from that worktree with `SVC_OUT_DIR` pointed at scratch -> exit 0; preflight
+    resolved `SVAERA Levels.arc` via the Workshop item and `SV 0.98i Levels.arc` via the
+    `build36-map` worktree cache, with no env vars set.
+  * **OUTPUT-NEUTRALITY (the load-bearing proof):** both builds were re-run from the MAIN checkout
+    (unmodified code, `SVC_*` set by hand) into scratch and compared byte-for-byte -
+    map `Levels_merged.arc` md5 **`718abad63e7813dc78c4b169df969fd5`** (688,692,225 B) and arz
+    `SoulvizierClassic.arz` md5 **`c1a8fa2aee5e6eb88b641b28d7dc6ae4`** (55,424,816 B) are
+    **IDENTICAL** worktree-vs-main. The preflight changes what the build LOOKS UP, never what it
+    builds.
+  * `tools/contracts/run_contracts.py --only map` before vs after the `contracts_map` change:
+    violation sets **IDENTICAL** (3 P2: MAP-PORTAL-1 x1, MAP-PORTAL-3 x2), GATE PASS both runs.
   DELIBERATELY NOT DONE (cheap-decision outcome): the full `upstream/` + `reference_mods/` trees were
   **not** re-extracted. Every input now resolves without them, `third_party/` still holds the
   archives, and re-extracting ~1.5 GB of gitignored duplicates buys nothing. Still open and NOT this
