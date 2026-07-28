@@ -235,6 +235,38 @@ REGISTRY = [
                             # immediately before visuals, so it is the ratified final registry
                             # writer of Cold Worm's kit. Touches exactly ONE record; the 3-tier
                             # soul + loot triple are asserted, never rewritten.
+    'uber_quest_markers',   # b91 (Will 2026-07-16, R-39, 6th sub-item): "the exclamation-marker
+                            # mechanism extended to all placed ubers". CORRECTION to b91 round 1,
+                            # which recorded this as map-side and BLOCKED: the marker is the
+                            # DB-side Monster field DisplayAsQuestItem (145 non-zero carriers,
+                            # 124 of them Monster - every base-game quest boss, every xsq named
+                            # quest hero, the escort NPCs, the quest chests/doors/objects and the
+                            # records\poi\** AreaOfInterest map-marker namespace). It is ALREADY
+                            # LIVE in this mod on the very boss the ruling is about
+                            # (records\test\boss_coldworm50.dbr = 1) - the mechanism was never
+                            # missing, only never extended. No Levels.arc build, no
+                            # SVC_SVAERA_ARC/SVC_SV_ARC dependency, no map bytes.
+                            # Roster is DERIVED, never hardcoded: build_svc_database.
+                            # soul_spawn_provenance_sets()'s placed_members (the same source of
+                            # truth as the PLACED_UBER 66% soul rate, R-42), narrowed to the
+                            # ENCOUNTERS by rule A (it, or a form in its actorToSpawnOnDeath
+                            # chain, actually pays a soul out - which excludes the 26 champion
+                            # retinue/adds mechanically) and widened by rule B across DEDICATED
+                            # transform forms only (a form whose spawners are ALL in the roster).
+                            # Rule B's exclusivity test is load-bearing: as_ghosthero_32 is
+                            # Neferkha's terminal form AND five roaming mummy heroes', so a naive
+                            # whole-chain walk would spam the marker across the map.
+                            # Both rules are DERIVED from shipped content, not invented: the one
+                            # placed uber already marked on main is um_polisgaoler_99 AND its
+                            # dedicated um_polisgaoler_unbound_99 - exactly rule A + rule B.
+                            # Registered after coldworm_buffs (same ruling, same lane) and
+                            # immediately before visuals, so it is the ratified final registry
+                            # writer of the field; it reads chanceToEquipFinger2, which
+                            # toxeus_souls_100 (R-48) writes earlier, so the roster is computed
+                            # against final rates. Ships its own gate (every placed uber + every
+                            # dedicated chain form must carry DisplayAsQuestItem=1, and no SHARED
+                            # form may) - negative test `py tools/patches/uber_quest_markers.py
+                            # --negtest`. One field, 0 new records, 0 tags.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

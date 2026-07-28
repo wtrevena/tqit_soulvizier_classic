@@ -7,8 +7,16 @@ Will's ruling (docs/WILL_RULINGS.md R-39, 2026-07-16), verbatim:
 > the exclamation-marker mechanism extended to all placed ubers, and the 3-tier soul +
 > loot-triple fix + roster drop-slot sweep - ships as ONE lane, not piecemeal.
 
-**Status: 5 of the 6 sub-items SHIPPED + build-verified. 1 sub-item (the exclamation-point map
-marker) is BLOCKED and is NOT claimed as done** - see section 7.
+**Status (round 2, 2026-07-28): ALL 6 sub-items SHIPPED + build-verified. R-39 is IMPLEMENTED.**
+
+> ⚠️ **ROUND 1 SAID THE 6TH SUB-ITEM WAS BLOCKED. THAT WAS WRONG, AND IT IS CORRECTED HERE.**
+> Round 1's section 7 concluded the exclamation marker was map-side and therefore blocked on
+> `SVC_SVAERA_ARC`/`SVC_SV_ARC`. Both halves of that conclusion are false. The marker is the
+> **DB-side Monster field `DisplayAsQuestItem`**, and it is **already live in this mod on Cold Worm
+> itself**. Round 2 shipped it as `tools/patches/uber_quest_markers.py`. The original section 7 is
+> preserved verbatim below (marked SUPERSEDED) so the mistake stays visible; **section 9 is the
+> live account** of the sub-item. Round 1's other proof - the arz md5
+> `461c54f95480f6c331f25ce7ab64c6f4` - was independently re-verified in round 2 and is genuine.
 
 ---
 
@@ -252,7 +260,21 @@ pre-existing content whose fix is Will's call. Wiring it in is the natural follo
 
 ---
 
-## 7. NOT DONE - the exclamation-point map marker (BLOCKED, honestly reported)
+## 7. ~~NOT DONE - the exclamation-point map marker (BLOCKED, honestly reported)~~ **SUPERSEDED BY SECTION 9**
+
+> **This entire section is WRONG and is kept only as the error record.** Point 1 (no `b63`
+> mechanism exists in the repo) is TRUE and still stands. Point 2 - "it is map-side, and map builds
+> are blocked" - is FALSE on both clauses:
+> * the marker is `DisplayAsQuestItem`, a **Monster.tpl field**, present on all 4,601 Monster
+>   records and set to 1 on 124 of them, including `records\test\boss_coldworm50.dbr` (**Cold Worm,
+>   the very boss this ruling is about**) and `um_polisgaoler_99` + `um_polisgaoler_unbound_99`.
+>   Round 1 scanned only for `miniMapEntity` and concluded "no DB-side monster property" from that
+>   one field's absence, without scanning the field-name universe for the quest-marker flag;
+> * and the map arcs are **not** unavailable on this machine anyway - SVAERA is at Steam Workshop
+>   item `2076433374` and SV 0.98i's `Levels.arc` is in the `build36-map` worktree, exactly as
+>   BL-b89-DEBT-4 records. Nothing here ever needed them.
+>
+> See section 9 for what actually shipped.
 
 R-39's remaining clause is "the exclamation-marker mechanism extended to all placed ubers". This
 lane did **not** deliver it, for two independent reasons:
@@ -320,4 +342,220 @@ armor_passive [72, 209, 432] (+20%), speed profile applied,
 2. **In-game DEV verify on a fresh character** (TQ bakes item properties at pickup, and the burrow
    is the one cross-rig graft in the kit): does Cold Worm now cast freezing blast / ice blasts /
    the burrow / the poison cloud, and does the dive animation read correctly as a burrow?
-3. **The exclamation marker** (section 7): design the mechanism, or drop the clause.
+3. ~~**The exclamation marker** (section 7): design the mechanism, or drop the clause.~~
+   **DONE in round 2 - see section 9.**
+
+---
+
+# 9. ROUND 2 (2026-07-28): THE EXCLAMATION MARKER, SHIPPED
+
+Owner: `tools/patches/uber_quest_markers.py` (registry module, apply + verify, registered after
+`coldworm_buffs` and immediately before `visuals`).
+
+## 9.1 What the mechanism actually is
+
+It is **`DisplayAsQuestItem`**, a DB-side field on `Monster.tpl`. Measured over the shipped arz
+(`local/baseline_build47.arz`, 51,085 records):
+
+```
+DisplayAsQuestItem value distribution : {0: 23100, 1: 145}
+present on Monster records            : 4601 / 4601   (absent on 0)
+non-zero carriers by Class            : Monster 124, Pet 4, FixedItemContainer 4,
+                                        FixedItemQuestObject 3, Megalesios 3,
+                                        Decoration 3, FixedItemDoor 2, Guard 1, Npc 1
+```
+
+The carrier set names the semantics unambiguously - it is the "show this entity as a quest
+objective" flag:
+
+| carrier group | examples |
+|---|---|
+| base-game quest bosses | Medusa / Sstheno / Euryale, Arachne, Minotaur Lord, Alastor, the Spartan centaur, Megalesios, Brontes + Steropes, Kondor the Mighty |
+| `xsq` named quest heroes | Forest Lord, Lich Queen, Machae envoys, the four Empusa variants, Stygian Hydradon, Bonescourge, Melinoe Bloodwitch |
+| escort / rescue NPCs | `xsq09_trappednpc_a..k`, `xsq03_escortworker`, `xsq21_escortmessenger`, `xsq15_orpheus` |
+| quest objects, doors, chests | `xsq06_keyslotfordoor_{a,b}`, `xsq06_leverdoor{a,b}`, `xsq05_{mushroom,root}chest`, `jo10 - jade figurine chest` |
+| the base game's own map-POI namespace | every `records\poi\**` record (Class `AreaOfInterest`) carries the same field |
+
+**And it is already LIVE in this mod on the very boss R-39 is about.**
+`records\test\boss_coldworm50.dbr` carries `DisplayAsQuestItem = 1` on `main`, untouched by round 1.
+That is the marker Will saw on Cold Worm when he wrote "the exclamation-marker mechanism extended to
+all placed ubers". The mechanism was never missing - it had simply never been extended past the
+handful of records that happened to inherit it.
+
+Consequences: **no `Levels.arc` build, no `SVC_SVAERA_ARC`/`SVC_SV_ARC` dependency, zero map bytes
+touched.** Round 1's blocker (b) evaporates entirely.
+
+## 9.2 "All placed ubers" - roster-derived, zero hardcoded names
+
+The repo already has exactly ONE canonical definition of "placed uber", and this module reuses it
+instead of inventing a second: `build_svc_database.soul_spawn_provenance_sets(db)` ->
+`placed_members` (monsters referenced by a mod PLACEMENT record under `records\drxmap\proxy*`).
+That is the same source of truth behind the PLACED_UBER 66% soul-release rate (R-42), so the marker
+roster and the drop-rate roster cannot silently diverge.
+
+Two mechanical rules turn that set into the marker roster:
+
+**RULE A - soul-paying chain.** A placed record qualifies only if it, or a form in its
+`actorToSpawnOnDeath` chain, actually pays a soul out (`chanceToEquipFinger2 > 0`) - the same chain
+test `tools/sweep_soul_drop_slots.py` already uses. The placement proxies also carry each boss's
+RETINUE, and a marker on every add would be map spam.
+
+**RULE B - dedicated chain forms only.** Every form of a qualifying encounter's transform chain is
+marked too (so the marker survives the transform), **but only when every record that spawns that
+form is itself in the roster.** Expanded to a fixpoint.
+
+**Both rules are DERIVED from shipped content, not invented.** Exactly one placed uber already
+carried the marker on `main`: `um_polisgaoler_99` (chance 0) -> `um_polisgaoler_unbound_99`
+(chance 66) - and **both forms** carry `DisplayAsQuestItem = 1`. The shipped precedent is literally
+rule A + rule B applied to one boss. This module applies the same rule to the rest of the roster.
+
+**Rule B's exclusivity test is load-bearing, not decoration.** A naive whole-chain walk pulls in
+`records\creature\monster\ghost\as_ghosthero_32.dbr`, which a reference scan shows is the terminal
+form of SIX monsters:
+
+```
+um_neferkha_99      <- the only placed uber
+um_tath_27  um_khenti_31  um_nebtaan_32  um_radementes_31  us_menkare_33   <- roaming mummy heroes
+```
+
+Marking it would put a quest marker on every ghost those five leave behind, anywhere on the map.
+The exclusivity test excludes it; the marker stops at Neferkha himself, who pays his own soul
+directly (`as_ghosthero_32` is at chance 0).
+
+## 9.3 The roster
+
+25 records: 21 rule-A encounters + 4 rule-B dedicated transform forms. 2 were already marked, so
+**23 records are newly marked**.
+
+```
+svc_um_hadesmarshal_80   um_bloodtoxeus_99      um_broodmother_99     um_charon_ferryman_99
+um_dorus_99              um_ephialtes_99        um_gorrahk_99         um_helepolis_99
+um_ilsevar_99            um_kravmoloch_99       um_mnemophage_99      um_neferkha_99
+um_polisgaoler_99 [X]    um_prox_47             um_sarkoth_99         um_tantalus_99
+um_toxeus_enslaver_99    um_toxeus_hunt_99      um_vashkarr_99        um_voranthys_99
+xhero_polybotes_47
+  + dedicated chain forms:
+um_charonform2_ferryman_99   um_mnemophage_core_99
+um_polisgaoler_unbound_99 [X]  um_tantalus_unbound_99
+```
+(`[X]` = already carried the marker before this module.)
+
+**Independent corroboration that rule A cuts in the right place:** every one of the 26 records it
+excludes is `monsterClassification = Champion`, and every one of the 25 it keeps is Boss or Hero.
+Two unrelated signals (soul-in-chain, and rank) agree perfectly on the same partition.
+
+```
+--- EXCLUDED (26 retinue/adds, no soul anywhere in their chain; ALL rank=Champion) ---
+am_vindicator_45           as_bloodwitch_43           cr_masterarcher_42
+em_ravager_41              svc_charon_wraith_99       svc_diadochi_striderguard_97
+svc_dorus_royalguard_71    svc_epiales_nightmare_92   svc_general_{a,b,c}_guard{1,2}  (6)
+svc_mnem_nightmare_72      svc_obs_escort_bonehallow  svc_obs_escort_permean
+svc_tantalus_famishedshade_90                         svc_vashkarr_lance
+svc_vashkarr_warlock       um_enslaver_marauder_99    um_frostguardian_45
+um_sepulchralwyrm_40       us_abyssalliche_{flame,frost,plague}_42  (3)
+
+--- EXCLUDED (1 SHARED transform form) ---
+as_ghosthero_32   (also spawned by 5 non-uber roaming mummy heroes)
+
+--- 8 mesh-basename non-records ignored (charon01.msh, gigantes01.msh, ...) ---
+```
+
+## 9.4 The gate + the planted negative test
+
+New invariant: **every placed-uber encounter, and every DEDICATED form of its transform chain, must
+carry `DisplayAsQuestItem = 1`; no SHARED form may.** `verify()` runs in registry step 4 over the
+FINAL merged db and fails the build loud on any violation. It also re-asserts three pre-existing
+anchors the ruling's premise rests on (Cold Worm, both Polis Gaoler forms) so a later writer cannot
+regress the mechanism out from under R-39.
+
+`apply()` proves its own scope mechanically: it snapshots `DisplayAsQuestItem` across EVERY record
+before and after its writes and fails loud if the changed set is anything other than the roster it
+computed.
+
+```
+$ py tools/patches/uber_quest_markers.py --negtest
+
+uber_quest_markers _negtest:
+  unmarked-roster-member plant flagged : True
+  anchor-regression plant flagged      : True
+  retinue adds excluded from roster    : True (26 adds, e.g. ...am_vindicator_45.dbr)
+  shared chain form left unmarked      : True
+                                         ...as_ghosthero_32.dbr (also spawned by 5 non-uber(s))
+  correctly-marked control is clean    : True ([])
+  -> PASS
+```
+
+## 9.5 Scope and dtype
+
+One field, on 23 records. **0 new records, 0 tags, 0 Text.arc surface, 0 map bytes**, no skills, no
+loot, no drop rates, no pools, no proxies. `set_field` is called WITHOUT an explicit dtype
+(CLAUDE.md's dtype-preservation law) and the written value mirrors the field's own dtype
+(INT -> `1`), so the re-encode is type-exact. The 2 records already at 1 are **skipped**, not
+rewritten (arz_patcher's minimal-touch law: they stay raw compressed passthrough bytes), so the
+touched set equals the changed set exactly - `modified 23 record(s)`, matching the record-diff.
+
+## 9.5b PROOFS
+
+**Build:** `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 py tools/build_svc_database.py ...` exit 0, full
+gate battery green (soul-leak / soul-augment / soul item-skill activation / soul-naming / granted-
+skill diversity / soul-summon-identity / boss-orb / boss-kit clone-shape / spawn-eligibility /
+champion-cap / roaming-sweep / stalker-sweep / pet stat-mirror + gear-parity + skill-kit /
+skill_quality diversity / A7 Occult-Hunting golden (84 waived, 0 other) / b77 unlock-alignment /
+Runemaster-golem-button). arz `55,424,905 B`.
+
+```
+=== patches-registry: 35 module(s), order 0afd6ce08a6b ===
+--- [34/35] uber_quest_markers  (placed-uber quest markers (R-39, 6th sub-item)) ---
+    uber_quest_markers: modified 23 record(s), 0 tag(s)
+=== patches-registry: 35 module(s) OK, order 0afd6ce08a6b ===
+
+  verify [uber_quest_markers] (placed-uber quest markers (R-39, 6th sub-item)) ...
+  placed-uber quest markers (R-39, 6th sub-item) verify OK: 25/25 placed-uber records carry
+  DisplayAsQuestItem=1 (incl. every dedicated transform-chain form); 26 retinue/add records
+  correctly unmarked; 1 shared transform form(s) correctly left alone; 3 pre-existing anchors intact
+```
+
+**Record-diff vs the round-1 (5/6) arz `461c54f95480f6c331f25ce7ab64c6f4`** - the delta is this
+sub-item and nothing else:
+
+```
+$ py tools/record_diff.py local/b91_pre_markers.arz work/.../SoulvizierClassic.arz
+  ADDED   : 0
+  REMOVED : 0
+  MODIFIED: 23        <- all 23 are exactly `DisplayAsQuestItem: [0] -> [1]`, 1 field each
+```
+(23/23 lines matched `DisplayAsQuestItem: [0] -> [1]`; zero other fields, zero other records.)
+
+**Determinism: FOUR independent full builds, one md5.** Two before the minimal-touch guard and two
+after, to different output paths, all
+`1526fbc4dbf3d5b21d551ef1fb9d3505` / `55,424,905 B`. (That the guard did not move the md5 also
+proves the 2 already-marked records round-tripped losslessly either way.)
+
+**Round 1 re-verified independently:** the arz this lane started from measured
+`461c54f95480f6c331f25ce7ab64c6f4`, exactly the md5 round 1 reported - so round 1's build proof is
+genuine even though its section-7 conclusion was not.
+
+```
+$ py tools/patches/_check_registry.py
+patches-registry selfcheck OK: 35 module(s), order 0afd6ce08a6b983c308938b0279efb892aca027ae1a409ba3c1b790aa6fc833a
+$ py -m py_compile tools/patches/uber_quest_markers.py tools/patches/__init__.py   -> OK
+```
+
+**Tags:** none added, so the Text.arc surface is unchanged and `validate_tags` has nothing new.
+
+**Registry collisions (expected, printed loud, all benign):** 14 of the 23 records are also written
+by an earlier module (`boss_skill_fix`, `toxeus_*`, `four_generals`, `diadochi`, `neferkha`,
+`black_poison`). This module is registered LAST among content modules, writes a field none of them
+touches, and is therefore the ratified final writer of `DisplayAsQuestItem`.
+
+**NOT deployed, NOT packaged, NOT pushed to Steam.**
+
+## 9.6 What still needs Will
+
+The field's *rendering* is engine-side. It is proven live by 124 base-game carriers plus Cold Worm
+and Polis Gaoler inside this very mod, so this is an existing engine feature being extended, not a
+new player surface being invented - but **no agent has seen the marker in-game**, and launching TQ
+was out of scope for this lane. Will's fresh-character DEV verify remains the launch gate, folded
+into BL-b91-DEBT-4: *do the placed ubers now show the quest marker, and is 25 of them the right
+amount of marker on the map, or does it read as clutter?* If it is clutter, the roster narrows by
+editing two rules in one module - no map rebuild.
