@@ -7,6 +7,7 @@ each check actually detects the defect it claims to. Run:
   python tools/contracts/_negtest_map.py
 Exits 0 if every contract's negative test PASSES, 1 otherwise. Self-contained
 (builds tiny in-memory map/blob/arz structures; no big artifacts needed)."""
+import os
 import struct
 import sys
 from pathlib import Path
@@ -53,14 +54,51 @@ def make_blob(sections, ver=0x11):
     return bytes(out)
 
 
-def make_rec02(guid, version=1):
-    """Minimal valid REC\\x02 container header (enough for rec02_header)."""
-    body = struct.pack('<I', 1)                       # guid_count = 1
-    body += guid                                       # 16B guid
+def rec02_tileset(num_tiles=0, max_tiles=208):
+    """One complete 56-byte tileset record: dtTileCacheParams (52) + int32 numTiles."""
+    return struct.pack('<3f2f2i4f2i', 0.0, 0.0, 0.0, 0.2, 0.2, 64, 64,
+                       2.0, 0.4, 1.0, 1.3, max_tiles, 128) + struct.pack('<i', num_tiles)
+
+
+def make_rec02(guid, version=1, guids=None, n_sets=3, tail=b''):
+    """A structurally VALID, empty REC\\x02 container - the shape stock ships for a
+    level with terrain but no walkable floor (3 complete tilesets, numTiles 0).
+
+    guids  : full GUID list override (default [guid]) - used to plant a DEGENERATE list.
+    n_sets : number of tilesets emitted - used to plant a truncated/short body.
+    tail   : extra bytes appended after the last tileset - used to plant trailing junk.
+    """
+    gl = list(guids) if guids is not None else [guid]
+    body = struct.pack('<I', len(gl))                 # guid_count
+    for g in gl:
+        body += g                                      # 16B guid each
     body += struct.pack('<3i', 0, 0, 0)                # center
     body += struct.pack('<3I', 100, 0, 100)            # dims
+    body += rec02_tileset() * n_sets                   # 3 complete empty tilesets
+    body += tail
     total = bytearray(b'REC\x02' + struct.pack('<II', version, 0) + body)
     struct.pack_into('<I', total, 8, len(total) - 12)  # payload_size = total-12
+    return bytes(total)
+
+
+def make_b89_stub(guid):
+    """Byte-faithful reconstruction of the DEAD 148-byte Approach-22 stub that killed
+    two Frida sessions on 2026-07-27 (b89): a valid header (version 1, correct
+    payload_size, guid_count 3, every GUID resolving) over a body holding ONE
+    TRUNCATED 44-byte parameter block + 4 stray zero uint32s, i.e. neither three
+    tilesets nor a clean end. This is the exact planted condition MAP-NAV-5 and
+    MAP-NAV-6 must both catch."""
+    body = struct.pack('<I', 3) + guid * 3             # DEGENERATE list: own x3
+    body += struct.pack('<3i', 0, 0, 0)                # center
+    body += struct.pack('<3I', 100, 0, 100)            # dims
+    body += struct.pack('<3f', 0.0, 0.0, 0.0)          # orig
+    body += struct.pack('<2f', 0.2, 0.2)               # cs, ch
+    body += struct.pack('<2I', 64, 64)                 # width, height
+    body += struct.pack('<4f', 2.0, 0.4, 1.0, 1.3)     # walkable* + maxSimplifError
+    body += struct.pack('<4I', 0, 0, 0, 0)             # the stray "tile counts"
+    total = bytearray(b'REC\x02' + struct.pack('<II', 1, 0) + body)
+    struct.pack_into('<I', total, 8, len(total) - 12)
+    assert len(total) == 148, len(total)
     return bytes(total)
 
 
@@ -247,6 +285,62 @@ def test_navmesh():
                    level_guids={GUID_A})
     check('NAV-3 fires on drxmap level lacking 0x0b', has(C.contract_navmesh(ctx3), 'MAP-NAV-3'))
 
+    # ---- b89 (2026-07-27): the ocean_extension05 stream-in crash ------------------
+    # THE planted condition: the real dead 148-byte stub, verbatim. Must trip BOTH the
+    # structural gate (truncated body) and the degenerate-list gate.
+    stub = make_b89_stub(GUID_A)
+    got = C.contract_navmesh(_nav_ctx([(0x0b, stub)]))
+    check('NAV-5 fires on the real b89 148-byte stub (truncated tileset body)',
+          has(got, 'MAP-NAV-5'), f'{got}')
+    check('NAV-6 fires on the real b89 148-byte stub (self-duplicated GUID list)',
+          has(got, 'MAP-NAV-6'), f'{got}')
+    check('b89 stub is P0 on both gates',
+          all(x['severity'] == 'P0' for x in got
+              if x['contract'] in ('MAP-NAV-5', 'MAP-NAV-6')))
+    # the header-only checks it slipped past - proof the OLD gates could not see it
+    check('b89 stub passes every pre-existing NAV-1 header check (why it shipped)',
+          not has(got, 'MAP-NAV-1'), f'{got}')
+
+    # NAV-5 variants: too few / too many tilesets, trailing junk, garbage tile record
+    check('NAV-5 fires on 2 tilesets (one short)',
+          has(C.contract_navmesh(_nav_ctx([(0x0b, make_rec02(GUID_A, n_sets=2))])),
+              'MAP-NAV-5'))
+    check('NAV-5 fires on 4 tilesets (one extra)',
+          has(C.contract_navmesh(_nav_ctx([(0x0b, make_rec02(GUID_A, n_sets=4))])),
+              'MAP-NAV-5'))
+    check('NAV-5 fires on trailing bytes after the last tileset',
+          has(C.contract_navmesh(_nav_ctx([(0x0b, make_rec02(GUID_A, tail=b'\x00' * 9))])),
+              'MAP-NAV-5'))
+    # a tileset claiming a tile whose data is not there at all
+    lying = bytearray(make_rec02(GUID_A))
+    struct.pack_into('<i', lying, 16 + 16 + 24 + 52, 1)   # set 1 numTiles 0 -> 1
+    check('NAV-5 fires on a tileset claiming a tile it does not carry',
+          has(C.contract_navmesh(_nav_ctx([(0x0b, bytes(lying))])), 'MAP-NAV-5'))
+
+    # NAV-6: degenerate list on an otherwise well-formed container
+    degen = make_rec02(GUID_A, guids=[GUID_A, GUID_A, GUID_A])
+    gotd = C.contract_navmesh(_nav_ctx([(0x0b, degen)]))
+    check('NAV-6 fires on a degenerate list in a structurally valid container',
+          has(gotd, 'MAP-NAV-6'), f'{gotd}')
+    check('NAV-5 stays silent on that (body is fine)', not has(gotd, 'MAP-NAV-5'), f'{gotd}')
+    # a DISTINCT multi-GUID list is normal (stock ships thousands) - must NOT fire
+    check('NAV-6 silent on a distinct multi-GUID list',
+          not has(C.contract_navmesh(_nav_ctx([(0x0b, make_rec02(GUID_A, guids=[GUID_A, GUID_B]))])),
+                  'MAP-NAV-6'))
+    # own-only (guid_count == 1) is stock-normal (251 base levels) - must NOT fire
+    check('NAV-6 silent on a single-own-GUID list (stock-normal, 251 base levels)',
+          not has(C.contract_navmesh(_nav_ctx([(0x0b, make_rec02(GUID_A))])), 'MAP-NAV-6'))
+
+    # the SHIPPED replacement container must clear both new gates
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from build_section_surgery import build_minimal_rec02
+    ints = bytearray(struct.pack('<13i', 120, 24, 120, 120, 24, 120, 4426, -37, 3109, 0, 0, 0, 0))
+    ints[36:52] = GUID_A
+    fixed = build_minimal_rec02(bytes(ints))
+    gotf = C.contract_navmesh(_nav_ctx([(0x0b, fixed)]))
+    check('the b89 REPLACEMENT empty container passes every navmesh contract',
+          len(gotf) == 0 and len(fixed) == 224, f'{len(fixed)}B {gotf}')
+
 
 def test_groups():
     print('CONTRACT 4: GROUPS')
@@ -270,11 +364,20 @@ def test_groups():
 
 def test_doors():
     print('CONTRACT 5: DOORS')
-    # use the REAL baseline Quests.arc (has UnlockFixedItem refs); place a fake SV
-    # door that is/ isn't referenced.
-    base = Path(r'C:\Users\willi\AppData\Local\Temp\claude\C--Users-willi-repos'
-                r'\55f6c1cb-5e9b-466b-a25d-f3fb1a0c56a8\scratchpad\contracts_baseline')
-    qa = str(base / 'Quests.arc')
+    # use a REAL Quests.arc (has UnlockFixedItem refs); place a fake SV door that
+    # is / isn't referenced. The path was hard-coded to one session's scratchpad, which
+    # made this whole harness un-runnable once that scratchpad was cleaned (b89 found it
+    # while wiring the NAV-5/NAV-6 planted tests). Resolve the live staged/local artifact
+    # instead, honour SVC_QUESTS_ARC, and SKIP loudly rather than crash if none exists.
+    repo = Path(__file__).resolve().parent.parent.parent
+    cands = [os.environ.get('SVC_QUESTS_ARC'),
+             repo / 'work' / 'SoulvizierClassic' / 'Resources' / 'Quests.arc',
+             repo / 'local' / 'Quests_scratch.arc']
+    qa = next((str(c) for c in cands if c and Path(c).exists()), None)
+    if qa is None:
+        print('  [SKIP] DOORS negative test: no Quests.arc found '
+              '(set SVC_QUESTS_ARC to run it)')
+        return
     referenced = b'records\\drxmap\\xurder\\doors\\tj_door01.dbr'    # urder.qst unlocks it
     unref = b'records\\drxmap\\bloodcave\\doors\\ghost_sealed_door.dbr'  # nothing unlocks it
     fake_arz = FakeArz({(C.norm_rec(referenced), 'locked'): 1, (C.norm_rec(unref), 'locked'): 1})

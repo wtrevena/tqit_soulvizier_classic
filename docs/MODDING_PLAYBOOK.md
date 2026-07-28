@@ -248,6 +248,19 @@ engine's runtime Recast generator (`ProcessRLTD_flow`, VA `0x101F6210`) rebuildi
 mesh at load, but that generator is gated by `cmp byte[0x10374441],0 / je (skip)`, and
 gate byte `0x10374441` lives in zero-initialized memory that NOTHING in the 3.78 MB
 Engine.dll ever sets non-zero. It is Editor/tool-only dead code in the shipping build.
+
+> **b89 (2026-07-27) - that stub was worse than useless, it was a CRASH.** It was also
+> MALFORMED: written against a wrong format model, it emitted ONE truncated 44-byte
+> parameter block (a real `dtTileCacheParams` is 52 B) instead of the THREE complete
+> 56-byte tilesets the engine parses, plus a degenerate `[own, own, own]` GUID list.
+> `ProcessRLTD` therefore ran off the end of the 148-byte section into the heap and
+> killed the game whenever such a level streamed in (two Frida sessions, both at
+> `ocean_extension05`). **A level with no walkable geometry must get a structurally
+> VALID EMPTY container** (`build_minimal_rec02`, 224 B: own GUID once + 3 complete
+> tilesets with `numTiles = 0`) - the shape stock TQAE ships for its own 60
+> walkable-floor-less border/vista levels. And note "declared cut" does NOT mean "not
+> streamed": the engine streams by grid proximity, so every level in the LEVELS index
+> needs a well-formed section. See `docs/reports/b89_ocean_ext05_hotfix.md`.
 The stub is kept ONLY for the 7 ocean-scenery levels that have no walkable geometry
 (so the build stays green); see `build_minimal_rec02()` in
 `tools/build_section_surgery.py:310`.
@@ -354,7 +367,11 @@ Injection into the merged map is done by `svaera_plus_portals.py` (Section 9) vi
   correct section). This is the real fix path.
 - Tier 2 (`donor_data` alone): `transplant_rec02` repositions an Editor-baked donor's
   header to this level's shifted grid (kept for any future Editor donor).
-- Tier 3 (`use_stub=True`): the dead 148-byte stub (ocean-scenery only).
+- Tier 3 (`use_stub=True`): `build_minimal_rec02`'s 224-byte structurally VALID EMPTY
+  container (own GUID once, 3 complete tilesets, 0 tiles) for levels with no `0x0a`
+  geometry to rasterize - the 7 ocean-scenery blood-cave levels + `coldtombs`. This
+  section IS parsed by the engine when the level streams; it must never be partial
+  (b89).
 `inject_rec02_into_blob` ALWAYS strips `0x0a` so a `ProcessRLTD` reinit cannot clobber
 the `0x0b` handler state.
 
@@ -362,7 +379,9 @@ the `0x0b` handler state.
 
 `py tools/verify_merged_bc_navmeshes.py` byte-verifies the FINAL merged map: for every
 blood-cave level (+ the Random09A doorway), the `0x0b` size == the generated donor's
-`.0b.bin` size and `0x0a` is stripped; ocean-scenery gets the 148-byte stub. Exits
+`.0b.bin` size and `0x0a` is stripped; ocean-scenery gets the 224-byte empty container.
+Since b89 it also WALKS each container's structure (3 complete tilesets, clean end), not
+just its size - size-only comparison is what let 8 malformed containers ship. Exits
 non-zero on any miss (`tools/verify_merged_bc_navmeshes.py:1-9`). This is a hard gate
 before deploy.
 
@@ -743,7 +762,8 @@ only.
 | What was tried | Why it failed | The rule |
 |----------------|---------------|----------|
 | Ship levels with `0x0a` only | Stock engine has no `0x0a` handler; silently skipped -> invisible wall | Every walkable level needs a real `0x0b` (Section 3) |
-| 148-byte empty `0x0b` stub (Approach 22) | Runtime Recast generator is gated by byte `0x10374441`, never set non-zero in the shipping DLL -> dead | Stub only for no-geometry ocean levels; real areas need real navmeshes |
+| 148-byte empty `0x0b` stub (Approach 22) | Runtime Recast generator is gated by byte `0x10374441`, never set non-zero in the shipping DLL -> dead; AND the stub was malformed (1 truncated tileset, not 3) so `ProcessRLTD` read past the section = **crash on stream-in** (b89) | No-geometry levels get the 224-byte VALID empty container; real areas need real navmeshes |
+| Assuming a "cut"/unreachable level is never loaded | The engine streams by grid proximity, not by design intent - `ocean_extension05` sits inside the walkable `drxBC3` block and streamed every time (b89) | Every level in the LEVELS index needs a well-formed `0x0b`; `MAP-NAV-5`/`-6` deliberately ignore cut-ness |
 | Quest-portal (boat-dialog) entrance | State bakes into saves; the 200x `OnLevelLoad` idiom broke in-game TWICE | Use engine-native entrances (a)/(b); quests for logic only |
 | Off-mesh teleport target coords | Silently no-op; also the unshifted coord landed ~1900u into void on a shifted cluster | Derive target from `0x0b` origin `center-dims`, verify `area!=0`, mind +16 padding |
 | Cave interior XZ-overlapping its surface region | Breaks the cave-mouth transition (invisible wall at threshold) | Interiors XZ-DISJOINT; only the intended neighbor edge abuts; edge-touch OK |

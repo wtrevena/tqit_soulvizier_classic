@@ -18,6 +18,35 @@
 > has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
 > files (Steam was already restarted today, so no Steam restart is needed).
 
+## 🩸🩸 OCEAN-CHAMBER CRASH FIX - build49-dev on DEV (2026-07-27) - DO THIS ONE FIRST
+
+**What changed:** your crash probe caught it twice, in the same place both times: the game died
+loading the navmesh of `ocean_extension05`, a 240x240 chamber sitting right against `drxBC3` in the
+deep ocean part of the cave. That chamber (and 7 others like it) shipped a **broken 148-byte
+navmesh** - a container the engine reads past the end of, straight into the heap. Nothing to do with
+memory pressure: one session died after 5 loads in 6 seconds, the other after 11 loads over 4
+minutes, both at that one chamber, while 20+ other chambers loaded fine.
+
+All 8 broken chambers now carry a proper (empty) navmesh in the shape the base game itself uses for
+its scenery levels: `ocean_extension05`, `ocean_extensionx01/x03/x04/x05/x06/x07`, and `coldtombs`
+(that last one is in Egypt - same landmine, different room). Only those 8 blobs changed; everything
+else in the map is byte-identical to build48. DB/Text/Quests untouched.
+
+**Restart first (standing law):** fully quit **TQ AND Steam**, restart Steam, then start TQ fresh.
+
+1. **Load your `_Toxeus` save** (Custom Quest -> `SoulvizierClassicDEV`).
+2. **Walk into the area that killed you** - the start of that deep section of the blood cave, through
+   `drxBC3` / `drxBC_Finale` and out over the ocean-extension block. Before, this crashed to desktop.
+   **Expected: no crash.**
+3. **Keep walking around that block** (the ocean chambers ring the whole finale area) and give it a
+   couple of minutes, since one of the two probe runs only died after ~4 minutes of play.
+4. **Report:** (a) did the crash stop? (b) does the area still LOOK right (the ocean/backdrop
+   scenery should be unchanged - it was never walkable floor)? (c) any new invisible wall anywhere in
+   the finale area?
+
+If it still dies there, say so immediately - the fallback is already picked (drop the navmesh section
+from those 8 levels entirely, which is what the base game does for its own backdrop levels).
+
 ## 🩸 BLOOD-CAVE CRASH FIX - build48-dev on DEV (2026-07-17) - THE walk test (do this first)
 
 **What changed:** the recurring blood-cave crash at the **first respawn fountain inside the cave**

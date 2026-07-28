@@ -68,8 +68,14 @@ from gen_rec02 import generate, load_tok_mesh
 from rec02_format import serialize_rec02, parse_rec02
 from svaera_plus_portals import GRID_SHIFT  # single source of truth for the shift
 
-UPSTREAM_SV_ARC = REPO / 'upstream' / 'soulvizier_098i' / 'Resources' / 'Levels.arc'
-SVAERA_ARC = REPO / 'reference_mods' / 'SVAERA_customquest' / 'Resources' / 'Levels.arc'
+# Merge inputs. Defaults = the in-repo gitignored caches; SVC_SV_ARC / SVC_SVAERA_ARC
+# override them (same contract as svaera_plus_portals.main) so donors can be regenerated
+# when those caches are absent - the SVAERA base also lives in the Steam Workshop content
+# dir (item 2076433374).
+UPSTREAM_SV_ARC = Path(os.environ.get(
+    'SVC_SV_ARC', str(REPO / 'upstream' / 'soulvizier_098i' / 'Resources' / 'Levels.arc')))
+SVAERA_ARC = Path(os.environ.get(
+    'SVC_SVAERA_ARC', str(REPO / 'reference_mods' / 'SVAERA_customquest' / 'Resources' / 'Levels.arc')))
 OUT_DIR = Path(os.environ.get(
     'SVC_DONOR_DIR', str(REPO / 'local' / 'editor_normalized')))
 
