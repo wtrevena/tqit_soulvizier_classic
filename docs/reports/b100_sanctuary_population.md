@@ -369,7 +369,36 @@ main's `local/Levels_merged.arc`, a different and older build - not either of th
 of this lane's maps read **24/24**. A verifier that silently falls back to a default path will
 happily grade the wrong file.
 
-### 5.5 Determinism of the derivation
+### 5.5 RECORD DIFF against a real baseline built from `4f0299c` in the same environment
+
+Not a document's hash - an actual second build. A detached worktree at `4f0299c` (this branch's
+merge-base, and the `main` tip named in the brief) in the session scratchpad, with the same
+interpreter, the same `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, the same upstream inputs and the same
+staged resource arcs:
+
+```
+py tools/debug/b99_record_diff.py <baseline arz> <this branch's arz>
+
+  records  : baseline 51108 -> built 51108
+  ADDED 0 / REMOVED 0 / CHANGED 0
+  RESULT: PASS
+```
+
+and, stronger than the record diff, the two arz files are **byte-identical**:
+
+```
+4378b617fefb2014e382bb5931e7d605  <scratchpad>/b100_baseline/work/.../SoulvizierClassic.arz   (built from 4f0299c)
+4378b617fefb2014e382bb5931e7d605  .claude/worktrees/sanctuary-populate/work/.../SoulvizierClassic.arz
+```
+
+**Zero record changes, zero field changes, nothing to attribute** - which is the correct outcome for
+a lane that touches no DB file. (`git diff 4f0299c HEAD -- tools/` confirms it by construction too:
+the only pre-existing file this branch modifies is `tools/build_section_surgery.py`, which the DB
+build does not import - it appears in `build_svc_database.py` and `apply_svc_patches.py` only inside
+comments. Everything else this branch adds is a new file under `tools/debug/` or the new
+`tools/gate_sanctuary_population.py`.)
+
+### 5.6 Determinism of the derivation
 
 ```
 PYTHONHASHSEED=0 -> local/b100_base/placements.json  md5 2d3cf483844086fe845ba48f4bab106e
