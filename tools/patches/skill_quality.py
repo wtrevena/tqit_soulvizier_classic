@@ -272,12 +272,17 @@ ALLOW = {
     'harpy_lightningaura.dbr': {  # harpy / lightning-aura family (SV-authored, kept whole) (9)
         'tagSoulName56', 'tagSoulName57', 'tagSoulName58', 'tagSoulName216', 'tagSoulName314',
         'tagSoulName497', 'tagSVCSoulDevParnell', 'tagSVCSoulNEmgiec', 'tagSoulSVC9001'},
-    'toxeus_flashpowder.dbr': {  # rogue / assassin family (post 9-reassign; sp_toxeus -> Shadow Surge) (5)
-        'tagSoulName505', 'tagSVCSoulDevDavid', 'tagSVCSoulDevFrazier', 'tagSoulName4',
-        # toxeus_suite's "the Endless Hunt" Toxeus stalker (registry module runs AFTER this one,
-        # so its grant is only visible to this gate now that it runs POST-finalization): the
-        # Toxeus family's own flash-powder shadow-burst signature, family-appropriate by design.
-        'tagSVCSoulToxeusHunt'},
+    'toxeus_flashpowder.dbr': {  # rogue / assassin family (post 9-reassign; sp_toxeus -> Shadow Surge) (4)
+        'tagSoulName505', 'tagSVCSoulDevDavid', 'tagSVCSoulDevFrazier', 'tagSoulName4'},
+        # ⚠️ 'tagSVCSoulToxeusHunt' REMOVED, b98 round 2 (R-84, feat/endless-hunt), BL-103
+        # fix-upstream: this roster is ground truth and the Endless Hunt LEFT the family.
+        # `toxeus_hunt_encounter` retires flash powder from his own kit as "the Enslaver's"
+        # and repoints his soul at `svc_hunt_quarrysmark`, so leaving him listed here would
+        # be a stale claim about who grants what. The gate is subset-based, so a stale entry
+        # would not have failed the build - which is exactly why it had to be removed by
+        # hand. Keeping it accurate also makes the coupling FAIL-LOUD in the other
+        # direction: if the repoint ever regresses, he is back outside this locked roster
+        # and this gate goes red.
     # cyclops_groundsmash.dbr roster is injected from the monolith's _GS_ROSTER_TAGS at gate time.
 }
 

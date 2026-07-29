@@ -84,6 +84,10 @@
 ## claimed 2026-07-27 by the fix/devourer-chest lane) - its OVERFLOW decade is 70-79.**
 ## **2026-07-28 (b98 Endless Hunt lane): Toxeus arc 1-19 is FULL - its OVERFLOW decade is 80-89
 ## (R-80..R-85 claimed). Next free Toxeus number: R-86.**
+## **2026-07-28 b98 ROUND 2 (adversarial vet) allocated NO new numbers on purpose.** Will made no new
+## decision; what changed is what round 1 CLAIMED about the decisions he had already made. R-83 and
+## R-84 therefore carry marked "ROUND 2" amendment blocks rather than new rulings, so his words stay
+## in one place and the correction sits next to the claim it corrects. R-86 is still free.
 
 ### Toxeus arc (continued)
 - R-19 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
@@ -434,6 +438,30 @@
   module, and by name only), so a naive clone would have shipped an invisible spear. Runbreaker sets
   the F3-corrected base rig explicitly and drops the DRX-only skin, and verify() asserts each tier's
   mesh equals the donor's FINAL post-F3 mesh so the two can never diverge.
+  > **ROUND 2 (2026-07-28, adversarial vet) - two additions, no reversal.**
+  > 1. `spearSpawnAnim` was the ONE animation slot the new spear row lacked. Both his `sHanded` and
+  >    `unarmed` rows bind `ShadowStalker_Spawn.anm`; the `spear` row did not, and the spear row is
+  >    now his ONLY row (`chanceToEquipRightHand=100`, Item1 weight 100) while he is a
+  >    `ControllerMonsterHidden` ambusher (appearDistance 12.0), so his emerge pose had lost its
+  >    binding. Now self-sourced from `sHandedSpawnAnim` like the other three, and added to the
+  >    SPEAR-ANIM-1 gate's required list with its own planted negative.
+  > 2. THE BORROWED-POSE DEBT IS QUANTIFIED, and the ranked fallbacks are corrected.
+  >    `Maenad_Spear_Att{Alpha,Beta,Gamma}.anm` track 26 bones including Bone_Tail01-04;
+  >    `ShadowStalker.msh` carries about 30 bones including Bone_L/R_HorseBone, Bone_Neck02,
+  >    Bone_L/R_Toe, Bone_L/R_Ear and Bone_Jaw, and NO tails. So during the three swing poses 8
+  >    ShadowStalker-only bones get no track and 4 tail tracks hit nothing, while the whole
+  >    shoulder/forearm/wrist/Bone_R_Weapon chain IS tracked, and 56 shipped TigerMan records (a rig
+  >    that also has HorseBone + Jaw + tails) play these same Maenad anims. He WILL swing; the
+  >    freeze is cosmetic. Still BL-b98-DEBT-1, still Will's eye.
+  >    TWO CLOSER DATA POINTS the round-1 fallback ranking missed, WITH THE CAVEAT THAT MAKES THEM
+  >    NOT A PRECEDENT: `records\skills\stealth\drxpet\anm_shadowstalker.dbr` ships a COMPLETE spear
+  >    block on `FemalePC_Spear_*`, and `records\test\outsider_hero_*_46.dbr` use `Neanderthal_Spear_*`.
+  >    Neither is proof for THIS rig: the first is the animation table of 42 pets that wear
+  >    `DRX\meshes\stalker.msh`, and the second belongs to records wearing
+  >    `SummonersDelightTextures\creatures\monsters\shadowstalker\daemon_outsider.msh` whose own
+  >    animation table (`records\creature\monster\shadowstalker\anm\anm_shadowstalker.dbr`) is not
+  >    even present in the mod arz. Both are DIFFERENT meshes. Ranked fallbacks are therefore
+  >    unchanged (MedusaMinion_Spear, then Machae_Spear), with these two recorded as leads.
 - R-84 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"he doesnt really have any
   different or unique skills from toxeus the murderer, the enslaver of souls"** - and that was
   LITERALLY TRUE. Ground truth: 9 of his 12 skill slots were the SAME SKILL RECORD as the Enslaver's
@@ -448,10 +476,9 @@
   the DRX STALKER-namespace shadow blast - a cold spectral spear at range: distance is not safety),
   Run Them Down (`svc_hunt_rundown` - a close-range spear sweep). `toxeus_bladestorm` (the Toxeus
   family signature verb) and EVERY passive are KEPT: this edits 3 slots, it never strips his kit.
-  CASTABILITY: he binds ZERO `unarmedSpecialAnimRef` slots (so do the Enslaver and the Devourer), so
-  every new skill declares NO `skillSpecialAnimationName` - the same law `toxeus_champion_kits`
-  already ships for these champions. Gated fail-loud, plus a SAMENESS gate that fails the build if
-  every one of his cast slots is an Enslaver cast slot again.
+  CASTABILITY: every new skill declares NO `skillSpecialAnimationName`, the same law
+  `toxeus_champion_kits` already ships for these champions. Gated fail-loud, plus a SAMENESS gate
+  that fails the build if every one of his cast slots is an Enslaver cast slot again.
   REPORTED, NOT SILENTLY CLAIMED: the skill this replaces at specialAttack3, `netherstrike`, declares
   skillSpecialAnimationName='LethalStrike' which he does not bind - that slot was very likely dead
   already, so this is a repair as well as a differentiation.
@@ -459,10 +486,84 @@
   demon" - `characterRacialProfile = Demon` on his record. That is a data fact, not a perception.
   ⚠️ CORRECTION TO THE DESIGN BRIEF, deliberately NOT actioned: the brief called
   `distressCallGroup='Skeleton'` on a Demon-race boss a clone leftover to fix. Ground truth says
-  otherwise - ALL 28 shipped ShadowStalker-mesh monsters are race=Demon AND distressCallGroup
-  'Skeleton', including the Enslaver's own marauders, so it is the base game's convention for this
-  rig. There is also no 'Demon' group in the DB (19 groups exist; Demon is not one), so "fixing" it
-  would invent a group of one member and cut him out of the shadowstalker distress network.
+  otherwise - it is the base game's convention for this rig, including on the Enslaver's own
+  marauders. There is also no 'Demon' group in the DB (19 monster distress groups exist; Demon is not
+  one), so "fixing" it would invent a group of one member and cut him out of the shadowstalker
+  distress network.
+  > **ROUND 2 (2026-07-28, adversarial vet). THREE CORRECTIONS AND TWO ADDITIONS. Will's words above
+  > are untouched; what changes is what round 1 CLAIMED about them.**
+  >
+  > **CORRECTION 1 - THE CASTABILITY PREMISE WAS INVERTED, and it cost him 40% of his cast budget.**
+  > Round 1 wrote "he binds ZERO `unarmedSpecialAnimRef` slots (so do the Enslaver and the
+  > Devourer)". The parenthesis is FALSE. `um_toxeus_enslaver_99` and `um_bloodtoxeus_99` both carry
+  > `charAnimationTableName = records\creature\monster\skeleton\anm\anm_skeleton01.dbr`, which binds
+  > `sHandedSpecialAnimRef1='AoE360'` and `sHandedSpecialAnimRef2='LethalStrike'` - so the other two
+  > champions CAN cast bladestorm and netherstrike. The Hunt has NO `charAnimationTableName` at all
+  > and bound no `*SpecialAnimRef` on any row, so `toxeus_bladestorm` at specialAttack2 @40% (it
+  > declares `skillSpecialAnimationName='AoE360'`) has NEVER been able to fire, in the shipped data
+  > or after round 1 - while round 1's report presented it as kept and working. Round 1's gate looped
+  > only the skills the module authored, so it could not catch it.
+  > **FIX:** the animation is BOUND rather than avoided. `AoE360` is bound on his own inline
+  > animation table (which IS his live table, since he has no charAnimationTableName) on TWO rows:
+  > `spear*`, the row the engine reads while he holds the R-83 spear, and `unarmed*`, the engine's
+  > universal fallback row, so the repair survives any later veto of the spear instead of dying with
+  > it. Each bound `.anm` is asserted at build time to be the MODAL shipped binding for AoE360 on
+  > that row (spear: `FemalePC_Spear_Skill_Tempest.anm`, 11 of 23 carriers; unarmed:
+  > `MalePC_DW_Skill_AOE360.anm`, 5 carriers), so the choice is provenance, not a guess that a file
+  > exists. Precedent: `coldworm_buffs.py` binds ref+anim for exactly this reason.
+  > **THE GATE IS REBUILT, not patched:** `_castability_violations()` now walks EVERY populated
+  > active slot on the record (attack / initial / dying / specialAttack / specialAttack2..6) and
+  > derives the animation row from the Class of the item he is GUARANTEED in RightHand, so it follows
+  > the weapon instead of assuming 'unarmed'. An unmapped weapon Class fails the gate rather than
+  > passing silently. Note this is a genuine cross-rig cosmetic debt of the same class as R-83's:
+  > the AoE360 pose is a PC-rig anim on the ShadowStalker rig. It makes the cast FIRE, which is the
+  > law; whether the whirl reads right is BL-b98-DEBT-1's question.
+  >
+  > **CORRECTION 2 - HIS SOUL STILL GRANTED THE SKILL THIS LANE RETIRED.**
+  > `toxeus_hunt_soul_{n,e,l}` granted `records\skills\soulskills\toxeus_flashpowder.dbr`, the very
+  > skill removed from his kit above as "the Enslaver's". So the one player-facing artifact of his
+  > identity, now dropping at 100% (R-81), handed out an ability he no longer has - and an
+  > over-shared filler (15 soul records grant it). The other two champion souls summon their
+  > champion; his was the odd one out. **FIX:** all three tiers now grant `svc_hunt_quarrysmark` (the
+  > "become the Hunt" grant) at itemSkillLevel n/e/l = 1/2/3, the monolith's own established soul
+  > tier convention, which also keeps the grant inside the skill's `skillMaxLevel` of 3. Soul and
+  > monster share ONE skill record, so player-mark and monster-mark can never diverge. NEW INVARIANT
+  > OF THE CLASS: a soul may never grant a level its skill does not have. FIX-UPSTREAM (BL-103): the
+  > soul's DESC tag in `toxeus_suite.py` no longer advertises "the flash-burst that opens the range"
+  > (and verify() fails the build if it comes back), and `skill_quality.ALLOW['toxeus_flashpowder.dbr']`
+  > drops `tagSVCSoulToxeusHunt` from its locked family roster because he left the family.
+  >
+  > **CORRECTION 3 - CENSUS.** Round 1's "all 28 shipped ShadowStalker-mesh monsters are race=Demon
+  > AND distressCallGroup 'Skeleton'". Re-run with the method stated so it reproduces (records whose
+  > `mesh` contains 'shadowstalker.msh' AND `Class`=='Monster' in the deployed arz): 30 records, ALL
+  > 30 race=Demon, 26 group 'Skeleton' and 4 group 'Jackalman' - and those 4 wear a DIFFERENT mesh
+  > path, `Creatures\Monster\jackalman\shadowstalker.msh`. The race half was right, the group half
+  > was not exactly right, and the DECISION IS UNCHANGED (no 'Demon' group exists).
+  >
+  > **ADDITION 1 - THE NEW SKILLS CARRIED UNREPORTED DONOR PAYLOADS.** Cloning brings the donor's
+  > whole record, and round 1 shipped the leftovers silently. Now stripped, with a gate and a planted
+  > negative for each: `svc_hunt_longreach` inherited `offensivePetrifyMin=2.0` (a 2-second HARD
+  > PETRIFY at 30% cast chance on a 5s cooldown at range 12-22, stacked on R-80's unleashable
+  > Legendary pursuit - combat-defining and never designed) plus lifedrain's 16-entry
+  > `offensiveLifeLeechMin`/`offensiveLifeMin`; `svc_hunt_rundown` inherited flash powder's 12-entry
+  > `offensiveConfusionChance`/`offensiveFumbleMin`/`offensiveProjectileFumbleMin`, its flat pierce
+  > ladder, AND its white-burst `radiusEffectName` + head attach point + powder cast sound, i.e. the
+  > exact audiovisual signature of the skill it replaces. `svc_hunt_quarrysmark_buff` KEEPS the
+  > donor's resist shred (marked prey takes the spear harder IS this skill's identity) but on a
+  > DESIGNED 3-entry ladder instead of Study Prey's inherited 12-entry one, which `skillLevel [1,2,3]`
+  > was reading at its three weakest steps. The lance's `maxDistance` was also raised from the
+  > donor's 18 to 22 to cover the LongRange band he is actually told to cast it in, with a gate.
+  >
+  > **ADDITION 2 - PLAYER SURFACE for the new skill CLASS (process law #3).** Round 1's checklist
+  > covered Runbreaker only. "Quarry's Mark", "The Long Reach" and "Run Them Down" existed ONLY in
+  > `FileDescription`, a dev-only field, while `svc_hunt_quarrysmark_buff` (which is `debufSkill=1`
+  > and therefore lands on the PLAYER's status bar) read "Study Prey" with a description about pierce
+  > damage that is not what it does. All four records now carry mod-authored `tagSVCHunt*` name and
+  > description tags, gated fail-loud both ways (right tag on the record, tag present in the Text
+  > set). REMAINING AND DISCLOSED, NOT FIXED: the two monster-only actives still inherit their
+  > donors' icons and sounds (`svc_hunt_longreach` = Life Drain's NegativeEnergyRay icons and
+  > lifedrain cast/hit sound paks). They have no UI surface on a monster, and no report from this
+  > lane claims how they sound. BL-b98-DEBT-10.
 - R-85 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim fragment: the Enslaver should have
   **"the same black shroud smoke his summoned demons have"**.
   THE FINDING THAT CHANGED THE TASK: he ALREADY carries it. `um_toxeus_enslaver_99` has

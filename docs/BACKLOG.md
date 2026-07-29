@@ -1,18 +1,23 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## BUILD60-DEV GATE RECORD - b98 THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, tag `build60-dev`)
+## BUILD61-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 2 (2026-07-28, branch `feat/endless-hunt`, tag `build61-dev`)
 
 > ⚠️ TAG NOTE: this lane was briefed to tag `build59-dev`, but that tag was ALREADY CLAIMED by the
 > parallel `fix/soul-identity` lane (b97 round 2, commit `e3f7c32`). A tag in use is never
-> reassigned, so this lane took the next free number, `build60-dev`. Nothing else changed.
+> reassigned, so round 1 took `build60-dev` and round 2 takes `build61-dev`.
 
 **NOT DEPLOYED.** Five content branches are staged for ONE merged deploy; this lane deliberately did
-not write to `CustomMaps\SoulvizierClassicDEV`. Artifacts for the orchestrator's merged deploy:
+not write to `CustomMaps\SoulvizierClassicDEV`. Ground truth re-hashed at the end of round 2 and
+UNCHANGED: DEV arz `9f98e3e88bca20f96bacc2fd6bb87b63`, `Levels.arc` `943d0ab9516d332db79bd7f9fd2d3ffe`.
+Sibling worktrees untouched. Artifacts for the orchestrator's merged deploy:
 - arz `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
-  md5 **c366b4108be547b4a4acb181d1b0675c** (51,104 records)
-- Text `.claude/worktrees/endless-hunt/work/text/Text.arc` md5 **ce4653d30f304a88e837b20e166639fc**
-  (COUPLED - the arz references the new `tagSVCwpnRunbreaker`; never ship one without the other)
+  md5 **6be6fb0a5507ca4f6988405e7a64add8** (51,104 records)
+- Text `.claude/worktrees/endless-hunt/work/text/Text.arc` md5 **c0f22186550484b932e26dacc12c6a9a**
+  (COUPLED - the arz references `tagSVCwpnRunbreaker` AND the 7 new `tagSVCHunt*` skill tags; never
+  ship one without the other)
 - `Levels.arc` / `Quests.arc` **untouched** - this is a DB-only lane, zero map bytes.
+- ROUND 1 artifacts (`c366b410...` / `ce4653d3...`, tag `build60-dev`) are SUPERSEDED; do not deploy
+  them.
 
 Rulings implemented: **R-80** (endless pursuit, Legendary only), **R-81** (his soul at 100%),
 **R-82** (the Rite of the Undivided drops off him too), **R-83** (Runbreaker, his spear),
@@ -20,16 +25,18 @@ Rulings implemented: **R-80** (endless pursuit, Legendary only), **R-81** (his s
 shroud). Full text in `docs/WILL_RULINGS.md` (Toxeus OVERFLOW decade 80-89, allocated by this lane);
 full report in `docs/reports/b98_endless_hunt.md`.
 
-**RECORD DIFF vs a freshly-built `main` (a0276ab) baseline, same env - INTENDED ONLY:**
-15 ADDED / 0 REMOVED / 4 MODIFIED. Added: the endless controller + variant monster + Legendary pool
-(R-80), `svc_{n,e,l}_runbreaker` + `runbreaker_guaranteed_{n,e,l}` (R-83), 4 pursuit-kit skills
-(R-84), the shroud skill + its CharFxPak (R-85). Modified: `um_toxeus_hunt_99` (30 fields),
-`um_toxeus_enslaver_99` (2 - the shroud in a FREE slot 19), the fixed proxy (5) and its pool
-(1 - FileDescription).
+**RECORD DIFF vs a freshly-built `main` (a0276ab) baseline, same env - INTENDED ONLY (ROUND 2):**
+15 ADDED / 0 REMOVED / **7 MODIFIED**. Added (unchanged from round 1): the endless controller +
+variant monster + Legendary pool (R-80), `svc_{n,e,l}_runbreaker` + `runbreaker_guaranteed_{n,e,l}`
+(R-83), 4 pursuit-kit skills (R-84), the shroud skill + its CharFxPak (R-85). Modified:
+`um_toxeus_hunt_99` (35 fields, was 30 - round 2 adds `spearSpawnAnim` plus the `spear`/`unarmed`
+AoE360 ref+anim bindings), `um_toxeus_enslaver_99` (2 - the shroud in a FREE slot 19), the fixed
+proxy (5), its pool (1 - FileDescription), and **round 2** `toxeus_hunt_soul_{n,e,l}` (2 each -
+`itemSkillName` + `itemSkillLevel`). No dtype flips, no collateral.
 
-**GATES (all green):**
-- registry selfcheck OK, 39 modules; every module `verify()` hook green.
-- `validate_tags` **PASS** (358 mod-owned tags all resolve, incl. the new `tagSVCwpnRunbreaker`).
+**GATES (all green, ROUND 2 re-run):**
+- registry selfcheck OK, 39 modules, order hash `14c27b6e835f`; every module `verify()` hook green.
+- `validate_tags` **PASS** (365 mod-owned tags all resolve, was 358: +7 `tagSVCHunt*`).
 - `verify_soul_drop_rates` **PASS** (incl. its own planted-regression negative test).
 - contract suite **PASS, 0 P0 / 0 P1**, identical to the `main` baseline run under identical inputs
   (both 0/0, 4,759 P2). NOTE FOR FUTURE LANES: run the suite with `--resource-arc-dir` pointing at a
@@ -37,10 +44,19 @@ full report in `docs/reports/b98_endless_hunt.md`.
   Without them the suite reports 102 P0 / ~460 P1 on `main` ITSELF - pure environment artifacts
   (unresolvable meshes because no arcs were loaded, and severity demotion because the provenance
   source could not load).
-- 3 NEW planted negative tests, 14/14 plants caught:
-  `py tools/patches/toxeus_hunt_encounter.py --negtest` (5/5),
+- contract suite compared PER CONTRACT against the `main` baseline: all 11 reporting contracts return
+  IDENTICAL counts (C-RES-ASSET-1 1586, C-RES-DBR-1 2630, C-RES-TAG-1 332, C-RES-TAGDEAD-1 35,
+  C-RES-TPL-1 57, MAP-NAV-4 2, MAP-PORTAL-1 1, MAP-PORTAL-3 2, MONSTER-MESH 2, MONSTER-SKILLS-LOOT
+  110, QST-TAG-PLACEHOLDER 2), so the pre-existing P1 count (zero) is provably unchanged.
+- 3 NEW planted negative tests, **26/26** plants caught:
+  `py tools/patches/toxeus_hunt_encounter.py --negtest` (**15/15**, was 5/5),
   `py tools/patches/toxeus_hunt_endless.py --negtest` (5/5),
   `py tools/patches/enslaver_shroud.py --negtest` (6/6).
+- INDEPENDENT re-verification read back out of the FINISHED arz (not asserted by the code that wrote
+  it): bladestorm's AoE360 bound with a real `.anm` on both rows and the only cast slot needing one;
+  3 souls granting `svc_hunt_quarrysmark` at 1/2/3 vs skillMaxLevel 3; 13 stripped donor fields all
+  ABSENT; 8 skill tags all mod-authored; the Legendary variant differing in EXACTLY `controller`;
+  Text.arc carrying all 7 new tags with no "flash-burst" string anywhere.
 
 **TWO WRONG CLAIMS IN THE SHIPPED DOCS, CORRECTED IN PLACE (retirement protocol - wording only, no
 record renamed or deleted):**
@@ -55,14 +71,103 @@ record renamed or deleted):**
    him invisible on Normal is RARITY: weight 1 against pool totals of 36,001-660,001, median about
    1 in 66,667. Corrected in `toxeus_suite.py` (docstring + the prefix comment + the sweep docstring),
    in `build_section_surgery.py`'s placement comment, and in R-16's successor entries.
-2. `distressCallGroup='Skeleton'` on a Demon-race ShadowStalker is NOT a clone leftover. All 28
-   shipped ShadowStalker-mesh monsters are race=Demon AND group 'Skeleton'; there is no 'Demon' group
-   in the DB at all. Left alone, with the census recorded.
+2. `distressCallGroup='Skeleton'` on a Demon-race ShadowStalker is NOT a clone leftover. Re-run in
+   round 2 with the method stated so it reproduces (records whose `mesh` contains 'shadowstalker.msh'
+   AND `Class`=='Monster'): **30 records, ALL 30 race=Demon, 26 group 'Skeleton' and 4 group
+   'Jackalman'** (and those 4 wear a different mesh path, `Creatures\Monster\jackalman\shadowstalker.msh`).
+   Round 1 said "all 28 ... are race=Demon AND group Skeleton"; the race half was right, the group
+   half was not exactly right. There is no 'Demon' group in the DB at all (19 monster distress groups
+   exist), so the DECISION IS UNCHANGED: left alone, with the corrected census recorded.
+
+---
+
+## ROUND 2 (2026-07-28) - the adversarial vet's two NO-GO blockers, fixed
+
+Round 1 (`2af3104`, tag `build60-dev`) was vetted NO-GO on two issues; everything else was upheld.
+Both are fixed here, plus the three MEDIUM and two LOW findings. No round-1 work was reversed.
+
+**BLOCKER 1 - AN UNCASTABLE SKILL IN A REWRITTEN CAST SLOT, CLAIMED AS WORKING.**
+`toxeus_bladestorm` sits at `specialAttack2` @40% and declares `skillSpecialAnimationName='AoE360'`.
+`um_toxeus_hunt_99` has NO `charAnimationTableName` and bound ZERO `*SpecialAnimRef` on any row, so
+under this repo's disasm-proven hard law (B-SOUL-PROC-2 / the b91 coldworm monster-side gate) that
+cast could never start - in the shipped data OR after round 1, which reported it as kept and working.
+The premise round 1 used to justify the design was also **inverted**: it claimed the Enslaver and the
+Devourer bind nothing either, but BOTH carry
+`charAnimationTableName = records\creature\monster\skeleton\anm\anm_skeleton01.dbr`, which binds
+`sHandedSpecialAnimRef1='AoE360'` and `sHandedSpecialAnimRef2='LethalStrike'`. They can cast; he could
+not. And round 1's gate looped only `_NEW_SKILLS`, so it could not have caught it.
+FIX: bind the animation instead of avoiding it, on TWO rows of his own inline animation table -
+`spear*` (the row the engine reads while he holds the R-83 spear) and `unarmed*` (the engine's
+universal fallback row, so the repair survives any later veto of the spear). Each `.anm` is asserted
+at BUILD TIME to be the modal shipped binding for AoE360 on that row (spear
+`FemalePC_Spear_Skill_Tempest.anm` 11/23 carriers; unarmed `MalePC_DW_Skill_AOE360.anm` 5 carriers),
+so it is provenance rather than a guess. The gate is rebuilt, not patched: `_castability_violations()`
+walks EVERY populated active slot (attack / initial / dying / specialAttack / specialAttack2..6) and
+DERIVES the animation row from the Class of the item he is guaranteed in RightHand, so it follows the
+weapon; an unmapped weapon Class fails the gate rather than passing silently.
+
+**BLOCKER 2 - HIS SOUL STILL GRANTED THE SKILL THIS LANE RETIRED.**
+`toxeus_hunt_soul_{n,e,l}` granted `soulskills\toxeus_flashpowder.dbr` - removed from his kit by R-84
+as "the Enslaver's" - so the one player-facing artifact of his identity, now dropping at 100%, handed
+out an ability he no longer has, and an over-shared filler (15 soul records grant it). FIX: all three
+tiers grant `svc_hunt_quarrysmark` at itemSkillLevel n/e/l = 1/2/3 (the monolith's own soul-tier
+convention, and inside the skill's `skillMaxLevel` of 3). NEW INVARIANT: a soul may never grant a
+level its skill does not have. FIX-UPSTREAM (BL-103): the soul DESC tag in `toxeus_suite.py` no longer
+advertises "the flash-burst" (gated), and `skill_quality.ALLOW['toxeus_flashpowder.dbr']` drops
+`tagSVCSoulToxeusHunt` because he left that family.
+
+**MEDIUM 1 - UNREPORTED INHERITED DONOR PAYLOADS, now stripped + gated.** `svc_hunt_longreach` carried
+`offensivePetrifyMin=2.0` (a 2-second hard petrify at 30% cast chance, 5s cooldown, range 12-22,
+stacked on R-80's unleashable Legendary pursuit) plus lifedrain's 16-entry leech ladders;
+`svc_hunt_rundown` carried flash powder's 12-entry confusion/fumble package, its flat pierce ladder,
+and its white-burst FX + head attach point + powder cast sound. `svc_hunt_quarrysmark_buff` keeps the
+donor's resist shred (it IS the identity) but on a designed 3-entry ladder instead of the inherited
+12-entry one that `skillLevel [1,2,3]` was reading at its three weakest steps. The lance's
+`maxDistance` also went 18 -> 22 so the far third of his own LongRange band is no longer a dry cast.
+
+**MEDIUM 2 - PLAYER-SURFACE CHECKLIST now covers the new skill CLASS, not just Runbreaker.** The three
+names existed only in `FileDescription` (dev-only), while `svc_hunt_quarrysmark_buff` is
+`debufSkill=1` and therefore lands on the PLAYER's status bar reading "Study Prey" with a description
+about pierce damage. All four records now carry mod-authored `tagSVCHunt*` name + description tags,
+gated both ways. Remaining and disclosed: BL-b98-DEBT-10.
+
+**LOW - `spearSpawnAnim`** was the one slot the new spear row lacked (he is a hidden ambusher and the
+spear row is now his only row); self-sourced and added to SPEAR-ANIM-1. **LOW - census corrections**
+are folded in above and in R-83/R-84.
+
+**GATES AFTER ROUND 2:** `toxeus_hunt_encounter --negtest` **15/15** (was 5/5), plus
+`toxeus_hunt_endless` 5/5 and `enslaver_shroud` 6/6 unchanged = **26/26 plants caught**.
+
+---
 
 **DEBT REGISTER (nothing silently deferred):**
 - `BL-b98-DEBT-1` LAUNCH-GATED, PLAYER SURFACE: Maenad-spear-on-SHADOWSTALKER has no shipped
   instance. Nobody has SEEN Runbreaker swing. Will's in-game look decides; ranked fallbacks
   MedusaMinion_Spear then Machae_Spear, each a one-constant edit.
+  > ROUND 2 - QUANTIFIED, still open, still Will's eye. `Maenad_Spear_Att{Alpha,Beta,Gamma}.anm`
+  > track 26 bones incl. Bone_Tail01-04; `ShadowStalker.msh` has about 30 bones incl.
+  > Bone_L/R_HorseBone, Bone_Neck02, Bone_L/R_Toe, Bone_L/R_Ear, Bone_Jaw and NO tails. During the 3
+  > swing poses, 8 ShadowStalker-only bones get no track (head/jaw/ears/toes freeze) and 4 tail
+  > tracks hit nothing; the shoulder/forearm/wrist/Bone_R_Weapon chain IS fully tracked and 56
+  > shipped TigerMan records (HorseBone + Jaw + tails) play these same Maenad anims, so he WILL swing
+  > and the shape is base-game normal. THE SAME DEBT NOW COVERS the round-2 AoE360 pose
+  > (`FemalePC_Spear_Skill_Tempest.anm`, a PC-rig anim on the ShadowStalker rig) - it makes
+  > bladestorm FIRE, which is the law; whether the whirl READS right is this item's question.
+  > TWO CLOSER LEADS, each with the caveat that stops them being precedent:
+  > `records\skills\stealth\drxpet\anm_shadowstalker.dbr` ships a complete `FemalePC_Spear_*` block
+  > but is the table of 42 pets on `DRX\meshes\stalker.msh`; `records\test\outsider_hero_*_46.dbr`
+  > use `Neanderthal_Spear_*` but wear `...\shadowstalker\daemon_outsider.msh` and point at an
+  > animation table that is not even present in the mod arz. Both are DIFFERENT meshes, so the ranked
+  > fallbacks are unchanged.
+- `BL-b98-DEBT-10` COSMETIC, DISCLOSED NOT FIXED (round 2, from the vet's MEDIUM on player surface):
+  the two monster-ONLY new actives still inherit their donors' icons and sounds -
+  `svc_hunt_longreach` carries Life Drain's NegativeEnergyRay up/down icons and its
+  `skillHitSound`/`skillSwipeSound` lifedrain paks (inherited from the orphan DRX stalker
+  `zshadowblast`, which has 0 other referencers, so nobody has heard it either). Neither has a UI
+  surface on a monster and no report from this lane claims how they sound, but they are the wrong
+  audio identity for a cold spectral spear. Fix is a one-line repoint per field once a
+  colour/audio-confirmed donor is agreed. The player-READABLE surfaces (the `debufSkill=1` status-bar
+  entry and the soul-granted mark) ARE fixed and gated.
 - `BL-b98-DEBT-2` BLOCKED ON ANOTHER LANE + WILL: the Enslaver's shroud cannot be claimed to read
   black while `RevenantPoison.msh` emits a mesh-embedded GREEN aura at his waist (b92, proven from
   asset bytes, NOT deployed, reachable only from tag `build53-dev`). Also Will question 7: give each
