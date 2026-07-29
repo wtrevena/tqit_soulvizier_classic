@@ -1246,5 +1246,28 @@ is changed. **The R-96 gate must not be loosened to accommodate this change.** A
 it exists to catch is worthless. If the two genuinely cannot both hold, that is a WILL DECISION with numbers
 attached, not an implementer's judgement call.
 
-**STATUS:** PENDING. Design brief written and ready to run; not implemented. Deliberately NOT started on
-2026-07-29 because the weekly model budget was at 95% and a half-finished rate change is worse than none.
+**STATUS: WITHDRAWN BY WILL THE SAME DAY, BEFORE ANY CODE WAS WRITTEN.** Nothing was implemented. The
+Hunt's rate is UNCHANGED and stays as b98 shipped it.
+
+**WILL, VERBATIM (2026-07-29, minutes after giving R-98):**
+
+> "oh ok i didnt know the hunt only had 346 possible pools, since there are so few pools for the hunt we can
+> leave the rate higher"
+
+**⚠️ CORRECTION TO THE PREMISE, recorded so nobody re-acts on the withdrawn ruling OR on the misreading that
+withdrew it.** 346 is not a smallness. It is the number of ProxyPools that carry `um_toxeus_hunt_99`, spread
+across all eight Immortal Throne areas (area001 Rhodes through area008 Hades Palace), reached by 540 proxies.
+**The pool COUNT is not the rarity knob** - the rarity is the per-slot WEIGHT inside each pool. Before b98 he
+sat at 1 weight against pool totals of 36,001-660,001, i.e. a per-slot probability of about 1/66,667, which
+is why Will met him once on Epic and never on Normal. b98 normalised that to about **1/1250**, which is what
+produces the "roughly one sighting per act" figure R-96 gates (Act IV 0.955 / Act V 1.034 / full pass 1.989).
+
+**NET EFFECT: the withdrawal and the status quo agree.** Leaving the rate alone IS "leaving it higher", and it
+keeps R-96 satisfied. No work is owed. `BL-b98-DEBT-11` (the Hunt sits 48-53x above the Enslaver in the 63
+pools they share) therefore stays OPEN as a known, accepted asymmetry rather than a defect - Will has now
+declined to close it in the Hunt's direction, and R-18 plus his own playthrough evidence keep the Enslaver
+frozen, so there is no remaining lever either side of it.
+
+**IF THIS IS EVER REVIVED:** the design brief is committed at
+`docs/wip_workflows/R-98_hunt_enslaver_ratio_5x.js` and is still valid - it measures both readings before
+touching a weight and forbids loosening the R-96 gate to fit its own change.
