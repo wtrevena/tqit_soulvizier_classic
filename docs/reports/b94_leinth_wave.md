@@ -688,3 +688,175 @@ preserved verbatim at
    `drxmap\proxy\q_*` proxies. That is another in-flight lane's work deployed for its own QA. Any
    arz built from `main` (including this one) necessarily reverts those 12 records. See the deploy
    section for the backup + restore path and the merge-order remedy.
+
+---
+
+> ROUND 3 SUPERSEDES PARTS OF SECTIONS 2 AND 3 ABOVE. Everything in sections 0-4 describes
+> rounds 1-2 and is kept as the decision trail; where round 3 contradicts it, ROUND 3 WINS.
+> R-numbers: the b94 entries were renumbered +2 (R-70..R-73 -> R-72..R-76) when main landed
+> its own R-70/R-71 in the 2026-07-28 ledger-hygiene pass. No ruling text changed.
+
+## 5. ROUND 3 (2026-07-29) - WILL ANSWERED THE FOUR QUESTIONS: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build60-dev`)
+
+> ⭐⭐ **WILL ANSWERED THE FOUR DESIGN QUESTIONS ON 2026-07-27. Three of the four answers go AGAINST
+> the implementer's recommendation. They are law; this round implements them, including the
+> reversals.** Ledgered VERBATIM as **R-76**, which **SUPERSEDES R-73 IN PART**.
+>
+> | Q | Will, verbatim | what round 1 had recommended | what shipped |
+> |---|---|---|---|
+> | Q4 how much stronger | *"lets give her some guardians like amgoz1 gave hades"* | stat inflation (+60% life, resists) | an **HONOUR GUARD**; the modest stat work is kept, no uber-tier push |
+> | Q6 staged poison rigs | *"Use them AND remove her poison weakness"* | REJECT as off-identity | **both rigs wired**, `defensivePoison` -15 -> **+15** |
+> | Q7 the ugly swarm | *"Keep the swarm as-is"* | cut 4;6;8/16 -> 2;3;4/6 + TTL | **cut REVERTED IN FULL**; risk measured + flagged instead |
+> | Q9 stranded character | add the no-kill fallback | (was the open residual) | **`Condition_OnLevelLoad` fallback**, no `Action_OpenDoor` |
+
+### PART D (NEW) - THE HONOUR GUARD, mirrored from what amgoz1/DRX actually built
+
+The real Hades guardians were traced in the shipped bytes BEFORE anything was designed:
+`xq06_boss_hades_champions.dbr` (FileDescription "DRX") is a **separate proxy** from the boss proxy,
+carrying the guard's own mesh (`gigantes01_quest.msh` @ 2.8), sharing the boss's difficulty/limit
+files and `quest=1`, pointing at `xq06_boss_hades_champion_pool.dbr` (`spawnMin=spawnMax=1`,
+`championMax=1`, `name1 = drxdishonorguard\anapaest_45`). A placement census over **all 2,282
+levels** finds it placed exactly **TWICE**, both in `HadesPalace_Floor05_04.lvl`.
+
+The literal mirror needs two new placements in `bossfight.lvl` (a Levels.arc rebuild). **Not taken**,
+because this repo already ships the DB-side equivalent and **its donor is literally Leinth's own
+pool**: `_svc_boss_pool`, "the 1-boss + 2-guaranteed-champion recipe (spawnMax=3 /
+championChance=100 / championMin=Max=2 -> 3-2=1 guaranteed boss; the LAW)", shipping in `neferkha`,
+`diadochi` and the Hades Marshal. Applied to `q_leinth_lone` in place. **Levels.arc BYTE-UNCHANGED.**
+
+* Her three variant `name` slots, weights and limits are **untouched** -> the single main is still a
+  random `q_leinth_47/49/50`.
+* `_svc_neutralize_pool_equation` is **mandatory, not cosmetic**: the inherited `proxypoolequation_02`
+  scales the literal counts by 1.357 and floors them -> 4-2 = **TWO Leinths side by side**, the exact
+  deterministic defect Will reported 2026-07-13. verify() fails if it ever returns.
+* Guards (amgoz1 bar, zero new art/FX/sound, both from her OWN cult):
+  `svc_leinth_guard_reaver` <- `d_reaver_42` ("Blood Reaver of the Sanctuary", no summons at all) and
+  `svc_leinth_guard_disciple` <- `c_disciple_42` ("Voice of the Bloodborn"). Both at HER band
+  `[47,62,74]`, Champion, scale 1.9, real Text names.
+* The Disciple's inherited `disciple_summon_bloodbeast` is petLimit 4 with **NO TTL** (the b76
+  defect), so the guard gets a **cloned** copy capped at 2 / 20s; the shared original is never
+  written. The clone also drops the donor's 3 **dangling** loot refs so the wave adds zero new
+  contract violations.
+* **Deliberate exit-trigger interaction:** the guards ride in `q_leinth_lone`, the pool R-74's primary
+  `Condition_KillAllCreaturesFromProxy` watches, so the primary now needs the whole guard dead. That
+  is the right reading, and it is why R-74's three per-variant fallbacks plus the new no-kill
+  fallback are load-bearing.
+
+### PART B' - both staged poison rigs live, weakness removed
+
+All three records DRX staged in her own folder have **ZERO referrers** in the 51k-record db (exact-path
+scan, not substring). **THE FREE WIN:** the "attack" rig is not a boss self-buff competing for a
+scarce cast slot - it is the **puddle's own aura**, so wiring the SUMMON alone brings **both** of
+Will's rigs live through ONE slot. Her summon is re-chained onto HER puddle and that puddle onto HER
+aura (DRX aimed both at the xpack copies), leaving the xpack Cerberus chain byte-clean.
+
+`defensivePoison` **-15 -> +15**: not invented, it is exactly her own cult heavy `d_reaver_42`'s
+value. Removes the weakness without immunity (poison stays her softest resist by a wide margin, so
+the counter-play survives). verify() fails on a negative value AND on immunity.
+
+**Slot accounting.** Monster records expose five castable `specialAttack` slots (census
+3164/1602/894/300/170; the only three `specialAttack6` users are `Pet.tpl` records from our own prior
+wave). Her four bespoke DRX specials hold 1-4, so there is exactly ONE free slot and round 1 spent it
+on the implementer's own Crimson Tithe. **Will's instruction outranks it:** `specialAttack5` -> the
+acid rig; Crimson Tithe -> `dyingSkillName` (79 shipping records carry its class there).
+`numAttackSlots` stays 4 - it is NOT a special-attack cap (46 shipping records run 4 with five wired).
+
+**RETIREMENT, stated not silent (R-73 names both):** `svc_leinth_choir_bloodborn` and
+`svc_leinth_sanguine_mire` are retired. Both were round-1 inventions on this unmerged branch, never
+shipped to Will. The honour guard is his own answer to what Choir existed for; the acid puddle is the
+authentic DRX rig for what Mire existed for.
+
+### ⚠️ BL-b94-DEBT-9 (P1, WILL DECISION) - THE ENTITY BUDGET EXCEEDS THE b76 THRESHOLD
+
+Will asked for the number and it is **measured, not estimated**:
+
+| source | count | lifetime |
+|---|---|---|
+| Leinth | 1 | - |
+| honour guards | 2 | permanent |
+| `summoned_ugly` | 16 | **PERMANENT (no TTL)** - Will: keep as-is |
+| `leinth_heatseeker_pet` | 10 | **PERMANENT (no TTL)** - her shipped DRX kit |
+| acid puddles | 10 | 6s |
+| guard bloodbeasts | 2 | 20s |
+| **TOTAL** | **41 concurrent** | **26 of them PERMANENT** |
+
+The b76 chumbi-freeze RCA measures the standalone offender `um_voranthys_99` at **25 PERMANENT**
+summons (petLimit 9+8+8) and states that even standing alone that "degrades over a long fight".
+**26 EXCEEDS it.** Nothing Will told me to keep was reduced; the only density lever pulled was
+retiring two of the implementer's OWN round-1 skills. **This needs Will's call after a play test.**
+The cheapest reductions if he wants one, in order: a finite TTL on `leinth_heatseeker` (10 permanent
+pets, his DRX kit, never discussed), then the ugly `petLimit`.
+
+### ⚠️ BL-b94-DEBT-10 (P2, WILL DECISION) - the exit vortex is now visible on entry
+
+The `.qst` vocabulary has **no door-state condition**, so Will's literal "whenever the boss trap door
+is already open" is not expressible. `Condition_OnLevelLoad` is the only mechanism that satisfies his
+actual requirement (nobody stranded, including his own latched character). Cost: the vortex is visible
+from the moment the player enters the Sanctuary rather than appearing when she dies. **If Will prefers
+the reveal, deleting this ONE trigger restores it** and the three kill fallbacks still cover every
+case except the already-latched character he asked to rescue. `Action_OpenDoor` is deliberately
+stripped, so the boss door stays earned either way.
+
+### ⚠️ BL-b94-DEBT-11 (P1, MERGE ORDER) - DEV collision with the unmerged `feat/sargath-soul` lane
+
+The DEV arz on disk was **not** a build of `main`: it carried the unmerged `feat/sargath-soul` lane's
+4 records (`summon_sargoth` + `sargoth_1/2/3`) plus 41 modified. Merging `main` into this branch
+removed most of the collision (was 8 removed / 247 modified, now 4 removed / 41 modified), but the
+sargath residual is another lane's **unmerged** work and a build from this branch necessarily reverts
+it. Deployed anyway (DEV is the shared test surface and the wave is untestable otherwise), but the
+pre-deploy state is backed up **byte-exact** and the action is fully reversible:
+`local/db_backups/SoulvizierClassicDEV_pre-b94r3_f6cd8698.arz` (+ `DEV_Text_pre-b94r3_4162a3e0.arc`,
+`DEV_Quests_pre-b94r3_35bfe3f3.arc`). **Remedy is merge order, not a hand-stitched arz** (which would
+break deployed==built and deterministic regeneration). This is the third occurrence of this class
+(see BL-b94-DEBT-7); it wants a standing rule, not another per-wave note.
+
+### ⚠️ BL-b94-DEBT-12 (P2, TOOLING) - worktree `work/.../Resources` shadows the main cache
+
+`mastery_sv_alignment`'s ancestor-walking arc resolver stops at the FIRST
+`work/SoulvizierClassic/Resources` it finds. A worktree that has staged only `Text.arc` there
+shadows the main checkout's populated one and the build aborts on 2 "unresolved emblem texture"
+FAILs. Worked around by moving the partial dir aside during the DB build. This bit round 1 too;
+the resolver should require the dir to actually contain `.arc` files before accepting it.
+
+### GATES (all green)
+
+| gate | result |
+|---|---|
+| `leinth_wave.verify` on the final merged arz | **OK** |
+| `uber_apex_orb.verify` on the final merged arz | **OK** |
+| `tools/debug/negtest_leinth_wave.py` | **23/23** (was 12/12; +11 round-3 negatives) |
+| `tools/debug/negtest_uber_apex_orb.py` | **16/16** |
+| `tools/contracts/tests_quests_negative.py` | **31/31** (was 25/25; +6 for `QST-LEINTH-NOKILL`) |
+| `validate_tags` | **PASS** |
+| contracts battery (5 modules) | **0 P0 / 0 P1 / 4737 P2, GATE PASS** |
+| both module verifies re-probed on the **DEPLOYED** bytes | **OK** |
+
+**PROOF THE FIX IS REAL, NOT ASSERTED:** the new `QST-LEINTH-NOKILL` contract **fires P0 on the
+PRE-WAVE bytes and is silent on the built bytes**. Run over the baseline with an identical config:
+**1 P0 / 1252 P1 / 3658 P2**; over the pre-merge build: **0 P0 / 1252 P1 / 3658 P2**. The wave removes
+exactly the one P0 it targets and adds **zero** violations at any severity (the 1252 resources P1s
+were pre-existing and identical on both; `main`'s debt-wave has since cleared them, which is why the
+post-merge number is 0 P1).
+
+### PROOFS
+
+| artifact | md5 | note |
+|---|---|---|
+| `SoulvizierClassic.arz` | `9cdb9ebaa0d277f5001b629a276a05d3` | post-merge build |
+| `Text.arc` (from the BUILD-EMITTED `uber_soul_tags.txt` `ee0185f4f0340b0a1dfd33f61c619d0e`) | `6981d27903dc42a736f2a90c86c5903c` | coupled |
+| `Quests.arc` | `bd0fb5f99d88fab74b81f27b7cb952b2` | PART C + the new no-kill fallback |
+| `Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **BEFORE == AFTER, never touched** |
+
+**Record diff, round 3 delta only (vs round 2's deployed arz): 3 added / 2 removed / 7 modified,
+every field intended, zero collateral.** Added = the 2 guards + the capped bloodbeast summon.
+Removed = the 2 retired round-1 skills. Modified = the 3 variants (poison + slot moves), the 2 acid
+records (re-chained + named), `leinth_summon_uglies` (**reverted to shipped**), and the pool (the
+escort LAW).
+
+### ⚠️ TESTING - RESTART STEAM AND TQ FIRST
+
+TQ.exe was NOT running at deploy time, but Steam was (killing either is banned for this lane). The
+write is hash-verified `deployed == built`, but per the standing rule **Will must fully restart Steam
+and TQ before testing** or he is testing stale in-memory data.
+
+---
