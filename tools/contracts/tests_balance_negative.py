@@ -6,7 +6,7 @@ silent), then surgically plant the exact regression the contract guards and asse
 it FIRES on that subject. A contract that never fires is worthless, so each plant
 is a regression that has a real in-game consequence:
 
-  * BAL-DEATHXP-1  the R-70 divisor reverted to Iron Lore's `/ 9`; the cap put back
+  * BAL-DEATHXP-1  the R-80 divisor reverted to Iron Lore's `/ 9`; the cap put back
                    to 500000; the floor lifted off 0; STR/INT dtype corruption; the
                    engine-loaded record deleted outright.
   * BAL-DEATHXP-2  the "looks fixed but isn't" regression: the divisor is scaled to
@@ -103,7 +103,7 @@ def new_ctx(ge=None, pl=None, look=None, drop_gameengine=False, maxlvl=None):
 # ===========================================================================
 def test_values():
     print('CONTRACT: BAL-DEATHXP-1')
-    check('silent on a compliant R-70 gameengine',
+    check('silent on a compliant R-80 gameengine',
           not fires(C.check_deathxp_values(new_ctx()), 'BAL-DEATHXP-1'))
 
     # break: the ruling reverted to Iron Lore's vanilla divisor

@@ -1,6 +1,6 @@
 r"""tools/patches/death_xp_penalty.py - cut the on-death EXPERIENCE penalty by 90%.
 
-WILL'S RULING (R-70, 2026-07-27, verbatim)
+WILL'S RULING (R-80, 2026-07-27, verbatim)
 ------------------------------------------
     "also i want to drastically reduce the xp penalty for dying. at high levels
      the penalty is way too crazy, it needs to be cut by like 90%"
@@ -101,7 +101,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/ on path
 
-MODULE_NAME = 'Death XP penalty -90% (R-70)'
+MODULE_NAME = 'Death XP penalty -90% (R-80)'
 
 # The ONE record the TQAE engine loads for the death penalty.
 GAMEENGINE = r'records\xpack\game\gameengine.dbr'
@@ -255,7 +255,7 @@ def verify(db, tags):
     if eq != EQ_NEW:
         raise SystemExit(
             'death_xp_penalty verify: deathPenaltyEquation is %r, expected %r - a '
-            'later phase clobbered the R-70 ruling.' % (eq, EQ_NEW))
+            'later phase clobbered the R-80 ruling.' % (eq, EQ_NEW))
     if int(mx) != MAX_NEW:
         raise SystemExit(
             'death_xp_penalty verify: deathPenaltyMax is %r, expected %d.'

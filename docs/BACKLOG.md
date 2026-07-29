@@ -1,11 +1,110 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD57-DEV GATE RECORD - b96 Vashkarr spear-and-shield soul retune (2026-07-28, branch `feat/vashkarr-soul`, tag `build57-dev`)
+
+**R-72, Will 2026-07-27, verbatim:** "Vashkarr, Eldest of the Ancients soul should get +% pierce
+damage and =% penetration  since he is a spear and shield guy and the soul should give +% boost to
+movement not have a penalty for speed, this guy should be fast. also he needs to do more damage. we
+can have the penalty be something like -6-8% reduction in elemental damage or something like that"
+plus, on field selection: "see spawn of chi soul for how to add +% penetration and pierce damage"
+
+DB-ONLY lane. **NO map rebuild. NOT DEPLOYED** - several lanes are editing the arz concurrently, so
+the orchestrator merges and deploys ONCE. Full report: `docs/reports/b96_vashkarr_soul.md`.
+
+**SCOPE (exactly 3 records):** `records\item\equipmentring\soul\svc_uber\vashkarr_soul_{n,e,l}.dbr`.
+Identified from the deployed arz by Text tag, not guessed: `tagSVCSoulVashkarr` =
+`{^F}Vashkarr, Eldest of the Ancients Soul`. Dropped by `um_vashkarr_99` at 66% Finger2 (there are
+no per-difficulty monster variants; difficulty scaling lives in the three item tiers).
+
+**WILL'S PREMISE CONFIRMED:** all three tiers shipped `characterRunSpeedModifier = -8.0` (FLOAT), a
+straight movement PENALTY, written by `_apply_b7_eldest_soul_rebalance` as an "ancient and heavy"
+downside. No pierce field of any kind was present and `offensiveElementalModifier` was absent.
+
+**AFTER, n/e/l:** `offensivePierceModifier` **40 / 58 / 78** (new) - `offensivePierceRatioModifier`
+**35 / 50 / 65** (new) - `characterRunSpeedModifier` **+12 / +17 / +22** (was -8/-8/-8) -
+`offensiveElementalModifier` **-8 / -7 / -6** (new). Damage raised: physical 78-124, physMod 46,
+OA 110, attack speed 18, bleed 150, life-leech 30 at Legendary (n/e follow the existing 0.6/0.82
+ramp). The FIRE package is held FLAT on purpose - nothing retired - so the soul's centre of gravity
+moves off the elemental axis, which is the axis the new drawback taxes.
+
+**FIELD PROVENANCE (every effect mirrored from a shipped donor, dtypes preserved, all FLOAT):**
+`offensivePierceModifier` + `offensivePierceRatioModifier` <- **Spawn of Chi soul**
+(`raptor\spawnofchi_soul_{n,e,l}`, tag `tagSoulName541`, 30/42/58 and 40/54/62), the donor Will
+named; 46 shipped souls carry that exact pair. `characterRunSpeedModifier` positive <-
+`vulture\sandbeak_soul` 20/26/29 (313 shipped souls carry a positive value).
+`offensiveElementalModifier` negative <- `equipmentring\u_n_ringofzakalwe` (Epic RING, same
+template/Class, ships -25% elemental / +25% physical: literally the same trade).
+
+**MONOTONICITY, handled deliberately:** the drawback SHRINKS with rarity (-8 -> -7 -> -6), so every
+tier stays inside Will's -6..-8% band AND the elemental field is itself monotonically increasing.
+No tier is worse than the one below it on any power axis, `souls_quality._flat_tier_violations` is
+helped rather than leaned on, and `_FLAT_TIER_WAIVER` stays EMPTY. A deepening penalty would have
+passed the gate while being a real tier regression.
+
+**LOAD-BEARING SECOND EDIT:** `_apply_b7_eldest_soul_rebalance` runs AFTER `_create_vashkarr` and
+was the last writer on that field, so setting the bonus in the tier stats alone would have been
+silently clobbered back to -8. Its -8% clause is now scoped to **GORRAHK ONLY**
+(`RUNSPEED_DOWNSIDE = ('gorrahk',)`); Gorrahk's value is unchanged, and the physres-cap /
+flat-armour / +25% HP half of that pass is untouched for both families (different Will ruling).
+
+**GATE (no-new-surface law):** new **`SOUL-IDENTITY-SHAPE`** (P1) in
+`tools/contracts/contracts_souls.py`, driven by a declarative `SOUL_IDENTITY_SHAPES` registry that
+binds a ruling to an asserted field shape (fields present, sign/band, tier ordering) and runs
+against the FINAL built arz, so a later pass cannot silently clobber a Will decision back out.
+7 planted negative tests in `tests_souls_negative.py` case 11, headed by **11b, which reproduces
+today's pre-R-72 shipped state (-8% run speed on all three tiers) and requires the contract to
+FIRE**. **Real-world negative proof:** the same contract run over the pre-change baseline arz
+yields exactly **13 P1, every one of them `SOUL-IDENTITY-SHAPE` on the three vashkarr records**
+(4 tiers x absent field, plus 3 negative-run-speed bounds and 1 ordering break); every OTHER souls
+contract is **0 P0 / 0 P1 / 0 P2** on that same run, so the lane's P1 delta is attributable in
+full and nothing pre-existing regressed.
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, upstream from the main repo tree):
+
+| artifact | md5 |
+|---|---|
+| baseline arz (worktree main HEAD `8c3445c`, pre-change) | `1c27d5fa650b5c076696db4ad379672f` |
+| built arz (this lane) | **`b88871f25e28791e6ffa00deea223af3`** |
+| built `Text.arc` (coupled pair, bytes UNCHANGED - no tag changed) | `fcca49277b9d31ed451e4a6843898843` |
+| `uber_soul_tags.txt` (build-emitted) | `49b6d85ba15236aa5df60f610e3a7bf0` |
+
+The baseline rebuild reproduced the md5 recorded for the b91 build **exactly**, which doubles as a
+determinism + provenance proof of the whole DB build before a single field was changed.
+
+**BUILT ARTIFACTS** (durable copies for the merged deploy; NOT deployed by this lane):
+`local/lane_builds/b96_vashkarr_soul.arz` (55,424,191 B), `local/lane_builds/b96_vashkarr_Text.arc`,
+`local/lane_builds/b96_vashkarr_uber_soul_tags.txt`. `Levels.arc` / `Quests.arc` never touched.
+
+**RECORD-DIFF vs baseline: 0 added, 0 removed, 3 changed, 11 fields each** - exactly
+`vashkarr_soul_{n,e,l}` and nothing else. `gorrahk_soul_{n,e,l}` do NOT appear, which is the
+positive proof that scoping the B7 run-speed clause left Gorrahk byte-identical. All four new/
+flipped fields land at **dtype 1 (FLOAT)**, matching their donors (no dtype corruption).
+
+**GATES:** DB build **exit 0**, every fail-loud invariant green (soul-leak 0 leaks, soul-augment,
+supra-ref, tags, spawn-eligibility, A9 render-chain, b77 unlock-alignment). **`souls_quality.verify`
+OK** - roster tiers monotonic AND strictly progressing (b78 gate) across every soul family, with
+`_FLAT_TIER_WAIVER` still EMPTY. **24 registry verify hooks ran, 0 failures**;
+`_check_registry.py` OK (33 modules). A7 Occult/Hunting golden guard **PASS** (90 waived, 0 other).
+`validate_tags` **PASS** (356/356 referenced, 417/417 authoritative; the 2 `tagNewMonster*` WARNs
+are the documented pre-existing pair). Contracts `--only souls,summons` on the built arz:
+**GATE PASS, 0 P0 / 0 P1 / 112 P2** (souls lane 0/0/0; the 112 summons P2 are pre-existing and
+**identical in count on the baseline run**). `tests_souls_negative.py` **21/21 PASS**
+(13 pre-existing + 8 new, headed by the planted pre-R-72 speed-penalty regression).
+
+**LEDGER:** `docs/WILL_RULINGS.md` **R-72** appended VERBATIM, status IMPLEMENTED, in a new
+reserved **Souls & items overflow decade 70-79** (the 40-49 decade is exhausted and the file
+already carries two accidental duplicate numbers, R-13 and R-43; a third collision was avoided
+deliberately).
+
+**OPEN DEBT:** BL-b96-DEBT-1..5 (see DEBT REGISTER).
+
+---
 ## BUILD54-DEV GATE RECORD - b93 death-XP penalty -90% (2026-07-28, branch `feat/death-xp-penalty`, tag `build54-dev`)
 
 > DEPLOY NOT PERFORMED - the DEV entry was taken by a CONCURRENT lane mid-build. See "DEPLOY" below.
 > Everything else (build, gates, record-diff, contracts, ledger, report) is GREEN and complete.
 
-**R-70, Will 2026-07-27, verbatim:** "also i want to drastically reduce the xp penalty for dying. at
+**R-80, Will 2026-07-27, verbatim:** "also i want to drastically reduce the xp penalty for dying. at
 high levels the penalty is way too crazy, it needs to be cut by like 90%"
 
 DB-ONLY lane (arz + Text coupled pair). **NO map rebuild** - `Levels.arc` + `Quests.arc` byte-identical
@@ -122,7 +221,7 @@ UNTOUCHED by this lane and were re-hashed after all work to prove it. **TQ.exe w
 (started 13:31) and was NOT killed** (standing ban); Will must kill TQ + Steam and restart before any
 test.
 
-**LEDGER:** `docs/WILL_RULINGS.md` **R-70** appended VERBATIM in a new "Global balance & progression"
+**LEDGER:** `docs/WILL_RULINGS.md` **R-80** appended VERBATIM in a new "Global balance & progression"
 section (decade 70-79), status IMPLEMENTED b93, with the exact before/after values recorded.
 
 **OPEN DEBT:** BL-b93-DEBT-1..5 (see DEBT REGISTER): in-game confirmation launch-gated; Steam/canonical
@@ -553,6 +652,38 @@ along automatically when the structural cluster-relocation fix lands.
 > - **`contracts_map.CUT_LEVEL_MARKERS` -> `CUT_LEVELS`** (BL-b89-DEBT-3): the cut exemption is now
 >   an exact-basename list of 8 levels instead of a substring tuple that swallowed 14.
 > - **A duplicate debt id was resolved:** the second `BL-b89-DEBT-4` is now `BL-b89-DEBT-5`.
+
+**b96 Vashkarr spear-and-shield soul retune (2026-07-28, build57-dev, R-72) - NEW**
+- **BL-b96-DEBT-1 (P2, launch-gated):** the retune is **not in-game confirmed**. Only Will can see
+  the tooltip and feel the movement change. Per the standing save lesson, TQ bakes item properties
+  at pickup, so an already-held Vashkarr soul will NOT reflect this: **he must test on a FRESHLY
+  dropped soul** (kill `um_vashkarr_99` again, 66% drop). Owner/trigger: Will's next test pass, after
+  the orchestrator's merged deploy and a full TQ + Steam restart.
+- **BL-b96-DEBT-2 (P2, unproven engine behaviour):** `offensiveElementalModifier` with a NEGATIVE
+  value is carried by exactly **one** shipped item in the whole 51,085-record database
+  (`u_n_ringofzakalwe`, -25.0). The field is unquestionably live (193 non-zero records, 114 items
+  positive), but that a negative composite elemental modifier renders and applies as "-X% Elemental
+  Damage" rather than being clamped at 0 is **inferred from the donor, not observed in game**. If
+  Will's tooltip does not show the penalty, the fallback is per-element negative `offensiveFireModifier`
+  (precedent: `ikaie_soul`, `coldtusk_soul`) at the cost of covering only fire. Owner/trigger: same
+  test pass as DEBT-1.
+- **BL-b96-DEBT-3 (P2, unproven semantics):** `offensivePierceRatioModifier` is asserted here to be
+  the armour-bypass PENETRATION stat (rather than a second flavour of pierce damage). This follows
+  Will's own named donor and 46 shipped souls, but the split between it and `offensivePierceModifier`
+  has not been measured in game. Owner/trigger: same test pass.
+- **BL-b96-DEBT-4 (P2, ledger gap found in passing):** `apply_svc_patches._apply_b7_eldest_soul_rebalance`
+  implements an **unledgered Will decision** - its only record is the verbatim quote in its docstring
+  ("crazy on normal, 74% physical damage resistance? doesnt that make you nearly unkillable by
+  physical hits that arent piercing?"), never assigned an R-number. R-72 had to cite it by function
+  name to describe what it supersedes. Owner/trigger: a rulings-backfill lane should assign it a
+  number in the 70-79 decade. A broader sweep for other unledgered decisions living only in
+  docstrings is likely worthwhile.
+- **BL-b96-DEBT-5 (P3, dead write):** `_create_vashkarr` assigns `tags['tagSVCSoulVashkarr'] =
+  '{^F}Soul of the Eldest'`, which the later F6 `_SOUL_NAME_STANDARD` pass unconditionally overwrites
+  with `'{^F}Vashkarr, Eldest of the Ancients Soul'` (the value that actually ships and the one Will
+  named). Harmless today but it is a silent ordering dependency: reordering the passes would rename
+  the soul. Owner/trigger: tidy-up lane; deliberately NOT touched here (out of scope, and touching
+  it risks the name Will used).
 
 **b93 death-XP penalty -90% (2026-07-28, build54-dev) - NEW**
 - **BL-b93-DEBT-1 (launch-gated):** the -90% death penalty is unproven IN-GAME. Owner/trigger: Will

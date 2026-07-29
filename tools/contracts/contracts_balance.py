@@ -4,7 +4,7 @@ Scope (deliberately narrow): the handful of GLOBAL, engine-loaded balance knobs 
 live on ONE record each and that a single stray write can silently revert, taking a
 Will ruling with it. Everything here is asserted over the SHIPPED .arz.
 
-Today this domain owns exactly one thing: the on-death EXPERIENCE penalty (R-70).
+Today this domain owns exactly one thing: the on-death EXPERIENCE penalty (R-80).
 
 WHY IT NEEDS A PERMANENT GATE
 -----------------------------
@@ -33,7 +33,7 @@ ENGINE GROUND TRUTH (measured 2026-07-28 from the shipped binaries):
     difficulty entering ONLY through `gameDifficultyDV` (0/1/2).
   * Vanilla TQAE, SV 0.98i, SV 0.9 and SV 0.41 all ship the identical vanilla triple
     `(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)` / 500000 / 0, so any
-    deviation from the R-70 values is a regression, never inherited upstream drift.
+    deviation from the R-80 values is a regression, never inherited upstream drift.
 
 INTERFACE (composes with the other domain modules without shared files):
   run(cfg: dict) -> list[dict]      cfg keys used: arz
@@ -52,7 +52,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # tools/ on path
 
 # --------------------------------------------------------------------------- #
-# The ruled values (R-70). Single source of truth for the gate; the build-side
+# The ruled values (R-80). Single source of truth for the gate; the build-side
 # module tools/patches/death_xp_penalty.py carries the same constants and this
 # contract cross-checks them so the two can never silently diverge.
 # --------------------------------------------------------------------------- #
@@ -85,7 +85,7 @@ CONTRACTS = [
      'asserts': 'the engine-loaded xpack gameengine carries deathPenaltyEquation '
                 '"/ 90", deathPenaltyMax 50000, deathPenaltyMin 0, with STR/INT '
                 'dtypes intact',
-     'derived_from': 'Will R-70 2026-07-27 ("cut by like 90%"); Game.dll loads only '
+     'derived_from': 'Will R-80 2026-07-27 ("cut by like 90%"); Game.dll loads only '
                      'Records/XPack/Game/GameEngine.dbr and reads exactly these 3 fields'},
     {'id': 'BAL-DEATHXP-2', 'name': 'Death XP penalty really is a 90% cut',
      'asserts': 'clamp(shipped equation, min, max) == 0.10 x clamp(vanilla equation, '
@@ -101,7 +101,7 @@ CONTRACTS = [
      'asserts': 'experienceEquation on the engine-loaded gameengine and '
                 'experienceLevelEquation/maxPlayerLevel on the live player-level '
                 'record are unchanged from the shipped SV values',
-     'derived_from': 'R-70 authorises a death-penalty change only; a build that also '
+     'derived_from': 'R-80 authorises a death-penalty change only; a build that also '
                      'moves XP gain or the level curve has exceeded the ruling'},
 ]
 
@@ -205,7 +205,7 @@ def check_deathxp_values(ctx):
     eq = ctx.value(GAMEENGINE, 'deathPenaltyEquation')
     if eq != RULED_EQUATION:
         out.append(_v(cid, 'P0', GAMEENGINE,
-                      'deathPenaltyEquation is not the R-70 value (death XP penalty '
+                      'deathPenaltyEquation is not the R-80 value (death XP penalty '
                       'reverted or re-tuned without a ruling)',
                       'want %r, got %r' % (RULED_EQUATION, eq)))
     elif ctx.dtype(GAMEENGINE, 'deathPenaltyEquation') != DTYPE_STRING:
@@ -221,7 +221,7 @@ def check_deathxp_values(ctx):
         mx_i = None
     if mx_i != RULED_MAX:
         out.append(_v(cid, 'P0', GAMEENGINE,
-                      'deathPenaltyMax is not the R-70 cap',
+                      'deathPenaltyMax is not the R-80 cap',
                       'want %d, got %r' % (RULED_MAX, mx)))
     elif ctx.dtype(GAMEENGINE, 'deathPenaltyMax') != DTYPE_INT:
         out.append(_v(cid, 'P0', GAMEENGINE,

@@ -114,7 +114,7 @@ REGISTRY = [
                                     # finalization-phase interim call) so it wins any collision
     'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
                             # gameengine (SV's pre-AE record lacks them; touches only gameengine)
-    'death_xp_penalty',     # b93 (Will R-70 2026-07-27): on-death XP loss cut by exactly 90% -
+    'death_xp_penalty',     # b93 (Will R-80 2026-07-27): on-death XP loss cut by exactly 90% -
                             # deathPenaltyEquation divisor 9 -> 90 and deathPenaltyMax
                             # 500000 -> 50000 on records\xpack\game\gameengine.dbr (the ONE
                             # GameEngine record Game.dll loads). MUST sit adjacent to

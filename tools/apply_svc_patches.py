@@ -11596,9 +11596,20 @@ def _apply_b7_eldest_soul_rebalance(db):
     into FLAT armor (defensiveProtection +150/+260/+400) + ~25% more HP, and add an
     amgoz character-through-tradeoff downside (-8% run speed: the Eldest is ancient
     and heavy). Runs after _create_vashkarr + _create_obsidian_roulette. Stat-only
-    (no skill refs) -> touches no soul gate."""
+    (no skill refs) -> touches no soul gate.
+
+    R-72 AMENDMENT (Will 2026-07-27, spear-and-shield retune): the -8% run-speed
+    downside is now scoped to GORRAHK ONLY. Will overturned it for Vashkarr - "the
+    soul should give +% boost to movement not have a penalty for speed, this guy
+    should be fast" - and his replacement downside (-6..-8% ELEMENTAL damage) is set
+    with the rest of the tier stats in _create_vashkarr._vk_stats. Because this pass
+    runs AFTER _create_vashkarr, leaving the old line in would silently clobber the
+    new positive value straight back to -8. The physres cap / flat armor / +25% HP
+    half of B7 is UNCHANGED for both souls (that half answers a different Will
+    ruling about physical immunity and is not superseded)."""
     PHYS = {'n': 30.0, 'e': 45.0, 'l': 60.0}
     PROT = {'n': 150.0, 'e': 260.0, 'l': 400.0}
+    RUNSPEED_DOWNSIDE = ('gorrahk',)   # R-72: NOT vashkarr (see the amendment above)
     done = 0
     for base in ('vashkarr', 'gorrahk'):
         for t in ('n', 'e', 'l'):
@@ -11611,11 +11622,14 @@ def _apply_b7_eldest_soul_rebalance(db):
             life = (life[0] if isinstance(life, list) else life)
             if life:
                 db.set_field(rec, 'characterLife', round(float(life) * 1.25, 1), DATA_TYPE_FLOAT)
-            db.set_field(rec, 'characterRunSpeedModifier', -8.0, DATA_TYPE_FLOAT)  # amgoz downside
+            if base in RUNSPEED_DOWNSIDE:
+                db.set_field(rec, 'characterRunSpeedModifier', -8.0, DATA_TYPE_FLOAT)  # amgoz downside
             db._modified.add(rec)
             done += 1
-    print(f"  A8/B7: Eldest+Gorrahk soul physres -> 30/45/60 + flat armor + HP + "
-          f"-8% run speed ({done} soul tier records; no longer physical-immune)")
+    print(f"  A8/B7: Eldest+Gorrahk soul physres -> 30/45/60 + flat armor + HP "
+          f"({done} soul tier records; no longer physical-immune); -8% run speed "
+          f"now GORRAHK-ONLY (R-72: Vashkarr carries a run-speed BONUS + a -6..-8% "
+          f"elemental drawback instead)")
 
 
 def _verify_boss_orbs(db):
@@ -12641,7 +12655,37 @@ def _create_vashkarr(db, tags):
     else:
         print("  VASHKARR: WARNING q_leinth_lone proxy/pool donor missing; proxy skipped")
 
-    # ── 5. Stat-only soul (no summon; dense aggressive fire/physical ladder). ──
+    # ── 5. Stat-only soul (no summon). SPEAR-AND-SHIELD RETUNE (R-72, Will
+    #    2026-07-27): "+% pierce damage and =% penetration since he is a spear and
+    #    shield guy ... the soul should give +% boost to movement not have a penalty
+    #    for speed, this guy should be fast. also he needs to do more damage. we can
+    #    have the penalty be something like -6-8% reduction in elemental damage".
+    #
+    #    Identity (amgoz1 bar): the Eldest is an ancient LANCER (the boss record is
+    #    cloned from bm_deathlance_32, AncientDragonian01 - spear + shield). His soul
+    #    now reads as the warrior he was, not a generic damage brick: the spear finds
+    #    the gap in any armour (pierce damage + pierce RATIO penetration), he is
+    #    faster than something that old has any right to be (run-speed BONUS), and the
+    #    only thing age took from him is the FLAME - his dragonian fire has guttered
+    #    (-6..-8% elemental damage). Physical/pierce grow; the fire package is held
+    #    flat, so the soul's centre of gravity shifts off the elemental axis without
+    #    retiring anything (retirement protocol: no shipped field is removed).
+    #
+    #    FIELD PROVENANCE (every effect mirrored from a SHIPPED donor, dtypes intact):
+    #      offensivePierceModifier       <- Spawn of Chi soul (Will's named donor)
+    #      offensivePierceRatioModifier  <- Spawn of Chi soul (Will's named donor)
+    #      characterRunSpeedModifier +ve <- sandbeak / sandprowler / rakanizeus souls
+    #      offensiveElementalModifier -ve<- u_n_ringofzakalwe (Epic ring: +25% physical
+    #                                       / -25% elemental - the same trade, larger)
+    #
+    #    TIER SHAPE vs the souls_quality gate: the DRAWBACK is deliberately made to
+    #    SHRINK with rarity (-8 -> -7 -> -6) rather than deepen. Every tier stays
+    #    inside Will's named -6..-8% band, and because -8 < -7 < -6 the elemental
+    #    field is itself monotonically INCREASING, so the Legendary ring is not worse
+    #    than the Epic on ANY power axis. (A deepening penalty would technically pass
+    #    _flat_tier_violations - it only needs one field strictly greater - but it
+    #    would be a real tier regression the gate cannot see.) Flavour: the deeper you
+    #    bind the Eldest, the better you carry the ember he lost.
     def _vk_stats(t, il):
         m = {'n': 0.6, 'e': 0.82, 'l': 1.0}[t]
         r = lambda v: round(v * m, 1)
@@ -12651,14 +12695,31 @@ def _create_vashkarr(db, tags):
             'augmentSkillName2': (S, _SK_ONSLAUGHT), 'augmentSkillLevel2': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
             'characterLife': (F, r(280.0)), 'characterLifeModifier': (F, r(10.0)),
             'characterStrength': (F, r(30.0)), 'characterStrengthModifier': (F, r(8.0)),
-            'characterOffensiveAbility': (F, r(90.0)),
-            'characterAttackSpeedModifier': (F, r(16.0)),
-            'offensivePhysicalMin': (F, r(60.0)), 'offensivePhysicalMax': (F, r(95.0)),
-            'offensivePhysicalModifier': (F, r(35.0)),
+            'characterOffensiveAbility': (F, r(110.0)),
+            'characterAttackSpeedModifier': (F, r(18.0)),
+            # (c) MORE DAMAGE - the physical/bleed/leech spearwork ladder is raised.
+            'offensivePhysicalMin': (F, r(78.0)), 'offensivePhysicalMax': (F, r(124.0)),
+            'offensivePhysicalModifier': (F, r(46.0)),
+            # the dragonian flame is HELD FLAT (nothing retired, nothing grown) - it
+            # is the axis the -% elemental drawback taxes.
             'offensiveFireMin': (F, r(50.0)), 'offensiveFireMax': (F, r(80.0)),
             'offensiveFireModifier': (F, r(30.0)),
-            'offensiveSlowBleedingMin': (F, r(120.0)), 'offensiveSlowBleedingDurationMin': (F, 3.0),
-            'offensiveLifeLeechMin': (F, r(25.0)),
+            'offensiveSlowBleedingMin': (F, r(150.0)), 'offensiveSlowBleedingDurationMin': (F, 3.0),
+            'offensiveLifeLeechMin': (F, r(30.0)),
+            # (a) THE SPEAR: +% pierce damage and +% pierce penetration (pierce RATIO
+            #     converts part of his big physical hit into armour-bypassing pierce,
+            #     so the two fields compound - this is why the lancer identity lands).
+            #     Explicit per-tier (not the r() ramp): a steeper low end reads better
+            #     and keeps every value inside the shipped roster envelope.
+            'offensivePierceModifier': (F, {'n': 40.0, 'e': 58.0, 'l': 78.0}[t]),
+            'offensivePierceRatioModifier': (F, {'n': 35.0, 'e': 50.0, 'l': 65.0}[t]),
+            # (b) SPEED: the old -8% run-speed penalty becomes a BONUS. Set here (and
+            #     no longer clobbered by the A8/B7 post-pass, which now scopes its
+            #     downside to Gorrahk only).
+            'characterRunSpeedModifier': (F, {'n': 12.0, 'e': 17.0, 'l': 22.0}[t]),
+            # (d) THE COST: the Eldest's fire has guttered with age. Will's band is
+            #     -6%..-8%; it SHRINKS with rarity (see the tier-shape note above).
+            'offensiveElementalModifier': (F, {'n': -8.0, 'e': -7.0, 'l': -6.0}[t]),
             'defensivePhysical': (F, r(140.0)), 'defensiveBleeding': (F, r(30.0)),
             'defensiveFire': (F, r(25.0)), 'defensiveLife': (F, r(20.0)),
             'characterDefensiveAbility': (F, r(60.0)),

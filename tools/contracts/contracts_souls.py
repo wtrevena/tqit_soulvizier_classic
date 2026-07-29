@@ -184,7 +184,58 @@ CONTRACTS = [
      'asserts': "a soul's itemSkillName grants a skill whose Class is within the base-UNION-SV set of "
                 'Classes ever granted via an item (else it may be a monster-only/unusable skill).',
      'derived_from': 'base(47) UNION SV(45) = 53 grantable Classes; our souls 0 outside on baseline'},
+    {'id': 'SOUL-IDENTITY-SHAPE', 'name': 'Ruling-bound soul families keep their designed shape',
+     'asserts': 'every soul family in SOUL_IDENTITY_SHAPES carries each ruling-mandated field on all '
+                'three tiers, inside its mandated sign/band, and with the mandated tier ordering '
+                '(so a later balance pass cannot silently clobber a Will ruling back out).',
+     'derived_from': 'docs/WILL_RULINGS.md - R-72 (Vashkarr spear-and-shield retune, 2026-07-27)'},
 ]
+
+
+# ============================================================================
+# RULING-BOUND SOUL IDENTITY SHAPES
+# ============================================================================
+# Declarative registry: a soul family whose SHAPE is fixed by a Will ruling gets an
+# entry here, so the ruling is asserted against the built .arz on every run instead of
+# living only in a comment. Adding a family is the whole cost of binding a new ruling.
+#
+# Per-field spec keys:
+#   min / max   inclusive bound on the value at EVERY tier (either may be omitted)
+#   order       'increasing'     -> strictly greater at each higher tier (n < e < l)
+#               'non_decreasing' -> never smaller at a higher tier (n <= e <= l); used
+#                                   for DRAWBACKS, where "not worse than the tier below"
+#                                   is the invariant that matters
+#   why         the ruling clause this field implements (quoted in the violation)
+SOUL_IDENTITY_SHAPES = {
+    # R-72 (Will, 2026-07-27): "Vashkarr, Eldest of the Ancients soul should get +%
+    # pierce damage and =% penetration since he is a spear and shield guy and the soul
+    # should give +% boost to movement not have a penalty for speed, this guy should be
+    # fast. also he needs to do more damage. we can have the penalty be something like
+    # -6-8% reduction in elemental damage or something like that"
+    'vashkarr': {
+        'ruling': 'R-72',
+        'dir': r'records\item\equipmentring\soul\svc_uber',
+        'fields': {
+            'offensivePierceModifier': {
+                'min': 1.0, 'order': 'increasing',
+                'why': '"+% pierce damage ... he is a spear and shield guy"'},
+            'offensivePierceRatioModifier': {
+                'min': 1.0, 'order': 'increasing',
+                'why': '"=% penetration" (read as +% pierce RATIO - armour bypass)'},
+            'characterRunSpeedModifier': {
+                'min': 1.0, 'order': 'increasing',
+                'why': '"+% boost to movement not have a penalty for speed, this guy '
+                       'should be fast" - MUST be positive, never the old -8 penalty'},
+            'offensiveElementalModifier': {
+                'min': -8.0, 'max': -6.0, 'order': 'non_decreasing',
+                'why': '"the penalty be something like -6-8% reduction in elemental '
+                       'damage" - in band on every tier, and never deepening with rarity '
+                       '(a drawback that worsens would make the higher tier strictly '
+                       'worse on that axis)'},
+        },
+    },
+}
+_TIERS = ('n', 'e', 'l')
 
 
 # ============================================================================
@@ -564,6 +615,70 @@ def _c_grant_usability(ctx, souls, out):
                           f"itemSkillName={isn} Class={cls}"))
 
 
+def _c_identity_shape(ctx, souls, out):
+    """Assert every ruling-bound soul family in SOUL_IDENTITY_SHAPES still has the
+    shape its ruling mandates. Runs against the FINAL built .arz, so it catches a
+    later balance pass clobbering an earlier Will decision back out (the exact way
+    Vashkarr's run-speed bonus could be silently reverted to the old -8% penalty:
+    _create_vashkarr sets it, and the A8/B7 rebalance pass runs afterwards)."""
+    for family, spec in sorted(SOUL_IDENTITY_SHAPES.items()):
+        ruling = spec['ruling']
+        recs = {}
+        for t in _TIERS:
+            want = _norm(f"{spec['dir']}\\{family}_soul_{t}.dbr")
+            real = ctx.recmap.get(want)
+            if real is None:
+                out.append(_v('SOUL-IDENTITY-SHAPE', 'P1', want,
+                              f"{ruling}: ruling-bound soul family {family!r} is missing its "
+                              f"{t.upper()} tier (the ruling cannot hold)",
+                              f"expected record {want}"))
+            else:
+                recs[t] = real
+        if len(recs) != len(_TIERS):
+            continue
+
+        for field, rule in sorted(spec['fields'].items()):
+            vals = {}
+            for t in _TIERS:
+                raw = ctx.fscalar(recs[t], field)
+                try:
+                    vals[t] = float(raw)
+                except (TypeError, ValueError):
+                    out.append(_v('SOUL-IDENTITY-SHAPE', 'P1', recs[t],
+                                  f"{ruling}: required field {field} is absent/non-numeric on the "
+                                  f"{t.upper()} tier; the ruling requires it - {rule['why']}",
+                                  f"{field}={raw!r}"))
+            if len(vals) != len(_TIERS):
+                continue
+
+            lo, hi = rule.get('min'), rule.get('max')
+            for t in _TIERS:
+                if lo is not None and vals[t] < lo:
+                    out.append(_v('SOUL-IDENTITY-SHAPE', 'P1', recs[t],
+                                  f"{ruling}: {field} is below the mandated minimum on the "
+                                  f"{t.upper()} tier - {rule['why']}",
+                                  f"{field}={vals[t]} (must be >= {lo})"))
+                if hi is not None and vals[t] > hi:
+                    out.append(_v('SOUL-IDENTITY-SHAPE', 'P1', recs[t],
+                                  f"{ruling}: {field} is above the mandated maximum on the "
+                                  f"{t.upper()} tier - {rule['why']}",
+                                  f"{field}={vals[t]} (must be <= {hi})"))
+
+            order = rule.get('order')
+            seq = [vals[t] for t in _TIERS]
+            if order == 'increasing':
+                ok = seq[0] < seq[1] < seq[2]
+            elif order == 'non_decreasing':
+                ok = seq[0] <= seq[1] <= seq[2]
+            else:
+                ok = True
+            if not ok:
+                out.append(_v('SOUL-IDENTITY-SHAPE', 'P1', recs['l'],
+                              f"{ruling}: {field} breaks the mandated {order} tier ordering "
+                              f"across n/e/l - {rule['why']}",
+                              f"{field} n/e/l = {seq}"))
+
+
 _CONTRACT_FUNCS = (
     _c_skill_ref_resolves,
     _c_itemcost_resolves,
@@ -574,6 +689,7 @@ _CONTRACT_FUNCS = (
     _c_level_only,
     _c_drop_classification,
     _c_grant_usability,
+    _c_identity_shape,
 )
 
 

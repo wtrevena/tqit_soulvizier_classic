@@ -1,4 +1,4 @@
-# b93 - DEATH XP PENALTY -90% (R-70), round 1
+# b93 - DEATH XP PENALTY -90% (R-80), round 1
 
 **Branch** `feat/death-xp-penalty` (worktree `.claude/worktrees/death-xp`, base `main` @ `8c3445c`)
 **Date** 2026-07-28
@@ -13,13 +13,13 @@ Will, 2026-07-27, verbatim:
 > "also i want to drastically reduce the xp penalty for dying. at high levels the penalty is way
 > too crazy, it needs to be cut by like 90%"
 
-Appended to `docs/WILL_RULINGS.md` as **R-70**, opening a new "Global balance & progression"
+Appended to `docs/WILL_RULINGS.md` as **R-80**, opening a new "Global balance & progression"
 section (decade 70-79), status IMPLEMENTED b93.
 
 ### Ledger reconciliation (standing law 1)
 
 Ledger swept for `death`, `xp`, `experience`, `penalty` across all 54 rulings. **No prior ruling
-touches the death penalty, XP gain, or the level curve.** R-70 overturns nothing.
+touches the death penalty, XP gain, or the level curve.** R-80 overturns nothing.
 
 | Ruling | Domain | Action taken |
 |---|---|---|

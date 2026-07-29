@@ -177,6 +177,79 @@ def main(argv):
     out = []; C._c_drop_classification(ctx, souls, out)
     record('SOUL-DROP-CLASSIFICATION silent at chance 0', False, C._norm(victim), out)
 
+    # 11. SOUL-IDENTITY-SHAPE (R-72 Vashkarr spear-and-shield retune).
+    #     The headline planted negative REPRODUCES THE PRE-R-72 SHIPPED STATE:
+    #     characterRunSpeedModifier = -8.0 on all three tiers (the amgoz "ancient and
+    #     heavy" downside the A8/B7 rebalance used to apply). That state MUST fail.
+    fam = C.SOUL_IDENTITY_SHAPES['vashkarr']
+    vk = {t: ctx.recmap.get(C._norm(f"{fam['dir']}\\vashkarr_soul_{t}.dbr")) for t in C._TIERS}
+
+    def _num(rec, field, default=0.0):
+        """Field value as float, tolerating an absent field. Only reached when the
+        suite is pointed at a PRE-R-72 arz (where the contract already fires on the
+        absence); keeps the harness from crashing instead of reporting."""
+        v = ctx.fscalar(rec, field)
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return default
+
+    if all(vk.values()):
+        def _shape_out():
+            o = []
+            C._c_identity_shape(ctx, souls, o)
+            return o
+
+        def _fires(label, want, subj):
+            o = _shape_out()
+            hit = any(C._norm(v['subject']) == C._norm(subj)
+                      and v['contract'] == 'SOUL-IDENTITY-SHAPE' for v in o)
+            results.append((label, 'PASS' if hit == want else 'FAIL', C._norm(subj),
+                            [(v['contract'], v['message'][:64]) for v in o][:2]))
+
+        # 11a. clean baseline: the built arz satisfies the ruling on every tier.
+        _fires('SOUL-IDENTITY-SHAPE silent on the shipped R-72 shape', False, vk['l'])
+
+        # 11b. THE REGRESSION TEST: restore the old -8% run-speed penalty.
+        orig_speed = {t: _num(vk[t], 'characterRunSpeedModifier') for t in C._TIERS}
+        for t in C._TIERS:
+            ctx.db.set_field(vk[t], 'characterRunSpeedModifier', -8.0, DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE fires on the pre-R-72 -8% speed PENALTY', True, vk['n'])
+        for t in C._TIERS:
+            ctx.db.set_field(vk[t], 'characterRunSpeedModifier', orig_speed[t], DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE silent after the speed bonus is restored', False, vk['n'])
+
+        # 11c. pierce damage stripped (the spear identity deleted).
+        orig_p = _num(vk['e'], 'offensivePierceModifier')
+        ctx.db.set_field(vk['e'], 'offensivePierceModifier', 0.0, DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE fires when pierce damage is zeroed', True, vk['e'])
+        ctx.db.set_field(vk['e'], 'offensivePierceModifier', orig_p, DATA_TYPE_FLOAT)
+
+        # 11d. penetration inverted across tiers (legendary weaker than epic).
+        orig_r = {t: _num(vk[t], 'offensivePierceRatioModifier') for t in C._TIERS}
+        ctx.db.set_field(vk['l'], 'offensivePierceRatioModifier',
+                         orig_r['n'] - 1.0, DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE fires on penetration tier INVERSION', True, vk['l'])
+        ctx.db.set_field(vk['l'], 'offensivePierceRatioModifier', orig_r['l'], DATA_TYPE_FLOAT)
+
+        # 11e. elemental drawback pushed OUT of Will's -6..-8% band.
+        orig_e = {t: _num(vk[t], 'offensiveElementalModifier') for t in C._TIERS}
+        ctx.db.set_field(vk['l'], 'offensiveElementalModifier', -25.0, DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE fires on out-of-band elemental penalty', True, vk['l'])
+
+        # 11f. elemental drawback DEEPENING with rarity: still inside the -6..-8% band
+        #      on every tier, so ONLY the non_decreasing ordering rule can catch it.
+        for t, v in (('n', -6.0), ('e', -7.0), ('l', -8.0)):
+            ctx.db.set_field(vk[t], 'offensiveElementalModifier', v, DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE fires when the drawback DEEPENS with tier', True, vk['l'])
+
+        for t in C._TIERS:
+            ctx.db.set_field(vk[t], 'offensiveElementalModifier', orig_e[t], DATA_TYPE_FLOAT)
+        _fires('SOUL-IDENTITY-SHAPE silent after the drawback band is restored', False, vk['l'])
+    else:
+        results.append(('SOUL-IDENTITY-SHAPE vashkarr family present', 'FAIL',
+                        'vashkarr_soul_{n,e,l}', [('SOUL-IDENTITY-SHAPE', 'family not found in arz')]))
+
     # report
     npass = sum(1 for _, r, _, _ in results if r == 'PASS')
     print("=== contracts_souls NEGATIVE TESTS ===")
