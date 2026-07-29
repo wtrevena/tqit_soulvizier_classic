@@ -111,6 +111,13 @@ roster_table (the final measured record -> orb table).`,
       required: ['status', 'commit_sha', 'done', 'not_done', 'proofs', 'roster_table'],
     } })
 
+  if (!impl) {
+    // A transient API error killed the implement agent. It commits as it goes, so its work is on
+    // the branch - do NOT treat this as a finding, just re-run the round.
+    log(`round ${round}: implement agent died (transient), retrying`)
+    continue
+  }
+
   phase('Vet')
   verdict = await agent(`INDEPENDENT ADVERSARIAL VET (round ${round}) of ${BR}.
 ${COMMON}
@@ -154,18 +161,21 @@ separating what you reproduced from what you took on trust.`,
       required: ['verdict', 'issues', 'summary'],
     } })
 
+  if (!verdict) {
+    verdict = { verdict: 'NO-GO', issues: ['VET AGENT DIED (transient API error), not a code finding - re-run the vet unchanged'], summary: 'vet agent failed to return' }
+  }
   log(`round ${round}: ${verdict.verdict} (${verdict.issues.length} issues)`)
   if (verdict.verdict === 'GO') break
 }
 
 return {
-  status: verdict.verdict === 'GO' ? 'go' : 'no-go',
+  status: (verdict && verdict.verdict) === 'GO' ? 'go' : 'no-go',
   branch: BR,
-  commit: impl.commit_sha,
-  roster: impl.roster_table,
-  done: impl.done,
-  not_done: impl.not_done,
-  proofs: impl.proofs,
-  vet: verdict.summary,
-  open_issues: verdict.issues,
+  commit: impl && impl.commit_sha,
+  roster: impl && impl.roster_table,
+  done: impl && impl.done,
+  not_done: impl && impl.not_done,
+  proofs: impl && impl.proofs,
+  vet: verdict && verdict.summary,
+  open_issues: (verdict && verdict.issues) || [],
 }
