@@ -1076,13 +1076,20 @@ def verify(db, tags=None):
     for rec in roster:
         got = _v1(db, rec, _TREASURE)
         if not isinstance(got, str) or _norm(got) != _norm(ORB05):
+            extra = ''
+            if _norm(rec) == _norm(_HUNT):
+                extra = (" This is the Endless Hunt - the champion Will has "
+                         "actually fought - and it is the record that shipped "
+                         "with NO orb at all for two waves.")
+            elif _norm(rec) in {_norm(r) for r in ROSTER_DEFERRED}:
+                extra = (" This one is a build-time CLONE of um_toxeus_hunt_99 "
+                         "made by toxeus_hunt_endless, so it inherits the orb "
+                         "only if that module still runs AFTER this one - check "
+                         "the registry order in tools/patches/__init__.py.")
             problems.append(
                 "%s treasureProxyName = %r, expected genericbossorb_05 - R-99 "
-                "puts EVERY Toxeus variant on the apex orb, and this one is "
-                "%s" % (rec.rsplit('\\', 1)[-1], got,
-                        "the record that shipped with no orb at all for two waves"
-                        if rec in ROSTER_DEFERRED or _norm(rec) == _norm(_HUNT)
-                        else "not on it"))
+                "puts EVERY Toxeus variant on the apex orb.%s"
+                % (rec.rsplit('\\', 1)[-1], got, extra))
 
     carriers = _consumers_of(db, ORB05)
     creep = sorted(set(_norm(c) for c in carriers) - {_norm(r) for r in roster})
