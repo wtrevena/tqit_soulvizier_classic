@@ -300,6 +300,30 @@ _CHAIN = [
         'sub_skill': _R2 + r'skills\soulskills\svc_bwpriest_summonmelinoe.dbr',
         'sub_pets': [_R2 + r'skills\soulskills\pets\bwpriest_attendant_%d.dbr' % i for i in (1, 2, 3)],
     },
+    # R-51 (b95, Will 2026-07-27): "backlog item sargath manbane soul should let
+    # you summon him" - the SAME ruling class as R-43 above, so it joins the SAME
+    # chain gate rather than getting a one-off. Sargoth Manbane is the DISPLAY name
+    # of records\creature\monster\dragonian\hero_tarthon_na'arak_37 (tagMonsterName1138);
+    # his soul family lives at the upstream-SV dragonian\sargoth_soul_* paths (NOT
+    # the svc_uber namespace the three families above use - this is an SV-original
+    # soul we are wiring a summon onto, not a soul we authored). Pets are built by
+    # tools/patches/sargoth_soul_summon.py via _build_boss_summon from his own rig.
+    # No sub-summon: his kit has no pet-spawning skill (lightning caster).
+    # No dragonian *_party_ portrait ships -> neutral proxy_party, same convention
+    # as the Hades Marshal + High Priest entries above.
+    {
+        'label': 'Sargoth Manbane',
+        'souls': [_R2 + r'item\equipmentring\soul\dragonian\sargoth_soul_%s.dbr' % t
+                  for t in ('n', 'e', 'l')],
+        'skill': _R2 + r'skills\soulskills\summon_sargoth.dbr',
+        'icon_stem': 'thunderorbup',
+        'portrait_stem': 'proxy_party_up',
+        'source': _R2 + r"creature\monster\dragonian\hero_tarthon_na'arak_37.dbr",
+        'pets': [_R2 + r'skills\soulskills\pets\sargoth_%d.dbr' % i for i in (1, 2, 3)],
+        'sub_skill': None,
+        'sub_source': None,
+        'sub_pets': [],
+    },
 ]
 
 
