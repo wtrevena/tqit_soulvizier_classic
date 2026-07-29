@@ -314,10 +314,15 @@ _FULL_SET = [
                            'z': ('int', 2321), 'tag': ('str', C.LEINTH_EXIT_TAG)}),
 ]
 _DOOR_ONLY = _FULL_SET[:1]
+# b94 round 3: the no-kill fallback is the SAME set minus Action_OpenDoor.
+_NOKILL_SET = _FULL_SET[1:]
 
 
 def _leinth_quest_bytes(primary_actions, fallback_actions, *, primary_resettable=1,
-                        variants=None, boat_tag=None, npc=None):
+                        variants=None, boat_tag=None, npc=None,
+                        nokill=1, nokill_actions=None, nokill_tag=None):
+    """`nokill` = how many Condition_OnLevelLoad "Show Exit Portal Fallback"
+    triggers to emit (b94 round 3, QST-LEINTH-NOKILL)."""
     variants = sorted(C.LEINTH_VARIANTS) if variants is None else variants
 
     def _tweak(actions):
@@ -348,6 +353,15 @@ def _leinth_quest_bytes(primary_actions, fallback_actions, *, primary_resettable
                                   'isQuestCritical': ('int', 0),
                                   'creatureRecord': ('str', v)},
                                  _tweak(fallback_actions)))
+    nk_acts = _NOKILL_SET if nokill_actions is None else nokill_actions
+    for _ in range(nokill):
+        triggers.append(_trigger(C.LEINTH_NOKILL_TAG, C.LEINTH_NOKILL_COND,
+                                 {'comments': ('int_or_empty', 0), 'isNot': ('int', 0),
+                                  'isResettable': ('int', 1),
+                                  'isQuestCritical': ('int', 0)},
+                                 _tweak(nk_acts) if nokill_tag is None
+                                 else [(cls, dict(f, tag=('str', nokill_tag))
+                                        if 'tag' in f else f) for cls, f in nk_acts]))
     trigcont = [('field', 'max', ('int', len(triggers)))]
     for t in triggers:
         trigcont.extend(t)
@@ -400,9 +414,46 @@ def test_leinth_exit():
               for x in C.check_leinth_exit(missing)))
 
 
+def test_leinth_nokill_exit():
+    print('CONTRACT: QST-LEINTH-NOKILL')
+    # compliant: exactly one OnLevelLoad fallback carrying the 3 portal actions
+    ok = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET))
+    check('QST-LEINTH-NOKILL silent when exactly one no-kill fallback is present',
+          not fires(C.check_leinth_nokill_exit(ok), 'QST-LEINTH-NOKILL'))
+    # break (THE BUG WILL HIT, P0): no no-kill fallback at all -> stranded forever
+    none_ = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET, nokill=0))
+    check('QST-LEINTH-NOKILL fires (P0) when the no-kill fallback is absent',
+          any(x['contract'] == 'QST-LEINTH-NOKILL' and x['severity'] == 'P0'
+              for x in C.check_leinth_nokill_exit(none_)))
+    # break (P1): duplicated fallbacks -> two travel offers on one NPC
+    dupe = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET, nokill=2))
+    check('QST-LEINTH-NOKILL fires (P1) on a duplicated no-kill fallback',
+          any(x['contract'] == 'QST-LEINTH-NOKILL' and x['severity'] == 'P1'
+              for x in C.check_leinth_nokill_exit(dupe)))
+    # break (P0): the fallback opens the boss trap door on every level load
+    withdoor = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET,
+                                               nokill_actions=_FULL_SET))
+    check('QST-LEINTH-NOKILL fires (P0) when the no-kill fallback opens the door',
+          any(x['contract'] == 'QST-LEINTH-NOKILL' and x['severity'] == 'P0'
+              for x in C.check_leinth_nokill_exit(withdoor)))
+    # break (P0): the fallback lost the travel offer (ShowNpc only)
+    noboat = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET,
+                                             nokill_actions=_NOKILL_SET[:1]))
+    check('QST-LEINTH-NOKILL fires (P0) when the no-kill fallback has no BoatDialog',
+          any(x['contract'] == 'QST-LEINTH-NOKILL' and x['severity'] == 'P0'
+              for x in C.check_leinth_nokill_exit(noboat)))
+    # break (P0): the offer tag regressed -> raw tag or no prompt
+    wrongtag = _leinth_ctx(_leinth_quest_bytes(_FULL_SET, _FULL_SET,
+                                               nokill_tag='tagSomethingElse'))
+    check('QST-LEINTH-NOKILL fires (P0) when the no-kill offer tag regresses',
+          any(x['contract'] == 'QST-LEINTH-NOKILL' and x['severity'] == 'P0'
+              for x in C.check_leinth_nokill_exit(wrongtag)))
+
+
 if __name__ == '__main__':
     for t in (test_rec_exists, test_proxy_placed, test_door_unlock, test_giveitem,
-              test_tags, test_load_window, test_widow_letter, test_leinth_exit):
+              test_tags, test_load_window, test_widow_letter, test_leinth_exit,
+              test_leinth_nokill_exit):
         t()
     npass = sum(1 for _n, ok, _d in RESULTS if ok)
     print('\n%d/%d checks PASS' % (npass, len(RESULTS)))

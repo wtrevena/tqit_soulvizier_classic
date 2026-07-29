@@ -409,6 +409,28 @@ CONTRACTS = [
                         '9.8u from the occultist merchant, so this is a '
                         'Quests.arc-only invariant.',
     },
+    {
+        'id': 'QST-LEINTH-NOKILL',
+        'name': 'A no-kill exit fallback rescues already-latched characters',
+        'asserts': 'In open_bloodcave_portal.qst step "Boss Room Crystal Gate" there '
+                   'is EXACTLY ONE Condition_OnLevelLoad trigger tagged "Show Exit '
+                   'Portal Fallback" carrying Action_ShowNpc + Action_UpdateNPCDialog '
+                   '+ Action_BoatDialog on vortexportal_exit with tag '
+                   'tagReturnFromLeinthBattle, and it must NOT carry Action_OpenDoor '
+                   '(the boss trap door stays earned). Zero such triggers = a '
+                   'character who already killed Leinth while the one-shot primary '
+                   'was latched is permanently stranded; two or more = duplicated '
+                   'travel offers on one NPC.',
+        'derived_from': 'Will 2026-07-27, answering the residual R-72 flagged: "ADD '
+                        'THE NO-KILL FALLBACK. Show the exit whenever the boss trap '
+                        'door is already open, regardless of whether the kill trigger '
+                        'latched - so a character who already killed her (INCLUDING '
+                        'WILL\'S OWN) is rescued rather than stranded." The .qst '
+                        'condition vocabulary has no door-state test, so '
+                        'Condition_OnLevelLoad is the only mechanism that satisfies '
+                        'the requirement; Action_OpenDoor is deliberately stripped so '
+                        'the fallback reveals the way out without granting the fight.',
+    },
 ]
 
 # ── QST-LEINTH-EXIT constants ───────────────────────────────────────────────
@@ -427,6 +449,12 @@ LEINTH_VARIANTS = {
 }
 LEINTH_EXIT_ACTIONS = ('Action_OpenDoor', 'Action_ShowNpc',
                        'Action_UpdateNPCDialog', 'Action_BoatDialog')
+
+# ── QST-LEINTH-NOKILL constants (b94 round 3, Will 2026-07-27) ──────────────
+LEINTH_NOKILL_TAG = 'Show Exit Portal Fallback'
+LEINTH_NOKILL_COND = 'Condition_OnLevelLoad'
+LEINTH_NOKILL_ACTIONS = ('Action_ShowNpc', 'Action_UpdateNPCDialog',
+                         'Action_BoatDialog')
 
 
 # =============================================================================
@@ -1085,6 +1113,80 @@ def check_leinth_exit(ctx):
     return viols
 
 
+def check_leinth_nokill_exit(ctx):
+    """QST-LEINTH-NOKILL. Exactly one OnLevelLoad exit fallback, and it must not
+    open the boss trap door."""
+    viols = []
+    raw = (ctx.raw or {}).get(LEINTH_QUEST)
+    if raw is None:
+        return viols
+    try:
+        triggers = _leinth_step_triggers(raw)
+    except Exception as ex:                      # pragma: no cover - malformed blob
+        return [_v('QST-LEINTH-NOKILL', 'P1', LEINTH_QUEST,
+                   'could not parse the boss-room step to verify the no-kill exit',
+                   repr(ex))]
+    if triggers is None:
+        return [_v('QST-LEINTH-NOKILL', 'P1', LEINTH_QUEST,
+                   'step %r not found; the no-kill exit fallback cannot be verified'
+                   % LEINTH_STEP, 'step missing from the shipped quest')]
+
+    found = 0
+    for tag, cls, _cond_blocks, act_classes, act_blocks in triggers:
+        if cls != LEINTH_NOKILL_COND or tag != LEINTH_NOKILL_TAG:
+            continue
+        found += 1
+        subject = '%s :: %s' % (LEINTH_QUEST, tag)
+
+        missing = [a for a in LEINTH_NOKILL_ACTIONS if a not in act_classes]
+        if missing:
+            viols.append(_v(
+                'QST-LEINTH-NOKILL', 'P0', subject,
+                'the no-kill exit fallback is missing %s, so an already-latched '
+                'character still gets no travel offer and stays stranded'
+                % ', '.join(missing), 'carries %s' % (act_classes or '[]')))
+        if 'Action_OpenDoor' in act_classes:
+            viols.append(_v(
+                'QST-LEINTH-NOKILL', 'P0', subject,
+                'the no-kill fallback carries Action_OpenDoor - it fires on every '
+                'level load, so the boss trap door would open for a player who never '
+                'fought Leinth', 'carries %s' % (act_classes,)))
+        for cls_name in LEINTH_NOKILL_ACTIONS:
+            for blk in act_blocks.get(cls_name, []):
+                npc = blk.get('npc')
+                if not (isinstance(npc, tuple) and npc[0] == 'str'
+                        and norm(npc[1]) == LEINTH_EXIT_NPC):
+                    viols.append(_v(
+                        'QST-LEINTH-NOKILL', 'P0', subject,
+                        '%s targets %r, not the placed exit NPC vortexportal_exit'
+                        % (cls_name, npc), 'expected %s' % LEINTH_EXIT_NPC))
+        for blk in act_blocks.get('Action_BoatDialog', []):
+            tagv = blk.get('tag')
+            if not (isinstance(tagv, tuple) and tagv[0] == 'str'
+                    and tagv[1] == LEINTH_EXIT_TAG):
+                viols.append(_v(
+                    'QST-LEINTH-NOKILL', 'P0', subject,
+                    'the no-kill BoatDialog offer tag is %r, not %s - the player gets '
+                    'a raw tag or no prompt' % (tagv, LEINTH_EXIT_TAG),
+                    'expected tag %s' % LEINTH_EXIT_TAG))
+
+    if found == 0:
+        viols.append(_v(
+            'QST-LEINTH-NOKILL', 'P0', LEINTH_QUEST,
+            'no %s trigger tagged %r in step %r - a character who already killed '
+            'Leinth while the one-shot primary was latched (Will\'s own _Toxeus) is '
+            'permanently stranded in the Sanctuary'
+            % (LEINTH_NOKILL_COND, LEINTH_NOKILL_TAG, LEINTH_STEP),
+            'expected exactly 1, found 0'))
+    elif found > 1:
+        viols.append(_v(
+            'QST-LEINTH-NOKILL', 'P1', LEINTH_QUEST,
+            'found %d no-kill exit fallbacks, expected exactly 1 - duplicated '
+            'ShowNpc/BoatDialog on a single NPC' % found,
+            'expected 1, found %d' % found))
+    return viols
+
+
 # =============================================================================
 # whitelist + orchestration
 # =============================================================================
@@ -1128,6 +1230,7 @@ def run_detailed(cfg):
     viols += check_load_window(ctx)
     viols += check_widow_letter(ctx)
     viols += check_leinth_exit(ctx)
+    viols += check_leinth_nokill_exit(ctx)
 
     wl = load_whitelist()
     if wl:

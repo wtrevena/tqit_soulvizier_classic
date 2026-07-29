@@ -1046,6 +1046,198 @@ def _promote_leinth_exit_fallbacks(data: bytes) -> bytes:
     return out
 
 
+# ── b94 ROUND 3 PART C: the NO-KILL exit fallback ──────────────────────────────
+# WILL 2026-07-27 (Q9, answering the residual R-72 flagged): "ADD THE NO-KILL
+# FALLBACK. Show the exit whenever the boss trap door is already open, regardless of
+# whether the kill trigger latched - so a character who already killed her
+# (INCLUDING WILL'S OWN) is rescued rather than stranded."
+#
+# WHY IT IS NOT LITERALLY "if the door is open": the .qst condition vocabulary has no
+# door-state test. The 14 condition classes qst_format supports are AnimationCompleted,
+# CharacterHasItem, ConversationStart, CounterState, EnterVolume, ExitVolume, GotToken,
+# KillAllCreaturesFromProxy, KillCreature, MoveCompleted, OnLevelLoad, OnQuestComplete,
+# OwnsTriggerToken, PickupItem, UseFixedItem. None reads a FixedItemDoor's open state,
+# and the primary's Action_OpenDoor grants no token to test for. So the only mechanism
+# that satisfies Will's REQUIREMENT (nobody is ever stranded, including his own already
+# -latched character) is Condition_OnLevelLoad: every time the boss level loads, the
+# exit NPC is shown and given its travel offer.
+#
+# DELIBERATELY WITHOUT Action_OpenDoor. The boss trap door stays earned - this trigger
+# only reveals the way OUT. A player who has not killed her gains nothing but the sight
+# of the vortex; the door, the fight and the loot are all untouched.
+#
+# THE ONE COST, STATED: because OnLevelLoad fires on EVERY entry, the vortex is visible
+# from the moment the player walks into the Sanctuary rather than appearing at the
+# instant she dies. That trades R-72's reveal for Will's guarantee. It is flagged in the
+# wave report as a Will-decision item; if he prefers the reveal, delete this one trigger
+# and the three kill fallbacks still cover every case except an already-latched
+# character (which is exactly the case he asked to rescue).
+#
+# Double-firing is harmless and already precedented here: the existing block comment
+# notes "the second unlock/open of an already-unlocked/open item is a no-op", and
+# round 1 already ships the same ShowNpc/BoatDialog set on four triggers.
+EXIT_NOKILL_TRIGGER = 'Show Exit Portal Fallback'
+EXIT_NOKILL_ACTION_CLASSES = ('Action_ShowNpc', 'Action_UpdateNPCDialog',
+                              'Action_BoatDialog')
+
+
+def _add_leinth_exit_nokill_fallback(data: bytes) -> bytes:
+    """ADD one Condition_OnLevelLoad trigger carrying the primary's portal actions
+    minus Action_OpenDoor. Strictly additive: one trigger appended to the
+    "Boss Room Crystal Gate" step, its container `max` incremented to match. Fails
+    loud if the primary is missing, if its action set moved, if stripping OpenDoor
+    does not leave exactly the 3 expected actions, or if the emitted bytes do not
+    re-parse into the intended shape. Idempotent: a second run is a no-op.
+    """
+    import copy
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    positions = _qst_block_positions(steps_container)
+    step_triples = [positions[i:i + 3] for i in range(0, len(positions), 3)]
+
+    target = None
+    for stepdef_pos, trigcont_pos, _sent in step_triples:
+        if _qst_field(steps_container[stepdef_pos][1], 'name') == HARDEN_STEP2_NAME:
+            target = trigcont_pos
+            break
+    if target is None:
+        raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: step {HARDEN_STEP2_NAME!r} not '
+                         f'found; the no-kill exit fallback cannot be applied.')
+    trigcont = list(steps_container[target][1])
+    tpos = _qst_block_positions(trigcont)
+    triples = [tpos[i:i + 3] for i in range(0, len(tpos), 3)]
+
+    # idempotence: already added?
+    for (hpos, _c, _a) in triples:
+        if _qst_field(trigcont[hpos][1], 'displayTag') == EXIT_NOKILL_TRIGGER:
+            print(f'  {BLOODCAVE_INTERIOR_QUEST}: no-kill exit fallback already '
+                  f'present; no-op')
+            return data
+
+    # harvest the primary's action block (it is the single source of truth for the
+    # NPC record, the destination coordinates and the offer tag)
+    primary_actions = None
+    for (_h, cpos, apos) in triples:
+        conds = trigcont[cpos][1]
+        if _qst_field(conds, 'conditionClassName') != 'Condition_KillAllCreaturesFromProxy':
+            continue
+        for it in conds:
+            if it[0] == 'block' and isinstance(_qst_field(it[1], 'proxyRecord'), str) \
+                    and _qst_field(it[1], 'proxyRecord').replace('\\', '/').lower() == EXIT_PROXY:
+                primary_actions = trigcont[apos][1]
+                break
+        if primary_actions is not None:
+            break
+    if primary_actions is None:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: the primary '
+            f'Condition_KillAllCreaturesFromProxy({EXIT_PROXY}) trigger is gone; '
+            f'refusing to guess the exit-portal action set for the no-kill fallback.')
+    got = tuple(it[2][1] for it in primary_actions
+                if it[0] == 'field' and it[1] == 'actionClassName')
+    if got != EXIT_ACTION_CLASSES:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: primary carries {got}, expected '
+            f'{EXIT_ACTION_CLASSES}; _promote_leinth_exit_fallbacks must run FIRST.')
+
+    # strip Action_OpenDoor (classname field + its following block), keep the rest
+    kept, i = [], 0
+    src = list(primary_actions)
+    while i < len(src):
+        it = src[i]
+        if it[0] == 'field' and it[1] == 'actionClassName':
+            blk = src[i + 1] if i + 1 < len(src) else None
+            if blk is None or blk[0] != 'block':
+                raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: action {it[2][1]!r} has '
+                                 f'no parameter block')
+            if it[2][1] != 'Action_OpenDoor':
+                kept.append(('field', 'actionClassName', ('str', it[2][1])))
+                kept.append(('block', copy.deepcopy(blk[1])))
+            i += 2
+            continue
+        i += 1
+    kept_classes = tuple(it[2][1] for it in kept
+                         if it[0] == 'field' and it[1] == 'actionClassName')
+    if kept_classes != EXIT_NOKILL_ACTION_CLASSES:
+        raise ValueError(
+            f'{BLOODCAVE_INTERIOR_QUEST}: stripping Action_OpenDoor left '
+            f'{kept_classes}, expected {EXIT_NOKILL_ACTION_CLASSES}')
+
+    header = ('block', [
+        ('field', 'displayTag', ('str', EXIT_NOKILL_TRIGGER)),
+        ('field', 'displayBitmap', ('int_or_empty', 0)),
+        ('field', 'comments', ('int_or_empty', 0)),
+        ('field', 'isActive', ('int', 0)),
+        ('field', 'bRatchet', ('int', 0)),
+    ])
+    conditions = ('block', [
+        ('field', 'conditionCount', ('int', 1)),
+        ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isNot', ('int', 0)),
+            ('field', 'isResettable', ('int', 1)),   # re-arms on every entry
+            ('field', 'isQuestCritical', ('int', 0)),
+        ]),
+    ])
+    actions = ('block', [('field', 'actionCount', ('int', len(EXIT_NOKILL_ACTION_CLASSES)))]
+               + kept)
+
+    bumped = False
+    for idx, it in enumerate(trigcont):
+        if it[0] == 'field' and it[1] == 'max':
+            trigcont[idx] = ('field', 'max', ('int', it[2][1] + 1))
+            bumped = True
+            break
+    if not bumped:
+        raise ValueError(f'{BLOODCAVE_INTERIOR_QUEST}: step {HARDEN_STEP2_NAME!r} '
+                         f'trigger container has no max field')
+    trigcont.extend([header, conditions, actions])
+    steps_container[target] = ('block', trigcont)
+    out = qst_format.serialize(tree)
+
+    # ── fail-loud verification on the EMITTED bytes ─────────────────────────
+    reparsed = qst_format.parse(out)
+    if qst_format.serialize(reparsed) != out:
+        raise ValueError('no-kill exit fallback does not round-trip stably')
+    steps2 = reparsed[1]
+    pos2 = _qst_block_positions(steps2)
+    found = 0
+    for sd, tc, _sn in [pos2[i:i + 3] for i in range(0, len(pos2), 3)]:
+        if _qst_field(steps2[sd][1], 'name') != HARDEN_STEP2_NAME:
+            continue
+        items = steps2[tc][1]
+        tp = _qst_block_positions(items)
+        for (h, c, a) in [tp[i:i + 3] for i in range(0, len(tp), 3)]:
+            if _qst_field(items[h][1], 'displayTag') != EXIT_NOKILL_TRIGGER:
+                continue
+            found += 1
+            if _qst_field(items[c][1], 'conditionClassName') != 'Condition_OnLevelLoad':
+                raise ValueError('no-kill fallback: condition class is not OnLevelLoad')
+            cls = tuple(it[2][1] for it in items[a][1]
+                        if it[0] == 'field' and it[1] == 'actionClassName')
+            if cls != EXIT_NOKILL_ACTION_CLASSES:
+                raise ValueError(f'no-kill fallback: emitted actions {cls}')
+            if 'Action_OpenDoor' in cls:
+                raise ValueError('no-kill fallback must NOT open the boss trap door')
+            npcs = [it[2][1] for blk in items[a][1] if blk[0] == 'block'
+                    for it in blk[1] if it[0] == 'field' and it[1] == 'npc']
+            if not npcs or any(n.replace('\\', '/').lower() != EXIT_NPC for n in npcs):
+                raise ValueError(f'no-kill fallback: npc targets {npcs}, expected '
+                                 f'only {EXIT_NPC}')
+            tagvals = [it[2][1] for blk in items[a][1] if blk[0] == 'block'
+                       for it in blk[1] if it[0] == 'field' and it[1] == 'tag']
+            if tagvals != [EXIT_TAG]:
+                raise ValueError(f'no-kill fallback: BoatDialog tag {tagvals}')
+    if found != 1:
+        raise ValueError(f'no-kill fallback: emitted {found} trigger(s), expected 1')
+    print(f'  {BLOODCAVE_INTERIOR_QUEST}: no-kill exit fallback added '
+          f'(Condition_OnLevelLoad -> ShowNpc+UpdateNPCDialog+BoatDialog, NO '
+          f'OpenDoor) - an already-latched character is never stranded again')
+    return out
+
+
 # -- Esti's Hidden Chest supra-formula de-duplication (B1, 2026-07-08) -----------
 # WHY: the Esti (Esfri) hidden chest in the blood cave grants a random supra arcane
 # formula. In build28 the ONLY source of that formula is a QUEST action: each of the 3
@@ -1579,11 +1771,17 @@ def _build_area_quests() -> dict:
     # PROMOTE them to carry the primary trigger's FULL exit-portal action set and
     # re-arm the primary (see _promote_leinth_exit_fallbacks). Order is load-bearing:
     # the promotion asserts the 3 fallbacks exist, so hardening must run first.
+    # b94 ROUND 3: then ADD the no-kill fallback Will asked for on 2026-07-27 - a
+    # Condition_OnLevelLoad trigger carrying the same ShowNpc/UpdateNPCDialog/
+    # BoatDialog set WITHOUT Action_OpenDoor, so a character who already killed her
+    # while the one-shot was latched is rescued instead of stranded. It runs LAST
+    # because it harvests (and asserts) the promoted primary's action block.
     bc = _upstream_quest_bytes(arc, BLOODCAVE_INTERIOR_QUEST)
     _assert_roundtrip(BLOODCAVE_INTERIOR_QUEST, bc)
-    out[BLOODCAVE_INTERIOR_QUEST] = _promote_leinth_exit_fallbacks(
-        _harden_guardian_door_unlocks(
-            _neutralize_bloodcave_entry_step(bc)))
+    out[BLOODCAVE_INTERIOR_QUEST] = _add_leinth_exit_nokill_fallback(
+        _promote_leinth_exit_fallbacks(
+            _harden_guardian_door_unlocks(
+                _neutralize_bloodcave_entry_step(bc))))
 
     # Immortal-Throne endpoint hard-cap: port the VANILLA base-game expansion-portals
     # controller (from XPack4/Quests.arc, NOT upstream SV) with the single IT->Eternal-
@@ -2711,7 +2909,10 @@ def promote_leinth_exit_in_arc(quests_arc_path: Path, out_path: Path = None):
                          f'the blood-cave questline must be ported first.')
     src = arc.get_file(target)
     _assert_roundtrip(target, src)
-    arc.set_file(target, _promote_leinth_exit_fallbacks(src))
+    # b94 ROUND 3: the surgical path applies the SAME two-step chain the full build
+    # does, so a hand-patched Quests.arc can never drift from a built one.
+    arc.set_file(target, _add_leinth_exit_nokill_fallback(
+        _promote_leinth_exit_fallbacks(src)))
     arc.write(out_path)
 
     arc2 = ArcArchive.from_file(out_path)
