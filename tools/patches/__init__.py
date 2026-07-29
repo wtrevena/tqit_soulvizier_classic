@@ -448,6 +448,22 @@ REGISTRY = [
                             # so it sweeps the FINAL assembled db and no later module can
                             # reintroduce the class. Deletes only whitelisted field slots; apply()
                             # proves roster-wide that nothing else moved.
+    'weapon_gate_truth',    # b100 (Will 2026-07-29, R-100/R-101/R-102): tooltip-vs-gate honesty
+                            # for the two dodge passives whose bonuses are silently dead unless
+                            # the player dual wields - Occult Blade Mastery (text-only; the record
+                            # is deliberately UNTOUCHED, narrowing/widening the gate is Will's
+                            # balance call) and Warfare Parry (skillBaseDescription REPOINTED off
+                            # the shared base tag tagSkillDescription192 onto the new mod-owned
+                            # tagParryDESC, per the R-41 re-point-over-edit-a-shared-tag rule).
+                            # Touches exactly ONE field on ONE record, in a namespace no other
+                            # module writes (records\skills\warfare\drxdodge attack.dbr), so it is
+                            # order-independent; registered here, after mastery_unlock_alignment
+                            # and every skill-UI writer, purely so its verify() gate reads the
+                            # FINAL assembled skill records. verify() = the DB half of the gate
+                            # (contracted records' gating fields must still match the gate their
+                            # shipped tooltip describes, plus a sweep for NEW uncontracted
+                            # dualWieldOnly player skills); the TEXT half is
+                            # tools/validate_weapon_gate_text.py, run by build_text_arc.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

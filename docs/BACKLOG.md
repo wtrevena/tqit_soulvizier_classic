@@ -1,5 +1,97 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## B100 GATE RECORD - WEAPON/HAND GATE HONESTY: Blade Mastery + Parry tooltips (2026-07-29, branch `fix/blade-mastery-truth`) - NOT DEPLOYED, NO TAG TAKEN
+
+**NOT DEPLOYED. NOTHING WAS WRITTEN TO ANY `CustomMaps\*` TARGET, no Steam action, no TQ/Steam
+process touched.** The orchestrator owns deploys. No `buildNN` tag was taken because this lane did
+not deploy; the tag belongs to whichever wave ships these bytes.
+
+> ⚠️ **BASE MOVED MID-LANE; THIS LANE REBASED AND REBUILT.** Briefed base was `main` @ `4f0299c`.
+> While the lane ran, `feat/leinth-wave` (R-98, `leinth_wave` + `uber_apex_orb` modules) merged and
+> `main` advanced to `e2a3b1e`. The branch was REBASED onto it (one append/append conflict in
+> `docs/WILL_RULINGS.md`, resolved by keeping BOTH sides) and **both artifacts were rebuilt from
+> scratch on the new base** - the hashes below are the post-rebase ones; the pre-rebase pair
+> (arz `1e0990d7f934afb90151aa4672ddc049` / Text `b5d74079e46267ea4c2e9b174dd59807`) is **stale, do
+> not ship it**. Pre-rebase tip is kept as tag `b100-prerebase`. `git diff main..HEAD` = 8 files,
+> **947 insertions, 0 deletions**. Registry selfcheck OK, 45 modules.
+> **WAVE-LABEL COLLISION (harmless, flagged so nobody is confused):** the parallel
+> `feat/sanctuary-populate` lane also labels itself "b100" (`docs/reports/b100_sanctuary_recon.md`).
+> The unique identifiers here are the module name `weapon_gate_truth` and rulings R-100..R-102; that
+> lane first claimed R-100..R-109, saw this branch's claim, and YIELDED to R-110..R-119 (its recon
+> doc records the yield), so the ruling numbers below are uncontested.
+
+**ARTIFACTS (arz + Text are COUPLED - the arz references the new `tagParryDESC`; never ship one
+without the other):**
+- arz `.claude/worktrees/blade-mastery/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **aea688b23acefe1b48ae31a0df4cc423** (built with `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`).
+- Text `.claude/worktrees/blade-mastery/local/b100_Text.arc` md5 **f51c62ffd2a0fcddfab00bad498c04dd**.
+- `Levels.arc` / `Quests.arc` **untouched** - DB+Text-only lane, zero map bytes.
+
+**WHAT IT IS.** Will asked (verbatim) "does the occult skill blade mastery chance to dodge attacks
+bonus apply if you are using any weapon or only if you are using a sword dagger or axe as the skill
+description says?" The answer is NEITHER - the real gate is narrower than the description in a way
+the description never stated. Full engine-level evidence chain: `docs/WILL_RULINGS.md` R-100 and the
+module docstring in `tools/patches/weapon_gate_truth.py`. Summary: all four bonuses sit on ONE
+`Skill_Passive` behind ONE availability gate (`Sword=1 Axe=1 dualWieldOnly=1`); `Skill::SetAvailability`
+(Game.dll 0x10245BC0) kills the whole skill unless `QualifyingWeapon()` (an OR over BOTH hands) and
+`QualifyingHandState()` (for `dualWieldOnly`: an actual WEAPON in the off hand) both hold, and
+`Skill_Passive` does not override it. So: a weapon in EACH hand, at least one a sword/dagger/axe.
+
+**CHANGES (text follows mechanics; MECHANICS DELIBERATELY UNTOUCHED - that is R-101, Will's call):**
+1. `tools/build_text_arc.py` TEXT_FIX_TAGS: `tagBladeMasteryDESC` rewritten (amgoz1's first two
+   sentences byte-unchanged; two clauses appended in the GAME'S OWN wording -
+   "Allows and requires dual wielding." is verbatim `x2tagSkillRunesDescription010`, and
+   "Requires at least one sword, dagger, or axe." is the `tagSkillDescription015` shape). New
+   mod-owned `tagParryDESC`.
+2. `tools/patches/weapon_gate_truth.py` (NEW, registered in the patches REGISTRY before the no-op
+   `visuals`): repoints Warfare Parry `records\skills\warfare\drxdodge attack.dbr`
+   `skillBaseDescription` off the SHARED base tag `tagSkillDescription192` onto `tagParryDESC`
+   (R-41 re-point-over-edit-a-shared-tag; the shared tag also serves
+   `records\skills
+ature\pet
+aturepetdodge_1%perlevelx100.dbr`, which has no dual gate).
+   **Exactly ONE record modified, ONE field.**
+3. `tools/validate_weapon_gate_text.py` (NEW) wired into `build_text_arc` main.
+4. `tools/occult_hunting_golden.json`: one `owner_approved_overrides` line for
+   `tag::tagBladeMasteryDESC` (one-line diff; Occult is Will's hand-tuned mastery, wording vetoable).
+
+**THE GATE (CLAUDE.md law #4), two halves because the two artifacts are built by two tools:**
+- DB half `weapon_gate_truth.verify()`: contracted records' gating fields must still equal the gate
+  their shipped tooltip describes, AND a sweep over every player-surface skill fails on any NEW
+  `dualWieldOnly=1` record that is neither contracted nor waived.
+- Text half `tools/validate_weapon_gate_text.py`: each contracted tag must RESOLVE in the built
+  Text.arc and still CONTAIN the clauses its LIVE gating fields demand (clauses derived from the
+  record, never from the contract).
+Edit the record without the text -> DB half reds. Edit the text without the record -> Text half reds.
+
+**PROOFS (commands + measured results, nothing estimated):**
+- `py tools/build_svc_database.py ...` **exit 0**; log line `--- [42/43] weapon_gate_truth ---`,
+  `weapon_gate_truth: modified 1 record(s), 0 tag(s)`, `Gate B100 ... OK`.
+- `py tools/build_text_arc.py ...` **exit 0**; A7 golden guard `PASS - Occult/Hunting golden state
+  intact (91 waived, 0 other)` (the new waiver is one of the 91); duplicate-tag gate OK;
+  `B100 WEAPON/HAND GATE TEXT GATE ... RESULT: PASS - 2 contracted tooltip(s) state the gate their
+  records actually enforce`.
+- Tag READ BACK OUT of the built Text.arc (not from the source dict):
+  `tagBladeMasteryDESC=The Occultist is able to wield two weapons at once. With lighter blades, the
+  Occultist can attack with greater proficiency and speed. {^n}{^y}Allows and requires dual wielding.
+  Requires at least one sword, dagger, or axe.` and
+  `tagParryDESC=Even the sturdiest armor has its chinks.  The best way to stay alive is to not get
+  hit. {^n}{^y}Allows and requires dual wielding.`
+- `py tools/validate_tags.py <arz> <Text.arc>` -> **RESULT: PASS** (368/368 referenced mod tags
+  present; the 2 WARN monster names are pre-existing and unrelated).
+- `py tools/debug/negtest_weapon_gate_truth.py <arz> <Text.arc>` -> **9/9 subtests as specified**
+  (2 positives + `dualWieldOnly` dropped / `Mace` added / Parry back on the shared tag / planted
+  stray dual-wield player skill / dual-wield clause stripped from the text / weapon-class clause
+  stripped from the text ALL red the gate).
+
+**NOT DONE / KNOWN GAPS (registered as debt below):** the F2 summons-contract gate did NOT run in
+this worktree (`WARNING: F2 summons-contract gate DID NOT RUN - needs ... a Resources dir beside the
+output`) because the lane deliberately kept no `work/SoulvizierClassic/Resources` in the worktree -
+creating an empty one SHADOWS the main checkout's arcs and false-fails
+`mastery_sv_alignment.verify` (observed once, then removed). Whoever integrates should re-run the
+build in the full `work/` layout. No in-game verification was done - no deploy, per the brief.
+
+
 ## BUILD65-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 4: INTEGRATION ONTO POST-b99 MAIN (2026-07-29, branch `feat/endless-hunt`, tag `build65-dev`)
 
 **NOT DEPLOYED.** This lane wrote nothing to `CustomMaps\SoulvizierClassicDEV`; re-hashed at the end,
@@ -1886,6 +1978,55 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b100 weapon/hand gate honesty (2026-07-29, `fix/blade-mastery-truth`) - NEW.** Found by the
+standing sibling sweep run alongside Will's Blade Mastery question (method: for every skill record
+reachable from a `records\ingameui\player skills\` UI slot or a shipped `*skilltree.dbr`, compare
+the rendered description against the record's Qualifying Weapons / `dualWieldOnly` / `meleeOnly`
+fields). 523 player-surface skills scanned, 57 disagreements, most of them vanilla convention
+(base-game tooltips habitually do not restate a weapon gate - Marksmanship, Takedown, Anatomy).
+The items below are the ones that are NOT that:
+- **BL-b100-DEBT-1 (P1, WILL DECISION - text vs mechanics, AMBIGUOUS so deliberately NOT fixed):**
+  Earth **Rupture** `records\skills\earth\drxflamesurge.dbr` ships `tagRuptureDESC` ending
+  `^y(Staff or Bow)`, but the record's qualifying weapons are **Staff + RangedOneHand (thrown)** -
+  **Bow is NOT in the list**, so equipping a bow leaves the skill unusable, and a thrown weapon
+  (which the tooltip never mentions) does work. That tooltip is itself a mod-authored correction
+  (`build_text_arc.py` TEXT_FIX_TAGS, comment "F7b (build36 fix wave) ... corrects the weapon
+  restriction to match the skill"), so ONE of the two sides is wrong and which one is a DESIGN
+  question: if the b36 lane B graft intended Staff-or-Bow, the RECORD is the defect (add Bow, a
+  balance change = Will's call); if the record is right, the TEXT should read "(Staff or Thrown)".
+  Not touched here because the honest text depends on which side is the bug. Sibling
+  `drxflamesurge_barrage.dbr` carries the same [Staff, RangedOneHand] gate.
+  Owner/trigger: Will picks a side; then the b100 gate should adopt the record into its CONTRACT.
+- **BL-b100-DEBT-2 (P2, text):** DRX **War Dance**
+  `records\skills\warfare\drxdualwieldtechnique_wardance.dbr` carries `dualWieldOnly=1` but its
+  description (`tagWarDanceDESC`, "Learn to leap up then spiral down...") never states the gate. It
+  is WAIVED in `weapon_gate_truth.DUAL_WIELD_SWEEP_WAIVERS` (it hangs off the Dual Wield ladder, so
+  the gate is contextually obvious) rather than fixed, to keep this lane's blast radius at the two
+  dodge passives Will actually asked about. Owner/trigger: a text lane; the fix is one TEXT_FIX_TAGS
+  line plus a CONTRACT entry.
+- **BL-b100-DEBT-3 (P2, dead divergent duplicate - RETIREMENT PROTOCOL applies, do NOT delete
+  blind):** a doubled-path copy of the Occult tree exists at `records\skills\skills\stealth\...`.
+  Its `drx_dual_blade.dbr` copy has **`Sword=1` only - no `Axe`** - i.e. it diverges from the live
+  record. Nothing references it today (the live tree AND the doubled tree both point `skillName22`
+  at the REAL `records\skills\stealth\drx_dual_blade.dbr`, and mastery-5 `skill24.dbr` likewise),
+  so it is inert - but if anything ever repoints to it, axes silently stop qualifying and the
+  shipped tooltip becomes a lie again. Same shape exists for `drxdodge attack.dbr`. Owner/trigger: a
+  hygiene lane, under CLAUDE.md law #2 (check the ledger before retiring anything).
+- **BL-b100-DEBT-4 (P2, build environment):** the **F2 summons-contract gate did not run** for this
+  lane's DB build (`WARNING: F2 summons-contract gate DID NOT RUN - needs the game dir, a Resources
+  dir beside the output, and tools/contracts`). Cause is the worktree layout, not the change: a
+  worktree with NO `work/SoulvizierClassic/Resources` cannot run it, and creating an EMPTY one
+  SHADOWS the main checkout's arcs and makes `mastery_sv_alignment.verify` false-fail on
+  `DRXtextures\masterybackdrops
+ewstealthpanel01.tex` (observed, then removed). Owner/trigger:
+  whoever integrates - re-run in the full `work/` layout, or a tooling lane teaches the resolver to
+  skip empty Resources dirs.
+- **BL-b100-DEBT-5 (P2, unverified in game):** nothing in this lane was deployed or played. The
+  claim that the two tooltips now render with the added clauses is proven at the Text.arc byte level
+  (read back out of the built archive) but NOT on screen. Owner/trigger: Will, on the next deploy -
+  hover Blade Mastery (Occult) and Parry (Warfare) and confirm the yellow line appears on its own
+  row.
 
 > 🧹 **2026-07-28 DOCS DEBT-CLEARANCE PASS (`fix/debt-docs`).** Six deferred items closed; the four
 > that changed this register are marked inline below. Also in that pass, and recorded here because
