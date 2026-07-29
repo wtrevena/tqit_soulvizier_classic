@@ -1,5 +1,180 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD62-DEV GATE RECORD - b99 CONTENT INTEGRATION WAVE round 1: four vetted lanes merged, ONE build, ONE coupled deploy (2026-07-29, branch `integration/content-wave`, tag `build62-dev`)
+
+> ⚠️ **TAG DEVIATION:** the brief asked for `build60-dev`. That tag, **and `build61-dev`**, were
+> already claimed by the in-flight `feat/endless-hunt` lane (b98, `2537508` and `74438bf`) before
+> this wave ran. This wave therefore took the next free tag, **`build62-dev`**.
+
+**MERGED** (actual tips, re-read at merge time - not remembered shas):
+
+| lane | branch | tip | merge commit |
+|---|---|---|---|
+| b93 death XP penalty -90% (R-80) | `feat/death-xp-penalty` | `5b30150` | `aa54b3f` |
+| b95 Sargoth Manbane soul summons him (R-51) | `feat/sargath-soul` | `dccbccf` | `8b0809a` |
+| b96 Vashkarr spear-and-shield retune (R-72) | `feat/vashkarr-soul` | `2012684` | `12e1380` |
+| b97 soul-vs-monster identity, 22 thieves | `fix/soul-identity` | `e3f7c32` | `a80e3c0` |
+
+All four branched from `8c3445c`, **before** main's 2026-07-28 debt-wave integration, so all four
+were real three-way merges. Full detail: `docs/reports/b99_content_wave.md`.
+
+**CONFLICTS, file by file:** `docs/BACKLOG.md` (5 hunks, union, newest-build-first);
+`docs/WILL_RULINGS.md` (3 hunks, union **plus a genuine reconciliation**, below);
+`tools/patches/__init__.py` (REGISTRY, order **derived** not concatenated, below);
+`tools/build_svc_database.py` (`_require_gates` + `_load_sv098_name_tags` unioned, spacing restored,
+re-parsed); `tools/apply_svc_patches.py` (auto-merged, disjoint regions).
+**CRLF:** the markdown is CRLF, so markers land as `'=======\r'`; every sweep used a STRIP-compare.
+Final sweep **586 files, 0 leftover markers**; both docs re-normalised to pure CRLF.
+
+**🔢 THREE-WAY R-NUMBER COLLISION (a real finding).** `main` already owned **R-70 and R-71**
+(Souls overflow decade 70-79, minted by the debt-wave integration). `feat/death-xp-penalty` and
+`feat/vashkarr-soul` both predate that and **each independently minted its own "R-70"** - three
+rulings, one number, in the ledger whose entire purpose is unambiguous citation. Resolved on the
+`fix/debt-docs` LEDGER-HYGIENE precedent (incumbent keeps the number): main's R-70/R-71 unchanged;
+**b96 Vashkarr R-70 -> R-72**, folded into the EXISTING `### Souls & items (continued)` section (its
+duplicate overflow-decade header + now-redundant blockquote dropped); **b93 death-XP R-70 -> R-80**,
+with "Global balance & progression" taking a fresh reserved decade **80-89**. Propagated through
+**38 citations across 8 files** (both docs, both reports, `contracts_balance.py`, `contracts_souls.py`,
+`tests_balance_negative.py`, `tests_souls_negative.py`, `apply_svc_patches.py`, `patches/__init__.py`).
+Post-check: `R-70 x5` (all main's), `R-71 x1`, `R-72 x2`, `R-80 x1`.
+
+**🧩 REGISTRY COLLISION - ORDER DERIVED FROM THE CONSTRAINTS.** `soul_identity` claimed the
+pre-`visuals` slot that main's 4-module debt-wave block also claims. Position derived, not unioned:
+`soul_identity` must run after every soul-wiring + drop-rate module (its own rule -> after
+`emberteeth_summon`, `sargoth_soul_summon`, `toxeus_souls_100`), **and before `uber_quest_markers`**,
+which declares it reads the FINAL `chanceToEquipFinger2` - a field `soul_identity` is now the last
+writer of. Only that slot satisfies both. `coldworm_buffs` / `fx_dangling_cleanup` unmoved.
+**REGISTRY: 40 modules, order `4072c4443e2589b68d1ec1d3dfe9fe246c326ab20b86046c546d155407879b02`**
+(main: 37, `368236bc454e...`).
+
+**⚠️ THE FOUR LANES' GATES ALL STILL PASS TOGETHER - proven, not asserted:**
+* `uber_quest_markers` roster is **25 placed ubers (2 already marked / 23 newly marked / 27 retinue
+  excluded / 1 SHARED left alone)** on the baseline **and identical on the integrated build** - none
+  of the 22 detached records is a placed uber or chain anchor, so the ordering moved no marker.
+* b97's roster-wide identity gate vs b95's **NEW** soul-summon wiring: `soul_identity` ran AFTER
+  `sargoth_soul_summon`, judged **929 live carriers / 616 soul names**, and convicted exactly the
+  **22** audited thieves. Sargoth's and Emberteeth's newly-wired families are untouched. The new
+  summon does **not** trip the mismatch detector.
+* b95's chain gate went **4 -> 5 rostered families**; `_negtest_sargoth_chain` plants 6 breaks in
+  Sargoth's item->skill->icon->spawnObjects->pet->portrait chain and the gate **fires on all 6**.
+* Collision gate: **92** records written by 2+ modules (baseline 91). The one new pair is the
+  EXPECTED, documented-benign `gameengine.dbr <- damage_display, death_xp_penalty` (disjoint fields,
+  no third module). `soul_identity` and `sargoth_soul_summon` caused **zero** collisions.
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`; `Text.arc` from the **BUILD-EMITTED**
+`work/.../Database/uber_soul_tags.txt`, never a `local/` copy):
+
+| artifact | bytes | md5 |
+|---|---|---|
+| built `SoulvizierClassic.arz` (51,093 recs) | 55,443,197 | `f6cd8698b1578a389fd6a432c1f757cb` |
+| built `uber_soul_tags.txt` | 32,254 | `38ae5e6c839a8256c1b9f24f67cc2ff0` |
+| built `Text.arc` | 88,733 | `4162a3e09ce2668e18ef42b040b319cc` |
+| baseline arz rebuilt from `main` a0276ab (51,089 recs) | 55,432,599 | `1650f6cbd83436a11d30465966d747ba` |
+| baseline `Text.arc` | 88,715 | `cec3194e615fa4fb00488203a901eff3` |
+
+The baseline reproduced **byte-identically** to the independently-built `SVC_b98_baseline.arz`
+already on disk - a free determinism proof. **`Text.arc` tag delta: ADDED 1 / REMOVED 0 / CHANGED 0**
+(`tagSVCSummonSargoth = 'Summon Sargoth Manbane'`).
+
+**RECORD DIFF vs the main baseline - `tools/debug/b99_record_diff.py`, exit 0:**
+**ADDED 4 / REMOVED 0 / CHANGED 30**, every one attributed: b93 gameengine (1 changed, 2 fields);
+b95 4 added (`pets\sargoth_{1,2,3}` + `summon_sargoth`) + 4 changed (the 3 SV soul tiers **plus SV's
+shipped Dropbox artefact** `sargoth_soul_n (amgoz-qosmio's conflicted copy 2013-08-07).dbr` - the
+module wires 4, not 3); b96 3 changed (11 fields each); b97 22 changed (`chanceToEquipFinger2` -> 0).
+**0 unattributed.**
+
+**GATES:**
+* `validate_tags` **PASS** (358/358 mod tags resolve) - on the built pair **and re-run on the
+  DEPLOYED pair**. 2 pre-existing base/SV monster-name WARNs, unchanged.
+* **FULL contracts battery, 6 modules / 62 contracts, identical config both sides:**
+
+| | baseline (`main`) | built (this wave) |
+|---|---|---|
+| balance | 3 viol (**3 P0**) FAIL | 0 OK |
+| map / quests / resources / summons | 5 / 2 / 4618 / 112, all P2, OK | 5 / 2 / 4618 / 112, all P2, OK |
+| souls | 13 viol (**13 P1**) FAIL | 0 OK |
+| **TOTAL** | **4753 (3 P0, 13 P1, 4737 P2) GATE: FAIL** | **4737 (0 P0, 0 P1, 4737 P2) GATE: PASS** |
+
+  Compared at **set level, not just counts**: `ONLY-IN-BASELINE 16` (the 3 `BAL-DEATHXP` P0s and 13
+  `SOUL-IDENTITY-SHAPE` P1s - b93's and b96's own contracts firing on a `main` without their fixes),
+  **`ONLY-IN-BUILT 0`**. The 4737 P2 pre-existing debt is the **byte-identical set** on both sides.
+  So the pre-existing count is not merely "unchanged" - it is the same violations, and the wave
+  clears 16 blocking ones while introducing none.
+* **Negative tests:** `tests_balance_negative` **26/26**, `tests_souls_negative` **21/21**,
+  `tests_soul_identity_negative` **ALL HELD**, `tests_quests_negative` **19/19**,
+  `tests_resources_negative` **ALL FIRED**, `_negtest_sargoth_chain` **6/6** (also re-run green on
+  the DEPLOYED bytes). `tests_summons_negative` 11/13 - `SUMMON-PET-NAKED` +
+  `MONSTER-SPAWN-ELIGIBILITY` `FAIL(no real fire)`, **proven PRE-EXISTING** by the identical run
+  against the baseline `main` arz producing the identical two failures.
+* Every module `verify()` hook green on the FINAL merged db, including `death_xp_penalty` (uniform
+  **-90.0%** over L1-1000 x N/E/L, 5 dead lookalikes byte-equal to vanilla), `sargoth_soul_summon`,
+  `soul_identity`, and `uber_quest_markers` (25/25).
+
+**DEPLOYED to DEV** (`CustomMaps\SoulvizierClassicDEV`), coupled **arz + Text ONLY**. TQ was not
+running (Steam was; it does not lock mod files). Backups:
+`local/db_backups/SoulvizierClassicDEV_pre-b99_9f98e3e8.arz`, `DEV_Text_pre-b99_9f98e3e8.arc`,
+`DEV_uber_soul_tags_pre-b99_9f98e3e8.txt`.
+
+| deployed artifact | before | after | verdict |
+|---|---|---|---|
+| `Database/SoulvizierClassicDEV.arz` | `9f98e3e88bca20f96bacc2fd6bb87b63` | `f6cd8698b1578a389fd6a432c1f757cb` | **== built** |
+| `Resources/Text.arc` | `ed31ec8407e59710d4ad28d5532e75ae` | `4162a3e09ce2668e18ef42b040b319cc` | **== built** (coupled pair) |
+| `Database/uber_soul_tags.txt` | `c89194fc6f3427cf25712ad8ee6af5fc` | `38ae5e6c839a8256c1b9f24f67cc2ff0` | **== built** |
+| `Resources/Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **UNTOUCHED** |
+| `Resources/Quests.arc` | `35bfe3f39e8480408e3c22ea5473f796` | `35bfe3f39e8480408e3c22ea5473f796` | **UNTOUCHED** (a live lane owns it) |
+
+**UNTOUCHED-SIBLING PROOF:** every one of the **62 files** under the DEV entry was md5-hashed before
+and after. Exactly **3** changed (the two coupled artifacts + the tag manifest that produced the
+Text); the other **59 are byte-identical**, including `Levels.arc`, `Quests.arc`, both `Quests.arc`
+side-backups, all 26 resource arcs and all 36 `XPack2/3/4` stubs.
+
+---
+
+### 🔎 DEV DRIFT RESOLUTION (the headline finding)
+
+**The DEV entry was NOT incoherent.** Four artifacts with three timestamps looked like several lanes
+had written different pieces; in fact **every byte of it was `feat/leinth-wave` b94 round 2**. Round 1
+deployed arz+Text+Quests at 15:07; round 2 rewrote **only** the arz at 18:56 because Text and Quests
+were byte-identical to round 1. Confirmed against that lane's own gate record, which names the exact
+four hashes (`9f98e3e8` / `ed31ec84` / `35bfe3f3` / `943d0ab9`).
+
+**Quests changed on DEV because `feat/leinth-wave` owns it** (its PART C, the Leinth post-kill exit
+portal, is a `tools/build_quest_files.py` change). It is a **LIVE lane**, so `Quests.arc` **and**
+`Levels.arc` were left alone, exactly as required.
+
+**IS ANYTHING ON DEV IN NO BRANCH? NO.** Every DEV-only byte traces to `feat/leinth-wave` @ `8a863f6`,
+which is intact in git. Nothing is unrecoverable, so this was not a STOP condition.
+
+**WHAT THIS DEPLOY REMOVED FROM DEV (all of it b94, all of it on that branch):** 13 records
+(`svc_leinth_{choir_bloodborn,crimson_tithe,sanguine_mire}`, the 7 `genericboss05*` / `genericbossorb_05`
+containers, the 3 `svc_uberorb_apex_*01c` loot tables) plus **75 field-level deltas** (the
+`q_leinth_47/49/50` buff set, `leinth_summon_uglies` pet caps, the 3 `bosschest_leinth_*` loot tables,
+and `treasureProxyName` on the two Toxeus champions). **Restore in one copy** from
+`local/db_backups/SoulvizierClassicDEV_pre-b99_9f98e3e8.arz`; the real fix is merge order - merge
+`feat/leinth-wave` into the next integration round and rebuild once.
+
+**WHAT THIS DEPLOY RESTORED TO DEV:** DEV's arz was built from `8c3445c` + leinth-wave and therefore
+**predated main's whole debt wave**. Deploying brought it forward by **8 records and ~454 field
+deltas** it was missing: `fx_dangling_cleanup` (353), `coldworm_buffs` (70), `uber_quest_markers` (23),
+`emberteeth_summon` (7 + 3 pets + summon skill), the `fx_dangling_cleanup` F3 spear field, and
+`fix/green-diff` b92's 12 Toxeus `mesh` fields (which leinth-wave's own deploy had reverted - see the
+DEPLOY COLLISION note in the build55 record). Plus this wave's own 4 records / 65 field deltas.
+
+**COUPLING PROOF (keeping leinth's `Quests.arc` on top of this arz is SAFE):** every DB record that
+the deployed `Quests.arc` PART C drives is present in this build -
+`records\drxmap\bloodcave\portals\vortexportal_exit.dbr` ✔,
+`records\drxmap\bloodcave\triggers\door_bossroom_trap.dbr` ✔, and 6 `q_leinth*` proxies ✔. The 13
+records this deploy removes are **loot tables and Leinth skill records referenced only from the arz
+side** (`q_leinth_*.skillName*`, `treasureProxyName`), and the arz is replaced atomically, so the
+revert is self-consistent and creates no dangling reference.
+
+> ⚠️ **FOR WILL:** DEV now carries b93+b95+b96+b97 + the full debt wave + the green-glow fix, but
+> **NOT** b94 (Leinth's apex orb / buffs / cult abilities). The Leinth **exit portal** (PART C) is
+> still live because `Quests.arc` was not touched. **Kill TQ + Steam and restart before testing**
+> (standing rule), and test souls on **freshly dropped** items - TQ bakes item properties at pickup.
+
+---
+
 ## BUILD59-DEV GATE RECORD - b97 SOUL-vs-MONSTER IDENTITY AUDIT round 2 (2026-07-28, branch `fix/soul-identity`, tag `build59-dev`)
 
 **SUPERSEDES the build58-dev record below.** Round 1 was correct in what it did and **incomplete in
@@ -835,6 +1010,27 @@ along automatically when the structural cluster-relocation fix lands.
 > - **`contracts_map.CUT_LEVEL_MARKERS` -> `CUT_LEVELS`** (BL-b89-DEBT-3): the cut exemption is now
 >   an exact-basename list of 8 levels instead of a substring tuple that swallowed 14.
 > - **A duplicate debt id was resolved:** the second `BL-b89-DEBT-4` is now `BL-b89-DEBT-5`.
+
+**b99 content integration wave (2026-07-29, build62-dev) - NEW**
+- **BL-b99-DEBT-1 (P1, MERGE ORDER - owner: orchestrator):** `feat/leinth-wave` b94 is no longer on
+  DEV (13 records + 75 field deltas, listed above). It is intact on the branch and in
+  `local/db_backups/SoulvizierClassicDEV_pre-b99_9f98e3e8.arz`. Trigger: merge `feat/leinth-wave`
+  into content-wave round 2 and rebuild once. Do **not** hand-patch.
+- **BL-b99-DEBT-2 (P2, launch-gated):** none of the four lanes is IN-GAME confirmed on this merged
+  build - the -90% death penalty, Sargoth's summon button, Vashkarr's retuned tooltip/movement, and
+  the 22 detached drops. Owner/trigger: Will, after a full TQ + Steam restart, on freshly dropped souls.
+- **BL-b99-DEBT-3 (P2, tooling debt, PRE-EXISTING):** `contracts_resources._BASELINE` hardcodes an
+  absolute path into a **dead session scratchpad** (`.../55f6c1cb-.../scratchpad/contracts_baseline`),
+  byte-identical on `main`. `tests_resources_negative` and `tests_summons_negative` therefore cannot
+  run out of the box; both were run here through a harness that rebinds the constant. Owner/trigger:
+  a tooling lane - make it an env var with a repo-relative default.
+- **BL-b99-DEBT-4 (P2, PRE-EXISTING):** `tests_summons_negative` `SUMMON-PET-NAKED` and
+  `MONSTER-SPAWN-ELIGIBILITY` report `FAIL(no real fire)` on **both** this build and the `main`
+  baseline. The planted breaks no longer provoke their contracts. Owner/trigger: the summons contract
+  owner - re-arm both planted negatives.
+- **BL-b99-DEBT-5 (P2, tag hygiene):** `build60-dev`/`build61-dev` were taken by `feat/endless-hunt`
+  while this wave was briefed for `build60-dev`; this wave shipped as `build62-dev`. Owner/trigger:
+  whoever allocates build tags - the numbers are being claimed by parallel lanes without a registry.
 
 **b97 soul-vs-monster identity audit (2026-07-28, build59-dev round 2) - NEW**
 - **BL-b97-DEBT-1 (WILL DECISION, content):** the **22** detached creatures now drop **no soul at
