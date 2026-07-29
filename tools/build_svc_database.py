@@ -3842,6 +3842,45 @@ def _persist_stage_baseline(output_path):
         return None
 
 
+def _load_sv098_name_tags(sv098_path):
+    r"""b97: tagKey(lower) -> displayed text from SV 0.98i's Text_EN.arc.
+
+    The soul-IDENTITY gate (tools/patches/soul_identity.py) compares a monster's
+    DISPLAY NAME to its soul's DISPLAY NAME, because the .dbr filename is not an
+    identity (the base game reuses one hero .dbr filename across several named
+    heroes - that is the defect the gate exists to catch). SV 0.98i's Text_EN is
+    the single upstream table carrying every base-game + SV monster/soul name;
+    the mod's own authored tags are layered on top inside the module.
+
+    Advisory-load: returns {} if the .arc is absent/unreadable. The consumer
+    fails LOUD on an empty table, so a missing file can never silently disable
+    the gate - it stops the build with a legible message instead.
+    """
+    text_path = Path(sv098_path).parent.parent / 'Resources' / 'Text_EN.arc'
+    tags = {}
+    try:
+        from arc_patcher import ArcArchive
+        arc = ArcArchive.from_file(text_path)
+        for entry in arc.entries:
+            nm = getattr(entry, 'name', '')
+            if not nm.lower().endswith('.txt'):
+                continue
+            txt = arc.get_text(nm)
+            if not txt:
+                continue
+            for line in txt.splitlines():
+                line = line.strip()
+                if not line or line.startswith('//') or '=' not in line:
+                    continue
+                key, _, val = line.partition('=')
+                tags[key.strip().lower()] = val.strip()
+        print(f"  b97 identity: {len(tags)} display-name tags from {text_path.name}")
+    except Exception as exc:  # noqa: BLE001 - advisory; consumer fails loud on {}
+        print(f"  b97 identity: SV Text_EN load FAILED ({exc}); the soul-identity "
+              f"gate will refuse to run (fail-loud) rather than pass unchecked")
+    return tags
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
@@ -3921,6 +3960,22 @@ def main():
     import apply_svc_patches as _asp_rearm
     _asp_rearm._SV098I_ALL_PATHS = _pfx['sv098i_all_paths']
     _asp_rearm._SV098I_SOUL_PATHS = _pfx['sv098i_soul_paths']
+    # b97 soul-identity: the DISPLAY-NAME table (tagKey -> text). A monster's real
+    # identity is its `description` tag, NOT its .dbr filename (base-game hero .dbr
+    # families reuse ONE filename across several differently-named heroes - the
+    # hero_wheedletongue_{39,41,43} = Wheedletongue/Fesil/Sinnet case). SV 0.98i's
+    # Text_EN carries every base-game + SV monster and soul name; on top of it we
+    # merge the SAME mod-authored tag sources that uber_soul_tags.txt (and hence
+    # the shipped Text.arc) is built from, so the gate judges identity against the
+    # text the PLAYER will actually see. Without `text_tags` in particular, the
+    # create_uber_souls-generated soul names (tagSoulSVC*) do not resolve and their
+    # carriers are skipped as unjudgeable. Loaded OUTSIDE the prefix cache so a
+    # cached payload can never ship an empty table (the gate fails loud on empty).
+    _b97_tags = _load_sv098_name_tags(sv098_path)
+    _b97_tags.update({str(t).lower(): v for t, v in text_tags})
+    for _src in (legacy_tags, thrown_tags, graft_tags):
+        _b97_tags.update({str(t).lower(): v for t, v in (_src or {}).items()})
+    _asp_rearm._SV098I_NAME_TAGS = _b97_tags
 
     from apply_svc_patches import apply_all_extended_patches
     # ── Soul drop-rate control (RELEASE is the DEFAULT for this repo) ──────────

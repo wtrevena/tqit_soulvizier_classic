@@ -252,6 +252,27 @@ REGISTRY = [
     #   fx_dangling_cleanup - LAST content module (its own constraint), so it sweeps
     #                         emberteeth_summon's new skill records AND coldworm_buffs'
     #                         repointed slots on the final assembled db.
+    #
+    # --- content-wave integration 2026-07-29 (b99): fix/soul-identity landed
+    # 'soul_identity' claiming that same pre-'visuals' slot, from a base that
+    # predates the four modules above. Its position here is DERIVED from the two
+    # colliding constraints, not from either branch's line number:
+    #   * soul_identity says "after EVERY soul-wiring + drop-rate module, so
+    #     apply() sees the FINAL carrier set" -> it must follow emberteeth_summon
+    #     (the last soul-wiring module), sargoth_soul_summon (b95, likewise) and
+    #     toxeus_souls_100 (the last chanceToEquipFinger2 writer). It does.
+    #   * uber_quest_markers says it "reads chanceToEquipFinger2 ... so the roster
+    #     is computed against FINAL rates". soul_identity is the LAST writer of
+    #     that field (it zeroes it on the 22 identity thieves), so the marker
+    #     roster is only computed against final rates if soul_identity runs
+    #     BEFORE uber_quest_markers. Registering it after would leave
+    #     uber_quest_markers' apply() deriving from stale pre-detachment rates
+    #     while its verify() re-derives on the final db - the two could disagree.
+    # This slot is the ONLY position that satisfies both, with coldworm_buffs
+    # (Cold Worm's kit, disjoint) and fx_dangling_cleanup (LAST) unmoved.
+    # The b99 integration PROVED the two rosters are in fact identical either way
+    # (none of the 22 detached records is a placed uber or a chain anchor), so no
+    # marker moved; the ordering is the permanent guarantee, not a repair.
     'emberteeth_summon',    # b91 DEBT / QUEUED FEATURE (Will 2026-07-14, verbatim "emberteeth
                             # soul should let you summon him"): converts the 3 pure-fire-stat
                             # emberteeth_soul_{n,e,l} rings into summon-the-boss souls - 3
@@ -262,6 +283,20 @@ REGISTRY = [
                             # field). Registered after every soul-wiring + drop-rate module so it
                             # sees the FINAL soul records, and before fx_dangling_cleanup so its
                             # new skill records are still swept by the FX hygiene pass.
+    'soul_identity',        # b97 (Will 2026-07-27): "some of the heroes are dropping the wrong
+                            # souls or souls for other boss monsters". A creature must not drop a
+                            # soul whose IDENTITY belongs to a DIFFERENT named creature that also
+                            # drops it. Data-derived rule (display-name identity, never the .dbr
+                            # filename - the axis that caused the defect); zeroes ONLY
+                            # chanceToEquipFinger2, only downward, on the 18 identity thieves,
+                            # leaving lootFinger2Item1 intact. Structurally cannot orphan a soul:
+                            # a family with NO identity-owning carrier (archetype souls,
+                            # name-drift 1:1, mod-themed "Soul of the X") is never touched.
+                            # Registered after EVERY soul-wiring + drop-rate module (incl.
+                            # toxeus_souls_100, whose two 100% champions are sole carriers and
+                            # thus untouched) so apply() sees the FINAL carrier set; verify()
+                            # re-runs the rule over the final merged db as the permanent,
+                            # list-free regression gate. See docs/reports/b97_soul_identity_audit.md.
     'coldworm_buffs',       # b91 (Will 2026-07-16, R-39): THE COLD WORM BUFFS LANE - 3x
                             # characterLife, +20% armor (defensiveProtection, delivered at the only
                             # layer where monsters carry it: the armor_passive level, whose

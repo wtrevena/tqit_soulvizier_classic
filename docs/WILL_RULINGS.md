@@ -316,6 +316,60 @@
   NOT silently deferred. In-game confirmation is launch-gated (BL-b91-DEBT-10): test on a FRESHLY
   DROPPED soul, since TQ bakes item properties at pickup. Source: docs/BACKLOG.md "QUEUED FEATURE:
   SOUL-EMBERTEETH-SUMMON (APPROVED by Will 2026-07-14)".
+- R-49a [2026-07-27] IMPLEMENTED b97 (fix/soul-identity), verbatim: "we also need to do an audit of
+  the hero monsters vs the souls that they drop since i can see that some of the heroes are dropping
+  the wrong souls or souls for other boss monsters i think" - CONFIRMED. **A creature must not drop a
+  soul whose identity belongs to a DIFFERENT named creature that also drops it.** 18 records were
+  detached (`chanceToEquipFinger2 -> 0`; `lootFinger2Item1` deliberately KEPT, the A4/R-45 shape).
+  ROOT CAUSE: a monster's identity is its `description` tag, NOT its .dbr filename - the base game
+  reuses ONE hero filename across several named heroes (`hero_wheedletongue_{39,41,43}` =
+  Wheedletongue / **Fesil the Quick** / **Sinnet Patchfur**), and `wire_souls_to_monsters` matches by
+  filename; our build then ACTIVATED the resulting mis-pairings that SV 0.98i shipped dead at
+  chance 0. Owner: `tools/patches/soul_identity.py` (registry module, registered after every
+  soul-wiring/drop-rate module). The rule is DATA-DERIVED, not a hand-list, and structurally cannot
+  orphan a soul: a family with NO identity-owning carrier (archetype souls like Satyr Fire Magi /
+  Sandwraith, name-drift 1:1 like Wither Mound <-> Speckled Jim, mod-themed "Soul of the X") is never
+  touched. verify() re-runs the rule over the FINAL merged db as a permanent LIST-FREE gate; planted
+  negative test `tools/contracts/tests_soul_identity_negative.py`.
+  RECONCILIATION: does NOT overturn any ruling. R-48's two champions are SOLE carriers of their souls
+  (untouched, re-proven at 100 by this module's verify()); R-45 tomb guardian stays 0.0; R-42's
+  50/66/25 classifier is NOT modified, so all 18 zeroes are carried as documented per-name waivers in
+  `tools/verify_soul_drop_rates.py` `_KNOWN_EXCEPTIONS` (the same shape as the legion_soul_stages
+  non-terminal zeroes); R-43 / R-44 / bloodtip / gustleech / the legion double-soul chains untouched.
+  NOT DONE ON PURPOSE (Will decisions, see report sec 8): no soul was INVENTED for the 18 now-soulless
+  creatures (new content = amgoz1 creative bar), no NAME-DRIFT rename (incl. the "The Etheral One
+  Soul" misspelling), and the Iron Lore zzdev dev-dummy soul drops were left alone (retirement
+  protocol). See docs/reports/b97_soul_identity_audit.md.
+  > NUMBERING NOTE: the Souls decade (40-49) is EXHAUSTED (R-49 went to the b91 devourer-chest fix),
+  > hence the `a` suffix. The next soul ruling should either continue the letter series (R-49b) or be
+  > allocated a fresh decade by whoever files it. Registered as BL-b97-DEBT-5.
+  >
+  > **ROUND 2 AMENDMENT [2026-07-28] - the round-1 gate was NOT roster-wide.** The vet caught it:
+  > both the audit and the shipped gate were scoped by a path predicate requiring `\creature\` or
+  > `\creatures\`, so **97 live soul carriers were never judged** - all 25 of `records\drxcreatures\`
+  > (shipping DRX/Urder content), `records\test\`, `records\item\equipmentring\soul\test\` and the
+  > pet trees. Hiding inside them was a **real 19th mismatch of exactly the reported class**:
+  > `records\drxcreatures\xurder\d2npc\01_akara.dbr` displays **"Akara"** and dropped
+  > **"Kallixenia ~ Liche Queen Soul"** at 66%, while the real Kallixenia
+  > (`xsq02_lichequeen_36`) drops an identically-named soul at the same rate - and the wire is
+  > **ours** (`apply_svc_patches._create_kallixenia_soul`). Three more (`soul\test\`
+  > `us_lysiaspellbreaker_15{,_e,_l}`, displaying "Nenea Sharpclaw") were hidden the same way.
+  > **22 records are now detached, not 18.** Three further defects were found and fixed in the same
+  > pass: (a) carriers were grouped by the soul .dbr **filename**, repeating inside the gate the very
+  > filename-is-identity mistake it exists to punish - grouping is now by the soul's **display name**;
+  > (b) `apply()` judged identity against **pre-F6** soul names while `verify()` saw the final ones,
+  > so the two passes could disagree (they did, on Kallixenia) - `_display_tags` now applies the same
+  > authoritative `_SOUL_NAME_STANDARD` override both passes will ship with; (c) the ARCHETYPE vs
+  > NAME-DRIFT split was decided by a row COUNT, which mislabelled **Cynisca, Princess of Sparta**,
+  > **Corpse Wake** and **Meritamen the Shadowcaller** as name drift - it is now decided from the
+  > data (does a record owning that soul name exist, gated dead?). **PETS are deliberately NOT
+  > carriers**: counting the 0.5% monster-scroll pet "Maenad ~ Sorceress" would crown a player summon
+  > rightful owner of an archetype soul and zero the real 50% Boss that drops it. Two new planted
+  > tests lock both halves: T6 plants a thief OUTSIDE `\creature(s)\`, T7 proves a pet convicts
+  > nobody. NEW WILL DECISION (report sec 8): zeroing Akara leaves our bespoke
+  > `soul\svc_uber\kallixenia_soul_*` item undroppable (the NAME stays obtainable from the real
+  > Kallixenia); the item is KEPT intact, and re-pointing it - or renaming the record to Kallixenia,
+  > which is what our own code comment intends - is Will's call.
 - R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class
   encounters (Blood Toxeus, Enslaver, Vashkarr, Broodmother, Dorus, Sarkoth, Gorrahk, Ilsevar,
   Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb
