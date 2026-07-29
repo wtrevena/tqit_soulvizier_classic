@@ -331,6 +331,40 @@
   confirmation is still an open standing obligation, as is amgoz1's and Dragonlord's written
   permission (neither captured in writing as of 2026-07-10). Source: docs/PERMISSIONS.md.
 
+### Global balance & progression (new section; decade 70-79)
+- R-70 [2026-07-27] IMPLEMENTED b93 (feat/death-xp-penalty) verbatim: "also i want to drastically
+  reduce the xp penalty for dying. at high levels the penalty is way too crazy, it needs to be cut
+  by like 90%" - the on-death EXPERIENCE penalty, cut to exactly 10% of its vanilla value across
+  every level and every difficulty. MECHANISM (found in the deployed bytes, not assumed):
+  `Game.dll` hard-codes exactly ONE GameEngine path in the whole install - the literal
+  `Records/XPack/Game/GameEngine.dbr` - and reads three fields off it: `deathPenaltyEquation`,
+  `deathPenaltyMin`, `deathPenaltyMax`. There is no flat-vs-percentage split and no per-difficulty
+  variant record: difficulty enters only through the `gameDifficultyDV` term (0 Normal / 1 Epic /
+  2 Legendary) inside the one equation. FIVE other records in the arz carry `deathPenalty*` fields
+  (`xpack\game\drxgameengine`, `xpack\game\copy of gameengine`, `xpack\game\xxxgameengine`,
+  `game\gameengine`, `game\cost backup\gameengine`) and the engine loads NONE of them - the last one
+  even carries a different formula (`^2.95 * (1+2*DV)/3`), a decoy that would have been the wrong
+  target. BEFORE (pure vanilla TQAE - byte-identical in base TQAE, SV 0.98i, SV 0.9, SV 0.41 and the
+  deployed DEV arz `1c27d5fa`; no prior ruling and no pipeline writer ever touched it):
+  `deathPenaltyEquation = "(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)"`,
+  `deathPenaltyMax = 500000`, `deathPenaltyMin = 0`. AFTER:
+  `deathPenaltyEquation = "(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)"`,
+  `deathPenaltyMax = 50000`, `deathPenaltyMin = 0` (UNTOUCHED). The divisor `9 -> 90` is exactly
+  x0.1 with no new token for the engine's equation parser to accept; the cap moves in lockstep
+  because the penalty is cubic and the OLD 500000 cap already bit above ~L86 on Legendary, so
+  scaling the equation alone would have delivered only -84% at L100 - less than the ruled 90% in
+  exactly the high-level regime the ruling names. WORKED EXAMPLE (shipped curve
+  `E(L) = 65*(L+1)^3.25`): L40 Legendary 49,778 -> 4,978 XP; L60 Legendary 168,000 -> 16,800;
+  L85 Legendary 477,653 -> 47,765 (10.2% -> 1.0% of a level band; ~375 -> ~37 same-level trash
+  kills). SCOPE: two fields on one record, nothing else - `experienceEquation` (XP GAIN), the level
+  curve `records\creature\pc\playerlevels.dbr` and all five dead lookalikes are proven unmoved.
+  Implemented as registry module `tools/patches/death_xp_penalty.py` (deterministic, idempotent,
+  scope-proving `apply()` + `verify()` re-asserting on the FINAL merged arz) and gated permanently by
+  the new contract domain `tools/contracts/contracts_balance.py` (BAL-DEATHXP-1/2/3 + BAL-XPGAIN-1,
+  26 planted negative tests in `tests_balance_negative.py`). MULTIPLAYER: shared DATABASE record, no
+  party-size term, no `/`-in-spawn-equation hazard - co-op behaves exactly like single-player at the
+  new rate. Report: `docs/reports/b93_death_xp_penalty.md`.
+
 ---
 
 ## LEDGER HYGIENE PASS (2026-07-28, branch `fix/debt-docs`)

@@ -1,0 +1,14 @@
+# whitelist_balance.txt  -  suppress KNOWN-INTENTIONAL deviations for contracts_balance.py
+#
+# Format: one entry per line:  <CONTRACT-ID> <subject>   # reason
+#   - <subject> is the record path exactly as it appears in a violation's "subject"
+#     field (case-insensitive, slash-insensitive).
+#   - everything after a '#' is an ignored comment.
+#   - a line with only a <CONTRACT-ID> (no subject) suppresses that whole contract.
+#     NEVER do that here: every contract in this domain guards a Will ruling, so a
+#     blanket suppression silently repeals design law. Change the ruled constants
+#     in tools/patches/death_xp_penalty.py + contracts_balance.py (and append the new
+#     ruling to docs/WILL_RULINGS.md) instead of whitelisting.
+#
+# As of the b93 death-XP lane (2026-07-28) there are NO active suppressions: the
+# shipped build satisfies BAL-DEATHXP-1/2/3 and BAL-XPGAIN-1 with zero violations.
