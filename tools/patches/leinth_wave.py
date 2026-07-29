@@ -100,20 +100,58 @@ the xpack Cerberus chain (boss_cerberus_40/42/44, specialAttack3) stays byte-cle
 
 THE ONE FREE ATTACK SLOT, AND WHO WINS IT
 -----------------------------------------
-Monster records expose five castable specialAttack slots (census: 3164/1602/894/300/
-170 users; the only three specialAttack6 users in the whole db are Pet.tpl records
-from our own prior wave, so slot 6 is NOT a Monster precedent). Leinth's four
-bespoke DRX specials (bloodboil, summon_uglies, bloodall_02, heatseeker) hold slots
-1-4, and the retirement protocol forbids displacing them. That leaves exactly ONE
-free attack slot, and round 1 spent it on CRIMSON TITHE - an invention of mine.
-Will's explicit instruction outranks my invention, so:
+Monster records expose five castable specialAttack slots (census over the deployed
+arz: 3169/1607/899/300/170 users; the only three specialAttack6 users in the whole
+db are Pet.tpl records from our own prior wave, so slot 6 is NOT a Monster
+precedent). Leinth's four bespoke DRX specials (bloodboil, summon_uglies,
+bloodall_02, heatseeker) hold slots 1-4, and the retirement protocol forbids
+displacing them. That leaves exactly ONE free attack slot, and round 1 spent it on
+CRIMSON TITHE - an invention of mine. Will's explicit instruction outranks my
+invention, so:
     specialAttack5 -> cerberus_acidpuddle_summon   (WILL'S ASK)
     CRIMSON TITHE  -> dyingSkillName               (re-homed, not dropped)
 dyingSkillName is a well-precedented home for its class: 79 shipping records carry a
 Skill_AttackProjectileAreaEffect there. As her death-throe it still lands the
 telegraphed moment R-73 wanted, at the instant the exit opens.
-NOTE numAttackSlots stays 4: it is NOT a special-attack cap - 46 shipping records
-run numAttackSlots=4 with five wired specials (and 3 with six), so slot 5 fires.
+
+NOTE numAttackSlots stays 4, and ROUND 2 CORRECTS ROUND 1'S CENSUS. Round 1 claimed
+"46 shipping records run numAttackSlots=4 with five wired specials (and 3 with
+six)"; the vet could not reproduce 46 and neither can I. The re-measured truth,
+straight from the deployed arz: 170 records carry a non-empty specialAttack5, split
+numAttackSlots 4 -> 76 and numAttackSlots 6 -> 94. Of the 76 at numAttackSlots=4:
+62 Pet.tpl, 12 Monster.tpl, 1 Hades.tpl, 1 Megalesios.tpl. The 12 Monster.tpl
+include the base-game em_monolith_45 (five wired), the mod's boss_coldworm50 and
+boss_dagon_66 (five wired each) and - decisively - HER OWN CULT'S
+b_seductress_39/41/43. So a numAttackSlots=4 Monster with a wired slot 5 is shipped
+precedent inside her own family. The structural proof is stronger than the census
+either way: numAttackSlots is defined in Templates/character.tpl beside
+numDefenseSlots and combatManagerRecord (defaultValue 4) - a combat positional-slot
+count, NOT a special-attack cap - while specialAttack5SkillName and dyingSkillName
+are both defined in templates/templatebase/monsterskillmanager.tpl, so the engine
+reads slot 5 and the dying slot regardless.
+
+ROUND 2: THE CAST-ABORT SWEEP (why round 1 was a NO-GO, and what it cost)
+-------------------------------------------------------------------------
+An independent vet proved that round 1's headline addition never fires: the staged
+acid summon carries skillSpecialAnimationName='AcidPuddle', a token absent from
+every row of her animation table, and hard-law #2 (SkillManager::StartSkill aborts a
+cast whose special anim the caster's table cannot start - the law that killed
+Meteor/Thunderball/Bonespire) aborts it. It also proved the Voice's TTL-capped
+bloodbeast was a LEVEL-0 summon (cast-wired, but in no skillName slot anywhere in
+the db). Neither round-1 gate asserted either law, so both shipped.
+Round 2 therefore does not just fix those two: it adds BOTH laws as roster-wide
+invariants (_cast_abort_violations + _level_zero_violations over all five records
+this wave writes, following charAnimationTableName), and running them turned up
+THREE MORE dead abilities nobody had noticed:
+    q_leinth_*           specialAttack1 melinoe_bloodboil 'BloodBoil'  UNBOUND
+    svc_leinth_guard_reaver specialAttack1 melinoe_bloodboil 'BloodBoil' UNBOUND
+    svc_leinth_guard_reaver specialAttack3 reaver_zap      'Zappity'    UNBOUND
+Blood Boil is HER SIGNATURE AoE life-leech - the skill her own soul is built around
+- and it has never fired in this mod. That is a direct, measurable cause of Will's
+"she is too easy, the fight is one long attrition sludge" (R-73), and fixing it is
+worth more to the encounter than any stat on the list below. All five are now
+castable; both shared donors (melinoe_bloodboil: 20 records; reaver_zap: 3) are
+CLONED, never written, so no other creature's behaviour moves by one byte.
 
 TWO ROUND-1 SKILLS ARE RETIRED (retirement protocol, stated not silent)
 -----------------------------------------------------------------------
@@ -131,18 +169,29 @@ told me to keep. Their records are simply never authored this round.
 
 THE ENTITY BUDGET (Will asked for this number; it is a FLAGGED RISK)
 --------------------------------------------------------------------
-Worst-case simultaneous entities for the whole encounter, at petLimit saturation:
+RE-MEASURED IN ROUND 2 against the deployed arz, per the vet's instruction that
+Will must not rule on a phantom. Every line below is read from the record, and
+every summon is confirmed CAST-WIRED (a rig in a skillName slot that nothing casts
+contributes zero - hero_flesheater, petLimit 4, sits in skillName4 on Leinth AND on
+the Reaver and is cast by neither, so it is correctly excluded).
+Worst case, at petLimit saturation:
     1  Leinth
     2  honour guards
    16  summoned_ugly            PERMANENT (no TTL) - Will: keep as-is
    10  leinth_heatseeker_pet    PERMANENT (no TTL) - her shipped DRX kit
-   10  acid puddles             transient, 6s TTL
-    2  guard bloodbeasts        transient, 20s TTL (capped by this module)
-   = 41 concurrent, of which 26 are PERMANENT.
+   10  acid puddles             transient, 6s TTL   <- REAL only after the r2 fix
+    2  guard bloodbeasts        transient, 20s TTL  <- REAL only after the r2 fix
+   = 41 concurrent, of which 26 are PERMANENT summons (+ the 3 bodies).
+HONEST DELTA: the figure is numerically the same as round 1's, but round 1's was a
+phantom - the 10 puddles could not spawn (cast abort) and the 2 bloodbeasts were
+level-0, so what round 1 would ACTUALLY have shipped is 29 concurrent / 26
+permanent. Round 2 makes the 41 real, and the permanent half is unchanged at 26
+either way, because both of the newly-live rigs are the TTL-capped ones.
 The b76 chumbi-freeze RCA measures the standalone offender (um_voranthys_99) at 25
 PERMANENT summons (petLimit 9 + 8 + 8) and states that even standing alone that
-"degrades over a long fight". Leinth's 26 permanent EXCEEDS it. Nothing Will told me
-to keep has been reduced; this is reported, not silently fixed. See the wave report.
+"degrades over a long fight". Leinth's 26 permanent EXCEEDS it, and she now also
+peaks 12 transient bodies on top. Nothing Will told me to keep has been reduced;
+this is reported, not silently fixed. See the wave report.
 
 STATS (all three variants; the deliberate no-touch list is below)
 
@@ -168,9 +217,22 @@ STATS (all three variants; the deliberate no-touch list is below)
                                      champions' 1.1)
   characterRunSpeed     1.0 -> 1.15 (she can reposition; far under the Enslaver's 1.5)
   characterLifeRegen    2 -> 10     (a life-leech witch should visibly heal)
-  skillLevel13          1;4;7 -> 4;7;9   (cerberus_crackfire, HER EXISTING poison
-                                     geysers: poison 800/850/950 and the 5%
-                                     current-life component ON at every difficulty)
+
+  KIT (round 2 - these, not the stats, are what the fight will feel):
+  specialAttack1        melinoe_bloodboil -> svc_leinth_bloodboil (a castable copy).
+                        Her signature AoE life-leech FIRES FOR THE FIRST TIME.
+  specialAttack5        cerberus_acidpuddle_summon, anim 'AcidPuddle' -> 'SpitSummon'
+                        (WILL Q6; round 1 wired it but it aborted on cast)
+  dyingSkillName        Crimson Tithe (unchanged from round 1)
+  skillLevel13          NOT TOUCHED, deliberately. Round 1 raised cerberus_crackfire
+                        1;4;7 -> 4;7;9 and reported "poison 800/850/950 and the 5%
+                        current-life component ON at every difficulty" as delivered.
+                        It is not: the skill has NO cast mechanism (skillName13
+                        only) and demands the token 'Roar', which anm_leinth does
+                        not bind. It is dormant twice over, there is no free
+                        Monster-precedented cast slot left to give it, and the raise
+                        changed nothing in play. The slot now keeps its shipped
+                        value and verify() PINS it. Registered as debt.
 
   WHY +15 AND NOT 0 OR 100 (Will said "remove the weakness", not "make her immune").
   +15 is not invented: it is EXACTLY the value her own cult's heavy carries
@@ -208,8 +270,19 @@ HER copies; the xpack Cerberus acid chain is unmoved; Crimson Tithe is wired at
 dyingSkillName; the two honour guards exist at her level band and the pool spawns
 EXACTLY 1 main + 2 guaranteed champions under the _svc_boss_pool LAW; every summon
 this module authors carries a finite TTL; her drop wiring is untouched; and she
-still ranks BELOW the Enslaver on resists/speed. Planted negative test:
-tools/debug/negtest_leinth_wave.py. See docs/reports/b94_leinth_wave.md.
+still ranks BELOW the Enslaver on resists/speed.
+
+ROUND 2 ADDS THE FOUR ASSERTIONS WHOSE ABSENCE MADE ROUND 1 A NO-GO:
+  * the acid summon's skillSpecialAnimationName is the BOUND token, not DRX's
+    unbound 'AcidPuddle' (HIGH-1);
+  * the Voice's capped bloodbeast occupies skillName4 at level >= 1, not just a
+    cast field (HIGH-2, the b39 "level-0 summon never fires" law);
+  * Blood Boil is the castable clone in BOTH halves on all four casters, and both
+    SHARED donors still carry their original tokens (nothing upstream moved);
+  * ROSTER-WIDE: 0 cast-aborting and 0 level-0 slots across all five records this
+    wave writes, evaluated by following charAnimationTableName.
+Planted negative tests: tools/debug/negtest_leinth_wave.py (27 subtests).
+See docs/reports/b94_leinth_wave.md.
 """
 import apply_svc_patches as asp
 
@@ -249,15 +322,31 @@ POISON = 15.0        # was -15 (R-73 kept it; R-76 supersedes)
 POISON_WAS = -15.0
 POISON_IMMUNE_FLOOR = 100.0   # verify(): must stay strictly below immunity
 
-# cerberus_crackfire (her EXISTING poison geysers). skillMaxLevel is 10 but the
-# per-level arrays carry only NINE entries (indices 0-8), so 9 is the highest
-# in-range level - the design's "4;7;10" is capped to 4;7;9 for that reason.
-# Effect: poison 800/850/950 and offensivePercentCurrentLifeMin 5% at every
-# difficulty (it is 0 below index 3, which is why Normal currently has none).
+# ── cerberus_crackfire, her poison geysers - ROUND 2: DORMANT, NOT DELIVERED ──
+# Round 1 raised skillLevel13 from the shipped [1,4,7] to [4,7,9] and R-73/R-76 +
+# the module docstring stated "poison 800/850/950 and the 5% current-life
+# component ON at every difficulty" as a delivered buff. The vet proved that is
+# false, and re-measuring against the deployed arz confirms it TWICE OVER:
+#   1. NO CAST MECHANISM. cerberus_crackfire sits ONLY in skillName13 on the three
+#      variants - no specialAttackN, no buffSelf, no dying, no initial. The
+#      original boss_cerberus_40/42/44 wire it at BOTH skillName4 AND
+#      specialAttack4SkillName (chance 25, delay 12, AnyRange); tools/patches/
+#      boss_skill_fix.py classifies exactly this shape as a "dormant kit slot".
+#   2. ITS ANIM TOKEN IS UNBOUND. skillSpecialAnimationName='Roar' is bound by 72
+#      records DB-wide - anm_leinth is not one of them - so even wired it would
+#      abort under hard-law #2.
+# It cannot be delivered inside this wave's budget either: all five castable
+# specialAttack slots are now spoken for (1 bloodboil, 2 uglies, 3 bloodall_02,
+# 4 heatseeker, 5 Will's acid rig) and the retirement protocol forbids displacing
+# her four bespoke DRX specials; slot 6 has NO Monster precedent (its only three
+# users DB-wide are Pet.tpl records from our own prior wave).
+# So this module now writes NOTHING to skillLevel13 - it keeps its shipped value
+# by construction - and verify() PINS it, so nobody can raise an inert number
+# again and believe they shipped a buff. Registered as debt for a future wave.
 GEYSER_SLOT = 13
-GEYSER_LEVELS = [4, 7, 9]      # was [1, 4, 7]
+GEYSER_LEVELS_SHIPPED = [1, 4, 7]   # PINNED: dormant, must not be "raised"
 GEYSER_SKILL = _LS + 'cerberus_crackfire.dbr'
-GEYSER_MAX_INDEX = 9           # len(offensivePoisonMin) on the donor
+GEYSER_ANIM = 'Roar'                # unbound in anm_leinth (part of why it is dead)
 
 # ── THE UGLY SWARM - WILL SAID KEEP AS-IS, SO THIS MODULE NEVER WRITES IT ────
 # Values read from the pre-wave baseline arz (1c27d5fa). verify() PINS them.
@@ -277,10 +366,62 @@ ACID_LEVELS = [1, 2, 3]        # donor skillMaxLevel is 3
 ACID_SPECIAL = '5'             # THE one free attack slot - Will's ask wins it
 ACID_CHANCE = 100.0            # matches her four existing specials
 ACID_LEVEL1 = [1, 2, 3]        # the puddle monster's own skillLevel1 on the aura
+# ROUND 2 FIX (the vet's HIGH-1). DRX left her staged copy carrying
+# skillSpecialAnimationName='AcidPuddle', a token owned ONLY by the xpack Cerberus
+# chain + the DRX Bastien records. It is absent from EVERY row of her own table
+# anm_leinth (unarmed row: SpitSummon, 2, BloodBall01, SummonTormentedSouls,
+# TelekinesisLoop, TelekinesisEnd, ThunderClap), and her three variants carry no
+# own *SpecialAnimRef. By this repo's disasm-derived hard-law #2 (SkillManager::
+# StartSkill aborts a cast whose skillSpecialAnimationName the caster's table
+# cannot start - the law that killed Meteor/Thunderball/Bonespire) the cast
+# ABORTED, so round 1's "acid rig LIVE" was false and BOTH of Will's staged rigs
+# died with it (the aura only exists on the spawned puddle).
+# The token is repointed at 'SpitSummon', which is NOT an invention: DRX bound it
+# themselves at anm_leinth unarmedSpecialAnimRef1 ->
+# XPack\Creatures\monster\empusa\anm\empusa_staff_skill_frostspit.anm and then
+# left it referenced by NO skill of hers - staged in the same breath as the acid
+# rig they also left unwired. It is semantically a spit-summon, and unlike ''
+# (the Meteor/Thunderball remedy, which falls back to the default attack anim) it
+# gives the fight the visible telegraph R-73 asked for.
+ACID_ANIM = 'SpitSummon'
+ACID_ANIM_WAS = 'AcidPuddle'
 # The xpack originals: proven byte-unchanged by verify() (Cerberus depends on them).
 ACID_XPACK_SUMMON = r'records\xpack\skills\bossskills\cerberus_acidpuddle_summon.dbr'
 ACID_XPACK_MONSTER = r'records\xpack\skills\bossskills\cerberus_acidpuddle_monster.dbr'
 ACID_XPACK_ATTACK = r'records\xpack\skills\bossskills\cerberus_acidpuddle_attack.dbr'
+
+# ── ROUND 2: THE CAST-ABORT SWEEP over everything this wave owns ─────────────
+# Running the repo's own anim-binding invariant (the one coldworm_buffs shipped)
+# across all five records this wave writes found THREE MORE dead active slots
+# beyond the vet's HIGH-1, every one of them a skill the wave advertises:
+#   q_leinth_*        specialAttack1 melinoe_bloodboil  'BloodBoil' UNBOUND
+#   svc_leinth_guard_reaver specialAttack1 melinoe_bloodboil 'BloodBoil' UNBOUND
+#   svc_leinth_guard_reaver specialAttack3 reaver_zap    'Zappity'   UNBOUND
+# 'BloodBoil' is bound by exactly 2 records DB-wide (anm_maenad bowSpecialAnimRef7,
+# anm_acolyte unarmedSpecialAnimRef1) and 'Zappity' by exactly 1 (little_lued
+# unarmedSpecialAnimRef2) - none of them is anm_leinth / anm_seductress_armed.
+# So Blood Boil, her SIGNATURE AoE life-leech and the thing that makes her read as
+# a blood witch at all, has never fired in this mod. That is a direct cause of
+# Will's "she is too easy / one long attrition sludge" (R-73).
+# BOTH donors are SHARED (melinoe_bloodboil: 20 records incl. every bloodwitch,
+# leucothea and d_reaver; reaver_zap: d_reaver_40/41/42), so they are CLONED and
+# only THIS WAVE'S records are repointed - zero blast radius, upstream untouched.
+# The replacement token is 'ThunderClap', chosen because it is bound in ALL SIX
+# weapon rows (bow/dHanded/sHanded/spear/staff/unarmed) of anm_leinth AND
+# anm_seductress_armed AND anm_seductress, so it is castable whatever stance the
+# engine picks - the strongest binding available, and stronger than '' because it
+# still animates the burst.
+GUARD_ANIM_TOKEN = 'ThunderClap'
+BLOODBOIL_DONOR = r'records\xpack\skills\monsterskills\activeattackradius\melinoe_bloodboil.dbr'
+BLOODBOIL = _BWS + 'svc_leinth_bloodboil.dbr'
+BLOODBOIL_WAS_ANIM = 'BloodBoil'
+BLOODBOIL_SLOT = 2             # skillName2 on BOTH Leinth and the reaver (donor's own slot)
+BLOODBOIL_SPECIAL = ''         # specialAttack1 on both
+ZAP_DONOR = _BWS + 'reaver_zap.dbr'
+ZAP = _BWS + 'svc_leinth_guard_zap.dbr'
+ZAP_WAS_ANIM = 'Zappity'
+ZAP_SLOT = 6                   # skillName6 on the reaver (donor's own slot)
+ZAP_SPECIAL = '3'              # specialAttack3 on the reaver
 
 # ── CRIMSON TITHE - kept, but re-homed to make room for Will's acid rig ──────
 TITHE = _LS + 'svc_leinth_crimson_tithe.dbr'
@@ -294,7 +435,7 @@ TITHE_FIELD = 'dyingSkillName'  # 79 shipping records carry this CLASS here
 # answers to the exact needs those two were invented for. They are simply never
 # authored, so no record is deleted from any shipped db.
 
-NEW_SKILLS = (TITHE,)
+NEW_SKILLS = (TITHE, BLOODBOIL, ZAP)
 
 # ── WILL Q4: THE HONOUR GUARD (the amgoz1/DRX Hades mirror) ──────────────────
 GUARD_REAVER = _BW + 'svc_leinth_guard_reaver.dbr'
@@ -314,6 +455,18 @@ GUARD_BEAST_DONOR = _BWS + 'disciple_summon_bloodbeast.dbr'
 GUARD_BEAST_LIMIT = 2
 GUARD_BEAST_TTL = 20.0
 GUARD_BEAST_SPECIAL = ''            # specialAttack1 on c_disciple_42
+# ROUND 2 FIX (the vet's HIGH-2). Round 1 wrote the capped CLONE into
+# specialAttackSkillName but left skillName4 holding the SHARED, uncapped donor -
+# so the clone had exactly ONE referrer in the whole 51,103-record db (that
+# specialAttack field) and NO skillName slot, i.e. NO skillLevel, i.e. it was a
+# LEVEL-0 SUMMON. tools/patches/boss_skill_fix.py states the b39 RCA law
+# verbatim: "a level-0 summon NEVER fires ... an unambiguous boss never summons
+# defect". The Voice of the Bloodborn therefore lost her whole summon kit and the
+# advertised petLimit 2 / TTL 20s cap was moot. The fix is to repoint the DONOR'S
+# OWN SLOT (skillName4) at the clone, keeping the donor's own level ladder
+# [5,10,15] - one field, no new slot, and the shared donor is still never written.
+GUARD_BEAST_SLOT = 4
+GUARD_BEAST_LEVELS = [5, 10, 15]    # c_disciple_42's own skillLevel4
 
 # The pool + the LAW (apply_svc_patches._svc_boss_pool): spawnMin=spawnMax=3,
 # championChance=100, championMin=championMax=2 -> 3-2 = 1 guaranteed main.
@@ -339,6 +492,15 @@ TAGS = {
 
 # ── the drop fields that MUST NOT move (scope proof) ────────────────────────
 _DROP_PREFIXES = ('chanceToEquip', 'loot', 'treasureProxyName', 'dropItems')
+
+# ── ROUND 2: the CAST-ABORT / LEVEL-0 gate surface ──────────────────────────
+# Every field on a Monster record that makes the engine actually START a skill.
+# (attack/initial/dying/buffSelf + the five castable specialAttack slots; slot 6
+# is included defensively so a future writer cannot smuggle a skill past the gate,
+# even though no Monster in the db uses it.)
+_CAST_FIELDS = (['attackSkillName', 'initialSkillName', 'dyingSkillName',
+                 'buffSelfSkillName'] +
+                ['specialAttack%sSkillName' % s for s in ('', '2', '3', '4', '5', '6')])
 
 
 def _v1(db, rec, field):
@@ -389,6 +551,146 @@ def _free_slot(db, rec, slot, label):
         raise SystemExit(
             "[leinth_wave] %s: skillName%d is NOT free (holds %r) - %s would "
             "silently displace an existing skill." % (rec, slot, cur, label))
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ROUND 2: the two invariants the round-1 gates did not assert, which is exactly
+# why two dead headline abilities shipped past them.
+# ═════════════════════════════════════════════════════════════════════════════
+def _bound_anim_tokens(db, rec):
+    r"""Every special-anim token `rec` can actually START -> its .anm file.
+
+    A monster may declare `unarmedSpecialAnimRef<i>` on ITSELF, but Leinth and
+    both guards declare none and instead point `charAnimationTableName` at a
+    shared table (anm_leinth / anm_seductress / anm_seductress_armed). The engine
+    resolves the caster's playable animations through that table, so the gate
+    MUST follow it - checking the monster record alone (which is all the coldworm
+    gate needed) finds nothing and passes everything.
+    """
+    import re as _re
+    out = {}
+    for src in (rec, _v1(db, rec, 'charAnimationTableName')):
+        if not isinstance(src, str) or not src.strip() or not db.has_record(src):
+            continue
+        for key, tf in (db.get_fields(src) or {}).items():
+            m = _re.match(r'(\w+?)SpecialAnimRef(\d+)$', key.split('###')[0])
+            if not m or not tf.values:
+                continue
+            name = str(tf.values[0] or '').strip()
+            if not name:
+                continue
+            anim = str(_v1(db, src, '%sSpecialAnim%s' % (m.group(1), m.group(2))) or '')
+            if not out.get(name):
+                out[name] = anim
+    return out
+
+
+def _cast_abort_violations(db, rec):
+    r"""HARD-LAW #2, monster side: SkillManager::StartSkill ABORTS a cast whose
+    `skillSpecialAnimationName` the caster's animation table cannot start.
+
+    This is the law that killed Meteor ('MeteorShower'), Thunderball ('Ensnare')
+    and Bonespire ('BoneSpire') on the player side, and it is the law round 1
+    walked straight into on the monster side with 'AcidPuddle'.
+    """
+    problems = []
+    bound = _bound_anim_tokens(db, rec)
+    label = rec.rsplit('\\', 1)[-1]
+    for field in _CAST_FIELDS:
+        path = _v1(db, rec, field)
+        path = str(path).strip() if isinstance(path, str) else ''
+        if not path or path == '0':
+            continue
+        if not db.has_record(path):
+            problems.append("%s: %s -> %s does NOT resolve (dead slot)"
+                            % (label, field, path))
+            continue
+        tok = _v1(db, path, 'skillSpecialAnimationName')
+        tok = str(tok).strip() if isinstance(tok, str) else ''
+        if not tok:
+            continue                      # empty = the always-castable default anim
+        if tok not in bound:
+            problems.append(
+                "%s: %s -> %s demands special animation %r, which the caster's "
+                "table (%s) does NOT bind (bound: %s). Hard-law #2: the cast "
+                "ABORTS, so this ability never fires."
+                % (label, field, path.rsplit('\\', 1)[-1], tok,
+                   str(_v1(db, rec, 'charAnimationTableName') or rec).rsplit('\\', 1)[-1],
+                   sorted(bound)))
+        elif not bound[tok].strip():
+            problems.append(
+                "%s: %s -> %s demands special animation %r whose bound "
+                "*SpecialAnim slot is EMPTY - no playable animation"
+                % (label, field, path.rsplit('\\', 1)[-1], tok))
+    return problems
+
+
+def _level_zero_violations(db, rec):
+    r"""THE b39 RCA LAW (tools/patches/boss_skill_fix.py, verbatim): "a level-0
+    summon NEVER fires ... an unambiguous boss never summons defect".
+
+    Every skill a record is wired to CAST must also occupy a `skillName<i>` slot
+    with `skillLevel<i>` >= 1, or it has no level at all. Round 1 wrote the
+    capped guard bloodbeast into `specialAttackSkillName` and left `skillName4`
+    on the shared donor, so the clone had no skillName slot anywhere in the db.
+    """
+    problems = []
+    label = rec.rsplit('\\', 1)[-1]
+    ff = db.get_fields(rec) or {}
+    kit = {}
+    for key, tf in ff.items():
+        b = key.split('###')[0]
+        if not (b.startswith('skillName') and b[9:].isdigit()) or not tf.values:
+            continue
+        p = str(tf.values[0] or '').replace('/', '\\').lower()
+        if not p:
+            continue
+        lv = db.get_field_value(rec, 'skillLevel%s' % b[9:])
+        lv = lv if isinstance(lv, list) else ([lv] if lv is not None else [])
+        try:
+            top = max(int(x) for x in lv) if lv else 0
+        except (TypeError, ValueError):
+            top = 0
+        kit[p] = max(kit.get(p, 0), top)
+    for field in _CAST_FIELDS:
+        path = _v1(db, rec, field)
+        path = str(path).strip() if isinstance(path, str) else ''
+        if not path or path == '0':
+            continue
+        key = path.replace('/', '\\').lower()
+        if key not in kit:
+            problems.append(
+                "%s: %s -> %s is CAST but occupies NO skillName slot, so it has "
+                "no skillLevel. b39 RCA law: a level-0 skill never fires."
+                % (label, field, path.rsplit('\\', 1)[-1]))
+        elif kit[key] < 1:
+            problems.append(
+                "%s: %s -> %s sits in a skillName slot at level 0 - it never fires"
+                % (label, field, path.rsplit('\\', 1)[-1]))
+    return problems
+
+
+def _build_castable_clone(db, donor, dest, token, label):
+    r"""Clone a SHARED skill and give it an animation token the casters can start.
+
+    The donors here are used by 20 records (melinoe_bloodboil) and 3 (reaver_zap),
+    so they are NEVER written; only this wave's own records are repointed at the
+    clone. This is the repo's documented Meteor/Thunderball remedy, taken one step
+    further: instead of blanking the token (default attack anim, no telegraph) it
+    is repointed at a token PROVEN bound in every weapon row of all three tables
+    this wave casts from.
+    """
+    _clone_new(db, donor, dest, label)
+    was = _v1(db, donor, 'skillSpecialAnimationName')
+    db.set_field(dest, 'skillSpecialAnimationName', token)
+    db.set_field(dest, 'FileDescription',
+                 'Leinth wave: %s, castable copy - anim %r -> %r so '
+                 'SkillManager::StartSkill no longer aborts (b94 r2)'
+                 % (label, str(was or ''), token))
+    db._modified.add(dest)
+    print("    %-28s anim %r -> %r  (shared donor %s left untouched)"
+          % (dest.rsplit('\\', 1)[-1], str(was or ''), token,
+             donor.rsplit('\\', 1)[-1]))
 
 
 def _build_honour_guard(db, tags):
@@ -451,9 +753,41 @@ def _build_honour_guard(db, tags):
             if any(isinstance(p, str) and p and not db.has_record(p) for p in cur):
                 sf(guard, dead, [])
         db._modified.add(guard)
-    # the Voice keeps her summon, but the CAPPED copy
+    # 5b-ii. THE VOICE KEEPS HER SUMMON, BUT THE CAPPED COPY - IN BOTH PLACES.
+    # ROUND 2 (the vet's HIGH-2): round 1 wrote the clone into the CAST field only
+    # and left skillName4 on the shared donor, so the clone had no skillLevel
+    # anywhere in the db = a level-0 summon = the b39 "boss never summons" defect,
+    # and the whole advertised petLimit-2 / TTL-20s cap was moot. Both halves are
+    # now written together, at the donor's own [5,10,15] ladder.
     sf(GUARD_DISCIPLE, 'specialAttack%sSkillName' % GUARD_BEAST_SPECIAL, GUARD_BEAST_SKILL)
+    cur_slot = _v1(db, GUARD_DISCIPLE, 'skillName%d' % GUARD_BEAST_SLOT)
+    if not isinstance(cur_slot, str) or 'summon_bloodbeast' not in cur_slot.lower():
+        raise SystemExit(
+            "[leinth_wave] %s: skillName%d holds %r, expected the donor's own "
+            "bloodbeast summon - refusing to repoint the wrong slot."
+            % (GUARD_DISCIPLE, GUARD_BEAST_SLOT, cur_slot))
+    sf(GUARD_DISCIPLE, 'skillName%d' % GUARD_BEAST_SLOT, GUARD_BEAST_SKILL)
+    sf(GUARD_DISCIPLE, 'skillLevel%d' % GUARD_BEAST_SLOT, list(GUARD_BEAST_LEVELS))
     db._modified.add(GUARD_DISCIPLE)
+    print("    the Voice's bloodbeast: skillName%d %s -> the CAPPED clone @ %s "
+          "(round 1 left it level-0: cast-wired but in NO skillName slot)"
+          % (GUARD_BEAST_SLOT, cur_slot.rsplit('\\', 1)[-1], GUARD_BEAST_LEVELS))
+
+    # 5b-iii. THE REAVER'S TWO DEAD SLOTS (round 2, same law as HIGH-1).
+    # d_reaver_42 shipped specialAttack1 -> melinoe_bloodboil ('BloodBoil') and
+    # specialAttack3 -> reaver_zap ('Zappity'), and NEITHER token is bound in
+    # anm_seductress_armed. So half of the honour guard's advertised kit could
+    # never fire. Both are repointed at castable clones; the shared donors
+    # (20 records / 3 records) are never written, so d_reaver_40/41/42 and every
+    # bloodwitch keep their exact shipped behaviour.
+    sf(GUARD_REAVER, 'skillName%d' % BLOODBOIL_SLOT, BLOODBOIL)
+    sf(GUARD_REAVER, 'specialAttack%sSkillName' % BLOODBOIL_SPECIAL, BLOODBOIL)
+    sf(GUARD_REAVER, 'skillName%d' % ZAP_SLOT, ZAP)
+    sf(GUARD_REAVER, 'specialAttack%sSkillName' % ZAP_SPECIAL, ZAP)
+    db._modified.add(GUARD_REAVER)
+    print("    the Reaver: Blood Boil (specialAttack1) + reaver_zap "
+          "(specialAttack3) repointed at castable clones - both were "
+          "cast-aborting on unbound %r / %r" % (BLOODBOIL_WAS_ANIM, ZAP_WAS_ANIM))
 
     # 5c. the LAW, applied to her own pool IN PLACE (variants/weights/limits kept)
     before = (_v1(db, LEINTH_POOL, 'spawnMin'), _v1(db, LEINTH_POOL, 'spawnMax'),
@@ -516,17 +850,38 @@ def apply(db, tags):
     db.set_field(ACID_SUMMON, 'spawnObjects', [ACID_MONSTER])
     db.set_field(ACID_SUMMON, 'skillDisplayName', 'tagSVCLeinthAcidMire')
     db.set_field(ACID_SUMMON, 'skillBaseDescription', 'tagSVCLeinthAcidMireDESC')
+    # ROUND 2, THE FIX THAT MAKES IT ACTUALLY FIRE. See ACID_ANIM above: DRX left
+    # this staged copy demanding 'AcidPuddle', a token absent from EVERY row of
+    # anm_leinth, so hard-law #2 aborted the cast and round 1's "acid rig LIVE"
+    # was false. Her own table binds 'SpitSummon' (unarmedSpecialAnimRef1 ->
+    # empusa_staff_skill_frostspit.anm) and NO skill of hers uses it - DRX staged
+    # the animation and the rig together and wired neither.
+    _acid_was = _v1(db, ACID_SUMMON, 'skillSpecialAnimationName')
+    db.set_field(ACID_SUMMON, 'skillSpecialAnimationName', ACID_ANIM)
     db.set_field(ACID_SUMMON, 'FileDescription',
-                 'Leinth: the acid rig DRX staged for her, finally wired (Will Q6, b94)')
+                 'Leinth: the acid rig DRX staged for her, finally wired AND '
+                 'castable (Will Q6, b94 r2)')
     db._modified.add(ACID_SUMMON)
     db.set_field(ACID_MONSTER, 'initialSkillName', ACID_ATTACK)
     db.set_field(ACID_MONSTER, 'skillName1', ACID_ATTACK)
     db.set_field(ACID_MONSTER, 'skillLevel1', list(ACID_LEVEL1))
     db._modified.add(ACID_MONSTER)
-    print("  acid rig LIVE: %s -> %s -> %s (all three had ZERO referrers; the "
+    print("  acid rig CHAINED: %s -> %s -> %s (all three had ZERO referrers; the "
           "xpack Cerberus copies are untouched)"
           % (ACID_SUMMON.rsplit('\\', 1)[-1], ACID_MONSTER.rsplit('\\', 1)[-1],
              ACID_ATTACK.rsplit('\\', 1)[-1]))
+    print("  acid rig CASTABLE: skillSpecialAnimationName %r -> %r (round 1 left "
+          "the DRX token, which anm_leinth does not bind -> StartSkill aborted "
+          "and BOTH staged rigs were dead)" % (str(_acid_was or ''), ACID_ANIM))
+
+    # ── 2b. ROUND 2: the same law, swept across the rest of the wave's kit ───
+    # Blood Boil is her SIGNATURE AoE life-leech and it has never fired in this
+    # mod: melinoe_bloodboil demands 'BloodBoil', bound DB-wide by exactly two
+    # records (anm_maenad, anm_acolyte) and by neither anm_leinth nor
+    # anm_seductress_armed. The donor is shared by 20 records, so it is CLONED.
+    _build_castable_clone(db, BLOODBOIL_DONOR, BLOODBOIL, GUARD_ANIM_TOKEN,
+                          'Blood Boil')
+    _build_castable_clone(db, ZAP_DONOR, ZAP, GUARD_ANIM_TOKEN, 'the Reaver zap')
 
     # ── 3. WILL Q7: the ugly swarm is NOT touched. Prove it stayed as shipped. ─
     _ugl = (db.get_field_value(UGLIES, 'petBurstSpawn'),
@@ -548,15 +903,31 @@ def apply(db, tags):
         db.set_field(rec, 'characterRunSpeed', RUN_SPEED)
         db.set_field(rec, 'characterLifeRegen', LIFE_REGEN)
 
-        # her EXISTING geysers, raised in place
+        # ROUND 2: her geysers are NOT raised. cerberus_crackfire sits in
+        # skillName13 with NO cast mechanism AND demands the unbound token 'Roar',
+        # so it is DORMANT twice over and round 1's [1,4,7] -> [4,7,9] raise
+        # changed nothing in play while being reported as a delivered buff. This
+        # module now writes nothing to the slot; verify() PINS it at its shipped
+        # value so the inert number cannot be "raised" again.
         cur_geyser = _v1(db, rec, 'skillName%d' % GEYSER_SLOT)
         if not isinstance(cur_geyser, str) or 'cerberus_crackfire' not in cur_geyser.lower():
             raise SystemExit(
                 "[leinth_wave] %s: skillName%d is %r, expected cerberus_crackfire "
-                "- her geyser slot moved; refusing to raise the wrong skill."
-                % (rec, GEYSER_SLOT, cur_geyser))
+                "- her geyser slot moved." % (rec, GEYSER_SLOT, cur_geyser))
         prev_g = db.get_field_value(rec, 'skillLevel%d' % GEYSER_SLOT)
-        db.set_field(rec, 'skillLevel%d' % GEYSER_SLOT, list(GEYSER_LEVELS))
+
+        # ROUND 2: her SIGNATURE Blood Boil, made castable. specialAttack1 and
+        # skillName2 are repointed TOGETHER (the HIGH-2 lesson: a cast field
+        # without its skillName slot is a level-0 skill), keeping the donor's own
+        # levels, which the loop below asserts are untouched.
+        _bb_lv = db.get_field_value(rec, 'skillLevel%d' % BLOODBOIL_SLOT)
+        cur_bb = _v1(db, rec, 'skillName%d' % BLOODBOIL_SLOT)
+        if not isinstance(cur_bb, str) or 'melinoe_bloodboil' not in cur_bb.lower():
+            raise SystemExit(
+                "[leinth_wave] %s: skillName%d is %r, expected melinoe_bloodboil "
+                "- refusing to repoint the wrong slot." % (rec, BLOODBOIL_SLOT, cur_bb))
+        db.set_field(rec, 'skillName%d' % BLOODBOIL_SLOT, BLOODBOIL)
+        db.set_field(rec, 'specialAttack%sSkillName' % BLOODBOIL_SPECIAL, BLOODBOIL)
 
         # the two additions, each into a PROVEN-FREE kit slot
         for slot, skill, levels, label in (
@@ -583,11 +954,13 @@ def apply(db, tags):
 
         db._modified.add(rec)
         print("  %s: life %s -> %g | phys %s -> %g | pierce %s -> %g | poison "
-              "%s -> %g | geysers %s -> %s | acid rig @ specialAttack%s (slot %d) "
-              "| Crimson Tithe @ %s (slot %d)"
+              "%s -> %g | geysers %s UNTOUCHED (dormant: no cast slot + unbound "
+              "%r) | Blood Boil -> castable clone @ specialAttack1 + slot %d %s "
+              "| acid rig @ specialAttack%s (slot %d) | Crimson Tithe @ %s (slot %d)"
               % (rec.rsplit('\\', 1)[-1], before[0], LIFE[rec], before[1], PHYS,
-                 before[2], PIERCE, before[3], POISON, prev_g, GEYSER_LEVELS,
-                 ACID_SPECIAL, ACID_SLOT, TITHE_FIELD, TITHE_SLOT))
+                 before[2], PIERCE, before[3], POISON, prev_g, GEYSER_ANIM,
+                 BLOODBOIL_SLOT, _bb_lv, ACID_SPECIAL, ACID_SLOT,
+                 TITHE_FIELD, TITHE_SLOT))
 
     # ── 5. WILL Q4: THE HONOUR GUARD (the amgoz1/DRX Hades mirror) ──────────
     _build_honour_guard(db, tags)
@@ -607,6 +980,21 @@ def apply(db, tags):
     print("  scope proof: 0 of %d loot/drop fields moved across the 3 variants "
           "(veil 100%%, soul 66%%, bosschestproxy_leinth all intact)"
           % sum(len(v) for v in drops_before.values()))
+
+    # ── ROUND 2 SCOPE PROOF #2: not one cast-aborting or level-0 slot survives ─
+    # (the module-local run; verify() re-runs it over the FINAL merged db)
+    live = []
+    for rec in list(VARIANTS) + list(GUARDS):
+        bad = _cast_abort_violations(db, rec) + _level_zero_violations(db, rec)
+        if bad:
+            raise SystemExit("[leinth_wave] CAST-ABORT/LEVEL-0 VIOLATION:\n  - "
+                             + "\n  - ".join(bad))
+        live.append(sum(1 for f in _CAST_FIELDS
+                        if isinstance(_v1(db, rec, f), str) and _v1(db, rec, f).strip()))
+    print("  castability proof: %d cast-wired slots across the 3 variants + 2 "
+          "guards, 0 aborting on an unbound animation, 0 at level 0 "
+          "(round 1 shipped 5 dead: acid x3, Reaver bloodboil + zap, and the "
+          "Voice's level-0 bloodbeast)" % sum(live))
 
 
 # =============================================================================
@@ -672,15 +1060,22 @@ def verify(db, tags=None):
             problems.append("%s: charLevel %s reaches uber tier - she is the blood "
                             "cave's main-path boss, not a Toxeus champion" % (label, lv))
 
-        # geysers raised, in range
+        # ROUND 2: the geysers are DORMANT and must stay EXACTLY as shipped.
+        # Raising an inert level is how round 1 came to report a buff that does
+        # nothing; this assertion is the reverse of round 1's and fails loud if
+        # anyone raises it again without ALSO giving it a cast slot + a bound anim.
         g = db.get_field_value(rec, 'skillLevel%d' % GEYSER_SLOT)
         g = g if isinstance(g, list) else [g]
-        if [int(x) for x in g] != GEYSER_LEVELS:
-            problems.append("%s: geyser skillLevel%d=%r, expected %s"
-                            % (label, GEYSER_SLOT, g, GEYSER_LEVELS))
-        if any(int(x) > GEYSER_MAX_INDEX for x in g if x is not None):
-            problems.append("%s: geyser level exceeds the %d-entry per-level arrays"
-                            % (label, GEYSER_MAX_INDEX))
+        if [int(x) for x in g] != GEYSER_LEVELS_SHIPPED:
+            problems.append(
+                "%s: geyser skillLevel%d=%r, expected the SHIPPED %s. "
+                "cerberus_crackfire has NO cast mechanism (skillName%d only - the "
+                "original boss_cerberus_40/42/44 also wire it at "
+                "specialAttack4SkillName) AND demands the token %r, which "
+                "anm_leinth does not bind. Raising it delivers NOTHING; wire it "
+                "first, or leave it as shipped."
+                % (label, GEYSER_SLOT, g, GEYSER_LEVELS_SHIPPED, GEYSER_SLOT,
+                   GEYSER_ANIM))
 
         # each addition is in a kit slot at level>=1 AND wired to a cast mechanism
         for skill, want_levels, wiring, lbl in (
@@ -711,6 +1106,19 @@ def verify(db, tags=None):
             if not _v1(db, rec, 'specialAttack%sSkillName' % suf):
                 problems.append("%s: specialAttack%s lost its skill - this wave "
                                 "must be purely additive" % (label, suf or '1'))
+
+        # ROUND 2: Blood Boil, her signature, must be the CASTABLE copy in BOTH
+        # halves (cast field + kit slot). Repointing only one half is the exact
+        # level-0 defect that killed the Voice's bloodbeast in round 1.
+        for field in ('specialAttack%sSkillName' % BLOODBOIL_SPECIAL,
+                      'skillName%d' % BLOODBOIL_SLOT):
+            got = _v1(db, rec, field)
+            if not isinstance(got, str) or got.replace('/', '\\').lower() != BLOODBOIL.lower():
+                problems.append(
+                    "%s: %s=%r, expected the castable clone %s - the shared "
+                    "melinoe_bloodboil demands %r, which anm_leinth does NOT "
+                    "bind, so her signature AoE aborts on cast (hard-law #2)"
+                    % (label, field, got, BLOODBOIL, BLOODBOIL_WAS_ANIM))
 
         # drops untouched
         if abs((_num('chanceToEquipHead') or 0) - 100.0) > 0.01:
@@ -803,6 +1211,22 @@ def verify(db, tags=None):
             problems.append(
                 "the acid summon spawns %r, expected HER staged puddle %s (DRX left "
                 "it aimed at the xpack copy)" % (sp, ACID_MONSTER))
+    if db.has_record(ACID_SUMMON):
+        # ROUND 2, THE HIGH-1 ASSERTION. Round 1 wired the rig and declared it
+        # LIVE without ever checking the one field that decides whether the cast
+        # starts at all. This is that check, stated as a hard target so it can
+        # never regress to the DRX token silently.
+        tok = _v1(db, ACID_SUMMON, 'skillSpecialAnimationName')
+        tok = str(tok).strip() if isinstance(tok, str) else ''
+        if tok != ACID_ANIM:
+            problems.append(
+                "her acid summon's skillSpecialAnimationName=%r, expected %r. DRX "
+                "shipped it as %r, a token owned only by the xpack Cerberus chain "
+                "and the DRX Bastien records and absent from EVERY row of "
+                "anm_leinth - SkillManager::StartSkill ABORTS the cast (hard-law "
+                "#2, the Meteor/Thunderball/Bonespire law), so BOTH of Will's "
+                "staged rigs die (the aura lives only on the spawned puddle)."
+                % (tok, ACID_ANIM, ACID_ANIM_WAS))
     if db.has_record(ACID_MONSTER):
         for f in ('initialSkillName', 'skillName1'):
             got = _v1(db, ACID_MONSTER, f)
@@ -865,6 +1289,57 @@ def verify(db, tags=None):
         problems.append(
             "the SHARED disciple_summon_bloodbeast gained a TTL - this wave must "
             "cap its own CLONE, never the record the cult's disciples share")
+
+    # ── ROUND 2, THE HIGH-2 ASSERTION: the Voice's summon must have a LEVEL ───
+    # Round 1 checked the clone's TTL but never its level, so a summon that can
+    # never fire passed a gate whose whole subject is that summon.
+    if db.has_record(GUARD_DISCIPLE):
+        got = _v1(db, GUARD_DISCIPLE, 'skillName%d' % GUARD_BEAST_SLOT)
+        if not isinstance(got, str) or got.replace('/', '\\').lower() != GUARD_BEAST_SKILL.lower():
+            problems.append(
+                "svc_leinth_guard_disciple: skillName%d=%r, expected the CAPPED "
+                "clone %s. Without it the clone has no skillLevel anywhere in the "
+                "db - the b39 RCA law: \"a level-0 summon NEVER fires ... an "
+                "unambiguous boss never summons defect\"."
+                % (GUARD_BEAST_SLOT, got, GUARD_BEAST_SKILL))
+        gl_lv = db.get_field_value(GUARD_DISCIPLE, 'skillLevel%d' % GUARD_BEAST_SLOT)
+        gl_lv = gl_lv if isinstance(gl_lv, list) else ([gl_lv] if gl_lv is not None else [])
+        if not gl_lv or min(int(x) for x in gl_lv) < 1:
+            problems.append(
+                "svc_leinth_guard_disciple: skillLevel%d=%r - the honour guard's "
+                "summon is at level 0 and never fires" % (GUARD_BEAST_SLOT, gl_lv))
+        # the Reaver's two repointed slots
+        for field, want, lbl in (
+                ('specialAttack%sSkillName' % BLOODBOIL_SPECIAL, BLOODBOIL, 'Blood Boil'),
+                ('skillName%d' % BLOODBOIL_SLOT, BLOODBOIL, 'Blood Boil'),
+                ('specialAttack%sSkillName' % ZAP_SPECIAL, ZAP, 'the Reaver zap'),
+                ('skillName%d' % ZAP_SLOT, ZAP, 'the Reaver zap')):
+            got = _v1(db, GUARD_REAVER, field)
+            if not isinstance(got, str) or got.replace('/', '\\').lower() != want.lower():
+                problems.append(
+                    "svc_leinth_guard_reaver: %s=%r, expected the castable clone "
+                    "%s (%s aborted on an unbound animation as the donor shipped it)"
+                    % (field, got, want, lbl))
+
+    # ── ROUND 2, THE ROSTER-WIDE SWEEP (the invariant round 1 never had) ─────
+    # Hard-law #2 + the b39 level-0 law, applied to EVERY cast-wired slot on
+    # every record this wave writes. Round 1 shipped FIVE dead abilities past its
+    # own gates because neither law was asserted anywhere.
+    for rec in list(VARIANTS) + list(GUARDS):
+        if db.has_record(rec):
+            problems.extend(_cast_abort_violations(db, rec))
+            problems.extend(_level_zero_violations(db, rec))
+
+    # the SHARED donors of the two castable clones must be byte-untouched
+    for donor, was in ((BLOODBOIL_DONOR, BLOODBOIL_WAS_ANIM), (ZAP_DONOR, ZAP_WAS_ANIM)):
+        if db.has_record(donor):
+            tok = _v1(db, donor, 'skillSpecialAnimationName')
+            if str(tok or '') != was:
+                problems.append(
+                    "the SHARED donor %s had its animation token rewritten (%r, "
+                    "was %r) - 20 bloodwitch/leucothea/d_reaver records depend on "
+                    "it; this wave must only ever repoint its OWN clones"
+                    % (donor.rsplit('\\', 1)[-1], tok, was))
 
     # the pool: EXACTLY 1 main + 2 guaranteed champions, equation neutralized
     if not db.has_record(LEINTH_POOL):
@@ -940,12 +1415,20 @@ def verify(db, tags=None):
             "[leinth_wave] R-73/R-76 VERIFY FAILED (Leinth honour guard + poison "
             "rigs + buff):\n  - " + "\n  - ".join(problems))
     print("  [leinth_wave] verify OK: 3 variants at life %s / phys %g / pierce %g "
-          "/ poison %g (weakness REMOVED, not immunity); geysers %s; BOTH staged "
-          "acid rigs live @ specialAttack%s chained to her own copies (xpack "
-          "Cerberus untouched); Crimson Tithe @ %s; ugly swarm AS SHIPPED "
-          "(%s/%d/no-TTL); honour guard = 2 named cult champions at %s via the "
-          "escort LAW (spawnMax %d - championMax %d = 1 Leinth, equation "
-          "neutralized); drops untouched; still ranked below the Enslaver"
+          "/ poison %g (weakness REMOVED, not immunity); BOTH staged acid rigs "
+          "live @ specialAttack%s chained to her own copies AND CASTABLE (anim "
+          "%r, bound in anm_leinth; xpack Cerberus untouched); Blood Boil "
+          "castable at last (%r -> %r, shared donor untouched); Crimson Tithe @ "
+          "%s; geysers PINNED at the shipped %s (DORMANT: no cast slot + unbound "
+          "%r - reported, not faked); ugly swarm AS SHIPPED (%s/%d/no-TTL); "
+          "honour guard = 2 named cult champions at %s via the escort LAW "
+          "(spawnMax %d - championMax %d = 1 Leinth, equation neutralized), the "
+          "Voice's bloodbeast at skillLevel%d %s (round 1 left it level-0) and "
+          "the Reaver's 2 cast-aborting slots repointed; 0 cast-aborting and 0 "
+          "level-0 slots across all 5 records; drops untouched; still below the "
+          "Enslaver"
           % ([int(LIFE[v]) for v in VARIANTS], PHYS, PIERCE, POISON,
-             GEYSER_LEVELS, ACID_SPECIAL, TITHE_FIELD, UGLIES_BURST, UGLIES_LIMIT,
-             GUARD_LEVEL, POOL_SPAWN, POOL_CHAMPION_MAX))
+             ACID_SPECIAL, ACID_ANIM, BLOODBOIL_WAS_ANIM, GUARD_ANIM_TOKEN,
+             TITHE_FIELD, GEYSER_LEVELS_SHIPPED, GEYSER_ANIM,
+             UGLIES_BURST, UGLIES_LIMIT, GUARD_LEVEL, POOL_SPAWN,
+             POOL_CHAMPION_MAX, GUARD_BEAST_SLOT, GUARD_BEAST_LEVELS))

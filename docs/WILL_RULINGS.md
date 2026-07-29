@@ -633,7 +633,84 @@ renumbered record is still present with a pointer to its replacement.
   bytes and is silent on the built bytes** - the fix is proven against real bytes, not asserted.
 
   Owners: `tools/patches/leinth_wave.py`, `tools/build_quest_files.py`. Negative tests:
-  `tools/debug/negtest_leinth_wave.py` (23/23), `tools/contracts/tests_quests_negative.py` (31/31).
+  `tools/debug/negtest_leinth_wave.py` (31/31), `tools/contracts/tests_quests_negative.py` (31/31).
   R-NUMBER NOTE: the b94 entries were authored as R-70..R-73 before `main` independently landed its
   own R-70/R-71 in the 2026-07-28 ledger-hygiene pass. On merge the b94 half was renumbered +2
   (R-72..R-76) following that pass's own renumber-on-collision precedent; no ruling TEXT was altered.
+
+  ### ⚠️ R-76 CORRECTIONS (2026-07-29, after an independent adversarial vet returned NO-GO)
+  The RULINGS above are Will's and stand unchanged. Three IMPLEMENTATION CLAIMS recorded beside them
+  were wrong, and one number was unreproducible. Every correction below was decoded from the
+  deployed artifacts, and the corrected state is now gated so it cannot regress.
+
+  1. **"BOTH staged acid rigs live" was FALSE as shipped in round 1.** DRX's staged copy
+     `leinth_skills\cerberus_acidpuddle_summon.dbr` carries `skillSpecialAnimationName='AcidPuddle'`,
+     a token owned DB-wide only by the xpack Cerberus chain and the DRX Bastien records, and absent
+     from EVERY row of her own table `anm_leinth` (unarmed row: SpitSummon, 2, BloodBall01,
+     SummonTormentedSouls, TelekinesisLoop, TelekinesisEnd, ThunderClap; her three variants carry no
+     own `*SpecialAnimRef`). By this repo's own hard-law #2 the cast ABORTS, and because the poison
+     aura lives only on the spawned puddle, BOTH of Will's Q6 rigs died with it. So Q6 was HALF
+     delivered: the weakness removal landed, the visible half did not.
+     **FIXED (round 2):** the token is repointed to `'SpitSummon'`, which DRX bound themselves at
+     `anm_leinth unarmedSpecialAnimRef1 -> empusa_staff_skill_frostspit.anm` and then left
+     referenced by no skill of hers - staged in the same breath as the rig. Her copy has zero other
+     referrers, so the xpack chain stays byte-clean. verify() now asserts the token.
+  2. **The honour guard's summon was a LEVEL-0 SUMMON, which never fires.** Round 1 wrote the
+     TTL-capped clone into `specialAttackSkillName` but left `skillName4` on the SHARED donor, so the
+     clone had exactly ONE referrer in the whole db and no `skillLevel` anywhere. By the b39 RCA law
+     quoted verbatim in `tools/patches/boss_skill_fix.py` ("a level-0 summon NEVER fires ... an
+     unambiguous boss never summons defect") the Voice of the Bloodborn lost her entire summon kit,
+     and the advertised petLimit 2 / TTL 20s cap was moot.
+     **FIXED (round 2):** `skillName4` now holds the clone at the donor's own `[5,10,15]`. gated.
+  3. **The geyser raise was NOT a delivered buff.** `cerberus_crackfire` sits ONLY in `skillName13`
+     with no cast mechanism of any kind (the original `boss_cerberus_40/42/44` wire it at BOTH
+     `skillName4` AND `specialAttack4SkillName`), and its own token `'Roar'` is likewise unbound in
+     `anm_leinth`. It is dormant twice over, so R-76's "poison 800/850/950 and the 5% current-life
+     component ON at every difficulty" was never true.
+     **CORRECTED (round 2):** the raise is REVERTED (the module writes nothing to the slot) and
+     verify() PINS the shipped `[1,4,7]`, so nobody can raise an inert number and believe they
+     shipped something. It cannot be delivered inside this wave: all five castable slots are spoken
+     for and slot 6 has no Monster precedent. Registered as debt `BL-b94-DEBT-12`.
+  4. **THREE MORE dead abilities, found by the new roster-wide sweep and fixed.** Adding hard-law #2
+     as an invariant over all five records this wave writes (following `charAnimationTableName`, which
+     the pre-existing coldworm gate did not do) exposed: `q_leinth_*` specialAttack1 and
+     `svc_leinth_guard_reaver` specialAttack1 both on `melinoe_bloodboil` (`'BloodBoil'`, bound
+     DB-wide by exactly 2 records, neither of them hers), and the Reaver's specialAttack3 on
+     `reaver_zap` (`'Zappity'`, bound by exactly 1). **Blood Boil is her SIGNATURE AoE life-leech -
+     the skill her own soul is built around - and it has never fired in this mod.** That is a direct,
+     measurable cause of Will's R-73 complaint that she is too easy and the fight is attrition
+     sludge, and it is worth more to the encounter than any stat in this wave. Both donors are
+     SHARED (20 records / 3 records) so both are CLONED, never written; the clones use
+     `'ThunderClap'`, bound in ALL SIX weapon rows of all three tables the wave casts from.
+     (Her SOUL is unaffected and was never at risk: `leinth_soul_{n,e,l}` proc the
+     `records\skills\soulskills\pcsafe\melinoe_bloodboil.dbr` copy, which has the anim field removed.)
+  5. **THE ENTITY BUDGET, RE-MEASURED so Will does not rule on a phantom.** The headline figure is
+     unchanged at **41 concurrent / 26 PERMANENT**, but round 1's version was not real: its 10 acid
+     puddles could not spawn and its 2 guard bloodbeasts were level-0, so what round 1 would actually
+     have shipped is **29 concurrent / 26 permanent**. Round 2 makes the 41 real. The permanent half
+     is 26 either way, because both newly-live rigs are the TTL-capped ones. The b76 comparison and
+     the flag to Will are therefore UNCHANGED: 26 permanent still exceeds `um_voranthys_99`'s 25, and
+     she now also peaks 12 transient bodies on top. Nothing Will asked to keep was reduced.
+  6. **The `numAttackSlots` census was unreproducible and is CORRECTED.** Not "46 records run
+     `numAttackSlots=4` with five wired specials (and 3 with six)". Measured on the deployed arz: 170
+     records carry a non-empty `specialAttack5`, split `numAttackSlots` 4 -> **76** and 6 -> **94**.
+     Of the 76: 62 `Pet.tpl`, **12 `Monster.tpl`**, 1 `Hades.tpl`, 1 `Megalesios.tpl`. The 12 include
+     the base-game `em_monolith_45`, the mod's `boss_coldworm50` and `boss_dagon_66`, and - decisively
+     - HER OWN CULT'S `b_seductress_39/41/43`. The conclusion is unchanged and is better proved
+     structurally: `numAttackSlots` is defined in `Templates/character.tpl` beside `numDefenseSlots`
+     and `combatManagerRecord` (defaultValue 4), i.e. a combat positional-slot count and NOT a
+     special-attack cap, while `specialAttack5SkillName` and `dyingSkillName` are both defined in
+     `templates/templatebase/monsterskillmanager.tpl`.
+  7. **Attribution correction (round 1's COLLATERAL SENTINEL).** The `Skeleton01.msh ->
+     RevenantPoison.msh` delta on 12 records and `DisplayAsQuestItem 0 -> 1` were blamed on the
+     pre-existing `fix/green-diff` DEV collision. They are in fact written by this branch's own merged
+     build code (`tools/apply_svc_patches.py` sets `RevenantPoison.msh`;
+     `tools/patches/uber_quest_markers.py` owns `DisplayAsQuestItem`). The CONCLUSION is unchanged
+     (not this wave's edits, and no FX/skin/texture/soul-drop field moved), but the attribution was
+     wrong and is corrected here so a future vet is not misled.
+  8. **Open for Will, not a defect (R-75 companion).** Item parity across the three blood-cave bosses
+     is exact, but GOLD parity is not: all three now consume the same `svc_uberorb_apex_{n,e,l}01c`
+     tables, yet Leinth keeps `typhongoldgenerator` ((L^1.6)*48) while the two champions keep
+     `bossgoldgenerator` ((L^1.6)*24), so a charLevel 74 mid boss still drops roughly twice the gold
+     of the charLevel 100 ubers. R-75 records this as a deliberate no-nerf consequence and Will's ask
+     was about item tier, so nothing is changed. Flagged for his ruling.

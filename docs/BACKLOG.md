@@ -1,5 +1,74 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD66-DEV GATE RECORD - b94 ROUND 4 (VET LOOP): 2 HIGH fixes + 3 more dead abilities found + 3 overstated claims corrected (2026-07-29, branch `feat/leinth-wave`, tag `build66-dev`)
+
+> An independent adversarial vet returned **NO-GO** on `build64-dev` with two HIGH findings, both in
+> PART B, both invisible to the wave's own gates. Both are fixed, the missing invariants now ship,
+> and running them exposed **three more dead abilities** nobody had caught. PARTS A, C and D were
+> passed GREEN by the vet and are untouched. Full detail: `docs/reports/b94_leinth_wave.md` sec 6;
+> ruling corrections appended verbatim under **R-76 CORRECTIONS** in `docs/WILL_RULINGS.md`.
+
+| # | finding | root cause | fix |
+|---|---|---|---|
+| HIGH-1 | Leinth's `specialAttack5` acid rig **never fired**, so BOTH of Will's Q6 staged rigs were dead (the poison aura lives only on the spawned puddle) | DRX's staged copy demands `skillSpecialAnimationName='AcidPuddle'`, absent from EVERY row of `anm_leinth`; hard-law #2 aborts the cast | token -> `'SpitSummon'`, which DRX bound at `anm_leinth unarmedSpecialAnimRef1` and left unused. Asserted. |
+| HIGH-2 | The honour guard's TTL-capped bloodbeast was a **level-0 summon**, which never fires (b39 RCA law) | round 3 wrote the clone into `specialAttackSkillName` only; `skillName4` still held the shared donor, so the clone had no `skillLevel` anywhere in 51,103 records | `skillName4` -> the clone at the donor's own `[5,10,15]`. Asserted. |
+| NEW x3 | **Blood Boil, her SIGNATURE AoE life-leech, has never fired in this mod** (x3 variants + the new Reaver guard), and the Reaver's zap likewise | `melinoe_bloodboil` demands `'BloodBoil'` (2 binders DB-wide, neither hers); `reaver_zap` demands `'Zappity'` (1 binder) | both SHARED donors CLONED (20 / 3 referrers, never written), clones use `'ThunderClap'` (bound in all 6 rows of all 3 tables). Both halves repointed together. |
+| CORRECTED | the geyser raise was reported as a delivered buff | `cerberus_crackfire` has NO cast mechanism AND an unbound `'Roar'`: dormant twice over | raise REVERTED, shipped `[1,4,7]` PINNED by verify(). Debt `BL-b94-DEBT-12`. |
+| CORRECTED | entity budget `41/26` was a phantom | its 10 puddles could not spawn and its 2 bloodbeasts were level-0 | re-measured: round 3 would really have shipped **29/26**; round 4 makes **41/26** real. **The b76 flag to Will is unchanged: 26 permanent still EXCEEDS `um_voranthys_99`'s 25.** |
+| CORRECTED | "46 shipping records run `numAttackSlots=4` with five wired specials" | unreproducible | measured **76** (62 `Pet.tpl`, **12 `Monster.tpl`** incl. her own cult's `b_seductress_39/41/43`) + 94 more at `numAttackSlots=6`. Conclusion unchanged, now proved structurally from `character.tpl` vs `monsterskillmanager.tpl`. |
+| CORRECTED | `RevenantPoison.msh` / `DisplayAsQuestItem` blamed on `fix/green-diff` | they are written by this branch's own build code (`apply_svc_patches`, `uber_quest_markers`) | attribution corrected; conclusion (not this wave's edits) unchanged. |
+
+**THE MISSING INVARIANTS, NOW SHIPPED** (this is the real fix - both HIGH findings are one class: a
+gate that checks what a skill IS but never whether the caster can START it):
+`leinth_wave._cast_abort_violations` (hard-law #2, monster side) + `leinth_wave._level_zero_violations`
+(the b39 "level-0 never fires" law), run over **all five records this wave writes** and, critically,
+**following `charAnimationTableName`** - the pre-existing `coldworm_buffs` gate reads
+`unarmedSpecialAnimRef` off the monster record only, which on these records finds nothing and passes
+everything. Planted negatives: `tools/debug/negtest_leinth_wave.py` **31/31** (was 23/23, +8 new).
+
+**BUILD/DEPLOY.** arz `06de12d4491a51cfe38bd321774a96b2` (51,105 records) + `Text.arc`
+`6981d27903dc42a736f2a90c86c5903c` (**rebuilt from this build's own emitted tag stream and
+byte-identical** to the deployed one, so the coupling is proved not assumed). `Quests.arc`
+`bd0fb5f99d88fab74b81f27b7cb952b2` and `Levels.arc` `943d0ab9516d332db79bd7f9fd2d3ffe` both
+UNCHANGED and untouched. Record diff vs the round-3 deployed arz: **ADDED 2 / REMOVED 0 / CHANGED 6,
+intended-only**, COLLATERAL SENTINEL **clean** (zero mesh/skin/texture/FX/shroud/soul-drop/quest-marker
+fields moved, so `fix/green-diff`'s surfaces are untouched). Gates: `leinth_wave.verify` OK,
+`uber_apex_orb.verify` OK, `negtest_leinth_wave` 31/31, `negtest_uber_apex_orb` 16/16,
+`tests_quests_negative` 31/31, `gate_traveler_responds` PASS, `validate_tags` PASS (363/363),
+registry selfcheck OK (39 modules), contracts **0 P0 / 0 P1 / 4737 P2 GATE PASS** with the IDENTICAL
+config on the round-3 deployed arz yielding **exactly the same counts**. Deployed == built,
+re-probed on the bytes on disk (31/31, 16/16, validate_tags PASS, **0 dead active slots on all five
+records**).
+
+**⚠️ WILL MUST FULLY QUIT TQ AND STEAM AND RESTART BEFORE TESTING** (killing either is banned for
+this lane, so the standing restart rule could not be applied here). **Nothing in this wave has been
+confirmed in game.**
+
+### DEBT (new this round)
+
+* **`BL-b94-DEBT-12` - Leinth's poison geysers are DORMANT and stay that way.**
+  `cerberus_crackfire` sits only in `skillName13` with no cast mechanism of any kind, and its token
+  `'Roar'` is unbound in `anm_leinth`, so it is dead twice over. It cannot be delivered in this wave:
+  all five castable `specialAttack` slots are spoken for, the retirement protocol forbids displacing
+  her four bespoke DRX specials, and slot 6 has no Monster precedent (its only 3 users DB-wide are
+  `Pet.tpl`). The inert level raise is reverted and verify() PINS the shipped `[1,4,7]` so nobody can
+  "raise" it again and believe they shipped something. A future wave that wants it must give it BOTH
+  a cast slot and a bound animation.
+* **`BL-b94-DEBT-13` - the shared DRX donors keep their cast-aborting tokens (fix-upstream deferred).**
+  `melinoe_bloodboil` (`'BloodBoil'`, 20 records including every bloodwitch, leucothea and
+  `d_reaver_40/41/42`) and `reaver_zap` (`'Zappity'`, 3 records) are dead on every OTHER creature that
+  casts them too. This wave clones rather than fixing upstream, because repointing the donors changes
+  the behaviour of 20 shipped monsters and defaults to WILL-VETO under the retirement/no-silent-scope
+  laws. Worth a dedicated lane: a DB-wide `_cast_abort_violations` sweep would likely find more.
+
+### CARRIED (unchanged by this round, verified explicitly against the built arz)
+
+* **`BL-b94-DEBT-11` (integration order, orchestrator).** `feat/sargath-soul`'s `summon_sargoth` +
+  `sargoth_1/2/3` are absent from this build because the branch's merge base (`main` @ `a0276ab`)
+  predates `main`'s content-wave. They were ALREADY absent from DEV before this deploy, so this round
+  changes nothing. Likewise `fix/green-diff`: both champions carry `RevenantPoison.msh` (main's
+  value), already the DEV state. **Remedy is merge order, not code:** merge the lanes and rebuild once.
+
 ## BUILD64-DEV GATE RECORD - b94 ROUND 3: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build64-dev`)
 
 > ⭐⭐ **WILL ANSWERED THE FOUR DESIGN QUESTIONS ON 2026-07-27. Three of the four answers go AGAINST

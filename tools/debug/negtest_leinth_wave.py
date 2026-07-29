@@ -27,6 +27,20 @@ NEGATIVE 19: a guard knocked off her level band must FAIL (free XP or a wall).
 NEGATIVE 20: a guard's name tag stripped must FAIL (player-surface checklist).
 NEGATIVE 21: a main name slot overwritten must FAIL (her 3-variant roll must survive).
 
+ROUND 2 OF THE VET LOOP (the two laws round 1's gates never asserted, which is
+exactly how two dead headline abilities shipped past them):
+NEGATIVE 22: the acid summon back on DRX's unbound 'AcidPuddle' must FAIL (HIGH-1,
+             hard-law #2 - StartSkill aborts and BOTH staged rigs die with it).
+NEGATIVE 23: the Voice's bloodbeast slot handed back to the shared donor must FAIL
+             (HIGH-2 - the capped clone loses its only skillLevel = level-0 summon).
+NEGATIVE 24: that summon dropped to level 0 must FAIL (b39 "never summons" law).
+NEGATIVE 25: Blood Boil reverted to the cast-aborting shared donor must FAIL.
+NEGATIVE 26: the Blood Boil clone given back the unbound token must FAIL.
+NEGATIVE 27: the Reaver's zap reverted to the cast-aborting donor must FAIL.
+NEGATIVE 28: the SHARED melinoe_bloodboil donor rewritten must FAIL (20 records).
+NEGATIVE 29: the dormant geyser "raised" again must FAIL (no cast slot + unbound
+             anim: raising it delivers nothing but reads as a buff).
+
 Usage: py tools/debug/negtest_leinth_wave.py [<built.arz>]
 Exit 0 = every subtest behaves as specified.
 """
@@ -107,6 +121,31 @@ def main():
         M.GUARD_REAVER, 'description', 'tagBWreaver')
     sub('negative 21 (a main name slot overwritten)',
         M.LEINTH_POOL, 'name2', M.GUARD_REAVER)
+
+    # ── ROUND 2 OF THE VET LOOP: the two laws whose absence made round 1 a
+    #    NO-GO, plus the three dead abilities the new roster sweep uncovered.
+    sub('negative 22 (acid summon reverted to DRX\'s unbound AcidPuddle anim '
+        '- HIGH-1: StartSkill aborts, both staged rigs die)',
+        M.ACID_SUMMON, 'skillSpecialAnimationName', M.ACID_ANIM_WAS)
+    sub('negative 23 (the Voice\'s bloodbeast slot handed back to the shared '
+        'donor - HIGH-2: the capped clone becomes a level-0 summon)',
+        M.GUARD_DISCIPLE, 'skillName%d' % M.GUARD_BEAST_SLOT, M.GUARD_BEAST_DONOR)
+    sub('negative 24 (the Voice\'s bloodbeast dropped to level 0)',
+        M.GUARD_DISCIPLE, 'skillLevel%d' % M.GUARD_BEAST_SLOT, [0, 0, 0])
+    sub('negative 25 (Blood Boil reverted to the shared, cast-aborting donor '
+        'on Leinth)', V1, 'specialAttack%sSkillName' % M.BLOODBOIL_SPECIAL,
+        M.BLOODBOIL_DONOR)
+    sub('negative 26 (Blood Boil\'s castable clone given back the unbound '
+        'BloodBoil token)', M.BLOODBOIL, 'skillSpecialAnimationName',
+        M.BLOODBOIL_WAS_ANIM)
+    sub('negative 27 (the Reaver\'s zap reverted to the cast-aborting donor)',
+        M.GUARD_REAVER, 'specialAttack%sSkillName' % M.ZAP_SPECIAL, M.ZAP_DONOR)
+    sub('negative 28 (the SHARED melinoe_bloodboil donor rewritten - 20 other '
+        'records depend on it)', M.BLOODBOIL_DONOR, 'skillSpecialAnimationName',
+        M.GUARD_ANIM_TOKEN)
+    sub('negative 29 (the dormant geyser "raised" again - it has no cast slot '
+        'and an unbound anim, so the number is a lie)',
+        V0, 'skillLevel%d' % M.GEYSER_SLOT, [4, 7, 9])
 
     results.append(('positive 2 (all mutations restored)', run_gate(), 'PASS'))
 

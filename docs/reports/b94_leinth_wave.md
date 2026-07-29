@@ -860,3 +860,219 @@ write is hash-verified `deployed == built`, but per the standing rule **Will mus
 and TQ before testing** or he is testing stale in-memory data.
 
 ---
+
+## 6. ROUND 4 (2026-07-29) - THE VET LOOP: 2 HIGH fixes, 3 more dead abilities found, 3 overstated claims corrected (tag `build66-dev`)
+
+An independent adversarial vet returned **NO-GO** on round 3 (`3ae53e0` / `build64-dev`) with two
+HIGH findings, both in PART B, both invisible to the wave's own gates. Everything below was decoded
+from the DEPLOYED artifacts, and every fix ships with the assertion whose absence let the defect
+through. PARTS A, C and D were passed GREEN by the vet and are untouched this round.
+
+### 6.1 The two HIGH findings: CONFIRMED independently, then fixed
+
+**HIGH-1: `specialAttack5` was UNCASTABLE, so BOTH of Will's Q6 rigs were dead.**
+
+| evidence (re-measured against the deployed arz) | result |
+|---|---|
+| her staged summon's token | `skillSpecialAnimationName = 'AcidPuddle'` |
+| `anm_leinth` unarmed row | `SpitSummon, 2, BloodBall01, SummonTormentedSouls, TelekinesisLoop, TelekinesisEnd, ThunderClap` |
+| `'AcidPuddle'` binders DB-wide | 12: the 3 `boss_cerberus_*` + `anm_cerberus` + 8 DRX Bastien records. **`anm_leinth` is not one.** |
+| her variants' own `*SpecialAnimRef` | **none** (they resolve through `charAnimationTableName`) |
+| referrers to HER staged copy | 6, all hers (`q_leinth_{47,49,50}` x `skillName9` + `specialAttack5SkillName`) |
+
+Hard-law #2 (`SkillManager::StartSkill` aborts a cast whose `skillSpecialAnimationName` the caster's
+table cannot start, the law that killed Meteor / Thunderball / Bonespire) aborted the cast, and since
+the poison aura exists only on the SPAWNED puddle, Will's second staged rig died with the first.
+Round 3's "acid rig LIVE" and "BOTH staged acid rigs live" were false.
+
+**FIX:** token `'AcidPuddle' -> 'SpitSummon'`. Not a substitution of convenience: DRX bound
+`SpitSummon` themselves at `anm_leinth unarmedSpecialAnimRef1 ->
+XPack\Creatures\monster\empusa\anm\empusa_staff_skill_frostspit.anm` and then left it referenced by
+NO skill of hers, staged in the same breath as the acid rig they also left unwired. It is
+semantically a spit-summon, and unlike the `''` remedy it keeps the visible telegraph R-73 wanted.
+Her copy has zero other referrers, so the xpack Cerberus chain stays byte-clean (asserted).
+
+**HIGH-2: the honour guard's summon was a LEVEL-0 SUMMON.**
+`svc_leinth_guard_disciple` carried `specialAttackSkillName = svc_leinth_guard_bloodbeast` at chance
+100, but a whole-db scan finds that clone with **exactly ONE referrer in 51,103 records** (that
+field) and in NO `skillName` slot, so it had no `skillLevel`. `skillName4` still held the SHARED,
+uncapped donor at `[5,10,15]`, which nothing on the record cast. Per the b39 RCA law quoted verbatim
+in `tools/patches/boss_skill_fix.py` ("a level-0 summon NEVER fires ... an unambiguous boss never
+summons defect") the Voice of the Bloodborn lost her whole summon kit and the advertised petLimit 2 /
+TTL 20s cap was moot. **FIX:** `skillName4` now holds the clone at the donor's own `[5,10,15]`. One
+field; the shared donor is still never written.
+
+### 6.2 The sweep those two findings justified: THREE MORE dead abilities
+
+Both HIGH findings are one class: **a gate that checks what a skill IS but never whether the caster
+can START it.** Round 4 promotes both laws to roster-wide invariants (`_cast_abort_violations` +
+`_level_zero_violations` over all five records this wave writes, **following
+`charAnimationTableName`** - the pre-existing `coldworm_buffs` gate reads `unarmedSpecialAnimRef` off
+the monster record only, which on these records finds nothing and passes everything). Three more:
+
+| record | slot | skill | token | binders DB-wide |
+|---|---|---|---|---|
+| `q_leinth_{47,49,50}` | specialAttack1 | `melinoe_bloodboil` | `'BloodBoil'` | 2 (`anm_maenad` bow ref7, `anm_acolyte` unarmed ref1) |
+| `svc_leinth_guard_reaver` | specialAttack1 | `melinoe_bloodboil` | `'BloodBoil'` | same 2 |
+| `svc_leinth_guard_reaver` | specialAttack3 | `reaver_zap` | `'Zappity'` | 1 (`little_lued` unarmed ref2) |
+
+**Blood Boil is her SIGNATURE AoE life-leech, the skill her own soul is built around, and it has
+never fired in this mod.** That is a direct, measurable cause of Will's R-73 complaint that she is
+too easy and the fight is one long attrition sludge, and it is worth more to the encounter than any
+stat in this wave. The Reaver was a brand-new named champion shipping with half its kit dead.
+
+**FIX:** both donors are SHARED (`melinoe_bloodboil` by 20 records including every bloodwitch,
+leucothea and `d_reaver`; `reaver_zap` by `d_reaver_40/41/42`), so both are **CLONED** and only this
+wave's records are repointed. Both halves (cast field AND `skillName` slot) are written together,
+which is the HIGH-2 lesson applied. The clones use `'ThunderClap'`, bound in **all six weapon rows**
+of `anm_leinth`, `anm_seductress_armed` AND `anm_seductress`, so it is castable in any stance.
+
+> **Her SOUL was never at risk and is untouched.** `leinth_soul_{n,e,l}` proc
+> `records\skills\soulskills\pcsafe\melinoe_bloodboil.dbr`, the pcsafe copy that ships with the anim
+> field removed entirely. Checked explicitly rather than assumed.
+
+### 6.3 The three overstated claims, corrected
+
+1. **"acid rig LIVE" / "BOTH staged acid rigs live"** was false, now true and asserted (6.1).
+2. **The guard's summon presented as working** was level-0, now levelled and asserted (6.1).
+3. **The geyser raise presented as a gameplay buff.** `cerberus_crackfire` is dormant TWICE over: it
+   sits ONLY in `skillName13` with no cast mechanism (the original `boss_cerberus_40/42/44` wire it
+   at BOTH `skillName4` and `specialAttack4SkillName`, chance 25 / delay 12 / AnyRange), and its own
+   token `'Roar'` is unbound in `anm_leinth` (72 binders DB-wide, none hers). Round 3's
+   `[1,4,7] -> [4,7,9]` changed nothing in play. **CORRECTED:** the raise is REVERTED (the module
+   writes nothing to the slot) and verify() PINS the shipped `[1,4,7]`. It cannot be delivered inside
+   this wave: all five castable slots are spoken for (1 Blood Boil, 2 uglies, 3 bloodall_02,
+   4 heatseeker, 5 Will's acid rig), the retirement protocol forbids displacing her four bespoke DRX
+   specials, and slot 6 has no Monster precedent. Debt `BL-b94-DEBT-12`.
+
+### 6.4 The entity budget, RE-MEASURED (the vet was right that round 3's was a phantom)
+
+| line | count | lifetime | cast-wired? |
+|---|---|---|---|
+| Leinth | 1 | - | - |
+| honour guards | 2 | - | - |
+| `summoned_ugly` (petLimit 16) | 16 | **PERMANENT** | yes (specialAttack2) |
+| `leinth_heatseeker_pet` (petLimit 10) | 10 | **PERMANENT** | yes (specialAttack4) |
+| acid puddles (petLimit 10) | 10 | 6s TTL | yes (specialAttack5), **real only after 6.1** |
+| guard bloodbeasts (petLimit 2) | 2 | 20s TTL | yes (specialAttack1), **real only after 6.1** |
+| `hero_flesheater` (petLimit 4) | **0** | - | **NO**: in `skillName4` on Leinth AND the Reaver, cast by neither, correctly excluded |
+| **TOTAL** | **41 concurrent, 26 PERMANENT** | | |
+
+**HONEST DELTA:** the headline number is unchanged, but round 3's was not real - its 10 puddles could
+not spawn and its 2 bloodbeasts were level-0, so what round 3 would actually have shipped is **29
+concurrent / 26 permanent**. Round 4 makes the 41 real. The PERMANENT half is 26 either way, because
+both newly-live rigs are the TTL-capped ones. **THE FLAG TO WILL IS UNCHANGED AND STILL STANDS:** the
+b76 chumbi-freeze RCA measures the standalone offender `um_voranthys_99` at 25 PERMANENT summons and
+says even alone it "degrades over a long fight". 26 EXCEEDS it, and she now also peaks 12 transient
+bodies on top. Nothing Will told us to keep has been reduced.
+
+### 6.5 The smaller corrections
+
+* **`numAttackSlots` census.** Round 3's "46 shipping records ... (and 3 with six)" is not
+  reproducible. Measured: 170 records carry a non-empty `specialAttack5`, split `numAttackSlots`
+  4 -> **76** / 6 -> **94**. Of the 76: 62 `Pet.tpl`, **12 `Monster.tpl`**, 1 `Hades.tpl`, 1
+  `Megalesios.tpl`. The 12 Monster.tpl include base-game `em_monolith_45`, mod `boss_coldworm50` and
+  `boss_dagon_66`, and **her own cult's `b_seductress_39/41/43`**. The conclusion is unchanged and now
+  rests on structure: `numAttackSlots` is defined in `Templates/character.tpl` beside `numDefenseSlots`
+  and `combatManagerRecord` (a combat positional-slot count, not a special-attack cap), while
+  `specialAttack5SkillName` and `dyingSkillName` live in `templates/templatebase/monsterskillmanager.tpl`.
+* **Attribution.** The round-3 COLLATERAL SENTINEL blamed `Skeleton01.msh -> RevenantPoison.msh` (12
+  records) and `DisplayAsQuestItem 0 -> 1` on the `fix/green-diff` DEV collision. They are written by
+  this branch's own merged build code (`tools/apply_svc_patches.py` and
+  `tools/patches/uber_quest_markers.py`). Conclusion unchanged, attribution corrected.
+* **Gold parity (for Will, not a defect).** All three bosses now share the apex item tables, but
+  Leinth keeps `typhongoldgenerator` ((L^1.6)*48) while the champions keep `bossgoldgenerator`
+  ((L^1.6)*24), so the charLevel 74 mid boss drops roughly twice the gold of the charLevel 100 ubers.
+  R-75 records this as a deliberate no-nerf consequence; flagged for his ruling.
+
+### 6.6 BUILD, PROOFS AND DEPLOY
+
+`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`. Build exit 0 with the full fail-loud battery green.
+
+| artifact | md5 | note |
+|---|---|---|
+| round-3 arz (the vetted NO-GO build, = DEV before this deploy) | `9cdb9ebaa0d277f5001b629a276a05d3` | 51,103 records |
+| **round-4 arz** | **`06de12d4491a51cfe38bd321774a96b2`** | **51,105 records**, 55,447,266 B |
+| `Text.arc` rebuilt from THIS build's emitted `uber_soul_tags.txt` | `6981d27903dc42a736f2a90c86c5903c` | **byte-identical** to round 3 and to what is deployed |
+| `Quests.arc` | `bd0fb5f99d88fab74b81f27b7cb952b2` | **unchanged** (PART C untouched this round) |
+| `Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **untouched**, mtime still 2026-07-27 16:48 |
+
+**COUPLING PROVED, NOT ASSUMED.** The arz+Text pair was rebuilt together; because this round adds no
+Text tag, the regenerated `Text.arc` came out byte-identical to the deployed one. That is a hash
+comparison of a freshly generated file, not a "we did not touch it" claim. **Levels+Quests:** neither
+changed, so the coupling is satisfied trivially and both are proved unchanged above.
+
+**RECORD DIFF (round-3 deployed -> round-4 build): INTENDED-ONLY.** `ADDED 2 / REMOVED 0 / CHANGED 6`.
+
+```
+ADDED    svc_leinth_bloodboil.dbr, svc_leinth_guard_zap.dbr        (the 2 castable clones)
+CHANGED  q_leinth_47/49/50           3 fields  skillLevel13 (raise REVERTED), skillName2, specialAttackSkillName
+         cerberus_acidpuddle_summon  2 fields  skillSpecialAnimationName, FileDescription
+         svc_leinth_guard_disciple   1 field   skillName4
+         svc_leinth_guard_reaver     4 fields  skillName2, skillName6, specialAttackSkillName, specialAttack3SkillName
+```
+
+**COLLATERAL SENTINEL: CLEAN.** Scanning the whole diff for any `mesh` / `skin` / `baseTexture` /
+`bitmap` / `fx` / `Effect` / `shroud` / `chanceToEquip` / `lootFinger` / `dropItems` /
+`treasureProxy` / `particle` / `DisplayAsQuestItem` field returns **zero hits**. The parallel
+`fix/green-diff` lane's surfaces are untouched.
+
+**GATES**
+
+| gate | result |
+|---|---|
+| `leinth_wave.verify` on the final merged arz | **OK** |
+| `uber_apex_orb.verify` on the final merged arz | **OK** |
+| `negtest_leinth_wave.py` | **31/31** (was 23/23; +8 planted negatives for the new laws) |
+| `negtest_uber_apex_orb.py` | **16/16** |
+| `tools/contracts/tests_quests_negative.py` | **31/31** |
+| `gate_traveler_responds.py` | **PASS** on all 4 invariants |
+| `validate_tags` | **PASS**, 363/363 referenced mod tags resolve |
+| patches-registry selfcheck | OK, 39 modules |
+| **contract suite (5 modules)** | **0 P0 / 0 P1 / 4737 P2, GATE PASS** |
+
+**The contract count is proved unchanged, not asserted:** the IDENTICAL configuration run against the
+round-3 DEPLOYED arz yields **exactly `0 P0 / 0 P1 / 4737 P2`** as well.
+
+> The single P1 on a first run (`C-RES-INPUT-1`) is a HARNESS config issue, not a content one: the
+> worktree's `upstream/` cache is empty (gitignored), so provenance cannot be established and the
+> module demotes everything to "unknown". Passing `--upstream-dir` at the main checkout's cache clears
+> it on BOTH builds. Already registered as `BL-b90-DEBT-1` / `BL-b89-DEBT-5`.
+
+**DEPLOYED to DEV** (coupled arz + Text; Quests and Levels deliberately untouched):
+
+| deployed artifact | md5 | verdict |
+|---|---|---|
+| `Database/SoulvizierClassicDEV.arz` | `06de12d4491a51cfe38bd321774a96b2` | **== built** |
+| `Resources/Text.arc` | `6981d27903dc42a736f2a90c86c5903c` | **== built** (coupled pair) |
+| `Resources/Quests.arc` | `bd0fb5f99d88fab74b81f27b7cb952b2` | **UNCHANGED** (== pre-deploy backup) |
+| `Resources/Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **UNTOUCHED** (mtime 2026-07-27 16:48, predates this wave) |
+
+Backups: `local/db_backups/SoulvizierClassicDEV_pre-b94r2vetfix_9cdb9eba.arz`,
+`DEV_Text_pre-b94r2vetfix_6981d279.arc`, `DEV_Quests_pre-b94r2vetfix_bd0fb5f9.arc`.
+
+**DEPLOYED RE-PROBE** (against the bytes on disk, not the build): `negtest_leinth_wave` **31/31**,
+`negtest_uber_apex_orb` **16/16**, `validate_tags` **PASS**, and the anim/level sweep reports
+**0 dead active slots on all five records** (Leinth x3, both guards), every token resolving to a real
+`.anm` file.
+
+### 6.7 What is still NOT proved, stated plainly
+
+* **Nothing in this wave has been confirmed in game.** Whether the portal appears and travels, whether
+  the honour guard reads as a fight worth having, and whether the new abilities and resists feel right
+  at levels 47-76 can only be settled by Will in play.
+* **Will must fully quit TQ and Steam and restart before testing.** Killing either is banned for this
+  lane, so the standing restart rule could not be applied here. The write is hash-verified, but a
+  running game holds the old database in memory.
+* **The two DEV-surface collisions are UNCHANGED by this deploy and remain integration-order matters
+  for the orchestrator** (verified explicitly against the built arz):
+  * `feat/sargath-soul`: `summon_sargoth` + `sargoth_1/2/3` are absent, because this branch's merge
+    base (`main` @ `a0276ab`) predates `main`'s content-wave. They were already absent from DEV before
+    this deploy, so this round changes nothing. `BL-b94-DEBT-11`.
+  * `fix/green-diff`: both champions carry `RevenantPoison.msh` (main's value), not that lane's
+    `GoldenSkeleton01.msh`. Also already the DEV state before this deploy. The remedy is merge order,
+    not a code change: merge both lanes and rebuild once.
+* **The geyser stays dormant** (`BL-b94-DEBT-12`), by choice and with the reason recorded, rather than
+  being reported as delivered.
+
+---
