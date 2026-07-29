@@ -16,6 +16,20 @@ NEGATIVE 6: a broken orb05 chain link (pool -> chest) must FAIL.
 NEGATIVE 7: R-48 collateral damage (a champion's soul rate cut) must FAIL.
 NEGATIVE 8: an orb04 consumer chest retargeted (donor-chain tamper) must FAIL.
 
+The Will-2026-07-27 half (Leinth is INCLUDED, upgraded, never nerfed):
+NEGATIVE 9 : a Leinth chest reverted to her old mid-tier loot table must FAIL
+             (she would be left behind on the Act-3 band).
+NEGATIVE 10: a Leinth chest reverted to the Act-3 down-scaling level equation
+             must FAIL (her items would stay down-tiered on normal/epic).
+NEGATIVE 11: a Leinth chest whose bespoke mesh was clobbered must FAIL
+             (the re-tier must never cost her identity).
+NEGATIVE 12: a Leinth chest switched to the champions' POORER bossgoldgenerator
+             must FAIL (that is a gold nerf: x24/x32 vs typhon's x48/x64).
+NEGATIVE 13: a Leinth VARIANT repointed at the generic orb must FAIL
+             (her bespoke "Leinth's Essense" proxy must stay hers - R-71).
+NEGATIVE 14: an apex loot group cut below her ORIGINAL table's chance must FAIL
+             (the computed no-nerf proof).
+
 Usage: py tools/debug/negtest_uber_apex_orb.py [<built.arz>]
 Exit 0 = every subtest behaves as specified.
 """
@@ -119,6 +133,46 @@ def main():
     sub('negative 8 (the orb04 normal chest retargeted - donor chain tampered)',
         {'_touch': [(ORB04_CHEST_N, 'tables')],
          'do': lambda: db.set_field(ORB04_CHEST_N, 'tables', N_TABLE)}, 'FAIL')
+
+    # ── the Will-2026-07-27 half: Leinth is INCLUDED and must not be nerfed ──
+    L_CHEST_N = M.LEINTH_CHESTS['normal']
+    L_OLD_TABLE_N = M.LEINTH_TABLES_BY_DIFF['normal']
+
+    # NEGATIVE 9: Leinth left behind on her old mid-tier table
+    sub('negative 9 (Leinth normal chest reverted to her old Act-3 loot table)',
+        {'_touch': [(L_CHEST_N, 'tables')],
+         'do': lambda: db.set_field(L_CHEST_N, 'tables', L_OLD_TABLE_N)}, 'FAIL')
+
+    # NEGATIVE 10: Leinth left on the down-scaling level equation
+    sub('negative 10 (Leinth normal chest reverted to the c03 down-scaling equation)',
+        {'_touch': [(L_CHEST_N, 'levelEquationFile')],
+         'do': lambda: db.set_field(
+             L_CHEST_N, 'levelEquationFile',
+             r'records\item\containers\c03_containerlevelequation.dbr')}, 'FAIL')
+
+    # NEGATIVE 11: her bespoke identity clobbered by the re-tier
+    sub('negative 11 (Leinth chest mesh clobbered with the generic orb mesh)',
+        {'_touch': [(L_CHEST_N, 'mesh')],
+         'do': lambda: db.set_field(L_CHEST_N, 'mesh',
+                                    r'DRX\meshes\bossorbmesh.msh')}, 'FAIL')
+
+    # NEGATIVE 12: her richer gold generator swapped for the champions' poorer one
+    sub('negative 12 (Leinth chest switched to the POORER bossgoldgenerator)',
+        {'_touch': [(L_CHEST_N, 'goldGenerator')],
+         'do': lambda: db.set_field(
+             L_CHEST_N, 'goldGenerator',
+             r'records\item\miscellaneous\gold\bossgoldgenerator.dbr')}, 'FAIL')
+
+    # NEGATIVE 13: a Leinth variant repointed at the generic orb (identity loss)
+    L_VARIANT = M.LEINTH_VARIANTS[0]
+    sub('negative 13 (q_leinth_47 repointed at the generic orb, losing her Essense)',
+        {'_touch': [(L_VARIANT, M._TREASURE)],
+         'do': lambda: db.set_field(L_VARIANT, M._TREASURE, M.ORB05)}, 'FAIL')
+
+    # NEGATIVE 14: the computed no-nerf proof - an apex group cut below her original
+    sub('negative 14 (apex loot2Chance cut below Leinth\'s original 25.0)',
+        {'_touch': [(N_TABLE, 'loot2Chance')],
+         'do': lambda: db.set_field(N_TABLE, 'loot2Chance', 1.0)}, 'FAIL')
 
     # FINAL POSITIVE: everything restored, gate green again
     results.append(('positive 2 (all mutations restored)', run_gate(db), 'PASS'))

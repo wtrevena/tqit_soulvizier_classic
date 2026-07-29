@@ -224,17 +224,22 @@ REGISTRY = [
                             # record). Placed here so it is the ratified final writer on her stats;
                             # verify() re-asserts every target on the FINAL merged db, including
                             # that her loot wiring never moved.
-    'uber_apex_orb',        # b94 PART A (R-70): champion orb CALIBRE parity with Leinth's chest -
-                            # authors a new un-named generic apex tier (genericbossorb_05 + 3 pools
-                            # + 3 chests + 3 loot tables cloned from the orb04 chain, with Leinth's
-                            # four calibre knobs) and repoints treasureProxyName on EXACTLY
-                            # um_toxeus_enslaver_99 + um_bloodtoxeus_99. genericbossorb_04 and its
-                            # other 19 consumers stay byte-unchanged (apply() proves it). MUST run
-                            # after toxeus_souls_100: EXPECTED S4b record collision on the two
-                            # champions (souls_100 writes chanceToEquipFinger2, this writes
-                            # treasureProxyName - DIFFERENT fields, later-wins is a no-op on both),
-                            # and this module's apply() additionally proves the R-48 soul wiring did
-                            # not move. Before 'visuals'.
+    'uber_apex_orb',        # b94 PART A (R-70, Will 2026-07-27): ONE apex drop calibre shared by
+                            # ALL THREE blood-cave bosses. Authors a new un-named generic apex tier
+                            # (genericbossorb_05 + 3 pools + 3 chests + 3 loot tables cloned from the
+                            # orb04 chain, carrying Leinth's four generosity knobs on the champions'
+                            # Act-4 tables) and repoints treasureProxyName on EXACTLY
+                            # um_toxeus_enslaver_99 + um_bloodtoxeus_99; then upgrades Leinth's THREE
+                            # sole-owned chests IN PLACE onto the SAME apex tables + level equation
+                            # (2 fields each), so she is re-tiered rather than left behind. Her
+                            # monster records, proxy and pools are untouched, so R-71's "her bespoke
+                            # chest survives" assertion in leinth_wave stays green - which is why
+                            # this MUST run AFTER 'leinth_wave'. genericbossorb_04 and its other 19
+                            # consumers stay byte-unchanged (apply() proves it). MUST also run after
+                            # toxeus_souls_100: EXPECTED S4b record collision on the two champions
+                            # (souls_100 writes chanceToEquipFinger2, this writes treasureProxyName -
+                            # DIFFERENT fields, later-wins is a no-op on both), and apply()
+                            # additionally proves the R-48 soul wiring did not move. Before 'visuals'.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

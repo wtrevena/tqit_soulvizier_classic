@@ -237,9 +237,53 @@
   `tools/debug/negtest_uber_apex_orb.py`.
   RECONCILIATION WITH R-47: R-47's substance is intact (still un-named, still generic, still
   shared, still not a bespoke "X's Essence"); R-70 ADDS a tier R-47 does not mention. R-47 is NOT
-  superseded. ⚠️ OPEN WILL QUESTION carried in docs/reports/b94_leinth_wave.md: "same calibre" is
-  implemented as SAME VOLUME on a BETTER item pool; the alternative reading (strictly identical to
-  Leinth) would DOWN-tier the champions to the Act-3 band, which is not recommended.
+  superseded.
+  ⚠️ **SCOPE SUPERSEDED IN PART BY R-73 (Will 2026-07-27, verbatim).** R-70's ANALYSIS stands
+  unchanged and is still the evidence base. What R-73 overrides is R-70's SCOPE DECISION: R-70
+  moved only the two champions and deliberately left Leinth's chest untouched, and R-70's open
+  question #3 ("should Leinth also get an orb?") is now ANSWERED - yes, she is included. The
+  built-out ruling is R-73; read the two together.
+
+- R-73 [2026-07-27, implemented b94 round 2 (feat/leinth-wave)] IMPLEMENTED. Will's decision,
+  **VERBATIM** (this one WAS captured as a first-person quote, unlike R-70/R-71/R-72 above, so it
+  carries no `[paraphrased]` marker):
+  > "increase the tier of the items dropped by leinth's orb to match the tier dropped by the
+  > champions' orb and give that to both toxeus variants and also to leinth"
+
+  This SUPERSEDES the design pass's orb plan and R-70's scope. The instruction is not "raise the
+  champions to Leinth" but "build ONE apex drop that combines both sides' strengths and give it to
+  all three". Each side won a different axis: Leinth had the GENEROSITY (numSpawn `*2.2/*2.4` vs
+  `*0.9/*1.3`, loot4Chance 100 vs 12.7, unique weights 50 vs 27) and the champions had the TIER
+  (xpack Act-4 static tables vs the Act-3 63-65 band; `containerlevelequation_all` = `1*1` vs
+  `c03`/`e_c03`, which DIVIDE the player level on normal/epic; goldGeneratorLevel 47/69/88 vs
+  30/50/64). The shared apex loot tables `records\item\loottables\svc\svc_uberorb_apex_{n,e,l}01c`
+  carry Leinth's four generosity knobs on the champions' Act-4 tables, and ALL THREE bosses now
+  consume them: modelled expected items at 1 player go 5.70 -> 21.16 for each champion (3.71x) and
+  18.51 -> 21.16 for Leinth (1.14x) PLUS a full item tier and +56% gold level.
+
+  HOW LEINTH IS INCLUDED, and why not by repointing her: a whole-database scan of EVERY field of
+  ALL 51,085 records proves `bosschestproxy_leinth` has EXACTLY THREE referrers, and all three are
+  her own variants (`q_leinth_47/49/50`, `treasureProxyName`). She SOLELY OWNS her chain, so it is
+  upgraded IN PLACE - `tables` + `levelEquationFile` on her three chests, two fields each, nothing
+  else. Her monster records, her proxy and her pools are NOT touched, so R-71's "her bespoke chest
+  survives" assertion stays green by construction, and the RETIREMENT PROTOCOL is never engaged
+  (nothing of hers is retired; her three original loot tables are deliberately left in the db and
+  are what the gate reads as the no-nerf reference). She KEEPS her bespoke player-visible identity
+  (`DRX\meshes\leinth_chest.msh`, scale 1.2, `tagLeinthChest` = "Leinth's Essense") and she KEEPS
+  her `typhongoldgenerator`, which is RICHER than the champions' `bossgoldgenerator`
+  (`(L^1.6)*48` vs `(L^1.6)*24`) - switching her to theirs would have been a gold NERF, so it was
+  deliberately not done. `LockedClassification` was also deliberately not copied: it is not an
+  item-tier field and is inert while `locked = 0`, which every consumer including orb04's own
+  chests carries.
+
+  NO-NERF IS PROVEN, NOT ASSERTED: apply() refuses to move her at all unless the apex table beats
+  her original on every one of the six loot-group chances, both spawn multipliers and
+  goldGeneratorLevel, and verify() recomputes the same proof on the FINAL merged arz. It holds on
+  all three difficulties (12.5->13.0, 25.0->32.0, 0.0->10.0, 100.0->100.0, 25.0->32.0, 12.5->13.0).
+  Owner: `tools/patches/uber_apex_orb.py`; planted negative tests for the Leinth half are
+  `negative 9-14` in `tools/debug/negtest_uber_apex_orb.py`.
+  RECONCILIATION WITH R-47: still intact. No NEW bespoke "X's Essence" is authored; her existing
+  one is re-tiered, not created, and the champions' new tier is still un-named, generic and shared.
   See docs/reports/b94_leinth_wave.md.
 
 - R-71 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "Leinth is too easy and her

@@ -39,7 +39,19 @@ merge picks up both waves.
 
 ---
 
-## 1. PART A - champion orb CALIBRE parity (R-70)
+## 1. PART A - ONE apex drop calibre for all three blood-cave bosses (R-70 + R-73)
+
+> ⭐ **ROUND 2 SUPERSEDES ROUND 1 HERE.** Round 1 implemented the design pass's orb plan: move the
+> two champions up to Leinth's volume, leave Leinth alone. Will's decision of 2026-07-27, captured
+> **verbatim**, overrides that scope:
+>
+> > "increase the tier of the items dropped by leinth's orb to match the tier dropped by the
+> > champions' orb and give that to both toxeus variants and also to leinth"
+>
+> So the deliverable is ONE apex drop combining BOTH sides' strengths, given to ALL THREE monsters.
+> **Leinth is included and upgraded**, not left behind and not nerfed. Ledgered as **R-73**;
+> R-70's analysis stands and its scope decision is marked superseded-in-part.
+> Everything in this section describes the SHIPPED round-2 state.
 
 ### Finding (confirmed, and by a wide margin)
 
@@ -66,12 +78,26 @@ proven from data alone; the raw knobs above already settle the direction on thei
 **Leinth 18.5 vs orb04 5.7 = 3.25x**, unique share 4.1-7.0% vs 3.1-3.3%. Identical on all three
 difficulties.
 
-**HONEST COUNTER-AXIS (it cuts the other way, so it is stated):** orb04 rolls the HIGHER item
-tier. Its tables are the xpack Act-4 statics `uberorb_default_{n,e,l}01c` at
-`goldGeneratorLevel` 47/69/88 with `levelEquationFile = containerlevelequation_all` and
-`LockedClassification = Boss`; Leinth's are the Act-3-band 63-65 tables at gold level 64 with no
-LockedClassification. So orb04's individual items are higher item-level; Leinth's are lower-tier
-but ~3.25x more numerous and ~2x more unique-weighted.
+**THE COUNTER-AXIS - and in round 2 this is not a caveat, it is half the deliverable.** orb04
+rolls the HIGHER item tier, on three separate levers:
+
+| tier lever | LEINTH (before) | ORB04 (the champions) |
+|---|---|---|
+| loot tables | Act-3 band `63-65` mastertables + `03_act3_arcaneformulae` | xpack Act-4 statics `static_*_l01c` + `03_act4_relics` + `03_act4_arcaneformulae` |
+| `levelEquationFile` | `c03` = `((avgPlayerLevel*1)/2.05)-12` (normal)<br>`e_c03` = `((avgPlayerLevel*1)/2.01)-23` (epic)<br>`l_c02` = `1*1` (legendary) | `containerlevelequation_all` = `1*1` on **all three** |
+| `goldGeneratorLevel` | 30 / 50 / 64 | 47 / 69 / 88 |
+
+The level-equation row is the one that is easy to miss and matters most: on Normal and Epic,
+Leinth's chest **divides the player's level** before rolling, so her items were held down to the
+Act-3 band by construction. Her Legendary chest was already on the uncapped `1*1`. Corroboration
+that `1*1` is the uncapped top-band form and not "item level 1": **all twelve** `l_*`
+(legendary-band) equations in the database are `1*1`, and `containerlevelequation_all` is used by
+**366** containers including every one of our own SVC boss hoards (Charon/Dorus/Ephialtes/
+Obsidian/Tantalus), the DRX hidden blood-cave chests and the base-game hero chests.
+
+So before round 2: orb04's individual items were higher item-level, Leinth's were lower-tier but
+~3.25x more numerous and ~2x more unique-weighted. **Each side won a different axis, which is
+exactly why Will's instruction is to combine them rather than pick one.**
 
 **Whole-kill context, so the champions are not misrepresented:** they have ELEVEN live equipment
 slots (~9.68 expected equipment items including their 100% souls per R-48, the Devourer's
@@ -80,13 +106,35 @@ guaranteed `crimsonverdict` and a guaranteed Misc4); Leinth has TWO (`chanceToEq
 Leinth still out-rewards them overall, and the entire gap lives in the orb/chest. That is exactly
 the thing the report pointed at.
 
-### The constraint that shaped the fix
+### The two constraints that shaped the fix
 
-`genericbossorb_04` is shared by **TWENTY-ONE** boss records (Sarkoth, Vashkarr, Bloodcrow,
+**(1) `genericbossorb_04` is shared by TWENTY-ONE boss records** (Sarkoth, Vashkarr, Bloodcrow,
 Voranthys, Broodmother, Enslaver, Gorrahk, Ilsevar, Dagon, Ephialtes, Mnemophage-core, Antaeus,
 Polis Gaoler, Deep Thresher, Meglograi, bloodcrow_soul, Dorus, Tantalus, Hades Marshal,
 Helepolis, Devourer). Editing it in place would silently buff twenty-one encounters and rewrite
-the mod's whole endgame economy. Rejected.
+the mod's whole endgame economy. Rejected, exactly as the brief required.
+
+**(2) SOLE-OWNERSHIP OF LEINTH'S CHEST - VERIFIED, and this is the fact the brief asked me to
+check and state.** The brief permitted upgrading `bosschestproxy_leinth` in place *if it is
+referenced only by her*. Scanning **every field of all 51,085 records** (not just
+`treasureProxyName` - a field-scoped scan would not be a proof) finds **EXACTLY THREE**
+references, and all three are Leinth's own variants:
+
+```
+records\drxcreatures\bloodwitch\q_leinth_47.dbr   treasureProxyName
+records\drxcreatures\bloodwitch\q_leinth_49.dbr   treasureProxyName
+records\drxcreatures\bloodwitch\q_leinth_50.dbr   treasureProxyName
+TOTAL references: 3  (distinct records: 3)
+```
+
+**She solely owns her chain, so the in-place upgrade is authorised and its blast radius is
+provably zero.** `apply()` re-runs this same whole-database scan on the live db every build and
+refuses to touch her chain if the referrer set is ever anything other than those three, so a
+future record that starts consuming her chest cannot be silently swept into the upgrade.
+
+That proof is also what makes in-place the *better* option than repointing her at the generic
+orb: repointing would have destroyed her "Leinth's Essense" name and her chest mesh for zero
+mechanical gain, and would have broken R-71's "her bespoke chest survives" assertion.
 
 ### What shipped
 
@@ -107,11 +155,69 @@ the mod's whole endgame economy. Rejected.
    record itself by matching the `unique` namespace in `lootNNameM`, never by hard-coded slot
    numbers, so an upstream table reshuffle cannot silently move the edit onto a static entry).
 
-2 CHANGED fields: `treasureProxyName` on `um_toxeus_enslaver_99` and `um_bloodtoxeus_99`.
+**8 CHANGED fields across 5 pre-existing records - and nothing else in 51,085:**
 
-**Result:** champion orb goes from ~5.7 to ~18.5 expected items at 1P (Leinth's figure) and from
-~3.1% to ~5.7% unique share (Leinth's figure), while KEEPING its strictly better Act-4 item pool
-and gold level 88. **Leinth's own chest is UNCHANGED** (explicit instruction, asserted in apply()).
+| record | field(s) | before -> after |
+|---|---|---|
+| `um_toxeus_enslaver_99` | `treasureProxyName` | `genericbossorb_04` -> `genericbossorb_05` |
+| `um_bloodtoxeus_99` | `treasureProxyName` | `genericbossorb_04` -> `genericbossorb_05` |
+| `bosschest_leinth_01_normal` | `tables` / `levelEquationFile` | `loottable_leinth_29-31` -> `svc_uberorb_apex_n01c` / `c03` -> `containerlevelequation_all` |
+| `bosschest_leinth_02_epic` | `tables` / `levelEquationFile` | `loottable_leinth_49-51` -> `svc_uberorb_apex_e01c` / `e_c03` -> `containerlevelequation_all` |
+| `bosschest_leinth_03_legendary` | `tables` / `levelEquationFile` | `loottable_leinth_63-65` -> `svc_uberorb_apex_l01c` / `l_c02` -> `containerlevelequation_all` |
+
+Leinth's THREE MONSTER RECORDS ARE NOT TOUCHED. Her `treasureProxyName` still names her own
+`bosschestproxy_leinth`, so R-71's "her bespoke chest survives" assertion in
+`tools/patches/leinth_wave.py` stays green by construction rather than by coincidence.
+
+### What Leinth deliberately KEEPS, and why
+
+| field | value kept | why |
+|---|---|---|
+| `mesh` / `scale` | `DRX\meshes\leinth_chest.msh` / 1.2 | her bespoke player-visible identity |
+| `description` | `tagLeinthChest` = "Leinth's Essense" | same; and R-47 forbids AUTHORING new bespoke essences, not keeping hers |
+| `goldGenerator` | `typhongoldgenerator` | it is **RICHER** than the champions' `bossgoldgenerator`: `(L^1.6)*48` vs `(L^1.6)*24`. Switching her to theirs would have been a **gold NERF**. She keeps hers AND inherits the higher `goldGeneratorLevel` from the shared table |
+| `LockedClassification` | still absent | not an item-tier field, and inert while `locked = 0` (which every consumer, orb04's own chests included, carries). Adding an untested lock field to a boss chest is pure downside |
+
+### RESULT - the calibre table (computed from the built arz, at 1 player)
+
+| monster | expected items | expected uniques | gold level | level equation | item pool |
+|---|---|---|---|---|---|
+| **Enslaver of Souls** | 5.70 -> **21.16** (3.71x) | 0.174 -> **1.165** | 47/69/88 (kept) | uncapped (kept) | Act-4 (kept) |
+| **Devourer of Blood** | 5.70 -> **21.16** (3.71x) | 0.174 -> **1.165** | 47/69/88 (kept) | uncapped (kept) | Act-4 (kept) |
+| **Leinth** x3 variants | 18.51 -> **21.16** (1.14x) | 0.913/1.094 -> **1.165** | 30/50/64 -> **47/69/88** | `c03`/`e_c03`/`l_c02` -> **uncapped** | Act-3 63-65 -> **Act-4** |
+
+At 6 players every figure scales by the same equation: 15.62 -> 57.96 for the champions,
+50.72 -> 57.96 for Leinth.
+
+**TABLE IDENTITY CHECK - the point of the whole exercise:** on each of the three difficulties all
+FIVE monster records resolve to the SAME loot table.
+
+```
+normal     IDENTICAL  svc_uberorb_apex_n01c.dbr  <- Enslaver, Devourer, q_leinth_47/49/50
+epic       IDENTICAL  svc_uberorb_apex_e01c.dbr  <- Enslaver, Devourer, q_leinth_47/49/50
+legendary  IDENTICAL  svc_uberorb_apex_l01c.dbr  <- Enslaver, Devourer, q_leinth_47/49/50
+```
+
+**ONE HONEST DOWN-TICK, stated because it is the only one:** Leinth's unique *share* dips from
+5.91% to 5.51% on Epic and Legendary (on Normal it RISES, 4.93% -> 5.51%). That is a ratio, not a
+reward: because the drop is larger overall, her expected *count* of uniques goes UP on every
+difficulty (1.094 -> 1.165 at 1P; 2.996 -> 3.192 at 6P), and they are now Act-4 uniques instead of
+Act-3 uniques. She is up on absolute uniques, up on unique tier, up on items, up on gold, and up
+on item level. There is no axis on which she is worse off.
+
+**The no-nerf claim is COMPUTED, not asserted.** `apply()` refuses to move her at all unless the
+apex table beats her original on all six loot-group chances, both spawn multipliers and
+`goldGeneratorLevel`, and `verify()` recomputes the same proof on the final merged arz. Measured,
+identical on all three difficulties:
+
+```
+g1 12.5->13.0 OK | g2 25.0->32.0 OK | g3 0.0->10.0 OK
+g4 100.0->100.0 OK | g5 25.0->32.0 OK | g6 12.5->13.0 OK
+```
+
+Her three original loot tables (`loottable_leinth_{29-31,49-51,63-65}`) are deliberately LEFT IN
+THE DATABASE, byte-unchanged. Nothing of hers is retired (retirement protocol), and they are what
+the gate reads as the live no-nerf reference.
 
 ### R-48 is untouched and untouchable here
 
@@ -333,8 +439,8 @@ via `Condition_KillAllCreaturesFromProxy -> Action_ShowNpc + Action_BoatDialog`.
 
 | gate | what it fails the build on | planted negative test |
 |---|---|---|
-| `tools/patches/uber_apex_orb.py::apply` | orb04 chain moved; consumers changed by anything other than the 2 champions; R-48 soul wiring moved; Leinth's chest tables moved | (in-apply, fail-loud) |
-| `tools/patches/uber_apex_orb.py::verify` | not exactly 2 orb05 carriers; broken orb05 chain on any difficulty; any of the 4 knobs below Leinth's; orb04 stripped of its other consumers; R-48 below 100 | `tools/debug/negtest_uber_apex_orb.py` (10 subtests) |
+| `tools/patches/uber_apex_orb.py::apply` | Leinth's chest chain gaining ANY referrer other than her 3 variants (whole-db sole-ownership re-proof); the apex table failing the no-nerf proof against her originals; orb04 chain moved; consumers changed by anything other than the 2 champions; R-48 soul wiring moved; her originals edited; her proxy/pools/monster records moved; her chests changing any field other than the 2 intended | (in-apply, fail-loud) |
+| `tools/patches/uber_apex_orb.py::verify` | not exactly 2 orb05 carriers; broken orb05 chain on any difficulty; any of the 4 knobs below Leinth's originals; orb04 stripped of its other consumers; R-48 below 100; **any Leinth chest not on the shared apex table + level equation**; **her mesh / "Leinth's Essense" tag / richer gold generator lost**; **a Leinth variant repointed off her own proxy**; **the computed no-nerf proof failing on any of the 6 loot groups x 3 difficulties** | `tools/debug/negtest_uber_apex_orb.py` (**16 subtests**, 6 of them the Leinth half) |
 | `tools/patches/leinth_wave.py::apply` | any loot/drop field on the 3 variants moved; a kit slot or cast mechanism already occupied | (in-apply, fail-loud) |
 | `tools/patches/leinth_wave.py::verify` | any stat target moved; poison weakness changed; a new skill at level 0 or unwired; a summon without a finite TTL or with a big petLimit; a drop field moved; she out-stats the Enslaver; she reaches uber charLevel | `tools/debug/negtest_leinth_wave.py` (12 subtests) |
 | contract `QST-LEINTH-EXIT` (`tools/contracts/contracts_quests.py`) | any Leinth-death trigger missing part of the exit action set; exit actions pointing at the wrong NPC; the offer tag regressed; the primary back to one-shot; a missing per-variant fallback | `tools/contracts/tests_quests_negative.py::test_leinth_exit` (6 subtests) |
@@ -353,7 +459,126 @@ Neither failure ever reached an artifact: both aborted before the `.arz` was wri
 
 ---
 
-## 4b. BUILD, PROOFS AND DEPLOY
+## 4a. ROUND 2 BUILD, PROOFS AND DEPLOY (the shipped state)
+
+`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, built from this branch. **Build exit 0** with the whole
+fail-loud battery green.
+
+| artifact | md5 | note |
+|---|---|---|
+| baseline `SoulvizierClassic.arz` (`main` build = the brief's ground truth) | `1c27d5fa650b5c076696db4ad379672f` | 51,085 records |
+| **round-2 `SoulvizierClassic.arz`** | **`9f98e3e88bca20f96bacc2fd6bb87b63`** | 51,098 records, 55,429,716 B |
+| round-1 arz (superseded) | `0d861748df91442ab860995cdea243eb` | kept for the diff trail |
+| `uber_soul_tags.txt` (build-emitted) | `c89194fc6f3427cf25712ad8ee6af5fc` | **byte-identical to round 1** - PART A adds zero tags |
+| `Text.arc` (rebuilt from that emitted file) | `ed31ec8407e59710d4ad28d5532e75ae` | **byte-identical to round 1 / to what is deployed** |
+| `Quests.arc` (PART C, unchanged in round 2) | `35bfe3f39e8480408e3c22ea5473f796` | |
+| `Levels.arc` BEFORE == AFTER (never touched) | `943d0ab9516d332db79bd7f9fd2d3ffe` | |
+
+**COUPLING SATISFIED WITH A PROOF, NOT AN ASSUMPTION.** The arz+Text pair was rebuilt together;
+because PART A authors no Text tag, the rebuilt `Text.arc` came out byte-identical to the deployed
+one. That is a stronger result than "Text unchanged, probably fine": the file was actually
+regenerated from the new build's own emitted tag stream and then hash-compared.
+
+**RECORD DIFF (baseline -> round-2 build): INTENDED-ONLY, zero collateral.**
+`ADDED 13 / REMOVED 0 / CHANGED 9` (22 differing records total).
+
+* **ADDED 13** = the 10 orb05 chain records + the 3 Leinth cult skills. Nothing else.
+* **CHANGED 9** = `um_toxeus_enslaver_99` (1 field), `um_bloodtoxeus_99` (1 field),
+  `q_leinth_{47,49,50}` (17 fields each, PART B), `leinth_summon_uglies` (3 fields, PART B), and
+  `bosschest_leinth_{01_normal,02_epic,03_legendary}` (**exactly 2 fields each**, PART A).
+* **COLLATERAL SENTINEL** (scans the whole diff for any `mesh` / `skin` / `baseTexture` / `bitmap`
+  / `fx` / `Effect` / `shroud` / `chanceToEquip` / `lootFinger` / `dropItems` / `treasureProxy`
+  field): the ONLY hits are the two intended `treasureProxyName` writes. **Not one FX, mesh, skin,
+  texture or soul-drop field moved anywhere in the roster.**
+
+**GATES**
+
+| gate | result |
+|---|---|
+| `uber_apex_orb.verify` on the final merged arz | **OK** |
+| `leinth_wave.verify` on the final merged arz | **OK** |
+| `negtest_uber_apex_orb.py` | **16/16** (was 10/10; +6 for the Leinth half) |
+| `negtest_leinth_wave.py` | **12/12** |
+| `tests_quests_negative.py` (incl. `QST-LEINTH-EXIT`) | **25/25** |
+| `validate_tags` | **PASS**, 362/362 referenced mod tags resolve |
+| patches-registry selfcheck | OK, 35 modules |
+
+**CONTRACT SUITE - 56 contracts, 5 modules, and this wave adds ZERO violations at ANY severity.**
+Run over the round-2 arz + round-2 Text + the deployed Quests + the deployed (unchanged) Levels +
+the full deployed Resources dir:
+
+| domain | contracts | P0 | P1 | P2 |
+|---|---|---|---|---|
+| map | 18 | 0 | 0 | 3 |
+| quests | 9 | 0 | 0 | 2 |
+| resources | 6 | 0 | 0 | 4815 |
+| souls | 10 | 0 | 0 | 0 |
+| summons | 13 | 0 | 0 | 112 |
+| **TOTAL** | **56** | **0** | **0** | **4932** |
+
+`GATE: PASS`. **The baseline comparison is the load-bearing part:** the IDENTICAL configuration
+run against the BASELINE arz (`1c27d5fa`) + the pre-wave `Text.arc` (`fcca4927`) yields **exactly
+`0 P0 / 0 P1 / 4932 P2`** as well. So the count is provably unchanged and this wave introduced
+nothing.
+
+> NOTE ON THE ROUND-1 "1252 resources P1" FIGURE: that number came from a run where the mod
+> `Resources` directory was not reachable, so 1252 assets could not be resolved. Pointing
+> `--resource-arc-dir` at the real deployed `Resources` folder resolves them and the P1 count is
+> 0 on BOTH the baseline and this build. The pre-existing debt is P2-class, not P1.
+
+### DEPLOYED to DEV
+
+Coupled **arz + Text**; `Quests.arc` was already the b94 one from round 1 (PART C is unchanged in
+round 2) and `Levels.arc` was never touched.
+
+| deployed artifact | md5 | verdict |
+|---|---|---|
+| `Database/SoulvizierClassicDEV.arz` | `9f98e3e88bca20f96bacc2fd6bb87b63` | **== built** |
+| `Resources/Text.arc` | `ed31ec8407e59710d4ad28d5532e75ae` | **== built** (coupled pair) |
+| `Resources/Quests.arc` | `35bfe3f39e8480408e3c22ea5473f796` | **UNCHANGED** (== the pre-deploy backup) |
+| `Resources/Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **UNTOUCHED** (mtime still 2026-07-27 16:48, predating this wave) |
+
+Backups taken before the deploy: `local/db_backups/SoulvizierClassicDEV_pre-b94r2_f3015aa3.arz`,
+`local/db_backups/DEV_Text_pre-b94r2_ed31ec84.arc`,
+`local/db_backups/DEV_Quests_pre-b94r2_35bfe3f3.arc`.
+
+**DEPLOYED RE-PROBE** (gates re-run against the bytes actually on disk, not against the build):
+`uber_apex_orb.verify` **OK** and `leinth_wave.verify` **OK** on the deployed `.arz`;
+`validate_tags` **PASS** on the deployed arz + deployed Text; all six new Leinth skill tags read
+back out of the deployed `Text.arc` with their real strings ("Crimson Tithe", "Choir of the
+Bloodborn", "Sanguine Mire" + descriptions).
+
+### ⚠️ TWO DEPLOY CAVEATS WILL MUST READ
+
+**(1) TQ.exe WAS RUNNING at deploy time.** I am not permitted to kill TQ or Steam, so I could not
+apply the standing restart-before-test rule myself. The write landed (hash-verified above), but
+the running game still holds the OLD database in memory. **Will must fully quit TQ and Steam and
+restart before testing anything in this wave.** Test the exit portal on a character/difficulty
+whose boss room has NOT already been cleared.
+
+**(2) THE `fix/green-diff` LANE'S DEV MESH WORK WAS REVERTED BY THIS DEPLOY, AGAIN.** The DEV arz
+on disk beforehand (`f3015aa3`) was round 1's b94 build PLUS that parallel lane's mesh swap, which
+has since iterated to `GoldenSkeleton01.msh` on **15** records:
+
+```
+um_toxeus_enslaver_99 / um_bloodtoxeus_99
+q_bloodtoxeus_ambush / q_bloodtoxeus_lone / q_enslaver_warband / q_yard_enslaver
+soulskills\pets\{bloodtoxeus,toxeus_enslaver,toxeus_eoat}_{1,2,3}
+   deployed-before = Creatures\Monster\Skeleton\GoldenSkeleton01.msh
+   main / this build = Creatures\Monster\Skeleton\RevenantPoison.msh
+```
+
+**This wave's code touches no mesh or FX field whatsoever** (the collateral sentinel above proves
+it), but any arz built from `main` necessarily reverts those 15 fields, and mine did. I did NOT
+hand-compose an arz that merges both lanes, because the brief requires `deployed == built` and the
+repo's own law requires builds to regenerate deterministically from committed code; a stitched
+artifact would satisfy neither. **The remedy is merge order, not a code change:** merge
+`fix/green-diff` and `feat/leinth-wave` and rebuild once, and both lands together. One-file restore
+of the pre-deploy DEV arz is `local/db_backups/SoulvizierClassicDEV_pre-b94r2_f3015aa3.arz`.
+
+---
+
+## 4b. ROUND 1 BUILD, PROOFS AND DEPLOY (historical - superseded by 4a)
 
 See the `BUILD55-DEV GATE RECORD` at the top of `docs/BACKLOG.md` for the full hash table, the
 record diff, the contract results and the deployed-vs-built verification. Two facts belong here
@@ -389,19 +614,24 @@ preserved verbatim at
 
 ## 5. OPEN WILL QUESTIONS (carried, not assumed)
 
-1. **ORB CALIBRE EXACTNESS.** "Same calibre" is implemented as **same VOLUME on a BETTER item
-   pool** (Leinth's four knobs laid on the champions' existing Act-4 tables at gold level 88). The
-   alternative reading, strictly identical to Leinth, would DOWN-tier the champions to the Act-3
-   63-65 band. Not recommended. Confirm the reading.
-2. **R-47 AMENDMENT.** A new un-named generic tier `genericbossorb_05` shared by both champions
-   keeps R-47's substance but adds a tier the ruling does not mention. The alternative (edit
-   `genericbossorb_04` in place) silently buffs 21 bosses. Confirm the new tier.
-3. **SHOULD LEINTH ALSO GET AN ORB?** She has no `genericbossorb` today: her bespoke DRX chest IS
-   her orb, and it is literally named "Leinth's Essense". Left exactly as-is (the instruction was
-   not to nerf her). Hang an orb on her as well, or leave it?
+> Round 2 CLOSED the first three. They are kept here, struck through, so the record shows how they
+> were answered rather than silently vanishing.
+
+1. ~~**ORB CALIBRE EXACTNESS.**~~ **ANSWERED by Will's 2026-07-27 decision.** Not "same volume on a
+   better pool for the champions only" - ONE apex calibre combining Leinth's generosity with the
+   champions' tier, given to all three. Implemented; see PART A.
+2. ~~**R-47 AMENDMENT.**~~ **RESOLVED without needing one.** The new tier is still un-named,
+   generic and shared, and Leinth's pre-existing bespoke essence is re-tiered rather than authored,
+   so R-47's prohibition (on AUTHORING bespoke essences per boss) is never engaged. Ledgered as
+   R-73 with the reconciliation spelled out. Editing `genericbossorb_04` in place stays rejected
+   (21 bosses).
+3. ~~**SHOULD LEINTH ALSO GET AN ORB?**~~ **ANSWERED: yes, she is included** - but by re-tiering
+   her own chest rather than hanging a generic orb on her, which is strictly better for her
+   (identity kept, richer gold generator kept, same item calibre as the champions). Sole-ownership
+   was verified first, exactly as the brief required.
 4. **THE TWO STAGED POISON RIGS.** `cerberus_acidpuddle_summon` / `cerberus_acidpuddle_attack` sit
    unused in her OWN folder. Rejected as off-identity (poison, on the one poison-weak boss). Use
-   them anyway?
+   them anyway? **STILL OPEN.**
 5. **HOW MUCH STRONGER.** Shipped ~1.6x life + physical 10->35 / pierce 20->45 + three abilities
    (roughly 2-2.5x time-to-kill for a physical build, ~1.6x for a caster). She was deliberately NOT
    pushed to uber tier. Right target?
