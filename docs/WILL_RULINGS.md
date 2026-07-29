@@ -880,3 +880,33 @@ shipped). **R-10** and **R-16** were re-read and are correctly PENDING as writte
 
 **RETIREMENT PROTOCOL:** nothing was deleted, retired, or dropped in this pass. Every superseded /
 renumbered record is still present with a pointer to its replacement.
+
+---
+
+## R-98 [2026-07-29] PENDING - the Hunt is exactly 5x the Enslaver in the pools they share
+
+**WILL, VERBATIM (do not paraphrase this into the implementation):**
+
+> "Make the hunt be 5 times as likely to appear than the enslaver in the areas that they share. do not
+> adjust the enslaver spawn rates, adjust the hunt spawn rate accordingly. the enslaver spawn rate is
+> appropriate currently based on my playthroughs of the game so far"
+
+**SCOPE:** `um_toxeus_hunt_99` (and its Legendary endless variant where it shares a pool) versus the roaming
+`um_toxeus_enslaver_99`, in the pools that carry BOTH. b98 measured that set as **63 pools** and measured the
+current ratio at **48-53x in the Hunt's favour**, filed as `BL-b98-DEBT-11`. Target is **5x**, so this is
+roughly a 10x reduction of the Hunt - the real factor must be DERIVED from the built bytes, not assumed.
+
+**THE ENSLAVER IS FROZEN.** R-18 already forbade changing his rate; Will has now re-affirmed it and given the
+reason (his own playthroughs). Any write to an Enslaver weight fails this ruling. Move the Hunt only.
+
+**KNOWN COLLISION, to be resolved with measurement rather than preference:** R-96 gates the build on the Hunt
+producing "roughly one sighting per act" (b98: Act IV 0.955 / Act V 1.034 / full pass 1.989 at p_slot 1/1250).
+Lowering the Hunt in the shared pools pushes on that figure. Will's wording scopes this ruling to "the areas
+that they share", so the shared-pools-only reading is the default, and because the shared set is a minority of
+the Hunt's 346 pools the two rulings may well both hold - but that must be MEASURED both ways before anything
+is changed. **The R-96 gate must not be loosened to accommodate this change.** A gate relaxed to fit the change
+it exists to catch is worthless. If the two genuinely cannot both hold, that is a WILL DECISION with numbers
+attached, not an implementer's judgement call.
+
+**STATUS:** PENDING. Design brief written and ready to run; not implemented. Deliberately NOT started on
+2026-07-29 because the weekly model budget was at 95% and a half-finished rate change is worse than none.
