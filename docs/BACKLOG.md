@@ -1,5 +1,97 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD65-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 4: INTEGRATION ONTO POST-b99 MAIN (2026-07-29, branch `feat/endless-hunt`, tag `build65-dev`)
+
+**NOT DEPLOYED.** This lane wrote nothing to `CustomMaps\SoulvizierClassicDEV`; re-hashed at the end,
+that arz is `9cdb9ebaa0d277f5001b629a276a05d3` (written 08:28 by a third lane - see DRIFT below).
+Artifacts for the orchestrator's merged deploy, superseding every earlier b98 round:
+- arz `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **4378b617fefb2014e382bb5931e7d605** (51,108 records)
+- Text `.claude/worktrees/endless-hunt/work/text/Text.arc` md5 **c33b6abe3d61559785ee00ab3280a765**
+  (COUPLED - the arz references `tagSVCwpnRunbreaker` + seven `tagSVCHunt*` tags; never ship one
+  without the other)
+- `Levels.arc` / `Quests.arc` **untouched** - DB-only lane, zero map bytes.
+
+> ⚠️ **THE ROUND 1/2/3 ARTIFACTS ARE NOW POISON. DO NOT DEPLOY THEM.** `c366b410`, `6be6fb0a` and
+> `33c102cb` were all built on the pre-b99 base `a0276ab`; dropping any of them on the deployed base
+> would delete `summon_sargoth` + `pets\sargoth_{1,2,3}` and revert 346 other xpack records.
+
+**TAG:** briefed `build59-dev`, long taken. Rounds 1-3 took build60/61/63-dev, `build62-dev` went to
+the b99 wave and `build64-dev` to b94, so round 4 takes **build65-dev**. A tag in use is never
+reassigned.
+
+**WHAT ROUND 4 IS.** Round 3 was vetted **NO-GO on integration state, not on content** - the vet
+rebuilt HEAD from a clean detached worktree, reproduced the lane's md5 exactly, ran all 39 patch
+gates green, decoded the arz with an independent reader and could not break a load-bearing claim.
+Round 4 fixes the base and the four findings raised alongside it. Nothing from rounds 1-3 was
+reversed. Full detail: `docs/reports/b98_endless_hunt.md` section 14.
+
+1. **STALE BASE (blocker) - FIXED.** Rebased `a0276ab` -> `38e7a25` (b99), four commits, four
+   conflicts, all hand-resolved. The registry collision (b95 `sargoth_soul_summon` vs b98's two
+   modules, both claiming the slot before `toxeus_souls_100`) was resolved by DERIVING the order from
+   both sides' stated constraints, not by concatenating them. `git diff 78d4d6f <rebased>` over the
+   eight b98-owned tool files shows changes in exactly ONE, `verify_soul_drop_rates.py`, and those
+   are b99's own 56 added lines - nothing this lane wrote moved.
+   Cross-lane interaction CHECKED: b97's roster-wide `soul_identity` gate meets b98's new endless
+   variant (a clone of the Hunt, hence a second carrier of `toxeus_hunt_soul`) and passes, because
+   identity is judged on DISPLAY NAMES and the variant is the same named creature. Read out of the
+   build log, not inferred.
+2. **R-80 COLLISION (blocker) - RESOLVED.** b99 is the incumbent (on main, deployed), so its R-80 and
+   its 80-89 decade stand; b98's seven rulings moved to the fresh Toxeus overflow decade **90-99**.
+   202 occurrences across 12 files, rewriting ONLY lines this branch added, so b99's own citations in
+   `death_xp_penalty.py`, `contracts_balance.py`, `tests_balance_negative.py` and the b93/b99 reports
+   are byte-untouched. 90-99 was re-checked free against main AND both in-flight branches
+   (`feat/leinth-wave` holds R-73..R-76, `fix/green-diff` up to R-71).
+   🔎 **AND THE BYTE-IDENTITY CHECK FAILED, CORRECTLY.** The vet predicted the renumber-only rebuild
+   would be byte-identical because "no record, field, gate or built byte keys off a ruling number".
+   It is not: `347a100c` -> `7f15b6a6`, a delta of exactly **1 record / 1 field / 0 dtype changes** -
+   `controller_toxeus_hunt_endless.dbr`'s `FileDescription` carries the ruling number as provenance.
+   The corrected number was KEPT (a stale `R-80` would point at b99's death-XP ruling), and a NEW
+   GATE now parses `docs/WILL_RULINGS.md` and fails if any ruling cited in a BUILT string is dead or
+   no longer this lane's. Two planted negatives, both caught.
+3. **SHROUD SHAPE (medium) - FIXED.** The new CharFxPak kept the 343 weapon-enchantment donor's
+   `'R Hand';'L Hand'` pair, so the Enslaver smoked from two FISTS while his marauders smoke from the
+   whole BODY. Will asked for "the same black shroud smoke his summoned demons have"; same means
+   shape too. The pak now mirrors the demons' exactly (one emitter, NO attach points) and `verify()`
+   DERIVES that from the demons' live record so the two cannot drift. Convention measured first: 248
+   of 294 `charFxPakSelfNames` references point at attach-free paks. Negatives 6 -> **10/10**.
+4. **"RAREST MEMBER OF EVERY POOL" (medium) - CORRECTED, NOT FIXED.** False in **63 of 346** pools:
+   `um_toxeus_enslaver_99` rides them at the old flat weight 1, so the Hunt at ~1/1,250 is now
+   **48-53x MORE common than the Enslaver** in every pool they share. Corrected in the module
+   comment, the ledger and the report. NOT fixed - a rate change on the Enslaver is Will's under
+   R-18. New `BL-b98-DEBT-11` + Will question 9.
+5. **R-93 STATUS (medium) - CORRECTED.** The "three different creatures" half is 1/3 done - the
+   Enslaver and the Devourer both wear `RevenantPoison.msh`. R-93 now reads **PARTIALLY IMPLEMENTED,
+   REMAINDER OPEN**; R-95 reads **IMPLEMENTED-IN-DATA, IN-GAME LOOK NOT CONFIRMED**.
+6. **SIGHTINGS GATE (low) - ADDED.** The p_slot invariant was gated; the number Will approved was
+   not. The 797-placement census is now machine-readable and a gate RE-DERIVES E[sightings] from it,
+   failing outside the "roughly one per act" band (0.70, 1.40). Reproduces exactly: Act IV 0.955 /
+   Act V 1.034 / pass 1.989. Retuning the constant 10x either way reds the build (both tested). The
+   census is also STAMPED with the Levels.arc it was measured on and compared against any reachable
+   one, loud-but-not-fatal by default (`SVC_CENSUS_STRICT=1` makes it fatal).
+
+**VERIFICATION (round 4, all re-run - not carried over):** DB build PASS exit 0 with
+`SVC_REQUIRE_GATES=1` (the A9 render-chain + F2 summons gates now RUN rather than skip, because
+`Resources` was staged beside the output); registry **42 modules OK** order `9867e2906fef`, all 33
+`verify()` hooks green; **planted negatives 40/40**; record diff vs a freshly built post-b99 `main`
+(`f6cd8698`) = **15 ADDED / 0 REMOVED / 352 CHANGED** (345 = the single R-96 `weightN` per pool, 7 =
+the intended targets), **0 dtype flips**; contract suite 6 domains **0 P0 / 0 P1 / 4,737 P2** with
+**every one of the 11 reporting contracts at delta 0** vs that same baseline; `validate_tags` PASS
+(427/427).
+
+**LEDGER:** `docs/WILL_RULINGS.md` R-90..R-96 (renumbered from R-80..R-86), with correction blocks
+appended to R-93, R-95 and R-96 and a corrected decade header. No ruling's CONTENT changed.
+
+**🚨 DRIFT, TWICE, UNDER THIS LANE.** The deployed DEV arz was `9f98e3e8` when the lane started,
+`f6cd8698` when b99 deployed at 07:12, and is **`9cdb9eba`** as of 08:28 - a third value from a lane
+that is neither b98 nor b99. `Levels.arc` there is unchanged (`943d0ab9`). Separately, the Levels.arc
+STAGED in `work/` is `fc0adcc0` and does NOT match the deployed one - registered as
+`BL-b98-DEBT-12`. Re-read the deploy target before trusting any hash in any b98 document.
+
+**OPEN DEBT:** BL-b98-DEBT-1, -2, -3, -4, -6, -7, -8, -9, -10 (unchanged) plus the two new items
+**BL-b98-DEBT-11** (Enslaver ~50x rarer than the Hunt) and **BL-b98-DEBT-12** (staged vs deployed
+Levels.arc; the census is hand-measured). BL-b98-DEBT-5 and BL-b90-DEBT-4 stay CLOSED.
+
 ## BUILD62-DEV GATE RECORD - b99 CONTENT INTEGRATION WAVE round 1: four vetted lanes merged, ONE build, ONE coupled deploy (2026-07-29, branch `integration/content-wave`, tag `build62-dev`)
 
 > ⚠️ **TAG DEVIATION:** the brief asked for `build60-dev`. That tag, **and `build61-dev`**, were
@@ -893,6 +985,23 @@ are folded in above and in R-93/R-94.
   roaming Legendary Hunt is still kiteable. Only the fixed Hades Palace encounter is endless. The
   alternative (a parallel ~345-proxy Legendary set) is large and invasive and was not taken.
 - `BL-b90-DEBT-4` **CLOSED** by R-91.
+- `BL-b98-DEBT-11` **NEW (round 4), NEEDS WILL - WILL-VETO under R-18.** R-96 normalised the HUNT's
+  roaming weight only. In the **63 of 346** pools they share, `um_toxeus_enslaver_99` is still on the
+  OLD flat weight 1 (p_slot 1/60,049..1/66,054), so the Endless Hunt at ~1/1,250 is now **48-53x MORE
+  common than the Enslaver**. Measured off the built arz; the "rarer" members of the other 283 pools
+  are all weight-0 inert rows (0 live). Nothing is broken, but the apex champion now appears ~50x
+  more often than the champion he is meant to stand beside, and round 3's incorrect "still the rarest
+  member of every pool" line closed that question off instead of raising it. Owner/trigger: Will -
+  leave it, or bring the Enslaver's sweep up to match. This lane did NOT touch his rate.
+- `BL-b98-DEBT-12` **NEW (round 4), MAP-LANE OWNED.** Two related facts, both found by the new census
+  stamp gate. (a) The `Levels.arc` STAGED in `work/` is `fc0adcc0713839a685b32d6e122653be` while the
+  `Levels.arc` DEPLOYED to `CustomMaps\SoulvizierClassicDEV` is `943d0ab9516d332db79bd7f9fd2d3ffe` -
+  the staged map and the deployed map are not the same file. b98 touches no map bytes and its census
+  was measured on the DEPLOYED map (which is what ships), so no b98 number is affected, but the
+  divergence is real. (b) The 797-placement census behind the "one sighting per act" figure is still
+  measured BY HAND (`py tools/debug/census_placements.py <Levels.arc> --dbr um_toxeus_hunt_99`); the
+  gate now re-derives the sightings figure and stamps the map, so a stale census cannot pass
+  silently, but it cannot re-census itself. Owner: whoever owns the map lane.
 
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 

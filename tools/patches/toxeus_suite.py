@@ -190,14 +190,129 @@ _LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # the whole IT proxy name
 #   BEFORE (flat weight 1): 0.0368 per pass = one sighting per 27 playthroughs, which is why
 #   Will met him once on Epic and never on Normal. He was never Legendary-gated; he was rare.
 #
-# HE IS STILL THE RAREST THING IN EVERY POOL: at 1/1250 his slot weight is 29..528 (median 53)
-# against native members carrying 18,000 each. Near-mythical, but no longer effectively invisible.
+# HE IS FAR RARER THAN THE NATIVES: at 1/1250 his slot weight is 29..528 (median 53) against
+# native members carrying 18,000 each. Near-mythical, but no longer effectively invisible.
+#
+# ⚠️ CORRECTION (round 4, 2026-07-29). Rounds 3 said "still the rarest member of EVERY pool". That
+# is FALSE and was caught by the adversarial vet, then re-measured here off the built arz: in
+# **63 of the 346** pools he rides, `um_toxeus_enslaver_99` is also a member and is still on the OLD
+# FLAT scheme at weight 1, i.e. p_slot 1/60,049..1/66,054 against the Hunt's normalised ~1/1,250.
+# In every pool they share, the HUNT IS NOW ~48-53x MORE COMMON THAN THE ENSLAVER. (The other
+# "rarer" rows are weight-0 inert members - checked, 0 of them live.) Nothing is broken by this;
+# R-96 normalised the Hunt only, and the Enslaver's own sweep rate is WILL-VETO under R-18 so this
+# lane must not touch it. But it is a DESIGN QUESTION for Will, registered as BL-b98-DEBT-11: the
+# apex Hunt now appears ~50x more often than the champion he is meant to sit alongside.
 _LS_TARGET_P_SLOT = 1.0 / 1250.0
 
 # Gate tolerance. Weights are integers, so a pool's realised p_slot cannot land exactly on the
 # target; the rounding error is largest in the poorest pools (36,000 -> weight 29). +/-4% covers
 # integer rounding with margin and still catches a real mistuning.
 _LS_P_SLOT_TOL = 0.04
+
+# ── THE CENSUS THE SIGHTINGS FIGURE RESTS ON (round 4: made machine-readable + gated) ────────
+# Rounds 3 carried the placement census as PROSE in the comment above and nothing re-derived the
+# headline "one sighting per act" from it. The p_slot invariant was gated; the number Will actually
+# approved was not. So if the world ever changed, p_slot would stay green while the sightings claim
+# went quietly stale. These constants close that: the gate below recomputes E[sightings] from them
+# and fails if it leaves the band the ruling names.
+#
+# EFFECTIVE MAIN DRAWS per act over a full pass at 1 player = SUM over that act's placements of the
+# pool's k (k = (spawnMin+spawnMax)/2), measured 2026-07-28 against the SHIPPED world01.map.
+# 797 placements (Act IV 406 / Act V 391) -> 2,486 effective draws.
+_LS_CENSUS_DRAWS = {'IV': 1194, 'V': 1292}          # 2,486 total
+_LS_CENSUS_PLACEMENTS = {'IV': 406, 'V': 391}       # 797 total
+# The census is only valid for the map it was measured on. STAMP IT so a future map change cannot
+# silently invalidate the sightings claim. Re-measure with:
+#     py tools/debug/census_placements.py <Levels.arc> --dbr um_toxeus_hunt_99
+_LS_CENSUS_LEVELS_ARC_MD5 = '943d0ab9516d332db79bd7f9fd2d3ffe'
+# "roughly one sighting per act" (R-96), as a band a machine can check rather than a claim a human
+# has to re-read. Deliberately wide: the ruling is "roughly one", and Will chose it over both
+# "a few per act" and "leave him a rumour", so the band has to exclude BOTH of those neighbours.
+_LS_SIGHTINGS_BAND = (0.70, 1.40)
+
+
+def _ls_expected_sightings(p=None):
+    """E[sightings] per act and per full pass, re-derived from the census constants.
+
+    Model (report section 12.2): a placement contributes P(at least one) =
+    1 - (1-p)^k, not k*p, because pool main draws are with replacement and
+    limitN=1 caps the COUNT at one Hunt per pool per trigger. Aggregated over an
+    act's placements this is the act's effective-draw total against p."""
+    p = _LS_TARGET_P_SLOT if p is None else p
+    out = {}
+    for act, draws in _LS_CENSUS_DRAWS.items():
+        # 1-(1-p)^draws would model the whole act as ONE placement; the per-placement
+        # sum is what the report derives, and at p<<1 it is draws*p to <0.1%.
+        out[act] = draws * p
+    out['PASS'] = sum(out[a] for a in _LS_CENSUS_DRAWS)
+    return out
+
+
+def _ls_census_gate():
+    """R-96 SIGHTINGS GATE (round 4). Two legs, both new.
+
+    LEG 1 (hard): re-derive the sightings figure from _LS_TARGET_P_SLOT + the census
+    and require every act to land inside the band the ruling names. This is what makes
+    the constant retunable SAFELY - move it too far in either direction and the build
+    reds instead of quietly shipping a different design than the one Will approved.
+
+    LEG 2 (loud, not fatal): stamp WHICH Levels.arc the census was measured on and say
+    so in every build log. If a Levels.arc is resolvable and is not the stamped one, the
+    sightings claim does not apply to it and the log says exactly that, with the remedy.
+    It is not fatal because this is a DB-only build that does not own the map, and the
+    staged and deployed maps legitimately differ between waves - a red here would be a
+    false alarm about somebody else's artifact. SVC_CENSUS_STRICT=1 makes it fatal for
+    a map lane that wants the harder contract."""
+    import hashlib
+    import os
+
+    e = _ls_expected_sightings()
+    lo, hi = _LS_SIGHTINGS_BAND
+    bad = [a for a in _LS_CENSUS_DRAWS if not (lo <= e[a] <= hi)]
+    print(f"  [C] R-96 sightings re-derived from the census: "
+          f"Act IV {e['IV']:.3f} | Act V {e['V']:.3f} | full pass {e['PASS']:.3f} "
+          f"(p_slot 1/{1.0/_LS_TARGET_P_SLOT:.0f}, {sum(_LS_CENSUS_PLACEMENTS.values())} placements, "
+          f"{sum(_LS_CENSUS_DRAWS.values())} effective draws)")
+    if bad:
+        raise SystemExit(
+            f"R-96 SIGHTINGS GATE FAILED: act(s) {sorted(bad)} land outside the "
+            f"'roughly one sighting per act' band {_LS_SIGHTINGS_BAND} "
+            f"({ {a: round(e[a], 3) for a in sorted(_LS_CENSUS_DRAWS)} }). "
+            f"_LS_TARGET_P_SLOT is 1/{1.0/_LS_TARGET_P_SLOT:.0f}. Either retune it back "
+            f"inside the ruling or get a NEW ruling from Will - this is WILL-VETO class "
+            f"(R-18 precedent).")
+
+    cand = [os.environ.get('SVC_LEVELS_ARC')]
+    here = _Path(__file__).resolve().parents[2]
+    cand += [str(here / 'work' / 'SoulvizierClassic' / 'Resources' / 'Levels.arc'),
+             str(here / 'local' / 'Levels_merged.arc')]
+    seen = next((c for c in cand if c and os.path.isfile(c)), None)
+    print(f"  [C] R-96 census provenance: measured against Levels.arc "
+          f"{_LS_CENSUS_LEVELS_ARC_MD5} - the sightings figure above is valid for THAT map.")
+    if not seen:
+        print("      (no Levels.arc reachable from this DB-only build; stamp printed, not compared)")
+        return
+    h = hashlib.md5()
+    with open(seen, 'rb') as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b''):
+            h.update(chunk)
+    got = h.hexdigest()
+    if got == _LS_CENSUS_LEVELS_ARC_MD5:
+        print(f"      re-affirmed: {seen} matches the stamp.")
+        return
+    msg = (f"R-96 CENSUS STAMP MISMATCH: {seen} is {got}, the census was measured on "
+           f"{_LS_CENSUS_LEVELS_ARC_MD5}. The p_slot invariant is unaffected (it is per-pool "
+           f"and map-independent), but the '~1 sighting per act' figure is NOT proven for this "
+           f"map. NOTE this can be a STAGING artifact rather than a real world change - the "
+           f"map staged in work/ is not always the map that is deployed - so check WHICH of the "
+           f"two moved before assuming the census is stale. Re-measure with: "
+           f"py tools/debug/census_placements.py \"{seen}\" "
+           f"--dbr um_toxeus_hunt_99, then update _LS_CENSUS_DRAWS / _LS_CENSUS_PLACEMENTS / "
+           f"_LS_CENSUS_LEVELS_ARC_MD5 together.")
+    if os.environ.get('SVC_CENSUS_STRICT') == '1':
+        raise SystemExit(msg)
+    print("  ⚠ WARNING " + msg)
+
 
 _LS_SLOT_LIMIT = 1   # per-slot MAX-count cap on the Hunt's name slot (mirrors asp._EN_SWEEP_SLOT_LIMIT).
                      # Pool MAIN draws are independent WITH REPLACEMENT (proven: vanilla pools spawn more
@@ -766,6 +881,10 @@ def _verify_legendary_stalker_sweep(db, touched):
           f"the Hunt at the R-96 NORMALISED rate (every pool p_slot = 1/"
           f"{1.0/_LS_TARGET_P_SLOT:.0f} +/-{_LS_P_SLOT_TOL:.0%}, per-slot limit 1 = <=1 "
           f"Hunt/trigger); 0 non-IT / boss / quest / hero leaks; band [40,68,100].")
+    # ROUND 4: the p_slot invariant above is necessary but NOT sufficient - it says every
+    # pool is consistent, it says nothing about whether the resulting rate is the one Will
+    # ruled. This re-derives the headline number and stamps the map it came from.
+    _ls_census_gate()
 
 
 def _author_legendary_only_limit(db):

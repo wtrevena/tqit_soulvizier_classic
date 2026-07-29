@@ -249,6 +249,55 @@ def apply(db, tags):
     return tags
 
 
+#: records this module authors whose BUILT strings cite a ruling number, and the
+#: lane those rulings must still belong to. Keep this list honest: anything added
+#: here that puts an "R-nn" into a shipped field belongs on it.
+_CITING_RECORDS = (_VAR_CTRL,)
+_CITE_LANE = 'feat/endless-hunt'
+_CITE_FIELDS = ('FileDescription',)
+
+
+def _ruling_citation_problems(db):
+    """Every R-nn in a BUILT string of this module's records must resolve to a live
+    ruling in docs/WILL_RULINGS.md that is still attributed to this lane.
+
+    Catches the exact defect the round-4 renumber exposed: a citation left pointing
+    at a number that now belongs to somebody else's ruling."""
+    import re as _re2
+    problems = []
+    ledger = _Path(__file__).resolve().parents[2] / 'docs' / 'WILL_RULINGS.md'
+    if not ledger.is_file():
+        return ["ruling-citation gate cannot run: %s is missing" % ledger]
+    text = ledger.read_text(encoding='utf-8', errors='replace')
+    entries = {}
+    for line in text.splitlines():
+        m = _re2.match(r'^-\s+(R-\d+[a-z]?)\b(.*)$', line)
+        if m:
+            entries.setdefault(m.group(1), m.group(2))
+    for rec in _CITING_RECORDS:
+        if not db.has_record(rec):
+            continue
+        for f in _CITE_FIELDS:
+            v = db.get_field_value(rec, f)
+            for s in (v if isinstance(v, list) else [v]):
+                for cite in _re2.findall(r'\bR-\d+[a-z]?\b', str(s or '')):
+                    if cite not in entries:
+                        problems.append(
+                            "%s.%s cites %s, which is not a live ruling in "
+                            "docs/WILL_RULINGS.md. A citation baked into a BUILT record "
+                            "must resolve; a dangling one is worse than none."
+                            % (rec.rsplit('\\', 1)[-1], f, cite))
+                    elif _CITE_LANE not in entries[cite]:
+                        problems.append(
+                            "%s.%s cites %s, but %s in the ledger is NOT this lane's "
+                            "ruling (it reads: %r). This is the stale-citation defect the "
+                            "round-4 renumber exposed - the number moved and the built "
+                            "string did not."
+                            % (rec.rsplit('\\', 1)[-1], f, cite, cite,
+                               entries[cite].strip()[:90]))
+    return problems
+
+
 def verify(db, tags=None):
     problems = []
 
@@ -327,6 +376,17 @@ def verify(db, tags=None):
             if _gv1(db, _VAR_POOL, 'name%d' % i):
                 problems.append("endless pool has an extra member name%d" % i)
 
+    # (N) RULING-CITATION GATE (round 4). A ruling number is normally documentary, but
+    # THIS MODULE PUTS ONE IN A BUILT RECORD: the endless controller's FileDescription
+    # reads "Endless pursuit (R-90): ...". That was found the hard way - the round-4
+    # renumber (R-80 -> R-90, because b99 owned R-80) was assumed byte-neutral, and the
+    # rebuild came back with exactly one record changed: this one. The number is worth
+    # keeping (it is the provenance a future reader needs), but a STALE one is worse than
+    # none, because after the renumber "R-80" would have pointed at somebody else's
+    # ruling about the death-XP penalty. So: every ruling this module cites in a BUILT
+    # string must still exist in the ledger AND still be attributed to this lane.
+    problems += _ruling_citation_problems(db)
+
     if problems:
         for p in problems:
             print("  ENDLESS-PURSUIT OFFENDER: %s" % p)
@@ -402,6 +462,16 @@ def _negtest():
          lambda db: db.d[_PROXY].__setitem__('pool1', [_VAR_POOL])),
         ('the hunter learns to flee',
          lambda db: db.d[_VAR_CTRL].__setitem__('FleeBehavior', ['FleeWhenEnemyClose'])),
+        # ROUND 4: the built-in citation. R-80 is b99's death-XP ruling after the
+        # renumber, so a FileDescription still saying R-80 is a stale citation
+        # pointing at somebody else's design. This is the defect that made the
+        # "renumbering is purely documentary" assumption false.
+        ('the built FileDescription still cites the pre-renumber R-80 (now b99s ruling)',
+         lambda db: db.d[_VAR_CTRL].__setitem__(
+             'FileDescription', ['Endless pursuit (R-80): no leash, no roam-back'])),
+        ('the built FileDescription cites a ruling that does not exist at all',
+         lambda db: db.d[_VAR_CTRL].__setitem__(
+             'FileDescription', ['Endless pursuit (R-9999): no leash'])),
     ]
     try:
         verify(_base())

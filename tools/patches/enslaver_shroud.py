@@ -47,13 +47,33 @@ slots - which is exactly what R-7 already did for the Devourer with
      established as the inert "NO TINT" default (195 shipped records) - a zero
      channel is OFF, not black, so this cannot recolour his weapon.
   2. `records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr` -
-     a CharFxPak cloned from the shipped `343_weapon_poisoncharfxpak` structure
-     (particleEffectAttachPoints 'R Hand';'L Hand'), with the particle swapped to
-     the marauders' own `drxshadowcloakrunning_fx`.
+     a CharFxPak cloned from the shipped `343_weapon_poisoncharfxpak` structure,
+     with the particle swapped to the marauders' own `drxshadowcloakrunning_fx`
+     AND the donor's attach points dropped (see ROUND 4 below).
      NOTE THE FORMAT DIFFERENCE, easy to get wrong: a CharFxPak uses
      `particleEffectAttachPoints` with FRIENDLY names ("R Hand"), whereas an
      EffectEntity uses `boneList` with raw bone names ("Bone_R_Weapon"). They are
      not interchangeable.
+
+     ⚠️ ROUND 4 SHAPE FIX (adversarial-vet finding, 2026-07-29). Rounds 1-3 kept
+     the donor's `'R Hand';'L Hand'` pair, so the Enslaver smoked from two FISTS
+     while his marauders smoke from the whole BODY. The colour half of Will's ask
+     was right and the shape half was not, and nothing in this file noticed,
+     because every gate here checked the particle IDENTITY and none checked the
+     emission SHAPE. Will asked for "the same black shroud smoke his summoned
+     demons have"; same means same shape too. Read out of the built arz:
+     `drxshadowcloakrunning_fx_pak` (Class FxPak) carries `particleEffectNames`
+     x1 and NO `particleEffectAttachPoints` at all. The pak now mirrors that -
+     one body emitter, zero attach points - and verify() DERIVES the expectation
+     from the demons' live record, so if their shroud ever changes shape this
+     fails loud instead of drifting. Convention check before making the change:
+     of the 294 resolvable `charFxPakSelfNames` references in the DB, 248 point
+     at an attach-free pak and 46 at one with attach points; 86 of the 131
+     CharFxPak records omit the field entirely, and none carries an empty one -
+     hence ABSENCE rather than an empty list.
+     STILL NOT CLAIMED: what this looks like IN GAME. The shape now matches the
+     demons' by construction and by gate, but nobody has seen it (BL-b98-DEBT-2
+     below covers the colour; the shape inherits the same launch gate).
   3. Wired into the LOWEST FREE `skillName` slot on the Enslaver. NO SKILL IS
      DROPPED TO MAKE ROOM - the design brief assumed all 12 of his slots were full
      and that one would have to be sacrificed under R-26's spirit. GROUND TRUTH: he
@@ -84,8 +104,10 @@ the mesh the Enslaver wears in the DEPLOYED arz - ends with
 `CreateEntity { attach = "Waist"; entity = "...RevenantPoison_FX.dbr" }` ->
 `Effects\MonsterFX\Buffs\RevenantPoison.pfx`, whose colour keyframes decode to
 R 0.534 / G 1.000 / B 0.591 = GREEN, compiled INTO THE MESH FILE and therefore
-invisible to any .arz scan. Black hand-smoke over a green waist aura will not read
-as a black shroud.
+invisible to any .arz scan. Black body-smoke over a green waist aura will not read
+as a black shroud - and after the round-4 shape fix the two now occupy the SAME
+space (both body-centred, the mesh aura at the waist), so if anything the mesh
+green matters more, not less.
 That mesh work belongs to the green-diff lane (b92, commit 60d7789, reachable only
 from tag build53-dev and NOT deployed) and turns on a Will answer about giving each
 champion a different aura-free mesh. It is registered as BL-b98-DEBT-2. NO REPORT
@@ -118,7 +140,19 @@ _PAK_DONOR = r'records\effects\weaponenchantments\343_weapon_poisoncharfxpak.dbr
 _SHROUD = r'records\skills\monster skills\buff_self\svc_enslaver_shroud.dbr'
 _SHROUD_PAK = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr'
 
-_ATTACH = ['R Hand', 'L Hand']
+# ── SHAPE (round 4 fix; see the ROUND 4 block in the docstring) ─────────────
+# The demons' own pak emits from the WHOLE BODY: `drxshadowcloakrunning_fx_pak`
+# carries `particleEffectNames` x1 and NO `particleEffectAttachPoints` at all.
+# Round 1 cloned the 343 weapon-enchantment pak's STRUCTURE wholesale and kept
+# its 'R Hand';'L Hand' attach pair, so the Enslaver smoked from two hands while
+# his marauders smoked from the body - the colour half of Will's ask was right
+# and the SHAPE half was not. Measured off the built arz before changing it:
+# of the 294 resolvable `charFxPakSelfNames` references in the DB, 248 point at a
+# pak with NO attach points and only 46 at one with any; all 14
+# `charFxPakRunningNames` references (the demons' channel) are attach-free. So
+# body-centred is both the faithful answer and the overwhelming convention.
+_ATTACH = []            # [] == emit from the body, exactly like the demons' pak
+_PARTICLE_COUNT = 1     # one entry, matching drxshadowcloakrunning_fx_pak x1
 
 
 def _norm(p):
@@ -161,13 +195,40 @@ def _slot_of(db, rec, skill):
     return None
 
 
+def _del_field(db, rec, name):
+    """Remove a field slot entirely rather than blanking it to ''.
+
+    Same rule the sibling module uses (B-TOXEUS-2): a live reference blanked to
+    the empty string is a loader hazard, an ABSENT field is the shipped way to
+    say "this record does not use this". 86 of the 131 CharFxPak records in the
+    DB simply omit `particleEffectAttachPoints`; none of them carries an empty
+    one, so absence - not emptiness - is the precedented shape.
+    """
+    ff = db.get_fields(rec)
+    if not ff:
+        return False
+    hit = False
+    for k in list(ff):
+        if k.split('###')[0] == name:
+            del ff[k]
+            hit = True
+    if hit:
+        db._modified.add(rec)
+    return hit
+
+
 def _build_pak(db):
     _require(db, _PAK_DONOR, _SHADOWCLOAK_FX)
     if not db.has_record(_SHROUD_PAK):
         db.clone_record(_PAK_DONOR, _SHROUD_PAK)
     # value-only overrides on a cloned record (dtype preserved).
-    db.set_field(_SHROUD_PAK, 'particleEffectNames', [_SHADOWCLOAK_FX] * len(_ATTACH))
-    db.set_field(_SHROUD_PAK, 'particleEffectAttachPoints', list(_ATTACH))
+    db.set_field(_SHROUD_PAK, 'particleEffectNames', [_SHADOWCLOAK_FX] * _PARTICLE_COUNT)
+    if _ATTACH:
+        db.set_field(_SHROUD_PAK, 'particleEffectAttachPoints', list(_ATTACH))
+    else:
+        # BODY-CENTRED: drop the donor's hand pair so he smokes the way his
+        # marauders do, which is what Will actually asked for.
+        _del_field(db, _SHROUD_PAK, 'particleEffectAttachPoints')
     db._modified.add(_SHROUD_PAK)
 
 
@@ -258,16 +319,46 @@ def verify(db, tags=None):
                 "area. Got %r. (343_dark_smoke and hades2_shadowcloud are NOT "
                 "colour-confirmed; R-10 calls 343_dark_smoke green-rendering.)"
                 % (_SHADOWCLOAK_FX, names))
-        ap = db.get_field_value(_SHROUD_PAK, 'particleEffectAttachPoints') or []
-        ap = ap if isinstance(ap, list) else [ap]
+        # SHAPE leg (round 4). Will asked for "the same black shroud smoke his
+        # summoned demons have" - same means same SHAPE as well as same colour.
+        # The demons' pak has no attach points, so neither may this one: a hand
+        # pair would put the smoke on two fists instead of round the body, and
+        # that difference is invisible to every colour check in this file.
+        apf = db.get_field_value(_SHROUD_PAK, 'particleEffectAttachPoints')
+        ap = [str(x) for x in (apf if isinstance(apf, list) else [apf] if apf else []) if str(x).strip()]
         if [str(x) for x in ap] != _ATTACH:
             problems.append(
-                "shroud pak particleEffectAttachPoints=%r != %r. A CharFxPak takes "
-                "FRIENDLY attach names, not EffectEntity boneList bone names."
-                % (ap, _ATTACH))
-        if len(names) != len(ap):
-            problems.append("shroud pak has %d particle(s) for %d attach point(s)"
-                            % (len(names), len(ap)))
+                "SHAPE: shroud pak particleEffectAttachPoints=%r, expected %r. The "
+                "demons' own %s emits from the WHOLE BODY with no attach points; an "
+                "attach pair (the 343 weapon-enchantment donor's shape) would smoke "
+                "from the hands instead and would NOT be 'the same shroud his "
+                "summoned demons have'. Bone names (Bone_R_Weapon) are doubly wrong "
+                "here - those belong on an EffectEntity boneList, never on a pak."
+                % (ap, _ATTACH, _SHADOWCLOAK_PAK.rsplit('\\', 1)[-1]))
+        if len(names) != _PARTICLE_COUNT:
+            problems.append(
+                "shroud pak has %d particleEffectNames entr(ies), expected %d. The "
+                "donor duplicated its effect once per attach point; with no attach "
+                "points there is exactly one body emitter, as on the demons' pak."
+                % (len(names), _PARTICLE_COUNT))
+
+    # The SHAPE expectation above is only honest if it is DERIVED from the record
+    # it claims to copy. Read the demons' own pak and require that it really is
+    # attach-free; if the marauders' shroud ever grows attach points, this gate
+    # fails loud instead of silently letting the two drift apart.
+    if db.has_record(_SHADOWCLOAK_PAK):
+        dapf = db.get_field_value(_SHADOWCLOAK_PAK, 'particleEffectAttachPoints')
+        dap = [str(x) for x in (dapf if isinstance(dapf, list) else [dapf] if dapf else [])
+               if str(x).strip()]
+        if dap != _ATTACH:
+            problems.append(
+                "the DEMONS' pak %s now has particleEffectAttachPoints=%r while this "
+                "module still copies %r. The shape reference moved; re-derive "
+                "_ATTACH from it rather than leaving the two shrouds different."
+                % (_SHADOWCLOAK_PAK, dap, _ATTACH))
+    else:
+        problems.append("the demons' shape/colour reference pak is missing: %s"
+                        % _SHADOWCLOAK_PAK)
 
     if not db.has_record(_SHADOWCLOAK_FX):
         problems.append("the confirmed shadowcloak EffectEntity is missing: %s"
@@ -344,8 +435,10 @@ def _negtest():
     def _base():
         db = _Stub()
         db.d[_SHADOWCLOAK_FX] = {'effectFile': [r'DRXeffects\shadowcloakrunning.pfx']}
-        db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHADOWCLOAK_FX, _SHADOWCLOAK_FX],
-                             'particleEffectAttachPoints': list(_ATTACH)}
+        # the demons' pak: one body emitter, NO attach points (this is the shape
+        # the module derives its own from).
+        db.d[_SHADOWCLOAK_PAK] = {'particleEffectNames': [_SHADOWCLOAK_FX]}
+        db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHADOWCLOAK_FX] * _PARTICLE_COUNT}
         db.d[_SHROUD] = {'Class': ['Skill_BuffSelfToggled'],
                          'charFxPakSelfNames': [_SHROUD_PAK],
                          'skillWeaponTintRed': [0.0], 'skillWeaponTintGreen': [0.0],
@@ -371,6 +464,19 @@ def _negtest():
         ('bone names used where attach-point names belong',
          lambda db: db.d[_SHROUD_PAK].__setitem__(
              'particleEffectAttachPoints', ['Bone_R_Weapon', 'Bone_L_Weapon'])),
+        # ROUND 4: the defect the vet found. Hands-only emission passes every
+        # colour check and is still the WRONG SHROUD, so it gets its own plant.
+        ('the donor hand-pair comes back (hands-only, not the demons body shroud)',
+         lambda db: db.d[_SHROUD_PAK].__setitem__(
+             'particleEffectAttachPoints', ['R Hand', 'L Hand'])),
+        ('one emitter per (absent) attach point becomes two duplicate emitters',
+         lambda db: db.d[_SHROUD_PAK].__setitem__(
+             'particleEffectNames', [_SHADOWCLOAK_FX, _SHADOWCLOAK_FX])),
+        ('the demons shape reference itself drifts to a hand pair',
+         lambda db: db.d[_SHADOWCLOAK_PAK].__setitem__(
+             'particleEffectAttachPoints', ['R Hand', 'L Hand'])),
+        ('the demons shape/colour reference pak disappears',
+         lambda db: db.d.pop(_SHADOWCLOAK_PAK)),
     ]
     try:
         verify(_base())

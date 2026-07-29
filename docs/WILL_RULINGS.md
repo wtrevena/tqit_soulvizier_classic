@@ -537,8 +537,20 @@
   The Endless Hunt's own soul is NOT a reagent. Now that he is a full champion dropping the formula
   at 100%, should `toxeus_hunt_soul_l` become one (a 4th, or replacing the base Greece Toxeus's)?
   NOT built - `ItemArtifactFormula` was not confirmed to declare a reagent4 (BL-b98-DEBT-4).
-- R-93 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased - Will's own idea] the Endless
-  Hunt wields a spear. Shipped as **Runbreaker**, a bespoke 3-tier signature weapon following the
+- R-93 [2026-07-28] **PARTIALLY IMPLEMENTED b98 (feat/endless-hunt), REMAINDER OPEN** [paraphrased -
+  Will's own idea] the Endless Hunt wields a spear, AND the three Toxeus champions should read as
+  three different creatures.
+  > ⚠️ **STATUS CORRECTED 2026-07-29 (round 4, adversarial-vet finding). The spear half is DONE; the
+  > "three different creatures" half is ONE THIRD done and this ruling must not read IMPLEMENTED.**
+  > Read out of the built arz: the Enslaver wears `Creatures\Monster\Skeleton\RevenantPoison.msh`
+  > (NewSkeleton_Charcoal.tex) and the Devourer `um_bloodtoxeus_99` wears **the same**
+  > `RevenantPoison.msh` (newskeleton_crimson.tex) - two of the three champions share a mesh and
+  > differ only by texture and scale. Only the Hunt is visually distinct (`ShadowStalker.msh`).
+  > b98 changed NEITHER mesh (both diffed, unmoved), so what shipped here is the Hunt's spear and
+  > silhouette, not the champion-distinctness ask. The mesh half is entangled with the b92
+  > mesh-embedded green aura and belongs to the `fix/green-diff` lane; it is registered as
+  > BL-b98-DEBT-2. **Do not treat "make the three champions look like three creatures" as closed.**
+  Spear detail follows. Shipped as **Runbreaker**, a bespoke 3-tier signature weapon following the
   Devourer's Crimson Verdict / Veinrender pattern exactly (`svc_{n,e,l}_runbreaker` +
   `runbreaker_guaranteed_{n,e,l}` FixedWeight tables wired to `lootRightHandItem1` @100%), so he both
   WIELDS and DROPS it instead of the random one-hander he carried.
@@ -691,7 +703,7 @@
   > donors' icons and sounds (`svc_hunt_longreach` = Life Drain's NegativeEnergyRay icons and
   > lifedrain cast/hit sound paks). They have no UI surface on a monster, and no report from this
   > lane claims how they sound. BL-b98-DEBT-10.
-- R-95 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim fragment: the Enslaver should have
+- R-95 [2026-07-28] IMPLEMENTED-IN-DATA b98 (feat/endless-hunt), IN-GAME LOOK NOT CONFIRMED, verbatim fragment: the Enslaver should have
   **"the same black shroud smoke his summoned demons have"**.
   THE FINDING THAT CHANGED THE TASK: he ALREADY carries it. `um_toxeus_enslaver_99` has
   `charFxPakRunningNames = drxshadowcloakrunning_fx_pak` - the SAME pak, the SAME EffectEntity, that
@@ -713,6 +725,20 @@
   COLOUR: the ONLY in-game-CONFIRMED black in this area is the shadowcloak smoke Will has SEEN on the
   marauders, so that is the only asset used - never `343_dark_smoke`, which R-10 itself calls
   green-rendering and which no one has confirmed. Gated: the shroud pak may reference nothing else.
+  > ⚠️ **SHAPE CORRECTED 2026-07-29 (round 4, adversarial-vet finding).** Rounds 1-3 got the COLOUR
+  > half right and the SHAPE half wrong, and no gate noticed because every gate checked particle
+  > IDENTITY and none checked emission SHAPE. The new pak was cloned wholesale from the
+  > `343_weapon_poisoncharfxpak` structure and kept its `particleEffectAttachPoints = 'R Hand';'L Hand'`,
+  > so the Enslaver would have smoked from two FISTS while his marauders smoke from the whole BODY -
+  > the demons' own `drxshadowcloakrunning_fx_pak` carries ONE particle and NO attach points at all.
+  > "The same black shroud smoke his summoned demons have" means the same shape as well as the same
+  > colour. The pak now mirrors the demons' exactly (one body emitter, zero attach points), and
+  > `verify()` DERIVES that expectation by reading the demons' live record, so the two cannot drift
+  > apart silently. Convention check made before changing it: of the 294 resolvable
+  > `charFxPakSelfNames` references in the DB, **248 point at an attach-free pak** and 46 at one with
+  > attach points; 86 of the 131 CharFxPak records omit the field entirely and none carries an empty
+  > one, so the field is REMOVED rather than blanked. Four new planted negatives cover the shape
+  > (hands-only, duplicate emitters, and the reference itself drifting or vanishing): 10/10 caught.
   ⚠️ NO REPORT FROM THIS LANE CLAIMS HE READS BLACK IN GAME. b92 proved from asset bytes that
   `RevenantPoison.msh` - the mesh he wears in the deployed arz - has a GREEN aura compiled into the
   mesh file at his waist. Black hand-smoke over a green waist aura will not read black. That mesh work
@@ -747,7 +773,16 @@
   `E = SUM over placements of chanceToRun * (1-(1-p)^k)`, with limitN=1 capping each placement at 1.
   RESULT, read back out of the SHIPPED bytes: **ACT IV 0.955 sightings, ACT V 1.034, full pass
   1.989** - 54x the shipped rate, and "roughly one per act" in both acts rather than on average.
-  HE IS STILL THE RAREST THING IN EVERY POOL (weight 53 against natives carrying 18,000 each).
+  HE IS FAR RARER THAN THE NATIVES (weight 53 against natives carrying 18,000 each).
+  > ⚠️ **CLAIM CORRECTED 2026-07-29 (round 4, adversarial-vet finding, re-measured off the built
+  > arz).** Round 3 wrote "still the rarest member of EVERY pool". **False in 63 of the 346 pools he
+  > rides:** in those, `um_toxeus_enslaver_99` is also a member and is still on the OLD FLAT scheme at
+  > weight 1 (p_slot 1/60,049..1/66,054), so the Hunt at ~1/1,250 is now **48-53x MORE common than
+  > the Enslaver** in every pool they share. The other pools' "rarer" rows are weight-0 inert members
+  > (checked; 0 live). Nothing about R-96 is invalidated - it normalised the HUNT only - and the
+  > Enslaver's sweep rate is WILL-VETO under **R-18**, so this lane deliberately did not touch it.
+  > But the apex Hunt now shows up ~50x more often than the champion he is meant to stand beside,
+  > which is a question for Will rather than a fact to bury: **BL-b98-DEBT-11**.
   DELIBERATELY UNCHANGED: the pool SET (still the same 345), the x600 self-scaling, the `limitN=1`
   structural cap, and the FIXED Hades Palace encounter, which stays a guaranteed p_slot of 1.000.
   GATE: the old gate asserted `weight == 1` plus a 1/2400 ceiling, which this ruling reds by

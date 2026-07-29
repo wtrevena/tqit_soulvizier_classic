@@ -1,36 +1,47 @@
-# b98 - THE ENDLESS HUNT (2026-07-29, branch `feat/endless-hunt`, ROUND 3, tag `build63-dev`)
+# b98 - THE ENDLESS HUNT (2026-07-29, branch `feat/endless-hunt`, ROUND 4, tag `build65-dev`)
 
-DB-ONLY lane. **NOT DEPLOYED** (five content branches are staged for one merged deploy).
-TAG NOTE: briefed as `build59-dev`, but that tag was already claimed by the parallel
-`fix/soul-identity` lane (b97 round 2, `e3f7c32`); a tag in use is never reassigned, so round 1 took
-`build60-dev`, round 2 `build61-dev`, and this round-3 commit takes `build63-dev`.
+DB-ONLY lane. **NOT DEPLOYED** - this lane wrote nothing to `CustomMaps`. Artifacts are handed to the
+orchestrator for its merged deploy.
+TAG NOTE: briefed as `build59-dev`, long since taken. Rounds 1-3 took `build60/61/63-dev`;
+`build62-dev` went to the b99 content wave and `build64-dev` to b94; round 4 takes the next free
+number, **`build65-dev`**. A tag in use is never reassigned.
 
-**ROUND 3 IS ONE RULING.** Will answered the single blocking question round 2 left open - the roam
-RATE - so this round implements **R-96** and nothing else. Sections 1-11 below are round-2 text and
-are unchanged; the rate work is **section 12**, and it is the only thing that moved. Every other gate
-was re-run, not re-opened.
+**ROUND 4 IS INTEGRATION PLUS FOUR VET FINDINGS. READ SECTION 14 FIRST.** Round 3 was vetted NO-GO
+on INTEGRATION STATE, not on content - the vet reproduced the lane's md5 exactly, ran every gate
+green and could not break a load-bearing claim. What was wrong was the BASE. Round 4:
 
-> 🚨 **TWO THINGS CHANGED UNDER THIS LANE WHILE ROUND 3 WAS BUILDING. SEE SECTION 13.**
-> The b99 content wave integrated four OTHER lanes and DEPLOYED (DEV arz is now
-> `f6cd8698b1578a389fd6a432c1f757cb`, not the `9f98e3e8...` this lane started against), and b99
-> also claimed **R-90** and the whole **80-89 decade**, which collides head-on with this lane's
-> R-90..R-96. `feat/endless-hunt` was NOT part of that deploy and is still un-integrated.
+* **rebased onto post-b99 `main` (`38e7a25`) and rebuilt**, so the artifact no longer reverts b99's
+  four lanes (14.1);
+* **renumbered R-80..R-86 -> R-90..R-96**, because b99 owns R-80 and the 80-89 decade (13.2, 14.2) -
+  and found, contrary to the vet's own stated assumption, that a ruling number DOES reach one built
+  byte (14.2);
+* **fixed the shroud SHAPE** - it emitted from two hands, not from the body like the demons' (14.4);
+* **corrected the false "rarest member of every pool" claim** and raised the design question it was
+  hiding (14.3);
+* **gated the headline sightings figure**, which nothing re-derived before (14.6);
+* **corrected R-93 to PARTIALLY IMPLEMENTED** - two of the three champions still share a mesh (14.5).
 
-Ground truth: deployed arz md5 `9f98e3e88bca20f96bacc2fd6bb87b63` (51,098 records),
-`Levels.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe`, `Quests.arc` md5
-`35bfe3f39e8480408e3c22ea5473f796`, plus the engine's own `Toolset/Templates.arc`.
-All re-hashed at the end of round 3 and **unchanged** (no deploy).
+Sections 1-12 are rounds 1-3 text and stand unchanged except where a round-4 correction block is
+marked inline. Section 13 is round 3's mid-round drift record, now resolved. Section 14 is round 4.
+
+Ground truth this lane was designed against: deployed arz `9f98e3e88bca20f96bacc2fd6bb87b63`,
+`Levels.arc` `943d0ab9516d332db79bd7f9fd2d3ffe`, `Quests.arc` `35bfe3f39e8480408e3c22ea5473f796`,
+plus the engine's own `Toolset/Templates.arc`. **The deployed arz has since moved TWICE under this
+lane** (`f6cd8698` at 07:12 by b99, then `9cdb9eba` at 08:28 by a third lane) - see 13.1 and 14.8.
+`Levels.arc` and `Quests.arc` there are unchanged. The build baseline used for every round-4 proof is
+a freshly built post-b99 `main`, `f6cd8698b1578a389fd6a432c1f757cb` (51,093 records), NOT the deploy
+target.
 
 | artifact | path | md5 |
 | --- | --- | --- |
-| arz | `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz` | `33c102cbc81d6571e3621507cda6fc07` (51,104 records) |
-| Text (COUPLED) | `.claude/worktrees/endless-hunt/work/text/Text.arc` | `c0f22186550484b932e26dacc12c6a9a` |
+| arz | `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz` | **`4378b617fefb2014e382bb5931e7d605`** (51,108 records) |
+| Text (COUPLED) | `.claude/worktrees/endless-hunt/work/text/Text.arc` | **`c33b6abe3d61559785ee00ab3280a765`** |
 | Levels / Quests | untouched | n/a |
 
-(Round 1 shipped arz `c366b4108be547b4a4acb181d1b0675c` / Text `ce4653d30f304a88e837b20e166639fc`;
-round 2 shipped arz `6be6fb0a5507ca4f6988405e7a64add8`. Both arz artifacts are SUPERSEDED by the one
-above. The Text.arc is BYTE-IDENTICAL across rounds 2 and 3 - the rate change adds no tag - but the
-arz+Text coupling still holds and both must ship together.)
+(Superseded: round 1 arz `c366b4108be547b4a4acb181d1b0675c`, round 2 `6be6fb0a5507ca4f6988405e7a64add8`,
+round 3 `33c102cbc81d6571e3621507cda6fc07` - all three were built on the pre-b99 base `a0276ab` and
+**must not be deployed**. Round 4's Text.arc differs from round 3's only because b99's lanes added
+tags of their own.)
 
 The pair is COUPLED: the arz references the new `tagSVCwpnRunbreaker` **and the seven new
 `tagSVCHunt*` skill tags**, so shipping the arz without this Text.arc puts raw tag strings in a
@@ -42,12 +53,12 @@ player's hands.
 
 | # | ask | ruling | status |
 | --- | --- | --- | --- |
-| 0 | "roughly one sighting per act" (the roam rate) | R-96 | **DONE** (round 3 - see 12) |
+| 0 | "roughly one sighting per act" (the roam rate) | R-96 | **DONE** (round 3 - see 12; gated in round 4, see 14.6) |
 | 1 | his soul does not drop; and the EoAT formula should drop off him like the other two | R-91, R-92 | **DONE** |
 | 2 | "yeah lets have the endless pursuit only be on legendary" | R-90 | **DONE** (fixed encounter only - see 6) |
-| 3 | give him a spear; make the three champions look like three creatures | R-93 | **DONE for the Hunt**; the Enslaver/Devourer mesh half is NOT done (see 7) |
+| 3 | give him a spear; make the three champions look like three creatures | R-93 | **SPEAR DONE**; the "three creatures" half is **1/3 DONE** - the Enslaver and Devourer still share a mesh (see 7 and 14.5) |
 | 4 | "he doesnt really have any different or unique skills from ... the enslaver of souls" | R-94 | **DONE** |
-| 5 | the Enslaver should have "the same black shroud smoke his summoned demons have" | R-95 | **DONE in data**; the in-game black CANNOT be claimed (see 7) |
+| 5 | the Enslaver should have "the same black shroud smoke his summoned demons have" | R-95 | **DONE IN DATA, colour AND shape** (shape fixed in round 4, 14.4); the in-game look CANNOT be claimed (see 7) |
 
 ---
 
@@ -461,6 +472,15 @@ tags read the mod-authored `tagSVCHunt*` values; the Legendary variant differs f
 11. **The AoE360 whirl pose has not been seen either** (round 2). Binding it makes bladestorm FIRE,
     which is the law it was breaking; whether a PC-rig whirl reads right on the ShadowStalker rig is
     the same cross-rig question as the swing poses. Folded into BL-b98-DEBT-1.
+12. **The Enslaver's shroud SHAPE has not been seen either** (round 4). The pak now emits from the
+    body with no attach points, mirroring the demons' own pak by construction and by gate - but that
+    is a data proof, not an eye. It inherits BL-b98-DEBT-2's launch gate.
+13. **The Enslaver's roaming rate is untouched, and he is now ~50x rarer than the Hunt** in the 63
+    pools they share (round 4). R-96 normalised the Hunt only; the Enslaver's sweep rate is WILL-VETO
+    under R-18. Reported, not fixed. BL-b98-DEBT-11.
+14. **The 797-placement census still depends on an artifact this lane does not own.** Round 4 gates
+    the DERIVED sightings figure and stamps the Levels.arc it was measured on, so a stale census
+    cannot pass silently - but the census itself is only re-measured by hand. BL-b98-DEBT-12.
 
 ## 10. Questions for Will (shortest form)
 
@@ -477,6 +497,12 @@ tags read the mod-authored `tagSVCHunt*` values; the Legendary variant differs f
    look less alike?
 8. Normal-difficulty tuning: he is charLevel 40 / 16,000 HP / run 1.8 in a band that clamps the
    player to 29-33. Scale him down, or is a brutal ambush the point?
+9. **NEW (round 4).** In the 63 pools they share, the Endless Hunt is now **48-53x more common than
+   the roaming Enslaver** - the Hunt was normalised to ~1/1,250 by R-96 and the Enslaver is still on
+   the old flat weight 1 (~1/60,000). The apex champion therefore shows up ~50x more often than the
+   champion he is meant to stand beside. Leave it (they are different encounters and the Enslaver has
+   his own fixed fight), or bring the Enslaver up too? A rate change on him is explicitly your call
+   under R-18, so nothing was touched.
 
 ---
 
@@ -749,7 +775,19 @@ an independent pass re-reads every Hunt slot weight from the finished arz and re
 | his slot weight | 1 | 29..528 (median 53) |
 
 "Roughly one sighting per act" holds **in each act separately**, not merely on average. He is also
-still the rarest thing in every pool he rides: weight 53 against natives carrying 18,000 each.
+far rarer than the natives he rides with: weight 53 against natives carrying 18,000 each.
+
+> ⚠️ **CORRECTION (round 4, adversarial-vet finding, re-measured here off the built arz).** Rounds 3
+> said he is "still the rarest member of every pool". **That is false in 63 of the 346 pools**, and
+> what it hides is a real design question. In those 63, `um_toxeus_enslaver_99` is also a member and
+> is still on the OLD FLAT scheme at weight 1 - p_slot 1/60,049..1/66,054 against the Hunt's
+> normalised ~1/1,250. **In every pool they share, the Hunt is now 48-53x MORE common than the
+> Enslaver.** (Checked and discarded: the other "rarer" rows in the remaining 283 pools are all
+> weight-0 inert members - 0 of them live.) Nothing is broken - R-96 normalised the Hunt only, and
+> the Enslaver's own sweep rate is WILL-VETO under R-18, so this lane must not touch it. But the
+> apex Hunt now appears ~50x more often than the champion he is meant to stand beside, and the
+> incorrect "rarest member" line closed that question off instead of raising it. Raised now as
+> **BL-b98-DEBT-11** and as a Will question in section 10.
 
 ### 12.5 What was deliberately NOT changed
 
@@ -916,3 +954,169 @@ the byte-identity proof.
 The renumber is purely documentary: **no record, field, gate or built byte depends on a ruling
 number.** Rebuilding after the renumber must produce a byte-identical arz, and that is the cheapest
 possible check that the renumber was clean.
+
+---
+
+## 14. ROUND 4 - INTEGRATION ONTO POST-b99 MAIN, and the four vet findings
+
+Round 3 was vetted **NO-GO on integration state, not on content**: the vet rebuilt HEAD from a clean
+detached worktree, reproduced the lane's md5 exactly, ran all 39 patch gates green, decoded the arz
+with an independent reader and could not break any load-bearing claim. What it could break was the
+BASE. This round fixes that and the four findings the vet raised alongside it. **Nothing from rounds
+1-3 was reversed.**
+
+### 14.1 BLOCKER - the branch was on a stale base and would have reverted b99
+
+`feat/endless-hunt` branched from `a0276ab`. `main` had moved to `38e7a25` (b99, four lanes,
+deployed), so `git merge-base --is-ancestor feat/endless-hunt main` was FALSE and the round-3 arz
+(51,104 records, built on a 51,089-record base) was missing b99's work entirely. Dropping it on the
+deployed base would have deleted `summon_sargoth` + `pets\sargoth_{1,2,3}` and reverted 346 other
+xpack records.
+
+**Rebased onto `38e7a25`, four commits, four conflicts, all resolved by hand:**
+
+| file | conflict | resolution |
+| --- | --- | --- |
+| `tools/patches/__init__.py` | b95's `sargoth_soul_summon` and b98's two modules both claimed the slot before `toxeus_souls_100` | order DERIVED, not unioned: sargoth first (it touches only the dragonian soul family, disjoint from every Toxeus record), then the b98 pair, still ahead of `toxeus_souls_100` - which keeps b98's stated "after toxeus_suite / toxeus_endofallthings / boss_skill_fix / toxeus_champion_kits" constraint AND b95's "late among content modules" |
+| `docs/BACKLOG.md` (x4, once per commit) | both sides prepend a gate record | union, newest-first |
+| `docs/WILL_RULINGS.md` | auto-merged | see 14.2 |
+| `tools/verify_soul_drop_rates.py` | auto-merged (b99 added 56 lines) | clean |
+
+**Proof the rebase preserved this lane's code exactly:** `git diff 78d4d6f <rebased>` over the eight
+b98-owned tool files shows changes in **exactly one** of them, `verify_soul_drop_rates.py`, and those
+are the 56 lines b99 added. Nothing this lane wrote moved.
+
+**Cross-lane interaction checked, not assumed.** The obvious hazard was b97's roster-wide
+`soul_identity` gate meeting b98's NEW endless variant, which is a clone of the Hunt and therefore a
+second carrier of `toxeus_hunt_soul`. It passes: `soul_identity` judges identity on DISPLAY NAMES,
+and the variant is the same named creature, so it is not a thief. Verified in the build log, not
+inferred - `soul_identity` ran after `toxeus_souls_100` and after the variant existed, and reported
+OK. The collision gate went 92 -> 96 records written by 2+ modules; all four new pairs are this
+lane's own and expected.
+
+### 14.2 BLOCKER - the R-80 collision, and a finding that contradicts the vet's own assumption
+
+The seven rulings moved to decade **90-99** (detail in 13.2 and in the ledger's corrected decade
+header). The rewrite touched **only lines this branch added**, so every R-80 citation main already
+owned is byte-untouched. **202 occurrences across 12 files.**
+
+**Mechanically proven documentary, under tools/:** every changed line in `tools/` is exactly the
+substitution `R-8x -> R-9x` and nothing else - 113 removed lines / 113 added lines, compared
+one-for-one.
+
+> **BUT THE BYTE-IDENTITY CHECK FAILED, AND IT WAS RIGHT TO.** The vet wrote: "I confirmed the
+> renumber is purely documentary - no record, field, gate or built byte keys off a ruling number - so
+> a clean renumber must rebuild to a byte-identical arz, and that byte-identity is the check to run."
+> The check was run. **It came back different**, and the diff named the reason in one line:
+>
+> | | |
+> | --- | --- |
+> | pre-renumber rebuild | `347a100c7c4828dd7545eaed9f4392b8` |
+> | post-renumber rebuild | `7f15b6a67c3e4635b9b5b214688f7a1f` |
+> | delta | **1 record, 1 field, 0 dtype changes**: `controller_toxeus_hunt_endless.dbr` `FileDescription`, "Endless pursuit (R-80)" -> "Endless pursuit (R-90)" |
+>
+> A ruling number DOES reach a built byte - once, in a provenance string this lane authors. Swept for
+> others: two more `R-9x` strings sit near writes in `toxeus_hunt_encounter.py` and both are
+> `print()` calls (build log only), which is why the diff found exactly one record and not three.
+> **The corrected number was kept**, because leaving `R-80` there would have pointed a future reader
+> at b99's death-XP ruling - a stale citation is worse than none. `FileDescription` is authoring
+> metadata carried by shipped base-game records (the demons' own pak has one); it is not a player
+> surface.
+>
+> **NEW GATE, because this class of defect had none.** `toxeus_hunt_endless.verify()` now parses
+> `docs/WILL_RULINGS.md` and requires every `R-nn` cited in a BUILT string of this module's records
+> to (a) exist as a live ruling and (b) still be attributed to `feat/endless-hunt`. Two planted
+> negatives: the stale `R-80` (caught, and the failure message quotes b93's ruling text back), and a
+> nonexistent `R-9999` (caught).
+
+### 14.3 MEDIUM - "the rarest member of every pool" was false, and it hid a real question
+
+Re-measured here off the built arz, independently of the vet: in **63 of the 346** pools he rides,
+`um_toxeus_enslaver_99` is also a member at the OLD flat weight 1 - p_slot 1/60,049..1/66,054 against
+the Hunt's normalised ~1/1,250. **The Hunt is now 48-53x MORE common than the Enslaver in every pool
+they share.** The "rarer" rows in the other 283 pools are all weight-0 inert members (checked; 0
+live), exactly as the vet said. Corrected in the module comment, in the ledger (R-96) and in section
+12.4; raised as `BL-b98-DEBT-11` and as Will question 9. **Not fixed** - a rate change on the
+Enslaver is explicitly Will's under R-18.
+
+### 14.4 MEDIUM - the shroud SHAPE was wrong, and is now fixed
+
+Rounds 1-3 got the colour right and the shape wrong, and no gate noticed because every gate checked
+particle IDENTITY and none checked emission SHAPE.
+
+| | demons' pak (`drxshadowcloakrunning_fx_pak`) | ours, rounds 1-3 | ours, round 4 |
+| --- | --- | --- | --- |
+| `particleEffectNames` | x1 | x2 (duplicated per attach point) | **x1** |
+| `particleEffectAttachPoints` | ABSENT | `'R Hand';'L Hand'` | **ABSENT** |
+| reads as | body shroud | smoke off two fists | **body shroud** |
+
+Will asked for "the same black shroud smoke his summoned demons have" - same means shape as well as
+colour. Convention measured before changing anything: of the 294 resolvable `charFxPakSelfNames`
+references in the DB, **248 point at an attach-free pak** and 46 at one with attach points; 87 of the
+131 CharFxPak records omit the field entirely and **none carries an empty one**, so the field is
+REMOVED, not blanked (the B-TOXEUS-2 rule). `verify()` now DERIVES the expectation by reading the
+demons' live record, so if their shroud ever changes the build fails instead of the two drifting
+apart. Negatives went 6 -> **10/10**, four of them new and all shape-class.
+Built-byte cost of this fix, isolated by rebuilding: **1 record, 2 fields, 0 dtype changes.**
+**Still not claimed: what it looks like in game.** BL-b98-DEBT-2 covers it.
+
+### 14.5 MEDIUM - R-93 must not read IMPLEMENTED
+
+The champion-distinctness half of item 3 is **one third done**. Read out of the built arz: the
+Enslaver and the Devourer BOTH wear `Creatures\Monster\Skeleton\RevenantPoison.msh` and differ only
+by texture; only the Hunt is a different mesh. b98 changed neither. R-93 now reads **PARTIALLY
+IMPLEMENTED, REMAINDER OPEN** with the open half named and pointed at `fix/green-diff`.
+R-95 likewise now reads **IMPLEMENTED-IN-DATA, IN-GAME LOOK NOT CONFIRMED**.
+
+### 14.6 LOW - the headline sightings number is now re-derived by a gate
+
+The vet's point was exact: the p_slot invariant was gated, the number Will actually approved was not,
+and the 797-placement census lived only as a prose comment. Both halves addressed:
+
+* the census is now **machine-readable** (`_LS_CENSUS_DRAWS`, `_LS_CENSUS_PLACEMENTS`) and a new gate
+  RE-DERIVES `E[sightings]` from it at build time, failing if any act leaves the
+  "roughly one sighting per act" band `(0.70, 1.40)`. It reproduces section 12.4 exactly:
+  **Act IV 0.955 | Act V 1.034 | full pass 1.989.** Retuning `_LS_TARGET_P_SLOT` 10x in either
+  direction reds the build (both directions tested).
+* the census is **stamped** with the Levels.arc it was measured on
+  (`943d0ab9516d332db79bd7f9fd2d3ffe`), printed in every build log, and compared against any
+  reachable Levels.arc with the re-measure command in the message. Deliberately LOUD-not-fatal by
+  default (`SVC_CENSUS_STRICT=1` makes it fatal) because this is a DB-only build that does not own
+  the map and a red here would be a false alarm about somebody else's artifact.
+
+> **AND IT IMMEDIATELY FOUND SOMETHING.** The Levels.arc staged in `work/` is
+> `fc0adcc0713839a685b32d6e122653be`; the Levels.arc **deployed** to
+> `CustomMaps\SoulvizierClassicDEV` is `943d0ab9516d332db79bd7f9fd2d3ffe` - the ground truth the
+> census was measured on and the one the brief names. So the staged map and the deployed map are not
+> the same file. This lane touches no map bytes and this changes none of its numbers (the census is
+> valid for the DEPLOYED map, which is what ships), but the staged/deployed divergence is real and is
+> registered as `BL-b98-DEBT-12` for whoever owns the map lane.
+
+### 14.7 Round-4 verification
+
+| check | result |
+| --- | --- |
+| DB build (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) | **PASS**, exit 0, 51,108 records |
+| gates that can now run that could not before | **A9 render-chain + F2 summons-contract** - `Resources` staged beside the output, so `SVC_REQUIRE_GATES=1` was satisfied rather than skipped |
+| registry | **42 modules OK**, order `9867e2906fef`; all 33 `verify()` hooks green |
+| planted negatives | **40/40** (15 encounter + 7 endless + 10 shroud + 8 suite; was 34) |
+| record diff vs a freshly built post-b99 `main` (`f6cd8698`) | **15 ADDED / 0 REMOVED / 352 CHANGED**, of which 345 are the single R-96 `weightN` and 7 are the intended targets; **0 dtype flips** |
+| contract suite (6 domains) vs that same baseline | **PASS - 0 P0 / 0 P1 / 4,737 P2**, and all 11 reporting contracts return **identical counts, delta 0 on every one** |
+| `validate_tags` | **PASS** (427/427 authoritative tags present) |
+| Levels.arc / Quests.arc | **untouched** - DB-only lane, zero map bytes |
+| deploy | **NONE.** Re-hashed at the end: the `CustomMaps\SoulvizierClassicDEV` arz is `9cdb9ebaa0d277f5001b629a276a05d3`, written by somebody else at 08:28 - this lane wrote nothing there |
+
+**FINAL ARTIFACTS FOR THE ORCHESTRATOR'S MERGED DEPLOY (they supersede every earlier round):**
+
+| artifact | path | md5 |
+| --- | --- | --- |
+| arz | `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz` | **`4378b617fefb2014e382bb5931e7d605`** (51,108 records) |
+| Text (COUPLED) | `.claude/worktrees/endless-hunt/work/text/Text.arc` | **`c33b6abe3d61559785ee00ab3280a765`** |
+
+### 14.8 GROUND TRUTH MOVED AGAIN WHILE THIS ROUND RAN
+
+The deployed DEV arz was `f6cd8698b1578a389fd6a432c1f757cb` when round 3 ended and the vet re-hashed
+it. It is now **`9cdb9ebaa0d277f5001b629a276a05d3`**, written 2026-07-29 08:28 - a third value, from
+a lane that is neither b98 nor b99. `Levels.arc` there is unchanged (`943d0ab9`). This lane deployed
+nothing and never wrote to `CustomMaps`; this is recorded so the next integrator re-reads the deploy
+target rather than trusting any hash in this report.
