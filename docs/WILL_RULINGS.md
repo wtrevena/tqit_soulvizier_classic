@@ -1271,3 +1271,55 @@ frozen, so there is no remaining lever either side of it.
 **IF THIS IS EVER REVIVED:** the design brief is committed at
 `docs/wip_workflows/R-98_hunt_enslaver_ratio_5x.js` and is still valid - it measures both readings before
 touching a weight and forbids loosening the R-96 gate to fit its own change.
+
+---
+
+## R-99 [2026-07-29] PENDING - the apex orb covers EVERY Toxeus variant, not just the two we wired
+
+**WILL, VERBATIM:**
+
+> "i didnt tell you to increase the drop of all the champions, just the toxeus variants (all variants we made
+> and didnt make) and leinth. they should drop more items than the normal champions"
+
+**FIRST, THE REASSURANCE, because the wording implies a fear that did not happen.** We did NOT raise all
+champions. `uber_apex_orb` deliberately minted a NEW tier `genericbossorb_05` precisely so the shared
+`genericbossorb_04` could stay byte-unchanged for its other 19 consumers (Sarkoth, Vashkarr, Bloodcrow,
+Voranthys, Broodmother, Gorrahk, Ilsevar, Dagon, Ephialtes, Mnemophage-core, Antaeus, Polis Gaoler, Deep
+Thresher, Meglograi, bloodcrow_soul, Dorus, Tantalus, Hades Marshal, Helepolis). The gate proves it, and
+negative 8 fires if the orb04 donor chain is tampered with.
+
+**BUT THE RULING EXPOSES A REAL GAP, measured in the merged build (arz `967b1f97137bf6479c18c08e9dd6ffc4`,
+51,124 records) - only TWO of the Toxeus variants were covered:**
+
+| record | charLevel | `treasureProxyName` today | verdict |
+|---|---|---|---|
+| `um_toxeus_enslaver_99` (Enslaver of Souls) | 40/68/100 | `genericbossorb_05` | ✅ covered |
+| `um_bloodtoxeus_99` (Devourer of Blood) | 40/68/100 | `genericbossorb_05` | ✅ covered |
+| `um_toxeus_hunt_99` (**The Endless Hunt**) | 40/68/100 | **NONE - no orb at all** | ❌ **MISSED, ours** |
+| `um_toxeus_hunt_l_99` (endless Legendary variant) | 40/68/100 | **NONE - no orb at all** | ❌ **MISSED, ours** |
+| `um_toxeus_99` (`tagMonsterName190`, inherited) | 33/66/99 | **NONE** | ❌ MISSED, not ours |
+| `um_toxeus_21` (inherited, low-level) | 25/45/65 | `genericbossorb_01` (LOWEST tier) | ⚠️ see judgement call |
+| `z_toxeus`, `old_z_toxeus` (zzdev dev dummies) | 40/56/71 | NONE | ⚠️ see judgement call |
+
+**The headline: the third champion Will actually met in play - the Endless Hunt - drops NO orb whatsoever.**
+b98 gave him a 100% soul and the EoAT formula but never an orb, and b94 wired only the two "fought
+champions". Nobody noticed because the two lanes ran in parallel and neither owned the other's roster.
+
+**TWO JUDGEMENT CALLS THIS RULING DOES NOT SETTLE - do not decide these silently:**
+1. `um_toxeus_21` is a charLevel 25/45/65 early-game Toxeus on the lowest orb tier. "All variants" reads as
+   including him, but handing an Act-4 apex orb to a level-25 encounter is a real balance change that would
+   let a new character farm endgame-tier loot. RECOMMEND: cover him with a scaled tier, or leave him and say
+   so - Will's call.
+2. `z_toxeus` / `old_z_toxeus` are Iron Lore **zzdev dev dummies** (already `BL-b97-DEBT-3`). They are not
+   placed encounters. RECOMMEND: exclude, and record the exclusion rather than silently skipping them.
+
+**IMPLEMENTATION CONSTRAINT:** `uber_apex_orb.verify()` currently hardcodes EXACTLY TWO champions and
+`negtest` NEGATIVE 2 asserts that a third record on `genericbossorb_05` must FAIL as scope creep. Extending
+the roster therefore REQUIRES rewriting that gate to be **roster-derived** (every Toxeus variant + Leinth),
+not merely widening a constant - otherwise the build reds the moment the ruling is implemented. Same commit.
+
+**"MORE ITEMS THAN THE NORMAL CHAMPIONS" is already satisfied by the orb05 calibre** (21.16 expected items
+vs orb04's 5.70); this ruling is about WHO is on it, not about re-tuning it.
+
+**STATUS:** PENDING - measured and specified, not implemented. Deferred only because the weekly model budget
+was exhausted; the two judgement calls above should be answered before or during implementation.
