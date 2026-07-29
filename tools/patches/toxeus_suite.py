@@ -47,8 +47,12 @@ WILL_DECISIONS_2026-07-11.md; laws: docs/PLAYBOOK.md, amgoz1_design_voice.md):
     poolLegendaryN, so the roam was never Legendary-leaning either - it has always been
     Normal + Epic + Legendary, everywhere in Act IV and V. Will meeting the roaming Hunt in
     RHODES on EPIC is this sweep working exactly as built, not a defect. What kept him
-    invisible on Normal is RARITY (weight 1 against pool totals of 36,001 to 660,001, median
-    about 1 in 66,667), not a difficulty gate. The single fixed encounter's Legendary-only
+    invisible on Normal is RARITY, not a difficulty gate: at the shipped flat weight 1 against
+    pool totals of 36,000..660,000 he was worth 0.0368 sightings per full Act IV+V pass - ONE
+    PER 27 PLAYTHROUGHS. R-86 (Will 2026-07-28, "roughly one sighting per act") retunes that to
+    a per-pool NORMALISED weight targeting a constant p_slot of 1/1250: measured 0.955 sightings
+    in Act IV, 1.034 in Act V, 1.989 over a full pass. Retune him at _LS_TARGET_P_SLOT and
+    nowhere else. The single fixed encounter's Legendary-only
     gate lived on the PROXY and is removed by tools/patches/toxeus_hunt_encounter.py (R-80).
     He drops his own granted-MOVE soul (his flash-powder shadow-burst - the Toxeus family
     signature - so the three Toxeus souls are three real builds: summon Devourer / summon
@@ -145,14 +149,6 @@ _AUG_ANATOMY = asp._EN_AUG_ANATOMY    # drxanatomy: Skill_Modifier (+%vit/pierce
 _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on-attack) - DB-verified
 
 # ── Roaming sweep tuning (parallels the Enslaver sweep, reuses its bad-subs) ──
-# The Hunt uses its OWN 1/2400 per-slot ceiling (a findable endgame apex), matching this module's
-# inject threshold (a pool is populated only when its pre-append wtotal >= 2399, so post-append
-# p_slot = 1/(wtotal+1) <= 1/2400) and every docstring below. It does NOT reuse asp._EN_SWEEP_MAX_P:
-# the ENSLAVER ceiling is far tighter (build38 BL-ENSLAVER-SPAWNS-V2: 1/2400 -> 1/24000 via
-# _EN_SWEEP_CEIL); reusing it here would make the verify (1/24000) reject the very pools the inject
-# (1/2400) legitimately populated - the Enslaver reaches 1/24000 by x600'ing (asp._EN_SWEEP_K) member
-# weights, which the Hunt deliberately does NOT do (it only appends weight 1 to the existing pool).
-# Decoupled so inject and verify agree again.
 # ⚠️ THE ONE LINE THAT CAUSED THE "HADES-ONLY" MYTH (corrected b98, 2026-07-28). This prefix is
 # NOT "Hades trash pools ONLY" - `records\xpack\proxieshades\` is the WHOLE Immortal Throne proxy
 # namespace (the base game filed Rhodes inside it as area001), so the sweep spans area001..area008:
@@ -160,13 +156,67 @@ _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on
 # Hades Palace. The NAME of the folder is the only thing about it that says "hades". The prefix
 # itself is CORRECT and unchanged - only the claim about what it means was wrong.
 _LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # the whole IT proxy namespace (378 ProxyPools present)
-_LS_MAX_P = 1.0 / 2400.0                                 # the Hunt's own ceiling (matches the inject)
+
+# ═════════════════════════════════════════════════════════════════════════════
+# THE ROAM RATE - R-86 (Will, 2026-07-28): "roughly one sighting per act".
+# ═════════════════════════════════════════════════════════════════════════════
+# ⚠️ WILL-VETO CLASS (the R-18 precedent: a rate change on these champions is Will's call, never
+# an implementer's). THIS IS THE ONE PLACE TO RETUNE HIM. Change _LS_TARGET_P_SLOT and nothing
+# else; the per-pool weights, the inject and the gate all derive from it.
+#
+# WHAT IT MEANS: the Hunt's slot is normalised so his probability per pool draw is the SAME
+# CONSTANT in every pool - _LS_TARGET_P_SLOT - instead of a flat weight. A flat weight cannot
+# work here: the pool weight TOTALS span 36,000..660,000 (an 18.3x spread, because the natives
+# are x600-scaled by different amounts), so one flat weight makes him 18x rarer in Rhodes than
+# in the Hades Palace for no design reason. Normalising is what makes "one per act" mean the
+# same thing in all eight areas.
+#
+# THE DERIVATION (measured 2026-07-28 against the built arz + the shipped world01.map, NOT
+# estimated - see docs/reports/b98_endless_hunt.md section 12 for the full table):
+#   345 roaming pools carry him; each resolved pool makes k main draws (k = (spawnMin+spawnMax)/2,
+#     measured mean 3.19, median 3, max 13.5) and every one of the 539 referencing proxies has
+#     chanceToRun = 100.
+#   The shipped map places those proxies 797 times across the Immortal Throne:
+#     ACT IV  Rhodes 54 + Medea 134 + Epirus 69 + Styx 149            = 406 placements
+#     ACT V   Judgement 175 + Elysian 131 + Hades Palace 85           = 391 placements
+#   => 2,486 effective main draws over a full Act IV+V pass at 1 player.
+#   E[sightings] = SUM over placements of chanceToRun * (1 - (1-p_slot)^k)   [limitN=1 caps the
+#   COUNT at 1 per pool per trigger, so each placement contributes at most 1 = P(at least one)].
+#   Solving E = 1 per act (2 per pass) gives p_slot = 1/1243; 1/1250 is the round retunable value.
+#
+# THE RESULT AT 1/1250 (what Will will actually see, per act):
+#     ACT IV 0.955 sightings | ACT V 1.034 sightings | FULL PASS 1.989
+#   i.e. "reliably met once or twice per playthrough, not never" - 54x the shipped rate.
+#   BEFORE (flat weight 1): 0.0368 per pass = one sighting per 27 playthroughs, which is why
+#   Will met him once on Epic and never on Normal. He was never Legendary-gated; he was rare.
+#
+# HE IS STILL THE RAREST THING IN EVERY POOL: at 1/1250 his slot weight is 29..528 (median 53)
+# against native members carrying 18,000 each. Near-mythical, but no longer effectively invisible.
+_LS_TARGET_P_SLOT = 1.0 / 1250.0
+
+# Gate tolerance. Weights are integers, so a pool's realised p_slot cannot land exactly on the
+# target; the rounding error is largest in the poorest pools (36,000 -> weight 29). +/-4% covers
+# integer rounding with margin and still catches a real mistuning.
+_LS_P_SLOT_TOL = 0.04
+
 _LS_SLOT_LIMIT = 1   # per-slot MAX-count cap on the Hunt's name slot (mirrors asp._EN_SWEEP_SLOT_LIMIT).
                      # Pool MAIN draws are independent WITH REPLACEMENT (proven: vanilla pools spawn more
                      # mains than they have name slots), so a plain weight-1 member in a pack pool with
                      # spawnMax>1 could surface 2+ Hunts in ONE trigger -- the exact "two-in-one-trigger"
                      # defect the Enslaver v2 sweep just fixed. Vanilla ALWAYS caps rare pack members at
                      # limitN=1; this stamps the same cap so at most ONE Hunt spawns per pool per trigger.
+                     # It matters MORE at the R-86 rate than it did at weight 1: with p_slot 1/1250 and a
+                     # 13-draw pool, P(2+ without the cap) is ~5e-5 per trigger, ~0.04 over a full pass.
+
+
+def _ls_slot_weight(wtotal):
+    """The Hunt's NORMALISED slot weight for a pool whose OTHER members total `wtotal`.
+
+    Solves w / (wtotal + w) == _LS_TARGET_P_SLOT for w, so every pool delivers the same
+    per-draw probability regardless of how hard the natives were scaled. Integer, >= 1.
+    This is the single source of truth: the inject writes it and the gate re-derives it."""
+    p = _LS_TARGET_P_SLOT
+    return max(1, int(round(p * wtotal / (1.0 - p))))
 
 
 # =============================================================================
@@ -465,16 +515,25 @@ def _create_legendary_stalker(db, tags):
 
 
 def _sweep_inject_legendary_stalker(db):
-    """Append the stalker at weight 1 to every ELIGIBLE Hades trash pool (allow-prefix =
-    xpack\\proxieshades ONLY), so his per-slot probability stays <= 1/2400 (a genuine rare
-    hunter). Parallels the Enslaver's _sweep_inject_roaming_rare with two deliberate differences:
+    """Append the stalker to every ELIGIBLE Immortal-Throne trash pool (allow-prefix =
+    xpack\\proxieshades ONLY) at the R-86 NORMALISED weight, so his per-draw probability is the
+    SAME constant (_LS_TARGET_P_SLOT, 1/1250) in every pool regardless of how hard that pool's
+    natives were scaled. Will 2026-07-28: "roughly one sighting per act" - measured 0.955 in Act
+    IV, 1.034 in Act V, 1.989 over a full pass. See _LS_TARGET_P_SLOT for the full derivation and
+    for the ONE constant to change when retuning him.
+    Before R-86 this appended a FLAT weight 1, which (a) left him at ~1 sighting per 27
+    playthroughs - Will met him once on Epic and never on Normal - and (b) because pool totals
+    span 36,000..660,000, made him 18.3x rarer in Rhodes than in the Hades Palace for no design
+    reason. The pool SET is deliberately unchanged; only the weight in the appended slot moved.
+    Parallels the Enslaver's _sweep_inject_roaming_rare with two deliberate differences:
       (1) the `xpack\\proxieshades` prefix - which is the WHOLE Immortal Throne proxy namespace
           (area001 Rhodes through area008 Hades Palace), NOT the Hades act, and NOT a difficulty
           gate of any kind. See the _LS_ALLOW_PREFIX comment and the b98 correction above;
       (2) the Enslaver sweep ALREADY RAN (in the monolith). Where the Enslaver is PRESENT (its
           `undead` pools) it already x600'd (asp._EN_SWEEP_K) the member weights, so this sweep
-          does NOT re-multiply those (that would double-scale + break the weight-1 invariant); it
-          just appends the stalker at weight 1 into a free slot (total >= 24000 -> p_slot << 1/2400).
+          does NOT re-multiply those (that would double-scale, and the normalised weight is
+          derived FROM the post-scale total so a double-scale would silently halve his rate); it
+          just appends the stalker at the normalised weight into a free slot.
           Where the Enslaver is ABSENT (b49: it now scales ONLY undead pools, so the ~282 non-undead
           Hades pools it used to scale are back at original weights), this sweep TAKES OVER the same
           x600 itself (same floor) so the Hunt keeps its FULL Hades breadth + identical 1/24000 rarity
@@ -523,6 +582,7 @@ def _sweep_inject_legendary_stalker(db):
 
     enl_lc = asp._EN_BOSS.replace('/', '\\').lower()
     touched = []
+    hweights = []
     self_scaled = 0
     for n in sorted(db.record_names()):
         if not is_pool(n) or not eligible(n):
@@ -574,25 +634,36 @@ def _sweep_inject_legendary_stalker(db):
                 db.set_field(n, 'weight%d' % i, w * asp._EN_SWEEP_K, I)
             wtotal *= asp._EN_SWEEP_K
             self_scaled += 1
-        if wtotal < 2399:                    # weight-1 append must keep p_slot <= 1/2400
-            continue
+        if wtotal < 2399:                    # pool-eligibility floor (unchanged: keeps the pool SET
+            continue                         # identical to the pre-R-86 sweep; post-x600 totals are
+                                             # >= 36,000, so this never binds in practice)
+        # R-86 (Will 2026-07-28, "roughly one sighting per act"): the slot weight is NORMALISED
+        # per pool so p_slot is the same constant everywhere, instead of the flat weight 1 that
+        # made him 18x rarer in Rhodes than in the Hades Palace and ~1-in-27-playthroughs overall.
+        # Derivation + measured per-act numbers: see _LS_TARGET_P_SLOT above.
+        hw = _ls_slot_weight(wtotal)
         db.set_field(n, 'name%d' % free, _HUNT_MONSTER, S)
-        db.set_field(n, 'weight%d' % free, 1, I)
+        db.set_field(n, 'weight%d' % free, hw, I)
         db.set_field(n, 'limit%d' % free, _LS_SLOT_LIMIT, I)   # structural: <=1 Hunt/trigger (mirrors enslaver v2)
         db._modified.add(n)
         touched.append(n)
-    print("  [C] STALKER SWEEP: injected the roaming Hunt into %d eligible Hades trash pool(s) "
-          "(weight 1, per-slot limit 1 = <=1 Hunt/trigger); %d of them self-x600'd here "
-          "(non-undead pools the b49 Enslaver breadth-restrict no longer scales -- Hunt breadth "
-          "preserved, was ~345)"
-          % (len(touched), self_scaled))
+        hweights.append(hw)
+    _wmin = min(hweights) if hweights else 0
+    _wmax = max(hweights) if hweights else 0
+    print("  [C] STALKER SWEEP: injected the roaming Hunt into %d eligible Immortal-Throne trash "
+          "pool(s) at the R-86 NORMALISED rate p_slot=1/%.0f (weight %d..%d per pool, per-slot "
+          "limit 1 = <=1 Hunt/trigger); %d of them self-x600'd here (non-undead pools the b49 "
+          "Enslaver breadth-restrict no longer scales -- Hunt breadth preserved, was ~345). "
+          "Target: ~1 sighting per act (measured 0.955 Act IV / 1.034 Act V / 1.989 per full pass)."
+          % (len(touched), 1.0 / _LS_TARGET_P_SLOT, _wmin, _wmax, self_scaled))
     return touched
 
 
 def _verify_legendary_stalker_sweep(db, touched):
     """FAIL-LOUD gate (parallels _verify_roaming_sweep, Hades-scoped): re-derive the touched set
-    from the arz and prove ONLY eligible Hades trash pools carry the stalker, each at weight 1 with
-    p_slot <= 1/2400 AND a per-slot limit=1 (_LS_SLOT_LIMIT) MAX-count cap (STRUCTURAL no-double:
+    from the arz and prove ONLY eligible Immortal-Throne trash pools carry the stalker, each at the
+    R-86 NORMALISED weight so every pool realises the SAME p_slot (1/1250 +/-4% for integer
+    rounding) AND a per-slot limit=1 (_LS_SLOT_LIMIT) MAX-count cap (STRUCTURAL no-double:
     <=1 Hunt per pool per trigger), the monster resolves at band [40,68,100], and there is no leak
     into a non-Hades or boss/quest/hero pool (every stalker-bearing pool must be in `touched` - there
     is no dedicated stalker pool, so no whitelist)."""
@@ -648,11 +719,26 @@ def _verify_legendary_stalker_sweep(db, touched):
             if str(nm).replace('/', '\\').lower() == hunt:
                 hw = w
                 hidx = i
-        if hw != 1:
-            problems.append(f"{n}: stalker weight {hw} != 1")
-        elif wtotal <= 0 or (1.0 / wtotal) > _LS_MAX_P + 1e-9:
-            problems.append(f"{n}: stalker p_slot {1.0 / max(wtotal, 1):.5f} > "
-                            f"{_LS_MAX_P:.5f} (too common)")
+        # R-86 NORMALISATION GATE. The old gate asserted `weight == 1` plus a 1/2400 ceiling;
+        # Will's "roughly one sighting per act" ruling reds that by construction, so it is
+        # replaced (not loosened) by the stronger invariant the new scheme actually guarantees:
+        # every pool must realise the SAME p_slot, within integer-rounding tolerance. That
+        # catches both a mistuned constant AND a pool that silently missed normalisation - the
+        # flat-weight bug class this ruling exists to kill.
+        others = wtotal - (hw or 0)
+        if hw is None or hw < 1:
+            problems.append(f"{n}: stalker weight {hw} missing/non-positive")
+        elif others <= 0:
+            problems.append(f"{n}: pool has no non-Hunt weight (wtotal {wtotal})")
+        else:
+            want = _ls_slot_weight(others)
+            if hw != want:
+                problems.append(f"{n}: stalker weight {hw} != normalised {want} "
+                                f"(others total {others})")
+            realised = hw / float(wtotal)
+            if abs(realised - _LS_TARGET_P_SLOT) > _LS_TARGET_P_SLOT * _LS_P_SLOT_TOL:
+                problems.append(f"{n}: stalker p_slot 1/{1.0/realised:.0f} outside "
+                                f"1/{1.0/_LS_TARGET_P_SLOT:.0f} +/-{_LS_P_SLOT_TOL:.0%}")
         # STRUCTURAL NO-DOUBLE: the Hunt's name slot MUST carry limit=1 (a per-slot MAX-count
         # cap) so the engine spawns at most ONE per pool per trigger. Pool mains draw WITH
         # REPLACEMENT, so without this a pack pool (spawnMax>1) could surface 2+ Hunts in a
@@ -676,9 +762,10 @@ def _verify_legendary_stalker_sweep(db, touched):
             print(f"  STALKER-SWEEP OFFENDER: {p}")
         raise SystemExit(
             f"Legendary-stalker roaming-sweep gate FAILED: {len(problems)} problem(s)")
-    print(f"  [C] stalker-sweep gate OK: {len(derived)} eligible Hades trash pools carry the Hunt "
-          f"at weight 1 + per-slot limit 1 (p_slot <= 1/2400, <=1 Hunt/trigger); 0 non-Hades / boss / "
-          f"quest / hero leaks; band [40,68,100].")
+    print(f"  [C] stalker-sweep gate OK: {len(derived)} eligible Immortal-Throne trash pools carry "
+          f"the Hunt at the R-86 NORMALISED rate (every pool p_slot = 1/"
+          f"{1.0/_LS_TARGET_P_SLOT:.0f} +/-{_LS_P_SLOT_TOL:.0%}, per-slot limit 1 = <=1 "
+          f"Hunt/trigger); 0 non-IT / boss / quest / hero leaks; band [40,68,100].")
 
 
 def _author_legendary_only_limit(db):
@@ -904,3 +991,105 @@ def verify(db, tags=None):
     clears. Fail-loud (SystemExit) on any real violation, which run_registry_verifies propagates."""
     _gate(db, tags if tags is not None else {})
     return tags
+
+
+# =============================================================================
+# PLANTED NEGATIVE TESTS for the R-86 roam-rate normalisation gate
+#   py tools/patches/toxeus_suite.py --negtest
+# A gate nobody has seen FAIL is not a gate. Each plant is a way the rate could
+# silently regress; the gate must catch every one.
+# =============================================================================
+def _negtest():
+    from collections import OrderedDict
+
+    POOL_A = 'records\\xpack\\proxieshades\\pools\\nt_pool_a.dbr'   # poorest band (36,000)
+    POOL_B = 'records\\xpack\\proxieshades\\pools\\nt_pool_b.dbr'   # richest band (660,000)
+    MON = 'records\\xpack\\creatures\\monster\\nt_native.dbr'
+
+    class _TF(object):
+        def __init__(self, v):
+            self.values = v
+
+    class _Stub(object):
+        def __init__(self):
+            self.d = {}
+            self._modified = set()
+
+        def has_record(self, n):
+            return n in self.d
+
+        def record_names(self):
+            return list(self.d)
+
+        def get_fields(self, n):
+            f = self.d.get(n)
+            return None if f is None else OrderedDict((k, _TF(v)) for k, v in f.items())
+
+        def get_field_value(self, n, f):
+            return self.d.get(n, {}).get(f)
+
+        def set_field(self, n, f, v, dt=None):
+            self.d.setdefault(n, {})[f] = v if isinstance(v, list) else [v]
+
+    def _pool(db, name, others_total):
+        """One native member carrying `others_total`, plus the Hunt at his normalised weight."""
+        db.d[name] = {
+            'templateName': ['database\\templates\\proxypool.tpl'],
+            'name1': [MON], 'weight1': [others_total],
+            'name2': [_HUNT_MONSTER], 'weight2': [_ls_slot_weight(others_total)],
+            'limit2': [_LS_SLOT_LIMIT],
+        }
+
+    def _base():
+        db = _Stub()
+        db.d[_HUNT_MONSTER] = {'Class': ['Monster'], 'charLevel': [40, 68, 100]}
+        db.d[MON] = {'Class': ['Monster']}
+        _pool(db, POOL_A, 36000)
+        _pool(db, POOL_B, 660000)
+        return db, [POOL_A, POOL_B]
+
+    plants = [
+        ('the pre-R-86 FLAT weight 1 comes back (1-in-27-playthroughs invisibility)',
+         lambda db: db.d[POOL_A].__setitem__('weight2', [1])),
+        ('ONE pool misses normalisation (the 18x per-area unfairness this ruling kills)',
+         lambda db: db.d[POOL_B].__setitem__('weight2', [_ls_slot_weight(36000)])),
+        ('the rate is silently doubled',
+         lambda db: db.d[POOL_A].__setitem__('weight2', [_ls_slot_weight(36000) * 2])),
+        ('a native member is re-scaled without re-deriving his weight (rate silently halved)',
+         lambda db: db.d[POOL_A].__setitem__('weight1', [72000])),
+        ('the structural <=1-per-trigger cap is dropped',
+         lambda db: db.d[POOL_A].__setitem__('limit2', [None])),
+        ('he leaks into a pool outside the Immortal-Throne namespace',
+         lambda db: _pool(db, 'records\\creature\\pools\\nt_leak.dbr', 66000)),
+        ('he leaks into a BOSS pool',
+         lambda db: _pool(db, 'records\\xpack\\proxieshades\\pools\\boss_nt.dbr', 66000)),
+        ('the sweep populates ZERO pools (he would never appear at all)',
+         lambda db: [db.d.pop(POOL_A), db.d.pop(POOL_B)]),
+    ]
+
+    db, touched = _base()
+    try:
+        _verify_legendary_stalker_sweep(db, touched)
+    except SystemExit as e:
+        print("NEGTEST SETUP FAIL: the clean stub should PASS but raised: %s" % e)
+        return 1
+    bad = 0
+    for label, plant in plants:
+        db, touched = _base()
+        plant(db)
+        # the gate re-derives the touched set from the db, so a LEAK plant must not be
+        # pre-declared in `touched` - that is exactly what makes it a leak.
+        try:
+            _verify_legendary_stalker_sweep(db, touched)
+        except SystemExit:
+            print("  negtest OK  (caught): %s" % label)
+            continue
+        print("  negtest FAIL (missed): %s" % label)
+        bad += 1
+    print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
+    return 1 if bad else 0
+
+
+if __name__ == '__main__':
+    import sys
+    sys.exit(_negtest() if '--negtest' in sys.argv else 0)

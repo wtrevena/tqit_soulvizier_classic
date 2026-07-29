@@ -83,11 +83,13 @@
 ## topics get a fresh decade (Legal 60-69). **2026-07-28: Souls & items 40-49 is FULL (R-49 was
 ## claimed 2026-07-27 by the fix/devourer-chest lane) - its OVERFLOW decade is 70-79.**
 ## **2026-07-28 (b98 Endless Hunt lane): Toxeus arc 1-19 is FULL - its OVERFLOW decade is 80-89
-## (R-80..R-85 claimed). Next free Toxeus number: R-86.**
+## (R-80..R-86 claimed). Next free Toxeus number: R-87.**
 ## **2026-07-28 b98 ROUND 2 (adversarial vet) allocated NO new numbers on purpose.** Will made no new
 ## decision; what changed is what round 1 CLAIMED about the decisions he had already made. R-83 and
 ## R-84 therefore carry marked "ROUND 2" amendment blocks rather than new rulings, so his words stay
-## in one place and the correction sits next to the claim it corrects. R-86 is still free.
+## in one place and the correction sits next to the claim it corrects.
+## **2026-07-29 b98 ROUND 3 claimed R-86** - the roam RATE ("roughly one sighting per act"), the one
+## genuinely NEW Will decision in this lane since round 1. It closes BL-b98-DEBT-5.
 
 ### Toxeus arc (continued)
 - R-19 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
@@ -590,8 +592,44 @@
   `RevenantPoison.msh` - the mesh he wears in the deployed arz - has a GREEN aura compiled into the
   mesh file at his waist. Black hand-smoke over a green waist aura will not read black. That mesh work
   belongs to the green-diff lane and turns on a Will answer (BL-b98-DEBT-2).
-
-### Legal / permissions (new section)
+- R-86 [2026-07-27] IMPLEMENTED b98 ROUND 3 (feat/endless-hunt, 2026-07-29), verbatim fragment:
+  the roaming Endless Hunt's target rate is **"roughly one sighting per act"**. He was offered three
+  options and picked this one over both **"a few per act"** and **"frequent stalker"** - so the
+  intent is near-mythical but no longer effectively invisible: reliably met once or twice per
+  playthrough, never.
+  PROVENANCE, stated honestly: this reached the lane through the orchestrator's brief, which dated
+  his answer 2026-07-27 and rendered it as the fragment above; there is no raw transcript line in
+  this repo, and the question it answers (`BL-b98-DEBT-5`, report section 10 Q3) was filed 07-28.
+  The wording is recorded exactly as received rather than smoothed. Same convention as R-81.
+  CLASS: **WILL-VETO** (the R-18 precedent - a rate change on these champions is Will's call, never
+  an implementer's). This ruling CLOSES `BL-b98-DEBT-5`, which recorded the rate as deliberately
+  NOT taken pending exactly this answer.
+  WHAT WAS WRONG: the sweep appended him at a FLAT weight 1 against pool totals of 36,000..660,000.
+  Measured against the built arz + the shipped `world01.map`, that is **0.0368 expected sightings
+  per full Act IV+V pass - ONE PER 27 PLAYTHROUGHS**. That, not any difficulty gate, is why Will met
+  him once on Epic and never on Normal (see R-80 and the "Hades-only myth" correction). A flat
+  weight was ALSO 18.3x unfair between areas, because the natives are x600-scaled by different
+  amounts - he was 18x rarer in Rhodes than in the Hades Palace for no design reason.
+  THE FIX: his slot weight is NORMALISED PER POOL to hit a constant per-draw probability
+  `_LS_TARGET_P_SLOT = 1/1250` (`tools/patches/toxeus_suite.py`, one named constant with the whole
+  derivation beside it - retune him there and nowhere else). Shipped weights are 29..528 per pool
+  (median 53), and the realised p_slot spread across all 345 pools collapses from 18.3x to 1.016x.
+  THE ARITHMETIC (measured 2026-07-29, not estimated - full per-area table in
+  `docs/reports/b98_endless_hunt.md` section 12): 345 roaming pools, mean 3.19 main draws per
+  resolved pool, all 539 referencing proxies at chanceToRun 100, and the shipped map places them
+  **797 times** (Act IV: Rhodes 54 + Medea 134 + Epirus 69 + Styx 149 = 406; Act V: Judgement 175 +
+  Elysian 131 + Hades Palace 85 = 391) = 2,486 effective draws per pass.
+  `E = SUM over placements of chanceToRun * (1-(1-p)^k)`, with limitN=1 capping each placement at 1.
+  RESULT, read back out of the SHIPPED bytes: **ACT IV 0.955 sightings, ACT V 1.034, full pass
+  1.989** - 54x the shipped rate, and "roughly one per act" in both acts rather than on average.
+  HE IS STILL THE RAREST THING IN EVERY POOL (weight 53 against natives carrying 18,000 each).
+  DELIBERATELY UNCHANGED: the pool SET (still the same 345), the x600 self-scaling, the `limitN=1`
+  structural cap, and the FIXED Hades Palace encounter, which stays a guaranteed p_slot of 1.000.
+  GATE: the old gate asserted `weight == 1` plus a 1/2400 ceiling, which this ruling reds by
+  construction, so it was REPLACED (not loosened) in the same commit by the stronger invariant the
+  new scheme guarantees - every pool must realise the SAME p_slot within +/-4% (integer rounding).
+  8 planted negatives, all caught, including "the flat weight 1 comes back" and "ONE pool misses
+  normalisation".
 - R-60 [2026-07-04] STANDING "Will's decision, 2026-07-04 - no Lite build" - KEEP DRX (Dragonlord's
   visual overhaul) in the shipped mod; `-LiteMode` is off the table (it strips assets the blood cave
   itself needs). Keeping DRX keeps Dragonlord's permission on the Workshop-publish critical path.

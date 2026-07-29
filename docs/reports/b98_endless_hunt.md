@@ -1,22 +1,36 @@
-# b98 - THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, ROUND 2, tag `build61-dev`)
+# b98 - THE ENDLESS HUNT (2026-07-29, branch `feat/endless-hunt`, ROUND 3, tag `build63-dev`)
 
 DB-ONLY lane. **NOT DEPLOYED** (five content branches are staged for one merged deploy).
 TAG NOTE: briefed as `build59-dev`, but that tag was already claimed by the parallel
 `fix/soul-identity` lane (b97 round 2, `e3f7c32`); a tag in use is never reassigned, so round 1 took
-`build60-dev` and this round-2 commit takes `build61-dev`.
+`build60-dev`, round 2 `build61-dev`, and this round-3 commit takes `build63-dev`.
+
+**ROUND 3 IS ONE RULING.** Will answered the single blocking question round 2 left open - the roam
+RATE - so this round implements **R-86** and nothing else. Sections 1-11 below are round-2 text and
+are unchanged; the rate work is **section 12**, and it is the only thing that moved. Every other gate
+was re-run, not re-opened.
+
+> 🚨 **TWO THINGS CHANGED UNDER THIS LANE WHILE ROUND 3 WAS BUILDING. SEE SECTION 13.**
+> The b99 content wave integrated four OTHER lanes and DEPLOYED (DEV arz is now
+> `f6cd8698b1578a389fd6a432c1f757cb`, not the `9f98e3e8...` this lane started against), and b99
+> also claimed **R-80** and the whole **80-89 decade**, which collides head-on with this lane's
+> R-80..R-86. `feat/endless-hunt` was NOT part of that deploy and is still un-integrated.
 
 Ground truth: deployed arz md5 `9f98e3e88bca20f96bacc2fd6bb87b63` (51,098 records),
-`Levels.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe`, plus the engine's own `Toolset/Templates.arc`.
-Both re-hashed at the end of round 2 and **unchanged** (no deploy).
+`Levels.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe`, `Quests.arc` md5
+`35bfe3f39e8480408e3c22ea5473f796`, plus the engine's own `Toolset/Templates.arc`.
+All re-hashed at the end of round 3 and **unchanged** (no deploy).
 
 | artifact | path | md5 |
 | --- | --- | --- |
-| arz | `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz` | `6be6fb0a5507ca4f6988405e7a64add8` (51,104 records) |
+| arz | `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz` | `33c102cbc81d6571e3621507cda6fc07` (51,104 records) |
 | Text (COUPLED) | `.claude/worktrees/endless-hunt/work/text/Text.arc` | `c0f22186550484b932e26dacc12c6a9a` |
 | Levels / Quests | untouched | n/a |
 
 (Round 1 shipped arz `c366b4108be547b4a4acb181d1b0675c` / Text `ce4653d30f304a88e837b20e166639fc`;
-both are SUPERSEDED by the pair above.)
+round 2 shipped arz `6be6fb0a5507ca4f6988405e7a64add8`. Both arz artifacts are SUPERSEDED by the one
+above. The Text.arc is BYTE-IDENTICAL across rounds 2 and 3 - the rate change adds no tag - but the
+arz+Text coupling still holds and both must ship together.)
 
 The pair is COUPLED: the arz references the new `tagSVCwpnRunbreaker` **and the seven new
 `tagSVCHunt*` skill tags**, so shipping the arz without this Text.arc puts raw tag strings in a
@@ -28,6 +42,7 @@ player's hands.
 
 | # | ask | ruling | status |
 | --- | --- | --- | --- |
+| 0 | "roughly one sighting per act" (the roam rate) | R-86 | **DONE** (round 3 - see 12) |
 | 1 | his soul does not drop; and the EoAT formula should drop off him like the other two | R-81, R-82 | **DONE** |
 | 2 | "yeah lets have the endless pursuit only be on legendary" | R-80 | **DONE** (fixed encounter only - see 6) |
 | 3 | give him a spear; make the three champions look like three creatures | R-83 | **DONE for the Hunt**; the Enslaver/Devourer mesh half is NOT done (see 7) |
@@ -431,8 +446,8 @@ tags read the mod-authored `tagSVCHunt*` values; the Legendary variant differs f
 4. **The ROAMING Hunt is still kiteable on Legendary.** ProxyPool has no per-difficulty member list
    and the 345 pools are native and shared. Only the fixed encounter is endless. Structural, reported
    not hidden. BL-b98-DEBT-9.
-5. **The roam RATE is untouched** (about 1 in 67,000 per roll). A rate change is WILL-VETO by the R-18
-   precedent. BL-b98-DEBT-5.
+5. ~~**The roam RATE is untouched**~~ **CLOSED IN ROUND 3 by R-86** - Will answered, and the rate now
+   delivers ~1 sighting per act. See section 12. `BL-b98-DEBT-5` is closed.
 6. **His empty drop slots are untouched.** Finger1 / Misc1 / Misc2 / Misc3 are wired at 0%, so his
    ring, potions, relic and amulet can never drop. WILL-VETO by the R-39 precedent. BL-b98-DEBT-6.
 7. **The EoAT recipe reagents are unchanged.** Whether his soul should become one is Will's call, and
@@ -452,8 +467,8 @@ tags read the mod-authored `tagSVCHunt*` values; the Legendary variant differs f
 1. Endless pursuit at 1000 units / 100 seconds also means he cannot be outrun to a town portal on
    Legendary. Intended?
 2. Should the Endless Hunt's legendary soul become a reagent of the End of All Things formula?
-3. The roam is about 1 in 67,000 per spawn roll. Target: once a playthrough, once per act, or leave
-   him a rumour?
+3. ~~The roam is about 1 in 67,000 per spawn roll. Target?~~ **ANSWERED** - "roughly one sighting per
+   act" (R-86, shipped round 3, section 12).
 4. Open his empty drop slots (ring / potions / relic / amulet) to Enslaver-comparable rates?
 5. Spear: keep him FAST (shipped) or make him a slow, heavy reach-hunter?
 6. Have you seen the Devourer's black poison read BLACK in game? Your answer decides whether
@@ -629,3 +644,256 @@ Every round-1 finding the vet upheld is untouched: the drop chain, the endless-p
 controller, the Runbreaker items and their F3 mesh correction, the ungated fixed encounter, the
 Enslaver shroud, the ledger allocation, and the no-deploy discipline. The NOT-DONE list in section 9
 is unchanged except that BL-b98-DEBT-10 joins it.
+
+---
+
+## 12. ROUND 3 - THE ROAM RATE (R-86), the one thing Will had not yet decided
+
+Round 2 shipped with exactly one blocking question open: **how often should the roaming Hunt
+actually appear?** Round 1 and 2 both refused to touch it, correctly - a rate change on these
+champions is WILL-VETO under the R-18 precedent, and it was filed as `BL-b98-DEBT-5`. Will has now
+answered: **"roughly one sighting per act"**, chosen over "a few per act" and "frequent stalker".
+Near-mythical, but reliably met once or twice a playthrough rather than never.
+
+### 12.1 What was actually wrong - quantified, not asserted
+
+The sweep appended him at a **flat weight 1** into pools whose other members total 36,000 to 660,000.
+Round 1 described that as "about 1 in 67,000 per spawn roll", which is the right order of magnitude
+for a single POOL DRAW but is not the number that matters. The number that matters is expected
+sightings over a playthrough, and it needs three measured inputs, all taken from the built arz and
+the shipped `world01.map` rather than estimated:
+
+| input | measured | how |
+| --- | --- | --- |
+| roaming pools carrying him | **345** | ProxyPool records with `um_toxeus_hunt_99` in a `nameN` slot (the 346th is the FIXED Hades Palace pool, excluded) |
+| main draws per resolved pool, `k` | mean **3.19**, median 3, max 13.5 | `(spawnMin+spawnMax)/2` on each pool |
+| proxies referencing them | **539**, all `chanceToRun` = **100** | `pool`/`poolEpic`/`poolLegendary` slots |
+| PLACEMENTS of those proxies in the world | **797** | scanned every level blob in `world01.map` |
+
+WARNING - a trap worth recording, because it silently produced a wrong answer first. The ProxyPool
+spawn count fields are `spawnMin` / `spawnMax`. An earlier pass of this analysis read
+`spawnMinimumNumber` / `spawnMaximumNumber`, which do not exist on the template - so every pool
+silently defaulted to `k = 1` and the model understated the draw count by 3.19x. It was caught by
+dumping the actual field set off a real pool record instead of trusting the field names. The final
+model raises `SystemExit` if either field is missing rather than defaulting.
+
+Placements, which is also the Act split:
+
+| area | placements | act |
+| --- | --- | --- |
+| area01 Rhodes | 54 | IV |
+| area02 Medea's Grove | 134 | IV |
+| area03 Epirus | 69 | IV |
+| area04 Styx | 149 | IV |
+| area05 Plains/Tower of Judgement | 175 | V |
+| area06 Elysian Fields | 131 | V |
+| area08 Hades Palace | 85 | V |
+| **ACT IV** | **406** | |
+| **ACT V** | **391** | |
+
+The two acts are almost exactly balanced (406 vs 391), which is what makes "one per act" and "two per
+pass" the same tuning target rather than two competing ones.
+
+### 12.2 The model
+
+```
+E[sightings over a pass] = SUM over placements of  chanceToRun_i * (1 - (1 - p_slot)^k_i)
+```
+
+Draws are independent and WITH REPLACEMENT, so a placement's contribution is P(at least one), not
+`k * p`. `limitN = 1` caps the COUNT at one Hunt per pool per trigger, which is exactly what makes
+`1 - (1-p)^k` the right term and not an over-count. Total effective draws over a full Act IV+V pass
+at 1 player: **2,486**.
+
+**BEFORE (flat weight 1): 0.0368 expected sightings per full pass = ONE PER 27 PLAYTHROUGHS.**
+That is the honest answer to why Will met him once on Epic and never on Normal. He was never
+difficulty-gated (section 6); he was effectively invisible.
+
+### 12.3 Why a flat weight was rejected
+
+The brief required either normalising per pool or explaining why a flat weight is acceptable. It is
+not acceptable here, and the measurement says so plainly: pool totals span **36,000..660,000, an
+18.3x spread**, because the natives were x600-scaled from different bases. A single flat weight
+therefore makes him **18.3x rarer in the poorest area than in the richest**, for no design reason at
+all. Two illustrative flat weights:
+
+| flat weight | sightings/pass | p_slot range | unfairness |
+| --- | --- | --- | --- |
+| 165 | 6.03 | 1/219 .. 1/4,001 | 18.3x |
+| 400 | 14.49 | 1/91 .. 1/1,651 | 18.1x |
+
+So the slot weight is **normalised per pool** to hit a constant per-draw probability:
+
+```
+weight_i = round( P * others_i / (1 - P) )      # solves  w/(others+w) == P
+```
+
+### 12.4 The chosen constant
+
+Solving `E = 2.0` (one per act) against 2,486 effective draws gives `p_slot = 1/1243`. The shipped
+value is the round, retunable **`_LS_TARGET_P_SLOT = 1/1250`**, a single named constant in
+`tools/patches/toxeus_suite.py` with the whole derivation in the comment beside it. **That is the one
+place to retune him**; the inject writes the weights from it and the gate re-derives them from it, so
+the two can never disagree.
+
+**REALISED RESULT, read back out of the SHIPPED bytes** (not asserted by the code that wrote them -
+an independent pass re-reads every Hunt slot weight from the finished arz and re-runs the model):
+
+| | before | after |
+| --- | --- | --- |
+| Act IV | - | **0.955 sightings** |
+| Act V | - | **1.034 sightings** |
+| full Act IV+V pass | 0.0368 (1 per 27 playthroughs) | **1.989** |
+| realised p_slot | 1/36,001 .. 1/660,001 | 1/1,241 .. 1/1,261 |
+| per-area spread | 18.3x | **1.016x** |
+| his slot weight | 1 | 29..528 (median 53) |
+
+"Roughly one sighting per act" holds **in each act separately**, not merely on average. He is also
+still the rarest thing in every pool he rides: weight 53 against natives carrying 18,000 each.
+
+### 12.5 What was deliberately NOT changed
+
+- **The pool SET.** Still the same 345. The eligibility rules, the bad-sub filters and the b49
+  x600 self-scaling coupling are untouched, so this ruling changed his RATE and nothing about his
+  BREADTH. The record diff proves it: 0 added, 0 removed.
+- **The FIXED Hades Palace encounter.** It is a single-member pool and still resolves at
+  `p_slot = 1.000` - guaranteed, exactly as R-80 left it. The normalisation is scoped by
+  `_LS_ALLOW_PREFIX` (the Immortal Throne proxy namespace), which structurally cannot reach it.
+- **`limitN = 1`.** Kept, and it matters MORE now than it did at weight 1: with `p = 1/1250` in a
+  13-draw pool, P(2+ in one trigger) is about 5e-5, roughly 0.04 over a full pass. Small, but it is
+  the "two-in-one-trigger" defect class the Enslaver v2 sweep already had to fix once.
+- **Everything in sections 1-11.** R-80..R-85 are byte-for-byte as round 2 left them.
+
+### 12.6 The gate had to be replaced, not loosened
+
+The old gate asserted `stalker weight == 1` plus a `p_slot <= 1/2400` ceiling. Will's ruling reds
+that by construction - the same situation round 1 hit with the Legendary-only gate, and it is handled
+the same way: **inverted in the same commit, never waived**. The replacement asserts the *stronger*
+invariant the new scheme actually guarantees:
+
+> every Hunt-bearing roaming pool must carry the weight re-derived from that pool's own total, and
+> must realise the SAME `p_slot` within +/-4% (the tolerance covers integer rounding, which is
+> largest in the poorest pools where the weight is only 29).
+
+That catches strictly more than the old one: a mistuned constant, AND a pool that silently missed
+normalisation - the exact flat-weight bug class this ruling exists to kill. `_LS_MAX_P` is fully
+retired with no remaining referencer.
+
+**Planted negatives, 8/8 caught** (`py tools/patches/toxeus_suite.py --negtest`): the flat weight 1
+comes back; ONE pool misses normalisation; the rate is silently doubled; a native member is re-scaled
+without re-deriving his weight (the rate would silently halve); the structural one-per-trigger cap
+is dropped; he leaks outside the Immortal-Throne namespace; he leaks into a BOSS pool; the sweep
+populates zero pools. Lane total is now **34/34** across four gates (was 26/26).
+
+### 12.7 Verification
+
+| gate | result |
+| --- | --- |
+| DB build (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`) | **PASS**, exit 0 |
+| **determinism** | rebuilding HEAD in this env reproduced round 2's published `6be6fb0a...` EXACTLY, so the diff baseline is the real round-2 build |
+| record diff vs that baseline | **0 ADDED / 0 REMOVED / 345 MODIFIED**, one `weightN` field each (345 field changes / 345 records); collateral sentinel **NONE** |
+| registry selfcheck | OK, 39 modules, order hash `14c27b6e835f` (unchanged) |
+| every module `verify()` | green |
+| roam-sweep gate | 345 pools, all within 1/1250 +/-4%, 0 leaks |
+| `validate_tags` | **PASS** (426 authoritative tags resolve) |
+| `verify_soul_drop_rates` | **PASS**, incl. its own planted negative |
+| planted negatives | **34/34** across 4 gates |
+| contract suite (5 domains) | **PASS - 0 P0 / 0 P1 / 4,759 P2**; all 11 reporting contracts return counts IDENTICAL to the baseline (**delta 0 on every one**) |
+| Text.arc | rebuilt, byte-identical to round 2 - coupling holds |
+
+WARNING - contract-suite note, repeated because it bit this round too. The suite must be given
+`--quests-arc`, `--resource-arc-dir`, `--base-game-dir` and `--upstream-dir`. Without `--quests-arc`
+it reports a spurious **1 P1 plus a crashed `contracts_quests` module on ANY build, the baseline
+included** - a missing-input artifact, not a regression. That was confirmed by re-running the
+identical command on both builds rather than by assuming.
+
+### 12.8 What this round does NOT change
+
+The NOT-DONE list in section 9 stands, minus item 5 which is now closed. In particular
+**`BL-b98-DEBT-9` is untouched and unaffected**: the roaming Hunt is still kiteable on Legendary,
+because ProxyPool has no per-difficulty member list. R-86 changed how OFTEN he appears; it did
+nothing about how he behaves when he does. Only the fixed Hades Palace encounter is endless.
+And no in-game QA of any kind was done - no deploy, no Steam, no launch.
+
+---
+
+## 13. WHAT CHANGED UNDER THIS LANE MID-ROUND (found, not assumed)
+
+Round 3 re-hashed the ground truth at the end, as every round does. Two things had moved, and both
+matter to whoever integrates b98.
+
+### 13.1 The merged deploy already happened, and b98 was not in it
+
+The design brief and rounds 1-2 all operated under a staging freeze: "five content branches are
+staged for ONE merged deploy". That deploy has now happened, without this lane.
+
+| fact | value |
+| --- | --- |
+| integration commit | `38e7a256` "b99 CONTENT WAVE: integrate 4 vetted lanes, one build, one coupled deploy" |
+| its tag | `build62-dev` (which is why round 3 takes `build63-dev`) |
+| lanes it merged | `feat/death-xp-penalty`, `feat/sargath-soul`, `feat/vashkarr-soul`, `fix/soul-identity` |
+| DEV arz before | `9f98e3e88bca20f96bacc2fd6bb87b63` |
+| DEV arz now | **`f6cd8698b1578a389fd6a432c1f757cb`** (written 2026-07-29 07:12:56) |
+| `Levels.arc` / `Quests.arc` | unchanged (`943d0ab9...` / `35bfe3f3...`) |
+| is `feat/endless-hunt` in it? | **NO** - verified with `git merge-base --is-ancestor 74438bf 38e7a256` |
+
+**This lane did not deploy anything** and never wrote to `CustomMaps`; every build went to `work/`
+inside the worktree or to the session scratchpad. The drift is b99's, and it is a normal integration
+rather than a defect. But the consequence is load-bearing:
+
+> **b98's arz is built on `main` a0276ab, NOT on the deployed b99 base.** The integrator must merge
+> b98 onto post-b99 `main` and REBUILD. Do not drop `33c102cbc81d6571e3621507cda6fc07` on top of b99
+> as-is - it would revert b99's four lanes exactly the way the original staging freeze existed to
+> prevent.
+
+Nothing about the R-86 work is invalidated by this. The rate is derived from the roaming pools and
+the shipped `world01.map`, neither of which b99 touched, and the normalisation is computed per pool
+at build time from whatever total that pool actually has - so it re-derives correctly on any base.
+
+### 13.2 HARD LEDGER COLLISION: R-80 and the entire 80-89 decade
+
+This is the one that needs a human decision.
+
+| | `feat/endless-hunt` (this lane, 2026-07-28) | `main` via b99 (deployed 2026-07-29) |
+| --- | --- | --- |
+| decade 80-89 is | the **Toxeus arc OVERFLOW** decade | **"Global balance and progression"** |
+| R-80 is | endless pursuit, Legendary only | the death-XP penalty (b93) |
+| numbers claimed | R-80, 81, 82, 83, 84, 85, **86** | R-80 |
+
+Both allocations are live and they collide the moment b98 merges. b99's own commit body documents
+the protocol for exactly this ("THREE-WAY R-80 collision... Incumbent keeps the number,
+`fix/debt-docs` precedent") - it hit the same class of problem with R-70 and resolved it by moving
+the newcomers, not the incumbent.
+
+**This lane deliberately did NOT unilaterally renumber**, for three reasons:
+1. this branch does not contain b99, so the collision does not exist here yet - renumbering would be
+   editing against a base that does not show the conflict;
+2. the repo has a documented reconciliation protocol and an integrator whose job this is;
+3. picking the wrong direction and moving seven rulings would be a considerably worse mess than
+   leaving one clearly-flagged decision.
+
+**RECOMMENDATION.** b99 is on `main` AND deployed, which makes it the incumbent for both R-80 and the
+80-89 label. b98's seven rulings should therefore move to a fresh Toxeus overflow decade at
+integration time.
+
+**SIZE OF THE MOVE, measured so it can be planned rather than discovered:** R-80..R-86 is
+**7 rulings and 195 citations across 12 source files.**
+
+| file | citations |
+| --- | --- |
+| `tools/patches/toxeus_hunt_encounter.py` | 67 |
+| `docs/reports/b98_endless_hunt.md` | 25 |
+| `docs/BACKLOG.md` | 23 |
+| `docs/WILL_RULINGS.md` | 21 |
+| `tools/patches/toxeus_suite.py` | 18 |
+| `tools/patches/__init__.py` | 10 |
+| `tools/patches/toxeus_hunt_endless.py` | 8 |
+| `tools/patches/toxeus_souls_100.py` | 8 |
+| `tools/verify_soul_drop_rates.py` | 5 |
+| `tools/patches/enslaver_shroud.py` | 3 |
+| `tools/build_section_surgery.py` | 1 |
+| `tools/patches/skill_quality.py` | 1 |
+
+The renumber is purely documentary: **no record, field, gate or built byte depends on a ruling
+number.** Rebuilding after the renumber must produce a byte-identical arz, and that is the cheapest
+possible check that the renumber was clean.
