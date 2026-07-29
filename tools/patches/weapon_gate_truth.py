@@ -6,9 +6,15 @@ are using a sword dagger or axe as the skill description says?"
 
 GROUND TRUTH (engine-level, not inferred from field names). Evidence chain:
 
-1. THE RECORD. `records\\skills\\stealth\\drx_dual_blade.dbr` in the built
-   `SoulvizierClassic.arz` (md5 1c27d5fa650b5c076696db4ad379672f) is a single
-   `Skill_Passive` (template `Database\\Templates\\Skill_Passive.tpl`) carrying
+1. THE RECORD. `records\\skills\\stealth\\drx_dual_blade.dbr`. Read at
+   investigation time out of the then-current built arz md5
+   1c27d5fa650b5c076696db4ad379672f, and re-confirmed field-for-field (ZERO
+   diffs) in this lane's own build md5 1e0990d7f934afb90151aa4672ddc049. NOTE
+   the main checkout's `work/.../SoulvizierClassic.arz` moved under this lane
+   mid-session (a parallel lane rebuilt it: 1c27d5fa -> 967b1f97, 51085 ->
+   51124 records); both of those and this lane's build agree on every field of
+   this record, so the reading does not depend on which one you open. It is a
+   single `Skill_Passive` (template `Database\\Templates\\Skill_Passive.tpl`) carrying
    ALL FOUR bonuses itself, with no attached/child records:
        characterDodgePercent           5,7,9,10,12,14,16,18,19,21,23,25
        characterDefensiveAbility      11,17,23,29,35,41,47,60,66,72,80,90
