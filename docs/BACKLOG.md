@@ -1,5 +1,54 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD68-DEV GATE RECORD - b100 SANCTUARY OF THE BLOODBORN: THE POPULATION (2026-07-29, branch `feat/sanctuary-populate`, tag `build68-dev`)
+
+**NOT DEPLOYED.** This lane wrote nothing to `CustomMaps`, launched neither TQ nor Steam, and
+touched no file outside its own worktree. Full evidence: `docs/reports/b100_sanctuary_population.md`.
+Rulings: **R-110** (population, IMPLEMENTED) and **R-111** (minimap, PENDING) in a fresh decade
+110-119, re-proven free this turn against `main` and every in-flight branch.
+
+**TAG:** briefed `build66-dev`; that tag was already taken by the b94/leinth-wave merge and
+`build67-dev` was taken too, so this lane takes **`build68-dev`**. A tag in use is never reassigned.
+
+**WHAT IT IS.** Will: the Sanctuary has *"large walkable areas with no enemies placed"*. Confirmed
+against built bytes before anything changed: `Levels/World/xBloodCave/drxBC3.lvl` (idx 2253) is the
+ONLY level in the 2,282-level world carrying the `BCXwalkway` -> "Sanctuary of the Bloodborn" region
+label; it holds 23,994 sq u of its own walkable ground and TEN monster proxies, and its worst exact
+60x60 screen box sums **24** spawnMax against a base-game cave/crypt/tomb MEDIAN of 26 and blood-cave
+siblings of 42..81. Our merge dropped nothing - placement-IDENTICAL to pristine SV 0.98i - so this is
+inherited upstream content debt, not a regression, and there is nothing to "restore".
+
+**THE CHANGE.** ADD-ONLY, map-side, **14 proxies** injected into drxBC3's `0x05` via
+`build_section_surgery.SANCTUARY_SPECS`, in four bands climbing the cult's hierarchy along the
+player's real one-way walk (Outer Court / Congregation / Clergy / Threshold). Every pool ALREADY
+SHIPS in this cave: **zero new creatures, records, pools or text tags**, so the lane is MAP-ONLY.
+Byte shape identity-rot / flags=0 / no 0x14 - measured to be exactly amgoz1's own drxBC3 shape.
+
+**BLAST RADIUS (`tools/debug/b100_map_diff.py`, baseline built from the merge-base tree in the same
+environment):** 1 level blob of 2,282 differs; inside it exactly ONE section (`0x05`, 18,778 ->
+19,833 B, 281 -> 295 instances); `0x0b` navmesh BYTE-IDENTICAL (857,212 B md5
+`06f783d00edc7c23866b0fe2b368bbb0`); all 281 pre-existing instances byte-preserved; the `0x01`
+LEVELS-index delta is entirely the offset ripple (2282/2282 identities unchanged, 0 other
+data_length changed, 28 data_offsets shifted). Verdict: **every change attributed.**
+
+**NEW GATE `MAP-SANCTUARY-1`** (`tools/gate_sanctuary_population.py`) - 13 invariants: own-area
+on-mesh, all 3 tilesets, floor-Y match (max dY 0.005 u), arrival-component reachability,
+on-the-processional, b44 landing clearance (anchors + level edge + props), R-30 spacing, an exact
+worst-screen density cap (24 -> 36, cap 42), `0x0b` byte-identity vs baseline (the b89 crash class),
+bounded-pool resolution (the b76 class), and ocean-ring scope. **8 planted negatives, 8/8 CAUGHT**
+(`--negtest`). The negatives immediately caught two real bugs in the gate's own first cut.
+
+**DESIGN CORRECTIONS (the design pass was treated as a proposal, and four claims failed):** its
+bands were keyed on world-X but the 690.6 u processional is non-monotonic in X and descends four
+elevation tiers (bands are now geodesic route distance); its probe never computed a Y at all; its
+density comparators used a proxy-CENTRED box that undercounts by a measured mean 1.39x (drxBC3 reads
+12 that way, 24 exactly); and its "every pool1 resolves as Class ProxyPool" is false as written -
+ProxyPool records carry no `Class` field at all, their identity is the template. Its INTENT, its four
+bands and its creature rosters are kept verbatim.
+
+**OPEN DEBT:** BL-b100-DEBT-1..7 (see DEBT REGISTER). Headline: **no in-game check exists** - no
+agent in this lane may launch TQ, so every claim is about bytes and geometry, not feel.
+
 ## BUILD65-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 4: INTEGRATION ONTO POST-b99 MAIN (2026-07-29, branch `feat/endless-hunt`, tag `build65-dev`)
 
 **NOT DEPLOYED.** This lane wrote nothing to `CustomMaps\SoulvizierClassicDEV`; re-hashed at the end,
@@ -1434,6 +1483,41 @@ along automatically when the structural cluster-relocation fix lands.
 > - **BL-DEBT-b100-6 (P2, OPEN):** density/screen-load figures are `spawnMax` MODEL sums over a chosen
 >   60x60 u box; TQ's real camera footprint was NOT measured (needs the game running). In-game feel
 >   check is Will's, unowned by any agent lane.
+
+> 🩸 **2026-07-29 b100 IMPLEMENTATION UPDATE (`feat/sanctuary-populate`, `build68-dev`, R-110/R-111).**
+> The population SHIPPED on-branch (see the BUILD68-DEV GATE RECORD at the top of this file and
+> `docs/reports/b100_sanctuary_population.md`). The six items above are re-stated here with their
+> post-implementation status; two are now closed, and one new item is opened.
+> - **BL-b100-DEBT-1 = BL-DEBT-b100-1 (P1, STILL OPEN, WILL_DECISION-1):** the ocean ring is
+>   deliberately UNTOUCHED and gate `MAP-SANCTUARY-1` G12 asserts it stays that way (0 proxies on all
+>   four tiles). Still Will's taste call.
+> - **BL-b100-DEBT-2 = BL-DEBT-b100-2 (P2, STILL OPEN, WILL_DECISION-2):** the shipped figure is
+>   **worst exact 60x60 box 24 -> 36**, under a gated cap of 42. ⚠️ The design's quoted numbers
+>   ("18 vs base-game median 14 / p90 70 / max 162") were produced with a proxy-CENTRED box that
+>   undercounts by a measured mean **1.39x**; recomputed with the exact box on the same map the
+>   base-game cave/crypt/tomb cohort (n=80) reads min 9 / p25 19 / MEDIAN 26 / p75 35 / p90 44 /
+>   max 78. Whether 36 is the feel Will wants is still his call, and it is a one-constant edit
+>   (`SCREEN_CAP` in `tools/debug/b100_derive_sanctuary.py`) plus a re-derive and a re-gate.
+> - **BL-b100-DEBT-3 = BL-DEBT-b100-3 (P2, STILL OPEN, now R-111):** the minimap zone-page defect,
+>   unchanged and deliberately not bundled. Mechanism recorded verbatim on R-111 in the ledger.
+> - **BL-b100-DEBT-4 = BL-DEBT-b100-4: CLOSED as a finding** - re-confirmed by the implementation
+>   (the placement diff vs SV 0.98i is unchanged) and now recorded on R-110 so it cannot be
+>   re-litigated as a "restore the lost spawns" task.
+> - **BL-b100-DEBT-5 = BL-DEBT-b100-5 (P1, STILL OPEN, WILL_DECISION-4):** `docs/amgoz1_design_voice.md`
+>   still does not exist. The creative bar this content was held to is a reconstruction from R-15,
+>   `docs/BLOOD_TOXEUS_DESIGN.md` and `docs/BOSS_SOULS_DESIGN.md`, and that reconstruction is
+>   unratified.
+> - **BL-b100-DEBT-6 = BL-DEBT-b100-6 (P2, STILL OPEN):** **NO IN-GAME CHECK EXISTS.** Nobody has
+>   walked the Sanctuary with this population in it; no agent in this lane may launch TQ or Steam.
+>   Every claim in the gate record is about bytes and geometry, not feel. `spawnMax` sums are the
+>   worst case the DATA permits; actual concurrent load depends on player pathing and aggro.
+> - **BL-b100-DEBT-7 (P2, NEW, OPEN):** **an INHERITED R-30 spacing violation, waived by name, not
+>   fixed.** amgoz1's own shipped drxBC3 placements `bw_seductress_lone` (world 4314.8,2882.1) and
+>   `bw_priest_houndmaster` (4316.6,2889.5) are **7.4 u apart** - R-30's spacing law is already broken
+>   by upstream content. Moving either is a design change to shipped work and defaults to WILL-VETO
+>   under the RETIREMENT PROTOCOL, so gate `MAP-SANCTUARY-1` G8b waives exactly this pair in an
+>   allow-LIST: any OTHER inherited violation, and anything involving a placement we made, still
+>   fails. If Will wants it fixed it is a MOVE_SPECS entry, not a new placement.
 
 > Compiled by the b84 rulings-backfill sweep (round 1, 2026-07-16) of docs/reports/*.md, this file,
 > WILL_TEST_GUIDE*.md, HANDOFF*.md, MULTIPLAYER_COMPAT.md, and CHANGELOG.md. One line each: item -
