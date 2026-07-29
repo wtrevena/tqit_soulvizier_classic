@@ -82,6 +82,8 @@
 ## reserve a decade (Toxeus 1-19, Masteries 20-29, World 30-39, Souls 40-49, Process 50-59); new
 ## topics get a fresh decade (Legal 60-69). **2026-07-28: Souls & items 40-49 is FULL (R-49 was
 ## claimed 2026-07-27 by the fix/devourer-chest lane) - its OVERFLOW decade is 70-79.**
+## **2026-07-28 (b98 Endless Hunt lane): Toxeus arc 1-19 is FULL - its OVERFLOW decade is 80-89
+## (R-80..R-85 claimed). Next free Toxeus number: R-86.**
 
 ### Toxeus arc (continued)
 - R-19 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
@@ -104,11 +106,22 @@
 - R-15 [2026-07-14] IMPLEMENTED "you are good to ship the rant scroll" - amgoz1 creative-text veto
   cleared for `{^r}The Murderer's Screed` / `A Parchment Slick with Blood` + the ~180-word rant text
   (Toxeus's voice). Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 6.
-- R-16 [2026-07-14] PENDING (BACKLOG entry "approved-by-Will-2026-07-14", NOT scheduled) Legendary-only
+- R-16 [2026-07-14] IMPLEMENTED b65, then SUPERSEDED by R-80 (2026-07-28) Legendary-only
   Toxeus stalker via the proven Hydra fixed-placement pattern (`pool1` empty + `poolLegendary1` = boss
   pool) - APPROVED, QUEUED, not built; the already-shipped roaming Endless Hunt (Hades-confined) stays
   as-is alongside it, Will's call whether it is additive or a replacement. Source: docs/
   MULTIPLAYER_COMPAT.md M4.6-M4.7; docs/reports/toxeus_suite_recon.md sec 5.3.
+  > ⚠️ **TWO CORRECTIONS, b98 2026-07-28.** (1) STATUS: it WAS built (b65 lowlift wave,
+  > `tools/patches/toxeus_legendary_stalker.py` + the `hadespalace_floor04_04` placement); this entry's
+  > "not built" was stale. (2) FACT: **"the already-shipped roaming Endless Hunt (Hades-confined)" is
+  > WRONG.** The roam was never Hades-confined and never difficulty-gated - `records\xpack\proxieshades\`
+  > is the WHOLE Immortal Throne proxy namespace (Rhodes is filed inside it as area001), the sweep
+  > reaches 540 proxies across area001..area008, and 365 of them define only `poolN`, which resolves on
+  > all three difficulties. The claim came from one mis-annotated constant in `toxeus_suite.py`, now
+  > corrected in place. **SUPERSEDED BY R-80:** Will removed the Legendary-only gate from the fixed
+  > encounter (it now resolves on N/E/L) and moved "Legendary-only" onto the endless-pursuit BEHAVIOUR
+  > instead. The RECORDS keep their names; the module was renamed to `toxeus_hunt_encounter.py` under
+  > the retirement protocol.
 - R-17 [pre-M4, STANDING] Duplicate rant-scroll drops on repeat Blood-Toxeus kills are ACCEPTED (Will)
   - the per-player Misc4 fallback (corpse/chest with `loottable=toxeus_rant_perplayer`) need not dedupe
   across kills. Source: docs/MULTIPLAYER_COMPAT.md M4.3.
@@ -319,6 +332,163 @@
   Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb
   (`genericbossorb_04`, no bespoke "X's Essence" name) as the established convention - NOT a bespoke
   named essence per boss. Source: docs/reports/b53_orb_essence.md sec 4.
+
+### Toxeus arc - OVERFLOW decade 80-89 (allocated 2026-07-28 by the b98 Endless Hunt lane)
+> The Toxeus decade 1-19 is FULL (R-1..R-19 all in use). Per the header's rule that a number in use
+> is NEVER reused, this lane allocated the next free decade, **80-89**, for the Toxeus arc. Checked
+> before choosing: nothing anywhere in this ledger uses 80-89 (in use today: 1-19, 20-29, 30-39,
+> 40-49, 50, 60-61, 70-71).
+
+- R-80 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"yeah lets have the endless
+  pursuit only be on legendary"** - Toxeus the Murderer, the Endless Hunt cannot be kited away from
+  his spawn point on LEGENDARY; Normal and Epic keep normal leash behaviour, and that is now
+  INTENDED, not a bug.
+  MECHANISM (proven, not assumed): leash/pursuit is not a Monster field at all - all 4,600 Monster
+  records carry zero leash/aggro/chase/pursuit field. It lives on the CONTROLLER. His
+  `controller_shadowstalker01_hidden` carries `MaxPursuitDistance=60` + `PursuitTime=20000` +
+  `RoamBehavior=Roam`: that IS the kite, field for field. Per-difficulty pursuit is NOT expressible
+  on one record - both fields are array-valued ZERO times across all 504 controller records, and the
+  engine's own `Toolset/Templates.arc` declares them `class="variable"` (scalar) while `LeadChance`
+  is `class="array"` (the [normal,epic,legendary] triple). `monster.tpl` likewise declares
+  `controller` `class="variable"`. A Legendary-gated buff/aura skill cannot do it either (skills move
+  STATS, never controller fields). So the ruling is delivered by a SECOND monster record selected
+  through the proxy's `poolLegendary1` slot - the shipped per-difficulty-monster-swap pattern (29
+  base-game proxies already do exactly this; `ag_demon_djinnsprite_01t_ambush` is the exact shape).
+  Owner: `tools/patches/toxeus_hunt_endless.py` - a dedicated relentless controller CLONED from his
+  own (never editing the shared donor, which 15 monsters use INCLUDING the Enslaver's marauders),
+  `um_toxeus_hunt_l_99`, and a single-member Legendary pool. Values all have named shipped
+  precedent: MaxPursuitDistance 1000 (controller_aktaios, the DB's highest), PursuitTime 100000 (21
+  carriers incl. hydra/terracotta/typhonminion), RoamBehavior NeverRoam (107 carriers), ForgiveRate
+  0.2 (Aktaios). FleeBehavior stays NeverFlee: Aktaios's FleeWhenEnemyClose was deliberately NOT
+  copied, because a hunter that flees is nonsense. verify() asserts base and variant differ in
+  EXACTLY the `controller` field, which is what makes the doubled record safe from drift.
+  ⚠️ LIMIT WILL MUST KNOW (reported, not hidden): the ROAMING spawns cannot be difficulty-split.
+  ProxyPool has `nameN` with no `nameEpicN`/`nameLegendaryN`, and the 345 roaming pools he rides are
+  NATIVE base-game pools shared across all difficulties. So the roaming Hunt stays kiteable even on
+  Legendary; only the FIXED Hades Palace encounter carries the endless variant. That is also the
+  SAFEST shape - MaxPursuitDistance 1000 is proven on Aktaios, a FIXED ARENA boss in bounded space.
+  ⚠️ ALSO NEEDS WILL: at 1000 units / 100 seconds he effectively cannot be outrun to a town portal
+  on Legendary. Confirm that is the intent (BL-b98-DEBT-3).
+  SCOPE CORRECTION SHIPPED WITH IT: the ruling's premise ("only on legendary") implies the MONSTER
+  is available on all three difficulties. The fixed encounter proxy was Legendary-ONLY, so the same
+  lane removed that gate - `q_toxeus_hunt_lone` now names his pool on pool1, poolEpic1 AND
+  poolLegendary1. `tools/patches/toxeus_hunt_encounter.py` owns it, and its verify() now FAILS if
+  any of the three is empty (the inverse of the assertion the old module shipped).
+- R-81 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased from the approved design brief;
+  no verbatim transcript line] the Endless Hunt's soul drops 100% of the time, like the other two
+  fought Toxeus champions. EXTENDS R-48 from two records to three and CLOSES `BL-b90-DEBT-4`, which
+  had recorded the carve-out and named Will as its owner/trigger.
+  ROOT CAUSE, stated exactly: the ONLY defect was the rate. `chanceToEquipFinger2 = 25.0` on
+  `records\creature\monster\shadowstalker\um_toxeus_hunt_99.dbr`. The soul was NOT unwired and NOT
+  the wrong record - `lootFinger2Item1` already named the correct `toxeus_hunt_soul_{n,e,l}` triple,
+  `chanceToEquipFinger2Item1` was already 100, `dropItems` already 1, and all three soul records
+  already existed with their name/desc tags and icon. 25% simply means three kills in four pay
+  nothing. Owner: `tools/patches/toxeus_souls_100.py` (the R-48 owner, extended; apply() re-proves
+  roster-wide that ONLY the three named records moved, verify() re-asserts 100 on the final merged
+  arz). `tools/verify_soul_drop_rates.py`'s waiver for `um_toxeus_hunt_99` moves 25.0 -> 100.0 and a
+  matching waiver is added for the R-80 endless variant. Holds under `SVC_RELEASE_DROPS=1`, which is
+  what ships. The Hero/Boss/Quest gate in `wire_souls_to_monsters` is untouched (he is Boss-class, so
+  the yeti Common/Champion lesson does not apply).
+- R-82 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased; the ask was to "align with
+  however the Enslaver and Devourer already drop it"] killing the Endless Hunt also yields the Rite
+  of the Undivided (the End of All Things formula), on ALL THREE difficulties - and the RECIPE keeps
+  demanding the LEGENDARY souls. Extends R-13 to the third champion. The Hunt had NO `Misc4` slot at
+  all; he now mirrors the ENSLAVER exactly (`chanceToEquipMisc4=100`,
+  `chanceToEquipMisc4Item1=100`, `lootMisc4Item1 = svc_rite_guaranteed` on all 3 tiers), using the
+  Enslaver's simple FixedWeight form rather than the Devourer's master table because the Hunt has no
+  rant scroll to co-schedule. VERIFIED ALREADY-CORRECT, no change needed: `svc_toxeus_eoat_formula`
+  names `toxeus_soul_l` + `enslaver_soul_l` + `blood_toxeus_soul_l` by exact path, so the recipe
+  cannot be completed with normal- or epic-tier souls and R-8's Legendary gate stands. Because the
+  formula ITEM can now drop on Normal/Epic, that recipe gate is load-bearing, so
+  `toxeus_hunt_encounter.verify()` now ASSERTS all three reagents stay `_l` records and fails the
+  build otherwise.
+  ⭐ OPEN WILL QUESTION raised by this: the three reagents are base Toxeus + Enslaver + Devourer.
+  The Endless Hunt's own soul is NOT a reagent. Now that he is a full champion dropping the formula
+  at 100%, should `toxeus_hunt_soul_l` become one (a 4th, or replacing the base Greece Toxeus's)?
+  NOT built - `ItemArtifactFormula` was not confirmed to declare a reagent4 (BL-b98-DEBT-4).
+- R-83 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased - Will's own idea] the Endless
+  Hunt wields a spear. Shipped as **Runbreaker**, a bespoke 3-tier signature weapon following the
+  Devourer's Crimson Verdict / Veinrender pattern exactly (`svc_{n,e,l}_runbreaker` +
+  `runbreaker_guaranteed_{n,e,l}` FixedWeight tables wired to `lootRightHandItem1` @100%), so he both
+  WIELDS and DROPS it instead of the random one-hander he carried.
+  THE RIG WAS PROVEN BEFORE THE ITEM WAS SHIPPED. His record was MISSING
+  spearAttackAnim1/2/3, spearRunAnim, spearDieAnim1 and spearStunAnim - a spear without those means
+  he walks with it and never swings. The ShadowStalker rig ships no spear animation of its own (13
+  .anm, 0 spear), so the attack poses are borrowed - which is the base game's NORM (672 shipped
+  records play a cross-rig spear anim vs 247 same-rig) and which this mod already does on the Toxeus
+  family's own skeleton rig (`boneash_1` carries a complete Maenad-spear block). The graft is
+  deliberately MINIMAL: only the 3 attack poses are borrowed (Maenad, the boneash_1 precedent); run,
+  die and stun are copied from the animation THIS RECORD ALREADY BINDS for its other weapon classes,
+  read at build time so they cannot desync. New gate SPEAR-ANIM-1 + a provenance assertion that each
+  borrowed pose is referenced by at least one other shipped record.
+  ⚠️ PLAYER SURFACE, UNPROVEN BY EYE: Maenad-spear-on-SHADOWSTALKER has no shipped instance. Only
+  Will's in-game look can settle it (BL-b98-DEBT-1). Ranked fallbacks: MedusaMinion_Spear (103
+  users), then Machae_Spear (same expansion, same underworld).
+  ⚠️ ONE-LINE WILL-VETO, deliberately taken and flagged: the supra spear donor ships
+  `CharacterAttackSpeedSlow`, but the Hunt is the FAST champion (run 1.8 / attack 1.3). Runbreaker
+  therefore ships `CharacterAttackSpeedAverage` + baseAttackSpeed 0.25 (both inside the shipped spear
+  envelope) to KEEP him fast. Flipping those two values back makes him a slow, heavy reach-hunter
+  instead; nothing else depends on the choice.
+  FIX-UPSTREAM CAUGHT IN PASSING (BL-103): the supra donor still carries the build30-F3
+  INVISIBLE-WEAPON DRX mesh at registry time (F3 repoints it in `run_registry_gates`, AFTER every
+  module, and by name only), so a naive clone would have shipped an invisible spear. Runbreaker sets
+  the F3-corrected base rig explicitly and drops the DRX-only skin, and verify() asserts each tier's
+  mesh equals the donor's FINAL post-F3 mesh so the two can never diverge.
+- R-84 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"he doesnt really have any
+  different or unique skills from toxeus the murderer, the enslaver of souls"** - and that was
+  LITERALLY TRUE. Ground truth: 9 of his 12 skill slots were the SAME SKILL RECORD as the Enslaver's
+  (flashpowder, toxeus_bladestorm, netherstrike, lifedrain, character_speedall,
+  boss_conversionimmunity, hero_scaling, toxeus_passiveproperties, armor_passive); his only 3
+  non-shared slots are the globalproperties_{normal,epic,legendary}01 per-difficulty STAT hooks. He
+  had ZERO unique active abilities, and slot 2 was even the same skill at the same slot index.
+  FIX: the three cast slots that overlapped the Enslaver become his own pursuit kit, identity-driven
+  per the amgoz1 bar (mark at medium range, reach at long range, kill at short range):
+  Quarry's Mark (`svc_hunt_quarrysmark` + `_buff`, from Study Prey - heavy run-speed slow + DA shred
+  + bleed: he has your scent and you cannot outrun him), The Long Reach (`svc_hunt_longreach`, from
+  the DRX STALKER-namespace shadow blast - a cold spectral spear at range: distance is not safety),
+  Run Them Down (`svc_hunt_rundown` - a close-range spear sweep). `toxeus_bladestorm` (the Toxeus
+  family signature verb) and EVERY passive are KEPT: this edits 3 slots, it never strips his kit.
+  CASTABILITY: he binds ZERO `unarmedSpecialAnimRef` slots (so do the Enslaver and the Devourer), so
+  every new skill declares NO `skillSpecialAnimationName` - the same law `toxeus_champion_kits`
+  already ships for these champions. Gated fail-loud, plus a SAMENESS gate that fails the build if
+  every one of his cast slots is an Enslaver cast slot again.
+  REPORTED, NOT SILENTLY CLAIMED: the skill this replaces at specialAttack3, `netherstrike`, declares
+  skillSpecialAnimationName='LethalStrike' which he does not bind - that slot was very likely dead
+  already, so this is a repair as well as a differentiation.
+  WILL'S OTHER OBSERVATION IS CONFIRMED BY THE DATA, NO CHANGE NEEDED: "it wasnt a skeleton, it was a
+  demon" - `characterRacialProfile = Demon` on his record. That is a data fact, not a perception.
+  ⚠️ CORRECTION TO THE DESIGN BRIEF, deliberately NOT actioned: the brief called
+  `distressCallGroup='Skeleton'` on a Demon-race boss a clone leftover to fix. Ground truth says
+  otherwise - ALL 28 shipped ShadowStalker-mesh monsters are race=Demon AND distressCallGroup
+  'Skeleton', including the Enslaver's own marauders, so it is the base game's convention for this
+  rig. There is also no 'Demon' group in the DB (19 groups exist; Demon is not one), so "fixing" it
+  would invent a group of one member and cut him out of the shadowstalker distress network.
+- R-85 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim fragment: the Enslaver should have
+  **"the same black shroud smoke his summoned demons have"**.
+  THE FINDING THAT CHANGED THE TASK: he ALREADY carries it. `um_toxeus_enslaver_99` has
+  `charFxPakRunningNames = drxshadowcloakrunning_fx_pak` - the SAME pak, the SAME EffectEntity, that
+  `um_enslaver_marauder_99` carries; only 14 records in the whole DB carry that field and he is one
+  of them. So the ask was "make the FX he already has actually show".
+  CAUSE: `charFxPakRunningNames` renders ONLY while RUNNING. The marauders are melee chasers that run
+  constantly; the Enslaver is a caster (spell-cast speed 2.0, full armour, run 1.5) who stands and
+  casts, so his running FX almost never plays. A bone mismatch was the first hypothesis and it is
+  ELIMINATED from the asset bytes: Bone_R_Weapon and Bone_L_Weapon both exist on RevenantPoison.msh.
+  FIX: `charFxPakSelfNames` is the PERSISTENT channel and is a SKILL field, never a Monster field
+  (184 carriers, zero of them Monster-class), so the shipped way is a self-buff SKILL - exactly what
+  R-7 did for the Devourer. `tools/patches/enslaver_shroud.py` authors `svc_enslaver_shroud`
+  (Skill_BuffSelfToggled cloned from the ONE zero-payload self-buff toggle in that namespace, so it
+  carries NO combat payload, with the donor's purple weapon tint zeroed to the inert NO-TINT default)
+  plus its CharFxPak, and wires it into a FREE skill slot. NO SKILL WAS DROPPED: the brief assumed
+  all 12 of his slots were full and one would have to be sacrificed under R-26's spirit - ground truth
+  is he uses skillName1..18 and the template reaches at least 23, so slot 19 was free all along. His
+  `charFxPakRunningNames` is kept, so he smokes harder when he moves and still matches his marauders.
+  COLOUR: the ONLY in-game-CONFIRMED black in this area is the shadowcloak smoke Will has SEEN on the
+  marauders, so that is the only asset used - never `343_dark_smoke`, which R-10 itself calls
+  green-rendering and which no one has confirmed. Gated: the shroud pak may reference nothing else.
+  ⚠️ NO REPORT FROM THIS LANE CLAIMS HE READS BLACK IN GAME. b92 proved from asset bytes that
+  `RevenantPoison.msh` - the mesh he wears in the deployed arz - has a GREEN aura compiled into the
+  mesh file at his waist. Black hand-smoke over a green waist aura will not read black. That mesh work
+  belongs to the green-diff lane and turns on a Will answer (BL-b98-DEBT-2).
 
 ### Legal / permissions (new section)
 - R-60 [2026-07-04] STANDING "Will's decision, 2026-07-04 - no Lite build" - KEEP DRX (Dragonlord's

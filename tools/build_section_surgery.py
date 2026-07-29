@@ -2367,10 +2367,16 @@ for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
     assert _uc_key in INJECT_SPECS, f'b42 uber-chest host {_uc_key} has no boss placement to append to'
     INJECT_SPECS[_uc_key] = list(INJECT_SPECS[_uc_key]) + list(_uc_specs)
 
-# TOXEUS LEGENDARY-ONLY STALKER (b65 lowlift wave, B-TOXEUS-STALKER-1): place the fixed
-# `q_toxeus_hunt_lone` proxy (tools/patches/toxeus_legendary_stalker.py - pool1/poolEpic1
-# EMPTY, poolLegendary1 = a single-member um_toxeus_hunt_99 pool, so the encounter resolves
-# ONLY on Legendary) into the LEAST-crowded Hades Palace floor, `hadespalace_floor04_04.lvl`
+# THE FIXED ENDLESS HUNT ENCOUNTER (b65 lowlift wave, B-TOXEUS-STALKER-1): place the fixed
+# `q_toxeus_hunt_lone` proxy into the LEAST-crowded Hades Palace floor, `hadespalace_floor04_04.lvl`
+# ⚠️ STATUS CORRECTED b98 (Will 2026-07-28, R-80): this placement used to be described as
+# "LEGENDARY-ONLY" because the proxy shipped with pool1/poolEpic1 EMPTY. Will removed that
+# gate - `tools/patches/toxeus_hunt_encounter.py` (renamed from toxeus_legendary_stalker.py)
+# now names his pool on pool1, poolEpic1 AND poolLegendary1, so the encounter resolves on
+# ALL THREE difficulties. What IS Legendary-only now is the BEHAVIOUR: poolLegendary1 points
+# at the endless-pursuit variant `um_toxeus_hunt_l_99` (tools/patches/toxeus_hunt_endless.py),
+# while Normal and Epic get the base, kiteable record. The MAP BYTES ARE UNCHANGED by any of
+# that - the placement below is difficulty-agnostic and always was
 # (already B41_GUARDB_KEY - the single `q_general_b_guardpair` honor-guard encounter lives
 # here; every OTHER Hades Palace floor already carries its own distinct set-piece: Menoetes
 # in floor_03, the Polis Vault jailer horde in floor04_01, the other 2 generals' guard pairs
