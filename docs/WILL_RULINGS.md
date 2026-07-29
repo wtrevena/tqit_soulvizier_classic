@@ -1332,6 +1332,13 @@ was exhausted; the two judgement calls above should be answered before or during
 > branch> -- docs/WILL_RULINGS.md` over ALL branches (incl. `main`, `feat/endless-hunt`,
 > `feat/leinth-wave`, `fix/green-diff`, `feat/sanctuary-populate`) returns a maximum of **R-99**,
 > so nothing above 99 was claimed anywhere. Next free number in this decade: **R-103**.
+> ⚠️ **RE-CHECKED AFTER THE REBASE (2026-07-29, `main` @ `e2a3b1e`) - the claim HELD, but it was a
+> race.** `feat/sanctuary-populate` had independently taken R-100..R-109 at almost the same moment;
+> its own recon doc records that it re-ran the freshness check, saw this branch, and YIELDED to
+> **R-110..R-119**. So 100-102 are this lane's and 103-109 remain free. Anyone opening a decade
+> should RE-RUN the census immediately before minting rather than trusting any written line here -
+> concurrent lanes make decade-freeness a race, and this is now the second lane in two days to hit
+> it (see also the b98 R-80 collision above).
 > ⚠️ HONESTY NOTE ON THIS WHOLE SECTION: Will asked a QUESTION here, he did not hand down a
 > decision. R-100 records his verbatim words and the answer the evidence supports; the STANDING
 > LAW in R-100 and the wording in R-102 are this lane's DERIVATION from that exchange and are

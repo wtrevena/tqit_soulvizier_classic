@@ -6,12 +6,25 @@
 process touched.** The orchestrator owns deploys. No `buildNN` tag was taken because this lane did
 not deploy; the tag belongs to whichever wave ships these bytes.
 
+> ⚠️ **BASE MOVED MID-LANE; THIS LANE REBASED AND REBUILT.** Briefed base was `main` @ `4f0299c`.
+> While the lane ran, `feat/leinth-wave` (R-98, `leinth_wave` + `uber_apex_orb` modules) merged and
+> `main` advanced to `e2a3b1e`. The branch was REBASED onto it (one append/append conflict in
+> `docs/WILL_RULINGS.md`, resolved by keeping BOTH sides) and **both artifacts were rebuilt from
+> scratch on the new base** - the hashes below are the post-rebase ones; the pre-rebase pair
+> (arz `1e0990d7f934afb90151aa4672ddc049` / Text `b5d74079e46267ea4c2e9b174dd59807`) is **stale, do
+> not ship it**. Pre-rebase tip is kept as tag `b100-prerebase`. `git diff main..HEAD` = 8 files,
+> **947 insertions, 0 deletions**. Registry selfcheck OK, 45 modules.
+> **WAVE-LABEL COLLISION (harmless, flagged so nobody is confused):** the parallel
+> `feat/sanctuary-populate` lane also labels itself "b100" (`docs/reports/b100_sanctuary_recon.md`).
+> The unique identifiers here are the module name `weapon_gate_truth` and rulings R-100..R-102; that
+> lane first claimed R-100..R-109, saw this branch's claim, and YIELDED to R-110..R-119 (its recon
+> doc records the yield), so the ruling numbers below are uncontested.
+
 **ARTIFACTS (arz + Text are COUPLED - the arz references the new `tagParryDESC`; never ship one
 without the other):**
 - arz `.claude/worktrees/blade-mastery/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
-  md5 **1e0990d7f934afb90151aa4672ddc049** (51,108 records), built with
-  `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`.
-- Text `.claude/worktrees/blade-mastery/local/b100_Text.arc` md5 **b5d74079e46267ea4c2e9b174dd59807**.
+  md5 **aea688b23acefe1b48ae31a0df4cc423** (built with `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`).
+- Text `.claude/worktrees/blade-mastery/local/b100_Text.arc` md5 **f51c62ffd2a0fcddfab00bad498c04dd**.
 - `Levels.arc` / `Quests.arc` **untouched** - DB+Text-only lane, zero map bytes.
 
 **WHAT IT IS.** Will asked (verbatim) "does the occult skill blade mastery chance to dodge attacks
