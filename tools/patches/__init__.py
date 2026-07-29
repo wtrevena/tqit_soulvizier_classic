@@ -275,6 +275,37 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
+    # --- b94 round 3 merge reconciliation: the b94 pair (leinth_wave ->
+    # uber_apex_orb, that order is load-bearing) and the debt-wave block below
+    # both claimed the slot before the no-op 'visuals'. The b94 pair runs FIRST so
+    # uber_apex_orb still sees leinth_wave's final Leinth records, and the debt-wave
+    # block keeps its own deliberate order with fx_dangling_cleanup LAST - which now
+    # also sweeps b94's new guard/skill records on the final assembled db.
+    'leinth_wave',          # b94 PART B (R-73): Leinth the Blood Witch buff + 3 cult abilities
+                            # (Crimson Tithe / Choir of the Bloodborn / Sanguine Mire, every donor
+                            # from her OWN records\drxcreatures\bloodwitch family) + the b76
+                            # summon-density cut on leinth_summon_uglies. Touches ONLY the 3
+                            # q_leinth_* records, her 2 own skill records and 3 NEW skill records -
+                            # disjoint from every module above (no other module names a bloodwitch
+                            # record). Placed here so it is the ratified final writer on her stats;
+                            # verify() re-asserts every target on the FINAL merged db, including
+                            # that her loot wiring never moved.
+    'uber_apex_orb',        # b94 PART A (R-72, Will 2026-07-27): ONE apex drop calibre shared by
+                            # ALL THREE blood-cave bosses. Authors a new un-named generic apex tier
+                            # (genericbossorb_05 + 3 pools + 3 chests + 3 loot tables cloned from the
+                            # orb04 chain, carrying Leinth's four generosity knobs on the champions'
+                            # Act-4 tables) and repoints treasureProxyName on EXACTLY
+                            # um_toxeus_enslaver_99 + um_bloodtoxeus_99; then upgrades Leinth's THREE
+                            # sole-owned chests IN PLACE onto the SAME apex tables + level equation
+                            # (2 fields each), so she is re-tiered rather than left behind. Her
+                            # monster records, proxy and pools are untouched, so R-73's "her bespoke
+                            # chest survives" assertion in leinth_wave stays green - which is why
+                            # this MUST run AFTER 'leinth_wave'. genericbossorb_04 and its other 19
+                            # consumers stay byte-unchanged (apply() proves it). MUST also run after
+                            # toxeus_souls_100: EXPECTED S4b record collision on the two champions
+                            # (souls_100 writes chanceToEquipFinger2, this writes treasureProxyName -
+                            # DIFFERENT fields, later-wins is a no-op on both), and apply()
+                            # additionally proves the R-48 soul wiring did not move. Before 'visuals'.
     # --- debt-wave integration 2026-07-28: fix/debt-mixed (coldworm_buffs,
     # uber_quest_markers) and fix/debt-db (emberteeth_summon, fx_dangling_cleanup)
     # each landed a block here claiming the slot immediately before the no-op

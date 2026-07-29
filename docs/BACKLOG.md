@@ -1007,6 +1007,480 @@ are folded in above and in R-93/R-94.
   gate now re-derives the sightings figure and stamps the map, so a stale census cannot pass
   silently, but it cannot re-census itself. Owner: whoever owns the map lane.
 
+## BUILD66-DEV GATE RECORD - b94 ROUND 4 (VET LOOP): 2 HIGH fixes + 3 more dead abilities found + 3 overstated claims corrected (2026-07-29, branch `feat/leinth-wave`, tag `build66-dev`)
+
+> An independent adversarial vet returned **NO-GO** on `build64-dev` with two HIGH findings, both in
+> PART B, both invisible to the wave's own gates. Both are fixed, the missing invariants now ship,
+> and running them exposed **three more dead abilities** nobody had caught. PARTS A, C and D were
+> passed GREEN by the vet and are untouched. Full detail: `docs/reports/b94_leinth_wave.md` sec 6;
+> ruling corrections appended verbatim under **R-76 CORRECTIONS** in `docs/WILL_RULINGS.md`.
+
+| # | finding | root cause | fix |
+|---|---|---|---|
+| HIGH-1 | Leinth's `specialAttack5` acid rig **never fired**, so BOTH of Will's Q6 staged rigs were dead (the poison aura lives only on the spawned puddle) | DRX's staged copy demands `skillSpecialAnimationName='AcidPuddle'`, absent from EVERY row of `anm_leinth`; hard-law #2 aborts the cast | token -> `'SpitSummon'`, which DRX bound at `anm_leinth unarmedSpecialAnimRef1` and left unused. Asserted. |
+| HIGH-2 | The honour guard's TTL-capped bloodbeast was a **level-0 summon**, which never fires (b39 RCA law) | round 3 wrote the clone into `specialAttackSkillName` only; `skillName4` still held the shared donor, so the clone had no `skillLevel` anywhere in 51,103 records | `skillName4` -> the clone at the donor's own `[5,10,15]`. Asserted. |
+| NEW x3 | **Blood Boil, her SIGNATURE AoE life-leech, has never fired in this mod** (x3 variants + the new Reaver guard), and the Reaver's zap likewise | `melinoe_bloodboil` demands `'BloodBoil'` (2 binders DB-wide, neither hers); `reaver_zap` demands `'Zappity'` (1 binder) | both SHARED donors CLONED (20 / 3 referrers, never written), clones use `'ThunderClap'` (bound in all 6 rows of all 3 tables). Both halves repointed together. |
+| CORRECTED | the geyser raise was reported as a delivered buff | `cerberus_crackfire` has NO cast mechanism AND an unbound `'Roar'`: dormant twice over | raise REVERTED, shipped `[1,4,7]` PINNED by verify(). Debt `BL-b94-DEBT-12`. |
+| CORRECTED | entity budget `41/26` was a phantom | its 10 puddles could not spawn and its 2 bloodbeasts were level-0 | re-measured: round 3 would really have shipped **29/26**; round 4 makes **41/26** real. **The b76 flag to Will is unchanged: 26 permanent still EXCEEDS `um_voranthys_99`'s 25.** |
+| CORRECTED | "46 shipping records run `numAttackSlots=4` with five wired specials" | unreproducible | measured **76** (62 `Pet.tpl`, **12 `Monster.tpl`** incl. her own cult's `b_seductress_39/41/43`) + 94 more at `numAttackSlots=6`. Conclusion unchanged, now proved structurally from `character.tpl` vs `monsterskillmanager.tpl`. |
+| CORRECTED | `RevenantPoison.msh` / `DisplayAsQuestItem` blamed on `fix/green-diff` | they are written by this branch's own build code (`apply_svc_patches`, `uber_quest_markers`) | attribution corrected; conclusion (not this wave's edits) unchanged. |
+
+**THE MISSING INVARIANTS, NOW SHIPPED** (this is the real fix - both HIGH findings are one class: a
+gate that checks what a skill IS but never whether the caster can START it):
+`leinth_wave._cast_abort_violations` (hard-law #2, monster side) + `leinth_wave._level_zero_violations`
+(the b39 "level-0 never fires" law), run over **all five records this wave writes** and, critically,
+**following `charAnimationTableName`** - the pre-existing `coldworm_buffs` gate reads
+`unarmedSpecialAnimRef` off the monster record only, which on these records finds nothing and passes
+everything. Planted negatives: `tools/debug/negtest_leinth_wave.py` **31/31** (was 23/23, +8 new).
+
+**BUILD/DEPLOY.** arz `06de12d4491a51cfe38bd321774a96b2` (51,105 records) + `Text.arc`
+`6981d27903dc42a736f2a90c86c5903c` (**rebuilt from this build's own emitted tag stream and
+byte-identical** to the deployed one, so the coupling is proved not assumed). `Quests.arc`
+`bd0fb5f99d88fab74b81f27b7cb952b2` and `Levels.arc` `943d0ab9516d332db79bd7f9fd2d3ffe` both
+UNCHANGED and untouched. Record diff vs the round-3 deployed arz: **ADDED 2 / REMOVED 0 / CHANGED 6,
+intended-only**, COLLATERAL SENTINEL **clean** (zero mesh/skin/texture/FX/shroud/soul-drop/quest-marker
+fields moved, so `fix/green-diff`'s surfaces are untouched). Gates: `leinth_wave.verify` OK,
+`uber_apex_orb.verify` OK, `negtest_leinth_wave` 31/31, `negtest_uber_apex_orb` 16/16,
+`tests_quests_negative` 31/31, `gate_traveler_responds` PASS, `validate_tags` PASS (363/363),
+registry selfcheck OK (39 modules), contracts **0 P0 / 0 P1 / 4737 P2 GATE PASS** with the IDENTICAL
+config on the round-3 deployed arz yielding **exactly the same counts**. Deployed == built,
+re-probed on the bytes on disk (31/31, 16/16, validate_tags PASS, **0 dead active slots on all five
+records**).
+
+**⚠️ WILL MUST FULLY QUIT TQ AND STEAM AND RESTART BEFORE TESTING** (killing either is banned for
+this lane, so the standing restart rule could not be applied here). **Nothing in this wave has been
+confirmed in game.**
+
+### DEBT (new this round)
+
+* **`BL-b94-DEBT-12` - Leinth's poison geysers are DORMANT and stay that way.**
+  `cerberus_crackfire` sits only in `skillName13` with no cast mechanism of any kind, and its token
+  `'Roar'` is unbound in `anm_leinth`, so it is dead twice over. It cannot be delivered in this wave:
+  all five castable `specialAttack` slots are spoken for, the retirement protocol forbids displacing
+  her four bespoke DRX specials, and slot 6 has no Monster precedent (its only 3 users DB-wide are
+  `Pet.tpl`). The inert level raise is reverted and verify() PINS the shipped `[1,4,7]` so nobody can
+  "raise" it again and believe they shipped something. A future wave that wants it must give it BOTH
+  a cast slot and a bound animation.
+* **`BL-b94-DEBT-13` - the shared DRX donors keep their cast-aborting tokens (fix-upstream deferred).**
+  `melinoe_bloodboil` (`'BloodBoil'`, 20 records including every bloodwitch, leucothea and
+  `d_reaver_40/41/42`) and `reaver_zap` (`'Zappity'`, 3 records) are dead on every OTHER creature that
+  casts them too. This wave clones rather than fixing upstream, because repointing the donors changes
+  the behaviour of 20 shipped monsters and defaults to WILL-VETO under the retirement/no-silent-scope
+  laws. Worth a dedicated lane: a DB-wide `_cast_abort_violations` sweep would likely find more.
+
+### CARRIED (unchanged by this round, verified explicitly against the built arz)
+
+* **`BL-b94-DEBT-11` (integration order, orchestrator).** `feat/sargath-soul`'s `summon_sargoth` +
+  `sargoth_1/2/3` are absent from this build because the branch's merge base (`main` @ `a0276ab`)
+  predates `main`'s content-wave. They were ALREADY absent from DEV before this deploy, so this round
+  changes nothing. Likewise `fix/green-diff`: both champions carry `RevenantPoison.msh` (main's
+  value), already the DEV state. **Remedy is merge order, not code:** merge the lanes and rebuild once.
+
+## BUILD64-DEV GATE RECORD - b94 ROUND 3: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build64-dev`)
+
+> ⭐⭐ **WILL ANSWERED THE FOUR DESIGN QUESTIONS ON 2026-07-27. Three of the four answers go AGAINST
+> the implementer's recommendation. They are law; this round implements them, including the
+> reversals.** Ledgered VERBATIM as **R-76**, which **SUPERSEDES R-73 IN PART**.
+>
+> | Q | Will, verbatim | what round 1 had recommended | what shipped |
+> |---|---|---|---|
+> | Q4 how much stronger | *"lets give her some guardians like amgoz1 gave hades"* | stat inflation (+60% life, resists) | an **HONOUR GUARD**; the modest stat work is kept, no uber-tier push |
+> | Q6 staged poison rigs | *"Use them AND remove her poison weakness"* | REJECT as off-identity | **both rigs wired**, `defensivePoison` -15 -> **+15** |
+> | Q7 the ugly swarm | *"Keep the swarm as-is"* | cut 4;6;8/16 -> 2;3;4/6 + TTL | **cut REVERTED IN FULL**; risk measured + flagged instead |
+> | Q9 stranded character | add the no-kill fallback | (was the open residual) | **`Condition_OnLevelLoad` fallback**, no `Action_OpenDoor` |
+
+### PART D (NEW) - THE HONOUR GUARD, mirrored from what amgoz1/DRX actually built
+
+The real Hades guardians were traced in the shipped bytes BEFORE anything was designed:
+`xq06_boss_hades_champions.dbr` (FileDescription "DRX") is a **separate proxy** from the boss proxy,
+carrying the guard's own mesh (`gigantes01_quest.msh` @ 2.8), sharing the boss's difficulty/limit
+files and `quest=1`, pointing at `xq06_boss_hades_champion_pool.dbr` (`spawnMin=spawnMax=1`,
+`championMax=1`, `name1 = drxdishonorguard\anapaest_45`). A placement census over **all 2,282
+levels** finds it placed exactly **TWICE**, both in `HadesPalace_Floor05_04.lvl`.
+
+The literal mirror needs two new placements in `bossfight.lvl` (a Levels.arc rebuild). **Not taken**,
+because this repo already ships the DB-side equivalent and **its donor is literally Leinth's own
+pool**: `_svc_boss_pool`, "the 1-boss + 2-guaranteed-champion recipe (spawnMax=3 /
+championChance=100 / championMin=Max=2 -> 3-2=1 guaranteed boss; the LAW)", shipping in `neferkha`,
+`diadochi` and the Hades Marshal. Applied to `q_leinth_lone` in place. **Levels.arc BYTE-UNCHANGED.**
+
+* Her three variant `name` slots, weights and limits are **untouched** -> the single main is still a
+  random `q_leinth_47/49/50`.
+* `_svc_neutralize_pool_equation` is **mandatory, not cosmetic**: the inherited `proxypoolequation_02`
+  scales the literal counts by 1.357 and floors them -> 4-2 = **TWO Leinths side by side**, the exact
+  deterministic defect Will reported 2026-07-13. verify() fails if it ever returns.
+* Guards (amgoz1 bar, zero new art/FX/sound, both from her OWN cult):
+  `svc_leinth_guard_reaver` <- `d_reaver_42` ("Blood Reaver of the Sanctuary", no summons at all) and
+  `svc_leinth_guard_disciple` <- `c_disciple_42` ("Voice of the Bloodborn"). Both at HER band
+  `[47,62,74]`, Champion, scale 1.9, real Text names.
+* The Disciple's inherited `disciple_summon_bloodbeast` is petLimit 4 with **NO TTL** (the b76
+  defect), so the guard gets a **cloned** copy capped at 2 / 20s; the shared original is never
+  written. The clone also drops the donor's 3 **dangling** loot refs so the wave adds zero new
+  contract violations.
+* **Deliberate exit-trigger interaction:** the guards ride in `q_leinth_lone`, the pool R-74's primary
+  `Condition_KillAllCreaturesFromProxy` watches, so the primary now needs the whole guard dead. That
+  is the right reading, and it is why R-74's three per-variant fallbacks plus the new no-kill
+  fallback are load-bearing.
+
+### PART B' - both staged poison rigs live, weakness removed
+
+All three records DRX staged in her own folder have **ZERO referrers** in the 51k-record db (exact-path
+scan, not substring). **THE FREE WIN:** the "attack" rig is not a boss self-buff competing for a
+scarce cast slot - it is the **puddle's own aura**, so wiring the SUMMON alone brings **both** of
+Will's rigs live through ONE slot. Her summon is re-chained onto HER puddle and that puddle onto HER
+aura (DRX aimed both at the xpack copies), leaving the xpack Cerberus chain byte-clean.
+
+`defensivePoison` **-15 -> +15**: not invented, it is exactly her own cult heavy `d_reaver_42`'s
+value. Removes the weakness without immunity (poison stays her softest resist by a wide margin, so
+the counter-play survives). verify() fails on a negative value AND on immunity.
+
+**Slot accounting.** Monster records expose five castable `specialAttack` slots (census
+3164/1602/894/300/170; the only three `specialAttack6` users are `Pet.tpl` records from our own prior
+wave). Her four bespoke DRX specials hold 1-4, so there is exactly ONE free slot and round 1 spent it
+on the implementer's own Crimson Tithe. **Will's instruction outranks it:** `specialAttack5` -> the
+acid rig; Crimson Tithe -> `dyingSkillName` (79 shipping records carry its class there).
+`numAttackSlots` stays 4 - it is NOT a special-attack cap (46 shipping records run 4 with five wired).
+
+**RETIREMENT, stated not silent (R-73 names both):** `svc_leinth_choir_bloodborn` and
+`svc_leinth_sanguine_mire` are retired. Both were round-1 inventions on this unmerged branch, never
+shipped to Will. The honour guard is his own answer to what Choir existed for; the acid puddle is the
+authentic DRX rig for what Mire existed for.
+
+### ⚠️ BL-b94-DEBT-9 (P1, WILL DECISION) - THE ENTITY BUDGET EXCEEDS THE b76 THRESHOLD
+
+Will asked for the number and it is **measured, not estimated**:
+
+| source | count | lifetime |
+|---|---|---|
+| Leinth | 1 | - |
+| honour guards | 2 | permanent |
+| `summoned_ugly` | 16 | **PERMANENT (no TTL)** - Will: keep as-is |
+| `leinth_heatseeker_pet` | 10 | **PERMANENT (no TTL)** - her shipped DRX kit |
+| acid puddles | 10 | 6s |
+| guard bloodbeasts | 2 | 20s |
+| **TOTAL** | **41 concurrent** | **26 of them PERMANENT** |
+
+The b76 chumbi-freeze RCA measures the standalone offender `um_voranthys_99` at **25 PERMANENT**
+summons (petLimit 9+8+8) and states that even standing alone that "degrades over a long fight".
+**26 EXCEEDS it.** Nothing Will told me to keep was reduced; the only density lever pulled was
+retiring two of the implementer's OWN round-1 skills. **This needs Will's call after a play test.**
+The cheapest reductions if he wants one, in order: a finite TTL on `leinth_heatseeker` (10 permanent
+pets, his DRX kit, never discussed), then the ugly `petLimit`.
+
+### ⚠️ BL-b94-DEBT-10 (P2, WILL DECISION) - the exit vortex is now visible on entry
+
+The `.qst` vocabulary has **no door-state condition**, so Will's literal "whenever the boss trap door
+is already open" is not expressible. `Condition_OnLevelLoad` is the only mechanism that satisfies his
+actual requirement (nobody stranded, including his own latched character). Cost: the vortex is visible
+from the moment the player enters the Sanctuary rather than appearing when she dies. **If Will prefers
+the reveal, deleting this ONE trigger restores it** and the three kill fallbacks still cover every
+case except the already-latched character he asked to rescue. `Action_OpenDoor` is deliberately
+stripped, so the boss door stays earned either way.
+
+### ⚠️ BL-b94-DEBT-11 (P1, MERGE ORDER) - DEV collision with the unmerged `feat/sargath-soul` lane
+
+The DEV arz on disk was **not** a build of `main`: it carried the unmerged `feat/sargath-soul` lane's
+4 records (`summon_sargoth` + `sargoth_1/2/3`) plus 41 modified. Merging `main` into this branch
+removed most of the collision (was 8 removed / 247 modified, now 4 removed / 41 modified), but the
+sargath residual is another lane's **unmerged** work and a build from this branch necessarily reverts
+it. Deployed anyway (DEV is the shared test surface and the wave is untestable otherwise), but the
+pre-deploy state is backed up **byte-exact** and the action is fully reversible:
+`local/db_backups/SoulvizierClassicDEV_pre-b94r3_f6cd8698.arz` (+ `DEV_Text_pre-b94r3_4162a3e0.arc`,
+`DEV_Quests_pre-b94r3_35bfe3f3.arc`). **Remedy is merge order, not a hand-stitched arz** (which would
+break deployed==built and deterministic regeneration). This is the third occurrence of this class
+(see BL-b94-DEBT-7); it wants a standing rule, not another per-wave note.
+
+### ⚠️ BL-b94-DEBT-12 (P2, TOOLING) - worktree `work/.../Resources` shadows the main cache
+
+`mastery_sv_alignment`'s ancestor-walking arc resolver stops at the FIRST
+`work/SoulvizierClassic/Resources` it finds. A worktree that has staged only `Text.arc` there
+shadows the main checkout's populated one and the build aborts on 2 "unresolved emblem texture"
+FAILs. Worked around by moving the partial dir aside during the DB build. This bit round 1 too;
+the resolver should require the dir to actually contain `.arc` files before accepting it.
+
+### GATES (all green)
+
+| gate | result |
+|---|---|
+| `leinth_wave.verify` on the final merged arz | **OK** |
+| `uber_apex_orb.verify` on the final merged arz | **OK** |
+| `tools/debug/negtest_leinth_wave.py` | **23/23** (was 12/12; +11 round-3 negatives) |
+| `tools/debug/negtest_uber_apex_orb.py` | **16/16** |
+| `tools/contracts/tests_quests_negative.py` | **31/31** (was 25/25; +6 for `QST-LEINTH-NOKILL`) |
+| `validate_tags` | **PASS** |
+| contracts battery (5 modules) | **0 P0 / 0 P1 / 4737 P2, GATE PASS** |
+| both module verifies re-probed on the **DEPLOYED** bytes | **OK** |
+
+**PROOF THE FIX IS REAL, NOT ASSERTED:** the new `QST-LEINTH-NOKILL` contract **fires P0 on the
+PRE-WAVE bytes and is silent on the built bytes**. Run over the baseline with an identical config:
+**1 P0 / 1252 P1 / 3658 P2**; over the pre-merge build: **0 P0 / 1252 P1 / 3658 P2**. The wave removes
+exactly the one P0 it targets and adds **zero** violations at any severity (the 1252 resources P1s
+were pre-existing and identical on both; `main`'s debt-wave has since cleared them, which is why the
+post-merge number is 0 P1).
+
+### PROOFS
+
+| artifact | md5 | note |
+|---|---|---|
+| `SoulvizierClassic.arz` | `9cdb9ebaa0d277f5001b629a276a05d3` | post-merge build |
+| `Text.arc` (from the BUILD-EMITTED `uber_soul_tags.txt` `ee0185f4f0340b0a1dfd33f61c619d0e`) | `6981d27903dc42a736f2a90c86c5903c` | coupled |
+| `Quests.arc` | `bd0fb5f99d88fab74b81f27b7cb952b2` | PART C + the new no-kill fallback |
+| `Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **BEFORE == AFTER, never touched** |
+
+**Record diff, round 3 delta only (vs round 2's deployed arz): 3 added / 2 removed / 7 modified,
+every field intended, zero collateral.** Added = the 2 guards + the capped bloodbeast summon.
+Removed = the 2 retired round-1 skills. Modified = the 3 variants (poison + slot moves), the 2 acid
+records (re-chained + named), `leinth_summon_uglies` (**reverted to shipped**), and the pool (the
+escort LAW).
+
+### ⚠️ TESTING - RESTART STEAM AND TQ FIRST
+
+TQ.exe was NOT running at deploy time, but Steam was (killing either is banned for this lane). The
+write is hash-verified `deployed == built`, but per the standing rule **Will must fully restart Steam
+and TQ before testing** or he is testing stale in-memory data.
+
+---
+
+
+## BUILD55-DEV GATE RECORD - b94 LEINTH WAVE: ONE apex drop calibre for all three bosses, Leinth buff + cult abilities, post-kill exit (2026-07-28, branch `feat/leinth-wave`, tag `build55-dev`)
+
+> ⭐ **ROUND 2 (SHIPPED). Will's decision of 2026-07-27, captured VERBATIM, SUPERSEDES the design
+> pass's orb plan and R-70's scope:**
+>
+> > "increase the tier of the items dropped by leinth's orb to match the tier dropped by the
+> > champions' orb and give that to both toxeus variants and also to leinth"
+>
+> Round 1 moved only the two champions and left Leinth alone. Round 2 builds ONE apex drop
+> combining Leinth's GENEROSITY (quantity knobs) with the champions' TIER (Act-4 tables, uncapped
+> level equation, gold 47/69/88) and gives that single calibre to **all three**. Ledgered as
+> **R-73** (verbatim, no `[paraphrased]` marker); **R-70's analysis stands, its scope decision is
+> marked superseded-in-part**; R-47 still not superseded.
+>
+> **SOLE-OWNERSHIP VERIFIED FIRST, as the brief required:** a scan of EVERY field of ALL 51,085
+> records finds `bosschestproxy_leinth` referenced **exactly 3 times**, all three being her own
+> `q_leinth_47/49/50` variants. She solely owns her chain, so it was upgraded IN PLACE (2 fields x
+> 3 chests) rather than repointed at the generic orb - keeping her "Leinth's Essense" name, her
+> `leinth_chest.msh` and her RICHER `typhongoldgenerator` (`(L^1.6)*48` vs the champions' `*24`;
+> switching her would have been a gold nerf). `apply()` re-runs that whole-db scan every build and
+> refuses to touch her chain if the referrer set is ever anything else.
+>
+> **CALIBRE, at 1 player (6P scales by the same equation):**
+>
+> | monster | expected items | expected uniques | gold level | level equation | item pool |
+> |---|---|---|---|---|---|
+> | Enslaver / Devourer | 5.70 -> **21.16** (3.71x) | 0.174 -> **1.165** | 47/69/88 kept | uncapped kept | Act-4 kept |
+> | Leinth x3 | 18.51 -> **21.16** (1.14x) | 0.913/1.094 -> **1.165** | 30/50/64 -> **47/69/88** | `c03`/`e_c03`/`l_c02` -> **uncapped** | Act-3 63-65 -> **Act-4** |
+>
+> All five monster records resolve to the **SAME** loot table on each difficulty
+> (`svc_uberorb_apex_{n,e,l}01c`). **No-nerf is COMPUTED, not asserted** - apply() refuses to move
+> her unless the apex table beats her original on all 6 loot groups + both spawn multipliers +
+> goldGeneratorLevel, and verify() recomputes it on the final arz (`12.5->13.0 | 25.0->32.0 |
+> 0.0->10.0 | 100.0->100.0 | 25.0->32.0 | 12.5->13.0`, identical on n/e/l). Her three original loot
+> tables are LEFT IN THE DB byte-unchanged (retirement protocol) and are the gate's live reference.
+> One honest down-tick: her unique *share* dips 5.91% -> 5.51% on epic/legendary (it RISES on
+> normal), but her expected unique *count* rises on every difficulty and they are Act-4 uniques now.
+>
+> **ROUND-2 HASHES:** arz **`9f98e3e88bca20f96bacc2fd6bb87b63`** (51,098 recs, 55,429,716 B);
+> `Text.arc` `ed31ec8407e59710d4ad28d5532e75ae` (rebuilt from the build-emitted
+> `uber_soul_tags.txt` `c89194fc...`, which is byte-identical to round 1 because PART A adds zero
+> tags); `Quests.arc` `35bfe3f39e8480408e3c22ea5473f796` (PART C unchanged); `Levels.arc`
+> `943d0ab9516d332db79bd7f9fd2d3ffe` (never touched). Round-1 arz `0d861748...` is superseded.
+>
+> **ROUND-2 RECORD DIFF vs baseline `1c27d5fa`: ADDED 13 / REMOVED 0 / CHANGED 9**, intended-only.
+> The collateral sentinel (any mesh/skin/texture/fx/shroud/chanceToEquip/lootFinger/dropItems field
+> anywhere in the diff) hits ONLY the 2 intended `treasureProxyName` writes.
+>
+> **ROUND-2 CONTRACTS: 56 contracts / 5 modules / `0 P0, 0 P1, 4932 P2`, `GATE: PASS`** - and the
+> IDENTICAL config over the BASELINE arz + pre-wave Text yields **exactly the same `0/0/4932`**, so
+> this wave provably added nothing at any severity. (The round-1 "1252 resources P1" figure was an
+> artifact of an unreachable mod `Resources` dir; with it supplied the P1 count is 0 on both sides
+> and the pre-existing debt is P2-class.)
+>
+> **ROUND-2 GATES:** `negtest_uber_apex_orb` **16/16** (was 10/10, +6 Leinth-half negatives),
+> `negtest_leinth_wave` **12/12**, `tests_quests_negative` **25/25**, `validate_tags` **PASS**
+> 362/362, both module `verify()` hooks OK on the final arz AND re-probed OK on the DEPLOYED bytes.
+>
+> **⚠️ TWO DEPLOY CAVEATS.** (1) **TQ.exe was RUNNING** at deploy time and I am banned from killing
+> TQ/Steam, so the standing restart-before-test rule could not be applied by me: the write landed
+> (hash-verified) but **Will must fully quit TQ + Steam and restart before testing**. (2) This
+> deploy **again reverted the parallel `fix/green-diff` lane's DEV mesh work** - now
+> `GoldenSkeleton01.msh` on **15** records (the 12 from round 1 plus the three `toxeus_eoat_*`
+> pets). This wave touches no mesh/FX field at all, but any arz built from `main` reverts them. I
+> did NOT hand-stitch a merged arz, because the brief requires `deployed == built` and the repo
+> requires deterministic regeneration from committed code. Remedy is merge order; one-file restore
+> is `local/db_backups/SoulvizierClassicDEV_pre-b94r2_f3015aa3.arz`.
+
+Three independent parts in one wave. Full report: `docs/reports/b94_leinth_wave.md`.
+**The PART A paragraph immediately below describes ROUND 1 and is superseded by the round-2 block
+above; PART B and PART C are unchanged and current.**
+Ledger: `docs/WILL_RULINGS.md` **R-70 / R-71 / R-72** appended (new decade 70-79, "Encounter economy /
+blood cave"), each marked `[paraphrased]` because the asks reached the implementer through a design
+brief rather than as a captured first-person Will quote (the ledger's own honesty law; same marker
+R-33/R-34/R-35 use). **R-47 is NOT superseded** - R-70 adds a tier it does not mention.
+
+**PART A - champion orb CALIBRE parity (R-70), DB-only.** `treasureProxyName` is the only field in
+all 51,085 records that ever references an orb. Both Toxeus champions were on the R-47 shared
+`genericbossorb_04`; Leinth is on her BESPOKE DRX chest `bosschestproxy_leinth` ("Leinth's Essense").
+Chains traced proxy -> ProxyAccessoryPool -> FixedItemContainer -> FixedItemLoot on all three
+difficulties: Leinth `numSpawnMin/Max (3+1.6P)*2.2 / *2.4`, `loot4Chance 100.0`, unique weights 50 vs
+orb04 `*0.9 / *1.3`, `12.7`, 27 -> a modelled 18.5 vs 5.7 expected items at 1P (3.25x) with ~2x the
+unique share. HONEST COUNTER-AXIS: orb04 rolls the HIGHER item tier (xpack Act-4 statics, gold level
+88, LockedClassification=Boss) vs Leinth's Act-3 63-65 band at gold 64.
+`genericbossorb_04` is shared by **21** boss records, so an in-place edit was rejected (it would
+silently buff the whole endgame). Instead a NEW un-named generic apex TIER: 10 new records
+(`genericbossorb_05` + 3 ProxyAccessoryPools + 3 FixedItemContainers + 3 loot tables
+`records\item\loottables\svc\svc_uberorb_apex_{n,e,l}01c.dbr`), every one a clone of the orb04 chain,
+carrying Leinth's FOUR knobs on the champions' EXISTING Act-4 tables (mesh/scale/gold/level-equation
+KEPT, so it still looks and level-scales like the apex orb). `treasureProxyName` repointed on EXACTLY
+`um_toxeus_enslaver_99` + `um_bloodtoxeus_99`. **Leinth's chest untouched** (no nerf, asserted).
+**R-48 untouched** (souls are Finger2 equipment, orbs are treasureProxyName; apply() proves it).
+
+**PART B - Leinth the Blood Witch (R-71), DB-only.** All 3 variants: `characterLife`
+32,481/35,703/38,924 -> **52,000/57,000/62,000** (+60%); **`defensivePhysical` 10 -> 35 and
+`defensivePierce` 20 -> 45** (THE REAL LEVER: her two passive packages already cap bleed 100 / life
+160 / convert 100 / elemental 50 / stun 100, so physical and pierce were the only damage that touched
+her); `characterAttackSpeed` 0.8 -> 1.0; `characterRunSpeed` 1.0 -> 1.15; `characterLifeRegen` 2 ->
+10; her EXISTING geysers `cerberus_crackfire` 1;4;7 -> **4;7;9**. **KEPT: `defensivePoison` -15**
+(amgoz1 identity + counter-play) and charLevel 47-76 (she is the cave's main-path terminal boss, not
+an uber). Three NEW abilities, every donor an already-shipping rig from her OWN
+`records\drxcreatures\bloodwitch` cult family (zero new art/FX/sound): **CRIMSON TITHE** (Disciple
+blood-rain -> `specialAttack5`, the fight's first telegraphed phase moment, 30s cooldown),
+**CHOIR OF THE BLOODBORN** (Disciple-boss Melinoe summon, cut to burst 2;3;4 / limit 6 + 45s TTL ->
+`buffSelfSkillName`), **SANGUINE MIRE** (her own SpawnPet rig spawning the Seductress blood puddle ->
+`dyingSkillName`). THREE not four is an **engine ceiling**: Monster.tpl exposes exactly 5 castable
+`specialAttack` slots and she already used 4 with her own bespoke DRX kit, leaving 1 free slot plus
+the 2 non-attack mechanisms with class precedent (`buffSelf` 9 SpawnPet users, `dying` 18 Boss
+users); a 4th would have displaced one of her own skills (retirement protocol). ALSO
+`leinth_summon_uglies` cut 4;6;8 / limit 16 permanent -> 2;3;4 / limit 6 / 45s TTL (b76 density law;
+the skill is NOT removed and stays wired at `specialAttack2`). DEVIATION: the brief asked geysers
+`4;7;10`; the per-level arrays carry only 9 entries so 10 is out of range - shipped `4;7;9`, which
+delivers the same intent. **Nothing loot-side moved** (veil 100%, soul 66% at the R-42 PLACED rate,
+`bosschestproxy_leinth`) - proven field-by-field in apply().
+
+**PART C - the post-kill exit to the occultist merchant (R-72), Quests.arc ONLY.** The machinery was
+ALREADY built, placed and correctly aimed: `vortexportal_exit.dbr` is Class=Npc (FileDescription
+"Exits the player after the Leinth boss fight"), placed exactly ONCE across all 2,282 levels
+(bossfight.lvl, 6.2u from Leinth's proxy, on-navmesh), Text already resolves `tagLeinthExitPortal` +
+`tagReturnFromLeinthBattle`, and its shipped BoatDialog destination decodes signed to world
+(-90,-103,2321) = **9.79u from the occultist merchant** outside the cave, same walkable component.
+**THE DEFECT:** only the ONE-SHOT `Condition_KillAllCreaturesFromProxy(q_leinth_lone)` primary
+carried the full OpenDoor+ShowNpc+UpdateNPCDialog+BoatDialog set; the three b48
+`Condition_KillCreature` fallbacks carried `Action_OpenDoor` ALONE. So whenever the proxy-wide
+condition did not satisfy the door opened and no portal appeared. **FIX**
+(`tools/build_quest_files.py::_promote_leinth_exit_fallbacks`): copy the primary's action block
+VERBATIM out of the parsed tree onto all three resettable fallbacks (so npc + destination ints + tag
+are byte-identical BY CONSTRUCTION) and flip the primary's `isResettable` 0 -> 1. **No new quest
+entry**, so the ~254-entry load window is NOT engaged and the QUESTS section is unchanged;
+**`Levels.arc` is BYTE-UNCHANGED**. Lands in **CANONICAL**, not TESTHUB-only (SV-native level,
+SV-native placement, variant-independent Quests.arc, nothing placed). The Typhon FixedItemTeleport
+alternative was evaluated and rejected (2 new records + 2 new PLACEMENTS + a two-blob Levels rebuild,
+and it re-enters the map-portal firing-risk class). Also added: `build_quest_files.py --sv-areas-only`
+/ `--promote-leinth-exit` surgical modes and a **fail-loud guard** in `main()` for the missing
+pristine SVAERA base (a full run without it would double-append the non-idempotent Q1/Q2/Q3/testhub
+triggers onto an already-built arc).
+
+**GATES SHIPPED (no-new-surface law):**
+- `tools/patches/uber_apex_orb.py` apply() + verify() - `tools/debug/negtest_uber_apex_orb.py` (10 subtests)
+- `tools/patches/leinth_wave.py` apply() + verify() - `tools/debug/negtest_leinth_wave.py` (12 subtests)
+- contract **`QST-LEINTH-EXIT`** (`tools/contracts/contracts_quests.py`) - 6 planted negative tests in
+  `tools/contracts/tests_quests_negative.py` (**suite 25/25 PASS**, was 19/19)
+- `_promote_leinth_exit_fallbacks` in-build fail-loud verification on the EMITTED bytes
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, built from this branch):
+
+| artifact | md5 |
+|---|---|
+| `SoulvizierClassic.arz` NEW (51,098 records, 55,429,694 B) | `0d861748df91442ab860995cdea243eb` |
+| `Text.arc` NEW (rebuilt from the BUILD-EMITTED `uber_soul_tags.txt`) | `ed31ec8407e59710d4ad28d5532e75ae` |
+| `uber_soul_tags.txt` (build-emitted, 423 tags) | `c89194fc6f3427cf25712ad8ee6af5fc` |
+| `Quests.arc` NEW | `35bfe3f39e8480408e3c22ea5473f796` |
+| baseline arz (this branch's `main` build = the brief's ground truth) | `1c27d5fa650b5c076696db4ad379672f` |
+| baseline Quests.arc (== the deployed one) | `5e664c7b190965fd69f6ff15d77d85e4` |
+| `Levels.arc` BEFORE == AFTER (**never touched**) | `943d0ab9516d332db79bd7f9fd2d3ffe` |
+
+**TEXT PIPELINE CONTROL PROOF:** rebuilding `Text.arc` from the BASELINE build's emitted
+`uber_soul_tags.txt` reproduces the currently deployed `Text.arc` byte-for-byte
+(`fcca49277b9d31ed451e4a6843898843`), so every byte that moves in the new `Text.arc` comes from this
+wave's six new Leinth skill tags and nothing else.
+
+**RECORD DIFF (baseline arz -> built arz): INTENDED-ONLY, zero collateral.**
+`ADDED 13 / REMOVED 0 / MODIFIED 6`.
+- ADDED 13 = the 10 orb05 chain records + the 3 Leinth cult skills. Nothing else.
+- MODIFIED: `um_toxeus_enslaver_99` **1 field** (`treasureProxyName`), `um_bloodtoxeus_99`
+  **1 field** (`treasureProxyName`), each `q_leinth_{47,49,50}` **17 fields** (6 stats +
+  `skillLevel13` + 3x `skillName`/`skillLevel` + `specialAttack5SkillName`/`Chance` +
+  `buffSelfSkillName` + `dyingSkillName`), `leinth_summon_uglies` **3 fields**
+  (`petBurstSpawn`/`petLimit`/`spawnObjectsTimeToLive`). **Not one loot, FX, mesh, skin or visual
+  field moved anywhere in the roster.**
+
+**QUESTS ENTRY-LEVEL BLOB DIFF: 1 of 107 entries changed** (`open_bloodcave_portal.qst`
+23,213 -> 25,316 B), 106 byte-identical. Re-running the promotion emits a byte-identical arc
+(idempotence md5-proven). The `QST-LEINTH-EXIT` contract on the PRE-wave bytes reports
+**3x P0 + 1x P1** and on the built bytes **0** (real-world negative proof).
+
+**GATES:** DB build **exit 0** with the whole fail-loud battery green, including
+`[leinth_wave] verify OK` and `[uber_apex_orb] verify OK` on the FINAL merged arz, B-SUMMON-1
+summon validator **0 STRICT failures / 280 chains / 256 pets**, the container loot-shape contract,
+the boss-kit clone-shape invariant, spawn-eligibility, A7 Occult/Hunting golden (90 waived, 0 other)
+and the MP spawn-equation gate. `validate_tags` **PASS** (362/362 referenced mod tags resolve, up
+from 356 by exactly the 6 new ones). Planted negative tests: `negtest_leinth_wave.py` **12/12**,
+`negtest_uber_apex_orb.py` **10/10**, `tests_quests_negative.py` **25/25** (was 19/19).
+**THE GATES ARE LIVE, NOT DECORATIVE:** `leinth_wave.verify` aborted a real build in this wave
+(catching a scalar-vs-list bug in the gate's own code), and `mastery_sv_alignment.verify` aborted
+another (an empty `work/.../Resources` dir staged in the worktree shadowed the main repo's for that
+module's ancestor-walking arc resolver). Neither ever reached an artifact.
+
+**CONTRACT SUITE** (built arz + new Text + new Quests + the UNCHANGED deployed `Levels.arc`):
+
+| domain | contracts | P0 | P1 | P2 |
+|---|---|---|---|---|
+| map | 18 | 0 | 0 | 3 (pre-existing `MAP-PORTAL-3`) |
+| quests | **9** (was 8, +`QST-LEINTH-EXIT`) | 0 | 0 | 2 |
+| resources | 6 | 0 | **1252** | 3541 |
+| souls | 10 | 0 | 0 | 0 |
+| summons | 13 | 0 | 0 | 112 |
+
+The 1252 resources P1 (`C-RES-DBR-1` x768 + `C-RES-ASSET-1` x484) is the **PRE-EXISTING**
+BL-b90-DEBT-1 set, and this wave is PROVEN not to have moved it: the identical `--only resources`
+run over the BASELINE arz + baseline Text + baseline Quests yields **exactly**
+`0 P0 / 1252 P1 / 3541 P2` as well. The suite therefore reports `GATE: FAIL` for the same
+pre-existing reason it has since before b90, with **zero** new P0/P1 from this wave.
+
+**DEPLOYED to DEV** (`CustomMaps\SoulvizierClassicDEV`), coupled **arz + Text + Quests**; TQ was NOT
+running (Steam was, which does not lock mod files). Backups:
+`local/db_backups/SoulvizierClassicDEV_pre-b94_5143ad1a.arz`, `local/DEV_arz_deployed_prev.arz`,
+`local/DEV_Text_deployed_prev.arc`, `local/DEV_Quests_deployed_prev.arc`.
+
+| deployed artifact | md5 | verdict |
+|---|---|---|
+| `Database/SoulvizierClassicDEV.arz` | `0d861748df91442ab860995cdea243eb` | **== built** |
+| `Resources/Text.arc` | `ed31ec8407e59710d4ad28d5532e75ae` | **== built** (coupled pair) |
+| `Resources/Quests.arc` | `35bfe3f39e8480408e3c22ea5473f796` | **== built** (PART C) |
+| `Resources/Levels.arc` | `943d0ab9516d332db79bd7f9fd2d3ffe` | **UNTOUCHED** (byte-identical before and after the deploy; still the build49 TESTHUB map) |
+
+**DEPLOYED RE-PROBE:** re-running both module `verify()` hooks against the DEPLOYED `.arz` and the
+`QST-LEINTH-EXIT` contract against the DEPLOYED `Quests.arc` all pass; all four Leinth-death
+triggers carry the full exit action set on disk; all six new Text tags resolve in the deployed
+`Text.arc`. **Will must kill TQ + Steam and restart before testing** (standing rule), and the exit
+portal should be tested on a character/difficulty whose boss room has NOT already been cleared.
+
+⚠️ **DEPLOY COLLISION, READ THIS.** The DEV `.arz` on disk before this deploy (`5143ad1a...`) was
+**NOT** a build of `main` (`1c27d5fa...`). A field-level record diff showed the delta was exactly
+ONE field, `mesh`, on 12 records (`um_toxeus_enslaver_99`, `um_bloodtoxeus_99`, the six
+`soulskills\pets\{bloodtoxeus,toxeus_enslaver}_{1,2,3}` and four `drxmap\proxy\q_*`):
+`RevenantPoison.msh` (main) vs `Skeleton01.msh` (deployed). That is the in-flight `fix/green-diff`
+lane's green-glow fix, deployed for its own QA and not yet on `main`. **This wave's code touches no
+FX or mesh field anywhere** (record diff above proves it), but any `.arz` built from `main`
+necessarily reverts those 12 mesh fields, so this deploy did. The remedy is merge order, not a code
+change: merge `fix/green-diff` + `feat/leinth-wave` and rebuild once. One-file restore of the
+pre-wave DEV `.arz` is `local/db_backups/SoulvizierClassicDEV_pre-b94_5143ad1a.arz`.
+
+**LEDGER:** `docs/WILL_RULINGS.md` gains **R-70 / R-71 / R-72** in a new decade 70-79 ("Encounter
+economy / blood cave"). **R-47 NOT superseded** (R-70 adds a tier it does not mention). R-48, R-42,
+R-3/R-49 and the b76 density law all re-verified un-regressed by the gates above.
+
+**OPEN DEBT:** BL-b94-DEBT-1..8 (see DEBT REGISTER; DEBT-7 merge order with `fix/green-diff`, DEBT-8 TQ was running at deploy). DEBT-2 shrank from 7 open Will questions to 4.
+
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 
 **R-49, Will 2026-07-27, verbatim (REPEAT of R-3):** "toxeus the murderer devourer of blood is not
@@ -1676,6 +2150,63 @@ along automatically when the structural cluster-relocation fix lands.
   icon, the pet's mobility on the orthrus rig and the 3-tier scaling. Owner/trigger: Will, on a
   **FRESHLY DROPPED** soul (TQ bakes item properties at pickup, so a soul already in a bag will
   not carry the new grant).
+**b94 LEINTH WAVE / R-70, R-71, R-72 (2026-07-28, build55-dev, branch `feat/leinth-wave`) - NEW**
+- **BL-b94-DEBT-1 (launch-gated, ALL THREE PARTS):** nothing in this wave is confirmed IN-GAME. The
+  orb calibre change, the Leinth buff and the exit portal all need a real play test on DEV, and the
+  exit portal specifically needs a Leinth kill on a character/difficulty whose boss room has not
+  already been cleared (the one-shot may already have latched on an existing save). Owner: Will's
+  test pass after a full TQ + Steam restart. Source: `docs/reports/b94_leinth_wave.md` sec 6.
+- **BL-b94-DEBT-2 (P1, WILL DECISION - now x4, was x7):** ROUND 2 CLOSED THREE of the seven. Will's
+  2026-07-27 decision (R-73) answered orb calibre exactness, the R-47 amendment question and
+  "should Leinth also get an orb" (yes - by re-tiering her own chest, sole-ownership verified
+  first). **STILL OPEN (4):** the two staged poison rigs (`cerberus_acidpuddle_summon/attack`,
+  rejected as off-identity because she is the one poison-WEAK boss), how much stronger she should
+  be (shipped ~1.6x life + phys 10->35 / pierce 20->45 + 3 abilities, deliberately NOT uber tier),
+  one-way vs two-way exit (shipped one-way, recommended), and the no-kill exit fallback for a
+  character already past a latched one-shot. Owner: Will. Source: same report sec 5.
+- **BL-b94-DEBT-7 (P1, MERGE ORDER - blocks a clean DEV surface for TWO lanes):** this wave's deploy
+  reverted the in-flight `fix/green-diff` lane's DEV mesh work for the SECOND time - now
+  `GoldenSkeleton01.msh` on **15** records (`um_toxeus_enslaver_99`, `um_bloodtoxeus_99`, the four
+  `drxmap\proxy\q_*` proxies and the nine `soulskills\pets\{bloodtoxeus,toxeus_enslaver,
+  toxeus_eoat}_{1,2,3}` pets). Neither lane's CODE conflicts - this wave touches no mesh or FX field
+  at all and the record-diff collateral sentinel proves it - so the fix is purely sequencing: merge
+  `fix/green-diff` and `feat/leinth-wave` and rebuild ONCE, and both land together. A hand-stitched
+  arz was deliberately NOT deployed (it would break `deployed == built` and the deterministic-
+  regeneration law). One-file restore of the pre-deploy DEV arz:
+  `local/db_backups/SoulvizierClassicDEV_pre-b94r2_f3015aa3.arz`. Owner: the integrator.
+- **BL-b94-DEBT-8 (P1, DEPLOY HYGIENE - unverified landing state):** `TQ.exe` was RUNNING when this
+  wave deployed to DEV. The implementer is hard-banned from killing TQ or Steam, so the standing
+  "restart Steam before every test" rule could not be applied at deploy time. The write is
+  hash-verified on disk (`deployed == built`), but the running game still holds the previous
+  database in memory, so **any test before a full TQ + Steam restart is testing stale data.** Fold
+  the restart into the test ping. Owner: whoever gives Will the test instructions.
+- **BL-b94-DEBT-3 (P1, UNPROVABLE STATICALLY):** the exit-portal root cause is INFERRED. The shipped
+  bytes prove the fallbacks lacked ShowNpc/BoatDialog and that the primary was a non-resettable
+  proxy-wide condition over a pool that also carries champion blood demons, but WHICH path failed on
+  Will's character cannot be proven offline. If the portal still fails after this fix, the remaining
+  unknown is `Condition_ShowNpc`/`Action_BoatDialog` binding semantics on an SV-only appended host
+  level (Frida would settle it). Owner: next blood-cave lane.
+- **BL-b94-DEBT-4 (P2, MP + Normal-band tuning):** the orb spawn equations are
+  `(3+(1.6*numberOfPlayers))*k`, so raising `k` multiplies champion loot in MP too (roughly 2.6x the
+  1P figure at 6 players). This is the SAME shape Leinth already ships, so it is not a new risk
+  class, but the champions should be eyeballed at 6P before any Steam push. Separately, Leinth's
+  +60% life plus the physical/pierce change could read as disproportionately brutal in the level-47
+  Normal band; time-to-kill cannot be measured statically. Owner: whoever runs the next MP/difficulty
+  pass.
+- **BL-b94-DEBT-5 (P2, gate coverage):** `tools/debug/gate_traveler_responds.py` deliberately
+  EXCLUDES the base/SV boatmen, the Leinth vortex portal among them, so it never gated this exit. The
+  new `QST-LEINTH-EXIT` contract covers the quest side, but extending `gate_traveler_responds.py`
+  itself to cover `vortexportal_exit` would close the mute-traveler regression class end to end (the
+  b48 lesson). Owner: next traveler/gate lane.
+- **BL-b94-DEBT-6 (P1, ENVIRONMENT, blocks any FULL Quests.arc rebuild on this machine):** neither
+  `reference_mods/SVAERA_customquest/Resources/Quests.arc` (the pristine base) nor
+  `upstream/soulvizier_098i/Resources/XPack/Quests.arc` (the SV area-quest source) is present on this
+  machine, so `build_quest_files.py main()` cannot run end to end and `--sv-areas-only` cannot
+  re-derive from upstream. b94 therefore shipped PART C through the new `--promote-leinth-exit`
+  surgical mode, which produces byte-for-byte what the full pipeline would (proven idempotent, and it
+  asserts the exact input shape). A fail-loud guard now stops a full run from double-appending onto
+  an already-built arc. Owner: run `scripts/sync_reference_mods.ps1` + re-extract the SV upstream
+  before the next full quest rebuild.
 
 **b90 Toxeus souls -> 100% (2026-07-27, build50-dev) - NEW**
 - ~~**BL-b90-DEBT-1 (P1, NOT this lane):** `contracts_resources` reports **1252 P1** (`C-RES-DBR-1` 768,

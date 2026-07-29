@@ -880,6 +880,344 @@ shipped). **R-10** and **R-16** were re-read and are correctly PENDING as writte
 
 **RETIREMENT PROTOCOL:** nothing was deleted, retired, or dropped in this pass. Every superseded /
 renumbered record is still present with a pointer to its replacement.
+### Encounter economy / blood cave (new section, decade 72-79)
+
+> ⚠️ PROVENANCE NOTE (honesty, per the ledger's own "quote rulings VERBATIM" law): the three
+> entries below were relayed to the b94 implementer through a design brief, NOT captured as a
+> first-person Will quote. They are therefore marked `[paraphrased]` in the same way R-33/R-34/
+> R-35 are, and each records exactly what the brief asserted plus what the implementer proved
+> against the shipped bytes. If Will's original wording surfaces, replace the paraphrase with the
+> verbatim text in place and drop the marker.
+
+- R-72 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "the orb the two Toxeus
+  champions drop is not the same calibre as the one Leinth drops" - CONFIRMED against the deployed
+  bytes, and by a wide margin, though not by the mechanism the wording assumes. Neither side drops
+  "an orb" in the same sense: Leinth drops a BESPOKE DRX CHEST
+  (`records\drxitem\container\bosschestproxy_leinth.dbr`, in-game "Leinth's Essense"), while BOTH
+  champions drop the R-47 shared generic apex orb `genericbossorb_04`. The delivery field is
+  `treasureProxyName`, the only field in all 51,085 records that ever references an orb. Tracing
+  both chains proxy -> ProxyAccessoryPool -> FixedItemContainer -> FixedItemLoot on all three
+  difficulties, the raw knobs are: numSpawnMin/Max `(3+1.6P)*2.2 / *2.4` (Leinth) vs `*0.9 / *1.3`
+  (orb04); loot4Chance 100.0 vs 12.7; unique-entry lootWeight 50 vs 27. Modelled expected items at
+  1 player: Leinth 18.5 vs orb04 5.7 (3.25x) with roughly twice the unique share. HONEST
+  COUNTER-AXIS, stated because it cuts the other way: orb04 rolls the HIGHER item tier (the xpack
+  Act-4 statics at goldGeneratorLevel 88, plus LockedClassification=Boss) while Leinth's tables are
+  the Act-3 63-65 band at gold level 64. FIX: do NOT nerf Leinth (explicit instruction) and do NOT
+  edit `genericbossorb_04` in place (it is shared by TWENTY-ONE boss records, so an in-place edit
+  would silently buff the mod's whole endgame). Instead author a NEW un-named generic apex TIER
+  `genericbossorb_05` (+ 3 pools + 3 chests + 3 loot tables, every one a clone of the orb04 chain)
+  carrying Leinth's four calibre knobs on the champions' EXISTING higher Act-4 tables, and repoint
+  `treasureProxyName` on EXACTLY `um_toxeus_enslaver_99` + `um_bloodtoxeus_99`. Net: champion orb
+  goes from ~5.7 to ~18.5 expected items at 1P on a strictly better item pool. Owner:
+  `tools/patches/uber_apex_orb.py` (apply() proves roster-wide that orb04 and its other 19
+  consumers are byte-unchanged and that the R-48 soul wiring never moved; verify() re-asserts the
+  whole chain on the FINAL merged arz). Planted negative test
+  `tools/debug/negtest_uber_apex_orb.py`.
+  RECONCILIATION WITH R-47: R-47's substance is intact (still un-named, still generic, still
+  shared, still not a bespoke "X's Essence"); R-72 ADDS a tier R-47 does not mention. R-47 is NOT
+  superseded.
+  ⚠️ **SCOPE SUPERSEDED IN PART BY R-75 (Will 2026-07-27, verbatim).** R-72's ANALYSIS stands
+  unchanged and is still the evidence base. What R-75 overrides is R-72's SCOPE DECISION: R-72
+  moved only the two champions and deliberately left Leinth's chest untouched, and R-72's open
+  question #3 ("should Leinth also get an orb?") is now ANSWERED - yes, she is included. The
+  built-out ruling is R-75; read the two together.
+
+- R-75 [2026-07-27, implemented b94 round 2 (feat/leinth-wave)] IMPLEMENTED. Will's decision,
+  **VERBATIM** (this one WAS captured as a first-person quote, unlike R-72/R-73/R-74 above, so it
+  carries no `[paraphrased]` marker):
+  > "increase the tier of the items dropped by leinth's orb to match the tier dropped by the
+  > champions' orb and give that to both toxeus variants and also to leinth"
+
+  This SUPERSEDES the design pass's orb plan and R-72's scope. The instruction is not "raise the
+  champions to Leinth" but "build ONE apex drop that combines both sides' strengths and give it to
+  all three". Each side won a different axis: Leinth had the GENEROSITY (numSpawn `*2.2/*2.4` vs
+  `*0.9/*1.3`, loot4Chance 100 vs 12.7, unique weights 50 vs 27) and the champions had the TIER
+  (xpack Act-4 static tables vs the Act-3 63-65 band; `containerlevelequation_all` = `1*1` vs
+  `c03`/`e_c03`, which DIVIDE the player level on normal/epic; goldGeneratorLevel 47/69/88 vs
+  30/50/64). The shared apex loot tables `records\item\loottables\svc\svc_uberorb_apex_{n,e,l}01c`
+  carry Leinth's four generosity knobs on the champions' Act-4 tables, and ALL THREE bosses now
+  consume them: modelled expected items at 1 player go 5.70 -> 21.16 for each champion (3.71x) and
+  18.51 -> 21.16 for Leinth (1.14x) PLUS a full item tier and +56% gold level.
+
+  HOW LEINTH IS INCLUDED, and why not by repointing her: a whole-database scan of EVERY field of
+  ALL 51,085 records proves `bosschestproxy_leinth` has EXACTLY THREE referrers, and all three are
+  her own variants (`q_leinth_47/49/50`, `treasureProxyName`). She SOLELY OWNS her chain, so it is
+  upgraded IN PLACE - `tables` + `levelEquationFile` on her three chests, two fields each, nothing
+  else. Her monster records, her proxy and her pools are NOT touched, so R-73's "her bespoke chest
+  survives" assertion stays green by construction, and the RETIREMENT PROTOCOL is never engaged
+  (nothing of hers is retired; her three original loot tables are deliberately left in the db and
+  are what the gate reads as the no-nerf reference). She KEEPS her bespoke player-visible identity
+  (`DRX\meshes\leinth_chest.msh`, scale 1.2, `tagLeinthChest` = "Leinth's Essense") and she KEEPS
+  her `typhongoldgenerator`, which is RICHER than the champions' `bossgoldgenerator`
+  (`(L^1.6)*48` vs `(L^1.6)*24`) - switching her to theirs would have been a gold NERF, so it was
+  deliberately not done. `LockedClassification` was also deliberately not copied: it is not an
+  item-tier field and is inert while `locked = 0`, which every consumer including orb04's own
+  chests carries.
+
+  NO-NERF IS PROVEN, NOT ASSERTED: apply() refuses to move her at all unless the apex table beats
+  her original on every one of the six loot-group chances, both spawn multipliers and
+  goldGeneratorLevel, and verify() recomputes the same proof on the FINAL merged arz. It holds on
+  all three difficulties (12.5->13.0, 25.0->32.0, 0.0->10.0, 100.0->100.0, 25.0->32.0, 12.5->13.0).
+  Owner: `tools/patches/uber_apex_orb.py`; planted negative tests for the Leinth half are
+  `negative 9-14` in `tools/debug/negtest_uber_apex_orb.py`.
+  RECONCILIATION WITH R-47: still intact. No NEW bespoke "X's Essence" is authored; her existing
+  one is re-tiered, not created, and the champions' new tier is still un-named, generic and shared.
+  See docs/reports/b94_leinth_wave.md.
+
+- R-73 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "Leinth is too easy and her
+  fight has nothing to react to; make her stronger and give her more abilities" - all three
+  variants (`q_leinth_47/49/50`) get characterLife +60% (32,481/35,703/38,924 ->
+  52,000/57,000/62,000), defensivePhysical 10 -> 35 and defensivePierce 20 -> 45 (THE REAL LEVER:
+  her two passive packages already give her bleed 100 / life 160 / convert 100 / elemental 50 /
+  stun 100, so physical and pierce were the only damage that touched her), characterAttackSpeed
+  0.8 -> 1.0, characterRunSpeed 1.0 -> 1.15, characterLifeRegen 2 -> 10, and her EXISTING poison
+  geysers (`cerberus_crackfire`) raised 1;4;7 -> 4;7;9. DELIBERATELY KEPT: defensivePoison stays
+  -15 (her amgoz1 identity and the fight's counter-play) and charLevel stays 47-76 (she is the
+  blood cave's main-path terminal boss, NOT an uber; pushing her to the champions' 100 would break
+  the cave's curve). THREE new abilities, every donor an already-shipping rig from her OWN
+  `records\drxcreatures\bloodwitch` cult family, so zero new art/FX/sound: CRIMSON TITHE (the
+  Disciple blood-rain -> specialAttack5, the fight's first telegraphed phase moment), CHOIR OF THE
+  BLOODBORN (the Disciple-boss Melinoe summon, cut to burst 2;3;4 / petLimit 6 with a finite TTL ->
+  buffSelfSkillName) and SANGUINE MIRE (her own SpawnPet rig spawning the Seductress blood puddle
+  -> dyingSkillName). WHY THREE AND NOT FOUR (engine ceiling, not a cut): Monster.tpl exposes
+  exactly five castable specialAttack slots and Leinth already used four with her own bespoke DRX
+  kit, so there was ONE free attack slot plus the two non-attack AI mechanisms with class
+  precedent (buffSelf: 9 SpawnPet users; dying: 18 Boss users). A fourth would have had to displace
+  one of her own DRX skills, which the retirement protocol forbids without Will.
+  ALSO: `leinth_summon_uglies` cut from petBurstSpawn 4;6;8 / petLimit 16 (permanent) to 2;3;4 /
+  petLimit 6 with a 45s TTL - the b76 chumbi-freeze density law; the skill is NOT removed and stays
+  wired at specialAttack2. NOT TOUCHED: every loot field (her 100% `lenithsveil` head drop, her 66%
+  soul at the R-42 PLACED rate, and `bosschestproxy_leinth`), proven field-by-field in apply().
+  Owner: `tools/patches/leinth_wave.py`; planted negative test
+  `tools/debug/negtest_leinth_wave.py`. ⚠️ OPEN WILL QUESTIONS in the wave report: the two staged
+  poison rigs DRX left unwired in her own folder (`cerberus_acidpuddle_summon/attack`) were
+  REJECTED as off-identity (poison, on the one boss with a poison weakness), and the Normal-band
+  difficulty of the +60% life needs a play check.
+
+- R-74 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "after you kill Leinth a
+  portal should open that takes you back to the occultist merchant outside the blood cave" - the
+  machinery was ALREADY built, placed and correctly aimed; one trigger asymmetry stopped it firing.
+  `records\drxmap\bloodcave\portals\vortexportal_exit.dbr` is Class=Npc (the traveler/boat-dialog
+  pattern) whose own FileDescription reads "Exits the player after the Leinth boss fight", placed
+  exactly ONCE across all 2,282 levels (bossfight.lvl, 6.2u from Leinth's proxy, on-navmesh); Text
+  already resolves tagLeinthExitPortal = "Mystical Vortex" and tagReturnFromLeinthBattle = "Leave
+  the Sanctuary of the Bloodborn?"; and its shipped BoatDialog destination decodes signed to world
+  (-90,-103,2321), which is 9.79u from the OCCULTIST MERCHANT outside the cave, on the same
+  walkable component as the merchant and his wagon. THE DEFECT: only the ONE-SHOT
+  `Condition_KillAllCreaturesFromProxy(q_leinth_lone)` primary carried the full
+  OpenDoor+ShowNpc+UpdateNPCDialog+BoatDialog set, while the three `Condition_KillCreature`
+  fallbacks added in b48 carried Action_OpenDoor ALONE. So whenever the proxy-wide condition did not
+  satisfy (an unaccounted champion blood demon in that pool, a character that did not have the quest
+  tracked at kill time, or the one-shot already latched) the boss door opened and no exit portal
+  ever appeared. FIX (Quests.arc ONLY, `tools/build_quest_files.py::_promote_leinth_exit_fallbacks`):
+  copy the primary's action block VERBATIM onto all three resettable fallbacks and flip the
+  primary's isResettable 0 -> 1. No new quest entry, so the ~254-entry load window is NOT engaged
+  and the QUESTS section is unchanged; Levels.arc is BYTE-UNCHANGED. Lands in CANONICAL, not
+  TESTHUB-only: bossfight.lvl is SV-native in both map variants, the NPC is an SV-native placement,
+  and Quests.arc is variant-independent. The Typhon FixedItemTeleport alternative was evaluated and
+  REJECTED (it would need two new records plus two new PLACEMENTS and a two-blob Levels rebuild, and
+  re-enters the map-portal firing-risk class this project left behind). Permanent gate:
+  contract `QST-LEINTH-EXIT` in `tools/contracts/contracts_quests.py` + 6 planted negative tests in
+  `tools/contracts/tests_quests_negative.py`. ⚠️ OPEN WILL QUESTIONS in the wave report: the offer
+  is one-way (recommended), and a character who already killed her while the one-shot was latched
+  and never kills her again is still stranded until a re-kill.
+
+- R-76 [2026-07-27, implemented b94 round 3 (feat/leinth-wave)] IMPLEMENTED. Will answered the four
+  design questions R-73 left open. Three of the four answers go AGAINST the implementer's
+  recommendation, so R-73 is **SUPERSEDED IN PART** by this entry (its stat work stands; its summon
+  cut, its poison-weakness law and two of its three new skills do not). Will's answers, VERBATIM:
+
+  * **Q4, how much stronger:** *"lets give her some guardians like amgoz1 gave hades"*
+  * **Q6, the two staged poison rigs:** *"Use them AND remove her poison weakness"*
+  * **Q7, the ugly swarm:** *"Keep the swarm as-is"*
+  * **Q9, the residual stranded character:** add the no-kill fallback - *"Show the exit whenever the
+    boss trap door is already open, regardless of whether the kill trigger latched - so a character
+    who already killed her (INCLUDING WILL'S OWN) is rescued rather than stranded."*
+
+  **Q4 - THE HONOUR GUARD, MIRRORED FROM THE REAL THING.** How amgoz1/DRX actually built Hades'
+  guardians was traced in the shipped bytes before anything was designed:
+  `records\xpack\quests\proxies\main\xq06_boss_hades_champions.dbr` (FileDescription "DRX") is a
+  SEPARATE proxy from the boss proxy `xq06_boss_hades.dbr`, carrying the GUARD's own mesh
+  (`gigantes01_quest.msh` at scale 2.8), sharing the boss's `hadesdifficulty_01` / `bosslimit_all`,
+  `quest = 1`, and pointing at `xq06_boss_hades_champion_pool.dbr` (also "DRX"): `spawnMin =
+  spawnMax = 1`, `championMax = 1`, `limit1 = 1`, `name1 =
+  records\drxcreatures\drxdishonorguard\anapaest_45.dbr`, `weight1 = 100`. A placement census over
+  all 2,282 levels finds that champion proxy placed exactly **TWICE**, both in
+  `XPack\Levels\Area08_HadesPalace\HadesPalace_Floor05_04.lvl`. So the pattern is: one dedicated
+  elite guard record, spawned from its OWN pool, standing beside the boss, two of them, invisible to
+  the boss's own quest proxy.
+  The literal mirror would need two new PLACEMENTS in `bossfight.lvl` (a Levels.arc rebuild). It was
+  NOT taken, because this repo already ships the DB-side equivalent and **its donor is literally
+  Leinth's own pool**: `apply_svc_patches._svc_boss_pool` is documented as "the 1-boss +
+  2-guaranteed-champion recipe (spawnMax=3 / championChance=100 / championMin=Max=2 -> 3-2=1
+  guaranteed boss; the LAW)", shipping in `neferkha` (2 frozen tomb guardians), `diadochi` (2 strider
+  guards) and the Hades Marshal (2 machae escorts). Applied to `q_leinth_lone` IN PLACE: her three
+  variant `name` slots, weights and limits are untouched, so the single main is still a random
+  `q_leinth_47/49/50`, and the two champion slots become her honour guard. **Levels.arc is
+  BYTE-UNCHANGED.**
+  `_svc_neutralize_pool_equation` is MANDATORY here, not cosmetic: her pool inherits
+  `proxypoolequation_02`, which scales the literal counts by 1.357 and floors them, giving spawnMax
+  4 and championMax 2, so 4-2 = **TWO Leinths side by side** - the exact deterministic defect Will
+  reported on 2026-07-13. verify() fails the build if that equation ever comes back.
+  THE GUARDS (amgoz1 bar: zero new art, FX or sound - both cloned from her OWN cult):
+  `svc_leinth_guard_reaver` from `d_reaver_42` ("Blood Reaver of the Sanctuary"; bloodburst +
+  bloodboil + sux2buwave + zap, and NO summons at all) and `svc_leinth_guard_disciple` from
+  `c_disciple_42` ("Voice of the Bloodborn"; the bloodstare + blood-rain caster). Both raised to HER
+  band `[47,62,74]`, Champion rank, scale 1.9, real Text names. The Disciple's inherited
+  `disciple_summon_bloodbeast` is petLimit 4 with NO TTL - the exact b76 defect - so the guard gets a
+  CLONED copy capped at 2 / 20s and the SHARED original is never written (verify() asserts both).
+  EXIT-TRIGGER INTERACTION, deliberate: the guards ride in `q_leinth_lone`, which is the pool R-74's
+  primary `Condition_KillAllCreaturesFromProxy` watches, so the primary now needs the whole honour
+  guard dead. That is the right reading, and it is exactly why R-74's three per-variant fallbacks
+  plus this entry's no-kill fallback are load-bearing rather than belt-and-braces.
+
+  **Q6 - BOTH STAGED RIGS WIRED, AND THE WEAKNESS REMOVED.** R-73 rejected
+  `cerberus_acidpuddle_{summon,attack}` as off-identity (poison rigs on the one poison-weak boss);
+  Will removed the contradiction from the other end instead. All THREE records DRX staged in her own
+  folder (`summon` / `monster` / `attack`) have ZERO referrers anywhere in the 51k-record db, proven
+  by exact-path scan rather than substring. THE FREE WIN: the "attack" rig is not a boss self-buff
+  competing for a scarce cast slot, it is the PUDDLE's own aura (the xpack twin sits at the puddle
+  monster's `initialSkillName` + `skillName1`), so wiring the SUMMON alone brings BOTH of Will's rigs
+  live through ONE `specialAttack` slot. Her summon is therefore re-chained onto HER puddle and that
+  puddle onto HER aura (DRX had aimed both at the xpack copies), leaving the xpack Cerberus chain
+  `boss_cerberus_40/42/44` byte-clean - verify() fails if either xpack record is ever repointed.
+  `defensivePoison` **-15 to +15**. The value is not invented: it is EXACTLY her own cult heavy
+  `d_reaver_42`'s `defensivePoison`, so she is anchored to her family's norm. It removes the weakness
+  (no more bonus poison damage) and makes her coherent now that she wields both the geysers and the
+  puddles, while deliberately NOT granting immunity - at +15 poison is still by far her softest
+  resist (bleed 100 / life 160 / convert 100 / elemental 50 / stun 100), so the counter-play R-73
+  valued survives in relative terms. verify() fails on a negative value AND on immunity.
+
+  **Q7 - THE SWARM IS RESTORED, AND THE RISK IS REPORTED NOT PATCHED.** R-73's cut of
+  `leinth_summon_uglies` (4;6;8 / petLimit 16 / permanent, cut to 2;3;4 / 6 / 45s TTL) is
+  **REVERTED IN FULL**. The module now writes NOTHING to that record, so it keeps its shipped values
+  by construction, and verify() PINS `petBurstSpawn [4,6,8]`, `petLimit 16` and the ABSENCE of a TTL
+  - the assertion is now the exact reverse of R-73's. Will was warned that guardians and acid puddles
+  are being added on top, and asked for the number; it is measured, not estimated:
+  **1 Leinth + 2 guards + 16 uglies (PERMANENT) + 10 heatseeker pets (PERMANENT) + 10 acid puddles
+  (6s) + 2 guard bloodbeasts (20s) = 41 concurrent entities, 26 of them PERMANENT.** The b76
+  chumbi-freeze RCA measures the standalone offender `um_voranthys_99` at 25 PERMANENT summons
+  (petLimit 9 + 8 + 8) and states that even standing alone that "degrades over a long fight".
+  **26 EXCEEDS it.** WARNING FLAGGED FOR WILL: nothing he told me to keep was reduced. The only
+  density lever pulled was retiring two of the implementer's OWN round-1 skills (below).
+
+  **RETIREMENT (protocol engaged explicitly, because R-73 names them).**
+  `svc_leinth_choir_bloodborn` and `svc_leinth_sanguine_mire` are retired. Both were the
+  implementer's own round-1 inventions, authored on this unmerged branch and never shipped to Will or
+  seen in game, so no player-facing content is removed. CHOIR summoned cult bodies - the HONOUR GUARD
+  is Will's own answer to that need and does it better; SANGUINE MIRE existed solely because she had
+  no zone control - the ACID PUDDLE is the authentic DRX-staged rig for that job. Their records are
+  simply never authored.
+  SLOT ACCOUNTING: Monster records expose five castable `specialAttack` slots (census
+  3164/1602/894/300/170 users; the only three `specialAttack6` users in the whole db are `Pet.tpl`
+  records from our own prior wave, so slot 6 is not a Monster precedent). Her four bespoke DRX
+  specials hold slots 1-4 and the retirement protocol forbids displacing them, so there is exactly
+  ONE free attack slot. Will's instruction outranks the implementer's invention: `specialAttack5`
+  takes the acid rig, and CRIMSON TITHE moves to `dyingSkillName` (79 shipping records carry its
+  class there). `numAttackSlots` stays 4 - it is NOT a special-attack cap (46 shipping records run
+  `numAttackSlots = 4` with five wired specials, and 3 with six).
+
+  **Q9 - THE NO-KILL EXIT FALLBACK.** The `.qst` condition vocabulary has no door-state test (the
+  supported classes are listed in `qst_format.CONDITION_FIELDS`, and none reads a `FixedItemDoor`;
+  the primary's `Action_OpenDoor` grants no token either), so Will's literal "whenever the boss trap
+  door is already open" is not directly expressible. `Condition_OnLevelLoad` is the only mechanism
+  that satisfies his actual REQUIREMENT - that nobody, including his own already-latched character,
+  is ever stranded. `tools/build_quest_files.py::_add_leinth_exit_nokill_fallback` appends ONE
+  trigger to the "Boss Room Crystal Gate" step carrying `Action_ShowNpc` + `Action_UpdateNPCDialog` +
+  `Action_BoatDialog` harvested VERBATIM from the promoted primary, with `Action_OpenDoor`
+  deliberately STRIPPED so the boss trap door stays earned. Quests.arc only; no new quest entry, so
+  the ~254 load window is not engaged. THE ONE COST, STATED FOR WILL: because OnLevelLoad fires on
+  every entry, the vortex is visible from the moment the player walks into the Sanctuary rather than
+  appearing at the instant she dies. That trades R-74's reveal for his guarantee; if he prefers the
+  reveal, deleting this single trigger restores it and the three kill fallbacks still cover every
+  case except the already-latched character he asked to rescue.
+  Permanent gate: new contract `QST-LEINTH-NOKILL` in `tools/contracts/contracts_quests.py` + 6
+  planted negatives in `tools/contracts/tests_quests_negative.py`. **It fires P0 on the PRE-WAVE
+  bytes and is silent on the built bytes** - the fix is proven against real bytes, not asserted.
+
+  Owners: `tools/patches/leinth_wave.py`, `tools/build_quest_files.py`. Negative tests:
+  `tools/debug/negtest_leinth_wave.py` (31/31), `tools/contracts/tests_quests_negative.py` (31/31).
+  R-NUMBER NOTE: the b94 entries were authored as R-70..R-73 before `main` independently landed its
+  own R-70/R-71 in the 2026-07-28 ledger-hygiene pass. On merge the b94 half was renumbered +2
+  (R-72..R-76) following that pass's own renumber-on-collision precedent; no ruling TEXT was altered.
+
+  ### ⚠️ R-76 CORRECTIONS (2026-07-29, after an independent adversarial vet returned NO-GO)
+  The RULINGS above are Will's and stand unchanged. Three IMPLEMENTATION CLAIMS recorded beside them
+  were wrong, and one number was unreproducible. Every correction below was decoded from the
+  deployed artifacts, and the corrected state is now gated so it cannot regress.
+
+  1. **"BOTH staged acid rigs live" was FALSE as shipped in round 1.** DRX's staged copy
+     `leinth_skills\cerberus_acidpuddle_summon.dbr` carries `skillSpecialAnimationName='AcidPuddle'`,
+     a token owned DB-wide only by the xpack Cerberus chain and the DRX Bastien records, and absent
+     from EVERY row of her own table `anm_leinth` (unarmed row: SpitSummon, 2, BloodBall01,
+     SummonTormentedSouls, TelekinesisLoop, TelekinesisEnd, ThunderClap; her three variants carry no
+     own `*SpecialAnimRef`). By this repo's own hard-law #2 the cast ABORTS, and because the poison
+     aura lives only on the spawned puddle, BOTH of Will's Q6 rigs died with it. So Q6 was HALF
+     delivered: the weakness removal landed, the visible half did not.
+     **FIXED (round 2):** the token is repointed to `'SpitSummon'`, which DRX bound themselves at
+     `anm_leinth unarmedSpecialAnimRef1 -> empusa_staff_skill_frostspit.anm` and then left
+     referenced by no skill of hers - staged in the same breath as the rig. Her copy has zero other
+     referrers, so the xpack chain stays byte-clean. verify() now asserts the token.
+  2. **The honour guard's summon was a LEVEL-0 SUMMON, which never fires.** Round 1 wrote the
+     TTL-capped clone into `specialAttackSkillName` but left `skillName4` on the SHARED donor, so the
+     clone had exactly ONE referrer in the whole db and no `skillLevel` anywhere. By the b39 RCA law
+     quoted verbatim in `tools/patches/boss_skill_fix.py` ("a level-0 summon NEVER fires ... an
+     unambiguous boss never summons defect") the Voice of the Bloodborn lost her entire summon kit,
+     and the advertised petLimit 2 / TTL 20s cap was moot.
+     **FIXED (round 2):** `skillName4` now holds the clone at the donor's own `[5,10,15]`. gated.
+  3. **The geyser raise was NOT a delivered buff.** `cerberus_crackfire` sits ONLY in `skillName13`
+     with no cast mechanism of any kind (the original `boss_cerberus_40/42/44` wire it at BOTH
+     `skillName4` AND `specialAttack4SkillName`), and its own token `'Roar'` is likewise unbound in
+     `anm_leinth`. It is dormant twice over, so R-76's "poison 800/850/950 and the 5% current-life
+     component ON at every difficulty" was never true.
+     **CORRECTED (round 2):** the raise is REVERTED (the module writes nothing to the slot) and
+     verify() PINS the shipped `[1,4,7]`, so nobody can raise an inert number and believe they
+     shipped something. It cannot be delivered inside this wave: all five castable slots are spoken
+     for and slot 6 has no Monster precedent. Registered as debt `BL-b94-DEBT-12`.
+  4. **THREE MORE dead abilities, found by the new roster-wide sweep and fixed.** Adding hard-law #2
+     as an invariant over all five records this wave writes (following `charAnimationTableName`, which
+     the pre-existing coldworm gate did not do) exposed: `q_leinth_*` specialAttack1 and
+     `svc_leinth_guard_reaver` specialAttack1 both on `melinoe_bloodboil` (`'BloodBoil'`, bound
+     DB-wide by exactly 2 records, neither of them hers), and the Reaver's specialAttack3 on
+     `reaver_zap` (`'Zappity'`, bound by exactly 1). **Blood Boil is her SIGNATURE AoE life-leech -
+     the skill her own soul is built around - and it has never fired in this mod.** That is a direct,
+     measurable cause of Will's R-73 complaint that she is too easy and the fight is attrition
+     sludge, and it is worth more to the encounter than any stat in this wave. Both donors are
+     SHARED (20 records / 3 records) so both are CLONED, never written; the clones use
+     `'ThunderClap'`, bound in ALL SIX weapon rows of all three tables the wave casts from.
+     (Her SOUL is unaffected and was never at risk: `leinth_soul_{n,e,l}` proc the
+     `records\skills\soulskills\pcsafe\melinoe_bloodboil.dbr` copy, which has the anim field removed.)
+  5. **THE ENTITY BUDGET, RE-MEASURED so Will does not rule on a phantom.** The headline figure is
+     unchanged at **41 concurrent / 26 PERMANENT**, but round 1's version was not real: its 10 acid
+     puddles could not spawn and its 2 guard bloodbeasts were level-0, so what round 1 would actually
+     have shipped is **29 concurrent / 26 permanent**. Round 2 makes the 41 real. The permanent half
+     is 26 either way, because both newly-live rigs are the TTL-capped ones. The b76 comparison and
+     the flag to Will are therefore UNCHANGED: 26 permanent still exceeds `um_voranthys_99`'s 25, and
+     she now also peaks 12 transient bodies on top. Nothing Will asked to keep was reduced.
+  6. **The `numAttackSlots` census was unreproducible and is CORRECTED.** Not "46 records run
+     `numAttackSlots=4` with five wired specials (and 3 with six)". Measured on the deployed arz: 170
+     records carry a non-empty `specialAttack5`, split `numAttackSlots` 4 -> **76** and 6 -> **94**.
+     Of the 76: 62 `Pet.tpl`, **12 `Monster.tpl`**, 1 `Hades.tpl`, 1 `Megalesios.tpl`. The 12 include
+     the base-game `em_monolith_45`, the mod's `boss_coldworm50` and `boss_dagon_66`, and - decisively
+     - HER OWN CULT'S `b_seductress_39/41/43`. The conclusion is unchanged and is better proved
+     structurally: `numAttackSlots` is defined in `Templates/character.tpl` beside `numDefenseSlots`
+     and `combatManagerRecord` (defaultValue 4), i.e. a combat positional-slot count and NOT a
+     special-attack cap, while `specialAttack5SkillName` and `dyingSkillName` are both defined in
+     `templates/templatebase/monsterskillmanager.tpl`.
+  7. **Attribution correction (round 1's COLLATERAL SENTINEL).** The `Skeleton01.msh ->
+     RevenantPoison.msh` delta on 12 records and `DisplayAsQuestItem 0 -> 1` were blamed on the
+     pre-existing `fix/green-diff` DEV collision. They are in fact written by this branch's own merged
+     build code (`tools/apply_svc_patches.py` sets `RevenantPoison.msh`;
+     `tools/patches/uber_quest_markers.py` owns `DisplayAsQuestItem`). The CONCLUSION is unchanged
+     (not this wave's edits, and no FX/skin/texture/soul-drop field moved), but the attribution was
+     wrong and is corrected here so a future vet is not misled.
+  8. **Open for Will, not a defect (R-75 companion).** Item parity across the three blood-cave bosses
+     is exact, but GOLD parity is not: all three now consume the same `svc_uberorb_apex_{n,e,l}01c`
+     tables, yet Leinth keeps `typhongoldgenerator` ((L^1.6)*48) while the two champions keep
+     `bossgoldgenerator` ((L^1.6)*24), so a charLevel 74 mid boss still drops roughly twice the gold
+     of the charLevel 100 ubers. R-75 records this as a deliberate no-nerf consequence and Will's ask
+     was about item tier, so nothing is changed. Flagged for his ruling.
+
 
 ---
 
