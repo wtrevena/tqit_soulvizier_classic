@@ -1,6 +1,10 @@
-# b98 - THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, tag `build59-dev`)
+# b98 - THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, tag `build60-dev`)
 
 DB-ONLY lane. **NOT DEPLOYED** (five content branches are staged for one merged deploy).
+TAG NOTE: briefed as `build59-dev`, but that tag was already claimed by the parallel
+`fix/soul-identity` lane (b97 round 2, `e3f7c32`); a tag in use is never reassigned, so this lane
+took the next free number.
+
 Ground truth: deployed arz md5 `9f98e3e88bca20f96bacc2fd6bb87b63` (51,098 records),
 `Levels.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe`, plus the engine's own `Toolset/Templates.arc`.
 

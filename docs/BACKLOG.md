@@ -1,6 +1,10 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## BUILD59-DEV GATE RECORD - b98 THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, tag `build59-dev`)
+## BUILD60-DEV GATE RECORD - b98 THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, tag `build60-dev`)
+
+> ⚠️ TAG NOTE: this lane was briefed to tag `build59-dev`, but that tag was ALREADY CLAIMED by the
+> parallel `fix/soul-identity` lane (b97 round 2, commit `e3f7c32`). A tag in use is never
+> reassigned, so this lane took the next free number, `build60-dev`. Nothing else changed.
 
 **NOT DEPLOYED.** Five content branches are staged for ONE merged deploy; this lane deliberately did
 not write to `CustomMaps\SoulvizierClassicDEV`. Artifacts for the orchestrator's merged deploy:
