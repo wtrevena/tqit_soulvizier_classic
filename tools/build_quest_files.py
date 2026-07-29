@@ -767,7 +767,7 @@ def _harden_guardian_door_unlocks(data: bytes) -> bytes:
 
 
 # ── b94 PART C: the POST-KILL EXIT to the occultist merchant ────────────────────
-# WILL'S REPORT (paraphrase; ledgered R-72): after killing Leinth there is no way out
+# WILL'S REPORT (paraphrase; ledgered R-74): after killing Leinth there is no way out
 # of the Sanctuary of the Bloodborn - "after you kill her, a portal should open".
 #
 # THE MACHINERY IS ALREADY BUILT, PLACED AND AIMED. Nothing new is needed:
@@ -1047,7 +1047,7 @@ def _promote_leinth_exit_fallbacks(data: bytes) -> bytes:
 
 
 # ── b94 ROUND 3 PART C: the NO-KILL exit fallback ──────────────────────────────
-# WILL 2026-07-27 (Q9, answering the residual R-72 flagged): "ADD THE NO-KILL
+# WILL 2026-07-27 (Q9, answering the residual R-74 flagged): "ADD THE NO-KILL
 # FALLBACK. Show the exit whenever the boss trap door is already open, regardless of
 # whether the kill trigger latched - so a character who already killed her
 # (INCLUDING WILL'S OWN) is rescued rather than stranded."
@@ -1068,7 +1068,7 @@ def _promote_leinth_exit_fallbacks(data: bytes) -> bytes:
 #
 # THE ONE COST, STATED: because OnLevelLoad fires on EVERY entry, the vortex is visible
 # from the moment the player walks into the Sanctuary rather than appearing at the
-# instant she dies. That trades R-72's reveal for Will's guarantee. It is flagged in the
+# instant she dies. That trades R-74's reveal for Will's guarantee. It is flagged in the
 # wave report as a Will-decision item; if he prefers the reveal, delete this one trigger
 # and the three kill fallbacks still cover every case except an already-latched
 # character (which is exactly the case he asked to rescue).
@@ -2739,6 +2739,43 @@ def _add_typhon_rhodes_unlock(data: bytes) -> bytes:
     Strictly additive (one trigger triple; the step's trigger-container max is
     incremented). Fails loud if the host step is missing, if the emitted bytes
     do not round-trip, or if the addition is not exactly one unlock action.
+
+    ── FIDELITY DECISION: **KEEP** (2026-07-28, `fix/debt-docs`; owner of the
+    asserts below). ────────────────────────────────────────────────────────────
+    This trigger is the ONLY non-SVAERA-faithful edit in our Quests.arc, and it
+    is INERT on its own: Q1 shipped as build30.3 and FAILED in-game (Will killed
+    Typhon, the unlock event fired, no portal), because the base game opens
+    `xq00_olympus_portaltorhodes` from ENGINE CODE (an end-of-campaign event that
+    never fires in Custom Quest) and no quest in SVAERA OR the base game
+    references that portal at all. The Q3 quests-lane archive
+    (docs/BACKLOG.md, 2026-07-09) therefore RECOMMENDED reverting this function
+    for pure SVAERA fidelity - and then parked the call as "DECISION DEFERRED to
+    coordinator". It has ridden every Quests build since, undecided.
+
+    The decision is now made and it is KEEP, for four reasons:
+      1. It is a byte-SUPERSET, not a mutation. The only file it touches is the
+         already-in-arc, already-registered, never-completing controller
+         'quest that controls bosses and their doors.qst'; every SVAERA behaviour
+         in that file is preserved verbatim (the Q3 byte analysis found this to
+         be the single file that differs from SVAERA, by +804 B of pure append).
+      2. Q3's kill-gated instant unlock (`_add_olympus_rhodes_travel`) builds on
+         the SAME host step and the SAME `Action_UnlockFixedItem` on the SAME
+         portal record. Reverting Q1 would not restore SVAERA fidelity - Q3
+         would still be there - it would only delete the token+OnLevelLoad
+         RELOAD path, which is what gives an EXISTING Typhon-slayer (Will's main)
+         the portal without re-killing the boss. Strictly less capability.
+      3. It is harmless when it does nothing. `canReFire=1` + `OnLevelLoad` makes
+         it idempotent and retroactive; an unlock on an engine-locked fixed item
+         is a no-op, which is exactly the observed build30.3 outcome.
+      4. Reverting costs a Quests.arc rebuild + a coupled redeploy (Levels+Quests
+         ship together) for zero player-visible benefit.
+
+    OWNER OF THE SURVIVAL GATE: this decision. The `patched != 1` / round-trip /
+    exactly-one-portal-reference / token-count asserts below exist to keep this
+    append a byte-superset across upstream changes - they are not orphaned. If a
+    future lane DOES revert this, it must delete the asserts with it and record
+    the reversal in the ledger. Source: docs/BACKLOG.md "Q3 archive (2026-07-09
+    day)" -> "Q1 unlock trigger recommendation".
     """
     def field_val(items, key):
         for it in items:

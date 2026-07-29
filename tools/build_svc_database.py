@@ -141,7 +141,14 @@ def apply_act5_leak_fix(db: ArzDatabase, base_db):
     """
     print("\n=== A5: Act-5 leak fix (post-Hades portal suppression + Victory-Portal un-gate) ===")
     if base_db is None:
-        print("  A5: base_db unavailable; SKIPPED (cannot import portal records)")
+        # Same blind-spot class as A9/F2 (B-GATE-HARDEN-1): without the base DB this
+        # silently ships an arz MISSING the Act-5 leak fix, and nothing downstream
+        # notices. Under SVC_REQUIRE_GATES=1 that is a build failure.
+        _gate_unavailable(
+            'A5 Act-5 leak fix',
+            'base_db unavailable, so the four portal records cannot be imported - the '
+            'arz would ship WITHOUT the post-Hades portal suppression',
+            'pass the base-game database.arz as argv[5]')
         return 0
 
     base_names = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
@@ -547,6 +554,77 @@ def _soul_is_farmable_boss(record_name, classification):
 
 _SOUL_CREATURE_PATH_MARKERS = ('\\creature\\', '/creature/', '\\creatures\\', '/creatures/')
 _SOUL_POOL_NAME_FIELD_RE = re.compile(r'^name(?:champion)?\d+$', re.I)
+_SOUL_TRANSFORM_FIELD = 'actorToSpawnOnDeath'
+
+
+def _soul_transform_edges(db):
+    """basename -> set(basename) forward edges of the engine's death-transform
+    graph (`actorToSpawnOnDeath`). A stage on this graph is NEVER spawned by a
+    pool or a placement record - it is spawned by the death of the stage before
+    it - so it carries no spawn provenance of its own. See
+    `_propagate_transform_provenance` for why that matters."""
+    edges = {}
+    for name in db.record_names():
+        v = db.get_field_value(name, _SOUL_TRANSFORM_FIELD)
+        if isinstance(v, list):
+            v = v[0] if v else None
+        if not v or not str(v).strip():
+            continue
+        vl = str(v).lower()
+        # same creature-path discipline the pool scan uses
+        if not any(m in vl for m in _SOUL_CREATURE_PATH_MARKERS):
+            continue
+        edges.setdefault(_soul_record_basename(name), set()).add(
+            _soul_record_basename(str(v)))
+    return edges
+
+
+def _propagate_transform_provenance(members, edges):
+    """Return `members` closed forward over the death-transform graph.
+
+    R-42 FOLD-IN (Will 2026-07-16, post-build42, verbatim): "LEGION TERMINAL @66:
+    fine for now. QUEUED: fold 'death-transform terminals of RANDOM chains inherit
+    the 50 rate' into the NEXT SOULS PASS". This is that fold-in.
+
+    WHY IT IS A CLASSIFIER BUG, NOT A PER-RECORD TWEAK. A death-transform chain
+    (`um_legion_28 -> _28a -> _28b -> _28c`) is ONE encounter: only the HEAD is
+    ever referenced by a spawn pool or a placement proxy; every later stage is
+    spawned by the previous stage's death. `soul_spawn_provenance_sets` scans
+    pools/placements only, so every non-head stage came back in NEITHER set and
+    fell through `soul_drop_rate`'s final "not proven to spawn randomly -> keep
+    the PLACED release rate" clause. That fall-through is correct for a genuinely
+    placed-in-level monster; it is WRONG for a transform stage, whose spawn
+    provenance is definitionally its chain head's. The visible symptom was the
+    Legion terminal shipping at 66 while the Legion himself - the record the
+    random pools actually name - ships at 50.
+
+    Fixing it HERE (the shared provenance source) rather than at a call site is
+    the b59 `boss_charon_39` lesson: `_soul_release_rate` routes through
+    `soul_drop_rate`, which routes through these sets, and so does
+    `create_uber_souls.py`. A per-record override or a call-site patch would be
+    bypassable; closing the set is not.
+
+    DIRECTION + PRECEDENCE. Membership only ever propagates FORWARD (head ->
+    later stages), never backward, and both sets are closed independently, so a
+    stage reachable from a PLACED head keeps 66 (`soul_drop_rate` checks
+    `placed_proxy_members` before `random_pool_members`) - the "never over-cut a
+    placed encounter" invariant is preserved. Cycles are safe (visited set).
+    """
+    if not edges:
+        return members
+    out = set(members)
+    frontier = [m for m in members if m in edges]
+    seen = set(frontier)
+    while frontier:
+        cur = frontier.pop()
+        for nxt in edges.get(cur, ()):  # noqa: SIM118 - dict.get on a set-valued map
+            if nxt in seen:
+                continue
+            seen.add(nxt)
+            out.add(nxt)
+            if nxt in edges:
+                frontier.append(nxt)
+    return out
 
 
 def soul_spawn_provenance_sets(db):
@@ -554,9 +632,14 @@ def soul_spawn_provenance_sets(db):
     from the db AT CALL TIME (roster-derived, no hardcoded names).
 
     random_pool_members = referenced via a name*/nameChampion* slot by a base-game
-        population pool under records\\proxies* (the roaming "random hero slot").
+        population pool under records\\proxies* (the roaming "random hero slot"),
+        PLUS every death-transform stage reachable from such a member.
     placed_proxy_members = referenced (any creature-path field) by a mod PLACEMENT
-        record under records\\drxmap\\proxy* (q_*_lone / warband / svc_*_pool).
+        record under records\\drxmap\\proxy* (q_*_lone / warband / svc_*_pool),
+        PLUS every death-transform stage reachable from such a member.
+
+    The death-transform closure is the R-42 fold-in; see
+    `_propagate_transform_provenance` for the full rationale.
     """
     random_members = set()
     placed_members = set()
@@ -582,6 +665,9 @@ def soul_spawn_provenance_sets(db):
                     placed_members.add(mb)
                 if is_generic_pool and _SOUL_POOL_NAME_FIELD_RE.match(fn):
                     random_members.add(mb)
+    edges = _soul_transform_edges(db)
+    random_members = _propagate_transform_provenance(random_members, edges)
+    placed_members = _propagate_transform_provenance(placed_members, edges)
     return random_members, placed_members
 
 
@@ -3679,16 +3765,121 @@ def _run_prefix(sv098_path, sv09_path, sv041_path, base_path):
     }
 
 
+def _require_gates():
+    """SVC_REQUIRE_GATES=1 -> a gate that cannot run is a BUILD FAILURE, not a SKIP.
+
+    B-GATE-HARDEN-1. The A9 render-chain and F2 summons-contract gates need the game dir
+    AND the mod's staged Resources beside the output; without both, mod-side art cannot
+    resolve and every ref would false-FAIL, so they skip loudly (correct for scratch /
+    determinism rebuilds that write to a temp dir). The hazard is the OTHER case: a
+    MIS-PATHED work build silently ships ungated, which is exactly the blind spot that
+    let the b89 148-byte stub survive every gate for 20+ builds. Any path that claims to
+    be the gate of record (scripts/bootstrap_working_mod.ps1, integration, deploy) sets
+    SVC_REQUIRE_GATES=1 so a missing input fails loud instead of printing a WARNING
+    nobody reads. Accepts 1/true/yes/on, case-insensitive."""
+    return str(os.environ.get('SVC_REQUIRE_GATES', '')).strip().lower() in (
+        '1', 'true', 'yes', 'on')
+
+
+def _gate_unavailable(gate_name, reason, remedy):
+    """Uniform handling for 'this gate cannot run here' (B-GATE-HARDEN-1).
+    FAILS the build under SVC_REQUIRE_GATES=1; otherwise prints the same text as a
+    WARNING and returns, preserving the historical scratch-build behaviour exactly."""
+    msg = (f"{gate_name} gate DID NOT RUN - {reason}\n"
+           f"    remedy: {remedy}")
+    if _require_gates():
+        raise SystemExit(
+            f"  FAIL: {msg}\n"
+            f"    (SVC_REQUIRE_GATES=1 is set, so a gate that cannot run is a build "
+            f"failure - B-GATE-HARDEN-1. Unset it only for scratch/determinism "
+            f"rebuilds that deliberately write outside the work/ layout.)")
+    print(f"  WARNING: {msg}\n"
+          f"    (set SVC_REQUIRE_GATES=1 to make this a hard failure - B-GATE-HARDEN-1)")
+
+
+def _persist_stage_baseline(output_path):
+    """Snapshot the PRE-BUILD arz into local/db_backups/ before it is overwritten
+    (B-GATE-HARDEN-1, second half).
+
+    Every record-diff proof in this repo ("exactly 2 of 3629 records moved") needs the
+    baseline the new arz is diffed against. Those baselines have been living in session
+    scratchpads, which are cleaned - so a proof written last week can no longer be
+    re-derived. Copy the outgoing arz to local/db_backups/<stem>_pre-<md5-8>.arz, keyed
+    by CONTENT so it is idempotent (rebuilding the same baseline twice writes one file)
+    and self-labelling (the name IS the hash a gate record cites).
+
+    local/ is gitignored working scratch, so this costs repo nothing. Never fatal: a
+    backup failure must not break a build, so every error degrades to a printed note.
+    Opt out with SVC_NO_STAGE_BASELINE=1."""
+    if str(os.environ.get('SVC_NO_STAGE_BASELINE', '')).strip().lower() in (
+            '1', 'true', 'yes', 'on'):
+        return None
+    try:
+        out = Path(output_path)
+        if not out.is_file():
+            return None                      # first build: nothing to preserve
+        import hashlib
+        import shutil
+        h = hashlib.md5()
+        with open(out, 'rb') as fh:
+            for chunk in iter(lambda: fh.read(1 << 20), b''):
+                h.update(chunk)
+        digest = h.hexdigest()
+        dest_dir = Path(__file__).resolve().parent.parent / 'local' / 'db_backups'
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / f'{out.stem}_pre-{digest[:8]}.arz'
+        if dest.is_file():
+            print(f"  stage baseline already persisted: {dest.name} (md5 {digest})")
+            return dest
+        shutil.copy2(out, dest)
+        print(f"  stage baseline persisted: {dest} (md5 {digest}, {dest.stat().st_size:,} B)")
+        print(f"    -> record-diffs against this build stay reproducible after session "
+              f"scratchpads are cleaned (B-GATE-HARDEN-1)")
+        return dest
+    except Exception as ex:                  # noqa: BLE001 - never break a build over a backup
+        print(f"  NOTE: could not persist the stage-baseline arz ({type(ex).__name__}: {ex}); "
+              f"continuing - the build is unaffected.")
+        return None
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
         sys.exit(1)
 
-    sv098_path = Path(sys.argv[1])
-    sv09_path = Path(sys.argv[2])
-    sv041_path = Path(sys.argv[3])
     output_path = Path(sys.argv[4])
-    base_path = Path(sys.argv[5]) if len(sys.argv) > 5 else None
+
+    # --- BUILD-INPUT PREFLIGHT (tools/check_build_inputs.py, BL-b90-DEBT-2) -------
+    # argv wins whenever the file is actually there, so every existing invocation is
+    # byte-identical to the pre-preflight build. When an argv path is missing (the
+    # normal case in a fresh worktree - upstream/ is gitignored, so `git worktree add`
+    # hands the lane an EMPTY cache) the shared resolver walks $SVC_* -> in-repo cache
+    # -> the MAIN checkout's cache -> the install/Workshop location -> third_party/,
+    # md5-pinning every fallback. A miss fails LOUD naming the exact env var instead of
+    # dying deep inside ArzDatabase with a bare FileNotFoundError.
+    # sv098i + sv09 are MANDATORY (the build cannot run without them) -> hard fail.
+    # sv041 and the base-game arz keep their existing OPTIONAL semantics exactly
+    # (main() already tolerated a blank/absent path for both), so an unresolvable one
+    # warns loudly and the build continues as it did before - no behaviour change.
+    import check_build_inputs
+    _inputs = check_build_inputs.preflight(
+        'sv098i_arz', 'sv09_arz',
+        given={'sv098i_arz': sys.argv[1], 'sv09_arz': sys.argv[2]})
+    sv098_path = _inputs['sv098i_arz']
+    sv09_path = _inputs['sv09_arz']
+
+    def _optional_input(key, argv_val):
+        if argv_val is not None and not str(argv_val).strip():
+            return None                      # explicitly blank = deliberately skipped
+        try:
+            return check_build_inputs.resolve(key, argv_val)
+        except check_build_inputs.MissingInput as _e:
+            print(f'  PREFLIGHT WARNING: optional input unresolved - '
+                  f'the build continues WITHOUT it:\n{_e}')
+            return None
+
+    sv041_path = _optional_input('sv041_arz', sys.argv[3])
+    base_path = _optional_input('base_arz', sys.argv[5]) if len(sys.argv) > 5 else None
 
 
     # -- build-speed: PREFIX SNAPSHOT CACHE (default ON; opt out with
@@ -3851,6 +4042,10 @@ def main():
     _validate_container_loot_shapes(db, base_names=_base_names_low)
 
     print(f"\nWriting output...")
+    # B-GATE-HARDEN-1: preserve the outgoing arz as a content-keyed stage baseline
+    # BEFORE it is overwritten, so intermediate record-diffs stay reproducible after
+    # session scratchpads are cleaned. Never fatal.
+    _persist_stage_baseline(output_path)
     db.write_arz(output_path)
 
     # ── B-SUMMON-1 gate (fail-loud): validate every soul-granted summon chain
@@ -3885,10 +4080,15 @@ def main():
         # Without BOTH the game dir and the mod's staged Resources beside the
         # output (the standard work/ layout), mod-side art cannot be resolved
         # and every mod ref would false-FAIL (seen on isolated determinism
-        # rebuilds writing to a scratch dir). Skip loudly instead.
-        print(f"  WARNING: A9 render-chain gate SKIPPED - needs the game dir "
-              f"AND a Resources dir beside the output "
-              f"(game={_game_dir}, mod_resources={_mod_resources})")
+        # rebuilds writing to a scratch dir). Skip loudly - or FAIL loudly under
+        # SVC_REQUIRE_GATES=1, so a mis-pathed work build can never ship ungated
+        # (B-GATE-HARDEN-1).
+        _gate_unavailable(
+            'A9 render-chain',
+            f'needs the game dir AND a Resources dir beside the output '
+            f'(game={_game_dir}, mod_resources={_mod_resources})',
+            'build into the work/ layout (work/<mod>/Database/<mod>.arz with '
+            'work/<mod>/Resources beside it) and pass the base-game database.arz as argv[5]')
 
     # ── A7 golden freeze guard (fail-loud): the owner's hand-tuned Occult (UI
     # slot 5) + Hunting (UI slot 6) state must match tools/occult_hunting_golden
@@ -3933,9 +4133,12 @@ def main():
                 f"Summons contract lane FAILED on the written .arz (exit {_rc}); "
                 f"this build does not ship (F2 gate)")
     else:
-        print(f"  WARNING: F2 summons-contract gate SKIPPED - needs the game dir, "
-              f"a Resources dir beside the output, and tools/contracts "
-              f"(game={_game_dir}, mod_resources={_mod_resources})")
+        _gate_unavailable(
+            'F2 summons-contract',
+            f'needs the game dir, a Resources dir beside the output, and tools/contracts '
+            f'(game={_game_dir}, mod_resources={_mod_resources}, contracts={_contracts})',
+            'build into the work/ layout (work/<mod>/Database/<mod>.arz with '
+            'work/<mod>/Resources beside it) and pass the base-game database.arz as argv[5]')
     print("Done.")
 
 

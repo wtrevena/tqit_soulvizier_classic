@@ -19,12 +19,12 @@
 - R-4 [2026-07-16] PENDING (fix/bloodtoxeus-spawns) quest rename "Toxeus the Murderer, Devourer of Blood's Stash"; chest rename "Toxeus the Murderer, Devourer of Blood's Hidden Chest" (was Esti's Hidden Chest).
 - R-5 [2026-07-16] IMPLEMENTED feat/toxeus-champions (b73) "the blood toxeus should have the Tears of Blood ability granted by the Arcane Formula - Blood of Ares" + "The toxeus devourer of blood should have maybe a 10 second cool down on a weaker version" - NOTE ground truth: corridor + deep boss share ONE record; both currently weak-10s; full-strength corridor variant = OPEN Will decision.
 - R-6 [2026-07-16] IMPLEMENTED feat/toxeus-champions (b73) Enslaver + Devourer get unique identity kits ("his abilities are pretty generic") - Soul-Rip / Chains of Servitude / Unholy Dominion; Blood Frenzy. Per-ability veto open on DEV.
-- R-7 [2026-07-16] PENDING (feat/black-poison) "we have wanted the devourer to have a literal black poison asset from the beginning and use that all along" - CREATE svc_black_poison; it is the Devourer's poison AND End of All Things' strike buff. Colors may only be claimed from in-game-confirmed assets.
+- R-7 [2026-07-16] IMPLEMENTED b83 (feat/black-poison, merged to main in the BUILD47 GATE RECORD 2026-07-17) "we have wanted the devourer to have a literal black poison asset from the beginning and use that all along" - CREATE svc_black_poison; it is the Devourer's poison AND End of All Things' strike buff. Colors may only be claimed from in-game-confirmed assets. Owner: `tools/patches/black_poison.py` (registry module, runs after toxeus_champion_kits and before toxeus_endofallthings, whose `_BLACK_POISON` const names it); verify() asserts `buffSelfSkillName` on all 3 Devourer soul-pets and fails on crimson OR base-green. See `docs/reports/b83_black_poison_rite_drop.md`.
 - R-8 [2026-07-16] IMPLEMENTED feat/toxeus-undivided (b72) End of All Things: name "Toxeus the Murderer, End of All Things"; ring "Soul of Toxeus, End of All Things"; formula demands LEGENDARY tier of the 3 Toxeus souls; 11-item kit per verbatim rulings (unlimited energy; NetherStrike max 0.5s; max SmokeScreen; max Galefury-granted skill; Tears of Blood 3s; Murderer's Edge + black poison (R-7); Entropy aura; Blood Feast; thralls = blood-cave tall casters w/ bloodhounds; The Ending w/ Light-of-Helios flash visual; Arrat the Corruptor AOE); ash-pale body + per-skill fragment colors; stronger than every Toxeus champion.
-- R-9 [2026-07-16] PENDING (feat/black-poison) "let the Rite of the Undivided drop wherever else any supra / uber weapons formulas have a chance to drop".
-- R-13 [2026-07-16] PENDING (feat/black-poison) "also make it so if you kill either toxeus the devourer of blood of toxeus the enslaver of souls you also get the formula" - Rite of the Undivided ALSO drops on killing the Devourer OR the Enslaver (read as guaranteed on-kill; implementer flags if convention argues for a chance instead). Extends R-9 (both sources coexist).
+- R-9 [2026-07-16] IMPLEMENTED b83 (feat/black-poison, merged to main in the BUILD47 GATE RECORD 2026-07-17) "let the Rite of the Undivided drop wherever else any supra / uber weapons formulas have a chance to drop" - the Rite is wired into BOTH `arcaneformulae\supra.dbr` and `supra_special.dbr` (the same two pools the b66 uber_orphan_weapons module wires every new supra formula into), so it drops wherever ANY supra weapon formula drops, at that same rarest tier. See `docs/reports/b83_black_poison_rite_drop.md`.
+- R-13 [2026-07-16] IMPLEMENTED b83 (feat/black-poison, merged to main in the BUILD47 GATE RECORD 2026-07-17) "also make it so if you kill either toxeus the devourer of blood of toxeus the enslaver of souls you also get the formula" - Rite of the Undivided ALSO drops on killing the Devourer OR the Enslaver (read as guaranteed on-kill; implementer flags if convention argues for a chance instead). Extends R-9 (both sources coexist). Shipped via `svc_rite_guaranteed` (FixedWeight 100% Rite) folded into each champion's Misc4 master table, leaving the Finger2 soul drop and the rant-scroll slot undisturbed. See `docs/reports/b83_black_poison_rite_drop.md`.
 - R-10 [2026-07-16] IMPLEMENTED fix/runtime-green (b75) + PENDING follow-up: Enslaver summon = BLACK (steal the marauders' shadowcloak smoke). Diadochi generals + Helepolis share the green-rendering 343_dark_smoke - swap after Will confirms the Enslaver reads black.
-- R-11 [2026-07-16] PENDING (fix/runtime-green pet-identity commit) "Toxeus the murderer, enslaver of souls is a beastman not a skeleton" - Enslaver family race = skeleton/Undead; all boss-summon pets inherit race/sounds/distress from their SOURCE monster.
+- R-11 [2026-07-16] IMPLEMENTED b81 (fix/runtime-green pet-identity commit, merged to main in the BUILD47 GATE RECORD 2026-07-17; `docs/reports/b81_pet_identity.md` closes with the explicit instruction "whoever integrates this branch should mark R-11" - done here) "Toxeus the murderer, enslaver of souls is a beastman not a skeleton" - Enslaver family race = skeleton/Undead; all boss-summon pets inherit race/sounds/distress from their SOURCE monster.
 - R-12 [2026-07-16] IMPLEMENTED b71 skeleton identity: Enslaver summon-skill icon + pet-bar portrait = one consistent skeleton (deathwalker) identity; marauders do NOT show in the pet bar (no portrait requirement).
 
 ## Masteries
@@ -32,19 +32,45 @@
 - R-21 [2026-07-16] IMPLEMENTED b70 "Hunting eviscerate should be a square".
 - R-22 [2026-07-16] IMPLEMENTED b70 (C2) col6 restack verbatim: "lets have darklings be in the same lane as throwing knife, but we will have darklings unlock at 10, dark aperture unlock at 16, and then above it we will have throwing knife at 24 and the augment to throwing knife at 32 so we wont have lines behind one another".
 - R-23 [2026-07-16] IMPLEMENTED feat/mastery-sv-fix "so how does dark invigoration work? I think it should augment shadow link" - genuinely augments via SkillTree slot order (proven mechanism); NEVER reorder skillName{N} slots (binding surface).
-- R-24 [2026-07-16] PENDING (fix/mastery-unlock) "Proceed with fixing the masteries as appropriate" - b74 audit implementation: every button's real unlock == its drawn row (Warfare col3 + Earth col4 ladders as WILL-VETO).
+- R-24 [2026-07-16] IMPLEMENTED b77 (fix/mastery-unlock, merged to main in the BUILD47 GATE RECORD 2026-07-17) "Proceed with fixing the masteries as appropriate" - b74 audit implementation: every button's real unlock == its drawn row (Warfare col3 + Earth col4 ladders as WILL-VETO). Owner: `tools/patches/mastery_unlock_alignment.py` (m1/m2/m3/m4/m7 only; registered LAST among mastery-UI writers; m5/m6 golden untouched so A7 stays green). RESIDUAL, NOT a status blocker: the WILL-VETO ladder designs in `docs/reports/b77_unlock_alignment_fix.md` sec 2 still await Will's DEV pass - they are shipped defaults, vetoable in place.
 - R-25 [2026-07-16] STANDING Darklings/DarkAperture/ToxicConcoction/ShadowStalker are PRE-0.98i SV content ("I did not create these by hand") - their canonical layout authority = SV 0.9/0.41 extractions.
 
 ## World / placement
-- R-30 [2026-07-16] PENDING (fix/chumbi-lag) verbatim: "you need to space these monsters out instead of putting them all on top of one another" + fountain death-loop = never again: SPACING LAW (fountain/NPC clearance + min inter-encounter distance, permanent placement gate).
-- R-31 [2026-07-16] PENDING (fix/chumbi-lag) boss pileup unstacked to intended locations; the summon issue is CO-PRIMARY ("both are making the game freeze"): tomb-guardian dogs hard-capped + TTL, sepulcher fight playable standing alone.
-- R-32 [2026-07-16] PENDING (fix/chumbi-lag) boss reward containers are NEVER quest-gated chests (the widow-quest Dead Adventurer's Chest reuse).
+- R-30 [2026-07-16] PENDING (fix/chumbi-lag; STATUS RE-VERIFIED 2026-07-28: `fix/chumbi-lag` IS merged to main via the BUILD46 GATE RECORD, but build46 shipped only b76 round 1 [yard removal + summon TTLs] and its own DEBT line still names "placement spacing/clearance gate follow-through" - the permanent SPACING-LAW gate this ruling demands is NOT built, so PENDING stands) verbatim: "you need to space these monsters out instead of putting them all on top of one another" + fountain death-loop = never again: SPACING LAW (fountain/NPC clearance + min inter-encounter distance, permanent placement gate).
+- R-31 [2026-07-16] PARTIALLY IMPLEMENTED b46, REMAINDER PENDING (fix/chumbi-lag) boss pileup unstacked to intended locations; the summon issue is CO-PRIMARY ("both are making the game freeze"): tomb-guardian dogs hard-capped + TTL, sepulcher fight playable standing alone.
+  - **STATUS 2026-07-28 (branch `fix/debt-gate`, B76-R2-SUMMON-GATE):** the *summon-cap* half is IMPLEMENTED and now **GATED**. b46 restored the finite `spawnObjectsTimeToLive` on the sepulcher/tomb-guardian chain (`tools/patches/summon_caps.py` `_TTL_TARGETS`: tomb guardians 5.0s per SV's own shodema value, alastor skeleton warrior/archer + the recursive `summonpet_undeadmelee01` 20.0s per the four_generals precedent). As of today `summon_caps.verify()` additionally enforces the whole CLASS - no unbounded fast summoner (`Skill_*SpawnPet*` with no petLimit, no TTL, cooldown < 10s) may enter the arz outside an evidenced waiver of 8 base/dead/test records - so a NEW freeze-class summoner can no longer ship unnoticed. Deliberately NOT a blanket petLimit-no-TTL rule (~140 healthy skills have that shape). Planted negative test: `py tools/patches/summon_caps.py --negtest`.
+  - **STILL PENDING (do not read the above as R-31 closed):** (a) the *boss pileup* half - unstacking the piled bosses to their intended locations (the b46 Monster Test Yard removal addressed the TESTHUB QA cluster, not the general SPACING LAW of R-30); (b) "sepulcher fight playable standing alone" is a RUNTIME judgement only Will's in-game pass can settle. The ⚠️ WILL-VETO on the exact TTL seconds also stands - the fix is the PRESENCE of a finite TTL, not the value.
+  - **STATUS RE-VERIFIED 2026-07-28 (branch `fix/debt-docs`):** b76/build46 DID land both halves in code - the TESTHUB Monster Test Yard was removed [HV01 now == canonical] and the sepulcher-chain summon TTLs were restored via `tools/patches/summon_caps.py` - but "sepulcher fight playable standing alone" is an IN-GAME claim nobody has confirmed, and build46 disclosed a side effect Will may veto [base Aktaios + Alastor minions now despawn]. Kept PENDING on Will's confirmation, not on missing code
+  - **STATUS 2026-07-28 (branch `fix/debt-tooling`):** the b76 HiddenValley01 Monster Test Yard removal now has a PERMANENT REGRESSION GUARD - `tools/debug/gate_build32_parseback.py --testhub` asserts the TESTHUB HiddenValley01 blob is byte-identical to canonical, so the yard cannot silently come back. This does NOT implement R-30's spacing law or R-31's summon caps; both stay PENDING.
+- R-32 [2026-07-16] PENDING (fix/chumbi-lag; STATUS RE-VERIFIED 2026-07-28: nothing in the b76/build46 contents addresses the widow-quest Dead Adventurer's Chest reuse - genuinely unbuilt) boss reward containers are NEVER quest-gated chests (the widow-quest Dead Adventurer's Chest reuse).
 
 ## Souls & items
-- R-40 [2026-07-16] PENDING (fix/soul-tiers) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate.
-- R-41 [2026-07-16] IMPLEMENTED fix/formula-names (b80) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
+- R-40 [2026-07-16] IMPLEMENTED b78 (fix/soul-tiers, merged to main in the BUILD47 GATE RECORD 2026-07-17) souls scale across normal/epic/legendary (Blood Cult High Priest epic == normal = the defect class); strict-progress gate. OUTCOME: the roster-wide sweep found **0 flat-tier families / 0 wrong-tier loot triples / 0 real missing tiers** - Will's specific observation was a save-bake + shared-name perception artifact, so the wave made NO data change. The deliverable is the permanent strict-progress gate that closes the blind spot (a genuinely-flat epic now fails the build). See `docs/reports/b78_soul_tier_scaling.md`.
+- R-41 [2026-07-16] IMPLEMENTED b80 (fix/formula-names, merged to main in the BUILD47 GATE RECORD 2026-07-17) formula display names match what they craft ("Mythic Formula - Crystalline Mask" crafts Galefury) - fixed by repointing `ar_hunter_helm_formula.dbr`'s description onto SV098i's own already-correct, previously-orphaned `tagRecipe_ar_helm_fix`; full 245-formula sweep found no other instance; permanent gate added (`tools/patches/formula_names.py` verify() + `tools/validate_formula_names.py`). See `docs/reports/b80_formula_names.md`.
 - R-42 [earlier, STANDING - PARTIALLY SUPERSEDED by R-48 (2026-07-27) for the two fought Toxeus champions ONLY; every other record's rate stands unchanged] Munderizer over-band damage BLESSED; Shadow Link large radius KEPT; legion terminal drop 66 fine for now (revisit next souls pass); soul drop rates: random 50 / placed 66 / boss 25.
-- R-43 [2026-07-16] IMPLEMENTED fix/soul-tiers @ d9353e4 (b85, pending merge) "the high priest soul should allow you to summon the high priest" - the Blood Cult High Priest soul's summon = the HIGH PRIEST himself (his identity/mesh/kit as the pet, all 3 tiers scaled), per boss-summon conventions + the b71/b81 identity laws (icon/portrait/race/sounds = High Priest). Companion check: epic soul must spawn the epic-tier pet (verified true roster-wide in b78, re-proven for this family).
+  - **R-42 FOLD-IN: IMPLEMENTED b91 (fix/debt-db, 2026-07-28).** The queued half of R-42 - Will
+    2026-07-16 post-build42, verbatim: *"LEGION TERMINAL @66: fine for now. QUEUED: fold 'death-
+    transform terminals of RANDOM chains inherit the 50 rate' into the NEXT SOULS PASS"* - is now
+    built. Fixed UPSTREAM in the shared classifier, not per record:
+    `build_svc_database.soul_spawn_provenance_sets()` closes BOTH membership sets forward over the
+    `actorToSpawnOnDeath` graph (`_soul_transform_edges` + `_propagate_transform_provenance`), so a
+    death-transform stage inherits its chain HEAD's spawn provenance instead of falling through
+    `soul_drop_rate()`'s "not proven to spawn randomly -> keep the PLACED rate" safe-default. Fixing
+    it at the provenance source is the b59 `boss_charon_39` lesson: `_soul_release_rate()`,
+    `wire_souls_to_monsters()` and `create_uber_souls.py` all route through these sets, so no caller
+    can bypass it. Propagation is FORWARD-ONLY and `placed_proxy_members` is still checked before
+    `random_pool_members`, so a PLACED chain's terminal can never be over-cut. **Roster-wide proof:
+    exactly 2 LIVE movers** - `um_legion_28c` (Will's named case) and `um_possessedboar_spirit`
+    (the only sibling; `double_soul_rulings` deliberately keeps it as the surviving dropper), both
+    66 -> 50, both terminals of RANDOM chains. 7 other classifier verdicts move but are inert
+    (`chanceToEquipFinger2 = 0`). PLACED-chain terminals `um_charonform2_ferryman_99` /
+    `um_polisgaoler_unbound_99` / `um_tantalus_unbound_99` correctly stay 66 - now for the right
+    reason instead of by fall-through. The R-48 100% carve-outs are untouched (both Boss-class, off
+    this graph, and `toxeus_souls_100` remains the final writer). Gated in
+    `tools/verify_soul_drop_rates.py` (updated spot tests + the PLACED never-over-cut negative half
+    + a planted-regression test that goes red if the closure is deleted). See
+    `docs/reports/b91_debt_db.md` sec 4.
+- R-43 [2026-07-16] IMPLEMENTED b85 (fix/soul-tiers, MERGED to main in the BUILD47 GATE RECORD 2026-07-17 - the earlier "pending merge" qualifier is now stale) "the high priest soul should allow you to summon the high priest" - the Blood Cult High Priest soul's summon = the HIGH PRIEST himself (his identity/mesh/kit as the pet, all 3 tiers scaled), per boss-summon conventions + the b71/b81 identity laws (icon/portrait/race/sounds = High Priest). Companion check: epic soul must spawn the epic-tier pet (verified true roster-wide in b78, re-proven for this family).
 
 ## Process (meta-rulings)
 - R-50 [2026-07-16] "what do you need to do to manage your tasks better so we dont end up with stuff like this happening over and over" -> THIS LEDGER + retirement protocol + player-surface checklist + no-new-surface-without-a-gate + debt register. See CLAUDE.md standing rules.
@@ -54,16 +80,25 @@
 ## HISTORICAL BACKFILL (b84 sweep, round 1, 2026-07-16) - see docs/BACKLOG.md DEBT REGISTER for the
 ## open-item counterpart of this sweep. Numbering continues each section's existing range; sections
 ## reserve a decade (Toxeus 1-19, Masteries 20-29, World 30-39, Souls 40-49, Process 50-59); new
-## topics get a fresh decade (Legal 60-69).
+## topics get a fresh decade (Legal 60-69). **2026-07-28: Souls & items 40-49 is FULL (R-49 was
+## claimed 2026-07-27 by the fix/devourer-chest lane) - its OVERFLOW decade is 70-79.**
 
 ### Toxeus arc (continued)
-- R-13 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
+- R-19 [2026-07-14] IMPLEMENTED (M4 MP-compat sweep, feat/toxeus-encounter-suite) Will's call verbatim:
   "we need to retire the one we are adding and just update the 15% one to 33%." Retires the never-wired
   ~50% parchment-room Toxeus feature (`demon_01_cluster_toxeus50` pool+proxy, `q_bloodtoxeus_lone_50`)
   entirely; the sole corridor Blood-Toxeus roll stays the `drxFirstRoom` ambush, `chanceToRun` retuned
   15->33. SUPERSEDES R-14. Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 5; docs/reports/
   toxeus_suite_recon.md sec 0.
-- R-14 [2026-07-09] SUPERSEDED by R-13 (2026-07-14) "put toxeus devourer of blood there too with 50%
+  > ⚠️ **ID CORRECTED 2026-07-28** (`fix/debt-docs` ledger-hygiene pass). The b84 backfill filed this
+  > as a SECOND `R-13`, colliding with the live Toxeus-arc R-13 (Rite of the Undivided on-kill drop).
+  > Renumbered into the next free slot of the Toxeus decade (1-19). The live R-13 keeps its number -
+  > a number in use is NEVER reused or reassigned. Nothing about the ruling itself changed.
+  > ⚠️ RETIREMENT-PROTOCOL CROSS-REFERENCE: this ruling is the origin of the `q_bloodtoxeus_lone_50`
+  > "orphan" retirement that R-3 records as having broken the 100% hidden-chest spawn. Read R-3
+  > before acting on this one; the `fix/devourer-chest` lane owns that repair.
+- R-14 [2026-07-09] SUPERSEDED by R-19 (2026-07-14; filed by the b84 backfill as "R-13", renumbered
+  2026-07-28 - see the ID CORRECTED note on R-19) "put toxeus devourer of blood there too with 50%
   spawn chance" - the original ask for a second parchment-room Toxeus spawn; never wired to the map,
   then explicitly retired. Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 5.
 - R-15 [2026-07-14] IMPLEMENTED "you are good to ship the rant scroll" - amgoz1 creative-text veto
@@ -81,6 +116,10 @@
   warband encounter frequency - the weight-1/K=600 rarity (~once per several hundred acts) is
   deliberate design; the dependable per-encounter beat is the PLACED warband set-piece, not the roam.
   Do not tighten/loosen without new Will approval. Source: docs/reports/b49_enslaver_rate.md.
+  **HONOURED b91 (2026-07-28):** the debt-clearance lane closed BL-ENSLAVER-SPAWNS without touching
+  frequency or breadth. Sub-fix (2) "reduce the spawn rate" is CLOSED BY THIS RULING - no action is
+  the correct action. (A per-area pool cap was considered and REJECTED for the same reason: cutting
+  the 273 swept pools would be a de-facto frequency cut R-18 forbids.)
 
 ### Masteries (continued)
 - R-26 [2026-07-09] STANDING (binding on ALL mastery work), verbatim: "editing skills is probably
@@ -139,19 +178,92 @@
   rig disappoints: giant scarab, plague swarm host. Same Nile Floodplain / 'Plight of the Nile
   Farmers' quest-completion spot, same quest-collision-safety requirement. Source: git commit
   `edd30b6` (docs/BACKLOG.md).
-- R-39 [2026-07-16] PENDING (worktree `coldworm-markers` has partials; interrupted lane, joins when
-  resumed) Cold Worm needs ~3x characterLife and +20% armor (`defensiveProtection`) ON TOP of the
-  already-queued kit (burrow/frost skills that actually cast), a massive total-speed boost, the
-  exclamation-marker mechanism extended to all placed ubers, and the 3-tier soul + loot-triple fix +
-  roster drop-slot sweep - ships as ONE lane, not piecemeal. Source: git commit `edd30b6` (docs/
-  BACKLOG.md "COLD WORM BUFFS").
+- R-39 [2026-07-16] **IMPLEMENTED (b91, branch `fix/debt-mixed`) - all 6 sub-items shipped
+  + build-verified.** (Round 1 recorded this as PARTIAL with the exclamation marker BLOCKED; round 2,
+  2026-07-28, shipped the marker and PROVED THE BLOCKER ITSELF WRONG - see the last bullet.)
+  Ruling text (unchanged): Cold Worm needs ~3x characterLife and +20%
+  armor (`defensiveProtection`) ON TOP of the already-queued kit (burrow/frost skills that actually
+  cast), a massive total-speed boost, the exclamation-marker mechanism extended to all placed ubers,
+  and the 3-tier soul + loot-triple fix + roster drop-slot sweep - ships as ONE lane, not piecemeal.
+  Source: git commit `edd30b6` (docs/BACKLOG.md "COLD WORM BUFFS").
+  - CORRECTION to this entry's own premise: the worktree `coldworm-markers` had **NO partials**.
+    `feat/coldworm-uber-markers` @ `75110bd` is an ANCESTOR of `main` (0 commits ahead, clean tree,
+    empty `main...` diff), so the lane was abandoned before anything landed. b91 was built from
+    ground truth, not resumed.
+  - IMPLEMENTED by `tools/patches/coldworm_buffs.py` (registry module, apply+verify, registered
+    after `boss_skill_fix` and immediately before `visuals`): 3x life `[14000,18000,22000] ->
+    [42000,54000,66000]`; +20% armor; the rig-proven `um_coldcreep_29` total-speed profile; and a
+    kit that actually casts. RCA: Cold Worm's ENTIRE kit pointed at the
+    `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace, absent from the mod arz AND upstream
+    SV 098i AND the base game - 8/8 active slots dead, the worst record in the whole DB.
+  - RECONCILIATION on "+20% armor (`defensiveProtection`)": that field is INERT on monsters
+    (0 non-zero carriers of `defensiveProtection` or `defensiveProtectionModifier` DB-wide); monster
+    armor comes only from `armor_passive`, whose `defensiveProtection` array is exactly linear
+    (level N == N armor). +20% is therefore applied as `armor_passive` level `[60,174,360] ->
+    [72,209,432]` - Will's field, at the only layer where the number does anything.
+  - The "3-tier soul + loot-triple fix" was ALREADY CORRECT on `main` (3 tiers, strict progression,
+    per-tier b40 icons, pcsafe grant, `[n,e,l]` triple @66 PLACED_UBER rate). b91 asserts it in
+    `verify()` and rewrites nothing.
+  - NEW GATE shipped with the lane: an active skill slot must be CASTABLE, not merely wired - the
+    skill must resolve AND its `skillSpecialAnimationName` must be bound by an
+    `unarmedSpecialAnimRef` on the caster (the monster-side twin of B-SOUL-PROC-2). Planted negative
+    test: `py tools/patches/coldworm_buffs.py --negtest` -> PASS.
+  - Roster drop-slot sweep shipped as `tools/sweep_soul_drop_slots.py` (read-only diagnostic,
+    encodes rank-gating + terminal-form-chain design rules). Cold Worm is clean; it surfaced 6
+    unwaived PRE-EXISTING findings (Leinth x3 + Spinebreaker `dropItems=0`; Typhon + Yaoguai
+    `dropItems` absent) which are REPORTED, NOT FIXED - fixing them changes placed-content drop
+    behaviour and defaults to WILL-VETO. In the BACKLOG DEBT register.
+  - **THE 6th SUB-ITEM (exclamation marker): IMPLEMENTED in round 2 (2026-07-28), and round 1's
+    "BLOCKED" verdict was WRONG.** Round 1 claimed two blockers; only the first survives.
+    (a) TRUE: the cited "b63 mechanism" does not exist in this repo (no b63 report/commit/code - the
+    reports jump b62 -> b64; the only `b63` string is the workflow id `wf_87586bbf-b63`), so the
+    mechanism had to be found from ground truth rather than "extended".
+    (b) **FALSE**: it is NOT map-side. The exclamation marker is the DB-side Monster field
+    **`DisplayAsQuestItem`** - present on all 4,601 Monster records, set to 1 on 124 of them (every
+    base-game quest boss, every `xsq` named quest hero, the escort/rescue NPCs, the quest
+    chests/doors/objects, and the whole `records\poi\**` `AreaOfInterest` map-marker namespace) -
+    and it was **ALREADY LIVE in this mod on Cold Worm himself** (`records\test\boss_coldworm50.dbr`
+    = 1 on `main`). That is the marker Will saw. Round 1 scanned only for `miniMapEntity`, found 0
+    Monster carriers, and generalised from that one field. No `Levels.arc` build, no
+    `SVC_SVAERA_ARC`/`SVC_SV_ARC` dependency, zero map bytes.
+    IMPLEMENTED by `tools/patches/uber_quest_markers.py` (registry module, apply+verify, after
+    `coldworm_buffs`, before `visuals`). "All placed ubers" is DERIVED, never hardcoded:
+    `soul_spawn_provenance_sets()`'s `placed_members` - the same source of truth as the PLACED_UBER
+    66% soul rate (R-42) - narrowed by RULE A (the record, or a form in its `actorToSpawnOnDeath`
+    chain, actually pays a soul out, which excludes the boss RETINUE mechanically) and widened by
+    RULE B (mark every DEDICATED chain form, i.e. one whose spawners are ALL in the roster).
+    **Both rules are derived from shipped content:** the one placed uber already marked on `main`
+    is `um_polisgaoler_99` AND its dedicated `um_polisgaoler_unbound_99` - literally rule A + rule B.
+    Rule B's exclusivity test is load-bearing: `as_ghosthero_32` is Neferkha's terminal form AND
+    five ROAMING mummy heroes' (`um_tath_27`/`um_khenti_31`/`um_nebtaan_32`/`um_radementes_31`/
+    `us_menkare_33`), so a naive whole-chain walk would spam markers across the map.
+    Roster = 25 records (21 encounters + 4 dedicated forms), 23 newly marked; 26 retinue/adds
+    excluded - and every excluded record is rank=Champion while every kept record is Boss/Hero, two
+    independent signals agreeing on the same cut. NEW GATE (a new content class ships its gate):
+    every roster member + dedicated chain form carries `DisplayAsQuestItem=1`, no SHARED form does,
+    and 3 pre-existing anchors stay intact; 4-plant negative test
+    `py tools/patches/uber_quest_markers.py --negtest` -> PASS. ONE field, 0 new records, 0 tags.
+    Report: `docs/reports/b91_coldworm_buffs.md` sec 9 (sec 7 kept, marked SUPERSEDED, as the error
+    record). LAUNCH-GATED residual in BL-b91-DEBT-4: nobody has SEEN the marker in-game (the
+    player-surface checklist forbids claiming a visual from a non-in-game-confirmed source), and
+    Will should judge whether 25 markers is the right density or reads as clutter - narrowing it is
+    a two-rule edit in one module, with no map rebuild.
 
 ### Souls & items (continued)
-- R-43 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
+- R-70 [2026-07-14] IMPLEMENTED (D2/FIX 5) Will's directive, verbatim: "Do not promote tomb guardian
   and do not have him drop a soul." `um_tombguardian_26` kept Common / `chanceToEquipFinger2=0.0`; the
   attached-but-undroppable `um_tombguardian_soul_{n,e,l}` rings were detached then retired (removed
   from the arz) along with their orphaned name tag. Source: docs/reports/souls_quality_fix.md sec 3
   (P2-a).
+  > ⚠️ **ID CORRECTED 2026-07-28** (`fix/debt-docs` ledger-hygiene pass). The b84 backfill filed this
+  > as a SECOND `R-43`, colliding with the live Souls R-43 (Blood Cult High Priest summon). The live
+  > R-43 keeps its number; this backfill entry moved. **It moved to R-70, not to R-49**: the Souls
+  > decade 40-49 is FULL because the parallel `fix/devourer-chest` lane claimed **R-49** on
+  > 2026-07-27 for a live Will ruling (the Devourer chest-spawn repeat, IMPLEMENTED b91, cited from
+  > R-3's body and from `docs/reports/b91_devourer_chest_spawn.md`). That number was in use first and
+  > is load-bearing, so this pass allocated the **Souls & items OVERFLOW decade 70-79** (see the
+  > header) rather than take it. The DEBT REGISTER line "Tomb Guardian soul leak - RESOLVED (R-43)"
+  > now reads R-70.
 - R-44 [2026-07-14] IMPLEMENTED (D3/FIX 4) Will's directive, verbatim: "fix the crowboar soul's
   summoned crow bug ... sweep the roster for any OTHER summon soul with the same broken
   on-attack+petLimit=1 shape and fix those too (same bug = same wave)." Round-2 widened this from 4 to
@@ -185,6 +297,23 @@
   touch the Hero/Boss/Quest soul-drop gate in `wire_souls_to_monsters` (the yeti Common/Champion
   lesson): both champions are `monsterClassification=Boss`, so the gate never applied to them and
   no Common/Champion is re-enabled. See docs/reports/b90_toxeus_souls_100pct.md.
+- R-71 [2026-07-14] IMPLEMENTED b91 (fix/debt-db, 2026-07-28) *(appended by the debt-db lane as a THIRD colliding R-49; renumbered into the Souls overflow decade 70-79 by the debt-wave integration - R-49 belongs to the fix/devourer-chest lane, 2026-07-27)*, verbatim: "emberteeth soul should let
+  you summon him." Ground truth first: `emberteeth_soul_{n,e,l}` granted NO skill at all (a pure
+  fire-stat ring), so the feature was genuinely unbuilt. Built via the standard boss-summon recipe -
+  3 permanent pets from `um_emberteeth`'s OWN rig through the shared `_build_boss_summon` pipeline
+  (mesh/anim table/attack skill/attribute cadence/skill kit; race + orthrus vox/alert/death/stun paks
+  per the b81 identity law and R-11; gear mirrored through `_set_pet_equipment`, never Monster.tpl
+  equipment/loot copies; D19 pet-mobility assert; permanent, no TTL) plus a manual-cast summon
+  button, souls wired at `itemSkillLevel` 1/2/3 so the epic soul spawns the epic-tier pet (the R-43
+  companion check). Every pre-existing fire benefit is KEPT and proven field-by-field in `apply()`;
+  the soul's display name is deliberately NOT renamed (a summon was asked for, not a rename). Owner:
+  `tools/patches/emberteeth_summon.py` (registry module + `verify()` hook). Life band derived from
+  the roster's lesser-summon life-per-charLevel cluster rather than invented. Player-surface
+  checklist in `docs/reports/b91_debt_db.md` sec 3; the pet-bar portrait falls back to the neutral
+  summon-proxy (no `chimera_party_*` art ships) - a bespoke portrait is registered as BL-b91-DEBT-8,
+  NOT silently deferred. In-game confirmation is launch-gated (BL-b91-DEBT-10): test on a FRESHLY
+  DROPPED soul, since TQ bakes item properties at pickup. Source: docs/BACKLOG.md "QUEUED FEATURE:
+  SOUL-EMBERTEETH-SUMMON (APPROVED by Will 2026-07-14)".
 - R-47 [pre-build41, STANDING] "the generic orb target Will wants" [paraphrased] - custom Boss-class
   encounters (Blood Toxeus, Enslaver, Vashkarr, Broodmother, Dorus, Sarkoth, Gorrahk, Ilsevar,
   Voranthys, Tantalus, Mnemophage-core, Ephialtes, ...) drop the un-named generic apex orb
@@ -202,7 +331,53 @@
   confirmation is still an open standing obligation, as is amgoz1's and Dragonlord's written
   permission (neither captured in writing as of 2026-07-10). Source: docs/PERMISSIONS.md.
 
-### Encounter economy / blood cave (new section, decade 70-79)
+---
+
+## LEDGER HYGIENE PASS (2026-07-28, branch `fix/debt-docs`)
+
+One-line summary: **two colliding R-numbers renumbered, six stale statuses flipped to IMPLEMENTED,
+zero records deleted.** No ruling text was altered; every change is a status/id correction with the
+evidence named inline.
+
+**ID COLLISIONS (the b84 backfill reused two live numbers).** A number in use is NEVER reused or
+reassigned, so the LIVE ruling kept its number and the BACKFILL entry moved into the next free slot
+of its own reserved decade:
+- backfill "R-13" (parchment-room Toxeus retirement) -> **R-19** (Toxeus decade 1-19). The live
+  R-13 is the Rite-of-the-Undivided on-kill drop. R-14's `SUPERSEDED by` pointer and the
+  `docs/reports/b90_toxeus_souls_100pct.md` cross-reference were updated with it.
+- backfill "R-43" (tomb-guardian de-soul) -> **R-70**. The live R-43 is the Blood Cult High Priest
+  summon. It did NOT go to R-49: the parallel `fix/devourer-chest` lane claimed R-49 on 2026-07-27
+  for a live Will ruling (the Devourer chest-spawn repeat, IMPLEMENTED b91), which fills the Souls
+  decade 40-49 - so this pass allocated the **Souls & items OVERFLOW decade 70-79** and took R-70.
+  Checked against that branch before choosing: it uses nothing in 70-79, so the two ledgers merge
+  without a new collision. The DEBT REGISTER line "Tomb Guardian soul leak - RESOLVED" was updated
+  with it. **NOTE for whoever merges the two lanes:** `fix/devourer-chest` still carries the OLD
+  duplicate `R-13` pair, since it branched before this pass - take this branch's R-19 renumber.
+
+**STATUS FLIPS.** The BUILD47 GATE RECORD (docs/BACKLOG.md, 2026-07-17) merged `feat/black-poison`,
+`fix/soul-tiers`, `fix/formula-names`, `fix/mastery-unlock`, `fix/runtime-green` and
+`fix/bloodtoxeus-spawns` into main - re-verified here with `git branch --merged main` (all six
+present) plus the shipped owner module for each. PENDING -> IMPLEMENTED: **R-7** (b83), **R-9**
+(b83), **R-13** (b83), **R-11** (b81), **R-24** (b77), **R-40** (b78). Status clarified without a
+state change: **R-41** (b80) and **R-43** (b85) were already IMPLEMENTED but carried branch-only /
+"pending merge" qualifiers that the build47 merge made stale. The matching DEBT REGISTER lines were
+struck through in the same commit.
+
+**DELIBERATELY NOT TOUCHED (owned by the parallel `fix/devourer-chest` lane):** **R-1**, **R-3**,
+**R-4** - the Blood-Toxeus entourage, the 100% hidden-chest spawn and the chest/quest renames. Their
+statuses stay exactly as that lane left them. Note R-19 above is the ruling whose
+`q_bloodtoxeus_lone_50` retirement R-3 blames for the lost chest spawn; read both together.
+
+**RE-VERIFIED AND LEFT PENDING (with the evidence recorded inline on each ruling):** **R-30**,
+**R-31**, **R-32** (`fix/chumbi-lag` IS merged, but build46 shipped only b76 round 1 - the spacing
+gate is unbuilt, the quest-chest reuse is untouched, and R-31's remaining blocker is Will's in-game
+confirmation, not missing code) and **R-39** (`feat/coldworm-uber-markers` is an ancestor of main but
+its tip carries only BACKLOG doc commits - "branch merged" is NOT evidence the Cold Worm work
+shipped). **R-10** and **R-16** were re-read and are correctly PENDING as written.
+
+**RETIREMENT PROTOCOL:** nothing was deleted, retired, or dropped in this pass. Every superseded /
+renumbered record is still present with a pointer to its replacement.
+### Encounter economy / blood cave (new section, decade 72-79)
 
 > ⚠️ PROVENANCE NOTE (honesty, per the ledger's own "quote rulings VERBATIM" law): the three
 > entries below were relayed to the b94 implementer through a design brief, NOT captured as a
@@ -211,7 +386,7 @@
 > against the shipped bytes. If Will's original wording surfaces, replace the paraphrase with the
 > verbatim text in place and drop the marker.
 
-- R-70 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "the orb the two Toxeus
+- R-72 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "the orb the two Toxeus
   champions drop is not the same calibre as the one Leinth drops" - CONFIRMED against the deployed
   bytes, and by a wide margin, though not by the mechanism the wording assumes. Neither side drops
   "an orb" in the same sense: Leinth drops a BESPOKE DRX CHEST
@@ -236,21 +411,21 @@
   whole chain on the FINAL merged arz). Planted negative test
   `tools/debug/negtest_uber_apex_orb.py`.
   RECONCILIATION WITH R-47: R-47's substance is intact (still un-named, still generic, still
-  shared, still not a bespoke "X's Essence"); R-70 ADDS a tier R-47 does not mention. R-47 is NOT
+  shared, still not a bespoke "X's Essence"); R-72 ADDS a tier R-47 does not mention. R-47 is NOT
   superseded.
-  ⚠️ **SCOPE SUPERSEDED IN PART BY R-73 (Will 2026-07-27, verbatim).** R-70's ANALYSIS stands
-  unchanged and is still the evidence base. What R-73 overrides is R-70's SCOPE DECISION: R-70
-  moved only the two champions and deliberately left Leinth's chest untouched, and R-70's open
+  ⚠️ **SCOPE SUPERSEDED IN PART BY R-75 (Will 2026-07-27, verbatim).** R-72's ANALYSIS stands
+  unchanged and is still the evidence base. What R-75 overrides is R-72's SCOPE DECISION: R-72
+  moved only the two champions and deliberately left Leinth's chest untouched, and R-72's open
   question #3 ("should Leinth also get an orb?") is now ANSWERED - yes, she is included. The
-  built-out ruling is R-73; read the two together.
+  built-out ruling is R-75; read the two together.
 
-- R-73 [2026-07-27, implemented b94 round 2 (feat/leinth-wave)] IMPLEMENTED. Will's decision,
-  **VERBATIM** (this one WAS captured as a first-person quote, unlike R-70/R-71/R-72 above, so it
+- R-75 [2026-07-27, implemented b94 round 2 (feat/leinth-wave)] IMPLEMENTED. Will's decision,
+  **VERBATIM** (this one WAS captured as a first-person quote, unlike R-72/R-73/R-74 above, so it
   carries no `[paraphrased]` marker):
   > "increase the tier of the items dropped by leinth's orb to match the tier dropped by the
   > champions' orb and give that to both toxeus variants and also to leinth"
 
-  This SUPERSEDES the design pass's orb plan and R-70's scope. The instruction is not "raise the
+  This SUPERSEDES the design pass's orb plan and R-72's scope. The instruction is not "raise the
   champions to Leinth" but "build ONE apex drop that combines both sides' strengths and give it to
   all three". Each side won a different axis: Leinth had the GENEROSITY (numSpawn `*2.2/*2.4` vs
   `*0.9/*1.3`, loot4Chance 100 vs 12.7, unique weights 50 vs 27) and the champions had the TIER
@@ -265,7 +440,7 @@
   ALL 51,085 records proves `bosschestproxy_leinth` has EXACTLY THREE referrers, and all three are
   her own variants (`q_leinth_47/49/50`, `treasureProxyName`). She SOLELY OWNS her chain, so it is
   upgraded IN PLACE - `tables` + `levelEquationFile` on her three chests, two fields each, nothing
-  else. Her monster records, her proxy and her pools are NOT touched, so R-71's "her bespoke chest
+  else. Her monster records, her proxy and her pools are NOT touched, so R-73's "her bespoke chest
   survives" assertion stays green by construction, and the RETIREMENT PROTOCOL is never engaged
   (nothing of hers is retired; her three original loot tables are deliberately left in the db and
   are what the gate reads as the no-nerf reference). She KEEPS her bespoke player-visible identity
@@ -286,7 +461,7 @@
   one is re-tiered, not created, and the champions' new tier is still un-named, generic and shared.
   See docs/reports/b94_leinth_wave.md.
 
-- R-71 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "Leinth is too easy and her
+- R-73 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "Leinth is too easy and her
   fight has nothing to react to; make her stronger and give her more abilities" - all three
   variants (`q_leinth_47/49/50`) get characterLife +60% (32,481/35,703/38,924 ->
   52,000/57,000/62,000), defensivePhysical 10 -> 35 and defensivePierce 20 -> 45 (THE REAL LEVER:
@@ -316,7 +491,7 @@
   REJECTED as off-identity (poison, on the one boss with a poison weakness), and the Normal-band
   difficulty of the +60% life needs a play check.
 
-- R-72 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "after you kill Leinth a
+- R-74 [2026-07-28] IMPLEMENTED b94 (feat/leinth-wave) [paraphrased] "after you kill Leinth a
   portal should open that takes you back to the occultist merchant outside the blood cave" - the
   machinery was ALREADY built, placed and correctly aimed; one trigger asymmetry stopped it firing.
   `records\drxmap\bloodcave\portals\vortexportal_exit.dbr` is Class=Npc (the traveler/boat-dialog
@@ -343,3 +518,122 @@
   `tools/contracts/tests_quests_negative.py`. ⚠️ OPEN WILL QUESTIONS in the wave report: the offer
   is one-way (recommended), and a character who already killed her while the one-shot was latched
   and never kills her again is still stranded until a re-kill.
+
+- R-76 [2026-07-27, implemented b94 round 3 (feat/leinth-wave)] IMPLEMENTED. Will answered the four
+  design questions R-73 left open. Three of the four answers go AGAINST the implementer's
+  recommendation, so R-73 is **SUPERSEDED IN PART** by this entry (its stat work stands; its summon
+  cut, its poison-weakness law and two of its three new skills do not). Will's answers, VERBATIM:
+
+  * **Q4, how much stronger:** *"lets give her some guardians like amgoz1 gave hades"*
+  * **Q6, the two staged poison rigs:** *"Use them AND remove her poison weakness"*
+  * **Q7, the ugly swarm:** *"Keep the swarm as-is"*
+  * **Q9, the residual stranded character:** add the no-kill fallback - *"Show the exit whenever the
+    boss trap door is already open, regardless of whether the kill trigger latched - so a character
+    who already killed her (INCLUDING WILL'S OWN) is rescued rather than stranded."*
+
+  **Q4 - THE HONOUR GUARD, MIRRORED FROM THE REAL THING.** How amgoz1/DRX actually built Hades'
+  guardians was traced in the shipped bytes before anything was designed:
+  `records\xpack\quests\proxies\main\xq06_boss_hades_champions.dbr` (FileDescription "DRX") is a
+  SEPARATE proxy from the boss proxy `xq06_boss_hades.dbr`, carrying the GUARD's own mesh
+  (`gigantes01_quest.msh` at scale 2.8), sharing the boss's `hadesdifficulty_01` / `bosslimit_all`,
+  `quest = 1`, and pointing at `xq06_boss_hades_champion_pool.dbr` (also "DRX"): `spawnMin =
+  spawnMax = 1`, `championMax = 1`, `limit1 = 1`, `name1 =
+  records\drxcreatures\drxdishonorguard\anapaest_45.dbr`, `weight1 = 100`. A placement census over
+  all 2,282 levels finds that champion proxy placed exactly **TWICE**, both in
+  `XPack\Levels\Area08_HadesPalace\HadesPalace_Floor05_04.lvl`. So the pattern is: one dedicated
+  elite guard record, spawned from its OWN pool, standing beside the boss, two of them, invisible to
+  the boss's own quest proxy.
+  The literal mirror would need two new PLACEMENTS in `bossfight.lvl` (a Levels.arc rebuild). It was
+  NOT taken, because this repo already ships the DB-side equivalent and **its donor is literally
+  Leinth's own pool**: `apply_svc_patches._svc_boss_pool` is documented as "the 1-boss +
+  2-guaranteed-champion recipe (spawnMax=3 / championChance=100 / championMin=Max=2 -> 3-2=1
+  guaranteed boss; the LAW)", shipping in `neferkha` (2 frozen tomb guardians), `diadochi` (2 strider
+  guards) and the Hades Marshal (2 machae escorts). Applied to `q_leinth_lone` IN PLACE: her three
+  variant `name` slots, weights and limits are untouched, so the single main is still a random
+  `q_leinth_47/49/50`, and the two champion slots become her honour guard. **Levels.arc is
+  BYTE-UNCHANGED.**
+  `_svc_neutralize_pool_equation` is MANDATORY here, not cosmetic: her pool inherits
+  `proxypoolequation_02`, which scales the literal counts by 1.357 and floors them, giving spawnMax
+  4 and championMax 2, so 4-2 = **TWO Leinths side by side** - the exact deterministic defect Will
+  reported on 2026-07-13. verify() fails the build if that equation ever comes back.
+  THE GUARDS (amgoz1 bar: zero new art, FX or sound - both cloned from her OWN cult):
+  `svc_leinth_guard_reaver` from `d_reaver_42` ("Blood Reaver of the Sanctuary"; bloodburst +
+  bloodboil + sux2buwave + zap, and NO summons at all) and `svc_leinth_guard_disciple` from
+  `c_disciple_42` ("Voice of the Bloodborn"; the bloodstare + blood-rain caster). Both raised to HER
+  band `[47,62,74]`, Champion rank, scale 1.9, real Text names. The Disciple's inherited
+  `disciple_summon_bloodbeast` is petLimit 4 with NO TTL - the exact b76 defect - so the guard gets a
+  CLONED copy capped at 2 / 20s and the SHARED original is never written (verify() asserts both).
+  EXIT-TRIGGER INTERACTION, deliberate: the guards ride in `q_leinth_lone`, which is the pool R-74's
+  primary `Condition_KillAllCreaturesFromProxy` watches, so the primary now needs the whole honour
+  guard dead. That is the right reading, and it is exactly why R-74's three per-variant fallbacks
+  plus this entry's no-kill fallback are load-bearing rather than belt-and-braces.
+
+  **Q6 - BOTH STAGED RIGS WIRED, AND THE WEAKNESS REMOVED.** R-73 rejected
+  `cerberus_acidpuddle_{summon,attack}` as off-identity (poison rigs on the one poison-weak boss);
+  Will removed the contradiction from the other end instead. All THREE records DRX staged in her own
+  folder (`summon` / `monster` / `attack`) have ZERO referrers anywhere in the 51k-record db, proven
+  by exact-path scan rather than substring. THE FREE WIN: the "attack" rig is not a boss self-buff
+  competing for a scarce cast slot, it is the PUDDLE's own aura (the xpack twin sits at the puddle
+  monster's `initialSkillName` + `skillName1`), so wiring the SUMMON alone brings BOTH of Will's rigs
+  live through ONE `specialAttack` slot. Her summon is therefore re-chained onto HER puddle and that
+  puddle onto HER aura (DRX had aimed both at the xpack copies), leaving the xpack Cerberus chain
+  `boss_cerberus_40/42/44` byte-clean - verify() fails if either xpack record is ever repointed.
+  `defensivePoison` **-15 to +15**. The value is not invented: it is EXACTLY her own cult heavy
+  `d_reaver_42`'s `defensivePoison`, so she is anchored to her family's norm. It removes the weakness
+  (no more bonus poison damage) and makes her coherent now that she wields both the geysers and the
+  puddles, while deliberately NOT granting immunity - at +15 poison is still by far her softest
+  resist (bleed 100 / life 160 / convert 100 / elemental 50 / stun 100), so the counter-play R-73
+  valued survives in relative terms. verify() fails on a negative value AND on immunity.
+
+  **Q7 - THE SWARM IS RESTORED, AND THE RISK IS REPORTED NOT PATCHED.** R-73's cut of
+  `leinth_summon_uglies` (4;6;8 / petLimit 16 / permanent, cut to 2;3;4 / 6 / 45s TTL) is
+  **REVERTED IN FULL**. The module now writes NOTHING to that record, so it keeps its shipped values
+  by construction, and verify() PINS `petBurstSpawn [4,6,8]`, `petLimit 16` and the ABSENCE of a TTL
+  - the assertion is now the exact reverse of R-73's. Will was warned that guardians and acid puddles
+  are being added on top, and asked for the number; it is measured, not estimated:
+  **1 Leinth + 2 guards + 16 uglies (PERMANENT) + 10 heatseeker pets (PERMANENT) + 10 acid puddles
+  (6s) + 2 guard bloodbeasts (20s) = 41 concurrent entities, 26 of them PERMANENT.** The b76
+  chumbi-freeze RCA measures the standalone offender `um_voranthys_99` at 25 PERMANENT summons
+  (petLimit 9 + 8 + 8) and states that even standing alone that "degrades over a long fight".
+  **26 EXCEEDS it.** WARNING FLAGGED FOR WILL: nothing he told me to keep was reduced. The only
+  density lever pulled was retiring two of the implementer's OWN round-1 skills (below).
+
+  **RETIREMENT (protocol engaged explicitly, because R-73 names them).**
+  `svc_leinth_choir_bloodborn` and `svc_leinth_sanguine_mire` are retired. Both were the
+  implementer's own round-1 inventions, authored on this unmerged branch and never shipped to Will or
+  seen in game, so no player-facing content is removed. CHOIR summoned cult bodies - the HONOUR GUARD
+  is Will's own answer to that need and does it better; SANGUINE MIRE existed solely because she had
+  no zone control - the ACID PUDDLE is the authentic DRX-staged rig for that job. Their records are
+  simply never authored.
+  SLOT ACCOUNTING: Monster records expose five castable `specialAttack` slots (census
+  3164/1602/894/300/170 users; the only three `specialAttack6` users in the whole db are `Pet.tpl`
+  records from our own prior wave, so slot 6 is not a Monster precedent). Her four bespoke DRX
+  specials hold slots 1-4 and the retirement protocol forbids displacing them, so there is exactly
+  ONE free attack slot. Will's instruction outranks the implementer's invention: `specialAttack5`
+  takes the acid rig, and CRIMSON TITHE moves to `dyingSkillName` (79 shipping records carry its
+  class there). `numAttackSlots` stays 4 - it is NOT a special-attack cap (46 shipping records run
+  `numAttackSlots = 4` with five wired specials, and 3 with six).
+
+  **Q9 - THE NO-KILL EXIT FALLBACK.** The `.qst` condition vocabulary has no door-state test (the
+  supported classes are listed in `qst_format.CONDITION_FIELDS`, and none reads a `FixedItemDoor`;
+  the primary's `Action_OpenDoor` grants no token either), so Will's literal "whenever the boss trap
+  door is already open" is not directly expressible. `Condition_OnLevelLoad` is the only mechanism
+  that satisfies his actual REQUIREMENT - that nobody, including his own already-latched character,
+  is ever stranded. `tools/build_quest_files.py::_add_leinth_exit_nokill_fallback` appends ONE
+  trigger to the "Boss Room Crystal Gate" step carrying `Action_ShowNpc` + `Action_UpdateNPCDialog` +
+  `Action_BoatDialog` harvested VERBATIM from the promoted primary, with `Action_OpenDoor`
+  deliberately STRIPPED so the boss trap door stays earned. Quests.arc only; no new quest entry, so
+  the ~254 load window is not engaged. THE ONE COST, STATED FOR WILL: because OnLevelLoad fires on
+  every entry, the vortex is visible from the moment the player walks into the Sanctuary rather than
+  appearing at the instant she dies. That trades R-74's reveal for his guarantee; if he prefers the
+  reveal, deleting this single trigger restores it and the three kill fallbacks still cover every
+  case except the already-latched character he asked to rescue.
+  Permanent gate: new contract `QST-LEINTH-NOKILL` in `tools/contracts/contracts_quests.py` + 6
+  planted negatives in `tools/contracts/tests_quests_negative.py`. **It fires P0 on the PRE-WAVE
+  bytes and is silent on the built bytes** - the fix is proven against real bytes, not asserted.
+
+  Owners: `tools/patches/leinth_wave.py`, `tools/build_quest_files.py`. Negative tests:
+  `tools/debug/negtest_leinth_wave.py` (23/23), `tools/contracts/tests_quests_negative.py` (31/31).
+  R-NUMBER NOTE: the b94 entries were authored as R-70..R-73 before `main` independently landed its
+  own R-70/R-71 in the 2026-07-28 ledger-hygiene pass. On merge the b94 half was renumbered +2
+  (R-72..R-76) following that pass's own renumber-on-collision precedent; no ruling TEXT was altered.

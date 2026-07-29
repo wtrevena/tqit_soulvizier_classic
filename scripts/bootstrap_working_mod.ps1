@@ -64,6 +64,16 @@ if (-not $SkipArzBuild -and $srcArz.Count -gt 0) {
     Write-Host 'Building patched .arz (SoulvizierClassic)...' -ForegroundColor Yellow
     $buildScript = Join-Path $toolsDir 'build_svc_database.py'
 
+    # B-GATE-HARDEN-1: this is the work/-layout build - the GATE OF RECORD. A gate that
+    # cannot run here (A5 base-DB import, A9 render-chain, F2 summons contract) means the
+    # build is mis-pathed, and a mis-pathed build must never silently ship ungated: that
+    # blind spot is what let the b89 malformed-navmesh stub survive every gate for 20+
+    # builds. SVC_REQUIRE_GATES=1 turns each "SKIPPED" WARNING into a hard build failure.
+    # Only scratch / determinism rebuilds that deliberately write outside work/ should
+    # leave it unset. Pre-set it in the environment to override.
+    if (-not $env:SVC_REQUIRE_GATES) { $env:SVC_REQUIRE_GATES = '1' }
+    Write-Host "  SVC_REQUIRE_GATES=$($env:SVC_REQUIRE_GATES) (a gate that cannot run FAILS the build)" -ForegroundColor DarkGray
+
     if ($sv09Arz.Count -gt 0 -and $sv041Arz.Count -gt 0) {
         & $pythonExe $buildScript $srcArz[0].FullName $sv09Arz[0].FullName $sv041Arz[0].FullName $dstArz
     } elseif ($sv09Arz.Count -gt 0) {

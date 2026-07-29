@@ -3,11 +3,11 @@ an HONOUR GUARD mirroring the one amgoz1/DRX gave Hades, and has the two poison
 rigs DRX staged for her finally wired in - every donor a PROVEN, already-shipping
 record from her OWN cult family (records\drxcreatures\bloodwitch\...).
 
-WILL'S ASK (paraphrase; the verbatim ruling is ledgered as R-71 in
+WILL'S ASK (paraphrase; the verbatim ruling is ledgered as R-73 in
 docs/WILL_RULINGS.md): Leinth is too easy and her fight is one long attrition
 sludge with nothing to react to. Make her stronger and give her more to do.
 
-⭐ ROUND 3 - WILL'S ANSWERS 2026-07-27 SUPERSEDE PARTS OF R-71 (ledgered R-74)
+⭐ ROUND 3 - WILL'S ANSWERS 2026-07-27 SUPERSEDE PARTS OF R-73 (ledgered R-76)
 ------------------------------------------------------------------------------
 Round 1 asked Will four design questions and proposed answers. He answered, and on
 three of them he went AGAINST the recommendation. His answers are law; this round
@@ -17,7 +17,7 @@ implements them, including where they reverse round 1.
      So the PRIMARY strengthening is an HONOUR GUARD, not stat inflation. Round 1's
      modest stat work is KEPT (it is not inflation and it still makes sense beside
      guardians); she is deliberately NOT pushed to uber charLevel 100 - he did not
-     ask for that, and R-71's reasoning against it stands.
+     ask for that, and R-73's reasoning against it stands.
 
   Q6 "the two staged poison rigs?" -> "Use them AND remove her poison weakness"
      Round 1 REJECTED them as off-identity (poison rigs on the one poison-weak
@@ -111,14 +111,14 @@ Will's explicit instruction outranks my invention, so:
     CRIMSON TITHE  -> dyingSkillName               (re-homed, not dropped)
 dyingSkillName is a well-precedented home for its class: 79 shipping records carry a
 Skill_AttackProjectileAreaEffect there. As her death-throe it still lands the
-telegraphed moment R-71 wanted, at the instant the exit opens.
+telegraphed moment R-73 wanted, at the instant the exit opens.
 NOTE numAttackSlots stays 4: it is NOT a special-attack cap - 46 shipping records
 run numAttackSlots=4 with five wired specials (and 3 with six), so slot 5 fires.
 
 TWO ROUND-1 SKILLS ARE RETIRED (retirement protocol, stated not silent)
 -----------------------------------------------------------------------
-R-71 names CHOIR OF THE BLOODBORN and SANGUINE MIRE, so retiring them requires an
-explicit ledger entry - this is it (R-74 supersedes that half of R-71). Both were
+R-73 names CHOIR OF THE BLOODBORN and SANGUINE MIRE, so retiring them requires an
+explicit ledger entry - this is it (R-76 supersedes that half of R-73). Both were
 MY OWN round-1 inventions, authored on this unmerged branch and never shipped to
 Will or seen in game, so no player-facing content is being taken away:
   * CHOIR summoned discipleboss_bladedancer pets to give her cult bodies. The
@@ -179,7 +179,7 @@ STATS (all three variants; the deliberate no-touch list is below)
   bonus poison damage) and makes her coherent now that she wields BOTH the geysers
   and the acid puddles. It is deliberately NOT immunity: at +15 poison remains by
   far her SOFTEST resist (bleed 100 / life 160 / convert 100 / elemental 50 /
-  stun 100), so the counter-play R-71 valued survives in relative terms while the
+  stun 100), so the counter-play R-73 valued survives in relative terms while the
   weakness itself is gone. It also stays far below the Enslaver's 100, so the
   mid-boss-must-not-out-stat-the-uber ordering invariant still holds.
 
@@ -214,7 +214,7 @@ tools/debug/negtest_leinth_wave.py. See docs/reports/b94_leinth_wave.md.
 import apply_svc_patches as asp
 
 MODULE_NAME = ("Leinth the Blood Witch - honour guard + staged poison rigs + buff "
-               "(R-71, R-74)")
+               "(R-73, R-76)")
 
 _BW = 'records\\drxcreatures\\bloodwitch\\'
 _LS = _BW + 'skills\\leinth_skills\\'
@@ -245,7 +245,7 @@ LIFE_REGEN = 10.0    # was 2
 # +15 == her own cult heavy d_reaver_42's defensivePoison (family norm, not an
 # invented number). Removes the weakness without granting immunity: poison stays
 # her SOFTEST resist by a wide margin, so the counter-play survives.
-POISON = 15.0        # was -15 (R-71 kept it; R-74 supersedes)
+POISON = 15.0        # was -15 (R-73 kept it; R-76 supersedes)
 POISON_WAS = -15.0
 POISON_IMMUNE_FLOOR = 100.0   # verify(): must stay strictly below immunity
 
@@ -288,7 +288,7 @@ TITHE_DONOR = _BWS + 'disciple_bloodrain_bleedx50_vitx10.dbr'
 TITHE_SLOT = 16                # moved off slot 9 (the acid rig takes it)
 TITHE_LEVELS = [8, 14, 20]
 TITHE_FIELD = 'dyingSkillName'  # 79 shipping records carry this CLASS here
-# RETIRED this round (R-74, stated not silent): svc_leinth_choir_bloodborn and
+# RETIRED this round (R-76, stated not silent): svc_leinth_choir_bloodborn and
 # svc_leinth_sanguine_mire. Both were round-1 inventions on this unmerged branch,
 # never shipped to Will; the honour guard and the acid puddle are Will's own
 # answers to the exact needs those two were invented for. They are simply never
@@ -470,7 +470,7 @@ def _build_honour_guard(db, tags):
     sf(LEINTH_POOL, 'championMin', POOL_CHAMPION_MIN)
     sf(LEINTH_POOL, 'championMax', POOL_CHAMPION_MAX)
     sf(LEINTH_POOL, 'FileDescription',
-       'Leinth (1 of 3 variants) + her 2-guard honour guard (b94, R-74)')
+       'Leinth (1 of 3 variants) + her 2-guard honour guard (b94, R-76)')
     asp._svc_neutralize_pool_equation(db, LEINTH_POOL)
     db._modified.add(LEINTH_POOL)
     print("  honour guard: 2 named cult champions at her band %s; pool spawn "
@@ -937,7 +937,7 @@ def verify(db, tags=None):
 
     if problems:
         raise SystemExit(
-            "[leinth_wave] R-71/R-74 VERIFY FAILED (Leinth honour guard + poison "
+            "[leinth_wave] R-73/R-76 VERIFY FAILED (Leinth honour guard + poison "
             "rigs + buff):\n  - " + "\n  - ".join(problems))
     print("  [leinth_wave] verify OK: 3 variants at life %s / phys %g / pierce %g "
           "/ poison %g (weakness REMOVED, not immunity); geysers %s; BOTH staged "

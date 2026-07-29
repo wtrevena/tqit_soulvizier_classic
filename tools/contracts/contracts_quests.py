@@ -421,7 +421,7 @@ CONTRACTS = [
                    'character who already killed Leinth while the one-shot primary '
                    'was latched is permanently stranded; two or more = duplicated '
                    'travel offers on one NPC.',
-        'derived_from': 'Will 2026-07-27, answering the residual R-72 flagged: "ADD '
+        'derived_from': 'Will 2026-07-27, answering the residual R-74 flagged: "ADD '
                         'THE NO-KILL FALLBACK. Show the exit whenever the boss trap '
                         'door is already open, regardless of whether the kill trigger '
                         'latched - so a character who already killed her (INCLUDING '

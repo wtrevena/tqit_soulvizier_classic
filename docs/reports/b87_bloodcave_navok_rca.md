@@ -1,5 +1,40 @@
 # b87 - Blood-Cave crash RCA: the runtime capture (navOK=0 co-residency), PROVEN
 
+> # ⛔ STATUS 2026-07-28: THE CENTRAL PREMISE OF THIS REPORT IS **REFUTED**. READ THIS FIRST.
+>
+> This report's whole mechanism rests on reading the Frida probe's **`navOK=0`** at ENTER as
+> *"ProcessRLTD REJECTED the navmesh"* (sec 1, sec 3). The **2026-07-27 runtime captures
+> refuted that reading**: `navOK=0` at ENTER is the **NORMAL in-progress state** - every ENTER
+> shows it and LEAVE flips it to 1. See `docs/reports/b89_ocean_ext05_hotfix.md` sec 1.
+>
+> The ENTER-with-no-LEAVE signature this report attributed to a residency-gate rejection was in
+> fact the **malformed 148-byte REC02 container body** (the dead Approach-22 stub), which is now
+> gated at P0 by **MAP-NAV-5** (container body structure) and **MAP-NAV-6** (self-duplicated GUID
+> list). Will **confirmed in-game 2026-07-27** that fixing those containers fixed the crash
+> ("the blood cave crash that was occurring is fixed, i was able to advance past that area").
+>
+> **What this means for each part of this document:**
+> * **Sec 1-3 (mechanism), sec 4 (latents), sec 6 (the ranked A/B/C/D fix menu), sec 8** -
+>   HISTORICAL. The disasm facts they cite are still correct (ProcessRLTD does run a per-GUID
+>   live-residency check at `Engine 0x101f4ba0`), but the inference "therefore an SV-custom
+>   multi-GUID respawn chamber crashes" is **unproven and no longer the working theory**. No
+>   runtime capture has ever shown a well-formed multi-GUID SV-custom navmesh failing to load;
+>   probe session B loaded ten navmeshes cleanly, blood-cave neighbours included.
+> * **Sec 7 (the MAP-NAV-4 gate)** - the gate still exists but was **DEMOTED from P0 to a P2
+>   SHAPE ADVISORY on 2026-07-28** (BL-b89-DEBT-4A) and its two whitelist entries (`drxBC3`,
+>   `RogueEncampment`) were **removed**: they were suppressed as "latent P0 crashes" on this
+>   dead premise. Both chambers are still reported, now as honest P2 advisories. Retirement
+>   protocol was followed - nothing was deleted, and no ruling in `docs/WILL_RULINGS.md` names
+>   MAP-NAV-4 or isolated-load co-residency (checked R-1..R-61, 2026-07-28).
+> * **Sec 10 (fix A on `new_secretdoor`) - KEPT, and now re-justified on CURRENT evidence.**
+>   It was shipped on the refuted theory, but `guid_count == 1` is independently **stock-normal**
+>   (251 base levels) and **runtime-proven on our own map**: probe session B shows
+>   `new_secretdoor_transitionhallway` at gc=1 with a clean ENTER+LEAVE `al=1`. It is a valid,
+>   healthy container shape, its walkable footprint was preserved byte-for-byte, and reverting it
+>   would churn the map for no benefit. **Not reverted.**
+>
+> Everything below is preserved verbatim as the decision record.
+
 Branch: `fix/bloodcave-navok` (worktree). Base: main `19d0aac` (build47, LIVE on Steam + DEV).
 Datum: the 2026-07-17 Frida probe caught the crash LIVE
 (`local/crash_probe/probe_20260717_084445.log`) while Will played to his recurring crash spot
@@ -315,3 +350,73 @@ a worktree fix-wave builds to a scratch dir without clobbering the live `local/`
 seam (to `drxbc_finale_transitionconnector`) and east seam (to `temple_entrance_clean`) still walk?
 If a seam walls, escalate `new_secretdoor` to option C (interior GridEntrance portal). If clean,
 extend fix A to `drxBC3` and `RogueEncampment`.
+
+---
+
+## 10a. FIX A - KEEP DECISION (BL-b89-DEBT-4B, CLOSED 2026-07-28, debt-map lane)
+
+**Question this section settles (from `docs/BACKLOG.md` BL-b89-DEBT-4, second paragraph):**
+build48's fix A collapsed `new_secretdoor_transitionhallway` to a single-own-GUID navmesh on a
+theory that the 2026-07-27 runtime captures later REFUTED. Should the delta be re-justified or
+reverted for provenance hygiene?
+
+**DECISION: KEEP. Do not revert. Do not extend.**
+
+**Why the original premise is dead.** Sec 10 above (and sec 3) argued that `navOK=0` on an
+isolated respawn was a rejection signal produced by ProcessRLTD's live-residency gate failing on
+the two not-yet-resident seam neighbours. The 2026-07-27 blood-cave captures refuted that:
+`navOK=0` is the NORMAL in-progress state during load, not a rejection. The real deterministic
+blood-cave crash was a malformed container BODY (`ocean_extension05`'s 148-byte stub), root-caused
+and fixed in `docs/reports/b89_ocean_ext05_hotfix.md`, gated permanently by `MAP-NAV-5`/`MAP-NAV-6`,
+and **confirmed in-game by Will on 2026-07-27, verbatim: "the blood cave crash that was occurring
+is fixed, i was able to advance past that area."**
+
+**Why the delta stays anyway (three independent reasons).**
+1. **It is stock-normal, not an invention.** A single-own-GUID `0x0b` GUID list is the shape 251
+   base-game levels ship. `MAP-NAV-6`'s own negative test asserts this explicitly ("NAV-6 silent on
+   a single-own-GUID list (stock-normal, 251 base levels)"), so the chamber is not carrying an
+   exotic form the engine has never seen.
+2. **It is structurally verified and walk-test-confirmed.** The sec-10 proofs stand on their own
+   merits regardless of the motivating theory: heights + cons BYTE-IDENTICAL across all 192 tiles,
+   unwalkable-cell count identical, walkable total preserved (479,328 == 479,328), only the
+   container GUID list and the tile `areas` plane changed, and the 63-127u seam overlap survives.
+   It then shipped in build48/49 and was walked without a seam-wall report.
+3. **Reverting costs more than it buys.** A revert means a full two-variant map rebuild plus a
+   FRESH walk test of both `new_secretdoor` seams, for zero player-visible benefit. That is exactly
+   the trade the retirement protocol says not to take on a cosmetic-provenance basis.
+
+**Recorded provenance (the thing that was actually missing).** The delta is now annotated in
+`tools/gen_bc_navmeshes.py` at both sites - the `ClusterConfig.own_guid_only_keys` field docstring
+(a "KEEP DECISION, DO NOT 'FIX' THIS AWAY" block) and the `NEW_SECRETDOOR_KEY` premise comment (a
+STATUS block marking the b87 theory SUPERSEDED). Wording of record: **retained as stock-normal,
+originally motivated by a since-refuted premise; harmless, walk-test-confirmed at build48/49.**
+Any future map lane that reads the old b87 rationale and concludes the collapse is an unjustified
+delta must stop here: the decision is taken.
+
+**Explicitly NOT closed by this section.** The FIRST half of `BL-b89-DEBT-4` - re-justify or retire
+`MAP-NAV-4` and its 2-chamber whitelist (`drxBC3`, `RogueEncampment`), which were flagged on the
+same refuted premise - remains OPEN. Fix A must NOT be extended to those two chambers on the b87
+rationale (sec 10's closing "If clean, extend fix A to drxBC3 and RogueEncampment" is
+**SUPERSEDED**: the premise that made extension desirable is gone).
+
+**Proofs re-run for this close-out (no rebuild required - documentation-only change):**
+`tools/contracts/_negtest_map.py` 49/49 PASS (including "NAV-6 silent on a single-own-GUID list
+(stock-normal, 251 base levels)"); `run_contracts.py --only map` against the live artifacts
+(`local/Levels_merged.arc`, `work/.../Text.arc`, `work/.../SoulvizierClassic.arz`) = 17 contracts,
+0 P0 / 0 P1 / 3 P2 (pre-existing base-game portal noise only), GATE: PASS.
+
+**Independent confirmation that fix A is genuinely LIVE in the shipped map** (i.e. this section is
+describing reality, not intent): the `0x0b` section of
+`Levels\World\xBloodCave\new_secretdoor_transitionhallway.lvl` inside `local/Levels_merged.arc`
+measures **157,898 B** with magic `REC\x02` - exactly the post-collapse size sec 10 recorded
+("158011 -> 157898 B").
+
+**Incidental finding, pre-existing, NOT introduced here - stale local donor cache.**
+`tools/verify_merged_bc_navmeshes.py` currently reports **23/24** with
+`FAIL (1): ['new_secretdoor_transitionhallway']` on this machine. That is a **stale-donor-cache
+artifact, not a map defect**: `local/editor_normalized/new_secretdoor_transitionhallway.lvl.0b.bin`
+on disk is the **158,011 B build47 (PRE-collapse) donor dated Jul 7**, so the verifier's
+map-vs-donor byte compare is measuring the map's correct build48 navmesh against a superseded
+cached donor. `tools/gen_bc_navmeshes.py` regenerates the donor WITH the collapse applied, so a
+normal rebuild self-corrects; the cache on this machine simply predates build48. A map lane that
+sees this 23/24 should refresh the donor cache first and not "fix" the map.

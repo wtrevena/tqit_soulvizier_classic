@@ -415,6 +415,38 @@ def test_sd():
                    text_values={'tagRegionName01': 'Helos', 'tagMZoneGoM': 'Duister'})
     check('SD-2 fires on mislabelled restored zone (GoM->Duister)',
           has(C.contract_sd_tags(ctx2), 'MAP-SD-2'))
+    # B-AREA-NAME-1 close-out (2026-07-28): the oracle now covers EVERY restored SV area,
+    # not just the Garden. Plant the same inherited-name defect on each of the other 9 tags
+    # in turn (each one relabelled to "Duister", the exact bug Will hit) and assert MAP-SD-2
+    # fires for each - i.e. the gate protects the CLASS. Then assert the whole real set is
+    # clean when each tag carries its own label.
+    good = {
+        'tagMZoneGoM': 'Garden of Merchants', 'tagBCXcave': 'Blood Cave',
+        'tagBCXpassage': 'Mysterious Passage', 'tagBCXtemple': 'Temple of Eternal Love',
+        'tagBCXwalkway': 'Sanctuary of the Bloodborn', 'tagSPDarkForest': 'Dark Forest',
+        'tagSPRogueEncampment': 'Rogue Encampment', 'tagJoLandia': 'Jolandia',
+        'tagNewMZone1': 'Olympian Arena',
+        'tagSVCRegionObsidianHalls': 'The Obsidian Halls',
+    }
+    assert set(good) == set(C.RESTORED_ZONE_LABEL_EXPECT), (
+        'negtest label fixture out of sync with RESTORED_ZONE_LABEL_EXPECT: '
+        f'{set(good) ^ set(C.RESTORED_ZONE_LABEL_EXPECT)}')
+    all_sd = make_sd(sorted(good))
+    all_map = make_top_map([(C.SEC_SD, all_sd)])
+    all_secs = C.parse_top_sections(all_map)
+    ctx_all = FakeCtx(map_data=all_map, secs=all_secs,
+                      text_keys=set(good), text_values=dict(good))
+    ok_all = C.contract_sd_tags(ctx_all)
+    check('SD-2 clean on the full correctly-labelled restored-area set',
+          len(ok_all) == 0, f'{ok_all}')
+    for tag in sorted(good):
+        bad = dict(good)
+        bad[tag] = 'Duister'
+        ctxb = FakeCtx(map_data=all_map, secs=all_secs,
+                       text_keys=set(good), text_values=bad)
+        vs = C.contract_sd_tags(ctxb)
+        check(f'SD-2 fires when {tag} inherits another area name',
+              has(vs, 'MAP-SD-2') and any(tag in v['subject'] for v in vs), f'{vs}')
 
 
 def test_refs():
@@ -519,9 +551,108 @@ def test_chest_guard():
           has(C.contract_chest_guard(ctx), 'MAP-CHESTGUARD-1'))
 
 
+def test_cut_levels():
+    """BL-b89-DEBT-3: the CUT exemption must cover ONLY the genuinely geometry-less
+    levels. The 6 live ocean_extension members are walked-on content (real navmeshes,
+    area-owners inside drxBC3/drxBC_Finale's GUID lists) and MUST stay under MAP-NAV-3.
+    Ground truth: tools/audit_navmesh_guid_lists.py over local/Levels_merged.arc."""
+    print('CONTRACT 3b: CUT-LEVEL EXEMPTION SCOPE')
+    dead = ['ocean_extension05', 'ocean_extensionx01', 'ocean_extensionx03',
+            'ocean_extensionx04', 'ocean_extensionx05', 'ocean_extensionx06',
+            'ocean_extensionx07', 'coldtombs']
+    live = ['ocean_extension01', 'ocean_extension02', 'ocean_extension03',
+            'ocean_extension04', 'ocean_extensionx02', 'ocean_extensionx08']
+    for n in dead:
+        check(f'is_cut TRUE for geometry-less {n}',
+              C.is_cut(f'Levels\\World\\xBloodCave\\{n}.lvl'))
+    for n in live:
+        check(f'is_cut FALSE for LIVE walked-on {n} (the b89 blind spot)',
+              not C.is_cut(f'Levels\\World\\xBloodCave\\{n}.lvl'))
+    # substring-vs-basename: the old marker tuple matched on substrings, so any level
+    # merely CONTAINING a marker was exempted. Basenames only, now.
+    check('is_cut FALSE for a level whose name merely contains a marker',
+          not C.is_cut('Levels\\World\\xBloodCave\\drx_ocean_extension_hall.lvl'))
+    # PLANTED NEGATIVE: a LIVE ocean level that lost its navmesh must now trip NAV-3.
+    drxblob = make_blob([(0x05, make_0x05([b'records\\drxmap\\bloodcave\\x.dbr']))])
+    ctx_live = FakeCtx(
+        levels=[{'fname': 'Levels\\World\\xBloodCave\\ocean_extension02.lvl',
+                 '_blob': drxblob, 'guid': GUID_A}], level_guids={GUID_A})
+    check('NAV-3 now fires on a LIVE ocean_extension level with no 0x0b '
+          '(pre-fix this was silently exempted)',
+          has(C.contract_navmesh(ctx_live), 'MAP-NAV-3'))
+    # ...and a genuinely cut one stays exempt (the exemption still works).
+    ctx_cut = FakeCtx(
+        levels=[{'fname': 'Levels\\World\\xBloodCave\\ocean_extension05.lvl',
+                 '_blob': drxblob, 'guid': GUID_A}], level_guids={GUID_A})
+    check('NAV-3 still silent on a genuinely cut level with no 0x0b',
+          not has(C.contract_navmesh(ctx_cut), 'MAP-NAV-3'))
+
+
+def test_depopulated():
+    print('CONTRACT 8: DEPOPULATED LEVELS')
+    rec = b'records\\creature\\monster\\boar.dbr'
+    populated = make_blob([(0x05, make_0x05([rec, rec, rec]))])
+    empty = make_blob([(0x05, make_0x05([]))])
+
+    def lvl(fname, blob):
+        return {'fname': fname, '_blob': blob, 'guid': GUID_A}
+
+    NEW = 'levels/world/greece/testtown.lvl'
+    KNOWN = sorted(C.DONOR_DEPOPULATED_LEVELS)[0]
+
+    # compliant: a level populated in vanilla is still populated in ours
+    ctx = FakeCtx(levels=[lvl('Levels/World/Greece/TestTown.lvl', populated)],
+                  base_level_pop={NEW: 3})
+    check('EMPTY compliant -> no violation',
+          len(C.contract_depopulated_levels(ctx)) == 0)
+
+    # PLANTED DEFECT: our build empties a level vanilla populates, and it is NOT in
+    # the frozen donor inventory -> must fire P1.
+    ctx_bad = FakeCtx(levels=[lvl('Levels/World/Greece/TestTown.lvl', empty)],
+                      base_level_pop={NEW: 3})
+    viols = C.contract_depopulated_levels(ctx_bad)
+    check('EMPTY-1 fires on a newly depopulated level', has(viols, 'MAP-EMPTY-1'))
+    check('EMPTY-1 rates a new depopulation P1',
+          any(v['contract'] == 'MAP-EMPTY-1' and v['severity'] == 'P1' for v in viols))
+
+    # scope guard: the 34 donor-inherited levels are known and must stay silent
+    ctx_known = FakeCtx(levels=[lvl(KNOWN, empty)],
+                        base_level_pop={KNOWN: C.DONOR_DEPOPULATED_LEVELS[KNOWN]})
+    check('EMPTY-1 does NOT fire on a frozen donor-inherited level (scope guard)',
+          not any(v['severity'] == 'P1'
+                  for v in C.contract_depopulated_levels(ctx_known)))
+
+    # scope guard: a level EMPTY IN VANILLA TOO (border/filler) must never fire -
+    # 202 such levels exist in the shipped map, so this is the noise floor.
+    ctx_filler = FakeCtx(levels=[lvl('Levels/World/Egypt/Memphis/Filler02.lvl', empty)],
+                         base_level_pop={'levels/world/egypt/memphis/filler02.lvl': 0})
+    check('EMPTY-1 does NOT fire on a level empty in vanilla too (scope guard)',
+          len(C.contract_depopulated_levels(ctx_filler)) == 0)
+
+    # drift guard: a frozen level that REGAINED entities must be reported (P2), never
+    # silently dropped - the retirement-protocol half of the gate.
+    ctx_back = FakeCtx(levels=[lvl(KNOWN, populated)],
+                       base_level_pop={KNOWN: C.DONOR_DEPOPULATED_LEVELS[KNOWN]})
+    vb = C.contract_depopulated_levels(ctx_back)
+    check('EMPTY-1 reports a frozen level that regained entities (re-freeze prompt)',
+          any(v['contract'] == 'MAP-EMPTY-1' and v['severity'] == 'P2' for v in vb))
+
+    # fail-loud: no base map -> must NOT pass blind
+    ctx_nobase = FakeCtx(levels=[lvl('Levels/World/Greece/TestTown.lvl', empty)],
+                         base_level_pop={})
+    check('EMPTY-1 fails loud when the base map is unavailable',
+          has(C.contract_depopulated_levels(ctx_nobase), 'MAP-EMPTY-1'))
+
+    # the frozen inventory must stay non-empty and well-formed
+    check('EMPTY-1 frozen inventory is intact (34 levels, all lowercased)',
+          len(C.DONOR_DEPOPULATED_LEVELS) == 34
+          and all(k == k.lower() and '\\' not in k for k in C.DONOR_DEPOPULATED_LEVELS),
+          'got %d entries' % len(C.DONOR_DEPOPULATED_LEVELS))
+
+
 if __name__ == '__main__':
-    for t in (test_quests, test_portals, test_navmesh, test_groups, test_doors, test_sd, test_refs,
-              test_chest_guard):
+    for t in (test_quests, test_portals, test_navmesh, test_cut_levels, test_groups,
+              test_doors, test_sd, test_refs, test_chest_guard, test_depopulated):
         t()
     npass = sum(1 for _n, ok, _d in RESULTS if ok)
     print(f'\n{npass}/{len(RESULTS)} checks PASS')

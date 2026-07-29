@@ -39,7 +39,7 @@ merge picks up both waves.
 
 ---
 
-## 1. PART A - ONE apex drop calibre for all three blood-cave bosses (R-70 + R-73)
+## 1. PART A - ONE apex drop calibre for all three blood-cave bosses (R-72 + R-75)
 
 > ⭐ **ROUND 2 SUPERSEDES ROUND 1 HERE.** Round 1 implemented the design pass's orb plan: move the
 > two champions up to Leinth's volume, leave Leinth alone. Will's decision of 2026-07-27, captured
@@ -49,8 +49,8 @@ merge picks up both waves.
 > > champions' orb and give that to both toxeus variants and also to leinth"
 >
 > So the deliverable is ONE apex drop combining BOTH sides' strengths, given to ALL THREE monsters.
-> **Leinth is included and upgraded**, not left behind and not nerfed. Ledgered as **R-73**;
-> R-70's analysis stands and its scope decision is marked superseded-in-part.
+> **Leinth is included and upgraded**, not left behind and not nerfed. Ledgered as **R-75**;
+> R-72's analysis stands and its scope decision is marked superseded-in-part.
 > Everything in this section describes the SHIPPED round-2 state.
 
 ### Finding (confirmed, and by a wide margin)
@@ -134,7 +134,7 @@ future record that starts consuming her chest cannot be silently swept into the 
 
 That proof is also what makes in-place the *better* option than repointing her at the generic
 orb: repointing would have destroyed her "Leinth's Essense" name and her chest mesh for zero
-mechanical gain, and would have broken R-71's "her bespoke chest survives" assertion.
+mechanical gain, and would have broken R-73's "her bespoke chest survives" assertion.
 
 ### What shipped
 
@@ -166,7 +166,7 @@ mechanical gain, and would have broken R-71's "her bespoke chest survives" asser
 | `bosschest_leinth_03_legendary` | `tables` / `levelEquationFile` | `loottable_leinth_63-65` -> `svc_uberorb_apex_l01c` / `l_c02` -> `containerlevelequation_all` |
 
 Leinth's THREE MONSTER RECORDS ARE NOT TOUCHED. Her `treasureProxyName` still names her own
-`bosschestproxy_leinth`, so R-71's "her bespoke chest survives" assertion in
+`bosschestproxy_leinth`, so R-73's "her bespoke chest survives" assertion in
 `tools/patches/leinth_wave.py` stays green by construction rather than by coincidence.
 
 ### What Leinth deliberately KEEPS, and why
@@ -227,7 +227,7 @@ champions before and after and fails loud if either moved.
 
 ---
 
-## 2. PART B - Leinth, the Blood Witch (R-71)
+## 2. PART B - Leinth, the Blood Witch (R-73)
 
 ### Why she melts today
 
@@ -321,7 +321,7 @@ apply() and the module fails loud if any of them moved.
 
 ---
 
-## 3. PART C - the post-kill exit to the occultist merchant (R-72)
+## 3. PART C - the post-kill exit to the occultist merchant (R-74)
 
 ### The machinery was already built, placed and correctly aimed
 
@@ -448,7 +448,7 @@ via `Condition_KillAllCreaturesFromProxy -> Action_ShowNpc + Action_BoatDialog`.
 | `tools/build_quest_files.py::main` | the pristine SVAERA base missing (would double-append the non-idempotent Q1/Q2/Q3/testhub steps onto an already-built arc) | new fail-loud guard added this wave |
 
 **The gates are demonstrably live, not decorative.** `leinth_wave.verify` aborted a real build in
-this wave (`R-71 VERIFY FAILED ... svc_leinth_sanguine_mire.dbr spawns a MISSING record r`). The
+this wave (`R-73 VERIFY FAILED ... svc_leinth_sanguine_mire.dbr spawns a MISSING record r`). The
 data was fine; the gate had caught a defect in the gate's OWN code - `get_field_value` returns the
 SCALAR for a single-entry array, so iterating it walked the string's characters. Fixed by
 normalising to a list before iterating. A second real abort came from
@@ -623,7 +623,7 @@ preserved verbatim at
 2. ~~**R-47 AMENDMENT.**~~ **RESOLVED without needing one.** The new tier is still un-named,
    generic and shared, and Leinth's pre-existing bespoke essence is re-tiered rather than authored,
    so R-47's prohibition (on AUTHORING bespoke essences per boss) is never engaged. Ledgered as
-   R-73 with the reconciliation spelled out. Editing `genericbossorb_04` in place stays rejected
+   R-75 with the reconciliation spelled out. Editing `genericbossorb_04` in place stays rejected
    (21 bosses).
 3. ~~**SHOULD LEINTH ALSO GET AN ORB?**~~ **ANSWERED: yes, she is included** - but by re-tiering
    her own chest rather than hanging a generic orb on her, which is strictly better for her

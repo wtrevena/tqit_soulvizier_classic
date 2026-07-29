@@ -30,7 +30,14 @@ proxies) that shares a mesh whose internal shader does not resolve - so the whol
 shared-render-chain family is visible - without gating on upstream debt.
 
 usage: py tools/validate_render_chain.py <mod.arz> <mod_resources_dir> <game_dir>
-exit 0 = PASS, 1 = FAIL, 2 = load error.
+exit 0 = PASS, 1 = FAIL, 2 = load error / unusable inputs.
+
+INPUT INTEGRITY (B-GATE-HARDEN-1): this validator resolves art against the mod's staged
+Resources dir AND the game dir. If either is absent it cannot answer the question at all -
+so it returns 2 (load error) rather than a PASS that means nothing. `SVC_REQUIRE_GATES=1`
+additionally makes a caller's decision to SKIP this gate a build failure (see
+build_svc_database._gate_unavailable); this module-level check is the second line of
+defence, for direct CLI invocations that bypass that caller.
 """
 import os
 import re
@@ -240,6 +247,20 @@ def mesh_internal_shaders(resolver, mesh_ref):
 
 
 def validate(arz_path, mod_resources, game_dir):
+    # B-GATE-HARDEN-1: never return PASS when the inputs make the answer meaningless.
+    # Without the staged mod Resources or the game dir, EVERY art ref would resolve to
+    # nothing; the old behaviour depended entirely on the caller remembering to skip.
+    _bad = [lbl for lbl, val in (('mod_resources', mod_resources), ('game_dir', game_dir))
+            if not val or not Path(val).is_dir()]
+    if _bad:
+        print("=" * 72)
+        print("SUMMON-PET RENDER-CHAIN VALIDATOR (A9 + D5 mesh-shader closure)")
+        print(f"  RESULT: CANNOT RUN - missing/unusable input dir(s): {', '.join(_bad)}")
+        print(f"    mod_resources={mod_resources}")
+        print(f"    game_dir={game_dir}")
+        print("    Every art reference would resolve to nothing, so a PASS here would be "
+              "meaningless. Returning 2 (load error), never 0. [B-GATE-HARDEN-1]")
+        return 2
     db = ArzDatabase.from_arz(Path(arz_path))
     recmap = {_norm(n): n for n in db.record_names()}
 

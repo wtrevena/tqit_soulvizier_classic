@@ -215,7 +215,13 @@ REGISTRY = [
                             # legion_soul_stages + double_soul_rulings rate writers. Mode-independent
                             # (holds under SVC_RELEASE_DROPS=1, which is what ships); verify() fails
                             # loud on the FINAL merged db if either drops below 100.
-    'leinth_wave',          # b94 PART B (R-71): Leinth the Blood Witch buff + 3 cult abilities
+    # --- b94 round 3 merge reconciliation: the b94 pair (leinth_wave ->
+    # uber_apex_orb, that order is load-bearing) and the debt-wave block below
+    # both claimed the slot before the no-op 'visuals'. The b94 pair runs FIRST so
+    # uber_apex_orb still sees leinth_wave's final Leinth records, and the debt-wave
+    # block keeps its own deliberate order with fx_dangling_cleanup LAST - which now
+    # also sweeps b94's new guard/skill records on the final assembled db.
+    'leinth_wave',          # b94 PART B (R-73): Leinth the Blood Witch buff + 3 cult abilities
                             # (Crimson Tithe / Choir of the Bloodborn / Sanguine Mire, every donor
                             # from her OWN records\drxcreatures\bloodwitch family) + the b76
                             # summon-density cut on leinth_summon_uglies. Touches ONLY the 3
@@ -224,7 +230,7 @@ REGISTRY = [
                             # record). Placed here so it is the ratified final writer on her stats;
                             # verify() re-asserts every target on the FINAL merged db, including
                             # that her loot wiring never moved.
-    'uber_apex_orb',        # b94 PART A (R-70, Will 2026-07-27): ONE apex drop calibre shared by
+    'uber_apex_orb',        # b94 PART A (R-72, Will 2026-07-27): ONE apex drop calibre shared by
                             # ALL THREE blood-cave bosses. Authors a new un-named generic apex tier
                             # (genericbossorb_05 + 3 pools + 3 chests + 3 loot tables cloned from the
                             # orb04 chain, carrying Leinth's four generosity knobs on the champions'
@@ -232,7 +238,7 @@ REGISTRY = [
                             # um_toxeus_enslaver_99 + um_bloodtoxeus_99; then upgrades Leinth's THREE
                             # sole-owned chests IN PLACE onto the SAME apex tables + level equation
                             # (2 fields each), so she is re-tiered rather than left behind. Her
-                            # monster records, proxy and pools are untouched, so R-71's "her bespoke
+                            # monster records, proxy and pools are untouched, so R-73's "her bespoke
                             # chest survives" assertion in leinth_wave stays green - which is why
                             # this MUST run AFTER 'leinth_wave'. genericbossorb_04 and its other 19
                             # consumers stay byte-unchanged (apply() proves it). MUST also run after
@@ -240,6 +246,93 @@ REGISTRY = [
                             # (souls_100 writes chanceToEquipFinger2, this writes treasureProxyName -
                             # DIFFERENT fields, later-wins is a no-op on both), and apply()
                             # additionally proves the R-48 soul wiring did not move. Before 'visuals'.
+    # --- debt-wave integration 2026-07-28: fix/debt-mixed (coldworm_buffs,
+    # uber_quest_markers) and fix/debt-db (emberteeth_summon, fx_dangling_cleanup)
+    # each landed a block here claiming the slot immediately before the no-op
+    # 'visuals'. The order below is a DELIBERATE reconciliation, not a union:
+    #   emberteeth_summon   - after every soul-wiring + drop-rate module (its own
+    #                         constraint) and BEFORE uber_quest_markers, so the
+    #                         marker roster is derived from the same final soul
+    #                         records that the post-finalization verify() sees.
+    #   coldworm_buffs      - still after boss_skill_fix, still the last writer of
+    #                         Cold Worm's kit (nothing below touches it).
+    #   uber_quest_markers  - still after coldworm_buffs and after toxeus_souls_100,
+    #                         still the last writer of DisplayAsQuestItem.
+    #   fx_dangling_cleanup - LAST content module (its own constraint), so it sweeps
+    #                         emberteeth_summon's new skill records AND coldworm_buffs'
+    #                         repointed slots on the final assembled db.
+    'emberteeth_summon',    # b91 DEBT / QUEUED FEATURE (Will 2026-07-14, verbatim "emberteeth
+                            # soul should let you summon him"): converts the 3 pure-fire-stat
+                            # emberteeth_soul_{n,e,l} rings into summon-the-boss souls - 3
+                            # permanent pets built from um_emberteeth's OWN rig via the shared
+                            # _build_boss_summon pipeline + a manual-cast summon button, wired
+                            # 1/2/3 so the epic soul spawns the epic pet (R-43 companion check).
+                            # Every pre-existing fire benefit is kept (apply() proves it field by
+                            # field). Registered after every soul-wiring + drop-rate module so it
+                            # sees the FINAL soul records, and before fx_dangling_cleanup so its
+                            # new skill records are still swept by the FX hygiene pass.
+    'coldworm_buffs',       # b91 (Will 2026-07-16, R-39): THE COLD WORM BUFFS LANE - 3x
+                            # characterLife, +20% armor (defensiveProtection, delivered at the only
+                            # layer where monsters carry it: the armor_passive level, whose
+                            # defensiveProtection array is exactly linear), the rig-proven
+                            # um_coldcreep_29 total-speed profile, and a casting kit that ACTUALLY
+                            # CASTS. RCA: boss_coldworm50's entire kit pointed at the
+                            # `boss skills\d2custom\coldworm_*` + `Game\D2*` namespace, which exists
+                            # in NEITHER the mod arz, NOR upstream SV 098i, NOR the base game - 8/8
+                            # active slots dead, the worst record in the whole DB (next-worst: 2).
+                            # Every dead slot is repointed at a donor that exists, at that donor's
+                            # own level (CryptWorm-rig donors um_coldcreep_29 / am_devourer_27 +
+                            # nearest-tier insectoid bosses). Ships its own NEW invariant gate: an
+                            # active skill slot must resolve AND, if the skill declares a
+                            # skillSpecialAnimationName, the caster must bind that ref (the
+                            # monster-side twin of the B-SOUL-PROC-2 StartSkill anim abort) -
+                            # negative test `py tools/patches/coldworm_buffs.py --negtest`.
+                            # Registered after boss_skill_fix (scoped to um_*_99, disjoint) and
+                            # immediately before visuals, so it is the ratified final registry
+                            # writer of Cold Worm's kit. Touches exactly ONE record; the 3-tier
+                            # soul + loot triple are asserted, never rewritten.
+    'uber_quest_markers',   # b91 (Will 2026-07-16, R-39, 6th sub-item): "the exclamation-marker
+                            # mechanism extended to all placed ubers". CORRECTION to b91 round 1,
+                            # which recorded this as map-side and BLOCKED: the marker is the
+                            # DB-side Monster field DisplayAsQuestItem (145 non-zero carriers,
+                            # 124 of them Monster - every base-game quest boss, every xsq named
+                            # quest hero, the escort NPCs, the quest chests/doors/objects and the
+                            # records\poi\** AreaOfInterest map-marker namespace). It is ALREADY
+                            # LIVE in this mod on the very boss the ruling is about
+                            # (records\test\boss_coldworm50.dbr = 1) - the mechanism was never
+                            # missing, only never extended. No Levels.arc build, no
+                            # SVC_SVAERA_ARC/SVC_SV_ARC dependency, no map bytes.
+                            # Roster is DERIVED, never hardcoded: build_svc_database.
+                            # soul_spawn_provenance_sets()'s placed_members (the same source of
+                            # truth as the PLACED_UBER 66% soul rate, R-42), narrowed to the
+                            # ENCOUNTERS by rule A (it, or a form in its actorToSpawnOnDeath
+                            # chain, actually pays a soul out - which excludes the 26 champion
+                            # retinue/adds mechanically) and widened by rule B across DEDICATED
+                            # transform forms only (a form whose spawners are ALL in the roster).
+                            # Rule B's exclusivity test is load-bearing: as_ghosthero_32 is
+                            # Neferkha's terminal form AND five roaming mummy heroes', so a naive
+                            # whole-chain walk would spam the marker across the map.
+                            # Both rules are DERIVED from shipped content, not invented: the one
+                            # placed uber already marked on main is um_polisgaoler_99 AND its
+                            # dedicated um_polisgaoler_unbound_99 - exactly rule A + rule B.
+                            # Registered after coldworm_buffs (same ruling, same lane) and
+                            # immediately before visuals, so it is the ratified final registry
+                            # writer of the field; it reads chanceToEquipFinger2, which
+                            # toxeus_souls_100 (R-48) writes earlier, so the roster is computed
+                            # against final rates. Ships its own gate (every placed uber + every
+                            # dedicated chain form must carry DisplayAsQuestItem=1, and no SHARED
+                            # form may) - negative test `py tools/patches/uber_quest_markers.py
+                            # --negtest`. One field, 0 new records, 0 tags.
+    'fx_dangling_cleanup',  # b91 DEBT: B-FX-DANGLING-1 (strip the 353 dangling
+                            # Chris\UnarmedProjectile_FX01 particleEffectName2/3 slots off 177
+                            # records - base-game ABSENCE parity, the same operation build30 F7a
+                            # ran on 3 pcsafe clones) + BLOODHOUND-DYINGFX (already resolved in
+                            # the arz; this module ships the permanent resolve-or-fail gate the
+                            # debt never had) + the F3 leftover DRX skin field on supra wep_spear.
+                            # Registered LAST among content modules (before the no-op 'visuals')
+                            # so it sweeps the FINAL assembled db and no later module can
+                            # reintroduce the class. Deletes only whitelisted field slots; apply()
+                            # proves roster-wide that nothing else moved.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

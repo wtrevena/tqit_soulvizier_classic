@@ -11752,6 +11752,49 @@ def _verify_roaming_sweep(db, touched):
         if not db.has_record(sk):
             problems.append(f"summon skill {sk} missing")
 
+    # (0b) BL-ENSLAVER-SPAWNS sub-fix (3) PERMANENCE GATE (b91). Will 2026-07-12,
+    # tour finding #2: "the marauders took ~0 damage" in Epic. `_create_enslaver`
+    # fixed it by demolishing the demon RESIST WALL (defensiveLife 100 -> 40 = the
+    # named root cause, FULL vitality immunity; Pierce 80 -> 40; Physical 30 -> 12)
+    # and trimming characterLife 13k/18k/24k -> 10k/14k/18k, while deliberately
+    # LEAVING the DPS alone (handHitDamage 300/380: "increase strength, never nerf").
+    # Nothing gated that, so any later wave could quietly restore the wall. These
+    # are CEILINGS on the defences and FLOORS on the damage, so the two halves of
+    # Will's ruling cannot drift apart: a future buff may not re-wall him, and a
+    # future "rebalance" may not pay for a cut by gutting his threat instead.
+    _MAR_DEF_CEIL = {'defensiveLife': 40.0, 'defensivePierce': 40.0,
+                     'defensivePhysical': 12.0}
+    _MAR_LIFE_CEIL = [10000.0, 14000.0, 18000.0]
+    _MAR_DPS_FLOOR = {'handHitDamageMin': 300.0, 'handHitDamageMax': 380.0}
+    if db.has_record(_EN_MARAUDER):
+        for f, ceil in sorted(_MAR_DEF_CEIL.items()):
+            got = gv(_EN_MARAUDER, f)
+            got = float(got) if got not in (None, '') else 0.0
+            if got > ceil + 1e-6:
+                problems.append(
+                    f"MARAUDER RESIST WALL BACK: {f}={got} > {ceil} ceiling "
+                    f"(BL-ENSLAVER-SPAWNS sub-fix 3, Will 2026-07-12 'the marauders "
+                    f"took ~0 damage'; defensiveLife 100 was FULL vitality immunity)")
+        life = db.get_field_value(_EN_MARAUDER, 'characterLife')
+        life = life if isinstance(life, list) else [life]
+        try:
+            life = [float(x) for x in life]
+        except (TypeError, ValueError):
+            life = []
+        if len(life) != len(_MAR_LIFE_CEIL) or \
+                any(g > c + 1e-6 for g, c in zip(life, _MAR_LIFE_CEIL)):
+            problems.append(
+                f"MARAUDER characterLife {life} exceeds the BL-ENSLAVER-SPAWNS "
+                f"ceiling {_MAR_LIFE_CEIL} (killable elite, not a sponge)")
+        for f, floor in sorted(_MAR_DPS_FLOOR.items()):
+            got = gv(_EN_MARAUDER, f)
+            got = float(got) if got not in (None, '') else 0.0
+            if got < floor - 1e-6:
+                problems.append(
+                    f"MARAUDER DPS NERFED: {f}={got} < {floor} floor - Will's ruling "
+                    f"cuts the effective-HP WALL and KEEPS the threat "
+                    f"('increase strength, never nerf')")
+
     # (1) re-derive touched pools = any ProxyPool containing the enslaver in a name
     # slot, EXCLUDING the whitelisted dedicated test-yard pool (which legitimately
     # carries him at weight 100, TESTHUB-only + inert on canonical). all_enslaver_
@@ -11827,6 +11870,27 @@ def _verify_roaming_sweep(db, touched):
         if enl_limit != _EN_SWEEP_SLOT_LIMIT:
             problems.append(f"{n}: enslaver slot limit{enl_idx}={enl_limit} != "
                             f"{_EN_SWEEP_SLOT_LIMIT} (STRUCTURAL no-double cap missing)")
+        # (3c) BL-ENSLAVER-SPAWNS sub-fix (1) ADJACENCY ASSERTION (b91). limitN is a
+        # per-SLOT cap, not a per-RECORD cap: if the Enslaver ever occupied TWO name
+        # slots of the same pool, each would independently honour limit=1 and the pool
+        # could still surface him TWICE in one trigger - exactly Will's "two side-by-
+        # side Enslavers" (2026-07-12 tour finding #2), and invisible to every check
+        # above (which reads a single enl_idx). A swept pool must name him EXACTLY
+        # ONCE across name1..18 AND nameChampion1..18. (The 2 whitelisted yard/warband
+        # pools legitimately list him in several slots and are excluded here - they
+        # are the dedicated set-piece, not the roam.)
+        n_slots = 0
+        for pre in ('name%d', 'nameChampion%d'):
+            for i in range(1, 19):
+                nm = gv(n, pre % i)
+                if nm and str(nm).replace('/', '\\').lower() == enl:
+                    n_slots += 1
+        if n_slots != 1:
+            problems.append(
+                f"{n}: enslaver occupies {n_slots} name/nameChampion slots (want "
+                f"exactly 1). limitN caps a SLOT, not the record, so N slots = up to "
+                f"N simultaneous Enslavers from ONE pool trigger "
+                f"(BL-ENSLAVER-SPAWNS adjacency assertion)")
 
     # (4) LEAK GUARD (proves BOTH directions): EVERY pool carrying the Enslaver
     # must be either a swept eligible trash pool (in `touched`) OR the whitelisted

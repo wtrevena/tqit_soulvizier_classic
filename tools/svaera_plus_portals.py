@@ -797,23 +797,17 @@ def build_ordered_quest_list(ae_quests, sv_quests):
 def main():
     """Build the merged Levels.arc (heavy: multi-GB). Not run on import."""
     # --- Paths ---
-    # The two merge INPUTS. Defaults are the historical in-repo cache locations
-    # (reference_mods/ + upstream/, both gitignored); SVC_SVAERA_ARC / SVC_SV_ARC
-    # override them so the build still runs when those caches are absent - e.g. the
-    # SVAERA base lives in the Steam Workshop content dir (item 2076433374) and SV
-    # 0.98i in another checkout. Fail LOUD naming the env var rather than dying deep
-    # inside ArcArchive with a bare FileNotFoundError (b89 lost time to exactly that).
-    svaera_path = Path(os.environ.get(
-        'SVC_SVAERA_ARC',
-        r'c:\Users\willi\repos\tqit_soulvizier_classic\reference_mods\SVAERA_customquest\Resources\Levels.arc'))
-    sv_path = Path(os.environ.get(
-        'SVC_SV_ARC',
-        r'c:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Resources\Levels.arc'))
-    for label, p, env in (('SVAERA base', svaera_path, 'SVC_SVAERA_ARC'),
-                          ('SV 0.98i', sv_path, 'SVC_SV_ARC')):
-        if not p.is_file():
-            raise SystemExit(f'FATAL: {label} Levels.arc not found at {p}\n'
-                             f'       set {env} to its location and re-run.')
+    # The two merge INPUTS, resolved by the ONE shared preflight
+    # (tools/check_build_inputs.py, BL-b90-DEBT-2): $SVC_SVAERA_ARC / $SVC_SV_ARC ->
+    # the in-repo cache -> the MAIN checkout's cache (gitignored caches never
+    # propagate into a linked worktree) -> the Steam Workshop item / a sibling
+    # worktree -> third_party/. Every fallback is md5-pinned, and a miss fails LOUD
+    # naming the exact env var instead of dying deep inside ArcArchive with a bare
+    # FileNotFoundError (b89 and b90 each lost time to exactly that).
+    import check_build_inputs
+    _inputs = check_build_inputs.preflight('svaera_levels_arc', 'sv098i_levels_arc')
+    svaera_path = _inputs['svaera_levels_arc']
+    sv_path = _inputs['sv098i_levels_arc']
 
     # --- TEST HUB flag (SVC_TEST_HUB=1) ---
     # OFF (default): canonical build -> local/Levels_merged.arc (A1/A2 doors + C1-C4 fixes, hub-free).

@@ -364,15 +364,24 @@ def blob_section_types(blob):
     return set(t for t, _ in parse_blob_sections(blob))
 
 
+def blob_0x05_base(blob):
+    """The 0x05 BASE record size for this level blob: 72 for v0x11/v0x0f, else 56.
+
+    THE canonical stride rule - every 0x05 walker in the repo must derive its base
+    size from here, never hardcode one (BUILD46 debt: tools/debug/census_placements.py
+    hardcoded 72 and so desynced on all 496 v0x0e levels).
+    """
+    return 72 if blob[3] in (0x11, 0x0f) else 56
+
+
 def parse_0x05(blob):
     """0x05 placed-instance section. Returns (strings, instances).
 
-    instance = {i, dbr(bytes), flags, uid(bytes|None)}. Record size = 72 for
-    blob version 0x11/0x0f, else 56; a flagged (flags!=0) record carries a
-    trailing 16-byte UniqueId.
+    instance = {i, dbr(bytes), flags, uid(bytes|None), pos(x,y,z)}. Record size =
+    72 for blob version 0x11/0x0f, else 56 (see blob_0x05_base); a flagged
+    (flags!=0) record carries a trailing 16-byte UniqueId.
     """
-    ver = blob[3]
-    base = 72 if ver in (0x11, 0x0f) else 56
+    base = blob_0x05_base(blob)
     d = None
     for t, sd in parse_blob_sections(blob):
         if t == 0x05:
@@ -400,10 +409,12 @@ def parse_0x05(blob):
         if pos + base > len(d):
             break
         sidx = struct.unpack_from('<I', d, pos)[0]
+        # measured layout: str_idx(4) + rot 3x3(36) + position(12) + flags(4)
+        xyz = struct.unpack_from('<3f', d, pos + 40)
         flags = struct.unpack_from('<I', d, pos + 52)[0]
         uid = d[pos + 56:pos + 72] if flags != 0 else None
         insts.append({'i': i, 'dbr': strings[sidx] if sidx < len(strings) else b'?',
-                      'flags': flags, 'uid': uid})
+                      'flags': flags, 'uid': uid, 'pos': xyz})
         pos += base + (16 if flags != 0 else 0)
     return strings, insts
 
@@ -598,12 +609,51 @@ def norm_rec(p):
     return p.replace('/', '\\').strip().lower()
 
 
-CUT_LEVEL_MARKERS = ('ocean_extension', 'coldtombs')  # docs/CUT_CONTENT.md
+# Declared-unreachable-by-design levels: EXACT basenames, never substrings.
+# See docs/CUT_CONTENT.md for the per-level justification.
+#
+# HISTORY (BL-b89-DEBT-3, corrected 2026-07-28): this used to be a SUBSTRING tuple
+# ('ocean_extension', 'coldtombs'), which swept the WHOLE ocean_extension family into
+# the exemption. That was factually wrong and it is how the malformed-container class
+# hid for weeks: `ocean_extension01`-`04`, `x02` and `x08` carry REAL generated
+# navmeshes (397KB/232KB/238KB/165KB/106KB/56KB, 531/318/294/237/141/75 tiles) and are
+# listed as area-owners inside `drxBC3`'s and `drxBC_Finale`'s navmesh GUID lists -
+# i.e. the player walks on cells those meshes own. Only the 8 genuinely geometry-less
+# members below (0 tiles in all three tilesets, and no other mesh lists their GUID)
+# are cut. Proven on the shipped map by tools/audit_navmesh_guid_lists.py; the
+# live-vs-dead split is asserted by _negtest_map.test_cut_levels().
+#
+# NOTE this exemption is deliberately NARROW and is only consulted by MAP-NAV-3.
+# MAP-NAV-1/-4/-5/-6 ignore cut-ness BY DESIGN: a cut level still streams in by grid
+# proximity, so its container must still be structurally valid (that is the whole b89
+# lesson - "declared cut" buys nothing at runtime).
+CUT_LEVELS = frozenset({
+    # Ocean scenery tiles with no walkable floor (no 0x0a geometry to rasterize).
+    'ocean_extension05',
+    'ocean_extensionx01',
+    'ocean_extensionx03',
+    'ocean_extensionx04',
+    'ocean_extensionx05',
+    'ocean_extensionx06',
+    'ocean_extensionx07',
+    # Cold Tombs: SV shipped it with no 0x0a pathing layer at all (ON HOLD per Will,
+    # task #36 - do NOT retire the level, the hold is a design question not a deletion).
+    'coldtombs',
+})
+
+
+def level_basename(fname):
+    """'Levels\\World\\xBloodCave\\ocean_extension05.lvl' -> 'ocean_extension05'."""
+    if isinstance(fname, bytes):
+        fname = fname.decode('latin-1')
+    b = fname.replace('\\', '/').split('/')[-1]
+    if b.lower().endswith('.lvl'):
+        b = b[:-4]
+    return b.lower()
 
 
 def is_cut(fname):
-    low = fname.lower()
-    return any(m in low for m in CUT_LEVEL_MARKERS)
+    return level_basename(fname) in CUT_LEVELS
 
 
 def V(cid, sev, subject, message, evidence):
@@ -638,6 +688,12 @@ class Ctx:
         # inherited base/IT/XPack levels by PROVENANCE (a base level's GUID is in
         # this set); empty if the base map could not be loaded.
         self.base_level_guids = set()
+        # Per-level 0x05 placed-instance COUNT in the stock base map, keyed on the
+        # lowercased '/'-normalized level path. Feeds MAP-EMPTY-1 (a level that is
+        # populated in vanilla but ships EMPTY in ours = a depopulated level). Built
+        # in the SAME base-map pass that already runs here, so it costs the ~3s 0x05
+        # scan and NOT a second 30s decompress of the 685 MB base map.
+        self.base_level_pop = {}
         bg = cfg.get('base_game_dir')
         if bg:
             bg = Path(bg)
@@ -652,9 +708,14 @@ class Ctx:
                     bmap = Arc.from_file(blv).world_map()
                     bsecs = parse_top_sections(bmap)
                     self.base_quests = parse_quests(sec_bytes(bmap, bsecs, SEC_QUESTS))
-                    self.base_level_guids = set(
-                        lv['guid'] for lv in parse_level_index(
-                            sec_bytes(bmap, bsecs, SEC_LEVELS)))
+                    base_levels = parse_level_index(
+                        sec_bytes(bmap, bsecs, SEC_LEVELS))
+                    self.base_level_guids = set(lv['guid'] for lv in base_levels)
+                    for lv in base_levels:
+                        bb = bmap[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+                        _s, binsts = parse_0x05(bb)
+                        self.base_level_pop[
+                            lv['fname'].lower().replace('\\', '/')] = len(binsts)
                 except Exception:
                     self.base_quests = None
         # text keys (mod union base)
@@ -729,8 +790,35 @@ def _is_our_content(npath, blob_has_drxmap):
 # the oracle for the "restored area mislabeled with another zone's name" defect
 # (B-AREA-NAME-1). Derived from the shipped restored-area zone-tag families
 # (tagMZone*/tagBCX*/tagSP*/tagNewMZone*); extend when a new restored area is added.
+#
+# B-AREA-NAME-1 CLOSE-OUT AUDIT (2026-07-28, debt-map lane): the whole restored-area
+# label set was dumped out of the SHIPPED SD region list (tools/sd_format.py, round-trip
+# True on local/Levels_merged.arc: SD v6, env=213, region=294) and resolved against the
+# built Text.arc + base Text_EN.arc. All 10 restored-area regions resolve, and each one
+# names its OWN area - the Garden fix (tagMZoneGoM -> "Garden of Merchants", shipped in
+# build_text_arc.TEXT_FIX_TAGS) is live and no sibling inherited the same defect:
+#   BCXpassage/tagBCXpassage -> 'Mysterious Passage'      BCXcave/tagBCXcave -> 'Blood Cave'
+#   BCXtemple/tagBCXtemple  -> 'Temple of Eternal Love'   BCXwalkway -> 'Sanctuary of the Bloodborn'
+#   Duister/tagMZoneGoM     -> 'Garden of Merchants'      Dark Forest/tagSPDarkForest -> 'Dark Forest'
+#   tagSPRogueEncampment    -> 'Rogue Encampment'         JoLandia/tagJoLandia -> 'Jolandia'
+#   Olympian Arena/tagNewMZone1 -> 'Olympian Arena'
+#   The Obsidian Halls/tagSVCRegionObsidianHalls -> 'The Obsidian Halls'
+# Every one of them is registered below so the oracle covers the CLASS, not just the one
+# instance Will hit. NOTE the internal region NAME is SV's own (e.g. the Garden region is
+# internally called 'Duister'); only the DISPLAY tag is player-visible, so the oracle keys
+# on the tag. Also note 'The Obsidian Halls' is reachable through two tags (the b46r3
+# minted tagSVCRegionObsidianHalls plus the base tagRegionName144 slot) - both are asserted.
 RESTORED_ZONE_LABEL_EXPECT = {
-    'tagMZoneGoM': ('garden', 'merchant'),   # Garden of Merchants (currently -> "Duister")
+    'tagMZoneGoM': ('garden', 'merchant'),          # Garden of Merchants (was "Duister" - the bug)
+    'tagBCXcave': ('blood', 'cave'),                # Blood Cave
+    'tagBCXpassage': ('passage',),                  # Mysterious Passage
+    'tagBCXtemple': ('temple',),                    # Temple of Eternal Love
+    'tagBCXwalkway': ('sanctuary', 'bloodborn'),    # Sanctuary of the Bloodborn
+    'tagSPDarkForest': ('dark forest', 'forest'),   # Dark Forest (the Secret Place)
+    'tagSPRogueEncampment': ('rogue', 'encampment'),  # Rogue Encampment
+    'tagJoLandia': ('jolandia',),                   # JoLandia
+    'tagNewMZone1': ('olympian', 'arena'),          # Olympian Arena (Boss Arena)
+    'tagSVCRegionObsidianHalls': ('obsidian',),     # The Obsidian Halls (Uber Dungeon, b46r3)
 }
 
 
@@ -1489,9 +1577,36 @@ def _respawn_shrines_in_blob(class_of, blob):
 
 
 def scan_isolated_load_risk(levels, blob_of, class_of, base_level_guids):
-    """SHARED classifier for the b87 isolated-load navmesh crash class. Used by BOTH
-    the battery contract (contract_navmesh_coresidency) and the standalone gate
-    (gate_navmesh_coresidency.py) so their scope can never drift apart.
+    """SHARED classifier for the isolated-load navmesh SHAPE advisory (MAP-NAV-4).
+    Used by BOTH the battery contract (contract_navmesh_coresidency) and the standalone
+    reporter (gate_navmesh_coresidency.py) so their scope can never drift apart.
+
+    ############################################################################
+    # EVIDENCE STATUS (BL-b89-DEBT-4A, 2026-07-28) - THIS IS AN ADVISORY, NOT A
+    # CRASH GATE. The b87 premise it was authored from is REFUTED.
+    ############################################################################
+    b87 read the Frida probe's `navOK=0` at ENTER as "ProcessRLTD REJECTED this
+    navmesh", and built a P0 crash law on it. The 2026-07-27 captures REFUTED that
+    reading: `navOK=0` at ENTER is the NORMAL in-progress state - every ENTER shows
+    it and LEAVE flips it to 1 (docs/reports/b89_ocean_ext05_hotfix.md sec 1). The
+    ENTER-with-no-LEAVE signature b87 attributed to a residency-gate rejection was
+    in fact the malformed 148-byte REC02 body class, which is now gated properly and
+    at P0 by MAP-NAV-5 (container body structure) and MAP-NAV-6 (self-duplicated GUID
+    list). No runtime capture has ever shown a well-formed multi-GUID SV-custom
+    navmesh failing to load; probe session B loaded ten navmeshes cleanly, blood-cave
+    neighbours included.
+
+    WHAT SURVIVES (why this classifier is kept rather than deleted):
+      * ProcessRLTD's per-GUID live-residency check is still disasm-proven
+        (Engine 0x101f4ba0: `cmp [reg+0x50 + idx*4], 0`), so listing a neighbour GUID
+        is genuinely a load-time dependency on that neighbour's residency.
+      * `guid_count == 1` is stock-normal (251 base levels) AND runtime-proven on our
+        own map (`new_secretdoor_transitionhallway` gc=1, ENTER+LEAVE al=1 in probe
+        session B). It is residency-proof by construction: the only GUID named is the
+        level being loaded, which is resident whenever its own navmesh loads.
+    So "an SV-custom chamber that can load in ISOLATION carries a single-own-GUID
+    navmesh" remains a sound HARDENING preference. It is NOT a demonstrated crash
+    class, so it reports at P2 and nothing is whitelisted (see the contract).
 
     A chamber is flagged iff ALL of:
       (1) it hosts a StrategicMovementRespawnShrine  -> can be loaded in ISOLATION
@@ -1501,21 +1616,14 @@ def scan_isolated_load_risk(levels, blob_of, class_of, base_level_guids):
       (3) it is SV-CUSTOM: its own level GUID is ABSENT from the stock base-game
           Levels.arc index (`base_level_guids`).
 
-    Why (3) is the true discriminator (not "respawn + multi-GUID"): the stock game
-    ships 264 respawn chambers with multi-GUID navmeshes (DelphiTownStart gc=12,
-    Memphis gc=13, ...) that save/reload fine, because a base region keeps its
-    navmesh-neighbour levels co-RESIDENT (region-packed) so ProcessRLTD's live-
-    residency gate (Engine 0x101f4ba0) completes on isolated load. The SV blood-cave
-    / secret-place clusters are grid-shifted into empty world space with offline-
-    generated navmeshes, so on an isolated respawn their listed neighbours are NOT
-    resident -> the navmesh load fails (Level+0x6a48 stays 0) and the region code
-    dereferences the absent navmesh (near-null 0xc0000005; RVA 0x20e270). Provenance
-    by own-GUID cleanly excludes every inherited base/IT/XPack respawn chamber
+    (3) is what keeps the advisory honest: the stock game ships 264 respawn chambers
+    with multi-GUID navmeshes (DelphiTownStart gc=12, Memphis gc=13, ...) that save
+    and reload fine, so "respawn + multi-GUID" is emphatically NOT a defect shape.
+    Provenance by own-GUID excludes every inherited base/IT/XPack respawn chamber
     (incl. the byte-identical Silk Road HiddenValley01 spawn hub) name-free, and
-    surfaces exactly the SV-custom respawn chambers our pipeline generates.
-    Static GUID resolution (MAP-NAV-1) is GREEN for these - every listed GUID resolves
-    in the LEVELS index - so this is the RESIDENCY half MAP-NAV-1 cannot see.
-    docs/reports/b87_bloodcave_navok_rca.md.
+    surfaces exactly the SV-custom respawn chambers our own pipeline generates.
+    docs/reports/b87_bloodcave_navok_rca.md (RCA, premise refuted);
+    docs/reports/b89_ocean_ext05_hotfix.md (the refutation + the real crash class).
 
     Returns list of dicts {level, guid, shrines, guid_count, neighbours}."""
     out = []
@@ -1543,37 +1651,173 @@ def scan_isolated_load_risk(levels, blob_of, class_of, base_level_guids):
 
 
 def contract_navmesh_coresidency(ctx):
-    """(10) MAP-NAV-4: isolated-load navmesh co-residency safety (b87, runtime-proven).
+    """(10) MAP-NAV-4: isolated-load navmesh SHAPE **ADVISORY** (P2, never blocking).
 
-    Every SV-CUSTOM level (own GUID absent from the stock base-game Levels.arc) that
-    hosts a StrategicMovementRespawnShrine MUST carry a navmesh loadable in isolation
-    (guid_count == 1). A multi-GUID navmesh there re-arms ProcessRLTD's LIVE-residency
-    gate on a fresh spawn (the grid neighbours are not resident), so the navmesh load
-    fails (navOK=0) and the region code null-derefs the absent navmesh (Engine RVA
-    0x20e270) - the crash the 2026-07-17 Frida probe pinned live at
-    new_secretdoor_transitionhallway (respawn_hadescave01). See scan_isolated_load_risk
-    for the full mechanism + why base/IT/XPack respawn chambers (region-packed, GUID in
-    stock) are the proven-safe control. Run the battery against BOTH the canonical and
-    TESTHUB arc for runtime parity. docs/reports/b87_bloodcave_navok_rca.md."""
+    An SV-CUSTOM level (own GUID absent from the stock base-game Levels.arc) that hosts
+    a StrategicMovementRespawnShrine can be loaded in ISOLATION (save-load / respawn).
+    The residency-proof shape for such a chamber is a single-own-GUID navmesh
+    (guid_count == 1): stock-normal (251 base levels) and runtime-proven on our own map.
+    A multi-GUID navmesh there is a HARDENING NOTE, not a defect.
+
+    SEVERITY IS DELIBERATELY P2 (BL-b89-DEBT-4A, 2026-07-28). This contract shipped at
+    P0 on the b87 "navOK=0 == ProcessRLTD rejected the navmesh" reading, which the
+    2026-07-27 runtime captures REFUTED (navOK=0 at ENTER is the normal in-progress
+    state). The real, runtime-proven crash class is the malformed REC02 container body,
+    now gated at P0 by MAP-NAV-5/MAP-NAV-6. Keeping MAP-NAV-4 at P0 would have a future
+    lane chase a dead premise and treat a non-defect as a launch blocker, so it is
+    demoted to advisory and its two whitelist suppressions are removed (a P2 does not
+    gate, so suppression is both unnecessary and a place for false "latent P0" claims to
+    hide). Retirement protocol: nothing deleted - the classifier, the standalone reporter
+    and its planted negative test all stay; no ruling in docs/WILL_RULINGS.md names
+    MAP-NAV-4 or isolated-load co-residency (checked 2026-07-28, R-1..R-61).
+    See scan_isolated_load_risk for the full evidence status.
+    docs/reports/b87_bloodcave_navok_rca.md; docs/reports/b89_ocean_ext05_hotfix.md."""
     if not ctx.base_level_guids:
-        # Fail loud, never pass blind: the provenance exclusion needs the stock
-        # base-game Levels.arc (cfg base_game_dir). run_contracts supplies it by default.
-        return [V('MAP-NAV-4', 'P1', '(base-game Levels.arc unavailable)',
-                  'cannot verify isolated-load navmesh safety: the stock base-game '
+        # Report, never pass blind - but at P2: an ADVISORY that cannot run must not
+        # block a build (the provenance exclusion needs the stock base-game Levels.arc
+        # via cfg base_game_dir; run_contracts supplies it by default).
+        return [V('MAP-NAV-4', 'P2', '(base-game Levels.arc unavailable)',
+                  'isolated-load navmesh SHAPE advisory did not run: the stock base-game '
                   'Levels.arc was not loaded, so SV-custom vs base/XPack level provenance '
-                  'cannot be established - failing loud rather than passing blind',
+                  'cannot be established - reported rather than passed silently',
                   'set cfg base_game_dir to the TQAE install (Resources/Levels.arc)')]
     v = []
     for c in scan_isolated_load_risk(ctx.levels, ctx.blob, ctx.class_of, ctx.base_level_guids):
-        v.append(V('MAP-NAV-4', 'P0', c['level'],
-                   'SV-custom save/respawn chamber has a MULTI-GUID navmesh: it can load '
-                   'in isolation on spawn, but ProcessRLTD\'s live-residency gate needs '
-                   'grid-neighbour levels resident that are NOT loaded on a fresh spawn '
-                   '-> navmesh load fails (navOK=0) and the region code null-derefs the '
-                   'absent navmesh = the deterministic blood-cave crash (b87)',
+        v.append(V('MAP-NAV-4', 'P2', c['level'],
+                   'ADVISORY (not a demonstrated defect): SV-custom save/respawn chamber '
+                   'carries a MULTI-GUID navmesh, so its load names grid-neighbour levels '
+                   'that need not be resident when the chamber loads in isolation. The '
+                   'residency-proof shape is guid_count == 1 (stock-normal, runtime-proven). '
+                   'The b87 crash law behind the old P0 severity is REFUTED; the real crash '
+                   'class is a malformed container body (MAP-NAV-5/MAP-NAV-6)',
                    f'shrine(s)={c["shrines"]}; navmesh guid_count={c["guid_count"]} '
                    f'neighbour-deps={c["neighbours"]}; own GUID {c["guid"].hex()[:8]} absent '
                    f'from stock base-game Levels.arc (SV-custom, not region-packed)'))
+    return v
+
+
+# --- MAP-EMPTY-1: depopulated-level regression guard ------------------------
+# A level that is POPULATED in the stock base game but ships with an EMPTY 0x05
+# placed-instance section in our map has lost every monster, prop, container and
+# NPC it ever had: geometry and navmesh intact, world empty. Nothing in the build
+# should ever produce that, so any NEW member of this set is a build regression.
+#
+# The 34 entries below are the DONOR-INHERITED baseline, frozen 2026-07-28 from a
+# three-way census (vanilla vs ours vs our own build history). They are NOT ours to
+# fix here and are NOT a regression: the identical 34 levels, at byte-identical blob
+# sizes, are empty in EVERY map we have ever built (build19-baseline, build30-
+# canonical, Levels_deployed_prev and current are set-identical), so the depopulation
+# arrives in the SVAERA AE base map our merge takes as its donor - our pipeline never
+# touches these levels. Confirming that against the donor arc needs SVC_SVAERA_ARC
+# (unset in this environment), so attribution is recorded, not closed: see
+# BL-DEBT-EMPTYLVL-1 in docs/BACKLOG.md.
+#
+# RETIREMENT PROTOCOL: do NOT delete entries to make the gate green. An entry leaving
+# this set means a level GAINED its entities back, which is a real change that must be
+# reviewed and re-frozen deliberately (the gate reports it rather than silently passing).
+DONOR_DEPOPULATED_LEVELS = {
+    # level path (lowercased, '/'-normalized)                       : vanilla 0x05 count
+    'xpack2/levels/celticheartlands/underground/hercynianforest03_cave.lvl': 257,
+    'xpack2/levels/primrose/delphiactorstemple.lvl': 24,
+    'xpack2/levels/primrose/primrosegrid01.lvl': 1778,
+    'xpack4/levels/act1/underground/devcave01.lvl': 314,
+    'xpack4/levels/act1/underground/devcave02.lvl': 221,
+    'xpack4/levels/act1/underground/devcave03.lvl': 245,
+    'xpack4/levels/act1/underground/devcave04.lvl': 215,
+    'xpack4/levels/act1/underground/devcave05.lvl': 117,
+    'xpack4/levels/act1/underground/devcave06.lvl': 8,
+    'xpack4/levels/act1/underground/devcave07.lvl': 9,
+    'xpack4/levels/act1/underground/devcave08.lvl': 7,
+    'xpack4/levels/act1/underground/devcave09.lvl': 13,
+    'xpack4/levels/act1/underground/devcave12.lvl': 1,
+    'xpack4/levels/act1/underground/devcave13.lvl': 11,
+    'xpack4/levels/act2/12thqlandia/dathq01.lvl': 25,
+    'xpack4/levels/act2/12thqlandia/dathq02.lvl': 24,
+    'xpack4/levels/act2/12thqlandia/dathq03.lvl': 31,
+    'xpack4/levels/act2/12thqlandia/dathq04.lvl': 23,
+    'xpack4/levels/act2/12thqlandia/dathq05.lvl': 233,
+    'xpack4/levels/act2/12thqlandia/dathq06.lvl': 175,
+    'xpack4/levels/act4/underground/devmaze01.lvl': 145,
+    'xpack4/levels/act4/underground/devmaze02.lvl': 147,
+    'xpack4/levels/act4/underground/devmaze03.lvl': 145,
+    'xpack4/levels/act4/underground/devmaze04.lvl': 144,
+    'xpack4/levels/act4/underground/devmaze05.lvl': 157,
+    'xpack4/levels/act4/underground/devmaze06.lvl': 147,
+    'xpack4/levels/act4/underground/devmaze07.lvl': 144,
+    'xpack4/levels/act4/underground/devmaze08.lvl': 171,
+    'xpack4/levels/act4/underground/devmaze09.lvl': 169,
+    'xpack4/levels/act4/underground/devmaze10.lvl': 135,
+    'xpack4/levels/act4/underground/devmaze11.lvl': 145,
+    'xpack4/levels/act4/underground/devmaze12.lvl': 134,
+    'xpack4/levels/act4/underground/devmaze13.lvl': 148,
+    'xpack4/levels/act4/underground/devmaze14.lvl': 169,
+}
+
+
+def scan_depopulated_levels(levels, blob_of, base_pop):
+    """Levels populated in the stock base map but EMPTY in ours.
+
+    Returns [{'level','base_count'}, ...] for every shared level whose base 0x05
+    instance count is > 0 and whose count in OUR map is 0. Pure function so the
+    negative test can drive it with synthetic inputs.
+    """
+    out = []
+    for lv in levels:
+        key = lv['fname'].lower().replace('\\', '/')
+        bc = base_pop.get(key, 0)
+        if bc <= 0:
+            continue
+        _s, insts = parse_0x05(blob_of(lv))
+        if not insts:
+            out.append({'level': key, 'base_count': bc})
+    return out
+
+
+def contract_depopulated_levels(ctx):
+    """(11) MAP-EMPTY-1: no level may ship with its entire placed-entity set gone.
+
+    A level present in both the stock base game and our map, populated there and
+    EMPTY here, has lost every monster / prop / container / NPC while keeping its
+    geometry and navmesh - a silently empty world the player can still walk into.
+    34 such levels are inherited from the SVAERA AE donor map and are frozen in
+    DONOR_DEPOPULATED_LEVELS; ANY level outside that inventory is a build regression
+    introduced by our own pipeline. Discovered 2026-07-28 while closing
+    RESPAWN-GREECEUG02, whose "missing respawn shrine" turned out to be one entity of
+    257 lost in a wholly depopulated level."""
+    if not ctx.base_level_pop:
+        # Fail loud, never pass blind (same law as MAP-NAV-4): without the stock map
+        # there is no baseline to compare against.
+        return [V('MAP-EMPTY-1', 'P1', '(base-game Levels.arc unavailable)',
+                  'cannot verify depopulated levels: the stock base-game Levels.arc was '
+                  'not loaded, so the vanilla population baseline is unknown - failing '
+                  'loud rather than passing blind',
+                  'set cfg base_game_dir to the TQAE install (Resources/Levels.arc)')]
+    v = []
+    found = scan_depopulated_levels(ctx.levels, ctx.blob, ctx.base_level_pop)
+    found_keys = set(c['level'] for c in found)
+    for c in sorted(found, key=lambda c: -c['base_count']):
+        if c['level'] in DONOR_DEPOPULATED_LEVELS:
+            continue
+        v.append(V('MAP-EMPTY-1', 'P1', c['level'],
+                   'level ships with an EMPTY 0x05 placed-instance section but is '
+                   'populated in the stock base game: every monster, prop, container '
+                   'and NPC is gone while the geometry and navmesh remain (a silently '
+                   'empty world the player can still enter)',
+                   f'base-game 0x05 instances={c["base_count"]}, ours=0; not in the '
+                   f'frozen DONOR_DEPOPULATED_LEVELS inventory of '
+                   f'{len(DONOR_DEPOPULATED_LEVELS)} donor-inherited levels, so this is '
+                   f'a regression introduced by our build'))
+    # The inventory is a frozen baseline, not a mute button: a level that RECOVERED its
+    # entities must be re-frozen deliberately rather than drifting silently.
+    for key in sorted(set(DONOR_DEPOPULATED_LEVELS) - found_keys):
+        if key not in ctx.base_level_pop:
+            continue
+        v.append(V('MAP-EMPTY-1', 'P2', key,
+                   'level is in the frozen DONOR_DEPOPULATED_LEVELS inventory but is no '
+                   'longer depopulated: it regained its placed entities. This is likely '
+                   'good news, but the inventory must be re-frozen deliberately',
+                   'remove it from DONOR_DEPOPULATED_LEVELS in the same commit that '
+                   'explains why it came back'))
     return v
 
 
@@ -1633,21 +1877,26 @@ CONTRACTS = [
                      'dereferenced on zone teardown -> the deterministic 0xc0000005 blood-cave '
                      'crash (docs/reports/b82_bloodcave_crash_rca.md; the placed-record '
                      'NON-EXISTENCE class).'},
-    {'id': 'MAP-NAV-4', 'name': 'SV-custom respawn chamber navmesh is isolated-load-safe (crash class)',
-     'asserts': 'every SV-CUSTOM level (own GUID absent from the stock base-game Levels.arc) '
-                'that hosts a StrategicMovementRespawnShrine (a save/respawn point loadable in '
-                'isolation) has a single-own-GUID navmesh (guid_count == 1). Inherited base/IT/'
-                'XPack respawn chambers (GUID present in stock, region-packed so neighbours stay '
-                'co-resident) are the proven-safe control and are excluded by provenance.',
-     'derived_from': 'the 2026-07-17 Frida probe pinned the recurring blood-cave crash at '
-                     'new_secretdoor_transitionhallway (respawn_hadescave01): its 3-GUID '
-                     'grid-seam navmesh fails ProcessRLTD\'s live-residency gate on isolated '
-                     'load (navOK=0) and the region code null-derefs the absent navmesh '
-                     '(Engine RVA 0x20e270) - docs/reports/b87_bloodcave_navok_rca.md. The stock '
-                     'game ships 264 respawn+multi-GUID chambers that reload fine (region-packed, '
-                     'co-resident), so "respawn + multi-GUID" is NOT the crash law; the SV-custom '
-                     'grid-shifted provenance is. This is the RESIDENCY half MAP-NAV-1 (static '
-                     'GUID resolution) cannot see.'},
+    {'id': 'MAP-NAV-4', 'name': 'SV-custom respawn chamber navmesh shape (P2 ADVISORY - not a crash gate)',
+     'asserts': 'ADVISORY ONLY, reported at P2 and never blocking: every SV-CUSTOM level (own GUID '
+                'absent from the stock base-game Levels.arc) that hosts a '
+                'StrategicMovementRespawnShrine (a save/respawn point loadable in isolation) '
+                'carries the residency-proof single-own-GUID navmesh shape (guid_count == 1). '
+                'Inherited base/IT/XPack respawn chambers (GUID present in stock) are excluded by '
+                'provenance - the stock game ships 264 respawn+multi-GUID chambers that reload '
+                'fine, so a multi-GUID navmesh is not itself a defect anywhere.',
+     'derived_from': 'DEMOTED FROM P0 TO P2 ADVISORY on 2026-07-28 (BL-b89-DEBT-4A). It was '
+                     'authored from the b87 reading that `navOK=0` at ENTER meant ProcessRLTD had '
+                     'REJECTED the navmesh; the 2026-07-27 runtime captures REFUTED that - navOK=0 '
+                     'at ENTER is the normal in-progress state (LEAVE flips it to 1) and the real '
+                     'crash class was the malformed 148-byte REC02 body, now gated at P0 by '
+                     'MAP-NAV-5/MAP-NAV-6 (docs/reports/b89_ocean_ext05_hotfix.md sec 1+6). What '
+                     'survives is a hardening preference: ProcessRLTD\'s per-GUID live-residency '
+                     'check is still disasm-proven (Engine 0x101f4ba0 `cmp [reg+0x50+idx*4],0`), '
+                     'and guid_count == 1 is stock-normal (251 base levels) plus runtime-proven on '
+                     'our own map (new_secretdoor gc=1, ENTER+LEAVE al=1), so it is residency-proof '
+                     'by construction. No SV-custom multi-GUID navmesh has ever been observed '
+                     'failing to load. docs/reports/b87_bloodcave_navok_rca.md (premise refuted).'},
     {'id': 'MAP-ZONE-1', 'name': 'b46 zone-override targets resolve',
      'asserts': 'every b46 LEVELS-entry teleport-map zone `dbr` override target '
                 '(svaera_plus_portals.LEVEL_ZONE_DBR_OVERRIDES) exists in the arz union.',
@@ -1671,6 +1920,19 @@ CONTRACTS = [
                      'champion, never THAT boss). egg_blooddragon was the only pool in 51k '
                      'records making a Boss the SOLE champion entry - docs/reports/'
                      'b91_devourer_chest_spawn.md.'},
+    {'id': 'MAP-EMPTY-1', 'name': 'no silently depopulated levels',
+     'asserts': 'no level that is populated in the stock base game ships with an EMPTY '
+                '0x05 placed-instance section, except the 34 donor-inherited levels '
+                'frozen in DONOR_DEPOPULATED_LEVELS.',
+     'derived_from': 'every playable base-game level carries placed entities; an empty '
+                     '0x05 with an intact 0x0b navmesh is a level whose monsters, props, '
+                     'containers and NPCs were all dropped while the geometry survived '
+                     '(found 2026-07-28 closing RESPAWN-GREECEUG02: the "missing respawn '
+                     'shrine" was 1 of 257 entities lost in a fully depopulated '
+                     'HercynianForest03_Cave). The 34-level baseline is set-identical and '
+                     'blob-size-identical across build19 / build30 / deployed_prev / '
+                     'current, so it is inherited from the SVAERA AE donor, not produced '
+                     'by our build - see BL-DEBT-EMPTYLVL-1.'},
 ]
 
 _CONTRACT_FUNCS = [
@@ -1678,6 +1940,7 @@ _CONTRACT_FUNCS = [
     contract_doors, contract_sd_tags, contract_placed_refs,
     contract_bloodcave_placed, contract_zone_overrides,
     contract_navmesh_coresidency, contract_chest_guard,
+    contract_depopulated_levels,
 ]
 
 

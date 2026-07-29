@@ -26,7 +26,7 @@ NEGATIVE 11: a Leinth chest whose bespoke mesh was clobbered must FAIL
 NEGATIVE 12: a Leinth chest switched to the champions' POORER bossgoldgenerator
              must FAIL (that is a gold nerf: x24/x32 vs typhon's x48/x64).
 NEGATIVE 13: a Leinth VARIANT repointed at the generic orb must FAIL
-             (her bespoke "Leinth's Essense" proxy must stay hers - R-71).
+             (her bespoke "Leinth's Essense" proxy must stay hers - R-73).
 NEGATIVE 14: an apex loot group cut below her ORIGINAL table's chance must FAIL
              (the computed no-nerf proof).
 

@@ -102,7 +102,7 @@ to the SAME apex tables, so all three bosses share one identical calibre:
                                  .levelEquationFile -> containerlevelequation_all
 
 Leinth's monster records are NOT touched at all: `treasureProxyName` still names
-her own `bosschestproxy_leinth`, so R-71's "her bespoke chest survives" guarantee
+her own `bosschestproxy_leinth`, so R-73's "her bespoke chest survives" guarantee
 (asserted by tools/patches/leinth_wave.py) stays green by construction.
 
 DELIBERATELY NOT CHANGED ON HER CHESTS, each for a stated reason:
@@ -137,7 +137,7 @@ RULINGS
 R-47 mandates the un-named generic apex orb (`genericbossorb_04`), explicitly NOT
 a bespoke "X's Essence" per boss. genericbossorb_05 keeps R-47's substance intact
 (un-named, generic, shared by both champions, no NEW bespoke essence authored) but
-adds a TIER the ruling does not mention -> ledgered as R-70 in
+adds a TIER the ruling does not mention -> ledgered as R-72 in
 docs/WILL_RULINGS.md. Leinth's pre-existing bespoke chest is neither created nor
 retired by this module, only re-tiered, so R-47's "no bespoke essence per boss"
 prohibition (which is about AUTHORING new ones) is not engaged.
@@ -167,7 +167,7 @@ tools/debug/negtest_uber_apex_orb.py. See docs/reports/b94_leinth_wave.md.
 import apply_svc_patches as asp
 
 MODULE_NAME = ("uber apex orb - ONE apex drop calibre for both Toxeus champions "
-               "AND Leinth (R-70)")
+               "AND Leinth (R-72)")
 
 # ── the two champions (sourced from the monolith so an upstream rename can never
 # silently desync this module's scope, exactly as toxeus_souls_100 does) ───────
@@ -622,7 +622,7 @@ def apply(db, tags):
             "nerfed.")
 
     # (iv) Her proxy, her pools and her three MONSTER records are untouched, so
-    #      R-71's "her bespoke chest survives" guarantee holds by construction.
+    #      R-73's "her bespoke chest survives" guarantee holds by construction.
     leinth_untouchable_after = _snapshot(db, list(leinth_untouchable_before))
     if leinth_untouchable_after != leinth_untouchable_before:
         moved = sorted(r for r in leinth_untouchable_before
@@ -630,7 +630,7 @@ def apply(db, tags):
         raise SystemExit(
             "[uber_apex_orb] Leinth's proxy/pools/monster records changed (%s). "
             "This module upgrades her CHESTS only; her treasureProxyName must "
-            "keep naming her own bespoke chest (R-71 asserts it too)." % moved)
+            "keep naming her own bespoke chest (R-73 asserts it too)." % moved)
 
     # (v) On her chests, EXACTLY the two intended fields moved and every bespoke
     #     identity field survived, proven field-by-field rather than in prose.
@@ -850,7 +850,7 @@ def verify(db, tags=None):
 
     if problems:
         raise SystemExit(
-            "[uber_apex_orb] R-70 VERIFY FAILED (one apex calibre for all three "
+            "[uber_apex_orb] R-72 VERIFY FAILED (one apex calibre for all three "
             "blood-cave bosses):\n  - " + "\n  - ".join(problems))
     print("  [uber_apex_orb] verify OK: both champions on genericbossorb_05 and "
           "Leinth's 3 chests on the SAME apex tables + level equation; chain "

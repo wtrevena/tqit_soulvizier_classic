@@ -272,6 +272,10 @@ each of the 8 printed as `EMPTY container: <lvl> (224 B 0x0b, no 0x0a geometry)`
   defect and clears on the fix.
 - `MAP-NAV-4` (b87 co-residency gate) negtest PASS; on both rebuilt variants it flags **exactly the
   2 whitelisted debt chambers** (`drxBC3`, `RogueEncampment`) - identical to build48, no regression.
+  > **UPDATE 2026-07-28 (BL-b89-DEBT-4A):** sec 1's refutation of `navOK=0` above pulled the floor
+  > out from under MAP-NAV-4's P0 crash law, so it was **demoted to a P2 SHAPE ADVISORY** and its
+  > **two whitelist entries were removed** (they claimed "latent P0 crashes" on the dead premise).
+  > The same 2 chambers are still reported, now as visible non-blocking advisories.
 - `_negtest_map.py`: **38/38 PASS** (36/36 when no `Quests.arc` is reachable and DOORS skips).
 
 **Deploy.** Rollback copy of the live build48 DEV map taken first:
