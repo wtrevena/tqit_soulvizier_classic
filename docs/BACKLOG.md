@@ -1,6 +1,6 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## BUILD60-DEV GATE RECORD - b94 ROUND 3: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build60-dev`)
+## BUILD64-DEV GATE RECORD - b94 ROUND 3: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build64-dev`)
 
 > ⭐⭐ **WILL ANSWERED THE FOUR DESIGN QUESTIONS ON 2026-07-27. Three of the four answers go AGAINST
 > the implementer's recommendation. They are law; this round implements them, including the

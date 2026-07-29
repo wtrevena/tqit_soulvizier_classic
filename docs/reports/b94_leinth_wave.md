@@ -696,7 +696,7 @@ preserved verbatim at
 > R-numbers: the b94 entries were renumbered +2 (R-70..R-73 -> R-72..R-76) when main landed
 > its own R-70/R-71 in the 2026-07-28 ledger-hygiene pass. No ruling text changed.
 
-## 5. ROUND 3 (2026-07-29) - WILL ANSWERED THE FOUR QUESTIONS: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build60-dev`)
+## 5. ROUND 3 (2026-07-29) - WILL ANSWERED THE FOUR QUESTIONS: Leinth's honour guard, the staged poison rigs, the swarm kept, the no-kill exit (2026-07-29, branch `feat/leinth-wave`, tag `build64-dev`)
 
 > ⭐⭐ **WILL ANSWERED THE FOUR DESIGN QUESTIONS ON 2026-07-27. Three of the four answers go AGAINST
 > the implementer's recommendation. They are law; this round implements them, including the
