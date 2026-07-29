@@ -323,9 +323,62 @@ py tools/debug/b100_map_diff.py --a local/b100_base/Levels_merged.arc --b local/
   MAP DIFF: PASS - every change attributed
 ```
 
-### 5.3 Artifacts produced
+### 5.3 Artifacts this lane actually built
 
-_(filled in by section 5.4 below - md5s of the artifacts this lane actually built)_
+All built in `.claude/worktrees/sanctuary-populate/` with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0
+SVC_RELEASE_DROPS=1`. Nothing was written to `CustomMaps` and nothing outside this worktree was
+modified.
+
+| artifact | md5 | size | note |
+|---|---|---:|---|
+| `local/b100_new/Levels_merged.arc` | `48a51961bb3a36c39f82759845041f14` | 688,692,859 B | **the deliverable** |
+| `local/b100_base/Levels_merged.arc` | `718abad63e7813dc78c4b169df969fd5` | 688,692,225 B | baseline (merge-base tree, same env) |
+| `work/SoulvizierClassic/Resources/Quests.arc` | `5e664c7b190965fd69f6ff15d77d85e4` | 194,926 B | COUPLED with Levels; **byte-identical to the deployed canonical** |
+| `work/SoulvizierClassic/Database/SoulvizierClassic.arz` | `4378b617fefb2014e382bb5931e7d605` | 55,460,430 B | 51,108 records; **UNCHANGED by this lane** |
+| `work/SoulvizierClassic/Resources/Text.arc` | `c33b6abe3d61559785ee00ab3280a765` | 89,024 B | COUPLED with the arz; **UNCHANGED by this lane** |
+
+Two independent cross-checks fell out of this:
+
+- **`Quests.arc` rebuilds byte-identical to the artifact already deployed** (`5e664c7b…`). The
+  coupled quest artifact is provably unchanged, and the quest build is reproducible from a cold
+  worktree.
+- **The `arz` and `Text.arc` md5s reproduce the b98 endless-hunt lane's recorded artifacts exactly**
+  (`4378b617fefb2014e382bb5931e7d605` / `c33b6abe3d61559785ee00ab3280a765`, BUILD65-DEV gate record).
+  This branch is based on `4f0299c`, which is that lane's tip, and an independent build in a
+  different worktree on a different day reproduces both hashes to the byte. That is a determinism
+  proof for the DB/Text half of the pipeline as well as evidence this lane changed neither.
+
+### 5.4 Every other gate, and its delta against the baseline
+
+The point of running each of these on **both** maps is that an absolute verdict says nothing; a
+zero delta does.
+
+| gate | baseline | new | delta |
+|---|---|---|---|
+| `tools/verify_merged_bc_navmeshes.py` | 24/24 real navmeshes match donor, 7 ocean stubs valid | **24/24, 7 valid** | none |
+| `tools/contracts/run_contracts.py --only map` (19 contracts) | 6 viol (0 P0, 0 P1, 6 P2), **GATE PASS** | 6 viol (0 P0, 0 P1, 6 P2), **GATE PASS** | **identical violation set, item for item** |
+| `tools/contracts/gate_placed_record_resolution.py` | 346 missing placed refs, 397 seeds, 14,241 walked | 346 / 397 / 14,241 | **zero delta** - a PRE-EXISTING failure on `main`, not this lane's, and none of the 14 records this lane places is in the missing set |
+| `tools/debug/gate_landing_clearance.py --wiring v1` | - | **PASS=27, GATE G-LAND PASS** | n/a (destination-set gate) |
+| `tools/validate_tags.py` | - | **RESULT: PASS** - all 366 referenced mod tags present; 2 pre-existing base/SV monster-name warnings (backlog, non-blocking) | n/a (DB gate, DB unchanged) |
+| `tools/gate_sanctuary_population.py` | (gate is new) | **PASS**, 8/8 planted negatives caught | n/a |
+
+⚠️ **One measurement mistake worth recording:** the first `verify_merged_bc_navmeshes` run reported
+`FAIL (1): new_secretdoor_transitionhallway`. That run used the wrong environment variable
+(`SVC_MAP_ARC` instead of `SVC_MERGED_ARC`) and therefore read the **default** artifact -
+main's `local/Levels_merged.arc`, a different and older build - not either of this lane's maps. Both
+of this lane's maps read **24/24**. A verifier that silently falls back to a default path will
+happily grade the wrong file.
+
+### 5.5 Determinism of the derivation
+
+```
+PYTHONHASHSEED=0 -> local/b100_base/placements.json  md5 2d3cf483844086fe845ba48f4bab106e
+PYTHONHASHSEED=1 -> local/b100_base/det_1.json       md5 2d3cf483844086fe845ba48f4bab106e
+PYTHONHASHSEED=2 -> local/b100_base/det_2.json       md5 2d3cf483844086fe845ba48f4bab106e
+```
+
+Identical across three hash seeds, and the printed spec block is identical too (the only differing
+line is the output filename). There is no RNG and no set-iteration-order dependence.
 
 ---
 
@@ -357,9 +410,38 @@ expensive than the population work. `BL-b100-DEBT-3`.
 ## 7. PLAYER-SURFACE CHECKLIST (CLAUDE.md law #3)
 
 The lane creates no record, so every player-visible surface it exposes belongs to content that
-already ships and is already fought elsewhere in this same cave.
+already ships and is already fought elsewhere in this same cave. Nothing is deferred, because there
+is nothing new to defer: no new name, icon, portrait, race, sound, tooltip, drop or unlock exists.
 
-_(measured table filled in by section 7.1)_
+```
+py tools/debug/b100_player_surfaces.py <arz> <Text.arc> <Levels.arc>
+
+  Text.arc tags loaded: 4491
+  distinct creature records the 14 new encounters can spawn: 39
+  ... every one is Class Monster, every name tag resolves in the mod's Text.arc, and
+      every one ALREADY spawns in the blood cave - most of them in drxBC3 itself:
+  01_bladedancer_35/36/37   tagAbomDW         5 levels incl. drxBC3
+  02_spearrunner_37/38/39   tagAbomSpear      5 levels incl. drxBC3
+  03_ravager_38/39/40       tagAbomBrute      4 levels incl. drxBC3
+  04_spiritcaller_40/41/42  tagAbomShaman     2 levels incl. drxBC3
+  a_acolyte_28/29/30        tagBWacolyte      6 levels incl. drxBC3
+  a_small_blooddemon_25/26/27  tagBDLesser    4 levels incl. drxBC3
+  b_med_blooddemon_30/31/32    tagBDMedium   11 levels incl. drxBC3
+  c_large_blooddemon_38/39/40  tagBDLarge     4 levels incl. drxBC3
+  b_bloodhound_33/34/35     tagBDHoundSmall   7 levels incl. drxBC3
+  c_bloodhound_40/42/44     tagBDHoundLarge   7 levels incl. drxBC3
+  b_seductress_39/41/43     tagBWseductress   6 levels incl. drxBC3
+  c_disciple_39/41/42       tagBWdisciple     8 levels incl. drxBC3
+  d_reaver_40/41/42         tagBWreaver       2 levels incl. drxBC3
+
+  PLAYER-SURFACE CHECKLIST: PASS (0 problem record(s))
+```
+
+⚠️ The first cut of this probe hand-rolled a Text.arc reader and reported **39 false failures**,
+because it split the UTF-16 `modstrings.txt` on `b'\n'` and produced 4,491 nonsense keys. Fixed by
+using the repo's own `validate_tags.collect_text_arc_tags`. The repo's standing law about not
+inventing a parser applies to probes too - this is the second time in this lane that ignoring it
+produced a confident wrong answer (the first was the design pass's own flat-XZ coordinate model).
 
 ---
 
