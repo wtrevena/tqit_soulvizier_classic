@@ -1,6 +1,101 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## BUILD58-DEV GATE RECORD - b97 SOUL-vs-MONSTER IDENTITY AUDIT round 1 (2026-07-28, branch `fix/soul-identity`, tag `build58-dev`)
+## BUILD59-DEV GATE RECORD - b97 SOUL-vs-MONSTER IDENTITY AUDIT round 2 (2026-07-28, branch `fix/soul-identity`, tag `build59-dev`)
+
+**SUPERSEDES the build58-dev record below.** Round 1 was correct in what it did and **incomplete in
+what it looked at**; the vet returned NO-GO on completeness and was right.
+
+**THE GAP:** both the audit and the shipped gate were scoped by `_is_creature()`, requiring the
+record path to contain `\creature\` or `\creatures\`. **97 live soul carriers were never judged** -
+all 25 of `records\drxcreatures\` (shipping DRX/Urder content), 51 in
+`records\item\equipmentring\soul\test\`, 4 in `records\test\`, 10 pets, 5 skill-summons, 2 quest
+proxies. The 850-row table contained **zero** drxcreatures rows, and the module's "roster-wide,
+list-free, any future content module fails the build" claim was simply false for anything authored
+outside `\creature(s)\`.
+
+**WHAT WAS HIDING IN IT - a real 19th mismatch of exactly Will's reported class:**
+`records\drxcreatures\xurder\d2npc\01_akara.dbr` displays **"Akara"** (`tagD2NPCakara`), is
+`Quest`-classified, and dropped **"Kallixenia ~ Liche Queen Soul"** at **66%**, while the real
+`Kallixenia ~ Liche Queen` (`xpack\...\abyssalliche\xsq02_lichequeen_36.dbr`) drops an
+identically-named soul at the same 66%. **The wire is OURS** -
+`apply_svc_patches._create_kallixenia_soul` hard-codes that monster while naming the soul after a
+different creature; the function's own docstring shows the author believed the record *was*
+Kallixenia. Three more (`soul\test\us_lysiaspellbreaker_15{,_e,_l}`, displaying "Nenea Sharpclaw"
+while carrying Lysia Spellbreaker's soul) were hidden the same way.
+**RECORDS TOUCHED: 18 -> 22.**
+
+**THREE MORE DEFECTS FIXED IN THE SAME PASS:**
+1. **Grouping keyed on the .dbr filename** - the gate repeated, internally, the very
+   filename-is-identity mistake it exists to punish. It **merged** `soul\abyssalliche\kallixenia_*`
+   with `soul\svc_uber\kallixenia_*` (two genuinely different items sharing a basename) and would
+   **split** two items sharing a name. Grouping is now the soul's **DISPLAY NAME**; `_soul_family()`
+   survives for reporting only and is directory-qualified. New **ITEM-DETACH GUARD** fails the build
+   if any soul ITEM loses its last live carrier without a reviewed waiver.
+2. **`apply()` judged PRE-F6 names.** `apply()` runs in `run_registry()`, *before*
+   `run_registry_gates()` calls `_apply_soul_naming_standard()` (the documented "final authoritative
+   override of the `tags` dict"); `verify()` runs *after*. So the two passes could disagree - and
+   did: `tagSVCSoulKallixenia` is `{^F}Soul of Kallixenia` at apply() time and
+   `{^F}Kallixenia ~ Liche Queen Soul` in the shipped `Text.arc`. `_display_tags()` now applies the
+   same override so both passes judge the text the player sees.
+3. **ARCHETYPE vs NAME-DRIFT was split by a row COUNT**, so three archetype rows were filed as "by
+   design, just spelled differently" - **Cynisca, Princess of Sparta**, **Corpse Wake** and
+   **Meritamen the Shadowcaller** - and report §3 contradicted §5b about Meritamen. The split is now
+   data-derived (does a record owning that soul name exist, carrying the same item, gated dead?).
+   All three are ARCHETYPE-SHARED; the true 1:1 drift **Wither Mound <-> Speckled Jim** moves to
+   NAME-DRIFT. Two reproducibility nits also fixed: both entrypoints hard-defaulted to the gitignored
+   `<repo>/upstream/...` (absent in a fresh worktree, so neither tool would run), and
+   `--markdown out.md` leaked its value into the positional list and crashed the tool.
+
+**EXPLICIT SCOPE DECISION (the vet asked):** **PETS ARE NOT CARRIERS** (record type `Pet` or a
+`\pets\` path segment), nor are quest **spawn proxies** (`\proxies\`). A pet yields no loot to the
+player; counting them is *harmful*, not merely useless - the 0.5% monster-scroll pet
+`monsterscrolls\pets\maenad_sorceress_20.dbr` displays "Maenad ~ Sorceress" and would be crowned
+rightful owner of the Maenad Sorceress Soul, convicting the real 50% **Boss** Meritamen. Verified
+empirically. Excluding a record can only ever REMOVE a conviction, so the exclusion fails safe by
+construction; `T7` locks it. **`records\test\` and `soul\test\` monsters DO count.**
+
+**AUDIT SCOPE (round 2, roster-wide):** 929 records with a live soul drop; minus 3 pets + 2 proxies =
+**926 JUDGED live carriers** (Hero 626 / Boss 174 / Quest 121 / Common 5), **615 distinct soul
+NAMES**, 628 distinct monster display names, 9 skipped as unjudgeable (no `description` tag - never
+convicted). Verdicts on the pre-fix ground truth: **MATCH 878 / MISMATCH 22 / ARCHETYPE-SHARED 14 /
+NAME-DRIFT 12**. On the fixed build: 904 live rows, **MISMATCH 0**. 926 - 22 = 904, exact.
+Full **926-row** table: `docs/reports/b97_soul_identity_table.md`.
+
+**BUILD HASHES** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`; BUILD ONLY, **NOT deployed**):
+
+| artifact | md5 |
+|---|---|
+| **ROUND-2 arz FOR THE ORCHESTRATOR** `work/b97r2/Database/SoulvizierClassic.arz` | **`41bc1d9e75df01ee538e2b25f8e0bb7f`** (55,424,077 B) |
+| round-1 arz (`3785843`, superseded) | `fcc6fad38d9b8a0fd54a337e23e5ffa8` (55,424,089 B) |
+| baseline arz (main `8c3445c`) | `1c27d5fa650b5c076696db4ad379672f` (55,424,142 B) |
+| `Text.arc` | `fcca49277b9d31ed451e4a6843898843` - **byte-identical to round 1 AND baseline**, 0 tags authored |
+| `uber_soul_tags.txt` | `49b6d85ba15236aa5df60f610e3a7bf0` - byte-identical to round 1 |
+
+**GATES:** DB build **exit 0**; `[33/34] soul_identity -> modified 22 record(s), 0 tag(s)`; step-4
+**`[soul_identity] verify OK`**. **RECORD-DIFF r2 vs r1: 0 added / 0 removed / 4 modified**, one
+field each (`chanceToEquipFinger2` 66->0 and 2->0), **dtype 1 FLOAT preserved**; chained with round
+1's proven 18 vs `main`, the total is **0 added / 0 removed / 22 modified, one field each**.
+`validate_tags` **PASS** (356/356 mod tags; 2 pre-existing base-name WARNs). `verify_soul_drop_rates
+--gate` **PASS** (832 enabled -> 100 / 446 gated stay 0 - *identical to round 1*, because all four
+new records sit outside that gate's own `\creature(s)\` roster: **BL-b97-DEBT-10**). Contracts
+`--only souls,summons` **0 P0 / 0 P1 / 112 P2 GATE PASS**, and the round-1 arz through the identical
+invocation yields the **byte-identical violation set** (0 only-in-r1, 0 only-in-r2). Planted negative
+test **ALL 21 ASSERTIONS HELD** (new: **T6** plants a thief OUTSIDE `\creature(s)\` on the real
+`01_akara.dbr` and proves `verify()` fires - the permanent guard against re-narrowing the scope;
+**T7** proves a pet convicts nobody). The same suite run against the **round-1** arz correctly
+**FAILS T1**, naming Akara and the Lysia trio - machine-checked proof that round 1 shipped the gap.
+Ruling spot-checks: R-48 Enslaver **100.0** / Devourer **100.0**, R-45 `um_tombguardian_26` **0.0**,
+real Kallixenia still **66.0** with her soul intact, `01_akara` **0.0** with its loot ref intact.
+
+**LEDGER:** `docs/WILL_RULINGS.md` **R-49a** carries a verbatim ROUND 2 AMENDMENT. No ruling
+overturned.
+
+**OPEN DEBT:** BL-b97-DEBT-1..11. **Headline WILL DECISION (new): BL-b97-DEBT-7** - zeroing Akara
+leaves our bespoke `svc_uber\kallixenia_soul_{n,e,l}` with no carrier (item KEPT intact, name still
+obtainable from the real Kallixenia). Three options in report §8 item 5; (b) is a one-field change
+that makes Akara *be* Kallixenia, which is what our own code comment intends.
+
+## BUILD58-DEV GATE RECORD - b97 SOUL-vs-MONSTER IDENTITY AUDIT round 1 (2026-07-28, branch `fix/soul-identity`, tag `build58-dev`) - SUPERSEDED by build59-dev above
 
 **R-49a, Will 2026-07-27, verbatim:** "we also need to do an audit of the hero monsters vs the souls
 that they drop since i can see that some of the heroes are dropping the wrong souls or souls for
@@ -445,14 +540,46 @@ along automatically when the structural cluster-relocation fix lands.
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
 
-**b97 soul-vs-monster identity audit (2026-07-28, build58-dev) - NEW**
-- **BL-b97-DEBT-1 (WILL DECISION, content):** the 18 detached creatures now drop **no soul at all**
-  (Fesil the Quick, Sinnet Patchfur, Blood-Eyes, Errak Bonecarver, Sartt Soulrender, Korat Bearkin,
-  Raghd Bloatworm, Prince Ch'kik't, Wahr'Ner Shadowpaw, Nazur the Shrouded, Masai-yin the
+**b97 soul-vs-monster identity audit (2026-07-28, build59-dev round 2) - NEW**
+- **BL-b97-DEBT-1 (WILL DECISION, content):** the **22** detached creatures now drop **no soul at
+  all** (Fesil the Quick, Sinnet Patchfur, Blood-Eyes, Errak Bonecarver, Sartt Soulrender, Korat
+  Bearkin, Raghd Bloatworm, Prince Ch'kik't, Wahr'Ner Shadowpaw, Nazur the Shrouded, Masai-yin the
   Grovekeeper, Xuannu the Twilight Matron, Morbi, Mormo, Daechalcos, Thelxiepeia Venomlip, Colossal
-  Scorpion). No soul was INVENTED for them - new content is a design call under the amgoz1 creative
-  bar. Two are **Boss**-classified and most likely to be missed: **Xuannu the Twilight Matron** and
-  **Blood-Eyes**. Owner/trigger: Will approves bespoke souls (or accepts them soulless).
+  Scorpion, **Akara**, **Nenea Sharpclaw x3**). No soul was INVENTED for them - new content is a
+  design call under the amgoz1 creative bar. Two are **Boss**-classified and most likely to be
+  missed: **Xuannu the Twilight Matron** and **Blood-Eyes**. Owner/trigger: Will approves bespoke
+  souls (or accepts them soulless).
+- **BL-b97-DEBT-7 (ROUND 2, WILL DECISION, content):** zeroing **Akara** leaves our bespoke
+  `records\item\equipmentring\soul\svc_uber\kallixenia_soul_{n,e,l}.dbr` (3-tier lich-queen caster
+  soul: `lichequeen_soulstrike` proc + Death Chill/Ternion augments) with **no live carrier**, i.e.
+  currently unobtainable. Nothing deleted - item records + loot ref intact (retirement protocol) and
+  carried as the only entry in `soul_identity._ACCEPTED_ITEM_DETACH`; the *name* stays obtainable
+  from the real Kallixenia. **(a)** leave it *(shipped)*; **(b)** set `01_akara.dbr`'s `description`
+  to `xtagxQuestMonster01` so Akara IS Kallixenia (one field; the sibling decoration `x01_akara.dbr`
+  already uses that tag, and `_create_kallixenia_soul`'s own docstring intends it) - cost: two
+  creatures and two rings share one name; **(c)** author Akara his own soul and re-point the
+  lich-queen soul. Owner/trigger: Will.
+- **BL-b97-DEBT-8 (ROUND 2, P2, text/design):** three soul NAMES are each carried by **two distinct
+  item families** - `{^F}Charon Soul` (`charon\charon` + `svc_uber\boss_charon`),
+  `{^F}General Yrrt'ik Soul` (`formicid\generalyrrtik` + `svc_uber\rainbowbright`),
+  `{^F}Plague Feast Soul` (`carrionbird\plaguefeast` + `svc_uber\nomnom`). Not identity theft (every
+  carrier owns its name) so the gate leaves them alone, but the player sees two different rings with
+  the same name. Owner/trigger: the naming lane.
+- **BL-b97-DEBT-9 (ROUND 2, P2, data hygiene):** amgoz Dropbox conflict-copy creatures ship with LIVE
+  66% soul drops and are counted in the by-design buckets (`copy of am_hero_29.dbr`,
+  `um_speckledjim_45 (pcos modstridende kopi 2014-09-10).dbr`, `um_cyniga_17 (pcos ...)`,
+  `um_liophotia_18 (pcos ...)`, `boss_gorgon_sstheno_22 (amgoz-qosmio's conflicted copy ...)`). One of
+  them is half the reason Speckled Jim reads as a 2-row family. Owner/trigger: data-hygiene lane.
+- **BL-b97-DEBT-10 (ROUND 2, P2, gate scope):** `tools/verify_soul_drop_rates.py::_is_creature` still
+  has the `\creature(s)\`-only scope hole that b97r2 closed in the identity gate, so every
+  `records\drxcreatures\` boss, `records\test\` and `soul\test\` monster is outside its roster (which
+  is why the round-2 zeroes needed no new `_KNOWN_EXCEPTIONS` waivers). Widening it pulls every
+  drxcreatures boss into the RANDOM/PLACED/BOSS classifier - its own wave. Owner/trigger: next
+  drop-rate pass.
+- **BL-b97-DEBT-11 (ROUND 2, P2, tooling):** `tools/audit_soul_identity.py` resolves SV's
+  `Text_EN.arc` with a best-effort probe over several possible `check_build_inputs` function names,
+  because that resolver exposes no stable public API. Give it a documented `resolve(name)` entry
+  point and delete the probe. Owner/trigger: build-tooling lane.
 - **BL-b97-DEBT-2 (P2, upstream):** `wire_souls_to_monsters`'s NEW-wire matcher still keys on the
   .dbr FILENAME. The b97 gate catches the consequence roster-wide, but the matcher itself is
   unchanged - fixing it would move records the F1 gate currently blesses and is its own wave.

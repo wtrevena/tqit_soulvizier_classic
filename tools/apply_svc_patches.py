@@ -7184,7 +7184,25 @@ def _fix_limos_lifeeater_stub(db):
 # ── 2.4 Kallixenia the Lich Queen (D2NPC Akara) ──
 
 def _create_kallixenia_soul(db):
-    """Kallixenia (01_akara) - lich-queen caster raining soul orbs. Level 36/54/69."""
+    r"""Kallixenia (01_akara) - lich-queen caster raining soul orbs. Level 36/54/69.
+
+    b97r2 IDENTITY CONFLICT (read before re-pointing this wire). This function
+    names the soul "Kallixenia ~ Liche Queen Soul" (tagSVCSoulKallixenia) but
+    attaches it to a record whose own `description` tag, tagD2NPCakara, reads
+    "Akara". The REAL Kallixenia (xpack\creatures\monster\abyssalliche\
+    xsq02_lichequeen_36.dbr) drops an identically-NAMED soul from
+    soul\abyssalliche\ at the same 66%, so in game a monster called Akara hands
+    out the Liche Queen's soul - exactly what Will reported on 2026-07-27.
+
+    tools/patches/soul_identity.py therefore detaches this roll
+    (chanceToEquipFinger2 -> 0; the loot ref and the item records are KEPT). The
+    wire is left here ON PURPOSE rather than zeroed at the source, so that the
+    single identity rule stays the only thing that decides who loses a drop and
+    the conflict stays visible in _REVIEWED. Re-pointing it is a Will decision
+    (docs/reports/b97_soul_identity_audit.md sec 8): either give Akara his own
+    soul identity, or set this record's description to the Kallixenia tag that
+    the sibling decoration x01_akara.dbr already uses.
+    """
     MONSTER = r'records\drxcreatures\xurder\d2npc\01_akara.dbr'
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
 

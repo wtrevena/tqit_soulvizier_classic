@@ -210,7 +210,16 @@ _KNOWN_EXCEPTIONS = {
     # (chanceToEquipFinger2 -> 0; lootFinger2Item1 left intact). The RANDOM/
     # PLACED/BOSS classifier is deliberately NOT modified - it still says
     # 50/25 for these - so all 18 are waived here BY NAME, exactly like the
-    # legion_soul_stages non-terminal zeroes above. Every soul involved is
+    # legion_soul_stages non-terminal zeroes above.
+    #
+    # ROUND 2 added 4 more identity thieves (01_akara + the soul\test\
+    # us_lysiaspellbreaker_15 trio). They need NO waiver here: THIS gate is
+    # itself scoped by its own _is_creature() to paths containing
+    # \creature(s)\, and all four sit outside it (records\drxcreatures\ and
+    # records\item\equipmentring\soul\test\). Registered as BL-b97-DEBT-7 -
+    # widening this gate's roster is a separate wave because it would pull
+    # every drxcreatures boss into the RANDOM/PLACED/BOSS classifier.
+    # Every soul involved is
     # still dropped by its rightful owner (soul_identity's ORPHAN GUARD proves
     # it every build). Full table: docs/reports/b97_soul_identity_audit.md.
     **{bn: (0.0,

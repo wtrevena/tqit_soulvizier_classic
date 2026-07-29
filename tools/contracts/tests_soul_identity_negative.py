@@ -19,6 +19,21 @@ A gate that never fires is worthless. This suite proves, over a real built/shipp
                 the exact base-game trap: filename 'hero_wheedletongue_41' contains
                 'wheedletongue', yet the record is "Fesil the Quick" and must NOT
                 count as a match.
+  T6 NEGATIVE   SCOPE. A thief planted OUTSIDE \creature(s)\ - on the real shipping
+                record records\drxcreatures\xurder\d2npc\01_akara.dbr - must ALSO
+                make verify() fire. This is the round-2 regression guard: round 1
+                scoped the whole gate on the path containing \creature(s)\, so 97
+                live carriers (all of drxcreatures, records\test\, soul\test\) were
+                never judged, and a real mismatch of exactly Will's reported class
+                shipped through it. Every T2/T3 plant lived inside \creature\, so
+                the suite could not see the hole. If someone ever re-narrows the
+                scope predicate, THIS fails.
+  T7 GUARD      PETS are deliberately NOT carriers. Re-arming the monster-scroll
+                pet 'Maenad ~ Sorceress' must NOT make verify() fire, and must not
+                convict the real Boss 'Meritamen the Shadowcaller' that shares its
+                archetype soul. Counting pets would crown a 0.5% player summon the
+                "rightful owner" of an archetype soul and zero the only live
+                monster that drops it.
 
 All mutation is in-memory; no file is written.
 
@@ -34,15 +49,25 @@ sys.path.insert(0, str(_HERE))
 sys.path.insert(0, str(_HERE.parent))
 
 from arz_patcher import ArzDatabase, DATA_TYPE_FLOAT  # noqa: E402
-from audit_soul_identity import load_arc_tags  # noqa: E402
+from audit_soul_identity import (  # noqa: E402
+    load_arc_tags, resolve_mod_text, resolve_sv_text)
 
 # The planted reproduction: a REAL mismatch from the 2026-07-27 audit.
 _T2_RECORD = r"records\creature\monster\ratman\hero_wheedletongue_41.dbr"
 _T2_MONSTER = "Fesil the Quick"
 _T2_SOUL = "Wheedletongue the Magnificent"
 
-# A family with NO identity-owning carrier -> must never be flagged (orphan safety).
-_T4_FAMILY = 'satyrfiremagi'
+# A soul name with NO identity-owning carrier -> never flagged (orphan safety).
+_T4_SOUL_NAME = 'Satyr Fire Magi Soul'
+
+# The round-2 scope plant: a REAL shipping record OUTSIDE \creature(s)\.
+_T6_RECORD = r"records\drxcreatures\xurder\d2npc\01_akara.dbr"
+_T6_MONSTER = "Akara"
+_T6_SOUL = "Kallixenia ~ Liche Queen"
+
+# The pet that must never be allowed to own an archetype soul.
+_T7_PET = r"records\item\miscellaneous\monsterscrolls\pets\maenad_sorceress_20.dbr"
+_T7_VICTIM = r"records\creature\monster\human\um_phagia_44.dbr"   # Meritamen, Boss
 
 _CHANCE = 'chanceToEquipFinger2'
 _LOOT = 'lootFinger2Item1'
@@ -61,12 +86,14 @@ def main(argv):
         print(__doc__)
         return 2
     arz = argv[1]
-    repo = _HERE.parent.parent
-    sv_text = Path(argv[2]) if len(argv) > 2 else (
-        repo / 'upstream' / 'soulvizier_098i' / 'Resources' / 'Text_EN.arc')
+    # Round 1 hard-defaulted to <repo>/upstream/..., which is gitignored and
+    # therefore ABSENT in a freshly created worktree - the suite simply would not
+    # run. Use the shared resolvers instead (env var -> main checkout -> install).
+    sv_text = Path(argv[2]) if len(argv) > 2 else resolve_sv_text()
     tagmap = load_arc_tags(sv_text)
-    if len(argv) > 3:
-        load_arc_tags(argv[3], tagmap)
+    mod_text = Path(argv[3]) if len(argv) > 3 else resolve_mod_text()
+    if mod_text:
+        load_arc_tags(mod_text, tagmap)
     if not tagmap:
         print("ERROR: no display-name tags loaded; the gate cannot be tested.",
               file=sys.stderr)
@@ -119,40 +146,86 @@ def main(argv):
         db.set_field(_T2_RECORD, _CHANCE, float(prev or 0.0), DATA_TYPE_FLOAT)
 
     # ── T3: a SYNTHETIC cross-wire is caught as well ────────────────────────
-    thieves, families = si.find_identity_thieves(db, {})
+    thieves, groups = si.find_identity_thieves(db, {})
     check("T3 precondition: db clean before planting", not thieves)
-    donor_fam = next((f for f, e in families.items()
-                      if e['matched'] and len(e['matched']) >= 1), None)
-    victim = next((r for f, e in families.items() if f != donor_fam
+    donor_key = next((k for k, e in groups.items() if e['matched']), None)
+    victim = next((r for k, e in groups.items() if k != donor_key
                    for r, _d in e['matched']), None)
-    if donor_fam and victim:
-        donor_soul = sorted(families[donor_fam]['souls'])[0]
+    if donor_key and victim:
+        donor_soul = sorted(groups[donor_key]['souls'])[0]
         keep_loot = db.get_field_value(victim, _LOOT)
         db.set_field(victim, _LOOT, donor_soul)
         try:
             si.verify(db, {})
             check("T3 synthetic cross-wire -> verify() FIRES", False,
-                  f"planted {donor_fam!r} soul on {victim} undetected")
+                  f"planted {donor_key!r} soul on {victim} undetected")
         except SystemExit:
             check("T3 synthetic cross-wire -> verify() FIRES", True,
-                  f"planted {donor_fam!r} soul on {victim}")
+                  f"planted {donor_key!r} soul on {victim}")
         db.set_field(victim, _LOOT, keep_loot)
     else:
         check("T3 synthetic cross-wire", False, "no donor/victim pair available")
 
-    # ── T4: archetype families must NOT be flagged (orphan safety) ──────────
-    thieves, families = si.find_identity_thieves(db, {})
+    # ── T4: archetype souls must NOT be flagged (orphan safety) ─────────────
+    thieves, groups = si.find_identity_thieves(db, {})
     check("T4 db clean again after un-planting", not thieves)
-    fam = families.get(_T4_FAMILY)
+    fam = groups.get(si.name_key('{^F}' + _T4_SOUL_NAME))
     if fam is None:
-        check(f"T4 archetype family {_T4_FAMILY!r} present", False, "family absent")
+        check(f"T4 archetype soul {_T4_SOUL_NAME!r} present", False, "absent")
     else:
-        check(f"T4 archetype family {_T4_FAMILY!r} has NO identity-owning carrier",
+        check(f"T4 archetype soul {_T4_SOUL_NAME!r} has NO identity-owning carrier",
               not fam['matched'],
               f"{len(fam['unmatched'])} named unique(s) carry it")
-        check(f"T4 archetype family {_T4_FAMILY!r} keeps a LIVE carrier "
+        check(f"T4 archetype soul {_T4_SOUL_NAME!r} keeps a LIVE carrier "
               f"(soul stays obtainable)",
               any(si._chance_of(db, r) > 0 for r, _d in fam['unmatched']))
+
+    # ── T6: SCOPE - a thief OUTSIDE \creature(s)\ must fire too ─────────────
+    # Round 1's scope predicate required '\creature\' or '\creatures\' in the
+    # path. This record is real shipping content that does not match it.
+    if not db.has_record(_T6_RECORD):
+        check(f"T6 scope plant present ({_T6_RECORD})", False, "record missing")
+    else:
+        check("T6 the plant really is outside the round-1 \\creature(s)\\ scope",
+              not any(t in _T6_RECORD.lower()
+                      for t in ('\\creature\\', '\\creatures\\')),
+              _T6_RECORD)
+        check("T6 the plant really is judged as a carrier now",
+              si._is_soul_carrier(db, _T6_RECORD))
+        prev6 = si._scalar(db.get_field_value(_T6_RECORD, _CHANCE))
+        db.set_field(_T6_RECORD, _CHANCE, 66.0, DATA_TYPE_FLOAT)
+        try:
+            si.verify(db, {})
+            check(f"T6 re-armed {_T6_MONSTER!r} (outside \\creature(s)\\) -> "
+                  f"verify() FIRES", False,
+                  "SCOPE REGRESSION: the gate is blind outside \\creature(s)\\ "
+                  "again - this is the exact round-1 NO-GO")
+        except SystemExit as exc:
+            msg = str(exc)
+            check(f"T6 re-armed {_T6_MONSTER!r} (outside \\creature(s)\\) -> "
+                  f"verify() FIRES", True)
+            check("T6 the failure names the out-of-scope record",
+                  _T6_RECORD.lower() in msg.lower())
+            check("T6 the failure names the rightful owner",
+                  _T6_SOUL.lower() in msg.lower())
+        db.set_field(_T6_RECORD, _CHANCE, float(prev6 or 0.0), DATA_TYPE_FLOAT)
+
+    # ── T7: pets are NOT carriers (widening scope must not swallow them) ────
+    if not db.has_record(_T7_PET) or not db.has_record(_T7_VICTIM):
+        check("T7 pet + victim records present", False, "record missing")
+    else:
+        check("T7 the monster-scroll pet is NOT counted as a soul carrier",
+              not si._is_soul_carrier(db, _T7_PET), _T7_PET)
+        before, _gb = si.find_identity_thieves(db, {})
+        prev7 = si._scalar(db.get_field_value(_T7_PET, _CHANCE))
+        db.set_field(_T7_PET, _CHANCE, 50.0, DATA_TYPE_FLOAT)
+        after, _g7 = si.find_identity_thieves(db, {})
+        check("T7 raising the pet's drop convicts nobody NEW",
+              set(after) == set(before),
+              f"newly convicted {sorted(set(after) - set(before))}")
+        check("T7 the real Boss 'Meritamen the Shadowcaller' keeps its archetype "
+              "soul", _T7_VICTIM not in after)
+        db.set_field(_T7_PET, _CHANCE, float(prev7 or 0.0), DATA_TYPE_FLOAT)
 
     print(f"\n{'FAILED: ' + ', '.join(_fails) if _fails else 'ALL ASSERTIONS HELD'}")
     return 1 if _fails else 0
