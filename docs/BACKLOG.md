@@ -586,6 +586,114 @@ section (decade 70-79), status IMPLEMENTED b93, with the exact before/after valu
 not shipped; **the DEV deploy is blocked on the concurrent-lane merge above**; SV's
 `experienceLevelEquation` ships with an unbalanced parenthesis (inherited, untouched, affects only the
 "% of a level" framing, not the XP-lost numbers); MULTIPLAYER_COMPAT.md quotes a stale build27 arz hash.
+## BUILD63-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 3: THE ROAM RATE (2026-07-29, branch `feat/endless-hunt`, tag `build63-dev`)
+
+> ⚠️ TAG NOTE: briefed as `build59-dev`, which was already claimed by the parallel
+> `fix/soul-identity` lane (b97 round 2). A tag in use is never reassigned; this lane took
+> `build60-dev` (round 1), `build61-dev` (round 2) and now `build63-dev` (round 3).
+> `build62-dev` went to the **b99 content wave** while this round was building.
+
+> 🚨 **TWO THINGS CHANGED UNDER THIS LANE MID-ROUND. READ BEFORE INTEGRATING.**
+>
+> **(1) THE MERGED DEPLOY ALREADY HAPPENED, AND THIS LANE WAS NOT IN IT.** The b99 content wave
+> (`38e7a256`, tag `build62-dev`, 2026-07-29 07:43) integrated FOUR lanes - `feat/death-xp-penalty`,
+> `feat/sargath-soul`, `feat/vashkarr-soul`, `fix/soul-identity` - and deployed. The DEV arz moved
+> from `9f98e3e88bca20f96bacc2fd6bb87b63` to **`f6cd8698b1578a389fd6a432c1f757cb`** (written
+> 07:12:56). `feat/endless-hunt` is **NOT** an ancestor of `build62-dev` (verified with
+> `git merge-base --is-ancestor`), so b98 is still un-integrated and un-deployed. This lane did not
+> deploy anything and never wrote to `CustomMaps`; the drift is b99's, and it is expected rather than
+> a defect - but it means **b98's artifact is built on `main` a0276ab, NOT on the currently deployed
+> b99 base.** The integrator must merge b98 onto post-b99 main and REBUILD; do not deploy this arz
+> on top of b99 without that merge.
+>
+> **(2) 🚨 HARD LEDGER COLLISION ON R-80 AND THE WHOLE 80-89 DECADE.** b99 allocated
+> **R-80 = the death-XP penalty** and claimed decade **80-89 as "Global balance & progression"**.
+> This lane had already allocated **R-80..R-86 as the Toxeus arc OVERFLOW decade**. Both are live;
+> they collide head-on the moment b98 merges. This lane deliberately did **NOT** unilaterally
+> renumber, because (a) the branch does not contain b99 so the collision only materialises at
+> integration, (b) the repo has a documented reconciliation protocol that b99 itself cites
+> ("incumbent keeps the number", the `fix/debt-docs` precedent), and (c) silently renumbering seven
+> rulings on a stale base could easily be the wrong direction.
+> **RECOMMENDATION:** b99 is on main AND deployed, so b99 is the incumbent for R-80 and for the
+> 80-89 label; b98's seven rulings should move to a fresh Toxeus overflow decade at integration.
+> **SIZE OF THE MOVE: R-80..R-86 = 7 rulings, 195 citations across 12 source files** - heaviest are
+> `tools/patches/toxeus_hunt_encounter.py` (67), `docs/reports/b98_endless_hunt.md` (25),
+> `docs/BACKLOG.md` (23), `docs/WILL_RULINGS.md` (21), `tools/patches/toxeus_suite.py` (18).
+> It is mechanical, but it is not small, and nothing in the DB or the gates depends on the numbers.
+
+**ONE RULING, ONE CHANGE.** Round 3 exists because Will answered the single blocking question round 2
+left open: the roam RATE. Everything else in b98 is unchanged from round 2 and was re-verified, not
+re-opened.
+
+**NOT DEPLOYED.** Five content branches are staged for ONE merged deploy; this lane deliberately did
+not write to `CustomMaps\SoulvizierClassicDEV`. Ground truth re-hashed at the end of round 3 and
+UNCHANGED: DEV arz `9f98e3e88bca20f96bacc2fd6bb87b63`, `Levels.arc` `943d0ab9516d332db79bd7f9fd2d3ffe`,
+`Quests.arc` `35bfe3f39e8480408e3c22ea5473f796`. Sibling worktrees untouched.
+Artifacts for the orchestrator's merged deploy:
+- arz `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **33c102cbc81d6571e3621507cda6fc07** (51,104 records)
+- Text `.claude/worktrees/endless-hunt/work/text/Text.arc` md5 **c0f22186550484b932e26dacc12c6a9a**
+  - BYTE-IDENTICAL to round 2 (the rate change adds no tag), but still COUPLED: the arz references
+  `tagSVCwpnRunbreaker` and the 7 `tagSVCHunt*` skill tags, so never ship one without the other.
+- `Levels.arc` / `Quests.arc` **untouched** - DB-only lane, zero map bytes.
+- ROUND 1 (`c366b410...`, `build60-dev`) and ROUND 2 (`6be6fb0a...`, `build61-dev`) arz artifacts are
+  SUPERSEDED; do not deploy them. The round-2 Text.arc is the same file and remains correct.
+
+Ruling implemented: **R-86** (the roam rate, "roughly one sighting per act"). CLOSES
+`BL-b98-DEBT-5`. R-80..R-85 are unchanged from round 2.
+
+**DETERMINISM PROOF:** rebuilding HEAD (round 2) in this same environment reproduced
+`6be6fb0a5507ca4f6988405e7a64add8` EXACTLY - the md5 the round-2 gate record published. So the
+baseline the diff below is taken against is the real round-2 build, not an approximation.
+
+**RECORD DIFF vs the freshly-rebuilt round-2 baseline - INTENDED ONLY:**
+**0 ADDED / 0 REMOVED / 345 MODIFIED.** The 345 are exactly the roaming ProxyPools the sweep owns,
+and every one of them changed **exactly one field**: the `weightN` of the Hunt's own name slot
+(345 field changes across 345 records - weight3 x150, weight6 x60, weight9 x57, weight7 x24,
+weight2 x24, weight4 x15, weight5 x9, weight1 x6). The collateral sentinel (mesh / skin / baseTexture
+/ bitmap / fx / Effect / shroud / chanceToEquip / lootFinger / dropItems / treasureProxy) reports
+**NONE**. No record added, none removed, no dtype flip, nothing outside the sweep.
+
+**THE RATE, MEASURED (not estimated) - full derivation in `docs/reports/b98_endless_hunt.md` §12:**
+| | before (flat weight 1) | after (R-86 normalised) |
+| --- | --- | --- |
+| Act IV sightings | - | **0.955** |
+| Act V sightings | - | **1.034** |
+| full Act IV+V pass | **0.0368** = 1 per 27 playthroughs | **1.989** |
+| per-area p_slot spread | 18.3x unfair | **1.016x** |
+| Hunt slot weight | 1 | 29..528 (median 53) |
+
+Inputs measured from the built arz + the shipped `world01.map`: 345 roaming pools, mean 3.19 main
+draws per resolved pool, 539 proxies all at chanceToRun 100, **797 placements** (Act IV 406 / Act V
+391) = 2,486 effective draws per pass. The FIXED Hades Palace encounter is untouched and still
+resolves at p_slot 1.000 (guaranteed).
+
+**GATES (all green, ROUND 3 re-run):**
+- DB build `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1` **PASS**, exit 0.
+- registry selfcheck OK, 39 modules, order hash `14c27b6e835f`; every module `verify()` hook green.
+- the roam-sweep gate was REPLACED, not loosened: the old `weight == 1` + 1/2400-ceiling assertion is
+  reded by this ruling by construction, so it now asserts the stronger invariant the new scheme
+  guarantees - every pool realises the SAME p_slot within +/-4%. Gate output: 345 pools, 0 leaks.
+- `validate_tags` **PASS** (426 authoritative tags all resolve).
+- `verify_soul_drop_rates` **PASS**, incl. its own planted-regression negative test.
+- planted negative tests **34/34 caught** across 4 gates (was 26/26; +8 new for the rate gate,
+  including "the flat weight 1 comes back", "ONE pool misses normalisation", "the rate is silently
+  doubled" and "a native is re-scaled without re-deriving his weight").
+- contract suite (5 domains) **PASS - 0 P0 / 0 P1 / 4,759 P2**, and every one of the 11 reporting
+  contracts returns a count IDENTICAL to the baseline (delta 0 on all of them), so the pre-existing
+  P1 total is provably unchanged. ⚠️ The suite needs `--quests-arc`, `--resource-arc-dir`,
+  `--base-game-dir` and `--upstream-dir` supplied; without `--quests-arc` it reports a spurious
+  1 P1 + a crashed module on ANY build, baseline included. Both runs used identical inputs.
+- Text.arc rebuilt and byte-identical to round 2, confirming the arz+Text coupling still holds.
+
+**NOT DONE / STILL OPEN:** the round-2 NOT-DONE list is unchanged except that `BL-b98-DEBT-5` is now
+CLOSED. Still open and needing Will or another lane: `BL-b98-DEBT-1` (the borrowed spear + AoE360
+poses have not been seen in game), `-2` (Enslaver/Devourer mesh split + the green aura, green-diff
+lane), `-3`, `-4`, `-6`, `-7`, `-8`, `-9` (the roaming Hunt is still kiteable on Legendary - a
+structural ProxyPool limit, unaffected by this ruling), `-10`. No in-game QA of any kind was done.
+
+---
+
 ## BUILD61-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 2 (2026-07-28, branch `feat/endless-hunt`, tag `build61-dev`)
 
 > ⚠️ TAG NOTE: this lane was briefed to tag `build59-dev`, but that tag was ALREADY CLAIMED by the
@@ -764,10 +872,14 @@ are folded in above and in R-83/R-84.
 - `BL-b98-DEBT-4` NEEDS WILL: should `toxeus_hunt_soul_l` become a reagent of the End of All Things
   formula (a 4th, or replacing the base Greece Toxeus's)? Do not promise a 4th slot before checking
   whether `ItemArtifactFormula.tpl` declares `reagent4`; the shipped record uses only 1/2/3.
-- `BL-b98-DEBT-5` WILL-VETO (rate change, deliberately NOT taken): the ROAMING Hunt is about 1 in
-  67,000 per spawn roll. R-18 forbids the equivalent change on the Enslaver, so this lane treated it
-  the same way and changed nothing. Target needed if Will wants him findable: "once a playthrough",
-  "once per act", or leave him a rumour.
+- `BL-b98-DEBT-5` **CLOSED** by R-86 (round 3, 2026-07-29). Will answered the blocking rate question:
+  **"roughly one sighting per act"**, chosen over "a few per act" and "frequent stalker". Implemented
+  as a per-pool NORMALISED slot weight targeting a constant `p_slot = 1/1250`
+  (`toxeus_suite._LS_TARGET_P_SLOT`, the single retune point). Measured before: 0.0368 sightings per
+  full Act IV+V pass = ONE PER 27 PLAYTHROUGHS. Measured after, read back out of the shipped bytes:
+  **Act IV 0.955 / Act V 1.034 / full pass 1.989**. Normalising (rather than a flat weight) also
+  killed the 18.3x per-area unfairness the flat weight caused; realised spread is now 1.016x. The old
+  `weight == 1` + 1/2400 gate was replaced by the constant-p_slot invariant, 8 planted negatives.
 - `BL-b98-DEBT-6` WILL-VETO (R-39 drop-slot precedent, deliberately NOT taken): the Hunt's Finger1 /
   Misc1 / Misc2 / Misc3 loot tables are all WIRED but sit at 0% equip chance, so his ring, potions,
   relic and amulet can never drop. Compare the Enslaver: Finger1 100 / Misc1 100 / Misc2 18 /
