@@ -17,10 +17,11 @@ whole class lives on CONTROLLER records, reached through the monster's scalar
 That is the kite, field for field.
 
 PER-DIFFICULTY PURSUIT IS NOT EXPRESSIBLE ON ONE RECORD. Two independent proofs:
-  * EMPIRICAL: across all 504 controller-class records, MaxPursuitDistance and
-    PursuitTime are array-valued ZERO times. The only controller field ever
-    array-valued anywhere is LeadChance (112 carriers), which proves controllers
-    CAN carry per-difficulty arrays and that these two do not.
+  * EMPIRICAL: across every controller record in the DB, MaxPursuitDistance and
+    PursuitTime are array-valued ZERO times (the count of controller records varies
+    with the denominator - see the CARRIER-COUNT NOTE below - but ZERO does not).
+    The only controller field ever array-valued anywhere is LeadChance, which proves
+    controllers CAN carry per-difficulty arrays and that these two do not.
   * AUTHORITATIVE: the engine's own Toolset/Templates.arc declares, in
     templates/controllermonster.tpl, MaxPursuitDistance class="variable" and
     PursuitTime class="variable", while LeadChance is class="array". In TQ,
@@ -42,9 +43,19 @@ WHAT THIS SHIPS
    ControllerMonsterHidden, appearDistance 12, NeverFlee), overridden with
        MaxPursuitDistance 1000.0   (controller_aktaios ships exactly this; it is
                                     the highest monster value in the DB)
-       PursuitTime        100000   (21 shipped carriers, incl. controller_hydra,
+       PursuitTime        100000   (shipped, incl. controller_hydra,
                                     controller_terracotta, controller_typhonminion)
-       RoamBehavior       NeverRoam (107 shipped carriers)
+       RoamBehavior       NeverRoam (shipped, widely)
+   ⚠️ CARRIER-COUNT NOTE (round 2, after the adversarial vet reported different
+   numbers): the three census figures round 1 quoted (21 / 107 / 504) came from a
+   different DENOMINATOR than the vet's (15 / 69 / 531) and than a mod-arz-only
+   re-run (8 / 31 / 250 records under `records\controllers\`). Every one of those
+   denominators is defensible - mod arz alone, mod arz unioned with the base-game
+   DB, or "controller-class" by Class rather than by path - and the CONCLUSION is
+   identical under all three: these fields are scalars by template declaration, and
+   each value this module writes has at least one named shipped carrier (verified
+   individually by record, not by count). Bare counts are not load-bearing here and
+   should not be quoted without their denominator.
        MinTimeBeforeRoam / MaxTimeBeforeRoam 0
        ForgiveRate        0.2      (Aktaios: anger decays slowly)
    CLONED, NEVER EDITED IN PLACE: controller_shadowstalker01_hidden is shared by 15

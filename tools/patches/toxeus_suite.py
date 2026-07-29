@@ -129,9 +129,17 @@ _SK_GP_L = asp._EN_SK_GP_L
 
 # ── Soul payload (all DB-verified resolve + castability-safe) ──
 _SOUL_PROC = asp._SS_FLASH_POWDER     # soulskills\toxeus_flashpowder.dbr: Skill_AttackRadius, NO special
-                                      # anim -> universally PC-castable (DB-verified). WARN-listed in the
-                                      # diversity gate (won't hard-fail). The Toxeus family signature verb
-                                      # (his shadow-burst) -> ties the Hunt to the GOAT progenitor (V2).
+                                      # anim -> universally PC-castable (DB-verified).
+# ⚠️ b98 ROUND 2 (R-84, feat/endless-hunt): THIS IS NO LONGER THE SHIPPED GRANT.
+# `toxeus_hunt_encounter` RETIRES flash powder from the Hunt's own kit (it was one of the
+# 9 skills he shared with the Enslaver), so leaving his soul granting it left the one
+# player-facing artifact of his identity handing out an ability he no longer has - and
+# pointing at an over-shared filler (15 soul records grant it). That module, which runs
+# LATER in the registry and authors the replacement, repoints all three tiers to
+# `svc_hunt_quarrysmark` at itemSkillLevel 1/2/3 and asserts it fail-loud. The value here
+# is deliberately left as the SHIPPED pre-state so that module's "another writer owns his
+# soul grant" guard still has something to recognise; do not "tidy" it to the new path
+# without moving that guard too.
 _SOUL_AC = asp._AC_ON_HIT             # base_atself_onanyhit: a SELF controller (no autoTargetRadius needed)
 _AUG_ANATOMY = asp._EN_AUG_ANATOMY    # drxanatomy: Skill_Modifier (+%vit/pierce) - DB-verified
 _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on-attack) - DB-verified
@@ -443,13 +451,17 @@ def _create_legendary_stalker(db, tags):
     #    'Soul of '). The DESC honours the GOAT progenitor (LORE LAW). ──
     tags['tagSVCMonsterToxeusHunt'] = '{^r}Toxeus the Murderer, the Endless Hunt'
     tags['tagSVCSoulToxeusHunt'] = '{^F}Toxeus the Murderer, the Endless Hunt Soul'
+    # b98 ROUND 2 (R-84): the last clause described the FLASH-BURST, which is no longer
+    # what this soul grants. `toxeus_hunt_encounter` repoints the grant to Quarry's Mark
+    # and its verify() fails the build if this text still advertises the flash powder.
     tags['tagSVCSoulToxeusHuntDESC'] = (
         'The shadow the first murderer casts when he runs you down beyond death. Toxeus the '
         'progenitor does not tire and does not stop; his hunt outlasts the hunted. Its bearer '
-        'takes his relentless step, his evasion, and the flash-burst that opens the range.')
+        'takes his relentless step, his evasion, and his mark: what you wound, you keep.')
     print(f"  [C] stalker: um_toxeus_hunt_99 (ShadowStalker rig, distinct iceheart skin, Boss "
-          f"[40,68,100] life 16/22/30k, pierce/pursuit) + granted-MOVE soul (flash-powder @25%) + "
-          f"Hades-only sweep touched {len(touched)} pools; 3 tags. (netherstrike anim = launch-gated)")
+          f"[40,68,100] life 16/22/30k, pierce/pursuit) + granted-MOVE soul + Immortal-Throne-wide "
+          f"roaming sweep touched {len(touched)} pools; 3 tags. (b98 repoints the drop rate to 100 "
+          f"[R-81], the soul grant to Quarry's Mark [R-84] and replaces netherstrike outright)")
 
 
 def _sweep_inject_legendary_stalker(db):

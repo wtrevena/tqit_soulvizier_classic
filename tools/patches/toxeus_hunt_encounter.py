@@ -105,27 +105,88 @@ Machae_Spear (same expansion, same underworld).
 CASTABILITY LAW (the Ephialtes / boss_skill_fix / coldworm lesson)
 --------------------------------------------------------------------------------
 A monster skill whose `skillSpecialAnimationName` is not bound by the caster has no
-playable animation, so the engine never starts it. GROUND TRUTH: `um_toxeus_hunt_99`
-binds ZERO `unarmedSpecialAnimRef` slots - and so do the Enslaver and the Devourer.
-Every skill this module adds therefore declares NO `skillSpecialAnimationName`
-whatsoever, which is exactly the law `toxeus_champion_kits` already ships for these
-champions. verify() proves it fail-loud.
-NOTE, reported not silently claimed: the skill this module REPLACES at
-specialAttack3, `netherstrike`, declares skillSpecialAnimationName='LethalStrike'
-which the Hunt does not bind - so that slot was very likely dead already. Replacing
-it is a repair as well as a differentiation.
+playable animation, so the engine aborts the cast (Game.dll SkillManager::StartSkill;
+docs/BACKLOG.md B-SOUL-PROC-2, docs/MASTERY_AUDIT_2026-07-09.md, and the b91 coldworm
+monster-side gate).
+
+>>> ROUND 2 CORRECTION. Round 1 of this module asserted "the Hunt binds ZERO
+    unarmedSpecialAnimRef slots - and so do the Enslaver and the Devourer". THE SECOND
+    HALF IS FALSE and the adversarial vet caught it. Ground truth, deployed arz
+    9f98e3e8:
+      * `um_toxeus_enslaver_99` and `um_bloodtoxeus_99` BOTH carry
+        `charAnimationTableName = records\creature\monster\skeleton\anm\anm_skeleton01.dbr`,
+        which binds `sHandedSpecialAnimRef1='AoE360'` and
+        `sHandedSpecialAnimRef2='LethalStrike'`. They CAN cast bladestorm and
+        netherstrike.
+      * `um_toxeus_hunt_99` has NO `charAnimationTableName` at all and bound NO
+        `*SpecialAnimRef` on any row, so `toxeus_bladestorm` (specialAttack2 @40%,
+        `skillSpecialAnimationName='AoE360'`) and `netherstrike` (specialAttack3,
+        'LethalStrike') were BOTH dead casts in the shipped data. 40% of his cast
+        budget did nothing, in exactly the domain of Will's complaint.
+    So the premise round 1 used to justify "add no special-anim skills" was inverted:
+    the other two champions are the ones who can cast, and he is the one who cannot.
+
+WHAT THIS MODULE NOW DOES ABOUT IT (R-84 round 2):
+ 1. It BINDS the animation instead of avoiding it. `AoE360` is bound on TWO rows of
+    his own inline animation table (he has no charAnimationTableName, so his inline
+    fields ARE the live table):
+      * `spear*`   - the row the engine reads while he holds the guaranteed
+                     WeaponHunting_Spear this module gives him. THE LIVE ROW.
+      * `unarmed*` - the engine's universal fallback row, so the repair survives any
+                     later veto of the spear (BL-b98-DEBT-1/7) instead of silently
+                     dying with it.
+    Each bound .anm is asserted at build time to be the MODAL shipped binding for
+    `AoE360` on that row (23 spear-row carriers, 5 unarmed-row carriers in the
+    deployed arz), so this is provenance, not a guess that a file exists. Precedent:
+    `coldworm_buffs.py` binds `unarmedSpecialAnimRef<i>` + `unarmedSpecialAnim<i>` for
+    exactly this reason.
+ 2. Every skill this module ADDS still declares NO `skillSpecialAnimationName`, so the
+    new kit needs no binding at all.
+ 3. THE GATE IS NO LONGER SCOPED TO THE NEW SKILLS. `_castability_violations()` walks
+    EVERY populated active slot on the record (attack / initial / dying /
+    specialAttack / specialAttack2..6), resolves each skill, and requires the caster to
+    bind its `skillSpecialAnimationName` on every row it can actually be reading. The
+    wielded row is DERIVED from the Class of the item he is guaranteed in RightHand, so
+    the gate follows the weapon rather than assuming 'unarmed'. Round 1's gate looped
+    `_NEW_SKILLS` only and could not have caught this.
+ 4. `netherstrike` (also dead, 'LethalStrike' unbound) is REPLACED by this module, so
+    that slot is repaired by removal rather than by binding a second animation.
+
+--------------------------------------------------------------------------------
+HIS SOUL GRANTS HIS OWN SKILL (R-84 round 2, the second vet blocker)
+--------------------------------------------------------------------------------
+`toxeus_hunt_soul_{n,e,l}` granted `records\skills\soulskills\toxeus_flashpowder.dbr`
+- the very skill this module RETIRES from his kit as "the Enslaver's". The one
+player-facing artifact of his identity, now dropping at 100%, pointed at an ability he
+no longer has, and at an over-shared filler (15 soul records grant it in the deployed
+arz). The other two champion souls summon their champion; his was the odd one out.
+FIX: the souls now grant `svc_hunt_quarrysmark` - HIS mark, the "become the Hunt"
+grant - at itemSkillLevel n/e/l = 1/2/3, the monolith's own established soul tier
+convention, which also keeps the grant inside the skill's `skillMaxLevel` of 3. The
+soul and the monster share ONE skill record, so the player's mark and his mark can
+never diverge. Gated fail-loud, including a new invariant of the class: a soul may
+never grant a level its skill does not have.
+The upstream author of the grant (`toxeus_suite._SOUL_PROC`) and the soul's DESC tag
+(which described the flash-burst) are corrected in `toxeus_suite.py`, and
+`skill_quality.ALLOW['toxeus_flashpowder.dbr']` drops `tagSVCSoulToxeusHunt` from its
+locked family roster (BL-103 fix-upstream: the roster is ground truth and he left the
+family).
 
 --------------------------------------------------------------------------------
 WHAT THIS MODULE DELIBERATELY DOES NOT DO
 --------------------------------------------------------------------------------
 * distressCallGroup is LEFT AT 'Skeleton'. The design brief called this a clone
   leftover ("a Demon-race boss calling the Skeleton distress group"). GROUND TRUTH
-  SAYS OTHERWISE: all 28 shipped ShadowStalker-mesh monsters are race=Demon AND
-  distressCallGroup='Skeleton', including the Enslaver's own marauders - it is the
-  base game's convention for this rig, not a leak. There is also NO 'Demon' group in
-  the DB (19 groups exist; Demon is not one), so "fixing" it would invent a group of
-  one member and cut him out of the shadowstalker distress network. Reported, not
-  changed.
+  SAYS OTHERWISE (census re-run in round 2 over the deployed arz, method stated so it
+  reproduces: records whose `mesh` contains 'shadowstalker.msh' AND `Class`=='Monster'
+  = 30 records; ALL 30 are race=Demon; 26 are distressCallGroup='Skeleton' and 4 are
+  'Jackalman' - and those 4 wear a DIFFERENT mesh path,
+  `Creatures\Monster\jackalman\shadowstalker.msh`). Round 1 said "all 28 ... are
+  race=Demon AND group Skeleton"; the race half is right, the group half was not
+  exactly right, and the conclusion is unchanged: there is NO 'Demon' group in the DB
+  (19 monster distress groups exist; Demon is not one), so "fixing" it would invent a
+  group of one member and cut him out of the shadowstalker distress network. Reported,
+  not changed.
 * No mesh change to the Enslaver or the Devourer. That work belongs to the
   green-diff lane (b92) and turns on a Will answer.
 * No roaming-sweep rate change. The roam rate is a WILL-VETO rate decision (R-18
@@ -186,11 +247,47 @@ _SPEAR_ATT_ANIMS = (
     r'Creatures\Monster\Maenad\ANM\Maenad_Spear_AttGamma.anm',
 )
 # spear slot -> the slot on the SAME record whose animation is reused verbatim.
+# spearSpawnAnim is here because he is a ControllerMonsterHidden ambusher
+# (appearDistance 12.0) and the spear row is now his ONLY row, so without it his
+# emerge pose loses its binding. Both the sHanded and unarmed rows already bind
+# ShadowStalker_Spawn.anm; this reads whichever the record itself carries.
 _SPEAR_SELF_ANIMS = {
     'spearRunAnim': 'sHandedRunAnim',
     'spearDieAnim1': 'sHandedDieAnim1',
     'spearStunAnim': 'sHandedStunAnim',
+    'spearSpawnAnim': 'sHandedSpawnAnim',
 }
+
+# -- R-84 round 2: CASTABILITY BINDINGS --------------------------------------
+# Weapon Class -> the animation ROW the engine reads while that weapon is held.
+# Covers every Weapon* Class that exists in the deployed arz; an unknown Class is a
+# GATE FAILURE, never a silent pass.
+_WEAPON_ROW = {
+    'WeaponHunting_Spear': 'spear',
+    'WeaponMelee_Sword': 'sHanded',
+    'WeaponMelee_Axe': 'sHanded',
+    'WeaponMelee_Mace': 'sHanded',
+    'WeaponMagical_Staff': 'staff',
+    'WeaponHunting_Bow': 'bow',
+    'WeaponHunting_RangedOneHand': 'rangedOneHand',
+    'WeaponArmor_Shield': None,      # offhand: never selects the row
+}
+_FALLBACK_ROW = 'unarmed'            # the engine's universal row when nothing is held
+# row -> (ref name, the .anm to bind). Each .anm is asserted at build time to be the
+# MODAL shipped binding for that ref on that row, so the choice carries provenance.
+_ANIM_REF_BINDINGS = (
+    ('spear', 'AoE360', r'Creatures\PC\Female\ANM\FemalePC_Spear_Skill_Tempest.anm'),
+    ('unarmed', 'AoE360', r'Creatures\PC\Male\ANM\MalePC_DW_Skill_AOE360.anm'),
+)
+# The `<row>SpecialAnimSpeed<i>` defaults ship 1..15 on the weapon rows and 1..10 on
+# unarmed, which is the engine-readable index range for each row.
+_ANIM_REF_CAP = {'unarmed': 10, 'bow': 10, 'dualRanged': 10, 'rangedOneHand': 10,
+                 'staff': 10, 'spear': 15, 'sHanded': 15, 'dHanded': 15}
+
+# every ACTIVE skill slot the AI can fire (the coldworm _ACTIVE_SLOT_FIELDS shape)
+_ACTIVE_SLOT_FIELDS = ('attackSkillName', 'initialSkillName', 'dyingSkillName',
+                       'specialAttackSkillName') + tuple(
+    'specialAttack%dSkillName' % i for i in range(2, 7))
 
 # -- R-84: the pursuit kit (donors are all DB-verified, all NO special anim) --
 _D_MARK = r'records\skills\hunting\studyprey.dbr'
@@ -210,6 +307,66 @@ _EXPECT_CLASS = {
     _LANCE: 'Skill_AttackSpellChaos',
     _SWEEP: 'Skill_AttackRadius',
 }
+# PLAYER SURFACE (R-83 process law #3): the new skill CLASS gets its own display
+# names + descriptions instead of reading as its donor. `svc_hunt_quarrysmark_buff`
+# is `debufSkill=1`, i.e. it lands on the PLAYER's status bar, and `svc_hunt_quarrysmark`
+# is what his soul now grants, so both are genuinely player-readable.
+_SKILL_TAGS = {
+    'tagSVCHuntQuarrysMark': "Quarry's Mark",
+    'tagSVCHuntQuarrysMarkDESC':
+        'Toxeus takes your scent. Marked prey bleeds, guards worse and runs slower, '
+        'and the Hunt is already moving.',
+    'tagSVCHuntQuarrysMarkBuffDESC':
+        'You are the quarry. Your stride shortens, your guard opens, and the wound '
+        'will not close while he can still smell it.',
+    'tagSVCHuntLongReach': 'The Long Reach',
+    'tagSVCHuntLongReachDESC':
+        'A spectral spear out of the dark, cold enough to stiffen the legs. Distance '
+        'was never safety.',
+    'tagSVCHuntRunDown': 'Run Them Down',
+    'tagSVCHuntRunDownDESC':
+        'The spear comes around in one full sweep at the end of the chase. Everything '
+        'inside the arc is opened.',
+}
+# skill record -> (display-name tag, base-description tag)
+_SKILL_TEXT = {
+    _MARK: ('tagSVCHuntQuarrysMark', 'tagSVCHuntQuarrysMarkDESC'),
+    _MARK_BUFF: ('tagSVCHuntQuarrysMark', 'tagSVCHuntQuarrysMarkBuffDESC'),
+    _LANCE: ('tagSVCHuntLongReach', 'tagSVCHuntLongReachDESC'),
+    _SWEEP: ('tagSVCHuntRunDown', 'tagSVCHuntRunDownDESC'),
+}
+# DONOR PAYLOADS THAT MUST NOT SURVIVE THE CLONE. Each is an unreported, combat-
+# defining leftover of the record the clone was taken from - never part of this
+# design, and (for the sweep) literally the signature of the skill being retired.
+# Round 1 shipped these silently; the vet caught all of them.
+_STRIP_DONOR_PAYLOAD = {
+    # zshadowblast's inherited Life Drain payload: a 2-second HARD PETRIFY at 30%
+    # cast chance on a 5s cooldown at range, plus lifedrain's 16-entry leech ladders.
+    _LANCE: ('offensivePetrifyMin', 'offensivePetrifyMax',
+             'offensiveLifeLeechMin', 'offensiveLifeLeechMax',
+             'offensiveLifeMin', 'offensiveLifeMax'),
+    # drxflashpowder's inherited blind/confuse package + its flat pierce ladder (this
+    # skill authors its own physical ladder + pierce RATIO), AND the Flash Powder
+    # white-burst FX with its head attach point and its powder cast sound - the exact
+    # audiovisual signature of the skill Run Them Down replaces.
+    _SWEEP: ('offensiveConfusionChance', 'offensiveConfusionMin', 'offensiveConfusionMax',
+             'offensiveFumbleMin', 'offensiveFumbleMax', 'offensiveFumbleDurationMin',
+             'offensiveProjectileFumbleMin', 'offensiveProjectileFumbleMax',
+             'offensiveProjectileFumbleDurationMin',
+             'offensivePierceMin', 'offensivePierceMax',
+             'radiusEffectName', 'particleEffectAttachPoint1', 'skillHitSound'),
+}
+
+# -- R-84 round 2: his soul grants HIS skill, not the retired flashpowder ----
+_HUNT_SOULS = {t: r'records\item\equipmentring\soul\svc_uber\toxeus_hunt_soul_%s.dbr' % t
+               for t in 'nel'}
+_RETIRED_SOUL_GRANT = r'records\skills\soulskills\toxeus_flashpowder.dbr'
+_SOUL_GRANT = _MARK
+_SOUL_GRANT_LEVEL = {'n': 1, 'e': 2, 'l': 3}   # the monolith's own N=1/E=2/L=3 convention
+_SOUL_DESC_TAG = 'tagSVCSoulToxeusHuntDESC'
+# the Toxeus family signature verb he KEEPS at specialAttack2 @40%. It declares
+# skillSpecialAnimationName='AoE360', which is why _bind_special_anims exists.
+_BLADESTORM = r'records\skills\monster skills\attack_radius\toxeus_bladestorm.dbr'
 # the skills this module RETIRES from his cast slots (kept in the DB - shared records)
 _REPLACED = {
     '': r'records\skills\stealth\flashpowder.dbr',
@@ -450,6 +607,95 @@ def _graft_spear_anims(db):
           "record's own sHanded slots.")
 
 
+# =============================================================================
+# (3b) R-84 round 2: make the cast slots he KEEPS actually fire
+# =============================================================================
+def _modal_row_binding(db, row, ref):
+    """Census: what .anm do OTHER shipped records bind to `ref` on `row`?
+
+    Returns (modal_anim, carrier_count, total_carriers). This is the provenance
+    proof - the module never invents an animation path, it adopts the one the
+    shipped data already uses for that exact (row, ref) pair.
+    """
+    from collections import Counter
+    seen = Counter()
+    total = 0
+    want = ref.strip().lower()
+    pat = _re.compile(r'^%sSpecialAnimRef(\d+)$' % _re.escape(row))
+    for name in db.record_names():
+        if name == _HUNT:
+            continue
+        ff = db.get_fields(name)
+        if not ff:
+            continue
+        for k, tf in ff.items():
+            m = pat.match(k.split('###')[0])
+            if not m or not tf.values:
+                continue
+            if str(tf.values[0]).strip().lower() != want:
+                continue
+            total += 1
+            anim = _gv1(db, name, '%sSpecialAnim%s' % (row, m.group(1)))
+            if anim and str(anim).strip():
+                seen[str(anim)] += 1
+    if not seen:
+        return None, 0, total
+    anim, count = seen.most_common(1)[0]
+    return anim, count, total
+
+
+def _free_anim_ref_slot(db, rec, row):
+    """The lowest `<row>SpecialAnimRef<i>` index that is unbound on `rec`."""
+    used = set()
+    ff = db.get_fields(rec) or {}
+    pat = _re.compile(r'^%sSpecialAnimRef(\d+)$' % _re.escape(row))
+    for k, tf in ff.items():
+        m = pat.match(k.split('###')[0])
+        if m and tf.values and str(tf.values[0]).strip():
+            used.add(int(m.group(1)))
+    for i in range(1, _ANIM_REF_CAP.get(row, 10) + 1):
+        if i not in used:
+            return i
+    return None
+
+
+def _bind_special_anims(db):
+    """THE BLOCKER FIX. Bind the special animations his KEPT cast slots demand.
+
+    `toxeus_bladestorm` (specialAttack2 @40%) declares skillSpecialAnimationName
+    'AoE360'. He has no charAnimationTableName, so his INLINE animation fields are
+    the live table, and he bound no `*SpecialAnimRef` on any row - the cast could
+    never start. This binds 'AoE360' on the row he actually wields (spear) AND on
+    the engine's universal fallback row (unarmed), so the repair also survives a
+    later veto of the spear.
+    """
+    S = DATA_TYPE_STRING
+    for row, ref, anim in _ANIM_REF_BINDINGS:
+        modal, count, total = _modal_row_binding(db, row, ref)
+        if modal is None:
+            raise SystemExit(
+                "[toxeus_hunt_encounter] no shipped record binds %r on the %r "
+                "animation row, so there is no provenance for an %s animation on "
+                "that row. Refusing to invent one." % (ref, row, ref))
+        if _norm(modal) != _norm(anim):
+            raise SystemExit(
+                "[toxeus_hunt_encounter] the MODAL shipped %s binding on the %r row "
+                "moved: %d/%d carriers now use %r, not the %r this module binds. "
+                "Re-derive the constant instead of shipping a stale one."
+                % (ref, row, count, total, modal, anim))
+        idx = _free_anim_ref_slot(db, _HUNT, row)
+        if idx is None:
+            raise SystemExit(
+                "[toxeus_hunt_encounter] no free %sSpecialAnimRef slot on %s"
+                % (row, _HUNT))
+        _set(db, _HUNT, '%sSpecialAnimRef%d' % (row, idx), ref, S)
+        _set(db, _HUNT, '%sSpecialAnim%d' % (row, idx), anim, S)
+        db._modified.add(_HUNT)
+        print("    %-8s row: %sSpecialAnimRef%d = %-8s -> %s  (modal shipped "
+              "binding, %d/%d carriers)"
+              % (row, row, idx, ref, anim.rsplit('\\', 1)[-1], count, total))
+
+
 def _wire_spear_to_hunt(db):
     """He WIELDS and DROPS Runbreaker instead of a random one-hander."""
     db.set_field(_HUNT, 'lootRightHandItem1', [_SPEAR_GUAR[t] for t in 'nel'])
@@ -471,7 +717,7 @@ def _wire_spear_to_hunt(db):
 # =============================================================================
 # (4) R-84: the pursuit kit
 # =============================================================================
-def _build_kit_skills(db):
+def _build_kit_skills(db, tags):
     _require(db, _D_MARK, _D_MARK_BUFF, _D_LANCE, _D_SWEEP)
 
     # -- QUARRY'S MARK: he studies you, then you cannot outrun him. ----------
@@ -483,6 +729,15 @@ def _build_kit_skills(db):
     db.set_field(B, 'offensiveSlowDefensiveAbilityDurationMin', 6.0)
     db.set_field(B, 'offensiveSlowBleedingMin', [70.0, 130.0, 210.0])
     db.set_field(B, 'offensiveSlowBleedingDurationMin', 6.0)
+    # The donor's resist shred is KEPT (marked prey takes the spear harder is exactly
+    # this skill's identity) but it is now a DESIGNED 3-entry ladder instead of Study
+    # Prey's inherited 12-entry one, which `skillLevel [1,2,3]` was reading at its
+    # 3 weakest steps. Reported in round 2 rather than left silent.
+    db.set_field(B, 'defensivePhysical', [-25.0, -32.0, -40.0])
+    db.set_field(B, 'defensivePierce', [-25.0, -32.0, -40.0])
+    db.set_field(B, 'skillActiveDuration', 6.0)     # match the three 6s effect timers
+    db.set_field(B, 'skillCooldownTime', 12.0)
+    db.set_field(B, 'skillMaxLevel', 3)
     db.set_field(B, 'FileDescription',
                  "SVC Endless Hunt: Quarry's Mark debuff (slow + DA shred + bleed)")
     db._modified.add(B)
@@ -506,6 +761,9 @@ def _build_kit_skills(db):
     db.set_field(L, 'offensiveSlowRunSpeedDurationMin', 3.0)
     db.set_field(L, 'skillCooldownTime', 5.0)
     db.set_field(L, 'skillMaxLevel', 3)
+    # The AI is told to use this at LongRange 12-22 (see _RANGE_BANDS); the donor's
+    # projectile only reached 18, so the far third of his own band was a dry cast.
+    db.set_field(L, 'maxDistance', float(_RANGE_BANDS['longRangeMax']))
     db.set_field(L, 'FileDescription',
                  'SVC Endless Hunt: The Long Reach (cold spectral spear at range)')
     db._modified.add(L)
@@ -524,6 +782,54 @@ def _build_kit_skills(db):
     db.set_field(W, 'FileDescription',
                  'SVC Endless Hunt: Run Them Down (close-range spear sweep)')
     db._modified.add(W)
+
+    # -- ROUND 2: the inherited donor payloads come OFF. ----------------------
+    for rec in sorted(_STRIP_DONOR_PAYLOAD):
+        gone = [f for f in _STRIP_DONOR_PAYLOAD[rec] if _del_field(db, rec, f)]
+        if gone:
+            print("    stripped %d inherited donor payload field(s) from %s: %s"
+                  % (len(gone), rec.rsplit('\\', 1)[-1], ', '.join(sorted(gone))))
+
+    # -- ROUND 2: PLAYER SURFACE. Each skill gets its own name + description. -
+    S = DATA_TYPE_STRING
+    tags.update(_SKILL_TAGS)
+    for rec in sorted(_SKILL_TEXT):
+        name_tag, desc_tag = _SKILL_TEXT[rec]
+        _set(db, rec, 'skillDisplayName', name_tag, S)
+        _set(db, rec, 'skillBaseDescription', desc_tag, S)
+        db._modified.add(rec)
+    print("    player surface: 4 skill records renamed off their donor tags "
+          "(%s)" % ', '.join(sorted(set(t for t, _d in _SKILL_TEXT.values()))))
+
+
+# =============================================================================
+# (4b) R-84 round 2: his soul grants HIS skill
+# =============================================================================
+def _wire_soul_grant(db):
+    """Repoint `toxeus_hunt_soul_{n,e,l}` off the retired flashpowder."""
+    _require(db, _SOUL_GRANT, *_HUNT_SOULS.values())
+    maxlv = _gv1(db, _SOUL_GRANT, 'skillMaxLevel') or 0
+    for t in 'nel':
+        soul = _HUNT_SOULS[t]
+        cur = _gv1(db, soul, 'itemSkillName')
+        if _norm(cur) not in (_norm(_RETIRED_SOUL_GRANT), _norm(_SOUL_GRANT)):
+            raise SystemExit(
+                "[toxeus_hunt_encounter] %s itemSkillName is %r, expected the shipped "
+                "%r (or an already-applied %r). Another writer owns his soul grant; "
+                "refusing to overwrite it blind."
+                % (soul, cur, _RETIRED_SOUL_GRANT, _SOUL_GRANT))
+        lv = _SOUL_GRANT_LEVEL[t]
+        if lv > int(maxlv):
+            raise SystemExit(
+                "[toxeus_hunt_encounter] %s would grant %s at level %d but the skill's "
+                "skillMaxLevel is %r - a soul may never grant a level its skill does "
+                "not have." % (soul, _SOUL_GRANT, lv, maxlv))
+        db.set_field(soul, 'itemSkillName', _SOUL_GRANT)
+        db.set_field(soul, 'itemSkillLevel', lv)
+        db._modified.add(soul)
+    print("  R-84 round 2: toxeus_hunt_soul_{n,e,l} grant %s at level 1/2/3 "
+          "(was the RETIRED soulskills\\toxeus_flashpowder at 4/6/8)"
+          % _SOUL_GRANT.rsplit('\\', 1)[-1])
 
 
 def _free_skillname_slot(db, rec, lo=1, hi=30):
@@ -598,9 +904,13 @@ def apply(db, tags):
     _build_spear_items(db, tags)
     _graft_spear_anims(db)
     _wire_spear_to_hunt(db)
-    _build_kit_skills(db)
+    _build_kit_skills(db, tags)
     print("  R-84: pursuit kit (the 3 Enslaver-shared cast slots become his own):")
     _wire_kit(db)
+    print("  R-84 round 2: binding the special animations his KEPT cast slots need "
+          "(toxeus_bladestorm @40% could never fire):")
+    _bind_special_anims(db)
+    _wire_soul_grant(db)
     print("=== [toxeus_hunt_encounter] done (verify() runs post-finalization) ===\n")
     return tags
 
@@ -632,7 +942,10 @@ def _spear_gate(db, mon, label, problems):
                         % (label, spear_tiers))
     needed = ['spearAttackAnim1', 'spearAttackAnim2', 'spearAttackAnim3',
               'spearRunAnim', 'spearWalkAnim', 'spearAttackIdleAnim',
-              'spearDieAnim1', 'spearStunAnim']
+              'spearDieAnim1', 'spearStunAnim',
+              # ROUND 2: he is a hidden ambusher and the spear row is now his ONLY
+              # row, so the emerge pose has to be bound on it too.
+              'spearSpawnAnim']
     for f in needed:
         v = _gv1(db, mon, f)
         if not v or not str(v).strip().lower().endswith('.anm'):
@@ -663,6 +976,99 @@ def _anim_provenance(db, problems):
             problems.append(
                 "SPEAR-ANIM-1 provenance: %s is referenced by NO other shipped "
                 "record, so nothing proves the .anm exists" % a)
+
+
+def _wielded_rows(db, mon, label, problems):
+    """Every animation ROW this monster can actually be reading at run time.
+
+    'unarmed' is always included: it is the engine's universal fallback row, so a
+    binding that lives ONLY on a weapon row dies the moment that weapon is vetoed,
+    unequipped or re-rolled. Every other row is DERIVED from the Class of the items
+    the monster is guaranteed in RightHand, so the gate follows the weapon instead of
+    assuming a row (round 1's gate text said 'unarmedSpecialAnimRef' while the record
+    had just been given a spear, which is the wrong row and a trap for the next lane).
+    """
+    rows = {_FALLBACK_ROW}
+    tables = db.get_field_value(mon, 'lootRightHandItem1') or []
+    if not isinstance(tables, list):
+        tables = [tables]
+    for tbl in tables:
+        if not tbl or not db.has_record(tbl):
+            continue
+        it = _gv1(db, tbl, 'lootName1')
+        if not it or not db.has_record(it):
+            continue
+        cls = _gv1(db, it, 'Class')
+        if cls not in _WEAPON_ROW:
+            problems.append(
+                "%s: guaranteed RightHand item %s has Class=%r, which this gate has "
+                "no animation-row mapping for - the castability check cannot be "
+                "trusted until _WEAPON_ROW covers it"
+                % (label, str(it).rsplit('\\', 1)[-1], cls))
+            continue
+        row = _WEAPON_ROW[cls]
+        if row:
+            rows.add(row)
+    return rows
+
+
+def _bound_refs(db, rec, row):
+    """{ref name: animation} bound on `rec` for animation row `row`."""
+    out = {}
+    ff = db.get_fields(rec) or {}
+    pat = _re.compile(r'^%sSpecialAnimRef(\d+)$' % _re.escape(row))
+    for k, tf in ff.items():
+        m = pat.match(k.split('###')[0])
+        if not m or not tf.values:
+            continue
+        name = str(tf.values[0]).strip()
+        if not name:
+            continue
+        out[name] = str(_gv1(db, rec, '%sSpecialAnim%s' % (row, m.group(1))) or '')
+    return out
+
+
+def _castability_violations(db, mon, label, problems):
+    """CASTABILITY-1 (round 2, widened): EVERY populated active skill slot, not just
+    the ones this module authored.
+
+    For each active slot: the skill must resolve, and if it declares a
+    `skillSpecialAnimationName` the caster must bind that ref name to a non-empty
+    animation on EVERY row it can be reading. Otherwise the engine has no playable
+    animation and SkillManager::StartSkill aborts the cast - the skill is dead
+    weight in the AI's cast budget while the data looks perfectly healthy.
+    """
+    rows = sorted(_wielded_rows(db, mon, label, problems))
+    bound = {row: _bound_refs(db, mon, row) for row in rows}
+    table = _gv1(db, mon, 'charAnimationTableName')
+    for field in _ACTIVE_SLOT_FIELDS:
+        path = _gv1(db, mon, field)
+        path = str(path).strip() if path is not None else ''
+        if not path or path == '0':
+            continue
+        if not db.has_record(path):
+            problems.append("%s: %s -> %s does NOT resolve (dead slot: the skill can "
+                            "never be cast)" % (label, field, path))
+            continue
+        need = _gv1(db, path, 'skillSpecialAnimationName')
+        need = str(need).strip() if need is not None else ''
+        if not need or need == '0':
+            continue
+        for row in rows:
+            have = bound[row].get(need)
+            if have is None:
+                problems.append(
+                    "%s CASTABILITY-1: %s -> %s requires special animation %r but the "
+                    "caster binds no %sSpecialAnimRef with that name (bound on that "
+                    "row: %s; charAnimationTableName=%r) - the engine has no playable "
+                    "animation, so the cast never fires"
+                    % (label, field, path.rsplit('\\', 1)[-1], need, row,
+                       sorted(bound[row]) or 'nothing', table))
+            elif not have.strip():
+                problems.append(
+                    "%s CASTABILITY-1: %s -> %s requires special animation %r whose "
+                    "bound %sSpecialAnim slot is EMPTY"
+                    % (label, field, path.rsplit('\\', 1)[-1], need, row))
 
 
 def verify(db, tags=None):
@@ -763,17 +1169,83 @@ def verify(db, tags=None):
         if cls != _EXPECT_CLASS[sk]:
             problems.append("R-84: %s Class=%r != %r"
                             % (sk.rsplit('\\', 1)[-1], cls, _EXPECT_CLASS[sk]))
-        if sk == _MARK_BUFF:
-            continue    # a buff payload is never cast directly
-        anim = _gv1(db, sk, 'skillSpecialAnimationName')
-        if anim not in (None, '', '0'):
-            problems.append(
-                "R-84 CASTABILITY: %s declares skillSpecialAnimationName=%r but "
-                "%s binds no unarmedSpecialAnimRef at all - the engine would have "
-                "no playable animation and would never fire the skill"
-                % (sk.rsplit('\\', 1)[-1], anim, _HUNT.rsplit('\\', 1)[-1]))
+        # ROUND 2 PLAYER SURFACE: no new skill may still read as its donor.
+        name_tag, desc_tag = _SKILL_TEXT[sk]
+        for field, want in (('skillDisplayName', name_tag),
+                            ('skillBaseDescription', desc_tag)):
+            got = _gv1(db, sk, field)
+            if got != want:
+                problems.append(
+                    "R-84 PLAYER SURFACE: %s %s=%r, expected the mod-authored %r "
+                    "(a donor tag here makes the skill read as the skill it replaced)"
+                    % (sk.rsplit('\\', 1)[-1], field, got, want))
+            elif tags is not None and want not in tags:
+                problems.append(
+                    "R-84 PLAYER SURFACE: %s names Text tag %s, which is not in the "
+                    "tag set - it would show a raw tag in game"
+                    % (sk.rsplit('\\', 1)[-1], want))
+        # ROUND 2: no inherited donor payload may survive on the clone.
+        for field in _STRIP_DONOR_PAYLOAD.get(sk, ()):
+            if _gv1(db, sk, field):
+                problems.append(
+                    "R-84 DONOR PAYLOAD: %s still carries the inherited %s=%r - an "
+                    "unreported, undesigned leftover of the record it was cloned from"
+                    % (sk.rsplit('\\', 1)[-1], field, _gv1(db, sk, field)))
     if db.has_record(_MARK) and _norm(_gv1(db, _MARK, 'buffSkillName')) != _norm(_MARK_BUFF):
         problems.append("R-84: Quarry's Mark buffSkillName != its own buff record")
+    # The AI must not be told to cast the lance beyond the projectile's own reach.
+    if db.has_record(_LANCE):
+        reach = float(_gv1(db, _LANCE, 'maxDistance') or 0.0)
+        band = float(_gv1(db, _HUNT, 'longRangeMax') or 0.0)
+        if reach + 0.001 < band:
+            problems.append(
+                "R-84: The Long Reach maxDistance=%g but he is told to cast it at "
+                "LongRange up to %g - the far part of his own band is a dry cast"
+                % (reach, band))
+
+    # --- (D2) ROUND 2: EVERY cast slot he keeps must actually be castable ---
+    _castability_violations(db, _HUNT, 'Endless Hunt', problems)
+
+    # --- (D3) ROUND 2: his soul grants HIS skill, at a level that exists ----
+    for t in 'nel':
+        soul = _HUNT_SOULS[t]
+        if not db.has_record(soul):
+            problems.append("R-84 SOUL: %s missing" % soul)
+            continue
+        grant = _gv1(db, soul, 'itemSkillName')
+        if _norm(grant) == _norm(_RETIRED_SOUL_GRANT):
+            problems.append(
+                "R-84 SOUL IDENTITY: %s still grants %s - the skill this lane RETIRED "
+                "from his kit. The one player-facing artifact of his identity would "
+                "hand out an ability he no longer has."
+                % (soul.rsplit('\\', 1)[-1], _RETIRED_SOUL_GRANT.rsplit('\\', 1)[-1]))
+            continue
+        if _norm(grant) != _norm(_SOUL_GRANT):
+            problems.append("R-84 SOUL: %s itemSkillName=%r != %s"
+                            % (soul.rsplit('\\', 1)[-1], grant, _SOUL_GRANT))
+            continue
+        lv = _gv1(db, soul, 'itemSkillLevel')
+        maxlv = _gv1(db, grant, 'skillMaxLevel')
+        try:
+            lv_i, max_i = int(lv), int(maxlv)
+        except (TypeError, ValueError):
+            problems.append("R-84 SOUL: %s itemSkillLevel=%r / skillMaxLevel=%r are "
+                            "not both integers" % (soul.rsplit('\\', 1)[-1], lv, maxlv))
+            continue
+        if lv_i < 1 or lv_i > max_i:
+            problems.append(
+                "R-84 SOUL: %s grants %s at level %d but the skill's skillMaxLevel is "
+                "%d - a soul may never grant a level its skill does not have"
+                % (soul.rsplit('\\', 1)[-1], grant.rsplit('\\', 1)[-1], lv_i, max_i))
+    # the soul DESCRIPTION must not still advertise the retired flash-burst
+    if tags is not None and _SOUL_DESC_TAG in tags:
+        desc = str(tags[_SOUL_DESC_TAG]).lower()
+        for banned in ('flash-burst', 'flash burst', 'flashpowder', 'flash powder'):
+            if banned in desc:
+                problems.append(
+                    "R-84 PLAYER SURFACE: %s still says %r, but the soul no longer "
+                    "grants the flash powder" % (_SOUL_DESC_TAG, banned))
+                break
 
     for suffix in sorted(_CAST_PLAN):
         new_skill, chance, band = _CAST_PLAN[suffix]
@@ -822,8 +1294,9 @@ def verify(db, tags=None):
     print("  [toxeus_hunt_encounter].verify OK: fixed encounter resolves on N/E/L; "
           "Rite at 100 percent Misc4 with the recipe still gated on LEGENDARY "
           "souls; Runbreaker x3 + a playable spear animation block (3 borrowed "
-          "poses, provenance proven); pursuit kit castable, wired and no longer an "
-          "Enslaver clone.")
+          "poses, provenance proven); pursuit kit wired, named and no longer an "
+          "Enslaver clone; EVERY populated cast slot castable on every row he can "
+          "read; his soul grants his own mark at a level the skill has.")
     return tags
 
 
@@ -831,11 +1304,23 @@ def verify(db, tags=None):
 def _negtest():
     """py tools/patches/toxeus_hunt_encounter.py --negtest
 
-    Four plants, each run against a tiny stub db, each of which MUST be caught:
+    Every plant runs against a tiny stub db and MUST be caught:
       1. the Legendary-only gate comes back (poolEpic1 emptied)
       2. a spear is equipped but the rig has no spearAttackAnim1
       3. a kit skill declares a skillSpecialAnimationName the caster cannot bind
       4. the EoAT recipe stops demanding LEGENDARY souls
+      5. the spear ships on the invisible-weapon DRX supra mesh
+      ROUND 2 (the two vet blockers + the three mediums):
+      6. a KEPT cast slot (bladestorm) loses its spear-row AoE360 binding
+      7. ... or loses only the unarmed fallback-row binding
+      8. the guaranteed weapon changes Class and the binding is now on the wrong row
+      9. his soul goes back to granting the retired flashpowder
+     10. his soul grants a level above the skill's skillMaxLevel
+     11. a new skill still carries an inherited donor payload (petrify / flash FX)
+     12. a new skill still reads as its donor (Study Prey's display tag)
+     13. the soul DESCRIPTION still advertises the retired flash-burst
+     14. the emerge pose (spearSpawnAnim) is unbound on his only weapon row
+     15. the AI is told to cast the lance beyond the projectile's own reach
     """
     from collections import OrderedDict
 
@@ -880,11 +1365,12 @@ def _negtest():
         db.d[_RITE_TABLE] = {'lootName1': [_EOAT_FORMULA]}
         hunt = {'chanceToEquipMisc4': [100.0],
                 'lootMisc4Item1': [_RITE_TABLE, _RITE_TABLE, _RITE_TABLE],
-                'lootRightHandItem1': [_SPEAR_GUAR[t] for t in 'nel']}
+                'lootRightHandItem1': [_SPEAR_GUAR[t] for t in 'nel'],
+                'longRangeMax': [_RANGE_BANDS['longRangeMax']]}
         for i, a in enumerate(_SPEAR_ATT_ANIMS, start=1):
             hunt['spearAttackAnim%d' % i] = [a]
         for f in ('spearRunAnim', 'spearWalkAnim', 'spearAttackIdleAnim',
-                  'spearDieAnim1', 'spearStunAnim'):
+                  'spearDieAnim1', 'spearStunAnim', 'spearSpawnAnim'):
             hunt[f] = [r'Creatures\Monster\ShadowStalker\ANM\ShadowStalker_Run.anm']
         for i, suffix in enumerate(sorted(_CAST_PLAN), start=1):
             sk, ch, band = _CAST_PLAN[suffix]
@@ -892,7 +1378,15 @@ def _negtest():
             hunt['specialAttack%sChance' % suffix] = [ch]
             hunt['skillName%d' % i] = [sk]
             hunt['skillLevel%d' % i] = [1, 2, 3]
+        # the KEPT cast slot the vet found dead: bladestorm needs 'AoE360'.
+        hunt['specialAttack2SkillName'] = [_BLADESTORM]
+        hunt['specialAttack2Chance'] = [40.0]
+        for row, ref, anim in _ANIM_REF_BINDINGS:
+            hunt['%sSpecialAnimRef1' % row] = [ref]
+            hunt['%sSpecialAnim1' % row] = [anim]
         db.d[_HUNT] = hunt
+        db.d[_BLADESTORM] = {'Class': ['Skill_AttackProjectileRing'],
+                             'skillSpecialAnimationName': ['AoE360']}
         # a second record carrying the borrowed poses = the provenance proof
         db.d[r'records\provenance\donor.dbr'] = dict(
             ('spearAttackAnim%d' % i, [a])
@@ -903,10 +1397,19 @@ def _negtest():
                                'itemNameTag': [_SPEAR_NAME_TAG],
                                'mesh': [_SPEAR_MESH]}
             db.d[_SPEAR_GUAR[t]] = {'lootName1': [_SPEAR[t]]}
+            db.d[_HUNT_SOULS[t]] = {'itemSkillName': [_SOUL_GRANT],
+                                    'itemSkillLevel': [_SOUL_GRANT_LEVEL[t]]}
         for sk, cls in _EXPECT_CLASS.items():
-            db.d[sk] = {'Class': [cls]}
+            name_tag, desc_tag = _SKILL_TEXT[sk]
+            db.d[sk] = {'Class': [cls], 'skillDisplayName': [name_tag],
+                        'skillBaseDescription': [desc_tag]}
         db.d[_MARK]['buffSkillName'] = [_MARK_BUFF]
+        db.d[_MARK]['skillMaxLevel'] = [3]
+        db.d[_LANCE]['maxDistance'] = [_RANGE_BANDS['longRangeMax']]
         return db
+
+    def _drop(db, rec, field):
+        db.d[rec].pop(field, None)
 
     plants = [
         ('Legendary-only gate returns',
@@ -922,8 +1425,33 @@ def _negtest():
         ('the spear ships on the invisible-weapon DRX supra mesh (build30 F3)',
          lambda db: db.d[_SPEAR['l']].__setitem__(
              'mesh', [r'DRX\meshes\supra\wep_spear.msh'])),
+        # -- ROUND 2 (the vet blockers) --------------------------------------
+        ('a KEPT cast slot loses its binding on the row he wields (the b98 r1 defect)',
+         lambda db: _drop(db, _HUNT, 'spearSpecialAnimRef1')),
+        ('a KEPT cast slot loses its unarmed fallback-row binding',
+         lambda db: _drop(db, _HUNT, 'unarmedSpecialAnimRef1')),
+        ('the guaranteed weapon changes Class, so the binding is on the wrong row',
+         lambda db: [db.d[_SPEAR[t]].__setitem__('Class', ['WeaponMelee_Sword'])
+                     for t in 'nel']),
+        ('his soul goes back to granting the RETIRED flashpowder',
+         lambda db: db.d[_HUNT_SOULS['l']].__setitem__(
+             'itemSkillName', [_RETIRED_SOUL_GRANT])),
+        ('his soul grants a level the skill does not have',
+         lambda db: db.d[_HUNT_SOULS['l']].__setitem__('itemSkillLevel', [8])),
+        ('an inherited donor payload survives on a new skill (the 2s hard petrify)',
+         lambda db: db.d[_LANCE].__setitem__('offensivePetrifyMin', [2.0])),
+        ('a new skill still reads as its donor (Study Prey display tag)',
+         lambda db: db.d[_MARK_BUFF].__setitem__('skillDisplayName', ['tagSkillName095'])),
+        ('the soul description still advertises the retired flash-burst',
+         'TAGS:the flash-burst that opens the range'),
+        ('the emerge pose is unbound on his only weapon row',
+         lambda db: db.d[_HUNT].__setitem__('spearSpawnAnim', [''])),
+        ('the AI is told to cast the lance beyond the projectile reach',
+         lambda db: db.d[_LANCE].__setitem__('maxDistance', [12.0])),
     ]
     tags = {_SPEAR_NAME_TAG: 'Runbreaker'}
+    tags.update(_SKILL_TAGS)
+    tags[_SOUL_DESC_TAG] = 'His relentless step and his evasion.'
     try:
         verify(_base(), dict(tags))
     except SystemExit as e:
@@ -932,9 +1460,13 @@ def _negtest():
     bad = 0
     for label, plant in plants:
         db = _base()
-        plant(db)
+        t = dict(tags)
+        if isinstance(plant, str) and plant.startswith('TAGS:'):
+            t[_SOUL_DESC_TAG] = plant[5:]
+        else:
+            plant(db)
         try:
-            verify(db, dict(tags))
+            verify(db, t)
         except SystemExit:
             print("  negtest OK  (caught): %s" % label)
             continue
