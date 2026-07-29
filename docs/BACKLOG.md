@@ -1405,6 +1405,36 @@ along automatically when the structural cluster-relocation fix lands.
 
 ## DEBT REGISTER (open deferred/unproven/launch-gated items)
 
+> 🩸 **2026-07-29 b100 SANCTUARY RECON + DESIGN (`feat/sanctuary-populate`, R-100..R-109 reserved).**
+> Read-only recon + design gate for Will's "large walkable areas with no enemies placed" report on the
+> Sanctuary of the Bloodborn. Full evidence: `docs/reports/b100_sanctuary_recon.md`. Measured against
+> canonical `Levels.arc` md5 `fc0adcc0713839a685b32d6e122653be`. NOTHING IMPLEMENTED OR DEPLOYED.
+> - **BL-DEBT-b100-1 (P1, OPEN, WILL_DECISION-1):** the four `ocean_extension01..04` tiles carry
+>   **42,199 sq u of walkable, Sanctuary-lit, banner-inheriting ground with ZERO monster proxies**,
+>   reachable from drxBC3 through a measured 107.2 u wide navmesh seam. Three options (populate as
+>   blood sea / close off / leave empty) in report section 7; option (ii) is the b89 navmesh-crash
+>   class and is recommended AGAINST. Needs Will's taste call before any implementation.
+> - **BL-DEBT-b100-2 (P2, OPEN, WILL_DECISION-2):** the proposed population lands the walkway at
+>   1,000 sq u/proxy and worst-case 18 simultaneous entities per screen (base-game median 14, p90 70,
+>   max 162; b76 freeze "well over 100"). Whether that is the intended feel is Will's call.
+> - **BL-DEBT-b100-3 (P2, OPEN):** **the Sanctuary minimap defect is NOT the b46 defect.** The zone
+>   `dbr` is valid and the bitmaps are present and non-blank; the `xbloodcave` cluster was
+>   GRID_SHIFTed `(7840,0,2030)` and now sits a measured **2,986 u east** of every native tile on the
+>   `orient/easternsilkroad` zone page it points at, so its TGAs composite off-page. Fix = a dedicated
+>   zone record (SV's own `olympus_gom.dbr` precedent), a COUPLED arz+Text+Levels change. Deliberately
+>   NOT bundled with the population lane. Will scoped it secondary ("isnt a huge issue").
+> - **BL-DEBT-b100-4 (P2, OPEN):** the emptiness is **inherited upstream content debt, not a
+>   regression** - our map is placement-IDENTICAL to pristine SV 0.98i on all 8 levels checked
+>   (drxBC3 281/10 both sides). Cause (a) "never placed", with (b)/(c)/(d) each disproven. Any future
+>   "restore the lost spawns" framing is wrong; there is nothing to restore.
+> - **BL-DEBT-b100-5 (P1, OPEN, WILL_DECISION-4):** **`docs/amgoz1_design_voice.md` DOES NOT EXIST**
+>   and never has (0 hits across all of git history), yet it is cited as the binding creative bar by
+>   `docs/BACKLOG.md`, `docs/WILL_RULINGS.md` R-15, and every content brief. Either author it or stop
+>   citing it.
+> - **BL-DEBT-b100-6 (P2, OPEN):** density/screen-load figures are `spawnMax` MODEL sums over a chosen
+>   60x60 u box; TQ's real camera footprint was NOT measured (needs the game running). In-game feel
+>   check is Will's, unowned by any agent lane.
+
 > Compiled by the b84 rulings-backfill sweep (round 1, 2026-07-16) of docs/reports/*.md, this file,
 > WILL_TEST_GUIDE*.md, HANDOFF*.md, MULTIPLAYER_COMPAT.md, and CHANGELOG.md. One line each: item -
 > source - owner/trigger. Verified against later reports where possible; items with no later
