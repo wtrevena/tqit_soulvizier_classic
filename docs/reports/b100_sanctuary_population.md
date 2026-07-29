@@ -497,3 +497,52 @@ Exhaustive; a triaged item is not a done item.
    CHOICES**, three of them derived from measurement and one (120 u) stated as taste. All four are
    one-line edits in `b100_derive_sanctuary.py`, after which the coords must be re-derived and the
    gate re-run.
+9. **THIS BRANCH IS NOT ON CURRENT `main` AND NEEDS AN INTEGRATION MERGE.** It branched from
+   `4f0299c` as briefed; `main` has since moved **twice** while this lane ran - first to `6467feb`
+   (`feat/leinth-wave`, which also took the briefed `build66-dev` tag) and then to `b7cb622`
+   (`fix/blade-mastery-truth`). `docs/BACKLOG.md` and `docs/WILL_RULINGS.md` are the likely conflict
+   points, since several lanes append to both. The ruling decade is NOT a conflict: the
+   blade-mastery lane's own ledger note records that it took 100-102 and **yielded 110-119 to this
+   lane**, so R-110/R-111 are uncontested on current `main`. Re-run the decade check anyway - it is
+   a race.
+10. **`MAP-SANCTUARY-1` IS NOT WIRED INTO ANY AUTOMATIC RUNNER.** It is a standalone gate the
+    integrator must invoke, like `gate_landing_clearance` and `verify_merged_bc_navmeshes`. Wiring
+    it into the wave-gate sequence is a follow-up.
+11. **`tools/contracts/gate_placed_record_resolution.py` FAILS ON `main` ALREADY** (346 missing
+    placed record refs, base-game setdressing). This lane's delta is **zero** and none of its 14
+    records is in the missing set, but the gate is red before and after and that is somebody's
+    pre-existing debt, not a clean bill of health.
+
+---
+
+## 9. ENVIRONMENT NOTES FOR WHOEVER INTEGRATES THIS
+
+- **Nothing was deployed.** `CustomMaps\SoulvizierClassicDEV` was last written at
+  **2026-07-29 08:28** (`Quests.arc`) and **2026-07-27 16:48** (`Levels.arc`), both before this lane
+  started. Its `Levels.arc` is 688,679,840 B and is NOT this lane's artifact.
+- **The canonical staging artifacts are untouched.** Re-hashed at the end of the lane:
+  `work/SoulvizierClassic/Resources/Levels.arc` = `fc0adcc0713839a685b32d6e122653be`, exactly the
+  md5 the recon pinned; `work/.../Quests.arc` = `5e664c7b190965fd69f6ff15d77d85e4`. Every build this
+  lane ran went to the worktree's own `work/` and to `local/b100_base` / `local/b100_new` via
+  `SVC_OUT_DIR`, never to the shared `local/` default.
+- ⚠️ **CONCURRENT DRIFT, not this lane's:** `work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  in the MAIN checkout was rewritten at **11:16** during this session (55,475,124 B, md5
+  `967b1f97137bf6479c18c08e9dd6ffc4`) by another lane. This lane's arz is a different file in a
+  different worktree (`4378b617fefb2014e382bb5931e7d605`, 55,460,430 B, 12:18). Do not assume the
+  main checkout's staged arz is anybody's ground truth right now.
+- **Two gitignored caches had to be populated for a cold worktree build**, both read-only-ish and
+  worth knowing about:
+  1. `build_quest_files.py` hard-codes `upstream\soulvizier_098i\Resources\XPack\Quests.arc`
+     relative to cwd, and that file is **not** covered by `tools/check_build_inputs.py` (which knows
+     about the SV arz's and `Text_EN.arc` but not the SV Quests). It is absent from every cache on
+     this machine and had to be extracted from `third_party/soulvizier098i.zip`
+     (`Resources/XPack/Quests.arc`, 222,487 B, md5 `a1b8020b20f41ca5b7e4af916bebf039`). **Worth
+     adding to the preflight**, since without it the quest half of a coupled deploy cannot be built
+     from a fresh worktree.
+  2. The DB build's `mastery_sv_alignment.verify` resolves emblem textures against
+     `work/SoulvizierClassic/Resources/*.arc`, so a worktree with an empty staging dir fails that
+     verify with a misleading "emblem tex UNRESOLVED" rather than "your staging dir is empty". The
+     art arcs were hardlinked in from the main checkout (no copy, no mutation of the source).
+- **Shared git config was not mutated** (checked at the end: no `core.worktree`, `core.bare=false`
+  as it already was, `user.name`/`user.email` unchanged and matching the branch's earlier commits).
+  The temporary baseline worktree in the session scratchpad was removed with `git worktree remove`.

@@ -46,6 +46,28 @@ density comparators used a proxy-CENTRED box that undercounts by a measured mean
 ProxyPool records carry no `Class` field at all, their identity is the template. Its INTENT, its four
 bands and its creature rosters are kept verbatim.
 
+**ARTIFACTS** (all in `.claude/worktrees/sanctuary-populate/`, nothing written to `CustomMaps`):
+- `local/b100_new/Levels_merged.arc` md5 **`48a51961bb3a36c39f82759845041f14`** (688,692,859 B) - the deliverable
+- `work/SoulvizierClassic/Resources/Quests.arc` md5 **`5e664c7b190965fd69f6ff15d77d85e4`** (194,926 B)
+  - COUPLED with Levels, and **byte-identical to the artifact already deployed**
+- `work/SoulvizierClassic/Database/SoulvizierClassic.arz` md5 **`4378b617fefb2014e382bb5931e7d605`**
+  (55,460,430 B, 51,108 records) and `work/.../Text.arc` md5 **`c33b6abe3d61559785ee00ab3280a765`**
+  (89,024 B) - **UNCHANGED by this lane**, and both reproduce the b98 lane's recorded md5s exactly.
+
+**RECORD DIFF vs a real baseline built from `4f0299c` in the same environment:** `ADDED 0 /
+REMOVED 0 / CHANGED 0`, and the two arz files are **byte-identical**. Nothing to attribute.
+
+**GATE DELTAS (each run on BOTH maps):** `verify_merged_bc_navmeshes` 24/24 both; map contract suite
+6 P2 / 0 P0 / 0 P1 and the **identical violation set item for item** both; `gate_placed_record_
+resolution` 346/397/14,241 both (a PRE-EXISTING `main` failure, zero delta, none of this lane's
+records in the missing set); `gate_landing_clearance --wiring v1` PASS=27; `validate_tags` PASS.
+
+⚠️ **CONCURRENCY:** this branch is on `4f0299c` and `main` moved TWICE while the lane ran (`6467feb`
+feat/leinth-wave, then `b7cb622` fix/blade-mastery-truth). It needs an integration merge;
+`docs/BACKLOG.md` and `docs/WILL_RULINGS.md` are the likely conflict points. The ruling decade is
+NOT contested - the blade-mastery lane's own ledger note records that it took 100-102 and yielded
+110-119 here.
+
 **OPEN DEBT:** BL-b100-DEBT-1..7 (see DEBT REGISTER). Headline: **no in-game check exists** - no
 agent in this lane may launch TQ, so every claim is about bytes and geometry, not feel.
 
