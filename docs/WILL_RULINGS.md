@@ -1321,5 +1321,30 @@ not merely widening a constant - otherwise the build reds the moment the ruling 
 **"MORE ITEMS THAN THE NORMAL CHAMPIONS" is already satisfied by the orb05 calibre** (21.16 expected items
 vs orb04's 5.70); this ruling is about WHO is on it, not about re-tuning it.
 
-**STATUS:** PENDING - measured and specified, not implemented. Deferred only because the weekly model budget
-was exhausted; the two judgement calls above should be answered before or during implementation.
+**BOTH JUDGEMENT CALLS ANSWERED BY WILL, same day. WILL, VERBATIM:**
+
+> "give all versions of toxeus the new apex orb, if some good items drop since someone got lucky and found
+> and killed the low-level Toxeus with no fixed spawn and they get some great items, so be it"
+
+**SCOPE IS THEREFORE SETTLED AND MAXIMAL: every Toxeus creature record goes on `genericbossorb_05`.**
+- `um_toxeus_hunt_99` + `um_toxeus_hunt_l_99` - the missed champion and his endless variant. **Highest value
+  item in this ruling**: this is the one Will has actually fought, and he currently gets no orb at all.
+- `um_toxeus_99` (inherited) - add.
+- `um_toxeus_21` (charLevel 25/45/65, inherited) - **add, and the balance objection is OVERRULED WITH
+  REASONS.** Will's reasoning is recorded because it is the precedent for future "is this too generous"
+  calls: the low-level Toxeus has **no fixed spawn**, so reaching him is already a lucky accident, and Will
+  would rather reward that accident than protect the curve. Do NOT quietly scale him down to a lesser tier
+  "in the spirit of" the ruling - he asked for the apex orb, on a record he knows is low-level, having been
+  told exactly what it means.
+- `z_toxeus` / `old_z_toxeus` (zzdev dev dummies) - "all versions" is unambiguous, so **include them**
+  rather than silently excluding. First VERIFY whether either is actually placed anywhere; if they are
+  unreachable dev leftovers the wiring is inert, which is a fine outcome - but record the placement finding
+  either way. RETIREMENT PROTOCOL: do not delete or retire them; code-unreferenced is not proof of dead.
+
+**REMAINING WORK IS MECHANICAL AND FULLY SPECIFIED:** extend the roster, make `verify()` roster-derived
+(it hardcodes exactly two champions and planted NEGATIVE 2 asserts a third is scope creep, so that test must
+be re-authored to assert the *whole* roster instead of a count), rebuild, re-run all 16 subtests plus new
+ones covering the added variants, record-diff for zero unattributed change, confirm `genericbossorb_04` and
+its 19 other consumers stay byte-unchanged.
+
+**STATUS:** RATIFIED, implementation queued. No open questions remain.
