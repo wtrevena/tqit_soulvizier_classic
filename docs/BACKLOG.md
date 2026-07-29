@@ -586,6 +586,93 @@ section (decade 70-79), status IMPLEMENTED b93, with the exact before/after valu
 not shipped; **the DEV deploy is blocked on the concurrent-lane merge above**; SV's
 `experienceLevelEquation` ships with an unbalanced parenthesis (inherited, untouched, affects only the
 "% of a level" framing, not the XP-lost numbers); MULTIPLAYER_COMPAT.md quotes a stale build27 arz hash.
+## BUILD59-DEV GATE RECORD - b98 THE ENDLESS HUNT (2026-07-28, branch `feat/endless-hunt`, tag `build59-dev`)
+
+**NOT DEPLOYED.** Five content branches are staged for ONE merged deploy; this lane deliberately did
+not write to `CustomMaps\SoulvizierClassicDEV`. Artifacts for the orchestrator's merged deploy:
+- arz `.claude/worktrees/endless-hunt/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **c366b4108be547b4a4acb181d1b0675c** (51,104 records)
+- Text `.claude/worktrees/endless-hunt/work/text/Text.arc` md5 **ce4653d30f304a88e837b20e166639fc**
+  (COUPLED - the arz references the new `tagSVCwpnRunbreaker`; never ship one without the other)
+- `Levels.arc` / `Quests.arc` **untouched** - this is a DB-only lane, zero map bytes.
+
+Rulings implemented: **R-80** (endless pursuit, Legendary only), **R-81** (his soul at 100%),
+**R-82** (the Rite of the Undivided drops off him too), **R-83** (Runbreaker, his spear),
+**R-84** (a kit that is his own, not the Enslaver's), **R-85** (the Enslaver's persistent black
+shroud). Full text in `docs/WILL_RULINGS.md` (Toxeus OVERFLOW decade 80-89, allocated by this lane);
+full report in `docs/reports/b98_endless_hunt.md`.
+
+**RECORD DIFF vs a freshly-built `main` (a0276ab) baseline, same env - INTENDED ONLY:**
+15 ADDED / 0 REMOVED / 4 MODIFIED. Added: the endless controller + variant monster + Legendary pool
+(R-80), `svc_{n,e,l}_runbreaker` + `runbreaker_guaranteed_{n,e,l}` (R-83), 4 pursuit-kit skills
+(R-84), the shroud skill + its CharFxPak (R-85). Modified: `um_toxeus_hunt_99` (30 fields),
+`um_toxeus_enslaver_99` (2 - the shroud in a FREE slot 19), the fixed proxy (5) and its pool
+(1 - FileDescription).
+
+**GATES (all green):**
+- registry selfcheck OK, 39 modules; every module `verify()` hook green.
+- `validate_tags` **PASS** (358 mod-owned tags all resolve, incl. the new `tagSVCwpnRunbreaker`).
+- `verify_soul_drop_rates` **PASS** (incl. its own planted-regression negative test).
+- contract suite **PASS, 0 P0 / 0 P1**, identical to the `main` baseline run under identical inputs
+  (both 0/0, 4,759 P2). NOTE FOR FUTURE LANES: run the suite with `--resource-arc-dir` pointing at a
+  Resources dir that actually holds the asset arcs and `--upstream-dir` at a populated upstream cache.
+  Without them the suite reports 102 P0 / ~460 P1 on `main` ITSELF - pure environment artifacts
+  (unresolvable meshes because no arcs were loaded, and severity demotion because the provenance
+  source could not load).
+- 3 NEW planted negative tests, 14/14 plants caught:
+  `py tools/patches/toxeus_hunt_encounter.py --negtest` (5/5),
+  `py tools/patches/toxeus_hunt_endless.py --negtest` (5/5),
+  `py tools/patches/enslaver_shroud.py --negtest` (6/6).
+
+**TWO WRONG CLAIMS IN THE SHIPPED DOCS, CORRECTED IN PLACE (retirement protocol - wording only, no
+record renamed or deleted):**
+1. The "Hades-only roaming Hunt" is a MYTH, and it came from ONE comment.
+   `toxeus_suite.py`'s `_LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)` was annotated "Hades
+   trash pools ONLY". That namespace is the WHOLE Immortal Throne proxy tree - the base game filed
+   RHODES inside it as area001. The sweep reaches 540 proxies across area001 Rhodes (70), area002
+   Medea's Grove (76), area003 Epirus (55), area004 Styx (78), area005 Plains of Judgement (79),
+   area006 Tower of Judgement (49), area007 Elysian Fields (82), area008 Hades Palace (49). 365 of
+   them define ONLY `poolN` (which resolves on all three difficulties) and ZERO define
+   `poolLegendaryN`. **Will meeting the roaming Hunt in Rhodes on Epic was never a defect.** What kept
+   him invisible on Normal is RARITY: weight 1 against pool totals of 36,001-660,001, median about
+   1 in 66,667. Corrected in `toxeus_suite.py` (docstring + the prefix comment + the sweep docstring),
+   in `build_section_surgery.py`'s placement comment, and in R-16's successor entries.
+2. `distressCallGroup='Skeleton'` on a Demon-race ShadowStalker is NOT a clone leftover. All 28
+   shipped ShadowStalker-mesh monsters are race=Demon AND group 'Skeleton'; there is no 'Demon' group
+   in the DB at all. Left alone, with the census recorded.
+
+**DEBT REGISTER (nothing silently deferred):**
+- `BL-b98-DEBT-1` LAUNCH-GATED, PLAYER SURFACE: Maenad-spear-on-SHADOWSTALKER has no shipped
+  instance. Nobody has SEEN Runbreaker swing. Will's in-game look decides; ranked fallbacks
+  MedusaMinion_Spear then Machae_Spear, each a one-constant edit.
+- `BL-b98-DEBT-2` BLOCKED ON ANOTHER LANE + WILL: the Enslaver's shroud cannot be claimed to read
+  black while `RevenantPoison.msh` emits a mesh-embedded GREEN aura at his waist (b92, proven from
+  asset bytes, NOT deployed, reachable only from tag `build53-dev`). Also Will question 7: give each
+  champion a DIFFERENT aura-free mesh so removing the green also separates them visually? Not built
+  here - it is the green-diff lane's scope and this lane never touched that worktree.
+- `BL-b98-DEBT-3` NEEDS WILL: at MaxPursuitDistance 1000 / PursuitTime 100000 the Legendary Hunt
+  effectively cannot be outrun to a town portal. Confirm that is the intent.
+- `BL-b98-DEBT-4` NEEDS WILL: should `toxeus_hunt_soul_l` become a reagent of the End of All Things
+  formula (a 4th, or replacing the base Greece Toxeus's)? Do not promise a 4th slot before checking
+  whether `ItemArtifactFormula.tpl` declares `reagent4`; the shipped record uses only 1/2/3.
+- `BL-b98-DEBT-5` WILL-VETO (rate change, deliberately NOT taken): the ROAMING Hunt is about 1 in
+  67,000 per spawn roll. R-18 forbids the equivalent change on the Enslaver, so this lane treated it
+  the same way and changed nothing. Target needed if Will wants him findable: "once a playthrough",
+  "once per act", or leave him a rumour.
+- `BL-b98-DEBT-6` WILL-VETO (R-39 drop-slot precedent, deliberately NOT taken): the Hunt's Finger1 /
+  Misc1 / Misc2 / Misc3 loot tables are all WIRED but sit at 0% equip chance, so his ring, potions,
+  relic and amulet can never drop. Compare the Enslaver: Finger1 100 / Misc1 100 / Misc2 18 /
+  Misc3 50. Proposal: open them to Enslaver-comparable rates so a Boss-class champion pays out.
+- `BL-b98-DEBT-7` WILL-VETO (tuning): the spear ships FAST (`CharacterAttackSpeedAverage`, 0.25) to
+  match his identity rather than the supra donor's Slow. Two values, vetoable in place.
+- `BL-b98-DEBT-8` NEEDS WILL (balance): on Normal he is charLevel 40 with 16,000 HP at run speed 1.8
+  in a Rhodes band that clamps the player to 29-33. The shipped Hades Marshal is charLevel 50 /
+  26,000 HP at run 0.85. Scale him down for Normal, or is a brutal ambush the point?
+- `BL-b98-DEBT-9` STRUCTURAL LIMIT, reported not fixed: the roaming spawns cannot be difficulty-split
+  (ProxyPool has no `nameEpicN`/`nameLegendaryN`, and the 345 pools are native and shared), so the
+  roaming Legendary Hunt is still kiteable. Only the fixed Hades Palace encounter is endless. The
+  alternative (a parallel ~345-proxy Legendary set) is large and invasive and was not taken.
+- `BL-b90-DEBT-4` **CLOSED** by R-81.
 
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 
@@ -1362,9 +1449,14 @@ along automatically when the structural cluster-relocation fix lands.
   lane: the missing canonical `CustomMaps\SoulvizierClassic` deploy dir (deploy-side, not build-side).
 - **BL-b90-DEBT-3 (launch-gated):** the 100% drop is unproven IN-GAME. Owner/trigger: Will kills a
   Devourer and an Enslaver on DEV after a full Steam restart.
-- **BL-b90-DEBT-4 (open question):** the third Toxeus champion `um_toxeus_hunt_99` (Legendary Stalker)
+- ~~**BL-b90-DEBT-4 (open question):** the third Toxeus champion `um_toxeus_hunt_99` (Legendary Stalker)
   is still at **25%**. R-48 names only the Enslaver and the Devourer, so it was deliberately left alone.
-  Owner/trigger: Will, if he wants the Stalker at 100 too.
+  Owner/trigger: Will, if he wants the Stalker at 100 too.~~
+  **✅ CLOSED 2026-07-28 by R-81 (b98, `feat/endless-hunt`, tag `build59-dev`).** Will wants him at
+  100 too. `tools/patches/toxeus_souls_100.py` extended from two targets to three; the
+  `verify_soul_drop_rates.py` waiver moves 25.0 -> 100.0 and the R-80 endless variant gets a matching
+  waiver. That rate was the SOLE reason his soul appeared not to drop - the loot triple, the sub-roll
+  weight, `dropItems` and all three soul records were already correct.
 
 **b89 ocean_extension05 hotfix (2026-07-27, build49-dev) - NEW**
 - ~~**BL-b89-DEBT-1 (P0-gated):** the 224-byte valid-EMPTY container is unproven IN-GAME.~~

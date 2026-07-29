@@ -34,10 +34,22 @@ WILL_DECISIONS_2026-07-11.md; laws: docs/PLAYBOOK.md, amgoz1_design_voice.md):
 
   PART C - The Legendary-leaning stalker "the Endless Hunt".  A distinct, brutal roaming
     Toxeus stalker on the ShadowStalker rig (Will OVERRODE the spec's skeleton default:
-    "ShadowStalker rig / am_deathstalker donor - distinct silhouette"). Confined to the
-    Hades/endgame trash pools via a dedicated roaming sweep (the shipped Enslaver mechanism
-    narrowed to Hades) so he reads as the endgame apex hunter - the honest closest thing to
-    "Legendary-only" TQAE supports (the true data-only gate is not cleanly supported; §3.1).
+    "ShadowStalker rig / am_deathstalker donor - distinct silhouette"). Roams the
+    `records\\xpack\\proxieshades` trash pools via a dedicated roaming sweep (the shipped
+    Enslaver mechanism, re-scoped) so he reads as the endgame apex hunter.
+    ⚠️ CORRECTION (b98, 2026-07-28) - THIS PARAGRAPH USED TO SAY "confined to Hades" AND
+    "narrowed to Hades", AND IT WAS WRONG. `records\\xpack\\proxieshades\\` is the WHOLE
+    Immortal Throne proxy namespace, not the Hades act: the base game filed RHODES inside it
+    as area001. The 540 proxies this sweep reaches span area001 Rhodes (70), area002 Medea's
+    Grove (76), area003 Epirus (55), area004 Styx (78), area005 Plains of Judgement (79),
+    area006 Tower of Judgement (49), area007 Elysian Fields (82) and area008 Hades Palace (49).
+    365 of them define ONLY poolN (which resolves on ALL THREE difficulties) and ZERO define
+    poolLegendaryN, so the roam was never Legendary-leaning either - it has always been
+    Normal + Epic + Legendary, everywhere in Act IV and V. Will meeting the roaming Hunt in
+    RHODES on EPIC is this sweep working exactly as built, not a defect. What kept him
+    invisible on Normal is RARITY (weight 1 against pool totals of 36,001 to 660,001, median
+    about 1 in 66,667), not a difficulty gate. The single fixed encounter's Legendary-only
+    gate lived on the PROXY and is removed by tools/patches/toxeus_hunt_encounter.py (R-80).
     He drops his own granted-MOVE soul (his flash-powder shadow-burst - the Toxeus family
     signature - so the three Toxeus souls are three real builds: summon Devourer / summon
     Enslaver / BECOME the Hunt). The min-player-level experiment artifact limit_legendary_only
@@ -124,8 +136,8 @@ _SOUL_AC = asp._AC_ON_HIT             # base_atself_onanyhit: a SELF controller 
 _AUG_ANATOMY = asp._EN_AUG_ANATOMY    # drxanatomy: Skill_Modifier (+%vit/pierce) - DB-verified
 _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on-attack) - DB-verified
 
-# ── Roaming sweep tuning (Hades-only; parallels the Enslaver sweep, reuses its bad-subs) ──
-# The Hunt uses its OWN 1/2400 per-slot ceiling (a findable Hades apex), matching this module's
+# ── Roaming sweep tuning (parallels the Enslaver sweep, reuses its bad-subs) ──
+# The Hunt uses its OWN 1/2400 per-slot ceiling (a findable endgame apex), matching this module's
 # inject threshold (a pool is populated only when its pre-append wtotal >= 2399, so post-append
 # p_slot = 1/(wtotal+1) <= 1/2400) and every docstring below. It does NOT reuse asp._EN_SWEEP_MAX_P:
 # the ENSLAVER ceiling is far tighter (build38 BL-ENSLAVER-SPAWNS-V2: 1/2400 -> 1/24000 via
@@ -133,7 +145,13 @@ _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on
 # (1/2400) legitimately populated - the Enslaver reaches 1/24000 by x600'ing (asp._EN_SWEEP_K) member
 # weights, which the Hunt deliberately does NOT do (it only appends weight 1 to the existing pool).
 # Decoupled so inject and verify agree again.
-_LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # Hades trash pools ONLY (378 ProxyPools present)
+# ⚠️ THE ONE LINE THAT CAUSED THE "HADES-ONLY" MYTH (corrected b98, 2026-07-28). This prefix is
+# NOT "Hades trash pools ONLY" - `records\xpack\proxieshades\` is the WHOLE Immortal Throne proxy
+# namespace (the base game filed Rhodes inside it as area001), so the sweep spans area001..area008:
+# Rhodes, Medea's Grove, Epirus, Styx, Plains of Judgement, Tower of Judgement, Elysian Fields and
+# Hades Palace. The NAME of the folder is the only thing about it that says "hades". The prefix
+# itself is CORRECT and unchanged - only the claim about what it means was wrong.
+_LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # the whole IT proxy namespace (378 ProxyPools present)
 _LS_MAX_P = 1.0 / 2400.0                                 # the Hunt's own ceiling (matches the inject)
 _LS_SLOT_LIMIT = 1   # per-slot MAX-count cap on the Hunt's name slot (mirrors asp._EN_SWEEP_SLOT_LIMIT).
                      # Pool MAIN draws are independent WITH REPLACEMENT (proven: vanilla pools spawn more
@@ -438,7 +456,9 @@ def _sweep_inject_legendary_stalker(db):
     """Append the stalker at weight 1 to every ELIGIBLE Hades trash pool (allow-prefix =
     xpack\\proxieshades ONLY), so his per-slot probability stays <= 1/2400 (a genuine rare
     hunter). Parallels the Enslaver's _sweep_inject_roaming_rare with two deliberate differences:
-      (1) Hades-only prefix (he only appears in Act-4/Hades -> "effectively Legendary" endgame);
+      (1) the `xpack\\proxieshades` prefix - which is the WHOLE Immortal Throne proxy namespace
+          (area001 Rhodes through area008 Hades Palace), NOT the Hades act, and NOT a difficulty
+          gate of any kind. See the _LS_ALLOW_PREFIX comment and the b98 correction above;
       (2) the Enslaver sweep ALREADY RAN (in the monolith). Where the Enslaver is PRESENT (its
           `undead` pools) it already x600'd (asp._EN_SWEEP_K) the member weights, so this sweep
           does NOT re-multiply those (that would double-scale + break the weight-1 invariant); it
