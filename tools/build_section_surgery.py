@@ -2369,7 +2369,7 @@ for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
 
 # THE FIXED ENDLESS HUNT ENCOUNTER (b65 lowlift wave, B-TOXEUS-STALKER-1): place the fixed
 # `q_toxeus_hunt_lone` proxy into the LEAST-crowded Hades Palace floor, `hadespalace_floor04_04.lvl`
-# ⚠️ STATUS CORRECTED b98 (Will 2026-07-28, R-80): this placement used to be described as
+# ⚠️ STATUS CORRECTED b98 (Will 2026-07-28, R-90): this placement used to be described as
 # "LEGENDARY-ONLY" because the proxy shipped with pool1/poolEpic1 EMPTY. Will removed that
 # gate - `tools/patches/toxeus_hunt_encounter.py` (renamed from toxeus_legendary_stalker.py)
 # now names his pool on pool1, poolEpic1 AND poolLegendary1, so the encounter resolves on

@@ -606,20 +606,19 @@ not shipped; **the DEV deploy is blocked on the concurrent-lane merge above**; S
 > b99 base.** The integrator must merge b98 onto post-b99 main and REBUILD; do not deploy this arz
 > on top of b99 without that merge.
 >
-> **(2) 🚨 HARD LEDGER COLLISION ON R-80 AND THE WHOLE 80-89 DECADE.** b99 allocated
-> **R-80 = the death-XP penalty** and claimed decade **80-89 as "Global balance & progression"**.
-> This lane had already allocated **R-80..R-86 as the Toxeus arc OVERFLOW decade**. Both are live;
-> they collide head-on the moment b98 merges. This lane deliberately did **NOT** unilaterally
-> renumber, because (a) the branch does not contain b99 so the collision only materialises at
-> integration, (b) the repo has a documented reconciliation protocol that b99 itself cites
-> ("incumbent keeps the number", the `fix/debt-docs` precedent), and (c) silently renumbering seven
-> rulings on a stale base could easily be the wrong direction.
-> **RECOMMENDATION:** b99 is on main AND deployed, so b99 is the incumbent for R-80 and for the
-> 80-89 label; b98's seven rulings should move to a fresh Toxeus overflow decade at integration.
-> **SIZE OF THE MOVE: R-80..R-86 = 7 rulings, 195 citations across 12 source files** - heaviest are
-> `tools/patches/toxeus_hunt_encounter.py` (67), `docs/reports/b98_endless_hunt.md` (25),
-> `docs/BACKLOG.md` (23), `docs/WILL_RULINGS.md` (21), `tools/patches/toxeus_suite.py` (18).
-> It is mechanical, but it is not small, and nothing in the DB or the gates depends on the numbers.
+> **(2) HARD LEDGER COLLISION ON R-80 AND THE WHOLE 80-89 DECADE - RESOLVED 2026-07-29 (round 4).**
+> b99 allocated **R-80 = the death-XP penalty** and claimed decade **80-89 as "Global balance &
+> progression"**. This lane had already allocated R-80..R-86 as the Toxeus arc OVERFLOW decade, from
+> a base that predates b99. Rounds 1-3 flagged it and deliberately did NOT unilaterally renumber
+> (the branch did not contain b99, so the collision did not materialise there). Round 4 rebased onto
+> post-b99 `main` and resolved it on the documented "incumbent keeps the number" protocol
+> (`fix/debt-docs` precedent, which b99 itself cites): b99's R-80 and its 80-89 label STAND, and this
+> lane's seven rulings moved wholesale, in order, to the fresh Toxeus overflow decade **90-99** -
+> R-80->R-90, R-81->R-91, R-82->R-92, R-83->R-93, R-84->R-94, R-85->R-95, R-86->R-96. 202 citations
+> rewritten across 12 files, touching ONLY lines this branch added, so b99's own R-80 citations in
+> `death_xp_penalty.py`, `contracts_balance.py`, `tests_balance_negative.py` and the b93/b99 reports
+> are byte-untouched. Proven documentary: the post-renumber rebuild is BYTE-IDENTICAL to the
+> pre-renumber rebuild (see the BUILD64-DEV gate record).
 
 **ONE RULING, ONE CHANGE.** Round 3 exists because Will answered the single blocking question round 2
 left open: the roam RATE. Everything else in b98 is unchanged from round 2 and was re-verified, not
@@ -639,8 +638,8 @@ Artifacts for the orchestrator's merged deploy:
 - ROUND 1 (`c366b410...`, `build60-dev`) and ROUND 2 (`6be6fb0a...`, `build61-dev`) arz artifacts are
   SUPERSEDED; do not deploy them. The round-2 Text.arc is the same file and remains correct.
 
-Ruling implemented: **R-86** (the roam rate, "roughly one sighting per act"). CLOSES
-`BL-b98-DEBT-5`. R-80..R-85 are unchanged from round 2.
+Ruling implemented: **R-96** (the roam rate, "roughly one sighting per act"). CLOSES
+`BL-b98-DEBT-5`. R-90..R-95 are unchanged from round 2.
 
 **DETERMINISM PROOF:** rebuilding HEAD (round 2) in this same environment reproduced
 `6be6fb0a5507ca4f6988405e7a64add8` EXACTLY - the md5 the round-2 gate record published. So the
@@ -655,7 +654,7 @@ weight2 x24, weight4 x15, weight5 x9, weight1 x6). The collateral sentinel (mesh
 **NONE**. No record added, none removed, no dtype flip, nothing outside the sweep.
 
 **THE RATE, MEASURED (not estimated) - full derivation in `docs/reports/b98_endless_hunt.md` §12:**
-| | before (flat weight 1) | after (R-86 normalised) |
+| | before (flat weight 1) | after (R-96 normalised) |
 | --- | --- | --- |
 | Act IV sightings | - | **0.955** |
 | Act V sightings | - | **1.034** |
@@ -713,16 +712,16 @@ Sibling worktrees untouched. Artifacts for the orchestrator's merged deploy:
 - ROUND 1 artifacts (`c366b410...` / `ce4653d3...`, tag `build60-dev`) are SUPERSEDED; do not deploy
   them.
 
-Rulings implemented: **R-80** (endless pursuit, Legendary only), **R-81** (his soul at 100%),
-**R-82** (the Rite of the Undivided drops off him too), **R-83** (Runbreaker, his spear),
-**R-84** (a kit that is his own, not the Enslaver's), **R-85** (the Enslaver's persistent black
+Rulings implemented: **R-90** (endless pursuit, Legendary only), **R-91** (his soul at 100%),
+**R-92** (the Rite of the Undivided drops off him too), **R-93** (Runbreaker, his spear),
+**R-94** (a kit that is his own, not the Enslaver's), **R-95** (the Enslaver's persistent black
 shroud). Full text in `docs/WILL_RULINGS.md` (Toxeus OVERFLOW decade 80-89, allocated by this lane);
 full report in `docs/reports/b98_endless_hunt.md`.
 
 **RECORD DIFF vs a freshly-built `main` (a0276ab) baseline, same env - INTENDED ONLY (ROUND 2):**
 15 ADDED / 0 REMOVED / **7 MODIFIED**. Added (unchanged from round 1): the endless controller +
-variant monster + Legendary pool (R-80), `svc_{n,e,l}_runbreaker` + `runbreaker_guaranteed_{n,e,l}`
-(R-83), 4 pursuit-kit skills (R-84), the shroud skill + its CharFxPak (R-85). Modified:
+variant monster + Legendary pool (R-90), `svc_{n,e,l}_runbreaker` + `runbreaker_guaranteed_{n,e,l}`
+(R-93), 4 pursuit-kit skills (R-94), the shroud skill + its CharFxPak (R-95). Modified:
 `um_toxeus_hunt_99` (35 fields, was 30 - round 2 adds `spearSpawnAnim` plus the `spear`/`unarmed`
 AoE360 ref+anim bindings), `um_toxeus_enslaver_99` (2 - the shroud in a FREE slot 19), the fixed
 proxy (5), its pool (1 - FileDescription), and **round 2** `toxeus_hunt_soul_{n,e,l}` (2 each -
@@ -791,7 +790,7 @@ Devourer bind nothing either, but BOTH carry
 `sHandedSpecialAnimRef1='AoE360'` and `sHandedSpecialAnimRef2='LethalStrike'`. They can cast; he could
 not. And round 1's gate looped only `_NEW_SKILLS`, so it could not have caught it.
 FIX: bind the animation instead of avoiding it, on TWO rows of his own inline animation table -
-`spear*` (the row the engine reads while he holds the R-83 spear) and `unarmed*` (the engine's
+`spear*` (the row the engine reads while he holds the R-93 spear) and `unarmed*` (the engine's
 universal fallback row, so the repair survives any later veto of the spear). Each `.anm` is asserted
 at BUILD TIME to be the modal shipped binding for AoE360 on that row (spear
 `FemalePC_Spear_Skill_Tempest.anm` 11/23 carriers; unarmed `MalePC_DW_Skill_AOE360.anm` 5 carriers),
@@ -801,7 +800,7 @@ DERIVES the animation row from the Class of the item he is guaranteed in RightHa
 weapon; an unmapped weapon Class fails the gate rather than passing silently.
 
 **BLOCKER 2 - HIS SOUL STILL GRANTED THE SKILL THIS LANE RETIRED.**
-`toxeus_hunt_soul_{n,e,l}` granted `soulskills\toxeus_flashpowder.dbr` - removed from his kit by R-84
+`toxeus_hunt_soul_{n,e,l}` granted `soulskills\toxeus_flashpowder.dbr` - removed from his kit by R-94
 as "the Enslaver's" - so the one player-facing artifact of his identity, now dropping at 100%, handed
 out an ability he no longer has, and an over-shared filler (15 soul records grant it). FIX: all three
 tiers grant `svc_hunt_quarrysmark` at itemSkillLevel n/e/l = 1/2/3 (the monolith's own soul-tier
@@ -812,7 +811,7 @@ advertises "the flash-burst" (gated), and `skill_quality.ALLOW['toxeus_flashpowd
 
 **MEDIUM 1 - UNREPORTED INHERITED DONOR PAYLOADS, now stripped + gated.** `svc_hunt_longreach` carried
 `offensivePetrifyMin=2.0` (a 2-second hard petrify at 30% cast chance, 5s cooldown, range 12-22,
-stacked on R-80's unleashable Legendary pursuit) plus lifedrain's 16-entry leech ladders;
+stacked on R-90's unleashable Legendary pursuit) plus lifedrain's 16-entry leech ladders;
 `svc_hunt_rundown` carried flash powder's 12-entry confusion/fumble package, its flat pierce ladder,
 and its white-burst FX + head attach point + powder cast sound. `svc_hunt_quarrysmark_buff` keeps the
 donor's resist shred (it IS the identity) but on a designed 3-entry ladder instead of the inherited
@@ -827,7 +826,7 @@ gated both ways. Remaining and disclosed: BL-b98-DEBT-10.
 
 **LOW - `spearSpawnAnim`** was the one slot the new spear row lacked (he is a hidden ambusher and the
 spear row is now his only row); self-sourced and added to SPEAR-ANIM-1. **LOW - census corrections**
-are folded in above and in R-83/R-84.
+are folded in above and in R-93/R-94.
 
 **GATES AFTER ROUND 2:** `toxeus_hunt_encounter --negtest` **15/15** (was 5/5), plus
 `toxeus_hunt_endless` 5/5 and `enslaver_shroud` 6/6 unchanged = **26/26 plants caught**.
@@ -872,7 +871,7 @@ are folded in above and in R-83/R-84.
 - `BL-b98-DEBT-4` NEEDS WILL: should `toxeus_hunt_soul_l` become a reagent of the End of All Things
   formula (a 4th, or replacing the base Greece Toxeus's)? Do not promise a 4th slot before checking
   whether `ItemArtifactFormula.tpl` declares `reagent4`; the shipped record uses only 1/2/3.
-- `BL-b98-DEBT-5` **CLOSED** by R-86 (round 3, 2026-07-29). Will answered the blocking rate question:
+- `BL-b98-DEBT-5` **CLOSED** by R-96 (round 3, 2026-07-29). Will answered the blocking rate question:
   **"roughly one sighting per act"**, chosen over "a few per act" and "frequent stalker". Implemented
   as a per-pool NORMALISED slot weight targeting a constant `p_slot = 1/1250`
   (`toxeus_suite._LS_TARGET_P_SLOT`, the single retune point). Measured before: 0.0368 sightings per
@@ -893,7 +892,7 @@ are folded in above and in R-83/R-84.
   (ProxyPool has no `nameEpicN`/`nameLegendaryN`, and the 345 pools are native and shared), so the
   roaming Legendary Hunt is still kiteable. Only the fixed Hades Palace encounter is endless. The
   alternative (a parallel ~345-proxy Legendary set) is large and invasive and was not taken.
-- `BL-b90-DEBT-4` **CLOSED** by R-81.
+- `BL-b90-DEBT-4` **CLOSED** by R-91.
 
 ## BUILD51-DEV GATE RECORD - b91 deep-chest Devourer guard, the 100% spawn round 2 (2026-07-28, branch `fix/devourer-chest`, tag `build51-dev`)
 
@@ -1673,9 +1672,9 @@ along automatically when the structural cluster-relocation fix lands.
 - ~~**BL-b90-DEBT-4 (open question):** the third Toxeus champion `um_toxeus_hunt_99` (Legendary Stalker)
   is still at **25%**. R-48 names only the Enslaver and the Devourer, so it was deliberately left alone.
   Owner/trigger: Will, if he wants the Stalker at 100 too.~~
-  **✅ CLOSED 2026-07-28 by R-81 (b98, `feat/endless-hunt`, tag `build59-dev`).** Will wants him at
+  **✅ CLOSED 2026-07-28 by R-91 (b98, `feat/endless-hunt`, tag `build59-dev`).** Will wants him at
   100 too. `tools/patches/toxeus_souls_100.py` extended from two targets to three; the
-  `verify_soul_drop_rates.py` waiver moves 25.0 -> 100.0 and the R-80 endless variant gets a matching
+  `verify_soul_drop_rates.py` waiver moves 25.0 -> 100.0 and the R-90 endless variant gets a matching
   waiver. That rate was the SOLE reason his soul appeared not to drop - the loot triple, the sub-roll
   weight, `dropItems` and all three soul records were already correct.
 

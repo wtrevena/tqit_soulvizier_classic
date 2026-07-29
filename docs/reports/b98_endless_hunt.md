@@ -6,15 +6,15 @@ TAG NOTE: briefed as `build59-dev`, but that tag was already claimed by the para
 `build60-dev`, round 2 `build61-dev`, and this round-3 commit takes `build63-dev`.
 
 **ROUND 3 IS ONE RULING.** Will answered the single blocking question round 2 left open - the roam
-RATE - so this round implements **R-86** and nothing else. Sections 1-11 below are round-2 text and
+RATE - so this round implements **R-96** and nothing else. Sections 1-11 below are round-2 text and
 are unchanged; the rate work is **section 12**, and it is the only thing that moved. Every other gate
 was re-run, not re-opened.
 
 > 🚨 **TWO THINGS CHANGED UNDER THIS LANE WHILE ROUND 3 WAS BUILDING. SEE SECTION 13.**
 > The b99 content wave integrated four OTHER lanes and DEPLOYED (DEV arz is now
 > `f6cd8698b1578a389fd6a432c1f757cb`, not the `9f98e3e8...` this lane started against), and b99
-> also claimed **R-80** and the whole **80-89 decade**, which collides head-on with this lane's
-> R-80..R-86. `feat/endless-hunt` was NOT part of that deploy and is still un-integrated.
+> also claimed **R-90** and the whole **80-89 decade**, which collides head-on with this lane's
+> R-90..R-96. `feat/endless-hunt` was NOT part of that deploy and is still un-integrated.
 
 Ground truth: deployed arz md5 `9f98e3e88bca20f96bacc2fd6bb87b63` (51,098 records),
 `Levels.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe`, `Quests.arc` md5
@@ -42,12 +42,12 @@ player's hands.
 
 | # | ask | ruling | status |
 | --- | --- | --- | --- |
-| 0 | "roughly one sighting per act" (the roam rate) | R-86 | **DONE** (round 3 - see 12) |
-| 1 | his soul does not drop; and the EoAT formula should drop off him like the other two | R-81, R-82 | **DONE** |
-| 2 | "yeah lets have the endless pursuit only be on legendary" | R-80 | **DONE** (fixed encounter only - see 6) |
-| 3 | give him a spear; make the three champions look like three creatures | R-83 | **DONE for the Hunt**; the Enslaver/Devourer mesh half is NOT done (see 7) |
-| 4 | "he doesnt really have any different or unique skills from ... the enslaver of souls" | R-84 | **DONE** |
-| 5 | the Enslaver should have "the same black shroud smoke his summoned demons have" | R-85 | **DONE in data**; the in-game black CANNOT be claimed (see 7) |
+| 0 | "roughly one sighting per act" (the roam rate) | R-96 | **DONE** (round 3 - see 12) |
+| 1 | his soul does not drop; and the EoAT formula should drop off him like the other two | R-91, R-92 | **DONE** |
+| 2 | "yeah lets have the endless pursuit only be on legendary" | R-90 | **DONE** (fixed encounter only - see 6) |
+| 3 | give him a spear; make the three champions look like three creatures | R-93 | **DONE for the Hunt**; the Enslaver/Devourer mesh half is NOT done (see 7) |
+| 4 | "he doesnt really have any different or unique skills from ... the enslaver of souls" | R-94 | **DONE** |
+| 5 | the Enslaver should have "the same black shroud smoke his summoned demons have" | R-95 | **DONE in data**; the in-game black CANNOT be claimed (see 7) |
 
 ---
 
@@ -65,9 +65,9 @@ three. Its `apply()` still proves roster-wide that ONLY the named records moved 
 creature records), and its `verify()` re-asserts 100 on the FINAL merged arz. Holds under
 `SVC_RELEASE_DROPS=1`, which is what ships - it does not lean on `_force_100_pct_soul_drops`, the
 testing-only forcer that never runs in a release build. `tools/verify_soul_drop_rates.py`'s waiver
-for him moves 25.0 -> 100.0, and the R-80 endless variant gets a matching waiver.
+for him moves 25.0 -> 100.0, and the R-90 endless variant gets a matching waiver.
 
-**The Rite of the Undivided (R-82).** He had NO `Misc4` slot at all. He now mirrors the ENSLAVER
+**The Rite of the Undivided (R-92).** He had NO `Misc4` slot at all. He now mirrors the ENSLAVER
 exactly: `chanceToEquipMisc4=100`, `chanceToEquipMisc4Item1=100`,
 `lootMisc4Item1 = svc_rite_guaranteed` on all three tiers. The Enslaver's simple FixedWeight form
 was used rather than the Devourer's master table, because the Hunt has no rant scroll to
@@ -189,7 +189,7 @@ and `verify()` asserts each tier's mesh equals the donor's FINAL post-F3 mesh so
 diverge. This was found by the contract suite, not by inspection, and a fifth negative-test plant now
 guards it.
 
-### Player-surface checklist (R-83)
+### Player-surface checklist (R-93)
 | surface | state |
 | --- | --- |
 | name | `tagSVCwpnRunbreaker` = "Runbreaker", one tag across all 3 tiers (the Veinrender convention). `validate_tags` PASS. |
@@ -303,7 +303,7 @@ reuse the b91 level-band reasoning for this monster; recommend a ledger reconcil
 
 **(B) The fixed proxy** `records\drxmap\proxy\q_toxeus_hunt_lone.dbr` in
 `hadespalace_floor04_04.lvl` WAS genuinely Legendary-only (`pool1=''`, `weight1=0`, `poolEpic1`
-absent). R-80 removes that gate: pool1, poolEpic1 and poolLegendary1 now all name his pool.
+absent). R-90 removes that gate: pool1, poolEpic1 and poolLegendary1 now all name his pool.
 `poolEpic1` is set EXPLICITLY rather than left to fall back on `pool1`, because "poolEpic1 absent" is
 the Hydra gate idiom and reads as deliberate gating intent to the next maintainer. The MAP BYTES ARE
 UNCHANGED - the placement was always difficulty-agnostic; only the DB pool slots decided.
@@ -446,7 +446,7 @@ tags read the mod-authored `tagSVCHunt*` values; the Legendary variant differs f
 4. **The ROAMING Hunt is still kiteable on Legendary.** ProxyPool has no per-difficulty member list
    and the 345 pools are native and shared. Only the fixed encounter is endless. Structural, reported
    not hidden. BL-b98-DEBT-9.
-5. ~~**The roam RATE is untouched**~~ **CLOSED IN ROUND 3 by R-86** - Will answered, and the rate now
+5. ~~**The roam RATE is untouched**~~ **CLOSED IN ROUND 3 by R-96** - Will answered, and the rate now
    delivers ~1 sighting per act. See section 12. `BL-b98-DEBT-5` is closed.
 6. **His empty drop slots are untouched.** Finger1 / Misc1 / Misc2 / Misc3 are wired at 0%, so his
    ring, potions, relic and amulet can never drop. WILL-VETO by the R-39 precedent. BL-b98-DEBT-6.
@@ -468,7 +468,7 @@ tags read the mod-authored `tagSVCHunt*` values; the Legendary variant differs f
    Legendary. Intended?
 2. Should the Endless Hunt's legendary soul become a reagent of the End of All Things formula?
 3. ~~The roam is about 1 in 67,000 per spawn roll. Target?~~ **ANSWERED** - "roughly one sighting per
-   act" (R-86, shipped round 3, section 12).
+   act" (R-96, shipped round 3, section 12).
 4. Open his empty drop slots (ring / potions / relic / amulet) to Enslaver-comparable rates?
 5. Spear: keep him FAST (shipped) or make him a slow, heavy reach-hunter?
 6. Have you seen the Devourer's black poison read BLACK in game? Your answer decides whether
@@ -513,7 +513,7 @@ animation fields ARE his live table, which is where the binding goes:
 
 | row | why this row | ref | animation | provenance |
 | --- | --- | --- | --- | --- |
-| `spear*` | the row the engine reads while he holds the R-83 spear (`chanceToEquipRightHand=100`, Item1 weight 100) | `AoE360` | `Creatures\PC\Female\ANM\FemalePC_Spear_Skill_Tempest.anm` | the **modal** shipped `spear`-row AoE360 binding: 11 of 23 carriers |
+| `spear*` | the row the engine reads while he holds the R-93 spear (`chanceToEquipRightHand=100`, Item1 weight 100) | `AoE360` | `Creatures\PC\Female\ANM\FemalePC_Spear_Skill_Tempest.anm` | the **modal** shipped `spear`-row AoE360 binding: 11 of 23 carriers |
 | `unarmed*` | the engine's universal fallback row, so the repair survives any later veto of the spear (BL-b98-DEBT-1/7) instead of dying with it | `AoE360` | `Creatures\PC\Male\ANM\MalePC_DW_Skill_AOE360.anm` | the modal shipped `unarmed`-row AoE360 binding: 5 carriers |
 
 Neither path is hardcoded on trust: `_modal_row_binding()` re-derives the modal `(row, ref) -> .anm`
@@ -531,14 +531,14 @@ text still said `unarmedSpecialAnimRef` after the record had just been given a s
 wrong row and a trap for the next lane.
 
 **Honest limitation.** The AoE360 pose is a PC-rig animation on the ShadowStalker rig, the same
-cross-rig class as R-83's borrowed swing poses. It makes the cast FIRE, which is the law. Whether the
+cross-rig class as R-93's borrowed swing poses. It makes the cast FIRE, which is the law. Whether the
 whirl READS right is Will's eye, folded into BL-b98-DEBT-1.
 
 ### 11.2 BLOCKER - his soul still granted the skill this lane retired
 
 `toxeus_hunt_soul_{n,e,l}` carried `itemSkillName = records\skills\soulskills\toxeus_flashpowder.dbr`,
 the flagship of item 4's retirement. So the one player-facing artifact of his identity, now dropping
-at 100% (R-81), handed out an ability he no longer has, and pointed at an over-shared filler (15 soul
+at 100% (R-91), handed out an ability he no longer has, and pointed at an over-shared filler (15 soul
 records grant it in the deployed arz). The other two champion souls summon their champion; his was the
 odd one out.
 
@@ -567,7 +567,7 @@ stripped, with a gate and a planted negative.
 
 | skill | inherited leftover | why it had to go |
 | --- | --- | --- |
-| `svc_hunt_longreach` | `offensivePetrifyMin = 2.0` | a 2-second **hard petrify** at 30% cast chance on a 5s cooldown at range 12-22, stacked on R-80's unleashable Legendary pursuit. Combat-defining, never designed, never disclosed. |
+| `svc_hunt_longreach` | `offensivePetrifyMin = 2.0` | a 2-second **hard petrify** at 30% cast chance on a 5s cooldown at range 12-22, stacked on R-90's unleashable Legendary pursuit. Combat-defining, never designed, never disclosed. |
 | `svc_hunt_longreach` | lifedrain's 16-entry `offensiveLifeLeechMin` / `offensiveLifeMin` | he is not a life-drainer; lifedrain is one of the three skills this lane retired from his kit. |
 | `svc_hunt_rundown` | flash powder's 12-entry `offensiveConfusionChance`, `offensiveFumbleMin`, `offensiveProjectileFumbleMin` (+ their durations) | the blind/confuse package of the exact skill it replaces. |
 | `svc_hunt_rundown` | flat `offensivePierceMin/Max` ladder | this skill authors its own physical ladder plus a pierce RATIO; the inherited flat ladder was an undisclosed third damage source. |
@@ -622,7 +622,7 @@ is agreed.
   pets on `DRX\meshes\stalker.msh`, and `records\test\outsider_hero_*_46.dbr` wear
   `...\shadowstalker\daemon_outsider.msh` and point at an animation table that is not even present in
   the mod arz. Ranked fallbacks unchanged.
-- **ShadowStalker census** corrected in section 5 and in R-84 (30 Monster records, all Demon, 26
+- **ShadowStalker census** corrected in section 5 and in R-94 (30 Monster records, all Demon, 26
   Skeleton and 4 Jackalman on a different mesh path). Decision unchanged.
 - **Controller carrier counts** (`toxeus_hunt_endless` docstring): round 1 quoted 21 / 107 / 504, the
   vet counted 15 / 69 / 531, a mod-arz-only re-run gives 8 / 31 / 250. All three denominators are
@@ -634,7 +634,7 @@ is agreed.
 
 The vet flagged that the brief asked whether the EoAT formula drop "fires ONLY on Legendary". It does
 not, and that is deliberate: `chanceToEquipMisc4 = 100` on all three tiers, exactly as the DEPLOYED
-`um_toxeus_enslaver_99` already ships, which is what R-13 and R-82 say. The Legendary gate lives on
+`um_toxeus_enslaver_99` already ships, which is what R-13 and R-92 say. The Legendary gate lives on
 the **recipe** (`svc_toxeus_eoat_formula` reagents 1/2/3 are all `_l` souls) and `verify()` asserts it
 fail-loud. See section 2.
 
@@ -647,7 +647,7 @@ is unchanged except that BL-b98-DEBT-10 joins it.
 
 ---
 
-## 12. ROUND 3 - THE ROAM RATE (R-86), the one thing Will had not yet decided
+## 12. ROUND 3 - THE ROAM RATE (R-96), the one thing Will had not yet decided
 
 Round 2 shipped with exactly one blocking question open: **how often should the roaming Hunt
 actually appear?** Round 1 and 2 both refused to touch it, correctly - a rate change on these
@@ -757,12 +757,12 @@ still the rarest thing in every pool he rides: weight 53 against natives carryin
   x600 self-scaling coupling are untouched, so this ruling changed his RATE and nothing about his
   BREADTH. The record diff proves it: 0 added, 0 removed.
 - **The FIXED Hades Palace encounter.** It is a single-member pool and still resolves at
-  `p_slot = 1.000` - guaranteed, exactly as R-80 left it. The normalisation is scoped by
+  `p_slot = 1.000` - guaranteed, exactly as R-90 left it. The normalisation is scoped by
   `_LS_ALLOW_PREFIX` (the Immortal Throne proxy namespace), which structurally cannot reach it.
 - **`limitN = 1`.** Kept, and it matters MORE now than it did at weight 1: with `p = 1/1250` in a
   13-draw pool, P(2+ in one trigger) is about 5e-5, roughly 0.04 over a full pass. Small, but it is
   the "two-in-one-trigger" defect class the Enslaver v2 sweep already had to fix once.
-- **Everything in sections 1-11.** R-80..R-85 are byte-for-byte as round 2 left them.
+- **Everything in sections 1-11.** R-90..R-95 are byte-for-byte as round 2 left them.
 
 ### 12.6 The gate had to be replaced, not loosened
 
@@ -811,7 +811,7 @@ identical command on both builds rather than by assuming.
 
 The NOT-DONE list in section 9 stands, minus item 5 which is now closed. In particular
 **`BL-b98-DEBT-9` is untouched and unaffected**: the roaming Hunt is still kiteable on Legendary,
-because ProxyPool has no per-difficulty member list. R-86 changed how OFTEN he appears; it did
+because ProxyPool has no per-difficulty member list. R-96 changed how OFTEN he appears; it did
 nothing about how he behaves when he does. Only the fixed Hades Palace encounter is endless.
 And no in-game QA of any kind was done - no deploy, no Steam, no launch.
 
@@ -846,37 +846,56 @@ rather than a defect. But the consequence is load-bearing:
 > as-is - it would revert b99's four lanes exactly the way the original staging freeze existed to
 > prevent.
 
-Nothing about the R-86 work is invalidated by this. The rate is derived from the roaming pools and
+Nothing about the R-96 work is invalidated by this. The rate is derived from the roaming pools and
 the shipped `world01.map`, neither of which b99 touched, and the normalisation is computed per pool
 at build time from whatever total that pool actually has - so it re-derives correctly on any base.
 
-### 13.2 HARD LEDGER COLLISION: R-80 and the entire 80-89 decade
+### 13.2 HARD LEDGER COLLISION: R-80 and the entire 80-89 decade - **RESOLVED IN ROUND 4**
 
-This is the one that needs a human decision.
+> **STATUS: CLOSED.** Round 3 flagged this and deliberately did not act, because `feat/endless-hunt`
+> did not contain b99 and the collision therefore did not exist on this branch. Round 4 rebased onto
+> post-b99 `main` (`38e7a25`), where it does exist, and resolved it. The original round-3 analysis is
+> kept below because the SIZE table is what made the move plannable, and because the decision record
+> should show what was known when.
 
-| | `feat/endless-hunt` (this lane, 2026-07-28) | `main` via b99 (deployed 2026-07-29) |
+| | `feat/endless-hunt` (rounds 1-3, 2026-07-28) | `main` via b99 (deployed 2026-07-29) |
 | --- | --- | --- |
 | decade 80-89 is | the **Toxeus arc OVERFLOW** decade | **"Global balance and progression"** |
 | R-80 is | endless pursuit, Legendary only | the death-XP penalty (b93) |
 | numbers claimed | R-80, 81, 82, 83, 84, 85, **86** | R-80 |
 
-Both allocations are live and they collide the moment b98 merges. b99's own commit body documents
+Both allocations were live and they collided the moment b98 met b99. b99's own commit body documents
 the protocol for exactly this ("THREE-WAY R-80 collision... Incumbent keeps the number,
 `fix/debt-docs` precedent") - it hit the same class of problem with R-70 and resolved it by moving
 the newcomers, not the incumbent.
 
-**This lane deliberately did NOT unilaterally renumber**, for three reasons:
-1. this branch does not contain b99, so the collision does not exist here yet - renumbering would be
-   editing against a base that does not show the conflict;
+**Rounds 1-3 deliberately did NOT unilaterally renumber**, for three reasons:
+1. that branch did not contain b99, so the collision did not exist there - renumbering would have
+   been editing against a base that does not show the conflict;
 2. the repo has a documented reconciliation protocol and an integrator whose job this is;
 3. picking the wrong direction and moving seven rulings would be a considerably worse mess than
    leaving one clearly-flagged decision.
 
-**RECOMMENDATION.** b99 is on `main` AND deployed, which makes it the incumbent for both R-80 and the
-80-89 label. b98's seven rulings should therefore move to a fresh Toxeus overflow decade at
-integration time.
+**RESOLUTION (round 4).** b99 is on `main` AND deployed, which makes it the incumbent for both R-80
+and the 80-89 label. This lane's seven rulings moved, in order, to the fresh Toxeus overflow decade
+**90-99**:
 
-**SIZE OF THE MOVE, measured so it can be planned rather than discovered:** R-80..R-86 is
+| was | now | ruling |
+| --- | --- | --- |
+| R-80 | **R-90** | endless pursuit, Legendary only |
+| R-81 | **R-91** | soul at 100% |
+| R-82 | **R-92** | the Rite of the Undivided on his kill |
+| R-83 | **R-93** | the spear + champion differentiation |
+| R-84 | **R-94** | his own kit, not the Enslaver's |
+| R-85 | **R-95** | the Enslaver's persistent black shroud |
+| R-86 | **R-96** | the roam rate, "roughly one sighting per act" |
+
+90-99 was chosen over the tail of an existing decade because it is free **on main and on every
+in-flight branch** - re-checked at move time against `feat/leinth-wave` (which holds R-73..R-76) and
+`fix/green-diff` (up to R-71), not just against main. See section 14 for the mechanical detail and
+the byte-identity proof.
+
+**SIZE OF THE MOVE, as measured in round 3** (the round-4 execution is reported in section 14):
 **7 rulings and 195 citations across 12 source files.**
 
 | file | citations |

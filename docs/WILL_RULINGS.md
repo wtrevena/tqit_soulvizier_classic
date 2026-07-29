@@ -84,13 +84,22 @@
 ## reserve a decade (Toxeus 1-19, Masteries 20-29, World 30-39, Souls 40-49, Process 50-59); new
 ## topics get a fresh decade (Legal 60-69, Global balance & progression 80-89). **2026-07-28: Souls & items 40-49 is FULL (R-49 was
 ## claimed 2026-07-27 by the fix/devourer-chest lane) - its OVERFLOW decade is 70-79.**
-## **2026-07-28 (b98 Endless Hunt lane): Toxeus arc 1-19 is FULL - its OVERFLOW decade is 80-89
-## (R-80..R-86 claimed). Next free Toxeus number: R-87.**
+## **2026-07-28 (b98 Endless Hunt lane): Toxeus arc 1-19 is FULL - its OVERFLOW decade is 90-99
+## (R-90..R-96 claimed). Next free Toxeus number: R-97.**
+## > ⚠️ **DECADE CORRECTED 2026-07-29 at integration round 2.** The b98 lane first claimed **80-89**
+## > and minted R-80..R-86 there, from a base (`a0276ab`) that predates b99. While it was building,
+## > the b99 content wave landed on `main` **and deployed**, and b99 had already opened 80-89 as
+## > "Global balance & progression" with **R-80 = the death-XP penalty**. Two live R-80s. On the
+## > `fix/debt-docs` LEDGER-HYGIENE precedent the INCUMBENT keeps the number, so b99's R-80 and its
+## > whole decade stand and this lane's seven rulings moved wholesale, in order, to the next free
+## > decade **90-99**: R-80->R-90, R-81->R-91, R-82->R-92, R-83->R-93, R-84->R-94, R-85->R-95,
+## > R-86->R-96. Nothing about any ruling's CONTENT changed; the renumber is purely documentary and
+## > was proven so by a byte-identical rebuild (see the b98 report, section 14).
 ## **2026-07-28 b98 ROUND 2 (adversarial vet) allocated NO new numbers on purpose.** Will made no new
-## decision; what changed is what round 1 CLAIMED about the decisions he had already made. R-83 and
-## R-84 therefore carry marked "ROUND 2" amendment blocks rather than new rulings, so his words stay
+## decision; what changed is what round 1 CLAIMED about the decisions he had already made. R-93 and
+## R-94 therefore carry marked "ROUND 2" amendment blocks rather than new rulings, so his words stay
 ## in one place and the correction sits next to the claim it corrects.
-## **2026-07-29 b98 ROUND 3 claimed R-86** - the roam RATE ("roughly one sighting per act"), the one
+## **2026-07-29 b98 ROUND 3 claimed R-96** - the roam RATE ("roughly one sighting per act"), the one
 ## genuinely NEW Will decision in this lane since round 1. It closes BL-b98-DEBT-5.
 
 ### Toxeus arc (continued)
@@ -114,7 +123,7 @@
 - R-15 [2026-07-14] IMPLEMENTED "you are good to ship the rant scroll" - amgoz1 creative-text veto
   cleared for `{^r}The Murderer's Screed` / `A Parchment Slick with Blood` + the ~180-word rant text
   (Toxeus's voice). Source: docs/MULTIPLAYER_COMPAT.md M4.7 item 6.
-- R-16 [2026-07-14] IMPLEMENTED b65, then SUPERSEDED by R-80 (2026-07-28) Legendary-only
+- R-16 [2026-07-14] IMPLEMENTED b65, then SUPERSEDED by R-90 (2026-07-28) Legendary-only
   Toxeus stalker via the proven Hydra fixed-placement pattern (`pool1` empty + `poolLegendary1` = boss
   pool) - APPROVED, QUEUED, not built; the already-shipped roaming Endless Hunt (Hades-confined) stays
   as-is alongside it, Will's call whether it is additive or a replacement. Source: docs/
@@ -126,7 +135,7 @@
   > is the WHOLE Immortal Throne proxy namespace (Rhodes is filed inside it as area001), the sweep
   > reaches 540 proxies across area001..area008, and 365 of them define only `poolN`, which resolves on
   > all three difficulties. The claim came from one mis-annotated constant in `toxeus_suite.py`, now
-  > corrected in place. **SUPERSEDED BY R-80:** Will removed the Legendary-only gate from the fixed
+  > corrected in place. **SUPERSEDED BY R-90:** Will removed the Legendary-only gate from the fixed
   > encounter (it now resolves on N/E/L) and moved "Legendary-only" onto the endless-pursuit BEHAVIOUR
   > instead. The RECORDS keep their names; the module was renamed to `toxeus_hunt_encounter.py` under
   > the retirement protocol.
@@ -446,13 +455,22 @@
   FIRE. Source: docs/reports/b96_vashkarr_soul.md.
 
 
-### Toxeus arc - OVERFLOW decade 80-89 (allocated 2026-07-28 by the b98 Endless Hunt lane)
+### Toxeus arc - OVERFLOW decade 90-99 (allocated 2026-07-28 by the b98 Endless Hunt lane, moved off 80-89 on 2026-07-29)
 > The Toxeus decade 1-19 is FULL (R-1..R-19 all in use). Per the header's rule that a number in use
-> is NEVER reused, this lane allocated the next free decade, **80-89**, for the Toxeus arc. Checked
-> before choosing: nothing anywhere in this ledger uses 80-89 (in use today: 1-19, 20-29, 30-39,
-> 40-49, 50, 60-61, 70-71).
+> is NEVER reused, this lane allocated a fresh decade for the Toxeus arc.
+>
+> ⚠️ **IT ORIGINALLY TOOK 80-89, AND THAT WAS WRONG BY THE TIME IT LANDED.** The check that
+> justified 80-89 was run against `a0276ab`, where 80-89 really was free. The b99 content wave then
+> merged to `main` and DEPLOYED, taking **R-80 = the death-XP penalty** and reserving 80-89 for
+> "Global balance & progression". b99 is the incumbent (on main, and shipped), so at integration
+> round 2 these seven rulings moved, in order and without any content change, to the next free
+> decade **90-99**: R-80->R-90, R-81->R-91, R-82->R-92, R-83->R-93, R-84->R-94, R-85->R-95,
+> R-86->R-96. Re-checked at the time of the move: in use across the whole ledger are 1-19, 20-29,
+> 30-39, 40-49, 50-51, 60-61, 70-72 and 80 - and, on the two branches still in flight,
+> `feat/leinth-wave` R-73..R-76 and `fix/green-diff` up to R-71. **90-99 is free on main and on
+> every in-flight branch**, which is why it was chosen rather than the tail of an existing decade.
 
-- R-80 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"yeah lets have the endless
+- R-90 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"yeah lets have the endless
   pursuit only be on legendary"** - Toxeus the Murderer, the Endless Hunt cannot be kited away from
   his spawn point on LEGENDARY; Normal and Epic keep normal leash behaviour, and that is now
   INTENDED, not a bug.
@@ -487,7 +505,7 @@
   lane removed that gate - `q_toxeus_hunt_lone` now names his pool on pool1, poolEpic1 AND
   poolLegendary1. `tools/patches/toxeus_hunt_encounter.py` owns it, and its verify() now FAILS if
   any of the three is empty (the inverse of the assertion the old module shipped).
-- R-81 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased from the approved design brief;
+- R-91 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased from the approved design brief;
   no verbatim transcript line] the Endless Hunt's soul drops 100% of the time, like the other two
   fought Toxeus champions. EXTENDS R-48 from two records to three and CLOSES `BL-b90-DEBT-4`, which
   had recorded the carve-out and named Will as its owner/trigger.
@@ -499,10 +517,10 @@
   nothing. Owner: `tools/patches/toxeus_souls_100.py` (the R-48 owner, extended; apply() re-proves
   roster-wide that ONLY the three named records moved, verify() re-asserts 100 on the final merged
   arz). `tools/verify_soul_drop_rates.py`'s waiver for `um_toxeus_hunt_99` moves 25.0 -> 100.0 and a
-  matching waiver is added for the R-80 endless variant. Holds under `SVC_RELEASE_DROPS=1`, which is
+  matching waiver is added for the R-90 endless variant. Holds under `SVC_RELEASE_DROPS=1`, which is
   what ships. The Hero/Boss/Quest gate in `wire_souls_to_monsters` is untouched (he is Boss-class, so
   the yeti Common/Champion lesson does not apply).
-- R-82 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased; the ask was to "align with
+- R-92 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased; the ask was to "align with
   however the Enslaver and Devourer already drop it"] killing the Endless Hunt also yields the Rite
   of the Undivided (the End of All Things formula), on ALL THREE difficulties - and the RECIPE keeps
   demanding the LEGENDARY souls. Extends R-13 to the third champion. The Hunt had NO `Misc4` slot at
@@ -519,7 +537,7 @@
   The Endless Hunt's own soul is NOT a reagent. Now that he is a full champion dropping the formula
   at 100%, should `toxeus_hunt_soul_l` become one (a 4th, or replacing the base Greece Toxeus's)?
   NOT built - `ItemArtifactFormula` was not confirmed to declare a reagent4 (BL-b98-DEBT-4).
-- R-83 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased - Will's own idea] the Endless
+- R-93 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt) [paraphrased - Will's own idea] the Endless
   Hunt wields a spear. Shipped as **Runbreaker**, a bespoke 3-tier signature weapon following the
   Devourer's Crimson Verdict / Veinrender pattern exactly (`svc_{n,e,l}_runbreaker` +
   `runbreaker_guaranteed_{n,e,l}` FixedWeight tables wired to `lootRightHandItem1` @100%), so he both
@@ -571,7 +589,7 @@
   >    animation table (`records\creature\monster\shadowstalker\anm\anm_shadowstalker.dbr`) is not
   >    even present in the mod arz. Both are DIFFERENT meshes. Ranked fallbacks are therefore
   >    unchanged (MedusaMinion_Spear, then Machae_Spear), with these two recorded as leads.
-- R-84 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"he doesnt really have any
+- R-94 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim: **"he doesnt really have any
   different or unique skills from toxeus the murderer, the enslaver of souls"** - and that was
   LITERALLY TRUE. Ground truth: 9 of his 12 skill slots were the SAME SKILL RECORD as the Enslaver's
   (flashpowder, toxeus_bladestorm, netherstrike, lifedrain, character_speedall,
@@ -614,7 +632,7 @@
   > only the skills the module authored, so it could not catch it.
   > **FIX:** the animation is BOUND rather than avoided. `AoE360` is bound on his own inline
   > animation table (which IS his live table, since he has no charAnimationTableName) on TWO rows:
-  > `spear*`, the row the engine reads while he holds the R-83 spear, and `unarmed*`, the engine's
+  > `spear*`, the row the engine reads while he holds the R-93 spear, and `unarmed*`, the engine's
   > universal fallback row, so the repair survives any later veto of the spear instead of dying with
   > it. Each bound `.anm` is asserted at build time to be the MODAL shipped binding for AoE360 on
   > that row (spear: `FemalePC_Spear_Skill_Tempest.anm`, 11 of 23 carriers; unarmed:
@@ -624,14 +642,14 @@
   > active slot on the record (attack / initial / dying / specialAttack / specialAttack2..6) and
   > derives the animation row from the Class of the item he is GUARANTEED in RightHand, so it follows
   > the weapon instead of assuming 'unarmed'. An unmapped weapon Class fails the gate rather than
-  > passing silently. Note this is a genuine cross-rig cosmetic debt of the same class as R-83's:
+  > passing silently. Note this is a genuine cross-rig cosmetic debt of the same class as R-93's:
   > the AoE360 pose is a PC-rig anim on the ShadowStalker rig. It makes the cast FIRE, which is the
   > law; whether the whirl reads right is BL-b98-DEBT-1's question.
   >
   > **CORRECTION 2 - HIS SOUL STILL GRANTED THE SKILL THIS LANE RETIRED.**
   > `toxeus_hunt_soul_{n,e,l}` granted `records\skills\soulskills\toxeus_flashpowder.dbr`, the very
   > skill removed from his kit above as "the Enslaver's". So the one player-facing artifact of his
-  > identity, now dropping at 100% (R-81), handed out an ability he no longer has - and an
+  > identity, now dropping at 100% (R-91), handed out an ability he no longer has - and an
   > over-shared filler (15 soul records grant it). The other two champion souls summon their
   > champion; his was the odd one out. **FIX:** all three tiers now grant `svc_hunt_quarrysmark` (the
   > "become the Hunt" grant) at itemSkillLevel n/e/l = 1/2/3, the monolith's own established soul
@@ -652,7 +670,7 @@
   > **ADDITION 1 - THE NEW SKILLS CARRIED UNREPORTED DONOR PAYLOADS.** Cloning brings the donor's
   > whole record, and round 1 shipped the leftovers silently. Now stripped, with a gate and a planted
   > negative for each: `svc_hunt_longreach` inherited `offensivePetrifyMin=2.0` (a 2-second HARD
-  > PETRIFY at 30% cast chance on a 5s cooldown at range 12-22, stacked on R-80's unleashable
+  > PETRIFY at 30% cast chance on a 5s cooldown at range 12-22, stacked on R-90's unleashable
   > Legendary pursuit - combat-defining and never designed) plus lifedrain's 16-entry
   > `offensiveLifeLeechMin`/`offensiveLifeMin`; `svc_hunt_rundown` inherited flash powder's 12-entry
   > `offensiveConfusionChance`/`offensiveFumbleMin`/`offensiveProjectileFumbleMin`, its flat pierce
@@ -673,7 +691,7 @@
   > donors' icons and sounds (`svc_hunt_longreach` = Life Drain's NegativeEnergyRay icons and
   > lifedrain cast/hit sound paks). They have no UI surface on a monster, and no report from this
   > lane claims how they sound. BL-b98-DEBT-10.
-- R-85 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim fragment: the Enslaver should have
+- R-95 [2026-07-28] IMPLEMENTED b98 (feat/endless-hunt), verbatim fragment: the Enslaver should have
   **"the same black shroud smoke his summoned demons have"**.
   THE FINDING THAT CHANGED THE TASK: he ALREADY carries it. `um_toxeus_enslaver_99` has
   `charFxPakRunningNames = drxshadowcloakrunning_fx_pak` - the SAME pak, the SAME EffectEntity, that
@@ -699,7 +717,7 @@
   `RevenantPoison.msh` - the mesh he wears in the deployed arz - has a GREEN aura compiled into the
   mesh file at his waist. Black hand-smoke over a green waist aura will not read black. That mesh work
   belongs to the green-diff lane and turns on a Will answer (BL-b98-DEBT-2).
-- R-86 [2026-07-27] IMPLEMENTED b98 ROUND 3 (feat/endless-hunt, 2026-07-29), verbatim fragment:
+- R-96 [2026-07-27] IMPLEMENTED b98 ROUND 3 (feat/endless-hunt, 2026-07-29), verbatim fragment:
   the roaming Endless Hunt's target rate is **"roughly one sighting per act"**. He was offered three
   options and picked this one over both **"a few per act"** and **"frequent stalker"** - so the
   intent is near-mythical but no longer effectively invisible: reliably met once or twice per
@@ -707,14 +725,14 @@
   PROVENANCE, stated honestly: this reached the lane through the orchestrator's brief, which dated
   his answer 2026-07-27 and rendered it as the fragment above; there is no raw transcript line in
   this repo, and the question it answers (`BL-b98-DEBT-5`, report section 10 Q3) was filed 07-28.
-  The wording is recorded exactly as received rather than smoothed. Same convention as R-81.
+  The wording is recorded exactly as received rather than smoothed. Same convention as R-91.
   CLASS: **WILL-VETO** (the R-18 precedent - a rate change on these champions is Will's call, never
   an implementer's). This ruling CLOSES `BL-b98-DEBT-5`, which recorded the rate as deliberately
   NOT taken pending exactly this answer.
   WHAT WAS WRONG: the sweep appended him at a FLAT weight 1 against pool totals of 36,000..660,000.
   Measured against the built arz + the shipped `world01.map`, that is **0.0368 expected sightings
   per full Act IV+V pass - ONE PER 27 PLAYTHROUGHS**. That, not any difficulty gate, is why Will met
-  him once on Epic and never on Normal (see R-80 and the "Hades-only myth" correction). A flat
+  him once on Epic and never on Normal (see R-90 and the "Hades-only myth" correction). A flat
   weight was ALSO 18.3x unfair between areas, because the natives are x600-scaled by different
   amounts - he was 18x rarer in Rhodes than in the Hades Palace for no design reason.
   THE FIX: his slot weight is NORMALISED PER POOL to hit a constant per-draw probability

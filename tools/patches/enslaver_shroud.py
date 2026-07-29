@@ -1,4 +1,4 @@
-r"""enslaver_shroud - THE ENSLAVER'S BLACK SHROUD (b98, R-85).
+r"""enslaver_shroud - THE ENSLAVER'S BLACK SHROUD (b98, R-95).
 
 WILL (2026-07-28), verbatim fragment: he wants the Enslaver to have
     "the same black shroud smoke his summoned demons have"
@@ -98,7 +98,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))   # tools/ on path
 
-MODULE_NAME = "Enslaver persistent black shroud (R-85)"
+MODULE_NAME = "Enslaver persistent black shroud (R-95)"
 
 DATA_TYPE_INT = 0
 DATA_TYPE_FLOAT = 1
@@ -202,7 +202,7 @@ def _wire(db):
 
 
 def apply(db, tags):
-    print("\n=== [enslaver_shroud] b98 THE ENSLAVER'S BLACK SHROUD (R-85) ===")
+    print("\n=== [enslaver_shroud] b98 THE ENSLAVER'S BLACK SHROUD (R-95) ===")
     _build_pak(db)
     _build_skill(db)
     _wire(db)

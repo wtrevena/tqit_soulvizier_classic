@@ -274,7 +274,7 @@ ALLOW = {
         'tagSoulName497', 'tagSVCSoulDevParnell', 'tagSVCSoulNEmgiec', 'tagSoulSVC9001'},
     'toxeus_flashpowder.dbr': {  # rogue / assassin family (post 9-reassign; sp_toxeus -> Shadow Surge) (4)
         'tagSoulName505', 'tagSVCSoulDevDavid', 'tagSVCSoulDevFrazier', 'tagSoulName4'},
-        # ⚠️ 'tagSVCSoulToxeusHunt' REMOVED, b98 round 2 (R-84, feat/endless-hunt), BL-103
+        # ⚠️ 'tagSVCSoulToxeusHunt' REMOVED, b98 round 2 (R-94, feat/endless-hunt), BL-103
         # fix-upstream: this roster is ground truth and the Endless Hunt LEFT the family.
         # `toxeus_hunt_encounter` retires flash powder from his own kit as "the Enslaver's"
         # and repoints his soul at `svc_hunt_quarrysmark`, so leaving him listed here would

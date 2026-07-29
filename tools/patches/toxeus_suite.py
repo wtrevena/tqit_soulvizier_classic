@@ -49,11 +49,11 @@ WILL_DECISIONS_2026-07-11.md; laws: docs/PLAYBOOK.md, amgoz1_design_voice.md):
     RHODES on EPIC is this sweep working exactly as built, not a defect. What kept him
     invisible on Normal is RARITY, not a difficulty gate: at the shipped flat weight 1 against
     pool totals of 36,000..660,000 he was worth 0.0368 sightings per full Act IV+V pass - ONE
-    PER 27 PLAYTHROUGHS. R-86 (Will 2026-07-28, "roughly one sighting per act") retunes that to
+    PER 27 PLAYTHROUGHS. R-96 (Will 2026-07-28, "roughly one sighting per act") retunes that to
     a per-pool NORMALISED weight targeting a constant p_slot of 1/1250: measured 0.955 sightings
     in Act IV, 1.034 in Act V, 1.989 over a full pass. Retune him at _LS_TARGET_P_SLOT and
     nowhere else. The single fixed encounter's Legendary-only
-    gate lived on the PROXY and is removed by tools/patches/toxeus_hunt_encounter.py (R-80).
+    gate lived on the PROXY and is removed by tools/patches/toxeus_hunt_encounter.py (R-90).
     He drops his own granted-MOVE soul (his flash-powder shadow-burst - the Toxeus family
     signature - so the three Toxeus souls are three real builds: summon Devourer / summon
     Enslaver / BECOME the Hunt). The min-player-level experiment artifact limit_legendary_only
@@ -134,7 +134,7 @@ _SK_GP_L = asp._EN_SK_GP_L
 # ── Soul payload (all DB-verified resolve + castability-safe) ──
 _SOUL_PROC = asp._SS_FLASH_POWDER     # soulskills\toxeus_flashpowder.dbr: Skill_AttackRadius, NO special
                                       # anim -> universally PC-castable (DB-verified).
-# ⚠️ b98 ROUND 2 (R-84, feat/endless-hunt): THIS IS NO LONGER THE SHIPPED GRANT.
+# ⚠️ b98 ROUND 2 (R-94, feat/endless-hunt): THIS IS NO LONGER THE SHIPPED GRANT.
 # `toxeus_hunt_encounter` RETIRES flash powder from the Hunt's own kit (it was one of the
 # 9 skills he shared with the Enslaver), so leaving his soul granting it left the one
 # player-facing artifact of his identity handing out an ability he no longer has - and
@@ -158,7 +158,7 @@ _AUG_OPENWOUND = asp._BT_AUG_OPENWOUND  # drxopenwound: Skill_Modifier (bleed-on
 _LS_ALLOW_PREFIX = ('records\\xpack\\proxieshades',)   # the whole IT proxy namespace (378 ProxyPools present)
 
 # ═════════════════════════════════════════════════════════════════════════════
-# THE ROAM RATE - R-86 (Will, 2026-07-28): "roughly one sighting per act".
+# THE ROAM RATE - R-96 (Will, 2026-07-28): "roughly one sighting per act".
 # ═════════════════════════════════════════════════════════════════════════════
 # ⚠️ WILL-VETO CLASS (the R-18 precedent: a rate change on these champions is Will's call, never
 # an implementer's). THIS IS THE ONE PLACE TO RETUNE HIM. Change _LS_TARGET_P_SLOT and nothing
@@ -205,7 +205,7 @@ _LS_SLOT_LIMIT = 1   # per-slot MAX-count cap on the Hunt's name slot (mirrors a
                      # spawnMax>1 could surface 2+ Hunts in ONE trigger -- the exact "two-in-one-trigger"
                      # defect the Enslaver v2 sweep just fixed. Vanilla ALWAYS caps rare pack members at
                      # limitN=1; this stamps the same cap so at most ONE Hunt spawns per pool per trigger.
-                     # It matters MORE at the R-86 rate than it did at weight 1: with p_slot 1/1250 and a
+                     # It matters MORE at the R-96 rate than it did at weight 1: with p_slot 1/1250 and a
                      # 13-draw pool, P(2+ without the cap) is ~5e-5 per trigger, ~0.04 over a full pass.
 
 
@@ -501,7 +501,7 @@ def _create_legendary_stalker(db, tags):
     #    'Soul of '). The DESC honours the GOAT progenitor (LORE LAW). ──
     tags['tagSVCMonsterToxeusHunt'] = '{^r}Toxeus the Murderer, the Endless Hunt'
     tags['tagSVCSoulToxeusHunt'] = '{^F}Toxeus the Murderer, the Endless Hunt Soul'
-    # b98 ROUND 2 (R-84): the last clause described the FLASH-BURST, which is no longer
+    # b98 ROUND 2 (R-94): the last clause described the FLASH-BURST, which is no longer
     # what this soul grants. `toxeus_hunt_encounter` repoints the grant to Quarry's Mark
     # and its verify() fails the build if this text still advertises the flash powder.
     tags['tagSVCSoulToxeusHuntDESC'] = (
@@ -511,17 +511,17 @@ def _create_legendary_stalker(db, tags):
     print(f"  [C] stalker: um_toxeus_hunt_99 (ShadowStalker rig, distinct iceheart skin, Boss "
           f"[40,68,100] life 16/22/30k, pierce/pursuit) + granted-MOVE soul + Immortal-Throne-wide "
           f"roaming sweep touched {len(touched)} pools; 3 tags. (b98 repoints the drop rate to 100 "
-          f"[R-81], the soul grant to Quarry's Mark [R-84] and replaces netherstrike outright)")
+          f"[R-91], the soul grant to Quarry's Mark [R-94] and replaces netherstrike outright)")
 
 
 def _sweep_inject_legendary_stalker(db):
     """Append the stalker to every ELIGIBLE Immortal-Throne trash pool (allow-prefix =
-    xpack\\proxieshades ONLY) at the R-86 NORMALISED weight, so his per-draw probability is the
+    xpack\\proxieshades ONLY) at the R-96 NORMALISED weight, so his per-draw probability is the
     SAME constant (_LS_TARGET_P_SLOT, 1/1250) in every pool regardless of how hard that pool's
     natives were scaled. Will 2026-07-28: "roughly one sighting per act" - measured 0.955 in Act
     IV, 1.034 in Act V, 1.989 over a full pass. See _LS_TARGET_P_SLOT for the full derivation and
     for the ONE constant to change when retuning him.
-    Before R-86 this appended a FLAT weight 1, which (a) left him at ~1 sighting per 27
+    Before R-96 this appended a FLAT weight 1, which (a) left him at ~1 sighting per 27
     playthroughs - Will met him once on Epic and never on Normal - and (b) because pool totals
     span 36,000..660,000, made him 18.3x rarer in Rhodes than in the Hades Palace for no design
     reason. The pool SET is deliberately unchanged; only the weight in the appended slot moved.
@@ -635,9 +635,9 @@ def _sweep_inject_legendary_stalker(db):
             wtotal *= asp._EN_SWEEP_K
             self_scaled += 1
         if wtotal < 2399:                    # pool-eligibility floor (unchanged: keeps the pool SET
-            continue                         # identical to the pre-R-86 sweep; post-x600 totals are
+            continue                         # identical to the pre-R-96 sweep; post-x600 totals are
                                              # >= 36,000, so this never binds in practice)
-        # R-86 (Will 2026-07-28, "roughly one sighting per act"): the slot weight is NORMALISED
+        # R-96 (Will 2026-07-28, "roughly one sighting per act"): the slot weight is NORMALISED
         # per pool so p_slot is the same constant everywhere, instead of the flat weight 1 that
         # made him 18x rarer in Rhodes than in the Hades Palace and ~1-in-27-playthroughs overall.
         # Derivation + measured per-act numbers: see _LS_TARGET_P_SLOT above.
@@ -651,7 +651,7 @@ def _sweep_inject_legendary_stalker(db):
     _wmin = min(hweights) if hweights else 0
     _wmax = max(hweights) if hweights else 0
     print("  [C] STALKER SWEEP: injected the roaming Hunt into %d eligible Immortal-Throne trash "
-          "pool(s) at the R-86 NORMALISED rate p_slot=1/%.0f (weight %d..%d per pool, per-slot "
+          "pool(s) at the R-96 NORMALISED rate p_slot=1/%.0f (weight %d..%d per pool, per-slot "
           "limit 1 = <=1 Hunt/trigger); %d of them self-x600'd here (non-undead pools the b49 "
           "Enslaver breadth-restrict no longer scales -- Hunt breadth preserved, was ~345). "
           "Target: ~1 sighting per act (measured 0.955 Act IV / 1.034 Act V / 1.989 per full pass)."
@@ -662,7 +662,7 @@ def _sweep_inject_legendary_stalker(db):
 def _verify_legendary_stalker_sweep(db, touched):
     """FAIL-LOUD gate (parallels _verify_roaming_sweep, Hades-scoped): re-derive the touched set
     from the arz and prove ONLY eligible Immortal-Throne trash pools carry the stalker, each at the
-    R-86 NORMALISED weight so every pool realises the SAME p_slot (1/1250 +/-4% for integer
+    R-96 NORMALISED weight so every pool realises the SAME p_slot (1/1250 +/-4% for integer
     rounding) AND a per-slot limit=1 (_LS_SLOT_LIMIT) MAX-count cap (STRUCTURAL no-double:
     <=1 Hunt per pool per trigger), the monster resolves at band [40,68,100], and there is no leak
     into a non-Hades or boss/quest/hero pool (every stalker-bearing pool must be in `touched` - there
@@ -719,7 +719,7 @@ def _verify_legendary_stalker_sweep(db, touched):
             if str(nm).replace('/', '\\').lower() == hunt:
                 hw = w
                 hidx = i
-        # R-86 NORMALISATION GATE. The old gate asserted `weight == 1` plus a 1/2400 ceiling;
+        # R-96 NORMALISATION GATE. The old gate asserted `weight == 1` plus a 1/2400 ceiling;
         # Will's "roughly one sighting per act" ruling reds that by construction, so it is
         # replaced (not loosened) by the stronger invariant the new scheme actually guarantees:
         # every pool must realise the SAME p_slot, within integer-rounding tolerance. That
@@ -763,7 +763,7 @@ def _verify_legendary_stalker_sweep(db, touched):
         raise SystemExit(
             f"Legendary-stalker roaming-sweep gate FAILED: {len(problems)} problem(s)")
     print(f"  [C] stalker-sweep gate OK: {len(derived)} eligible Immortal-Throne trash pools carry "
-          f"the Hunt at the R-86 NORMALISED rate (every pool p_slot = 1/"
+          f"the Hunt at the R-96 NORMALISED rate (every pool p_slot = 1/"
           f"{1.0/_LS_TARGET_P_SLOT:.0f} +/-{_LS_P_SLOT_TOL:.0%}, per-slot limit 1 = <=1 "
           f"Hunt/trigger); 0 non-IT / boss / quest / hero leaks; band [40,68,100].")
 
@@ -994,7 +994,7 @@ def verify(db, tags=None):
 
 
 # =============================================================================
-# PLANTED NEGATIVE TESTS for the R-86 roam-rate normalisation gate
+# PLANTED NEGATIVE TESTS for the R-96 roam-rate normalisation gate
 #   py tools/patches/toxeus_suite.py --negtest
 # A gate nobody has seen FAIL is not a gate. Each plant is a way the rate could
 # silently regress; the gate must catch every one.
@@ -1049,7 +1049,7 @@ def _negtest():
         return db, [POOL_A, POOL_B]
 
     plants = [
-        ('the pre-R-86 FLAT weight 1 comes back (1-in-27-playthroughs invisibility)',
+        ('the pre-R-96 FLAT weight 1 comes back (1-in-27-playthroughs invisibility)',
          lambda db: db.d[POOL_A].__setitem__('weight2', [1])),
         ('ONE pool misses normalisation (the 18x per-area unfairness this ruling kills)',
          lambda db: db.d[POOL_B].__setitem__('weight2', [_ls_slot_weight(36000)])),

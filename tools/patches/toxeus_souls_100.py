@@ -1,11 +1,11 @@
-r"""toxeus_souls_100 - R-48 (Will 2026-07-27) + R-81 (Will 2026-07-28): the
+r"""toxeus_souls_100 - R-48 (Will 2026-07-27) + R-91 (Will 2026-07-28): the
 FOUGHT Toxeus champions drop their soul 100% of the time.
 
 WILL'S RULING (verbatim, 2026-07-27):
     "increase the drop rate for the souls of toxeus the murderer, enslaver of
      souls and toxeus the murderer, devourer of blood to 100%"
 
-WILL'S RULING (2026-07-28, R-81, the Endless Hunt lane): the third fought Toxeus
+WILL'S RULING (2026-07-28, R-91, the Endless Hunt lane): the third fought Toxeus
 champion joins them at 100%. This closes docs/BACKLOG.md BL-b90-DEBT-4, which
 recorded the Hunt's 25% as a deliberate carve-out awaiting exactly this call:
     "the third Toxeus champion um_toxeus_hunt_99 (Legendary Stalker) is still at
@@ -21,7 +21,7 @@ SCOPE - EXACTLY THREE MONSTER RECORDS, NOTHING ELSE:
         records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr
         soul family: records\item\equipmentring\soul\svc_uber\blood_toxeus_soul_{n,e,l}.dbr
         release rate BEFORE this module: 25.0  (module-owned superboss cap)
-  * Toxeus the Murderer, the Endless Hunt                       [R-81, b98]
+  * Toxeus the Murderer, the Endless Hunt                       [R-91, b98]
         records\creature\monster\shadowstalker\um_toxeus_hunt_99.dbr
         soul family: records\item\equipmentring\soul\svc_uber\toxeus_hunt_soul_{n,e,l}.dbr
         release rate BEFORE this module: 25.0  (Boss rate, R-42 split)
@@ -85,7 +85,7 @@ See docs/reports/b90_toxeus_souls_100pct.md.
 import apply_svc_patches as asp
 from arz_patcher import DATA_TYPE_FLOAT, DATA_TYPE_INT
 
-MODULE_NAME = "toxeus champion souls -> 100% drop (R-48 + R-81)"
+MODULE_NAME = "toxeus champion souls -> 100% drop (R-48 + R-91)"
 
 # ── THE THREE TARGETS (module-local constants, sourced from the monolith so a
 # record rename upstream can never silently desync this module's scope) ──────
@@ -206,10 +206,10 @@ def apply(db, tags):
         raise SystemExit(
             f"[toxeus_souls_100] SCOPE VIOLATION: apply() changed "
             f"{_CHANCE} on {len(changed)} record(s) {changed}, expected exactly "
-            f"the {len(_TARGETS)} R-48/R-81 targets {expected}. Every other "
+            f"the {len(_TARGETS)} R-48/R-91 targets {expected}. Every other "
             f"soul's rate must be untouched.")
     print(f"  scope proof: exactly {len(changed)}/{len(after)} creature records' "
-          f"{_CHANCE} changed (the {len(_TARGETS)} R-48/R-81 targets); every "
+          f"{_CHANCE} changed (the {len(_TARGETS)} R-48/R-91 targets); every "
           f"other soul rate untouched")
 
 
@@ -250,10 +250,10 @@ def verify(db, tags):
 
     if problems:
         raise SystemExit(
-            "[toxeus_souls_100] R-48/R-81 VERIFY FAILED (Will 2026-07-27, "
+            "[toxeus_souls_100] R-48/R-91 VERIFY FAILED (Will 2026-07-27, "
             "\"increase the drop rate for the souls of toxeus the murderer, "
             "enslaver of souls and toxeus the murderer, devourer of blood to "
-            "100%\"; extended to the Endless Hunt by R-81, 2026-07-28):"
+            "100%\"; extended to the Endless Hunt by R-91, 2026-07-28):"
             "\n  - " + "\n  - ".join(problems))
     print(f"  [toxeus_souls_100] verify OK: all {len(_TARGETS)} Toxeus champions "
           f"at {TARGET_RATE:g}% soul drop with their soul families + dropItems intact")

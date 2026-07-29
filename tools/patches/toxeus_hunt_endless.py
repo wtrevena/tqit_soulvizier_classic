@@ -1,4 +1,4 @@
-r"""toxeus_hunt_endless - THE ENDLESS PURSUIT (b98, R-80).
+r"""toxeus_hunt_endless - THE ENDLESS PURSUIT (b98, R-90).
 
 WILL'S RULING (verbatim, 2026-07-28):
     "yeah lets have the endless pursuit only be on legendary"
@@ -86,7 +86,7 @@ TWO THINGS MAKE THAT UNREACHABLE:
 ORDERING is load-bearing to both: this module is registered AFTER every writer of
 the base record (toxeus_hunt_encounter, toxeus_champion_kits, boss_skill_fix,
 toxeus_souls_100 and uber_quest_markers), so the clone captures the FINAL base -
-including the R-81 100% soul rate and the DisplayAsQuestItem marker.
+including the R-91 100% soul rate and the DisplayAsQuestItem marker.
 
 --------------------------------------------------------------------------------
 THE LIMIT WILL MUST KNOW ABOUT (reported, not hidden)
@@ -105,7 +105,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))   # tools/ on path
 
-MODULE_NAME = "Endless Hunt: Legendary-only endless pursuit (R-80)"
+MODULE_NAME = "Endless Hunt: Legendary-only endless pursuit (R-90)"
 
 DATA_TYPE_INT = 0
 DATA_TYPE_FLOAT = 1
@@ -163,7 +163,7 @@ def _build_controller(db):
         else:
             db.set_field(_VAR_CTRL, f, v)
     db.set_field(_VAR_CTRL, 'FileDescription',
-                 'Endless pursuit (R-80): no leash, no roam-back, never forgets')
+                 'Endless pursuit (R-90): no leash, no roam-back, never forgets')
     db._modified.add(_VAR_CTRL)
     print("  controller cloned: MaxPursuitDistance 60 -> 1000 (Aktaios), "
           "PursuitTime 20000 -> 100000, Roam -> NeverRoam, ForgiveRate 1.0 -> 0.2; "
@@ -241,7 +241,7 @@ def _wire_pool_and_proxy(db):
 
 
 def apply(db, tags):
-    print("\n=== [toxeus_hunt_endless] b98 THE ENDLESS PURSUIT (R-80) ===")
+    print("\n=== [toxeus_hunt_endless] b98 THE ENDLESS PURSUIT (R-90) ===")
     _build_controller(db)
     _build_variant(db)
     _wire_pool_and_proxy(db)
@@ -271,7 +271,7 @@ def verify(db, tags=None):
         if _norm(_gv1(db, _BASE_MON, 'controller')) == _norm(_VAR_CTRL):
             problems.append(
                 "the BASE Endless Hunt now points at the endless controller too - "
-                "Normal and Epic would become unkiteable, which R-80 does not say")
+                "Normal and Epic would become unkiteable, which R-90 does not say")
 
     # (2) the controller actually carries the endless numbers, and the SHARED
     #     donor was not edited in place (the 15-monster blast radius).
@@ -309,13 +309,13 @@ def verify(db, tags=None):
     else:
         pl = _gv1(db, _PROXY, 'poolLegendary1')
         if _norm(pl) != _norm(_VAR_POOL):
-            problems.append("R-80: %s poolLegendary1=%r != the endless pool %s"
+            problems.append("R-90: %s poolLegendary1=%r != the endless pool %s"
                             % (_PROXY, pl, _VAR_POOL))
         for f in ('pool1', 'poolEpic1'):
             v = _gv1(db, _PROXY, f)
             if _norm(v) != _norm(_BASE_POOL):
                 problems.append(
-                    "R-80: %s %s=%r != the BASE pool %s - Normal/Epic must keep the "
+                    "R-90: %s %s=%r != the BASE pool %s - Normal/Epic must keep the "
                     "kiteable Hunt" % (_PROXY, f, v, _BASE_POOL))
     if not db.has_record(_VAR_POOL):
         problems.append("endless pool missing: %s" % _VAR_POOL)

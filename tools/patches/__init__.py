@@ -229,7 +229,7 @@ REGISTRY = [
     # constraint sets are satisfied by keeping sargoth first (it only touches the dragonian
     # soul family - disjoint from every Toxeus record) and running the b98 pair immediately
     # after it, still ahead of 'toxeus_souls_100'.
-    'toxeus_hunt_encounter',# b98 (Will 2026-07-28, R-80/R-82/R-83/R-84). RENAMED from
+    'toxeus_hunt_encounter',# b98 (Will 2026-07-28, R-90/R-92/R-93/R-94). RENAMED from
                             # 'toxeus_legendary_stalker' under the RETIREMENT PROTOCOL: the old
                             # name described a Legendary-only gate that Will's ruling removes, and
                             # it was only ever true of the FIXED proxy - the ROAMING sweep was
@@ -242,12 +242,12 @@ REGISTRY = [
                             # pursuit kit.
                             # ORDERING: after toxeus_suite (which authors um_toxeus_hunt_99) AND
                             # after toxeus_endofallthings, which is the author of BOTH
-                            # svc_rite_guaranteed and the EoAT formula this module's R-82 wiring
+                            # svc_rite_guaranteed and the EoAT formula this module's R-92 wiring
                             # and its recipe-gate assertion read. Also after boss_skill_fix and
                             # toxeus_champion_kits, so it is the ratified last writer of the
                             # Hunt's cast slots. Negative test:
                             # py tools/patches/toxeus_hunt_encounter.py --negtest
-    'enslaver_shroud',      # b98 (Will 2026-07-28, R-85): the Enslaver's PERSISTENT black shroud.
+    'enslaver_shroud',      # b98 (Will 2026-07-28, R-95): the Enslaver's PERSISTENT black shroud.
                             # He ALREADY carries the marauders' shadowcloak pak on
                             # charFxPakRunningNames - a channel that only renders while RUNNING,
                             # and he is a caster who stands and casts, so it almost never plays.
@@ -261,12 +261,12 @@ REGISTRY = [
                             # writer of the slot it claims. Uses ONLY the in-game-CONFIRMED
                             # shadowcloak smoke, never 343_dark_smoke (R-10: green-rendering).
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-    'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-81): "increase the drop rate for
+    'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
                             # devourer of blood to 100%". Sets chanceToEquipFinger2=100 on EXACTLY
                             # um_toxeus_enslaver_99 (was 66) + um_bloodtoxeus_99 (was 25) +, per
-                            # R-81, um_toxeus_hunt_99 (was 25 - the SOLE reason the Endless Hunt's
+                            # R-91, um_toxeus_hunt_99 (was 25 - the SOLE reason the Endless Hunt's
                             # soul appeared not to drop; this closes BL-b90-DEBT-4); every
                             # other soul rate untouched (apply() proves it roster-wide). Registered
                             # LAST among content modules so it is the ratified final registry writer
@@ -387,7 +387,7 @@ REGISTRY = [
                             # dedicated chain form must carry DisplayAsQuestItem=1, and no SHARED
                             # form may) - negative test `py tools/patches/uber_quest_markers.py
                             # --negtest`. One field, 0 new records, 0 tags.
-    'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-80): "yeah lets have the endless pursuit only
+    'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-90): "yeah lets have the endless pursuit only
                             # be on legendary". Pursuit is a CONTROLLER property and both
                             # MaxPursuitDistance and PursuitTime are declared class="variable" in
                             # the engine's own controllermonster.tpl (scalar, never a per-difficulty
@@ -401,7 +401,7 @@ REGISTRY = [
                             # toxeus_champion_kits, boss_skill_fix, toxeus_souls_100 AND
                             # uber_quest_markers), because the variant is generated as a
                             # clone-then-override of the base at build time - so it inherits the
-                            # R-81 100% soul rate and the DisplayAsQuestItem marker by construction
+                            # R-91 100% soul rate and the DisplayAsQuestItem marker by construction
                             # instead of drifting. verify() asserts base and variant differ in
                             # EXACTLY the `controller` field, which is what makes the doubled record
                             # safe. Placed before fx_dangling_cleanup so the FX hygiene sweep still

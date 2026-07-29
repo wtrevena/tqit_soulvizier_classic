@@ -40,7 +40,7 @@ gate: his slot carries weight 1 against pool totals of 36,001 to 660,001, i.e.
 --------------------------------------------------------------------------------
 WHAT THIS MODULE SHIPS
 --------------------------------------------------------------------------------
-1. THE GATE COMES OFF THE FIXED ENCOUNTER (R-80 scope): pool1 and poolEpic1 now
+1. THE GATE COMES OFF THE FIXED ENCOUNTER (R-90 scope): pool1 and poolEpic1 now
    BOTH name the Hunt's pool explicitly, so the guaranteed Hades Palace encounter
    exists on Normal, Epic and Legendary. `poolEpic1` is set EXPLICITLY rather than
    left to fall back on `pool1`, because "poolEpic1 absent" is the Hydra gate
@@ -48,7 +48,7 @@ WHAT THIS MODULE SHIPS
    `poolLegendary1` is left naming the base pool here and is REPOINTED at the
    endless-pursuit variant pool by `toxeus_hunt_endless` (registered later).
 
-2. THE RITE OF THE UNDIVIDED DROPS OFF HIM (R-82), mirroring the Enslaver EXACTLY:
+2. THE RITE OF THE UNDIVIDED DROPS OFF HIM (R-92), mirroring the Enslaver EXACTLY:
    chanceToEquipMisc4=100 / chanceToEquipMisc4Item1=100 /
    lootMisc4Item1 = svc_rite_guaranteed on all three tiers. The Hunt had NO Misc4
    slot at all. R-13 reads the champion Rite drop as guaranteed-on-kill; the
@@ -57,11 +57,11 @@ WHAT THIS MODULE SHIPS
    LEGENDARY souls (asserted in verify()), so the formula dropping on Normal/Epic
    cannot short-circuit R-8's gate.
 
-3. HE CARRIES A SPEAR (R-83) - "Runbreaker", a bespoke 3-tier signature weapon on
+3. HE CARRIES A SPEAR (R-93) - "Runbreaker", a bespoke 3-tier signature weapon on
    the Devourer's Crimson Verdict / Veinrender pattern, guaranteed in his RightHand
    slot so he both WIELDS and DROPS it. See THE ANIMATION PROOF below.
 
-4. HE STOPS BEING AN ENSLAVER CLONE (R-84). Ground truth: 9 of his 12 skill slots
+4. HE STOPS BEING AN ENSLAVER CLONE (R-94). Ground truth: 9 of his 12 skill slots
    were the SAME SKILL RECORD as the Enslaver's, and his only 3 non-shared slots
    are the globalproperties_{normal,epic,legendary}01 STAT hooks. He had ZERO
    unique active abilities. The three cast slots that overlapped the Enslaver
@@ -126,7 +126,7 @@ monster-side gate).
     So the premise round 1 used to justify "add no special-anim skills" was inverted:
     the other two champions are the ones who can cast, and he is the one who cannot.
 
-WHAT THIS MODULE NOW DOES ABOUT IT (R-84 round 2):
+WHAT THIS MODULE NOW DOES ABOUT IT (R-94 round 2):
  1. It BINDS the animation instead of avoiding it. `AoE360` is bound on TWO rows of
     his own inline animation table (he has no charAnimationTableName, so his inline
     fields ARE the live table):
@@ -153,7 +153,7 @@ WHAT THIS MODULE NOW DOES ABOUT IT (R-84 round 2):
     that slot is repaired by removal rather than by binding a second animation.
 
 --------------------------------------------------------------------------------
-HIS SOUL GRANTS HIS OWN SKILL (R-84 round 2, the second vet blocker)
+HIS SOUL GRANTS HIS OWN SKILL (R-94 round 2, the second vet blocker)
 --------------------------------------------------------------------------------
 `toxeus_hunt_soul_{n,e,l}` granted `records\skills\soulskills\toxeus_flashpowder.dbr`
 - the very skill this module RETIRES from his kit as "the Enslaver's". The one
@@ -199,7 +199,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))   # tools/ on path
 
-MODULE_NAME = "Endless Hunt encounter (R-80/R-82/R-83/R-84): ungate, Rite, spear, pursuit kit"
+MODULE_NAME = "Endless Hunt encounter (R-90/R-92/R-93/R-94): ungate, Rite, spear, pursuit kit"
 
 DATA_TYPE_INT = 0
 DATA_TYPE_FLOAT = 1
@@ -212,11 +212,11 @@ _STALKER_PROXY = r'records\drxmap\proxy\q_toxeus_hunt_lone.dbr'
 _STALKER_MESH = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
 _STALKER_SCALE = 1.9
 
-# -- R-82: the Rite of the Undivided (the EXACT table the Enslaver drops) ----
+# -- R-92: the Rite of the Undivided (the EXACT table the Enslaver drops) ----
 _RITE_TABLE = r'records\item\loottables\svc\svc_rite_guaranteed.dbr'
 _EOAT_FORMULA = r'records\drxitem\supra\recipes\svc_toxeus_eoat_formula.dbr'
 
-# -- R-83: the spear ---------------------------------------------------------
+# -- R-93: the spear ---------------------------------------------------------
 _SPEAR_DONOR = r'records\drxitem\supra\wep_spear.dbr'      # supra-tier calibre donor
 # THE build30-F3 CORRECTED RIG. The donor's SHIPPED mesh is
 # `DRX\meshes\supra\wep_spear.msh`, which embeds the XPack-scoped shader
@@ -258,7 +258,7 @@ _SPEAR_SELF_ANIMS = {
     'spearSpawnAnim': 'sHandedSpawnAnim',
 }
 
-# -- R-84 round 2: CASTABILITY BINDINGS --------------------------------------
+# -- R-94 round 2: CASTABILITY BINDINGS --------------------------------------
 # Weapon Class -> the animation ROW the engine reads while that weapon is held.
 # Covers every Weapon* Class that exists in the deployed arz; an unknown Class is a
 # GATE FAILURE, never a silent pass.
@@ -289,7 +289,7 @@ _ACTIVE_SLOT_FIELDS = ('attackSkillName', 'initialSkillName', 'dyingSkillName',
                        'specialAttackSkillName') + tuple(
     'specialAttack%dSkillName' % i for i in range(2, 7))
 
-# -- R-84: the pursuit kit (donors are all DB-verified, all NO special anim) --
+# -- R-94: the pursuit kit (donors are all DB-verified, all NO special anim) --
 _D_MARK = r'records\skills\hunting\studyprey.dbr'
 _D_MARK_BUFF = r'records\skills\hunting\studypreybuff.dbr'
 _D_LANCE = r'records\skills\stealth\drxpet\drx_stalker_skills\zshadowblast.dbr'
@@ -307,7 +307,7 @@ _EXPECT_CLASS = {
     _LANCE: 'Skill_AttackSpellChaos',
     _SWEEP: 'Skill_AttackRadius',
 }
-# PLAYER SURFACE (R-83 process law #3): the new skill CLASS gets its own display
+# PLAYER SURFACE (R-93 process law #3): the new skill CLASS gets its own display
 # names + descriptions instead of reading as its donor. `svc_hunt_quarrysmark_buff`
 # is `debufSkill=1`, i.e. it lands on the PLAYER's status bar, and `svc_hunt_quarrysmark`
 # is what his soul now grants, so both are genuinely player-readable.
@@ -357,7 +357,7 @@ _STRIP_DONOR_PAYLOAD = {
              'radiusEffectName', 'particleEffectAttachPoint1', 'skillHitSound'),
 }
 
-# -- R-84 round 2: his soul grants HIS skill, not the retired flashpowder ----
+# -- R-94 round 2: his soul grants HIS skill, not the retired flashpowder ----
 _HUNT_SOULS = {t: r'records\item\equipmentring\soul\svc_uber\toxeus_hunt_soul_%s.dbr' % t
                for t in 'nel'}
 _RETIRED_SOUL_GRANT = r'records\skills\soulskills\toxeus_flashpowder.dbr'
@@ -435,7 +435,7 @@ def _set(db, rec, field, value, dtype):
 
 
 # =============================================================================
-# (1) the fixed encounter: pool + proxy, gate OFF (R-80 scope)
+# (1) the fixed encounter: pool + proxy, gate OFF (R-90 scope)
 # =============================================================================
 def _ensure_pool(db):
     from apply_svc_patches import _ensure_record
@@ -458,7 +458,7 @@ def _ensure_pool(db):
 def _author_proxy(db):
     """Author (first build) or re-gate (idempotent) the fixed encounter proxy.
 
-    R-80 SCOPE: the MONSTER is available on all three difficulties, so pool1 AND
+    R-90 SCOPE: the MONSTER is available on all three difficulties, so pool1 AND
     poolEpic1 both name his pool. poolLegendary1 also names it here; the
     toxeus_hunt_endless module repoints it at the endless-pursuit variant pool.
     """
@@ -492,12 +492,12 @@ def _author_proxy(db):
             'name': 'q_toxeus_hunt_lone (fixed Endless Hunt encounter, N/E/L)',
         })
     print("  fixed encounter: pool1 + poolEpic1 + poolLegendary1 all name the "
-          "Hunt's pool (Legendary-only gate REMOVED, R-80); registered for "
+          "Hunt's pool (Legendary-only gate REMOVED, R-90); registered for "
           "spawn-eligibility.")
 
 
 # =============================================================================
-# (2) R-82: the Rite of the Undivided drops off him too
+# (2) R-92: the Rite of the Undivided drops off him too
 # =============================================================================
 def _wire_rite(db):
     _require(db, _RITE_TABLE, _EOAT_FORMULA)
@@ -512,12 +512,12 @@ def _wire_rite(db):
     _set(db, _HUNT, 'chanceToEquipMisc4Item1', 100, I)
     _set(db, _HUNT, 'lootMisc4Item1', [_RITE_TABLE] * 3, S)
     db._modified.add(_HUNT)
-    print("  R-82: Rite of the Undivided wired to Misc4 at 100 percent on all 3 "
+    print("  R-92: Rite of the Undivided wired to Misc4 at 100 percent on all 3 "
           "tiers (mirrors the Enslaver exactly; he had NO Misc4 slot before).")
 
 
 # =============================================================================
-# (3) R-83: Runbreaker, his signature spear
+# (3) R-93: Runbreaker, his signature spear
 # =============================================================================
 def _build_spear_items(db, tags):
     _require(db, _SPEAR_DONOR)
@@ -575,7 +575,7 @@ def _build_spear_items(db, tags):
     # PLAYER SURFACE: the display name. One tag across all 3 tiers, exactly the
     # Veinrender convention (tagSVCwpnVeinRender is shared by n/e/l).
     tags[_SPEAR_NAME_TAG] = 'Runbreaker'
-    print("  R-83: Runbreaker authored (3 tiers) + 3 guaranteed loot tables; "
+    print("  R-93: Runbreaker authored (3 tiers) + 3 guaranteed loot tables; "
           "name tag %s." % _SPEAR_NAME_TAG)
 
 
@@ -602,13 +602,13 @@ def _graft_spear_anims(db):
                 % (_HUNT, self_slot, spear_slot))
         _set(db, _HUNT, spear_slot, src, S)
     db._modified.add(_HUNT)
-    print("  R-83: spear animation block grafted - 3 BORROWED attack poses "
+    print("  R-93: spear animation block grafted - 3 BORROWED attack poses "
           "(Maenad, boneash_1 precedent) + run/die/stun reused from this "
           "record's own sHanded slots.")
 
 
 # =============================================================================
-# (3b) R-84 round 2: make the cast slots he KEEPS actually fire
+# (3b) R-94 round 2: make the cast slots he KEEPS actually fire
 # =============================================================================
 def _modal_row_binding(db, row, ref):
     """Census: what .anm do OTHER shipped records bind to `ref` on `row`?
@@ -709,13 +709,13 @@ def _wire_spear_to_hunt(db):
     for f, v in sorted(_RANGE_BANDS.items()):
         db.set_field(_HUNT, f, v)
     db._modified.add(_HUNT)
-    print("  R-83: RightHand -> runbreaker_guaranteed_{n,e,l} at 100 percent; "
+    print("  R-93: RightHand -> runbreaker_guaranteed_{n,e,l} at 100 percent; "
           "range bands widened for a two-handed reach weapon "
           "(short 0-5 / med 5-12 / long 12-22).")
 
 
 # =============================================================================
-# (4) R-84: the pursuit kit
+# (4) R-94: the pursuit kit
 # =============================================================================
 def _build_kit_skills(db, tags):
     _require(db, _D_MARK, _D_MARK_BUFF, _D_LANCE, _D_SWEEP)
@@ -803,7 +803,7 @@ def _build_kit_skills(db, tags):
 
 
 # =============================================================================
-# (4b) R-84 round 2: his soul grants HIS skill
+# (4b) R-94 round 2: his soul grants HIS skill
 # =============================================================================
 def _wire_soul_grant(db):
     """Repoint `toxeus_hunt_soul_{n,e,l}` off the retired flashpowder."""
@@ -827,7 +827,7 @@ def _wire_soul_grant(db):
         db.set_field(soul, 'itemSkillName', _SOUL_GRANT)
         db.set_field(soul, 'itemSkillLevel', lv)
         db._modified.add(soul)
-    print("  R-84 round 2: toxeus_hunt_soul_{n,e,l} grant %s at level 1/2/3 "
+    print("  R-94 round 2: toxeus_hunt_soul_{n,e,l} grant %s at level 1/2/3 "
           "(was the RETIRED soulskills\\toxeus_flashpowder at 4/6/8)"
           % _SOUL_GRANT.rsplit('\\', 1)[-1])
 
@@ -905,9 +905,9 @@ def apply(db, tags):
     _graft_spear_anims(db)
     _wire_spear_to_hunt(db)
     _build_kit_skills(db, tags)
-    print("  R-84: pursuit kit (the 3 Enslaver-shared cast slots become his own):")
+    print("  R-94: pursuit kit (the 3 Enslaver-shared cast slots become his own):")
     _wire_kit(db)
-    print("  R-84 round 2: binding the special animations his KEPT cast slots need "
+    print("  R-94 round 2: binding the special animations his KEPT cast slots need "
           "(toxeus_bladestorm @40% could never fire):")
     _bind_special_anims(db)
     _wire_soul_grant(db)
@@ -1075,7 +1075,7 @@ def verify(db, tags=None):
     """POST-FINALIZATION fail-loud gates."""
     problems = []
 
-    # --- (A) the fixed encounter resolves on ALL THREE difficulties (R-80) --
+    # --- (A) the fixed encounter resolves on ALL THREE difficulties (R-90) --
     if not db.has_record(_STALKER_PROXY):
         problems.append("proxy missing: %s" % _STALKER_PROXY)
     else:
@@ -1083,7 +1083,7 @@ def verify(db, tags=None):
             v = _gv1(db, _STALKER_PROXY, f)
             if not v:
                 problems.append(
-                    "R-80: %s %s is EMPTY - the fixed Endless Hunt encounter does "
+                    "R-90: %s %s is EMPTY - the fixed Endless Hunt encounter does "
                     "not resolve on that difficulty. Will's ruling put the monster "
                     "on Normal, Epic AND Legendary." % (_STALKER_PROXY, f))
             elif not db.has_record(v):
@@ -1101,73 +1101,73 @@ def verify(db, tags=None):
             if _gv1(db, _STALKER_POOL, 'name%d' % i):
                 problems.append("pool has an extra member name%d (single-member pool)" % i)
 
-    # --- (B) R-82: the Rite drops, and the RECIPE still gates on LEGENDARY --
+    # --- (B) R-92: the Rite drops, and the RECIPE still gates on LEGENDARY --
     if abs(float(_gv1(db, _HUNT, 'chanceToEquipMisc4') or 0.0) - 100.0) > 0.001:
-        problems.append("R-82: %s chanceToEquipMisc4=%r (must be 100)"
+        problems.append("R-92: %s chanceToEquipMisc4=%r (must be 100)"
                         % (_HUNT, _gv1(db, _HUNT, 'chanceToEquipMisc4')))
     m4 = db.get_field_value(_HUNT, 'lootMisc4Item1') or []
     m4 = m4 if isinstance(m4, list) else [m4]
     if len(m4) != 3 or any(_norm(x) != _norm(_RITE_TABLE) for x in m4):
-        problems.append("R-82: %s lootMisc4Item1=%r (must be the Rite table on all "
+        problems.append("R-92: %s lootMisc4Item1=%r (must be the Rite table on all "
                         "3 tiers)" % (_HUNT, m4))
     if db.has_record(_EOAT_FORMULA):
         for i in (1, 2, 3):
             r = _gv1(db, _EOAT_FORMULA, 'reagent%dBaseName' % i)
             if not r or not str(r).lower().endswith('_l.dbr'):
                 problems.append(
-                    "R-82 GATE: the End of All Things formula's reagent%d is %r - "
+                    "R-92 GATE: the End of All Things formula's reagent%d is %r - "
                     "it must stay a LEGENDARY (_l) soul. The formula item is now "
                     "obtainable on Normal/Epic, so the LEGENDARY gate has to live "
                     "on the recipe or R-8 is broken." % (i, r))
     else:
-        problems.append("R-82 GATE: the EoAT formula record is missing (%s)" % _EOAT_FORMULA)
+        problems.append("R-92 GATE: the EoAT formula record is missing (%s)" % _EOAT_FORMULA)
 
-    # --- (C) R-83: the spear, its items and its animations ------------------
+    # --- (C) R-93: the spear, its items and its animations ------------------
     for t in 'nel':
         item, guar = _SPEAR[t], _SPEAR_GUAR[t]
         if not db.has_record(item):
-            problems.append("R-83: spear tier missing: %s" % item)
+            problems.append("R-93: spear tier missing: %s" % item)
             continue
         if _gv1(db, item, 'Class') != 'WeaponHunting_Spear':
-            problems.append("R-83: %s Class=%r != WeaponHunting_Spear"
+            problems.append("R-93: %s Class=%r != WeaponHunting_Spear"
                             % (item, _gv1(db, item, 'Class')))
         if _gv1(db, item, 'itemNameTag') != _SPEAR_NAME_TAG:
-            problems.append("R-83: %s itemNameTag=%r != %s"
+            problems.append("R-93: %s itemNameTag=%r != %s"
                             % (item, _gv1(db, item, 'itemNameTag'), _SPEAR_NAME_TAG))
         for f in ('bumpTexture', 'baseTexture'):
             if _gv1(db, item, f):
-                problems.append("R-83: %s carries the build30-F3 DRX-only skin %s "
+                problems.append("R-93: %s carries the build30-F3 DRX-only skin %s "
                                 "(it fits only the DRX mesh)" % (item, f))
         m = _norm(_gv1(db, item, 'mesh'))
         if m.startswith(_INVISIBLE_MESH_PREFIX):
             problems.append(
-                "R-83 INVISIBLE WEAPON: %s mesh=%r is the build30-F3 class - a "
+                "R-93 INVISIBLE WEAPON: %s mesh=%r is the build30-F3 class - a "
                 "DRX supra mesh embedding an XPack-scoped shader the engine cannot "
                 "resolve, so the spear renders INVISIBLE in his hand." % (item, m))
         donor_mesh = _norm(_gv1(db, _SPEAR_DONOR, 'mesh')) if db.has_record(_SPEAR_DONOR) else None
         if donor_mesh and m != donor_mesh:
             problems.append(
-                "R-83: %s mesh=%r != the FINAL (post-F3) supra spear mesh %r. "
+                "R-93: %s mesh=%r != the FINAL (post-F3) supra spear mesh %r. "
                 "Runbreaker must track whatever rig F3 settles on, or the two "
                 "silently diverge." % (item, m, donor_mesh))
         if not db.has_record(guar):
-            problems.append("R-83: guaranteed table missing: %s" % guar)
+            problems.append("R-93: guaranteed table missing: %s" % guar)
         elif _norm(_gv1(db, guar, 'lootName1')) != _norm(item):
-            problems.append("R-83: %s lootName1 != %s" % (guar, item))
+            problems.append("R-93: %s lootName1 != %s" % (guar, item))
     if tags is not None and _SPEAR_NAME_TAG not in tags:
-        problems.append("R-83 PLAYER SURFACE: %s is not in the Text tag set, so "
+        problems.append("R-93 PLAYER SURFACE: %s is not in the Text tag set, so "
                         "Runbreaker would show a raw tag in game" % _SPEAR_NAME_TAG)
     _spear_gate(db, _HUNT, 'Endless Hunt', problems)
     _anim_provenance(db, problems)
 
-    # --- (D) R-84: the pursuit kit exists, is CASTABLE, and is wired --------
+    # --- (D) R-94: the pursuit kit exists, is CASTABLE, and is wired --------
     for sk in _NEW_SKILLS:
         if not db.has_record(sk):
-            problems.append("R-84: new skill missing: %s" % sk)
+            problems.append("R-94: new skill missing: %s" % sk)
             continue
         cls = _gv1(db, sk, 'Class')
         if cls != _EXPECT_CLASS[sk]:
-            problems.append("R-84: %s Class=%r != %r"
+            problems.append("R-94: %s Class=%r != %r"
                             % (sk.rsplit('\\', 1)[-1], cls, _EXPECT_CLASS[sk]))
         # ROUND 2 PLAYER SURFACE: no new skill may still read as its donor.
         name_tag, desc_tag = _SKILL_TEXT[sk]
@@ -1176,30 +1176,30 @@ def verify(db, tags=None):
             got = _gv1(db, sk, field)
             if got != want:
                 problems.append(
-                    "R-84 PLAYER SURFACE: %s %s=%r, expected the mod-authored %r "
+                    "R-94 PLAYER SURFACE: %s %s=%r, expected the mod-authored %r "
                     "(a donor tag here makes the skill read as the skill it replaced)"
                     % (sk.rsplit('\\', 1)[-1], field, got, want))
             elif tags is not None and want not in tags:
                 problems.append(
-                    "R-84 PLAYER SURFACE: %s names Text tag %s, which is not in the "
+                    "R-94 PLAYER SURFACE: %s names Text tag %s, which is not in the "
                     "tag set - it would show a raw tag in game"
                     % (sk.rsplit('\\', 1)[-1], want))
         # ROUND 2: no inherited donor payload may survive on the clone.
         for field in _STRIP_DONOR_PAYLOAD.get(sk, ()):
             if _gv1(db, sk, field):
                 problems.append(
-                    "R-84 DONOR PAYLOAD: %s still carries the inherited %s=%r - an "
+                    "R-94 DONOR PAYLOAD: %s still carries the inherited %s=%r - an "
                     "unreported, undesigned leftover of the record it was cloned from"
                     % (sk.rsplit('\\', 1)[-1], field, _gv1(db, sk, field)))
     if db.has_record(_MARK) and _norm(_gv1(db, _MARK, 'buffSkillName')) != _norm(_MARK_BUFF):
-        problems.append("R-84: Quarry's Mark buffSkillName != its own buff record")
+        problems.append("R-94: Quarry's Mark buffSkillName != its own buff record")
     # The AI must not be told to cast the lance beyond the projectile's own reach.
     if db.has_record(_LANCE):
         reach = float(_gv1(db, _LANCE, 'maxDistance') or 0.0)
         band = float(_gv1(db, _HUNT, 'longRangeMax') or 0.0)
         if reach + 0.001 < band:
             problems.append(
-                "R-84: The Long Reach maxDistance=%g but he is told to cast it at "
+                "R-94: The Long Reach maxDistance=%g but he is told to cast it at "
                 "LongRange up to %g - the far part of his own band is a dry cast"
                 % (reach, band))
 
@@ -1210,18 +1210,18 @@ def verify(db, tags=None):
     for t in 'nel':
         soul = _HUNT_SOULS[t]
         if not db.has_record(soul):
-            problems.append("R-84 SOUL: %s missing" % soul)
+            problems.append("R-94 SOUL: %s missing" % soul)
             continue
         grant = _gv1(db, soul, 'itemSkillName')
         if _norm(grant) == _norm(_RETIRED_SOUL_GRANT):
             problems.append(
-                "R-84 SOUL IDENTITY: %s still grants %s - the skill this lane RETIRED "
+                "R-94 SOUL IDENTITY: %s still grants %s - the skill this lane RETIRED "
                 "from his kit. The one player-facing artifact of his identity would "
                 "hand out an ability he no longer has."
                 % (soul.rsplit('\\', 1)[-1], _RETIRED_SOUL_GRANT.rsplit('\\', 1)[-1]))
             continue
         if _norm(grant) != _norm(_SOUL_GRANT):
-            problems.append("R-84 SOUL: %s itemSkillName=%r != %s"
+            problems.append("R-94 SOUL: %s itemSkillName=%r != %s"
                             % (soul.rsplit('\\', 1)[-1], grant, _SOUL_GRANT))
             continue
         lv = _gv1(db, soul, 'itemSkillLevel')
@@ -1229,12 +1229,12 @@ def verify(db, tags=None):
         try:
             lv_i, max_i = int(lv), int(maxlv)
         except (TypeError, ValueError):
-            problems.append("R-84 SOUL: %s itemSkillLevel=%r / skillMaxLevel=%r are "
+            problems.append("R-94 SOUL: %s itemSkillLevel=%r / skillMaxLevel=%r are "
                             "not both integers" % (soul.rsplit('\\', 1)[-1], lv, maxlv))
             continue
         if lv_i < 1 or lv_i > max_i:
             problems.append(
-                "R-84 SOUL: %s grants %s at level %d but the skill's skillMaxLevel is "
+                "R-94 SOUL: %s grants %s at level %d but the skill's skillMaxLevel is "
                 "%d - a soul may never grant a level its skill does not have"
                 % (soul.rsplit('\\', 1)[-1], grant.rsplit('\\', 1)[-1], lv_i, max_i))
     # the soul DESCRIPTION must not still advertise the retired flash-burst
@@ -1243,7 +1243,7 @@ def verify(db, tags=None):
         for banned in ('flash-burst', 'flash burst', 'flashpowder', 'flash powder'):
             if banned in desc:
                 problems.append(
-                    "R-84 PLAYER SURFACE: %s still says %r, but the soul no longer "
+                    "R-94 PLAYER SURFACE: %s still says %r, but the soul no longer "
                     "grants the flash powder" % (_SOUL_DESC_TAG, banned))
                 break
 
@@ -1252,19 +1252,19 @@ def verify(db, tags=None):
         sn = _gv1(db, _HUNT, 'specialAttack%sSkillName' % suffix)
         ch = _gv1(db, _HUNT, 'specialAttack%sChance' % suffix)
         if _norm(sn) != _norm(new_skill):
-            problems.append("R-84: specialAttack%s=%r != %s"
+            problems.append("R-94: specialAttack%s=%r != %s"
                             % (suffix or '1', sn, new_skill.rsplit('\\', 1)[-1]))
         elif (ch or 0) <= 0:
-            problems.append("R-84: specialAttack%s chance %r <= 0" % (suffix or '1', ch))
+            problems.append("R-94: specialAttack%s chance %r <= 0" % (suffix or '1', ch))
         slot = _slot_of(db, _HUNT, new_skill)
         if slot is None:
-            problems.append("R-84: %s is not in any skillName slot"
+            problems.append("R-94: %s is not in any skillName slot"
                             % new_skill.rsplit('\\', 1)[-1])
         else:
             lv = db.get_field_value(_HUNT, 'skillLevel%d' % slot)
             lv0 = lv[0] if isinstance(lv, list) and lv else lv
             if not lv0:
-                problems.append("R-84: %s sits at skillLevel%d=%r (level 0 never fires)"
+                problems.append("R-94: %s sits at skillLevel%d=%r (level 0 never fires)"
                                 % (new_skill.rsplit('\\', 1)[-1], slot, lv))
 
     # SAMENESS GATE: he must not share every active cast slot with the Enslaver again.
@@ -1282,7 +1282,7 @@ def verify(db, tags=None):
         shared = mine & _casts(ens)
         if mine and len(shared) >= len(mine):
             problems.append(
-                "R-84 SAMENESS: every one of the Endless Hunt's %d cast slots is "
+                "R-94 SAMENESS: every one of the Endless Hunt's %d cast slots is "
                 "also an Enslaver cast slot (%s) - he is an Enslaver clone again"
                 % (len(mine), sorted(s.rsplit('\\', 1)[-1] for s in shared)))
 
