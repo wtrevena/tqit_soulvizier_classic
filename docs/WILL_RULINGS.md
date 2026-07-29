@@ -880,3 +880,71 @@ shipped). **R-10** and **R-16** were re-read and are correctly PENDING as writte
 
 **RETIREMENT PROTOCOL:** nothing was deleted, retired, or dropped in this pass. Every superseded /
 renumbered record is still present with a pointer to its replacement.
+
+---
+
+## Sanctuary of the Bloodborn / blood-cave population (decade 110-119, claimed 2026-07-29 by `feat/sanctuary-populate`)
+
+> **DECADE ALLOCATION.** World/placement 30-39 is full and its rulings are all owned by other
+> lanes; the next free decade was checked with
+> `git grep -ohE '\bR-[0-9]+\b' <every branch>` on 2026-07-29, which returned R-1..R-51, R-60/61,
+> R-70..R-76, R-80..R-86, R-90..R-98 and R-100..R-102 (`fix/blade-mastery-truth`). **R-110..R-119
+> had zero hits on any branch.** This lane FIRST claimed R-100..R-109 - genuinely free when it
+> started - and yielded when `fix/blade-mastery-truth` appeared mid-lane and took 100/101/102.
+> Ruling-decade freeness is a RACE under parallel lanes: re-run the check, never trust this line.
+
+- R-110 [2026-07-29] IMPLEMENTED b100 (`feat/sanctuary-populate`), verbatim: the Sanctuary of the
+  Bloodborn has **"large walkable areas with no enemies placed"**. CONFIRMED against the built map
+  before anything was changed, and the cause identified as inherited upstream content debt rather
+  than a regression: `Levels/World/xBloodCave/drxBC3.lvl` (level index 2253) is the ONLY level in
+  the 2,282-level world carrying the region label `BCXwalkway` -> `tagBCXwalkway` -> "Sanctuary of
+  the Bloodborn"; it holds **23,994 sq u** of its own walkable navmesh ground (`0x0b` cells whose
+  `areas` owner byte is drxBC3's own GUID index) carrying **TEN** monster proxies, and its worst
+  60x60 world-unit screen box sums **24** pool `spawnMax` against a base-game cave/crypt/tomb
+  MEDIAN of 26 and blood-cave siblings of 42 (`yet_another_fucking_connector`) to 81 (`drxBC2`).
+  Our merge dropped nothing - the level is placement-IDENTICAL to pristine SV 0.98i (281 instances
+  / 10 proxies on both sides), so there is nothing to "restore"; amgoz1 simply never populated it.
+  FIX: **ADD-ONLY**, map-side, 14 new proxies injected into drxBC3's `0x05` via
+  `tools/build_section_surgery.py` `SANCTUARY_SPECS`, all drawn from pools this cave already ships
+  (`bw_acolyte_lone`, `zparty_witchfest_2099`, `bw_acolyte_clutch`, `bw_priest_houndmaster`,
+  `bw_priest_lone`, `hound_01_pack`, `abom_dancer_spear_mix`, `abom_ravager_lone`, `q_shaman_lone`)
+  - **zero new creatures, records, pools or text tags**, so the lane stays map-only and drags in no
+  `arz`+`Text` coupling. All 281 shipped instances keep their exact bytes (RETIREMENT PROTOCOL: the
+  10 existing proxies are amgoz1's design of record and are kept and reused as the skeleton of the
+  first three bands). Shape: a **congregation at rite, not a patrol** - four bands climbing the
+  cult's own hierarchy along the player's one-way walk (Outer Court -> Congregation -> Clergy ->
+  Threshold). NEW GATE shipped with it per CLAUDE.md law #4: `tools/gate_sanctuary_population.py`
+  (`MAP-SANCTUARY-1`, 13 invariants incl. on-mesh in all 3 tilesets, floor-Y match, reachability,
+  on-the-processional, b44 landing clearance, R-30 spacing, a hard worst-screen density cap, and
+  `0x0b` navmesh byte-identity vs baseline - the b89 crash class), with 8 planted negative tests.
+  See `docs/reports/b100_sanctuary_population.md`.
+  > ⚠️ **THE DESIGN PASS'S BAND AXIS WAS WRONG AND WAS CORRECTED IN IMPLEMENTATION.** The design
+  > (`docs/reports/b100_sanctuary_recon.md` sec 4) banded by WORLD-X on the premise that the player
+  > "walks strictly WESTWARD". Measured, the processional is **690.6 u of geodesic navmesh path**,
+  > X is **non-monotonic** along it (4411 -> 4290 -> 4306 -> 4210 -> 4187), and the walk **descends
+  > four elevation tiers** (world Y +2 arrival platform -> -10 -> -22 -> the -34 pit floor, where
+  > the west door into `drxBC_Finale` actually is - all 36,937 west-seam cells read Y=-34). The
+  > design's own probe collapsed the level to a flat XZ set and never computed a Y at all. The
+  > design's INTENT ("population escalates along the one-way walk, climbing the cult's hierarchy")
+  > and its four bands and creature rosters are kept verbatim; only the band AXIS changed, to
+  > geodesic route distance. Its rule 2 (34 u between "party" proxies) was also replaced - measured,
+  > it is unsatisfiable, and it was only ever a proxy for the density cap that is now gated directly.
+
+- R-111 [2026-07-29] PENDING (`BL-DEBT-b100-3`; Will scoped it secondary), verbatim: **"the minimap
+  doesn't render them"**, and **"isnt a huge issue"**. NOT the b46 defect, and deliberately NOT
+  fixed in the same commit as R-110. b46's two proven mechanisms were each checked and each is
+  SATISFIED here: drxBC3's `0x17` REGION list is POPULATED and resolves (so the banner is correct),
+  and its zone pointer `records/ingameui/teleportmap/zones/orient/easternsilkroad.dbr` is VALID (b46's
+  `crypt_floor1` had `dbr = ''`), and 2,275 of 2,282 levels carry a minimap bitmap with drxBC3's
+  2,764,844 B payload 99.99% non-zero. THE ACTUAL MECHANISM: `tools/svaera_plus_portals.py` sets
+  `GRID_SHIFT = {'xbloodcave': (7840, 0, 2030)}` to relocate the cluster into empty map space with
+  "3001.8u clearance", and a level's minimap TGA composites onto its ZONE's page at the level's own
+  grid corner - so measuring all 79 levels sharing the `easternsilkroad` page, the 48 native tiles
+  span X[-1412,440] Z[-1764,2302] while the 31 blood-cave tiles span X[3426,5979] Z[2629,3425], a
+  measured **2,986 u** gap. The very clearance that made the relocation safe for the world grid is
+  what puts the cluster off its own minimap page. FIX DIRECTION (not built): a dedicated
+  `records/ingameui/teleportmap/zones/orient/bloodcave.dbr` with its own `ZoneNameTag` and
+  `ArrowLocation`/`WindowLocation`, which is SV's own precedent (amgoz1 authored `olympus_gom.dbr`
+  for one relocated area rather than reusing `olympus.dbr`). That is a COUPLED `arz`+`Text`+`Levels`
+  change (new DB record, new text tag, LEVELS-entry `dbr` override for ~31 levels), materially more
+  expensive than the population work, and it must not ride the population commit.
