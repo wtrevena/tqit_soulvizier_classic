@@ -153,6 +153,59 @@ TEXT_FIX_TAGS = {
     'tagRuptureDESC': ("Connects the player's tumultuous earth energies to their "
                        "weapon, causing projectiles to explode on impact. "
                        "^y(Staff or Bow)"),
+    # ── B100 WEAPON/HAND GATE HONESTY (Will 2026-07-29) ─────────────────────
+    # Will asked whether Blade Mastery's chance-to-dodge applies with any
+    # weapon or only sword/dagger/axe. Ground truth (full evidence chain in
+    # tools/patches/weapon_gate_truth.py): the record
+    # records\skills\stealth\drx_dual_blade.dbr is ONE Skill_Passive carrying
+    # all four bonuses (dodge %, defensive ability, attack speed %, offensive
+    # ability %) behind ONE availability gate - Sword=1, Axe=1, dualWieldOnly=1.
+    # Game.dll Skill::SetAvailability (0x10245BC0) returns unavailable
+    # (reason 4 = "Skill Requires Equipment") unless BOTH
+    # Skill::QualifyingWeapon() - an OR over the two equipped weapon types
+    # against the record's list - AND Skill::QualifyingHandState() - which for
+    # dualWieldOnly demands EquipManager::GetHandState() in {2,7}, i.e. an
+    # actual WEAPON in the off hand - hold. Skill_Passive does not override
+    # SetAvailability (vtable slot 54 == Skill::SetAvailability, byte-checked),
+    # so passive modifiers are gated exactly like attacks.
+    # The old text ("...able to wield two weapons at once ... ^y(Swords/
+    # Daggers/Axes)") states the GRANT but never the REQUIREMENT, and its
+    # parenthetical reads as "hold one of these", which is neither necessary
+    # (a club in the other hand is fine) nor sufficient (sword + shield, or a
+    # lone sword, gets nothing at all). The two added clauses are the GAME'S
+    # OWN wording for these two fields: "Allows and requires dual wielding."
+    # is verbatim x2tagSkillRunesDescription010 (Runemaster Reckless Offense,
+    # the one vanilla dualWieldOnly record with a dedicated tooltip), and
+    # "Requires at least one <weapons>." is verbatim the shape of
+    # tagSkillDescription015 (War Wind - Lacerate). "Dagger" is kept because
+    # TQAE has no dagger class: every dagger/knife in this mod, including the
+    # mod's own drxitem\supra\wep_dagger.dbr, is Class=WeaponMelee_Sword, so
+    # daggers qualify AS swords. amgoz1's first two sentences are untouched.
+    # MECHANICS ARE NOT CHANGED HERE - narrowing/widening the gate is a balance
+    # call and therefore Will's (WILL_RULINGS R-101). Occult is hand-tuned, so
+    # the A7 golden guard carries an owner_approved_overrides entry for this
+    # tag: the wording is vetoable in place.
+    'tagBladeMasteryDESC': ("The Occultist is able to wield two weapons at once. "
+                            "With lighter blades, the Occultist can attack with "
+                            "greater proficiency and speed. {^n}{^y}Allows and "
+                            "requires dual wielding.  Requires at least one "
+                            "sword, dagger, or axe."),
+    # B100 sibling, same defect class: Warfare "Parry"
+    # (records\skills\warfare\drxdodge attack.dbr) is a Skill_Passive whose ONLY
+    # bonus is characterDodgePercent (3..30) and which carries dualWieldOnly=1
+    # with an EMPTY qualifying-weapon list - so its dodge is dead unless the
+    # player holds a weapon in each hand, and its shipped description never said
+    # so. Its old tag (tagSkillDescription192) is SHARED with
+    # records\skills\nature\pet\naturepetdodge_1%perlevelx100.dbr (no dual gate),
+    # so per the standing re-point-over-edit-a-shared-tag preference (R-41) the
+    # record is repointed onto this NEW mod-owned tag by
+    # tools/patches/weapon_gate_truth.py and the shared tag is left alone. Body
+    # text = the vanilla tagSkillDescription192 wording, byte-for-byte (two
+    # spaces after the first sentence, as vanilla), plus the gate clause.
+    # No weapon-class clause: this record restricts no weapon class at all.
+    'tagParryDESC': ("Even the sturdiest armor has its chinks.  The best way to "
+                     "stay alive is to not get hit. {^n}{^y}Allows and requires "
+                     "dual wielding."),
 }
 
 # The union skip-set: any key in here is emitted ONLY by the fix block.
@@ -646,6 +699,26 @@ def build_text_arc(sv_arc_path: Path, output_path: Path,
     else:
         print(f"  WARNING: A7 golden guard SKIPPED - no arz at {arz_path} "
               f"(build the database first for the full gate)")
+
+    # ── B100 weapon/hand gate honesty, TEXT half (fail-loud) ───────────────
+    # Process law #4 for the tooltip<->gating-field coupling. The DB build's
+    # weapon_gate_truth.verify() proved the contracted records still carry the
+    # gate their tooltips describe; here, with the fresh Text.arc in hand, we
+    # prove the other direction - each contracted record's tag still RESOLVES
+    # and its rendered string still STATES that gate. Editing the description
+    # without the record (or the record without the description) reds the
+    # build instead of shipping a tooltip that lies about when the skill's
+    # bonuses are alive. See docs/WILL_RULINGS.md R-100.
+    if arz_path.exists():
+        from validate_weapon_gate_text import validate as _validate_weapon_gate
+        if _validate_weapon_gate(str(arz_path), str(output_path),
+                                 base_en_arc_path) != 0:
+            raise SystemExit(
+                "B100 weapon/hand gate text gate FAILED on arz + Text.arc; "
+                "this Text build does not ship")
+    else:
+        print(f"  WARNING: B100 weapon-gate text gate SKIPPED - no arz at "
+              f"{arz_path} (build the database first for the full gate)")
 
     return output_path
 
