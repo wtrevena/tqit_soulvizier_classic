@@ -27,8 +27,9 @@ marked inline. Section 13 is round 3's mid-round drift record, now resolved. Sec
 Ground truth this lane was designed against: deployed arz `9f98e3e88bca20f96bacc2fd6bb87b63`,
 `Levels.arc` `943d0ab9516d332db79bd7f9fd2d3ffe`, `Quests.arc` `35bfe3f39e8480408e3c22ea5473f796`,
 plus the engine's own `Toolset/Templates.arc`. **The deployed arz has since moved TWICE under this
-lane** (`f6cd8698` at 07:12 by b99, then `9cdb9eba` at 08:28 by a third lane) - see 13.1 and 14.8.
-`Levels.arc` and `Quests.arc` there are unchanged. The build baseline used for every round-4 proof is
+lane** (`f6cd8698` at 07:12 by b99, then `9cdb9eba` at 08:28 by a third lane), and the deployed
+`Quests.arc` moved with the second of those - see 13.1 and 14.8. The deployed `Levels.arc` is
+unchanged, which is the one R-96's census depends on. The build baseline used for every round-4 proof is
 a freshly built post-b99 `main`, `f6cd8698b1578a389fd6a432c1f757cb` (51,093 records), NOT the deploy
 target.
 
@@ -1117,6 +1118,20 @@ and the 797-placement census lived only as a prose comment. Both halves addresse
 
 The deployed DEV arz was `f6cd8698b1578a389fd6a432c1f757cb` when round 3 ended and the vet re-hashed
 it. It is now **`9cdb9ebaa0d277f5001b629a276a05d3`**, written 2026-07-29 08:28 - a third value, from
-a lane that is neither b98 nor b99. `Levels.arc` there is unchanged (`943d0ab9`). This lane deployed
-nothing and never wrote to `CustomMaps`; this is recorded so the next integrator re-reads the deploy
-target rather than trusting any hash in this report.
+a lane that is neither b98 nor b99. **That same 08:28 write also replaced the deployed `Quests.arc`**,
+which is now `bd0fb5f99d88fab74b81f27b7cb952b2`, not the `35bfe3f39e8480408e3c22ea5473f796` this
+lane's ground truth names. `Levels.arc` there IS unchanged (`943d0ab9`), which is what matters for
+R-96's census.
+
+| deploy target artifact | b98's ground truth | as of 2026-07-29 08:28 | moved? |
+| --- | --- | --- | --- |
+| arz | `9f98e3e8...` | `9cdb9eba...` | yes, twice (b99 07:12, then 08:28) |
+| `Quests.arc` | `35bfe3f3...` | `bd0fb5f9...` | **yes, at 08:28** |
+| `Levels.arc` | `943d0ab9...` | `943d0ab9...` | no |
+
+**This lane produced no `Quests.arc` at all** - `tools/build_quest_files.py` was never run, so
+"Quests.arc untouched BY THIS LANE" remains exactly true; what changed is the deploy target
+underneath it. (For completeness: the `Quests.arc` staged in `work/` is a third value again,
+`5e664c7b190965fd69f6ff15d77d85e4`.) This lane deployed nothing and never wrote to `CustomMaps`;
+all of this is recorded so the next integrator RE-READS the deploy target rather than trusting any
+hash in this report.

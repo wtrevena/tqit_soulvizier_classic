@@ -84,9 +84,13 @@ appended to R-93, R-95 and R-96 and a corrected decade header. No ruling's CONTE
 
 **🚨 DRIFT, TWICE, UNDER THIS LANE.** The deployed DEV arz was `9f98e3e8` when the lane started,
 `f6cd8698` when b99 deployed at 07:12, and is **`9cdb9eba`** as of 08:28 - a third value from a lane
-that is neither b98 nor b99. `Levels.arc` there is unchanged (`943d0ab9`). Separately, the Levels.arc
-STAGED in `work/` is `fc0adcc0` and does NOT match the deployed one - registered as
-`BL-b98-DEBT-12`. Re-read the deploy target before trusting any hash in any b98 document.
+that is neither b98 nor b99, and **that same 08:28 write also replaced the deployed `Quests.arc`**
+(now `bd0fb5f9`, not the `35bfe3f3` this lane's ground truth names). The deployed `Levels.arc` IS
+unchanged (`943d0ab9`), which is the one R-96's census depends on. This lane produced no Quests.arc
+at all - `build_quest_files.py` was never run - so "untouched by this lane" holds; what moved is the
+target underneath. Separately, the Levels.arc STAGED in `work/` is `fc0adcc0` and does NOT match the
+deployed one - registered as `BL-b98-DEBT-12`. Re-read the deploy target before trusting any hash in
+any b98 document.
 
 **OPEN DEBT:** BL-b98-DEBT-1, -2, -3, -4, -6, -7, -8, -9, -10 (unchanged) plus the two new items
 **BL-b98-DEBT-11** (Enslaver ~50x rarer than the Hunt) and **BL-b98-DEBT-12** (staged vs deployed
