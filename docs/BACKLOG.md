@@ -1405,7 +1405,7 @@ along automatically when the structural cluster-relocation fix lands.
 
 ## DEBT REGISTER (open deferred/unproven/launch-gated items)
 
-> 🩸 **2026-07-29 b100 SANCTUARY RECON + DESIGN (`feat/sanctuary-populate`, R-100..R-109 reserved).**
+> 🩸 **2026-07-29 b100 SANCTUARY RECON + DESIGN (`feat/sanctuary-populate`, R-110..R-119 reserved).**
 > Read-only recon + design gate for Will's "large walkable areas with no enemies placed" report on the
 > Sanctuary of the Bloodborn. Full evidence: `docs/reports/b100_sanctuary_recon.md`. Measured against
 > canonical `Levels.arc` md5 `fc0adcc0713839a685b32d6e122653be`. NOTHING IMPLEMENTED OR DEPLOYED.

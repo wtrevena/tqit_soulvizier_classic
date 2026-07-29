@@ -85,5 +85,6 @@ for r in sanc:
         print('      idx=%-5d %-70s corner=%s len=%d' % (
             li, lv['fname'], lv['corner'], lv['data_length']))
 
-json.dump({'sanc_guids': [bytes(r.guid).hex() for r in sanc]},
-          open(os.path.join(os.path.dirname(__file__), 'sanc_guids.json'), 'w'))
+# NOTE: deliberately does NOT write a file next to itself - a probe must not
+# drop artifacts into tools/debug/. Print instead; redirect if you want it saved.
+print('\nsanc_guids:', json.dumps([bytes(r.guid).hex() for r in sanc]))

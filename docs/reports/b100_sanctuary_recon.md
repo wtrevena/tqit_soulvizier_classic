@@ -4,10 +4,21 @@
 > enemies placed", and "the minimap doesn't render them". He added the minimap "isnt a huge issue".
 > **Priority order is therefore EMPTY SPACE first, minimap second.** This doc does not invert that.
 >
-> **Rulings decade claimed: R-100..R-109.** Proven free by `git grep -ohE "\bR-1[0-9][0-9]\b"` across
-> every branch in the repo (0 hits). Highest existing anywhere = R-97. Nothing appended to
-> `docs/WILL_RULINGS.md` this turn: no new WILL decision was made, and the ledger takes Will's words
-> verbatim only. Section 7 lists what will become R-100..R-103 once he rules.
+> **Rulings decade claimed: R-110..R-119.** Verified free by
+> `git grep -ohE "\bR-[0-9]+\b" <every branch except this one>` -> the full claimed set is
+> R-1..R-51, R-60/61, R-70..R-76, R-80..R-87, R-90..R-98, R-100..R-102 (plus the sentinel R-9999).
+> **R-110..R-119 has zero hits on any branch.**
+>
+> ⚠️ **This claim MOVED mid-lane and the history is kept deliberately.** The decade was first taken as
+> R-100..R-109, which was genuinely free at the time. While this lane ran, two other lanes advanced
+> concurrently: `feat/leinth-wave` merged into `main` (adding **R-98** and taking the `build66-dev`
+> tag), and a new branch **`fix/blade-mastery-truth`** appeared and claimed **R-100, R-101, R-102**.
+> The re-check caught the collision and this lane yielded, moving to R-110. Anyone re-running the
+> freshness check should re-run it rather than trusting this line: concurrent lanes make ruling-decade
+> freeness a race.
+>
+> Nothing was appended to `docs/WILL_RULINGS.md` this turn: no new WILL decision was made, and the
+> ledger takes Will's words verbatim only. Section 7 lists what will become R-110..R-113 once he rules.
 >
 > **GROUND TRUTH (built artifacts, not documents).** Every number below was measured against:
 > - `work/SoulvizierClassic/Resources/Levels.arc` = **md5 `fc0adcc0713839a685b32d6e122653be`**,
