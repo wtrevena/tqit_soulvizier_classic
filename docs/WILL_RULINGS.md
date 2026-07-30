@@ -1949,6 +1949,90 @@ has not yet won. `BL-b98-DEBT-2` is the related debt. R-93
 remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
 that mesh regardless of the green.
 
+### SIXTH AMENDMENT - **BUILT (b102, `fix/green-mesh-swap`).** What shipped, and the two places this ruling was wrong.
+
+**STATUS: R-102 IMPLEMENTED in data on `fix/green-mesh-swap`. NOT DEPLOYED, NOT SEEN BY WILL.**
+Nothing below claims a colour or a silhouette in game - the player-surface checklist forbids that, and
+this whole bug exists because four waves claimed exactly that. What is claimed is measured.
+
+**NO NEW RULING NUMBER WAS MINTED, deliberately.** The decade census
+(`git grep -ohE "R-[0-9]+" <branch> -- docs/WILL_RULINGS.md` over every local branch) returns **R-124** on
+`feat/devourer-kit` and R-119 on four others, so 103+ is an active race between in-flight lanes. This lane
+amends the ruling it was given instead of claiming a number it would have to defend.
+
+**THE ROOT CAUSE, RE-MEASURED FIRST-HAND rather than cited.** `tools/mesh_assets.embedded_fx_of()` reads
+the `.msh` binary out of `Creatures.arc`:
+
+| mesh | embedded effect entity | bones |
+|---|---|---|
+| `Creatures\Monster\Skeleton\RevenantPoison.msh` | **`Records\Effects\MonsterFX\Buffs\RevenantPoison_FX.dbr`** | 20 |
+| `Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh` | **none** | 20 |
+| `Creatures\Monster\Skeleton\GoldenSkeleton01.msh` | **none** | 20 |
+| `Creatures\Monster\ShadowStalker\ShadowStalker.msh` | `Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr` | 30 |
+
+and that effect entity, read out of the base-game `.arz`, is `boneList = Bone_R_Weapon; Bone_L_Weapon` ->
+`Effects\MonsterFX\Buffs\RevenantPoison.pfx`, whose own bytes name **`Shaders\Particle\ParticleAdditive.ssh`**.
+An additive-blend particle is precisely Will's *"it depends on the lighting"* - so that tell is now
+mechanism, not inference. (The b92 colour decode R 0.534 / G 1.000 / B 0.591 is CITED, not re-derived: a
+naive float scan of the `.pfx` found no normalized triple, so this lane does not claim a colour number of
+its own.)
+
+**WHERE THIS RULING WAS WRONG, ONE.** It named `ShadowStalker.msh` as "the evidenced choice". It is not,
+for two independently sufficient reasons: **(a)** it is not effect-free - it carries
+`ShadowStalker_Smoke.dbr` - so it is evidence about one particular effect being black, not about the mesh
+class being clean; and **(b)** `um_toxeus_hunt_99` ALREADY WEARS IT, so putting the Enslaver on it would have
+fixed the Enslaver-vs-Devourer collision by creating an Enslaver-vs-Hunt one. The ruling's own warning
+against "fix the green and break R-93 in the same commit" applied to its own recommendation.
+
+**WHERE THIS RULING WAS WRONG, TWO - and this one is the good news.** It called the mesh swap the
+*dangerous* half ("A mesh swap re-rigs everything... he T-poses or goes uncastable"). Measured, it is the
+opposite for this swap. Both champions bind `anm_skeleton01`, and that table plus all **40** inline
+overrides on each champion record are built from **`SkeletonGrayBlackNEW_*.anm`** - the animation set of
+`SkeletonGrayBlack01New.msh`. The Enslaver has been playing SkeletonGrayBlack clips on a RevenantPoison
+body all along. Moving him onto `SkeletonGrayBlack01New.msh` puts him on the NATIVE mesh of his own clips:
+this swap **removes** a cross-rig mismatch. Bone sets are identical (20/20, same names) across
+RevenantPoison, SkeletonGrayBlack01New and GoldenSkeleton01, so nothing an existing clip drives goes
+missing, and every `*SpecialAnimRef*` that serves LethalStrike / AoE360 / BloodBoil / Summon lives on the
+animation TABLE, which the mesh is not part of.
+
+**WHAT SHIPPED**
+
+| champion | mesh | why this one, measured |
+|---|---|---|
+| Enslaver of Souls (monster + every pet tier + 2 preview proxies) | `SkeletonGrayBlack01New.msh` | FX-free; identical rig; **native mesh of the clips he already plays**; `newskeleton_charcoal.tex` on this mesh is a shipped pairing |
+| Devourer of Blood (monster + every pet tier + the End-of-All-Things pets + 2 preview proxies) | `GoldenSkeleton01.msh` | FX-free; identical rig; only **4.6%** of its bytes differ from RevenantPoison, so his silhouette survives the fix; 464 shipped users, 59 of them on a `NewSkeleton_*` override + `ANM_Skeleton01` |
+| The Endless Hunt | `ShadowStalker.msh` (unchanged) | already distinct; its embedded smoke is the one Will looked at and called "the proper black shroud", so it is grandfathered BY NAME rather than ignored |
+
+**R-93's mesh half is therefore also delivered**: three champions, three distinct meshes, none of them the
+green one. `Skeleton01.msh` was the other FX-free candidate and was **rejected**: it differs from
+`SkeletonGrayBlack01New.msh` by 784 bytes out of 348,798 (**0.2%**) - it is the same model, so using both
+would have satisfied R-93 on paper while leaving two champions that still read as one creature.
+
+**THE SECOND AMENDMENT'S SHROUD GAP IS CLOSED.** `svc_enslaver_shroud` now covers `{monster}` +
+`{every pet tier}`, and the tiers are **derived** from `summon_toxeus_enslaver.spawnObjects` rather than
+listed, so a future 4th tier is in scope for the fix and the gate with no code change. The gate also
+asserts the pets' controller actually fires self-buffs (`BuffSelfBehavior = WhenEnemyIsSeen`) - a
+`Skill_BuffSelfToggled` that the AI never toggles is an empty slot, and nothing would have caught that.
+
+**SHARED-RECORD LAW, both directions.** `RevenantPoison.msh` has **30** carriers in the built arz and only
+**13** are ours. The other 17 - four base/SV green revenants (whose green is INTENDED: they wear
+`newskeleton_grean.tex`, and `um_toxeus_21` is one of them), ten `pharaohshonorguard_mummyguardian_*`
+summons and the `old_z_toxeus` dev dummy - are untouched, and the gate FAILS if the mesh ever reaches zero
+carriers (RETIREMENT PROTOCOL: this lane repoints, it never retires).
+
+**THREE THINGS THIS LANE DID NOT DECIDE, listed so they are not mistaken for done:**
+1. **Does the End of All Things want a FOURTH distinct silhouette?** It is a crafted supra pet cloned from
+   the Devourer's pets and it follows his mesh today, which kills its green for free. Whether the
+   apotheosis of the line should look like its own creature is a design call, Will's, not this lane's.
+2. **How any of it READS in game.** Unseen. Colour and silhouette claims need Will's eye
+   (`BL-R102-DEBT-1`).
+3. **The `Build\Resources\` animation defect.** `spearSpellAttackAnim` on **306** records - Charon, the
+   liches, the base skeleton pets, Iron Lore test monsters, and two of ours by inheritance - names an
+   ArtManager BUILD PATH that resolves nowhere at runtime. It ships that way in the base game, it is
+   unrelated to the mesh, and repointing 306 mostly-not-ours records is a different lane. The animation
+   gate EXCLUDES that one prefix by name, loudly, rather than passing silently or failing on a base-game
+   defect (`BL-R102-DEBT-3`).
+
 ---
 
 ## R-103 [2026-07-29] Toxeus champions: KEEP all three power additions. The lever is REFLECT, and it is found.

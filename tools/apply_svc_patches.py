@@ -54,6 +54,19 @@ SUMMON_MOUNTAINBLADE_SKILL = r'records\skills\soulskills\summon_mountainblade.db
 SUMMON_ENSLAVER_SKILL = r'records\skills\soulskills\summon_toxeus_enslaver.dbr'
 SUMMON_ENSLAVER_PETMARAUDERS = r'records\skills\soulskills\svc_enslaver_petmarauders.dbr'
 
+# ── R-102 (2026-07-29): the Toxeus champions' meshes have ONE owner ──────────
+# `Creatures\Monster\Skeleton\RevenantPoison.msh` is where the green Will kept
+# reporting actually lives - compiled into the mesh file as a CreateEntity block,
+# invisible to every .arz scan and unreachable by `baseTexture` (which replaces
+# the primary skin only). Which clean mesh each champion wears, and the evidence
+# for it, is owned by tools/patches/champion_mesh.py; these two names are
+# IMPORTED rather than re-typed so the authoring sites below and the gate can
+# never drift apart. See that module's docstring for the measurements.
+from patches.champion_mesh import (                                # noqa: E402
+    DEVOURER_MESH as _R102_DEVOURER_MESH,
+    ENSLAVER_MESH as _R102_ENSLAVER_MESH,
+)
+
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
 NORMAL_SCROLLS = [
@@ -9638,16 +9651,22 @@ def _create_blood_toxeus_monster(db):
     db.set_field(M, 'actorHeight', 2.0)
     # ── VISUAL: "the GREEN Athens Toxeus, but RED" (Will's directive #2). ──────
     # The green Athens Toxeus (um_toxeus_21) is DB-verified to use mesh
-    # RevenantPoison.msh + baseTexture newskeleton_grean.tex. To read as the SAME
-    # boss but red, use the IDENTICAL Athens mesh (RevenantPoison.msh) and the
-    # crimson SIBLING skin from the SAME newskeleton_* family (newskeleton_crimson.tex).
-    # Both resolve in the shipped Creatures.arc; the newskeleton_* skins are a
-    # shared, mesh-independent skin set (crimson already rides revenantfire/storm/
-    # goldenskeleton/skeletonrumorboss in the shipped DB), so crimson on the poison
-    # rig is engine-valid and renders red. (The donor um_toxeus_99 SP variant uses
-    # revenantstorm.msh, a DIFFERENT rig from the Athens boss Will pointed at; the
-    # clone brought revenantstorm across, so we override it back to the Athens mesh.)
-    db.set_field(M, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')
+    # RevenantPoison.msh + baseTexture newskeleton_grean.tex, and the crimson
+    # SIBLING skin from the same newskeleton_* family reads red on it.
+    #
+    # ⚠️ R-102 CORRECTION (2026-07-29). The mesh half of that reasoning is now
+    # RETIRED. RevenantPoison.msh carries an embedded CreateEntity block ->
+    # Records\Effects\MonsterFX\Buffs\RevenantPoison_FX.dbr -> an additive-blend
+    # .pfx on Bone_R/L_Weapon: the mesh emits a GREEN aura no .dbr field can
+    # suppress, which is the glow Will reported on both champions across four fix
+    # waves. He confirmed it survives the texture change ("from what i remember he
+    # had the green glow too" - the Devourer, same mesh, DIFFERENT crimson skin),
+    # so the texture is exonerated and only the mesh moves.
+    # The replacement is GoldenSkeleton01.msh: measured FX-FREE, a bone set
+    # IDENTICAL to RevenantPoison's, and only 4.6% of its bytes differ from it, so
+    # he keeps the Athens-Toxeus silhouette Will asked for. The CRIMSON SKIN IS
+    # UNCHANGED - Will's "but RED" directive is untouched by this.
+    db.set_field(M, 'mesh', _R102_DEVOURER_MESH)
     db.set_field(M, 'baseTexture', r'Creatures\monster\skeleton\newskeleton_crimson.tex')
 
     # ── Resistance wall (§7): pierce 70, poison 80 (bleed identity, not green
@@ -9768,11 +9787,12 @@ def _create_blood_toxeus_proxy(db):
     # ── Proxy ──
     db.clone_record(_BT_DONOR_PROXY, _BT_PROXY)
     P = _BT_PROXY
-    # Preview silhouette matches the ACTUAL boss rig: the green Athens Toxeus mesh
-    # (RevenantPoison.msh), so the map preview reads as the Toxeus he is. (Not the
-    # placed map instance - that lives in build_section_surgery INJECT_SPECS, a
-    # separate lane; this is only the proxy DB record's preview visual.)
-    db.set_field(P, 'mesh', r'Creatures\Monster\Skeleton\RevenantPoison.msh')  # Athens Toxeus preview silhouette
+    # Preview silhouette matches the ACTUAL boss rig, so the map preview reads as
+    # the Toxeus he is. (Not the placed map instance - that lives in
+    # build_section_surgery INJECT_SPECS, a separate lane; this is only the proxy
+    # DB record's preview visual.) R-102: it follows the boss off the green
+    # RevenantPoison mesh, or the preview and the encounter drift apart.
+    db.set_field(P, 'mesh', _R102_DEVOURER_MESH)   # Devourer preview silhouette
     db.set_field(P, 'scale', 2.1)                                             # Hemorrheus size (donor 4.0)
     db.set_field(P, 'pool1', _BT_POOL)
     db.set_field(P, 'chanceToRun', 100.0)   # D7: chest proxy always guards the stash (explicit)
@@ -10907,9 +10927,11 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
 
 def _create_blood_toxeus_summon(db):
     """D7 (Will 2026-07-09): the Devourer of Blood soul's summon chain - 3 permanent
-    Toxeus pets (RevenantPoison.msh + newskeleton_crimson.tex, ship-verified in
-    Creatures.arc) + the manual-cast summon skill. Aggressive superboss power
-    (flagged in needs_will_signoff)."""
+    Toxeus pets (the Devourer's own rig, inherited from the boss record, plus
+    newskeleton_crimson.tex - both ship-verified in Creatures.arc; which mesh
+    that rig IS became R-102's business, and is owned by
+    tools/patches/champion_mesh.py) + the manual-cast summon skill. Aggressive
+    superboss power (flagged in needs_will_signoff)."""
     ok = _build_boss_summon(
         db, _BT_MONSTER, _BT_PET_PATHS, SUMMON_TOXEUS_SKILL,
         'tagSVCSummonBloodToxeus', 'tagMonsterHemorrheus',
@@ -10935,7 +10957,7 @@ def _create_blood_toxeus_summon(db):
         # svc gear ever wired first, the strict svc->common substitute would still
         # keep the pet armed with a common weapon+shield, never the svc set item.)
     if ok:
-        print("  D7 Toxeus summon: 3 pets from boss rig (RevenantPoison + crimson) + "
+        print("  D7 Toxeus summon: 3 pets from boss rig (R-102 clean mesh + crimson) + "
               "summon skill (250/300/350 en, 180s cd); gear auto-mirrors the boss (A1)")
     return ok
 
@@ -11021,7 +11043,14 @@ _EN_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakru
 # inherits the black-skeleton rig automatically. The MARAUDERS stay ShadowStalker
 # demons (Will: "keep the form he looks like now"), only super-strong.
 _EN_SKELETON_DONOR = r'records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr'
-_EN_BOSS_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
+# ⚠️ R-102 (2026-07-29): was RevenantPoison.msh - the mesh whose own embedded
+# CreateEntity block is the green glow Will reported four waves running. He is
+# now on SkeletonGrayBlack01New.msh, which is FX-free, carries the IDENTICAL
+# 20-bone rig, and is the NATIVE mesh of the SkeletonGrayBlackNEW_*.anm clips he
+# was already playing - so this swap removes a cross-rig mismatch instead of
+# creating one. The ALL-BLACK charcoal skin below is unchanged (Will's law
+# 2026-07-11, "black skeleton"), and charcoal-on-this-rig is a shipped pairing.
+_EN_BOSS_MESH = _R102_ENSLAVER_MESH
 _EN_BOSS_TEX = r'Creatures\Monster\Skeleton\NewSkeleton_Charcoal.tex'
 # A1 WARBAND (build36 AMENDMENT, Option A championChance set-piece): a dedicated
 # proxy+pool that spawns 1 leader + 4 "Enslaved Shadow Marauder" champions present
@@ -11214,7 +11243,7 @@ def _create_enslaver(db, tags):
     B = _EN_BOSS
     sf(B, 'description', 'tagSVCMonsterEnslaver')
     sf(B, 'monsterClassification', 'Boss')
-    sf(B, 'mesh', _EN_BOSS_MESH)                          # RevenantPoison (Devourer rig)
+    sf(B, 'mesh', _EN_BOSS_MESH)                          # R-102: FX-free skeleton rig
     sf(B, 'baseTexture', _EN_BOSS_TEX)                    # ALL-BLACK charcoal skin
     sf(B, 'characterRacialProfile', 'Undead')            # skeleton (was Demon)
     sf(B, 'charLevel', list(_EN_BAND))
@@ -11427,7 +11456,7 @@ def _create_enslaver_warband(db):
     sf(P, 'chanceToRun', 100.0)
     sf(P, 'difficultyLimitsFile', _YARD_LIMIT, S)          # limit_obsidianbosses [1..110]
     sf(P, 'difficultyEquationFile', _YARD_DIFFICULTY, S)   # difficulty_04 (as the yard; optional)
-    sf(P, 'mesh', _EN_BOSS_MESH, S)                        # RevenantPoison skeleton silhouette
+    sf(P, 'mesh', _EN_BOSS_MESH, S)                        # leader's skeleton silhouette
     sf(P, 'scale', 2.4)                                    # match the leader's silhouette
     sf(P, 'placementExtents', 4.0)                         # 5-monster footprint; map lane re-verifies
     db._modified.add(P)

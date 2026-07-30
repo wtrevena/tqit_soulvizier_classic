@@ -1,6 +1,7 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## P0 GATE RECORD - R-140 FROZEN THROWN-WIELDERS + R-141 UBER QUEST-ITEM LEAKS (2026-07-30, branch `fix/quest-item-leaks`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -596,6 +597,182 @@ that matches the exemplar exactly and is not a new behaviour class.
 ---
 >>>>>>> feat/devourer-kit
 
+=======
+## B102 GATE RECORD - R-102 KILL THE MESH-EMBEDDED GREEN + R-93's mesh half (2026-07-30, branch `fix/green-mesh-swap`) - NOT DEPLOYED, NO TAG TAKEN
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed.** The orchestrator owns every deploy. No `buildNN` tag was taken: this
+lane did not deploy, and the tag belongs to whichever wave ships these bytes.
+
+> ⚠️ **BASE MOVED MID-LANE. ROUND 2 (2026-07-30) MERGED IT AND RE-PROVED EVERYTHING ON THE MERGED
+> TREE - the branch is now a clean fast-forward candidate.** Briefed base was `main` @ `7efd107`;
+> `main` advanced to `533c73d` (`9a12d17` "R-109: tombstone XP recovery must EQUAL the XP lost" +
+> `533c73d`, a backtick fix in a wave script). Between them they touch `docs/WILL_RULINGS.md` and
+> `docs/wip_workflows/*.js` and NOTHING else (`git show --stat 9a12d17 533c73d` = 3 files + 1 file),
+> so they are disjoint from every file this lane edits.
+> **Merge `f318179` is clean** - `git merge main` auto-merged `docs/WILL_RULINGS.md` with no conflict,
+> both appends survive (`grep -n "SIXTH AMENDMENT"` -> 1952, `grep -n "R-109"` -> 2430), and no
+> `tools/` file moved.
+> **THE MERGE IS PROVEN INERT ON THE ARTIFACT:** a FOURTH full scratch build, run post-merge in this
+> environment, produced the **byte-identical** md5 `6ce12e5d12a267bc97eda0abc12ba896`, exit 0, with
+> the same gate output (log `local/b102_build4_postmerge.log`). The record-diff was then re-run on the
+> post-merge artifact against the same `7efd107` baseline and is still **0 ADDED / 0 REMOVED / 15
+> CHANGED, all attributed** (`local/b102_record_diff_postmerge.txt`, exit 0). So the baseline built
+> from `7efd107` remains valid evidence for the merged tree, because R-109 provably contributes zero
+> database bytes.
+> **`git diff 7efd107..HEAD --numstat` = 11 files.** `docs/WILL_RULINGS.md` **84 insertions / 0
+> deletions** and `docs/BACKLOG.md` **151 / 0** - both pure appends, so no ruling or gate record was
+> displaced (the b101 lesson). The only deletions in the whole branch are 22 lines in
+> `apply_svc_patches.py` and 28 in `enslaver_shroud.py`, all of them lines this lane rewrote.
+
+**ARTIFACT (DB-ONLY lane. `Text.arc`, `Levels.arc` and `Quests.arc` are untouched - zero map bytes,
+zero new tags, so there is NO arz+Text or Levels+Quests coupling to honour here):**
+- arz `.claude/worktrees/green-mesh/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **`6ce12e5d12a267bc97eda0abc12ba896`**, **55,475,296 B**, **51,124 records**, 46 registry modules,
+  built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
+  **exit 0** (log `local/b102_build2.log`).
+- **DETERMINISM RE-PROVED**: a confirming rebuild from scratch at the same HEAD produced the
+  byte-identical md5 `6ce12e5d12a267bc97eda0abc12ba896`, exit 0, with identical gate output
+  (log `local/b102_build3_confirm.log`; the `md5sum` of both artifacts is its last two lines).
+  **ROUND 2 added a FOURTH build, post-merge-of-`main`, same md5, exit 0**
+  (`local/b102_build4_postmerge.log`) - so the artifact is reproducible across three independent
+  scratch builds AND across a base change.
+- **ROUND 2 INDEPENDENT RE-VERIFICATION (2026-07-30), deliberately NOT using this lane's own
+  helpers**, because the whole bug is a four-wave history of a lane verifying itself:
+  * **ROOT CAUSE re-read from RAW BYTES** straight out of `Creatures.arc` with a generic string
+    scan (no `mesh_assets` call): `revenantpoison.msh` 342,392 B contains a literal `createentity`
+    block naming `records\effects\monsterfx\buffs\revenantpoison_fx.dbr`;
+    `skeletongrayblack01new.msh` (348,798 B) and `goldenskeleton01.msh` (342,030 B) contain **NO**
+    `.pfx` / `createentity` / `_fx.dbr` string at all.
+  * **ANIMATION SAFETY re-measured the same way**: bone sets extracted by regex from the three
+    `.msh` binaries are **identical** - `missing=NONE extra=NONE` in both directions vs
+    RevenantPoison. The re-rig risk R-102 flagged is measured at zero for these two destinations.
+  * **OUTCOME re-read from the built arz** with an independent probe: green carriers 30 -> 15,
+    the drop is exactly the 15 roster records, `newly-green: NONE`, three DISTINCT champion meshes,
+    and the shroud present on the monster (slot 19, level `[1,2,3]`) AND all three pet tiers
+    (slot 13, level 1).
+  * **EXHAUSTIVENESS check the roster-derived gate structurally CANNOT do** (it derives from
+    hand-named anchors, so a surface reachable from no anchor would pass vacuously): swept the whole
+    arz for every Toxeus/Enslaver/Devourer/EoAT/marauder/Hemorrheus-shaped record carrying a mesh.
+    Exactly **two** remain on `RevenantPoison.msh`, and both are correctly out of scope -
+    `um_toxeus_21` (the base/SV Athens Toxeus whose green is INTENDED) and
+    `zzdev\old_z_toxeus` (a dev dummy). **No champion surface was missed.**
+  * All **29 planted negatives re-run and all 29 fire**: `champion_mesh --negtest` 12/12,
+    `enslaver_shroud --negtest` 17/17.
+- BASELINE built by THIS lane from `main` @ `7efd107` in the SAME environment and the SAME work/
+  layout: md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, 51,124 records, exit 0
+  (`local/baseline/build_baseline_worklayout.log`). A second baseline written to a scratch path
+  produced the byte-identical md5, so the baseline is reproducible, not a one-off.
+
+**WHAT IT IS.** Will, verbatim: *"ok i was wrong, toxeus the murderer enslaver of souls are still
+having a green glow and it is not a skill of mine"* / *"it is constant, he glows green the whole
+time"* / *"yes the demons that he summons have the proper black shroud and they dont have any
+green"*. Four waves (b39 / b55 / b55r2 / b92) edited FX FIELDS and none moved a pixel. **The green is
+not in a field.** Measured first-hand here from the shipped `.msh` bytes
+(`tools/mesh_assets.embedded_fx_of`):
+
+| mesh | embedded effect entity | bones |
+|---|---|---|
+| `Creatures\Monster\Skeleton\RevenantPoison.msh` | **`Records\Effects\MonsterFX\Buffs\RevenantPoison_FX.dbr`** | 20 |
+| `Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh` | **none** | 20 |
+| `Creatures\Monster\Skeleton\GoldenSkeleton01.msh` | **none** | 20 |
+| `Creatures\Monster\ShadowStalker\ShadowStalker.msh` | `Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr` (Will-confirmed BLACK) | 30 |
+
+and that entity resolves, in the base-game arz, to `boneList = Bone_R_Weapon; Bone_L_Weapon` ->
+`Effects\MonsterFX\Buffs\RevenantPoison.pfx`, whose bytes name **`Shaders\Particle\ParticleAdditive.ssh`**
+- an additive-blend particle, i.e. Will's *"it depends on the lighting"* as mechanism rather than
+inference. `baseTexture` replaces the PRIMARY SKIN only, which is why a texture-only fix could never
+have worked and why Will's Devourer recollection (same mesh, DIFFERENT crimson skin, also green) is
+consistent.
+
+**THE SWAP.** Enslaver family -> `SkeletonGrayBlack01New.msh`; Devourer family (incl. the End of All
+Things pets that clone his) -> `GoldenSkeleton01.msh`; the Hunt keeps `ShadowStalker.msh`. **Three
+champions, three distinct meshes: R-93's mesh half lands in the same commit** instead of being traded
+away. `Skeleton01.msh` was the other FX-free candidate and was REJECTED - it differs from
+`SkeletonGrayBlack01New.msh` by 784 B of 348,798 (0.2%), i.e. the same model.
+
+**R-102's OWN RECOMMENDATION WAS CORRECTED, twice, with measurements** (full detail in the SIXTH
+AMENDMENT in `docs/WILL_RULINGS.md`):
+1. It named `ShadowStalker.msh` as "the evidenced choice". It is not FX-free, and `um_toxeus_hunt_99`
+   already wears it - using it would have fixed one R-93 collision by creating another.
+2. It called the mesh swap the dangerous half ("re-rigs everything... he T-poses"). Measured, it is
+   the SAFE half: both champions bind `anm_skeleton01`, and that table plus all **40** inline
+   overrides on each champion record are built from **`SkeletonGrayBlackNEW_*.anm`** - the Enslaver
+   has been playing SkeletonGrayBlack clips on a RevenantPoison body all along, so this swap puts him
+   on the NATIVE mesh of his own animation set and REMOVES a cross-rig mismatch.
+
+**THE SHROUD HALF (R-102 second amendment, Will: "that is still not implemented").** b98 wired
+`svc_enslaver_shroud` to the MONSTER only; all three `pets\toxeus_enslaver_*` tiers were skipped, and
+the pet is what Will summons. It now covers `{monster} + {every pet tier}`, with the tiers **derived**
+from `summon_toxeus_enslaver.spawnObjects`, and the gate additionally asserts the pets' controller
+really fires self-buffs (`BuffSelfBehavior = WhenEnemyIsSeen`) - a `Skill_BuffSelfToggled` the AI never
+toggles is an empty slot, and nothing would have caught that.
+
+**GATES (all fail-loud, all planted-negative-tested):**
+- `py tools/patches/champion_mesh.py --negtest` -> **12/12 plants caught**, exit 0. Plants include the
+  exact b98 defect class (monster fixed, a pet tier left behind), a NEW 4th tier appearing in the
+  summon and never repointed, the EoAT pets forgotten, R-93 broken by collapsing two champions onto
+  one mesh, a destination mesh that does not exist, a live animation reference going dark, and the
+  green mesh being RETIRED out of the DB instead of repointed.
+- `py tools/patches/enslaver_shroud.py --negtest` -> **17/17 plants caught**, exit 0 (10 pre-existing
+  + 7 new b102 pet-tier plants).
+- `py tools/patches/_check_registry.py` -> OK, 46 modules.
+- In-build `champion_mesh.verify()` (post-finalization, over the FINAL assembled db): roster mesh
+  correctness, zero champions on the green mesh, three DISTINCT champion meshes, every destination
+  mesh existence + embedded-FX + bone-completeness audited FROM THE ASSET BYTES, every reachable
+  `.anm` resolves, and the shared mesh still has its non-roster carriers. Live output:
+  *"17 roster record(s) across 3 champions, 0 on RevenantPoison.msh, 3 distinct meshes (R-93), every
+  destination mesh FX-audited and rig-complete, every reachable .anm resolves"* + *"62 distinct .anm
+  reachable from the roster, all resolve"* + *"15 non-roster carrier(s) of RevenantPoison.msh left
+  untouched"*.
+- In-build `enslaver_shroud.verify()`: *"in a FREE slot on ALL 4 surface(s) - the monster AND every
+  derived pet tier (3), each with a controller that actually fires self-buffs"*.
+- **INDEPENDENT CONFIRMATION FROM A GATE THIS LANE DID NOT WRITE:** the pre-existing A9
+  SUMMON-PET RENDER-CHAIN validator resolves every pet's mesh/texture against the shipped arcs and
+  reports **identical** results before and after the swap - *"pets checked: 263; art refs checked:
+  3050 / RESULT: PASS (22 upstream WARN(s))"* in BOTH the baseline log and `local/b102_build2.log`.
+  So the new meshes resolve for the pets, and the swap introduced no new art warning.
+
+**⚠️ THE GATE CAUGHT A FALSE FAILURE IN ITSELF, and that is recorded rather than quietly fixed.**
+Build 1 RED'd on `UNRESOLVED ANIMATION SVMesh\anims\skeleton_skill_spellshock.anm`. The clip is fine -
+98,929 B inside the MOD's own `SVMesh.arc` - but `mesh_assets` only searched the GAME install, so
+every mod-shipped animation read as MISSING. A loud false alarm in an anim gate is worse than no gate,
+because it teaches the next lane to waive it. `mesh_assets.mod_resource_dirs()` now discovers the
+staged mod Resources and the mod archives shadow the base game (engine load order), and an
+un-findable mod Resources dir is reported as the GATE BEING UNAVAILABLE (B-GATE-HARDEN-1, hard failure
+under `SVC_REQUIRE_GATES=1`), never as the animations being broken.
+
+**SHARED-RECORD LAW, enumerated before editing.** `RevenantPoison.msh` has **30** carriers in the
+built arz; only **13** are ours. The other 17 - four base/SV green revenants on `newskeleton_grean.tex`
+(`cm_revenanttainted_16`, `um_nefesiris_30`, `um_rotbone_14`, `um_toxeus_21`, whose green is
+INTENDED), ten `pharaohshonorguard_mummyguardian_*` summons and the `old_z_toxeus` dev dummy - are
+untouched. The gate FAILS if the mesh ever reaches zero carriers (RETIREMENT PROTOCOL: this lane
+repoints, it never retires), and the record-diff re-proves it independently.
+
+**RECORD-DIFF vs the lane's own baseline** (`py tools/debug/b102_green_mesh_record_diff.py
+local/baseline/BASELINE_worklayout.arz work/SoulvizierClassic/Database/SoulvizierClassic.arz`):
+**0 ADDED / 0 REMOVED / 15 CHANGED, and every one of the 15 is attributed**, exit 0
+(`local/b102_record_diff.txt`):
+- **LEG 1, 15 mesh moves off `RevenantPoison.msh`:** `um_toxeus_enslaver_99` + `toxeus_enslaver_1..3`
+  + proxies `q_enslaver_warband` / `q_yard_enslaver` -> `SkeletonGrayBlack01New.msh`;
+  `um_bloodtoxeus_99` + `bloodtoxeus_1..3` + `toxeus_eoat_1..3` + proxies `q_bloodtoxeus_lone` /
+  `q_bloodtoxeus_ambush` -> `GoldenSkeleton01.msh`.
+- **LEG 2, 3 shroud grants:** `toxeus_enslaver_1..3`, each in slot **13**, which was FREE
+  (`skillName13` absent). Those three records carry a delta from BOTH legs - which is what caught a
+  real bug in the diff TOOL on its first run: it attributed per RECORD ("match exactly one leg") and
+  so called the correct build a violation. It now attributes **per FIELD** and requires every changed
+  field to land in one of the two legs.
+- Incidental finding, recorded because it explains a missing delta: those pets already carried an
+  ORPHANED `skillLevel13 = 1` (a level with no skill - Lyia-clone residue), so filling the slot wrote
+  the value it already had and only `skillName13` shows in the diff. The gate reads the granted level
+  out of the BUILT record rather than out of the diff, so a level-0 grant would still fail.
+- **RETIREMENT PROTOCOL re-proved independently of the gate:** carriers of `RevenantPoison.msh` go
+  **30 -> 15**, the drop is exactly the 15 roster records, and all 15 survivors are listed by name.
+
+**OPEN / NOT DONE (registered in the DEBT REGISTER below as BL-R102-DEBT-1..4):** nothing here has
+been seen in game, the EoAT's own silhouette is an undecided design question, and the base-game
+`Build\Resources\` animation defect is waived by name rather than fixed.
+>>>>>>> fix/green-mesh-swap
 
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
@@ -2780,6 +2957,42 @@ measured each one are in the gate record at the top of this file. One line each,
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b102 R-102 mesh-embedded green (2026-07-30, `fix/green-mesh-swap`) - NEW.** Everything this lane
+could not close itself, stated so each is a known gap and not a silent one.
+- **BL-R102-DEBT-1 (P1, LAUNCH-GATED - owner: Will's eye, via the orchestrator's deploy):** NOTHING IN
+  THIS LANE HAS BEEN SEEN IN GAME. The green's *source* is proven from asset bytes and by Will's own
+  elimination, and the destination meshes are proven FX-free, rig-complete and animation-resolvable -
+  but "the Enslaver no longer glows green", "he still reads as a black skeleton", "the Devourer still
+  reads as the Athens Toxeus in red" and "the shroud reads black on the new mesh" are all
+  PLAYER-SURFACE claims that only a deploy and Will's look can settle. The player-surface checklist
+  forbids claiming them and this lane does not. This is the same debt shape as `BL-b98-DEBT-2`, which
+  it supersedes on the colour question.
+- **BL-R102-DEBT-2 (P2, OPEN WILL DECISION - owner: Will):** should **Toxeus, End of All Things** get
+  a FOURTH distinct silhouette? Its three pets (`pets\toxeus_eoat_1..3`) are clones of the Devourer's
+  pets and follow his mesh, which kills their green for free and keeps the family read. Whether the
+  apotheosis of the line should look like its own creature is a design call, not this lane's. If yes,
+  the FX-free rig-compatible pool measured here is the place to pick from (303 meshes carry the
+  20-bone skeleton core with zero embedded FX; `SkeletonSpirit01.msh` is the nearest in-family
+  candidate but uses the `StandardBlendedGlowSkinned` shader, which wants scrutiny in a lane about a
+  glow).
+- **BL-R102-DEBT-3 (P2, UPSTREAM DEFECT, deliberately NOT fixed - owner: a future anim lane):**
+  `spearSpellAttackAnim` on **306** records in the built arz names an ArtManager BUILD PATH,
+  `Build\Resources\Creatures\Monster\Skeleton\ANM\SkeletonGrayBlackNEW_OneHand_AttBeta.anm`, which
+  resolves nowhere at runtime. Carriers include Charon (5 records), the abyssal liches, the base
+  skeleton pets `drx_skelly_10..20`, Iron Lore test monsters - and, by inheritance, `um_bloodtoxeus_99`
+  and `um_toxeus_enslaver_99`. It ships that way in the BASE GAME, it is unrelated to the mesh, and
+  repointing 306 mostly-not-ours records is a different lane under the shared-record law. The
+  `champion_mesh` animation gate EXCLUDES that one prefix BY NAME and says so in its output, so a NEW
+  dangling reference still fails the build. Command that produced the count is in the wave commits.
+- **BL-R102-DEBT-4 (P3, PRE-EXISTING LEDGER HYGIENE - owner: orchestrator):** this lane deliberately
+  minted NO new ruling number. The decade census
+  (`git grep -ohE "R-[0-9]+" <branch> -- docs/WILL_RULINGS.md` over every local branch) returns
+  **R-124** on `feat/devourer-kit` and **R-119** on `feat/sanctuary-populate`, `feat/soul-economy`,
+  `feat/toxeus-apex-roster`, `feat/uber-visibility` and `fix/blade-mastery-truth`, so 103+ is an
+  active race between in-flight lanes and any number this lane claimed would have to be defended at
+  merge. It amended the ruling it was given (R-102, SIXTH AMENDMENT) instead. The duplicate-R-number
+  problem itself is already `BL-b101-DEBT-1`; this is a note that b102 did not add to it.
 
 **b101 R-99 all-Toxeus apex orb (2026-07-29, `feat/toxeus-apex-roster`) - NEW.** Every item below is
 something this lane could NOT close itself, stated so it is a known gap and not a silent one.

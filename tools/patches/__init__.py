@@ -279,7 +279,18 @@ REGISTRY = [
                             # other writers in his kit + FX domain, so it is the ratified last
                             # writer of the slot it claims. Uses ONLY the in-game-CONFIRMED
                             # shadowcloak smoke, never 343_dark_smoke (R-10: green-rendering).
+                            # ⚠️ b102 (R-102 SECOND AMENDMENT, Will: "that is still not
+                            # implemented"): b98 wired the shroud to the MONSTER ONLY and all three
+                            # `pets\toxeus_enslaver_*` tiers were skipped - and the pet is what Will
+                            # summons, so from where he stands it was never delivered. The module
+                            # now wires a ROSTER = {monster} + {every tier READ from
+                            # summon_toxeus_enslaver.spawnObjects}, each in its own lowest free slot
+                            # (pets use 1-12 + 15; nothing dropped), and its gate additionally
+                            # asserts the pets' controller really fires self-buffs
+                            # (BuffSelfBehavior=WhenEnemyIsSeen) - a toggle the AI never toggles is
+                            # an empty slot. Deriving the tiers is what makes the miss unrepeatable.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
+                            # (17 plants, 7 of them the b102 pet-tier class)
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
@@ -488,6 +499,42 @@ REGISTRY = [
                             # safe. Placed before fx_dangling_cleanup so the FX hygiene sweep still
                             # covers the new records. Negative test:
                             # py tools/patches/toxeus_hunt_endless.py --negtest
+    'champion_mesh',        # b102 (Will 2026-07-29, R-102 + the R-93 remainder): THE ENSLAVER'S
+                            # GREEN GLOW. Four waves (b39/b55/b55r2/b92) edited FX FIELDS and none
+                            # moved a pixel, because the green is not in a field: it is the
+                            # CreateEntity block compiled INTO
+                            # Creatures\Monster\Skeleton\RevenantPoison.msh (measured from the
+                            # shipped bytes by tools/mesh_assets.embedded_fx_of ->
+                            # Records\Effects\MonsterFX\Buffs\RevenantPoison_FX.dbr, an
+                            # ADDITIVE-blend .pfx on Bone_R/L_Weapon). baseTexture replaces the
+                            # primary skin only, so no .dbr edit can reach it. Moves the Enslaver
+                            # family onto SkeletonGrayBlack01New.msh and the Devourer family (incl.
+                            # the EoAT pets that clone his) onto GoldenSkeleton01.msh - both
+                            # measured FX-FREE with a bone set IDENTICAL to RevenantPoison's, and
+                            # DISTINCT from each other and from the Hunt's ShadowStalker.msh, so
+                            # R-93's "three champions, three creatures" lands in the same commit
+                            # instead of being traded away.
+                            # ORDER IS LOAD-BEARING: registered after EVERY module that authors or
+                            # rewrites a champion record - toxeus_suite, toxeus_champion_kits,
+                            # toxeus_endofallthings (author of the EoAT pets), enslaver_pet_fx,
+                            # enslaver_shroud, toxeus_hunt_encounter and toxeus_hunt_endless (which
+                            # CLONES um_toxeus_hunt_l_99 at build time, so it must exist before this
+                            # roster is resolved) - making this the ratified last writer of `mesh`
+                            # on the roster. Still before fx_dangling_cleanup so the FX hygiene
+                            # sweep covers the final state. Writes ONLY on a real change, so a
+                            # record already carrying the right mesh is not re-encoded.
+                            # The roster is DERIVED: only the anchor monsters, the preview proxies
+                            # and each champion's own soul-summon skill are named; every pet tier is
+                            # read out of that summon's spawnObjects, so a 4th tier is picked up by
+                            # the fix AND the gate with no code change (the exact defect class of
+                            # R-102's second amendment, where the shroud reached the monster and
+                            # none of the three pet tiers).
+                            # SHARED-RECORD LAW: RevenantPoison.msh has 30 carriers and only 13 are
+                            # ours; the other 17 (base/SV green revenants on newskeleton_grean.tex,
+                            # 10 pharaoh honour-guard summons, 1 dev dummy) are untouched, and
+                            # verify() fails if the mesh is ever emptied out of the DB entirely
+                            # (RETIREMENT PROTOCOL).
+                            # Negative test: py tools/patches/champion_mesh.py --negtest (12 plants)
     'fx_dangling_cleanup',  # b91 DEBT: B-FX-DANGLING-1 (strip the 353 dangling
                             # Chris\UnarmedProjectile_FX01 particleEffectName2/3 slots off 177
                             # records - base-game ABSENCE parity, the same operation build30 F7a
