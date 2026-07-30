@@ -64,7 +64,7 @@ let impl = null, verdict = null
 for (let round = 1; round <= 3; round++) {
   impl = await agent(`R-99 ALL-TOXEUS APEX ORB - IMPLEMENT (round ${round}).
 ${COMMON}
-${round > 1 ? `\nTHE INDEPENDENT VET RETURNED **${verdict.verdict}**. CLEAR EVERY ISSUE:\n${JSON.stringify(verdict.issues, null, 1)}\n${verdict.summary}\nRe-measure rather than restate. If a finding is genuinely wrong, prove it with a command and its output.` : ''}
+${(round > 1 && verdict) ? `\nTHE INDEPENDENT VET RETURNED **${verdict.verdict}**. CLEAR EVERY ISSUE:\n${JSON.stringify(verdict.issues, null, 1)}\n${verdict.summary}\nRe-measure rather than restate. If a finding is genuinely wrong, prove it with a command and its output.` : ''}
 
 THE WORK, which R-99 has fully specified - no design latitude, but plenty of care required:
 
