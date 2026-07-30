@@ -328,22 +328,30 @@ Running the new `verify()` against the pre-R-99 arz fires with **exactly the 6 g
 `genericbossorb_01.dbr STILL carries Toxeus record(s) ['um_toxeus_21.dbr']`. A gate that cannot fail on
 the state it was written to detect is not a gate.
 
-### 5.8 Byte-identity: FOUR identical builds
+### 5.8 Byte-identity: FIVE identical builds
 
-The arz was built from scratch four times with the identical command and env, and every one returned
+The arz was built from scratch five times with the identical command and env, and every one returned
 **exit 0** with md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B:
 
 | build | after what | log |
 |---|---|---|
-| 1 | the round-1 code, rebuilt from scratch by this round rather than trusted | `docs/reports/b101_logs/b101_r99_reproduce.log` (kept) |
+| 1 | the round-1 code, rebuilt from scratch by round 1 rather than trusted | `docs/reports/b101_logs/b101_r99_reproduce.log` (kept) |
 | 2 | the verify-side fixes of steps 6/7/10 (proving the gate hardening moved no shipped byte) | dropped in round 2 as a redundant intermediate |
 | 3 | merging `main` @ `31f3432` (proving the mid-lane base move moved no shipped byte) | dropped in round 2 as a redundant intermediate |
-| 4 | **round 2's confirming rebuild** after the vet's doc/comment corrections, incl. merging `main` @ `b376b61` | `docs/reports/b101_logs/b101_r2_confirm_rebuild.log` |
+| 4 | **round 2**, after merging `main` @ `b376b61` and the first batch of vet-driven comment edits | superseded by build 5 |
+| 5 | **round 2's FINAL confirming rebuild, at the final HEAD, after every module comment edit incl. the baseline-md5 re-citation** | `docs/reports/b101_logs/b101_r2_final_rebuild.log` |
 
-Build 4 exists because round 2 edited comments inside `tools/patches/uber_apex_orb.py` (rescoping the
-name-tag claim, citing the `dropItems` evidence, documenting the marauder exclusion, re-citing the
-baseline md5). Per this repo's own discipline a comment edit inside a build module gets one confirming
-rebuild rather than an assurance that comments cannot matter.
+Builds 4 and 5 exist because round 2 edited comments inside `tools/patches/uber_apex_orb.py` (rescoping
+the name-tag claim, citing the `dropItems` evidence, documenting the marauder exclusion) and then
+`tools/debug/b101_r99_record_diff.py` plus two more `uber_apex_orb.py` sites (the baseline-md5
+re-citation). Per this repo's own discipline a comment edit inside a build module gets a confirming
+rebuild rather than an assurance that comments cannot matter. **Build 5 is the authoritative one**: it
+is the only build made after ALL module edits were final. Every module edit round 2 made is provably
+inside a docstring or a `#` comment (`git diff 5cc2d5e..HEAD -- tools/` shows no executable line moved),
+and build 5 confirms it empirically.
+
+Round 2's baseline log is kept alongside them: `docs/reports/b101_logs/b101_r2_baseline_main_b376b61.log`
+(**exit 0**, `aea688b23acefe1b48ae31a0df4cc423`).
 
 ### 5.9 The base moved mid-lane; merged and re-proved
 
@@ -557,7 +565,8 @@ Will-ratified inclusion, not a cleanup.
 | `docs/WILL_RULINGS.md` | R-99 -> IMPLEMENTED with the measured result, plus a ROUND 2 block; R-100 collision flag; the RETRACTION of round 1's false merge-loss claim |
 | `docs/BACKLOG.md` | BUILD69-DEV gate record + `BL-b101-DEBT-1..9` (round 2 adds `-8` derivation bound and `-9` the diff-reading process rule, and reorders `-6`/`-7`) |
 | `docs/reports/b101_logs/b101_r99_reproduce.log` | the 45-module log of the shipped bytes (moved out of the repo root in round 2) |
-| `docs/reports/b101_logs/b101_r2_confirm_rebuild.log` | round 2's confirming rebuild after the comment corrections |
+| `docs/reports/b101_logs/b101_r2_final_rebuild.log` | round 2's FINAL confirming rebuild at the final HEAD (build 5, the authoritative one) |
+| `docs/reports/b101_logs/b101_r2_baseline_main_b376b61.log` | round 2's baseline of the NEWEST main tip, exit 0, `aea688b23acefe1b48ae31a0df4cc423` |
 | `.gitignore` | `/*.log` + `/local_*` so root build logs cannot be committed again (the `local_` prefix only LOOKED ignored) |
 
 **Removed in round 2** (vet finding, artifact hygiene): `local_baseline_build.log`,

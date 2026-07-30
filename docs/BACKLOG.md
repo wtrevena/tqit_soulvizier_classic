@@ -34,15 +34,20 @@ zero new tags, so there is NO artifact coupling to honour):**
   md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry modules.
   Built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
   **exit 0** (log `docs/reports/b101_logs/b101_r99_reproduce.log`).
-- **Byte-identity re-proved THREE TIMES, four identical builds in total**, each **exit 0** and each
+- **Byte-identity re-proved FOUR TIMES, five identical builds in total**, each **exit 0** and each
   **md5 `6a3a491db546b603c52132237c40aa63`, 55,475,226 B**: (1) the round-1 code rebuilt from scratch,
-  (2) after the verify-side fixes in steps 6/7/10, (3) after merging `main` @ `31f3432`, and (4) round
-  2's confirming rebuild after the vet-driven comment corrections in `tools/patches/uber_apex_orb.py`
-  and the merge of `main` @ `b376b61`. So neither the gate hardening, nor any of the three mid-lane base
-  moves, nor round 2's doc/comment corrections changed a shipped byte. Logs kept:
-  `docs/reports/b101_logs/b101_r99_reproduce.log` (build 1) and
-  `docs/reports/b101_logs/b101_r2_confirm_rebuild.log` (build 4); builds 2 and 3 were redundant
-  intermediates and their logs were dropped in round 2's cleanup.
+  (2) after the verify-side fixes in steps 6/7/10, (3) after merging `main` @ `31f3432`, (4) round 2
+  after merging `main` @ `b376b61` plus its first batch of comment corrections, and (5) **round 2's
+  FINAL rebuild at the final HEAD, after every module comment edit including the baseline-md5
+  re-citation - the authoritative one**. So neither the gate hardening, nor any of the three mid-lane
+  base moves, nor any of round 2's doc/comment corrections changed a shipped byte. Logs kept:
+  `docs/reports/b101_logs/b101_r99_reproduce.log` (build 1),
+  `docs/reports/b101_logs/b101_r2_final_rebuild.log` (build 5) and
+  `docs/reports/b101_logs/b101_r2_baseline_main_b376b61.log` (round 2's baseline of the newest main
+  tip, exit 0, `aea688b23acefe1b48ae31a0df4cc423`). Builds 2, 3 and 4 were redundant intermediates and
+  their logs are not kept. Every round-2 module edit is provably inside a docstring or a `#` comment
+  (`git diff 5cc2d5e..HEAD -- tools/` moves no executable line); build 5 confirms it empirically rather
+  than arguing it.
 
 > ⚠️ **BASE MOVED MID-LANE THREE TIMES; THIS LANE MERGED AND REBUILT EACH TIME.** Briefed base was
 > `main` @ `e014ef8`. While the lane ran, `main` advanced to `31f3432` (R-102/R-103 Enslaver green-glow),
