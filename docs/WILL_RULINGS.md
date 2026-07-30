@@ -1812,3 +1812,56 @@ is "yes, harder is the point". But he should choose it knowing the three changes
 has not yet won. `BL-b98-DEBT-2` is the related debt. R-93
 remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
 that mesh regardless of the green.
+
+---
+
+## R-103 [2026-07-29] Toxeus champions: KEEP all three power additions. The lever is REFLECT, and it is found.
+
+**WILL, VERBATIM:**
+
+> "yes harder is the point, keep all three. if we need to make him more killable we will reduce his reflect
+> damage or his health or something. currently the reflect damage is what makes these variants nearly
+> unkillable since i one shot myself when i hit them"
+>
+> "the answer is not cutting skills but cutting elsewhere"
+
+**RULING: R-100 #1 (Bloodbath), #12 (Blood Frenzy) and #13 (summonable minions) all STAND, in full.** Do not
+water any of them down, do not "balance" them by trimming their numbers, and do not propose cutting a skill as
+a difficulty fix. Harder is the intent. The difficulty lever is elsewhere, and he named it.
+
+**THE SOURCE IS FOUND - ONE RECORD, ONE FIELD PAIR, SHARED BY ALL THREE VARIANTS.** Measured on `967b1f97`:
+
+`records\skills\monster skills\passive_buffs\toxeus_passiveproperties.dbr`
+- **`defensiveReflect` = 100.0**
+- **`defensiveReflectChance` = 33.0**
+
+Carried by all three champions and nothing else on them reflects: the Enslaver (skill slot 11), the Devourer
+(slot 11) and the Endless Hunt (slot 8). None of the three creature records carries a reflect field of its own.
+Leinth carries **no** reflect at all, which is why she does not produce this symptom.
+
+**WHAT THOSE TWO NUMBERS ACTUALLY MEAN, and why Will's experience is the correct read:** one hit in three
+returns **100% of the damage dealt** to the attacker. So the reflected damage **scales with the PLAYER's own
+damage**, without limit. The better geared Will gets, the more certainly he kills himself - and any build that
+can burst a boss down can one-shot itself doing it. That is not a hard fight, it is a stat that inverts
+progression: investing in damage strictly increases the chance you die to your own hit. His "nearly
+unkillable" is exactly what 100/33 produces.
+
+**RECOMMENDATION (his call - this is a balance number): cut the MAGNITUDE, not the frequency.**
+- Lowering `defensiveReflect` from 100 to roughly 25-35 keeps the "do not just facetank-spam him" signal, keeps
+  a reflected hit genuinely painful, and stops it being lethal-by-construction to strong characters.
+- Lowering `defensiveReflectChance` instead (e.g. 33 -> 5) leaves it a coin-flip instadeath that is simply
+  rarer. That is worse design: the same feel-bad, just less often and less learnable.
+- Health is the honest alternative lever he also offered, and it is strictly safer than reflect because it
+  scales with the fight rather than with the player's build. Reflect first, health only if still needed.
+
+**REQUIRED CHECK BEFORE EDITING - the orb04 lesson applies exactly.** `toxeus_passiveproperties` is a SHARED
+record. Enumerate every creature that carries it BEFORE changing it in place; if anything outside the Toxeus
+champions uses it, mint a champion-specific passive instead of editing the shared one, exactly as
+`genericbossorb_05` was minted rather than editing `genericbossorb_04` and silently buffing 19 bosses.
+
+**GATE:** assert the reflect pair stays within the ruled band on every Toxeus champion, and that no champion
+regains a per-record reflect field that bypasses the shared passive. Plant a negative at 100.0 and confirm the
+build reds.
+
+**STATUS:** measured and specified, NOT implemented. Awaiting Will's number for `defensiveReflect` (my
+recommendation is 30). Everything else in R-100 for these champions proceeds unchanged.
