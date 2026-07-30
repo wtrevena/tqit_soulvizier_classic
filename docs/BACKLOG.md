@@ -14,7 +14,7 @@ Will can see it. **That rebuild was NOT run by this lane** - see NOT DONE.
 
 | item | ruling | shipped |
 |---|---|---|
-| rate sweep | R-105 / R-106 / R-107 | **796** of 1,564 carriers re-rated by ONE shared classifier |
+| rate sweep | R-105 / R-106 / R-107 | **794** of 1,564 carriers re-rated by ONE shared classifier |
 | forge acts | R-100 #11 | **580** soul->formula memberships added across the 12 XP-potion formulas (fixed point in 3 rounds) |
 | Soul Gaoler | R-100 #17 | 5 chest placements -> 2; the normal-tier guaranteed donors replaced |
 
@@ -56,6 +56,16 @@ Will can see it. **That rebuild was NOT run by this lane** - see NOT DONE.
   module's own roster so the carve-out cannot drift. That leaves ONE record on the original tension:
   **`boss_satyrshaman_55`**, a fixed-location act boss shipping at **33** under the count. Will's
   call, one line either way.
+- **BL-b102-DEBT-10 (P1, LEDGER CORRECTION, no action needed) - the R-106 amendment's other two "plain
+  defects" are not defects.** It listed `um_charon_ferryman_99` and `um_tantalus_99` (with the Gaoler)
+  as "fixed-location bosses at 0% carrying a soul that can never drop ... they need no policy decision
+  at all". R-107 already retracted that claim for the Gaoler. Measured
+  (`tools/debug/probe_uber_transform_chains.py`), all three are the HEAD of a two-form chain whose
+  TERMINAL drops: head 0% -onDeath-> terminal 66%, head carrying its DONOR's soul and terminal carrying
+  ours. Raising the two failed `double_soul_rulings.verify` ("legion_soul_stages distinct-soul roster
+  ... expected exactly Charon 39/41/43 + Hades 54") - i.e. it would have made one encounter pay two
+  different souls, the Legion defect class. All three heads stay at 0. Nothing for Will to decide; this
+  is recorded so the amendment's wrong sentence is not re-implemented by a later lane.
 - **BL-b102-DEBT-3 (P2, WILL DECISION + MAP) - a truly per-difficulty vault.** Measured: container loot
   tables cannot difficulty-index (0 of 74,013 base-game records carry a multi-value `lootNNameM`; the
   3-array convention is Monster.tpl-only, 2,703 instances). The base game ships one chest record per
