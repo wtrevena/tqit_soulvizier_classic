@@ -272,9 +272,23 @@ md5sum local/verify_rebuild.arz
 because it is an easy trap for the next agent. Building to `local/` instead of the `work/` layout
 means the A9 render-chain gate has no `Resources/` dir beside the output, and under
 `SVC_REQUIRE_GATES=1` a gate that *cannot run* is a build failure by design (B-GATE-HARDEN-1). The
-build says so itself and names the remedy. Re-run into the proper `work/` layout: **exit 0**, same
-md5. So: `SVC_REQUIRE_GATES=1` + a scratch output path = a red build that says nothing about the
-code.
+build says so itself and names the remedy. Re-run into the proper `work/` layout:
+
+```
+py tools/build_svc_database.py <4 inputs> \
+   work/SoulvizierClassic/Database/SoulvizierClassic.arz <base arz>
+EXIT=0
+b55515970be41c2542208e84a8705640 *work/SoulvizierClassic/Database/SoulvizierClassic.arz
+```
+
+**exit 0, same md5, with the FULL gate battery actually running** - the A9 render-chain gate present
+(`SUMMON-PET RENDER-CHAIN VALIDATOR (A9 + D5 mesh-shader closure)`), 23 registry `verify OK` lines
+including all 3 of this lane's. So the artifact is now reproduced byte-identically **three** times
+(§4.2, §4.7, §5.1) and once with every gate live. Since the md5 is identical, §4.3's record-diff
+result carries over unchanged by construction.
+
+Lesson for the next agent: `SVC_REQUIRE_GATES=1` + a scratch output path = a red build that says
+nothing about the code.
 
 ### 5.2 All 29 planted negatives re-run against the BUILT arz, by a second pass
 
