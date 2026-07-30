@@ -62,6 +62,33 @@ def main(argv):
     check("T3 a chest repointed at another chest's loot table",
           lambda d: d.set_field(pv._CHEST[3], 'tables', pv._CHEST_LOOT[0]))
 
+    # T5 - the map half: the halved placement list quietly grown back
+    import build_section_surgery as bss
+    _saved = list(bss.B41_SPECS[bss.B41_POLIS_KEY])
+    try:
+        bss.B41_SPECS[bss.B41_POLIS_KEY] = _saved + [
+            (b'records\\drxitem\\container\\svc_polisvault_chest_05.dbr',
+             78.8, 3.6, 32.6, {})]
+        d = load(arz)
+        hit = fires(d)
+        if not hit:
+            fails.append('T5 placement count')
+        print("%s %-62s -> %s"
+              % ('OK ' if hit else 'XX ',
+                 'T5 a 3rd chest placement added back to the halved map list',
+                 'RED (correct)' if hit else 'GREEN (BLIND)'))
+    finally:
+        bss.B41_SPECS[bss.B41_POLIS_KEY] = _saved
+    # T5 positive control the other way: with the list restored the gate is green
+    d = load(arz)
+    ok2 = not fires(d)
+    if not ok2:
+        fails.append('T5 restore control')
+    print("%s %-62s -> %s"
+          % ('OK ' if ok2 else 'XX ',
+             'T5 control: restored 2-chest list is accepted',
+             'GREEN (correct)' if ok2 else 'RED (false positive)'))
+
     print()
     if fails:
         print("NEGTEST FAILED: %d" % len(fails))

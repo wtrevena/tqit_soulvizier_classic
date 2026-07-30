@@ -2340,3 +2340,127 @@ answer is not cutting skills but cutting elsewhere").
 **STATUS:** measured and specified, NOT implemented. **Will is currently HARD-BLOCKED from finishing this
 encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers; my recommendations are reflect
 30 and pierce 40.
+
+---
+
+## R-140 [2026-07-30] IMPLEMENTATION RECORD + factual amendments: R-105 / R-106 / R-107 rates, R-100 #11 forge acts, R-100 #17 Gaoler
+
+> **NUMBER PROVENANCE.** `git grep -oE "\bR-1[0-9][0-9]\b" $(git branch -a --format='%(refname)')` over
+> **main and every in-flight branch** returns R-100..R-124 and R-130 taken; the whole **R-140..R-149
+> decade is FREE**. This block is appended at the END of the file (rather than edited into R-105/
+> R-106/R-107) precisely so it cannot collide with a branch that is editing those sections.
+>
+> **THIS IS NOT A NEW WILL DECISION.** No new words of his exist. It records (a) that R-105, R-106,
+> R-107 Part 1, R-100 #11 and R-100 #17 are now IMPLEMENTED in code, and (b) five places where the
+> MEASUREMENT inside those rulings was wrong or incomplete, corrected here rather than left standing,
+> because a wrong premise about these fields mis-scopes every future soul change. Every correction is
+> a command anyone can re-run.
+
+### WHAT SHIPPED (branch `feat/soul-economy`)
+
+| ruling | verbatim ask | shipped |
+|---|---|---|
+| R-105 | "no monsters should be at 66%. move all 66% and 50% to 33%" | 733 carriers -> 33, +1 -> 25 (below). The 66% and 50% cohorts are now EMPTY |
+| R-105 | "25% for fixed location bosses and 33% for non-fixed location bosses" | the 12 `boss_pharaohshonorguard*` 10% -> 25%; the 5% pair and the 39 2%-tier heroes -> 33% |
+| R-106 | "only hero monsters should drop their soul" | the 11 Common **droppers** -> 0% (the other 4 are PETS, see amendment 2) |
+| R-106 | the four R-48 Toxeus champions stay 100 | asserted by gate invariant G3, unchanged |
+| R-106 amdt | `um_charon_ferryman_99` + `um_tantalus_99` 0% -> 25% | shipped (they carried a soul that could never drop) |
+| R-107 | "the soul gaoler should not drop the soul just the unbound final version" | base `um_polisgaoler_99` pinned at 0; `um_polisgaoler_unbound_99` 66% -> 25% |
+| R-100 #11 | XP-potion forge formulas cannot use our souls | 577 souls given act membership, **201 of them ours** |
+| R-100 #17 | halve the Gaoler's chests; his epic chests drop "essence" not "embodiment" | 5 placements -> 2; the normal-tier guaranteed donors replaced with the chest's own legendary tier |
+
+**HELD, untouched, and named so it cannot be lost:** the **172 Champion-tier carriers at 0%** plus **7
+Champion carriers with a live fractional rate**. R-106's amendment put the star tier squarely to Will
+("DOES 'STARS OR BETTER' INCLUDE THE WHOLE CHAMPION TIER? That is the 172-creature decision") and he has
+not answered. The classifier returns HELD for them and gate invariant G7 fails if the HELD set drifts.
+
+### AMENDMENT 1 - R-100 #11's premise is wrong: there is NO act classification FIELD
+
+His words were *"the souls that we added ... do not have the proper classification on them"*. There is no
+field to set. SV 0.98i ships 12 `ItemArtifactFormula` records
+`records\item\formulas\{n,e,l}_{01..04}_lesserpotionofexperience_formula.dbr` whose three reagent slots
+each hold an **enumerated list**: `[0X_actY_anysoul.dbr, <every soul of that act at that difficulty>]`
+(measured: the `e_01` formula holds 152 entries, 151 of them `*_soul_e.dbr`). A soul is "act N" **iff it
+is named in act N's list**, so a soul we mint is unusable until its path is appended there. `{n,e,l}` is
+the difficulty tier and `01..04` is the act (1 Greece, 2 Egypt, 3 Orient, 4 Hades).
+Reproduce: `py tools/debug/probe_xp_formula_reagents.py <arz>`.
+
+**There is no act-5 formula anywhere** (SV 0.98i is Immortal-Throne-era; the base game ships none), so a
+soul dropped by an `xpack2`/`xpack3` monster has no list to join. Those are reported, never forced into
+act 4. **OPEN FOR WILL:** mint a 5th/6th formula set, or leave Ragnarok/Atlantis souls out of the forge.
+
+### AMENDMENT 2 - four of R-106's fifteen "Common carriers" are WILL'S OWN PETS
+
+R-106 ruled "those 15 go to 0%". Measured with `py tools/debug/probe_common_carriers.py <arz>`:
+
+| carriers | what they are | action |
+|---|---|---|
+| 6 `soul\test\swift_ar_archer_08` / `swift_br_archer_14` (n/e/l) | Class=**Monster** | -> 0 |
+| 5 `skills\boss skills\summoned minions\pharaoh'shonorguard_mummypriest_*` | Class=**Monster** | -> 0 |
+| 4 `skills\soulskills\pets\carrioncrow_05/1/2/3` | **Class=Pet, Pet.tpl** | **HELD** |
+
+The last four are the crows **a soul summons for him**. R-104 established that `chanceToEquipFinger2` does
+double duty - drop rate AND a power switch - and on a Pet only the second meaning exists, because a pet
+drops nothing. Zeroing them would have nerfed his summons and changed no drop anywhere: the
+`toxeus_passiveproperties` trap (18 carriers, 9 of them his pets) in a new costume. Pet/Proxy/ProxyPool
+templates are therefore excluded from the rate roster. **OPEN FOR WILL:** should a summoned crow keep
+wearing its soul? (Recommendation: yes - leave them.)
+
+### AMENDMENT 3 - the 1,722-carrier roster is NOT the `\creature(s)\` roster
+
+R-104/R-106 cross-tabulated 1,722 soul-bearing creatures. The shipped `verify_soul_drop_rates` gate's own
+`_is_creature()` path filter sees only **1,279** of them. The missing 443 include **every record R-105
+named in the sub-25% buckets**: the 6 swift archers and all 39 of the 2%-tier heroes live under
+`records\item\equipmentring\soul\test\`, the 5 mummy priests under `records\skills\boss skills\summoned
+minions\`, and a Quest carrier at 66% under `records\drxcreatures\`. Applying the ruling on the old
+roster would have shipped it half-done AND the gate would not have seen the half that was missed.
+Selection is now by TEMPLATE, because the base game gives special bosses bespoke Monster-derived
+Classes - `SpiritHost` (all 12 pharaoh honour guards), `Hades`, `Cerberus`, `Typhon`, `Ormenos`,
+`Megalesios` - and a `Class == 'Monster'` filter silently drops 35 live carriers including the entire
+10% cohort.
+
+### AMENDMENT 4 - R-105's "0.3%" bucket is 0.35%, and the Common split is 6/9 with 4 of the 9 being pets
+
+Measured on the built arz: the low buckets are **0.5% (13 records)** and **0.35% (11 records)**, not 0.3%.
+Of the 15 Common carriers, 6 sit at 0.5 and 9 at 0.35 - and 4 of those 9 are the pet crows, so **11**
+records were zeroed, not 15.
+
+### AMENDMENT 5 - A TENSION INSIDE R-105 THAT ONLY WILL CAN SETTLE (5 records)
+
+R-105 says both of these:
+1. "move all 66% and 50% to 33%. **That is 734 creatures**" (a COUNT), and
+2. "**25% for fixed location bosses** and 33% for non-fixed".
+
+Five of the 734 are fixed-location act bosses: `boss_charon_39/41/43`, `boss_satyrshaman_55`, and
+`records\drxcreatures\bloodwitch\boss_hades_54.dbr` (plus the Quest-class `crowheroes\kreeloo.dbr`).
+Sentence 1 puts them at 33; sentence 2 puts them at 25. **This lane followed his COUNT** (they ship at
+33) because the count is explicit and was ratified with a number, and recorded the tension instead of
+inferring. One line from him flips them. Registered as `BL-b102-DEBT-2`.
+
+### THE ONE CLASSIFIER, AND THE GATE
+
+`build_svc_database.ruled_soul_equip_rate()` is the single decision point; it derives fixed-vs-non-fixed
+from `soul_drop_rate()`, which keys on `monsterClassification` and never on the record name or folder -
+the reason that matters is in R-106 itself (the mummy priests classify **Common** behind a boss-ish
+filename). `apply_svc_patches._apply_soul_rate_policy()` applies it as the **last writer** of the release
+build, so a hand-set rate anywhere upstream cannot survive. `tools/verify_soul_drop_rates.py` checks the
+FINAL arz per-record against that same function and adds 7 whole-cohort invariants (G1..G7) with 7
+planted negatives plus a positive control.
+
+### R-100 #17: WHY THE GAOLER'S CHESTS COULD NOT SIMPLY BE MADE DIFFICULTY-AWARE
+
+Measured on the base game (74,013 records): a **Monster.tpl** loot slot IS difficulty-indexed - 2,703
+records carry `lootMisc2Item1 = [01_actN, 02_actN, 03_actN]`, including this Gaoler's own donor
+`xsecrethero_wardenofsouls_48`. A **container's** loot table is NOT: **zero** `lootNNameM` fields
+anywhere carry more than one value, and the base game instead ships one chest record per tier
+(`goldenchest_normal_/epic_/legendary_01`). So the shipped defect - the one slot that fires at 100%
+handing out normal-tier "Essence of ..." relics inside an otherwise legendary-tier chest - was fixed by
+matching that slot to the chest's own tier. A vault that pays a different tier per DIFFICULTY needs 3
+chest records per spot plus map-side placement: `BL-b102-DEBT-3`, Will's call.
+
+### R-107 PART 2 IS NOT IMPLEMENTED
+
+The Devourer reflect/pierce cut (Will HARD-BLOCKED from finishing that encounter) is untouched by this
+lane - it needs his numbers, and its required implementation is a monster-only clone of
+`toxeus_passiveproperties` so his 9 pets keep their defence. Still PENDING, still outranking the rest of
+the R-100 batch.

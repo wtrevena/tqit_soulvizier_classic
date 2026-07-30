@@ -4098,7 +4098,9 @@ def main():
     # change the mode - so a typo can never ship the wrong drop rates):
     #   SVC_TESTING_DROPS=1   -> force 100% drops (testing).           [opt-in]
     #   SVC_RELEASE_DROPS=0   -> force 100% drops (testing).  (legacy inverse)
-    #   (unset / SVC_RELEASE_DROPS=1) -> tuned 66%/25% RELEASE rates.  [default]
+    #   (unset / SVC_RELEASE_DROPS=1) -> the R-105/R-106/R-107 RELEASE rates
+    #                                    (33 non-fixed / 25 fixed boss / 0 Common
+    #                                    / 100 the four R-48 champions). [default]
     # SVC_RELEASE_DROPS is kept for backward compatibility with existing scripts
     # and docs; SVC_TESTING_DROPS is the new, clearer way to ask for a test build.
     _TRUE = ('1', 'true', 'yes', 'on')
@@ -4138,11 +4140,13 @@ def main():
     if force_full_drops:
         print("*** TESTING BUILD: soul drops FORCED to 100% "
               f"({_reason}) ***")
-        print("*** For the RELEASE .arz (tuned 66%/25%), build with NO override "
+        print("*** For the RELEASE .arz (R-105 rates), build with NO override "
               "(or SVC_RELEASE_DROPS=1). ***")
     else:
-        print("*** RELEASE BUILD (repo default): tuned soul drop rates kept "
-              "(66% Hero/Quest, 25% Boss). ***")
+        print("*** RELEASE BUILD (repo default): R-105/R-106/R-107 soul rates "
+              f"({SOUL_RATE_NONFIXED:.0f}% non-fixed, {SOUL_RATE_FIXED_BOSS:.0f}% "
+              f"fixed-location boss, {SOUL_RATE_COMMON:.0f}% Common, "
+              f"{SOUL_RATE_R48_CHAMPION:.0f}% the four R-48 Toxeus champions). ***")
         print("*** For a 100% test build, set SVC_TESTING_DROPS=1. ***")
     print("=" * 70)
     # ── patches-registry (build37) hook ───────────────────────────────────────
