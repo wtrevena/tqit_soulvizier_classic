@@ -125,8 +125,14 @@ roster **26**, all **26** already at `DisplayAsQuestItem = 1`, and
 and never deployed (R-100's own "TWO OF HIS REPORTS ARE EXPLAINED BY A DEPLOY
 THAT NEVER RAN" note applies verbatim to the "the other major bosses ... do not
 have one" half); the only CODE change #7 needs is to take the marker OFF the
-Devourer. That is what `MARKER_EXEMPT` does, and `apply()` writes 0 rather than
-merely skipping him, because he ships marked today.
+Devourer. That is what `MARKER_EXEMPT` does, and `apply()` ENFORCES
+`DisplayAsQuestItem = 0` on the exempt set rather than merely omitting it from the
+write loop. Both paths are measured and they differ: run against an ALREADY-MARKED
+arz (the shipped product, or the baseline the negtest uses) it genuinely WRITES the
+0 - plant 6 reports `before=1.0 after=0.0`; run inside a FRESH build the record
+arrives here at 0 and the module honestly prints `(0 newly unmarked)`. Enforcing
+rather than skipping is what lets verify() ASSERT the 0, so a later writer cannot
+put the marker back with nothing noticing.
 
 The exemption is a NAMED SET, not a derived rule, because "hidden" is a placement
 property with no DB expression - but it is cross-checked mechanically

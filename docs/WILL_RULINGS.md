@@ -1632,9 +1632,20 @@ Gaoler forms, Tantalus + Tantalus Unbound, the Mnemophage chain, Menoetes, and `
 "TWO OF HIS REPORTS ARE EXPLAINED BY A DEPLOY THAT NEVER RAN" note applies verbatim to "the other major
 bosses you have made ... do not have one". **No new code was needed for that half, and none was written.**
 
-The only CODE change #7 needs is the EXCEPTION: the Devourer ships MARKED today, and Will ruled he must not
-be. `MARKER_EXEMPT` now names him with his ruling, and `apply()` **writes 0** (an unmark, not a skip),
-because a skip would have left b91's existing 1 in place. Roster **26 -> 25 targets + 1 exempt**.
+The only CODE change #7 needs is the EXCEPTION: the Devourer is MARKED in the shipped arz, and Will ruled he
+must not be. `MARKER_EXEMPT` now names him with his ruling. Roster **26 -> 25 targets + 1 exempt**.
+
+⚠️ **PRECISION, because the two states are easy to conflate.** `apply()` ENFORCES
+`DisplayAsQuestItem = 0` on the exempt set rather than merely omitting it from the write loop, and the two
+paths differ, both measured:
+* against the shipped/BASELINE arz (a finished product this module had already marked), `apply()` genuinely
+  **writes** the 0 - negtest plant 6 reports `before=1.0 after=0.0`;
+* on a FRESH build the record reaches this module at 0 already, so the green build honestly prints
+  `R-100 #7 EXEMPT 1 record(s) forced to DisplayAsQuestItem=0 (0 newly unmarked)`.
+
+The 1 -> 0 delta in the record diff is therefore against the BASELINE ARZ, which is the correct
+before/after for "what changes for the player". Enforcing rather than skipping is what lets the GATE assert
+the 0, so a later writer cannot put the marker back and have nothing notice.
 
 The exemption is a NAMED set because "hidden" is a placement property with no DB expression - but it cannot
 rot: `_exempt_closure()` asserts every entry exists AND is a member of the derived roster (a stale entry reds
