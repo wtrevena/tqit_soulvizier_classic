@@ -1568,3 +1568,389 @@ re-breaking the b92 mesh-green work (`BL-b98-DEBT-2`).
 **STATUS:** captured verbatim, decomposed, NOT implemented. Order of operations: deploy first (items 5 and 6
 evaporate), ask about item 4, then lane the rest by class - the two P0s (#2 Charon's Oar, #15 frozen thrown
 monsters) go first.
+
+---
+
+## R-101 [2026-07-29] P0 - our uber clones inherited their donors' QUEST-ITEM drops. Swept exhaustively: 3 records.
+
+**WILL, VERBATIM (second report of the same defect, which is what turned it into a class):**
+
+> "Same thing with the Key of the Warden of Souls, that is now a farmable item from the uber boss you made
+> that you cloned from the warden of souls, they now drop the key of the warden of souls which they should not"
+
+(The first, from the R-100 batch: *"when you cloned the monster to create the Soul of the Unferried, you
+literally clone another monster in the game who is a quest monster who drops Charon's Oar, and now this
+monster is also dropping Charon's Oar."*)
+
+**MECHANISM:** cloning a quest boss copies `perPartyMemberDropItemName`, the field the base game uses to hand
+out quest keys and journal items. Our clone keeps pointing at the donor's quest item, so a unique,
+quest-gating item becomes farmable from a repeatable uber encounter.
+
+**THE SWEEP - measured against the merged build `967b1f97137bf6479c18c08e9dd6ffc4` (51,124 records), not
+inferred. This is a CLOSED SET, not a sample:**
+
+Every `um_*` record in the database that carries `perPartyMemberDropItemName` is **3**, and **all 3 of them
+point at a quest-classified item.** There are no non-quest uses of the field on our ubers at all, which makes
+the invariant trivially clean to state and to gate.
+
+| # | our uber record | leaked quest item | how Will found it |
+|---|---|---|---|
+| 1 | `records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99.dbr` (`tagSVCMonsterCharonFerryman`) | `xsq12_charonsoar.dbr` - **Charon's Oar** | reported (R-100 #2) |
+| 2 | `records\xpack\creatures\monster\gigantes\um_polisgaoler_99.dbr` (`tagSVCMonsterPolisGaoler`) | `z_wardenofsoulskey.dbr` - **Key of the Warden of Souls** | reported (this ruling) |
+| 3 | `records\xpack\creatures\monster\gigantes\um_polisgaoler_unbound_99.dbr` (`tagSVCMonsterPolisGaolerUnbound`) | `z_wardenofsoulskey.dbr` - **Key of the Warden of Souls** | **NOT reported - found by the sweep.** He met one Gaoler; the "unbound" variant leaks the same key |
+
+Cross-check from the other direction (inbound references per quest item) agrees exactly:
+- `xsq12_charonsoar` has 5 inbound refs - 4 legitimate base-game Charon forms
+  (`boss_charonform2_39/41/43`, `testcharon01`) plus our `um_charonform2_ferryman_99`.
+- `z_wardenofsoulskey` has 3 - the legitimate `xsecrethero_wardenofsouls_48` plus BOTH of our Gaolers.
+- No other quest item anywhere in the database has an inbound reference from a `um_*` record.
+
+**THE FIX:** clear `perPartyMemberDropItemName` (and any matching chance field) on all three. Do NOT touch the
+donors - `boss_charonform2_*`, `testcharon01` and `xsecrethero_wardenofsouls_48` must stay byte-identical, or
+the actual quests break. That is the whole risk in this change and it must be proven, not asserted.
+
+**THE GATE (required, process law #4):** no `um_*` record may carry a `perPartyMemberDropItemName` that
+resolves to an item with `itemClassification == Quest`. State it as a general invariant over the roster, not
+as three named exceptions - the roster grows, and this defect class arrived precisely because a clone was
+assumed to be safe. Plant negatives: re-add each of the three and confirm the build reds; and add a
+non-quest per-party drop to confirm the gate does NOT fire on that (it must stay a quest-only ban, since the
+field itself is legitimate).
+
+**RELATED, same monster:** R-100 #17 (Soul Gaoler / Polis Gaoler chest count too high, and his EPIC chests
+dropping Normal-tier "essence of..." instead of "embodiment of...") is the SAME creature family as leaks 2
+and 3. One lane should own the Gaoler end to end.
+
+**WIDER LESSON, worth acting on beyond this fix:** we have cloned base-game quest bosses repeatedly to make
+ubers, and nobody enumerated what else a quest boss carries that a repeatable encounter must not inherit.
+`perPartyMemberDropItemName` is one field. The lane should also sweep our clones for other quest-coupled
+fields (quest triggers, one-shot flags, journal hooks, `questItem*`-style references) and report what it
+finds, even where it changes nothing.
+
+**STATUS:** measured and specified, NOT implemented. P0 - a quest-gating item is farmable in the shipped mod.
+
+---
+
+## R-102 [2026-07-29] REOPENED - the Enslaver's green glow is REAL. Will retracted his own explanation.
+
+**WILL, VERBATIM:**
+
+> "ok i was wrong, toxeus the murderer enslaver of souls are still having a green glow and it is not a skill
+> of mine"
+
+**HISTORY, and why this matters procedurally.** Four fix waves chased this green (b39/b55/b55r2/b92). Earlier
+on 2026-07-27 Will resolved it himself - he concluded his own character's skill was propagating onto the
+monster - and on that basis I STOPPED a fifth lane (`fix/green-diff`, still parked at `a0276ab`). That
+resolution is now withdrawn by the person who made it. **The lane must be restarted, and the four prior
+waves' "fixed" claims should be treated as unproven rather than as evidence the FX surface is clean.**
+
+**FRESH DIFFERENTIAL, measured against merged main `967b1f97137bf6479c18c08e9dd6ffc4`. The decisive move was
+comparing him to the Devourer, who wears THE SAME MESH and is NOT reported green.**
+
+Creature-level visuals on the Enslaver are now genuinely spare - the earlier waves did land:
+- `mesh` = `Creatures\Monster\Skeleton\RevenantPoison.msh`
+- `baseTexture` = `NewSkeleton_Charcoal.tex` (charcoal - not a green skin)
+- `charFxPakRunningNames` = the demons' own `drxshadowcloakrunning_fx_pak` (the black smoke Will asked for)
+- no other FX, tint, glow or particle field on the record at all
+
+**THE MESH HYPOTHESIS IS WEAKENED, NOT DEAD.** `RevenantPoison.msh` is a poison-themed asset and was the
+obvious suspect - but `um_bloodtoxeus_99` (the Devourer) wears the *same* mesh with a crimson texture and Will
+has not reported green on him. If the green were baked into the mesh, both should glow. Keep it on the list
+(he may simply not have scrutinised the Devourer), but rank it below the differential below.
+
+**PRIME SUSPECTS - skills the Enslaver has that the Devourer does NOT, filtered to those carrying FX:**
+
+| skill | FX it pulls in | why suspect |
+|---|---|---|
+| `records\skills\spirit\svc_enslaver_soulrip.dbr` | `targetFxPakName` = `Records\Effects\Spirit\343_NexusImpact_FXPak01.dbr` | **spirit school - the green school in this game.** Also the same "343" donor family b98 flagged elsewhere |
+| `records\skills\monster skills\attack_melee\netherstrike.dbr` | `warmupFxPakName` + `targetFxPakName` = `drx_nether_strike_source/target_fx_pak` | nether/spectral FX, DRX-authored, never audited by any of the four waves |
+| `records\skills\monster skills\buff_other\unholy_rally.dbr` | no visual field on the record itself | check what it applies to its TARGETS - a buff_other can paint the caster's allies, and one of them standing on him would read as his own glow |
+
+**RULED OUT this pass, with the values:** `svc_enslaver_shroud` (b98's) is clean -
+`charBuffFxType = None`, `skillWeaponTintRed/Green/Blue` all `0.0`. It is not the source.
+`drxshadowcloakrunning_fx` carries no colour channel fields at all.
+
+**ON BOTH champions, so it cannot explain a difference between them, but still worth checking as an
+ADDITIVE source:** `records\skills\spirit\lifedrain.dbr` - lifedrain is classically a green channelled beam
+in this engine. If the glow is intermittent rather than constant, this is the likeliest single cause and the
+Devourer would glow too.
+
+**METHOD NOTE FOR THE LANE - why four waves missed it.** Every prior wave enumerated FX fields on the
+CREATURE record. The creature record is now clean, and the green persists, so by elimination the source is
+one layer out: a SKILL's FX pak, a buff applied to something standing next to him, or the mesh asset itself.
+Do not re-audit the creature record and declare victory again. Ask Will one question the data cannot answer -
+**is the glow constant, or only when he attacks/casts?** - because constant points at mesh or a self-buff,
+and intermittent points at soulrip/netherstrike/lifedrain.
+
+### AMENDMENT, same day - WILL'S THREE CLARIFICATIONS MOVE THE TARGET OFF THE MONSTER ENTIRELY
+
+**WILL, VERBATIM, in order:**
+
+> "it is constant, he glows green the whole time"
+>
+> "immediately when i summon him he glows green its like a green smoke"
+>
+> "he has black smoke too but the green is more prominent"
+>
+> "it depends on the lighting"
+
+**"WHEN I SUMMON HIM" IS THE WHOLE BALL GAME.** He is describing the **summoned PET**, not the world monster.
+Those are different records. Four fix waves - and my own probe an hour ago - all audited
+`um_toxeus_enslaver_99`, the MONSTER. What Will actually looks at when he reports this is
+`records\skills\soulskills\pets\toxeus_enslaver_{1,2,3}.dbr`, summoned by the soul's granted skill. **That
+alone plausibly explains four "fixed" waves and a still-green summon: right symptom, wrong record.**
+
+**BUT THE PETS ARE ALSO CLEAN AT THE .DBR LEVEL** (measured on `967b1f97`, all three tiers identical):
+`baseTexture` = `NewSkeleton_Charcoal.tex`, `mesh` = `RevenantPoison.msh`,
+`charFxPakRunningNames` = the demons' `drxshadowcloakrunning_fx_pak`, `dissolveColor` R0/G0/B255. No green
+field anywhere. So the green is NOT expressed in any creature-or-pet `.dbr` field, on either surface.
+
+**"BLACK SMOKE TOO, GREEN MORE PROMINENT" MEANS TWO EMITTERS, AND WE ONLY ACCOUNT FOR ONE.** The black is
+`drxshadowcloakrunning_fx` - the demons' shroud, which is what he asked for and wants to keep. The green is a
+SECOND, unaccounted emitter. Any fix must kill the green WITHOUT killing the black.
+
+**"IT DEPENDS ON THE LIGHTING" IS A STRONG MECHANICAL TELL:** brightness varying with scene light is how an
+**additive-blend particle** behaves. That points away from a flat texture or a solid tint field and toward a
+particle asset.
+
+**RANKED SUSPECTS after these clarifications:**
+1. **The `.pfx` particle asset behind the shroud chain.** `drxshadowcloakrunning_fx.dbr` carries almost no
+   fields of its own (a probe over every colour/texture/particle-named field returned only `Anchored = 0`), so
+   the actual particle definition lives in the referenced **`.pfx` binary** (b98 resolved it to
+   `shadowcloakrunning.pfx` in `DRXeffects.arc`). **No `.dbr` edit can change a colour baked into a `.pfx`** -
+   which is exactly why four waves of field edits could sincerely "fix" this and change nothing on screen.
+2. **The summon skill's own FX** - `records\skills\soulskills\summon_toxeus_enslaver.dbr` and its pet-bar
+   chain. NOT YET PROBED, and it is the best fit for "immediately when i summon him". Do this first: it is
+   cheap and it is the newest untested surface.
+3. **`RevenantPoison.msh`** - still possible, but note the crimson pets (`bloodtoxeus_1`, `toxeus_eoat_1`)
+   wear the SAME mesh and Will has not reported them green. Rank last, and if it IS the mesh, ask Will
+   whether the crimson variants glow too before touching it.
+
+**THE PROCESS LESSON, which matters more than this bug.** For four waves nobody asked *"which record are you
+actually looking at?"* The green was reported on "the Enslaver"; there are at least five Enslaver-ish records
+(the monster, three pet tiers, and the marauder minions). One clarifying question - "summoned or in the
+world?" - would have redirected every one of those waves. Ask it before the next lane starts, not after.
+
+### SECOND AMENDMENT - WILL IS RIGHT: THE SHROUD WAS NEVER IMPLEMENTED ON THE THING HE SUMMONS
+
+**WILL, VERBATIM:**
+
+> "no the black is not the demon shroud i asked for, that is still not implemented. the black is something else"
+
+**HE IS CORRECT, AND MY LABEL WAS WRONG.** I told him the black smoke was the demons' shroud he asked for.
+It is not. Measured on `967b1f97`:
+
+| surface | skills | `svc_enslaver_shroud` present? | `charFxPakRunningNames` |
+|---|---|---|---|
+| `um_toxeus_enslaver_99` (MONSTER) | 19 | **YES** - slot 19 | `drxshadowcloakrunning_fx_pak` |
+| `soulskills\pets\toxeus_enslaver_1` (PET) | 13 | **NO** | `drxshadowcloakrunning_fx_pak` |
+| `soulskills\pets\toxeus_enslaver_3` (PET) | 13 | **NO** | `drxshadowcloakrunning_fx_pak` |
+
+So:
+1. **b98 wired the requested shroud to the MONSTER ONLY.** All three PET tiers never received it. Will
+   summons the pet, so from where he stands the request was simply not delivered - and he is right to say so.
+   `R-95` / the b98 report claim the Enslaver shroud is "DONE in data, colour AND shape". That claim is
+   **HALF TRUE and must be corrected**: done on one of the two surfaces the player actually sees.
+2. **The black smoke he currently sees is `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak`, which was
+   ALREADY on the pet records before any of our work.** It is pre-existing DRX pet FX, not ours. That is
+   exactly his "the black is something else".
+3. Even the monster's copy is **not deployed** - it is on `main`, not on his disk.
+
+**MY ERROR, recorded because it is the same failure mode twice in one day:** I repeated a lane's "DONE" claim
+without checking WHICH RECORD it landed on. The lane said "Enslaver shroud done"; there are two Enslaver
+surfaces; it did one. Combined with the R-100 finding that the Hunt's soul was also reported-missing purely
+because nothing was deployed, the rule is: **a "DONE" in a lane report is a claim about a branch, not about
+what Will can see. Check the surface AND the deploy before telling him anything is implemented.**
+
+**ADDED SCOPE for the shroud work (not a new ruling - the original request, finished properly):** wire the
+shroud to ALL THREE PET TIERS as well as the monster, and gate it roster-derived over
+`{monster} + {every pet tier}` so a future tier cannot be silently skipped. Then deploy, because none of it
+counts until it is on his disk.
+
+### THIRD AMENDMENT - WILL SENT A SCREENSHOT. WHAT IS VISIBLE, AND WHY IT INVERTS A b98 ASSUMPTION.
+
+Will: *"can you see the green on the summoned pet?"* - screenshot, Prison of Souls, his spear-and-shield
+character next to the summoned Enslaver pet. Also: *"even in bright areas you can see the green but on certain
+backgrounds it is extremely striking"*.
+
+**WHAT IS ACTUALLY VISIBLE (stated as observation, separated from inference):**
+- A distinct **volumetric green smoke cloud centred on the pet**, hugging the ground around its feet and lower
+  body, extending to the pet's LEFT - i.e. AWAY from the soul-cage set piece. It is emitted by the pet.
+- Its hue is **mossy / olive green**, clearly DIFFERENT from the Prison of Souls cage's bright **cyan-teal**
+  beam a few metres to the right. Two different greens in one frame. **That hue difference is the load-bearing
+  observation: it rules out "you are just seeing the cage's light reflected off him".**
+- The pet's bones also read green-tinted, but the cage throws green ambient light across that whole area, so
+  the SKIN tint is confounded and must not be used as evidence either way.
+- **No obvious black smoke in this frame**, consistent with his "the black is something else" and with the
+  shroud never having reached the pets.
+
+**NEW LEADING HYPOTHESIS, and it inverts what b98 assumed.** The pet record has **exactly ONE** particle
+emitter: `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak` -> `drxshadowcloakrunning_fx` ->
+(a `.pfx` binary, `shadowcloakrunning.pfx` in `DRXeffects.arc`). Will sees exactly ONE dominant smoke cloud,
+and it is green. The parsimonious conclusion is that **that one emitter IS the green smoke** - i.e.
+`shadowcloakrunning.pfx` is a green spectral cloak in DRX, not a black one.
+
+b98 assumed that pak was BLACK - it reasoned from Will's description of the demons' smoke and then wired the
+SAME pak onto the monster as `svc_enslaver_shroud`, calling it "the demons' black shroud, colour AND shape".
+If this hypothesis holds, **b98's shroud does not fix the green - it ADDS a second green emitter to the
+monster.** ⚠️ **DO NOT DEPLOY b98's shroud as-is until the `.pfx` colour is confirmed.** Verify before
+believing this; but verify it FIRST, because it is cheap and it gates a deploy.
+
+**THE ONE MEASUREMENT THAT SETTLES IT:** extract `shadowcloakrunning.pfx` from `DRXeffects.arc` and read its
+texture reference and colour keys. Mechanical byte work - Opus, not Fable (per the byte-reading budget rule).
+Then check what the marauder demons actually emit, because Will likes THEIR smoke; if they use this same pak
+and read black to him, the difference is elsewhere and this hypothesis dies.
+
+### FOURTH AMENDMENT - **SOLVED BY ELIMINATION. IT IS THE MESH.** `RevenantPoison.msh`.
+
+**WILL, VERBATIM - the observation that closed it:**
+
+> "yes the demons that he summons have the proper black shroud and they dont have any green"
+
+**MY OWN `.pfx`-IS-GREEN HYPOTHESIS IS DEAD, and his observation is what killed it.** The marauder demons
+carry the **identical** effect record and show **no green at all**, so that effect is genuinely black. Reported
+here rather than quietly dropped, because it was the leading theory one message ago and it lasted exactly as
+long as it took to check it against him.
+
+**THE FOUR-WAY COMPARISON, measured on `967b1f97` - one variable is left standing:**
+
+| record | mesh | baseTexture | `charFxPakRunningNames` | green in game? |
+|---|---|---|---|---|
+| `um_enslaver_marauder_99` (his demons) | **`ShadowStalker.msh`** | *(none)* | `drxshadowcloakrunning_fx_pak` | **NO - correct black shroud** ✅ |
+| `pets\toxeus_enslaver_1` (what he summons) | **`RevenantPoison.msh`** | `NewSkeleton_Charcoal.tex` | `drxshadowcloakrunning_fx_pak` | **GREEN** ❌ |
+| `um_toxeus_enslaver_99` (the monster) | **`RevenantPoison.msh`** | `NewSkeleton_Charcoal.tex` | `drxshadowcloakrunning_fx_pak` | green (his original report) ❌ |
+| `pets\bloodtoxeus_1` (Devourer pet) | `RevenantPoison.msh` | `newskeleton_crimson.tex` | *(none)* | never reported |
+
+**The FX pak is byte-identical between the clean demon and the green pet. The mesh is the only difference that
+tracks the symptom.** Therefore the green is baked into **`Creatures\Monster\Skeleton\RevenantPoison.msh`** -
+the *poison* variant of the revenant skeleton - as an emissive or a secondary material the `.dbr`'s
+`baseTexture` field does not override (`baseTexture` replaces the primary skin only).
+
+**THIS RETROSPECTIVELY EXPLAINS EVERY EARLIER FAILURE, and it is a lesson, not an excuse:**
+- **Constant** - a mesh renders every frame; no skill or buff timing involved. Matches "he glows green the
+  whole time".
+- **Visible even in bright areas, striking on certain backgrounds** - an emissive shell, exactly his words.
+- **Four fix waves changed nothing** because all four edited FX FIELDS, and the green was never in a field.
+  We were editing the correct-looking layer of the wrong subsystem, and each wave could sincerely verify its
+  own change and still not move a pixel.
+
+**THE FIX, and it pays a second debt:** put the Enslaver - **the monster AND all three pet tiers** - on a mesh
+that is not the poison revenant. **`ShadowStalker.msh` is the evidenced choice**: it is proven green-free in
+this exact scene, and it is literally what his own demons wear, so it is in-family rather than arbitrary. This
+simultaneously satisfies **R-93**, which wants the Enslaver and the Devourer to stop sharing
+`RevenantPoison.msh`.
+
+⚠️ **THE REAL RISK IS ANIMATION, NOT COLOUR.** A mesh swap re-rigs everything: the Enslaver's inline animation
+rows and every skill that names a specific anim must still resolve, or he T-poses or goes uncastable. b98 hit
+exactly this class of bug with the spear rig. The lane must prove every referenced `.anm` resolves on the new
+mesh BEFORE claiming the fix, and must check the marauder's own rig as the reference implementation.
+
+**LIFT THE DEPLOY BLOCK:** b98's `svc_enslaver_shroud` is **exonerated** as a green source (its pak is the
+black one the demons wear). It is still only wired to the MONSTER and still needs extending to the three pet
+tiers, but it is safe to deploy.
+
+**ONE CHEAP CONFIRMATION, worth doing before the swap:** ask Will to summon the **Devourer** pet. Same mesh,
+crimson texture, and no FX pak at all. If it also glows green, the mesh conclusion is confirmed independently
+and the swap must cover him too. If it does NOT, the mechanism is a mesh-plus-charcoal-texture interaction and
+the fix may be a texture change instead of a mesh swap - a smaller and safer change.
+
+### FIFTH AMENDMENT - CORROBORATED. THE FIX IS A MESH SWAP, NOT A TEXTURE CHANGE.
+
+**WILL, VERBATIM:**
+
+> "i cant summon the devourer since i havent been able to kill him to get his soul but from what i remember
+> he had the green glow too"
+
+**THIS IS THE DISCRIMINATING ANSWER, and it settles the open branch.** The two candidates left were
+(a) the mesh alone, or (b) a `RevenantPoison.msh` + `NewSkeleton_Charcoal.tex` interaction. The Devourer wears
+the **same mesh with a DIFFERENT texture** (`newskeleton_crimson.tex`) and Will remembers him green as well.
+
+| record | mesh | baseTexture | green? |
+|---|---|---|---|
+| Enslaver (monster + 3 pet tiers) | `RevenantPoison.msh` | `NewSkeleton_Charcoal.tex` | **green** (confirmed, screenshot) |
+| Devourer | `RevenantPoison.msh` | `newskeleton_crimson.tex` | **green** (Will, from memory) |
+| Marauder demons | `ShadowStalker.msh` | *(none)* | **clean** (confirmed in game) |
+
+Green survives a texture change and dies with a mesh change. **So the texture is exonerated and a texture-only
+fix would NOT have worked. The mesh swap is required, and it must cover the Devourer too, not just the
+Enslaver.**
+
+**CONFIDENCE, stated honestly:** the Enslaver half is confirmed by a screenshot; the Devourer half is Will's
+recollection, not a fresh observation, because he has not been able to kill the Devourer and so cannot summon
+him. It is corroborating rather than conclusive - but it is consistent, it comes from the same person who
+correctly retracted his own earlier explanation of this bug, and it points the same way as the marauder
+comparison. **Treat the mesh as the cause; re-confirm the Devourer opportunistically rather than blocking the
+fix on it.**
+
+**SCOPE UPDATE for the fix:** `ShadowStalker.msh` on the Enslaver monster + all three Enslaver pet tiers +
+`um_bloodtoxeus_99` + the Devourer's pet tiers. Since R-93 wants these two champions to STOP sharing a mesh,
+the lane should pick a distinct clean mesh per champion rather than moving both onto the marauders' one -
+otherwise the green is fixed and R-93 is broken in the same commit. Both must be proven green-free before
+either ships.
+
+### ⚠️ A DESIGN FLAG WILL SHOULD HEAR ONCE, ARISING FROM THE SAME MESSAGE
+
+**He has not been able to kill the Devourer at all.** Meanwhile R-100 asks to give that same boss THREE power
+additions: **Bloodbath** (#1), **Blood Frenzy** on low health (#12) and **summonable minions** (#13). Blood
+Frenzy specifically triggers when he is nearly dead - i.e. precisely at the moment Will currently loses the
+fight. Those three stack onto a boss that is already beating him.
+
+This is **not** a refusal and nothing here is being scaled down on my own authority: R-100 stands as written and
+will be implemented as specified. It is worth one sentence to him so the decision is informed - he may well
+want exactly that (he is the one who put the Devourer on a hidden chest as a hard secret), and if so the answer
+is "yes, harder is the point". But he should choose it knowing the three changes compound on an encounter he
+has not yet won. `BL-b98-DEBT-2` is the related debt. R-93
+remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
+that mesh regardless of the green.
+
+---
+
+## R-103 [2026-07-29] Toxeus champions: KEEP all three power additions. The lever is REFLECT, and it is found.
+
+**WILL, VERBATIM:**
+
+> "yes harder is the point, keep all three. if we need to make him more killable we will reduce his reflect
+> damage or his health or something. currently the reflect damage is what makes these variants nearly
+> unkillable since i one shot myself when i hit them"
+>
+> "the answer is not cutting skills but cutting elsewhere"
+
+**RULING: R-100 #1 (Bloodbath), #12 (Blood Frenzy) and #13 (summonable minions) all STAND, in full.** Do not
+water any of them down, do not "balance" them by trimming their numbers, and do not propose cutting a skill as
+a difficulty fix. Harder is the intent. The difficulty lever is elsewhere, and he named it.
+
+**THE SOURCE IS FOUND - ONE RECORD, ONE FIELD PAIR, SHARED BY ALL THREE VARIANTS.** Measured on `967b1f97`:
+
+`records\skills\monster skills\passive_buffs\toxeus_passiveproperties.dbr`
+- **`defensiveReflect` = 100.0**
+- **`defensiveReflectChance` = 33.0**
+
+Carried by all three champions and nothing else on them reflects: the Enslaver (skill slot 11), the Devourer
+(slot 11) and the Endless Hunt (slot 8). None of the three creature records carries a reflect field of its own.
+Leinth carries **no** reflect at all, which is why she does not produce this symptom.
+
+**WHAT THOSE TWO NUMBERS ACTUALLY MEAN, and why Will's experience is the correct read:** one hit in three
+returns **100% of the damage dealt** to the attacker. So the reflected damage **scales with the PLAYER's own
+damage**, without limit. The better geared Will gets, the more certainly he kills himself - and any build that
+can burst a boss down can one-shot itself doing it. That is not a hard fight, it is a stat that inverts
+progression: investing in damage strictly increases the chance you die to your own hit. His "nearly
+unkillable" is exactly what 100/33 produces.
+
+**RECOMMENDATION (his call - this is a balance number): cut the MAGNITUDE, not the frequency.**
+- Lowering `defensiveReflect` from 100 to roughly 25-35 keeps the "do not just facetank-spam him" signal, keeps
+  a reflected hit genuinely painful, and stops it being lethal-by-construction to strong characters.
+- Lowering `defensiveReflectChance` instead (e.g. 33 -> 5) leaves it a coin-flip instadeath that is simply
+  rarer. That is worse design: the same feel-bad, just less often and less learnable.
+- Health is the honest alternative lever he also offered, and it is strictly safer than reflect because it
+  scales with the fight rather than with the player's build. Reflect first, health only if still needed.
+
+**REQUIRED CHECK BEFORE EDITING - the orb04 lesson applies exactly.** `toxeus_passiveproperties` is a SHARED
+record. Enumerate every creature that carries it BEFORE changing it in place; if anything outside the Toxeus
+champions uses it, mint a champion-specific passive instead of editing the shared one, exactly as
+`genericbossorb_05` was minted rather than editing `genericbossorb_04` and silently buffing 19 bosses.
+
+**GATE:** assert the reflect pair stays within the ruled band on every Toxeus champion, and that no champion
+regains a per-record reflect field that bypasses the shared passive. Plant a negative at 100.0 and confirm the
+build reds.
+
+**STATUS:** measured and specified, NOT implemented. Awaiting Will's number for `defensiveReflect` (my
+recommendation is 30). Everything else in R-100 for these champions proceeds unchanged.
