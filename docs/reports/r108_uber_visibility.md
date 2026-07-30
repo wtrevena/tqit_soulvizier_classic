@@ -82,6 +82,35 @@ Nothing here is "triaged"; each line is either a Will decision or an unproven cl
 
 ---
 
+## 2b. One defect this lane produced and the build caught - worth generalising
+
+The first full gated build **failed loud, exit 1**, on this lane's own code:
+
+```
+--- [15/47] death_xp_penalty  (Death XP penalty -90% (R-80)) ---
+    death_xp_penalty: applied -> divisor 9->90, cap 500000->50000 ...
+patches-registry: REGISTRY entry 'tombstone_xp_recovery' failed to import
+(tools/patches/tombstone_xp_recovery.py): ModuleNotFoundError("No module named 'death_xp_penalty'")
+```
+
+`tombstone_xp_recovery` imports its sibling `death_xp_penalty` to reuse the R-80 penalty model.
+`death_xp_penalty` lives in `patches/`, not `tools/`, and the registry loads modules as
+`patches.<name>` (`importlib.import_module('%s.%s' % (__name__, name))`). So a **bare**
+`import death_xp_penalty` resolves in CLI mode - where `patches/` is the script directory, which is
+why `--negtest` and `--table` both passed 7/7 first time - and then dies inside the real build.
+
+Two things worth keeping:
+1. **A patch module importing a SIBLING patch module must import it package-relatively.** Only
+   `tools/` is on `sys.path`; `tools/patches/` is not. The one existing cross-patch import in the
+   tree (`_probe_legion_soul_stages.py`) uses `from patches import ...`, consistent with this.
+   `general_guardians` is unaffected - it imports `apply_svc_patches`, which IS in `tools/`.
+2. **The fail-loud registry did its job**, and that is the reason this is a footnote rather than a
+   shipped no-op: `_load_module` raises `SystemExit` on any import failure, so a module that
+   silently did nothing could not reach an artifact. A module CLI passing is not evidence the module
+   runs in the build.
+
+---
+
 ## 3. Files
 
 | file | what |
