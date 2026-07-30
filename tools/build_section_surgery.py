@@ -1356,6 +1356,13 @@ SVC_EPHIALTES_CHEST_DBR = b'records\\drxmap\\proxy\\svc_ephialtes_chest.dbr'
 SVC_TANTALUS_CHEST_DBR = b'records\\drxmap\\proxy\\svc_tantalus_chest.dbr'
 SVC_CHARON_CHEST_DBR = b'records\\drxmap\\proxy\\svc_charon_chest.dbr'
 SVC_DORUS_CHEST_DBR = b'records\\drxmap\\proxy\\svc_dorus_chest.dbr'
+# R-131 (Will, R-100 #14 + #16): the two ubers that guarded NOTHING. Both records are
+# authored DB-side by the same _svc_build_world_chest_proxy the four above use
+# (mnemophage in apply_svc_patches _create_mnemophage_superboss; diadochi in
+# tools/patches/diadochi.py), so these are not dangling MAP-REFs - and the build's own
+# _svc_verify_world_chests reds if either record stops being built.
+SVC_MNEMOPHAGE_CHEST_DBR = b'records\\drxmap\\proxy\\svc_mnemophage_chest.dbr'
+SVC_DIADOCHI_CHEST_DBR = b'records\\drxmap\\proxy\\svc_diadochi_chest.dbr'
 
 
 # ── R-100 #9/#10: ONE chest per fixed uber, not three ──────────────────────────────
@@ -1403,6 +1410,22 @@ UBER_CHEST_SPECS = {
     TANTALUS_HOST_KEY:    _chest_ring(SVC_TANTALUS_CHEST_DBR, 30.0, 1.0, 40.0),
     GOLDENBOUGH_HOST_KEY: _chest_ring(SVC_CHARON_CHEST_DBR, 187.9, -7.0, 46.9),
     DORUS_HOST_KEY:       _chest_ring(SVC_DORUS_CHEST_DBR, 83.0, 1.0, 51.0),   # b47 RELOCATE: Kroisos at Tomb03 LOCAL (83,1,51); chests ride the moved boss
+    # ── R-131 / R-100 #14 + #16: the two ubers who guarded NOTHING now guard a hoard ──
+    # Same ring, same UBER_CHEST_COUNT, same surveyed "A" (+x) offset as the four above,
+    # centred on each boss's own shipped spawn point - so the chest inherits the boss
+    # spot's own placement proof and no new geometry is invented.
+    #   MNEMOPHAGE (R-100 #14): boss at Mnemosyne01 local (43,3,71) -> chest (45.6,3,71).
+    #   HELEPOLIS  (R-100 #16): boss at the R-100 #16 OFF-PATH spot (70,8.8,80) -> chest
+    #     (72.6,8.8,80). It rides the relocated boss, so the chest is off the walking
+    #     path by construction too - putting it on the old on-path spot would have
+    #     re-created exactly the defect #16 exists to fix.
+    # SURVEYED on the built map fc0adcc0713839a685b32d6e122653be, both new spots, at the
+    # chest proxy's own placementExtents (1.0) AND at DOUBLE it (2.0) for margin:
+    #   (45.6,71.0) mnemosyne01  ext 1.0 + 2.0: N/E/L d=0.14 clr=100/100/100 comp#1/180,700
+    #   (72.6,80.0) elysian_03   ext 1.0 + 2.0: N/E/L d=0.14 clr=100/100/100 comp#1/242,100
+    # Reproduce: py tools/debug/survey_uberboss_spots.py <map> --level <lvl> --pt X Z EXT
+    MNEMOPHAGE_HOST_KEY:  _chest_ring(SVC_MNEMOPHAGE_CHEST_DBR, 43.0, 3.0, 71.0),
+    B41_HELEPOLIS_KEY:    _chest_ring(SVC_DIADOCHI_CHEST_DBR, 70.0, 8.8, 80.0),
 }
 
 

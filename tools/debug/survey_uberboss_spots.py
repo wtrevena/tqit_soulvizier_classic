@@ -349,7 +349,12 @@ BOSS_SPOTS = [
     ('area04_styx/styx_riveredge_01.lvl',
      [('M6 GoldenBough FORECOURT-spec (shipped)', 187.9, 46.9, 3.5), ('M6 SUMMIT-spec (tight, 82% Leg)', 217.7, 12.5, 3.5)]),
     ('area05_judgment/undergrounds/judgment_templeug_mnemosyne01.lvl',
-     [('M7 Mnemophage SPEC-PRIMARY (shipped)', 43.0, 71.0, 3.5), ('M7 Mnemophage ALT-B', 41.0, 61.0, 3.5)]),
+     [('M7 Mnemophage SPEC-PRIMARY (shipped)', 43.0, 71.0, 3.5), ('M7 Mnemophage ALT-B', 41.0, 61.0, 3.5),
+      # R-100 #14 / R-131: his new world chest, surveyed at the chest proxy's own
+      # placementExtents (1.0) and at double it (2.0). Kept in the standing --bosses
+      # sweep so a later relocation of the boss cannot silently strand the chest.
+      ('M7 Mnemophage CHEST A (R-100 #14)', 45.6, 71.0, 1.0),
+      ('M7 Mnemophage CHEST A margin x2', 45.6, 71.0, 2.0)]),
     ('area05_judgment/undergrounds/judgment_stonecity_exit01.lvl',
      [('M8 Ephialtes SPEC-PRIMARY (shipped)', 15.9, 34.7, 3.5), ('M8 R3-nudge (reverted)', 22.0, 45.0, 3.5)]),
     # R-100 #16: the Helepolis moved off the main walking path (0.0u -> 18.9u from a shortest
@@ -357,6 +362,10 @@ BOSS_SPOTS = [
     ('area06_elysian/elysian_fields_03.lvl',
      [('HELEPOLIS off-path (shipped, R-100 #16)', 70.0, 80.0, 4.0),
       ('HELEPOLIS off-path escort ring', 70.0, 80.0, 6.0),
+      # R-100 #16 / R-131: the chest he never had. It RIDES the relocated boss, so it
+      # is off the walking path by construction; surveyed at ext 1.0 and 2.0.
+      ('HELEPOLIS CHEST A (R-100 #16)', 72.6, 80.0, 1.0),
+      ('HELEPOLIS CHEST A margin x2', 72.6, 80.0, 2.0),
       ('HELEPOLIS b41 spot (0.0u from a shortest route - Will: "right in the walking path", RETIRED)',
        20.7, 81.7, 4.0)]),
 ]
