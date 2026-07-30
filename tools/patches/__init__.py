@@ -126,6 +126,25 @@ REGISTRY = [
                             # machae) our own overlay disarmed, back into their EXISTING pools
                             # in place (no clone, no new pool); disjoint namespace (monster
                             # records only, none touched by any other module) - order-independent.
+    'thrown_anim_rig',      # R-100 #15 P0 (Will: the restored throwers "spawn and they cant move
+                            # or attack or anything they are broken"). thrown_restore fixed the
+                            # EQUIPMENT; the freeze is the ANIMATION side. SV 0.98i replaces the 4
+                            # animation tables those families use with pre-thrown-weapon versions
+                            # binding ZERO rangedOneHand/dualRanged clips, so an armed wielder
+                            # enters a stance with no run/walk/attack anim. This module CLONES each
+                            # table (166/66/61/27 NON-TARGET carriers -> SHARED-RECORD LAW forbids
+                            # editing in place) into records\creature\monster\svc\thrown_anm\*,
+                            # restores the base TQAE stance clips verbatim on the clone, and
+                            # repoints charAnimationTableName on the 10 roster records - which it
+                            # IMPORTS from thrown_restore.ROSTER so the two can never drift.
+                            # MUST run immediately after thrown_restore: it is the other half of
+                            # the same restore, and its DB-wide gate ("no monster equips a thrown
+                            # weapon on a table that leaves that stance unbound") can only be true
+                            # once the equipment half has run. The S4b collision WARN naming
+                            # EXACTLY this pair on the 10 monster records is EXPECTED and benign -
+                            # their field sets are disjoint (equip/loot/characterLife vs
+                            # charAnimationTableName) and neither reads the other's fields. A WARN
+                            # naming any THIRD module on those records is a real finding.
     'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
@@ -464,6 +483,24 @@ REGISTRY = [
                             # shipped tooltip describes, plus a sweep for NEW uncontracted
                             # dualWieldOnly player skills); the TEXT half is
                             # tools/validate_weapon_gate_text.py, run by build_text_arc.
+    'uber_quest_drops',     # R-101 P0 (Will 2026-07-29, reported TWICE - Charon's Oar, then the
+                            # Key of the Warden of Souls): cloning a quest boss to make an uber
+                            # copies perPartyMemberDropItemName, so a quest-GATING item became
+                            # farmable off a repeatable encounter. Clears the field on the 3
+                            # MEASURED clones (um_charonform2_ferryman_99, um_polisgaoler_99,
+                            # um_polisgaoler_unbound_99 - the third found by the sweep, not by
+                            # play) and NOTHING else: it never writes a donor, an item, or a pool.
+                            # Registered LAST among content modules (after polis_vault and every
+                            # other boss-creating module, and after the whole monolith) so its
+                            # DB-wide gate - "no um_* record may carry a per-party drop resolving
+                            # to itemClassification==Quest" - reads the FINAL assembled roster.
+                            # S4b COLLISION IS EXPECTED on all 3 and is benign - MEASURED from the
+                            # build, not predicted: um_charonform2_ferryman_99 <- uber_quest_markers,
+                            # and both Gaolers <- polis_vault. The field sets are disjoint (minimap
+                            # marker / boss kit vs perPartyMemberDropItemName) and this module runs
+                            # LAST, so it is the ratified final writer on its own field. A WARN
+                            # naming a module that also writes perPartyMemberDropItemName on any of
+                            # those 3 is a real finding: investigate before shipping.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

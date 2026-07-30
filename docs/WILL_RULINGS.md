@@ -2383,3 +2383,287 @@ the build, and recovery below it must red the build.
 **STATUS:** ruled, in flight. Owned by the `feat/uber-visibility` lane of the R-108 implementation wave
 (task `wx0ky10vv`), which was briefed with the earlier 10% framing; this entry is the authority and the vet
 must hold the implementer to the equality, not to 10%.
+
+---
+
+## R-140 [2026-07-30] IMPLEMENTED - R-100 #15 ROOT CAUSE: the thrown-wielders are frozen because SV strips the thrown ANIMATION STANCE, not because of anything to do with their weapons
+
+> **NUMBER CHOICE.** The R-100 decade and everything up to **R-124** is claimed somewhere across the 120
+> branch heads, and **R-130** is claimed (uncommitted) by the `map-placement` worktree. `R-140..R-149` was
+> proven free before use, against `main`, all 120 heads' WHOLE TREES, and every worktree WORKING DIR
+> (uncommitted included):
+> * `git grep -l -E "R-14[0-9]" $(git for-each-ref --format='%(refname:short)' refs/heads)` -> **empty**
+> * `for d in $(git worktree list --porcelain | grep '^worktree ' | sed 's/^worktree //'); do grep -rl -E "R-14[0-9]" "$d/docs" "$d/tools"; done` -> **empty**
+>
+> This ruling AMENDS R-100 #15 with its root cause and implementation. It does not renumber, move or alter
+> R-100.
+
+**WILL, VERBATIM (R-100 #15, recorded 2026-07-29, the item R-100 itself calls "the most serious item in the
+batch"):**
+
+> "also all of the guys that we brought back into the game which utilize thrown objects are all frozen in the
+> game, they spawn and they cant move or attack or anything they are broken"
+
+**FIRST, A CORRECTION TO THE BRIEF FOR THIS LANE.** The owner named for this defect was
+`tools/patches/thrown_wielders.py`. That file is **SUPERSEDED and UNREGISTERED** - its own header says so, and
+`grep -n thrown tools/patches/__init__.py` confirms it is not in `REGISTRY`. It cannot be the cause of anything
+in Will's game. The **LIVE** module is `tools/patches/thrown_restore.py` (b64), registered at `[16/47]`, which
+restores the base equip/loot fields on 10 records in place. Everything below is about that module's roster.
+
+**ROOT CAUSE (measured against base TQAE `database.arz`, SV 0.98i `database.arz`, and the SHIPPED build
+`md5 6a3a491db546b603c52132237c40aa63`, 51,124 records - not inferred):**
+
+A TQ creature plays one animation block per WEAPON CLASS. Equipping a `WeaponHunting_RangedOneHand` (a thrown
+weapon) puts the creature in the `rangedOneHand` stance, or `dualRanged` when BOTH hands are thrown. The `.anm`
+clips for a stance come from the creature's ANIMATION TABLE (`charAnimationTableName`).
+
+`py tools/debug/probe_anim_tables.py <base.arz> <sv098i.arz>` and
+`py tools/debug/probe_anim_tables.py local/baseline_main.arz`:
+
+| animation table | stance | base TQAE | SV 0.98i **and our shipped build** |
+|---|---|---|---|
+| `ANM_Maenad.dbr` | `rangedOneHand` | **9 clips** | **0 clips** |
+| `ANM_Tiger.dbr` | `rangedOneHand` | **10 clips** | **0 clips** |
+| `ANM_Machae.dbr` | `rangedOneHand` | **11 clips** | **0 clips** |
+| `ANM_DuneRaider.dbr` | `dualRanged` | **9 clips** | **0 clips** |
+
+SV 0.98i's roster predates thrown weapons, and a record overlay is WHOLESALE - so SV's copies of those four
+tables replace the base ones and bind **no run anim, no walk anim, no attack anim** for the thrown stance.
+`thrown_restore` then hands the creature a javelin. It enters that stance and becomes a statue. That is
+precisely, and only, what Will reported.
+
+**WHY EVERY PRIOR "PROVEN ON 3 FAMILIES AND RE-VERIFIED" CLAIM WAS WORTHLESS.** They tested the wrong thing.
+The 92 numeric `rangedOneHand*AnimSpeed` / `*AnimWeight` fields DO survive SV's overlay (template defaults), so
+`thrown_wielders.verify`'s check - `rangedOneHandAttackAnimWeight1 is not None` - is TRUE on a table that binds
+no clip at all. A weight with nothing to weight is not a rig. The mesh RIG_WHITELIST was also true and also
+irrelevant: the mesh has the clips; nothing was pointing at them.
+
+**MEASURED SCOPE, stated as an invariant and not as N names.** `py tools/debug/probe_frozen_throwers.py
+local/baseline_main.arz` on the shipped build: **10 thrown wielders in the entire database, and all 10 FROZEN** -
+maenad `ar_archer_06`/`br_archer_10`, tigerman `ar_archer_27`/`_33`, machae `ar`/`br`/`cr_archer_37`, duneraider
+`am_assassin_15`/`_21`/`_27`. "All of the guys" was exactly right.
+
+**WHERE THE FIX BELONGS - decided from shipping data, not from belief.**
+`py tools/debug/probe_anim_authority.py <base.arz>` over all **5,561** base-game `Class=Monster` records:
+* 2,596 records bind a Run/Walk/Attack slot on the RECORD that their table does not -> the record IS read.
+* 8,884 bind one on the TABLE that their record does not -> the table IS read (per-field fallback).
+* **For `rangedOneHand` and `dualRanged` specifically: ZERO records bind them at record level; 1,085 + 259 get
+  them from the TABLE only.** Not one shipping thrower in the game carries its thrown anims on its own record.
+
+So the table is the load-bearing surface and the only shape with shipping precedent. Writing the clips onto the
+creature records instead would have been an invented shape - and if the engine reads this stance from the table
+alone, it would have shipped a third statue.
+
+**SHARED-RECORD LAW APPLIES, HARD.** Carrier census on the shipped build
+(`probe_thrown_stance_gap.py ... --carriers`): `ANM_Maenad` **168 carriers, 166 NON-TARGET** (every maenad in
+the game, including `um_lyialeafsong_18` - one of Will's own pets); `ANM_Tiger` 68/66; `ANM_Machae` 64/61;
+`ANM_DuneRaider` 30/27. So the four tables are **cloned**, never edited: `tools/patches/thrown_anim_rig.py`
+clones each into `records\creature\monster\svc\thrown_anm\*`, restores the base stance clips VERBATIM on the
+clone (39 clips over 4 families, every value captured from base TQAE), and repoints `charAnimationTableName` on
+exactly the 10 roster records - which it IMPORTS from `thrown_restore.ROSTER` so the two can never drift.
+
+**THE GATE (process law #4), stated over the roster:** *no `Class=Monster` record may equip a thrown weapon
+while naming an animation table that leaves that weapon's stance without `RunAnim` + `WalkAnim` +
+`AttackAnim1`.* One implementation (`scan_frozen_throwers`) serves the gate, the negatives and the probe.
+Planted negatives, all firing: lose the run clip / lose the walk clip / lose the attack clip / repoint a roster
+record back at SV's stripped table (the exact shipped bug) / bind a `.msh` where an `.anm` belongs / edit a
+shared original in place / arm ANY non-roster monster with a thrown weapon on a stripped table. Two
+must-stay-GREEN controls: a non-thrown equip change on a sibling monster, and a non-critical clip slot.
+
+**ASSETS PROVEN, not assumed:** all **31/31** distinct `.anm` clips this restores resolve in the shipped arcs,
+0 missing (`py tools/debug/probe_anm_asset_resolve.py <game> work/SoulvizierClassic/Resources`, exact inner
+archive paths printed so an archive-name-stripping artifact cannot masquerade as a resolution).
+
+**STATUS: IMPLEMENTED** on `fix/quest-item-leaks`. **10 frozen -> 0.** No family had to be disabled: all four
+rigs are restorable, because the clips were never missing - only the pointers were.
+
+**NOT PROVEN AND CANNOT BE PROVEN HERE (Will's, launch-gated):** that the restored wielders *visibly throw* and
+move in-game. Every claim above is a database/asset proof. The mod is not deployed by this lane, and only a
+play test can confirm the animation reads correctly. The 3 duneraider variants are also **dual**-throwers whose
+stance is `dualRanged`; `am_assassin_15` additionally has ZERO ProxyPool membership anywhere in vanilla (a b64
+finding, unchanged here), so it cannot be the one he sees - the Egypt sighting must be `_21` or `_27`.
+
+---
+
+## R-141 [2026-07-30] IMPLEMENTED - R-101 quest-item leaks closed; plus ONE measured correction and ONE genuinely open Will decision
+
+**WILL, VERBATIM (both reports, which is what made this a class rather than a bug):**
+
+> "when you cloned the monster to create the Soul of the Unferried, you literally clone another monster in the
+> game who is a quest monster who drops Charon's Oar, and now this monster is also dropping Charon's Oar."
+
+> "Same thing with the Key of the Warden of Souls, that is now a farmable item from the uber boss you made that
+> you cloned from the warden of souls, they now drop the key of the warden of souls which they should not"
+
+**R-101's SWEEP REPRODUCES EXACTLY** on this lane's own baseline
+(`py tools/debug/probe_quest_coupled_fields.py local/baseline_main.arz`, build md5
+`6a3a491db546b603c52132237c40aa63`): 62 `itemClassification==Quest` records; **611** `um_*` records; exactly
+**3** carry `perPartyMemberDropItemName` and **all 3 point at a Quest item**. Inbound census agrees:
+`xsq12_charonsoar` <- 4 legitimate Charon forms + our uber; `z_wardenofsoulskey` <- `xsecrethero_wardenofsouls_48`
++ BOTH our Gaolers. Nothing about R-101 needed re-deriving; it needed building.
+
+**MEASURED CORRECTION TO R-101.** R-101 instructs "clear `perPartyMemberDropItemName` (and any matching chance
+field)". **There is no matching chance field.** `perPartyMemberDropChance` is ABSENT (dtype `None`) on all three
+records. Nothing to clear. The gate therefore PINS it absent-or-zero instead, so a future percentage-gated
+re-add cannot slip past a check that only looked at the name field.
+
+**THE DONORS - the whole risk - are proven untouched three independent ways:** `apply()` records exactly which
+records it wrote and `verify()` asserts no donor is in that set; `verify()` asserts every donor STILL hands out
+its exact quest item (so the real quests provably still work); and the wave's arz record-diff shows the 5 donor
+records unchanged.
+
+**GATE:** *no `um_*` record may carry a `perPartyMemberDropItemName` resolving to `itemClassification == Quest`* -
+a roster invariant, DB-wide. `apply()` deliberately fixes the three MEASURED records BY NAME rather than
+clearing whatever it finds: a 4th inherited leak must turn the build RED for a human, not be silently laundered.
+Negatives both ways, as R-101 demanded: re-adding each of the three reds; the same class planted on a DIFFERENT
+uber reds; a donor stripped of its quest drop reds; and **a NON-quest per-party drop on an uber stays GREEN**
+(the field itself is legitimate - the gate reported "1 carrier, 0 pointing at a Quest item").
+
+**THE WIDER SWEEP R-101 ASKED FOR ("report what it finds, even where it changes nothing"), over all 611 ubers:**
+* `DisplayAsQuestItem = 1` on **24** ubers. **NOT a leak** - on a creature record this is the minimap
+  exclamation-marker rig (`uber_quest_markers`), which is exactly what Will ASKED for in R-100 #7. Left alone.
+* `quest = 1` on **exactly 2** records - `um_polisgaoler_99` and `um_polisgaoler_unbound_99` - inherited from
+  the quest boss `xsecrethero_wardenofsouls_48`. **No other uber in the database carries it.** This is a real
+  second inheritance from the same clone, and it is the one thing the sweep found that R-101 did not name.
+* No `questItem*`-style reference, journal hook or one-shot flag was found on any uber.
+
+### R-141a - OPEN WILL DECISION (not taken by this lane): the Gaolers' inherited `quest = 1` flag
+
+Both Gaolers are flagged to the engine as QUEST monsters because they were cloned from one. That flag changes
+how the engine treats a live encounter (spawn/limit/respawn/tracking behaviour), and the Gaoler encounter is
+Will's own content, so **clearing it is a design change, not a mechanical fix** - exactly the line R-101 itself
+draws around the donors. Nothing was changed. The current value is PINNED by the gate so it cannot drift
+silently while the question is open, and it is registered as `BL-R101-QUESTFLAG-1`.
+
+**THE QUESTION FOR WILL:** the Soul Gaoler and his unbound form are repeatable uber encounters that the engine
+still believes are one-off quest monsters. Do you want that flag cleared? **RECOMMENDATION: yes, clear it** -
+a repeatable farm target should not be wearing a quest monster's engine flag, and it is the same reasoning that
+made the quest-item drop wrong. But it is deliberately NOT done on my own authority, because it touches how a
+live encounter of yours spawns, and R-100 #17 already has you re-scoping this same creature's chests and loot
+tiers. One lane should own the Gaoler end to end and take this with it.
+
+**STATUS: IMPLEMENTED** (the 3 leaks) on `fix/quest-item-leaks`. **3 leaks -> 0**, 0 donors written.
+**NOT DONE / OPEN:** R-141a above, and the in-game confirmation that the Oar and the Key no longer drop - which
+only Will can give, since this lane does not deploy.
+
+---
+
+## R-140 AMENDMENT [2026-07-30] Three measured corrections to R-140, from an INDEPENDENT re-derivation. The fix is unchanged and is now BETTER evidenced than R-140 claimed.
+
+> **This amends R-140 in place. It does not renumber, move or alter R-140 or R-141, and takes no new
+> number** - it corrects facts inside an existing ruling, which is what the ledger law requires when a
+> ruling's evidence turns out to be wrong. The FIX that shipped is unchanged: nothing below alters a
+> record, a clip or the roster. Two of the three corrections make the shipped fix *more* defensible
+> than R-140 argued; the third widens a number R-140 understated.
+>
+> Method: none of R-140's own probes were used. Every fact below was re-derived with independent code
+> against base TQAE `database.arz` (74,013 records), SV 0.98i `database.arz`, this lane's baseline
+> (`local/baseline_main.arz`, md5 `6a3a491db546b603c52132237c40aa63`) and the wave build
+> (md5 `78e5957f9a09e3bfed44599ac6a36854`). R-140's ROOT CAUSE and its 10-record roster both
+> REPRODUCED exactly, so the diagnosis stands - only these three claims were wrong.
+
+### CORRECTION 1 (the important one) - "ZERO records bind the thrown stance at record level" is FALSE, and the second surface therefore has real shipping precedent
+
+R-140 says, and uses as its reason for treating the animation TABLE as the only precedented surface:
+
+> "For `rangedOneHand` and `dualRanged` specifically: ZERO records bind them at record level ... Not one
+> shipping thrower in the game carries its thrown anims on its own record."
+
+**Measured over all base-game `Class=Monster` records: 7 bind `rangedOneHandRunAnim` / `AttackAnim1` and 5
+bind the `dualRanged` equivalents, at RECORD level.** Nine of those twelve are themselves thrown wielders,
+and **every one of them carries `charAnimationTableName = None`** - no animation table at all, the whole
+thrown rig on the creature record:
+
+| record | stance | its animation table |
+|---|---|---|
+| `xpack2\creatures\monster\bosses\ancient_earth_42 / _45 / _48` | `rangedOneHand` | **None** |
+| `xpack2\quests\npc\non speaking\scripted\x2q06_thor` | `rangedOneHand` | **None** |
+| `xpack2\creatures\monster\bosses\ancient_forest_42 / _45 / _48` | `dualRanged` | **None** |
+| `xpack4\creatures\monster\zz_dev\ancient_forest_48`, `x4_dev_junga_skeleton` | `dualRanged` | **None** |
+
+(The other three - `x2q06_lokieagle`, `x2q07_lokieagle`, `x3mq_telhinelyktos_fleeing` - bind the stance at
+record level without equipping a thrown weapon.)
+
+R-140's probe missed these because it asked "which records bind a slot their TABLE does not", and a record
+with no table at all falls out of that comparison entirely.
+
+**WHY THIS MATTERS.** R-140 shipped the record-level clips as a hedge - "belt AND braces, deliberately" -
+justified by an *unprovable* worry about SV's `Monster.tpl` corruption of `ANM_Maenad`. That hedge is no
+longer needed as a hedge: the Nerthus Ancients are the shipping game's own thrown BOSSES and they carry
+exactly this shape. The shape our 10 records now have (record-level clips **and** a valid table) is a
+strict superset of a shape TQ itself ships and animates. **Keep it.** The correction removes the only real
+objection to the second surface - that it was invented - so belt-and-braces is ratified on evidence
+rather than on caution.
+
+### CORRECTION 2 - "10 thrown wielders in the entire database" is MOD-ONLY; the engine-visible number is 78
+
+The mod `.arz` is an **OVERLAY**, not a full merge: **41,226 base records are not in it**, and the engine
+reads those from base. Every census in R-140 walked the mod's record names only, so "10 thrown wielders in
+the entire database" really means *10 in the mod's own records*.
+
+Resolved the way the engine resolves (mod overlay first, base as pass-through), the union holds
+**78 thrown wielders: our 10 (all 10 were frozen, all 10 now fixed) + 68 base-only**.
+
+**The roster is nevertheless COMPLETE, and this is the check that proves it:** the danger was a base-only
+thrower naming one of the four SV-stripped tables, since it would inherit our broken table while being
+invisible to a mod-only scan. **Measured: 0 base-only monsters both name a stripped table AND equip a
+thrown weapon.** No monster outside the 10 is frozen by this defect. R-140's conclusion survives; its
+framing did not.
+
+One further outlier, recorded so a later gate widening does not mistake it for a regression:
+`xpack2\creatures\npc\corinth\fighting\ss_porcusroh2_die` (a base-only scripted Corinth NPC) resolves
+`rangedOneHandWalkAnim` nowhere. **This is PRE-EXISTING in the stock game** - base's own `ANM_MalePC01`
+binds no `rangedOneHandWalkAnim` at all - and is not introduced, worsened or touched by this mod.
+
+### CORRECTION 3 - the shared-carrier census is mod-only and understates the blast radius
+
+R-140's carrier counts are mod-record counts. Adding the base-only carriers the overlay leaves in place:
+
+All counts below are PRE-FIX (measured on `local/baseline_main.arz`), which is the state the
+clone-or-edit decision was actually taken against:
+
+| table | R-140 (mod-only, pre-fix) | base-only | TRUE total (pre-fix) |
+|---|---|---|---|
+| `ANM_Maenad` | 168 | 8 | **176** |
+| `ANM_Tiger` | 68 | 19 | **87** |
+| `ANM_Machae` | 64 | 4 | **68** |
+| `ANM_DuneRaider` | 30 | 0 | **30** |
+
+> **A correction inside the correction, kept visible on purpose.** The first draft of this table
+> printed 174 / 85 / 65 / 30 - I had put R-140's PRE-fix mod counts in column 1 and my own POST-fix
+> totals in column 3, so the rows did not even add up. It was caught by running
+> `probe_thrown_union_scope.py` against the post-fix build and the pre-fix baseline separately and
+> noticing 166+8=174 vs 168+8=176. Recorded rather than quietly fixed, because "the census was run
+> against the wrong artifact" is the exact failure mode this whole amendment exists to correct, and it
+> is worth knowing it is easy enough to make twice in one day. Post-fix the mod-side counts are
+> 166 / 66 / 61 / 27 (the 2/2/3/3 roster records having moved to the clones), i.e. post-fix totals
+> 174 / 85 / 65 / 27.
+
+**The CLONE-not-edit decision is correct at both counts and nothing changes** - the numbers only get worse
+for editing in place, never better. Recorded because SHARED-RECORD LAW is decided on exactly these
+numbers, and a future lane reading R-140 would under-count its own blast radius by up to 31 carriers.
+
+### WHAT THIS AMENDMENT ADDED TO THE BUILD (not just prose)
+
+`tools/gate_thrown_anim_assets.py`. R-140 proved the database BINDS the stance; nothing proved the `.anm`
+clips it binds actually SHIP. That is the identical failure shape one layer down (green database, frozen
+monster), and R-100 #15's brief asked for it explicitly: *"prove for each that its attack/move animations
+resolve"*, *"GATE: every thrown wielder's referenced anms resolve; planted negative on a broken binding."*
+
+**Invariant:** *for every `Class=Monster` that equips a thrown weapon, every `.anm` this database binds for
+that weapon's stance - on the creature record OR on its animation table - must resolve in the shipped arc
+set under the engine's own archive scoping.* Resolution delegates to
+`validate_render_chain.EngineArcResolver` (the repo's canonical engine-faithful resolver); the thrower
+enumeration is imported from `patches.thrown_anim_rig.scan_frozen_throwers`. Neither can drift from the
+module it gates.
+
+Result on the wave build: **PASS - 10 wielders, 31 distinct clips, 31/31 resolve, 0 frozen.**
+`--selftest`: **6 planted cases, 5 must-RED all RED, 1 must-stay-GREEN GREEN**, gate GREEN again after full
+restore. One must-RED is a real clip named under the WRONG XPack scope - that case exists because a naive
+strip-the-first-component matcher reported all 9 machae clips as MISSING during this verification when
+they are in fact present in `Resources\xpack\Creatures.arc`. The canonical resolver is what makes this
+gate trustworthy rather than merely green.
+
+**STATUS: R-140 stands as amended.** Diagnosis reproduced, fix unchanged and better evidenced, one gate
+added. Still NOT proven and still Will's: that the restored wielders visibly throw and move in-game
+(BL-R140-LAUNCH-1). Everything here remains a database/asset proof.
