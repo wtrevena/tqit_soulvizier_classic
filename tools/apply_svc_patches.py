@@ -5269,6 +5269,132 @@ def _force_100_pct_soul_drops(db):
     print(f"  Left gated-off (Common/Champion, no drop): {skipped}")
 
 
+# Templates that carry soul loot fields but can NEVER drop them: a Pet is the
+# player's own summon (its chanceToEquipFinger2 is a power switch, see below),
+# and Proxy/ProxyPool are spawn plumbing that merely mirrors a monster's fields.
+_SOUL_RATE_NON_DROPPER_TEMPLATES = frozenset({
+    'pet.tpl', 'proxy.tpl', 'proxypool.tpl',
+})
+
+
+def _soul_carrier_roster(db):
+    """Yield (record, classification, current_chance) for every MONSTER record
+    whose `lootFinger2Item1` names a soul - the R-104/R-106 roster (1,722
+    carriers cross-tabulated in R-106), minus the records that cannot drop.
+
+    NOT path-scoped. The old `\\creature(s)\\` path filter (still used by
+    verify_soul_drop_rates' own `_is_creature`) sees only 1,279 of them and
+    would silently skip 443 carriers - including EVERY record R-105 named in the
+    sub-25% buckets: the 6 swift archers and the 39 2%-tier heroes live under
+    `records\\item\\equipmentring\\soul\\test\\`, the 5 mummy priests under
+    `records\\skills\\boss skills\\summoned minions\\`, and a Quest carrier at 66
+    under `records\\drxcreatures\\`. Applying a ruling to 1,279 of 1,722 carriers
+    would have shipped the ruling half-done and the gate would not have seen it.
+
+    ⚠️ THE PET EXCLUSION IS THE POINT, not a tidy-up (R-104: the field does
+    double duty). Four of R-106's fifteen "Common carriers" are
+    `records\\skills\\soulskills\\pets\\carrioncrow_*` - **Class=Pet, Pet.tpl**:
+    the crows a soul SUMMONS FOR WILL. Their `chanceToEquipFinger2` is a pure
+    pet-power switch (a pet drops nothing), so zeroing them under "Common must
+    not drop" would nerf his summons and change no drop anywhere. Same class of
+    trap as toxeus_passiveproperties' 9 pet carriers. Pets, Proxy and ProxyPool
+    records are therefore OUT of this roster and untouched; they are reported to
+    Will instead (docs/BACKLOG.md BL-b102-DEBT-1).
+
+    Selection is by TEMPLATE, not by `Class`: the base game gives its special
+    bosses bespoke Monster-derived Classes/templates - `SpiritHost` (all 12
+    pharaoh honour guards R-105 sends to 25), `Hades`, `Cerberus`, `Typhon`,
+    `Ormenos`, `Megalesios`. A `Class == 'Monster'` filter drops all of them
+    (measured: 35 live carriers, including the entire 10% cohort). So the rule is
+    "everything that carries soul loot EXCEPT the three non-dropping templates",
+    and the applier prints the template histogram so a new template class shows
+    up in the build log instead of silently falling out of the roster.
+    """
+    for rec in db.record_names():
+        fields = db.get_fields(rec)
+        if not fields:
+            continue
+        tpl = db.get_field_value(rec, 'templateName')
+        if isinstance(tpl, list):
+            tpl = tpl[0] if tpl else ''
+        tpl_base = str(tpl or '').replace('/', '\\').rsplit('\\', 1)[-1].lower()
+        if tpl_base in _SOUL_RATE_NON_DROPPER_TEMPLATES:
+            continue
+        has_soul = False
+        cur = 0.0
+        cls = ''
+        for key, tf in fields.items():
+            fn = key.split('###')[0]
+            if fn == 'lootFinger2Item1' and tf.values:
+                for v in tf.values:
+                    if isinstance(v, str) and 'soul' in v.lower():
+                        has_soul = True
+                        break
+            elif fn == 'chanceToEquipFinger2' and tf.values:
+                try:
+                    cur = float(tf.values[0])
+                except (TypeError, ValueError):
+                    cur = 0.0
+            elif fn == 'monsterClassification' and tf.values:
+                cls = str(tf.values[0] or '')
+        if has_soul:
+            yield rec, cls, cur
+
+
+def _apply_soul_rate_policy(db):
+    """R-105 / R-106 / R-107 (Will 2026-07-29): apply THE ruled soul equip/drop
+    rate to every soul-carrying creature.
+
+    LAST-WRITER by design. It runs at the very end of the release build, after
+    every soul-wiring writer in the pipeline (wire_souls_to_monsters,
+    create_uber_souls, the monolith's own hand-set rates, every registry
+    module), so a hand-authored 66/10/2/0.5 anywhere upstream can no longer
+    survive into the shipped arz. That is the same LAST-WRITER lesson
+    verify_soul_drop_rates.py was rewritten around: model one writer's delta and
+    a later writer silently undoes it.
+
+    Every target comes from build_svc_database.ruled_soul_equip_rate - the ONE
+    shared classifier, keyed on `monsterClassification`. A HELD cohort (None) is
+    never written, so the 172 Champion-tier carriers and the 210 hero-class 0%
+    carriers stay EXACTLY as they are until Will rules on them.
+    """
+    from collections import defaultdict as _dd
+    from build_svc_database import (ruled_soul_equip_rate,
+                                    soul_spawn_provenance_sets)
+    rmem, pmem = soul_spawn_provenance_sets(db)
+    moved = _dd(int)      # (from, to) -> count
+    held = _dd(int)       # reason bucket -> count
+    templates = _dd(int)  # roster template histogram (a new one must be visible)
+    changed = 0
+    total = 0
+    for rec, cls, cur in list(_soul_carrier_roster(db)):
+        total += 1
+        _t = db.get_field_value(rec, 'templateName')
+        if isinstance(_t, list):
+            _t = _t[0] if _t else ''
+        templates[str(_t or '').replace('/', '\\').rsplit('\\', 1)[-1].lower()] += 1
+        target = ruled_soul_equip_rate(rec, cls, cur, rmem, pmem)
+        if target is None:
+            held[cls or '(unset)'] += 1
+            continue
+        if abs(target - cur) < 0.01:
+            continue
+        db.set_field(rec, 'chanceToEquipFinger2', float(target), DATA_TYPE_FLOAT)
+        db._modified.add(rec)
+        moved[(cur, target)] += 1
+        changed += 1
+    print(f"  R-105/106/107 soul-rate policy: {changed} of {total} soul carriers "
+          f"re-rated (25 fixed boss / 33 non-fixed / 0 Common / 100 R-48)")
+    for (src, dst), n in sorted(moved.items(), key=lambda kv: -kv[1]):
+        print(f"      {src:>6.2f}% -> {dst:>6.2f}%  : {n}")
+    if held:
+        print("      HELD (not ruled, untouched): "
+              + ", ".join(f"{k}={v}" for k, v in sorted(held.items())))
+    print("      roster templates: "
+          + ", ".join(f"{k}={v}" for k, v in sorted(templates.items(),
+                                                    key=lambda kv: -kv[1])))
+
+
 def _overhaul_generic_souls(db):
     """Overhaul all 78 generic/weak souls with thematic skills and abilities."""
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
@@ -19016,7 +19142,14 @@ def run_registry_gates(db, tags, force_full_drops=True):
         print("  TESTING BUILD: soul drops forced to 100% "
               "(set SVC_RELEASE_DROPS=1 for tuned 66%/25% rates)")
     else:
-        print("  RELEASE BUILD: tuned soul drop rates kept (66% Hero/Quest, 25% Boss)")
+        # R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDE the old 66/50/25 split.
+        # LAST WRITER in the release build: every hand-set rate anywhere upstream
+        # is normalized onto the ruled value here, through the ONE shared
+        # classifier (build_svc_database.ruled_soul_equip_rate).
+        _apply_soul_rate_policy(db)
+        print("  RELEASE BUILD: R-105/106/107 soul rates "
+              "(33% non-fixed, 25% fixed-location boss, 0% Common, "
+              "100% the four R-48 Toxeus champions)")
 
     # F7c (build36): wire itemText -> the authored DESC tag on every generated
     # soul, so the amgoz1-style flavor text finally renders in-game. Runs last,

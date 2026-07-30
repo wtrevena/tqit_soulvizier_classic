@@ -703,6 +703,115 @@ def soul_drop_rate(record_name, classification, random_pool_members,
     return placed_chance
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# R-105 / R-106 / R-107 (Will 2026-07-29): THE SOUL EQUIP/DROP RATE POLICY.
+#
+# WILL, VERBATIM (R-105): "no monsters should be at 66%. move all 66% and 50% to
+# 33%. Which ones are 25% or smaller? the ones that are smaller should be 33% I
+# think unless they are bosses at fixed locations? i think we said 25% for fixed
+# location bosses and 33% for non-fixed location bosses"
+# WILL, VERBATIM (R-106): "most of the monsters that have a soul are probably
+# trash monsters, only hero monsters should drop their soul"
+# WILL, VERBATIM (R-107): "yeah so the soul gaoler should not drop the soul just
+# the unbound final version"
+#
+# `chanceToEquipFinger2` does DOUBLE DUTY (R-104): it is the soul DROP rate AND a
+# monster POWER switch (an equipped soul applies its item properties). Every
+# number below is Will's, not a derivation.
+#
+# THE ONE CLASSIFIER. `ruled_soul_equip_rate()` is the single place that decides a
+# carrier's rate, and it derives the fixed-vs-non-fixed split from
+# `soul_drop_rate()` above (which derives it from `monsterClassification`, NEVER
+# from the record name or folder - the b97 vet caught drifted duplicate logic in
+# exactly this area, and the mummy priests classify Common despite a boss-ish
+# filename). It returns None for the cohorts Will has NOT ruled on, so a HELD
+# cohort can never be moved by accident.
+# ─────────────────────────────────────────────────────────────────────────────
+SOUL_RATE_FIXED_BOSS = 25.0    # R-105: fixed-location bosses
+SOUL_RATE_NONFIXED = 33.0      # R-105: everything else that drops a soul
+SOUL_RATE_COMMON = 0.0         # R-106: Common (trash) never drops a soul
+SOUL_RATE_R48_CHAMPION = 100.0  # R-48/R-90/R-91: the four fought Toxeus champions
+
+# R-105 ratified BY COUNT: "move all 66% and 50% to 33%. That is 734 creatures."
+SOUL_RATE_RATIFIED_COHORTS = (66.0, 50.0)
+
+# R-48 / R-90 / R-91: the four fixed-spawn Toxeus champions stay at 100. Not a
+# cohort - four named records.
+SOUL_RATE_R48_RECORDS = frozenset({
+    'um_toxeus_enslaver_99', 'um_bloodtoxeus_99',
+    'um_toxeus_hunt_99', 'um_toxeus_hunt_l_99',
+})
+
+# Fixed-location bosses named INDIVIDUALLY by a ruling, which the roster-driven
+# classifier cannot see (they are `um_*` Boss records, so _soul_is_farmable_boss
+# deliberately returns False for them, and they sit in mod PLACED proxies).
+#   um_polisgaoler_unbound_99 - R-107: "take the unbound form 66% -> 25% under
+#       R-105's fixed-boss rate" (the base Gaoler stays at 0, see below).
+#   um_charon_ferryman_99 / um_tantalus_99 - R-106 amendment: Boss-class fixed
+#       ubers stuck at 0% carrying a soul that can never drop; "R-105 already
+#       rules them at 25%".
+SOUL_RATE_FIXED_BOSS_PINS = frozenset({
+    'um_polisgaoler_unbound_99', 'um_charon_ferryman_99', 'um_tantalus_99',
+})
+
+# R-107, verbatim: only the unbound final Gaoler drops. The base form stays at 0
+# and must never be raised by the 0%-defect rule above.
+SOUL_RATE_ZERO_PINS = frozenset({'um_polisgaoler_99'})
+
+
+def ruled_soul_equip_rate(record_name, classification, current,
+                          random_pool_members, placed_proxy_members):
+    """THE ruled `chanceToEquipFinger2` for one soul-carrying creature.
+
+    Returns a float target, or **None meaning HELD** - not ruled, do not touch.
+
+    Precedence (each line traceable to a verbatim ruling):
+      1. the four R-48 Toxeus champions            -> 100
+      2. R-107's explicit zero pin (base Gaoler)   -> 0
+      3. R-106: Common classification              -> 0   (15 carriers today)
+      4. R-107/R-106 fixed-boss pins               -> 25
+      5. R-106: Champion tier                      -> HELD (Will's open call,
+         172 carriers at 0 + 7 with a fractional rate)
+      6. unset classification                      -> HELD (never ruled)
+      7. already 0 and not a named 0% defect       -> HELD (the 210 hero-class
+         zeroes are a CONTENT lane: each needs a soul that suits the creature)
+      8. anything still live                       -> soul_drop_rate() with the
+         ruled numbers: 25 fixed-location boss, else 33.
+
+    NOTE on rule 8 vs the ratified count: R-105 ratified "all 66% and 50% -> 33%,
+    that is 734 creatures". Five of those 734 are non-`um_` Boss records that
+    `_soul_is_farmable_boss` calls farmable/25 (boss_charon_39/41/43,
+    boss_satyrshaman_55 and one more). Will's COUNT wins over the classifier for
+    the two ratified cohorts, so they land on 33 with the rest of their cohort;
+    every OTHER cohort (10%/5%/2%) goes through the classifier, which is exactly
+    what R-105's own table asked for (the 12 pharaoh honour guards -> 25, our
+    non-fixed 5%/2% ubers -> 33).
+    """
+    mb = _soul_record_basename(record_name)
+    cls = str(classification or '').strip()
+    if mb in SOUL_RATE_R48_RECORDS:
+        return SOUL_RATE_R48_CHAMPION
+    if mb in SOUL_RATE_ZERO_PINS:
+        return SOUL_RATE_COMMON
+    if cls.lower() == 'common':
+        return SOUL_RATE_COMMON
+    if mb in SOUL_RATE_FIXED_BOSS_PINS:
+        return SOUL_RATE_FIXED_BOSS
+    if cls.lower() == 'champion':
+        return None
+    if not cls:
+        return None
+    if any(abs(float(current) - c) < 0.01 for c in SOUL_RATE_RATIFIED_COHORTS):
+        return SOUL_RATE_NONFIXED
+    if float(current) <= 0.0:
+        return None
+    return soul_drop_rate(record_name, cls,
+                          random_pool_members, placed_proxy_members,
+                          boss_chance=SOUL_RATE_FIXED_BOSS,
+                          random_chance=SOUL_RATE_NONFIXED,
+                          placed_chance=SOUL_RATE_NONFIXED)
+
+
 def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, random_chance=50.0,
                            placed_chance=66.0, rare_chance=None):
     """Wire orphaned soul items to matching monster records.
