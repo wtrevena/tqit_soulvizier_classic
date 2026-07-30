@@ -16,7 +16,7 @@ WHAT THE WHOLE DIFF IS ALLOWED TO BE, and why it is this small. Everything the
 wave does is either a NEW record or a named field on a named record:
 
   ADDED (7)
-    skills\monster skills\passive_buffs\svc_toxeus_monster_passive.dbr
+    skills\monster skills\passive_buffs\svc_toxeus_passiveproperties_monster.dbr
     skills\boss skills\svc_devourer_bloodbath.dbr
     skills\boss skills\svc_devourer_summonbloodspawn.dbr
     skills\boss skills\svc_hunt_summoncoursers.dbr
@@ -55,7 +55,7 @@ def norm(s):
 
 
 NEW_RECORDS = {norm(p) for p in (
-    r'records\skills\monster skills\passive_buffs\svc_toxeus_monster_passive.dbr',
+    r'records\skills\monster skills\passive_buffs\svc_toxeus_passiveproperties_monster.dbr',
     r'records\skills\boss skills\svc_devourer_bloodbath.dbr',
     r'records\skills\boss skills\svc_devourer_summonbloodspawn.dbr',
     r'records\skills\boss skills\svc_hunt_summoncoursers.dbr',

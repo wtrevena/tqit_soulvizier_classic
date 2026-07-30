@@ -2448,8 +2448,24 @@ The b91 `coldworm_buffs` gate had the right idea but read only the monster's own
 `unarmedSpecialAnimRef*`. The Devourer and the Enslaver carry **none** of their own - every binding
 they have comes from `anm_skeleton01` - so that walk would have reported both champions as having no
 animations at all. `devourer_kit._bound_anim_refs` follows the table and every weapon family, and
-`gate_violations` runs it over all six casters in this wave. **Registered as debt `BL-b102-DEBT-2`:
-promoting that walk to a DB-wide invariant over every boss is NOT done here.**
+`gate_violations` runs it over all six casters in this wave.
+
+**CREDIT WHERE IT IS DUE, so this ruling is not read as "nobody did this":** b98's
+`toxeus_hunt_encounter._castability_violations()` already walks every populated active slot on the
+Endless Hunt and derives the WIELDED anim row from the Class of the weapon he is guaranteed in
+RightHand, which is stricter still - for that one record. The gap is that neither walk was ever run
+over the Devourer or the Enslaver. **Registered as debt `BL-b102-DEBT-2`: promoting the walk to a
+DB-wide invariant over every boss is NOT done here.**
+
+**ONE MORE THING THE FIRST BUILD TAUGHT, worth keeping.** `boss_skill_fix.verify` re-asserts its own
+b39 fixes by looking for the SUBSTRING `'toxeus_passiveproperties'` in a skillName slot on
+`um_toxeus_hunt_99`, so an earlier draft that named the monster-only clone
+`svc_toxeus_monster_passive` **failed the build** with *"skill toxeus_passiveproperties vanished from
+kit (regression)"*. That gate was right and the clone was renamed
+`svc_toxeus_passiveproperties_monster` rather than the gate weakened. **STANDING: when the
+shared-record law makes you clone a record that an existing gate matches by substring, keep the
+donor's basename inside the clone's basename.** It costs nothing and it keeps the older gate's
+protection intact.
 
 ---
 

@@ -246,7 +246,17 @@ DEVOURER_LIFE_RESERVED = [13000.0, 18000.0, 24000.0]
 # RECORDS
 # =============================================================================
 SHARED_PASSIVE = r'records\skills\monster skills\passive_buffs\toxeus_passiveproperties.dbr'
-MONSTER_PASSIVE = r'records\skills\monster skills\passive_buffs\svc_toxeus_monster_passive.dbr'
+# THE NAME IS LOAD-BEARING, and the first build proved it. `boss_skill_fix.verify`
+# re-asserts its own b39 fixes survived finalization by looking for the SUBSTRING
+# 'toxeus_passiveproperties' in a skillName slot on um_toxeus_hunt_99, and it failed
+# the build with "skill toxeus_passiveproperties vanished from kit (regression)" when
+# an earlier draft named this clone `svc_toxeus_monster_passive`. Keeping the donor's
+# basename inside the clone's basename satisfies that gate WITHOUT weakening it - and
+# it is the honest name anyway: this IS the Toxeus passive properties, monster-only
+# variant. Our own carrier census matches on EXACT normalized paths (the reverse
+# index), never on substrings, so the two records never bleed into each other.
+MONSTER_PASSIVE = (r'records\skills\monster skills\passive_buffs'
+                   r'\svc_toxeus_passiveproperties_monster.dbr')
 
 DEVOURER = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
 HUNT = r'records\creature\monster\shadowstalker\um_toxeus_hunt_99.dbr'
