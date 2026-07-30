@@ -1,12 +1,32 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## BUILD69-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tag `build69-dev`) - NOT DEPLOYED
+## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
-process launched or killed.** The orchestrator owns every deploy and every upload. `build69-dev` tags
-the BYTES for traceability, not a shipment; it was verified free before taking it (`git tag -l
-build69*` empty; `build60-dev`..`build68-dev` are all taken, and the brief's `build62/65/66` are among
-them).
+process launched or killed.** The orchestrator owns every deploy and every upload. The tags mark the
+BYTES for traceability, not a shipment.
+- `build69-dev` (round 1) was verified free before taking it (`git tag -l build69*` empty;
+  `build60-dev`..`build68-dev` all taken, and the brief's `build62/65/66` are among them).
+- `build71-dev` (round 2, after the independent vet's NO-GO was cleared) was likewise verified free
+  first. **`build70-dev` was NOT free** - `git log -1 build70-dev^{commit}` -> `a5ac817 2026-07-29
+  21:20:08 "b100 round 2: full negtest artifact of record - 16/16, exit 0"`, i.e. the parallel
+  blade-mastery lane took it mid-session, so this lane took the next free number. Highest `buildNN-dev`
+  before round 2 was 70.
+- **The two tags are BYTE-IDENTICAL by construction**, and that is measured, not assumed: round 2
+  changed only docs and comments, and the confirming rebuild re-printed the same arz md5.
+
+> ✅ **ROUND 2 CLEARED AN INDEPENDENT VET'S NO-GO. The vet reproduced every byte-level and gate-level
+> claim in this record exactly** (it built the arz itself, ran the gates, wrote its own scanners and took
+> no hash from any document) and its ONE blocking item was documentation: this lane had written a
+> **provably false** incident narrative - a merge accused of silently deleting 101 lines of
+> `docs/WILL_RULINGS.md` - into the design law of record, this gate record and the wave report. That is
+> now RETRACTED in all four places with every disproving command reproduced (see the note below and the
+> RETRACTION block in the R-100 section of `docs/WILL_RULINGS.md`). The other seven findings were
+> LOW/MEDIUM: artifact hygiene (5 root build logs + 2 stale `local/*.arz`), an overstated claim about
+> what the name-tag cross-check catches, an unevidenced `dropItems=0` assertion, a stale baseline md5
+> cited as a measurement basis, one undocumented adjacent exclusion, and a DEBT ordering nit. **All
+> cleared, each by re-measuring rather than restating** - see the per-item detail in
+> `docs/reports/b101_toxeus_apex_roster.md`. No shipped byte changed.
 
 **ARTIFACT (DB-only lane - `Text.arc`, `Levels.arc` and `Quests.arc` are untouched, zero map bytes,
 zero new tags, so there is NO artifact coupling to honour):**
