@@ -1,0 +1,460 @@
+#!/usr/bin/env python3
+"""R-100 #8/#16b GATE: every uber we place is INSIDE its intended area and OFF the
+main walking path.
+
+Two independent oracles, both mechanical - neither is a human eyeball and neither can be
+satisfied by the metric that failed in b45.
+
+------------------------------------------------------------------------------------
+ORACLE 1 - CONTAINMENT, via the level's own area-name binding (NOT distance-to-a-POI)
+------------------------------------------------------------------------------------
+b45 "fixed" Tantalus by minimising the distance to `pj_denoftantalus.dbr`, declared 10.2u
+"unambiguously in the den", and shipped. Will re-reported him OUTSIDE the den anyway,
+because that record is an `AreaOfInterest` SIGNPOST standing in the OUTDOOR level in
+front of the cave mouth. Distance to it is structurally incapable of proving containment:
+the marker itself is not in the den.
+
+The oracle that IS capable is the one the game itself uses for the top-right area banner
+(RE'd + proven across all 2282 levels in docs/reports/b46_minimap_result.md): the level's
+0x17 REGION guid list, resolved against the world SD (0x18) REGION records, resolved
+against Text. If the host level's banner does not read the intended area, the boss is not
+in that area - full stop, no clearance arithmetic can argue with it.
+
+Measured on the deployed DEV map, this immediately convicts the shipped placement:
+    Styx_SwampBorder_01      -> "Stygian Marsh"       (where Tantalus stands)
+    Styx_CaveUG_FrogCamp01/02/03 -> "Den of Tantalus"  (where he belongs)
+
+------------------------------------------------------------------------------------
+ORACLE 2 - MAIN WALKING PATH (R-100 #16b standing rule)
+------------------------------------------------------------------------------------
+"The main walking path is never an appropriate place for an uber monster we place."
+Operationalised on the level's own 0x0b navmesh, with no hand-drawn routes:
+
+  GATEWAYS = the ways a player enters/leaves this level:
+     (a) main-component walkable cells inside a band of the level TILE rectangle edge
+         (world tiles stitch edge-to-edge; the navmesh deliberately overhangs 16u into
+         the neighbour, so the tile rect - not the navmesh bbox - is the crossing line);
+     (b) 0x06 reciprocal door cells / 0x14 GridEntrance mouths (cave + dungeon doors).
+  Gateway cells are clustered by 8-adjacency; clusters smaller than MIN_CLUSTER are noise.
+
+  For each pair of clusters (A,B): multi-source BFS gives dA and dB over the walkable
+  graph, so dist(A,B) = min dA over B, and the set of cells lying on SOME shortest A->B
+  route is exactly {c : dA[c] + dB[c] <= dist(A,B) + slack}. That is the level's main
+  walking path between those two mouths, derived, not asserted.
+
+  Two verdicts per placement:
+   * BLOCKS  (hard): delete the encounter FOOTPRINT disc (R_FOOTPRINT) from the graph and
+     re-BFS. If any gateway pair that was connected is now disconnected, the encounter
+     physically corks the level's only route. This is the worst case and always fails.
+   * ON-PATH (the rule): the ENGAGEMENT disc (R_ENGAGE) intersects a shortest-route
+     corridor, i.e. a player merely travelling between two mouths is dragged into the
+     fight. This is what Will reported for the Helepolis.
+
+RADII are grounded in this repo's own established encounter numbers, not invented:
+  R_FOOTPRINT 6.0u - the "boss + 2 champion escorts + hoard chest" ring every uber survey
+                     in build_section_surgery already reports as clr@6.
+  R_ENGAGE   12.0u - twice the footprint: the band a passer-by is pulled into.
+Both are CLI-tunable so a ruling can retune the policy without editing the gate.
+
+Usage:
+  py tools/debug/gate_uber_placement.py <map.arc>                 # audit every placement
+  py tools/debug/gate_uber_placement.py <map.arc> --only tantalus
+  py tools/debug/gate_uber_placement.py <map.arc> --negtest       # planted negatives
+"""
+import sys
+import math
+import struct
+import argparse
+from collections import deque
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'contracts'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from arc_patcher import ArcArchive                                   # noqa: E402
+from contracts_map import (parse_0x05, parse_blob_sections,          # noqa: E402
+                           blob_0x14_map, GRIDENTRANCE_PREFIX)
+from rec02_format import parse_rec02                                 # noqa: E402
+from sd_format import SDSection, sd_from_map_bytes                   # noqa: E402
+from build_section_surgery import parse_0x17_header                  # noqa: E402
+import survey_uberboss_spots as S                                    # noqa: E402
+
+BS = chr(92)
+R_FOOTPRINT = 6.0
+R_ENGAGE = 12.0
+SEAM_BAND = 1.0          # world units either side of a tile edge that counts as a crossing
+MIN_CLUSTER = 8          # gateway cells; smaller runs are navmesh fringe noise
+PATH_SLACK = 2.0         # world units of shortest-path slack (route is a corridor, not a line)
+
+BASE_TEXT_ARC = (r"C:\Program Files (x86)\Steam\steamapps\common"
+                 r"\Titan Quest Anniversary Edition\Text\Text_EN.arc")
+
+
+# ── expected-area table ────────────────────────────────────────────────────────────
+# host level suffix -> (label, intended area display name or None to skip containment).
+# The intended area is the AREA WILL NAMES, not the level's filename. `None` = the
+# encounter is deliberately not area-bound (test yards, ambushes in unnamed levels).
+EXPECTED_AREA = {
+    'medea_templeug_tomb03.lvl':                ('M4 Kroisos the Coin-Drowned', 'Great Hall of Propontis'),
+    'styx_caveug_frogcamp02.lvl':               ('M5 Tantalus the Hunger Unbound', 'Den of Tantalus'),
+    'styx_swampborder_01.lvl':                  ('M5 Tantalus (RETIRED outdoor spot)', 'Den of Tantalus'),
+    'styx_riveredge_01.lvl':                    ('M6 Charon / Soul of the Unferried', 'Shrine of the Golden Bough'),
+    'judgment_templeug_mnemosyne01.lvl':        ('M7 The Mnemophage', 'Lower City of Lost Souls'),
+    'judgment_stonecity_exit01.lvl':            ('M8 Ephialtes, the Dread', 'The Dread Halls'),
+    'hadespalace_floor04_01.lvl':               ('Alkyoneus the Soul-Gaoler', 'Prison of Souls'),
+    'hadespalace_floor_03.lvl':                 ('Menoetes, Marshal of the Dead', 'The Winding Descent'),
+    'hadespalace_crystal_03.lvl':               ('General A honor guard', 'The Winding Descent'),
+    'hadespalace_floor04_04.lvl':               ('General B honor guard + Endless Hunt', 'Prison of Souls'),
+    'hadespalace_crystal_04.lvl':               ('General C honor guard', 'Prison of Souls'),
+    'elysian_fields_03.lvl':                    ('The Helepolis, Taker of Cities', 'Delian Meadows'),
+    'thebesopttomba.lvl':                       ('Neferkha, the Rimebound Pharaoh', None),
+    'tombobs01.lvl':                            ('Obsidian roulette b,d', 'The Obsidian Halls'),
+    'tombobs02.lvl':                            ('Broodmother nest + roulette a,c', 'The Obsidian Halls'),
+    'connector04.lvl':                          ('Aniketos (SV restore)', None),
+    'random05a.lvl':                            ('Vashkarr', None),
+    'drxfirstxistion_connection.lvl':           ('Blood-Toxeus parchment ambush', None),
+}
+
+# Records this gate treats as OUR placed encounters (bosses/hordes) and OUR chests.
+BOSS_MARKERS = ('drxmap' + BS + 'proxy' + BS + 'q_', 'minobossproxy_aniketos')
+CHEST_MARKERS = ('svc_' , 'polisvault_chest')
+
+
+# ── world / level loading ──────────────────────────────────────────────────────────
+def load_text():
+    txt = {}
+    p = Path(BASE_TEXT_ARC)
+    if not p.exists():
+        return txt
+    a = ArcArchive.from_file(p)
+    for e in a.entries:
+        d = a.decompress(e)
+        t = None
+        for enc in ('utf-16-le', 'latin1'):
+            try:
+                t = d.decode(enc)
+                break
+            except Exception:
+                continue
+        if not t:
+            continue
+        for line in t.splitlines():
+            if '=' in line and not line.startswith('//'):
+                k, _, v = line.partition('=')
+                txt.setdefault(k.strip(), v.strip())
+    return txt
+
+
+def level_regions(blob, sd_regions, text):
+    """Display names of the SD regions this level's 0x17 REGION list binds."""
+    out = []
+    for t, d in parse_blob_sections(blob):
+        if t != 0x17:
+            continue
+        try:
+            _m, _v, _env, region, _audio, _r = parse_0x17_header(d)
+        except Exception:
+            return ['<0x17 unparseable>']
+        for _ix, g in region:
+            nm, tag = sd_regions.get(bytes(g), ('?unknown', ''))
+            out.append(text.get(tag, nm))
+        break
+    return out
+
+
+def tile_rect(lv):
+    """The level's own TILE rectangle in 0x05-local units: (W, H).
+
+    ints_raw[0] / [2] are half-extents in the world lattice; the tile spans 2x each.
+    Cross-checked against the 0x0b container on 4 hosts: 2*dims - 32 == 2*ints (the
+    navmesh deliberately overhangs 16u into each neighbour, which is why the NAVMESH
+    bbox must not be used as the crossing line)."""
+    ii = struct.unpack_from('<13i', lv['ints_raw'], 0)
+    return 2 * ii[0], 2 * ii[2]
+
+
+def door_cells(blob, lv):
+    """0x05-local (x,z) of this level's door mouths (0x14 GridEntrance instances and
+    0x06 reciprocal descriptors)."""
+    pts = []
+    _s, insts = parse_0x05(blob)
+    x14 = blob_0x14_map(blob) or {}
+    for idx, pl in x14.items():
+        if idx < len(insts) and (len(pl) == 48 or
+                                 (len(pl) == 60 and pl[:12] == GRIDENTRANCE_PREFIX)):
+            p = insts[idx]['pos']
+            pts.append((p[0], p[2]))
+    # 0x06 descriptor trailer = the door grid cell (x, layer, z) in 8u cells.
+    for t, d in parse_blob_sections(blob):
+        if t != 0x06:
+            continue
+        n = len(d)
+        for count in range(1, 9):
+            hdr = n - (8 + count * 60)
+            if hdr < 0:
+                break
+            f0, c = struct.unpack_from('<2I', d, hdr)
+            if c == count and (f0 == 64 or f0 == 4 + count * 60):
+                for i in range(count):
+                    off = hdr + 8 + i * 60
+                    cx, _cy, cz = struct.unpack_from('<3I', d, off + 48)
+                    pts.append((cx * 8.0 + 4.0, cz * 8.0 + 4.0))
+                break
+        break
+    return pts
+
+
+# ── navmesh graph ──────────────────────────────────────────────────────────────────
+class Nav:
+    def __init__(self, blob, lv, set_idx=0):
+        b = S.get_0x0b(blob)
+        if b is None:
+            raise ValueError('no 0x0b navmesh')
+        doc = parse_rec02(b, decompress=True)
+        origin = tuple(doc['center'][i] - doc['dims'][i] for i in range(3))
+        gc = struct.unpack_from('<13i', lv['ints_raw'], 0)[6:9]
+        self.off = (gc[0] - origin[0], gc[2] - origin[2])
+        self.cellmap, self.cs = S.build_indexed_cells(doc, set_idx)
+        comps = S.components_of(self.cellmap)
+        self.main = comps[0] if comps else frozenset()
+        self.ncomp = len(comps)
+
+    def key(self, x, z):
+        """0x05-local (x,z) -> cell index key."""
+        return (int(round((x + self.off[0]) / self.cs - 0.5)),
+                int(round((z + self.off[1]) / self.cs - 0.5)))
+
+    def local(self, k):
+        return ((k[0] + 0.5) * self.cs - self.off[0], (k[1] + 0.5) * self.cs - self.off[1])
+
+    def disc(self, x, z, r):
+        """Main-component cells within r of 0x05-local (x,z)."""
+        k0 = self.key(x, z)
+        rr = int(math.ceil(r / self.cs))
+        out = set()
+        for dx in range(-rr, rr + 1):
+            for dz in range(-rr, rr + 1):
+                k = (k0[0] + dx, k0[1] + dz)
+                if k not in self.main:
+                    continue
+                lx, lz = self.local(k)
+                if (lx - x) ** 2 + (lz - z) ** 2 <= r * r:
+                    out.add(k)
+        return out
+
+    def bfs(self, sources, blocked=frozenset()):
+        """Multi-source BFS over the main component. Returns {cell: steps}."""
+        dist = {}
+        q = deque()
+        for s in sources:
+            if s in self.main and s not in blocked:
+                dist[s] = 0
+                q.append(s)
+        while q:
+            c = q.popleft()
+            dc = dist[c] + 1
+            for dx, dz in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                n = (c[0] + dx, c[1] + dz)
+                if n in dist or n not in self.main or n in blocked:
+                    continue
+                dist[n] = dc
+                q.append(n)
+        return dist
+
+
+def cluster(cells):
+    """8-adjacency clustering of a cell set."""
+    cells = set(cells)
+    out = []
+    while cells:
+        seed = cells.pop()
+        comp = {seed}
+        q = deque([seed])
+        while q:
+            c = q.popleft()
+            for dx in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    n = (c[0] + dx, c[1] + dz)
+                    if n in cells:
+                        cells.discard(n)
+                        comp.add(n)
+                        q.append(n)
+        out.append(comp)
+    out.sort(key=len, reverse=True)
+    return out
+
+
+def gateways(nav, lv, blob):
+    """Clustered gateway cells: tile-edge crossings + door mouths."""
+    W, H = tile_rect(lv)
+    band = SEAM_BAND
+    seam = set()
+    for k in nav.main:
+        lx, lz = nav.local(k)
+        if (abs(lx) <= band or abs(lx - W) <= band or
+                abs(lz) <= band or abs(lz - H) <= band):
+            # must be inside the tile span on the other axis
+            if -band <= lx <= W + band and -band <= lz <= H + band:
+                seam.add(k)
+    clusters = [c for c in cluster(seam) if len(c) >= MIN_CLUSTER]
+    for (dx, dz) in door_cells(blob, lv):
+        d = nav.disc(dx, dz, 6.0)
+        if len(d) >= MIN_CLUSTER:
+            clusters.append(set(d))
+    return clusters
+
+
+# ── the gate ───────────────────────────────────────────────────────────────────────
+def analyse(nav, lv, blob, x, z, r_foot, r_eng):
+    """Return dict with path verdicts for a placement at 0x05-local (x,z)."""
+    res = {'gateways': 0, 'pairs': 0, 'blocks': [], 'onpath': [],
+           'min_path_dist': None, 'onmesh': None}
+    k = nav.key(x, z)
+    near = None
+    rr = int(math.ceil(3.0 / nav.cs))
+    for dx in range(-rr, rr + 1):
+        for dz in range(-rr, rr + 1):
+            kk = (k[0] + dx, k[1] + dz)
+            if kk in nav.main:
+                lx, lz = nav.local(kk)
+                d = math.hypot(lx - x, lz - z)
+                if near is None or d < near:
+                    near = d
+    res['onmesh'] = near
+    gws = gateways(nav, lv, blob)
+    res['gateways'] = len(gws)
+    if len(gws) < 2:
+        return res
+    fields = [nav.bfs(g) for g in gws]
+    foot = nav.disc(x, z, r_foot)
+    eng = nav.disc(x, z, r_eng)
+    blocked_fields = {}
+    slack = int(PATH_SLACK / nav.cs)
+    best = None
+    for i in range(len(gws)):
+        for j in range(i + 1, len(gws)):
+            di, dj = fields[i], fields[j]
+            reach = [di[c] for c in gws[j] if c in di]
+            if not reach:
+                continue                      # already disconnected without the boss
+            res['pairs'] += 1
+            dij = min(reach)
+            onpath = {c for c in di if c in dj and di[c] + dj[c] <= dij + slack}
+            if onpath:
+                for c in onpath:
+                    lx, lz = nav.local(c)
+                    d = math.hypot(lx - x, lz - z)
+                    if best is None or d < best:
+                        best = d
+            if eng & onpath:
+                res['onpath'].append((i, j, len(eng & onpath)))
+            if i not in blocked_fields:
+                blocked_fields[i] = nav.bfs(gws[i], blocked=foot)
+            if not any(c in blocked_fields[i] for c in gws[j]):
+                res['blocks'].append((i, j))
+    res['min_path_dist'] = best
+    return res
+
+
+def collect_placements():
+    """Our placed encounters, from the build's own INJECT_SPECS (single source of truth)."""
+    import build_section_surgery as B
+    out = []
+    for key, specs in B.INJECT_SPECS.items():
+        suffix = key.replace(BS, '/').split('/')[-1].lower()
+        for sp in specs:
+            dbr = sp[0].decode('latin1').lower()
+            kind = None
+            if any(m in dbr for m in BOSS_MARKERS):
+                kind = 'BOSS'
+            elif any(m in dbr for m in CHEST_MARKERS) and 'chest' in dbr:
+                kind = 'CHEST'
+            if kind:
+                out.append((suffix, key, dbr, kind, sp[1], sp[2], sp[3]))
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('map')
+    ap.add_argument('--only', default=None)
+    ap.add_argument('--r-foot', type=float, default=R_FOOTPRINT)
+    ap.add_argument('--r-eng', type=float, default=R_ENGAGE)
+    ap.add_argument('--negtest', action='store_true')
+    ap.add_argument('--chests', action='store_true', help='also report chest placements')
+    a = ap.parse_args()
+
+    arc = ArcArchive.from_file(Path(a.map))
+    data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
+    _d, levels = S.load_world(a.map)
+    sd = SDSection.parse(sd_from_map_bytes(data))
+    sd_regions = {bytes(r.guid): (r.name, r.tag) for r in sd.region_records}
+    text = load_text()
+
+    placements = collect_placements()
+    if not a.chests:
+        placements = [p for p in placements if p[3] == 'BOSS']
+    if a.only:
+        placements = [p for p in placements if a.only.lower() in p[0] or a.only.lower() in p[2]]
+
+    print('R-100 #8/#16b UBER PLACEMENT GATE')
+    print('map        : %s' % a.map)
+    print('radii      : footprint=%.1fu  engagement=%.1fu  (seam band %.1fu, slack %.1fu)'
+          % (a.r_foot, a.r_eng, SEAM_BAND, PATH_SLACK))
+    print('placements : %d\n' % len(placements))
+
+    fails = []
+    navcache = {}
+    for suffix, key, dbr, kind, x, y, z in sorted(placements):
+        label, want = EXPECTED_AREA.get(suffix, ('(unregistered host)', None))
+        try:
+            lv, blob = S.get_blob(data, levels, suffix)
+        except SystemExit:
+            print('  %-34s %-46s HOST NOT IN MAP -> FAIL' % (suffix, dbr.split(BS)[-1]))
+            fails.append((suffix, dbr, 'host missing'))
+            continue
+        regions = level_regions(blob, sd_regions, text)
+        contain = 'n/a'
+        if want is not None:
+            contain = 'OK' if any(want.lower() in r.lower() for r in regions) else 'FAIL'
+        if suffix not in navcache:
+            navcache[suffix] = Nav(blob, lv, 0)
+        nav = navcache[suffix]
+        r = analyse(nav, lv, blob, x, z, a.r_foot, a.r_eng)
+        W, H = tile_rect(lv)
+        verdict = []
+        if contain == 'FAIL':
+            verdict.append('OUT-OF-AREA')
+        if r['blocks']:
+            verdict.append('BLOCKS-ROUTE')
+        if r['onpath']:
+            verdict.append('ON-MAIN-PATH')
+        ok = not verdict
+        print('  %s  %s' % (label, '=' * max(4, 62 - len(label))))
+        print('    record   : %s' % dbr.split(BS)[-1])
+        print('    host     : %s   tile %dx%d' % (lv['fname'], W, H))
+        print('    area     : %s   [want %s] -> %s'
+              % (' | '.join(regions) or '(none)', want, contain))
+        print('    local    : (%.1f, %.1f, %.1f)   nearest walkable %s'
+              % (x, y, z, ('%.2fu' % r['onmesh']) if r['onmesh'] is not None else 'OFF-MESH>3u'))
+        print('    gateways : %d clusters, %d connected pairs' % (r['gateways'], r['pairs']))
+        print('    path     : dist-to-nearest-shortest-route %s ; blocks=%s ; on-path pairs=%s'
+              % (('%.1fu' % r['min_path_dist']) if r['min_path_dist'] is not None else 'n/a',
+                 r['blocks'] or 'none', [(i, j) for i, j, _n in r['onpath']] or 'none'))
+        print('    VERDICT  : %s\n' % ('PASS' if ok else 'FAIL: ' + ', '.join(verdict)))
+        if not ok:
+            fails.append((suffix, dbr, ','.join(verdict)))
+
+    print('=' * 78)
+    if fails:
+        print('GATE RED: %d placement(s) fail' % len(fails))
+        for s, d, w in fails:
+            print('   %-34s %-44s %s' % (s, d.split(BS)[-1], w))
+        return 1
+    print('GATE GREEN: every placement is in its intended area and off the main walking path')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
