@@ -2340,3 +2340,126 @@ answer is not cutting skills but cutting elsewhere").
 **STATUS:** measured and specified, NOT implemented. **Will is currently HARD-BLOCKED from finishing this
 encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers; my recommendations are reflect
 30 and pierce 40.
+
+---
+
+## R-130 [2026-07-30] The Den of Tantalus is a CAVE, chest counts drop to one, and "off the main walking path" gets a measurable definition
+
+> **DECADE CLAIM.** 130-139 was proven free before minting. `git grep -h -oE "R-1(2[5-9]|3[0-9])"
+> $(git branch --format='%(refname:short)')` over the WHOLE TREE of ALL 120 local branches returns
+> **empty**; the maximum ruling number claimed anywhere is R-124 (`feat/devourer-kit`), with
+> R-119 live on three further in-flight branches (`feat/sanctuary-populate`, `feat/soul-economy`,
+> `feat/toxeus-apex-roster`). 125-129 are free but are left as slack so the next lane also gets a
+> whole decade. This lane owns 130 only.
+
+Source: R-100 items #8, #9, #10, #14, #16 and the #16b standing rule. Will's words are already recorded
+verbatim in R-100; this entry is the DESIGN LAW derived from them plus the three measurements that
+change how the rule must be implemented.
+
+### PART 1 - #8. THE DEN OF TANTALUS IS A CAVE INTERIOR, AND b45 DID NOT "FAIL TO HOLD"
+
+**Will, R-100 #8:** *"tantalus the hunger unbound is not inside the den of tantalus like he is supposed to
+be, he is sitting right in front of the den of tantalus outside of it."*
+
+The b45 task that claimed this fix is marked COMPLETED, and the brief asked why it did not hold.
+**It held. It shipped. It implemented the wrong target.** Measured on the deployed DEV map
+(`Levels.arc` md5 `943d0ab9516d332db79bd7f9fd2d3ffe`):
+
+| fact | evidence |
+|---|---|
+| The b45 coordinate IS deployed | 0x05 read of blob [755]: `q_tantalus_lone.dbr` @ local (34.00,-13.40,106.00) - exactly b45's number, not the pre-b45 (54,-15.2,114.3) |
+| The Den of Tantalus is **not** that level | blob [755] `Styx_SwampBorder_01`'s 0x17 REGION guid resolves to SD region **"Stygian Marsh"** (`xtagRegionName33`) |
+| The Den of Tantalus **is** the cave | `Styx_CaveUG_FrogCamp01/02/03` [878/879/880] all resolve to **"Den of Tantalus"** (`xtagRegionName80`) |
+| The way in | SwampBorder_01 instance #24 `ext_hc_cliffwall01.dbr` @ (27,-13,115) is a GridEntrance; its 0x14 binding names dest GUID `620fd291..` = `Styx_CaveUG_FrogCamp01.lvl` |
+| Why the b45 metric was incapable | `pj_denoftantalus.dbr` is `Class=AreaOfInterest`, `AreaDescription=xtagPOI12` ("Den of Tantalus") - a **signpost** standing 2.8u in FRONT of that cave mouth, outdoors |
+
+So b45 moved the boss from 28.1u to 10.2u from an outdoor signpost and called 10.2u "unambiguously in
+the den". Minimising distance to that marker **cannot** put the boss inside the den, because the marker
+is not inside the den either. Ten units from it is, precisely, *right in front of the den, outside of it*
+- Will's exact sentence. The lesson is not "b45 was careless"; b45 surveyed diligently against a metric
+that could not answer the question.
+
+**RULING: containment is proven by the AREA BANNER, never by proximity to a POI, a landmark or a
+doorway.** The oracle is the level's own 0x17 REGION guid resolved against the world SD (0x18) and Text -
+the same binding that paints the top-right area name in game (RE'd and proven across all 2282 levels in
+`docs/reports/b46_minimap_result.md`). If the host level's banner does not read the intended area, the
+encounter is not in that area, and no clearance arithmetic may argue with it. Gated by
+`tools/debug/gate_uber_placement.py` (ORACLE 1).
+
+**IMPLEMENTED:** Tantalus moves to `Styx_CaveUG_FrogCamp02` local (30.0,1.0,40.0) - the den's treasure
+chamber, ~100u of walking deep, 9.3u from the den's own golden hoard, clr@6.0 100%/100%/100%, comp#1,
+nearest functional native 9.33u. The Helos area-return NPC deliberately stays OUTSIDE in the marsh
+(it is the travel landing), which is why `TANTALUS_OUTDOOR_HOST_KEY` remains a separate constant.
+
+### PART 2 - #9/#10. ONE CHEST PER FIXED UBER, SCOPED AS A CLASS
+
+**Will, R-100 #9:** *"he has three chests, all of them tantalus hoard where he should only have one."*
+**#10:** *"the uber monster soul of the unferried also had three chests."*
+
+These are **one mechanism, not two coincidences**: the Unferried IS the Charon / Golden Bough encounter,
+and both chest sets are b42 round-2's `_chest_triangle`. **RULING: `UBER_CHEST_COUNT = 1`, applied to the
+whole b42 class** (Ephialtes, Tantalus, Charon/Unferried, Kroisos/Dorus) - not special-cased to the two
+Will happened to walk into. Ephialtes and Kroisos carry the identical three-identical-chests arrangement
+and would have drawn the same report the moment he reached them; fixing only the reported two guarantees
+a repeat report, which is what DONE-MEANS-DONE exists to prevent.
+
+This **AMENDS b42 round-2** (*"replace the current chest with three large majestic chests"*), itself a
+Will decision - recorded as a supersession, not a silent override. **Nothing is retired:** the DB side is
+untouched (the bosses still carry no accessory chest; the world-chest proxy records and their
+region-tuned hoard chains are unchanged), the surviving chest keeps the b42 triangle's own already
+surveyed "A" offset, and one constant reverses the whole thing.
+
+WARNING - FOR WILL: he named two bosses; this applies the rule to four. If he wants Ephialtes or Kroisos
+to keep three, that is a one-line change.
+
+### PART 3 - #16b. WHAT "THE MAIN WALKING PATH" MEANS, MEASURABLY
+
+**Will, R-100 #16b:** *"the main walking path is not the appropriate place for uber monsters we are
+placing in the game."*
+
+A standing rule needs a definition a build can check. **RULING: the main walking path is derived from the
+level's own navmesh, not drawn by hand.** Gateways = tile-edge crossings + 0x06/0x14 door mouths;
+multi-source BFS gives the exact on-shortest-route set `{c : dA[c] + dB[c] <= dist(A,B) + slack}` for
+every gateway pair. An encounter **BLOCKS** if deleting its 6u footprint disconnects a gateway pair, and
+is **ON-PATH** if its 12u engagement disc intersects a shortest route.
+
+**The calibration matters as much as the metric.** The raw ON-PATH test failed 15 of 20 shipped
+placements, which cannot be right - Will named exactly ONE (the Helepolis) and has fought Menoetes,
+Ephialtes and the Gaoler horde happily where they stand. The difference is the LEVEL, not the boss: in a
+tight dungeon corridor the level *is* the path and "move him off it" is not a thing that can be done; in
+an open field there is somewhere else to stand. So the rule only bites where an alternative exists:
+**ON-PATH is a failure only where >= 25% of the level's walkable area is off-path**; below that it is
+reported as ON-PATH(UNAVOIDABLE) and never gates. This is a policy constant, tunable by a future ruling.
+
+**IMPLEMENTED (#16):** the Helepolis was measured at **0.0u** from a shortest route - literally on the
+line, on two gateway pairs' routes, in a level that is 29% off-path (an alternative plainly existed).
+Moved to Elysian_Fields_03 local (70.0,8.8,80.0): **18.9u** off-route, **zero** on-path pairs, clr@6.0
+100%/100%/100%, comp#1, nearest native 10.0u.
+
+WARNING - FOR WILL, the one taste trade-off: the whole WESTERN half of that meadow is the corridor (the
+best western candidate still read 6.7u), so the fix costs him adjacency to the two native `xsq25` siege
+striders - the Helepolis now stands ~45u east of them in the walled court. If he would rather keep him
+among his kin and accept being near the path, say so and it is a coordinate change.
+
+### PART 4 - #14. THE "LOWER CITY OF LOST SOULS" UBER IS THE MNEMOPHAGE
+
+**Will, R-100 #14:** *"the uber boss in the lower city of lost souls has no chest that he is guarding and
+the orb he drops is trash."*
+
+R-100 left the boss unidentified. **Measured: it is the Mnemophage.** His host
+`Judgment_TempleUG_Mnemosyne01` binds SD region `xtagRegionName36` = **"Lower City of Lost Souls"**. Both
+halves of his report are confirmed against the build: `_SVC_FIXED_UBER_CHESTS` deliberately excludes him
+(*"Mnemophage carries no chest by design"*), so there is no `svc_mnemophage_chest` record to place, and
+`um_mnemophage_core_99` sits on `genericbossorb_04` (~5.70 expected items) while R-99's apex tier
+`genericbossorb_05` is ~21.16 - which is exactly what "trash" describes.
+
+**STATUS of #14: NOT IMPLEMENTED, and deliberately so.** Both halves need DB records this map lane does
+not own: a chest needs `_svc_build_world_chest_proxy(db,'mnemophage',...)` + a dedicated hoard + a Text
+tag + a `_SVC_CHEST_STD` bracket, and the orb needs `um_mnemophage_core_99` moved to `genericbossorb_05`
+- which R-99 records as REQUIRING `uber_apex_orb.verify()` to be rewritten roster-derived first, because
+its planted NEGATIVE 2 asserts that a third record on orb05 must FAIL. Doing that from a map branch would
+red the build and collide with the `feat/toxeus-apex-roster` lane. Specified here, handed off, not faked.
+
+**STATUS:** Parts 1, 2 and 3 IMPLEMENTED on `fix/uber-placement` and gated. Part 4 SPECIFIED, owner
+needed. The full #16b audit of every existing placement - including the ones deliberately left alone -
+is in the wave report.
