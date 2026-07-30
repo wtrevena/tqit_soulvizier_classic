@@ -58,14 +58,29 @@ measured rather than assumed - `py tools/debug/probe_anim_authority.py
     does not  -> the record IS read.
   * 8,884 records bind one on the TABLE that their record does not -> the table
     IS read. (Per-field fallback: record overrides, table fills in.)
-  * **For `rangedOneHand` and `dualRanged` specifically: 0 records bind them at
-    record level, 1,085 + 259 get them from the table ONLY.** Not one shipping
-    thrower in the entire game carries its thrown anims on its own record.
+  * For `rangedOneHand` and `dualRanged`, 1,085 + 259 creatures get the stance
+    from the TABLE only - so the table is the surface base uses at scale, and it
+    is the primary target here.
 
-So the TABLE is the surface base itself uses for this stance, and it is the
-primary target here. It is not, however, sufficient on its own for the maenad
-family - see "BOTH SURFACES" below - so the identical clips are written to the
-creature records as well.
+CORRECTED 2026-07-30 (see the R-140 AMENDMENT in docs/WILL_RULINGS.md). An
+earlier revision of this docstring, and R-140 itself, claimed "0 records bind
+them at record level ... not one shipping thrower carries its thrown anims on
+its own record". **That is FALSE**, and the probe that produced it asked the
+wrong question - it counted records that bind a slot their TABLE does not, so a
+record with NO table fell out of the comparison entirely. Re-measured over all
+base `Class=Monster` records: **7 bind `rangedOneHand` Run/Attack at RECORD
+level and 5 bind the `dualRanged` equivalents; 9 of those are themselves thrown
+wielders and every one has `charAnimationTableName = None`** - the Nerthus
+Ancients (`ancient_earth_42/45/48`, `ancient_forest_42/45/48`, two `xpack4`
+dev twins) and `x2q06_thor`, i.e. the shipping game's own thrown bosses, whole
+rig on the creature record.
+
+That matters for what this module does: the clips are written to BOTH the cloned
+table and the creature records (see "BOTH SURFACES" below). That second surface
+was originally shipped as a hedge; it is in fact a shape the base game itself
+uses for thrown creatures, so it is precedented, not invented. The shape our 10
+records carry (record clips AND a valid table) is a strict superset of one TQ
+ships and animates.
 
 =============================================================================
 SHARED-RECORD LAW: these four tables are HEAVILY shared -> CLONE, never edit
@@ -79,6 +94,13 @@ Carrier census on the shipped build
     ANM_Tiger.dbr          68 carriers,  66 NON-TARGET
     ANM_Machae.dbr         64 carriers,  61 NON-TARGET
     ANM_DuneRaider.dbr     30 carriers,  27 NON-TARGET
+
+Those counts are MOD-RECORD counts, and the .arz is an OVERLAY (41,226 base
+records are not in it), so they understate the real blast radius. Counting the
+base-only carriers the overlay leaves pointing at these same paths, the TRUE
+totals are 174 / 85 / 65 / 30 (R-140 AMENDMENT, correction 3). The decision is
+the same at either count - editing in place would be worse, never better - but
+a later lane must not read 168 and think that is the whole game.
 
 That is the `toxeus_passiveproperties` lesson again (18 carriers, 9 of them
 Will's pets). So this module NEVER edits a shared table: it CLONES each one to
@@ -103,8 +125,18 @@ The gate is stated as a ROSTER INVARIANT over the whole database, not as 10
 named exceptions (process law #4): no `Class=Monster` record may equip a thrown
 weapon while BOTH its own record AND its animation table leave that weapon's
 stance without RunAnim + WalkAnim + AttackAnim1. `scan_frozen_throwers()` is the
-single implementation, used by verify(), by the negative tests and by
-`tools/debug/probe_frozen_throwers.py`.
+single implementation, used by verify(), by the negative tests, by
+`tools/debug/probe_frozen_throwers.py` and by `tools/gate_thrown_anim_assets.py`.
+
+SCOPE, stated precisely (R-140 AMENDMENT, correction 2): those 10 are the thrown
+wielders among the MOD's OWN records. The .arz is an overlay, so the engine also
+loads 68 base-only thrown wielders straight from base - 78 in the union. The
+roster is still complete, and this is what proves it rather than assumes it:
+ZERO base-only monsters both name one of the four stripped tables AND equip a
+thrown weapon, so none of them can inherit this defect. `scan_frozen_throwers`
+treats a table that is absent from the overlay as healthy for exactly this
+reason - it is a pure base pass-through the mod never wrote, and base's own
+tables do bind the stance (9/10/11/9 clips, measured).
 
 =============================================================================
 WHY THE STANCE IS RESTORED ON *BOTH* SURFACES (belt AND braces, deliberately)
