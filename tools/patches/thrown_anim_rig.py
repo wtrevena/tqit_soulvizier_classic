@@ -48,11 +48,11 @@ monsters shipped frozen: `thrown_wielders.verify` tested
 binds no clip at all.)
 
 =============================================================================
-WHY THE FIX GOES IN THE TABLE AND NOT ON THE CREATURE RECORD
+WHICH SURFACE THE ENGINE READS - settled from shipping data, not from belief
 =============================================================================
-Both surfaces exist, so this was decided from shipping data rather than belief -
-`py tools/debug/probe_anim_authority.py <base.arz>`, over all **5,561**
-base-game `Class=Monster` records:
+Both surfaces exist (the creature record and the animation table), so this was
+measured rather than assumed - `py tools/debug/probe_anim_authority.py
+<base.arz>`, over all **5,561** base-game `Class=Monster` records:
 
   * 2,596 records bind a Run/Walk/Attack slot on the RECORD that their table
     does not  -> the record IS read.
@@ -62,10 +62,10 @@ base-game `Class=Monster` records:
     record level, 1,085 + 259 get them from the table ONLY.** Not one shipping
     thrower in the entire game carries its thrown anims on its own record.
 
-So the table is the load-bearing surface for this stance and the only shape with
-any shipping precedent. Writing the clips onto the 10 creature records instead
-would be an invented shape with zero precedent - and if the engine reads the
-stance from the table alone, it would ship a third statue.
+So the TABLE is the surface base itself uses for this stance, and it is the
+primary target here. It is not, however, sufficient on its own for the maenad
+family - see "BOTH SURFACES" below - so the identical clips are written to the
+creature records as well.
 
 =============================================================================
 SHARED-RECORD LAW: these four tables are HEAVILY shared -> CLONE, never edit
@@ -81,12 +81,12 @@ Carrier census on the shipped build
     ANM_DuneRaider.dbr     30 carriers,  27 NON-TARGET
 
 That is the `toxeus_passiveproperties` lesson again (18 carriers, 9 of them
-Will's pets). So this module NEVER edits a shared table: it CLONES each one into
-its own `records\creature\monster\svc\thrown_anm\...` record, restores the base
-thrown-stance clips ON THE CLONE, and repoints `charAnimationTableName` on
-exactly the 10 roster records. verify() proves the four originals still bind
-zero thrown clips (i.e. were not edited) and that every non-target carrier still
-names the original table.
+Will's pets). So this module NEVER edits a shared table: it CLONES each one to
+`<original>_thrown.dbr` BESIDE the original, restores the base thrown-stance
+clips ON THE CLONE, and repoints `charAnimationTableName` on exactly the 10
+roster records. verify() proves the four originals still bind zero thrown clips
+(i.e. were not edited) and that every non-target carrier still names the
+original table.
 
 Cloning from OUR table (not from base) deliberately preserves every SV change to
 the other stances (e.g. SV's ANM_Maenad binds 26 bow clips where base binds 10);
@@ -101,16 +101,49 @@ machae ar/br/cr_archer_37, duneraider am_assassin_15/21/27.
 
 The gate is stated as a ROSTER INVARIANT over the whole database, not as 10
 named exceptions (process law #4): no `Class=Monster` record may equip a thrown
-weapon while naming an animation table that leaves that weapon's stance without
-RunAnim + WalkAnim + AttackAnim1. `scan_frozen_throwers()` is the single
-implementation, used by verify(), by the negative tests and by
+weapon while BOTH its own record AND its animation table leave that weapon's
+stance without RunAnim + WalkAnim + AttackAnim1. `scan_frozen_throwers()` is the
+single implementation, used by verify(), by the negative tests and by
 `tools/debug/probe_frozen_throwers.py`.
+
+=============================================================================
+WHY THE STANCE IS RESTORED ON *BOTH* SURFACES (belt AND braces, deliberately)
+=============================================================================
+A second, independent SV defect turned up while building this, and it is why
+table-only would have been a gamble on the largest family:
+
+    base TQAE : records\creature\monster\maenad\anm\anm_maenad.dbr
+                templateName = database\Templates\CharAnimationTable.tpl
+    SV 0.98i  : the SAME path, templateName = database\Templates\Monster.tpl,
+                Class = Monster, mesh = Creatures\Monster\Maenad\Maenad02.msh,
+                description = tagMonsterName082
+
+SV overwrote maenad's ANIMATION TABLE with a full MONSTER record. (The other
+three tables are untouched `CharAnimationTable.tpl` in both.) 168 records still
+name that path as their animation table. If the engine type-checks what
+`charAnimationTableName` resolves to, every maenad's table lookup is dead and
+only its own record's clips are read - which fits what we see, since maenad
+creature records DO carry their own bow/spear/staff/unarmed clips and maenads
+animate fine, while the thrown stance (record-level: nothing, anywhere in the
+game) is exactly the one that is frozen.
+
+We cannot settle that from the database, and this bug has already shipped broken
+twice, so the module restores the identical base clips on BOTH surfaces:
+  * the CLONED animation table  - correct if the table is read (8,884 shipping
+    records depend on the table being read);
+  * the 10 CREATURE RECORDS     - correct if the table is ignored/rejected
+    (2,596 shipping records depend on the record being read).
+Both carry the same verbatim base values, so whichever surface the engine
+consults it gets the same animation. The maenad template corruption itself is
+NOT repaired here: that is a 168-carrier shared record and repointing every
+maenad in the game is a different, much larger lane. Reported as debt
+(BL-R140-MAENAD-TPL-1).
 
 Contract (tools/patches/README.md): MODULE_NAME + apply(db, tags) + verify.
 """
 
 MODULE_NAME = ("Thrown-wielder ANIMATION RIG (R-100 #15): restore the thrown "
-               "stance SV stripped, on cloned per-family anim tables")
+               "stance SV stripped, on cloned anim tables AND the creatures")
 
 # Sibling module. The roster is IMPORTED (never re-listed) so this module and
 # thrown_restore can never drift apart. Dual import because there are two live
@@ -133,9 +166,17 @@ except ImportError:                         # stand-alone script context
 # ---------------------------------------------------------------------------
 CRITICAL_SLOTS = ("RunAnim", "WalkAnim", "AttackAnim1")
 
-# Where the cloned tables live. Disjoint SVC namespace - no other module writes
-# under it, and no base/SV record is displaced.
-_NS = r"records\creature\monster\svc\thrown_anm"
+# Each clone sits BESIDE the table it clones, as `<original>_thrown.dbr`.
+# Deliberately NOT a fresh `records\creature\monster\svc\...` namespace: SV's
+# ANM_Maenad is a `Monster.tpl` record (see the docstring), so a clone of it is a
+# Class=Monster record, and dropping one of those into a new SVC namespace would
+# make it look like a spawnable monster to any path-scoped gate or future reader.
+# Beside the original, every clone is exactly as visible - and as classified - as
+# the record it came from. The paths are new and unique, so no record is
+# displaced and no other module writes them.
+def _beside(table_path, suffix="_thrown"):
+    assert table_path.endswith(".dbr")
+    return table_path[:-len(".dbr")] + suffix + ".dbr"
 
 
 def _norm(s):
@@ -183,7 +224,7 @@ FAMILIES = [
     {
         "key": "maenad",
         "table": r"records\creature\monster\maenad\anm\anm_maenad.dbr",
-        "clone": _NS + r"\anm_maenad_thrown.dbr",
+        "clone": _beside(r"records\creature\monster\maenad\anm\anm_maenad.dbr"),
         "stance": "rangedOneHand",
         "clips": {
             "rangedOneHandAttackAnim1":     r"Creatures\monster\maenad\anm\maenad_unarmed_attalpha.anm",
@@ -200,7 +241,7 @@ FAMILIES = [
     {
         "key": "tigerman",
         "table": r"records\creature\monster\tigerman\anm\anm_tiger.dbr",
-        "clone": _NS + r"\anm_tiger_thrown.dbr",
+        "clone": _beside(r"records\creature\monster\tigerman\anm\anm_tiger.dbr"),
         "stance": "rangedOneHand",
         "clips": {
             "rangedOneHandAttackAnim1":     r"Creatures\monster\tigerman\anm\tigerman_dw_attbeta.anm",
@@ -218,7 +259,7 @@ FAMILIES = [
     {
         "key": "machae",
         "table": r"records\xpack\creatures\monster\machae\anm\anm_machae.dbr",
-        "clone": _NS + r"\anm_machae_thrown.dbr",
+        "clone": _beside(r"records\xpack\creatures\monster\machae\anm\anm_machae.dbr"),
         "stance": "rangedOneHand",
         "clips": {
             "rangedOneHandAlertAnim1":      r"XPack\Creatures\Monster\Machae\ANM\Machae_OneHand_Alert.anm",
@@ -237,7 +278,7 @@ FAMILIES = [
     {
         "key": "duneraider",
         "table": r"records\creature\monster\duneraider\anm\anm_duneraider.dbr",
-        "clone": _NS + r"\anm_duneraider_thrown.dbr",
+        "clone": _beside(r"records\creature\monster\duneraider\anm\anm_duneraider.dbr"),
         "stance": "dualRanged",
         "clips": {
             "dualRangedAttackAnim1":    r"Creatures\Monster\DuneRaider\ANM\DuneRaider_DW_AttBeta.anm",
@@ -302,6 +343,16 @@ def _is_thrown_loot(vals):
     return False
 
 
+def _unbound_slots(fields, stance):
+    """Which CRITICAL_SLOTS this decoded field map leaves without an .anm."""
+    out = []
+    for s in CRITICAL_SLOTS:
+        v = _fv(fields, stance + s)
+        if not (isinstance(v, str) and v.lower().endswith(".anm")):
+            out.append(stance + s)
+    return out
+
+
 def scan_frozen_throwers(db):
     """(throwers, frozen) over the whole DB.
 
@@ -309,6 +360,13 @@ def scan_frozen_throwers(db):
                thrown weapon at chance > 0.
     frozen   = [(record, stance, table, [unbound critical slots])] - the
                violators of the R-100 #15 invariant.
+
+    A slot counts as bound if EITHER the creature record or its animation table
+    supplies it: that is the real engine-level freeze condition (per-field
+    fallback, measured over 5,561 base monsters), and stating it as the union is
+    what lets the gate be true of the whole roster rather than of our 10 - every
+    shipping base thrower binds this stance on the TABLE only, so a
+    record-only test would flag the entire base game.
     """
     by_lower = {_norm(n): n for n in db.record_names()}
     tbl_cache = {}
@@ -325,10 +383,7 @@ def scan_frozen_throwers(db):
             # pass-through table is healthy by construction.
             tbl_cache[key] = []
             return []
-        tff = db.get_fields(real)
-        missing = [stance + s for s in CRITICAL_SLOTS
-                   if not (isinstance(_fv(tff, stance + s), str)
-                           and str(_fv(tff, stance + s)).lower().endswith(".anm"))]
+        missing = _unbound_slots(db.get_fields(real), stance)
         tbl_cache[key] = missing
         return missing
 
@@ -350,12 +405,15 @@ def scan_frozen_throwers(db):
         stance = "dualRanged" if (r_thrown and l_thrown) else "rangedOneHand"
         tbl = _fv(fields, "charAnimationTableName")
         throwers.append((name, stance, tbl))
+        # union of the two surfaces: a slot is unbound only if NEITHER supplies it
+        on_record = set(_unbound_slots(fields, stance))
         if not tbl:
-            frozen.append((name, stance, None, ["<no charAnimationTableName>"]))
+            if on_record:
+                frozen.append((name, stance, None, sorted(on_record)))
             continue
-        missing = table_binds(tbl, stance)
+        missing = on_record & set(table_binds(tbl, stance))
         if missing:
-            frozen.append((name, stance, tbl, list(missing)))
+            frozen.append((name, stance, tbl, sorted(missing)))
     return throwers, frozen
 
 
@@ -388,10 +446,20 @@ def apply(db, tags):
         for field, clip in fam["clips"].items():
             db.set_field(fam["clone"], field, clip)
 
-    # repoint ONLY the roster records (imported, so the two modules cannot drift)
     for entry in thrown_restore.ROSTER:
         fam = _family_for(entry)
-        db.set_field(entry["record"], "charAnimationTableName", fam["clone"])
+        rec = entry["record"]
+        # (a) repoint ONLY the roster records at the clone
+        db.set_field(rec, "charAnimationTableName", fam["clone"])
+        # (b) SECOND SURFACE: the SAME verbatim base clips on the creature
+        #     record itself, because SV turned ANM_Maenad into a Monster.tpl
+        #     record and we cannot prove from the DB that the engine still
+        #     accepts it as an animation table (docstring, BL-R140-MAENAD-TPL-1).
+        #     Identical values, so whichever surface the engine reads it gets the
+        #     same animation; applied to all four families for uniformity rather
+        #     than special-casing maenad.
+        for field, clip in fam["clips"].items():
+            db.set_field(rec, field, clip)
 
 
 # ---------------------------------------------------------------------------
@@ -438,6 +506,14 @@ def verify(db, tags):
         if want != fam["stance"]:
             errs.append("%s selects stance %s but family %s restores %s"
                         % (rec, want, fam["key"], fam["stance"]))
+        # SECOND SURFACE: the creature record must carry the clips too, so the
+        # rig survives even if the engine refuses SV's Monster.tpl "table".
+        rff = db.get_fields(rec)
+        for field, clip in fam["clips"].items():
+            got = _fv(rff, field)
+            if _norm(got) != _norm(clip):
+                errs.append("%s (creature record, 2nd surface) %s=%r, expected "
+                            "the verbatim base clip %r" % (rec, field, got, clip))
 
     for fam in FAMILIES:
         clone = fam["clone"]
@@ -488,11 +564,13 @@ def verify(db, tags):
         raise SystemExit("thrown_anim_rig.verify FAILED:\n  " + "\n  ".join(errs))
 
     n_clips = sum(len(f["clips"]) for f in FAMILIES)
+    n_rec_clips = sum(len(_family_for(e)["clips"]) for e in thrown_restore.ROSTER)
     print("  thrown_anim_rig.verify: OK (%d thrown wielders in the DB, 0 frozen; "
-          "%d cloned animation tables carrying %d verbatim base clips; %d roster "
-          "records repointed; all %d shared originals unedited)"
+          "%d cloned animation tables carrying %d verbatim base clips + the same "
+          "clips on %d repointed creature records (%d clips, 2nd surface); all %d "
+          "shared originals unedited, 0 non-target carriers moved)"
           % (len(throwers), len(FAMILIES), n_clips,
-             len(thrown_restore.ROSTER), len(FAMILIES)))
+             len(thrown_restore.ROSTER), n_rec_clips, len(FAMILIES)))
 
 
 # ---------------------------------------------------------------------------
@@ -566,8 +644,22 @@ def _negtest(db, tags):
     _case([(fam0["table"], S + "RunAnim")],
           lambda: db.set_field(fam0["table"], S + "RunAnim", fam0["clips"][S + "RunAnim"]),
           "shared ORIGINAL table edited in place instead of cloned")
+    # --- MUST RED: the SECOND surface loses its clips -----------------------
+    _case([(rec0, S + "RunAnim")],
+          lambda: db.set_field(rec0, S + "RunAnim", ""),
+          "creature record (2nd surface) loses its thrown RUN anim")
+    _case([(rec0, S + "AttackAnim1")],
+          lambda: db.set_field(rec0, S + "AttackAnim1", ""),
+          "creature record (2nd surface) loses its thrown ATTACK anim")
+    # --- MUST RED: the TRUE engine freeze - BOTH surfaces lose the same slot,
+    #     which is the only state the DB-wide invariant itself calls frozen ----
+    _case([(rec0, S + "RunAnim"), (fam0["clone"], S + "RunAnim")],
+          lambda: (db.set_field(rec0, S + "RunAnim", ""),
+                   db.set_field(fam0["clone"], S + "RunAnim", "")),
+          "BOTH surfaces lose the thrown RUN anim (the actual statue state)")
     # --- MUST RED: the class, not the 10 instances - ANY new thrown wielder
-    #     anywhere in the DB on a stance-stripped table -----------------------
+    #     anywhere in the DB, on a stance-stripped table and with no record
+    #     clips of its own ----------------------------------------------------
     def _plant_new_thrower():
         db.set_field(victim, "chanceToEquipRightHand", 100.0)
         db.set_field(victim, "lootRightHandItem1",
@@ -587,7 +679,7 @@ def _negtest(db, tags):
 
     # restoration proof: the gate is green again on the untouched db
     verify(db, dict(tags))
-    print("  thrown_anim_rig._negtest: OK (%d planted cases - 7 must-RED, 2 must-stay-GREEN "
+    print("  thrown_anim_rig._negtest: OK (%d planted cases - 10 must-RED, 2 must-stay-GREEN "
           "- and verify is GREEN again after full restore)" % checks)
 
 
