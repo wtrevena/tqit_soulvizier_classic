@@ -122,6 +122,24 @@ REGISTRY = [
                             # neither reads the other's fields, so order between them is
                             # immaterial. A collision WARN naming any THIRD module on this
                             # record is a real finding: investigate before shipping.
+    'tombstone_xp_recovery',  # R-109 (Will 2026-07-30): "lets make the tombstone xp recovery
+                            # match the xp lost upon dying". ONE field on the SAME record
+                            # death_xp_penalty owns: RedemptionMultiplier 0.5 -> 1.0 on
+                            # records\xpack\game\gameengine.dbr. Game.dll computes
+                            # recovered = trunc((float)<XP ACTUALLY LOST> * RedemptionMultiplier)
+                            # (GetPlayerExperienceRedemptionAmount VA 0x10194f60 reads the amount
+                            # RegisterExperienceLoss VA 0x10194540 stored at GraveInfo+0x0C), so
+                            # 1.0 makes the marker return exactly what the penalty took, DERIVED
+                            # from the penalty rather than hardcoded - retune deathPenalty* and
+                            # the marker follows with no edit here (negtest plant 6 proves it).
+                            # MUST run immediately AFTER death_xp_penalty: apply() refuses to run
+                            # unless the R-80 penalty is already in its ruled state. Third writer
+                            # of gameengine.dbr alongside damage_display (FontStyles) and
+                            # death_xp_penalty (deathPenalty*); all three field sets are disjoint,
+                            # so the S4b collision WARN naming this TRIO is EXPECTED and benign -
+                            # a FOURTH module on this record is a real finding.
+                            # Negative test: py tools/patches/tombstone_xp_recovery.py --negtest
+                            # Measured before/after table: ... --table <arz>
     'thrown_restore',       # b64: restore base+IT thrown-wielders (maenad/duneraider/tigerman/
                             # machae) our own overlay disarmed, back into their EXISTING pools
                             # in place (no clone, no new pool); disjoint namespace (monster
