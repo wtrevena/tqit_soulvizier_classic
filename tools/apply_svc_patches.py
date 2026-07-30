@@ -5233,36 +5233,43 @@ def _force_100_pct_soul_drops(db):
     soul-loot field alone would re-enable exactly those - the normal-yeti bug
     (every common yeti dropping a soul). Gating on the existing chance keeps the
     classification gate intact: only monsters meant to drop get boosted to 100%.
+
+    ── b102 SCOPE FIX (TESTING BUILDS ONLY; the release arz never calls this) ──
+    This used to walk `db.record_names()` filtered by `'creature' in rec.lower()`
+    - the SAME path filter R-140 AMENDMENT 3 caught in verify_soul_drop_rates'
+    `_is_creature`, and it had the SAME hole. Measured on the b102 build: 52 LIVE
+    soul carriers sit outside any `\\creature(s)\\` path and were therefore never
+    boosted, so a "100% drops" test build silently left them at their release
+    rate:
+        42  records\\item\\equipmentring\\soul\\test\\*        (SV files a pile of
+                                                             real Monster.tpl
+                                                             records under an
+                                                             ITEM path - this is
+                                                             where R-105's whole
+                                                             2%-tier hero cohort
+                                                             lives)
+         5  records\\item\\miscellaneous\\monsterscrolls\\pets\\*
+         4  records\\test\\*   (boss_dagon_66, boss_coldworm50 - OUR placed ubers)
+         1  records\\skills\\monster skills\\summoning_pets\\pets\\*
+    So "I killed Dagon twenty times on a 100% test build and got no soul" was a
+    true report about a real defect in the TEST harness, not about the drop rate.
+    It now uses `_soul_carrier_roster` - THE shared roster the release policy and
+    the gate both use - so the three cannot disagree about who is a carrier. The
+    roster excludes Pet/Proxy/ProxyPool templates, so this cannot start boosting
+    a summon, and the `cur_chance > 0` gate is unchanged, so Common (0 after the
+    R-106 pass) still cannot be re-enabled: the normal-yeti bug stays fixed.
     """
     count = 0
     skipped = 0
-    for rec in db.record_names():
-        if 'creature' not in rec.lower():
-            continue
-        fields = db.get_fields(rec)
-        if not fields:
-            continue
-        has_soul = False
-        cur_chance = 0.0
-        for key, tf in fields.items():
-            fn = key.split('###')[0]
-            if fn == 'lootFinger2Item1' and tf.values:
-                for v in tf.values:
-                    if isinstance(v, str) and 'soul' in v.lower():
-                        has_soul = True
-                        break
-            elif fn == 'chanceToEquipFinger2' and tf.values:
-                try:
-                    cur_chance = float(tf.values[0])
-                except (TypeError, ValueError):
-                    cur_chance = 0.0
-        if has_soul and cur_chance > 0:
+    # every row of the roster already HAS soul loot - that is its entry condition
+    for rec, _cls, cur_chance in list(_soul_carrier_roster(db)):
+        if cur_chance > 0:
             db.set_field(rec, 'chanceToEquipFinger2', 100.0, DATA_TYPE_FLOAT)
             db.set_field(rec, 'chanceToEquipFinger2Item1', 100, DATA_TYPE_INT)
             db.set_field(rec, 'dropItems', 1, DATA_TYPE_INT)
             db._modified.add(rec)
             count += 1
-        elif has_soul:
+        else:
             # soul-loot present but drop gated off (Common/Champion) - leave at 0
             skipped += 1
     print(f"  Soul drop rate forced to 100% on {count} monster records (TESTING)")
@@ -5360,14 +5367,51 @@ def _apply_soul_rate_policy(db):
     """
     from collections import defaultdict as _dd
     from build_svc_database import (ruled_soul_equip_rate,
-                                    soul_spawn_provenance_sets)
+                                    soul_spawn_provenance_sets,
+                                    _soul_is_farmable_boss, _soul_record_basename,
+                                    SOUL_RATE_RATIFIED_COHORTS,
+                                    SOUL_RATE_UNTOUCHABLE,
+                                    SOUL_RATE_COUNT_OVER_CLASS)
     rmem, pmem = soul_spawn_provenance_sets(db)
     moved = _dd(int)      # (from, to) -> count
     held = _dd(int)       # reason bucket -> count
     templates = _dd(int)  # roster template histogram (a new one must be visible)
     changed = 0
     total = 0
-    for rec, cls, cur in list(_soul_carrier_roster(db)):
+    roster = list(_soul_carrier_roster(db))     # PRE-policy values, materialized
+
+    # ── SELF-DERIVE the count-vs-class tension set and prove the pinned roster
+    # still describes reality. SOUL_RATE_COUNT_OVER_CLASS exists to make
+    # ruled_soul_equip_rate idempotent (see its comment), but a hand-typed
+    # frozenset would silently go stale the moment a new fixed-location boss is
+    # authored into the 66/50 cohort - and that record would then be moved to 33
+    # by the applier and demanded at 25 by the gate, the exact failure this pin
+    # was introduced to fix. Deriving it here from the PRE-policy arz on every
+    # build makes the list self-checking: a drift stops the build and goes to
+    # Will rather than shipping a rate nobody ruled on.
+    _derived = {_soul_record_basename(rec)
+                for rec, cls, cur in roster
+                if any(abs(float(cur) - c) < 0.01
+                       for c in SOUL_RATE_RATIFIED_COHORTS)
+                and _soul_is_farmable_boss(rec, cls)} - set(SOUL_RATE_UNTOUCHABLE)
+    if _derived != set(SOUL_RATE_COUNT_OVER_CLASS):
+        raise SystemExit(
+            "R-105 count-vs-class roster DRIFT: the carriers that are BOTH in a "
+            "ratified cohort (66/50) AND classified fixed-location bosses are "
+            "%s, but build_svc_database.SOUL_RATE_COUNT_OVER_CLASS pins %s "
+            "(only-in-build=%s, only-in-pin=%s). R-105 rules these two ways at "
+            "once ('that is 734 creatures' vs '25%% for fixed location bosses'), "
+            "so a new one is a WILL DECISION, not a default. Refusing to ship a "
+            "rate nobody ruled on - see docs/BACKLOG.md BL-b102-DEBT-2."
+            % (sorted(_derived), sorted(SOUL_RATE_COUNT_OVER_CLASS),
+               sorted(_derived - set(SOUL_RATE_COUNT_OVER_CLASS)),
+               sorted(set(SOUL_RATE_COUNT_OVER_CLASS) - _derived)))
+    print(f"  R-105 count-vs-class pin: {len(_derived)} fixed-location boss(es) "
+          f"inside the ratified 66/50 cohorts land on the non-fixed rate by "
+          f"Will's COUNT (roster re-derived from this build, matches the pin): "
+          f"{sorted(_derived)}")
+
+    for rec, cls, cur in roster:
         total += 1
         _t = db.get_field_value(rec, 'templateName')
         if isinstance(_t, list):

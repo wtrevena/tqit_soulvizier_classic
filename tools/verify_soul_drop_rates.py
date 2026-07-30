@@ -188,12 +188,21 @@ _KNOWN_EXCEPTIONS = {
     # fixed locations", and R-105's own table rules these 12 "fixed bosses,
     # wrong rate -> 25%"). They are now ON the ruled rate, so they need no
     # waiver; cohort invariant G5 asserts all 12 sit at 25.
+    # ── RETIRED BY R-105, DELIBERATELY NOT DELETED (retirement protocol) ──────
+    # `svc_um_hadesmarshal_80` used to be waived here at **66.0** ("module-
+    # authored placed boss (four_generals); basename svc_um_ not recognized by
+    # the naive classifier, module keeps its own 66"). R-105 moved it to 33 with
+    # the rest of the 66% cohort, so the waiver is not merely stale - it was a
+    # LIVE HOLE: _check_last_writer consults this table on any mismatch, so an
+    # entry saying "66 is acceptable" would have silently WAIVED a future writer
+    # stomping the record back to 66, the precise regression class this gate
+    # exists to catch. The record is now covered by
+    # bsd.SOUL_RATE_COUNT_OVER_CLASS + cohort invariant G8, which assert 33
+    # positively instead of excusing a value.
+
     # Module-authored placed/superboss records the naive path/basename
     # heuristic cosmetically mislabels (b59 report section 6 + the original
     # spot-test table already document these; the shipped value IS intended).
-    'svc_um_hadesmarshal_80': (66.0,
-        'module-authored placed boss (four_generals); basename svc_um_ not '
-        'recognized by the naive classifier, module keeps its own 66'),
     # R-48 (Will 2026-07-27, b90): "increase the drop rate for the souls of
     # toxeus the murderer, enslaver of souls and toxeus the murderer, devourer
     # of blood to 100%". These two FOUGHT champions are carved out of the
@@ -325,6 +334,60 @@ def _find_golden():
     return None, None
 
 
+def _diff_against_golden(recs, golden_chance):
+    """The PURE half of the golden diff: given the built roster and the
+    baseline's {record -> chance}, return the list of unattributed deltas.
+
+    Split out of _check_intended_diff_vs_golden so the planted negative below
+    can exercise it against the ALREADY-LOADED baseline dict instead of reading
+    and parsing a second 55 MB arz - a negative test nobody runs because it is
+    slow is not a negative test.
+    """
+    cur_chance = {name: cur for name, cls, cur, exp, k in recs}
+    cur_expected = {name: exp for name, cls, cur, exp, k in recs}
+    fails = []
+    diffs = 0
+    for name, gcur in golden_chance.items():
+        ccur = cur_chance.get(name)
+        if ccur is None or abs(gcur - ccur) < 0.01:
+            continue
+        diffs += 1
+        bn = bsd._soul_record_basename(name)
+        # ── the older explicit ruling outranks every "intended" test ──────────
+        # double_soul_rulings (c): "CHARON 39/41/43 + HADES 54 - UNTOUCHED
+        # (Will's explicit ruling)". These records are HELD, so `expected == cur`
+        # by construction and the is_intended_cut test below would call ANY move
+        # of them intended - i.e. the one roster protected by an explicit Will
+        # ruling was the only roster this gate could not defend. A delta on them
+        # is a failure, full stop; the in-build double_soul_rulings.verify()
+        # asserts the same thing field-by-field, this makes it true standalone.
+        if bn in bsd.SOUL_RATE_UNTOUCHABLE:
+            fails.append(
+                f"UNTOUCHED-ruling violated: {name} baseline={gcur}% -> "
+                f"built={ccur}%. double_soul_rulings (c) rules Charon 39/41/43 "
+                f"+ Hades 54 explicitly UNTOUCHED; R-105's newer COUNT does not "
+                f"silently overrule it (docs/BACKLOG.md BL-b102-DEBT-2)")
+            continue
+        # R-105/R-106/R-107: a delta is INTENDED iff the new value is exactly
+        # what the ruled policy says for that record. Anything else is a silent
+        # regression against the baseline, whatever the classifier thinks.
+        is_intended_cut = abs(ccur - cur_expected.get(name, ccur + 1)) < 0.01
+        exc = _KNOWN_EXCEPTIONS.get(bn)
+        is_documented = exc is not None and abs(ccur - exc[0]) < 0.01
+        if is_intended_cut or is_documented:
+            continue
+        fails.append(
+            f"UNINTENDED golden-diff: {name} baseline={gcur}% -> "
+            f"built={ccur}% - not the ruled R-105/106/107 value for this record "
+            f"and not a documented _KNOWN_EXCEPTIONS waiver: a silent "
+            f"regression against the baseline")
+    _diff_against_golden.last_delta_count = diffs
+    return fails
+
+
+_diff_against_golden.last_delta_count = 0
+
+
 def _check_intended_diff_vs_golden(recs, golden_path, pinned_md5=None):
     """HARDENING for the MEDIUM gate-blindness finding (vet round 2 on
     feat/soul-drop-50): _check_last_writer() above uses soul_drop_rate()
@@ -347,37 +410,15 @@ def _check_intended_diff_vs_golden(recs, golden_path, pinned_md5=None):
     if golden_path is None:
         print("\n  (intended-diff-vs-golden check SKIPPED: no local golden arz "
               f"found - looked for {[str(p) for p, _m in _GOLDEN_CANDIDATES]})")
-        return []
+        return [], None
     import hashlib
     _real = hashlib.md5(golden_path.read_bytes()).hexdigest()
     golden_db = ArzDatabase.from_arz(golden_path)
     golden_recs, _, _ = _gather(golden_db)
     golden_chance = {name: cur for name, cls, cur, exp, k in golden_recs}
-    cur_chance = {name: cur for name, cls, cur, exp, k in recs}
-    cur_klass = {name: k for name, cls, cur, exp, k in recs}
-    cur_expected = {name: exp for name, cls, cur, exp, k in recs}
 
-    fails = []
-    diffs = 0
-    for name, gcur in golden_chance.items():
-        ccur = cur_chance.get(name)
-        if ccur is None or abs(gcur - ccur) < 0.01:
-            continue
-        diffs += 1
-        # R-105/R-106/R-107: a delta is INTENDED iff the new value is exactly
-        # what the ruled policy says for that record. Anything else is a silent
-        # regression against the baseline, whatever the classifier thinks.
-        is_intended_cut = abs(ccur - cur_expected.get(name, ccur + 1)) < 0.01
-        bn = bsd._soul_record_basename(name)
-        exc = _KNOWN_EXCEPTIONS.get(bn)
-        is_documented = exc is not None and abs(ccur - exc[0]) < 0.01
-        if is_intended_cut or is_documented:
-            continue
-        fails.append(
-            f"UNINTENDED golden-diff: {name} golden(build40)={gcur}% -> "
-            f"built={ccur}% - not the intended 66->50 RANDOM cut and not a "
-            f"documented _KNOWN_EXCEPTIONS waiver: a silent regression "
-            f"against the pre-drop-50 baseline")
+    fails = _diff_against_golden(recs, golden_chance)
+    diffs = _diff_against_golden.last_delta_count
     _pin = ('md5 %s%s' % (_real, '' if (pinned_md5 in (None, _real))
                           else ' ⚠️ PINNED %s' % pinned_md5))
     print(f"\n  Intended-diff-vs-golden ({golden_path.name}, {_pin}): "
@@ -388,7 +429,7 @@ def _check_intended_diff_vs_golden(recs, golden_path, pinned_md5=None):
             f"baseline {golden_path.name} md5 {_real} != the pinned "
             f"{pinned_md5} - this gate is diffing against a DIFFERENT baseline "
             f"than the one the wave's record-diff was attributed against")
-    return fails
+    return fails, golden_chance
 
 
 def _check_last_writer(recs):
@@ -522,7 +563,19 @@ def _check_cohorts(recs):
                      f"carrier(s) moved onto a ruled rate - the star tier is "
                      f"Will's open 172-creature decision: {moved_champions[:6]}")
 
-    # G7b - every HELD record is Champion-classified, unset, or gated at 0.
+    # G7b - every HELD record is Champion-classified, unset, gated at 0, or on
+    # the older-ruling UNTOUCHABLE roster.
+    #
+    # ⚠️ THE UNTOUCHABLE CLAUSE IS NOT A LOOPHOLE, IT IS THE FOURTH LEGAL REASON
+    # TO BE HELD, AND IT WAS MISSING. G7b was written when HELD meant only
+    # "Champion tier / unset classification / already 0". The ruling-collision
+    # carve-out (double_soul_rulings (c): "CHARON 39/41/43 + HADES 54 -
+    # UNTOUCHED") landed afterwards and holds 8 Boss-classified carriers at a
+    # LIVE 66/25, so G7b red on all 8 on the first fully-gated build of this
+    # wave - a gate failing on the very carve-out the same commit introduced.
+    # The clause is scoped to exactly bsd.SOUL_RATE_UNTOUCHABLE (itself
+    # cross-checked against double_soul_rulings' own roster by G2b), so it can
+    # only ever excuse those records and cannot widen behind anyone's back.
     for name, cls, cur, expected, klass in recs:
         if not klass.endswith('+HELD'):
             continue
@@ -531,8 +584,30 @@ def _check_cohorts(recs):
             continue
         if abs(cur) < 0.01:
             continue
-        fails.append(f"G7b: {name} is HELD but is neither Champion, unset, nor "
-                     f"0% (cls={cls}, cur={cur}) - the HELD set has drifted")
+        if bsd._soul_record_basename(name) in bsd.SOUL_RATE_UNTOUCHABLE:
+            continue
+        fails.append(f"G7b: {name} is HELD but is neither Champion, unset, 0%, "
+                     f"nor on the UNTOUCHABLE roster (cls={cls}, cur={cur}) - "
+                     f"the HELD set has drifted")
+
+    # G8 - THE COUNT-OVER-CLASS PIN IS EXACTLY THE SET THAT NEEDS IT, and every
+    # member actually shipped on the non-fixed rate. This is the invariant that
+    # keeps ruled_soul_equip_rate IDEMPOTENT: a member silently dropped from the
+    # pin would be re-derived at the fixed-boss rate by this very gate.
+    for bn in sorted(bsd.SOUL_RATE_COUNT_OVER_CLASS):
+        got = idx.get(bn)
+        if got is None:
+            fails.append(f"G8: count-over-class pin {bn} is not a soul carrier "
+                         f"in this arz - the pin has gone stale")
+        elif abs(got - bsd.SOUL_RATE_NONFIXED) > 0.01:
+            fails.append(f"G8 R-105 (COUNT wins over the fixed-boss class for "
+                         f"this record): {bn} is at {got}%, ruled "
+                         f"{bsd.SOUL_RATE_NONFIXED}%")
+    if bsd.SOUL_RATE_COUNT_OVER_CLASS & set(bsd.SOUL_RATE_UNTOUCHABLE):
+        fails.append(
+            f"G8: a record is in BOTH SOUL_RATE_COUNT_OVER_CLASS and "
+            f"SOUL_RATE_UNTOUCHABLE - contradictory rulings: "
+            f"{sorted(bsd.SOUL_RATE_COUNT_OVER_CLASS & set(bsd.SOUL_RATE_UNTOUCHABLE))}")
     return fails
 
 
@@ -587,7 +662,8 @@ def main(argv):
     print("INTENDED-DIFF-VS-GOLDEN (hardens the LAST-WRITER check's blind spot)")
     print("=" * 78)
     _gp, _gmd5 = _find_golden()
-    failures.extend(_check_intended_diff_vs_golden(recs, _gp, _gmd5))
+    _gold_fails, _golden_chance = _check_intended_diff_vs_golden(recs, _gp, _gmd5)
+    failures.extend(_gold_fails)
 
     if waived:
         print("\n" + "=" * 78)
@@ -868,6 +944,38 @@ def main(argv):
         return 'no Champion carrier found'
     _plant("a HELD Champion-tier carrier moved onto the 33% rate",
            _move_a_champion)
+    # (i) THE IDEMPOTENCE PIN BROKEN - a count-over-class boss put on the
+    #     fixed-boss rate. This is the negative for G8: without the pin, the
+    #     classifier's SECOND evaluation of these records returns 25, so the
+    #     applier and the gate disagree and 8 records red as LAST-WRITER
+    #     mismatches. Proves the gate notices if the pin is silently narrowed.
+    _plant("a count-over-class boss put back on 25 (boss_satyrshaman_55)",
+           lambda c: _set(c, 'boss_satyrshaman_55', bsd.SOUL_RATE_FIXED_BOSS))
+    _plant("our placed Leinth moved off the counted 33 (q_leinth_47 -> 25)",
+           lambda c: _set(c, 'q_leinth_47', bsd.SOUL_RATE_FIXED_BOSS))
+    # (j) AN UNTOUCHABLE CARRIER MOVED - checked against the GOLDEN baseline,
+    #     not against _check_cohorts. It cannot live in the _plant() list above:
+    #     G7b now (correctly) excuses the UNTOUCHABLE roster from the HELD-shape
+    #     rule, and G2 only asserts the 66/50 cohorts are EMPTY, so a charon
+    #     moved 66 -> 33 makes those cohorts smaller and reds nothing. The only
+    #     thing that can see "this record must not have MOVED" is a comparison
+    #     with its pre-wave value, which is exactly what the golden diff holds.
+    #     Closing this matters: without it, the one roster protected by an older
+    #     explicit Will ruling was the only roster with no standalone guard.
+    if _golden_chance is not None:
+        moved = [list(r) for r in recs]
+        _tgt = _set(moved, 'boss_charon_39', bsd.SOUL_RATE_NONFIXED)
+        got = _diff_against_golden([tuple(r) for r in moved], _golden_chance)
+        ok = any('UNTOUCHED' in f for f in got)
+        if not ok:
+            failures.append("NEGATIVE TEST FAILED (untouchable moved): the "
+                            "golden diff did not fire on %s" % _tgt)
+        print(f"  {'OK ' if ok else 'XX '} "
+              f"{'an UNTOUCHED-ruling carrier moved off its shipped rate':58s} "
+              f"-> gate {'RED (correct)' if ok else 'GREEN (BLIND)'}")
+    else:
+        print("  ?  untouchable-moved negative SKIPPED (no golden baseline "
+              "present on this machine)")
     # POSITIVE CONTROL (the other way): the unmodified build must be GREEN, and a
     # HELD Champion left exactly where it is must NOT fire the gate.
     ctrl = _check_cohorts(recs)

@@ -795,6 +795,40 @@ SOUL_RATE_UNTOUCHABLE = frozenset({
     'boss_hades_54', 'boss_hadesform2_54', 'boss_hadesform3_54',
 })
 
+# ⚠️ THE ONE PLACE R-105 CONTRADICTS ITSELF, MADE EXPLICIT SO THE CLASSIFIER IS
+# IDEMPOTENT. R-105 says BOTH "move all 66% and 50% to 33%. That is 734
+# creatures" (a COUNT that includes these) and "25% for fixed location bosses".
+# These are the carriers that sit on BOTH sides: they were in a ratified cohort
+# AND `_soul_is_farmable_boss` calls them fixed-location/25.
+#
+# WHY A NAMED LIST AND NOT A VALUE TEST. The ratified-cohort branch below keys on
+# `current`, so once such a record has been moved 66 -> 33 a SECOND evaluation no
+# longer sees 66 and falls through to soul_drop_rate() -> 25. That made
+# `ruled_soul_equip_rate` NON-IDEMPOTENT: the applier wrote 33 and the gate,
+# re-deriving from the SHIPPED value, demanded 25 - which is exactly how the
+# first fully-gated run of this wave failed (8 LAST-WRITER mismatches + the same
+# 8 as UNINTENDED golden-diffs). Naming them makes the second evaluation agree
+# with the first, and turns a silent value-dependent branch into a visible,
+# one-line-flippable roster: if Will rules "fixed-location bosses win over the
+# count", this frozenset becomes the list that returns SOUL_RATE_FIXED_BOSS.
+#
+# It is NOT typed from a guess: _apply_soul_rate_policy re-derives
+# {ratified cohort} ∧ {_soul_is_farmable_boss} - SOUL_RATE_UNTOUCHABLE from the
+# PRE-policy arz on every build and fails loud if it differs from this set, so a
+# newly-authored fixed-location boss landing in the 66/50 cohort cannot slip
+# through unnoticed - it stops the build and goes to Will.
+#
+# (The 4 UNTOUCHABLE records - boss_charon_39/41/43 + boss_hades_54 - are on the
+# same tension but are handled earlier by precedence and never move at all, so
+# they are deliberately NOT listed here; the derivation subtracts them.)
+SOUL_RATE_COUNT_OVER_CLASS = frozenset({
+    'boss_satyrshaman_55',      # base-game Olympian-arena act boss
+    'boss_coldworm50', 'boss_dagon_66',          # our placed ubers (records\test\)
+    'q_leinth_47', 'q_leinth_49', 'q_leinth_50',  # our placed Leinth trio
+    'murderbunny',                                # DRX crowheroes placed boss
+    'svc_um_hadesmarshal_80',                     # four_generals placed boss
+})
+
 
 def ruled_soul_equip_rate(record_name, classification, current,
                           random_pool_members, placed_proxy_members):
@@ -817,14 +851,26 @@ def ruled_soul_equip_rate(record_name, classification, current,
 
     NOTE on rule 8 vs the ratified count (BL-b102-DEBT-2, flagged for Will):
     R-105 ratified "all 66% and 50% -> 33%, that is 734 creatures" - a COUNT -
-    but it ALSO says "25% for fixed location bosses". Five of those 734 are
-    fixed-location act bosses that `_soul_is_farmable_boss` calls farmable/25:
-    `boss_charon_39/41/43`, `boss_satyrshaman_55` and
-    `records\\drxcreatures\\bloodwitch\\boss_hades_54.dbr`. His COUNT wins here,
-    so they land on 33 with the rest of their cohort; every OTHER cohort
-    (10%/5%/2%) goes through the classifier, which is exactly what R-105's own
-    table asked for (the 12 pharaoh honour guards -> 25, our non-fixed 5%/2%
-    ubers -> 33). One line from Will flips the five.
+    but it ALSO says "25% for fixed location bosses". **TWELVE** of those 734 are
+    carriers `_soul_is_farmable_boss` calls fixed-location/25 (measured on the
+    baseline arz, not guessed): `boss_charon_39/41/43` + `boss_hades_54` (which
+    never move - rule 0 holds them under the older UNTOUCHED ruling) plus the
+    EIGHT in `SOUL_RATE_COUNT_OVER_CLASS`: `boss_satyrshaman_55`,
+    `boss_coldworm50`, `boss_dagon_66`, `q_leinth_47/49/50`, `murderbunny` and
+    `svc_um_hadesmarshal_80`. His COUNT wins for those eight, so they land on 33
+    with the rest of their cohort; every OTHER cohort (10%/5%/2%) goes through
+    the classifier, which is exactly what R-105's own table asked for (the 12
+    pharaoh honour guards -> 25, our non-fixed 5%/2% ubers -> 33). One line -
+    changing what SOUL_RATE_COUNT_OVER_CLASS returns - flips all eight.
+
+    ⚠️ THIS FUNCTION IS IDEMPOTENT AND MUST STAY THAT WAY. Rules 7 and 8 read
+    `current`, so the gate re-derives every verdict from the value that SHIPPED,
+    not from the pre-policy value the applier saw. Any new rule keyed on
+    `current` must therefore produce the SAME answer when fed its own output, or
+    the gate and the applier will disagree - which is precisely how the
+    count-vs-class set above was caught (8 LAST-WRITER mismatches on the first
+    fully-gated build of this wave, every one of them a record the applier had
+    correctly moved 66 -> 33 and the gate then demanded at 25).
     """
     mb = _soul_record_basename(record_name)
     cls = str(classification or '').strip()
@@ -842,6 +888,11 @@ def ruled_soul_equip_rate(record_name, classification, current,
         return None
     if not cls:
         return None
+    # IDEMPOTENCE PIN - must precede BOTH the value-keyed ratified-cohort test
+    # below and the soul_drop_rate() fallthrough, because those two disagree for
+    # exactly this set and the first one only fires while `current` is still 66/50.
+    if mb in SOUL_RATE_COUNT_OVER_CLASS:
+        return SOUL_RATE_NONFIXED
     if any(abs(float(current) - c) < 0.01 for c in SOUL_RATE_RATIFIED_COHORTS):
         return SOUL_RATE_NONFIXED
     if float(current) <= 0.0:
