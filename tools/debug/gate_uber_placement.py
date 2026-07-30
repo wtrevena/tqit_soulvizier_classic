@@ -457,6 +457,81 @@ def collect_placements():
     return out
 
 
+def negtest(mappath, r_foot, r_eng):
+    """PLANTED NEGATIVES. Each must FIRE (or deliberately NOT fire) or the gate is decorative.
+
+    Every planted value is a coordinate this project ACTUALLY SHIPPED and Will ACTUALLY
+    complained about, so these are regression locks, not synthetic strawmen.
+    """
+    data, levels = S.load_world(mappath)
+    arc = ArcArchive.from_file(Path(mappath))
+    raw = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
+    sd = SDSection.parse(sd_from_map_bytes(raw))
+    sd_regions = {bytes(r.guid): (r.name, r.tag) for r in sd.region_records}
+    text = load_text()
+    fails = []
+
+    def check(label, cond, detail):
+        print('  %-4s %-64s %s' % ('PASS' if cond else 'FAIL', label, detail))
+        if not cond:
+            fails.append(label)
+
+    print('PLANTED NEGATIVES')
+
+    # N1 CONTAINMENT must convict the exact spot b45 shipped (outdoors, 10.2u from the signpost).
+    lv, blob = S.get_blob(data, levels, 'styx_swampborder_01.lvl')
+    regions = level_regions(blob, sd_regions, text)
+    check('N1 b45 outdoor host is NOT "Den of Tantalus"',
+          not any('den of tantalus' in r.lower() for r in regions),
+          'host banner reads %r' % (' | '.join(regions),))
+
+    # N1b ... and the oracle must ACCEPT the real den, or it only ever says "no".
+    lv2, blob2 = S.get_blob(data, levels, 'styx_caveug_frogcamp02.lvl')
+    regions2 = level_regions(blob2, sd_regions, text)
+    check('N1b the den host IS "Den of Tantalus"',
+          any('den of tantalus' in r.lower() for r in regions2),
+          'host banner reads %r' % (' | '.join(regions2),))
+
+    # N2 WALKING PATH must convict the exact Helepolis spot Will called out.
+    lv3, blob3 = S.get_blob(data, levels, 'elysian_fields_03.lvl')
+    nav3 = Nav(blob3, lv3, 0)
+    lr3 = level_routes(nav3, lv3, blob3, r_eng)
+    old = analyse(nav3, lv3, blob3, 20.7, 81.7, r_foot, r_eng, lr3)
+    check('N2 retired Helepolis spot (20.7,81.7) reads ON-PATH',
+          bool(old['onpath']) and lr3['offpath_frac'] >= OFFPATH_MIN,
+          'd(route)=%.1fu pairs=%s offpath=%.0f%%'
+          % (old['min_path_dist'], old['onpath'], 100 * lr3['offpath_frac']))
+
+    # N2b ... and must CLEAR the new one, or it is just a level-wide veto.
+    new = analyse(nav3, lv3, blob3, 70.0, 80.0, r_foot, r_eng, lr3)
+    check('N2b new Helepolis spot (70,80) reads OFF-PATH',
+          not new['onpath'],
+          'd(route)=%.1fu pairs=%s' % (new['min_path_dist'], new['onpath'] or 'none'))
+
+    # N3 BLOCKS must fire on a real chokepoint (the audit found this one unaided).
+    lv4, blob4 = S.get_blob(data, levels, 'tombobs01.lvl')
+    nav4 = Nav(blob4, lv4, 0)
+    lr4 = level_routes(nav4, lv4, blob4, r_eng)
+    rb = analyse(nav4, lv4, blob4, 220.8, 89.6, r_foot, r_eng, lr4)
+    check('N3 BLOCKS fires on the obsidian roulette-b chokepoint',
+          bool(rb['blocks']), 'blocks=%s' % (rb['blocks'] or 'none'))
+
+    # N4 the AVOIDABILITY calibration must SUPPRESS on a corridor level, or the gate reds
+    # 15 of 20 shipped placements and gets switched off - the failure mode that matters most.
+    lv5, blob5 = S.get_blob(data, levels, 'hadespalace_floor04_01.lvl')
+    nav5 = Nav(blob5, lv5, 0)
+    lr5 = level_routes(nav5, lv5, blob5, r_eng)
+    gao = analyse(nav5, lv5, blob5, 72.1, 37.1, r_foot, r_eng, lr5)
+    check('N4 Gaoler is ON-PATH but the corridor level SUPPRESSES the failure',
+          bool(gao['onpath']) and lr5['offpath_frac'] < OFFPATH_MIN,
+          'on-path=%s offpath=%.0f%% (< %.0f%% threshold)'
+          % (bool(gao['onpath']), 100 * lr5['offpath_frac'], 100 * OFFPATH_MIN))
+
+    print('\n%s: %d/%d planted negatives behaved as specified'
+          % ('NEGTEST GREEN' if not fails else 'NEGTEST RED', 6 - len(fails), 6))
+    return 1 if fails else 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('map')
@@ -472,6 +547,9 @@ def main():
     ap.add_argument('--checklevel', default=None, help='level suffix for --checkpt')
     ap.add_argument('--checkpt', action='append', default=[], help='X,Z to evaluate')
     a = ap.parse_args()
+
+    if a.negtest:
+        return negtest(a.map, a.r_foot, a.r_eng)
 
     if a.checkpt:
         _d3, levels3 = S.load_world(a.map)
