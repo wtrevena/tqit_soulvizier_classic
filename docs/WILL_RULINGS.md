@@ -1711,8 +1711,60 @@ texture reference and colour keys. Mechanical byte work - Opus, not Fable (per t
 Then check what the marauder demons actually emit, because Will likes THEIR smoke; if they use this same pak
 and read black to him, the difference is elsewhere and this hypothesis dies.
 
-**STATUS:** REOPENED, and now with visual evidence. Not the monster's fields, not the pets' fields. Exactly one
-emitter on the pet and it appears to be the green one. Next action is a `.pfx` decode, and b98's shroud deploy
-is BLOCKED pending it. `BL-b98-DEBT-2` is the related debt. R-93
+### FOURTH AMENDMENT - **SOLVED BY ELIMINATION. IT IS THE MESH.** `RevenantPoison.msh`.
+
+**WILL, VERBATIM - the observation that closed it:**
+
+> "yes the demons that he summons have the proper black shroud and they dont have any green"
+
+**MY OWN `.pfx`-IS-GREEN HYPOTHESIS IS DEAD, and his observation is what killed it.** The marauder demons
+carry the **identical** effect record and show **no green at all**, so that effect is genuinely black. Reported
+here rather than quietly dropped, because it was the leading theory one message ago and it lasted exactly as
+long as it took to check it against him.
+
+**THE FOUR-WAY COMPARISON, measured on `967b1f97` - one variable is left standing:**
+
+| record | mesh | baseTexture | `charFxPakRunningNames` | green in game? |
+|---|---|---|---|---|
+| `um_enslaver_marauder_99` (his demons) | **`ShadowStalker.msh`** | *(none)* | `drxshadowcloakrunning_fx_pak` | **NO - correct black shroud** ✅ |
+| `pets\toxeus_enslaver_1` (what he summons) | **`RevenantPoison.msh`** | `NewSkeleton_Charcoal.tex` | `drxshadowcloakrunning_fx_pak` | **GREEN** ❌ |
+| `um_toxeus_enslaver_99` (the monster) | **`RevenantPoison.msh`** | `NewSkeleton_Charcoal.tex` | `drxshadowcloakrunning_fx_pak` | green (his original report) ❌ |
+| `pets\bloodtoxeus_1` (Devourer pet) | `RevenantPoison.msh` | `newskeleton_crimson.tex` | *(none)* | never reported |
+
+**The FX pak is byte-identical between the clean demon and the green pet. The mesh is the only difference that
+tracks the symptom.** Therefore the green is baked into **`Creatures\Monster\Skeleton\RevenantPoison.msh`** -
+the *poison* variant of the revenant skeleton - as an emissive or a secondary material the `.dbr`'s
+`baseTexture` field does not override (`baseTexture` replaces the primary skin only).
+
+**THIS RETROSPECTIVELY EXPLAINS EVERY EARLIER FAILURE, and it is a lesson, not an excuse:**
+- **Constant** - a mesh renders every frame; no skill or buff timing involved. Matches "he glows green the
+  whole time".
+- **Visible even in bright areas, striking on certain backgrounds** - an emissive shell, exactly his words.
+- **Four fix waves changed nothing** because all four edited FX FIELDS, and the green was never in a field.
+  We were editing the correct-looking layer of the wrong subsystem, and each wave could sincerely verify its
+  own change and still not move a pixel.
+
+**THE FIX, and it pays a second debt:** put the Enslaver - **the monster AND all three pet tiers** - on a mesh
+that is not the poison revenant. **`ShadowStalker.msh` is the evidenced choice**: it is proven green-free in
+this exact scene, and it is literally what his own demons wear, so it is in-family rather than arbitrary. This
+simultaneously satisfies **R-93**, which wants the Enslaver and the Devourer to stop sharing
+`RevenantPoison.msh`.
+
+⚠️ **THE REAL RISK IS ANIMATION, NOT COLOUR.** A mesh swap re-rigs everything: the Enslaver's inline animation
+rows and every skill that names a specific anim must still resolve, or he T-poses or goes uncastable. b98 hit
+exactly this class of bug with the spear rig. The lane must prove every referenced `.anm` resolves on the new
+mesh BEFORE claiming the fix, and must check the marauder's own rig as the reference implementation.
+
+**LIFT THE DEPLOY BLOCK:** b98's `svc_enslaver_shroud` is **exonerated** as a green source (its pak is the
+black one the demons wear). It is still only wired to the MONSTER and still needs extending to the three pet
+tiers, but it is safe to deploy.
+
+**ONE CHEAP CONFIRMATION, worth doing before the swap:** ask Will to summon the **Devourer** pet. Same mesh,
+crimson texture, and no FX pak at all. If it also glows green, the mesh conclusion is confirmed independently
+and the swap must cover him too. If it does NOT, the mechanism is a mesh-plus-charcoal-texture interaction and
+the fix may be a texture change instead of a mesh swap - a smaller and safer change.
+
+**STATUS: ROOT CAUSE IDENTIFIED BY ELIMINATION** (mesh), fix specified, animation risk named, deploy block on
+b98's shroud lifted, one confirming question queued for Will. `BL-b98-DEBT-2` is the related debt. R-93
 remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
 that mesh regardless of the green.
