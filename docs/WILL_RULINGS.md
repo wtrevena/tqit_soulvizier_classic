@@ -1863,5 +1863,48 @@ champions uses it, mint a champion-specific passive instead of editing the share
 regains a per-record reflect field that bypasses the shared passive. Plant a negative at 100.0 and confirm the
 build reds.
 
-**STATUS:** measured and specified, NOT implemented. Awaiting Will's number for `defensiveReflect` (my
-recommendation is 30). Everything else in R-100 for these champions proceeds unchanged.
+### AMENDMENT - WILL'S SOUL-STACKING POINT: RIGHT AS A MECHANIC, BUT IT DOES NOT APPLY TO THESE THREE
+
+**WILL, VERBATIM:**
+
+> "note that his soul is equipped as an item so reflect damage on his soul adds on top of the reflect damage
+> he has as a skill"
+
+**THE MECHANIC HE DESCRIBES IS REAL and worth writing down as a standing consideration.** These champions DO
+wear their own souls - `chanceToEquipFinger2 = 100.0` on all four records, with `lootFinger2Item1` naming their
+own n/e/l soul triple - so any defensive property on the soul ITEM genuinely adds to whatever their skills
+grant. That is a correct reading of the equipment model and it is not obvious from the records.
+
+**BUT MEASURED ON `967b1f97`, IT CONTRIBUTES NOTHING HERE. The worn souls carry ZERO reflect and ZERO
+retaliation:**
+
+| champion | equips | soul %-reflect | soul flat retaliation |
+|---|---|---|---|
+| Enslaver | 100% | **none** | **none** |
+| Devourer | 100% | **none** | **none** |
+| Endless Hunt | 100% | **none** | **none** |
+| Endless Hunt (Legendary variant) | 100% | **none** | **none** |
+
+(`enslaver_soul_{n,e,l}`, `blood_toxeus_soul_{n,e,l}`, `toxeus_hunt_soul_{n,e,l}` - all nine records, every
+`*reflect*` and `*retaliation*` field either absent or zero.)
+
+**SO THE ENTIRE REFLECT IS THE ONE SKILL: `toxeus_passiveproperties` at 100.0 / 33.0.** Good news for the fix -
+there is exactly one field pair to change and no hidden second source stacking behind it. Will's instinct to
+check was right; the answer is that it comes back clean.
+
+**A DISTINCTION THAT MATTERS FOR THE FIX, since the two get conflated:**
+- **`defensiveReflect` (%)** returns a PROPORTION of the damage taken, so it scales with the player's own hit
+  and is unbounded. This is what one-shots him.
+- **`retaliation*` (flat)** deals a fixed amount back regardless of the incoming hit, so it cannot one-shot a
+  healthy character. Harmless by comparison.
+Only the first needs touching. Do not "fix" retaliation and report the reflect solved.
+
+**STANDING CONSIDERATION FOR EVERY OTHER BOSS (not this fix, but bake it into future briefs):** **983** soul
+records across this mod carry non-zero `retaliation*` fields, and monsters wear their own souls at 100%. So for
+any OTHER champion the soul really can stack defensive properties onto the monster, and a difficulty
+investigation that reads only the creature and its skills will under-count. **Always read the worn soul too.**
+Worth a gate that sums a champion's skill-granted and soul-granted reflect and fails above a ruled ceiling.
+
+**STATUS:** measured and specified, NOT implemented. Single lever confirmed: `toxeus_passiveproperties`
+`defensiveReflect` 100.0 (chance 33.0), no soul contribution. Awaiting Will's number - my recommendation is
+30. Everything else in R-100 for these champions proceeds unchanged, all three power additions included.
