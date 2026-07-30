@@ -103,14 +103,25 @@ Ten hard filters, each of which the gate re-proves against the FINAL MERGED map:
 | F6 | >= 90% of a 3.0 u disc walkable | the pack needs room to materialise |
 | F7 | >= 3.0 u from every placed `0x05` instance | never inside a pillar or a bone pile |
 | F8 | >= 10 u inside drxBC3's own footprint edge | the b44 class applied to a **walk-in seam**: the player crosses x=4186 into `drxBC_Finale` and must not arrive inside a pack. Without it the derivation put an 8-spawn `abom_dancer_spear_mix` at world x=4186.5, i.e. **0.5 u from the exit door** |
-| F9 | >= 16 u (Chebyshev) from every other monster proxy, old or new | **R-30's spacing law**, verbatim: *"you need to space these monsters out instead of putting them all on top of one another"* |
-| F10 | the worst axis-aligned 60x60 box anywhere sums <= 42 spawnMax | the density ceiling, enforced DURING selection rather than reported afterwards |
+| F9 | >= 16 u (Chebyshev) from every other monster proxy, old or new | implements **R-30's spacing law** (*"you need to space these monsters out instead of putting them all on top of one another"*). ⚠️ The **16 u is the design pass's own number, not Will's** - R-30 fixes no distance. Constant, not law. |
+| F10 | the worst axis-aligned 60x60 box anywhere sums <= **57.0 EFFECTIVE entities** | the density ceiling, enforced DURING selection rather than reported afterwards. ⚠️ ROUND-2 UNIT FIX: `spawnMax` is not what the engine spawns - the pool's `proxyPoolEquation` multiplies it. |
 
 Reproduce:
 
 ```
-PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 py tools/debug/b100_derive_sanctuary.py --map <Levels.arc>
+PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 py tools/debug/b100_derive_sanctuary.py \
+    --map local/b100_base/Levels_merged.arc \
+    --arz work/SoulvizierClassic/Database/SoulvizierClassic.arz
 ```
+
+⚠️ **`--map` MUST be a BASELINE map** (one WITHOUT these placements). The derivation reads
+drxBC3's existing proxies as the point set it spaces against, so running it on the post-change
+map would feed this lane's own 14 back in as pre-existing content. It now asserts 281 instances
+/ 10 monster proxies and fails in one second if pointed at the wrong artifact. **And pass
+`--arz` explicitly** - round 1's default resolved to the MAIN CHECKOUT's staged arz from a
+worktree (another lane's artifact); that default is now `REPO`-relative, but being explicit
+costs nothing. Determinism: 3 runs at `PYTHONHASHSEED` 7/14/21 produced identical output, json
+md5 `c7fbe1a0f90c9d95a59ec009bc6cd34e`.
 
 ---
 
@@ -201,10 +212,43 @@ axis, so enumerating point pairs is exhaustive, not a sample):
 pool has a non-zero `spawnMax`, and does **not** additionally require > 3,000 sq u, which would
 mean decoding 2,282 navmeshes. Like-for-like within itself, which is the point.)
 
-**The density cap is therefore derived, not chosen:** `SCREEN_CAP = 42` = the sparsest
-already-shipping blood-cave level that carries real content, which is also the base-game
-cave/crypt/tomb p90 (44). Result **24 -> 36**: the Sanctuary lands inside its own family and stays
-the sparsest walkable level in the blood cave, which is what a processional should be.
+**The density cap is derived, not chosen** - but ⚠️ **ROUND 2 CORRECTED BOTH ITS UNIT AND ITS
+CROSS-FAMILY COMPARISON.** Round 1 wrote: *"`SCREEN_CAP = 42` = the sparsest already-shipping
+blood-cave level that carries real content, which is also the base-game cave/crypt/tomb p90
+(44). Result 24 -> 36."* The second clause was **invalid**: a pool's `spawnMax` is not what the
+engine spawns, because the pool's `proxyPoolEquation` multiplies it, and the two cohorts use
+different equations. MEASURED in the built arz:
+
+| equation record | `spawnMaxEquation` | factor @ 1 player | used by |
+|---|---|---:|---|
+| `proxypoolequation_01.dbr` | `poolValue*(2.623966 + 1.076769*nP - 0.100485*nP^2)` | **3.60025x** | 854 of the 887 base-game cohort refs |
+| `proxypoolequation_02.dbr` | `poolValue*(0.91 + 0.497143*nP - 0.05*nP^2)` | **1.357143x** | 162 of the 176 blood-cave refs (and all 24 in drxBC3) |
+
+So comparing raw field values across them compared different units, and "42 is also the
+base-game p90" was a coincidence. Re-measured in **EFFECTIVE ENTITIES** with the identical box
+(`py tools/debug/b100_density_census.py`):
+
+```
+=== blood cave, worst 60x60 EFFECTIVE ===
+  drxBC2                            109.9      drxBC_finale_transitionconnector   58.4
+  drxFirstRoom                      104.4      yet_another_fucking_connector      57.0
+  drxBC_Finale                       81.4      drxBC3 (baseline)                  32.6
+  drxBC_Connector2                   63.8      drxBC3 (AFTER this lane)           51.6
+
+=== base-game cave/crypt/tomb cohort (n=80) ===
+  EFFECTIVE : min 27.2  p25 68.4  MEDIAN 90.0  p75 126.0  p90 158.4  max 280.8
+  raw EXACT : min 9     p25 19    MEDIAN 26    p75 35     p90 44     max 78
+```
+
+The cap is now **`SCREEN_CAP_EFF = 57.0`**, still derived the same way - the sparsest
+already-shipping blood-cave level carrying real content (`yet_another_fucking_connector`) -
+and the walkway goes **32.6 -> 51.6 effective**. That is **57% of the base-game median**, 33% of
+its p90, still the sparsest walkable level in its own cave, and under half the b76
+chumbi-freeze figure ("well over 100"). **Because all 24 of drxBC3's proxies use `_02`,
+effective is an exact 1.357143x rescale of raw within this level and 57.0 eff == 42 raw, so the
+unit correction moved NO placement.** The direction of round 1's error was conservative. Note
+`drxBC2` already ships at **109.9 effective** - inherited debt in the b76 range, not this
+lane's, and worth somebody's attention.
 
 ### 3.4 The design's rule 2 is unsatisfiable, and was the wrong invariant anyway
 
@@ -390,7 +434,7 @@ relative to it), built with the identical command and environment into an isolat
 `SVC_OUT_DIR`, so the diff isolates exactly this lane's change.
 
 ```
-py tools/debug/b100_map_diff.py --a local/b100_base/Levels_merged.arc --b local/b100_new/Levels_merged.arc
+py tools/debug/b100_map_diff.py --a local/b100_base/Levels_merged.arc --b local/b100_r2/Levels_merged.arc
 
   levels: 2282 vs 2282
   level blobs differing: 1
