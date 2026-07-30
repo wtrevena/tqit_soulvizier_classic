@@ -74,11 +74,18 @@ TWO INDEPENDENT CROSS-CHECKS run inside the gate, so the predicate cannot rot:
     EQUAL to it. A new `um_toxeus_*` variant therefore REDS THE BUILD (with a
     message telling the next lane to ratify it) instead of being silently
     dropped, which is the precise failure this ruling exists to close.
- 2. NAME-TAG DERIVATION. The roster is re-derived a second way - every
-    Monster.tpl record whose `description` is one of the roster's four display
-    tags - and the two derivations are diffed. This catches a Toxeus authored
-    OUTSIDE the `toxeus` path namespace, which the path predicate alone would
-    miss. The tag derivation legitimately returns 2 extra base-game records
+ 2. NAME-TAG DERIVATION. The roster is re-derived a second way - every record
+    on ANY template EXCEPT `Pet.tpl` whose `description` is one of the roster's
+    four display tags - and the two derivations are diffed. This catches a Toxeus
+    authored OUTSIDE the `toxeus` path namespace, which the path predicate alone
+    would miss, INCLUDING one minted on a bespoke boss template rather than
+    Monster.tpl (this scan used to filter on Monster.tpl, and planted negative
+    R3 proved that filter made it hollow for exactly that case - the R3 donor is
+    a `Typhon2.tpl` boss). Widening it was measured to add ZERO hits in the live
+    db. Pet.tpl stays excluded on purpose: the nine Toxeus summon pets are out of
+    roster scope by design and carry their own `*Pet` tags, so a lane naming a
+    summon after its master must not red the build.
+    The tag derivation legitimately returns 2 extra base-game records
     (`am_assassin_04`, `am_assassin_06`): they are charLevel 4/6 Act-1 Common
     "Desecrated Dead Assassin" skeletons that merely REUSE the base-game text tag
     `tagMonsterName190`. They carry no Toxeus controller, no boss/hero rank, no
@@ -365,6 +372,9 @@ ROSTER_DEFERRED = (_HUNT_L,)
 # The derivation predicate, spelled out so the gate messages can quote it.
 _ROSTER_TOKEN = 'toxeus'
 _MONSTER_TPL = 'templates\\monster.tpl'
+# The second (name-tag) derivation scans EVERY template except this one - see
+# _roster_by_name_tag for why the exclusion is Pet.tpl and nothing else.
+_PET_TPL = 'templates\\pet.tpl'
 
 # Base-game records that share a Toxeus display tag but are NOT Toxeus: charLevel
 # 4/6 Act-1 Common "Desecrated Dead Assassin" skeletons
@@ -550,18 +560,38 @@ def toxeus_roster(db):
 
 
 def _roster_by_name_tag(db, roster):
-    """SECOND, independent derivation: Monster.tpl records whose `description`
-    is one of the display tags the path-derived roster uses.
+    """SECOND, independent derivation: records whose `description` is one of the
+    display tags the path-derived roster uses, on ANY template except Pet.tpl.
 
     This is the derivation that would catch a Toxeus authored OUTSIDE the
     'toxeus' path namespace, which the path predicate alone cannot see.
+
+    IT DELIBERATELY DOES **NOT** FILTER ON Monster.tpl, and that is a FIX, not an
+    oversight. It used to, and planted negative R3 proved the filter made the
+    whole cross-check hollow for the case that matters most: a boss authored on a
+    BESPOKE template. The R3 donor `boss_titan_typhon_42` is
+    `database\\Templates\\Typhon2.tpl`, so a Monster.tpl-filtered scan skipped it
+    and the gate stayed green while wearing a champion's display tag. Every one of
+    this mod's own uber bosses could likewise be minted on a bespoke boss
+    template. Widening the scan was MEASURED to add ZERO hits in the live db
+    (the only carriers of the four roster tags are the 8 roster records plus the 2
+    pinned am_assassin false positives, all Monster.tpl), so this strictly
+    strengthens the gate without risking a false red.
+
+    Pet.tpl IS excluded, for a stated reason rather than by accident: the nine
+    Toxeus summon pets are deliberately out of roster scope (a pet has no death
+    loot, and `treasureProxyName` on Pet.tpl is the documented CRASH trap), and
+    they legitimately carry their OWN `*Pet` display tags
+    (`tagMonsterHemorrheusPet`, `tagSVCMonsterEnslaverPet`,
+    `tagMonsterToxeusEoATPet` - measured). A future lane naming a summon after its
+    master is normal content work and must not red the build.
     """
     tags = {_v1(db, r, 'description') for r in roster}
     tags.discard(None)
     out = []
     for n in db.record_names():
         tpl = _v1(db, n, 'templateName')
-        if not (isinstance(tpl, str) and _norm(tpl).endswith(_MONSTER_TPL)):
+        if isinstance(tpl, str) and _norm(tpl).endswith(_PET_TPL):
             continue
         if _v1(db, n, 'description') in tags:
             out.append(n)
