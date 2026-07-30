@@ -1463,14 +1463,30 @@ ruling - the ban in this ruling is honoured literally.
 > picking the incumbent between two same-day lanes is the orchestrator's call. Registered as
 > `BL-b101-DEBT-1`.
 >
-> ⚠️ **THIS WHOLE SECTION WAS BRIEFLY LOST AND HAS BEEN RESTORED.** The `feat/toxeus-apex-roster`
-> merge commit `4748e93` resolved an append/append conflict in this file by keeping only its own side,
-> which deleted these 101 lines - Will's verbatim 19-item play report, captured word for word
-> precisely so nothing could fall off it. Found by `git diff main..HEAD` reading
-> "101 deletions / 0 insertions" and restored byte-identically from `main`. Recorded here as a worked
-> example of the failure mode CLAUDE.md law #1 exists to catch: a routine-looking merge resolution is
-> enough to vaporise a verbatim Will ruling, so any lane touching this file should diff it against
-> `main` before committing.
+> 🛑 **RETRACTION (b101 round 2, 2026-07-29). AN EARLIER ANNOTATION HERE CLAIMED THIS SECTION HAD BEEN
+> "SILENTLY DELETED BY MERGE `4748e93` AND RESTORED". THAT CLAIM WAS FALSE AND IS WITHDRAWN.** Nothing
+> was ever lost. The independent vet caught it and I reproduced every command:
+> * `git diff e014ef8 4748e93 --numstat -- docs/WILL_RULINGS.md` -> **empty**. The merge result is
+>   byte-identical to the `main` it merged; it dropped nothing.
+> * `for c in d7c9aee e014ef8 4748e93 60a3bfb~1 60a3bfb 0c4e9a2; do git show $c:docs/WILL_RULINGS.md |
+>   grep -c "PLAY-SESSION BATCH"; done` -> `0 0 0 0 1 1`. This section did not exist on EITHER side of
+>   that merge.
+> * `git log -1 --format="%h %ad %s" --date=iso 0c4e9a2` -> `2026-07-29 18:18:15 R-100: capture Will's
+>   19-item play-session batch VERBATIM` vs `4748e93` -> `2026-07-29 12:57:15`. R-100 was authored on
+>   `main` **5h21m AFTER** the merge it was accused of destroying. `git merge-base --is-ancestor
+>   0c4e9a2 e014ef8` -> exit `1` (not an ancestor).
+> * `git diff 60a3bfb~1 60a3bfb --numstat` -> `101 0 docs/WILL_RULINGS.md`: commit `60a3bfb` was an
+>   ordinary catch-up **ADD** of `main`'s newer text, not a restore, and its commit subject
+>   ("RESTORE the 101 ruling lines this branch's merge silently dropped") is likewise wrong.
+>
+> ROOT CAUSE OF THE FALSE REPORT: `git diff main..HEAD --numstat` shows a file `main` added after the
+> merge base as pure DELETIONS on the branch side. That is a two-dot-diff artifact, not data loss.
+> Reproduced live today: `git diff main..HEAD --numstat` reports `0 96 tools/debug/probe_blockers.py`,
+> `0 86 …probe_class_examples.py`, `0 101 …probe_soul_by_class.py` - three files `main` ADDED at
+> `fc7a886`, which this branch has never touched. **The real lesson, and the one worth keeping: read
+> `git diff <mergebase>..HEAD` (three-dot `main...HEAD`) before accusing a commit of losing anything,
+> and check the accused commit's own `--numstat` against BOTH its parents.** A fabricated incident in
+> the design law of record is itself a violation of CLAUDE.md law #1.
 
 Will played and reported a large batch in one message. Recorded verbatim FIRST, before any triage, because
 losing an item off a list this long is exactly the failure the DONE-MEANS-DONE rule exists to prevent.
