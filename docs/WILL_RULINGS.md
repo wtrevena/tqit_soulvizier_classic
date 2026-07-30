@@ -2605,3 +2605,71 @@ were **uncapped**. Neither new summon is unbounded.
 
 **Both names are this lane's invention and are flagged for Will veto**, per the standing creative-bar
 rule; they ship as defaults.
+
+---
+
+## R-126 [2026-07-30] IMPLEMENTED b102 - DERIVED FROM MEASUREMENT (not a Will decision; vetoable). `actorHeight` is a per-RIG constant, NOT a size knob, and the b102 minions had invented values.
+
+**This ruling exists because the record-diff cannot catch this class of defect, and it did not.**
+`ADDED 7 / REMOVED 0 / CHANGED 7` was green while both new minions shipped with a wrong field, because
+an invented value on a record that is itself NEW is not a "change" against any baseline. It took a
+DB-wide measurement of the animation rig to see it.
+
+**WHAT WAS WRONG.** The first draft of `tools/patches/devourer_kit.py` wrote `actorHeight` on both new
+minions as if it were part of making them bigger:
+
+| record | donor | donor scale -> ours | donor actorHeight -> ours |
+|---|---|---|---|
+| `um_devourer_bloodspawn_99` | `c_large_blooddemon_40` | 1.75 -> **2.4** | 1.0 -> **1.6** |
+| `um_hunt_courser_99` | `c_bloodhound_44` | 1.25 -> **1.7** | 1.7 -> **1.4** |
+
+The courser is the tell: its `scale` went **UP** 1.36x while its `actorHeight` went **DOWN** 18%.
+Whatever `actorHeight` is, it cannot be both.
+
+**THE MEASUREMENT (`py tools/debug/probe_actorheight.py <arz>`, run on the b102 arz, 51,131 records).**
+Group every record by its `mesh` - i.e. by the rig it animates on - and ask whether `actorHeight` ever
+moves with `scale`:
+
+* **2,122** rigs carry an `actorHeight` on more than one record.
+* **184** of those have BOTH `scale` and `actorHeight` varying inside the rig.
+* **60** still vary once the `actorHeight = 0.0` class is dropped (0.0 is a distinct "no height"
+  state used by ambient/non-combat variants - e.g. `ag_insect_antlion_0Nn` sit at 0.0 while every
+  real antlion on the same mesh sits at 1.7 across scale 0.7..1.39).
+* **ZERO** rigs - 0 of 2,122 - make `actorHeight` proportional to `scale`.
+
+And on the two rigs this wave actually touched:
+
+* `DRX\meshes\blooddemon01.msh` - **24** other records spanning `scale` **0.7 -> 1.75**. Every one of
+  them `actorHeight` **1.0** (or 0.0). Ours was the only 1.6 on the rig.
+* `DRX\meshes\bloodhound.msh` - **9** other records spanning `scale` **1.0 -> 2.25**. Every one of them
+  `actorHeight` **1.7** (or 0.0). Ours was the only 1.4 on the rig.
+
+`xbloodhound_36` is the control that settles it: that rig **already has** a record scaled to 2.25,
+*larger than our courser's 1.7*, and it did **not** touch `actorHeight`. If the field were a size knob,
+that record is where the base content would have proved it.
+
+**THE RULE (standing, applies to every future clone, not just these two).** `actorHeight` is where the
+engine hangs a creature's name plate and hit FX on its rig. It belongs to the MESH, not to the
+instance. **A cloned creature inherits its donor's `actorHeight`. Make a creature bigger with `scale`.**
+If a lane ever has a real reason to move it, the reason has to be a measured property of the rig, and
+the measurement goes in this ledger.
+
+**WHAT SHIPPED.** `_build_minion` no longer takes or writes a height argument at all - the field is
+simply left inherited. **`scale` is untouched**: the Gorged Bloodspawn still ships at 2.4 and the
+Courser at 1.7, so neither minion got smaller; only the rig constant was put back.
+
+**THE GATE (CLAUDE.md law #4).** `devourer_kit.gate_violations()` now asserts each minion's
+`actorHeight` equals **its donor's, read live out of the same db** - not a number copied into the
+module, which could drift away from the rig the way the original values did. The donors are separately
+proven byte-unchanged by the b102 record-diff, so the gate is anchored to ground truth. Planted
+negative **N10** re-creates the exact shipped defect (courser `actorHeight` 1.4) and is asserted to
+fire; the suite is now **10/10 with a clean control**.
+
+**RESIDUAL, HONESTLY STATED.** What `actorHeight` does at runtime is inferred from the data (its
+distribution over rigs, and the 0.0 "no height" class), not from disassembly. That does not weaken the
+ruling - being the only record on a 25-record rig with a bespoke value is a defect whatever the field
+drives - but a lane that wants to move it deliberately should pin the mechanic first.
+
+**DEBT:** this is the same shape as `BL-b102-DEBT-2` (the castability walk): a rig-constant check
+should eventually run over every cloned creature in the DB, not just the two this wave authored.
+Registered as `BL-b102-DEBT-9`. NOT done here.
