@@ -23,6 +23,24 @@ UNTOUCHED (zero map bytes, so the Levels+Quests coupling does not apply).
 ship without a `Text.arc` built from the same run.** (The repo-root `uber_soul_tags.txt` is a stale
 tracked artifact, NOT the live one; the live file is the build output beside the arz.)
 
+> ✅ **COUPLING NOW SATISFIED (2026-07-30, re-verification pass).** The paragraph above was written
+> as a WARNING and the Text side had NOT actually been built - the staged
+> `work/SoulvizierClassic/Resources/Text.arc` predated this lane's own DB build
+> (`f51c62ffd2a0fcddfab00bad498c04dd`), so the 3 tags lived in the arz and in the tag sink but in no
+> shipped Text artifact. Deploying that pair would have rendered three raw `tagSVCChestGeneral*Guard`
+> strings on the Guardians' chests. Built now:
+> `py tools/build_text_arc.py upstream/soulvizier_098i/Resources/Text_EN.arc`
+> `work/SoulvizierClassic/Resources/Text.arc work/SoulvizierClassic/Database/uber_soul_tags.txt`
+> `"<TQAE>/Text/Text_EN.arc"` -> **EXIT 0**, contracted-tooltip gate PASS,
+> **`Text.arc` md5 `67466b9bc1c83c000247deff98e46505`**. All 3 tags proved present in
+> `modstrings.txt` by a bare `ArcArchive` read (Reaver's Spoil / The Bilespitter's Cache /
+> Ember-Ward Reliquary). **SHIP THE PAIR: arz `b55515970be41c2542208e84a8705640` +
+> Text.arc `67466b9bc1c83c000247deff98e46505`.**
+>
+> LESSON worth generalising: `validate_tags` proves every arz tag HAS a definition; nothing proved
+> the shipped `Text.arc` was built from THIS run. A stale Text artifact is the blind spot. Any lane
+> that mints a tag should record the Text.arc md5 in its gate record, as done here.
+
 | | arz | size | records | modules | exit |
 |---|---|---|---|---|---|
 | baseline (`main` @ `7efd107`, same env, same command) | `6a3a491db546b603c52132237c40aa63` | 55,475,226 B | 51,124 | 45 | 0 |

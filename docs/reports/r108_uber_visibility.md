@@ -333,3 +333,42 @@ carries a dedicated `genericbossorb_*` captures **7** records, not 6 - the 6 Gua
 either (all 27 excluded adds are `champion`). Recorded in `WILL_RULINGS.md` beside the open question
 so the next lane does not re-derive a rule that does not close. **The answer to WHETHER is still
 Will's; this only settles that the HOW must be a pinned set, symmetric with `MARKER_EXEMPT`.**
+
+### 5.7 A REAL GAP THIS PASS FOUND AND CLOSED: `Text.arc` was never rebuilt
+
+§Header of this report states the arz+Text coupling ("this lane mints 3 new tags, so the arz and
+Text must ship together"). **The coupling was stated but not executed.** Measured: the staged
+`work/SoulvizierClassic/Resources/Text.arc` was dated *before* this lane's own DB build
+(md5 `f51c62ffd2a0fcddfab00bad498c04dd`), so the three chest-name tags existed in the arz and in the
+build's tag sink (`work/SoulvizierClassic/Database/uber_soul_tags.txt` lines 410-412) but **not in
+any shipped Text.arc**. Deploying that pair would have shown the player three raw
+`tagSVCChestGeneral*Guard` strings on the Guardians' chests - exactly the orphaned-tag defect class
+`validate_tags` exists to prevent, arriving through the one door it does not watch (a *stale* Text
+artifact rather than a missing tag).
+
+Built:
+
+```
+py tools/build_text_arc.py upstream/soulvizier_098i/Resources/Text_EN.arc \
+   work/SoulvizierClassic/Resources/Text.arc \
+   work/SoulvizierClassic/Database/uber_soul_tags.txt \
+   "<TQAE>/Text/Text_EN.arc"
+EXIT=0    RESULT: PASS - 2 contracted tooltip(s) state the gate their records actually enforce
+```
+
+`Text.arc` md5 `f51c62ffd2a0fcddfab00bad498c04dd` (stale) -> **`67466b9bc1c83c000247deff98e46505`**
+(89,331 B -> current), i18n de-clobber active against the base-game `Text_EN.arc`.
+
+Proved present by a bare `ArcArchive` read of the built arc (no lane code in the loop):
+
+```
+PRESENT  tagSVCChestGeneralAGuard   in modstrings.txt  ->  Reaver's Spoil
+PRESENT  tagSVCChestGeneralBGuard   in modstrings.txt  ->  The Bilespitter's Cache
+PRESENT  tagSVCChestGeneralCGuard   in modstrings.txt  ->  Ember-Ward Reliquary
+RESULT: PASS (3/3)
+```
+
+**DEPLOY COUPLING, now satisfiable:** ship `SoulvizierClassic.arz`
+(`b55515970be41c2542208e84a8705640`) **together with** `Text.arc`
+(`67466b9bc1c83c000247deff98e46505`). `Levels.arc` and `Quests.arc` are untouched by this lane
+(`git diff --stat main...HEAD` over the map/quest tools is empty), so their coupling does not apply.
