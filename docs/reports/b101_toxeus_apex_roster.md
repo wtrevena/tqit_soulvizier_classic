@@ -1,0 +1,342 @@
+# b101 - R-99: the apex orb covers EVERY Toxeus variant (all-Toxeus roster + roster-derived gate)
+
+Branch `feat/toxeus-apex-roster`. Ruling: **R-99** (`docs/WILL_RULINGS.md`), ratified by Will
+2026-07-29, now IMPLEMENTED. Owner module `tools/patches/uber_apex_orb.py` (the R-72/R-75 owner, its
+roster EXTENDED - not a new module).
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process was launched or killed.** The orchestrator owns every deploy and every upload.
+
+---
+
+## 1. What Will asked for, and what was actually wrong
+
+R-99, verbatim: *"i didnt tell you to increase the drop of all the champions, just the toxeus variants
+(all variants we made and didnt make) and leinth"*, and on the two judgement calls the first pass
+raised: *"give all versions of toxeus the new apex orb, if some good items drop since someone got lucky
+and found and killed the low-level Toxeus with no fixed spawn and they get some great items, so be
+it"*.
+
+The real gap: b94 wired the two FOUGHT champions onto the new apex tier `genericbossorb_05` from a
+**hand-typed pair**, while b98 built the Endless Hunt in a parallel lane. Neither lane owned the
+other's half of the roster, so **the third champion - the one Will has actually fought in play -
+shipped with no `treasureProxyName` at all**, for two waves, and nobody noticed.
+
+That is the defect this wave closes, and it is why the roster is now DERIVED from the database instead
+of typed.
+
+## 2. The change
+
+`uber_apex_orb.toxeus_roster(db)` = every record whose path contains `toxeus` **and** whose
+`templateName` is `Monster.tpl`. Both halves are load-bearing: the path token is what finds a variant a
+future lane adds without telling this module; the `Monster.tpl` half is what keeps the nine `Pet.tpl`
+Toxeus summon pets out, because `treasureProxyName` is a Monster.tpl loot field and writing one onto
+`Pet.tpl` is the documented crash trap in `CLAUDE.md`.
+
+The derived roster is cross-checked **two independent ways** so the predicate cannot rot:
+
+1. **Pinned allow-list.** `ROSTER_PINNED` names all 8. The derived set is asserted EQUAL to it, so a
+   new `um_toxeus_*` variant **reds the build** with a message telling the next lane to ratify it,
+   rather than being silently dropped. That silence is the exact failure R-99 exists to close.
+2. **Name-tag derivation.** The roster is re-derived from display tags, on ANY template except
+   `Pet.tpl`, and the two derivations are diffed. Two base-game `am_assassin` records legitimately
+   reuse `tagMonsterName190` and are pinned as known false positives; a THIRD tag-only hit reds.
+
+`apply()` repoints exactly the derived roster. Five records had no `treasureProxyName` field at all, so
+the write ADDS it (`DATA_TYPE_STRING`); the ones that already carried a string get a value-only write
+(the cloned-record dtype trap). `um_toxeus_hunt_l_99` does not exist when this module runs - it is
+authored later by `toxeus_hunt_endless` as a clone of the final Hunt - so `apply()` tolerates its
+absence via `ROSTER_DEFERRED` while `verify()`, which runs over the FINAL merged db, requires it
+present and on orb05.
+
+Nothing about the orb's CALIBRE changed. R-99 is about who sits on the tier; "more items than the
+normal champions" was already satisfied by orb05 (21.16 modelled expected items vs orb04's 5.70).
+
+## 3. THE ROSTER TABLE, read back OUT of the built arz
+
+Built arz `6a3a491db546b603c52132237c40aa63`, 55,475,226 B, 51,124 records.
+
+| record | charLevel n/e/l | rank | `treasureProxyName` before | after |
+|---|---|---|---|---|
+| `um_toxeus_enslaver_99` (Enslaver of Souls) | 40/68/100 | Boss | `genericbossorb_05` | `genericbossorb_05` |
+| `um_bloodtoxeus_99` (Devourer of Blood) | 40/68/100 | Boss | `genericbossorb_05` | `genericbossorb_05` |
+| `um_toxeus_hunt_99` (**the Endless Hunt**) | 40/68/100 | Boss | **field absent** | `genericbossorb_05` |
+| `um_toxeus_hunt_l_99` (endless variant) | 40/68/100 | Boss | **field absent** | `genericbossorb_05` |
+| `um_toxeus_99` (SP Toxeus, inherited) | 33/66/99 | Hero | **field absent** | `genericbossorb_05` |
+| `um_toxeus_21` (Athens, inherited) | 25/45/65 | Boss | `genericbossorb_01` | `genericbossorb_05` |
+| `z_toxeus` (zzdev dummy) | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+| `old_z_toxeus` (zzdev dummy) | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+
+Every charLevel matches R-99's own table, re-measured rather than copied. `charLevel` is ONE field
+holding a 3-element array - reading only `[0]` reports a 40/68/100 boss as "40/-/-", which is how a
+proof table starts lying; the tool reads the whole array.
+
+`um_toxeus_21` was **not** quietly scaled down to a lesser tier. R-99 bans that explicitly and the ban
+is honoured literally.
+
+## 4. The gate: NEGATIVE 2 restated, not weakened
+
+`verify()` used to hardcode exactly TWO champions, and planted `NEGATIVE 2` asserted that a **THIRD**
+record on orb05 must FAIL as scope creep. That test encoded a COUNT of two champions, which is the
+wrong invariant under R-99 - it would have redded the build the moment the ruling landed.
+
+The invariant it protected is still real and is now stated as a **set equality, tested both ways**:
+
+* every derived-roster record carries `treasureProxyName = genericbossorb_05`; **and**
+* the set of orb05 carriers is EXACTLY that roster - nothing non-Toxeus may sit on the apex tier.
+
+That second half is what keeps R-99's opening reassurance ("we did NOT raise all the champions") true,
+and `NEGATIVE 2` still plants a non-Toxeus record on orb05 and still requires FAIL.
+
+`verify()` also proves: the orb05 chain resolves end to end on all 3 difficulties; orb05's four calibre
+knobs are >= Leinth's original chest's on every difficulty; **every** donor tier a roster record left
+(orb04 AND orb01) survives, carries no Toxeus record and still serves its measured consumer floor; the
+three fought champions keep their R-48/R-91 100% soul; all three of Leinth's chests are on the same
+apex tables and level equation with her bespoke identity intact; and the six-loot-group no-nerf proof
+is recomputed rather than asserted.
+
+## 5. Proofs (commands + measured outputs, nothing estimated)
+
+Environment for every build: `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1
+SVC_REQUIRE_GATES=1`, `py` launcher.
+
+### 5.1 Full build, gates required
+
+```
+py tools/build_svc_database.py upstream/soulvizier_098i/Database/database.arz \
+   upstream/soulvizier_0.9/Database/database.arz upstream/soulvizier_041/Database/database.arz \
+   work/SoulvizierClassic/Database/SoulvizierClassic.arz \
+   "C:/Program Files (x86)/Steam/steamapps/common/Titan Quest Anniversary Edition/Database/database.arz"
+```
+
+**exit 0.** arz **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry
+modules. Log `local_r99_reproduce.log`. Key lines:
+
+```
+--- [37/45] uber_apex_orb  (uber apex orb - ONE apex drop calibre for the WHOLE Toxeus roster AND Leinth (R-72 + R-99)) ---
+  R-99 roster DERIVED from the db (path contains 'toxeus' AND templateName is Monster.tpl): 7 record(s), == ROSTER_PINNED minus the 1 deferred clone(s)
+  donor tier to protect: genericbossorb_01.dbr - 11 consumer(s), 10 of them NOT Toxeus and staying put
+  donor tier to protect: genericbossorb_04.dbr - 21 consumer(s), 19 of them NOT Toxeus and staying put
+  blast radius genericbossorb_01.dbr: 11 -> 10 consumer(s) (1 Toxeus left, 10 non-Toxeus untouched)
+  blast radius genericbossorb_04.dbr: 21 -> 19 consumer(s) (2 Toxeus left, 19 non-Toxeus untouched)
+    uber_apex_orb: modified 20 record(s), 0 tag(s)
+  [uber_apex_orb] verify OK: the DERIVED Toxeus roster is 8 record(s) ... EVERY one is on
+  genericbossorb_05, with the orb05 carrier set EXACTLY equal to it (no scope creep) ...
+```
+
+(The apply-time roster is 7 and the verify-time roster is 8 by design - the Legendary endless variant
+is cloned into existence later in the registry and inherits the orb.)
+
+### 5.2 The baseline, built from `main` in the same environment
+
+`main` @ `e014ef8`, built in a scratchpad worktree with the identical command and env: **exit 0**,
+**`aea688b23acefe1b48ae31a0df4cc423`**, 55,475,172 B, 51,124 records, 45 modules.
+
+This md5 **independently reproduces the value the B100 gate record published for the same base**, which
+corroborates both that build's determinism and this environment.
+
+> ⚠️ The baseline log committed by this lane's round 1 (`local_baseline_build.log`, arz
+> `967b1f97137bf6479c18c08e9dd6ffc4`) and round 1's own build log (`local_r99_build.log`, arz
+> `f99d5c83a60cb3136eff62622b999550`) are both **44-module builds made BEFORE the merge of `main` @
+> `e014ef8` at 12:57**, so neither is a baseline of the real tip and **`f99d5c83...` must not be
+> shipped**. They are kept as the audit trail of round 1, not as artifacts.
+
+### 5.3 Record-diff: zero unattributed changes
+
+```
+py tools/debug/b101_r99_record_diff.py <baseline aea688b2....arz> work/SoulvizierClassic/Database/SoulvizierClassic.arz
+```
+
+**exit 0:**
+
+```
+  records  : baseline 51124 -> built 51124
+  ADDED 0 / REMOVED 0 / CHANGED 6
+--- ATTRIBUTED TO R-99 (roster treasureProxyName) : 6 record(s) ---
+  um_toxeus_hunt_99.dbr    FIELD ABSENT          -> genericbossorb_05.dbr
+  um_toxeus_hunt_l_99.dbr  FIELD ABSENT          -> genericbossorb_05.dbr
+  um_toxeus_21.dbr         genericbossorb_01.dbr -> genericbossorb_05.dbr
+  um_toxeus_99.dbr         FIELD ABSENT          -> genericbossorb_05.dbr
+  old_z_toxeus.dbr         FIELD ABSENT          -> genericbossorb_05.dbr
+  z_toxeus.dbr             FIELD ABSENT          -> genericbossorb_05.dbr
+--- ROSTER RECORDS WITH ZERO DELTA (already on orb05 before R-99) : 2 ---
+RESULT: PASS - 0 ADDED, 0 REMOVED, 6 CHANGED and every one of them is a DERIVED Toxeus roster
+record whose ONLY moved field is treasureProxyName -> genericbossorb_05. Zero unattributed changes.
+```
+
+**0 REMOVED** is the load-bearing half for the neighbouring lanes: b98's 15 records and b99's
+`summon_sargoth` + pets all survive. The attribution rule is strict in both directions - any added
+record, any removed record, any other changed field, or a roster record landing on anything other than
+orb05, exits 1.
+
+### 5.4 `genericbossorb_04` BYTE-UNCHANGED, and its 19 other consumers
+
+```
+py tools/debug/b101_r99_proof_table.py <built.arz> <baseline.arz>
+```
+
+```
+[2] DONOR TIER genericbossorb_04 (R-47 shared generic apex orb)
+    chain records compared field-by-field vs baseline: 10
+    BYTE-UNCHANGED: all 10 record(s) identical to the baseline (every field, every value, every dtype)
+    consumers: baseline 19 -> built 19 ; Toxeus record(s) still on it: 0
+    lost  : none
+    gained: none
+```
+
+All 19 named and still on it: `um_sarkoth_99`, `um_vashkarr_99`, `um_bloodcrow_50`, `um_voranthys_99`,
+`um_broodmother_99`, `um_gorrahk_99`, `um_ilsevar_99`, `boss_dagon_66`, `um_ephialtes_99`,
+`um_mnemophage_core_99`, `um_antaeus_49`, `um_polisgaoler_unbound_99`, `um_deeptresher_47`,
+`um_meglograi_48`, `bloodcrow_soul`, `um_dorus_99`, `um_tantalus_unbound_99`,
+`svc_um_hadesmarshal_80`, `um_helepolis_99`. The 10 records compared are the proxy plus its 3 pools,
+3 chests and 3 loot tables - the whole donor chain a clone could have written back into.
+
+The **second** donor tier is protected identically, which R-99 newly requires because `um_toxeus_21`
+leaves it:
+
+```
+[3] DONOR TIER genericbossorb_01 (um_toxeus_21's old tier)
+    BYTE-UNCHANGED: all 1 record(s) identical to the baseline
+    consumers: baseline 11 -> built 10 ; Toxeus record(s) still on it: 0
+    lost  : ['um_toxeus_21.dbr']    gained: none
+```
+
+Its other 10 (`um_elephantsnatcher_17`, `us_mormo_16`, `um_kaublasia_19`, `um_calybe_20` x2,
+`um_rakanizeus_17` x2, `um_melalos_19` x3) stay exactly where they were.
+
+### 5.5 R-48 / R-91 independence, proven not asserted
+
+`chanceToEquipFinger2` on all 8 roster records is bit-identical to the baseline:
+
+| record | built | baseline | soul |
+|---|---|---|---|
+| `um_toxeus_enslaver_99` | 100.0 | 100.0 | `enslaver_soul_n` |
+| `um_toxeus_hunt_99` | 100.0 | 100.0 | `toxeus_hunt_soul_n` |
+| `um_toxeus_hunt_l_99` | 100.0 | 100.0 | `toxeus_hunt_soul_n` |
+| `um_bloodtoxeus_99` | 100.0 | 100.0 | `blood_toxeus_soul_n` |
+| `um_toxeus_99` | 66.0 | 66.0 | `sp_toxeus_soul_n` |
+| `um_toxeus_21` | 50.0 | 50.0 | `toxeus_soul_n` |
+| `z_toxeus` / `old_z_toxeus` | 0.0 | 0.0 | `finger_n01b` |
+
+Souls are Finger2 EQUIPMENT and orbs are `treasureProxyName` - independent mechanisms. `apply()` also
+snapshots the three soul fields on every roster record before its own writes and fails loud on any
+movement, so the guard covers rates it does not know the value of.
+
+### 5.6 Planted negatives: 29/29
+
+```
+py tools/debug/negtest_uber_apex_orb.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
+```
+
+**`29/29 subtests behaved as specified`, exit 0, 0 skipped.** 1 positive on the real arz; negatives
+1-14 (champion back on orb04, non-Toxeus on orb05, the four calibre knobs, a broken chain link, R-48
+collateral damage, donor-chain tamper, and the six Leinth guards); **negatives 15-22, one per derived
+roster record, each losing its orb** - generated from the roster so a future variant gets its own
+negative automatically; R1/R2 (roster-pin drift in both directions); R3 (the second derivation fires);
+R4 (the false-positive pin proven load-bearing); R5 (orb01 stripped below its floor); and a final
+positive proving every mutation was restored.
+
+### 5.7 The gate reds the pre-R-99 baseline
+
+Running the new `verify()` against the pre-R-99 arz fires with **exactly the 6 gaps R-99 enumerated**
+(hunt, hunt_l, `um_toxeus_99`, `um_toxeus_21`, `z_toxeus`, `old_z_toxeus`) plus
+`genericbossorb_01.dbr STILL carries Toxeus record(s) ['um_toxeus_21.dbr']`. A gate that cannot fail on
+the state it was written to detect is not a gate.
+
+### 5.8 Byte-identity after the verify-side fixes
+
+Steps 6 and 7 changed `verify()`/docstring only. Rebuilt from scratch with the identical command and
+env to prove no apply-side drift - see the BUILD69-DEV gate record for the resulting md5.
+
+## 6. THE ZZDEV PAIR - the finding R-99 demanded, and it is not the expected one
+
+R-99: *"First VERIFY whether either is actually placed anywhere; if they are unreachable dev leftovers
+the wiring is inert, which is a fine outcome - but record the placement finding either way."*
+
+Measured with `tools/debug/b101_toxeus_placement_census.py` against the shipped `Levels.arc`
+`fc0adcc0713839a685b32d6e122653be`: **2,282 levels walked, 0 unparsed `0x05` sections, 17,348 distinct
+placed paths, 491,885 instances indexed** (the index was validated before any conclusion was drawn from
+it - a census that silently indexes nothing would report everything as inert).
+
+> ⚠️ **THE FIRST ANSWER WAS WRONG, AND THE CORRECTION MATTERS.** The first census walked ONE hop and
+> concluded `z_arthur` had 0 placements and the chain was unreachable. Placement in this map is a
+> **two-hop** chain - a placed `0x05` **proxy** draws a **pool**, and the pool names the monster - so a
+> one-hop check reported "the SPAWNER is placed in 0 level(s)" for *every champion*, which reads as
+> unreachable and is false. The census now walks breadth-first UP the reference graph to 3 hops and
+> prints the whole chain top-down.
+
+| record | verdict |
+|---|---|
+| `um_toxeus_enslaver_99` | REACHABLE at hop 2 - placed `ug_undead_skeleton_02n` x23 `.pool1` -> `undead_02_skeletonbat03` `.name1` |
+| `um_toxeus_hunt_99` | REACHABLE at hop 2 - placed `demon_melinoe_01n` x19 `.pool1` -> `melinoe_01_general02` `.name3` |
+| `um_toxeus_hunt_l_99` | REACHABLE at hop 2 - placed `q_toxeus_hunt_lone` x1 (`HadesPalace_Floor04_04.lvl`) `.poolLegendary1` -> `q_toxeus_hunt_lone_endless` `.name1` |
+| `um_toxeus_21` | REACHABLE at hop 2 - placed `ug_undead_ghostskeleton_03t` x5 `.poolEpic4` -> `el_skeleton_03_ranged05` `.nameChampion7` |
+| `um_bloodtoxeus_99` | REACHABLE at hop 2 - placed `egg_blooddragon_pack` x1 (`xBloodCave/drxBC2.lvl`) `.pool1` -> `egg_blooddragon` `.name1` |
+| `um_toxeus_99` | **INERT** - 0 static, 0 db referrers, no placed ancestor within 3 hops |
+| `old_z_toxeus` | **INERT** - 0 static, 0 db referrers, no placed ancestor within 3 hops |
+| `z_toxeus` | **REACHABLE at hop 1** - placed `z_arthur` x1 `.actorToSpawnOnDeath` |
+
+**`z_arthur` IS statically placed**: exactly ONE `0x05` instance in
+`XPack\Levels\Area01_Rhodes\Undergrounds\ScrabledEggs_Floor06.lvl`. It is a `Monster.tpl`,
+`monsterClassification = Quest`, charLevel 40/56/71 record (`FileDescription = "Satyr"`) whose
+`actorToSpawnOnDeath` is `z_toxeus`.
+
+So the honest summary is **"one of the two is inert, the other is live-but-obscure"**, not "both
+inert": killing that one placed `z_arthur` spawns a Champion-rank Act-1 dev dummy that now drops the
+Act-4 apex orb. **Will's words pre-authorise exactly this** ("if some good items drop since someone got
+lucky ... so be it") and he explicitly included them, so it is RECORDED, not reversed - but it is a live
+consequence rather than a no-op and he should know.
+
+**Honest limit:** static placement proves the record is IN the level. It does not prove a player can
+walk to that spot, or that the engine spawns it there. Player reachability is launch-gated and is
+registered as debt, not claimed.
+
+Both carry `dropItems = 0`, so neither drops equipped gear; the orb is the separate `treasureProxyName`
+mechanism and would fire. **Neither is deleted, retired, blanked or renamed** - RETIREMENT PROTOCOL,
+and this is a Will-ratified inclusion, not a cleanup.
+
+## 7. Two defects this lane found in its own work (both fixed, both worth reading)
+
+1. **The name-tag cross-check was hollow.** Running the harness (rather than trusting it) returned
+   **28/29** with `negative R3 ... gate=PASS (expected FAIL)`. Root cause was a real gate hole: the
+   second derivation filtered on `Monster.tpl`, but R3's donor `boss_titan_typhon_42` is
+   `Typhon2.tpl` - so a boss on a **bespoke template** could wear a Toxeus champion's display tag,
+   sit outside the `toxeus` path namespace, and both derivations would miss it. Every uber boss this
+   mod mints could be authored that way. Fixed by widening the scan to every template except
+   `Pet.tpl`, after MEASURING that the widening adds zero hits in the live db (the only carriers of
+   the four roster tags are the 8 roster records plus the 2 pinned `am_assassin` false positives).
+   `Pet.tpl` stays excluded with the reason written down: the nine Toxeus summons are out of roster
+   scope by design and carry their own measured `*Pet` tags, so naming a summon after its master must
+   not red the build. Harness now 29/29.
+2. **This branch's merge silently deleted 101 lines of `docs/WILL_RULINGS.md`** - the whole R-100
+   PLAY-SESSION BATCH, Will's verbatim 19-item play report. The merge commit `4748e93` resolved an
+   append/append conflict by keeping only its own side. Found because `git diff main..HEAD` read
+   "101 deletions / 0 insertions"; restored byte-identically from `main`. This is CLAUDE.md law #1's
+   failure mode happening in practice, so the lesson is recorded in the ledger next to the restored
+   text: **any lane touching that file should diff it against `main` before committing.**
+
+## 8. Wave-label and ruling-number collisions (flagged, not resolved)
+
+* **`b100` was already taken** on `main` by `fix/blade-mastery-truth` (the WEAPON/HAND GATE HONESTY
+  gate record) and, in parallel, by `feat/sanctuary-populate`'s recon doc. This lane is therefore
+  **b101**, and round 1's `b100_toxeus_placement_census.py` plus its `b100_toxeus_apex_roster.md`
+  docstring reference were renamed to `b101` rather than shipping a cross-reference to a filename
+  another wave owns.
+* **There are TWO live R-100s** in `docs/WILL_RULINGS.md`: blade-mastery's
+  `R-100 ... IMPLEMENTED b100` and the play-session batch. Both same-day, both parallel lanes. This
+  lane deliberately did NOT renumber either - reassigning another lane's ruling number from a third
+  lane is the same class of silent cross-lane edit the ledger law exists to prevent. The file's own
+  `fix/debt-docs` precedent (incumbent keeps the number) is the tie-breaker to apply; picking the
+  incumbent between two same-day lanes is the orchestrator's call. `BL-b101-DEBT-1`.
+
+## 9. Files
+
+| file | what |
+|---|---|
+| `tools/patches/uber_apex_orb.py` | roster DERIVED + pinned + double-cross-checked; `verify()` re-authored as a set equality in both directions; blast-radius proof derived over every donor tier; docstring rewritten (it described a two-champion design) and its zzdev claim corrected |
+| `tools/debug/negtest_uber_apex_orb.py` | NEGATIVE 2 restated as a set equality; negatives 15-22 one per roster record; R1-R5; skipped subtests printed and warned about |
+| `tools/debug/b101_toxeus_placement_census.py` | the R-99 placement census; multi-hop reachability |
+| `tools/debug/b101_r99_record_diff.py` | baseline-vs-built diff with strict roster attribution |
+| `tools/debug/b101_r99_proof_table.py` | reads the roster table, donor tiers, soul wiring and orb05 chain back OUT of the built arz |
+| `docs/WILL_RULINGS.md` | R-99 -> IMPLEMENTED with the measured result; R-100 collision flag; 101 restored lines |
+| `docs/BACKLOG.md` | BUILD69-DEV gate record + `BL-b101-DEBT-*` |
