@@ -112,7 +112,19 @@ Contract (tools/patches/README.md): MODULE_NAME + apply(db, tags) + verify.
 MODULE_NAME = ("Thrown-wielder ANIMATION RIG (R-100 #15): restore the thrown "
                "stance SV stripped, on cloned per-family anim tables")
 
-import thrown_restore  # noqa: E402  (sibling module; tools/patches on sys.path)
+# Sibling module. The roster is IMPORTED (never re-listed) so this module and
+# thrown_restore can never drift apart. Dual import because there are two live
+# entry paths: the registry loads us as `patches.thrown_anim_rig` (package
+# context -> relative import), while `py tools/patches/thrown_anim_rig.py` and
+# tools/debug/probe_frozen_throwers.py load us as a top-level module with
+# tools/patches on sys.path (no package -> plain import).
+try:                                        # registry / package context
+    from . import thrown_restore           # noqa: E402
+except ImportError:                         # stand-alone script context
+    import os as _os
+    import sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    import thrown_restore                   # noqa: E402
 
 
 # ---------------------------------------------------------------------------
