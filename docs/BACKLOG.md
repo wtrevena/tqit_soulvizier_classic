@@ -1,9 +1,5 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 ## P0 GATE RECORD - R-140 FROZEN THROWN-WIELDERS + R-141 UBER QUEST-ITEM LEAKS (2026-07-30, branch `fix/quest-item-leaks`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -267,7 +263,6 @@ commits touch `docs/` only), so the baseline is still the correct comparison poi
   R-140\'s carrier counts and its "10 thrown wielders in the entire database" were mod-only. Corrected
   in the R-140 AMENDMENT (true carriers 174/85/65/30; union 78 throwers). Flagged because the same
   blind spot will silently understate ANY future shared-record census run the same way.
-=======
 ## B102 GATE RECORD - THE DEVOURER + ENDLESS HUNT WAVE (2026-07-30, branch `feat/devourer-kit`) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -597,9 +592,7 @@ a named constant - one line to retune. Both summons also inherit the shipped Ens
 that matches the exemplar exactly and is not a new behaviour class.
 
 ---
->>>>>>> feat/devourer-kit
 
-=======
 ## B102 GATE RECORD - R-102 KILL THE MESH-EMBEDDED GREEN + R-93's mesh half (2026-07-30, branch `fix/green-mesh-swap`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -774,8 +767,6 @@ local/baseline/BASELINE_worklayout.arz work/SoulvizierClassic/Database/Soulvizie
 **OPEN / NOT DONE (registered in the DEBT REGISTER below as BL-R102-DEBT-1..4):** nothing here has
 been seen in game, the EoAT's own silhouette is an undecided design question, and the base-game
 `Build\Resources\` animation defect is waived by name rather than fixed.
->>>>>>> fix/green-mesh-swap
-=======
 ## R131 GATE RECORD - R-100 #14 + #16 CHEST HALVES (2026-07-30 round 2, branch `fix/uber-placement`) - NOT DEPLOYED, NO TAG TAKEN
 
 Full report: `docs/reports/R130_uber_placement.md` sec 7-9. Ruling: **R-131** in
@@ -974,8 +965,6 @@ env PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 PYTHONIOENCODING=ut
 - **BL-R130-DEBT-10** - **NOT DEPLOYED, no tag taken.** The orchestrator owns deploys;
   `Levels`+`Quests` remain coupled.
 
->>>>>>> fix/uber-placement
-=======
 ## B102 GATE RECORD - R-105/R-106/R-107 SOUL RATE SWEEP + R-100 #11 FORGE ACTS + R-100 #17 SOUL GAOLER (2026-07-30, branch `feat/soul-economy`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -1141,7 +1130,6 @@ pass it did not earn.
   would have caught it), not something a reader can mistake for a result. Cheap to add; not done here
   because it touches the shared hook config rather than this wave's surface.
 
->>>>>>> feat/soul-economy
 
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 

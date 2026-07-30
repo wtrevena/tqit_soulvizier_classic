@@ -2427,7 +2427,6 @@ encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers;
 
 ---
 
-<<<<<<< HEAD
 ## R-109 [2026-07-30] Tombstone XP recovery must EQUAL the XP lost on death
 
 **WILL, VERBATIM, in two steps - the second SUPERSEDES the first and is the ruling:**
@@ -2471,8 +2470,6 @@ must hold the implementer to the equality, not to 10%.
 
 ---
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 ## R-140 [2026-07-30] IMPLEMENTED - R-100 #15 ROOT CAUSE: the thrown-wielders are frozen because SV strips the thrown ANIMATION STANCE, not because of anything to do with their weapons
 
 > **NUMBER CHOICE.** The R-100 decade and everything up to **R-124** is claimed somewhere across the 120
@@ -2754,7 +2751,7 @@ gate trustworthy rather than merely green.
 **STATUS: R-140 stands as amended.** Diagnosis reproduced, fix unchanged and better evidenced, one gate
 added. Still NOT proven and still Will's: that the restored wielders visibly throw and move in-game
 (BL-R140-LAUNCH-1). Everything here remains a database/asset proof.
-=======
+
 ## R-120..R-123 + R-125 [2026-07-30] - b102 `feat/devourer-kit`: the Devourer + Endless Hunt implementation wave
 
 > **NUMBER HYGIENE - AND ONE LIVE COLLISION, RESOLVED BY MOVING OUR OWN.** R-100..R-107 were taken
@@ -3049,8 +3046,7 @@ drives - but a lane that wants to move it deliberately should pin the mechanic f
 **DEBT:** this is the same shape as `BL-b102-DEBT-2` (the castability walk): a rig-constant check
 should eventually run over every cloned creature in the DB, not just the two this wave authored.
 Registered as `BL-b102-DEBT-9`. NOT done here.
->>>>>>> feat/devourer-kit
-=======
+
 ## R-130 [2026-07-30] The Den of Tantalus is a CAVE, chest counts drop to one, and "off the main walking path" gets a measurable definition
 
 > **DECADE CLAIM.** 130-139 was proven free before minting. `git grep -h -oE "R-1(2[5-9]|3[0-9])"
@@ -3268,8 +3264,7 @@ ruling.** Not (a)-through-(c) chosen here; Will's call.
 
 **STATUS:** Part 1 **IMPLEMENTED** on `fix/uber-placement`, gated and record-diffed. Part 2 **PENDING -
 OPEN WILL DECISION**, measured, nothing changed.
->>>>>>> fix/uber-placement
-=======
+
 ## R-150 [2026-07-30] IMPLEMENTATION RECORD + factual amendments: R-105 / R-106 / R-107 rates, R-100 #11 forge acts, R-100 #17 Gaoler
 
 > ### ⚠️ RENUMBERED R-140 -> R-150. THIS LANE MOVED ITS OWN, AND TOUCHED NOBODY ELSE'S.
@@ -3538,4 +3533,3 @@ Both are `Monster.tpl` (so the Pet/Proxy template exclusion does not catch them)
 `chanceToEquipFinger2` is a power switch far more than a drop rate. They are HELD, untouched, and
 recorded here so "the sub-25 buckets are all resolved" is never claimed. Registered under
 `BL-b102-DEBT-1`. **OPEN FOR WILL** together with the crows, one answer covers all six.
->>>>>>> feat/soul-economy

@@ -189,7 +189,7 @@ recovery in terms of the penalty so the two cannot drift when the penalty is ret
 will not take a derived expression, mirror the penalty equation verbatim and gate on them being equal.
 **Report the measured before/after BOTH ways (XP lost vs XP recoverable) at several levels on all three
 difficulties.** GATE: equality - plant negatives on BOTH sides, recovery above the penalty must red the
-build and recovery below it must red the build too (paying back less would punish the player twice).\`,
+build and recovery below it must red the build too (paying back less would punish the player twice).`,
   },
 ]
 
