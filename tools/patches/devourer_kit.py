@@ -126,7 +126,8 @@ shipped SV/DRX content actually measured in this arz:
 
 DEVOURER OF BLOOD -> "Gorged Bloodspawn"
   Donor `drxcreatures\blooddemon\c_large_blooddemon_40` (Champion, Demon,
-  DRX\meshes\blooddemon01.msh). This is not an arbitrary pick: the blood demons
+  DRX\meshes\blooddemon01.msh). Scaled up via `scale` ONLY - `actorHeight` is
+  inherited, see R-126. This is not an arbitrary pick: the blood demons
   are ALREADY his declared retinue - `_BT_BLOODDEMON` in apply_svc_patches names
   b_med_blooddemon_30/31/32 as his phase adds, and his placed pool
   `q_bloodtoxeus_lone` spawns exactly those three as his championMin=2 escort. He
@@ -205,9 +206,17 @@ design choices):
   R-123  Blood Frenzy is present but its payload is thin - OPEN WILL DECISION
   R-125  the two minion families; `docs/amgoz1_design_voice.md` does not exist
          (was R-124 until two other live lanes took that number the same day)
+  R-126  `actorHeight` is a per-RIG constant, not a size knob - the first draft
+         of THIS module invented one on each minion and the record-diff could
+         not see it (an invented value on a NEW record is not a "change" against
+         any baseline). Measured DB-wide: 0 of 2,122 rigs scale actorHeight;
+         both donor rigs hold it flat across their whole size ladder, including
+         `xbloodhound_36` at scale 2.25 - LARGER than our courser. Now inherited
+         from the donor and gated against it (plant N10).
 
 Negative test: `py tools/patches/devourer_kit.py --negtest <baseline.arz>`
 Census only : `py tools/patches/devourer_kit.py --analyze <arz>`
+R-126 data  : `py tools/debug/probe_actorheight.py <arz>`
 """
 import re
 import sys
