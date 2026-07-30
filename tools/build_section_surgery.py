@@ -2509,8 +2509,16 @@ for _b65_key, _b65_specs in B65_TOXEUS_STALKER_SPECS.items():
 #   F10 the worst axis-aligned 60x60 world-unit box anywhere on the walkway sums <= 57.0
 #      EFFECTIVE ENTITIES. ⚠️ ROUND-2 UNIT CORRECTION: a pool's spawnMax is NOT what the
 #      engine spawns - the pool's proxyPoolEquation multiplies it. Measured:
-#      proxypoolequation_01 = 3.60025x at 1 player, _02 = 1.357143x. All 176 blood-cave pool
-#      references use _02; 854 of the base-game cave/crypt/tomb cohort's 887 use _01, so
+#      proxypoolequation_01 = 3.60025x at 1 player, _02 = 1.357143x. ⚠️ ROUND-3 CORRECTION: rounds
+#      1-2 said "All 176 blood-cave pool references use _02". Re-measured with FULL RECORD PATHS
+#      (the basename is ambiguous - proxypoolequation_01.dbr exists in 5 namespaces and the
+#      xpack\creatures\monster one carries the _02 FORMULA), the blood cave is NOT uniform: 176 use
+#      _02, FOUR use _01 (all four ag_insect_tropicalspider_02t.dbr, in bc_initialpathway /
+#      drxfirstroom / xpassagetransitionstart x2), 3 resolve to none. IT CHANGES NOTHING
+#      LOAD-BEARING, measured: drxBC3 itself IS uniform (all 24 of its Proxy instances resolve to
+#      records\proxies orient\proxypoolequation_02.dbr) so the exact-rescale claim below holds, and
+#      yet_another_fucking_connector - the level the cap is derived FROM - measures 57.0 eff / 42
+#      raw = 1.357x, i.e. also uniform _02. 854 of the base-game cave/crypt/tomb cohort's 887 use _01, so
 #      round 1's cross-family comparison of RAW spawnMax was invalid. 57.0 is DERIVED: the
 #      sparsest already-shipping blood-cave level that carries real content
 #      (yet_another_fucking_connector, 57.0 eff), against a base-game cave/crypt/tomb cohort

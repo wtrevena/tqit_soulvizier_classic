@@ -1,5 +1,184 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD72-DEV GATE RECORD - b100 SANCTUARY OF THE BLOODBORN, ROUND 3: CLEARING A SECOND NO-GO VET (2026-07-29, branch `feat/sanctuary-populate`, tag `build72-dev`)
+
+> ⚠️ **TAG NOTE.** The brief asked for `build66-dev`. `build66-dev` through `build71-dev` are ALL
+> taken (`build70-dev` by this lane's own round 2, `build71-dev` by a parallel lane), so round 3
+> takes the next free tag, **`build72-dev`**, verified free with
+> `git rev-parse -q --verify refs/tags/build72-dev` before claiming it.
+
+**STATUS: the second independent vet returned NO-GO with 11 findings. All 11 were RE-MEASURED, not
+argued. NINE were confirmed and fixed, ONE was confirmed but understated (it had a coordinate
+consequence the vet said it did not), and ONE IS WRONG and is recorded as such with the command that
+disproves it. Two findings turned out to have a design defect hiding behind them.**
+
+**THE DELIVERABLE:** `local/b100_r3/Levels_merged.arc` md5 **`3812c6c9e9d934da7225be8208c1474f`**,
+688,692,861 B, COUPLED with `work/SoulvizierClassic/Resources/Quests.arc` md5
+`5e664c7b190965fd69f6ff15d77d85e4`, 194,926 B (rebuilt in round 3 and byte-identical to round 2's,
+quest-record contract PASS over 107 records). `arz` `4378b617fefb2014e382bb5931e7d605` and `Text.arc`
+`c33b6abe3d61559785ee00ab3280a765` are **UNCHANGED by this lane** - the lane is MAP-ONLY, so the
+arz+Text coupling is not engaged. **NOT DEPLOYED. Nothing was written to `CustomMaps`.** The staged
+canonical was re-verified untouched at the end of the round:
+`work/SoulvizierClassic/Resources/Levels.arc` = `fc0adcc0713839a685b32d6e122653be`, 688,691,547 B,
+exactly the pinned value, and there is still no bare `local/Levels_merged.arc` in the main checkout.
+
+### THE TWO FINDINGS THAT WERE MORE THAN DOCUMENTATION
+
+**1. THE GATE STILL ABORTED INSTEAD OF FAILING, AND THE VET PROVED IT (R-116).** Round 2 claimed
+`strict=False` had closed the b89-class gap. It guarded only the container PARSE. REPRODUCED before
+fixing: shifting the `0x0b` container `center` by +64 u leaves every size intact and all 3 tilesets x
+**1,149 tiles** still decompressing (section unchanged at **857,212 B**), so the object constructs
+cleanly and the gate then dies on `assert ac is not None` at `b100_derive_sanctuary.py:480` from
+`gate_sanctuary_population.py:256` - **AssertionError, zero gate rows printed**. Fail-SAFE, not
+fail-CORRECT. FIXED with a typed `NavGeometryError`, a **baseline-free** `Sanctuary.frame_check()`,
+and a wrapped `route()`; `frame_sane` now prints in G10's own row. **Two new plants**, and the second
+is the load-bearing one: the frame shift WITH a baseline, and the same shift with **NO baseline**
+(new `MAPNB` plant kind) so a baseline-free invariant cannot hide behind a baseline-dependent one.
+
+**2. A FALSE "MEASURED" CLAIM WAS THE JUSTIFICATION FOR BAND 3 - AND THE BAND ALSO MISSED ITS OWN
+INTENT (R-115).** R-110 said `bw_priest_houndmaster` "is the only proxy in this cave that pairs a
+caster with beasts (measured: championChance 100, championMin=championMax=2 bloodhounds inside
+spawnMax 3)". Re-measured four ways, every clause fails: its pool rosters `c_disciple_39/41/42` ONLY
+with **no hound under any field**; `championMin=championMax=2` is champion-rank promotion of those
+same disciples (**of 1,846 ProxyPool records in the built arz, ZERO carry any `championName*` /
+`championWeight*` / `heroName*` / `bossName*` field while 1,845 carry `championChance/Min/Max`** - the
+field family that could name a different creature does not exist in this template); `bw_priest_lone`
+carries the IDENTICAL roster at `spawnMax` 1; and the superlative is disproved by this level's own
+signature proxy `zparty_witchfest_2099`, which pairs 3 `c_disciple` casters with 3 `c_bloodhound`
+beasts plus 3 `d_reaver`s in one roster. **The vet said no coordinate was affected. It was.** The
+design's actual intent - a chase-plus-caster texture mid-walk - was not being delivered either:
+round 2's roster was flat (`band -> dbr`), the insertion anchor reset per dbr, and `hound_01_pack`
+landed **60.2 u** from the priests it is supposed to be leashed to. FIXED by making the roster
+`band -> GROUPS -> (dbr, count)` where **a group may span several pools**: band 3 is now one knot of
+`2x bw_priest_houndmaster + 1x hound_01_pack` (priests 16.0 u apart, hounds **30.2 u** from the
+anchor) and `bw_priest_lone` is its own group, genuinely set apart at route 390.0 u. **3 of 14
+placements moved. Density did not change.**
+
+### GATE `MAP-SANCTUARY-1` AS IT NOW STANDS
+
+**16 rows, 16/16 PASS** on the round-3 map; **18 planted negatives, 18/18 correct** (8 declaration +
+9 map-side + 1 map-side run deliberately WITHOUT a baseline). Every plant declares both the gate it
+must trip AND an allow-set, so the converse is checked too. Density is gated in **EFFECTIVE
+ENTITIES**: drxBC3 **32.6 -> 51.6**, cap **57.0** (margin +5.4) at world(4374,3023), the cap being the
+sparsest already-shipping blood-cave level carrying real content (`yet_another_fucking_connector`),
+against a base-game cave/crypt/tomb cohort (n=80) of **median 90.0 / p90 158.4 / max 280.8**.
+
+```
+G1  roster 14 declared placed .................. PASS  295 instances, tail 14 match (0 missing, 0 unexpected)
+G1b flags=0 / identity rotation ................ PASS  0 flagged, 0 rotated
+G1c RETIREMENT: 281 shipped byte-intact ........ PASS  295 = 281 + 14, 11/11 shipped proxies in place,
+                                                       head digest 78a536278d5dbdf23332e70750aa04d9
+G1d RETIREMENT: byte-identical to baseline ..... PASS  281 baseline instances, 0 differ
+G2  on drxBC3's OWN walkable ground ............ PASS  14/14
+G3  all 3 tilesets agree + walkable in each .... PASS  14/14; tilesets differing from tileset 1: none
+G4  floor |Y - navmesh Y| <= 0.25 u ............ PASS  max dY 0.005 u
+G5  reachable from the arrival portal .......... PASS  14/14 in the arrival component
+G6  on the processional (detour <= 60 u) ....... PASS  route 690.6 u; max detour 60.0 u, MARGIN 0.0 u (inherent)
+G7  landing clearance .......................... PASS  nearest anchor 20.1 u, edge 12.1 u, prop 4.4 u
+G8  spacing >= 16 u (R-30's law) ............... PASS  24 monster proxies; closest new-involving pair 16.0 u
+G8b no UNWAIVED inherited violation ............ PASS  1 inherited, 0 unwaived (amgoz1's own pair, waived by name)
+G9  density <= 57.0 EFFECTIVE ................... PASS  worst 51.6 (margin +5.4) at world(4374,3023)
+G10 0x0b byte-identical + well formed + FRAME ... PASS  857,212 B, identical=True, 3 x [383,383,383] tiles, frame_sane=True
+G11 bounded ProxyPools (b76 class) ............. PASS  14/14 resolve, no summon-refill loop
+G12 ocean ring untouched (WILL_DECISION-1) ..... PASS  01: 21 inst / 0 proxies, 02: 0/0, 03: 12/0, 04: 0/0
+GATE MAP-SANCTUARY-1: PASS
+```
+
+### BLAST RADIUS - ZERO UNATTRIBUTED CHANGE
+
+`py tools/debug/b100_map_diff.py --a local/b100_base/Levels_merged.arc --b local/b100_r3/Levels_merged.arc`
+
+**1 level blob of 2,282 differs**; inside it exactly **ONE section** (`0x05`, 18,778 -> 19,833 B,
+281 -> 295 instances); the **`0x0b` navmesh is BYTE-IDENTICAL** (857,212 B, md5
+`06f783d00edc7c23866b0fe2b368bbb0`) - the b89 crash class, proven not assumed; the `0x01` LEVELS-index
+delta is **entirely** the offset ripple (identity fname+ints_raw **2282/2282 unchanged**, 0 other
+`data_length` changed, 28 `data_offset` shifted after a +1,055 B blob). **MAP DIFF: PASS - every
+change attributed.**
+
+### GATE DELTAS (each run on BOTH maps)
+
+| gate | baseline | round-3 map | delta |
+|---|---|---|---|
+| `MAP-SANCTUARY-1` | (new) | **16/16 rows PASS, 18/18 plants** | n/a |
+| `verify_merged_bc_navmeshes` | 24/24 + 7 ocean stubs valid | **24/24, 7 valid, 0x0a stripped** | none |
+| `run_contracts --only map` (19 contracts) | 6 viol (0 P0, 0 P1, 6 P2), **GATE PASS** | 6 viol (0 P0, 0 P1, 6 P2), **GATE PASS** | **identical violation set, item for item** |
+| `gate_landing_clearance --wiring v1` | - | **PASS=27, GATE G-LAND PASS** | n/a |
+| `validate_tags` (with the manifest) | - | **PASS** - 366 REFERENCED + **427 AUTHORITATIVE** tags all present; 2 pre-existing warnings | n/a (DB unchanged) |
+| `b100_specs_vs_derive` | (new, round 3) | **PASS - identical, order included** (14 vs 14) | n/a |
+| `_check_registry` | - | **OK, 42 modules**, order digest `9867e2906fef…f26fe30` | none |
+| `check_build_inputs --all --verify-hashes` | - | **PASS, 9 inputs** | n/a |
+| player-surface checklist (run against the **BASELINE**, non-circular) | - | **PASS, 0 problems, 39 creature records** | n/a |
+| derivation determinism | - | `PYTHONHASHSEED` 0/1/2 -> **`3792c0c438522880f3671f5b3a1e673a`** | n/a |
+
+### FINDINGS 3-7, 9, 10 - THE DOCUMENTATION-INTEGRITY SWEEP (R-117)
+
+Confirmed and fixed: the BUILD70-DEV record misstating its own gate (it carried round-1's "13
+invariants / cap 24 -> 36 / 8 plants" while stating the correct figures 60 lines earlier) and its
+incomplete OPEN-DEBT list; report sec 2 describing the superseded farthest-point mechanism; sec 5.6
+pinning the determinism md5 of the round-1 set that no longer ships; a stale "8/8" plant count; the
+`BL-b100-DEBT-6` vs `-8` mis-citation; the `R-15` mis-citation (R-15 in full is *"you are good to
+ship the rant scroll"* - a creative-text veto clearance, not a design-voice doctrine); and the
+`b100_density_census` equation-mix label, which resolved multipliers by full path (correct) but
+labelled by basename (ambiguous - `proxypoolequation_01.dbr` exists in **5 namespaces** and the
+`xpack\creatures\monster` one carries the `_02` formula).
+
+**ONE FINDING IS WRONG.** The vet read "all 366 referenced mod tags present" as a stale figure
+contradicting "427/427 authoritative tags". **Both are correct and are different metrics from the
+SAME run:** `py tools/validate_tags.py <arz> <Text.arc> <uber_soul_tags.txt>` prints `OK: all 366
+referenced mod tags are present` AND `Authoritative list: uber_soul_tags.txt (427 tags)` / `OK: all
+427 authoritative tags are present`, `RESULT: PASS`. 366 = mod-owned tag values the `.arz`
+REFERENCES; 427 = tags the DB build DECLARES it authored. The report now prints both.
+
+**AND FIXING FINDING 10 SURFACED A ROUND-2 FIGURE THAT IS WRONG:** "All 176 blood-cave pool
+references use `_02`" - measured with full paths, it is 176 `_02` + **4 `_01`** + 3 none (the four are
+all `ag_insect_tropicalspider_02t.dbr`). Nothing load-bearing moves: **drxBC3 is uniform `_02` across
+all 24 of its Proxy instances**, so R-112's exact-rescale claim and the `57.0 eff == 42 raw`
+equivalence both hold, and `yet_another_fucking_connector` (the level the cap is derived FROM) is
+also uniform `_02`.
+
+### THE FOOT-GUN IS FIXED IN CODE (`BL-b100-DEBT-9`, R-117 item 7)
+
+`tools/svaera_plus_portals.py` no longer hardcodes the MAIN CHECKOUT's absolute `local\` path. The
+**write** (`SVC_OUT_DIR`) now defaults to THIS checkout's `local/`, so a worktree build cannot
+clobber the shared canonical by omission - which is what happened once in round 2. The **read**
+(`SVC_DONOR_DIR`) prefers this checkout's donors, falls back to the MAIN checkout's (correct: donors
+are gitignored and cost ~213 s to regenerate) and **prints which one it used** - verified from this
+worktree: `DONOR_DIR_SRC = MAIN checkout ... (this worktree has no donors)`, 39 donors found.
+Behaviour in the main checkout is byte-unchanged, because there `REPO/local` IS the old path.
+**RESIDUAL: `tools/verify_merged_bc_navmeshes.py` has the same shape and was NOT changed** - it is a
+READ, so a wrong-artifact hazard rather than a clobber hazard; this lane hit exactly that once.
+
+### OPEN DEBT (process law #4 - the full list, printed)
+
+**`BL-b100-DEBT-1` .. `BL-b100-DEBT-12`.** All OPEN except **DEBT-9, now CLOSED in code** (residual
+noted above). Headline, unchanged and unchangeable by this lane: **NO IN-GAME CHECK EXISTS**
+(`BL-b100-DEBT-6`) - no agent in this lane may launch TQ, so every claim here is about bytes and
+geometry, never about feel. Round-3 additions/changes: **DEBT-12** (the `bw_priest_houndmaster`
+name-vs-roster trap - amgoz1's own record, do not touch, but never trust the name);
+**DEBT-11 + WILL_DECISION-5** (three of four multi-member groups sit at exactly `SEP_MIN` = 16.000 u,
+because nearest-point against one floor is what "as close as the spacing law allows" means in code -
+amgoz1's own tight pairs are at 7.4 / 30.2 / 41.9 and his tightest is BELOW our floor; four more
+unratified constants were deliberately NOT invented); **DEBT-4 RE-OPENED** as the item Will should
+close first (`docs/amgoz1_design_voice.md` does not exist in any commit on any branch, and R-15 does
+not carry the doctrine it is cited for, so every b100 creative claim rests on an unratified
+reconstruction).
+
+**STILL WILL'S CALL, not engineering:** WILL_DECISION-1 the ocean ring (14,673 sq u of its own
+walkable ground, zero proxies, reachable, untouched by this lane and asserted so by G12);
+WILL_DECISION-2 whether 51.6 effective is the feel he wants; WILL_DECISION-3 the minimap zone record
+(R-111 - a COUPLED `arz`+`Text`+`Levels` change, ~31 level `dbr` overrides, deliberately NOT ridden on
+this commit); WILL_DECISION-4 the design-voice document; WILL_DECISION-5 how close "together" is.
+
+### CONCURRENCY / INTEGRATION
+
+Branched from `4f0299c`; `main` has since moved to `b376b61` (R-106/R-107 landed), so this branch
+needs a rebase or merge before integration and `docs/BACKLOG.md` + `docs/WILL_RULINGS.md` are the
+likely conflict points - several lanes append there. **Ruling decade re-verified AT WRITE TIME
+against every branch:** R-115..R-118 have **zero hits anywhere**, and every `R-119` hit on
+`main` / `feat/toxeus-apex-roster` / `fix/blade-mastery-truth` is the range reference `R-110..R-119`,
+not an entry. R-110..R-119 is this lane's own reserved decade and main's own ledger note
+(`docs/WILL_RULINGS.md:1338`) records the yield. **Re-run the check anyway - it is a race.**
+
 ## BUILD70-DEV GATE RECORD - b100 SANCTUARY OF THE BLOODBORN, ROUND 2: CLEARING A NO-GO VET (2026-07-29, branch `feat/sanctuary-populate`, tag `build70-dev`)
 
 **NOT DEPLOYED.** This lane wrote nothing to `CustomMaps`, launched neither TQ nor Steam.
@@ -27,7 +206,9 @@ each finding was re-measured with a command. The three round-1 claims that did N
    / 194,926 B. **Different size AND hash.** Levels+Quests are COUPLED and the integrator MUST ship
    this lane's `Quests.arc` with the map. R-113, `BL-b100-DEBT-8`.
 2. **Density was gated in the wrong unit.** `spawnMax` is not what the engine spawns - the pool's
-   `proxyPoolEquation` multiplies it (`_01` = 3.60025x at 1 player, `_02` = 1.357143x). All 176
+   `proxyPoolEquation` multiplies it (`_01` = 3.60025x at 1 player, `_02` = 1.357143x). [ROUND-3
+   CORRECTION: "all 176" below is wrong - 176 use `_02`, **4 use `_01`**; nothing load-bearing
+   changes because drxBC3 and `yet_another_fucking_connector` are both uniform `_02`. See BUILD72-DEV.] All 176
    blood-cave pool references use `_02`; 854/887 of the base-game cohort's use `_01`, so round 1's
    raw cross-family comparison was invalid. Now gated in **EFFECTIVE ENTITIES**, cap **57.0**,
    drxBC3 **32.6 -> 51.6**, corrected cohort (n=80) **median 90.0 / p90 158.4 / max 280.8**. No
@@ -1595,6 +1776,52 @@ the crash chain but is NOT implicated (crash predates b79; DB spawn doesn't touc
 along automatically when the structural cluster-relocation fix lands.
 
 ## DEBT REGISTER (open deferred/unproven/launch-gated items)
+
+> 🩸🩸🩸 **2026-07-29 b100 ROUND 3 - SECOND VET NO-GO CLEARED (`feat/sanctuary-populate`,
+> `build72-dev`, R-115/R-116/R-117/R-118).** See the BUILD72-DEV GATE RECORD at the top of this file.
+> **FULL OPEN-DEBT LIST FOR THIS LANE (CLAUDE.md process law #4 requires the gate record to print
+> it): `BL-b100-DEBT-1` .. `BL-b100-DEBT-12`, all OPEN except DEBT-4-as-a-finding and DEBT-9 (now
+> CLOSED, see below).** Round 3 changes:
+> - **BL-b100-DEBT-12 (P2, NEW, OPEN):** `bw_priest_houndmaster`'s NAME does not match its ROSTER.
+>   Measured: its pool rosters `c_disciple_39/41/42` only, with **no hound record under any field**,
+>   and `championMin=championMax=2` is champion-rank promotion of those same disciples (of 1,846
+>   ProxyPool records in the built arz, ZERO carry any `championName*` field). It is amgoz1's own
+>   record, so under the RETIREMENT PROTOCOL this lane does not touch it - but rounds 1-2 built a
+>   design justification on the name and it became ledger law in R-110. **Any future content lane must
+>   read the roster, never the name.** R-115. There may be more of these in the `drxmap\proxy` family;
+>   nobody has swept it.
+> - **BL-b100-DEBT-9 (P2) -> CLOSED IN CODE, not merely disclosed.** `tools/svaera_plus_portals.py`
+>   no longer hardcodes the MAIN CHECKOUT's absolute `local\` path. Both defaults now derive from the
+>   script's own checkout: the **write** (`SVC_OUT_DIR`) defaults to THIS checkout's `local/` so a
+>   worktree build cannot clobber the shared canonical by omission, and the **read**
+>   (`SVC_DONOR_DIR`) prefers this checkout's donors, falls back to the MAIN checkout's (correct - the
+>   donors are gitignored and take ~213 s to regenerate) and **prints which one it used**. Behaviour
+>   in the main checkout is byte-unchanged because there `REPO/local` IS the old path. ⚠️ **RESIDUAL,
+>   STILL OPEN under this id:** `tools/verify_merged_bc_navmeshes.py` has the same shape
+>   (env-overridable, main-relative default) and was NOT touched - it is a READ, so it is a
+>   wrong-artifact hazard rather than a clobber hazard, and this lane hit exactly that once (a
+>   `SVC_MAP_ARC`-instead-of-`SVC_MERGED_ARC` typo silently verified main's older map). R-117.
+> - **BL-b100-DEBT-11 (P2, OPEN) - RE-STATED WITH A FIFTH DECISION.** Beyond the five constants
+>   already listed, round 3 adds **WILL_DECISION-5: how close is "together"?** Three of the four
+>   multi-member groups land at exactly `SEP_MIN` = 16.000 u, because nearest-point insertion against
+>   ONE floor constant is what "as close as the spacing law allows" means in code. amgoz1's own three
+>   tight pairs sit at three DIFFERENT distances (7.4 / 30.2 / 41.9), and his tightest is BELOW this
+>   lane's floor. Giving each group its own declared closeness would spread the distribution but adds
+>   four more unratified constants, so it was deliberately NOT invented. R-118.
+> - **BL-b100-DEBT-4 (the amgoz1 design-voice bar) - RE-OPENED AS THE ITEM WILL SHOULD CLOSE FIRST.**
+>   Round 2 recorded it "CLOSED as a finding". Round 3 found the citation is worse than missing:
+>   `R-15`, cited throughout b100 as "the amgoz1 bar", is in full *"you are good to ship the rant
+>   scroll"* - a one-line creative-text veto clearance for the Murderer's Screed, sourced to
+>   `docs/MULTIPLAYER_COMPAT.md` M4.7 item 6. It carries no design-voice doctrine at all, and
+>   `docs/amgoz1_design_voice.md` still does not exist in any commit on any branch. **Every b100
+>   creative claim rests on an unratified reconstruction.** R-117 item 6.
+> - **CORRECTION TO A ROUND-2 FIGURE (no debt, recorded so it is not re-derived):** "All 176
+>   blood-cave pool references use `_02`" is wrong. With FULL RECORD PATHS (the basename is ambiguous
+>   - `proxypoolequation_01.dbr` exists in 5 namespaces and the `xpack\creatures\monster` one carries
+>   the `_02` formula), the blood cave is 176 `_02` + **4 `_01`** + 3 none. Nothing load-bearing
+>   moves: drxBC3 is uniform `_02` across all 24 of its Proxy instances, and
+>   `yet_another_fucking_connector` - the level the 57.0 cap is DERIVED from - measures 57.0 eff / 42
+>   raw = 1.357x, i.e. also uniform `_02`.
 
 > 🩸🩸 **2026-07-29 b100 ROUND 2 - VET NO-GO CLEARED (`feat/sanctuary-populate`, `build70-dev`,
 > R-112/R-113/R-114).** See the BUILD70-DEV GATE RECORD at the top of this file. Debt added or
