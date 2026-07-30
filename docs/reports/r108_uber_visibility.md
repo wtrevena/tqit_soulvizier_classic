@@ -194,7 +194,35 @@ got=ACCEPT`.
 on all three difficulties. L100 Legendary: lose 50,000, recover **50,000** (was 25,000). L85
 Legendary: lose 47,765, recover **47,765** (was 23,882). L10 Normal: lose 11, recover **11** (was 5).
 
-### 4.6 The mechanism proof
+### 4.6 Independent read of the BUILT arz (no lane code in the loop)
+
+The module `verify()`s above are this lane's own code checking this lane's own work, so the shipped
+values were also read straight out of the built arz with a bare `ArzDatabase`:
+
+```
+svc_general_a_guard1  rank=Champion scale=2.0 life=[9110,11387,13665] orb=genericbossorb_03 regen=5.0
+      added skills: minotaur_onslaught | gigantes_groundbreaker
+svc_general_a_guard2  ... added skills: empusa_spirit_lifedrainnova | hero_slowspiritbolt_ring
+svc_general_b_guard1  ... added skills: hero_vomitbile | empusavenomancer_venombolt
+svc_general_b_guard2  ... added skills: empusa_venom_venomcloud | hero_poisonwave
+svc_general_c_guard1  ... added skills: empusa_pyro_pillarofflame | hero_flamewave
+svc_general_c_guard2  ... added skills: gigantes_shieldcharge | hero_bouncingfire_ring
+  q_general_{a,b,c}_guardpair -> accessory1 = svc_general{a,b,c}guardhoard_pool_01
+  svc_general{a,b,c}guardhoard_01  locked=1  LockedClassification=Champion  desc=tagSVCChestGeneral{A,B,C}Guard
+
+um_bloodtoxeus_99      DisplayAsQuestItem = 0     <- R-100 #7, the Devourer stays hard to find
+um_toxeus_enslaver_99  DisplayAsQuestItem = 1
+um_toxeus_hunt_99      DisplayAsQuestItem = 1
+um_toxeus_hunt_l_99    DisplayAsQuestItem = 1     <- the variants Will asked for, all marked
+
+RedemptionMultiplier = 1.0
+deathPenaltyEquation = (currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)   max = 50000
+```
+
+All six guards are Champion (R-106 untouched), all twelve signature skills are distinct and land on
+the guard whose epithet asks for them, and the R-80 penalty is byte-intact beside the R-109 field.
+
+### 4.7b The mechanism proof
 
 `py tools/debug/probe_tombstone_xp.py --disasm` (read-only; opens the stock Steam `Game.dll`, walks
 the PE export table, disassembles the five functions and the loader site). The symbol table and the
