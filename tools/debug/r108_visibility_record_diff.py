@@ -223,7 +223,50 @@ def main(argv):
         print('  %-58s %d record(s), %d moved' % (label, total, len(moved)))
     print('  %-58s %d moved' % ('R-80 fields on the GameEngine record', len(ge_r80)))
 
+    # ---- NON-VACUITY: a PASS with none of this lane's deltas present is a FALSE
+    #      GREEN. This lane's own first build proved why: `tombstone_xp_recovery`
+    #      failed to import, so its ruling would simply not have been in the arz -
+    #      and a diff that only hunts for UNEXPECTED changes says PASS to that.
+    #      Every expected delta is therefore REQUIRED, not merely tolerated.
+    #      (Diffing the baseline against itself now correctly reports NO-GO here.)
+    got = {k for k, _n, _w in attributed}
+    required = {
+        'R-109': 'RedemptionMultiplier 0.5 -> 1.0 on the GameEngine record',
+        'R-100 #7': 'DisplayAsQuestItem 1 -> 0 on the exempt Devourer',
+        'R-100 #18 guard': 'the six retuned Guardian records',
+        'R-100 #18 proxy': 'the three guard-pair proxies wired to a hoard',
+        'R-100 #18 hoard ADD': 'the 27 new guard-hoard records',
+    }
+    missing_classes = [(k, v) for k, v in sorted(required.items()) if k not in got]
+
+    n_guard = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 guard')
+    n_proxy = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 proxy')
+    n_hoard = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 hoard ADD')
+    count_problems = []
+    if n_guard and n_guard != len(guards_n):
+        count_problems.append('guards retuned: %d, expected %d' % (n_guard, len(guards_n)))
+    if n_proxy and n_proxy != len(proxies_n):
+        count_problems.append('proxies wired: %d, expected %d' % (n_proxy, len(proxies_n)))
+    if n_hoard and n_hoard != len(hoards_n):
+        count_problems.append('hoard records added: %d, expected %d'
+                              % (n_hoard, len(hoards_n)))
+
+    print('\n--- NON-VACUITY: every expected delta class must be PRESENT ---')
+    for k in sorted(required):
+        n = sum(1 for kk, _n, _w in attributed if kk == k)
+        print('  [%s] %-22s %d record(s)  %s'
+              % ('OK ' if k in got else 'MISS', k, n, required[k]))
+
     print('\n' + '=' * 78)
+    if missing_classes or count_problems:
+        print('LANE DELTAS MISSING / MISCOUNTED  ** NO-GO **')
+        for k, v in missing_classes:
+            print('   MISSING  %-22s %s' % (k, v))
+        for p in count_problems:
+            print('   COUNT    %s' % p)
+        print('   (a diff that finds no unattributed change but ALSO no expected '
+              'change is a FALSE GREEN - see the sibling-import incident)')
+        return 1
     if unattributed:
         print('UNATTRIBUTED DELTAS: %d  ** NO-GO **' % len(unattributed))
         for kind, n, bad, why in unattributed:
