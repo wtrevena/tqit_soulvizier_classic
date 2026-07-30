@@ -113,6 +113,39 @@ from tag build53-dev and NOT deployed) and turns on a Will answer about giving e
 champion a different aura-free mesh. It is registered as BL-b98-DEBT-2. NO REPORT
 FROM THIS LANE MAY CLAIM THE ENSLAVER READS BLACK until Will has looked at him in
 game with the mesh question settled.
+
+--------------------------------------------------------------------------------
+b102 / R-102 SECOND AMENDMENT - THE SHROUD REACHED THE MONSTER AND NOTHING ELSE
+--------------------------------------------------------------------------------
+WILL, VERBATIM:
+
+> "no the black is not the demon shroud i asked for, that is still not implemented.
+>  the black is something else"
+
+HE WAS RIGHT AND THIS MODULE WAS WRONG. Measured on the built arz: the shroud sat
+in the MONSTER's slot 19 and on NONE of the three `pets\toxeus_enslaver_*` tiers.
+Will summons the PET. So from where he stands the request was simply never
+delivered, and the black he did see was the pre-existing DRX
+`charFxPakRunningNames` the pet records already carried - "the black is something
+else", exactly.
+
+The blocker above is also LIFTED: R-102's fourth amendment exonerated this pak as
+a green source (Will: "the demons that he summons have the proper black shroud and
+they dont have any green" - they carry the byte-identical pak), and the b102
+`champion_mesh` module removes the mesh-embedded green underneath it. So the
+shroud can now be claimed as black on the FX side; what still needs Will's EYE is
+only how it reads on the new mesh.
+
+WHAT CHANGED HERE (one idea, not a list): the shroud is wired to a ROSTER, and the
+roster is DERIVED - the monster plus every tier read out of
+`summon_toxeus_enslaver.spawnObjects` at build time. A 4th tier appended to that
+summon is picked up by the fix and by the gate with no code change, which is the
+only way "a future tier cannot be skipped" can be true of anything.
+Each pet gets the shroud in ITS OWN lowest free `skillName` slot (they use 1-12
+and 15; nothing is dropped, R-26's spirit), and their controller
+`controller_skelly_aggressive` carries `BuffSelfBehavior = WhenEnemyIsSeen`, the
+same trigger the monster's controller uses - so the toggle actually fires on a
+summoned pet rather than sitting inert in a slot.
 """
 
 import sys as _sys
@@ -128,6 +161,13 @@ DATA_TYPE_STRING = 2
 
 _ENSLAVER = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
 _MARAUDER = r'records\creature\monster\shadowstalker\um_enslaver_marauder_99.dbr'
+# b102 (R-102 second amendment): the surface Will actually looks at. The pet TIERS
+# are never listed - they are read out of this summon's spawnObjects, so the
+# roster cannot go stale when a tier is added.
+_ENSLAVER_SUMMON = r'records\skills\soulskills\summon_toxeus_enslaver.dbr'
+# The pets' AI controller. Named here because a self-buff toggle is inert without
+# a controller that fires it; the gate asserts this rather than assuming it.
+_PET_CONTROLLER_BUFF_TRIGGER = 'WhenEnemyIsSeen'
 
 # the in-game-CONFIRMED black: the smoke Will saw on the marauders
 _SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx.dbr'
@@ -247,23 +287,75 @@ def _build_skill(db):
     db._modified.add(_SHROUD)
 
 
-def _wire(db):
-    _require(db, _ENSLAVER)
-    slot = _slot_of(db, _ENSLAVER, _SHROUD) or _free_skillname_slot(db, _ENSLAVER)
+def _pet_tiers(db):
+    """Every Enslaver pet tier, READ from the summon skill's spawnObjects.
+
+    b102 / R-102 second amendment. b98 wired the shroud to the monster only, so
+    the three tiers Will actually summons never got it and he correctly said the
+    request was "still not implemented". Deriving the tiers instead of listing
+    them is what makes that failure unrepeatable: append a 4th pet to the summon
+    and it is in scope for both apply() and verify() with no code change.
+    """
+    if not db.has_record(_ENSLAVER_SUMMON):
+        return []
+    v = db.get_field_value(_ENSLAVER_SUMMON, 'spawnObjects')
+    v = v if isinstance(v, list) else ([v] if v else [])
+    out = []
+    for x in v:
+        s = str(x).strip()
+        if s and db.has_record(s) and s not in out:
+            out.append(s)
+    return out
+
+
+def shroud_roster(db):
+    """{monster} + {every derived pet tier} - the surfaces the shroud must cover."""
+    return ([_ENSLAVER] if db.has_record(_ENSLAVER) else []) + _pet_tiers(db)
+
+
+def _wire_one(db, rec):
+    """Put the shroud in this record's own lowest FREE skill slot."""
+    slot = _slot_of(db, rec, _SHROUD) or _free_skillname_slot(db, rec)
     if slot is None:
         raise SystemExit(
-            "[enslaver_shroud] no free skillName slot on the Enslaver. R-26's "
-            "spirit forbids dropping a functional skill to make room - stop and "
-            "ask Will rather than sacrificing one.")
-    db.set_field(_ENSLAVER, 'skillName%d' % slot, _SHROUD)
-    db.set_field(_ENSLAVER, 'skillLevel%d' % slot, [1, 2, 3])
-    db._modified.add(_ENSLAVER)
-    print("  shroud wired into skillName%d (NO existing skill dropped); "
-          "charFxPakRunningNames kept as-is." % slot)
+            "[enslaver_shroud] no free skillName slot on %s. R-26's spirit "
+            "forbids dropping a functional skill to make room - stop and ask "
+            "Will rather than sacrificing one." % rec)
+    db.set_field(rec, 'skillName%d' % slot, _SHROUD)
+    # Level is cosmetic here (the shroud carries no payload at all - the
+    # VISUAL-ONLY invariant below enforces that), so any granted level shows it.
+    # The monster keeps its per-difficulty [1,2,3]; a pet tier is already ONE
+    # record per tier, so a scalar 1 is the honest shape there.
+    if rec == _ENSLAVER:
+        db.set_field(rec, 'skillLevel%d' % slot, [1, 2, 3])
+    else:
+        db.set_field(rec, 'skillLevel%d' % slot, 1)
+    db._modified.add(rec)
+    return slot
+
+
+def _wire(db):
+    _require(db, _ENSLAVER)
+    roster = shroud_roster(db)
+    tiers = _pet_tiers(db)
+    if not tiers:
+        raise SystemExit(
+            "[enslaver_shroud] %s spawns no resolvable pet, so the tier roster "
+            "is EMPTY. That is the exact b98 failure this module now exists to "
+            "prevent (shroud on the monster, nothing on what Will summons) - "
+            "stop rather than ship a monster-only shroud again." % _ENSLAVER_SUMMON)
+    for rec in roster:
+        slot = _wire_one(db, rec)
+        print("  shroud -> skillName%-2d on %s%s"
+              % (slot, rec, '   (MONSTER)' if rec == _ENSLAVER else '   (PET TIER)'))
+    print("  %d surface(s) wired (1 monster + %d derived pet tier(s)); NO existing "
+          "skill dropped; charFxPakRunningNames kept as-is everywhere."
+          % (len(roster), len(tiers)))
 
 
 def apply(db, tags):
-    print("\n=== [enslaver_shroud] b98 THE ENSLAVER'S BLACK SHROUD (R-95) ===")
+    print("\n=== [enslaver_shroud] b98 THE ENSLAVER'S BLACK SHROUD (R-95) "
+          "+ b102 every pet tier (R-102 2nd amendment) ===")
     _build_pak(db)
     _build_skill(db)
     _wire(db)
@@ -366,25 +458,65 @@ def verify(db, tags=None):
     elif not _gv1(db, _SHADOWCLOAK_FX, 'effectFile'):
         problems.append("%s has no effectFile" % _SHADOWCLOAK_FX)
 
+    # ── ROSTER LEG (b102, R-102 second amendment). The shroud must be on the
+    #    MONSTER *and* on every pet tier, and the tier list must be DERIVED, or
+    #    the b98 failure repeats the next time a tier is added: Will summons the
+    #    pet, so a monster-only shroud is, from where he stands, not implemented.
     if not db.has_record(_ENSLAVER):
         problems.append("Enslaver missing: %s" % _ENSLAVER)
-    else:
-        slot = _slot_of(db, _ENSLAVER, _SHROUD)
+    if not db.has_record(_ENSLAVER_SUMMON):
+        problems.append(
+            "the Enslaver summon skill is missing (%s), so the pet-tier roster "
+            "cannot be derived and a tier could be silently skipped"
+            % _ENSLAVER_SUMMON)
+    tiers = _pet_tiers(db)
+    if db.has_record(_ENSLAVER_SUMMON) and not tiers:
+        problems.append(
+            "%s spawns NO resolvable pet: the derived tier roster is EMPTY. b98 "
+            "shipped a monster-only shroud exactly this way and Will reported it "
+            "as never implemented." % _ENSLAVER_SUMMON)
+
+    for rec in shroud_roster(db):
+        is_pet = rec != _ENSLAVER
+        slot = _slot_of(db, rec, _SHROUD)
         if slot is None:
-            problems.append("the shroud is not in any of the Enslaver's skillName slots")
-        else:
-            lv = db.get_field_value(_ENSLAVER, 'skillLevel%d' % slot)
-            lv0 = lv[0] if isinstance(lv, list) and lv else lv
-            if not lv0:
-                problems.append("shroud sits at skillLevel%d=%r (level 0 is not granted)"
-                                % (slot, lv))
-        # R-26 spirit: nothing was dropped to make room.
-        if _norm(_gv1(db, _ENSLAVER, 'charFxPakRunningNames')) != _norm(_SHADOWCLOAK_PAK):
             problems.append(
-                "the Enslaver's own charFxPakRunningNames was changed (%r). This "
-                "module must ADD the persistent channel, never take away the "
-                "running one that matches his marauders."
-                % _gv1(db, _ENSLAVER, 'charFxPakRunningNames'))
+                "SHROUD MISSING on %s%s - the shroud is in none of its skillName "
+                "slots. R-102's second amendment: b98 wired the MONSTER ONLY, all "
+                "three pet tiers were skipped, and the pet is what Will summons."
+                % (rec, ' (PET TIER)' if is_pet else ' (MONSTER)'))
+            continue
+        lv = db.get_field_value(rec, 'skillLevel%d' % slot)
+        lv0 = lv[0] if isinstance(lv, list) and lv else lv
+        if not lv0:
+            problems.append("%s: shroud sits at skillLevel%d=%r (level 0 is not "
+                            "granted, so it never displays)" % (rec, slot, lv))
+        if is_pet:
+            # A self-buff toggle is inert unless the controller fires it. The
+            # pets run controller_skelly_aggressive; assert the trigger rather
+            # than assuming it, so a controller repoint cannot silently kill the
+            # shroud on the exact surface Will looks at.
+            ctrl = _gv1(db, rec, 'controller')
+            if not ctrl or not db.has_record(str(ctrl)):
+                problems.append("%s has no resolvable controller (%r), so its "
+                                "self-buff shroud can never fire" % (rec, ctrl))
+            else:
+                trig = _gv1(db, str(ctrl), 'BuffSelfBehavior')
+                if str(trig) != _PET_CONTROLLER_BUFF_TRIGGER:
+                    problems.append(
+                        "%s: controller %s has BuffSelfBehavior=%r, expected %r. A "
+                        "Skill_BuffSelfToggled that the AI never toggles is a slot "
+                        "with nothing in it."
+                        % (rec, ctrl, trig, _PET_CONTROLLER_BUFF_TRIGGER))
+        # R-26 spirit + "ADD, never take away": the pre-existing DRX running FX
+        # (the black smoke Will already sees) must survive on every surface that
+        # had it. The monster and the pet tiers all carry it on main.
+        run = _gv1(db, rec, 'charFxPakRunningNames')
+        if _norm(run) != _norm(_SHADOWCLOAK_PAK):
+            problems.append(
+                "%s: charFxPakRunningNames is %r, expected %s. This module must "
+                "ADD the persistent channel, never take away the running one that "
+                "matches his marauders." % (rec, run, _SHADOWCLOAK_PAK))
     if db.has_record(_MARAUDER):
         if _norm(_gv1(db, _MARAUDER, 'charFxPakRunningNames')) != _norm(_SHADOWCLOAK_PAK):
             problems.append("the marauders lost their shadowcloak running FX (%r)"
@@ -396,8 +528,11 @@ def verify(db, tags=None):
         raise SystemExit("enslaver_shroud.verify FAILED: %d problem(s)" % len(problems))
     print("  [enslaver_shroud].verify OK: persistent shroud on the marauders' own "
           "confirmed shadowcloak smoke, visual-only (no payload, no tint), in a FREE "
-          "Enslaver skill slot; his running FX and the marauders' are untouched. "
-          "IN-GAME BLACK IS NOT CLAIMED (BL-b98-DEBT-2: the mesh-embedded green).")
+          "slot on ALL %d surface(s) - the monster AND every derived pet tier (%d), "
+          "each with a controller that actually fires self-buffs; every running FX "
+          "untouched. WHAT IS STILL NOT CLAIMED: how it READS in game - only Will's "
+          "eye settles that (BL-R102-DEBT-1)."
+          % (len(shroud_roster(db)), len(_pet_tiers(db))))
     return tags
 
 
@@ -432,6 +567,11 @@ def _negtest():
         def set_field(self, n, f, v, dt=None):
             self.d.setdefault(n, {})[f] = v if isinstance(v, list) else [v]
 
+    _PETS = [r'records\skills\soulskills\pets\toxeus_enslaver_%d.dbr' % i
+             for i in (1, 2, 3)]
+    _CTRL = (r'records\skills\spirit\drxpet\drxpet_controllers'
+             r'\controller_skelly_aggressive.dbr')
+
     def _base():
         db = _Stub()
         db.d[_SHADOWCLOAK_FX] = {'effectFile': [r'DRXeffects\shadowcloakrunning.pfx']}
@@ -446,6 +586,12 @@ def _negtest():
         db.d[_ENSLAVER] = {'skillName19': [_SHROUD], 'skillLevel19': [1, 2, 3],
                            'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
         db.d[_MARAUDER] = {'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
+        db.d[_CTRL] = {'BuffSelfBehavior': [_PET_CONTROLLER_BUFF_TRIGGER]}
+        db.d[_ENSLAVER_SUMMON] = {'spawnObjects': list(_PETS)}
+        for p in _PETS:
+            db.d[p] = {'skillName13': [_SHROUD], 'skillLevel13': [1],
+                       'controller': [_CTRL],
+                       'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
         return db
 
     plants = [
@@ -477,6 +623,28 @@ def _negtest():
              'particleEffectAttachPoints', ['R Hand', 'L Hand'])),
         ('the demons shape/colour reference pak disappears',
          lambda db: db.d.pop(_SHADOWCLOAK_PAK)),
+        # ── b102 / R-102 second amendment: the defect Will reported as "still not
+        #    implemented". Every one of these passed b98's gate unchanged.
+        ('THE b98 DEFECT ITSELF: shroud on the monster, on NO pet tier',
+         lambda db: [db.d[p].pop('skillName13') for p in _PETS]),
+        ('one pet tier is skipped while the other two are wired',
+         lambda db: db.d[_PETS[1]].pop('skillName13')),
+        ('a NEW 4th pet tier is summoned and never gets the shroud',
+         lambda db: (db.d.__setitem__(
+             r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr',
+             {'controller': [_CTRL],
+              'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}),
+             db.d[_ENSLAVER_SUMMON].__setitem__(
+                 'spawnObjects', _PETS + [
+                     r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr']))),
+        ('the summon loses its spawnObjects, so the tier roster goes silently empty',
+         lambda db: db.d[_ENSLAVER_SUMMON].__setitem__('spawnObjects', [])),
+        ('a pet gets the shroud at level 0 (present in a slot, never displayed)',
+         lambda db: db.d[_PETS[0]].__setitem__('skillLevel13', [0])),
+        ('the pets controller stops firing self-buffs, so the toggle is inert',
+         lambda db: db.d[_CTRL].__setitem__('BuffSelfBehavior', ['NeverBuff'])),
+        ('a pet loses the pre-existing DRX running smoke instead of gaining a shroud',
+         lambda db: db.d[_PETS[2]].__setitem__('charFxPakRunningNames', [''])),
     ]
     try:
         verify(_base())
