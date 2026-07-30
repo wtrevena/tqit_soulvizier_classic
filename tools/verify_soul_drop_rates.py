@@ -470,8 +470,22 @@ def _check_cohorts(recs):
         fails.append(f"G6: {len(strays)} non-HELD carrier(s) on an unruled rate: "
                      f"{strays[:6]}")
 
-    # G7 - the HELD cohorts are still exactly the tiers Will has NOT ruled on:
-    # every HELD record is Champion-classified, unset, or a 0% hero-class one.
+    # G7 - THE CHAMPION TIER IS HELD (R-106 amendment: "DOES 'STARS OR BETTER'
+    # INCLUDE THE WHOLE CHAMPION TIER? That is the 172-creature decision" - still
+    # unanswered). No Champion carrier may sit on a RULED rate: finding one at
+    # 33/25/100 means this policy moved the tier Will has not ruled on. (0 is
+    # legal: 172 of them are already there and were never touched.)
+    moved_champions = [(n, cur) for n, c, cur, e, k in recs
+                       if str(c).lower() == 'champion'
+                       and round(cur, 2) in (bsd.SOUL_RATE_NONFIXED,
+                                             bsd.SOUL_RATE_FIXED_BOSS,
+                                             bsd.SOUL_RATE_R48_CHAMPION)]
+    if moved_champions:
+        fails.append(f"G7 R-106 (HELD): {len(moved_champions)} Champion-tier "
+                     f"carrier(s) moved onto a ruled rate - the star tier is "
+                     f"Will's open 172-creature decision: {moved_champions[:6]}")
+
+    # G7b - every HELD record is Champion-classified, unset, or gated at 0.
     for name, cls, cur, expected, klass in recs:
         if not klass.endswith('+HELD'):
             continue
@@ -480,7 +494,7 @@ def _check_cohorts(recs):
             continue
         if abs(cur) < 0.01:
             continue
-        fails.append(f"G7: {name} is HELD but is neither Champion, unset, nor "
+        fails.append(f"G7b: {name} is HELD but is neither Champion, unset, nor "
                      f"0% (cls={cls}, cur={cur}) - the HELD set has drifted")
     return fails
 
@@ -798,6 +812,17 @@ def main(argv):
     # (g) a stray unruled rate
     _plant("a stray unruled rate (um_morth_18 -> 12.5%)",
            lambda c: _set(c, 'um_morth_18', 12.5))
+    # (h) THE HELD TIER MOVED - a Champion-tier carrier given the 33% rate.
+    #     This is the negative for the cohort Will has NOT ruled on: the policy
+    #     must never touch it, and the gate must notice if anything does.
+    def _move_a_champion(copy):
+        for row in copy:
+            if str(row[1]).lower() == 'champion':
+                row[2] = bsd.SOUL_RATE_NONFIXED
+                return "%s -> 33" % row[0]
+        return 'no Champion carrier found'
+    _plant("a HELD Champion-tier carrier moved onto the 33% rate",
+           _move_a_champion)
     # POSITIVE CONTROL (the other way): the unmodified build must be GREEN, and a
     # HELD Champion left exactly where it is must NOT fire the gate.
     ctrl = _check_cohorts(recs)
