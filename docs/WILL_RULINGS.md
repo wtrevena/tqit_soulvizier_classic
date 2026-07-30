@@ -2118,3 +2118,89 @@ and it should be fixed in the same lane as the rate sweep, not held behind the C
 mummy-priest suggestion withdrawn (they are Common). **Three of our own uber bosses at 0% -> 25%, no decision
 needed.** The Champion tier (172 creatures) is HELD pending Will's yes/no; Hero + Boss + Quest zeroes proceed to
 a content lane that proposes a soul per creature.
+
+---
+
+## R-107 [2026-07-29] Gaoler soul scoping (already correct - I was wrong), and WHY the Devourer is unkillable
+
+**WILL, VERBATIM:**
+
+> "yeah so the soul gaoler should not drop the soul just the unbound final version. also i just tried to kill the
+> blood cave toxeus the devourer and I one hit myself when i hit him, he is basically unkillable with the current
+> reflect damage unless you use pets to kill him but i am playing on epic and i have two toxeus the murderer,
+> enslaver of souls pets summoned and they cant kill him so i guess i cant kill him"
+
+### PART 1 - THE GAOLER RULING IS ALREADY IMPLEMENTED, AND MY EARLIER CLAIM WAS WRONG
+
+**CORRECTION.** In the R-106 amendment I listed `um_polisgaoler_99` among "three of our own ubers that can never
+drop their souls - a plain defect". That was wrong. Measured:
+
+| record | class | soul chance | soul carried |
+|---|---|---|---|
+| `um_polisgaoler_99` (base) | Boss | **0.0** | `wardenofsouls_soul_{n,e,l}` (the base game's) |
+| `um_polisgaoler_unbound_99` (final) | Boss | **66.0** | `polisgaoler_soul_{n,e,l}` (**ours**) |
+
+The base Gaoler already does not drop, the unbound final form already does, and they carry **different** souls.
+**His ruling was already satisfied before he gave it** - so the correct action here is NOT to raise the base
+Gaoler. It is: leave the base at 0, and take the unbound form **66% -> 25%** under R-105's fixed-boss rate.
+The two remaining genuine 0% defects from that list stand: `um_charon_ferryman_99` and `um_tantalus_99`.
+(Both Gaolers still leak the Warden key - R-101 is unaffected.)
+
+### PART 2 - ⚠️ THE REFLECT CUT CANNOT BE MADE IN PLACE. IT WOULD NERF WILL'S OWN PETS.
+
+`toxeus_passiveproperties` has **18 carriers**, and they are not all things Will fights:
+
+- **Monsters he fights (7):** `um_toxeus_enslaver_99`, `um_toxeus_hunt_99`, `um_toxeus_hunt_l_99`,
+  `um_bloodtoxeus_99`, `um_toxeus_21`, `um_toxeus_99`, plus `drxcreatures\crowheroes\less.dbr` -
+  **a DRX crow hero that is not a Toxeus creature at all** (pure collateral).
+- **PETS HE SUMMONS (9):** `pets\toxeus_enslaver_{1,2,3}`, `pets\bloodtoxeus_{1,2,3}`, `pets\toxeus_eoat_{1,2,3}`.
+- 2 zzdev dummies.
+
+**So a one-line edit of `defensiveReflect` 100 -> 30 would also strip 70 points of reflect off the very pets
+Will is using to try to kill this boss.** That is the exact failure mode the `genericbossorb_04` lesson exists to
+prevent, and it would have silently made his situation worse while the commit message said "made the boss more
+killable".
+
+**REQUIRED IMPLEMENTATION:** mint a **monster-only** passive (clone of the current record) carrying the reduced
+reflect, point the 6 Toxeus MONSTERS at it, and leave the 9 PET records on the original 100/33 so his summons
+keep their defence. `less.dbr` also stays on the original - it is not ours to retune. Gate it: assert no pet
+record ever lands on the monster passive and vice versa, and plant a negative both ways.
+
+### PART 3 - WHY HE CANNOT KILL HIM, MEASURED. REFLECT IS NOT THE ONLY WALL.
+
+Devourer, on **Epic** (the difficulty he is playing), from the built record plus the shared passive:
+
+| | value |
+|---|---|
+| `characterLife` | 13,000 / **18,000** / 24,000 (n/e/l) |
+| `defensivePierce` | **70%** |
+| `defensiveBleeding` | 80% |
+| `defensivePoison` | 80% |
+| `defensiveLife` (vitality) | 100% |
+| `characterDodgePercent` | 15% |
+| `characterDeflectProjectile` | 33% |
+| `defensiveBlockModifierChance` | 25% |
+| `defensiveConfusion` / `defensiveConvert` | 150% each |
+| **reflect** | **100% at 33% chance** |
+
+**THE THING WORTH SEEING: his own character is a SPEAR user - pierce damage - and this boss has 70% pierce
+resistance.** So Will is simultaneously (a) dealing roughly a third of his damage, and (b) taking his own full
+hit back one time in three. That is not a hard boss, it is a hard counter to his specific build wearing a
+one-shot mechanic. And his pets fail for the same reason: the Enslaver pet kit is physical/pierce-flavoured
+into 70% pierce plus 15% dodge plus 33% deflect on 18,000 life.
+
+**THREE LEVERS, in the order I would pull them (all his call, all numbers his to set):**
+1. **Reflect 100 -> ~30** on the monster-only passive. Fixes the one-shot, which is the actual blocker, and
+   costs nothing elsewhere.
+2. **`defensivePierce` 70 -> ~40.** This is the quiet one that makes the fight feel possible rather than merely
+   survivable, and it is the reason pets are not working either. 70% resistance against a spear build is a
+   near-immunity.
+3. **`characterLife`** last. It is the honest lever he offered, but cutting life shortens a fight that is
+   currently unwinnable rather than long - fix the first two and this may not be needed.
+
+**DO NOT** touch Bloodbath, Blood Frenzy or the summons (R-103: "harder is the point, keep all three", "the
+answer is not cutting skills but cutting elsewhere").
+
+**STATUS:** measured and specified, NOT implemented. **Will is currently HARD-BLOCKED from finishing this
+encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers; my recommendations are reflect
+30 and pierce 40.
