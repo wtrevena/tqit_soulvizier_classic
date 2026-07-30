@@ -351,7 +351,23 @@ def _del_field(db, rec, field):
             hit = True
     if hit:
         db._modified.add(rec)
+        _bump()
     return hit
+
+
+def _set_ref(db, rec, field, value, dtype=None):
+    """Write a .dbr-valued field and invalidate the reverse index."""
+    if dtype is None:
+        db.set_field(rec, field, value)
+    else:
+        db.set_field(rec, field, value, dtype)
+    db._modified.add(rec)
+    _bump()
+
+
+def _clone(db, src, dest):
+    db.clone_record(src, dest)
+    _bump()
 
 
 def _skill_slots(db, rec):
@@ -390,6 +406,7 @@ def _add_kit_skill(db, rec, skill, level):
     db.set_field(rec, 'skillName%d' % slot, skill, DATA_TYPE_STRING)
     db.set_field(rec, 'skillLevel%d' % slot, level)
     db._modified.add(rec)
+    _bump()
     return slot
 
 
@@ -401,23 +418,54 @@ def _repoint_slot(db, rec, old, new):
         return None
     db.set_field(rec, 'skillName%d' % i, new)
     db._modified.add(rec)
+    _bump()
     return i
 
 
-def _carriers(db, target, field_re=None):
-    """Every record referencing `target` in any field (optionally name-filtered)."""
-    want = _norm(target)
-    out = []
+# ── the reverse reference index ──────────────────────────────────────────────
+# A carrier census is a full-DB scan (51k records), and both the shared-record law
+# and the gate need several of them. The index is built once and reused until a
+# REFERENCE is rewritten; `_bump()` is called only by the write paths that can
+# actually move a .dbr-valued field, so a plain float plant never pays for a
+# rebuild. Scalar-only mutations therefore cost nothing.
+_REF_INDEX = {}
+_REF_GEN = [0]
+
+
+def _bump():
+    _REF_GEN[0] += 1
+
+
+def _ref_index(db):
+    key = id(db)
+    cached = _REF_INDEX.get(key)
+    if cached is not None and cached[0] == _REF_GEN[0]:
+        return cached[1]
+    idx = {}
     for n in db.record_names():
-        for k, tf in (db.get_fields(n) or {}).items():
-            b = k.split('###')[0]
-            if field_re and not re.match(field_re, b):
+        ff = db.get_fields(n)
+        if not ff:
+            continue
+        for k, tf in ff.items():
+            vals = tf.values
+            if not vals:
                 continue
-            if not tf.values:
-                continue
-            if any(isinstance(v, str) and _norm(v) == want for v in tf.values):
-                out.append((n, b))
-    return out
+            base = None
+            for v in vals:
+                if isinstance(v, str) and len(v) > 4 and v[-4:].lower() == '.dbr':
+                    if base is None:
+                        base = k.split('###')[0]
+                    idx.setdefault(v.replace('/', '\\').lower(), []).append((n, base))
+    _REF_INDEX[key] = (_REF_GEN[0], idx)
+    return idx
+
+
+def _carriers(db, target, field_re=None):
+    """Every (record, field) referencing `target` (optionally field-name filtered)."""
+    hits = _ref_index(db).get(_norm(target), ())
+    if field_re:
+        return [(n, f) for n, f in hits if re.match(field_re, f)]
+    return list(hits)
 
 
 def _passive_carriers(db, target):
@@ -507,17 +555,17 @@ def _l0_special_offenders(db, rec):
 # =============================================================================
 # PART A - R-103 / R-107: the monster-only reflect passive + the pierce cut
 # =============================================================================
-def _build_monster_passive(db):
+def _build_monster_passive(db, census):
     _require(db, SHARED_PASSIVE, 'the shared Toxeus passive')
 
-    # SHARED-RECORD LAW: enumerate carriers BEFORE touching anything.
-    before = _passive_carriers(db, SHARED_PASSIVE)
+    # SHARED-RECORD LAW: the carriers were enumerated BEFORE anything was touched.
+    before = census['passive']
     pets_on_it = [c for c in before if _norm(c) in {_norm(p) for p in PETS_KEEP_ORIGINAL}]
     print('  [R-107] shared passive blast radius: %d carrier(s), %d of them Will\'s '
           'own PETS -> cloning a monster-only passive instead of editing in place'
           % (len(before), len(pets_on_it)))
 
-    db.clone_record(SHARED_PASSIVE, MONSTER_PASSIVE)
+    _clone(db, SHARED_PASSIVE, MONSTER_PASSIVE)
     # value-only overrides: the clone already carries both fields as FLOAT
     db.set_field(MONSTER_PASSIVE, 'defensiveReflect', REFLECT_MONSTER)
     db.set_field(MONSTER_PASSIVE, 'defensiveReflectChance', REFLECT_CHANCE)
@@ -541,8 +589,20 @@ def _build_monster_passive(db):
     for rec, slot in moved:
         print('    reflect %g -> %g : %-72s [skillName%d]'
               % (100.0, REFLECT_MONSTER, rec.rsplit('\\', 1)[-1], slot))
-    print('    um_toxeus_hunt_l_99 inherits the repoint from its clone base '
-          '(toxeus_hunt_endless runs after this module); verify() asserts it landed.')
+    # In the REGISTRY, um_toxeus_hunt_l_99 does not exist yet (toxeus_hunt_endless
+    # mints it later off the base Hunt) and inherits the repoint by construction.
+    # Running standalone against an ALREADY-BUILT arz (--negtest / --analyze) it
+    # does exist, so repoint it directly. Both routes end in the same state, and
+    # toxeus_hunt_endless's "base and variant differ in EXACTLY `controller`"
+    # assertion holds either way.
+    if db.has_record(HUNT_L):
+        slot = _repoint_slot(db, HUNT_L, SHARED_PASSIVE, MONSTER_PASSIVE)
+        print('    reflect %g -> %g : %-72s [skillName%s] (already minted)'
+              % (100.0, REFLECT_MONSTER, HUNT_L.rsplit('\\', 1)[-1], slot))
+    else:
+        print('    um_toxeus_hunt_l_99 inherits the repoint from its clone base '
+              '(toxeus_hunt_endless runs after this module); verify() asserts it '
+              'landed.')
 
 
 def _cut_devourer_pierce(db):
@@ -558,14 +618,14 @@ def _cut_devourer_pierce(db):
 # =============================================================================
 # PART B - R-100 #1: Bloodbath, cd 45 -> 15, and made castable at all
 # =============================================================================
-def _build_bloodbath(db):
+def _build_bloodbath(db, census):
     _require(db, BLOODBOIL_SHARED, 'melinoe_bloodboil (the Bloodbath donor)')
-    shared_carriers = sorted({n for n, _ in _carriers(db, BLOODBOIL_SHARED)})
+    shared_carriers = census['bloodboil']
     print('  [R-100 #1] melinoe_bloodboil blast radius: %d carrier(s) (%d of them '
           'Will\'s own pets) -> cloning rather than cutting the cooldown in place'
           % (len(shared_carriers), sum(1 for c in shared_carriers if '\\pets\\' in c)))
 
-    db.clone_record(BLOODBOIL_SHARED, BLOODBATH)
+    _clone(db, BLOODBOIL_SHARED, BLOODBATH)
     db.set_field(BLOODBATH, 'skillCooldownTime', BLOODBATH_COOLDOWN)
     # B-SOUL-PROC-2: DELETE the anim (base-absence parity), never blank it.
     had = _one(db, BLOODBATH, 'skillSpecialAnimationName')
@@ -580,8 +640,7 @@ def _build_bloodbath(db):
     slot = _repoint_slot(db, DEVOURER, BLOODBOIL_SHARED, BLOODBATH)
     if slot is None:
         slot = _add_kit_skill(db, DEVOURER, BLOODBATH, [8, 12, 16])
-    db.set_field(DEVOURER, 'specialAttackSkillName', BLOODBATH)
-    db._modified.add(DEVOURER)
+    _set_ref(db, DEVOURER, 'specialAttackSkillName', BLOODBATH)
     print('    svc_devourer_bloodbath: cd %g (was 45), special anim %r REMOVED; '
           'Devourer skillName%d + specialAttackSkillName repointed (chance %s kept). '
           'melinoe_bloodboil itself is byte-unchanged for its %d other carriers.'
@@ -612,7 +671,7 @@ def _assert_bloodfrenzy(db):
 def _build_minion(db, donor, dest, name_tag, life, hand_min, hand_max,
                   scale, height, run_speed, label):
     _require(db, donor, '%s donor' % label)
-    db.clone_record(donor, dest)
+    _clone(db, donor, dest)
     db.set_field(dest, 'description', name_tag)
     db.set_field(dest, 'monsterClassification', 'Champion')
     db.set_field(dest, 'charLevel', [40, 68, 100])
@@ -639,8 +698,8 @@ def _build_summon(db, dest, spawn, label, note):
     """Clone the PROVEN Enslaver summon shell, repoint its payload, and strip the
     special anim that makes the original never fire."""
     _require(db, ENSLAVER_SUMMON, 'the Enslaver summon shell')
-    db.clone_record(ENSLAVER_SUMMON, dest)
-    db.set_field(dest, 'spawnObjects', [spawn])
+    _clone(db, ENSLAVER_SUMMON, dest)
+    _set_ref(db, dest, 'spawnObjects', [spawn])
     db.set_field(dest, 'petBurstSpawn', SUMMON_BURST)
     db.set_field(dest, 'petLimit', SUMMON_PET_LIMIT)
     db.set_field(dest, 'skillCooldownTime', SUMMON_COOLDOWN)
@@ -664,9 +723,8 @@ def _build_devourer_summon(db):
 
     slot = _add_kit_skill(db, DEVOURER, DEV_SUMMON, [1, 2, 3])
     was = _one(db, DEVOURER, 'specialAttack5SkillName')
-    db.set_field(DEVOURER, 'specialAttack5SkillName', DEV_SUMMON)
+    _set_ref(db, DEVOURER, 'specialAttack5SkillName', DEV_SUMMON)
     db.set_field(DEVOURER, 'specialAttack5Chance', SUMMON_CAST_CHANCE)
-    db._modified.add(DEVOURER)
     keeps = _slot_of(db, DEVOURER, LILDUDE_SUMMON)
     print('    Devourer skillName%d + specialAttack5 @%g (was %s - a charLevel-9, '
           '1.0-HP pit sprite). RETIREMENT PROTOCOL: that skill record is NOT '
@@ -679,7 +737,7 @@ def _build_devourer_summon(db):
 def _build_hunt_summon(db):
     # the donor hound's own spit is B-SOUL-PROC-2 dead; give the courser a live one
     _require(db, PUKE_DONOR, 'the bloodhound spit donor')
-    db.clone_record(PUKE_DONOR, COURSER_SPEW)
+    _clone(db, PUKE_DONOR, COURSER_SPEW)
     had = _one(db, COURSER_SPEW, 'skillSpecialAnimationName')
     _del_field(db, COURSER_SPEW, 'skillSpecialAnimationName')
     db.set_field(COURSER_SPEW, 'FileDescription',
@@ -691,8 +749,7 @@ def _build_hunt_summon(db):
         db, COURSER_DONOR, COURSER, 'tagSVCMonsterHuntCourser',
         life=[3500.0, 4800.0, 6500.0], hand_min=180.0, hand_max=240.0,
         scale=1.7, height=1.4, run_speed=1.6, label='Courser of the Endless Hunt')
-    db.set_field(COURSER, 'specialAttack2SkillName', COURSER_SPEW)
-    db._modified.add(COURSER)
+    _set_ref(db, COURSER, 'specialAttack2SkillName', COURSER_SPEW)
 
     _build_summon(
         db, HUNT_SUMMON, COURSER, 'svc_hunt_summoncoursers',
@@ -706,21 +763,27 @@ def _build_hunt_summon(db):
         raise SystemExit('[devourer_kit] the Hunt\'s specialAttack5 is no longer '
                          'free (%s) - re-derive the slot plan, do NOT displace it'
                          % prior)
-    db.set_field(HUNT, 'specialAttack5SkillName', HUNT_SUMMON, DATA_TYPE_STRING)
+    _set_ref(db, HUNT, 'specialAttack5SkillName', HUNT_SUMMON, DATA_TYPE_STRING)
     db.set_field(HUNT, 'specialAttack5Chance', SUMMON_CAST_CHANCE, DATA_TYPE_FLOAT)
-    db._modified.add(HUNT)
     print('    Hunt skillName%d + specialAttack5 @%g (slot was FREE - nothing '
-          'displaced). um_toxeus_hunt_l_99 inherits both from its clone base.'
-          % (slot, SUMMON_CAST_CHANCE))
+          'displaced).' % (slot, SUMMON_CAST_CHANCE))
+    # same clone-order note as the passive repoint above
+    if db.has_record(HUNT_L):
+        lslot = _add_kit_skill(db, HUNT_L, HUNT_SUMMON, [1, 2, 3])
+        _set_ref(db, HUNT_L, 'specialAttack5SkillName', HUNT_SUMMON, DATA_TYPE_STRING)
+        db.set_field(HUNT_L, 'specialAttack5Chance', SUMMON_CAST_CHANCE, DATA_TYPE_FLOAT)
+        print('    Hunt(L) skillName%d + specialAttack5 @%g (already minted)'
+              % (lslot, SUMMON_CAST_CHANCE))
+    else:
+        print('    um_toxeus_hunt_l_99 inherits both from its clone base.')
 
 
 # =============================================================================
 # PART E - the sibling defect: the Enslaver's own summon has never fired either
 # =============================================================================
-def _fix_enslaver_summon(db):
+def _fix_enslaver_summon(db, census):
     _require(db, ENSLAVER_SUMMON, 'the Enslaver summon')
-    carriers = sorted({n for n, _ in _carriers(db, ENSLAVER_SUMMON)})
-    outside = [c for c in carriers if _norm(c) not in {_norm(ENSLAVER)}]
+    outside = [c for c in census['enslaver_summon'] if _norm(c) != _norm(ENSLAVER)]
     if outside:
         raise SystemExit('[devourer_kit] svc_enslaver_summonmarauders has carriers '
                          'outside the Enslaver (%s) - clone instead of editing in '
@@ -748,13 +811,24 @@ def apply(db, tags):
         if db.has_record(r):
             raise SystemExit('[devourer_kit] name collision: %s already exists' % r)
 
-    _build_monster_passive(db)
+    # SHARED-RECORD LAW: every carrier census is taken ONCE, BEFORE the first
+    # mutation, off a single reverse-reference index. Taking them pre-mutation is
+    # not just cheaper, it is more honest - "does anything outside our scope carry
+    # this record" is a question about the state we INHERITED.
+    _bump()
+    census = {
+        'passive': _passive_carriers(db, SHARED_PASSIVE),
+        'bloodboil': sorted({n for n, _ in _carriers(db, BLOODBOIL_SHARED)}),
+        'enslaver_summon': sorted({n for n, _ in _carriers(db, ENSLAVER_SUMMON)}),
+    }
+
+    _build_monster_passive(db, census)
     _cut_devourer_pierce(db)
-    _build_bloodbath(db)
+    _build_bloodbath(db, census)
     _assert_bloodfrenzy(db)
     _build_devourer_summon(db)
     _build_hunt_summon(db)
-    _fix_enslaver_summon(db)
+    _fix_enslaver_summon(db, census)
 
     for k, v in TAGS.items():
         tags[k] = v
@@ -870,7 +944,8 @@ def gate_violations(db):
 
     # -- 8. the summons ------------------------------------------------------
     for skill, host, spawn, label in ((DEV_SUMMON, DEVOURER, BLOODSPAWN, 'Devourer'),
-                                      (HUNT_SUMMON, HUNT, COURSER, 'Hunt')):
+                                      (HUNT_SUMMON, HUNT, COURSER, 'Hunt'),
+                                      (HUNT_SUMMON, HUNT_L, COURSER, 'Hunt(L)')):
         if not db.has_record(skill):
             p.append('%s summon missing: %s' % (label, skill))
             continue
@@ -939,6 +1014,9 @@ def gate_violations(db):
 
 
 def verify(db, tags=None):
+    # every other registry module has run since apply(); toxeus_hunt_endless in
+    # particular MINTED um_toxeus_hunt_l_99 off the base Hunt. Force a fresh index.
+    _bump()
     problems = gate_violations(db)
     if problems:
         for x in problems:
@@ -970,15 +1048,19 @@ def _negtest(arz):
     # the L variant does not exist in a bare apply() (its author runs later), so
     # mint the same clone the registry would, to exercise the full carrier gate.
     if not db.has_record(HUNT_L):
-        db.clone_record(HUNT, HUNT_L)
+        _clone(db, HUNT, HUNT_L)
 
     control = gate_violations(db)
     results = []
 
-    def plant(label, mutate, restore, needle):
+    def plant(label, mutate, restore, needle, moves_a_ref=False):
         mutate()
+        if moves_a_ref:
+            _bump()
         fired = any(needle.lower() in v.lower() for v in gate_violations(db))
         restore()
+        if moves_a_ref:
+            _bump()
         results.append((label, fired))
 
     plant('N1 reflect back to 100 on the monster passive',
@@ -991,7 +1073,7 @@ def _negtest(arz):
     plant('N2 a PET dragged onto the monster passive',
           lambda: db.set_field(pet, 'skillName%d' % pet_slot, MONSTER_PASSIVE),
           lambda: db.set_field(pet, 'skillName%d' % pet_slot, SHARED_PASSIVE),
-          'R-107 VIOLATION')
+          'R-107 VIOLATION', moves_a_ref=True)
 
     plant("N3 'BloodBoil' put back on Bloodbath",
           lambda: db.set_field(BLOODBATH, 'skillSpecialAnimationName', 'BloodBoil',
@@ -1019,7 +1101,7 @@ def _negtest(arz):
           lambda: db.set_field(DEVOURER, 'skillName%d' % bf_slot, BLOODFRENZY.replace(
               'quak_bloodfrenzy', 'hero_scaling')),
           lambda: db.set_field(DEVOURER, 'skillName%d' % bf_slot, BLOODFRENZY),
-          'Blood Frenzy sits in 0')
+          'Blood Frenzy sits in 0', moves_a_ref=True)
 
     plant('N8 characterLife spent (the reserved third lever)',
           lambda: db.set_field(DEVOURER, 'characterLife', [9000.0, 12000.0, 16000.0]),
