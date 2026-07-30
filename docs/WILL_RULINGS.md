@@ -2619,12 +2619,25 @@ binds no `rangedOneHandWalkAnim` at all - and is not introduced, worsened or tou
 
 R-140's carrier counts are mod-record counts. Adding the base-only carriers the overlay leaves in place:
 
-| table | R-140 (mod-only) | base-only | TRUE total |
+All counts below are PRE-FIX (measured on `local/baseline_main.arz`), which is the state the
+clone-or-edit decision was actually taken against:
+
+| table | R-140 (mod-only, pre-fix) | base-only | TRUE total (pre-fix) |
 |---|---|---|---|
-| `ANM_Maenad` | 168 | 8 | **174** |
-| `ANM_Tiger` | 68 | 19 | **85** |
-| `ANM_Machae` | 64 | 4 | **65** |
+| `ANM_Maenad` | 168 | 8 | **176** |
+| `ANM_Tiger` | 68 | 19 | **87** |
+| `ANM_Machae` | 64 | 4 | **68** |
 | `ANM_DuneRaider` | 30 | 0 | **30** |
+
+> **A correction inside the correction, kept visible on purpose.** The first draft of this table
+> printed 174 / 85 / 65 / 30 - I had put R-140's PRE-fix mod counts in column 1 and my own POST-fix
+> totals in column 3, so the rows did not even add up. It was caught by running
+> `probe_thrown_union_scope.py` against the post-fix build and the pre-fix baseline separately and
+> noticing 166+8=174 vs 168+8=176. Recorded rather than quietly fixed, because "the census was run
+> against the wrong artifact" is the exact failure mode this whole amendment exists to correct, and it
+> is worth knowing it is easy enough to make twice in one day. Post-fix the mod-side counts are
+> 166 / 66 / 61 / 27 (the 2/2/3/3 roster records having moved to the clones), i.e. post-fix totals
+> 174 / 85 / 65 / 27.
 
 **The CLONE-not-edit decision is correct at both counts and nothing changes** - the numbers only get worse
 for editing in place, never better. Recorded because SHARED-RECORD LAW is decided on exactly these

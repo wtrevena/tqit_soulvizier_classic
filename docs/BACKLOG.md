@@ -199,8 +199,9 @@ rather than merely green.
    still complete, and it is now PROVEN rather than assumed: **0 base-only monsters both name a stripped
    table and equip a thrown weapon**, so none can inherit this defect.
 3. **The shared-carrier census is mod-only.** True totals including base-only carriers:
-   `ANM_Maenad` **174** (not 168), `ANM_Tiger` **85** (not 68), `ANM_Machae` **65** (not 64),
-   `ANM_DuneRaider` **30**. Clone-not-edit is correct at both counts; recorded so a later lane cannot
+   PRE-FIX `ANM_Maenad` **176** (not 168), `ANM_Tiger` **87** (not 68), `ANM_Machae` **68** (not 64),
+   `ANM_DuneRaider` **30** (base-only adds 8/19/4/0). Clone-not-edit is correct at both counts;
+   recorded so a later lane cannot
    under-count its blast radius by up to 31 carriers.
 
 ### DEBT REGISTER additions

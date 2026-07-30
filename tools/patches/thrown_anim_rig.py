@@ -98,9 +98,13 @@ Carrier census on the shipped build
 Those counts are MOD-RECORD counts, and the .arz is an OVERLAY (41,226 base
 records are not in it), so they understate the real blast radius. Counting the
 base-only carriers the overlay leaves pointing at these same paths, the TRUE
-totals are 174 / 85 / 65 / 30 (R-140 AMENDMENT, correction 3). The decision is
-the same at either count - editing in place would be worse, never better - but
-a later lane must not read 168 and think that is the whole game.
+PRE-FIX totals are 176 / 87 / 68 / 30 (R-140 AMENDMENT, correction 3; base-only
+adds 8 / 19 / 4 / 0). The decision is the same at either count - editing in
+place would be worse, never better - but a later lane must not read 168 and
+think that is the whole game.
+Re-measure with `py tools/debug/probe_thrown_union_scope.py <base.arz> <mod.arz>`,
+and mind which artifact you point it at: post-fix the mod-side counts are
+166 / 66 / 61 / 27, because the 2/2/3/3 roster records have moved to the clones.
 
 That is the `toxeus_passiveproperties` lesson again (18 carriers, 9 of them
 Will's pets). So this module NEVER edits a shared table: it CLONES each one to
