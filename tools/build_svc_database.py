@@ -778,14 +778,16 @@ def ruled_soul_equip_rate(record_name, classification, current,
       8. anything still live                       -> soul_drop_rate() with the
          ruled numbers: 25 fixed-location boss, else 33.
 
-    NOTE on rule 8 vs the ratified count: R-105 ratified "all 66% and 50% -> 33%,
-    that is 734 creatures". Five of those 734 are non-`um_` Boss records that
-    `_soul_is_farmable_boss` calls farmable/25 (boss_charon_39/41/43,
-    boss_satyrshaman_55 and one more). Will's COUNT wins over the classifier for
-    the two ratified cohorts, so they land on 33 with the rest of their cohort;
-    every OTHER cohort (10%/5%/2%) goes through the classifier, which is exactly
-    what R-105's own table asked for (the 12 pharaoh honour guards -> 25, our
-    non-fixed 5%/2% ubers -> 33).
+    NOTE on rule 8 vs the ratified count (BL-b102-DEBT-2, flagged for Will):
+    R-105 ratified "all 66% and 50% -> 33%, that is 734 creatures" - a COUNT -
+    but it ALSO says "25% for fixed location bosses". Five of those 734 are
+    fixed-location act bosses that `_soul_is_farmable_boss` calls farmable/25:
+    `boss_charon_39/41/43`, `boss_satyrshaman_55` and
+    `records\\drxcreatures\\bloodwitch\\boss_hades_54.dbr`. His COUNT wins here,
+    so they land on 33 with the rest of their cohort; every OTHER cohort
+    (10%/5%/2%) goes through the classifier, which is exactly what R-105's own
+    table asked for (the 12 pharaoh honour guards -> 25, our non-fixed 5%/2%
+    ubers -> 33). One line from Will flips the five.
     """
     mb = _soul_record_basename(record_name)
     cls = str(classification or '').strip()
