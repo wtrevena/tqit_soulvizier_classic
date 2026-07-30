@@ -239,55 +239,82 @@ def classify_soul_acts(db):
     return assignments, unresolved, stats
 
 
+_MAX_ROUNDS = 8
+
+
 def wire_souls_into_xp_formulas(db, verbose=True):
     """Append every evidence-assigned soul to its act+tier formula's reagent
-    lists. Idempotent (membership is a set), deterministic (sorted), additive
-    only: no existing entry is ever removed or reordered away - the formula's
-    original first entry (the `0X_actY_anysoul` display item) stays first.
+    lists. Deterministic (sorted), additive only: no existing entry is ever
+    removed or reordered away - the formula's original first entry (the
+    `0X_actY_anysoul` display item) stays first.
 
-    Returns (added, unresolved, stats).
+    RUNS TO A FIXED POINT, and that is not an optimisation - it is required for
+    correctness. S4/S5 are majority/unanimity rules over the acts the FORMULAS
+    already declare, so every soul this pass adds ENLARGES the priors and can
+    make a further soul resolvable. Wiring once therefore leaves the db in a
+    state where re-running the classifier finds new assignments - which is
+    exactly what the I5 gate invariant reports (it caught this on the first real
+    build: `aithon_embercrown_soul_{n,e,l}` became act-1-resolvable only after
+    its monster folder gained enough classified siblings). Iterating until a
+    round adds nothing makes the classifier's output a genuine fixed point, so
+    the gate's independent re-derivation agrees with what shipped.
+
+    Returns (added, unresolved, stats) from the FINAL round.
     """
     act_of, formulas = read_formula_membership(db)
-    assignments, unresolved, stats = classify_soul_acts(db)
     if not formulas:
         if verbose:
             print("  XP-forge acts: no lesserpotionofexperience formulas in this "
                   "db - nothing to wire")
-        return 0, unresolved, stats
+        return 0, [], Counter()
 
-    per_formula = defaultdict(list)
-    for soul, (act, _sig) in assignments.items():
-        tier = soul_tier(soul)
-        key = (tier, act)
-        if key in formulas:
-            per_formula[key].append(soul)
+    total_added = 0
+    rounds = []
+    for rnd in range(1, _MAX_ROUNDS + 1):
+        assignments, unresolved, stats = classify_soul_acts(db)
+        per_formula = defaultdict(list)
+        for soul, (act, _sig) in assignments.items():
+            key = (soul_tier(soul), act)
+            if key in formulas:
+                per_formula[key].append(soul)
+        added = 0
+        for key in sorted(per_formula):
+            rec = formulas[key]
+            for field in REAGENT_FIELDS:
+                existing = _field_values(db, rec, field)
+                if not existing:
+                    continue
+                have = {_n(v) for v in existing}
+                new = [s for s in sorted(per_formula[key]) if _n(s) not in have]
+                if not new:
+                    continue
+                db.set_field(rec, field, list(existing) + new)
+                db._modified.add(rec)
+                if field == REAGENT_FIELDS[0]:
+                    added += len(new)
+        rounds.append((rnd, added))
+        total_added += added
+        if added == 0:
+            break
+    else:
+        raise SystemExit(
+            "XP-forge act classification did not reach a fixed point in %d "
+            "rounds (%s). A cycle in the S4/S5 folder priors would mean the "
+            "shipped membership depends on iteration count - refusing to ship "
+            "it." % (_MAX_ROUNDS, rounds))
 
-    added = 0
-    for key in sorted(per_formula):
-        rec = formulas[key]
-        for field in REAGENT_FIELDS:
-            existing = _field_values(db, rec, field)
-            if not existing:
-                continue
-            have = {_n(v) for v in existing}
-            new = [s for s in sorted(per_formula[key]) if _n(s) not in have]
-            if not new:
-                continue
-            db.set_field(rec, field, list(existing) + new)
-            db._modified.add(rec)
-            if field == REAGENT_FIELDS[0]:
-                added += len(new)
-                if verbose:
-                    print("    %s_%02d formula: +%d souls (now %d reagent entries)"
-                          % (key[0], key[1], len(new), len(existing) + len(new)))
     if verbose:
+        sizes = {'%s_%02d' % k: len(_field_values(db, formulas[k], REAGENT_FIELDS[0]))
+                 for k in sorted(formulas)}
+        print("    rounds (round, added): %s" % rounds)
+        print("    final reagent-list sizes: %s" % sizes)
         print("  XP-forge acts (R-100 #11): %d soul->formula memberships added; "
-              "signals: %s" % (added, dict(stats)))
+              "signals in the final round: %s" % (total_added, dict(stats)))
         if unresolved:
             why = Counter(r for _s, r in unresolved)
             print("    UNRESOLVED (reported, never guessed): %d - %s"
                   % (len(unresolved), dict(why)))
-    return added, unresolved, stats
+    return total_added, unresolved, stats
 
 
 # ─────────────────────────────────────────────────────────────────────────────
