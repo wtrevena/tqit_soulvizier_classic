@@ -1,5 +1,247 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## P0 GATE RECORD - R-140 FROZEN THROWN-WIELDERS + R-141 UBER QUEST-ITEM LEAKS (2026-07-30, branch `fix/quest-item-leaks`) - NOT DEPLOYED, NO TAG TAKEN
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed, no map/`Levels.arc`/`Quests.arc`/`Text.arc` byte touched.** DB-only lane:
+`Text.arc` is untouched because **0 tags** were added or changed by either module, so the standing
+arz+Text coupling has nothing to honour, and the Levels+Quests coupling is not in scope at all. **No
+`buildNN-dev` tag was taken** - the highest is `build71-dev` and this lane deliberately left tag
+allocation to the orchestrator rather than racing the parallel lanes for `build72`.
+
+**THE TWO P0s, both shipped bugs in Will's live game:**
+- **R-100 #15 / R-140** - every restored thrown-object monster is frozen ("they spawn and they cant
+  move or attack or anything they are broken"). **10 of 10 fixed.**
+- **R-101 / R-141** - our uber clones inherited their quest-boss donors' quest-item drops, making
+  Charon's Oar and the Key of the Warden of Souls farmable. **3 of 3 fixed, 5 donors untouched.**
+
+### BASELINE (built by THIS lane, from `main` @ `7efd107`, in THIS environment)
+- `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 py
+  tools/build_svc_database.py upstream/soulvizier_098i/... upstream/soulvizier_0.9/...
+  upstream/soulvizier_041/... work/SoulvizierClassic/Database/SoulvizierClassic.arz "<TQAE>/database.arz"`
+- **exit 0**, md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 46 registry
+  modules (log `local/baseline_build2.log`). This md5 **equals the one `docs/BACKLOG.md` already
+  records for b101 `build69-dev`/`build71-dev`**, which is an independent confirmation that this
+  lane's environment reproduces the recorded build bit-for-bit before it changed anything.
+- A first baseline attempt written outside the `work/` layout came back **exit 1** - `SVC_REQUIRE_GATES=1`
+  correctly refuses a build where the A9 render-chain gate cannot run. Re-run into `work/` (with a
+  directory junction to the main checkout's `Resources`), exit 0, same md5. Recorded because "the
+  gate could not run" is a build failure here, not a warning.
+
+### WAVE BUILD
+- Same command, same env, from the committed tree: **exit 0**, md5 **`78e5957f9a09e3bfed44599ac6a36854`**, `55,486,289` B,
+  **`51,128` records**, **47** registry modules (log `local/fix_build4.log`).
+- Two build failures were found and fixed BY BUILDING, not by reading:
+  1. `[17/47] thrown_anim_rig` aborted with `ModuleNotFoundError: No module named 'thrown_restore'` -
+     the registry imports modules as `patches.<name>`, so the plain sibling import that worked in the
+     stand-alone dry-run is wrong in the real build. Now try-relative-then-plain, and BOTH entry paths
+     are exercised (`_check_registry.py` + a stand-alone import).
+  2. The REGISTRY comment for `uber_quest_drops` claimed "no S4b collision is expected". The build
+     proved otherwise; the comment is corrected to the measured pairs (below).
+
+### MODULES (2 new, both registered)
+| module | position | writes | tags |
+|---|---|---|---|
+| `tools/patches/thrown_anim_rig.py` | `[17/47]`, immediately after `thrown_restore` | **14 records** (4 cloned animation tables + the 10 roster creature records) | 0 |
+| `tools/patches/uber_quest_drops.py` | `[46/47]`, after every boss-creating module | **3 records** | 0 |
+
+`py tools/patches/_check_registry.py` -> **OK, 47 module(s)**, order hash
+`27d7dff2e5fc20ea577e648227f0bf06cb6df8c8b7d7b7c4a08539208ea282b3`.
+
+### S4b COLLISIONS - EXPECTED, DECLARED, BENIGN (measured from the build, not predicted)
+```
+records\creature\monster\{maenad\ar_archer_06, maenad\br_archer_10, tigerman\ar_archer_27,
+  tigerman\ar_archer_33, duneraider\am_assassin_15, _21, _27}          <- thrown_restore, thrown_anim_rig
+records\xpack\creatures\monster\machae\{ar,br,cr}_archer_37            <- thrown_restore, thrown_anim_rig
+records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99 <- uber_quest_markers, uber_quest_drops
+records\xpack\creatures\monster\gigantes\um_polisgaoler_99                  <- polis_vault, uber_quest_drops
+records\xpack\creatures\monster\gigantes\um_polisgaoler_unbound_99          <- polis_vault, uber_quest_drops
+```
+Field sets are disjoint in every pair (equip/loot/`characterLife` vs `charAnimationTableName`+clips;
+minimap marker / boss kit vs `perPartyMemberDropItemName`), and in both pairs this wave's module runs
+LATER, so it is the ratified final writer on its own fields. A WARN naming a THIRD module on any of
+these records, or naming a module that writes the SAME field, is a real finding.
+
+### GATES (both new, both with planted negatives that actually fire)
+- **`thrown_anim_rig.verify`** - `OK (10 thrown wielders in the DB, 0 frozen; 4 cloned animation
+  tables carrying 39 verbatim base clips + the same clips on 10 repointed creature records (98 clips,
+  2nd surface); all 4 shared originals unedited, 0 non-target carriers moved)`.
+  Invariant, stated over the roster: *no `Class=Monster` record may equip a thrown weapon while
+  BOTH its own record AND its animation table leave that weapon's stance without `RunAnim` +
+  `WalkAnim` + `AttackAnim1`.* 12 planted cases - 10 must-RED, 2 must-stay-GREEN.
+- **`uber_quest_drops.verify`** - `OK (0 um_* per-party-drop carriers in the DB, 0 pointing at a Quest
+  item; 3 measured leaks cleared; 5 donors unwritten and still handing out their quest item;
+  quest-flag pin held on 2 record(s))`.
+  Invariant: *no `um_*` record may carry a `perPartyMemberDropItemName` resolving to
+  `itemClassification == Quest`.* 7 planted cases - 6 must-RED, 1 must-stay-GREEN (a NON-quest
+  per-party drop, because the field itself is legitimate - R-101 asked for this direction explicitly).
+- The FULL pre-existing gate battery ran over the assembled DB and passed (exit 0), including the A9
+  render-chain and the mastery-unlock gates.
+
+### RECORD-DIFF vs THIS LANE'S OWN BASELINE
+`py tools/debug/gate_wave_record_diff.py <baseline.arz> <fix.arz>` - attribution is DERIVED from the
+two modules' own data (`FAMILIES`, `ROSTER`, `LEAKS`), never hand-listed, and the per-record FIELD SET
+is checked too, so a stray field on an expected record is reported exactly like a stray record:
+
+```
+==============================================================================
+WAVE RECORD-DIFF GATE
+  OLD (baseline from main): local/baseline_main.arz  (51124 records)
+  NEW (this wave)         : work/SoulvizierClassic/Database/SoulvizierClassic.arz  (51128 records)
+  ADDED 4   REMOVED 0   MODIFIED 13
+==============================================================================
+
+-- ADDED --
+  + records\creature\monster\duneraider\anm\anm_duneraider_thrown.dbr        thrown_anim_rig (cloned duneraider anim table)
+  + records\creature\monster\maenad\anm\anm_maenad_thrown.dbr                thrown_anim_rig (cloned maenad anim table)
+  + records\creature\monster\tigerman\anm\anm_tiger_thrown.dbr               thrown_anim_rig (cloned tigerman anim table)
+  + records\xpack\creatures\monster\machae\anm\anm_machae_thrown.dbr         thrown_anim_rig (cloned machae anim table)
+
+-- REMOVED --
+  (none)
+
+-- MODIFIED --
+  ~ records\creature\monster\duneraider\am_assassin_15.dbr                   thrown_anim_rig (repoint + duneraider clips)
+      10 field(s): charAnimationTableName, dualRangedAttackAnim1, dualRangedAttackAnim2, dualRangedAttackAnim3, dualRangedAttackIdleAnim, dualRangedBuffOtherAnim1, dualRangedBuffSelfAnim1, dualRangedRunAnim, dualRangedStunAnim, dualRangedWalkAnim
+  ~ records\creature\monster\duneraider\am_assassin_21.dbr                   thrown_anim_rig (repoint + duneraider clips)
+      10 field(s): charAnimationTableName, dualRangedAttackAnim1, dualRangedAttackAnim2, dualRangedAttackAnim3, dualRangedAttackIdleAnim, dualRangedBuffOtherAnim1, dualRangedBuffSelfAnim1, dualRangedRunAnim, dualRangedStunAnim, dualRangedWalkAnim
+  ~ records\creature\monster\duneraider\am_assassin_27.dbr                   thrown_anim_rig (repoint + duneraider clips)
+      10 field(s): charAnimationTableName, dualRangedAttackAnim1, dualRangedAttackAnim2, dualRangedAttackAnim3, dualRangedAttackIdleAnim, dualRangedBuffOtherAnim1, dualRangedBuffSelfAnim1, dualRangedRunAnim, dualRangedStunAnim, dualRangedWalkAnim
+  ~ records\creature\monster\maenad\ar_archer_06.dbr                         thrown_anim_rig (repoint + maenad clips)
+      10 field(s): charAnimationTableName, rangedOneHandAttackAnim1, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandDieAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+  ~ records\creature\monster\maenad\br_archer_10.dbr                         thrown_anim_rig (repoint + maenad clips)
+      10 field(s): charAnimationTableName, rangedOneHandAttackAnim1, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandDieAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+  ~ records\creature\monster\tigerman\ar_archer_27.dbr                       thrown_anim_rig (repoint + tigerman clips)
+      11 field(s): charAnimationTableName, rangedOneHandAttackAnim1, rangedOneHandAttackAnim2, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandDieAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+  ~ records\creature\monster\tigerman\ar_archer_33.dbr                       thrown_anim_rig (repoint + tigerman clips)
+      11 field(s): charAnimationTableName, rangedOneHandAttackAnim1, rangedOneHandAttackAnim2, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandDieAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+  ~ records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99.dbr uber_quest_drops (cleared Charon's Oar)
+      1 field(s): perPartyMemberDropItemName
+  ~ records\xpack\creatures\monster\gigantes\um_polisgaoler_99.dbr           uber_quest_drops (cleared Key of the Warden of Souls)
+      1 field(s): perPartyMemberDropItemName
+  ~ records\xpack\creatures\monster\gigantes\um_polisgaoler_unbound_99.dbr   uber_quest_drops (cleared Key of the Warden of Souls)
+      1 field(s): perPartyMemberDropItemName
+  ~ records\xpack\creatures\monster\machae\ar_archer_37.dbr                  thrown_anim_rig (repoint + machae clips)
+      12 field(s): charAnimationTableName, rangedOneHandAlertAnim1, rangedOneHandAttackAnim1, rangedOneHandAttackAnim2, rangedOneHandAttackAnim3, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+  ~ records\xpack\creatures\monster\machae\br_archer_37.dbr                  thrown_anim_rig (repoint + machae clips)
+      12 field(s): charAnimationTableName, rangedOneHandAlertAnim1, rangedOneHandAttackAnim1, rangedOneHandAttackAnim2, rangedOneHandAttackAnim3, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+  ~ records\xpack\creatures\monster\machae\cr_archer_37.dbr                  thrown_anim_rig (repoint + machae clips)
+      12 field(s): charAnimationTableName, rangedOneHandAlertAnim1, rangedOneHandAttackAnim1, rangedOneHandAttackAnim2, rangedOneHandAttackAnim3, rangedOneHandAttackIdleAnim, rangedOneHandBuffOtherAnim1, rangedOneHandBuffSelfAnim1, rangedOneHandRunAnim, rangedOneHandSpellAttackAnim, rangedOneHandStunAnim, rangedOneHandWalkAnim
+
+-- R-101 DONOR PROOF (must be in NEITHER list) --
+  unchanged records\xpack\creatures\monster\bosses\02_charon\boss_charonform2_39.dbr
+  unchanged records\xpack\creatures\monster\bosses\02_charon\boss_charonform2_41.dbr
+  unchanged records\xpack\creatures\monster\bosses\02_charon\boss_charonform2_43.dbr
+  unchanged records\xpack\creatures\monster\bosses\02_charon\testcharon01.dbr
+  unchanged records\xpack\creatures\monster\gigantes\xsecrethero_wardenofsouls_48.dbr
+
+==============================================================================
+GATE GREEN: 4 added / 0 removed / 13 modified - every change attributed to this wave's two modules, 0 unattributed, 0 removed, all 5 donors unchanged.
+```
+
+### ROUND 2 (2026-07-30) - INDEPENDENT RE-VERIFICATION + 1 NEW GATE + 3 CORRECTIONS TO R-140
+
+Round 2 did not trust round 1's probes. Every claim was re-derived with independent code against base
+TQAE `database.arz` (**74,013** records), SV 0.98i `database.arz`, `local/baseline_main.arz`
+(`6a3a491db546b603c52132237c40aa63`) and the wave build (`78e5957f9a09e3bfed44599ac6a36854`).
+
+**WHAT REPRODUCED (round 1 was right about the substance):**
+- ROOT CAUSE: base binds the thrown stance 9/10/11/9 clips on the four tables; SV 0.98i binds **0**;
+  our build inherits SV's **0**. Confirmed on all four, in all three databases.
+- DEFECT: **10 throwers in the mod's records, 10 FROZEN** on the baseline -> **0 FROZEN** on the wave
+  build. Thrower detection here resolved weapons through **ground truth** (178 base
+  `WeaponHunting_RangedOneHand` records + the 84 loot tables that can yield one), not a filename
+  heuristic, and found the same 10 - so the module's path test is not hiding anything.
+- R-141: 3 leaks on the baseline -> **0**; all 5 donors **field-for-field IDENTICAL** (whole field map
+  compared, not just the one field) and all 5 still hand out their quest item.
+- SHARED-RECORD LAW: all four originals still bind 0 thrown clips; carriers moved 168->166, 68->66,
+  64->61, 30->27, i.e. **exactly** the 2/2/3/3 roster records and nothing else; every record repointed
+  onto a clone is a thrown wielder (0 strays). **0 records REMOVED**, 4 added.
+
+**NEW GATE - `tools/gate_thrown_anim_assets.py`** (the brief asked for it; round 1 shipped only a probe).
+`thrown_anim_rig.verify` proves the database BINDS the stance; nothing proved the `.anm` clips it binds
+actually SHIP. That is the same failure shape as the original defect one layer down - green database,
+frozen monster. Invariant: *every `.anm` a thrown wielder relies on, on the record OR its table, must
+resolve in the shipped arc set under the engine's own archive scoping.* Resolution delegates to
+`validate_render_chain.EngineArcResolver`; the thrower enumeration is imported from
+`patches.thrown_anim_rig.scan_frozen_throwers`, so neither can drift.
+```
+py tools/gate_thrown_anim_assets.py work/SoulvizierClassic/Database/SoulvizierClassic.arz \
+     work/SoulvizierClassic/Resources "<TQAE install>"
+THROWN-ANIM ASSET GATE: PASS - 10 thrown wielder(s), 31 distinct .anm clip(s) bound across both
+surfaces, 31/31 resolve in the shipped arc set, 0 frozen                             (exit 0)
+
+py tools/gate_thrown_anim_assets.py <same args> --selftest
+  [ok ] critical clip bound to a path that ships nowhere                 -> RED
+  [ok ] real clip referenced under the WRONG XPack scope                 -> RED
+  [ok ] critical clip bound to a non-existent asset with an .anm name    -> RED
+  [ok ] critical clip lost on BOTH surfaces (the statue state)           -> RED
+  [ok ] unresolvable clip on the TABLE surface                           -> RED
+  [ok ] non-critical slot repointed at a DIFFERENT clip that does ship   -> GREEN
+SELFTEST: PASS (6 planted cases - 5 must-RED, 1 must-stay-GREEN - and the gate is GREEN again
+after full restore)                                                                  (exit 0)
+```
+The WRONG-XPack-scope case is not decoration: a naive strip-the-first-component matcher reported all
+**9 machae clips as MISSING** during this verification when they are in fact present in
+`Resources\xpack\Creatures.arc`. Using the repo's canonical resolver is what makes the gate trustworthy
+rather than merely green.
+
+**THREE CORRECTIONS TO R-140** (full detail + tables in the `R-140 AMENDMENT` entry of
+`docs/WILL_RULINGS.md`). The fix is UNCHANGED - no record, clip or roster entry moved:
+1. **"ZERO records bind the thrown stance at record level" is FALSE.** 7 base Monster records bind
+   `rangedOneHand` Run/Attack and 5 bind the `dualRanged` equivalents; **9 of them are thrown wielders
+   with `charAnimationTableName = None`** - the Nerthus Ancients + `x2q06_thor`, the shipping game's own
+   thrown bosses with the whole rig on the creature record. R-140's probe asked "which records bind a
+   slot their TABLE does not", so table-less records fell out. **This RATIFIES the second surface**: it
+   is precedented, not the invented hedge R-140 apologised for.
+2. **"10 thrown wielders in the entire database" is MOD-ONLY.** The `.arz` is an OVERLAY - **41,226 base
+   records are not in it**. Engine-visible union: **78 throwers (our 10 + 68 base-only)**. The roster is
+   still complete, and it is now PROVEN rather than assumed: **0 base-only monsters both name a stripped
+   table and equip a thrown weapon**, so none can inherit this defect.
+3. **The shared-carrier census is mod-only.** True totals including base-only carriers:
+   `ANM_Maenad` **174** (not 168), `ANM_Tiger` **85** (not 68), `ANM_Machae` **65** (not 64),
+   `ANM_DuneRaider` **30**. Clone-not-edit is correct at both counts; recorded so a later lane cannot
+   under-count its blast radius by up to 31 carriers.
+
+### DEBT REGISTER additions
+- **BL-R140-LAUNCH-1 (launch-gated, owner: Will):** that the restored wielders VISIBLY throw, move and
+  attack in-game is NOT proven and cannot be proven from the database. Every claim in this record is a
+  database/asset proof. Needs a play test after the orchestrator deploys.
+- **BL-R140-MAENAD-TPL-1 (P1, NOT FIXED HERE):** SV 0.98i replaced
+  `records\creature\monster\maenad\anm\anm_maenad.dbr` - a `CharAnimationTable.tpl` in base TQAE -
+  with a full `Monster.tpl` record (Class=Monster, mesh `Maenad02.msh`, description
+  `tagMonsterName082`). **168 records still name that path as their animation table.** If the engine
+  type-checks `charAnimationTableName`, every maenad's table fallback is dead. This wave works around
+  it (the clips are written to the creature records as well as the cloned table) but does NOT repair
+  it: repointing 168 carriers is a different, much larger lane. The other three tables are clean
+  `CharAnimationTable.tpl` in both base and SV.
+- **BL-R140-UNREACHABLE-1 (carried from b64, unchanged):** 64 further thrown wielders are intact but
+  live only in Ragnarok/Atlantis zones this campaign does not reach, and `am_assassin_15` has ZERO
+  ProxyPool membership in vanilla itself. Not restored, not placed - no invented pool wiring.
+- **BL-R140-DEADCODE-1 (P2, hygiene):** `tools/patches/thrown_wielders.py` is SUPERSEDED and
+  UNREGISTERED but is still the file every brief names as the owner of this defect. It cost this lane
+  real time. Retire or re-header it - RETIREMENT PROTOCOL applies, so it is flagged, not deleted.
+- **BL-R101-QUESTFLAG-1 (P1, OPEN WILL DECISION - see R-141a):** `um_polisgaoler_99` and
+  `um_polisgaoler_unbound_99` carry `quest = 1`, inherited from the quest boss they were cloned from.
+  No other uber in the database has it. NOT changed - flipping a live encounter's quest flag is a
+  design call. The gate PINS the current value so it cannot drift while the question is open.
+  Recommendation to Will: clear it, in the same lane that owns R-100 #17 (the Gaoler's chests/tiers).
+- **BL-R141-LAUNCH-1 (launch-gated, owner: Will):** in-game confirmation that Charon's Oar and the Key
+  of the Warden of Souls no longer drop from the ubers, AND that the two real quests still hand them
+  out. The database proof is complete; the play proof is his.
+- **BL-R140-STOCKANM-1 (P3, NOT OURS - recorded so a later gate widening does not misread it):** the
+  base-only scripted Corinth NPC `xpack2\creatures\npc\corinth\fighting\ss_porcusroh2_die` equips a
+  thrown weapon and resolves `rangedOneHandWalkAnim` nowhere - base's own `ANM_MalePC01` binds no such
+  clip at all. **PRE-EXISTING in the stock game**, not introduced, worsened or touched by this mod. It
+  is the ONLY unbound critical slot in the entire 78-thrower union. If the thrown gate is ever widened
+  past the mod\'s own records it must WAIVE this one explicitly rather than "fix" a base-game bug.
+- **BL-R140-TABLECENSUS-1 (P3, doc-accuracy debt, corrected in place):** every census in the round-1
+  record walked the MOD's record names while the `.arz` is an OVERLAY (41,226 base records absent), so
+  R-140\'s carrier counts and its "10 thrown wielders in the entire database" were mod-only. Corrected
+  in the R-140 AMENDMENT (true carriers 174/85/65/30; union 78 throwers). Flagged because the same
+  blind spot will silently understate ANY future shared-record census run the same way.
+
+
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -2152,6 +2394,29 @@ the crash chain but is NOT implicated (crash predates b79; DB spawn doesn't touc
 along automatically when the structural cluster-relocation fix lands.
 
 ## DEBT REGISTER (open deferred/unproven/launch-gated items)
+
+**R-140 / R-141 P0 wave (2026-07-30, `fix/quest-item-leaks`) - NEW.** Full detail + the commands that
+measured each one are in the gate record at the top of this file. One line each, so none is silent:
+- **BL-R140-LAUNCH-1** (launch-gated, Will) - that the 10 restored thrown wielders VISIBLY throw, move
+  and attack is a PLAY proof this lane cannot give; everything shipped is a database/asset proof.
+- **BL-R140-MAENAD-TPL-1** (P1) - SV replaced maenad's `CharAnimationTable.tpl` animation table with a
+  full `Monster.tpl` record; **168 records still name that path as their animation table**. Worked
+  around (clips written to the creature records too), NOT repaired. Own lane.
+- **BL-R140-UNREACHABLE-1** (carried from b64) - 64 further thrown wielders sit in Ragnarok/Atlantis
+  zones this campaign never reaches; `am_assassin_15` has zero ProxyPool membership in vanilla itself.
+- **BL-R140-DEADCODE-1** (P2) - `tools/patches/thrown_wielders.py` is SUPERSEDED + UNREGISTERED yet is
+  still the file briefs name as this defect's owner. Flagged, not deleted (RETIREMENT PROTOCOL).
+- **BL-R101-QUESTFLAG-1** (P1, **OPEN WILL DECISION**, R-141a) - both Gaolers carry `quest = 1`
+  inherited from the quest boss they were cloned from; no other uber does. NOT changed - it is a
+  design call on a live encounter. The gate PINS the value so it cannot drift. Recommend clearing it
+  in the lane that owns R-100 #17 (the Gaoler's chest count + Epic loot tier).
+- **BL-R141-LAUNCH-1** (launch-gated, Will) - in-game confirmation that the Oar and the Key no longer
+  drop from the ubers AND that the two real quests still hand them out.
+- **BL-R140-STOCKANM-1** (P3, NOT OURS) - base-only `ss_porcusroh2_die` resolves `rangedOneHandWalkAnim`
+  nowhere in the STOCK game; the only unbound critical slot in the 78-thrower union. Waive, never "fix".
+- **BL-R140-TABLECENSUS-1** (P3) - round-1 censuses were mod-only while the `.arz` is an overlay;
+  corrected in the R-140 AMENDMENT, flagged so the same blind spot is not repeated.
+
 
 > Compiled by the b84 rulings-backfill sweep (round 1, 2026-07-16) of docs/reports/*.md, this file,
 > WILL_TEST_GUIDE*.md, HANDOFF*.md, MULTIPLAYER_COMPAT.md, and CHANGELOG.md. One line each: item -
