@@ -1956,3 +1956,57 @@ for monsters who dont have a fixed spawn from 50% to 33%"):**
 WITHOUT a fixed spawn, which those four are not.
 
 **STATUS:** measured, correction recorded, R-100 #19 held pending his answer on cohort scope. Nothing changed.
+
+---
+
+## R-105 [2026-07-29] SOUL EQUIP/DROP RATE POLICY - 66% and 50% both go to 33%; the sub-25% cohorts need one more call
+
+**WILL, VERBATIM:**
+
+> "no monsters should be at 66%. move all 66% and 50% to 33%. Which ones are 25% or smaller? the ones that are
+> smaller should be 33% I think unless they are bosses at fixed locations? i think we said 25% for fixed
+> location bosses and 33% for non-fixed location bosses"
+
+**RATIFIED AND UNAMBIGUOUS:** every creature at **66%** (373) and **50%** (361) -> **33%**. That is **734
+creatures**. The four Toxeus champions stay at **100%** (R-48). His remembered policy - **25% for
+fixed-location bosses, 33% for non-fixed** - is confirmed as the design rule and is now law of record.
+
+**HIS POLICY MEMORY CHECKS OUT AGAINST THE DATA.** The existing 25% bucket is 111 creatures of which **108 are
+`boss_*` fixed-location bosses** (Chimaera, Polyphemus, the Telkines, Dragon Liche and so on). So 25% already
+means "fixed-location boss" in the shipped data. Nothing to change there.
+
+**THE SUB-25% BUCKETS, MEASURED - 188 creatures, and they are THREE different kinds of thing:**
+
+| rate | count | what they actually are | policy answer |
+|---|---|---|---|
+| 25% | 111 | **108 `boss_*` fixed bosses** + 3 oddities (`us_meritamen_34`, `spiderblackwidow01`, `bloodcrow_soul`) | **already correct** - leave at 25. The 3 oddities need eyeballing |
+| 10% | 12 | all `boss_pharaohshonorguard1..4` - fixed bosses, but at 10 not 25 | **-> 25%** (fixed bosses, wrong rate) |
+| 5% | 2 | **ours**: `um_calybe_20`, `um_lyialeafsong_18` | **-> 33%** (non-fixed ubers) |
+| 2% | 39 | **all ours** - 13 heroes x n/e/l (`um_alethadarkclaw`, `um_amyntanimblebow`, `um_dimanae_19`, `um_inoniastrongheart_18`, `um_isadorasunspear`, ...) | **-> 33%** (non-fixed ubers; at 2% their souls effectively never drop) |
+| 0.3% | 5 | `pharaoh'shonorguard_mummypriest_19..31` - boss-ish | **-> 25%** if fixed |
+| **0.5%** | **13** | **ORDINARY TRASH MONSTERS** - `swift_ar_archer_08`, `swift_ar_huntress_10`, `swift_br_archer_14`, `duskyboar_17`, `gorgon_slayer_16`, `maenad_huntress_18`, `maenad_sorceress_20` | ⚠️ **NEEDS HIS CALL** |
+| **0.3%** | **6** | **ORDINARY TRASH MONSTERS** - `cragharpy_witch_18`, `dayria_carrioncrow_40`, `carrioncrow_05/1/2/3` | ⚠️ **NEEDS HIS CALL** |
+
+**THE ONE THING HIS POLICY DOES NOT COVER, and it must not be inferred.** His rule is stated in terms of
+BOSSES - fixed versus non-fixed. But **19 of the sub-25% carriers are neither: they are ordinary trash
+monsters** (archers, huntresses, a boar, crows, a harpy witch) sitting at 0.3-0.5%. A literal application of
+"the ones that are smaller should be 33%" would raise **common respawning trash to a one-in-three soul drop**,
+which would flood the game with souls and cheapen every soul in it. That is almost certainly not what he
+means, but it IS what the words say, so it goes back to him rather than being quietly excluded.
+
+Three options for him: (a) leave ordinary monsters at their current fractional rates - they are trash, the low
+rate is the point; (b) give ordinary monsters their own tier, e.g. 5%; (c) genuinely take them to 33%.
+**Recommendation: (a).** The 0.3-0.5% rates read as deliberate rarity on infinitely-respawning enemies, and
+they are the only thing in this whole table that is NOT a boss or an uber.
+
+**STILL SEPARATE AND STILL OPEN:** the **796 creatures at 0%** carry a soul in `lootFinger2Item1` that can never
+be equipped and therefore can never drop. That is a latent content bug of its own, 35x the scale of the 22
+detached creatures the b97 identity audit found. Not part of this rate policy; needs its own lane.
+
+**IMPLEMENTATION NOTES:** this is the `DROP-50` constant's territory - the change must go through the same
+single shared classifier rather than a second parallel code path (the b97 vet caught drifted duplicate logic
+here before). Gate it: assert every cohort lands on its ruled rate, that the four champions stay at 100, and
+plant negatives for a champion knocked off 100 and for a cohort left at 66.
+
+**STATUS:** 66%/50% -> 33% is RATIFIED and ready to implement (734 creatures). The 10% and 0.3% boss buckets ->
+25% follow from his stated policy. The 19 ordinary-monster carriers are HELD pending his answer.
