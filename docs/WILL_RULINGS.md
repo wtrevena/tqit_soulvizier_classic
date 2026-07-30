@@ -1538,3 +1538,60 @@ fields (quest triggers, one-shot flags, journal hooks, `questItem*`-style refere
 finds, even where it changes nothing.
 
 **STATUS:** measured and specified, NOT implemented. P0 - a quest-gating item is farmable in the shipped mod.
+
+---
+
+## R-102 [2026-07-29] REOPENED - the Enslaver's green glow is REAL. Will retracted his own explanation.
+
+**WILL, VERBATIM:**
+
+> "ok i was wrong, toxeus the murderer enslaver of souls are still having a green glow and it is not a skill
+> of mine"
+
+**HISTORY, and why this matters procedurally.** Four fix waves chased this green (b39/b55/b55r2/b92). Earlier
+on 2026-07-27 Will resolved it himself - he concluded his own character's skill was propagating onto the
+monster - and on that basis I STOPPED a fifth lane (`fix/green-diff`, still parked at `a0276ab`). That
+resolution is now withdrawn by the person who made it. **The lane must be restarted, and the four prior
+waves' "fixed" claims should be treated as unproven rather than as evidence the FX surface is clean.**
+
+**FRESH DIFFERENTIAL, measured against merged main `967b1f97137bf6479c18c08e9dd6ffc4`. The decisive move was
+comparing him to the Devourer, who wears THE SAME MESH and is NOT reported green.**
+
+Creature-level visuals on the Enslaver are now genuinely spare - the earlier waves did land:
+- `mesh` = `Creatures\Monster\Skeleton\RevenantPoison.msh`
+- `baseTexture` = `NewSkeleton_Charcoal.tex` (charcoal - not a green skin)
+- `charFxPakRunningNames` = the demons' own `drxshadowcloakrunning_fx_pak` (the black smoke Will asked for)
+- no other FX, tint, glow or particle field on the record at all
+
+**THE MESH HYPOTHESIS IS WEAKENED, NOT DEAD.** `RevenantPoison.msh` is a poison-themed asset and was the
+obvious suspect - but `um_bloodtoxeus_99` (the Devourer) wears the *same* mesh with a crimson texture and Will
+has not reported green on him. If the green were baked into the mesh, both should glow. Keep it on the list
+(he may simply not have scrutinised the Devourer), but rank it below the differential below.
+
+**PRIME SUSPECTS - skills the Enslaver has that the Devourer does NOT, filtered to those carrying FX:**
+
+| skill | FX it pulls in | why suspect |
+|---|---|---|
+| `records\skills\spirit\svc_enslaver_soulrip.dbr` | `targetFxPakName` = `Records\Effects\Spirit\343_NexusImpact_FXPak01.dbr` | **spirit school - the green school in this game.** Also the same "343" donor family b98 flagged elsewhere |
+| `records\skills\monster skills\attack_melee\netherstrike.dbr` | `warmupFxPakName` + `targetFxPakName` = `drx_nether_strike_source/target_fx_pak` | nether/spectral FX, DRX-authored, never audited by any of the four waves |
+| `records\skills\monster skills\buff_other\unholy_rally.dbr` | no visual field on the record itself | check what it applies to its TARGETS - a buff_other can paint the caster's allies, and one of them standing on him would read as his own glow |
+
+**RULED OUT this pass, with the values:** `svc_enslaver_shroud` (b98's) is clean -
+`charBuffFxType = None`, `skillWeaponTintRed/Green/Blue` all `0.0`. It is not the source.
+`drxshadowcloakrunning_fx` carries no colour channel fields at all.
+
+**ON BOTH champions, so it cannot explain a difference between them, but still worth checking as an
+ADDITIVE source:** `records\skills\spirit\lifedrain.dbr` - lifedrain is classically a green channelled beam
+in this engine. If the glow is intermittent rather than constant, this is the likeliest single cause and the
+Devourer would glow too.
+
+**METHOD NOTE FOR THE LANE - why four waves missed it.** Every prior wave enumerated FX fields on the
+CREATURE record. The creature record is now clean, and the green persists, so by elimination the source is
+one layer out: a SKILL's FX pak, a buff applied to something standing next to him, or the mesh asset itself.
+Do not re-audit the creature record and declare victory again. Ask Will one question the data cannot answer -
+**is the glow constant, or only when he attacks/casts?** - because constant points at mesh or a self-buff,
+and intermittent points at soulrip/netherstrike/lifedrain.
+
+**STATUS:** REOPENED, surface narrowed, not fixed. `BL-b98-DEBT-2` (the mesh-embedded aura) is the related
+debt. R-93 remains PARTIALLY IMPLEMENTED - the Enslaver and Devourer still share `RevenantPoison.msh`, which
+is a second reason to revisit that mesh regardless of the green.
