@@ -74,6 +74,20 @@ proof table starts lying; the tool reads the whole array.
 `um_toxeus_21` was **not** quietly scaled down to a lesser tier. R-99 bans that explicitly and the ban
 is honoured literally.
 
+**The nearest adjacent record, and why it is NOT on this table** (asked for by the vet, because it is
+the one exclusion a reader would most plausibly challenge). `um_enslaver_marauder_99` lives in the same
+`records\creature\monster\shadowstalker\` folder as three roster champions, is a `Monster.tpl` record,
+and carries no `treasureProxyName`. Excluding it is correct: its tag
+`tagSVCMonsterEnslaverMarauder` resolves in `tools/apply_svc_patches.py:11373` to
+`'{^r}Enslaved Shadow Marauder'`, and its own constant at `apply_svc_patches.py:11001` is commented
+`# hostile Champion` - it is the Enslaver's **summoned minion**, a Champion-rank add, not a Toxeus
+variant and not an uber encounter. It has no `toxeus` path token and wears none of the four roster
+display tags, so both derivations independently agree it is out. Measured folder-by-folder across every
+folder containing a roster record; nothing else in any of them is Toxeus-adjacent (the only other
+`genericbossorb_*` carriers in those folders are `um_gorrahk_99` and `um_ilsevar_99` on orb04 and
+`um_xaiweng_48` on orb03, all non-Toxeus and all untouched). Also documented in the module's
+"WHAT IS DELIBERATELY NOT IN THE ROSTER" block, which previously covered only the `Pet.tpl` exclusion.
+
 ## 4. The gate: NEGATIVE 2 restated, not weakened
 
 `verify()` used to hardcode exactly TWO champions, and planted `NEGATIVE 2` asserted that a **THIRD**
@@ -331,9 +345,31 @@ consequence rather than a no-op and he should know.
 walk to that spot, or that the engine spawns it there. Player reachability is launch-gated and is
 registered as debt, not claimed.
 
-Both carry `dropItems = 0`, so neither drops equipped gear; the orb is the separate `treasureProxyName`
-mechanism and would fire. **Neither is deleted, retired, blanked or renamed** - RETIREMENT PROTOCOL,
-and this is a Will-ratified inclusion, not a cleanup.
+Both carry `dropItems = 0`, so neither drops equipped gear. The orb is the separate
+`treasureProxyName` mechanism, and the vet correctly flagged that round 1 merely ASSERTED it would
+still fire. The evidence exists in the shipped db and is now cited instead. Scanning all 51,124
+records, **exactly FIVE `Monster.tpl` records combine `dropItems == 0` with a `treasureProxyName`**
+(63 carry a proxy in total):
+
+| record | dropItems | treasureProxyName |
+|---|---|---|
+| `records\drxcreatures\bloodwitch\q_leinth_47.dbr` | 0 | `bosschestproxy_leinth.dbr` |
+| `records\drxcreatures\bloodwitch\q_leinth_49.dbr` | 0 | `bosschestproxy_leinth.dbr` |
+| `records\drxcreatures\bloodwitch\q_leinth_50.dbr` | 0 | `bosschestproxy_leinth.dbr` |
+| `records\xpack\creatures\monster\zzdev\old_z_toxeus.dbr` | 0 | `genericbossorb_05.dbr` |
+| `records\xpack\creatures\monster\zzdev\z_toxeus.dbr` | 0 | `genericbossorb_05.dbr` |
+
+Three of the five are Leinth, whose bespoke chest is a **shipped, gate-proven, player-facing drop**
+that this very module protects with fourteen planted negatives. So a `dropItems = 0` record
+demonstrably still gets its treasure proxy honoured in this mod's own live content - the two
+mechanisms are independent by precedent, not by assumption. **Honest limit:** that is DB-side
+corroboration, NOT an in-game observation; nothing in this lane was launched, and whether the orb
+visibly drops on kill stays launch-gated (`BL-b101-DEBT-3`/`-5`). This matters for severity: if
+`dropItems = 0` also suppressed the proxy, `z_toxeus`'s apex orb would be inert and `BL-b101-DEBT-2`
+would be moot.
+
+**Neither is deleted, retired, blanked or renamed** - RETIREMENT PROTOCOL, and this is a
+Will-ratified inclusion, not a cleanup.
 
 ## 7. Defects in this lane's own work - ONE real (fixed), ONE misdiagnosed (retracted)
 
@@ -348,6 +384,26 @@ and this is a Will-ratified inclusion, not a cleanup.
    `Pet.tpl` stays excluded with the reason written down: the nine Toxeus summons are out of roster
    scope by design and carry their own measured `*Pet` tags, so naming a summon after its master must
    not red the build. Harness now 29/29.
+
+   ⚠️ **AND THE EXACT RESIDUAL BOUND, which round 1 overstated** (vet finding, reproduced in round 2).
+   Round 1 wrote that this derivation "would catch a Toxeus authored OUTSIDE the `toxeus` path
+   namespace". It only catches one that **also reuses one of the four roster display tags**, because
+   the tag set is built FROM the path-derived roster. Measured against the built arz by planting both
+   distinguishable cases (a clone outside the namespace, on `genericbossorb_04`, i.e. a Toxeus NOT on
+   the apex orb):
+
+   | planted record | `description` | gate |
+   |---|---|---|
+   | `…questbosses\um_murderer_r2bound_99.dbr` | `tagMonsterHemorrheus` (a roster tag) | **FAIL** - caught |
+   | `…questbosses\um_murderer_r2bound_99.dbr` | `tagSVCMonsterToxeusR2Bound` (brand new) | **PASS** - blind |
+
+   Cleanup was asserted between the two cases (the record removed from `_raw_records` and the gate
+   re-run to `PASS`, with the orb04 consumer count seen moving `19 -> 20 -> 19`), so neither result is
+   an artifact of the other. **The blind spot is empty today**, checked three independent ways over all
+   51,124 records: 0 records outside the namespace carry a `*toxeus*` `controller`, 0 wear a `*toxeus*`
+   soul in any `lootFinger2Item*` slot, and 0 point at `genericbossorb_05`. So this is a bound on the
+   GATE, not a defect in the shipped bytes. Rescoped at both claim sites in
+   `tools/patches/uber_apex_orb.py` and registered as `BL-b101-DEBT-8`.
 2. 🛑 **WITHDRAWN - THIS "DEFECT" WAS A MISDIAGNOSIS, AND IT WAS THE VET'S ONE BLOCKING FINDING.**
    Round 1 claimed here that "this branch's merge `4748e93` silently deleted 101 lines of
    `docs/WILL_RULINGS.md` - the whole R-100 PLAY-SESSION BATCH, Will's verbatim 19-item play report",
