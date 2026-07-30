@@ -718,15 +718,27 @@ PLANTS = [
     (MAP, 'G10', ('G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G8b', 'G9', 'G10', 'G11'),
      'b89: truncate the 0x0b container to a 148-byte stub',
      map_navmesh('truncate')),
-    (MAP, 'G3', ('G3',), 'make tileset 3 disagree with tileset 1',
+    # G10 is in this allow-set because it MUST also fail, and the first run of this
+    # plant proved it: diverging a tileset means re-serializing the 0x0b container, so
+    # its bytes necessarily stop matching the baseline. That is G10's byte-identity
+    # half doing its job, and the pair of failures is what shows G3 and G10 are
+    # INDEPENDENT rather than duplicates - G3 catches the semantic divergence between
+    # tilesets, G10 catches that the container moved at all.
+    (MAP, 'G3', ('G3', 'G10'), 'make tileset 3 disagree with tileset 1',
      map_tileset_divergence()),
 ]
 
 
-def negtest(map_path, arz_path, baseline_path=None):
+def negtest(map_path, arz_path, baseline_path=None, only=None):
+    """`only` = a substring filter over the plant labels, so one plant can be re-run in
+    ~1 minute instead of re-running all 17 gate passes (~13 minutes on this machine).
+    The recorded artifact is always the unfiltered run."""
     print(f'PLANTED NEGATIVE TESTS for gate {GATE}')
     print(f'  map      : {map_path}')
-    print(f'  baseline : {baseline_path or "(none) - G1d/G10 identity halves inactive"}\n')
+    print(f'  baseline : {baseline_path or "(none) - G1d/G10 identity halves inactive"}')
+    if only:
+        print(f'  ⚠️ FILTERED to plants matching {only!r} - not the full suite')
+    print()
     base_bad, base_r = run(map_path, baseline_path=baseline_path, arz_path=arz_path,
                            quiet=True)
     print(f'  baseline (unmodified): {base_bad} failing '
@@ -739,7 +751,8 @@ def negtest(map_path, arz_path, baseline_path=None):
         return 1
     exp = expected_specs()
     fails = 0
-    for kind, want_gid, allowed, label, mutate in PLANTS:
+    plants = [p for p in PLANTS if not only or only.lower() in p[3].lower()]
+    for kind, want_gid, allowed, label, mutate in plants:
         if kind == DECL:
             bad, res = run(map_path, baseline_path=baseline_path, arz_path=arz_path,
                            expected=mutate(list(exp)), quiet=True)
@@ -755,9 +768,9 @@ def negtest(map_path, arz_path, baseline_path=None):
               + (f'  ⚠️ STRAY {stray}' if stray else ''))
         if not ok:
             fails += 1
-    ndecl = sum(1 for p in PLANTS if p[0] == DECL)
-    print(f'\nNEGTEST: {len(PLANTS) - fails}/{len(PLANTS)} plants correct '
-          f'({ndecl} declaration + {len(PLANTS) - ndecl} map-side); each had to fail its '
+    ndecl = sum(1 for p in plants if p[0] == DECL)
+    print(f'\nNEGTEST: {len(plants) - fails}/{len(plants)} plants correct '
+          f'({ndecl} declaration + {len(plants) - ndecl} map-side); each had to fail its '
           f'target gate AND stay inside its allow-set -> {"PASS" if not fails else "FAIL"}')
     return 1 if fails else 0
 
@@ -769,12 +782,15 @@ def main():
     ap.add_argument('--arz', default=str(REPO / 'work' / 'SoulvizierClassic' /
                                          'Database' / 'SoulvizierClassic.arz'))
     ap.add_argument('--negtest', action='store_true')
+    ap.add_argument('--only', default=None,
+                    help='with --negtest: substring filter over plant labels, to re-run '
+                         'one plant quickly. The artifact of record is the full run.')
     a = ap.parse_args()
     if a.negtest:
         # ROUND-2 FIX: --baseline is now threaded into the negative tests, so G1d's and
         # G10's byte-identity halves are actually exercised by the plants. Round 1's
         # negtest never passed it, leaving those halves unproven.
-        return negtest(a.map, a.arz, a.baseline)
+        return negtest(a.map, a.arz, a.baseline, a.only)
     bad, _ = run(a.map, a.baseline, a.arz)
     return 1 if bad else 0
 
