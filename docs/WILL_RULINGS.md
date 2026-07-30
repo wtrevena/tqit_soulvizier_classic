@@ -1908,3 +1908,51 @@ Worth a gate that sums a champion's skill-granted and soul-granted reflect and f
 **STATUS:** measured and specified, NOT implemented. Single lever confirmed: `toxeus_passiveproperties`
 `defensiveReflect` 100.0 (chance 33.0), no soul contribution. Awaiting Will's number - my recommendation is
 30. Everything else in R-100 for these champions proceeds unchanged, all three power additions included.
+
+---
+
+## R-104 [2026-07-29] Soul EQUIP chance: the real distribution, and what it means for the 50 -> 33 ruling
+
+**WILL, VERBATIM, correcting me:**
+
+> "no every monster does not wear it soul at full chance i dont think, you can tell when they have their soul
+> equipped since they are stronger when it is on them"
+
+**HE IS RIGHT AND I WAS WRONG.** I wrote "every monster wears its own soul at 100%" in the R-103 amendment. That
+was an overgeneralisation from the four Toxeus champions, which are the ONLY creatures in the database at 100%.
+Corrected here rather than left standing, because a wrong premise about this field would mis-scope every
+soul-rate change.
+
+**MEASURED DISTRIBUTION on `967b1f97` - 1,722 soul-bearing creatures carry a `chanceToEquipFinger2`:**
+
+| chance | creatures | what it is |
+|---|---|---|
+| **100%** | **4** | exactly `um_toxeus_enslaver_99`, `um_bloodtoxeus_99`, `um_toxeus_hunt_99`, `um_toxeus_hunt_l_99` - R-48's fixed-spawn ubers. **Do not retune.** |
+| **66%** | **373** | the largest non-zero cohort |
+| **50%** | **361** | the cohort R-DROP-50 set, and the one his 50 -> 33 ruling names |
+| 25% | 111 | |
+| 10% / 5% / 2% / 0.5% / 0.3% | 77 | long tail |
+| **0%** | **796** | carry a soul in the slot but NEVER equip it, so it can never drop - a separate latent problem, and much larger than the 22 detached creatures found by the b97 identity audit |
+
+**HIS MECHANICAL OBSERVATION IS CONFIRMED AND IT MATTERS:** "you can tell when they have their soul equipped
+since they are stronger when it is on them". Correct - an equipped soul applies its item properties to the
+monster. Which means **`chanceToEquipFinger2` does DOUBLE DUTY: it is simultaneously the soul DROP rate and a
+monster POWER switch.** Lowering it does not only make souls rarer, it makes those monsters weaker more often.
+
+**THEREFORE, TWO THINGS TO PUT BACK TO WILL BEFORE IMPLEMENTING R-100 #19 ("decrease the general soul drop rate
+for monsters who dont have a fixed spawn from 50% to 33%"):**
+
+1. **WHICH COHORT?** There is no single general rate. He named 50%, which is 361 creatures - but the LARGER
+   cohort sits at **66%** (373 creatures) and is untouched by a literal reading. Does #19 mean (a) only the 50%
+   cohort -> 33, leaving 373 creatures at a HIGHER rate than the ones he just lowered, or (b) every non-fixed
+   cohort down to 33, or (c) 66 and 50 both -> 33? Reading (a) is literal but produces an inverted result, so
+   this needs his word rather than my inference.
+2. **THE POWER SIDE EFFECT.** Cutting 50 -> 33 also means those monsters spawn WITHOUT their soul's stats 17
+   percentage points more often - i.e. they get weaker, not just stingier. If he wants the drop rarer WITHOUT
+   the power drop, that is a different and larger change (decouple the drop from the equip), and it should be
+   costed separately rather than smuggled in.
+
+**NOT AT ISSUE:** the four 100% champions stay at 100% (R-48), and #19 explicitly scopes itself to monsters
+WITHOUT a fixed spawn, which those four are not.
+
+**STATUS:** measured, correction recorded, R-100 #19 held pending his answer on cohort scope. Nothing changed.
