@@ -13,7 +13,7 @@ pierce retune), **R-100 #1** (Bloodbath, cd 45 -> 15), **R-100 #12** (Blood Fren
 balance - R-103 ruled *"yes harder is the point, keep all three"* and *"the answer is not cutting
 skills but cutting elsewhere"*, and all three power additions ship in full.
 
-**DB-ONLY LANE.** `Text.arc` is COUPLED (2 new monster-name tags, so arz+Text ship together);
+**DB + TEXT LANE.** `Text.arc` is COUPLED (2 new monster-name tags, so arz+Text ship together);
 `Levels.arc` and `Quests.arc` are untouched - zero map bytes, so the Levels+Quests coupling does not
 apply.
 
