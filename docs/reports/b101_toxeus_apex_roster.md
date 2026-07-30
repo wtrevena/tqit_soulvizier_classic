@@ -476,5 +476,13 @@ Will-ratified inclusion, not a cleanup.
 | `tools/debug/b101_toxeus_placement_census.py` | the R-99 placement census; multi-hop reachability |
 | `tools/debug/b101_r99_record_diff.py` | baseline-vs-built diff with strict roster attribution |
 | `tools/debug/b101_r99_proof_table.py` | reads the roster table, donor tiers, soul wiring and orb05 chain back OUT of the built arz |
-| `docs/WILL_RULINGS.md` | R-99 -> IMPLEMENTED with the measured result; R-100 collision flag; 101 restored lines |
-| `docs/BACKLOG.md` | BUILD69-DEV gate record + `BL-b101-DEBT-*` |
+| `docs/WILL_RULINGS.md` | R-99 -> IMPLEMENTED with the measured result, plus a ROUND 2 block; R-100 collision flag; the RETRACTION of round 1's false merge-loss claim |
+| `docs/BACKLOG.md` | BUILD69-DEV gate record + `BL-b101-DEBT-1..9` (round 2 adds `-8` derivation bound and `-9` the diff-reading process rule, and reorders `-6`/`-7`) |
+| `docs/reports/b101_logs/b101_r99_reproduce.log` | the 45-module log of the shipped bytes (moved out of the repo root in round 2) |
+| `docs/reports/b101_logs/b101_r2_confirm_rebuild.log` | round 2's confirming rebuild after the comment corrections |
+| `.gitignore` | `/*.log` + `/local_*` so root build logs cannot be committed again (the `local_` prefix only LOOKED ignored) |
+
+**Removed in round 2** (vet finding, artifact hygiene): `local_baseline_build.log`,
+`local_r99_build.log`, `local_r99_postmerge.log`, `local_r99_rebuild.log` - 4 of the 5 root logs round 1
+committed (12,341 lines total, none of them gitignored, `main` carries none). Two stale `local/*.arz`
+were renamed on disk to `local/STALE_DO_NOT_SHIP_*`.
