@@ -87,9 +87,29 @@ re-pointed or deleted (RETIREMENT PROTOCOL: they are amgoz1's design of record).
 ## 2. THE COORDINATES ARE DERIVED, NOT AUTHORED
 
 `tools/debug/b100_derive_sanctuary.py` re-derives the exact list in `SANCTUARY_SPECS` from a built
-map. Deterministic farthest-point insertion: **no RNG**, and the tie-break key
-`(min Chebyshev distance, -route distance, -gcx, -gcz)` is a total order over distinct cells, so the
-result reproduces byte-for-byte on any machine and any Python build.
+map, and `tools/debug/b100_specs_vs_derive.py` proves the transcription into `SANCTUARY_SPECS` is
+element-for-element identical to the derivation's own output, order included.
+
+**THE MECHANISM IS GROUP-CLUSTERED INSERTION** (round-2 correction, extended in round 3), **not**
+farthest-point insertion:
+
+* a **group's first member** is placed **farthest-point** - the candidate whose minimum Chebyshev
+  distance to everything already committed is largest - so distinct groups land in distinct places
+  along the walk. Tie-break key `(-min Chebyshev distance, route distance, gcx, gcz)`.
+* every **subsequent member of the same group** is placed **nearest-point** to that group's own
+  anchor, so a group is a knot rather than a spread. Tie-break key
+  `(distance to anchor, route distance, gcx, gcz)`.
+* **round 3:** a group may span several pools, and the anchor belongs to the **group**, not to the
+  dbr. Round 2 reset the anchor per dbr, which is why band 3's hounds landed 60.2 u from the priests
+  they are leashed to (see sec 1.2).
+
+Both keys are total orders over distinct cells, so there is **no RNG** and the result reproduces
+byte-for-byte on any machine and any Python build (sec 5.6).
+
+> ⚠️ **ROUND-3 CORRECTION (vet finding 4).** This section previously read "Deterministic
+> farthest-point insertion", which is the ROUND-1 mechanism that R-112 and the code explicitly
+> replaced. Sec 2 is the section a reader opens to answer "how were these coordinates derived", and
+> it contradicted sec 3, R-112 and `b100_derive_sanctuary.py`.
 
 Ten hard filters, each of which the gate re-proves against the FINAL MERGED map:
 
@@ -503,7 +523,10 @@ this drift (`git show 4f0299c | grep -i quests`), so the information was already
 the new map without the rebuilt `Quests.arc` yields **two widow letters** once the quest tracks. An
 integrator reading "byte-identical to deployed" could reasonably conclude the Quests half needs no
 attention. **It does:** the deployed Quests bytes differ from the staged/built ones, and this lane's
-`Quests.arc` must be staged and deployed alongside the map. Registered as `BL-b100-DEBT-6`.
+`Quests.arc` must be staged and deployed alongside the map. Registered as `BL-b100-DEBT-8`.
+(Round-3 fix, vet finding 7: this line cited `BL-b100-DEBT-6`, which is a different item - "no
+in-game check exists". Lines further down in secs 6 and 7 already cited DEBT-8 correctly, so this
+one was the outlier.)
 
 The `arz`/`Text.arc` cross-check DOES survive, and is worth keeping: the md5s this lane rebuilds
 reproduce the b98 endless-hunt lane's recorded artifacts exactly
@@ -564,14 +587,30 @@ comments. Everything else this branch adds is a new file under `tools/debug/` or
 
 ### 5.6 Determinism of the derivation
 
+All three runs derive from the SAME baseline map (`local/b100_base/Levels_merged.arc`), which is
+what the derivation requires:
+
 ```
-PYTHONHASHSEED=0 -> local/b100_base/placements.json  md5 2d3cf483844086fe845ba48f4bab106e
-PYTHONHASHSEED=1 -> local/b100_base/det_1.json       md5 2d3cf483844086fe845ba48f4bab106e
-PYTHONHASHSEED=2 -> local/b100_base/det_2.json       md5 2d3cf483844086fe845ba48f4bab106e
+py tools/debug/b100_derive_sanctuary.py --map local/b100_base/Levels_merged.arc \
+     --arz work/SoulvizierClassic/Database/SoulvizierClassic.arz --json <out>
+
+PYTHONHASHSEED=0 -> local/b100_r3/placements.json  md5 3792c0c438522880f3671f5b3a1e673a
+PYTHONHASHSEED=1 -> local/b100_r3/det_1.json       md5 3792c0c438522880f3671f5b3a1e673a
+PYTHONHASHSEED=2 -> local/b100_r3/det_2.json       md5 3792c0c438522880f3671f5b3a1e673a
 ```
 
 Identical across three hash seeds, and the printed spec block is identical too (the only differing
-line is the output filename). There is no RNG and no set-iteration-order dependence.
+line is the output filename - verified by `diff` of the two logs with the `wrote` line stripped:
+both seeds IDENTICAL to seed 0). There is no RNG and no set-iteration-order dependence.
+
+> ⚠️ **ROUND-3 CORRECTION (vet finding 5).** This block previously pinned md5
+> `2d3cf483844086fe845ba48f4bab106e` against `local/b100_base/*.json`, which is the **round-1
+> even-spread placement set that no longer ships**. The determinism claim was true; the artifact it
+> evidenced was the wrong one. Round 2's shipped set hashed `c7fbe1a0f90c9d95a59ec009bc6cd34e`
+> (which the vet independently reproduced); round 3's, above, hashes `3792c0c4…`. The lesson is
+> mechanical: this block must be regenerated in the same commit as any change to `BANDS`,
+> `SANCTUARY_SPECS` or the insertion keys, and `tools/debug/b100_specs_vs_derive.py` now exists so
+> that a specs/derivation divergence cannot pass silently either.
 
 ---
 

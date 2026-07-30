@@ -1052,3 +1052,141 @@ renumbered record is still present with a pointer to its replacement.
   there and find 14,673 sq u with zero monster proxies. It remains **WILL_DECISION-1** and gate row
   G12 asserts this lane did not touch it. This lane does NOT claim Will's emptiness report is fully
   resolved: the walkway is populated and proven, the ocean ring is not.
+
+- R-115 [2026-07-29] IMPLEMENTED b100 ROUND 3 (`feat/sanctuary-populate`) - **a CREATURE-IDENTITY
+  claim in R-110 was read off a record NAME and was FALSE, and correcting it also fixed a band whose
+  shape had never delivered its own stated intent.** R-110 and the round-1/2 `SANCTUARY_SPECS`
+  band-3 comment both asserted that `bw_priest_houndmaster` "is the only proxy in this cave that
+  pairs a caster with beasts (measured: championChance 100, championMin=championMax=2 bloodhounds
+  inside spawnMax 3)". A round-2 vet challenged it; RE-MEASURED here from the built arz rather than
+  argued, and every clause fails:
+  1. `records\drxmap\proxy\pools\bw_priest_houndmaster.dbr` rosters `name1..name3` =
+     `c_disciple_39` / `41` / `42` ONLY, weight 150 each. **NO hound record appears in it under any
+     field.**
+  2. `championMin=championMax=2` is **CHAMPION-RANK PROMOTION OF ITS OWN DISCIPLES**, not two
+     bloodhounds. Proof beyond the single record, which the vet did not run: of the **1,846**
+     ProxyPool records in the built arz, **ZERO** carry any `championName*` / `championWeight*` /
+     `heroName*` / `bossName*` field, while **1,845** carry `championChance`/`championMin`/
+     `championMax`. The field family that could name a DIFFERENT champion creature does not exist in
+     this template, so `championMin`/`Max` can only promote the pool's own `nameN` roster.
+  3. `bw_priest_lone` carries the **IDENTICAL** roster (same three disciples, same weights) at
+     `spawnMax` 1 / `championChance` 0. The "houndmaster" IS the lone priest at a higher count with
+     guaranteed champion promotion.
+  4. The superlative is disproved by this level's OWN signature proxy: `zparty_witchfest_2099` pairs
+     3 casters (`c_disciple_39/41/42`) with 3 beasts (`c_bloodhound_40/42/44`) plus 3 `d_reaver`s in
+     one roster.
+  Reading creature identity off a record NAME is exactly what CLAUDE.md law #3 and the amgoz1 bar
+  exist to catch, and by R-110 it had become ledger law. **THE VET SAID NO COORDINATE WAS AFFECTED;
+  IT WAS.** The design's actual INTENT - "the middle of the walk gets its own combat texture (chase
+  + caster) instead of another melee wave" - was not being delivered either: round 2's roster was
+  flat (`band -> dbr`), so the insertion anchor reset per dbr and `hound_01_pack` was a SEPARATE
+  group from the priests it is supposed to be leashed to. MEASURED on the round-2 build: **60.2 u
+  apart**. The texture existed at BAND scale only. FIX: the roster is now `band -> GROUPS ->
+  (dbr, count)` and **a group may span several pools**, so band 3 is one group of
+  `2x bw_priest_houndmaster + 1x hound_01_pack` placed as ONE KNOT (priests 16.0 u apart, hounds
+  **30.2 u** from the anchor) and `bw_priest_lone` is its own group, genuinely "set apart, further up
+  the walk" (route 390.0 u). **3 of the 14 placements moved; density did not change** (32.6 -> 51.6
+  effective, cap 57.0, worst box still world(4374,3023)). New check
+  `tools/debug/b100_specs_vs_derive.py` proves `SANCTUARY_SPECS` is element-for-element identical to
+  the derivation's own output, order included, so a transcription typo can no longer pass silently.
+  > WARNING - INHERITED CONTENT DEBT, NOT OURS TO FIX: `bw_priest_houndmaster` is amgoz1's own
+  > record and its NAME does not match its ROSTER. Under the RETIREMENT PROTOCOL this lane does not
+  > touch it. Registered as `BL-b100-DEBT-12` so the next content lane does not trust the name
+  > either.
+
+- R-116 [2026-07-29] IMPLEMENTED b100 ROUND 3 - **the gate's advertised fail-safe behaviour was
+  still only half true, and the vet proved it by planting a corruption round 2 could not report.**
+  R-112 recorded that `Sanctuary(strict=False)` had closed the b89-class gap ("both b89 plants now
+  give a G10 FAIL instead of an uncaught AssertionError"). `strict=False` guarded only the container
+  **PARSE**. REPRODUCED here before fixing: shifting the `0x0b` container `center` by +64 u leaves
+  every size intact and all 3 tilesets x **1,149 tiles** still decompressing (section unchanged at
+  **857,212 B**), so the object constructs cleanly, `mesh_ok` is True, and the gate then dies on a
+  bare `assert ac is not None` at `b100_derive_sanctuary.py:480` reached from
+  `gate_sanctuary_population.py:256` - **AssertionError, zero gate rows printed**. It was
+  fail-SAFE (exit 1, and G10's byte-identity half would also have failed had the run completed) so no
+  defect could ship through it, but it was not the PASS/FAIL behaviour the gate claims, and it is the
+  same gap the round-1 vet raised. FIX, three parts: (a) a typed `NavGeometryError`, raised by
+  `route()` in place of asserts, for all three impossible-route cases; (b) `Sanctuary.frame_check()`,
+  a cheap **BASELINE-FREE** frame invariant - round 2 could only catch a moved frame through G10's
+  byte-identity half, i.e. only when a `--baseline` was supplied; (c) the gate wraps `s.route()` and
+  routes any geometry failure into the same NOT-EVALUABLE-plus-G10 path the parse failure already
+  used, with `frame_sane` now printed in G10's own row. TWO NEW PLANTS, and the second is the one
+  that matters: the frame shift with a baseline (CAUGHT by G10 + the 10-row nav cascade) and **the
+  same shift with NO `--baseline`** (CAUGHT by G10 alone), a new `MAPNB` plant kind that exists
+  precisely so a baseline-free invariant cannot hide behind a baseline-dependent one.
+
+- R-117 [2026-07-29] IMPLEMENTED b100 ROUND 3 - **documentation-integrity sweep, one FOOT-GUN
+  actually fixed, and one vet finding proved WRONG.** The round-2 vet raised seven records-and-prose
+  findings; each was re-measured.
+  1. **The BUILD70-DEV gate record misstated the gate that shipped** (CLAUDE.md process law #4).
+     Inside one record it described "13 invariants ... an exact worst-screen density cap (24 -> 36,
+     cap 42) ... 8 planted negatives, 8/8 CAUGHT" while stating the correct 16 rows / cap 57.0
+     effective / 16 plants sixty lines earlier - so the record contradicted itself and handed an
+     integrator the SUPERSEDED constants. Corrected in place, with a forward pointer to the
+     round-3 record. Its **OPEN DEBT list was also incomplete** (`BL-b100-DEBT-1..10` while DEBT-11
+     was registered and open in the same file); law #4 requires the gate record to print the open
+     debt list, so it now does, and round 3 adds DEBT-12.
+  2. **Report sec 2 described the SUPERSEDED mechanism** ("Deterministic farthest-point insertion"),
+     which is the round-1 mechanism R-112 and the code replaced - in the very section a reader opens
+     to answer "how were these coordinates derived". Rewritten to the actual group-clustered
+     mechanism, both tie-break keys stated.
+  3. **The only determinism evidence was for a placement set that no longer ships:** sec 5.6 pinned
+     md5 `2d3cf483844086fe845ba48f4bab106e`, the round-1 even-spread set. The CLAIM was true, the
+     ARTIFACT was wrong. Regenerated for the set that actually ships: 3 seeds
+     (`PYTHONHASHSEED` 0/1/2) all produce `3792c0c438522880f3671f5b3a1e673a`, and the printed spec
+     block is identical too (`diff` of the logs, `wrote` line stripped).
+  4. **A stale plant count** in the sec 5.4 gate table ("8/8 planted negatives caught"). Corrected.
+  5. **A debt-id mis-citation:** report line 506 attributed the `Quests.arc` deploy drift to
+     `BL-b100-DEBT-6` ("no in-game check exists"); it is `BL-b100-DEBT-8`, which the same report
+     cites correctly twice elsewhere. Corrected.
+  6. **`R-15` does not carry the doctrine it was cited for, and the vet is right.** R-15 in full is
+     "you are good to ship the rant scroll" - a one-line amgoz1 creative-text veto clearance for the
+     Murderer's Screed, sourced to `docs/MULTIPLAYER_COMPAT.md` M4.7 item 6. It is NOT a design-voice
+     doctrine. Every b100 citation of "the amgoz1 bar (R-15)" overstated it. This STRENGTHENS
+     WILL_DECISION-4: `docs/amgoz1_design_voice.md` **does not exist and never has** (re-confirmed:
+     `git log --all -- docs/amgoz1_design_voice.md` is empty) while `CLAUDE.md` and `docs/BACKLOG.md`
+     cite it as binding law. The bar this lane held itself to is a RECONSTRUCTION and is unratified.
+     `BL-b100-DEBT-4` stays open and is the item Will should close first.
+  7. **THE FOOT-GUN IS NOW FIXED, not merely disclosed** (`BL-b100-DEBT-9`).
+     `tools/svaera_plus_portals.py` hardcoded its default output dir to the MAIN CHECKOUT's absolute
+     `local\` path, so any worktree lane that forgot `SVC_OUT_DIR` wrote its merged map over the
+     canonical shared artifact - which this lane did once in round 2. Both default paths are now
+     derived from the script's own checkout: the **write** (`SVC_OUT_DIR`) defaults to THIS
+     checkout's `local/`, so a worktree build stays in the worktree unless the operator asks
+     otherwise; the **read** (`SVC_DONOR_DIR`) prefers this checkout's donors, falls back to the
+     MAIN checkout's (correct - the donors are gitignored and take ~213 s to regenerate, so a fresh
+     worktree has none), and **prints which one it used**. Behaviour in the main checkout is
+     byte-unchanged, because there `REPO/local` IS the old hardcoded path.
+  > SCALES - ONE FINDING IS WRONG, and it is recorded here so nobody "fixes" a correct number. The
+  > vet read the report's "all 366 referenced mod tags present" as a stale figure contradicting a
+  > "427/427 authoritative tags" claim. **They are two DIFFERENT metrics emitted by the SAME
+  > `validate_tags.py` run, and both are correct.** MEASURED:
+  > `py tools/validate_tags.py <arz> <Text.arc> work/SoulvizierClassic/Database/uber_soul_tags.txt`
+  > prints `OK: all 366 referenced mod tags are present in Text.arc` AND
+  > `Authoritative list: uber_soul_tags.txt (427 tags)` / `OK: all 427 authoritative tags are
+  > present in Text.arc`, `RESULT: PASS`. 366 = distinct tag values the `.arz` REFERENCES that are
+  > mod-owned; 427 = tags the DB build DECLARES it authored, cross-checked from the manifest.
+  > Neither is stale. The report now states both so they cannot be confused again.
+
+- R-118 [2026-07-29] IMPLEMENTED b100 ROUND 3 - **the "bimodal like amgoz1" shape claim is
+  WITHDRAWN, and the honest measurement now prints on every derivation run.** R-112 recorded that
+  the round-2 shape was "min 16.0 / median 30.0 / max 62.2 - six pairs hard against the 16 u spacing
+  floor with gaps out to 62.2 u, i.e. bimodal like amgoz1's own distribution". The vet re-measured
+  and the comparison does not hold: amgoz1's three tight pairs sit at three DIFFERENT distances
+  (**7.4 / 30.2 / 41.9**) while three of round 2's sat at exactly **16.000** - the `SEP_MIN` floor,
+  to machine precision. The distribution IS bimodal, but its clustered mode was a single constant
+  and that constant is one this lane chose, not one Will ruled (`BL-b100-DEBT-11`). The vet called it
+  "not a blocker; worth Will's eye", and that is the right weight. WHAT ROUND 3 DID: the band-3
+  composition fix (R-115) gave the clustered mode **3 distinct values** where round 2 had one -
+  measured intra-group distances `[16.0, 16.0, 16.0, 30.2, 60.2, 60.2]`, full nearest-neighbour
+  distribution `[16.0 x6, 30.0, 30.0, 30.2, 30.2, 41.4, 42.6, 60.2, 62.2]` against amgoz1's
+  `[7.4, 7.4, 30.2, 30.2, 38.0, 41.9, 41.9, 44.0, 48.6, 55.2]` - and the derivation now PRINTS the
+  per-group distances every run (`shape: INTRA-group distance to the group anchor`) so the claim can
+  never drift from the code again. WHAT ROUND 3 DELIBERATELY DID NOT DO: three 2-member groups still
+  land at exactly the floor, because nearest-point insertion against ONE floor constant is what "as
+  close as the spacing law allows" means in code - that is the design being implemented faithfully,
+  not an accident. Giving each group its own declared closeness distance would spread it, but that is
+  **four more unratified constants** on top of the one already registered as debt, so it is left as
+  WILL_DECISION-5 rather than invented here. Note amgoz1's own tightest pair (7.4 u) is BELOW this
+  lane's floor and is the pair G8b waives by name - so matching his distribution exactly would
+  require lowering `SEP_MIN`, which is a spacing decision, not a shape decision.

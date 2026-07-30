@@ -35,8 +35,14 @@ each finding was re-measured with a command. The three round-1 claims that did N
 3. **The placement SHAPE was the opposite of the recorded intent.** R-110 records "a congregation at
    rite, not a patrol" but the mechanism was farthest-point insertion, which MAXIMISES spacing.
    Measured round 1: NN Chebyshev min 23.2 / median 31.8. Now group-clustered (anchor
-   farthest-point, members nearest-point to their own anchor): **min 16.0 / median 30.0 / max 62.2**,
-   bimodal like amgoz1's own 7.4 / 41.9 / 55.2.
+   farthest-point, members nearest-point to their own anchor): **min 16.0 / median 30.0 / max 62.2**.
+   > ⚠️ **ROUND-3 CORRECTION (vet finding 8):** this line used to end "bimodal like amgoz1's own
+   > 7.4 / 41.9 / 55.2" and that comparison does NOT hold. amgoz1's three tight pairs sit at three
+   > DIFFERENT distances (7.4 / 30.2 / 41.9); three of round 2's sat at exactly 16.000, the SEP_MIN
+   > floor, to machine precision. The distribution is bimodal, but its tight mode was a single
+   > constant this lane chose (`BL-b100-DEBT-11`), not Will's number. Round 3 improved it to 3
+   > distinct tight values as a side effect of the band-3 composition fix and now prints the
+   > per-group distances on every derivation run. See the BUILD72-DEV record.
 
 **THE GATE NOW ENFORCES THE RETIREMENT PROTOCOL IT ADVERTISED.** Round 1's G1 compared only the tail
 14 as a set; four map-side negatives the vet planted all passed with every gate green. New **G1c**
@@ -91,12 +97,22 @@ environment):** 1 level blob of 2,282 differs; inside it exactly ONE section (`0
 LEVELS-index delta is entirely the offset ripple (2282/2282 identities unchanged, 0 other
 data_length changed, 28 data_offsets shifted). Verdict: **every change attributed.**
 
-**NEW GATE `MAP-SANCTUARY-1`** (`tools/gate_sanctuary_population.py`) - 13 invariants: own-area
-on-mesh, all 3 tilesets, floor-Y match (max dY 0.005 u), arrival-component reachability,
-on-the-processional, b44 landing clearance (anchors + level edge + props), R-30 spacing, an exact
-worst-screen density cap (24 -> 36, cap 42), `0x0b` byte-identity vs baseline (the b89 crash class),
-bounded-pool resolution (the b76 class), and ocean-ring scope. **8 planted negatives, 8/8 CAUGHT**
-(`--negtest`). The negatives immediately caught two real bugs in the gate's own first cut.
+**NEW GATE `MAP-SANCTUARY-1`** (`tools/gate_sanctuary_population.py`) - **16 rows** as shipped by
+round 2: own-area on-mesh, all 3 tilesets agreeing cell-for-cell, floor-Y match (max dY 0.005 u),
+arrival-component reachability, on-the-processional, b44 landing clearance (anchors + level edge +
+props), R-30 spacing plus the named inherited-violation waiver, a worst-screen density cap in
+**EFFECTIVE ENTITIES** (**32.6 -> 51.6, cap 57.0**), the RETIREMENT-PROTOCOL rows G1c/G1d, `0x0b`
+byte-identity vs baseline (the b89 crash class), bounded-pool resolution (the b76 class), and
+ocean-ring scope. **16 planted negatives, 16/16 CAUGHT** (`--negtest`) - 8 declaration + 8 map-side.
+The negatives immediately caught real bugs in the gate's own first cut.
+
+> ⚠️ **CORRECTED IN ROUND 3 (vet finding 3).** The paragraph above previously carried the ROUND-1
+> text verbatim - "13 invariants ... an exact worst-screen density cap (24 -> 36, cap 42) ... 8
+> planted negatives, 8/8 CAUGHT" - inside the BUILD70-DEV record, i.e. this record contradicted its
+> own round-2 findings list 60 lines above and handed an integrator the SUPERSEDED constants. The
+> numbers above are now the ones round 2 actually shipped. **The gate as it stands TODAY is round
+> 3's: 16 rows, 18 planted negatives, cap 57.0 effective** - see the BUILD72-DEV record at the very
+> top of this file.
 
 **DESIGN CORRECTIONS (the design pass was treated as a proposal, and four claims failed):** its
 bands were keyed on world-X but the 690.6 u processional is non-monotonic in X and descends four

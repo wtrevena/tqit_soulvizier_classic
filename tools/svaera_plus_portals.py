@@ -11,6 +11,11 @@ No shared+drxmap level replacements - those caused the invisible wall.
 import sys, os, struct
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
+
+# THIS checkout - the worktree the script physically lives in, never a hardcoded path.
+# Every default read/write location below is derived from it (round-3 fix, BL-b100-DEBT-9).
+REPO = Path(__file__).resolve().parent.parent
+
 from arc_patcher import ArcArchive
 from merge_levels_binary import (parse_sections, parse_level_index, parse_quests,
     parse_bitmap_index, build_level_index, build_quests, build_bitmap_index,
@@ -532,9 +537,36 @@ def extract_0x0b_body(lvl_path):
 # valid EMPTY container (used by the 7 ocean-scenery levels + coldtombs, none of
 # which has 0x0a geometry to rasterize). See b89: the old 148-byte stub there was a
 # malformed container the engine crashed on when it streamed the level.
-DONOR_DIR = Path(os.environ.get(
-    'SVC_DONOR_DIR',
-    r'c:\Users\willi\repos\tqit_soulvizier_classic\local\editor_normalized'))
+#
+# ⚠️ ROUND-3 FIX (b100 vet NOTE / BL-b100-DEBT-9). This default used to be the MAIN
+# CHECKOUT's absolute path, hardcoded. For DONOR_DIR that is a READ, so falling back to
+# main is not only safe but wanted (the donors are gitignored and take ~213 s to
+# regenerate, so a fresh worktree has none) - but it must PREFER the lane's own copy and
+# it must SAY which one it used. For the OUTPUT dir the same hardcoding was a genuine
+# foot-gun: a worktree build wrote its merged map straight into the main checkout's
+# local/ unless the operator remembered SVC_OUT_DIR. It clobbered main's
+# local/Levels_merged.arc once during this very lane. See _resolve_out_dir below.
+def _donor_dir():
+    env = os.environ.get('SVC_DONOR_DIR')
+    if env:
+        return Path(env), 'SVC_DONOR_DIR'
+    own = REPO / 'local' / 'editor_normalized'
+    if any(own.glob('*.0b.bin')) if own.is_dir() else False:
+        return own, 'this checkout'
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import check_build_inputs as _cbi
+        main = _cbi._main_checkout(REPO)
+    except Exception:                                 # noqa: BLE001 - best effort
+        main = None
+    if main is not None:
+        cand = main / 'local' / 'editor_normalized'
+        if cand.is_dir() and any(cand.glob('*.0b.bin')):
+            return cand, f'MAIN checkout {main} (this worktree has no donors)'
+    return own, 'this checkout (EMPTY - donors will fall back to minimal containers)'
+
+
+DONOR_DIR, DONOR_DIR_SRC = _donor_dir()
 
 
 def find_pre_positioned_donor(lv):
@@ -818,16 +850,24 @@ def main():
     USE_HUB = os.environ.get('SVC_TEST_HUB') == '1'
     inject_specs = merge_hub_into_inject_specs(INJECT_SPECS) if USE_HUB else INJECT_SPECS
     out_name = 'Levels_merged_TESTHUB.arc' if USE_HUB else 'Levels_merged.arc'
-    # Output dir override (SVC_OUT_DIR): default = the canonical local/ build location
-    # (behaviour preserved). Set it to build the merged map into an isolated scratch dir
-    # (e.g. a worktree fix-wave that must not clobber the live local/ build47 artifact
-    # nor race a concurrent build). The .0b.bin donor dir is likewise overridable via
-    # SVC_DONOR_DIR (see DONOR_DIR) so a scratch build reads its own donors.
-    _out_dir = Path(os.environ.get(
-        'SVC_OUT_DIR', r'c:\Users\willi\repos\tqit_soulvizier_classic\local'))
+    # Output dir override (SVC_OUT_DIR): default = THIS CHECKOUT's local/.
+    #
+    # ⚠️ ROUND-3 FIX (b100 vet NOTE / BL-b100-DEBT-9). This default was the MAIN
+    # CHECKOUT's absolute path, hardcoded, so every worktree lane that forgot
+    # SVC_OUT_DIR wrote its merged map into MAIN's local/Levels_merged.arc - the
+    # canonical artifact other lanes and the deploy script read. It happened during this
+    # very lane (the stray was preserved as
+    # local/Levels_merged.b100r2-STRAY-DO-NOT-DEPLOY.arc rather than deleted). A
+    # worktree's build output now stays in the worktree by DEFAULT; the operator has to
+    # ask for a different destination, instead of having to remember not to clobber.
+    # Behaviour in the main checkout is unchanged - there REPO/local IS the old path.
+    _out_dir = Path(os.environ.get('SVC_OUT_DIR', str(REPO / 'local')))
     _out_dir.mkdir(parents=True, exist_ok=True)
     out_arc_path = _out_dir / out_name
     print(f'BUILD MODE: {"TEST HUB (SVC_TEST_HUB=1)" if USE_HUB else "canonical"} -> {out_name}')
+    print(f'  out dir  : {_out_dir}'
+          + ('' if os.environ.get('SVC_OUT_DIR') else '  (default = this checkout)'))
+    print(f'  donor dir: {DONOR_DIR}  [{DONOR_DIR_SRC}]')
 
     # --- Load maps ---
     print('Loading SVAERA...')
