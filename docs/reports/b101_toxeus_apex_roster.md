@@ -271,12 +271,17 @@ matches nothing under `tools/patches/`, `tools/contracts/`, or any top-level `to
 baseline `aea688b23acefe1b48ae31a0df4cc423` remains the correct comparison point - and the post-merge
 rebuild confirms it with the same md5.
 
-**The merge conflict was the same trap that already destroyed 101 lines on this branch**, so it was
-resolved by keeping BOTH sides and then VERIFIED instead of trusted: with line endings normalised, the
-only two lines of `main`'s ledger absent from the result are the R-99 heading and the
-`**STATUS:** RATIFIED` line - both deliberately superseded by the IMPLEMENTED block - with 91 lines
-added and 0 conflict markers left. Confirming a merge of that file by diffing it against `main`
-afterwards should be standard practice on this repo.
+Every merge of that file was resolved by keeping BOTH sides and then VERIFIED instead of trusted. After
+the final merge of `main` @ `b376b61` (a clean auto-merge, no conflict at all): with line endings
+normalised, the only two lines of `main`'s ledger absent from the result are the R-99 `PENDING` heading
+and the `**STATUS:** RATIFIED` line - both deliberately superseded by the IMPLEMENTED block - with 107
+lines added, 0 conflict markers, R-100's verbatim batch present and `main`'s newest R-106/R-107 present.
+Confirming a merge of that file by diffing it against `main` afterwards should be standard practice on
+this repo.
+
+> 🛑 **RETRACTION.** Round 1 of this report asserted here that "the merge conflict was the same trap
+> that already destroyed 101 lines on this branch". **That is false and is withdrawn** - see section 7.
+> No lines were ever destroyed on this branch.
 
 > A note on why the CRLF detail matters: the first attempt to verify the resolution compared
 > `git show main:docs/WILL_RULINGS.md` (LF, as stored) against the working file (CRLF) and reported all
@@ -330,7 +335,7 @@ Both carry `dropItems = 0`, so neither drops equipped gear; the orb is the separ
 mechanism and would fire. **Neither is deleted, retired, blanked or renamed** - RETIREMENT PROTOCOL,
 and this is a Will-ratified inclusion, not a cleanup.
 
-## 7. Two defects this lane found in its own work (both fixed, both worth reading)
+## 7. Defects in this lane's own work - ONE real (fixed), ONE misdiagnosed (retracted)
 
 1. **The name-tag cross-check was hollow.** Running the harness (rather than trusting it) returned
    **28/29** with `negative R3 ... gate=PASS (expected FAIL)`. Root cause was a real gate hole: the
@@ -343,12 +348,31 @@ and this is a Will-ratified inclusion, not a cleanup.
    `Pet.tpl` stays excluded with the reason written down: the nine Toxeus summons are out of roster
    scope by design and carry their own measured `*Pet` tags, so naming a summon after its master must
    not red the build. Harness now 29/29.
-2. **This branch's merge silently deleted 101 lines of `docs/WILL_RULINGS.md`** - the whole R-100
-   PLAY-SESSION BATCH, Will's verbatim 19-item play report. The merge commit `4748e93` resolved an
-   append/append conflict by keeping only its own side. Found because `git diff main..HEAD` read
-   "101 deletions / 0 insertions"; restored byte-identically from `main`. This is CLAUDE.md law #1's
-   failure mode happening in practice, so the lesson is recorded in the ledger next to the restored
-   text: **any lane touching that file should diff it against `main` before committing.**
+2. 🛑 **WITHDRAWN - THIS "DEFECT" WAS A MISDIAGNOSIS, AND IT WAS THE VET'S ONE BLOCKING FINDING.**
+   Round 1 claimed here that "this branch's merge `4748e93` silently deleted 101 lines of
+   `docs/WILL_RULINGS.md` - the whole R-100 PLAY-SESSION BATCH, Will's verbatim 19-item play report",
+   and wrote that accusation into the design law of record. **It never happened.** The independent vet
+   caught it; round 2 reproduced every disproving command rather than taking the correction on trust:
+
+   | command | output | what it proves |
+   |---|---|---|
+   | `git diff e014ef8 4748e93 --numstat -- docs/WILL_RULINGS.md` | *(empty)* | the merge result is byte-identical to the `main` it merged - it lost nothing |
+   | `for c in d7c9aee e014ef8 4748e93 60a3bfb~1 60a3bfb 0c4e9a2; do git show $c:docs/WILL_RULINGS.md \| grep -c "PLAY-SESSION BATCH"; done` | `0 0 0 0 1 1` | the text did not exist on EITHER side of that merge |
+   | `git log -1 --format="%h %ad %s" --date=iso 0c4e9a2` | `2026-07-29 18:18:15  R-100: capture Will's 19-item play-session batch VERBATIM` | the ruling was authored on `main`… |
+   | `git log -1 --format="%h %ad %s" --date=iso 4748e93` | `2026-07-29 12:57:15  Merge branch 'main' …` | …**5h21m AFTER** the merge it was accused of destroying |
+   | `git merge-base --is-ancestor 0c4e9a2 e014ef8` | exit `1` | R-100 was not reachable from the merged base |
+   | `git diff 60a3bfb~1 60a3bfb --numstat` | `101 0 docs/WILL_RULINGS.md` | commit `60a3bfb` was an ADD of main's newer text, not a restore - its own subject line is wrong too |
+
+   **ROOT CAUSE OF THE FALSE REPORT:** two-dot `git diff main..HEAD --numstat` renders a file that
+   `main` added *after* the merge base as pure deletions on the branch side. Reproduced live in round 2:
+   `git diff main..HEAD --numstat` reported `0 96 tools/debug/probe_blockers.py`, `0 86
+   …probe_class_examples.py`, `0 101 …probe_soul_by_class.py` - three files `main` ADDED at `fc7a886`
+   that this branch has never touched. **The real, transferable lesson: use three-dot `main...HEAD`,
+   and check the accused commit's own `--numstat` against BOTH parents, before accusing any commit of
+   losing anything.** Corrected in all four places it had been written (`docs/WILL_RULINGS.md` R-100
+   annotation, `docs/BACKLOG.md` head note and gate record, and this report in two places) and
+   registered as `BL-b101-DEBT-9`. A fabricated incident in the design law of record is itself a
+   violation of CLAUDE.md law #1, which is why the vet made it blocking.
 
 ## 8. Wave-label and ruling-number collisions (flagged, not resolved)
 

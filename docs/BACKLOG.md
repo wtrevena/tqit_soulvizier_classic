@@ -19,28 +19,49 @@ zero new tags, so there is NO artifact coupling to honour):**
   (after merging main), each **exit 0** and each **md5 `6a3a491db546b603c52132237c40aa63`,
   55,475,226 B**. So neither the gate hardening nor the mid-lane base move changed a shipped byte.
 
-> ⚠️ **BASE MOVED MID-LANE; THIS LANE MERGED AND REBUILT.** Briefed base was `main` @ `e014ef8`. While
-> the lane ran, `main` advanced to `31f3432` (the R-102/R-103 Enslaver green-glow lane: 487 lines of
-> `docs/WILL_RULINGS.md` + 7 standalone `tools/debug/probe_*.py`). `main` touched **zero build inputs**
-> (`git diff e014ef8..main --name-only` matches nothing under `tools/patches/`, `tools/contracts/` or
-> any top-level `tools/*.py`), and the post-merge rebuild proves it: same md5. **The
-> `docs/WILL_RULINGS.md` conflict was the SAME append/append conflict that commit `4748e93` earlier
-> resolved by discarding 101 lines of Will's verbatim ruling.** This time it was resolved by keeping
-> BOTH sides and then VERIFIED rather than trusted: with line endings normalised, the only two lines of
-> main's file absent from the result are the R-99 heading and the `**STATUS:** RATIFIED` line, both
-> deliberately superseded by the IMPLEMENTED block; 91 lines added; 0 conflict markers left.
-> The baseline md5 `aea688b23acefe1b48ae31a0df4cc423` is still the right comparison point because
-> `main`'s new commits cannot change the arz.
+> ⚠️ **BASE MOVED MID-LANE THREE TIMES; THIS LANE MERGED AND REBUILT EACH TIME.** Briefed base was
+> `main` @ `e014ef8`. While the lane ran, `main` advanced to `31f3432` (R-102/R-103 Enslaver green-glow),
+> then `1897557` (R-103 amendment / R-104 / R-105), then `b376b61` (R-106 / R-106 amendment / R-107).
+> Every advance was **docs + `tools/debug/probe_*.py` only**: `git diff e014ef8..b376b61 --name-only |
+> grep -vE '^docs/|^tools/debug/'` -> **empty**, and `grep -rnE "^\s*(from|import)\s+.*debug"
+> tools/*.py tools/patches/*.py tools/contracts/*.py` finds no build-tree import of any debug module
+> (the single hit is a comment). So `main`'s advances cannot change the arz, and the post-merge rebuilds
+> prove it: same md5 every time. The baseline md5 `aea688b23acefe1b48ae31a0df4cc423` therefore stands.
+>
+> **`docs/WILL_RULINGS.md` merge integrity, VERIFIED not trusted, at every merge.** After the final
+> merge of `main` @ `b376b61` (clean auto-merge, no conflict): `diff <(git show
+> main:docs/WILL_RULINGS.md | tr -d '\r') <(tr -d '\r' < docs/WILL_RULINGS.md) | grep '^<'` -> exactly
+> **two** lines of main's file absent from the result, the R-99 `PENDING` heading and its
+> `**STATUS:** RATIFIED` line, both deliberately superseded by the IMPLEMENTED block. 107 lines added;
+> `grep -cE '^(<<<<<<<|=======|>>>>>>>)'` -> **0** conflict markers; `grep -c "PLAY-SESSION BATCH"` ->
+> 2 (R-100 intact); `grep -cE '^## R-10[67]'` -> 2 (main's newest rulings present).
+>
+> 🛑 **A ROUND-1 CLAIM HERE WAS FALSE AND IS WITHDRAWN.** An earlier version of this note said the
+> merge conflict was "the SAME append/append conflict that commit `4748e93` earlier resolved by
+> discarding 101 lines of Will's verbatim ruling". **No such loss ever happened.** `git diff e014ef8
+> 4748e93 --numstat -- docs/WILL_RULINGS.md` -> empty; the R-100 text was authored on `main` at
+> `0c4e9a2` (2026-07-29 18:18:15), **5h21m AFTER** merge `4748e93` (12:57:15), and `git merge-base
+> --is-ancestor 0c4e9a2 e014ef8` -> exit 1. The full retraction with every command lives in the R-100
+> section of `docs/WILL_RULINGS.md`. Cause of the false report: two-dot `git diff main..HEAD` renders
+> files `main` added after the merge base as deletions.
 - **Baseline** for every comparison: a build of `main` @ `e014ef8` made in the same environment,
   md5 **`aea688b23acefe1b48ae31a0df4cc423`**, 51,124 records, exit 0. This independently reproduces
-  the md5 the B100 gate record below published for that same base.
+  the md5 the B100 gate record below published for that same base. **This, not the round-1
+  `967b1f97137bf6479c18c08e9dd6ffc4`, is the citation basis for every measurement in this lane**;
+  round 2 re-cited it in `tools/patches/uber_apex_orb.py` and `tools/debug/b101_r99_record_diff.py`.
 
-> ⚠️ **TWO STALE ARTIFACTS ARE COMMITTED AS ROUND-1 AUDIT TRAIL - DO NOT SHIP EITHER.**
-> `local_r99_build.log` (arz `f99d5c83a60cb3136eff62622b999550`) and `local_baseline_build.log`
-> (arz `967b1f97137bf6479c18c08e9dd6ffc4`, the md5 R-99 itself quotes) are **44-module builds made
-> before this branch merged `main` @ `e014ef8` at 12:57**, so neither includes `weapon_gate_truth` and
-> neither is a baseline of the real tip. They are kept because round 1 died mid-flight and the log was
-> the only evidence it existed.
+> ⚠️ **ROUND-1 STALE ARTIFACTS - CLEANED UP IN ROUND 2.** Round 1 committed five build logs
+> (12,341 lines) at the repo ROOT - `local_baseline_build.log`, `local_r99_build.log`,
+> `local_r99_postmerge.log`, `local_r99_rebuild.log`, `local_r99_reproduce.log`. They were NOT
+> gitignored (`git check-ignore -v local_r99_build.log` -> no match; only `local/` is ignored), so the
+> `local_` prefix merely LOOKED ignored, and `main` carries none (`git ls-tree --name-only main | grep
+> -ci '\.log$'` -> 0). This violated the standing no-loose-files-in-repo-root rule. Round 2 removed all
+> five from the branch and moved the two that carry the load-bearing md5 lines under
+> `docs/reports/b101_logs/`. Two stale `local/*.arz` copies were also left on disk under authoritative
+> names - `local/BASELINE_main_5e35d87.arz` (`967b1f97…`, a 44-module PRE-merge build, NOT a baseline of
+> the tip) and `local/R99_BUILT.arz` (`f99d5c83…`, which must NOT be shipped). Both were renamed with a
+> `STALE_DO_NOT_SHIP_` prefix in round 2 (`local/` is gitignored, so this is a disk action only) to
+> disarm the stale-copy foot-gun CLAUDE.md's "Deploy hazard" section documents.
 
 **WHAT IT IS.** R-99, ratified by Will the same day: every Toxeus variant gets the apex orb
 `genericbossorb_05`, low-level one included. b94 had wired only the two FOUGHT champions from a
@@ -96,15 +117,21 @@ did NOT raise all the champions") true.
   unparsed `0x05` sections, 17,348 distinct placed paths / 491,885 instances (index validated before
   any conclusion drawn).
 
-**TWO DEFECTS FOUND IN THIS LANE'S OWN WORK, both fixed here:**
+**ONE REAL DEFECT FOUND IN THIS LANE'S OWN WORK, fixed here:**
 1. **The name-tag cross-check was hollow.** negtest returned 28/29 with `negative R3 ... gate=PASS`.
    Real gate hole: the second derivation filtered on `Monster.tpl`, but R3's donor is a `Typhon2.tpl`
    boss - so a boss on a bespoke template could wear a champion's display tag and both derivations
    would miss it. Widened to every template except `Pet.tpl` after MEASURING that it adds zero live
    hits. Now 29/29.
-2. **This branch's merge `4748e93` silently deleted 101 lines of `docs/WILL_RULINGS.md`** - the whole
-   R-100 PLAY-SESSION BATCH, Will's verbatim 19-item play report. Found via `git diff main..HEAD`
-   reading "101 deletions / 0 insertions"; restored byte-identically from `main`.
+
+**A SECOND "DEFECT" ROUND 1 REPORTED HERE WAS A MISDIAGNOSIS AND IS WITHDRAWN.** Round 1 claimed
+"this branch's merge `4748e93` silently deleted 101 lines of `docs/WILL_RULINGS.md`". It did not; the
+independent vet caught the error and round 2 reproduced every disproving command (`git diff e014ef8
+4748e93 --numstat -- docs/WILL_RULINGS.md` -> empty; the R-100 text was authored on `main` 5h21m
+after that merge; `git diff 60a3bfb~1 60a3bfb --numstat` -> `101 0`, an ADD of main's newer text, not
+a restore). Nothing of Will's was ever lost. Full retraction with commands: the R-100 section of
+`docs/WILL_RULINGS.md`. The transferable lesson is registered as `BL-b101-DEBT-9`: use three-dot
+`main...HEAD`, never two-dot `main..HEAD`, before accusing a commit of losing anything.
 
 **NOT DONE / KNOWN GAPS - all registered as `BL-b101-DEBT-*` below:** nothing in this lane was deployed
 or played, so no in-game confirmation exists; `z_toxeus` turned out to be live rather than inert and
