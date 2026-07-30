@@ -324,6 +324,12 @@ TAGS = {
 # every monster this module makes the gate walk for castability
 CASTERS = (DEVOURER, HUNT, HUNT_L, ENSLAVER, BLOODSPAWN, COURSER)
 
+# minion -> the donor it was cloned from. The gate reads the DONOR live out of
+# the same db (both are proven byte-unchanged by the record-diff), so the
+# actorHeight invariant is checked against ground truth rather than a number
+# copied into this file that could drift away from the rig. See R-126.
+MINION_DONORS = {BLOODSPAWN: BLOODSPAWN_DONOR, COURSER: COURSER_DONOR}
+
 ACTIVE_SLOT_FIELDS = ('attackSkillName', 'initialSkillName', 'dyingSkillName',
                       'specialAttackSkillName') + tuple(
     'specialAttack%dSkillName' % i for i in range(2, 6))
@@ -690,7 +696,7 @@ def _assert_bloodfrenzy(db):
 # PART D - R-100 #13: the two minion families + their summons
 # =============================================================================
 def _build_minion(db, donor, dest, name_tag, life, hand_min, hand_max,
-                  scale, height, run_speed, label):
+                  scale, run_speed, label):
     _require(db, donor, '%s donor' % label)
     _clone(db, donor, dest)
     db.set_field(dest, 'description', name_tag)
@@ -700,7 +706,21 @@ def _build_minion(db, donor, dest, name_tag, life, hand_min, hand_max,
     db.set_field(dest, 'handHitDamageMin', hand_min)
     db.set_field(dest, 'handHitDamageMax', hand_max)
     db.set_field(dest, 'scale', scale)
-    db.set_field(dest, 'actorHeight', height)
+    # `actorHeight` is DELIBERATELY NOT WRITTEN - it is inherited from the donor.
+    # It is a per-RIG constant, not a size knob, and this was measured DB-wide on
+    # the built arz (`tools/debug/probe_actorheight.py`):
+    #   * 2,122 mesh groups carry an actorHeight on more than one record;
+    #     in ZERO of them is actorHeight proportional to `scale`.
+    #   * `DRX\meshes\blooddemon01.msh`: 24 records spanning scale 0.7 -> 1.75,
+    #     every one of them actorHeight 1.0 (or 0.0 for the no-height class).
+    #   * `DRX\meshes\bloodhound.msh`: 9 records spanning scale 1.0 -> **2.25**
+    #     - larger than our courser - every one of them actorHeight 1.7.
+    # `xbloodhound_36` is the control that settles it: the rig ALREADY has a
+    # record scaled bigger than ours and it did not touch the field. An earlier
+    # draft of this module invented 1.6 / 1.4, which made both minions the only
+    # records on their rig with a bespoke value - and moved the courser's height
+    # DOWN while scaling it UP. `scale` is what makes them big; actorHeight is
+    # where the engine hangs the name plate and hit FX on the rig. See R-126.
     db.set_field(dest, 'characterRunSpeed', run_speed)
     # A summoned add is not a loot pinata and must never carry a soul (R-101:
     # clones inherit their donor's drops; R-106/R-42: only real encounters pay
@@ -711,8 +731,10 @@ def _build_minion(db, donor, dest, name_tag, life, hand_min, hand_max,
     db.set_field(dest, 'DisplayAsQuestItem', 0)
     db._modified.add(dest)
     print('    %s: Champion, band [40,68,100], HP %s, %gx scale, %g/%g hand dmg, '
-          'runSpeed %g, dropItems 0, soul chance 0'
-          % (label, list(life), scale, hand_min, hand_max, run_speed))
+          'runSpeed %g, dropItems 0, soul chance 0, actorHeight %s INHERITED from '
+          'the donor rig (R-126)'
+          % (label, list(life), scale, hand_min, hand_max, run_speed,
+             _one(db, dest, 'actorHeight')))
 
 
 def _build_summon(db, dest, spawn, label, note):
@@ -736,7 +758,7 @@ def _build_devourer_summon(db):
     _build_minion(
         db, BLOODSPAWN_DONOR, BLOODSPAWN, 'tagSVCMonsterDevourerBloodspawn',
         life=[4500.0, 6200.0, 8400.0], hand_min=200.0, hand_max=260.0,
-        scale=2.4, height=1.6, run_speed=1.3, label='Gorged Bloodspawn')
+        scale=2.4, run_speed=1.3, label='Gorged Bloodspawn')
     _build_summon(
         db, DEV_SUMMON, BLOODSPAWN, 'svc_devourer_summonbloodspawn',
         'SVC Devourer: summons Gorged Bloodspawn - the blood he has drunk, sent '
@@ -769,7 +791,7 @@ def _build_hunt_summon(db):
     _build_minion(
         db, COURSER_DONOR, COURSER, 'tagSVCMonsterHuntCourser',
         life=[3500.0, 4800.0, 6500.0], hand_min=180.0, hand_max=240.0,
-        scale=1.7, height=1.4, run_speed=1.6, label='Courser of the Endless Hunt')
+        scale=1.7, run_speed=1.6, label='Courser of the Endless Hunt')
     _set_ref(db, COURSER, 'specialAttack2SkillName', COURSER_SPEW)
 
     _build_summon(
@@ -1017,6 +1039,22 @@ def gate_violations(db):
         if not _vals(db, mon, 'characterLife') or min(_vals(db, mon, 'characterLife')) < 1000:
             p.append('%s characterLife %s is trash-tier'
                      % (label, _vals(db, mon, 'characterLife')))
+        # R-126: actorHeight is a per-RIG constant, never a size knob. Measured
+        # DB-wide: of 2,122 mesh groups carrying an actorHeight on >1 record,
+        # ZERO make it proportional to `scale`. Both donor rigs hold it flat
+        # across their whole size ladder (blooddemon01 1.0 over scale 0.7..1.75;
+        # bloodhound 1.7 over scale 1.0..2.25, i.e. a record BIGGER than ours).
+        # So the invariant is inheritance from the donor, checked live against
+        # the donor record - which the record-diff proves byte-unchanged.
+        donor = MINION_DONORS.get(mon)
+        if donor and db.has_record(donor):
+            got = _one(db, mon, 'actorHeight')
+            want = _one(db, donor, 'actorHeight')
+            if got != want:
+                p.append('%s actorHeight %s != its donor rig\'s %s - actorHeight is '
+                         'where the engine hangs the name plate and hit FX on the '
+                         'mesh, and it is NOT a size knob (R-126). Scale the model '
+                         'with `scale`, inherit this.' % (label, got, want))
 
     # -- 10. THE CASTABILITY GATE (b94 lesson, B-SOUL-PROC-2 monster side) ---
     for rec in CASTERS:
@@ -1133,6 +1171,16 @@ def _negtest(arz):
           lambda: db.set_field(SHARED_PASSIVE, 'defensiveReflect', 30.0),
           lambda: db.set_field(SHARED_PASSIVE, 'defensiveReflect', 100.0),
           'ORIGINAL toxeus_passiveproperties was edited')
+
+    # This is the EXACT defect that shipped in the first draft of this module and
+    # that the record-diff could never have caught (an invented value on a record
+    # that is itself new is not a "change" against any baseline). It took a
+    # DB-wide measurement of the rig to see. The plant re-creates it verbatim.
+    courser_h = _one(db, COURSER, 'actorHeight')
+    plant('N10 a minion given a bespoke actorHeight (the R-126 defect)',
+          lambda: db.set_field(COURSER, 'actorHeight', 1.4),
+          lambda: db.set_field(COURSER, 'actorHeight', courser_h),
+          "actorHeight is where the engine hangs the name plate")
 
     print('\ndevourer_kit _negtest (%s):' % arz)
     for label, fired in results:
