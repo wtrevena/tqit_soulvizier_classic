@@ -133,10 +133,13 @@ a restore). Nothing of Will's was ever lost. Full retraction with commands: the 
 `docs/WILL_RULINGS.md`. The transferable lesson is registered as `BL-b101-DEBT-9`: use three-dot
 `main...HEAD`, never two-dot `main..HEAD`, before accusing a commit of losing anything.
 
-**NOT DONE / KNOWN GAPS - all registered as `BL-b101-DEBT-*` below:** nothing in this lane was deployed
-or played, so no in-game confirmation exists; `z_toxeus` turned out to be live rather than inert and
-Will should be told; `um_toxeus_99` and `old_z_toxeus` are dormant; and there are two live R-100s plus a
-contested `b100` wave label, neither resolved here.
+**NOT DONE / KNOWN GAPS - all NINE registered as `BL-b101-DEBT-1..9` below:** nothing in this lane was
+deployed or played, so no in-game confirmation exists; `z_toxeus` turned out to be live rather than
+inert and Will should be told; `um_toxeus_99` and `old_z_toxeus` are dormant; there are two live R-100s
+plus a contested `b100` wave label, neither resolved here; the name-tag cross-check has a measured
+residual blind spot (a Toxeus outside the namespace with a BRAND-NEW display tag - empty today,
+`DEBT-8`); and round 1's false merge-loss narrative is retracted with the process rule recorded as
+`DEBT-9`.
 
 
 ## B100 GATE RECORD - WEAPON/HAND GATE HONESTY: Blade Mastery + Parry tooltips (2026-07-29, branch `fix/blade-mastery-truth`) - NOT DEPLOYED, NO TAG TAKEN
@@ -2162,6 +2165,12 @@ something this lane could NOT close itself, stated so it is a known gap and not 
   confirmed. Note this is the fix for two items on Will's own R-100 play list (#6 "he didnt drop an
   orb"), and R-100's own analysis says those evaporate on the first coupled deploy. Owner/trigger:
   orchestrator deploy + Will re-fight.
+- **BL-b101-DEBT-6 (P2, census scope, PRE-EXISTING pattern):** the placement census walks up to
+  `_MAX_HOPS = 3` and reads only the STATIC `0x05` axis plus db referrers. A monster reachable only via
+  a >3-hop chain, or spawned by quest script rather than a record reference, would still read as INERT.
+  Adequate for this map's deepest measured chain (2) but it is a bound, not a proof of absence.
+  Owner/trigger: raise `_MAX_HOPS` if a later lane finds a deeper chain.
+
 - **BL-b101-DEBT-7 (P2, CROSS-LANE INTERACTION with R-105 - compatible, but two quoted numbers will go
   stale):** `main` @ `1897557` landed **R-105**, which ratifies moving soul equip/drop rates of **66%
   and 50% both to 33%** across 734 creatures. Two of this lane's eight roster records are in that
@@ -2173,11 +2182,33 @@ something this lane could NOT close itself, stated so it is a known gap and not 
   in this gate record are point-in-time measurements of the pre-R-105 db. Owner/trigger: whoever
   implements R-105 should re-run `py tools/debug/b101_r99_proof_table.py <built> <baseline>` and update
   those three tables in the same commit, and must NOT let the sweep touch the three 100% champions.
-- **BL-b101-DEBT-6 (P2, census scope, PRE-EXISTING pattern):** the placement census walks up to
-  `_MAX_HOPS = 3` and reads only the STATIC `0x05` axis plus db referrers. A monster reachable only via
-  a >3-hop chain, or spawned by quest script rather than a record reference, would still read as INERT.
-  Adequate for this map's deepest measured chain (2) but it is a bound, not a proof of absence.
-  Owner/trigger: raise `_MAX_HOPS` if a later lane finds a deeper chain.
+- **BL-b101-DEBT-8 (P2, RESIDUAL GATE BOUND - measured, empty today, raised by the independent vet):**
+  the roster's SECOND (name-tag) derivation builds its tag set FROM the path-derived roster, so it can
+  only catch a Toxeus authored outside the `toxeus` path namespace that **REUSES** one of the four
+  roster display tags. A Toxeus outside the namespace that also invents a **NEW** tag is invisible to
+  BOTH derivations. Measured, not assumed, by planting both cases against the built arz
+  (`6a3a491db546b603c52132237c40aa63`): a clone outside the namespace on `genericbossorb_04` given
+  `tagMonsterHemorrheus` -> `gate=FAIL` (caught); the same clone given a fresh
+  `tagSVCMonsterToxeusR2Bound` -> **`gate=PASS`** (blind). **The blind spot is EMPTY today**, checked
+  three independent ways over all 51,124 records: zero records outside the namespace carry a
+  `*toxeus*` `controller`, zero wear a `*toxeus*` soul in any `lootFinger2Item*` slot, and zero point
+  at `genericbossorb_05`. So this is a bound on the GATE, not a defect in the shipped bytes. Closing it
+  needs a THIRD derivation keyed on something a new variant cannot rename away (the controller, or the
+  soul it wears); deliberately not attempted in this lane because it is outside R-99 and would be an
+  unmeasured widening. Owner/trigger: the next lane that mints a Toxeus variant, or any lane hardening
+  this gate. Documented at the two claim sites in `tools/patches/uber_apex_orb.py` (module docstring
+  cross-check #2, and `_roster_by_name_tag`'s docstring).
+- **BL-b101-DEBT-9 (P2, PROCESS - born from this lane's own false incident report):** round 1 of this
+  lane read `git diff main..HEAD --numstat` as evidence that a merge had deleted 101 lines of
+  `docs/WILL_RULINGS.md`, and wrote that accusation into the design law of record, this gate record and
+  the wave report. **It was false** (full retraction with every disproving command: the R-100 section of
+  `docs/WILL_RULINGS.md` and §7 of `docs/reports/b101_toxeus_apex_roster.md`). Two-dot
+  `git diff A..B --numstat` renders a file that `A` added after the merge base as pure DELETIONS on
+  `B`'s side. **Rule to bake into briefs and vets:** use three-dot `main...HEAD` for branch diffs, and
+  before accusing any commit of losing content, check that commit's OWN `--numstat` against BOTH its
+  parents (`git diff <parent1> <merge> --numstat -- <file>`) and confirm the content existed on at
+  least one side at that time (`git show <commit>:<file>`). Owner/trigger: any lane or vet writing an
+  incident narrative about lost content.
 
 **b100 weapon/hand gate honesty (2026-07-29, `fix/blade-mastery-truth`) - NEW.** Found by the
 standing sibling sweep run alongside Will's Blade Mastery question (method: for every skill record

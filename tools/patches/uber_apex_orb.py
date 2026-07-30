@@ -77,14 +77,30 @@ TWO INDEPENDENT CROSS-CHECKS run inside the gate, so the predicate cannot rot:
  2. NAME-TAG DERIVATION. The roster is re-derived a second way - every record
     on ANY template EXCEPT `Pet.tpl` whose `description` is one of the roster's
     four display tags - and the two derivations are diffed. This catches a Toxeus
-    authored OUTSIDE the `toxeus` path namespace, which the path predicate alone
-    would miss, INCLUDING one minted on a bespoke boss template rather than
-    Monster.tpl (this scan used to filter on Monster.tpl, and planted negative
-    R3 proved that filter made it hollow for exactly that case - the R3 donor is
-    a `Typhon2.tpl` boss). Widening it was measured to add ZERO hits in the live
-    db. Pet.tpl stays excluded on purpose: the nine Toxeus summon pets are out of
-    roster scope by design and carry their own `*Pet` tags, so a lane naming a
-    summon after its master must not red the build.
+    authored OUTSIDE the `toxeus` path namespace **that REUSES one of the four
+    roster display tags**, including one minted on a bespoke boss template rather
+    than Monster.tpl (this scan used to filter on Monster.tpl, and planted
+    negative R3 proved that filter made it hollow for exactly that case - the R3
+    donor is a `Typhon2.tpl` boss). Widening it was measured to add ZERO hits in
+    the live db. Pet.tpl stays excluded on purpose: the nine Toxeus summon pets
+    are out of roster scope by design and carry their own `*Pet` tags, so a lane
+    naming a summon after its master must not red the build.
+
+    ⚠️ EXACT RESIDUAL BOUND OF THIS CROSS-CHECK, MEASURED - do not overclaim it.
+    Because the tag set is built FROM the path-derived roster, a Toxeus authored
+    outside the `toxeus` namespace that ALSO invents a brand-new display tag is
+    invisible to BOTH derivations. Measured on the real built arz by planting the
+    two distinguishable cases (a clone outside the namespace, orb04, given first
+    a roster tag and then a new one):
+        outside namespace + REUSES `tagMonsterHemorrheus`  -> gate=FAIL  (caught)
+        outside namespace + new `tagSVCMonsterToxeusR2Bound` -> gate=PASS (BLIND)
+    The blind spot is EMPTY today, checked three independent ways over all 51,124
+    records: zero records outside the namespace carry a `*toxeus*` controller,
+    zero wear a `*toxeus*` soul in any `lootFinger2Item*` slot, and zero point at
+    `genericbossorb_05`. Registered as `BL-b101-DEBT-8`. Closing it would need a
+    THIRD derivation keyed on something a new variant cannot rename away (the
+    controller or the soul it wears); that is deliberately not attempted here
+    because it is out of R-99's scope and would be an unmeasured widening.
     The tag derivation legitimately returns 2 extra base-game records
     (`am_assassin_04`, `am_assassin_06`): they are charLevel 4/6 Act-1 Common
     "Desecrated Dead Assassin" skeletons that merely REUSE the base-game text tag
@@ -100,6 +116,20 @@ it is a CRASH RISK: `treasureProxyName` is a Monster.tpl loot field, and this
 repo's hardest-won lesson (CLAUDE.md) is that copying ANY equipment/loot field
 from Monster.tpl onto Pet.tpl crashes the game. The `templateName == monster.tpl`
 half of the predicate is load-bearing for exactly that reason, not decoration.
+
+THE ONE `Monster.tpl` NEIGHBOUR A READER WILL ASK ABOUT, so it is answered here
+rather than left to look like an oversight: `um_enslaver_marauder_99` sits in the
+SAME `records\creature\monster\shadowstalker\` folder as three roster champions
+(`um_toxeus_enslaver_99`, `um_toxeus_hunt_99`, `um_toxeus_hunt_l_99`), is a
+`Monster.tpl` record, and carries NO `treasureProxyName`. Excluding it is CORRECT
+and is not an accident of the path predicate: its tag `tagSVCMonsterEnslaverMarauder`
+resolves in `apply_svc_patches.py` to `'{^r}Enslaved Shadow Marauder'` and its own
+constant there is commented `# hostile Champion` - it is the Enslaver's SUMMONED
+minion, a Champion-rank add, not a Toxeus variant and not an uber encounter. It
+has no `toxeus` path token and does not wear a roster display tag, so both
+derivations agree it is out, which is the right answer. (Measured folder-by-folder
+over every folder containing a roster record; nothing else in any of them is
+Toxeus-adjacent.)
 
 ⚠️ BUILD-ORDER FACT THAT LOOKS LIKE A BUG AND IS NOT. `um_toxeus_hunt_l_99` does
 not exist when this module's `apply()` runs: it is authored later in the registry
@@ -240,9 +270,22 @@ built db:
     level, NOT that a player can walk to it or that the engine spawns it. Whether
     that Rhodes underground spot is player-reachable is LAUNCH-GATED and is
     registered as debt - it is not claimed here either way.
-Both carry `dropItems = 0`, so neither drops equipped gear; the orb is the
-separate `treasureProxyName` mechanism and WOULD fire. So the honest summary is
-"one of the two is inert, the other is live-but-obscure", NOT "both inert".
+Both carry `dropItems = 0`, so neither drops equipped gear. The orb is the
+separate `treasureProxyName` mechanism, and the SHIPPED DB CORROBORATES that the
+two are independent rather than this being an engine assumption: scanning all
+51,124 records, EXACTLY FIVE `Monster.tpl` records combine `dropItems == 0` with a
+`treasureProxyName`, and three of them are `q_leinth_47/49/50` -> the bespoke
+`bosschestproxy_leinth`, i.e. a shipped, gate-proven, PLAYER-FACING drop that this
+very module protects with fourteen planted negatives. (The other two are the zzdev
+pair this lane just wired. 63 `Monster.tpl` records carry a proxy in total.) So a
+`dropItems = 0` record demonstrably still gets its treasure proxy honoured in this
+mod's own live content. HONEST LIMIT: that is DB-side corroboration by precedent,
+not an in-game observation - nothing in this lane was launched, and whether the
+orb visibly drops on kill remains launch-gated (`BL-b101-DEBT-3`/`-5`). This
+matters because it sets the severity of `BL-b101-DEBT-2`: if `dropItems = 0` also
+suppressed the proxy, z_toxeus's apex orb would be inert and the Will-decision
+item would be moot. So the honest summary is "one of the two is inert, the other
+is live-but-obscure", NOT "both inert".
 R-99 pre-authorised this outcome in Will's own words - "if some good items drop
 since someone got lucky ... so be it" - and included them explicitly, so the
 finding is recorded rather than acted on. Neither is deleted, retired, blanked or
@@ -599,8 +642,18 @@ def _roster_by_name_tag(db, roster):
     """SECOND, independent derivation: records whose `description` is one of the
     display tags the path-derived roster uses, on ANY template except Pet.tpl.
 
-    This is the derivation that would catch a Toxeus authored OUTSIDE the
-    'toxeus' path namespace, which the path predicate alone cannot see.
+    This is the derivation that catches a Toxeus authored OUTSIDE the 'toxeus'
+    path namespace **that REUSES one of the roster's display tags**, which the
+    path predicate alone cannot see.
+
+    ⚠️ SCOPE IT HONESTLY. The tag set below is built FROM the path-derived roster,
+    so this cross-check cannot see a Toxeus that is outside the namespace AND
+    invents a NEW display tag. Measured, not assumed: a clone outside the
+    namespace on `genericbossorb_04` reds the gate when given `tagMonsterHemorrheus`
+    and stays GREEN when given a fresh `tagSVCMonsterToxeusR2Bound`. That blind
+    spot is empty today (0 records outside the namespace carry a toxeus
+    controller, a toxeus soul, or orb05, over all 51,124 records) and the residual
+    bound is registered as `BL-b101-DEBT-8`.
 
     IT DELIBERATELY DOES **NOT** FILTER ON Monster.tpl, and that is a FIX, not an
     oversight. It used to, and planted negative R3 proved the filter made the
