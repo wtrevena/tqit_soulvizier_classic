@@ -184,12 +184,12 @@ b93 cut \`deathPenaltyEquation\` by 90% (and \`deathPenaltyMax\` 500000 -> 50000
 still returns the ORIGINAL amount, recovering it now GRANTS MORE XP THAN THE DEATH COST - a free-XP exploit we
 introduced.** Find the field/equation that governs what the tombstone returns, measure what it currently pays
 against what b93 now takes, and **SUPERSEDED BY R-109 - build the EQUALITY, not the 10%:** Will refined it to *"lets make the tombstone xp
-recovery match the xp lost upon dying"*. So `recovered == lost`, EXACTLY, on every difficulty. Express the
+recovery match the xp lost upon dying"*. So \`recovered == lost\`, EXACTLY, on every difficulty. Express the
 recovery in terms of the penalty so the two cannot drift when the penalty is retuned again; if the engine
 will not take a derived expression, mirror the penalty equation verbatim and gate on them being equal.
 **Report the measured before/after BOTH ways (XP lost vs XP recoverable) at several levels on all three
 difficulties.** GATE: equality - plant negatives on BOTH sides, recovery above the penalty must red the
-build and recovery below it must red the build too (paying back less would punish the player twice).`,
+build and recovery below it must red the build too (paying back less would punish the player twice).\`,
   },
 ]
 
