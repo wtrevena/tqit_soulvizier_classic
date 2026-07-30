@@ -200,7 +200,26 @@ Legendary: lose 47,765, recover **47,765** (was 23,882). L10 Normal: lose 11, re
 the PE export table, disassembles the five functions and the loader site). The symbol table and the
 decisive instructions are transcribed in `docs/WILL_RULINGS.md` R-109.
 
-### 4.7 Reproducibility
+### 4.7 Reproducibility, and what changed after the artifact was built
 
-A confirming rebuild was run at the final branch HEAD, after the two gate/assert hardenings in
-§2b. Result recorded in the `build72-dev` gate record in `docs/BACKLOG.md`.
+A confirming rebuild was run after the two gate/assert hardenings that landed in `6e11e0a`
+(`general_guardians`' free-slot assert made idempotent; `tombstone_xp_recovery.verify` rejecting
+`deathPenaltyMax <= 0` instead of dividing by it). Result recorded in the `build72-dev` gate record
+in `docs/BACKLOG.md`.
+
+Everything committed to `tools/` AFTER `6e11e0a` is docstring text, and that is **measured, not
+asserted** - the two files' ASTs with docstrings stripped are identical to their `6e11e0a` versions:
+
+```
+py -c "<ast.parse + strip module/def/class docstrings + ast.dump, vs git show 6e11e0a:<file>>"
+  tombstone_xp_recovery.py   AST (docstrings stripped) identical to 6e11e0a: True
+  uber_quest_markers.py      AST (docstrings stripped) identical to 6e11e0a: True
+  -> PASS - every post-build tools change is docstring-only
+```
+
+The two later text commits are corrections this lane made against itself rather than polish:
+`7b3ecc0` narrowed an overstated "apply() writes 0" claim (true of the baseline arz, not of a fresh
+build, where the module honestly prints `0 newly unmarked`), and `cf63311` separated what the
+`Game.dll` disassembly MEASURES from what it lets us infer - the "a death cannot de-level you"
+reading of the XP helper at `0x1017d620` is an interpretation, since the binary carries no field
+names for those offsets, and R-109 does not rest on it.
