@@ -74,13 +74,39 @@ def main(argv):
                      for f in sac.REAGENT_FIELDS],
           'I4')
     # I5 an assigned soul missing from its formula (simulates the shipped bug:
-    # a minted soul that never made it into the list)
+    # a minted soul that never made it into the list).
+    #
+    # ⚠️ THIS TEST USED TO BE VACUOUS AND REPORTED ITSELF AS BLIND. It picked its
+    # target from `classify_soul_acts(d)` on the UNMUTATED db - but the wiring
+    # pass runs to a FIXED POINT, so on a real build every evidence-assignable
+    # soul is already listed, `classify_soul_acts` returns an EMPTY assignment
+    # map (the build log's own "signals in the final round:
+    # {'S0-already-listed': 2149}"), `target` came back None, and the mutation
+    # never happened. The gate was then correctly green and the test called it
+    # "GREEN (BLIND)" - a false accusation against a working invariant, which is
+    # just as bad as a false green.
+    #
+    # Correct construction: take a soul the formula ALREADY lists, and one whose
+    # OTHER tiers are listed too, so that once it is removed the classifier
+    # re-derives its act from S1-sibling-tier and I5 must fire. Anything the
+    # classifier could not re-derive would (rightly) not be an I5 violation.
+    def _reclassifiable_member(d):
+        listed_e = [v for v in vals(d, e1) if 'anysoul' not in sac._stem(v)]
+        n1_have = {sac._n(v) for v in vals(d, n1)}
+        for v in listed_e:
+            sib_n = sac.soul_base(v) + '.dbr'          # the n-tier sibling path
+            if sac._n(sib_n) in n1_have:
+                return v
+        return None
+
     def drop_an_assigned(d):
-        assignments, _u, _s = sac.classify_soul_acts(d)
-        target = next((s for s, (a, sig) in assignments.items()
-                       if a == 1 and sac.soul_tier(s) == 'e'), None)
+        target = _reclassifiable_member(d)
         if target is None:
-            return
+            raise SystemExit(
+                "negtest I5 setup: no act-1 epic soul in e_01 whose NORMAL "
+                "sibling is listed in n_01 - cannot construct a soul the "
+                "classifier is guaranteed to re-derive, so the I5 negative "
+                "would be vacuous. Refusing to report a pass it did not earn.")
         for f in sac.REAGENT_FIELDS:
             d.set_field(e1, f, [v for v in vals(d, e1, f)
                                 if sac._n(v) != sac._n(target)])
