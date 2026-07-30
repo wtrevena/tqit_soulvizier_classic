@@ -2071,5 +2071,50 @@ Toxeus champions at 100%, and plant a negative for a Common monster nudged to 33
 that suits the creature (the amgoz1 bar), and some may be deliberately soul-less. Recommend a dedicated lane
 that reports the roster with a proposed soul per creature before changing anything.
 
-**STATUS:** rule ratified. R-105's 734-creature change is confirmed safe. 15 Common carriers -> 0%. My R-105
-mummy-priest suggestion withdrawn. The 210 hero-class zeroes need their own lane and Will's content sign-off.
+### AMENDMENT - HIS CRITERION IS A DISPLAY ONE. MAPPED. AND THREE OF OUR OWN UBERS CANNOT DROP THEIR SOULS.
+
+**WILL, VERBATIM:**
+
+> "gigantic bats are probably not heroes with stars above their heads. only guys with stars above their heads or
+> better should drop souls, or guys with purple names"
+
+**HIS DOUBT ABOUT THE BATS WAS HALF RIGHT, AND THE HALF THAT WAS WRONG MATTERS.** They are not Hero - measured,
+`am_giganticbat_12/14/16` are **`Champion`**. But **Champion IS the star tier**: a Champion is precisely the
+beefed-up monster that displays a star above its head. So by his own criterion - "stars above their heads **or
+better**" - the gigantic bats **do** qualify. The question he actually needs to answer is therefore narrower
+than it looks:
+
+**DOES "STARS OR BETTER" INCLUDE THE WHOLE CHAMPION TIER? That is the 172-creature decision.** The engine's
+classes map onto his display language like this:
+- **`Champion`** -> star above the head. 172 of the zeroes. Beefed-up ordinary monsters, spawned in numbers:
+  gigantic bats, carrion lords, plague lords, `ar_slayer`, `ember_satyr_warden`, the `mutated_*` variants.
+- **`Hero`** -> the purple/named uniques he described. **28** of the zeroes: `hero_adarathelovely_43`,
+  `um_legion_28/28a/28b`, `us_frostscarab_35`, `um_morbi_17`, `hero_grom_31`, `hero_wheedletongue_41`,
+  `ur_masai_43`, `us_poisonsiren_14`.
+- **`Boss`** -> **9**. See below, because this is the real find.
+- **`Quest`** -> 1 (`01_akara`, already a known WILL DECISION as `BL-b97-DEBT-7`).
+
+**MY RECOMMENDATION: Hero + Boss + Quest yes, Champion NO.** Champions are ordinary monsters wearing a star and
+they spawn in quantity - 172 records, many in n/e/l triples of the same creature. Souls from them would be
+common by volume even at a modest rate, which is the flooding problem in a different costume. His instinct to
+squint at the bats is the right instinct even though their class technically qualifies. **This is his call, not
+mine** - it is the difference between roughly 38 creatures and roughly 210.
+
+### 🔴 THE ACTUAL BUG, FOUND IN PASSING: THREE OF OUR OWN UBER BOSSES CAN NEVER DROP THEIR SOULS
+
+Of the 9 `Boss`-class carriers stuck at 0%, three are **ours**, and they are fixed-location ubers we built:
+- `um_charon_ferryman_99.dbr`
+- `um_polisgaoler_99.dbr`  *(the Soul Gaoler - also R-100 #17 and R-101's key leak)*
+- `um_tantalus_99.dbr`  *(also R-100 #8, outside his den, and #9, three chests)*
+
+Plus base/SV bosses `us_mormo_16`, `ur_uber_45`, `um_inkeyes_45`, `um_inkeyes2_45`, `um_bloodcrow_50`,
+`um_bloodcrow_50_l`.
+
+**These need no policy decision at all.** They are fixed-location bosses, so R-105 already rules them at **25%**,
+and they are currently at **0** - carrying a soul that can never drop. That is a plain defect in our own content
+and it should be fixed in the same lane as the rate sweep, not held behind the Champion question.
+
+**STATUS:** rule ratified. R-105's 734-creature change confirmed safe. 15 Common carriers -> 0%. My R-105
+mummy-priest suggestion withdrawn (they are Common). **Three of our own uber bosses at 0% -> 25%, no decision
+needed.** The Champion tier (172 creatures) is HELD pending Will's yes/no; Hero + Boss + Quest zeroes proceed to
+a content lane that proposes a soul per creature.
