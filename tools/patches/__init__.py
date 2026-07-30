@@ -494,8 +494,13 @@ REGISTRY = [
                             # other boss-creating module, and after the whole monolith) so its
                             # DB-wide gate - "no um_* record may carry a per-party drop resolving
                             # to itemClassification==Quest" - reads the FINAL assembled roster.
-                            # Disjoint: the only records it writes are those 3, which no other
-                            # module writes this field on, so no S4b collision is expected.
+                            # S4b COLLISION IS EXPECTED on all 3 and is benign - MEASURED from the
+                            # build, not predicted: um_charonform2_ferryman_99 <- uber_quest_markers,
+                            # and both Gaolers <- polis_vault. The field sets are disjoint (minimap
+                            # marker / boss kit vs perPartyMemberDropItemName) and this module runs
+                            # LAST, so it is the ratified final writer on its own field. A WARN
+                            # naming a module that also writes perPartyMemberDropItemName on any of
+                            # those 3 is a real finding: investigate before shipping.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
