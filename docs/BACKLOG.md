@@ -6,6 +6,20 @@
 process launched or killed.** The orchestrator owns every deploy. No `buildNN` tag was taken: this
 lane did not deploy, and the tag belongs to whichever wave ships these bytes.
 
+> ⚠️ **BASE MOVED MID-LANE AND THIS LANE DID *NOT* REBASE - deliberately, and the reason matters.**
+> Briefed base is `main` @ `7efd107`; while the lane ran, `main` advanced to `9a12d17` ("R-109:
+> tombstone XP recovery must EQUAL the XP lost"). That commit touches `docs/WILL_RULINGS.md` and two
+> `docs/wip_workflows/*.js` files and NOTHING else (`git show --stat 9a12d17` = 3 files), so it is
+> disjoint from every file this lane edits. Rebasing would have invalidated the measured baseline
+> (built from `7efd107`) and with it the entire record-diff proof, for zero content benefit. The
+> integration decision is the orchestrator's; if it rebases, it should rebuild the baseline on the new
+> base and re-run `tools/debug/b102_green_mesh_record_diff.py`, which is written to derive both
+> rosters live and needs no edit to do that.
+> **`git diff 7efd107..HEAD --numstat` = 11 files.** `docs/WILL_RULINGS.md` **84 insertions / 0
+> deletions** and `docs/BACKLOG.md` **151 / 0** - both pure appends, so no ruling or gate record was
+> displaced (the b101 lesson). The only deletions in the whole branch are 22 lines in
+> `apply_svc_patches.py` and 28 in `enslaver_shroud.py`, all of them lines this lane rewrote.
+
 **ARTIFACT (DB-ONLY lane. `Text.arc`, `Levels.arc` and `Quests.arc` are untouched - zero map bytes,
 zero new tags, so there is NO arz+Text or Levels+Quests coupling to honour here):**
 - arz `.claude/worktrees/green-mesh/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
@@ -73,7 +87,18 @@ toggles is an empty slot, and nothing would have caught that.
 - In-build `champion_mesh.verify()` (post-finalization, over the FINAL assembled db): roster mesh
   correctness, zero champions on the green mesh, three DISTINCT champion meshes, every destination
   mesh existence + embedded-FX + bone-completeness audited FROM THE ASSET BYTES, every reachable
-  `.anm` resolves, and the shared mesh still has its non-roster carriers.
+  `.anm` resolves, and the shared mesh still has its non-roster carriers. Live output:
+  *"17 roster record(s) across 3 champions, 0 on RevenantPoison.msh, 3 distinct meshes (R-93), every
+  destination mesh FX-audited and rig-complete, every reachable .anm resolves"* + *"62 distinct .anm
+  reachable from the roster, all resolve"* + *"15 non-roster carrier(s) of RevenantPoison.msh left
+  untouched"*.
+- In-build `enslaver_shroud.verify()`: *"in a FREE slot on ALL 4 surface(s) - the monster AND every
+  derived pet tier (3), each with a controller that actually fires self-buffs"*.
+- **INDEPENDENT CONFIRMATION FROM A GATE THIS LANE DID NOT WRITE:** the pre-existing A9
+  SUMMON-PET RENDER-CHAIN validator resolves every pet's mesh/texture against the shipped arcs and
+  reports **identical** results before and after the swap - *"pets checked: 263; art refs checked:
+  3050 / RESULT: PASS (22 upstream WARN(s))"* in BOTH the baseline log and `local/b102_build2.log`.
+  So the new meshes resolve for the pets, and the swap introduced no new art warning.
 
 **⚠️ THE GATE CAUGHT A FALSE FAILURE IN ITSELF, and that is recorded rather than quietly fixed.**
 Build 1 RED'd on `UNRESOLVED ANIMATION SVMesh\anims\skeleton_skill_spellshock.anm`. The clip is fine -
