@@ -4,9 +4,15 @@ r"""b101 (R-99) record-diff: every delta must be ATTRIBUTABLE to the R-99 roster
 Usage:
   py tools/debug/b101_r99_record_diff.py <baseline.arz> <built.arz>
 
-Baseline = a build of `main` in THIS environment (the pre-R-99 arz; measured
-967b1f97137bf6479c18c08e9dd6ffc4, 51,124 records). Built = a build of
-`feat/toxeus-apex-roster`.
+Baseline = a build of `main` in THIS environment (the pre-R-99 arz). The measured
+tip baseline is **aea688b23acefe1b48ae31a0df4cc423**, 55,475,172 B, 51,124 records,
+a fully gated exit-0 build of `main` @ `b376b61`. Built = a build of
+`feat/toxeus-apex-roster`, **6a3a491db546b603c52132237c40aa63**, 55,475,226 B.
+
+⚠️ An earlier revision of this docstring cited `967b1f97137bf6479c18c08e9dd6ffc4`
+as the baseline. That artifact is a 44-MODULE PRE-merge build (its log reads
+"[37/44] uber_apex_orb" and never reaches `weapon_gate_truth`), which the BACKLOG
+gate record explicitly disowns as a baseline of the tip. Do not diff against it.
 
 WHY THE EXPECTED DIFF IS SO SMALL, and why that is the point. The whole
 `genericbossorb_05` chain (proxy + 3 pools + 3 chests + 3 loot tables) and

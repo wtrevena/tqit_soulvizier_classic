@@ -54,9 +54,12 @@ what caused that, so this module derives its roster from the live database:
     toxeus_roster(db) = every record whose PATH contains 'toxeus'
                         AND whose templateName is database\templates\monster.tpl
 
-measured on the merged build `967b1f97137bf6479c18c08e9dd6ffc4` (51,124 records),
-that predicate returns EXACTLY these 8 records - the roster R-99 enumerates, with
-nothing missing and nothing extra:
+measured on the R-99 BUILT arz `6a3a491db546b603c52132237c40aa63` (51,124 records),
+against the tip baseline `aea688b23acefe1b48ae31a0df4cc423` (a build of `main`,
+51,124 records, made in the same environment) - NOT on the round-1 md5
+`967b1f97...`, which was a 44-module PRE-merge build the gate record disowns as a
+baseline of the tip. That predicate returns EXACTLY these 8 records - the roster
+R-99 enumerates, with nothing missing and nothing extra:
 
     record                                     charLevel   BEFORE R-99
     um_toxeus_enslaver_99  (Enslaver of Souls) 40/68/100   genericbossorb_05
@@ -480,9 +483,19 @@ ORB05 = _NEW + 'genericbossorb_05.dbr'
 # The tiers a roster record LEAVES, with the number of consumers that must still
 # be on each one afterwards. FLOORS, not equalities: a later lane may legitimately
 # ADD a consumer to a generic tier, but nothing here may ever strip one.
-# MEASURED on the merged build 967b1f97137bf6479c18c08e9dd6ffc4 (51,124 records):
+# MEASURED on the TIP BASELINE aea688b23acefe1b48ae31a0df4cc423 (a fully gated
+# exit-0 build of `main`, 51,124 records, 55,475,172 B, made in this environment),
+# and re-confirmed at apply time inside the real 45-module build:
 #   genericbossorb_04: 21 consumers, the 2 b94 champions left  -> 19 remain
 #   genericbossorb_01: 11 consumers, um_toxeus_21 leaves (R-99) -> 10 remain
+# The baseline build's own log prints the orb04 half verbatim:
+#   "scope proof: orb04 chain byte-unchanged; consumers 21 -> 19 (the 2 champions
+#    moved to orb05)".
+# ⚠️ DO NOT re-cite 967b1f97137bf6479c18c08e9dd6ffc4 here. These same two numbers
+# reproduce on it, but it is a 44-MODULE PRE-merge build (its log reads
+# "[37/44] uber_apex_orb" and never reaches weapon_gate_truth), so the BACKLOG gate
+# record disowns it as a baseline of the tip. Citing a disowned artifact as a
+# measurement basis is how a stale number outlives the build that produced it.
 DONOR_TIER_FLOORS = {
     ORB04: 19,
     ORB01: 10,

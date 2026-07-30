@@ -143,11 +143,32 @@ is cloned into existence later in the registry and inherits the orb.)
 
 ### 5.2 The baseline, built from `main` in the same environment
 
-`main` @ `e014ef8`, built in a scratchpad worktree with the identical command and env: **exit 0**,
-**`aea688b23acefe1b48ae31a0df4cc423`**, 55,475,172 B, 51,124 records, 45 modules.
+Built TWICE, from two different `main` commits, with the identical command and env - and both give the
+same bytes:
 
-This md5 **independently reproduces the value the B100 gate record published for the same base**, which
-corroborates both that build's determinism and this environment.
+| baseline build | `main` commit | result |
+|---|---|---|
+| round 1 | `e014ef8` (the briefed base) | **exit 0**, `aea688b23acefe1b48ae31a0df4cc423`, 55,475,172 B, 51,124 records, 45 modules |
+| round 2 | `b376b61` (the NEWEST tip, 3 advances later) | **exit 0**, `aea688b23acefe1b48ae31a0df4cc423`, 55,475,172 B, 51,124 records |
+
+```
+git worktree add --detach .claude/worktrees/r2-baseline b376b61
+# Resources/ hardlinked in so the A9 render-chain gate can actually RUN
+PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 \
+  py tools/build_svc_database.py …   ->  EXIT=0
+md5sum work/SoulvizierClassic/Database/SoulvizierClassic.arz
+   ->  aea688b23acefe1b48ae31a0df4cc423
+```
+
+That second build is the stronger claim: it turns "main's advances are docs-only, so they cannot change
+the arz" from a file-list argument into an **empirical result**. The round-2 baseline is also **fully
+gated to exit 0** (the A9 render-chain gate needs a `Resources/` directory beside the output, so the
+hardlink step above is what lets it run rather than skip). This md5 additionally **reproduces the value
+the B100 gate record published**, corroborating that build's determinism and this environment.
+
+The baseline log also prints the pre-R-99 donor-tier state verbatim, which is what the module's
+`DONOR_TIER_FLOORS` comment now cites: `scope proof: orb04 chain byte-unchanged; consumers 21 -> 19 (the
+2 champions moved to orb05)`.
 
 > ⚠️ **ROUND 1's TWO "BASELINE" ARTIFACTS WERE STALE AND ARE NOW GONE FROM THE BRANCH.**
 > `local_baseline_build.log` (arz `967b1f97137bf6479c18c08e9dd6ffc4`) and `local_r99_build.log` (arz

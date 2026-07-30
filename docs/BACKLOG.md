@@ -49,11 +49,21 @@ zero new tags, so there is NO artifact coupling to honour):**
 > --is-ancestor 0c4e9a2 e014ef8` -> exit 1. The full retraction with every command lives in the R-100
 > section of `docs/WILL_RULINGS.md`. Cause of the false report: two-dot `git diff main..HEAD` renders
 > files `main` added after the merge base as deletions.
-- **Baseline** for every comparison: a build of `main` @ `e014ef8` made in the same environment,
-  md5 **`aea688b23acefe1b48ae31a0df4cc423`**, 51,124 records, exit 0. This independently reproduces
-  the md5 the B100 gate record below published for that same base. **This, not the round-1
-  `967b1f97137bf6479c18c08e9dd6ffc4`, is the citation basis for every measurement in this lane**;
-  round 2 re-cited it in `tools/patches/uber_apex_orb.py` and `tools/debug/b101_r99_record_diff.py`.
+- **Baseline** for every comparison: md5 **`aea688b23acefe1b48ae31a0df4cc423`**, **55,475,172 B**,
+  51,124 records, **exit 0 with `SVC_REQUIRE_GATES=1`**. Round 1 built this from `main` @ `e014ef8`;
+  **round 2 rebuilt it from the NEWEST main tip `b376b61` in a fresh detached worktree and got the
+  identical md5**, which empirically proves all three mid-lane base moves changed zero shipped bytes
+  rather than only arguing it from the file list. It also independently reproduces the md5 the B100 gate
+  record below published for that base. **This, not the round-1 `967b1f97137bf6479c18c08e9dd6ffc4`, is
+  the citation basis for every measurement in this lane**; round 2 re-cited it in
+  `tools/patches/uber_apex_orb.py` (2 sites) and `tools/debug/b101_r99_record_diff.py`, each with an
+  explicit "do not re-cite the pre-merge md5" warning naming the `[37/44]`-vs-`[37/45]` tell.
+  ⚠️ **PRE-EXISTING, NOT THIS LANE'S TO REWRITE:** `967b1f97…` is also quoted as a measurement basis by
+  OTHER lanes' text now on `main` - `docs/WILL_RULINGS.md` lines ~1291 (R-99's own pre-implementation
+  analysis, authored on `main`), ~1568, ~1636, ~1693, ~1749, ~1787, ~1861, ~1968, ~2014, ~2062 (the
+  R-101..R-107 Enslaver/soul-rate lanes) and `tools/patches/weapon_gate_truth.py:14`. Those numbers do
+  reproduce, so nothing is wrong with them, but silently editing another lane's ledger text from this
+  lane is exactly the cross-lane edit the ledger law forbids. Flagged for the orchestrator, not touched.
 
 > ⚠️ **ROUND-1 STALE ARTIFACTS - CLEANED UP IN ROUND 2.** Round 1 committed five build logs
 > (12,341 lines) at the repo ROOT - `local_baseline_build.log`, `local_r99_build.log`,
