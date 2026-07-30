@@ -91,10 +91,12 @@ def main(argv):
           % ('record', 'charLevel n/e/l', 'rank', 'treasureProxyName', 'name tag'))
     print('-' * 100)
     for rec in roster:
-        lv = []
-        for f in ('charLevel', 'charLevelEpic', 'charLevelLegendary'):
-            x = v1(built, rec, f)
-            lv.append(str(int(float(x))) if x not in (None, '') else '-')
+        # charLevel is ONE field holding a 3-element array (normal/epic/legendary),
+        # not three fields - reading only [0] silently reports '40/-/-' for a
+        # 40/68/100 boss, which is how a proof table starts lying.
+        lvv = built.get_field_value(rec, 'charLevel')
+        lvv = lvv if isinstance(lvv, list) else ([lvv] if lvv is not None else [])
+        lv = [str(int(float(x))) for x in lvv] or ['-']
         rank = v1(built, rec, 'monsterClassification') or '-'
         tp = v1(built, rec, 'treasureProxyName')
         tp = str(tp).rsplit('\\', 1)[-1] if tp else '** NONE **'

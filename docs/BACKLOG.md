@@ -1,5 +1,103 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD69-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tag `build69-dev`) - NOT DEPLOYED
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed.** The orchestrator owns every deploy and every upload. `build69-dev` tags
+the BYTES for traceability, not a shipment; it was verified free before taking it (`git tag -l
+build69*` empty; `build60-dev`..`build68-dev` are all taken, and the brief's `build62/65/66` are among
+them).
+
+**ARTIFACT (DB-only lane - `Text.arc`, `Levels.arc` and `Quests.arc` are untouched, zero map bytes,
+zero new tags, so there is NO artifact coupling to honour):**
+- arz `.claude/worktrees/toxeus-apex-roster/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry modules.
+  Built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
+  **exit 0** (log `local_r99_reproduce.log`).
+- **Byte-identity re-proved:** after the verify-side fixes in steps 6/7/10 the arz was rebuilt from
+  scratch with the identical command and env - **exit 0, same md5 `6a3a491db546b603c52132237c40aa63`,
+  same 55,475,226 B** (log `local_r99_rebuild.log`). So the gate-hardening changed no shipped byte.
+- **Baseline** for every comparison: a build of `main` @ `e014ef8` made in the same environment,
+  md5 **`aea688b23acefe1b48ae31a0df4cc423`**, 51,124 records, exit 0. This independently reproduces
+  the md5 the B100 gate record below published for that same base.
+
+> ⚠️ **TWO STALE ARTIFACTS ARE COMMITTED AS ROUND-1 AUDIT TRAIL - DO NOT SHIP EITHER.**
+> `local_r99_build.log` (arz `f99d5c83a60cb3136eff62622b999550`) and `local_baseline_build.log`
+> (arz `967b1f97137bf6479c18c08e9dd6ffc4`, the md5 R-99 itself quotes) are **44-module builds made
+> before this branch merged `main` @ `e014ef8` at 12:57**, so neither includes `weapon_gate_truth` and
+> neither is a baseline of the real tip. They are kept because round 1 died mid-flight and the log was
+> the only evidence it existed.
+
+**WHAT IT IS.** R-99, ratified by Will the same day: every Toxeus variant gets the apex orb
+`genericbossorb_05`, low-level one included. b94 had wired only the two FOUGHT champions from a
+hand-typed pair while b98 built the Endless Hunt in a parallel lane, so **the champion Will has
+actually fought shipped with no `treasureProxyName` at all for two waves**. The roster is now DERIVED
+from the database (`uber_apex_orb.toxeus_roster`: path contains `toxeus` AND `templateName` is
+`Monster.tpl`), pinned, and cross-checked a second way by display tag, so a future variant REDS the
+build instead of being silently dropped. Full detail: `docs/reports/b101_toxeus_apex_roster.md` and
+R-99 in `docs/WILL_RULINGS.md`.
+
+**THE ROSTER, read back OUT of the built arz** (charLevels re-measured, all match R-99's own table):
+
+| record | charLevel n/e/l | rank | before | after |
+|---|---|---|---|---|
+| `um_toxeus_enslaver_99` | 40/68/100 | Boss | `genericbossorb_05` | unchanged (b94) |
+| `um_bloodtoxeus_99` | 40/68/100 | Boss | `genericbossorb_05` | unchanged (b94) |
+| `um_toxeus_hunt_99` | 40/68/100 | Boss | **field absent** | `genericbossorb_05` |
+| `um_toxeus_hunt_l_99` | 40/68/100 | Boss | **field absent** | `genericbossorb_05` |
+| `um_toxeus_99` | 33/66/99 | Hero | **field absent** | `genericbossorb_05` |
+| `um_toxeus_21` | 25/45/65 | Boss | `genericbossorb_01` | `genericbossorb_05` |
+| `z_toxeus` | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+| `old_z_toxeus` | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+
+**THE GATE (CLAUDE.md law #4).** `verify()` no longer hardcodes two champions and planted `NEGATIVE 2`
+no longer asserts "a THIRD record must FAIL" (a COUNT, which R-99 makes wrong). The invariant is
+restated as a **set equality tested in both directions** - every roster record on orb05, AND the orb05
+carrier set EXACTLY the roster - which is unweakened and is what keeps R-99's opening reassurance ("we
+did NOT raise all the champions") true.
+
+**PROOFS (commands + measured results; nothing estimated):**
+- `py tools/build_svc_database.py ...` **exit 0**; `--- [37/45] uber_apex_orb ---`,
+  `uber_apex_orb: modified 20 record(s), 0 tag(s)`, `blast radius genericbossorb_04.dbr: 21 -> 19
+  consumer(s)`, `blast radius genericbossorb_01.dbr: 11 -> 10 consumer(s)`, and
+  `[uber_apex_orb] verify OK: the DERIVED Toxeus roster is 8 record(s) ... EVERY one is on
+  genericbossorb_05, with the orb05 carrier set EXACTLY equal to it (no scope creep)`.
+- `py tools/debug/b101_r99_record_diff.py <baseline> <built>` -> **exit 0, `0 ADDED / 0 REMOVED /
+  6 CHANGED`**, every one a derived-roster record whose ONLY moved field is `treasureProxyName` ->
+  `genericbossorb_05`. **Zero unattributed changes.** 0 REMOVED means b98's 15 records and b99's
+  `summon_sargoth` + pets all survived.
+- `py tools/debug/b101_r99_proof_table.py <built> <baseline>` -> **`genericbossorb_04` BYTE-UNCHANGED**:
+  the proxy plus its 3 pools, 3 chests and 3 loot tables = 10 records identical field-by-field,
+  value-by-value, dtype-by-dtype; consumers **19 -> 19, nothing lost, nothing gained**, 0 Toxeus
+  records left on it, all 19 named in the report. `genericbossorb_01` byte-unchanged, consumers
+  **11 -> 10**, losing exactly `um_toxeus_21`.
+- **R-48/R-91 independence PROVEN:** `chanceToEquipFinger2` bit-identical to baseline on all 8 roster
+  records - three fought champions 100.0, `um_toxeus_99` 66.0, `um_toxeus_21` 50.0, zzdev pair 0.0.
+- `py tools/debug/negtest_uber_apex_orb.py <built>` -> **`29/29 subtests behaved as specified`, exit 0,
+  0 skipped**, including **one negative per roster record** proving the gate fires if that record loses
+  its orb, plus R1-R5 (pin drift both ways, the second derivation, the false-positive pin proven
+  load-bearing, and orb01 stripped below its floor).
+- The new `verify()` **reds the pre-R-99 baseline** with exactly the 6 gaps R-99 enumerated.
+- `py tools/debug/b101_toxeus_placement_census.py <built> <Levels.arc>` -> 2,282 levels walked, 0
+  unparsed `0x05` sections, 17,348 distinct placed paths / 491,885 instances (index validated before
+  any conclusion drawn).
+
+**TWO DEFECTS FOUND IN THIS LANE'S OWN WORK, both fixed here:**
+1. **The name-tag cross-check was hollow.** negtest returned 28/29 with `negative R3 ... gate=PASS`.
+   Real gate hole: the second derivation filtered on `Monster.tpl`, but R3's donor is a `Typhon2.tpl`
+   boss - so a boss on a bespoke template could wear a champion's display tag and both derivations
+   would miss it. Widened to every template except `Pet.tpl` after MEASURING that it adds zero live
+   hits. Now 29/29.
+2. **This branch's merge `4748e93` silently deleted 101 lines of `docs/WILL_RULINGS.md`** - the whole
+   R-100 PLAY-SESSION BATCH, Will's verbatim 19-item play report. Found via `git diff main..HEAD`
+   reading "101 deletions / 0 insertions"; restored byte-identically from `main`.
+
+**NOT DONE / KNOWN GAPS - all registered as `BL-b101-DEBT-*` below:** nothing in this lane was deployed
+or played, so no in-game confirmation exists; `z_toxeus` turned out to be live rather than inert and
+Will should be told; `um_toxeus_99` and `old_z_toxeus` are dormant; and there are two live R-100s plus a
+contested `b100` wave label, neither resolved here.
+
+
 ## B100 GATE RECORD - WEAPON/HAND GATE HONESTY: Blade Mastery + Parry tooltips (2026-07-29, branch `fix/blade-mastery-truth`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. NOTHING WAS WRITTEN TO ANY `CustomMaps\*` TARGET, no Steam action, no TQ/Steam
@@ -1978,6 +2076,47 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b101 R-99 all-Toxeus apex orb (2026-07-29, `feat/toxeus-apex-roster`) - NEW.** Every item below is
+something this lane could NOT close itself, stated so it is a known gap and not a silent one.
+- **BL-b101-DEBT-1 (P1, LEDGER HYGIENE - owner: orchestrator):** `docs/WILL_RULINGS.md` now carries
+  **TWO live R-100s** - `- R-100 ... IMPLEMENTED b100 (fix/blade-mastery-truth)` in the
+  "Player-surface truthfulness" decade, and `## R-100 PLAY-SESSION BATCH` (Will's verbatim 19 items).
+  Both were written 2026-07-29 by parallel lanes. b101 flagged it in the file but deliberately did NOT
+  renumber either side: reassigning another lane's ruling number from a third lane is the same class of
+  silent cross-lane edit the ledger law exists to prevent. The file's own `fix/debt-docs` precedent
+  (the INCUMBENT keeps the number, the other lane's rulings move wholesale to the next free decade) is
+  the tie-breaker to apply. Related: the **wave label `b100` is also contested** three ways
+  (`fix/blade-mastery-truth`'s gate record, `feat/sanctuary-populate`'s recon doc, and this lane's
+  round-1 filenames, which were renamed to `b101`). Owner/trigger: orchestrator picks the incumbent.
+- **BL-b101-DEBT-2 (P1, WILL SHOULD BE TOLD - the ruling assumed the opposite):** R-99 was ratified
+  believing the two `zzdev` dummies were unreachable leftovers, so wiring them would be inert. It is
+  **not inert**. Re-measured multi-hop, `z_arthur` has exactly ONE static `0x05` instance in
+  `XPack\Levels\Area01_Rhodes\Undergrounds\ScrabledEggs_Floor06.lvl` and its `actorToSpawnOnDeath` is
+  `z_toxeus`, so killing it spawns a Champion-rank Act-1 dev dummy (charLevel 40/56/71) that now drops
+  the **Act-4 apex orb**. Will's words pre-authorise it ("if some good items drop since someone got
+  lucky ... so be it") so nothing was reversed, but he made that call on a stated premise that turned
+  out false. Owner/trigger: surface it to Will; he may want `z_toxeus` on a scaled tier or the placed
+  `z_arthur` left alone. RETIREMENT PROTOCOL: neither record may be deleted or blanked.
+- **BL-b101-DEBT-3 (P2, LAUNCH-GATED, cannot be closed without a launch):** static placement proves
+  `z_arthur` is IN that Rhodes underground level; it does **not** prove a player can walk to that spot
+  or that the engine spawns it there. Nothing in this lane claims in-game reachability either way.
+  Owner/trigger: an in-game visit to `ScrabledEggs_Floor06` after a deploy.
+- **BL-b101-DEBT-4 (P2, dormant-by-map, NOT a defect to "fix" in the db):** `um_toxeus_99` (the
+  inherited SP Toxeus, Hero, 33/66/99) and `old_z_toxeus` have **0 static placements, 0 db referrers and
+  no placed ancestor within 3 hops** in `Levels.arc` `fc0adcc0713839a685b32d6e122653be`. Their orbs are
+  wired per "all versions" and are simply dormant until a map/pool lane places or pools them. Recorded
+  so the dormancy is known. Owner/trigger: whichever lane decides `um_toxeus_99` deserves a spawn.
+- **BL-b101-DEBT-5 (P2, unverified in game):** nothing in this lane was deployed or played. The orb
+  drop itself - that the Endless Hunt now actually drops the apex orb on kill - is **not** in-game
+  confirmed. Note this is the fix for two items on Will's own R-100 play list (#6 "he didnt drop an
+  orb"), and R-100's own analysis says those evaporate on the first coupled deploy. Owner/trigger:
+  orchestrator deploy + Will re-fight.
+- **BL-b101-DEBT-6 (P2, census scope, PRE-EXISTING pattern):** the placement census walks up to
+  `_MAX_HOPS = 3` and reads only the STATIC `0x05` axis plus db referrers. A monster reachable only via
+  a >3-hop chain, or spawned by quest script rather than a record reference, would still read as INERT.
+  Adequate for this map's deepest measured chain (2) but it is a bound, not a proof of absence.
+  Owner/trigger: raise `_MAX_HOPS` if a later lane finds a deeper chain.
 
 **b100 weapon/hand gate honesty (2026-07-29, `fix/blade-mastery-truth`) - NEW.** Found by the
 standing sibling sweep run alongside Will's Blade Mastery question (method: for every skill record

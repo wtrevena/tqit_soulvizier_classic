@@ -7,7 +7,7 @@
   PREFLIGHT: SV 0.4.1 database.arz: supplied path does not exist (upstream\soulvizier_041\Database\database.arz) - falling back to the resolution ladder
   PREFLIGHT: SV 0.4.1 database.arz                      OK via main-checkout cache
              C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_041\Database\database.arz
-  prefix-cache: MISS (prefix-531147c5328d9c0c.pkl absent)
+  prefix-cache: MISS (prefix-fca6ddbabf1fa1fe.pkl absent)
 Loading SV 0.98i: C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Database\database.arz
   Read 10000/51186...
   Read 20000/51186...
@@ -371,7 +371,7 @@ D3 restore OFF (default; SVC_RESTORE_DROPPED_NPCS unset): dropped SVAERA town NP
   Uber souls created: 28
   Soul records added: 84 (n/e/l variants)
   Skipped 61 non-monster/garbage records
-  prefix-cache: STORED snapshot prefix-531147c5328d9c0c.pkl
+  prefix-cache: STORED snapshot prefix-fca6ddbabf1fa1fe.pkl
   b97 identity: 14652 display-name tags from Text_EN.arc
 
 ======================================================================
@@ -1852,7 +1852,7 @@ D3 restore OFF (default; SVC_RESTORE_DROPPED_NPCS unset): dropped SVAERA town NP
   Container loot contract: PASS (modified FixedItemLoot records; 48 base-precedented idiom slot(s) noted)
 
 Writing output...
-  stage baseline persisted: C:\Users\willi\repos\tqit_soulvizier_classic\.claude\worktrees\toxeus-apex-roster\local\db_backups\SoulvizierClassic_pre-f99d5c83.arz (md5 f99d5c83a60cb3136eff62622b999550, 55,475,233 B)
+  stage baseline persisted: C:\Users\willi\repos\tqit_soulvizier_classic\.claude\worktrees\toxeus-apex-roster\local\db_backups\SoulvizierClassic_pre-6a3a491d.arz (md5 6a3a491db546b603c52132237c40aa63, 55,475,226 B)
     -> record-diffs against this build stay reproducible after session scratchpads are cleaned (B-GATE-HARDEN-1)
 Writing 51124 records to work\SoulvizierClassic\Database\SoulvizierClassic.arz...
   Modified records: 38576
@@ -2411,7 +2411,7 @@ OCCULT/HUNTING GOLDEN FREEZE GUARD (A7)
   WAIVED drift (owner-approved 'Will-authorized H/O improvement wave 2026-07-12 (H2: circle-icon control spin renamed Tempest (was shared "Eviscerate"))'): field::records\skills\hunting\drxspear_tempest.dbr::skillDisplayName[run_contracts] LIVE (work/ + local/) + overrides(arz,base_game_dir,resource_arc_dir)
 [run_contracts] running 1 module(s): summons
    -> summons ...
-      done summons (33.4s) 0P0 0P1 112P2
+      done summons (35.8s) 0P0 0P1 112P2
 ==============================================================================
  SOULVIZIER CLASSIC - PERMANENT CONTRACT SUITE
  source: LIVE (work/ + local/) + overrides(arz,base_game_dir,resource_arc_dir)
@@ -2426,16 +2426,16 @@ OCCULT/HUNTING GOLDEN FREEZE GUARD (A7)
    upstream_dir      C:\Users\willi\repos\tqit_soulvizier_classic\.claude\worktrees\toxeus-apex-roster\upstream  [MISSING]
 
  stage freshness (vs the .arz; informational, does not gate):
-   arz               2026-07-29 18:31 same     
-   text_arc          2026-07-27 17:48 -2.0d    OLDER THAN ARZ by 2.0d
+   arz               2026-07-29 19:32 same     
+   text_arc          2026-07-27 17:48 -2.1d    OLDER THAN ARZ by 2.1d
    levels_arc        2026-07-27 16:47 -2.1d    OLDER THAN ARZ by 2.1d
    quests_arc        2026-07-16 01:45 -13.7d   OLDER THAN ARZ by 13.7d
    NOTE: 3 artifact(s) flagged above - re-stage (scripts/bootstrap_working_mod.ps1)
          before trusting this run as ground truth.
 
- modules: 1   contracts: 13   wall: 33.5s
+ modules: 1   contracts: 13   wall: 36.1s
 
-  [contracts_summons     ] 13 contracts |   112 viol (  0 P0,   0 P1,   112 P2) |   33.4s  OK
+  [contracts_summons     ] 13 contracts |   112 viol (  0 P0,   0 P1,   112 P2) |   35.8s  OK
 
 ------------------------------------------------------------------------------
  VIOLATIONS BY CONTRACT  (non-whitelisted; most-severe first)
