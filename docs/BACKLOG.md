@@ -1,5 +1,187 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed.** The orchestrator owns every deploy and every upload. The tags mark the
+BYTES for traceability, not a shipment.
+- `build69-dev` (round 1) was verified free before taking it (`git tag -l build69*` empty;
+  `build60-dev`..`build68-dev` all taken, and the brief's `build62/65/66` are among them).
+- `build71-dev` (round 2, after the independent vet's NO-GO was cleared) was likewise verified free
+  first. **`build70-dev` was NOT free** - `git log -1 build70-dev^{commit}` -> `a5ac817 2026-07-29
+  21:20:08 "b100 round 2: full negtest artifact of record - 16/16, exit 0"`, i.e. the parallel
+  blade-mastery lane took it mid-session, so this lane took the next free number. Highest `buildNN-dev`
+  before round 2 was 70.
+- **The two tags are BYTE-IDENTICAL by construction**, and that is measured, not assumed: round 2
+  changed only docs and comments, and the confirming rebuild re-printed the same arz md5.
+
+> ✅ **ROUND 2 CLEARED AN INDEPENDENT VET'S NO-GO. The vet reproduced every byte-level and gate-level
+> claim in this record exactly** (it built the arz itself, ran the gates, wrote its own scanners and took
+> no hash from any document) and its ONE blocking item was documentation: this lane had written a
+> **provably false** incident narrative - a merge accused of silently deleting 101 lines of
+> `docs/WILL_RULINGS.md` - into the design law of record, this gate record and the wave report. That is
+> now RETRACTED in all four places with every disproving command reproduced (see the note below and the
+> RETRACTION block in the R-100 section of `docs/WILL_RULINGS.md`). The other seven findings were
+> LOW/MEDIUM: artifact hygiene (5 root build logs + 2 stale `local/*.arz`), an overstated claim about
+> what the name-tag cross-check catches, an unevidenced `dropItems=0` assertion, a stale baseline md5
+> cited as a measurement basis, one undocumented adjacent exclusion, and a DEBT ordering nit. **All
+> cleared, each by re-measuring rather than restating** - see the per-item detail in
+> `docs/reports/b101_toxeus_apex_roster.md`. No shipped byte changed.
+
+**ARTIFACT (DB-only lane - `Text.arc`, `Levels.arc` and `Quests.arc` are untouched, zero map bytes,
+zero new tags, so there is NO artifact coupling to honour):**
+- arz `.claude/worktrees/toxeus-apex-roster/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry modules.
+  Built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
+  **exit 0** (log `docs/reports/b101_logs/b101_r99_reproduce.log`).
+- **Byte-identity re-proved FOUR TIMES, five identical builds in total**, each **exit 0** and each
+  **md5 `6a3a491db546b603c52132237c40aa63`, 55,475,226 B**: (1) the round-1 code rebuilt from scratch,
+  (2) after the verify-side fixes in steps 6/7/10, (3) after merging `main` @ `31f3432`, (4) round 2
+  after merging `main` @ `b376b61` plus its first batch of comment corrections, and (5) **round 2's
+  FINAL rebuild at the final HEAD, after every module comment edit including the baseline-md5
+  re-citation - the authoritative one**. So neither the gate hardening, nor any of the three mid-lane
+  base moves, nor any of round 2's doc/comment corrections changed a shipped byte. Logs kept:
+  `docs/reports/b101_logs/b101_r99_reproduce.log` (build 1),
+  `docs/reports/b101_logs/b101_r2_final_rebuild.log` (build 5) and
+  `docs/reports/b101_logs/b101_r2_baseline_main_b376b61.log` (round 2's baseline of the newest main
+  tip, exit 0, `aea688b23acefe1b48ae31a0df4cc423`). Builds 2, 3 and 4 were redundant intermediates and
+  their logs are not kept. Every round-2 module edit is provably inside a docstring or a `#` comment
+  (`git diff 5cc2d5e..HEAD -- tools/` moves no executable line); build 5 confirms it empirically rather
+  than arguing it.
+
+> ⚠️ **BASE MOVED MID-LANE THREE TIMES; THIS LANE MERGED AND REBUILT EACH TIME.** Briefed base was
+> `main` @ `e014ef8`. While the lane ran, `main` advanced to `31f3432` (R-102/R-103 Enslaver green-glow),
+> then `1897557` (R-103 amendment / R-104 / R-105), then `b376b61` (R-106 / R-106 amendment / R-107).
+> Every advance was **docs + `tools/debug/probe_*.py` only**: `git diff e014ef8..b376b61 --name-only |
+> grep -vE '^docs/|^tools/debug/'` -> **empty**, and `grep -rnE "^\s*(from|import)\s+.*debug"
+> tools/*.py tools/patches/*.py tools/contracts/*.py` finds no build-tree import of any debug module
+> (the single hit is a comment). So `main`'s advances cannot change the arz, and the post-merge rebuilds
+> prove it: same md5 every time. The baseline md5 `aea688b23acefe1b48ae31a0df4cc423` therefore stands.
+>
+> **`docs/WILL_RULINGS.md` merge integrity, VERIFIED not trusted, at every merge.** After the final
+> merge of `main` @ `b376b61` (clean auto-merge, no conflict): `diff <(git show
+> main:docs/WILL_RULINGS.md | tr -d '\r') <(tr -d '\r' < docs/WILL_RULINGS.md) | grep '^<'` -> exactly
+> **two** lines of main's file absent from the result, the R-99 `PENDING` heading and its
+> `**STATUS:** RATIFIED` line, both deliberately superseded by the IMPLEMENTED block. 107 lines added;
+> `grep -cE '^(<<<<<<<|=======|>>>>>>>)'` -> **0** conflict markers; `grep -c "PLAY-SESSION BATCH"` ->
+> 2 (R-100 intact); `grep -cE '^## R-10[67]'` -> 2 (main's newest rulings present).
+>
+> 🛑 **A ROUND-1 CLAIM HERE WAS FALSE AND IS WITHDRAWN.** An earlier version of this note said the
+> merge conflict was "the SAME append/append conflict that commit `4748e93` earlier resolved by
+> discarding 101 lines of Will's verbatim ruling". **No such loss ever happened.** `git diff e014ef8
+> 4748e93 --numstat -- docs/WILL_RULINGS.md` -> empty; the R-100 text was authored on `main` at
+> `0c4e9a2` (2026-07-29 18:18:15), **5h21m AFTER** merge `4748e93` (12:57:15), and `git merge-base
+> --is-ancestor 0c4e9a2 e014ef8` -> exit 1. The full retraction with every command lives in the R-100
+> section of `docs/WILL_RULINGS.md`. Cause of the false report: two-dot `git diff main..HEAD` renders
+> files `main` added after the merge base as deletions.
+- **Baseline** for every comparison: md5 **`aea688b23acefe1b48ae31a0df4cc423`**, **55,475,172 B**,
+  51,124 records, **exit 0 with `SVC_REQUIRE_GATES=1`**. Round 1 built this from `main` @ `e014ef8`;
+  **round 2 rebuilt it from the NEWEST main tip `b376b61` in a fresh detached worktree and got the
+  identical md5**, which empirically proves all three mid-lane base moves changed zero shipped bytes
+  rather than only arguing it from the file list. It also independently reproduces the md5 the B100 gate
+  record below published for that base. **This, not the round-1 `967b1f97137bf6479c18c08e9dd6ffc4`, is
+  the citation basis for every measurement in this lane**; round 2 re-cited it in
+  `tools/patches/uber_apex_orb.py` (2 sites) and `tools/debug/b101_r99_record_diff.py`, each with an
+  explicit "do not re-cite the pre-merge md5" warning naming the `[37/44]`-vs-`[37/45]` tell.
+  ⚠️ **PRE-EXISTING, NOT THIS LANE'S TO REWRITE:** `967b1f97…` is also quoted as a measurement basis by
+  OTHER lanes' text now on `main` - `docs/WILL_RULINGS.md` lines ~1291 (R-99's own pre-implementation
+  analysis, authored on `main`), ~1568, ~1636, ~1693, ~1749, ~1787, ~1861, ~1968, ~2014, ~2062 (the
+  R-101..R-107 Enslaver/soul-rate lanes) and `tools/patches/weapon_gate_truth.py:14`. Those numbers do
+  reproduce, so nothing is wrong with them, but silently editing another lane's ledger text from this
+  lane is exactly the cross-lane edit the ledger law forbids. Flagged for the orchestrator, not touched.
+
+> ⚠️ **ROUND-1 STALE ARTIFACTS - CLEANED UP IN ROUND 2.** Round 1 committed five build logs
+> (12,341 lines) at the repo ROOT - `local_baseline_build.log`, `local_r99_build.log`,
+> `local_r99_postmerge.log`, `local_r99_rebuild.log`, `local_r99_reproduce.log`. They were NOT
+> gitignored (`git check-ignore -v local_r99_build.log` -> no match; only `local/` is ignored), so the
+> `local_` prefix merely LOOKED ignored, and `main` carries none (`git ls-tree --name-only main | grep
+> -ci '\.log$'` -> 0). This violated the standing no-loose-files-in-repo-root rule. Round 2 removed all
+> five from the branch and moved the two that carry the load-bearing md5 lines under
+> `docs/reports/b101_logs/`. Two stale `local/*.arz` copies were also left on disk under authoritative
+> names - `local/BASELINE_main_5e35d87.arz` (`967b1f97…`, a 44-module PRE-merge build, NOT a baseline of
+> the tip) and `local/R99_BUILT.arz` (`f99d5c83…`, which must NOT be shipped). Both were renamed with a
+> `STALE_DO_NOT_SHIP_` prefix in round 2 (`local/` is gitignored, so this is a disk action only) to
+> disarm the stale-copy foot-gun CLAUDE.md's "Deploy hazard" section documents.
+
+**WHAT IT IS.** R-99, ratified by Will the same day: every Toxeus variant gets the apex orb
+`genericbossorb_05`, low-level one included. b94 had wired only the two FOUGHT champions from a
+hand-typed pair while b98 built the Endless Hunt in a parallel lane, so **the champion Will has
+actually fought shipped with no `treasureProxyName` at all for two waves**. The roster is now DERIVED
+from the database (`uber_apex_orb.toxeus_roster`: path contains `toxeus` AND `templateName` is
+`Monster.tpl`), pinned, and cross-checked a second way by display tag, so a future variant REDS the
+build instead of being silently dropped. Full detail: `docs/reports/b101_toxeus_apex_roster.md` and
+R-99 in `docs/WILL_RULINGS.md`.
+
+**THE ROSTER, read back OUT of the built arz** (charLevels re-measured, all match R-99's own table):
+
+| record | charLevel n/e/l | rank | before | after |
+|---|---|---|---|---|
+| `um_toxeus_enslaver_99` | 40/68/100 | Boss | `genericbossorb_05` | unchanged (b94) |
+| `um_bloodtoxeus_99` | 40/68/100 | Boss | `genericbossorb_05` | unchanged (b94) |
+| `um_toxeus_hunt_99` | 40/68/100 | Boss | **field absent** | `genericbossorb_05` |
+| `um_toxeus_hunt_l_99` | 40/68/100 | Boss | **field absent** | `genericbossorb_05` |
+| `um_toxeus_99` | 33/66/99 | Hero | **field absent** | `genericbossorb_05` |
+| `um_toxeus_21` | 25/45/65 | Boss | `genericbossorb_01` | `genericbossorb_05` |
+| `z_toxeus` | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+| `old_z_toxeus` | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+
+**THE GATE (CLAUDE.md law #4).** `verify()` no longer hardcodes two champions and planted `NEGATIVE 2`
+no longer asserts "a THIRD record must FAIL" (a COUNT, which R-99 makes wrong). The invariant is
+restated as a **set equality tested in both directions** - every roster record on orb05, AND the orb05
+carrier set EXACTLY the roster - which is unweakened and is what keeps R-99's opening reassurance ("we
+did NOT raise all the champions") true.
+
+**PROOFS (commands + measured results; nothing estimated):**
+- `py tools/build_svc_database.py ...` **exit 0**; `--- [37/45] uber_apex_orb ---`,
+  `uber_apex_orb: modified 20 record(s), 0 tag(s)`, `blast radius genericbossorb_04.dbr: 21 -> 19
+  consumer(s)`, `blast radius genericbossorb_01.dbr: 11 -> 10 consumer(s)`, and
+  `[uber_apex_orb] verify OK: the DERIVED Toxeus roster is 8 record(s) ... EVERY one is on
+  genericbossorb_05, with the orb05 carrier set EXACTLY equal to it (no scope creep)`.
+- `py tools/debug/b101_r99_record_diff.py <baseline> <built>` -> **exit 0, `0 ADDED / 0 REMOVED /
+  6 CHANGED`**, every one a derived-roster record whose ONLY moved field is `treasureProxyName` ->
+  `genericbossorb_05`. **Zero unattributed changes.** 0 REMOVED means b98's 15 records and b99's
+  `summon_sargoth` + pets all survived.
+- `py tools/debug/b101_r99_proof_table.py <built> <baseline>` -> **`genericbossorb_04` BYTE-UNCHANGED**:
+  the proxy plus its 3 pools, 3 chests and 3 loot tables = 10 records identical field-by-field,
+  value-by-value, dtype-by-dtype; consumers **19 -> 19, nothing lost, nothing gained**, 0 Toxeus
+  records left on it, all 19 named in the report. `genericbossorb_01` byte-unchanged, consumers
+  **11 -> 10**, losing exactly `um_toxeus_21`.
+- **R-48/R-91 independence PROVEN:** `chanceToEquipFinger2` bit-identical to baseline on all 8 roster
+  records - three fought champions 100.0, `um_toxeus_99` 66.0, `um_toxeus_21` 50.0, zzdev pair 0.0.
+- `py tools/debug/negtest_uber_apex_orb.py <built>` -> **`29/29 subtests behaved as specified`, exit 0,
+  0 skipped**, including **one negative per roster record** proving the gate fires if that record loses
+  its orb, plus R1-R5 (pin drift both ways, the second derivation, the false-positive pin proven
+  load-bearing, and orb01 stripped below its floor).
+- The new `verify()` **reds the pre-R-99 baseline** with exactly the 6 gaps R-99 enumerated.
+- `py tools/debug/b101_toxeus_placement_census.py <built> <Levels.arc>` -> 2,282 levels walked, 0
+  unparsed `0x05` sections, 17,348 distinct placed paths / 491,885 instances (index validated before
+  any conclusion drawn).
+
+**ONE REAL DEFECT FOUND IN THIS LANE'S OWN WORK, fixed here:**
+1. **The name-tag cross-check was hollow.** negtest returned 28/29 with `negative R3 ... gate=PASS`.
+   Real gate hole: the second derivation filtered on `Monster.tpl`, but R3's donor is a `Typhon2.tpl`
+   boss - so a boss on a bespoke template could wear a champion's display tag and both derivations
+   would miss it. Widened to every template except `Pet.tpl` after MEASURING that it adds zero live
+   hits. Now 29/29.
+
+**A SECOND "DEFECT" ROUND 1 REPORTED HERE WAS A MISDIAGNOSIS AND IS WITHDRAWN.** Round 1 claimed
+"this branch's merge `4748e93` silently deleted 101 lines of `docs/WILL_RULINGS.md`". It did not; the
+independent vet caught the error and round 2 reproduced every disproving command (`git diff e014ef8
+4748e93 --numstat -- docs/WILL_RULINGS.md` -> empty; the R-100 text was authored on `main` 5h21m
+after that merge; `git diff 60a3bfb~1 60a3bfb --numstat` -> `101 0`, an ADD of main's newer text, not
+a restore). Nothing of Will's was ever lost. Full retraction with commands: the R-100 section of
+`docs/WILL_RULINGS.md`. The transferable lesson is registered as `BL-b101-DEBT-9`: use three-dot
+`main...HEAD`, never two-dot `main..HEAD`, before accusing a commit of losing anything.
+
+**NOT DONE / KNOWN GAPS - all NINE registered as `BL-b101-DEBT-1..9` below:** nothing in this lane was
+deployed or played, so no in-game confirmation exists; `z_toxeus` turned out to be live rather than
+inert and Will should be told; `um_toxeus_99` and `old_z_toxeus` are dormant; there are two live R-100s
+plus a contested `b100` wave label, neither resolved here; the name-tag cross-check has a measured
+residual blind spot (a Toxeus outside the namespace with a BRAND-NEW display tag - empty today,
+`DEBT-8`); and round 1's false merge-loss narrative is retracted with the process rule recorded as
+`DEBT-9`.
+
+
 ## B100 GATE RECORD - WEAPON/HAND GATE HONESTY: Blade Mastery + Parry tooltips (2026-07-29, branch `fix/blade-mastery-truth`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. NOTHING WAS WRITTEN TO ANY `CustomMaps\*` TARGET, no Steam action, no TQ/Steam
@@ -1978,6 +2160,95 @@ along automatically when the structural cluster-relocation fix lands.
 > way. Cross-reference docs/WILL_RULINGS.md for the ruling each item traces back to (R-numbers below).
 > Do not silently drop an item off this list without checking it actually shipped (RETIREMENT
 > PROTOCOL, CLAUDE.md law #2).
+
+**b101 R-99 all-Toxeus apex orb (2026-07-29, `feat/toxeus-apex-roster`) - NEW.** Every item below is
+something this lane could NOT close itself, stated so it is a known gap and not a silent one.
+- **BL-b101-DEBT-1 (P1, LEDGER HYGIENE - owner: orchestrator):** `docs/WILL_RULINGS.md` carries **FOUR
+  DUPLICATED RULING NUMBERS**. Measured on the post-merge file (78 ruling definitions, highest R-103)
+  by counting every `^##\s*R-<n>\s*\[` and `^-\s*R-<n>\s*\[`:
+
+  | number | the two live claimants |
+  |---|---|
+  | **R-72** | `IMPLEMENTED b94 (feat/leinth-wave)` = the orb-calibre ruling **vs** `IMPLEMENTED b96 (feat/vashkarr-soul)` = Vashkarr's soul retune. **PRE-EXISTING, and it is a live trap:** `tools/patches/uber_apex_orb.py` cites "R-72" throughout meaning the orb one, so a reader who lands on the Vashkarr R-72 is sent to the wrong ruling. A disambiguating note was added to that docstring. |
+  | **R-100** | `IMPLEMENTED b100 (fix/blade-mastery-truth)` **vs** `## R-100 PLAY-SESSION BATCH` (Will's verbatim 19 items) |
+  | **R-101** | blade-mastery's open weapon-gate balance question **vs** main's `P0 - our uber clones inherited their donors' QUEST-ITEM drops` |
+  | **R-102** | blade-mastery's Parry re-point **vs** main's Enslaver-green-glow lane |
+
+  All three of the 100-decade collisions are same-day parallel-lane claims. b101 flagged R-100 in the
+  file but deliberately renumbered NOTHING: reassigning another lane's ruling number from a third lane
+  is the same class of silent cross-lane edit the ledger law exists to prevent. The file's own
+  `fix/debt-docs` precedent (the INCUMBENT keeps the number, the other lane's rulings move wholesale to
+  the next free decade) is the tie-breaker to apply. Related: the **wave label `b100` is contested**
+  three ways (`fix/blade-mastery-truth`'s gate record, `feat/sanctuary-populate`'s recon doc, and this
+  lane's round-1 filenames, which were renamed to `b101`). Owner/trigger: orchestrator picks the
+  incumbent for each number, then a single hygiene pass renumbers the losers wholesale.
+- **BL-b101-DEBT-2 (P1, WILL SHOULD BE TOLD - the ruling assumed the opposite):** R-99 was ratified
+  believing the two `zzdev` dummies were unreachable leftovers, so wiring them would be inert. It is
+  **not inert**. Re-measured multi-hop, `z_arthur` has exactly ONE static `0x05` instance in
+  `XPack\Levels\Area01_Rhodes\Undergrounds\ScrabledEggs_Floor06.lvl` and its `actorToSpawnOnDeath` is
+  `z_toxeus`, so killing it spawns a Champion-rank Act-1 dev dummy (charLevel 40/56/71) that now drops
+  the **Act-4 apex orb**. Will's words pre-authorise it ("if some good items drop since someone got
+  lucky ... so be it") so nothing was reversed, but he made that call on a stated premise that turned
+  out false. Owner/trigger: surface it to Will; he may want `z_toxeus` on a scaled tier or the placed
+  `z_arthur` left alone. RETIREMENT PROTOCOL: neither record may be deleted or blanked.
+- **BL-b101-DEBT-3 (P2, LAUNCH-GATED, cannot be closed without a launch):** static placement proves
+  `z_arthur` is IN that Rhodes underground level; it does **not** prove a player can walk to that spot
+  or that the engine spawns it there. Nothing in this lane claims in-game reachability either way.
+  Owner/trigger: an in-game visit to `ScrabledEggs_Floor06` after a deploy.
+- **BL-b101-DEBT-4 (P2, dormant-by-map, NOT a defect to "fix" in the db):** `um_toxeus_99` (the
+  inherited SP Toxeus, Hero, 33/66/99) and `old_z_toxeus` have **0 static placements, 0 db referrers and
+  no placed ancestor within 3 hops** in `Levels.arc` `fc0adcc0713839a685b32d6e122653be`. Their orbs are
+  wired per "all versions" and are simply dormant until a map/pool lane places or pools them. Recorded
+  so the dormancy is known. Owner/trigger: whichever lane decides `um_toxeus_99` deserves a spawn.
+- **BL-b101-DEBT-5 (P2, unverified in game):** nothing in this lane was deployed or played. The orb
+  drop itself - that the Endless Hunt now actually drops the apex orb on kill - is **not** in-game
+  confirmed. Note this is the fix for two items on Will's own R-100 play list (#6 "he didnt drop an
+  orb"), and R-100's own analysis says those evaporate on the first coupled deploy. Owner/trigger:
+  orchestrator deploy + Will re-fight.
+- **BL-b101-DEBT-6 (P2, census scope, PRE-EXISTING pattern):** the placement census walks up to
+  `_MAX_HOPS = 3` and reads only the STATIC `0x05` axis plus db referrers. A monster reachable only via
+  a >3-hop chain, or spawned by quest script rather than a record reference, would still read as INERT.
+  Adequate for this map's deepest measured chain (2) but it is a bound, not a proof of absence.
+  Owner/trigger: raise `_MAX_HOPS` if a later lane finds a deeper chain.
+
+- **BL-b101-DEBT-7 (P2, CROSS-LANE INTERACTION with R-105 - compatible, but two quoted numbers will go
+  stale):** `main` @ `1897557` landed **R-105**, which ratifies moving soul equip/drop rates of **66%
+  and 50% both to 33%** across 734 creatures. Two of this lane's eight roster records are in that
+  cohort: `um_toxeus_99` (66.0) and `um_toxeus_21` (50.0). **The gate is compatible by construction and
+  needs no change** - `apply()`'s R-48/R-91 guard is a before/after DIFF inside a single build, so it
+  tolerates any rate, and `verify()` asserts the literal `100.0` only on the three FOUGHT champions,
+  which is exactly the carve-out R-105 must preserve. What DOES go stale is documentation: the `66.0`
+  and `50.0` figures in R-99's implemented table, in `docs/reports/b101_toxeus_apex_roster.md` §5.5 and
+  in this gate record are point-in-time measurements of the pre-R-105 db. Owner/trigger: whoever
+  implements R-105 should re-run `py tools/debug/b101_r99_proof_table.py <built> <baseline>` and update
+  those three tables in the same commit, and must NOT let the sweep touch the three 100% champions.
+- **BL-b101-DEBT-8 (P2, RESIDUAL GATE BOUND - measured, empty today, raised by the independent vet):**
+  the roster's SECOND (name-tag) derivation builds its tag set FROM the path-derived roster, so it can
+  only catch a Toxeus authored outside the `toxeus` path namespace that **REUSES** one of the four
+  roster display tags. A Toxeus outside the namespace that also invents a **NEW** tag is invisible to
+  BOTH derivations. Measured, not assumed, by planting both cases against the built arz
+  (`6a3a491db546b603c52132237c40aa63`): a clone outside the namespace on `genericbossorb_04` given
+  `tagMonsterHemorrheus` -> `gate=FAIL` (caught); the same clone given a fresh
+  `tagSVCMonsterToxeusR2Bound` -> **`gate=PASS`** (blind). **The blind spot is EMPTY today**, checked
+  three independent ways over all 51,124 records: zero records outside the namespace carry a
+  `*toxeus*` `controller`, zero wear a `*toxeus*` soul in any `lootFinger2Item*` slot, and zero point
+  at `genericbossorb_05`. So this is a bound on the GATE, not a defect in the shipped bytes. Closing it
+  needs a THIRD derivation keyed on something a new variant cannot rename away (the controller, or the
+  soul it wears); deliberately not attempted in this lane because it is outside R-99 and would be an
+  unmeasured widening. Owner/trigger: the next lane that mints a Toxeus variant, or any lane hardening
+  this gate. Documented at the two claim sites in `tools/patches/uber_apex_orb.py` (module docstring
+  cross-check #2, and `_roster_by_name_tag`'s docstring).
+- **BL-b101-DEBT-9 (P2, PROCESS - born from this lane's own false incident report):** round 1 of this
+  lane read `git diff main..HEAD --numstat` as evidence that a merge had deleted 101 lines of
+  `docs/WILL_RULINGS.md`, and wrote that accusation into the design law of record, this gate record and
+  the wave report. **It was false** (full retraction with every disproving command: the R-100 section of
+  `docs/WILL_RULINGS.md` and §7 of `docs/reports/b101_toxeus_apex_roster.md`). Two-dot
+  `git diff A..B --numstat` renders a file that `A` added after the merge base as pure DELETIONS on
+  `B`'s side. **Rule to bake into briefs and vets:** use three-dot `main...HEAD` for branch diffs, and
+  before accusing any commit of losing content, check that commit's OWN `--numstat` against BOTH its
+  parents (`git diff <parent1> <merge> --numstat -- <file>`) and confirm the content existed on at
+  least one side at that time (`git show <commit>:<file>`). Owner/trigger: any lane or vet writing an
+  incident narrative about lost content.
 
 **b100 weapon/hand gate honesty (2026-07-29, `fix/blade-mastery-truth`) - NEW.** Found by the
 standing sibling sweep run alongside Will's Blade Mastery question (method: for every skill record

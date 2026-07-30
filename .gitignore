@@ -17,6 +17,12 @@ work/
 /test_*.tok
 /tools/catalog_output.txt
 /scratchpad/
+# Build logs at the repo ROOT. b101 committed 12,341 lines of them because the
+# `local_` PREFIX looks ignored while only the `local/` DIRECTORY actually is
+# (`git check-ignore -v local_r99_build.log` -> no match). Agent scratch belongs in
+# the session scratchpad; a log worth keeping goes under docs/reports/.
+/*.log
+/local_*
 
 # build-speed: prefix snapshot cache (regenerable, per-machine; never commit)
 .build_cache/
