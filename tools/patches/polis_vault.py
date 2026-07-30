@@ -107,9 +107,49 @@ _SK_DARK_COVENANT = r'records\skills\spirit\drxdarkcovenant.dbr'
 _SK_DEATH_CHILL = r'records\skills\spirit\drxdeathchillaura.dbr'
 _AC_ON_ATTACK = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr'
 
-# Guaranteed high-value loot donors for the vault chests (confirmed present).
-_GUAR_UNIQUE = M._OBS_GUAR_UNIQUE   # records\xpack\item\loottables\weapons\mastertables\unique_1h_n01.dbr
-_GUAR_RELIC = M._OBS_GUAR_RELIC     # records\xpack\item\loottables\relics\01_act4_relics.dbr
+# ── R-100 #17 (Will 2026-07-29), THE DIFFICULTY-TIER MIS-WIRE ────────────────
+# WILL, VERBATIM: "also his chests on epic are dropping 'essence' like 'essence
+# of the chill of tartarus' which should only drop on normal instead of dropping
+# the epic version which starts with 'embodiment' like 'embodiment of the chill
+# of tartarus'."
+#
+# ROOT CAUSE, measured (tools/debug/probe_gaoler_chests.py +
+# probe_relic_difficulty_tiers.py). The vault's loot tables are clones of the DRX
+# mega-chest table `loottable_hidden_bloodcave_03`, whose EVERY slot is
+# legendary tier: `..._l01` weapons/armour/jewellery and `03_act4_relics`. On top
+# of that clone this module injected its GUARANTEED slots from the monolith's
+# shared `_OBS_GUAR_*` donors, and both of those are pinned to the NORMAL tier:
+#     unique_1h_n01.dbr   <- `_n01` = normal-tier uniques
+#     01_act4_relics.dbr  <- `01_`  = normal-tier relics ("Essence of ...")
+# The `01_/02_/03_` prefix IS the tier: 01_act4_relics lists `01_Act*` relics,
+# 02_ lists `02_Act*`, 03_ lists `03_Act*` (measured on the base-game arz). So
+# the guaranteed slot - the one slot that fires at 100% - handed out normal-tier
+# relics on every difficulty while the rest of the same chest paid legendary.
+#
+# WHY NOT A DIFFICULTY-INDEXED ARRAY: on a Monster.tpl record the loot slots ARE
+# difficulty-indexed 3-arrays (2,703 native instances of
+# `lootMisc2Item1 = [01_act4, 02_act4, 03_act4]`, e.g. on this very Gaoler's own
+# donor xsecrethero_wardenofsouls_48). On a CONTAINER's loot table they are NOT:
+# zero `lootNNameM` fields anywhere in the 74,013-record base game carry more
+# than one value. A container's tier is fixed by the tables it names, and the
+# base game ships a separate chest record per tier
+# (goldenchest_normal_/epic_/legendary_01). So the in-scope fix is to stop the
+# guaranteed slot from being the odd one out, and match it to the tier the rest
+# of the chest already pays. A truly per-difficulty vault needs 3 chest records
+# per spot plus map-side placement and is registered as BL-b102-DEBT-3.
+#
+# SHARED-SYMBOL LAW: `M._OBS_GUAR_UNIQUE` / `M._OBS_GUAR_RELIC` have two OTHER
+# carriers inside the monolith (apply_svc_patches lines ~15409 and ~16715, the
+# other dedicated-hoard builders). They are deliberately NOT edited here - this
+# module now names its own tier-correct donors, and the same mis-wire in those
+# two carriers is reported, not silently retuned under a Gaoler ticket
+# (docs/BACKLOG.md BL-b102-DEBT-4).
+_GUAR_UNIQUE = r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr'
+_GUAR_RELIC = r'records\xpack\item\loottables\relics\03_act4_relics.dbr'
+# The normal-tier donors this module used to inject, kept NAMED (not deleted) so
+# the gate below can prove they are gone from the vault's tables.
+_GUAR_UNIQUE_WRONG = M._OBS_GUAR_UNIQUE   # ...\mastertables\unique_1h_n01.dbr
+_GUAR_RELIC_WRONG = M._OBS_GUAR_RELIC     # ...\relics\01_act4_relics.dbr
 
 # Text tags.
 _TAG_G1 = 'tagSVCMonsterPolisGaoler'
@@ -421,3 +461,90 @@ def apply(db, tags):
     _build_horde(db)
     _build_vault(db, tags)
     print("=== polis_vault done ===\n")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# R-100 #17 GATE. Runs in the registry's POST-FINALIZATION verify phase, i.e.
+# over the FINAL assembled db, so a later writer cannot re-introduce the
+# normal-tier donor behind this module's back. Negative tests:
+# tools/debug/negtest_gaoler_chests.py.
+# ─────────────────────────────────────────────────────────────────────────────
+_NORMAL_TIER_MARKERS = ('_n01.dbr', '\\01_act4_relics.dbr')
+
+
+def _all_loot_strings(db, rec):
+    ff = db.get_fields(rec) or {}
+    out = []
+    for k, tf in ff.items():
+        b = k.split('###')[0]
+        if not b.lower().startswith('loot'):
+            continue
+        for v in tf.values:
+            if isinstance(v, str) and v:
+                out.append((b, v))
+    return out
+
+
+def verify(db, tags):
+    """T1  all 5 chest records + 5 loot tables still EXIST (retirement protocol:
+            halving the count withdrew PLACEMENTS, it never deleted a record).
+        T2  no vault loot table names a NORMAL-tier donor anywhere (R-100 #17:
+            "essence of ..." on epic). Both markers are checked, not just the
+            relic one, because the guaranteed unique slot had the same defect.
+        T3  each chest still points at its own loot table (5 independent rolls).
+        T4  the guaranteed slot is still GUARANTEED (loot3Chance == 100) - the
+            tier fix must not quietly turn the payoff slot off.
+        T5  the map lane places exactly TWO of the five, and they are 01 and 03
+            (the apex). Source-level assertion against build_section_surgery's
+            own B41_SPECS, so the DB half and the map half cannot drift apart.
+    """
+    problems = []
+    for chest, loot in zip(_CHEST, _CHEST_LOOT):
+        if not db.has_record(chest):
+            problems.append("T1 chest record MISSING (never delete): %s" % chest)
+            continue
+        if not db.has_record(loot):
+            problems.append("T1 loot table MISSING (never delete): %s" % loot)
+            continue
+        tv = db.get_field_value(chest, 'tables')
+        tv = tv[0] if isinstance(tv, list) and tv else tv
+        if str(tv or '').replace('/', '\\').lower() != loot.lower():
+            problems.append("T3 %s tables=%r, expected its own %s"
+                            % (chest, tv, loot))
+        ch3 = db.get_field_value(loot, 'loot3Chance')
+        ch3 = ch3[0] if isinstance(ch3, list) and ch3 else ch3
+        if ch3 is None or abs(float(ch3) - 100.0) > 0.01:
+            problems.append("T4 %s loot3Chance=%r, expected 100 (the guaranteed "
+                            "high-value slot)" % (loot, ch3))
+        for field, val in _all_loot_strings(db, loot):
+            vl = val.replace('/', '\\').lower()
+            for marker in _NORMAL_TIER_MARKERS:
+                if vl.endswith(marker):
+                    problems.append(
+                        "T2 %s :: %s = %s - NORMAL-tier donor inside a "
+                        "legendary-tier vault chest (R-100 #17: the 'essence "
+                        "of ...' bug)" % (loot, field, val))
+
+    # T5 - the map half
+    try:
+        import build_section_surgery as _bss
+        placed = [p.decode('latin-1') if isinstance(p, bytes) else str(p)
+                  for (p, *_rest) in _bss.B41_SPECS[_bss.B41_POLIS_KEY]]
+        chests = [p for p in placed if 'svc_polisvault_chest' in p.lower()]
+        want = ['svc_polisvault_chest_01', 'svc_polisvault_chest_03']
+        got = [p.replace('/', '\\').lower().rsplit('\\', 1)[-1].replace('.dbr', '')
+               for p in chests]
+        if got != want:
+            problems.append("T5 map places %r, R-100 #17 halved it to %r"
+                            % (got, want))
+    except Exception as exc:                      # pragma: no cover - import guard
+        problems.append("T5 could not read build_section_surgery.B41_SPECS: %s" % exc)
+
+    if problems:
+        for p in problems[:12]:
+            print("  POLIS VAULT GATE OFFENDER: %s" % p)
+        raise SystemExit("polis_vault gate FAILED: %d problem(s) (R-100 #17)"
+                         % len(problems))
+    print("  polis_vault gate PASS (R-100 #17): 5 chest records + 5 loot tables "
+          "intact, 0 normal-tier donors, guaranteed slots still 100%, map places "
+          "exactly chest_01 + the apex chest_03.")

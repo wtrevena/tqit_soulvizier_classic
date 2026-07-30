@@ -1209,10 +1209,26 @@ _B41_ROT = {'rot': Q_LEINTH_EXEMPLAR_ROT}
 B41_SPECS = {
     # 1) POLIS DAEMONAI warden cage (Will's #1): {^r}Alkyoneus the Soul-Gaoler + a 6-body
     #    daemon-jailer horde (2 native Behemoth jailers + Limos + Melinoe + Gigantes
-    #    Vindicator + Gigantes lieutenant) + 5 boss-locked Majestic Chests. 12 appends,
-    #    0x05 count 75 -> 87. Guardian y=3.2; horde/chests y=3.6. The native
-    #    z_wardenchestc (the old skeleton chest) is KEPT (zero native edits -> 6 chests
-    #    total); the exactly-5 removal is a gated option NOT taken in this pass.
+    #    Vindicator + Gigantes lieutenant) + boss-locked Majestic Chests. Guardian
+    #    y=3.2; horde/chests y=3.6. The native z_wardenchestc (the old skeleton chest)
+    #    is KEPT (zero native edits).
+    #
+    #    ── R-100 #17 (Will 2026-07-29): "The Soul Gaoler boss chests are too much,
+    #    we need to cut the number of chests in half for him (round down if needed)."
+    #    HALVED: 5 majestic chests -> 2 (chest_01 and the APEX chest_03). Both
+    #    readings of "his chests" land on the same placement:
+    #        ours only : 5 -> floor(5/2) = 2
+    #        everything the player sees in the room (5 + the native z_wardenchestc):
+    #                    6 -> 3, i.e. 2 of ours + the native one, still exactly half.
+    #    WHICH TWO, and why: chest_03 is the APEX chest (the goldenchest_legendary_02
+    #    donor, the only one with BOTH a guaranteed unique and a guaranteed relic) and
+    #    sits dead centre in front of the Gaoler - it is the encounter's payoff and is
+    #    never the one to cut. chest_01 keeps the second distinct loot theme (the
+    #    guaranteed legendary weapon). 0x05 appends 12 -> 9.
+    #    RETIREMENT PROTOCOL: chest records 02/04/05 and their loot tables are NOT
+    #    deleted or blanked - polis_vault.py still authors all five. Only three
+    #    PLACEMENTS are withdrawn, so restoring any of them is a one-line change and
+    #    no design intent is destroyed.
     B41_POLIS_KEY: [
         (b'records\\drxmap\\proxy\\q_polisgaoler_lone.dbr',                     72.1, 3.2, 37.1, _B41_ROT),
         (b'records\\xpack\\quests\\proxies\\scripted\\ss_warden_behemoth.dbr',  66.0, 3.6, 37.5, _B41_ROT),
@@ -1222,10 +1238,7 @@ B41_SPECS = {
         (b'records\\drxmap\\proxy\\q_polis_vindicator.dbr',                     66.4, 3.6, 36.2, _B41_ROT),
         (b'records\\drxmap\\proxy\\q_polis_lieutenant.dbr',                     77.5, 3.6, 36.2, _B41_ROT),
         (b'records\\drxitem\\container\\svc_polisvault_chest_01.dbr',           65.2, 3.6, 32.6, _B41_ROT),
-        (b'records\\drxitem\\container\\svc_polisvault_chest_02.dbr',           68.5, 3.6, 30.5, _B41_ROT),
         (b'records\\drxitem\\container\\svc_polisvault_chest_03.dbr',           72.1, 3.6, 29.5, _B41_ROT),
-        (b'records\\drxitem\\container\\svc_polisvault_chest_04.dbr',           75.5, 3.6, 30.5, _B41_ROT),
-        (b'records\\drxitem\\container\\svc_polisvault_chest_05.dbr',           78.8, 3.6, 32.6, _B41_ROT),
     ],
     # 2) MENOETES, Marshal of the Dead - central hall Floor_03 (Y=11.5, native-confirmed
     #    to 0.01u). 1 marshal proxy (+2 machae grandmaster-archer champion escorts DB-side).
