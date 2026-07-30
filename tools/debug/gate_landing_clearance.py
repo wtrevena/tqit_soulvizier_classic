@@ -606,11 +606,11 @@ B41_PLACEMENTS = {
         ('ss_warden_behemoth', 78.2, 3.6, 37.5), ('q_polis_limos', 67.1, 3.6, 41.5),
         ('q_polis_bloodwitch', 77.1, 3.6, 41.5), ('q_polis_vindicator', 66.4, 3.6, 36.2),
         ('q_polis_lieutenant', 77.5, 3.6, 36.2),
+        # R-100 #17: chest count halved (5 -> 2). Records 02/04/05 still exist and
+        # are still authored by polis_vault.py; only their PLACEMENTS are withdrawn,
+        # so this list must stay in step with B41_SPECS in build_section_surgery.py.
         (r'drxitem\container\svc_polisvault_chest_01', 65.2, 3.6, 32.6),
-        (r'drxitem\container\svc_polisvault_chest_02', 68.5, 3.6, 30.5),
-        (r'drxitem\container\svc_polisvault_chest_03', 72.1, 3.6, 29.5),
-        (r'drxitem\container\svc_polisvault_chest_04', 75.5, 3.6, 30.5),
-        (r'drxitem\container\svc_polisvault_chest_05', 78.8, 3.6, 32.6)],
+        (r'drxitem\container\svc_polisvault_chest_03', 72.1, 3.6, 29.5)],
     'xpack/levels/area08_hadespalace/hadespalace_floor_03.lvl': [
         ('q_hadesmarshal_lone', 155.7, 11.5, 102.3)],
     'xpack/levels/area08_hadespalace/hadespalace_crystal_03.lvl': [

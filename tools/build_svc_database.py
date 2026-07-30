@@ -703,6 +703,207 @@ def soul_drop_rate(record_name, classification, random_pool_members,
     return placed_chance
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# R-105 / R-106 / R-107 (Will 2026-07-29): THE SOUL EQUIP/DROP RATE POLICY.
+#
+# WILL, VERBATIM (R-105): "no monsters should be at 66%. move all 66% and 50% to
+# 33%. Which ones are 25% or smaller? the ones that are smaller should be 33% I
+# think unless they are bosses at fixed locations? i think we said 25% for fixed
+# location bosses and 33% for non-fixed location bosses"
+# WILL, VERBATIM (R-106): "most of the monsters that have a soul are probably
+# trash monsters, only hero monsters should drop their soul"
+# WILL, VERBATIM (R-107): "yeah so the soul gaoler should not drop the soul just
+# the unbound final version"
+#
+# `chanceToEquipFinger2` does DOUBLE DUTY (R-104): it is the soul DROP rate AND a
+# monster POWER switch (an equipped soul applies its item properties). Every
+# number below is Will's, not a derivation.
+#
+# THE ONE CLASSIFIER. `ruled_soul_equip_rate()` is the single place that decides a
+# carrier's rate, and it derives the fixed-vs-non-fixed split from
+# `soul_drop_rate()` above (which derives it from `monsterClassification`, NEVER
+# from the record name or folder - the b97 vet caught drifted duplicate logic in
+# exactly this area, and the mummy priests classify Common despite a boss-ish
+# filename). It returns None for the cohorts Will has NOT ruled on, so a HELD
+# cohort can never be moved by accident.
+# ─────────────────────────────────────────────────────────────────────────────
+SOUL_RATE_FIXED_BOSS = 25.0    # R-105: fixed-location bosses
+SOUL_RATE_NONFIXED = 33.0      # R-105: everything else that drops a soul
+SOUL_RATE_COMMON = 0.0         # R-106: Common (trash) never drops a soul
+SOUL_RATE_R48_CHAMPION = 100.0  # R-48/R-90/R-91: the four fought Toxeus champions
+
+# R-105 ratified BY COUNT: "move all 66% and 50% to 33%. That is 734 creatures."
+SOUL_RATE_RATIFIED_COHORTS = (66.0, 50.0)
+
+# R-48 / R-90 / R-91: the four fixed-spawn Toxeus champions stay at 100. Not a
+# cohort - four named records.
+SOUL_RATE_R48_RECORDS = frozenset({
+    'um_toxeus_enslaver_99', 'um_bloodtoxeus_99',
+    'um_toxeus_hunt_99', 'um_toxeus_hunt_l_99',
+})
+
+# Fixed-location bosses named INDIVIDUALLY by a ruling, which the roster-driven
+# classifier cannot see (a `um_*` Boss record makes _soul_is_farmable_boss return
+# False by design, and they sit in mod PLACED proxies).
+#   um_polisgaoler_unbound_99 - R-107: "take the unbound form 66% -> 25% under
+#       R-105's fixed-boss rate".
+SOUL_RATE_FIXED_BOSS_PINS = frozenset({'um_polisgaoler_unbound_99'})
+
+# ⚠️ THE HEADS OF THREE TWO-FORM UBER CHAINS. They stay at 0 - NOT a defect.
+#
+# R-107, verbatim: "the soul gaoler should not drop the soul just the unbound
+# final version". R-107 explicitly RETRACTED the R-106 amendment's claim that the
+# base Gaoler's 0% was "a plain defect" - and the other two records that
+# amendment listed are the SAME SHAPE, measured
+# (tools/debug/probe_uber_transform_chains.py):
+#
+#   um_charon_ferryman_99  chance 0  -onDeath->  um_charonform2_ferryman_99 (drops)
+#   um_tantalus_99         chance 0  -onDeath->  um_tantalus_unbound_99     (drops)
+#   um_polisgaoler_99      chance 0  -onDeath->  um_polisgaoler_unbound_99  (drops)
+#
+# Each head carries its DONOR's soul and each terminal carries OURS, so raising a
+# head would make one encounter pay two different souls - exactly the Legion
+# defect class that legion_soul_stages + double_soul_rulings exist to stop. The
+# build proved it: raising these two failed double_soul_rulings.verify with
+# "legion_soul_stages distinct-soul roster ... expected exactly Charon 39/41/43 +
+# Hades 54". So R-106's amendment was wrong about these two for the same reason
+# R-107 says it was wrong about the Gaoler. All three heads are pinned at 0.
+SOUL_RATE_ZERO_PINS = frozenset({
+    'um_polisgaoler_99', 'um_charon_ferryman_99', 'um_tantalus_99',
+})
+
+# ⚠️ AN OLDER, STILL-STANDING WILL RULING THAT OUTRANKS THE RATE SWEEP HERE.
+# `tools/patches/double_soul_rulings.py` ruling (c): "CHARON 39/41/43 + HADES 54
+# - UNTOUCHED (Will's explicit ruling) ... explicitly NOT reduced ... This module
+# touches NONE of their records; verify() asserts a literal zero-diff (every
+# field on all 8 monster records)". That gate is field-level, so re-rating them
+# violates it - and it CAUGHT this sweep on the first gated build:
+#   "double_soul_rulings.verify FAIL: (c) Charon/Hades roster is NOT
+#    byte-identical to the pre-apply snapshot" listing boss_charon_39/41/43 and
+#    boss_hades_54.
+# R-105's COUNT ("that is 734 creatures") includes them, so the two rulings
+# genuinely disagree. A newer count does NOT silently overrule an older explicit
+# "untouched", so they are HELD at their shipped rate, visibly, and the conflict
+# goes back to Will (docs/BACKLOG.md BL-b102-DEBT-2). Gate invariant G2 asserts
+# these are the ONLY records left at 66.
+# The list mirrors double_soul_rulings._UNTOUCHED_RECORDS; verify_soul_drop_rates
+# cross-checks the two against each other so they cannot drift apart.
+SOUL_RATE_UNTOUCHABLE = frozenset({
+    'boss_charon_39', 'boss_charonform2_39',
+    'boss_charon_41', 'boss_charonform2_41',
+    'boss_charon_43', 'boss_charonform2_43',
+    'boss_hades_54', 'boss_hadesform2_54', 'boss_hadesform3_54',
+})
+
+# ⚠️ THE ONE PLACE R-105 CONTRADICTS ITSELF, MADE EXPLICIT SO THE CLASSIFIER IS
+# IDEMPOTENT. R-105 says BOTH "move all 66% and 50% to 33%. That is 734
+# creatures" (a COUNT that includes these) and "25% for fixed location bosses".
+# These are the carriers that sit on BOTH sides: they were in a ratified cohort
+# AND `_soul_is_farmable_boss` calls them fixed-location/25.
+#
+# WHY A NAMED LIST AND NOT A VALUE TEST. The ratified-cohort branch below keys on
+# `current`, so once such a record has been moved 66 -> 33 a SECOND evaluation no
+# longer sees 66 and falls through to soul_drop_rate() -> 25. That made
+# `ruled_soul_equip_rate` NON-IDEMPOTENT: the applier wrote 33 and the gate,
+# re-deriving from the SHIPPED value, demanded 25 - which is exactly how the
+# first fully-gated run of this wave failed (8 LAST-WRITER mismatches + the same
+# 8 as UNINTENDED golden-diffs). Naming them makes the second evaluation agree
+# with the first, and turns a silent value-dependent branch into a visible,
+# one-line-flippable roster: if Will rules "fixed-location bosses win over the
+# count", this frozenset becomes the list that returns SOUL_RATE_FIXED_BOSS.
+#
+# It is NOT typed from a guess: _apply_soul_rate_policy re-derives
+# {ratified cohort} ∧ {_soul_is_farmable_boss} - SOUL_RATE_UNTOUCHABLE from the
+# PRE-policy arz on every build and fails loud if it differs from this set, so a
+# newly-authored fixed-location boss landing in the 66/50 cohort cannot slip
+# through unnoticed - it stops the build and goes to Will.
+#
+# (The 4 UNTOUCHABLE records - boss_charon_39/41/43 + boss_hades_54 - are on the
+# same tension but are handled earlier by precedence and never move at all, so
+# they are deliberately NOT listed here; the derivation subtracts them.)
+SOUL_RATE_COUNT_OVER_CLASS = frozenset({
+    'boss_satyrshaman_55',      # base-game Olympian-arena act boss
+    'boss_coldworm50', 'boss_dagon_66',          # our placed ubers (records\test\)
+    'q_leinth_47', 'q_leinth_49', 'q_leinth_50',  # our placed Leinth trio
+    'murderbunny',                                # DRX crowheroes placed boss
+    'svc_um_hadesmarshal_80',                     # four_generals placed boss
+})
+
+
+def ruled_soul_equip_rate(record_name, classification, current,
+                          random_pool_members, placed_proxy_members):
+    """THE ruled `chanceToEquipFinger2` for one soul-carrying creature.
+
+    Returns a float target, or **None meaning HELD** - not ruled, do not touch.
+
+    Precedence (each line traceable to a verbatim ruling):
+      1. the four R-48 Toxeus champions            -> 100
+      2. R-107's explicit zero pin (base Gaoler)   -> 0
+      3. R-106: Common classification              -> 0   (15 carriers today)
+      4. R-107/R-106 fixed-boss pins               -> 25
+      5. R-106: Champion tier                      -> HELD (Will's open call,
+         172 carriers at 0 + 7 with a fractional rate)
+      6. unset classification                      -> HELD (never ruled)
+      7. already 0 and not a named 0% defect       -> HELD (the 210 hero-class
+         zeroes are a CONTENT lane: each needs a soul that suits the creature)
+      8. anything still live                       -> soul_drop_rate() with the
+         ruled numbers: 25 fixed-location boss, else 33.
+
+    NOTE on rule 8 vs the ratified count (BL-b102-DEBT-2, flagged for Will):
+    R-105 ratified "all 66% and 50% -> 33%, that is 734 creatures" - a COUNT -
+    but it ALSO says "25% for fixed location bosses". **TWELVE** of those 734 are
+    carriers `_soul_is_farmable_boss` calls fixed-location/25 (measured on the
+    baseline arz, not guessed): `boss_charon_39/41/43` + `boss_hades_54` (which
+    never move - rule 0 holds them under the older UNTOUCHED ruling) plus the
+    EIGHT in `SOUL_RATE_COUNT_OVER_CLASS`: `boss_satyrshaman_55`,
+    `boss_coldworm50`, `boss_dagon_66`, `q_leinth_47/49/50`, `murderbunny` and
+    `svc_um_hadesmarshal_80`. His COUNT wins for those eight, so they land on 33
+    with the rest of their cohort; every OTHER cohort (10%/5%/2%) goes through
+    the classifier, which is exactly what R-105's own table asked for (the 12
+    pharaoh honour guards -> 25, our non-fixed 5%/2% ubers -> 33). One line -
+    changing what SOUL_RATE_COUNT_OVER_CLASS returns - flips all eight.
+
+    ⚠️ THIS FUNCTION IS IDEMPOTENT AND MUST STAY THAT WAY. Rules 7 and 8 read
+    `current`, so the gate re-derives every verdict from the value that SHIPPED,
+    not from the pre-policy value the applier saw. Any new rule keyed on
+    `current` must therefore produce the SAME answer when fed its own output, or
+    the gate and the applier will disagree - which is precisely how the
+    count-vs-class set above was caught (8 LAST-WRITER mismatches on the first
+    fully-gated build of this wave, every one of them a record the applier had
+    correctly moved 66 -> 33 and the gate then demanded at 25).
+    """
+    mb = _soul_record_basename(record_name)
+    cls = str(classification or '').strip()
+    if mb in SOUL_RATE_UNTOUCHABLE:
+        return None          # older explicit "UNTOUCHED" ruling wins - see above
+    if mb in SOUL_RATE_R48_RECORDS:
+        return SOUL_RATE_R48_CHAMPION
+    if mb in SOUL_RATE_ZERO_PINS:
+        return SOUL_RATE_COMMON
+    if cls.lower() == 'common':
+        return SOUL_RATE_COMMON
+    if mb in SOUL_RATE_FIXED_BOSS_PINS:
+        return SOUL_RATE_FIXED_BOSS
+    if cls.lower() == 'champion':
+        return None
+    if not cls:
+        return None
+    # IDEMPOTENCE PIN - must precede BOTH the value-keyed ratified-cohort test
+    # below and the soul_drop_rate() fallthrough, because those two disagree for
+    # exactly this set and the first one only fires while `current` is still 66/50.
+    if mb in SOUL_RATE_COUNT_OVER_CLASS:
+        return SOUL_RATE_NONFIXED
+    if any(abs(float(current) - c) < 0.01 for c in SOUL_RATE_RATIFIED_COHORTS):
+        return SOUL_RATE_NONFIXED
+    if float(current) <= 0.0:
+        return None
+    return soul_drop_rate(record_name, cls,
+                          random_pool_members, placed_proxy_members,
+                          boss_chance=SOUL_RATE_FIXED_BOSS,
+                          random_chance=SOUL_RATE_NONFIXED,
+                          placed_chance=SOUL_RATE_NONFIXED)
+
+
 def wire_souls_to_monsters(db: ArzDatabase, boss_chance=25.0, random_chance=50.0,
                            placed_chance=66.0, rare_chance=None):
     """Wire orphaned soul items to matching monster records.
@@ -3989,7 +4190,9 @@ def main():
     # change the mode - so a typo can never ship the wrong drop rates):
     #   SVC_TESTING_DROPS=1   -> force 100% drops (testing).           [opt-in]
     #   SVC_RELEASE_DROPS=0   -> force 100% drops (testing).  (legacy inverse)
-    #   (unset / SVC_RELEASE_DROPS=1) -> tuned 66%/25% RELEASE rates.  [default]
+    #   (unset / SVC_RELEASE_DROPS=1) -> the R-105/R-106/R-107 RELEASE rates
+    #                                    (33 non-fixed / 25 fixed boss / 0 Common
+    #                                    / 100 the four R-48 champions). [default]
     # SVC_RELEASE_DROPS is kept for backward compatibility with existing scripts
     # and docs; SVC_TESTING_DROPS is the new, clearer way to ask for a test build.
     _TRUE = ('1', 'true', 'yes', 'on')
@@ -4029,11 +4232,13 @@ def main():
     if force_full_drops:
         print("*** TESTING BUILD: soul drops FORCED to 100% "
               f"({_reason}) ***")
-        print("*** For the RELEASE .arz (tuned 66%/25%), build with NO override "
+        print("*** For the RELEASE .arz (R-105 rates), build with NO override "
               "(or SVC_RELEASE_DROPS=1). ***")
     else:
-        print("*** RELEASE BUILD (repo default): tuned soul drop rates kept "
-              "(66% Hero/Quest, 25% Boss). ***")
+        print("*** RELEASE BUILD (repo default): R-105/R-106/R-107 soul rates "
+              f"({SOUL_RATE_NONFIXED:.0f}% non-fixed, {SOUL_RATE_FIXED_BOSS:.0f}% "
+              f"fixed-location boss, {SOUL_RATE_COMMON:.0f}% Common, "
+              f"{SOUL_RATE_R48_CHAMPION:.0f}% the four R-48 Toxeus champions). ***")
         print("*** For a 100% test build, set SVC_TESTING_DROPS=1. ***")
     print("=" * 70)
     # ── patches-registry (build37) hook ───────────────────────────────────────

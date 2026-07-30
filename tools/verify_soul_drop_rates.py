@@ -1,6 +1,25 @@
 """
-LAST-WRITER verification gate for the soul drop-rate split (Will 2026-07-14:
-"Cut all soul drop rates for randomly spawning monsters to 50% from current 66%").
+LAST-WRITER verification gate for the soul equip/drop RATE POLICY.
+
+CURRENT LAW: R-105 / R-106 / R-107 (Will, 2026-07-29) - 33% for every non-fixed
+carrier, 25% for fixed-location bosses, 0% for Common (trash), 100% for the four
+fought Toxeus champions (R-48/R-90/R-91). This SUPERSEDES the 66/50/25 split the
+gate was originally written for (Will 2026-07-14), which is why the historical
+notes below still speak in 66/50 terms - they document WHY the gate is shaped
+this way (LAST-WRITER, not a replay), not what the rates are.
+
+The gate has two independent halves:
+  1. PER-RECORD: the value actually in the arz must equal
+     build_svc_database.ruled_soul_equip_rate() - the ONE shared classifier -
+     for every record it rules, and must be UNCHANGED for every record it HOLDS.
+  2. WHOLE-COHORT (`_check_cohorts`): the shape of the shipped distribution vs
+     the rulings' own counts - no Common above 0, the 66/50 cohorts empty,
+     exactly the four champions at 100, the named fixed-boss pins at 25, the
+     base Gaoler at 0, all 12 pharaoh honour guards at 25, no stray unruled
+     rate, and the HELD set still exactly the tiers Will has not ruled on.
+     Seven planted negatives prove half 2 reds, plus a positive control.
+
+--- historical context (why this gate is LAST-WRITER) ---
 
 ROUND 2 REWRITE (vet NO-GO). Round 1's gate was a dry-run REPLAY over the
 upstream golden arz that modeled ONLY wire_souls_to_monsters' own delta:
@@ -41,7 +60,15 @@ import apply_svc_patches as asp
 
 DEFAULT_ARZ = HERE.parent / 'work' / 'SoulvizierClassic' / 'Database' / 'SoulvizierClassic.arz'
 
-RANDOM_CHANCE, PLACED_CHANCE, BOSS_CHANCE = 50.0, 66.0, 25.0
+# R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDED the 50/66/25 split this gate was
+# born for: every non-fixed carrier is 33, fixed-location bosses stay 25, Common
+# is 0, the four R-48 Toxeus champions stay 100. The gate now asks
+# build_svc_database.ruled_soul_equip_rate() - the ONE shared classifier - what
+# each record SHOULD be, and additionally asserts the whole-cohort invariants
+# (below) that a per-record check is structurally blind to.
+RANDOM_CHANCE, PLACED_CHANCE, BOSS_CHANCE = (bsd.SOUL_RATE_NONFIXED,
+                                             bsd.SOUL_RATE_NONFIXED,
+                                             bsd.SOUL_RATE_FIXED_BOSS)
 
 # create_uber_souls.py's exclusive output directory - only present in a REAL
 # build (it is created by the build pipeline, never shipped in any upstream
@@ -107,32 +134,35 @@ def _require_real_build(db):
 def _gather(db):
     """Collect (name, cls, cur, expected, klass) for every soul-dropping
     creature in `db`. `cur` is the ACTUAL value stored in this arz (whichever
-    writer ran last); `expected` is what soul_drop_rate() says it should be
-    IF the drop is enabled at all (cur>0) - it has no opinion on gating."""
+    writer ran last); `expected` is what the R-105/R-106/R-107 policy
+    (build_svc_database.ruled_soul_equip_rate) says it must be. A HELD record
+    (the policy returns None: the Champion tier, unset classifications, and the
+    hero-class 0% roster that is a CONTENT lane) gets expected == cur and a
+    klass suffixed `+HELD`, so it is visible and can never be silently moved.
+
+    ROSTER: apply_svc_patches._soul_carrier_roster - the SAME roster the applier
+    writes - so the gate and the applier can never disagree about who is in
+    scope. The old `_is_creature` path scope saw 1,279 of the 1,722 carriers.
+    """
     random_members, placed_members = bsd.soul_spawn_provenance_sets(db)
     recs = []
-    for name in db.record_names():
-        if not _is_creature(name):
-            continue
-        f = db.get_fields(name)
-        if not f or not _has_soul(f):
-            continue
-        cls = str(_fv(f, 'monsterClassification') or '')
-        cur = _chance(f)
-        expected = bsd.soul_drop_rate(name, cls, random_members, placed_members,
-                                      boss_chance=BOSS_CHANCE,
-                                      random_chance=RANDOM_CHANCE,
-                                      placed_chance=PLACED_CHANCE)
+    for name, cls, cur in asp._soul_carrier_roster(db):
+        ruled = bsd.ruled_soul_equip_rate(name, cls, cur,
+                                          random_members, placed_members)
+        held = ruled is None
+        expected = cur if held else ruled
         if bsd._soul_is_farmable_boss(name, cls):
             klass = 'FARMABLE_BOSS(25)'
         elif str(cls).lower() == 'quest':
-            klass = 'QUEST(66)'
+            klass = 'QUEST(33)'
         elif bsd._soul_record_basename(name) in placed_members:
-            klass = 'PLACED_UBER(66)'
+            klass = 'PLACED_UBER(33)'
         elif bsd._soul_record_basename(name) in random_members:
-            klass = 'RANDOM_HERO(50)'
+            klass = 'RANDOM_HERO(33)'
         else:
-            klass = 'UNREFERENCED(66)'
+            klass = 'UNREFERENCED(33)'
+        if held:
+            klass += '+HELD'
         recs.append((name, cls, cur, expected, klass))
     return recs, random_members, placed_members
 
@@ -153,17 +183,26 @@ _KNOWN_EXCEPTIONS = {
     'um_legion_28a': (0.0, 'legion_soul_stages zeroed non-terminal stage (66->0 intended)'),
     'um_legion_28b': (0.0, 'legion_soul_stages zeroed non-terminal stage (66->0 intended)'),
 
-    # Pharaoh's Honor Guard: hand-tuned 2.25%->10% (a THIRD tier outside the
-    # 25/50/66 model, predates 2026-07-14).
-    **{f'boss_pharaohshonorguard{n}_{lv}': (10.0,
-        "hand-tuned Pharaoh's Honor Guard rate (10%), not part of the 25/50/66 model")
-       for n in (1, 2, 3, 4) for lv in (25, 28, 31)},
+    # Pharaoh's Honor Guard: the hand-tuned 10% waiver is RETIRED by R-105
+    # ("the ones that are smaller should be 33% ... unless they are bosses at
+    # fixed locations", and R-105's own table rules these 12 "fixed bosses,
+    # wrong rate -> 25%"). They are now ON the ruled rate, so they need no
+    # waiver; cohort invariant G5 asserts all 12 sit at 25.
+    # ── RETIRED BY R-105, DELIBERATELY NOT DELETED (retirement protocol) ──────
+    # `svc_um_hadesmarshal_80` used to be waived here at **66.0** ("module-
+    # authored placed boss (four_generals); basename svc_um_ not recognized by
+    # the naive classifier, module keeps its own 66"). R-105 moved it to 33 with
+    # the rest of the 66% cohort, so the waiver is not merely stale - it was a
+    # LIVE HOLE: _check_last_writer consults this table on any mismatch, so an
+    # entry saying "66 is acceptable" would have silently WAIVED a future writer
+    # stomping the record back to 66, the precise regression class this gate
+    # exists to catch. The record is now covered by
+    # bsd.SOUL_RATE_COUNT_OVER_CLASS + cohort invariant G8, which assert 33
+    # positively instead of excusing a value.
+
     # Module-authored placed/superboss records the naive path/basename
     # heuristic cosmetically mislabels (b59 report section 6 + the original
     # spot-test table already document these; the shipped value IS intended).
-    'svc_um_hadesmarshal_80': (66.0,
-        'module-authored placed boss (four_generals); basename svc_um_ not '
-        'recognized by the naive classifier, module keeps its own 66'),
     # R-48 (Will 2026-07-27, b90): "increase the drop rate for the souls of
     # toxeus the murderer, enslaver of souls and toxeus the murderer, devourer
     # of blood to 100%". These two FOUGHT champions are carved out of the
@@ -198,26 +237,16 @@ _KNOWN_EXCEPTIONS = {
         'R-90/R-91 (Will 2026-07-28): the Legendary endless-pursuit variant of '
         'the Endless Hunt - a clone of um_toxeus_hunt_99 differing ONLY in '
         'controller; patches/toxeus_hunt_endless.py owns it'),
-    # Pre-existing "module-set Boss@66" divergences from the naive boss_-path
-    # farmable heuristic (b59 report ground-truth table: "FARMABLE_BOSS(25) |
-    # 66.0 -> 66.0 | 5 | unchanged"); predates and is orthogonal to the
-    # RANDOM/PLACED split this gate exists to police.
-    'boss_satyrshaman_55': (66.0,
-        'pre-existing module-set Boss@66 (b59 report ground-truth table), '
-        'orthogonal to the RANDOM/PLACED split'),
-    'boss_charon_41': (66.0,
-        'pre-existing module-set Boss@66 (Charon Form1/3), orthogonal to '
-        'the RANDOM/PLACED split'),
-    'boss_charon_43': (66.0,
-        'pre-existing module-set Boss@66 (Charon Form1/3), orthogonal to '
-        'the RANDOM/PLACED split'),
-    'boss_charon_39': (66.0,
-        'pre-existing module-set Boss@66 (Charon Form1 donor; round-2 vet '
-        'NO-GO fix re-asserts 66 alongside 41/43 - create_uber_souls mints '
-        'this record\'s own soul via an unpinned soul_drop_rate() call, so '
-        'the naive "\\boss_" path heuristic would otherwise misclassify this '
-        'PLACED Golden Bough encounter as a farmable Act boss and cut it to '
-        '25, desyncing it from 41/43), orthogonal to the RANDOM/PLACED split'),
+    # RETIRED BY R-105. The five pre-existing "module-set Boss@66" records
+    # (boss_satyrshaman_55, boss_charon_39/41/43 and the Hades/Megalesios pair
+    # under records\drxcreatures\) were waived because the naive boss_-path
+    # heuristic called them farmable/25 while the shipped value was a deliberate
+    # 66. R-105 ratified "move all 66% and 50% to 33%. That is 734 creatures" -
+    # a COUNT that includes them - so they now land on 33 with the rest of their
+    # cohort and need no waiver. ⚠️ FLAGGED FOR WILL (docs/BACKLOG.md
+    # BL-b102-DEBT-2): these ARE fixed-location act bosses, so his OTHER
+    # sentence ("25% for fixed location bosses") would put them at 25. His count
+    # was followed, not the inference; one line from him settles it.
 
     # ── b97 SOUL-IDENTITY (Will 2026-07-27): "some of the heroes are dropping
     # the wrong souls or souls for other boss monsters". Each record below was
@@ -282,18 +311,84 @@ _KNOWN_EXCEPTIONS = {
 # (gitignored, like every other .arz) - the check degrades to a printed
 # SKIP (not a failure) when it is not present on the machine running the
 # gate, so the gate battery still runs standalone/CI-clean elsewhere.
-_GOLDEN_MD5 = 'b33c5a447f3a8ca652c14f78d4ad1dd4'
-_GOLDEN_CANDIDATES = [HERE.parent / 'local' / 'baseline_build40.arz']
+#
+# ⚠️ THE BASELINE IS PER-WAVE, SO THIS GATE MUST NOT CLAIM ONE FIXED MD5.
+# It used to print a hardcoded `md5 expected b33c5a44...` (the build40 golden)
+# whatever file it actually loaded - so on b102, where the baseline is
+# `local/baseline_main.arz` (main @ 7efd107, md5 6a3a491d...), the gate printed
+# an md5 that was not the file's. Each candidate now carries its OWN pinned md5
+# and the gate prints the loaded file's real digest beside the pin, so a
+# mismatch is visible instead of asserted.
+_GOLDEN_CANDIDATES = [
+    (HERE.parent / 'local' / 'baseline_main.arz',
+     '6a3a491db546b603c52132237c40aa63'),   # b102 baseline: main @ 7efd107
+    (HERE.parent / 'local' / 'baseline_build40.arz',
+     'b33c5a447f3a8ca652c14f78d4ad1dd4'),   # the original pre-drop-50 golden
+]
 
 
 def _find_golden():
-    for p in _GOLDEN_CANDIDATES:
+    for p, pinned in _GOLDEN_CANDIDATES:
         if p.exists():
-            return p
-    return None
+            return p, pinned
+    return None, None
 
 
-def _check_intended_diff_vs_golden(recs, golden_path):
+def _diff_against_golden(recs, golden_chance):
+    """The PURE half of the golden diff: given the built roster and the
+    baseline's {record -> chance}, return the list of unattributed deltas.
+
+    Split out of _check_intended_diff_vs_golden so the planted negative below
+    can exercise it against the ALREADY-LOADED baseline dict instead of reading
+    and parsing a second 55 MB arz - a negative test nobody runs because it is
+    slow is not a negative test.
+    """
+    cur_chance = {name: cur for name, cls, cur, exp, k in recs}
+    cur_expected = {name: exp for name, cls, cur, exp, k in recs}
+    fails = []
+    diffs = 0
+    for name, gcur in golden_chance.items():
+        ccur = cur_chance.get(name)
+        if ccur is None or abs(gcur - ccur) < 0.01:
+            continue
+        diffs += 1
+        bn = bsd._soul_record_basename(name)
+        # ── the older explicit ruling outranks every "intended" test ──────────
+        # double_soul_rulings (c): "CHARON 39/41/43 + HADES 54 - UNTOUCHED
+        # (Will's explicit ruling)". These records are HELD, so `expected == cur`
+        # by construction and the is_intended_cut test below would call ANY move
+        # of them intended - i.e. the one roster protected by an explicit Will
+        # ruling was the only roster this gate could not defend. A delta on them
+        # is a failure, full stop; the in-build double_soul_rulings.verify()
+        # asserts the same thing field-by-field, this makes it true standalone.
+        if bn in bsd.SOUL_RATE_UNTOUCHABLE:
+            fails.append(
+                f"UNTOUCHED-ruling violated: {name} baseline={gcur}% -> "
+                f"built={ccur}%. double_soul_rulings (c) rules Charon 39/41/43 "
+                f"+ Hades 54 explicitly UNTOUCHED; R-105's newer COUNT does not "
+                f"silently overrule it (docs/BACKLOG.md BL-b102-DEBT-2)")
+            continue
+        # R-105/R-106/R-107: a delta is INTENDED iff the new value is exactly
+        # what the ruled policy says for that record. Anything else is a silent
+        # regression against the baseline, whatever the classifier thinks.
+        is_intended_cut = abs(ccur - cur_expected.get(name, ccur + 1)) < 0.01
+        exc = _KNOWN_EXCEPTIONS.get(bn)
+        is_documented = exc is not None and abs(ccur - exc[0]) < 0.01
+        if is_intended_cut or is_documented:
+            continue
+        fails.append(
+            f"UNINTENDED golden-diff: {name} baseline={gcur}% -> "
+            f"built={ccur}% - not the ruled R-105/106/107 value for this record "
+            f"and not a documented _KNOWN_EXCEPTIONS waiver: a silent "
+            f"regression against the baseline")
+    _diff_against_golden.last_delta_count = diffs
+    return fails
+
+
+_diff_against_golden.last_delta_count = 0
+
+
+def _check_intended_diff_vs_golden(recs, golden_path, pinned_md5=None):
     """HARDENING for the MEDIUM gate-blindness finding (vet round 2 on
     feat/soul-drop-50): _check_last_writer() above uses soul_drop_rate()
     itself as its own oracle, so it is structurally BLIND to a value the
@@ -314,37 +409,27 @@ def _check_intended_diff_vs_golden(recs, golden_path):
     else is an unintended, silent regression and fails loud."""
     if golden_path is None:
         print("\n  (intended-diff-vs-golden check SKIPPED: no local golden arz "
-              f"found - looked for {[str(p) for p in _GOLDEN_CANDIDATES]})")
-        return []
+              f"found - looked for {[str(p) for p, _m in _GOLDEN_CANDIDATES]})")
+        return [], None
+    import hashlib
+    _real = hashlib.md5(golden_path.read_bytes()).hexdigest()
     golden_db = ArzDatabase.from_arz(golden_path)
     golden_recs, _, _ = _gather(golden_db)
     golden_chance = {name: cur for name, cls, cur, exp, k in golden_recs}
-    cur_chance = {name: cur for name, cls, cur, exp, k in recs}
-    cur_klass = {name: k for name, cls, cur, exp, k in recs}
 
-    fails = []
-    diffs = 0
-    for name, gcur in golden_chance.items():
-        ccur = cur_chance.get(name)
-        if ccur is None or abs(gcur - ccur) < 0.01:
-            continue
-        diffs += 1
-        is_intended_cut = (abs(gcur - 66.0) < 0.01 and abs(ccur - 50.0) < 0.01
-                           and cur_klass.get(name) == 'RANDOM_HERO(50)')
-        bn = bsd._soul_record_basename(name)
-        exc = _KNOWN_EXCEPTIONS.get(bn)
-        is_documented = exc is not None and abs(ccur - exc[0]) < 0.01
-        if is_intended_cut or is_documented:
-            continue
-        fails.append(
-            f"UNINTENDED golden-diff: {name} golden(build40)={gcur}% -> "
-            f"built={ccur}% - not the intended 66->50 RANDOM cut and not a "
-            f"documented _KNOWN_EXCEPTIONS waiver: a silent regression "
-            f"against the pre-drop-50 baseline")
-    print(f"\n  Intended-diff-vs-golden ({golden_path.name}, md5 expected "
-          f"{_GOLDEN_MD5}): {diffs} chanceToEquipFinger2 deltas vs golden, "
+    fails = _diff_against_golden(recs, golden_chance)
+    diffs = _diff_against_golden.last_delta_count
+    _pin = ('md5 %s%s' % (_real, '' if (pinned_md5 in (None, _real))
+                          else ' ⚠️ PINNED %s' % pinned_md5))
+    print(f"\n  Intended-diff-vs-golden ({golden_path.name}, {_pin}): "
+          f"{diffs} chanceToEquipFinger2 deltas vs golden, "
           f"{diffs - len(fails)} intended/documented, {len(fails)} UNINTENDED")
-    return fails
+    if pinned_md5 is not None and _real != pinned_md5:
+        fails.append(
+            f"baseline {golden_path.name} md5 {_real} != the pinned "
+            f"{pinned_md5} - this gate is diffing against a DIFFERENT baseline "
+            f"than the one the wave's record-diff was attributed against")
+    return fails, golden_chance
 
 
 def _check_last_writer(recs):
@@ -360,8 +445,8 @@ def _check_last_writer(recs):
     failures = []
     waived = []
     for name, cls, cur, expected, klass in recs:
-        if abs(cur) < 0.01:
-            continue  # gated off - not this gate's concern (rate is moot)
+        if klass.endswith('+HELD'):
+            continue  # not ruled by R-105/106/107 - the policy has no opinion
         if abs(cur - expected) <= 0.01:
             continue
         bn = bsd._soul_record_basename(name)
@@ -372,9 +457,159 @@ def _check_last_writer(recs):
             continue
         failures.append(
             f"LAST-WRITER mismatch: {name} [{klass}, cls={cls or '(none)'}] "
-            f"arz has {cur}% but soul_drop_rate() says {expected}% - some "
-            f"writer after wire_souls_to_monsters set the wrong rate")
+            f"arz has {cur}% but ruled_soul_equip_rate() says {expected}% - some "
+            f"writer after the R-105/106/107 policy pass set the wrong rate")
     return failures, waived
+
+
+# ── R-105/R-106/R-107 WHOLE-COHORT INVARIANTS ────────────────────────────────
+# A per-record check compares each record against the classifier, so it is
+# structurally blind to "the classifier itself was widened/narrowed". These
+# assert the SHAPE of the shipped distribution against the rulings' own counts.
+def _check_cohorts(recs):
+    """Fail-loud cohort invariants. Returns a list of failure strings."""
+    fails = []
+    by_rate = defaultdict(list)
+    for name, cls, cur, expected, klass in recs:
+        by_rate[round(cur, 2)].append((name, cls, klass))
+
+    # G1 (R-106) - no Common carrier may drop at all.
+    common_live = [n for n, c, cur, e, k in recs
+                   if str(c).lower() == 'common' and cur > 0.01]
+    if common_live:
+        fails.append(f"G1 R-106: {len(common_live)} Common-classified carrier(s) "
+                     f"still drop a soul: {common_live[:6]}")
+
+    # G2 (R-105) - the two ratified cohorts must be EMPTY, except for the records
+    # an OLDER explicit Will ruling puts out of reach (double_soul_rulings (c):
+    # "CHARON 39/41/43 + HADES 54 - UNTOUCHED"). Those must ALSO be exactly that
+    # set - no more, no fewer - so the carve-out can never quietly grow.
+    for r in bsd.SOUL_RATE_RATIFIED_COHORTS:
+        left = [(n, c, k) for n, c, k in by_rate.get(round(r, 2), [])
+                if bsd._soul_record_basename(n) not in bsd.SOUL_RATE_UNTOUCHABLE]
+        if left:
+            fails.append(f"G2 R-105 (\"no monsters should be at 66%\"): "
+                         f"{len(left)} carrier(s) still at {r}%: "
+                         f"{[n for n, c, k in left[:6]]}")
+    # G2b - the carve-out list must still be the one double_soul_rulings owns.
+    try:
+        sys.path.insert(0, str(HERE / 'patches'))
+        import double_soul_rulings as _dsr
+        owned = {bsd._soul_record_basename(p) for p in _dsr._UNTOUCHED_RECORDS}
+        if owned != set(bsd.SOUL_RATE_UNTOUCHABLE):
+            fails.append(
+                f"G2b: SOUL_RATE_UNTOUCHABLE has drifted from "
+                f"double_soul_rulings._UNTOUCHED_RECORDS "
+                f"(only-here={sorted(set(bsd.SOUL_RATE_UNTOUCHABLE) - owned)}, "
+                f"only-there={sorted(owned - set(bsd.SOUL_RATE_UNTOUCHABLE))})")
+    except Exception as exc:                       # pragma: no cover
+        fails.append(f"G2b: could not cross-check the untouchable roster: {exc}")
+
+    # G3 (R-48/R-90/R-91) - exactly the four Toxeus champions sit at 100.
+    hundreds = {bsd._soul_record_basename(n) for n, c, k in by_rate.get(100.0, [])}
+    if hundreds != set(bsd.SOUL_RATE_R48_RECORDS):
+        fails.append(f"G3 R-48: the 100% set is {sorted(hundreds)}, expected "
+                     f"{sorted(bsd.SOUL_RATE_R48_RECORDS)}")
+
+    # G4 (R-107) - the pinned fixed-location bosses, and the base Gaoler at 0.
+    idx = {bsd._soul_record_basename(n): cur
+           for n, c, cur, e, k in recs}
+    for bn in sorted(bsd.SOUL_RATE_FIXED_BOSS_PINS):
+        got = idx.get(bn)
+        if got is None:
+            fails.append(f"G4: pinned fixed-location boss {bn} is not a soul "
+                         f"carrier in this arz")
+        elif abs(got - bsd.SOUL_RATE_FIXED_BOSS) > 0.01:
+            fails.append(f"G4 R-107/R-106: {bn} is at {got}%, ruled "
+                         f"{bsd.SOUL_RATE_FIXED_BOSS}%")
+    for bn in sorted(bsd.SOUL_RATE_ZERO_PINS):
+        got = idx.get(bn)
+        if got is not None and abs(got) > 0.01:
+            fails.append(f"G4 R-107 (\"the soul gaoler should not drop the soul "
+                         f"just the unbound final version\"): {bn} is at {got}%")
+
+    # G5 (R-105) - the 12 pharaoh honour guards land on the fixed-boss rate.
+    guards = [(n, cur) for n, c, cur, e, k in recs
+              if 'pharaohshonorguard' in n.lower()]
+    bad = [(n, v) for n, v in guards if abs(v - bsd.SOUL_RATE_FIXED_BOSS) > 0.01]
+    if len(guards) != 12:
+        fails.append(f"G5: expected 12 pharaoh honour-guard carriers, found "
+                     f"{len(guards)}")
+    if bad:
+        fails.append(f"G5 R-105: honour guard(s) off the fixed-boss rate: {bad[:6]}")
+
+    # G6 - every live rate in the shipped arz is one of the ruled values, OR it
+    # belongs to a HELD record. A stray 12.5% anywhere means a writer escaped.
+    allowed = {0.0, bsd.SOUL_RATE_FIXED_BOSS, bsd.SOUL_RATE_NONFIXED,
+               bsd.SOUL_RATE_R48_CHAMPION}
+    strays = [(n, cur, k) for n, c, cur, e, k in recs
+              if not k.endswith('+HELD') and round(cur, 2) not in allowed]
+    if strays:
+        fails.append(f"G6: {len(strays)} non-HELD carrier(s) on an unruled rate: "
+                     f"{strays[:6]}")
+
+    # G7 - THE CHAMPION TIER IS HELD (R-106 amendment: "DOES 'STARS OR BETTER'
+    # INCLUDE THE WHOLE CHAMPION TIER? That is the 172-creature decision" - still
+    # unanswered). No Champion carrier may sit on a RULED rate: finding one at
+    # 33/25/100 means this policy moved the tier Will has not ruled on. (0 is
+    # legal: 172 of them are already there and were never touched.)
+    moved_champions = [(n, cur) for n, c, cur, e, k in recs
+                       if str(c).lower() == 'champion'
+                       and round(cur, 2) in (bsd.SOUL_RATE_NONFIXED,
+                                             bsd.SOUL_RATE_FIXED_BOSS,
+                                             bsd.SOUL_RATE_R48_CHAMPION)]
+    if moved_champions:
+        fails.append(f"G7 R-106 (HELD): {len(moved_champions)} Champion-tier "
+                     f"carrier(s) moved onto a ruled rate - the star tier is "
+                     f"Will's open 172-creature decision: {moved_champions[:6]}")
+
+    # G7b - every HELD record is Champion-classified, unset, gated at 0, or on
+    # the older-ruling UNTOUCHABLE roster.
+    #
+    # ⚠️ THE UNTOUCHABLE CLAUSE IS NOT A LOOPHOLE, IT IS THE FOURTH LEGAL REASON
+    # TO BE HELD, AND IT WAS MISSING. G7b was written when HELD meant only
+    # "Champion tier / unset classification / already 0". The ruling-collision
+    # carve-out (double_soul_rulings (c): "CHARON 39/41/43 + HADES 54 -
+    # UNTOUCHED") landed afterwards and holds 8 Boss-classified carriers at a
+    # LIVE 66/25, so G7b red on all 8 on the first fully-gated build of this
+    # wave - a gate failing on the very carve-out the same commit introduced.
+    # The clause is scoped to exactly bsd.SOUL_RATE_UNTOUCHABLE (itself
+    # cross-checked against double_soul_rulings' own roster by G2b), so it can
+    # only ever excuse those records and cannot widen behind anyone's back.
+    for name, cls, cur, expected, klass in recs:
+        if not klass.endswith('+HELD'):
+            continue
+        c = str(cls or '').lower()
+        if c in ('champion', ''):
+            continue
+        if abs(cur) < 0.01:
+            continue
+        if bsd._soul_record_basename(name) in bsd.SOUL_RATE_UNTOUCHABLE:
+            continue
+        fails.append(f"G7b: {name} is HELD but is neither Champion, unset, 0%, "
+                     f"nor on the UNTOUCHABLE roster (cls={cls}, cur={cur}) - "
+                     f"the HELD set has drifted")
+
+    # G8 - THE COUNT-OVER-CLASS PIN IS EXACTLY THE SET THAT NEEDS IT, and every
+    # member actually shipped on the non-fixed rate. This is the invariant that
+    # keeps ruled_soul_equip_rate IDEMPOTENT: a member silently dropped from the
+    # pin would be re-derived at the fixed-boss rate by this very gate.
+    for bn in sorted(bsd.SOUL_RATE_COUNT_OVER_CLASS):
+        got = idx.get(bn)
+        if got is None:
+            fails.append(f"G8: count-over-class pin {bn} is not a soul carrier "
+                         f"in this arz - the pin has gone stale")
+        elif abs(got - bsd.SOUL_RATE_NONFIXED) > 0.01:
+            fails.append(f"G8 R-105 (COUNT wins over the fixed-boss class for "
+                         f"this record): {bn} is at {got}%, ruled "
+                         f"{bsd.SOUL_RATE_NONFIXED}%")
+    if bsd.SOUL_RATE_COUNT_OVER_CLASS & set(bsd.SOUL_RATE_UNTOUCHABLE):
+        fails.append(
+            f"G8: a record is in BOTH SOUL_RATE_COUNT_OVER_CLASS and "
+            f"SOUL_RATE_UNTOUCHABLE - contradictory rulings: "
+            f"{sorted(bsd.SOUL_RATE_COUNT_OVER_CLASS & set(bsd.SOUL_RATE_UNTOUCHABLE))}")
+    return fails
+
 
 
 def main(argv):
@@ -408,9 +643,16 @@ def main(argv):
             print(f"      arz={cur:5.1f}%  expected={expected:5.1f}%   x{n}{tag}")
     print(f"\n  TOTAL soul-droppers: {len(recs)}   LAST-WRITER mismatches: {mismatch_count}")
 
-    random_enabled_50 = sum(1 for n, c, cur, e, k in recs
-                            if k == 'RANDOM_HERO(50)' and abs(cur - 50.0) < 0.01)
-    print(f"  RANDOM_HERO records actually shipping at 50%: {random_enabled_50}")
+    # (was a hardcoded `k == 'RANDOM_HERO(50)'` count - dead under R-105, where
+    # _gather() labels the klass 'RANDOM_HERO(33)'. A counter that can never
+    # match prints a permanent 0 and reads like a real measurement, so it is
+    # derived from the ruled constant instead.)
+    _rh = 'RANDOM_HERO(%.0f)' % bsd.SOUL_RATE_NONFIXED
+    random_enabled = sum(1 for n, c, cur, e, k in recs
+                         if k == _rh
+                         and abs(cur - bsd.SOUL_RATE_NONFIXED) < 0.01)
+    print(f"  {_rh} records actually shipping at "
+          f"{bsd.SOUL_RATE_NONFIXED:.0f}%: {random_enabled}")
 
     # ---- INVARIANT: LAST-WRITER check on the real arz ----
     failures, waived = _check_last_writer(recs)
@@ -419,7 +661,9 @@ def main(argv):
     print("\n" + "=" * 78)
     print("INTENDED-DIFF-VS-GOLDEN (hardens the LAST-WRITER check's blind spot)")
     print("=" * 78)
-    failures.extend(_check_intended_diff_vs_golden(recs, _find_golden()))
+    _gp, _gmd5 = _find_golden()
+    _gold_fails, _golden_chance = _check_intended_diff_vs_golden(recs, _gp, _gmd5)
+    failures.extend(_gold_fails)
 
     if waived:
         print("\n" + "=" * 78)
@@ -464,48 +708,47 @@ def main(argv):
     idx = {bsd._soul_record_basename(n): (n, cls, cur, exp, k) for (n, cls, cur, exp, k) in recs}
     EXPECT = {
         # basename: (expect_klass_contains or None, expect_actual_arz_value)
-        'um_camelbane_32':        ('RANDOM', 50.0),   # SV uber tier, random pool
-        'um_morth_18':            ('RANDOM', 50.0),
-        'um_crowboar_09':         ('RANDOM', 50.0),   # <- one of the 21 NO-GO records
-        'um_xix_36':              ('RANDOM', 50.0),   # <- NO-GO record (create_uber_souls)
-        'um_frost_32':            ('RANDOM', 50.0),   # <- NO-GO record (create_uber_souls)
-        'hero_junshan_39':        ('RANDOM', 50.0),   # <- NO-GO record (create_uber_souls)
-        'hero_grom_28':           ('RANDOM', 50.0),   # plain hero roster
-        'u_bloodwing_12':         ('RANDOM', 50.0),   # u_ unique, random pool
-        'um_legion_28':           (None, 0.0),        # legion_soul_stages: non-terminal, zeroed (one soul/encounter)
-        # R-42 FOLD-IN (b91): the Legion TERMINAL now INHERITS its chain head's
-        # RANDOM provenance through the actorToSpawnOnDeath closure in
-        # build_svc_database.soul_spawn_provenance_sets, so it classifies RANDOM
-        # and ships 50 - closing Will's queued "death-transform terminals of
-        # RANDOM chains inherit the 50 rate". Was (None, 66.0) + an open Will Q.
-        'um_legion_28c':          ('RANDOM', 50.0),
-        # Same fold-in, the only other LIVE mover roster-wide: the Possessed
-        # Boar's death-transform spirit (head um_possessedboar IS a random-pool
-        # member; double_soul_rulings deliberately leaves this terminal as the
-        # surviving dropper, so its rate must follow its chain).
-        'um_possessedboar_spirit': ('RANDOM', 50.0),
-        # NEGATIVE half of the same fold-in: terminals of PLACED chains must NOT
-        # move (placed_proxy_members is checked before random_pool_members, so a
-        # placed head's stages stay 66 - the "never over-cut a placed encounter"
-        # invariant). These three are now RIGHT for the right reason instead of
-        # falling through the classifier's unreferenced-default.
-        'um_charonform2_ferryman_99': ('PLACED', 66.0),
-        'um_polisgaoler_unbound_99':  ('PLACED', 66.0),
-        'um_tantalus_unbound_99':     ('PLACED', 66.0),
-        'um_vashkarr_99':         ('PLACED', 66.0),   # q_vashkarr_lone
-        'um_broodmother_99':      ('PLACED', 66.0),
-        # svc_um_hadesmarshal_80: module-authored placed boss (four_generals sets
-        # 66). Basename starts svc_um_ (not um_), so the raw classifier cosmetically
-        # labels it FARMABLE, but wire_souls never rates it (module-owned) and the
-        # module keeps it at its own 66 -> outcome UNCHANGED. Assert the outcome.
-        'svc_um_hadesmarshal_80': (None, 66.0),
-        # R-48 (Will 2026-07-27): both fought Toxeus champions ship at 100%.
-        # klass still reads PLACED (the classifier is deliberately untouched);
-        # the ACTUAL arz value is the carve-out.
+        # ── R-105: the two ratified cohorts (66 + 50) all land on 33 ──────────
+        'um_camelbane_32':        ('RANDOM', 33.0),   # SV uber tier, random pool
+        'um_morth_18':            ('RANDOM', 33.0),
+        'um_crowboar_09':         ('RANDOM', 33.0),   # <- one of the 21 NO-GO records
+        'um_xix_36':              ('RANDOM', 33.0),   # <- NO-GO record (create_uber_souls)
+        'um_frost_32':            ('RANDOM', 33.0),   # <- NO-GO record (create_uber_souls)
+        'hero_junshan_39':        ('RANDOM', 33.0),   # <- NO-GO record (create_uber_souls)
+        'hero_grom_28':           ('RANDOM', 33.0),   # plain hero roster
+        'u_bloodwing_12':         ('RANDOM', 33.0),   # u_ unique, random pool
+        'um_legion_28':           (None, 0.0),        # legion_soul_stages: non-terminal, zeroed
+        'um_legion_28c':          ('RANDOM', 33.0),   # R-42 closure terminal, now on the ruled rate
+        'um_possessedboar_spirit': ('RANDOM', 33.0),
+        'um_charonform2_ferryman_99': ('PLACED', 33.0),
+        'um_tantalus_unbound_99': ('PLACED', 33.0),
+        'um_vashkarr_99':         ('PLACED', 33.0),   # q_vashkarr_lone
+        'um_broodmother_99':      ('PLACED', 33.0),
+        'svc_um_hadesmarshal_80': (None, 33.0),       # module-authored placed boss
+        'xsq27_namedhero_a_machae_45': ('QUEST', 33.0),  # Four Generals (quest)
+        # ── R-105 sub-25 buckets: non-fixed ubers up to 33, honour guards to 25 ─
+        'um_calybe_20':           (None, 33.0),       # was 5% (ours, non-fixed)
+        'um_lyialeafsong_18':     (None, 33.0),       # was 5% (ours, non-fixed)
+        'um_alethadarkclaw':      (None, 33.0),       # was 2% (ours, non-fixed)
+        'boss_pharaohshonorguard1_25': (None, 25.0),  # was 10% - fixed boss, wrong rate
+        # ── R-106: the Common droppers go to 0 (classification, not filename:
+        #    the mummy priests classify Common behind a boss-ish name) ─────────
+        "pharaoh'shonorguard_mummypriest_19": (None, 0.0),
+        'swift_ar_archer_08':     (None, 0.0),
+        'swift_br_archer_14_l':   (None, 0.0),
+        # ── R-107 / R-106 amendment: the named fixed-location bosses ──────────
+        'um_polisgaoler_99':          (None, 0.0),    # base form NEVER drops
+        'um_polisgaoler_unbound_99':  (None, 25.0),   # only the unbound final form
+        'um_charon_ferryman_99':      (None, 0.0),    # chain HEAD - its terminal drops
+        'um_tantalus_99':             (None, 0.0),    # chain HEAD - its terminal drops
+        # ── R-48 / R-90 / R-91: the four fought Toxeus champions stay at 100 ──
         'um_toxeus_enslaver_99':  ('PLACED', 100.0),
-        'xsq27_namedhero_a_machae_45': ('QUEST', 66.0),  # Four Generals (quest)
-        'um_tantalus_99':         (None, 0.0),        # placed but gated -> stays 0
-        'um_bloodtoxeus_99':      (None, 100.0),       # R-48: 25 -> 100 (Will 2026-07-27)
+        'um_bloodtoxeus_99':      (None, 100.0),
+        'um_toxeus_hunt_99':      (None, 100.0),
+        'um_toxeus_hunt_l_99':    (None, 100.0),
+        # ── R-106 HELD: the Champion tier is Will's open call - untouched ─────
+        'swift_ar_huntress_10':   (None, 0.5),        # Champion, still 0.5 (HELD)
+        'am_giganticbat_12':      (None, 0.0),        # Champion at 0 (HELD)
     }
     for bn, (want_k, want_actual) in EXPECT.items():
         if bn not in idx:
@@ -606,12 +849,13 @@ def main(argv):
     print("NEGATIVE TEST: planted post-wire writer (simulates the round-1 NO-GO)")
     print("=" * 78)
     planted_target = next((n for n, c, cur, e, k in recs
-                           if k == 'RANDOM_HERO(50)' and abs(cur - 50.0) < 0.01), None)
+                           if k == 'RANDOM_HERO(33)'
+                           and abs(cur - bsd.SOUL_RATE_NONFIXED) < 0.01), None)
     if planted_target is None:
-        failures.append("negtest setup: no RANDOM_HERO@50 record found in this "
+        failures.append("negtest setup: no RANDOM_HERO@33 record found in this "
                         "arz to plant the stomp on - cannot prove the gate catches "
                         "the round-1 regression class")
-        print("  ? no RANDOM_HERO@50 record available - negtest SKIPPED")
+        print("  ? no RANDOM_HERO@33 record available - negtest SKIPPED")
     else:
         db_stomped = ArzDatabase.from_arz(arz_path)
         db_stomped.set_field(planted_target, 'chanceToEquipFinger2', 66.0, DATA_TYPE_FLOAT)
@@ -623,9 +867,121 @@ def main(argv):
                 f"NEGATIVE TEST FAILED: planted a post-wire 66% stomp on "
                 f"{planted_target} (a RANDOM_HERO@50 record) and the gate did "
                 f"NOT flag it - the gate cannot catch the round-1 regression class")
-        print(f"  {'OK ' if caught else 'XX '} planted {planted_target} 50->66: "
+        print(f"  {'OK ' if caught else 'XX '} planted {planted_target} 33->66: "
               f"gate {'CAUGHT it' if caught else 'MISSED it'} "
               f"({len(stomp_failures)} failure(s) on the stomped copy)")
+
+    # ---- R-105/R-106/R-107 COHORT INVARIANTS + PLANTED NEGATIVES BOTH WAYS ----
+    print("\n" + "=" * 78)
+    print("R-105/R-106/R-107 COHORT INVARIANTS (whole-distribution shape)")
+    print("=" * 78)
+    cohort_fails = _check_cohorts(recs)
+    for m in cohort_fails:
+        print(f"  XX {m}")
+    if not cohort_fails:
+        live = defaultdict(int)
+        for n_, c_, cur_, e_, k_ in recs:
+            live[round(cur_, 2)] += 1
+        print("  OK  every cohort on its ruled rate. Shipped distribution: "
+              + ", ".join(f"{r}%x{n_}" for r, n_ in sorted(live.items(), reverse=True)))
+    failures.extend(cohort_fails)
+
+    print("\n" + "=" * 78)
+    print("NEGATIVE TESTS: planted violations of each ruled cohort must RED")
+    print("=" * 78)
+    _R = bsd._soul_record_basename
+    _by_bn = {_R(n): (n, cls, cur, e, k) for n, cls, cur, e, k in recs}
+
+    def _plant(label, mutate):
+        """Copy `recs`, apply `mutate`, and assert _check_cohorts goes RED."""
+        copy = [list(r) for r in recs]
+        target = mutate(copy)
+        got = _check_cohorts([tuple(r) for r in copy])
+        ok = bool(got)
+        if not ok:
+            failures.append(f"NEGATIVE TEST FAILED ({label}): the cohort gate did "
+                            f"NOT fire on a planted violation ({target})")
+        print(f"  {'OK ' if ok else 'XX '} {label:58s} "
+              f"-> gate {'RED (correct)' if ok else 'GREEN (BLIND)'}")
+
+    def _set(copy, bn, value):
+        for row in copy:
+            if _R(row[0]) == bn:
+                row[2] = value
+                row[3] = value if row[4].endswith('+HELD') else row[3]
+                return f"{bn}={value}"
+        return f"{bn} (absent)"
+
+    # (a) a champion knocked off 100
+    _plant("R-48 champion knocked off 100 (um_bloodtoxeus_99 -> 33)",
+           lambda c: _set(c, 'um_bloodtoxeus_99', 33.0))
+    # (b) a cohort left at 66
+    _plant("a carrier left behind at 66 (um_camelbane_32)",
+           lambda c: _set(c, 'um_camelbane_32', 66.0))
+    # (c) a Common monster nudged up
+    _plant("a Common monster nudged to 33 (swift_ar_archer_08)",
+           lambda c: _set(c, 'swift_ar_archer_08', 33.0))
+    # (d) the base Gaoler made to drop
+    _plant("the base Soul Gaoler made to drop (um_polisgaoler_99 -> 33)",
+           lambda c: _set(c, 'um_polisgaoler_99', 33.0))
+    # (e) the unbound Gaoler off the fixed-boss rate
+    _plant("um_polisgaoler_unbound_99 off 25 (-> 33)",
+           lambda c: _set(c, 'um_polisgaoler_unbound_99', 33.0))
+    # (f) an honour guard left on the old 10%
+    _plant("a pharaoh honour guard left at 10%",
+           lambda c: _set(c, 'boss_pharaohshonorguard1_25', 10.0))
+    # (g) a stray unruled rate
+    _plant("a stray unruled rate (um_morth_18 -> 12.5%)",
+           lambda c: _set(c, 'um_morth_18', 12.5))
+    # (h) THE HELD TIER MOVED - a Champion-tier carrier given the 33% rate.
+    #     This is the negative for the cohort Will has NOT ruled on: the policy
+    #     must never touch it, and the gate must notice if anything does.
+    def _move_a_champion(copy):
+        for row in copy:
+            if str(row[1]).lower() == 'champion':
+                row[2] = bsd.SOUL_RATE_NONFIXED
+                return "%s -> 33" % row[0]
+        return 'no Champion carrier found'
+    _plant("a HELD Champion-tier carrier moved onto the 33% rate",
+           _move_a_champion)
+    # (i) THE IDEMPOTENCE PIN BROKEN - a count-over-class boss put on the
+    #     fixed-boss rate. This is the negative for G8: without the pin, the
+    #     classifier's SECOND evaluation of these records returns 25, so the
+    #     applier and the gate disagree and 8 records red as LAST-WRITER
+    #     mismatches. Proves the gate notices if the pin is silently narrowed.
+    _plant("a count-over-class boss put back on 25 (boss_satyrshaman_55)",
+           lambda c: _set(c, 'boss_satyrshaman_55', bsd.SOUL_RATE_FIXED_BOSS))
+    _plant("our placed Leinth moved off the counted 33 (q_leinth_47 -> 25)",
+           lambda c: _set(c, 'q_leinth_47', bsd.SOUL_RATE_FIXED_BOSS))
+    # (j) AN UNTOUCHABLE CARRIER MOVED - checked against the GOLDEN baseline,
+    #     not against _check_cohorts. It cannot live in the _plant() list above:
+    #     G7b now (correctly) excuses the UNTOUCHABLE roster from the HELD-shape
+    #     rule, and G2 only asserts the 66/50 cohorts are EMPTY, so a charon
+    #     moved 66 -> 33 makes those cohorts smaller and reds nothing. The only
+    #     thing that can see "this record must not have MOVED" is a comparison
+    #     with its pre-wave value, which is exactly what the golden diff holds.
+    #     Closing this matters: without it, the one roster protected by an older
+    #     explicit Will ruling was the only roster with no standalone guard.
+    if _golden_chance is not None:
+        moved = [list(r) for r in recs]
+        _tgt = _set(moved, 'boss_charon_39', bsd.SOUL_RATE_NONFIXED)
+        got = _diff_against_golden([tuple(r) for r in moved], _golden_chance)
+        ok = any('UNTOUCHED' in f for f in got)
+        if not ok:
+            failures.append("NEGATIVE TEST FAILED (untouchable moved): the "
+                            "golden diff did not fire on %s" % _tgt)
+        print(f"  {'OK ' if ok else 'XX '} "
+              f"{'an UNTOUCHED-ruling carrier moved off its shipped rate':58s} "
+              f"-> gate {'RED (correct)' if ok else 'GREEN (BLIND)'}")
+    else:
+        print("  ?  untouchable-moved negative SKIPPED (no golden baseline "
+              "present on this machine)")
+    # POSITIVE CONTROL (the other way): the unmodified build must be GREEN, and a
+    # HELD Champion left exactly where it is must NOT fire the gate.
+    ctrl = _check_cohorts(recs)
+    print(f"  {'OK ' if not ctrl else 'XX '} POSITIVE CONTROL: the unmodified "
+          f"build is {'GREEN' if not ctrl else 'RED (false positive)'} "
+          f"(HELD Champion tier untouched, no false alarm)")
 
     # ---- verdict ----
     print("\n" + "=" * 78)
@@ -635,10 +991,12 @@ def main(argv):
             print(f"   - {m}")
         print("=" * 78)
         return 1 if gate else 0
-    print("PASS: every enabled soul-dropper's ACTUAL rate in the real arz matches "
-          "the shared classifier (RANDOM->50, PLACED/QUEST->66, BOSS->25), gated "
-          "stays 0, testing-mode forcer unchanged, and the gate proves it can "
-          "catch a planted post-wire stomp (the round-1 regression class).")
+    print("PASS: every soul carrier's ACTUAL rate in the real arz matches the ONE "
+          "shared classifier's R-105/R-106/R-107 verdict (33 non-fixed, 25 "
+          "fixed-location boss, 0 Common, 100 the four R-48 champions), every "
+          "HELD cohort is untouched, the testing-mode forcer is unchanged, and "
+          "the gate proves it reds on a planted post-wire stomp AND on a planted "
+          "violation of each ruled cohort.")
     print("=" * 78)
     return 0
 

@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## P0 GATE RECORD - R-140 FROZEN THROWN-WIELDERS + R-141 UBER QUEST-ITEM LEAKS (2026-07-30, branch `fix/quest-item-leaks`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -974,6 +975,173 @@ env PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 PYTHONIOENCODING=ut
   `Levels`+`Quests` remain coupled.
 
 >>>>>>> fix/uber-placement
+=======
+## B102 GATE RECORD - R-105/R-106/R-107 SOUL RATE SWEEP + R-100 #11 FORGE ACTS + R-100 #17 SOUL GAOLER (2026-07-30, branch `feat/soul-economy`) - NOT DEPLOYED, NO TAG TAKEN
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed, no map artifact rebuilt.** The orchestrator owns every deploy.
+
+**COUPLING:** this wave is `.arz`-only on the DB side (no new Text tag, so the arz+Text coupling is
+satisfied by shipping the same Text). The Gaoler chest-count change is **map tooling**
+(`build_section_surgery.py`), so it needs a `Levels.arc` rebuild + the `Levels+Quests` coupling before
+Will can see it. **That rebuild was NOT run by this lane** - see NOT DONE.
+
+### WHAT THE THREE ITEMS WERE, AND WHAT SHIPPED
+
+| item | ruling | shipped |
+|---|---|---|
+| rate sweep | R-105 / R-106 / R-107 | **794** of 1,564 carriers re-rated by ONE shared classifier |
+| forge acts | R-100 #11 | **580** soul->formula memberships added across the 12 XP-potion formulas (fixed point in 3 rounds) |
+| Soul Gaoler | R-100 #17 | 5 chest placements -> 2; the normal-tier guaranteed donors replaced |
+
+### THE ARTIFACT
+
+| | |
+|---|---|
+| baseline (`main` @ `7efd107`, built in THIS env BEFORE any edit) | `local/baseline_main.arz` md5 `6a3a491db546b603c52132237c40aa63`, 55,475,226 B, 51,124 records |
+| built (`feat/soul-economy`) | `work/SoulvizierClassic/Database/SoulvizierClassic.arz` md5 `4583e8615fb9365866552b476f4743ff`, 55,476,220 B, 51,124 records |
+| build command | `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 py tools/build_svc_database.py <sv098i> <sv09> <sv041> <out> <base>` -> **exit 0** |
+
+**THE BUILD WAS RUN TWICE AND BOTH RUNS PRODUCED md5 `4583e861...`.** Run 1 was the pre-fix code;
+run 2 was after the three gate/classifier fixes (see GATE HISTORY). The identical digest is the proof
+that those fixes changed **no shipped release output at all**: the count-over-class pin returns the
+same value the old value-keyed branch did, the forcer change is TESTING-only, and the gate is
+standalone. It also re-confirms the build is deterministic under `PYTHONHASHSEED=0`.
+
+### GATES (all green on the artifact above)
+
+| gate | exit | what it proved |
+|---|---|---|
+| full build battery (`SVC_REQUIRE_GATES=1`, 45 registry modules + post-finalization `verify()` phase) | **0** | incl. `polis_vault gate PASS`, `double_soul_rulings.verify OK`, `XP-forge gate PASS` |
+| `tools/verify_soul_drop_rates.py --gate` | **0** | per-record vs the ONE classifier + cohorts **G1..G8** + **11** planted negatives + positive control + the testing-forcer property |
+| `tools/debug/negtest_xp_forge_acts.py` | **0** | I1..I5 all fire, control green |
+| `tools/debug/negtest_gaoler_chests.py` | **0** | T2 (x2) / T3 / T4 / T5 all fire, 2 controls green |
+| `tools/debug/b102_record_diff.py` | **0** | **811** modified records, **all** attributed (A=794 rate, B=12 formulas, C=5 vault tables); **0 REMOVED, 0 ADDED** |
+
+**NON-VACUITY - the same three gates over the PRE-WAVE baseline (`local/baseline_main.arz`):**
+
+| gate on baseline | exit | it red on exactly this wave's targets |
+|---|---|---|
+| `verify_soul_drop_rates.py --gate` | **1** | **833** violations - the 66/50 cohorts still populated, Common carriers still dropping |
+| `negtest_gaoler_chests.py` | **1** | control RED: `polisvault_01/02/03...` still name `unique_1h_n01` + `01_act4_relics` (Will's "essence of ..." bug, verbatim) |
+| `negtest_xp_forge_acts.py` | **1** | control RED: `I5 ... duskyboar_soul_n / ravenousboar_soul_n / carrioncrow_soul_n: assigned act 1 (S3-proxy-region) but not listed in n_01_lesserpotionofexperience_formula` (Will's "you cant use them in the forge formulas", verbatim) |
+
+**SHIPPED RATE DISTRIBUTION (from the gate's own cohort print, 1,564 carriers):**
+`100%x4` (the R-48 champions) · `66%x4` (the UNTOUCHED-ruling Charon/Hades heads) · `33%x770` ·
+`25%x122` · `0.5%x7` + `0.35%x2` (all HELD: 7 Champion-tier + 2 unset-classification) · `0%x655`.
+The **66% and 50% cohorts are otherwise EMPTY** and **no Common carrier is above 0**.
+
+### GATE HISTORY - THE FIRST FULLY-GATED RUN FAILED, WITH 76 VIOLATIONS
+
+Recorded because the earlier draft of this record shipped with `<<MD5>>`/`<<EXIT>>` placeholders, i.e.
+the gates had never actually been run. When they were, they found three real defects, all now fixed
+and all recorded verbatim in `docs/WILL_RULINGS.md` **R-150 AMENDMENTS 7, 8 and 9**:
+
+| # | n | defect |
+|---|---|---|
+| 1 | 8 | `ruled_soul_equip_rate()` was **not idempotent** - it answered 33 for a record at 66 and 25 for the same record once 33 was written, so the applier and the gate disagreed by construction. Fixed by `SOUL_RATE_COUNT_OVER_CLASS` + a build-time re-derivation that HALTS on drift + invariant G8. |
+| 2 | 8 | **G7b red on the carve-out its own wave introduced** (the UNTOUCHABLE Charon/Hades roster is HELD at a live 66/25). Fixed - and the hole it exposed (a HELD record's golden delta always reading as "intended", leaving the one roster protected by an explicit Will ruling undefended) closed with it. |
+| 3 | 52 | `_force_100_pct_soul_drops` carried **AMENDMENT 3's path filter**, so a `SVC_TESTING_DROPS=1` build never boosted 52 live carriers - including our own placed `boss_dagon_66` and `boss_coldworm50`. TESTING-only; the release arz is byte-identical either way (see above). |
+
+Separately, the forge suite's **I5 planted negative was vacuous** and printed `GREEN (BLIND)` against
+a working invariant (it selected its target from an assignment map that is empty by construction
+after the wiring pass reaches its fixed point). Rebuilt so it fires, or HALTS rather than claim a
+pass it did not earn.
+
+### DEBT REGISTER (every open item, none silently dropped)
+
+- **BL-b102-DEBT-1 (P2, WILL DECISION) - SIX summon-side carriers held, not four.** R-106 said "those
+  15 [Common carriers] go to 0%". **Four** of them are `records\skills\soulskills\pets\carrioncrow_05/1/2/3`
+  - **Class=Pet, Pet.tpl**, the crows a soul summons FOR Will. On a pet `chanceToEquipFinger2` is a
+  pure power switch (a pet drops nothing), so zeroing them would nerf his summons and fix no drop.
+  **Measured after the build, TWO MORE** live sub-1% carriers are held for a different reason - their
+  `monsterClassification` is **empty**, so the classifier refuses to rule (R-150 AMENDMENT 10):
+  `records\item\miscellaneous\monsterscrolls\pets\duskyboar_17.dbr` (0.5) and
+  `records\skills\monster skills\summoning_pets\pets\dayria_carrioncrow_40.dbr` (0.35). Both are
+  `Monster.tpl` (so the Pet-template exclusion misses them) but both are **summons**, so the same
+  reasoning applies. All six are HELD and visible in the shipped distribution as `0.5%x7 / 0.35%x2`
+  (the other 7 are the Champion tier, DEBT below). Recommendation: leave all six. One word closes it.
+- **BL-b102-DEBT-2 (P1, WILL DECISION) - ⚠️ CORRECTED: EIGHT records on the R-105 tension, not one, and
+  the classifier was broken by it.** R-105 says both "move all 66% and 50% to 33% - that is 734
+  creatures" (a COUNT that includes them) and "25% for fixed location bosses". The earlier draft of
+  this entry said the carve-out left **ONE** record open. **Measured on the baseline: TWELVE carriers
+  are in a ratified cohort AND classified fixed-location bosses.** Four - `boss_charon_39/41/43` and
+  `drxcreatures\bloodwitch\boss_hades_54` - are ALSO covered by an OLDER explicit Will ruling
+  (`tools/patches/double_soul_rulings.py` (c): "CHARON 39/41/43 + HADES 54 - UNTOUCHED"), whose
+  field-level zero-diff `verify()` **FAILED this wave's first gated build** and named exactly those
+  four; a newer COUNT does not silently overrule an older explicit "untouched", so they are **HELD at
+  66** in `SOUL_RATE_UNTOUCHABLE` (G2b cross-checks the list against that module's own roster).
+  **THE OTHER EIGHT SHIP AT 33 UNDER THE COUNT AND ARE WILL'S CALL:** `boss_satyrshaman_55`,
+  `boss_coldworm50`, `boss_dagon_66`, `q_leinth_47/49/50`, `murderbunny`, `svc_um_hadesmarshal_80`.
+  Seven of the eight are **our own placed ubers**, reached by `_soul_is_farmable_boss`'s naive
+  `boss_`/`q_` path heuristic - which is why five of them used to carry `_KNOWN_EXCEPTIONS` waivers
+  reading "the shipped value IS intended".
+  **This was not only a miscount - it was a live defect.** Because the ratified-cohort rule keyed on
+  the record's CURRENT value, the classifier returned a DIFFERENT answer on its own output, so the
+  applier wrote 33 and the gate demanded 25 (8 LAST-WRITER + 8 golden-diff failures). Fixed by
+  `build_svc_database.SOUL_RATE_COUNT_OVER_CLASS`, invariant **G8** and a build-time re-derivation
+  that **halts the build** if a new fixed-location boss ever lands in the 66/50 cohort - so this
+  decision can never be made silently by a future lane. One line flips all eight.
+- **BL-b102-DEBT-10 (P1, LEDGER CORRECTION, no action needed) - the R-106 amendment's other two "plain
+  defects" are not defects.** It listed `um_charon_ferryman_99` and `um_tantalus_99` (with the Gaoler)
+  as "fixed-location bosses at 0% carrying a soul that can never drop ... they need no policy decision
+  at all". R-107 already retracted that claim for the Gaoler. Measured
+  (`tools/debug/probe_uber_transform_chains.py`), all three are the HEAD of a two-form chain whose
+  TERMINAL drops: head 0% -onDeath-> terminal 66%, head carrying its DONOR's soul and terminal carrying
+  ours. Raising the two failed `double_soul_rulings.verify` ("legion_soul_stages distinct-soul roster
+  ... expected exactly Charon 39/41/43 + Hades 54") - i.e. it would have made one encounter pay two
+  different souls, the Legion defect class. All three heads stay at 0. Nothing for Will to decide; this
+  is recorded so the amendment's wrong sentence is not re-implemented by a later lane.
+- **BL-b102-DEBT-3 (P2, WILL DECISION + MAP) - a truly per-difficulty vault.** Measured: container loot
+  tables cannot difficulty-index (0 of 74,013 base-game records carry a multi-value `lootNNameM`; the
+  3-array convention is Monster.tpl-only, 2,703 instances). The base game ships one chest record per
+  tier and the map places the right one. Giving the Gaoler's vault normal/epic/legendary chests needs 3
+  records per spot + map placement.
+- **BL-b102-DEBT-4 (P1, CODE) - the same tier mis-wire in 2 sibling carriers, and there it is worse.**
+  `_OBS_GUAR_UNIQUE` (`unique_1h_n01`) and `_OBS_GUAR_RELIC` (`01_act4_relics`) are also injected as
+  guaranteed slots by `apply_svc_patches` at lines 15535-15536 (the Obsidian hoard) and 16841-16842
+  (`_svc_build_dedicated_hoard`, every other uber's hoard). Both builders create **three tiered tables
+  `01/02/03`** and then inject the SAME normal-tier donor into all three - so the epic and legendary
+  hoards of every uber that uses them pay normal-tier "Essence of ..." in their guaranteed slot, the
+  identical bug Will reported on the Gaoler. NOT retuned under a Gaoler ticket (shared-symbol law); the
+  fix there is per-tier (`01/02/03_act4_relics` + `unique_1h_n01/e01/l01`) and needs its own pass.
+- **BL-b102-DEBT-5 (P1, CONTENT) - 289 souls still have no forge act** (corrected from "292/99": the
+  final gated build's own line is `UNRESOLVED (reported, never guessed): 289 - {'no monster drops it
+  (unobtainable)': 193, 'no dominant act signal': 96}`). **193 have no dropping monster at all** -
+  unobtainable, a separate defect worth its own lane - and **96** have no dominant act signal, most of
+  them our placed ubers whose act is a MAP placement fact, not DB data. Closing them needs a small
+  level -> act table from the map lane, or Will naming the act per uber.
+- **BL-b102-DEBT-6 (P2, CONTENT) - no act-5/act-6 XP formula exists.** SV 0.98i is Immortal-Throne era;
+  neither it nor the base game ships a Ragnarok/Atlantis experience-potion formula, so souls dropped by
+  `xpack2`/`xpack3` monsters have no list to join. Minting a 5th/6th set is new content = Will's call.
+- **BL-b102-DEBT-7 (P1, LAUNCH-GATED) - the Gaoler chest count is source-only.** The halving lives in
+  `build_section_surgery.B41_SPECS`; no `Levels.arc` was rebuilt by this lane, so **Will cannot see it
+  until the map is rebuilt and deployed with `Quests.arc`**. `polis_vault.verify()` T5 asserts the
+  source table, which is a source proof, NOT an artifact proof.
+- **BL-b102-DEBT-8 (P2, DESIGN) - which two chests.** Keeping `chest_01` + the apex `chest_03` is this
+  lane's design call (the apex is the only chest with both a guaranteed unique and a guaranteed relic,
+  and it sits dead centre). Trivially changed if Will wants a different pair or a different spread.
+- **BL-b102-DEBT-9 (P2, TOOLING) - `tools/patches/_probe_legion_soul_stages.py` asserts 66.** It is a
+  standalone probe, not a build gate, and its `assert before[...] == 66.0` pre-state is now stale under
+  R-105. It will fail if re-run; it is not in any gate battery.
+- **BL-b102-DEBT-11 (P2, BEHAVIOUR CHANGE, TESTING BUILDS ONLY) - the 100% test build now boosts 52
+  more carriers.** `_force_100_pct_soul_drops` was fixed to use the shared `_soul_carrier_roster`
+  instead of its `'creature' in path` filter (R-150 AMENDMENT 9), so a `SVC_TESTING_DROPS=1` build
+  goes from **857 -> 909** boosted records. That is the intended repair - the 52 were silently left at
+  their release rate, which made test builds lie about our own placed ubers (`boss_dagon_66`,
+  `boss_coldworm50`) - but it IS a change in what a test build does, and the 7 HELD Champion-tier
+  carriers at 0.5/0.35 are among the newly boosted (they have `chance > 0`, so the forcer's unchanged
+  `> 0` gate takes them). No release build is affected: the arz md5 is identical before and after.
+  Flagged so a future "the test build shows drops that release will not" report resolves in one step.
+- **BL-b102-DEBT-12 (P1, PROCESS) - the b101/b102 record template ships with `<<PLACEHOLDER>>`
+  fields.** This record was first committed with `<<MD5>>`, `<<EXIT>>`, `<<VSDR>>` etc. still
+  unresolved - i.e. presented as a gate record while the gates had never been run. When they were run
+  they found 3 real defects + 1 vacuous negative test. A gate record with an unfilled placeholder
+  should be a **committable-but-loud** state (a pre-commit grep for `<<[A-Z]` in `docs/BACKLOG.md`
+  would have caught it), not something a reader can mistake for a result. Cheap to add; not done here
+  because it touches the shared hook config rather than this wave's surface.
+
+>>>>>>> feat/soul-economy
 
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
