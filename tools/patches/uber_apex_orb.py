@@ -214,22 +214,49 @@ overwritten with no dtype argument (the cloned-record dtype trap).
 
 THE ZZDEV PAIR - PLACEMENT MEASURED, NOT ASSUMED (R-99 required this)
 ---------------------------------------------------------------------
+⚠️ CORRECTED 2026-07-29 (b101 round 2). An earlier version of this docstring said
+`z_arthur` had "0 placements, so the chain is unreachable in the shipped map".
+**THAT WAS WRONG**, and it was wrong in the direction that matters. It came from a
+ONE-HOP census; re-measuring with the multi-hop walk found the placement. The
+claim is corrected here rather than quietly dropped, because a stale comment in
+this exact module is what sent two earlier lanes wrong.
+
 Both are Iron Lore dev leftovers (`FileDescription = "SPAWNED ON ARTHUR DEATH"`,
-Champion rank, `dropItems = 0`). Measured against the shipped
-`Levels.arc` (`fc0adcc0713839a685b32d6e122653be`, 2,282 levels) and the built db:
-  * `old_z_toxeus`: 0 static `0x05` placements, 0 db referrers -> fully INERT.
-  * `z_toxeus`:     0 static `0x05` placements, but ONE db referrer -
-    `records\xpack\creatures\monster\zzdev\z_arthur.dbr .actorToSpawnOnDeath`.
-    `z_arthur` is itself a zzdev record with 0 placements, so the chain is
-    unreachable in the shipped map - but the referrer is recorded because
-    "unreferenced" was NOT the finding, and a later map lane placing `z_arthur`
-    would make this live.
-Both also carry `dropItems = 0`, so even if reached they drop nothing equipped;
-the orb is a separate `treasureProxyName` mechanism and would fire. Wiring them
-is therefore inert-to-harmless, which is the outcome R-99 called "fine". Neither
-is deleted, retired, blanked or renamed (RETIREMENT PROTOCOL): code-unreferenced
-is not proof of dead, and this is a Will-ratified inclusion, not a cleanup.
-Re-measure with `tools/debug/b101_toxeus_placement_census.py`.
+Champion rank, charLevel 40/56/71, `dropItems = 0`). MEASURED against the shipped
+`Levels.arc` (`fc0adcc0713839a685b32d6e122653be`, 2,282 levels walked, 0 unparsed
+`0x05` sections, 17,348 distinct placed paths / 491,885 instances indexed) and the
+built db:
+  * `old_z_toxeus`: 0 static `0x05` placements, 0 db referrers, no placed ancestor
+    within 3 hops -> genuinely INERT. Its orb can never fire in this map.
+  * `z_toxeus`: 0 static placements of its OWN, but it IS REACHABLE at hop 1.
+    Its single db referrer is
+    `records\xpack\creatures\monster\zzdev\z_arthur.dbr .actorToSpawnOnDeath`, and
+    `z_arthur` **IS STATICALLY PLACED** - exactly ONE `0x05` instance, in
+    `XPack\Levels\Area01_Rhodes\Undergrounds\ScrabledEggs_Floor06.lvl`. `z_arthur`
+    is a `Monster.tpl`, `monsterClassification = Quest`, charLevel 40/56/71 record
+    (`FileDescription = "Satyr"`). So killing that one placed z_arthur spawns
+    z_toxeus, and z_toxeus now drops the Act-4 apex orb.
+    HONEST LIMIT OF THIS FINDING: static placement proves the record is IN the
+    level, NOT that a player can walk to it or that the engine spawns it. Whether
+    that Rhodes underground spot is player-reachable is LAUNCH-GATED and is
+    registered as debt - it is not claimed here either way.
+Both carry `dropItems = 0`, so neither drops equipped gear; the orb is the
+separate `treasureProxyName` mechanism and WOULD fire. So the honest summary is
+"one of the two is inert, the other is live-but-obscure", NOT "both inert".
+R-99 pre-authorised this outcome in Will's own words - "if some good items drop
+since someone got lucky ... so be it" - and included them explicitly, so the
+finding is recorded rather than acted on. Neither is deleted, retired, blanked or
+renamed (RETIREMENT PROTOCOL): code-unreferenced is not proof of dead, and this is
+a Will-ratified inclusion, not a cleanup.
+
+ALSO MEASURED, and NOT a zzdev record: `um_toxeus_99` (the inherited SP Toxeus,
+Hero, 33/66/99) has 0 static placements, 0 db referrers and NO placed ancestor
+within 3 hops - it is as inert as `old_z_toxeus` in this map. Its orb is wired per
+R-99 ("all versions") and is simply dormant until something places or pools him.
+Registered as debt so it is a known dormancy, not a silent one.
+
+Re-measure everything above with
+`py tools/debug/b101_toxeus_placement_census.py <built.arz> <Levels.arc>`.
 
 LEINTH (3 records, 2 fields each) - her SOLE-OWNED chests are upgraded IN PLACE
 to the SAME apex tables, so all three bosses share one identical calibre:

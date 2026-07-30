@@ -50,6 +50,11 @@ from contracts_map import (parse_level_index, parse_0x05, SEC_LEVELS)  # noqa: E
 _SPAWN_FIELDS = ('actorToSpawnOnDeath', 'name1', 'name2', 'name3', 'name4',
                  'name5', 'name6', 'name7', 'name8', 'name9', 'name10')
 
+# How far UP the reference graph to walk looking for a statically placed ancestor.
+# 3 is enough for this map's deepest measured chain (placed proxy -> pool ->
+# monster = 2) with one hop of headroom; each hop costs one whole-db field scan.
+_MAX_HOPS = 3
+
 
 def _norm(s):
     return str(s).replace('/', '\\').lower()
@@ -144,24 +149,70 @@ def main():
         if len(rr) > 6:
             print('%68s<- ... +%d more referrer(s)' % ('', len(rr) - 6))
 
-    # ── one hop of TRANSITIVE reachability for anything that looked inert ────
-    print('\n--- transitive check: is the SPAWNER of an "inert" record placed? ---')
-    any_transitive = False
-    for rec, (n_static, n_refs, _v) in findings.items():
-        if n_static:
+    # ── MULTI-HOP reachability: walk UP until a PLACED ancestor is found ─────
+    # WHY THIS IS NOT ONE HOP (measured, and it changes every champion's verdict).
+    # This tool originally checked a single hop and printed "the SPAWNER is placed
+    # in 0 level(s)" for every champion, which reads as "unreachable" and is FALSE.
+    # The real placement graph in this map is TWO hops:
+    #     records\drxmap\proxy\q_toxeus_hunt_lone.dbr        <- PLACED (0x05)
+    #        -> records\drxmap\proxy\pools\q_toxeus_hunt_lone.dbr   (the pool)
+    #           -> um_toxeus_hunt_99.dbr                            (.name1)
+    # The monster's direct referrer is the POOL, which is never placed itself; the
+    # PROXY one level above it is. So a 1-hop check under-reports by construction.
+    # This walk is breadth-first UP the reference graph to _MAX_HOPS, stopping at
+    # the first placed ancestor, and it prints the whole path so the claim is
+    # auditable rather than a bare verdict.
+    print('\n--- MULTI-HOP reachability: nearest PLACED ancestor (max %d hops) ---'
+          % _MAX_HOPS)
+    for rec in roster:
+        if sum(static_hits(rec).values()):
+            print('  %-26s PLACED DIRECTLY' % rec.rsplit('\\', 1)[-1])
             continue
-        for parent, field in sorted(set(refs.get(rec, []))):
-            if field not in _SPAWN_FIELDS:
-                continue
-            p_static = static_hits(parent)
-            any_transitive = True
-            print('  %s <- %s .%s : the SPAWNER is placed in %d level(s) (%d instance(s))'
-                  % (rec.rsplit('\\', 1)[-1], parent.rsplit('\\', 1)[-1], field,
-                     len(p_static), sum(p_static.values())))
-            for lvl, c in sorted(p_static.items())[:4]:
-                print('        %s x%d' % (lvl, c))
-    if not any_transitive:
-        print('  (nothing to check - every roster record is either placed or pooled)')
+        # frontier: {record -> path of (child, field) that led here}
+        frontier = {rec: []}
+        seen = {_norm(rec)}
+        hit = None
+        for hop in range(1, _MAX_HOPS + 1):
+            parents = {}
+            targets = {_norm(k): k for k in frontier}
+            for n in db.record_names():
+                ff = db.get_fields(n)
+                if not ff:
+                    continue
+                for k, tf in ff.items():
+                    base = k.split('###')[0]
+                    for val in tf.values:
+                        if isinstance(val, str) and _norm(val) in targets:
+                            child = targets[_norm(val)]
+                            if _norm(n) in seen:
+                                continue
+                            parents.setdefault(n, frontier[child] + [(child, base)])
+            if not parents:
+                break
+            placed = sorted((p for p in parents if sum(static_hits(p).values())),
+                            key=lambda p: -sum(static_hits(p).values()))
+            if placed:
+                hit = (placed[0], parents[placed[0]], hop)
+                break
+            seen |= {_norm(p) for p in parents}
+            frontier = parents
+        if hit:
+            anc, path, hop = hit
+            st = static_hits(anc)
+            print('  %-26s REACHABLE at hop %d via PLACED %s (x%d in %s)'
+                  % (rec.rsplit('\\', 1)[-1], hop, anc.rsplit('\\', 1)[-1],
+                     sum(st.values()), sorted(st)[0]))
+            # printed TOP-DOWN (placed ancestor first) so the chain reads the way
+            # the engine walks it: what is placed -> what it draws -> the monster.
+            chain = [anc] + [c for c, _f in reversed(path)]
+            hops = [f for _c, f in reversed(path)]
+            for i, node in enumerate(chain):
+                arrow = '  .%s ->' % hops[i] if i < len(hops) else ''
+                print('        %s%s%s'
+                      % ('PLACED ' if i == 0 else '', node.rsplit('\\', 1)[-1], arrow))
+        else:
+            print('  %-26s NO placed ancestor within %d hops -> INERT in THIS map'
+                  % (rec.rsplit('\\', 1)[-1], _MAX_HOPS))
     return 0
 
 
