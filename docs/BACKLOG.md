@@ -144,8 +144,13 @@ authoritative tags all present); `tools/patches/_check_registry.py` **OK, 42 mod
 --verify-hashes` **PASS, 9 inputs**; player-surface checklist **PASS, 0 problems, 39 creature
 records**, re-run NON-circularly against the baseline map.
 
-⚠️ **CONCURRENCY:** this branch is on `4f0299c` and `main` moved TWICE while the lane ran (`6467feb`
-feat/leinth-wave, then `b7cb622` fix/blade-mastery-truth). It needs an integration merge;
+⚠️ **CONCURRENCY:** this branch is on `4f0299c` and `main` has moved REPEATEDLY across both rounds -
+`6467feb` (feat/leinth-wave, which also took the briefed `build66-dev` tag), then `b7cb622`
+(fix/blade-mastery-truth), then `ad0711b` (round-2 start), and it was `b376b61` by the time round 2
+finished. `build69-dev` was claimed by `feat/toxeus-apex-roster` in the same window, which is why
+round 2 takes `build70-dev`. Ruling decade re-checked at the very END of round 2: R-110..R-114 are
+uncontested (only `feat/toxeus-apex-roster`, `fix/blade-mastery-truth` and `main` hold R-1xx, all
+R-100..R-102) - but re-run the check, it is a race. It needs an integration merge;
 `docs/BACKLOG.md` and `docs/WILL_RULINGS.md` are the likely conflict points. The ruling decade is
 NOT contested - the blade-mastery lane's own ledger note records that it took 100-102 and yielded
 110-119 here.

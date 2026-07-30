@@ -666,7 +666,8 @@ Exhaustive; a triaged item is not a done item.
    the derivation filters on the same constant, but it does mean "on the processional" tolerates 60 u
    of detour on a 690.6 u route.
 10. **THIS BRANCH IS NOT ON CURRENT `main` AND NEEDS AN INTEGRATION MERGE.** It branched from
-    `4f0299c` as briefed; `main` has moved repeatedly during both rounds (now `ad0711b`).
+    `4f0299c` as briefed; `main` has moved repeatedly during both rounds - it was `ad0711b` when
+    round 2 started and `b376b61` when round 2 finished, i.e. it moved WHILE this round ran.
     `docs/BACKLOG.md` and `docs/WILL_RULINGS.md` are the likely conflict points. The ruling decade is
     uncontested (R-110..R-114 here; `main` holds only R-100..R-102) but **re-run the check - it is a
     race**, and `build69-dev` was taken by another lane between round 1 and round 2, which is why this
