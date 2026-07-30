@@ -1274,7 +1274,7 @@ touching a weight and forbids loosening the R-96 gate to fit its own change.
 
 ---
 
-## R-99 [2026-07-29] PENDING - the apex orb covers EVERY Toxeus variant, not just the two we wired
+## R-99 [2026-07-29] IMPLEMENTED b101 - the apex orb covers EVERY Toxeus variant, not just the two we wired
 
 **WILL, VERBATIM:**
 
@@ -1377,11 +1377,100 @@ be re-authored to assert the *whole* roster instead of a count), rebuild, re-run
 ones covering the added variants, record-diff for zero unattributed change, confirm `genericbossorb_04` and
 its 19 other consumers stay byte-unchanged.
 
-**STATUS:** RATIFIED, implementation queued. No open questions remain.
+**STATUS: IMPLEMENTED b101 (branch `feat/toxeus-apex-roster`), 2026-07-29. NOT DEPLOYED - no tag
+shipped bytes; the orchestrator owns every deploy.** Owner module `tools/patches/uber_apex_orb.py`
+(the R-72/R-75 owner, roster EXTENDED); planted negatives `tools/debug/negtest_uber_apex_orb.py`;
+placement census `tools/debug/b101_toxeus_placement_census.py`; record-diff
+`tools/debug/b101_r99_record_diff.py`; read-back proof table `tools/debug/b101_r99_proof_table.py`.
+See docs/reports/b101_toxeus_apex_roster.md and the BUILD69-DEV GATE RECORD in docs/BACKLOG.md.
+
+**MEASURED RESULT (read back OUT of the built arz, not asserted from the patch's intentions).**
+Build exit 0 with `SVC_REQUIRE_GATES=1`; arz **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B,
+**51,124 records**. Baseline for every comparison below is a build of `main` @ `e014ef8` made in the
+same environment: **`aea688b23acefe1b48ae31a0df4cc423`**, 51,124 records (independently corroborated -
+it reproduces the md5 the b100 gate record published for that base).
+
+| record | charLevel n/e/l | rank | before | after |
+|---|---|---|---|---|
+| `um_toxeus_enslaver_99` | 40/68/100 | Boss | `genericbossorb_05` | `genericbossorb_05` (already, b94) |
+| `um_bloodtoxeus_99` | 40/68/100 | Boss | `genericbossorb_05` | `genericbossorb_05` (already, b94) |
+| `um_toxeus_hunt_99` | 40/68/100 | Boss | **field absent** | `genericbossorb_05` ← the headline fix |
+| `um_toxeus_hunt_l_99` | 40/68/100 | Boss | **field absent** | `genericbossorb_05` (clone-inherited) |
+| `um_toxeus_99` | 33/66/99 | Hero | **field absent** | `genericbossorb_05` |
+| `um_toxeus_21` | 25/45/65 | Boss | `genericbossorb_01` | `genericbossorb_05` (OVERRULED call honoured) |
+| `z_toxeus` | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+| `old_z_toxeus` | 40/56/71 | Champion | **field absent** | `genericbossorb_05` |
+
+Every charLevel above matches this ruling's own table exactly, re-measured rather than copied.
+
+**THE ROSTER IS DERIVED, NOT TYPED** (`uber_apex_orb.toxeus_roster`: path contains `toxeus` AND
+`templateName` is `Monster.tpl`) and cross-checked TWO ways - against `ROSTER_PINNED` (so a new
+variant REDS the build instead of being silently dropped, which is how the Endless Hunt shipped
+orb-less for two waves) and against a second name-tag derivation. The nine `Pet.tpl` Toxeus summons
+are excluded by the `Monster.tpl` half, deliberately: `treasureProxyName` on `Pet.tpl` is the
+documented crash trap.
+
+**PROVEN, each against artifacts built for this ruling:**
+- Record-diff vs the `main` baseline: **0 ADDED, 0 REMOVED, 6 CHANGED**, and every one of the 6 is a
+  derived-roster record whose ONLY moved field is `treasureProxyName` → `genericbossorb_05`. **Zero
+  unattributed changes.** 0 REMOVED means b98's 15 records and b99's `summon_sargoth` + pets survived.
+- `genericbossorb_04` **BYTE-UNCHANGED**: the proxy plus its whole donor chain (3 pools, 3 chests, 3
+  loot tables) = 10 records compared field-by-field, value-by-value, dtype-by-dtype against the
+  baseline - all identical; consumers 19 → 19, **nothing lost, nothing gained**, 0 Toxeus records left
+  on it. This is the entire reason a new tier was minted, and it is measured, not asserted.
+- `genericbossorb_01` (the SECOND donor tier, which `um_toxeus_21` leaves) byte-unchanged; consumers
+  11 → 10, losing exactly `um_toxeus_21` and nothing else; its other 10 stay put.
+- **R-48/R-91 independence PROVEN, not asserted:** `chanceToEquipFinger2` on all 8 roster records is
+  bit-identical to the baseline - the three fought champions still 100.0, `um_toxeus_99` still 66.0,
+  `um_toxeus_21` still 50.0, the zzdev pair still 0.0. Souls are Finger2 equipment, orbs are
+  `treasureProxyName`; the orb change moved neither.
+- Planted negatives: **29/29 as specified** (1 positive + 22 negatives + R1-R5 + 1 restore positive),
+  including ONE PER ROSTER RECORD proving the gate fires if that record loses its orb.
+- The new gate correctly **REDS the pre-R-99 baseline** with exactly the 6 gaps this ruling enumerated.
+
+**TWO THINGS THIS IMPLEMENTATION FOUND THAT THE RULING ASSUMED OTHERWISE - read them, they change the
+answer to judgement call #2:**
+1. **`z_arthur` IS PLACED, so `z_toxeus` is NOT inert.** This ruling's recommendation and the first
+   implementation pass both recorded the zzdev chain as unreachable. Re-measured with a MULTI-HOP walk
+   (the first census was one hop, and placement here is a two-hop placed-proxy → pool → monster chain),
+   `z_arthur` has exactly ONE static `0x05` instance in
+   `XPack\Levels\Area01_Rhodes\Undergrounds\ScrabledEggs_Floor06.lvl`, and its
+   `actorToSpawnOnDeath` is `z_toxeus`. So a Champion-rank Act-1 dev dummy now drops the Act-4 apex
+   orb. Will's words pre-authorise it ("if some good items drop since someone got lucky ... so be
+   it"), so it is RECORDED, not reversed - but it is a live consequence, not a no-op, and he should
+   know. Honest limit: static placement proves the record is in the level, NOT that a player can walk
+   to it; player reachability is launch-gated (registered as debt).
+2. **`um_toxeus_99` and `old_z_toxeus` are genuinely inert in this map** (0 static placements, 0 db
+   referrers, no placed ancestor within 3 hops). Their orbs are wired per "all versions" and are simply
+   dormant. Recorded so the dormancy is known rather than silent.
+
+**NOTHING WAS DELETED, RETIRED, BLANKED OR RENAMED** (RETIREMENT PROTOCOL): the zzdev pair is wired
+per Will's explicit inclusion, `genericbossorb_01`/`_04` and Leinth's three original loot tables all
+stay in the db, and `um_toxeus_21` was NOT quietly scaled to a lesser tier "in the spirit of" the
+ruling - the ban in this ruling is honoured literally.
 
 ---
 
 ## R-100 [2026-07-29] PLAY-SESSION BATCH - 19 items, CAPTURED VERBATIM, none implemented yet
+
+> 🚩 **NUMBER COLLISION FLAGGED BY b101 (`feat/toxeus-apex-roster`), NOT RESOLVED HERE.** There are
+> now TWO live R-100s in this file: `- R-100 ... IMPLEMENTED b100 (fix/blade-mastery-truth)` in the
+> "Player-surface truthfulness" decade above, and this section. Both were written the same day by
+> parallel lanes. This lane deliberately did NOT renumber either one - reassigning another lane's
+> ruling number from a third lane is the same class of silent cross-lane edit the ledger law exists to
+> prevent. The file's own `fix/debt-docs` LEDGER-HYGIENE precedent (the INCUMBENT keeps the number,
+> the other lane's rulings move wholesale to the next free decade) is the tie-breaker to apply, but
+> picking the incumbent between two same-day lanes is the orchestrator's call. Registered as
+> `BL-b101-DEBT-1`.
+>
+> ⚠️ **THIS WHOLE SECTION WAS BRIEFLY LOST AND HAS BEEN RESTORED.** The `feat/toxeus-apex-roster`
+> merge commit `4748e93` resolved an append/append conflict in this file by keeping only its own side,
+> which deleted these 101 lines - Will's verbatim 19-item play report, captured word for word
+> precisely so nothing could fall off it. Found by `git diff main..HEAD` reading
+> "101 deletions / 0 insertions" and restored byte-identically from `main`. Recorded here as a worked
+> example of the failure mode CLAUDE.md law #1 exists to catch: a routine-looking merge resolution is
+> enough to vaporise a verbatim Will ruling, so any lane touching this file should diff it against
+> `main` before committing.
 
 Will played and reported a large batch in one message. Recorded verbatim FIRST, before any triage, because
 losing an item off a list this long is exactly the failure the DONE-MEANS-DONE rule exists to prevent.
