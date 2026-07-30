@@ -2380,14 +2380,34 @@ def _add_typhon_rhodes_unlock(data: bytes) -> bytes:
 
 
 def main():
-    # Start from SVAERA's original Quests.arc (clean)
-    svaera_quests = Path(r'reference_mods\SVAERA_customquest\Resources\Quests.arc')
+    # Start from SVAERA's original Quests.arc (clean).
+    #
+    # ⚠️ b100 ROUND-2 FIX - THIS WAS A SILENT STALE-INPUT BUG. This used to be
+    #     svaera_quests = Path(r'reference_mods\SVAERA_customquest\Resources\Quests.arc')
+    #     if svaera_quests.exists(): shutil.copy2(...)
+    # i.e. a bare repo-relative path plus "restore only if it happens to be there".
+    # `reference_mods/` is gitignored, so it is EMPTY in every fresh worktree AND
+    # (measured 2026-07-29) in the main checkout too. The restore therefore did
+    # NOTHING, and this build went on to patch whatever `work/.../Quests.arc`
+    # already contained - an ALREADY-PATCHED artifact from a previous run. The only
+    # thing that caught it was _add_typhon_rhodes_unlock's own
+    # exactly-one-portal-reference assert, which surfaced as a baffling
+    # "expected exactly 1 reference to the Rhodes portal, found 3" instead of
+    # "your upstream input is missing". Without that assert this would have shipped
+    # a double-patched Quests.arc - and Levels+Quests are COUPLED, so it would have
+    # shipped attached to a map.
+    # The base is now resolved through the SAME md5-pinned fallback chain as every
+    # other upstream input (env var -> in-repo cache -> MAIN checkout's cache ->
+    # Steam Workshop item 2076433374), and a miss FAILS LOUD.
     quests_arc_path = Path(r'work\SoulvizierClassic\Resources\Quests.arc')
+    import check_build_inputs
+    svaera_quests = check_build_inputs.preflight('svaera_quests_arc')['svaera_quests_arc']
 
     import shutil
-    if svaera_quests.exists():
-        shutil.copy2(svaera_quests, quests_arc_path)
-        print(f'Restored clean Quests.arc from SVAERA ({quests_arc_path.stat().st_size / 1024:.1f} KB)')
+    quests_arc_path.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(svaera_quests, quests_arc_path)
+    print(f'Restored clean Quests.arc from SVAERA ({quests_arc_path.stat().st_size / 1024:.1f} KB)'
+          f'\n  base: {svaera_quests}')
 
     # Replace sv_commonmechanics.qst with our combined portal quest ONLY if any
     # portals are defined. The blood-cave portal hack was removed (walk-in entry),

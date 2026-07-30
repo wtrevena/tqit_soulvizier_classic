@@ -89,6 +89,7 @@ EXPECTED_MD5 = {
     'sv098i_levels_arc': '0b575c9dcd95461ec4ef2dea351f7d36',   # SV 0.98i Levels.arc
     'svaera_levels_arc': 'a1e13e48b3de499df31a5ca4d919030d',   # SVAERA 1.14 Levels.arc
     'svaera_arz':        '7bad88043e5c1be0c83fce1e8522ce8a',   # SVAERA_customquest.arz
+    'svaera_quests_arc': 'b786666ccc7accf4b533adecc457ce81',   # SVAERA 1.14 Quests.arc (194,578 B)
     # base_arz is the player's own TQAE install: version-dependent, deliberately unpinned.
 }
 
@@ -168,6 +169,21 @@ INPUTS = [
                        SVAERA_WORKSHOP / 'Database' / 'SVAERA_customquest.arz'),),
           groups=('db',), optional=True,
           note='build36 lane-B graft; skip the graft with SVC_GRAFT_SVAERA=0'),
+    # b100 round 2: build_quest_files.py needs SVAERA's PRISTINE Quests.arc as the base it
+    # restores before patching, and it was the one build input NOT in this registry. It
+    # resolved the path with a bare relative Path() + `if exists(): copy`, so in any
+    # checkout where reference_mods/ is empty - which is BOTH the main checkout and every
+    # fresh worktree today - the restore SILENTLY DID NOTHING and the build re-patched the
+    # already-patched work/ artifact. Only build_quest_files.py's own
+    # exactly-one-portal-reference assert caught it, and it caught it as a confusing
+    # "found 3" ValueError rather than as a missing input. Registering it here gives it the
+    # same md5-pinned fallback chain as every other SVAERA input.
+    Input('svaera_quests_arc', 'SVAERA Quests.arc (quest build base)', 'SVC_SVAERA_QUESTS_ARC',
+          'reference_mods/SVAERA_customquest/Resources/Quests.arc',
+          candidates=(('Steam Workshop item 2076433374',
+                       SVAERA_WORKSHOP / 'Resources' / 'Quests.arc'),),
+          groups=('quests',),
+          note='soa SVAERA 1.14 - the pristine archive build_quest_files.py patches'),
 ]
 
 BY_KEY = {i.key: i for i in INPUTS}
