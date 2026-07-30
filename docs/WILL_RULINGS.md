@@ -2343,15 +2343,27 @@ encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers;
 
 ---
 
-## R-120 decade [2026-07-30] - b102 `feat/devourer-kit`: the Devourer + Endless Hunt implementation wave
+## R-120..R-123 + R-125 [2026-07-30] - b102 `feat/devourer-kit`: the Devourer + Endless Hunt implementation wave
 
-> **DECADE HYGIENE.** R-100..R-107 were taken by the 07-29 lanes and R-108..R-119 are taken elsewhere
-> in the tree. `R-12[0-9]` was proven free before a single line was written:
-> `git grep -l -E "R-12[0-9]\b" $(git rev-list --all)` -> **empty**, and a working-copy grep over
-> `docs/WILL_RULINGS.md` + `docs/BACKLOG.md` in `main` AND all 100+ in-flight worktrees -> **empty**.
-> Nothing here renumbers or edits another lane's ruling.
+> **NUMBER HYGIENE - AND ONE LIVE COLLISION, RESOLVED BY MOVING OUR OWN.** R-100..R-107 were taken
+> by the 07-29 lanes and R-108..R-119 are taken elsewhere. When this lane started, `R-12[0-9]` was
+> provably free: `git grep -l -E "R-12[0-9]\b" $(git rev-list --all)` -> **empty**, and a
+> working-copy grep over `docs/WILL_RULINGS.md` + `docs/BACKLOG.md` in `main` AND all 100+ in-flight
+> worktrees -> **empty**.
 >
-> **NONE OF R-120..R-124 IS A NEW WILL DECISION.** R-100 #1/#12/#13, R-103 and R-107 are the
+> **THAT STOPPED BEING TRUE WHILE THIS LANE WAS BUILDING.** Re-checked at the end of the session,
+> three commits from two OTHER live lanes had landed a ruling numbered **R-124** minutes later
+> (`fix/uber-placement` @ `b1774d5` and `7940e78`, `fix/green-mesh-swap` @ `b302abd`), and
+> `fix/uber-placement` / `feat/soul-economy` had also taken R-130, R-140 and R-149. Per the ledger
+> law this lane **renumbered ITS OWN ruling** (the old R-124 is now **R-125**, re-verified free
+> against every worktree working copy at the time of writing) and **did not touch either other
+> lane's number** - reassigning another lane's ruling from a third lane is exactly the silent
+> cross-lane edit the ledger exists to prevent, and picking an incumbent between same-day lanes is
+> the orchestrator's call, not this lane's. **R-120..R-123 and R-125 are this lane's;
+> R-124 belongs to the other two lanes and they still collide with each other.** Registered as
+> `BL-b102-DEBT-3`.
+>
+> **NONE OF R-120..R-123 / R-125 IS A NEW WILL DECISION.** R-100 #1/#12/#13, R-103 and R-107 are the
 > decisions; this decade records what was MEASURED while implementing them, where the measurement
 > contradicts what those rulings assumed, and the two design choices that are this lane's own and are
 > therefore vetoable. Will's words are quoted, never paraphrased into a ruling.
@@ -2494,7 +2506,7 @@ than an in-place edit. **If Will wants Blood Frenzy to bite**, the answer is a
 
 ---
 
-## R-124 [2026-07-30] IMPLEMENTED b102, **NAMES + DONORS FLAGGED FOR WILL VETO** - the two new minion families, and the doc that is cited as the bar but does not exist.
+## R-125 [2026-07-30] IMPLEMENTED b102, **NAMES + DONORS FLAGGED FOR WILL VETO** - the two new minion families, and the doc that is cited as the bar but does not exist.
 
 **`docs/amgoz1_design_voice.md` IS NOT IN THIS TREE.** It is cited as law in `docs/BACKLOG.md` (3x),
 `docs/HUNTING_IMPROVEMENT_SUGGESTIONS.md`, four wave reports, `tools/patches/bossarena.py` and a wip
