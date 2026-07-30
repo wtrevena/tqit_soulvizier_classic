@@ -1764,7 +1764,51 @@ crimson texture, and no FX pak at all. If it also glows green, the mesh conclusi
 and the swap must cover him too. If it does NOT, the mechanism is a mesh-plus-charcoal-texture interaction and
 the fix may be a texture change instead of a mesh swap - a smaller and safer change.
 
-**STATUS: ROOT CAUSE IDENTIFIED BY ELIMINATION** (mesh), fix specified, animation risk named, deploy block on
-b98's shroud lifted, one confirming question queued for Will. `BL-b98-DEBT-2` is the related debt. R-93
+### FIFTH AMENDMENT - CORROBORATED. THE FIX IS A MESH SWAP, NOT A TEXTURE CHANGE.
+
+**WILL, VERBATIM:**
+
+> "i cant summon the devourer since i havent been able to kill him to get his soul but from what i remember
+> he had the green glow too"
+
+**THIS IS THE DISCRIMINATING ANSWER, and it settles the open branch.** The two candidates left were
+(a) the mesh alone, or (b) a `RevenantPoison.msh` + `NewSkeleton_Charcoal.tex` interaction. The Devourer wears
+the **same mesh with a DIFFERENT texture** (`newskeleton_crimson.tex`) and Will remembers him green as well.
+
+| record | mesh | baseTexture | green? |
+|---|---|---|---|
+| Enslaver (monster + 3 pet tiers) | `RevenantPoison.msh` | `NewSkeleton_Charcoal.tex` | **green** (confirmed, screenshot) |
+| Devourer | `RevenantPoison.msh` | `newskeleton_crimson.tex` | **green** (Will, from memory) |
+| Marauder demons | `ShadowStalker.msh` | *(none)* | **clean** (confirmed in game) |
+
+Green survives a texture change and dies with a mesh change. **So the texture is exonerated and a texture-only
+fix would NOT have worked. The mesh swap is required, and it must cover the Devourer too, not just the
+Enslaver.**
+
+**CONFIDENCE, stated honestly:** the Enslaver half is confirmed by a screenshot; the Devourer half is Will's
+recollection, not a fresh observation, because he has not been able to kill the Devourer and so cannot summon
+him. It is corroborating rather than conclusive - but it is consistent, it comes from the same person who
+correctly retracted his own earlier explanation of this bug, and it points the same way as the marauder
+comparison. **Treat the mesh as the cause; re-confirm the Devourer opportunistically rather than blocking the
+fix on it.**
+
+**SCOPE UPDATE for the fix:** `ShadowStalker.msh` on the Enslaver monster + all three Enslaver pet tiers +
+`um_bloodtoxeus_99` + the Devourer's pet tiers. Since R-93 wants these two champions to STOP sharing a mesh,
+the lane should pick a distinct clean mesh per champion rather than moving both onto the marauders' one -
+otherwise the green is fixed and R-93 is broken in the same commit. Both must be proven green-free before
+either ships.
+
+### ⚠️ A DESIGN FLAG WILL SHOULD HEAR ONCE, ARISING FROM THE SAME MESSAGE
+
+**He has not been able to kill the Devourer at all.** Meanwhile R-100 asks to give that same boss THREE power
+additions: **Bloodbath** (#1), **Blood Frenzy** on low health (#12) and **summonable minions** (#13). Blood
+Frenzy specifically triggers when he is nearly dead - i.e. precisely at the moment Will currently loses the
+fight. Those three stack onto a boss that is already beating him.
+
+This is **not** a refusal and nothing here is being scaled down on my own authority: R-100 stands as written and
+will be implemented as specified. It is worth one sentence to him so the decision is informed - he may well
+want exactly that (he is the one who put the Devourer on a hidden chest as a hard secret), and if so the answer
+is "yes, harder is the point". But he should choose it knowing the three changes compound on an encounter he
+has not yet won. `BL-b98-DEBT-2` is the related debt. R-93
 remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
 that mesh regardless of the green.
