@@ -152,6 +152,8 @@ same bytes:
 | round 2 | `b376b61` (the NEWEST tip, 3 advances later) | **exit 0**, `aea688b23acefe1b48ae31a0df4cc423`, 55,475,172 B, 51,124 records |
 
 ```
+# the scratch baseline worktree was REMOVED after the build (detached, nothing
+# unique in it: git merge-base --is-ancestor b376b61 main -> 0). Recreate with:
 git worktree add --detach .claude/worktrees/r2-baseline b376b61
 # Resources/ hardlinked in so the A9 render-chain gate can actually RUN
 PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 \
