@@ -52,6 +52,7 @@ Usage:
 import sys
 import re
 import struct
+import hashlib
 import math
 import json
 import argparse
@@ -86,6 +87,10 @@ SHRINE = (4388.0, 3085.0)     # StrategicMovementRespawnShrine respawn_hades_shr
 # garbage. Round 1's reproduce command did not guard that; this does.
 BASELINE_INSTANCES = 281
 BASELINE_PROXIES = 10
+# md5 over the byte identity (dbr + 36 rotation bytes + 12 position bytes + flags +
+# uid) of all 281 shipped instances, in order, measured off a baseline map built from
+# main 4f0299c. `--shipped-roster` reprints it. See head_digest() for why it exists.
+SHIPPED_HEAD_DIGEST = '78a536278d5dbdf23332e70750aa04d9'
 
 # amgoz1's OWN drxBC3 proxy placements, verbatim from pristine-identical baseline bytes
 # (level-LOCAL x, y, z, exactly as the 0x05 section carries them). These ARE the design of
@@ -274,6 +279,29 @@ def inst_key(it):
     """The full byte identity of one placed instance, order-independent of the
     string table."""
     return (it['dbr'], it['rot'], it['posb'], it['flags'], it['uid'])
+
+
+def head_digest(raw_instances, n=None):
+    """md5 over the full byte identity of the first `n` placed instances, in order.
+
+    This is the RETIREMENT PROTOCOL invariant reduced to 16 bytes, so the gate can
+    prove "amgoz1's 281 instances are exactly as shipped" WITHOUT being handed a
+    baseline map. It is what catches the subtlest of the round-1 vet's four map-side
+    negatives: delete one shipped instance and duplicate another, so the instance
+    COUNT still reads 295 and the declared tail still matches perfectly. A count
+    check cannot see that, and the named-proxy check cannot either when the deleted
+    instance is one of the 270 decorations rather than one of the 11 proxies."""
+    if n is None:
+        n = BASELINE_INSTANCES
+    h = hashlib.md5()
+    for it in raw_instances[:n]:
+        dbr, rot, posb, flags, uid = inst_key(it)
+        h.update(dbr)
+        h.update(rot)
+        h.update(posb)
+        h.update(bytes([flags & 0xff]))
+        h.update(uid or b'')
+    return h.hexdigest()
 
 
 # --------------------------------------------------------------------------- #
@@ -762,11 +790,14 @@ def main():
     if a.shipped_roster:
         s = Sanctuary(a.map, a.arz)
         print(f'# from {a.map}  ({len(s.instances)} instances)')
+        print(f"SHIPPED_HEAD_DIGEST = '{head_digest(s.raw_instances)}'")
+        print('SHIPPED_PROXIES = (')
         for it in s.raw_instances:
             d = it['dbr'].decode('latin-1')
             if s._cls is not None and s._cls.get(CM.norm_rec(d)) == 'Proxy':
                 print("    ('%s', %.3f, %.3f, %.3f)," %
                       (d.split('\\')[-1], it['pos'][0], it['pos'][1], it['pos'][2]))
+        print(')')
         return 0
 
     s = Sanctuary(a.map, a.arz)

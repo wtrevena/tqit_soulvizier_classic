@@ -1,4 +1,14 @@
-# b100 - Sanctuary of the Bloodborn: THE POPULATION (implementation, round 1)
+# b100 - Sanctuary of the Bloodborn: THE POPULATION (implementation, round 2)
+
+> **ROUND 2.** An independent vet returned **NO-GO** on round 1 with 13 findings (1 HIGH, 6
+> MEDIUM, 6 LOW). Every one was **re-measured, not argued**. Outcomes: **11 confirmed and fixed**,
+> **1 confirmed as a real defect whose supporting number was itself wrong** (the ocean-ring scope
+> finding - the emptiness is real, the "1.76x / 36%" figures were not), and **1 partially wrong**
+> (the zero-margin readings are inherent to a shared constant, not near-misses). Section 9 is the
+> finding-by-finding ledger with the command that settled each. Round 1's own headline claims that
+> did not survive: the `Quests.arc` deploy-safety claim (**false**), the base-game density
+> comparison (**invalid units**), and the placement SHAPE (**the code produced the opposite of the
+> recorded design intent**). All three are corrected in code, not just in prose.
 
 > **Will's report, verbatim:** the Sanctuary of the Bloodborn has *"large walkable areas with no
 > enemies placed"*, and *"the minimap doesn't render them"* - he added the minimap *"isnt a huge
@@ -20,12 +30,14 @@
 | | |
 |---|---|
 | **What shipped** | 14 monster proxies placed into `Levels/World/xBloodCave/drxBC3.lvl`, the one level carrying the "Sanctuary of the Bloodborn" region label. Four bands climbing the cult's hierarchy along the player's actual one-way walk. |
-| **Cost** | **Zero new creatures, records, pools or text tags.** Every proxy is drawn from a pool this cave already ships, so the lane is MAP-ONLY and drags in no `arz`+`Text` coupling. `Quests.arc` rebuilt anyway (Levels+Quests deploy together) and comes out **byte-identical** to the deployed canonical. |
-| **Blast radius** | **1 level blob of 2,282** differs, and inside it **one section (0x05)**. The `0x0b` navmesh is byte-identical. All 281 pre-existing instances are byte-preserved. |
-| **Density** | worst exact 60x60 screen box **24 -> 36** spawnMax, under the gated cap of 42 (= the sparsest already-shipping blood-cave sibling, and the base-game cave/crypt/tomb p90). |
-| **New gate** | `MAP-SANCTUARY-1` - 13 invariants, **8/8 planted negatives caught**. |
-| **Design corrections** | The design pass's band AXIS, its Y model, its density measurement and one of its evidence claims were each wrong. Section 3. |
-| **Not done** | No in-game check (no agent here may launch TQ). Ocean ring untouched (WILL_DECISION-1). Minimap not fixed (R-111). Section 8. |
+| **Cost** | **Zero new creatures, records, pools or text tags.** Every proxy is drawn from a pool this cave already ships, so the lane is MAP-ONLY and drags in no `arz`+`Text` coupling. |
+| **⚠️ Quests coupling** | `Quests.arc` IS rebuilt (Levels+Quests deploy together) but it is **NOT** byte-identical to the artifact currently deployed. MEASURED: deployed `bd0fb5f99d88fab74b81f27b7cb952b2` / 194,971 B vs this lane's `5e664c7b190965fd69f6ff15d77d85e4` / 194,926 B. **Round 1 claimed identity in four places and it was false.** The integrator must ship this lane's `Quests.arc` with the map. Section 5.3. |
+| **Blast radius** | **1 level blob of 2,282** differs, and inside it **one section (0x05)**. The `0x0b` navmesh is byte-identical. All 281 pre-existing instances are byte-preserved (proven by digest AND by baseline byte-diff). |
+| **Density** | worst exact 60x60 screen box **32.6 -> 51.6 EFFECTIVE entities**, under the gated cap of 57.0. Effective, not raw `spawnMax`: the pool's `proxyPoolEquation` multiplies it, and round 1's raw cross-family comparison mixed a 1.357143x family with a 3.60025x one. Corrected base-game cave/crypt/tomb cohort (n=80): median **90.0**, p90 **158.4**. |
+| **Shape** | nearest-neighbour Chebyshev **min 16.0 / median 30.0 / max 62.2** - bimodal, groups clustered at the spacing floor with wide gaps between them, like amgoz1's own 7.4/41.9/55.2. Round 1's farthest-point mechanism gave 23.2/31.8/48.2, i.e. the evenly-spaced patrol the bar forbids. |
+| **New gate** | `MAP-SANCTUARY-1` - **16 rows**, **16/16 planted negatives correct** (8 declaration + **8 map-side byte plants**), each checked against its target gate AND an allow-set. |
+| **Design corrections** | The design pass's band AXIS, its Y model, its density measurement, one evidence claim, **its ocean-ring area (2.88x too large)** and **its seam width (5x too large)** were each wrong. Sections 3 and 9. |
+| **Not done** | No in-game check (no agent here may launch TQ). Ocean ring untouched - **14,673 sq u of reachable empty ground, WILL_DECISION-1** (not 42,199; see 9.7). Minimap not fixed (R-111). Section 8. |
 
 ---
 
@@ -331,22 +343,47 @@ modified.
 
 | artifact | md5 | size | note |
 |---|---|---:|---|
-| `local/b100_new/Levels_merged.arc` | `48a51961bb3a36c39f82759845041f14` | 688,692,859 B | **the deliverable** |
-| `local/b100_base/Levels_merged.arc` | `718abad63e7813dc78c4b169df969fd5` | 688,692,225 B | baseline (merge-base tree, same env) |
-| `work/SoulvizierClassic/Resources/Quests.arc` | `5e664c7b190965fd69f6ff15d77d85e4` | 194,926 B | COUPLED with Levels; **byte-identical to the deployed canonical** |
-| `work/SoulvizierClassic/Database/SoulvizierClassic.arz` | `4378b617fefb2014e382bb5931e7d605` | 55,460,430 B | 51,108 records; **UNCHANGED by this lane** |
-| `work/SoulvizierClassic/Resources/Text.arc` | `c33b6abe3d61559785ee00ab3280a765` | 89,024 B | COUPLED with the arz; **UNCHANGED by this lane** |
+| `local/b100_r2/Levels_merged.arc` | `65063ae5fe89d75ef4a65ad46f1ea19d` | 688,692,862 B | **the round-2 deliverable** |
+| `local/b100_r2b/Levels_merged.arc` | `65063ae5fe89d75ef4a65ad46f1ea19d` | 688,692,862 B | independent rebuild, **identical md5** - map-build determinism |
+| `local/b100_base/Levels_merged.arc` | `718abad63e7813dc78c4b169df969fd5` | 688,692,225 B | baseline (merge-base `4f0299c` tree, same env) |
+| `local/b100_new/Levels_merged.arc` | `48a51961bb3a36c39f82759845041f14` | 688,692,859 B | round-1 deliverable, SUPERSEDED (its placements were the even-spread set) |
+| `work/SoulvizierClassic/Resources/Quests.arc` | `5e664c7b190965fd69f6ff15d77d85e4` | 194,926 B | COUPLED with Levels. **NOT the deployed bytes - see the drift table below.** |
 
-Two independent cross-checks fell out of this:
+#### ⚠️ THE `Quests.arc` DEPLOY-SAFETY CLAIM WAS FALSE (vet finding 1, HIGH)
 
-- **`Quests.arc` rebuilds byte-identical to the artifact already deployed** (`5e664c7b…`). The
-  coupled quest artifact is provably unchanged, and the quest build is reproducible from a cold
-  worktree.
-- **The `arz` and `Text.arc` md5s reproduce the b98 endless-hunt lane's recorded artifacts exactly**
-  (`4378b617fefb2014e382bb5931e7d605` / `c33b6abe3d61559785ee00ab3280a765`, BUILD65-DEV gate record).
-  This branch is based on `4f0299c`, which is that lane's tip, and an independent build in a
-  different worktree on a different day reproduces both hashes to the byte. That is a determinism
-  proof for the DB/Text half of the pipeline as well as evidence this lane changed neither.
+Round 1 asserted, in four places (report sec 0, sec 5.3 table, sec 5.3 body, and the BUILD68-DEV
+gate record), that the `Quests.arc` it built was *"byte-identical to the artifact already
+deployed"*. The bytes on disk contradict it. There are **three distinct values** in play:
+
+| role | md5 | size | written |
+|---|---|---:|---|
+| **DEPLOYED** `CustomMaps/SoulvizierClassicDEV/Resources/Quests.arc` | `bd0fb5f99d88fab74b81f27b7cb952b2` | 194,971 B | 2026-07-29 08:28 |
+| **STAGED** (main checkout `work/`) and this lane's build | `5e664c7b190965fd69f6ff15d77d85e4` | 194,926 B | 2026-07-16 01:45 / this lane |
+| b98's recorded ground truth (historical) | `35bfe3f39e8480408e3c22ea5473f796` | - | superseded 07-29 08:28 |
+
+```
+$ md5sum "/c/Users/willi/OneDrive/Documents/My Games/Titan Quest - Immortal Throne/CustomMaps/SoulvizierClassicDEV/Resources/Quests.arc" \
+         work/SoulvizierClassic/Resources/Quests.arc
+bd0fb5f99d88fab74b81f27b7cb952b2  .../CustomMaps/SoulvizierClassicDEV/Resources/Quests.arc   (194,971 B)
+5e664c7b190965fd69f6ff15d77d85e4  work/SoulvizierClassic/Resources/Quests.arc                 (194,926 B)
+```
+
+"Identical to the CANONICAL STAGED copy" is true and is what round 1 actually measured; it is not
+the same statement. This lane's own base commit `4f0299c` is the b98 addendum that recorded exactly
+this drift (`git show 4f0299c | grep -i quests`), so the information was already in the tree.
+
+**WHY IT MATTERS:** Levels+Quests are COUPLED, and `CLAUDE.md`'s standing warning is that shipping
+the new map without the rebuilt `Quests.arc` yields **two widow letters** once the quest tracks. An
+integrator reading "byte-identical to deployed" could reasonably conclude the Quests half needs no
+attention. **It does:** the deployed Quests bytes differ from the staged/built ones, and this lane's
+`Quests.arc` must be staged and deployed alongside the map. Registered as `BL-b100-DEBT-6`.
+
+The `arz`/`Text.arc` cross-check DOES survive, and is worth keeping: the md5s this lane rebuilds
+reproduce the b98 endless-hunt lane's recorded artifacts exactly
+(`4378b617fefb2014e382bb5931e7d605` / `c33b6abe3d61559785ee00ab3280a765`, BUILD65-DEV gate record).
+This branch is based on `4f0299c`, which is that lane's tip, and an independent build in a
+different worktree on a different day reproduces both hashes to the byte - a determinism proof for
+the DB/Text half of the pipeline and evidence this lane changed neither.
 
 ### 5.4 Every other gate, and its delta against the baseline
 

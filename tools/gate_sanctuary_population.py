@@ -209,11 +209,18 @@ def run(map_path, baseline_path=None, arz_path=None, expected=None, quiet=False,
             problems.append(f'SHIPPED proxy {dbr} @ local({x},{y},{z}) is GONE or MOVED')
         else:
             head_set[k] -= 1
-    r.add('G1c', 'RETIREMENT PROTOCOL: add-only - 281 shipped instances still there, '
-                 'all 11 shipped Proxy placements at their shipped coords',
+    # ... and the whole head as a 16-byte digest, which is what catches a
+    # delete-one-decoration-and-duplicate-another edit: the count still reads 295,
+    # the declared tail still matches, and no NAMED proxy moved.
+    dig = D.head_digest(s.raw_instances)
+    if dig != D.SHIPPED_HEAD_DIGEST:
+        problems.append(f'shipped-head digest {dig} != {D.SHIPPED_HEAD_DIGEST}')
+    r.add('G1c', 'RETIREMENT PROTOCOL: add-only - 281 shipped instances byte-intact '
+                 '(digest), all 11 shipped Proxy placements at their shipped coords',
           not problems,
           f'{n_total} instances (= {D.BASELINE_INSTANCES} + {len(exp)}), '
-          f'{len(D.SHIPPED_PROXIES)}/{len(D.SHIPPED_PROXIES)} shipped proxies in place'
+          f'{len(D.SHIPPED_PROXIES)}/{len(D.SHIPPED_PROXIES)} shipped proxies in place, '
+          f'head digest {dig} OK'
           if not problems else '; '.join(problems[:4]))
     if baseline_path:
         b0 = D.Sanctuary(baseline_path, strict=False)
@@ -303,9 +310,17 @@ def run(map_path, baseline_path=None, arz_path=None, expected=None, quiet=False,
           + (f'; stranded: {[o["dbr"] for o in b]}' if b else ''))
     b = worst('detour', lambda v, l: v <= l, D.CORRIDOR_SLACK)
     mx = max(o['detour'] for o in onmesh)
+    # A ~0.0 u margin here is EXPECTED, not a near-miss: the derivation's candidate
+    # filter and this gate share CORRIDOR_SLACK, so the derivation legitimately admits
+    # cells all the way out to exactly the limit and the farthest-point anchor step
+    # actively prefers them. The margin is printed because a reader deserves to know
+    # the constant is load-bearing and shared - it is a CHOICE (60 u of detour on a
+    # 690.6 u route), not a law - and because any future change to CORRIDOR_SLACK,
+    # MOVE_SPECS or the prop set moves both sides at once.
     r.add('G6', f'on the processional (detour <= {D.CORRIDOR_SLACK:.0f} u)', not b,
           f'route {best * D.CS:.1f} u; max detour {mx:.1f} u, '
-          f'MARGIN {D.CORRIDOR_SLACK - mx:.1f} u'
+          f'MARGIN {D.CORRIDOR_SLACK - mx:.1f} u (a ~0 margin is expected: the '
+          f'derivation filters on this same constant, so it admits cells right up to it)'
           + (f'; off-route: {[o["dbr"] for o in b]}' if b else ''))
     b = ([o for o in onmesh if o['d_arrival'] < D.CLEAR_ANCHOR]
          + [o for o in onmesh if o['d_shrine'] < D.CLEAR_ANCHOR])
@@ -317,7 +332,9 @@ def run(map_path, baseline_path=None, arz_path=None, expected=None, quiet=False,
     r.add('G7', f'landing clearance: >= {D.CLEAR_ANCHOR:.0f} u off both anchors, '
                 f'>= {D.EDGE_CLEAR:.0f} u inside the edge, >= {D.PROP_CLEAR:.0f} u off props',
           not b and not e and not p,
-          f'nearest anchor {na:.1f} u (margin {na - D.CLEAR_ANCHOR:+.1f}), '
+          f'nearest anchor {na:.1f} u (margin {na - D.CLEAR_ANCHOR:+.1f}; a +0.1 margin '
+          f'is the 0.2 u navmesh lattice - the closest ADMISSIBLE cell, same shared '
+          f'constant as G6), '
           f'nearest edge {ne:.1f} u (margin {ne - D.EDGE_CLEAR:+.1f}), '
           f'nearest prop {np_:.1f} u (margin {np_ - D.PROP_CLEAR:+.1f})')
 
@@ -536,9 +553,9 @@ def _finish(r, s, map_path, baseline_path, arz_path, quiet):
 # --------------------------------------------------------------------------- #
 
 def _split_0x05(blob):
-    """(magic, sections, section_index, strings, raw_records) for byte surgery."""
-    magic = blob[:4]
-    secs = [dict(type=t, data=d) for t, d in BSS.parse_blob_sections(blob)]
+    """(magic, sections, section_index, strings, raw_records) for byte surgery.
+    NOTE BSS.parse_blob_sections returns (sections, magic) - sections first."""
+    secs, magic = BSS.parse_blob_sections(blob)
     si = next(i for i, s in enumerate(secs) if s['type'] == 0x05)
     d = secs[si]['data']
     base = CM.blob_0x05_base(blob)
@@ -618,8 +635,7 @@ def map_navmesh(mode):
     byte; `truncate` cuts it to a 148-byte stub, which is the exact shape of the b89
     navmesh that made the engine read into adjacent heap."""
     def patch(blob):
-        magic = blob[:4]
-        secs = [dict(type=t, data=d) for t, d in BSS.parse_blob_sections(blob)]
+        secs, magic = BSS.parse_blob_sections(blob)
         si = next(i for i, s in enumerate(secs) if s['type'] == 0x0b)
         d = bytearray(secs[si]['data'])
         if mode == 'flip':
@@ -635,8 +651,7 @@ def map_tileset_divergence():
     """Make tileset 3 disagree with tileset 1 - G3's own subject. Implemented by
     zeroing one tile record's area bytes in the third tileset only."""
     def patch(blob):
-        magic = blob[:4]
-        secs = [dict(type=t, data=d) for t, d in BSS.parse_blob_sections(blob)]
+        secs, magic = BSS.parse_blob_sections(blob)
         si = next(i for i, s in enumerate(secs) if s['type'] == 0x0b)
         raw = secs[si]['data']
         doc = parse_rec02(raw, decompress=True)
@@ -666,13 +681,20 @@ PLANTS = [
     (DECL, 'G7', _G1FAMILY + ('G4', 'G6', 'G7', 'G8', 'G9'),
      'drop a pack on the arrival portal (the b44 landing-pileup class)',
      lambda e: [(e[0][0], 225.0, 39.005, 220.0)] + e[1:]),
-    (DECL, 'G7', _G1FAMILY + ('G4', 'G6', 'G7', 'G8', 'G9'),
+    # world x 4186.5 is 0.5 u inside the west grid line, where the walkable cells are
+    # owned by drxBC_Finale rather than drxBC3 - so G2/G3/G5 failing too is CORRECT,
+    # not stray: a pack parked on the seam is off drxBC3's own ground and out of its
+    # reachable component. Disclosed in the allow-set instead of hidden.
+    (DECL, 'G7', _G1FAMILY + ('G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9'),
      'drop a pack 0.5 u from the west door seam (the walk-in variant)',
      lambda e: e[:-1] + [(e[-1][0], 0.5, 3.005, e[-1][3])]),
     (DECL, 'G8', _G1FAMILY + ('G6', 'G7', 'G8', 'G9'),
      'stack two proxies on top of one another (R-30\'s own words)',
      lambda e: e[:-1] + [(e[-1][0], e[-2][1] + 1.0, e[-2][2], e[-2][3])]),
-    (DECL, 'G9', _G1FAMILY + ('G4', 'G6', 'G7', 'G8', 'G9'),
+    # the pile lands at local (100..126, 15.005, 160), which is off-mesh for most of
+    # the 14 - so G2/G3/G5 are again genuine consequences of a deliberately absurd
+    # placement, not gate leakage.
+    (DECL, 'G9', _G1FAMILY + ('G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G9'),
      'pile the whole congregation into one screen box',
      lambda e: [(d, 100.0 + i * 2.0, 15.005, 160.0) for i, (d, _x, _y, _z) in enumerate(e)]),
     # ---- MAP plants. These are the four the round-1 vet planted and round 1 missed,
