@@ -1,5 +1,86 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## B102 GATE RECORD - R-105/R-106/R-107 SOUL RATE SWEEP + R-100 #11 FORGE ACTS + R-100 #17 SOUL GAOLER (2026-07-30, branch `feat/soul-economy`) - NOT DEPLOYED, NO TAG TAKEN
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed, no map artifact rebuilt.** The orchestrator owns every deploy.
+
+**COUPLING:** this wave is `.arz`-only on the DB side (no new Text tag, so the arz+Text coupling is
+satisfied by shipping the same Text). The Gaoler chest-count change is **map tooling**
+(`build_section_surgery.py`), so it needs a `Levels.arc` rebuild + the `Levels+Quests` coupling before
+Will can see it. **That rebuild was NOT run by this lane** - see NOT DONE.
+
+### WHAT THE THREE ITEMS WERE, AND WHAT SHIPPED
+
+| item | ruling | shipped |
+|---|---|---|
+| rate sweep | R-105 / R-106 / R-107 | **800** of 1,564 carriers re-rated by ONE shared classifier |
+| forge acts | R-100 #11 | **580** soul->formula memberships added across the 12 XP-potion formulas (fixed point in 3 rounds) |
+| Soul Gaoler | R-100 #17 | 5 chest placements -> 2; the normal-tier guaranteed donors replaced |
+
+### THE ARTIFACT
+
+| | |
+|---|---|
+| baseline (`main` @ `7efd107`, built in THIS env BEFORE any edit) | `local/baseline_main.arz` md5 `6a3a491db546b603c52132237c40aa63`, 55,475,226 B, 51,124 records |
+| built (`feat/soul-economy`) | `work/SoulvizierClassic/Database/SoulvizierClassic.arz` md5 `<<MD5>>`, `<<SIZE>>` B, `<<RECORDS>>` records |
+| build command | `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 py tools/build_svc_database.py <sv098i> <sv09> <sv041> <out> <base>` -> exit `<<EXIT>>` |
+
+### GATES
+
+| gate | result |
+|---|---|
+| full build battery (`SVC_REQUIRE_GATES=1`) | `<<EXIT>>` |
+| `tools/verify_soul_drop_rates.py --gate` (per-record + G1..G7 cohorts + 7 planted negatives + control) | `<<VSDR>>` |
+| `tools/debug/negtest_xp_forge_acts.py` (I1..I5 planted negatives + control) | `<<NEGFORGE>>` |
+| `tools/debug/negtest_gaoler_chests.py` (T2/T3/T4/T5 planted negatives + 2 controls) | `<<NEGGAOLER>>` |
+| `tools/debug/b102_record_diff.py` (every delta attributed, 0 REMOVED, 0 ADDED) | `<<RECDIFF>>` |
+| the SAME gate run over the PRE-WAVE baseline | **RED with exactly this wave's targets** (proof it is not vacuous) |
+
+### DEBT REGISTER (every open item, none silently dropped)
+
+- **BL-b102-DEBT-1 (P2, WILL DECISION) - the 4 carrion-crow PETS.** R-106 said "those 15 [Common
+  carriers] go to 0%". Four of them are `records\skills\soulskills\pets\carrioncrow_05/1/2/3` -
+  **Class=Pet, Pet.tpl**, the crows a soul summons FOR Will. On a pet `chanceToEquipFinger2` is a pure
+  power switch (a pet drops nothing), so zeroing them would nerf his summons and fix no drop. HELD.
+  Recommendation: leave them. One word from Will closes it.
+- **BL-b102-DEBT-2 (P2, WILL DECISION) - 5 fixed-location act bosses inside the ratified 734.** R-105
+  says both "move all 66% and 50% to 33% - that is 734 creatures" (a count that includes them) and
+  "25% for fixed location bosses". `boss_charon_39/41/43`, `boss_satyrshaman_55` and
+  `drxcreatures\bloodwitch\boss_hades_54` ship at **33** because this lane followed his COUNT. One line
+  from him flips them to 25.
+- **BL-b102-DEBT-3 (P2, WILL DECISION + MAP) - a truly per-difficulty vault.** Measured: container loot
+  tables cannot difficulty-index (0 of 74,013 base-game records carry a multi-value `lootNNameM`; the
+  3-array convention is Monster.tpl-only, 2,703 instances). The base game ships one chest record per
+  tier and the map places the right one. Giving the Gaoler's vault normal/epic/legendary chests needs 3
+  records per spot + map placement.
+- **BL-b102-DEBT-4 (P1, CODE) - the same tier mis-wire in 2 sibling carriers, and there it is worse.**
+  `_OBS_GUAR_UNIQUE` (`unique_1h_n01`) and `_OBS_GUAR_RELIC` (`01_act4_relics`) are also injected as
+  guaranteed slots by `apply_svc_patches` at lines 15535-15536 (the Obsidian hoard) and 16841-16842
+  (`_svc_build_dedicated_hoard`, every other uber's hoard). Both builders create **three tiered tables
+  `01/02/03`** and then inject the SAME normal-tier donor into all three - so the epic and legendary
+  hoards of every uber that uses them pay normal-tier "Essence of ..." in their guaranteed slot, the
+  identical bug Will reported on the Gaoler. NOT retuned under a Gaoler ticket (shared-symbol law); the
+  fix there is per-tier (`01/02/03_act4_relics` + `unique_1h_n01/e01/l01`) and needs its own pass.
+- **BL-b102-DEBT-5 (P1, CONTENT) - 292 souls still have no forge act.** 193 have **no dropping monster
+  at all** (unobtainable - a separate defect worth its own lane), and 99 have no dominant act signal;
+  93 of those are our placed ubers whose act is a MAP placement fact, not DB data. Closing them needs a
+  small level -> act table from the map lane (or Will naming the act per uber).
+- **BL-b102-DEBT-6 (P2, CONTENT) - no act-5/act-6 XP formula exists.** SV 0.98i is Immortal-Throne era;
+  neither it nor the base game ships a Ragnarok/Atlantis experience-potion formula, so souls dropped by
+  `xpack2`/`xpack3` monsters have no list to join. Minting a 5th/6th set is new content = Will's call.
+- **BL-b102-DEBT-7 (P1, LAUNCH-GATED) - the Gaoler chest count is source-only.** The halving lives in
+  `build_section_surgery.B41_SPECS`; no `Levels.arc` was rebuilt by this lane, so **Will cannot see it
+  until the map is rebuilt and deployed with `Quests.arc`**. `polis_vault.verify()` T5 asserts the
+  source table, which is a source proof, NOT an artifact proof.
+- **BL-b102-DEBT-8 (P2, DESIGN) - which two chests.** Keeping `chest_01` + the apex `chest_03` is this
+  lane's design call (the apex is the only chest with both a guaranteed unique and a guaranteed relic,
+  and it sits dead centre). Trivially changed if Will wants a different pair or a different spread.
+- **BL-b102-DEBT-9 (P2, TOOLING) - `tools/patches/_probe_legion_soul_stages.py` asserts 66.** It is a
+  standalone probe, not a build gate, and its `assert before[...] == 66.0` pre-state is now stale under
+  R-105. It will fail if re-run; it is not in any gate battery.
+
+
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
