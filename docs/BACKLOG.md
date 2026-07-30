@@ -32,6 +32,30 @@ Baseline kept at `local/baseline_main_7efd107.arz`. Build log
 `docs/reports/r108_logs/r108_build.log`. Env for every build:
 `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, `py` launcher.
 
+**REPRODUCIBLE: built TWICE, exit 0 both times, BYTE-IDENTICAL.**
+
+```
+md5sum local/r108_build1.arz work/SoulvizierClassic/Database/SoulvizierClassic.arz
+  b55515970be41c2542208e84a8705640 *local/r108_build1.arz                              (build 1)
+  b55515970be41c2542208e84a8705640 *work/.../SoulvizierClassic.arz                     (build 2)
+```
+
+The second build ran AFTER the two gate/assert hardenings the first artifact exposed
+(`general_guardians`' free-slot assert made IDEMPOTENT so `--negtest` can run against a built arz;
+`tombstone_xp_recovery.verify` rejecting `deathPenaltyMax <= 0` explicitly instead of dividing by it
+in the success path). Same md5 => **neither hardening moved a shipped byte**, which is the claim that
+needed proving rather than asserting.
+
+Everything committed to `tools/` after that is docstring text, and that is measured too - the two
+touched files' ASTs with docstrings stripped are IDENTICAL to their `6e11e0a` versions
+(`tombstone_xp_recovery.py: True`, `uber_quest_markers.py: True`; command + output in
+`docs/reports/r108_uber_visibility.md` sec 4.7). Two of those text commits are corrections this lane
+made against ITSELF: `7b3ecc0` narrowed an overstated "apply() writes 0" claim (true of the baseline
+arz, NOT of a fresh build, where the module honestly prints `0 newly unmarked`), and `cf63311`
+separated what the `Game.dll` disassembly MEASURES from what it lets us infer (the "a death cannot
+de-level you" reading of the XP helper at `0x1017d620` is an interpretation - the binary carries no
+field names for those offsets - and R-109 does not rest on it).
+
 **🛑 THE FIRST BUILD OF THIS LANE FAILED LOUD, EXIT 1, ON THIS LANE'S OWN CODE - recorded rather
 than quietly fixed.** `tombstone_xp_recovery` imported its sibling `death_xp_penalty` with a bare
 `import`. `death_xp_penalty` lives in `patches/`, not `tools/`, and the registry loads modules as
