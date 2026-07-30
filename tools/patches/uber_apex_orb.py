@@ -303,6 +303,15 @@ champions by name, because those are the numbers the rulings state.
 
 RULINGS
 -------
+⚠️ **"R-72" IS AMBIGUOUS IN THE LEDGER - THERE ARE TWO.** Every "R-72" in this
+module means the one ledgered `IMPLEMENTED b94 (feat/leinth-wave)`, the ORB
+CALIBRE ruling ("the orb the two Toxeus champions drop is not the same calibre as
+the one Leinth drops"). The OTHER R-72, ledgered `IMPLEMENTED b96
+(feat/vashkarr-soul)`, is Vashkarr's spear-and-shield SOUL retune and has nothing
+to do with orbs. The collision is pre-existing, is not this lane's to renumber, and
+is registered as `BL-b101-DEBT-1`; this note exists so a reader who lands on the
+wrong one is not sent down the wrong ruling.
+
 R-47 mandates the un-named generic apex orb (`genericbossorb_04`), explicitly NOT
 a bespoke "X's Essence" per boss. genericbossorb_05 keeps R-47's substance intact
 (un-named, generic, shared by the whole Toxeus roster, no NEW bespoke essence

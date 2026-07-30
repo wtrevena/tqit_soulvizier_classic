@@ -2079,16 +2079,25 @@ along automatically when the structural cluster-relocation fix lands.
 
 **b101 R-99 all-Toxeus apex orb (2026-07-29, `feat/toxeus-apex-roster`) - NEW.** Every item below is
 something this lane could NOT close itself, stated so it is a known gap and not a silent one.
-- **BL-b101-DEBT-1 (P1, LEDGER HYGIENE - owner: orchestrator):** `docs/WILL_RULINGS.md` now carries
-  **TWO live R-100s** - `- R-100 ... IMPLEMENTED b100 (fix/blade-mastery-truth)` in the
-  "Player-surface truthfulness" decade, and `## R-100 PLAY-SESSION BATCH` (Will's verbatim 19 items).
-  Both were written 2026-07-29 by parallel lanes. b101 flagged it in the file but deliberately did NOT
-  renumber either side: reassigning another lane's ruling number from a third lane is the same class of
-  silent cross-lane edit the ledger law exists to prevent. The file's own `fix/debt-docs` precedent
-  (the INCUMBENT keeps the number, the other lane's rulings move wholesale to the next free decade) is
-  the tie-breaker to apply. Related: the **wave label `b100` is also contested** three ways
-  (`fix/blade-mastery-truth`'s gate record, `feat/sanctuary-populate`'s recon doc, and this lane's
-  round-1 filenames, which were renamed to `b101`). Owner/trigger: orchestrator picks the incumbent.
+- **BL-b101-DEBT-1 (P1, LEDGER HYGIENE - owner: orchestrator):** `docs/WILL_RULINGS.md` carries **FOUR
+  DUPLICATED RULING NUMBERS**. Measured on the post-merge file (78 ruling definitions, highest R-103)
+  by counting every `^##\s*R-<n>\s*\[` and `^-\s*R-<n>\s*\[`:
+
+  | number | the two live claimants |
+  |---|---|
+  | **R-72** | `IMPLEMENTED b94 (feat/leinth-wave)` = the orb-calibre ruling **vs** `IMPLEMENTED b96 (feat/vashkarr-soul)` = Vashkarr's soul retune. **PRE-EXISTING, and it is a live trap:** `tools/patches/uber_apex_orb.py` cites "R-72" throughout meaning the orb one, so a reader who lands on the Vashkarr R-72 is sent to the wrong ruling. A disambiguating note was added to that docstring. |
+  | **R-100** | `IMPLEMENTED b100 (fix/blade-mastery-truth)` **vs** `## R-100 PLAY-SESSION BATCH` (Will's verbatim 19 items) |
+  | **R-101** | blade-mastery's open weapon-gate balance question **vs** main's `P0 - our uber clones inherited their donors' QUEST-ITEM drops` |
+  | **R-102** | blade-mastery's Parry re-point **vs** main's Enslaver-green-glow lane |
+
+  All three of the 100-decade collisions are same-day parallel-lane claims. b101 flagged R-100 in the
+  file but deliberately renumbered NOTHING: reassigning another lane's ruling number from a third lane
+  is the same class of silent cross-lane edit the ledger law exists to prevent. The file's own
+  `fix/debt-docs` precedent (the INCUMBENT keeps the number, the other lane's rulings move wholesale to
+  the next free decade) is the tie-breaker to apply. Related: the **wave label `b100` is contested**
+  three ways (`fix/blade-mastery-truth`'s gate record, `feat/sanctuary-populate`'s recon doc, and this
+  lane's round-1 filenames, which were renamed to `b101`). Owner/trigger: orchestrator picks the
+  incumbent for each number, then a single hygiene pass renumbers the losers wholesale.
 - **BL-b101-DEBT-2 (P1, WILL SHOULD BE TOLD - the ruling assumed the opposite):** R-99 was ratified
   believing the two `zzdev` dummies were unreachable leftovers, so wiring them would be inert. It is
   **not inert**. Re-measured multi-hop, `z_arthur` has exactly ONE static `0x05` instance in
