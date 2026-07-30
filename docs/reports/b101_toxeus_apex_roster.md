@@ -359,6 +359,28 @@ this repo.
 > `git show main:docs/WILL_RULINGS.md` (LF, as stored) against the working file (CRLF) and reported all
 > 1,867 lines as missing. That is a false alarm from the comparison method, not a real loss, and it is
 > recorded because a lane that panicked at it might "fix" the file and cause the very loss it feared.
+> **Note this is the SAME class of error as the retracted 101-line claim: a diff artifact read as data
+> loss.** Round 1 caught it here and then fell for it there.
+
+### 5.10 ROUND 2: everything above re-proved against artifacts round 2 built itself
+
+Round 2 did not inherit a single hash. It rebuilt both sides and re-ran every proof:
+
+| proof | command | result |
+|---|---|---|
+| baseline, newest main tip | build `main` @ `b376b61` in a fresh detached worktree | **exit 0**, `aea688b23acefe1b48ae31a0df4cc423`, 55,475,172 B, 51,124 records |
+| branch build (pre-doc-fix) | full gated build | **exit 0**, `6a3a491db546b603c52132237c40aa63`, 55,475,226 B, contracts **0 P0 / 0 P1 / 112 P2** |
+| branch build (post-doc-fix) | full gated build at the final HEAD | **exit 0**, same md5 (see 5.8 build 5) |
+| planted negatives | `py tools/debug/negtest_uber_apex_orb.py <built>` | **29/29 subtests behaved as specified**, exit 0, **0 skipped** |
+| record-diff | `py tools/debug/b101_r99_record_diff.py <baseline> <built>` | **exit 0** - `0 ADDED / 0 REMOVED / 6 CHANGED`, all 6 attributed |
+| read-back proof table | `py tools/debug/b101_r99_proof_table.py <built> <baseline>` | **exit 0** - roster 8/8 on orb05; orb04 chain 10/10 byte-unchanged, 19 -> 19 consumers, 0 Toxeus; orb01 byte-unchanged, 11 -> 10 losing exactly `um_toxeus_21`; R-48 champions 100.0/100.0/100.0 bit-identical |
+| neighbour survival | set difference over all 51,124 record names | 0 REMOVED; b98 9/9, b99 8/8, b94 79/79 all present in both |
+| derivation bound | planted 2 out-of-namespace clones | roster tag -> `gate=FAIL`; new tag -> `gate=PASS` (the `BL-b101-DEBT-8` bound) |
+| `dropItems=0` + proxy | whole-db scan | exactly 5 `Monster.tpl` records: 3 Leinth + the 2 zzdev |
+
+**Nothing was deployed.** No `CustomMaps\*` write, no Steam action, no TQ or Steam process launched or
+killed, `Levels.arc` untouched, `uber_apex_orb: modified 20 record(s), 0 tag(s)` so there is no
+`Text.arc` coupling.
 
 ## 6. THE ZZDEV PAIR - the finding R-99 demanded, and it is not the expected one
 
