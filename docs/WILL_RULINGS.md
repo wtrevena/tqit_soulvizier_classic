@@ -1449,6 +1449,37 @@ per Will's explicit inclusion, `genericbossorb_01`/`_04` and Leinth's three orig
 stay in the db, and `um_toxeus_21` was NOT quietly scaled to a lesser tier "in the spirit of" the
 ruling - the ban in this ruling is honoured literally.
 
+**ROUND 2 (2026-07-29, after an independent vet returned NO-GO). No shipped byte changed** - the vet
+reproduced every byte-level and gate-level claim above exactly, and its single blocking item was a
+DOCUMENTATION defect: this lane had written a **false** incident narrative (a merge accused of deleting
+101 lines of this file) into this ledger, the BACKLOG gate record and the wave report. That is retracted
+in all four places with every disproving command reproduced - see the RETRACTION block in the R-100
+section below. Three substantive corrections also landed, each re-measured rather than restated:
+
+1. **The name-tag cross-check's claim is now scoped to what it measurably catches.** It catches an
+   out-of-namespace Toxeus that REUSES one of the four roster display tags; one that also invents a NEW
+   tag is invisible to both derivations. Planted both cases against the built arz: roster tag ->
+   `gate=FAIL` (caught), fresh tag -> `gate=PASS` (blind). The blind spot is EMPTY today (0 records
+   outside the namespace carry a `*toxeus*` controller, wear a `*toxeus*` soul, or point at
+   `genericbossorb_05`, over all 51,124 records), so this bounds the GATE, not the bytes.
+   `BL-b101-DEBT-8`.
+2. **The `dropItems = 0` claim is now evidenced, not asserted.** Exactly FIVE `Monster.tpl` records in
+   all 51,124 combine `dropItems == 0` with a `treasureProxyName`: `q_leinth_47/49/50` ->
+   `bosschestproxy_leinth` (a shipped, gate-proven, PLAYER-FACING drop) plus the two zzdev records this
+   lane wired. So the two mechanisms are independent by this mod's own live precedent. This sets the
+   severity of `BL-b101-DEBT-2`: `z_toxeus`'s apex orb is NOT rendered inert by `dropItems = 0`, so the
+   Will-decision item is real. Still not in-game confirmed.
+3. **The nearest adjacent exclusion is documented.** `um_enslaver_marauder_99` (same folder as three
+   roster champions, `Monster.tpl`, no orb) is the Enslaver's summoned minion -
+   `tagSVCMonsterEnslaverMarauder` -> `'{^r}Enslaved Shadow Marauder'`, its own constant commented
+   `# hostile Champion` - correctly excluded, and now said so.
+
+Round 2 also merged `main` @ `b376b61` (R-106 / R-106 amendment / R-107; docs + `tools/debug/probe_*.py`
+only, verified to touch zero build inputs), cleaned four stale build logs off the repo root, re-cited the
+tip baseline in place of the stale round-1 md5, and re-ran the full gated build to re-print the same
+arz md5. Tag `build71-dev` marks the round-2 commit; `build69-dev` marks round 1 and the two are
+BYTE-IDENTICAL by construction.
+
 ---
 
 ## R-100 [2026-07-29] PLAY-SESSION BATCH - 19 items, CAPTURED VERBATIM, none implemented yet
