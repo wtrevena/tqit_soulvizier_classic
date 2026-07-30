@@ -243,10 +243,37 @@ Running the new `verify()` against the pre-R-99 arz fires with **exactly the 6 g
 `genericbossorb_01.dbr STILL carries Toxeus record(s) ['um_toxeus_21.dbr']`. A gate that cannot fail on
 the state it was written to detect is not a gate.
 
-### 5.8 Byte-identity after the verify-side fixes
+### 5.8 Byte-identity: THREE identical builds
 
-Steps 6 and 7 changed `verify()`/docstring only. Rebuilt from scratch with the identical command and
-env to prove no apply-side drift - see the BUILD69-DEV gate record for the resulting md5.
+The arz was built from scratch three times with the identical command and env, and every one returned
+**exit 0** with md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B:
+
+| log | after what |
+|---|---|
+| `local_r99_reproduce.log` | the round-1 code, rebuilt from scratch by this round rather than trusted |
+| `local_r99_rebuild.log` | the verify-side fixes of steps 6/7/10 (proving the gate hardening moved no shipped byte) |
+| `local_r99_postmerge.log` | merging `main` @ `31f3432` (proving the mid-lane base move moved no shipped byte) |
+
+### 5.9 The base moved mid-lane; merged and re-proved
+
+Briefed base was `main` @ `e014ef8`. While the lane ran, `main` advanced to `31f3432` - the R-102/R-103
+Enslaver green-glow lane: 487 lines of `docs/WILL_RULINGS.md` plus 7 standalone
+`tools/debug/probe_*.py`. It touched **zero build inputs** (`git diff e014ef8..main --name-only`
+matches nothing under `tools/patches/`, `tools/contracts/`, or any top-level `tools/*.py`), so the
+baseline `aea688b23acefe1b48ae31a0df4cc423` remains the correct comparison point - and the post-merge
+rebuild confirms it with the same md5.
+
+**The merge conflict was the same trap that already destroyed 101 lines on this branch**, so it was
+resolved by keeping BOTH sides and then VERIFIED instead of trusted: with line endings normalised, the
+only two lines of `main`'s ledger absent from the result are the R-99 heading and the
+`**STATUS:** RATIFIED` line - both deliberately superseded by the IMPLEMENTED block - with 91 lines
+added and 0 conflict markers left. Confirming a merge of that file by diffing it against `main`
+afterwards should be standard practice on this repo.
+
+> A note on why the CRLF detail matters: the first attempt to verify the resolution compared
+> `git show main:docs/WILL_RULINGS.md` (LF, as stored) against the working file (CRLF) and reported all
+> 1,867 lines as missing. That is a false alarm from the comparison method, not a real loss, and it is
+> recorded because a lane that panicked at it might "fix" the file and cause the very loss it feared.
 
 ## 6. THE ZZDEV PAIR - the finding R-99 demanded, and it is not the expected one
 

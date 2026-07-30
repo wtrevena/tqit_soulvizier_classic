@@ -14,9 +14,23 @@ zero new tags, so there is NO artifact coupling to honour):**
   md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry modules.
   Built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
   **exit 0** (log `local_r99_reproduce.log`).
-- **Byte-identity re-proved:** after the verify-side fixes in steps 6/7/10 the arz was rebuilt from
-  scratch with the identical command and env - **exit 0, same md5 `6a3a491db546b603c52132237c40aa63`,
-  same 55,475,226 B** (log `local_r99_rebuild.log`). So the gate-hardening changed no shipped byte.
+- **Byte-identity re-proved TWICE, three identical builds in total** - `local_r99_reproduce.log`,
+  `local_r99_rebuild.log` (after the verify-side fixes in steps 6/7/10) and `local_r99_postmerge.log`
+  (after merging main), each **exit 0** and each **md5 `6a3a491db546b603c52132237c40aa63`,
+  55,475,226 B**. So neither the gate hardening nor the mid-lane base move changed a shipped byte.
+
+> ⚠️ **BASE MOVED MID-LANE; THIS LANE MERGED AND REBUILT.** Briefed base was `main` @ `e014ef8`. While
+> the lane ran, `main` advanced to `31f3432` (the R-102/R-103 Enslaver green-glow lane: 487 lines of
+> `docs/WILL_RULINGS.md` + 7 standalone `tools/debug/probe_*.py`). `main` touched **zero build inputs**
+> (`git diff e014ef8..main --name-only` matches nothing under `tools/patches/`, `tools/contracts/` or
+> any top-level `tools/*.py`), and the post-merge rebuild proves it: same md5. **The
+> `docs/WILL_RULINGS.md` conflict was the SAME append/append conflict that commit `4748e93` earlier
+> resolved by discarding 101 lines of Will's verbatim ruling.** This time it was resolved by keeping
+> BOTH sides and then VERIFIED rather than trusted: with line endings normalised, the only two lines of
+> main's file absent from the result are the R-99 heading and the `**STATUS:** RATIFIED` line, both
+> deliberately superseded by the IMPLEMENTED block; 91 lines added; 0 conflict markers left.
+> The baseline md5 `aea688b23acefe1b48ae31a0df4cc423` is still the right comparison point because
+> `main`'s new commits cannot change the arz.
 - **Baseline** for every comparison: a build of `main` @ `e014ef8` made in the same environment,
   md5 **`aea688b23acefe1b48ae31a0df4cc423`**, 51,124 records, exit 0. This independently reproduces
   the md5 the B100 gate record below published for that same base.
