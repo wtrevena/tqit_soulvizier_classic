@@ -300,6 +300,27 @@ negative automatically; R1/R2 (roster-pin drift in both directions); R3 (the sec
 R4 (the false-positive pin proven load-bearing); R5 (orb01 stripped below its floor); and a final
 positive proving every mutation was restored.
 
+Round 2 re-ran it against its own build and got the same result, with the roster printed first so the
+harness's scope is auditable rather than trusted:
+
+```
+DERIVED Toxeus roster (8 records) - one planted negative each:
+   records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr -> genericbossorb_05.dbr
+   records\creature\monster\shadowstalker\um_toxeus_hunt_99.dbr     -> genericbossorb_05.dbr
+   records\creature\monster\shadowstalker\um_toxeus_hunt_l_99.dbr   -> genericbossorb_05.dbr
+   records\creature\monster\skeleton\um_toxeus_21.dbr               -> genericbossorb_05.dbr
+   records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr   -> genericbossorb_05.dbr
+   records\xpack\creatures\monster\skeleton\um_toxeus_99.dbr        -> genericbossorb_05.dbr
+   records\xpack\creatures\monster\zzdev\old_z_toxeus.dbr           -> genericbossorb_05.dbr
+   records\xpack\creatures\monster\zzdev\z_toxeus.dbr               -> genericbossorb_05.dbr
+...
+  [PASS] negative 22 (R-99 roster: z_toxeus loses its apex orb): gate=FAIL (expected FAIL)
+  [PASS] negative R5 (um_elephantsnatcher_17 pulled off genericbossorb_01 - donor tier stripped below its floor): gate=FAIL (expected FAIL)
+  [PASS] positive 2 (all mutations restored): gate=PASS (expected PASS)
+
+29/29 subtests behaved as specified
+```
+
 ### 5.7 The gate reds the pre-R-99 baseline
 
 Running the new `verify()` against the pre-R-99 arz fires with **exactly the 6 gaps R-99 enumerated**
