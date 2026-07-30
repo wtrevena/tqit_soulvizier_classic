@@ -13,8 +13,8 @@
 | 8 | Tantalus outside the Den of Tantalus | **FIXED + GATED.** Root cause proven; he is now inside the den, which is a CAVE, not the outdoor level |
 | 9 | Tantalus has 3 chests, wants 1 | **FIXED**, scoped as a class |
 | 10 | Soul of the Unferried also has 3 | **FIXED** by the same class change (it is the same b42 mechanism) |
-| 14 | Lower City of Lost Souls uber: no chest, trash orb | **IDENTIFIED (the Mnemophage) + SPECIFIED. NOT IMPLEMENTED** - both halves need DB records this map lane does not own |
-| 16 | Destroyer of Cities: no chest, stands in the walking path | **PATH HALF FIXED.** Chest half NOT done (same DB blocker as #14) |
+| 14 | Lower City of Lost Souls uber: no chest, trash orb | **CHEST HALF FIXED + GATED** (round 2, R-131). Orb half: measured, and the measurement inverts the premise - **PENDING Will decision**, see sec 8 |
+| 16 | Destroyer of Cities: no chest, stands in the walking path | **BOTH HALVES FIXED.** Path in round 1; **chest in round 2 (R-131)**, riding the relocated boss so it is off-path by construction |
 | 16b | STANDING RULE + audit every existing placement | **RULE DEFINED, GATED, FULL AUDIT DELIVERED** (sec 5) |
 
 ---
@@ -238,22 +238,123 @@ state; the real build is the valid test, and it passes.)
 
 ---
 
-## 7. NOT DONE (exhaustive)
+## 7. ROUND 2 (R-131) - the two chest halves round 1 handed off, BUILT
 
-1. **#14 Mnemophage chest** - needs `_svc_build_world_chest_proxy(db,'mnemophage',...)` + a
-   dedicated hoard + a Text tag + a `_SVC_CHEST_STD` bracket. DB lane. Placing a record that
-   does not exist in the arz would be a dangling MAP-REF.
-2. **#14 Mnemophage orb** - `um_mnemophage_core_99` is on `genericbossorb_04` (~5.70 expected
-   items) and wants R-99's `genericbossorb_05` (~21.16). **Blocked by design:** R-99 records
-   that `uber_apex_orb.verify()` must first be rewritten roster-derived, because its planted
-   NEGATIVE 2 asserts a third record on orb05 must FAIL. Doing this from a map branch would
-   red the build and collide with `feat/toxeus-apex-roster`.
-3. **#16 Helepolis chest** - same DB blocker as (1); there is no `svc_diadochi_chest` record.
-4. **In-game verification of both relocations** - launch-gated. Nobody has walked into the
-   den or the eastern Elysian court on this build. Per the standing rule, the test ping must
-   include a full Steam restart and a packaged-hash verify.
-5. **`q_obs_roulette_b` BLOCKS-ROUTE** - `BL-R130-DEBT-3`, above. Will's call.
-6. **Will's call on the 3->1 chest class** - he named two bosses, the rule was applied to four.
-7. **Will's call on the 3 accepted on-path bosses** (Menoetes, Ephialtes, Charon) and on the
-   Helepolis siege-strider adjacency trade-off (sec 4).
-8. **Deploy** - not performed. The orchestrator owns deploys; `Levels`+`Quests` stay coupled.
+> Round 1 closed with "#14 Mnemophage chest" and "#16 Helepolis chest" listed as NOT DONE,
+> blocked on "a DB lane this map branch does not own". **That was a triage, and it was wrong.**
+> `_svc_build_dedicated_hoard` and `_svc_build_world_chest_proxy` are the exact two helpers the
+> other four fixed ubers already call, living in the same two files this lane already edits.
+> Round 2 builds both. Ruling: **R-131** in `docs/WILL_RULINGS.md`.
+
+### 7.1 What was built
+
+| | the Mnemophage (#14) | the Helepolis (#16) |
+|---|---|---|
+| host / area banner | `Judgment_TempleUG_Mnemosyne01` -> **Lower City of Lost Souls** | `Elysian_Fields_03` -> **Delian Meadows** |
+| boss charLevel N/E/L | [46, 68, 100] | [58, 80, 97] |
+| `_SVC_CHEST_STD` bracket | `svc_mnemophagehoard` 45-47 / 63-65 / 63-65 | `svc_diadochihoard` 57-59 / 63-65 / 63-65 |
+| chest display name | **"Mnemophage's Lethe-Hoard"** | **"Helepolis's Spoil-Hoard"** |
+| world-chest proxy record | `records\drxmap\proxy\svc_mnemophage_chest.dbr` | `records\drxmap\proxy\svc_diadochi_chest.dbr` |
+| placed at (level-local) | (45.6, 3.0, 71.0) | (72.6, 8.8, 80.0) |
+| authored in | `apply_svc_patches._create_mnemophage_superboss` | `tools/patches/diadochi.py` |
+
+Both use the b42 round-2 WORLD-CHEST pattern, not the boss-accessory one: the boss proxy's
+`accessory1/Epic1/Legendary1` stay EMPTY and a standalone `Class=Proxy` container is placed by the
+map lane at `UBER_CHEST_COUNT` (= 1, per R-130 #9/#10) on the same surveyed `+x` offset the other
+four use. **No new mechanism, no new coordinate geometry.**
+
+### 7.2 The three things that could have gone wrong, checked rather than assumed
+
+1. **Bracket records exist.** `_svc_standardize_boss_chests` raises `SystemExit` on a missing
+   `boss_default_<bracket>`. Enumerated from the built arz first: 32 brackets, `01-03` .. `63-65`
+   in steps of 2. `45-47` and `57-59` are both present.
+2. **Registry ordering.** `diadochi.py` runs in `run_registry`, which `build_svc_database.py`
+   calls **before** `run_registry_gates` - and both `_svc_standardize_boss_chests` and
+   `_svc_verify_world_chests` live inside that battery. So a hoard authored in a registry module
+   IS region-tuned and IS covered by the invariant. (Had the order been the other way, the
+   diadochi hoard would have shipped un-tuned and silently.)
+3. **The new gate assertion is satisfiable.** `_SVC_FIXED_UBER_CHESTS` gains both prefixes, so
+   `_svc_verify_world_chests` now asserts over SIX ubers that the boss proxy carries no accessory
+   chest. Measured on the shipped arz beforehand: `accessory1`/`accessoryEpic1`/
+   `accessoryLegendary1` are all `None` on `q_mnemophage_lone`, `q_diadochi_lone`, `q_tantalus_lone`
+   and the donor `q_leinth_lone`.
+
+### 7.3 The Helepolis chest rides the relocation - deliberately
+
+His chest is centred on the **new** off-path spot (70, 8.8, 80), not the retired b41 one. A chest on
+the old coordinate would have re-created exactly the defect #16 exists to fix: a reward the player
+has to stand in the walking corridor to open. Because it rides the boss it is off-path by
+construction - and the gate does not take that on trust, since it discovers chests from the map by
+marker (`CHEST_MARKERS`) and audits both new chests for containment and path independently.
+
+### 7.4 Placement survey of the two NEW chest spots
+
+Surveyed on map `fc0adcc0713839a685b32d6e122653be` at the chest proxy's own `placementExtents`
+(1.0) **and at double it** (2.0):
+
+```
+judgment_templeug_mnemosyne01.lvl  (45.6, 71.0)  ext 1.0  N/E/L d=0.14 clr=100/100/100  comp#1/180,700
+judgment_templeug_mnemosyne01.lvl  (45.6, 71.0)  ext 2.0  N/E/L d=0.14 clr=100/100/100  comp#1/180,700
+elysian_fields_03.lvl              (72.6, 80.0)  ext 1.0  N/E/L d=0.14 clr=100/100/100  comp#1/242,100
+elysian_fields_03.lvl              (72.6, 80.0)  ext 2.0  N/E/L d=0.14 clr=100/100/100  comp#1/242,100
+```
+
+Both are now permanent entries in the standing `survey_uberboss_spots.py --bosses` sweep, so a
+future relocation of either boss cannot silently strand its chest.
+
+---
+
+## 8. #14's ORB - the measurement inverts the premise. **PENDING WILL DECISION.**
+
+Round 1 recorded the orb half as "blocked by the `uber_apex_orb.verify()` roster gate". True, but
+not the important reason. `treasureProxyName` on **every** placed fixed uber, read off the shipped
+arz:
+
+```
+Tantalus (terminal)  um_tantalus_unbound_99      genericbossorb_04
+Mnemophage (core)    um_mnemophage_core_99       genericbossorb_04   <- the "trash" orb
+Ephialtes            um_ephialtes_99             genericbossorb_04
+Kroisos / Dorus      um_dorus_99                 genericbossorb_04
+Helepolis            um_helepolis_99             genericbossorb_04
+Charon (ferryman)    um_charonform2_ferryman_99  bosschest02_charon  (own named essence)
+Devourer (Toxeus)    um_bloodtoxeus_99           genericbossorb_05   (R-99 roster)
+```
+
+**The Mnemophage's orb is not worse than his peers' - it is identical to all four of them.** So
+"his orb is trash" is a complaint about the **orb04 tier**, not a Mnemophage-specific defect. Which
+means:
+
+* moving **only** him to orb05 makes him a strict outlier above four equals for no stated reason,
+  and reds the build (that `verify()` assertion is R-47/R-99's "not all champions" guarantee doing
+  its job, not obstructing);
+* moving **all five** is precisely what Will refused ONE DAY EARLIER in R-99, verbatim: *"i didnt
+  tell you to increase the drop of all the champions, just the toxeus variants (all variants we
+  made and didnt make) and leinth."*
+
+Either move would override a ruling made yesterday, so neither is taken. **Recommendation:** the
+Part 1 chest is the substantive answer to #14 - a Boss-locked region-tuned dedicated hoard is a far
+bigger reward swing than the orb tier - so play it before re-tiering. If it still reads thin, the
+option that fits every existing ruling is to mint ONE new mid tier for the five placed non-Toxeus
+fixed ubers **as a class**, leaving orb05 exclusively Toxeus + Leinth and R-99 intact. Will's call.
+
+---
+
+## 9. NOT DONE (exhaustive, after round 2)
+
+1. **#14 Mnemophage orb tier** - measured (sec 8), deliberately unchanged. **Open Will decision**,
+   `BL-R131-DEBT-1`. Not a blocked task: a ruling-level choice with three costed options.
+2. **In-game verification of everything this lane did** - **launch-gated.** Nobody has walked into
+   the Den of Tantalus, the eastern Elysian court, the Mnemosyne chamber or opened either new
+   chest on this build. Per the standing rule the test ping must carry a full Steam restart and a
+   packaged-hash verify. Covers: both relocations, both new chests, and the 3->1 chest count.
+3. **Neither new chest's LOOT has been observed** - the chain is proven to RESOLVE (build gates +
+   region-tuning), never opened in game. `BL-R131-DEBT-2`.
+4. **`q_obs_roulette_b` BLOCKS-ROUTE** - `BL-R130-DEBT-3`, unchanged. Will's call.
+5. **Will's call on the 3->1 chest class** - he named two bosses, the rule was applied to four.
+6. **Will's call on the 9 accepted on-path placements** (Menoetes, Ephialtes, Charon are the three
+   worth a real decision) and on the Helepolis siege-strider adjacency trade-off (sec 4).
+7. **The two new chest NAMES are unvetted by Will** - "Mnemophage's Lethe-Hoard" and "Helepolis's
+   Spoil-Hoard" follow the shipped convention and the amgoz1 bar, but they are my wording.
+8. **Deploy** - not performed. The orchestrator owns deploys; `Levels`+`Quests` stay coupled, as
+   do `arz`+`Text` (both new chest tags are Text-side, so the arz and Text.arc MUST ship together
+   or the chests show raw tag text).

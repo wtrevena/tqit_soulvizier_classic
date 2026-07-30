@@ -2506,3 +2506,100 @@ red the build and collide with the `feat/toxeus-apex-roster` lane. Specified her
 **STATUS:** Parts 1, 2 and 3 IMPLEMENTED on `fix/uber-placement` and gated. Part 4 SPECIFIED, owner
 needed. The full #16b audit of every existing placement - including the ones deliberately left alone -
 is in the wave report.
+
+---
+
+## R-131 [2026-07-30] The two chest-less ubers get a hoard; the "trash orb" is a TIER complaint, not a Mnemophage defect
+
+> **DECADE CLAIM.** R-131 was proven free before minting.
+> `git grep -h -oE "R-1(2[5-9]|3[0-9])" $(git branch --format='%(refname:short)')` over the WHOLE TREE of
+> all **120** local branches returns exactly `R-125`, `R-130`, `R-131` - and
+> `git grep -l "R-131" ...` shows the only carriers are this lane's own four source files, i.e. this
+> ruling's own implementation. R-125 belongs to `feat/devourer-kit`; R-130 is this lane's prior pass.
+> **126-129 and 132-139 remain free.**
+
+Source: R-100 **#14** and **#16**, the two halves R-130 Part 4 SPECIFIED and handed off. This entry
+implements the CHEST half of both and rules on the ORB half with a measurement that changes the answer.
+
+**SUPERSEDES R-130 Part 4's "NOT IMPLEMENTED, and deliberately so."** That status was written on the
+belief that the chest halves belonged to a different lane. They did not: `_svc_build_dedicated_hoard`
+and `_svc_build_world_chest_proxy` are the exact helpers the other four fixed ubers already call, in the
+same two files this lane already edits. Handing them off was a triage, and a triaged item is not a done
+item.
+
+### PART 1 - #14 + #16, THE CHEST HALVES: IMPLEMENTED
+
+**Will, R-100 #14, verbatim:** *"the uber boss in the lower city of lost souls has no chest that he is
+guarding and the orb he drops is trash."*
+**Will, R-100 #16, verbatim:** Machine uber boss (**Destroyer of Cities**) drops **no chest**, and
+stands **in the main walking path**.
+
+Both now carry a hoard, built on the SAME chain as the other four rather than by a new mechanism:
+
+| | the Mnemophage (#14) | the Helepolis (#16) |
+|---|---|---|
+| host / area banner | `Judgment_TempleUG_Mnemosyne01` -> **Lower City of Lost Souls** | `Elysian_Fields_03` -> **Delian Meadows** |
+| boss band (N/E/L) | [46, 68, 100] | [58, 80, 97] |
+| `_SVC_CHEST_STD` bracket | `svc_mnemophagehoard` = 45-47 / 63-65 / 63-65 | `svc_diadochihoard` = 57-59 / 63-65 / 63-65 |
+| chest name | **"Mnemophage's Lethe-Hoard"** | **"Helepolis's Spoil-Hoard"** |
+| world-chest proxy | `records\drxmap\proxy\svc_mnemophage_chest.dbr` | `records\drxmap\proxy\svc_diadochi_chest.dbr` |
+| placed at (level-local) | (45.6, 3.0, 71.0) | (72.6, 8.8, 80.0) |
+
+**WHY THE HELEPOLIS CHEST RIDES HIS RELOCATION.** His chest is centred on the R-100 #16 OFF-PATH spot
+(70, 8.8, 80), not on his retired b41 spot. Putting a new chest on the old coordinate would have
+re-created the very defect #16 exists to fix - a reward the player has to stand in the corridor to open.
+Because it rides the boss, it is off the walking path by construction, and the placement gate audits it
+as an independent record anyway (it discovers chests from the map by marker, so both new chests are
+containment- and path-checked without the gate being told about them).
+
+**WHAT WAS NOT RETIRED.** The Mnemophage's no-chest was a DELIBERATE build36 design choice - the shipped
+comment read *"the Mnemophage's marquee is the custom amulet, not a hoard (differentiator)"*. Will has
+now played the encounter and overruled it. That intent is QUOTED IN PLACE in the source rather than
+deleted, and his Lethe's Draught amulet is untouched: he gains a chest and loses nothing. The Helepolis
+never had a chest at all, so his half is a gap being closed, not a design being reversed.
+
+**THE NEW SURFACE SHIPS WITH ITS GATE.** Both prefixes are added to `_SVC_FIXED_UBER_CHESTS`, so
+`_svc_verify_world_chests` now asserts for six ubers, not four, that the boss proxy's accessory tiers
+are EMPTY **and** the world-chest record exists. If a later lane deletes either hoard, the build reds
+instead of the chest quietly vanishing. (Measured before wiring: all four accessory slots on
+`q_mnemophage_lone` and `q_diadochi_lone` are already `None`, so the assertion is satisfiable.)
+
+### PART 2 - #14's ORB: THE MEASUREMENT INVERTS THE PREMISE. **PENDING - OPEN WILL DECISION.**
+
+R-130 Part 4 said the orb half was blocked by the `uber_apex_orb.verify()` roster gate. **That is true
+but it is not the real reason, and the real reason matters more.** Measured on the shipped arz
+`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, `treasureProxyName` on every placed fixed uber:
+
+```
+Tantalus (terminal)  um_tantalus_unbound_99      genericbossorb_04
+Mnemophage (core)    um_mnemophage_core_99       genericbossorb_04   <- the "trash" orb
+Ephialtes            um_ephialtes_99             genericbossorb_04
+Kroisos / Dorus      um_dorus_99                 genericbossorb_04
+Helepolis            um_helepolis_99             genericbossorb_04
+Charon (ferryman)    um_charonform2_ferryman_99  bosschest02_charon  (own named essence)
+Devourer (Toxeus)    um_bloodtoxeus_99           genericbossorb_05   (R-99 roster)
+```
+
+**The Mnemophage's orb is not worse than his peers' - it is IDENTICAL to all four of them.** So "his orb
+is trash" is a complaint about the **orb04 tier as a whole**, not a Mnemophage-specific defect. That
+reframes the fix completely:
+
+* Moving **only** the Mnemophage to orb05 would make him a strict outlier above Tantalus, Ephialtes,
+  Kroisos and the Helepolis for no stated reason, and would red the build (`uber_apex_orb.verify()`
+  asserts the orb05 carrier set is EXACTLY the derived Toxeus roster - that assertion is R-47/R-99's
+  "not all champions" guarantee and is working as intended here, not obstructing).
+* Moving **all five** onto orb05 is precisely the change Will refused ONE DAY EARLIER, in R-99, verbatim:
+  *"i didnt tell you to increase the drop of all the champions, just the toxeus variants (all variants we
+  made and didnt make) and leinth."*
+
+**Doing either on my own authority would be overriding a ruling Will made yesterday.** So the orb half is
+recorded as an open decision with the numbers rather than guessed at. **RECOMMENDATION:** the chest
+shipped in Part 1 is the substantive answer to #14 - a Boss-locked, region-tuned dedicated hoard is a far
+larger reward swing than the orb tier - so try it in play before re-tiering anything. If it still reads
+thin, the clean options are (a) leave orb04 alone and raise the hoard's brackets, (b) mint ONE new mid
+tier for the five placed non-Toxeus fixed ubers as a class, keeping orb05 exclusively Toxeus+Leinth and
+R-99 intact, or (c) explicitly widen R-99 to admit them. **(b) is the option that fits every existing
+ruling.** Not (a)-through-(c) chosen here; Will's call.
+
+**STATUS:** Part 1 **IMPLEMENTED** on `fix/uber-placement`, gated and record-diffed. Part 2 **PENDING -
+OPEN WILL DECISION**, measured, nothing changed.

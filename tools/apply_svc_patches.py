@@ -16569,8 +16569,13 @@ def _svc_verify_world_chests(db):
             print(f"    - WORLD-CHEST problem: {p}")
         raise SystemExit(f"World-chest verification: {len(problems)} issue(s); the "
                          f"3-majestic-chest replacement is not structurally guaranteed.")
+    # NOTE the count is UBER_CHEST_COUNT in tools/build_section_surgery.py, not a literal 3.
+    # This line used to say "places 3x each"; R-130 (#9/#10, Will: "he has three chests ... where
+    # he should only have one") dropped it to 1 and the message went stale the same day. It now
+    # names the constant instead of a number so it cannot drift again.
     print(f"  World-chest verify: {len(_SVC_FIXED_UBER_CHESTS)} fixed ubers carry NO "
-          f"bespoke chest; {len(built)} world-chest prox/ies built (map lane places 3x each).")
+          f"bespoke chest; {len(built)} world-chest prox/ies built (the map lane places each "
+          f"UBER_CHEST_COUNT times - see build_section_surgery.UBER_CHEST_SPECS).")
 
 
 # =============================================================================
