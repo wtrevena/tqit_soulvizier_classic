@@ -13,11 +13,16 @@ zero new tags, so there is NO artifact coupling to honour):**
 - arz `.claude/worktrees/toxeus-apex-roster/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
   md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry modules.
   Built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
-  **exit 0** (log `local_r99_reproduce.log`).
-- **Byte-identity re-proved TWICE, three identical builds in total** - `local_r99_reproduce.log`,
-  `local_r99_rebuild.log` (after the verify-side fixes in steps 6/7/10) and `local_r99_postmerge.log`
-  (after merging main), each **exit 0** and each **md5 `6a3a491db546b603c52132237c40aa63`,
-  55,475,226 B**. So neither the gate hardening nor the mid-lane base move changed a shipped byte.
+  **exit 0** (log `docs/reports/b101_logs/b101_r99_reproduce.log`).
+- **Byte-identity re-proved THREE TIMES, four identical builds in total**, each **exit 0** and each
+  **md5 `6a3a491db546b603c52132237c40aa63`, 55,475,226 B**: (1) the round-1 code rebuilt from scratch,
+  (2) after the verify-side fixes in steps 6/7/10, (3) after merging `main` @ `31f3432`, and (4) round
+  2's confirming rebuild after the vet-driven comment corrections in `tools/patches/uber_apex_orb.py`
+  and the merge of `main` @ `b376b61`. So neither the gate hardening, nor any of the three mid-lane base
+  moves, nor round 2's doc/comment corrections changed a shipped byte. Logs kept:
+  `docs/reports/b101_logs/b101_r99_reproduce.log` (build 1) and
+  `docs/reports/b101_logs/b101_r2_confirm_rebuild.log` (build 4); builds 2 and 3 were redundant
+  intermediates and their logs were dropped in round 2's cleanup.
 
 > ⚠️ **BASE MOVED MID-LANE THREE TIMES; THIS LANE MERGED AND REBUILT EACH TIME.** Briefed base was
 > `main` @ `e014ef8`. While the lane ran, `main` advanced to `31f3432` (R-102/R-103 Enslaver green-glow),

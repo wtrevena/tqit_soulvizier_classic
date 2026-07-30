@@ -124,7 +124,7 @@ py tools/build_svc_database.py upstream/soulvizier_098i/Database/database.arz \
 ```
 
 **exit 0.** arz **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**, 45 registry
-modules. Log `local_r99_reproduce.log`. Key lines:
+modules. Log `docs/reports/b101_logs/b101_r99_reproduce.log`. Key lines:
 
 ```
 --- [37/45] uber_apex_orb  (uber apex orb - ONE apex drop calibre for the WHOLE Toxeus roster AND Leinth (R-72 + R-99)) ---
@@ -149,11 +149,18 @@ is cloned into existence later in the registry and inherits the orb.)
 This md5 **independently reproduces the value the B100 gate record published for the same base**, which
 corroborates both that build's determinism and this environment.
 
-> ⚠️ The baseline log committed by this lane's round 1 (`local_baseline_build.log`, arz
-> `967b1f97137bf6479c18c08e9dd6ffc4`) and round 1's own build log (`local_r99_build.log`, arz
-> `f99d5c83a60cb3136eff62622b999550`) are both **44-module builds made BEFORE the merge of `main` @
-> `e014ef8` at 12:57**, so neither is a baseline of the real tip and **`f99d5c83...` must not be
-> shipped**. They are kept as the audit trail of round 1, not as artifacts.
+> ⚠️ **ROUND 1's TWO "BASELINE" ARTIFACTS WERE STALE AND ARE NOW GONE FROM THE BRANCH.**
+> `local_baseline_build.log` (arz `967b1f97137bf6479c18c08e9dd6ffc4`) and `local_r99_build.log` (arz
+> `f99d5c83a60cb3136eff62622b999550`) were both **44-module builds made BEFORE the merge of `main` @
+> `e014ef8` at 12:57** - provable from the log itself, which reads `--- [37/44] uber_apex_orb` and never
+> reaches `weapon_gate_truth`, versus `[37/45]` and `[44/45] weapon_gate_truth` in the real one. So
+> neither was a baseline of the tip, and `f99d5c83…` must never be shipped. Round 2 dropped them (and
+> two redundant intermediate rebuild logs) from the branch rather than keeping four stale logs at the
+> repo root under authoritative-looking names, and renamed the two matching stale `local/*.arz` on disk
+> to `local/STALE_DO_NOT_SHIP_*`. The one surviving log is
+> `docs/reports/b101_logs/b101_r99_reproduce.log`, the 45-module log of the shipped bytes.
+> **`967b1f97…` is NOT the measurement basis for anything in this lane;** round 2 re-cited the tip
+> baseline in `tools/patches/uber_apex_orb.py` and `tools/debug/b101_r99_record_diff.py`.
 
 ### 5.3 Record-diff: zero unattributed changes
 
@@ -265,25 +272,41 @@ Running the new `verify()` against the pre-R-99 arz fires with **exactly the 6 g
 `genericbossorb_01.dbr STILL carries Toxeus record(s) ['um_toxeus_21.dbr']`. A gate that cannot fail on
 the state it was written to detect is not a gate.
 
-### 5.8 Byte-identity: THREE identical builds
+### 5.8 Byte-identity: FOUR identical builds
 
-The arz was built from scratch three times with the identical command and env, and every one returned
+The arz was built from scratch four times with the identical command and env, and every one returned
 **exit 0** with md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B:
 
-| log | after what |
-|---|---|
-| `local_r99_reproduce.log` | the round-1 code, rebuilt from scratch by this round rather than trusted |
-| `local_r99_rebuild.log` | the verify-side fixes of steps 6/7/10 (proving the gate hardening moved no shipped byte) |
-| `local_r99_postmerge.log` | merging `main` @ `31f3432` (proving the mid-lane base move moved no shipped byte) |
+| build | after what | log |
+|---|---|---|
+| 1 | the round-1 code, rebuilt from scratch by this round rather than trusted | `docs/reports/b101_logs/b101_r99_reproduce.log` (kept) |
+| 2 | the verify-side fixes of steps 6/7/10 (proving the gate hardening moved no shipped byte) | dropped in round 2 as a redundant intermediate |
+| 3 | merging `main` @ `31f3432` (proving the mid-lane base move moved no shipped byte) | dropped in round 2 as a redundant intermediate |
+| 4 | **round 2's confirming rebuild** after the vet's doc/comment corrections, incl. merging `main` @ `b376b61` | `docs/reports/b101_logs/b101_r2_confirm_rebuild.log` |
+
+Build 4 exists because round 2 edited comments inside `tools/patches/uber_apex_orb.py` (rescoping the
+name-tag claim, citing the `dropItems` evidence, documenting the marauder exclusion, re-citing the
+baseline md5). Per this repo's own discipline a comment edit inside a build module gets one confirming
+rebuild rather than an assurance that comments cannot matter.
 
 ### 5.9 The base moved mid-lane; merged and re-proved
 
-Briefed base was `main` @ `e014ef8`. While the lane ran, `main` advanced to `31f3432` - the R-102/R-103
-Enslaver green-glow lane: 487 lines of `docs/WILL_RULINGS.md` plus 7 standalone
-`tools/debug/probe_*.py`. It touched **zero build inputs** (`git diff e014ef8..main --name-only`
-matches nothing under `tools/patches/`, `tools/contracts/`, or any top-level `tools/*.py`), so the
-baseline `aea688b23acefe1b48ae31a0df4cc423` remains the correct comparison point - and the post-merge
-rebuild confirms it with the same md5.
+Briefed base was `main` @ `e014ef8`. `main` then advanced **three times** while the lane ran:
+`31f3432` (R-102/R-103 Enslaver green-glow), `1897557` (R-103 amendment / R-104 / R-105) and, during
+round 2, `b376b61` (R-106 / R-106 amendment / R-107). Each advance was merged and re-proved.
+
+Every advance is **docs plus `tools/debug/probe_*.py` and nothing else**, measured over the whole span:
+
+```
+git diff e014ef8..b376b61 --name-only | grep -vE '^docs/|^tools/debug/'   ->  (empty)
+grep -rnE "^\s*(from|import)\s+.*debug" tools/*.py tools/patches/*.py tools/contracts/*.py
+   ->  only tools/patches/emberteeth_summon.py:238, which imports apply_svc_patches
+       and merely says "debugging" in its comment - no build-tree module imports
+       anything from tools/debug/
+```
+
+So `main`'s advances cannot change the arz, the baseline `aea688b23acefe1b48ae31a0df4cc423` remains the
+correct comparison point, and the post-merge rebuilds confirm it with the same md5 every time.
 
 Every merge of that file was resolved by keeping BOTH sides and then VERIFIED instead of trusted. After
 the final merge of `main` @ `b376b61` (a clean auto-merge, no conflict at all): with line endings
