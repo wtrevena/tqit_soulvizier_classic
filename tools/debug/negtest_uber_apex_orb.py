@@ -53,9 +53,21 @@ NEGATIVE R1: a Toxeus variant the pin does not know about must FAIL (planted by
              failure R-99 exists to close).
 NEGATIVE R2: a pinned Toxeus variant missing from the db must FAIL (a rename or a
              deletion of a ratified record).
-NEGATIVE R3: the SECOND, name-tag derivation must fire - a non-Toxeus Monster
-             record given a Toxeus display tag must FAIL (this is the derivation
-             that catches a Toxeus authored outside the 'toxeus' path namespace).
+NEGATIVE R3: the SECOND, name-tag derivation must fire - a non-Toxeus boss given a
+             Toxeus display tag must FAIL (this is the derivation that catches a
+             Toxeus authored outside the 'toxeus' path namespace).
+             ⚠️ THIS TEST FOUND A REAL GATE HOLE, so do not "simplify" its donor.
+             The donor `boss_titan_typhon_42` is deliberately a BESPOKE-template
+             boss (`database\Templates\Typhon2.tpl`, not Monster.tpl). The second
+             derivation used to filter on Monster.tpl, so this subtest came back
+             gate=PASS - meaning a boss on a bespoke template could wear a
+             champion's display tag and both derivations would miss it. The
+             derivation was widened to every template except Pet.tpl; picking a
+             friendlier Monster.tpl donor would have hidden the bug instead.
+
+COUNT: 29 subtests as of the R-99 roster of 8 (2 positives + negatives 1-14 +
+one per roster record + R1-R5). The roster half is GENERATED, so the count grows
+by itself when a variant is ratified - it is not a number to keep in sync by hand.
 NEGATIVE R4: the base-game false-positive pin must be LOAD-BEARING - with
              _TAG_FALSE_POSITIVES emptied, the two am_assassin records must FAIL
              the gate, proving the second derivation really evaluates them.
