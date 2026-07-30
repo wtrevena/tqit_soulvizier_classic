@@ -35,12 +35,18 @@ PYTHONIOENCODING=utf-8`; baseline = `main` @ `533c73d` built in this same enviro
 in-repo worktree so input resolution is identical):
 
 ```
-arz  BASELINE  6a3a491db546b603c52132237c40aa63   55,475,226 B
-arz  BRANCH    3bf06a36caba4dec9503b93d925412af   55,481,800 B
-map  BASELINE  718abad63e7813dc78c4b169df969fd5  688,692,225 B
-map  BRANCH    34d2f275122458abc9d46d0969853345  688,690,415 B
-Text BRANCH    b27808a2c8ba668a00b6335e3aec12ad       89,364 B
+arz     BASELINE  6a3a491db546b603c52132237c40aa63   55,475,226 B
+arz     BRANCH    3bf06a36caba4dec9503b93d925412af   55,481,800 B
+map     BASELINE  718abad63e7813dc78c4b169df969fd5  688,692,225 B
+map     BRANCH    34d2f275122458abc9d46d0969853345  688,690,415 B
+TESTHUB BRANCH    fe97ef0add7ca293598fd49b45c1451c  688,682,932 B  (Levels_merged_TESTHUB.arc)
+Text    BRANCH    b27808a2c8ba668a00b6335e3aec12ad       89,364 B
 ```
+
+**BOTH MAP VARIANTS CARRY THE FIX.** The `SVC_TEST_HUB=1` variant is what DEV actually deploys, so
+it was built and gated separately rather than assumed to follow: `--chests --only mnemosyne` and
+`--chests --only elysian_fields_03` on `Levels_merged_TESTHUB.arc` both return **GATE GREEN**, with
+the identical coordinates and the identical 18.9u / 19.3u off-path distances as the canonical map.
 
 - **THE BASELINE IS PROVEN CORRECT, NOT ASSUMED:** the arz baseline `6a3a491d...` is
   **byte-identical** to the arz currently staged in `work/SoulvizierClassic/Database/`, and is the
