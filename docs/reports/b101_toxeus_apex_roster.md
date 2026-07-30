@@ -206,10 +206,24 @@ RESULT: PASS - 0 ADDED, 0 REMOVED, 6 CHANGED and every one of them is a DERIVED 
 record whose ONLY moved field is treasureProxyName -> genericbossorb_05. Zero unattributed changes.
 ```
 
-**0 REMOVED** is the load-bearing half for the neighbouring lanes: b98's 15 records and b99's
-`summon_sargoth` + pets all survive. The attribution rule is strict in both directions - any added
-record, any removed record, any other changed field, or a roster record landing on anything other than
-orb05, exits 1.
+**0 REMOVED** is the load-bearing half for the neighbouring lanes. Round 2 also enumerated them BY NAME
+rather than leaving it to the aggregate (set-difference over all 51,124 record names, baseline vs built):
+
+```
+REMOVED (in baseline, gone from built): 0
+ADDED   (in built, absent from baseline): 0
+b98 Endless Hunt (token 'toxeus_hunt') : 9 records in built, all present in baseline too: True
+   controller_toxeus_hunt_endless, um_toxeus_hunt_99, um_toxeus_hunt_l_99,
+   q_toxeus_hunt_lone (proxy + 2 pools), toxeus_hunt_soul_{n,e,l}
+b99 Sargoth      (token 'sargoth')     : 8 records in built, all present in baseline too: True
+   summon_sargoth, sargoth_{1,2,3} pets, sargoth_soul_{n,e,l} (+1 upstream conflicted copy)
+b94 Leinth       (token 'leinth')      : 79 records in built, all present in baseline too: True
+   including all 3 of her original loot tables (loottable_leinth_29-31 / 49-51 / 63-65),
+   which R-72 requires be PRESERVED rather than replaced
+```
+
+The attribution rule is strict in both directions - any added record, any removed record, any other
+changed field, or a roster record landing on anything other than orb05, exits 1.
 
 ### 5.4 `genericbossorb_04` BYTE-UNCHANGED, and its 19 other consumers
 
