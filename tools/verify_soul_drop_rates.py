@@ -635,8 +635,8 @@ def main(argv):
         # ── R-107 / R-106 amendment: the named fixed-location bosses ──────────
         'um_polisgaoler_99':          (None, 0.0),    # base form NEVER drops
         'um_polisgaoler_unbound_99':  (None, 25.0),   # only the unbound final form
-        'um_charon_ferryman_99':      (None, 25.0),   # was 0 - a soul that could never drop
-        'um_tantalus_99':             (None, 25.0),   # was 0 - same defect
+        'um_charon_ferryman_99':      (None, 0.0),    # chain HEAD - its terminal drops
+        'um_tantalus_99':             (None, 0.0),    # chain HEAD - its terminal drops
         # ── R-48 / R-90 / R-91: the four fought Toxeus champions stay at 100 ──
         'um_toxeus_enslaver_99':  ('PLACED', 100.0),
         'um_bloodtoxeus_99':      (None, 100.0),

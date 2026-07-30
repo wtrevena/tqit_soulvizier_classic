@@ -743,20 +743,34 @@ SOUL_RATE_R48_RECORDS = frozenset({
 })
 
 # Fixed-location bosses named INDIVIDUALLY by a ruling, which the roster-driven
-# classifier cannot see (they are `um_*` Boss records, so _soul_is_farmable_boss
-# deliberately returns False for them, and they sit in mod PLACED proxies).
+# classifier cannot see (a `um_*` Boss record makes _soul_is_farmable_boss return
+# False by design, and they sit in mod PLACED proxies).
 #   um_polisgaoler_unbound_99 - R-107: "take the unbound form 66% -> 25% under
-#       R-105's fixed-boss rate" (the base Gaoler stays at 0, see below).
-#   um_charon_ferryman_99 / um_tantalus_99 - R-106 amendment: Boss-class fixed
-#       ubers stuck at 0% carrying a soul that can never drop; "R-105 already
-#       rules them at 25%".
-SOUL_RATE_FIXED_BOSS_PINS = frozenset({
-    'um_polisgaoler_unbound_99', 'um_charon_ferryman_99', 'um_tantalus_99',
-})
+#       R-105's fixed-boss rate".
+SOUL_RATE_FIXED_BOSS_PINS = frozenset({'um_polisgaoler_unbound_99'})
 
-# R-107, verbatim: only the unbound final Gaoler drops. The base form stays at 0
-# and must never be raised by the 0%-defect rule above.
-SOUL_RATE_ZERO_PINS = frozenset({'um_polisgaoler_99'})
+# ⚠️ THE HEADS OF THREE TWO-FORM UBER CHAINS. They stay at 0 - NOT a defect.
+#
+# R-107, verbatim: "the soul gaoler should not drop the soul just the unbound
+# final version". R-107 explicitly RETRACTED the R-106 amendment's claim that the
+# base Gaoler's 0% was "a plain defect" - and the other two records that
+# amendment listed are the SAME SHAPE, measured
+# (tools/debug/probe_uber_transform_chains.py):
+#
+#   um_charon_ferryman_99  chance 0  -onDeath->  um_charonform2_ferryman_99 (drops)
+#   um_tantalus_99         chance 0  -onDeath->  um_tantalus_unbound_99     (drops)
+#   um_polisgaoler_99      chance 0  -onDeath->  um_polisgaoler_unbound_99  (drops)
+#
+# Each head carries its DONOR's soul and each terminal carries OURS, so raising a
+# head would make one encounter pay two different souls - exactly the Legion
+# defect class that legion_soul_stages + double_soul_rulings exist to stop. The
+# build proved it: raising these two failed double_soul_rulings.verify with
+# "legion_soul_stages distinct-soul roster ... expected exactly Charon 39/41/43 +
+# Hades 54". So R-106's amendment was wrong about these two for the same reason
+# R-107 says it was wrong about the Gaoler. All three heads are pinned at 0.
+SOUL_RATE_ZERO_PINS = frozenset({
+    'um_polisgaoler_99', 'um_charon_ferryman_99', 'um_tantalus_99',
+})
 
 # ⚠️ AN OLDER, STILL-STANDING WILL RULING THAT OUTRANKS THE RATE SWEEP HERE.
 # `tools/patches/double_soul_rulings.py` ruling (c): "CHARON 39/41/43 + HADES 54
