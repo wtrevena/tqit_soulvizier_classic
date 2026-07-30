@@ -87,6 +87,27 @@ SHRINE = (4388.0, 3085.0)     # StrategicMovementRespawnShrine respawn_hades_shr
 BASELINE_INSTANCES = 281
 BASELINE_PROXIES = 10
 
+# amgoz1's OWN drxBC3 proxy placements, verbatim from pristine-identical baseline bytes
+# (level-LOCAL x, y, z, exactly as the 0x05 section carries them). These ARE the design of
+# record the RETIREMENT PROTOCOL protects: this lane ADDS ONLY, and if a future lane moves,
+# re-points or drops any of them, gate row G1c fails by name WITHOUT needing a baseline map
+# to compare against. `proxy_shrinepalace` is included because it is a placed instance even
+# though it is not a MONSTER proxy (the density/spacing rows exclude it, this row does not).
+#   py tools/debug/b100_derive_sanctuary.py --shipped-roster <baseline.arc>  re-prints it.
+SHIPPED_PROXIES = (
+    ('proxy_shrinepalace.dbr', 101.792, 15.005, 64.967),
+    ('hound_01_pack.dbr', 179.255, 15.225, 21.365),
+    ('bw_seductress_lone.dbr', 128.775, 15.005, 13.125),
+    ('bw_priest_houndmaster.dbr', 130.645, 15.005, 20.525),
+    ('zparty_witchfest_2099.dbr', 190.167, 27.005, 94.238),
+    ('zparty_witchfest_2099.dbr', 103.345, 15.005, 119.885),
+    ('bw_priest_houndmaster.dbr', 60.675, 15.005, 180.735),
+    ('zparty_witchfest_2099.dbr', 102.615, 27.005, 205.935),
+    ('zparty_witchfest_2099.dbr', 158.375, 27.005, 175.115),
+    ('bw_reaver_lone.dbr', 210.235, 27.005, 162.445),
+    ('bw_priest_houndmaster.dbr', 202.405, 27.005, 132.225),
+)
+
 # --- hard placement rules -----------------------------------------------------
 # Design sec 4.3 rule 3 kept verbatim. Rule 1 is restated in mesh terms (own-area
 # + reachable + on-corridor). Rule 2 is REPLACED - see the block comment below.
@@ -260,7 +281,7 @@ class Sanctuary:
     """Everything measured off one built map, in one place, so the gate and the
     derivation cannot drift apart."""
 
-    def __init__(self, map_path, arz_path=None, strict=True):
+    def __init__(self, map_path, arz_path=None, strict=True, blob_patch=None):
         """strict=True (the derivation): a malformed navmesh is an AssertionError.
         strict=False (the GATE): a malformed navmesh is RECORDED in self.nav_error and
         the object still exposes `nav_raw` + `instances`, so the gate can report a
@@ -268,7 +289,16 @@ class Sanctuary:
         unconditionally in here, so the two b89-class navmesh plants (flip one byte /
         truncate the 0x0b container) aborted the gate with an uncaught AssertionError
         rather than failing the invariant that owns them. Exit code was still non-zero,
-        so it was fail-SAFE, but it was not the PASS/FAIL behaviour the gate claims."""
+        so it was fail-SAFE, but it was not the PASS/FAIL behaviour the gate claims.
+
+        blob_patch: an optional callable(bytes) -> bytes applied to drxBC3's RAW LEVEL BLOB
+        the instant it is read out of the map and BEFORE anything is parsed from it. This is
+        the hook the gate's MAP-SIDE planted negatives use: a plant corrupts the actual level
+        bytes (delete a shipped instance, teleport one, flip a byte in the 0x0b navmesh
+        container, truncate it) and the gate then reads the corrupted map exactly as it would
+        read a corrupted build. Round 1 had no such hook, so EVERY plant could only mutate the
+        DECLARATION while the map stayed correct, and the invariants that are about the map
+        itself - the RETIREMENT PROTOCOL above all - were never exercised."""
         self.map_path = str(map_path)
         self.strict = strict
         self.nav_error = None
@@ -288,13 +318,22 @@ class Sanctuary:
         lv = levels[idx]
         self.corner = tuple(lv['corner'])
         self.blob = mp[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+        if blob_patch is not None:
+            self.blob = blob_patch(self.blob)
         self.blob_version = self.blob[3]
         own_guid = struct.pack('<4I', *struct.unpack_from('<13I', lv['ints_raw'], 0)[9:13]).hex()
 
         # instances FIRST - they do not depend on the navmesh, so a corrupt 0x0b must
         # not cost the gate its ability to check the roster / retirement protocol.
-        self.instances = CM.parse_0x05(self.blob)[1]
-        self.raw_instances = parse_0x05_raw(self.blob)
+        self.inst_error = None
+        self.instances, self.raw_instances = [], []
+        try:
+            self.instances = CM.parse_0x05(self.blob)[1]
+            self.raw_instances = parse_0x05_raw(self.blob)
+        except Exception as exc:                      # noqa: BLE001 - reported, not hidden
+            self.inst_error = f'{type(exc).__name__}: {exc}'
+            if strict:
+                raise
 
         sec0b = [d for t, d in CM.parse_blob_sections(self.blob) if t == 0x0b]
         self.nav_raw = sec0b[0] if len(sec0b) == 1 else b''
@@ -715,7 +754,20 @@ def main():
     ap.add_argument('--arz', default=str(REPO / 'work' / 'SoulvizierClassic' /
                                         'Database' / 'SoulvizierClassic.arz'))
     ap.add_argument('--json', default=None)
+    ap.add_argument('--shipped-roster', action='store_true',
+                    help='print SHIPPED_PROXIES for the given --map and exit (use a '
+                         'BASELINE map; this is how that constant is regenerated)')
     a = ap.parse_args()
+
+    if a.shipped_roster:
+        s = Sanctuary(a.map, a.arz)
+        print(f'# from {a.map}  ({len(s.instances)} instances)')
+        for it in s.raw_instances:
+            d = it['dbr'].decode('latin-1')
+            if s._cls is not None and s._cls.get(CM.norm_rec(d)) == 'Proxy':
+                print("    ('%s', %.3f, %.3f, %.3f)," %
+                      (d.split('\\')[-1], it['pos'][0], it['pos'][1], it['pos'][2]))
+        return 0
 
     s = Sanctuary(a.map, a.arz)
     print(f'map    : {a.map}')

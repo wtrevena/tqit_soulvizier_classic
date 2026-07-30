@@ -2446,10 +2446,31 @@ for _b65_key, _b65_specs in B65_TOXEUS_STALKER_SPECS.items():
 # the arrival portal - which is what the design's words "along the one-way walk" mean - and
 # every Y below is READ FROM THE NAVMESH CELL, not guessed.
 #
-# COORDS ARE DERIVED, NOT AUTHORED. `py tools/debug/b100_derive_sanctuary.py --map <arc>`
-# re-derives this exact list from the built map: deterministic farthest-point insertion, no
-# RNG, total-order tie-break, so it reproduces byte-for-byte. Every point satisfies, and
-# `py tools/gate_sanctuary_population.py` re-proves against the FINAL MERGED map:
+# COORDS ARE DERIVED, NOT AUTHORED.
+#   py tools/debug/b100_derive_sanctuary.py --map local/b100_base/Levels_merged.arc \
+#        --arz work/SoulvizierClassic/Database/SoulvizierClassic.arz
+# re-derives this exact list. ⚠️ THE --map MUST BE A **BASELINE** MAP (one WITHOUT these
+# placements): the derivation reads drxBC3's existing proxies as the point set it spaces
+# against, so running it on the post-change map would feed this lane's own 14 back in as
+# pre-existing content. It now asserts 281 instances / 10 monster proxies and fails loud in
+# one second if you point it at the wrong artifact.
+#
+# THE MECHANISM IS GROUP-CLUSTERED INSERTION, NOT FARTHEST-POINT (round-2 correction). Round 1
+# used farthest-point insertion, which MAXIMISES the minimum spacing - i.e. the most evenly
+# spread arrangement the filters allow, which is precisely the "evenly spaced patrol" this
+# design and the amgoz1 bar forbid. Measured on the round-1 build: the 14 had
+# nearest-neighbour Chebyshev min 23.2 u / median 31.8 u, while amgoz1's own TEN shipped
+# drxBC3 proxies measure min 7.4 / median 41.9 - he clusters, and the code could not. Now:
+# each roster group's FIRST member is placed farthest-point (so distinct groups land in
+# distinct places along the walk) and every SUBSEQUENT member is placed nearest-point to that
+# group's own anchor (so a group is a knot). Measured on this list: min 16.0 / median 30.0 /
+# max 62.2 - six pairs hard against the 16 u spacing floor, gaps out to 62.2 u. Bimodal, like
+# amgoz1's own distribution, not uniform. Still zero RNG and a total order on every tie-break:
+# 3 runs at PYTHONHASHSEED 7/14/21 produced identical output (json md5
+# c7fbe1a0f90c9d95a59ec009bc6cd34e).
+#
+# Every point satisfies, and `py tools/gate_sanctuary_population.py` re-proves against the
+# FINAL MERGED map:
 #   F1 on a walkable navmesh cell whose `areas` owner byte is drxBC3's own GUID index
 #   F2 walkable in ALL THREE tilesets (Normal/Epic/Legendary)
 #   F3 in the same connected component as the arrival portal (engine climb model, 1.0 u)
@@ -2460,18 +2481,33 @@ for _b65_key, _b65_specs in B65_TOXEUS_STALKER_SPECS.items():
 #   F7 >= 3.0 u from every placed 0x05 instance (never inside a pillar or a bone pile)
 #   F8 >= 10 u inside drxBC3's own footprint edge - the b44 class applied to a WALK-IN
 #      seam, so the player never crosses into a pack with no reaction time
-#   F9 >= 16 u (Chebyshev) from EVERY other monster proxy, old or new - R-30's spacing law
-#   F10 the worst axis-aligned 60x60 world-unit box anywhere on the walkway sums <= 42
-#      spawnMax. 42 is DERIVED: the sparsest already-shipping blood-cave level that carries
-#      real content (yet_another_fucking_connector), and the base-game cave/crypt/tomb p90.
-#      Result: 24 -> 36, so the Sanctuary stays the sparsest walkable level in its own cave.
+#   F9 >= 16 u (Chebyshev) from EVERY other monster proxy, old or new. This implements
+#      R-30's spacing LAW ("space these monsters out instead of putting them all on top of
+#      one another"); the 16 u figure itself is the DESIGN PASS's, not Will's - R-30 states
+#      no distance. Treat 16.0 as a constant, not a ruling.
+#   F10 the worst axis-aligned 60x60 world-unit box anywhere on the walkway sums <= 57.0
+#      EFFECTIVE ENTITIES. ⚠️ ROUND-2 UNIT CORRECTION: a pool's spawnMax is NOT what the
+#      engine spawns - the pool's proxyPoolEquation multiplies it. Measured:
+#      proxypoolequation_01 = 3.60025x at 1 player, _02 = 1.357143x. All 176 blood-cave pool
+#      references use _02; 854 of the base-game cave/crypt/tomb cohort's 887 use _01, so
+#      round 1's cross-family comparison of RAW spawnMax was invalid. 57.0 is DERIVED: the
+#      sparsest already-shipping blood-cave level that carries real content
+#      (yet_another_fucking_connector, 57.0 eff), against a base-game cave/crypt/tomb cohort
+#      (n=80) of MEDIAN 90.0, p90 158.4, max 280.8 eff. Result on drxBC3: 32.6 -> 51.6 eff,
+#      still the sparsest walkable level in its own cave, 57% of the base-game median, and
+#      less than half the b76 chumbi-freeze figure ("well over 100"). Note drxBC2 ALREADY
+#      sits at 109.9 eff pre-existing - inherited debt, not ours.
 # The design's own rule 2 ("two spawnMax>=6 proxies never within 34 u") is REPLACED by
 # F9+F10: it was a sufficient condition for a density cap, it is unsatisfiable here (7
 # roster parties + 5 shipped ones against 258 sq u of party-eligible ground in band 2), and
 # F10 gates the thing Will actually cares about directly. See the population report sec 3.
 #
-# BYTE SHAPE: identity rotation, flags=0, no 0x14 - byte-shape identical to all TEN proxies
-# amgoz1 himself placed in this level (measured: every drxBC3 proxy is identity/flags=0).
+# BYTE SHAPE: identity rotation, flags=0, no 0x14. MEASURED, and this is the whole
+# justification for not rotating anything to face the aisle: all TWENTY-FIVE Proxy instances
+# amgoz1 placed in drxBC3 are identity rotation / flags=0, even though 228 of the level's 269
+# NON-proxy instances ARE rotated. Rotating proxies is a thing this map does elsewhere (1,614
+# of 6,598 map-wide, 28 of 228 in the blood cave) but never in this level, so identity is the
+# host level's own convention and matching it is deliberate, not an omission.
 # drxBC3 is an SV-only v0x0e blob -> inject_into_sv_only_blob, 56-byte records, the same
 # path the widow letter and the Enslaver warband already use in this cave.
 SANCTUARY_HOST_KEY = 'levels/world/xbloodcave/drxbc3.lvl'
@@ -2480,41 +2516,54 @@ SANCTUARY_SPECS = {
     SANCTUARY_HOST_KEY: [
         # --- BAND 1: THE OUTER COURT (route 0-120 u) -----------------------------------
         # The arrival breath. You step out of the portal beside a Hades respawn shrine and
-        # two novices kneel alone at the edge of the rite, too rapt to have noticed you.
-        # Lone acolytes are the weakest thing in the cult and this is the one place in the
-        # mod where that reads as DEVOTION rather than as filler. Band 1 necessarily starts
-        # after the descent ramp: F5's 20 u clearance around the two anchors alone excludes
-        # the whole 538 sq u arrival platform (a 20 u disc is 1,257 sq u).
-        (_SP + b'bw_acolyte_lone.dbr',       210.100, 38.605, 195.900),  # route  38.8u  world(4396.1,  1.6,3064.9) sMax 1
-        (_SP + b'bw_acolyte_lone.dbr',       176.100, 27.005, 148.900),  # route 119.8u  world(4362.1,-10.0,3017.9) sMax 1
-        # --- BAND 2: THE CONGREGATION (route 120-265 u, the Y=-10 upper walkway) --------
+        # two novices kneel TOGETHER at the edge of the rite, too rapt to have noticed you
+        # (16.0 u apart - hard against the spacing floor, which is what "kneeling together"
+        # costs). Lone acolytes are the weakest thing in the cult and this is the one place
+        # in the mod where that reads as DEVOTION rather than as filler. Band 1 necessarily
+        # starts after the descent ramp: F5's 20 u clearance around the two player anchors
+        # alone excludes the whole 538 sq u arrival platform (a 20 u disc is 1,257 sq u).
+        (_SP + b'bw_acolyte_lone.dbr',       210.100, 38.605, 195.900),  # route  38.8u world(4396.1,  1.6,3064.9) sMax 1 = 1.4 eff [anchor]
+        (_SP + b'bw_acolyte_lone.dbr',       210.500, 30.205, 179.900),  # route  54.4u world(4396.5, -6.8,3048.9) sMax 1 = 1.4 eff [member]
+        # --- BAND 2: THE CONGREGATION (route 120-265 u) --------------------------------
         # The rite in full voice. zparty_witchfest_2099 is ALREADY the Sanctuary's signature
         # proxy (4 placed here, 28 in drxBC_Finale) - the witchfest IS the ceremony, and
         # "witchfest" is amgoz1's own word for what happens on this walkway. Thickening it
         # with acolyte clutches turns the congregation into a body of worshippers.
-        (_SP + b'zparty_witchfest_2099.dbr', 102.500, 22.605, 164.100),  # route 251.0u  world(4288.5,-14.4,3033.1) sMax 12
-        (_SP + b'zparty_witchfest_2099.dbr', 163.900, 27.005, 203.900),  # route 176.6u  world(4349.9,-10.0,3072.9) sMax 12
-        (_SP + b'bw_acolyte_clutch.dbr',     177.500, 27.005, 124.100),  # route 143.2u  world(4363.5,-10.0,2993.1) sMax 9
-        (_SP + b'bw_acolyte_clutch.dbr',     179.900, 27.005, 172.100),  # route 128.8u  world(4365.9,-10.0,3041.1) sMax 9
-        # --- BAND 3: THE CLERGY (route 265-460 u, the Y=-22 middle walkway) -------------
+        # NOTE, measured: these are the two HEAVY groups (16.3 and 12.2 effective entities
+        # each) and they are the two the density cap refuses to let cluster - each pair ends
+        # up 60.2 u apart because a tight knot of them would breach SCREEN_CAP_EFF. That is
+        # the load ceiling overriding the shape rule, by design, and it is why band 2 reads
+        # as a rite spread down the length of the upper walkway rather than as one mob.
+        # The band spans two elevation tiers: the anchor sits at world Y -14.40 on the ramp,
+        # the other three at Y -10.00 (round 1's comment called the whole band "the Y=-10
+        # upper walkway", which was wrong for the anchor).
+        (_SP + b'zparty_witchfest_2099.dbr', 102.500, 22.605, 164.100),  # route 251.0u world(4288.5,-14.4,3033.1) sMax 12 = 16.3 eff [anchor]
+        (_SP + b'zparty_witchfest_2099.dbr', 162.700, 27.005, 154.100),  # route 128.0u world(4348.7,-10.0,3023.1) sMax 12 = 16.3 eff [member]
+        (_SP + b'bw_acolyte_clutch.dbr',     172.500, 27.005, 124.100),  # route 148.2u world(4358.5,-10.0,2993.1) sMax  9 = 12.2 eff [anchor]
+        (_SP + b'bw_acolyte_clutch.dbr',     178.100, 27.005, 184.300),  # route 142.8u world(4364.1,-10.0,3053.3) sMax  9 = 12.2 eff [member]
+        # --- BAND 3: THE CLERGY (route 265-460 u) ---------------------------------------
         # Between the congregation and the god stand the priests, and priests here come
         # leashed to bloodhounds. bw_priest_houndmaster is the only proxy in this cave that
-        # pairs a caster with beasts, which gives the middle of the walk its own combat
-        # texture (chase + caster) instead of another melee wave.
-        (_SP + b'bw_priest_houndmaster.dbr',  71.100,  3.005,  19.500),  # route 459.8u  world(4257.1,-34.0,2888.5) sMax 3
-        (_SP + b'bw_priest_houndmaster.dbr', 108.100, 15.005,  70.300),  # route 348.4u  world(4294.1,-22.0,2939.3) sMax 3
-        (_SP + b'bw_priest_lone.dbr',        147.300, 15.005,  60.500),  # route 397.4u  world(4333.3,-22.0,2929.5) sMax 1
-        (_SP + b'hound_01_pack.dbr',          73.500, 15.005, 132.100),  # route 312.0u  world(4259.5,-22.0,3001.1) sMax 6
+        # pairs a caster with beasts (measured: championChance 100, championMin=championMax=2
+        # bloodhounds inside spawnMax 3), which gives the middle of the walk its own combat
+        # texture (chase + caster) instead of another melee wave. The two houndmasters stand
+        # together as a pair (16.0 u); the lone priest and the loose hound pack are set apart
+        # further up the walk.
+        (_SP + b'bw_priest_houndmaster.dbr',  71.100,  3.005,  19.500),  # route 459.8u world(4257.1,-34.0,2888.5) sMax  3 =  4.1 eff [anchor]
+        (_SP + b'bw_priest_houndmaster.dbr',  87.100,  8.005,  18.300),  # route 445.0u world(4273.1,-29.0,2887.3) sMax  3 =  4.1 eff [member]
+        (_SP + b'bw_priest_lone.dbr',        108.100, 15.005,  70.300),  # route 348.4u world(4294.1,-22.0,2939.3) sMax  1 =  1.4 eff [anchor]
+        (_SP + b'hound_01_pack.dbr',         147.300, 15.005,  60.500),  # route 397.4u world(4333.3,-22.0,2929.5) sMax  6 =  8.1 eff [anchor]
         # --- BAND 4: THE THRESHOLD (route 460-691 u, the Y=-34 pit floor) ---------------
         # The door-wardens, down on the floor of the pit the whole walkway crosses, in front
         # of the west door into drxBC_Finale. The abominations are the cult's flesh-craft -
         # what the Bloodborn MAKE, not what they recruit - so they belong at the holy of
-        # holies, and they already guard the adjacent connectors. One q_shaman_lone gives the
-        # band a named face, echoing the shaman standing in yet_another_fucking_connector.
-        (_SP + b'abom_dancer_spear_mix.dbr',  13.300,  3.005, 105.900),  # route 604.0u  world(4199.3,-34.0,2974.9) sMax 8
-        (_SP + b'abom_dancer_spear_mix.dbr',  12.100,  3.005, 162.300),  # route 662.0u  world(4198.1,-34.0,3031.3) sMax 8
-        (_SP + b'abom_ravager_lone.dbr',      22.900,  3.005,  57.300),  # route 545.8u  world(4208.9,-34.0,2926.3) sMax 1
-        (_SP + b'q_shaman_lone.dbr',          25.700,  3.005, 134.100),  # route 623.4u  world(4211.7,-34.0,3003.1) sMax 1
+        # holies, and they already guard the adjacent connectors. The two spear-dancers flank
+        # the approach as a pair (16.0 u); one q_shaman_lone gives the band a named face,
+        # echoing the shaman standing in yet_another_fucking_connector.
+        (_SP + b'abom_dancer_spear_mix.dbr',  21.900,  3.005, 100.100),  # route 589.6u world(4207.9,-34.0,2969.1) sMax  8 = 10.9 eff [anchor]
+        (_SP + b'abom_dancer_spear_mix.dbr',  22.100,  3.005,  84.100),  # route 573.4u world(4208.1,-34.0,2953.1) sMax  8 = 10.9 eff [member]
+        (_SP + b'abom_ravager_lone.dbr',      12.100,  3.005, 162.300),  # route 662.0u world(4198.1,-34.0,3031.3) sMax  1 =  1.4 eff [anchor]
+        (_SP + b'q_shaman_lone.dbr',          29.700,  3.005,  42.700),  # route 524.4u world(4215.7,-34.0,2911.7) sMax  1 =  1.4 eff [anchor]
     ],
 }
 # drxBC3 hosts no other injection today (it is the first content this lane puts there), so a
