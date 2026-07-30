@@ -196,7 +196,18 @@ is out of scope by construction); no charFxPak added to any SpawnPet skill (the
 build28 crash trap, restated verbatim in `_create_blood_toxeus_skills`); no map,
 no pool, no proxy, no soul rate, no treasure proxy.
 
+WHAT THIS LANE WROTE BACK INTO THE LEDGER (docs/WILL_RULINGS.md, none of them a new
+Will decision - they are the measured amendments plus this lane's two vetoable
+design choices):
+  R-120  Bloodbath was already wired at 90% and had never fired (B-SOUL-PROC-2)
+  R-121  the Enslaver's own summon is dead the same way - fixed, FLAGGED FOR VETO
+  R-122  reflect + pierce were not the only walls; the castability walk is the audit
+  R-123  Blood Frenzy is present but its payload is thin - OPEN WILL DECISION
+  R-125  the two minion families; `docs/amgoz1_design_voice.md` does not exist
+         (was R-124 until two other live lanes took that number the same day)
+
 Negative test: `py tools/patches/devourer_kit.py --negtest <baseline.arz>`
+Census only : `py tools/patches/devourer_kit.py --analyze <arz>`
 """
 import re
 import sys
