@@ -366,7 +366,7 @@ py tools/gate_sanctuary_population.py --negtest --map local/b100_r2/Levels_merge
   [MAP]  must fail G1b  give a NEW instance a non-identity rotation             -> CAUGHT by ['G1b']
   [MAP]  must fail G10  b89: flip one byte inside the 0x0b navmesh container    -> CAUGHT by ['G2'..'G11']
   [MAP]  must fail G10  b89: truncate the 0x0b container to a 148-byte stub     -> CAUGHT by ['G2'..'G11']
-  [MAP]  must fail G3   make tileset 3 disagree with tileset 1                  -> CAUGHT by ['G3']
+  [MAP]  must fail G3   make tileset 3 disagree with tileset 1                  -> CAUGHT by ['G3','G10']
 
 NEGTEST: 16/16 plants correct (8 declaration + 8 map-side); each had to fail its target
          gate AND stay inside its allow-set -> PASS
@@ -386,11 +386,24 @@ plant and the pile plant also trip `G2`/`G3`/`G5`, because world x 4186.5 is on 
 consequences of the plant, not gate leakage, so they are listed in the allow-set with that reasoning
 in the code.
 
+**The tileset plant trips `G3` AND `G10`, and that is the point.** Diverging a tileset means
+re-serializing the `0x0b` container, so its bytes necessarily stop matching the baseline - `G10`'s
+byte-identity half doing its job. The pair of failures is what demonstrates `G3` and `G10` are
+INDEPENDENT rather than duplicates: `G3` catches the semantic divergence between tilesets, `G10`
+catches that the container moved at all.
+
 **The negatives earned their keep in both rounds.** Round 1: they exposed that `G7` measured each new
 proxy's distance to *itself* and that `G8`/`G9` read the built map instead of the declaration. Round
-2: the map plants exposed that `G1c` as first written could not catch the delete-and-pad edit (which
-is why the digest exists) and that `BSS.parse_blob_sections` returns `(sections, magic)` rather than
-pairs - a bug in the plant helpers themselves, caught because the runner checks the converse.
+2, three separate defects, all in the tests rather than the map - which is the cheap place for them:
+`G1c` as first written could not catch the delete-and-pad edit (which is why the byte digest exists);
+`BSS.parse_blob_sections` returns `(sections, magic)` rather than pairs, so three plant helpers were
+silently broken; and the tileset plant's allow-set was too narrow, which **the new converse check
+caught on its first outing** - the first full run scored 15/16 and the failing item was my own
+allow-set, not the gate. Round 1's runner would have reported that plant as a clean pass.
+
+`--negtest --only <substring>` re-runs a single plant in ~1 minute instead of all 17 gate passes
+(~13 minutes on this machine). The artifact of record is always the unfiltered run:
+`local/b100_r2/negtest.log`, `NEGTEST_EXIT=0`.
 
 ### 4.2 One thing the gate found that is NOT ours to fix
 
