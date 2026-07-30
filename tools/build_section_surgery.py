@@ -1065,8 +1065,37 @@ BROODNEST_SPECS = {
 # (-> um_dorus_99) is unchanged (never player-visible). No quest record is touched.
 DORUS_HOST_KEY = 'xpack/levels/area02_medea/undergrounds/medea_templeug_tomb03.lvl'
 Q_DORUS_LONE_DBR = b'records\\drxmap\\proxy\\q_dorus_lone.dbr'
-# M5 TANTALUS THE INSATIABLE - Den of Tantalus, Styx_SwampBorder_01 [755], corner (-396,0,-10209), v0x0f
-TANTALUS_HOST_KEY = 'xpack/levels/area04_styx/styx_swampborder_01.lvl'
+# M5 TANTALUS THE INSATIABLE.
+#
+# ⚠️ R-100 #8 CORRECTION (2026-07-30). The Den of Tantalus is NOT Styx_SwampBorder_01.
+# It is the three-level CAVE INTERIOR `Styx_CaveUG_FrogCamp01/02/03`, reached through the
+# cave mouth in SwampBorder_01. Proven three independent ways on the deployed DEV map
+# (Levels.arc md5 943d0ab9516d332db79bd7f9fd2d3ffe):
+#   1. AREA BANNER (the binding the game itself uses; b46r3 RE): each FrogCamp level's 0x17
+#      REGION guid resolves to SD region "Den of Tantalus" (xtagRegionName80). SwampBorder_01's
+#      resolves to "Stygian Marsh" (xtagRegionName33). The boss stood in the Marsh.
+#   2. THE DOOR: SwampBorder_01 instance #24 `ext_hc_cliffwall01.dbr` @ local (27,-13,115) is a
+#      GridEntrance whose 0x14 binding names dest GUID 620fd291.. == Styx_CaveUG_FrogCamp01.
+#   3. THE MARKER: `pj_denoftantalus.dbr` is Class=AreaOfInterest, AreaDescription=xtagPOI12
+#      ("Den of Tantalus") - a SIGNPOST standing 2.8u in FRONT of that cave mouth, outdoors.
+#
+# THIS IS WHY b45 "DID NOT HOLD": it held perfectly and implemented the wrong target. b45's
+# fix DID ship (the deployed map has the boss at its b45 coord (34,-13.4,106), verified by
+# direct 0x05 read), and it moved him from 28.1u to 10.2u from that signpost - i.e. from far
+# out in the marsh to standing right in front of the den entrance, which is verbatim what Will
+# reported next ("he is sitting right in front of the den of tantalus outside of it").
+# Minimising distance to the marker CANNOT put the boss in the den, because the marker is not
+# in the den. The metric was incapable, not mis-applied. `tools/debug/gate_uber_placement.py`
+# now gates on the area banner instead so this class of error cannot recur.
+#
+# The old outdoor host is KEPT as its own constant: the Helos-hub area-return NPC legitimately
+# lives out there in the marsh (it is the travel LANDING, and must stay outside the cave).
+TANTALUS_OUTDOOR_HOST_KEY = 'xpack/levels/area04_styx/styx_swampborder_01.lvl'
+# The den proper: FrogCamp02 [879], corner (-787,-9,-10279), v0x0f, region "Den of Tantalus".
+# It is the treasure chamber of the complex (2 native xb_goldenchest_underworld) and a DEAD
+# END - the gate measures exactly ONE gateway cluster, so it carries no through-route at all
+# and R-100 #16b is satisfied by construction.
+TANTALUS_HOST_KEY = 'xpack/levels/area04_styx/undergrounds/styx_caveug_frogcamp02.lvl'
 Q_TANTALUS_LONE_DBR = b'records\\drxmap\\proxy\\q_tantalus_lone.dbr'
 # M6 CHARON AT THE GOLDEN BOUGH - Styx_RiverEdge_01, corner (-524,0,-9697), v0x11
 GOLDENBOUGH_HOST_KEY = 'xpack/levels/area04_styx/styx_riveredge_01.lvl'
@@ -1099,24 +1128,32 @@ UBERBOSS_SPECS = {
     DORUS_HOST_KEY: [
         (Q_DORUS_LONE_DBR, 83.0, 1.0, 51.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
-    # M5 Tantalus: den-INTERIOR spot ~10u from the pj_denoftantalus POI marker.
-    # b45 RE-PLACEMENT (Will 2026-07-13 ground truth: "the den of tantalus monsters did not
-    # get placed inside of the den of tantalus, they got placed in the wrong location").
-    # RCA (docs/reports/b45_tantalus_placement.md): the old spec-PRIMARY local (54,-15.2,114.3)
-    # = world (-342,-15.2,-10094.7) is genuinely ON-MESH (R4 frame is correct) in the RIGHT host
-    # (blob [755] owns the den POI, and Area04_Styx is NOT grid-shifted) - but it sits 28.1u EAST
-    # of the den marker (world -370,-13,-10097), tucked in the SE corner of this LARGE open
-    # SwampBorder level, 34u from the b39 den-entrance landing (local 52,80) - out past the den
-    # mouth on the open Styx floor. So NOT a coordinate-frame bug and NOT a wrong host key: it was
-    # a BAD SPEC COORD that optimized a 9u clearance disc over proximity to the den. FIX = the
-    # closest full-clearance spot to the marker: local (34.0,-13.4,106.0) = world (-362,-13.4,
-    # -10103). Re-surveyed on the built map: 10.2u from the POI marker (unambiguously in the den),
-    # d=0.14u on-mesh, clr@3.5 100%/100%/100% + clr@6 97%/97%/97% (room for boss + 2 champion
-    # escorts + the DB-side hoard chest), comp#1, floor Y -13.4 (navmesh-validated to +/-0.2u),
-    # 31.6u clear of the b39 landing, >9u from every native monster proxy + poison geyser.
-    # (old spec-primary (54,114.3) and R3 nudge (50,116) both RETIRED - both read "wrong location".)
+    # M5 Tantalus - R-100 #8 RE-PLACEMENT (2026-07-30): INSIDE the den at last.
+    # Host changes level (see the TANTALUS_HOST_KEY block above for the full RCA of why the
+    # b45 outdoor spot was wrong and why b45's own metric could never have caught it).
+    #
+    # NEW: FrogCamp02 LOCAL (30.0, 1.0, 40.0) = WORLD (-757, -8, -10239).
+    #   * area banner   : "Den of Tantalus" (xtagRegionName80) - the boss is now IN the den.
+    #   * on-mesh       : d=0.14u all 3 tilesets, comp#1 / 89,831 cells (the main mass).
+    #   * clearance     : clr@3.5 100/100/100 AND clr@6.0 100/100/100 (N/E/L) - full room for
+    #                     boss + 2 champion Famished-Shade escorts + the hoard chest.
+    #   * floor Y       : navmesh reads 1.20; the navmesh quantises one ch step (0.2) high, and
+    #                     EVERY native floor instance in this level is authored at y=1.00
+    #                     (goldenchest 1.00, the 4 anouran/karkinos proxies 1.00/1.01), so 1.0.
+    #                     Formula + calibration: tools/debug/navmesh_floor_y.py --calibrate
+    #                     (median |dy| 0.20 over 26 on-mesh instances here).
+    #   * collision     : nearest FUNCTIONAL native 9.33u (the west xb_goldenchest_underworld),
+    #                     nearest ANY 8.82u (a static light) - both clear of the >6u guard.
+    #   * walking path  : FrogCamp02 is a DEAD END (one gateway cluster, zero through-routes),
+    #                     so R-100 #16b cannot be violated here at all.
+    #   * depth         : ~100u of walking from the level's gateway - the far end of the den,
+    #                     and 9.3u from the den's own deepest golden chest, so he reads as the
+    #                     thing guarding the hoard rather than a monster standing in a room.
+    # (RETIRED, both for reading "wrong location": SV/b36 spec-primary (54,-15.2,114.3) and the
+    # b45 den-mouth spot (34,-13.4,106.0). Neither is deleted from the record - both are named
+    # here and in the survey's BOSS_SPOTS as labelled retired references.)
     TANTALUS_HOST_KEY: [
-        (Q_TANTALUS_LONE_DBR, 34.0, -13.4, 106.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        (Q_TANTALUS_LONE_DBR, 30.0, 1.0, 40.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
     # M6 Charon: the Shrine of the Golden Bough. The spec's DEFAULT primary is the SUMMIT beside
     # the eternal flame, with the temple FORECOURT as the mandated fallback if the boss+2-champion
@@ -1245,11 +1282,40 @@ B41_SPECS = {
     B41_GUARDC_KEY: [
         (b'records\\drxmap\\proxy\\q_general_c_guardpair.dbr',                  72.46, 27.0, 55.98, _B41_ROT),
     ],
-    # 3) THE HELEPOLIS (Diadochi Siege Strider) - Elysian_Fields_03 north Siege-Strider
-    #    field (v0x11 base-72). Y=4.0 (CORRECTED from the plan's 1.0 - navmesh floor +
-    #    nearest native both read 4.0). 1 proxy (boss + 2 strider-guard champion escorts).
+    # 3) THE HELEPOLIS (Diadochi Siege Strider), Will's "machine uber boss destroyer of
+    #    cities" - Elysian_Fields_03 (v0x11 base-72). 1 proxy (boss + 2 strider-guard
+    #    champion escorts).
+    #
+    #    R-100 #16 RE-PLACEMENT (2026-07-30). Will: "he is right in the walking path, he
+    #    should be moved off of the main walking path." MEASURED and confirmed: at the old
+    #    b41 spot local (20.7,4.0,81.7) the encounter sat **0.0u** from a shortest route -
+    #    literally ON the line - and intersected the routes of gateway pairs (1,2) AND (1,3)
+    #    (tools/debug/gate_uber_placement.py, deployed map 943d0ab9). This level is NOT a
+    #    corridor: 29% of it is off-path, so an alternative demonstrably existed and standing
+    #    on the trodden line was our choice, not a constraint.
+    #
+    #    NEW: LOCAL (70.0, 8.8, 80.0) = WORLD (-86, -39.2, -13791).
+    #      * walking path : 18.9u from the nearest shortest route; ZERO on-path gateway pairs
+    #                       (was 0.0u / 2 pairs). Blocks nothing.
+    #      * on-mesh      : d=0.14u all 3 tilesets, comp#1 / 242,100 cells.
+    #      * clearance    : clr@4.0 100/100/100 AND clr@6.0 100/100/100 (N/E/L) - the scale-3.2
+    #                       colossus plus both strider-guard escorts fit with margin.
+    #      * floor Y      : navmesh reads 9.00 and quantises one ch step (0.2) high -> 8.8.
+    #                       Cross-checked against the level's own natives, which are authored
+    #                       at 8.90 / 9.00 in this eastern court (demon_furies_01t @76.3,8.90,
+    #                       89.6; demon_furies_02n @82.5,9.00,30.6). The old spot's authored
+    #                       4.0 vs navmesh 4.20 shows the same one-step bias, so the correction
+    #                       is the level's own measured constant, not a guess.
+    #      * collision    : nearest native 10.0u (a delphi decorative wall), nearest monster
+    #                       proxy 11.4u - clear of the >6u guard.
+    #    WHY EAST, not a small sidestep: every candidate in the western Siege-Strider field
+    #    was re-measured and the whole west side IS the corridor - the best western spot still
+    #    read 6.7u from a route (engagement disc 12u still on it). The eastern walled court is
+    #    the nearest genuinely off-path ground with a full 6u ring. He loses adjacency to the
+    #    two native xsq25 siege striders (now ~45u west); flagged for Will in the wave report
+    #    as the one taste trade-off this fix forces.
     B41_HELEPOLIS_KEY: [
-        (b'records\\drxmap\\proxy\\q_diadochi_lone.dbr',                        20.7, 4.0, 81.7, _B41_ROT),
+        (b'records\\drxmap\\proxy\\q_diadochi_lone.dbr',                        70.0, 8.8, 80.0, _B41_ROT),
     ],
     # 4) NEFERKHA, the Rimebound Pharaoh - frost court in ThebesOptTombA's north chamber
     #    (Y=1.0). Court proxy (boss + 2 frozen-guardian escorts) + 4 sarcophagus-hatch
@@ -1292,22 +1358,51 @@ SVC_CHARON_CHEST_DBR = b'records\\drxmap\\proxy\\svc_charon_chest.dbr'
 SVC_DORUS_CHEST_DBR = b'records\\drxmap\\proxy\\svc_dorus_chest.dbr'
 
 
-def _chest_triangle(dbr, cx, cy, cz):
-    """3 chest placements in a r=2.6u triangle around a boss spawn (cx,cy,cz). Each
-    entry = (dbr, x, y, z) with identity rot / flags=0 / no 0x14 (default prop shape)."""
-    return [
+# ── R-100 #9/#10: ONE chest per fixed uber, not three ──────────────────────────────
+# Will, R-100 #9 (Tantalus): "he has three chests, all of them tantalus hoard where he
+# should only have one." R-100 #10: "the uber monster soul of the unferried also had three
+# chests." Both are this b42 triangle - the Unferried IS the Charon/Golden Bough encounter
+# (svc_charon_chest), so his two reports are one mechanism, not two coincidences.
+#
+# SCOPED AS A CLASS, not special-cased to the two he happened to walk into (the brief's
+# explicit instruction, and the only reading that does not guarantee a repeat report):
+# UBER_CHEST_COUNT applies to all four b42 fixed ubers. Ephialtes and Kroisos/Dorus carry
+# the identical 3x-identical-chest arrangement and would have drawn the same complaint the
+# moment he reached them. See docs/WILL_RULINGS.md R-108.
+#
+# This AMENDS b42 round-2 ("replace the current chest with three large majestic chests"),
+# which was itself a Will decision - it is not a silent override. Nothing is retired: the
+# DB side is untouched (the boss still carries no accessory chest; the world-chest proxy
+# record and its region-tuned hoard chain are unchanged), only the PLACEMENT COUNT drops
+# 3 -> 1, so this is fully reversible by changing one constant.
+UBER_CHEST_COUNT = 1
+
+
+def _chest_ring(dbr, cx, cy, cz, count=None):
+    """`count` chest placements on a r=2.6u ring around a boss spawn (cx,cy,cz).
+
+    Offsets are the b42 triangle's own surveyed points, consumed in order, so reducing the
+    count keeps the SURVIVING chest on a spot already proven clr 100% / comp#1 / d<=0.14u -
+    no new coordinate is invented by this change. Entry = (dbr, x, y, z) with identity rot /
+    flags=0 / no 0x14 (the default prop byte-shape)."""
+    n = UBER_CHEST_COUNT if count is None else count
+    ring = [
         (dbr, round(cx + 2.6, 2), cy, round(cz + 0.0, 2)),   # A: +x
         (dbr, round(cx - 1.8, 2), cy, round(cz + 1.8, 2)),   # B: -x +z
         (dbr, round(cx - 1.8, 2), cy, round(cz - 1.8, 2)),   # C: -x -z
     ]
+    if n > len(ring):
+        raise ValueError(f'_chest_ring: count {n} exceeds the {len(ring)} surveyed offsets')
+    return ring[:n]
 
 
-# host key -> 3 chest placements (boss centres from UBERBOSS_SPECS above).
+# host key -> chest placements (boss centres from UBERBOSS_SPECS above).
 UBER_CHEST_SPECS = {
-    DREAD_HOST_KEY:       _chest_triangle(SVC_EPHIALTES_CHEST_DBR, 15.9, 3.2, 34.7),
-    TANTALUS_HOST_KEY:    _chest_triangle(SVC_TANTALUS_CHEST_DBR, 34.0, -13.4, 106.0),  # b45 RELOCATE: den LOCAL (34,-13.4,106); chests ride the moved boss
-    GOLDENBOUGH_HOST_KEY: _chest_triangle(SVC_CHARON_CHEST_DBR, 187.9, -7.0, 46.9),
-    DORUS_HOST_KEY:       _chest_triangle(SVC_DORUS_CHEST_DBR, 83.0, 1.0, 51.0),   # b47 RELOCATE: Kroisos at Tomb03 LOCAL (83,1,51); chests ride the moved boss
+    DREAD_HOST_KEY:       _chest_ring(SVC_EPHIALTES_CHEST_DBR, 15.9, 3.2, 34.7),
+    # R-100 #8: the Tantalus chest rides the boss into the den (FrogCamp02 local 30,1,40).
+    TANTALUS_HOST_KEY:    _chest_ring(SVC_TANTALUS_CHEST_DBR, 30.0, 1.0, 40.0),
+    GOLDENBOUGH_HOST_KEY: _chest_ring(SVC_CHARON_CHEST_DBR, 187.9, -7.0, 46.9),
+    DORUS_HOST_KEY:       _chest_ring(SVC_DORUS_CHEST_DBR, 83.0, 1.0, 51.0),   # b47 RELOCATE: Kroisos at Tomb03 LOCAL (83,1,51); chests ride the moved boss
 }
 
 
@@ -2643,7 +2738,10 @@ HELOS_HUB_RETURN_SPECS = [
     # b39 HUB v2: the 6 existing returns MOVED to the new approach-point landings (a few u off each,
     # so the player sees the return NPC on arrival). All surveyed on-mesh comp#1 2026-07-13.
     (DORUS_HOST_KEY,       (AREA_RETURN_DORUS_DBR,      72.0,   1.0,  57.0)),   # b47 RELOCATE: Tomb03, ~11.7u from Kroisos (83,51); on-mesh d0.14/clr100%/comp#1 (was tomb01 73,1,139)
-    (TANTALUS_HOST_KEY,    (AREA_RETURN_TANTALUS_DBR,   52.0, -12.0,  80.0)),   # ~2.8u off (50,78) swamp-stairs landing
+    # R-100 #8: this return NPC is the OUTDOOR travel landing and must NOT follow the boss
+    # into the cave - it is where the Helos hub drops the player, out on the swamp stairs.
+    # It keeps the SwampBorder host explicitly (TANTALUS_HOST_KEY now means the den interior).
+    (TANTALUS_OUTDOOR_HOST_KEY, (AREA_RETURN_TANTALUS_DBR, 52.0, -12.0,  80.0)),   # ~2.8u off (50,78) swamp-stairs landing
     (GOLDENBOUGH_HOST_KEY, (AREA_RETURN_CHARON_DBR,     46.0, -12.0, 104.0)),   # ~2.8u off (44,106) Hades-city landing
     (MNEMOPHAGE_HOST_KEY,  (AREA_RETURN_MNEMOPHAGE_DBR, 44.0,   3.0,  93.0)),   # ~2.8u off (42,91) stairs-up landing
     (DREAD_HOST_KEY,       (AREA_RETURN_EPHIALTES_DBR,  90.0,   3.0, 120.0)),   # ~2.8u off (88,122) stairs-up landing

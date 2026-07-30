@@ -50,6 +50,20 @@ Operationalised on the level's own 0x0b navmesh, with no hand-drawn routes:
      corridor, i.e. a player merely travelling between two mouths is dragged into the
      fight. This is what Will reported for the Helepolis.
 
+  AVOIDABILITY - the calibration that stops this gate crying wolf. The first run of the
+  raw ON-PATH test failed 15 of 20 shipped placements, which cannot be right: Will named
+  exactly ONE placement as in-the-path (the Helepolis) and has happily fought Menoetes,
+  Ephialtes and the Gaoler horde where they stand. The difference is not the metric, it is
+  the LEVEL. In a tight dungeon corridor the level IS the path, so every possible spot is
+  on it and "move him off the path" is not a thing that can be done. In an open field
+  there is somewhere else to stand, so standing on the trodden line is a choice we made.
+  So the gate measures OFF-PATH FRACTION: the share of the level's main component that is
+  further than R_ENGAGE from every shortest route. ON-PATH is a FAILURE only where that
+  fraction is >= OFFPATH_MIN (an alternative demonstrably exists); below it the finding is
+  reported as ON-PATH(UNAVOIDABLE) - informational, never gating. Measured separation on
+  the deployed map is clean: Elysian_Fields_03 (the Helepolis) sits far above the
+  threshold, the Hades Palace / Dread Halls corridor hosts far below.
+
 RADII are grounded in this repo's own established encounter numbers, not invented:
   R_FOOTPRINT 6.0u - the "boss + 2 champion escorts + hoard chest" ring every uber survey
                      in build_section_surgery already reports as clr@6.
@@ -86,6 +100,7 @@ R_ENGAGE = 12.0
 SEAM_BAND = 1.0          # world units either side of a tile edge that counts as a crossing
 MIN_CLUSTER = 8          # gateway cells; smaller runs are navmesh fringe noise
 PATH_SLACK = 2.0         # world units of shortest-path slack (route is a corridor, not a line)
+OFFPATH_MIN = 0.25       # >= this share of the level off-path => an alternative spot exists
 
 BASE_TEXT_ARC = (r"C:\Program Files (x86)\Steam\steamapps\common"
                  r"\Titan Quest Anniversary Edition\Text\Text_EN.arc")
@@ -306,10 +321,54 @@ def gateways(nav, lv, blob):
 
 
 # ── the gate ───────────────────────────────────────────────────────────────────────
-def analyse(nav, lv, blob, x, z, r_foot, r_eng):
-    """Return dict with path verdicts for a placement at 0x05-local (x,z)."""
-    res = {'gateways': 0, 'pairs': 0, 'blocks': [], 'onpath': [],
-           'min_path_dist': None, 'onmesh': None}
+def level_routes(nav, lv, blob, r_eng):
+    """Per-LEVEL (placement-independent) route model. Cached by the caller.
+
+    Returns {gws, fields, pairs, routes (cell->pair list), offpath_frac}."""
+    gws = gateways(nav, lv, blob)
+    fields = [nav.bfs(g) for g in gws]
+    slack = int(PATH_SLACK / nav.cs)
+    routes = {}          # cell -> set of pair ids lying on a shortest route through it
+    pairs = []
+    for i in range(len(gws)):
+        for j in range(i + 1, len(gws)):
+            di, dj = fields[i], fields[j]
+            reach = [di[c] for c in gws[j] if c in di]
+            if not reach:
+                continue
+            dij = min(reach)
+            pairs.append((i, j))
+            pid = len(pairs) - 1
+            for c in di:
+                if c in dj and di[c] + dj[c] <= dij + slack:
+                    routes.setdefault(c, []).append(pid)
+    # dilate the route set by r_eng to get the "corridor a traveller is dragged through"
+    corridor = set()
+    if routes:
+        cutoff = int(r_eng / nav.cs)
+        dist = {c: 0 for c in routes}
+        q = deque(dist)
+        while q:
+            c = q.popleft()
+            d = dist[c]
+            corridor.add(c)
+            if d >= cutoff:
+                continue
+            for dx, dz in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                n = (c[0] + dx, c[1] + dz)
+                if n not in dist and n in nav.main:
+                    dist[n] = d + 1
+                    q.append(n)
+    n_main = max(1, len(nav.main))
+    return {'gws': gws, 'fields': fields, 'pairs': pairs, 'routes': routes,
+            'offpath_frac': 1.0 - (len(corridor) / n_main)}
+
+
+def analyse(nav, lv, blob, x, z, r_foot, r_eng, lr):
+    """Path verdicts for a placement at 0x05-local (x,z), given the level route model."""
+    res = {'gateways': len(lr['gws']), 'pairs': len(lr['pairs']), 'blocks': [],
+           'onpath': [], 'min_path_dist': None, 'onmesh': None,
+           'offpath_frac': lr['offpath_frac']}
     k = nav.key(x, z)
     near = None
     rr = int(math.ceil(3.0 / nav.cs))
@@ -322,39 +381,62 @@ def analyse(nav, lv, blob, x, z, r_foot, r_eng):
                 if near is None or d < near:
                     near = d
     res['onmesh'] = near
-    gws = gateways(nav, lv, blob)
-    res['gateways'] = len(gws)
-    if len(gws) < 2:
+    if len(lr['gws']) < 2:
         return res
-    fields = [nav.bfs(g) for g in gws]
     foot = nav.disc(x, z, r_foot)
     eng = nav.disc(x, z, r_eng)
-    blocked_fields = {}
-    slack = int(PATH_SLACK / nav.cs)
     best = None
-    for i in range(len(gws)):
-        for j in range(i + 1, len(gws)):
-            di, dj = fields[i], fields[j]
-            reach = [di[c] for c in gws[j] if c in di]
-            if not reach:
-                continue                      # already disconnected without the boss
-            res['pairs'] += 1
-            dij = min(reach)
-            onpath = {c for c in di if c in dj and di[c] + dj[c] <= dij + slack}
-            if onpath:
-                for c in onpath:
-                    lx, lz = nav.local(c)
-                    d = math.hypot(lx - x, lz - z)
-                    if best is None or d < best:
-                        best = d
-            if eng & onpath:
-                res['onpath'].append((i, j, len(eng & onpath)))
-            if i not in blocked_fields:
-                blocked_fields[i] = nav.bfs(gws[i], blocked=foot)
-            if not any(c in blocked_fields[i] for c in gws[j]):
-                res['blocks'].append((i, j))
+    hit_pairs = set()
+    for c in lr['routes']:
+        lx, lz = nav.local(c)
+        d = math.hypot(lx - x, lz - z)
+        if best is None or d < best:
+            best = d
+        if c in eng:
+            hit_pairs.update(lr['routes'][c])
     res['min_path_dist'] = best
+    res['onpath'] = sorted(lr['pairs'][p] for p in hit_pairs)
+    blocked_fields = {}
+    for (i, j) in lr['pairs']:
+        if i not in blocked_fields:
+            blocked_fields[i] = nav.bfs(lr['gws'][i], blocked=foot)
+        if not any(c in blocked_fields[i] for c in lr['gws'][j]):
+            res['blocks'].append((i, j))
     return res
+
+
+def propose(nav, lv, blob, r_foot, r_eng, n=10, step=2.0, prefer_far=True):
+    """Rank candidate boss spots in a level: on-mesh, clear, OFF the main walking path,
+    and as deep as possible from the level's gateways (the 'far end of the room' the
+    specs keep asking for). Returns [(score, x, z, clr, dpath, dgate)]."""
+    lr = level_routes(nav, lv, blob, r_eng)
+    gcells = set()
+    for g in lr['gws']:
+        gcells |= g
+    dgate_field = nav.bfs(gcells) if gcells else {}
+    xs = sorted({round(nav.local(k)[0] / step) * step for k in nav.main})
+    zs = sorted({round(nav.local(k)[1] / step) * step for k in nav.main})
+    route = set(lr['routes'])
+    out = []
+    for x in xs:
+        for z in zs:
+            k = nav.key(x, z)
+            if k not in nav.main:
+                continue
+            ring = nav.disc(x, z, r_foot)
+            # full clearance: the whole footprint ring must be walkable main-component
+            need = int(math.pi * (r_foot / nav.cs) ** 2 * 0.97)
+            if len(ring) < need:
+                continue
+            if ring & route:
+                continue                      # sits on a shortest route: rejected outright
+            dpath = min((math.hypot(nav.local(c)[0] - x, nav.local(c)[1] - z)
+                         for c in route), default=999.0)
+            dgate = dgate_field.get(k, 0) * nav.cs
+            score = (dgate if prefer_far else -dgate) + 2.0 * min(dpath, 40.0)
+            out.append((score, x, z, len(ring), dpath, dgate))
+    out.sort(reverse=True)
+    return out[:n]
 
 
 def collect_placements():
@@ -383,7 +465,42 @@ def main():
     ap.add_argument('--r-eng', type=float, default=R_ENGAGE)
     ap.add_argument('--negtest', action='store_true')
     ap.add_argument('--chests', action='store_true', help='also report chest placements')
+    ap.add_argument('--propose', default=None,
+                    help='level suffix: rank candidate off-path boss spots instead of auditing')
+    ap.add_argument('--propose-step', type=float, default=2.0)
+    ap.add_argument('--propose-n', type=int, default=14)
+    ap.add_argument('--checklevel', default=None, help='level suffix for --checkpt')
+    ap.add_argument('--checkpt', action='append', default=[], help='X,Z to evaluate')
     a = ap.parse_args()
+
+    if a.checkpt:
+        _d3, levels3 = S.load_world(a.map)
+        lv3, blob3 = S.get_blob(_d3, levels3, a.checklevel)
+        nav3 = Nav(blob3, lv3, 0)
+        lr3 = level_routes(nav3, lv3, blob3, a.r_eng)
+        print('point check in %s   off-path share %.0f%%  gateways=%d pairs=%d'
+              % (lv3['fname'], 100 * lr3['offpath_frac'], len(lr3['gws']), len(lr3['pairs'])))
+        for p in a.checkpt:
+            x, z = (float(v) for v in p.split(','))
+            r = analyse(nav3, lv3, blob3, x, z, a.r_foot, a.r_eng, lr3)
+            print('  (%7.1f,%7.1f)  onmesh=%s  d(route)=%s  blocks=%s  on-path pairs=%s'
+                  % (x, z,
+                     ('%.2fu' % r['onmesh']) if r['onmesh'] is not None else 'OFF>3u',
+                     ('%.1fu' % r['min_path_dist']) if r['min_path_dist'] is not None else 'n/a',
+                     r['blocks'] or 'none', r['onpath'] or 'none'))
+        return 0
+
+    if a.propose:
+        _d2, levels2 = S.load_world(a.map)
+        lv2, blob2 = S.get_blob(_d2, levels2, a.propose)
+        nav2 = Nav(blob2, lv2, 0)
+        W2, H2 = tile_rect(lv2)
+        print('candidate off-path boss spots in %s (tile %dx%d)' % (lv2['fname'], W2, H2))
+        print('  %-8s %-8s %-9s %-10s %-10s' % ('x', 'z', 'ring', 'd(route)', 'd(gateway)'))
+        for sc, x, z, ring, dp, dg in propose(nav2, lv2, blob2, a.r_foot, a.r_eng,
+                                              n=a.propose_n, step=a.propose_step):
+            print('  %-8.1f %-8.1f %-9d %-10.1f %-10.1f' % (x, z, ring, dp, dg))
+        return 0
 
     arc = ArcArchive.from_file(Path(a.map))
     data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
@@ -419,17 +536,24 @@ def main():
         if want is not None:
             contain = 'OK' if any(want.lower() in r.lower() for r in regions) else 'FAIL'
         if suffix not in navcache:
-            navcache[suffix] = Nav(blob, lv, 0)
-        nav = navcache[suffix]
-        r = analyse(nav, lv, blob, x, z, a.r_foot, a.r_eng)
+            nav = Nav(blob, lv, 0)
+            navcache[suffix] = (nav, level_routes(nav, lv, blob, a.r_eng))
+        nav, lr = navcache[suffix]
+        r = analyse(nav, lv, blob, x, z, a.r_foot, a.r_eng, lr)
         W, H = tile_rect(lv)
+        avoidable = r['offpath_frac'] >= OFFPATH_MIN
         verdict = []
+        notes = []
         if contain == 'FAIL':
             verdict.append('OUT-OF-AREA')
         if r['blocks']:
             verdict.append('BLOCKS-ROUTE')
         if r['onpath']:
-            verdict.append('ON-MAIN-PATH')
+            if avoidable:
+                verdict.append('ON-MAIN-PATH')
+            else:
+                notes.append('ON-PATH(UNAVOIDABLE: only %.0f%% of this level is off-path)'
+                             % (100 * r['offpath_frac']))
         ok = not verdict
         print('  %s  %s' % (label, '=' * max(4, 62 - len(label))))
         print('    record   : %s' % dbr.split(BS)[-1])
@@ -438,11 +562,15 @@ def main():
               % (' | '.join(regions) or '(none)', want, contain))
         print('    local    : (%.1f, %.1f, %.1f)   nearest walkable %s'
               % (x, y, z, ('%.2fu' % r['onmesh']) if r['onmesh'] is not None else 'OFF-MESH>3u'))
-        print('    gateways : %d clusters, %d connected pairs' % (r['gateways'], r['pairs']))
+        print('    gateways : %d clusters, %d connected pairs ; off-path share %.0f%% (%s)'
+              % (r['gateways'], r['pairs'], 100 * r['offpath_frac'],
+                 'alternatives exist' if avoidable else 'level is essentially all corridor'))
         print('    path     : dist-to-nearest-shortest-route %s ; blocks=%s ; on-path pairs=%s'
               % (('%.1fu' % r['min_path_dist']) if r['min_path_dist'] is not None else 'n/a',
-                 r['blocks'] or 'none', [(i, j) for i, j, _n in r['onpath']] or 'none'))
-        print('    VERDICT  : %s\n' % ('PASS' if ok else 'FAIL: ' + ', '.join(verdict)))
+                 r['blocks'] or 'none', r['onpath'] or 'none'))
+        print('    VERDICT  : %s%s\n'
+              % ('PASS' if ok else 'FAIL: ' + ', '.join(verdict),
+                 ('   [' + '; '.join(notes) + ']') if notes else ''))
         if not ok:
             fails.append((suffix, dbr, ','.join(verdict)))
 
