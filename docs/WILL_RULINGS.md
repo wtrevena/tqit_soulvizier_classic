@@ -1641,7 +1641,44 @@ actually looking at?"* The green was reported on "the Enslaver"; there are at le
 (the monster, three pet tiers, and the marauder minions). One clarifying question - "summoned or in the
 world?" - would have redirected every one of those waves. Ask it before the next lane starts, not after.
 
-**STATUS:** REOPENED. Surface narrowed hard: not the monster's fields, not the pets' fields, black emitter
-accounted for, green emitter unaccounted and probably additive. `BL-b98-DEBT-2` is the related debt. R-93
+### SECOND AMENDMENT - WILL IS RIGHT: THE SHROUD WAS NEVER IMPLEMENTED ON THE THING HE SUMMONS
+
+**WILL, VERBATIM:**
+
+> "no the black is not the demon shroud i asked for, that is still not implemented. the black is something else"
+
+**HE IS CORRECT, AND MY LABEL WAS WRONG.** I told him the black smoke was the demons' shroud he asked for.
+It is not. Measured on `967b1f97`:
+
+| surface | skills | `svc_enslaver_shroud` present? | `charFxPakRunningNames` |
+|---|---|---|---|
+| `um_toxeus_enslaver_99` (MONSTER) | 19 | **YES** - slot 19 | `drxshadowcloakrunning_fx_pak` |
+| `soulskills\pets\toxeus_enslaver_1` (PET) | 13 | **NO** | `drxshadowcloakrunning_fx_pak` |
+| `soulskills\pets\toxeus_enslaver_3` (PET) | 13 | **NO** | `drxshadowcloakrunning_fx_pak` |
+
+So:
+1. **b98 wired the requested shroud to the MONSTER ONLY.** All three PET tiers never received it. Will
+   summons the pet, so from where he stands the request was simply not delivered - and he is right to say so.
+   `R-95` / the b98 report claim the Enslaver shroud is "DONE in data, colour AND shape". That claim is
+   **HALF TRUE and must be corrected**: done on one of the two surfaces the player actually sees.
+2. **The black smoke he currently sees is `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak`, which was
+   ALREADY on the pet records before any of our work.** It is pre-existing DRX pet FX, not ours. That is
+   exactly his "the black is something else".
+3. Even the monster's copy is **not deployed** - it is on `main`, not on his disk.
+
+**MY ERROR, recorded because it is the same failure mode twice in one day:** I repeated a lane's "DONE" claim
+without checking WHICH RECORD it landed on. The lane said "Enslaver shroud done"; there are two Enslaver
+surfaces; it did one. Combined with the R-100 finding that the Hunt's soul was also reported-missing purely
+because nothing was deployed, the rule is: **a "DONE" in a lane report is a claim about a branch, not about
+what Will can see. Check the surface AND the deploy before telling him anything is implemented.**
+
+**ADDED SCOPE for the shroud work (not a new ruling - the original request, finished properly):** wire the
+shroud to ALL THREE PET TIERS as well as the monster, and gate it roster-derived over
+`{monster} + {every pet tier}` so a future tier cannot be silently skipped. Then deploy, because none of it
+counts until it is on his disk.
+
+**STATUS:** REOPENED. Surface narrowed hard: not the monster's fields, not the pets' fields, the black emitter
+is pre-existing DRX pet FX (NOT our shroud, which never reached the pets), green emitter unaccounted and
+probably additive. `BL-b98-DEBT-2` is the related debt. R-93
 remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
 that mesh regardless of the green.
