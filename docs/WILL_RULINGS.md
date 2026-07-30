@@ -1479,3 +1479,62 @@ re-breaking the b92 mesh-green work (`BL-b98-DEBT-2`).
 **STATUS:** captured verbatim, decomposed, NOT implemented. Order of operations: deploy first (items 5 and 6
 evaporate), ask about item 4, then lane the rest by class - the two P0s (#2 Charon's Oar, #15 frozen thrown
 monsters) go first.
+
+---
+
+## R-101 [2026-07-29] P0 - our uber clones inherited their donors' QUEST-ITEM drops. Swept exhaustively: 3 records.
+
+**WILL, VERBATIM (second report of the same defect, which is what turned it into a class):**
+
+> "Same thing with the Key of the Warden of Souls, that is now a farmable item from the uber boss you made
+> that you cloned from the warden of souls, they now drop the key of the warden of souls which they should not"
+
+(The first, from the R-100 batch: *"when you cloned the monster to create the Soul of the Unferried, you
+literally clone another monster in the game who is a quest monster who drops Charon's Oar, and now this
+monster is also dropping Charon's Oar."*)
+
+**MECHANISM:** cloning a quest boss copies `perPartyMemberDropItemName`, the field the base game uses to hand
+out quest keys and journal items. Our clone keeps pointing at the donor's quest item, so a unique,
+quest-gating item becomes farmable from a repeatable uber encounter.
+
+**THE SWEEP - measured against the merged build `967b1f97137bf6479c18c08e9dd6ffc4` (51,124 records), not
+inferred. This is a CLOSED SET, not a sample:**
+
+Every `um_*` record in the database that carries `perPartyMemberDropItemName` is **3**, and **all 3 of them
+point at a quest-classified item.** There are no non-quest uses of the field on our ubers at all, which makes
+the invariant trivially clean to state and to gate.
+
+| # | our uber record | leaked quest item | how Will found it |
+|---|---|---|---|
+| 1 | `records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99.dbr` (`tagSVCMonsterCharonFerryman`) | `xsq12_charonsoar.dbr` - **Charon's Oar** | reported (R-100 #2) |
+| 2 | `records\xpack\creatures\monster\gigantes\um_polisgaoler_99.dbr` (`tagSVCMonsterPolisGaoler`) | `z_wardenofsoulskey.dbr` - **Key of the Warden of Souls** | reported (this ruling) |
+| 3 | `records\xpack\creatures\monster\gigantes\um_polisgaoler_unbound_99.dbr` (`tagSVCMonsterPolisGaolerUnbound`) | `z_wardenofsoulskey.dbr` - **Key of the Warden of Souls** | **NOT reported - found by the sweep.** He met one Gaoler; the "unbound" variant leaks the same key |
+
+Cross-check from the other direction (inbound references per quest item) agrees exactly:
+- `xsq12_charonsoar` has 5 inbound refs - 4 legitimate base-game Charon forms
+  (`boss_charonform2_39/41/43`, `testcharon01`) plus our `um_charonform2_ferryman_99`.
+- `z_wardenofsoulskey` has 3 - the legitimate `xsecrethero_wardenofsouls_48` plus BOTH of our Gaolers.
+- No other quest item anywhere in the database has an inbound reference from a `um_*` record.
+
+**THE FIX:** clear `perPartyMemberDropItemName` (and any matching chance field) on all three. Do NOT touch the
+donors - `boss_charonform2_*`, `testcharon01` and `xsecrethero_wardenofsouls_48` must stay byte-identical, or
+the actual quests break. That is the whole risk in this change and it must be proven, not asserted.
+
+**THE GATE (required, process law #4):** no `um_*` record may carry a `perPartyMemberDropItemName` that
+resolves to an item with `itemClassification == Quest`. State it as a general invariant over the roster, not
+as three named exceptions - the roster grows, and this defect class arrived precisely because a clone was
+assumed to be safe. Plant negatives: re-add each of the three and confirm the build reds; and add a
+non-quest per-party drop to confirm the gate does NOT fire on that (it must stay a quest-only ban, since the
+field itself is legitimate).
+
+**RELATED, same monster:** R-100 #17 (Soul Gaoler / Polis Gaoler chest count too high, and his EPIC chests
+dropping Normal-tier "essence of..." instead of "embodiment of...") is the SAME creature family as leaks 2
+and 3. One lane should own the Gaoler end to end.
+
+**WIDER LESSON, worth acting on beyond this fix:** we have cloned base-game quest bosses repeatedly to make
+ubers, and nobody enumerated what else a quest boss carries that a repeatable encounter must not inherit.
+`perPartyMemberDropItemName` is one field. The lane should also sweep our clones for other quest-coupled
+fields (quest triggers, one-shot flags, journal hooks, `questItem*`-style references) and report what it
+finds, even where it changes nothing.
+
+**STATUS:** measured and specified, NOT implemented. P0 - a quest-gating item is farmable in the shipped mod.
