@@ -2135,6 +2135,17 @@ something this lane could NOT close itself, stated so it is a known gap and not 
   confirmed. Note this is the fix for two items on Will's own R-100 play list (#6 "he didnt drop an
   orb"), and R-100's own analysis says those evaporate on the first coupled deploy. Owner/trigger:
   orchestrator deploy + Will re-fight.
+- **BL-b101-DEBT-7 (P2, CROSS-LANE INTERACTION with R-105 - compatible, but two quoted numbers will go
+  stale):** `main` @ `1897557` landed **R-105**, which ratifies moving soul equip/drop rates of **66%
+  and 50% both to 33%** across 734 creatures. Two of this lane's eight roster records are in that
+  cohort: `um_toxeus_99` (66.0) and `um_toxeus_21` (50.0). **The gate is compatible by construction and
+  needs no change** - `apply()`'s R-48/R-91 guard is a before/after DIFF inside a single build, so it
+  tolerates any rate, and `verify()` asserts the literal `100.0` only on the three FOUGHT champions,
+  which is exactly the carve-out R-105 must preserve. What DOES go stale is documentation: the `66.0`
+  and `50.0` figures in R-99's implemented table, in `docs/reports/b101_toxeus_apex_roster.md` §5.5 and
+  in this gate record are point-in-time measurements of the pre-R-105 db. Owner/trigger: whoever
+  implements R-105 should re-run `py tools/debug/b101_r99_proof_table.py <built> <baseline>` and update
+  those three tables in the same commit, and must NOT let the sweep touch the three 100% champions.
 - **BL-b101-DEBT-6 (P2, census scope, PRE-EXISTING pattern):** the placement census walks up to
   `_MAX_HOPS = 3` and reads only the STATIC `0x05` axis plus db referrers. A monster reachable only via
   a >3-hop chain, or spawned by quest script rather than a record reference, would still read as INERT.

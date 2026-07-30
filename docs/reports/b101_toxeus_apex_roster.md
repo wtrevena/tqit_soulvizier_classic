@@ -222,6 +222,14 @@ Souls are Finger2 EQUIPMENT and orbs are `treasureProxyName` - independent mecha
 snapshots the three soul fields on every roster record before its own writes and fails loud on any
 movement, so the guard covers rates it does not know the value of.
 
+> ⚠️ **TWO OF THESE NUMBERS ARE ABOUT TO MOVE, and that is fine.** `main` landed **R-105** while this
+> lane ran: soul rates of 66% and 50% both go to 33% across 734 creatures, which covers
+> `um_toxeus_99` (66.0) and `um_toxeus_21` (50.0) above. **The gate needs no change** - the R-48/R-91
+> guard is a before/after DIFF inside one build so it tolerates any rate, and `verify()` asserts the
+> literal 100.0 only on the three FOUGHT champions, which is exactly R-105's carve-out. What goes stale
+> is this table: it is a point-in-time measurement of the pre-R-105 db. Whoever implements R-105 should
+> re-run the proof table and update it in the same commit (`BL-b101-DEBT-7`).
+
 ### 5.6 Planted negatives: 29/29
 
 ```
