@@ -483,6 +483,19 @@ REGISTRY = [
                             # shipped tooltip describes, plus a sweep for NEW uncontracted
                             # dualWieldOnly player skills); the TEXT half is
                             # tools/validate_weapon_gate_text.py, run by build_text_arc.
+    'uber_quest_drops',     # R-101 P0 (Will 2026-07-29, reported TWICE - Charon's Oar, then the
+                            # Key of the Warden of Souls): cloning a quest boss to make an uber
+                            # copies perPartyMemberDropItemName, so a quest-GATING item became
+                            # farmable off a repeatable encounter. Clears the field on the 3
+                            # MEASURED clones (um_charonform2_ferryman_99, um_polisgaoler_99,
+                            # um_polisgaoler_unbound_99 - the third found by the sweep, not by
+                            # play) and NOTHING else: it never writes a donor, an item, or a pool.
+                            # Registered LAST among content modules (after polis_vault and every
+                            # other boss-creating module, and after the whole monolith) so its
+                            # DB-wide gate - "no um_* record may carry a per-party drop resolving
+                            # to itemClassification==Quest" - reads the FINAL assembled roster.
+                            # Disjoint: the only records it writes are those 3, which no other
+                            # module writes this field on, so no S4b collision is expected.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
