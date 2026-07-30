@@ -214,6 +214,28 @@ Zero unattributed changes. On "0 REMOVED records": **no DB record is removed** -
 * `gate_uber_placement.py --negtest`: **6/6 planted negatives behaved as specified** (sec 5.1).
 * Full audit: 1 RED, deliberate, documented above.
 
+### TESTHUB variant (what DEV actually deploys) - verified by a real build
+
+`SVC_TEST_HUB=1` build, 0x05 read of the result:
+
+```
+[755] Styx_SwampBorder_01      n0x05 76 -> 72   boss + 3 chests gone, and
+      #71 svc_area_return_tantalus.dbr  local (52.00,-12.00,80.00)   <- STILL OUTDOORS
+[879] Styx_CaveUG_FrogCamp02   n0x05 103
+      #101 q_tantalus_lone.dbr      local (30.00,1.00,40.00)
+      #102 svc_tantalus_chest.dbr   local (32.60,1.00,40.00)
+[776] Elysian_Fields_03        #277 q_diadochi_lone.dbr  local (70.00,8.80,80.00)
+```
+
+This is the check that mattered: relocating the boss must NOT drag the Helos travel-landing
+return NPC into the cave with him. It does not - `TANTALUS_OUTDOOR_HOST_KEY` holds it in the
+marsh, in both map variants.
+
+(Note: calling `merge_hub_into_inject_specs()` outside the build flow raises a b48 Sparta-mute
+`ValueError` about the canonical Almyros placement. That is PRE-EXISTING and not caused by this
+lane - `main` raises the identical error on the identical call. The function needs build-time
+state; the real build is the valid test, and it passes.)
+
 ---
 
 ## 7. NOT DONE (exhaustive)
