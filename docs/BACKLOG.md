@@ -1,5 +1,94 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## R130 GATE RECORD - R-100 #8/#9/#10/#14/#16/#16b PLACEMENT, CHESTS, AND THE WALKING-PATH LAW (2026-07-30, branch `fix/uber-placement`) - NOT DEPLOYED, NO TAG TAKEN
+
+Full report: `docs/reports/R130_uber_placement.md`. Ruling: **R-130** in `docs/WILL_RULINGS.md`
+(decade 130-139 proven free across the whole tree of all 120 local branches before minting; max
+claimed anywhere is R-124).
+
+**WHAT SHIPPED (map-only; no DB record created, changed, or removed):**
+- **#8** Tantalus moved OUT of `Styx_SwampBorder_01` (area banner "Stygian Marsh") and INTO
+  `Styx_CaveUG_FrogCamp02` (area banner "Den of Tantalus") at local (30.0, 1.0, 40.0).
+- **#9/#10** `UBER_CHEST_COUNT = 1`: `_chest_triangle` -> `_chest_ring`, applied to the whole b42
+  class (Ephialtes, Tantalus, Charon/Unferried, Kroisos/Dorus), not just the two Will reached.
+- **#16** Helepolis moved from 0.0u to 18.9u off the nearest shortest route, local (70.0, 8.8, 80.0).
+- **#16b** the standing rule now has a mechanical definition + a gate + planted negatives.
+
+**ROOT CAUSE OF THE b45 "REGRESSION" (the brief's actual question):** b45 did not fail to hold. Its
+coordinate IS in the deployed map (0x05 read: `q_tantalus_lone` @ (34.00,-13.40,106.00)). It
+optimised distance to `pj_denoftantalus.dbr`, which is `Class=AreaOfInterest` / `xtagPOI12` - a
+SIGNPOST standing 2.8u outdoors in front of the cave mouth (`ext_hc_cliffwall01` 0x14 GridEntrance
+-> `Styx_CaveUG_FrogCamp01`). Minimising distance to it cannot put anything inside the den. 10.2u
+from that signpost is exactly "right in front of the den, outside of it".
+
+**NEW TOOLING (4 files, all under `tools/debug/`):**
+- `gate_uber_placement.py` - the R-100 #8/#16b gate. ORACLE 1 containment via the level's own 0x17
+  REGION guid -> world SD -> Text (the in-game area banner). ORACLE 2 walking path via gateway
+  clustering + multi-source BFS on-shortest-route sets, with BLOCKS / ON-PATH / avoidability.
+  Modes: audit, `--only`, `--checkpt`, `--propose`, `--negtest`.
+- `navmap_ascii.py` - ASCII navmesh + instance renderer (enclosure and corridor topology).
+- `navmesh_floor_y.py` - floor Y read off the navmesh, with `--calibrate` (median |dy| 0.16-0.20u
+  over three levels).
+- `diff_maps_blobs.py` - the map lane's record-diff (per-level section deltas + 0x05 add/remove).
+
+**GATES (all on the built map `92b3b921de2033799b624e0941e37c7a`):**
+- `gate_uber_placement.py --only tantalus` -> **GREEN**, area reads "Den of Tantalus".
+- `gate_uber_placement.py --negtest` -> **6/6 planted negatives behaved as specified.** N1 b45's
+  outdoor host must NOT read the den; N1b the den host must; N2 the retired Helepolis spot must read
+  ON-PATH (d=0.0u, pairs (1,2),(1,3)); N2b the new one must not (d=18.9u); N3 BLOCKS must fire on the
+  roulette-b chokepoint; N4 the avoidability calibration must SUPPRESS on a corridor level (Gaoler,
+  22% off-path) - without N4 the gate reds 15 of 20 shipped placements and gets switched off.
+- `survey_uberboss_spots.py --bosses` -> every shipped spot OK, both new spots at ext 3.5/4.0 AND at
+  the 6.0 escort ring, clr 100/100/100, comp#1.
+- **RECORD-DIFF vs a `main` baseline built in the same environment:** 6 levels differ, **all 0x05
+  only**, **`navmesh (0x0b) changes: 0`** (the b89 blood-cave crash class is provably untouched),
+  every delta attributable, **0 DB records removed** (every `svc_*_chest` proxy still exists and is
+  still placed at least once).
+- **DETERMINISM:** two independent full builds produced byte-identical output
+  (`92b3b921de2033799b624e0941e37c7a`, 688,690,290 B).
+
+```
+BASELINE main@9a12d17  718abad63e7813dc78c4b169df969fd5  688,692,225 B
+BRANCH   fix/uber-placement 92b3b921de2033799b624e0941e37c7a  688,690,290 B
+env PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 PYTHONIOENCODING=utf-8
+```
+
+**DEBT REGISTER (nothing silently deferred):**
+- **BL-R130-DEBT-1** - **#14 Mnemophage has no chest.** Identified this lane: the "Lower City of Lost
+  Souls" uber IS the Mnemophage (`Judgment_TempleUG_Mnemosyne01` binds `xtagRegionName36`). Needs
+  `_svc_build_world_chest_proxy(db,'mnemophage',...)` + dedicated hoard + Text tag + `_SVC_CHEST_STD`
+  bracket. DB lane; a map branch cannot place a record that does not exist in the arz.
+- **BL-R130-DEBT-2** - **#14 Mnemophage orb is "trash".** `um_mnemophage_core_99` sits on
+  `genericbossorb_04` (~5.70 expected items) vs R-99's apex `genericbossorb_05` (~21.16). BLOCKED BY
+  DESIGN: R-99 records that `uber_apex_orb.verify()` must be rewritten roster-derived first, because
+  its planted NEGATIVE 2 asserts a third record on orb05 must FAIL. Collides with
+  `feat/toxeus-apex-roster`; must be sequenced, not raced.
+- **BL-R130-DEBT-3** - **`q_obs_roulette_b` (TombObs01 @ 220.8,89.6) reads BLOCKS-ROUTE**, sitting at
+  the mouth of the only corridor linking the level's two gateway clusters. Honest bound: corks at the
+  default 6.0u footprint, passes at 4.0u, so it is marginal and radius-sensitive. Left RED on purpose
+  rather than accepted or silently moved. Out of this lane's scope (a prop, not an uber Will
+  reported). **Will's call.**
+- **BL-R130-DEBT-4** - **#16 Helepolis still has no chest** (same DB blocker as DEBT-1; there is no
+  `svc_diadochi_chest` record).
+- **BL-R130-DEBT-5** - **Both relocations are LAUNCH-GATED.** Nobody has walked into the Den of
+  Tantalus or the eastern Elysian court on this build. Per the standing rule the test ping must carry
+  a full Steam restart + packaged-hash verify.
+- **BL-R130-DEBT-6** - **Will's call on scope of the 3->1 chest rule.** He named 2 bosses; the class
+  change covers 4. One-line revert per boss if he disagrees.
+- **BL-R130-DEBT-7** - **Will's call on the 9 AUDITED + ACCEPTED on-path placements** (listed with
+  reasons in `ACCEPTED_ON_PATH` and printed on every gate run). The three worth a real decision are
+  Menoetes, Ephialtes and Charon/Golden Bough - all destination bosses whose route-adjacency is
+  intrinsic to being at the end of the route.
+- **BL-R130-DEBT-8** - **The Helepolis loses siege-strider adjacency.** The whole western meadow is
+  the corridor (best western candidate 6.7u), so he now stands ~45u east of the two native `xsq25`
+  striders. Taste trade-off, reversible by coordinate.
+- **BL-R130-DEBT-9** - **`OFFPATH_MIN = 0.25` is a policy constant**, chosen so the gate separates the
+  one placement Will reported from the corridor levels he has never complained about. It is not
+  derived from anything deeper and should be retuned by ruling if the separation drifts.
+- **BL-R130-DEBT-10** - **NOT DEPLOYED, no tag taken.** The orchestrator owns deploys;
+  `Levels`+`Quests` remain coupled.
+
+
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
