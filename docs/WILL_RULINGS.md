@@ -2626,9 +2626,8 @@ minions as if it were part of making them bigger:
 The courser is the tell: its `scale` went **UP** 1.36x while its `actorHeight` went **DOWN** 18%.
 Whatever `actorHeight` is, it cannot be both.
 
-**THE MEASUREMENT (`py tools/debug/probe_actorheight.py <arz>`, run on the b102 arz, 51,131 records).**
-Group every record by its `mesh` - i.e. by the rig it animates on - and ask whether `actorHeight` ever
-moves with `scale`:
+**THE MEASUREMENT (`py tools/debug/probe_actorheight.py <arz>`, 51,131 records).** Group every record
+by its `mesh` - i.e. by the rig it animates on - and ask whether `actorHeight` ever moves with `scale`:
 
 * **2,122** rigs carry an `actorHeight` on more than one record.
 * **184** of those have BOTH `scale` and `actorHeight` varying inside the rig.
@@ -2636,6 +2635,14 @@ moves with `scale`:
   state used by ambient/non-combat variants - e.g. `ag_insect_antlion_0Nn` sit at 0.0 while every
   real antlion on the same mesh sits at 1.7 across scale 0.7..1.39).
 * **ZERO** rigs - 0 of 2,122 - make `actorHeight` proportional to `scale`.
+
+> **Which artefact each number came from, because it matters.** The counts above are the
+> **DEFECTIVE** build `974d77d2ffc3fa5cbefca15816183276` - the one that still carried the two
+> invented values. Re-run on the **corrected** build `8a81a53f2b0f40004e4b3b17b81e0480`, the same
+> survey reports **58**, not 60, for the third bullet: the two rigs this wave touched stopped being
+> counted as "varying" the moment the minions went back to inheriting. 2,122 / 184 / **0** are
+> unchanged. That 60 -> 58 delta is itself the cleanest confirmation that our two records were the
+> anomaly, so both numbers are recorded rather than quietly replaced.
 
 And on the two rigs this wave actually touched:
 

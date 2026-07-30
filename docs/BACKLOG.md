@@ -191,6 +191,143 @@ every weapon family, not just `unarmed`.
   #19 the 50 -> 33 rate. They are other lanes' scope; naming them here so the batch is not silently
   half-closed.
 
+### B102 AMENDMENT (2026-07-30, same branch) - R-126, the defect the record-diff could not see
+
+The gate record above is accurate for what it measured. This amendment records what a second,
+independent vet of the BUILT ARTEFACT found afterwards, the fix, and the corrected artefact.
+
+**THE DEFECT (R-126).** Both new minions carried an **invented `actorHeight`**. The record-diff was
+green throughout and could never have caught it: an invented value on a record that is *itself new*
+is not a "change" against any baseline. Only a measurement of the animation rig shows it.
+
+| record | donor | scale donor -> ours | actorHeight donor -> ours (WAS) |
+|---|---|---|---|
+| `um_devourer_bloodspawn_99` | `c_large_blooddemon_40` | 1.75 -> 2.4 | 1.0 -> **1.6** |
+| `um_hunt_courser_99` | `c_bloodhound_44` | 1.25 -> 1.7 | 1.7 -> **1.4** |
+
+The courser is the tell: `scale` **up** 1.36x while `actorHeight` went **down** 18%.
+
+**THE MEASUREMENT** - `py tools/debug/probe_actorheight.py <arz>` (committed, re-runnable):
+
+* **2,122** rigs (distinct `mesh` values) carry an `actorHeight` on more than one record.
+* **184** have both `scale` and `actorHeight` varying; **60** still vary once the `actorHeight = 0.0`
+  "no height" class is excluded.
+* **ZERO of 2,122** make `actorHeight` proportional to `scale`.
+* `DRX\meshes\blooddemon01.msh`: **24** other records, `scale` **0.7 -> 1.75**, all `actorHeight` 1.0.
+* `DRX\meshes\bloodhound.msh`: **9** other records, `scale` **1.0 -> 2.25**, all `actorHeight` 1.7.
+  `xbloodhound_36` at scale **2.25** is the control - that rig already has a record **larger than our
+  courser** and it did not touch the field.
+
+**THE FIX.** `_build_minion` no longer takes or writes a height argument; `actorHeight` is inherited
+from the donor. **`scale` is untouched** - Bloodspawn still 2.4, Courser still 1.7 - so neither minion
+got smaller. Build log, verbatim:
+
+> `Gorged Bloodspawn: ... 2.4x scale, ... actorHeight 1.0 INHERITED from the donor rig (R-126)`
+> `Courser of the Endless Hunt: ... 1.7x scale, ... actorHeight 1.7000000476837158 INHERITED from the donor rig (R-126)`
+
+**THE GATE.** `gate_violations()` now asserts each minion's `actorHeight` equals **its donor's, read
+live from the same db** (the donors are proven byte-unchanged by the record-diff), so the rule is
+anchored to ground truth rather than to a constant that could drift from the rig the way the original
+values did. New plant **N10** re-creates the exact shipped defect and is asserted to fire.
+
+### THE CORRECTED ARTEFACT (this supersedes the md5 in the record above)
+
+- baseline arz (a build of `main` in this environment) **UNCHANGED**:
+  `work/SoulvizierClassic/Database/BASELINE.arz` md5 **`6a3a491db546b603c52132237c40aa63`**,
+  55,475,226 B, 51,124 records. Independently re-confirmed this session: the MAIN checkout's own
+  built arz hashed **byte-identical** to it.
+- **SUPERSEDED** built arz (carried the R-126 defect) md5 `974d77d2ffc3fa5cbefca15816183276`,
+  55,486,240 B. Do not ship this one.
+- **CURRENT** built arz `work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **`8a81a53f2b0f40004e4b3b17b81e0480`**, **55,486,235 B**, **51,131 records**
+  (= 51,124 + exactly the 7 new), built with
+  `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, **exit 0**.
+
+**RE-RUN PROOFS (all against the corrected artefact):**
+
+- `py tools/debug/b102_record_diff.py <BASELINE> <built>` -> exit 0,
+  **ADDED 7 / REMOVED 0 / CHANGED 7**, `RESULT: PASS`, all 17 shared/donor records byte-unchanged.
+  **0 REMOVED - nothing was retired.**
+- `[devourer_kit] verify OK` on the FINAL assembled db, verbatim: *monster-only passive 30/33 carried
+  by EXACTLY the 6 Toxeus monsters; the original stays 100/33 for 12 carrier(s) incl. all 9 pets +
+  less.dbr; Devourer pierce 40, life [13000.0, 18000.0, 24000.0] untouched; Bloodbath cd 15 anim-less
+  and cast @90.0; Blood Frenzy present once; both summons anim-less @petLimit 3; both minions
+  Champion, soul-less, loot-less; 0 unbound special animations across 6 casters.*
+- `toxeus_hunt_endless.verify OK` - *base and variant differ in EXACTLY 'controller'*, so the
+  Legendary Hunt still inherits the retuned passive AND the courser summon by construction.
+- `py tools/patches/devourer_kit.py --negtest <BASELINE>` -> exit 0, **PASS (10/10 plants fired)**,
+  control clean `[]`.
+- `py tools/debug/probe_actorheight.py <built> --record <minion>`:
+  Bloodspawn `scale=2.4 actorHeight=1.0` on a rig whose 24 other records are all 1.0;
+  Courser `scale=1.7 actorHeight=1.7` on a rig whose 9 other records are all 1.7. Both now match.
+- **arz+Text coupling proven end-to-end** (it is a DB **+ Text** lane, 2 new tags):
+  `py tools/build_text_arc.py <SV098 Text_EN.arc> <out Text.arc> <uber_soul_tags.txt>` -> exit 0;
+  `tagSVCMonsterDevourerBloodspawn=Gorged Bloodspawn` and
+  `tagSVCMonsterHuntCourser=Courser of the Endless Hunt` both present in the built
+  `modstrings.txt`; `py tools/validate_tags.py <built arz> <Text.arc> <uber_soul_tags.txt>` ->
+  exit 0 **RESULT: PASS**, *all 376 referenced mod tags present*, *all 435 authoritative tags
+  present*. (The 2 `tagNewMonster46/66` WARNs are pre-existing base/SV, explicitly non-blocking.)
+
+### ⚠️ WORKTREE BUILD PREREQUISITE - this cost two failed builds, so it is written down
+
+`work/SoulvizierClassic/Resources` must exist **beside the output** or the build **fails** under
+`SVC_REQUIRE_GATES=1`, and it must contain the **real arcs**, because two different gates read it two
+different ways:
+
+* `build_svc_database.py` computes `_mod_resources = <output>.parent.parent / 'Resources'` - literally
+  beside the arz - and A9 refuses to be skipped (`B-GATE-HARDEN-1`).
+* `mastery_sv_alignment._arc_resolver()` walks **UP** the ancestors for the first
+  `work/SoulvizierClassic/Resources` it finds, deliberately so a linked worktree falls through to the
+  shared main-repo copy.
+
+A worktree with **no** such dir red-lines A9 (`gate DID NOT RUN`). A worktree with a **partial** one -
+which is what you get if you innocently build `Text.arc` into it - stops the ancestor walk at a
+near-empty directory and red-lines `mastery_sv_alignment` with a **misleading** `emblem tex UNRESOLVED
+in shipped arcs` that has nothing to do with your lane. Both failures were reproduced this session.
+
+Setup used here (`work/` is gitignored, so this is local-only and does not travel with the branch):
+
+```
+cmd /c mklink /J "<worktree>\work\SoulvizierClassic\Resources" ^
+                 "<main repo>\work\SoulvizierClassic\Resources"
+```
+
+**HAZARD, because a junction writes through:** with that junction in place, running
+`build_text_arc.py` with an output inside the worktree's `Resources` writes into the **MAIN
+checkout's shared `work/`**, which other lanes are using concurrently (observed live this session: a
+`Text.arc` and `mod_authored_tags.txt` appeared there at 10:24 from another lane, with different
+sizes from ours). Build Text to a scratch path instead - this lane did, which is why its Text proof
+above uses a scratchpad output.
+
+**DEBT REGISTER - ADDITIONS AND ONE CLOSURE:**
+- `BL-b102-DEBT-7` **CLOSED.** `main` was merged into the branch (it had moved to `533c73d`, R-109
+  tombstone XP). The one conflict was in `docs/WILL_RULINGS.md`, where main's R-109 block and this
+  lane's R-120..R-125 block both landed at the old end-of-file; resolved by **keeping both verbatim**,
+  ordered by ruling number, with **no ruling renumbered**. `git diff 7efd107..533c73d --stat` is
+  `docs/` only - zero files under `tools/` - so the artefact hashes are unaffected by the merge.
+- `BL-b102-DEBT-9` **The rig-constant check is not DB-wide.** `devourer_kit` now enforces
+  actorHeight-inheritance for the 2 minions it authors. Every other cloned creature in the mod is
+  unchecked. Same shape as `BL-b102-DEBT-2`. Promote it to a build-wide gate over every clone.
+- `BL-b102-DEBT-10` **`mastery_sv_alignment._arc_resolver()` accepts a Resources dir it never
+  validates.** It stops at the first ancestor directory *named* `Resources` regardless of whether the
+  arcs it needs are in it, which is what turns a partial worktree dir into a misleading FAIL in an
+  unrelated lane. One-line hardening: require the specific arcs (or a non-trivial `*.arc` count)
+  before accepting a candidate, and keep walking otherwise. **NOT done here** - that module is
+  another lane's and is contended across many in-flight branches, so editing it mid-flight would
+  create merge pain for a fault that is not this lane's. Orchestrator's call.
+- `BL-b102-DEBT-11` **R-126 rests on measurement, not disassembly.** What `actorHeight` drives at
+  runtime is inferred from its distribution over rigs plus the distinct 0.0 "no height" class. The
+  ruling holds regardless (being the only record on a 25-record rig with a bespoke value is a defect
+  either way), but a lane that wants to move the field deliberately should pin the mechanic first.
+
+**RESIDUAL DESIGN VALUES, flagged not hidden:** `SUMMON_CAST_CHANCE = 100.0` puts the Hunt's new
+`specialAttack5` at 100 while his other four specials sit at 45/40/30/30. It is in-family for the
+Devourer (whose SA3 and SA4 were **already** 100.0 before this wave) and it is bounded by
+`petLimit 3` + an 8s cooldown, but on the Hunt it is this lane's choice, not a measured value. It is
+a named constant - one line to retune. Both summons also inherit the shipped Enslaver shell's
+**absent** `spawnObjectsTimeToLive`, i.e. the adds are permanent until killed, capped by `petLimit`;
+that matches the exemplar exactly and is not a new behaviour class.
+
 ---
 
 
