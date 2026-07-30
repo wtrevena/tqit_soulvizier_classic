@@ -237,23 +237,43 @@ def run(map_path, baseline_path=None, arz_path=None, expected=None, quiet=False,
               'no baseline given')
 
     # ---- geometry ----------------------------------------------------------
-    if not mesh_ok:
+    # ROUND-3 FIX (vet finding 1). Round 2 guarded only the container PARSE
+    # (`strict=False`), so a mutation that parses cleanly but MOVES THE MESH FRAME -
+    # measured: shift the 0x0b `center` by +64 u, all sizes intact, all 3 tilesets x
+    # 1149 tiles still decompressing, section size unchanged at 857,212 B - reached
+    # `s.route()` and died on a bare assert at b100_derive_sanctuary.py:480, aborting
+    # the gate with a traceback and printing NO rows. Two changes close it:
+    #   (a) `s.frame_check()` is a cheap BASELINE-FREE frame invariant, so the failure
+    #       is diagnosed before any geometry row is attempted (round 2 could only catch
+    #       this through G10's byte-identity half, i.e. only with a --baseline);
+    #   (b) `s.route()` is wrapped, and raises the typed NavGeometryError rather than
+    #       AssertionError, so ANY future geometry failure becomes a FAIL row too.
+    geom_error = s.frame_check() if mesh_ok else None
+    darr = dwest = best = arrc = None
+    if mesh_ok and geom_error is None:
+        try:
+            darr, dwest, best, arrc = s.route()
+        except D.NavGeometryError as exc:
+            geom_error = f'NavGeometryError: {exc}'
+        except Exception as exc:                      # noqa: BLE001 - reported, not hidden
+            geom_error = f'{type(exc).__name__}: {exc}'
+    if not mesh_ok or geom_error is not None:
         # Every mesh-derived row is unevaluable; say so once per row rather than
         # pretending, and let G10 carry the actual diagnosis.
+        why = s.nav_error if not mesh_ok else geom_error
+        kind = 'navmesh unusable' if not mesh_ok else 'navmesh GEOMETRY unusable'
         for gid, nm in (('G2', 'on-mesh'), ('G3', 'tilesets'), ('G4', 'floor Y'),
                         ('G5', 'reachable'), ('G6', 'on the processional'),
                         ('G7', 'landing clearance')):
-            r.add(gid, f'{nm}: NOT EVALUABLE - navmesh unusable', False,
-                  f'see G10: {s.nav_error}')
+            r.add(gid, f'{nm}: NOT EVALUABLE - {kind}', False, f'see G10: {why}')
         if arz_path:
             _density_and_pools(r, s, exp, cx, cz)
         else:
             for gid in ('G8', 'G8b', 'G9', 'G11'):
                 r.add(gid, f'{gid} (needs --arz)', False, 'no arz given')
-        _navmesh_row(r, s, baseline_path)
+        _navmesh_row(r, s, baseline_path, geom_error)
         _scope_row(r, map_path)
         return _finish(r, s, map_path, baseline_path, arz_path, quiet)
-    darr, dwest, best, arrc = s.route()
     # "props" for the F7/G7 clearance test = the instances that were ALREADY in the
     # level, i.e. everything except the placements this lane declares. Without the
     # exclusion every new proxy measures 0.0 u from itself.
@@ -467,8 +487,13 @@ def _density_and_pools(r, s, exp, cx, cz):
               'rerun once the 0x0b container is valid')
 
 
-def _navmesh_row(r, s, baseline_path):
-    """G10 - the b89 crash class. Must FAIL, not raise, on a corrupt container."""
+def _navmesh_row(r, s, baseline_path, geom_error=None):
+    """G10 - the b89 crash class. Must FAIL, not raise, on a corrupt container.
+
+    ROUND-3 (vet finding 1): `geom_error` carries a container that PARSED but whose
+    mesh FRAME moved. That is a b89-class corruption too - the engine would be handed
+    cells that do not sit under the level's own geometry - so it belongs in this row,
+    and it is caught WITHOUT a baseline."""
     if s.nav_error is not None:
         r.add('G10', 'navmesh: 0x0b well formed (b89 CRASH CLASS)', False,
               f'{len(s.nav_raw):,} B - UNUSABLE: {s.nav_error}')
@@ -481,15 +506,22 @@ def _navmesh_row(r, s, baseline_path):
         r.add('G10', 'navmesh: 0x0b well formed (b89 CRASH CLASS)', False,
               f'{len(s.nav_raw):,} B - parse raised {type(exc).__name__}: {exc}')
         return
+    frame_ok = geom_error is None
+    frame_note = '' if frame_ok else f'; FRAME BROKEN: {geom_error}'
     if baseline_path:
         b0 = D.Sanctuary(baseline_path, strict=False)
         same = b0.nav_raw == s.nav_raw
-        r.add('G10', 'navmesh: 0x0b byte-identical to baseline + well formed (b89)',
-              same and parses,
-              f'{len(s.nav_raw):,} B, identical={same}, 3 tilesets x {tiles} tiles')
+        r.add('G10', 'navmesh: 0x0b byte-identical to baseline + well formed + frame '
+                     'sane (b89)',
+              same and parses and frame_ok,
+              f'{len(s.nav_raw):,} B, identical={same}, 3 tilesets x {tiles} tiles, '
+              f'frame_sane={frame_ok}{frame_note}')
     else:
-        r.add('G10', 'navmesh: 0x0b well formed (no baseline given for identity)',
-              parses, f'{len(s.nav_raw):,} B, 3 tilesets x {tiles} tiles')
+        r.add('G10', 'navmesh: 0x0b well formed + frame sane (no baseline given for '
+                     'byte identity)',
+              parses and frame_ok,
+              f'{len(s.nav_raw):,} B, 3 tilesets x {tiles} tiles, '
+              f'frame_sane={frame_ok}{frame_note}')
 
 
 def _scope_row(r, map_path):
@@ -647,6 +679,23 @@ def map_navmesh(mode):
     return patch
 
 
+def map_navmesh_frame_shift(dx=64):
+    """b89 class, ROUND-3 (vet finding 1's own plant P6): move the container CENTER so
+    the mesh FRAME no longer matches the level. Every size is intact and all 3 tilesets
+    x 1149 tiles still decompress, so `strict=False` does NOT catch it - this is exactly
+    the mutation that made round 2's gate abort with an uncaught AssertionError out of
+    `route()` instead of printing a FAIL row. `dx` is a whole number of world units:
+    the container center is an int32 triple."""
+    def patch(blob):
+        secs, magic = BSS.parse_blob_sections(blob)
+        si = next(i for i, s in enumerate(secs) if s['type'] == 0x0b)
+        doc = parse_rec02(secs[si]['data'], decompress=True)
+        doc['center'] = (doc['center'][0] + int(dx), doc['center'][1], doc['center'][2])
+        secs[si]['data'] = serialize_rec02(doc)
+        return BSS.rebuild_blob(magic, secs)
+    return patch
+
+
 def map_tileset_divergence():
     """Make tileset 3 disagree with tileset 1 - G3's own subject. Implemented by
     zeroing one tile record's area bytes in the third tileset only."""
@@ -663,8 +712,12 @@ def map_tileset_divergence():
 
 
 # (kind, target gate id prefix, allowed-to-fail gate ids, label, mutator)
-DECL, MAP = 'DECL', 'MAP'
+# MAPNB = a MAP plant deliberately run with NO --baseline, so it can only be caught by a
+# BASELINE-FREE invariant. Added in round 3 to prove the new frame check stands on its
+# own rather than riding on G10's byte-identity half.
+DECL, MAP, MAPNB = 'DECL', 'MAP', 'MAPNB'
 _G1FAMILY = ('G1', 'G1b', 'G1c', 'G1d')
+_NAVFAMILY = ('G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8', 'G8b', 'G9', 'G10', 'G11')
 PLANTS = [
     # ---- DECLARATION plants. Every one of these necessarily perturbs the roster, so
     # the G1 family is in every allow-set; that is disclosed, not hidden.
@@ -726,6 +779,17 @@ PLANTS = [
     # tilesets, G10 catches that the container moved at all.
     (MAP, 'G3', ('G3', 'G10'), 'make tileset 3 disagree with tileset 1',
      map_tileset_divergence()),
+    # ---- ROUND-3 plants: the vet's P6. A container that PARSES but whose frame moved.
+    # Round 2 aborted here with an uncaught AssertionError and printed no rows at all.
+    (MAP, 'G10', _NAVFAMILY,
+     'b89: shift the 0x0b container CENTER +64 u (parses clean, frame moves)',
+     map_navmesh_frame_shift(64)),
+    # ... and the same mutation with NO baseline, which is the only way to prove the
+    # frame check is genuinely baseline-free rather than G10's byte-identity half in
+    # disguise. G1d necessarily fails ("no baseline given") and is in the allow-set.
+    (MAPNB, 'G10', _NAVFAMILY + ('G1d',),
+     'b89 frame shift caught with NO --baseline (frame check stands alone)',
+     map_navmesh_frame_shift(64)),
 ]
 
 
@@ -756,6 +820,10 @@ def negtest(map_path, arz_path, baseline_path=None, only=None):
         if kind == DECL:
             bad, res = run(map_path, baseline_path=baseline_path, arz_path=arz_path,
                            expected=mutate(list(exp)), quiet=True)
+        elif kind == MAPNB:
+            # deliberately WITHOUT a baseline - see the MAPNB note above
+            bad, res = run(map_path, baseline_path=None, arz_path=arz_path,
+                           blob_patch=mutate, quiet=True)
         else:
             bad, res = run(map_path, baseline_path=baseline_path, arz_path=arz_path,
                            blob_patch=mutate, quiet=True)
@@ -769,9 +837,11 @@ def negtest(map_path, arz_path, baseline_path=None, only=None):
         if not ok:
             fails += 1
     ndecl = sum(1 for p in plants if p[0] == DECL)
+    nnb = sum(1 for p in plants if p[0] == MAPNB)
     print(f'\nNEGTEST: {len(plants) - fails}/{len(plants)} plants correct '
-          f'({ndecl} declaration + {len(plants) - ndecl} map-side); each had to fail its '
-          f'target gate AND stay inside its allow-set -> {"PASS" if not fails else "FAIL"}')
+          f'({ndecl} declaration + {len(plants) - ndecl - nnb} map-side + {nnb} map-side '
+          f'run WITHOUT a baseline); each had to fail its target gate AND stay inside its '
+          f'allow-set -> {"PASS" if not fails else "FAIL"}')
     return 1 if fails else 0
 
 

@@ -305,6 +305,20 @@ def head_digest(raw_instances, n=None):
 
 
 # --------------------------------------------------------------------------- #
+class NavGeometryError(RuntimeError):
+    """The 0x0b container PARSED but its mesh FRAME is wrong - the cells do not sit
+    where the level says they do, so no route through the level exists.
+
+    ROUND-3 FIX (vet finding 1). Round 2 wrapped only the container PARSE. A mutation
+    that parses cleanly but relocates the mesh frame (measured: shift the container
+    `center` by +64 u - all sizes intact, all 3 tilesets x 1149 tiles still decompress,
+    section size unchanged at 857,212 B) sailed past `strict=False` and then died on a
+    bare `assert` inside `route()`, aborting the gate with a traceback instead of
+    printing a FAIL row. It was fail-SAFE (exit 1) but not the advertised behaviour,
+    which is exactly the gap the round-1 vet raised and round 2 only half closed.
+    Geometry failures are now a TYPED exception that the gate catches per-row."""
+
+
 class Sanctuary:
     """Everything measured off one built map, in one place, so the gate and the
     derivation cannot drift apart."""
@@ -473,19 +487,50 @@ class Sanctuary:
                     q.append(n)
         return d
 
+    def frame_check(self):
+        """Cheap, baseline-free sanity check on the navmesh FRAME: does the arrival
+        portal still land on a walkable cell? Returns None when the frame is sane, else
+        a message. ROUND-3 FIX (vet finding 1): this is what catches a container whose
+        `center`/`dims` moved - the bytes parse, every tile decompresses, but the cells
+        no longer sit under the level's own entities. Round 2 could only catch this via
+        G10's byte-identity half, i.e. only when a --baseline was supplied."""
+        if self.nav_error is not None:
+            return f'navmesh unusable: {self.nav_error}'
+        ac, d = self.nearest_cell(*ARRIVAL)
+        if ac is None:
+            return (f'the arrival portal {ARRIVAL} has NO walkable cell within 8.0 u - '
+                    f'the mesh frame (org {self.org}) does not match the level')
+        if not self.own:
+            return 'no cell in the navmesh is owned by drxBC3 own area index'
+        return None
+
     def route(self):
-        """(d_from_arrival, d_from_west_seam, best_total_cells). Cached."""
+        """(d_from_arrival, d_from_west_seam, best_total_cells). Cached.
+
+        Raises NavGeometryError - NOT AssertionError - when the geometry makes a route
+        impossible, so the gate can turn it into a FAIL row (vet finding 1). The
+        derivation lets it propagate, which is correct: a derivation with no route has
+        nothing to derive."""
         if getattr(self, '_route', None) is None:
             ac, _ = self.nearest_cell(*ARRIVAL)
-            assert ac is not None, 'arrival portal is not on the navmesh'
+            if ac is None:
+                raise NavGeometryError(
+                    f'the arrival portal {ARRIVAL} is not on the navmesh (mesh org '
+                    f'{self.org}) - the container frame does not match the level')
             darr = self.bfs([ac])
             # the west threshold into drxBC_Finale: own-footprint z-span, x < 4187
             west = [k for k in self.cells
                     if k in darr and self.wx(k[0]) < 4187.0
                     and 2869.0 <= self.wz(k[1]) <= 3109.0]
-            assert west, 'no reachable west-seam cell - the processional does not exist'
+            if not west:
+                raise NavGeometryError(
+                    'no reachable west-seam cell - the processional does not exist')
             dwest = self.bfs(west)
-            best = min(darr[k] + dwest[k] for k in self.own if k in darr and k in dwest)
+            reach = [darr[k] + dwest[k] for k in self.own if k in darr and k in dwest]
+            if not reach:
+                raise NavGeometryError(
+                    'no cell of drxBC3\'s OWN ground lies on any arrival -> west route')
+            best = min(reach)
             self._route = (darr, dwest, best, ac)
         return self._route
 
