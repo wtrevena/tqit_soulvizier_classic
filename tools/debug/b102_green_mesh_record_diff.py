@@ -106,63 +106,84 @@ def main(argv):
         unattributed.append(('REMOVED', n, set(),
                              'R-102 retires NOTHING (RETIREMENT PROTOCOL)'))
 
+    # Attribution is PER FIELD, not per record. The three Enslaver pet tiers are
+    # in BOTH rosters and legitimately carry a delta from each leg in the same
+    # record (their mesh moved AND the shroud landed in a free slot), so a
+    # per-record "match exactly one leg" rule would call the correct result a
+    # violation - it did, on the first run. Partition the fields instead, and
+    # require that EVERY field lands in one of the two legs.
     for n, d in sorted(changed.items()):
-        fields = set(d)
+        leftover = set(d)
 
         # ── leg 1: the mesh swap ──
-        if fields == {'mesh'} and n in mesh_expect:
-            vb, vt = d['mesh']
-            old = norm(vb[1][0]) if vb and vb[1] else None
-            new = norm(vt[1][0]) if vt and vt[1] else None
-            if old != norm(CM.GREEN_MESH):
-                unattributed.append(('CHANGED', n, fields,
-                                     'moved OFF %r, but the only mesh this lane '
-                                     'takes a record off is %s'
-                                     % (old, CM.GREEN_MESH)))
-                continue
-            if new != mesh_expect[n]:
-                unattributed.append(('CHANGED', n, fields,
-                                     'landed on %r, expected %r for its family'
-                                     % (new, mesh_expect[n])))
-                continue
-            mesh_moves.append((n, old, new))
-            continue
+        if 'mesh' in leftover:
+            if n not in mesh_expect:
+                unattributed.append(('CHANGED', n, {'mesh'},
+                                     'mesh moved on a record that is NOT in the '
+                                     'derived champion roster'))
+            else:
+                vb, vt = d['mesh']
+                old = norm(vb[1][0]) if vb and vb[1] else None
+                new = norm(vt[1][0]) if vt and vt[1] else None
+                if old != norm(CM.GREEN_MESH):
+                    unattributed.append(('CHANGED', n, {'mesh'},
+                                         'moved OFF %r, but the only mesh this lane '
+                                         'takes a record off is %s'
+                                         % (old, CM.GREEN_MESH)))
+                elif new != mesh_expect[n]:
+                    unattributed.append(('CHANGED', n, {'mesh'},
+                                         'landed on %r, expected %r for its family'
+                                         % (new, mesh_expect[n])))
+                else:
+                    mesh_moves.append((n, old, new))
+            leftover.discard('mesh')
 
         # ── leg 2: the shroud reaching a pet tier ──
-        if n in shroud_pets and all(_SLOT_RE.match(k) for k in fields):
-            slots = {int(_SLOT_RE.match(k).group(2)) for k in fields}
-            bad = None
-            for s in sorted(slots):
-                nb = d.get('skillName%d' % s)
-                if nb is None:
-                    bad = ('skillLevel%d moved with no matching skillName%d' % (s, s))
-                    break
-                vb, vt = nb
-                if vb is not None and vb[1] and str(vb[1][0]).strip():
-                    bad = ('skillName%d was OCCUPIED (%r) before - this lane only '
-                           'fills FREE slots, it never displaces a skill (R-26)'
-                           % (s, vb[1][0]))
-                    break
-                if not vt or not vt[1] or norm(vt[1][0]) != shroud_skill:
-                    bad = ('skillName%d landed on %r, not the shroud'
-                           % (s, vt[1][0] if vt and vt[1] else None))
-                    break
-                lv = d.get('skillLevel%d' % s)
-                lvv = lv[1][1][0] if lv and lv[1] and lv[1][1] else None
-                if not lvv:
-                    bad = 'skillLevel%d is %r - level 0 is never granted' % (s, lvv)
-                    break
-            if bad:
-                unattributed.append(('CHANGED', n, fields, bad))
-                continue
-            shroud_moves.append((n, sorted(slots)))
-            continue
+        slot_fields = {k for k in leftover if _SLOT_RE.match(k)}
+        if slot_fields:
+            if n not in shroud_pets:
+                unattributed.append(('CHANGED', n, slot_fields,
+                                     'skill slots moved on a record that is NOT a '
+                                     'derived Enslaver pet tier'))
+            else:
+                slots = {int(_SLOT_RE.match(k).group(2)) for k in slot_fields}
+                bad = None
+                for s in sorted(slots):
+                    nb = d.get('skillName%d' % s)
+                    if nb is None:
+                        bad = ('skillLevel%d moved with no matching skillName%d'
+                               % (s, s))
+                        break
+                    vb, vt = nb
+                    if vb is not None and vb[1] and str(vb[1][0]).strip():
+                        bad = ('skillName%d was OCCUPIED (%r) before - this lane '
+                               'only fills FREE slots, it never displaces a skill '
+                               '(R-26)' % (s, vb[1][0]))
+                        break
+                    if not vt or not vt[1] or norm(vt[1][0]) != shroud_skill:
+                        bad = ('skillName%d landed on %r, not the shroud'
+                               % (s, vt[1][0] if vt and vt[1] else None))
+                        break
+                    # The granted LEVEL must be non-zero in the BUILT db. It may
+                    # show no delta: these pets already carried an orphaned
+                    # skillLevel13=1 (Lyia-clone residue, a level with no skill),
+                    # so filling that slot writes the value it already had. Read
+                    # the built record rather than the diff.
+                    lv = built.get_field_value(tmap[n], 'skillLevel%d' % s)
+                    lvv = lv[0] if isinstance(lv, list) and lv else lv
+                    if not lvv:
+                        bad = ('skillLevel%d is %r in the built db - level 0 is '
+                               'never granted' % (s, lvv))
+                        break
+                if bad:
+                    unattributed.append(('CHANGED', n, slot_fields, bad))
+                else:
+                    shroud_moves.append((n, sorted(slots)))
+            leftover -= slot_fields
 
-        why = ('not in either derived roster' if n not in mesh_expect
-               and n not in shroud_pets else
-               'in a roster, but the moved fields are not this lane\'s (%s)'
-               % ','.join(sorted(fields)))
-        unattributed.append(('CHANGED', n, fields, why))
+        if leftover:
+            unattributed.append(('CHANGED', n, leftover,
+                                 'field(s) belonging to neither leg of this lane'))
 
     print('\n--- LEG 1: MESH MOVED OFF THE GREEN MESH : %d record(s) ---' % len(mesh_moves))
     for n, old, new in mesh_moves:

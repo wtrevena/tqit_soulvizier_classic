@@ -9,7 +9,7 @@ lane did not deploy, and the tag belongs to whichever wave ships these bytes.
 **ARTIFACT (DB-ONLY lane. `Text.arc`, `Levels.arc` and `Quests.arc` are untouched - zero map bytes,
 zero new tags, so there is NO arz+Text or Levels+Quests coupling to honour here):**
 - arz `.claude/worktrees/green-mesh/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
-  md5 **`__BUILT_MD5__`**, **__BUILT_BYTES__ B**, **__BUILT_RECORDS__ records**, 46 registry modules,
+  md5 **`6ce12e5d12a267bc97eda0abc12ba896`**, **55,475,296 B**, **51,124 records**, 46 registry modules,
   built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
   **exit 0** (log `local/b102_build2.log`).
 - BASELINE built by THIS lane from `main` @ `7efd107` in the SAME environment and the SAME work/
@@ -93,7 +93,23 @@ repoints, it never retires), and the record-diff re-proves it independently.
 
 **RECORD-DIFF vs the lane's own baseline** (`py tools/debug/b102_green_mesh_record_diff.py
 local/baseline/BASELINE_worklayout.arz work/SoulvizierClassic/Database/SoulvizierClassic.arz`):
-__DIFF_RESULT__
+**0 ADDED / 0 REMOVED / 15 CHANGED, and every one of the 15 is attributed**, exit 0
+(`local/b102_record_diff.txt`):
+- **LEG 1, 15 mesh moves off `RevenantPoison.msh`:** `um_toxeus_enslaver_99` + `toxeus_enslaver_1..3`
+  + proxies `q_enslaver_warband` / `q_yard_enslaver` -> `SkeletonGrayBlack01New.msh`;
+  `um_bloodtoxeus_99` + `bloodtoxeus_1..3` + `toxeus_eoat_1..3` + proxies `q_bloodtoxeus_lone` /
+  `q_bloodtoxeus_ambush` -> `GoldenSkeleton01.msh`.
+- **LEG 2, 3 shroud grants:** `toxeus_enslaver_1..3`, each in slot **13**, which was FREE
+  (`skillName13` absent). Those three records carry a delta from BOTH legs - which is what caught a
+  real bug in the diff TOOL on its first run: it attributed per RECORD ("match exactly one leg") and
+  so called the correct build a violation. It now attributes **per FIELD** and requires every changed
+  field to land in one of the two legs.
+- Incidental finding, recorded because it explains a missing delta: those pets already carried an
+  ORPHANED `skillLevel13 = 1` (a level with no skill - Lyia-clone residue), so filling the slot wrote
+  the value it already had and only `skillName13` shows in the diff. The gate reads the granted level
+  out of the BUILT record rather than out of the diff, so a level-0 grant would still fail.
+- **RETIREMENT PROTOCOL re-proved independently of the gate:** carriers of `RevenantPoison.msh` go
+  **30 -> 15**, the drop is exactly the 15 roster records, and all 15 survivors are listed by name.
 
 **OPEN / NOT DONE (registered in the DEBT REGISTER below as BL-R102-DEBT-1..4):** nothing here has
 been seen in game, the EoAT's own silhouette is an undecided design question, and the base-game
