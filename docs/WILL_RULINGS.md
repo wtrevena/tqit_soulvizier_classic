@@ -948,3 +948,107 @@ renumbered record is still present with a pointer to its replacement.
   for one relocated area rather than reusing `olympus.dbr`). That is a COUPLED `arz`+`Text`+`Levels`
   change (new DB record, new text tag, LEVELS-entry `dbr` override for ~31 levels), materially more
   expensive than the population work, and it must not ride the population commit.
+
+- R-112 [2026-07-29] IMPLEMENTED b100 ROUND 2 (`feat/sanctuary-populate`) - **AMENDMENT to R-110.
+  R-110's text above is left exactly as written (the ledger is never edited); this entry records
+  what an independent vet proved wrong about it and what the code now does instead.** The vet
+  returned NO-GO with 13 findings; each was RE-MEASURED rather than argued. Three of R-110's
+  substantive claims did not survive:
+  1. **THE PLACEMENT SHAPE WAS THE OPPOSITE OF THE RECORDED INTENT.** R-110 records "Shape: a
+     congregation at rite, not a patrol", and the amgoz1 bar (R-15) forbids evenly-spaced filler.
+     But the mechanism was deterministic FARTHEST-POINT INSERTION, which **maximises** the minimum
+     spacing - the most uniform arrangement the filters permit. MEASURED on the round-1 build: the
+     14 new proxies had nearest-neighbour Chebyshev **min 23.2 u / median 31.8 u**, against
+     amgoz1's own ten shipped drxBC3 proxies at **min 7.4 / median 41.9** - he CLUSTERS, and the
+     code could not. FIXED IN CODE, not in prose: insertion is now TWO-MODE - each roster group's
+     first member is placed farthest-point (distinct groups land in distinct places along the
+     walk), every subsequent member nearest-point to that group's own anchor (novices kneel
+     TOGETHER, the houndmasters are a pair, the spear-dancers flank the door). Re-measured:
+     **min 16.0 / median 30.0 / max 62.2** - six pairs hard against the 16 u spacing floor with
+     gaps out to 62.2 u, i.e. bimodal like amgoz1's own distribution. The two HEAVY party proxies
+     (`zparty_witchfest_2099`, `bw_acolyte_clutch`) still end up ~60 u apart, but now because the
+     DENSITY CAP forbids knotting them, not because the shape rule spread everything - the load
+     ceiling overriding the aesthetic rule is correct and is now visible in the gate output.
+  2. **THE DENSITY NUMBERS WERE IN THE WRONG UNIT.** A pool's `spawnMax` is NOT what the engine
+     spawns: the pool's `proxyPoolEquation` multiplies it. MEASURED in the built arz -
+     `proxypoolequation_01` = `poolValue*(2.623966+1.076769*nP-0.100485*nP^2)` = **3.60025x** at
+     one player; `proxypoolequation_02` = `poolValue*(0.91+0.497143*nP-0.05*nP^2)` = **1.357143x**.
+     Every blood-cave pool uses `_02`; **854 of the 887** pool references in the base-game
+     cave/crypt/tomb cohort use `_01`. So R-110's "worst 60x60 box sums 24 against a base-game
+     MEDIAN of 26" compared raw field values across two different multipliers and was invalid as
+     written, and its claim that the cap 42 "is also the base-game p90" was a coincidence of raw
+     values. Density is now gated in **EFFECTIVE ENTITIES**: cap **57.0**, still derived as the
+     sparsest already-shipping blood-cave level carrying real content
+     (`yet_another_fucking_connector`), against a corrected cohort (n=80) of **median 90.0, p90
+     158.4, max 280.8**. drxBC3 goes **32.6 -> 51.6 effective**. Because all 24 of drxBC3's proxies
+     use `_02`, effective is an exact rescale of raw WITHIN this level and 57.0 eff == 42 raw, so
+     the unit correction **moved no placement**. The direction of the original error was
+     conservative - the change is further below base-game density than R-110 claimed. Note
+     `drxBC2` already ships at **109.9 effective**, which is inherited debt in the b76
+     chumbi-freeze range and is NOT this lane's.
+  3. **THE GATE DID NOT ENFORCE THE RETIREMENT PROTOCOL IT ADVERTISED.** R-110 says the gate
+     proves "all 281 shipped instances keep their exact bytes". It did not: G1 compared only the
+     TAIL 14 as a set, never the head and never the total, and because every planted negative
+     mutated the DECLARATION while leaving the map correct, no plant could exercise it. The vet
+     planted four MAP-SIDE negatives and **all four passed with every gate green** (delete a
+     shipped instance; delete one of amgoz1's ten shipped monster proxies, which also silently
+     lowered the density numbers; delete-and-pad so the count still read 295; teleport a shipped
+     proxy 500 u off the level). NOW: **G1c** checks the exact total, all ELEVEN shipped `Proxy`
+     placements by name at their exact shipped local coords, and an md5 **digest of all 281
+     shipped instances' byte identity** (`78a536278d5dbdf23332e70750aa04d9`) - all three without
+     needing a baseline map; **G1d** adds a byte-for-byte head diff against a baseline when one is
+     given, rotation bytes included. The gate is 16 rows with **16/16 planted negatives correct**
+     (8 declaration + **8 map-side byte plants**), and every plant now declares both the gate it
+     must trip and an allow-set, so the converse is checked too.
+  Also corrected: the shipped-`Quests.arc` deploy-safety claim was FALSE (see R-113); `--arz`
+  defaults resolved to another lane's artifact from a worktree; the player-surface proof was run
+  circularly against the post-change map (re-run honestly against the baseline: **PASS, 0
+  problems, 39 creature records**); `SEP_MIN = 16.0` was attributed to R-30, which fixes NO
+  distance (16.0 is the design pass's own number - R-30 stays PENDING and its status is unchanged);
+  and the design pass's ocean-ring figures were themselves wrong (see R-114). NEW ARTIFACT:
+  `local/b100_r2/Levels_merged.arc` md5 **65063ae5fe89d75ef4a65ad46f1ea19d**, 688,692,862 B,
+  reproduced byte-identically by a second independent build.
+
+- R-113 [2026-07-29] IMPLEMENTED b100 ROUND 2, correction of a FALSE claim in R-110's own gate
+  record: R-110 / the BUILD68-DEV record asserted the lane's `Quests.arc` was **"byte-identical to
+  the artifact already deployed"**. IT IS NOT. MEASURED 2026-07-29: deployed
+  `CustomMaps/SoulvizierClassicDEV/Resources/Quests.arc` = `bd0fb5f99d88fab74b81f27b7cb952b2`,
+  194,971 B (written 08:28); this lane's build and the main checkout's STAGED copy =
+  `5e664c7b190965fd69f6ff15d77d85e4`, 194,926 B. Identity with the CANONICAL STAGED copy is what was
+  actually measured and is a different statement. This lane's own base commit `4f0299c` is the b98
+  addendum that already recorded this drift. **CONSEQUENCE:** Levels+Quests are COUPLED and
+  CLAUDE.md warns that shipping the new map without the rebuilt `Quests.arc` yields TWO widow
+  letters once the quest tracks, so an integrator must ship this lane's `Quests.arc` WITH the map -
+  the round-1 wording invited the opposite conclusion. SEPARATE DEFECT FOUND WHILE PROVING THIS:
+  `tools/build_quest_files.py` restored its pristine base with a bare repo-relative
+  `reference_mods\...` path guarded by `if exists()`, and `reference_mods/` is gitignored and EMPTY
+  in every fresh worktree AND in the main checkout - so the restore SILENTLY did nothing and the
+  build re-patched an already-patched artifact. Only its own exactly-one-portal-reference assert
+  caught it (as a baffling "found 3"); without that assert it would have shipped a DOUBLE-PATCHED
+  `Quests.arc` attached to a map. FIXED: `svaera_quests_arc` registered in
+  `tools/check_build_inputs.py` with the same md5-pinned fallback chain as every other SVAERA input
+  (pinned `b786666ccc7accf4b533adecc457ce81`, 194,578 B), and the restore now always runs and fails
+  loud on a miss. `Quests.arc` then rebuilds reproducibly to `5e664c7b190965fd69f6ff15d77d85e4`
+  with the quest-record contract PASS over 107 records.
+
+- R-114 [2026-07-29] IMPLEMENTED b100 ROUND 2 - **the design pass's ocean-ring measurements were
+  WRONG, and so was the vet finding that quoted them.** Both stated the four ocean tiles hold
+  **42,199 sq u** of walkable enemy-free ground, and the vet concluded this lane therefore
+  addressed only ~36% of the reachable empty ground, the ocean being "1.76x the area that got
+  populated". MEASURED: 42,199 is the **ALL-AREA** sum, which counts each level's PADDED neighbour
+  strips - exactly the trap the design pass flagged in its own RISKS section and then fell into.
+  Restricting each tile to the cells its OWN GUID index owns (the same `areas`-byte mechanism the
+  implementation uses for drxBC3): `ocean_extension01` **9,785**, `02` **3,299**, `03` **1,563**,
+  `04` **25** = **14,673 sq u**, against the **23,994 sq u** this lane populated. So the ocean ring
+  is **0.61x** the populated area, not 1.76x, and this lane addresses **62.1%** of the reachable
+  own-area empty ground, not 36%. `ocean_extension04` has 25 sq u of its own ground - it is not a
+  place at all - and `ocean_extension05` has ZERO. The design's **107.2 u** seam opening is likewise
+  an all-area figure: own-area-to-own-area, `drxBC3 <-> ocean_extension02` measures 163 shared
+  walkable columns with a widest contiguous run of **21.4 u** (`<->01` 168 / 19.8 u, `<->03` 42 /
+  8.4 u, `<-> drxBC_Finale` 62 / 12.4 u). WHAT SURVIVES, and it is the part that matters: the ocean
+  ring IS genuinely reachable empty ground. The b13 tile-lattice requirement - which the vet
+  explicitly did NOT measure - is **SATISFIED** at every drxBC3 ocean seam (offset **0.000 mod
+  12.8**, with walkable crossings measured past each boundary), so the player really can walk out
+  there and find 14,673 sq u with zero monster proxies. It remains **WILL_DECISION-1** and gate row
+  G12 asserts this lane did not touch it. This lane does NOT claim Will's emptiness report is fully
+  resolved: the walkway is populated and proven, the ocean ring is not.

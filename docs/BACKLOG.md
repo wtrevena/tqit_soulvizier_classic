@@ -1,14 +1,74 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## BUILD68-DEV GATE RECORD - b100 SANCTUARY OF THE BLOODBORN: THE POPULATION (2026-07-29, branch `feat/sanctuary-populate`, tag `build68-dev`)
+## BUILD70-DEV GATE RECORD - b100 SANCTUARY OF THE BLOODBORN, ROUND 2: CLEARING A NO-GO VET (2026-07-29, branch `feat/sanctuary-populate`, tag `build70-dev`)
 
-**NOT DEPLOYED.** This lane wrote nothing to `CustomMaps`, launched neither TQ nor Steam, and
-touched no file outside its own worktree. Full evidence: `docs/reports/b100_sanctuary_population.md`.
-Rulings: **R-110** (population, IMPLEMENTED) and **R-111** (minimap, PENDING) in a fresh decade
-110-119, re-proven free this turn against `main` and every in-flight branch.
+**NOT DEPLOYED.** This lane wrote nothing to `CustomMaps`, launched neither TQ nor Steam.
+Full evidence: `docs/reports/b100_sanctuary_population.md`. Rulings: **R-110** (population,
+IMPLEMENTED) and **R-111** (minimap, PENDING) from round 1, plus **R-112** (round-2 amendment to
+R-110), **R-113** (the false Quests.arc claim + the quest-build stale-input defect) and **R-114**
+(the design pass's ocean-ring figures were wrong) appended this turn. Decade 110-119 re-proven free
+against `main` and every in-flight branch: only `feat/toxeus-apex-roster`, `fix/blade-mastery-truth`
+and `main` hold R-1xx entries, all of them R-100..R-102.
 
-**TAG:** briefed `build66-dev`; that tag was already taken by the b94/leinth-wave merge and
-`build67-dev` was taken too, so this lane takes **`build68-dev`**. A tag in use is never reassigned.
+**TAG:** briefed `build66-dev` (taken by the b94/leinth-wave merge). Round 1 took `build68-dev`.
+`build69-dev` has since been taken by `feat/toxeus-apex-roster` (`859f8a9`), so round 2 takes
+**`build70-dev`**. A tag in use is never reassigned.
+
+### ROUND 2 - AN INDEPENDENT VET RETURNED **NO-GO**; ALL 13 FINDINGS RE-MEASURED
+
+Outcome: **11 confirmed and fixed**, **1 confirmed-but-with-wrong-numbers** (the ocean scope
+finding: the emptiness is real, its "1.76x / 36%" figures were not - R-114), **1 partially wrong**
+(the zero-margin readings are inherent to a shared constant, not near-misses). Nothing was argued;
+each finding was re-measured with a command. The three round-1 claims that did NOT survive:
+
+1. **`Quests.arc` deploy-safety claim was FALSE** (HIGH). Round 1 asserted in four places that its
+   `Quests.arc` was "byte-identical to the artifact already deployed". MEASURED: deployed =
+   `bd0fb5f99d88fab74b81f27b7cb952b2` / 194,971 B; built + staged = `5e664c7b190965fd69f6ff15d77d85e4`
+   / 194,926 B. **Different size AND hash.** Levels+Quests are COUPLED and the integrator MUST ship
+   this lane's `Quests.arc` with the map. R-113, `BL-b100-DEBT-8`.
+2. **Density was gated in the wrong unit.** `spawnMax` is not what the engine spawns - the pool's
+   `proxyPoolEquation` multiplies it (`_01` = 3.60025x at 1 player, `_02` = 1.357143x). All 176
+   blood-cave pool references use `_02`; 854/887 of the base-game cohort's use `_01`, so round 1's
+   raw cross-family comparison was invalid. Now gated in **EFFECTIVE ENTITIES**, cap **57.0**,
+   drxBC3 **32.6 -> 51.6**, corrected cohort (n=80) **median 90.0 / p90 158.4 / max 280.8**. No
+   placement moved (within drxBC3 the units are exactly proportional).
+3. **The placement SHAPE was the opposite of the recorded intent.** R-110 records "a congregation at
+   rite, not a patrol" but the mechanism was farthest-point insertion, which MAXIMISES spacing.
+   Measured round 1: NN Chebyshev min 23.2 / median 31.8. Now group-clustered (anchor
+   farthest-point, members nearest-point to their own anchor): **min 16.0 / median 30.0 / max 62.2**,
+   bimodal like amgoz1's own 7.4 / 41.9 / 55.2.
+
+**THE GATE NOW ENFORCES THE RETIREMENT PROTOCOL IT ADVERTISED.** Round 1's G1 compared only the tail
+14 as a set; four map-side negatives the vet planted all passed with every gate green. New **G1c**
+(exact total + all 11 shipped `Proxy` placements by name at their shipped coords + an md5 digest of
+all 281 shipped instances' byte identity, `78a536278d5dbdf23332e70750aa04d9`, no baseline needed) and
+**G1d** (byte-for-byte head diff vs a baseline, rotation bytes included). **16 rows, 16/16 planted
+negatives correct - 8 declaration plants + 8 MAP-SIDE byte plants** (delete a shipped instance;
+delete a shipped monster proxy; delete-and-pad to keep the count at 295; teleport a shipped proxy
+500 u; rotate a new instance; flip one byte in the `0x0b`; truncate it to a 148-byte b89-shaped stub;
+diverge tileset 3). Each plant declares its target gate AND an allow-set, so the converse is checked.
+
+**A SEPARATE DEFECT FOUND WHILE PRODUCING THE COUPLED ARTIFACT:** `tools/build_quest_files.py`
+restored its pristine base via a bare repo-relative `reference_mods\...` path guarded by
+`if exists()`. `reference_mods/` is gitignored and **EMPTY in every fresh worktree AND in the main
+checkout**, so the restore silently did nothing and the build re-patched an already-patched artifact.
+Only its own exactly-one-portal-reference assert caught it. Fixed by registering `svaera_quests_arc`
+in `tools/check_build_inputs.py` (md5-pinned `b786666ccc7accf4b533adecc457ce81`) and always
+restoring. `Quests.arc` now rebuilds reproducibly with the quest-record contract PASS over 107
+records. `BL-b100-DEBT-8`.
+
+⚠️ **I OVERWROTE A GITIGNORED SCRATCH ARTIFACT IN THE MAIN CHECKOUT.**
+`tools/svaera_plus_portals.py` hardcodes its default output to
+`c:\Users\willi\repos\tqit_soulvizier_classic\local`, so the first round-2 map build wrote the MAIN
+CHECKOUT's `local/Levels_merged.arc` rather than this worktree's. The staged canonical
+(`work/SoulvizierClassic/Resources/Levels.arc` = `fc0adcc0713839a685b32d6e122653be`) and the deployed
+copy (`943d0ab9516d332db79bd7f9fd2d3ffe`) were both verified **UNTOUCHED**. The stray build was
+renamed to `local/Levels_merged.b100r2-STRAY-DO-NOT-DEPLOY.arc` (bytes preserved, zero data loss) so
+that nothing can consume it as canonical via `deploy_to_custommaps.ps1 -SyncLevels`; there is now no
+bare `local/Levels_merged.arc` in the main checkout. Whatever a previous lane had left there is gone
+and is not recoverable - it was regenerable scratch, and CLAUDE.md's standing rule is to regenerate
+via `svaera_plus_portals.py` rather than trust a leftover `local/` build. Every subsequent build in
+this lane used `SVC_OUT_DIR`. `BL-b100-DEBT-9`.
 
 **WHAT IT IS.** Will: the Sanctuary has *"large walkable areas with no enemies placed"*. Confirmed
 against built bytes before anything changed: `Levels/World/xBloodCave/drxBC3.lvl` (idx 2253) is the
@@ -46,21 +106,43 @@ density comparators used a proxy-CENTRED box that undercounts by a measured mean
 ProxyPool records carry no `Class` field at all, their identity is the template. Its INTENT, its four
 bands and its creature rosters are kept verbatim.
 
-**ARTIFACTS** (all in `.claude/worktrees/sanctuary-populate/`, nothing written to `CustomMaps`):
-- `local/b100_new/Levels_merged.arc` md5 **`48a51961bb3a36c39f82759845041f14`** (688,692,859 B) - the deliverable
+**ROUND-2 ARTIFACTS** (all in `.claude/worktrees/sanctuary-populate/`, nothing written to `CustomMaps`):
+- `local/b100_r2/Levels_merged.arc` md5 **`65063ae5fe89d75ef4a65ad46f1ea19d`** (688,692,862 B) - **the
+  deliverable**. A second independent build into a separate `SVC_OUT_DIR` produced the **identical
+  md5** - map-build determinism.
+- `local/b100_base/Levels_merged.arc` md5 **`718abad63e7813dc78c4b169df969fd5`** (688,692,225 B) - the
+  baseline built from merge-base `4f0299c` in the same environment.
 - `work/SoulvizierClassic/Resources/Quests.arc` md5 **`5e664c7b190965fd69f6ff15d77d85e4`** (194,926 B)
-  - COUPLED with Levels, and **byte-identical to the artifact already deployed**
+  - COUPLED with Levels. ⚠️ **NOT the deployed bytes** (deployed = `bd0fb5f9…` / 194,971 B). Round 1
+  claimed identity and was wrong; **this artifact must ship with the map.**
 - `work/SoulvizierClassic/Database/SoulvizierClassic.arz` md5 **`4378b617fefb2014e382bb5931e7d605`**
   (55,460,430 B, 51,108 records) and `work/.../Text.arc` md5 **`c33b6abe3d61559785ee00ab3280a765`**
-  (89,024 B) - **UNCHANGED by this lane**, and both reproduce the b98 lane's recorded md5s exactly.
+  (89,024 B) - **UNCHANGED by this lane.** Both were REBUILT from scratch this round and reproduce
+  round 1's and the b98 lane's recorded md5s to the byte: a determinism proof for the DB/Text half
+  and evidence the lane touches no record.
+- Round 1's `local/b100_new/Levels_merged.arc` (`48a51961…`) is **SUPERSEDED** - its placements are
+  the even-spread set R-112 replaced.
 
 **RECORD DIFF vs a real baseline built from `4f0299c` in the same environment:** `ADDED 0 /
 REMOVED 0 / CHANGED 0`, and the two arz files are **byte-identical**. Nothing to attribute.
 
-**GATE DELTAS (each run on BOTH maps):** `verify_merged_bc_navmeshes` 24/24 both; map contract suite
-6 P2 / 0 P0 / 0 P1 and the **identical violation set item for item** both; `gate_placed_record_
-resolution` 346/397/14,241 both (a PRE-EXISTING `main` failure, zero delta, none of this lane's
-records in the missing set); `gate_landing_clearance --wiring v1` PASS=27; `validate_tags` PASS.
+**WHOLE-MAP BLOB DIFF (`tools/debug/b100_map_diff.py`) new vs baseline:** exactly **1 level blob of
+2,282** differs - `[2253] drxBC3.lvl`, 1,113,386 -> 1,114,441 B - and inside it exactly one section,
+`0x05` (18,778 -> 19,833 B). `0x0b` navmesh **byte-IDENTICAL** (857,212 B, md5
+`06f783d00edc7c23866b0fe2b368bbb0`). Top-level `0x01`/`0x02` changes fully attributed: level identity
+(fname + tile dims + grid corner + GUID) unchanged on **2282/2282**, `data_length` changed on **0**
+other levels, `data_offset` shifted on 28 - the expected ripple. Verdict `PASS - every change
+attributed`.
+
+**GATE DELTAS (each run on BOTH maps):** `MAP-SANCTUARY-1` **16/16 rows PASS** + **16/16 planted
+negatives**; `verify_merged_bc_navmeshes` **24/24 real navmeshes match donor + 7 ocean stubs valid**
+on both; `seam_lattice_check --gate` **24 aligned / 15 misaligned on BOTH** (zero delta - the 15 are
+pre-existing `ocean_extensionx*` seams, `BL-b100-DEBT-10`); map contract suite **6 P2 / 0 P0 / 0 P1,
+GATE PASS**, the **identical violation set item for item** on both; `validate_tags` **PASS** (427
+authoritative tags all present); `tools/patches/_check_registry.py` **OK, 42 modules**, order digest
+`9867e2906fef7b8a29e36adf784ea368f465789ef042dcd080f092203f26fe30`; `check_build_inputs --all
+--verify-hashes` **PASS, 9 inputs**; player-surface checklist **PASS, 0 problems, 39 creature
+records**, re-run NON-circularly against the baseline map.
 
 ⚠️ **CONCURRENCY:** this branch is on `4f0299c` and `main` moved TWICE while the lane ran (`6467feb`
 feat/leinth-wave, then `b7cb622` fix/blade-mastery-truth). It needs an integration merge;
@@ -68,8 +150,25 @@ feat/leinth-wave, then `b7cb622` fix/blade-mastery-truth). It needs an integrati
 NOT contested - the blade-mastery lane's own ledger note records that it took 100-102 and yielded
 110-119 here.
 
-**OPEN DEBT:** BL-b100-DEBT-1..7 (see DEBT REGISTER). Headline: **no in-game check exists** - no
-agent in this lane may launch TQ, so every claim is about bytes and geometry, not feel.
+**OPEN DEBT:** BL-b100-DEBT-1..10 (see DEBT REGISTER). Headline: **no in-game check exists** - no
+agent in this lane may launch TQ, so every claim is about bytes and geometry, not feel. Round-2
+additions:
+- **`BL-b100-DEBT-8` (P1, NEW):** the deployed `Quests.arc` differs from the staged/built one
+  (`bd0fb5f9…` vs `5e664c7b…`). Levels+Quests are COUPLED - the integrator must stage and deploy this
+  lane's `Quests.arc` alongside the map. Also covers the now-fixed silent stale-input bug in
+  `build_quest_files.py`; what remains open is that `reference_mods/` is empty in the main checkout,
+  so the Workshop fallback is load-bearing for every quest build until someone repopulates the cache.
+- **`BL-b100-DEBT-9` (P2, NEW):** `tools/svaera_plus_portals.py` hardcodes its default output dir to
+  the MAIN CHECKOUT's `local/`, so any worktree lane that forgets `SVC_OUT_DIR` clobbers a shared
+  scratch artifact. This lane did exactly that once (see the warning above) before isolating. The
+  default should be REPO-relative like every other path was made this round.
+  `tools/verify_merged_bc_navmeshes.py` has the same shape (env-overridable, main-relative default).
+- **`BL-b100-DEBT-10` (P2, NEW, PRE-EXISTING NOT OURS):** `seam_lattice_check --gate` reports **15
+  misaligned seams** on the shipped map, identical before and after this lane. All 15 involve
+  `ocean_extensionx*` tiles plus `ocean_extension02|05` and `03|05`. Per b13 a misaligned lattice
+  means those seams do not stitch, i.e. the player cannot walk across them. The four ocean tiles that
+  border drxBC3 ARE aligned (0.000 mod 12.8), so the Sanctuary itself is fine, but this is an
+  unexamined walkability hole in the outer ocean ring.
 
 ## BUILD65-DEV GATE RECORD - b98 THE ENDLESS HUNT, ROUND 4: INTEGRATION ONTO POST-b99 MAIN (2026-07-29, branch `feat/endless-hunt`, tag `build65-dev`)
 
@@ -1476,7 +1575,47 @@ along automatically when the structural cluster-relocation fix lands.
 
 ## DEBT REGISTER (open deferred/unproven/launch-gated items)
 
+> 🩸🩸 **2026-07-29 b100 ROUND 2 - VET NO-GO CLEARED (`feat/sanctuary-populate`, `build70-dev`,
+> R-112/R-113/R-114).** See the BUILD70-DEV GATE RECORD at the top of this file. Debt added or
+> RE-STATED WITH CORRECTED NUMBERS this round - **read these in preference to the round-1 wording
+> further down, which quotes figures round 2 disproved**:
+> - **BL-b100-DEBT-8 (P1, NEW, OPEN):** the DEPLOYED `Quests.arc` (`bd0fb5f99d88fab74b81f27b7cb952b2`,
+>   194,971 B) is NOT the staged/built one (`5e664c7b190965fd69f6ff15d77d85e4`, 194,926 B). Round 1
+>   claimed they were identical, in four places. Levels+Quests are COUPLED: **stage and deploy this
+>   lane's `Quests.arc` with the map** or risk the two-widow-letter class. The `build_quest_files.py`
+>   silent stale-input bug behind the discovery is FIXED; what stays open is that `reference_mods/` is
+>   empty in the main checkout, so the Steam-Workshop fallback is load-bearing for every quest build.
+> - **BL-b100-DEBT-9 (P2, NEW, OPEN):** `tools/svaera_plus_portals.py` (and
+>   `tools/verify_merged_bc_navmeshes.py`) default their paths to the MAIN CHECKOUT's `local/`, so a
+>   worktree lane that forgets `SVC_OUT_DIR` silently clobbers shared scratch. This lane did it once.
+> - **BL-b100-DEBT-10 (P2, NEW, PRE-EXISTING NOT OURS):** 15 misaligned navmesh seams on the shipped
+>   map (identical before/after this lane), all involving `ocean_extensionx*` plus
+>   `ocean_extension02|05` and `03|05`. Per b13 those seams do not stitch. The four ocean tiles
+>   bordering drxBC3 ARE aligned, so the Sanctuary is unaffected.
+> - **BL-DEBT-b100-1 CORRECTED (P1, STILL OPEN, WILL_DECISION-1):** the ocean ring holds **14,673 sq u**
+>   of its OWN walkable ground (01: 9,785 / 02: 3,299 / 03: 1,563 / 04: 25), **not 42,199** - that
+>   figure counted padded neighbour strips. So it is **0.61x** the 23,994 sq u this lane populated, and
+>   this lane addresses **62.1%** of the reachable own-area empty ground, not 36%. The widest
+>   own-area-to-own-area opening is **21.4 u**, not 107.2 u. It IS genuinely reachable: b13 lattice
+>   offset 0.000 mod 12.8 at every drxBC3 ocean seam. Still Will's taste call. R-114.
+> - **BL-DEBT-b100-2 CORRECTED (P2, STILL OPEN, WILL_DECISION-2):** the density figures are
+>   **EFFECTIVE ENTITIES**, not raw `spawnMax`. drxBC3 goes **32.6 -> 51.6** against a gated cap of
+>   **57.0** and a base-game cave/crypt/tomb cohort (n=80) of **median 90.0 / p90 158.4 / max 280.8**.
+>   Round 1's "18 per screen vs base-game median 14 / p90 70 / max 162" and "24 -> 36 vs median 26"
+>   are BOTH superseded - they mixed a 1.357143x pool family with a 3.60025x one. The knob is
+>   `SCREEN_CAP_EFF` in `tools/debug/b100_derive_sanctuary.py`. R-112.
+> - **BL-b100-DEBT-11 (P2, NEW, OPEN):** `SEP_MIN = 16.0`, `SCREEN_CAP_EFF = 57.0`,
+>   `CORRIDOR_SLACK = 60.0`, `EDGE_CLEAR = 10.0` and the 120 u band-1 boundary are **engineering
+>   constants, not rulings**. Round 1 attributed the 16 u to R-30; R-30 fixes no distance. R-30's
+>   status is unchanged (**PENDING**). Two of the 14 placements sit exactly on the `CORRIDOR_SLACK`
+>   limit and the nearest anchor clears `CLEAR_ANCHOR` by 0.1 u - both are INHERENT (the derivation
+>   filters on the same constants and the navmesh lattice is 0.2 u), not near-misses, and the gate now
+>   prints the margins and says so.
+
 > 🩸 **2026-07-29 b100 SANCTUARY RECON + DESIGN (`feat/sanctuary-populate`, R-110..R-119 reserved).**
+> ⚠️ **ROUND-2 WARNING: the ocean-area and density figures in this round-1 block are WRONG.** See the
+> round-2 block immediately above (R-112/R-114) for the corrected numbers. Kept verbatim because the
+> ledger is never rewritten.
 > Read-only recon + design gate for Will's "large walkable areas with no enemies placed" report on the
 > Sanctuary of the Bloodborn. Full evidence: `docs/reports/b100_sanctuary_recon.md`. Measured against
 > canonical `Levels.arc` md5 `fc0adcc0713839a685b32d6e122653be`. NOTHING IMPLEMENTED OR DEPLOYED.
