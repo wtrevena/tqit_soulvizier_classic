@@ -1,5 +1,209 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD72-DEV GATE RECORD - R-108 WAVE lane `feat/uber-visibility`: R-100 #7 + R-100 #18 + R-109 (2026-07-30, branch `feat/uber-visibility`, tag `build72-dev`) - NOT DEPLOYED
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed.** The orchestrator owns every deploy and every upload. The tag marks the
+BYTES for traceability, not a shipment. `build72-dev` was verified free before taking it
+(`git rev-parse -q --verify build72-dev` -> empty; `build71-dev` was the highest taken).
+
+**BASE.** Briefed base `main` @ `7efd107`. `main` advanced once mid-lane to `9a12d17` - which is
+where **R-109 itself was authored**, superseding the brief's "10%" framing with the EQUALITY - and
+this branch merged it. That advance is docs + `docs/wip_workflows/*.js` only
+(`git diff 7efd107 9a12d17 --numstat` -> `43 0 docs/WILL_RULINGS.md`,
+`263 0 docs/wip_workflows/R-108_batch_implementation_wave.js`,
+`1 1 docs/wip_workflows/R-99_all_toxeus_apex_orb.js`), so it cannot move an arz byte and the
+baseline built at `7efd107` stands for both.
+
+**ARTIFACT.** DB-only in terms of *artifacts to rebuild*: `Levels.arc` and `Quests.arc` are
+UNTOUCHED (zero map bytes, so the Levels+Quests coupling does not apply).
+⚠️ **arz + Text ARE COUPLED for this lane** - it mints 3 new tags
+(`tagSVCChestGeneral{A,B,C}Guard`, the guardian chest names) which the build writes into
+`work/SoulvizierClassic/Database/uber_soul_tags.txt` for `build_text_arc.py`. **The arz must not
+ship without a `Text.arc` built from the same run.** (The repo-root `uber_soul_tags.txt` is a stale
+tracked artifact, NOT the live one; the live file is the build output beside the arz.)
+
+| | arz | size | records | modules | exit |
+|---|---|---|---|---|---|
+| baseline (`main` @ `7efd107`, same env, same command) | `6a3a491db546b603c52132237c40aa63` | 55,475,226 B | 51,124 | 45 | 0 |
+| **built** (`feat/uber-visibility`) | **`b55515970be41c2542208e84a8705640`** | **55,485,062 B** | **51,151** | **47** | **0** |
+
+Baseline kept at `local/baseline_main_7efd107.arz`. Build log
+`docs/reports/r108_logs/r108_build.log`. Env for every build:
+`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, `py` launcher.
+
+**🛑 THE FIRST BUILD OF THIS LANE FAILED LOUD, EXIT 1, ON THIS LANE'S OWN CODE - recorded rather
+than quietly fixed.** `tombstone_xp_recovery` imported its sibling `death_xp_penalty` with a bare
+`import`. `death_xp_penalty` lives in `patches/`, not `tools/`, and the registry loads modules as
+`patches.<name>`, so the bare form resolves in CLI mode (which is exactly why `--negtest` and
+`--table` both passed 7/7 first time) and dies inside the real build:
+
+```
+--- [15/47] death_xp_penalty  (Death XP penalty -90% (R-80)) ---
+patches-registry: REGISTRY entry 'tombstone_xp_recovery' failed to import
+(tools/patches/tombstone_xp_recovery.py): ModuleNotFoundError("No module named 'death_xp_penalty'")
+EXIT=1
+```
+
+Two things worth keeping: **a patch module importing a SIBLING patch module must import it
+package-relatively** (only `tools/` is on `sys.path`), and **a module CLI passing is NOT evidence
+the module runs in the build** - `_load_module`'s fail-loud `SystemExit` is the only reason a silent
+no-op could not reach an artifact. The lane's record-diff tool was hardened in response so that a
+diff finding no UNEXPECTED change but also no EXPECTED change is a NO-GO rather than a false green
+(its own planted negative: diffing the baseline against itself now exits 1 with all five delta
+classes MISSING).
+
+**THE THREE ITEMS, and what each actually changed:**
+
+| item | ruling | code | shipped delta |
+|---|---|---|---|
+| exclamation mark on every uber EXCEPT the Devourer | R-100 #7 | `tools/patches/uber_quest_markers.py` | ONE field on ONE record: `um_bloodtoxeus_99.DisplayAsQuestItem 1 -> 0`. **The rest of #7 was ALREADY on `main`** - measured roster 26/26 marked - and was simply never deployed. |
+| Guardians of the General must READ as uber | R-100 #18 | `tools/patches/general_guardians.py` (NEW) | 6 guard records retuned (20 fields each) + 3 pair proxies wired + 27 NEW hoard records + 3 tags. |
+| tombstone XP recovery == XP lost | R-109 | `tools/patches/tombstone_xp_recovery.py` (NEW) | ONE field on ONE record: `gameengine.RedemptionMultiplier 0.5 -> 1.0`. |
+
+Registry lines from the green build:
+
+```
+--- [16/47] tombstone_xp_recovery  (tombstone XP recovery == XP lost (R-109)) ---
+    tombstone_xp_recovery: applied RedemptionMultiplier 0.5 -> 1.0  (L85 Legendary: lose 47765 XP, recover 47765 XP; was 23882)
+--- [42/47] general_guardians  (Guardians of the General read as uber (R-100 #18)) ---
+    general_guardians: modified 36 record(s), 3 tag(s)
+--- [43/47] uber_quest_markers  (placed-uber quest markers (R-39 6th sub-item + R-100 #7 exemption)) ---
+  ... roster 24 placed-uber record(s) (2 already marked, 22 newly marked); R-100 #7 EXEMPT 1 record(s)
+      forced to DisplayAsQuestItem=0 (0 newly unmarked): um_bloodtoxeus_99.dbr ...
+```
+
+(Roster is 24 at apply and 25 at verify BY DESIGN - `toxeus_hunt_endless` clones the Legendary
+Endless Hunt variant into existence at [44], after the marker pass. Same shape b101 documented for
+`uber_apex_orb`. "0 newly unmarked" is likewise correct on a FRESH build: the exemption means the
+Devourer is never marked in the first place; the 1 -> 0 delta is against the BASELINE ARZ, where
+this same module had marked him.)
+
+The three S4b collision WARNs are exactly the documented ones and no others:
+`records\xpack\game\gameengine.dbr <- damage_display, death_xp_penalty, tombstone_xp_recovery`
+(disjoint field sets: FontStyles / `deathPenalty*` / `RedemptionMultiplier`), and the six guards +
+three pair proxies `<- four_generals, general_guardians` (creator then ratified final writer).
+
+**MODULE VERIFIES, on the FINAL merged arz (all green):**
+
+```
+tombstone_xp_recovery.verify OK: RedemptionMultiplier = 1.0 (FLOAT); XP recovered from the death
+  marker == XP lost to the death penalty EXACTLY on 3012 checked points (L1-1000 x Normal/Epic/
+  Legendary against the LIVE penalty - divisor 90, cap 50000, min 0 - plus the realised-loss domain
+  up to the float32 bound); the cap is 336x inside the float32 exact-integer bound 16777216; all 5
+  dead gameengine lookalikes still at 0.5; gravestonegreece.dbr intact (Class FixedItemGravestone).
+Guardians of the General read as uber (R-100 #18) verify OK: 6 guardians at scale 2.0 (donor 1.50 /
+  general 1.65), life [9110, 11387, 13665] x3 (45% of their general, never above it), 12 distinct
+  signature skills all resolving and all pet-free, orb genericbossorb_03.dbr (R-99 apex + the marshal
+  tier untouched, 6 other consumers intact), 3 Champion-locked hoards = ONE chest per pair, rank/soul
+  policy unchanged, all 6 generals still Quest-class with their souls.
+placed-uber quest markers (R-39 6th sub-item + R-100 #7 exemption) verify OK: 25/25 placed-uber
+  records carry DisplayAsQuestItem=1 (incl. every dedicated transform-chain form); 1 R-100 #7 exempt
+  record(s) at DisplayAsQuestItem=0 (um_bloodtoxeus_99.dbr); 27 retinue/add records correctly
+  unmarked; 1 shared transform form(s) correctly left alone; 3 pre-existing anchors intact
+```
+
+**GATES - all three ship their own, all with planted negatives that actually fire. 29/29 PASS, and
+re-run against the BUILT arz, not just a baseline** (`docs/reports/r108_logs/r108_negtests.log`):
+
+| gate | plants | result |
+|---|---|---|
+| `py tools/patches/tombstone_xp_recovery.py --negtest <arz>` | 7 | **PASS 7/7** |
+| `py tools/patches/uber_quest_markers.py --negtest <arz>` | 8 | **PASS 8/8** |
+| `py tools/patches/general_guardians.py --negtest <arz>` | 14 | **PASS 14/14** |
+
+R-109's gate is the EQUALITY form the ruling itself demands, so BOTH sides fire: multiplier 2.0
+(recovery above the loss) rejected, the pre-R-109 0.5 (recovery below the loss) rejected, and the
+hardcoded 0.1 the ruling explicitly rejects also rejected. **The decisive plant is the seventh: the
+death penalty is retuned to divisor 45 / cap 123456 and the gate STILL PASSES with no edit here** -
+that is the proof the recovery is DERIVED from the penalty rather than pinned to a percentage.
+
+`general_guardians` ships a NEW content-class invariant (a Guardian must read as uber on every axis
+Will named) whose plants include both "put it back the way it shipped" cases, the eclipse-the-boss
+case, the reserved-apex-orb case, the sealed-chest case (a `Boss` lock on a `Champion` encounter
+never opens), the R-106 rank/soul cases, four_generals' quest-safety case, and the b76/R-31 density
+case.
+
+**RECORD DIFF vs the baseline** (`py tools/debug/r108_visibility_record_diff.py
+local/baseline_main_7efd107.arz work/SoulvizierClassic/Database/SoulvizierClassic.arz`, full output
+`docs/reports/r108_logs/r108_record_diff.txt`) - every expected set is DERIVED live from the built db
+through the modules' own APIs, never typed into the diff tool:
+
+```
+records  : baseline 51124 -> built 51151
+ADDED 27 / REMOVED 0 / CHANGED 11
+RESULT: PASS - 0 REMOVED, 27 ADDED (all 27 declared guard-hoard records), 11 CHANGED and every one
+attributes to R-100 #7, R-100 #18 or R-109. Zero unattributed changes.
+```
+
+ZERO-DELTA claims, re-checked rather than asserted: the other **25** roster members 0 moved, the
+**5** dead `gameengine` lookalikes 0 moved, the **R-80** penalty fields 0 moved.
+
+**R-109's MEASURED BEFORE/AFTER, BOTH WAYS** (`--table`, full output
+`docs/reports/r108_logs/r109_before_after_table.txt`). Ratio recovered/lost: **0.5000 before,
+1.0000 after**, on all three difficulties. L100 Legendary: lose 50,000 -> recover **50,000** (was
+25,000). L85 Legendary: lose 47,765 -> recover **47,765** (was 23,882).
+
+⚠️ **R-109's PREMISE WAS WRONG IN THE PLAYER'S FAVOUR AND THE RULING NOW SAYS SO.** The feared
+free-XP loop never existed: `Game.dll` stores the amount ACTUALLY lost at `GraveInfo+0x0C`
+(`RegisterExperienceLoss` VA `0x10194540`) and the marker returns `trunc(that * RedemptionMultiplier)`
+(`GetPlayerExperienceRedemptionAmount` VA `0x10194f60`), so b93 scaled recovery in lockstep. The real
+pre-R-109 defect was the opposite one and is exactly what R-109's gate clause forbids - the player
+was **punished twice** at 0.5x. Full symbol table + disassembly in `docs/WILL_RULINGS.md` R-109;
+reproduce with `py tools/debug/probe_tombstone_xp.py --disasm`.
+
+**NOT DONE / KNOWN GAPS - all registered as `BL-R108VIS-DEBT-1..6` below:** nothing in this lane was
+deployed or played, so there is no in-game confirmation of anything; whether the six Guardians should
+also get exclamation marks is a genuine Will decision that was deliberately NOT guessed; the two
+guards of each pair still share a mesh; and `amgoz1_design_voice.md` is still absent from the repo.
+
+### ⚠️ BL-R108VIS-DEBT-1 (P1, WILL DECISION - do the Guardians get exclamation marks?)
+R-100 #18 calls the six Guardians "the uber bosses we added" while R-100 #7 asks for a marker on
+"all the uber bosses we made". `uber_quest_markers` rule A marks placed encounters that pay a SOUL;
+the Guardians pay none (Champions, soul loot cleared by `four_generals`, kept that way here for
+R-106), so they are mechanically outside the roster - and three markers per war-council room
+(general + two guards) is precisely the map spam rule A exists to prevent. **They ship UNMARKED and
+this was NOT guessed.** If Will wants them marked it is one line: a pinned extra set in
+`uber_quest_markers` alongside `MARKER_EXEMPT`.
+
+### ⚠️ BL-R108VIS-DEBT-2 (P2, LAUNCH-GATED - nothing here is proven in game)
+No deploy, no TQ launch. Specifically unproven: the exclamation mark actually disappearing from the
+Devourer; the Guardians reading as uber to a player; the Guardian chests actually opening on a
+`Champion` lock; the twelve signature skills actually firing (slot/anim wiring is validated by the
+build's gates, not by a fight); and a character dying and recovering the full XP from a marker.
+R-109 in particular is arithmetic proved from the disassembly and the gate, not from a death.
+
+### ⚠️ BL-R108VIS-DEBT-3 (P2, VISUAL - the two guards of a pair still share one mesh)
+Measured: `svc_general_a_guard1` and `guard2` both carry
+`XPack\Creatures\Monster\Machae\machae01b.msh`, byte-identical to the `am_warden_43` they were cloned
+from. This lane fixed "looks like the other guys" via `scale 2.0` (33% over every machae in the room)
+plus twelve loud distinct attack FX, but did NOT differentiate the two guards of a pair from each
+other. That needs a mesh swap - the exact class of change `fix/green-mesh-swap` is in flight on and
+which needs an in-game check. Per-guard ambient aura FX (`charFxPakRunningNames`) was considered and
+REJECTED: the shipped candidates (`svc_black_poison_charfxpak`, `svc_ashsmoke_charfxpak`) are audited
+by the `black_poison` lane's own gate.
+
+### ⚠️ BL-R108VIS-DEBT-4 (P2, MISSING REFERENCE DOC - third lane to hit this)
+`amgoz1_design_voice.md`, cited by the 2026-07-11 standing directive, is STILL absent from this repo.
+Checked `git log --all --diff-filter=A -- "*amgoz*design*"` (empty) and a tree-wide `find` (the only
+`amgoz` hits are upstream `.dbr` conflicted copies). The bar was reconstructed from
+CLAUDE.md/BACKLOG.md and shipped SV content - the same fallback `uber_orphan_weapons.py` recorded in
+b66. It should be authored once, by someone, instead of re-derived per lane.
+
+### ⚠️ BL-R108VIS-DEBT-5 (P2, PRECEDENT TENSION, recorded not hidden)
+The six Guardians now carry a `treasureProxyName` while `um_enslaver_marauder_99` is deliberately
+orb-less ("The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0)" in `apply_svc_patches`).
+Resolved in favour of Will's explicit #18 ask; the two cases do differ measurably (`dropItems` is
+`1` on the guards and `0` on the marauders), and `svc_obs_escort_permean` is a shipped Champion on
+`genericbossorb_02`. If Will wants Champion escorts orb-less as a rule, the guards' orb is one field.
+
+### ⚠️ BL-R108VIS-DEBT-6 (P2, MERGE COUPLING with sibling R-108 lanes)
+`um_bloodtoxeus_99` is touched by this lane (`DisplayAsQuestItem`) and by `feat/devourer-kit`
+(R-100 #1/#12/#13: Bloodbath, Blood Frenzy, summons - skill fields). Field-disjoint, so the merge
+should be clean, but the integrator should confirm the Devourer still ends at
+`DisplayAsQuestItem = 0` after every R-108 lane lands - `uber_quest_markers.verify()` will red the
+build if it does not.
+
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
