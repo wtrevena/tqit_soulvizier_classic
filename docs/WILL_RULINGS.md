@@ -1378,3 +1378,104 @@ ones covering the added variants, record-diff for zero unattributed change, conf
 its 19 other consumers stay byte-unchanged.
 
 **STATUS:** RATIFIED, implementation queued. No open questions remain.
+
+---
+
+## R-100 [2026-07-29] PLAY-SESSION BATCH - 19 items, CAPTURED VERBATIM, none implemented yet
+
+Will played and reported a large batch in one message. Recorded verbatim FIRST, before any triage, because
+losing an item off a list this long is exactly the failure the DONE-MEANS-DONE rule exists to prevent.
+The numbering is mine; the words are his.
+
+**WILL, VERBATIM (single message, 2026-07-29):**
+
+> "We should grant the skill Bloodbath from the Erebenea the Bloodletter Soul to toxeus the devourer of blood
+> but lets reduce the cooldown on the skill from 45s to like 15s. Also when you cloned the monster to create
+> the Soul of the Unferried, you literally clone another monster in the game who is a quest monster who drops
+> Charon's Oar, and now this monster is also dropping Charon's Oar. Furthermore, the monster that you created
+> is literally a clone of the other one with no new skills or anything, its like playing the same monster
+> twice. Also I just faced toxeus the murderer, the endless hunt again and he was still a demon not a
+> skeleton, he didnt drop a soul, he didnt drop an orb. also toxeus the murderer the endless hunt had an
+> exclamation mark on him on the minimap but the other major bosses you have made, including the toxeus the
+> murderer variants do not have one. we should give an exclamation mark over their head to all the uber
+> bosses we made with the exception of toxeus the murderer, devourer of blood since he is sitting on a chest
+> a hidden location and should not be so easily found. also tantalus the hunger unbound is not inside the den
+> of tantalus like he is supposed to be, he is sitting right in front of the den of tantalus outside of it.
+> also he has three chests, all of them tantalus hoard where he should only have one. the uber monster soul
+> of the unferried also had three chests. Also there are forge formulas for experience potions that require
+> souls from a specific act, but the souls that we added for the new monsters we added into those acts and
+> probably the souls we added that were missing do not have the proper classification on them so you cant
+> use them in the forge formulas. We should also give the skill Blood Frenzy to the devourer of blood
+> (activated on low health), see Chief Bullfrog Quak soul for this skill. also we need to give toxeus the
+> murderer devourer of blood and toxeus the murderer endless hunt some guys they can summon like toxeus the
+> murderer enslaver of souls has. also the uber boss in the lower city of lost souls has no chest that he is
+> guarding and the orb he drops is trash. also all of the guys that we brought back into the game which
+> utilize thrown objects are all frozen in the game, they spawn and they cant move or attack or anything they
+> are broken. the machine uber boss destroyer of cities i think he is called doesnt have a chest that he
+> drops either. also he is right in the walking path, he should be moved off of the main walking path. the
+> main walking path is not the appropriate place for uber monsters we are placing in the game. The Soul
+> Gaoler boss chests are too much, we need to cut the number of chests in half for him (round down if
+> needed), also his chests on epic are dropping "essence" like "essence of the chill of tartarus" which
+> should only drop on normal instead of dropping the epic version which starts with "embodiment" like
+> "embodiment of the chill of tartarus". also the guys who are the guardians of the general the uber bosses
+> we added are super weak and they dont have any chests and dont drop any orbs or anything. also they are
+> small and they look just like the other guys and i killed them so fast they are so weak they appear just
+> like normal guys they are not big with no special skills or anything to make them even noticeable besides
+> their red names
+>
+> Also lets decrease the general soul drop rate for monsters who dont have a fixed spawn from 50% to 33%"
+
+### READ THIS BEFORE TRIAGING ANY OF IT: TWO OF HIS REPORTS ARE EXPLAINED BY A DEPLOY THAT NEVER RAN
+
+Measured, not assumed:
+- Deployed DEV arz = `06de12d4491a51cfe38bd321774a96b2` (the b94 Leinth lane's own round-2 write).
+- Merged main's build = `967b1f97137bf6479c18c08e9dd6ffc4` (51,124 records) - built, gate-green, and
+  **NEVER DEPLOYED**.
+- The canonical `CustomMaps\SoulvizierClassic` entry does not exist on this machine at all, so the Steam
+  build is further behind still.
+
+So when he says the Endless Hunt "didnt drop a soul, he didnt drop an orb": the 100% soul fix (R-91, b98) is
+on `main` and not on his disk, and the orb (R-99) is not merged yet. Those two are NOT new defects and must
+NOT be re-investigated as such - they are one un-run deploy. Deploy the coupled arz+Text, have him re-fight,
+and only then believe any residual.
+
+### THE ITEMS
+
+| # | item | class | notes |
+|---|---|---|---|
+| 1 | Grant **Bloodbath** (from the Erebenea the Bloodletter soul) to the **Devourer**; cooldown 45s -> **15s** | content | 15 is his number |
+| 2 | **Soul of the Unferried** was cloned from a QUEST monster and inherited its **Charon's Oar** drop | **P0 defect** | a quest item is now farmable |
+| 3 | That same monster is a bare clone - "like playing the same monster twice" | content | needs its own kit, held to the amgoz1 bar |
+| 4 | Endless Hunt "**still a demon not a skeleton**" | **CONTRADICTS an earlier ruling - see below** | do not guess |
+| 5 | Endless Hunt dropped no soul | **NOT A DEFECT** | un-deployed R-91 |
+| 6 | Endless Hunt dropped no orb | **NOT A DEFECT** | R-99 not merged yet |
+| 7 | **Exclamation mark over the head of EVERY uber boss we made**, EXCEPT the Devourer (hidden chest, must stay hard to find) | content | the Hunt already has one; b91's `uber_quest_markers` is the existing rig - copy it, do not invent |
+| 8 | **Tantalus the Hunger Unbound is OUTSIDE the Den of Tantalus**, sitting in front of it | **P1 regression** | b45 claimed exactly this fix; internal task "b45 FIX: re-place Tantalus encounter inside Den of Tantalus" is marked COMPLETED. Re-open and find out why it did not hold |
+| 9 | Tantalus has **3 chests, all "Tantalus Hoard"**; should have **1** | defect | b50's "3 majestic chests per boss" is the likely author; that decision now needs scoping |
+| 10 | Soul of the Unferried **also has 3 chests** | defect | same root as #9 |
+| 11 | **Forge formulas for XP potions require souls from a specific act**, and our added souls lack the act classification, so they cannot be used | **P1 defect** | affects every soul we minted, including the missing-souls wave |
+| 12 | Grant **Blood Frenzy** (low-health trigger) to the Devourer - see the **Chief Bullfrog Quak** soul | content | |
+| 13 | Give the **Devourer AND the Endless Hunt summonable minions**, like the Enslaver has | content | `svc_enslaver_summonmarauders` is the pattern |
+| 14 | Uber boss in the **Lower City of Lost Souls**: guards **no chest**, and his **orb is trash** | defect | orb tier probably wants the R-99 apex treatment |
+| 15 | **EVERY thrown-object monster we restored is FROZEN** - spawns, cannot move or attack | **P0 defect** | `thrown_wielders.py`. Multiple internal tasks claimed this rig was proven on 3 families and re-verified. It ships broken. Most serious item in the batch |
+| 16 | Machine uber boss (**Destroyer of Cities**) drops **no chest**, and stands **in the main walking path** | defect | |
+| 16b | **STANDING RULE: the main walking path is never an appropriate place for an uber monster we place.** Applies to every existing and future placement - audit them all | **standing** | |
+| 17 | **Soul Gaoler**: halve his chest count (round down). His **Epic** chests drop Normal-tier "essence of..." instead of Epic-tier "embodiment of..." | defect | difficulty-tier mis-wire in his loot chain |
+| 18 | **Guardians of the General** are weak, small, chest-less, orb-less, indistinguishable from trash except for red names | content | must READ as uber: size, kit, drops |
+| 19 | **General soul drop rate for monsters with NO fixed spawn: 50% -> 33%** | balance | this is the DROP-50 constant. It must NOT touch R-48 (the fixed 100% Toxeus souls) |
+
+### ITEM 4 IS A DIRECT CONTRADICTION AND MUST GO BACK TO WILL, NOT BE GUESSED
+
+On 2026-07-27 the recorded ruling behind R-90..R-96 was that the Endless Hunt should be a **DEMON, not a
+skeleton**, explicitly so that he would stop reading as a copy of the undead Enslaver - and b98 implemented
+exactly that (`ShadowStalker.msh`, race Demon, against the Enslaver's `RevenantPoison.msh`, race Undead).
+He now reports "he was still a demon not a skeleton" as a complaint.
+
+Either the 07-27 ruling was recorded backwards, or he has changed his mind, or he means something narrower
+(the Hunt should be a skeleton and some other axis should carry his identity). **Do not pick one.** Ask, and
+quote both of his statements back to him. Guessing means redoing a mesh and race change twice, and risks
+re-breaking the b92 mesh-green work (`BL-b98-DEBT-2`).
+
+**STATUS:** captured verbatim, decomposed, NOT implemented. Order of operations: deploy first (items 5 and 6
+evaporate), ask about item 4, then lane the rest by class - the two P0s (#2 Charon's Oar, #15 frozen thrown
+monsters) go first.
