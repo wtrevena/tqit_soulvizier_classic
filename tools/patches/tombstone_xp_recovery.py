@@ -159,7 +159,20 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/ on path
 
-import death_xp_penalty as dxp  # noqa: E402  (same package dir)
+# SIBLING import. The registry loads this file as `patches.tombstone_xp_recovery`
+# (`importlib.import_module('%s.%s' % (__name__, name))` in patches/__init__.py),
+# so `death_xp_penalty` - which lives in patches/, NOT in tools/ - is only
+# reachable package-relatively. A bare `import death_xp_penalty` builds and passes
+# the CLI (where this file runs as __main__ with patches/ as the script dir) and
+# then dies inside the real build; the registry's _load_module is fail-loud, so
+# that mistake reds the build rather than silently skipping the R-109 ruling
+# (measured: build exit 1, "REGISTRY entry 'tombstone_xp_recovery' failed to
+# import ... No module named 'death_xp_penalty'"). Both paths are supported here.
+try:                                    # imported as patches.tombstone_xp_recovery
+    from . import death_xp_penalty as dxp          # noqa: E402
+except ImportError:                     # run directly: py tools/patches/<this>.py
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import death_xp_penalty as dxp                 # noqa: E402
 
 MODULE_NAME = 'tombstone XP recovery == XP lost (R-109)'
 
