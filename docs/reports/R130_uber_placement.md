@@ -287,7 +287,33 @@ has to stand in the walking corridor to open. Because it rides the boss it is of
 construction - and the gate does not take that on trust, since it discovers chests from the map by
 marker (`CHEST_MARKERS`) and audits both new chests for containment and path independently.
 
-### 7.4 Placement survey of the two NEW chest spots
+### 7.4 The FULL #16b audit, re-run on the round-2 map (with chests)
+
+`py tools/debug/gate_uber_placement.py <map> --chests` on the built branch map
+`34d2f275122458abc9d46d0969853345`:
+
+```
+placements : 47
+VERDICT PASS : 46
+VERDICT FAIL : 1
+AUDITED + ACCEPTED on-path placements (9) - printed in full on every run
+GATE RED: 1 placement(s) fail
+   tombobs01.lvl   q_obs_roulette_b.dbr   BLOCKS-ROUTE,ON-MAIN-PATH
+```
+
+**The single RED is the round-1 finding, still deliberately red** (`BL-R130-DEBT-3`) - the
+roulette-b chokepoint. It is NOT a regression from this round and it is NOT silently accepted.
+Both new chests are inside the 46 PASS:
+
+```
+svc_mnemophage_chest.dbr  area "Lower City of Lost Souls" -> OK  off-path share 100%  blocks=none
+svc_diadochi_chest.dbr    area "Delian Meadows"           -> OK  d(route)=19.3u        blocks=none
+```
+
+Note the gate defaults to bosses only; `--chests` is what widens it to chest placements, which is
+why the audit must be run with that flag to be the complete #16b list.
+
+### 7.5 Placement survey of the two NEW chest spots
 
 Surveyed on map `fc0adcc0713839a685b32d6e122653be` at the chest proxy's own `placementExtents`
 (1.0) **and at double it** (2.0):
