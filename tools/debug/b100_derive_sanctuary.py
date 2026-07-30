@@ -214,16 +214,73 @@ PARTY_SPAWNMAX = 6            # reporting only (what the design called a "party"
 BAND_BOUNDS = (120.0, 265.0, 460.0)
 
 P = 'records\\drxmap\\proxy\\'
+
+# --------------------------------------------------------------------------- #
+# ROUND-3: THE ROSTER IS NOW BAND -> GROUPS -> (dbr, count), NOT BAND -> (dbr, count).
+#
+# WHY. The round-2 vet re-measured band 3's stated justification and it was FALSE.
+# R-110 / the report / the old SANCTUARY_SPECS comment all said
+# `bw_priest_houndmaster` "is the only proxy in this cave that pairs a caster with
+# beasts (measured: championChance 100, championMin=championMax=2 bloodhounds inside
+# spawnMax 3)". RE-MEASURED HERE, from the built arz, three ways:
+#
+#   1. `records\drxmap\proxy\pools\bw_priest_houndmaster.dbr` rosters name1..name3 =
+#      c_disciple_39 / 41 / 42 ONLY. There is NO hound record anywhere in it, under
+#      any field.
+#   2. championMin=championMax=2 is a RANK PROMOTION OF ITS OWN DISCIPLES, not two
+#      bloodhounds. Proof beyond the single record: of the 1,846 ProxyPool records in
+#      the built arz, ZERO carry any championName*/championWeight*/heroName*/bossName*
+#      field while 1,845 carry championChance/championMin/championMax - so the field
+#      family that could name a different champion creature does not exist in this
+#      template, and championMin/Max can only promote the pool's own nameN roster.
+#   3. `bw_priest_lone` carries the IDENTICAL roster (same three disciples, same
+#      weight 150) at spawnMax 1 / championChance 0. The "houndmaster" IS the lone
+#      priest at a higher count with guaranteed champion promotion.
+#   ... and the superlative is disproved by this level's own signature proxy:
+#      `zparty_witchfest_2099` pairs casters (3x c_disciple) with beasts
+#      (3x c_bloodhound_40/42/44), plus 3x d_reaver, in ONE roster.
+#
+# The record NAME lies; reading identity off a name is exactly what CLAUDE.md law #3
+# and the amgoz1 bar exist to catch, and it had become ledger law in R-110.
+#
+# WHAT THE DESIGN ACTUALLY WANTED still stands: "the middle of the walk gets its own
+# combat texture (chase + caster) instead of another melee wave". No single pool in
+# this cave's roster delivers it, so it is delivered by COMPOSITION - the houndmasters
+# and `hound_01_pack` (3x b_bloodhound, spawnMax 6) are now ONE GROUP and are placed
+# as a knot, so the priests really are leashed to hounds. Under round 2's flat roster
+# they were separate groups and landed 60.2 u apart (measured), which delivered the
+# texture only at BAND scale, not at encounter scale - the design's premise was wrong
+# AND its shape did not achieve the design's own intent.
+#
+# A group is the unit of clustering: its FIRST member is placed farthest-point, every
+# later member (across dbrs, in declared order) nearest-point to that group's anchor.
+# Declaration order is load-bearing for determinism - do not reorder without
+# re-deriving.
 BANDS = [
-    ('1 THE OUTER COURT', [(P + 'bw_acolyte_lone.dbr', 2)]),
-    ('2 THE CONGREGATION', [(P + 'zparty_witchfest_2099.dbr', 2),
-                            (P + 'bw_acolyte_clutch.dbr', 2)]),
-    ('3 THE CLERGY', [(P + 'bw_priest_houndmaster.dbr', 2),
-                      (P + 'bw_priest_lone.dbr', 1),
-                      (P + 'hound_01_pack.dbr', 1)]),
-    ('4 THE THRESHOLD', [(P + 'abom_dancer_spear_mix.dbr', 2),
-                         (P + 'abom_ravager_lone.dbr', 1),
-                         (P + 'q_shaman_lone.dbr', 1)]),
+    ('1 THE OUTER COURT', [
+        ('the two novices, kneeling together',
+         [(P + 'bw_acolyte_lone.dbr', 2)]),
+    ]),
+    ('2 THE CONGREGATION', [
+        ('the witchfest itself',
+         [(P + 'zparty_witchfest_2099.dbr', 2)]),
+        ('the body of worshippers',
+         [(P + 'bw_acolyte_clutch.dbr', 2)]),
+    ]),
+    ('3 THE CLERGY', [
+        # the composition fix: casters AND their beasts, as one encounter
+        ('the houndmasters and the hounds they are named for',
+         [(P + 'bw_priest_houndmaster.dbr', 2), (P + 'hound_01_pack.dbr', 1)]),
+        ('one priest set apart, further up the walk',
+         [(P + 'bw_priest_lone.dbr', 1)]),
+    ]),
+    ('4 THE THRESHOLD', [
+        ('the two door-wardens, flanking the approach',
+         [(P + 'abom_dancer_spear_mix.dbr', 2)]),
+        ('the ravager', [(P + 'abom_ravager_lone.dbr', 1)]),
+        ('the shaman, the band\'s named face',
+         [(P + 'q_shaman_lone.dbr', 1)]),
+    ]),
 ]
 
 
@@ -764,55 +821,71 @@ def derive(s):
     placed = []
     bounds = (0.0,) + BAND_BOUNDS + (float('inf'),)
     report = []
-    for bi, (label, roster) in enumerate(BANDS):
+    for bi, (label, groups) in enumerate(BANDS):
         lo, hi = bounds[bi], bounds[bi + 1]
         band = {k: r for k, r in cand.items() if lo <= r < hi}
         report.append((label, lo, hi, len(band)))
-        for dbr, n in roster:
-            eff = s.effective(dbr)
-            assert eff is not None, (
-                f'{dbr}: no resolvable effective spawn count (spawnMax x '
-                f'spawnMaxEquation) - refusing to place a proxy whose load is unknown')
-            anchor = None                       # (x, z) of this group's first member
-            for m in range(n):
-                ranked = []
-                for k, r in band.items():
-                    x, z = s.wx(k[0]), s.wz(k[1])
-                    if not sep_ok(x, z, committed):
-                        continue
+        for gname, roster in groups:
+            # ROUND-3: a GROUP may span several dbrs (band 3's houndmasters + their
+            # hounds), so the anchor belongs to the GROUP, not to the dbr. Round 2
+            # reset the anchor per dbr, which is why the hounds ended up 60.2 u from
+            # the priests they are supposed to be leashed to.
+            anchor = None                       # (x, z) of this GROUP's first member
+            gmember = 0
+            gsize = sum(n for _d, n in roster)
+            for dbr, n in roster:
+                eff = s.effective(dbr)
+                assert eff is not None, (
+                    f'{dbr}: no resolvable effective spawn count (spawnMax x '
+                    f'spawnMaxEquation) - refusing to place a proxy whose load is '
+                    f'unknown')
+                for _m in range(n):
+                    gmember += 1
+                    ranked = []
+                    for k, r in band.items():
+                        x, z = s.wx(k[0]), s.wz(k[1])
+                        if not sep_ok(x, z, committed):
+                            continue
+                        if anchor is None:
+                            # ANCHOR: largest min-distance first. Ascending on the
+                            # negated key == round 1's (md, -route, -gcx, -gcz)
+                            # descending.
+                            md = min(max(abs(x - qx), abs(z - qz))
+                                     for (qx, qz, _d, _sm) in committed)
+                            key = (-md, r, k[0], k[1])
+                        else:
+                            # MEMBER: smallest distance to this GROUP's anchor first.
+                            da = max(abs(x - anchor[0]), abs(z - anchor[1]))
+                            key = (da, r, k[0], k[1])
+                        ranked.append((key, k, x, z))
+                    ranked.sort(key=lambda t: t[0])
+                    bestk = None
+                    for _score, k, x, z in ranked:
+                        if worst_screen(committed
+                                        + [(x, z, dbr, eff)])[0] <= SCREEN_CAP_EFF:
+                            bestk = k
+                            break
+                    assert bestk is not None, (
+                        f'no rule-satisfying cell left in band {label} group {gname!r} '
+                        f'for {dbr} (group member {gmember}/{gsize}) - {len(band)} band '
+                        f'cells, {len(ranked)} passed the {SEP_MIN:.0f}u spacing floor, '
+                        f'none kept the worst {SCREEN:.0f}x{SCREEN:.0f} box at or under '
+                        f'{SCREEN_CAP_EFF:.1f} effective. Widen the band, widen the '
+                        f'corridor, or cut the roster.')
+                    x, z = s.wx(bestk[0]), s.wz(bestk[1])
+                    y = s.wy(s.cells[bestk])
                     if anchor is None:
-                        # ANCHOR: largest min-distance first. Ascending on the negated
-                        # key == round 1's (md, -route, -gcx, -gcz) descending.
-                        md = min(max(abs(x - qx), abs(z - qz))
-                                 for (qx, qz, _d, _sm) in committed)
-                        key = (-md, r, k[0], k[1])
-                    else:
-                        # MEMBER: smallest distance to this group's anchor first.
-                        da = max(abs(x - anchor[0]), abs(z - anchor[1]))
-                        key = (da, r, k[0], k[1])
-                    ranked.append((key, k, x, z))
-                ranked.sort(key=lambda t: t[0])
-                bestk = None
-                for _score, k, x, z in ranked:
-                    if worst_screen(committed + [(x, z, dbr, eff)])[0] <= SCREEN_CAP_EFF:
-                        bestk = k
-                        break
-                assert bestk is not None, (
-                    f'no rule-satisfying cell left in band {label} for {dbr} '
-                    f'(member {m + 1}/{n}) - {len(band)} band cells, {len(ranked)} '
-                    f'passed the {SEP_MIN:.0f}u spacing floor, none kept the worst '
-                    f'{SCREEN:.0f}x{SCREEN:.0f} box at or under {SCREEN_CAP_EFF:.1f} '
-                    f'effective. Widen the band, widen the corridor, or cut the roster.')
-                x, z = s.wx(bestk[0]), s.wz(bestk[1])
-                y = s.wy(s.cells[bestk])
-                if anchor is None:
-                    anchor = (x, z)
-                committed.append((x, z, dbr, eff))
-                placed.append(dict(band=label, dbr=dbr, cell=bestk, world=(x, y, z),
-                                   route=cand[bestk], spawnMax=s.spawn_max(dbr) or 0,
-                                   mult=s.multiplier(dbr), eff=eff,
-                                   role=('anchor' if m == 0 else 'member')))
-                del band[bestk]
+                        anchor = (x, z)
+                    committed.append((x, z, dbr, eff))
+                    placed.append(dict(band=label, group=gname, dbr=dbr, cell=bestk,
+                                       world=(x, y, z), route=cand[bestk],
+                                       spawnMax=s.spawn_max(dbr) or 0,
+                                       mult=s.multiplier(dbr), eff=eff,
+                                       role=('anchor' if gmember == 1 else 'member'),
+                                       d_anchor=(0.0 if gmember == 1 else
+                                                 max(abs(x - anchor[0]),
+                                                     abs(z - anchor[1])))))
+                    del band[bestk]
     return placed, existing, report
 
 
@@ -865,18 +938,22 @@ def main():
 
     cx, cy, cz = s.corner
     print('\n=== derived placements (LEVEL-LOCAL, ready for INJECT_SPECS) ===')
-    cur = None
+    cur = curg = None
     for p in placed:
         if p['band'] != cur:
             cur = p['band']
             print(f'  # --- {cur} ---')
+        if p['group'] != curg:
+            curg = p['group']
+            print(f'  #     group: {curg}')
         wxx, wyy, wzz = p['world']
         lx, ly, lz = wxx - cx, wyy - cy, wzz - cz
         print("        (P + '%s', %.3f, %.3f, %.3f),"
-              "   # route %5.1fu  world(%.1f,%.1f,%.1f) sMax=%d x%.4f = %.1f eff  [%s]"
+              "   # route %5.1fu  world(%.1f,%.1f,%.1f) sMax=%d x%.4f = %.1f eff  "
+              "[%s d_anchor %.1fu]"
               % (p['dbr'].split('\\')[-1], lx, ly + 0.005, lz,
                  p['route'], wxx, wyy, wzz, p['spawnMax'], p['mult'], p['eff'],
-                 p['role']))
+                 p['role'], p['d_anchor']))
 
     allp = [(p['world'][0], p['world'][2], p['dbr'], p['eff']) for p in placed]
     w0, _ = worst_screen(existing)
@@ -911,13 +988,31 @@ def main():
         v = nnd(pts)
         print(f'  {nm:18s} n={len(pts):2d}  min {v[0]:5.1f}  median '
               f'{v[len(v) // 2]:5.1f}  max {v[-1]:5.1f}   {[round(t, 1) for t in v]}')
+    # ROUND-3, vet finding 8: the CLUSTERED mode is printed on its own, per group, so
+    # nobody has to take "bimodal" on trust again. The tight mode is nearest-point
+    # against ONE floor (SEP_MIN), so members of a 2-member group land AT that floor by
+    # construction; a group with more members, or whose members have different
+    # admissible cells, spreads. Whatever it actually is, it prints here.
+    print('\n=== shape: INTRA-group distance to the group anchor (the tight mode) ===')
+    bygroup = {}
+    for p in placed:
+        bygroup.setdefault((p['band'], p['group']), []).append(p)
+    for (bnd, gnm), ps in bygroup.items():
+        ds = [f'{q["d_anchor"]:.1f}' for q in ps[1:]]
+        print(f'  {bnd[:1]} {gnm[:52]:52s} n={len(ps)}  '
+              f'd_anchor {", ".join(ds) if ds else "(singleton)"}')
+    tight = sorted(round(p['d_anchor'], 1) for p in placed if p['role'] == 'member')
+    print(f'  tight mode across all groups: {tight}  '
+          f'({len(set(tight))} distinct value(s), floor SEP_MIN={SEP_MIN:.1f})')
 
     if a.json:
         Path(a.json).write_text(json.dumps(
-            [dict(band=p['band'], dbr=p['dbr'], world=list(p['world']),
+            [dict(band=p['band'], group=p['group'], dbr=p['dbr'],
+                  world=list(p['world']),
                   local=[p['world'][0] - cx, p['world'][1] - cy + 0.005, p['world'][2] - cz],
                   route=p['route'], spawnMax=p['spawnMax'], mult=p['mult'],
-                  eff=p['eff'], role=p['role']) for p in placed], indent=1))
+                  eff=p['eff'], role=p['role'], d_anchor=p['d_anchor'])
+             for p in placed], indent=1))
         print(f'\nwrote {a.json}')
     return 0
 

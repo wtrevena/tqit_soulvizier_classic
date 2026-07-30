@@ -2463,11 +2463,32 @@ for _b65_key, _b65_specs in B65_TOXEUS_STALKER_SPECS.items():
 # drxBC3 proxies measure min 7.4 / median 41.9 - he clusters, and the code could not. Now:
 # each roster group's FIRST member is placed farthest-point (so distinct groups land in
 # distinct places along the walk) and every SUBSEQUENT member is placed nearest-point to that
-# group's own anchor (so a group is a knot). Measured on this list: min 16.0 / median 30.0 /
-# max 62.2 - six pairs hard against the 16 u spacing floor, gaps out to 62.2 u. Bimodal, like
-# amgoz1's own distribution, not uniform. Still zero RNG and a total order on every tie-break:
-# 3 runs at PYTHONHASHSEED 7/14/21 produced identical output (json md5
-# c7fbe1a0f90c9d95a59ec009bc6cd34e).
+# group's own anchor (so a group is a knot).
+#
+# ROUND-3: A GROUP MAY NOW SPAN SEVERAL POOLS, and the anchor belongs to the GROUP. Round 2
+# reset the anchor per dbr, so band 3's hounds were a separate group from the priests they
+# are supposed to be leashed to and landed 60.2 u away (measured). See the band-3 note below
+# for why that mattered.
+#
+# SHAPE, MEASURED ON THIS LIST, and stated honestly because the round-2 vet caught the
+# previous wording overselling it: nearest-neighbour Chebyshev min 16.0 / median 30.0 /
+# max 62.2, full distribution
+#   [16.0 x6, 30.0, 30.0, 30.2, 30.2, 41.4, 42.6, 60.2, 62.2]
+# against amgoz1's own [7.4, 7.4, 30.2, 30.2, 38.0, 41.9, 41.9, 44.0, 48.6, 55.2].
+# It IS bimodal, but round 2 called it "bimodal like amgoz1's own distribution" and that
+# comparison does not hold: amgoz1's three tight pairs sit at three DIFFERENT distances
+# (7.4 / 30.2 / 41.9) while three of ours sit at exactly 16.000, the SEP_MIN floor, to
+# machine precision. That is the code faithfully implementing the design's own words ("as
+# close as the spacing law allows") against ONE floor constant - it is not an accident - but
+# it means the tight mode is a single number, and 16.0 is a constant this lane chose, not one
+# Will ruled (BL-b100-DEBT-11). The clustered mode is now printed per group on every
+# derivation run (`shape: INTRA-group distance to the group anchor`) so the claim can never
+# drift from the code again: measured 3 distinct values, [16.0, 16.0, 16.0, 30.2, 60.2, 60.2].
+# Giving every group its own declared "how close is together" distance would spread it, but
+# that is four MORE unratified constants on top of the one already registered as debt, so it
+# is left as Will's taste call rather than invented here.
+# Still zero RNG and a total order on every tie-break: 3 runs at PYTHONHASHSEED 0/1/2
+# produced identical output (json md5 recorded in the population report sec 5.6).
 #
 # Every point satisfies, and `py tools/gate_sanctuary_population.py` re-proves against the
 # FINAL MERGED map:
@@ -2542,17 +2563,39 @@ SANCTUARY_SPECS = {
         (_SP + b'bw_acolyte_clutch.dbr',     172.500, 27.005, 124.100),  # route 148.2u world(4358.5,-10.0,2993.1) sMax  9 = 12.2 eff [anchor]
         (_SP + b'bw_acolyte_clutch.dbr',     178.100, 27.005, 184.300),  # route 142.8u world(4364.1,-10.0,3053.3) sMax  9 = 12.2 eff [member]
         # --- BAND 3: THE CLERGY (route 265-460 u) ---------------------------------------
-        # Between the congregation and the god stand the priests, and priests here come
-        # leashed to bloodhounds. bw_priest_houndmaster is the only proxy in this cave that
-        # pairs a caster with beasts (measured: championChance 100, championMin=championMax=2
-        # bloodhounds inside spawnMax 3), which gives the middle of the walk its own combat
-        # texture (chase + caster) instead of another melee wave. The two houndmasters stand
-        # together as a pair (16.0 u); the lone priest and the loose hound pack are set apart
-        # further up the walk.
-        (_SP + b'bw_priest_houndmaster.dbr',  71.100,  3.005,  19.500),  # route 459.8u world(4257.1,-34.0,2888.5) sMax  3 =  4.1 eff [anchor]
-        (_SP + b'bw_priest_houndmaster.dbr',  87.100,  8.005,  18.300),  # route 445.0u world(4273.1,-29.0,2887.3) sMax  3 =  4.1 eff [member]
-        (_SP + b'bw_priest_lone.dbr',        108.100, 15.005,  70.300),  # route 348.4u world(4294.1,-22.0,2939.3) sMax  1 =  1.4 eff [anchor]
-        (_SP + b'hound_01_pack.dbr',         147.300, 15.005,  60.500),  # route 397.4u world(4333.3,-22.0,2929.5) sMax  6 =  8.1 eff [anchor]
+        # ⚠️ ROUND-3: THE JUSTIFICATION THAT USED TO STAND HERE WAS FALSE, AND FIXING IT
+        # CHANGED THE SHAPE OF THE BAND. Rounds 1-2 said "bw_priest_houndmaster is the only
+        # proxy in this cave that pairs a caster with beasts (measured: championChance 100,
+        # championMin=championMax=2 bloodhounds inside spawnMax 3)". RE-MEASURED from the
+        # built arz, every clause of that is wrong:
+        #   * pools\bw_priest_houndmaster.dbr rosters name1..name3 = c_disciple_39/41/42 ONLY.
+        #     NO hound record appears in it under any field. The record NAME lies.
+        #   * championMin=championMax=2 is CHAMPION-RANK PROMOTION OF ITS OWN DISCIPLES. Proof
+        #     beyond this record: of 1,846 ProxyPool records in the built arz, ZERO carry any
+        #     championName*/championWeight*/heroName*/bossName* field while 1,845 carry
+        #     championChance/Min/Max - the field family that could name a different champion
+        #     creature does not exist in this template.
+        #   * bw_priest_lone carries the IDENTICAL roster (same 3 disciples, same weight 150)
+        #     at spawnMax 1 / championChance 0. The houndmaster IS the lone priest at a higher
+        #     count with guaranteed champion promotion.
+        #   * and the superlative is disproved by this level's OWN signature proxy:
+        #     zparty_witchfest_2099 pairs 3 casters (c_disciple) with 3 beasts
+        #     (c_bloodhound_40/42/44) plus 3 d_reavers in one roster.
+        # Reading creature identity off a record NAME is exactly what CLAUDE.md law #3 and the
+        # amgoz1 bar exist to catch, and it had become ledger law in R-110. See R-115.
+        # WHAT THE DESIGN WANTED SURVIVES: "the middle of the walk gets its own combat texture
+        # (chase + caster) instead of another melee wave". No single pool here delivers that,
+        # so it is delivered by COMPOSITION - the two houndmasters and hound_01_pack (3x
+        # b_bloodhound_33/34/35, spawnMax 6) are ONE GROUP and are placed as ONE KNOT: the
+        # priests stand 16.0 u apart and the hounds 30.2 u from the anchor, so the priests
+        # really are leashed to hounds and the encounter is a chase plus a caster line. Under
+        # round 2 they were separate groups and landed 60.2 u apart, which delivered the
+        # texture only at BAND scale - the premise was wrong AND the shape missed the intent.
+        # The lone priest is then genuinely "set apart, further up the walk" (route 390.0 u).
+        (_SP + b'bw_priest_houndmaster.dbr',  71.100,  3.005,  19.500),  # route 459.8u world(4257.1,-34.0,2888.5) sMax  3 =  4.1 eff [group anchor]
+        (_SP + b'bw_priest_houndmaster.dbr',  87.100,  8.005,  18.300),  # route 445.0u world(4273.1,-29.0,2887.3) sMax  3 =  4.1 eff [member, 16.0u from anchor]
+        (_SP + b'hound_01_pack.dbr',         101.300, 15.005,  49.700),  # route 375.8u world(4287.3,-22.0,2918.7) sMax  6 =  8.1 eff [member, 30.2u from anchor]
+        (_SP + b'bw_priest_lone.dbr',        143.900, 15.005,  64.500),  # route 390.0u world(4329.9,-22.0,2933.5) sMax  1 =  1.4 eff [own group, set apart]
         # --- BAND 4: THE THRESHOLD (route 460-691 u, the Y=-34 pit floor) ---------------
         # The door-wardens, down on the floor of the pit the whole walkway crosses, in front
         # of the west door into drxBC_Finale. The abominations are the cult's flesh-craft -
@@ -2560,10 +2603,10 @@ SANCTUARY_SPECS = {
         # holies, and they already guard the adjacent connectors. The two spear-dancers flank
         # the approach as a pair (16.0 u); one q_shaman_lone gives the band a named face,
         # echoing the shaman standing in yet_another_fucking_connector.
-        (_SP + b'abom_dancer_spear_mix.dbr',  21.900,  3.005, 100.100),  # route 589.6u world(4207.9,-34.0,2969.1) sMax  8 = 10.9 eff [anchor]
-        (_SP + b'abom_dancer_spear_mix.dbr',  22.100,  3.005,  84.100),  # route 573.4u world(4208.1,-34.0,2953.1) sMax  8 = 10.9 eff [member]
-        (_SP + b'abom_ravager_lone.dbr',      12.100,  3.005, 162.300),  # route 662.0u world(4198.1,-34.0,3031.3) sMax  1 =  1.4 eff [anchor]
-        (_SP + b'q_shaman_lone.dbr',          29.700,  3.005,  42.700),  # route 524.4u world(4215.7,-34.0,2911.7) sMax  1 =  1.4 eff [anchor]
+        (_SP + b'abom_dancer_spear_mix.dbr',  20.700,  3.005, 100.100),  # route 590.8u world(4206.7,-34.0,2969.1) sMax  8 = 10.9 eff [group anchor]
+        (_SP + b'abom_dancer_spear_mix.dbr',  22.100,  3.005,  84.100),  # route 573.4u world(4208.1,-34.0,2953.1) sMax  8 = 10.9 eff [member, 16.0u from anchor]
+        (_SP + b'abom_ravager_lone.dbr',      12.100,  3.005, 162.300),  # route 662.0u world(4198.1,-34.0,3031.3) sMax  1 =  1.4 eff [own group]
+        (_SP + b'q_shaman_lone.dbr',          29.700,  3.005,  42.700),  # route 524.4u world(4215.7,-34.0,2911.7) sMax  1 =  1.4 eff [own group]
     ],
 }
 # drxBC3 hosts no other injection today (it is the first content this lane puts there), so a
