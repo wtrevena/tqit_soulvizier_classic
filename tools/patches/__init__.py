@@ -437,6 +437,37 @@ REGISTRY = [
                             # dedicated chain form must carry DisplayAsQuestItem=1, and no SHARED
                             # form may) - negative test `py tools/patches/uber_quest_markers.py
                             # --negtest`. One field, 0 new records, 0 tags.
+    'devourer_kit',         # b102 (Will 2026-07-29, R-100 #1/#12/#13 + R-103 + R-107): the
+                            # Devourer + Endless Hunt wave. (a) CLONES a monster-only Toxeus
+                            # passive at defensiveReflect 30/33 and repoints ONLY the 6 Toxeus
+                            # MONSTERS - the shared toxeus_passiveproperties has 18 carriers and
+                            # NINE are Will's own summoned PETS, so the one-line in-place edit
+                            # R-107 warns about would have stripped 70 reflect off the pets he is
+                            # using to fight the boss (the genericbossorb_04 lesson); pets,
+                            # drxcreatures\crowheroes\less.dbr and the 2 zzdev dummies keep 100/33.
+                            # (b) Devourer defensivePierce 70 -> 40 (R-107 lever 2, his spear
+                            # build); characterLife deliberately untouched (lever 3, held in
+                            # reserve). (c) Bloodbath: melinoe_bloodboil is shared with 6 Toxeus
+                            # PET records, so the 45s -> 15s cut lands on a CLONE
+                            # (svc_devourer_bloodbath) with its 'BloodBoil' skillSpecialAnimation
+                            # DELETED - anm_skeleton01 binds no such ref, so B-SOUL-PROC-2 aborted
+                            # every cast and the Devourer's 90%-chance signature nova had never
+                            # once fired. (d) new summonable minions for BOTH champions (Gorged
+                            # Bloodspawn off his own declared blood-demon retinue; Coursers of the
+                            # Endless Hunt off the DRX bloodhound rig), petLimit 3 each. Blood
+                            # Frenzy is asserted, NOT duplicated (b73 already placed it).
+                            # ORDER IS LOAD-BEARING: MUST run BEFORE 'toxeus_hunt_endless', which
+                            # generates um_toxeus_hunt_l_99 as a clone-then-override of the base
+                            # Hunt and whose verify() asserts the two differ in EXACTLY the
+                            # `controller` field - so the Legendary variant inherits the retuned
+                            # passive and the courser summon by construction instead of drifting
+                            # (and that gate stays green). Also AFTER every other writer of the
+                            # two champions' kits (toxeus_suite / toxeus_champion_kits /
+                            # boss_skill_fix / black_poison / toxeus_hunt_encounter /
+                            # toxeus_souls_100 / uber_apex_orb / uber_quest_markers), so it is the
+                            # ratified last writer of the slots it claims, and BEFORE
+                            # 'fx_dangling_cleanup' so the FX sweep still covers its new records.
+                            # Negative test: py tools/patches/devourer_kit.py --negtest
     'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-90): "yeah lets have the endless pursuit only
                             # be on legendary". Pursuit is a CONTROLLER property and both
                             # MaxPursuitDistance and PursuitTime are declared class="variable" in

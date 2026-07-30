@@ -2386,6 +2386,7 @@ must hold the implementer to the equality, not to 10%.
 
 ---
 
+<<<<<<< HEAD
 ## R-140 [2026-07-30] IMPLEMENTED - R-100 #15 ROOT CAUSE: the thrown-wielders are frozen because SV strips the thrown ANIMATION STANCE, not because of anything to do with their weapons
 
 > **NUMBER CHOICE.** The R-100 decade and everything up to **R-124** is claimed somewhere across the 120
@@ -2667,3 +2668,299 @@ gate trustworthy rather than merely green.
 **STATUS: R-140 stands as amended.** Diagnosis reproduced, fix unchanged and better evidenced, one gate
 added. Still NOT proven and still Will's: that the restored wielders visibly throw and move in-game
 (BL-R140-LAUNCH-1). Everything here remains a database/asset proof.
+=======
+## R-120..R-123 + R-125 [2026-07-30] - b102 `feat/devourer-kit`: the Devourer + Endless Hunt implementation wave
+
+> **NUMBER HYGIENE - AND ONE LIVE COLLISION, RESOLVED BY MOVING OUR OWN.** R-100..R-107 were taken
+> by the 07-29 lanes and R-108..R-119 are taken elsewhere. When this lane started, `R-12[0-9]` was
+> provably free: `git grep -l -E "R-12[0-9]\b" $(git rev-list --all)` -> **empty**, and a
+> working-copy grep over `docs/WILL_RULINGS.md` + `docs/BACKLOG.md` in `main` AND all 100+ in-flight
+> worktrees -> **empty**.
+>
+> **THAT STOPPED BEING TRUE WHILE THIS LANE WAS BUILDING.** Re-checked at the end of the session,
+> three commits from two OTHER live lanes had landed a ruling numbered **R-124** minutes later
+> (`fix/uber-placement` @ `b1774d5` and `7940e78`, `fix/green-mesh-swap` @ `b302abd`), and
+> `fix/uber-placement` / `feat/soul-economy` had also taken R-130, R-140 and R-149. Per the ledger
+> law this lane **renumbered ITS OWN ruling** (the old R-124 is now **R-125**, re-verified free
+> against every worktree working copy at the time of writing) and **did not touch either other
+> lane's number** - reassigning another lane's ruling from a third lane is exactly the silent
+> cross-lane edit the ledger exists to prevent, and picking an incumbent between same-day lanes is
+> the orchestrator's call, not this lane's. **R-120..R-123 and R-125 are this lane's;
+> R-124 belongs to the other two lanes and they still collide with each other.** Registered as
+> `BL-b102-DEBT-3`.
+>
+> **NONE OF R-120..R-123 / R-125 IS A NEW WILL DECISION.** R-100 #1/#12/#13, R-103 and R-107 are the
+> decisions; this decade records what was MEASURED while implementing them, where the measurement
+> contradicts what those rulings assumed, and the two design choices that are this lane's own and are
+> therefore vetoable. Will's words are quoted, never paraphrased into a ruling.
+
+---
+
+## R-120 [2026-07-30] IMPLEMENTED b102 - AMENDMENT to R-100 #1: "grant Bloodbath to the Devourer" was never a wiring gap. The skill was already wired at 90% and had never once fired.
+
+**R-100 #1, Will verbatim:** *"We should grant the skill Bloodbath from the Erebenea the Bloodletter
+Soul to toxeus the devourer of blood but lets reduce the cooldown on the skill from 45s to like 15s."*
+
+Measured on the built arz `6a3a491db546b603c52132237c40aa63` (51,124 records), which is byte-identical
+to the artefact the b101 gate record names:
+
+| | measured |
+|---|---|
+| the skill behind "Bloodbath" | `records\skills\soulskills\melinoe_bloodboil.dbr` - `skillCooldownTime` **45.0** (exactly Will's "45s"), icon `DRXtextures\skill icons\soul\bloodbathup.tex` |
+| how the Erebenea soul grants it | `erebenea_soul_{n,e,l}.itemSkillName` -> the `pcsafe\` twin (the B-SOUL-PROC-2 player-safe clone) |
+| already on the Devourer? | **YES** - `um_bloodtoxeus_99.skillName1` @ level `[8,12,16]` AND `specialAttackSkillName` @ `specialAttackChance` **90.0**, shipped since build32 |
+| `melinoe_bloodboil.skillSpecialAnimationName` | **`'BloodBoil'`** |
+| the Devourer's caster table | `records\creature\monster\skeleton\anm\anm_skeleton01.dbr` |
+| every `SpecialAnimRef` that table binds | dHanded: DwAttAlpha, JumpSlash, Crosscut, AoE360, BladeSweep, Charge - sHanded: AoE360, LethalStrike, Absorb, Charge, Bolts, Strike, ShieldSkill01, Staff - staff: Spellshock - unarmed: Halfring, Fullring |
+| `'BloodBoil'` among them | **ABSENT** |
+| records in the whole DB binding a `'BloodBoil'` ref | **exactly 2**, neither a skeleton: `creature\monster\maenad\anm\anm_maenad.dbr` [bowSpecialAnimRef7] and `drxcreatures\bloodwitch\anm_acolyte.dbr` [unarmedSpecialAnimRef1] |
+
+**Under this repo's own disasm-proven hard law B-SOUL-PROC-2** (BACKLOG "RCA v2":
+`Game.dll SkillManager::StartSkill`, log string *"Animation failed to start in
+SkillManager::StartSkill"* va `0x1035c3b0`, gate vcall va `0x102561d4`) a cast whose
+`skillSpecialAnimationName` cannot start on the CASTER's animation table is **aborted**. That same
+BACKLOG entry already names this exact token in its census of never-playable monster anims:
+*"BloodBoil x29"*.
+
+**So the Devourer's signature nova, wired at a 90% cast chance, has never fired in any build.** That is
+why Will experienced Bloodbath as absent, and why "grant it to him" was the right request from a
+player's chair even though the record already named it.
+
+**IMPLEMENTED as:** a CLONE, `records\skills\boss skills\svc_devourer_bloodbath.dbr`, at
+`skillCooldownTime` **15.0** (Will's number, behind the named constant `BLOODBATH_COOLDOWN`) with
+`skillSpecialAnimationName` **DELETED entirely** - the exact remedy this repo already shipped for the
+same law (the `pcsafe\` clones; the BACKLOG records 172/204 base proc grants as anim-less, and records
+that an EMPTY string has zero precedent - B-TOXEUS-2). Only `um_bloodtoxeus_99` is repointed.
+
+**WHY A CLONE AND NOT THE RECORD ITSELF - the SHARED-RECORD LAW.** `melinoe_bloodboil` has **7
+carriers** and **6 are Will's own summoned PETS** (`pets\bloodtoxeus_{1,2,3}`,
+`pets\toxeus_eoat_{1,2,3}`); its `pcsafe\` twin has 26 more on player soul items. Cutting the cooldown
+in place would have silently tripled the cast rate of six pets nobody asked about. `melinoe_bloodboil`
+ships byte-unchanged.
+
+---
+
+## R-121 [2026-07-30] IMPLEMENTED b102, **FLAGGED FOR WILL VETO** - the SAME law kills the Enslaver's marauder summon, which is the exemplar R-100 #13 is patterned on.
+
+**R-100 #13, Will verbatim:** *"also we need to give toxeus the murderer devourer of blood and toxeus
+the murderer endless hunt some guys they can summon like toxeus the murderer enslaver of souls has."*
+
+Measured: `records\skills\boss skills\svc_enslaver_summonmarauders.dbr` carries
+`skillSpecialAnimationName = 'Summon'`; its sole carrier `um_toxeus_enslaver_99` rides the same
+`anm_skeleton01` table and binds no `'Summon'` ref anywhere. **The Enslaver's marauder summon has never
+fired either.** What Will has been seeing is his warband: `q_enslaver_warband` spawns
+`championMin=championMax=4` Enslaved Shadow Marauders *present at spawn*, so the boss appears escorted
+without ever casting.
+
+Shipping two working summons while the one he named as the reference stays dead is exactly the
+"triaged-into-follow-up = NOT done" failure, so the anim was deleted here too (single carrier, so the
+shared-record law does not force a clone; one field, no numbers touched).
+
+**THIS IS THE ONE CHANGE IN THE WAVE WILL DID NOT ASK FOR BY NAME.** It makes the Enslaver meaningfully
+harder - up to 4 more summoned marauders on top of his 4 warband escorts. R-103 sanctions the direction
+(*"yes harder is the point"*, *"the answer is not cutting skills but cutting elsewhere"*), and the
+Enslaver is also one of the six monsters whose reflect drops 100 -> 30 in the same wave, so he nets
+easier on the mechanic that was actually killing Will. Vetoable by deleting `_fix_enslaver_summon` -
+nothing else depends on it.
+
+---
+
+## R-122 [2026-07-30] AMENDMENT to R-103/R-107: reflect and pierce were NOT the only walls, and the audit that finds the rest.
+
+R-107 Part 3 measured the Devourer's defensive wall and concluded *"That is not a hard boss, it is a
+hard counter to his specific build wearing a one-shot mechanic."* Both levers it named are implemented
+in b102 (reflect 100 -> 30 on a monster-only clone, pierce 70 -> 40, `characterLife` untouched as the
+reserved third lever). **What it could not see is that the fight was also being fought by a boss whose
+two most conspicuous abilities never fired** (R-120, R-121). The honest statement of the encounter
+after b102 is therefore NOT "the same fight minus reflect": it is a *different* fight - less lethal on
+the one-shot axis, more active on every other. Will should be told that before he re-fights it.
+
+**THE STANDING LESSON, and why this is a ruling and not a footnote:** a difficulty investigation that
+reads a monster's stats and its skill LIST is not enough. A skill can be present, levelled, and wired
+to a 90%-chance cast slot and still be mechanically absent. **Every future boss tuning or difficulty
+RCA must first run the castability walk** - for each active cast slot, does the skill resolve, and if
+it declares a `skillSpecialAnimationName`, does the caster bind that ref (via its own inline
+`<family>SpecialAnimRef<i>` block **or** its `charAnimationTableName` table)?
+
+The b91 `coldworm_buffs` gate had the right idea but read only the monster's own
+`unarmedSpecialAnimRef*`. The Devourer and the Enslaver carry **none** of their own - every binding
+they have comes from `anm_skeleton01` - so that walk would have reported both champions as having no
+animations at all. `devourer_kit._bound_anim_refs` follows the table and every weapon family, and
+`gate_violations` runs it over all six casters in this wave.
+
+**CREDIT WHERE IT IS DUE, so this ruling is not read as "nobody did this":** b98's
+`toxeus_hunt_encounter._castability_violations()` already walks every populated active slot on the
+Endless Hunt and derives the WIELDED anim row from the Class of the weapon he is guaranteed in
+RightHand, which is stricter still - for that one record. The gap is that neither walk was ever run
+over the Devourer or the Enslaver. **Registered as debt `BL-b102-DEBT-2`: promoting the walk to a
+DB-wide invariant over every boss is NOT done here.**
+
+**ONE MORE THING THE FIRST BUILD TAUGHT, worth keeping.** `boss_skill_fix.verify` re-asserts its own
+b39 fixes by looking for the SUBSTRING `'toxeus_passiveproperties'` in a skillName slot on
+`um_toxeus_hunt_99`, so an earlier draft that named the monster-only clone
+`svc_toxeus_monster_passive` **failed the build** with *"skill toxeus_passiveproperties vanished from
+kit (regression)"*. That gate was right and the clone was renamed
+`svc_toxeus_passiveproperties_monster` rather than the gate weakened. **STANDING: when the
+shared-record law makes you clone a record that an existing gate matches by substring, keep the
+donor's basename inside the clone's basename.** It costs nothing and it keeps the older gate's
+protection intact.
+
+---
+
+## R-123 [2026-07-30] R-100 #12 (Blood Frenzy) is SATISFIED, but its payload is thin. **OPEN WILL DECISION - deliberately not taken here.**
+
+**R-100 #12, Will verbatim:** *"We should also give the skill Blood Frenzy to the devourer of blood
+(activated on low health), see Chief Bullfrog Quak soul for this skill."*
+
+Measured: the Devourer **already carries**
+`records\skills\monster skills\passive_buffs\quak_bloodfrenzy.dbr` on `skillName17` at level
+`[4,8,12]`, placed by b73. It is `Skill_PassiveOnLifeBuffSelf`, `lifeMonitorPercent 25.0`,
+`skillActiveDuration 6.0`, `skillCooldownTime 18.0`, and it declares **no** special animation, so
+unlike Bloodbath it genuinely triggers. b102 asserts it and does **not** duplicate it.
+
+**HONEST RESIDUAL:** measured field by field, the record's ONLY non-zero offensive payload is
+`offensiveSlowLifeLeachModifier [50..240]` - a life-leech-over-time modifier - plus the `quak_bufffx`
+visual. b73's report describes it as an "attack-speed + bleed/leech surge"; the attack-speed half is
+not in the record (`characterAttackSpeed` and `characterAttackSpeedModifier` are both 0.0). So at his
+levels it is a real trigger with a small effect.
+
+**NOT CHANGED HERE, on purpose.** Will asked for the skill, and the skill is there. Retuning its
+numbers is a balance change he did not ask for, and `quak_bloodfrenzy` is SHARED with the Chief
+Bullfrog Quak soul the player can equip, so any buff would need the clone-and-repoint treatment rather
+than an in-place edit. **If Will wants Blood Frenzy to bite**, the answer is a
+`svc_devourer_bloodfrenzy` clone carrying real numbers - one more record, the same pattern as Bloodbath.
+
+---
+
+## R-125 [2026-07-30] IMPLEMENTED b102, **NAMES + DONORS FLAGGED FOR WILL VETO** - the two new minion families, and the doc that is cited as the bar but does not exist.
+
+**`docs/amgoz1_design_voice.md` IS NOT IN THIS TREE.** It is cited as law in `docs/BACKLOG.md` (3x),
+`docs/HUNTING_IMPROVEMENT_SUGGESTIONS.md`, four wave reports, `tools/patches/bossarena.py` and a wip
+workflow, but `git log --all --diff-filter=A -- '*amgoz1_design_voice*'` returns **nothing** - it was
+never committed. b65 already noticed ("re-distilled from first principles since
+`amgoz1_design_voice.md` is gone from the tree") and the citations kept accumulating anyway. Every
+brief that says "held to the amgoz1 bar (amgoz1_design_voice.md)" points at a file no agent can read.
+**Registered as debt `BL-b102-DEBT-1`: either author it or strike the citations.**
+
+The bar used for this wave was RECONSTRUCTED from shipped SV/DRX content measured in the arz: a
+creature's kit and retinue come from ITS OWN family (SV's Erebenea the Bloodletter grants a bleed nova
+because she is a lamia bloodletter; DRX's blood-cult disciple summons bloodhounds); names are concrete
+and physical, never category labels ("Enslaved Shadow Marauder", "Neferkha, the Rimebound Pharaoh");
+and a champion's adds carry a different SILHOUETTE from him so the fight reads at a glance. Will's own
+R-100 #18 is the negative form of the same bar - adds that *"look just like the other guys ... not big
+with no special skills or anything to make them even noticeable besides their red names"*.
+
+| | Devourer of Blood | Endless Hunt |
+|---|---|---|
+| name | **"Gorged Bloodspawn"** | **"Courser of the Endless Hunt"** |
+| record | `drxcreatures\blooddemon\um_devourer_bloodspawn_99.dbr` | `drxcreatures\bloodhound\um_hunt_courser_99.dbr` |
+| donor | `c_large_blooddemon_40` (Champion, Demon, `DRX\meshes\blooddemon01.msh`) | `c_bloodhound_44` (Champion, Demon, `DRX\meshes\bloodhound.msh`) |
+| why HIM | the blood demons are ALREADY his declared retinue - `_BT_BLOODDEMON` names `b_med_blooddemon_30/31/32` as his phase adds and `q_bloodtoxeus_lone` spawns exactly those three as his escort. He is the Devourer *of blood*; what he summons is the blood he has drunk | he is the hunter - Quarry's Mark, Long Reach, Run Down, the Runbreaker spear, endless pursuit. What a hunter fields is a pack that runs the quarry to ground |
+| stats | Champion, band [40,68,100], HP [4500,6200,8400], scale 2.4, 200/260 hand, runSpeed 1.3 | Champion, band [40,68,100], HP [3500,4800,6500], scale 1.7, 180/240 hand, runSpeed 1.6 |
+| cast slot | REPLACES `specialAttack5` | lands on a FREE `specialAttack5` - nothing displaced |
+
+Both minions ship `dropItems 0`, `chanceToEquipFinger2 0`, `DisplayAsQuestItem 0` and no
+`treasureProxyName`, so a re-summonable add can never become a loot faucet, can never pay out a soul
+(R-42/R-106) and can never enter the `uber_quest_markers` roster. The courser also gets an anim-less
+clone of the donor hound's spit (`svc_courser_bloodspew`), because the donor's own
+`bloodhound\skills\puke.dbr` demands `'BloodPuke'` while the donor binds only `'Roar'` - the same
+B-SOUL-PROC-2 defect one rig over.
+
+**THE ONE DISPLACEMENT, and why.** The Devourer's `specialAttack5` held
+`t1_skill_pitspawner_summonlildude_02`, a shared DRX map-dressing spawner whose payload
+`t1_lildude_02` is a **charLevel 9, 1.0-HP, scale 0.5** pit sprite - on a boss whose own band is
+[40,68,100]. That is exactly the "not real minions" the request is about, and the engine caps every
+monster at `specialAttack5`, so a new cast ability has to claim a slot. **RETIREMENT PROTOCOL
+OBSERVED:** the pit-spawner record is NOT deleted, blanked or renamed, keeps its two other carriers
+(`t1_pitspawner_01/02`) and keeps its place in the Devourer's `skillName9` slot - only the AI cast
+slot moved.
+
+**DENSITY (the b76 chumbi-freeze precedent), stated as worst-case simultaneous entity counts** - both
+summons are `petLimit 3` / `petBurstSpawn 3` / cd 8s, against the Enslaver's shipped 4 / 6 / 2s:
+
+* Devourer, `q_bloodtoxeus_lone` (spawnMin=Max 3, championMin=Max 2): **1 boss + 2 blood demons + 3 summoned = 6**
+* Devourer, `egg_blooddragon` (spawnMin=Max 4, championMin=Max 3): **1 boss + 3 blood dragons + 3 summoned = 7**
+* Hunt, `q_toxeus_hunt_lone` (spawnMin=Max 1, championChance 0): **1 boss + 3 summoned = 4**
+* Hunt, roaming sweep: the host pool's own members + 1 Hunt (his per-pool cap is 1) + 3 coursers
+
+For comparison the shipped Enslaver reaches 1 + 4 warband + 4 summoned = **9**, and the b76 offenders
+were **uncapped**. Neither new summon is unbounded.
+
+**Both names are this lane's invention and are flagged for Will veto**, per the standing creative-bar
+rule; they ship as defaults.
+
+---
+
+## R-126 [2026-07-30] IMPLEMENTED b102 - DERIVED FROM MEASUREMENT (not a Will decision; vetoable). `actorHeight` is a per-RIG constant, NOT a size knob, and the b102 minions had invented values.
+
+**This ruling exists because the record-diff cannot catch this class of defect, and it did not.**
+`ADDED 7 / REMOVED 0 / CHANGED 7` was green while both new minions shipped with a wrong field, because
+an invented value on a record that is itself NEW is not a "change" against any baseline. It took a
+DB-wide measurement of the animation rig to see it.
+
+**WHAT WAS WRONG.** The first draft of `tools/patches/devourer_kit.py` wrote `actorHeight` on both new
+minions as if it were part of making them bigger:
+
+| record | donor | donor scale -> ours | donor actorHeight -> ours |
+|---|---|---|---|
+| `um_devourer_bloodspawn_99` | `c_large_blooddemon_40` | 1.75 -> **2.4** | 1.0 -> **1.6** |
+| `um_hunt_courser_99` | `c_bloodhound_44` | 1.25 -> **1.7** | 1.7 -> **1.4** |
+
+The courser is the tell: its `scale` went **UP** 1.36x while its `actorHeight` went **DOWN** 18%.
+Whatever `actorHeight` is, it cannot be both.
+
+**THE MEASUREMENT (`py tools/debug/probe_actorheight.py <arz>`, 51,131 records).** Group every record
+by its `mesh` - i.e. by the rig it animates on - and ask whether `actorHeight` ever moves with `scale`:
+
+* **2,122** rigs carry an `actorHeight` on more than one record.
+* **184** of those have BOTH `scale` and `actorHeight` varying inside the rig.
+* **60** still vary once the `actorHeight = 0.0` class is dropped (0.0 is a distinct "no height"
+  state used by ambient/non-combat variants - e.g. `ag_insect_antlion_0Nn` sit at 0.0 while every
+  real antlion on the same mesh sits at 1.7 across scale 0.7..1.39).
+* **ZERO** rigs - 0 of 2,122 - make `actorHeight` proportional to `scale`.
+
+> **Which artefact each number came from, because it matters.** The counts above are the
+> **DEFECTIVE** build `974d77d2ffc3fa5cbefca15816183276` - the one that still carried the two
+> invented values. Re-run on the **corrected** build `8a81a53f2b0f40004e4b3b17b81e0480`, the same
+> survey reports **58**, not 60, for the third bullet: the two rigs this wave touched stopped being
+> counted as "varying" the moment the minions went back to inheriting. 2,122 / 184 / **0** are
+> unchanged. That 60 -> 58 delta is itself the cleanest confirmation that our two records were the
+> anomaly, so both numbers are recorded rather than quietly replaced.
+
+And on the two rigs this wave actually touched:
+
+* `DRX\meshes\blooddemon01.msh` - **24** other records spanning `scale` **0.7 -> 1.75**. Every one of
+  them `actorHeight` **1.0** (or 0.0). Ours was the only 1.6 on the rig.
+* `DRX\meshes\bloodhound.msh` - **9** other records spanning `scale` **1.0 -> 2.25**. Every one of them
+  `actorHeight` **1.7** (or 0.0). Ours was the only 1.4 on the rig.
+
+`xbloodhound_36` is the control that settles it: that rig **already has** a record scaled to 2.25,
+*larger than our courser's 1.7*, and it did **not** touch `actorHeight`. If the field were a size knob,
+that record is where the base content would have proved it.
+
+**THE RULE (standing, applies to every future clone, not just these two).** `actorHeight` is where the
+engine hangs a creature's name plate and hit FX on its rig. It belongs to the MESH, not to the
+instance. **A cloned creature inherits its donor's `actorHeight`. Make a creature bigger with `scale`.**
+If a lane ever has a real reason to move it, the reason has to be a measured property of the rig, and
+the measurement goes in this ledger.
+
+**WHAT SHIPPED.** `_build_minion` no longer takes or writes a height argument at all - the field is
+simply left inherited. **`scale` is untouched**: the Gorged Bloodspawn still ships at 2.4 and the
+Courser at 1.7, so neither minion got smaller; only the rig constant was put back.
+
+**THE GATE (CLAUDE.md law #4).** `devourer_kit.gate_violations()` now asserts each minion's
+`actorHeight` equals **its donor's, read live out of the same db** - not a number copied into the
+module, which could drift away from the rig the way the original values did. The donors are separately
+proven byte-unchanged by the b102 record-diff, so the gate is anchored to ground truth. Planted
+negative **N10** re-creates the exact shipped defect (courser `actorHeight` 1.4) and is asserted to
+fire; the suite is now **10/10 with a clean control**.
+
+**RESIDUAL, HONESTLY STATED.** What `actorHeight` does at runtime is inferred from the data (its
+distribution over rigs, and the 0.0 "no height" class), not from disassembly. That does not weaken the
+ruling - being the only record on a 25-record rig with a bespoke value is a defect whatever the field
+drives - but a lane that wants to move it deliberately should pin the mechanic first.
+
+**DEBT:** this is the same shape as `BL-b102-DEBT-2` (the castability walk): a rig-constant check
+should eventually run over every cloned creature in the DB, not just the two this wave authored.
+Registered as `BL-b102-DEBT-9`. NOT done here.
+>>>>>>> feat/devourer-kit
