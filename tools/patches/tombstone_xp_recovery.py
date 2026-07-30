@@ -423,6 +423,12 @@ def verify(db, tags):
         checked += 1
 
     # --- the exactness precondition, re-proved against the LIVE cap ----------
+    if int(mx) <= 0:
+        raise SystemExit(
+            'tombstone_xp_recovery verify: deathPenaltyMax is %d. A non-positive cap '
+            'means the death penalty can never take anything, so R-109 has nothing to '
+            'mirror - that is a penalty-side change (R-80) that must be re-ruled, not '
+            'a state this gate may pass silently.' % int(mx))
     if int(mx) >= FLOAT32_EXACT_INT_BOUND:
         raise SystemExit(
             'tombstone_xp_recovery verify: deathPenaltyMax is %d, at or above the '

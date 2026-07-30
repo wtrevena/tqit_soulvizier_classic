@@ -394,23 +394,27 @@ def apply(db, tags):
             'pet-spawners, but these do: %s' % ', '.join(spawners))
 
     # --- the slots this module claims must be FREE on all six, or we would be
-    #     silently clobbering somebody else's kit (never assumed - measured now)
+    #     silently clobbering somebody else's kit (never assumed - measured now).
+    #     IDEMPOTENT: a slot already holding THIS module's own intended value is a
+    #     re-run, not a collision, so apply() over an already-patched db is a clean
+    #     no-op. Only a FOREIGN value reds the build.
     occupied = []
     for g in GENERALS:
-        for rec in GUARD[g]:
-            for slot in SIG_SKILL_SLOTS:
-                v = _s(db, rec, slot)
-                if v and str(v).strip():
-                    occupied.append('%s.%s = %s' % (rec, slot, v))
-            for pre in SIG_SPECIAL_SLOTS:
-                v = _s(db, rec, pre + 'SkillName')
-                if v and str(v).strip():
-                    occupied.append('%s.%sSkillName = %s' % (rec, pre, v))
+        for idx, rec in enumerate(GUARD[g]):
+            for n, skill in enumerate(SIGNATURE[(g, idx)]):
+                v = _s(db, rec, SIG_SKILL_SLOTS[n])
+                if v and str(v).strip() and str(v) != skill:
+                    occupied.append('%s.%s = %s (ours: %s)'
+                                    % (rec, SIG_SKILL_SLOTS[n], v, skill))
+                v = _s(db, rec, SIG_SPECIAL_SLOTS[n] + 'SkillName')
+                if v and str(v).strip() and str(v) != skill:
+                    occupied.append('%s.%sSkillName = %s (ours: %s)'
+                                    % (rec, SIG_SPECIAL_SLOTS[n], v, skill))
     if occupied:
         raise SystemExit(
             'general_guardians: the signature-kit slots are NOT free - another writer '
-            'already uses them, so writing here would silently clobber it. Re-pick the '
-            'slots deliberately:\n  %s' % '\n  '.join(occupied))
+            'already uses them with a DIFFERENT skill, so writing here would silently '
+            'clobber it. Re-pick the slots deliberately:\n  %s' % '\n  '.join(occupied))
 
     modified_before = set(db._modified)
     expected_touch = set()
