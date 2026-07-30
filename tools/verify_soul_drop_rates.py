@@ -302,19 +302,30 @@ _KNOWN_EXCEPTIONS = {
 # (gitignored, like every other .arz) - the check degrades to a printed
 # SKIP (not a failure) when it is not present on the machine running the
 # gate, so the gate battery still runs standalone/CI-clean elsewhere.
-_GOLDEN_MD5 = 'b33c5a447f3a8ca652c14f78d4ad1dd4'
-_GOLDEN_CANDIDATES = [HERE.parent / 'local' / 'baseline_main.arz',
-                      HERE.parent / 'local' / 'baseline_build40.arz']
+#
+# ⚠️ THE BASELINE IS PER-WAVE, SO THIS GATE MUST NOT CLAIM ONE FIXED MD5.
+# It used to print a hardcoded `md5 expected b33c5a44...` (the build40 golden)
+# whatever file it actually loaded - so on b102, where the baseline is
+# `local/baseline_main.arz` (main @ 7efd107, md5 6a3a491d...), the gate printed
+# an md5 that was not the file's. Each candidate now carries its OWN pinned md5
+# and the gate prints the loaded file's real digest beside the pin, so a
+# mismatch is visible instead of asserted.
+_GOLDEN_CANDIDATES = [
+    (HERE.parent / 'local' / 'baseline_main.arz',
+     '6a3a491db546b603c52132237c40aa63'),   # b102 baseline: main @ 7efd107
+    (HERE.parent / 'local' / 'baseline_build40.arz',
+     'b33c5a447f3a8ca652c14f78d4ad1dd4'),   # the original pre-drop-50 golden
+]
 
 
 def _find_golden():
-    for p in _GOLDEN_CANDIDATES:
+    for p, pinned in _GOLDEN_CANDIDATES:
         if p.exists():
-            return p
-    return None
+            return p, pinned
+    return None, None
 
 
-def _check_intended_diff_vs_golden(recs, golden_path):
+def _check_intended_diff_vs_golden(recs, golden_path, pinned_md5=None):
     """HARDENING for the MEDIUM gate-blindness finding (vet round 2 on
     feat/soul-drop-50): _check_last_writer() above uses soul_drop_rate()
     itself as its own oracle, so it is structurally BLIND to a value the
@@ -335,8 +346,10 @@ def _check_intended_diff_vs_golden(recs, golden_path):
     else is an unintended, silent regression and fails loud."""
     if golden_path is None:
         print("\n  (intended-diff-vs-golden check SKIPPED: no local golden arz "
-              f"found - looked for {[str(p) for p in _GOLDEN_CANDIDATES]})")
+              f"found - looked for {[str(p) for p, _m in _GOLDEN_CANDIDATES]})")
         return []
+    import hashlib
+    _real = hashlib.md5(golden_path.read_bytes()).hexdigest()
     golden_db = ArzDatabase.from_arz(golden_path)
     golden_recs, _, _ = _gather(golden_db)
     golden_chance = {name: cur for name, cls, cur, exp, k in golden_recs}
@@ -365,9 +378,16 @@ def _check_intended_diff_vs_golden(recs, golden_path):
             f"built={ccur}% - not the intended 66->50 RANDOM cut and not a "
             f"documented _KNOWN_EXCEPTIONS waiver: a silent regression "
             f"against the pre-drop-50 baseline")
-    print(f"\n  Intended-diff-vs-golden ({golden_path.name}, md5 expected "
-          f"{_GOLDEN_MD5}): {diffs} chanceToEquipFinger2 deltas vs golden, "
+    _pin = ('md5 %s%s' % (_real, '' if (pinned_md5 in (None, _real))
+                          else ' ⚠️ PINNED %s' % pinned_md5))
+    print(f"\n  Intended-diff-vs-golden ({golden_path.name}, {_pin}): "
+          f"{diffs} chanceToEquipFinger2 deltas vs golden, "
           f"{diffs - len(fails)} intended/documented, {len(fails)} UNINTENDED")
+    if pinned_md5 is not None and _real != pinned_md5:
+        fails.append(
+            f"baseline {golden_path.name} md5 {_real} != the pinned "
+            f"{pinned_md5} - this gate is diffing against a DIFFERENT baseline "
+            f"than the one the wave's record-diff was attributed against")
     return fails
 
 
@@ -548,9 +568,16 @@ def main(argv):
             print(f"      arz={cur:5.1f}%  expected={expected:5.1f}%   x{n}{tag}")
     print(f"\n  TOTAL soul-droppers: {len(recs)}   LAST-WRITER mismatches: {mismatch_count}")
 
-    random_enabled_50 = sum(1 for n, c, cur, e, k in recs
-                            if k == 'RANDOM_HERO(50)' and abs(cur - 50.0) < 0.01)
-    print(f"  RANDOM_HERO records actually shipping at 50%: {random_enabled_50}")
+    # (was a hardcoded `k == 'RANDOM_HERO(50)'` count - dead under R-105, where
+    # _gather() labels the klass 'RANDOM_HERO(33)'. A counter that can never
+    # match prints a permanent 0 and reads like a real measurement, so it is
+    # derived from the ruled constant instead.)
+    _rh = 'RANDOM_HERO(%.0f)' % bsd.SOUL_RATE_NONFIXED
+    random_enabled = sum(1 for n, c, cur, e, k in recs
+                         if k == _rh
+                         and abs(cur - bsd.SOUL_RATE_NONFIXED) < 0.01)
+    print(f"  {_rh} records actually shipping at "
+          f"{bsd.SOUL_RATE_NONFIXED:.0f}%: {random_enabled}")
 
     # ---- INVARIANT: LAST-WRITER check on the real arz ----
     failures, waived = _check_last_writer(recs)
@@ -559,7 +586,8 @@ def main(argv):
     print("\n" + "=" * 78)
     print("INTENDED-DIFF-VS-GOLDEN (hardens the LAST-WRITER check's blind spot)")
     print("=" * 78)
-    failures.extend(_check_intended_diff_vs_golden(recs, _find_golden()))
+    _gp, _gmd5 = _find_golden()
+    failures.extend(_check_intended_diff_vs_golden(recs, _gp, _gmd5))
 
     if waived:
         print("\n" + "=" * 78)
