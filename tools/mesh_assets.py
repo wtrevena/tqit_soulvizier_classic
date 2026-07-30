@@ -57,11 +57,32 @@ def game_dir():
     return Path(os.environ.get('SVC_TQAE_DIR', _DEFAULT_GAME))
 
 
+def mod_resource_dirs():
+    r"""The MOD's own staged `Resources` dirs, in the order the engine sees them.
+
+    A creature reference is NOT necessarily a base-game asset: this mod ships
+    `SVMesh.arc`, `drx.arc`, `DRXeffects.arc` and friends, and records address
+    them exactly like base archives (`SVMesh\anims\...anm`). A resolver that
+    only reads the game install therefore reports every mod-shipped clip as
+    MISSING - which is a false failure, and a loud one, because an anim gate
+    that cries wolf gets waived instead of fixed.
+    """
+    out = []
+    env = os.environ.get('SVC_MOD_RESOURCES')
+    if env:
+        out.append(Path(env))
+    # the standard staged layouts, relative to the build's CWD
+    for pat in ('work/*/Resources', 'local/*/Resources'):
+        out.extend(sorted(Path('.').glob(pat)))
+    return [p for p in out if p.is_dir()]
+
+
 def _arc_dirs(mod_resources=None):
     g = game_dir()
     dirs = []
     if mod_resources:
         dirs.append(Path(mod_resources))
+    dirs += mod_resource_dirs()          # mod archives shadow the base game
     dirs += [g / 'Resources',
              g / 'Resources' / 'xpack',
              g / 'Resources' / 'XPack2',

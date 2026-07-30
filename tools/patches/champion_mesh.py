@@ -390,14 +390,28 @@ def verify(db, tags=None):
                  % (len(green_carriers), GREEN_MESH.rsplit('\\', 1)[-1]))
 
     # 3. ANIMATION: every .anm any roster record can play must resolve.
-    from mesh_assets import arcs_available, mesh_report, asset_exists
+    from mesh_assets import (arcs_available, asset_exists, mesh_report,
+                             mod_resource_dirs)
 
-    if not arcs_available():
-        msg = ("champion_mesh ASSET gate DID NOT RUN - the Creatures arcs are not "
-               "reachable (looked under %s)\n"
-               "    remedy: set SVC_TQAE_DIR to the TQAE install, or build on a "
-               "machine with the game installed" % os.environ.get(
-                   'SVC_TQAE_DIR', '<default Steam path>'))
+    # B-GATE-HARDEN-1 shape. TWO preconditions, and the second one is the
+    # non-obvious half: this mod SHIPS animation archives of its own
+    # (`SVMesh\anims\...`), so a resolver that can only see the game install
+    # reports every mod-authored clip as MISSING. That is a false failure, and a
+    # false failure in an anim gate is worse than no gate - it teaches the next
+    # lane to waive it. So an un-findable mod Resources dir is reported as the
+    # gate being UNAVAILABLE, never as the animations being broken.
+    _mod_res = mod_resource_dirs()
+    if not arcs_available() or not _mod_res:
+        msg = ("champion_mesh ASSET gate DID NOT RUN - %s\n"
+               "    remedy: build into the work/ layout "
+               "(work/<mod>/Database/<mod>.arz with work/<mod>/Resources beside "
+               "it), and set SVC_TQAE_DIR if the game is not at the default "
+               "Steam path"
+               % ('the Creatures arcs are not reachable under %s'
+                  % os.environ.get('SVC_TQAE_DIR', '<default Steam path>')
+                  if not arcs_available() else
+                  'the MOD Resources dir was not found, so mod-shipped .anm '
+                  'archives (SVMesh.arc et al) could not be searched'))
         if _require_gates():
             problems.append(msg)
         else:
@@ -467,9 +481,10 @@ def verify(db, tags=None):
                     "%s). A champion whose clip does not resolve T-poses."
                     % (a, len(recs), recs[0]))
         notes.append("animation: %d distinct .anm reachable from the roster, all "
-                     "resolve; %d reference(s) waived as the base-game "
-                     "'%s' build-path defect (BL-R102-DEBT-3)"
-                     % (len(checked), waived, _UPSTREAM_BUILD_PATH_PREFIX))
+                     "resolve (mod arcs searched: %s); %d reference(s) waived as "
+                     "the base-game '%s' build-path defect (BL-R102-DEBT-3)"
+                     % (len(checked), [str(p) for p in _mod_res], waived,
+                        _UPSTREAM_BUILD_PATH_PREFIX))
 
     if problems:
         for p in problems:
