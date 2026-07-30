@@ -19151,6 +19151,32 @@ def run_registry_gates(db, tags, force_full_drops=True):
               "(33% non-fixed, 25% fixed-location boss, 0% Common, "
               "100% the four R-48 Toxeus champions)")
 
+    # ── R-100 #11 (Will 2026-07-29): the XP-potion forge formulas ────────────
+    # "there are forge formulas for experience potions that require souls from a
+    # specific act, but the souls that we added ... do not have the proper
+    # classification on them so you cant use them in the forge formulas."
+    # The "classification" is NOT a field: SV's 12 lesserpotionofexperience
+    # formulas ENUMERATE every eligible soul path per (difficulty, act) in their
+    # reagent slots, so a minted soul is unusable until it is named there. Runs
+    # here, after every soul-authoring pass in the monolith AND every registry
+    # module, so the roster it classifies is the final one. Additive only.
+    print("\n=== R-100 #11: XP-potion forge formula act membership ===")
+    from soul_act_classifier import (wire_souls_into_xp_formulas,
+                                     verify_xp_formula_membership)
+    wire_souls_into_xp_formulas(db)
+    _forge_problems = verify_xp_formula_membership(db)
+    if _forge_problems:
+        for _p in _forge_problems[:15]:
+            print(f"  XP-FORGE OFFENDER: {_p}")
+        raise SystemExit(
+            f"XP-potion forge formula gate FAILED: {len(_forge_problems)} "
+            f"problem(s) (see offenders above). Invariants: every reagent "
+            f"resolves, the 3 reagent slots agree, the anysoul display item "
+            f"stays first, no cross-tier contamination, every assigned soul "
+            f"is listed.")
+    print("  XP-forge gate PASS: reagents resolve, slots agree, display item "
+          "first, no cross-tier contamination, every assigned soul listed.")
+
     # F7c (build36): wire itemText -> the authored DESC tag on every generated
     # soul, so the amgoz1-style flavor text finally renders in-game. Runs last,
     # after all souls + all tags exist; keyed on tag membership so only OUR
