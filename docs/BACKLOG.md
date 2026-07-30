@@ -1,5 +1,199 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## B102 GATE RECORD - THE DEVOURER + ENDLESS HUNT WAVE (2026-07-30, branch `feat/devourer-kit`) - NOT DEPLOYED
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed, and no `buildNN-dev` tag taken.** The orchestrator owns every deploy.
+
+**WHAT THIS WAVE IS.** Will gave a 19-item play-session batch (R-100) and, a day later, the session
+had produced rulings and probes instead of code. This lane is the implementation of the four items
+that all land on the two champions he cannot fight on fair terms: **R-103/R-107** (the reflect +
+pierce retune), **R-100 #1** (Bloodbath, cd 45 -> 15), **R-100 #12** (Blood Frenzy) and
+**R-100 #13** (summonable minions for the Devourer AND the Endless Hunt). Nothing was trimmed for
+balance - R-103 ruled *"yes harder is the point, keep all three"* and *"the answer is not cutting
+skills but cutting elsewhere"*, and all three power additions ship in full.
+
+**DB-ONLY LANE.** `Text.arc` is COUPLED (2 new monster-name tags, so arz+Text ship together);
+`Levels.arc` and `Quests.arc` are untouched - zero map bytes, so the Levels+Quests coupling does not
+apply.
+
+### THE HEADLINE FINDING, and it is not what R-107 expected
+
+`melinoe_bloodboil` ("Bloodbath") declares `skillSpecialAnimationName = 'BloodBoil'`. The Devourer's
+caster table `anm_skeleton01` binds **no** `'BloodBoil'` ref in any weapon family, and only **2**
+records in the whole 51,124-record DB bind that ref at all (neither a skeleton). Under this repo's
+disasm-proven **B-SOUL-PROC-2** law - `Game.dll SkillManager::StartSkill` aborts a cast whose special
+anim cannot start on the caster's table, and whose own BACKLOG RCA already lists *"BloodBoil x29"*
+among never-playable monster anims - **the Devourer's signature nova, wired at a 90% cast chance
+since build32, has never once fired.** The identical defect kills
+`svc_enslaver_summonmarauders` (`'Summon'`, same table, no such ref), which is the exact summon
+R-100 #13 tells us to pattern the new ones on. Both are fixed. Full measurement in **R-120/R-121**;
+the standing audit lesson is **R-122**.
+
+### WHAT SHIPPED (7 new records, one field pair each on 6 monsters, 1 field deleted)
+
+**(a) R-103 / R-107 - the reflect retune, made WITHOUT nerfing Will's own pets.**
+`toxeus_passiveproperties` has **18 carriers** and **9 are the pets he summons**
+(`pets\toxeus_enslaver_{1,2,3}`, `pets\bloodtoxeus_{1,2,3}`, `pets\toxeus_eoat_{1,2,3}`), plus
+`drxcreatures\crowheroes\less.dbr` (a DRX crow hero that is not ours) and 2 zzdev dummies. A one-line
+`defensiveReflect 100 -> 30` would have stripped 70 reflect off the very pets he is fighting with -
+the `genericbossorb_04` lesson exactly. So a monster-only clone
+`svc_toxeus_passiveproperties_monster` carries **30.0 / 33.0** and **only the 6 Toxeus MONSTERS** are
+repointed. `defensiveReflectChance` stays 33.0 because R-103 ruled that cutting the CHANCE instead
+"leaves it a coin-flip instadeath that is simply rarer. That is worse design".
+Both numbers are named constants (`REFLECT_MONSTER`, `REFLECT_CHANCE`) so Will can retune in one line.
+
+**(b) R-107 lever 2 - `um_bloodtoxeus_99.defensivePierce` 70.0 -> 40.0** (`DEVOURER_PIERCE`). He plays
+a spear build; 70% was a near-immunity and is why his pets could not finish it either.
+**`characterLife` is deliberately NOT touched** - R-107 ranks it third and calls it the reserve lever.
+The gate asserts it did not move.
+
+**(c) R-100 #1 - Bloodbath, cd 45 -> 15, and made castable at all.** `melinoe_bloodboil` is shared
+with 6 Toxeus PET records, so the cut lands on a clone `svc_devourer_bloodbath`
+(`BLOODBATH_COOLDOWN = 15.0`) whose `'BloodBoil'` special anim is DELETED (base-absence parity, never
+blanked - B-TOXEUS-2). Only the Devourer is repointed; `melinoe_bloodboil` ships byte-unchanged.
+
+**(d) R-100 #12 - Blood Frenzy.** ALREADY on him from b73 (`quak_bloodfrenzy`, skillName17 @
+level [4,8,12], `Skill_PassiveOnLifeBuffSelf`, fires below 25% life, no special anim so it genuinely
+triggers). Asserted, **not duplicated**. Its thin payload is R-123, an OPEN Will decision.
+
+**(e) R-100 #13 - summonable minions for BOTH champions, held to the reconstructed amgoz1 bar.**
+"Gorged Bloodspawn" off his OWN declared blood-demon retinue for the Devourer, "Courser of the
+Endless Hunt" off the DRX bloodhound rig for the Hunt - different mesh, race and silhouette from the
+Enslaver's ShadowStalker marauders in both cases. Both summons `petLimit 3 / petBurstSpawn 3 / cd 8s`
+and anim-less by construction. Both minions are Champions at band [40,68,100] with `dropItems 0`,
+`chanceToEquipFinger2 0`, `DisplayAsQuestItem 0` and no `treasureProxyName`.
+
+**(f) SIBLING, FLAGGED FOR WILL (R-121).** `svc_enslaver_summonmarauders` demanded the same kind of
+unbound anim (`'Summon'`), so the summon R-100 #13 is patterned on had never fired either. One field
+deleted, single carrier, no numbers touched. **This is the only change Will did not ask for by name.**
+
+
+### ARTIFACT
+
+**DB + Text lane.** `Levels.arc` and `Quests.arc` are UNTOUCHED (zero map bytes), so the
+Levels+Quests coupling does not apply. **arz+Text ARE coupled** - this wave adds 2 Text tags
+(`tagSVCMonsterDevourerBloodspawn`, `tagSVCMonsterHuntCourser`), so a deploy that ships the arz
+without rebuilding `Text.arc` puts raw tag text on both new monsters' name plates.
+
+- baseline arz (a build of `main` @ `7efd107` in THIS environment)
+  `.claude/worktrees/devourer-kit/work/SoulvizierClassic/Database/BASELINE.arz`
+  md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, **51,124 records**.
+  **That md5 is the determinism proof:** it reproduces, byte for byte, the artefact the b101 gate
+  record already names as the built arz of `feat/toxeus-apex-roster`.
+- built arz `.claude/worktrees/devourer-kit/work/SoulvizierClassic/Database/SoulvizierClassic.arz`
+  md5 **`974d77d2ffc3fa5cbefca15816183276`**, **55,486,240 B**, **51,131 records** (= 51,124 + exactly
+  the 7 new), **46 registry modules**, built with
+  `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, **exit 0**.
+
+### PROOFS (commands + measured outputs; nothing estimated)
+
+- `py tools/build_svc_database.py upstream/soulvizier_098i/... upstream/soulvizier_0.9/... upstream/soulvizier_041/... work/SoulvizierClassic/Database/SoulvizierClassic.arz "<TQAE>/Database/database.arz"`
+  -> **exit 0**, `--- [42/46] devourer_kit ---`, `devourer_kit: modified 13 record(s), 2 tag(s)`,
+  `authored 7 new records + 2 Text tags`, `Written 50000/51131...`, `Done.`
+- **`[devourer_kit] verify OK`** on the FINAL assembled db (post-finalization), verbatim:
+  > monster-only passive 30/33 carried by EXACTLY the 6 Toxeus monsters; the original stays 100/33
+  > for 12 carrier(s) incl. all 9 pets + less.dbr; Devourer pierce 40, life
+  > [13000.0, 18000.0, 24000.0] untouched; Bloodbath cd 15 anim-less and cast @90.0; Blood Frenzy
+  > present once; both summons anim-less @petLimit 3; both minions Champion, soul-less, loot-less;
+  > 0 unbound special animations across 6 casters.
+- `boss_skill_fix.verify: OK (roster um_*_99 clean of level-0 specials; all enables survived
+  finalization)` - the gate that red-lined build 1 and forced the clone rename.
+- `placed-uber quest markers verify OK: 26/26 ... 27 retinue/add records correctly unmarked` - the
+  two new minions are correctly OUTSIDE the marker roster.
+- `toxeus_hunt_endless`: `variant authored: um_toxeus_hunt_l_99.dbr = the FINAL base record with ONE
+  field changed (controller)` - so the Legendary Hunt inherits the retuned passive AND the courser
+  summon by construction, and that module's own "differ in EXACTLY controller" gate stays green.
+- `py tools/debug/b102_record_diff.py <baseline> <built>` -> **exit 0**,
+  **`ADDED 7 / REMOVED 0 / CHANGED 7`**, `RESULT: PASS - every one attributable to b102, and all 17
+  shared/donor records byte-unchanged.` The 7 changed records and their ONLY moved fields:
+
+  | record | fields that moved |
+  |---|---|
+  | `um_bloodtoxeus_99` | `defensivePierce` 70.0 -> 40.0; `skillName1` + `specialAttackSkillName` melinoe_bloodboil -> `svc_devourer_bloodbath`; `skillName11` -> the monster passive; `skillName18`/`skillLevel18` + `specialAttack5SkillName` -> `svc_devourer_summonbloodspawn` (was the pit-sprite spawner) |
+  | `um_toxeus_hunt_99` | `skillName8` -> the monster passive; `skillName13`/`skillLevel13` [1,2,3] + `specialAttack5SkillName`/`Chance` 100.0 -> `svc_hunt_summoncoursers` |
+  | `um_toxeus_hunt_l_99` | identical to the base Hunt (inherited) |
+  | `um_toxeus_enslaver_99` | `skillName11` -> the monster passive (ONLY) |
+  | `um_toxeus_21`, `um_toxeus_99` | `skillName13` -> the monster passive (ONLY) |
+  | `svc_enslaver_summonmarauders` | `skillSpecialAnimationName` `'Summon'` -> **field deleted** |
+
+- **THE CLONE-NOT-EDIT PROOF, 17/17 byte-unchanged**, printed record by record:
+  `toxeus_passiveproperties`, `melinoe_bloodboil`, `quak_bloodfrenzy`,
+  `t1_skill_pitspawner_summonlildude_02`, all three donors (`c_large_blooddemon_40`,
+  `c_bloodhound_44`, `puke.dbr`), `drxcreatures\crowheroes\less.dbr`, and **all nine of Will's Toxeus
+  PET records**. **0 REMOVED** across the whole 51,124-record baseline: nothing was retired.
+
+### THE GATE (CLAUDE.md law #4) - PLANTED NEGATIVES THAT ACTUALLY FIRE
+
+`devourer_kit.gate_violations()` is the SAME function `verify()` raises on and the SAME function the
+planted negatives call, so the plants exercise exactly the code the build gates on - a plant cannot
+pass against a weaker private copy of the rule.
+
+`py tools/patches/devourer_kit.py --negtest` -> **exit 0, PASS (9/9 plants fired), control clean `[]`**:
+
+| plant | the law it defends |
+|---|---|
+| N1 reflect back to 100 on the monster passive | R-103's number |
+| N2 a PET dragged onto the monster passive | **R-107 Part 2 - the whole reason this is a clone** |
+| N3 `'BloodBoil'` put back on Bloodbath | B-SOUL-PROC-2 castability |
+| N4 an unbounded summon (`petLimit 12`) | the b76 chumbi-freeze density law |
+| N5 a minion given a soul drop | R-42/R-106 - a summoned add never pays a soul out |
+| N6 pierce back to 70 on the Devourer | R-107 lever 2 |
+| N7 Blood Frenzy removed from the Devourer | R-100 #12 |
+| N8 `characterLife` spent | R-107's RESERVED third lever |
+| N9 the original shared passive nerfed in place | the in-place edit R-107 forbids |
+
+The gate is also tested in BOTH directions on the carrier sets: every one of the 6 Toxeus monsters
+must be ON the monster-only passive AND the monster-only carrier set must be EXACTLY those 6 (so a
+future lane cannot quietly widen it), while every pet + `less.dbr` + both zzdev dummies must still be
+on the ORIGINAL. Plus the B-SOUL-PROC-2 castability walk over all 6 casters, which - unlike the b91
+`coldworm_buffs` version - follows `charAnimationTableName` into the shared animation table and reads
+every weapon family, not just `unarmed`.
+
+
+**DEBT REGISTER (nothing silently deferred):**
+- `BL-b102-DEBT-1` **`docs/amgoz1_design_voice.md` DOES NOT EXIST** and never did:
+  `git log --all --diff-filter=A -- '*amgoz1_design_voice*'` returns nothing. It is nonetheless cited
+  as the creative bar in `docs/BACKLOG.md` (3x), `docs/HUNTING_IMPROVEMENT_SUGGESTIONS.md`, four wave
+  reports, `tools/patches/bossarena.py` and a wip workflow. b65 already noticed and the citations kept
+  accumulating. Either author it or strike the citations. This lane RECONSTRUCTED the bar from shipped
+  SV/DRX content (R-125) rather than pretend to have read it.
+- `BL-b102-DEBT-2` **The B-SOUL-PROC-2 castability walk is not a DB-wide invariant.** This wave runs
+  it over 6 casters and b98 runs a stricter wielded-row version over 1. Two champions shipped for
+  months with a dead 90%-chance signature ability precisely because nobody ran it over them. Promote
+  `devourer_kit._bound_anim_refs` + `_anim_violations` (they follow `charAnimationTableName` into the
+  table AND every weapon family, which the b91 coldworm version did not) to a build-wide gate over
+  every boss. NOT done here.
+- `BL-b102-DEBT-3` **R-124 is triple-claimed and this lane could only fix its own half.**
+  `fix/uber-placement` (`b1774d5`, `7940e78`) and `fix/green-mesh-swap` (`b302abd`) each landed an
+  R-124 the same day; this lane moved ITS ruling to R-125 and left both of theirs alone (renumbering
+  another lane's ruling from a third lane is the exact failure the ledger law prevents). **They still
+  collide with each other** - orchestrator's call, same shape as the `BL-b101-DEBT-1` R-100 collision.
+- `BL-b102-DEBT-4` **LAUNCH-GATED, PLAYER SURFACE: nobody has SEEN any of this.** Bloodbath has never
+  animated on the skeleton rig in any build (it never cast at all), so what the anim-less cast looks
+  like on `anm_skeleton01` is unverified; the two new minion meshes at their new scales
+  (blooddemon01 @2.4, bloodhound @1.7) are unverified for clipping and ceiling clearance in the blood
+  cave and Hades Palace; and neither new name has been seen in-game. Will's eye decides. This lane
+  did not deploy and did not launch TQ.
+- `BL-b102-DEBT-5` **The Enslaver summon fix (R-121) is a difficulty change Will did not request.**
+  Sanctioned in direction by R-103 but not by name. One-line revert (`_fix_enslaver_summon`).
+- `BL-b102-DEBT-6` **Blood Frenzy's payload (R-123) is an OPEN Will decision.** The skill is present
+  and triggers, but its only non-zero offensive field is `offensiveSlowLifeLeachModifier`. A
+  `svc_devourer_bloodfrenzy` clone with real numbers is the fix if he wants it to bite. NOT done.
+- `BL-b102-DEBT-7` **`main` moved under this branch.** Branched from `7efd107` per the brief; `main`
+  is now `9a12d17` (R-109 tombstone XP). The three-dot diff is clean (4 files, +1649, 0 deletions) so
+  the merge should be trivial, but the integrator owns the rebase and a re-run of the gates on the
+  merged tip.
+- `BL-b102-DEBT-8` **The 15 other R-100 items are untouched by this lane** - #2 Charon's Oar, #3 the
+  bare Unferried clone, #4 demon-vs-skeleton (a direct contradiction that must go back to Will, never
+  be guessed), #7 markers, #8/#9 Tantalus, #10, #11 forge act-classification, #14, #15 frozen
+  thrown-wielders (the worst item in the batch), #16/#16b, #17 Gaoler, #18 the General's guardians,
+  #19 the 50 -> 33 rate. They are other lanes' scope; naming them here so the batch is not silently
+  half-closed.
+
+---
+
+
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
