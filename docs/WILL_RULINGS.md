@@ -1592,6 +1592,56 @@ Do not re-audit the creature record and declare victory again. Ask Will one ques
 **is the glow constant, or only when he attacks/casts?** - because constant points at mesh or a self-buff,
 and intermittent points at soulrip/netherstrike/lifedrain.
 
-**STATUS:** REOPENED, surface narrowed, not fixed. `BL-b98-DEBT-2` (the mesh-embedded aura) is the related
-debt. R-93 remains PARTIALLY IMPLEMENTED - the Enslaver and Devourer still share `RevenantPoison.msh`, which
-is a second reason to revisit that mesh regardless of the green.
+### AMENDMENT, same day - WILL'S THREE CLARIFICATIONS MOVE THE TARGET OFF THE MONSTER ENTIRELY
+
+**WILL, VERBATIM, in order:**
+
+> "it is constant, he glows green the whole time"
+>
+> "immediately when i summon him he glows green its like a green smoke"
+>
+> "he has black smoke too but the green is more prominent"
+>
+> "it depends on the lighting"
+
+**"WHEN I SUMMON HIM" IS THE WHOLE BALL GAME.** He is describing the **summoned PET**, not the world monster.
+Those are different records. Four fix waves - and my own probe an hour ago - all audited
+`um_toxeus_enslaver_99`, the MONSTER. What Will actually looks at when he reports this is
+`records\skills\soulskills\pets\toxeus_enslaver_{1,2,3}.dbr`, summoned by the soul's granted skill. **That
+alone plausibly explains four "fixed" waves and a still-green summon: right symptom, wrong record.**
+
+**BUT THE PETS ARE ALSO CLEAN AT THE .DBR LEVEL** (measured on `967b1f97`, all three tiers identical):
+`baseTexture` = `NewSkeleton_Charcoal.tex`, `mesh` = `RevenantPoison.msh`,
+`charFxPakRunningNames` = the demons' `drxshadowcloakrunning_fx_pak`, `dissolveColor` R0/G0/B255. No green
+field anywhere. So the green is NOT expressed in any creature-or-pet `.dbr` field, on either surface.
+
+**"BLACK SMOKE TOO, GREEN MORE PROMINENT" MEANS TWO EMITTERS, AND WE ONLY ACCOUNT FOR ONE.** The black is
+`drxshadowcloakrunning_fx` - the demons' shroud, which is what he asked for and wants to keep. The green is a
+SECOND, unaccounted emitter. Any fix must kill the green WITHOUT killing the black.
+
+**"IT DEPENDS ON THE LIGHTING" IS A STRONG MECHANICAL TELL:** brightness varying with scene light is how an
+**additive-blend particle** behaves. That points away from a flat texture or a solid tint field and toward a
+particle asset.
+
+**RANKED SUSPECTS after these clarifications:**
+1. **The `.pfx` particle asset behind the shroud chain.** `drxshadowcloakrunning_fx.dbr` carries almost no
+   fields of its own (a probe over every colour/texture/particle-named field returned only `Anchored = 0`), so
+   the actual particle definition lives in the referenced **`.pfx` binary** (b98 resolved it to
+   `shadowcloakrunning.pfx` in `DRXeffects.arc`). **No `.dbr` edit can change a colour baked into a `.pfx`** -
+   which is exactly why four waves of field edits could sincerely "fix" this and change nothing on screen.
+2. **The summon skill's own FX** - `records\skills\soulskills\summon_toxeus_enslaver.dbr` and its pet-bar
+   chain. NOT YET PROBED, and it is the best fit for "immediately when i summon him". Do this first: it is
+   cheap and it is the newest untested surface.
+3. **`RevenantPoison.msh`** - still possible, but note the crimson pets (`bloodtoxeus_1`, `toxeus_eoat_1`)
+   wear the SAME mesh and Will has not reported them green. Rank last, and if it IS the mesh, ask Will
+   whether the crimson variants glow too before touching it.
+
+**THE PROCESS LESSON, which matters more than this bug.** For four waves nobody asked *"which record are you
+actually looking at?"* The green was reported on "the Enslaver"; there are at least five Enslaver-ish records
+(the monster, three pet tiers, and the marauder minions). One clarifying question - "summoned or in the
+world?" - would have redirected every one of those waves. Ask it before the next lane starts, not after.
+
+**STATUS:** REOPENED. Surface narrowed hard: not the monster's fields, not the pets' fields, black emitter
+accounted for, green emitter unaccounted and probably additive. `BL-b98-DEBT-2` is the related debt. R-93
+remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
+that mesh regardless of the green.
