@@ -404,6 +404,32 @@ REGISTRY = [
                             # immediately before visuals, so it is the ratified final registry
                             # writer of Cold Worm's kit. Touches exactly ONE record; the 3-tier
                             # soul + loot triple are asserted, never rewritten.
+    'general_guardians',    # R-100 #18 (Will 2026-07-29): the six Guardians of the General
+                            # ("super weak ... no chests ... no orbs ... small ... look just
+                            # like the other guys ... no special skills"). RETUNES the 6
+                            # svc_general_{a,b,c}_guard{1,2} records four_generals builds +
+                            # their 3 pair proxies, and adds 27 new hoard records (3 dedicated
+                            # Champion-locked chests, one per PAIR). Measured on main: they
+                            # shipped at scale 1.45 (SMALLER than the 1.5 warden they were
+                            # cloned from), life [3200,4200,5400] vs their general's
+                            # [20244,25305,30366], and a kit inherited VERBATIM from that
+                            # warden - four_generals added zero skills, so all six fought
+                            # identically to the trash beside them.
+                            # Registered AFTER coldworm_buffs / boss_skill_fix (the
+                            # coldworm_buffs precedent) so it is the ratified final registry
+                            # writer of the guard records, and BEFORE uber_quest_markers,
+                            # which it deliberately does not enter: the guards pay no soul, so
+                            # rule A keeps them out of the marker roster and three markers per
+                            # war-council room is the map spam rule A exists to prevent. That
+                            # one call is FLAGGED FOR WILL, not guessed (R-100 #18 calls these
+                            # "the uber bosses we added" while #7 asks for markers on "all the
+                            # uber bosses we made").
+                            # No pet-spawners by construction, re-asserted mechanically, so
+                            # the b76/R-31 density law cannot be touched by this lane.
+                            # Orb tier is genericbossorb_03 (the guards' own L45-48 band):
+                            # NOT _04 (the marshal tier whose consumer set uber_apex_orb
+                            # audits) and NOT _05 (R-99's reserved Toxeus apex).
+                            # Negative test: py tools/patches/general_guardians.py --negtest
     'uber_quest_markers',   # b91 (Will 2026-07-16, R-39, 6th sub-item): "the exclamation-marker
                             # mechanism extended to all placed ubers". CORRECTION to b91 round 1,
                             # which recorded this as map-side and BLOCKED: the marker is the
