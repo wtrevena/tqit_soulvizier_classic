@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""b100 (R-99): PLACEMENT CENSUS for the whole Toxeus monster roster.
+r"""b101 (R-99): PLACEMENT CENSUS for the whole Toxeus monster roster.
 
 R-99 orders every Toxeus creature record onto the apex orb `genericbossorb_05`,
 including the two Iron Lore `zzdev` dev dummies, and explicitly requires the
@@ -28,7 +28,7 @@ Both axes are walked TRANSITIVELY for the spawn-on-death / proxy chain, so
 that spawns it is placed.
 
 Usage:
-  py tools/debug/b100_toxeus_placement_census.py <built.arz> <Levels.arc>
+  py tools/debug/b101_toxeus_placement_census.py <built.arz> <Levels.arc>
 
 Exit 0 always - this is a MEASUREMENT tool, not a gate. The gate that enforces
 the roster is uber_apex_orb.verify().
@@ -92,7 +92,7 @@ def main():
     from patches import uber_apex_orb as M                # noqa: E402
     roster = M.toxeus_roster(db)
 
-    print('\n=== b100 Toxeus placement census ===')
+    print('\n=== b101 Toxeus placement census ===')
     print('arz    : %s' % arz)
     print('map    : %s' % arc)
     print('roster : %d records (derived)' % len(roster))

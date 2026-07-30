@@ -222,7 +222,7 @@ the orb is a separate `treasureProxyName` mechanism and would fire. Wiring them
 is therefore inert-to-harmless, which is the outcome R-99 called "fine". Neither
 is deleted, retired, blanked or renamed (RETIREMENT PROTOCOL): code-unreferenced
 is not proof of dead, and this is a Will-ratified inclusion, not a cleanup.
-Re-measure with `tools/debug/b100_toxeus_placement_census.py`.
+Re-measure with `tools/debug/b101_toxeus_placement_census.py`.
 
 LEINTH (3 records, 2 fields each) - her SOLE-OWNED chests are upgraded IN PLACE
 to the SAME apex tables, so all three bosses share one identical calibre:
@@ -308,8 +308,8 @@ proof, computed rather than asserted). Her three original loot tables are
 deliberately LEFT IN THE DB (retirement protocol) and are what (c) and (h) read as
 the live reference. Planted negative tests:
 tools/debug/negtest_uber_apex_orb.py. Placement census:
-tools/debug/b100_toxeus_placement_census.py.
-See docs/reports/b94_leinth_wave.md and docs/reports/b100_toxeus_apex_roster.md.
+tools/debug/b101_toxeus_placement_census.py.
+See docs/reports/b94_leinth_wave.md and docs/reports/b101_toxeus_apex_roster.md.
 """
 import apply_svc_patches as asp
 from arz_patcher import DATA_TYPE_STRING
