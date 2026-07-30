@@ -6,15 +6,22 @@
 process launched or killed.** The orchestrator owns every deploy. No `buildNN` tag was taken: this
 lane did not deploy, and the tag belongs to whichever wave ships these bytes.
 
-> ⚠️ **BASE MOVED MID-LANE AND THIS LANE DID *NOT* REBASE - deliberately, and the reason matters.**
-> Briefed base is `main` @ `7efd107`; while the lane ran, `main` advanced to `9a12d17` ("R-109:
-> tombstone XP recovery must EQUAL the XP lost"). That commit touches `docs/WILL_RULINGS.md` and two
-> `docs/wip_workflows/*.js` files and NOTHING else (`git show --stat 9a12d17` = 3 files), so it is
-> disjoint from every file this lane edits. Rebasing would have invalidated the measured baseline
-> (built from `7efd107`) and with it the entire record-diff proof, for zero content benefit. The
-> integration decision is the orchestrator's; if it rebases, it should rebuild the baseline on the new
-> base and re-run `tools/debug/b102_green_mesh_record_diff.py`, which is written to derive both
-> rosters live and needs no edit to do that.
+> ⚠️ **BASE MOVED MID-LANE. ROUND 2 (2026-07-30) MERGED IT AND RE-PROVED EVERYTHING ON THE MERGED
+> TREE - the branch is now a clean fast-forward candidate.** Briefed base was `main` @ `7efd107`;
+> `main` advanced to `533c73d` (`9a12d17` "R-109: tombstone XP recovery must EQUAL the XP lost" +
+> `533c73d`, a backtick fix in a wave script). Between them they touch `docs/WILL_RULINGS.md` and
+> `docs/wip_workflows/*.js` and NOTHING else (`git show --stat 9a12d17 533c73d` = 3 files + 1 file),
+> so they are disjoint from every file this lane edits.
+> **Merge `f318179` is clean** - `git merge main` auto-merged `docs/WILL_RULINGS.md` with no conflict,
+> both appends survive (`grep -n "SIXTH AMENDMENT"` -> 1952, `grep -n "R-109"` -> 2430), and no
+> `tools/` file moved.
+> **THE MERGE IS PROVEN INERT ON THE ARTIFACT:** a FOURTH full scratch build, run post-merge in this
+> environment, produced the **byte-identical** md5 `6ce12e5d12a267bc97eda0abc12ba896`, exit 0, with
+> the same gate output (log `local/b102_build4_postmerge.log`). The record-diff was then re-run on the
+> post-merge artifact against the same `7efd107` baseline and is still **0 ADDED / 0 REMOVED / 15
+> CHANGED, all attributed** (`local/b102_record_diff_postmerge.txt`, exit 0). So the baseline built
+> from `7efd107` remains valid evidence for the merged tree, because R-109 provably contributes zero
+> database bytes.
 > **`git diff 7efd107..HEAD --numstat` = 11 files.** `docs/WILL_RULINGS.md` **84 insertions / 0
 > deletions** and `docs/BACKLOG.md` **151 / 0** - both pure appends, so no ruling or gate record was
 > displaced (the b101 lesson). The only deletions in the whole branch are 22 lines in
@@ -29,6 +36,31 @@ zero new tags, so there is NO arz+Text or Levels+Quests coupling to honour here)
 - **DETERMINISM RE-PROVED**: a confirming rebuild from scratch at the same HEAD produced the
   byte-identical md5 `6ce12e5d12a267bc97eda0abc12ba896`, exit 0, with identical gate output
   (log `local/b102_build3_confirm.log`; the `md5sum` of both artifacts is its last two lines).
+  **ROUND 2 added a FOURTH build, post-merge-of-`main`, same md5, exit 0**
+  (`local/b102_build4_postmerge.log`) - so the artifact is reproducible across three independent
+  scratch builds AND across a base change.
+- **ROUND 2 INDEPENDENT RE-VERIFICATION (2026-07-30), deliberately NOT using this lane's own
+  helpers**, because the whole bug is a four-wave history of a lane verifying itself:
+  * **ROOT CAUSE re-read from RAW BYTES** straight out of `Creatures.arc` with a generic string
+    scan (no `mesh_assets` call): `revenantpoison.msh` 342,392 B contains a literal `createentity`
+    block naming `records\effects\monsterfx\buffs\revenantpoison_fx.dbr`;
+    `skeletongrayblack01new.msh` (348,798 B) and `goldenskeleton01.msh` (342,030 B) contain **NO**
+    `.pfx` / `createentity` / `_fx.dbr` string at all.
+  * **ANIMATION SAFETY re-measured the same way**: bone sets extracted by regex from the three
+    `.msh` binaries are **identical** - `missing=NONE extra=NONE` in both directions vs
+    RevenantPoison. The re-rig risk R-102 flagged is measured at zero for these two destinations.
+  * **OUTCOME re-read from the built arz** with an independent probe: green carriers 30 -> 15,
+    the drop is exactly the 15 roster records, `newly-green: NONE`, three DISTINCT champion meshes,
+    and the shroud present on the monster (slot 19, level `[1,2,3]`) AND all three pet tiers
+    (slot 13, level 1).
+  * **EXHAUSTIVENESS check the roster-derived gate structurally CANNOT do** (it derives from
+    hand-named anchors, so a surface reachable from no anchor would pass vacuously): swept the whole
+    arz for every Toxeus/Enslaver/Devourer/EoAT/marauder/Hemorrheus-shaped record carrying a mesh.
+    Exactly **two** remain on `RevenantPoison.msh`, and both are correctly out of scope -
+    `um_toxeus_21` (the base/SV Athens Toxeus whose green is INTENDED) and
+    `zzdev\old_z_toxeus` (a dev dummy). **No champion surface was missed.**
+  * All **29 planted negatives re-run and all 29 fire**: `champion_mesh --negtest` 12/12,
+    `enslaver_shroud --negtest` 17/17.
 - BASELINE built by THIS lane from `main` @ `7efd107` in the SAME environment and the SAME work/
   layout: md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, 51,124 records, exit 0
   (`local/baseline/build_baseline_worklayout.log`). A second baseline written to a scratch path
