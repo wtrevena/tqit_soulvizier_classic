@@ -26,6 +26,9 @@ zero new tags, so there is NO arz+Text or Levels+Quests coupling to honour here)
   md5 **`6ce12e5d12a267bc97eda0abc12ba896`**, **55,475,296 B**, **51,124 records**, 46 registry modules,
   built with `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
   **exit 0** (log `local/b102_build2.log`).
+- **DETERMINISM RE-PROVED**: a confirming rebuild from scratch at the same HEAD produced the
+  byte-identical md5 `6ce12e5d12a267bc97eda0abc12ba896`, exit 0, with identical gate output
+  (log `local/b102_build3_confirm.log`; the `md5sum` of both artifacts is its last two lines).
 - BASELINE built by THIS lane from `main` @ `7efd107` in the SAME environment and the SAME work/
   layout: md5 **`6a3a491db546b603c52132237c40aa63`**, 55,475,226 B, 51,124 records, exit 0
   (`local/baseline/build_baseline_worklayout.log`). A second baseline written to a scratch path
