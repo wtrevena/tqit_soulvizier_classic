@@ -2010,3 +2010,66 @@ plant negatives for a champion knocked off 100 and for a cohort left at 66.
 
 **STATUS:** 66%/50% -> 33% is RATIFIED and ready to implement (734 creatures). The 10% and 0.3% boss buckets ->
 25% follow from his stated policy. The 19 ordinary-monster carriers are HELD pending his answer.
+
+---
+
+## R-106 [2026-07-29] "Only hero monsters should drop their soul" - RATIFIED as the rule, but the data inverts his premise
+
+**WILL, VERBATIM:**
+
+> "most of the monsters that have a soul are probably trash monsters, only hero monsters should drop their soul"
+
+**THE RULE IS RATIFIED:** soul drops belong to Hero / Champion / Quest / Boss class creatures. Common (trash)
+monsters should not drop souls.
+
+**BUT HIS FACTUAL PREMISE IS THE WRONG WAY ROUND, and this is good news for the rate change.** The engine's own
+`monsterClassification` field is authoritative here (Common / Champion / Hero / Quest / Boss), and it beats the
+name-based guessing I used in R-105. Cross-tabulated over all **1,722** soul-bearing creatures:
+
+| rate | Boss | Hero | Quest | Champion | Common | unset | total |
+|---|---|---|---|---|---|---|---|
+| **100%** | 4 | . | . | . | . | . | 4 |
+| **66%** | 34 | **222** | **117** | . | **0** | . | 373 |
+| **50%** | 14 | **347** | . | . | **0** | . | 361 |
+| **25%** | 106 | . | 3 | . | **0** | 2 | 111 |
+| 10% | 12 | . | . | . | 0 | . | 12 |
+| 5% | 1 | 1 | . | . | 0 | . | 2 |
+| 2% | . | 39 | . | . | 0 | . | 39 |
+| 0.5% | . | . | . | 6 | **6** | 1 | 13 |
+| 0.3% | . | . | . | 1 | **9** | 1 | 11 |
+| **0%** | 9 | **28** | 1 | 172 | 324 | 262 | 796 |
+| TOTAL | 180 | 637 | 121 | 179 | 339 | 266 | 1722 |
+
+**THREE CONSEQUENCES, all measured:**
+
+1. **THE R-105 RATE CHANGE IS SAFE AND NEEDS NO NARROWING.** Every one of the 734 creatures going 66%/50% ->
+   33% is already **Hero, Quest or Boss**. There are **ZERO Common monsters** in either cohort. His worry about
+   blanket-raising trash does not apply - the rule was already being followed at those rates.
+
+2. **ONLY 15 COMMON MONSTERS HAVE ANY SOUL CHANCE AT ALL**, and they are exactly the ones flagged in R-105:
+   6 swift archers at 0.5%, plus 4 carrion crows and 5 `pharaoh'shonorguard_mummypriest_*` at 0.3%.
+   **Per this ruling those 15 go to 0%.** (Note the mummy priests classify as **Common** despite a boss-ish
+   name - which is precisely why the classification field, not the filename, is the authority. My R-105
+   suggestion to raise them to 25% was wrong and is withdrawn.)
+
+3. **THE REAL DEFECT IS THE MIRROR IMAGE, AND IT IS 14x BIGGER: 210 HERO/CHAMPION/QUEST/BOSS CREATURES SIT AT
+   0%** and therefore can never drop the soul they carry - 28 Hero, 172 Champion, 9 Boss, 1 Quest. Examples:
+   `hero_adarathelovely_43`, `um_legion_28/28a/28b`, `am_carrionlord_12/15`, `bm_plaguelord_10/12`,
+   `em_sirenofthedeep_37`, `ember_satyr_warden_55`, `us_mormo_16`, `ar_slayer_11/14`, `am_giganticbat_12/14/16`.
+   **"Only heroes should drop souls" is nearly true already; "heroes SHOULD drop souls" is broken 210 times.**
+   That is where the real content is missing, and it is the same defect class as the 22 detached creatures the
+   b97 audit found - at 10x the scale.
+
+**THE 324 COMMON AT 0% ARE CORRECT** under this ruling and must be left alone. Do not "fix" them upward.
+
+**IMPLEMENTATION for this ruling:** derive the target rate from `monsterClassification`, never from the record
+name or folder. One shared classifier (the b97 vet already caught drifted duplicate logic in this exact area).
+Gate it: no Common carrier above 0%, every Hero/Quest non-fixed carrier at 33%, fixed bosses at 25%, the four
+Toxeus champions at 100%, and plant a negative for a Common monster nudged to 33%.
+
+**OPEN FOR WILL:** the 210 hero-class zeroes are a content decision, not just a rate flip - each needs a soul
+that suits the creature (the amgoz1 bar), and some may be deliberately soul-less. Recommend a dedicated lane
+that reports the roster with a proposed soul per creature before changing anything.
+
+**STATUS:** rule ratified. R-105's 734-creature change is confirmed safe. 15 Common carriers -> 0%. My R-105
+mummy-priest suggestion withdrawn. The 210 hero-class zeroes need their own lane and Will's content sign-off.
