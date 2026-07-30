@@ -186,6 +186,28 @@ The WRONG-XPack-scope case is not decoration: a naive strip-the-first-component 
 `Resources\xpack\Creatures.arc`. Using the repo's canonical resolver is what makes the gate trustworthy
 rather than merely green.
 
+**REPRODUCIBILITY + FINAL GATE SET (round 2, against a build made from the COMMITTED tree).** The DB
+was rebuilt from scratch after every round-2 commit, same env
+(`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`), log `local/final_rebuild.log`:
+**exit 0**, md5 **`78e5957f9a09e3bfed44599ac6a36854`**, 55,486,289 B - BYTE-IDENTICAL to round 1's
+build, so the wave is deterministic from the committed source. Both P0 verifies ran inside that build:
+```
+thrown_anim_rig.verify: OK (10 thrown wielders in the DB, 0 frozen; 4 cloned animation tables
+  carrying 39 verbatim base clips + the same clips on 10 repointed creature records (98 clips,
+  2nd surface); all 4 shared originals unedited, 0 non-target carriers moved)
+uber_quest_drops.verify: OK (0 um_* per-party-drop carriers in the DB, 0 pointing at a Quest item;
+  3 measured leaks cleared; 5 donors unwritten and still handing out their quest item;
+  quest-flag pin held on 2 record(s))
+```
+Five gates re-run against that FRESH artifact, all exit 0: the thrown-anim ASSET gate (31/31 resolve);
+`probe_thrown_union_scope` (0 frozen attributable to this mod, 0 base-only throwers on a stripped
+table); `probe_thrown_mesh_family` (0 critical off-family clips); `gate_wave_record_diff`
+(**4 added / 0 removed / 13 modified, 0 unattributed, all 5 donors unchanged**); registry selfcheck
+(47 modules, order hash `27d7dff2...`).
+
+**BASELINE STILL VALID vs CURRENT MAIN.** The baseline was built from `main` @ `7efd107`; main has
+since moved to `533c73d`. `git diff --stat 7efd107 533c73d -- tools/ scripts/` is **EMPTY** (both new
+commits touch `docs/` only), so the baseline is still the correct comparison point for a DB build.
 **THREE CORRECTIONS TO R-140** (full detail + tables in the `R-140 AMENDMENT` entry of
 `docs/WILL_RULINGS.md`). The fix is UNCHANGED - no record, clip or roster entry moved:
 1. **"ZERO records bind the thrown stance at record level" is FALSE.** 7 base Monster records bind
