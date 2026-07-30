@@ -1727,6 +1727,18 @@ guards pay none, so they are mechanically outside the roster; and three markers 
 + two guards) is precisely the map spam rule A exists to prevent. They ship UNMARKED. If Will wants them
 marked it is one line (a pinned extra set in `uber_quest_markers`). Registered as debt.
 
+> **MEASURED 2026-07-30 (independent re-verification pass, same lane), and it settles HOW - not WHETHER:**
+> the obvious "just derive it, don't hand-list it" idea - mark any placed monster carrying a dedicated
+> `genericbossorb_*` - **OVER-CAPTURES BY EXACTLY ONE RECORD** and therefore cannot be used as-is.
+> Measured over the built arz (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+> md5 `b55515970be41c2542208e84a8705640`): of the 27 placed records rule A excludes as retinue/adds,
+> **7 carry a boss orb - the 6 Guardians (`genericbossorb_03`) plus `svc_obs_escort_permean.dbr`
+> (`genericbossorb_02`), which is an ESCORT ADD and must not get a marker.** All 27 adds are rank
+> `champion`, so rank cannot separate them either. So if Will says yes, the honest shape is the pinned
+> extra set the paragraph above names (symmetric with `MARKER_EXEMPT`, cross-checked against the derived
+> roster so it cannot rot), NOT a widened derivation. This measurement is recorded so the next lane does
+> not spend the effort re-deriving a rule that does not close.
+
 **ALSO NOT DONE HERE (visual):** the two guards of a pair still share one `mesh`. Differentiating them means
 a mesh swap, which is the exact class of change the `fix/green-mesh-swap` lane is in flight on and which
 needs an in-game check. The "stop being a lookalike" win here comes from `scale 2.0` (33% over every machae

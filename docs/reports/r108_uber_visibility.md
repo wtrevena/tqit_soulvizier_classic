@@ -251,3 +251,71 @@ build, where the module honestly prints `0 newly unmarked`), and `cf63311` separ
 `Game.dll` disassembly MEASURES from what it lets us infer - the "a death cannot de-level you"
 reading of the XP helper at `0x1017d620` is an interpretation, since the binary carries no field
 names for those offsets, and R-109 does not rest on it.
+
+---
+
+## 5. INDEPENDENT RE-VERIFICATION (2026-07-30, second pass over the finished lane)
+
+Everything in §4 was re-run from scratch by a second pass that trusted none of it. Four things were
+checked that §4 did not cover, and one new measurement came out of it.
+
+### 5.1 Determinism: the artifact reproduces BYTE-IDENTICALLY from committed HEAD
+
+```
+git merge main --no-edit                     # c2878b2, docs-only catch-up
+py tools/build_svc_database.py <4 inputs> local/verify_rebuild.arz <base arz>
+md5sum local/verify_rebuild.arz
+  b55515970be41c2542208e84a8705640      <- IDENTICAL to §4.2's artifact
+```
+
+**That run exited 1, and the exit-1 is the HARNESS's fault, not the lane's** - worth recording
+because it is an easy trap for the next agent. Building to `local/` instead of the `work/` layout
+means the A9 render-chain gate has no `Resources/` dir beside the output, and under
+`SVC_REQUIRE_GATES=1` a gate that *cannot run* is a build failure by design (B-GATE-HARDEN-1). The
+build says so itself and names the remedy. Re-run into the proper `work/` layout: **exit 0**, same
+md5. So: `SVC_REQUIRE_GATES=1` + a scratch output path = a red build that says nothing about the
+code.
+
+### 5.2 All 29 planted negatives re-run against the BUILT arz, by a second pass
+
+`tombstone_xp_recovery` **7/7**, `uber_quest_markers` **8/8**, `general_guardians` **14/14**.
+R-109's two-sided requirement is explicitly satisfied: `multiplier 2.0` (recovery ABOVE the loss)
+**REJECT**, `multiplier 0.5` (recovery BELOW the loss - the pre-R-109 shipped value) **REJECT**,
+`multiplier 0.1` (the hardcoded-10% form the ruling rejects) **REJECT**, and the derived-ness plant
+`penalty RETUNED divisor 90 -> 45, cap -> 123456` **ACCEPT with no edit here**.
+
+### 5.3 SHARED-RECORD LAW, audited independently rather than taken on trust
+
+The brief names two records this project has already been bitten on. Measured baseline -> built:
+
+| record | carriers | edited by this lane? |
+|---|---|---|
+| `genericbossorb_03` (the orb the Guardians now pay) | **12** (6 pre-existing + the 6 new guards) | **NO - byte-identical** |
+| `genericbossorb_04` (the 21-consumer trap) | 19 | **NO - byte-identical** |
+| `genericbossorb_02`, `genericbossorb_05` | 5, 8 | **NO - byte-identical** |
+| `records\xpack\game\gameengine.dbr` | 1 (Game.dll literal) | yes - **exactly one field**, `RedemptionMultiplier [0.5] -> [1.0]` |
+
+So the lane POINTED AT the shared orb and never edited it, which is the law's required shape, and the
+one record it did edit moved one field.
+
+### 5.4 The `main` baseline claim re-measured
+
+`py tools/patches/uber_quest_markers.py --analyze local/baseline_main_7efd107.arz` ->
+roster 25 / already marked 25 / **exempt 1** / would-be-newly-marked **0**. Confirms §1's headline:
+b91 had already marked all 26 and the only code #7 needed was the exemption.
+
+### 5.5 `amgoz1_design_voice.md` - absence CONFIRMED, and it never existed
+
+`git log --all --oneline --diff-filter=A -- "*amgoz*"` -> **empty**; `git ls-files | grep -i amgoz`
+-> **empty**. The file has never been added on any branch in this repo's history. §2 item 4 stands
+and is understated: it is not "missing", it was never authored.
+
+### 5.6 NEW MEASUREMENT - the derived-rule idea for the Guardian markers does NOT close
+
+§2 item 1 leaves "do the Guardians get markers?" to Will. The natural follow-up ("then at least
+derive it instead of hand-listing") was measured and **fails**: marking any placed monster that
+carries a dedicated `genericbossorb_*` captures **7** records, not 6 - the 6 Guardians plus
+`svc_obs_escort_permean.dbr`, an escort add that must stay unmarked. Rank cannot separate them
+either (all 27 excluded adds are `champion`). Recorded in `WILL_RULINGS.md` beside the open question
+so the next lane does not re-derive a rule that does not close. **The answer to WHETHER is still
+Will's; this only settles that the HOW must be a pinned set, symmetric with `MARKER_EXEMPT`.**
