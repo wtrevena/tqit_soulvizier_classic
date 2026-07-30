@@ -1,0 +1,101 @@
+# R-108 wave, lane `feat/uber-visibility` - R-100 #7, R-100 #18, R-109
+
+> **Branch** `feat/uber-visibility`, worktree `.claude/worktrees/visibility`.
+> **Base** `main` @ `7efd107`, merged forward to `main` @ `9a12d17` mid-lane (see §6).
+> **NOT DEPLOYED.** Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or
+> Steam process launched or killed. The orchestrator owns every deploy.
+
+Three items, all DB-only. `Levels.arc` and `Quests.arc` are untouched (zero map bytes, so the
+Levels+Quests coupling does not apply). `Text.arc` IS coupled: this lane mints 3 new tags, so the
+arz and Text must ship together.
+
+| item | ruling | status |
+|---|---|---|
+| exclamation mark on every uber except the Devourer | R-100 #7 | IMPLEMENTED |
+| the Guardians of the General must read as uber | R-100 #18 | IMPLEMENTED (one adjacent call flagged for Will) |
+| tombstone XP recovery == XP lost | R-109 | IMPLEMENTED |
+
+Full detail, with Will's words and every derivation, is appended to `docs/WILL_RULINGS.md` under the
+R-100 section (`### R-100 #7 + #18 IMPLEMENTED`) and under R-109 (`### R-109 IMPLEMENTATION`). This
+report is the wave record: what was measured, what was built, what was proved and what was not.
+
+---
+
+## 1. The one-line summary of each item
+
+**#7** - measured first, and the measurement changed the job. The placed-uber roster on `main` was
+**26 records, ALL 26 already marked**. b91 had shipped "mark all placed ubers" and it was never
+deployed (R-100's own un-run-deploy note). So the only code #7 needed was the **exception**: the
+Devourer ships marked and must not be. `apply()` now writes `DisplayAsQuestItem = 0` on him and the
+gate asserts the 0, so a later writer cannot put it back. Roster 26 -> 25 + 1 exempt.
+
+**#18** - Will is right on all six counts and two of them are outright bugs: the guards shipped at
+`scale 1.45`, **smaller than the 1.5 warden they were cloned from**, and with a kit inherited
+**verbatim** from that warden (`four_generals` added zero skills, so all six fought identically to
+the trash beside them). Retuned to the amgoz1 bar: 12 distinct signature skills, two per guard,
+each chosen from the epithet `four_generals` had already written into its name; `scale 2.0`; HP
+derived as 45% of the general each pair guards; themed resists; `genericbossorb_03`; one
+Champion-locked hoard per pair.
+
+**#R-109** - the mechanism was found in the shipped `Game.dll`, and it **inverts the ruling's
+premise in the player's favour**: the grave stores the amount ACTUALLY lost, so b93 scaled the
+recovery in lockstep and the feared free-XP loop never existed. The real defect was the opposite -
+recovery was 0.5x the loss, i.e. the player was punished twice, which is exactly what R-109's gate
+clause forbids. One field (`RedemptionMultiplier` 0.5 -> 1.0) makes it an equality, and it stays
+**derived**: retune the penalty and the marker follows with no edit.
+
+---
+
+## 2. What was NOT done, exhaustively
+
+Nothing here is "triaged"; each line is either a Will decision or an unproven claim.
+
+1. **Guardian exclamation marks - WILL DECISION.** #18 calls the six "the uber bosses we added"
+   while #7 asks for markers on "all the uber bosses we made". `uber_quest_markers` rule A marks
+   placed encounters that pay a SOUL; the guards pay none, and three markers per war-council room
+   (general + two guards) is the map spam rule A exists to prevent. **They ship UNMARKED.** If Will
+   wants them marked it is one line: a pinned extra set in `uber_quest_markers`. **Not guessed.**
+2. **Guardian pair-internal silhouette - NOT DONE.** The two guards of each pair still share one
+   `mesh` (`machae01b.msh` etc). Differentiating them is a mesh swap, the exact class of change
+   `fix/green-mesh-swap` is in flight on and which needs an in-game check. Per-guard ambient aura FX
+   (`charFxPakRunningNames`) was considered and **rejected**: the shipped candidates
+   (`svc_black_poison_charfxpak`, `svc_ashsmoke_charfxpak`) are audited by the `black_poison` lane's
+   own gate. The "stop being a lookalike" win here comes from `scale 2.0` + 12 distinct attack FX.
+3. **NOTHING IN THIS LANE IS PROVEN IN GAME.** No TQ launch, no deploy. Specifically unproven:
+   the exclamation mark actually disappearing from the Devourer's head/minimap; the guardians
+   reading as uber to a player; the guardian chests actually opening on a Champion lock; the twelve
+   signature skills actually firing (slot/anim wiring is validated by the build's own gates, not by
+   a fight); and a character dying and recovering the full XP from a marker.
+4. **`amgoz1_design_voice.md` IS STILL ABSENT** from this repo. Checked
+   `git log --all --diff-filter=A -- "*amgoz*design*"` (empty) and a tree-wide `find` (no match; the
+   only `amgoz` hits are upstream `.dbr` conflicted copies). The bar was reconstructed from
+   CLAUDE.md/BACKLOG.md and shipped SV content, the same fallback `uber_orphan_weapons.py` recorded
+   in b66. It should be authored.
+5. **The Guardians' 6 records now carry a `treasureProxyName` while `um_enslaver_marauder_99` is
+   deliberately orb-less** ("The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0)" in
+   `apply_svc_patches`). That is a real precedent tension. It is resolved in favour of Will's
+   explicit #18 ask ("dont drop any orbs or anything"), and the guards' `dropItems` is measured `1`
+   (the marauders' is `0`), so the two cases genuinely differ. Recorded, not hidden.
+6. **The R-100 batch's other 16 items are other lanes'** (#1/#12/#13 `feat/devourer-kit`, #2
+   `fix/quest-item-leaks`, #8/#16 `fix/uber-placement`, #19 `feat/soul-economy`, and so on). This
+   lane touched none of them.
+
+---
+
+## 3. Files
+
+| file | what |
+|---|---|
+| `tools/patches/tombstone_xp_recovery.py` | NEW. R-109. One field, the equality gate, 7 planted negatives. |
+| `tools/debug/probe_tombstone_xp.py` | NEW, read-only. Reproduces the `Game.dll` mechanism proof. |
+| `tools/patches/general_guardians.py` | NEW. R-100 #18. Retunes the six guards + three pair proxies, adds 27 hoard records, 14 planted negatives. |
+| `tools/patches/uber_quest_markers.py` | R-100 #7 exemption + its gate; negtest 4 -> 8 plants. |
+| `tools/patches/__init__.py` | registers the two new modules; records the ordering constraints. |
+| `docs/WILL_RULINGS.md` | R-109 implementation block; R-100 #7 + #18 implementation block. |
+| `docs/BACKLOG.md` | gate record + debt register entries. |
+
+---
+
+## 4. Proofs
+
+See §5 of this file for the command/output matrix and `docs/BACKLOG.md` for the gate record.
