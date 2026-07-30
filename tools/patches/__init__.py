@@ -436,6 +436,16 @@ REGISTRY = [
                             # dedicated chain form must carry DisplayAsQuestItem=1, and no SHARED
                             # form may) - negative test `py tools/patches/uber_quest_markers.py
                             # --negtest`. One field, 0 new records, 0 tags.
+                            # R-100 #7 (Will 2026-07-29) ADDS ONE RULED EXEMPTION: the Devourer
+                            # (um_bloodtoxeus_99) "is sitting on a chest a hidden location and
+                            # should not be so easily found", so he is forced to
+                            # DisplayAsQuestItem=0 - he ships MARKED on main (b91 put him in the
+                            # roster), so this is an UNMARK, not a skip, and the gate asserts the 0
+                            # rather than just omitting him. Roster 26 -> 25 + 1 exempt. The
+                            # exemption is cross-checked against the derived roster (a stale entry
+                            # reds the build) and closed over actorToSpawnOnDeath. Every other
+                            # Toxeus variant (Enslaver, both Endless Hunt forms) stays MARKED -
+                            # Will asked for those explicitly.
     'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-90): "yeah lets have the endless pursuit only
                             # be on legendary". Pursuit is a CONTROLLER property and both
                             # MaxPursuitDistance and PursuitTime are declared class="variable" in

@@ -107,12 +107,48 @@ Also excluded, mechanically:
 
 
 ================================================================================
+2b. R-100 #7 (Will, 2026-07-29) - ONE RULED EXEMPTION, AND ONLY ONE
+================================================================================
+Will played the b91 result and confirmed the mechanism reads correctly in game
+("toxeus the murderer the endless hunt had an exclamation mark on him on the
+minimap"), asked for it on the rest of the roster - and carved out exactly one
+boss:
+
+    "we should give an exclamation mark over their head to all the uber bosses we
+     made with the exception of toxeus the murderer, devourer of blood since he is
+     sitting on a chest a hidden location and should not be so easily found."
+
+MEASURED STARTING POINT (`py tools/patches/uber_quest_markers.py --analyze
+local/baseline_main_7efd107.arz`, the arz this branch built from `main` 7efd107):
+roster **26**, all **26** already at `DisplayAsQuestItem = 1`, and
+`um_bloodtoxeus_99` IS one of them. So the rest of #7 was already shipped by b91
+and never deployed (R-100's own "TWO OF HIS REPORTS ARE EXPLAINED BY A DEPLOY
+THAT NEVER RAN" note applies verbatim to the "the other major bosses ... do not
+have one" half); the only CODE change #7 needs is to take the marker OFF the
+Devourer. That is what `MARKER_EXEMPT` does, and `apply()` writes 0 rather than
+merely skipping him, because he ships marked today.
+
+The exemption is a NAMED SET, not a derived rule, because "hidden" is a placement
+property with no DB expression - but it is cross-checked mechanically
+(`_exempt_closure`): every entry must exist AND must be a member of the derived
+roster, so a stale exemption reds the build instead of rotting, and the entry is
+expanded over `actorToSpawnOnDeath` so a future Devourer transform form inherits
+the exemption automatically. Measured: the Devourer has NO chain
+(`actorToSpawnOnDeath` empty) and no record spawns him, so the closure is exactly
+one record today.
+
+Everything else about #7 stays roster-derived: a future uber that lands in the
+placement proxies and pays a soul gets its marker with no edit here.
+
+
+================================================================================
 3. THE GATE (a new content class ships its gate)
 ================================================================================
-The new invariant this lane introduces:
+The invariant this lane introduces, in its post-R-100 #7 form:
 
     EVERY placed-uber encounter record, and every form of its transform chain,
-    must carry DisplayAsQuestItem = 1.
+    must carry DisplayAsQuestItem = 1 - EXCEPT the R-100 #7 exemption closure,
+    which must carry DisplayAsQuestItem = 0.
 
 `verify()` runs in registry step 4 over the FINAL merged db (after the entire
 gate battery) and fails the BUILD loud on any roster member sitting at 0. It also
@@ -122,9 +158,15 @@ ruling is built on.
 
 Planted negative test proves the gate is not vacuous:
     py tools/patches/uber_quest_markers.py --negtest
-It plants (1) a roster member reset to 0 - must be flagged; (2) a retinue add
-(no soul in its chain) - must NOT be in the roster, i.e. the roster is not
-"everything the proxies reference"; (3) an untouched control - must be clean.
+It plants (1) a roster member reset to 0 - must be flagged; (2) an anchor
+regression - must be flagged; (3) a retinue add (no soul in its chain) - must NOT
+be in the roster, i.e. the roster is not "everything the proxies reference";
+(4) a shared transform form - must stay unmarked; (5) the R-100 #7 exempt boss
+RE-MARKED - must be flagged (this is what makes the exemption an invariant rather
+than a skip); (6) the exempt boss must be out of the write roster AND actually at
+0 after apply() (it ships at 1, so this is a real before/after); (7) a STALE
+exemption naming a non-roster record - must red the build; plus an untouched
+control - must be clean.
 
 Read-only analysis of any arz:
     py tools/patches/uber_quest_markers.py --analyze <arz>
@@ -165,7 +207,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import build_svc_database as bsd
 from arz_patcher import DATA_TYPE_INT
 
-MODULE_NAME = "placed-uber quest markers (R-39, 6th sub-item)"
+MODULE_NAME = "placed-uber quest markers (R-39 6th sub-item + R-100 #7 exemption)"
 
 FIELD = 'DisplayAsQuestItem'
 CHANCE = 'chanceToEquipFinger2'
@@ -180,6 +222,33 @@ ENCOUNTER_RANKS = {'hero', 'boss', 'quest'}
 # game's own bespoke boss Class (3 records, all already marked) and is included
 # so a placed record on that Class could never be silently dropped.
 MONSTER_CLASSES = {'monster', 'megalesios'}
+
+# ── R-100 #7: the ONE ruled EXEMPTION (Will, 2026-07-29) ────────────────────
+# Verbatim: "we should give an exclamation mark over their head to all the uber
+# bosses we made with the exception of toxeus the murderer, devourer of blood
+# since he is sitting on a chest a hidden location and should not be so easily
+# found."
+#
+# WHY THIS IS A PINNED SET AND NOT A DERIVED RULE. "Hidden" is a PLACEMENT
+# property, not a DB property: nothing on a Monster record says "this encounter is
+# meant to be hard to find". The honest shape is therefore a named exemption
+# carrying its ruling, cross-checked mechanically so it can never rot silently -
+# _exempt_targets() asserts (a) every entry exists, (b) every entry WOULD be in
+# the rule-A/rule-B roster (so a stale exemption for a record that stopped being a
+# placed uber reds the build instead of sitting there as dead config), and (c) the
+# chain closure is computed, not typed, so a future transform form of the Devourer
+# is exempted automatically the same way rule B would have marked it.
+#
+# It is deliberately NOT wired to "is the boss on genericbossorb_05" or to the
+# Toxeus namespace: R-99's apex roster contains the Enslaver and both Endless Hunt
+# forms, and Will explicitly WANTS those marked ("the other major bosses you have
+# made, including the toxeus the murderer variants do not have one"). Only the
+# Devourer is exempt.
+MARKER_EXEMPT = (
+    (r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr',
+     'Toxeus the Murderer, Devourer of Blood - R-100 #7: sits on a hidden chest '
+     'in a hidden location and must stay hard to find'),
+)
 
 # Pre-existing carriers this lane's premise rests on. verify() re-asserts them so
 # a later writer cannot regress the mechanism out from under R-39.
@@ -280,11 +349,47 @@ def _spawn_parents(db):
     return parents
 
 
+def _exempt_closure(db, roster):
+    """R-100 #7's exemption, expanded over `actorToSpawnOnDeath` exactly the way
+    rule B expands the roster, so a future transform form of an exempt boss is
+    exempt too rather than quietly acquiring a marker.
+
+    Returns an ordered list of record names. Fails LOUD rather than silently
+    ignoring a stale entry: an exemption naming a record that does not exist, or
+    that is not in the computed roster, is dead config and must be re-ruled."""
+    roster_lower = {r.lower() for r in roster}
+    out, seen, problems = [], set(), []
+    for rec, why in MARKER_EXEMPT:
+        if not db.has_record(rec):
+            problems.append('%s - record ABSENT (%s)' % (rec, why))
+            continue
+        if rec.lower() not in roster_lower:
+            problems.append(
+                '%s - NOT in the derived placed-uber roster, so exempting it is a '
+                'no-op and the ruling it carries is unenforced (%s)' % (rec, why))
+            continue
+        for form in _chain(db, rec):
+            if form.lower() in seen:
+                continue
+            if form.lower() != rec.lower() and _cls(db, form) not in MONSTER_CLASSES:
+                continue
+            seen.add(form.lower())
+            out.append(form)
+    if problems:
+        raise AssertionError(
+            'uber_quest_markers: MARKER_EXEMPT is stale - re-rule it rather than '
+            'letting it rot:\n' + '\n'.join('    ' + p for p in problems))
+    return out
+
+
 def placed_uber_roster(db):
-    """Return (targets, excluded_adds, shared_forms, mesh_noise).
+    """Return (targets, exempt, excluded_adds, shared_forms, mesh_noise).
 
     targets       - ordered record names that MUST carry the marker (rule A
-                    encounters + rule B dedicated chain forms), deduplicated.
+                    encounters + rule B dedicated chain forms), MINUS the R-100 #7
+                    exemption closure, deduplicated.
+    exempt        - the R-100 #7 closure: records that qualified for the marker but
+                    that Will ruled must NOT get one. They must sit at 0.
     excluded_adds - placed Monster records with no soul anywhere in their chain
                     (retinue/adds); reported, never marked.
     shared_forms  - chain forms skipped by rule B's exclusivity test, as
@@ -368,14 +473,25 @@ def placed_uber_roster(db):
     # the plant-3 invariant ("no add is also a target") honest.
     excluded_adds = [a for a in excluded_adds if a.lower() not in seen]
 
-    return targets, excluded_adds, shared_forms, mesh_noise
+    # ── R-100 #7: subtract the ruled exemption LAST, from the finished roster ──
+    # Done after the fixpoint, so the exemption is expressed against the roster the
+    # rules actually produced and _exempt_closure can prove each entry really was
+    # in it. An exempt record stays OUT of excluded_adds too: it is not an add, it
+    # is a full uber that Will ruled must stay hard to find.
+    exempt = _exempt_closure(db, targets)
+    exempt_lower = {e.lower() for e in exempt}
+    targets = [t for t in targets if t.lower() not in exempt_lower]
+
+    return targets, exempt, excluded_adds, shared_forms, mesh_noise
 
 
 # ── the invariant, shared by verify() and the negative test ─────────────────
-def marker_violations(db, targets=None):
-    """Every roster member (and every anchor) must sit at DisplayAsQuestItem=1."""
-    if targets is None:
-        targets, _adds, _shared, _noise = placed_uber_roster(db)
+def marker_violations(db, targets=None, exempt=None):
+    """Every roster member (and every anchor) must sit at DisplayAsQuestItem=1,
+    and every R-100 #7 exempt record must sit at 0 - the exemption is an
+    invariant with teeth, not merely an omission from the write loop."""
+    if targets is None or exempt is None:
+        targets, exempt, _adds, _shared, _noise = placed_uber_roster(db)
     bad = []
     for rec in targets:
         cur = _marker_of(db, rec)
@@ -383,6 +499,14 @@ def marker_violations(db, targets=None):
             bad.append((rec, 'FIELD ABSENT'))
         elif cur != 1.0:
             bad.append((rec, f'{FIELD}={cur}'))
+    why_of = {r.lower(): w for r, w in MARKER_EXEMPT}
+    for rec in exempt:
+        cur = _marker_of(db, rec)
+        if cur is None:
+            bad.append((rec, 'EXEMPT but FIELD ABSENT'))
+        elif cur != 0.0:
+            bad.append((rec, f'R-100 #7 EXEMPT but {FIELD}={cur} - '
+                             + why_of.get(rec.lower(), 'exempt transform form')))
     for rec, why in PREEXISTING_ANCHORS:
         if not db.has_record(rec):
             bad.append((rec, f'ANCHOR RECORD MISSING ({why})'))
@@ -404,10 +528,23 @@ def _snapshot_markers(db):
 
 # ── registry hooks ──────────────────────────────────────────────────────────
 def apply(db, tags):
-    targets, excluded_adds, shared_forms, mesh_noise = placed_uber_roster(db)
+    targets, exempt, excluded_adds, shared_forms, mesh_noise = placed_uber_roster(db)
 
     before = _snapshot_markers(db)
     already = [r for r in targets if before.get(r) == 1.0]
+
+    # R-100 #7: an exempt record that is ALREADY marked (the Devourer is, from
+    # b91) must be UNMARKED here - the ruling is a state, not a skip.
+    unmarked = []
+    for rec in exempt:
+        dtype = _marker_dtype(db, rec)
+        if dtype is None:
+            raise AssertionError(
+                f'uber_quest_markers: {FIELD} absent on exempt record {rec}')
+        if before.get(rec) == 0.0:
+            continue                      # minimal touch: already correct
+        db.set_field(rec, FIELD, 0 if dtype == DATA_TYPE_INT else 0.0)
+        unmarked.append(rec)
 
     for rec in targets:
         dtype = _marker_dtype(db, rec)
@@ -425,7 +562,7 @@ def apply(db, tags):
 
     after = _snapshot_markers(db)
     changed = sorted(k for k in after if before.get(k) != after[k])
-    expected = sorted(set(targets) - set(already))
+    expected = sorted((set(targets) - set(already)) | set(unmarked))
     if changed != expected:
         raise AssertionError(
             'uber_quest_markers: scope violation - changed set != computed '
@@ -433,19 +570,24 @@ def apply(db, tags):
             f'  missing   : {sorted(set(expected) - set(changed))}')
 
     print(f'  {MODULE_NAME}: roster {len(targets)} placed-uber record(s) '
-          f'({len(already)} already marked, {len(changed)} newly marked); '
+          f'({len(already)} already marked, '
+          f'{len(set(targets) - set(already))} newly marked); '
+          f'R-100 #7 EXEMPT {len(exempt)} record(s) forced to {FIELD}=0 '
+          f'({len(unmarked)} newly unmarked): '
+          f'{", ".join(r.split(chr(92))[-1] for r in exempt) or "-"}; '
           f'excluded {len(excluded_adds)} retinue/add record(s) with no soul in '
           f'their chain and {len(shared_forms)} SHARED transform form(s); '
           f'{len(mesh_noise)} mesh-basename non-record(s) ignored; 0 tag(s)')
 
 
 def verify(db, tags):
-    targets, excluded_adds, shared_forms, _noise = placed_uber_roster(db)
-    bad = marker_violations(db, targets)
+    targets, exempt, excluded_adds, shared_forms, _noise = placed_uber_roster(db)
+    bad = marker_violations(db, targets, exempt)
     if bad:
         raise AssertionError(
-            'uber_quest_markers verify FAILED - placed uber(s) without the '
-            'quest marker:\n' + '\n'.join(f'    {r}: {w}' for r, w in bad))
+            'uber_quest_markers verify FAILED - marker state wrong (a roster member '
+            'without the marker, or an R-100 #7 exempt boss WITH one):\n'
+            + '\n'.join(f'    {r}: {w}' for r, w in bad))
 
     # the exclusion side of the invariant must stay real: an add that silently
     # acquired a soul would change the roster, so re-assert none of the excluded
@@ -467,6 +609,8 @@ def verify(db, tags):
 
     print(f'  {MODULE_NAME} verify OK: {len(targets)}/{len(targets)} placed-uber '
           f'records carry {FIELD}=1 (incl. every dedicated transform-chain form); '
+          f'{len(exempt)} R-100 #7 exempt record(s) at {FIELD}=0 '
+          f'({", ".join(r.split(chr(92))[-1] for r in exempt) or "-"}); '
           f'{len(excluded_adds)} retinue/add records correctly unmarked; '
           f'{len(shared_forms)} shared transform form(s) correctly left alone; '
           f'{len(PREEXISTING_ANCHORS)} pre-existing anchors intact')
@@ -480,12 +624,13 @@ def _load(arz):
 
 def _analyze(arz):
     db = _load(arz)
-    targets, adds, shared, noise = placed_uber_roster(db)
+    targets, exempt, adds, shared, noise = placed_uber_roster(db)
     marked = [r for r in targets if _marker_of(db, r) == 1.0]
     print(f'\nARZ: {arz}')
     print(f'  placed-uber roster           : {len(targets)}')
     print(f'  already DisplayAsQuestItem=1 : {len(marked)}')
     print(f'  would be newly marked        : {len(targets) - len(marked)}')
+    print(f'  R-100 #7 EXEMPT              : {len(exempt)}')
     print(f'  excluded retinue/adds        : {len(adds)}')
     print(f'  excluded SHARED chain forms  : {len(shared)}')
     print(f'  mesh-basename non-records    : {len(noise)}')
@@ -493,6 +638,13 @@ def _analyze(arz):
     for r in targets:
         print(f'    [{"X" if _marker_of(db, r) == 1.0 else " "}] {r}'
               f'  rank={_rank(db, r)}')
+    print('\n  --- R-100 #7 EXEMPT (must be 0; would otherwise be roster members) ---')
+    why_of = {a.lower(): b for a, b in MARKER_EXEMPT}
+    for r in exempt:
+        print(f'    [{"!" if _marker_of(db, r) == 1.0 else " "}] {r}'
+              f'  rank={_rank(db, r)}  {FIELD}={_marker_of(db, r)}')
+        if r.lower() in why_of:
+            print(f'          {why_of[r.lower()]}')
     print('\n  --- EXCLUDED (retinue/adds, no soul in chain) ---')
     for r in adds:
         print(f'        {r}  rank={_rank(db, r)}')
@@ -504,25 +656,31 @@ def _analyze(arz):
 
 
 def _negtest(arz):
-    """Prove the gate is not vacuous. Four plants over a throwaway db."""
+    """Prove the gate is not vacuous. Seven plants over a throwaway db."""
     db = _load(arz)
-    targets, adds, shared, _noise = placed_uber_roster(db)
+    targets, exempt, adds, shared, _noise = placed_uber_roster(db)
+
+    # PRE-STATE, measured before apply() so plant 5 is a real before/after claim:
+    # on `main` the Devourer ships MARKED (b91 put him in the roster), which is
+    # exactly the state R-100 #7 reverses.
+    exempt_before = {r: _marker_of(db, r) for r in exempt}
+
     apply(db, {})
 
-    clean = marker_violations(db, targets)
+    clean = marker_violations(db, targets, exempt)
     control_ok = (clean == [])
 
     # PLANT 1: a roster member reset to 0 must be flagged.
     victim = targets[0]
     db.set_field(victim, FIELD, 0)
-    plant1 = any(r == victim for r, _ in marker_violations(db, targets))
+    plant1 = any(r == victim for r, _ in marker_violations(db, targets, exempt))
     db.set_field(victim, FIELD, 1)
 
     # PLANT 2: the anchor regression must be flagged.
     anchor = PREEXISTING_ANCHORS[0][0]
     prev = _marker_of(db, anchor)
     db.set_field(anchor, FIELD, 0)
-    plant2 = any(r == anchor for r, _ in marker_violations(db, targets))
+    plant2 = any(r == anchor for r, _ in marker_violations(db, targets, exempt))
     db.set_field(anchor, FIELD, int(prev))
 
     # PLANT 3: the roster must NOT be "everything the proxies reference" - a
@@ -538,6 +696,38 @@ def _negtest(arz):
     else:
         plant4, sf_label = False, 'NONE FOUND - the leak test is vacuous'
 
+    # PLANT 5 (R-100 #7): re-marking an exempt boss must be flagged. This is the
+    # plant that gives the exemption teeth - without it, "exempt" would only mean
+    # "apply() skipped it" and any later writer could put the marker back.
+    if exempt:
+        ex = exempt[0]
+        db.set_field(ex, FIELD, 1)
+        plant5 = any(r == ex for r, _ in marker_violations(db, targets, exempt))
+        db.set_field(ex, FIELD, 0)
+    else:
+        plant5 = False
+
+    # PLANT 6 (R-100 #7): the exempt boss must NOT be in the write roster, and
+    # apply() must actually have UNMARKED him (he ships marked on main).
+    plant6 = (bool(exempt)
+              and all(e not in targets for e in exempt)
+              and all(_marker_of(db, e) == 0.0 for e in exempt))
+
+    # PLANT 7: a STALE exemption must red rather than rot. Point MARKER_EXEMPT at
+    # a record that is not a placed uber and re-derive.
+    global MARKER_EXEMPT
+    saved = MARKER_EXEMPT
+    try:
+        MARKER_EXEMPT = ((adds[0] if adds else PREEXISTING_ANCHORS[0][0],
+                          'PLANTED stale exemption - not a placed uber'),)
+        try:
+            placed_uber_roster(db)
+            plant7 = False
+        except AssertionError:
+            plant7 = True
+    finally:
+        MARKER_EXEMPT = saved
+
     print('\nuber_quest_markers _negtest:')
     print(f'  unmarked-roster-member plant flagged : {plant1}')
     print(f'  anchor-regression plant flagged      : {plant2}')
@@ -545,8 +735,15 @@ def _negtest(arz):
           f'({len(adds)} adds, e.g. {adds[0] if adds else "-"})')
     print(f'  shared chain form left unmarked      : {plant4}')
     print(f'                                         {sf_label}')
+    print(f'  R-100 #7 re-marking exempt flagged   : {plant5}')
+    print(f'  R-100 #7 exempt out of roster + set 0: {plant6}')
+    for r in exempt:
+        print(f'                                         {r}'
+              f'  before={exempt_before.get(r)} after={_marker_of(db, r)}')
+    print(f'  stale-exemption plant reds the build : {plant7}')
     print(f'  correctly-marked control is clean    : {control_ok} ({clean})')
-    ok = plant1 and plant2 and plant3 and plant4 and control_ok
+    ok = (plant1 and plant2 and plant3 and plant4 and plant5 and plant6
+          and plant7 and control_ok)
     print(f'  -> {"PASS" if ok else "FAIL"}')
     return 0 if ok else 1
 
