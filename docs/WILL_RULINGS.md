@@ -1677,8 +1677,42 @@ shroud to ALL THREE PET TIERS as well as the monster, and gate it roster-derived
 `{monster} + {every pet tier}` so a future tier cannot be silently skipped. Then deploy, because none of it
 counts until it is on his disk.
 
-**STATUS:** REOPENED. Surface narrowed hard: not the monster's fields, not the pets' fields, the black emitter
-is pre-existing DRX pet FX (NOT our shroud, which never reached the pets), green emitter unaccounted and
-probably additive. `BL-b98-DEBT-2` is the related debt. R-93
+### THIRD AMENDMENT - WILL SENT A SCREENSHOT. WHAT IS VISIBLE, AND WHY IT INVERTS A b98 ASSUMPTION.
+
+Will: *"can you see the green on the summoned pet?"* - screenshot, Prison of Souls, his spear-and-shield
+character next to the summoned Enslaver pet. Also: *"even in bright areas you can see the green but on certain
+backgrounds it is extremely striking"*.
+
+**WHAT IS ACTUALLY VISIBLE (stated as observation, separated from inference):**
+- A distinct **volumetric green smoke cloud centred on the pet**, hugging the ground around its feet and lower
+  body, extending to the pet's LEFT - i.e. AWAY from the soul-cage set piece. It is emitted by the pet.
+- Its hue is **mossy / olive green**, clearly DIFFERENT from the Prison of Souls cage's bright **cyan-teal**
+  beam a few metres to the right. Two different greens in one frame. **That hue difference is the load-bearing
+  observation: it rules out "you are just seeing the cage's light reflected off him".**
+- The pet's bones also read green-tinted, but the cage throws green ambient light across that whole area, so
+  the SKIN tint is confounded and must not be used as evidence either way.
+- **No obvious black smoke in this frame**, consistent with his "the black is something else" and with the
+  shroud never having reached the pets.
+
+**NEW LEADING HYPOTHESIS, and it inverts what b98 assumed.** The pet record has **exactly ONE** particle
+emitter: `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak` -> `drxshadowcloakrunning_fx` ->
+(a `.pfx` binary, `shadowcloakrunning.pfx` in `DRXeffects.arc`). Will sees exactly ONE dominant smoke cloud,
+and it is green. The parsimonious conclusion is that **that one emitter IS the green smoke** - i.e.
+`shadowcloakrunning.pfx` is a green spectral cloak in DRX, not a black one.
+
+b98 assumed that pak was BLACK - it reasoned from Will's description of the demons' smoke and then wired the
+SAME pak onto the monster as `svc_enslaver_shroud`, calling it "the demons' black shroud, colour AND shape".
+If this hypothesis holds, **b98's shroud does not fix the green - it ADDS a second green emitter to the
+monster.** ⚠️ **DO NOT DEPLOY b98's shroud as-is until the `.pfx` colour is confirmed.** Verify before
+believing this; but verify it FIRST, because it is cheap and it gates a deploy.
+
+**THE ONE MEASUREMENT THAT SETTLES IT:** extract `shadowcloakrunning.pfx` from `DRXeffects.arc` and read its
+texture reference and colour keys. Mechanical byte work - Opus, not Fable (per the byte-reading budget rule).
+Then check what the marauder demons actually emit, because Will likes THEIR smoke; if they use this same pak
+and read black to him, the difference is elsewhere and this hypothesis dies.
+
+**STATUS:** REOPENED, and now with visual evidence. Not the monster's fields, not the pets' fields. Exactly one
+emitter on the pet and it appears to be the green one. Next action is a `.pfx` decode, and b98's shroud deploy
+is BLOCKED pending it. `BL-b98-DEBT-2` is the related debt. R-93
 remains PARTIALLY IMPLEMENTED (Enslaver and Devourer share `RevenantPoison.msh`), a second reason to revisit
 that mesh regardless of the green.
