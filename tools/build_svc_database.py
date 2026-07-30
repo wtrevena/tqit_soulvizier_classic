@@ -758,6 +758,29 @@ SOUL_RATE_FIXED_BOSS_PINS = frozenset({
 # and must never be raised by the 0%-defect rule above.
 SOUL_RATE_ZERO_PINS = frozenset({'um_polisgaoler_99'})
 
+# ⚠️ AN OLDER, STILL-STANDING WILL RULING THAT OUTRANKS THE RATE SWEEP HERE.
+# `tools/patches/double_soul_rulings.py` ruling (c): "CHARON 39/41/43 + HADES 54
+# - UNTOUCHED (Will's explicit ruling) ... explicitly NOT reduced ... This module
+# touches NONE of their records; verify() asserts a literal zero-diff (every
+# field on all 8 monster records)". That gate is field-level, so re-rating them
+# violates it - and it CAUGHT this sweep on the first gated build:
+#   "double_soul_rulings.verify FAIL: (c) Charon/Hades roster is NOT
+#    byte-identical to the pre-apply snapshot" listing boss_charon_39/41/43 and
+#    boss_hades_54.
+# R-105's COUNT ("that is 734 creatures") includes them, so the two rulings
+# genuinely disagree. A newer count does NOT silently overrule an older explicit
+# "untouched", so they are HELD at their shipped rate, visibly, and the conflict
+# goes back to Will (docs/BACKLOG.md BL-b102-DEBT-2). Gate invariant G2 asserts
+# these are the ONLY records left at 66.
+# The list mirrors double_soul_rulings._UNTOUCHED_RECORDS; verify_soul_drop_rates
+# cross-checks the two against each other so they cannot drift apart.
+SOUL_RATE_UNTOUCHABLE = frozenset({
+    'boss_charon_39', 'boss_charonform2_39',
+    'boss_charon_41', 'boss_charonform2_41',
+    'boss_charon_43', 'boss_charonform2_43',
+    'boss_hades_54', 'boss_hadesform2_54', 'boss_hadesform3_54',
+})
+
 
 def ruled_soul_equip_rate(record_name, classification, current,
                           random_pool_members, placed_proxy_members):
@@ -791,6 +814,8 @@ def ruled_soul_equip_rate(record_name, classification, current,
     """
     mb = _soul_record_basename(record_name)
     cls = str(classification or '').strip()
+    if mb in SOUL_RATE_UNTOUCHABLE:
+        return None          # older explicit "UNTOUCHED" ruling wins - see above
     if mb in SOUL_RATE_R48_RECORDS:
         return SOUL_RATE_R48_CHAMPION
     if mb in SOUL_RATE_ZERO_PINS:

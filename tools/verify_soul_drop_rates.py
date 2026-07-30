@@ -419,13 +419,30 @@ def _check_cohorts(recs):
         fails.append(f"G1 R-106: {len(common_live)} Common-classified carrier(s) "
                      f"still drop a soul: {common_live[:6]}")
 
-    # G2 (R-105) - the two ratified cohorts must be EMPTY.
+    # G2 (R-105) - the two ratified cohorts must be EMPTY, except for the records
+    # an OLDER explicit Will ruling puts out of reach (double_soul_rulings (c):
+    # "CHARON 39/41/43 + HADES 54 - UNTOUCHED"). Those must ALSO be exactly that
+    # set - no more, no fewer - so the carve-out can never quietly grow.
     for r in bsd.SOUL_RATE_RATIFIED_COHORTS:
-        left = by_rate.get(round(r, 2), [])
+        left = [(n, c, k) for n, c, k in by_rate.get(round(r, 2), [])
+                if bsd._soul_record_basename(n) not in bsd.SOUL_RATE_UNTOUCHABLE]
         if left:
             fails.append(f"G2 R-105 (\"no monsters should be at 66%\"): "
                          f"{len(left)} carrier(s) still at {r}%: "
                          f"{[n for n, c, k in left[:6]]}")
+    # G2b - the carve-out list must still be the one double_soul_rulings owns.
+    try:
+        sys.path.insert(0, str(HERE / 'patches'))
+        import double_soul_rulings as _dsr
+        owned = {bsd._soul_record_basename(p) for p in _dsr._UNTOUCHED_RECORDS}
+        if owned != set(bsd.SOUL_RATE_UNTOUCHABLE):
+            fails.append(
+                f"G2b: SOUL_RATE_UNTOUCHABLE has drifted from "
+                f"double_soul_rulings._UNTOUCHED_RECORDS "
+                f"(only-here={sorted(set(bsd.SOUL_RATE_UNTOUCHABLE) - owned)}, "
+                f"only-there={sorted(owned - set(bsd.SOUL_RATE_UNTOUCHABLE))})")
+    except Exception as exc:                       # pragma: no cover
+        fails.append(f"G2b: could not cross-check the untouchable roster: {exc}")
 
     # G3 (R-48/R-90/R-91) - exactly the four Toxeus champions sit at 100.
     hundreds = {bsd._soul_record_basename(n) for n, c, k in by_rate.get(100.0, [])}

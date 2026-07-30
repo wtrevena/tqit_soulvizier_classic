@@ -2425,17 +2425,26 @@ Measured on the built arz: the low buckets are **0.5% (13 records)** and **0.35%
 Of the 15 Common carriers, 6 sit at 0.5 and 9 at 0.35 - and 4 of those 9 are the pet crows, so **11**
 records were zeroed, not 15.
 
-### AMENDMENT 5 - A TENSION INSIDE R-105 THAT ONLY WILL CAN SETTLE (5 records)
+### AMENDMENT 5 - A TENSION INSIDE R-105, AND A RULING COLLISION THE BUILD CAUGHT
 
 R-105 says both of these:
 1. "move all 66% and 50% to 33%. **That is 734 creatures**" (a COUNT), and
 2. "**25% for fixed location bosses** and 33% for non-fixed".
 
-Five of the 734 are fixed-location act bosses: `boss_charon_39/41/43`, `boss_satyrshaman_55`, and
-`records\drxcreatures\bloodwitch\boss_hades_54.dbr` (plus the Quest-class `crowheroes\kreeloo.dbr`).
-Sentence 1 puts them at 33; sentence 2 puts them at 25. **This lane followed his COUNT** (they ship at
-33) because the count is explicit and was ratified with a number, and recorded the tension instead of
-inferring. One line from him flips them. Registered as `BL-b102-DEBT-2`.
+Five of the 734 are fixed-location act bosses: `boss_charon_39/41/43`, `boss_satyrshaman_55` and
+`records\drxcreatures\bloodwitch\boss_hades_54.dbr`. Sentence 1 puts them at 33; sentence 2 at 25.
+
+**AND FOUR OF THEM WERE ALREADY UNDER AN OLDER, EXPLICIT RULING OF HIS.**
+`tools/patches/double_soul_rulings.py` ruling (c): *"CHARON 39/41/43 + HADES 54 - UNTOUCHED (Will's
+explicit ruling)"*, enforced by a field-level zero-diff `verify()`. That gate **FAILED this wave's
+first fully-gated build** and named exactly `boss_charon_39/41/43` + `boss_hades_54`. A newer COUNT
+does not silently overrule an older explicit "untouched", so those four are **HELD at 66** (listed in
+`build_svc_database.SOUL_RATE_UNTOUCHABLE`, cross-checked against that module's own roster by gate
+G2b) and the collision goes back to Will. The sweep therefore moves **796** carriers, not 800.
+
+That leaves ONE record still sitting on the original tension: **`boss_satyrshaman_55`** ships at 33
+under the count. Registered as `BL-b102-DEBT-2`; one line from him settles both halves.
+
 
 ### THE ONE CLASSIFIER, AND THE GATE
 

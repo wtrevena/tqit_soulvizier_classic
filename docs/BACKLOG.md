@@ -14,7 +14,7 @@ Will can see it. **That rebuild was NOT run by this lane** - see NOT DONE.
 
 | item | ruling | shipped |
 |---|---|---|
-| rate sweep | R-105 / R-106 / R-107 | **800** of 1,564 carriers re-rated by ONE shared classifier |
+| rate sweep | R-105 / R-106 / R-107 | **796** of 1,564 carriers re-rated by ONE shared classifier |
 | forge acts | R-100 #11 | **580** soul->formula memberships added across the 12 XP-potion formulas (fixed point in 3 rounds) |
 | Soul Gaoler | R-100 #17 | 5 chest placements -> 2; the normal-tier guaranteed donors replaced |
 
@@ -44,11 +44,18 @@ Will can see it. **That rebuild was NOT run by this lane** - see NOT DONE.
   **Class=Pet, Pet.tpl**, the crows a soul summons FOR Will. On a pet `chanceToEquipFinger2` is a pure
   power switch (a pet drops nothing), so zeroing them would nerf his summons and fix no drop. HELD.
   Recommendation: leave them. One word from Will closes it.
-- **BL-b102-DEBT-2 (P2, WILL DECISION) - 5 fixed-location act bosses inside the ratified 734.** R-105
-  says both "move all 66% and 50% to 33% - that is 734 creatures" (a count that includes them) and
-  "25% for fixed location bosses". `boss_charon_39/41/43`, `boss_satyrshaman_55` and
-  `drxcreatures\bloodwitch\boss_hades_54` ship at **33** because this lane followed his COUNT. One line
-  from him flips them to 25.
+- **BL-b102-DEBT-2 (P2, WILL DECISION) - fixed-location act bosses inside the ratified 734, and a
+  RULING COLLISION the build caught.** R-105 says both "move all 66% and 50% to 33% - that is 734
+  creatures" (a count that includes them) and "25% for fixed location bosses". Four of the five -
+  `boss_charon_39/41/43` and `drxcreatures\bloodwitch\boss_hades_54` - are ALSO covered by an OLDER
+  explicit Will ruling (`tools/patches/double_soul_rulings.py` (c): "CHARON 39/41/43 + HADES 54 -
+  UNTOUCHED (Will's explicit ruling)"), whose field-level zero-diff `verify()` **FAILED this wave's
+  first fully-gated build** and named exactly those four. A newer COUNT does not silently overrule an
+  older explicit "untouched", so the four are **HELD at 66**, listed in
+  `build_svc_database.SOUL_RATE_UNTOUCHABLE`, and gate G2b cross-checks that list against that
+  module's own roster so the carve-out cannot drift. That leaves ONE record on the original tension:
+  **`boss_satyrshaman_55`**, a fixed-location act boss shipping at **33** under the count. Will's
+  call, one line either way.
 - **BL-b102-DEBT-3 (P2, WILL DECISION + MAP) - a truly per-difficulty vault.** Measured: container loot
   tables cannot difficulty-index (0 of 74,013 base-game records carry a multi-value `lootNNameM`; the
   3-array convention is Monster.tpl-only, 2,703 instances). The base game ships one chest record per
