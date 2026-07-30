@@ -2,6 +2,7 @@
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## P0 GATE RECORD - R-140 FROZEN THROWN-WIELDERS + R-141 UBER QUEST-ITEM LEAKS (2026-07-30, branch `fix/quest-item-leaks`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
@@ -773,6 +774,206 @@ local/baseline/BASELINE_worklayout.arz work/SoulvizierClassic/Database/Soulvizie
 been seen in game, the EoAT's own silhouette is an undecided design question, and the base-game
 `Build\Resources\` animation defect is waived by name rather than fixed.
 >>>>>>> fix/green-mesh-swap
+=======
+## R131 GATE RECORD - R-100 #14 + #16 CHEST HALVES (2026-07-30 round 2, branch `fix/uber-placement`) - NOT DEPLOYED, NO TAG TAKEN
+
+Full report: `docs/reports/R130_uber_placement.md` sec 7-9. Ruling: **R-131** in
+`docs/WILL_RULINGS.md` (decade re-proven free before minting - see below). This round BUILDS the
+two items round 1 (R-130) triaged into a hand-off. **`BL-R130-DEBT-1` and `BL-R130-DEBT-4` are
+CLOSED by this record.**
+
+**WHAT SHIPPED**
+- **#14** the Mnemophage ("Lower City of Lost Souls") gets a chest: `svc_mnemophagehoard`
+  brackets 45-47 / 63-65 / 63-65 (band [46,68,100]), named **"Mnemophage's Lethe-Hoard"**,
+  world-chest proxy `records\drxmap\proxy\svc_mnemophage_chest.dbr`, placed at
+  `Judgment_TempleUG_Mnemosyne01` local **(45.6, 3.0, 71.0)**.
+- **#16** the Helepolis ("Destroyer of Cities") gets a chest: `svc_diadochihoard` brackets
+  57-59 / 63-65 / 63-65 (band [58,80,97]), named **"Helepolis's Spoil-Hoard"**, proxy
+  `records\drxmap\proxy\svc_diadochi_chest.dbr`, placed at `Elysian_Fields_03` local
+  **(72.6, 8.8, 80.0)** - i.e. riding his R-100 #16 OFF-PATH relocation, not the retired spot.
+- Both use the existing b42 world-chest pattern at `UBER_CHEST_COUNT` (= 1 per R-130), so no new
+  mechanism and no new coordinate geometry was invented.
+- **The new surface ships with its gate:** both prefixes added to `_SVC_FIXED_UBER_CHESTS`, so
+  `_svc_verify_world_chests` now asserts over SIX ubers (was four) that the boss proxy's accessory
+  tiers stay EMPTY and the world-chest record exists.
+- Stale-message fix: the world-chest verify printed "map lane places 3x each" after R-130 dropped
+  `UBER_CHEST_COUNT` to 1 the same day. It now names the constant, not a number.
+
+**DECADE CLAIM (re-proven this round):**
+`git grep -h -oE "R-1(2[5-9]|3[0-9])" $(git branch --format='%(refname:short)')` over all **120**
+local branches returns exactly `R-125`, `R-130`, `R-131`; `git grep -l "R-131" ...` shows the only
+carriers are this lane's own four source files. R-125 = `feat/devourer-kit`, R-130 = round 1.
+**126-129 and 132-139 remain free.**
+
+**BUILD + PROOF** (env `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1
+PYTHONIOENCODING=utf-8`; baseline = `main` @ `533c73d` built in this same environment, in an
+in-repo worktree so input resolution is identical):
+
+```
+arz     BASELINE  6a3a491db546b603c52132237c40aa63   55,475,226 B
+arz     BRANCH    3bf06a36caba4dec9503b93d925412af   55,481,800 B
+map     BASELINE  718abad63e7813dc78c4b169df969fd5  688,692,225 B
+map     BRANCH    34d2f275122458abc9d46d0969853345  688,690,415 B
+TESTHUB BRANCH    fe97ef0add7ca293598fd49b45c1451c  688,682,932 B  (Levels_merged_TESTHUB.arc)
+Text    BRANCH    b27808a2c8ba668a00b6335e3aec12ad       89,364 B
+```
+
+**BOTH MAP VARIANTS CARRY THE FIX.** The `SVC_TEST_HUB=1` variant is what DEV actually deploys, so
+it was built and gated separately rather than assumed to follow: `--chests --only mnemosyne` and
+`--chests --only elysian_fields_03` on `Levels_merged_TESTHUB.arc` both return **GATE GREEN**, with
+the identical coordinates and the identical 18.9u / 19.3u off-path distances as the canonical map.
+
+- **THE BASELINE IS PROVEN CORRECT, NOT ASSUMED:** the arz baseline `6a3a491d...` is
+  **byte-identical** to the arz currently staged in `work/SoulvizierClassic/Database/`, and is the
+  same md5 `tools/patches/uber_apex_orb.py` cites as the R-99 built arz. The map baseline
+  `718abad6...` **independently reproduces** the md5 R-130's own report cites for its `main`
+  baseline.
+- **DETERMINISM, both sides:** baseline built TWICE into different output dirs -> same md5;
+  branch built TWICE into different output dirs -> same md5.
+- **ARZ RECORD-DIFF (`tools/record_diff.py`): ADDED 20 / REMOVED 0 / MODIFIED 0.** Purely
+  additive - 2 x (3 loot tables + 3 chests + 3 accessory pools) + 2 world-chest proxies. **Not one
+  pre-existing record was touched**, so the blast radius is provably zero.
+- **MAP RECORD-DIFF (`tools/debug/diff_maps_blobs.py`): 7 levels, all `0x05`-only,
+  `navmesh (0x0b) changes: 0`** - the b89 blood-cave crash class is provably untouched. The two
+  new lines are `+ svc_mnemophage_chest (45.60,3.00,71.00)` and
+  `+ svc_diadochi_chest (72.60,8.80,80.00)`; the other five levels are R-130's own deltas.
+- **BUILD EXIT 0 with every gate armed**, including the A9 render-chain gate that could not run in
+  the first attempt (it needs a `Resources/` dir beside the output; the build was redone in the
+  `work/` layout rather than unsetting `SVC_REQUIRE_GATES`). `Boss-chest standardization: repointed
+  21` (was 15) and `World-chest verify: 6 fixed ubers ... 6 world-chest prox/ies built` (was 4/4).
+- **CHAIN RESOLUTION, all 3 difficulties, both bosses:** proxy -> accessory pool -> FixedItemContainer
+  -> region-tuned `boss_default_<bracket>`, every hop resolving, `locked=1`,
+  `LockedClassification=Boss`, correct description tag. Bracket records were enumerated from the
+  built arz BEFORE wiring (32 exist, `01-03`..`63-65`), so the fail-loud is satisfied by
+  measurement.
+- **PLACEMENT GATE GREEN on the built map, with chests:**
+  `gate_uber_placement.py <map> --chests --only mnemosyne` -> 2/2 PASS, area reads **"Lower City of
+  Lost Souls"**; `--chests --only elysian_fields_03` -> 2/2 PASS, area **"Delian Meadows"**, boss
+  **18.9u** and chest **19.3u** from the nearest shortest route (the chest is FURTHER off-path than
+  the boss - the "rides the relocation" claim, with a number).
+- **PLANTED NEGATIVES: `--negtest` 6/6 behaved as specified**, unchanged by this round.
+- **SURVEY:** both new chest spots d=0.14u, clr **100/100/100** on N/E/L, comp#1
+  (180,700 / 242,100 cells), at the chest proxy's own extents (1.0) **and at double** (2.0). Both
+  are now permanent entries in the standing `survey_uberboss_spots.py --bosses` sweep.
+- **PLAYER SURFACE:** `Text.arc` rebuilt and both tags verified present in `modstrings.txt` -
+  `tagSVCMnemophageHoard=Mnemophage's Lethe-Hoard`, `tagSVCDiadochiHoard=Helepolis's Spoil-Hoard`.
+  No raw tag text will show.
+
+**DEBT REGISTER (round 2)**
+- **BL-R131-DEBT-1** - **#14's ORB is an OPEN WILL DECISION, not a blocked task.** Measured: every
+  placed non-Toxeus fixed uber (Tantalus, Mnemophage, Ephialtes, Kroisos, Helepolis) is on
+  `genericbossorb_04`. The Mnemophage's orb is IDENTICAL to his four peers', so "his orb is trash"
+  is a TIER complaint, not a defect unique to him. Moving only him reds the build
+  (`uber_apex_orb.verify()` asserts orb05 carriers == the Toxeus roster) and makes him an outlier;
+  moving all five is what R-99 refused verbatim one day earlier. Three costed options in R-131
+  Part 2; recommendation is to play the new chest first. **Will's call.**
+- **BL-R131-DEBT-2** - **Neither new chest has been OPENED in game.** The chain is proven to
+  resolve; its loot has never been observed. Launch-gated.
+- **BL-R131-DEBT-3** - **Both new chest NAMES are unvetted by Will.** They follow the shipped
+  `<Boss>'s <flavour>-Hoard` convention and the amgoz1 bar, but the wording is mine.
+- **BL-R131-DEBT-4** - **NOT DEPLOYED, no tag taken.** The orchestrator owns deploys. Couplings:
+  `Levels`+`Quests`, and `arz`+`Text` (both new chest tags are Text-side - shipping the arz without
+  the new Text.arc would show raw tag text on the chests).
+- Round 1's `BL-R130-DEBT-3` (`q_obs_roulette_b` BLOCKS-ROUTE), `-5` (launch-gated relocations),
+  `-6`/`-7` (Will's calls on chest-count scope and the accepted on-path list), `-8` (Helepolis
+  siege-strider adjacency) and `-9` (`OFFPATH_MIN` policy constant) are all UNCHANGED and still open.
+
+---
+
+## R130 GATE RECORD - R-100 #8/#9/#10/#14/#16/#16b PLACEMENT, CHESTS, AND THE WALKING-PATH LAW (2026-07-30, branch `fix/uber-placement`) - NOT DEPLOYED, NO TAG TAKEN
+
+Full report: `docs/reports/R130_uber_placement.md`. Ruling: **R-130** in `docs/WILL_RULINGS.md`
+(decade 130-139 proven free across the whole tree of all 120 local branches before minting; max
+claimed anywhere is R-124).
+
+**WHAT SHIPPED (map-only; no DB record created, changed, or removed):**
+- **#8** Tantalus moved OUT of `Styx_SwampBorder_01` (area banner "Stygian Marsh") and INTO
+  `Styx_CaveUG_FrogCamp02` (area banner "Den of Tantalus") at local (30.0, 1.0, 40.0).
+- **#9/#10** `UBER_CHEST_COUNT = 1`: `_chest_triangle` -> `_chest_ring`, applied to the whole b42
+  class (Ephialtes, Tantalus, Charon/Unferried, Kroisos/Dorus), not just the two Will reached.
+- **#16** Helepolis moved from 0.0u to 18.9u off the nearest shortest route, local (70.0, 8.8, 80.0).
+- **#16b** the standing rule now has a mechanical definition + a gate + planted negatives.
+
+**ROOT CAUSE OF THE b45 "REGRESSION" (the brief's actual question):** b45 did not fail to hold. Its
+coordinate IS in the deployed map (0x05 read: `q_tantalus_lone` @ (34.00,-13.40,106.00)). It
+optimised distance to `pj_denoftantalus.dbr`, which is `Class=AreaOfInterest` / `xtagPOI12` - a
+SIGNPOST standing 2.8u outdoors in front of the cave mouth (`ext_hc_cliffwall01` 0x14 GridEntrance
+-> `Styx_CaveUG_FrogCamp01`). Minimising distance to it cannot put anything inside the den. 10.2u
+from that signpost is exactly "right in front of the den, outside of it".
+
+**NEW TOOLING (4 files, all under `tools/debug/`):**
+- `gate_uber_placement.py` - the R-100 #8/#16b gate. ORACLE 1 containment via the level's own 0x17
+  REGION guid -> world SD -> Text (the in-game area banner). ORACLE 2 walking path via gateway
+  clustering + multi-source BFS on-shortest-route sets, with BLOCKS / ON-PATH / avoidability.
+  Modes: audit, `--only`, `--checkpt`, `--propose`, `--negtest`.
+- `navmap_ascii.py` - ASCII navmesh + instance renderer (enclosure and corridor topology).
+- `navmesh_floor_y.py` - floor Y read off the navmesh, with `--calibrate` (median |dy| 0.16-0.20u
+  over three levels).
+- `diff_maps_blobs.py` - the map lane's record-diff (per-level section deltas + 0x05 add/remove).
+
+**GATES (all on the built map `92b3b921de2033799b624e0941e37c7a`):**
+- `gate_uber_placement.py --only tantalus` -> **GREEN**, area reads "Den of Tantalus".
+- `gate_uber_placement.py --negtest` -> **6/6 planted negatives behaved as specified.** N1 b45's
+  outdoor host must NOT read the den; N1b the den host must; N2 the retired Helepolis spot must read
+  ON-PATH (d=0.0u, pairs (1,2),(1,3)); N2b the new one must not (d=18.9u); N3 BLOCKS must fire on the
+  roulette-b chokepoint; N4 the avoidability calibration must SUPPRESS on a corridor level (Gaoler,
+  22% off-path) - without N4 the gate reds 15 of 20 shipped placements and gets switched off.
+- `survey_uberboss_spots.py --bosses` -> every shipped spot OK, both new spots at ext 3.5/4.0 AND at
+  the 6.0 escort ring, clr 100/100/100, comp#1.
+- **RECORD-DIFF vs a `main` baseline built in the same environment:** 6 levels differ, **all 0x05
+  only**, **`navmesh (0x0b) changes: 0`** (the b89 blood-cave crash class is provably untouched),
+  every delta attributable, **0 DB records removed** (every `svc_*_chest` proxy still exists and is
+  still placed at least once).
+- **DETERMINISM:** two independent full builds produced byte-identical output
+  (`92b3b921de2033799b624e0941e37c7a`, 688,690,290 B).
+
+```
+BASELINE main@9a12d17  718abad63e7813dc78c4b169df969fd5  688,692,225 B
+BRANCH   fix/uber-placement 92b3b921de2033799b624e0941e37c7a  688,690,290 B
+env PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1 PYTHONIOENCODING=utf-8
+```
+
+**DEBT REGISTER (nothing silently deferred):**
+- **BL-R130-DEBT-1** - ✅ **CLOSED by the R131 gate record above (round 2 built it).** Original text
+  kept for the record: **#14 Mnemophage has no chest.** Identified this lane: the "Lower City of Lost
+  Souls" uber IS the Mnemophage (`Judgment_TempleUG_Mnemosyne01` binds `xtagRegionName36`). Needs
+  `_svc_build_world_chest_proxy(db,'mnemophage',...)` + dedicated hoard + Text tag + `_SVC_CHEST_STD`
+  bracket. DB lane; a map branch cannot place a record that does not exist in the arz.
+- **BL-R130-DEBT-2** - ⚠️ **SUPERSEDED by `BL-R131-DEBT-1`.** The "blocked by the roster gate"
+  framing below is true but is NOT the operative reason - round 2 measured that all five placed
+  non-Toxeus fixed ubers share this orb, making it a TIER question and an open Will decision rather
+  than a sequencing problem. Original text: **#14 Mnemophage orb is "trash".** `um_mnemophage_core_99` sits on
+  `genericbossorb_04` (~5.70 expected items) vs R-99's apex `genericbossorb_05` (~21.16). BLOCKED BY
+  DESIGN: R-99 records that `uber_apex_orb.verify()` must be rewritten roster-derived first, because
+  its planted NEGATIVE 2 asserts a third record on orb05 must FAIL. Collides with
+  `feat/toxeus-apex-roster`; must be sequenced, not raced.
+- **BL-R130-DEBT-3** - **`q_obs_roulette_b` (TombObs01 @ 220.8,89.6) reads BLOCKS-ROUTE**, sitting at
+  the mouth of the only corridor linking the level's two gateway clusters. Honest bound: corks at the
+  default 6.0u footprint, passes at 4.0u, so it is marginal and radius-sensitive. Left RED on purpose
+  rather than accepted or silently moved. Out of this lane's scope (a prop, not an uber Will
+  reported). **Will's call.**
+- **BL-R130-DEBT-4** - ✅ **CLOSED by the R131 gate record above (round 2 built it).** Original text:
+  **#16 Helepolis still has no chest** (same DB blocker as DEBT-1; there is no
+  `svc_diadochi_chest` record).
+- **BL-R130-DEBT-5** - **Both relocations are LAUNCH-GATED.** Nobody has walked into the Den of
+  Tantalus or the eastern Elysian court on this build. Per the standing rule the test ping must carry
+  a full Steam restart + packaged-hash verify.
+- **BL-R130-DEBT-6** - **Will's call on scope of the 3->1 chest rule.** He named 2 bosses; the class
+  change covers 4. One-line revert per boss if he disagrees.
+- **BL-R130-DEBT-7** - **Will's call on the 9 AUDITED + ACCEPTED on-path placements** (listed with
+  reasons in `ACCEPTED_ON_PATH` and printed on every gate run). The three worth a real decision are
+  Menoetes, Ephialtes and Charon/Golden Bough - all destination bosses whose route-adjacency is
+  intrinsic to being at the end of the route.
+- **BL-R130-DEBT-8** - **The Helepolis loses siege-strider adjacency.** The whole western meadow is
+  the corridor (best western candidate 6.7u), so he now stands ~45u east of the two native `xsq25`
+  striders. Taste trade-off, reversible by coordinate.
+- **BL-R130-DEBT-9** - **`OFFPATH_MIN = 0.25` is a policy constant**, chosen so the gate separates the
+  one placement Will reported from the corridor levels he has never complained about. It is not
+  derived from anything deeper and should be retuned by ruling if the separation drifts.
+- **BL-R130-DEBT-10** - **NOT DEPLOYED, no tag taken.** The orchestrator owns deploys;
+  `Levels`+`Quests` remain coupled.
+
+>>>>>>> fix/uber-placement
 
 ## BUILD69-DEV / BUILD71-DEV GATE RECORD - b101 R-99 ALL-TOXEUS APEX ORB (2026-07-29, branch `feat/toxeus-apex-roster`, tags `build69-dev` = round 1, `build71-dev` = round 2) - NOT DEPLOYED
 

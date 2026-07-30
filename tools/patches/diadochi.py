@@ -98,6 +98,7 @@ SOUL_GRANT_PCSAFE = A._PCSAFE_DIR + r'\leveler_turretattack.dbr'
 # ── TAGS ─────────────────────────────────────────────────────────────────────
 TAG_BOSS  = 'tagSVCMonsterHelepolis'
 TAG_CHAMP = 'tagSVCMonsterStriderGuard'
+TAG_HOARD = 'tagSVCDiadochiHoard'                        # R-131 / R-100 #16: his new chest
 
 BAND = [58, 80, 97]                                      # charLevel N/E/L (EXTREME, below the L100 crown)
 HP   = [24000.0, 32000.0, 42000.0]                       # WILL: keep 42k single-form
@@ -274,6 +275,28 @@ def apply(db, tags):
 
     _proxy(PROXY, POOL)
 
+    # ── 5b. R-131 / R-100 #16 - THE HOARD HE NEVER HAD ────────────────────────
+    # Will, verbatim: "the machine uber boss destroyer of cities ... doesnt drop a
+    # chest". He never did: b37 shipped him with a soul + the apex orb and no hoard
+    # at all, so this is a GAP being closed, not a design being reversed.
+    #
+    # Built by the SAME two monolith helpers the other five placed ubers use, so the
+    # Helepolis lands on the identical chain rather than inventing a mechanism:
+    #   _svc_build_dedicated_hoard  -> loot table -> FixedItemContainer -> accessory pool
+    #                                  (x3 difficulty tiers, Boss-locked, bespoke name)
+    #   _svc_build_world_chest_proxy-> a standalone Class=Proxy container the MAP lane
+    #                                  places, which is why _proxy() above deliberately
+    #                                  leaves this boss's accessory tiers EMPTY.
+    # ORDERING (checked, not assumed): the registry runs BEFORE run_registry_gates, and
+    # _svc_standardize_boss_chests + _svc_verify_world_chests both live inside that
+    # battery - so a hoard authored here IS region-tuned ('svc_diadochihoard' is in
+    # _SVC_CHEST_STD) and IS covered by the world-chest invariant ('diadochi' is in
+    # _SVC_FIXED_UBER_CHESTS). Falls back to the shared Obsidian pool if a donor is
+    # missing, exactly like the monolith callers, so a donor gap degrades to "a hoard"
+    # rather than to "no chest again".
+    _dia_hoard = A._svc_build_dedicated_hoard(db, 'diadochi', TAG_HOARD) or A._SVC_HOARD_POOL
+    A._svc_build_world_chest_proxy(db, 'diadochi', _dia_hoard)
+
     # ── 6. THE SOUL - "{^F}Ash of the Funeral Games" (S1 the bombardment). The
     #    RAW turret barrage, made castable by the pcsafe strip authored above.
     #    _create_soul wires it onto the boss's Finger2 (66%, the bespoke-uber rate)
@@ -291,6 +314,11 @@ def apply(db, tags):
     # ── 8. Tags (Text.arc) ────────────────────────────────────────────────────
     tags[TAG_BOSS] = '{^r}The Helepolis, Taker of Cities'
     tags[TAG_CHAMP] = '{^r}Diadochi Strider-Guard'
+    # R-131 / R-100 #16: the hoard's player-visible name. Follows the shipped
+    # "<Boss>'s <flavour>-Hoard" convention (Tantalus's Hoard / Ferryman's Toll-Hoard
+    # / Ephialtes's Dread-Hoard) and reads straight off his own title - what a Taker
+    # of Cities is standing on is the spoil of the cities he took.
+    tags[TAG_HOARD] = "Helepolis's Spoil-Hoard"
     tags[SOUL_TAG] = '{^F}Ash of the Funeral Games'
     tags[SOUL_TAG + 'DESC'] = (
         'The great engine that took the cities of the Successor Wars and never '

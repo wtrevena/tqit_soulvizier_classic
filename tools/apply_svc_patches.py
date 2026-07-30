@@ -16510,6 +16510,15 @@ _SVC_CHEST_STD = {
     'svc_ephialteshoard':  ('57-59', '63-65', '63-65'),    # Ephialtes [58,78,97]  Dread Halls (Act5/Judgment)
     'svc_dorushoard':      ('41-43', '57-59', '63-65'),    # Dorus     [41,57,71]  Medea tomb (Act2)
     'svc_obsidianhoard':   ('39-41', '57-59', '63-65'),    # Obsidian  [40,58,72]  Obsidian Halls (Act3/Orient)
+    # R-131 (Will, R-100 #14 + #16): the two ubers that guarded NOTHING now get a
+    # hoard on the identical region-tuned chain. Brackets derived the same way as
+    # every row above - the boss's own charLevel per difficulty snapped to the
+    # nearest base bracket, capped at 63-65 (the top loot tier). Both target tables
+    # were confirmed present in the built arz (32 boss_default_* brackets, 01-03
+    # through 63-65 in steps of 2), so the fail-loud in _svc_standardize_boss_chests
+    # is satisfied by measurement, not by hope.
+    'svc_mnemophagehoard': ('45-47', '63-65', '63-65'),    # Mnemophage[46,68,100] Pools of Mnemosyne (Act5/Judgment)
+    'svc_diadochihoard':   ('57-59', '63-65', '63-65'),    # Helepolis [58,80,97]  Fields of the Diadochi (Act6/Elysian)
 }
 _SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
 
@@ -16555,6 +16564,14 @@ _SVC_FIXED_UBER_CHESTS = {
     'tantalus':  r'records\drxmap\proxy\q_tantalus_lone.dbr',
     'charon':    r'records\drxmap\proxy\q_goldenbough_lone.dbr',
     'dorus':     r'records\drxmap\proxy\q_dorus_lone.dbr',
+    # R-131 (Will, R-100 #14 "the uber in the lower city of lost souls ... guards no
+    # chest" and #16 "the machine uber ... drops no chest"). Both now carry the SAME
+    # invariant as the other four: the boss proxy's accessory tiers stay EMPTY and a
+    # standalone world-chest proxy exists for the map lane to place. Adding them here
+    # is what turns "he has a chest now" into a build invariant instead of a hope -
+    # if a later lane deletes either hoard, the build reds.
+    'mnemophage': r'records\drxmap\proxy\q_mnemophage_lone.dbr',
+    'diadochi':   r'records\drxmap\proxy\q_diadochi_lone.dbr',
 }
 
 
@@ -16581,8 +16598,13 @@ def _svc_verify_world_chests(db):
             print(f"    - WORLD-CHEST problem: {p}")
         raise SystemExit(f"World-chest verification: {len(problems)} issue(s); the "
                          f"3-majestic-chest replacement is not structurally guaranteed.")
+    # NOTE the count is UBER_CHEST_COUNT in tools/build_section_surgery.py, not a literal 3.
+    # This line used to say "places 3x each"; R-130 (#9/#10, Will: "he has three chests ... where
+    # he should only have one") dropped it to 1 and the message went stale the same day. It now
+    # names the constant instead of a number so it cannot drift again.
     print(f"  World-chest verify: {len(_SVC_FIXED_UBER_CHESTS)} fixed ubers carry NO "
-          f"bespoke chest; {len(built)} world-chest prox/ies built (map lane places 3x each).")
+          f"bespoke chest; {len(built)} world-chest prox/ies built (the map lane places each "
+          f"UBER_CHEST_COUNT times - see build_section_surgery.UBER_CHEST_SPECS).")
 
 
 # =============================================================================
@@ -17454,12 +17476,26 @@ def _create_mnemophage_superboss(db, tags):
     _svc_clear_soul_loot(db, _MN_ESCORT)
     db._modified.add(_MN_ESCORT)
 
-    # ── pool / proxy / limit (preview = Epiales rig, scale 2.5). No chest: the
-    #    Mnemophage's marquee is the custom amulet, not a hoard (differentiator). ──
+    # ── pool / proxy / limit (preview = Epiales rig, scale 2.5). ──
+    # R-131 (Will, R-100 #14, verbatim: "the uber monster in the lower city of lost
+    # souls guards no chest and his orb is trash"). The build36 spec DELIBERATELY gave
+    # this boss no hoard - "the Mnemophage's marquee is the custom amulet, not a hoard
+    # (differentiator)" was the exact comment that stood here. Will has now PLAYED the
+    # encounter and overruled it, so that intent is SUPERSEDED, not forgotten: it is
+    # quoted above rather than deleted, per the retirement protocol. Nothing of his is
+    # taken away - Lethe's Draught is still guaranteed on the shell below, so he ends up
+    # with BOTH his marquee amulet and a hoard.
+    #
+    # The chest arrives by the b42 round-2 WORLD-CHEST pattern, identical to the other
+    # five: the boss proxy's accessory tiers stay EMPTY (no hoard_pools argument) and a
+    # standalone Class=Proxy container record is authored for the map lane to place.
+    # _svc_verify_world_chests now asserts exactly that for him.
     _svc_widen_limit(db, _SVC_LIMIT_DONOR, _MN_LIMIT)
     _svc_boss_pool(db, _MN_POOL, _MN_SHELL, _MN_ESCORT,
                    'the Mnemophage (main) + 2 nightmare champion escorts')
-    _svc_boss_proxy(db, _MN_PROXY, _MN_POOL, _MN_LIMIT, _MN_MESH, 2.5)  # no chest = the Mnemophage spec differentiator
+    _mn_hoard = _svc_build_dedicated_hoard(db, 'mnemophage', 'tagSVCMnemophageHoard') or _SVC_HOARD_POOL
+    _svc_boss_proxy(db, _MN_PROXY, _MN_POOL, _MN_LIMIT, _MN_MESH, 2.5)  # accessory tiers stay EMPTY - the chest is WORLD-placed
+    _svc_build_world_chest_proxy(db, 'mnemophage', _mn_hoard)
     _MOD_AUTHORED_SPAWN_PROXIES.append(
         {'proxy': _MN_PROXY, 'pool': _MN_POOL, 'main_monster': _MN_SHELL,
          'name': 'q_mnemophage_lone (Mnemophage + 2 nightmare escorts)'})
@@ -17525,6 +17561,13 @@ def _create_mnemophage_superboss(db, tags):
     tags['tagSVCMonsterMnemNightmare'] = '{^G}Epiales ~ Drowned Nightmare'
     tags['tagSVCPetMnemPhantasm'] = 'Stolen Nightmare'
     tags['tagSVCSummonMnemophage'] = 'Raise a Stolen Nightmare'
+    # R-131 / R-100 #14: the hoard he now guards. Named from the lore already shipped
+    # on his own amulet ("drawn from the Lethe the Mnemophage HOARDED"), so the chest
+    # reads as the thing that sentence always implied he was sitting on. Follows the
+    # established "<Boss>'s <flavour>-Hoard" convention of the other four
+    # (Tantalus's Hoard / Ferryman's Toll-Hoard / Ephialtes's Dread-Hoard) and stays
+    # distinct from the amulet's own name.
+    tags['tagSVCMnemophageHoard'] = "Mnemophage's Lethe-Hoard"
     tags['tagSVCamuletLetheDraught'] = "Lethe's Draught"
     tags['tagSVCamuletLetheDraughtDESC'] = (
         'A phial of the pools\' own water, drawn from the Lethe the Mnemophage '
