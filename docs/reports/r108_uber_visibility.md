@@ -125,6 +125,82 @@ Two things worth keeping:
 
 ---
 
-## 4. Proofs
+## 4. Proofs - commands this lane RAN, with their measured outputs
 
-See §5 of this file for the command/output matrix and `docs/BACKLOG.md` for the gate record.
+Environment for every build: `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1
+SVC_REQUIRE_GATES=1`, `py` launcher. Logs under `docs/reports/r108_logs/`.
+
+### 4.1 The baseline, built from `main` in this environment
+
+```
+git worktree add .claude/worktrees/visibility -b feat/uber-visibility main    # main @ 7efd107
+py tools/build_svc_database.py upstream/soulvizier_098i/Database/database.arz \
+   upstream/soulvizier_0.9/Database/database.arz upstream/soulvizier_041/Database/database.arz \
+   work/SoulvizierClassic/Database/SoulvizierClassic.arz \
+   "C:/Program Files (x86)/Steam/steamapps/common/Titan Quest Anniversary Edition/Database/database.arz"
+```
+**exit 0**, md5 `6a3a491db546b603c52132237c40aa63`, 55,475,226 B, 51,124 records, 45 modules.
+Kept at `local/baseline_main_7efd107.arz`.
+
+`main` then advanced to `9a12d17` (where R-109 was authored) and this branch merged it.
+`git diff 7efd107 9a12d17 --numstat` -> `43 0 docs/WILL_RULINGS.md`,
+`263 0 docs/wip_workflows/R-108_batch_implementation_wave.js`,
+`1 1 docs/wip_workflows/R-99_all_toxeus_apex_orb.js` - docs only, so the baseline stands for both.
+
+### 4.2 The lane build
+
+Same command on `feat/uber-visibility`: **exit 0**, md5 `b55515970be41c2542208e84a8705640`,
+55,485,062 B, **51,151** records, **47** modules. Log `r108_logs/r108_build.log`.
+(The FIRST attempt exited **1** on the sibling-import bug in §2b; that is the incident, not a
+footnote.)
+
+### 4.3 Record diff - the brief's hard requirement
+
+```
+py tools/debug/r108_visibility_record_diff.py local/baseline_main_7efd107.arz \
+   work/SoulvizierClassic/Database/SoulvizierClassic.arz
+```
+```
+records  : baseline 51124 -> built 51151
+ADDED 27 / REMOVED 0 / CHANGED 11
+RESULT: PASS - 0 REMOVED, 27 ADDED (all 27 declared guard-hoard records), 11 CHANGED and every one
+attributes to R-100 #7, R-100 #18 or R-109. Zero unattributed changes.
+```
+The 11 changed = 6 guards (20 fields each, all inside the declared retune set) + 3 guard-pair
+proxies (accessory slots only) + `um_bloodtoxeus_99.DisplayAsQuestItem 1 -> 0` +
+`gameengine.RedemptionMultiplier 0.5 -> 1.0`. Zero-delta claims re-checked: the other 25 roster
+members 0 moved, the 5 dead `gameengine` lookalikes 0 moved, the R-80 penalty fields 0 moved.
+
+**The diff tool has its own planted negative.** Diffing the baseline against ITSELF reports
+`0 ADDED / 0 REMOVED / 0 CHANGED` and **exits 1** with all five expected delta classes MISSING -
+because a diff that finds no unexpected change and also no expected change is a false green, which
+is exactly what the sibling-import failure would have produced.
+
+### 4.4 Gates - 29/29, re-run against the BUILT arz (`r108_logs/r108_negtests.log`)
+
+| gate | plants | result |
+|---|---|---|
+| `py tools/patches/tombstone_xp_recovery.py --negtest <built arz>` | 7 | PASS 7/7 |
+| `py tools/patches/uber_quest_markers.py --negtest <built arz>` | 8 | PASS 8/8 |
+| `py tools/patches/general_guardians.py --negtest <built arz>` | 14 | PASS 14/14 |
+
+The single most important row, because it is what makes R-109 "derived, not hardcoded":
+`penalty RETUNED (divisor 90 -> 45, cap -> 123456) still passes untouched   expected=ACCEPT
+got=ACCEPT`.
+
+### 4.5 R-109's before/after, both ways (`r108_logs/r109_before_after_table.txt`)
+
+`py tools/patches/tombstone_xp_recovery.py --table <arz>`. Ratio recovered/lost **0.5000 -> 1.0000**
+on all three difficulties. L100 Legendary: lose 50,000, recover **50,000** (was 25,000). L85
+Legendary: lose 47,765, recover **47,765** (was 23,882). L10 Normal: lose 11, recover **11** (was 5).
+
+### 4.6 The mechanism proof
+
+`py tools/debug/probe_tombstone_xp.py --disasm` (read-only; opens the stock Steam `Game.dll`, walks
+the PE export table, disassembles the five functions and the loader site). The symbol table and the
+decisive instructions are transcribed in `docs/WILL_RULINGS.md` R-109.
+
+### 4.7 Reproducibility
+
+A confirming rebuild was run at the final branch HEAD, after the two gate/assert hardenings in
+§2b. Result recorded in the `build72-dev` gate record in `docs/BACKLOG.md`.
