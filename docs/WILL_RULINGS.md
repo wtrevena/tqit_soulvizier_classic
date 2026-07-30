@@ -2115,3 +2115,197 @@ plant negatives for a champion knocked off 100 and for a cohort left at 66.
 
 **STATUS:** 66%/50% -> 33% is RATIFIED and ready to implement (734 creatures). The 10% and 0.3% boss buckets ->
 25% follow from his stated policy. The 19 ordinary-monster carriers are HELD pending his answer.
+
+---
+
+## R-106 [2026-07-29] "Only hero monsters should drop their soul" - RATIFIED as the rule, but the data inverts his premise
+
+**WILL, VERBATIM:**
+
+> "most of the monsters that have a soul are probably trash monsters, only hero monsters should drop their soul"
+
+**THE RULE IS RATIFIED:** soul drops belong to Hero / Champion / Quest / Boss class creatures. Common (trash)
+monsters should not drop souls.
+
+**BUT HIS FACTUAL PREMISE IS THE WRONG WAY ROUND, and this is good news for the rate change.** The engine's own
+`monsterClassification` field is authoritative here (Common / Champion / Hero / Quest / Boss), and it beats the
+name-based guessing I used in R-105. Cross-tabulated over all **1,722** soul-bearing creatures:
+
+| rate | Boss | Hero | Quest | Champion | Common | unset | total |
+|---|---|---|---|---|---|---|---|
+| **100%** | 4 | . | . | . | . | . | 4 |
+| **66%** | 34 | **222** | **117** | . | **0** | . | 373 |
+| **50%** | 14 | **347** | . | . | **0** | . | 361 |
+| **25%** | 106 | . | 3 | . | **0** | 2 | 111 |
+| 10% | 12 | . | . | . | 0 | . | 12 |
+| 5% | 1 | 1 | . | . | 0 | . | 2 |
+| 2% | . | 39 | . | . | 0 | . | 39 |
+| 0.5% | . | . | . | 6 | **6** | 1 | 13 |
+| 0.3% | . | . | . | 1 | **9** | 1 | 11 |
+| **0%** | 9 | **28** | 1 | 172 | 324 | 262 | 796 |
+| TOTAL | 180 | 637 | 121 | 179 | 339 | 266 | 1722 |
+
+**THREE CONSEQUENCES, all measured:**
+
+1. **THE R-105 RATE CHANGE IS SAFE AND NEEDS NO NARROWING.** Every one of the 734 creatures going 66%/50% ->
+   33% is already **Hero, Quest or Boss**. There are **ZERO Common monsters** in either cohort. His worry about
+   blanket-raising trash does not apply - the rule was already being followed at those rates.
+
+2. **ONLY 15 COMMON MONSTERS HAVE ANY SOUL CHANCE AT ALL**, and they are exactly the ones flagged in R-105:
+   6 swift archers at 0.5%, plus 4 carrion crows and 5 `pharaoh'shonorguard_mummypriest_*` at 0.3%.
+   **Per this ruling those 15 go to 0%.** (Note the mummy priests classify as **Common** despite a boss-ish
+   name - which is precisely why the classification field, not the filename, is the authority. My R-105
+   suggestion to raise them to 25% was wrong and is withdrawn.)
+
+3. **THE REAL DEFECT IS THE MIRROR IMAGE, AND IT IS 14x BIGGER: 210 HERO/CHAMPION/QUEST/BOSS CREATURES SIT AT
+   0%** and therefore can never drop the soul they carry - 28 Hero, 172 Champion, 9 Boss, 1 Quest. Examples:
+   `hero_adarathelovely_43`, `um_legion_28/28a/28b`, `am_carrionlord_12/15`, `bm_plaguelord_10/12`,
+   `em_sirenofthedeep_37`, `ember_satyr_warden_55`, `us_mormo_16`, `ar_slayer_11/14`, `am_giganticbat_12/14/16`.
+   **"Only heroes should drop souls" is nearly true already; "heroes SHOULD drop souls" is broken 210 times.**
+   That is where the real content is missing, and it is the same defect class as the 22 detached creatures the
+   b97 audit found - at 10x the scale.
+
+**THE 324 COMMON AT 0% ARE CORRECT** under this ruling and must be left alone. Do not "fix" them upward.
+
+**IMPLEMENTATION for this ruling:** derive the target rate from `monsterClassification`, never from the record
+name or folder. One shared classifier (the b97 vet already caught drifted duplicate logic in this exact area).
+Gate it: no Common carrier above 0%, every Hero/Quest non-fixed carrier at 33%, fixed bosses at 25%, the four
+Toxeus champions at 100%, and plant a negative for a Common monster nudged to 33%.
+
+**OPEN FOR WILL:** the 210 hero-class zeroes are a content decision, not just a rate flip - each needs a soul
+that suits the creature (the amgoz1 bar), and some may be deliberately soul-less. Recommend a dedicated lane
+that reports the roster with a proposed soul per creature before changing anything.
+
+### AMENDMENT - HIS CRITERION IS A DISPLAY ONE. MAPPED. AND THREE OF OUR OWN UBERS CANNOT DROP THEIR SOULS.
+
+**WILL, VERBATIM:**
+
+> "gigantic bats are probably not heroes with stars above their heads. only guys with stars above their heads or
+> better should drop souls, or guys with purple names"
+
+**HIS DOUBT ABOUT THE BATS WAS HALF RIGHT, AND THE HALF THAT WAS WRONG MATTERS.** They are not Hero - measured,
+`am_giganticbat_12/14/16` are **`Champion`**. But **Champion IS the star tier**: a Champion is precisely the
+beefed-up monster that displays a star above its head. So by his own criterion - "stars above their heads **or
+better**" - the gigantic bats **do** qualify. The question he actually needs to answer is therefore narrower
+than it looks:
+
+**DOES "STARS OR BETTER" INCLUDE THE WHOLE CHAMPION TIER? That is the 172-creature decision.** The engine's
+classes map onto his display language like this:
+- **`Champion`** -> star above the head. 172 of the zeroes. Beefed-up ordinary monsters, spawned in numbers:
+  gigantic bats, carrion lords, plague lords, `ar_slayer`, `ember_satyr_warden`, the `mutated_*` variants.
+- **`Hero`** -> the purple/named uniques he described. **28** of the zeroes: `hero_adarathelovely_43`,
+  `um_legion_28/28a/28b`, `us_frostscarab_35`, `um_morbi_17`, `hero_grom_31`, `hero_wheedletongue_41`,
+  `ur_masai_43`, `us_poisonsiren_14`.
+- **`Boss`** -> **9**. See below, because this is the real find.
+- **`Quest`** -> 1 (`01_akara`, already a known WILL DECISION as `BL-b97-DEBT-7`).
+
+**MY RECOMMENDATION: Hero + Boss + Quest yes, Champion NO.** Champions are ordinary monsters wearing a star and
+they spawn in quantity - 172 records, many in n/e/l triples of the same creature. Souls from them would be
+common by volume even at a modest rate, which is the flooding problem in a different costume. His instinct to
+squint at the bats is the right instinct even though their class technically qualifies. **This is his call, not
+mine** - it is the difference between roughly 38 creatures and roughly 210.
+
+### 🔴 THE ACTUAL BUG, FOUND IN PASSING: THREE OF OUR OWN UBER BOSSES CAN NEVER DROP THEIR SOULS
+
+Of the 9 `Boss`-class carriers stuck at 0%, three are **ours**, and they are fixed-location ubers we built:
+- `um_charon_ferryman_99.dbr`
+- `um_polisgaoler_99.dbr`  *(the Soul Gaoler - also R-100 #17 and R-101's key leak)*
+- `um_tantalus_99.dbr`  *(also R-100 #8, outside his den, and #9, three chests)*
+
+Plus base/SV bosses `us_mormo_16`, `ur_uber_45`, `um_inkeyes_45`, `um_inkeyes2_45`, `um_bloodcrow_50`,
+`um_bloodcrow_50_l`.
+
+**These need no policy decision at all.** They are fixed-location bosses, so R-105 already rules them at **25%**,
+and they are currently at **0** - carrying a soul that can never drop. That is a plain defect in our own content
+and it should be fixed in the same lane as the rate sweep, not held behind the Champion question.
+
+**STATUS:** rule ratified. R-105's 734-creature change confirmed safe. 15 Common carriers -> 0%. My R-105
+mummy-priest suggestion withdrawn (they are Common). **Three of our own uber bosses at 0% -> 25%, no decision
+needed.** The Champion tier (172 creatures) is HELD pending Will's yes/no; Hero + Boss + Quest zeroes proceed to
+a content lane that proposes a soul per creature.
+
+---
+
+## R-107 [2026-07-29] Gaoler soul scoping (already correct - I was wrong), and WHY the Devourer is unkillable
+
+**WILL, VERBATIM:**
+
+> "yeah so the soul gaoler should not drop the soul just the unbound final version. also i just tried to kill the
+> blood cave toxeus the devourer and I one hit myself when i hit him, he is basically unkillable with the current
+> reflect damage unless you use pets to kill him but i am playing on epic and i have two toxeus the murderer,
+> enslaver of souls pets summoned and they cant kill him so i guess i cant kill him"
+
+### PART 1 - THE GAOLER RULING IS ALREADY IMPLEMENTED, AND MY EARLIER CLAIM WAS WRONG
+
+**CORRECTION.** In the R-106 amendment I listed `um_polisgaoler_99` among "three of our own ubers that can never
+drop their souls - a plain defect". That was wrong. Measured:
+
+| record | class | soul chance | soul carried |
+|---|---|---|---|
+| `um_polisgaoler_99` (base) | Boss | **0.0** | `wardenofsouls_soul_{n,e,l}` (the base game's) |
+| `um_polisgaoler_unbound_99` (final) | Boss | **66.0** | `polisgaoler_soul_{n,e,l}` (**ours**) |
+
+The base Gaoler already does not drop, the unbound final form already does, and they carry **different** souls.
+**His ruling was already satisfied before he gave it** - so the correct action here is NOT to raise the base
+Gaoler. It is: leave the base at 0, and take the unbound form **66% -> 25%** under R-105's fixed-boss rate.
+The two remaining genuine 0% defects from that list stand: `um_charon_ferryman_99` and `um_tantalus_99`.
+(Both Gaolers still leak the Warden key - R-101 is unaffected.)
+
+### PART 2 - ⚠️ THE REFLECT CUT CANNOT BE MADE IN PLACE. IT WOULD NERF WILL'S OWN PETS.
+
+`toxeus_passiveproperties` has **18 carriers**, and they are not all things Will fights:
+
+- **Monsters he fights (7):** `um_toxeus_enslaver_99`, `um_toxeus_hunt_99`, `um_toxeus_hunt_l_99`,
+  `um_bloodtoxeus_99`, `um_toxeus_21`, `um_toxeus_99`, plus `drxcreatures\crowheroes\less.dbr` -
+  **a DRX crow hero that is not a Toxeus creature at all** (pure collateral).
+- **PETS HE SUMMONS (9):** `pets\toxeus_enslaver_{1,2,3}`, `pets\bloodtoxeus_{1,2,3}`, `pets\toxeus_eoat_{1,2,3}`.
+- 2 zzdev dummies.
+
+**So a one-line edit of `defensiveReflect` 100 -> 30 would also strip 70 points of reflect off the very pets
+Will is using to try to kill this boss.** That is the exact failure mode the `genericbossorb_04` lesson exists to
+prevent, and it would have silently made his situation worse while the commit message said "made the boss more
+killable".
+
+**REQUIRED IMPLEMENTATION:** mint a **monster-only** passive (clone of the current record) carrying the reduced
+reflect, point the 6 Toxeus MONSTERS at it, and leave the 9 PET records on the original 100/33 so his summons
+keep their defence. `less.dbr` also stays on the original - it is not ours to retune. Gate it: assert no pet
+record ever lands on the monster passive and vice versa, and plant a negative both ways.
+
+### PART 3 - WHY HE CANNOT KILL HIM, MEASURED. REFLECT IS NOT THE ONLY WALL.
+
+Devourer, on **Epic** (the difficulty he is playing), from the built record plus the shared passive:
+
+| | value |
+|---|---|
+| `characterLife` | 13,000 / **18,000** / 24,000 (n/e/l) |
+| `defensivePierce` | **70%** |
+| `defensiveBleeding` | 80% |
+| `defensivePoison` | 80% |
+| `defensiveLife` (vitality) | 100% |
+| `characterDodgePercent` | 15% |
+| `characterDeflectProjectile` | 33% |
+| `defensiveBlockModifierChance` | 25% |
+| `defensiveConfusion` / `defensiveConvert` | 150% each |
+| **reflect** | **100% at 33% chance** |
+
+**THE THING WORTH SEEING: his own character is a SPEAR user - pierce damage - and this boss has 70% pierce
+resistance.** So Will is simultaneously (a) dealing roughly a third of his damage, and (b) taking his own full
+hit back one time in three. That is not a hard boss, it is a hard counter to his specific build wearing a
+one-shot mechanic. And his pets fail for the same reason: the Enslaver pet kit is physical/pierce-flavoured
+into 70% pierce plus 15% dodge plus 33% deflect on 18,000 life.
+
+**THREE LEVERS, in the order I would pull them (all his call, all numbers his to set):**
+1. **Reflect 100 -> ~30** on the monster-only passive. Fixes the one-shot, which is the actual blocker, and
+   costs nothing elsewhere.
+2. **`defensivePierce` 70 -> ~40.** This is the quiet one that makes the fight feel possible rather than merely
+   survivable, and it is the reason pets are not working either. 70% resistance against a spear build is a
+   near-immunity.
+3. **`characterLife`** last. It is the honest lever he offered, but cutting life shortens a fight that is
+   currently unwinnable rather than long - fix the first two and this may not be needed.
+
+**DO NOT** touch Bloodbath, Blood Frenzy or the summons (R-103: "harder is the point, keep all three", "the
+answer is not cutting skills but cutting elsewhere").
+
+**STATUS:** measured and specified, NOT implemented. **Will is currently HARD-BLOCKED from finishing this
+encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers; my recommendations are reflect
+30 and pierce 40.
