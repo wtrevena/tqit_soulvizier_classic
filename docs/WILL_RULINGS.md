@@ -2343,6 +2343,49 @@ encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers;
 
 ---
 
+## R-109 [2026-07-30] Tombstone XP recovery must EQUAL the XP lost on death
+
+**WILL, VERBATIM, in two steps - the second SUPERSEDES the first and is the ruling:**
+
+> "one thing we need to check is when you go find your tombstone after you die, you should only get 10% of the
+> original xp that is awarded since we cut the death penalty"
+
+> "lets make the tombstone xp recovery match the xp lost upon dying"
+
+**THE RULING IS THE INVARIANT, NOT THE NUMBER: `XP recovered from the death marker == XP lost to the death
+penalty`, exactly, on every difficulty.** Implement the equality; do not hardcode 10%.
+
+**WHY THE SECOND FORM IS THE BETTER RULE, and why it must be built as stated.** "10% of the original" is only
+correct while b93's cut happens to be 90%. If the death penalty is ever retuned again - and R-103 shows Will
+does retune numbers once he has played with them - a hardcoded 10% silently desynchronises and re-opens the
+exploit. Deriving the recovery FROM the penalty makes the pair self-correcting: change the penalty, the marker
+follows automatically.
+
+**THE BUG THIS CLOSES, which we introduced.** b93 cut `deathPenaltyEquation` to
+`(currentPlayerLevel^3) * ((1 + (3 * gameDifficultyDV)) / 90)` and `deathPenaltyMax` 500000 -> 50000. If the
+death-marker recovery still pays the pre-cut amount, then **dying and walking back to the marker is a NET XP
+GAIN** - the player loses 10% and recovers 100%. That is a free-XP loop created by our own change, and it is
+exactly the kind of coupled field a single-value edit misses.
+
+**IMPLEMENTATION:**
+- Find the field/equation governing what the death marker returns. Do not assume it is a mirror of
+  `deathPenaltyEquation`; measure what it actually pays today.
+- Express the recovery in terms of the penalty so the two cannot drift. If the engine will not accept a derived
+  expression, then mirror the penalty's own equation verbatim and add a gate that fails when they differ.
+- **Report the measured before/after BOTH WAYS** - XP lost on death, and XP recoverable from the marker - at
+  several levels across all three difficulties, so the equality is provable rather than asserted.
+
+**GATE (tighten what the R-108 wave was briefed with):** the wave's brief said `recovered <= lost`. That was
+the weaker safety form and it is now SUPERSEDED - assert **equality**. `recovered < lost` is no longer a pass:
+it would quietly punish the player twice. Plant negatives on both sides: recovery above the penalty must red
+the build, and recovery below it must red the build.
+
+**STATUS:** ruled, in flight. Owned by the `feat/uber-visibility` lane of the R-108 implementation wave
+(task `wx0ky10vv`), which was briefed with the earlier 10% framing; this entry is the authority and the vet
+must hold the implementer to the equality, not to 10%.
+
+---
+
 ## R-140 [2026-07-30] IMPLEMENTED - R-100 #15 ROOT CAUSE: the thrown-wielders are frozen because SV strips the thrown ANIMATION STANCE, not because of anything to do with their weapons
 
 > **NUMBER CHOICE.** The R-100 decade and everything up to **R-124** is claimed somewhere across the 120
