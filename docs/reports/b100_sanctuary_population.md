@@ -237,46 +237,116 @@ source blob - the pre-merge blob is not where the grid shift and the injections 
 ```
 py tools/gate_sanctuary_population.py --map <new.arc> --baseline <baseline.arc> --arz <arz>
 
-  G1   roster: the 14 declared proxies are placed                     PASS  295 instances total, tail 14 match (0 missing, 0 unexpected)
-  G1b  roster: new instances are flags=0 / no UniqueId                PASS  0 flagged
-  G2   on-mesh: on drxBC3's OWN walkable ground                       PASS  14/14
-  G3   on-mesh in ALL 3 tilesets (N/E/L)                              PASS  14/14
-  G4   floor: |Y - navmesh cell Y| <= 0.25 u                          PASS  max dY 0.005 u
-  G5   reachable from the arrival portal                              PASS  14/14 in the arrival component
-  G6   on the processional (detour <= 60 u)                           PASS  route 690.6 u; max detour 60.0 u
-  G7   landing clearance (anchors / level edge / props)               PASS  nearest anchor 20.1 u, edge 12.1 u, prop 3.7 u
-  G8   spacing: every NEW proxy >= 16 u from every other (R-30)       PASS  24 monster proxies; closest new-involving pair 21.5 u
-  G8b  spacing: no UNWAIVED inherited violation                       PASS  1 inherited, 0 unwaived
-  G9   density: worst 60x60 box <= 42 spawnMax                        PASS  worst 36 at world(4318,3019); total spawnMax 140 over 24 proxies
-  G11  pools: every placed proxy resolves to a live, BOUNDED pool     PASS  14/14
-  G10  navmesh: 0x0b byte-identical to baseline + well formed (b89)   PASS  857,212 B, identical=True, 3 tilesets x [383,383,383] tiles
-  G12  scope: the ocean ring is untouched (WILL_DECISION-1)           PASS  0 proxies on all four ocean tiles
+  G1   roster: the 14 declared proxies are placed          PASS  295 instances total, tail 14 match (0 missing, 0 unexpected)
+  G1b  new instances flags=0 / IDENTITY ROTATION           PASS  0 flagged, 0 rotated
+  G1c  RETIREMENT: 281 shipped byte-intact (digest) + 11   PASS  295 = 281 + 14; 11/11 shipped proxies in place;
+       shipped Proxy placements at their shipped coords          head digest 78a536278d5dbdf23332e70750aa04d9 OK
+  G1d  RETIREMENT: shipped instances BYTE-identical to     PASS  281 baseline instances, 0 differ (dbr + 36 rotation
+       the baseline                                              bytes + 12 position bytes + flags + uid all equal)
+  G2   on-mesh: on drxBC3's OWN walkable ground            PASS  14/14 on an own-area walkable cell
+  G3   tilesets: all 3 agree cell-for-cell AND every       PASS  14/14 walkable in all 3; tilesets differing
+       proxy walkable in each                                    from tileset 1: none
+  G4   floor: |Y - navmesh cell Y| <= 0.25 u               PASS  max dY 0.005 u
+  G5   reachable from the arrival portal                   PASS  14/14 in the arrival component
+  G6   on the processional (detour <= 60 u)                PASS  route 690.6 u; max detour 60.0 u, MARGIN 0.0 u
+  G7   landing clearance (anchors / edge / props)          PASS  nearest anchor 20.1 u (+0.1), edge 12.1 u (+2.1),
+                                                                nearest prop 4.4 u (+1.4)
+  G8   spacing: every NEW proxy >= 16 u from every other   PASS  24 monster proxies; closest new-involving pair 16.0 u
+  G8b  no UNWAIVED inherited spacing violation             PASS  1 inherited, 0 unwaived
+  G9   density: worst 60x60 box <= 57.0 EFFECTIVE          PASS  worst 51.6 (margin +5.4) at world(4374,3023);
+                                                                total effective 190.0 over 24 proxies
+  G11  pools: live, BOUNDED ProxyPool + parseable          PASS  14/14 resolve; no summon-refill loop (b76)
+       spawn multiplier
+  G10  navmesh: 0x0b byte-identical to baseline +          PASS  857,212 B, identical=True,
+       well formed (b89)                                         3 tilesets x [383, 383, 383] tiles
+  G12  scope: the ocean ring is untouched                  PASS  ocean_extension01 21 inst / 0 proxies; 02 0/0;
+                                                                03 12 inst / 0 proxies; 04 0/0
 
-GATE MAP-SANCTUARY-1: PASS
+GATE MAP-SANCTUARY-1: PASS      (exit 0)
 ```
+
+**16 rows, not 13.** Round 2 added `G1c`/`G1d` (the RETIREMENT PROTOCOL, which round 1 advertised but
+did not check) and split `G3` into a real invariant instead of a tautology of `G2`.
+
+**⚠️ THE TWO ZERO-ISH MARGINS ARE INHERENT, NOT NEAR-MISSES.** G6's max detour is exactly 60.0 u and
+G7's nearest anchor is 20.1 u; the vet flagged both as zero-slack. Re-measured and explained: the
+DERIVATION filters candidate cells on the *same* `CORRIDOR_SLACK` and `CLEAR_ANCHOR` constants the
+gate checks, so it legitimately admits cells right up to the limit and the farthest-point anchor step
+actively prefers them; and the navmesh lattice is 0.2 u, so the closest ADMISSIBLE cell to a 20.0 u
+exclusion is 20.1 u. Any future change to either constant moves both sides at once. The gate now
+prints the margins **and** this explanation so nobody reads 0.0 as a near-miss. What IS true and is
+now registered as `BL-b100-DEBT-11`: "on the processional" permits up to 60 u of detour on a 690.6 u
+route and two placements take all of it. That is a taste question about how far off the aisle a
+worshipper may stand, and it is a one-line edit.
 
 ### 4.1 Planted negatives - a gate nobody has watched FAIL is not a gate
 
+**ROUND 2 REWROTE THIS ENTIRELY, because the round-1 vet showed the plants were the weak point.**
+Round 1 had 8 plants and **all eight mutated only the DECLARATION** while leaving the built map
+correct. Three consequences, all demonstrated by the vet:
+
+- the RETIREMENT PROTOCOL was **never exercised**, and four map-side negatives passed with every
+  gate green;
+- two b89-class navmesh negatives **aborted the gate with an uncaught `AssertionError`** instead of
+  failing `G10` (fail-safe, since the exit code was still non-zero, but not the PASS/FAIL behaviour
+  the gate advertised);
+- because every declaration plant perturbs the roster, **every plant also tripped G1**, so "one
+  plant per invariant" was not true and no plant isolated its target. Round 1's runner only checked
+  that the target gate failed - never that unrelated gates did not.
+
+There are now **two plant kinds**, and each plant declares **both** the gate it must trip **and** the
+full set it is allowed to trip; the runner checks both directions.
+
+- **DECL** plants mutate the declared placement list (the map stays correct).
+- **MAP** plants rewrite drxBC3's **raw level blob** through a new `Sanctuary(blob_patch=...)` hook -
+  real byte surgery on the level, which is what the vet did by hand. Verified independently that all
+  eight actually change the bytes (e.g. the truncation plant takes the blob 1,114,441 -> 257,377 B).
+
 ```
-py tools/gate_sanctuary_population.py --negtest --map <arc> --arz <arz>
+py tools/gate_sanctuary_population.py --negtest --map local/b100_r2/Levels_merged.arc \
+      --baseline local/b100_base/Levels_merged.arc --arz work/.../SoulvizierClassic.arz
 
-  baseline (unmodified placements): 0 failing -> OK, the gate is green before we break it
-  plant [G1] drop one proxy from the roster                                  -> CAUGHT by ['G1']
-  plant [G1] move a proxy 5 u off its declared coord                         -> CAUGHT by ['G1', 'G8']
-  plant [G2] push a proxy onto the padded neighbour strip outside drxBC3     -> CAUGHT by ['G1','G2','G3','G4','G5','G6','G7']
-  plant [G4] keep the XZ but flatten Y to the top tier                       -> CAUGHT by ['G1', 'G4', 'G7']
-  plant [G7] drop a pack on the arrival portal (the b44 landing-pileup)      -> CAUGHT by ['G1', 'G7']
-  plant [G7] drop a pack 0.5 u from the west door seam (walk-in variant)     -> CAUGHT by ['G1','G2','G3','G4','G5','G6','G7']
-  plant [G8] stack two proxies on top of one another (R-30's own words)      -> CAUGHT by ['G1', 'G8']
-  plant [G9] pile the whole congregation into one screen box                 -> CAUGHT by ['G1'..'G9']
+  baseline (unmodified): 0 failing -> OK, the gate is green before we break it
+  [DECL] must fail G1   drop one proxy from the roster                          -> CAUGHT by ['G1','G1c']
+  [DECL] must fail G1   move a proxy 5 u off its declared coord                 -> CAUGHT by ['G1','G8']
+  [DECL] must fail G2   push a proxy onto the padded neighbour strip            -> CAUGHT by ['G1','G2','G3','G4','G5','G6','G7']
+  [DECL] must fail G4   flatten Y to the top tier (the design's missing axis)   -> CAUGHT by ['G1','G4','G7']
+  [DECL] must fail G7   drop a pack on the arrival portal (b44 pileup class)    -> CAUGHT by ['G1','G7','G8']
+  [DECL] must fail G7   drop a pack 0.5 u from the west door seam              -> CAUGHT by ['G1','G2','G3','G4','G5','G6','G7']
+  [DECL] must fail G8   stack two proxies on top of one another (R-30)          -> CAUGHT by ['G1','G8']
+  [DECL] must fail G9   pile the whole congregation into one screen box         -> CAUGHT by ['G1','G2'..'G9']
+  [MAP]  must fail G1c  delete one of the 281 SHIPPED instances (a decoration)  -> CAUGHT by ['G1c','G1d']
+  [MAP]  must fail G1c  delete one of amgoz1's TEN shipped MONSTER proxies      -> CAUGHT by ['G1c','G1d']
+  [MAP]  must fail G1c  delete a shipped instance AND pad (count still 295)     -> CAUGHT by ['G1c','G1d']
+  [MAP]  must fail G1c  teleport a shipped proxy 500 u off the level            -> CAUGHT by ['G1c','G1d']
+  [MAP]  must fail G1b  give a NEW instance a non-identity rotation             -> CAUGHT by ['G1b']
+  [MAP]  must fail G10  b89: flip one byte inside the 0x0b navmesh container    -> CAUGHT by ['G2'..'G11']
+  [MAP]  must fail G10  b89: truncate the 0x0b container to a 148-byte stub     -> CAUGHT by ['G2'..'G11']
+  [MAP]  must fail G3   make tileset 3 disagree with tileset 1                  -> CAUGHT by ['G3']
 
-NEGTEST: 8/8 plants caught -> PASS
+NEGTEST: 16/16 plants correct (8 declaration + 8 map-side); each had to fail its target
+         gate AND stay inside its allow-set -> PASS
 ```
 
-**The negatives earned their keep immediately.** The first cut of the gate had two real bugs that
-the plants exposed: G7 measured each new proxy's distance to *itself* (the prop list was read from
-the post-injection map), and G8/G9 read the built map instead of the declaration, so no plant could
-ever bite them. Both are fixed; that is why the plants exist.
+**Four of those sixteen are the vet's own negatives, reproduced as permanent regression tests.** The
+subtlest - delete one shipped decoration and duplicate another so the instance count still reads 295
+and the declared tail still matches perfectly - is caught by `G1c` **without a baseline map**, because
+`G1c` now includes an md5 over the byte identity of all 281 shipped instances
+(`78a536278d5dbdf23332e70750aa04d9`). A count check cannot see that edit, and the named-proxy check
+cannot either when the deleted instance is one of the 270 decorations rather than one of the 11
+proxies.
+
+**Two allow-sets are deliberately wide, and that is disclosed rather than hidden.** The west-door-seam
+plant and the pile plant also trip `G2`/`G3`/`G5`, because world x 4186.5 is on ground **owned by
+`drxBC_Finale`**, not drxBC3, and the pile lands off-mesh for most of the 14. Those are genuine
+consequences of the plant, not gate leakage, so they are listed in the allow-set with that reasoning
+in the code.
+
+**The negatives earned their keep in both rounds.** Round 1: they exposed that `G7` measured each new
+proxy's distance to *itself* and that `G8`/`G9` read the built map instead of the declaration. Round
+2: the map plants exposed that `G1c` as first written could not catch the delete-and-pad edit (which
+is why the digest exists) and that `BSS.parse_blob_sections` returns `(sections, magic)` rather than
+pairs - a bug in the plant helpers themselves, caught because the runner checks the converse.
 
 ### 4.2 One thing the gate found that is NOT ours to fix
 
@@ -516,52 +586,112 @@ produced a confident wrong answer (the first was the design pass's own flat-XZ c
 Exhaustive; a triaged item is not a done item.
 
 1. **NO IN-GAME CHECK.** Nobody has walked the Sanctuary with this population in it. No agent in
-   this lane may launch TQ or Steam. Every claim here is a claim about bytes and geometry, not
-   about feel. The density figures in particular are `spawnMax` sums - the worst case the DATA
-   permits - and actual concurrent load depends on player pathing and aggro.
-2. **NOT DEPLOYED.** Nothing was written to `CustomMaps`. `Levels.arc` and `Quests.arc` are COUPLED
-   and must ship in the same deploy.
-3. **THE OCEAN RING IS UNTOUCHED** - `WILL_DECISION-1`, 42,199 sq u of walkable, Sanctuary-lit,
-   banner-inheriting ground with zero enemies behind a measured 107.2 u opening. Not ours to take.
-4. **THE MINIMAP IS NOT FIXED** - R-111 / `BL-b100-DEBT-3`.
-5. **DENSITY IS UNRATIFIED** - `WILL_DECISION-2`. 24 -> 36 worst-screen is a derived cap, not Will's
-   ruling.
-6. **`docs/amgoz1_design_voice.md` STILL DOES NOT EXIST** - `WILL_DECISION-4`. The creative bar this
-   content is held to remains reconstructed from R-15, `docs/BLOOD_TOXEUS_DESIGN.md` and
-   `docs/BOSS_SOULS_DESIGN.md`, and that reconstruction is unratified.
-7. **THE INHERITED 7.4 u SPACING VIOLATION IS WAIVED, NOT FIXED** - `BL-b100-DEBT-7`.
-8. **`SCREEN_CAP`, `CORRIDOR_SLACK`, `EDGE_CLEAR` AND THE 120 u BAND-1 BOUNDARY ARE ENGINEERING
-   CHOICES**, three of them derived from measurement and one (120 u) stated as taste. All four are
-   one-line edits in `b100_derive_sanctuary.py`, after which the coords must be re-derived and the
-   gate re-run.
-9. **THIS BRANCH IS NOT ON CURRENT `main` AND NEEDS AN INTEGRATION MERGE.** It branched from
-   `4f0299c` as briefed; `main` has since moved **twice** while this lane ran - first to `6467feb`
-   (`feat/leinth-wave`, which also took the briefed `build66-dev` tag) and then to `b7cb622`
-   (`fix/blade-mastery-truth`). `docs/BACKLOG.md` and `docs/WILL_RULINGS.md` are the likely conflict
-   points, since several lanes append to both. The ruling decade is NOT a conflict: the
-   blade-mastery lane's own ledger note records that it took 100-102 and **yielded 110-119 to this
-   lane**, so R-110/R-111 are uncontested on current `main`. Re-run the decade check anyway - it is
-   a race.
-10. **`MAP-SANCTUARY-1` IS NOT WIRED INTO ANY AUTOMATIC RUNNER.** It is a standalone gate the
-    integrator must invoke, like `gate_landing_clearance` and `verify_merged_bc_navmeshes`. Wiring
-    it into the wave-gate sequence is a follow-up.
-11. **`tools/contracts/gate_placed_record_resolution.py` FAILS ON `main` ALREADY** (346 missing
-    placed record refs, base-game setdressing). This lane's delta is **zero** and none of its 14
-    records is in the missing set, but the gate is red before and after and that is somebody's
-    pre-existing debt, not a clean bill of health.
+   this lane may launch TQ or Steam. Every claim here is a claim about bytes and geometry, not about
+   feel. The density figures are **effective-entity sums over a chosen 60x60 u box** - the worst case
+   the data permits with the documented spawn multiplier applied. TQ's real camera footprint was NOT
+   measured, and actual concurrent load depends on player pathing and aggro.
+2. **NOT DEPLOYED.** Nothing was written to `CustomMaps`.
+3. ⚠️ **THE COUPLED `Quests.arc` IS NOT THE DEPLOYED ONE.** Deployed = `bd0fb5f99d88fab74b81f27b7cb952b2`
+   / 194,971 B; this lane's build and the staged copy = `5e664c7b190965fd69f6ff15d77d85e4` / 194,926 B.
+   Levels+Quests are COUPLED, so the integrator **must** stage and deploy this lane's `Quests.arc`
+   with the map. Round 1 asserted these were identical, in four places, and that was false
+   (`BL-b100-DEBT-8`, R-113).
+4. **THE OCEAN RING IS UNTOUCHED** - `WILL_DECISION-1`. **CORRECTED FIGURES:** the four tiles hold
+   **14,673 sq u** of their OWN walkable ground (01: 9,785 / 02: 3,299 / 03: 1,563 / 04: 25), not the
+   42,199 sq u the design pass and the vet both quoted - that number counted padded neighbour strips.
+   The widest own-area-to-own-area opening off drxBC3 is **21.4 u**, not 107.2 u. It IS genuinely
+   reachable (b13 lattice offset **0.000 mod 12.8** at every drxBC3 ocean seam, with measured walkable
+   crossings - the check the vet said it had not done). **So: this lane populates 23,994 sq u and
+   leaves 14,673 sq u empty, i.e. it addresses 62.1% of the reachable own-area empty ground and
+   Will's report is NOT fully resolved.** Which is exactly why it stays his call (R-114).
+5. **THE MINIMAP IS NOT FIXED** - R-111 / `BL-b100-DEBT-3`. Mechanism measured and filed; it is a
+   coupled `arz`+`Text`+`Levels` change and Will scoped it secondary.
+6. **DENSITY IS UNRATIFIED** - `WILL_DECISION-2`. 32.6 -> 51.6 effective against a *derived* cap of
+   57.0 is engineering, not Will's ruling. One-line knob: `SCREEN_CAP_EFF`.
+7. **`docs/amgoz1_design_voice.md` STILL DOES NOT EXIST** - `WILL_DECISION-4`. Confirmed again this
+   round: zero hits across all of git history. The creative bar this content is held to remains
+   reconstructed from R-15, `docs/BLOOD_TOXEUS_DESIGN.md` and `docs/BOSS_SOULS_DESIGN.md`, and that
+   reconstruction is unratified even though `CLAUDE.md`, `docs/BACKLOG.md` and every content brief
+   cite the file as binding law.
+8. **THE INHERITED 7.4 u SPACING VIOLATION IS WAIVED, NOT FIXED** - `BL-b100-DEBT-7`. amgoz1's own
+   pair; moving it defaults to WILL-VETO.
+9. **FIVE LOAD-BEARING CONSTANTS ARE CHOICES, NOT LAWS** (`BL-b100-DEBT-11`): `SEP_MIN = 16.0`,
+   `SCREEN_CAP_EFF = 57.0`, `CORRIDOR_SLACK = 60.0`, `EDGE_CLEAR = 10.0`, and the 120 u band-1
+   boundary. Round 1 attributed the 16 u to R-30; **R-30 fixes no distance** and its status is
+   unchanged (**PENDING**). Two placements sit exactly on the `CORRIDOR_SLACK` limit - inherent, since
+   the derivation filters on the same constant, but it does mean "on the processional" tolerates 60 u
+   of detour on a 690.6 u route.
+10. **THIS BRANCH IS NOT ON CURRENT `main` AND NEEDS AN INTEGRATION MERGE.** It branched from
+    `4f0299c` as briefed; `main` has moved repeatedly during both rounds (now `ad0711b`).
+    `docs/BACKLOG.md` and `docs/WILL_RULINGS.md` are the likely conflict points. The ruling decade is
+    uncontested (R-110..R-114 here; `main` holds only R-100..R-102) but **re-run the check - it is a
+    race**, and `build69-dev` was taken by another lane between round 1 and round 2, which is why this
+    round takes `build70-dev`.
+11. **`MAP-SANCTUARY-1` IS NOT WIRED INTO ANY AUTOMATIC RUNNER.** It is a standalone gate the
+    integrator must invoke, like `gate_landing_clearance` and `verify_merged_bc_navmeshes`.
+12. **`tools/contracts/gate_placed_record_resolution.py` FAILS ON `main` ALREADY** (346 missing placed
+    record refs, base-game setdressing). Zero delta from this lane and none of its 14 records is in
+    the missing set, but it is red before and after.
+13. **15 MISALIGNED NAVMESH SEAMS EXIST ON THE SHIPPED MAP** - identical before and after this lane
+    (`BL-b100-DEBT-10`). All involve `ocean_extensionx*` tiles plus `ocean_extension02|05` and
+    `03|05`. Per b13 those seams do not stitch, so parts of the outer ocean ring may be unreachable.
+    Not investigated; not this lane's.
+14. **I OVERWROTE A SHARED GITIGNORED SCRATCH ARTIFACT** (`BL-b100-DEBT-9`). The first round-2 map
+    build wrote the MAIN CHECKOUT's `local/Levels_merged.arc`, because
+    `tools/svaera_plus_portals.py` hardcodes that directory as its default output. The staged
+    canonical and the deployed copy were both verified untouched; the stray build is preserved as
+    `local/Levels_merged.b100r2-STRAY-DO-NOT-DEPLOY.arc` so nothing can consume it via
+    `-SyncLevels`, and every later build used `SVC_OUT_DIR`. Whatever a previous lane had left at
+    that path is gone and unrecoverable. It was regenerable scratch and `CLAUDE.md` says never to
+    trust it, but it was not mine to overwrite.
+15. **THE `reference_mods/` CACHE IS EMPTY IN THE MAIN CHECKOUT**, so the Steam-Workshop fallback is
+    now load-bearing for every `Quests.arc` build (`BL-b100-DEBT-8`). Repopulating it is a follow-up.
 
 ---
 
-## 9. ENVIRONMENT NOTES FOR WHOEVER INTEGRATES THIS
+## 9. THE VET'S 13 FINDINGS, ONE BY ONE
+
+Every finding was re-measured. Nothing here is a restatement of a round-1 claim.
+
+| # | sev | finding | verdict | what changed |
+|---|---|---|---|---|
+| 1 | HIGH | `Quests.arc` "byte-identical to deployed" is false | **CONFIRMED** | Fixed in 4 report places + gate record + R-113. Deployed `bd0fb5f9…`/194,971 vs built `5e664c7b…`/194,926. Also uncovered and fixed a *silent stale-input bug* in `build_quest_files.py`. |
+| 2 | MED | the gate does not enforce the RETIREMENT PROTOCOL it claims | **CONFIRMED** | New `G1c` (total + 11 named shipped proxies + 281-instance byte digest, baseline-free) and `G1d` (byte diff vs baseline). All four of the vet's map-side negatives are now permanent plants and all four are caught. |
+| 3 | MED | density comparison mixes two pool multipliers | **CONFIRMED** | Density regated in EFFECTIVE entities (`SCREEN_CAP_EFF = 57.0`). Measured `_01` = 3.60025x, `_02` = 1.357143x; cohort corrected to median 90.0 / p90 158.4 / max 280.8. No placement moved. |
+| 4 | MED | `SCREEN_CAP`'s own code comment contradicts the constant | **CONFIRMED** | The stale 24/18/70 and proxy-centred 23/72 text is gone; the block now documents the effective-unit derivation. |
+| 5 | MED | R-110 records a shape the code produces the opposite of | **CONFIRMED** | Mechanism changed from farthest-point to group-clustered insertion. NN Chebyshev min 23.2/med 31.8 -> **min 16.0/med 30.0/max 62.2**. On rotation: **not a defect** - all 25 `Proxy` instances amgoz1 placed in drxBC3 are identity, so identity is the host level's own convention (measured; 228 of its 269 *non*-proxy instances ARE rotated). |
+| 6 | MED | `--arz` default resolves to another lane's artifact from a worktree | **CONFIRMED** | Both defaults made `REPO`-relative in `b100_derive_sanctuary.py` and `b100_density_census.py`. |
+| 7 | MED | scope: the ocean ring is 1.76x the populated area, ~36% addressed | **CONFIRMED DEFECT, WRONG NUMBERS** | The emptiness is real and stays `WILL_DECISION-1`. But 42,199 sq u is the ALL-AREA sum incl. navmesh pad; own-area is **14,673** = **0.61x** the populated area, so **62.1%** is addressed, not 36%. Seam opening **21.4 u**, not 107.2. And the b13 stitching the vet did not measure **is satisfied** (0.000 mod 12.8). R-114. |
+| 8 | LOW | "8 plants, one per invariant, 8/8" is not accurate; no plant isolates its target | **CONFIRMED** | 16 plants across 2 kinds; each declares target + allow-set and the runner checks the converse. `--baseline` is now threaded into `--negtest` so G1d/G10 identity halves are exercised. |
+| 9 | LOW | G3 is not independent; navmesh corruption crashes the gate | **CONFIRMED** | Tileset equality is RECORDED (`tileset_diffs`) not asserted; `Sanctuary(strict=False)` reports `nav_error`, so both b89 plants now produce a `G10` FAIL instead of an `AssertionError`. |
+| 10 | LOW | two placements sit exactly on the G6 limit; G7 margin 0.1 u | **PARTIALLY WRONG** | The numbers are right; "no slack" is a misreading. The derivation filters on the *same* constants the gate checks, so admissible cells reach the limit by construction, and the 0.2 u navmesh lattice makes 20.1 u the closest admissible cell to a 20.0 u exclusion. Gate now prints margins **and** this explanation. The real residual (60 u of tolerated detour is a taste choice) is `BL-b100-DEBT-11`. |
+| 11 | LOW | `SEP_MIN = 16.0` attributed to R-30, which sets no number | **CONFIRMED** | Attribution corrected in code and in the gate row text; added to the constants-not-laws list. R-30 stays PENDING, untouched. |
+| 12 | LOW | minor tooling defects (dead expression, unused const, 8-slot loop, self-checked differ) | **CONFIRMED** | Dead `sum(1 for _ in ())` removed; `MIN_AREA` removed with a note on why the area half of the cohort filter never ran; pool slots now discovered from the record's own fields (`zparty_witchfest_2099` has a `name9`); the whole-map diff conclusion is independently corroborated by `verify_merged_bc_navmeshes` + the contract suite + G10's byte comparison. |
+| 13 | LOW | two doc inaccuracies (band-2 tier comment, circular player-surface proof) | **CONFIRMED** | Band-2 comment now states the anchor sits at world Y **-14.40** on a ramp while the other three are at -10.00. Player-surface probe re-run against the **baseline** map (PASS, 0 problems, 39 records) and now **refuses** a post-change map unless `--allow-postchange` is passed. |
+
+---
+
+## 10. ENVIRONMENT NOTES FOR WHOEVER INTEGRATES THIS
 
 - **Nothing was deployed.** `CustomMaps\SoulvizierClassicDEV` was last written at
   **2026-07-29 08:28** (`Quests.arc`) and **2026-07-27 16:48** (`Levels.arc`), both before this lane
   started. Its `Levels.arc` is 688,679,840 B and is NOT this lane's artifact.
 - **The canonical staging artifacts are untouched.** Re-hashed at the end of the lane:
   `work/SoulvizierClassic/Resources/Levels.arc` = `fc0adcc0713839a685b32d6e122653be`, exactly the
-  md5 the recon pinned; `work/.../Quests.arc` = `5e664c7b190965fd69f6ff15d77d85e4`. Every build this
-  lane ran went to the worktree's own `work/` and to `local/b100_base` / `local/b100_new` via
-  `SVC_OUT_DIR`, never to the shared `local/` default.
+  md5 the recon pinned; `work/.../Quests.arc` = `5e664c7b190965fd69f6ff15d77d85e4`; the DEPLOYED
+  `Levels.arc` = `943d0ab9516d332db79bd7f9fd2d3ffe`. All three re-verified at the end of round 2.
+- ⚠️ **ROUND-2 CORRECTION - round 1's claim that every build went via `SVC_OUT_DIR` "never to the
+  shared `local/` default" DOES NOT HOLD FOR ROUND 2.** `tools/svaera_plus_portals.py` hardcodes
+  its default output dir to `c:\Users\willi\repos\tqit_soulvizier_classic\local` - the MAIN
+  CHECKOUT - and the first round-2 map build ran without `SVC_OUT_DIR`, so it **overwrote the main
+  checkout's gitignored scratch `local/Levels_merged.arc`**. The staged canonical and the deployed
+  copy were both verified untouched (hashes above). The stray build was renamed
+  `local/Levels_merged.b100r2-STRAY-DO-NOT-DEPLOY.arc` - bytes preserved, zero data loss - so that
+  `deploy_to_custommaps.ps1 -SyncLevels` cannot pick up an unvetted artifact, and there is now no
+  bare `local/Levels_merged.arc` in the main checkout. Whatever a previous lane had left there is
+  gone and unrecoverable; it was regenerable scratch that `CLAUDE.md` explicitly says never to
+  trust, but it was not mine to overwrite. Every later build used `SVC_OUT_DIR`, and a second build
+  into an isolated dir reproduced the deliverable's md5 exactly. `BL-b100-DEBT-9`.
 - ⚠️ **CONCURRENT DRIFT, not this lane's:** `work/SoulvizierClassic/Database/SoulvizierClassic.arz`
   in the MAIN checkout was rewritten at **11:16** during this session (55,475,124 B, md5
   `967b1f97137bf6479c18c08e9dd6ffc4`) by another lane. This lane's arz is a different file in a
@@ -570,12 +700,26 @@ Exhaustive; a triaged item is not a done item.
 - **Two gitignored caches had to be populated for a cold worktree build**, both read-only-ish and
   worth knowing about:
   1. `build_quest_files.py` hard-codes `upstream\soulvizier_098i\Resources\XPack\Quests.arc`
-     relative to cwd, and that file is **not** covered by `tools/check_build_inputs.py` (which knows
-     about the SV arz's and `Text_EN.arc` but not the SV Quests). It is absent from every cache on
-     this machine and had to be extracted from `third_party/soulvizier098i.zip`
-     (`Resources/XPack/Quests.arc`, 222,487 B, md5 `a1b8020b20f41ca5b7e4af916bebf039`). **Worth
-     adding to the preflight**, since without it the quest half of a coupled deploy cannot be built
-     from a fresh worktree.
+     relative to cwd (the SOURCE of the ported `.qst` files), and that file is **not** covered by
+     `tools/check_build_inputs.py`. It is absent from every cache on this machine and had to be
+     extracted from `third_party/soulvizier098i.zip` (`Resources/XPack/Quests.arc`, 222,487 B, md5
+     `a1b8020b20f41ca5b7e4af916bebf039`; still present in this worktree, re-verified round 2).
+     **Still worth adding to the preflight.**
+  1b. ⚠️ **ROUND 2 FOUND AND FIXED A WORSE ONE, IN THE SAME FILE.** `build_quest_files.py` also
+     needs SVAERA's **pristine `Quests.arc`** as the base it restores *before* patching, and it
+     resolved that with a bare repo-relative `reference_mods\SVAERA_customquest\Resources\Quests.arc`
+     guarded by `if svaera_quests.exists()`. `reference_mods/` is gitignored and **EMPTY in every
+     fresh worktree AND in the main checkout**, so the restore SILENTLY DID NOTHING and the build
+     went on to patch the ALREADY-PATCHED `work/.../Quests.arc` from the previous run. It surfaced
+     only as `ValueError: expected exactly 1 reference to the Rhodes portal after the patch, found
+     3` from `_add_typhon_rhodes_unlock`'s own survival assert - which means that assert block, whose
+     docstring insists it is not orphaned, is the only thing standing between this repo and a
+     DOUBLE-PATCHED `Quests.arc` shipped attached to a map. FIXED: `svaera_quests_arc` is now
+     registered in `tools/check_build_inputs.py` with the same md5-pinned fallback chain as every
+     other SVAERA input (`SVC_SVAERA_QUESTS_ARC` -> in-repo cache -> main checkout's cache -> Steam
+     Workshop item 2076433374; pinned `b786666ccc7accf4b533adecc457ce81`, 194,578 B) and the restore
+     always runs, failing loud on a miss. `Quests.arc` then rebuilds reproducibly to
+     `5e664c7b190965fd69f6ff15d77d85e4` with the quest-record contract PASS over 107 records.
   2. The DB build's `mastery_sv_alignment.verify` resolves emblem textures against
      `work/SoulvizierClassic/Resources/*.arc`, so a worktree with an empty staging dir fails that
      verify with a misleading "emblem tex UNRESOLVED" rather than "your staging dir is empty". The
