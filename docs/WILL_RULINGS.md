@@ -2512,7 +2512,7 @@ disassembly of the stock 32-bit `Game.dll` (image base `0x10000000`); reproduce 
 |---|---|---|
 | `?CharacterIsDying@Player@GAME@@UAEXXZ` | `0x10207fc0` | the on-death handler |
 | `?GetPlayerDeathExperiencePenalty@GameEngine@GAME@@QBEI...` | `0x101945a0` | evaluates the equation object at `GE+0x103C`, floors at 0, rounds (`+0.5` from `0x103a3348`, then `fistp` with RC=11), clamps between `GE+0x1064` (`deathPenaltyMin`) and `GE+0x1068` (`deathPenaltyMax`) |
-| (XP helper on `Player+0xC2C`) | `0x1017d620` | subtracts, FLOORS at the current level's XP threshold so a death can never de-level you, and **returns the amount ACTUALLY removed** |
+| (XP helper on `Player+0xC2C`, not exported) | `0x1017d620` | MEASURED: `new = max(total - penalty, FLOOR)`, writes `new` back, **returns `old - new` = the amount ACTUALLY removed** (clamped at 0). `FLOOR` comes from `0x1017d540`, an equation evaluated for index `min(max(level-1,0), cap)`. INTERPRETATION (no field names in the binary): that is the current level's XP threshold, i.e. a death cannot de-level you. **R-109 does not rest on that reading** - only on the measured part, that the grave is handed the REALISED loss |
 | `?RegisterExperienceLoss@GameEngine@GAME@@QAEXIH@Z` | `0x10194540` | `mov [eax+0xc], ecx` - stores that actual loss at **`GraveInfo+0x0C`** |
 | `?GetPlayerExperienceRedemptionAmount@GameEngine@GAME@@IAEII@Z` | `0x10194f60` | reads `GraveInfo+0x0C`, `mulss xmm0, [edi+0x2a04]`, truncates |
 | the GameEngine field loader | `0x1019b8c3` | `mov [esp],0x3f000000` (0.5f default) / `push "RedemptionMultiplier"` / `fstp [edi+0x2a04]` - the ONLY writer of `GE+0x2A04`, and the `mulss` above is its only reader |

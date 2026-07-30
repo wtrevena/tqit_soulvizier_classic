@@ -36,12 +36,21 @@ is reproducible with `py tools/debug/probe_tombstone_xp.py --disasm`.
       already reproduces in Python.
 
   (c) an XP-subtraction helper on the player's level object at Player+0xC2C,
-      VA 0x1017d620. It takes the nominal penalty, subtracts it from the XP total
-      at +0x34, FLOORS the result at the current level's own XP threshold (so a
-      death can never de-level you), and RETURNS THE AMOUNT ACTUALLY REMOVED
-      (`eax = old - new`, `cmovs` to 0). `CharacterIsDying` then does
-      `sub dword ptr [esi+0xcf0], edi` with the nominal penalty for the mirrored
-      counter.
+      VA 0x1017d620 (not exported; named by its call site). MEASURED: it takes the
+      nominal penalty, computes `new = max(total_at_+0x34 - penalty, FLOOR)`,
+      writes `new` back to +0x34 and RETURNS `old - new`, i.e. **the amount
+      ACTUALLY REMOVED**, clamped at 0 by `cmovs`. FLOOR comes from VA 0x1017d540,
+      which evaluates an equation object and rounds it the same way (`+0.5` from
+      0x103a3348, `fistp` with RC=11) for the index
+      `min(max([+0x30] - 1, 0), [+0x2c])`.
+      INTERPRETATION (consistent with TQ's known behaviour, but the binary carries
+      no field names for these offsets): that index is the level below the current
+      one and the equation is the XP table, so the floor is the current level's own
+      XP threshold and a death cannot de-level you. **Nothing in this module
+      depends on that reading** - all it needs is the measured part, that the value
+      handed to the grave is the REALISED loss and is therefore <= the nominal
+      penalty. `CharacterIsDying` separately does `sub dword ptr [esi+0xcf0], edi`
+      with the nominal penalty for its own mirrored counter.
 
   (d) `?RegisterExperienceLoss@GameEngine@GAME@@QAEXIH@Z` VA 0x10194540
       stores that ACTUALLY-REMOVED amount into the player's grave record:
