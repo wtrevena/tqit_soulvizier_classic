@@ -490,11 +490,24 @@ modified.
 
 | artifact | md5 | size | note |
 |---|---|---:|---|
-| `local/b100_r2/Levels_merged.arc` | `65063ae5fe89d75ef4a65ad46f1ea19d` | 688,692,862 B | **the round-2 deliverable** |
-| `local/b100_r2b/Levels_merged.arc` | `65063ae5fe89d75ef4a65ad46f1ea19d` | 688,692,862 B | independent rebuild, **identical md5** - map-build determinism |
-| `local/b100_base/Levels_merged.arc` | `718abad63e7813dc78c4b169df969fd5` | 688,692,225 B | baseline (merge-base `4f0299c` tree, same env) |
+| **`local/b100_r3/Levels_merged.arc`** | **`3812c6c9e9d934da7225be8208c1474f`** | **688,692,861 B** | **THE ROUND-3 DELIVERABLE - this is what ships** |
+| `local/b100_base/Levels_merged.arc` | `718abad63e7813dc78c4b169df969fd5` | 688,692,225 B | baseline (merge-base `4f0299c` tree, same env) - every diff below is against THIS |
+| `work/SoulvizierClassic/Database/SoulvizierClassic.arz` | `4378b617fefb2014e382bb5931e7d605` | 55,460,430 B | UNCHANGED by this lane (reproduces b98's recorded hash) |
+| `work/SoulvizierClassic/Resources/Text.arc` | `c33b6abe3d61559785ee00ab3280a765` | 89,024 B | UNCHANGED by this lane (reproduces b98's recorded hash) |
+| `work/SoulvizierClassic/Resources/Quests.arc` | `5e664c7b190965fd69f6ff15d77d85e4` | 194,926 B | COUPLED with Levels. Rebuilt in round 3 and **byte-identical** to the round-2 build (quest-record contract PASS, 107 records). **NOT the deployed bytes - see the drift table below.** |
+| `local/b100_r2/Levels_merged.arc` | `65063ae5fe89d75ef4a65ad46f1ea19d` | 688,692,862 B | round-2 deliverable, SUPERSEDED by round 3 (band 3 regrouped - R-115) |
+| `local/b100_r2b/Levels_merged.arc` | `65063ae5fe89d75ef4a65ad46f1ea19d` | 688,692,862 B | round-2 independent rebuild, identical md5 - map-build determinism |
 | `local/b100_new/Levels_merged.arc` | `48a51961bb3a36c39f82759845041f14` | 688,692,859 B | round-1 deliverable, SUPERSEDED (its placements were the even-spread set) |
-| `work/SoulvizierClassic/Resources/Quests.arc` | `5e664c7b190965fd69f6ff15d77d85e4` | 194,926 B | COUPLED with Levels. **NOT the deployed bytes - see the drift table below.** |
+
+⚠️ **The canonical staged map was verified UNTOUCHED at the end of round 3**, and the round-2 stray
+in the main checkout is still quarantined:
+```
+$ md5sum /c/Users/willi/repos/tqit_soulvizier_classic/work/SoulvizierClassic/Resources/Levels.arc
+fc0adcc0713839a685b32d6e122653be   (688,691,547 B - exactly the pinned canonical value)
+$ ls /c/Users/willi/repos/tqit_soulvizier_classic/local/Levels_merged.arc
+ls: cannot access ...: No such file or directory      # no bare canonical to consume by accident
+```
+The foot-gun that produced that stray is now **fixed in code**, not merely disclosed - see sec 5.7.
 
 #### ⚠️ THE `Quests.arc` DEPLOY-SAFETY CLAIM WAS FALSE (vet finding 1, HIGH)
 
@@ -546,8 +559,33 @@ zero delta does.
 | `tools/contracts/run_contracts.py --only map` (19 contracts) | 6 viol (0 P0, 0 P1, 6 P2), **GATE PASS** | 6 viol (0 P0, 0 P1, 6 P2), **GATE PASS** | **identical violation set, item for item** |
 | `tools/contracts/gate_placed_record_resolution.py` | 346 missing placed refs, 397 seeds, 14,241 walked | 346 / 397 / 14,241 | **zero delta** - a PRE-EXISTING failure on `main`, not this lane's, and none of the 14 records this lane places is in the missing set |
 | `tools/debug/gate_landing_clearance.py --wiring v1` | - | **PASS=27, GATE G-LAND PASS** | n/a (destination-set gate) |
-| `tools/validate_tags.py` | - | **RESULT: PASS** - all 366 referenced mod tags present; 2 pre-existing base/SV monster-name warnings (backlog, non-blocking) | n/a (DB gate, DB unchanged) |
-| `tools/gate_sanctuary_population.py` | (gate is new) | **PASS**, 8/8 planted negatives caught | n/a |
+| `tools/validate_tags.py` | - | **RESULT: PASS** - all **366 REFERENCED** mod tags present **and** all **427 AUTHORITATIVE** tags present; 2 pre-existing base/SV monster-name warnings (backlog, non-blocking) | n/a (DB gate, DB unchanged) |
+| `tools/gate_sanctuary_population.py` | (gate is new) | **16/16 rows PASS**, **18/18 planted negatives caught** | n/a |
+| `tools/debug/b100_specs_vs_derive.py` | (check is new, round 3) | **PASS - identical, order included** (14 vs 14) | n/a |
+| `tools/patches/_check_registry.py` | - | **OK, 42 modules**, order digest `9867e2906fef7b8a29e36adf784ea368f465789ef042dcd080f092203f26fe30` | n/a (registry unchanged) |
+| `tools/check_build_inputs.py --all --verify-hashes` | - | **RESULT: PASS (9 inputs resolvable)** | n/a |
+| `tools/build_quest_files.py` | - | **quest-record contract PASS, 107 records**; rebuilds byte-identical to `5e664c7b…` | none (coupled artifact unchanged) |
+
+> ⚠️ **ROUND-3 CORRECTIONS TO THIS TABLE (vet finding 6), and one place the finding is WRONG.**
+> * The plant count read **"8/8"**, a surviving round-1 figure. Round 2 shipped 16; round 3 ships
+>   **18** (8 declaration + 9 map-side + 1 map-side run deliberately WITHOUT a baseline).
+> * The finding also read the **"366 referenced mod tags"** line as stale, contradicting a
+>   "427/427 authoritative tags" claim elsewhere. **Both numbers are correct and they are DIFFERENT
+>   METRICS from the SAME run.** Measured:
+>   ```
+>   $ py tools/validate_tags.py work/SoulvizierClassic/Database/SoulvizierClassic.arz \
+>          work/SoulvizierClassic/Resources/Text.arc \
+>          work/SoulvizierClassic/Database/uber_soul_tags.txt
+>     OK: all 366 referenced mod tags are present in Text.arc
+>     Authoritative list: uber_soul_tags.txt (427 tags)
+>     OK: all 427 authoritative tags are present in Text.arc
+>     RESULT: PASS
+>   ```
+>   366 = distinct tag values the `.arz` REFERENCES that are mod-owned; 427 = tags the DB build
+>   DECLARES it authored, cross-checked against the manifest. Both are now printed above so the two
+>   can never be conflated again. Note the earlier round-2 runs omitted the third argument, which is
+>   why only the 366 line appeared - the tool is silent about the authoritative check when no
+>   manifest is passed.
 
 ⚠️ **One measurement mistake worth recording:** the first `verify_merged_bc_navmeshes` run reported
 `FAIL (1): new_secretdoor_transitionhallway`. That run used the wrong environment variable

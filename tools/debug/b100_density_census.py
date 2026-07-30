@@ -108,7 +108,18 @@ def main():
     eq_mix = Counter()
 
     def info(dbr):
-        """(raw spawnMax, effective, equation basename)"""
+        """(raw spawnMax, effective, equation FULL RECORD PATH).
+
+        ⚠️ ROUND-3 (vet finding 10, which the vet verified is NOT an arithmetic bug but
+        IS an ambiguous label): the multiplier has always been resolved by FULL RECORD
+        PATH, which is correct - but the `eq_mix` label used the BASENAME, and the
+        basename is genuinely ambiguous. MEASURED: `proxypoolequation_01.dbr` exists in
+        FIVE namespaces, and `records\\xpack\\creatures\\monster\\proxypoolequation_01.dbr`
+        carries the `_02` FORMULA (0.91 + 0.497143*nP - 0.05*nP^2 = 1.357143x) while
+        `proxies egypt` / `proxies greek` / `proxies orient` / `xpack\\proxieshades` all
+        carry 2.623966 + 1.076769*nP - 0.100485*nP^2 = 3.60025x. Every number the census
+        printed was right; a reader bucketing by basename would have drawn the wrong
+        conclusion. The mix is now keyed by full path."""
         n = CM.norm_rec(dbr)
         if n in info_cache:
             return info_cache[n]
@@ -127,7 +138,8 @@ def main():
                 if isinstance(eq, list):
                     eq = eq[0] if eq else None
                 if eq:
-                    eqn = str(eq).replace('/', '\\').split('\\')[-1]
+                    # FULL PATH, not basename - see the docstring above.
+                    eqn = str(eq).replace('/', '\\')
                     k = CM.norm_rec(eq)
                     mult = None
                     if k in names:
