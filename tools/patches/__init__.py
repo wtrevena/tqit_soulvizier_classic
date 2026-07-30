@@ -126,6 +126,25 @@ REGISTRY = [
                             # machae) our own overlay disarmed, back into their EXISTING pools
                             # in place (no clone, no new pool); disjoint namespace (monster
                             # records only, none touched by any other module) - order-independent.
+    'thrown_anim_rig',      # R-100 #15 P0 (Will: the restored throwers "spawn and they cant move
+                            # or attack or anything they are broken"). thrown_restore fixed the
+                            # EQUIPMENT; the freeze is the ANIMATION side. SV 0.98i replaces the 4
+                            # animation tables those families use with pre-thrown-weapon versions
+                            # binding ZERO rangedOneHand/dualRanged clips, so an armed wielder
+                            # enters a stance with no run/walk/attack anim. This module CLONES each
+                            # table (166/66/61/27 NON-TARGET carriers -> SHARED-RECORD LAW forbids
+                            # editing in place) into records\creature\monster\svc\thrown_anm\*,
+                            # restores the base TQAE stance clips verbatim on the clone, and
+                            # repoints charAnimationTableName on the 10 roster records - which it
+                            # IMPORTS from thrown_restore.ROSTER so the two can never drift.
+                            # MUST run immediately after thrown_restore: it is the other half of
+                            # the same restore, and its DB-wide gate ("no monster equips a thrown
+                            # weapon on a table that leaves that stance unbound") can only be true
+                            # once the equipment half has run. The S4b collision WARN naming
+                            # EXACTLY this pair on the 10 monster records is EXPECTED and benign -
+                            # their field sets are disjoint (equip/loot/characterLife vs
+                            # charAnimationTableName) and neither reads the other's fields. A WARN
+                            # naming any THIRD module on those records is a real finding.
     'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module

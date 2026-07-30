@@ -134,6 +134,29 @@ def _scalar(v):
     return v[0] if isinstance(v, list) and v else v
 
 
+def _fv(fields, key):
+    r"""Scalar value of `key` in a decoded field map, or None.
+
+    PERFORMANCE (this matters: verify() sweeps all ~51k records): the obvious
+    `db.get_field_value(rec, key)` falls back to a LINEAR scan of the record's
+    ~1000 fields whenever the key is ABSENT, which is the common case in a
+    full-DB sweep. Reading the decoded map directly, with the same `###`
+    suffix fallback `get_field_value` uses, keeps the sweep to dict lookups.
+    In the real build every record is already decoded (apply_svc_patches'
+    `_RecordIndex.sync_blobs` does one full pass), so the sweep adds no decode
+    cost at all.
+    """
+    if not fields:
+        return None
+    tf = fields.get(key)
+    if tf is None:
+        for k, v in fields.items():
+            if "###" in k and k.split("###")[0] == key:
+                tf = v
+                break
+    return _scalar(tf.value) if tf is not None else None
+
+
 # ---------------------------------------------------------------------------
 # THE RESTORE DATA. Every value below is captured VERBATIM (path, spelling and
 # letter case) from base TQAE `database.arz`, dumped by
@@ -275,41 +298,45 @@ def scan_frozen_throwers(db):
     frozen   = [(record, stance, table, [unbound critical slots])] - the
                violators of the R-100 #15 invariant.
     """
-    def gv(rec, key):
-        return db.get_field_value(rec, key)
-
+    by_lower = {_norm(n): n for n in db.record_names()}
     tbl_cache = {}
 
     def table_binds(tbl, stance):
+        """critical slots this table leaves UNBOUND for `stance` ([] == healthy)"""
         key = (_norm(tbl), stance)
         if key in tbl_cache:
             return tbl_cache[key]
-        missing = []
-        if not db.has_record(tbl):
-            # Not in the overlay -> pure base pass-through. The base tables DO
-            # bind the thrown stance (measured), so a pass-through table is
-            # healthy by construction; treat as bound and say so.
-            tbl_cache[key] = missing
-            return missing
-        for slot in CRITICAL_SLOTS:
-            v = _scalar(gv(tbl, stance + slot))
-            if not (isinstance(v, str) and v.lower().endswith(".anm")):
-                missing.append(stance + slot)
+        real = by_lower.get(_norm(tbl))
+        if real is None:
+            # Absent from the overlay -> pure base-game pass-through. The base
+            # tables DO bind the thrown stance (measured: 9/10/11/9 clips), so a
+            # pass-through table is healthy by construction.
+            tbl_cache[key] = []
+            return []
+        tff = db.get_fields(real)
+        missing = [stance + s for s in CRITICAL_SLOTS
+                   if not (isinstance(_fv(tff, stance + s), str)
+                           and str(_fv(tff, stance + s)).lower().endswith(".anm"))]
         tbl_cache[key] = missing
         return missing
 
     throwers, frozen = [], []
     for name in db.record_names():
-        if _scalar(gv(name, "Class")) != "Monster":
+        fields = db.get_fields(name)
+        if not fields or _fv(fields, "Class") != "Monster":
             continue
-        right = float(_scalar(gv(name, "chanceToEquipRightHand")) or 0)
-        left = float(_scalar(gv(name, "chanceToEquipLeftHand")) or 0)
-        r_thrown = right > 0 and _is_thrown_loot(gv(name, "lootRightHandItem1"))
-        l_thrown = left > 0 and _is_thrown_loot(gv(name, "lootLeftHandItem1"))
+        right = float(_fv(fields, "chanceToEquipRightHand") or 0)
+        left = float(_fv(fields, "chanceToEquipLeftHand") or 0)
+        if right <= 0 and left <= 0:
+            continue
+        r_thrown = right > 0 and _is_thrown_loot(
+            fields["lootRightHandItem1"].value if "lootRightHandItem1" in fields else None)
+        l_thrown = left > 0 and _is_thrown_loot(
+            fields["lootLeftHandItem1"].value if "lootLeftHandItem1" in fields else None)
         if not (r_thrown or l_thrown):
             continue
         stance = "dualRanged" if (r_thrown and l_thrown) else "rangedOneHand"
-        tbl = _scalar(gv(name, "charAnimationTableName"))
+        tbl = _fv(fields, "charAnimationTableName")
         throwers.append((name, stance, tbl))
         if not tbl:
             frozen.append((name, stance, None, ["<no charAnimationTableName>"]))
@@ -371,7 +398,7 @@ def verify(db, tags):
     errs = []
 
     def gv(rec, key):
-        return _scalar(db.get_field_value(rec, key))
+        return _fv(db.get_fields(rec), key)
 
     # ---- 1. the roster invariant -------------------------------------------
     throwers, frozen = scan_frozen_throwers(db)
@@ -418,6 +445,16 @@ def verify(db, tags):
 
     # ---- 4. SHARED-RECORD proof --------------------------------------------
     targets = {_norm(e["record"]) for e in thrown_restore.ROSTER}
+    clone_of = {_norm(f["clone"]): f for f in FAMILIES}
+    # ONE sweep for every family's carrier check (not one sweep per family).
+    moved = {}
+    for name in db.record_names():
+        if _norm(name) in targets:
+            continue
+        t = _fv(db.get_fields(name), "charAnimationTableName")
+        if t and _norm(t) in clone_of:
+            moved.setdefault(_norm(t), []).append(name)
+
     for fam in FAMILIES:
         orig = fam["table"]
         if not db.has_record(orig):
@@ -430,17 +467,10 @@ def verify(db, tags):
                             "binds %s%s=%r - this module must CLONE, never edit "
                             "a table with non-target carriers"
                             % (orig, fam["stance"], slot, v))
-        # nobody outside the roster was repointed off the original
-        moved = []
-        for name in db.record_names():
-            if _norm(name) in targets:
-                continue
-            t = gv(name, "charAnimationTableName")
-            if t and _norm(t) == _norm(fam["clone"]):
-                moved.append(name)
-        if moved:
+        hits = moved.get(_norm(fam["clone"]), [])
+        if hits:
             errs.append("non-target carriers repointed onto %s: %s"
-                        % (fam["clone"], ", ".join(sorted(moved)[:5])))
+                        % (fam["clone"], ", ".join(sorted(hits)[:5])))
 
     if errs:
         raise SystemExit("thrown_anim_rig.verify FAILED:\n  " + "\n  ".join(errs))
@@ -456,75 +486,97 @@ def verify(db, tags):
 # ---------------------------------------------------------------------------
 # PLANTED NEGATIVES - each must turn the gate RED.
 # ---------------------------------------------------------------------------
-def _clone_db_shallow(d):
-    import copy
-    d2 = copy.copy(d)
-    d2._decoded_cache = copy.deepcopy(d._decoded_cache)
-    d2._modified = set(d._modified)
-    return d2
-
-
 def _negtest(db, tags):
+    """Plant each defect shape into the REAL db, run verify(), then restore the
+    exact prior field state.
+
+    Save/restore rather than a deepcopy of `db`: `_decoded_cache` holds ~51k
+    decoded records, so copying it once per case (9 cases) is minutes of work
+    and gigabytes. Restoration is exact - the pre-value is read back with the
+    same accessor and re-written, and `_modified` is rewound to its prior
+    contents - and it is proved: verify() is re-run at the end and must be
+    GREEN again, so nothing leaks between cases or out of the negative test.
+    """
     checks = 0
     fam0 = FAMILIES[0]
     rec0 = thrown_restore.ROSTER[0]["record"]
+    victim = r"records\creature\monster\maenad\ar_archer_04.dbr"   # non-roster sibling
 
-    def _expect_fail(mutate, label):
+    def _snapshot(pairs):
+        return [(rec, key, db.get_field_value(rec, key)) for rec, key in pairs]
+
+    def _restore(snap, mod_before):
+        for rec, key, old in snap:
+            db.set_field(rec, key, old if old is not None else "")
+        db._modified.clear()
+        db._modified.update(mod_before)
+
+    def _case(pairs, mutate, label, expect_fail=True):
         nonlocal checks
-        d2 = _clone_db_shallow(db)
-        mutate(d2)
+        mod_before = set(db._modified)
+        snap = _snapshot(pairs)
+        mutate()
         try:
-            verify(d2, dict(tags))
+            verify(db, dict(tags))
+            passed = True
         except SystemExit:
-            checks += 1
-            return
-        raise SystemExit("negtest: expected verify FAIL for %s, but it passed" % label)
-
-    def _expect_pass(mutate, label):
-        nonlocal checks
-        d2 = _clone_db_shallow(db)
-        mutate(d2)
-        verify(d2, dict(tags))   # must NOT raise
+            passed = False
+        finally:
+            _restore(snap, mod_before)
+        if expect_fail and passed:
+            raise SystemExit("negtest: expected verify FAIL for %s, but it PASSED" % label)
+        if not expect_fail and not passed:
+            raise SystemExit("negtest: expected verify PASS for %s, but it FAILED" % label)
         checks += 1
 
-    # THE defect itself, re-planted three ways.
-    _expect_fail(lambda d: d.set_field(fam0["clone"], fam0["stance"] + "RunAnim", ""),
-                 "clone loses its thrown RUN anim (the freeze)")
-    _expect_fail(lambda d: d.set_field(fam0["clone"], fam0["stance"] + "WalkAnim", ""),
-                 "clone loses its thrown WALK anim")
-    _expect_fail(lambda d: d.set_field(fam0["clone"], fam0["stance"] + "AttackAnim1", ""),
-                 "clone loses its thrown ATTACK anim")
-    # the pre-fix state: roster record still points at SV's stripped table
-    _expect_fail(lambda d: d.set_field(rec0, "charAnimationTableName", fam0["table"]),
-                 "roster record repointed back at SV's stripped shared table")
-    # a clip that is not an .anm at all
-    _expect_fail(lambda d: d.set_field(fam0["clone"], fam0["stance"] + "RunAnim",
-                                       r"Creatures\Monster\Maenad\Maenad02.msh"),
-                 "thrown RUN slot bound to a mesh instead of an .anm")
-    # SHARED-RECORD guard: editing the original table instead of cloning
-    _expect_fail(lambda d: d.set_field(fam0["table"], fam0["stance"] + "RunAnim",
-                                       fam0["clips"][fam0["stance"] + "RunAnim"]),
-                 "shared original table edited in place (SHARED-RECORD LAW)")
-    # a NEW thrown wielder anywhere in the DB whose table lacks the stance
-    def _plant_new_thrower(d):
-        victim = r"records\creature\monster\maenad\ar_archer_04.dbr"
-        d.set_field(victim, "chanceToEquipRightHand", 100.0)
-        d.set_field(victim, "lootRightHandItem1",
-                    [r"records\xpack2\item\loottables\weapons\static\1h_ranged_01b.dbr"])
-    _expect_fail(_plant_new_thrower,
-                 "a NON-roster monster armed with a thrown weapon on a stripped table")
+    S = fam0["stance"]
 
-    # NEGATIVE CONTROL: the gate must stay GREEN for changes it must not police.
-    _expect_pass(lambda d: d.set_field(fam0["clone"], fam0["stance"] + "StunAnim",
-                                       fam0["clips"][fam0["stance"] + "StunAnim"]),
-                 "re-writing a non-critical clip to its own value stays green")
-    _expect_pass(lambda d: d.set_field(
-        r"records\creature\monster\maenad\ar_archer_04.dbr",
-        "chanceToEquipRightHand", 100.0),
-        "a non-thrown equip change on a sibling monster stays green")
+    # --- MUST RED: the defect itself, re-planted three ways -----------------
+    _case([(fam0["clone"], S + "RunAnim")],
+          lambda: db.set_field(fam0["clone"], S + "RunAnim", ""),
+          "clone loses its thrown RUN anim (the freeze)")
+    _case([(fam0["clone"], S + "WalkAnim")],
+          lambda: db.set_field(fam0["clone"], S + "WalkAnim", ""),
+          "clone loses its thrown WALK anim")
+    _case([(fam0["clone"], S + "AttackAnim1")],
+          lambda: db.set_field(fam0["clone"], S + "AttackAnim1", ""),
+          "clone loses its thrown ATTACK anim")
+    # --- MUST RED: the exact PRE-FIX state ----------------------------------
+    _case([(rec0, "charAnimationTableName")],
+          lambda: db.set_field(rec0, "charAnimationTableName", fam0["table"]),
+          "roster record repointed back at SV's stripped shared table (the shipped bug)")
+    # --- MUST RED: a slot bound to something that is not an animation -------
+    _case([(fam0["clone"], S + "RunAnim")],
+          lambda: db.set_field(fam0["clone"], S + "RunAnim",
+                               r"Creatures\Monster\Maenad\Maenad02.msh"),
+          "thrown RUN slot bound to a MESH instead of an .anm")
+    # --- MUST RED: SHARED-RECORD LAW violation ------------------------------
+    _case([(fam0["table"], S + "RunAnim")],
+          lambda: db.set_field(fam0["table"], S + "RunAnim", fam0["clips"][S + "RunAnim"]),
+          "shared ORIGINAL table edited in place instead of cloned")
+    # --- MUST RED: the class, not the 10 instances - ANY new thrown wielder
+    #     anywhere in the DB on a stance-stripped table -----------------------
+    def _plant_new_thrower():
+        db.set_field(victim, "chanceToEquipRightHand", 100.0)
+        db.set_field(victim, "lootRightHandItem1",
+                     [r"records\xpack2\item\loottables\weapons\static\1h_ranged_01b.dbr"])
+    _case([(victim, "chanceToEquipRightHand"), (victim, "lootRightHandItem1")],
+          _plant_new_thrower,
+          "a NON-roster monster armed with a thrown weapon on a stripped table")
 
-    print("  thrown_anim_rig._negtest: OK (%d planted cases: 7 must-red, 2 must-stay-green)"
-          % checks)
+    # --- MUST STAY GREEN: things this gate must NOT police ------------------
+    _case([(victim, "chanceToEquipRightHand")],
+          lambda: db.set_field(victim, "chanceToEquipRightHand", 100.0),
+          "a NON-thrown equip change on a sibling monster", expect_fail=False)
+    _case([(fam0["clone"], S + "StunAnim")],
+          lambda: db.set_field(fam0["clone"], S + "StunAnim",
+                               r"Creatures\Monster\Maenad\ANM\Maenad_UnArmed_Stun.anm"),
+          "a NON-critical clip slot rewritten", expect_fail=False)
+
+    # restoration proof: the gate is green again on the untouched db
+    verify(db, dict(tags))
+    print("  thrown_anim_rig._negtest: OK (%d planted cases - 7 must-RED, 2 must-stay-GREEN "
+          "- and verify is GREEN again after full restore)" % checks)
 
 
 # ---------------------------------------------------------------------------

@@ -37,8 +37,9 @@ def index_dir(root):
         except Exception as exc:                      # pragma: no cover
             print("  [skip] %s (%s)" % (arc, exc))
             continue
-        for name in a.entries:
-            idx.setdefault(norm(name), arc)
+        for entry in a.entries:          # ArcEntry objects, not name strings
+            if getattr(entry, "name", ""):
+                idx.setdefault(norm(entry.name), arc)
     return idx
 
 
@@ -73,13 +74,16 @@ def main():
         hit = None
         for c in cands:
             if c in mod_idx:
-                hit = ("MOD", mod_idx[c].name)
+                hit = ("MOD", mod_idx[c].name, c)
                 break
             if c in base_idx:
-                hit = ("BASE", base_idx[c].name)
+                hit = ("BASE", base_idx[c].name, c)
                 break
         if hit:
-            print("  OK   [%-4s %-22s] %s" % (hit[0], hit[1], a))
+            # print the EXACT inner path that matched, so an archive-name
+            # stripping artifact can never masquerade as a resolution.
+            print("  OK   [%-4s %-16s] %-62s  <- inner %s"
+                  % (hit[0], hit[1], a, hit[2]))
         else:
             missing.append(a)
             print("  MISS %s" % a)
