@@ -2383,13 +2383,13 @@ encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers;
 
 | ruling | verbatim ask | shipped |
 |---|---|---|
-| R-105 | "no monsters should be at 66%. move all 66% and 50% to 33%" | 733 carriers -> 33, +1 -> 25 (below). The 66% and 50% cohorts are now EMPTY |
+| R-105 | "no monsters should be at 66%. move all 66% and 50% to 33%" | **368** of the 373 at 66% and **all 361** at 50% -> 33 (**729** total, the build's own histogram). Of the remaining 5: **1** -> 25 (`um_polisgaoler_unbound_99`, R-107) and **4** HELD at 66 by the older UNTOUCHED ruling. The 50% cohort is EMPTY; the 66% cohort is exactly those 4 |
 | R-105 | "25% for fixed location bosses and 33% for non-fixed location bosses" | the 12 `boss_pharaohshonorguard*` 10% -> 25%; the 5% pair and the 39 2%-tier heroes -> 33% |
 | R-106 | "only hero monsters should drop their soul" | the 11 Common **droppers** -> 0% (the other 4 are PETS, see amendment 2) |
 | R-106 | the four R-48 Toxeus champions stay 100 | asserted by gate invariant G3, unchanged |
 | R-106 amdt | `um_charon_ferryman_99` + `um_tantalus_99` 0% -> 25% | **NOT shipped - the amendment is wrong, see AMENDMENT 6** |
 | R-107 | "the soul gaoler should not drop the soul just the unbound final version" | base `um_polisgaoler_99` pinned at 0; `um_polisgaoler_unbound_99` 66% -> 25% |
-| R-100 #11 | XP-potion forge formulas cannot use our souls | 577 souls given act membership, **201 of them ours** |
+| R-100 #11 | XP-potion forge formulas cannot use our souls | **580** soul->formula memberships added over 3 rounds to a fixed point (577 + 3 + 0); the 12 formulas now list **2,161** souls, **204** of them our own minted `svc_uber` souls |
 | R-100 #17 | halve the Gaoler's chests; his epic chests drop "essence" not "embodiment" | 5 placements -> 2; the normal-tier guaranteed donors replaced with the chest's own legendary tier |
 
 **HELD, untouched, and named so it cannot be lost:** the **172 Champion-tier carriers at 0%** plus **7
