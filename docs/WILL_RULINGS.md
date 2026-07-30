@@ -2343,18 +2343,41 @@ encounter**, so this outranks the rest of the R-100 batch. Awaiting his numbers;
 
 ---
 
-## R-140 [2026-07-30] IMPLEMENTATION RECORD + factual amendments: R-105 / R-106 / R-107 rates, R-100 #11 forge acts, R-100 #17 Gaoler
+## R-150 [2026-07-30] IMPLEMENTATION RECORD + factual amendments: R-105 / R-106 / R-107 rates, R-100 #11 forge acts, R-100 #17 Gaoler
 
-> **NUMBER PROVENANCE.** `git grep -oE "\bR-1[0-9][0-9]\b" $(git branch -a --format='%(refname)')` over
-> **main and every in-flight branch** returns R-100..R-124 and R-130 taken; the whole **R-140..R-149
-> decade is FREE**. This block is appended at the END of the file (rather than edited into R-105/
-> R-106/R-107) precisely so it cannot collide with a branch that is editing those sections.
+> ### ⚠️ RENUMBERED R-140 -> R-150. THIS LANE MOVED ITS OWN, AND TOUCHED NOBODY ELSE'S.
+>
+> The original claim below was made in good faith and was true when written:
+> `git grep -oE "\bR-1[0-9][0-9]\b" $(git branch -a --format='%(refname)')` returned R-100..R-124 +
+> R-130 taken and the whole R-140..R-149 decade free. **It stopped being true while this lane was
+> building.** Re-run at the end of the session:
+>
+> ```
+> git grep -ohE "\bR-[0-9]{3}\b" $(git branch -a --format='%(refname)') -- docs/WILL_RULINGS.md | sort -u
+>   -> R-100..R-125, R-130, R-140, R-141, R-149
+> git grep -hnE "^## R-14[01]" refs/heads/fix/quest-item-leaks -- docs/WILL_RULINGS.md
+>   -> 2389: ## R-140 ... R-100 #15 ROOT CAUSE: the thrown-wielders are frozen ...
+>   -> 2488: ## R-141 ... R-101 quest-item leaks closed ...
+>   -> 2551: ## R-140 AMENDMENT ... Three measured corrections to R-140 ...
+> ```
+>
+> `fix/quest-item-leaks` had taken **R-140 for a completely different subject**, plus R-141 and an
+> R-140 AMENDMENT that cross-reference each other. Per the ledger law a lane renumbers **its own**
+> ruling and never reassigns another lane's, so **this** block moved: R-140 -> **R-150**. The
+> R-150..R-159 decade was re-verified free against main and every in-flight branch with the command
+> above at the moment of writing. Nothing on `fix/quest-item-leaks` was edited, and its R-140 stands.
+> (`feat/devourer-kit`'s own collision note names `feat/soul-economy` as an R-140 incumbent - that
+> note is now stale by exactly this renumber, and is left alone for the same reason.)
 >
 > **THIS IS NOT A NEW WILL DECISION.** No new words of his exist. It records (a) that R-105, R-106,
-> R-107 Part 1, R-100 #11 and R-100 #17 are now IMPLEMENTED in code, and (b) five places where the
-> MEASUREMENT inside those rulings was wrong or incomplete, corrected here rather than left standing,
-> because a wrong premise about these fields mis-scopes every future soul change. Every correction is
-> a command anyone can re-run.
+> R-107 Part 1, R-100 #11 and R-100 #17 are now IMPLEMENTED in code, and (b) the places where the
+> MEASUREMENT inside those rulings - or inside this block's own first draft - was wrong or
+> incomplete, corrected here rather than left standing, because a wrong premise about these fields
+> mis-scopes every future soul change. Every correction is a command anyone can re-run.
+>
+> ⚠️ **AMENDMENTS 7-9 CORRECT AMENDMENT 5 AND THE FIRST DRAFT OF THIS BLOCK.** Amendments 1-6 were
+> written from a build whose gate had never been run to green. It was then run, and it FAILED with 76
+> violations. Read amendments 7-9 before trusting any count in 1-6.
 
 ### WHAT SHIPPED (branch `feat/soul-economy`)
 
@@ -2499,3 +2522,92 @@ The Devourer reflect/pierce cut (Will HARD-BLOCKED from finishing that encounter
 lane - it needs his numbers, and its required implementation is a monster-only clone of
 `toxeus_passiveproperties` so his 9 pets keep their defence. Still PENDING, still outranking the rest of
 the R-100 batch.
+
+### AMENDMENT 7 [2026-07-30] AMENDMENT 5 UNDERCOUNTED THE R-105 TENSION BY 7, AND THE CLASSIFIER WAS NOT IDEMPOTENT
+
+AMENDMENT 5 said "**Five** of the 734 are fixed-location act bosses" and `BL-b102-DEBT-2` said the
+carve-out left "**ONE** record on the original tension" (`boss_satyrshaman_55`). Both numbers are
+wrong. Measured on the baseline arz, not inferred:
+
+```
+py -c "... roster = apply_svc_patches._soul_carrier_roster(baseline_main.arz);
+       {r for r,cls,cur in roster
+          if cur in (66.0, 50.0) and build_svc_database._soul_is_farmable_boss(r, cls)}"
+  -> 12 records, all at 66.0, all cls=Boss
+```
+
+| record | in R-105's ratified 734 | classifier says | outcome |
+|---|---|---|---|
+| `boss_charon_39` / `_41` / `_43` | yes | fixed boss / 25 | **HELD at 66** (older UNTOUCHED ruling) |
+| `boss_hades_54` | yes | fixed boss / 25 | **HELD at 66** (older UNTOUCHED ruling) |
+| `boss_satyrshaman_55` | yes | fixed boss / 25 | ships **33** (COUNT) |
+| `boss_coldworm50`, `boss_dagon_66` | yes | fixed boss / 25 | ships **33** (COUNT) |
+| `q_leinth_47` / `_49` / `_50` | yes | fixed boss / 25 | ships **33** (COUNT) |
+| `murderbunny` | yes | fixed boss / 25 | ships **33** (COUNT) |
+| `svc_um_hadesmarshal_80` | yes | fixed boss / 25 | ships **33** (COUNT) |
+
+So the open question for Will is **EIGHT records, not one**. The eight are not act bosses in the
+Greece/Egypt/Orient/Hades sense - seven are OUR OWN placed ubers plus one base-game arena boss - and
+`_soul_is_farmable_boss` reaches them through a naive `boss_`/`q_` path heuristic, which is exactly
+why five of them used to carry `_KNOWN_EXCEPTIONS` waivers reading "the shipped value IS intended".
+
+**AND THIS WAS NOT MERELY A COUNTING ERROR - IT WAS A LIVE DEFECT.** `ruled_soul_equip_rate()` keyed
+the ratified-cohort rule on the record's CURRENT value, so it returned 33 while the record still sat
+at 66 and **25 for the same record once 33 had been written**. The applier and the gate therefore
+disagreed by construction, and the first fully-gated build of this wave failed on exactly these 8
+records, twice each (LAST-WRITER mismatch + UNINTENDED golden-diff). The fix is
+`build_svc_database.SOUL_RATE_COUNT_OVER_CLASS`, checked before both value-keyed rules, plus a
+build-time re-derivation of the set from the pre-policy arz that HALTS the build if a new
+fixed-location boss ever appears in the 66/50 cohort. Gate invariant **G8** + 2 planted negatives.
+
+### AMENDMENT 8 [2026-07-30] THE UNTOUCHED-RULING ROSTER WAS THE ONLY ROSTER THE GATE COULD NOT DEFEND
+
+Cohort invariant **G7b** ("every HELD record is Champion-classified, unset, or gated at 0") predates
+the ruling-collision carve-out recorded in AMENDMENT 5. That carve-out holds 8 Boss-classified
+Charon/Hades carriers at a **live** 66/25, so G7b red on all 8 - a gate failing on the carve-out its
+own wave introduced. G7b now admits a fourth legal reason to be HELD, scoped to exactly
+`SOUL_RATE_UNTOUCHABLE` (which G2b already cross-checks against `double_soul_rulings`' own roster).
+
+Closing that exposed a worse hole and it is closed too. Because those records are HELD,
+`expected == cur` by construction, so the intended-diff-vs-golden check called **any** move of them
+"intended": the one roster protected by an explicit Will ruling was the only roster with no
+standalone guard. A golden delta on an `SOUL_RATE_UNTOUCHABLE` record is now an unconditional
+failure with its own planted negative.
+
+### AMENDMENT 9 [2026-07-30] THE TESTING BUILD SILENTLY DID NOT FORCE 52 CARRIERS TO 100%
+
+AMENDMENT 3 caught the `\creature(s)\` path filter in the gate's `_is_creature`.
+**`apply_svc_patches._force_100_pct_soul_drops` had the identical filter and therefore the identical
+hole.** Measured on the b102 build: 52 live soul carriers sit outside any `\creature(s)\` path and
+were never boosted, so a build made with `SVC_TESTING_DROPS=1` left them at their RELEASE rate:
+
+| n | path | what lives there |
+|---|---|---|
+| 42 | `records\item\equipmentring\soul\test\` | SV files real `Monster.tpl` records under an ITEM path - R-105's whole 2%-tier hero cohort |
+| 5 | `records\item\miscellaneous\monsterscrolls\pets\` | monster-scroll summons |
+| 4 | `records\test\` | **our own placed ubers** - `boss_dagon_66`, `boss_coldworm50` |
+| 1 | `records\skills\monster skills\summoning_pets\pets\` | `dayria_carrioncrow_40` |
+
+"I killed it twenty times on a 100% test build and got no soul" was therefore a **true report about
+the test harness**, not about the drop rate. The forcer now uses the ONE shared
+`_soul_carrier_roster`. Release builds never call it, and the record-diff proves the shipped release
+arz is unchanged by this. The `chance > 0` gate is untouched, so Common (0 after R-106) still cannot
+be re-enabled - the normal-yeti bug stays fixed - and the roster excludes Pet/Proxy/ProxyPool, so no
+summon is affected.
+
+### AMENDMENT 10 [2026-07-30] TWO MORE LIVE CARRIERS ARE HELD BY UNSET CLASSIFICATION, AND SHOULD BE NAMED
+
+AMENDMENT 2 named the 4 pet crows. Measured, there are **two more** carriers with a live sub-1% rate
+that the policy holds and that nothing in R-105/R-106 addresses, because their `monsterClassification`
+is **empty** and the classifier refuses to rule on an unset class:
+
+| record | rate | what it is |
+|---|---|---|
+| `records\item\miscellaneous\monsterscrolls\pets\duskyboar_17.dbr` | 0.5 | monster-scroll summon |
+| `records\skills\monster skills\summoning_pets\pets\dayria_carrioncrow_40.dbr` | 0.35 | a monster's summoned pet |
+
+Both are `Monster.tpl` (so the Pet/Proxy template exclusion does not catch them) but both are
+**summons, not farmable monsters**, so the same reasoning as the crows applies: their
+`chanceToEquipFinger2` is a power switch far more than a drop rate. They are HELD, untouched, and
+recorded here so "the sub-25 buckets are all resolved" is never claimed. Registered under
+`BL-b102-DEBT-1`. **OPEN FOR WILL** together with the crows, one answer covers all six.
