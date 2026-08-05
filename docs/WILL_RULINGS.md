@@ -1678,14 +1678,17 @@ exemption is an invariant, not an omission), the exempt boss is out of the write
 each guard's identity into its NAME and then never implemented it, so each guard now gets the SIGNATURE PAIR
 of skills its own epithet demands, and no two of the six share one:
 
-| guard | name `four_generals` gave it | signature (both already-shipped records) |
+| guard | name `four_generals` gave it | signature (`†` = rides a blank-anim CLONE, see the round-2 correction below) |
 |---|---|---|
 | a1 | `{^r}Ravok the Lawless ~ Machae Reaver` | `minotaur_onslaught` + `gigantes_groundbreaker` |
 | a2 | `{^r}Sethuun ~ Machae Soul-Warden` | `empusa_spirit_lifedrainnova` + `hero_slowspiritbolt_ring` |
-| b1 | `{^r}Bhikru the Bilespitter ~ Machae Venomancer` | `hero_vomitbile` + `empusavenomancer_venombolt` |
+| b1 | `{^r}Bhikru the Bilespitter ~ Machae Venomancer` | `hero_vomitbile`† + `empusavenomancer_venombolt`† |
 | b2 | `{^r}Nakoth ~ Machae Plague-Ward` | `empusa_venom_venomcloud` + `hero_poisonwave` |
-| c1 | `{^r}Kharzun the Ember ~ Machae Pyre-Ward` | `empusa_pyro_pillarofflame` + `hero_flamewave` |
-| c2 | `{^r}Voreth ~ Machae Cinder-Reaver` | `gigantes_shieldcharge` + `hero_bouncingfire_ring` |
+| c1 | `{^r}Kharzun the Ember ~ Machae Pyre-Ward` | `empusa_pyro_pillarofflame` + `hero_flamewave`† |
+| c2 | `{^r}Voreth ~ Machae Cinder-Reaver` | `gigantes_shieldcharge`† + `hero_bouncingfire_ring` |
+
+*(All six ALSO keep a slot-1 special, `shieldcharge`, which round 1 left on the shipped record and round 2
+repointed to a fifth blank-anim clone. Round 1 shipped all five of those as silent no-ops.)*
 
 Plus, every number derived from something already in the db rather than invented:
 * `scale` **1.45 -> 2.0** - `um_enslaver_marauder_99`'s own scale, i.e. the encounter **Will himself points
@@ -1715,10 +1718,55 @@ Plus, every number derived from something already in the db rather than invented
   would make them soul-eligible under `wire_souls_to_monsters` and collide head-on with **R-106**. Will asked
   for chests and orbs, not souls.
 
-`--negtest` -> **PASS (14/14)**, including "reverted to the shipped 1.45", "scale merely equal to the plain
-warden donor", "reverted to the shipped `[3200,4200,5400]`", "guard HP raised above its general", "orb moved
-onto R-99's reserved apex tier", "chest left on the recipe's Boss lock (never opens)", "guard promoted to
-Hero", "general de-quested", and a pet-spawner smuggled into a guard kit.
+`--negtest` -> round 1 reported **PASS (14/14)**, including "reverted to the shipped 1.45", "scale merely
+equal to the plain warden donor", "reverted to the shipped `[3200,4200,5400]`", "guard HP raised above its
+general", "orb moved onto R-99's reserved apex tier", "chest left on the recipe's Boss lock (never opens)",
+"guard promoted to Hero", "general de-quested", and a pet-spawner smuggled into a guard kit.
+
+> ### 🛑 ROUND-2 CORRECTION (2026-08-05): FOUR OF THE TWELVE COULD NOT FIRE, AND THE 14/14 GATE COULD NOT SEE IT
+>
+> **The round-1 statement "12 distinct signature skills" was TRUE about the WIRING and FALSE about the
+> PLAY.** Measured on round 1's own build (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+> 51,151 records), not inferred:
+>
+> * every guard binds `charAnimationTableName = records\xpack\creatures\monster\machae\anm\anm_machae.dbr`;
+> * that table declares exactly FOUR `<row>SpecialAnimRef<N<=15>` clip names - `bow1='HeavyShot'`,
+>   `sHanded1='ThunderClap'`, `spear1='Slam'`, `spear2='Strike'`;
+> * Game.dll's `SkillManager::StartSkill` aborts a special SILENTLY when the caster's table has no clip for
+>   the skill's `skillSpecialAnimationName` (this repo's own crash-law RE, already applied once as the b42
+>   Ephialtes Dread Nova fix in `tools/apply_svc_patches.py`);
+> * so these **NEVER FIRED**: `hero_vomitbile` ('Belch', guard b1), `empusavenomancer_venombolt` ('Belch',
+>   guard b1 - BOTH of its two), `hero_flamewave` ('ShadowScythe', guard c1), `gigantes_shieldcharge`
+>   ('Charge', guard c2);
+> * and the slot-1 special all six INHERITED, `records\skills\defensive\shieldcharge.dbr`, names
+>   'ShieldCharge', also absent - on `skillName3` AND `specialAttackSkillName`, on all six.
+> * **20 dead cast slots in total. Bhikru the Bilespitter (b1) therefore had ZERO castable specials of any
+>   kind**, so Will's complaint ("no special skills or anything to make them even noticeable") was left
+>   literally true for one of the six.
+>
+> **TRUE STATEMENT AFTER THE ROUND-2 FIX:** twelve distinct signature skills over six monsters, **EIGHT
+> pointed at the shipped record verbatim and FOUR riding a mod-authored blank-anim CLONE** of it, plus the
+> inherited slot-1 special repointed to a fifth clone on all six. Fix = the b42 recipe: clone into
+> `records\skills\svc\` and blank the clone's `skillSpecialAnimationName` so the cast rides the default
+> attack clip every rig has. **CLONE, NEVER EDIT** - the five donors carry other monsters (venombolt alone
+> has 25, `shieldcharge` 85 other carrier slots); `verify()` proves on the built db that every donor still
+> holds its shipped clip name and every clone holds none.
+>
+> Repick-a-clip-the-rig-HAS was considered and rejected per skill: the four clips are per weapon ROW
+> (bow/sHanded/spear) and the guards' weapon comes from a 100%-chance loot pool, so a repick would be
+> castable only on some rolls; blanking is row-independent.
+>
+> **THE GATE IS THE REAL FIX.** `general_guardians.verify()` now asserts, for every guard and every
+> `skillNameN` / `specialAttack*SkillName` slot, that the named `skillSpecialAnimationName` is empty or
+> present in that creature's OWN resolved animation table - and reds otherwise. Planted negatives prove it
+> catches exactly the round-1 defect ('Belch'), a clip that exists nowhere, the raw-donor wiring, the
+> inherited dead slot-1, a donor edited in place, and an unresolvable anim table; a matching positive
+> proves a clip the rig DOES declare is still accepted, so the rule is membership, not "must be empty".
+> Standalone re-measurement: `py tools/patches/general_guardians.py --castability <arz>`.
+>
+> **LESSON, and it is the point of this correction:** the round-1 gate checked that the twelve skills were
+> WIRED, RESOLVED and pet-free. It never checked they could be PLAYED. A gate that passes 14/14 on the
+> defect it exists to catch is worse than no gate, because it is cited as proof.
 
 **⚠️ ONE #18-ADJACENT CALL IS DELIBERATELY NOT GUESSED AND GOES BACK TO WILL: do the Guardians get
 exclamation marks too?** #18 calls these six "the uber bosses we added" while #7 asks for a marker on "all

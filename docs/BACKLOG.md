@@ -126,7 +126,9 @@ The three S4b collision WARNs are exactly the documented ones and no others:
 (disjoint field sets: FontStyles / `deathPenalty*` / `RedemptionMultiplier`), and the six guards +
 three pair proxies `<- four_generals, general_guardians` (creator then ratified final writer).
 
-**MODULE VERIFIES, on the FINAL merged arz (all green):**
+**MODULE VERIFIES, on the FINAL merged arz (all green) - ⚠️ THIS IS ROUND 1's OUTPUT AND ITS
+`general_guardians` LINE IS CORRECTED BY THE ROUND-2 BLOCK BELOW (four of the twelve skills could
+not fire; the round-1 verify had no way to see it):**
 
 ```
 tombstone_xp_recovery.verify OK: RedemptionMultiplier = 1.0 (FLOAT); XP recovered from the death

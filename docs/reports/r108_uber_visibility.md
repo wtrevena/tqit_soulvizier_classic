@@ -37,6 +37,21 @@ each chosen from the epithet `four_generals` had already written into its name; 
 derived as 45% of the general each pair guards; themed resists; `genericbossorb_03`; one
 Champion-locked hoard per pair.
 
+> **🛑 ROUND-2 CORRECTION (2026-08-05).** Round 1 wired twelve skills; **four of them could not
+> fire**, and this report said so nowhere. The machae animation table
+> (`anm_machae.dbr`, bound by all six via `charAnimationTableName`) declares exactly four clips -
+> `HeavyShot / Slam / Strike / ThunderClap` - and `hero_vomitbile` ('Belch'),
+> `empusavenomancer_venombolt` ('Belch'), `hero_flamewave` ('ShadowScythe') and
+> `gigantes_shieldcharge` ('Charge') all name something else, so `SkillManager::StartSkill` aborted
+> them silently (the b42 mechanism). The inherited slot-1 `shieldcharge` ('ShieldCharge') was dead
+> the same way on all six. **20 dead cast slots; Bhikru the Bilespitter had ZERO castable specials
+> of any kind.** Round 2 clones each of those five into `records\skills\svc\` with a blanked
+> `skillSpecialAnimationName` and repoints the guards, and `verify()` now enforces the invariant
+> per creature. Accurate statement now: **12 distinct signature skills, 8 pointed at the shipped
+> record and 4 riding a blank-anim clone, plus a fifth clone for the slot-1 special on all six -
+> and every one of them can fire.** Full detail in `docs/WILL_RULINGS.md` (R-100 #18, round-2
+> correction block).
+
 **#R-109** - the mechanism was found in the shipped `Game.dll`, and it **inverts the ruling's
 premise in the player's favour**: the grave stores the amount ACTUALLY lost, so b93 scaled the
 recovery in lockstep and the feared free-XP loop never existed. The real defect was the opposite -
@@ -60,12 +75,16 @@ Nothing here is "triaged"; each line is either a Will decision or an unproven cl
    `fix/green-mesh-swap` is in flight on and which needs an in-game check. Per-guard ambient aura FX
    (`charFxPakRunningNames`) was considered and **rejected**: the shipped candidates
    (`svc_black_poison_charfxpak`, `svc_ashsmoke_charfxpak`) are audited by the `black_poison` lane's
-   own gate. The "stop being a lookalike" win here comes from `scale 2.0` + 12 distinct attack FX.
+   own gate. The "stop being a lookalike" win here comes from `scale 2.0` + 12 distinct attack FX
+   (round 1 claimed that win while 4 of the 12 were mechanically dead; see the round-2 correction
+   above - the claim only became true after round 2's blank-anim clones).
 3. **NOTHING IN THIS LANE IS PROVEN IN GAME.** No TQ launch, no deploy. Specifically unproven:
    the exclamation mark actually disappearing from the Devourer's head/minimap; the guardians
    reading as uber to a player; the guardian chests actually opening on a Champion lock; the twelve
-   signature skills actually firing (slot/anim wiring is validated by the build's own gates, not by
-   a fight); and a character dying and recovering the full XP from a marker.
+   signature skills actually firing (round 2 now proves, from the built `.arz`, that no skill names
+   a clip the machae rig lacks - which is the mechanism that WAS killing four of them; the remaining
+   unproven part is only the in-fight cast, not the animation binding); and a character dying and
+   recovering the full XP from a marker.
 4. **`amgoz1_design_voice.md` IS STILL ABSENT** from this repo. Checked
    `git log --all --diff-filter=A -- "*amgoz*design*"` (empty) and a tree-wide `find` (no match; the
    only `amgoz` hits are upstream `.dbr` conflicted copies). The bar was reconstructed from

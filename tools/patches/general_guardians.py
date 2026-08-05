@@ -96,8 +96,8 @@ epithet demands, and no two of the six share one:
   general b - Makaria (poison)
     guard1  {^r}Bhikru the Bilespitter ~ Machae Venomancer
             the bilespitter spits, the venomancer bolts:
-              hero_vomitbile              (Skill_AttackProjectileBurst)
-              empusavenomancer_venombolt  (Skill_AttackProjectile)
+              hero_vomitbile              (Skill_AttackProjectileBurst)  [BLANK-ANIM CLONE]
+              empusavenomancer_venombolt  (Skill_AttackProjectile)       [BLANK-ANIM CLONE]
     guard2  {^r}Nakoth ~ Machae Plague-Ward
             a plague-ward fills the ground he wards:
               empusa_venom_venomcloud     (Skill_AttackProjectileAreaEffect)
@@ -107,16 +107,17 @@ epithet demands, and no two of the six share one:
     guard1  {^r}Kharzun the Ember ~ Machae Pyre-Ward
             the pyre-ward raises the pyre:
               empusa_pyro_pillarofflame   (Skill_AttackProjectileAreaEffect)
-              hero_flamewave              (Skill_AttackWave)
+              hero_flamewave              (Skill_AttackWave)             [BLANK-ANIM CLONE]
     guard2  {^r}Voreth ~ Machae Cinder-Reaver
             a cinder-reaver closes and scatters embers:
-              gigantes_shieldcharge       (Skill_AttackWeaponCharge)
+              gigantes_shieldcharge       (Skill_AttackWeaponCharge)     [BLANK-ANIM CLONE]
               hero_bouncingfire_ring      (Skill_AttackProjectileRing)
 
-Every one of the twelve is an EXISTING shipped skill record (no new skill
-records, no new FX, nothing to bake). Twelve distinct skills over six monsters:
-after this, no two guards look or fight alike, and none of them fights like the
-`shieldcharge` trash they were indistinguishable from.
+Twelve distinct signature skills over six monsters, no two guards alike. EIGHT of
+the twelve are pointed at VERBATIM as shipped; the other FOUR ride a mod-authored
+BLANK-ANIM CLONE of the shipped skill, because the shipped record names a special
+animation the machae rig does not have (section 2b). No new FX and no new art in
+either case: a clone is the donor's own bytes with ONE clip NAME cleared.
 
 DENSITY LAW, HONOURED BY CONSTRUCTION (b76 / R-31, and the brief's explicit
 "mind the b76 density precedent if you add summons"): NOT ONE of the twelve is a
@@ -125,6 +126,72 @@ puts on a guard is checked to be non-`Skill_*SpawnPet*` and to declare no
 `spawnObjects` - so this lane cannot contribute a single permanent entity to the
 Hades war-council rooms. The Guardians read as uber through KIT and PRESENCE, not
 through adds.
+
+================================================================================
+2b. THE ROUND-1 DEFECT: FOUR OF THE TWELVE COULD NOT FIRE AT ALL
+================================================================================
+Round 1 wired the twelve and the round-1 gate went 14/14 green while FOUR of them
+were mechanically dead. That is the defect this section fixes, and the reason the
+gate below now measures castability instead of assuming it.
+
+MECHANISM (this project's own crash-law RE, already applied once as the b42
+Ephialtes Dread Nova fix in `tools/apply_svc_patches.py`): Game.dll's
+`SkillManager::StartSkill` aborts the cast, SILENTLY, when the caster's animation
+table has no clip for the skill's `skillSpecialAnimationName`. A monster's table
+is whatever its own `charAnimationTableName` points at.
+
+MEASURED on the round-1 build (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+51,151 records), not assumed:
+  * all six guards bind
+        charAnimationTableName = records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+  * that table declares exactly FOUR `<row>SpecialAnimRef<N<=15>` clip names:
+        bow1='HeavyShot'  sHanded1='ThunderClap'  spear1='Slam'  spear2='Strike'
+  * four of the twelve name a clip outside that set, so they never fired:
+        hero_vomitbile              -> 'Belch'         (guard b1)
+        empusavenomancer_venombolt  -> 'Belch'         (guard b1 - BOTH of its two)
+        hero_flamewave              -> 'ShadowScythe'  (guard c1)
+        gigantes_shieldcharge       -> 'Charge'        (guard c2)
+  * and the specialAttack SLOT-1 skill all six INHERITED from the warden donor,
+        records\skills\defensive\shieldcharge.dbr -> 'ShieldCharge'
+    is not in that set either, on skillName3 AND specialAttackSkillName.
+  * total dead cast slots on the six guards: 20.
+  => Bhikru the Bilespitter (b1) had ZERO castable specials of any kind: both of
+     his signature skills AND his inherited slot-1 special were all dead. Will's
+     complaint ("no special skills or anything to make them even noticeable") was
+     still literally true for one of the six after round 1.
+  The three generals themselves are CLEAN on this invariant (measured: no
+  anim-carrying skill in any cast slot), so nothing about them changes.
+
+THE FIX (a), the exact b42 recipe, applied to all five offending skills:
+CLONE the shipped skill into `records\skills\svc\` and BLANK the clone's
+`skillSpecialAnimationName`, so the cast rides the default attack clip every rig
+has. The guards are repointed at the clones; the shipped records are never
+touched. Precedent for a blank clip on each offender's own Class, counted in this
+same build:
+      Skill_AttackProjectileBurst   102 shipped records already blank
+      Skill_AttackProjectile        156
+      Skill_AttackWave               29
+      Skill_AttackWeaponCharge        5  (e.g. coldtusk_charge, tykos_charge)
+
+WHY NOT FIX (b) (repick a clip the machae rig HAS): the table's four clips are
+per-WEAPON-ROW (bow / sHanded / spear), and which row the engine reads depends on
+what the guard has actually equipped at spawn - which here resolves through a
+100%-chance RightHand/LeftHand loot pool, not a fixed weapon. A repick would
+therefore be castable only for some rolls. Blanking is row-independent, so it is
+the choice that is castable on every roll. This is a deliberate per-skill call,
+not a blanket one: it was taken for all four because all four sit on the same rig
+with the same unknown weapon row.
+
+CLONE, NEVER EDIT IN PLACE (shared-record law): every one of the five offenders
+has other carriers that must not change behaviour -
+      hero_vomitbile              xhero_woodear_40, xhero_longjaw_40
+      empusavenomancer_venombolt  25 other monsters (empusa/epiales families)
+      hero_flamewave              xhero_ephialtes_47, xhero_terrorofthedark_47
+      gigantes_shieldcharge       am_armorite_40/42, xhero_polybotes_47
+      shieldcharge                85 other carrier slots (every machae warden,
+                                  the Defensive mastery tree, ...)
+`verify()` proves, on the built db, that each DONOR still carries its original
+clip name (i.e. was not edited) and that each clone carries none.
 
 ================================================================================
 3. THE RETUNE - every number derived from something already in the db
@@ -196,19 +263,27 @@ through adds.
 ================================================================================
 4. SCOPE + SHARED-RECORD LAW
 ================================================================================
-WRITES: the 6 guard monster records, the 3 guard-pair proxies, and 9 NEW hoard
+WRITES: the 6 guard monster records, the 3 guard-pair proxies, 9 NEW hoard
 records per general (3 loot tables + 3 chests + 3 accessory pools x 3 generals =
-27 new records). Nothing else. `apply()` snapshots the whole db's modified-set and
-fails loud if anything outside that list is dirtied.
+27 new records), and 5 NEW blank-anim skill clones under `records\skills\svc\`.
+Nothing else. `apply()` snapshots the whole db's modified-set and fails loud if
+anything outside that list is dirtied.
 
 SHARED-RECORD LAW, enumerated before writing:
   * the 6 guards + 3 proxies are MOD-AUTHORED and have exactly one other writer,
     `four_generals`, which CREATES them. This module runs after it and is the
     ratified final writer. No third carrier exists.
-  * the 12 kit skills, `genericbossorb_03` and the hoard DONORS are shared and are
-    only ever POINTED AT, never edited. `verify()` proves the donors are byte-
-    unchanged and that `genericbossorb_03`'s pre-existing six consumers all
+  * 8 of the 12 kit skills, `genericbossorb_03` and the hoard DONORS are shared
+    and are only ever POINTED AT, never edited. `verify()` proves the donors are
+    byte-unchanged and that `genericbossorb_03`'s pre-existing six consumers all
     survive.
+  * the other 4 kit skills, plus the slot-1 `shieldcharge`, are shared AND needed
+    a field changed, so they are CLONED into `records\skills\svc\` and the clone
+    is what changes (section 2b). The shipped records keep every other carrier.
+    Each clone is registered in the monolith's `_BOSS_KIT_CLONES`, so the
+    build's own B-TOXEUS-2 clone-shape invariant gates them too (a clip NAME is
+    not a `.dbr` ref, so blanking it is inside that gate's rules - the same thing
+    `_svc_clone_blank_anim` relies on for the b42/C1-C3 clones).
   * the three generals are never written. `verify()` re-asserts they are still
     Quest-class and still drop their souls, i.e. four_generals' quest-safety
     contract is intact.
@@ -219,6 +294,7 @@ must ship with its arz).
 
 Planted negative test:  py tools/patches/general_guardians.py --negtest <arz>
 Read-only survey:       py tools/patches/general_guardians.py --analyze <arz>
+Castability audit:      py tools/patches/general_guardians.py --castability <arz>
 """
 import sys
 from pathlib import Path
@@ -265,10 +341,25 @@ ELEMENT_RESIST = {
     'c': 'defensiveFire',       # Trophonios: flame
 }
 
-# ── the signature kits (section 2). Every path is an EXISTING shipped skill ──
+# ── the CASTABILITY law (section 2b) ─────────────────────────────────────────
+# A monster casts a special only if its OWN animation table (the record its
+# charAnimationTableName points at) declares a clip with the skill's
+# skillSpecialAnimationName. Same disasm bound the soul pcsafe wave uses:
+# SkillManager::StartSkill reads <row>SpecialAnimRef1..15.
+ANIM_TABLE_FIELD = 'charAnimationTableName'
+ANIM_IDX_CAP = mono._PCSAFE_ANIM_IDX_CAP
+SPECIAL_ANIM_FIELD = 'skillSpecialAnimationName'
+# where the blank-anim clones live (an established mod-authored skill namespace)
+CLONE_DIR = r'records\skills\svc'
+
+# ── the signature kits (section 2) ───────────────────────────────────────────
+# DONOR = the shipped record. Where the donor names a clip the machae rig lacks,
+# the guard is wired to a BLANK-ANIM CLONE of it instead (section 2b); the value
+# beside it is the donor's shipped clip name, re-asserted by verify() to prove
+# the shared record was CLONED and never edited.
 _SK = r'records\skills'
 _XSK = r'records\xpack\skills\monsterskills'
-SIGNATURE = {
+SIGNATURE_DONOR = {
     ('a', 0): [_XSK + r'\activeattackmelee\minotaur_onslaught.dbr',
                _XSK + r'\activeattackwave\gigantes_groundbreaker.dbr'],
     ('a', 1): [_XSK + r'\activeattackradius\empusa_spirit_lifedrainnova.dbr',
@@ -282,6 +373,44 @@ SIGNATURE = {
     ('c', 1): [_XSK + r'\activeattackmelee\gigantes_shieldcharge.dbr',
                _XSK + r'\activeattackradius\hero_bouncingfire_ring.dbr'],
 }
+# donor -> (clone path, the donor's SHIPPED clip name that made it uncastable)
+BLANK_ANIM_CLONE = {
+    _XSK + r'\activeattackprojectile\hero_vomitbile.dbr':
+        (CLONE_DIR + r'\svc_machaeguard_vomitbile.dbr', 'Belch'),
+    _XSK + r'\activeattackprojectile\empusavenomancer_venombolt.dbr':
+        (CLONE_DIR + r'\svc_machaeguard_venombolt.dbr', 'Belch'),
+    _XSK + r'\activeattackwave\hero_flamewave.dbr':
+        (CLONE_DIR + r'\svc_machaeguard_flamewave.dbr', 'ShadowScythe'),
+    _XSK + r'\activeattackmelee\gigantes_shieldcharge.dbr':
+        (CLONE_DIR + r'\svc_machaeguard_embercharge.dbr', 'Charge'),
+}
+# the slot-1 special all six INHERITED from the warden donor. Its clip is not in
+# the machae table either, so every guard's slot-1 special was dead too; it gets
+# the same treatment and is repointed on skillName3 + specialAttackSkillName.
+SLOT1_DONOR = _SK + r'\defensive\shieldcharge.dbr'
+SLOT1_CLONE = CLONE_DIR + r'\svc_machaeguard_shieldcharge.dbr'
+SLOT1_DONOR_ANIM = 'ShieldCharge'
+SLOT1_SKILL_SLOT = 'skillName3'          # what four_generals inherited it in
+SLOT1_SPECIAL_SLOT = 'specialAttackSkillName'
+BLANK_ANIM_CLONE[SLOT1_DONOR] = (SLOT1_CLONE, SLOT1_DONOR_ANIM)
+
+
+def _clone_paths():
+    """The 5 blank-anim clone record paths this module mints."""
+    return {c for c, _ in BLANK_ANIM_CLONE.values()}
+
+
+def effective_skill(donor):
+    """The record a guard is actually wired to: the blank-anim clone if the
+    shipped donor names a clip the machae rig lacks, else the donor itself."""
+    hit = BLANK_ANIM_CLONE.get(donor)
+    return hit[0] if hit else donor
+
+
+# what the guards are WIRED to (clone where cloned) - the rest of the module,
+# verify() and the negative tests all key off this, never off the donor list.
+SIGNATURE = {k: [effective_skill(d) for d in v] for k, v in SIGNATURE_DONOR.items()}
+
 # the slots the signature skills land in. four_generals' guards use skillName1..3
 # and specialAttackSkillName (all inherited from the warden donor), so 4/5 and
 # specialAttack2/3 are free on every one of the six (asserted in apply()).
@@ -368,16 +497,104 @@ def is_pet_spawner(db, rec):
     return any(isinstance(x, str) and x.strip() for x in sp)
 
 
+# ── the CASTABILITY invariant (section 2b) ───────────────────────────────────
+# Generic on purpose: it takes a monster record and answers the question the
+# round-1 gate never asked - can this creature actually PLAY every special its
+# own kit names? Nothing here is machae-specific; the anim table is whatever the
+# creature itself binds.
+def _resolve(db, path):
+    """Case/slash-tolerant record resolution (db.has_record is exact)."""
+    if not path:
+        return None
+    p = str(path).replace('/', '\\').strip()
+    if db.has_record(p):
+        return p
+    low = p.lower()
+    for n in db.record_names():
+        if n.replace('/', '\\').lower() == low:
+            return n
+    return None
+
+
+def creature_anim_clips(db, monster):
+    """(anim-table record, set of lowercase clip names it can play) for a
+    creature, read from its OWN charAnimationTableName. `None` clips means the
+    table did not resolve - which is itself an offence, not a pass."""
+    import re as _re
+    tbl = _resolve(db, _s(db, monster, ANIM_TABLE_FIELD))
+    if not tbl:
+        return None, None
+    clips = set()
+    for key in (db.get_fields(tbl) or {}):
+        fname = key.split('###')[0]
+        m = _re.match(r'(.+?)SpecialAnimRef(\d+)$', fname)
+        if not m or int(m.group(2)) > ANIM_IDX_CAP:
+            continue
+        v = _s(db, tbl, fname)
+        if v and str(v).strip():
+            clips.add(str(v).strip().lower())
+    return tbl, clips
+
+
+def creature_cast_slots(db, monster):
+    """[(slot field, skill path)] for every slot this creature can cast from -
+    skillNameN and every specialAttack*SkillName."""
+    import re as _re
+    out = set()
+    for key, tf in (db.get_fields(monster) or {}).items():
+        fname = key.split('###')[0]
+        if not (_re.fullmatch(r'skillName\d+', fname)
+                or _re.fullmatch(r'specialAttack\d*SkillName', fname)):
+            continue
+        for v in (tf.values or []):
+            if isinstance(v, str) and v.strip():
+                out.add((fname, v.strip()))
+    return sorted(out)
+
+
+def uncastable_slots(db, monster):
+    """THE NEW INVARIANT. Every skill this creature can cast must name a special
+    animation that is EMPTY or present in the creature's own resolved animation
+    table; anything else is a cast the engine's StartSkill aborts silently (the
+    b42 mechanism). Returns a list of human-readable offences (empty == clean)."""
+    bad = []
+    tbl, clips = creature_anim_clips(db, monster)
+    if clips is None:
+        return ['%s: %s=%r does not resolve, so NO special can be proven playable'
+                % (monster.split('\\')[-1], ANIM_TABLE_FIELD,
+                   _s(db, monster, ANIM_TABLE_FIELD))]
+    for slot, skill in creature_cast_slots(db, monster):
+        rec = _resolve(db, skill)
+        if not rec:
+            bad.append('%s.%s -> %s does not resolve'
+                       % (monster.split('\\')[-1], slot, skill))
+            continue
+        anim = _s(db, rec, SPECIAL_ANIM_FIELD)
+        if not anim or not str(anim).strip():
+            continue                      # default attack clip: always playable
+        if str(anim).strip().lower() not in clips:
+            bad.append(
+                '%s.%s -> %s names special anim %r, which %s does NOT declare '
+                '(has: %s) - StartSkill aborts the cast silently, so this skill '
+                'NEVER FIRES'
+                % (monster.split('\\')[-1], slot, skill.split('\\')[-1], str(anim),
+                   tbl.split('\\')[-1], ', '.join(sorted(clips)) or '(none)'))
+    return bad
+
+
 # ── registry hooks ───────────────────────────────────────────────────────────
 def apply(db, tags):
     print('\n=== general_guardians: the Guardians of the General read as uber (R-100 #18) ===')
 
     # --- donors + targets must all exist; never silently skip ----------------
+    #     NOTE the check is on the DONORS (the shipped records), because the
+    #     clones do not exist yet on the first pass.
     missing = [p for p in
                ([q for pair in GUARD.values() for q in pair]
                 + list(GUARD_PROXY.values()) + list(GUARD_POOL.values())
                 + [q for pair in GENERAL.values() for q in pair]
-                + [ORB] + [s for ss in SIGNATURE.values() for s in ss])
+                + [ORB] + [s for ss in SIGNATURE_DONOR.values() for s in ss]
+                + [SLOT1_DONOR])
                if not db.has_record(p)]
     if missing:
         raise SystemExit(
@@ -387,29 +604,53 @@ def apply(db, tags):
             % (len(missing), '\n  '.join(missing)))
 
     # --- the density law, checked BEFORE anything is written -----------------
-    spawners = [s for ss in SIGNATURE.values() for s in ss if is_pet_spawner(db, s)]
+    spawners = [s for ss in SIGNATURE_DONOR.values() for s in ss
+                if is_pet_spawner(db, s)]
     if spawners:
         raise SystemExit(
             'general_guardians: b76/R-31 density law - the signature kit must add no '
             'pet-spawners, but these do: %s' % ', '.join(spawners))
+
+    # --- CASTABILITY (section 2b) PRE-CHECK: every donor we are about to clone
+    #     must still carry the SHIPPED clip name we measured. If it does not,
+    #     either upstream moved or somebody edited the shared record in place -
+    #     both must red before we build anything on top of it.
+    for donor, (clone, shipped_anim) in sorted(BLANK_ANIM_CLONE.items()):
+        got = _s(db, donor, SPECIAL_ANIM_FIELD)
+        if str(got or '') != shipped_anim:
+            raise SystemExit(
+                'general_guardians: donor %s carries %s=%r, expected the shipped %r. '
+                'Either upstream changed or somebody EDITED the shared record - '
+                're-derive before cloning it.'
+                % (donor, SPECIAL_ANIM_FIELD, got, shipped_anim))
 
     # --- the slots this module claims must be FREE on all six, or we would be
     #     silently clobbering somebody else's kit (never assumed - measured now).
     #     IDEMPOTENT: a slot already holding THIS module's own intended value is a
     #     re-run, not a collision, so apply() over an already-patched db is a clean
     #     no-op. Only a FOREIGN value reds the build.
+    #     A slot holding the DONOR of our own clone is also a re-run (a round-1
+    #     arz replayed through round 2's code), not a foreign writer.
     occupied = []
     for g in GENERALS:
         for idx, rec in enumerate(GUARD[g]):
             for n, skill in enumerate(SIGNATURE[(g, idx)]):
+                ours = {skill, SIGNATURE_DONOR[(g, idx)][n]}
                 v = _s(db, rec, SIG_SKILL_SLOTS[n])
-                if v and str(v).strip() and str(v) != skill:
+                if v and str(v).strip() and str(v) not in ours:
                     occupied.append('%s.%s = %s (ours: %s)'
                                     % (rec, SIG_SKILL_SLOTS[n], v, skill))
                 v = _s(db, rec, SIG_SPECIAL_SLOTS[n] + 'SkillName')
-                if v and str(v).strip() and str(v) != skill:
+                if v and str(v).strip() and str(v) not in ours:
                     occupied.append('%s.%sSkillName = %s (ours: %s)'
                                     % (rec, SIG_SPECIAL_SLOTS[n], v, skill))
+            # slot 1: four_generals inherited the warden's dead shieldcharge here.
+            # Only that inherited value (or our clone of it) may be overwritten.
+            for slot in (SLOT1_SKILL_SLOT, SLOT1_SPECIAL_SLOT):
+                v = _s(db, rec, slot)
+                if v and str(v).strip() and str(v) not in (SLOT1_DONOR, SLOT1_CLONE):
+                    occupied.append('%s.%s = %s (expected the inherited %s)'
+                                    % (rec, slot, v, SLOT1_DONOR))
     if occupied:
         raise SystemExit(
             'general_guardians: the signature-kit slots are NOT free - another writer '
@@ -418,6 +659,25 @@ def apply(db, tags):
 
     modified_before = set(db._modified)
     expected_touch = set()
+
+    # ── 0. the blank-anim clones (section 2b) ────────────────────────────────
+    # CLONE, never edit in place: each donor keeps every other carrier it has.
+    # `_svc_clone_blank_anim` is the monolith's own b42/C1-C3 recipe and registers
+    # the pair in _BOSS_KIT_CLONES, so the build's B-TOXEUS-2 clone-shape
+    # invariant (run later, in run_registry_gates) covers these five too.
+    for donor, (clone, _shipped_anim) in sorted(BLANK_ANIM_CLONE.items()):
+        if not mono._svc_clone_blank_anim(db, donor, clone):
+            raise SystemExit(
+                'general_guardians: could not clone %s -> %s (donor missing). The '
+                'guard wired to it would ship with a skill that never fires - the '
+                'exact round-1 defect. Fail rather than half-ship.' % (donor, clone))
+        expected_touch.add(clone)
+    print('  0. castability: %d blank-anim clone(s) minted under %s (the b42 recipe). '
+          'The machae rig plays only [%s]; these donors named [%s], so every one of '
+          'them was a silent no-op on a guard.'
+          % (len(BLANK_ANIM_CLONE), CLONE_DIR,
+             ', '.join(sorted(creature_anim_clips(db, GUARD['a'][0])[1] or [])),
+             ', '.join(sorted({a for _, a in BLANK_ANIM_CLONE.values()}))))
 
     # ── 1. the six guards ────────────────────────────────────────────────────
     for g in GENERALS:
@@ -443,15 +703,25 @@ def apply(db, tags):
                 _setf(db, rec, pre + 'Range', SIG_RANGE[n], S)
                 _setf(db, rec, pre + 'Timeout', 2.0, F)
                 _setf(db, rec, pre + 'Delay', 6.0, F)
+            # slot 1: repoint the inherited-and-dead shieldcharge at its
+            # blank-anim clone so every guard has a working special of its own
+            # (Bhikru had none at all before this - section 2b).
+            _setf(db, rec, SLOT1_SKILL_SLOT, SLOT1_CLONE, S)
+            _setf(db, rec, SLOT1_SPECIAL_SLOT, SLOT1_CLONE, S)
             db._modified.add(rec)
             expected_touch.add(rec)
+    _cloned = sum(1 for ss in SIGNATURE_DONOR.values() for s in ss
+                  if s in BLANK_ANIM_CLONE)
     print('  1. six guardians retuned: scale %.2f -> %.1f, life -> 45%% of their '
           'general (%s), regen %.1f, themed resists, orb %s'
           % (SCALE_OLD, SCALE_NEW,
              ' / '.join(str([int(x) for x in guard_life(db, g)]) for g in GENERALS),
              LIFE_REGEN_NEW, ORB.split('\\')[-1]))
-    print('  2. signature kits: 12 DISTINCT existing skills over 6 monsters, '
-          '0 pet-spawners (b76 density law holds by construction)')
+    print('  2. signature kits: 12 distinct signature skills over 6 monsters (%d '
+          'pointed at as shipped, %d riding a blank-anim clone so they can actually '
+          'fire), plus the inherited slot-1 special repointed to its own clone on '
+          'all six; 0 pet-spawners (b76 density law holds by construction)'
+          % (12 - _cloned, _cloned))
 
     # ── 2. one dedicated Champion-locked hoard per PAIR + the proxy wiring ───
     for g in GENERALS:
@@ -493,7 +763,8 @@ def apply(db, tags):
             'general_guardians: scope violation - touched %d record(s) outside the '
             'declared set:\n  %s' % (len(stray), '\n  '.join(sorted(stray))))
     print('  5. scope OK: %d record(s) touched, all inside the declared set '
-          '(6 guards + 3 proxies + 27 new hoard records)' % len(newly))
+          '(6 guards + 3 proxies + 27 new hoard records + %d blank-anim clones)'
+          % (len(newly), len(BLANK_ANIM_CLONE)))
     print('=== general_guardians: DONE ===')
     return tags
 
@@ -547,6 +818,21 @@ def verify(db, tags):
                 elif is_pet_spawner(db, skill):
                     bad.append('%s: signature skill %s is a pet-spawner - b76/R-31 '
                                'density law' % (tag, skill))
+
+            # (c2) slot 1: the inherited warden special must be on OUR clone, not
+            #      on the shipped record whose clip the machae rig cannot play.
+            for slot in (SLOT1_SKILL_SLOT, SLOT1_SPECIAL_SLOT):
+                got = _s(db, rec, slot)
+                if got != SLOT1_CLONE:
+                    bad.append('%s: %s=%r, want %s - the inherited shipped '
+                               'shieldcharge names %r, which the machae rig cannot '
+                               'play, so slot 1 would be a dead special again'
+                               % (tag, slot, got, SLOT1_CLONE, SLOT1_DONOR_ANIM))
+
+            # (c3) THE NEW INVARIANT (section 2b, the thing round 1's 14/14 gate
+            #      could not see): every skill this guard can cast must name a
+            #      special animation his OWN table declares, or none at all.
+            bad.extend(uncastable_slots(db, rec))
 
             # (d) "dont drop any orbs" - and never onto a reserved tier
             orb = _s(db, rec, 'treasureProxyName')
@@ -638,21 +924,80 @@ def verify(db, tags):
             bad.append('%s: the warden DONOR was edited (scale %r, shipped 1.5) - '
                        'donors are read-only here' % (WARDEN_DONOR[g], dsc))
 
+    # (i) CLONE, NEVER EDIT IN PLACE - proven both ways on the built db:
+    #     the DONOR still carries its shipped clip name (so it was not edited and
+    #     its other carriers are unchanged), and the CLONE carries none (so the
+    #     guard's cast rides the default attack clip).
+    # ONE reverse pass over the db (never one per clone) for both questions:
+    # who still carries each DONOR, and has anyone outside the six been moved
+    # onto one of our CLONES.
+    _guard_set = {q for pair in GUARD.values() for q in pair}
+    _clone_low = {c.lower(): c for c, _ in BLANK_ANIM_CLONE.values()}
+    _donor_low = {d.lower(): d for d in BLANK_ANIM_CLONE}
+    donor_carriers = {d: 0 for d in BLANK_ANIM_CLONE}
+    clone_intruders = {c: [] for c, _ in BLANK_ANIM_CLONE.values()}
+    for n in db.record_names():
+        for key, tf in (db.get_fields(n) or {}).items():
+            fname = key.split('###')[0]
+            if not (fname.startswith('skillName')
+                    or fname.startswith('specialAttack')):
+                continue
+            for v in (tf.values or []):
+                if not isinstance(v, str) or not v.strip():
+                    continue
+                low = v.replace('/', '\\').strip().lower()
+                if low in _donor_low and n not in _guard_set:
+                    donor_carriers[_donor_low[low]] += 1
+                elif low in _clone_low and n not in _guard_set:
+                    clone_intruders[_clone_low[low]].append('%s.%s' % (n, fname))
+    for donor, (clone, shipped_anim) in sorted(BLANK_ANIM_CLONE.items()):
+        got = _s(db, donor, SPECIAL_ANIM_FIELD)
+        if str(got or '') != shipped_anim:
+            bad.append('%s: SHARED DONOR was edited in place (%s=%r, shipped %r) - '
+                       'the shared-record law says clone and repoint, never edit; '
+                       'this silently changes every other carrier'
+                       % (donor, SPECIAL_ANIM_FIELD, got, shipped_anim))
+        if donor_carriers[donor] < 1:
+            bad.append('%s: has NO non-guard carrier left - this lane must never '
+                       'displace a shipped consumer of a shared skill' % donor)
+        if not db.has_record(clone):
+            bad.append('%s: blank-anim clone MISSING - the guard wired to it has a '
+                       'skill that never fires' % clone)
+            continue
+        cgot = _s(db, clone, SPECIAL_ANIM_FIELD)
+        if cgot and str(cgot).strip():
+            bad.append('%s: clone still carries %s=%r - the whole point of the clone '
+                       'is that it carries none' % (clone, SPECIAL_ANIM_FIELD, cgot))
+        if str(_s(db, clone, 'Class', '') or '') != str(_s(db, donor, 'Class', '') or ''):
+            bad.append('%s: clone Class=%r != donor %r - it is no longer the same '
+                       'skill' % (clone, _s(db, clone, 'Class'), _s(db, donor, 'Class')))
+        if clone_intruders[clone]:
+            bad.append('%s: carried by %d NON-guard slot(s) %s - this clone exists '
+                       'only for the six Guardians'
+                       % (clone, len(clone_intruders[clone]),
+                          ', '.join(sorted(clone_intruders[clone])[:5])))
+
     if bad:
         raise SystemExit(
             'general_guardians verify FAILED - %d offender(s):\n    %s'
             % (len(bad), '\n    '.join(bad)))
 
+    _cast = sum(len(creature_cast_slots(db, r))
+                for pair in GUARD.values() for r in pair)
     print('  %s verify OK: 6 guardians at scale %.1f (donor 1.50 / general %.2f), '
           'life %s (45%% of their general, never above it), 12 distinct signature '
           'skills all resolving and all pet-free, orb %s (R-99 apex + the marshal tier '
           'untouched, %d other consumers intact), 3 %s-locked hoards = ONE chest per '
           'pair, rank/soul policy unchanged, all 6 generals still Quest-class with '
-          'their souls.'
+          'their souls. CASTABILITY: %d cast slot(s) across the six checked against '
+          'their own anim table [%s] - 0 name a clip the rig lacks; %d blank-anim '
+          'clones present, every shared donor byte-unedited.'
           % (MODULE_NAME, SCALE_NEW,
              float(_s(db, GENERAL['a'][0], 'scale', 0.0) or 0.0),
              ' / '.join(str([int(x) for x in guard_life(db, g)]) for g in GENERALS),
-             ORB.split('\\')[-1], len(others), HOARD_LOCK_CLASS))
+             ORB.split('\\')[-1], len(others), HOARD_LOCK_CLASS,
+             _cast, ', '.join(sorted(creature_anim_clips(db, GUARD['a'][0])[1] or [])),
+             len(BLANK_ANIM_CLONE)))
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────────
@@ -682,6 +1027,45 @@ def _analyze(arz):
               % ('  (general %s)' % g, _val(db, GENERAL[g][0], 'characterLife'),
                  _s(db, GENERAL[g][0], 'scale'),
                  str(_s(db, GUARD_PROXY[g], 'accessory1') or '-').split('\\')[-1]))
+
+
+def _castability(arz):
+    """PROOF, per guard and per cast slot, straight off a built .arz: what the
+    creature's own animation table declares, what each of its skills demands, and
+    therefore whether that skill CAN FIRE. This is the measurement the round-1
+    gate never made. Exit 1 if any slot is dead."""
+    db = _load(arz)
+    print('\nARZ: %s' % arz)
+    dead = 0
+    total = 0
+    for g in GENERALS:
+        for rec in GUARD[g]:
+            if not db.has_record(rec):
+                print('\n=== %s : ABSENT ===' % rec); dead += 1; continue
+            tbl, clips = creature_anim_clips(db, rec)
+            print('\n=== %s ===' % rec.split('\\')[-1])
+            print('    anim table : %s' % (tbl or 'UNRESOLVED'))
+            print('    plays clips: %s' % (', '.join(sorted(clips)) if clips else '-'))
+            for slot, skill in creature_cast_slots(db, rec):
+                sk = _resolve(db, skill)
+                anim = _s(db, sk, SPECIAL_ANIM_FIELD) if sk else None
+                if not sk:
+                    print('    [MISSING ] %-24s %s' % (slot, skill)); dead += 1; continue
+                if not anim or not str(anim).strip():
+                    ok, why = True, 'no special anim -> default attack clip'
+                else:
+                    ok = clips is not None and str(anim).strip().lower() in clips
+                    why = 'anim %r %s' % (str(anim),
+                                          'IS in the table' if ok else 'NOT in the table')
+                total += 1
+                if not ok:
+                    dead += 1
+                print('    [%s] %-24s %-46s %s'
+                      % ('CAN FIRE' if ok else '  DEAD  ', slot,
+                         skill.split('\\')[-1], why))
+    print('\n%d cast slot(s) inspected across the six Guardians; %d CANNOT FIRE.'
+          % (total, dead))
+    return 1 if dead else 0
 
 
 def _negtest(arz):
@@ -790,6 +1174,80 @@ def _negtest(arz):
     else:
         results.append(('pet-spawner plant', True, False, False))
 
+    # ── THE ROUND-2 PLANTS: the castability class the round-1 gate went 14/14
+    #    green on. Each of these is exactly what shipped in round 1. ───────────
+    b1 = GUARD['b'][0]                       # Bhikru, who had ZERO castable specials
+    b1_clone = SIGNATURE[('b', 0)][0]        # svc_machaeguard_vomitbile
+    b1_donor = SIGNATURE_DONOR[('b', 0)][0]  # hero_vomitbile ('Belch')
+
+    # PLANT 14: a guard's skill names a clip the machae rig does NOT have.
+    # This is THE round-1 defect, planted directly. It MUST red.
+    prev_ca = _s(db, b1_clone, SPECIAL_ANIM_FIELD)
+    check("skill naming a clip the rig lacks ('Belch') rejected", True,
+          lambda: db.set_field(b1_clone, SPECIAL_ANIM_FIELD, 'Belch'),
+          lambda: db.set_field(b1_clone, SPECIAL_ANIM_FIELD, prev_ca or ''))
+
+    # PLANT 15: a clip name that exists NOWHERE in the db at all -> must red.
+    check("skill naming a clip that exists nowhere ('NoSuchClip') rejected", True,
+          lambda: db.set_field(b1_clone, SPECIAL_ANIM_FIELD, 'NoSuchClip'),
+          lambda: db.set_field(b1_clone, SPECIAL_ANIM_FIELD, prev_ca or ''))
+
+    # 15b/15c: the MEMBERSHIP pair. Both plant a skill into the same FREE slot on
+    # the same guard; the ONLY difference is whether the clip it names is one the
+    # machae table declares. That isolates this invariant from every other rule
+    # in verify() and proves the gate is not simply "the anim must be empty".
+    FREE_SLOT = 'skillName6'
+    in_table = out_table = None
+    for n in db.record_names():
+        a = _s(db, n, SPECIAL_ANIM_FIELD)
+        if not a or not str(a).strip() or n in _clone_paths():
+            continue
+        a = str(a).strip().lower()
+        if a == 'thunderclap' and in_table is None:
+            in_table = n
+        elif a == 'belch' and out_table is None:
+            out_table = n
+    if in_table and out_table:
+        check("free slot given a skill whose clip the rig HAS ('ThunderClap') accepted",
+              False,
+              lambda: _setf(db, b1, FREE_SLOT, in_table, S),
+              lambda: db.set_field(b1, FREE_SLOT, ''))
+        check("free slot given a skill whose clip the rig LACKS ('Belch') rejected",
+              True,
+              lambda: _setf(db, b1, FREE_SLOT, out_table, S),
+              lambda: db.set_field(b1, FREE_SLOT, ''))
+    else:
+        results.append(('membership pair (needs a ThunderClap + a Belch skill)',
+                        True, False, False))
+
+    # PLANT 16: the guard repointed back at the raw upstream donor (which still
+    # carries 'Belch') -> the round-1 wiring exactly -> must red.
+    prev_b1 = _s(db, b1, SIG_SKILL_SLOTS[0])
+    check('guard repointed at the raw upstream donor (round-1 wiring) rejected', True,
+          lambda: db.set_field(b1, SIG_SKILL_SLOTS[0], b1_donor),
+          lambda: db.set_field(b1, SIG_SKILL_SLOTS[0], prev_b1))
+
+    # PLANT 17: slot 1 left on the inherited shieldcharge ('ShieldCharge', absent
+    # from the machae table) -> Bhikru's "no working special of any kind" -> red.
+    prev_s1 = _s(db, b1, SLOT1_SPECIAL_SLOT)
+    check('slot-1 special left on the inherited dead shieldcharge rejected', True,
+          lambda: db.set_field(b1, SLOT1_SPECIAL_SLOT, SLOT1_DONOR),
+          lambda: db.set_field(b1, SLOT1_SPECIAL_SLOT, prev_s1))
+
+    # PLANT 18: SHARED-RECORD LAW - the donor edited in place instead of cloned.
+    # It would "work" for our guard and silently change 25 other monsters -> red.
+    prev_don = _s(db, b1_donor, SPECIAL_ANIM_FIELD)
+    check('shared donor edited in place instead of cloned rejected', True,
+          lambda: db.set_field(b1_donor, SPECIAL_ANIM_FIELD, ''),
+          lambda: db.set_field(b1_donor, SPECIAL_ANIM_FIELD, prev_don))
+
+    # PLANT 19: the creature's own animation table unresolvable -> nothing can be
+    # proven playable -> must red rather than pass by default.
+    prev_tbl = _s(db, b1, ANIM_TABLE_FIELD)
+    check('unresolvable charAnimationTableName rejected', True,
+          lambda: db.set_field(b1, ANIM_TABLE_FIELD, r'records\no\such\anm.dbr'),
+          lambda: db.set_field(b1, ANIM_TABLE_FIELD, prev_tbl))
+
     print('\ngeneral_guardians _negtest:')
     for label, exp, got, ok in results:
         print('  [%s] %-62s expected=%s got=%s'
@@ -811,5 +1269,8 @@ if __name__ == '__main__':
     elif '--negtest' in args:
         i = args.index('--negtest')
         raise SystemExit(_negtest(args[i + 1] if len(args) > i + 1 else DEFAULT_ARZ))
+    elif '--castability' in args:
+        i = args.index('--castability')
+        raise SystemExit(_castability(args[i + 1] if len(args) > i + 1 else DEFAULT_ARZ))
     else:
         print(__doc__)
