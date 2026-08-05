@@ -414,6 +414,9 @@ SIGNATURE = {k: [effective_skill(d) for d in v] for k, v in SIGNATURE_DONOR.item
 # the slots the signature skills land in. four_generals' guards use skillName1..3
 # and specialAttackSkillName (all inherited from the warden donor), so 4/5 and
 # specialAttack2/3 are free on every one of the six (asserted in apply()).
+# Round 2 does NOT claim a new slot: it rewrites the VALUE already sitting in
+# skillName3 + specialAttackSkillName (the inherited, uncastable shieldcharge)
+# to point at this module's blank-anim clone of that same skill.
 SIG_SKILL_SLOTS = ('skillName4', 'skillName5')
 SIG_SPECIAL_SLOTS = ('specialAttack2', 'specialAttack3')
 SIG_CHANCE = (40.0, 35.0)
