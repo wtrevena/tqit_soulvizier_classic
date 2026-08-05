@@ -198,11 +198,15 @@ is exactly what the sibling-import failure would have produced.
 
 ### 4.4 Gates - 29/29, re-run against the BUILT arz (`r108_logs/r108_negtests.log`)
 
+⚠️ **ROUND-1 NUMBERS. The `general_guardians` row is superseded by section 7:** those 14 plants all
+passed while four of the twelve signature skills could not fire, which is the whole point of the
+round-2 correction. Round 2's suite is **22**, PASS 22/22 on both the baseline and the built arz.
+
 | gate | plants | result |
 |---|---|---|
 | `py tools/patches/tombstone_xp_recovery.py --negtest <built arz>` | 7 | PASS 7/7 |
 | `py tools/patches/uber_quest_markers.py --negtest <built arz>` | 8 | PASS 8/8 |
-| `py tools/patches/general_guardians.py --negtest <built arz>` | 14 | PASS 14/14 |
+| `py tools/patches/general_guardians.py --negtest <built arz>` | 14 (round 1) -> **22 (round 2)** | round 1 PASS 14/14, **round 2 PASS 22/22** |
 
 The single most important row, because it is what makes R-109 "derived, not hardcoded":
 `penalty RETUNED (divisor 90 -> 45, cap -> 123456) still passes untouched   expected=ACCEPT
@@ -312,7 +316,9 @@ nothing about the code.
 
 ### 5.2 All 29 planted negatives re-run against the BUILT arz, by a second pass
 
-`tombstone_xp_recovery` **7/7**, `uber_quest_markers` **8/8**, `general_guardians` **14/14**.
+`tombstone_xp_recovery` **7/7**, `uber_quest_markers` **8/8**, `general_guardians` **14/14** (round-1
+number; **round 2 is 22/22** - see section 7, and note that this 14/14 is precisely the false green
+the round-2 correction exists to explain).
 R-109's two-sided requirement is explicitly satisfied: `multiplier 2.0` (recovery ABOVE the loss)
 **REJECT**, `multiplier 0.5` (recovery BELOW the loss - the pre-R-109 shipped value) **REJECT**,
 `multiplier 0.1` (the hardcoded-10% form the ruling rejects) **REJECT**, and the derived-ness plant
