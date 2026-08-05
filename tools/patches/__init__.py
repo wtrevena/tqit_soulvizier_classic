@@ -122,6 +122,24 @@ REGISTRY = [
                             # neither reads the other's fields, so order between them is
                             # immaterial. A collision WARN naming any THIRD module on this
                             # record is a real finding: investigate before shipping.
+    'tombstone_xp_recovery',  # R-109 (Will 2026-07-30): "lets make the tombstone xp recovery
+                            # match the xp lost upon dying". ONE field on the SAME record
+                            # death_xp_penalty owns: RedemptionMultiplier 0.5 -> 1.0 on
+                            # records\xpack\game\gameengine.dbr. Game.dll computes
+                            # recovered = trunc((float)<XP ACTUALLY LOST> * RedemptionMultiplier)
+                            # (GetPlayerExperienceRedemptionAmount VA 0x10194f60 reads the amount
+                            # RegisterExperienceLoss VA 0x10194540 stored at GraveInfo+0x0C), so
+                            # 1.0 makes the marker return exactly what the penalty took, DERIVED
+                            # from the penalty rather than hardcoded - retune deathPenalty* and
+                            # the marker follows with no edit here (negtest plant 6 proves it).
+                            # MUST run immediately AFTER death_xp_penalty: apply() refuses to run
+                            # unless the R-80 penalty is already in its ruled state. Third writer
+                            # of gameengine.dbr alongside damage_display (FontStyles) and
+                            # death_xp_penalty (deathPenalty*); all three field sets are disjoint,
+                            # so the S4b collision WARN naming this TRIO is EXPECTED and benign -
+                            # a FOURTH module on this record is a real finding.
+                            # Negative test: py tools/patches/tombstone_xp_recovery.py --negtest
+                            # Measured before/after table: ... --table <arz>
     'thrown_restore',       # b64: restore base+IT thrown-wielders (maenad/duneraider/tigerman/
                             # machae) our own overlay disarmed, back into their EXISTING pools
                             # in place (no clone, no new pool); disjoint namespace (monster
@@ -416,6 +434,32 @@ REGISTRY = [
                             # immediately before visuals, so it is the ratified final registry
                             # writer of Cold Worm's kit. Touches exactly ONE record; the 3-tier
                             # soul + loot triple are asserted, never rewritten.
+    'general_guardians',    # R-100 #18 (Will 2026-07-29): the six Guardians of the General
+                            # ("super weak ... no chests ... no orbs ... small ... look just
+                            # like the other guys ... no special skills"). RETUNES the 6
+                            # svc_general_{a,b,c}_guard{1,2} records four_generals builds +
+                            # their 3 pair proxies, and adds 27 new hoard records (3 dedicated
+                            # Champion-locked chests, one per PAIR). Measured on main: they
+                            # shipped at scale 1.45 (SMALLER than the 1.5 warden they were
+                            # cloned from), life [3200,4200,5400] vs their general's
+                            # [20244,25305,30366], and a kit inherited VERBATIM from that
+                            # warden - four_generals added zero skills, so all six fought
+                            # identically to the trash beside them.
+                            # Registered AFTER coldworm_buffs / boss_skill_fix (the
+                            # coldworm_buffs precedent) so it is the ratified final registry
+                            # writer of the guard records, and BEFORE uber_quest_markers,
+                            # which it deliberately does not enter: the guards pay no soul, so
+                            # rule A keeps them out of the marker roster and three markers per
+                            # war-council room is the map spam rule A exists to prevent. That
+                            # one call is FLAGGED FOR WILL, not guessed (R-100 #18 calls these
+                            # "the uber bosses we added" while #7 asks for markers on "all the
+                            # uber bosses we made").
+                            # No pet-spawners by construction, re-asserted mechanically, so
+                            # the b76/R-31 density law cannot be touched by this lane.
+                            # Orb tier is genericbossorb_03 (the guards' own L45-48 band):
+                            # NOT _04 (the marshal tier whose consumer set uber_apex_orb
+                            # audits) and NOT _05 (R-99's reserved Toxeus apex).
+                            # Negative test: py tools/patches/general_guardians.py --negtest
     'uber_quest_markers',   # b91 (Will 2026-07-16, R-39, 6th sub-item): "the exclamation-marker
                             # mechanism extended to all placed ubers". CORRECTION to b91 round 1,
                             # which recorded this as map-side and BLOCKED: the marker is the
@@ -479,6 +523,16 @@ REGISTRY = [
                             # ratified last writer of the slots it claims, and BEFORE
                             # 'fx_dangling_cleanup' so the FX sweep still covers its new records.
                             # Negative test: py tools/patches/devourer_kit.py --negtest
+                            # R-100 #7 (Will 2026-07-29) ADDS ONE RULED EXEMPTION: the Devourer
+                            # (um_bloodtoxeus_99) "is sitting on a chest a hidden location and
+                            # should not be so easily found", so he is forced to
+                            # DisplayAsQuestItem=0 - he ships MARKED on main (b91 put him in the
+                            # roster), so this is an UNMARK, not a skip, and the gate asserts the 0
+                            # rather than just omitting him. Roster 26 -> 25 + 1 exempt. The
+                            # exemption is cross-checked against the derived roster (a stale entry
+                            # reds the build) and closed over actorToSpawnOnDeath. Every other
+                            # Toxeus variant (Enslaver, both Endless Hunt forms) stays MARKED -
+                            # Will asked for those explicitly.
     'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-90): "yeah lets have the endless pursuit only
                             # be on legendary". Pursuit is a CONTROLLER property and both
                             # MaxPursuitDistance and PursuitTime are declared class="variable" in

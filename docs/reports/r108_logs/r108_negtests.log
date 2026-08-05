@@ -1,0 +1,59 @@
+############ py tools/patches/tombstone_xp_recovery.py --negtest <built arz> ############
+    tombstone_xp_recovery: ALREADY RULED (no-op) RedemptionMultiplier 0.5 -> 1.0  (L85 Legendary: lose 47765 XP, recover 47765 XP; was 23882)
+  tombstone_xp_recovery.verify OK: RedemptionMultiplier = 1.0 (FLOAT); XP recovered from the death marker == XP lost to the death penalty EXACTLY on 3012 checked points (L1-1000 x Normal/Epic/Legendary against the LIVE penalty - divisor 90, cap 50000, min 0 - plus the realised-loss domain up to the float32 bound); the cap is 336x inside the float32 exact-integer bound 16777216; all 5 dead gameengine lookalikes still at 0.5; gravestonegreece.dbr intact (Class FixedItemGravestone).
+  tombstone_xp_recovery.verify OK: RedemptionMultiplier = 1.0 (FLOAT); XP recovered from the death marker == XP lost to the death penalty EXACTLY on 3012 checked points (L1-1000 x Normal/Epic/Legendary against the LIVE penalty - divisor 45, cap 123456, min 0 - plus the realised-loss domain up to the float32 bound); the cap is 136x inside the float32 exact-integer bound 16777216; all 5 dead gameengine lookalikes still at 0.5; gravestonegreece.dbr intact (Class FixedItemGravestone).
+
+tombstone_xp_recovery _negtest:
+  [PASS] control - ruled state passes                                   expected=ACCEPT got=ACCEPT
+  [PASS] recovery ABOVE the loss (multiplier 2.0) rejected              expected=REJECT got=REJECT
+  [PASS] recovery BELOW the loss (the pre-R-109 0.5) rejected           expected=REJECT got=REJECT
+  [PASS] the rejected hardcoded-10% form (multiplier 0.1) rejected      expected=REJECT got=REJECT
+  [PASS] dead lookalike shotgunned (drxgameengine.dbr) rejected         expected=REJECT got=REJECT
+  [PASS] gravestone record de-classed rejected                          expected=REJECT got=REJECT
+  [PASS] penalty RETUNED (divisor 90 -> 45, cap -> 123456) still passes untouched expected=ACCEPT got=ACCEPT
+  -> PASS (7/7)
+EXIT=0
+############ py tools/patches/uber_quest_markers.py --negtest <built arz> ############
+  placed-uber quest markers (R-39 6th sub-item + R-100 #7 exemption): roster 25 placed-uber record(s) (25 already marked, 0 newly marked); R-100 #7 EXEMPT 1 record(s) forced to DisplayAsQuestItem=0 (0 newly unmarked): um_bloodtoxeus_99.dbr; excluded 27 retinue/add record(s) with no soul in their chain and 1 SHARED transform form(s); 8 mesh-basename non-record(s) ignored; 0 tag(s)
+
+uber_quest_markers _negtest:
+  unmarked-roster-member plant flagged : True
+  anchor-regression plant flagged      : True
+  retinue adds excluded from roster    : True (27 adds, e.g. records\xpack\creatures\monster\gigantes\am_vindicator_45.dbr)
+  shared chain form left unmarked      : True
+                                         records\creature\monster\ghost\as_ghosthero_32.dbr (also spawned by 5 non-uber(s))
+  R-100 #7 re-marking exempt flagged   : True
+  R-100 #7 exempt out of roster + set 0: True
+                                         records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr  before=0.0 after=0.0
+  stale-exemption plant reds the build : True
+  correctly-marked control is clean    : True ([])
+  -> PASS
+EXIT=0
+############ py tools/patches/general_guardians.py --negtest <built arz> ############
+
+=== general_guardians: the Guardians of the General read as uber (R-100 #18) ===
+  1. six guardians retuned: scale 1.45 -> 2.0, life -> 45% of their general ([9110, 11387, 13665] / [9110, 11387, 13665] / [9110, 11387, 13665]), regen 5.0, themed resists, orb genericbossorb_03.dbr
+  2. signature kits: 12 DISTINCT existing skills over 6 monsters, 0 pet-spawners (b76 density law holds by construction)
+  3. chests: 3 dedicated Champion-locked hoards (1 per PAIR, 9 new records each) wired to accessory1/Epic1/Legendary1 - the accessory mechanism hard-caps at ONE chest per difficulty, so this cannot repeat R-100 #9
+  4. tags: 3 chest names (tagSVCChestGeneralAGuard, tagSVCChestGeneralBGuard, tagSVCChestGeneralCGuard)
+  5. scope OK: 36 record(s) touched, all inside the declared set (6 guards + 3 proxies + 27 new hoard records)
+=== general_guardians: DONE ===
+  Guardians of the General read as uber (R-100 #18) verify OK: 6 guardians at scale 2.0 (donor 1.50 / general 1.65), life [9110, 11387, 13665] / [9110, 11387, 13665] / [9110, 11387, 13665] (45% of their general, never above it), 12 distinct signature skills all resolving and all pet-free, orb genericbossorb_03.dbr (R-99 apex + the marshal tier untouched, 6 other consumers intact), 3 Champion-locked hoards = ONE chest per pair, rank/soul policy unchanged, all 6 generals still Quest-class with their souls.
+
+general_guardians _negtest:
+  [PASS] control - the retuned state passes                             expected=ACCEPT got=ACCEPT
+  [PASS] scale reverted to the shipped 1.45 rejected                    expected=REJECT got=REJECT
+  [PASS] scale equal to the plain warden donor (1.5) rejected           expected=REJECT got=REJECT
+  [PASS] characterLife reverted to the shipped [3200,4200,5400] rejected expected=REJECT got=REJECT
+  [PASS] guard HP raised ABOVE its general rejected                     expected=REJECT got=REJECT
+  [PASS] orb removed rejected                                           expected=REJECT got=REJECT
+  [PASS] orb moved onto the R-99 reserved apex tier rejected            expected=REJECT got=REJECT
+  [PASS] chest unwired from the guard-pair proxy rejected               expected=REJECT got=REJECT
+  [PASS] chest left on the recipe Boss lock (never opens) rejected      expected=REJECT got=REJECT
+  [PASS] signature skill stripped rejected                              expected=REJECT got=REJECT
+  [PASS] guard promoted to Hero (R-106 soul policy) rejected            expected=REJECT got=REJECT
+  [PASS] guard given a soul drop rejected                               expected=REJECT got=REJECT
+  [PASS] general de-quested (four_generals quest safety) rejected       expected=REJECT got=REJECT
+  [PASS] pet-spawner smuggled into a guard kit (b76 density law) rejected expected=REJECT got=REJECT
+  -> PASS (14/14)
+EXIT=0

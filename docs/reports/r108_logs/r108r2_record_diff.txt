@@ -1,0 +1,83 @@
+  Read 10000/51124...
+  Read 20000/51124...
+  Read 30000/51124...
+  Read 40000/51124...
+  Read 50000/51124...
+  Loaded: 51124 records, 143420 strings
+  Read 10000/51156...
+  Read 20000/51156...
+  Read 30000/51156...
+  Read 40000/51156...
+  Read 50000/51156...
+  Loaded: 51156 records, 143455 strings
+==============================================================================
+R-108 / feat/uber-visibility RECORD DIFF
+  baseline : local/baseline_main_7efd107.arz
+  built    : work/SoulvizierClassic/Database/SoulvizierClassic.arz
+  records  : baseline 51124 -> built 51156
+  DERIVED: roster 25, R-100 #7 exempt 1, guards 6, guard proxies 3, declared new hoard records 27
+  ADDED 32 / REMOVED 0 / CHANGED 11
+==============================================================================
+
+--- ATTRIBUTED : 43 ---
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_01.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_02.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_03.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_loot_01.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_loot_02.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_loot_03.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_pool_01.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_pool_02.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalaguardhoard_pool_03.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_01.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_02.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_03.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_loot_01.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_loot_02.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_loot_03.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_pool_01.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_pool_02.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalbguardhoard_pool_03.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_01.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_02.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_03.dbr          new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_loot_01.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_loot_02.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_loot_03.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_pool_01.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_pool_02.dbr     new record
+  R-100 #18 hoard ADD    records\drxitem\container\svc_generalcguardhoard_pool_03.dbr     new record
+  R-100 #18 anim CLONE ADD records\skills\svc\svc_machaeguard_embercharge.dbr               blank-anim clone (castability, section 2b)
+  R-100 #18 anim CLONE ADD records\skills\svc\svc_machaeguard_flamewave.dbr                 blank-anim clone (castability, section 2b)
+  R-100 #18 anim CLONE ADD records\skills\svc\svc_machaeguard_shieldcharge.dbr              blank-anim clone (castability, section 2b)
+  R-100 #18 anim CLONE ADD records\skills\svc\svc_machaeguard_venombolt.dbr                 blank-anim clone (castability, section 2b)
+  R-100 #18 anim CLONE ADD records\skills\svc\svc_machaeguard_vomitbile.dbr                 blank-anim clone (castability, section 2b)
+  R-100 #18 proxy        records\drxmap\proxy\q_general_a_guardpair.dbr                   accessory1/Epic1/Legendary1 wired
+  R-100 #18 proxy        records\drxmap\proxy\q_general_b_guardpair.dbr                   accessory1/Epic1/Legendary1 wired
+  R-100 #18 proxy        records\drxmap\proxy\q_general_c_guardpair.dbr                   accessory1/Epic1/Legendary1 wired
+  R-100 #18 guard        records\xpack\creatures\monster\machae\svc_general_a_guard1.dbr  22 field(s): characterLife, characterLifeRegen, defensiveLife, defensivePhysical, scale, skillLevel4, skillLevel5, skillName3, skillName4, skillName5, specialAttack2Chance, specialAttack2Delay, specialAttack2Range, specialAttack2SkillName, specialAttack2Timeout, specialAttack3Chance, specialAttack3Delay, specialAttack3Range, specialAttack3SkillName, specialAttack3Timeout, specialAttackSkillName, treasureProxyName
+  R-100 #18 guard        records\xpack\creatures\monster\machae\svc_general_a_guard2.dbr  22 field(s): characterLife, characterLifeRegen, defensiveLife, defensivePhysical, scale, skillLevel4, skillLevel5, skillName3, skillName4, skillName5, specialAttack2Chance, specialAttack2Delay, specialAttack2Range, specialAttack2SkillName, specialAttack2Timeout, specialAttack3Chance, specialAttack3Delay, specialAttack3Range, specialAttack3SkillName, specialAttack3Timeout, specialAttackSkillName, treasureProxyName
+  R-100 #18 guard        records\xpack\creatures\monster\machae\svc_general_b_guard1.dbr  22 field(s): characterLife, characterLifeRegen, defensivePhysical, defensivePoison, scale, skillLevel4, skillLevel5, skillName3, skillName4, skillName5, specialAttack2Chance, specialAttack2Delay, specialAttack2Range, specialAttack2SkillName, specialAttack2Timeout, specialAttack3Chance, specialAttack3Delay, specialAttack3Range, specialAttack3SkillName, specialAttack3Timeout, specialAttackSkillName, treasureProxyName
+  R-100 #18 guard        records\xpack\creatures\monster\machae\svc_general_b_guard2.dbr  22 field(s): characterLife, characterLifeRegen, defensivePhysical, defensivePoison, scale, skillLevel4, skillLevel5, skillName3, skillName4, skillName5, specialAttack2Chance, specialAttack2Delay, specialAttack2Range, specialAttack2SkillName, specialAttack2Timeout, specialAttack3Chance, specialAttack3Delay, specialAttack3Range, specialAttack3SkillName, specialAttack3Timeout, specialAttackSkillName, treasureProxyName
+  R-100 #18 guard        records\xpack\creatures\monster\machae\svc_general_c_guard1.dbr  22 field(s): characterLife, characterLifeRegen, defensiveFire, defensivePhysical, scale, skillLevel4, skillLevel5, skillName3, skillName4, skillName5, specialAttack2Chance, specialAttack2Delay, specialAttack2Range, specialAttack2SkillName, specialAttack2Timeout, specialAttack3Chance, specialAttack3Delay, specialAttack3Range, specialAttack3SkillName, specialAttack3Timeout, specialAttackSkillName, treasureProxyName
+  R-100 #18 guard        records\xpack\creatures\monster\machae\svc_general_c_guard2.dbr  22 field(s): characterLife, characterLifeRegen, defensiveFire, defensivePhysical, scale, skillLevel4, skillLevel5, skillName3, skillName4, skillName5, specialAttack2Chance, specialAttack2Delay, specialAttack2Range, specialAttack2SkillName, specialAttack2Timeout, specialAttack3Chance, specialAttack3Delay, specialAttack3Range, specialAttack3SkillName, specialAttack3Timeout, specialAttackSkillName, treasureProxyName
+  R-100 #7               records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr   DisplayAsQuestItem 1 -> 0
+  R-109                  records\xpack\game\gameengine.dbr                                RedemptionMultiplier 0.5 -> 1.0
+
+--- ZERO-DELTA CLAIMS, re-checked ---
+  R-100 #7: every OTHER roster member (already marked on main) 25 record(s), 0 moved
+  R-109: the 5 dead gameengine lookalikes                    5 record(s), 0 moved
+  SHARED-RECORD LAW: the 5 blank-anim clone DONORS (cloned, never edited) 5 record(s), 0 moved
+  R-80 fields on the GameEngine record                       0 moved
+
+--- NON-VACUITY: every expected delta class must be PRESENT ---
+  [OK ] R-100 #18 anim CLONE ADD 5 record(s)  the 5 blank-anim clones that make the dead skills castable
+  [OK ] R-100 #18 guard        6 record(s)  the six retuned Guardian records
+  [OK ] R-100 #18 hoard ADD    27 record(s)  the 27 new guard-hoard records
+  [OK ] R-100 #18 proxy        3 record(s)  the three guard-pair proxies wired to a hoard
+  [OK ] R-100 #7               1 record(s)  DisplayAsQuestItem 1 -> 0 on the exempt Devourer
+  [OK ] R-109                  1 record(s)  RedemptionMultiplier 0.5 -> 1.0 on the GameEngine record
+
+==============================================================================
+RESULT: PASS - 0 REMOVED, 32 ADDED (27 declared guard-hoard records + 5 declared blank-anim clones), 11 CHANGED and every one attributes to R-100 #7, R-100 #18 or R-109. Zero unattributed changes. The 5 clone DONORS are in the zero-delta set above, so the shared-record law is proved on bytes, not asserted.
+EXIT=0

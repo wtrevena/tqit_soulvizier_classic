@@ -1616,6 +1616,184 @@ re-breaking the b92 mesh-green work (`BL-b98-DEBT-2`).
 evaporate), ask about item 4, then lane the rest by class - the two P0s (#2 Charon's Oar, #15 frozen thrown
 monsters) go first.
 
+### R-100 #7 + #18 IMPLEMENTED (2026-07-30, `feat/uber-visibility`, the R-108 wave)
+
+> Scoped strictly to items **#7** and **#18**. This block adds to the section, it does not rewrite any of
+> Will's words or any other lane's item rows above.
+
+**#7 - exclamation mark on every uber we made EXCEPT the Devourer: IMPLEMENTED**
+(`tools/patches/uber_quest_markers.py`).
+
+MEASURED FIRST (`py tools/patches/uber_quest_markers.py --analyze` on this branch's own build of `main`
+@ `7efd107`, md5 `6a3a491db546b603c52132237c40aa63`): the placed-uber roster was **26 records and ALL 26
+already carried `DisplayAsQuestItem = 1`** - including the Enslaver, both Endless Hunt forms, both Polis
+Gaoler forms, Tantalus + Tantalus Unbound, the Mnemophage chain, Menoetes, and `um_bloodtoxeus_99`. So the
+"give it to all of them" half of #7 was **already shipped by b91 and simply never deployed** - R-100's own
+"TWO OF HIS REPORTS ARE EXPLAINED BY A DEPLOY THAT NEVER RAN" note applies verbatim to "the other major
+bosses you have made ... do not have one". **No new code was needed for that half, and none was written.**
+
+The only CODE change #7 needs is the EXCEPTION: the Devourer is MARKED in the shipped arz, and Will ruled he
+must not be. `MARKER_EXEMPT` now names him with his ruling. Roster **26 -> 25 targets + 1 exempt**.
+
+⚠️ **PRECISION, because the two states are easy to conflate.** `apply()` ENFORCES
+`DisplayAsQuestItem = 0` on the exempt set rather than merely omitting it from the write loop, and the two
+paths differ, both measured:
+* against the shipped/BASELINE arz (a finished product this module had already marked), `apply()` genuinely
+  **writes** the 0 - negtest plant 6 reports `before=1.0 after=0.0`;
+* on a FRESH build the record reaches this module at 0 already, so the green build honestly prints
+  `R-100 #7 EXEMPT 1 record(s) forced to DisplayAsQuestItem=0 (0 newly unmarked)`.
+
+The 1 -> 0 delta in the record diff is therefore against the BASELINE ARZ, which is the correct
+before/after for "what changes for the player". Enforcing rather than skipping is what lets the GATE assert
+the 0, so a later writer cannot put the marker back and have nothing notice.
+
+The exemption is a NAMED set because "hidden" is a placement property with no DB expression - but it cannot
+rot: `_exempt_closure()` asserts every entry exists AND is a member of the derived roster (a stale entry reds
+the build), and closes it over `actorToSpawnOnDeath` so a future Devourer transform form inherits the
+exemption the same way rule B would have marked it. Measured: the Devourer has NO chain and no record spawns
+him, so today's closure is exactly one record. Everything else stays roster-derived - a future uber that
+lands in the placement proxies and pays a soul is marked with no edit here.
+
+`--negtest` -> **PASS (8/8)**, including three new plants: re-marking the exempt boss is flagged (the
+exemption is an invariant, not an omission), the exempt boss is out of the write roster and measured
+`before=1.0 after=0.0`, and a stale exemption reds the build.
+
+**#18 - the Guardians of the General must READ as uber: IMPLEMENTED**
+(`tools/patches/general_guardians.py`, a NEW registry module that retunes the six
+`svc_general_{a,b,c}_guard{1,2}` records `four_generals` builds).
+
+**HE IS RIGHT ON ALL SIX COUNTS, AND TWO OF THEM ARE OUTRIGHT BUGS** (measured on the same arz):
+
+| his words | measured |
+|---|---|
+| "they are small" | `scale = 1.45` - **SMALLER than the `am_warden_43` Champion they were cloned from (1.5)** and than their general (1.65). `_build_guards`' docstring calls 1.45 "a modest scale bump"; against its own donor it is a shrink. **BUG.** |
+| "they look just like the other guys" | `mesh = XPack\Creatures\Monster\Machae\machae01b.msh`, **byte-identical to that warden's**. Both guards of a pair clone ONE donor, so they also match each other. |
+| "super weak ... i killed them so fast" | `characterLife [3200, 4200, 5400]` vs their general's `[20244, 25305, 30366]` (the PAIR is 32% of one general); zero defensive resists; `characterLifeRegen 0`. Below every named elite escort this mod ships (`um_enslaver_marauder_99` 2.0/`[10000,14000,18000]`, `svc_diadochi_striderguard_97` 2.4/`[10000,14000,19000]`, `svc_tantalus_famishedshade_90` 2.0/`[4500,6500,9000]`). |
+| "no special skills or anything" | kit = `armor_passive`, `bonusdamage_physical`, `shieldcharge`, `specialAttackSkillName = shieldcharge` - **all four inherited VERBATIM from the donor. `four_generals` added zero skills**, so a "named elite honor guard" fights exactly like the trash beside it, and all six fight identically. **BUG.** |
+| "they dont have any chests" | the three `q_general_*_guardpair` proxies carry no `accessory1/Epic1/Legendary1`. |
+| "dont drop any orbs" | no `treasureProxyName` on any of the six. |
+| "besides their red names" | correct, and already true: the `{^r}` is in the tags `four_generals` minted. Those names were the only part of these six ever held to the amgoz1 bar. |
+
+**THE FIX, held to the amgoz1 bar - identity, not a stat multiplier.** `four_generals` had already written
+each guard's identity into its NAME and then never implemented it, so each guard now gets the SIGNATURE PAIR
+of skills its own epithet demands, and no two of the six share one:
+
+| guard | name `four_generals` gave it | signature (`†` = rides a blank-anim CLONE, see the round-2 correction below) |
+|---|---|---|
+| a1 | `{^r}Ravok the Lawless ~ Machae Reaver` | `minotaur_onslaught` + `gigantes_groundbreaker` |
+| a2 | `{^r}Sethuun ~ Machae Soul-Warden` | `empusa_spirit_lifedrainnova` + `hero_slowspiritbolt_ring` |
+| b1 | `{^r}Bhikru the Bilespitter ~ Machae Venomancer` | `hero_vomitbile`† + `empusavenomancer_venombolt`† |
+| b2 | `{^r}Nakoth ~ Machae Plague-Ward` | `empusa_venom_venomcloud` + `hero_poisonwave` |
+| c1 | `{^r}Kharzun the Ember ~ Machae Pyre-Ward` | `empusa_pyro_pillarofflame` + `hero_flamewave`† |
+| c2 | `{^r}Voreth ~ Machae Cinder-Reaver` | `gigantes_shieldcharge`† + `hero_bouncingfire_ring` |
+
+*(All six ALSO keep a slot-1 special, `shieldcharge`, which round 1 left on the shipped record and round 2
+repointed to a fifth blank-anim clone. Round 1 shipped all five of those as silent no-ops.)*
+
+Plus, every number derived from something already in the db rather than invented:
+* `scale` **1.45 -> 2.0** - `um_enslaver_marauder_99`'s own scale, i.e. the encounter **Will himself points
+  at as the model in this same message** (#13: "give ... some guys they can summon like toxeus the murderer
+  enslaver of souls has"). 33% over every machae in the room, 21% over their general.
+* `characterLife` -> **45% of the general each pair guards, per difficulty** = `[9110, 11387, 13665]`. The
+  pair is ~91% of one general combined: a real fight that never eclipses the boss. Inside the measured house
+  band on all three difficulties. `characterLifeRegen 0 -> 5.0` (the general's own value).
+* themed resists per general element (`defensiveLife` / `defensivePoison` / `defensiveFire` at 35, shared
+  `defensivePhysical` 20 - the marshal's 30 one tier down), never a flat wall.
+* **orb** -> `genericbossorb_03`. The ladder, measured: `01` = ten L16-20 bosses; `02` = five, INCLUDING our
+  own Champion escort `svc_obs_escort_permean` (so a Champion on a boss orb is shipped precedent); `03` = six
+  L45-48 bosses, the guards' own `charLevel [42,58,72]` band; `04` = nineteen incl. their marshal; `05` = the
+  eight-record Toxeus apex roster **reserved by R-99** and gate-locked by `uber_apex_orb.verify()`. `03` is
+  the honest rung and it touches neither audited tier. Nothing about the orb records is edited - a pointer,
+  not a shared-record write.
+* **chest** -> ONE dedicated hoard per PAIR (monolith `_svc_build_dedicated_hoard` recipe, 9 new records per
+  general), wired to the pair proxy's `accessory1/Epic1/Legendary1`. `LockedClassification` is overridden
+  from the recipe's `Boss` to **`Champion`** - the guards ARE Champions, so a Boss lock would seal the chest
+  **forever**; `Champion` is a shipped valid value whose three carriers include `hidden_bloodcave_chest_01`,
+  the very donor this chain clones. The accessory mechanism hard-caps at ONE chest per difficulty
+  (`Proxy.tpl` exposes no `accessory2..N`), so **this cannot reproduce #9's three-Tantalus-Hoards problem**.
+* **b76 / R-31 DENSITY LAW HELD BY CONSTRUCTION:** not one of the twelve signature skills is a pet-spawner,
+  and `verify()` re-asserts that mechanically (no `Skill_*SpawnPet*`, no `spawnObjects`). This lane adds
+  **zero** permanent entities to the Hades war-council rooms.
+* `monsterClassification` stays **Champion** and the soul loot stays cleared, deliberately: promoting to Hero
+  would make them soul-eligible under `wire_souls_to_monsters` and collide head-on with **R-106**. Will asked
+  for chests and orbs, not souls.
+
+`--negtest` -> round 1 reported **PASS (14/14)**, including "reverted to the shipped 1.45", "scale merely
+equal to the plain warden donor", "reverted to the shipped `[3200,4200,5400]`", "guard HP raised above its
+general", "orb moved onto R-99's reserved apex tier", "chest left on the recipe's Boss lock (never opens)",
+"guard promoted to Hero", "general de-quested", and a pet-spawner smuggled into a guard kit.
+
+> ### 🛑 ROUND-2 CORRECTION (2026-08-05): FOUR OF THE TWELVE COULD NOT FIRE, AND THE 14/14 GATE COULD NOT SEE IT
+>
+> **The round-1 statement "12 distinct signature skills" was TRUE about the WIRING and FALSE about the
+> PLAY.** Measured on round 1's own build (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+> 51,151 records), not inferred:
+>
+> * every guard binds `charAnimationTableName = records\xpack\creatures\monster\machae\anm\anm_machae.dbr`;
+> * that table declares exactly FOUR `<row>SpecialAnimRef<N<=15>` clip names - `bow1='HeavyShot'`,
+>   `sHanded1='ThunderClap'`, `spear1='Slam'`, `spear2='Strike'`;
+> * Game.dll's `SkillManager::StartSkill` aborts a special SILENTLY when the caster's table has no clip for
+>   the skill's `skillSpecialAnimationName` (this repo's own crash-law RE, already applied once as the b42
+>   Ephialtes Dread Nova fix in `tools/apply_svc_patches.py`);
+> * so these **NEVER FIRED**: `hero_vomitbile` ('Belch', guard b1), `empusavenomancer_venombolt` ('Belch',
+>   guard b1 - BOTH of its two), `hero_flamewave` ('ShadowScythe', guard c1), `gigantes_shieldcharge`
+>   ('Charge', guard c2);
+> * and the slot-1 special all six INHERITED, `records\skills\defensive\shieldcharge.dbr`, names
+>   'ShieldCharge', also absent - on `skillName3` AND `specialAttackSkillName`, on all six.
+> * **20 dead cast slots in total. Bhikru the Bilespitter (b1) therefore had ZERO castable specials of any
+>   kind**, so Will's complaint ("no special skills or anything to make them even noticeable") was left
+>   literally true for one of the six.
+>
+> **TRUE STATEMENT AFTER THE ROUND-2 FIX:** twelve distinct signature skills over six monsters, **EIGHT
+> pointed at the shipped record verbatim and FOUR riding a mod-authored blank-anim CLONE** of it, plus the
+> inherited slot-1 special repointed to a fifth clone on all six. Fix = the b42 recipe: clone into
+> `records\skills\svc\` and blank the clone's `skillSpecialAnimationName` so the cast rides the default
+> attack clip every rig has. **CLONE, NEVER EDIT** - the five donors carry other monsters (venombolt alone
+> has 25, `shieldcharge` 85 other carrier slots); `verify()` proves on the built db that every donor still
+> holds its shipped clip name and every clone holds none.
+>
+> Repick-a-clip-the-rig-HAS was considered and rejected per skill: the four clips are per weapon ROW
+> (bow/sHanded/spear) and the guards' weapon comes from a 100%-chance loot pool, so a repick would be
+> castable only on some rolls; blanking is row-independent.
+>
+> **THE GATE IS THE REAL FIX.** `general_guardians.verify()` now asserts, for every guard and every
+> `skillNameN` / `specialAttack*SkillName` slot, that the named `skillSpecialAnimationName` is empty or
+> present in that creature's OWN resolved animation table - and reds otherwise. Planted negatives prove it
+> catches exactly the round-1 defect ('Belch'), a clip that exists nowhere, the raw-donor wiring, the
+> inherited dead slot-1, a donor edited in place, and an unresolvable anim table; a matching positive
+> proves a clip the rig DOES declare is still accepted, so the rule is membership, not "must be empty".
+> Standalone re-measurement: `py tools/patches/general_guardians.py --castability <arz>`.
+>
+> **LESSON, and it is the point of this correction:** the round-1 gate checked that the twelve skills were
+> WIRED, RESOLVED and pet-free. It never checked they could be PLAYED. A gate that passes 14/14 on the
+> defect it exists to catch is worse than no gate, because it is cited as proof.
+
+**⚠️ ONE #18-ADJACENT CALL IS DELIBERATELY NOT GUESSED AND GOES BACK TO WILL: do the Guardians get
+exclamation marks too?** #18 calls these six "the uber bosses we added" while #7 asks for a marker on "all
+the uber bosses we made" - but `uber_quest_markers` rule A marks placed encounters that pay a SOUL, and the
+guards pay none, so they are mechanically outside the roster; and three markers per war-council room (general
++ two guards) is precisely the map spam rule A exists to prevent. They ship UNMARKED. If Will wants them
+marked it is one line (a pinned extra set in `uber_quest_markers`). Registered as debt.
+
+> **MEASURED 2026-07-30 (independent re-verification pass, same lane), and it settles HOW - not WHETHER:**
+> the obvious "just derive it, don't hand-list it" idea - mark any placed monster carrying a dedicated
+> `genericbossorb_*` - **OVER-CAPTURES BY EXACTLY ONE RECORD** and therefore cannot be used as-is.
+> Measured over the built arz (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`,
+> md5 `b55515970be41c2542208e84a8705640`): of the 27 placed records rule A excludes as retinue/adds,
+> **7 carry a boss orb - the 6 Guardians (`genericbossorb_03`) plus `svc_obs_escort_permean.dbr`
+> (`genericbossorb_02`), which is an ESCORT ADD and must not get a marker.** All 27 adds are rank
+> `champion`, so rank cannot separate them either. So if Will says yes, the honest shape is the pinned
+> extra set the paragraph above names (symmetric with `MARKER_EXEMPT`, cross-checked against the derived
+> roster so it cannot rot), NOT a widened derivation. This measurement is recorded so the next lane does
+> not spend the effort re-deriving a rule that does not close.
+
+**ALSO NOT DONE HERE (visual):** the two guards of a pair still share one `mesh`. Differentiating them means
+a mesh swap, which is the exact class of change the `fix/green-mesh-swap` lane is in flight on and which
+needs an in-game check. The "stop being a lookalike" win here comes from `scale 2.0` (33% over every machae
+in the room) plus twelve loud, distinct attack FX. Per-guard ambient aura FX (`charFxPakRunningNames`) was
+considered and rejected: the shipped candidates are `svc_black_poison_charfxpak` and `svc_ashsmoke_charfxpak`,
+which the `black_poison` lane's own gate audits. Registered as debt.
+
 ---
 
 ## R-101 [2026-07-29] P0 - our uber clones inherited their donors' QUEST-ITEM drops. Swept exhaustively: 3 records.
@@ -3565,3 +3743,102 @@ Both are `Monster.tpl` (so the Pet/Proxy template exclusion does not catch them)
 `chanceToEquipFinger2` is a power switch far more than a drop rate. They are HELD, untouched, and
 recorded here so "the sub-25 buckets are all resolved" is never claimed. Registered under
 `BL-b102-DEBT-1`. **OPEN FOR WILL** together with the crows, one answer covers all six.
+**STATUS:** ~~ruled, in flight~~ **IMPLEMENTED** on `feat/uber-visibility` (the R-108 wave lane, task
+`wx0ky10vv`) as `tools/patches/tombstone_xp_recovery.py`. Held to the EQUALITY, not to 10%. Detail below.
+
+### R-109 IMPLEMENTATION (2026-07-30, `feat/uber-visibility`)
+
+**THE MECHANISM WAS FOUND IN THE SHIPPED BYTES, NOT ASSUMED.** R-109 says "Do not assume it is a mirror of
+`deathPenaltyEquation`; measure what it actually pays today." Measured, via the PE export table and a
+disassembly of the stock 32-bit `Game.dll` (image base `0x10000000`); reproduce with
+`py tools/debug/probe_tombstone_xp.py --disasm`:
+
+| symbol | VA | what it does |
+|---|---|---|
+| `?CharacterIsDying@Player@GAME@@UAEXXZ` | `0x10207fc0` | the on-death handler |
+| `?GetPlayerDeathExperiencePenalty@GameEngine@GAME@@QBEI...` | `0x101945a0` | evaluates the equation object at `GE+0x103C`, floors at 0, rounds (`+0.5` from `0x103a3348`, then `fistp` with RC=11), clamps between `GE+0x1064` (`deathPenaltyMin`) and `GE+0x1068` (`deathPenaltyMax`) |
+| (XP helper on `Player+0xC2C`, not exported) | `0x1017d620` | MEASURED: `new = max(total - penalty, FLOOR)`, writes `new` back, **returns `old - new` = the amount ACTUALLY removed** (clamped at 0). `FLOOR` comes from `0x1017d540`, an equation evaluated for index `min(max(level-1,0), cap)`. INTERPRETATION (no field names in the binary): that is the current level's XP threshold, i.e. a death cannot de-level you. **R-109 does not rest on that reading** - only on the measured part, that the grave is handed the REALISED loss |
+| `?RegisterExperienceLoss@GameEngine@GAME@@QAEXIH@Z` | `0x10194540` | `mov [eax+0xc], ecx` - stores that actual loss at **`GraveInfo+0x0C`** |
+| `?GetPlayerExperienceRedemptionAmount@GameEngine@GAME@@IAEII@Z` | `0x10194f60` | reads `GraveInfo+0x0C`, `mulss xmm0, [edi+0x2a04]`, truncates |
+| the GameEngine field loader | `0x1019b8c3` | `mov [esp],0x3f000000` (0.5f default) / `push "RedemptionMultiplier"` / `fstp [edi+0x2a04]` - the ONLY writer of `GE+0x2A04`, and the `mulss` above is its only reader |
+
+So, exactly: **`recovered = trunc( (float)(XP ACTUALLY LOST) * RedemptionMultiplier )`**, on the same
+`records\xpack\game\gameengine.dbr` that `death_xp_penalty` (R-80) owns. `Game.dll` also hard-codes the ONE
+gravestone record at `0x00344554` (`Records/XPack/Item/Gravestones/GravestoneGreece.dbr`, Class
+`FixedItemGravestone`).
+
+**🛑 R-109's PREMISE WAS WRONG IN THE PLAYER'S FAVOUR, AND THAT CORRECTION IS THE HONEST REPORT.** R-109
+feared "the player loses 10% and recovers 100%" - a free-XP loop we introduced with b93. **That loop never
+existed.** The grave stores the amount actually removed, not a precomputed absolute, so b93's cut scaled the
+recovery in lockstep: before b93 you lost `P` and got back `0.5P`; after b93 you lost `0.1P` and got back
+`0.05P`. Recovery was ALWAYS half the loss and never above it. The real pre-R-109 defect is the opposite one,
+and it is exactly the one R-109's own gate clause names: **the player was being punished twice.**
+
+**THE CHANGE (one field, and it is DERIVED, not hardcoded):**
+
+    records\xpack\game\gameengine.dbr
+      RedemptionMultiplier    0.5  ->  1.0        (dtype FLOAT, preserved)
+
+At 1.0 the engine's own formula collapses to `recovered = lost`. R-109 asks for the recovery to be
+"expressed in terms of the penalty so the two cannot drift" - **the engine already does that**, because
+`RegisterExperienceLoss` records the realised loss and the redemption path never reads `deathPenalty*` at
+all. Retune the penalty however you like and the marker follows with no edit here. That is proved, not
+argued: negtest plant 6 retunes the penalty to divisor 45 / cap 123456 and the gate still **passes untouched**.
+1.0f is also the value `GameEngine`'s own constructor puts in that member before the DBR load
+(`0x101a378d`, `mov dword ptr [ebx+0x2a04], 0x3f800000`), so it is the engine's own number, not an
+out-of-band one.
+
+**MEASURED BEFORE/AFTER, BOTH WAYS** (`py tools/patches/tombstone_xp_recovery.py --table <arz>`; every LOST /
+BACK value is an integer because the engine rounds before the clamp):
+
+| level | difficulty | LOST pre-b93 | LOST now | BACK @0.5 pre-b93 | BACK @0.5 now (shipped) | **BACK @1.0 now (R-109)** |
+|---|---|---|---|---|---|---|
+| 10 | Normal | 111 | 11 | 55 | 5 | **11** |
+| 10 | Epic | 444 | 44 | 222 | 22 | **44** |
+| 10 | Legendary | 778 | 78 | 389 | 39 | **78** |
+| 40 | Normal | 7111 | 711 | 3555 | 355 | **711** |
+| 40 | Epic | 28444 | 2844 | 14222 | 1422 | **2844** |
+| 40 | Legendary | 49778 | 4978 | 24889 | 2489 | **4978** |
+| 70 | Normal | 38111 | 3811 | 19055 | 1905 | **3811** |
+| 70 | Epic | 152444 | 15244 | 76222 | 7622 | **15244** |
+| 70 | Legendary | 266778 | 26678 | 133389 | 13339 | **26678** |
+| 85 | Legendary | 477653 | 47765 | 238826 | 23882 | **47765** |
+| 100 | Normal | 111111 | 11111 | 55555 | 5555 | **11111** |
+| 100 | Epic | 444444 | 44444 | 222222 | 22222 | **44444** |
+| 100 | Legendary | 500000 | 50000 | 250000 | 25000 | **50000** |
+
+Ratio recovered/lost: **0.5000 before, 1.0000 after**, on all three difficulties.
+
+**EXACTNESS.** The round-trip is int32 -> double -> float32 -> `mulss 1.0f` -> truncate. float32 represents
+every integer below 2^24 exactly, `x * 1.0f` is exact, and truncating an exactly-represented integer returns
+it. The shipped `deathPenaltyMax` is 50,000, i.e. **336x inside** that bound, and `verify()` re-proves the
+headroom against the LIVE cap rather than a constant (and reds the build if a future lane raises the cap
+past 2^24).
+
+**THE GATE**, in R-109's superseding form (equality, both sides): `verify()` runs on the FINAL merged arz and
+re-derives the equality numerically over L1-1000 x Normal/Epic/Legendary **against the LIVE penalty knobs read
+out of the arz** plus the realised-loss domain up to the float32 bound (3,012 checked points), re-asserts the
+FLOAT dtype, re-asserts all five dead `gameengine` lookalikes still at 0.5 (anti-shotgun), and re-asserts the
+gravestone record still exists and is still `FixedItemGravestone` (retirement protocol - `Game.dll` hard-codes
+that path, so retiring it would delete the surface this ruling is about).
+
+`py tools/patches/tombstone_xp_recovery.py --negtest` -> **PASS (7/7)**:
+
+| plant | expected | got |
+|---|---|---|
+| control - the ruled state | ACCEPT | ACCEPT |
+| recovery ABOVE the loss (multiplier 2.0) | REJECT | REJECT |
+| recovery BELOW the loss (the pre-R-109 0.5) | REJECT | REJECT |
+| the hardcoded-10% form R-109 rejects (multiplier 0.1) | REJECT | REJECT |
+| a dead lookalike shotgunned with the edit | REJECT | REJECT |
+| the ONE gravestone record de-classed | REJECT | REJECT |
+| **penalty retuned (divisor 90 -> 45, cap -> 123456), no edit here** | **ACCEPT** | **ACCEPT** |
+
+**SCOPE:** one field on one record. `deathPenaltyEquation` / `Min` / `Max` are re-asserted byte-equal by this
+module's own scope proof, so R-80 is provably untouched. No new records, no tags, no map bytes, no
+`Text.arc` surface. MULTIPLAYER: a DB field, so every player must ship the identical arz (the standing
+determinism statement); it carries no party-size or spawn-equation term.
+
+**NOT PROVEN IN-GAME.** The arithmetic is engine-side and is proved from the disassembly and from the
+gate, but no character has died and walked back to a marker on a build carrying this change. Will's
+in-game check is the launch gate (registered as debt).

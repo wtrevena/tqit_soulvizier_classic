@@ -1,0 +1,216 @@
+  Read 10000/51124...
+  Read 20000/51124...
+  Read 30000/51124...
+  Read 40000/51124...
+  Read 50000/51124...
+  Loaded: 51124 records, 143420 strings
+ARZ: local/baseline_main_7efd107.arz
+
+=== svc_general_a_guard1.dbr   [GUARD] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              globalproperties_legendary01.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName16              paralysisresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [  DEAD  ] skillName3               shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+    [  DEAD  ] specialAttackSkillName   shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+
+=== svc_general_a_guard2.dbr   [GUARD] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              globalproperties_legendary01.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName16              paralysisresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [  DEAD  ] skillName3               shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+    [  DEAD  ] specialAttackSkillName   shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+
+=== svc_general_b_guard1.dbr   [GUARD] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              globalproperties_legendary01.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName16              paralysisresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [  DEAD  ] skillName3               shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+    [  DEAD  ] specialAttackSkillName   shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+
+=== svc_general_b_guard2.dbr   [GUARD] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              globalproperties_legendary01.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName16              paralysisresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [  DEAD  ] skillName3               shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+    [  DEAD  ] specialAttackSkillName   shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+
+=== svc_general_c_guard1.dbr   [GUARD] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              globalproperties_legendary01.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName16              paralysisresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [  DEAD  ] skillName3               shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+    [  DEAD  ] specialAttackSkillName   shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+
+=== svc_general_c_guard2.dbr   [GUARD] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              globalproperties_legendary01.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName16              paralysisresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [  DEAD  ] skillName3               shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+    [  DEAD  ] specialAttackSkillName   shieldcharge.dbr                               anim 'ShieldCharge' is NOT declared
+
+=== xsq27_namedhero_a_machae_45.dbr   [general (read-only cross-check)] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              hero_scaling.dbr                               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName17              boss_conversionimmunity.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [CAN FIRE] skillName3               xsq27_machaegeneral_coldenergyblast.dbr        no special anim -> default attack clip
+    [CAN FIRE] skillName4               xsq27_machaegeneral_circleofdecay.dbr          no special anim -> default attack clip
+    [CAN FIRE] skillName5               xsq27_machaegeneral_lifedrainnova.dbr          no special anim -> default attack clip
+    [CAN FIRE] skillName6               svc_general_summonarchers_a.dbr                no special anim -> default attack clip
+    [CAN FIRE] skillName7               lifedrain.dbr                                  no special anim -> default attack clip
+    [CAN FIRE] specialAttack2SkillName  svc_general_summonarchers_a.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack3SkillName  lifedrain.dbr                                  no special anim -> default attack clip
+    [CAN FIRE] specialAttackSkillName   xsq27_machaegeneral_lifedrainnova.dbr          no special anim -> default attack clip
+
+=== xsq27_namedhero_a_machae_47.dbr   [general (read-only cross-check)] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              hero_scaling.dbr                               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName17              boss_conversionimmunity.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [CAN FIRE] skillName3               xsq27_machaegeneral_coldenergyblast.dbr        no special anim -> default attack clip
+    [CAN FIRE] skillName4               xsq27_machaegeneral_circleofdecay.dbr          no special anim -> default attack clip
+    [CAN FIRE] skillName5               xsq27_machaegeneral_lifedrainnova.dbr          no special anim -> default attack clip
+    [CAN FIRE] skillName6               svc_general_summonarchers_a.dbr                no special anim -> default attack clip
+    [CAN FIRE] skillName7               lifedrain.dbr                                  no special anim -> default attack clip
+    [CAN FIRE] specialAttack2SkillName  svc_general_summonarchers_a.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack3SkillName  lifedrain.dbr                                  no special anim -> default attack clip
+    [CAN FIRE] specialAttackSkillName   xsq27_machaegeneral_lifedrainnova.dbr          no special anim -> default attack clip
+
+=== xsq27_namedhero_b_machae_45.dbr   [general (read-only cross-check)] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              hero_scaling.dbr                               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName17              boss_conversionimmunity.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [CAN FIRE] skillName3               envenomweapon.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName4               envenomweapon_delirium.dbr                     no special anim -> default attack clip
+    [CAN FIRE] skillName5               envenomweapon_neurotoxin.dbr                   no special anim -> default attack clip
+    [CAN FIRE] skillName6               xsq27_machaegeneral_venomcloud.dbr             no special anim -> default attack clip
+    [CAN FIRE] skillName7               xsq27_machaegeneral_petrify.dbr                no special anim -> default attack clip
+    [CAN FIRE] skillName8               offensivebonus_3poisonx8secperlvlx100.dbr      no special anim -> default attack clip
+    [CAN FIRE] skillName9               svc_general_summonarchers_b.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack2SkillName  xsq27_machaegeneral_venomcloud.dbr             no special anim -> default attack clip
+    [CAN FIRE] specialAttack3SkillName  svc_general_summonarchers_b.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttackSkillName   xsq27_machaegeneral_petrify.dbr                no special anim -> default attack clip
+
+=== xsq27_namedhero_b_machae_47.dbr   [general (read-only cross-check)] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              hero_scaling.dbr                               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName17              boss_conversionimmunity.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [CAN FIRE] skillName3               envenomweapon.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName4               envenomweapon_delirium.dbr                     no special anim -> default attack clip
+    [CAN FIRE] skillName5               envenomweapon_neurotoxin.dbr                   no special anim -> default attack clip
+    [CAN FIRE] skillName6               xsq27_machaegeneral_venomcloud.dbr             no special anim -> default attack clip
+    [CAN FIRE] skillName7               xsq27_machaegeneral_petrify.dbr                no special anim -> default attack clip
+    [CAN FIRE] skillName8               offensivebonus_3poisonx8secperlvlx100.dbr      no special anim -> default attack clip
+    [CAN FIRE] skillName9               svc_general_summonarchers_b.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack2SkillName  xsq27_machaegeneral_venomcloud.dbr             no special anim -> default attack clip
+    [CAN FIRE] specialAttack3SkillName  svc_general_summonarchers_b.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttackSkillName   xsq27_machaegeneral_petrify.dbr                no special anim -> default attack clip
+
+=== xsq27_namedhero_c_machae_45.dbr   [general (read-only cross-check)] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              hero_scaling.dbr                               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName17              boss_conversionimmunity.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [CAN FIRE] skillName3               fireenchantment.dbr                            no special anim -> default attack clip
+    [CAN FIRE] skillName4               fireenchantment_brimstone.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName5               fireenchantment_stoneskin.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName6               xsq27_machaegeneral_flamering.dbr              no special anim -> default attack clip
+    [CAN FIRE] skillName7               xsq27_machaegeneral_fieryenergyblast.dbr       no special anim -> default attack clip
+    [CAN FIRE] skillName8               xsq27_machaegeneral_eruption.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName9               svc_general_summonarchers_c.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack2SkillName  xsq27_machaegeneral_eruption.dbr               no special anim -> default attack clip
+    [CAN FIRE] specialAttack3SkillName  xsq27_machaegeneral_fieryenergyblast.dbr       no special anim -> default attack clip
+    [CAN FIRE] specialAttack4SkillName  svc_general_summonarchers_c.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack5SkillName  svc_general_summonarchers_c.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttackSkillName   xsq27_machaegeneral_flamering.dbr              no special anim -> default attack clip
+
+=== xsq27_namedhero_c_machae_47.dbr   [general (read-only cross-check)] ===
+    charAnimationTableName -> records\xpack\creatures\monster\machae\anm\anm_machae.dbr
+    clips it can play      : heavyshot, slam, strike, thunderclap
+    [CAN FIRE] skillName1               armor_passive.dbr                              no special anim -> default attack clip
+    [CAN FIRE] skillName10              globalproperties_normal01.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName11              globalproperties_epic01.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName12              hero_scaling.dbr                               no special anim -> default attack clip
+    [CAN FIRE] skillName15              elementalresistance_10xlevel.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName17              boss_conversionimmunity.dbr                    no special anim -> default attack clip
+    [CAN FIRE] skillName2               bonusdamage_physical.dbr                       no special anim -> default attack clip
+    [CAN FIRE] skillName3               fireenchantment.dbr                            no special anim -> default attack clip
+    [CAN FIRE] skillName4               fireenchantment_brimstone.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName5               fireenchantment_stoneskin.dbr                  no special anim -> default attack clip
+    [CAN FIRE] skillName6               xsq27_machaegeneral_flamering.dbr              no special anim -> default attack clip
+    [CAN FIRE] skillName7               xsq27_machaegeneral_fieryenergyblast.dbr       no special anim -> default attack clip
+    [CAN FIRE] skillName8               xsq27_machaegeneral_eruption.dbr               no special anim -> default attack clip
+    [CAN FIRE] skillName9               svc_general_summonarchers_c.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack2SkillName  xsq27_machaegeneral_eruption.dbr               no special anim -> default attack clip
+    [CAN FIRE] specialAttack3SkillName  xsq27_machaegeneral_fieryenergyblast.dbr       no special anim -> default attack clip
+    [CAN FIRE] specialAttack4SkillName  svc_general_summonarchers_c.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttack5SkillName  svc_general_summonarchers_c.dbr                no special anim -> default attack clip
+    [CAN FIRE] specialAttackSkillName   xsq27_machaegeneral_flamering.dbr              no special anim -> default attack clip
+
+==============================================================================
+156 cast slot(s) inspected; 12 CANNOT FIRE.
+RESULT: FAIL
+EXIT=1
