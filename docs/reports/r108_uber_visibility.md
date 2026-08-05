@@ -554,3 +554,27 @@ castability at all.
 * **The guards still share a mesh within a pair** (`BL-R108VIS-DEBT-3`), still ship unmarked
   (`BL-R108VIS-DEBT-1`, a Will decision), and `amgoz1_design_voice.md` is still absent
   (`BL-R108VIS-DEBT-4`). Round 2 changed none of those.
+
+### 7.7 Determinism: rebuilt at FINAL HEAD, byte-identical
+
+The artifact section 7.3 measures was built at `628b281`. Everything committed after it in this
+round is comment or documentation, so the arz must reproduce. Proved rather than argued - output
+DELETED again, same command, same env, at the round-2 tip:
+
+```
+py tools/build_svc_database.py <4 inputs> work/SoulvizierClassic/Database/SoulvizierClassic.arz <base arz>
+EXIT=0
+e77059427b53f009f55e56dbdca758c8 *work/SoulvizierClassic/Database/SoulvizierClassic.arz   (build 2)
+e77059427b53f009f55e56dbdca758c8 *local/r108r2_build1.arz                                 (build 1)
+```
+
+**Byte-identical.** Log `r108_logs/r108r2_build_confirm.log`. The one module edit made between the
+two builds (`88581f2`, `7c8a71c`) is proved comment-only by stripped-AST equality
+(`ast.dump(ast.parse(old)) == ast.dump(ast.parse(new))` -> `True`), so the identity is expected and
+now measured.
+
+⚠️ ONE HARNESS TRAP RECORDED, not swept: the FIRST attempt at this confirming rebuild exited **127**
+with a zero-byte log - the backgrounded shell could not find `py` at all. It is an environment
+flake, not a code failure (the very next run of `py --version` in the same worktree printed
+`Python 3.12.10`), but a 127 with an empty log looks exactly like a build failure and would mislead
+the next agent. Re-run verbatim: EXIT 0.
