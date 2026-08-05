@@ -136,7 +136,8 @@ Two things worth keeping:
 |---|---|
 | `tools/patches/tombstone_xp_recovery.py` | NEW. R-109. One field, the equality gate, 7 planted negatives. |
 | `tools/debug/probe_tombstone_xp.py` | NEW, read-only. Reproduces the `Game.dll` mechanism proof. |
-| `tools/patches/general_guardians.py` | NEW. R-100 #18. Retunes the six guards + three pair proxies, adds 27 hoard records, 14 planted negatives. |
+| `tools/patches/general_guardians.py` | NEW. R-100 #18. Retunes the six guards + three pair proxies, adds 27 hoard records **+ 5 blank-anim skill clones (round 2)**, **22** planted negatives, and the castability invariant. |
+| `tools/debug/r108_visibility_record_diff.py` | round 2: knows the 5 clones (derived, required) and proves the 5 DONORS did not move. |
 | `tools/patches/uber_quest_markers.py` | R-100 #7 exemption + its gate; negtest 4 -> 8 plants. |
 | `tools/patches/__init__.py` | registers the two new modules; records the ordering constraints. |
 | `docs/WILL_RULINGS.md` | R-109 implementation block; R-100 #7 + #18 implementation block. |
