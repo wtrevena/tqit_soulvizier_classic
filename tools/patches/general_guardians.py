@@ -505,6 +505,27 @@ def is_pet_spawner(db, rec):
 # round-1 gate never asked - can this creature actually PLAY every special its
 # own kit names? Nothing here is machae-specific; the anim table is whatever the
 # creature itself binds.
+#
+# ⚠️ PRECEDENT + AN HONEST LIMIT, both stated rather than discovered later.
+# `tools/patches/toxeus_hunt_encounter.py::_castability_violations` (b98 round 2)
+# already ships a STRONGER form of this check for the three Toxeus champions: it
+# derives WHICH animation ROW the engine will read from the Class of the weapon
+# the caster is GUARANTEED in RightHand, and requires the clip on EVERY such row.
+# This one is the UNION form the R-100 #18 brief specifies: empty, or present in
+# the creature's table on ANY row (indices <= the engine's documented bound).
+#   * WHY the weaker form here: the Guardians have no guaranteed weapon - both
+#     hands come from a 100%-chance loot POOL - so the row cannot be derived the
+#     way b98 derives it, and a per-row rule would need a weapon resolution this
+#     lane has not done.
+#   * WHAT THAT COSTS: this gate would ACCEPT a future repick to a clip that only
+#     one row declares (e.g. 'ThunderClap', sHanded-only), which would then be
+#     castable on some weapon rolls and not others.
+#   * WHY IT CANNOT BITE THE SHIPPED STATE: round 2's remedy is BLANKING, not
+#     repicking, and verify() separately asserts that all five of this module's
+#     clones carry NO special anim at all. Every guard slot is therefore on the
+#     always-playable default attack clip, which is row-independent.
+#   * Registered as debt (BL-R108VIS-DEBT-7) together with the fact that neither
+#     gate covers mod-authored monster kits in general.
 def _resolve(db, path):
     """Case/slash-tolerant record resolution (db.has_record is exact)."""
     if not path:

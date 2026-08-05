@@ -277,11 +277,28 @@ Resolved in favour of Will's explicit #18 ask; the two cases do differ measurabl
 Round 2 proved that a creature can carry a fully-wired, fully-resolving, pet-free skill that the
 engine will NEVER cast, because the skill's `skillSpecialAnimationName` is not in the creature's own
 `charAnimationTableName`. The gate that catches it now lives in `general_guardians.verify()` and
-therefore covers **the 6 Guardians and nothing else**. The same class exists everywhere in the mod:
+therefore covers **the 6 Guardians and nothing else**.
+
+**THERE ARE NOW TWO PER-LANE GATES OF THIS CLASS AND NEITHER IS REPO-WIDE - that is the debt.**
+`tools/patches/toxeus_hunt_encounter.py::_castability_violations` (b98 round 2) is the STRONGER
+form: it derives WHICH animation ROW the engine reads from the Class of the weapon the caster is
+GUARANTEED in RightHand and requires the clip on every such row. `general_guardians` uses the UNION
+form the R-100 #18 brief specifies (empty, or present on ANY row within the engine's index bound)
+because the Guardians have no guaranteed weapon - both hands come from a 100%-chance loot POOL, so
+the row cannot be derived the way b98 derives it.
+**STATED LIMIT, not discovered later:** the union form would ACCEPT a future repick to a clip only
+one row declares (e.g. 'ThunderClap', sHanded-only), which would be castable on some weapon rolls
+and not others. It cannot bite the shipped state, because round 2's remedy is BLANKING and
+`verify()` separately asserts all five clones carry no special anim at all - every guard slot is on
+the row-independent default attack clip. A repo-wide gate should use the b98 row-aware form plus an
+explicit "no guaranteed weapon" branch.
+
+The same class exists everywhere in the mod:
 * `_verify_soul_granted_skill_activation` covers the PLAYER side (soul grants, `<=15` universal-anim
   rule) and `_svc_clone_blank_anim` is the per-boss remedy several lanes already applied by hand
-  (b42 Ephialtes, the C1-C3 corrections, Dorus, Tantalus). Nothing covers **mod-authored MONSTER
-  kits in general**.
+  (b42 Ephialtes, the C1-C3 corrections, Dorus, Tantalus). Between b98 and this lane, exactly
+  **9 monster records** (3 Toxeus champions + 6 Guardians) are gated. Nothing covers **mod-authored
+  MONSTER kits in general**.
 * MEASURED as part of this round: the three Machae generals themselves are clean, so the gap is not
   currently biting next door. **Not measured: every other mod-authored monster in the db.**
 **FIX SHAPE (not done here, deliberately - it is a repo-wide gate, not this lane's scope):** promote
