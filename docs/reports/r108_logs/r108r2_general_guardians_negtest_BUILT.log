@@ -1,0 +1,43 @@
+  Read 10000/51156...
+  Read 20000/51156...
+  Read 30000/51156...
+  Read 40000/51156...
+  Read 50000/51156...
+  Loaded: 51156 records, 143455 strings
+
+=== general_guardians: the Guardians of the General read as uber (R-100 #18) ===
+  0. castability: 5 blank-anim clone(s) minted under records\skills\svc (the b42 recipe). The machae rig plays only [heavyshot, slam, strike, thunderclap]; these donors named [Belch, Charge, ShadowScythe, ShieldCharge], so every one of them was a silent no-op on a guard.
+  1. six guardians retuned: scale 1.45 -> 2.0, life -> 45% of their general ([9110, 11387, 13665] / [9110, 11387, 13665] / [9110, 11387, 13665]), regen 5.0, themed resists, orb genericbossorb_03.dbr
+  2. signature kits: 12 distinct signature skills over 6 monsters (8 pointed at as shipped, 4 riding a blank-anim clone so they can actually fire), plus the inherited slot-1 special repointed to its own clone on all six; 0 pet-spawners (b76 density law holds by construction)
+  3. chests: 3 dedicated Champion-locked hoards (1 per PAIR, 9 new records each) wired to accessory1/Epic1/Legendary1 - the accessory mechanism hard-caps at ONE chest per difficulty, so this cannot repeat R-100 #9
+  4. tags: 3 chest names (tagSVCChestGeneralAGuard, tagSVCChestGeneralBGuard, tagSVCChestGeneralCGuard)
+  5. scope OK: 41 record(s) touched, all inside the declared set (6 guards + 3 proxies + 27 new hoard records + 5 blank-anim clones)
+=== general_guardians: DONE ===
+  Guardians of the General read as uber (R-100 #18) verify OK: 6 guardians at scale 2.0 (donor 1.50 / general 1.65), life [9110, 11387, 13665] / [9110, 11387, 13665] / [9110, 11387, 13665] (45% of their general, never above it), 12 distinct signature skills all resolving and all pet-free, orb genericbossorb_03.dbr (R-99 apex + the marshal tier untouched, 6 other consumers intact), 3 Champion-locked hoards = ONE chest per pair, rank/soul policy unchanged, all 6 generals still Quest-class with their souls. CASTABILITY: 78 cast slot(s) across the six checked against their own anim table [heavyshot, slam, strike, thunderclap] - 0 name a clip the rig lacks; 5 blank-anim clones present, every shared donor byte-unedited.
+  Guardians of the General read as uber (R-100 #18) verify OK: 6 guardians at scale 2.0 (donor 1.50 / general 1.65), life [9110, 11387, 13665] / [9110, 11387, 13665] / [9110, 11387, 13665] (45% of their general, never above it), 12 distinct signature skills all resolving and all pet-free, orb genericbossorb_03.dbr (R-99 apex + the marshal tier untouched, 6 other consumers intact), 3 Champion-locked hoards = ONE chest per pair, rank/soul policy unchanged, all 6 generals still Quest-class with their souls. CASTABILITY: 79 cast slot(s) across the six checked against their own anim table [heavyshot, slam, strike, thunderclap] - 0 name a clip the rig lacks; 5 blank-anim clones present, every shared donor byte-unedited.
+
+general_guardians _negtest:
+  [PASS] control - the retuned state passes                             expected=ACCEPT got=ACCEPT
+  [PASS] scale reverted to the shipped 1.45 rejected                    expected=REJECT got=REJECT
+  [PASS] scale equal to the plain warden donor (1.5) rejected           expected=REJECT got=REJECT
+  [PASS] characterLife reverted to the shipped [3200,4200,5400] rejected expected=REJECT got=REJECT
+  [PASS] guard HP raised ABOVE its general rejected                     expected=REJECT got=REJECT
+  [PASS] orb removed rejected                                           expected=REJECT got=REJECT
+  [PASS] orb moved onto the R-99 reserved apex tier rejected            expected=REJECT got=REJECT
+  [PASS] chest unwired from the guard-pair proxy rejected               expected=REJECT got=REJECT
+  [PASS] chest left on the recipe Boss lock (never opens) rejected      expected=REJECT got=REJECT
+  [PASS] signature skill stripped rejected                              expected=REJECT got=REJECT
+  [PASS] guard promoted to Hero (R-106 soul policy) rejected            expected=REJECT got=REJECT
+  [PASS] guard given a soul drop rejected                               expected=REJECT got=REJECT
+  [PASS] general de-quested (four_generals quest safety) rejected       expected=REJECT got=REJECT
+  [PASS] pet-spawner smuggled into a guard kit (b76 density law) rejected expected=REJECT got=REJECT
+  [PASS] skill naming a clip the rig lacks ('Belch') rejected           expected=REJECT got=REJECT
+  [PASS] skill naming a clip that exists nowhere ('NoSuchClip') rejected expected=REJECT got=REJECT
+  [PASS] free slot given a skill whose clip the rig HAS ('ThunderClap') accepted expected=ACCEPT got=ACCEPT
+  [PASS] free slot given a skill whose clip the rig LACKS ('Belch') rejected expected=REJECT got=REJECT
+  [PASS] guard repointed at the raw upstream donor (round-1 wiring) rejected expected=REJECT got=REJECT
+  [PASS] slot-1 special left on the inherited dead shieldcharge rejected expected=REJECT got=REJECT
+  [PASS] shared donor edited in place instead of cloned rejected        expected=REJECT got=REJECT
+  [PASS] unresolvable charAnimationTableName rejected                   expected=REJECT got=REJECT
+  -> PASS (22/22)
+EXIT=0

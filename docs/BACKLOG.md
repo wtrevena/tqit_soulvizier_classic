@@ -1,5 +1,61 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD73-DEV GATE RECORD - R-108 lane ROUND 2: the Guardians' four DEAD signature skills (2026-08-05, branch `feat/uber-visibility`, tag `build73-dev`) - NOT DEPLOYED
+
+**NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
+process launched or killed.**
+
+The round-1 independent vet returned NO-GO on exactly one thing and it was right: **four of the
+twelve signature skills, and the slot-1 special all six inherited, named a `skillSpecialAnimationName`
+that `anm_machae.dbr` does not declare, so `SkillManager::StartSkill` aborted them silently. 20 dead
+cast slots; Bhikru the Bilespitter had ZERO castable specials of any kind.** Fix = the b42 Ephialtes
+recipe five times (clone into `records\skills\svc\`, blank the clip, repoint the guards; CLONE never
+edit) plus the invariant itself in `general_guardians.verify()`.
+
+| | arz | size | records | modules | exit |
+|---|---|---|---|---|---|
+| round 1 (`build72-dev`) | `b55515970be41c2542208e84a8705640` | 55,485,062 B | 51,151 | 47 | 0 |
+| **round 2** | **`e77059427b53f009f55e56dbdca758c8`** | **55,491,436 B** | **51,156** | **47** | **0** |
+
+Output DELETED before the rebuild (a stale artifact whose md5 already matches what you expect is a
+real trap). Env: `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`,
+`work/` layout so the full gate battery is live. Log `docs/reports/r108_logs/r108r2_build.log`.
+Snapshot kept at `local/r108r2_build1.arz`.
+
+**PROVED FROM THE ARTIFACT, three independent ways** (details + logs in
+`docs/reports/r108_uber_visibility.md` section 7):
+* `tools/debug/r108r2_twelve_skill_table.py` - **12/12 signature skills CAN FIRE**, **6/6 slot-1
+  specials CAN FIRE**; Bhikru 0 -> 3 castable specials.
+* `tools/debug/r108r2_castability_probe.py` (bare `ArzDatabase`, no lane code in the loop, also
+  cross-checks the 3 generals) - **180 cast slots, 0 CANNOT FIRE, PASS**. Its negative control on the
+  PRE-LANE baseline: **156 slots, 12 CANNOT FIRE, FAIL**, so the probe is not vacuous.
+* the module's own in-build `verify()` - 78 cast slots across the six checked against their own anim
+  table, 0 name a clip the rig lacks, 5 clones present, every shared donor byte-unedited.
+
+**SHARED-RECORD LAW, on bytes:** the 5 donors still carry `Belch` / `Belch` / `ShadowScythe` /
+`Charge` / `ShieldCharge`, the 5 clones carry none, Class matches, and the donors kept
+4 / 39 / 4 / 6 / 74 non-guard carrier slots. The record diff lists all 5 donors in its ZERO-DELTA set
+independently.
+
+**RECORD DIFF** vs `local/baseline_main_7efd107.arz` -> **EXIT 0**: `ADDED 32 / REMOVED 0 /
+CHANGED 11`, zero unattributed, all six expected delta classes present (non-vacuity), other 25
+roster members / 5 dead lookalikes / R-80 fields all 0 moved.
+`docs/reports/r108_logs/r108r2_record_diff.txt`.
+
+**NEGATIVE SUITE 14 -> 22, PASS 22/22** on both the baseline and the built arz, including the exact
+round-1 defect (`'Belch'`), a clip that exists nowhere, the raw-donor wiring, the inherited dead
+slot-1, a donor edited in place, an unresolvable anim table, and a MEMBERSHIP PAIR proving a clip the
+rig DOES declare is still accepted.
+
+**Text.arc NOT rebuilt and not required:** round 2 mints no tag, so the coupling partner recorded
+below (`67466b9bc1c83c000247deff98e46505`) still matches this arz's tag set.
+
+**NEW DEBT:** `BL-R108VIS-DEBT-7` (P1, the castability gate is guard-scoped; b98's row-aware sibling
+covers 3 more records; nothing is repo-wide) and `BL-R108VIS-DEBT-8` (P2, round-1 counts in the
+record below are stale by 5 records). `BL-R108VIS-DEBT-2` narrowed, not closed.
+
+---
+
 ## BUILD72-DEV GATE RECORD - R-108 WAVE lane `feat/uber-visibility`: R-100 #7 + R-100 #18 + R-109 (2026-07-30, branch `feat/uber-visibility`, tag `build72-dev`) - NOT DEPLOYED
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
