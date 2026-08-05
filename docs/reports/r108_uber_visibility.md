@@ -392,3 +392,159 @@ RESULT: PASS (3/3)
 (`b55515970be41c2542208e84a8705640`) **together with** `Text.arc`
 (`67466b9bc1c83c000247deff98e46505`). `Levels.arc` and `Quests.arc` are untouched by this lane
 (`git diff --stat main...HEAD` over the map/quest tools is empty), so their coupling does not apply.
+
+---
+
+## 7. ROUND 2 (2026-08-05) - THE ONE NO-GO: FOUR SIGNATURE SKILLS COULD NOT FIRE
+
+The round-1 independent vet returned NO-GO on exactly one thing, and it was right. R-100 #7 and
+R-109 were reproduced and passed; nothing about them was touched here.
+
+### 7.1 The defect, measured on ROUND 1's OWN artifact
+
+`work/SoulvizierClassic/Database/SoulvizierClassic.arz` @ `b55515970be41c2542208e84a8705640`,
+51,151 records. Every line below is a field read.
+
+* All six Guardians bind
+  `charAnimationTableName = records\xpack\creatures\monster\machae\anm\anm_machae.dbr`.
+* That table declares **exactly four** `<row>SpecialAnimRef<N<=15>` clip names:
+  `bow1='HeavyShot'`, `sHanded1='ThunderClap'`, `spear1='Slam'`, `spear2='Strike'`.
+* Game.dll's `SkillManager::StartSkill` aborts a special SILENTLY when the caster's table has no clip
+  for the skill's `skillSpecialAnimationName` - this repo's own crash-law RE, already applied once as
+  the **b42 Ephialtes Dread Nova** fix in `tools/apply_svc_patches.py`.
+* Therefore these **never fired**:
+
+  | skill | clip it demanded | guard |
+  |---|---|---|
+  | `hero_vomitbile` | `Belch` | b1 Bhikru |
+  | `empusavenomancer_venombolt` | `Belch` | b1 Bhikru (so BOTH of his two) |
+  | `hero_flamewave` | `ShadowScythe` | c1 Kharzun |
+  | `gigantes_shieldcharge` | `Charge` | c2 Voreth |
+  | `shieldcharge` (INHERITED slot 1) | `ShieldCharge` | **all six**, on `skillName3` AND `specialAttackSkillName` |
+
+* **20 dead cast slots. Bhikru the Bilespitter had ZERO castable specials of any kind** - Will's
+  complaint was left literally true for one of the six.
+* The three Machae generals are CLEAN on this invariant (no anim-carrying skill in any cast slot), so
+  nothing about them changes.
+* NEGATIVE CONTROL, so the measurement is not circular: the independent probe run against the
+  PRE-LANE baseline (`local/baseline_main_7efd107.arz`, the guards exactly as `four_generals` built
+  them) reports **156 cast slots inspected, 12 CANNOT FIRE, RESULT: FAIL** - it finds the 6 x 2
+  inherited `shieldcharge` slots by itself. Log:
+  `r108_logs/r108r2_castability_BASELINE_negative_control.log`.
+
+### 7.2 The fix - the b42 recipe, five times, CLONE never edit
+
+Each offender is CLONED into `records\skills\svc\` with `skillSpecialAnimationName` blanked, via the
+monolith's own `_svc_clone_blank_anim` (which registers the pair in `_BOSS_KIT_CLONES`, so the
+build's B-TOXEUS-2 clone-shape invariant gates them too). The guards are repointed at the clones; the
+shipped records are never written. Blank-anim precedent counted per Class in this same build:
+`Skill_AttackProjectileBurst` 102 shipped records already blank, `Skill_AttackProjectile` 156,
+`Skill_AttackWave` 29, `Skill_AttackWeaponCharge` 5 (e.g. `coldtusk_charge`, `tykos_charge`).
+
+**Why blank rather than repick a clip the rig HAS** (both options were on the table, per skill): the
+four clips are per weapon ROW (`bow` / `sHanded` / `spear`) and the guards' weapon comes from a
+100%-chance RightHand/LeftHand loot POOL, not a fixed weapon. A repick would be castable only for
+some rolls. Blanking rides the default attack clip, which is row-independent.
+
+### 7.3 PROVED ON THE BUILT ARZ - all twelve, plus the slot-1 special
+
+Build: `PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, output
+DELETED first, `work/` layout so the full gate battery is live. **EXIT 0**
+(log `r108_logs/r108r2_build.log`).
+
+| | arz | size | records | modules |
+|---|---|---|---|---|
+| round 1 | `b55515970be41c2542208e84a8705640` | 55,485,062 B | 51,151 | 47 |
+| **round 2** | **`e77059427b53f009f55e56dbdca758c8`** | **55,491,436 B** | **51,156** | **47** |
+
+Per-skill table generated FROM the artifact
+(`tools/debug/r108r2_twelve_skill_table.py`, output `r108_logs/r108r2_twelve_skill_table.md`):
+**12 of 12 CAN FIRE**, and all six slot-1 specials CAN FIRE. Bhikru went from 0 castable specials to
+3. Independent probe over the same artifact (`tools/debug/r108r2_castability_probe.py`, a bare
+`ArzDatabase` read with no lane code in the loop, cross-checking the 3 generals as well):
+**180 cast slots inspected, 0 CANNOT FIRE, RESULT: PASS**.
+
+The module's own in-build `verify()` line:
+
+```
+Guardians of the General read as uber (R-100 #18) verify OK: ... CASTABILITY: 78 cast slot(s)
+across the six checked against their own anim table [heavyshot, slam, strike, thunderclap] -
+0 name a clip the rig lacks; 5 blank-anim clones present, every shared donor byte-unedited.
+```
+
+SHARED-RECORD LAW, measured on the artifact rather than asserted - every donor still carries its
+shipped clip name, every clone carries none, Class matches, and no donor lost a carrier:
+
+```
+donor hero_vomitbile.dbr             anim='Belch'        | clone ...vomitbile.dbr     anim=''  donor kept  4 non-guard carrier slots
+donor empusavenomancer_venombolt.dbr anim='Belch'        | clone ...venombolt.dbr     anim=''  donor kept 39
+donor hero_flamewave.dbr             anim='ShadowScythe' | clone ...flamewave.dbr     anim=''  donor kept  4
+donor gigantes_shieldcharge.dbr      anim='Charge'       | clone ...embercharge.dbr   anim=''  donor kept  6
+donor shieldcharge.dbr               anim='ShieldCharge' | clone ...shieldcharge.dbr  anim=''  donor kept 74
+```
+
+### 7.4 Record diff vs the baseline - zero unattributed
+
+`py tools/debug/r108_visibility_record_diff.py local/baseline_main_7efd107.arz
+work/SoulvizierClassic/Database/SoulvizierClassic.arz` -> **EXIT 0**
+(`r108_logs/r108r2_record_diff.txt`):
+
+```
+records  : baseline 51124 -> built 51156
+ADDED 32 / REMOVED 0 / CHANGED 11
+RESULT: PASS - 0 REMOVED, 32 ADDED (27 declared guard-hoard records + 5 declared blank-anim
+clones), 11 CHANGED and every one attributes to R-100 #7, R-100 #18 or R-109.
+```
+
+ZERO-DELTA claims re-checked: the other 25 roster members 0 moved, the 5 dead gameengine lookalikes
+0 moved, the R-80 penalty fields 0 moved, and **the 5 clone DONORS 0 moved** - the shared-record law
+proved by the diff itself, not only by `verify()`. NON-VACUITY: all six expected delta classes
+present, so a build that silently stopped minting the clones is a NO-GO rather than a green.
+
+### 7.5 The gate - the actual deliverable
+
+`general_guardians.verify()` now asserts, for every guard and every `skillNameN` /
+`specialAttack*SkillName` slot, that the named `skillSpecialAnimationName` is empty or present in
+that creature's OWN resolved animation table. It runs in every build under `run_registry_verifies`.
+Negative suite **14 -> 22, PASS 22/22** on both the baseline and the built arz:
+
+* `'Belch'` planted on a clone - THE round-1 defect - **REJECT**
+* a clip that exists nowhere in the db (`'NoSuchClip'`) - **REJECT**
+* a guard repointed at the raw upstream donor (the round-1 wiring) - **REJECT**
+* slot 1 left on the inherited dead `shieldcharge` - **REJECT**
+* a shared donor edited in place instead of cloned - **REJECT**
+* an unresolvable `charAnimationTableName` - **REJECT**
+* MEMBERSHIP PAIR, same free slot on the same guard: a skill whose clip the rig HAS
+  (`'ThunderClap'`) **ACCEPT**, one whose clip it LACKS (`'Belch'`) **REJECT** - so the rule is
+  membership, not "the anim must be empty"
+
+Standalone re-measurement: `py tools/patches/general_guardians.py --castability <arz>`.
+
+**WHERE THIS GATE IS WEAKER THAN ITS SIBLING, stated rather than left to be found.**
+`tools/patches/toxeus_hunt_encounter.py::_castability_violations` (b98 round 2) already ships a
+per-weapon-ROW form for the three Toxeus champions: it derives which row the engine reads from the
+Class of the item the caster is GUARANTEED in RightHand. This one uses the UNION form the R-100 #18
+brief specifies, because the Guardians have no guaranteed weapon. It would therefore ACCEPT a future
+repick to a clip only one row declares. It cannot bite the shipped state - the remedy here is
+blanking, and `verify()` separately asserts all five clones carry no special anim - but a repo-wide
+gate should use the b98 row-aware form. Registered as `BL-R108VIS-DEBT-7`, together with the fact
+that between the two lanes exactly **9 monster records** (3 champions + 6 Guardians) are gated for
+castability at all.
+
+### 7.6 What round 2 did NOT do
+
+* **No deploy, no Steam action, no TQ or Steam process launched or killed.** Nothing was written to
+  any `CustomMaps\*` target.
+* **No in-game test.** The animation half of "do the twelve skills fire" is now proved from the
+  artifact; cast frequency, range/timeout feel, whether the FX read well and whether the pair fight
+  is fun remain launch-gated (`BL-R108VIS-DEBT-2`, narrowed accordingly).
+* **No repo-wide castability gate** (`BL-R108VIS-DEBT-7`, P1, with the fix shape written down).
+* **R-100 #7 and R-109 were not touched.** In this build's diff they are still exactly one field
+  each: `DisplayAsQuestItem 1 -> 0` on `um_bloodtoxeus_99`, `RedemptionMultiplier 0.5 -> 1.0` on
+  `gameengine`.
+* **Text.arc was NOT rebuilt** and did not need to be: round 2 mints no tag. The coupling partner
+  recorded in section 6 (`67466b9bc1c83c000247deff98e46505`) still matches this arz's tag set;
+  re-verify before shipping if anything else changes.
+* **The guards still share a mesh within a pair** (`BL-R108VIS-DEBT-3`), still ship unmarked
+  (`BL-R108VIS-DEBT-1`, a Will decision), and `amgoz1_design_voice.md` is still absent
+  (`BL-R108VIS-DEBT-4`). Round 2 changed none of those.
