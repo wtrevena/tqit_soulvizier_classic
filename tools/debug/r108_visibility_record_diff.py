@@ -60,6 +60,11 @@ GUARD_FIELDS = {
     'specialAttack2Timeout', 'specialAttack2Delay',
     'specialAttack3SkillName', 'specialAttack3Chance', 'specialAttack3Range',
     'specialAttack3Timeout', 'specialAttack3Delay',
+    # round 2 (castability): the inherited slot-1 special was dead on all six
+    # (its clip is absent from anm_machae), so both slots that carry it are
+    # repointed to a blank-anim clone. These two fields CHANGE VALUE ONLY -
+    # the clone is a new record, never an edit of the shipped shieldcharge.
+    'skillName3', 'specialAttackSkillName',
 }
 PROXY_FIELDS = {'accessory1', 'accessoryEpic1', 'accessoryLegendary1'}
 R80_FROZEN = ('deathPenaltyEquation', 'deathPenaltyMin', 'deathPenaltyMax')
@@ -83,6 +88,11 @@ def main(argv):
     guards_n = {norm(q) for pair in GG.GUARD.values() for q in pair}
     proxies_n = {norm(p) for p in GG.GUARD_PROXY.values()}
     hoards_n = {norm(r) for g in GG.GENERALS for r in GG._hoard_records(g)}
+    # round 2: the blank-anim clones (section 2b). DERIVED from the module, and
+    # their DONORS are listed too so the diff can prove the donors did NOT move -
+    # that is the shared-record law, checked on bytes rather than asserted.
+    clones_n = {norm(c) for c, _ in GG.BLANK_ANIM_CLONE.values()}
+    clone_donors_n = {norm(d) for d in GG.BLANK_ANIM_CLONE}
     ge_n = norm(TXR.GAMEENGINE)
     lookalikes_n = {norm(r) for r in TXR.DEAD_LOOKALIKES}
 
@@ -127,10 +137,14 @@ def main(argv):
     for n in added:
         if n in hoards_n:
             attributed.append(('R-100 #18 hoard ADD', n, 'new record'))
+        elif n in clones_n:
+            attributed.append(('R-100 #18 anim CLONE ADD', n,
+                               'blank-anim clone (castability, section 2b)'))
         else:
             unattributed.append(('ADDED', n, set(),
                                  'the only records this lane authors are the 27 '
-                                 'declared guard-hoard records'))
+                                 'declared guard-hoard records and the %d declared '
+                                 'blank-anim clones' % len(clones_n)))
 
     for n, d in sorted(changed.items()):
         fields = set(d)
@@ -200,7 +214,9 @@ def main(argv):
     for label, names in (
             ('R-100 #7: every OTHER roster member (already marked on main)',
              sorted(roster_n)),
-            ('R-109: the 5 dead gameengine lookalikes', sorted(lookalikes_n))):
+            ('R-109: the 5 dead gameengine lookalikes', sorted(lookalikes_n)),
+            ('SHARED-RECORD LAW: the 5 blank-anim clone DONORS (cloned, never edited)',
+             sorted(clone_donors_n))):
         moved = [n for n in names if n in changed]
         zero_delta.append((label, len(names), moved))
         for n in moved:
@@ -236,13 +252,19 @@ def main(argv):
         'R-100 #18 guard': 'the six retuned Guardian records',
         'R-100 #18 proxy': 'the three guard-pair proxies wired to a hoard',
         'R-100 #18 hoard ADD': 'the 27 new guard-hoard records',
+        'R-100 #18 anim CLONE ADD':
+            'the 5 blank-anim clones that make the dead skills castable',
     }
     missing_classes = [(k, v) for k, v in sorted(required.items()) if k not in got]
 
     n_guard = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 guard')
     n_proxy = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 proxy')
     n_hoard = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 hoard ADD')
+    n_clone = sum(1 for k, _n, _w in attributed if k == 'R-100 #18 anim CLONE ADD')
     count_problems = []
+    if n_clone and n_clone != len(clones_n):
+        count_problems.append('blank-anim clones added: %d, expected %d'
+                              % (n_clone, len(clones_n)))
     if n_guard and n_guard != len(guards_n):
         count_problems.append('guards retuned: %d, expected %d' % (n_guard, len(guards_n)))
     if n_proxy and n_proxy != len(proxies_n):
@@ -273,9 +295,12 @@ def main(argv):
             print('   %-8s %s  %s  (%s)'
                   % (kind, n, ('fields=' + ','.join(sorted(bad))) if bad else '', why))
         return 1
-    print('RESULT: PASS - 0 REMOVED, %d ADDED (all 27 declared guard-hoard records), '
-          '%d CHANGED and every one attributes to R-100 #7, R-100 #18 or R-109. '
-          'Zero unattributed changes.' % (len(added), len(changed)))
+    print('RESULT: PASS - 0 REMOVED, %d ADDED (%d declared guard-hoard records + %d '
+          'declared blank-anim clones), %d CHANGED and every one attributes to '
+          'R-100 #7, R-100 #18 or R-109. Zero unattributed changes. The 5 clone '
+          'DONORS are in the zero-delta set above, so the shared-record law is '
+          'proved on bytes, not asserted.'
+          % (len(added), len(hoards_n), len(clones_n), len(changed)))
     return 0
 
 
