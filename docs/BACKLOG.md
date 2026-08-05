@@ -154,7 +154,7 @@ re-run against the BUILT arz, not just a baseline** (`docs/reports/r108_logs/r10
 |---|---|---|
 | `py tools/patches/tombstone_xp_recovery.py --negtest <arz>` | 7 | **PASS 7/7** |
 | `py tools/patches/uber_quest_markers.py --negtest <arz>` | 8 | **PASS 8/8** |
-| `py tools/patches/general_guardians.py --negtest <arz>` | 14 | **PASS 14/14** |
+| `py tools/patches/general_guardians.py --negtest <arz>` | 14 -> **22 (round 2)** | round 1 **PASS 14/14**, round 2 **PASS 22/22** |
 
 R-109's gate is the EQUALITY form the ruling itself demands, so BOTH sides fire: multiplier 2.0
 (recovery above the loss) rejected, the pre-R-109 0.5 (recovery below the loss) rejected, and the
@@ -167,6 +167,29 @@ Will named) whose plants include both "put it back the way it shipped" cases, th
 case, the reserved-apex-orb case, the sealed-chest case (a `Boss` lock on a `Champion` encounter
 never opens), the R-106 rank/soul cases, four_generals' quest-safety case, and the b76/R-31 density
 case.
+
+> **🛑 ROUND-2 GATE CORRECTION (2026-08-05) - THE 14/14 ABOVE PASSED ON THE DEFECT IT EXISTED TO
+> CATCH.** Four of the twelve signature skills, plus the slot-1 special all six inherited, named a
+> `skillSpecialAnimationName` that `anm_machae.dbr` does not declare, so `SkillManager::StartSkill`
+> aborted them silently: `hero_vomitbile` + `empusavenomancer_venombolt` ('Belch', guard b1 - so
+> **Bhikru the Bilespitter had ZERO castable specials of any kind**), `hero_flamewave`
+> ('ShadowScythe', c1), `gigantes_shieldcharge` ('Charge', c2), and `shieldcharge` ('ShieldCharge',
+> all six on `skillName3` + `specialAttackSkillName`). **20 dead cast slots.** The round-1 gate
+> checked WIRED / RESOLVES / pet-free and never checked PLAYABLE.
+>
+> Round 2 (a) clones each of the five into `records\skills\svc\` with a blanked
+> `skillSpecialAnimationName` via the monolith's own `_svc_clone_blank_anim` (the b42 Ephialtes
+> recipe; registers in `_BOSS_KIT_CLONES` so the B-TOXEUS-2 clone-shape invariant covers them too)
+> and repoints the guards - **CLONE, NEVER EDIT**: `verify()` proves each donor still carries its
+> shipped clip name and each clone carries none, and that no donor lost a non-guard carrier; and
+> (b) adds the invariant itself to `verify()`: for every guard and every `skillNameN` /
+> `specialAttack*SkillName`, the named animation must be empty or present in that creature's OWN
+> resolved `charAnimationTableName`. Negative suite 14 -> **22**, including the exact round-1 defect
+> ('Belch'), a clip that exists nowhere, the raw-donor wiring, the inherited dead slot-1, a shared
+> donor edited in place, an unresolvable anim table, and a MEMBERSHIP PAIR (same free slot, same
+> guard, one skill whose clip the rig HAS -> ACCEPT, one whose clip it LACKS -> REJECT) proving the
+> rule is membership rather than "must be empty". Standalone audit:
+> `py tools/patches/general_guardians.py --castability <arz>`.
 
 **RECORD DIFF vs the baseline** (`py tools/debug/r108_visibility_record_diff.py
 local/baseline_main_7efd107.arz work/SoulvizierClassic/Database/SoulvizierClassic.arz`, full output
@@ -196,7 +219,9 @@ pre-R-109 defect was the opposite one and is exactly what R-109's gate clause fo
 was **punished twice** at 0.5x. Full symbol table + disassembly in `docs/WILL_RULINGS.md` R-109;
 reproduce with `py tools/debug/probe_tombstone_xp.py --disasm`.
 
-**NOT DONE / KNOWN GAPS - all registered as `BL-R108VIS-DEBT-1..6` below:** nothing in this lane was
+**NOT DONE / KNOWN GAPS - all registered as `BL-R108VIS-DEBT-1..8` below** (7 and 8 are NEW from the
+round-2 castability fix, and DEBT-7 is the one the round-1 vet correctly noted was missing from this
+register): nothing in this lane was
 deployed or played, so there is no in-game confirmation of anything; whether the six Guardians should
 also get exclamation marks is a genuine Will decision that was deliberately NOT guessed; the two
 guards of each pair still share a mesh; and `amgoz1_design_voice.md` is still absent from the repo.
@@ -216,6 +241,13 @@ Devourer; the Guardians reading as uber to a player; the Guardian chests actuall
 `Champion` lock; the twelve signature skills actually firing (slot/anim wiring is validated by the
 build's gates, not by a fight); and a character dying and recovering the full XP from a marker.
 R-109 in particular is arithmetic proved from the disassembly and the gate, not from a death.
+
+> **ROUND-2 NARROWING (2026-08-05):** "the twelve signature skills actually firing" is no longer a
+> single opaque unknown. The ANIMATION half is now proved from the built `.arz` - no guard slot
+> names a clip its own `charAnimationTableName` lacks (`--castability`, and `verify()` reds the
+> build otherwise). That is exactly the half that was silently FALSE in round 1 for four skills.
+> What stays launch-gated is only the in-fight behaviour: cast frequency, range/timeout tuning,
+> whether the FX read well, and whether the pair fight is fun.
 
 ### ⚠️ BL-R108VIS-DEBT-3 (P2, VISUAL - the two guards of a pair still share one mesh)
 Measured: `svc_general_a_guard1` and `guard2` both carry
@@ -240,6 +272,31 @@ orb-less ("The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0)" in `app
 Resolved in favour of Will's explicit #18 ask; the two cases do differ measurably (`dropItems` is
 `1` on the guards and `0` on the marauders), and `svc_obs_escort_permean` is a shipped Champion on
 `genericbossorb_02`. If Will wants Champion escorts orb-less as a rule, the guards' orb is one field.
+
+### ⚠️ BL-R108VIS-DEBT-7 (P1, NEW 2026-08-05 - the castability invariant is guard-scoped, not repo-wide)
+Round 2 proved that a creature can carry a fully-wired, fully-resolving, pet-free skill that the
+engine will NEVER cast, because the skill's `skillSpecialAnimationName` is not in the creature's own
+`charAnimationTableName`. The gate that catches it now lives in `general_guardians.verify()` and
+therefore covers **the 6 Guardians and nothing else**. The same class exists everywhere in the mod:
+* `_verify_soul_granted_skill_activation` covers the PLAYER side (soul grants, `<=15` universal-anim
+  rule) and `_svc_clone_blank_anim` is the per-boss remedy several lanes already applied by hand
+  (b42 Ephialtes, the C1-C3 corrections, Dorus, Tantalus). Nothing covers **mod-authored MONSTER
+  kits in general**.
+* MEASURED as part of this round: the three Machae generals themselves are clean, so the gap is not
+  currently biting next door. **Not measured: every other mod-authored monster in the db.**
+**FIX SHAPE (not done here, deliberately - it is a repo-wide gate, not this lane's scope):** promote
+`general_guardians.uncastable_slots(db, monster)` into a shared build gate that walks every
+mod-authored monster record and reds on any slot naming a clip absent from that creature's own
+table, with a waiver manifest for any deliberate exception. Owner: whoever next touches a boss kit.
+
+### ⚠️ BL-R108VIS-DEBT-8 (P2, NEW 2026-08-05 - round 2 minted 5 new skill records; the round-1 gate record's counts are stale)
+The lane now writes **5 more records** than the round-1 gate record above states
+(`records\skills\svc\svc_machaeguard_{vomitbile,venombolt,flamewave,embercharge,shieldcharge}.dbr`),
+so its ADDED count moves 27 -> 32 and its arz md5 changes. The round-1 numbers in the gate record
+are annotated as round-1 rather than edited away (RETIREMENT PROTOCOL / no silent rewriting of a
+record). The **arz + Text coupling still holds and the tag set did NOT change** - these five clones
+carry no new tag - so the Text.arc md5 recorded above is still the correct partner artifact, but an
+integrator must re-verify that after any further change.
 
 ### ⚠️ BL-R108VIS-DEBT-6 (P2, MERGE COUPLING with sibling R-108 lanes)
 `um_bloodtoxeus_99` is touched by this lane (`DisplayAsQuestItem`) and by `feat/devourer-kit`

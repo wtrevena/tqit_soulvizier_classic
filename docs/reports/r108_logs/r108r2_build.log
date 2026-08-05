@@ -1,0 +1,350 @@
+  PREFLIGHT: SV 0.98i database.arz: supplied path does not exist (upstream\soulvizier_098i\Database\database.arz) - falling back to the resolution ladder
+  PREFLIGHT: SV 0.98i database.arz                      OK via main-checkout cache
+             C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Database\database.arz
+  PREFLIGHT: SV 0.9 database.arz: supplied path does not exist (upstream\soulvizier_0.9\Database\database.arz) - falling back to the resolution ladder
+  PREFLIGHT: SV 0.9 database.arz                        OK via main-checkout cache
+             C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_0.9\Database\database.arz
+  PREFLIGHT: SV 0.4.1 database.arz: supplied path does not exist (upstream\soulvizier_041\Database\database.arz) - falling back to the resolution ladder
+  PREFLIGHT: SV 0.4.1 database.arz                      OK via main-checkout cache
+             C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_041\Database\database.arz
+  prefix-cache: MISS (prefix-07f7acbb7ff7e73b.pkl absent)
+Loading SV 0.98i: C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_098i\Database\database.arz
+  Read 10000/51186...
+  Read 20000/51186...
+  Read 30000/51186...
+  Read 40000/51186...
+  Read 50000/51186...
+  Loaded: 51186 records, 140943 strings
+  F6 provenance: captured 2158 SV-original soul paths (51186 total SV records) for the naming + mod-authored-summon gates
+
+Loading SV 0.9: C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_0.9\Database\database.arz
+  Read 10000/48722...
+  Read 20000/48722...
+  Read 30000/48722...
+  Read 40000/48722...
+  Loaded: 48722 records, 134626 strings
+
+Loading SV 0.4.1: C:\Users\willi\repos\tqit_soulvizier_classic\upstream\soulvizier_041\Database\database.arz
+  Read 10000/46443...
+  Read 20000/46443...
+  Read 30000/46443...
+  Read 40000/46443...
+  Loaded: 46443 records, 128550 strings
+
+Loading base game: C:\Program Files (x86)\Steam\steamapps\common\Titan Quest Anniversary Edition\Database\database.arz
+  Read 10000/74013...
+  Read 20000/74013...
+  Read 30000/74013...
+  Read 40000/74013...
+  Read 50000/74013...
+  Read 60000/74013...
+  Read 70000/74013...
+  Loaded: 74013 records, 190522 strings
+
+=== Import base game boss records for soul wiring ===
+  Imported 0 base game boss records
+
+=== A5: Act-5 leak fix (post-Hades portal suppression + Victory-Portal un-gate) ===
+  A5 SUPPRESS: portal_hadesscandia.dbr += RequireNoDLC=TQA2 (never spawns)
+  A5 SUPPRESS: x4_other_immortalthrone_to_eternalembers_teleport_a.dbr += RequireNoDLC=TQX4 (never spawns)
+  A5 UN-GATE: endportal_hades RequireNoDLC dropped (removed) -> the one visible Victory Portal for all DLC combos -> Epic
+  A5 TIDY: endportal_hades_normal_epic RequireNoDLC=['TQA2', 'TQX4'] (suppress the redundant 2nd portal)
+  A5: 4 portal record override(s) written (arz-only; re-evaluated at spawn every load)
+
+=== Patch 0: Strip incompatible UI overrides ===
+  Stripped: 1097 UI records
+  Kept: 372 skill tree records
+
+=== Patch 0b: Remove dead orphan records ===
+  Removed dead orphan: records\item\miscellaneous\oneshot\potionexp_test.dbr
+  Dead orphan records removed: 1
+
+=== Patch 0c: Chimera chest double-extension rename (Q4-3) ===
+  renamed records\item\containers\boss\bosschest13_chimera_epic.dbr.dbr -> records\item\containers\boss\bosschest13_chimera_epic.dbr (+ lockedSound -> resolvable base path)
+  renamed records\item\containers\boss\repeatbosschest13_chimera_epic.dbr.dbr -> records\item\containers\boss\repeatbosschest13_chimera_epic.dbr (+ lockedSound -> resolvable base path)
+  rewrote bosschestpool13_chimera_epic.fixedItemName1 -> single .dbr
+
+=== Patch 1: Restore potion drop rates ===
+  Potion weights restored: 168
+
+=== Patch 2: Wire souls to monsters ===
+  Soul catalog: 808 names across 98 types
+  Spawn provenance: 1791 random-pool members, 0 placed-proxy members
+  Newly wired: 7
+  Already had souls: 1154 (all updated to AE equip fields)
+  Equip fields set: 742
+  Common/Champion drop-chance zeroed: 419 (never drop souls)
+  F1 cross-wire gate OK: no NEW fuzzy Hero/Boss/Quest soul cross-wires
+
+=== Patch 3: Make equipment enchantable ===
+  Items made enchantable: 8568
+
+=== Patch 4: Grant all inventory bags ===
+  Inventory sack cost set to 0 (free)
+  Starter chest (build30.2): numSpawn='46+(2*numberOfPlayers)' (equation form, 48 solo); single slot, dual table 108:36 = E[36 potions + 12 bags]; in-game verified 2026-07-09
+
+=== Patch 5: Expand caravan stash ===
+  Imported stashwindow.dbr from base game
+  Storage Area: 10 wide x 50 tall (500 slots)
+  Imported relicvaultwindow.dbr from base game
+  Relic Vault: 10 wide x 50 tall (500 slots)
+  Imported caravanwindow.dbr from base game (has Relic Vault tab)
+
+=== Patch 6: Restore Rest skill ===
+  Added Rest to quest reward tree: skillName22 = records\quests\rewards\drxrest_skillbuff.dbr
+  skillLevel22 = 1 (auto-granted from game start)
+  Effect: +350 life/mana regen, -300 all resistances, 5s duration, 3min cooldown
+
+=== Patch 11: Restore legacy skills from SV 0.4.1 ===
+  Created: drxdarklings.dbr (Darklings from 0.4.1)
+  Created: drxdarklings_darkaperture.dbr (Dark Aperture)
+  Rogue skillName26 = Darklings, skillName27 = Dark Aperture
+  Rogue UI Skill25: (328,279) Darklings
+  Rogue UI Skill26: (328,155) Dark Aperture
+  Replaced: Elemental Flurry -> Thorn Sprites
+  Replaced: Dissemination -> Fabrical Tear
+  Spirit skillName26 = Sands of Sleep
+  Spirit skillName27 = Troubled Dreams
+  Spirit skillName28 = Distortion Wave
+  Spirit skillName29 = Chaotic Resonance
+  Spirit skillName30 = Psionic Immolation
+  Spirit UI Skill25: (128,403) Sands of Sleep
+  Spirit UI Skill26: (128,279) Troubled Dreams
+  Spirit UI Skill27: (328,403) Distortion Wave
+  Spirit UI Skill28: (328,217) Chaotic Resonance
+  Spirit UI Skill29: (328,93) Psionic Immolation
+  Created: drxhamstring.dbr (original Hamstring from 0.4.1)
+  Warfare skillName26 = Hamstring
+  Warfare UI Skill25: (428,279) Hamstring
+  Total legacy skill changes: 20
+
+=== Patch 8: Fix broken mastery skills ===
+  + desc: drxlaytrap.dbr = tagbreachDESC
+  + desc: drxlaytrap_rapidconstruction.dbr = tagNewSkill321DESC
+  Rewrote 318640 case-mismatched .dbr references
+  Injected display fields into 38 skill stubs
+
+=== Patch 10: Register SV-added skill buttons in panel controllers ===
+  Mastery 1: 26 buttons (5 added) -> xpack + xpack3 overrides
+  Mastery 2: 25 buttons (4 added) -> xpack + xpack3 overrides
+  Mastery 3: 25 buttons (4 added) -> xpack + xpack3 overrides
+  Mastery 4: 26 buttons (5 added) -> xpack + xpack3 overrides
+  Mastery 5: 27 buttons (6 added) -> xpack + xpack3 overrides
+  Mastery 6: 25 buttons (4 added) -> xpack + xpack3 overrides
+  Mastery 7: 30 buttons (9 added) -> xpack + xpack3 overrides
+  Mastery 8: 25 buttons (4 added) -> xpack + xpack3 overrides
+  Total skill buttons registered: 41
+
+=== Patch 9: Add DLC mastery trees ===
+  records\xpack\creatures\pc\malepc01.dbr: added RuneMaster (slot 11) + Neidan (slot 12)
+  records\xpack\creatures\pc\femalepc01.dbr: added RuneMaster (slot 11) + Neidan (slot 12)
+
+=== MASTERY WAVE 1: broken-class fixes (B1-B6) ===
+  B1 Meteor: skillSpecialAnimationName 'MeteorShower' -> ''
+  B2 Thunderball (also revives concussiveblast): skillSpecialAnimationName 'Ensnare' -> ''
+  B3 Bonespire: skillSpecialAnimationName 'BoneSpire' -> ''
+  hygiene: literal-'0' anim on a passive: skillSpecialAnimationName '0' -> ''
+  hygiene: literal-'0' anim on a passive: skillSpecialAnimationName '0' -> ''
+  B4 Shield Smash: offensivePhysicalMin 0 -> 12..61 ladder; offensivePhysicalModifier 0 -> 20..50 ladder (len 10 = ult)
+  B5 Nightmare MasterMind: skillName1 repointed (resolving lowercase path) + skillLevel1 ramp min(tier,12) on 20 tiers
+    B6 port anm_malepc01.dbr bow[8] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_malepc01.dbr bow[9] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    B6 port anm_malepc01.dbr bow[10] = Crosscut (FemalePC_Bow_Skill_LethalInjection.anm)
+    B6 SKIP anm_malepc01.dbr dHanded: row FULL (15/15) - cannot port 'Hew' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr dHanded: row FULL (15/15) - cannot port 'Barrage' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr dHanded: row FULL (15/15) - cannot port 'Taunt' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr dHanded: row FULL (15/15) - cannot port 'Ensnare' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr dHanded: row FULL (15/15) - cannot port 'ThunderClap' without replacing an entry (forbidden)
+    B6 port anm_malepc01.dbr dualRanged[11] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    B6 port anm_malepc01.dbr dualRanged[12] = Hew (malepc_dr_attgamma.anm)
+    B6 port anm_malepc01.dbr dualRanged[13] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_malepc01.dbr dualRanged[14] = Barrage (malepc_staff_skill_spellfury.anm)
+    B6 port anm_malepc01.dbr rangedOneHand[11] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_malepc01.dbr rangedOneHand[12] = ThunderClap (malepc_onehand_skill_thunderclap.anm)
+    B6 port anm_malepc01.dbr rangedOneHand[13] = Ensnare (malePC_Spear_Skill_Ensnare.anm)
+    B6 port anm_malepc01.dbr rangedOneHand[14] = Crosscut (MalePC_OneHand_Skill_CastProjectile.anm)
+    B6 SKIP anm_malepc01.dbr sHanded: row FULL (15/15) - cannot port 'Hew' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr sHanded: row FULL (15/15) - cannot port 'Crosscut' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr sHanded: row FULL (15/15) - cannot port 'Taunt' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr sHanded: row FULL (15/15) - cannot port 'Ensnare' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr spear: row FULL (15/15) - cannot port 'Crosscut' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr spear: row FULL (15/15) - cannot port 'Hew' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr spear: row FULL (15/15) - cannot port 'Taunt' without replacing an entry (forbidden)
+    B6 SKIP anm_malepc01.dbr spear: row FULL (15/15) - cannot port 'Ensnare' without replacing an entry (forbidden)
+    B6 port anm_malepc01.dbr staff[7] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_malepc01.dbr staff[8] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    B6 port anm_malepc01.dbr staff[9] = Flamesurge (malepc_onehand_skill_castprojectile.anm)
+    B6 port anm_malepc01.dbr staff[10] = CrossCut (Wraith_Staff_AttBeta.anm)
+    B6 port anm_malepc01.dbr staff[11] = Hew (Wraith_Staff_AttBeta.anm)
+    B6 port anm_malepc01.dbr unarmed[11] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_malepc01.dbr unarmed[12] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    B6 port anm_malepc01.dbr unarmed[13] = Hew (malePC_OneHand_Skill_Hew.anm)
+    B6 port anm_femalepc.dbr bow[8] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_femalepc.dbr bow[9] = Ensnare (FemalePC_Bow_Skill_Ensnare.anm)
+    B6 port anm_femalepc.dbr bow[10] = Crosscut (FemalePC_Bow_Skill_LethalInjection.anm)
+    B6 SKIP anm_femalepc.dbr dHanded: row FULL (15/15) - cannot port 'Hew' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr dHanded: row FULL (15/15) - cannot port 'Barrage' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr dHanded: row FULL (15/15) - cannot port 'Taunt' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr dHanded: row FULL (15/15) - cannot port 'Ensnare' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr dHanded: row FULL (15/15) - cannot port 'ThunderClap' without replacing an entry (forbidden)
+    B6 port anm_femalepc.dbr dualRanged[11] = Ensnare (FeMalePC_OneHand_Skill_Ensnare.anm)
+    B6 port anm_femalepc.dbr dualRanged[12] = Hew (femalepc_dr_attgamma.anm)
+    B6 port anm_femalepc.dbr dualRanged[13] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_femalepc.dbr dualRanged[14] = Barrage (femalepc_staff_skill_spellfury.anm)
+    B6 port anm_femalepc.dbr rangedOneHand[11] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_femalepc.dbr rangedOneHand[12] = ThunderClap (femalepc_onehand_skill_thunderclap.anm)
+    B6 port anm_femalepc.dbr rangedOneHand[13] = Ensnare (FemalePC_Spear_Skill_Ensnare.anm)
+    B6 port anm_femalepc.dbr rangedOneHand[14] = Crosscut (MalePC_OneHand_Skill_CastProjectile.anm)
+    B6 SKIP anm_femalepc.dbr sHanded: row FULL (15/15) - cannot port 'Hew' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr sHanded: row FULL (15/15) - cannot port 'Crosscut' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr sHanded: row FULL (15/15) - cannot port 'Taunt' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr sHanded: row FULL (15/15) - cannot port 'Ensnare' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr spear: row FULL (15/15) - cannot port 'Crosscut' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr spear: row FULL (15/15) - cannot port 'Hew' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr spear: row FULL (15/15) - cannot port 'Taunt' without replacing an entry (forbidden)
+    B6 SKIP anm_femalepc.dbr spear: row FULL (15/15) - cannot port 'Ensnare' without replacing an entry (forbidden)
+    B6 port anm_femalepc.dbr staff[7] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_femalepc.dbr staff[8] = Ensnare (FemalePC_OneHand_Skill_Ensnare.anm)
+    B6 port anm_femalepc.dbr staff[9] = Flamesurge (femalepc_STAFF_skill_castprojectile.anm)
+    B6 port anm_femalepc.dbr staff[10] = CrossCut (Wraith_Staff_AttBeta.anm)
+    B6 port anm_femalepc.dbr staff[11] = Hew (Wraith_Staff_AttBeta.anm)
+    B6 port anm_femalepc.dbr unarmed[11] = Taunt (FemalePC_Taunt.anm)
+    B6 port anm_femalepc.dbr unarmed[12] = Ensnare (FemalePC_UnArmed_Skill_Ensnare.anm)
+    B6 port anm_femalepc.dbr unarmed[13] = Hew (FemalePC_OneHand_Skill_Hew.anm)
+  B6 anim tables: 38 (clip,ref) pair(s) restored from base (row-matched, free indices <= 15 only); 26 row(s) full - skipped by the conservative <=15 policy (graft #0 below completes the melee rows above index 15)
+    graft#0 anm_malepc01.dbr dHanded[16] = Hew (malePC_OneHand_Skill_Hew.anm)
+    graft#0 anm_malepc01.dbr dHanded[17] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    graft#0 anm_malepc01.dbr dHanded[18] = Barrage (malepc_dw_skill_doublex.anm)
+    graft#0 anm_malepc01.dbr dHanded[19] = ThunderClap (MalePC_DW_Skill_ThunderClap.anm)
+    graft#0 anm_malepc01.dbr sHanded[16] = Hew (MalePC_OneHand_Skill_Hew.anm)
+    graft#0 anm_malepc01.dbr sHanded[17] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    graft#0 anm_malepc01.dbr sHanded[18] = Crosscut (malepc_onehand_skill_doubleslash.anm)
+    graft#0 anm_malepc01.dbr spear[16] = Hew (malePC_OneHand_Skill_Hew.anm)
+    graft#0 anm_malepc01.dbr spear[17] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    graft#0 anm_malepc01.dbr spear[18] = Crosscut (malepc_onehand_skill_doubleslash.anm)
+    graft#0 anm_femalepc.dbr dHanded[16] = Hew (FemalePC_OneHand_Skill_Hew.anm)
+    graft#0 anm_femalepc.dbr dHanded[17] = Ensnare (MalePC_OneHand_Skill_Ensnare.anm)
+    graft#0 anm_femalepc.dbr dHanded[18] = Barrage (femalepc_dw_skill_doublex.anm)
+    graft#0 anm_femalepc.dbr dHanded[19] = ThunderClap (FemalePC_DW_Skill_ThunderClap.anm)
+    graft#0 anm_femalepc.dbr sHanded[16] = Hew (FemalePC_OneHand_Skill_Hew.anm)
+    graft#0 anm_femalepc.dbr sHanded[17] = Ensnare (FemalePC_OneHand_Skill_Ensnare.anm)
+    graft#0 anm_femalepc.dbr sHanded[18] = Crosscut (femalepc_onehand_skill_doubleslash.anm)
+    graft#0 anm_femalepc.dbr spear[16] = Hew (FemalePC_OneHand_Skill_Hew.anm)
+    graft#0 anm_femalepc.dbr spear[17] = Ensnare (FemalePC_Spear_Skill_Ensnare.anm)
+    graft#0 anm_femalepc.dbr spear[18] = Crosscut (femalepc_onehand_skill_doubleslash.anm)
+  GRAFT #0 melee-row completion: 20 (clip,ref) pair(s) restored onto dHanded/sHanded/spear at indices >15 (Hew/Ensnare/Crosscut/Barrage/ThunderClap; 'Rest' preserved)
+  Mastery Wave 1 broken fixes applied: 9 item(s)
+
+=== MASTERY WAVE 1: Defense/Earth/Storm boosts ===
+  DEF drxbatter: physMod 3..25 -> 6..55 (len 16); manaCost -6/lvl
+  DEF drxshieldcharge: +offensivePhysicalModifier 15..80 (len 16)
+  DEF drxheave: +offensivePercentCurrentLifeMin 1..5%% (len 12)
+  DEF drxcolossusform: cd 360->180, speed -30->-15, absorb x50/35
+  DEF drxdefensivemastery: elemRes ML1-40 0 -> 0.2/lvl (8%% @40); tail 32 entries kept
+  DEF rendarmor: armor-amp x160/115 + duration 5->6s
+  DEF heave_cleave: +bleed 30..120 over 3s (len 12; its +245%% amp finally has a base)
+  EARTH: Meteor cd 360->60; Volcanic Orb cd 4->1.5
+  EARTH drxearthmastery: mana 8..320 -> 12..480; +castSpeed 0..20%; +runSpeed 0..12% (ML1-40)
+  EARTH eruption_moltenlava: +total-resist shred 25..40%% over 3s (len 12; verified base field family, 47-record precedent)
+  EARTH hygiene: dangling SandBox FX / Wildfire sound refs cleared
+  STORM drxstormmastery: life 17/lvl -> 22.5/lvl (ML40 680 -> 900)
+  STORM wisps: characterLife -> 240 + 50/tier on 20 tier(s) (ult ~1190, kept < Shadow Stalker ~1440)
+  STORM wisps: +resist passive (35%% freeze/stun/fire/lightning/cold) wired into a free skill slot on 20 tier(s)
+  STORM eye-of-the-storm aura: +12%% run speed (party-wide)
+  STORM hygiene: wisp summon targetFxPakName leading space fixed
+  Mastery Wave 1 boosts applied (Defense 7, Earth 5+hyg, Storm 5)
+
+=== MASTERY WAVE 2: Warfare/Nature/Spirit/Dream + RuneMaster/Neidan ===
+  WARFARE ancestralhorn: cd/crm 300->120, TTL 30->45 (~10%->37% pet uptime)
+  WARFARE battlestandard: TTL 18..36 -> 24..50 (banner amp ~50%->~70% uptime)
+  WARFARE warwind (optional): cd/crm 12->8 (pre-Refinement AoE feel)
+  WARFARE spectralsoldier: dangling armband path fixed on 20/20 tiers
+  NATURE forceofnature: cd/crm 360->180 (~17%->33% treant uptime; 180 not 120 = no Occult overshoot)
+  NATURE naturemastery petBonus: +pet dmg 0->30%% + protection 0->160 (ML1-40)
+  NATURE accel-growth+renewal: dangling defensiveConvert (==cooldown ladder, silent charm-res malus) cleared; cooldown kept
+  NATURE wolf/sylvan dangling FX: maul->Damage01, survivalinstinct->Buff07, nymph controllerAggressive repointed on 20 tier(s)
+  SPIRIT outsidersummons (Ether Lord): cd 360->120, TTL 30->60 (~8%->50% uptime; stays temporary)
+  SPIRIT deathward: cd 300->180 (panic on Cornered-Rage cadence)
+  SPIRIT bonepet: spiritbreath 'xxx' unprefixed on 5 tier(s); dangling drxplaceholder skillName2 cleared on 20 tier(s); skillName6 no-op KEPT
+  SPIRIT bonescourge_spiritbreath: dangling SandBox particleEffectName2/3 cleared (re-enable is clean)
+  SPIRIT wraithlord (Liche King): skellysummon2/3 'xxx' RE-ENABLED on 20/20 tiers (chain resolves to drx_skelly_01..20); soulblight double-slot KEPT (removal forbidden); revertible
+  DREAM nightmare: dangling timefield self-buff cleared on 20 tier(s) (MasterMind repoint already shipped W1 B5)
+  DREAM phantasm: cd 180->120; TTL 15..25 -> 15..30 (~14%->~30% uptime)
+  DREAM phantasm pet: dangling RingAll loot ref cleared on 20 tier(s)
+  DREAM nightmare psionicbeam: offensivePhysical/LifeMin [8..66] x2 -> [16..132] (elite-pet share)
+  DREAM mana ladders: temporalrift 10->16, spellbreaker 10->12, spellshock 10->12 (continued step)
+  DREAM phantomstrike: self-slow [-11..-50] -> zeroed (len 14; blink no longer self-roots; field kept per rule)
+  RUNEMASTER mastery: life 800->1160 (ML40); mana 0->400 (ML40; was the sole 0-mana INT mastery)
+  RUNEMASTER menhiraltar (Guardian Stones): cd 240->120, TTL 45->60 (~19%->~50% pet uptime)
+  NEIDAN mastery: life 900->1050 (ML40; still squishiest/caster-leaning)
+  NEIDAN terracotta_servant: petLimit [1x9,2] -> [1x7,2,2,3] (2 constructs by skill L8, 3 at L10)
+  NEIDAN deathbomb: skillCastChance 33 -> 45 (x16; corpse-explosion clear engine)
+  NEIDAN splash (Spreading Influence): +skillDependancy=shenpao (attaches the ML40 modifier)
+  Mastery Wave 2 boosts applied (Warfare 4, Nature 4, Spirit 4, Dream 6, RuneMaster 2, Neidan 4)
+
+=== OH pane art: Occult select-mastery preview repoint (4 DLC tiers) ===
+  records\ingameui\player skills\select mastery\masterypane.dbr (imported+repointed) idx4: InGameUI\Skills\StealthPanelLarge01.tex -> DRXtextures\masterybackdrops\occultpanellarge.tex
+  records\xpack\ui\skills\select mastery\masterypane.dbr (imported+repointed) idx4: XPack\UI\Skills\StealthPanelMedium01.tex -> DRXtextures\masterybackdrops\occultpanellarge.tex
+  records\xpack2\ui\skills\select mastery\masterypane.dbr (imported+repointed) idx4: XPack\UI\Skills\StealthPanelMedium01.tex -> DRXtextures\masterybackdrops\occultpanellarge.tex
+  records\xpack4\ui\skills\select mastery\masterypane.dbr (imported+repointed) idx4: XPack\UI\Skills\StealthPanelMedium01.tex -> DRXtextures\masterybackdrops\occultpanellarge.tex
+  OH pane art: select-mastery Occult preview repointed on 4/4 DLC tiers
+
+Build36 graft ON: loading SVAERA source: C:\Program Files (x86)\Steam\steamapps\workshop\content\475150\2076433374\SVAERA_customquest\Database\SVAERA_customquest.arz
+  Read 10000/110495...
+  Read 20000/110495...
+  Read 30000/110495...
+  Read 40000/110495...
+  Read 50000/110495...
+  Read 60000/110495...
+  Read 70000/110495...
+  Read 80000/110495...
+  Read 90000/110495...
+  Read 100000/110495...
+  Read 110000/110495...
+  Loaded: 110495 records, 266239 strings
+
+=== BUILD36 LANE B: SVAERA mastery-skill graft (18 skills) ===
+  closure import: 21 record(s) pulled from SVAERA
+  drxrupture: cleared 2 dangling placeholder projectile-FX refs
+    wired Slam: drxwarfareskilltree.dbr[skillName27] + UI mastery 1\skill26 (328,31)
+    wired Fissure: drxwarfareskilltree.dbr[skillName28] + UI mastery 1\skill27 (328,217)
+    wired Lasting Legacy: drxwarfareskilltree.dbr[skillName29] + UI mastery 1\skill28 (328,341)
+    wired Perfect Block: drxdefensiveskilltree.dbr[skillName26] + UI mastery 2\skill25 (428,31)
+    wired Unyielding Phalanx: drxdefensiveskilltree.dbr[skillName27] + UI mastery 2\skill26 (428,155)
+    wired Fire Nova: drxearthskilltree.dbr[skillName26] + UI mastery 3\skill25 (428,31)
+    wired Rupture: drxearthskilltree.dbr[skillName27] + UI mastery 3\skill26 (428,93)
+    wired Burning Bolts: drxearthskilltree.dbr[skillName28] + UI mastery 3\skill27 (428,217)
+    wired Flare: drxearthskilltree.dbr[skillName29] + UI mastery 3\skill28 (428,341)
+    wired Lightning Dash: drxstormskilltree.dbr[skillName26] + UI mastery 4\skill26 (428,31)
+    wired Frost Nova: drxstormskilltree.dbr[skillName27] + UI mastery 4\skill27 (428,155)
+    wired Earthbind: drxnatureskilltree.dbr[skillName26] + UI mastery 8\skill25 (328,31)
+    wired Sylvan Protection: drxnatureskilltree.dbr[skillName27] + UI mastery 8\skill26 (328,155)
+    wired Dream Image: drxdreamskilltree.dbr[skillName26] + UI mastery 9\skill25 (128,31)
+  re-registering ingameui panels for masteries [1, 2, 3, 4, 8]
+
+=== Patch 10: Register SV-added skill buttons in panel controllers ===
+  Mastery 1: 29 buttons (3 added) -> xpack + xpack3 overrides
+  Mastery 2: 27 buttons (2 added) -> xpack + xpack3 overrides
+  Mastery 3: 29 buttons (4 added) -> xpack + xpack3 overrides
+  Mastery 4: 28 buttons (2 added) -> xpack + xpack3 overrides
+  Mastery 5: 27 buttons -> xpack + xpack3 overrides
+  Mastery 6: 25 buttons -> xpack + xpack3 overrides
+  Mastery 7: 30 buttons -> xpack + xpack3 overrides
+  Mastery 8: 27 buttons (2 added) -> xpack + xpack3 overrides
+  Total skill buttons registered: 13
+  Dream panectrl: +1 button (xpack mastery 9 skill25)
+  GRAFT COMPLETE: 14 player-tree skills wired (21 closure records; 8 SV-authored tags)
+
+=== BUILD36 LANE B: Runemaster buffs (vanilla-path, additive) ===
+  Menhir Wall: cd 22->18, wall TTL 10->14 (+40% uptime)
+  Mines: cd 9->8, active duration 10->14 (mines linger)
+  RUNEMASTER buffs applied: 2 vanilla-path record(s)
+  F7a storm panel: Skill25 moved (128,217) -> (128,279) (was overlapping Skill06 Static Charge)
+
+=== GROUP E: N5 thrown weapons (drop restore + supra) ===
+  N5 thrown-weapon drops RESTORED: 198 defaultloot tables (eligible 198, skipped-occupied 0)
+  N5 supra thrown weapons: 3 supers (Sanguine Orbit, The Last Word, Charon's Toll) + 3 formulas wired into supra.dbr + supra_special.dbr @ w100
+
+=== Patch 7: Verify uber monster classifications ===
+  Skipping promotion -- original SV classifications are correct.
+  40 um_ minions (Common/Champion/none) intentionally left as-is.
