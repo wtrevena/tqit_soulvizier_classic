@@ -2464,9 +2464,41 @@ the weaker safety form and it is now SUPERSEDED - assert **equality**. `recovere
 it would quietly punish the player twice. Plant negatives on both sides: recovery above the penalty must red
 the build, and recovery below it must red the build.
 
-**STATUS:** ruled, in flight. Owned by the `feat/uber-visibility` lane of the R-108 implementation wave
-(task `wx0ky10vv`), which was briefed with the earlier 10% framing; this entry is the authority and the vet
-must hold the implementer to the equality, not to 10%.
+### AMENDMENT - **MY PREMISE WAS WRONG. THERE WAS NEVER A FREE-XP EXPLOIT.** Disproven from the engine.
+
+I wrote above that "dying and recovering the marker is a NET XP GAIN - a free-XP loop we introduced". That is
+**FALSE**, and the lane disproved it from `Game.dll` rather than accepting it. Recorded prominently because the
+wrong version was stated confidently, in the ledger, twice.
+
+**WHAT THE ENGINE ACTUALLY DOES** (disassembled, capstone, VAs given so anyone can re-check):
+- There is exactly ONE `"RedemptionMultiplier"` literal (VA `0x10346548`).
+- It has exactly ONE writer - the push at `0x1019b8ba` supplying the **0.5f** default - and exactly ONE reader,
+  `mulss xmm0,[edi+0x2a04]` at `0x10194fca`, inside `GetPlayerExperienceRedemptionAmount`.
+- **The load-bearing find:** `RegisterExperienceLoss` stores its arg2 into `GraveInfo+0x0C`, and at its single
+  call site (`0x10208012`) that arg2 is the return of the helper at `0x1017d620`, which computes
+  `old - max(old - penalty, floor)` - i.e. **the REALISED loss**, already clamped.
+
+So the marker never paid "the original pre-cut amount". It pays **`realised_loss * RedemptionMultiplier`**, and
+the multiplier shipped at **0.5**. b93's death-penalty cut therefore scaled the recovery automatically and
+could not have opened an exploit. What actually existed was the OPPOSITE defect: **the player recovered only
+half of what they lost**, on every death, in stock and in this mod.
+
+**WILL'S RULING IS UNCHANGED AND NOW EVEN SIMPLER TO SATISFY:** `recovered == lost` is achieved by setting
+`RedemptionMultiplier` **0.5 -> 1.0**. It is derived from the realised loss by the engine itself, so it cannot
+drift when the penalty is retuned - which is exactly the property Will asked for and the reason his second
+formulation ("match the xp lost") was the better rule.
+
+**PROOF THAT IT IS DERIVED, NOT HARDCODED:** the lane's gate plants a retuned penalty (divisor 90 -> 45, cap ->
+123456) and the equality still ACCEPTS - so the invariant survives a future rebalance. 7/7 tombstone negatives
+fire, both directions, re-run independently by the vet.
+
+**THE LESSON, and it is the same one as the b91 `difficultyLimitsFile` claim:** I asserted a mechanism from the
+shape of a field name and a plausible story, then wrote it into the design law of record as fact. Both times an
+agent that went to the actual engine found the opposite. **A mechanism claim belongs in this ledger only with
+the bytes that prove it.**
+
+**STATUS:** R-109 IMPLEMENTED in the `feat/uber-visibility` branch (`RedemptionMultiplier` 0.5 -> 1.0), vet-
+reproduced independently, awaiting only that branch's round-2 merge. The exploit framing above is retracted.
 
 ---
 
