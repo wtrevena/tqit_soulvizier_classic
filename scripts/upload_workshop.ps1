@@ -212,11 +212,14 @@ if ($ChangeNote.Length -gt 8000) {
 Write-Host "Change note ($($ChangeNote.Length) chars):" -ForegroundColor Cyan
 Write-Host $ChangeNote
 
-# PREVIEW / COVER IMAGE. Optional but strongly wanted: without it the item shows a blank tile.
-if (-not $PreviewFile) {
-    $defaultPreview = Join-Path $RepoRoot 'assets\workshop_preview.jpg'
-    if (Test-Path $defaultPreview) { $PreviewFile = $defaultPreview }
-}
+# PREVIEW / COVER IMAGE.
+# ⛔ NOT attempted by default. PROVEN 2026-08-06: this Workshop item (3759792705) lives on Steam's
+#    LEGACY UGC cloud storage (`k_EPublishedFileStorageSystemLegacyCloud`), and the preview upload
+#    ALWAYS fails there with `UGC Upload Limit exceeded` (steamcmd cloud_log.txt). Worse, bundling the
+#    failing preview into the same run made two earlier sessions misread the whole upload as failed
+#    ("Reverting to previous content ... Limit exceeded") when the CONTENT depot actually committed
+#    fine. So the previewfile key is OMITTED unless you explicitly pass -PreviewFile, isolating the
+#    content upload from the broken cover path. The cover must be set another way (in-game/website).
 $previewLine = ''
 if ($PreviewFile) {
     if (-not (Test-Path $PreviewFile)) {
