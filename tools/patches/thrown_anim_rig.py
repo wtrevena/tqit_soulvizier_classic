@@ -481,6 +481,26 @@ def apply(db, tags):
         # sibling `*Anim*` clip field). No explicit dtype - clone-safe.
         for field, clip in fam["clips"].items():
             db.set_field(fam["clone"], field, clip)
+        # DANGLING CONTROLLER, inherited from the donor and NOT caused by us.
+        # Every one of these anim tables carries `controller` =
+        # Records\Controllers\Monster\Controller_Maenad02.dbr, which does not
+        # resolve - the only surviving copy sits under `controllers\monster\old\`.
+        # NINE shipped records dangle identically (anm_maenad, anm_maenad_hover,
+        # anm_maenadbow, anm_sandspirit, ...) and the game plays fine, so the field
+        # is provably not load-bearing on an anim table.
+        #
+        # It only becomes a Steam BLOCKER on OUR clone, because C-RES-DBR-1 rates an
+        # unresolved reference from a MOD-AUTHORED record P1 while the inherited ones
+        # are P2. Blanking it on the clone is behaviour-identical to the dangling
+        # state it replaces (the engine resolves neither), touches no inherited
+        # record, and clears the gate honestly rather than by whitelist.
+        _ctrl = ""
+        try:
+            _ctrl = (db.get_field_value(fam["clone"], "controller") or "")
+        except Exception:
+            _ctrl = ""
+        if _ctrl and not db.has_record(str(_ctrl).strip()):
+            db.set_field(fam["clone"], "controller", "")
 
     for entry in thrown_restore.ROSTER:
         fam = _family_for(entry)
