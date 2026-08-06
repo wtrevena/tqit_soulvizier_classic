@@ -3885,3 +3885,24 @@ Text.arc read-back confirms fire caster -> "Gorgon ~ Geomancer", poison caster -
 display names on the correct creatures, per Will's "restore the FULL VANILLA names" - it does not invent new
 element-matched names. NOT PROVEN IN-GAME: a display-name change is proven from the rebuilt Text.arc, but a
 player eyeballing the two monsters near Knossos is the launch gate (orchestrator owns deploys).
+## Items / costume dyes
+- R-160 [2026-08-06] IMPLEMENTED `fix/pr2-dye-skins` (Resources-only; no arz change) - **Will verbatim
+  (PR-2 decision):** *"try to FIND the missing costume-dye skin assets; wire in the ones found; for the
+  ones that cannot be found, REMOVE them."* Context: the Garden-of-Merchants "special / costume dyes"
+  (OneShot_Dye records) reskin the PC to `Creatures\PC\{Male,Female}\...tex` from amgoz1's AllSkins
+  pack; the shipped mod painted the PC flat GREY (Flozer44 report, PR-2). ROOT CAUSE (byte-proven):
+  `scripts/bootstrap_working_mod.ps1` Step 2b STRIPPED `Creatures.arc` as "cosmetic - falls back to
+  base skins", but the AllSkins skin paths do NOT exist in base -> unresolved material -> grey. The
+  skins DO exist, in SV 0.98i's OWN `Creatures.arc` (md5 5ef9d00a, in `third_party/soulvizier098i.zip`
+  - the source the prior `fix/pr2-dyes-grey` lane never checked, which is why it concluded "drop"). FOUND:
+  a purely-additive mod `Creatures.arc` (288 net-new SV skin entries; overrides 0 base asset) makes ALL
+  288 OBTAINABLE dyes resolve. Gate `tools/gate_dye_skins.py` proves it (PASS iff zero obtainable dye
+  references a missing skin; --negtest). NOT-FOUND -> "REMOVE": 34 dyes reference a male skin that
+  exists in NO shippable source (14 `Nyours_Placeholder*`, 15 `NtheRavens_MaleHairy*`, 5 one-offs) - ALL
+  34 are ORPHAN records already in NO loot table and NOT placed in the world map, i.e. already
+  unobtainable, so "removed" is already true; per the RETIREMENT PROTOCOL the dead records are left
+  intact (not deleted) and documented. **OPEN FOR WILL (flagged, not vetoed here):** the restored skins
+  are amgoz1's AllSkins community pack (some nude/topless/lingerie variants - original SV content), and
+  keeping `Creatures.arc` costs ~+98 MB decompressed address space on the 32-bit engine (mitigated by
+  the 4GB LAA patch). In-game confirmation that a dyed PC now renders is LAUNCH-GATED. See
+  docs/BACKLOG.md PR-2 and the dye-skins lane report.
