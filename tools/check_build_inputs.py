@@ -89,7 +89,9 @@ EXPECTED_MD5 = {
     'sv098i_levels_arc': '0b575c9dcd95461ec4ef2dea351f7d36',   # SV 0.98i Levels.arc
     'svaera_levels_arc': 'a1e13e48b3de499df31a5ca4d919030d',   # SVAERA 1.14 Levels.arc
     'svaera_arz':        '7bad88043e5c1be0c83fce1e8522ce8a',   # SVAERA_customquest.arz
+    'sv098i_creatures_arc': '5ef9d00a9dd5ecebb0e3ada5385a1b31',  # SV 0.98i Creatures.arc (AllSkins costume-dye PC skins)
     # base_arz is the player's own TQAE install: version-dependent, deliberately unpinned.
+    # base_creatures_arc is likewise the player's own TQAE install - unpinned.
 }
 
 
@@ -168,6 +170,16 @@ INPUTS = [
                        SVAERA_WORKSHOP / 'Database' / 'SVAERA_customquest.arz'),),
           groups=('db',), optional=True,
           note='build36 lane-B graft; skip the graft with SVC_GRAFT_SVAERA=0'),
+    Input('sv098i_creatures_arc', 'SV 0.98i Creatures.arc (costume-dye PC skins)',
+          'SVC_SV098I_CREATURES_ARC',
+          'upstream/soulvizier_098i/Resources/Creatures.arc',
+          archive_rel=('third_party/soulvizier098i.zip', 'Resources/Creatures.arc'),
+          groups=('resources',),
+          note='amgoz1 AllSkins PC skins the Garden costume dyes reskin to (PR-2)'),
+    Input('base_creatures_arc', 'base game (TQAE) Creatures.arc', 'SVC_BASE_CREATURES_ARC',
+          candidates=(('Steam TQAE install', STEAM_TQAE / 'Resources' / 'Creatures.arc'),),
+          groups=('resources',),
+          note="the player's own TQAE install - overlap reference, never pinned"),
 ]
 
 BY_KEY = {i.key: i for i in INPUTS}

@@ -130,9 +130,8 @@ if ($arcFiles.Count -gt 0) {
 # Categories:
 #   TQIT UI    - TQIT engine resources that break AE's modern UI
 #   Empty      - Archives with 0 files inside (waste of file handles)
-#   Cosmetic   - PC character skin textures (290 skins, 39 MB) -- cosmetic only,
-#                game falls back to base game skins. Saves ~39 MB compressed / ~98 MB
-#                decompressed address space. Matches SVAERA's approach (547 KB).
+# (Creatures.arc was formerly stripped as "cosmetic" - that GREYED costume-dyed PCs;
+#  it is now kept via the additive rebuild in Step 2e. See PR-2 / docs/BACKLOG.md.)
 $stripList = @(
     # --- TQIT UI/engine (incompatible with AE) ---
     'Caravan.arc',
@@ -155,9 +154,10 @@ $stripList = @(
     'UI.arc',
     'XPack.arc',
     # --- Empty archives ---
-    'LMesh.arc',
-    # --- Cosmetic-only (PC skin textures, 39 MB) ---
-    'Creatures.arc'
+    'LMesh.arc'
+    # NOTE (PR-2): Creatures.arc is NO LONGER stripped - it holds amgoz1's AllSkins
+    # PC skins the Garden costume dyes reskin to. Stripping it greyed the PC (Flozer44).
+    # Step 2e below stages a purely-additive Creatures.arc with only the net-new skins.
 )
 
 Write-Host ''
@@ -188,6 +188,26 @@ if (Test-Path $xpackDir) {
 }
 
 Write-Host "Stripped $strippedCount files (~$strippedMB MB)"
+
+# --- Step 2e: Stage the costume-dye PC skins Creatures.arc (PR-2) ---
+# The Garden-of-Merchants costume dyes reskin the PC to amgoz1's AllSkins textures
+# (Creatures\PC\...tex) that live ONLY in SV 0.98i's Creatures.arc. Rebuild a
+# purely-additive Creatures.arc (net-new SV skins only; overrides zero base asset)
+# so every obtainable dye resolves instead of greying the character.
+Write-Host ''
+Write-Host 'Staging costume-dye PC skins (Creatures.arc, PR-2)...' -ForegroundColor Yellow
+$creaturesOut = Join-Path $workDir 'Resources\Creatures.arc'
+& $pythonExe (Join-Path $toolsDir 'build_creatures_dye_skins_arc.py') --out $creaturesOut
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'ERROR: failed to build the costume-dye Creatures.arc' -ForegroundColor Red
+    exit 1
+}
+# Prove every obtainable dye resolves against the staged arc (fails the build otherwise).
+& $pythonExe (Join-Path $toolsDir 'gate_dye_skins.py') $dstArz --mod-resources (Join-Path $workDir 'Resources')
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'ERROR: dye-skins gate failed - an obtainable dye still references a missing skin' -ForegroundColor Red
+    exit 1
+}
 
 # --- Step 2c: Lite Mode -- strip DRX visual overhaul for low-memory systems ---
 # DRX (Diablo Re-eXtinction) adds 339 MB of visual assets. On systems with
