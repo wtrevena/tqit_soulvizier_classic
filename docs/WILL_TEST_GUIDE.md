@@ -136,6 +136,19 @@ approach point** for its area - the **door / entrance / travel-NPC you would use
 **amid the regular mobs**, NOT on top of the boss. So you can test the real in-game travel guys,
 learn where everything is, and **walk in** to the boss yourself.
 
+> ⚠️ **CANONICAL / STEAM ACCESS to the SV side-areas is DIFFERENT (PR-5, verified 2026-08-06 from the
+> shipped bytes).** The 14 named travelers above exist **only on the DEV/TESTHUB map** - the Steam
+> build ships **none** of them. On the **canonical/Steam** build the four core SV areas (Garden /
+> Secret Place / Uber Dungeon / **Sparta Crypt**) are reached from a **single NPC in the Helos start
+> plaza: "Almyros the Wayfarer"** (`portal_master_helos`, just S of the town-portal shrine). Talk to
+> him -> his boat-dialog lists **"The Sparta Crypt"** -> it teleports you straight **inside**
+> `spartacryptlevel2` (a return NPC stands there to send you back). **There is NO portal or door in
+> the Athens catacombs on the shipped map** (the invented catacomb door was removed 2026-07-12; the
+> catacomb's portal section is empty). This is why the Steam player (and Will on 07-14) hunting the
+> catacombs never found it - the entrance is Almyros in the start town, not a catacomb portal. Whether
+> to ADD a discoverable catacomb-side entrance (recommended) is a Will design pick: see BACKLOG
+> **ATHENS-CRYPT-L2-REACH** (turnkey spec attached).
+
 ### Original 11 areas - where v2 now drops you
 
 | Traveler NPC | Drops you at (v2) | What to walk to / test |
