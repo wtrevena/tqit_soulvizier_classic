@@ -13,8 +13,11 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
 
   T1 NO WALK-THROUGHS: zero walk-through portal records (portal_olympianarena1/2, map_portal_aura)
      placed in EITHER the canonical INJECT_SPECS or the TESTHUB merged specs.
-  T2 HELOS HUB: the 25 Helos-hub records (14 travelers + 11 returns) appear 0x in canonical and
+  T2 HELOS HUB: the 24 Helos-hub records (14 travelers + 10 returns) appear 0x in canonical and
      EXACTLY 1x in the TESTHUB build (WARDEN LAW: one boat-dialog record == one placement).
+     (PR-5 SPARTA POLISH: svc_area_return_sparta is no longer a hub placement - the canonical
+     Sparta catacomb entrance is the dedicated Warden clone, see T5c. It is kept in the arz
+     HELOS_HUB_RETURNS creation list as the clone donor, byte-unchanged, but placed nowhere.)
   T3 MASTERS RETIRED: BOTH split masters have 0 placements - svc_testhub_master_helos (superseded
      by the 11 travelers) AND svc_testhub_master_cave (b48 round 3: it was a mute ORPHAN - placed at
      the cave mouth with no boat trigger - now retired).
@@ -22,8 +25,13 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
      placement; each of the 5 distinct per-area returns (svc_testhub_return_{garden,secret,uber,
      sparta,bossarena}) is placed EXACTLY ONCE (Garden/Secret/Uber/Sparta canonical, Boss Arena
      TESTHUB) so all 5 fire; Almyros (portal_master_helos) placed once canonically.
-  T5 CROSS-FILE: map / quests / arz reference the SAME 17 hub records AND the SAME 5 per-area return
-     records; every boat-menu label tag the quests use is minted or reused in the arz.
+  T5 CROSS-FILE: map / quests / arz reference the SAME 24 hub records (arz minus the retired-but-
+     kept donor svc_area_return_sparta) AND the SAME 5 per-area return records; every boat-menu
+     label tag the quests use is minted or reused in the arz.
+  T5c ENTER-OFFERS (b62 + PR-5 SPARTA POLISH): 2 enter-offers. Uber reuses the TESTHUB hub record
+     svc_area_return_uber (0 new placement). Sparta is keyed on the dedicated, differently-named
+     Warden clone svc_warden_sparta_crypt, placed EXACTLY once canonically (inherited by TESTHUB)
+     at the catacomb; the shared donor svc_area_return_sparta is placed 0x (retired).
   T6 (built map, optional): a passed .arc's 0x05 sections contain ZERO walk-through portal
      instances; the canonical .arc places 0 hub records; the TESTHUB .arc places each once.
   RESPONDS (b48 round 3): the gate_traveler_responds invariants (no mute/orphan/warden/beyond-
@@ -89,11 +97,12 @@ def check_specs(fails):
     print(f'  T1 no-walk-throughs: canonical + TESTHUB place 0 of '
           f'{[n.decode() for n in WALKTHROUGH_NEEDLES]}')
 
-    # T2: the 25 hub records: 0 canonical, exactly 1 TESTHUB.
+    # T2: the 24 hub records: 0 canonical, exactly 1 TESTHUB. (PR-5 SPARTA POLISH dropped
+    # svc_area_return_sparta from the hub placement roster - 14 plaza + 10 returns = 24.)
     hub_records = [s[0] for s in bss.HELOS_HUB_PLAZA_SPECS] + \
                   [sp[0] for _k, sp in bss.HELOS_HUB_RETURN_SPECS]
-    if len({_norm(r) for r in hub_records}) != 25:
-        fails.append(f'T2: expected 25 distinct hub records, got '
+    if len({_norm(r) for r in hub_records}) != 24:
+        fails.append(f'T2: expected 24 distinct hub records, got '
                      f'{len({_norm(r) for r in hub_records})}')
     for r in hub_records:
         nd = _norm(r)
@@ -103,7 +112,7 @@ def check_specs(fails):
             fails.append(f'T2: hub record {nd} present in CANONICAL ({c}x) - must be TESTHUB-only')
         if t != 1:
             fails.append(f'T2: hub record {nd} placed {t}x in TESTHUB (WARDEN LAW: exactly 1)')
-    print(f'  T2 helos-hub: 25 records, canonical=0 each, TESTHUB=1 each (warden law)')
+    print(f'  T2 helos-hub: 24 records, canonical=0 each, TESTHUB=1 each (warden law)')
 
     # T3: BOTH split masters retired (0 placements). b48 round 3 retires the cave master orphan.
     # NOTE: the cave master is placed via build_hub_extra_specs()[R09_LVL_KEY], which
@@ -154,8 +163,13 @@ def check_specs(fails):
     if map_recs != q_recs:
         fails.append(f'T5: map vs quests record mismatch: only-map={map_recs - q_recs}, '
                      f'only-quests={q_recs - map_recs}')
-    arz_recs = {_norm(r) for r, *_ in asp.HELOS_HUB_OUTBOUND} | \
-               {_norm(r) for r in asp.HELOS_HUB_RETURNS}
+    # PR-5 SPARTA POLISH: svc_area_return_sparta stays in the arz HELOS_HUB_RETURNS creation list
+    # (it is the byte-unchanged clone donor for the Warden + retirement-protocol kept), but it is no
+    # longer a hub PLACEMENT (map) or route (quests) - so exclude it from the arz-side roster to
+    # match map==quests. Its dedicated successor svc_warden_sparta_crypt is checked in T5c.
+    _RETIRED_SPARTA = _norm(asp.AREA_RETURN_SPARTA_DONOR)
+    arz_recs = ({_norm(r) for r, *_ in asp.HELOS_HUB_OUTBOUND} |
+                {_norm(r) for r in asp.HELOS_HUB_RETURNS}) - {_RETIRED_SPARTA}
     if map_recs != arz_recs:
         fails.append(f'T5: map vs arz record mismatch: only-map={map_recs - arz_recs}, '
                      f'only-arz={arz_recs - map_recs}')
@@ -182,13 +196,48 @@ def check_specs(fails):
         fails.append(f'T5b: unexpected per-area return port tags: {ret_ports}')
     print(f'  T5b per-area returns: arz==quests==map (5 records); ports {sorted(ret_ports)} resolve')
 
-    # T5c (b62 TRAVELERS-INTO-AREAS): the enter-offer + return-to-origin wiring introduces ZERO new
-    # arz records (both TRAVELER_ENTER_OFFERS npcs are already in the 25-record hub set) and exactly
-    # 4 new label tags, all minted by _create_traveler_enter_offers.
+    # T5c (b62 TRAVELERS-INTO-AREAS + PR-5 SPARTA POLISH): exactly 2 enter-offers, wired to exactly
+    # 4 minted label tags. Their record dispositions now DIFFER (they are no longer both TESTHUB-only
+    # hub records):
+    #   - Uber (svc_area_return_uber): reuses an existing TESTHUB hub record - 0 new placement.
+    #   - Sparta (svc_warden_sparta_crypt = the dedicated "Warden of the Spartan Crypt" clone):
+    #     a NEW canonical record placed EXACTLY once at the catacomb (inherited by TESTHUB); the
+    #     shared donor svc_area_return_sparta it was cloned from is placed 0x (retired).
     enter_npcs = {_norm(npc) for npc, _xyz, _tag in bqf.TRAVELER_ENTER_OFFERS}
-    if not enter_npcs <= map_recs:
-        fails.append(f'T5c: enter-offer NPC(s) not in the existing 25-record hub set (would be a '
-                     f'NEW placement): {enter_npcs - map_recs}')
+    if len(enter_npcs) != 2:
+        fails.append(f'T5c: expected exactly 2 enter-offer NPCs, got {len(enter_npcs)}: {enter_npcs}')
+    warden = _norm(asp.WARDEN_SPARTA_CRYPT_DBR)
+    uber_ret = _norm(bss.AREA_RETURN_UBER_DBR)
+    retired_sparta = _norm(asp.AREA_RETURN_SPARTA_DONOR)
+    # Uber enter-offer NPC must be an existing TESTHUB hub record (0 new placement).
+    if uber_ret not in map_recs:
+        fails.append(f'T5c: Uber enter-offer NPC {uber_ret} is not in the 24-record hub set '
+                     f'(would be a NEW placement)')
+    # Sparta enter-offer NPC must be the dedicated Warden clone (NOT the shared donor, NOT a hub
+    # record) and it must be placed EXACTLY once canonically + once in TESTHUB (canonical inherited).
+    if warden not in enter_npcs:
+        fails.append(f'T5c: Sparta enter-offer must be keyed on the Warden clone {warden}; '
+                     f'enter NPCs = {enter_npcs}')
+    if warden in map_recs:
+        fails.append(f'T5c: the Warden clone {warden} must NOT be in the TESTHUB-only hub roster '
+                     f'(it is a canonical placement)')
+    wc, wt = _count_in_specs(canonical, warden), _count_in_specs(testhub, warden)
+    if wc != 1 or wt != 1:
+        fails.append(f'T5c: Warden clone {warden} must be placed once canonically + once in TESTHUB '
+                     f'(inherited); got canonical={wc}, TESTHUB={wt}')
+    # the shared donor svc_area_return_sparta is RETIRED - placed nowhere on either build.
+    sc, st = _count_in_specs(canonical, retired_sparta), _count_in_specs(testhub, retired_sparta)
+    if sc != 0 or st != 0:
+        fails.append(f'T5c: retired shared record {retired_sparta} must be placed 0x '
+                     f'(the Warden clone replaces it); got canonical={sc}, TESTHUB={st}')
+    # the Warden must NOT carry the shared "Helos (Return)" route -> its ONLY route is the descend
+    # enter-offer (proven here by the quest table: the Warden appears in NO HELOS_HUB_TRAVEL row).
+    if any(_norm(npc) == warden for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL):
+        fails.append(f'T5c: Warden {warden} carries a HELOS_HUB_TRAVEL route (e.g. the '
+                     f'"Helos (Return)" port) - it must offer ONLY "Descend into the Sparta Crypt"')
+    # the Warden's name tag is minted in the arz (distinct from the shared tagSVCNpcAreaReturn).
+    if not hasattr(asp, 'TAG_WARDEN_SPARTA_NAME'):
+        fails.append('T5c: apply_svc_patches must expose TAG_WARDEN_SPARTA_NAME (the Warden name tag)')
     enter_tags = {t for _npc, _xyz, t in bqf.TRAVELER_ENTER_OFFERS}
     origin_tags = {t for dests in bqf.TESTHUB_RETURN_DESTS_BY_NPC.values() for _xyz, t in dests}
     minted_enter = {asp.TAG_ENTER_SPARTA_CRYPT, asp.TAG_ENTER_UBER_DUNGEON,
@@ -196,13 +245,8 @@ def check_specs(fails):
     missing_enter = (enter_tags | origin_tags) - minted_enter - {'tagSVCTestHubToHelos'}
     if missing_enter:
         fails.append(f'T5c: enter-offer/return-to-origin tags not minted in arz: {missing_enter}')
-    # both enter-offer NPCs must be placed EXACTLY ONCE in TESTHUB and NOT AT ALL in canonical -
-    # they ride the same TESTHUB-only records the hub already places (T2 covers the placement
-    # count; this just confirms the enter-offer table only names those two).
-    if len(enter_npcs) != 2:
-        fails.append(f'T5c: expected exactly 2 enter-offer NPCs, got {len(enter_npcs)}: {enter_npcs}')
-    print(f'  T5c enter-offers: {len(enter_npcs)} NPC(s) reuse existing hub records (0 new '
-          f'placements); {len(minted_enter)} new label tags resolve')
+    print(f'  T5c enter-offers: Uber reuses hub record (0 new placement); Sparta = dedicated Warden '
+          f'clone (canonical x1, retired donor x0, descend-only); {len(minted_enter)} label tags resolve')
 
 
 def check_responds(fails):

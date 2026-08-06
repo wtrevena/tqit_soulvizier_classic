@@ -684,8 +684,10 @@ def load_landings_arg(wiring):
             # HELOS_HUB_TRAVEL 'ret_sparta'/'ret_uber' entries above (extra trigger, same record) -
             # gate them too so a future landing tweak can't silently skip the enter-offer coord.
             for (npc, xyz, tag) in TRAVELER_ENTER_OFFERS:
+                # PR-5 SPARTA POLISH: the Sparta enter-offer moved from svc_area_return_sparta to the
+                # dedicated Warden clone svc_warden_sparta_crypt (same landing coord, gate-clean).
                 nm = 'enter_' + npc.rsplit('\\', 1)[-1].replace('svc_area_return_', '').replace(
-                    '.dbr', '')
+                    'svc_warden_', '').replace('.dbr', '')
                 out.append((nm, tuple(xyz), tag))
             return out, 'v1 (LIVE build_quest_files.HELOS_HUB_TRAVEL + TRAVELER_ENTER_OFFERS)'
         except Exception as e:

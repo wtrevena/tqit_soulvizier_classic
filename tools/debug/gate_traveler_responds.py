@@ -62,7 +62,13 @@ DEP = Path(r"C:\Users\willi\OneDrive\Documents\My Games\Titan Quest - Immortal T
 # base-game/SV boatmen (athens/knossos/rhakotis/olympus/urder/vortex) - those register their
 # routes in their own per-act quests (not this always-loaded host), are 1 route : 1 NPC by
 # construction, and are out of scope for the hub-traveler-mute gate.
-HUB_KW = ('svc_helos_trav', 'svc_area_return', 'svc_testhub', 'portal_master_helos')
+# PR-5 SPARTA POLISH (Will 2026-08-06): svc_warden_sparta (the dedicated "Warden of the Spartan
+# Crypt" clone) is a hub boat NPC placed canonically at the Athens-catacomb Sparta-crypt entrance,
+# so it must be tracked here (it owns the tagSVCEnterSpartaCrypt descend route). The keyword is the
+# specific 'svc_warden_sparta' (not bare 'svc_warden') so it cannot accidentally match unrelated
+# 'ss_warden_*' behemoth/boss records.
+HUB_KW = ('svc_helos_trav', 'svc_area_return', 'svc_testhub', 'portal_master_helos',
+          'svc_warden_sparta')
 HOST_QST = "sv_commonmechanics.qst"
 
 

@@ -2435,7 +2435,11 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_area_return_ephialtes.dbr',  (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_warband.dbr',    (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_uber.dbr',       (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_sparta.dbr',     (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    # PR-5 SPARTA POLISH (Will 2026-08-06): svc_area_return_sparta's "Helos (Return)" return entry
+    # is REMOVED. The Sparta catacomb entrance is now the dedicated descend-only Warden clone
+    # (svc_warden_sparta_crypt); the shared svc_area_return_sparta is retired from placement (kept
+    # byte-unchanged in the arz as the clone donor) so it needs no boat route. Its interior partner
+    # svc_testhub_return_sparta still returns the player to the catacomb door / Helos (unchanged).
     (_HHUB + r'\svc_area_return_devourer.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_vashkarr.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_obsidian.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
@@ -2567,8 +2571,16 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
 # cluster), so an enter-offer without a paired return would strand the player with no way back
 # (the P0-A "no way back" class of bug). It needs a new map-lane NPC placement first; flagged as a
 # BACKLOG follow-up.
+# PR-5 SPARTA POLISH (Will 2026-08-06): the Sparta enter-offer is keyed on the DEDICATED
+# "Warden of the Spartan Crypt" (svc_warden_sparta_crypt, a descend-only clone of
+# svc_area_return_sparta - apply_svc_patches _create_sparta_crypt_warden), which the map lane
+# places canonically at the catacomb spot. The Warden carries ONLY this "Descend into the Sparta
+# Crypt" port (its return-to-Helos entry was removed from HELOS_HUB_TRAVEL below) -> a single-option
+# menu, per Will. The landing (-5596,-2,-1410) is unchanged (gate-clean; Almyros's raw
+# (-5602,-2,-1409) FAILS gate_landing_clearance = greece_sarcophagia02_02 CONTAINER at 2.38u<4.0u).
+# The Uber enter-offer is unchanged (svc_area_return_uber stays TESTHUB-only).
 TRAVELER_ENTER_OFFERS = [
-    (r'records\quests\svc_area_return_sparta.dbr', (-5596, -2, -1410), 'tagSVCEnterSpartaCrypt'),
+    (r'records\quests\svc_warden_sparta_crypt.dbr', (-5596, -2, -1410), 'tagSVCEnterSpartaCrypt'),
     (r'records\quests\svc_area_return_uber.dbr',   (-2438, 10, -2450), 'tagSVCEnterUberDungeon'),
 ]
 

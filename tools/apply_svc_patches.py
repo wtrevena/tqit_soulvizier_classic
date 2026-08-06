@@ -12677,6 +12677,59 @@ def _create_traveler_enter_offers(db, tags):
           "records, reuses the existing placed return NPCs on both ends of each round trip")
 
 
+# ── PR-5 SPARTA POLISH (Will 2026-08-06): the Athens-catacomb Sparta-crypt entrance NPC ───────
+# Will decided TWO things about the catacomb entrance the PR-5 catacomb-traveler lane placed:
+#   (1) NAME it "Warden of the Spartan Crypt" (it displayed the generic shared "Return Traveler").
+#   (2) its menu is DESCEND ONLY - drop the "Helos (Return)" port it had inherited from the shared
+#       area-return record.
+# SHARED-RECORD LAW (the crux): the placed record was svc_area_return_sparta, whose descriptionTag
+# tagSVCNpcAreaReturn ("Return Traveler") is SHARED by all 11 area-return travelers (Dorus,
+# Tantalus, Charon, ... Obsidian) - renaming that tag OR mutating that record would rename/alter
+# every sibling. So instead we CLONE svc_area_return_sparta into a DEDICATED record
+# svc_warden_sparta_crypt that carries its OWN descriptionTag (minted here) and greeting, and the
+# MAP lane places the CLONE (not the shared record) at the proven on-mesh catacomb spot. The shared
+# svc_area_return_sparta record is left BYTE-UNCHANGED (still created verbatim by
+# _create_helos_traveler_hub above) - it is merely no longer placed (retired; kept per the
+# RETIREMENT PROTOCOL as the clone donor). The clone is wired with ONLY the "Descend into the
+# Sparta Crypt" enter-offer (build_quest_files TRAVELER_ENTER_OFFERS keys tagSVCEnterSpartaCrypt on
+# the CLONE); the tagSVCAreaReturnToHelos "Helos (Return)" port is a DIFFERENT record's route and
+# is never wired to the clone -> the Warden offers exactly one option. Player surfaces touched:
+# NAME + GREETING (text only). Must run AFTER _create_helos_traveler_hub (the donor's creator).
+WARDEN_SPARTA_CRYPT_DBR = r'records\quests\svc_warden_sparta_crypt.dbr'
+AREA_RETURN_SPARTA_DONOR = r'records\quests\svc_area_return_sparta.dbr'
+TAG_WARDEN_SPARTA_NAME = 'tagSVCNpcWardenSpartaCrypt'
+TAG_WARDEN_SPARTA_CHAT = 'tagSVCWardenSpartaCryptChat'
+
+
+def _create_sparta_crypt_warden(db, tags):
+    """Clone the shared svc_area_return_sparta into the DEDICATED, differently-named catacomb
+    entrance NPC 'Warden of the Spartan Crypt' (PR-5 polish). The clone gets its OWN descriptionTag
+    (so the shared tagSVCNpcAreaReturn 'Return Traveler' is untouched on all 11 siblings) and a
+    fitting greeting; the map lane places the CLONE (not the shared record) at the proven catacomb
+    spot, and the quest lane wires ONLY the descend enter-offer to it. Fails loud if the donor is
+    missing or the clone already exists (must run AFTER _create_helos_traveler_hub, which mints the
+    donor svc_area_return_sparta)."""
+    donor = _find_record(db, AREA_RETURN_SPARTA_DONOR)
+    if not donor:
+        raise SystemExit(f"PR-5 Warden: clone donor missing: {AREA_RETURN_SPARTA_DONOR}")
+    if db.has_record(WARDEN_SPARTA_CRYPT_DBR):
+        raise SystemExit(f"PR-5 Warden: {WARDEN_SPARTA_CRYPT_DBR} already exists")
+    db.clone_record(donor, WARDEN_SPARTA_CRYPT_DBR)
+    db.set_field(WARDEN_SPARTA_CRYPT_DBR, 'description', TAG_WARDEN_SPARTA_NAME)
+    db.set_field(WARDEN_SPARTA_CRYPT_DBR, 'FileDescription',
+                 'SVC PR-5: Warden of the Spartan Crypt - canonical Athens-catacomb Sparta-crypt '
+                 'entrance (descend-only; dedicated clone of the shared svc_area_return_sparta)')
+    db.set_field(WARDEN_SPARTA_CRYPT_DBR, 'messageDialogTag', TAG_WARDEN_SPARTA_CHAT)
+    db._modified.add(WARDEN_SPARTA_CRYPT_DBR)
+    tags[TAG_WARDEN_SPARTA_NAME] = 'Warden of the Spartan Crypt'
+    tags[TAG_WARDEN_SPARTA_CHAT] = ("I am the Warden of the Spartan Crypt. The dead of Sparta lie "
+                                    "sealed below - the way down is shut to the living, but for you "
+                                    "I will open it. Speak, and descend.")
+    print("  PR-5 Warden: svc_warden_sparta_crypt cloned from svc_area_return_sparta "
+          "(descriptionTag tagSVCNpcWardenSpartaCrypt='Warden of the Spartan Crypt', descend-only; "
+          "shared svc_area_return_sparta left byte-unchanged + retired from placement)")
+
+
 # ── GROUP C (build32): Vashkarr, Eldest of the Ancients (N4-DB) ──────────────
 # Will signed off (BACKLOG N4-DB): a lone Ancient-Dragonian warlord in the
 # Random05A cave east of Chang'an. Identity B - {^r}Vashkarr, Eldest of the
@@ -18731,6 +18784,7 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     _create_testhub_portal_npcs(db, tags)     # Portal rig (GROUP 2 unblock): TESTHUB hub + return NPCs -> Model C travel (map lane places them; INERT on canonical)
     _create_helos_traveler_hub(db, tags)      # Helos traveler hub v2 (Will 2026-07-13): 14 named per-area travelers + 11 area returns (TESTHUB map places them; INERT on canonical)
     _create_traveler_enter_offers(db, tags)   # TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final): 4 boat-menu labels for the Sparta Crypt + Uber Dungeon enter-offer/return-to-origin round trip (zero new records, reuses existing placed NPCs)
+    _create_sparta_crypt_warden(db, tags)     # PR-5 SPARTA POLISH (Will 2026-08-06): dedicated "Warden of the Spartan Crypt" catacomb-entrance clone of svc_area_return_sparta (descend-only); shared record byte-unchanged (must run AFTER _create_helos_traveler_hub, the donor's creator)
     _create_emberscale_charm(db, tags)    # D10 Emberscale charm (turtle pattern; Flameguard Slayer 7%)
     # B-SOUL-PROC-1 FIX B: the 8 explicit itemSkillLevel==0 souls (SV-upstream
     # snaptooth/rocksting/orythroneus e/l tiers + generator crowboar n/e). Runs
