@@ -651,6 +651,26 @@ REGISTRY = [
                             # verify() reads the final assembled db. In-game confirmation is
                             # launch-gated + gender-dependent (see docs/BACKLOG.md PR-1).
                             # Negative test: py tools/patches/pc_dissolve_restore.py --negtest
+    'gorgon_vanilla_names', # PR-4 (Steam player Flozer44 2026-07-28; Will 2026-08-06 "restore
+                            # the FULL VANILLA names"): the two gorgon spellcasters show their
+                            # vanilla names SWAPPED. SV 0.98i FLIPPED the record->descriptionTag
+                            # pointers relative to base TQAE (the STRINGS are byte-identical in
+                            # both). Base assigns FIRE ar_pyromancer_13/16 -> tagMonsterName1263
+                            # ("Gorgon ~ Geomancer") and POISON ar_venomancer_13/16 ->
+                            # tagMonsterName1256 ("Gorgon ~ Profaner"), derived from each
+                            # creature's OWN kit (BlazingWeapons vs Arachnos_VenomBolt). This
+                            # module repoints description back to the base-game assignment on the
+                            # 4 records - smallest correct change: no tag STRING edited, no NEW
+                            # tag minted (the two are base-game tags, present in base Text_EN AND
+                            # our Text.arc). SHARED-RECORD LAW: verify() asserts the two tags are
+                            # carried by EXACTLY these 4 records in the merged DB (XPack4 chaos
+                            # gorgons use the DISTINCT x4tagMonsterName*Chaos tags). Name is bound
+                            # to identity: apply()/verify() re-check the archetype kit signature.
+                            # Disjoint namespace (no other module writes these gorgon records), so
+                            # order-independent; registered here purely so verify() reads the final
+                            # assembled db. In-game confirmation launch-gated (name read-back proven
+                            # from the rebuilt Text.arc in this lane).
+                            # Negative test: py tools/patches/gorgon_vanilla_names.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

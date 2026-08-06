@@ -3842,3 +3842,46 @@ determinism statement); it carries no party-size or spawn-equation term.
 **NOT PROVEN IN-GAME.** The arithmetic is engine-side and is proved from the disassembly and from the
 gate, but no character has died and walked back to a marker on a build carrying this change. Will's
 in-game check is the launch gate (registered as debt).
+
+---
+
+## Player-facing names / vanilla-name fidelity (new section; decade 160-169, opened 2026-08-06, branch `fix/pr4-gorgon-vanilla`)
+
+> Decade proven free by git grep at open time: `for n in 160..169; do git grep -h "R-$n\b" -- docs/WILL_RULINGS.md; done` = 0 hits each.
+
+## R-160 [2026-08-06] IMPLEMENTED (branch `fix/pr4-gorgon-vanilla`) "restore the FULL VANILLA names" - PR-4, Steam player Flozer44 (2026-07-28): the two Gorgon spellcasters show their vanilla names SWAPPED ("Impious"/"Geomancy Adept" on the wrong monsters, in his words). Un-swap them to the stock-Titan-Quest assignment.
+
+**GROUND TRUTH (measured from the bytes; Will's paraphrase reconciled to the actual strings).** The two
+gorgon-caster archetypes, identified by each creature's OWN skill kit (never guessed):
+
+| record | kit signature (skillName1/2) | element |
+|---|---|---|
+| `records\creature\monster\gorgon\ar_pyromancer_13.dbr` + `_16` | BlazingWeapons + PillarofFlame | FIRE |
+| `records\creature\monster\gorgon\ar_venomancer_13.dbr` + `_16` | Arachnos_VenomBolt + Arachne PoisonCloud | POISON |
+
+BASE TQAE `database.arz` assigns `description`: FIRE pyromancer -> `tagMonsterName1263`, POISON venomancer ->
+`tagMonsterName1256`. BASE TQAE `Text_EN.arc` (and SV 0.98i's, byte-for-byte the same strings):
+`tagMonsterName1263` = "Gorgon ~ Geomancer", `tagMonsterName1256` = "Gorgon ~ Profaner". So the literals Will
+and the player named ("Impious"/"Geomancy Adept") appear in NO text source - they are a paraphrase of the
+actual vanilla strings "Profaner"/"Geomancer". Soulvizier 0.98i (which our merge carries VERBATIM) FLIPPED
+the two record->tag pointers relative to base (the STRINGS were never changed): our shipped build had FIRE ->
+1256 ("Profaner") and POISON -> 1263 ("Geomancer") - exactly the swap the player saw.
+
+**THE FIX (smallest correct change).** Repoint `description` on the 4 records back to the base-game
+assignment (FIRE -> 1263 "Gorgon ~ Geomancer", POISON -> 1256 "Gorgon ~ Profaner"). No tag STRING is edited
+and no NEW tag is minted (both are base-game tags, present in base `Text_EN.arc` and resolving from it
+underneath our `Text.arc` after the i18n de-clobber). Implemented as the registry module
+`tools/patches/gorgon_vanilla_names.py` (before the no-op `visuals`). SHARED-RECORD LAW: `verify()` asserts
+the two tags are carried by EXACTLY these 4 records in the merged DB (the XPack4 chaos gorgons use the
+DISTINCT `x4tagMonsterName*Chaos` tags), and the name is bound to identity via the kit-signature check.
+
+**PROOF.** Record-diff vs a same-environment main-HEAD baseline (`3a3a0b41...`): 0 ADDED, 0 REMOVED, exactly
+4 MODIFIED, `description` field only. Fixed arz `ab02f16e11d2cfa2dd05c0ce479fb917`; Text.arc
+`39c505485aa4abb6c5bf8d1bf5e62f4b`. Full gated build green (SVC_REQUIRE_GATES=1); `validate_tags` PASS;
+Text.arc read-back confirms fire caster -> "Gorgon ~ Geomancer", poison caster -> "Gorgon ~ Profaner".
+
+**NOTE (honest, not a blocker).** In stock Titan Quest neither name is element-perfect: the FIRE caster wears
+"Geomancer" (an earth name) and the POISON caster wears "Profaner". This fix restores the exact stock-TQ
+display names on the correct creatures, per Will's "restore the FULL VANILLA names" - it does not invent new
+element-matched names. NOT PROVEN IN-GAME: a display-name change is proven from the rebuilt Text.arc, but a
+player eyeballing the two monsters near Knossos is the launch gate (orchestrator owns deploys).
