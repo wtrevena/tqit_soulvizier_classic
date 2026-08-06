@@ -2027,8 +2027,24 @@ HELOS_PORTAL_DESTS = [
     ((1173, -39, -4001), 'tagSVCHelosToGarden'),   # Garden of Merchants (N1 H2 landing)
     ((-2396, 2, -5790), 'tagSVCHelosToSecret'),    # The Secret Place (A2 S2 landing)
     ((-2438, 10, -2450), 'tagSVCHelosToUber'),     # Uber Dungeon (SV-native A1 arrival)
-    ((-5602, -2, -1409), 'tagSVCHelosToSparta'),   # Sparta Crypt (hub landing)
+    # PR-5 (Will 2026-08-06): "the Sparta Crypt should be entered from the Athens CATACOMBS, not from
+    # Helos." The Sparta Crypt destination (was ((-5602,-2,-1409),'tagSVCHelosToSparta')) is REMOVED
+    # from Almyros's Helos boat menu. Almyros KEEPS Garden / Secret Place / Uber Dungeon. The crypt is
+    # now reached from a CANONICAL catacomb entrance NPC (svc_area_return_sparta, placed in
+    # catacube02_floorlast by build_section_surgery.py), whose sv_commonmechanics enter-offer
+    # ("Descend into the Sparta Crypt", tagSVCEnterSpartaCrypt -> TRAVELER_ENTER_OFFERS) lands the
+    # player on-mesh inside spartacryptlevel2. The tagSVCHelosToSparta TAG stays minted (still used by
+    # the TESTHUB-only svc_helos_trav_sparta + svc_testhub_master) so validate_tags stays green.
 ]
+# PR-5 UPDATE (Will 2026-08-06): the Sparta half of the b62 reconciliation below is SUPERSEDED.
+# Almyros no longer offers tagSVCHelosToSparta at all (removed from HELOS_PORTAL_DESTS above) - the
+# Sparta Crypt is now entered from a CANONICAL catacomb entrance NPC (svc_area_return_sparta, placed
+# in catacube02_floorlast by build_section_surgery.py; its enter-offer lands on-mesh inside
+# spartacryptlevel2). So on canonical there is now a real outer-door traveler for Sparta, which the
+# b62 note (below) correctly said did not previously exist. The UBER half is UNCHANGED: Almyros still
+# offers tagSVCHelosToUber (interior landing) and svc_helos_trav_uber (TESTHUB) still lands at the
+# maze03 door - that divergence stands exactly as the b62 note describes.
+#
 # RECONCILIATION NOTE (b62 TRAVELERS-INTO-AREAS, Will 2026-07-14 final - "reconcile the Almyros
 # divergent tagSVCHelosToSparta dest"): tagSVCHelosToUber/tagSVCHelosToSparta above land INSIDE
 # the interior (crypt_floor1 / spartacryptlevel2), while the SAME tags on the live hub traveler
@@ -2526,6 +2542,12 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
 
 
 # ── TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final, item 1): ENTER-OFFERS ────────────────────
+# PR-5 (Will 2026-08-06): svc_area_return_sparta's enter-offer below is now the CANONICAL Sparta
+# Crypt entrance (the NPC is placed canonically in catacube02_floorlast by build_section_surgery.py;
+# Almyros's Helos Sparta route was removed). The Sparta landing stays (-5596,-2,-1410) because that
+# spot PASSES gate_landing_clearance (100% clearance) whereas Almyros's raw (-5602,-2,-1409) FAILS it
+# (greece_sarcophagia02_02 is a CONTAINER at 2.38u < 4.0u - the chest-pin bug class). The Uber
+# enter-offer is unchanged (still TESTHUB-surface only, since svc_area_return_uber stays TESTHUB-only).
 # The in-world traveler standing NEAR a sealed SV area also offers to take the player INTO it.
 # Ground-truthed (docs/reports/travelers_into_areas_sweep.md): of every in-world return NPC, only
 # TWO gate a truly SEALED separate deep area with an EXISTING placed NPC on both the outer AND

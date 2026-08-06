@@ -2784,10 +2784,44 @@ HELOS_HUB_RETURN_SPECS = [
     (EN_WARBAND_HOST_KEY,  (AREA_RETURN_WARBAND_DBR,    43.0,  10.0,  27.0)),   # ~4.2u off (40,24) demon-pack landing
     # b39 HUB v2: 5 NEW returns at the new door / order-(ii) landings.
     (MAZE03_LVL_KEY,             (AREA_RETURN_UBER_DBR,      285.0,  1.0, 148.0)),   # ~2.8u off (283,150) Uber-door landing (maze03)
-    (CATACUBE_FLOORLAST_LVL_KEY, (AREA_RETURN_SPARTA_DBR,     26.0,  1.0,  40.0)),   # ~2.8u off (24,38) Sparta-door landing (catacube)
+    # PR-5 (Will 2026-08-06): svc_area_return_sparta is PROMOTED from this TESTHUB-only return set to
+    # a CANONICAL catacomb ENTRANCE (see the SPARTA_CATACOMB_ENTRANCE fold just below the DBR/host
+    # constants). It is now placed once by the base INJECT_SPECS on BOTH map variants, so leaving it
+    # here would DOUBLE-place it on TESTHUB (merge_hub_into_inject_specs appends this over the base) -
+    # a warden-law violation (gate_traveler_responds G-WARDEN). Hence it is removed from this list.
     (DRXBC2_LVL_KEY,             (AREA_RETURN_DEVOURER_DBR,   72.0, 28.0,  57.0)),   # ~2.8u off (70,55) devourer-chamber landing (accepted CHECK 75% clr, on-mesh comp#1)
     (VASHKARR_HOST_KEY,          (AREA_RETURN_VASHKARR_DBR,   37.0,  1.0,  50.0)),   # ~2.8u off (35,52) Vashkarr-cave landing (random05a)
     (BROODNEST_HOST_KEY,         (AREA_RETURN_OBSIDIAN_DBR,  148.0,  1.0,  31.0)),   # ~4.2u off (151,28) Obsidian-entrance landing (tombobs02)
+]
+
+# ── PR-5 SPARTA-CRYPT CATACOMB ENTRANCE (Will 2026-08-06) ─────────────────────────────────────
+# Will's decision: "the Sparta Crypt should be entered from the Athens CATACOMBS, not from Helos."
+# On the shipped/canonical map the crypt was reachable ONLY via Almyros the Wayfarer in the Helos
+# start plaza (portal_master_helos -> tagSVCHelosToSparta), which nobody could discover (PR-5:
+# Flozer44 + Will 2026-07-14 both hunted the catacombs). This PROMOTES the catacomb entrance NPC
+# svc_area_return_sparta (the "Athens-catacomb tomb guy" - the b62 enter-offer OWNER, already
+# carrying its "Descend into the Sparta Crypt" boat-dialog in the shipped Quests.arc) from the
+# TESTHUB-only HELOS_HUB_RETURN_SPECS (removed above) to a single CANONICAL placement in the
+# DEEPEST Athens catacomb, by stairsdown01, amid the beastmen. Coupled quest change:
+# build_quest_files.py drops tagSVCHelosToSparta from Almyros's Helos menu (Garden/Secret/Uber KEPT).
+#
+# Placement PROVEN on-mesh on the f30303ed canonical map (survey_uberboss_spots, base 72):
+#   local (25,1,38) = world (-6587,1,-3180); d=0.14u, clr 100% in ALL 3 tilesets, comp#1/123720
+#   (main walkable component), next to stairsdown01 @6.07u, nearest hard collider 3.69u.
+# CATACUBE_FLOORLAST_LVL_KEY is a native SVAERA v0x0f host -> inject_into_0x05_v11 (base-72, the
+# proven maze03 / A1 path); flags=0, no 0x14 (talk NPC) -> the level's 0x0b navmesh is UNTOUCHED
+# (proven byte-identical by the wave's blob-diff). Its enter-offer lands the player on-mesh inside
+# spartacryptlevel2 at (-5596,-2,-1410) [gate-clean; Almyros's raw (-5602,-2,-1409) FAILS
+# gate_landing_clearance = the greece_sarcophagia02_02 CONTAINER at 2.38u < 4.0u]. The inner return
+# NPC svc_testhub_return_sparta already stands in the crypt (SC2 INJECT_SPECS block above) and
+# returns to this catacomb door - NOT duplicated here.
+# Collision-guarded promotion (base placement is the SOLE catacube injection on BOTH map variants;
+# merge_hub_into_inject_specs no longer folds a hub copy in, since it was removed from
+# HELOS_HUB_RETURN_SPECS above -> single placement = warden-law-safe).
+assert CATACUBE_FLOORLAST_LVL_KEY not in INJECT_SPECS, \
+    f'PR-5 catacomb-entrance host key collision with INJECT_SPECS: {CATACUBE_FLOORLAST_LVL_KEY}'
+INJECT_SPECS[CATACUBE_FLOORLAST_LVL_KEY] = [
+    (AREA_RETURN_SPARTA_DBR, 25.0, 1.0, 38.0),
 ]
 
 

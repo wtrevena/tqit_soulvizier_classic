@@ -3906,3 +3906,41 @@ player eyeballing the two monsters near Knossos is the launch gate (orchestrator
   keeping `Creatures.arc` costs ~+98 MB decompressed address space on the 32-bit engine (mitigated by
   the 4GB LAA patch). In-game confirmation that a dyed PC now renders is LAUNCH-GATED. See
   docs/BACKLOG.md PR-2 and the dye-skins lane report.
+## Side-area access / discoverability (decade 160-169, opened 2026-08-06, branch `fix/pr5-catacomb-traveler`)
+
+## R-160 [2026-08-06] IMPLEMENTED (fix/pr5-catacomb-traveler) - the Sparta Crypt is entered from the Athens catacombs, not from Helos
+
+VERBATIM (Will's decision, PR-5): "the Sparta Crypt should be entered from the Athens CATACOMBS, not
+from Helos."
+
+CONTEXT: on the shipped/canonical map the Sparta Crypt (spartacryptlevel2) was reachable ONLY via
+"Almyros the Wayfarer" (portal_master_helos) in the Helos start plaza, whose boat menu carried a "The
+Sparta Crypt" destination. Nobody could discover it - the Steam player Flozer44 AND Will (2026-07-14,
+R-triage in BACKLOG PR-5) both hunted the Athens catacombs for a portal that was not there. The
+catacomb traveler records (svc_area_return_sparta / svc_helos_trav_sparta) existed in the arz but
+shipped placed 0x (TESTHUB-only).
+
+IMPLEMENTED as a coupled MAP + QUESTS change (arz + Text untouched; the enter-offer menu tags already
+shipped):
+- MAP: svc_area_return_sparta (the Athens-catacomb "tomb guy" + the b62 enter-offer OWNER) is PROMOTED
+  from the TESTHUB-only return set to a single CANONICAL placement in the deepest Athens catacomb
+  (catacube02_floorlast, by stairsdown01) at local (25,1,38) = world (-6587,1,-3180) - on-mesh
+  d=0.14u, clr 100% all 3 tilesets, comp#1. Its 0x0b navmesh is byte-identical (only 0x05 grows by
+  the one NPC). The interior return NPC svc_testhub_return_sparta already stands in the crypt and was
+  NOT duplicated.
+- QUESTS: the "The Sparta Crypt" destination (tagSVCHelosToSparta) is REMOVED from Almyros's Helos boat
+  menu; his Garden / Secret Place / Uber Dungeon destinations are KEPT. The catacomb NPC's existing
+  boat-dialog ("Descend into the Sparta Crypt", tagSVCEnterSpartaCrypt) lands the player on-mesh inside
+  spartacryptlevel2 at (-5596,-2,-1410). NOTE the landing is NOT Almyros's raw (-5602,-2,-1409): that
+  spot FAILS gate_landing_clearance (greece_sarcophagia02_02 is a CONTAINER at 2.38u < the 4.0u min -
+  the chest-pin bug class); the b62-nudged (-5596,-2,-1410) passes at 100%.
+
+PROOFS (built this lane): canonical map wave 2677f7ac (baseline f30303ed = ship) - ONLY
+catacube02_floorlast.lvl 0x05 changed, navmesh identical. Quests wave 85f73859 (baseline bd0fb5f9 =
+ship) - ONLY sv_commonmechanics.qst, portal_master_helos 4->3, tagSVCHelosToSparta 2->1,
+Garden/Secret/Uber 2->2. Gates green: gate_traveler_responds (canonical + TESTHUB, built + spec),
+gate_landing_clearance v1 (PASS=27, both maps).
+
+NOT PROVEN IN-GAME. Deploys are the orchestrator's. Will's walk (into the deepest Athens catacomb, talk
+to the traveler by the stairs-down, descend, kill through, return) is the remaining launch gate -
+registered as debt. See docs/WILL_TEST_GUIDE.md (PR-5 catacomb-entrance step) and BACKLOG PR-5.

@@ -18,6 +18,27 @@
 > has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
 > files (Steam was already restarted today, so no Steam restart is needed).
 
+> ## 🆕 PR-5 (2026-08-06): THE SPARTA CRYPT IS NOW ENTERED FROM THE ATHENS CATACOMBS (canonical/Steam)
+> **This is a CANONICAL/Steam change (it ships), not a TESTHUB-only one.** Per Will's decision - "the
+> Sparta Crypt should be entered from the Athens CATACOMBS, not from Helos" - a **catacomb entrance
+> traveler now stands on the shipping map**, and **Almyros the Wayfarer in Helos NO LONGER lists "The
+> Sparta Crypt"** (he still offers Garden of Merchants / The Secret Place / The Uber Dungeon).
+>
+> **WALK-TO TEST (fresh Custom Quest char recommended):**
+> 1. Go into the **Athens catacombs** and work down to the **DEEPEST level** (CataCube02_FloorLast) -
+>    the chamber with the **stairs-down**, amid the beastmen. World spot **(-6587, 1, -3180)**.
+> 2. A **traveler NPC stands right by the stairs-down** there (record `svc_area_return_sparta`). Talk
+>    to him -> his boat menu includes **"Descend into the Sparta Crypt"**.
+> 3. Pick it -> you teleport **on-mesh inside `spartacryptlevel2`** (the crypt interior). A **return
+>    traveler stands there** (`svc_testhub_return_sparta`) and sends you back to **this catacomb door**
+>    (primary) or **Helos** (secondary).
+> 4. Sanity: talk to **Almyros in the Helos plaza** and confirm **"The Sparta Crypt" is GONE** from his
+>    menu while Garden / Secret Place / Uber Dungeon remain.
+>
+> **IN-GAME CONFIRMATION IS THE REMAINING GATE.** This was proven byte-level (only the catacomb blob's
+> 0x05 changed; navmesh byte-identical; the landing passes gate_landing_clearance) but NOT walked
+> in-game by the implementer (deploys are the orchestrator's). See BACKLOG PR-5 + WILL_RULINGS R-160.
+
 ## 🩸🩸 OCEAN-CHAMBER CRASH FIX - build49-dev on DEV (2026-07-27) - DO THIS ONE FIRST
 
 **What changed:** your crash probe caught it twice, in the same place both times: the game died
