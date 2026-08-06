@@ -9218,3 +9218,16 @@ THREE fixes, one wave:
     frustration). Keep their DPS threat; cut their effective-HP wall.
 Verify vs the warband placement too (the static blood-cave warband keeps its 4 marauders;
 these fixes target the ROAMING variant's pools + per-difficulty marauder defenses).
+
+## STEAM PLAYER REPORTS - build after the R-108 wave went live (captured 2026-08-06)
+Two Steam comments, both dated BEFORE today's live update (Jul 28-29), so each is triaged against what the wave shipped. NEVER-DROP-A-REPORT: all 5 items recorded verbatim, owner/state each.
+
+**fleurydid (Jul 29):** *"mod trop difficile et quand je meurt tombe invisible"* (too hard; and when I die I go invisible)
+- **PR-1 (NEW, P2, needs investigation):** player character goes INVISIBLE on death/respawn. Not touched by the wave. Repro unknown - possibly model fails to re-render after the rebirth-fountain respawn. Investigate.
+- PR-1b (difficulty): partly eased by today's build (death penalty -90%, tombstone returns full, Toxeus reflect 100->30). General difficulty is subjective; no action unless Will wants a global pass.
+
+**Flozer44 (Jul 28, reached Knossos @ lvl 22):**
+- **PR-2 (NEW, P2):** special DYES bought from the Merchants' Gardens merchants don't apply - character turns GREY. Likely a missing dye texture or a null-material relic. Investigate the dye/relic records.
+- **PR-3 (LIKELY FIXED TODAY - verify in-game):** *"Maenads equipped with ranged weapons aren't firing; they just stand motionless with their arms spread wide."* This is the FROZEN THROWN-WEAPON MONSTER bug (R-100 #15). `thrown_anim_rig.py` covers the maenad family (the anm_maenad_thrown clone). His comment predates today's push. HIGH confidence resolved in the live build; confirm with a fresh maenad encounter.
+- **PR-4 (NEW, P3, text-only):** Gorgon names SWAPPED - "Impious" and "Geomancy Adept" are on the wrong monsters. A name-tag assignment swap; cheap text fix once the two records are found.
+- **PR-5 (KNOWN/OPEN, P2):** cannot find the secret portal to the "Depths of the Spartan Crypt" in the Athens catacombs. Related: unmerged branch `fix/athens-catacomb-traveler` (tip 9dc5b09) RCA'd "Sparta traveler survived the port + responds; Crypt L2 unreachable by design." So the traveler works but the deeper crypt / its portal may be genuinely unreachable or too hidden. Needs a real reachability check on the shipped map, not just docs.
