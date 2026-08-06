@@ -633,6 +633,24 @@ REGISTRY = [
                             # LAST, so it is the ratified final writer on its own field. A WARN
                             # naming a module that also writes perPartyMemberDropItemName on any of
                             # those 3 is a real finding: investigate before shipping.
+    'pc_dissolve_restore',  # PR-1 (Steam player fleurydid 2026-07-29, "quand je meurt tombe
+                            # invisible"): the PLAYER goes INVISIBLE on death/respawn. The two
+                            # ACTIVE PC records (femalepc01/malepc01) are taken verbatim from SV
+                            # 0.98i, which STRIPPED the base+SVAERA dissolveTexture
+                            # (Effects\Textures\CloudTEST03.tex) that feeds the engine's death/
+                            # despawn alpha-FADE pass, while KEEPING female allowTransparency=1
+                            # (the enable for that path). With the path enabled and no dissolve
+                            # texture the female mesh is left transparent on death and the respawn
+                            # never restores it. base (allowTransparency=0 AND texture present) and
+                            # SVAERA (allowTransparency=1 BUT texture present) are both safe; only
+                            # our lineage has path-on + texture-off. This module restores the
+                            # base+SVAERA value on BOTH PC records - strictly additive, matches the
+                            # maintained port exactly on the female path, resolves in base
+                            # Effects.arc. Disjoint namespace (no other module writes those two
+                            # creature records), so order-independent; registered here purely so
+                            # verify() reads the final assembled db. In-game confirmation is
+                            # launch-gated + gender-dependent (see docs/BACKLOG.md PR-1).
+                            # Negative test: py tools/patches/pc_dissolve_restore.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
