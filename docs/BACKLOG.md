@@ -1,5 +1,47 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - PR-1..PR-5 PLAYER-REPORT WAVE + R-170 SPARTA WARDEN (2026-08-06, main @ `0449b1b`) - LIVE ON STEAM
+
+**Steam Workshop item 3759792705 UPDATED and CONFIRMED (real content commit, not "no change").** SteamCMD log
+(`local/upload_run.log` mirror): cached login OK, `Preparing content... Uploading content... Committing update...Success.`,
+`Updated Workshop item: 3759792705`. Cover image OMITTED by design (no `-PreviewFile`; the legacy-UGC cover upload is the
+only failing component and remains Will's separate action).
+
+**What shipped (the delta since the R-108 blood-cave wave that was already live):**
+- **PR-2 dyes** - `tools/build_creatures_dye_skins_arc.py` packs the missing SV costume-dye PC skins into an ADDITIVE
+  `Resources/Creatures.arc` (288 net-new skins, 0 base overrides). Unobtainable dyes left alone. `gate_dye_skins` PASS.
+- **PR-1 invisible-on-death** - `tools/patches/pc_dissolve_restore.py` restores `dissolveTexture=Effects\Textures\CloudTEST03.tex`
+  on femalepc01+malepc01 (candidate fix for fleurydid's "quand je meurt tombe invisible"; unconfirmed in-game).
+- **PR-4 Gorgon names** - `tools/patches/gorgon_vanilla_names.py` restores vanilla "Gorgon ~ Geomancer" / "Gorgon ~ Profaner".
+- **PR-5 + polish (R-170)** - dedicated **Warden of the Spartan Crypt** (`records\quests\svc_warden_sparta_crypt.dbr`, cloned
+  from the SHARED `svc_area_return_sparta` which stays byte-unchanged + placed nowhere) at the deepest Athens catacomb
+  (`CataCube02_FloorLast`, world -6587,1,-3180); DESCEND-ONLY menu; lands on-mesh in spartacryptlevel2 (-5596,-2,-1410).
+  Almyros's Helos->Sparta route removed (Garden/Secret/Uber intact).
+- PR-3 maenad ranged = the thrown-object fix ALREADY shipped in the R-108 wave (no new work; Will confirmed).
+
+**SHIP ARTIFACT HASHES (built deterministically `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`; vet-confirmed, packaged==work byte-for-byte):**
+| artifact | md5 | bytes |
+|---|---|---|
+| `Database/SoulvizierClassic.arz` | `d447f09556cf9e09fa33ef57ccfec6c7` | 55,523,171 (51,188 rec, +1 = Warden only) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 (+2 Warden tags) |
+| `Resources/Levels.arc` | `78a3e263ef10407808ef06858dfe9012` | 688,690,526 (canonical; Warden blob navmesh byte-identical) |
+| `Resources/Quests.arc` | `6b25f8dd3c0b47a1438ef1dd1b69fc11` | 194,961 (ONLY sv_commonmechanics differs vs live; Leinth exit intact) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 (dye layer) |
+
+**VERIFICATION:** arz record-diff vs pre-Warden baseline (ab02f16e) = ADDED 1 / REMOVED 0 / MODIFIED 0. Map: only
+`CataCube02_FloorLast` is the Warden delta, 0x0b navmesh byte-identical (b89 crash-safe). Quests per-entry diff vs live
+`bd0fb5f9` = ONLY `sv_commonmechanics.qst` changed; `open_bloodcave_portal.qst` (Leinth exit) byte-identical. Gates:
+0 P0 / 0 P1; contract battery 4476 P2 (all pre-existing editor-only classes) GATE PASS. Build lane `wf_27c17178`
+(build+independent vet, both GO, all 5 md5s independently recomputed). Sparta polish lane `wf_e94c6bfa` (GO).
+
+**RESIDUAL (honest):** the Sparta catacomb entrance is UNCONFIRMED IN-GAME (shipped on evidence - navmesh proven crash-safe;
+worst case is the Warden not appearing / mis-landing, not a crash). Will to verify on the live build. Quests cache
+(`reference_mods\SVAERA_customquest\Resources\Quests.arc` md5 b786666, `upstream\...\XPack\Quests.arc` md5 a1b8020b) was
+missing on main and repopulated from the SVAERA workshop item + sibling worktrees to enable the full Quests rebuild.
+
+---
+
+
 ## P0 GATE RECORD - R-140 FROZEN THROWN-WIELDERS + R-141 UBER QUEST-ITEM LEAKS (2026-07-30, branch `fix/quest-item-leaks`) - NOT DEPLOYED, NO TAG TAKEN
 
 **NOT DEPLOYED. Nothing was written to any `CustomMaps\*` target, no Steam action, no TQ or Steam
