@@ -138,10 +138,15 @@ def classify(dbr):
                                     '/creature/', 'minion', 'demon_', 'beastman',
                                     'undead_', 'skeleton', 'keres')):
         return 'monster'
-    # 4) talk NPCs (ours + native)
+    # 4) talk NPCs (ours + native). PR-5 SPARTA POLISH: 'svc_warden' = the dedicated
+    # "Warden of the Spartan Crypt" catacomb-entrance NPC (Class=Npc, soft collision exactly
+    # like the svc_area_return_* it was cloned from) - matched here so a TESTHUB traveler that
+    # lands at its spot reads as a soft NPC crowd NOTE, not a hard PIN. Monster 'warden' records
+    # (e.g. ss_warden_behemoth) are already classified 'monster' above via their /monster path.
     if any(k in d for k in ('npc', 'villager', 'townsperson', 'merchant', 'caravan',
                             'portal_master', 'helos_trav', 'area_return', 'return',
-                            'storyteller', 'soulcollector', 'boatman', 'speaking')):
+                            'svc_warden', 'storyteller', 'soulcollector', 'boatman',
+                            'speaking')):
         return 'npc'
     # 5) solid props / setdressing with collision (incl. DRX blood-cave destructibles:
     # burst vessels / egg-sacs / fleshy growths have collision until killed)
