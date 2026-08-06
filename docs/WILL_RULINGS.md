@@ -3944,3 +3944,54 @@ gate_landing_clearance v1 (PASS=27, both maps).
 NOT PROVEN IN-GAME. Deploys are the orchestrator's. Will's walk (into the deepest Athens catacomb, talk
 to the traveler by the stairs-down, descend, kill through, return) is the remaining launch gate -
 registered as debt. See docs/WILL_TEST_GUIDE.md (PR-5 catacomb-entrance step) and BACKLOG PR-5.
+
+### R-170 AMENDMENT [2026-08-06] IMPLEMENTED (fix/pr5-sparta-polish) - name the catacomb NPC "Warden of the Spartan Crypt" + descend-only menu
+
+VERBATIM (Will's decision, PR-5 polish): Will decided TWO things about the catacomb entrance NPC that
+R-170 placed: (1) NAME it "Warden of the Spartan Crypt" (it had displayed the generic shared name
+"Return Traveler"); (2) its menu is DESCEND ONLY - remove the "Helos (Return)" travel option it
+inherited from the shared area-return record.
+
+SHARED-RECORD LAW (the crux): the record R-170 placed at the catacomb was svc_area_return_sparta,
+whose descriptionTag tagSVCNpcAreaReturn ("Return Traveler") is SHARED by all 11 area-return travelers
+(Dorus, Tantalus, Charon, ... Obsidian). Renaming that tag OR mutating that record would rename/alter
+every sibling. So instead this lane CLONES svc_area_return_sparta into a DEDICATED record
+svc_warden_sparta_crypt with its OWN descriptionTag (tagSVCNpcWardenSpartaCrypt = "Warden of the
+Spartan Crypt") + a fitting greeting (tagSVCWardenSpartaCryptChat), and PLACES THE CLONE at the exact
+proven on-mesh catacomb spot (local (25,1,38) = world (-6587,1,-3180)) instead of svc_area_return_sparta.
+
+IMPLEMENTED (coupled arz + Text + MAP + QUESTS; the shared record left BYTE-UNCHANGED):
+- arz (apply_svc_patches _create_sparta_crypt_warden): svc_warden_sparta_crypt = a byte-identical clone
+  of svc_area_return_sparta except description + messageDialogTag + FileDescription. The shared
+  svc_area_return_sparta is untouched (Class=Npc, description=tagSVCNpcAreaReturn) and kept as the clone
+  donor per the RETIREMENT PROTOCOL - it is now placed NOWHERE.
+- Text: 2 new tags minted (name + greeting); tagSVCNpcAreaReturn = "Return Traveler" untouched.
+- MAP (build_section_surgery): INJECT_SPECS[catacube02_floorlast] places WARDEN_SPARTA_DBR (the clone),
+  same coord, same NPC byte-shape -> the level's 0x0b navmesh is byte-identical; only the 0x05 record-
+  path string differs (+1 byte).
+- QUESTS (build_quest_files): the "Descend into the Sparta Crypt" enter-offer (tagSVCEnterSpartaCrypt)
+  is keyed on the CLONE; svc_area_return_sparta's "Helos (Return)" entry (tagSVCAreaReturnToHelos) is
+  REMOVED from HELOS_HUB_TRAVEL -> the Warden offers EXACTLY ONE option; the shared record now carries
+  no route and no placement. The interior return NPC svc_testhub_return_sparta (in spartacryptlevel2)
+  is UNCHANGED - it still sends the player back to this catacomb door / Helos.
+- GATES: gate_travel_npc_invariants T2/T5/T5c brought green for the 24-record hub + the new canonical
+  Warden + the retired donor (the R-170 lane had left this battery red); gate_traveler_responds HUB_KW
+  += svc_warden_sparta (Warden now tracked, proven to own only its descend route); gate_landing_clearance
+  classifies svc_warden as a soft-collision NPC (like svc_area_return_*).
+
+PROOFS (built this lane, this env; baseline = main-HEAD 48f47f4). arz record-diff base ab02f16e ->
+wave d447f095: ADDED=1 (svc_warden_sparta_crypt), REMOVED=0, MODIFIED=0 (svc_area_return_sparta
+byte-unchanged). Text.arc modstrings diff: +2 lines only (Warden name + greeting), 0 removed;
+tagSVCNpcAreaReturn="Return Traveler" unchanged. sv_commonmechanics boat-route diff: the Warden owns
+EXACTLY ONE route (tagSVCEnterSpartaCrypt -> on-mesh (-5596,-2,-1410)); svc_area_return_sparta lost
+BOTH routes (retired). Canonical map baseline 2677f7ac (== R-170 ship wave) -> wave 78a3e263, and
+TESTHUB baseline e708389f -> d5ce1835: ONLY CataCube02_FloorLast changed (0x05 +1 B), 0x0b navmesh
+BYTE-IDENTICAL (124427, parse_rec02 OK), 0 levels added/removed, QUESTS/GROUPS/SD/BITMAPS/DATA2 byte-
+identical. Placement counts on the built canonical map: svc_warden_sparta_crypt x1 (CataCube02_FloorLast),
+svc_area_return_sparta x0, svc_testhub_return_sparta x1 (SpartaCryptLevel2), Almyros (portal_master_helos)
+x1 offering Garden/Secret/Uber only. Gates GREEN: gate_travel_npc_invariants (build-free + built-arc T6),
+gate_traveler_responds (canonical + TESTHUB), gate_landing_clearance --wiring v1 (built map PASS).
+
+NOT PROVEN IN-GAME. Deploys are the orchestrator's. Will's walk (into the deepest Athens catacomb, talk
+to the WARDEN by the stairs-down, confirm the name reads "Warden of the Spartan Crypt" and the menu has
+ONLY "Descend into the Sparta Crypt", descend, return) is the remaining launch gate - registered as debt.

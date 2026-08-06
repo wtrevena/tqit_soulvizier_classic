@@ -20,15 +20,20 @@
 
 > ## 🆕 PR-5 (2026-08-06): THE SPARTA CRYPT IS NOW ENTERED FROM THE ATHENS CATACOMBS (canonical/Steam)
 > **This is a CANONICAL/Steam change (it ships), not a TESTHUB-only one.** Per Will's decision - "the
-> Sparta Crypt should be entered from the Athens CATACOMBS, not from Helos" - a **catacomb entrance
-> traveler now stands on the shipping map**, and **Almyros the Wayfarer in Helos NO LONGER lists "The
-> Sparta Crypt"** (he still offers Garden of Merchants / The Secret Place / The Uber Dungeon).
+> Sparta Crypt should be entered from the Athens CATACOMBS, not from Helos" - the **Warden of the
+> Spartan Crypt now stands on the shipping map**, and **Almyros the Wayfarer in Helos NO LONGER lists
+> "The Sparta Crypt"** (he still offers Garden of Merchants / The Secret Place / The Uber Dungeon).
+>
+> **PR-5 POLISH (2026-08-06):** the catacomb NPC is now named **"Warden of the Spartan Crypt"** (it used
+> to read the generic "Return Traveler"), and his menu is **DESCEND ONLY** - the old "Helos (Return)"
+> option is gone, so he offers a **single** boat choice.
 >
 > **WALK-TO TEST (fresh Custom Quest char recommended):**
 > 1. Go into the **Athens catacombs** and work down to the **DEEPEST level** (CataCube02_FloorLast) -
 >    the chamber with the **stairs-down**, amid the beastmen. World spot **(-6587, 1, -3180)**.
-> 2. A **traveler NPC stands right by the stairs-down** there (record `svc_area_return_sparta`). Talk
->    to him -> his boat menu includes **"Descend into the Sparta Crypt"**.
+> 2. The **Warden of the Spartan Crypt** stands right by the stairs-down there (record
+>    `svc_warden_sparta_crypt`). Confirm his name reads **"Warden of the Spartan Crypt"**, then talk to
+>    him -> his boat menu has **EXACTLY ONE option: "Descend into the Sparta Crypt"** (no "Helos (Return)").
 > 3. Pick it -> you teleport **on-mesh inside `spartacryptlevel2`** (the crypt interior). A **return
 >    traveler stands there** (`svc_testhub_return_sparta`) and sends you back to **this catacomb door**
 >    (primary) or **Helos** (secondary).
@@ -36,8 +41,9 @@
 >    menu while Garden / Secret Place / Uber Dungeon remain.
 >
 > **IN-GAME CONFIRMATION IS THE REMAINING GATE.** This was proven byte-level (only the catacomb blob's
-> 0x05 changed; navmesh byte-identical; the landing passes gate_landing_clearance) but NOT walked
-> in-game by the implementer (deploys are the orchestrator's). See BACKLOG PR-5 + WILL_RULINGS R-160.
+> 0x05 changed; navmesh byte-identical; the Warden owns exactly the one descend route; the landing
+> passes gate_landing_clearance) but NOT walked in-game by the implementer (deploys are the
+> orchestrator's). See BACKLOG PR-5 + WILL_RULINGS R-170 (+ its PR-5 POLISH amendment).
 
 ## 🩸🩸 OCEAN-CHAMBER CRASH FIX - build49-dev on DEV (2026-07-27) - DO THIS ONE FIRST
 
@@ -163,7 +169,7 @@ learn where everything is, and **walk in** to the boss yourself.
 |---|---|---|
 | **Traveler: Garden of Merchants** | the merchant hub by the caravan_rhodes Super-Caravan + the SV **rift-shrine** (teleportshrine_gom) that reaches the Garden in game | browse the merchants; the rift-shrine is the in-game way in |
 | **Traveler: The Secret Place** | the darkforestenter **forest-cluster entry** | walk in; the crow-hero bosses (Murderbunny, Zilla) live in the interiors |
-| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | 🆕 the return traveler standing right there (`svc_area_return_sparta`) now has a SECOND option too: "Descend into the Sparta Crypt" - takes you straight into `spartacryptlevel2` (the interior itself), where its own return traveler now sends you back to THIS catacomb door (primary) or Helos (secondary) |
+| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | 🆕 PR-5 POLISH: the **Warden of the Spartan Crypt** (`svc_warden_sparta_crypt`) stands right there. His menu is DESCEND ONLY - a single "Descend into the Sparta Crypt" option that takes you straight into `spartacryptlevel2` (the interior itself), where its own return traveler sends you back to THIS catacomb door (primary) or Helos (secondary) |
 | **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east. 🆕 the return traveler standing right there (`svc_area_return_uber`) now has a SECOND option too: "Enter the Uber Dungeon" - takes you straight into `crypt_floor1` (the interior itself), where its own return traveler now sends you back to THIS door (primary) or Helos (secondary) |
 | **Traveler: The Boss Arena** | the boss-arena forecourt (~90u south of the arena volume) | walk north into the Satyr-Shaman arena |
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
@@ -265,9 +271,10 @@ are banned; a walk-through to the Garden with no way back was a live Steam bug):
    🆕 The interior itself (`crypt_floor1`) is now ENTERABLE: at the Knossos->Uber door, talk to
    the return traveler standing there (`svc_area_return_uber`) and pick "Enter the Uber Dungeon".
 2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt". 🆕 The crypt itself (`spartacryptlevel2`) is
-   now ENTERABLE: at the Athens catacomb door, talk to the return traveler standing there
-   (`svc_area_return_sparta`) and pick "Descend into the Sparta Crypt". Its own return traveler
-   inside sends you back to this same catacomb door (primary) or Helos (secondary).
+   now ENTERABLE: at the Athens catacomb door, talk to the **Warden of the Spartan Crypt**
+   (`svc_warden_sparta_crypt`) - his menu is DESCEND ONLY, one "Descend into the Sparta Crypt"
+   option. Its own return traveler inside sends you back to this same catacomb door (primary) or
+   Helos (secondary).
 3. **Garden of Merchants** - "Traveler: Garden of Merchants". (The old first-cave portal NPC is on
    Will's removal list; the Garden is now reached via the hub, not that NPC.)
 4. **Secret Place** - "Traveler: The Secret Place". The crow-hero bosses (Murderbunny, Zilla, etc. -
