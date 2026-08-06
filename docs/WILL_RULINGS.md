@@ -3908,7 +3908,7 @@ player eyeballing the two monsters near Knossos is the launch gate (orchestrator
   docs/BACKLOG.md PR-2 and the dye-skins lane report.
 ## Side-area access / discoverability (decade 160-169, opened 2026-08-06, branch `fix/pr5-catacomb-traveler`)
 
-## R-160 [2026-08-06] IMPLEMENTED (fix/pr5-catacomb-traveler) - the Sparta Crypt is entered from the Athens catacombs, not from Helos
+## R-170 [2026-08-06] IMPLEMENTED (fix/pr5-catacomb-traveler) - the Sparta Crypt is entered from the Athens catacombs, not from Helos
 
 VERBATIM (Will's decision, PR-5): "the Sparta Crypt should be entered from the Athens CATACOMBS, not
 from Helos."
