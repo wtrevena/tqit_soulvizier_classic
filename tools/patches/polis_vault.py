@@ -107,49 +107,66 @@ _SK_DARK_COVENANT = r'records\skills\spirit\drxdarkcovenant.dbr'
 _SK_DEATH_CHILL = r'records\skills\spirit\drxdeathchillaura.dbr'
 _AC_ON_ATTACK = r'records\xpack\ai controllers\autocast_items\basetemplates\base_atenemy_onattack.dbr'
 
-# ── R-100 #17 (Will 2026-07-29), THE DIFFICULTY-TIER MIS-WIRE ────────────────
-# WILL, VERBATIM: "also his chests on epic are dropping 'essence' like 'essence
-# of the chill of tartarus' which should only drop on normal instead of dropping
-# the epic version which starts with 'embodiment' like 'embodiment of the chill
-# of tartarus'."
+# ── GAOLER-CHEST DIFFICULTY TIERING (Will 2026-08-08) ────────────────────────
+# WILL, VERBATIM INTENT: the two placed Gaoler cage chests must scale by
+# difficulty so ONLY "Essence of ..." relics drop on NORMAL, ONLY "Embodiment
+# of ..." relics drop on EPIC, and ONLY "Incarnation of ..." relics drop on
+# LEGENDARY. Apply to the STEAM (canonical) build; preserve the Legendary payout
+# (Will farms these on his Legendary TESTHUB character). Supersedes the earlier
+# R-100 #17 fix, which only matched the guaranteed slot to LEGENDARY so the chest
+# paid Incarnation-tier relics on EVERY difficulty (correct on Legendary, but
+# over-tier on Normal/Epic - the exact leak this order closes in the other
+# direction).
 #
-# ROOT CAUSE, measured (tools/debug/probe_gaoler_chests.py +
-# probe_relic_difficulty_tiers.py). The vault's loot tables are clones of the DRX
-# mega-chest table `loottable_hidden_bloodcave_03`, whose EVERY slot is
-# legendary tier: `..._l01` weapons/armour/jewellery and `03_act4_relics`. On top
-# of that clone this module injected its GUARANTEED slots from the monolith's
-# shared `_OBS_GUAR_*` donors, and both of those are pinned to the NORMAL tier:
-#     unique_1h_n01.dbr   <- `_n01` = normal-tier uniques
-#     01_act4_relics.dbr  <- `01_`  = normal-tier relics ("Essence of ...")
-# The `01_/02_/03_` prefix IS the tier: 01_act4_relics lists `01_Act*` relics,
-# 02_ lists `02_Act*`, 03_ lists `03_Act*` (measured on the base-game arz). So
-# the guaranteed slot - the one slot that fires at 100% - handed out normal-tier
-# relics on every difficulty while the rest of the same chest paid legendary.
+# VERIFIED TIER MAP (base-game Text_EN.arc + the arz, this session):
+#   Essence of X   = NORMAL tier  = `01_act4_relics` (lists `01_act*` relics)
+#   Embodiment of X= EPIC tier    = `02_act4_relics` (lists `02_act*` relics)
+#   Incarnation of X=LEGENDARY tier=`03_act4_relics` (lists `03_act*` relics)
+# Each tier is a SEPARATE, tier-pure LootItemTable_FixedWeight; a relic .dbr has
+# no internal difficulty gate, so WHICH tier drops is decided ONLY by the table
+# the dropper names. Gear tiers follow the same `_n01`/`_e01`/`_l01`(+`a`) triple.
 #
-# WHY NOT A DIFFICULTY-INDEXED ARRAY: on a Monster.tpl record the loot slots ARE
-# difficulty-indexed 3-arrays (2,703 native instances of
-# `lootMisc2Item1 = [01_act4, 02_act4, 03_act4]`, e.g. on this very Gaoler's own
-# donor xsecrethero_wardenofsouls_48). On a CONTAINER's loot table they are NOT:
-# zero `lootNNameM` fields anywhere in the 74,013-record base game carry more
-# than one value. A container's tier is fixed by the tables it names, and the
-# base game ships a separate chest record per tier
-# (goldenchest_normal_/epic_/legendary_01). So the in-scope fix is to stop the
-# guaranteed slot from being the odd one out, and match it to the tier the rest
-# of the chest already pays. A truly per-difficulty vault needs 3 chest records
-# per spot plus map-side placement and is registered as BL-b102-DEBT-3.
+# THE MECHANISM (engine-proven, corrects the prior module's premise). A container
+# loot table IS difficulty-indexed: `FixedItemLoot.tpl` (the template these
+# `records\item\loottables\svc\polisvault_*` tables use) declares every loot slot
+#     Variable{ name="loot1Name1" class="array" type="file_dbr"
+#               description="Index by game mode" }
+# i.e. each `lootNNameM` field holds up to 3 values [normal, epic, legendary] and
+# the engine reads the one for the current game mode (difficulty) - the SAME
+# selection the base game uses on a Monster's `lootMisc2Item1 = [01,02,03]`
+# (2,478 native instances; e.g. this Gaoler's own donor
+# xsecrethero_wardenofsouls_48). The base game never POPULATES the container-side
+# array because campaign chests are placed as a separate per-difficulty record
+# per region (goldenchest_normal_/epic_/legendary_01); a single custom-quest
+# chest replayed on all three difficulties has no such per-region twin, so the
+# in-place difficulty array is the correct, map-free, Steam-clean fix.
 #
-# SHARED-SYMBOL LAW: `M._OBS_GUAR_UNIQUE` / `M._OBS_GUAR_RELIC` have two OTHER
-# carriers inside the monolith (apply_svc_patches lines ~15409 and ~16715, the
-# other dedicated-hoard builders). They are deliberately NOT edited here - this
-# module now names its own tier-correct donors, and the same mis-wire in those
-# two carriers is reported, not silently retuned under a Gaoler ticket
-# (docs/BACKLOG.md BL-b102-DEBT-4).
+# THE FIX: after cloning the (all-legendary) DRX mega-chest loot into each vault
+# table, `_tierize_loot_table` rewrites every tier-specific slot - relic, unique
+# and static gear alike - from its single legendary value to the [normal, epic,
+# legendary] triple (`_tier_variants`). LEGENDARY is index 2 and is byte-for-byte
+# the value that was already there, so the Legendary farm payout is UNCHANGED;
+# only the over-drop of legendary tiers on Normal/Epic is stopped. The one slot
+# left untouched is `03_act4_arcaneformulae_sp` (a crafting-formula table, not a
+# relic and not gear; its `_sp` variant has no `01_`/`02_` siblings to index to -
+# recorded in docs/BACKLOG.md).
+#
+# SHARED-SYMBOL LAW: this module owns ONLY the polisvault_* tables. The
+# monolith's shared `M._OBS_GUAR_*` donors and the other dedicated-hoard builders
+# are NOT touched; the build-wide sweep that this module's gate runs
+# (tools/gate_relic_difficulty_tiers.py) REPORTS, never silently retunes, any
+# wrong-difficulty relic elsewhere.
 _GUAR_UNIQUE = r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr'
 _GUAR_RELIC = r'records\xpack\item\loottables\relics\03_act4_relics.dbr'
-# The normal-tier donors this module used to inject, kept NAMED (not deleted) so
-# the gate below can prove they are gone from the vault's tables.
-_GUAR_UNIQUE_WRONG = M._OBS_GUAR_UNIQUE   # ...\mastertables\unique_1h_n01.dbr
-_GUAR_RELIC_WRONG = M._OBS_GUAR_RELIC     # ...\relics\01_act4_relics.dbr
+# The canonical difficulty triples (index 0=normal, 1=epic, 2=legendary), used by
+# the gate + the negative test to prove the tiering is correct AND that Legendary
+# (index 2) still pays the exact legendary tier the farm depends on.
+_DIFF_RELIC = [r'records\xpack\item\loottables\relics\01_act4_relics.dbr',
+               r'records\xpack\item\loottables\relics\02_act4_relics.dbr',
+               r'records\xpack\item\loottables\relics\03_act4_relics.dbr']
+_DIFF_UNIQUE_1H = [r'records\xpack\item\loottables\weapons\mastertables\unique_1h_n01.dbr',
+                   r'records\xpack\item\loottables\weapons\mastertables\unique_1h_e01.dbr',
+                   r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr']
 
 # Text tags.
 _TAG_G1 = 'tagSVCMonsterPolisGaoler'
@@ -367,12 +384,91 @@ def _build_horde(db):
           "reuse the native ss_warden_behemoth proxy)." % built)
 
 
+import re as _re
+
+# The tier token in a loot-table leaf name (Will 2026-08-08):
+#   Pattern B - a leading `01_`/`02_`/`03_` (relics, arcane formulae): the digit IS
+#     the tier (01=normal Essence, 02=epic Embodiment, 03=legendary Incarnation).
+#   Pattern A - a trailing `_n01`/`_e01`/`_l01` token, optionally with a band letter
+#     (`_l01a`): the n/e/l letter IS the tier (unique + static gear master tables).
+_TIER_B = _re.compile(r'^(0[1-3])(_.*)$')          # 03_act4_relics -> ('03','_act4_relics')
+_TIER_A = _re.compile(r'_([nel])(0[1-9][a-z]?)$')  # unique_1h_l01 / static_all_l01a
+
+
+def _tier_triple_names(path):
+    """Pattern-only: if `path`'s leaf carries a tier token, return the [normal,
+    epic, legendary] triple of full paths (index 0/1/2 = the game-mode order),
+    WITHOUT checking the db. Returns None when the leaf carries no tier token.
+    Preserves the input's exact prefix + casing; only the tier token is
+    substituted, so the derived paths match the db record names byte-for-byte."""
+    p = str(path).replace('/', '\\')
+    leaf = p.rsplit('\\', 1)[-1]
+    stem = leaf[:-4] if leaf.lower().endswith('.dbr') else leaf
+    prefix = p[:len(p) - len(leaf)]
+    mB = _TIER_B.match(stem)
+    mA = _TIER_A.search(stem)
+    if mB:
+        band = mB.group(2)                       # '_act4_relics'
+        variants = ['01' + band, '02' + band, '03' + band]
+    elif mA:
+        tail = mA.group(2)                       # '01' or '01a'
+        head = stem[:mA.start()]                 # 'unique_1h' / 'static_all'
+        variants = ['%s_%s%s' % (head, t, tail) for t in ('n', 'e', 'l')]
+    else:
+        return None
+    return [prefix + v + '.dbr' for v in variants]
+
+
+def _tier_variants(db, path):
+    """As `_tier_triple_names`, but returns the triple ONLY when all three tier
+    siblings exist in the db (else None). This is what the tiering + the gate act
+    on - a tier token with no complete triple (the arcane `_sp` case) is left as a
+    scalar. Tier-agnostic: maps ANY member of a triple to the full ordered triple,
+    so the gate can reuse it to validate an already-tierized array."""
+    names = _tier_triple_names(path)
+    if names is None or not all(db.has_record(pp) for pp in names):
+        return None
+    return names
+
+
+def _tierize_loot_table(db, loot):
+    """Rewrite every tier-specific `lootNNameM` slot of a vault loot table from its
+    single legendary value to the [normal, epic, legendary] difficulty array the
+    FixedItemLoot.tpl slot is declared to index by game mode. Idempotent (a slot
+    already carrying the 3-array is left alone). Legendary is index 2 == the value
+    that was there, so the Legendary payout is byte-preserved. Returns
+    (tierized, skipped) where skipped is the list of tier-token slots with no
+    complete n/e/l triple (the arcane-formula `_sp` case) for the caller to report."""
+    ff = db.get_fields(loot) or {}
+    tierized, skipped = 0, []
+    for k in list(ff):
+        base = k.split('###')[0]
+        if not (base.lower().startswith('loot') and 'name' in base.lower()):
+            continue
+        vals = [v for v in ff[k].values if isinstance(v, str) and v]
+        if len(vals) != 1:
+            continue                              # empty, or already a difficulty array
+        variants = _tier_variants(db, vals[0])
+        if variants is None:
+            if _tier_triple_names(vals[0]) is not None:
+                skipped.append((base, vals[0]))   # a tier token we could not complete
+            continue
+        db.set_field(loot, base, list(variants))  # no dtype -> STRING preserved
+        tierized += 1
+    return tierized, skipped
+
+
 def _build_vault(db, tags):
     """The 5 golden Majestic Chests (ChestTemple01, already Boss-locked, LockedRadius
     100 kept - the base Charon boss-chest value) with per-chest enriched apex loot
     (clone of the mega-chest legendary table, numSpawn just under the mega, a
     guaranteed unique/relic slot varied per spec 5.2). 5 distinct records => 5
-    independent rolls. Graceful loot fallback keeps the donor's own legendary table."""
+    independent rolls. Graceful loot fallback keeps the donor's own legendary table.
+
+    Will 2026-08-08: every tier-specific slot of each loot table is then rewritten
+    to its [normal, epic, legendary] difficulty array by `_tierize_loot_table`, so
+    ONLY Essence relics drop on Normal, ONLY Embodiment on Epic, ONLY Incarnation on
+    Legendary (Legendary = the untouched legendary tier -> the farm is preserved)."""
     if not db.has_record(_CHEST_DON):
         print("  POLIS VAULT: WARNING chest donor missing: %s; vault skipped" % _CHEST_DON)
         return
@@ -393,6 +489,7 @@ def _build_vault(db, tags):
         (_CHEST_DON,      2.4, 2.8, [(_GUAR_RELIC, 80), (_GUAR_UNIQUE, 50)]),  # 5 mixed + relic/charm
     ]
 
+    total_tierized, skipped_slots = 0, []
     for i, (chest, loot, (chest_don, nmin, nmax, guar)) in enumerate(
             zip(_CHEST, _CHEST_LOOT, themes), start=1):
         donor = chest_don if db.has_record(chest_don) else _CHEST_DON
@@ -414,12 +511,28 @@ def _build_vault(db, tags):
             for j, (tbl, wt) in enumerate(guar, start=1):
                 sf(loot, 'loot3Name%d' % j, tbl)
                 sf(loot, 'loot3Weight%d' % j, wt)
+            # Will 2026-08-08: make every tier-specific slot (relic + gear) a
+            # [normal, epic, legendary] difficulty array so the chest pays only the
+            # difficulty-correct tier; Legendary (index 2) is the untouched value.
+            n_tier, skipped = _tierize_loot_table(db, loot)
+            total_tierized += n_tier
+            for base, val in skipped:
+                if (base, val) not in skipped_slots:
+                    skipped_slots.append((base, val))
             db._modified.add(loot)
             sf(chest, 'tables', loot)
         db._modified.add(chest)
     print("  POLIS VAULT: 5 golden Majestic Chests (ChestTemple01, Boss-lock, "
           "LockedRadius 100) with %s apex loot + 5 independent rolls."
           % ('enriched' if loot_ok else 'donor-legendary'))
+    if loot_ok:
+        print("  POLIS VAULT: difficulty tiering (Will 2026-08-08): %d slot(s) across "
+              "the 5 tables rewritten to [normal, epic, legendary] arrays (Essence/"
+              "Embodiment/Incarnation relics + n/e/l gear; Legendary payout preserved)."
+              % total_tierized)
+        for base, val in skipped_slots:
+            print("  POLIS VAULT: tier slot NOT indexable (no n/e/l triple, left "
+                  "scalar): %s = %s" % (base, val.rsplit('\\', 1)[-1]))
 
 
 def _register_naming(db, tags):
@@ -464,40 +577,91 @@ def apply(db, tags):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# R-100 #17 GATE. Runs in the registry's POST-FINALIZATION verify phase, i.e.
-# over the FINAL assembled db, so a later writer cannot re-introduce the
-# normal-tier donor behind this module's back. Negative tests:
-# tools/debug/negtest_gaoler_chests.py.
+# GAOLER-CHEST DIFFICULTY GATE (Will 2026-08-08). Runs in the registry's
+# POST-FINALIZATION verify phase, i.e. over the FINAL assembled db, so a later
+# writer cannot flatten the difficulty arrays behind this module's back. Negative
+# tests: tools/debug/negtest_gaoler_chests.py. The build-wide relic-tier audit is
+# tools/gate_relic_difficulty_tiers.py (invoked at the end of this verify()).
 # ─────────────────────────────────────────────────────────────────────────────
-_NORMAL_TIER_MARKERS = ('_n01.dbr', '\\01_act4_relics.dbr')
+def _norm(s):
+    return str(s).replace('/', '\\').lower()
 
 
-def _all_loot_strings(db, rec):
+def _leaf(s):
+    return _norm(s).rsplit('\\', 1)[-1]
+
+
+def _slot_values(db, rec):
+    """Yield (base_field, [string values]) for every lootNNameM slot of a table."""
     ff = db.get_fields(rec) or {}
-    out = []
     for k, tf in ff.items():
-        b = k.split('###')[0]
-        if not b.lower().startswith('loot'):
+        base = k.split('###')[0]
+        if not (base.lower().startswith('loot') and 'name' in base.lower()):
             continue
-        for v in tf.values:
-            if isinstance(v, str) and v:
-                out.append((b, v))
-    return out
+        vals = [v for v in tf.values if isinstance(v, str) and v]
+        if vals:
+            yield base, vals
+
+
+def _check_loot_table_tiers(db, loot):
+    """The core difficulty-correctness check for ONE vault loot table. Every
+    tier-specific slot must be the ordered [normal, epic, legendary] difficulty
+    array; a SCALAR tier table (which the engine would pay on every difficulty) is
+    the defect. A relic scalar is ALWAYS a defect (relic tables always have the
+    01/02/03 triple). Legendary is index 2, so a correct array proves the Legendary
+    farm payout is unchanged. Returns a list of problem strings."""
+    probs = []
+    for base, strs in _slot_values(db, loot):
+        is_relic = any('loottables\\relics\\' in _norm(v) for v in strs)
+        if len(strs) == 1:
+            triple = _tier_variants(db, strs[0])
+            if triple is not None:
+                kind = 'RELIC (Essence/Embodiment/Incarnation)' if is_relic else 'gear'
+                probs.append(
+                    "T2 %s :: %s = %s is a SCALAR %s tier table -> the engine pays "
+                    "that ONE tier on EVERY difficulty; it must be the ordered "
+                    "[normal, epic, legendary] array %s"
+                    % (_leaf(loot), base, _leaf(strs[0]), kind,
+                       [_leaf(x) for x in triple]))
+            elif is_relic:
+                probs.append(
+                    "T2 %s :: %s = %s is a SCALAR relic table with no completable "
+                    "01/02/03 triple" % (_leaf(loot), base, _leaf(strs[0])))
+        else:
+            triple = _tier_variants(db, strs[0])
+            if triple is None:
+                probs.append(
+                    "T2 %s :: %s = %s is a %d-value array whose first entry is not a "
+                    "completable tier table" % (_leaf(loot), base,
+                    [_leaf(x) for x in strs], len(strs)))
+            elif len(strs) != 3 or [_norm(x) for x in strs] != [_norm(x) for x in triple]:
+                probs.append(
+                    "T2 %s :: %s = %s is not the ordered [normal, epic, legendary] "
+                    "triple %s (index 0=normal, 1=epic, 2=legendary; index 2 must be "
+                    "the legendary tier so the farm payout is preserved)"
+                    % (_leaf(loot), base, [_leaf(x) for x in strs],
+                       [_leaf(x) for x in triple]))
+    return probs
 
 
 def verify(db, tags):
-    """T1  all 5 chest records + 5 loot tables still EXIST (retirement protocol:
-            halving the count withdrew PLACEMENTS, it never deleted a record).
-        T2  no vault loot table names a NORMAL-tier donor anywhere (R-100 #17:
-            "essence of ..." on epic). Both markers are checked, not just the
-            relic one, because the guaranteed unique slot had the same defect.
+    """Will 2026-08-08 difficulty-tiering gate over the FINAL assembled db.
+        T1  all 5 chest records + 5 loot tables still EXIST (retirement protocol:
+            halving the placement count never deleted a record).
+        T2  DIFFICULTY-CORRECT TIERS: in every vault loot table, each tier-specific
+            slot (relic + gear) is the ordered [normal, epic, legendary] difficulty
+            array, never a scalar single tier. This is the whole of Will's order:
+            only Essence on Normal, only Embodiment on Epic, only Incarnation on
+            Legendary; and index 2 == legendary, so the Legendary farm is preserved.
         T3  each chest still points at its own loot table (5 independent rolls).
-        T4  the guaranteed slot is still GUARANTEED (loot3Chance == 100) - the
-            tier fix must not quietly turn the payoff slot off.
+        T4  the guaranteed slot is still GUARANTEED (loot3Chance == 100).
         T5  the map lane places exactly TWO of the five, and they are 01 and 03
-            (the apex). Source-level assertion against build_section_surgery's
+            (the apex) - a source-level assertion against build_section_surgery's
             own B41_SPECS, so the DB half and the map half cannot drift apart.
-    """
+        Then the build-wide relic-difficulty AUDIT
+        (tools/gate_relic_difficulty_tiers.py) sweeps the whole db and fails on any
+        OTHER mod-owned single-placement chest that could pay a wrong-difficulty
+        relic."""
     problems = []
     for chest, loot in zip(_CHEST, _CHEST_LOOT):
         if not db.has_record(chest):
@@ -508,22 +672,15 @@ def verify(db, tags):
             continue
         tv = db.get_field_value(chest, 'tables')
         tv = tv[0] if isinstance(tv, list) and tv else tv
-        if str(tv or '').replace('/', '\\').lower() != loot.lower():
+        if _norm(tv or '') != _norm(loot):
             problems.append("T3 %s tables=%r, expected its own %s"
-                            % (chest, tv, loot))
+                            % (_leaf(chest), tv, _leaf(loot)))
         ch3 = db.get_field_value(loot, 'loot3Chance')
         ch3 = ch3[0] if isinstance(ch3, list) and ch3 else ch3
         if ch3 is None or abs(float(ch3) - 100.0) > 0.01:
             problems.append("T4 %s loot3Chance=%r, expected 100 (the guaranteed "
-                            "high-value slot)" % (loot, ch3))
-        for field, val in _all_loot_strings(db, loot):
-            vl = val.replace('/', '\\').lower()
-            for marker in _NORMAL_TIER_MARKERS:
-                if vl.endswith(marker):
-                    problems.append(
-                        "T2 %s :: %s = %s - NORMAL-tier donor inside a "
-                        "legendary-tier vault chest (R-100 #17: the 'essence "
-                        "of ...' bug)" % (loot, field, val))
+                            "high-value slot)" % (_leaf(loot), ch3))
+        problems.extend(_check_loot_table_tiers(db, loot))
 
     # T5 - the map half
     try:
@@ -535,16 +692,28 @@ def verify(db, tags):
         got = [p.replace('/', '\\').lower().rsplit('\\', 1)[-1].replace('.dbr', '')
                for p in chests]
         if got != want:
-            problems.append("T5 map places %r, R-100 #17 halved it to %r"
+            problems.append("T5 map places %r, expected the halved %r"
                             % (got, want))
     except Exception as exc:                      # pragma: no cover - import guard
         problems.append("T5 could not read build_section_surgery.B41_SPECS: %s" % exc)
 
     if problems:
-        for p in problems[:12]:
+        for p in problems[:16]:
             print("  POLIS VAULT GATE OFFENDER: %s" % p)
-        raise SystemExit("polis_vault gate FAILED: %d problem(s) (R-100 #17)"
-                         % len(problems))
-    print("  polis_vault gate PASS (R-100 #17): 5 chest records + 5 loot tables "
-          "intact, 0 normal-tier donors, guaranteed slots still 100%, map places "
+        raise SystemExit("polis_vault gate FAILED: %d problem(s) (Will 2026-08-08 "
+                         "difficulty tiering)" % len(problems))
+    print("  polis_vault gate PASS (Will 2026-08-08): 5 chest records + 5 loot "
+          "tables intact; every relic + gear slot is an ordered [normal, epic, "
+          "legendary] array (Essence/Embodiment/Incarnation by difficulty; "
+          "Legendary payout preserved); guaranteed slots still 100%; map places "
           "exactly chest_01 + the apex chest_03.")
+
+    # Build-wide relic-difficulty AUDIT (Will's second ask). Fail-loud on any other
+    # mod-owned single-placement chest that could pay a wrong-difficulty relic.
+    try:
+        import gate_relic_difficulty_tiers as _audit
+        _audit.audit(db, fail=True)
+    except SystemExit:
+        raise
+    except Exception as exc:                      # pragma: no cover - import guard
+        print("  POLIS VAULT: build-wide relic-tier audit skipped (%s)" % exc)
