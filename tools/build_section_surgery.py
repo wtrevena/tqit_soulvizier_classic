@@ -2937,6 +2937,38 @@ def build_hub_extra_specs():
             (SVC_RETURN_BOSSARENA_DBR, 136.0, 27.0, 104.0),
 
         ],
+        # ── TESTHUB-ONLY GAOLER-CAGE LOOT-FARM DUPLICATES (Will 2026-08-08) ──────────────────
+        # Will: "clone the chests that are there ... add three duplicates or 4 duplicates of the
+        # two chests that are there now" in the Alkyoneus (Soul-Gaoler) cage, at the spots chests
+        # were before, so he can farm the best gear in the game on his TESTHUB character to test-
+        # kill the Toxeus-the-Murderer variants. These are EXACT DUPLICATES of the two PLACED
+        # vault chests (svc_polisvault_chest_01 + the apex _03) - same records, same loot tables,
+        # same Boss-lock (LockedClassification=Boss, LockedRadius=100 keyed to the Gaoler dying
+        # within 100u, NOT to a chest instance id -> every duplicate ~5-8u from the boss unlocks
+        # identically when he dies). 4 placements, balanced 2x _01 + 2x _03, at the exact
+        # local coords R-100 #17 (commit 7d6f348) withdrew from B41_SPECS (chest_02/04/05 spots)
+        # plus one freshly-surveyed centre spot, all on-mesh clr>=89% in all 3 tilesets:
+        #   A (68.5,30.5) was chest_02   |  B (75.5,30.5) was chest_04
+        #   C (78.8,32.6) was chest_05   |  D (72.1,34.0) fresh mid-row centre, clr 100%
+        # Net cage: 2 originals + these 4 = 3x _01 + 3x _03 (all identical strong chests).
+        #
+        # TESTHUB-ONLY BY CONSTRUCTION: this lives in build_hub_extra_specs(), folded into
+        # INJECT_SPECS ONLY when SVC_TEST_HUB=1 (merge_hub_into_inject_specs appends after the base
+        # B41_SPECS entries -> base instance indices never shift). The canonical build never folds
+        # hub extras, so local/Levels_merged.arc stays BYTE-IDENTICAL (R-100 #17's halved-to-2
+        # canonical cage is untouched). B41_SPECS is NOT edited, so polis_vault.verify() T5 (which
+        # reads B41_SPECS, asserting exactly chest_01 + _03 placed) stays GREEN. Duplicate flags=0
+        # instances of an already-placed record are proven safe in this same cage (ss_warden_behemoth
+        # is placed 2x); each FixedItemContainer rolls its own loot independently. No 'uniqueid' opt
+        # (a shared one would be the only way to collide) - matches the base chest tuples' byte-shape.
+        # B41_POLIS_KEY is defined module-level (line ~1233), collides with no other key in this dict
+        # nor in HELOS_HUB_RETURN_SPECS, and is not R09_LVL_KEY, so it flows through the normal fold.
+        B41_POLIS_KEY: [
+            (b'records\\drxitem\\container\\svc_polisvault_chest_01.dbr',           68.5, 3.6, 30.5, _B41_ROT),  # was chest_02 spot
+            (b'records\\drxitem\\container\\svc_polisvault_chest_03.dbr',           75.5, 3.6, 30.5, _B41_ROT),  # was chest_04 spot
+            (b'records\\drxitem\\container\\svc_polisvault_chest_01.dbr',           78.8, 3.6, 32.6, _B41_ROT),  # was chest_05 spot
+            (b'records\\drxitem\\container\\svc_polisvault_chest_03.dbr',           72.1, 3.6, 34.0, _B41_ROT),  # fresh mid-row centre
+        ],
     }
     # Helos-hub area RETURN NPCs (build37): append one distinct return record per new boss/warband
     # area. Appended (not assigned) because a boss host level already carries its q_*_lone proxy in
