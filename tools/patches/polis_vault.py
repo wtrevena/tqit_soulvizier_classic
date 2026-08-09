@@ -146,10 +146,57 @@ _AC_ON_ATTACK = r'records\xpack\ai controllers\autocast_items\basetemplates\base
 # (docs/BACKLOG.md BL-b102-DEBT-4).
 _GUAR_UNIQUE = r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr'
 _GUAR_RELIC = r'records\xpack\item\loottables\relics\03_act4_relics.dbr'
-# The normal-tier donors this module used to inject, kept NAMED (not deleted) so
-# the gate below can prove they are gone from the vault's tables.
-_GUAR_UNIQUE_WRONG = M._OBS_GUAR_UNIQUE   # ...\mastertables\unique_1h_n01.dbr
-_GUAR_RELIC_WRONG = M._OBS_GUAR_RELIC     # ...\relics\01_act4_relics.dbr
+
+# ── WILL 2026-08-08: THE GAOLER-CHEST DIFFICULTY-TIER CONVERSION ─────────────
+# R-100 #17 matched the guaranteed slot to the chest's OTHER slots, but the whole
+# chest was legendary on EVERY difficulty (the vault loot tables are clones of the
+# fully-legendary loottable_hidden_bloodcave_03). So Alkyoneus's cage dropped
+# Incarnation relics ("incarnation of ...") on Normal and Epic, where Will wants
+# Essence on Normal and Embodiment on Epic. A flat FixedItemContainer CANNOT
+# difficulty-scale its own loot (FixedItemContainer.tpl has no per-difficulty
+# fields; ZERO of the 53,520 difficulty-indexed loot arrays in the base+DLC db are
+# on any container - they are ALL on Monster records). The ONLY base-game-proven,
+# mod-precedented container difficulty branch is a Class=Proxy record with
+# accessory1 / accessoryEpic1 / accessoryLegendary1 (the esti/hidden-bloodcave
+# chest = proxy_hidden_bloodcave_chest already does exactly this). So the 2 MAP-
+# PLACED chests (svc_polisvault_chest_01 + _03) are CONVERTED IN PLACE from
+# FixedItemContainer to Proxy at their existing paths: the engine reads accessory1
+# on Normal, accessoryEpic1 on Epic, accessoryLegendary1 on Legendary; each -> a
+# ProxyAccessoryPool -> a per-difficulty golden FixedItemContainer -> its single-
+# tier FixedItemLoot table. The Boss-lock survives proxy-spawn (base
+# BossChest05_Hades_01 and mod svc_charonhoard_01 are both proxy-spawned AND
+# LockedClassification=Boss). Container/proxy 0x05 placements share byte-shape, so
+# the Class swap at the SAME path needs NO Levels edit (canonical Levels md5 stays
+# 78a3e263). The LEGENDARY chain REUSES the existing polisvault_0N table verbatim
+# so Will's Legendary farm payout is byte-preserved.
+_UNIQUE_TIER = {
+    'n': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_n01.dbr',
+    'e': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_e01.dbr',
+    'l': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr',
+}
+_RELIC_TIER = {  # 01=Essence(Normal), 02=Embodiment(Epic), 03=Incarnation(Legendary)
+    'n': r'records\xpack\item\loottables\relics\01_act4_relics.dbr',
+    'e': r'records\xpack\item\loottables\relics\02_act4_relics.dbr',
+    'l': r'records\xpack\item\loottables\relics\03_act4_relics.dbr',
+}
+# The proven esti-chest chain donors (proxy_hidden_bloodcave_chest ->
+# pool_hidden_0N -> hidden_bloodcave_chest_0N -> loottable_hidden_bloodcave_0N).
+_PROXY_DON = r'records\drxitem\container\proxy_hidden_bloodcave_chest.dbr'
+_POOL_HIDDEN = {'n': r'records\drxitem\container\pool_hidden_01.dbr',
+                'e': r'records\drxitem\container\pool_hidden_02.dbr',
+                'l': r'records\drxitem\container\pool_hidden_03.dbr'}
+_BC_LOOT_DON = {'n': r'records\drxitem\container\loottable_hidden_bloodcave_01.dbr',
+                'e': r'records\drxitem\container\loottable_hidden_bloodcave_02.dbr',
+                'l': r'records\drxitem\container\loottable_hidden_bloodcave_03.dbr'}
+# The 2 map-placed chests (R-100 #17 halved B41_SPECS to these) get the full
+# per-difficulty proxy conversion. (chest_NN, numSpawn min, numSpawn max, guar
+# slots) - the numSpawn + guaranteed-slot SHAPE mirrors the existing Legendary
+# polisvault_0N table (chest_01 = 1 unique; chest_03 apex = unique + relic).
+_PLACED_TIERED = [
+    ('01', 2.4, 2.8, ['unique']),
+    ('03', 2.8, 3.2, ['unique', 'relic']),
+]
+_DIFFEQ_FIELDS = ('difficultyEquationFile', 'difficultyLimitsFile')
 
 # Text tags.
 _TAG_G1 = 'tagSVCMonsterPolisGaoler'
@@ -367,6 +414,92 @@ def _build_horde(db):
           "reuse the native ss_warden_behemoth proxy)." % built)
 
 
+def _build_tier_loot(db, dest, tier, nmin, nmax, guar_kinds):
+    """A single-tier FixedItemLoot table for one difficulty of a placed chest.
+    Clone the TIER-MATCHING bloodcave loot donor (so every base slot is already
+    the right tier: bloodcave_01 = all _n01 + 01_act4_relics, _02 = _e01 + 02, _03
+    = _l01 + 03), then apply the polisvault richness: the placed chest's numSpawn
+    and a guaranteed loot3 slot per kind, each pointed at the TIER-correct donor.
+    This is why Normal now drops Essence (01), Epic Embodiment (02), Legendary
+    Incarnation (03)."""
+    db.clone_record(_BC_LOOT_DON[tier], dest)
+    sf = db.set_field
+    sf(dest, 'numSpawnMinEquation', '(3+(1.8*numberOfPlayers))*%s' % nmin)
+    sf(dest, 'numSpawnMaxEquation', '(3+(1.8*numberOfPlayers))*%s' % nmax)
+    sf(dest, 'loot3Chance', 100.0)
+    for j, kind in enumerate(guar_kinds, start=1):
+        donor = _UNIQUE_TIER[tier] if kind == 'unique' else _RELIC_TIER[tier]
+        sf(dest, 'loot3Name%d' % j, donor)
+        sf(dest, 'loot3Weight%d' % j, 100)
+    db._modified.add(dest)
+
+
+def _convert_placed_chest_to_proxy(db, N, nmin, nmax, guar_kinds):
+    """Convert svc_polisvault_chest_NN from Class=FixedItemContainer to Class=Proxy
+    IN PLACE at its existing path, building the 3-tier chain modeled on
+    proxy_hidden_bloodcave_chest + _svc_build_dedicated_hoard. The per-difficulty
+    containers are clones of the CURRENT golden chest, so the Majestic-Chest look,
+    the Boss/100u Gaoler-death unlock, Hero loot classification and gold generator
+    are all byte-preserved; only the loot table differs by difficulty."""
+    sf = db.set_field
+    C = r'records\drxitem\container'
+    L = r'records\item\loottables\svc'
+    chest = rf'{C}\svc_polisvault_chest_{N}.dbr'      # the placed record -> becomes a Proxy
+    l_loot = rf'{L}\polisvault_{N}.dbr'               # existing Legendary table (byte-preserved)
+
+    # Fail-loud: the whole fix depends on the proven esti-chest chain donors.
+    need = [_PROXY_DON, chest, l_loot] + list(_POOL_HIDDEN.values()) + list(_BC_LOOT_DON.values())
+    missing = [d for d in need if not db.has_record(d)]
+    if missing:
+        raise SystemExit("polis_vault: Gaoler chest %s cannot be tiered - donor(s) "
+                         "missing: %s" % (N, ', '.join(missing)))
+
+    # 1. per-difficulty FixedItemLoot tables (N/E new; L reuses the existing table).
+    loot = {'n': rf'{L}\polisvault_{N}_n.dbr',
+            'e': rf'{L}\polisvault_{N}_e.dbr',
+            'l': l_loot}
+    _build_tier_loot(db, loot['n'], 'n', nmin, nmax, guar_kinds)
+    _build_tier_loot(db, loot['e'], 'e', nmin, nmax, guar_kinds)
+
+    # 2. per-difficulty FixedItemContainers (clone the golden chest for identical
+    #    look + lock; retarget the loot table). LockedRadius 100 = the Gaoler
+    #    100u unlock, NOT the 50 hoard default.
+    cont = {}
+    for tier in ('n', 'e', 'l'):
+        cpath = rf'{C}\svc_polisvault_chest_{N}_{tier}.dbr'
+        db.clone_record(chest, cpath)                 # golden FixedItemContainer donor (still intact here)
+        sf(cpath, 'locked', 1)
+        sf(cpath, 'LockedClassification', 'Boss')
+        sf(cpath, 'LockedRadius', 100.0)
+        sf(cpath, 'goldGeneratorChance', 100.0)
+        sf(cpath, 'lootClassification', 'Hero')
+        sf(cpath, 'tables', loot[tier])
+        db._modified.add(cpath)
+        cont[tier] = cpath
+
+    # 3. per-difficulty ProxyAccessoryPools (clone the tier-matching hidden pool).
+    pool = {}
+    for tier in ('n', 'e', 'l'):
+        ppath = rf'{C}\svc_polisvault_pool_{N}_{tier}.dbr'
+        db.clone_record(_POOL_HIDDEN[tier], ppath)
+        sf(ppath, 'fixedItemName1', cont[tier])
+        sf(ppath, 'fixedItemChance', 100)
+        sf(ppath, 'fixedItemWeight1', 100)
+        db._modified.add(ppath)
+        pool[tier] = ppath
+
+    # 4. CONVERT the placed chest IN PLACE: clone the proven esti-chest Proxy over
+    #    the same path (record_type -> 'Proxy', Class -> 'Proxy', templateName ->
+    #    Proxy.tpl, no FixedItemContainer field residue; difficultyEquationFile /
+    #    difficultyLimitsFile = ContainerDifficultyEquation / ContainerLimitEquation
+    #    ride the donor verbatim), then wire the 3 difficulty pools.
+    db.clone_record(_PROXY_DON, chest)
+    sf(chest, 'accessory1', pool['n'], S)
+    sf(chest, 'accessoryEpic1', pool['e'], S)
+    sf(chest, 'accessoryLegendary1', pool['l'], S)
+    db._modified.add(chest)
+
+
 def _build_vault(db, tags):
     """The 5 golden Majestic Chests (ChestTemple01, already Boss-locked, LockedRadius
     100 kept - the base Charon boss-chest value) with per-chest enriched apex loot
@@ -421,6 +554,19 @@ def _build_vault(db, tags):
           "LockedRadius 100) with %s apex loot + 5 independent rolls."
           % ('enriched' if loot_ok else 'donor-legendary'))
 
+    # ── WILL 2026-08-08: convert the 2 MAP-PLACED chests to per-difficulty
+    #    Proxy chains so Normal drops Essence, Epic Embodiment, Legendary
+    #    Incarnation (the Legendary chain reuses polisvault_0N verbatim). The 3
+    #    unplaced chests (02/04/05) stay flat legendary FixedItemContainers -
+    #    they are never placed, so they need no difficulty branch (and the
+    #    retirement protocol keeps their records alive for verify T1).
+    for N, nmin, nmax, guar_kinds in _PLACED_TIERED:
+        _convert_placed_chest_to_proxy(db, N, nmin, nmax, guar_kinds)
+    print("  POLIS VAULT: chest_01 + chest_03 (the placed pair) converted to "
+          "Class=Proxy difficulty chains (accessory1/Epic1/Legendary1 -> pool -> "
+          "golden FixedItemContainer -> single-tier loot; Essence/Embodiment/"
+          "Incarnation on Normal/Epic/Legendary; Legendary payout byte-preserved).")
+
 
 def _register_naming(db, tags):
     """Register the hand-designed evocative soul name so the F6 naming machinery
@@ -464,87 +610,115 @@ def apply(db, tags):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# R-100 #17 GATE. Runs in the registry's POST-FINALIZATION verify phase, i.e.
-# over the FINAL assembled db, so a later writer cannot re-introduce the
-# normal-tier donor behind this module's back. Negative tests:
+# GAOLER-CHEST GATE (Will 2026-08-08, supersedes the R-100 #17 flat-chest gate).
+# Runs in the registry's POST-FINALIZATION verify phase, i.e. over the FINAL
+# assembled db, so a later writer cannot re-flatten the chests behind this
+# module's back. The per-difficulty TIER-CORRECTNESS check is delegated to
+# tools/gate_relic_difficulty_tiers.audit_proxy_chain so the in-build gate and the
+# standalone audit share ONE implementation and cannot disagree. Negative tests:
 # tools/debug/negtest_gaoler_chests.py.
 # ─────────────────────────────────────────────────────────────────────────────
-_NORMAL_TIER_MARKERS = ('_n01.dbr', '\\01_act4_relics.dbr')
-
-
-def _all_loot_strings(db, rec):
-    ff = db.get_fields(rec) or {}
-    out = []
-    for k, tf in ff.items():
-        b = k.split('###')[0]
-        if not b.lower().startswith('loot'):
-            continue
-        for v in tf.values:
-            if isinstance(v, str) and v:
-                out.append((b, v))
-    return out
+def _scalar(v):
+    return v[0] if isinstance(v, list) and v else v
 
 
 def verify(db, tags):
-    """T1  all 5 chest records + 5 loot tables still EXIST (retirement protocol:
-            halving the count withdrew PLACEMENTS, it never deleted a record).
-        T2  no vault loot table names a NORMAL-tier donor anywhere (R-100 #17:
-            "essence of ..." on epic). Both markers are checked, not just the
-            relic one, because the guaranteed unique slot had the same defect.
-        T3  each chest still points at its own loot table (5 independent rolls).
-        T4  the guaranteed slot is still GUARANTEED (loot3Chance == 100) - the
-            tier fix must not quietly turn the payoff slot off.
-        T5  the map lane places exactly TWO of the five, and they are 01 and 03
-            (the apex). Source-level assertion against build_section_surgery's
-            own B41_SPECS, so the DB half and the map half cannot drift apart.
+    """T1  all 5 chest records + 5 Legendary loot tables still EXIST (retirement
+            protocol: halving the count withdrew PLACEMENTS, it never deleted a
+            record). The 3 unplaced chests (02/04/05) stay FixedItemContainers.
+        T2  each PLACED chest (01, 03) is Class=Proxy with all three difficulty
+            accessory tiers wired AND difficultyEquationFile/difficultyLimitsFile
+            set (so the engine actually branches on difficulty).
+        T3  each placed chest's accessory1/Epic1/Legendary1 chain resolves
+            proxy -> pool -> container -> loot table, and every relic + unique slot
+            names the tier matching the accessory slot (accessory1 = Essence/01/n,
+            accessoryEpic1 = Embodiment/02/e, accessoryLegendary1 = Incarnation/
+            03/l). This is the Will 2026-08-08 order and the R-100 #17 successor.
+        T4  each per-difficulty container keeps the Boss lock (LockedClassification
+            = Boss, LockedRadius = 100) so the Gaoler-death unlock survives, and its
+            loot table's guaranteed loot3 slot stays 100%.
+        T5  the Legendary chain still reaches the byte-preserved polisvault_0N
+            table (Will's Legendary farm payout is unchanged).
+        T6  the map lane places exactly chest_01 + chest_03. Source-level assertion
+            against build_section_surgery.B41_SPECS so DB + map cannot drift apart.
     """
+    import gate_relic_difficulty_tiers as grdt
     problems = []
+    placed_ids = {N for (N, *_r) in _PLACED_TIERED}
+
+    # T1 - every chest record + Legendary loot table survives.
     for chest, loot in zip(_CHEST, _CHEST_LOOT):
         if not db.has_record(chest):
             problems.append("T1 chest record MISSING (never delete): %s" % chest)
-            continue
         if not db.has_record(loot):
-            problems.append("T1 loot table MISSING (never delete): %s" % loot)
-            continue
-        tv = db.get_field_value(chest, 'tables')
-        tv = tv[0] if isinstance(tv, list) and tv else tv
-        if str(tv or '').replace('/', '\\').lower() != loot.lower():
-            problems.append("T3 %s tables=%r, expected its own %s"
-                            % (chest, tv, loot))
-        ch3 = db.get_field_value(loot, 'loot3Chance')
-        ch3 = ch3[0] if isinstance(ch3, list) and ch3 else ch3
-        if ch3 is None or abs(float(ch3) - 100.0) > 0.01:
-            problems.append("T4 %s loot3Chance=%r, expected 100 (the guaranteed "
-                            "high-value slot)" % (loot, ch3))
-        for field, val in _all_loot_strings(db, loot):
-            vl = val.replace('/', '\\').lower()
-            for marker in _NORMAL_TIER_MARKERS:
-                if vl.endswith(marker):
-                    problems.append(
-                        "T2 %s :: %s = %s - NORMAL-tier donor inside a "
-                        "legendary-tier vault chest (R-100 #17: the 'essence "
-                        "of ...' bug)" % (loot, field, val))
+            problems.append("T1 Legendary loot table MISSING (never delete): %s" % loot)
 
-    # T5 - the map half
+    for N, nmin, nmax, guar_kinds in _PLACED_TIERED:
+        C = r'records\drxitem\container'
+        L = r'records\item\loottables\svc'
+        chest = rf'{C}\svc_polisvault_chest_{N}.dbr'
+        if not db.has_record(chest):
+            continue
+        # T2 - it is a Proxy with the full difficulty branch.
+        cls = str(_scalar(db.get_field_value(chest, 'Class')) or '')
+        rtype = db._record_types.get(chest, '')
+        if cls != 'Proxy' or rtype != 'Proxy':
+            problems.append("T2 %s is not a Proxy (Class=%r, record_type=%r) - the "
+                            "flat-container leak is back" % (chest, cls, rtype))
+        for slot in ('accessory1', 'accessoryEpic1', 'accessoryLegendary1'):
+            if not _scalar(db.get_field_value(chest, slot)):
+                problems.append("T2 %s missing %s (no difficulty branch)" % (chest, slot))
+        for f in _DIFFEQ_FIELDS:
+            if not _scalar(db.get_field_value(chest, f)):
+                problems.append("T2 %s missing %s" % (chest, f))
+        # T3 - the tier-correctness of every difficulty branch (shared audit).
+        problems.extend("T3 " + p for p in grdt.audit_proxy_chain(db, chest))
+        # T4 - Boss lock survives + guaranteed slot stays on, per container.
+        for tier in ('n', 'e', 'l'):
+            cpath = rf'{C}\svc_polisvault_chest_{N}_{tier}.dbr'
+            if not db.has_record(cpath):
+                problems.append("T4 per-difficulty container MISSING: %s" % cpath)
+                continue
+            lc = str(_scalar(db.get_field_value(cpath, 'LockedClassification')) or '')
+            lr = _scalar(db.get_field_value(cpath, 'LockedRadius'))
+            if lc != 'Boss':
+                problems.append("T4 %s LockedClassification=%r, expected Boss" % (cpath, lc))
+            if lr is None or abs(float(lr) - 100.0) > 0.01:
+                problems.append("T4 %s LockedRadius=%r, expected 100 (Gaoler unlock)" % (cpath, lr))
+            lt = _scalar(db.get_field_value(cpath, 'tables'))
+            ch3 = _scalar(db.get_field_value(grdt.real(db, lt), 'loot3Chance')) if lt else None
+            if ch3 is None or abs(float(ch3) - 100.0) > 0.01:
+                problems.append("T4 %s -> %s loot3Chance=%r, expected 100"
+                                % (cpath, lt, ch3))
+        # T5 - the Legendary chain reaches the byte-preserved polisvault_0N table.
+        leg_cont = rf'{C}\svc_polisvault_chest_{N}_l.dbr'
+        leg_tbl = _scalar(db.get_field_value(leg_cont, 'tables')) if db.has_record(leg_cont) else None
+        want_leg = rf'{L}\polisvault_{N}.dbr'
+        if str(leg_tbl or '').replace('/', '\\').lower() != want_leg.lower():
+            problems.append("T5 %s Legendary tables=%r, expected the byte-preserved %s"
+                            % (leg_cont, leg_tbl, want_leg))
+
+    # T6 - the map half.
     try:
         import build_section_surgery as _bss
         placed = [p.decode('latin-1') if isinstance(p, bytes) else str(p)
                   for (p, *_rest) in _bss.B41_SPECS[_bss.B41_POLIS_KEY]]
         chests = [p for p in placed if 'svc_polisvault_chest' in p.lower()]
-        want = ['svc_polisvault_chest_01', 'svc_polisvault_chest_03']
+        want = ['svc_polisvault_chest_%s' % N for N in sorted(placed_ids)]
         got = [p.replace('/', '\\').lower().rsplit('\\', 1)[-1].replace('.dbr', '')
                for p in chests]
         if got != want:
-            problems.append("T5 map places %r, R-100 #17 halved it to %r"
-                            % (got, want))
+            problems.append("T6 map places %r, expected %r" % (got, want))
     except Exception as exc:                      # pragma: no cover - import guard
-        problems.append("T5 could not read build_section_surgery.B41_SPECS: %s" % exc)
+        problems.append("T6 could not read build_section_surgery.B41_SPECS: %s" % exc)
 
     if problems:
-        for p in problems[:12]:
+        for p in problems[:16]:
             print("  POLIS VAULT GATE OFFENDER: %s" % p)
-        raise SystemExit("polis_vault gate FAILED: %d problem(s) (R-100 #17)"
+        raise SystemExit("polis_vault gate FAILED: %d problem(s) (Gaoler tiering)"
                          % len(problems))
-    print("  polis_vault gate PASS (R-100 #17): 5 chest records + 5 loot tables "
-          "intact, 0 normal-tier donors, guaranteed slots still 100%, map places "
-          "exactly chest_01 + the apex chest_03.")
+    print("  polis_vault gate PASS (Gaoler tiering): chest_01 + chest_03 are "
+          "per-difficulty Proxies; Essence/Embodiment/Incarnation on Normal/Epic/"
+          "Legendary; Boss-lock + 100u unlock intact; Legendary payout byte-"
+          "preserved; map places exactly the placed pair; 5 records + 5 Legendary "
+          "tables retained.")
