@@ -1,5 +1,51 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - TESTHUB GAOLER-CAGE FARM CHESTS (Will 2026-08-08, branch `worktree-wf_b5564f5b-c37-2`) - NOT DEPLOYED, NO TAG TAKEN
+
+**Will's ask (two messages, combined):** in the TESTHUB ONLY (not Steam), add farm-duplicate chests to the
+Alkyoneus/Soul-Gaoler cage so he can farm the best gear in the game on his TESTHUB character to test-kill the
+Toxeus-the-Murderer variants. Clarification that OVERRIDES the loot question: *"clone the chests that are there
+dont add three weak chests add three duplicates or 4 duplicates of the two chests that are there now."*
+
+**What shipped (source only; NOT deployed - the main session deploys the TESTHUB to `SoulvizierClassicDEV`):**
+- **4 EXACT-DUPLICATE placements** of the 2 PLACED cage chests, TESTHUB-only, balanced **2x `svc_polisvault_chest_01`
+  + 2x apex `svc_polisvault_chest_03`** (`records\drxitem\container\...`). Same records, same loot tables, same
+  Boss-lock (`LockedClassification=Boss`, `LockedRadius=100` keyed to the Gaoler dying within 100u, NOT to a chest
+  id -> every dup ~5-8u from the boss unlocks identically), same `_B41_ROT` byte-shape, flags=0, no `uniqueid` ->
+  independent FixedItemContainer rolls. Net cage: 2 originals + 4 dups = 3x `_01` + 3x `_03`, all identical strong
+  chests (+ the untouched native `z_wardenchestc`).
+- **Coords (LEVEL-LOCAL, `hadespalace_floor04_01.lvl`):** `_01`@(68.5,3.6,30.5) [was chest_02], `_03`@(75.5,3.6,30.5)
+  [was chest_04], `_01`@(78.8,3.6,32.6) [was chest_05] - the exact spots R-100 #17 (commit `7d6f348`) withdrew from
+  `B41_SPECS` - plus a fresh surveyed centre `_03`@(72.1,3.6,34.0).
+- **TESTHUB-only by construction:** added ONLY to `build_section_surgery.py::build_hub_extra_specs()` under key
+  `B41_POLIS_KEY`. Folded into `INJECT_SPECS` iff `SVC_TEST_HUB=1` (appended AFTER the base `B41_SPECS` entries ->
+  base indices never shift). Canonical build never folds hub extras -> `local/Levels_merged.arc` stays BYTE-IDENTICAL.
+  **`B41_SPECS` is NOT edited** -> `polis_vault.verify()` T5 stays green (it reads `B41_SPECS`, asserting the R-100 #17
+  halved 2-chest list). Source commit `7d6e276`.
+
+**GATES (all against builds `PYTHONHASHSEED=0`, isolated `SVC_OUT_DIR`, shared read-only donors):**
+| gate | result |
+|---|---|
+| canonical byte-identity | `local/Levels_merged.arc` md5 **`78a3e263ef10407808ef06858dfe9012`** (688,690,526 B) == the shipped/live PR-5 canonical - PASS (fail-loud match) |
+| TESTHUB build | md5 **`3a6f9d7412bacaa0fbf91734c5697d0e`** (688,682,322 B) |
+| det-2x | TESTHUB rebuilt twice -> identical `3a6f9d74` |
+| blob-diff (pre-edit vs post-edit TESTHUB, `diff_maps_blobs.py`) | exactly **1** blob changed (`hadespalace_floor04_01`), section `0x05` only, count 84->88 (**+4**), the 4 ADDED = my chests at exact coords, **0 removed**, **0x0b navmesh changes = 0**, no other section touched |
+| MAP contracts (`--only map` vs current arz `d447f095`) | **0 P0 / 0 P1** / 6 P2 (all pre-existing base/SV debt: MAP-NAV-4 x3, MAP-PORTAL-1 x1, MAP-PORTAL-3 x2; none in the Gaoler level). MAP-REF-1 = 0 |
+| survey (post-edit TESTHUB) | all 4 spots on-mesh (d<=0.14u) in comp#1/104131 (reachable): A 98/94/92%, B 92/92/87%, C 76/72/67%@ext3 (90/83/77%@ext2), D 100/100/100% |
+| navmesh (`verify_merged_bc_navmeshes`) | 24/24 in-scope navmeshes present, 0x0a stripped - PASS |
+| entrance landing (`--check-merged`, TESTHUB) | Y=19.00, dY +0.00u, 508/508 cells - PASS |
+| travel-NPC invariants (canonical vs TESTHUB) | T1-T6 GATE PASS (chests invisible) |
+| Gaoler-chest negtest (`negtest_gaoler_chests.py` vs arz `d447f095`) | NEGTEST PASS (B41_SPECS control GREEN; planted 3rd chest REDs) |
+| packager TESTHUB guard | unchanged + correct: TESTHUB `3a6f9d74` != canonical `78a3e263` -> still refuses to ship TESTHUB |
+| arz | UNTOUCHED (pure map re-placement; no arz rebuild). Current arz md5 `d447f09556cf9e09fa33ef57ccfec6c7` |
+
+**RESIDUAL (honest):** not deployed, not tested in-game. The 3 A/B/C spots were live-on-canonical shipped chests from
+b41 until R-100 #17 (2026-07-29), so they are proven-openable; spot D is a fresh 100%-clear survey. Worst case is a
+chest clipping / lower open-clearance (static container, no crash risk). Will to verify in-game after the main session
+deploys the TESTHUB.
+
+---
+
 ## SHIP RECORD - PR-1..PR-5 PLAYER-REPORT WAVE + R-170 SPARTA WARDEN (2026-08-06, main @ `0449b1b`) - LIVE ON STEAM
 
 **Steam Workshop item 3759792705 UPDATED and CONFIRMED (real content commit, not "no change").** SteamCMD log
