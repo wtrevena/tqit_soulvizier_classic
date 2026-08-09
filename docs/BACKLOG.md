@@ -1,5 +1,68 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - GAOLER-CHEST DIFFICULTY TIERING + BUILD-WIDE RELIC-TIER AUDIT (Will 2026-08-08, branch `relic-tiering-redo`) - NOT DEPLOYED, NO TAG TAKEN
+
+**Will's order (2026-08-08):** the 2 Gaoler chests must drop Essence-only on Normal, Embodiment-only on Epic,
+Incarnation-only on Legendary (STEAM build) + audit the whole build so no wrong-tier relic drops on the wrong
+difficulty. Preserve the Legendary payout (Will farms these on Legendary). arz-only fix (no Levels/Text/Quests).
+
+**Root cause.** A flat FixedItemContainer cannot difficulty-scale its own loot (FixedItemContainer.tpl has no
+per-difficulty fields; ZERO of 53,520 difficulty-indexed loot arrays in base+DLC are on any container - all on
+Monster records). The vault's loot tables were clones of the fully-legendary `loottable_hidden_bloodcave_03`, so
+Alkyoneus's cage paid Incarnation relics on EVERY difficulty (leak #1). Separately, `_svc_build_dedicated_hoard`
+hard-coded the NORMAL guaranteed slot (unique_1h_n01 + 01_act4_relics) into loot_01/02/03, so the general-guard
+hoards' Epic (accessoryEpic1->loot_02) and Legendary (accessoryLegendary1->loot_03) branches dropped Essence (leak #2).
+
+**GROUP 1 - Gaoler chests (leak #1), the PROXY way (`tools/patches/polis_vault.py`).** `svc_polisvault_chest_01`
+and `_03` are converted IN PLACE from Class=FixedItemContainer to Class=Proxy (clone of the proven esti-chest
+`proxy_hidden_bloodcave_chest`; record_type + Class + templateName + difficultyEquationFile/difficultyLimitsFile all
+correct). Each proxy -> accessory1/accessoryEpic1/accessoryLegendary1 -> 3 ProxyAccessoryPools -> 3 golden
+FixedItemContainers (clones of the current chest, so the Majestic look + Boss/100u Gaoler-death unlock + Hero
+lootClass + gold100 are byte-preserved) -> 3 single-tier FixedItemLoot tables. Normal = clone of bloodcave_01 (all
+_n01 + 01_act4_relics) + guaranteed unique_1h_n01 (chest_03 also +01_act4_relics); Epic = bloodcave_02 (_e01 + 02) +
+unique_1h_e01 (chest_03 +02_act4_relics); Legendary = REUSES the existing polisvault_0N table VERBATIM (byte-preserved
+Legendary payout). Container/proxy 0x05 placements share byte-shape -> the Class swap at the same path needs NO Levels
+edit; canonical Levels md5 stays `78a3e263` (verified unchanged). Placement stays exactly chest_01 + chest_03.
+
+**GROUP 2 - general-guard hoards (leak #2, `tools/apply_svc_patches.py::_svc_build_dedicated_hoard`).** The guaranteed
+loot3 slot is now tier-indexed by t: 01->unique_1h_n01+01_act4_relics, 02->unique_1h_e01+02_act4_relics,
+03->unique_1h_l01+03_act4_relics. BUFF-ONLY (raises Epic/Legendary guaranteed drops to correct tier; no farm reduced).
+Also tier-corrects the (unused, boss_default-repointed) tantalus/charon/mnemophage/ephialtes/diadochi hoard tables at
+the same single point - latent-correctness, no gameplay change for those (their chests point at boss_default).
+
+**GROUP 3 - the audit gate (`tools/gate_relic_difficulty_tiers.py`, NEW).** WIRING-BASED (not name-suffix based, which
+false-positives on the chest-index polisvault_0N naming): for every Proxy it walks accessory1/Epic1/Legendary1 ->
+pool -> container -> loot table and asserts every relic + unique slot on each MOD-OWNED loot table names that branch's
+OWN tier (accessory1=01/n, Epic1=02/e, Legendary1=03/l). Base level-banded tables (boss_default_*) are out of scope.
+Reused in-build by `polis_vault.verify()` (shared `audit_proxy_chain`) so build gate + standalone audit cannot disagree.
+
+**GATES (all `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`):**
+| gate | result |
+|---|---|
+| arz det-2x | md5 **`9c190b991a148ac6c35b1e852dac56fd`** (55,527,745 B, 51,204 rec) built TWICE identical |
+| new tier gate vs new arz | GATE PASS, 21 mod-owned per-difficulty branches audited, 0 wrong-tier |
+| new tier gate vs baseline d447f095 (NEGATIVE) | GATE FAIL, 12 wrong-tier members (general a/b/c x Epic+Legendary x unique+relic) - the leak reds |
+| `negtest_gaoler_chests.py` vs new arz | NEGTEST PASS (7 planted violations all RED, 2 positive controls GREEN) |
+| `polis_vault.verify()` (in-build) | PASS (Gaoler tiering: Proxy class + 3-tier wiring + tier-correct + Boss/100 lock + byte-preserved Legendary + placement) |
+| `negtest_container_shape.py` | ALL OK (new FixedItemLoot records pass the container-loot contract) |
+| `validate_tags` | PASS (382 referenced + 442 authoritative present; 0 new tags authored) |
+| record_diff vs d447f095 | ADDED 16 / REMOVED 0 / MODIFIED 18 (see below), ZERO unexplained |
+| canonical Levels.arc | `78a3e263` UNCHANGED (arz-only; produced NO Levels); Text.arc `a9fed7ba` UNCHANGED |
+| champion_mesh cold-build note | the dye-layer Creatures.arc in work/Resources SHADOWS the base arc for the gate resolver (false 65-anim fail); moving it aside for the build lets base anims resolve -> champion_mesh.verify OK. NOT my change; the drxrenewal cold-build guard fix was NOT needed (build passed apply_mastery_wave2_boosts clean). |
+
+**record_diff (34 records):** ADDED 16 = polisvault_{01,03}_{n,e} loot (4) + svc_polisvault_chest_{01,03}_{n,e,l} containers
+(6) + svc_polisvault_pool_{01,03}_{n,e,l} pools (6). MODIFIED 18 = svc_polisvault_chest_{01,03} (42 fields each,
+FixedItemContainer->Proxy) + svc_{charon,diadochi,ephialtes,generala/b/c guard,mnemophage,tantalus}hoard_loot_{02,03}
+(2 fields each: loot3Name1 unique tier + loot3Name2 relic tier). polisvault_{01,03}.dbr (Legendary tables) are NOT in
+the diff = byte-identical = Legendary payout preserved.
+
+**RESIDUAL (honest):** not deployed, not tested in-game (main session deploys DEV; Steam is Will-gated). Mechanism is
+base-game-proven (BossChest05_Hades) + mod-precedented (svc_charonhoard, proxy_hidden_bloodcave_chest); worst case is
+a chest not spawning on one difficulty, not a crash. The 10 tier-corrected non-general-guard hoard tables are unused
+(repointed to boss_default) so the buff is real only for the 3 general-guard pairs + the 2 Gaoler chests.
+
+---
+
 ## GATE RECORD - TESTHUB GAOLER-CAGE FARM CHESTS (Will 2026-08-08, branch `worktree-wf_b5564f5b-c37-2`) - NOT DEPLOYED, NO TAG TAKEN
 
 **Will's ask (two messages, combined):** in the TESTHUB ONLY (not Steam), add farm-duplicate chests to the

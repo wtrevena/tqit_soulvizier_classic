@@ -15121,9 +15121,29 @@ _OBS_HOARD_LOOT_DONOR = {t: rf'records\drxitem\container\loottable_hidden_bloodc
 _OBS_ACC_POOL = {t: rf'records\drxitem\container\svc_obsidianhoard_pool_{t}.dbr' for t in ('01', '02', '03')}
 _OBS_ACC_POOL_DONOR = {t: rf'records\drxitem\container\pool_hidden_{t}.dbr' for t in ('01', '02', '03')}
 # Guaranteed high-value table for the hoard's loot3 slot (already resolves - the
-# mega chest references it in loot1Name3).
+# mega chest references it in loot1Name3). These two are the NORMAL-tier donors;
+# the per-tier maps below are the difficulty-correct set.
 _OBS_GUAR_UNIQUE = r'records\xpack\item\loottables\weapons\mastertables\unique_1h_n01.dbr'
 _OBS_GUAR_RELIC = r'records\xpack\item\loottables\relics\01_act4_relics.dbr'
+# WILL 2026-08-08 (leak #2, the general-guard audit): _svc_build_dedicated_hoard
+# hard-coded the NORMAL-tier guaranteed slot (unique_1h_n01 + 01_act4_relics =
+# "Essence") into loot_01 AND loot_02 AND loot_03, so the Epic (accessoryEpic1 ->
+# loot_02) and Legendary (accessoryLegendary1 -> loot_03) branches dropped an
+# Essence relic + a normal unique. The tier index is the 01/02/03 suffix (= the
+# accessory slot difficulty), so each tier now names its OWN guaranteed donor.
+# BUFF-ONLY: this raises the Epic/Legendary guaranteed drop to the correct tier;
+# it never reduces a farm. (The base loot1..6 slots were already tier-correct -
+# they are cloned from the tier-matching loottable_hidden_bloodcave_0N donor.)
+_OBS_GUAR_UNIQUE_TIER = {
+    '01': _OBS_GUAR_UNIQUE,
+    '02': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_e01.dbr',
+    '03': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr',
+}
+_OBS_GUAR_RELIC_TIER = {
+    '01': _OBS_GUAR_RELIC,
+    '02': r'records\xpack\item\loottables\relics\02_act4_relics.dbr',
+    '03': r'records\xpack\item\loottables\relics\03_act4_relics.dbr',
+}
 
 
 # ── RUNE GOLEM (SVAERA Runemaster graft; docs/SVAERA_MASTERY_COMPARISON.md §3/§5.2) ──
@@ -16986,8 +17006,10 @@ def _svc_build_dedicated_hoard(db, prefix, desc_tag):
         sf(lt, 'numSpawnMinEquation', '(3+(1.8*numberOfPlayers))*2.4')
         sf(lt, 'numSpawnMaxEquation', '(3+(1.8*numberOfPlayers))*2.8')
         sf(lt, 'loot3Chance', 100.0)
-        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE); sf(lt, 'loot3Weight1', 100)
-        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC); sf(lt, 'loot3Weight2', 60)
+        # tier-correct guaranteed slot (Will 2026-08-08 leak #2): 01/02/03 name the
+        # normal/epic/legendary unique + relic donor, matching the accessory tier.
+        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE_TIER[t]); sf(lt, 'loot3Weight1', 100)
+        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC_TIER[t]); sf(lt, 'loot3Weight2', 60)
         db._modified.add(lt)
         # chest: clone the blood-cave mega chest, retheme to this boss's Boss-locked hoard.
         ch = rf'{base}\svc_{prefix}hoard_{t}.dbr'
