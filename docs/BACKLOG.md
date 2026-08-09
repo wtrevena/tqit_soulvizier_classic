@@ -1,5 +1,110 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - GAOLER-CHEST DIFFICULTY TIERING (Will 2026-08-08, branch `worktree-wf_e7655704-594-2`) - arz-only, NOT DEPLOYED, NO TAG TAKEN
+
+**Will's order (2026-08-08, verbatim intent):** the two placed Gaoler cage chests must scale by difficulty so
+ONLY "Essence of ..." relics drop on NORMAL, ONLY "Embodiment of ..." relics drop on EPIC, ONLY
+"Incarnation of ..." relics drop on LEGENDARY. Apply to the STEAM (canonical) build; preserve the Legendary
+farm payout (Will farms these on his Legendary TESTHUB character). Plus: audit the Steam build to confirm no
+Essence/Embodiment/Incarnation relic can drop on the wrong difficulty. This SUPERSEDES the earlier R-100 #17
+fix (which only matched the guaranteed slot to LEGENDARY, so the chest paid Incarnation on every difficulty -
+correct on Legendary but over-tier on Normal/Epic).
+
+**Root cause + the engine mechanism (measured this session).** Relic tiers are SEPARATE tier-pure loot tables
+(`01_act4_relics` = Essence/normal, `02_` = Embodiment/epic, `03_` = Incarnation/legendary); a relic .dbr has
+no internal difficulty gate, so the tier is fixed by the table the dropper names. The vault loot tables
+(`records\item\loottables\svc\polisvault_01..05.dbr`) are clones of the DRX mega-chest, EVERY slot legendary
+(`_l01`/`03_act4_relics`), so on Normal/Epic they paid legendary. **The fix mechanism is engine-proven:**
+`FixedItemLoot.tpl` (the template these tables use) declares every loot slot `loot1Name1 class="array"
+type="file_dbr" description="Index by game mode"` - i.e. each `lootNNameM` field holds up to 3 values
+`[normal, epic, legendary]` and the engine reads the one for the current difficulty (the SAME selection the base
+game uses on a Monster's `lootMisc2Item1 = [01,02,03]`). The base game never populates the container-side array
+because campaign chests are placed as a separate per-difficulty record per region; a single custom-quest chest
+replayed on all three difficulties has no such twin, so the in-place difficulty array is the correct, map-free,
+Steam-clean fix.
+
+**What shipped (source only; arz-only, no map/Levels change - main session deploys + QA-gates Steam):**
+- `tools/patches/polis_vault.py` (`_build_vault` + new `_tier_variants` / `_tier_triple_names` /
+  `_tierize_loot_table`): after cloning the all-legendary mega-chest loot into each of the 5 vault tables, every
+  tier-specific slot (relic + unique + static gear) is rewritten from its single legendary value to the
+  `[normal, epic, legendary]` array. **Legendary is index 2 == the value that was already there, so the
+  Legendary farm payout is byte-preserved;** only the over-drop of legendary tiers on Normal/Epic is stopped.
+  128 slots tierized across the 5 tables. Applies to all 5 tables (the builder builds all 5 identically); only
+  chest_01 + chest_03 are PLACED (per R-100 #17). `B41_SPECS` and the chest records are untouched.
+- **Rewritten fail-loud gate** `polis_vault.verify()` (T1 records intact, T2 every relic + gear slot is the
+  ordered `[normal,epic,legendary]` array with Legendary=index2, T3 own-table, T4 guaranteed=100%, T5 map
+  places exactly chest_01+chest_03) + its negative test `tools/debug/negtest_gaoler_chests.py` (7 plants: relic
+  flatten x2, relic reversed-order, gear flatten, guaranteed-off, chest-repoint, map-grow - all RED; 2 controls
+  green).
+- **New build-wide audit gate** `tools/gate_relic_difficulty_tiers.py` (Will's second ask) + its `--negtest`:
+  classifies every FixedItemContainer relic slot into route-b (difficulty array), route-a (member of a complete
+  `_01/_02/_03` or `_normal/_epic/_legendary` per-difficulty family, placed per difficulty), or ungated scalar.
+  `polis_vault.verify()` invokes it fail-loud on any statically-placed Gaoler-vault scalar relic. **Audit result
+  on the fixed arz: 9 vault relic slots are difficulty arrays; 526 relic slots are per-difficulty family members
+  (the mod's boss hoards + DRX/SV per-difficulty triples); 0 MOD-OWNED single-placement ungated scalars remain;
+  1716 upstream base-game per-region scalar chests left untouched (not placed on this custom map).**
+
+**Per-difficulty drop table AFTER the fix (both placed chests):**
+| chest | slot | NORMAL (idx0) | EPIC (idx1) | LEGENDARY (idx2) |
+|---|---|---|---|---|
+| chest_01 | relic (loot4Name2) | 01_act4_relics (Essence) | 02_act4_relics (Embodiment) | 03_act4_relics (Incarnation) |
+| chest_01 | guaranteed unique / all gear | `_n01` normal | `_e01` epic | `_l01` legendary |
+| chest_03 | guaranteed relic (loot3Name2) + relic (loot4Name2) | 01_act4_relics (Essence) | 02_act4_relics (Embodiment) | 03_act4_relics (Incarnation) |
+| chest_03 | guaranteed unique / all gear | `_n01` normal | `_e01` epic | `_l01` legendary |
+
+Legendary column = the exact legendary tables that shipped, so the Legendary farm is unchanged.
+
+**GATES / VERIFICATION (against the current arz baseline `d447f095`, PYTHONHASHSEED=0):**
+| gate | result |
+|---|---|
+| fixed arz (baseline + tiering) | md5 **`859071bd25bbe7f35e26ce301687154a`** (55,523,888 B) |
+| det-2x | rebuilt twice -> identical `859071bd` |
+| record_diff vs `d447f09556cf9e09fa33ef57ccfec6c7` | **0 added / 0 removed / 5 modified** = exactly `polisvault_01..05.dbr` (chest records + all else UNTOUCHED); relic slots `[03]` -> `[01,02,03]`, gear `[l01]` -> `[n01,e01,l01]` |
+| build-path check | the wired `_build_vault` produces byte-identical tierized tables to the standalone verification (build path proven, not just the transform) |
+| `polis_vault.verify()` | PASS |
+| `gate_relic_difficulty_tiers.audit(fail=True)` | PASS (0 mod-owned ungated) |
+| `negtest_gaoler_chests.py` | 7/7 plants RED, 2 controls green - NEGTEST PASS |
+| `gate_relic_difficulty_tiers.py --negtest` | plant RED, control green - NEGTEST PASS |
+| `validate_tags.py` | PASS (identical to baseline; the fix adds no tags) |
+| container/loot-shape gates | not touched: `_svc_standardize_boss_chests` / `_svc_verify_world_chests` operate on the boss hoards + fixed-uber proxies, never `svc_polisvault_chest`; no build gate rejects a multi-value `lootNNameM` (the template declares it `class="array"`) |
+
+**RESIDUAL / NOTES FOR WILL (honest):**
+- **Not deployed, not tested in-game.** The fix is arz-only; the main session builds + QA-gates the Steam promote.
+- **One vault slot left scalar-legendary by design:** `loot4Name6 = 03_act4_arcaneformulae_sp` in each table. This
+  is a crafting-FORMULA table (NOT a relic, NOT gear), and its `_sp` "special" variant has no `01_`/`02_`
+  siblings to index to, so it cannot be tiered without inventing records. Formulae over-drop legendary on
+  Normal/Epic exactly as before; out of Will's relic/gear scope. Decision for Will if he wants formulae tiered:
+  point it at the non-`_sp` `[01,02,03]_act4_arcaneformulae` triple (a content change).
+- **Build-wide audit spotted, NOT this lane's to fix (reported per SHARED-SYMBOL LAW):** `svc_general{a,b,c}
+  guardhoard_loot_01/02/03` each carry `loot3Name2 = 01_act4_relics` (Essence) on ALL three difficulty members,
+  so the general-guardian hoards pay a normal-tier relic even on Legendary. These are per-difficulty PLACED
+  (route a), so it is a balance detail of the `general_guardians` lane, not the single-placement Gaoler bug.
+  Flag for Will/the general_guardians owner.
+- **The per-difficulty PLACEMENT of the route-a families (charon/diadochi/dorus/ephialtes/mnemophage/obsidian/
+  tantalus/leinth/highpriest/hidden_bloodcave/sp hoards) is map/boss-orb side and outside this arz-only audit.**
+  They follow the established `uber_apex_orb`/leinth per-difficulty-record pattern (presumed difficulty-gated).
+  A map-side spot-check that each `_01/_02/_03` member is placed only on its own difficulty would fully close
+  Will's "no wrong-difficulty relic anywhere" ask; queued for the map lane.
+- **RULINGS LEDGER:** this 2026-08-08 order should be appended VERBATIM to `docs/WILL_RULINGS.md` as a new
+  ruling superseding R-100 #17 (the ledger is outside this lane's scoped files; flagged for the main session).
+
+**PRE-EXISTING BUILD BLOCKER discovered (NOT caused by this lane, but it blocks a from-scratch det-2x rebuild):**
+A COLD build (`build_svc_database.py` with an empty prefix cache) aborts in `apply_mastery_wave2_boosts` with
+`records\skills\nature\drxrenewal.dbr defensiveConvert != skillCooldownTime (already fixed?)`. Measured cause:
+under `PYTHONHASHSEED=0` the assembled `drxrenewal` has `skillCooldownTime = None` and `defensiveConvert = None`
+(both absent) at wave-2 time, so `eq(None,None)` is False and the guard raises; with a random hash seed the same
+record assembles WITH the ladder present, so the merge that adds `drxrenewal` is hash-order-dependent. `d447f095`
+was built from a WARM prefix cache (the main checkout holds 4 warm `.build_cache/prefix-*.pkl`); editing any
+`tools/**/*.py` (e.g. `polis_vault.py`) changes the prefix cache key (`_tools_source_fingerprint` hashes ALL of
+`tools/`), forcing a cold prefix that trips this. **Consequence for this lane:** the full-entrypoint `build_svc_
+database.py` det-2x could not be run here, so the fix was verified by applying the REAL `_build_vault` /
+`_tierize_loot_table` to the exact `d447f095` baseline (record_diff isolates the delta to zero prefix noise) and
+proving the wired build path is byte-identical. The main session (warm cache) can run the full build normally;
+if it needs a cold det-2x it must fix the `drxrenewal` wave-2 guard first (out of this lane's scope: it owns the
+DB builder for the vault only).
+
+---
+
 ## GATE RECORD - TESTHUB GAOLER-CAGE FARM CHESTS (Will 2026-08-08, branch `worktree-wf_b5564f5b-c37-2`) - NOT DEPLOYED, NO TAG TAKEN
 
 **Will's ask (two messages, combined):** in the TESTHUB ONLY (not Steam), add farm-duplicate chests to the
