@@ -671,6 +671,35 @@ REGISTRY = [
                             # assembled db. In-game confirmation launch-gated (name read-back proven
                             # from the rebuilt Text.arc in this lane).
                             # Negative test: py tools/patches/gorgon_vanilla_names.py --negtest
+    'chest_loot_breadth',   # Will 2026-08-10 ("there are never any legendary spears
+                            # dropped it is basically the same items dropped over and
+                            # over by all chests"): the BLAST-RADIUS half of the chest
+                            # breadth wave. Every mod chest is a clone of the DRX donor
+                            # loottable_hidden_bloodcave_0N, whose weapon row names
+                            # unique_1h_*01 (axe/club/sword ONLY) + bow + staff and
+                            # simply forgot the third excluded class, SPEAR - so all 24
+                            # legendary spears in the DB were unreachable from all 40 mod
+                            # chest tables. This module sweeps every mod-owned gear chest
+                            # PLUS the 3 DRX donors and applies the shared
+                            # tools/svc_loot_breadth contract: one aggregate weapon master
+                            # into the single free loot1 member slot, the dead weapon /
+                            # shield group chances raised, and the guaranteed loot3 weapon
+                            # member re-aimed from unique_1h_*01 onto that master AT THE
+                            # SAME WEIGHT (so every chest's weapon:relic split is exactly
+                            # what shipped; only the classes it can pay widen 3 -> 6).
+                            # ORDER IS LOAD-BEARING: it must run LAST among content
+                            # modules because it sweeps the FINAL table set - the monolith
+                            # hoards, general_guardians' 3 guard-pair hoards,
+                            # uber_apex_orb's apex tables and polis_vault's cage are all
+                            # authored earlier, and a chest authored after this sweep would
+                            # keep the collapsed row. Tables polis_vault already widened
+                            # (it applies the same helper while writing its per-chest
+                            # THEMES) are detected and skipped, so NO S4b collision is
+                            # expected between the two; a collision WARN naming them is a
+                            # real finding. Its verify() is the build-wide fail-loud
+                            # breadth gate (standalone twin:
+                            # py tools/gate_chest_loot_breadth.py <arz>; negatives:
+                            # py tools/debug/negtest_chest_breadth.py <arz>).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
