@@ -45,43 +45,66 @@ def main(argv):
         print("   difficultyLimitsFile  =%s" % (n(dlf).rsplit('\\', 1)[-1] if dlf else None))
         for slot, label in ACC:
             pool = sc(db.get_field_value(real, slot))
-            cont = sc(db.get_field_value(lk.real(pool), 'fixedItemName1')) if pool else None
-            cr = lk.real(cont) if cont else None
-            loot = sc(db.get_field_value(cr, 'tables')) if cr else None
-            lr = lk.real(loot) if loot else None
-            lc = sc(db.get_field_value(cr, 'LockedClassification'))
-            lrad = sc(db.get_field_value(cr, 'LockedRadius'))
-            gold = sc(db.get_field_value(cr, 'goldGeneratorChance'))
-            lclass = sc(db.get_field_value(cr, 'lootClassification'))
-            nmin = sc(db.get_field_value(lr, 'numSpawnMinEquation')) if lr else None
-            nmax = sc(db.get_field_value(lr, 'numSpawnMaxEquation')) if lr else None
-            relics, uniques, statics, guar = set(), set(), set(), []
-            ff = db.get_fields(lr) or {}
-            for k, tf in ff.items():
-                b = k.split('###')[0]
-                if not b.lower().startswith('loot'):
-                    continue
-                for v in tf.values:
-                    if not isinstance(v, str) or not v:
-                        continue
-                    pl = n(v)
-                    if g.is_relic(pl):
-                        relics.add(g.relic_tier(pl))
-                    elif 'unique' in pl:
-                        uniques.add(gear_tier(pl))
-                    elif '\\static' in pl or re.search(r'_[nel]0\dc?\.dbr$', pl):
-                        statics.add(gear_tier(pl))
-                    if b.startswith('loot3Name'):
-                        guar.append(n(v).rsplit('\\', 1)[-1])
-            print("   %s: cont=%s" % (label, n(cont).rsplit('\\', 1)[-1]))
-            print("        loot table   : %s" % (n(loot).rsplit('\\', 1)[-1] if loot else None))
-            print("        lock         : %s r=%s gold%%=%s lootClass=%s"
-                  % (lc, lrad, gold, lclass))
-            print("        numSpawn     : min=%s max=%s" % (nmin, nmax))
-            print("        RELIC tier   : %s" % sorted(relics))
-            print("        UNIQUE tier  : %s" % sorted(uniques))
-            print("        STATIC gear  : %s" % sorted(statics))
-            print("        guaranteed   : %s" % guar)
+            # Will 2026-08-10: a difficulty pool now names up to 8 THEMED container
+            # variants (the base-game cave-boss-chest construction), so report every
+            # one - the whole point of the wave is that they differ.
+            pr = lk.real(pool) if pool else None
+            variants = []
+            if pr:
+                for i in range(1, 9):
+                    nm = sc(db.get_field_value(pr, 'fixedItemName%d' % i))
+                    if nm:
+                        variants.append(
+                            (nm, sc(db.get_field_value(pr, 'fixedItemWeight%d' % i))))
+            print("   %s: pool=%s -> %d themed container(s)"
+                  % (label, n(pool).rsplit('\\', 1)[-1] if pool else None, len(variants)))
+            for cont, weight in (variants or [(None, None)]):
+                _dump_variant(db, lk, g, label, cont, weight)
+
+
+def _dump_variant(db, lk, g, label, cont, weight):
+    """One (difficulty, themed variant) row of the drop table."""
+    cr = lk.real(cont) if cont else None
+    loot = sc(db.get_field_value(cr, 'tables')) if cr else None
+    lr = lk.real(loot) if loot else None
+    lc = sc(db.get_field_value(cr, 'LockedClassification'))
+    lrad = sc(db.get_field_value(cr, 'LockedRadius'))
+    gold = sc(db.get_field_value(cr, 'goldGeneratorChance'))
+    lclass = sc(db.get_field_value(cr, 'lootClassification'))
+    nmin = sc(db.get_field_value(lr, 'numSpawnMinEquation')) if lr else None
+    nmax = sc(db.get_field_value(lr, 'numSpawnMaxEquation')) if lr else None
+    relics, uniques, statics, guar = set(), set(), set(), []
+    chances = []
+    ff = db.get_fields(lr) or {}
+    for k, tf in ff.items():
+        b = k.split('###')[0]
+        if not b.lower().startswith('loot'):
+            continue
+        if re.match(r'^loot\dChance$', b):
+            chances.append((b, sc(tf.values)))
+        for v in tf.values:
+            if not isinstance(v, str) or not v:
+                continue
+            pl = n(v)
+            if g.is_relic(pl):
+                relics.add(g.relic_tier(pl))
+            elif 'unique' in pl:
+                uniques.add(gear_tier(pl))
+            elif '\\static' in pl or re.search(r'_[nel]0\dc?\.dbr$', pl):
+                statics.add(gear_tier(pl))
+            if b.startswith('loot3Name'):
+                guar.append(n(v).rsplit('\\', 1)[-1])
+    print("      %s cont=%s (pool weight %s)"
+          % (label, n(cont).rsplit('\\', 1)[-1] if cont else None, weight))
+    print("        loot table   : %s" % (n(loot).rsplit('\\', 1)[-1] if loot else None))
+    print("        lock         : %s r=%s gold%%=%s lootClass=%s"
+          % (lc, lrad, gold, lclass))
+    print("        numSpawn     : min=%s max=%s" % (nmin, nmax))
+    print("        group chances: %s" % sorted(chances))
+    print("        RELIC tier   : %s" % sorted(relics))
+    print("        UNIQUE tier  : %s" % sorted(uniques))
+    print("        STATIC gear  : %s" % sorted(statics))
+    print("        guaranteed   : %s" % guar)
 
 
 if __name__ == '__main__':

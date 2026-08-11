@@ -3996,6 +3996,80 @@ NOT PROVEN IN-GAME. Deploys are the orchestrator's. Will's walk (into the deepes
 to the WARDEN by the stairs-down, confirm the name reads "Warden of the Spartan Crypt" and the menu has
 ONLY "Descend into the Sparta Crypt", descend, return) is the remaining launch gate - registered as debt.
 
+## Chest loot breadth (new section; decade 180-189, opened 2026-08-10, lane `chest-loot-breadth`)
+
+## R-180 [2026-08-10] IMPLEMENTED (chest-loot-breadth) - the chests must drop DIFFERENT items, and legendary SPEARS must be possible
+
+VERBATIM (Will, 2026-08-10): "we need to update the chests in the test hub in the place where the
+Polybotes Soul drops in the prison of souls so that they drop different items since right now I am
+seeing every chest drop the same items pretty much ever playthrough, there are never any legendary
+spears dropped it is basically the same items dropped over and over by all chests. we need to expand
+the bredth of the legendary items dropped in the testhub chests and also in the steam version."
+
+WHICH CHESTS: "the place where the Polybotes Soul drops in the prison of souls" = the Polis Daemonai
+Warden's Vault-Cage in `hadespalace_floor04_01`, guarded by Alkyoneus the Soul-Gaoler (Polybotes =
+`xhero_polybotes_47`, the cage's H6 lieutenant). The TESTHUB cage holds SIX physical chests (the 2
+canonical placements + the 4 farm duplicates of 2026-08-08, commit `7d6e276`) but only TWO records.
+
+ROOT CAUSE, measured on the live DEV arz `9c190b99` (both halves are real defects, not perception):
+1. NO LEGENDARY SPEARS WAS STRUCTURAL. Every mod chest's weapon row is a clone of the DRX donor
+   `loottable_hidden_bloodcave_0N`, whose loot1 names `static_all_l01a` (w1000), `static_staff_l01a`
+   (w500), `unique_1h_l01` (w200), `bow_l01` (w200), `staff_l01` (w200). `unique_1h_l01` is a
+   LootMasterTable with EXACTLY THREE children - axe, club, sword. Spear, thrown and every 2H class
+   are not members. The donor compensates for bow and staff by naming them DIRECTLY and simply forgot
+   the third excluded class, SPEAR. The only spear path left was `static_all_l01a ->
+   static_spear_l01a`, a static randomizer with 50 Rare / 24 Magical / 5 Common / 1 Broken and ZERO
+   Legendary leaves. So a legendary spear was IMPOSSIBLE from all 40 mod chest tables while 24
+   legendary spears sat in the DB unreachable. `xpack\...\weapons\unique\spear_l01.dbr` (17 items,
+   all Legendary, same shape as the already-named `bow_l01`) was named by zero chests in the mod.
+2. THE SAMENESS. `loot3Chance=100` with a single member (`unique_1h_l01`) made one axe/mace/sword
+   unique the only slot that reliably fired; loot1 (weapons) and loot6 (shields) fired at 14% each
+   (1.13 expected non-guaranteed hits per open), and the two placed chest records were near-clones
+   (field diff: 70 identical, 4 different), so six chests drew from one collapsed pool.
+
+IMPLEMENTED (arz-only - the chest records and loot tables live entirely in the .arz and the TESTHUB
+duplicates reference the SAME records, so the fix reaches the TESTHUB cage AND canonical/Steam
+together, with no Levels/Text/Quests rebuild):
+- `tools/svc_loot_breadth.py` (NEW) is the ONE implementation. FixedItemLoot caps at 6 groups x 6
+  members (measured across base + mod) and loot1 already used 5, so breadth is added the base game's
+  own way: one aggregate LootMasterTable per tier, `svc_unique_weapons_{n,e,l}01` = unique_1h + spear
+  + bow + staff (xpack band) + the base `all_{tier}0{1,2,3}` mastertables, dropped into the single
+  free member slot at w800. Weapon-row chance 14 -> 40, shield row 14 -> 30. The GUARANTEED loot3
+  weapon member is re-aimed from `unique_1h_*01` onto that master AT THE SAME WEIGHT, so every
+  chest's guaranteed weapon:relic split is exactly what shipped - only the classes it can pay widen.
+- `tools/patches/chest_loot_breadth.py` (NEW, registered last before `visuals`) sweeps all 51
+  mod-owned gear chests + the 3 DRX donors, so the Steam half of the ask ("and also in the steam
+  version") and every boss hoard get the identical treatment from one edit. Closes BL-b102-DEBT-4.
+- `tools/patches/polis_vault.py`: the cage stops mirroring itself with NO map edit. Each placed
+  chest's per-difficulty ProxyAccessoryPool now names THREE THEMED containers at 50/25/25 instead of
+  one - chest_01 = martial (spear + 1H bias) / hunter (bow + spear) / warden (shield + armour),
+  chest_03 = apex (any class + relic) / adept (staff) / sovereign (jewellery). That is the base
+  game's cave-boss-chest construction (952 shipped ProxyAccessoryPools name more than one container;
+  `legendary_01_cavebosschest_01` picks among 3 at 75/50/25), so each of the six physical chests
+  resolves its own theme at spawn and re-rolls on a later playthrough.
+
+NON-REDUCTION (Will farms this cage on Legendary; R-100 #17 + Will 2026-08-08 both preserved it):
+numSpawn equations untouched and asserted per variant, no member removed, no chance lowered, the
+guaranteed slot still 100%, the Legendary chain still lands on `polisvault_0N`. Every edit is
+additive or a strict raise. The per-difficulty relic law (Essence / Embodiment / Incarnation) is
+preserved by construction and re-proven by `gate_relic_difficulty_tiers` (21 branches, 0 leaks).
+
+MEASURED (dry-run of the real code against the live arz, before -> after):
+Legendary 258 -> 308 distinct legendary items, legendary spears 0 -> 22 (every ungated one);
+Epic 90 -> 111 (9 spears); Normal 99 -> 181 own-tier items (18 spears) with ZERO legendary gear
+leaked down. The 2 spears still out of reach are deliberate: `svc_l_runbreaker` (the Endless Hunt's
+guaranteed drop) and the DRX supra craft-only spear.
+
+GATE (law 4, no new surface without a gate): `tools/gate_chest_loot_breadth.py` + the in-build
+`chest_loot_breadth.verify()` + `polis_vault.verify()` T7, all sharing one implementation - B1 every
+mod chest reaches every weapon class at its own tier (SPEAR named explicitly), B2 per-tier pool
+floor, B3 no legendary gear on Normal, plus the differentiation assertion that the cage's tables are
+never field-identical again. Negatives: `tools/debug/negtest_chest_breadth.py` (5 plants RED, 2
+positive controls GREEN).
+
+NOT PROVEN IN-GAME. The build, DEV deploy and Steam ship are the orchestrator's; Will's check (kill
+Alkyoneus, open all 6 cage chests across 3 runs, expect legendary spears and visible class variety)
+is the remaining launch gate. See docs/WILL_TEST_GUIDE.md and the BACKLOG gate record.
 ## R-200 [2026-08-10] IMPLEMENTED (branch `fix/boar-snatcher-orb`, module `tools/patches/red_uber_orbs.py`) - every RED UBER drops the mystical orb
 
 **Will, VERBATIM (2026-08-10):**

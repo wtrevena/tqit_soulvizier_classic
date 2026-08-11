@@ -95,9 +95,93 @@ resolves against mod UNION base and the 3 imported records are self-consistent b
   NOT touch: `drxcreatures\crowheroes\murderbunny` (lvl 66, `tagUrderMunder`), `drxmap\quest\blockersquirrel`,
   and the two `drxcreatures\bloodwitch\effects\*_bones` corpse props (lvl 1). Flagged for Will rather than
   silently wired - they are outside the class he named.
-- `BL-R200-DEBT-4` - REGISTRY MERGE: this lane appends `'red_uber_orbs'` immediately before `'visuals'`, and
-  the same-day chest-loot wave appends `'chest_loot_breadth'` in the same region. Expect a trivial textual
-  conflict at integration; both lines belong, `'visuals'` stays LAST.
+- `BL-R200-DEBT-4` - REGISTRY MERGE: **RESOLVED IN-LANE.** `main` @ `6899906` (the same-day chest-loot wave,
+  R-180) was merged into this branch. All three conflicts were pure both-sides-appended text and were kept
+  in full: REGISTRY order is now `... gorgon_vanilla_names, chest_loot_breadth, red_uber_orbs, visuals`
+  (`visuals` still LAST); the ledger reads R-180 then R-200 (append-only, newest last); the BACKLOG reads
+  R-200 then R-180 (gate records newest-FIRST). Nothing on either side was edited or dropped. The remaining
+  integration surface is the warden-dialog wave, which had not landed when this merge was taken.
+## GATE RECORD - CHEST LOOT BREADTH + CAGE DIFFERENTIATION (Will 2026-08-10, R-180, on `main`) - SOURCE ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+
+**Will's ask (verbatim):** "we need to update the chests in the test hub in the place where the Polybotes Soul
+drops in the prison of souls so that they drop different items since right now I am seeing every chest drop the
+same items pretty much ever playthrough, there are never any legendary spears dropped it is basically the same
+items dropped over and over by all chests. we need to expand the bredth of the legendary items dropped in the
+testhub chests and also in the steam version."
+
+**Root cause (measured on the live DEV arz `9c190b99`).** Every mod chest's weapon row is a clone of the DRX donor
+`loottable_hidden_bloodcave_0N`, whose loot1 names `unique_1h_*01` - a LootMasterTable with EXACTLY THREE children
+(axe, club, sword) - plus `bow_*01` and `staff_*01`, the two classes that master excludes. It forgot the THIRD
+excluded class, SPEAR. The only spear path left was the static randomizer (0 Legendary leaves), so a legendary
+spear was structurally impossible from all 40 mod chest tables while 24 sat in the DB unreachable. Second half:
+`loot3Chance=100` with ONE member made an axe/mace/sword unique the only slot that reliably fired (loot1 and loot6
+fired at 14%), and the two placed cage records were near-clones (70 of 74 fields identical), so the six physical
+chests in the cage drew from one collapsed pool. Full RCA in R-180.
+
+**What shipped (source only; arz-only change - no Levels/Text/Quests, so it reaches the TESTHUB cage and
+canonical/Steam simultaneously; the TESTHUB duplicates reference the SAME records).**
+- **`tools/svc_loot_breadth.py` (NEW)** - the single implementation of the breadth contract. FixedItemLoot caps at
+  6 groups x 6 members and loot1 already used 5, so breadth is added the base game's way: one aggregate
+  LootMasterTable per tier, `svc_unique_weapons_{n,e,l}01` (unique_1h + spear + bow + staff, xpack band, plus the
+  base `all_{tier}0{1,2,3}` mastertables), into the single free member slot at w800; weapon row 14 -> 40, shield
+  row 14 -> 30; the guaranteed loot3 weapon member re-aimed from `unique_1h_*01` onto that master **at the same
+  weight**, so every chest's weapon:relic split is byte-identical to what shipped.
+- **`tools/patches/chest_loot_breadth.py` (NEW, registered last before `visuals`)** - sweeps all 51 mod-owned gear
+  chests + the 3 DRX donors (so the esti / hidden-bloodcave mega chest and every boss hoard get it too). Closes
+  **BL-b102-DEBT-4** structurally. Tables `polis_vault` already themed are detected and skipped, so there is NO
+  S4b collision between the two modules.
+- **`tools/patches/polis_vault.py`** - the cage stops mirroring itself with **no map edit**: each placed chest's
+  per-difficulty ProxyAccessoryPool now names **three themed containers at 50/25/25** (chest_01 = martial /
+  hunter / warden, chest_03 = apex / adept / sovereign) instead of one. Base-game construction (952 shipped
+  ProxyAccessoryPools name more than one container). 18 variant containers + 18 variant tables; variant `a` keeps
+  the shipped record paths, so the Legendary chain still lands on `polisvault_0N`.
+- **Gates:** `tools/gate_chest_loot_breadth.py` (NEW standalone) + in-build `chest_loot_breadth.verify()` +
+  `polis_vault.verify()` **T7**, all one implementation. `tools/debug/negtest_chest_breadth.py` (NEW).
+  `tools/debug/derive_gaoler_drops.py` now reports every themed variant + group chances.
+
+**MEASURED (dry-run of the REAL module code against the live arz `9c190b99`, no build required):**
+| tier | distinct pool before | after | legendary spears before -> after | floor |
+|---|---:|---:|---|---:|
+| Normal (own-tier Epic-class items) | 99 | **181** | 0 -> 18 (own tier) | 150 |
+| Epic (Legendary items) | 90 | **111** | 0 -> **9** | 95 |
+| Legendary | 258 | **308** | 0 -> **22** | 260 |
+
+The only 2 legendary spears still unreachable are deliberate: `svc_l_runbreaker` (the Endless Hunt's guaranteed
+drop) and the DRX supra craft-only spear.
+
+**GATES RUN THIS LANE (cheap gates only - the build is the ship lane's):**
+| gate | result |
+|---|---|
+| `py -m py_compile` on all 6 touched/new files | OK |
+| `py tools/patches/_check_registry.py` | OK, 54 modules, order `0c76e665206959` |
+| dry-run of the real code vs live arz -> post-fix arz written | 57 records modified / 15 added |
+| `py tools/gate_chest_loot_breadth.py <post-fix arz>` | **GATE PASS** - 51 tables, all 6 weapon classes at own tier, pools n 181 / e 111-116 / l 308 |
+| `py tools/debug/negtest_chest_breadth.py <post-fix arz>` | **NEGTEST PASS** - 5 plants RED (shipped 3-class row, guaranteed-slot revert, floor collapse with one spear surviving, legendary master on Normal, variant re-cloned over its sibling), 2 positive controls GREEN |
+| REAL `polis_vault._convert_placed_chest_to_proxy` + `polis_vault.verify()` exercised on a restored golden-chest db | **PASS** (T1-T7; 18 variant containers Boss-locked r=100, Legendary chain on `polisvault_0N`, numSpawn richness per variant, no two cage tables field-identical) |
+| `py tools/debug/negtest_gaoler_chests.py <post-fix arz>` (the EXISTING 08-08 negtest, against the NEW variant shape) | **NEGTEST PASS** - positive control green, all 7 plants + the T6 placement plant RED |
+| `gate_relic_difficulty_tiers.audit_db` over the post-fix db | **33 branches, 0 leaks** (up from 21: each cage pool now names 3 containers, so there is MORE tier surface, all of it clean). The new masters are named `svc_unique_weapons_{n,e,l}01` deliberately, so this pre-existing gate reads their tier off the name and reds a mis-wire with no new rule (proven: the planted Normal-pool-to-Legendary-container case lists it as a leak) |
+| DIFFERENTIAL verify sweep: EVERY registry module's `verify()` on the baseline arz vs the post-fix arz | baseline **38 pass / 8 fail** -> post-fix **40 pass / 6 fail**. The 2 that flip are `polis_vault` and `chest_loot_breadth` (they RED on the shipped defect and GREEN after the fix - i.e. the new gates would have caught this bug). The other 6 failures are IDENTICAL in both runs and are standalone-harness artifacts (empty `tags` dict / no SV098i Text table loaded): svaera_sets, turtleshell_relics, uber_orphan_weapons, soul_identity, toxeus_hunt_encounter, leinth_wave. **ZERO regressions.** |
+| `py tools/debug/derive_gaoler_drops.py <post-fix arz>` | per-variant table renders (guaranteed slot + group chances + numSpawn) |
+| dtype-discipline refactor (explicit `S` only on NEW fields, per CLAUDE.md) re-run | output arz **md5-identical** to the pre-refactor run (`99688dac7f1104beedf3328a76940afc`), so the cleanup provably changed nothing |
+
+**NON-REDUCTION PROOF (Will farms the cage on Legendary; R-100 #17 + Will 2026-08-08):** numSpawn equations
+untouched and asserted per variant by `polis_vault.verify` T5, no member removed, no chance lowered, guaranteed
+slot still 100%, guaranteed weapon:relic weights unchanged, Legendary chain still on `polisvault_0N`. Every edit
+is additive or a strict raise.
+
+**STILL TO DO (the ship lane):** det-2x build (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`), the
+full gate battery incl. `negtest_gaoler_chests` + `negtest_container_shape` + `validate_tags` + `run_contracts`,
+record-diff vs `9c190b99` (expect ~15 ADDED masters/variant tables + variant containers, 0 REMOVED), the
+`Levels.arc 78a3e263 / Text.arc a9fed7ba / Quests.arc 6b25f8dd` untouched proof, DEV deploy to
+`SoulvizierClassicDEV` (never kill Will's TQ.exe), tag `buildNN-dev`, then the Steam ship - which necessarily
+carries the 08-08/08-09 relic-tiering work too, since Steam is still build74 (`d447f095`).
+
+**RESIDUAL (honest):** not built, not deployed, not seen in-game. The mechanism is base-game-proven
+(multi-container accessory pools, aggregate LootMasterTables) and every donor was byte-verified present in the
+live arz, but the in-game confirmation (open all 6 cage chests across 3 runs) is Will's.
+
+---
+
 
 ## GATE RECORD - GAOLER-CHEST DIFFICULTY TIERING + BUILD-WIDE RELIC-TIER AUDIT (Will 2026-08-08, branch `relic-tiering-redo`) - NOT DEPLOYED, NO TAG TAKEN
 
