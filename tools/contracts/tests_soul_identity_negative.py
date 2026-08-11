@@ -194,6 +194,14 @@ def main(argv):
               si._is_soul_carrier(db, _T6_RECORD))
         prev6 = si._scalar(db.get_field_value(_T6_RECORD, _CHANCE))
         db.set_field(_T6_RECORD, _CHANCE, 66.0, DATA_TYPE_FLOAT)
+        # R-202: the IMPERSONATION this test needs is no longer in the shipped
+        # data - our soul was renamed to "Soul of the Pale Diadem" and now names
+        # nobody, so re-arming the record alone would (correctly) convict no one
+        # and T6 would silently stop testing its SCOPE property. So plant the
+        # old impersonating STRING too: T6 exists to prove the rule fires
+        # OUTSIDE \creature(s)\, and that must not depend on a live defect.
+        _prev_name = asp._SV098I_NAME_TAGS.get('tagsvcsoulkallixenia')
+        asp._SV098I_NAME_TAGS['tagsvcsoulkallixenia'] = f'{{^F}}{_T6_SOUL} Soul'
         try:
             si.verify(db, {})
             check(f"T6 re-armed {_T6_MONSTER!r} (outside \\creature(s)\\) -> "
@@ -209,6 +217,38 @@ def main(argv):
             check("T6 the failure names the rightful owner",
                   _T6_SOUL.lower() in msg.lower())
         db.set_field(_T6_RECORD, _CHANCE, float(prev6 or 0.0), DATA_TYPE_FLOAT)
+        if _prev_name is None:
+            asp._SV098I_NAME_TAGS.pop('tagsvcsoulkallixenia', None)
+        else:
+            asp._SV098I_NAME_TAGS['tagsvcsoulkallixenia'] = _prev_name
+
+    # ── T8 (R-202): the HELD detachment must survive, and must be held by an
+    #    explicit decision rather than by the identity rule ────────────────────
+    # After R-202 the rule no longer convicts 01_akara (its soul impersonates
+    # nobody), so nothing derived keeps that roll at 0. If a future edit drops
+    # _R202_KEPT_DETACHED, a soul silently becomes obtainable inside a wave that
+    # never ratified it. Prove BOTH halves: the rule is silent, and verify()
+    # still fires when the held record is re-armed.
+    check("T8 the identity rule alone no longer convicts the held record "
+          "(R-202 fixed the impersonation at the source)",
+          not si.find_identity_thieves(db, {})[0])
+    if not db.has_record(_T6_RECORD):
+        check("T8 held record present", False, "record missing")
+    else:
+        prev8 = si._scalar(db.get_field_value(_T6_RECORD, _CHANCE))
+        check("T8 the held record ships DETACHED", float(prev8 or 0.0) == 0.0,
+              f"{_CHANCE}={prev8!r}")
+        db.set_field(_T6_RECORD, _CHANCE, 66.0, DATA_TYPE_FLOAT)
+        try:
+            si.verify(db, {})
+            check("T8 re-armed held record -> verify() FIRES", False,
+                  "a held detachment can be silently reversed - the R-202 "
+                  "assertion in verify() is missing or dead")
+        except SystemExit as exc:
+            check("T8 re-armed held record -> verify() FIRES", True)
+            check("T8 the failure names the held detachment",
+                  'held detachment' in str(exc).lower())
+        db.set_field(_T6_RECORD, _CHANCE, float(prev8 or 0.0), DATA_TYPE_FLOAT)
 
     # ── T7: pets are NOT carriers (widening scope must not swallow them) ────
     if not db.has_record(_T7_PET) or not db.has_record(_T7_VICTIM):

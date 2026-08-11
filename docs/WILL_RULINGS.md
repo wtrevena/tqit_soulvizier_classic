@@ -5413,3 +5413,126 @@ execution; that is stated in the ship record rather than carried quietly.
 > master back to `ARMOR_MASTER_WEIGHT` moves the worst worn-slot yield 0.04517 -> 0.04249 against
 > D7b's 0.0375 floor, spending ~6% of the headroom and reding nothing. So no negative ships for it and
 > it is labelled what it is - a balance choice inside a margin, `BL-R181-DEBT-11`.
+
+---
+
+## R-202 [2026-08-11] IMPLEMENTED (branch `fix/soul-rename-ratified`) - two DIFFERENT souls may never read the SAME name in the player's bag
+
+**Will, VERBATIM (2026-08-11), on `docs/SOUL_RENAME_PROPOSAL.md`:**
+
+> "Proceed with ratifying all 5 and fix SV duplicates / collisions as you deem necessary."
+
+R-202 closes `BL-R201-DEBT-1` and continues the naming decade (200-209) after R-200/R-201. R-201 minted
+the rule that the three TIERS of one soul must read differently. **This is the other axis - two
+DIFFERENT souls must not read the same** - and R-201's own post-ship vet is what found it: 40 display
+names shared by more than one soul family, 5 of them involving one of our 98.
+
+**BASELINE, REPRODUCED BEFORE ANYTHING WAS TOUCHED.** Measured on the live `build83` arz plus the
+shipped `Text.arc`, using the R-201 gate's own canonical-family filter (`_soul_family_key` /
+`_iter_soul_tier_records`): **2,191 canonical soul tier records / 740 families / 698 distinct display
+names / 40 duplicates** - the proposal's numbers and the vet's numbers, to the record.
+
+### CLAUSE 1 - "ratify all 5"
+
+The five mod-vs-SV rows, PRIMARY names, exactly as tabled. **SV never moves** (law #2: never override
+amgoz1; R-49a: no name-drift rename, misspellings included), so in every one of the five it is OUR soul
+that changes:
+
+| row | tag | was | is |
+|---|---|---|---|
+| 7 | `tagSoulSVC9005` | Charon Soul | **Charon ~ Ferryman of the Styx Soul** |
+| 12 | `tagSVCSoulRainbowbright` | General Yrrt'ik Soul | **Soul of Rainbowbright the Standard-Bearer** |
+| 14 | `tagSVCSoulHCFrost` | Ice Mandible Soul | **Frostmaw Soul** |
+| 19 | `tagSVCSoulKallixenia` | Kallixenia ~ Liche Queen Soul | **Soul of the Pale Diadem** |
+| 38 | `tagSVCSoulNomnom` | Plague Feast Soul | **Soul of Nomnom** |
+
+Rows 7 and 14 are the one-line table edits the proposal specified
+(`create_uber_souls.DISPLAY_NAME_OVERRIDES`, `_DEWIRED_HANDCRAFT`) and stay in the F6
+`{^F}<X> Soul` shape, so they need no exemption. Rows 12/19/38 are `Soul of X` marquee names and use
+the **F6-table restoration precedent** (Anapaest A9 / Drowned-King b47): the entry LEAVES
+`_SOUL_NAME_STANDARD` and the tag JOINS `_HAND_DESIGNED_SOUL_TAGS`, because without that exemption the
+auto-transform flattens `Soul of X` back to `X Soul` **before the gate ever sees it**.
+
+> **DEVIATION, STATED.** Row 19's tabled PRIMARY said "replace the `_SOUL_NAME_STANDARD` value and add
+> to `_HAND_DESIGNED_SOUL_TAGS`". It is instead authored at the SAME single site as rows 12/38 and
+> deleted from `_SOUL_NAME_STANDARD`. The rendered string is identical to the ratified PRIMARY; the
+> reason is that the tabled shape leaves a dead, contradicting string sitting in the source. Row 19's
+> DESC was rewritten **identity-neutral** - it names the regalia and the two things the record actually
+> grants (`lichequeen_soulstrike`'s soul-orb rain, `drxdeathchillaura`) and names no creature - so the
+> still-OPEN Akara wire is untouched and the prose stays correct whichever way Will later rules it.
+
+### CLAUSE 2 - "fix SV duplicates / collisions as you deem necessary"
+
+A DISCRETION grant that overrides the SV-untouchable default **where a collision needs it**. Exercised
+conservatively, in three parts:
+
+* **RETIRED** SV's 30 dead `soul\test\` duplicate families (60 Epic/Legendary tier records) from the
+  BUILD OUTPUT. SV's source files on disk are untouched; the records simply stop being written into the
+  shipped `.arz` (the `strip_ui_overrides` / `remove_dead_orphan_records` convention). The retirement
+  protocol says "unreferenced in code is NOT sufficient", so that is deliberately not the argument. The
+  evidence is: **0** inbound field references from any record outside the folder, RE-DERIVED from the
+  current arz every build rather than trusted from the audit doc; **0** byte hits for the path fragment
+  (ASCII and UTF-16LE, both slash flavours) across the shipped `Levels.arc` / `Quests.arc` /
+  `Creatures.arc` / `Items.arc` / `Text.arc`, so a static world placement could not hide from a DB-only
+  scan; and every one is an `e`/`l`-only twin of a LIVE family that keeps dropping, so no soul, formula
+  or monster loses anything. The ~90 non-duplicate `um_*` / `us_*` / `swift_*` leftovers in that same
+  folder are equally dead but are NOT display-name duplicates, so they are deliberately OUT of this
+  ratification and stay for the dead-content lane.
+* **SEPARATED** the 2 live two-monsters-one-tag SV pairs. In each, the member whose identity the shared
+  name does NOT describe gets its own mod-owned tag, and SV's string stays untouched on the family it
+  actually names: `empusa\alcestis` -> `tagSVCSoulEmpusaAlcestis` "Empusa Alcestis Soul" (`soulcarver`,
+  18 monster droppers, keeps `tagSoulName200`); `maenad\maenadscout` -> `tagSVCSoulMaenadScout`
+  "Maenad Scout Soul" (`maenadvanguard`, 212 referents, keeps `tagSoulName34`). Names are SV's own
+  plain `<Family> <Name> Soul` register - these are SV souls, not amgoz1-evocative territory.
+* **LEFT AS-IS**, on purpose: SV's four `_n` double-authored siblings and the `orythroneus` typo twin.
+  Harmless, lowest-risk, and renaming them is exactly the name-drift R-49a forbids.
+
+> **THE OBVIOUS NAME WAS ALREADY TAKEN, AND ONLY A MEASUREMENT CAUGHT IT.** The natural separation name
+> for `empusa\alcestis` is "Alcestis Soul" - which is **already the display name of our own de-wired
+> handcraft soul** `svc_uber\xhero_nightsmistress` (the base game reuses the name Alcestis for
+> `xhero_nightsmistress`). Taking it would have closed one collision by opening another. Every candidate
+> string in this wave was checked against the full 698-name roster before it was written, and the C3
+> gate now makes that check mandatory instead of merely diligent.
+
+**ARITHMETIC:** 40 duplicates - 5 renamed - 30 retired - 2 separated = **5 remaining, all SV-vs-SV, 0
+involving `svc_uber\`**. Those 5 ARE the waiver list.
+
+### GATE: C3 CROSS-FAMILY (`_verify_soul_cross_family_naming`, fail-loud)
+
+No two canonical soul families may render the same display name. The waiver list is the ratified
+SV-vs-SV keep-as-is set **and nothing else**, with three structural guards that make it un-abusable:
+
+1. **SHRINK-ONLY** - `_C3_WAIVER_CEILING` is asserted at gate time, so the list can lose entries and
+   never gain them. A new duplicate gets FIXED, not waivered.
+2. **Nothing under `svc_uber\` may EVER be waivered** - our own souls have no excuse (rule 3 of the
+   proposal: mod-vs-mod renames the lesser one).
+3. **Nothing under `soul\test\` either** - a waiver there would silently re-bless a dead twin the
+   retirement just removed.
+
+Waivers match the **EXACT family set**, so a third family joining a waived name is still RED. Display
+names resolve through SV 0.98i's own `Text_EN.arc` (md5-pinned via `check_build_inputs`), which is what
+makes the mod-vs-SV case exact rather than tag-identity-only; if that input is ever unavailable the gate
+**ANNOUNCES its own downgrade** instead of passing silently.
+
+**NEGATIVE-TESTED 7 ways, all RED** (`tools/debug/negtest_r202_cross_family.py`, which also re-runs the
+whole wave offline against a built arz): planted mod-vs-SV collision; planted mod-vs-mod collision;
+waiver list grown past the ceiling; an `svc_uber` family waivered; a retired `soul\test\` family
+waivered; a third family joining a waived name; and the separation's own precondition broken. The gate
+is additionally proven RED on the **PRE-wave** roster (35 offenders + 5 waived = the 40 measured), so it
+is not vacuous in either direction. The separation is self-proving: every tier record must exist AND
+still carry the shared SV tag, or the build stops rather than renaming the wrong thing. The retirement
+guard is deliberately ASYMMETRIC - retiring MORE than the ratified 60 fails the build, retiring fewer
+only prints a NOTE - because over-deletion is the dangerous direction.
+
+**COUPLING (satisfied, not waived):** this wave changes TAG STRINGS, so the `.arz` and `Text.arc`
+**ship together** and `uber_soul_tags.txt` is regenerated in the same build. Shipping `Text.arc` against
+a stale manifest is the exact shape of the historical `tagSoulSVC9005`/`9006` orphan bug.
+`validate_tags` is the authoritative gate.
+
+**NOT PROVEN IN-GAME.** Will's check: the five renamed souls read their new names on all three tiers,
+and a Maenad Scout soul and a Maenad Vanguard soul in the same bag now read differently. TQ bakes item
+data at pickup, so **re-drop a fresh one** before calling a rename missing.
+
+**STILL OPEN, deliberately untouched by this ruling:** row 19's Akara wire - whether
+`d2npc\01_akara.dbr` gets its own soul identity or is re-pointed
+(`docs/reports/b97_soul_identity_audit.md` sec 8). The new name is safe either way.

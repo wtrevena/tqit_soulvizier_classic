@@ -1,9 +1,31 @@
 # SOUL RENAME PROPOSAL - `BL-R201-DEBT-1` (40 cross-family duplicate display names)
 
-> **STATUS: PROPOSAL. NOTHING IS IMPLEMENTED. NO GAME DATA WAS TOUCHED BY THE LANE THAT WROTE THIS.**
-> This document exists to be **ratified line-by-line or wholesale by Will**. Until a row is approved,
-> nothing changes. Renaming souls is explicitly a Will decision, not an agent call
-> (`docs/BACKLOG.md` `BL-R201-DEBT-1`).
+> ## ✅ STATUS: RATIFIED AND IMPLEMENTED (Will 2026-08-11) - see **R-202** in `docs/WILL_RULINGS.md`
+>
+> **Will, VERBATIM:** *"Proceed with ratifying all 5 and fix SV duplicates / collisions as you deem
+> necessary."*
+>
+> Implemented on branch `fix/soul-rename-ratified`. This document is now the **historical proposal**;
+> R-202 is the design law of record and states what actually shipped. What changed against the tables
+> below:
+>
+> * **Table A, all 5 PRIMARY names ratified and applied.** Row 19 uses the PRIMARY
+>   (`Soul of the Pale Diadem`) and the Akara wire stays OPEN, exactly as this document scoped it. One
+>   stated mechanism deviation on row 19 (single authoring site instead of a `_SOUL_NAME_STANDARD`
+>   value); identical rendered string. See R-202.
+> * **Table B is no longer 35 keep-as-is.** Will's second clause granted discretion over the SV side,
+>   so this document's "this proposal does not propose retiring anything" was superseded by him:
+>   * the **30** dead `soul\test\` families (29 groups; row 32 held two) are **RETIRED** from the build
+>     output, on a re-derived zero-referent proof plus a byte-scan of every shipped non-DB artifact;
+>   * the **2** live two-monsters-one-tag pairs (rows 11 and 32) are **SEPARATED** - the member the
+>     shared name does not describe gets its own mod-owned tag;
+>   * the **5** remaining rows (4, 10, 15, 37, 40 - SV's `_n` siblings and the typo twin) are the only
+>     ones left AS-IS, and they are now the C3 gate's entire waiver list.
+> * **The C3 cross-family clause of implementation note 4 SHIPPED**, stricter than proposed: it covers
+>   ALL canonical soul families rather than only externally-referenced ones, it is shrink-only, and
+>   nothing under `svc_uber\` or `soul\test\` may ever be waivered.
+>
+> Expected-after count in note 5 ("**35** duplicate display names") is therefore **superseded: 5**.
 
 **Measured on:** `work/SoulvizierClassic/Database/SoulvizierClassic.arz` (build83, 51,253 records) with
 display strings resolved through `work/SoulvizierClassic/Resources/Text.arc` (4,507 tags), using the

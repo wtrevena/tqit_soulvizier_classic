@@ -188,15 +188,15 @@ _REVIEWED = {
     r"records\creature\monster\scorpion\um_rocksting_29.dbr":
         ("Colossal Scorpion", 'Rocksting Soul', "Rock Sting"),
     # ── ROUND 2: the 4 carriers the \creature(s)\ scope predicate hid ─────────
-    # OUR OWN wire. apply_svc_patches._create_kallixenia_soul points a bespoke
-    # "Kallixenia ~ Liche Queen Soul" at the DRX D2-NPC record 01_akara, whose
-    # description tag (tagD2NPCakara) reads "Akara". The real Kallixenia
-    # (xpack\...\abyssalliche\xsq02_lichequeen_36) drops an identically-NAMED
-    # soul at the same 66%, so the player sees Akara handing out the Liche
-    # Queen's soul - precisely Will's report. See docs report sec 8 for the
-    # Will decision (zero the roll now vs. rename the record to Kallixenia).
-    r"records\drxcreatures\xurder\d2npc\01_akara.dbr":
-        ("Akara", 'Kallixenia ~ Liche Queen Soul', "Kallixenia ~ Liche Queen"),
+    # NOTE (R-202, 2026-08-11): `01_akara` USED TO SIT HERE and no longer does.
+    # It was convicted because our bespoke soul rendered "Kallixenia ~ Liche
+    # Queen Soul", identical to the real Kallixenia's, so a monster called Akara
+    # handed out the Liche Queen's soul. R-202 renamed OUR soul to
+    # "Soul of the Pale Diadem", which impersonates nobody, so the identity RULE
+    # correctly stops convicting it - the defect is fixed at the source instead
+    # of being suppressed. Its roll STAYS detached all the same, now explicitly
+    # via _R202_KEPT_DETACHED below, because re-enabling a drop is a separate
+    # Will decision that R-202 deliberately did not take.
     # SV's own legacy soul\test\ monsters: the us_lysiaspellbreaker_15 trio
     # carries Lysia Spellbreaker's soul but a copy-pasted "Nenea Sharpclaw"
     # description. Lysia Spellbreaker's real record keeps the soul live.
@@ -216,19 +216,52 @@ _REVIEWED = {
 # so it must be reviewed per item, never silent.
 _ACCEPTED_ITEM_DETACH = {
     r"records\item\equipmentring\soul\svc_uber\kallixenia_soul_n.dbr":
-        "b97r2: our own bespoke Kallixenia soul, wired ONLY to 01_akara "
-        "('Akara'). The NAME 'Kallixenia ~ Liche Queen Soul' stays obtainable "
-        "from the real Kallixenia (soul\\abyssalliche\\kallixenia_soul_*). The "
-        "item record is kept intact (retirement protocol - nothing deleted); "
-        "re-attaching it is a one-line Will decision (report sec 8).",
+        "b97r2 + R-202: our own bespoke soul, wired ONLY to 01_akara ('Akara'). "
+        "b97r2 detached it because it rendered 'Kallixenia ~ Liche Queen Soul' "
+        "and impersonated the real Kallixenia. R-202 renamed it to 'Soul of the "
+        "Pale Diadem', so the impersonation is GONE and the identity rule no "
+        "longer convicts the carrier - but the roll stays detached "
+        "(_R202_KEPT_DETACHED) because making a soul obtainable again is a "
+        "content decision Will has not taken. The item record is kept intact "
+        "(retirement protocol - nothing deleted); re-attaching it is still the "
+        "one-line Will decision in report sec 8.",
     r"records\item\equipmentring\soul\svc_uber\kallixenia_soul_e.dbr": "as _n",
     r"records\item\equipmentring\soul\svc_uber\kallixenia_soul_l.dbr": "as _n",
+}
+
+
+# ── R-202: detachments the identity RULE no longer derives, but that must NOT
+#    silently reverse ────────────────────────────────────────────────────────
+# When a rename removes an impersonation at the source, the rule stops convicting
+# the carrier - correctly. The danger is the side effect: a roll that has been 0
+# since b97 would quietly go back to 66% inside a wave that was only ever
+# authorised to change STRINGS. That is a content change nobody ratified, so the
+# detachment is held here EXPLICITLY, is printed every build, and is asserted by
+# verify(). Removing an entry re-enables a drop and is therefore a Will decision.
+_R202_KEPT_DETACHED = {
+    r"records\drxcreatures\xurder\d2npc\01_akara.dbr":
+        "R-202 renamed our soul to 'Soul of the Pale Diadem', so 'Akara' no "
+        "longer hands out the Liche Queen's soul and the b97 conviction lapses. "
+        "The roll stays 0 because the Akara WIRE is still an OPEN Will decision "
+        "(docs/reports/b97_soul_identity_audit.md sec 8) and R-202 was a naming "
+        "ratification, not a drop ratification.",
 }
 
 
 # ============================================================================
 # text helpers
 # ============================================================================
+def _resolve_key(db, path):
+    """The db's actual record key for `path`, tolerating '/' vs '\\' and case."""
+    if db.has_record(path):
+        return path
+    want = path.replace('/', '\\').lower()
+    for cand in db.record_names():
+        if cand.replace('/', '\\').lower() == want:
+            return cand
+    return None
+
+
 def _strip_color(s):
     """'{^F}Stone Hide Soul' -> 'Stone Hide Soul'."""
     return re.sub(r'\{\^.\}', '', str(s or ''))
@@ -400,9 +433,13 @@ def _display_tags(db, tags):
     # documented "final authoritative override of the `tags` dict". verify()
     # runs AFTER it. So round 1's apply() judged identity against names that
     # are NOT the ones the player sees, and could therefore disagree with its
-    # own verify(). Real case: tagSVCSoulKallixenia is '{^F}Soul of Kallixenia'
-    # at apply() time and '{^F}Kallixenia ~ Liche Queen Soul' in the shipped
-    # Text.arc - a different identity, and the difference IS the Akara bug.
+    # own verify(). The case that proved it: tagSVCSoulKallixenia read
+    # '{^F}Soul of Kallixenia' at apply() time and '{^F}Kallixenia ~ Liche Queen
+    # Soul' in the shipped Text.arc - a different identity, and the difference
+    # WAS the Akara bug. (R-202 has since renamed that soul to '{^F}Soul of the
+    # Pale Diadem' and removed it from _SOUL_NAME_STANDARD, so this particular
+    # tag no longer diverges; the OVERRIDE below stays because the divergence is
+    # structural - any tag still in the table has it.)
     # Applying the same override here makes both passes judge the shipped text.
     # (The companion auto-transform only swaps '{^F}Soul of X' <-> '{^F}X Soul',
     # which _soul_core() normalizes away, so it cannot change an identity.)
@@ -562,6 +599,23 @@ def apply(db, tags):
         print(f"  ZEROED {prev:g}% -> 0%  {disp!r} ({rec}) was dropping "
               f"{soul_name!r}, which belongs to {owner!r}")
 
+    # ── R-202 HELD DETACHMENTS (must run BEFORE the item-detach guard so the
+    #    guard judges the TRUE final state) ────────────────────────────────────
+    # A rename that removes an impersonation at the source makes the identity
+    # rule lapse - correctly. It must not thereby hand a soul back to the player
+    # as a side effect of a STRING wave. Held explicitly, printed every build.
+    for rec, why in sorted(_R202_KEPT_DETACHED.items()):
+        actual = _resolve_key(db, rec)
+        if actual is None:
+            raise SystemExit(
+                f"[soul_identity] R-202 HELD DETACH: {rec} is not in the db. A "
+                f"held detachment whose record vanished is not a no-op - it "
+                f"means the wire moved. Re-review before shipping.")
+        prev = _chance_of(db, actual)
+        db.set_field(actual, _CHANCE, 0.0, DATA_TYPE_FLOAT)
+        db._modified.add(actual)
+        print(f"  HELD DETACHED {prev:g}% -> 0%  {actual}\n      {why}")
+
     # ── ITEM-DETACH GUARD: no soul ITEM goes dark without a reviewed waiver ──
     # The ORPHAN PROOF below is about the soul NAME (is it still obtainable?).
     # This is about the specific ITEM RECORD: two distinct items can share one
@@ -616,6 +670,23 @@ def verify(db, tags):
             f"{len(thieves)} creature(s) still drop a soul whose identity belongs "
             "to a DIFFERENT named creature that also drops it:\n  - "
             + "\n  - ".join(lines))
+
+    # R-202 HELD DETACHMENTS: the identity rule no longer derives these, so the
+    # rule's own emptiness above proves NOTHING about them. Assert them directly
+    # over the FINAL db (post drop-rate forcer) - a held detachment that quietly
+    # came back is a drop nobody ratified.
+    back = []
+    for rec in sorted(_R202_KEPT_DETACHED):
+        actual = _resolve_key(db, rec)
+        if actual is None or _chance_of(db, actual) > 0:
+            back.append((rec, None if actual is None else _chance_of(db, actual)))
+    if back:
+        raise SystemExit(
+            "[soul_identity] VERIFY FAILED (R-202 held detachment): "
+            + "; ".join(f"{r} is at {c!r} (expected 0, or the record vanished)"
+                        for r, c in back)
+            + ". Re-enabling this drop is a Will decision, not a build outcome "
+              "(docs/reports/b97_soul_identity_audit.md sec 8).")
     print("  [soul_identity] verify OK: no creature drops another named "
           "creature's soul (identity checked on display names, every record "
           "path, pets + quest proxies excluded)")

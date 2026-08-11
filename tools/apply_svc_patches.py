@@ -9592,6 +9592,14 @@ def _retire_dead_soul_test_duplicates(db):
 # SV 0.98i's own Text_EN.arc, the source build_text_arc.py emits the SV half of
 # the shipped Text.arc from. Loaded lazily + cached so C3 can resolve the SV
 # soul names the mod tag dict does not carry. `False` = tried and unavailable.
+#
+# WHY NOT `_SV098I_NAME_TAGS`: the build already injects that from the SAME file
+# (build_svc_database._load_sv098_name_tags), but it LOWERCASES every key for the
+# b97 soul-identity gate's case-insensitive monster/soul name comparison. C3
+# compares tag keys exactly as the records carry them, so it keeps its own
+# case-preserving copy rather than guessing at a case fold. Same md5-pinned
+# input either way (check_build_inputs pins `sv098i_text_arc`), so the two can
+# never disagree about what SV says.
 _SV_TEXT_STRINGS = None
 
 
