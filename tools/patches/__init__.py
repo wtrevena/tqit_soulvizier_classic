@@ -958,6 +958,46 @@ REGISTRY = [
                             # armor_loot_breadth.verify's distribution gate.
                             # Standalone: py tools/gate_loot_distribution.py <arz>;
                             # negatives: py tools/debug/negtest_armor_breadth.py <arz>.
+    'loot_volume_trim',     # R-230 (Will 2026-08-11): "we probably need to trip the
+                            # loot-volume trim, especially on the steam version where
+                            # maybe from the two chests, you get guaranteed 1 legendary
+                            # item. on the testhub version we can spawn more that is
+                            # fine." This is the say-so BL-R181-DEBT-5 was waiting for:
+                            # R-181 named numSpawn as the volume lever and refused to
+                            # pull it without Will, so three waves raised COMPOSITION
+                            # while volume stood still and the shipped b83 cage paid
+                            # 36.4 Legendary gear pieces for two chests opened once.
+                            # Non-reduction is suspended for VOLUME ONLY: this module
+                            # writes numSpawnMin/MaxEquation and nothing else, and its
+                            # own scope proof fails the build if any member, weight or
+                            # group chance moves - so every breadth and distribution
+                            # property b75-b83 shipped survives at lower volume, which
+                            # the two gates running after it re-prove on the same db.
+                            # ORDER IS LOAD-BEARING, LAST before the no-op 'visuals',
+                            # for two reasons: (1) volume is an OVERRIDE - the monolith
+                            # writes *2.4/*2.8 onto 27 hoard tables and polis_vault
+                            # writes the cage's own - so running last makes this the
+                            # single authority instead of something a later module
+                            # silently undoes (the BL-R181-DEBT-7 failure mode);
+                            # (2) the TESTHUB cage twin is CLONED from the finished
+                            # canonical chain, so it inherits every b75-b83 edit for
+                            # free and there is no second copy of the tuning to keep in
+                            # step. The twin is how "canonical trims, TESTHUB stays
+                            # rich" is expressed at all: one arz serves both map
+                            # variants, so the split has to live in the RECORDS, and
+                            # build_section_surgery.build_hub_extra_specs points the 4
+                            # TESTHUB-only duplicate placements at the twin. Canonical
+                            # B41_SPECS is untouched, so Levels_merged.arc stays
+                            # byte-identical and the Steam delta stays arz-only.
+                            # Its verify() also carries Will's 2026-08-11 artifact
+                            # ruling (tools/svc_chest_artifacts.py) - which is NOT a
+                            # no-op: 6 equippable artifacts are chest-reachable today
+                            # by R-185's design, so the gate pins them by name with a
+                            # re-derived rule and the residue is BL-R230-DEBT-2.
+                            # Standalone: py tools/gate_loot_volume.py <arz> (--apply
+                            # on a pre-wave arz, --calibrate to re-derive thresholds)
+                            # and py tools/gate_chest_artifacts.py <arz>; negatives:
+                            # py tools/debug/negtest_loot_volume.py <arz>.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
