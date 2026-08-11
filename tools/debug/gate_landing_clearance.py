@@ -83,6 +83,40 @@ HARD_FAIL = ('container', 'monster', 'proxy', 'prop')
 DEADLY_CLASSES = ('container', 'monster', 'proxy', 'prop', 'other')
 NOTE_DIST = 2.0         # npc/portal within this raises an informational note
 
+# ── b63 SILENT-WARDEN: G-NPC-LANDING-SEP (Will 2026-08-10) ───────────────────────────────────
+# A placed TALK NPC sitting ON a teleport landing is its own defect, distinct from the pin bug
+# above: an arriving player materialises inside the NPC's actor cylinder, so the click that should
+# open his dialog can resolve to the player instead. The "Warden of the Spartan Crypt" stood at
+# world (-6587,1,-3180), which is BYTE-FOR-BYTE the destination of BOTH boat routes that teleport
+# the player to that door (tagSVCHelosToSparta and tagSVCReturnToAthensCatacomb). 0.00u.
+#
+# It shipped because npc/portal are SOFT classes here: they only ever raised an informational
+# NOTE, never a FAIL. Commit f83162f then classified the new svc_warden record INTO that soft
+# class so the built map read PASS. This check removes the escape hatch: for the specific pair
+# (placed BOAT NPC, BOAT ROUTE DESTINATION) the npc class-min is a HARD FAIL, with NO per-record
+# exemptions - no classification tweak can silence it.
+#
+# THRESHOLD, calibrated from MEASURED ground truth rather than taken on faith. The b63 RCA
+# proposed 4.0u ("matching the existing collider threshold"), but 4.0 is the CONTAINER min and a
+# gate must separate what is BROKEN from what is PROVEN TO WORK, not encode a round number.
+# Measured on the deployed DEV map (2026-08-10, this gate, --wiring v1, 156 boat-NPC/landing pairs):
+#   PROVEN BROKEN  0.00u - svc_warden_sparta_crypt sits exactly on the Sparta-door landing.
+#                          Will: no dialog box, nothing. THE bug this gate exists for.
+#   PROVEN WORKING 1.12u - svc_helos_trav_secret vs the Helos plaza return landing (-5980,1,909),
+#                          where all 10 area-return routes drop the player. Will travels through
+#                          that plaza constantly and those travelers respond.
+#   PROVEN WORKING 1.28u - svc_helos_trav_garden vs the same plaza landing.
+#   next up        3.00u - svc_area_return_uber vs the Uber-door landing.
+# So the real defect is COINCIDENT placement, not mere proximity. A 4.0u (or even 2.0u) floor would
+# red ~20 pairs that demonstrably work, which is how gates get switched off; 1.0u sits cleanly
+# between the broken case and the tightest confirmed-working case. The tightest measured margin is
+# PRINTED on every run, so drift toward the floor is visible instead of silent.
+BOAT_NPC_MIN_SEP = 1.0     # no exemptions, no per-record escape hatch
+# Record-path keywords identifying a PLACED BOAT NPC (kept in sync with
+# gate_traveler_responds.HUB_KW, which is imported when available so there is ONE source of truth).
+BOAT_NPC_KW_FALLBACK = ('svc_helos_trav', 'svc_area_return', 'svc_testhub', 'portal_master_helos',
+                        'svc_warden_sparta')
+
 # Nudge robustness (--nudge only). The emitted coord clears each collidable class by
 # class_min PLUS this buffer and stands on solid footing, so the INTEGER-world coord
 # actually emitted (and a built map whose entity positions drift slightly) still clears
@@ -143,6 +177,13 @@ def classify(dbr):
     # like the svc_area_return_* it was cloned from) - matched here so a TESTHUB traveler that
     # lands at its spot reads as a soft NPC crowd NOTE, not a hard PIN. Monster 'warden' records
     # (e.g. ss_warden_behemoth) are already classified 'monster' above via their /monster path.
+    # b63 SILENT-WARDEN (Will 2026-08-10): this line stays - the record genuinely IS Class=Npc
+    # and soft-collides, so calling it anything else would be a lie about its physics. But it is
+    # NO LONGER the only thing standing between us and a boat NPC parked on top of a teleport
+    # landing: that was how a 0.00u Warden/landing overlap shipped to Steam on 2026-08-06. The
+    # exemption-free G-NPC-LANDING-SEP check below now enforces a hard BOAT_NPC_MIN_SEP (1.0u,
+    # calibrated from measurement - see the constant's block comment) between EVERY placed boat
+    # NPC and EVERY boat route destination, with NO per-record escape hatch.
     if any(k in d for k in ('npc', 'villager', 'townsperson', 'merchant', 'caravan',
                             'portal_master', 'helos_trav', 'area_return', 'return',
                             'svc_warden', 'storyteller', 'soulcollector', 'boatman',
@@ -736,6 +777,54 @@ DEFAULT_MAPS = [
 ]
 
 
+def boat_npc_keywords():
+    """ONE source of truth for "is this record a placed boat NPC". Imported from
+    gate_traveler_responds when available so the two gates cannot drift apart."""
+    try:
+        from gate_traveler_responds import HUB_KW
+        return tuple(HUB_KW)
+    except Exception:
+        return BOAT_NPC_KW_FALLBACK
+
+
+def check_boat_npc_landing_separation(results):
+    """b63 G-NPC-LANDING-SEP. For every boat route landing, every PLACED BOAT NPC in the
+    destination level must be at least BOAT_NPC_MIN_SEP away. No per-record exemptions.
+    Returns (violations, min_margin, n_pairs) where violations = [(landing_name, tag, dist,
+    dbr, world)] and min_margin is the smallest (dist - BOAT_NPC_MIN_SEP) seen over all
+    NPC/landing pairs that were actually measured (None if none were)."""
+    kw = boat_npc_keywords()
+    violations, margins, n_pairs = [], [], 0
+    for r in results:
+        if r.get('local') is None:
+            continue
+        for (dist, dbr, _x, _z, _klass, _ex) in r['near']:
+            dl = dbr.replace('/', '\\').lower()
+            if not any(k in dl for k in kw):
+                continue
+            n_pairs += 1
+            margins.append(dist - BOAT_NPC_MIN_SEP)
+            if dist < BOAT_NPC_MIN_SEP:
+                violations.append((r['name'], r['tag'], dist, dbr, tuple(r['world'])))
+    return violations, (min(margins) if margins else None), n_pairs
+
+
+def report_boat_npc_separation(results):
+    """Print the G-NPC-LANDING-SEP section. Returns True if it FAILS."""
+    violations, min_margin, n_pairs = check_boat_npc_landing_separation(results)
+    print('\n' + '=' * 78)
+    print(f'G-NPC-LANDING-SEP (b63)  min separation {BOAT_NPC_MIN_SEP}u, NO exemptions')
+    print(f'  boat-NPC/landing pairs measured: {n_pairs}'
+          + (f'   tightest margin: {min_margin:+.2f}u' if min_margin is not None else ''))
+    for (name, tag, dist, dbr, world) in violations:
+        short = dbr.rsplit('\\', 1)[-1].rsplit('/', 1)[-1]
+        print(f'    - FAIL {name} (tag={tag}, world={world}): boat NPC {short} is {dist:.2f}u '
+              f'away (< {BOAT_NPC_MIN_SEP}u). A player arriving here materialises inside that '
+              f'NPC, so clicking him may not open his dialog. Move the NPC or the landing.')
+    print(f'  {"FAIL" if violations else "PASS"}')
+    return bool(violations)
+
+
 def main():
     ap = argparse.ArgumentParser(description='Hub teleport landing-clearance gate.')
     ap.add_argument('--map', help='Levels.arc to gate (default: deployed DEV / local merged)')
@@ -821,8 +910,10 @@ def main():
                 tag = 'ROBUST' if robust else 'TIGHT - no robust spot in range, hand-verify'
                 print(f'  {r["name"]:14s} ({wx},{wy},{wz}) -> ({nwx},{wy},{nwz})  '
                       f'[nudge {rad:.1f}u, {tag}]  binding collider {binding}  clr {clr}')
-    bad = bool(deadly or fails) or (args.strict_check and bool(checks))
-    print(f'\nGATE G-LAND: {"FAIL" if bad else "PASS"}')
+    sep_bad = report_boat_npc_separation(results)
+    bad = bool(deadly or fails) or sep_bad or (args.strict_check and bool(checks))
+    print(f'\nGATE G-LAND: {"FAIL" if bad else "PASS"}'
+          + ('  (G-NPC-LANDING-SEP is part of this verdict)' if sep_bad else ''))
     return 1 if bad else 0
 
 

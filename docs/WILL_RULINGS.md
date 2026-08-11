@@ -3996,6 +3996,85 @@ NOT PROVEN IN-GAME. Deploys are the orchestrator's. Will's walk (into the deepes
 to the WARDEN by the stairs-down, confirm the name reads "Warden of the Spartan Crypt" and the menu has
 ONLY "Descend into the Sparta Crypt", descend, return) is the remaining launch gate - registered as debt.
 
+### R-170 FOLLOW-UP [2026-08-10] IMPLEMENTED (fix/warden-sparta-dialog) - b63 THE WARDEN WAS MUTE: the descend route moves onto the proven trigger class + he moves off the teleport landing
+
+VERBATIM (Will's bug report, 2026-08-10): "when I click on the guy who travels you to the spartan
+crypt (warden of the spartan crypt) nothing happens, no dialog box comes up, nothing."
+
+THIS IS THE R-170 AMENDMENT'S OWN LAUNCH GATE FAILING. That entry closed with "NOT PROVEN IN-GAME
+... Will's walk ... is the remaining launch gate - registered as debt". The walk happened; it failed.
+SEVERITY P0 AND LIVE ON STEAM since 2026-08-06 (ship record commit 045efb6, Workshop 3759792705):
+PR-5 deleted tagSVCHelosToSparta from Almyros's Helos menu and the canonical map does not place
+svc_helos_trav_sparta at all, so the catacomb Warden is the SOLE entrance to spartacryptlevel2 for
+every subscriber. If he is mute there, that whole area has been unreachable for four days.
+
+WHAT WAS WRONG (two stacked defects; deploy staleness was RULED OUT - the DEV set Will played is
+coherent, arz + Text + Levels + Quests all carry PR-5, and his live _Toxeus .que files match the
+DEV quest definition exactly at 402 triggers / 39 boat actions).
+
+PRIMARY - MENU SOURCE. The POLISH left the Warden with EXACTLY ONE menu entry, and that entry was
+emitted by build_quest_files._add_traveler_enter_offers. The Warden was the ONLY placed NPC in the
+mod whose entire menu came from an enter-offer, and that trigger class has ZERO in-game
+confirmations anywhere in this project, whereas all 30 earlier triggers in the host step are classes
+Will has demonstrably used. Before the POLISH the catacomb NPC carried tagSVCAreaReturnToHelos from
+HELOS_HUB_TRAVEL, a proven class; commit 1f66404 removed that line to honour DESCEND ONLY and in
+doing so left the never-verified class as his sole menu source. Zero menu entries = no dialog box at
+all, which is exactly the symptom.
+HONEST CAVEAT, stated so nobody over-claims: the two generators emit a STRUCTURALLY IDENTICAL
+trigger (verified against the deployed DEV quest - same Condition_OnLevelLoad, same single
+Action_BoatDialog, same field order). The only real differences are the displayTag string and the
+trigger's POSITION in step 1, because enter-offers are appended LAST (the Warden was trigger 31 of
+33). So the operative change is REGISTRATION ORDER plus generator provenance, not a different
+mechanism. This is the strongest quest-side lever available; if the Warden is still mute after this
+wave, the next suspect is Action_BoatDialog binding only for levels loaded at trigger time (test by
+teleporting in versus walking in), and the cure is a GridEntrance door (the proven build24/25
+Knossos-to-Uber mechanism) instead of a boat NPC.
+
+CONTRIBUTING - CLICK TARGETING. He stood at world (-6587,1,-3180), byte-for-byte the destination of
+BOTH routes that teleport the player to that door (tagSVCHelosToSparta, tagSVCReturnToAthensCatacomb).
+0.00u. That only ever shipped because commit f83162f made gate_landing_clearance TOLERATE it (it
+classified svc_warden into the soft-collision NPC class, which raises a NOTE and never a FAIL)
+instead of moving him.
+
+IMPLEMENTED (Quests + MAP + gates; arz and Text UNTOUCHED, no new records, no new tags):
+- QUESTS (build_quest_files): the Warden's single route moves from TRAVELER_ENTER_OFFERS into
+  HELOS_HUB_TRAVEL, as its FIRST row (earliest hub slot). Count conservation is now a build-time
+  law (_HUB_PLUS_ENTER_TRIGGERS = 26), so step 1 stays at 33 triggers / 39 boat actions - exactly
+  what the deployed and Steam builds carry.
+- MAP (build_section_surgery): the Warden moves local (25,1,38) -> (25,1,32) = world
+  (-6587,1,-3186). Surveyed on the canonical ship map 78a3e263: d=0.14u on-mesh, clr 100/100/99%,
+  comp#1/123720; 6.00u from both landings (was 0.00u); stairsdown01 6.51u (was 6.07u) so he still
+  stands right by the stairs-down as this ledger and WILL_TEST_GUIDE describe; nearest hard collider
+  4.58u (was 3.69u). Talk NPC, flags=0, no 0x14 -> the level's 0x0b navmesh stays byte-identical.
+- GATES (no-new-surface-without-a-gate): G-SOLE-SOURCE (no placed boat NPC may draw its entire menu
+  from TRAVELER_ENTER_OFFERS); G-DIALOG-CHAIN (every placed traveler's record -> quest -> QUESTS
+  load-window chain must resolve); G-NPC-LANDING-SEP (exemption-free minimum separation between any
+  placed boat NPC and any boat route destination); the same sole-source law asserted at import time
+  in build_quest_files and again in gate_travel_npc_invariants T5c.
+
+R-170 AND ITS AMENDMENT ARE UNCHANGED AS DESIGN LAW. Will's ruling is about the MENU, not about
+which generator emits it: the Warden still offers EXACTLY ONE option, "Descend into the Sparta
+Crypt" (tagSVCEnterSpartaCrypt), still lands at (-5596,-2,-1410), and still has NO "Helos (Return)"
+port. gate_travel_npc_invariants T5c now asserts that menu shape DIRECTLY (exactly one route, that
+tag, never tagSVCAreaReturnToHelos), so it can no longer be satisfied by accident.
+DO NOT "fix" a future Warden problem by re-adding tagSVCAreaReturnToHelos to him - that would give
+him two options and violate Will's DESCEND-ONLY decision.
+
+PROOFS (build-free, this env; baseline main-HEAD 63238f3): gate_travel_npc_invariants GATE PASS;
+gate_traveler_responds --specs and --specs --canonical PASS (31 route owners / 39 routes UNCHANGED;
+sources hub 24->25, enter_offer 2->1); gate_traveler_responds --negtest PASS (7 planted violations
+caught, baseline green); negtest_warden_dialog PASS (10/10, including a false-positive guard);
+the NEW gate run against PRISTINE main goes RED naming svc_warden_sparta_crypt, i.e. it would have
+caught the 2026-08-06 regression; gate_landing_clearance vs the DEPLOYED DEV map (still carrying the
+old placement) reports exactly 1 G-NPC-LANDING-SEP violation of 156 pairs, the Warden at 0.00u.
+
+NOT PROVEN IN-GAME, AND THE PREVIOUS "shipped on evidence" IS EXACTLY WHY THIS BUG EXISTS. Deploys
+and the Steam update are the orchestrator's/Will's. The remaining gate is Will's walk. Test on
+LEGENDARY or EPIC: his Normal-difficulty .que is still the stale pre-PR-5 shape (403 triggers / 41
+boat actions) and will only re-sync on next load. Steam must be updated in the same wave, keeping
+arz+Text and Levels+Quests coupled, with a changenote saying the Sparta Crypt entrance was broken
+from 2026-08-06 to the fix date.
+
 ## Chest loot breadth (new section; decade 180-189, opened 2026-08-10, lane `chest-loot-breadth`)
 
 ## R-180 [2026-08-10] IMPLEMENTED (chest-loot-breadth) - the chests must drop DIFFERENT items, and legendary SPEARS must be possible

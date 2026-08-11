@@ -2404,8 +2404,35 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
 # INT world (grid_corner + level-local), ALL surveyed ON-MESH in the main walkable component vs
 # the built TESTHUB map (tools/debug/survey_hub_v2_landings.py, 2026-07-13). Returns land at the
 # Helos plaza spot (same as TESTHUB_RETURN_DESTS).
+#
+# ── b63 SILENT-WARDEN FIX (Will 2026-08-10) ───────────────────────────────────────────────────
+# Will's bug, VERBATIM: "when I click on the guy who travels you to the spartan crypt (warden of
+# the spartan crypt) nothing happens, no dialog box comes up, nothing."
+#
+# The Warden's single "Descend into the Sparta Crypt" route USED to be emitted by
+# _add_traveler_enter_offers (TRAVELER_ENTER_OFFERS below). After the PR-5 POLISH removed
+# svc_area_return_sparta's "Helos (Return)" row from this table, the Warden's ENTIRE menu came
+# from that one enter-offer trigger - and the enter-offer trigger class has ZERO in-game
+# confirmations anywhere in this project, while every one of the routes below is Will-confirmed.
+# Structurally the two generators emit an IDENTICAL trigger (same Condition_OnLevelLoad, same
+# single Action_BoatDialog, same field order); the ONLY differences are the displayTag string and
+# the trigger's POSITION in the host step, because the enter-offers are appended LAST. So the
+# operative change here is REGISTRATION ORDER + generator provenance: the Warden's route moves off
+# the never-verified tail slot (it was trigger 31 of 33) into the proven, Will-walked hub block,
+# as its FIRST row (the earliest hub slot). Route count, trigger count and boat-action count are
+# all unchanged (asserted by _HUB_PLUS_ENTER_TRIGGERS below).
+#
+# R-170 AMENDMENT IS PRESERVED EXACTLY: the Warden still owns EXACTLY ONE route, still labelled
+# tagSVCEnterSpartaCrypt ("Descend into the Sparta Crypt"), still lands at the gate-clean
+# (-5596,-2,-1410), and still carries NO "Helos (Return)" port. DESCEND ONLY, per Will.
+# Adding tagSVCAreaReturnToHelos back to the Warden would VIOLATE that ruling - never do it.
 _HHUB = r'records\quests'
 HELOS_HUB_TRAVEL = [
+    # b63 SILENT-WARDEN FIX: the canonical Athens-catacomb Sparta entrance. Deliberately FIRST so
+    # it registers in the earliest hub slot (it previously sat in the appended-last enter-offer
+    # tail, the only trigger class in the rig never confirmed in-game). Its label tag and dest are
+    # globally unique across all boat routes, so an earlier slot cannot steal or be stolen.
+    (_HHUB + r'\svc_warden_sparta_crypt.dbr', (-5596, -2, -1410), 'tagSVCEnterSpartaCrypt'),
     # (npc record, (world x, y, z), boat-menu label tag)  -- OUTBOUND (all placed in Helos)
     # KEEP: Garden/Secret/BossArena already land at their natural approach (merchant hub w/ rift +
     # return NPC / forest-cluster entry / arena forecourt 90u off the boss volume) - no boss to
@@ -2571,18 +2598,60 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
 # cluster), so an enter-offer without a paired return would strand the player with no way back
 # (the P0-A "no way back" class of bug). It needs a new map-lane NPC placement first; flagged as a
 # BACKLOG follow-up.
-# PR-5 SPARTA POLISH (Will 2026-08-06): the Sparta enter-offer is keyed on the DEDICATED
+# PR-5 SPARTA POLISH (Will 2026-08-06): the Sparta enter-offer was keyed on the DEDICATED
 # "Warden of the Spartan Crypt" (svc_warden_sparta_crypt, a descend-only clone of
 # svc_area_return_sparta - apply_svc_patches _create_sparta_crypt_warden), which the map lane
-# places canonically at the catacomb spot. The Warden carries ONLY this "Descend into the Sparta
-# Crypt" port (its return-to-Helos entry was removed from HELOS_HUB_TRAVEL below) -> a single-option
-# menu, per Will. The landing (-5596,-2,-1410) is unchanged (gate-clean; Almyros's raw
-# (-5602,-2,-1409) FAILS gate_landing_clearance = greece_sarcophagia02_02 CONTAINER at 2.38u<4.0u).
-# The Uber enter-offer is unchanged (svc_area_return_uber stays TESTHUB-only).
+# places canonically at the catacomb spot. The Warden carries ONLY the "Descend into the Sparta
+# Crypt" port (its return-to-Helos entry was removed from HELOS_HUB_TRAVEL) -> a single-option
+# menu, per Will. SUPERSEDED BY b63 (Will 2026-08-10, the silent-Warden bug): that single port is
+# now emitted from HELOS_HUB_TRAVEL instead of from this table, because being an enter-offer's
+# SOLE owner is what made it mute. Same tag, same landing (-5596,-2,-1410), same one-option menu -
+# only the emitting generator and the registration slot changed. The landing stays put (gate-clean;
+# Almyros's raw (-5602,-2,-1409) FAILS gate_landing_clearance = greece_sarcophagia02_02 CONTAINER
+# at 2.38u<4.0u). The Uber enter-offer is unchanged (svc_area_return_uber stays TESTHUB-only).
+#
+# b63 SILENT-WARDEN FIX (Will 2026-08-10): the Sparta row MOVED OUT of this table into
+# HELOS_HUB_TRAVEL (see the b63 note there). This table is now what its own docstring always
+# assumed it was: a SECOND menu entry bolted onto an NPC that ALREADY owns a route from
+# HELOS_HUB_TRAVEL. svc_area_return_uber qualifies (it owns tagSVCAreaReturnToHelos there); the
+# Warden did not, which is exactly how it ended up with a single never-verified trigger as its
+# whole menu. _assert_enter_offers_are_second_entries() below makes that a build-time law.
 TRAVELER_ENTER_OFFERS = [
-    (r'records\quests\svc_warden_sparta_crypt.dbr', (-5596, -2, -1410), 'tagSVCEnterSpartaCrypt'),
     (r'records\quests\svc_area_return_uber.dbr',   (-2438, 10, -2450), 'tagSVCEnterUberDungeon'),
 ]
+
+# b63 SILENT-WARDEN FIX: count conservation. Moving a row BETWEEN these two tables must not add
+# or drop a trigger, a boat action or a route - the host step's trigger count and the shipped
+# boat-action count stay exactly what the deployed/Steam build has (step 1: 33 triggers, 39 boat
+# actions). Both generators bump the host step's trigger max by their own len(), so the sum is
+# what matters. Fails LOUD at import time if a future edit changes the total.
+_HUB_PLUS_ENTER_TRIGGERS = 26
+if len(HELOS_HUB_TRAVEL) + len(TRAVELER_ENTER_OFFERS) != _HUB_PLUS_ENTER_TRIGGERS:
+    raise ValueError(
+        f'b63 count conservation: HELOS_HUB_TRAVEL ({len(HELOS_HUB_TRAVEL)}) + '
+        f'TRAVELER_ENTER_OFFERS ({len(TRAVELER_ENTER_OFFERS)}) must total '
+        f'{_HUB_PLUS_ENTER_TRIGGERS} boat-dialog triggers on the sv_commonmechanics host step. '
+        f'If you are DELIBERATELY adding/removing a traveler route, bump this constant in the '
+        f'same commit and re-record the step-1 trigger count in the wave report.')
+
+
+def _assert_enter_offers_are_second_entries():
+    """b63 SILENT-WARDEN LAW (Will 2026-08-10). An enter-offer may only ever be a SECOND menu
+    entry on an NPC that ALREADY owns a HELOS_HUB_TRAVEL route. It may NEVER be an NPC's sole
+    menu source: that is precisely how the "Warden of the Spartan Crypt" shipped mute to Steam on
+    2026-08-06 (its whole menu came from one appended-last trigger of a class with zero in-game
+    confirmations). Fails LOUD at import, so the mistake cannot be rebuilt."""
+    hub = {npc.replace('/', '\\').lower() for npc, _xyz, _tag in HELOS_HUB_TRAVEL}
+    for npc, _xyz, tag in TRAVELER_ENTER_OFFERS:
+        if npc.replace('/', '\\').lower() not in hub:
+            raise ValueError(
+                f'b63 SOLE-SOURCE VIOLATION: enter-offer {tag} is the ONLY boat route of '
+                f'{npc} (it owns no HELOS_HUB_TRAVEL row). An enter-offer must be a SECOND '
+                f'entry on an NPC that already has a proven route - otherwise the NPC opens no '
+                f'dialog at all. Give it a HELOS_HUB_TRAVEL row instead (see the b63 note).')
+
+
+_assert_enter_offers_are_second_entries()
 
 
 def _add_traveler_enter_offers(data: bytes) -> bytes:
@@ -2590,8 +2659,9 @@ def _add_traveler_enter_offers(data: bytes) -> bytes:
     to the sv_commonmechanics refire step (strictly additive: bumps the step's trigger max by
     len(TRAVELER_ENTER_OFFERS)). Mirrors _add_helos_traveler_hub_travel exactly. Fails loud if the
     host step is missing, the bytes do not round-trip, or the reference-count deltas do not land
-    exactly (both NPCs already carry a route from HELOS_HUB_TRAVEL, so their reference count rises
-    by 1 more here, not from 0)."""
+    exactly (every enter-offer NPC already carries a route from HELOS_HUB_TRAVEL - enforced by
+    _assert_enter_offers_are_second_entries at import - so its reference count rises by 1 MORE
+    here, never from 0)."""
     def field_val(items, key):
         for it in items:
             if it[0] == 'field' and it[1] == key:

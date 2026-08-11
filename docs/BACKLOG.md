@@ -1,5 +1,113 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## 🟢 BUILD RECORD - b63 SILENT WARDEN (2026-08-10, `fix/warden-sparta-dialog` @ `af40892`) - BUILT + ALL GATES GREEN
+
+Built from `af40892` (= `main` @ `6899906` merged in, so the tree is a strict superset of the
+post-R-180 chest-loot main). Deterministic env `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, isolated
+`SVC_OUT_DIR` scratch build so nothing raced the parallel chest-loot wave's build slot (machine
+checked idle first: zero heavy build processes at launch).
+
+**Delta proof that this build is what post-merge `main` produces.** `git diff f18b06c..af40892` is
+`tools/patches/polis_vault.py` + `tools/svc_loot_breadth.py` + `docs/BACKLOG.md` only. Both code
+files are **arz-only patch modules**; neither is imported by `build_quest_files.py` or
+`build_section_surgery.py`, so `Levels.arc`/`Quests.arc` are byte-independent of them.
+
+| artifact | md5 | bytes | baseline it replaces |
+|---|---|---|---|
+| `Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | `6b25f8dd...` (194,961) = PR-5 ship + live DEV |
+| `Levels.arc` CANONICAL (Steam) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | `78a3e263...` (688,690,526) = PR-5 ship |
+| `Levels.arc` TESTHUB (DEV only) | `7a7ca9ac7e313b6be6eb65bc45aca36a` | 688,682,321 | `3a6f9d74...` (688,682,322) = live DEV, 08-08 Gaoler-cage build |
+
+**VERIFICATION LADDER - every rung green.**
+| # | check | result |
+|---|---|---|
+| L1 | `gate_travel_npc_invariants` (build-free) | **GATE PASS**, exit 0 (T1-T5c + RESPONDS) |
+| L2 | `gate_traveler_responds --specs` and `--specs --canonical` | **PASS**, exit 0 both; sources hub 25 / portal 3 / testhub_return 10 / enter_offer 1 |
+| L3 | `gate_traveler_responds --negtest` + `negtest_warden_dialog` | **PASS**, exit 0 both (7 + 10 planted defects all RED, positive controls GREEN) |
+| L4a/b | `gate_traveler_responds` vs the **BUILT** pair, TESTHUB **and** canonical | **PASS**, exit 0 both. G-COLLISION / G-WARDEN / G-ORPHAN / G-DEST / **G-SOLE-SOURCE** / **G-DIALOG-CHAIN** all PASS. QUESTS load window read off the BUILT map: `sv_commonmechanics.qst` at **index 96 of 255, in-window** |
+| L4c/d | `gate_landing_clearance --wiring v1` vs the **BUILT** TESTHUB **and** canonical maps | **G-LAND PASS**, exit 0 both. The `sparta` landing `(-6587,1,-3180)` now reports **d=6.00u** to `svc_warden_sparta_crypt.dbr` at local `(25.0,32.0)`. The 0.00u overlap is gone |
+| L5a | blob-diff canonical `78a3e263` -> new | **1** level changed (`catacube02_floorlast`), section **`0x05` only**, count 191 -> 191, `svc_warden_sparta_crypt.dbr` `(25,1,38)` -> `(25,1,32)`. **navmesh `0x0b` changes = 0** |
+| L5b | blob-diff TESTHUB (live DEV `3a6f9d74`) -> new | identical shape: **1** level, `0x05` only, same single move, **`0x0b` changes = 0**. Also proves the 08-08 Gaoler-cage chests survived the rebuild (no other blob moved) |
+| L6 | `Quests.arc` per-ENTRY diff vs `6b25f8dd` | **PASS**: 107 entries both sides, **only `sv_commonmechanics.qst` changed** (693,482 -> 693,480 B), **0 added, 0 removed, 106 byte-identical** |
+| L7 | count conservation vs the LIVE DEV `Quests.arc` | **PASS**: `Action_BoatDialog` occurrences **39 -> 39**, all parsed structure counts identical. Will's `_Toxeus` Legendary/Epic `.que` shape (402 triggers / 39 pending-fire) is therefore **unchanged**, so no existing character resyncs |
+
+The whole `sv_commonmechanics.qst` delta is **-2 bytes**: one trigger's `displayTag` string changes
+as the route moves from the enter-offer generator to the hub generator. No trigger, action or route
+was added or removed.
+
+## 🔴 P0 LIVE-ON-STEAM - b63 SILENT WARDEN: the Sparta Crypt entrance opens no dialog (Will 2026-08-10, branch `fix/warden-sparta-dialog`) - FIX IMPLEMENTED, BUILT, GATES GREEN
+
+**Will's report, VERBATIM (2026-08-10):** "when I click on the guy who travels you to the spartan crypt
+(warden of the spartan crypt) nothing happens, no dialog box comes up, nothing."
+
+**STEAM EXPOSURE - treat as P0.** LIVE on Workshop item 3759792705 since **2026-08-06** (ship record
+commit 045efb6). PR-5 deleted `tagSVCHelosToSparta` from Almyros's Helos menu and the canonical map
+places `svc_helos_trav_sparta` **nowhere**, so the catacomb Warden is the **SOLE** entrance to
+`spartacryptlevel2` for every subscriber. While he is mute, that entire area is **unreachable** for all
+Steam players. The PR-5 ship record's own declared residual ("the Sparta catacomb entrance is
+UNCONFIRMED IN-GAME, shipped on evidence; Will to verify on the live build") is what just cashed in.
+NOTE Will cannot verify the Steam build locally right now: his workshop cache at
+`steamapps\workshop\content\475150\3759792705` is STALE/pre-PR-5 (Quests `bd0fb5f9`, no
+`Creatures.arc`) and has never re-downloaded. Checking it needs a forced workshop re-download, and Steam
+must not be restarted while TQ is running.
+
+**Deploy staleness RULED OUT.** The DEV set Will played is coherent (arz + Text + Levels + Quests all
+carry PR-5) and his live `_Toxeus` `.que` files match the DEV quest definition exactly (402 triggers /
+39 boat actions on Legendary + Epic). His **Normal** `.que` is still the pre-PR-5 shape (403/41), so
+**ask him to test on Legendary or Epic**.
+
+**Root cause (two stacked defects).**
+1. **PRIMARY, menu source.** The PR-5 POLISH left the Warden with exactly ONE menu entry, emitted by
+   `_add_traveler_enter_offers`. He was the ONLY placed NPC in the mod whose whole menu came from an
+   enter-offer, and that trigger class has **zero in-game confirmations** anywhere in this project.
+   Commit `1f66404` removed his proven `tagSVCAreaReturnToHelos` row (correctly, to honour DESCEND
+   ONLY) and thereby left the unverified class as his sole source. Zero menu entries = no dialog box.
+   **Honest caveat:** the two generators emit a byte-structurally IDENTICAL trigger; the real
+   differences are the `displayTag` and the trigger's POSITION (enter-offers are appended last - he was
+   trigger 31 of 33). So the fix's operative lever is **registration order + generator provenance**.
+2. **CONTRIBUTING, click targeting.** He stood at world `(-6587,1,-3180)` = **byte-for-byte** the
+   destination of BOTH routes that teleport the player there. **0.00u.** It shipped because commit
+   `f83162f` made `gate_landing_clearance` tolerate it (soft-collision NPC class = NOTE, never FAIL).
+
+**Fix (Quests + MAP + gates; arz and Text UNTOUCHED - no new records, no new tags).**
+| part | change |
+|---|---|
+| `build_quest_files.py` | the Warden's single route moves `TRAVELER_ENTER_OFFERS` -> `HELOS_HUB_TRAVEL` (first row = earliest hub slot). `_HUB_PLUS_ENTER_TRIGGERS = 26` makes count conservation a build law: step 1 stays **33 triggers / 39 boat actions**. `_assert_enter_offers_are_second_entries()` fails at import if an enter-offer is ever an NPC's only route. |
+| `build_section_surgery.py` | Warden local `(25,1,38)` -> `(25,1,32)` = world `(-6587,1,-3186)`. Surveyed on canonical `78a3e263`: d=0.14u, clr **100/100/99%**, comp#1/123720; **6.00u** off both landings (was 0.00u); stairsdown01 **6.51u** (was 6.07u, so still by the stairs-down); nearest hard collider **4.58u** (was 3.69u). Talk NPC, flags=0, no `0x14` -> **`0x0b` navmesh byte-identical**. |
+| `gate_traveler_responds.py` | **G-SOLE-SOURCE** (no placed boat NPC may draw its whole menu from enter-offers) + **G-DIALOG-CHAIN** (every placed traveler: record -> quest -> QUESTS load-window must resolve) + `--negtest`. |
+| `gate_landing_clearance.py` | **G-NPC-LANDING-SEP**, exemption-free minimum separation between any placed boat NPC and any boat route destination. Threshold **1.0u**, calibrated from measurement (broken 0.00u vs proven-working 1.12u/1.28u at the Helos plaza); 4.0u would red ~20 working pairs. |
+| `gate_travel_npc_invariants.py` | T5/T5c updated; **R-170 AMENDMENT now asserted directly on the menu** (exactly one route, `tagSVCEnterSpartaCrypt`, never `tagSVCAreaReturnToHelos`). |
+| `negtest_warden_dialog.py` (NEW) | 10 planted-defect checks incl. a false-positive guard. |
+
+**R-170 AMENDMENT PRESERVED:** one option only, "Descend into the Sparta Crypt", landing
+`(-5596,-2,-1410)`, no Helos return. **Never** re-add `tagSVCAreaReturnToHelos` to the Warden.
+
+**GATES (build-free, this env; baseline main-HEAD `63238f3`):**
+| gate | result |
+|---|---|
+| `gate_travel_npc_invariants` | **GATE PASS** (T1-T6 + RESPONDS), exit 0 |
+| `gate_traveler_responds --specs` / `--specs --canonical` | **PASS**, exit 0. 31 route owners / **39 routes UNCHANGED**; sources hub 24->25, enter_offer 2->1 |
+| `gate_traveler_responds --negtest` | **PASS**, exit 0 (7 planted violations caught, baseline green) |
+| `negtest_warden_dialog` | **PASS**, exit 0, **10/10** |
+| new gate vs PRISTINE main `63238f3` (NEGATIVE) | **GATE FAIL**, exit 1, names `svc_warden_sparta_crypt` - it would have caught the 2026-08-06 regression |
+| `gate_landing_clearance` vs **deployed DEV map** (old placement), live wiring | **G-NPC-LANDING-SEP FAIL**: exactly **1 violation of 156 pairs**, the Warden at **0.00u**. Negative test AND live confirmation of the defect |
+
+**DEBT / RESIDUAL (honest).**
+- **NOT BUILT, NOT DEPLOYED, NOT PROVEN IN-GAME.** Held on-branch deliberately: a parallel chest-loot
+  wave (`wf_883a9dde`) owns the build slot (one heavy build at a time) and its ship agent audits `main`.
+- Ship phase must: rebuild canonical + TESTHUB **Levels.arc AND Quests.arc** (`PYTHONHASHSEED=0
+  SVC_RELEASE_DROPS=1`), re-run all gates against the built pair, blob-diff (**only
+  `CataCube02_FloorLast` `0x05` differs; `0x0b` byte-identical; QUESTS/GROUPS/SD/BITMAPS/DATA2
+  byte-identical**), Quests per-entry diff vs `6b25f8dd` (**only `sv_commonmechanics.qst`**), then
+  deploy DEV **coupled (Levels+Quests together)** and update Steam in the same wave (**arz+Text
+  coupled**), changenote: Sparta Crypt entrance broken 2026-08-06 to fix date.
+- **Ask Will to test on LEGENDARY or EPIC** (his Normal `.que` is stale).
+- **FALLBACK if still mute** after this wave: `Action_BoatDialog` may only bind when the NPC's level is
+  loaded at trigger time, so a WALKED-INTO level never binds. Test teleport-in vs walk-in. Cure = a
+  **GridEntrance door** (the proven build24/25 Knossos->Uber / Sparta L2 mechanism) instead of a boat NPC.
+- **SEPARATE COUPLING VIOLATION, not this lane's:** the deployed DEV set has `arz` from Aug 9 (the
+  chest-loot wave) but `Text.arc` still from Aug 6 - **arz+Text were not co-rebuilt**. Not the Warden's
+  cause (all Warden tags resolve), but the chest-loot wave must answer it.
 ## GATE RECORD - CHEST LOOT BREADTH + CAGE DIFFERENTIATION (Will 2026-08-10, R-180, on `main`) - SOURCE ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
 
 **Will's ask (verbatim):** "we need to update the chests in the test hub in the place where the Polybotes Soul
