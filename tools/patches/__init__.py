@@ -589,6 +589,43 @@ REGISTRY = [
                             # verify() fails if the mesh is ever emptied out of the DB entirely
                             # (RETIREMENT PROTOCOL).
                             # Negative test: py tools/patches/champion_mesh.py --negtest (12 plants)
+    'devourer_shroud',      # Will 2026-08-11, verbatim: "toxeus the murderer, devourer of souls
+                            # we need to add the black shadow shroud around him, the same one that
+                            # his demon summon guys have". THE NAME DOES NOT EXIST - it fuses
+                            # "Devourer of Blood" and "Enslaver of Souls" - so it was resolved from
+                            # the records: enslaver_shroud already put the shroud on the Enslaver's
+                            # monster AND all three pet tiers and that SHIPPED in build83, so "we
+                            # need to ADD" cannot be about him; the Devourer of Blood is the only
+                            # Toxeus variant carrying NO shroud on ANY surface, and his summons are
+                            # literally the blooddemon-folder Blood Demons ("his demon summon
+                            # guys"). Ground truth on the shipped 44499f56: um_bloodtoxeus_99 +
+                            # pets\bloodtoxeus_1..3 have NO charFxPakRunningNames at all, and their
+                            # only body FX is svc_black_poison -> 343_dark_smoke x2 on
+                            # 'R Hand';'L Hand' - two HAND emitters, not a shroud "around him".
+                            # Gives him BOTH channels the marauders carry: the demons' own
+                            # drxshadowcloakrunning_fx_pak on charFxPakRunningNames, plus a
+                            # persistent Skill_BuffSelfToggled (svc_devourer_shroud +
+                            # svc_devourer_shroud_charfxpak) in a FREE slot - NO skill dropped
+                            # (R-26 spirit; he used skillName1..18, so 19 was free, pets 8).
+                            # HIS OWN records, not svc_enslaver_shroud: R-93 exists because 9 of
+                            # his 12 slots were once literally the Enslaver's records.
+                            # ORDER IS LOAD-BEARING: registered after EVERY module that authors or
+                            # rewrites his record - toxeus_champion_kits, black_poison (owner of
+                            # svc_black_poison, which this lane must NOT displace), devourer_kit
+                            # (which claims slots by "lowest free" and would otherwise race this
+                            # one) and champion_mesh - so it is the ratified last writer of the FX
+                            # slot it claims. Still before fx_dangling_cleanup so the FX hygiene
+                            # sweep covers the final state.
+                            # ROSTER IS DERIVED FROM TWO WITNESSES THAT MUST AGREE: the anchor +
+                            # summon_bloodtoxeus.spawnObjects (a 4th tier is auto-in-scope), and
+                            # every record described by his name tags (which catches a DIFFICULTY
+                            # CLONE - the Hunt already has one, um_toxeus_hunt_l_99). Placement
+                            # needs no leg: q_bloodtoxeus_lone name1/2/3, q_bloodtoxeus_ambush and
+                            # egg_blooddragon are all PROXIES at the one monster record.
+                            # CRASH LAW asserted, not assumed: verify() walks every skill slot on
+                            # every roster member and FAILS if any Skill_SpawnPet* record in his
+                            # kit carries a charFxPak field (the build28 crash trap).
+                            # Negative test: py tools/patches/devourer_shroud.py --negtest (24 plants)
     'fx_dangling_cleanup',  # b91 DEBT: B-FX-DANGLING-1 (strip the 353 dangling
                             # Chris\UnarmedProjectile_FX01 particleEffectName2/3 slots off 177
                             # records - base-game ABSENCE parity, the same operation build30 F7a
