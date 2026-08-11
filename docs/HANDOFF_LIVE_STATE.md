@@ -1,5 +1,21 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD81 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `f16712077f315e5d5cf38a32f9c1fec6`** (55,556,551 B, 51,247 records).
+> **Workshop item 3759792705 is now build81 CANONICAL** (was build80): `Upload finished ... : OK`,
+> ManifestID **`8270033132631496719`** (steamcmd 2026-08-11 03:22:40 -> 03:22:57), `-Update
+> -Visibility 0` with the VDF read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files,
+> 1188.3 MB, single wrapper. **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in
+> `docs/BACKLOG.md` -> BUILD81-DEV GATE RECORD. Tag `build81-ship` at this doc commit.
+> - **Push-gate before upload:** dist==work all 5 artifacts PASS, TESTHUB guard PASS (packaged
+>   `6784cf0f`, NOT the TESTHUB `7a7ca9ac`), `run_contracts` on the DIST payload **0 P0 / 0 P1 / 4492
+>   P2** - identical to the live baseline, so ZERO new violations. Changenote 3,193 chars, VDF-safe.
+> - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first
+>   (`build81-dev`).
+> - **Rollback (Steam):** re-upload the build80 arz, kept at `local/build80_ship_c5851a1a.arz`; the
+>   other four artifacts are unchanged. This ship's artifact: `local/build81_run1_f1671207.arz`.
+
 > ## BUILD81-DEV DEPLOYED TO DEV (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
 > **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `f16712077f315e5d5cf38a32f9c1fec6`**
 > (55,556,551 B, 51,247 records), copied with md5 source==dest verification **while TQ.exe was NOT

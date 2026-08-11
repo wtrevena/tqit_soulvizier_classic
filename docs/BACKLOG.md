@@ -1,5 +1,33 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - R-184/185/186 THE CRAFT CHAIN is **LIVE ON STEAM** (2026-08-11, `main` @ the round-2 `fix/craft-thrown-breadth` merge, tag `build81-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' [U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content...
+Uploading content... Committing update...Success.` + `Updated Workshop item: 3759792705`. Confirmed
+independently from `C:\steamcmd\logs\workshop_log.txt`, not from the console text alone:
+
+```
+[2026-08-11 03:22:40] [AppID 475150] Upload starting for workshop item 3759792705 by AppID 475150
+[2026-08-11 03:22:56] [AppID 475150] Uploaded new content ( ManifestID 8270033132631496719 ) for item 3759792705.
+[2026-08-11 03:22:57] [AppID 475150] Upload finished for workshop item 3759792705 : OK
+```
+
+**STEAM = DEV = `main`:** `Database/SoulvizierClassic.arz` = **`f16712077f315e5d5cf38a32f9c1fec6`**
+(55,556,551 B, 51,247 records), CHANGED from build80's `c5851a1a`. The other four artifacts
+(`Levels.arc 6784cf0f` CANONICAL, `Text.arc a9fed7ba`, `Quests.arc 607ec99c`, `Creatures.arc
+8c0d8d53`) are byte-unchanged and were re-uploaded as-is. 56 files, 1188.3 MB, single wrapper.
+`-Update -Visibility 0` with the VDF read back to confirm `"visibility" "0"` - the item stays PUBLIC.
+
+**PUSH-GATE, run before the upload and all green:** dist==work on all 5 artifacts PASS; TESTHUB guard
+PASS (packaged Levels md5 `6784CF0F`, proven different from the TESTHUB `7A7CA9AC` - the local-only
+variant is never uploaded); `run_contracts` against the DIST payload **0 P0 / 0 P1 / 4492 P2**,
+identical to the live baseline, so ZERO new violations reach Steam; changenote 3,193 chars, VDF-safe.
+
+**TQ.exe was NOT running at any point, was never killed, and Steam was never restarted.** DEV was
+deployed and verified first (`build81-dev`). **Rollback (Steam):** re-upload the build80 arz, kept at
+`local/build80_ship_c5851a1a.arz`; the other four artifacts are unchanged.
+
 ## BUILD81-DEV GATE RECORD - R-184/185/186 THE CRAFT CHAIN: mythic formulas drop on Normal, every reagent is farmable, the legendary thrown drop - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the round-2 `fix/craft-thrown-breadth` merge, tag `build81-dev`)
 
 **Will's order (verbatim, 2026-08-10):** *"i meant do the mythic formulas drop. they can drop in normal
