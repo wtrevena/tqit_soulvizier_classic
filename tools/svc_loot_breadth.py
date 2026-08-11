@@ -547,8 +547,12 @@ def chest_tables(db, lk=None):
     return sorted(out)
 
 
-def audit_table(db, table, tier, ex, floor=None):
-    """The per-chest breadth contract. Returns a list of problem strings.
+def audit_table(db, table, tier, ex, floor=None, noun='chest'):
+    """The per-container breadth contract. Returns a list of problem strings.
+
+    `noun` only names the CONTAINER KIND in the B1 message so the shared contract
+    reads correctly wherever it is reused (R-210 passes 'orb'); it changes no
+    check. Default 'chest' keeps every R-180 message byte-identical.
       B1 every REQUIRED weapon class is reachable at the tier's own classification
          (SPEAR named explicitly - the reported defect);
       B2 the distinct target-classification pool is at least POOL_FLOOR[tier];
@@ -562,9 +566,9 @@ def audit_table(db, table, tier, ex, floor=None):
     missing = [c for c in REQUIRED_WEAPON_CLASSES if not by_class.get(c)]
     if missing:
         problems.append(
-            "B1 %s [%s tier] reaches NO %s item of class(es): %s (a chest must be able "
+            "B1 %s [%s tier] reaches NO %s item of class(es): %s (a %s must be able "
             "to pay every weapon class at its own tier)"
-            % (base, tier, ic, ', '.join(missing)))
+            % (base, tier, ic, ', '.join(missing), noun))
     fl = POOL_FLOOR[tier] if floor is None else floor
     if total < fl:
         problems.append("B2 %s [%s tier] reaches only %d distinct %s items, floor is %d "
