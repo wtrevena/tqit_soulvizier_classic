@@ -1,5 +1,7 @@
 # CHEST_DROP_MATRIX.md - what the chests can and cannot drop
 
+> **VOLUME AMENDED 2026-08-11 by R-230 (branch fix/loot-volume-trim).** Sections 1-7 describe WHAT the chests pay and in WHAT PROPORTIONS, and every one of those numbers still holds. HOW MUCH they pay changed by roughly 10x: see the new **section 8**, which also corrects the artifact rows of sections 2 and 4 against Will 2026-08-11 ("artifacts should never drop from chests").
+
 > ⚠️ **AMENDED 2026-08-10 by the craft-chain wave (R-184 / R-185 / R-186, branch
 > `fix/craft-thrown-breadth`).** Sections 1, 3 (weapons other than thrown), 4 and 5 still describe
 > the shipped build. Sections **2** (the uber-craft chain), the **thrown** row of section 3, and
@@ -557,3 +559,93 @@ legendary spears 0 -> 22, 51 tables audited, all 6 weapon classes). The only app
 that this document also quotes a 120-item figure for the union across *all* Epic-tier tables, which
 is simply the per-table 111 plus the 5 extra the red-uber apex table adds; it is not a
 contradiction of the 111-116 per-table range.
+
+---
+
+## 8. HOW MUCH the chests pay (R-230, Will 2026-08-11) - the volume trim
+
+> Sections 1-7 answer WHAT a chest can pay and in WHAT PROPORTIONS. Neither question is this one.
+> Every distribution check in the mod is a ratio, and a ratio cannot see volume, which is why both
+> loot gates were GREEN on the shipped `build83` arz while two chests paid 36 legendaries.
+
+**Will, verbatim (2026-08-11):** *"we probably need to trip the loot-volume trim, especially on the
+steam version where maybe from the two chests, you get guaranteed 1 legendary item. on the testhub
+version we can spawn more that is fine."*
+
+### 8.1 The canonical Gaoler cage, per run (both chests opened once)
+
+| difficulty | grade it pays | shipped `build83` | after R-230 | cut | P(at least one) |
+|---|---|---:|---:|---:|---:|
+| Normal | Epic | 43.71 | **3.84** | 11.4x | 99.99% |
+| Epic | Legendary | 28.17 | **2.68** | 10.5x | 96.86% |
+| Legendary | Legendary | 36.41 | **3.82** | 9.5x | 99.63% |
+
+"Guaranteed" is treated as a guarantee, not an average: a never-empty floor keeps at least one loot
+iteration on every container, so the 100% guaranteed row still fires and the gate holds P(at least one
+item at the tier's grade) at 95%.
+
+### 8.2 Every other surface, proportionally
+
+The trim is MULTIPLICATIVE on each table's own shipped multiplier, so the richness ORDER is preserved:
+the blood-cave mega chest is still the richest surface in the mod, cage chest_03 still beats chest_01,
+and an apex orb still beats a level-banded one (the b79 precedent).
+
+| surface family | count | S before | S after | gear per open, before -> after |
+|---|---:|---:|---:|---|
+| gaoler cage chest_01 / _03 | 6 | 12.48 / 14.40 | 1.125 - 1.512 | 23.89 -> 2.15 (worst) |
+| boss + guard hoards | 27 | 12.48 | 1.125 - 1.310 | 19.19 -> 1.73 |
+| blood-cave mega chest (3 DRX donors) | 3 | 18.96 | 1.612 - 1.991 | 17.45 -> 1.50 |
+| `polisvault_02 / _04 / _05` spares | 3 | 12.48 | 1.310 | 15.45 -> 1.62 |
+| apex uber orbs | 3 | 10.58 | 1.125 - 1.131 | 9.53 -> 1.01 |
+| R-220 orbs (`uberorb_default_*`, `boss_charon_*01b`) | 15 | 5.06 - 8.28 | 1.125 | 7.46 -> 1.01 |
+| **TESTHUB cage twin (new)** | 6 | n/a | **12.48 / 14.40** | **n/a -> 23.89** |
+
+One honest wrinkle: the never-empty floor lifts the thinnest orbs off the multiplicative ladder, so the
+spread between the richest and the thinnest surface COMPRESSES. That is a consequence of a discrete
+spawn count, not a design choice.
+
+### 8.3 The TESTHUB split, and why it had to be a RECORD split
+
+There is one database and both map variants read it, so "canonical trims, TESTHUB stays rich" cannot be
+expressed by the map. The four TESTHUB farm-duplicate cage chests used to name the SAME two container
+records as the two canonical placements. `loot_volume_trim` therefore clones the whole cage chain to a
+`_hub` twin BEFORE trimming - 44 records: 18 loot tables, 18 themed containers, 6 pools, 2 chest
+proxies - and `build_section_surgery.build_hub_extra_specs` points the four TESTHUB-only placements at
+the twin. Canonical `B41_SPECS` is untouched, so `local/Levels_merged.arc` stays byte-identical.
+
+The twin's loot tables are clones of the FINISHED canonical tables, so they carry every breadth and
+armour-parity edit from sections 1-7 verbatim: a DEV farm run still tests exactly the pools a Steam
+player rolls from, just far more often.
+
+### 8.4 Nothing in sections 1-7 changed
+
+The trim writes two fields per record, `numSpawnMinEquation` and `numSpawnMaxEquation`, and its scope
+proof fails the build if a member, a weight or a group chance moves. Pool sizes are identical (Normal
+181 / Epic 111-116 / Legendary 308), all seven weapon classes still reachable, armour parity unchanged,
+the guaranteed slot still 100%, relic tiers still tier-matched.
+
+### 8.5 Artifacts (correcting section 2 and section 4)
+
+Sections 2 and 4 say six divine artifacts drop from Legendary chests since R-185. That is still true,
+and it now sits against a NEWER Will ruling (2026-08-11): *"artifacts should never drop from chests"*.
+The two collide. Measured on the shipped `build83` arz: **30 of 57 mod loot surfaces reach an
+`ItemArtifact` record - 6 equippable plus 10 mercenary scrolls.** What ships today is
+`tools/gate_chest_artifacts.py`, which proves **135 of the 141 equippable artifacts unreachable** and
+pins the six R-185 craft reagents by name with a rule re-derived every build, so nothing new can leak.
+Full compliance is a one-row craft-lane change, priced in `BL-R230-DEBT-2`. A mercenary or spell scroll
+is NOT an equippable artifact here, and that is measured rather than assumed: 158 of the 299
+`ItemArtifact` records grant a skill under `records\skills\scroll skills\`, and 141 do not.
+
+### 8.6 Re-derive every number in this section
+
+```
+py tools/gate_loot_volume.py work/SoulvizierClassic/Database/SoulvizierClassic.arz --calibrate
+py tools/gate_loot_volume.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
+py tools/gate_chest_artifacts.py work/SoulvizierClassic/Database/SoulvizierClassic.arz --verbose
+py tools/debug/negtest_loot_volume.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
+```
+
+Add `--apply` to either gate to measure a PRE-wave arz against the same contract (idempotent, safe on
+a built arz). The model is `tools/svc_loot_volume.py`; the spawn arithmetic it uses is
+`svc_loot_distribution.spawn_iterations` and `ChestProfile`, the same engine reading sections 1-7 rest
+on.

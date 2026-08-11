@@ -1,5 +1,107 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - R-230 LOOT-VOLUME TRIM: the canonical chests come down ~10x, the TESTHUB farm keeps its own, `BL-R181-DEBT-5` CLOSED (2026-08-11, branch `fix/loot-volume-trim`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+
+**Will's ask (verbatim, 2026-08-11):** *"we probably need to trip the loot-volume trim, especially on
+the steam version where maybe from the two chests, you get guaranteed 1 legendary item. on the testhub
+version we can spawn more that is fine."*
+
+This is the say-so `BL-R181-DEBT-5` was explicitly waiting for. Design record + the full derivation:
+`docs/WILL_RULINGS.md` -> **R-230**.
+
+**MEASURED, canonical two-chest Gaoler cage run, against the shipped `build83` arz `44499f56`** (live
+on Steam and DEV right now):
+
+| difficulty | grade it pays | shipped b83 | R-230 | cut | P(>=1 at grade) | ceiling |
+|---|---|---:|---:|---:|---:|---:|
+| Normal | Epic | 43.71 | **3.84** | 11.4x | 0.9999 | 4.55 |
+| Epic | Legendary | 28.17 | **2.68** | 10.5x | 0.9686 | 3.20 |
+| Legendary | Legendary | 36.41 | **3.82** | 9.5x | 0.9963 | 4.55 |
+
+**TESTHUB twin: 43.71 / 28.17 / 36.41 - the shipped numbers, unchanged.** A 9.5x canonical-vs-DEV
+split on Legendary, and it is a RECORD split because one arz serves both map variants.
+
+**PER-SURFACE, before -> after** (`py tools/gate_loot_volume.py <arz> --calibrate` prints all 63):
+
+| surface family | count | S before | S after | gear/open before -> after |
+|---|---:|---:|---:|---|
+| gaoler cage chest_01 / _03 | 6 | 12.48 / 14.40 | 1.125 - 1.512 | 23.89 -> 2.15 (worst) |
+| boss + guard hoards (`svc_*hoard_loot_0N`) | 27 | 12.48 | 1.125 - 1.310 | 19.19 -> 1.73 |
+| blood-cave mega chest (3 DRX donors) | 3 | 18.96 | 1.612 - 1.991 | 17.45 -> 1.50 |
+| `polisvault_02 / _04 / _05` spares | 3 | 12.48 | 1.310 | 15.45 -> 1.62 |
+| apex uber orbs (`svc_uberorb_apex_*`) | 3 | 10.58 | 1.125 - 1.131 | 9.53 -> 1.01 |
+| R-220 orbs (`uberorb_default_*`, `boss_charon_*01b`) | 15 | 5.06 - 8.28 | 1.125 | 7.46 -> 1.01 |
+| **TESTHUB cage twin (NEW)** | 6 | n/a | **12.48 / 14.40** | **n/a -> 23.89** |
+
+**THE LEVER, AND ONLY THE LEVER.** `numSpawnMinEquation` / `numSpawnMaxEquation`, two fields, and the
+module's own scope proof FAILS THE BUILD if any member, weight or group chance moves. Every equation
+keeps its `(<bracket>)*<M>` shape - only `<M>` changes - so `numberOfPlayers` co-op scaling survives
+byte-for-byte in form. Breadth and distribution are therefore untouched, and re-proven on the same db
+rather than asserted.
+
+**GATES, all static (no build in this lane).**
+
+| gate | result |
+|---|---|
+| `gate_loot_volume` V1-V7 (NEW) | **PASS - 0 findings**, 69 canonical + 18 TESTHUB tables in scope |
+| `gate_loot_distribution` (R-181) with the trim applied | **PASS - 0 findings, 63 surfaces** |
+| `gate_chest_loot_breadth` (R-180/R-220/R-186) with the trim applied | **PASS - 0 findings, 69 tables** |
+| `ownership_problems` (the BL-R181-DEBT-7 structural half) | **PASS - 0 findings** |
+| D7X + **D7X2** (NEW) reference-surface | **PASS** |
+| `gate_chest_artifacts` (NEW) | **PASS** - 135 of 141 equippable artifacts unreachable, 6 pinned |
+| `negtest_loot_volume` (NEW) | **9 planted defects RED / 3 positive controls GREEN** |
+| map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03`; `B41_SPECS` still names `svc_polisvault_chest_01/03` |
+| registry integrity | order hash **`198242d6db75`**, `loot_volume_trim` last before the no-op `visuals` |
+
+**D7 HAD TO MOVE, AND IT IS THE ONE THING IN THE R-181 CONTRACT A VOLUME CUT COULD BREAK.** Every
+other distribution check is a ratio and divides volume out. D7 is an absolute per-open armour floor,
+so its number is now DERIVED in code (a per-iteration strength times an anchor volume) and its anchor
+moves off `svc_uberorb_apex_e01c` onto `gaoler cage chest_01 [l]` - because the never-empty floor lifts
+every thin container to the same 1.125 iterations, so the old volume proxy stopped separating anything
+and D7 would newly have red the 15 R-220 orb tables b80 deliberately excluded. **Cost, stated: D7's
+reach falls 42-of-57 -> 21-of-75 surfaces.** D7b (0.0375 per spawn iteration, unchanged, all 75
+surfaces) is what carries the invariant now - exactly as R-181's own comment predicted it would have
+to. **D7X2** re-proves the committed anchor volume against the anchor surface's own bytes every run,
+so this cannot silently rescale again.
+
+**WHAT THE SHIP LANE OWES (not run here, by instruction).** Full DB build + det-2x, record-diff vs
+`44499f56`, `run_contracts`, `validate_tags`, DEV deploy, Steam. Expected record-diff: **ADDED 44**
+(the TESTHUB cage twin: 18 loot tables + 18 themed containers + 6 pools + 2 chest proxies) /
+**REMOVED 0** / **MODIFIED 69** (two numSpawn fields each, nothing else). **No new tags are authored**,
+so the arz+Text coupling holds with no Text rebuild.
+
+> WARNING - **MAP COUPLING, and it is the only non-arz half.** The TESTHUB Levels variant must be
+> REBUILT (`SVC_TEST_HUB=1`) for the four DEV duplicates to reach the rich twin. Until then they keep
+> naming the canonical records and DEV's cage is trimmed like canonical - the SAFE direction (DEV
+> under-pays, Steam never over-pays). **Canonical `B41_SPECS` is untouched, so
+> `local/Levels_merged.arc` stays byte-identical and the Steam delta stays arz-only.**
+
+**DEBT REGISTER**
+- `BL-R230-DEBT-1` - **THE numSpawn LEVER BOTTOMS OUT AT 2.74, NOT 1.0.** One spawn iteration of the
+  canonical cage already pays 1.60 + 1.14 = 2.74 Legendary-grade pieces, because six loot groups roll
+  independently per iteration and their chances sum past 280%. This wave lands at 3.82, within 40% of
+  that floor. Reaching a literal "1 legendary item" per run needs the group chances or the guaranteed
+  100% row lowered - COMPOSITION, which this lane is forbidden to touch. **WILL DECISION** if he meant
+  literally one.
+- `BL-R230-DEBT-2` - **"artifacts should never drop from chests" is PENDING, not implemented.** The
+  premise it was relayed with was wrong: 30 of 57 surfaces reach an artifact today (6 equippable + 10
+  merc scrolls), and the 6 are R-185's deliberate divine-artifact craft reagents. The gate that ships
+  pins those 6 by name with a re-derived rule and proves the other 135 unreachable, so nothing new can
+  leak. Full compliance is one craft-lane change, priced in R-230's companion ruling.
+- `BL-R230-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. Will's
+  check: Prison of Souls / Hades Palace floor 4, kill Alkyoneus, open BOTH canonical cage chests on
+  Legendary - expect a handful of items with roughly one to four legendaries, not a floor covered in
+  them. On the DEV TESTHUB cage the four duplicates should still pour (after the hub map rebuild).
+- `BL-R230-DEBT-4` - the trim is applied to the 3 DRX donors (`loottable_hidden_bloodcave_0N`) as well,
+  because `all_surfaces` audits them and R-181 writes them. That is deliberate and consistent, but it
+  means the blood-cave mega chest - the game's designated jackpot - now pays 1.50 legendary per open
+  instead of 17.45. It is still the richest surface in the mod by construction (the trim is
+  multiplicative), and if Will wants the jackpot to stay a jackpot in ABSOLUTE terms, that is a
+  one-constant change to its family's trim.
+
+---
+
+
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
@@ -1015,10 +1117,17 @@ copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are a
   6 cage chests, over 2-3 runs.** Expect helms / chest plates / bracers / greaves / shields alongside
   weapons at roughly equal volume, no single weapon class running the run, and four copies of the same
   SPEAR now uncommon. Full note at the top of `docs/WILL_TEST_GUIDE.md`.
-- **`BL-R181-DEBT-5` (P1, WILL DECISION):** `numSpawn` is the drop-VOLUME lever and is deliberately
-  untouched under the non-reduction law. Because total legendary gear RISES 70.8 -> 109.4, **P(four
-  copies of ANY one item) only moves 47.3% -> 39.7%** even though P(four of one SPEAR) drops 27.0% ->
-  6.3%. Cutting drops per open needs Will's say-so; it is not taken quietly here.
+- **`BL-R181-DEBT-5` (P1, WILL DECISION -> CLOSED 2026-08-11 by `fix/loot-volume-trim` / R-230):**
+  `numSpawn` is the drop-VOLUME lever and is deliberately untouched under the non-reduction law.
+  Because total legendary gear RISES 70.8 -> 109.4, **P(four copies of ANY one item) only moves 47.3%
+  -> 39.7%** even though P(four of one SPEAR) drops 27.0% -> 6.3%. Cutting drops per open needs Will's
+  say-so; it is not taken quietly here.
+  **THE SAY-SO ARRIVED 2026-08-11:** *"we probably need to trip the loot-volume trim, especially on
+  the steam version where maybe from the two chests, you get guaranteed 1 legendary item."* The lever
+  is pulled: canonical cage run 36.41 -> 3.82 Legendary-grade gear (9.5x), TESTHUB twin held at 36.41.
+  Ruling `docs/WILL_RULINGS.md` -> R-230; GATE RECORD at the top of this file. The residual that
+  outlives it is `BL-R230-DEBT-1`: the lever bottoms out at 2.74 per run, so "literally one" would
+  need the guaranteed row lowered and that is a separate Will decision.
 - **`BL-R181-DEBT-7` (P1, CLOSED 2026-08-11 by `fix/orb-armor-rows`, BUILT + SHIPPED as `build83`
   (arz `44499f56`) - BUILD83-DEV GATE RECORD + SHIP RECORD at the top of this
   file; the measured range below was taken before b79's own weapon-row raise landed and understates
@@ -2033,6 +2142,9 @@ surface. 0.24 reds that by 30%, and negtest N7 re-plants it so the number stays 
 - `BL-R181-DEBT-5` - **WILL DECISION:** `numSpawn` (drop VOLUME) is untouched, so P(any single item
   lands 4x in a run) only falls 47.3% -> 39.7%. Lowering it would cut drops per open, which
   non-reduction forbids without Will's say-so.
+  **CLOSED 2026-08-11** by `fix/loot-volume-trim` / `tools/patches/loot_volume_trim.py` (R-230). Will
+  gave the say-so; the canonical cage run falls 36.41 -> 3.82 Legendary-grade gear while the TESTHUB
+  twin keeps 36.41. GATE RECORD at the top of this file, ruling at `docs/WILL_RULINGS.md` -> R-230.
 - `BL-R181-DEBT-7` - **ARMOUR ON THE R-220 ORB TABLES IS OWNED BY NOBODY, and it starves.** b79
   merged to main as `914b227` while this lane was in vet-fix. Its 15 tables (`uberorb_default_*` x12,
   `boss_charon_{n,e,l}01b`) sit outside `\svc\`, so they were never in this module's ownership rule,
@@ -2667,12 +2779,20 @@ resolves against mod UNION base and the 3 imported records are self-consistent b
 - `BL-R200-DEBT-1` - SCOPE BOUNDARY: 333 non-uber Boss-class records (base act/quest bosses, `x4_*` Eternal
   Embers, `jinchan_*`, Ragnarok/Atlantis chains) still carry no orb, deliberately. They pay out through
   level-placed quest chests. If Will ever wants those too it is a separate, economy-wide decision.
+  **CLOSED AS BY-DESIGN 2026-08-11. Will, verbatim: "no ordinary bosses dont get orbs".** No code
+  change and none wanted: R-200 drew exactly this boundary, and its red-uber gate already asserts the
+  positive side (negtest N3 reds a NEW red uber with no orb; N8 proves the scope stays red-only). The
+  ordinary bosses keep paying through their level-placed quest chests.
+  Ruling: `docs/WILL_RULINGS.md` -> R-200 CLARIFICATION [2026-08-11].
 - `BL-R200-DEBT-2` - NOT PROVEN IN-GAME. Nothing in this lane was launched. Will killing the Boar Snatcher
   (PineForest04 or SpartaOptCave03) and seeing the orb drop is the launch gate.
 - `BL-R200-DEBT-3` - the 4 non-uber, non-`tagSVC` Boss-class oddities the audit surfaced and deliberately did
   NOT touch: `drxcreatures\crowheroes\murderbunny` (lvl 66, `tagUrderMunder`), `drxmap\quest\blockersquirrel`,
   and the two `drxcreatures\bloodwitch\effects\*_bones` corpse props (lvl 1). Flagged for Will rather than
   silently wired - they are outside the class he named.
+  **CLOSED AS BY-DESIGN 2026-08-11. Will, verbatim: "no ordinary bosses dont get orbs".** The lane was
+  right to flag them and right not to wire them; they stay orb-less. No code change.
+  Ruling: `docs/WILL_RULINGS.md` -> R-200 CLARIFICATION [2026-08-11].
 - `BL-R200-DEBT-4` - REGISTRY MERGE: **RESOLVED IN-LANE.** `main` @ `6899906` (the same-day chest-loot wave,
   R-180) was merged into this branch. All three conflicts were pure both-sides-appended text and were kept
   in full: REGISTRY order is now `... gorgon_vanilla_names, chest_loot_breadth, red_uber_orbs, visuals`

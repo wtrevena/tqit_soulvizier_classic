@@ -5413,3 +5413,158 @@ execution; that is stated in the ship record rather than carried quietly.
 > master back to `ARMOR_MASTER_WEIGHT` moves the worst worn-slot yield 0.04517 -> 0.04249 against
 > D7b's 0.0375 floor, spending ~6% of the headroom and reding nothing. So no negative ships for it and
 > it is labelled what it is - a balance choice inside a margin, `BL-R181-DEBT-11`.
+
+---
+
+## R-230 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/loot_volume_trim.py`) - the chests pay a RUN's worth, not a vendor's stock; the TESTHUB farm keeps its own
+
+**WILL, VERBATIM (2026-08-11):**
+
+> "we probably need to trip the loot-volume trim, especially on the steam version where maybe from
+> the two chests, you get guaranteed 1 legendary item. on the testhub version we can spawn more that
+> is fine."
+
+**THIS IS THE SAY-SO `BL-R181-DEBT-5` WAS WAITING FOR, AND THE DEBT SAID SO IN ADVANCE.** R-181,
+verbatim: *"numSpawn is the volume lever, and lowering it is a WILL DECISION, logged as
+BL-R181-DEBT-5 rather than taken quietly here - it would reduce drops per open, which is exactly what
+non-reduction forbids without his say-so."* Three waves then raised COMPOSITION while volume stood
+still. MEASURED on the shipped `build83` arz `44499f56`, which is live on Steam and DEV right now, the
+two canonical cage chests opened once pay:
+
+| difficulty | grade it pays | shipped b83 | R-230 | cut |
+|---|---|---:|---:|---:|
+| Normal | Epic | **43.71** | **3.84** | 11.4x |
+| Epic | Legendary | **28.17** | **2.68** | 10.5x |
+| Legendary | Legendary | **36.41** | **3.82** | 9.5x |
+
+**NON-REDUCTION IS SUSPENDED FOR VOLUME AND VOLUME ONLY.** The module writes exactly two fields per
+record - `numSpawnMinEquation` and `numSpawnMaxEquation` - and its own scope proof FAILS THE BUILD if
+any member, weight or group chance moves. No pool loses an item, no chance is lowered, the guaranteed
+100% row stays 100%. Every breadth and distribution property b75-b83 shipped therefore survives at
+lower volume, and that is re-proven rather than asserted: `chest_loot_breadth.verify` and
+`armor_loot_breadth.verify` both run AFTER this module on the same db and both stay green.
+
+**WHY THE OTHER GATES SURVIVE A VOLUME CUT BY CONSTRUCTION.** Breadth counts DISTINCT REACHABLE items,
+a property of the loot graph, and `numSpawn` only multiplies how often that graph is sampled.
+Distribution D1-D6, D8, D9 and D7b are all RATIOS and divide the volume out. D7 - an ABSOLUTE floor of
+armour pieces per open - is the single exception in the whole contract, and R-181's own block comment
+had already written the answer: *"below that the number is a numSpawn demand rather than a parity
+one"*. So D7's floor is now DERIVED in code (a per-iteration strength times an anchor volume) and
+**D7X2** re-proves the committed anchor against the anchor surface's own bytes every run. The anchor
+also MOVES, off `svc_uberorb_apex_e01c` and onto `gaoler cage chest_01 [l]`: the never-empty floor
+lifts every thin container to the same 1.125 iterations, so the old volume proxy stopped separating
+anything and D7 would newly have red the fifteen R-220 orb tables b80 deliberately excluded. D7's reach
+falls from 42-of-57 surfaces to 21-of-75, and D7b (unchanged, all 75 surfaces) carries the invariant -
+exactly as R-181's own comment predicted it would have to.
+
+**THE LADDER, and it is per DIFFICULTY as asked.** Every equation keeps its exact
+`(<bracket>)*<M>` shape and only `<M>` moves, so `numberOfPlayers` co-op scaling is preserved
+byte-for-byte in form. The trim is MULTIPLICATIVE on each table's shipped multiplier, so the shipped
+richness ORDER survives (blood-cave mega chest richest, cage chest_03 above chest_01, apex orb above a
+level-banded one - the b79 precedent Will asked to keep):
+
+| tier | trim | e.g. cage chest_01 | S before -> after |
+|---|---:|---|---|
+| Normal | x0.085 | `*2.4/*2.8` -> `*0.2188/*0.25` | 12.48 -> 1.125 |
+| Epic | x0.095 | `*2.4/*2.8` -> `*0.228/*0.266` | 12.48 -> 1.186 |
+| Legendary | x0.105 | `*2.4/*2.8` -> `*0.252/*0.294` | 12.48 -> 1.310 |
+
+Stated rather than hidden: at these volumes the never-empty floor lifts the thinnest orbs OFF the
+multiplicative ladder, so the spread between the richest and thinnest surface COMPRESSES. That is a
+mechanical consequence of a discrete spawn count, not a design choice, and `--calibrate` prints both
+numbers so it can never be silent.
+
+**"GUARANTEED" IS TREATED AS A GUARANTEE, NOT AN AVERAGE.** A never-empty floor
+(`MIN_SPAWN_MIN_SOLO = 1.05` iterations at one player) keeps at least one loot iteration on every
+container, so the 100% guaranteed row still fires. P(the two-chest run pays at least one item at the
+tier's grade) = **99.99% Normal / 96.86% Epic / 99.63% Legendary**, gated at 95%. That floor is not
+taste: build28/29/30 replaced a numSpawn equation with the bare literal `48`, the engine's evaluator
+returned 0, and the chest opened and dropped NOTHING - a P0 that took three builds to find. V3 and V4
+plant that P0 rather than trusting a comment.
+
+**THE MECHANICAL FLOOR IS 2.74, NOT 1.0, AND THAT IS STATED PLAINLY.** ONE spawn iteration of the
+canonical cage already pays 1.60 + 1.14 = 2.74 Legendary-grade pieces, because six loot groups roll
+independently per iteration and their chances sum past 280%. The `numSpawn` lever cannot reach a
+literal "1 legendary item" per run; it bottoms out at 2.74 and this wave lands at 3.82, within 40% of
+that floor. Going lower means lowering group chances or the guaranteed row - COMPOSITION, which this
+lane is forbidden to touch. Registered as `BL-R230-DEBT-1`. **If Will means literally one, that is the
+one-line follow-up and it needs his word, because it takes the guaranteed row below 100%.**
+
+**THE TESTHUB HALF IS A RECORD SPLIT, BECAUSE THE ARZ IS SHARED.** The four TESTHUB farm-duplicate
+cage chests (Will 2026-08-08) named the SAME two container records as the two canonical placements, so
+a trim written into those records would have reached Will's DEV farm too. There is ONE database and
+both map variants read it, so the split can only live in the RECORDS: `loot_volume_trim` clones the
+whole cage chain to a `_hub` twin BEFORE trimming - so the twin carries the shipped volume and every
+b75-b83 breadth/armour edit verbatim, with no second copy of the tuning to keep in step - and
+`build_section_surgery.build_hub_extra_specs` points the four TESTHUB-only placements at the twin.
+PROVEN both ways: the hub specs name `svc_polisvault_hub_chest_01/03`, `B41_SPECS` still names
+`svc_polisvault_chest_01/03`. TESTHUB run stays **43.71 / 28.17 / 36.41**, canonical **3.84 / 2.68 /
+3.82** - a 9.5x split on Legendary.
+
+> WARNING - **COUPLING:** the map half needs the TESTHUB Levels variant REBUILT (`SVC_TEST_HUB=1`).
+> Until then the four duplicates keep naming the canonical records and DEV's cage is trimmed like
+> canonical. That is the SAFE direction (DEV under-pays, Steam never over-pays). Canonical `B41_SPECS`
+> is untouched, so `local/Levels_merged.arc` stays byte-identical and the Steam delta stays arz-only.
+
+**GATE (law 4, no new surface without a gate):** `tools/svc_loot_volume.py` is the one implementation,
+shared by `tools/gate_loot_volume.py`, `loot_volume_trim.verify()` and the negatives. V1 canonical
+ceiling per open, V2 TESTHUB FLOOR (so a later lane cannot quietly kill the DEV farm while every
+ceiling stays green), V3 never-empty, V4 equation form, V5 the twin is strictly richer, V6 the cage RUN
+ceiling per difficulty, V7 the guarantee. Negatives:
+`py tools/debug/negtest_loot_volume.py <arz>` - **9 planted defects RED, 3 controls GREEN**, and they
+plant in BOTH directions: too much (N1, the defect Will reported) and too little (N5, the MIRROR - this
+lane's own over-correction, trimmed until the guarantee dies).
+
+**NOT PROVEN IN-GAME.** Everything above is a database and gate proof. **Will's check: Prison of Souls
+/ Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open BOTH canonical cage chests on Legendary -
+expect a handful of items with roughly one to four legendaries, not a floor covered in them; and on the
+DEV TESTHUB cage the four duplicates should still pour.** Registered as `BL-R230-DEBT-3`.
+
+### R-230 COMPANION RULING [2026-08-11] PENDING - "artifacts should never drop from chests"
+
+**WILL, VERBATIM (2026-08-11):** *"artifacts should never drop from chests"*.
+
+**THE PREMISE THIS ARRIVED WITH WAS WRONG, AND SAYING SO IS THE POINT.** It was relayed as a no-op -
+"current state already complies (0/292), assert it so it can never regress". It does not comply.
+MEASURED on the shipped b83 arz `44499f56`: **30 of the 57 mod loot surfaces reach an `ItemArtifact`
+record**; 16 distinct artifacts are reachable, **6 equippable + 10 mercenary scrolls**. The six are the
+IT divine artifacts (Ikon of Zeus, Thoth's Glory, Marduk's Tablet of Destiny, Golden Eye of Sun Wukong,
+Crescent Moon of Artemis, Demeter's Bounty) and they drop **BY DESIGN, from R-185** - a Will ruling of
+2026-08-10 whose rule G1 requires every non-green reagent of every uber craftable to be findable in a
+Legendary chest, and two craftables (Mortok's Skull, The All-Seeing Eye) name nothing but divine
+artifacts.
+
+So the newer ruling and a shipped one COLLIDE, and a volume lane does not get to resolve that quietly.
+**Ledger state: PENDING, deliberately.** What ships is everything enforceable without reverting R-185:
+`tools/svc_chest_artifacts.py` + `tools/gate_chest_artifacts.py` assert **A1** no equippable artifact
+is reachable from any mod chest, hoard or orb beyond a roster pinned BY NAME; **A2/A3** every pin is
+re-derived from the bytes every run (still reachable AND still named as a reagent by a real formula) so
+a pin cannot outlive its reason; **A4** the scroll discriminator still discriminates. **135 of the 141
+equippable artifacts are proven unreachable; nothing new can leak.**
+
+**A SCROLL IS NOT AN ARTIFACT, AND THE DIFFERENCE IS MEASURED.** All 299 `ItemArtifact` records sit on
+`ItemArtifact.tpl`, so the engine `Class` cannot separate a Divine artifact from a mercenary-hire
+scroll. What does: **158 of the 299 point `itemSkillName` at `records\skills\scroll skills\...` and 141
+do not.** The 141 are what a player wears. A literal all-299 reading would demand stripping merc
+scrolls out of the base game's own `04_*_misc` tables - changing every chest in the campaign - which is
+neither the ask nor something a loot lane may do.
+
+**WHAT FULL COMPLIANCE COSTS (`BL-R230-DEBT-2`), priced so Will can decide in one step:** delete the
+`svc_craft_reagents_artifact_l01` member from its three hosts (`04_l_misc`, `amulet_l01`, `finger_l01`);
+`svc_craft_thrown`'s rules G1 and G4 then RED on those six, so they need a new exemption class in the
+same shape as the existing MI/green one - *"a reagent that is itself a craftable"*.
+`docs/CHEST_DROP_MATRIX.md` 6.5 already reaches that verdict independently ("No fix needed ... this
+recipe is a craft-a-craft by base-game design"), so 42-of-42 completability survives. **It is one lane,
+and one lane per problem means it is not this one.** The day it runs, A3 reds the now-dead pins and the
+roster deletes itself.
+
+### R-200 CLARIFICATION [2026-08-11] - ordinary bosses do NOT get orbs, BY DESIGN
+
+**WILL, VERBATIM (2026-08-11):** *"no ordinary bosses dont get orbs"*.
+
+`BL-R200-DEBT-1` (333 non-uber Boss-class records carrying no orb) and `BL-R200-DEBT-3` (the 4
+non-uber, non-`tagSVC` Boss-class oddities the R-200 audit surfaced and declined to wire) are both
+**CLOSED AS BY-DESIGN**. No code change: R-200 already drew exactly this boundary and its red-uber gate
+already asserts the positive side (every RED uber HAS an orb, negtest N3 reds a new red uber with no
+orb, N8 proves the scope stays red-only). The ordinary bosses keep paying through their level-placed
+quest chests, which is what they have always done.
