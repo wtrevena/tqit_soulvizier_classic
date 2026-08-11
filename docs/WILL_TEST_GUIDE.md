@@ -244,6 +244,19 @@
 >    missed: they were paying **0.07 helms per open** against 0.98 weapons. They now pay about **1.2
 >    of every worn slot**. If an orb chest still looks weapon-only, that is a real find.
 >
+> **ADDED AFTER THE FACT (BL-R181-DEBT-7, round 3): the ORDINARY uber orbs too, and one honest
+> warning.** Item 6 above covers the red-uber and Leinth orbs. Fifteen more orb loot tables - the
+> level-banded ones every ordinary uber drops, plus Charon's - had their armour owned by NOBODY and
+> were running **3.4:1 to 8.5:1 weapons:armour with a worn slot as thin as 0.007 pieces per open**.
+> They now pay **0.29 to 1.16 of the thinnest worn slot**, and total drops per orb went UP
+> (7.9 -> 9.2, 9.3 -> 11.8, 13.7 -> 15.8 items per open). Nothing was reduced anywhere.
+>
+> ⚠️ **The warning, so you are not surprised:** on these fifteen the mix now runs **armour-heavy** -
+> roughly 2 to 3.5 armour pieces per weapon (w:a 0.28-0.49). That is the exact ratio the Toxeus apex
+> orb has been shipping since build75, so it is consistent rather than invented, but if orbs start
+> feeling like an armour vending machine that is a REAL finding and worth saying - it is one constant
+> to move back.
+>
 > **WHAT WAS DELIBERATELY LEFT ALONE, so you can rule it in or out:** armour that drops off MONSTERS is
 > base-game wiring in this mod - of the ~1,500-1,850 records that carry each armour-drop chance, only
 > 12 to 14 are ours (under 1%) - and no monster in the database drops a shield off its body at all
