@@ -4262,3 +4262,131 @@ Epic** (his Normal `.que` is the stale pre-PR-5 shape). If the Warden is still s
 diagnostic question is **did he walk in or teleport in** - that answer selects the already-identified
 fallback, a `GridEntrance` door (the proven build24/25 Knossos->Uber / Sparta L2 mechanism) instead of
 a boat NPC.
+
+---
+
+## R-181 [2026-08-10] IMPLEMENTED (branch `fix/armor-loot-breadth`, module `tools/patches/armor_loot_breadth.py`) - armour must drop like armour, and no class may run away with the run
+
+**WILL, VERBATIM (2026-08-10), TWO reports in one sitting:**
+
+> "also what about the armor? i am not really seeing armor drops like shields, chest plates,
+> helmets, etc."
+
+> "you overcorrected, that run 4 scorpions tail spears dropped"
+
+**BOTH REPORTS ARE RATE REPORTS, AND R-180 COULD NOT SEE EITHER.** R-180 asked and answered a
+REACHABILITY question - can a chest pay a legendary spear at all. Measured on the SHIPPED build76
+arz `16994072`: every one of the 51 mod chest tables already reaches all five worn slots, ZERO have
+an empty slot, and R-180's own gate was GREEN. Nothing was unreachable. What was wrong was HOW OFTEN.
+Per open of the cage's chest_01 the shipped build pays **11.56 legendary weapons against 0.17 helms /
+0.26 arms / 0.68 torso / 0.29 legs / 1.25 shields**. Over the six-chest cage run: **58.5 weapons to
+12.4 armour pieces, a 4.73:1 ratio, with the helm at 1.6% of the run's legendary mass.** Will is not
+misreading a wide pool; he is correctly reading a starving one. A gate that counts distinct reachable
+items is blind to this by construction, which is why R-181 adds a second, orthogonal gate rather than
+tightening the first.
+
+**THE FOUR SCORPION'S TAILS, ARITHMETICALLY.** Not a within-class weighting bug - the cage's spear
+weights were already near-uniform (the top spear carried 1.33x its class's uniform share). It was
+VOLUME x CLASS SHARE:
+
+1. `loot3Chance = 100` fires EVERY spawn iteration (S = 12.48 on chest_01, S = 14.40 on chest_03) and
+   every member of it is a weapon or relic table, so a cage run pays roughly 75 guaranteed weapons.
+2. SPEAR took **24.0%** of the run's legendary gear (even across the 11 gear slots is 9.1%) through
+   three stacked paths: the martial theme's direct spear member at 30% of the guaranteed slot, the
+   aggregate weapon master naming `spear_l01` again, and `all_l0N` naming it a third time. Meanwhile
+   `unique_1h_*01` pays THREE classes (axe/mace/sword) from ONE member slot and carried a single
+   spear's weight, so each 1H class got a THIRD of a spear's mass.
+3. 16.99 spear drops per run over 22 distinct spears gives **P(some spear lands 4x in one run) =
+   27.0%**, and P(that spear is specifically Scorpion's Tail) = 2.07%. Will's run was the ordinary
+   case, not bad luck. (`u_e_scorpion'stail` is item 11 of `spear_l01`, Legendary-classified, level
+   50.) Modelled under the assumption most FAVOURABLE to the shipped build - `LootItemTable_DynWeight`
+   treated as uniform over its `itemNames` - so 27.0% is a LOWER bound on the real skew.
+
+**IMPLEMENTED (arz-only; no Levels / Text / Quests change, 0 new tags, so it reaches the TESTHUB cage
+and canonical/Steam together exactly as R-180 does):**
+
+- `tools/svc_loot_distribution.py` (NEW) is the MODEL: E[drops of item x per open] = S x SUM_G
+  (chance_G/100 x P(x | group G)). The engine reading is MEASURED, not assumed - 167 of the 296
+  base-game FixedItemLoot tables have group chances summing past 100 (up to 226.2 on
+  `hermit mage chest_*`), which is impossible if the six groups were mutually exclusive.
+- `tools/svc_armor_breadth.py` (NEW) is the WRITE contract: the 3 aggregate armour masters
+  `svc_unique_armor_{n,e,l}01` (all five worn slots at equal weight, R-180's own machinery reused),
+  every armour row lifted to the weapon row's 40% (shipped 33 / 31 / 30), unique-armour members
+  raised to 850 against roughly 1700 of static junk, the armour master into the first free
+  armour-row member slot at 1700, and `unique_1h_*01` re-weighted to 3x its single-class siblings.
+- `tools/svc_loot_breadth.py` (EDIT): the aggregate weapon master now weights per CLASS, not per
+  member. Theme class-biases softened - each theme keeps its shipped weapon:relic:armour split TO THE
+  PERCENT, and `warden` now pays all five worn slots instead of only shield + torso.
+- `tools/patches/armor_loot_breadth.py` (NEW, registered immediately after `chest_loot_breadth`)
+  sweeps all 51 mod chests + the 3 DRX donors, so the cage, every boss hoard, the guard-pair hoards
+  and the blood-cave mega chest get the identical treatment from one edit.
+
+**A SHIELD'S `Class` IS `WeaponArmor_Shield`, NOT `ArmorProtective_*`.** Any audit written as
+`startswith('Armor')` reports zero shields; any weapon audit written as `startswith('Weapon')` counts
+every shield as a weapon. Both errors erase the slot Will named FIRST.
+`svc_loot_distribution.GEAR_SLOTS` is the single authority and nothing re-derives it. (The arm slot is
+likewise two classes - `ArmorProtective_Forearm` and `ArmorJewelry_Bracelet`.)
+
+**NON-REDUCTION (R-100 #17 / Will 2026-08-08 / R-180), re-proven per edit:** numSpawn equations
+untouched, no member removed, no group chance lowered, no member weight lowered, guaranteed slot still
+100%, the Legendary chain still lands on `polisvault_0N`. Expected drops per cage run RISE from 70.8
+to 109.0. What changes inside an armour row is its COMPOSITION - legendary up, static junk down as a
+fraction - which is the ask, because "i am not really seeing armor drops" is a report about
+legendaries on a Legendary farm, not about item count.
+
+**MEASURED (dry run of the real modules against the shipped arz), cage run before -> after:**
+
+| slot | shipped | R-181 | | slot | shipped | R-181 |
+|---|---|---|---|---|---|---|
+| axe | 7.5% | 8.4% | | helm | 1.6% | 8.5% |
+| mace/club | 8.9% | 9.8% | | arms | 2.4% | 7.7% |
+| sword | 7.7% | 8.5% | | torso | 3.7% | 10.2% |
+| **SPEAR** | **24.0%** | **9.3%** | | legs | 2.7% | 8.5% |
+| bow | 17.1% | 8.1% | | shield | 7.1% | 12.6% |
+| staff | 17.5% | 8.3% | | **weapon:armour** | **4.73:1** | **1.10:1** |
+
+Armour pieces per run 12.4 -> 51.8. Thinnest worn slot per open 0.11 -> 0.73.
+**P(some spear lands 4x in one run) 27.0% -> 5.3%; P(four Scorpion's Tails specifically) 2.07% ->
+0.37%, a 5.6x cut; P(any single item lands 4x anywhere in the run) 47.3% -> 37.3%.** Item pools are
+UNCHANGED (270 distinct gear items reachable from the cage) - this ruling moves RATES, R-180 moved
+REACH.
+
+**GATE (law 4, no new surface without a gate):** `tools/gate_loot_distribution.py` + the in-build
+`armor_loot_breadth.verify()`, one shared implementation. Per SURFACE (the cage's three themed
+variants at their 50/25/25 pool weights on each difficulty, each hoard, the mega chest): D1/D2 class
+share caps, D3 no starving class, D4 no item over 5.8x its class's uniform share, D5 no item over 3.0%
+of the surface, D6 weapon:armour at most 1.65:1 and D6b at least 0.25:1 (fixing armour must not
+quietly bury weapons; the binding case is the blood-cave mega chest, which has no guaranteed
+weapon slot at all and lands at 0.33:1), D7 every worn slot at least 0.60 pieces per open, D8/D9
+the same evenness measured INSIDE the weapon side and INSIDE the armour side. **Every threshold
+is derived from a `--calibrate` run against BOTH the shipped arz and the fix, and each one REDS the
+shipped state and clears the fix by 9-20%.** The one that does not red the shipped state (D4) is
+labelled a regression guard in the source rather than dressed up as a fix.
+
+**D8/D9 EXIST BECAUSE A PLANTED NEGATIVE CAME BACK GREEN.** Once armour parity lands, armour carries
+half the gear mass, so re-planting the SHIPPED spear over-weighting reads as only about 21% of total
+gear and slides under D1/D2. The skew Will reported lives inside the weapon side and has to be
+measured in the weapon side's own denominator. Negatives:
+`py tools/debug/negtest_armor_breadth.py <arz>` - 6 planted defects all RED, plus two positive
+controls, one of which proves the DELIBERATE warden armour bias stays GREEN (a gate that cannot tell
+a designed theme from a defect is a gate that gets switched off - the b63 1.0u lesson).
+
+**SCOPE BOUNDARIES, STATED SO NOBODY WIDENS THEM BY ACCIDENT.**
+
+1. The `svc_uberorb_*` orb tables are NOT touched - they belong to the concurrent b79
+   `fix/orb-loot-breadth` lane, which owns armour slots for orb tables. They are PRINTED on every
+   build run, never silently skipped (`BL-R181-DEBT-1`).
+2. General MONSTER armour drops are MEASURED AND REPORTED, NOT CHANGED. The per-monster gear-drop
+   wiring (`chanceToEquipHead/Forearm/Torso/LowerBody`) is nonzero on 1084 / 1497 / 1594 / 1234
+   BASE-or-SV monster records against 12 / 12 / 14 / 12 mod-owned ones - under 1% of the population.
+   Monster armour dropping is BASE-GAME-GOVERNED in this mod, inherited wholesale by the merge.
+   `chanceToEquipShield` does not exist as a monster field at all, so no monster in this DB has ever
+   dropped a shield off its body: shields come only from chests and merchants. Whether to touch base
+   monster loot is a Will decision, not a silent scope widening (`BL-R181-DEBT-2`).
+3. Two residual POOL gaps, reported not fixed: the cage reaches 19 of 41 legendary axes (46%) and 33
+   of 71 legendary torsos (46%), against 75-92% for every other slot (`BL-R181-DEBT-3`).
+
+**NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's. Will's check -
+kill Alkyoneus, open all six cage chests across a couple of runs, expect visible helms, chest plates,
+greaves and shields alongside weapons and no run dominated by one spear - is the remaining launch
+gate.

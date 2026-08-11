@@ -278,8 +278,19 @@ def widen_armor_rows(db, table, tier, lk=None):
                                       ARMOR_UNIQUE_WEIGHT))
     # One armour master, into the first armour row that still has a free member slot.
     if master and groups:
-        already = any(SLB._n(master) == SLB._n(nm)
-                      for g in groups for _i, nm, _w in SLB._slot_members(db, real, g))
+        already = False
+        for g in groups:
+            for i, nm, _w in SLB._slot_members(db, real, g):
+                if SLB._n(master) == SLB._n(nm):
+                    already = True
+                    # Re-assert the weight (raise-only) rather than trusting whatever a
+                    # previous run wrote. A cached/partially-built arz carrying an older
+                    # ARMOR_MASTER_WEIGHT would otherwise survive the sweep untouched,
+                    # and the balance this module commits to would be silently stale.
+                    if _raise_weight(db, real, 'loot%dWeight%d' % (g, i),
+                                     ARMOR_MASTER_WEIGHT):
+                        changes.append('loot%dWeight%d armour master -> %d'
+                                       % (g, i, ARMOR_MASTER_WEIGHT))
         if not already:
             for g in groups:
                 idx = SLB._first_free_member(db, real, g)

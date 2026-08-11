@@ -43,19 +43,20 @@ concentration only makes a single item's share HIGHER than reported, never lower
 every "before" skew number here is a LOWER BOUND on the skew Will actually saw, and
 every threshold this module enforces is enforced against the optimistic case.
 
-WHAT IT MEASURES (the two committed balance targets of R-181)
--------------------------------------------------------------
-  ACROSS-CLASS  no single equipment class may hold more than MAX_CLASS_SHARE of a
-                surface's legendary-drop mass, and every class the surface claims to
-                pay must hold at least MIN_CLASS_SHARE. Even would be 1/11 = 9.1%
-                across the 6 weapon + 5 armour classes.
-  WITHIN-CLASS  no single ITEM may hold more than MAX_ITEM_SHARE_IN_CLASS of its own
-                class's mass (uniform over a 17-item table is 5.9%), and no single item
-                more than MAX_ITEM_SHARE_TOTAL of the surface's whole mass.
-  ARMOUR PARITY every armour slot must clear ARMOUR_SLOT_FLOOR expected legendary
-                pieces per open, and the weapon:armour mass ratio must not exceed
-                MAX_WEAPON_ARMOUR_RATIO. This is the half `svc_loot_breadth` is blind
-                to and the half Will reported.
+WHAT IT MEASURES (the committed balance targets of R-181)
+----------------------------------------------------------
+  ACROSS-CLASS  D1/D2 - no equipment class may hold more than its share cap of a table's
+                or a surface's legendary mass; D3 - every class the surface claims to pay
+                must clear a floor. Even is 1/11 = 9.1% over the 6 weapon + 5 worn slots.
+  WITHIN-SIDE   D8/D9 - the same evenness measured INSIDE the weapon side and INSIDE the
+                armour side, in their own denominators. Necessary, not decorative: once
+                armour carries half the mass, a weapon-side skew hides under D1/D2 (a
+                planted negative proved it by coming back GREEN).
+  WITHIN-CLASS  D4 - no item may exceed MAX_ITEM_OVER_UNIFORM times its class's uniform
+                share; D5 - and none may exceed MAX_ITEM_SHARE_TOTAL of the surface.
+  ARMOUR PARITY D7 - every worn slot clears ARMOR_SLOT_FLOOR pieces per open; D6 - the
+                weapon:armour mass ratio stays inside MAX_WEAPON_ARMOUR_RATIO. This is
+                the half `svc_loot_breadth` is blind to and the half Will reported.
 
 Shared by `tools/gate_loot_distribution.py` (standalone), the in-build gate
 `tools/patches/armor_loot_breadth.verify()` and `tools/debug/negtest_armor_breadth.py`,
@@ -118,15 +119,15 @@ SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPE
 # margin is a gate that gets switched off (the b63 1.0u lesson).
 #
 #   check                      shipped   R-181   threshold   reds shipped   margin
-#   D1 class share, table       0.4313   0.3842    0.42          yes          9%
+#   D1 class share, table       0.4313   0.3548    0.42          yes         16%
 #   D2 class share, surface     0.3431   0.1744    0.21          yes         17%
 #   D3 thinnest class share     0.0106   0.0201    0.016         yes         20%
-#   D4 item share / uniform     4.13x    4.92x     5.8x          no*         15%
+#   D4 item share / uniform     4.13x    4.93x     5.8x          no*         15%
 #   D5 item share, surface      0.0583   0.0246    0.030         yes         18%
 #   D6 weapon : armour          7.21     1.389     1.65          yes         16%
-#   D7 thinnest armour slot     0.1109   0.7224    0.60          yes         17%
-#   D8 class share of weapons   0.4145   0.2428    0.29          yes         16%
-#   D9 slot share of armour     0.5352   0.3725    0.44          yes         15%
+#   D7 thinnest armour slot     0.1109   0.7348    0.60          yes         18%
+#   D8 class share of weapons   0.4145   0.2431    0.29          yes         16%
+#   D9 slot share of armour     0.5352   0.3492    0.44          yes         21%
 #
 #   * D4 is a REGRESSION GUARD, and the report says so plainly rather than pretending
 #     otherwise. The cage's within-class spread was ALREADY near-uniform in the shipped
@@ -158,6 +159,12 @@ MAX_ITEM_SHARE_TOTAL = 0.030
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
 ARMOR_SLOT_FLOOR = 0.60          # expected legendary pieces of that slot per chest open
 MAX_WEAPON_ARMOUR_RATIO = 1.65   # legendary weapon mass : legendary armour mass
+# ... and the MIRROR, so "fix the armour" cannot quietly become "bury the weapons". The
+# binding case is the blood-cave mega chest `loottable_hidden_bloodcave_03`, which has NO
+# guaranteed weapon slot at all (`loot3Chance = 0`) and was already armour-leaning at
+# 1.60:1 before this wave; it measures 0.33:1 after, so the floor sits at 0.25 (24%
+# margin) to catch a future inversion without reding a surface whose SHAPE is the reason.
+MIN_WEAPON_ARMOUR_RATIO = 0.25
 # D8/D9 - the WITHIN-SIDE balance, and the reason they exist is a negative test that
 # came back GREEN when it should have been RED. D1/D2 measure a class's share of ALL
 # gear; once armour parity lands, armour takes half the mass, so re-planting the shipped
@@ -488,6 +495,11 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 "%.2f %s armour pieces per open"
                 % (label, ('inf' if amass <= 0 else '%.2f' % (wmass / amass)),
                    MAX_WEAPON_ARMOUR_RATIO, wmass, ic, amass, ic))
+        elif wmass / amass < MIN_WEAPON_ARMOUR_RATIO:
+            problems.append(
+                "D6b %s: weapon:armour mass is %.2f:1 (floor %.2f:1) - fixing armour "
+                "must not bury weapons: %.2f %s weapons vs %.2f %s armour per open"
+                % (label, wmass / amass, MIN_WEAPON_ARMOUR_RATIO, wmass, ic, amass, ic))
         for s in ARMOR_SLOTS:
             per_open = agg_slot.get(s, 0.0)
             if per_open < ARMOR_SLOT_FLOOR:

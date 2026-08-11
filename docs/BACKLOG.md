@@ -1,5 +1,123 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - R-181 ARMOUR PARITY + CLASS REBALANCE (Will 2026-08-10, branch `fix/armor-loot-breadth`) - SOURCE ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+
+**Will, verbatim, TWO reports in one sitting after the R-180 ship:** "also what about the armor? i am
+not really seeing armor drops like shields, chest plates, helmets, etc." and "you overcorrected, that
+run 4 scorpions tail spears dropped". Ledgered R-181. **arz-only** - no Levels / Text / Quests change,
+0 new tags, so the TESTHUB cage and canonical/Steam move together exactly as R-180 does.
+
+**BOTH ARE RATE REPORTS AND R-180'S GATE WAS GREEN THROUGH BOTH OF THEM.** Measured on the SHIPPED
+build76 arz `16994072e1cb244af9f4d759309162cb`: all 51 mod chest tables already reach all five worn
+slots, ZERO have an empty slot. Reachability was never the defect. The Gaoler cage paid **58.5
+legendary weapons to 12.4 armour pieces per six-chest run (4.73:1)** with the helm at 1.6% of the
+run's legendary mass, and **SPEAR at 24.0%** where even across the 11 gear slots is 9.1%. Full RCA,
+the arithmetic behind the four Scorpion's Tails, and every scope boundary are in R-181 in
+`docs/WILL_RULINGS.md`.
+
+**WHAT CHANGED (5 source files, 1 registry entry):**
+
+| file | role |
+|---|---|
+| `tools/svc_loot_distribution.py` | NEW - the drop-probability model + the 9 committed balance targets |
+| `tools/svc_armor_breadth.py` | NEW - the write contract (armour masters, row parity, the 1H correction, surface definitions) |
+| `tools/patches/armor_loot_breadth.py` | NEW - the sweep + the in-build fail-loud distribution gate |
+| `tools/gate_loot_distribution.py` | NEW - standalone twin, plus `--calibrate` (prints the worst observed value per check) |
+| `tools/debug/negtest_armor_breadth.py` | NEW - 6 planted defects + 2 positive controls |
+| `tools/svc_loot_breadth.py` | EDIT - master weights per CLASS not per member; theme biases softened (splits preserved to the percent); warden pays all 5 worn slots; a dropped theme member now PRINTS |
+| `tools/patches/polis_vault.py` | EDIT - authors the armour master before writing themes (the warden theme names it) |
+| `tools/patches/__init__.py` | registry: `armor_loot_breadth` immediately after `chest_loot_breadth`; 56 modules, order `e4d36810c943` |
+
+**MEASURED, cage run (6 chests, Legendary, 1 player), shipped -> R-181** - dry run of the REAL modules
+against the shipped arz, so these are the build's numbers, not a projection:
+
+| slot | shipped | R-181 | | slot | shipped | R-181 |
+|---|---|---|---|---|---|---|
+| axe | 7.5% | 8.4% | | helm | 1.6% | 8.5% |
+| mace/club | 8.9% | 9.8% | | arms | 2.4% | 7.7% |
+| sword | 7.7% | 8.5% | | torso | 3.7% | 10.2% |
+| **SPEAR** | **24.0%** | **9.3%** | | legs | 2.7% | 8.5% |
+| bow | 17.1% | 8.1% | | shield | 7.1% | 12.6% |
+| staff | 17.5% | 8.3% | | **weapon:armour** | **4.73:1** | **1.10:1** |
+
+- legendary gear per cage run **70.8 -> 108.9** (strictly up: non-reduction holds)
+- armour pieces per run **12.4 -> 51.8**; thinnest worn slot per open **0.11 -> 0.73**
+- **P(some spear lands 4x in one run) 27.0% -> 5.3%**; P(four Scorpion's Tails) **2.07% -> 0.37%**
+- P(any single item lands 4x anywhere in the run) 47.3% -> 37.3%
+- item pools UNCHANGED at 270 distinct reachable gear items (R-180 owns reach, R-181 owns rate)
+
+**PER-SLOT FIRE RATE, expected LEGENDARY pieces per open, before -> after (representative surfaces):**
+
+| surface | helm | arms | torso | legs | shield | weapons | w:a |
+|---|---|---|---|---|---|---|---|
+| cage `polisvault_01` (Legendary) | 0.17 -> 1.38 | 0.26 -> 1.24 | 0.18 -> 1.41 | 0.29 -> 1.38 | 0.37 -> 1.64 | 13.11 -> 13.19 | 10.3 -> 1.87 |
+| cage `polisvault_03` (Legendary) | 0.20 -> 1.59 | 0.30 -> 1.43 | 0.20 -> 1.62 | 0.34 -> 1.60 | 0.43 -> 1.89 | 8.32 -> 8.72 | 5.7 -> 1.07 |
+| boss hoard `svc_charonhoard_loot_03` | 0.17 -> 1.38 | 0.26 -> 1.24 | 0.18 -> 1.41 | 0.29 -> 1.38 | 0.37 -> 1.64 | 8.50 -> 8.86 | 6.7 -> 1.26 |
+| boss hoard `svc_charonhoard_loot_01` (Normal) | 0.22 -> 1.75 | 0.37 -> 1.75 | 0.22 -> 1.75 | 0.37 -> 1.75 | 0.40 -> 1.76 | 10.21 -> 10.52 | 6.5 -> 1.20 |
+| blood-cave mega chest `loottable_hidden_bloodcave_03` | 0.26 -> 2.10 | 0.40 -> 1.89 | 0.27 -> 2.14 | 0.44 -> 2.10 | 0.57 -> 2.49 | 3.11 -> 3.54 | 1.60 -> 0.33 |
+
+The mega chest is the one surface that goes armour-LEANING (0.33:1): it has no guaranteed weapon
+slot at all (`loot3Chance = 0`) and was already at 1.60:1 before this wave, so the armour lift lands
+with no weapon counterweight. That is why the gate carries a MIRROR floor, D6b `weapon:armour >=
+0.25:1` - fixing armour must not quietly bury weapons - and 0.33 clears it by 24%.
+
+Row fire rates: torso/head **33 -> 40%**, arms/legs **31 -> 40%**, shields **30 -> 40%** (the weapon
+row's own R-180 rate). Unique-armour member weights **100/200/100 -> 850** against roughly 1700 of
+static junk, plus the aggregate armour master at 1700 in the first free armour-row member slot.
+
+**GATE BATTERY (static, source-lane; the build itself is the orchestrator's):**
+
+| gate | scope | result |
+|---|---|---|
+| `gate_loot_distribution.py` vs the SHIPPED arz | 36 surfaces | **RED, as designed** - D2/D3/D6/D7/D8/D9 all fire on the state Will reported |
+| `gate_loot_distribution.py` vs the R-181 dry run | 36 surfaces | **PASS** - thinnest worn slot 0.73/open, no class over 21% of a surface, worst weapon:armour 1.39:1 (cap 1.65) |
+| `gate_chest_loot_breadth.py` (R-180's) vs the dry run | 51 tables | **PASS** - all 6 weapon classes incl. SPEAR, thinnest pool 111 items; R-180 is not regressed |
+| `negtest_armor_breadth.py` | 6 plants + 2 controls | **PASS** - every plant RED; the fixed build and the deliberate warden bias both GREEN |
+| `patches/_check_registry.py` | registry | **PASS** - 56 modules, order `e4d36810c943` |
+
+Threshold calibration (each REDS the shipped state and clears the fix with margin; the lone regression
+guard is labelled as one in the source rather than dressed up):
+
+| check | shipped | R-181 | threshold | reds shipped | margin |
+|---|---|---|---|---|---|
+| D1 class share, table | 0.4313 | 0.3548 | 0.42 | yes | 16% |
+| D2 class share, surface | 0.3431 | 0.1744 | 0.21 | yes | 17% |
+| D3 thinnest class share | 0.0106 | 0.0201 | 0.016 | yes | 20% |
+| D4 item share / uniform | 4.13x | 4.93x | 5.8x | no (guard) | 15% |
+| D5 item share, surface | 0.0583 | 0.0246 | 0.030 | yes | 18% |
+| D6 weapon : armour | 7.21 | 1.389 | 1.65 | yes | 16% |
+| D7 thinnest armour slot | 0.1109 | 0.7348 | 0.60 | yes | 18% |
+| D8 class share of weapons | 0.4145 | 0.2431 | 0.29 | yes | 16% |
+| D9 slot share of armour | 0.5352 | 0.3492 | 0.44 | yes | 21% |
+
+**DEBT REGISTERED AT COMMIT TIME (law 4):**
+
+- `BL-R181-DEBT-1` - the `svc_uberorb_*` orb tables are OUT OF SCOPE by owner (the concurrent b79
+  `fix/orb-loot-breadth` lane owns armour slots for orb tables). Printed on every build run and
+  excluded from this gate's surface set. When b79 lands, decide whether the orb surfaces join the
+  distribution gate or keep their own.
+- `BL-R181-DEBT-2` - **WILL DECISION:** general MONSTER armour drops are BASE-GAME-GOVERNED here.
+  `chanceToEquipHead/Forearm/Torso/LowerBody` is nonzero on 1084 / 1497 / 1594 / 1234 BASE-or-SV
+  monster records against 12 / 12 / 14 / 12 mod-owned ones, and `chanceToEquipShield` is not a monster
+  field at all (no monster in this DB drops a shield off its body - shields come only from chests and
+  merchants). If Will wants armour off monsters too, that is a base-loot wave with its own gate, not
+  a silent widening of this one.
+- `BL-R181-DEBT-3` - residual POOL gaps, not rate gaps: the cage reaches 19 of 41 legendary axes (46%)
+  and 33 of 71 legendary torsos (46%) against 75-92% for every other slot. Widening those means adding
+  members to `all_{tier}0N`-class masters and is a separate, R-180-shaped job.
+- `BL-R181-DEBT-4` - NOT PROVEN IN-GAME. Will's cage check (kill Alkyoneus, open all six chests across
+  a couple of runs, expect visible helms/chest plates/greaves/shields alongside weapons and no run
+  dominated by one spear) is the remaining launch gate.
+
+**REPRODUCE ANY NUMBER IN THIS RECORD:**
+
+```
+py tools/gate_loot_distribution.py <arz>              # the audit
+py tools/gate_loot_distribution.py <arz> --calibrate  # worst observed value per check
+py tools/gate_chest_loot_breadth.py <arz>             # R-180's reachability gate
+py tools/debug/negtest_armor_breadth.py <arz>         # 6 plants + 2 positive controls
+```
+
 ## 🚢 SHIP RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb is **LIVE ON STEAM** (2026-08-10, `main` @ `6b9167a`, tag `build76-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'

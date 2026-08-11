@@ -1,5 +1,53 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-181 (2026-08-10): ARMOUR NOW DROPS LIKE ARMOUR, AND NO ONE CLASS RUNS AWAY WITH THE RUN
+> **⏳ SOURCE ONLY - NOT BUILT, NOT ON DEV, NOT ON STEAM YET.** This is your two follow-up reports on
+> R-180: *"also what about the armor? i am not really seeing armor drops like shields, chest plates,
+> helmets, etc."* and *"you overcorrected, that run 4 scorpions tail spears dropped"*. Both were REAL
+> and both were measured, not guessed. arz-only again, so when it ships the map/quests/Text will not
+> move. **Fully quit TQ and restart Steam before testing** (standing rule).
+>
+> **YOU WERE RIGHT ABOUT BOTH, AND HERE ARE THE NUMBERS.** R-180 proved a chest COULD pay every weapon
+> class; it never checked how OFTEN. On the build you played, one cage run paid **58.5 legendary
+> weapons against 12.4 armour pieces** - helms were 1.6% of everything that dropped - and **SPEAR alone
+> was 24% of the run** when an even split across the eleven gear slots is 9.1%. At 17 spear drops a run
+> over 22 distinct spears, **four copies of one spear was a 27% event**. Your run was the ordinary
+> case, not bad luck.
+>
+> **WHAT CHANGED.** Every armour row now fires at the weapon row's own 40% (they were 33/31/30), the
+> legendary share inside each armour row went from roughly 10-19% of the row's weight to about half,
+> and one new "armour master" pays all five worn slots evenly. On the weapon side, the one table that
+> covers axe + mace + sword was carrying a single spear's weight, so each of those three classes got a
+> third of a spear's chance; that is fixed, and the per-chest theme biases were softened. **Nothing was
+> reduced** - your cage run goes from about 71 to about 109 legendary items; only the mix changes.
+>
+> | per cage run | you played | after |
+> |---|---|---|
+> | SPEAR share | 24.0% | 9.3% |
+> | helm share | 1.6% | 8.5% |
+> | torso share | 3.7% | 10.2% |
+> | shield share | 7.1% | 12.6% |
+> | weapons : armour | 4.73 : 1 | 1.10 : 1 |
+> | armour pieces | 12.4 | 51.8 |
+> | P(4 copies of one spear) | 27.0% | 5.3% |
+> | P(4 Scorpion's Tails) | 2.07% | 0.37% |
+>
+> **HOW TO TEST IT (same cage as R-180 - Prison of Souls, Hades Palace floor 4, where Alkyoneus the
+> Soul-Gaoler guards the Polybotes cage):**
+> 1. Kill Alkyoneus (both forms) and open **all 6 chests**.
+> 2. You should now see **helmets, chest plates, bracers, greaves and shields** in the pile, not just
+>    weapons - expect roughly as much armour as weaponry.
+> 3. No single weapon class should dominate. If one class is clearly running the run again, say which.
+> 4. **Re-run 2-3 times.** Four copies of the same item in one run should now be uncommon rather than
+>    routine; if it still happens most runs, that is a real find and worth reporting.
+> 5. Boss hoards (Charon, Tantalus, the Diadochi, the guard pairs) and the blood-cave mega chest got
+>    the identical treatment, so check one of those too if you are passing.
+>
+> **WHAT WAS DELIBERATELY LEFT ALONE, so you can rule it in or out:** armour that drops off MONSTERS is
+> base-game wiring in this mod (roughly 99% of the records carrying it came in with the merge), and no
+> monster in the database drops a shield off its body at all - shields only ever come from chests and
+> merchants. If you want armour off monsters too, that is a separate wave and it needs your call.
+
 > ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
 > **✅ LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
 > **`16994072e1cb244af9f4d759309162cb`** (55,549,261 B), deployed + md5-verified 2026-08-10 while TQ was

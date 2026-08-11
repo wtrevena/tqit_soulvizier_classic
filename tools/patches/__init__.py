@@ -727,10 +727,10 @@ REGISTRY = [
                             #     siblings here AND inside R-180's weapon master, plus softened
                             #     class-bias weights in svc_loot_breadth.THEMES (each theme keeps
                             #     its shipped weapon:relic:armour split to the percent).
-                            # MEASURED cage run, before -> after: weapon:armour 4.73:1 -> 1.16:1;
-                            # armour 12.4 -> 49.7 pieces; SPEAR 24.0% -> 9.6% (even is 9.1%);
-                            # helm 1.6% -> 7.5%; P(4 copies of one spear in a run) 27.0% -> 5.5%,
-                            # and P(4 Scorpion's Tails specifically) 2.07% -> 0.38%.
+                            # MEASURED cage run, before -> after: weapon:armour 4.73:1 -> 1.10:1;
+                            # armour 12.4 -> 51.8 pieces; SPEAR 24.0% -> 9.3% (even is 9.1%);
+                            # helm 1.6% -> 8.5%; P(4 copies of one spear in a run) 27.0% -> 5.3%,
+                            # and P(4 Scorpion's Tails specifically) 2.07% -> 0.37%.
                             # ORDER IS LOAD-BEARING: immediately AFTER chest_loot_breadth, for
                             # the same reason that module runs late (it sweeps the FINAL table
                             # set) and because it raises weights R-180 wrote and reads members
