@@ -160,6 +160,11 @@ built. Re-run against it with the merged code:
 | `patches/_check_registry.py` | **OK: 59 modules**, order `ba6fde285aad4fc60158fa368ae23cdab2a6087ac0860ca7c6e24e5c651aa4bb` |
 | calibration | D1 0.2079 / D2 0.2079 / D4 5.0417 / D5 0.0451 / D6 1.5950 / D6b 0.2812 / D7 0.2850 / **D7b 0.0443** / D8 0.2363 (new cap 0.28) / D9 0.2918 |
 
+**THE PER-TABLE TABLE ABOVE IS THE build80 MEASUREMENT** (the state that actually shipped to Steam, so
+it is the one that answers "what was Will opening"). Re-measured on the b81 baseline the same fifteen
+read **w:a 3.41:1 .. 8.47:1 before, 0.28:1 .. 0.49:1 after; thinnest worn slot 0.007 .. 0.041 before,
+0.285 .. 1.164 after** - thrown items widen every pool slightly, and nothing else moves.
+
 **BLAST RADIUS, PROVEN EXACTLY.** Applying every loot module EXCEPT `orb_armor_rows` to the build80 arz
 reproduces the shipped build81 bytes **identically on all 360 FixedItemLoot records in the db**. Adding
 `orb_armor_rows` changes **exactly 15 records, 12 fields each, and nothing else** - the fifteen R-220
