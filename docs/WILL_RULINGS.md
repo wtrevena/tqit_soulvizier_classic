@@ -5752,8 +5752,10 @@ readings rise with S, so a truncated ceiling could never fire while its continuo
 a check that cannot fail, printed in a PASS line, is worse than no check. The first draft had one; it
 was removed once the monotonicity was written down instead of assumed.
 
-**REPRODUCED AS AN ARTIFACT FACT BEFORE IT WAS FIXED:** the gate emits **43 findings** on the live b83
-arz. Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - 7 planted defects RED (including M5,
+**REPRODUCED AS AN ARTIFACT FACT BEFORE IT WAS FIXED:** the gate emits **29 findings** on the live b83
+arz - 3 O1, 12 O2, 14 O3. (It read 43 while the inert `O3b` twin above still existed; deleting a check
+that could never fail removed its 14 duplicate lines and nothing else. Re-measured after the deletion,
+not adjusted to match.) Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - 7 planted defects RED (including M5,
 which is green on the continuous reading and RED under truncation, the exact case O4's model choice
 exists for) and 3 positive controls GREEN.
 

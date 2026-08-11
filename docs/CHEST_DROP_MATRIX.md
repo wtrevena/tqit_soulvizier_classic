@@ -812,5 +812,7 @@ py tools/gate_orb_legendary.py <arz> --apply       # apply R-230 + R-231 to a PR
 py tools/debug/negtest_orb_legendary.py <arz>      # 7 planted defects RED, 3 controls GREEN
 ```
 
-On the shipped b83 arz the audit emits **43 findings** - the defect reproduced as an artifact fact
-before any code was written.
+On the shipped b83 arz the audit emits **29 findings** (3 O1 + 12 O2 + 14 O3) - the defect reproduced
+as an artifact fact before any code was written. It read 43 while the contract still carried the inert
+`O3b` truncated-ceiling twin (section 9.4); removing a check that could never fail removed its 14
+duplicate lines and nothing else.

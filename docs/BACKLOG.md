@@ -57,7 +57,7 @@ would have handed a theme row to the armour sweep.
 
 | gate | result |
 |---|---|
-| `gate_orb_legendary` O1-O5 (NEW) on the shipped b83 arz | **43 findings - THE DEFECT REPRODUCED AS AN ARTIFACT FACT before any code was written** |
+| `gate_orb_legendary` O1-O5 (NEW) on the shipped b83 arz | **29 findings - THE DEFECT REPRODUCED AS AN ARTIFACT FACT before any code was written** (3 O1 + 12 O2 + 14 O3). It read 43 in this lane's first commit, when the contract still carried the inert `O3b` truncated-ceiling twin; deleting a check that could never fail removed its 14 duplicate lines and nothing else. Re-measured, not adjusted. |
 | `gate_orb_legendary` O1-O5 (NEW) after R-230+R-231 | **PASS - 0 findings**, 18 tables, 0 guaranteed rows, worst 0.846 legendary/open (ceiling 1.00) |
 | `gate_loot_volume` V1-V7b (R-230) on the same db | **PASS - 0 findings** |
 | `gate_loot_distribution` (R-181) on the same db | **PASS - 0 findings** |
