@@ -80,19 +80,21 @@ SCOPE BOUNDARY, STATED SO NOBODY WIDENS IT BY ACCIDENT
   b79 `fix/orb-loot-breadth` covered them; it does not, and its own docstring says so.
   See `in_scope`. The tables b79 really writes (`uberorb_default_*`, `boss_charon_*01b`)
   sit outside `\svc\` and were never in this rule.
-* OUT, BY EVIDENCE, MEASURED AND REPORTED RATHER THAN SILENTLY WIDENED (both are Will
-  decisions, and both are in the R-181 record with numbers):
-    - general MONSTER armour drops (BL-R181-DEBT-2): base-game-governed here, mod-owned
-      on 12-14 records of ~1500-1850, and `chanceToEquipShield` is not a field on ANY
-      record in the db, so no monster can drop a shield off its body at all.
-    - the 15 loot tables R-220/b79 writes (`uberorb_default_*`, `boss_charon_*01b`;
-      BL-R181-DEBT-7). They sit outside `\svc\` so they were never in this module's
-      ownership rule, and b79 widens only the weapon row on them. Measured after both
-      waves: ALL FIFTEEN starve armour - weapon:armour 2.0:1 to 4.1:1 and a thinnest worn
-      slot of 0.01-0.04 pieces per open against the D7 floor of 0.52. Armour on those
-      tables is owned by NOBODY. Not fixed here, because one lane per problem and b79 has
-      already merged; the fix is one `widen_armor_rows` call per table (identical donor
-      shape) plus adding them to `all_surfaces`, and it needs an owner.
+* THE 15 R-220 ORB TABLES ARE NOW IN, AND THE OWNERSHIP RULE THAT EXCLUDED THEM IS GONE
+  (BL-R181-DEBT-7, closed by `tools/patches/orb_armor_rows.py`). `uberorb_default_*` and
+  `boss_charon_*01b` live outside `\svc\`, so R-181's folder-shaped ownership rule never
+  reached them and R-220 widened only their WEAPON row: measured on the shipped build80
+  arz all fifteen starved, weapon:armour 3.4:1 to 8.4:1 with a thinnest worn slot of
+  0.007-0.044 pieces per open against the D7 floor of 0.52. `all_surfaces` no longer asks
+  what FOLDER a table lives in - it asks R-220's own scope derivation which tables the
+  uber orb chains reach, so a SIXTEENTH orb table is covered the day it is written, with
+  no list to update. `ownership_problems` then closes the class outright: any loot table
+  a module writes and no surface audits fails the build. See `tools/svc_loot_ownership.py`.
+* OUT, BY EVIDENCE, MEASURED AND REPORTED RATHER THAN SILENTLY WIDENED (a Will decision,
+  in the R-181 record with numbers): general MONSTER armour drops (BL-R181-DEBT-2) are
+  base-game-governed here, mod-owned on 12-14 records of ~1500-1850, and
+  `chanceToEquipShield` is not a field on ANY record in the db, so no monster can drop a
+  shield off its body at all.
 """
 import re
 import sys
@@ -102,6 +104,7 @@ if __name__ == '__main__' or __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import svc_loot_breadth as SLB
 import svc_loot_distribution as SLD
+import svc_loot_ownership as OWN
 
 TIERS = SLB.TIERS
 
@@ -146,15 +149,73 @@ ARMOR_UNIQUE_WEIGHT = 850
 # slot rises. Measured both ways - this is the value that balances the armour side, not a
 # round number.
 ARMOR_MASTER_WEIGHT = 2 * ARMOR_UNIQUE_WEIGHT
+# ── EVENNESS: a member is only as even as the POOL BEHIND IT ─────────────────
+# `ARMOR_UNIQUE_WEIGHT` is an ABSOLUTE weight, and it carries an assumption the round-2
+# vet of BL-R181-DEBT-7 made expensive: that the pool behind the member SPREADS the
+# weight it is given. Measured on the shipped b82 arz `09a0f51d` over all 55 distinct
+# unique-armour members any in-scope armour row names, the share of a member's OWN
+# in-tier mass carried by its single largest item is:
+#     the aggregate armour master        0.0121 .. 0.0346   (N = 47 .. 149 items)
+#     the xpack / base per-slot family    0.0370 .. 0.2000   (N =  5 ..  36)
+#     the base-game LEVEL-BANDED family   0.0489 .. 0.4643   (N =  5 ..  30)
+# `legsall_e03` (N=6) puts 46.4% of its own mass on ONE item, `headall_n03` 25.0%.
+# Raising such a member 27 -> 850 multiplies THAT ITEM ~31x, and that - not any
+# pre-existing base-game concentration - is what pushed four orb surfaces over Will's
+# 3.0% "one item dominates the run" cap in the first round of this lane (measured
+# against the LIVE b82 artifact: 49-51 went 0.0330 -> 0.0451, 29-31 0.0251 -> 0.0323).
+# So the weight a member may carry is bounded by its pool's own evenness: no member is
+# raised past the weight at which its TOP ITEM carries what a reference-even pool's top
+# item carries at ARMOR_UNIQUE_WEIGHT.
+#   target = ARMOR_UNIQUE_WEIGHT * ARMOR_UNIQUE_REF_TOP_SHARE / top_share    (capped at
+#   ARMOR_UNIQUE_WEIGHT, so this is only ever a bound and never a boost)
+# THE REFERENCE IS THE SHIPPED FLEET, NOT A TASTE, and it is deliberately set to catch
+# SKEW rather than pool size. The highest top-share reachable from any of the 42
+# pre-existing surfaces is `unique_torso_e01` at 0.1967, so anything at or under that is
+# a rate this wave has already shipped and re-vetted. Just above it sit the banded
+# `shield_e0{1,2,3}` at exactly 0.2000 - which is 1/5 of a FIVE-item pool, i.e. PERFECTLY
+# UNIFORM. A top-share bound punishes a small pool even when nothing inside it is skewed,
+# and capping a uniform pool buys nothing (850 -> 839, noise). 0.21 clears both, so the
+# bound fires only where an item is over-weighted INSIDE its pool. Measured consequence:
+# 0 of the 42 pre-existing surfaces change a single field, and the bound binds on exactly
+# the 9 level-banded pools above 0.21, every one of them reachable ONLY from the 15 R-220
+# orb tables this lane owns.
+ARMOR_UNIQUE_REF_TOP_SHARE = 0.21
+# ... and the weight a narrow member cannot carry is NOT dropped: it moves to the
+# aggregate master, the one instrument that is even by construction. Total unique-armour
+# weight per table is conserved at 5 x ARMOR_UNIQUE_WEIGHT + ARMOR_MASTER_WEIGHT; only
+# its DISTRIBUTION moves, from the concentrating instruments to the spreading one. On a
+# table where nothing is capped the surplus is 0 and the master lands on
+# ARMOR_MASTER_WEIGHT exactly, which is why the 42 pre-existing surfaces do not move.
 
 # Path shapes. A member is "unique armour" when it lives under a worn-slot folder AND on
 # the `unique` path (the mastertables/unique split the base game itself uses).
+#
+# TWO DONOR FAMILIES SPELL "unique" DIFFERENTLY, AND THAT IS WHY THE ORB TABLES STARVED
+# (BL-R181-DEBT-7). The xpack/DRX family this module was written against names its
+# unique-armour tables `\torso\mastertables\unique_torso_l01.dbr` - the token is
+# `unique_<slot>`. The base-game LEVEL-BANDED family the nine `uberorb_default_<band>`
+# tables are cloned from instead names `\torso\mastertables\unique\torsoall_n01.dbr` and
+# `\head\mastertables\uniques\headall_n01.dbr` - a `unique\` (and, on head, `uniqueS\`)
+# SUBFOLDER. The old expression required the token to be `unique_` right after the slot
+# folder, so on those nine tables it matched only the shield member, and the four body
+# slots kept the donor's weight of 27 against ~1700 of static junk. MEASURED: helm/arms/
+# torso/legs 0.026 pieces per open each, against the D7 floor of 0.52.
+# The expression below accepts both spellings and is strictly WIDER than the old one
+# (every path the old regex matched still matches), so it can only ever raise more
+# members - never fewer. Measured on the 42 pre-existing surfaces: 0 records change.
 _SLOT_FOLDER_RE = re.compile(r'\\(torso|head|arms|legs|shields)\\')
 _UNIQUE_ARMOR_RE = re.compile(
-    r'\\(torso|head|arms|legs|shields)\\(mastertables\\unique_\w+|unique)\\?')
-_UNIQUE_1H_RE = re.compile(r'\\unique_1h_[nel]0\d\.dbr$')
+    r'\\(torso|head|arms|legs|shields)\\(mastertables\\)?uniques?')
+# Same two-family split on the weapon side: the xpack family names the 3-class one-hand
+# master `\weapons\mastertables\unique_1h_l01.dbr`, the level-banded family names
+# `\weapons\mastertables\unique\1h_all_l01.dbr`, and its single-class siblings sit under
+# `\weapons\mastertables\unique\` rather than `\weapons\unique\`. Without both spellings
+# `balance_one_hand` cannot see that ONE member is paying axe+mace+sword, and
+# `balance_weapon_row` counts three unique tables as static and over-raises the master.
+_UNIQUE_1H_RE = re.compile(r'\\(unique_1h|1h_all)_[nel]0\d\.dbr$')
 _SINGLE_CLASS_UNIQUE_RE = re.compile(
-    r'\\weapons\\unique\\(axe|club|sword|spear|bow|staff|throwing)_[nel]0\d\.dbr$')
+    r'\\weapons\\(mastertables\\)?unique\\'
+    r'(axe|club|sword|spear|bow|staff|throwing)_[nel]0\d\.dbr$')
 # R-180's aggregate weapon master, by name (the mirror of ARMOR_MASTER on this side).
 _WEAPON_MASTER_RE = re.compile(r'\\svc_unique_weapons_[nel]01\.dbr$')
 
@@ -302,6 +363,58 @@ def armor_groups(db, real):
     return out
 
 
+_TIER_CLASS = {'n': 'Epic', 'e': 'Legendary', 'l': 'Legendary'}
+
+
+def _pool_reader(db):
+    r"""One (Db, Distributor) per db, for reading the POOL behind a loot-table member.
+
+    Cached on the db, and safe to cache for one specific measured reason: the only
+    members this is ever asked about are per-slot unique-armour pools
+    (`_UNIQUE_ARMOR_RE`), which live under base-game/xpack paths that NO module in this
+    repo writes - verified by grep over `tools/*.py` and `tools/patches/*.py`. A cached
+    resolution of a table the wave later edits would be stale; a cached resolution of a
+    table nothing edits cannot be.
+    """
+    r = getattr(db, '_svc_armor_pool_reader', None)
+    if r is None:
+        d = SLD.Db(db)
+        r = (d, SLD.Distributor(d), {})
+        db._svc_armor_pool_reader = r
+    return r
+
+
+def pool_top_share(db, member, tier):
+    """Share of a member's OWN in-tier mass carried by its single largest item.
+
+    0.0 for a member that resolves to nothing in this tier - which makes the evenness
+    bound below a no-op there rather than a division by zero.
+    """
+    d, dist, memo = _pool_reader(db)
+    key = (SLB._n(member), tier)
+    if key in memo:
+        return memo[key]
+    ic = _TIER_CLASS[tier]
+    qs = [q for it, q in dist.dist(member).items()
+          if str(d.gv(it, 'itemClassification') or '') == ic]
+    tot = sum(qs)
+    memo[key] = (max(qs) / tot) if tot > 0 else 0.0
+    return memo[key]
+
+
+def armor_unique_target(db, member, tier):
+    """The weight ONE unique-armour member may carry, bounded by its pool's evenness.
+
+    See ARMOR_UNIQUE_REF_TOP_SHARE for the derivation. Computed from the POOL and never
+    from the member's current weight, so it is stable across re-runs: the sweep is
+    idempotent for the same reason `balance_one_hand` is.
+    """
+    s = pool_top_share(db, member, tier)
+    if s <= ARMOR_UNIQUE_REF_TOP_SHARE:
+        return ARMOR_UNIQUE_WEIGHT
+    return int(round(ARMOR_UNIQUE_WEIGHT * ARMOR_UNIQUE_REF_TOP_SHARE / s))
+
+
 def _raise_weight(db, real, field, target):
     cur = SLB._sc(db.get_field_value(real, field))
     cur = int(cur) if cur is not None else 0
@@ -387,18 +500,39 @@ def widen_armor_rows(db, table, tier, lk=None):
     master = lk.real(ARMOR_MASTER[tier])
     if not real:
         return []
+    # Registering IS writing (svc_loot_ownership): the ledger is populated by the
+    # builder, never by its callers, so a new caller cannot forget to claim a table
+    # and leave its distribution owned by nobody - the BL-R181-DEBT-7 defect class.
+    OWN.note_write(real, 'svc_armor_breadth.widen_armor_rows')
     changes = []
     groups = armor_groups(db, real)
+    # PASS 1 - what each unique-armour member may carry, bounded by its POOL's evenness,
+    # and the surplus that bound hands to the aggregate master. Computed before anything
+    # is written because the master's weight depends on the whole table's surplus, not on
+    # one row's; a member-by-member write order would have to guess it.
+    plan, surplus = [], 0
+    for g in groups:
+        for i, nm, _w in SLB._slot_members(db, real, g):
+            if _UNIQUE_ARMOR_RE.search(SLB._n(nm)):
+                t = armor_unique_target(db, nm, tier)
+                plan.append((g, i, nm, t))
+                surplus += ARMOR_UNIQUE_WEIGHT - t
+    master_weight = ARMOR_MASTER_WEIGHT + surplus
+    # PASS 2 - the writes. Raise-only throughout (`_raise_weight`), which is also the
+    # fail-loud story for a STALE cached arz: an input that already carries 850 on a
+    # narrow member keeps it, the surplus never reaches the master, and D5 reds naming
+    # the surface. A silently-lowered weight would trip the lane's own scope proof.
     for g in groups:
         if SLB._raise_chance(db, real, g, ARMOR_ROW_CHANCE):
             changes.append('loot%dChance->%g' % (g, ARMOR_ROW_CHANCE))
-        for i, nm, _w in SLB._slot_members(db, real, g):
-            if _UNIQUE_ARMOR_RE.search(SLB._n(nm)):
-                if _raise_weight(db, real, 'loot%dWeight%d' % (g, i),
-                                 ARMOR_UNIQUE_WEIGHT):
-                    changes.append('loot%dWeight%d %s -> %d'
-                                   % (g, i, SLB._n(nm).rsplit('\\', 1)[-1],
-                                      ARMOR_UNIQUE_WEIGHT))
+    for g, i, nm, t in plan:
+        if _raise_weight(db, real, 'loot%dWeight%d' % (g, i), t):
+            changes.append('loot%dWeight%d %s -> %d%s'
+                           % (g, i, SLB._n(nm).rsplit('\\', 1)[-1], t,
+                              '' if t >= ARMOR_UNIQUE_WEIGHT
+                              else ' (pool top share %.3f > %.2f; %d to the master)'
+                              % (pool_top_share(db, nm, tier),
+                                 ARMOR_UNIQUE_REF_TOP_SHARE, ARMOR_UNIQUE_WEIGHT - t)))
     # One armour master, into the first armour row that still has a free member slot.
     if master and groups:
         already = False
@@ -411,17 +545,21 @@ def widen_armor_rows(db, table, tier, lk=None):
                     # ARMOR_MASTER_WEIGHT would otherwise survive the sweep untouched,
                     # and the balance this module commits to would be silently stale.
                     if _raise_weight(db, real, 'loot%dWeight%d' % (g, i),
-                                     ARMOR_MASTER_WEIGHT):
+                                     master_weight):
                         changes.append('loot%dWeight%d armour master -> %d'
-                                       % (g, i, ARMOR_MASTER_WEIGHT))
+                                       % (g, i, master_weight))
         if not already:
             for g in groups:
                 idx = SLB._first_free_member(db, real, g)
                 if idx is not None:
                     SLB._set_str(db, real, 'loot%dName%d' % (g, idx), master)
                     db.set_field(real, 'loot%dWeight%d' % (g, idx),
-                                 int(ARMOR_MASTER_WEIGHT))
-                    changes.append('loot%dName%d=armour master' % (g, idx))
+                                 int(master_weight))
+                    changes.append('loot%dName%d=armour master (weight %d%s)'
+                                   % (g, idx, master_weight,
+                                      '' if not surplus
+                                      else ', %d of it surplus from narrow pools'
+                                      % surplus))
                     break
             else:
                 # Every armour row is 6/6. Never drop a member to make room - report it,
@@ -482,10 +620,107 @@ def cage_surfaces(lk):
     return out
 
 
+# ── R-220's tables, derived from R-220's own scope rule (never typed here) ───
+def orb_scope(db, lk, fresh=False):
+    r"""{norm(table): (real, tier)} for every loot table an UBER's mystical orb reaches.
+
+    `fresh=True` bypasses the cache entirely. The GATE uses it, so the coverage assertion
+    is always made against a derivation taken from the FINAL db state - see the caching
+    note below.
+
+    THIS IS A DERIVATION, NOT A LIST, and that is the whole point of BL-R181-DEBT-7.
+    R-181 decided what it owned by asking what FOLDER a table lived in; R-220 then wrote
+    fifteen tables in other folders and their armour belonged to nobody. Asking R-220's
+    own `scope_tables` instead means the answer to "which orb tables exist" has exactly
+    ONE implementation, on the lane that owns the orbs - so a sixteenth orb table, or a
+    rewired drop chain, is inside the distribution gate the moment R-220 sees it.
+
+    Derived MOD-ONLY (no `base_rows`). R-220 derives over mod UNION base to catch a
+    base-only uber, but a base-only chain is by definition one the overlay does not
+    contain and therefore one nothing can widen OR audit - `svc_orb_breadth.OUT_OF_REACH`
+    is where that decision lives. Measured on the build80 arz: mod-only and union give the
+    same 18 tables, and the union's one extra proxy (the Dark Obelisk) is the pinned
+    out-of-reach chain. Running mod-only here keeps the distribution gate free of a
+    base-arz dependency it would otherwise acquire.
+
+    CACHING, and why the key is not just the record count. The derivation costs a full
+    51k-record template scan and `all_surfaces` is called by apply(), by the gate and by
+    `--calibrate`, so it is cached on the db. The key was originally `len(record_names())`
+    alone, and the round-2 vet was right that that is not enough: a pass that REWIRED an
+    uber's orb chain to a different EXISTING table adds and removes no records, so the
+    cache would go on serving the pre-rewire scope. The newly reached table would be
+    neither swept nor audited, and neither ownership witness would fire, because nothing
+    wrote IT.
+    ⚠️ AND THE KEY DOES NOT FULLY CLOSE THAT - the round-3 vet was right to push back on
+    an earlier version of this paragraph that said it did. `len(db._modified)` counts
+    DISTINCT touched records, so a rewire that edits a record ALREADY in `_modified`
+    moves neither number and can still be served a stale scope. A length-keyed cache
+    cannot do better; only a content hash of every chain-relevant field could, and that
+    costs the scan the cache exists to avoid.
+    So the key is a NARROWING, not a proof, and the proof is elsewhere:
+      * `len(db._modified)` in the key catches every rewire that touches a record no
+        earlier pass had touched - the common case, and cheap; and
+      * `fresh=True`, which the GATE uses, so the coverage assertion is never made
+        against a cache at all; and
+      * `orb_armor_rows.verify` compares that fresh derivation against the set apply()
+        actually SWEPT (`db._svc_orb_swept`) and fails loud on any difference. THAT pair
+        is the real guarantee: it catches a mid-build rewire whatever the cache did,
+        including the already-modified-record case the key is blind to.
+    Unreachable today (`visuals`, the only registry module after this one, writes nothing,
+    and the monolith's finalization does not touch orb chains) - but a cache that can go
+    stale quietly is exactly the kind of narrowing BL-R181-DEBT-7 was.
+
+    WHAT THE WRITE-SENSITIVE KEY COSTS, measured on the build82 arz (51,253 records) so
+    nobody has to guess whether correctness here was expensive: first derivation 26.19s
+    (one-time - it warms `svc_orb_breadth`'s own chain caches), cache hit 0.008s,
+    RE-derivation after an invalidating write 1.90s, `fresh=True` 1.86s. So the pessimistic
+    key costs about two seconds per write-batch, and a build pays it a handful of times.
+    Every one of those four derivations returned the identical 18 tables.
+    """
+    try:
+        import svc_orb_breadth as SOB
+    except ImportError as exc:              # pragma: no cover - packaging
+        # Never a silent narrowing: if R-220's module is gone, the 15 orb tables drop
+        # out of the audit set, which is the exact hole this function closes.
+        print("  ARMOUR BREADTH: WARNING svc_orb_breadth is not importable (%r), so the "
+              "uber orb loot tables are NOT in the distribution surface set this run. "
+              "No silent pass: this line IS the downgrade." % (exc,))
+        return {}
+    # Cached ON THE DB, so two dbs in one process (the negative battery builds a fresh one
+    # per case) can never read each other's scope. Key = (record count, write count), the
+    # second half being what makes a rewire that adds no records invalidate it.
+    if fresh:
+        return SOB.scope_tables(db, lk)
+    key = (len(db.record_names()), len(getattr(db, '_modified', ())))
+    hit = getattr(db, '_svc_orb_scope_cache', None)
+    if hit is None or hit[0] != key:
+        hit = (key, SOB.scope_tables(db, lk))
+        db._svc_orb_scope_cache = hit
+    return hit[1]
+
+
+def orb_surfaces(db, lk, claimed):
+    """Every R-220 orb table as a surface of its own, skipping ones already claimed.
+
+    An orb is opened alone - one uber dies, one orb drops - so unlike the cage there is
+    no multi-variant pool to aggregate: the table IS the surface. The 3
+    `svc_uberorb_apex_*` tables are already claimed by the mod-ownership sweep above and
+    are skipped here rather than audited twice.
+    """
+    out = []
+    for _key, (table, tier) in sorted(orb_scope(db, lk).items()):
+        real = lk.real(table)
+        if not real or SLB._n(real) in claimed:
+            continue
+        claimed.add(SLB._n(real))
+        out.append(("orb %s" % SLB._n(real).rsplit('\\', 1)[-1], [real], [1], tier))
+    return out
+
+
 def all_surfaces(db, lk):
     r"""Every surface the distribution gate covers: the two cage chests as multi-variant
     surfaces, then every remaining in-scope mod chest table as a surface of its own, then
-    the 3 DRX donors.
+    the 3 DRX donors, then every loot table an uber's mystical orb reaches.
 
     THE DONORS ARE AUDITED BECAUSE THEY ARE WRITTEN. `armor_loot_breadth.apply()` sweeps
     `targets + SLB.DRX_DONORS.values()`, so the blood-cave mega chest
@@ -511,7 +746,82 @@ def all_surfaces(db, lk):
             continue
         claimed.add(SLB._n(table))
         surfaces.append((SLB._n(table).rsplit('\\', 1)[-1], [table], [1], tier))
+    surfaces.extend(orb_surfaces(db, lk, claimed))
     return surfaces
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OWNERSHIP: no loot table a module writes may escape the distribution gate
+# ─────────────────────────────────────────────────────────────────────────────
+def ownership_problems(db, lk=None, surfaces=None):
+    r"""The structural half of BL-R181-DEBT-7. Returns a list of problem strings.
+
+    R-181 shipped a fail-loud distribution gate and it was GREEN while fifteen live
+    surfaces starved, because the gate audited the tables R-181 had decided it owned and
+    R-220 wrote fifteen others. No number could have caught that; only a rule about
+    WRITES can. So:
+
+        every loot table written in this build must be in the surface set.
+
+    ...where "written" means what the witnesses below can actually SEE. That qualifier is
+    load-bearing and was added in round 2: the monolith `tools/apply_svc_patches.py` runs
+    outside `run_registry`, so no touch log records it, and it writes some loot rows
+    without a shared builder. Its 27 hoard gear containers now register with the ledger;
+    its base-game `defaultloot` restore is deliberately outside the contract
+    (BL-R181-DEBT-2 / -10). `tools/svc_loot_ownership.py` states the reach exactly.
+
+    TWO WITNESSES (`tools/svc_loot_ownership.py` explains why one is not enough):
+      * the LEDGER - the four shared loot builders register every table they touch, so
+        any caller is covered, including dry runs and the negative battery;
+      * the REGISTRY TOUCH LOG - `patches/__init__.run_registry` records every
+        `db._modified.add()` against the module that made it, which also catches a module
+        that writes loot fields RAW without going through a builder. Restricted to
+        FixedItemLoot records, because that is the template the distribution model reads;
+        a LootMasterTable (the masters this wave authors) is a component of a surface,
+        not a surface.
+
+    `svc_loot_breadth.EXEMPT` is the ONE escape hatch and it costs a written reason - the
+    same door a non-gear mod table already uses.
+    """
+    lk = lk or SLB.Lookup(db)
+    audited = {SLB._n(t) for (_l, ts, _w, _tr) in
+               (surfaces if surfaces is not None else all_surfaces(db, lk))
+               for t in ts}
+    exempt = {SLB._n(k) for k in SLB.EXEMPT}
+    problems = []
+
+    def _uncovered(table_l):
+        return table_l not in audited and table_l not in exempt
+
+    for table_l, writers in sorted(OWN.writes().items()):
+        if _uncovered(table_l):
+            problems.append(
+                "OWN1 %s is WRITTEN by %s but no distribution surface audits it. A loot "
+                "table nobody audits is how BL-R181-DEBT-7 shipped fifteen starving "
+                "surfaces through two green gates. Put it in a surface (derive it, never "
+                "type it) or, if it is not a gear container, add it to "
+                "svc_loot_breadth.EXEMPT with a reason."
+                % (table_l, ', '.join(writers)))
+
+    reg = OWN.registry_writes(db)
+    if reg is None:
+        print("  ARMOUR BREADTH: NOTE no registry touch log on this db "
+              "(db._registry_touch_log absent), so OWN2 - the witness that catches a "
+              "module writing loot rows RAW, without a shared builder - did not run this "
+              "pass. The ledger witness (OWN1) still did. No silent pass: this line IS "
+              "the downgrade.")
+    else:
+        for table_l, modules in sorted(reg.items()):
+            real = lk.real(table_l)
+            if not real or not SLB._n(lk.tpl(real)).endswith('fixeditemloot.tpl'):
+                continue
+            if _uncovered(table_l):
+                problems.append(
+                    "OWN2 %s is a FixedItemLoot container WRITTEN by registry module(s) "
+                    "%s, and no distribution surface audits it. Same rule as OWN1: cover "
+                    "it with a derived surface, or EXEMPT it with a reason."
+                    % (table_l, ', '.join(modules)))
+    return problems
 
 
 def apply_wave(db, lk=None, quiet=True):
@@ -537,6 +847,13 @@ def apply_wave(db, lk=None, quiet=True):
         from patches import orb_loot_breadth as OLB
     except ImportError:
         OLB = None
+    try:
+        # ... and BL-R181-DEBT-7's module runs after THAT, because the armour parity it
+        # writes on the orb tables includes the weapon row's own share balance, which can
+        # only be computed once R-220 has put the breadth master in the row.
+        from patches import orb_armor_rows as OAR
+    except ImportError:
+        OAR = None
     try:
         # R-184/185/186 (b81) runs BEFORE chest_loot_breadth in the registry and AUTHORS
         # the thrown tables that `_master_members` names as the seventh class. Omitting it
@@ -569,7 +886,9 @@ def apply_wave(db, lk=None, quiet=True):
         CLB.apply(db, None)
         ALB.apply(db, None)
         if OLB is not None:
-            OLB.apply(db, None)          # registry order: orb_loot_breadth runs last
+            OLB.apply(db, None)          # registry order: orb_loot_breadth, then ...
+        if OAR is not None:
+            OAR.apply(db, None)          # ... orb_armor_rows, the last loot writer
     lk.refresh()
     return db, lk
 
@@ -580,6 +899,7 @@ def audit_db(db, lk=None, verbose=False):
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
     problems, reports = [], []
+    seen_labels = set()
     # D3X: the per-tier D3 era exemptions are re-proved from the bytes ONCE per audit,
     # before any surface is measured, so a carve-out can never outlive the era fact that
     # earned it (b81 / R-186; see SLD.D3_ERA_EXEMPT).
@@ -588,6 +908,33 @@ def audit_db(db, lk=None, verbose=False):
         probs, rep = SLD.audit_surface(d, dist, label, tables, weights, tier)
         problems.extend(probs)
         reports.append(rep)
+        seen_labels.add(label)
+        # STALE D5 PIN: a pinned surface that has fallen back under the global cap is
+        # dead config, and dead config is how an exemption outlives its reason (the
+        # svc_orb_breadth.OUT_OF_REACH stale-pin discipline, applied to the same class
+        # of decision). Reported, never quietly kept.
+        pin = SLD.D5_PINNED.get(label)
+        if pin and rep and rep.get('top_items'):
+            share = rep['top_items'][0][1] / (rep['total'] or 1.0)
+            if share <= SLD.MAX_ITEM_SHARE_TOTAL:
+                problems.append(
+                    "D5 STALE PIN: %s is pinned at %.3f but its worst single-item share "
+                    "is now %.4f, under the global cap of %.3f. Remove the pin from "
+                    "svc_loot_distribution.D5_PINNED - a ceiling nothing needs is a "
+                    "ceiling nobody re-reads." % (label, pin[0], share,
+                                                  SLD.MAX_ITEM_SHARE_TOTAL))
+    # D7X: the surface ARMOR_SLOT_FLOOR was calibrated on must still be D7-ASSERTED.
+    # Runs after every surface is measured because it reads their reports. The round-1
+    # vet found D7 switched off on all three apex orb surfaces by a 1.78e-15 float
+    # shortfall, with the PASS line still claiming the floor held; this is the assertion
+    # from the other side, so the exclusion cannot recur silently.
+    problems.extend(SLD.reference_surface_problems(reports))
+    for label in sorted(SLD.D5_PINNED):
+        if label not in seen_labels:
+            problems.append(
+                "D5 STALE PIN: %s is pinned in svc_loot_distribution.D5_PINNED but is "
+                "no longer a surface this gate audits. Remove the pin, or find out why "
+                "the surface vanished." % label)
         if verbose and rep:
             tot = rep['total'] or 1.0
             print('    %-42s %s' % (label, '  '.join(

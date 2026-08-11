@@ -242,8 +242,121 @@ MAX_ITEM_OVER_UNIFORM = 5.8
 # ... and no item may own more than this share of the whole surface's gear mass. This is
 # the absolute "one item dominates the run" bound and it DOES red the shipped build.
 MAX_ITEM_SHARE_TOTAL = 0.030
+# ── D5 PINS: ONE measured per-surface ceiling, and it is a TIGHTENING. ───────
+# ⚠️ THIS BLOCK IS A CORRECTION, AND THE CORRECTION IS THE POINT. The first round of
+# BL-R181-DEBT-7 pinned FOUR orb surfaces at 0.037/0.044/0.039/0.052 and justified all
+# four with numbers measured on `build79` - three ships stale by the time it was written.
+# Re-measured against `local/build82_run1_09a0f51d.arz`, the LIVE artifact that build
+# replaces (Steam = DEV, md5 09a0f51d), the true before -> after of that round was
+# 29-31 0.0251 -> 0.0323, 39-41 0.0338 -> 0.0383, 43-45 0.0339 -> 0.0337,
+# 49-51 0.0330 -> 0.0451: three got WORSE, one was flat, and 29-31 was pushed from
+# COMPLIANT to over-cap by the lane itself. The claimed cause (base-game level-banded
+# `all_<band>` randomisers) was also wrong - the top item on all four AFTER that round
+# was an armour piece the round's own rows introduced. The real cause is measured and
+# fixed at source: see `svc_armor_breadth.ARMOR_UNIQUE_REF_TOP_SHARE`. Raising a narrow,
+# internally-skewed base-game pool (`legsall_e03`, N=6, 46.4% of its own mass on one
+# item) from 27 to 850 multiplied that item ~31x. Bounding each member's weight by its
+# pool's evenness and handing the surplus to the aggregate master closes THREE of the
+# four outright: 29-31 0.0292, 43-45 0.0272, 49-51 0.0286, all under the global 0.030
+# with no pin at all.
+# ONE SURFACE IS LEFT, AND ITS PIN IS BELOW ITS OWN PRE-LANE VALUE. `uberorb_default_
+# 39-41` measured 0.0338 on the live b82 artifact and measures 0.0308 after this lane -
+# a 9% IMPROVEMENT on a surface that was already over the cap before anything here
+# touched it. It cannot be brought the last 3% without capping `unique_torso_e01`
+# (top share 0.1967), which is reachable from 19 pre-existing cage/hoard/apex surfaces
+# and would cut their torso mass ~12% against D7's 0.52/open floor - measured, and
+# rejected as a worse trade than one honest pin. So the pin is 0.033: a CEILING THE
+# SURFACE ALREADY BEAT BEFORE THIS LANE EXISTED, not a cap raised to admit this lane's
+# own work. The global cap stays 0.030 for all 57 surfaces.
+# WHY A PIN AND NOT A POOL-SIZE CLAUSE. The obvious alternative - let the cap scale with
+# the surface's pool size, the argument D4 makes for classes one block above - was
+# MEASURED AND REJECTED: the smallest x-uniform among the 24 pre-existing surfaces D5 reds
+# in the defect state is 3.53, and the largest among the new orb surfaces AFTER the wave
+# is 6.35, so any clause loose enough to pass the orbs would let 23 of those 24 shipped
+# defects through.
+# THE RESIDUE, stated rather than dressed up: these orb tables pay only 2.7-5.8 legendary
+# gear pieces per open, because roughly half of every armour row is base-game static junk
+# that yields no legendary at all. "No item over 3% of the mass" on a surface that thin
+# demands an effective pool of 33+ items in every class it pays, and the base-game
+# per-slot pools it names hold 5-9. That is the honest reason one surface still needs a
+# ceiling, and it is registered as BL-R181-DEBT-9.
+# A pin whose surface has fallen back under the global cap is DEAD CONFIG and fails the
+# gate (the svc_orb_breadth.OUT_OF_REACH stale-pin discipline) - which is exactly how the
+# other three pins in this block were caught and deleted, by the gate, not by a reader.
+D5_PINNED = {
+    'orb uberorb_default_39-41.dbr': (0.033, 'level-banded epic tier; MEASURED 0.0308 '
+        'after this lane against 0.0338 on the live b82 arz 09a0f51d BEFORE it - the pin '
+        'is BELOW the surface\'s own pre-lane value. Its `headall_e01` pool (N=8) puts '
+        '26.6% of its mass on one helm and this mod does not own that pool'),
+}
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
 ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per chest open
+# ── D7's VOLUME PROBLEM, and the volume-free form of the same invariant ──────
+# "0.52 pieces per open" is a statement about a container that spawns roughly 10.6 items
+# per open, because that is the container it was derived on: the R-181 calibration's
+# binding surface was `svc_uberorb_apex_e01c` at 0.6229, and its numSpawn equations
+# (Leinth's `(3+(1.6*numberOfPlayers))*2.2 / *2.4`) give S = 10.58. Every one of the 42
+# surfaces R-181 audited spawns AT LEAST that much (10.58 .. 18.96), so the number was
+# never volume-sensitive in practice and nothing said so.
+# ⚠️ AND THAT "AT LEAST" IS A FLOATING-POINT STATEMENT, which is how the round-1 vet
+# caught this gate switching itself off. The three `svc_uberorb_apex_{n,e,l}01c` surfaces
+# compute S_eff = 10.579999999999998 - 1.78e-15 UNDER the constant - because S_eff is a
+# weighted sum over variants, not a literal. A bare `spawn >= REF` therefore evaluated
+# FALSE on them and D7 silently stopped being asserted on the very surface the 0.52 floor
+# was derived on, leaving an unguarded 0.3968 .. 0.52 per-open band on each. The
+# comparison is made with a relative tolerance below, and `reference_surface_problems`
+# asserts from the other side that the reference surface is still D7-asserted, so the
+# exclusion cannot recur silently no matter which way a future edit moves the numbers.
+# BL-R181-DEBT-7 brought in 15 surfaces that spawn 5.06 .. 8.28. On those the same
+# absolute number is not a parity demand at all - it is a demand for MORE DROPS, i.e. for
+# numSpawn, and BL-R181-DEBT-5 reserves that lever to Will. MEASURED after the armour
+# treatment lands on them: they are pinned from the other side by D6b, running
+# weapon:armour 0.28 .. 0.49 against its 0.24 floor, so armour on them CANNOT be lifted
+# further without burying weapons. The absolute floor is unreachable there by
+# construction, not by neglect.
+# So D7 keeps its exact number and its exact behaviour on every container big enough for
+# it to mean what it says, and the volume-free form of the same invariant - the same
+# armour yield measured PER SPAWN ITERATION - is asserted on every surface as D7b.
+# THAT QUANTITY IS NEARLY A CONSTANT OF THE CONTRACT, which is why it is the honest form.
+# Re-measured after the wave on the live b82 arz `09a0f51d`, 47 of the 57 surfaces land on
+# EXACTLY 0.1406 (normal, 16 of them) / 0.0589 (epic, 14) / 0.0996 (legendary, 17) per
+# iteration. The round-1 text claimed that was every surface in the mod; it is not, and
+# the ten exceptions are both known and boring: the three gaoler cage surfaces, whose
+# guaranteed row belongs to a THEME and not to this sweep (0.0673 / 0.1137 / 0.1606 - two
+# of the three ABOVE their tier's constant), and the seven level-banded orb tiers whose
+# per-slot pools are narrow enough for the evenness bound to bite (0.0452 .. 0.1296).
+#   check                       defect (build79)   after wave   threshold   margin
+#   D7  thinnest slot / open     0.0071 .. 0.3314    >= 0.6229*   0.52        16%
+#   D7b thinnest slot / spawn    0.0011 .. 0.0175    >= 0.0452    0.0375      20%
+#   * on surfaces at or above the reference volume; D7 is not asserted below it.
+# D7b at 0.0375 REDS ALL 57 defect surfaces (the defect state's BEST reading is 0.0175,
+# 2.1x under), which makes it a strictly stronger revert-detector than the absolute floor.
+ARMOR_SLOT_FLOOR_REF_SPAWN = 10.58   # spawn iterations of the surface 0.52 was derived on
+# Relative slack on that comparison. It exists ONLY to absorb the last-bit error of a
+# weighted sum (1.7e-16 relative on the apex orbs); it is ~7 orders of magnitude smaller
+# than the coarsest real gap between two surfaces' volumes, so it can never admit or
+# exclude a surface on anything but float noise.
+ARMOR_SLOT_FLOOR_REF_TOL = 1e-9
+# The surface the 0.52 floor was derived on. Named so `reference_surface_problems` can
+# assert that D7 is still ASSERTED on it - the check that would have caught the round-1
+# defect from the other side. This is the surface's LABEL in `all_surfaces`: the three
+# `svc_uberorb_apex_*` tables are claimed by the mod-ownership sweep before `orb_surfaces`
+# is reached, so they carry the bare basename and NOT the `orb ` prefix the other fifteen
+# R-220 tables get. (D7X caught that distinction itself when this constant was first
+# written with the prefix - which is the check doing its job.)
+ARMOR_SLOT_FLOOR_REF_SURFACE = 'svc_uberorb_apex_e01c.dbr'
+ARMOR_SLOT_FLOOR_PER_SPAWN = 0.0375  # D7b: worn-slot pieces per SPAWN ITERATION
+
+
+def d7_applies(spawn):
+    """Is the absolute per-open floor (D7) asserted on a surface of this spawn volume?
+
+    ONE implementation, because the round-1 defect was a second, subtly different copy of
+    this comparison living inline: `audit_surface` gates on it, `reference_surface_problems`
+    asserts on it, the gate's PASS line counts with it and the negative battery plants
+    against it. A bare `>=` here is the bug (see the block comment above).
+    """
+    return spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN * (1.0 - ARMOR_SLOT_FLOOR_REF_TOL)
 MAX_WEAPON_ARMOUR_RATIO = 1.85   # legendary weapon mass : legendary armour mass
 # ... and the MIRROR, so "fix the armour" cannot quietly become "bury the weapons". The
 # binding case is the blood-cave mega chest `loottable_hidden_bloodcave_03`, which has NO
@@ -474,6 +587,56 @@ class ChestProfile:
 # ─────────────────────────────────────────────────────────────────────────────
 # THE AUDIT (shared by the standalone gate, the in-build gate and the negtests)
 # ─────────────────────────────────────────────────────────────────────────────
+def reference_surface_problems(reports):
+    r"""D7X - THE REFERENCE SURFACE MUST STILL BE D7-ASSERTED. Returns a list of problems.
+
+    Born from the round-1 vet, which is worth stating plainly because it is this lane's
+    own defect class in miniature: `svc_uberorb_apex_e01c` is the surface the 0.52 floor
+    was CALIBRATED on (0.6229 pieces per open, the binding reading of the whole R-181
+    derivation) - and a 1.78e-15 floating-point shortfall in its weighted S_eff made
+    `spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN` evaluate False, so D7 stopped being asserted on
+    it entirely. Nothing failed. The gate's PASS line went on claiming the floor held "on
+    every surface at or above the reference spawn volume" while its own reference surface
+    sat outside the check, with an unguarded 0.3968 .. 0.52 per-open band.
+
+    `d7_applies`' tolerance fixes THAT instance. This function is the structural half, and
+    it is deliberately asserted from the opposite direction: not "is the comparison
+    written correctly" but "is the check demonstrably ON at the one place we know its
+    number means something". A future edit to the threshold, to the equations, to the
+    variant weights or to the comparison itself cannot switch D7 off at the reference
+    surface without this reding.
+
+    Also reds if the reference surface is ABSENT from the audit set, because a calibration
+    anchor that no longer exists is a threshold nobody can re-derive.
+    """
+    problems = []
+    ref = None
+    for rep in reports:
+        if rep and rep.get('label') == ARMOR_SLOT_FLOOR_REF_SURFACE:
+            ref = rep
+            break
+    if ref is None:
+        problems.append(
+            "D7X the D7 reference surface %r is not in the audit set. ARMOR_SLOT_FLOOR "
+            "(%.2f/open) was derived on it, so a threshold whose anchor has vanished can "
+            "no longer be re-derived or defended. Re-anchor the constant on a surface "
+            "that exists (and say so where it is defined), or find out why the surface "
+            "left the set." % (ARMOR_SLOT_FLOOR_REF_SURFACE, ARMOR_SLOT_FLOOR))
+        return problems
+    if not ref.get('d7_asserted'):
+        problems.append(
+            "D7X D7 is NOT asserted on its own reference surface %s (S_eff=%.17g vs "
+            "ARMOR_SLOT_FLOOR_REF_SPAWN=%.17g, short by %.3e). The absolute %.2f/open "
+            "floor was calibrated on this exact surface, so it being outside the check "
+            "means the floor is unenforced where it is best understood - and the PASS "
+            "line would still claim it held. This is the round-1 float-boundary defect "
+            "recurring; see d7_applies."
+            % (ARMOR_SLOT_FLOOR_REF_SURFACE, ref.get('S_eff', 0.0),
+               ARMOR_SLOT_FLOOR_REF_SPAWN,
+               ARMOR_SLOT_FLOOR_REF_SPAWN - ref.get('S_eff', 0.0), ARMOR_SLOT_FLOOR))
+    return problems
+
+
 def era_exemption_problems(d, classification=None):
     r"""RE-PROVE every `D3_ERA_EXEMPT` entry against the database. Returns a list of
     problems, empty when every exemption is still earned.
@@ -536,7 +699,9 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
 
     agg_slot = defaultdict(float)
     agg_item = defaultdict(float)
+    spawn = 0.0
     for wi, p in zip(w, profs):
+        spawn += wi * p.S
         for s, ev in p.by_slot().items():
             agg_slot[s] += wi * ev
         for it, ev in p.per_item.items():
@@ -597,11 +762,13 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 "class" % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / m,
                            SLOT_LABEL.get(s, s), over_uniform, MAX_ITEM_OVER_UNIFORM,
                            len(items), 100.0 / len(items)))
-        if tev / total > MAX_ITEM_SHARE_TOTAL:
+        pin, why = D5_PINNED.get(label, (None, None))
+        cap = MAX_ITEM_SHARE_TOTAL if pin is None else pin
+        if tev / total > cap:
             problems.append(
-                "D5 %s: %s is %.1f%% of the surface's whole %s gear mass (cap %.1f%%)"
+                "D5 %s: %s is %.1f%% of the surface's whole %s gear mass (cap %.1f%%%s)"
                 % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / total, ic,
-                   100.0 * MAX_ITEM_SHARE_TOTAL))
+                   100.0 * cap, '' if pin is None else ', its PINNED ceiling - %s' % why))
     # D8/D9 the WITHIN-SIDE balance. D1/D2 measure a class against ALL gear, so once
     # armour carries half the mass a weapon-side skew hides under them - which a planted
     # negative proved by coming back GREEN. Measure each side in its own denominator.
@@ -642,15 +809,35 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 % (label, wmass / amass, MIN_WEAPON_ARMOUR_RATIO, wmass, ic, amass, ic))
         for s in ARMOR_SLOTS:
             per_open = agg_slot.get(s, 0.0)
-            if per_open < ARMOR_SLOT_FLOOR:
+            # D7 - the absolute per-open floor, asserted on every container whose own
+            # spawn volume is at least the volume the floor was derived at. Below that
+            # the number is a numSpawn demand rather than a parity one (BL-R181-DEBT-5
+            # reserves numSpawn to Will), so D7b carries the invariant instead.
+            if d7_applies(spawn) and per_open < ARMOR_SLOT_FLOOR:
                 problems.append(
                     "D7 %s: armour slot %s pays only %.2f %s piece(s) per open "
                     "(floor %.2f) - Will's \"i am not really seeing armor drops\""
                     % (label, SLOT_LABEL.get(s, s), per_open, ic, ARMOR_SLOT_FLOOR))
+            # D7b - the same invariant with the container's own volume divided out, so a
+            # low-volume orb is held to the same CONTRACT as a cage without being asked
+            # for drops it does not spawn. Asserted on every surface, and it reds all 57
+            # surfaces of the defect state on its own.
+            if spawn > 0 and per_open / spawn < ARMOR_SLOT_FLOOR_PER_SPAWN:
+                problems.append(
+                    "D7b %s: armour slot %s pays %.4f %s piece(s) per SPAWN ITERATION "
+                    "(floor %.4f; %.2f per open over S=%.2f iterations) - the worn slot "
+                    "is thin for what this container actually pays, not merely for its "
+                    "size" % (label, SLOT_LABEL.get(s, s), per_open / spawn, ic,
+                              ARMOR_SLOT_FLOOR_PER_SPAWN, per_open, spawn))
     report = {
         'label': label, 'tier': tier, 'classification': ic,
         'tables': [p.table for p in profs],
         'S': [p.S for p in profs],
+        'S_eff': spawn,
+        # Reported, not recomputed by callers: the gate's PASS line states how many
+        # surfaces D7 is actually asserted on, so a surface dropping out of the absolute
+        # floor is a VISIBLE number rather than a silent exclusion.
+        'd7_asserted': d7_applies(spawn),
         'drops_per_open': [p.expected_drops() for p in profs],
         'slot_mass': dict(agg_slot), 'total': total,
         'top_items': sorted(agg_item.items(), key=lambda kv: -kv[1])[:12],

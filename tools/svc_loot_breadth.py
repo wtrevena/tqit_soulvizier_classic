@@ -68,6 +68,7 @@ from pathlib import Path
 if __name__ == '__main__' or __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 from arz_patcher import DATA_TYPE_STRING as S
+import svc_loot_ownership as OWN
 
 TIERS = ('n', 'e', 'l')
 _RELIC_INDEX = {'n': '01', 'e': '02', 'l': '03'}
@@ -391,6 +392,12 @@ def widen_weapon_row(db, table, tier, lk=None):
     master = lk.real(MASTER[tier])
     if not real or not master:
         return []
+    # OWNERSHIP LEDGER (BL-R181-DEBT-7). This builder is how R-220 widened fifteen tables
+    # whose armour then belonged to nobody. Registering here - in the builder, not in its
+    # callers - means every present and future caller claims what it writes by writing it,
+    # and `svc_armor_breadth.ownership_problems` fails the build on anything the
+    # distribution gate cannot see.
+    OWN.note_write(real, 'svc_loot_breadth.widen_weapon_row')
     changes = []
     have = {_n(nm) for (_i, nm, _w) in _slot_members(db, real, 1)}
     if _n(master) not in have:
@@ -432,6 +439,7 @@ def retarget_guaranteed_weapon(db, table, tier, lk=None):
     master = lk.real(MASTER[tier])
     if not real or not master:
         return []
+    OWN.note_write(real, 'svc_loot_breadth.retarget_guaranteed_weapon')
     members = _slot_members(db, real, 3)
     if any(_n(nm) == _n(master) for _i, nm, _w in members):
         return []
@@ -454,6 +462,7 @@ def set_guaranteed_theme(db, table, tier, theme, lk=None):
     real = lk.real(table)
     if not real:
         return []
+    OWN.note_write(real, 'svc_loot_breadth.set_guaranteed_theme')
     spec = THEMES[theme]
     members = []
     for kind, weight in spec:

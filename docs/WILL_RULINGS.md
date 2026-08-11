@@ -4580,6 +4580,10 @@ a designed theme from a defect is a gate that gets switched off - the b63 1.0u l
    2.0:1 to 4.1:1, thinnest worn slot 0.01-0.04 per open against the D7 floor of 0.52.** Reported,
    not fixed: one lane per problem, and b79 has already merged (`BL-R181-DEBT-7`). The fix is
    mechanical - identical donor shape, one `widen_armor_rows` call per table plus `all_surfaces()`.
+   **-> CLOSED 2026-08-11 by the R-181 SECOND AMENDMENT below** (branch `fix/orb-armor-rows`, module
+   `tools/patches/orb_armor_rows.py`). Note for the record: "2.0:1 to 4.1:1" understated it. Measured
+   on the shipped build80 arz `c5851a1a` the fifteen ran **3.45:1 to 8.38:1** with a thinnest worn
+   slot of **0.007**, because the reading above was taken before b79's own weapon-row raise landed.
 
 **NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's. Will's check -
 kill Alkyoneus, open all six cage chests across a couple of runs, expect visible helms, chest plates,
@@ -5117,3 +5121,295 @@ md5-proven byte-unchanged, so the arz+Text coupling was SATISFIED, not waived. C
 one line (`RAISE_ROW_CHANCES = False`). One new debt filed by the ship lane: `BL-R220-DEBT-7` (the R-200
 negtest harness cannot run against a post-R-200 arz - pre-existing, measured on the untouched shipped
 baseline too). Full records: `docs/BACKLOG.md` -> SHIP RECORD + BUILD79-DEV GATE RECORD.
+
+---
+
+## R-181 SECOND AMENDMENT [2026-08-11] IMPLEMENTED (branch `fix/orb-armor-rows`, module `tools/patches/orb_armor_rows.py`) - the orb tables' armour has an OWNER, and "owned by nobody" is now structurally impossible
+
+**WILL'S ORDER, the one this closes:** orbs roll ALL item classes - **armour parity included**. R-220
+delivered the weapon half of that on the mystical orbs. This is the armour half.
+
+**WHAT WAS ACTUALLY WRONG, and it is not "someone forgot a table".** R-181 decided what it owned by
+asking what FOLDER a loot table lived in (`\svc\`). R-220 then wrote fifteen tables in other folders -
+`uberorb_default_*` x12 and `boss_charon_{n,e,l}01b` - and widened only their WEAPON row. Armour on
+them belonged to no module, so no surface audited them, so **both fail-loud loot gates were GREEN for
+an entire build while fifteen live player surfaces starved.** MEASURED on the shipped build80 arz
+`c5851a1a`:
+
+| | shipped build80 | after this wave |
+|---|---|---|
+| weapon:armour, the 15 tables | **3.45:1 .. 8.38:1** (cap 1.85) | **0.28:1 .. 0.49:1** |
+| thinnest worn slot, per open | **0.007 .. 0.044** | **0.285 .. 1.164** |
+| thinnest worn slot, per spawn iteration | **0.0011 .. 0.0050** | **0.0443 .. 0.1406** |
+
+After the wave every uber orb in the mod sits in the SAME weapon:armour band as the three apex orbs
+Will already farms (0.28-0.33), which is the parity test that matters: consistency with the surface he
+has actually played, not a number chosen here.
+
+**THE FIX IS R-181'S OWN TREATMENT, NOT A SECOND OPINION.** One `svc_armor_breadth.widen_armor_rows`
+call per table: every armour row to the weapon row's 40%, every unique-armour member to 850, the
+aggregate armour master (all five worn slots at equal weight) into the shield row's free member slot,
+plus the weapon row's own two R-181 corrections so lifting armour cannot INVERT the surface. Additive
+or a strict raise throughout - nothing removed, nothing lowered, `numSpawn` untouched.
+
+**TWO THINGS HAD TO BE WIDENED BEFORE THE TREATMENT COULD EVEN SEE THESE TABLES, and both were silent
+misses rather than design decisions:**
+
+1. **The two donor families spell "unique" differently.** The xpack/DRX family names
+   `\torso\mastertables\unique_torso_l01.dbr`; the base-game LEVEL-BANDED family the nine
+   `uberorb_default_<band>` tables clone names `\torso\mastertables\unique\torsoall_n01.dbr` and
+   `\head\mastertables\uniques\headall_n01.dbr`. `_UNIQUE_ARMOR_RE` matched only the first spelling,
+   so on those nine tables it saw the SHIELD member and none of the four body slots - which is why
+   helm/arms/torso/legs sat at the donor's weight of 27 against ~1700 of static junk. Same split on
+   the weapon side (`unique_1h_l01` vs `unique\1h_all_l01`), which hid the fact that one member was
+   paying axe+mace+sword at a single class's weight. The expressions are now strictly WIDER - every
+   path the old ones matched still matches - and the proof is byte-level, below.
+2. **Ownership was a folder name.** It is now a rule about WRITES.
+
+**THE LAW THIS ADDS (`tools/svc_loot_ownership.py`):**
+
+> Every loot table a module WRITES must be inside the distribution gate's surface set.
+
+Not "every mod-owned table" - every WRITTEN table, whoever wrote it and wherever it lives. Two
+independent witnesses, because neither alone is enough: the LEDGER (the four shared loot builders
+register every table they touch, so any caller anywhere is covered, including dry runs and the
+negative battery) and the REGISTRY TOUCH LOG (`run_registry` already recorded every `_modified.add()`
+against the module that made it; it is now persisted as `db._registry_touch_log` for the
+post-finalization gates, which catches a module that writes loot fields RAW). A missing touch log is
+ANNOUNCED, never a silent pass. Coverage of the orb tables is likewise DERIVED - `all_surfaces` reads
+R-220's own `scope_tables` - so a sixteenth orb table is swept AND audited the day it exists. A typed
+list of fifteen names is exactly how this debt existed.
+
+**ONE THRESHOLD GAINED A SECOND FORM, AND IT WAS DERIVED, NOT LOOSENED.** D7 ("every worn slot pays
+0.52 pieces per open") is a statement about a container that spawns ~10.6 items, because that is the
+container it was calibrated on - every one of R-181's 42 surfaces spawns 10.58 to 18.96, so the number
+was never volume-sensitive and nothing said so. The orb tables spawn **5.06 to 8.28**. On them the
+same absolute number is not a parity demand, it is a demand for more DROPS - `numSpawn`, which
+`BL-R181-DEBT-5` reserves to Will - and it is unreachable from the other side too: after the treatment
+they sit at weapon:armour 0.28-0.49 against D6b's 0.24 floor, so armour on them CANNOT be lifted
+further without burying weapons. So **D7 keeps its exact number and its exact behaviour on every
+surface at or above the volume it was derived at (all 42 - byte-identical), and D7b asserts the same
+invariant with the container's own volume divided out, on all 57.** That quantity turns out to be
+nearly a constant of the contract: after the wave EVERY chest, hoard, cage variant, DRX donor and orb
+lands on 0.1406 / 0.0589 / 0.0996 per iteration by tier. **D7b at 0.0375 reds all 57 surfaces of the
+defect state** (its best reading is 0.0175), making it a strictly stronger revert-detector than the
+absolute floor it complements. Nothing was weakened: the defect state goes from 27 findings to **622**.
+
+> ⚠️ **SUPERSEDED BY ROUND 3 (see the ROUND 3 amendment at the end of this file). The paragraph below
+> is kept VERBATIM because the mistake is the lesson.** Its build79 readings reproduce exactly, but
+> b79 was three ships stale: against the LIVE b82 artifact three of the four surfaces were made WORSE
+> by this lane and `uberorb_default_29-31` was pushed from compliant (0.0251) to over-cap (0.0323) by
+> it. The stated cause was wrong too. Round 3 removed the cause and **three of the four pins are
+> deleted**; the one that remains sits BELOW its surface's own pre-lane value.
+
+**FOUR SURFACES CARRY A MEASURED, REASONED D5 PIN INSTEAD OF A LOOSENED CAP.** Four level-banded orb
+tiers hold a single item at 3.2-4.5% of the surface's gear mass against the 3.0% cap. MEASURED on
+build79, BEFORE any of this: 3.2%, 4.58%, 4.61%, 4.47% - **pre-existing concentrations that were
+invisible only because nobody audited the table**, and this wave IMPROVES two of them. The obvious
+alternative - let D5's cap scale with pool size, the argument D4 already makes for classes - was
+measured and REJECTED: the smallest x-uniform among the 24 pre-existing surfaces D5 reds in the defect
+state is 3.53 and the largest among the new orb surfaces is 6.35, so any clause loose enough to pass
+the orbs would let **23 of those 24 shipped defects through**. The global cap therefore stays 0.030 for
+every surface in the mod and these four are held to their own measured ceiling, each with a written
+reason; a pin that falls back under the global cap reds as dead config. Cause registered as
+`BL-R181-DEBT-9`: base-game level-banded static randomisers paying a narrow set of high-band
+legendaries, the same class of finding D4 already records and the same content this mod does not own.
+
+**NON-REGRESSION IS PROVEN AT THE BYTE LEVEL, NOT ASSERTED.** The R-181 wave running on this branch
+against the build79 arz reproduces the **SHIPPED build80 bytes exactly on all 360 FixedItemLoot
+records in the db** - so the widened expressions and the new surface set change nothing outside R-220
+scope. Every other calibration number is unmoved: D1 0.2084, D2 0.2084, D4 5.0383, D6 1.5857, D8
+0.2413, D9 0.2918, D3 0.0175, D6b 0.2845.
+
+**GATES.** All three loot gates PASS on the build80 arz with the wave applied: distribution (57
+surfaces, up from 42), orb breadth (18 tables, pools GREW - epic 101-121 against the 95-116 R-220
+shipped, legendary 246-327 against 246-308), chest breadth (35 tables). Registry selfcheck OK, 58
+modules, order `4a8297a0e59d`. Negative battery: **13 planted defects all red, 3 positive controls
+green**, including the b79 armour rows replanted on one table from EACH donor family and the SYNTHETIC
+ORPHAN planted against both ownership witnesses.
+
+**NOT PROVEN IN-GAME, and it is the same gate as R-181's.** Everything above is a database and gate
+proof. Will's check: kill any uber that drops a Mystical Orb (a red-uber orb, Charon's Essence, or any
+generic-orb uber) and expect helms / chest plates / bracers / greaves / shields out of the ORB at
+roughly the rate the cage chests now pay them.
+
+**`BL-R181-DEBT-4` WAS OBSERVED LIVE HERE, THEN CLOSED BY b81'S OWN MERGE.** That debt predicted that
+bucketing `WeaponHunting_RangedOneHand` with `bow` would be invalidated the moment
+`fix/craft-thrown-breadth` landed. Measured here by accident, mid-flight, against an arz that lane had
+just built: **D8 bow read 29.2-29.8% against its then-29.0% cap on six of the new orb surfaces** - they
+are the thinnest weapon pools in the mod, so a mis-bucketed weapon class shows THERE first. b81 then
+merged and did both halves itself (thrown has its own slot in `WEAPON_SLOTS`/`SLOT_ORDER`;
+`MAX_WEAPON_CLASS_SHARE` re-derived 0.29 -> 0.28 for seven weapon classes). Re-verified after merging
+main into this lane: **D8's worst reading over all 57 surfaces is 0.2363.** The observation is kept
+because it is the evidence the debt was real.
+
+**RE-MEASURED AFTER `main` ADVANCED (b81, thrown as a real twelfth gear class; and again after b82).**
+`main` moved twice while this lane was in flight, so every number above was re-taken with the merges in
+place - round 2's readings are against the SHIPPED `local/build81_ship_f1671207.arz`
+(`f16712077f315e5d5cf38a32f9c1fec6`), not the pre-ship run `c502f173` round 1 quoted: distribution PASS on 57 surfaces across all 12 classes, orb / chest /
+craft-thrown gates PASS, **16 negatives red and 3 positive controls green**, registry 59 modules order
+`ba6fde285aad`, and the D5 pins all still earned (49-51 moved 0.0453 -> 0.0451, still above the 0.030
+global cap, so none went stale) - **that last clause is SUPERSEDED BY ROUND 3: "still above the global
+cap" was true and "still earned" was not, because the lane itself had put three of them there. Three
+of the four pins are now deleted.** The merge had exactly two conflicts, both ADDITIVE - each side had
+added an independent block - and this lane's negtest cases were renumbered N10/N11 to stop colliding
+with b81's N7-N9. **Blast radius, proven exactly:** every loot module EXCEPT `orb_armor_rows`
+reproduces the shipped b81 bytes identically on all 360 FixedItemLoot records; adding it changes
+exactly **15 records, 12 fields each, and nothing else**.
+
+**MEASURE FROM `local/`, NOT FROM `work/`.** Mid-lane, `work/SoulvizierClassic/Database/
+SoulvizierClassic.arz` was rewritten by a concurrent build (md5 `c502f173` at 01:53, against build80's
+`c5851a1a`). Two readings taken against it before that was noticed were discarded and re-taken. This is
+`BL-R181-DEBT-8` biting a second time; while a fleet is running, the committed artifacts in `local/`
+are the only safe baselines.
+
+### R-181 SECOND AMENDMENT, ROUND 2 [2026-08-11] - the independent vet found this lane committing its own defect class, and the law it produced
+
+The round-2 vet returned **1 HIGH, 2 MEDIUM, 2 LOW**. All five are closed on this branch. One of them
+matters far past its patch, because it is this ruling's own subject caught happening again.
+
+**THE HIGH: A FAIL-LOUD GATE WENT QUIET ON A LIVE SURFACE WHILE ITS PASS LINE SAID OTHERWISE.** D7 -
+the absolute "every worn slot pays at least 0.52 legendary pieces per open" floor - is asserted only
+on containers at or above the volume it was derived at, via `spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN`.
+`S_eff` is a WEIGHTED SUM over a surface's variants, not a literal, so the three
+`svc_uberorb_apex_{n,e,l}01c` surfaces compute **10.579999999999998** - `1.78e-15` under the constant.
+The comparison was therefore False and **D7 was never evaluated on them at all**, leaving an unguarded
+band of **0.3968 .. 0.52 pieces per open** on each, roughly a quarter of the floor. It was guarded
+before this lane. Worse, `svc_uberorb_apex_e01c` at 0.6229 is **the exact surface the 0.52 number was
+calibrated on**, and two documents said in writing that D7 kept its exact behaviour on "all 42,
+byte-identical". Both were false for 3 of the 42. The vet demonstrated it rather than arguing it:
+cutting that surface's armour rows 25% reds on `main` and passed GREEN on this branch.
+
+> **LAW: A THRESHOLD MUST BE ASSERTED, DEMONSTRABLY, AT THE PLACE ITS NUMBER WAS DERIVED.** A
+> calibration anchor is the one surface where a threshold provably means what it says. If the check is
+> not switched ON there, the number is folklore. `svc_loot_distribution.reference_surface_problems`
+> (**D7X**) now asserts exactly that, from the opposite direction to the comparison it protects: not
+> "is the `>=` written correctly" but "is D7 demonstrably ON at the reference surface, and is that
+> surface still in the audit set at all". A future edit to the threshold, the equations, the variant
+> weights or the comparison cannot switch D7 off there without reding. It caught its own constant
+> being written with a wrong label prefix on the first run.
+
+> **LAW: A GATE STATES THE COUNT, NEVER THE UNIVERSAL.** "every surface at or above the reference
+> volume" is unfalsifiable in a log; **"the 42 of 57 surfaces at or above the reference volume"** is a
+> number a reader can watch move. Both the standalone gate and the in-build gate now print it. This is
+> the same discipline `armor_loot_breadth` already applied to D7b ("saying every worn slot clears
+> 0.52/open while a low-volume orb sits at 0.28 would be a gate lying in its own PASS line") - the
+> round-1 lane wrote that sentence and then broke it two constants over.
+
+**THE FIX IS A TOLERANCE PLUS A STRUCTURE, NOT A TOLERANCE.** `d7_applies()` is now the single
+implementation of the boundary (`ARMOR_SLOT_FLOOR_REF_TOL = 1e-9` relative - seven orders of magnitude
+under the coarsest real gap between two surfaces' volumes, so it can only ever absorb float noise),
+used by the audit, both PASS lines and the negatives alike. Two permanent negatives pin it: **N12**
+plants the vet's own regression on the reference surface inside the band D7b alone cannot see, **N13**
+nudges the reference volume past that surface's own S_eff so D7X itself must red. Measured after:
+**D7 asserted on 42 of 57 surfaces**, every calibration number unchanged, 16 negatives red.
+
+**THE TWO MEDIUMS: A GATE MUST NOT CLAIM MORE REACH THAN IT HAS.** The ownership gate printed "every
+loot table written in this build is audited by a surface or EXEMPT", which neither witness could
+enforce: `tools/apply_svc_patches.py` runs OUTSIDE `run_registry` (no touch log -> OWN2 blind) and
+writes some loot rows without a shared builder (-> OWN1 blind). Both halves done. Its **27
+`svc_*hoard_loot_{01,02,03}` gear containers now call `note_write`**, so the ledger genuinely covers
+them - measured, all 27 are inside the audited surface set and ownership stays at 0 problems. Its
+base-game `defaultloot` restore is deliberately OUTSIDE the contract and is now **named in the PASS
+line itself** and registered as `BL-R181-DEBT-10`: those writes copy a value straight out of the base
+arz, restoring a base-game row to its base-game shape rather than widening a mod surface, and
+base-game monster loot is `BL-R181-DEBT-2`, a Will decision. The second medium was record hygiene -
+three gate numbers in the BACKLOG record did not reproduce (35 vs **51** tables, 13 vs **16**
+negatives, 58/`4a8297a0` vs **59**/`ba6fde28`); they were pre-merge readings left standing beside
+post-merge ones and are **corrected in place**, because this repo's records are the audit trail a cold
+successor trusts. `main` was re-merged at **`0019861`** (b81 shipped, b82 atlantis-voyage landed);
+sole conflict was the additive BACKLOG header, `tools/` auto-merged clean, all gates re-green.
+
+**THE TWO LOWS, both "the proof did not prove what it printed".** The scope proof's name-field branch
+was a bare `pass` whose comment claimed the value was checked above - it was not, so a donor shape
+carrying an existing member could have been clobbered while the proof reported PASS and the failure
+text promised "no member removed". It now asserts the slot was empty. And `orb_scope`'s cache was keyed
+on record count alone, so a rewire that moved a chain between EXISTING tables would serve a stale
+scope; the key now carries the write count, the gate derives with `fresh=True` from the db's final
+state, and `verify()` compares that against what `apply()` actually swept and fails loud on any
+difference - the only way to catch a table reached after the sweep, since nothing wrote it and no
+ownership witness would fire.
+
+### R-181 SECOND AMENDMENT, ROUND 3 [2026-08-11] - the lane was making three live surfaces worse, and its own record said the opposite
+
+The round-2 vet returned **1 HIGH and 3 LOW**. All four are closed on this branch. The HIGH is the one
+that matters past its patch, and it is the same failure shape as round 2's - a proof measured against
+something other than what it claimed - but this time it had a **gameplay consequence**, not only a
+documentation one.
+
+**THE HIGH: FOUR PER-SURFACE CEILINGS RAISED WILL'S CAP ON NUMBERS FROM A THREE-SHIPS-STALE ARTIFACT.**
+`MAX_ITEM_SHARE_TOTAL = 0.030` is the guard born from Will's own report - *"you overcorrected, that run
+4 scorpions tail spears dropped"*. Round 2 raised it to 0.037/0.044/0.039/0.052 on four orb surfaces
+and justified all four with the sentence *"MEASURED on build79, the state BEFORE any of this"*, adding
+that the treatment IMPROVED two of them. Those b79 readings were honestly sourced and reproduce
+exactly - but **b79 was three ships stale**, and the b81 craft/thrown wave had since diluted the weapon
+side of those very surfaces. Measured against `local/build82_run1_09a0f51d.arz`, the LIVE Steam/DEV
+bytes the build replaces, round 2's true before -> after was:
+
+| surface | b82 before | round 2 after | round 2's claim |
+|---|---|---|---|
+| `uberorb_default_29-31` | **0.0251** (UNDER the cap) | **0.0323** | "unchanged, pre-existing" |
+| `uberorb_default_39-41` | 0.0338 | **0.0383** | "IMPROVED from 0.0458" |
+| `uberorb_default_43-45` | 0.0339 | 0.0337 | "IMPROVED from 0.0461" |
+| `uberorb_default_49-51` | 0.0330 | **0.0451** | "0.0447 before it" |
+
+Three worse, one flat, and **29-31 pushed from compliant to over-cap by the lane itself** - it needed a
+pin ONLY because the lane put it there. The stated cause was inverted too: on b82 the top item on all
+four is a WEAPON; after round 2 it is an ARMOUR piece round 2's own rows introduced.
+
+> **LAW: A BASELINE IS AN ARTIFACT, AND THE ONLY HONEST ONE IS THE ARTIFACT YOU ARE REPLACING.**
+> "Before" does not mean "before this branch existed"; it means **the bytes that are live right now**.
+> A lane that has been rebased across three ships has three candidate baselines and only one of them
+> tells a player what changed. Every before/after in a ship record is now measured against the LIVE
+> artifact by md5, and the md5 is quoted beside the number.
+
+> **LAW: WHEN A GUARD OF WILL'S REDS ON YOUR OWN WORK, MOVE THE WORK.** Raising a threshold because the
+> lane trips it is the failure mode the threshold exists to prevent. The order of resort is: fix the
+> cause, then take it to Will as a balance call, and only then pin - and a pin is only honest if it
+> sits **below** what the surface measured before the lane touched it, so it cannot admit anything the
+> lane created.
+
+**THE CAUSE, MEASURED, AND FIXED AT SOURCE.** `ARMOR_UNIQUE_WEIGHT = 850` is an ABSOLUTE weight, and it
+silently assumed the pool behind a member SPREADS what it is given. Over all 55 distinct unique-armour
+members any in-scope armour row names, the share of a member's own mass carried by its top item runs:
+aggregate master **1.2-3.5%** (N=47-149), xpack family **3.7-20.0%**, and the base-game LEVEL-BANDED
+family the nine `uberorb_default_<band>` tables are cloned from **4.9-46.4%** - `legsall_e03` has six
+items and puts 46.4% of its mass on one pair of greaves. Raising that member 27 -> 850 multiplies that
+one item **~31x**. That, not any base-game randomiser, is what round 2 shipped.
+
+> **LAW: AN EVEN-SPREAD INSTRUMENT IS ONLY AS EVEN AS ITS POOL.** This module already held that "the
+> master is the even-spread instrument, so any per-slot bias must be expressed by a THEME, never
+> smuggled in here" - and then handed the same absolute weight to pools with six items in them.
+> `ARMOR_UNIQUE_REF_TOP_SHARE` bounds each member by its own pool's measured evenness and hands the
+> surplus to the aggregate master, conserving total unique-armour weight per table and moving only its
+> distribution. The reference (0.21) is set from the SHIPPED fleet - above the highest top-share any
+> pre-existing surface can reach (`unique_torso_e01` 0.1967) and above the perfectly-uniform five-item
+> banded shields (0.2000) - so it fires on SKEW and never on pool size, and **0 of the 42 pre-existing
+> surfaces change a single field.**
+
+**RESULT: THREE OF THE FOUR PINS ARE GONE, DELETED BY THE GATE'S OWN STALE-PIN CHECK.** 29-31 **0.0292**,
+43-45 **0.0272**, 49-51 **0.0286** - all under the 0.030 global cap unpinned, and the run that proved it
+failed with three `D5 STALE PIN` findings naming them, which is the stale-pin discipline doing exactly
+its job. One pin remains: `uberorb_default_39-41` at **0.033**, holding a surface that measures 0.0308
+after this lane against **0.0338 before it**. The last 3% needs `unique_torso_e01` capped, which 19
+pre-existing cage/hoard/apex surfaces also draw from and whose torso mass would fall ~12% against D7's
+0.52/open floor - measured, and rejected as the worse trade. The residue is registered as a rewritten
+`BL-R181-DEBT-9`: these orb surfaces pay only 2.7-5.8 legendary pieces per open, and a 3% single-item
+cap on a surface that thin needs 33+ effective items in every class it pays, against base-game pools
+holding 5-9. **N14** plants the bound's defeat and reds.
+
+**THE THREE LOWS, all "a check claimed more reach than it has".** `orb_armor_rows.verify`'s `missing`
+check is a cache/rewire detector, not independent coverage evidence - `all_surfaces` derives its orb
+surfaces from the same `orb_scope`, so coverage there is by construction, which IS the intent; the
+docstring now says which of its three checks proves what, and warns that a PASS is not coverage
+evidence. `orb_scope`'s cache key cannot see a write to an ALREADY-modified record, so calling it
+closed "by construction" was too strong: it is a narrowing, and the real guarantee is `fresh=True` plus
+the `_svc_orb_swept` comparison. And **OWN2 has never executed inside a real build** - it needs
+`db._registry_touch_log`, which only exists under `run_registry` - so the ship build is its first live
+execution; that is stated in the ship record rather than carried quietly.
+
+> **LAW: A NEGATIVE THAT DOES NOT FIRE MUST NOT SHIP AS THOUGH IT DOES.** The evenness bound's second
+> half - handing the surplus to the master - was planted as a negative and came back GREEN: forcing the
+> master back to `ARMOR_MASTER_WEIGHT` moves the worst worn-slot yield 0.04517 -> 0.04249 against
+> D7b's 0.0375 floor, spending ~6% of the headroom and reding nothing. So no negative ships for it and
+> it is labelled what it is - a balance choice inside a margin, `BL-R181-DEBT-11`.

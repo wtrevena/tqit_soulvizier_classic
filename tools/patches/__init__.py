@@ -930,6 +930,34 @@ REGISTRY = [
                             # Its verify() is the fail-loud gate (standalone twin:
                             # py tools/gate_orb_loot_breadth.py <arz>; negatives:
                             # py tools/debug/negtest_orb_breadth.py <arz>).
+    'orb_armor_rows',       # BL-R181-DEBT-7: the OTHER half of Will's "i am not really
+                            # seeing armor drops like shields, chest plates, helmets",
+                            # on the surface nobody owned. R-181 gave every mod chest
+                            # armour at weapon-row parity but keyed ownership off the
+                            # \svc\ FOLDER; R-220 then wrote 15 tables in other folders
+                            # (uberorb_default_*, boss_charon_*01b) and widened only
+                            # their WEAPON row. MEASURED on the shipped build80 arz
+                            # c5851a1a, all fifteen starved - weapon:armour 3.45:1 to
+                            # 8.38:1, thinnest worn slot 0.007-0.044 per open against
+                            # the D7 floor of 0.52 - with BOTH loot gates green, because
+                            # a table no module claims is a table no gate audits.
+                            # This module applies svc_armor_breadth.widen_armor_rows
+                            # (the R-181 treatment verbatim) to R-220's OWN derived
+                            # scope, and svc_armor_breadth.all_surfaces now reads that
+                            # same derivation, so a 16th orb table is swept AND audited
+                            # the day it exists - no list to keep in step.
+                            # ORDER IS LOAD-BEARING: immediately AFTER orb_loot_breadth.
+                            # The treatment includes the weapon row's own legendary-share
+                            # balance, which is computed from the aggregate weapon master
+                            # R-220 puts in loot1; running earlier would find no master
+                            # and skip the half that stops the surface inverting to
+                            # 85% armour (the R-181 D6b defect, shipped once already).
+                            # Its verify() is the OWNERSHIP gate - every loot table
+                            # WRITTEN in the build must be inside a distribution surface
+                            # (tools/svc_loot_ownership.py); the numbers are still
+                            # armor_loot_breadth.verify's distribution gate.
+                            # Standalone: py tools/gate_loot_distribution.py <arz>;
+                            # negatives: py tools/debug/negtest_armor_breadth.py <arz>.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
@@ -1082,6 +1110,15 @@ def run_registry(db, tags, registry=None):
             executed.append(name)
     finally:
         tracker._active_module = None
+        # PERSIST the per-module touch log for the POST-FINALIZATION gates
+        # (BL-R181-DEBT-7). The tracker itself must go - downstream consumers need
+        # stock set semantics - but "which module wrote this record" is the only
+        # evidence that can answer the ownership question, and the gates that ask it
+        # run in run_registry_verifies(), long after this finally block. A list of
+        # (module, record) pairs, read-only by contract; consumers that find the
+        # attribute missing must ANNOUNCE the downgrade rather than pass quietly
+        # (see svc_armor_breadth.ownership_problems).
+        db._registry_touch_log = list(tracker._touch_log)
         # Restore a plain set with identical membership so all downstream
         # consumers (write_arz, the container-shape gate) see stock semantics.
         db._modified = set(tracker)

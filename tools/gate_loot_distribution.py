@@ -68,6 +68,7 @@ def calibrate(db):
     worst = defaultdict(lambda: (0.0, ''))
     best_min = (1e9, '')
     thin = (1e9, '')
+    thin_per_spawn = (1e9, '')
     low_ratio = (1e9, '')
     for label, tables, weights, tier in SAB.all_surfaces(db, lk):
         profs = [SLD.ChestProfile(d, dist, t, 1,
@@ -75,6 +76,7 @@ def calibrate(db):
                                    'l': 'Legendary'}[tier]) for t in tables]
         w = [float(x) for x in (weights or [1] * len(profs))]
         tw = sum(w) or 1.0
+        spawn = sum(wi / tw * p.S for wi, p in zip(w, profs))
         agg, agg_item = defaultdict(float), defaultdict(float)
         for wi, p in zip(w, profs):
             for s, ev in p.by_slot().items():
@@ -133,6 +135,9 @@ def calibrate(db):
         for s in SLD.ARMOR_SLOTS:
             if agg.get(s, 0.0) < thin[0]:
                 thin = (agg.get(s, 0.0), '%s %s' % (label, s))
+            if spawn > 0 and agg.get(s, 0.0) / spawn < thin_per_spawn[0]:
+                thin_per_spawn = (agg.get(s, 0.0) / spawn,
+                                  '%s %s (S=%.2f)' % (label, s, spawn))
     print('\n=== CALIBRATION (worst observed value per check) ===')
     for k in sorted(worst):
         v, who = worst[k]
@@ -140,6 +145,8 @@ def calibrate(db):
     print('  %-28s %8.4f   %s' % ('D3 thinnest class share', best_min[0], best_min[1]))
     print('  %-28s %8.4f   %s' % ('D6b LOWEST weapon:armour', low_ratio[0], low_ratio[1]))
     print('  %-28s %8.4f   %s' % ('D7 thinnest armour slot', thin[0], thin[1]))
+    print('  %-28s %8.4f   %s' % ('D7b thinnest slot / spawn', thin_per_spawn[0],
+                                  thin_per_spawn[1]))
 
 
 def main(argv):
@@ -170,9 +177,24 @@ def main(argv):
         print("\nGATE FAIL: a loot surface is skewed across classes, dominated by one "
               "item, or starving a worn slot.")
         return 1
+    # D7's reach is COUNTED, never implied. The round-1 vet found three surfaces silently
+    # outside it while this line claimed otherwise, so the line now states the number and
+    # names the reference surface D7X asserts on.
+    n_d7 = sum(1 for r in reports if r and r.get('d7_asserted'))
     print("\nGATE PASS: every mod loot surface spreads across all %d equipment classes "
-          "within its committed bounds, and every worn slot clears %.2f piece(s) per "
-          "open." % (len(SLD.GEAR_SLOTS), SLD.ARMOR_SLOT_FLOOR))
+          "within its committed bounds; every worn slot clears %.4f piece(s) per SPAWN "
+          "ITERATION (D7b, all %d surfaces) and %.2f per open on the %d of %d surfaces "
+          "at or above the reference spawn volume of %.2f (D7), the reference surface "
+          "%s among them (D7X)."
+          % (len(SLD.GEAR_SLOTS), SLD.ARMOR_SLOT_FLOOR_PER_SPAWN, len(reports),
+             SLD.ARMOR_SLOT_FLOOR, n_d7, len(reports), SLD.ARMOR_SLOT_FLOOR_REF_SPAWN,
+             SLD.ARMOR_SLOT_FLOOR_REF_SURFACE))
+    if SLD.D5_PINNED:
+        print("  D5 PINS (measured per-surface ceilings, each with a reason; a pin that "
+              "falls back under the %.3f global cap reds as dead config):"
+              % SLD.MAX_ITEM_SHARE_TOTAL)
+        for k, (v, why) in sorted(SLD.D5_PINNED.items()):
+            print("    %-42s %.3f - %s" % (k, v, why))
     return 0
 
 

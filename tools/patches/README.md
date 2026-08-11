@@ -118,6 +118,16 @@ Run over the modules (in `run_registry`), independent of the monolith battery:
   Later-wins is legal registry semantics, but it is **never silent**. Keep
   modules **disjoint**; if you must co-edit a record, make the ordering explicit
   in `REGISTRY` and expect the warning.
+- **The touch log OUTLIVES the run.** The same per-module `(module, record)` log
+  that feeds S4b is persisted as **`db._registry_touch_log`** before the tracking
+  set is swapped back out, because the question "which module wrote this record"
+  can only be asked by the **post-finalization `verify()` gates**, long after
+  `run_registry` returns. Read-only by contract; a gate that finds it missing must
+  ANNOUNCE the downgrade rather than pass quietly. First consumer:
+  `svc_armor_breadth.ownership_problems` (BL-R181-DEBT-7), which fails the build if
+  any loot table a module wrote is audited by no distribution surface - the defect
+  class where **both** loot gates stayed green while fifteen live surfaces starved,
+  because ownership was a folder name instead of a rule about writes.
 
 ---
 
