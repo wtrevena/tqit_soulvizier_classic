@@ -1,5 +1,34 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-250 (2026-08-11): THE DEVOURER OF BLOOD NOW WEARS THE DEMONS' BLACK SHROUD
+> **⚠️ BUILT, NOT YET DEPLOYED** (branch `fix/toxeus-shroud`; it goes out with the next build).
+> **Fully quit TQ and restart Steam before testing** (standing rule).
+>
+> **First, the name.** You wrote *"toxeus the murderer, devourer of souls"*. There is no Devourer of
+> Souls - the mod has a **Devourer of BLOOD** and an **Enslaver of SOULS** - so we picked from the data
+> instead of guessing: the **Enslaver already got that shroud** (monster and all three summon tiers,
+> live since build83), and the **Devourer of Blood had no shroud at all** while his minions are
+> literally Blood Demons. So this went on the **Devourer of Blood**. **If you meant a different one,
+> say so and it moves in one line.**
+>
+> **What he had before:** no body shroud whatsoever. What looked like smoke was two small puffs on his
+> **hands** (his black-poison effect), not something around him.
+>
+> **THE TEST - two places, because there are two of him:**
+> 1. **The world boss.** Fight the Devourer of Blood (the hidden-chest secret). He should be wrapped in
+>    the **same black smoke the Enslaver's shadow marauders wear**, standing still as well as moving.
+> 2. **The summon.** If you have his soul, summon him. The **pet must look the same as the boss** -
+>    that is the half that was missed last time on the Enslaver, so it is worth the extra look.
+>
+> **THE ONE THING TO WATCH FOR, honestly flagged:** his older **hand** smoke is still there underneath
+> the new shroud, and that hand effect uses an asset we have never confirmed the colour of - notes in
+> the repo call it green-rendering. If he reads **green, or green-and-black**, that is a real finding,
+> not you imagining it: say so and we delete or repoint the hand effect. Nobody has seen this in game
+> yet, so your eye is the only test that counts.
+>
+> **NOT CHANGED, on purpose:** the **Endless Hunt** (already black via his own mesh) and **Toxeus, End
+> of All Things** (the crafted supra pet). Tell us if you want the End of All Things shrouded too.
+
 > ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
 > **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule).

@@ -12447,3 +12447,68 @@ works in-game ("the removal of atlantis portals worked by the way, i just checke
 Closes the R-210 in-game gate (BL-PORTALCAP-DEBT-2). Still awaiting its own in-game check:
 the R-211/build82 sea-VOYAGE cap (Rhodes post-Typhon: no Marinos, no Gadir captain,
 no Atlantis adventure in the quest log) - BL-VOYAGECAP-DEBT-1 stays open until walked.
+
+---
+
+## R-250 LANE GATE RECORD (2026-08-11, `fix/toxeus-shroud`, `tools/patches/devourer_shroud.py`) - the Devourer of Blood's black shadow shroud
+
+**Will, verbatim:** *"toxeus the murderer, devourer of souls we need to add the black shadow shroud
+around him, the same one that his demon summon guys have"*. The name fuses two bosses; the target was
+resolved from the records, not from the phrase. Full reasoning + the four-variant table:
+`docs/WILL_RULINGS.md` -> **R-250**.
+
+**Measured on the shipped `build83` arz `44499f56`:** `um_bloodtoxeus_99` and all three
+`pets\bloodtoxeus_*` carry **no `charFxPakRunningNames` at all**, and their only body FX is R-7's
+`svc_black_poison` -> `343_dark_smoke` **x2 on `'R Hand';'L Hand'`** - two hand emitters, not a shroud
+"around him". The Enslaver, by contrast, has had the shroud on the monster AND every pet tier since
+build83, which is why "we need to ADD" could not be about him.
+
+**STATIC GATES (this lane builds nothing - the ship lane does):**
+- `py tools/patches/devourer_shroud.py --negtest` -> **28/28 plants caught**.
+- `py tools/patches/_check_registry.py` -> **OK, 60 modules**, order hash
+  `5cf0f80c5e63c6104d756f8d07a46db33061badf916a5193bddd54b64a0f361c`.
+- **ANTI-INERT:** `verify()` run against the live `build83` arz **FAILS with 10 problems** before the
+  fix and PASSES after it, so the gate is measured in both directions rather than asserted.
+- **APPLY HARNESS** on the real shipped arz: 2 records ADDED, 4 MODIFIED, **12 field ADDs, 0
+  overwrites, 0 lowered**; a second `apply()` moves **nothing** (idempotent); **blast radius 0** -
+  no record outside the derived roster + the 2 new records is touched.
+- **A9-style render resolution:** skill -> pak -> EffectEntity -> `.pfx` -> shipped archive =
+  `DRXeffects\shadowcloakrunning.pfx` -> `DRXeffects.arc` **PASS**. Two negative plants cover a
+  missing `.pfx` and a missing archive; when the staged payload is not visible the leg **announces
+  its own downgrade** instead of passing silently.
+- **COEXISTING GATES**, run on the same arz before and after `apply()`: `enslaver_shroud`,
+  `black_poison`, `champion_mesh`, `devourer_kit`, `toxeus_champion_kits`, `enslaver_pet_fx`,
+  `toxeus_endofallthings`, `fx_dangling_cleanup`, `uber_apex_orb` are **GREEN in both runs -
+  0 regressions**. `toxeus_hunt_encounter` is **RED in BOTH runs (9 problems, identical)**: a
+  pre-existing state of that module against a bare arz, not caused by this lane, and reported rather
+  than filtered out of the list.
+
+**Surfaces covered (roster DERIVED from two witnesses that must agree):**
+`um_bloodtoxeus_99` (`skillName19`, level `[1,2,3]`) + `pets\bloodtoxeus_1/2/3` (`skillName18`,
+level `1`), each also gaining `charFxPakRunningNames = drxshadowcloakrunning_fx_pak`. Every placed and
+roaming form and every difficulty is reached through the one monster record
+(`q_bloodtoxeus_lone` name1/2/3, `q_bloodtoxeus_ambush`, `egg_blooddragon` are all proxies at it).
+
+### DEBT REGISTER (registered at commit time, per the NO-NEW-SURFACE-WITHOUT-A-GATE law)
+
+- **`BL-DEVSHROUD-1` (P1, OPEN WILL DECISION - the real risk in this lane):** `svc_black_poison` was
+  **kept** ("ADD, never take away"; R-7 owns it and the RETIREMENT PROTOCOL forbids this lane retiring
+  it), so the Devourer now carries a **confirmed-black body shroud AND an unconfirmed hand smoke** at
+  the same time. `343_dark_smoke` is not colour-confirmed - R-10 calls it "the green-rendering
+  `343_dark_smoke`" and `black_poison`'s own docstring flags it as BP-SMOKE-1. This is the same
+  two-emitter picture Will described on the Enslaver in R-102 ("he has black smoke too but the green
+  is more prominent"). **If he reports green on the Devourer, the fix is one line** - repoint
+  `svc_black_poison_charfxpak` at the shadowcloak particle - and it is his call.
+- **`BL-DEVSHROUD-2` (P2, WILL DECISION):** the **End of All Things** (`pets\toxeus_eoat_1..3`) was
+  deliberately NOT given the shroud. He is a separate named variant and a crafted supra pet, and
+  R-102's sixth amendment already left "does the EoAT want its own look" as Will's decision.
+- **`BL-DEVSHROUD-3` (P1, LAUNCH-GATED - owner: Will's eye):** **NOT PROVEN IN GAME.** The particle is
+  the one Will has SEEN on the marauders and called black, the shape is derived from their own pak,
+  and the `.pfx` provably ships - but nobody has looked at the Devourer wearing it. No report from
+  this lane may claim how it reads. Rides with `BL-R102-DEBT-1`.
+- **`BL-DEVSHROUD-4` (P3, HYGIENE, not this lane's to fix):** `pets\bloodtoxeus_1..3` carry **orphan
+  `skillLevel` arrays with no `skillName` beside them** - slot 8 `[4,6,8]`, 9 `[1,2,3]`, 13 `[1]`,
+  14 `[1,2,3]`, 16 `[12]`, 17 `[1]` - SV-donor residue. This lane routes around them (it demands a
+  slot free in BOTH `skillName` and `skillLevel`) rather than clobbering one, but the residue is still
+  there and any module using a name-only freeness test will silently overwrite a per-difficulty array.
+  `toxeus_enslaver_1..3` have the same residue at 14/16/17.

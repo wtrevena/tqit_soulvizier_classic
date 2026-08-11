@@ -196,8 +196,29 @@ def _skill_slots(db, rec):
     return out
 
 
+def _level_slots(db, rec):
+    """{slot index} for every skillLevel<i> field PRESENT on rec, blank name or not."""
+    out = set()
+    for k, tf in (db.get_fields(rec) or {}).items():
+        b = k.split('###')[0]
+        if b.startswith('skillLevel') and b[10:].isdigit() and tf.values:
+            out.add(int(b[10:]))
+    return out
+
+
 def _free_slot(db, rec, lo=1, hi=23):
-    used = set(_skill_slots(db, rec))
+    """The lowest FULLY free slot - free in skillName AND in skillLevel.
+
+    Measured on the shipped build83 arz, `pets\\bloodtoxeus_1..3` carry ORPHAN
+    skillLevel arrays with no skillName beside them (slot 8 = [4,6,8], 9 = [1,2,3],
+    13 = [1], 14 = [1,2,3], 16 = [12], 17 = [1]) - SV-donor residue. A name-only
+    freeness test calls slot 8 free and silently OVERWRITES a per-difficulty array,
+    which is a field change this lane cannot explain in a record diff and which
+    would quietly disarm the slot if anything ever filled its name. Slot 18+ is
+    genuinely empty on all three, and 19+ on the monster, so demanding both costs
+    nothing here and makes the write purely ADDITIVE.
+    """
+    used = set(_skill_slots(db, rec)) | _level_slots(db, rec)
     for i in range(lo, hi + 1):
         if i not in used:
             return i
@@ -210,6 +231,93 @@ def _slot_of(db, rec, skill):
         if _norm(p) == want:
             return i
     return None
+
+
+def _find_resources_dir():
+    r"""The staged mod `Resources\` dir, for the A9-style render-resolution leg.
+
+    `$SVC_MOD_RESOURCES` wins. Otherwise walk up for `work\SoulvizierClassic\
+    Resources` - and because `work/` is gitignored, a WORKTREE has none, so the
+    MAIN checkout is followed through the worktree's `.git` FILE
+    (`gitdir: <main>/.git/worktrees/<name>`), the same hop
+    `tools/check_build_inputs.py` uses to make a worktree build work at all.
+    """
+    import os
+    env = os.environ.get('SVC_MOD_RESOURCES')
+    if env and _Path(env).is_dir():
+        return _Path(env)
+    roots = []
+    for base in _Path(__file__).resolve().parents:
+        roots.append(base)
+        g = base / '.git'
+        if g.is_file():
+            try:
+                txt = g.read_text(encoding='utf-8', errors='ignore').strip()
+            except OSError:
+                txt = ''
+            if txt.startswith('gitdir:'):
+                gd = _Path(txt.split(':', 1)[1].strip())
+                for anc in [gd] + list(gd.parents):
+                    if anc.name == '.git':
+                        roots.append(anc.parent)
+                        break
+    for r in roots:
+        cand = r / 'work' / 'SoulvizierClassic' / 'Resources'
+        if cand.is_dir():
+            return cand
+    return None
+
+
+def fx_asset_resolution(db, resources=None):
+    r"""A9-STYLE RENDER RESOLUTION on the pak: does the particle actually SHIP?
+
+    The record chain can be perfect and the boss still smoke nothing if the
+    `.pfx` the EffectEntity names is not inside a shipped `.arc` - resolution is
+    not rendering (the A9/D5 lesson, `tools/validate_render_chain.py`). This walks
+    the WHOLE chain the engine walks:
+
+        skill.charFxPakSelfNames -> pak.particleEffectNames -> fx.effectFile
+              -> `<Arc>\<inner>.pfx` inside `<mod Resources>\<Arc>.arc`
+
+    and requires the Devourer's chain to land on the SAME shipped file as the
+    demons' own. Returns (status, detail) with status PASS / FAIL / SKIP; SKIP is
+    announced loudly by the caller rather than counted as a pass, because a gate
+    that cannot see the payload has not answered the question.
+    """
+    fx = _gv1(db, _SHROUD_PAK, 'particleEffectNames')
+    if isinstance(fx, list):
+        fx = fx[0] if fx else None
+    if not fx or not db.has_record(str(fx)):
+        return ('FAIL', 'the shroud pak names no resolvable EffectEntity (%r)' % fx)
+    eff = _gv1(db, str(fx), 'effectFile')
+    if not eff:
+        return ('FAIL', '%s has no effectFile' % fx)
+    res = _Path(resources) if resources else _find_resources_dir()
+    if res is None or not res.is_dir():
+        return ('SKIP', 'no staged mod Resources dir found (set $SVC_MOD_RESOURCES); '
+                        'the .pfx SHIPPING could not be checked')
+    parts = str(eff).replace('/', '\\').split('\\')
+    if len(parts) < 2:
+        return ('FAIL', 'effectFile %r has no archive component' % eff)
+    arcname, inner = parts[0], '/'.join(parts[1:]).lower()
+    cand = res / (arcname + '.arc')
+    if not cand.exists():
+        hits = [p for p in res.glob('*.arc') if p.stem.lower() == arcname.lower()]
+        cand = hits[0] if hits else None
+    if cand is None:
+        return ('FAIL', '%s.arc is not in the shipped payload, so %r cannot render'
+                        % (arcname, eff))
+    try:
+        _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
+        from arc_patcher import ArcArchive
+        names = {(e.name or '').lower().replace('\\', '/')
+                 for e in ArcArchive.from_file(cand).entries}
+    except Exception as e:                                  # noqa: BLE001
+        return ('SKIP', 'could not read %s (%s)' % (cand.name, e))
+    if inner not in names:
+        return ('FAIL', '%r is NOT inside %s - the shroud would resolve to nothing '
+                        'and he would smoke nothing' % (eff, cand.name))
+    return ('PASS', '%s -> %s (%d entries)' % (eff, cand.name, len(names)))
 
 
 def _del_field(db, rec, name):
@@ -470,6 +578,17 @@ def verify(db, tags=None):
         problems.append("%s has no effectFile (A9 render resolution: the pak would "
                         "resolve to nothing)" % _SHADOWCLOAK_FX)
 
+    # ── A9-STYLE RENDER RESOLUTION on the pak: resolution is not rendering ──
+    if db.has_record(_SHROUD_PAK):
+        status, detail = fx_asset_resolution(db)
+        if status == 'FAIL':
+            problems.append("A9 RENDER RESOLUTION: %s" % detail)
+        elif status == 'SKIP':
+            print("  [devourer_shroud] A9 render resolution DOWNGRADED (not a pass): %s"
+                  % detail)
+        else:
+            print("  [devourer_shroud] A9 render resolution PASS: %s" % detail)
+
     # the demon he actually summons must still exist - "his demon summon guys" is
     # the whole reason this asset was chosen.
     if not db.has_record(_BLOODSPAWN):
@@ -521,10 +640,18 @@ def verify(db, tags=None):
                 % (rec, ' (PET TIER)' if is_pet else ' (MONSTER)'))
         else:
             lv = db.get_field_value(rec, 'skillLevel%d' % slot)
-            lv0 = lv[0] if isinstance(lv, list) and lv else lv
-            if not lv0:
+            lv = list(lv) if isinstance(lv, list) else ([lv] if lv is not None else [])
+            want = [1, 2, 3] if rec == _DEVOURER else [1]
+            if not lv or not lv[0]:
                 problems.append("%s: shroud sits at skillLevel%d=%r (level 0 is not "
                                 "granted, so it never displays)" % (rec, slot, lv))
+            elif lv != want:
+                problems.append(
+                    "%s: shroud skillLevel%d=%r, expected %r. The monster carries the "
+                    "per-difficulty [1,2,3]; a pet tier IS one record per tier, so a "
+                    "scalar 1 is its honest shape. A different array here means "
+                    "another module has written this slot after us."
+                    % (rec, slot, lv, want))
         # RUNNING channel - the marauders' own field on every surface.
         run = _gv1(db, rec, 'charFxPakRunningNames')
         if _norm(run) != _norm(_SHADOWCLOAK_PAK):
@@ -705,6 +832,12 @@ def _negtest():
          lambda db: db.d[_MARAUDER].__setitem__('charFxPakRunningNames', [''])),
         ('the effect entity resolves to no .pfx (A9 render resolution)',
          lambda db: db.d[_SHADOWCLOAK_FX].__setitem__('effectFile', [''])),
+        ('A9: the .pfx names a file that is NOT in the shipped payload',
+         lambda db: db.d[_SHADOWCLOAK_FX].__setitem__(
+             'effectFile', [r'DRXeffects\this_pfx_does_not_ship.pfx'])),
+        ('A9: the .pfx names an archive the mod does not ship at all',
+         lambda db: db.d[_SHADOWCLOAK_FX].__setitem__(
+             'effectFile', [r'NoSuchArchive\shadowcloakrunning.pfx'])),
         ('the shroud grows a combat payload',
          lambda db: db.d[_SHROUD].__setitem__('offensivePhysicalMin', [500.0])),
         ('the donor purple tint comes back',
@@ -713,6 +846,10 @@ def _negtest():
          lambda db: db.d[_SHROUD].__setitem__('Class', ['Skill_AttackRadius'])),
         ('the shroud sits at level 0 (in a slot, never displayed)',
          lambda db: db.d[_PETS[0]].__setitem__('skillLevel8', [0])),
+        ('a later module overwrites the pet shroud level with a per-difficulty array',
+         lambda db: db.d[_PETS[0]].__setitem__('skillLevel8', [4, 6, 8])),
+        ('the monster shroud loses its per-difficulty [1,2,3]',
+         lambda db: db.d[_DEVOURER].__setitem__('skillLevel19', [1])),
         ('a controller stops firing self-buffs, so the toggle is inert',
          lambda db: db.d[_CTRL_P].__setitem__('BuffSelfBehavior', ['NeverBuff'])),
         ('R-7\'s black poison is taken away instead of added to',

@@ -5419,3 +5419,98 @@ Standing law: EVERY build ship ends with `git push origin main --tags`. The ship
 complete until the push succeeds. Applies to every lane from build84 onward (already baked
 into the in-flight b84/b86/b87 ship briefs); doc-only commits push at the next convenient
 point, ship commits push immediately.
+
+---
+
+## R-250 [2026-08-11] IMPLEMENTED (branch `fix/toxeus-shroud`, module `tools/patches/devourer_shroud.py`) - the Devourer of Blood gets the demons' black shadow shroud
+
+**WILL, VERBATIM:**
+
+> "toxeus the murderer, devourer of souls we need to add the black shadow shroud around him, the same
+> one that his demon summon guys have"
+
+**THE NAME HE USED DOES NOT EXIST, AND THAT IS WORTH ONE PARAGRAPH RATHER THAN A GUESS.** "Devourer of
+Souls" fuses the two boss names - **Devourer of Blood** and **Enslaver of Souls** - so the phrase alone
+cannot pick a target. The RECORDS can. Read out of the SHIPPED `build83` arz `44499f56`:
+
+| variant (display name) | anchor record | its summons | black shadow shroud today? |
+|---|---|---|---|
+| Toxeus the Murderer, **Enslaver of Souls** | `um_toxeus_enslaver_99` + `pets\toxeus_enslaver_1..3` | Enslaved Shadow Marauders `um_enslaver_marauder_99` | **YES - both channels, on the monster AND all three pet tiers, live since build83** |
+| Toxeus the Murderer, **Devourer of Blood** | `um_bloodtoxeus_99` + `pets\bloodtoxeus_1..3` | Blood Demons `drxcreatures\blooddemon\um_devourer_bloodspawn_99` | **NO - nothing, on any surface** |
+| Toxeus the Murderer, the Endless Hunt | `um_toxeus_hunt_99` / `um_toxeus_hunt_l_99` | Coursers (bloodhounds, not demons) | mesh-embedded `ShadowStalker_Smoke` - the one he called "the proper black shroud" |
+| Toxeus the Murderer, End of All Things | `pets\toxeus_eoat_1..3` | EoAT disciples | none (deliberately out of scope, below) |
+
+**Two independent facts pick the Devourer, and they agree.** (1) `enslaver_shroud` already covers the
+Enslaver's monster and every pet tier and that SHIPPED in build83, so "we need to **ADD**" cannot be a
+statement about him - on his surfaces it is already there. (2) The Devourer is the only Toxeus variant
+carrying no shroud anywhere, and his summoned minions live in the `blooddemon` folder: "his demon
+summon guys", literally.
+
+**WHAT HE HAS TODAY, AND WHY IT IS NOT A SHROUD.** `um_bloodtoxeus_99` and all three `bloodtoxeus_*`
+pets have **no `charFxPakRunningNames` field at all** - the field the marauders and the whole Enslaver
+family use. His only body FX is R-7's `svc_black_poison` -> `svc_black_poison_charfxpak`, whose shape is
+`particleEffectNames = 343_dark_smoke x2` on `particleEffectAttachPoints = 'R Hand';'L Hand'`. That is
+**two hand emitters**, and Will asked for a shroud "**around him**". It is the same ROUND-4 defect the
+Enslaver's own lane had to fix on itself in b98. **He also has no crimson shroud** despite his name -
+crimson is only his `baseTexture` (`newskeleton_crimson.tex`); there is no crimson FX record on him
+anywhere - so nothing of his own design is being displaced.
+
+**WHAT SHIPPED.** Both channels the marauders carry, copied verbatim:
+- `charFxPakRunningNames = drxshadowcloakrunning_fx_pak` - the demons' own field, their own pak - on
+  the monster and all three pet tiers, all four of which had **nothing** there before.
+- `svc_devourer_shroud` (a `Skill_BuffSelfToggled`) + `svc_devourer_shroud_charfxpak`, pointed at the
+  demons' `drxshadowcloakrunning_fx` with **no attach points** (body-centred, exactly the demons' own
+  pak shape), in a **fully free** slot on each surface: `skillName19` on the monster (level `[1,2,3]`),
+  `skillName18` on each pet (level `1`). **No skill was dropped** (R-26's spirit).
+- **HIS OWN records, not `svc_enslaver_shroud`.** Sharing the Enslaver's skill record would have been
+  one record cheaper and would have re-created the exact defect **R-93** exists to prevent - Will's "he
+  has no different or unique skills from toxeus the murderer, the enslaver of souls", which was
+  literally true of 9 of his 12 slots. The FX asset is shared, because that is the request; the skill
+  records are not.
+- Record diff is **purely additive**: 2 records ADDED, 4 MODIFIED, 12 field ADDs, **0 overwrites, 0
+  lowered, 0 stray**. `_free_slot` demands a slot free in `skillName` **and** `skillLevel`, because the
+  pets carry orphan `skillLevel` arrays (slot 8 = `[4,6,8]`, 9 = `[1,2,3]`, 13, 14, 16, 17) with no name
+  beside them - a name-only freeness test silently overwrites a per-difficulty array.
+
+**COVERAGE, and the one thing that makes it durable.** The roster is never listed; it is derived from
+**two witnesses that must agree** - the anchor plus `summon_bloodtoxeus.spawnObjects`, and every record
+described by his name tags (`tagMonsterHemorrheus` / `tagMonsterHemorrheusPet`). The second witness is
+what catches a **difficulty clone**: the Hunt already has one (`um_toxeus_hunt_l_99`, minted at build
+time), and if the Devourer ever gets one it keeps his description tag, the first witness never sees it,
+and the gate fails instead of shipping a Legendary Devourer with no shroud. Placement needs no separate
+leg: `q_bloodtoxeus_lone` (name1/name2/name3 = the three difficulties), `q_bloodtoxeus_ambush` and
+`egg_blooddragon` are all **proxies at the one monster record**, so the record change reaches every
+placed and roaming form and every tier.
+
+**CRASH LAW asserted, not assumed.** `verify()` walks every skill slot on every roster member and FAILS
+if any `Skill_SpawnPet*` record in his kit has grown a `charFxPak*` field - the build28 trap. Everything
+this module writes lands on a monster/pet record field or on a `Skill_BuffSelfToggled`.
+
+**GATE:** `tools/patches/devourer_shroud.py --negtest` = **28/28 plants caught**, including the whole
+ask (no shroud at all), the b98 defect verbatim (monster wired, pets not), a skipped tier, a new 4th
+tier, a Legendary difficulty clone, the hand-pair shape regression, `343_dark_smoke` swapped in for the
+confirmed black, the demons' own reference drifting, R-7's black poison being taken away, and a
+`charFxPak` landing on his SpawnPet skill. **ANTI-INERT PROOF:** the gate FAILS on the live `build83`
+arz with 10 problems before the fix, so it is measured in both directions. An **A9-style render
+resolution** leg walks skill -> pak -> EffectEntity -> `.pfx` and requires the file to be inside a
+SHIPPED archive (`DRXeffects\shadowcloakrunning.pfx` -> `DRXeffects.arc`, PASS); when it cannot see the
+staged payload it **announces its own downgrade** instead of passing quietly.
+
+### ⚠️ TWO THINGS THIS LANE DID NOT DECIDE, and one is a real risk
+
+1. **`svc_black_poison` was KEPT, and that may be wrong.** "ADD, never take away": it is R-7's record,
+   `black_poison` owns it, and the RETIREMENT PROTOCOL forbids this lane retiring it. But the honest
+   statement is that `343_dark_smoke` is **not a colour-confirmed black** - R-10 calls it "the
+   green-rendering 343_dark_smoke" and `black_poison`'s own docstring flags it (BP-SMOKE-1). So the
+   Devourer now carries a confirmed-black BODY shroud **and** an unconfirmed HAND smoke at the same
+   time, which is exactly the two-emitter picture Will described on the Enslaver in R-102 ("he has
+   black smoke too but the green is more prominent"). **If he reports green on the Devourer the fix is
+   one line** - repoint `svc_black_poison_charfxpak` at the shadowcloak particle - **and it is Will's
+   call, not this lane's.** `BL-DEVSHROUD-1`.
+2. **The End of All Things was NOT touched** (`pets\toxeus_eoat_1..3`). He is a separate named variant,
+   a crafted supra pet, and R-102's sixth amendment already left "does the EoAT want its own look" as
+   Will's decision. `BL-DEVSHROUD-2`.
+
+**NOT PROVEN IN GAME** (`BL-DEVSHROUD-3`). The particle is the one Will has SEEN and called black, on
+the marauders; the shape is derived from their own pak; the `.pfx` provably ships. Nobody has looked at
+the Devourer wearing it, and the player-surface checklist forbids claiming otherwise.
