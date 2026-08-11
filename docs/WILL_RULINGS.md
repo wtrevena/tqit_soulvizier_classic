@@ -4529,6 +4529,10 @@ a designed theme from a defect is a gate that gets switched off - the b63 1.0u l
    2.0:1 to 4.1:1, thinnest worn slot 0.01-0.04 per open against the D7 floor of 0.52.** Reported,
    not fixed: one lane per problem, and b79 has already merged (`BL-R181-DEBT-7`). The fix is
    mechanical - identical donor shape, one `widen_armor_rows` call per table plus `all_surfaces()`.
+   **-> CLOSED 2026-08-11 by the R-181 SECOND AMENDMENT below** (branch `fix/orb-armor-rows`, module
+   `tools/patches/orb_armor_rows.py`). Note for the record: "2.0:1 to 4.1:1" understated it. Measured
+   on the shipped build80 arz `c5851a1a` the fifteen ran **3.45:1 to 8.38:1** with a thinnest worn
+   slot of **0.007**, because the reading above was taken before b79's own weapon-row raise landed.
 
 **NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's. Will's check -
 kill Alkyoneus, open all six cage chests across a couple of runs, expect visible helms, chest plates,
@@ -4822,3 +4826,116 @@ md5-proven byte-unchanged, so the arz+Text coupling was SATISFIED, not waived. C
 one line (`RAISE_ROW_CHANCES = False`). One new debt filed by the ship lane: `BL-R220-DEBT-7` (the R-200
 negtest harness cannot run against a post-R-200 arz - pre-existing, measured on the untouched shipped
 baseline too). Full records: `docs/BACKLOG.md` -> SHIP RECORD + BUILD79-DEV GATE RECORD.
+
+---
+
+## R-181 SECOND AMENDMENT [2026-08-11] IMPLEMENTED (branch `fix/orb-armor-rows`, module `tools/patches/orb_armor_rows.py`) - the orb tables' armour has an OWNER, and "owned by nobody" is now structurally impossible
+
+**WILL'S ORDER, the one this closes:** orbs roll ALL item classes - **armour parity included**. R-220
+delivered the weapon half of that on the mystical orbs. This is the armour half.
+
+**WHAT WAS ACTUALLY WRONG, and it is not "someone forgot a table".** R-181 decided what it owned by
+asking what FOLDER a loot table lived in (`\svc\`). R-220 then wrote fifteen tables in other folders -
+`uberorb_default_*` x12 and `boss_charon_{n,e,l}01b` - and widened only their WEAPON row. Armour on
+them belonged to no module, so no surface audited them, so **both fail-loud loot gates were GREEN for
+an entire build while fifteen live player surfaces starved.** MEASURED on the shipped build80 arz
+`c5851a1a`:
+
+| | shipped build80 | after this wave |
+|---|---|---|
+| weapon:armour, the 15 tables | **3.45:1 .. 8.38:1** (cap 1.85) | **0.28:1 .. 0.49:1** |
+| thinnest worn slot, per open | **0.007 .. 0.044** | **0.285 .. 1.164** |
+| thinnest worn slot, per spawn iteration | **0.0011 .. 0.0050** | **0.0443 .. 0.1406** |
+
+After the wave every uber orb in the mod sits in the SAME weapon:armour band as the three apex orbs
+Will already farms (0.28-0.33), which is the parity test that matters: consistency with the surface he
+has actually played, not a number chosen here.
+
+**THE FIX IS R-181'S OWN TREATMENT, NOT A SECOND OPINION.** One `svc_armor_breadth.widen_armor_rows`
+call per table: every armour row to the weapon row's 40%, every unique-armour member to 850, the
+aggregate armour master (all five worn slots at equal weight) into the shield row's free member slot,
+plus the weapon row's own two R-181 corrections so lifting armour cannot INVERT the surface. Additive
+or a strict raise throughout - nothing removed, nothing lowered, `numSpawn` untouched.
+
+**TWO THINGS HAD TO BE WIDENED BEFORE THE TREATMENT COULD EVEN SEE THESE TABLES, and both were silent
+misses rather than design decisions:**
+
+1. **The two donor families spell "unique" differently.** The xpack/DRX family names
+   `\torso\mastertables\unique_torso_l01.dbr`; the base-game LEVEL-BANDED family the nine
+   `uberorb_default_<band>` tables clone names `\torso\mastertables\unique\torsoall_n01.dbr` and
+   `\head\mastertables\uniques\headall_n01.dbr`. `_UNIQUE_ARMOR_RE` matched only the first spelling,
+   so on those nine tables it saw the SHIELD member and none of the four body slots - which is why
+   helm/arms/torso/legs sat at the donor's weight of 27 against ~1700 of static junk. Same split on
+   the weapon side (`unique_1h_l01` vs `unique\1h_all_l01`), which hid the fact that one member was
+   paying axe+mace+sword at a single class's weight. The expressions are now strictly WIDER - every
+   path the old ones matched still matches - and the proof is byte-level, below.
+2. **Ownership was a folder name.** It is now a rule about WRITES.
+
+**THE LAW THIS ADDS (`tools/svc_loot_ownership.py`):**
+
+> Every loot table a module WRITES must be inside the distribution gate's surface set.
+
+Not "every mod-owned table" - every WRITTEN table, whoever wrote it and wherever it lives. Two
+independent witnesses, because neither alone is enough: the LEDGER (the four shared loot builders
+register every table they touch, so any caller anywhere is covered, including dry runs and the
+negative battery) and the REGISTRY TOUCH LOG (`run_registry` already recorded every `_modified.add()`
+against the module that made it; it is now persisted as `db._registry_touch_log` for the
+post-finalization gates, which catches a module that writes loot fields RAW). A missing touch log is
+ANNOUNCED, never a silent pass. Coverage of the orb tables is likewise DERIVED - `all_surfaces` reads
+R-220's own `scope_tables` - so a sixteenth orb table is swept AND audited the day it exists. A typed
+list of fifteen names is exactly how this debt existed.
+
+**ONE THRESHOLD GAINED A SECOND FORM, AND IT WAS DERIVED, NOT LOOSENED.** D7 ("every worn slot pays
+0.52 pieces per open") is a statement about a container that spawns ~10.6 items, because that is the
+container it was calibrated on - every one of R-181's 42 surfaces spawns 10.58 to 18.96, so the number
+was never volume-sensitive and nothing said so. The orb tables spawn **5.06 to 8.28**. On them the
+same absolute number is not a parity demand, it is a demand for more DROPS - `numSpawn`, which
+`BL-R181-DEBT-5` reserves to Will - and it is unreachable from the other side too: after the treatment
+they sit at weapon:armour 0.28-0.49 against D6b's 0.24 floor, so armour on them CANNOT be lifted
+further without burying weapons. So **D7 keeps its exact number and its exact behaviour on every
+surface at or above the volume it was derived at (all 42 - byte-identical), and D7b asserts the same
+invariant with the container's own volume divided out, on all 57.** That quantity turns out to be
+nearly a constant of the contract: after the wave EVERY chest, hoard, cage variant, DRX donor and orb
+lands on 0.1406 / 0.0589 / 0.0996 per iteration by tier. **D7b at 0.0375 reds all 57 surfaces of the
+defect state** (its best reading is 0.0175), making it a strictly stronger revert-detector than the
+absolute floor it complements. Nothing was weakened: the defect state goes from 27 findings to **622**.
+
+**FOUR SURFACES CARRY A MEASURED, REASONED D5 PIN INSTEAD OF A LOOSENED CAP.** Four level-banded orb
+tiers hold a single item at 3.2-4.5% of the surface's gear mass against the 3.0% cap. MEASURED on
+build79, BEFORE any of this: 3.2%, 4.58%, 4.61%, 4.47% - **pre-existing concentrations that were
+invisible only because nobody audited the table**, and this wave IMPROVES two of them. The obvious
+alternative - let D5's cap scale with pool size, the argument D4 already makes for classes - was
+measured and REJECTED: the smallest x-uniform among the 24 pre-existing surfaces D5 reds in the defect
+state is 3.53 and the largest among the new orb surfaces is 6.35, so any clause loose enough to pass
+the orbs would let **23 of those 24 shipped defects through**. The global cap therefore stays 0.030 for
+every surface in the mod and these four are held to their own measured ceiling, each with a written
+reason; a pin that falls back under the global cap reds as dead config. Cause registered as
+`BL-R181-DEBT-9`: base-game level-banded static randomisers paying a narrow set of high-band
+legendaries, the same class of finding D4 already records and the same content this mod does not own.
+
+**NON-REGRESSION IS PROVEN AT THE BYTE LEVEL, NOT ASSERTED.** The R-181 wave running on this branch
+against the build79 arz reproduces the **SHIPPED build80 bytes exactly on all 360 FixedItemLoot
+records in the db** - so the widened expressions and the new surface set change nothing outside R-220
+scope. Every other calibration number is unmoved: D1 0.2084, D2 0.2084, D4 5.0383, D6 1.5857, D8
+0.2413, D9 0.2918, D3 0.0175, D6b 0.2845.
+
+**GATES.** All three loot gates PASS on the build80 arz with the wave applied: distribution (57
+surfaces, up from 42), orb breadth (18 tables, pools GREW - epic 101-121 against the 95-116 R-220
+shipped, legendary 246-327 against 246-308), chest breadth (35 tables). Registry selfcheck OK, 58
+modules, order `4a8297a0e59d`. Negative battery: **13 planted defects all red, 3 positive controls
+green**, including the b79 armour rows replanted on one table from EACH donor family and the SYNTHETIC
+ORPHAN planted against both ownership witnesses.
+
+**NOT PROVEN IN-GAME, and it is the same gate as R-181's.** Everything above is a database and gate
+proof. Will's check: kill any uber that drops a Mystical Orb (a red-uber orb, Charon's Essence, or any
+generic-orb uber) and expect helms / chest plates / bracers / greaves / shields out of the ORB at
+roughly the rate the cage chests now pay them.
+
+**ONE THING IS OWED TO THE `fix/craft-thrown-breadth` MERGE, and it is not hypothetical any more.**
+`BL-R181-DEBT-4` predicted that bucketing `WeaponHunting_RangedOneHand` with `bow` would be invalidated
+the moment that lane lands. Measured here by accident and worth recording: audited against a
+concurrently-built arz carrying that lane's content, **D8 bow reads 29.2-29.8% against its 29.0% cap on
+six of the new orb surfaces** - they are the thinnest weapon pools in the mod, so the mis-bucketing
+shows there FIRST. On the canonical build80 artifact the same check reads 0.2413. Do both halves of
+`BL-R181-DEBT-4` at that merge; this lane deliberately does not, because giving thrown its own slot
+before its content exists would red D3 for a class that pays nothing.

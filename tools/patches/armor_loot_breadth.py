@@ -134,20 +134,28 @@ def verify(db, tags):
         raise SystemExit("armor_loot_breadth gate FAILED: no loot surface was audited "
                          "at all (scope rule broken - it must never be empty)")
     worst_ratio, worst_label = 0.0, '?'
-    thinnest, thin_label = 1e9, '?'
+    thin_ps, thin_ps_label = 1e9, '?'
     for rep in reports:
         wm = sum(rep['slot_mass'].get(s, 0.0) for s in SLD.WEAPON_SLOTS)
         am = sum(rep['slot_mass'].get(s, 0.0) for s in SLD.ARMOR_SLOTS)
         if am > 0 and wm / am > worst_ratio:
             worst_ratio, worst_label = wm / am, rep['label']
+        spawn = rep.get('S_eff') or 1.0
         for s in SLD.ARMOR_SLOTS:
-            v = rep['slot_mass'].get(s, 0.0)
-            if v < thinnest:
-                thinnest, thin_label = v, '%s/%s' % (rep['label'], SLD.SLOT_LABEL[s])
+            v = rep['slot_mass'].get(s, 0.0) / spawn
+            if v < thin_ps:
+                thin_ps, thin_ps_label = v, '%s/%s' % (rep['label'], SLD.SLOT_LABEL[s])
+    # Reported per SPAWN ITERATION, not per open, because that is the form asserted on
+    # EVERY surface (D7b). The per-open floor D7 is asserted too, on every surface at or
+    # above the volume it was derived at - saying "every worn slot clears 0.52/open"
+    # while a low-volume orb sits at 0.28 would be a gate lying in its own PASS line.
     print("  armor_loot_breadth gate PASS: %d loot surface(s) audited; every worn slot "
-          "clears %.2f/open (thinnest %s = %.2f), no class over %.0f%% of a surface, no "
-          "item over %.1fx its class uniform share, worst weapon:armour %.2f:1 on %s (cap %.2f)."
-          % (len(reports), SLD.ARMOR_SLOT_FLOOR, thin_label, thinnest,
+          "clears %.4f piece(s) per SPAWN ITERATION (thinnest %s = %.4f) and %.2f/open "
+          "on every surface at or above S=%.2f, no class over %.0f%% of a surface, no "
+          "item over %.1fx its class uniform share, worst weapon:armour %.2f:1 on %s "
+          "(cap %.2f)."
+          % (len(reports), SLD.ARMOR_SLOT_FLOOR_PER_SPAWN, thin_ps_label, thin_ps,
+             SLD.ARMOR_SLOT_FLOOR, SLD.ARMOR_SLOT_FLOOR_REF_SPAWN,
              100.0 * SLD.MAX_CLASS_SHARE_AGGREGATE,
              SLD.MAX_ITEM_OVER_UNIFORM, worst_ratio, worst_label,
              SLD.MAX_WEAPON_ARMOUR_RATIO))
