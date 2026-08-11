@@ -11255,6 +11255,13 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
             # Huo-ren class this assert exists to make unbuildable. Dropping the
             # leading truthiness test makes a locomotion-less table fail LOUD,
             # which is the whole point of a fail-loud gate.
+            # SAFETY, MEASURED BEFORE THE CHANGE: all 20 `_build_boss_summon`
+            # call sites across the monolith and every patch module were
+            # enumerated by AST and each source resolved against the live arz.
+            # 16 sit on tables that DO bind locomotion; 4 declare no table at
+            # all and therefore take the `else` branch below, which is
+            # untouched. `anm_quilvine.dbr` is the only locomotion-less table
+            # in reach and no summon source uses it. Zero callers newly red.
             if f'{_row}RunAnim' not in _run_fields:
                 _loco = (sorted(_run_fields) if _run_fields else
                          'NONE - this table binds no locomotion clip at all, '

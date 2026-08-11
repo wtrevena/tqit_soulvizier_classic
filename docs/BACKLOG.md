@@ -119,12 +119,29 @@ reproduced and proved fixed rather than argued about.
   cosmetic - the run cycle may read fast - not structural. Confirm in the TESTHUB yard alongside
   the scale sweep (BL-BOUGH-DEBT-2) and record the reading either way.
 
-* **`BL-BOUGH-DEBT-7` (P3, OPEN) - `_build_boss_summon`'s replace-by-pet-paths change is
-  monolith-wide.** It now supersedes any earlier registration of the same pet-path set instead of
-  appending. Across the other 23 summon families no duplicate pet set exists, so behaviour is
-  unchanged for them and the full-build gate output should be byte-identical outside this lane -
-  but that is an argument, not a measurement, until the Ship phase runs the full DB build. Watch
-  for a `summon-pet registry: SUPERSEDED` line naming any family other than `charon_oarsman_*`.
+* **`BL-BOUGH-DEBT-7` (P3, OPEN) - the two monolith-wide changes, and what was measured.**
+  Both edits to `apply_svc_patches` are global, so both were checked against every caller before
+  being called safe:
+
+  1. **The D19 guard (`_run_fields and` dropped) - PROVEN SAFE, measured.** The change only bites a
+     caller whose SOURCE monster sits on an anim table that binds no `*RunAnim` row at all. All
+     **20** `_build_boss_summon` call sites were enumerated by AST across the monolith and every
+     patch module and each source resolved against the live arz: 16 sit on tables that bind
+     locomotion (`anm_skeleton01`, `anm_dragonian`, `anm_sepulchralwyrm`, `anm_melinoe`,
+     `anm_seductress`, `anm_wraith01`, `anm_minion`, `anm_epiales01`, `anm_machae`, `anm_automatoi`,
+     `anm_sandspirit`, `anm_bogdweller`), and 4 declare no table at all
+     (`um_enslaver_marauder_99`, `um_emberteeth`, `um_neferkha_99`, `um_sarpedon_41`), which takes
+     the assert's *other* branch - untouched by this edit. **`anm_quilvine.dbr` is the only
+     locomotion-less table any of this reaches, and after the donor swap no summon source uses it.**
+     Zero callers would newly red.
+  2. **Replace-by-pet-paths - argued from the green baseline, not yet re-measured.** The registry
+     now supersedes an earlier registration of the same pet-path set instead of appending. A
+     duplicate pet-path set means two builders wrote the same pet records, which is itself the bug;
+     the build was green across all 24 families before `charon_rework` existed, so no such duplicate
+     existed then and behaviour is unchanged for them. That is sound but it is still an argument
+     until the Ship phase runs the full DB build. **Watch the log for a
+     `summon-pet registry: SUPERSEDED` line naming any family other than `charon_oarsman_*`** - one
+     is expected and correct, any other is a finding.
 
 * **`BL-BOUGH-DEBT-5` (P3, OPEN) - the monolith still authors the Charon encounter first.**
   `apply_svc_patches._create_goldenbough_boss` runs, builds Charon, and `charon_rework` then
