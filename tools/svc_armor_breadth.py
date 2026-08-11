@@ -597,26 +597,40 @@ _VARIANT_W = (50, 25, 25)
 
 
 def cage_surfaces(lk):
-    """The Polis Daemonai Warden's vault cage: chest_01 and chest_03, on EACH difficulty
+    r"""The Polis Daemonai Warden's vault cage: chest_01 and chest_03, on EACH difficulty
     branch, with the 3 themed variants at the ProxyAccessoryPool weights polis_vault
     writes. Auditing all three branches matters: a themed variant is only ever met
     alongside its two siblings, so judging one in isolation would both over-flag a
-    deliberate theme and under-flag the mix the player actually opens."""
+    deliberate theme and under-flag the mix the player actually opens.
+
+    R-230 (Will 2026-08-11) adds the TESTHUB TWIN as a second family. It is the same
+    cage - `svc_loot_volume.clone_hub_cage` copies the canonical chain record for record
+    - kept at the SHIPPED volume for Will's DEV farm while canonical trims, and the four
+    TESTHUB-only duplicate placements name it. It is grouped here for the same reason the
+    canonical cage is: audited variant-by-variant instead, a deliberate theme's bias reds
+    D5/D6/D8 (measured: 10 findings across the six twin branches, every one of them the
+    theme doing its job). `svc_loot_volume` owns these names; the patterns are mirrored
+    rather than imported because that module imports THIS one, and its V5 check resolves
+    both sides against the db every run, so the two cannot drift apart in silence.
+    """
     out = []
-    for N in ('01', '03'):
-        for tier in TIERS:
-            tabs, wts = [], []
-            for v, w in zip(('a', 'b', 'c'), _VARIANT_W):
-                if v == 'a':
-                    p = (r'%s\polisvault_%s.dbr' % (_L, N) if tier == 'l'
-                         else r'%s\polisvault_%s_%s.dbr' % (_L, N, tier))
-                else:
-                    p = r'%s\polisvault_%s_%s%s.dbr' % (_L, N, tier, v)
-                if lk.real(p):
-                    tabs.append(p)
-                    wts.append(w)
-            if tabs:
-                out.append(('gaoler cage chest_%s [%s]' % (N, tier), tabs, wts, tier))
+    for label, canon in (('gaoler cage', True), ('TESTHUB cage twin', False)):
+        for N in ('01', '03'):
+            for tier in TIERS:
+                tabs, wts = [], []
+                for v, w in zip(('a', 'b', 'c'), _VARIANT_W):
+                    if not canon:
+                        p = r'%s\polisvault_hub_%s_%s%s.dbr' % (_L, N, tier, v)
+                    elif v == 'a':
+                        p = (r'%s\polisvault_%s.dbr' % (_L, N) if tier == 'l'
+                             else r'%s\polisvault_%s_%s.dbr' % (_L, N, tier))
+                    else:
+                        p = r'%s\polisvault_%s_%s%s.dbr' % (_L, N, tier, v)
+                    if lk.real(p):
+                        tabs.append(p)
+                        wts.append(w)
+                if tabs:
+                    out.append(('%s chest_%s [%s]' % (label, N, tier), tabs, wts, tier))
     return out
 
 

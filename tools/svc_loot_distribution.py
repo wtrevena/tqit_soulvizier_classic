@@ -290,7 +290,43 @@ D5_PINNED = {
         '26.6% of its mass on one helm and this mod does not own that pool'),
 }
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
-ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per chest open
+# ── R-230 RE-ANCHOR (Will 2026-08-11, the loot-volume trim) ──────────────────
+# D7 is the ONLY check in this module that is not a ratio, so it is the only one a
+# VOLUME change can invalidate, and R-230 cut every mod surface's numSpawn by roughly
+# an order of magnitude. Holding the literal 0.52 would have demanded 0.52 armour
+# pieces out of a container that now spawns ~1.1 loot iterations - which is D7 turning
+# into a numSpawn demand, precisely what the block below says it must never be, and it
+# would have red every surface in the mod for a "defect" that is the ruling itself.
+# Deleting or loosening D7 by hand was the other option and it is the one that gets a
+# gate switched off, so instead the DERIVATION is now in code: D7's real content is a
+# PER-ITERATION strength (0.52 pieces over the 10.58 iterations of the surface it was
+# calibrated on = 0.04915 per iteration), and the anchor and the floor move together.
+# The per-iteration strength is byte-for-byte the b80 number; only the volume it is
+# multiplied by moved, and D7X2 re-proves that volume against the reference surface's
+# actual bytes every run, so this can never drift into a weaker check unnoticed.
+#
+# THE ANCHOR SURFACE ALSO MOVES, and that is the half worth reading twice. b80 anchored
+# on `svc_uberorb_apex_e01c` because it was the BINDING surface of its calibration, and
+# the membership rule "S >= the anchor's S" then happened to exclude exactly the fifteen
+# R-220 orb tables - which b80 wanted excluded, for a reason it wrote down: armour on
+# them cannot be lifted any further without reding D6b, so the absolute floor is
+# "unreachable there by construction, not by neglect". R-230's never-empty floor
+# (`svc_loot_volume.MIN_SPAWN_MIN_SOLO`) lifts every thin container to the SAME 1.125
+# iterations, the apex orb included, so that volume proxy stops separating anything:
+# anchored on the apex orb, D7 would newly assert on all fifteen and red two of them for
+# a starvation b80 already measured, priced and declined to fix. Anchoring instead on
+# `gaoler cage chest_01 [l]` - the surface Will's ruling is literally about, and the
+# richest cage branch - reproduces b80's membership intent (rich containers in, the thin
+# R-220 orbs out) under the new volumes. The cost is stated rather than hidden: D7's
+# reach falls from 42 of 57 surfaces to 21 of 75, because after the trim most surfaces
+# genuinely are the same size. D7b, unchanged at 0.0375 per iteration and asserted on
+# ALL 75, is what carries the invariant now - exactly as the block below predicted it
+# would have to ("the volume-free form ... is asserted on every surface as D7b").
+ARMOR_SLOT_FLOOR_PER_ITER_AT_REF = 0.52 / 10.58   # 0.049149..., the b80 derivation
+ARMOR_SLOT_FLOOR_REF_SPAWN = 1.310   # spawn iterations of the R-230 anchor surface
+ARMOR_SLOT_FLOOR = ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * ARMOR_SLOT_FLOOR_REF_SPAWN
+# ── the ORIGINAL derivation, kept because a threshold nobody can re-derive is a
+#    threshold nobody can defend ──────────────────────────────────────────────
 # ── D7's VOLUME PROBLEM, and the volume-free form of the same invariant ──────
 # "0.52 pieces per open" is a statement about a container that spawns roughly 10.6 items
 # per open, because that is the container it was derived on: the R-181 calibration's
@@ -331,7 +367,8 @@ ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per ch
 #   * on surfaces at or above the reference volume; D7 is not asserted below it.
 # D7b at 0.0375 REDS ALL 57 defect surfaces (the defect state's BEST reading is 0.0175,
 # 2.1x under), which makes it a strictly stronger revert-detector than the absolute floor.
-ARMOR_SLOT_FLOOR_REF_SPAWN = 10.58   # spawn iterations of the surface 0.52 was derived on
+#   (b80's own reading of this line: `ARMOR_SLOT_FLOOR_REF_SPAWN = 10.58`, the spawn
+#    volume of `svc_uberorb_apex_e01c` before R-230 trimmed it.)
 # Relative slack on that comparison. It exists ONLY to absorb the last-bit error of a
 # weighted sum (1.7e-16 relative on the apex orbs); it is ~7 orders of magnitude smaller
 # than the coarsest real gap between two surfaces' volumes, so it can never admit or
@@ -344,7 +381,9 @@ ARMOR_SLOT_FLOOR_REF_TOL = 1e-9
 # is reached, so they carry the bare basename and NOT the `orb ` prefix the other fifteen
 # R-220 tables get. (D7X caught that distinction itself when this constant was first
 # written with the prefix - which is the check doing its job.)
-ARMOR_SLOT_FLOOR_REF_SURFACE = 'svc_uberorb_apex_e01c.dbr'
+#   b80's value was `svc_uberorb_apex_e01c.dbr`; R-230 moved it for the reason given at
+#   ARMOR_SLOT_FLOOR above, and this is the `cage_surfaces` LABEL, not a basename.
+ARMOR_SLOT_FLOOR_REF_SURFACE = 'gaoler cage chest_01 [l]'
 ARMOR_SLOT_FLOOR_PER_SPAWN = 0.0375  # D7b: worn-slot pieces per SPAWN ITERATION
 
 
@@ -606,8 +645,14 @@ def reference_surface_problems(reports):
     variant weights or to the comparison itself cannot switch D7 off at the reference
     surface without this reding.
 
-    Also reds if the reference surface is ABSENT from the audit set, because a calibration
-    anchor that no longer exists is a threshold nobody can re-derive.
+    D7X2 (R-230) is the second half, and it exists because the volume trim made
+    `ARMOR_SLOT_FLOOR` a DERIVED number: floor = per-iteration strength x the reference
+    surface's spawn volume. A committed volume that no longer matches the reference
+    surface's actual bytes silently rescales the floor - up, and D7 reds everywhere for
+    nothing; down, and D7 quietly stops asserting anything. So the committed
+    `ARMOR_SLOT_FLOOR_REF_SPAWN` is re-proved against the measured S_eff every run. This
+    is the same discipline as a D5 pin or the MI_NO_LIVE_CARRIER roster: a committed
+    number whose rule is re-derived from the database, never trusted.
     """
     problems = []
     ref = None
@@ -634,6 +679,20 @@ def reference_surface_problems(reports):
             % (ARMOR_SLOT_FLOOR_REF_SURFACE, ref.get('S_eff', 0.0),
                ARMOR_SLOT_FLOOR_REF_SPAWN,
                ARMOR_SLOT_FLOOR_REF_SPAWN - ref.get('S_eff', 0.0), ARMOR_SLOT_FLOOR))
+    # D7X2 - the committed anchor volume must still BE the reference surface's volume.
+    measured = float(ref.get('S_eff', 0.0))
+    if abs(measured - ARMOR_SLOT_FLOOR_REF_SPAWN) > 0.01 * ARMOR_SLOT_FLOOR_REF_SPAWN:
+        problems.append(
+            "D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=%.4f no longer matches the "
+            "reference surface %s, which MEASURES %.4f spawn iterations. "
+            "ARMOR_SLOT_FLOOR is derived as %.5f/iteration x that volume, so a stale "
+            "anchor rescales the armour-parity floor without anyone choosing to: %.4f "
+            "today versus %.4f at the measured volume. Re-derive the constant against "
+            "the surface (and say why the volume moved), or the floor means whatever "
+            "the last numSpawn edit happened to leave behind."
+            % (ARMOR_SLOT_FLOOR_REF_SPAWN, ARMOR_SLOT_FLOOR_REF_SURFACE, measured,
+               ARMOR_SLOT_FLOOR_PER_ITER_AT_REF, ARMOR_SLOT_FLOOR,
+               ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * measured))
     return problems
 
 
