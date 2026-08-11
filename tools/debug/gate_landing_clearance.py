@@ -181,8 +181,9 @@ def classify(dbr):
     # and soft-collides, so calling it anything else would be a lie about its physics. But it is
     # NO LONGER the only thing standing between us and a boat NPC parked on top of a teleport
     # landing: that was how a 0.00u Warden/landing overlap shipped to Steam on 2026-08-06. The
-    # exemption-free G-NPC-LANDING-SEP check below now enforces a hard 4.0u minimum between EVERY
-    # placed boat NPC and EVERY boat route destination, with NO per-record escape hatch.
+    # exemption-free G-NPC-LANDING-SEP check below now enforces a hard BOAT_NPC_MIN_SEP (1.0u,
+    # calibrated from measurement - see the constant's block comment) between EVERY placed boat
+    # NPC and EVERY boat route destination, with NO per-record escape hatch.
     if any(k in d for k in ('npc', 'villager', 'townsperson', 'merchant', 'caravan',
                             'portal_master', 'helos_trav', 'area_return', 'return',
                             'svc_warden', 'storyteller', 'soulcollector', 'boatman',
