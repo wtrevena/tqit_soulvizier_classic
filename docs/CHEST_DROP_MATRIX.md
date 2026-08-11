@@ -792,7 +792,7 @@ mirror**, a legendary must still be POSSIBLE at {e 15%, l 25%}; **O5 the second 
 still pay >= 1.50 items of any kind. Ceilings are measured on the CONTINUOUS spawn reading and O4 on
 the INTEGER-TRUNCATED one, because each is the pessimistic side of its own direction.
 
-> âš ï¸ **`BL-R231-DEBT-1` - the "low chance" half is NOT fully discharged, and the gate says so in its
+> ⚠️ **`BL-R231-DEBT-1` - the "low chance" half is NOT fully discharged, and the gate says so in its
 > own PASS line.** P(at least one legendary) lands at **54-61% on Legendary difficulty**. After the
 > trim an orb pays ~2.06 items and **~40% of a Legendary orb's entire drop mass IS
 > legendary-classified**, because R-180/R-220 weighted `svc_unique_weapons_l01` /

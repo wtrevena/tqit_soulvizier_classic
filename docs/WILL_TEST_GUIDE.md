@@ -1,6 +1,6 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> ## ðŸ†• R-230 + R-231 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
+> ## 🆕 R-230 + R-231 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
 > **NOT BUILT YET** (branch `fix/loot-volume-trim`; this note is written with the lane so the check is
 > ready when the build lands). arz-only - no map / quest / Text change on the canonical side.
 > **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is MEASURED
@@ -34,7 +34,7 @@
 >   spear variety, the armour parity and the class breadth from the last few builds are all intact - they
 >   just arrive less often. If some class of item has stopped appearing entirely, that is a real bug.
 >
-> **âš ï¸ THE ONE THING I DID NOT FULLY FIX, so you can rule on it (`BL-R231-DEBT-1`).**
+> **⚠️ THE ONE THING I DID NOT FULLY FIX, so you can rule on it (`BL-R231-DEBT-1`).**
 > The CHANCE of seeing at least one legendary from an orb is still **54-61%** on Legendary. That is not
 > "a low chance" and I am not pretending it is. The reason: about **40% of everything a Legendary-tier
 > orb can pay IS legendary-grade**, because the last few builds deliberately weighted the unique weapon
@@ -50,8 +50,8 @@
 > (under-pays rather than over-pays, which is the safe direction).
 
 
-> ## ðŸ†• R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
-> **âœ… LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
+> ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
+> **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule).
 >
 > **Background in one line:** `build78` took Atlantis off the portal page, but an Atlantis-DLC owner
@@ -79,8 +79,8 @@
 > intentional anti-strand behaviour, not a leak.
 
 
-> ## ðŸ†• R-184/185/186 (2026-08-11): THE CRAFT CHAIN - FORMULAS ON NORMAL, EVERY REAGENT FARMABLE, THROWN LEGENDARIES DROP
-> **âœ… LIVE ON DEV as `build81` (arz `f1671207`).** arz-only (no map / quest / Text change).
+> ## 🆕 R-184/185/186 (2026-08-11): THE CRAFT CHAIN - FORMULAS ON NORMAL, EVERY REAGENT FARMABLE, THROWN LEGENDARIES DROP
+> **✅ LIVE ON DEV as `build81` (arz `f1671207`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured on
 > the shipped build, not estimated.
 >
@@ -113,7 +113,7 @@
 > ordinary DRX vit wand; the four craft-tier ones stay prizes at **~0.08 per run each**, which is
 > roughly **five times rarer than any specific legendary spear**. That is deliberate: they are still
 > meant to be crafted, and a chest handing you one should feel like luck.
-> âš ï¸ **This is the number I most want your eye on.** I built a version where the thrown class carried
+> ⚠️ **This is the number I most want your eye on.** I built a version where the thrown class carried
 > a full class's weight - it looked correct by every automated check, and it paid **1.3 of each craft
 > weapon per run**, which would have made crafting them pointless. I rebuilt it. If it still feels too
 > generous (or too stingy) in play, it is one constant and one line to change.
@@ -121,8 +121,8 @@
 > **Where to go:** Prison of Souls / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open all 6
 > cage chests, 2-3 runs. Same trip as the last three builds, so you can compare directly.
 
-> ## ðŸ†• R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
-> **âœ… LIVE ON DEV AND ON STEAM as `build79` (arz `883a31e2`).** arz-only (no map/quest/Text change).
+> ## 🆕 R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
+> **✅ LIVE ON DEV AND ON STEAM as `build79` (arz `883a31e2`).** arz-only (no map/quest/Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule). The numbers in the table below are
 > measured on the shipped build, not estimated.
 >
@@ -191,12 +191,12 @@
 >
 > **If you see any tab other than those four, that is a real find** - the gate says there are zero.
 >
-> âš ï¸ **STILL OPEN, be aware:** this removes the Atlantis PAGE, not the Atlantis VOYAGE. If you own the
+> ⚠️ **STILL OPEN, be aware:** this removes the Atlantis PAGE, not the Atlantis VOYAGE. If you own the
 > Atlantis DLC you can still sail Rhodes -> Gadir -> Atlantis by boat. That is a separate fix
 > (`BL-PORTALCAP-DEBT-1`) and needs your call on how to block it.
 
 > ## NEW R-201 (2026-08-10): OUR SOULS FINALLY HAVE EPIC AND LEGENDARY NAMES
-> **âœ… LIVE ON DEV AND ON STEAM (build77-ship, Workshop item 3759792705).** arz
+> **✅ LIVE ON DEV AND ON STEAM (build77-ship, Workshop item 3759792705).** arz
 > **`435cc485ee43e739b85d4221e6c9bb4b`**; the map, quests and Text did not move.
 >
 > **THE ONE-LINE TEST - two souls, three tiers each:**
@@ -211,12 +211,12 @@
 > Broodmother, the Blood Cult High Priest, the Waking Dread, all four Toxeus souls, every hand-crafted
 > hero soul.
 >
-> âš ï¸ **Use a FRESHLY DROPPED soul, not one already in your stash or caravan, if anything looks off.** The
+> ⚠️ **Use a FRESHLY DROPPED soul, not one already in your stash or caravan, if anything looks off.** The
 > name is read from the database at display time so a stored soul should update too, but TQ bakes item
 > data at pickup (standing lesson), and a stale stash item is the one way you could see "no change" on a
 > build that is actually correct.
 >
-> âš ï¸ **Do not use Charon Soul as your test.** Two different souls render that exact name - ours and
+> ⚠️ **Do not use Charon Soul as your test.** Two different souls render that exact name - ours and
 > Soulvizier's own - so it cannot tell you whether the fix landed. Same caution for General Yrrt'ik, Ice
 > Mandible, Kallixenia and Plague Feast. That duplicate-name overlap is older than this fix and is logged
 > as `BL-R201-DEBT-1`; renaming souls is your call, not ours.
@@ -233,8 +233,8 @@
 > **If you see a soul that still reads the same on all three tiers, that is a real find** - the new
 > build gate says there are zero left, and it fails the build if one appears.
 
-> ## ðŸ†• R-181 (2026-08-10): ARMOUR NOW DROPS LIKE ARMOUR, AND NO ONE CLASS RUNS AWAY WITH THE RUN
-> **âœ… LIVE ON DEV AND ON STEAM as `build80` (arz `c5851a1a`).** This is your two follow-up reports on
+> ## 🆕 R-181 (2026-08-10): ARMOUR NOW DROPS LIKE ARMOUR, AND NO ONE CLASS RUNS AWAY WITH THE RUN
+> **✅ LIVE ON DEV AND ON STEAM as `build80` (arz `c5851a1a`).** This is your two follow-up reports on
 > R-180: *"also what about the armor? i am not really seeing armor drops like shields, chest plates,
 > helmets, etc."* and *"you overcorrected, that run 4 scorpions tail spears dropped"*. Both were REAL
 > and both were measured, not guessed. arz-only again, so the map/quests/Text did not move.
@@ -295,14 +295,14 @@
 >    of every worn slot**. If an orb chest still looks weapon-only, that is a real find.
 >
 > **ADDED AFTER THE FACT (BL-R181-DEBT-7, round 3): the ORDINARY uber orbs too, and one honest
-> warning. âœ… LIVE ON DEV **AND STEAM** as `build83` (arz `44499f56`)** - arz-only, no map / quest / Text change;
+> warning. ✅ LIVE ON DEV **AND STEAM** as `build83` (arz `44499f56`)** - arz-only, no map / quest / Text change;
 > fully quit TQ and restart Steam before testing. Item 6 above covers the red-uber and Leinth orbs. Fifteen more orb loot tables - the
 > level-banded ones every ordinary uber drops, plus Charon's - had their armour owned by NOBODY and
 > were running **3.4:1 to 8.5:1 weapons:armour with a worn slot as thin as 0.007 pieces per open**.
 > They now pay **0.29 to 1.16 of the thinnest worn slot**, and total drops per orb went UP
 > (7.9 -> 9.2, 9.3 -> 11.8, 13.7 -> 15.8 items per open). Nothing was reduced anywhere.
 >
-> âš ï¸ **The warning, so you are not surprised:** on these fifteen the mix now runs **armour-heavy** -
+> ⚠️ **The warning, so you are not surprised:** on these fifteen the mix now runs **armour-heavy** -
 > roughly 2 to 3.5 armour pieces per weapon (w:a 0.28-0.49). That is the exact ratio the Toxeus apex
 > orb has been shipping since build75, so it is consistent rather than invented, but if orbs start
 > feeling like an armour vending machine that is a REAL finding and worth saying - it is one constant
@@ -314,8 +314,8 @@
 > (the field does not exist on a single record), so shields only ever come from chests and merchants.
 > If you want armour off monsters too, that is a separate wave and it needs your call.
 
-> ## ðŸ†• R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
-> **âœ… LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
+> ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
+> **✅ LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
 > **`16994072e1cb244af9f4d759309162cb`** (55,549,261 B), deployed + md5-verified 2026-08-10 while TQ was
 > closed. arz-only; the map/quests/Text on DEV did not move. **Fully quit TQ and restart Steam before
 > testing** (standing rule).
@@ -329,8 +329,8 @@
 > If ANY red uber you kill still drops no orb, say so - the new class gate says there are zero left, so
 > that would be a real find.
 
-> ## ðŸ†• R-180 (2026-08-10): THE GAOLER-CAGE CHESTS NOW DROP DIFFERENT THINGS, AND LEGENDARY SPEARS ARE POSSIBLE
-> **âœ… NOW LIVE ON DEV - build75-dev.** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
+> ## 🆕 R-180 (2026-08-10): THE GAOLER-CAGE CHESTS NOW DROP DIFFERENT THINGS, AND LEGENDARY SPEARS ARE POSSIBLE
+> **✅ NOW LIVE ON DEV - build75-dev.** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
 > **`3fb1f3ce8889e27de2491ab12814547d`** (55,539,324 B), deployed + md5-verified 2026-08-10 while TQ was
 > closed. It is arz-only, so the 4 TESTHUB farm-duplicate chests get it too (they reference the same 2
 > records as the canonical pair). **Fully quit TQ and restart Steam before testing** (standing rule).
@@ -395,7 +395,7 @@
 > has none of that (canonical map only). Fully quit + restart TQ before testing so it loads the fresh
 > files (Steam was already restarted today, so no Steam restart is needed).
 
-> ## ðŸ†• PR-5 (2026-08-06): THE SPARTA CRYPT IS NOW ENTERED FROM THE ATHENS CATACOMBS (canonical/Steam)
+> ## 🆕 PR-5 (2026-08-06): THE SPARTA CRYPT IS NOW ENTERED FROM THE ATHENS CATACOMBS (canonical/Steam)
 > **This is a CANONICAL/Steam change (it ships), not a TESTHUB-only one.** Per Will's decision - "the
 > Sparta Crypt should be entered from the Athens CATACOMBS, not from Helos" - the **Warden of the
 > Spartan Crypt now stands on the shipping map**, and **Almyros the Wayfarer in Helos NO LONGER lists
@@ -422,7 +422,7 @@
 > passes gate_landing_clearance) but NOT walked in-game by the implementer (deploys are the
 > orchestrator's). See BACKLOG PR-5 + WILL_RULINGS R-170 (+ its PR-5 POLISH amendment).
 >
-> ## ðŸ”´ b63 (2026-08-10): YOU WALKED IT AND HE WAS MUTE - FIXED, RE-TEST THIS ONE
+> ## 🔴 b63 (2026-08-10): YOU WALKED IT AND HE WAS MUTE - FIXED, RE-TEST THIS ONE
 > Your report: "when I click on the guy who travels you to the spartan crypt (warden of the spartan
 > crypt) nothing happens, no dialog box comes up, nothing." You were right, and it was **live on
 > Steam** from 2026-08-06, where he is the **only** way into the Sparta Crypt.
@@ -437,7 +437,7 @@
 > **His menu is UNCHANGED and still DESCEND ONLY** - one option, "Descend into the Sparta Crypt", no
 > "Helos (Return)". That is still your ruling and it is now asserted by a gate directly.
 >
-> **âš ï¸ TEST ON LEGENDARY OR EPIC, not Normal.** Your `_Toxeus` Normal-difficulty quest state is still
+> **⚠️ TEST ON LEGENDARY OR EPIC, not Normal.** Your `_Toxeus` Normal-difficulty quest state is still
 > the stale pre-PR-5 shape and will only re-sync the next time you load it; Legendary and Epic already
 > carry the current quest definition.
 >
@@ -465,7 +465,7 @@
 > Soul-Gaoler and open all 6 vault-cage chests across about 3 runs - you should see legendary SPEARS
 > become possible and the six chests stop mirroring each other.
 
-## ðŸ©¸ðŸ©¸ OCEAN-CHAMBER CRASH FIX - build49-dev on DEV (2026-07-27) - DO THIS ONE FIRST
+## 🩸🩸 OCEAN-CHAMBER CRASH FIX - build49-dev on DEV (2026-07-27) - DO THIS ONE FIRST
 
 **What changed:** your crash probe caught it twice, in the same place both times: the game died
 loading the navmesh of `ocean_extension05`, a 240x240 chamber sitting right against `drxBC3` in the
@@ -494,7 +494,7 @@ else in the map is byte-identical to build48. DB/Text/Quests untouched.
 If it still dies there, say so immediately - the fallback is already picked (drop the navmesh section
 from those 8 levels entirely, which is what the base game does for its own backdrop levels).
 
-## ðŸ©¸ BLOOD-CAVE CRASH FIX - build48-dev on DEV (2026-07-17) - THE walk test (do this first)
+## 🩸 BLOOD-CAVE CRASH FIX - build48-dev on DEV (2026-07-17) - THE walk test (do this first)
 
 **What changed:** the recurring blood-cave crash at the **first respawn fountain inside the cave**
 (the mid-cave fountain, `new_secretdoor_transitionhallway` / `respawn_hadescave01`) is now fixed on
@@ -589,8 +589,8 @@ learn where everything is, and **walk in** to the boss yourself.
 |---|---|---|
 | **Traveler: Garden of Merchants** | the merchant hub by the caravan_rhodes Super-Caravan + the SV **rift-shrine** (teleportshrine_gom) that reaches the Garden in game | browse the merchants; the rift-shrine is the in-game way in |
 | **Traveler: The Secret Place** | the darkforestenter **forest-cluster entry** | walk in; the crow-hero bosses (Murderbunny, Zilla) live in the interiors |
-| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | ðŸ†• PR-5 POLISH: the **Warden of the Spartan Crypt** (`svc_warden_sparta_crypt`) stands right there. His menu is DESCEND ONLY - a single "Descend into the Sparta Crypt" option that takes you straight into `spartacryptlevel2` (the interior itself), where its own return traveler sends you back to THIS catacomb door (primary) or Helos (secondary) |
-| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east. ðŸ†• the return traveler standing right there (`svc_area_return_uber`) now has a SECOND option too: "Enter the Uber Dungeon" - takes you straight into `crypt_floor1` (the interior itself), where its own return traveler now sends you back to THIS door (primary) or Helos (secondary) |
+| **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | 🆕 PR-5 POLISH: the **Warden of the Spartan Crypt** (`svc_warden_sparta_crypt`) stands right there. His menu is DESCEND ONLY - a single "Descend into the Sparta Crypt" option that takes you straight into `spartacryptlevel2` (the interior itself), where its own return traveler sends you back to THIS catacomb door (primary) or Helos (secondary) |
+| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east. 🆕 the return traveler standing right there (`svc_area_return_uber`) now has a SECOND option too: "Enter the Uber Dungeon" - takes you straight into `crypt_floor1` (the interior itself), where its own return traveler now sends you back to THIS door (primary) or Helos (secondary) |
 | **Traveler: The Boss Arena** | the boss-arena forecourt (~90u south of the arena volume) | walk north into the Satyr-Shaman arena |
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
 | **Traveler: Medea Tomb (Dorus)** | the tomb **entrance** (cryptentrance), amid the drowned court | walk ~82u to **Dorus, the Drowned King** + hoard |
@@ -688,9 +688,9 @@ NOT YET TESTED - reach all of these via the **HELOS TRAVELER HUB** above (DEV/TE
 invented walk-through doors that used to enter them were REMOVED 2026-07-12 (walk-through teleports
 are banned; a walk-through to the Garden with no way back was a live Steam bug):
 1. **Uber Dungeon / Obsidian Halls** (roulette + 4 wardens) - "Traveler: The Obsidian Halls".
-   ðŸ†• The interior itself (`crypt_floor1`) is now ENTERABLE: at the Knossos->Uber door, talk to
+   🆕 The interior itself (`crypt_floor1`) is now ENTERABLE: at the Knossos->Uber door, talk to
    the return traveler standing there (`svc_area_return_uber`) and pick "Enter the Uber Dungeon".
-2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt". ðŸ†• The crypt itself (`spartacryptlevel2`) is
+2. **Sparta Crypt L2** - "Traveler: The Sparta Crypt". 🆕 The crypt itself (`spartacryptlevel2`) is
    now ENTERABLE: at the Athens catacomb door, talk to the **Warden of the Spartan Crypt**
    (`svc_warden_sparta_crypt`) - his menu is DESCEND ONLY, one "Descend into the Sparta Crypt"
    option. Its own return traveler inside sends you back to this same catacomb door (primary) or
