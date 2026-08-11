@@ -1,5 +1,45 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD80-DEV DEPLOYED TO DEV (2026-08-11) - R-181 armour breadth + loot distribution; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `c5851a1abbebe9eb7744c9311fa14728`**
+> (55,552,948 B, 51,239 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 added, 0 removed; the 61 siblings
+> were re-hashed after the copy and are byte-identical. det-2x **byte-IDENTICAL** across two independent
+> full builds, the second with the prefix cache DISABLED.
+> - **What it is:** R-181, Will's TWO reports in one sitting - "also what about the armor? i am not really
+>   seeing armor drops like shields, chest plates, helmets, etc." and "you overcorrected, that run 4
+>   scorpions tail spears dropped". **Both are RATE reports and R-180 could not see either**: R-180 asked
+>   REACHABILITY (can a chest pay a legendary spear at all) and was correctly green, while the cage paid
+>   **58.5 legendary weapons to 12.4 armour pieces (4.73:1)** with the helm at 1.6% of the run and SPEAR at
+>   24.0% against an even share of 9.1%. Now: **every one of the 11 gear classes sits between 7.8% and
+>   10.8%**, weapons:armour **1.22:1**, armour pieces per run **12.4 -> 49.4**, and nothing was reduced
+>   (total legendary gear per run RISES 70.8 -> 109.4).
+> - **The 4 Scorpion's Tails, arithmetically:** P(some legendary spear lands 4x in one cage run)
+>   **27.0% -> 6.3%**; P(four Scorpion's Tails specifically) **2.07% -> 0.45%**. ⚠️ **P(ANY single item
+>   lands 4x) only moves 47.3% -> 39.7%**, because volume ROSE. The honest sentence to Will is "much rarer
+>   for a spear, still routine for something", not "fixed". `numSpawn` is the volume lever and lowering it
+>   is HIS call (`BL-R181-DEBT-5`).
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Text.arc a9fed7ba` / `Levels.arc 7a7ca9ac` (TESTHUB,
+>   the DEV variant) / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged on the DEV
+>   surface. 0 new tags authored, so `validate_tags` PASSES against the EXISTING `Text.arc`.
+> - **Record-diff vs the shipped `883a31e2`: ADDED 3 / REMOVED 0 / MODIFIED 57, ZERO unexplained** - the 3
+>   armour masters, plus 54 swept surfaces + the 3 aggregate weapon masters. Non-reduction proved
+>   mechanically over the whole diff: **603 values raised, 0 lowered, 60 members added, 0 removed.**
+> - **NEW permanent gate:** `tools/gate_loot_distribution.py` + the in-build `armor_loot_breadth.verify()`
+>   sharing one implementation (D1-D9), negative-tested **7 plants RED / 2 controls GREEN**. It is
+>   ORTHOGONAL to R-180's reachability gate by construction: it reds the shipped arz with **328 findings
+>   over 42 surfaces** while R-180's gate is green on the same bytes.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 == the build79 baseline** under the identical config. Gate record:
+>   `docs/BACKLOG.md` -> BUILD80-DEV GATE RECORD. Ruling: `docs/WILL_RULINGS.md` -> R-181 + AMENDMENT.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `883a31e2` (the build79 arz this replaced);
+>   the same bytes are kept at `local/build79_ship_883a31e2.arz`, this artifact at
+>   `local/build80_run1_c5851a1a.arz`.
+> - **Will's in-game check:** Prison of Souls / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open
+>   all 6 cage chests across 2-3 runs; expect helms/chest plates/bracers/greaves/shields alongside weapons,
+>   no class dominating, no 4x-same-spear runs. Also check a red-uber Mystical Orb chest: those were the
+>   worst surfaces in the mod (0.07 helms per open) and now pay ~1.2 of every worn slot. Full note at the
+>   top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+
 > ## BUILD79 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-220 uber orb loot breadth; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
 > `Database/SoulvizierClassic.arz` = `883a31e2b87f03a54a51c550147c8242`** (55,551,723 B, 51,236 records).

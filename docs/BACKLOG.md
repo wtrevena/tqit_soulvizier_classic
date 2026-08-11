@@ -1,5 +1,152 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD80-DEV GATE RECORD - R-181 ARMOUR BREADTH + LOOT DISTRIBUTION: armour drops like armour and no class runs away with the run - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ `2f7f263`, tag `build80-dev`)
+
+**Will's two reports (verbatim, 2026-08-10):** *"also what about the armor? i am not really seeing armor
+drops like shields, chest plates, helmets, etc."* and *"you overcorrected, that run 4 scorpions tail
+spears dropped"*. Ledgered **R-181**. Ruling + full argument + the independent vet's six findings:
+`docs/WILL_RULINGS.md` -> R-181 and its AMENDMENT.
+
+**SHIP ORDER HONOURED.** This lane held on branch until all THREE queued waves had landed their deploys:
+soul-naming (`build77-dev` + `build77-ship`), portal-atlantis (`build78`, DEV + Steam) and orb-breadth
+(`build79-dev` 23:57, `build79-ship` 00:04). `main` was then at `17bdfb8`; the branch had already merged
+`914b227`, so the integration merge `2f7f263` was a clean `--no-ff` with **ZERO conflicts**. TQ.exe was
+NOT running at any point in this lane, was never killed, and Steam was never restarted.
+
+**THE DEFECT, RE-PROVED FROM BYTES BEFORE BUILDING.**
+`py tools/gate_loot_distribution.py local/build79_ship_883a31e2.arz` -> **RED as designed on the LIVE
+shipped arz**: **328 findings over 42 surfaces**. It names Will's exact item without being told about it:
+`D5 gaoler cage chest_01 [e]: u_e_scorpion'stail.dbr is 5.0% of the surface's whole Legendary gear mass
+(cap 3.0%)`, alongside `D2 ... class SPEAR holds 34.3% (cap 25.0%, even is 9.1%)` and
+`D3 ... class helm holds only 1.06% (floor 1.5%) - the slot is starving`. That is the build he played.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into the
+work/ layout, **exit 0 "Done."**, log `local/build80_r181_run1.log`).
+
+| artifact | md5 | bytes | vs `build79` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`c5851a1abbebe9eb7744c9311fa14728`** | 55,552,948 (51,239 rec) | **CHANGED** from `883a31e2` (+1,225 B, +3 rec) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and both deploy couplings are SATISFIED rather than waived.** The wave authors NO text tag
+(it adds 3 loot tables and re-weights existing loot rows), so `validate_tags` PASSES against the EXISTING
+`Text.arc` and the arz+Text coupling holds with no Text rebuild. Nothing map-side moved, so the
+Levels+Quests coupling is not engaged. All four siblings were md5-proven unchanged on disk, not assumed.
+
+**RECORD-DIFF vs the shipped `883a31e2`: ADDED 3 / REMOVED 0 / MODIFIED 57, ZERO unexplained.** The 3
+added are exactly the armour masters `svc_unique_armor_{n,e,l}01.dbr`. The 57 modified decompose with no
+remainder: **21** cage tables (`polisvault_01_*` 8, `polisvault_03_*` 8, `polisvault*` 5) + **27** boss and
+guard-pair hoards (charon / diadochi / ephialtes / generala / generalb / generalc / mnemophage / obsidian /
+tantalus, 3 each) + **3** `svc_uberorb_apex_*` + **3** `loottable_hidden_bloodcave_*` DRX donors = the 54
+swept surfaces, plus the **3** `svc_unique_weapons_{n,e,l}01` aggregate masters that the per-CLASS
+re-weighting touches. 54 + 3 = 57.
+
+**NON-REDUCTION (R-100 #17 / Will 2026-08-08 / R-180), proved MECHANICALLY over the whole diff** rather
+than asserted: **603 numeric values RAISED, 0 LOWERED; 60 members ADDED, 0 REMOVED.** The only shape
+changes are 3 INSERTS on the warden variants (`polisvault_01_{n,e,l}c`), where the armour master takes
+`loot3Name2` and both displaced members survive one slot down (shield 2 -> 3, torso 3 -> 4, `loot3Name4`
+newly populated). Nothing was dropped anywhere in the database.
+
+**MEASURED ON THE BUILT ARZ** (`py tools/gate_loot_distribution.py <arz> --verbose`), the six-chest Gaoler
+cage run on Legendary (3x chest_01 + 3x chest_03, each drawing a themed variant at the pool's 50/25/25):
+
+| class | shipped | build80 | | class | shipped | build80 |
+|---|---|---|---|---|---|---|
+| axe | 5.28 (7.5%) | **9.63 (8.8%)** | | helm | 1.11 (1.6%) | **9.51 (8.7%)** |
+| mace/club | 6.27 (8.9%) | **11.19 (10.2%)** | | arms | 1.70 (2.4%) | **8.55 (7.8%)** |
+| sword | 5.43 (7.7%) | **9.75 (8.9%)** | | torso | 2.63 (3.7%) | **9.99 (9.1%)** |
+| **SPEAR** | **16.99 (24.0%)** | **10.71 (9.8%)** | | legs | 1.89 (2.7%) | **9.54 (8.7%)** |
+| bow | 12.12 (17.1%) | **9.24 (8.5%)** | | shield | 5.03 (7.1%) | **11.79 (10.8%)** |
+| staff | 12.37 (17.5%) | **9.54 (8.7%)** | | **weapons : armour** | **4.73 : 1** | **1.22 : 1** |
+
+Even across the 11 gear classes is 9.1%; **every one of the eleven now sits between 7.8% and 10.8%**,
+where the shipped spread ran 1.6% to 24.0%. Armour pieces per run **12.4 -> 49.4**; total legendary gear
+**70.8 -> 109.4** (nothing reduced). **These numbers match the branch's pre-build dry run to the second
+decimal**, which is what makes the dry run trustworthy in hindsight rather than merely lucky.
+
+**THE THREE SURFACES THE VET RESCUED** (apex orb tables backing R-200's red-uber Mystical Orb chests and
+Leinth's), per open, shipped -> build80: helm `0.07 -> 1.17`, arms `0.07 -> 1.05`, torso `0.08 -> 1.19`,
+legs `0.07 -> 1.17`, shield `0.17 -> 1.39` on `svc_uberorb_apex_l01c`. They were the worst surfaces in the
+mod and an owner-based exclusion had hidden them from the gate entirely.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery, 57 registry modules + every `verify()` hook) | **exit 0, "Done."** |
+| **NEW** `armor_loot_breadth.verify()` in-build | **PASS** - 42 surfaces; thinnest worn slot `svc_uberorb_apex_e01c/arms` = 0.62/open (floor 0.52); no class over 25% of a surface; no item over 5.8x its class uniform share; worst weapon:armour 1.59:1 on gaoler cage chest_01 [e] (cap 1.85) |
+| **NEW** `py tools/gate_loot_distribution.py <built arz>` (the standalone twin) | **PASS** - 42 surfaces, 0 findings, D1-D9 all green |
+| **NEW** `py tools/debug/negtest_armor_breadth.py <built arz>` | **PASS** - all **7** planted defects RED (incl. N7 the mirror over-correction on a live apex table, proving `MIN_WEAPON_ARMOUR_RATIO` load-bearing), **2/2** positive controls GREEN incl. the deliberate warden armour bias |
+| R-180 REGRESSION `py tools/gate_chest_loot_breadth.py` | **PASS** - 51 tables, pools n 181..181 / e 111..116 / l 308..308, all 6 weapon classes. **Identical to build79**, so reach is not regressed by the rate work |
+| R-180 REGRESSION `py tools/debug/negtest_chest_breadth.py` | **PASS** - every planted collapse reds, unmodified build green |
+| R-220 REGRESSION `py tools/gate_orb_loot_breadth.py --verbose` | **PASS** - 18 tables; pools n 180..195 / e 96..116 / l 241..308; spear 18 / 9 / 22. **Bit-for-bit the build79 numbers** |
+| R-220 REGRESSION `py tools/debug/negtest_orb_breadth.py` | **PASS 11/11 as designed** |
+| R-200 in-build `red_uber_orbs` gate | **PASS** - 55 red ubers in the runtime universe, 8 wired, 6 exempt with conditions re-proven, **0 orb-less** |
+| R-201 in-build soul tier-naming gate | **PASS** - 2191 canonical soul tier records / 740 families (739 multi-tier), every tier distinct |
+| R-210 `py tools/gate_dlc_act_ui_cap.py` (in-build AND standalone) | **PASS** - T1-T7; portal pages `['Greece','Egypt','Orient','Hades']`, ZERO DLC-act entries |
+| b63 WARDEN / TRAVELER `py tools/debug/negtest_warden_dialog.py` | **PASS 10/10** |
+| b77 `py tools/gate_unlock_alignment.py` | **PASS** - 238 live buttons, 13/13 waivers |
+| R-100 #17 `py tools/gate_relic_difficulty_tiers.py` | **PASS** |
+| Occult/Hunting golden-state gate (in-build) | **PASS** - 84 waived, 0 other |
+| `py tools/validate_tags.py <arz> <EXISTING Text.arc> uber_soul_tags.txt` | **PASS** - 2 pre-existing base/SV monster-name WARNs, non-blocking, unchanged |
+| `py tools/contracts/run_contracts.py`, all 6 modules, LIVE work/+local/ | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B vs the shipped build79 baseline under the identical config | **4492** - byte-for-byte the same number, so this wave adds **ZERO** new contract violations |
+| `py tools/patches/_check_registry.py` | **OK: 57 modules**, order `f14a6af7c35ef2c2b67ba575e190af76c3d97fb69327ba574a1daabf718b83ca` (identical to the branch's record) |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `c5851a1a` from two independent full builds**, the second run with the prefix cache **DISABLED** (`SVC_NO_CACHE=1`) |
+
+**WHY det-2x WAS RUN CACHE-FREE, stated rather than buried.** A SECOND heavy build (the sibling
+`fix/craft-thrown-breadth` lane, writing to its own scratchpad `craft2/lane3.arz`) was running
+concurrently with run 1: it started at 00:16:14, 45 seconds before this lane's build, so the machine was
+genuinely idle at the moment this lane checked. The two builds shared no output path, but they do share
+the prefix snapshot cache, so run 2 was taken with `SVC_NO_CACHE=1` to rebuild every stage from upstream.
+It reproduced `c5851a1a` exactly, which rules out cache contamination as well as proving determinism.
+⚠️ **Owed to that lane, not by it:** its build read this checkout's `tools/` tree, which by then carried
+the merged R-181 modules, so its scratch arz is NOT a clean craft-thrown-only artifact and should be
+rebuilt before that lane draws conclusions from it. Registered as **`BL-R181-DEBT-8`**.
+
+**Repo pytest modules NOT RUN (pre-existing environment gap, not a regression):** the test modules under
+`tools/` are import-time integration tests needing the gitignored
+`reference_mods/SVAERA_customquest/Resources/Levels.arc` (absent in this checkout) and error at COLLECTION
+regardless of code. This merge changed no test module.
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = **`c5851a1a`**), copied
+with md5 source==dest verification **while TQ.exe was NOT running** (nothing killed, Steam not restarted).
+All 62 DEV files were hashed before and after: **1 of 62 changed** (the arz), 0 added, 0 removed, and the
+61 siblings are byte-identical, with `Text.arc a9fed7ba` / `Levels.arc 7a7ca9ac` (the TESTHUB variant the
+DEV entry carries) / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` named explicitly.
+**The three loot gates were then re-run against the DEPLOYED DEV arz itself** (not just the build output)
+and all three PASS, so the live DEV surface is proven, not inferred.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `883a31e2` (the build79 arz this replaced) ->
+copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+`local/build79_ship_883a31e2.arz`, and this wave's own artifact at `local/build80_run1_c5851a1a.arz`.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **`BL-R181-DEBT-1` (P1, LAUNCH-GATED): NOT PROVEN IN-GAME.** Everything above is a database and gate
+  proof. **Will's test: Prison of Souls / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open all
+  6 cage chests, over 2-3 runs.** Expect helms / chest plates / bracers / greaves / shields alongside
+  weapons at roughly equal volume, no single weapon class running the run, and four copies of the same
+  SPEAR now uncommon. Full note at the top of `docs/WILL_TEST_GUIDE.md`.
+- **`BL-R181-DEBT-5` (P1, WILL DECISION):** `numSpawn` is the drop-VOLUME lever and is deliberately
+  untouched under the non-reduction law. Because total legendary gear RISES 70.8 -> 109.4, **P(four
+  copies of ANY one item) only moves 47.3% -> 39.7%** even though P(four of one SPEAR) drops 27.0% ->
+  6.3%. Cutting drops per open needs Will's say-so; it is not taken quietly here.
+- **`BL-R181-DEBT-7` (P1, OPEN, un-owned surface):** the 15 loot tables R-220 writes
+  (`uberorb_default_*`, `boss_charon_*01b`) sit outside this module's `\svc\` ownership rule and R-220
+  widens only their WEAPON row, so armour on them is owned by nobody. Measured with both waves applied:
+  weapon:armour 2.0:1 to 4.1:1, thinnest worn slot 0.01-0.04 per open against the D7 floor of 0.52.
+  Reported, not fixed (one lane per problem). The fix is mechanical: one `widen_armor_rows` call per
+  table plus `all_surfaces()`.
+- **`BL-R181-DEBT-2 / -3 / -4` (P2):** base-game MONSTER armour drops measured and reported not changed
+  (`chanceToEquipShield` does not exist on ANY of the 51,239 records, so no monster can drop a shield off
+  its body); two residual POOL gaps (cage reaches 46% of legendary axes and torsos); and
+  `WeaponHunting_RangedOneHand` bucketed with `bow`, which `fix/craft-thrown-breadth` will invalidate at
+  its merge.
+- **`BL-R181-DEBT-8` (P2, NEW, filed by this lane):** see the det-2x note above.
+
 ## SHIP RECORD - R-220 UBER ORB LOOT BREADTH: the mystical orbs are **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-loot-breadth` merge, tag `build79-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'

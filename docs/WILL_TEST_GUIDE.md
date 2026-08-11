@@ -113,11 +113,12 @@
 > build gate says there are zero left, and it fails the build if one appears.
 
 > ## 🆕 R-181 (2026-08-10): ARMOUR NOW DROPS LIKE ARMOUR, AND NO ONE CLASS RUNS AWAY WITH THE RUN
-> **⏳ SOURCE ONLY - NOT BUILT, NOT ON DEV, NOT ON STEAM YET.** This is your two follow-up reports on
+> **✅ LIVE ON DEV AND ON STEAM as `build80` (arz `c5851a1a`).** This is your two follow-up reports on
 > R-180: *"also what about the armor? i am not really seeing armor drops like shields, chest plates,
 > helmets, etc."* and *"you overcorrected, that run 4 scorpions tail spears dropped"*. Both were REAL
-> and both were measured, not guessed. arz-only again, so when it ships the map/quests/Text will not
-> move. **Fully quit TQ and restart Steam before testing** (standing rule).
+> and both were measured, not guessed. arz-only again, so the map/quests/Text did not move.
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured
+> on the SHIPPED build, not predicted - the dry run and the build agree to the second decimal.
 >
 > **YOU WERE RIGHT ABOUT BOTH, AND HERE ARE THE NUMBERS.** R-180 proved a chest COULD pay every weapon
 > class; it never checked how OFTEN. On the build you played, one cage run paid **58.5 legendary
