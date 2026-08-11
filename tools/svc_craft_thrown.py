@@ -118,9 +118,10 @@ only new Normal-side membership it creates.
 
 CROSS-LANE RECORD OVERLAP (do NOT read this as "disjoint"). This module writes no chest
 or hoard `FixedItemLoot` record, no orb table and no hoard weight - but it is NOT
-record-disjoint from the concurrent lanes. Byte-measured, baseline build78 arz -> lane
-arz: 7 records ADDED, 0 REMOVED, 15 MODIFIED, and THREE of the 15 -
-`records\item\loottables\svc\svc_unique_weapons_{n,e,l}01.dbr` - are also rewritten by
+record-disjoint from the concurrent lanes. Record-measured, baseline arz -> lane arz:
+8 records ADDED, 0 REMOVED, 16 MODIFIED by this lane (24 written in total), and THREE of
+the 16 - `records\item\loottables\svc\svc_unique_weapons_{n,e,l}01.dbr` - are also
+rewritten by
 `fix/armor-loot-breadth` (b80), which changes every member weight in the same producer,
 `svc_loot_breadth._master_members`. That is a genuine write/write collision on three
 records. BINDING RESOLUTION (not a suggestion): on merge, thrown keeps a QUARTER of a
@@ -338,7 +339,7 @@ REAGENT_ITEM_WEIGHT = 100
 # difference between 19 surfaces and 1, so the rule is expressed in surfaces: a non-MI
 # reagent must be payable by at least half of the legendary mod chest tables (a fraction,
 # so it self-scales when a lane adds or retires chests), and never fewer than 3 whether
-# or not the fraction says so. MEASURED after this wave: 57/57 non-MI reagents at 19/19.
+# or not the fraction says so. MEASURED after this wave: 60/60 non-MI reagents (54 ordinary + 6 artifact) at 19/19.
 SPREAD_MIN_FRACTION = 0.5
 SPREAD_MIN_SURFACES = 3
 
@@ -851,7 +852,9 @@ def audit_reagent_completability(db, lk, ex, prove_mi=True):
 
     if buckets['missing']:
         problems.append(
-            "G0 %d reagent(s) name a record that does not exist in this database: %s"
+            "G0 %d reagent(s) name a record the MOD database does not carry (a base-game "
+            "or DLC record is not an answer: R-210 caps the playable arc at Immortal "
+            "Throne, so DLC-only content is unreachable for a player of this mod): %s"
             % (len(buckets['missing']),
                ', '.join(_n(x).rsplit('\\', 1)[-1] for x in buckets['missing'])))
 

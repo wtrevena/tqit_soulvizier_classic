@@ -167,7 +167,7 @@ def main(argv):
     # must red - that asymmetry is the whole reason G4 exists.
     db = _fresh(arz)
     lk = SLB.Lookup(db)
-    keep = SCT.REAGENT_HOSTS['artifact'][0][0]          # 04_l_misc, the 1/19 surface
+    # REAGENT_HOSTS['artifact'][0] is 04_l_misc, the 1/19 surface - deliberately KEPT.
     for host, _w in SCT.REAGENT_HOSTS['artifact'][1:]:
         _drop_member(db, lk, host, 'svc_craft_reagents_artifact')
     ok = _run('N9', 'G4', db)
@@ -176,7 +176,6 @@ def main(argv):
     print("       %-4s %-58s %s" % ('G1', 'EXPECT GREEN (G1 cannot see a spread defect)',
                                     'PASS' if not g1 else 'FAIL'))
     results.append(ok and not g1)
-    del keep
 
     # N10 - the orphaned green unhooked from its legendary host
     db = _fresh(arz)

@@ -4463,7 +4463,7 @@ orb. Six reagents behind one boss family is exactly what Will ruled out, and a u
 test cannot see the difference. The artifact family therefore also hangs off `amulet_l01` and
 `finger_l01` (a divine artifact is a trinket; jewellery is its closest kin), and the gate grew a
 SPREAD rule: **every non-MI reagent must be payable by at least half of the legendary chest surfaces,
-never fewer than 3.** Measured after: **57/57 non-MI reagents at 19/19, floor 10.**
+never fewer than 3.** Measured after: **60/60 non-MI reagents (54 ordinary + 6 artifact) at 19/19, floor 10.**
 
 **THE MI EXEMPTION IS EARNED BY A *LIVE* MONSTER, NOT ASSUMED.** The gate derives the MI roster by
 rule (`itemClassification == 'Rare'`), fails loud if it drifts from the committed list, and then

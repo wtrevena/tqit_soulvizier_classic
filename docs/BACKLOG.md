@@ -10444,7 +10444,7 @@ surface is `svc_uberorb_apex_l01c`, the apex uber-boss orb - six reagents behind
 which is precisely Will's "not a specific character". `unique_torso_l01` / `amulet_l01` /
 `finger_l01` / `unique_1h_l01` are all **19/19**, so the artifact family also hangs off `amulet_l01`
 and `finger_l01`, and the gate grew rule **G4**: every non-MI reagent must be payable by at least
-half the legendary chest surfaces (floor 3). **Measured after: 57/57 non-MI reagents at 19/19, floor
+half the legendary chest surfaces (floor 3). **Measured after: 60/60 non-MI reagents at 19/19, floor
 10.** Note this also removes an accidental cross-lane coupling: `svc_uberorb_apex_*` is b79's surface.
 
 **(3) R-186 thrown weapons droppable.** `svc_unique_thrown_{n,e,l}01` authored (the unique
@@ -10481,7 +10481,8 @@ implementation shared by the standalone gate, the in-build `verify()` and the ne
   **N9 the spread defect - G4 reds while G1 stays GREEN, which is the whole reason G4 exists**,
   N10 the orphaned green unhooked from its host, N11 no-live-carrier roster drift).
 
-**Records written by this lane: 20.** `01_act{1,2,3,4}_arcaneformulae`, `svc_unique_thrown_{n,e,l}01`,
+**Records written by this lane: 24** (8 added + 16 modified, measured record-by-record against the
+deployed arz). `01_act{1,2,3,4}_arcaneformulae`, `svc_unique_thrown_{n,e,l}01`,
 `svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01`, `unique_torso_l01`, `amulet_l01`,
 `finger_l01`, `04_l_misc`, `unique_1h_l01`, and the four `svc_thrown_*_formula` records.
 (`chest_loot_breadth` additionally rewrites the three `svc_unique_weapons_{tier}01` masters with the
@@ -10489,13 +10490,31 @@ new eighth member, as it always does - and see the INTEGRATION NOTES: **those th
 b80**.) Zero intersection with the orb lane's `svc_uberorb_*` and the armour lane's
 `svc_unique_armor_*` / `polisvault_*` / chest tables.
 
+> **Baseline caveat for anyone re-running the diff.** Diffing against the *deployed*
+> `work/SoulvizierClassic/Database/SoulvizierClassic.arz` shows **15 extra** modified records
+> (9 `item\containers\defaultloot\uberorb_default_*`, 3 `boss_charon_*`, 3
+> `xpack\...\uberorb_default_*01c`) that this lane does not touch. They are baseline drift: the
+> deployed arz predates the b78 portal-cap merge this branch carries. PROVEN by re-running the same
+> diff against the ROUND-1 lane build, which shows the identical 15 - so they are not a round-2
+> stray. Diff against a build of `main` at this branch's merge-base to see this lane alone.
+
 **Registry order is load-bearing:** `craft_thrown_breadth` runs immediately BEFORE
 `chest_loot_breadth`, because `ensure_masters` silently skips a master member whose donor does not
 resolve - the thrown tables must exist first.
 
-**NOT DONE / launch-gated:** in-game confirmation. Static gates only, per the lane brief; no Ship
-build was run here. Will's one-line check: open a Legendary Gaoler cage chest until a thrown weapon
-drops, and confirm a Mythic Formula can drop on a Normal character.
+**BUILD PROOF (round 2).** A full DB build was run from the lane worktree and completed clean:
+**51,244 records, 55,555,213 bytes, md5 `371c71287d2984c793e32d3212b496e3`**, every in-build gate
+green including `craft_thrown_breadth` (*"42/42 on n/e/l; 82 reagents = 22 MI + 54 ordinary + 6
+artifact + 0 missing, 61 reachable from Legendary chests, thinnest non-MI spread 19 of 19 legendary
+chest surfaces (floor 10); thrown payable on 51 mod chest tables with 0 legendary thrown on
+Normal"*), `chest_loot_breadth` (pools n 181 / e 116-121 / l 327 against floors 150 / 95 / 260),
+`gate_relic_difficulty_tiers`, `gate_dlc_act_ui_cap` and the 56-module registry selfcheck. Standalone
+gate + `negtest_craft_thrown` (12/12) re-run against that exact arz. Measured on it: legendary GEAR
+reachable from the Normal branch **0**, placed reagents reachable from Normal chests **0**.
+
+**NOT DONE / launch-gated:** in-game confirmation. No Ship/Steam build or deploy was run here. Will's
+one-line check: open a Legendary Gaoler cage chest until a thrown weapon drops, and confirm a Mythic
+Formula can drop on a Normal character.
 
 ### DEBT REGISTER (per "NO NEW SURFACE WITHOUT A GATE + DEBT REGISTER")
 
@@ -10559,9 +10578,9 @@ drops, and confirm a Mythic Formula can drop on a Normal character.
 Measured against `fix/armor-loot-breadth` (b80) and `fix/orb-loot-breadth` (b79) as they stood when
 this lane finished.
 
-⚠️ **THE RECORD INTERSECTION IS *NOT* EMPTY - correcting round 1's headline.** Byte-level record diff
-of the baseline build78 arz against the lane-built arz: **7 ADDED / 0 REMOVED / 15 MODIFIED**, and
-**three of the 15 - `records\item\loottables\svc\svc_unique_weapons_{n,e,l}01.dbr` - are ALSO
+⚠️ **THE RECORD INTERSECTION IS *NOT* EMPTY - correcting round 1's headline.** Record-level diff of
+the deployed arz against the round-2 lane build: **8 ADDED / 0 REMOVED / 16 MODIFIED by this lane**,
+and **three of the 16 - `records\item\loottables\svc\svc_unique_weapons_{n,e,l}01.dbr` - are ALSO
 rewritten by b80**, because both lanes change the same producer,
 `svc_loot_breadth._master_members()`. That is a genuine write/write collision on three records, not
 merely a textual one. Everything else IS disjoint: no `svc_uberorb_*` (b79), no

@@ -488,7 +488,7 @@ All four (common, green) pairs are distinct, and each recipe needs **one** green
 a thrown craftable leans on the single DRX reaver family once, not twice. All three Common wands are
 chest-reachable through `svc_unique_thrown_{e,l}01`.
 
-### 7.6 What R-184/185/186 wrote (20 records)
+### 7.6 What R-184/185/186 wrote (24 records: 8 added + 16 modified)
 
 `01_act{1,2,3,4}_arcaneformulae` (the supra members) · `svc_unique_thrown_{n,e,l}01` ·
 `svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01` · their legendary hosts
