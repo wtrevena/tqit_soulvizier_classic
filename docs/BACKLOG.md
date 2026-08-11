@@ -1,6 +1,41 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## 🔴 P0 LIVE-ON-STEAM - b63 SILENT WARDEN: the Sparta Crypt entrance opens no dialog (Will 2026-08-10, branch `fix/warden-sparta-dialog`) - FIX IMPLEMENTED, NOT BUILT, NOT DEPLOYED
+## 🟢 BUILD RECORD - b63 SILENT WARDEN (2026-08-10, `fix/warden-sparta-dialog` @ `af40892`) - BUILT + ALL GATES GREEN
+
+Built from `af40892` (= `main` @ `6899906` merged in, so the tree is a strict superset of the
+post-R-180 chest-loot main). Deterministic env `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, isolated
+`SVC_OUT_DIR` scratch build so nothing raced the parallel chest-loot wave's build slot (machine
+checked idle first: zero heavy build processes at launch).
+
+**Delta proof that this build is what post-merge `main` produces.** `git diff f18b06c..af40892` is
+`tools/patches/polis_vault.py` + `tools/svc_loot_breadth.py` + `docs/BACKLOG.md` only. Both code
+files are **arz-only patch modules**; neither is imported by `build_quest_files.py` or
+`build_section_surgery.py`, so `Levels.arc`/`Quests.arc` are byte-independent of them.
+
+| artifact | md5 | bytes | baseline it replaces |
+|---|---|---|---|
+| `Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | `6b25f8dd...` (194,961) = PR-5 ship + live DEV |
+| `Levels.arc` CANONICAL (Steam) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | `78a3e263...` (688,690,526) = PR-5 ship |
+| `Levels.arc` TESTHUB (DEV only) | `7a7ca9ac7e313b6be6eb65bc45aca36a` | 688,682,321 | `3a6f9d74...` (688,682,322) = live DEV, 08-08 Gaoler-cage build |
+
+**VERIFICATION LADDER - every rung green.**
+| # | check | result |
+|---|---|---|
+| L1 | `gate_travel_npc_invariants` (build-free) | **GATE PASS**, exit 0 (T1-T5c + RESPONDS) |
+| L2 | `gate_traveler_responds --specs` and `--specs --canonical` | **PASS**, exit 0 both; sources hub 25 / portal 3 / testhub_return 10 / enter_offer 1 |
+| L3 | `gate_traveler_responds --negtest` + `negtest_warden_dialog` | **PASS**, exit 0 both (7 + 10 planted defects all RED, positive controls GREEN) |
+| L4a/b | `gate_traveler_responds` vs the **BUILT** pair, TESTHUB **and** canonical | **PASS**, exit 0 both. G-COLLISION / G-WARDEN / G-ORPHAN / G-DEST / **G-SOLE-SOURCE** / **G-DIALOG-CHAIN** all PASS. QUESTS load window read off the BUILT map: `sv_commonmechanics.qst` at **index 96 of 255, in-window** |
+| L4c/d | `gate_landing_clearance --wiring v1` vs the **BUILT** TESTHUB **and** canonical maps | **G-LAND PASS**, exit 0 both. The `sparta` landing `(-6587,1,-3180)` now reports **d=6.00u** to `svc_warden_sparta_crypt.dbr` at local `(25.0,32.0)`. The 0.00u overlap is gone |
+| L5a | blob-diff canonical `78a3e263` -> new | **1** level changed (`catacube02_floorlast`), section **`0x05` only**, count 191 -> 191, `svc_warden_sparta_crypt.dbr` `(25,1,38)` -> `(25,1,32)`. **navmesh `0x0b` changes = 0** |
+| L5b | blob-diff TESTHUB (live DEV `3a6f9d74`) -> new | identical shape: **1** level, `0x05` only, same single move, **`0x0b` changes = 0**. Also proves the 08-08 Gaoler-cage chests survived the rebuild (no other blob moved) |
+| L6 | `Quests.arc` per-ENTRY diff vs `6b25f8dd` | **PASS**: 107 entries both sides, **only `sv_commonmechanics.qst` changed** (693,482 -> 693,480 B), **0 added, 0 removed, 106 byte-identical** |
+| L7 | count conservation vs the LIVE DEV `Quests.arc` | **PASS**: `Action_BoatDialog` occurrences **39 -> 39**, all parsed structure counts identical. Will's `_Toxeus` Legendary/Epic `.que` shape (402 triggers / 39 pending-fire) is therefore **unchanged**, so no existing character resyncs |
+
+The whole `sv_commonmechanics.qst` delta is **-2 bytes**: one trigger's `displayTag` string changes
+as the route moves from the enter-offer generator to the hub generator. No trigger, action or route
+was added or removed.
+
+## 🔴 P0 LIVE-ON-STEAM - b63 SILENT WARDEN: the Sparta Crypt entrance opens no dialog (Will 2026-08-10, branch `fix/warden-sparta-dialog`) - FIX IMPLEMENTED, BUILT, GATES GREEN
 
 **Will's report, VERBATIM (2026-08-10):** "when I click on the guy who travels you to the spartan crypt
 (warden of the spartan crypt) nothing happens, no dialog box comes up, nothing."
