@@ -1,5 +1,20 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
+> **✅ LIVE ON DEV - build76-dev.** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
+> **`16994072e1cb244af9f4d759309162cb`** (55,549,261 B), deployed + md5-verified 2026-08-10 while TQ was
+> closed. arz-only; the map/quests/Text on DEV did not move. **Fully quit TQ and restart Steam before
+> testing** (standing rule).
+>
+> **THE ONE-LINE TEST: kill the Boar Snatcher (the red legendary spider) and a Mystical Orb should drop.**
+> Find him in **Greece - Pine Forest (Area003/PineForest04)** or the **Sparta optional cave
+> (SpartaOptCave03)**; all three level variants (15/17/19) were wired, so any difficulty works.
+>
+> While you are there, 7 more red ubers that were silently orb-less now pay out too: **Neferkha**,
+> **um_frost**, **Phagia (the lvl-44 twin)**, **Aithon** in the Olympian Arena, and **Kravmoloch**.
+> If ANY red uber you kill still drops no orb, say so - the new class gate says there are zero left, so
+> that would be a real find.
+
 > ## 🆕 R-180 (2026-08-10): THE GAOLER-CAGE CHESTS NOW DROP DIFFERENT THINGS, AND LEGENDARY SPEARS ARE POSSIBLE
 > **✅ NOW LIVE ON DEV - build75-dev.** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
 > **`3fb1f3ce8889e27de2491ab12814547d`** (55,539,324 B), deployed + md5-verified 2026-08-10 while TQ was

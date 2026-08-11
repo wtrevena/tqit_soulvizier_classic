@@ -1,5 +1,116 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## 🟢 BUILD76-DEV GATE RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main` @ `5742775` merged, tag `build76-dev`)
+
+**Will's order (2026-08-10, verbatim):** "boar snatcher legendary spider should drop a mystical orb like
+the other red uber monsters". Ledgered R-200. **arz-only** - no Levels / Text / Quests change, 0 new tags.
+Implementation + RCA (why no gate caught it: no orb-breadth gate existed, and every roster derivation in
+this repo ran over the MOD db while the Boar Snatcher is BASE-only) is the R-200 gate record below.
+
+**SHIP ORDER HONOURED.** This lane held on branch until BOTH parallel waves had finished their DEV
+deploys - chest-loot R-180 (`3fb1f3ce`, 19:15) and warden b63 (`7a7ca9ac` / `607ec99c`, 19:16) - and only
+then merged into the then-current `main` (`824ed0c`). One heavy build at a time was respected: the machine
+was checked idle (0 build processes) before the build slot was taken.
+
+**THE BUILD (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, built INTO the work/ layout).**
+
+| artifact | md5 | bytes | vs the DEV/Steam baseline |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`16994072e1cb244af9f4d759309162cb`** | 55,549,261 (51,234 rec) | CHANGED from `3fb1f3ce` (+9,937 B, +3 rec) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **rebuilt BYTE-IDENTICAL** |
+| `Resources/Levels.arc` CANONICAL | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | UNTOUCHED (b63) |
+| `Resources/Levels.arc` TESTHUB | `7a7ca9ac7e313b6be6eb65bc45aca36a` | 688,682,321 | UNTOUCHED (b63) |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | UNTOUCHED (b63) |
+
+**det-2x is actually det-3x.** The arz was built THREE times - a scratch run, the work/-layout ship run,
+and a dedicated determinism run - and every one produced `16994072e1cb244af9f4d759309162cb`. (The first
+scratch run also proved the B-GATE-HARDEN-1 remedy is real: under `SVC_REQUIRE_GATES=1` a build outside
+the work/ layout FAILS on gate A9 rather than silently skipping it, so the ship build was moved into the
+work/ layout - where it passed - and only the determinism twin used the documented flag exemption.)
+
+**arz+Text COUPLING: MEASURED, NOT ASSUMED.** `build_text_arc.py` was re-run from the freshly built
+manifest and its output is **byte-identical** to the shipped `a9fed7ba` (89,551 B). So the "08-09 arz+Text
+were not co-rebuilt" concern raised in the b63 RCA is closed a second, independent way: not just "no tags
+changed" but "the Text artifact regenerates to the same bytes". The DEV copy of the tag MANIFEST was stale
+(`53ebd887`, Aug 5) and was refreshed to `774aa1f9` in this deploy for coherence.
+
+**RECORD-DIFF vs the arz that is live on DEV and Steam (`3fb1f3ce`): 3 ADDED / 0 REMOVED / 5 MODIFIED,
+ZERO unexplained.** Every single change maps to R-200:
+
+| | record | change |
+|---|---|---|
+| + | `creature\monster\spider\um_boareater_40.dbr` | imported (Boar Snatcher, lvl 15) + `treasureProxyName = genericbossorb_01` |
+| + | `creature\monster\spider\um_boareater_42.dbr` | imported (Boar Snatcher, lvl 17) + `genericbossorb_01` |
+| + | `creature\monster\spider\um_boareater_44.dbr` | imported (Boar Snatcher, lvl 19) + `genericbossorb_01` |
+| ~ | `creature\monster\limos\um_frost_36.dbr` | `treasureProxyName: None -> genericbossorb_02` |
+| ~ | `creature\monster\neferkha\um_neferkha_99.dbr` | `None -> genericbossorb_02` |
+| ~ | `creature\monster\human\um_phagia_44.dbr` | `None -> genericbossorb_03` |
+| ~ | `creature\monster\bossarena\boss_satyrshaman_55.dbr` | `None -> genericbossorb_04` (Aithon) |
+| ~ | `creature\monster\skeleton\um_kravmoloch_99.dbr` | `None -> genericbossorb_04` |
+
+Each MODIFIED record changed **exactly one field**. No orb, pool, chest or loot table was edited, so this
+is consumers-ADDED-only and `uber_apex_orb`'s tier FLOORS + its "orb05 carriers == the Toxeus roster"
+assertion both stay green.
+
+**BASE-IMPORT IDENTITY, re-proven INDEPENDENTLY off the built bytes** (not just by the module's own
+`apply()` assertion): each of the 3 imported records was diffed field-by-field against its base-game
+original in `<TQAE>\Database\database.arz` - **1,022 base fields carried verbatim (values AND dtypes),
+0 dropped, 0 changed, exactly 1 added (`treasureProxyName`)**. The spider's kit, mesh, controller and
+stats are intact; the base-override wholesale-replacement hazard did not fire.
+
+**GATE BATTERY - ALL GREEN. The R-180 loot-breadth gate, the b63 traveler/dialog gates and the new R-200
+orb gate now coexist and were all re-run on this build.**
+
+| gate | target | result |
+|---|---|---|
+| DB build, `SVC_REQUIRE_GATES=1` | work/ layout | **exit 0** - every in-build invariant + all 47 module `verify()` hooks green |
+| det-2x (x3 runs) | - | `16994072` **identical every time** |
+| `red_uber_orbs.verify()` (in-build) | built arz | **PASS** - 55 red ubers (mod UNION base), 8 wired, 6 exempt re-proven, **0 orb-less** |
+| `red_uber_orbs.py --negtest` | the pre-fix baseline `3fb1f3ce` | **9/9 as designed** (N3 = this very regression REDs; N8 Hero-rank scope proof stays GREEN) |
+| `record_diff.py` | `3fb1f3ce` -> built | 3 / 0 / 5, zero unexplained |
+| base-import identity (independent) | built arz vs base arz | **PASS** (1,022 fields verbatim + 1 added) |
+| `gate_chest_loot_breadth.py` (R-180's) | built arz | **GATE PASS** - 51 tables, all 6 weapon classes incl. SPEAR, pools n 181 / e 111-116 / l 308 |
+| `negtest_chest_breadth.py` (R-180's) | built arz | **NEGTEST PASS** |
+| `negtest_gaoler_chests.py` | built arz | **NEGTEST PASS** |
+| `gate_relic_difficulty_tiers.py` | built arz | **GATE PASS** - 33 mod-owned per-difficulty branches, 0 wrong-tier |
+| `validate_tags.py` | built arz + shipped Text | **PASS** - all 442 authoritative tags present |
+| `run_contracts` (all 6 modules) | built set | **GATE PASS** - 0 P0 / 0 P1 / 4492 P2 |
+| `run_contracts` A/B | the **baseline** `3fb1f3ce` under the identical config | **4492** - i.e. **byte-for-byte the same violation count; this wave adds ZERO new contract violations** (the 3 imported base records introduce no unresolved mesh/skill/tag ref) |
+| `gate_travel_npc_invariants` (b63's) | post-merge main | **GATE PASS** |
+| `gate_traveler_responds --specs` / `--specs --canonical` | post-merge main | **PASS** both (incl. G-SOLE-SOURCE + G-DIALOG-CHAIN) |
+| `gate_traveler_responds` vs the BUILT pair | TESTHUB **and** canonical | **GATE PASS** both; QUESTS load window: `sv_commonmechanics.qst` at **index 96 of 255, in-window** |
+| `gate_landing_clearance --wiring v1` | BUILT TESTHUB **and** canonical | **G-LAND PASS** both |
+| `gate_traveler_responds --negtest` + `negtest_warden_dialog` | post-merge main | **PASS** both (7/7 and 10/10) |
+| `verify_merged_bc_navmeshes` | canonical map | **PASS** 24/24, 0x0a stripped |
+| `patches/_check_registry.py` | post-merge main | OK, **55 modules**, order `c7adf7e547add4f436e69be5c71a3fc5121dac6cd8b4aa63be06f440afca87ea`; `red_uber_orbs` second-to-last, `visuals` still LAST |
+
+**DEPLOYED to DEV (`CustomMaps\SoulvizierClassicDEV`).** TQ.exe was **not running**, was never killed, and
+Steam was never restarted. **UNTOUCHED-SIBLING PROOF: all 62 files under the DEV entry were md5-hashed
+before and after; exactly 2 changed** - the arz and the tag manifest that produced its Text - and the other
+**60 are byte-identical**, including `Levels.arc`, `Quests.arc`, `Text.arc` and every resource arc.
+
+| deployed artifact | before | after |
+|---|---|---|
+| `Database/SoulvizierClassicDEV.arz` | `3fb1f3ce8889e27de2491ab12814547d` | **`16994072e1cb244af9f4d759309162cb`** (== built) |
+| `Database/uber_soul_tags.txt` | `53ebd8879f77fe92597cecd3658570b4` (stale, Aug 5) | `774aa1f97e187ec207e169f6f7a1db2a` |
+| `Resources/Levels.arc` | `7a7ca9ac...` | `7a7ca9ac...` **UNTOUCHED** |
+| `Resources/Quests.arc` | `607ec99c...` | `607ec99c...` **UNTOUCHED** |
+| `Resources/Text.arc` | `a9fed7ba...` | `a9fed7ba...` **UNTOUCHED** |
+
+**`SoulvizierClassicDEV2` DOES NOT EXIST** on this machine - `CustomMaps` has exactly one child,
+`SoulvizierClassicDEV` (checked at deploy time, `Test-Path` = False). The July-era DEV+DEV2 handoff note is
+STALE. There was no DEV2 deploy to skip or defer; stating it rather than silently dropping the step.
+
+**Rollback (one copy):** `local/db_backups/SoulvizierClassicDEV_pre-r200_3fb1f3ce.arz` (also
+`local/DEV_arz_deployed_prev.arz`) + `local/db_backups/DEV_uber_soul_tags_pre-r200_53ebd887.txt`.
+
+**RESIDUAL (honest):** `BL-R200-DEBT-2` stands - **NOT PROVEN IN-GAME**. Nothing in this lane was launched.
+Will killing the Boar Snatcher and seeing the orb drop is the launch gate. `BL-R200-DEBT-1` (333 non-uber
+Boss-class records deliberately left orb-less) and `BL-R200-DEBT-3` (4 Boss-class oddities flagged, not
+wired) are unchanged and remain Will decisions.
+
+---
+
 ## 🚢 SHIP RECORD - b63 SILENT WARDEN (P0) + R-180 CHEST BREADTH: **LIVE ON STEAM** (2026-08-10, `main` @ `824ed0c` merged, tag `build75-ship`)
 
 **The P0 is closed on the artifact side.** Workshop item **3759792705 UPDATED and CONFIRMED** - SteamCMD:
