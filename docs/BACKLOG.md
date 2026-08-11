@@ -214,6 +214,26 @@ pool slightly, so the pinned shares moved DOWN a hair (49-51: 0.0453 -> 0.0451).
 the 0.030 global cap, so none is stale - and the stale-pin check would have failed the gate if one had
 fallen under it.
 
+### ROUND-2 GATE SWEEP against the artifact that is LIVE RIGHT NOW (`build82`, `09a0f51d`)
+
+Re-run in full after the second `main` merge, against `local/build82_run1_09a0f51d.arz`
+(`09a0f51dcc5c64b3d84c123a421aeef1`, 55,562,756 B, 51,253 records) - the bytes on Steam and DEV today,
+not a lane artifact. b82 is a portal/travel-route lane; that it moves no loot is **measured here, not
+assumed**.
+
+| check | result on the LIVE `09a0f51d` |
+|---|---|
+| `gate_loot_distribution.py --apply` | **PASS - 57 surfaces**, all 12 equipment classes, 0 findings. **D7 asserted on 42 of 57** (the full R-181 set) and the PASS line now says so; **D7X** confirms the reference surface `svc_uberorb_apex_e01c.dbr` is among them |
+| `--calibrate` | **BYTE-IDENTICAL to the b81 reading**: D1 0.2079 / D2 0.2079 / D4 5.0417 / D5 0.0451 / D6 1.5950 / D6b 0.2812 / D7 0.2850 / D7b 0.0443 / D8 0.2363 / D9 0.2918. So the D7 tolerance and D7X add COVERAGE without moving a single threshold reading, and b82's 6 new records are outside the loot surface set |
+| `gate_orb_loot_breadth.py` (R-220) | **PASS - 18 tables** |
+| `gate_chest_loot_breadth.py --apply` (R-180) | **PASS - 51 tables** |
+| `gate_craft_thrown_breadth.py` (R-186) | **PASS** |
+| `debug/negtest_orb_breadth.py` (R-220) | **PASS - 11/11** |
+| `debug/negtest_armor_breadth.py` | **PASS - 16 negatives RED, 3 positive controls GREEN** (19 OK lines, exit 0) |
+| `patches/_check_registry.py` | **OK - 59 modules**, order `ba6fde285aad4fc60158fa368ae23cdab2a6087ac0860ca7c6e24e5c651aa4bb` |
+| in-build `armor_loot_breadth.verify` + `orb_armor_rows.verify` | **both PASS**, ownership 0 problems with both witnesses live |
+| BLAST RADIUS | of **360** FixedItemLoot records, `orb_armor_rows` changes **exactly 15**, **12 fields each**, **0 values lowered, 0 members removed**. The 3 apex tables are untouched no-ops - R-181 already rescued them, which is what makes them the exemplar and what made the D7 float exclusion invisible |
+
 ### ROUND 2 (2026-08-11) - the independent vet's five findings, all closed
 
 The round-1 vet returned 1 HIGH, 2 MEDIUM, 2 LOW. Every one is fixed in this branch; the HIGH was
