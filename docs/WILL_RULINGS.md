@@ -5416,6 +5416,14 @@ execution; that is stated in the ship record rather than carried quietly.
 
 ---
 
+## R-230 (Will 2026-08-11, verbatim): "every time we make a new build we should be pushing the code to remote on github"
+Standing law: EVERY build ship ends with `git push origin main --tags`. The ship step is not
+complete until the push succeeds. Applies to every lane from build84 onward (already baked
+into the in-flight b84/b86/b87 ship briefs); doc-only commits push at the next convenient
+point, ship commits push immediately.
+
+---
+
 ## R-240 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/loot_volume_trim.py`) - the chests pay a RUN's worth, not a vendor's stock; the TESTHUB farm keeps its own
 
 **WILL, VERBATIM (2026-08-11):**

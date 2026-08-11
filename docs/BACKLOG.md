@@ -2098,6 +2098,17 @@ targets. Fixing it means renaming souls (law #2 / evocative-names territory) and
 an agent call. Consequence acted on now: the Will test note was corrected to name only souls whose
 display name is provably UNIQUE (`Soul of the Gaoler`, `Soul of the Insatiable`) instead of Charon.
 
+> **PROPOSAL WRITTEN, AWAITING WILL'S SIGN-OFF (2026-08-11): `docs/SOUL_RENAME_PROPOSAL.md`.** All 40
+> groups re-measured from the build83 arz + shipped `Text.arc` with the gate's own canonical-family
+> filter (2,191 records / 740 families / 698 distinct names / 40 duplicates - the vet's numbers
+> reproduced exactly), each group classified SV-original vs mod-authored vs generated, and resolved by
+> the standing rule: **5 RENAME PROPOSED** (all mod-vs-SV: Charon, General Yrrt'ik, Ice Mandible,
+> Kallixenia, Plague Feast), **35 KEEP-AS-IS** (all SV-vs-SV, law #2 + R-49a). New fact the proposal
+> establishes: the 29 `soul\test\` duplicates have **ZERO external referents**, so they are SV dead
+> content, not a player-visible naming defect. Nothing is implemented; the doc is a ratification table
+> Will approves line-by-line or wholesale. All 5 renames are mod-owned TAG-STRING changes (0 records
+> renamed / retired / re-pointed, 0 SV tags touched) and ride any future arz+Text wave once ratified.
+
 
 ## 🧭 LANE RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis / Ragnarok / Eternal Embers removed from the act-selection UI (2026-08-10, branch `fix/portal-atlantis-cap`, NOT BUILT/SHIPPED HERE)
 
@@ -12748,3 +12759,9 @@ code comment); LOW-1 the single-family green concentration (halved by the 2+1 re
 verified map-side, `x2d_reaver_01` dropped as unplaced); LOW-2 the unstated Epic-craft-result choice
 (now stated, plus a per-tier Normal weight); LOW-3 the worktree build trap (filed as
 `BL-BUILD-DEBT-WORKTREE`); LOW-4 the two miscounts (4 tables vs 8 memberships; `supra_special` = 43).
+
+## ✅ IN-GAME CONFIRMED by Will 2026-08-11: the Atlantis PORTAL-PAGE cap (R-210/build78)
+works in-game ("the removal of atlantis portals worked by the way, i just checked").
+Closes the R-210 in-game gate (BL-PORTALCAP-DEBT-2). Still awaiting its own in-game check:
+the R-211/build82 sea-VOYAGE cap (Rhodes post-Typhon: no Marinos, no Gadir captain,
+no Atlantis adventure in the quest log) - BL-VOYAGECAP-DEBT-1 stays open until walked.
