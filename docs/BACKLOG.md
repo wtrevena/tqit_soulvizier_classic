@@ -111,7 +111,7 @@ would have handed a theme row to the armour sweep.
 | `gate_orb_loot_breadth` (R-220) on the same db | **PASS - 0 findings** - the class variety b79 shipped is intact at the lower rate |
 | `gate_craft_thrown_breadth` (R-186) on the same db | **PASS - 0 findings** |
 | `gate_chest_artifacts` (R-185 / Will's artifact ruling) on the same db | **PASS - 0 findings** |
-| `negtest_orb_legendary` (NEW) | **7 planted defects RED / 3 positive controls GREEN** |
+| `negtest_orb_legendary` (NEW) | **8 planted defects RED / 4 positive controls GREEN** (round-3: +Q4 the chance-half notice fires at 60.9% against the 25% bar, +M8 it CLEARS at 3.7% when the rate is driven under) |
 
 **The negatives plant in BOTH directions**, because a rate ruling has two ways to be wrong: M1/M2 put
 guaranteed rows back (O1), M3 restores an orb's shipped spawn volume (O2+O3 - the guarantee Will hit

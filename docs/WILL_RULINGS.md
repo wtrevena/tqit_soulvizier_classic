@@ -5776,9 +5776,11 @@ was removed once the monotonicity was written down instead of assumed.
 **REPRODUCED AS AN ARTIFACT FACT BEFORE IT WAS FIXED:** the gate emits **29 findings** on the live b83
 arz - 3 O1, 12 O2, 14 O3. (It read 43 while the inert `O3b` twin above still existed; deleting a check
 that could never fail removed its 14 duplicate lines and nothing else. Re-measured after the deletion,
-not adjusted to match.) Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - 7 planted defects RED (including M5,
+not adjusted to match.) Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - 8 planted defects RED (including M5,
 which is green on the continuous reading and RED under truncation, the exact case O4's model choice
-exists for) and 3 positive controls GREEN.
+exists for, and round-3's M8, which drives the legendary rate under the low-chance bar and proves the
+undischarged-notice CLEARS at 3.7% rather than being a permanent banner) and 4 positive controls GREEN
+(round-3 added Q4: the notice FIRES on the shipping build, 60.9% against the 25% bar, naming the debt).
 
 ### THE HALF THIS LANE COULD NOT REACH - `BL-R241-DEBT-1`, WILL DECISION
 

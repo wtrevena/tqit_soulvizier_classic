@@ -816,7 +816,7 @@ the INTEGER-TRUNCATED one, because each is the pessimistic side of its own direc
 py tools/gate_orb_legendary.py <arz> --census      # the guaranteed-row count, per tier
 py tools/gate_orb_legendary.py <arz> --calibrate   # S, drops, E[legendary], P(>=1), both models
 py tools/gate_orb_legendary.py <arz> --apply       # apply R-240 + R-241 to a PRE-wave arz first
-py tools/debug/negtest_orb_legendary.py <arz>      # 7 planted defects RED, 3 controls GREEN
+py tools/debug/negtest_orb_legendary.py <arz>      # 8 planted defects RED, 4 controls GREEN
 ```
 
 On the shipped b83 arz the audit emits **29 findings** (3 O1 + 12 O2 + 14 O3) - the defect reproduced
