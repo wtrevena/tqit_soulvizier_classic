@@ -1,14 +1,15 @@
-[h2]Fixed: the mod's own souls had no Epic or Legendary names[/h2]
+[h2]Fixed: Atlantis, Ragnarok and Eternal Embers no longer appear on the portal page[/h2]
 
-[b]A player-visible naming bug, and the structural cause behind it.[/b] Soulvizier's souls come in three tiers, and the higher two are meant to read [i]Epic Soul of the Gaoler[/i] and [i]Legendary Soul of the Gaoler[/i]. Every soul inherited from Soulvizier did exactly that. Every soul this port added did not: all three tiers showed the same plain name, so there was no way to tell an Epic soul from a Legendary one by reading it.
+[b]This mod is capped at Immortal Throne, and the travel window finally says so.[/b] If you own the Titan Quest expansions, opening a rebirth fountain or teleport showed act tabs for Atlantis, Ragnarok and Eternal Embers alongside Greece, Egypt, Orient and Immortal Throne. Those acts are not part of this mod and were never meant to be offered.
 
 [list]
-[*][b]98 souls now show their tier.[/b] The Soul of the Gaoler, Charon, Dagon, the Broodmother, the Blood Cult High Priest and every other soul authored for this port now render the Epic and Legendary prefix the rest of the roster has always had.
-[*][b]Nothing was renamed.[/b] The tier word sits in front of the existing name, so the normal tier reads exactly as it did before and the original Soulvizier souls were not touched at all.
-[*][b]The cause was structural, not a typo.[/b] A soul's three tiers share one name and differentiate through a separate quality field. Every generator this port uses writes one set of values to all three tiers, and none of them ever set that field, so the defect would have repeated on the next soul added.
-[*][b]A permanent gate so it cannot come back.[/b] The build now fails loudly if any soul's tiers would render the same name, or if a tier carries the wrong quality word. It is checked against the whole roster on every build, with no exception list.
+[*][b]The portal page now lists exactly four acts:[/b] Greece, Egypt, Orient and Immortal Throne. Every legitimate destination on those four pages is untouched, including Olympus and all of Hades.
+[*][b]The quest log lost its DLC act tabs too.[/b] The same record hole put Atlantis, Ragnarok and Eternal Embers tabs in the quest log. They are gone for the same reason.
+[*][b]Nothing was removed from the game you own.[/b] This changes only what this mod's act-selection screens offer. Your expansions are untouched outside the mod, and players who own no expansions see no difference at all: they never had those tabs.
+[*][b]The cause.[/b] The portal window's page list is a single database record. Soulvizier shipped an Immortal-Throne-era copy of it with four pages, but this port's user-interface cleanup pass deleted that copy, so the base game's own seven-page version took over. The four base pages are now imported back faithfully with the three expansion pages removed.
+[*][b]A permanent gate so it cannot come back.[/b] The build now fails loudly if any expansion act reappears on either screen, and equally if one of the four legitimate acts goes missing.
 [/list]
 
-[i]This update changes item names only. No drop rate, loot table, stat, skill or map was touched. The Boar Snatcher orb fix, the Spartan Crypt entrance fix and the chest breadth work from the previous updates are all included.[/i]
+[i]This update changes two user-interface records only. No drop rate, loot table, stat, skill, monster or map was touched. The Epic and Legendary soul names, the Boar Snatcher orb, the Spartan Crypt entrance and the chest breadth work from the previous updates are all included.[/i]
 
-[i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA, the merge base for this Anniversary Edition port - [b]Dragonlord[/b] for DRX.[/i]
+[i]Known and being worked on: an Atlantis owner can still reach Atlantis by boat from Rhodes. That voyage is a separate fix and is tracked.[/i]

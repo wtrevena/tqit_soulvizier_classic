@@ -1,5 +1,40 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD78 SHIPPED TO DEV **AND** STEAM (2026-08-10) - R-210 portal-page DLC cap; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `f663846233295da3e8824bfa4d8925c8`** (55,551,546 B, 51,236 records).
+> DEV copied with md5 source==dest verification **while TQ.exe was NOT running** (nothing killed, Steam
+> not restarted); **1 of 62 DEV files changed**, the 61 siblings re-hashed after the copy and byte-identical.
+> Steam: **Workshop item 3759792705, `Upload finished : OK`, ManifestID `3967507886597870867`**
+> (steamcmd 2026-08-10 21:59:12 -> 21:59:32), `-Update -Visibility 0` with the VDF read back to confirm
+> `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB, single wrapper.
+> - **What it is:** R-210, Will's bug "in the portal page i see atlantis which should be disabled in this
+>   mod". The portal window's page list is ONE record, `records\ingameui\teleportmap\teleportmap.dbr`;
+>   SV ships a four-page IT-era copy but `strip_ui_overrides()` deletes every `records\ingameui\` record
+>   that is not a mastery tree, so the mod shipped NO override and the BASE game's seven-page record won.
+>   The base record is now imported byte-faithfully with exactly the 9 DLC page fields deleted, plus the
+>   same treatment for the quest log's 6 DLC act-tab fields on `player quests\questwindow.dbr`. The cap
+>   runs AFTER the strip and asserts that ordering (the one way it could ship inert).
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Levels.arc 6784cf0f` (canonical) / `Text.arc a9fed7ba` /
+>   `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. 0 new tags authored, so
+>   `validate_tags` PASSES against the EXISTING `Text.arc` and no Text rebuild was needed.
+> - **Record-diff vs the shipped `435cc485`: ADDED 2 / REMOVED 0 / MODIFIED 0, ZERO unexplained** - the two
+>   capped records and nothing else. Gate records: `docs/BACKLOG.md` -> R-210 SHIP RECORD + BUILD78-DEV GATE
+>   RECORD. Ruling: `docs/WILL_RULINGS.md` -> R-210. RCA: `docs/PORTAL_PAGE_DLC_CAP.md`.
+> - **NEW permanent gate:** `tools/gate_dlc_act_ui_cap.py` (fail-loud, golden allow-list, negative-tested
+>   3 ways) runs in-memory at cap time, on the WRITTEN `.arz`, and again on the DIST payload at push-gate.
+>   It fails equally if a DLC act reappears OR if one of the four legitimate acts goes missing.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 on the dist payload, and the baseline arz under the identical config
+>   also gives 4492** - zero new violations, measured both directions.
+> - **Rollback (one step, either surface):** `local/build77_ship_435cc485.arz` (also
+>   `local/DEV_arz_deployed_prev.arz`) = the build77 arz this replaced.
+> - **Will's in-game check:** open a portal and count the act tabs - four (Greece / Egypt / Orient /
+>   Immortal Throne), no Atlantis; the Immortal Throne page still lists Olympus and all of Hades. Full note
+>   at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+> - ⚠️ **STILL OPEN (`BL-PORTALCAP-DEBT-1`, P1):** this removes the Atlantis PAGE, not the Atlantis VOYAGE.
+>   An Atlantis-DLC owner can still sail Rhodes -> Gadir -> Atlantis. Needs its own lane and Will's sign-off
+>   on the layer; options ranked in `PORTAL_PAGE_DLC_CAP.md` section 8.
+
 > ## BUILD77 SHIPPED TO STEAM (2026-08-10) - R-201 soul tier naming; arz-only delta on build76-ship
 > **Workshop item 3759792705 is now build77 CANONICAL** (was build76). `Committing update...Success.` +
 > `Updated Workshop item: 3759792705`; VDF read back `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB,
