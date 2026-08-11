@@ -2833,10 +2833,32 @@ HELOS_HUB_RETURN_SPECS = [
 # Collision-guarded promotion (base placement is the SOLE catacube injection on BOTH map variants;
 # merge_hub_into_inject_specs no longer folds a hub copy in, since svc_area_return_sparta was
 # removed from HELOS_HUB_RETURN_SPECS above -> single placement = warden-law-safe).
+#
+# b63 SILENT-WARDEN FIX (Will 2026-08-10) - RELOCATED off the teleport landing.
+# Will: "when I click on the guy who travels you to the spartan crypt (warden of the spartan
+# crypt) nothing happens, no dialog box comes up, nothing."
+# The Warden stood at local (25,1,38) = world (-6587,1,-3180), which is BYTE-FOR-BYTE the
+# destination of TWO boat routes that teleport the player to this door: svc_helos_trav_sparta
+# (tagSVCHelosToSparta, TESTHUB) and svc_testhub_return_sparta (tagSVCReturnToAthensCatacomb,
+# canonical + TESTHUB). 0.00u separation: an arriving player materialises INSIDE the Warden's
+# actorRadius, so the click that should open his dialog can resolve to the player instead. Every
+# other placed traveler sits >=3u off its landing (svc_area_return_uber is 3.00u off). That 0.00u
+# overlap only ever shipped because commit f83162f made gate_landing_clearance TOLERATE it (it
+# classified svc_warden as a soft-collision NPC) rather than moving him; gate_landing_clearance
+# now carries the exemption-free G-NPC-LANDING-SEP check so this class cannot recur.
+# NEW SPOT local (25,1,32) = world (-6587,1,-3186), surveyed on the canonical ship map 78a3e263
+# (survey_uberboss_spots, base 72, ext 3.0): d=0.14u on-mesh, clr 100/100/99% (N/E/L),
+# comp#1/123720 (the main walkable component) - the same quality as the spot it replaces.
+#   - 6.00u from BOTH route landings (>= the 4.0u G-NPC-LANDING-SEP minimum): the overlap is gone.
+#   - stairsdown01 is 6.51u away (it was 6.07u), so he still stands RIGHT BY THE STAIRS-DOWN,
+#     exactly as R-170 + docs/WILL_TEST_GUIDE describe him. Design intent is unchanged.
+#   - nearest HARD collider 4.58u (AthensCatacomb_Urn03), vs 3.69u before: strictly better.
+# Talk NPC, flags=0, no 0x14, same record path and same byte-shape as before -> only the two
+# position floats in this level's 0x05 change; the 0x0b navmesh stays BYTE-IDENTICAL.
 assert CATACUBE_FLOORLAST_LVL_KEY not in INJECT_SPECS, \
     f'PR-5 catacomb-entrance host key collision with INJECT_SPECS: {CATACUBE_FLOORLAST_LVL_KEY}'
 INJECT_SPECS[CATACUBE_FLOORLAST_LVL_KEY] = [
-    (WARDEN_SPARTA_DBR, 25.0, 1.0, 38.0),
+    (WARDEN_SPARTA_DBR, 25.0, 1.0, 32.0),
 ]
 
 

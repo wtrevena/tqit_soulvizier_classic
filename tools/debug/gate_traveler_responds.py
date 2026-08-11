@@ -32,6 +32,34 @@ HARD INVARIANTS (any failure => exit 1; no MUTE clickable traveler ships) - ever
   G-ORPHAN     must register >=1 boat route (a placed NPC with no route does NOTHING when clicked).
   G-DEST       every route destination is non-zero (a real teleport target).
 
+b63 SILENT-WARDEN ADDITIONS (Will 2026-08-10: "when I click on the guy who travels you to the
+spartan crypt (warden of the spartan crypt) nothing happens, no dialog box comes up, nothing").
+The four invariants above were ALL GREEN on the build that shipped that mute Warden to Steam, so
+they were not sufficient. Two more, both fail-loud:
+
+  G-SOLE-SOURCE   no PLACED hub boat NPC may draw its ENTIRE route set from TRAVELER_ENTER_OFFERS.
+                  Enter-offers are a SECOND menu entry bolted onto an NPC that already owns a
+                  HELOS_HUB_TRAVEL / per-area-return route; they are appended LAST to the host step
+                  and the class has never been confirmed in-game. The Warden of the Spartan Crypt
+                  was the only placed NPC in the mod whose whole menu came from one, and it opened
+                  no dialog at all. Sole-sourcing an unproven trigger class is now a build error.
+
+  G-DIALOG-CHAIN  the brief's "no silent traveler can ever ship again" gate. For EVERY placed
+                  traveler NPC, all three links of the talk chain must RESOLVE:
+                    (1) RECORD  - the .dbr is minted by the arz builder (apply_svc_patches roster),
+                                  so the shipped .arz really contains the NPC record;
+                    (2) QUEST   - it registers >=1 Action_BoatDialog route, and that route lives in
+                                  the always-loaded host quest sv_commonmechanics.qst (never in some
+                                  new quest that would need a fresh QUESTS registration);
+                    (3) WINDOW  - that host quest sits INSIDE the engine's proven ~256-entry QUESTS
+                                  load window. Proven build-free because the host quest IS
+                                  svaera_plus_portals.QUEST_INSERT_ANCHOR, the anchor the map's
+                                  QUESTS rebuild splices the SV questlines after and asserts is
+                                  in-window; proven directly when a built Levels.arc is passed
+                                  (--levels), by reading the map's QUESTS section and checking the
+                                  host quest's actual index. A break in ANY link = a clickable NPC
+                                  that says nothing, which is precisely Will's bug.
+
 Read-only. Defaults to the DEPLOYED DEV set; override with --quests / --levels to gate a
 freshly-built pair (wire into the build after Quests+TESTHUB-Levels are built).
 
@@ -71,6 +99,16 @@ HUB_KW = ('svc_helos_trav', 'svc_area_return', 'svc_testhub', 'portal_master_hel
           'svc_warden_sparta')
 HOST_QST = "sv_commonmechanics.qst"
 
+# b63: route provenance. Which generator emitted a route decides G-SOLE-SOURCE.
+SRC_ENTER = 'enter_offer'     # build_quest_files._add_traveler_enter_offers (appended LAST)
+SRC_HUB = 'hub'               # _add_helos_traveler_hub_travel (the Will-confirmed class)
+SRC_PORTAL = 'portal'         # _add_helos_portal_travel (Almyros)
+SRC_RETURN = 'testhub_return'  # _add_testhub_portal_travel (the 5 per-area returns)
+# The displayTag prefix _add_traveler_enter_offers stamps on its triggers. This is how the
+# arc-reading path recovers provenance from a BUILT Quests.arc (the spec path sets it directly).
+ENTER_OFFER_DISPLAY_PREFIX = 'SVC: Traveler Enter-Offer'
+HUB_DISPLAY_PREFIX = 'SVC: Helos Traveler Hub'
+
 
 def s32(v):
     return struct.unpack("<i", struct.pack("<I", v))[0] if isinstance(v, int) else v
@@ -96,9 +134,23 @@ def _entries(container_items):
     return out
 
 
+def _src_from_display(display):
+    """b63: recover a route's emitting generator from its trigger displayTag (the only
+    provenance a BUILT Quests.arc carries)."""
+    if display.startswith(ENTER_OFFER_DISPLAY_PREFIX):
+        return SRC_ENTER
+    if display.startswith(HUB_DISPLAY_PREFIX):
+        return SRC_HUB
+    if 'Portal-Master' in display:
+        return SRC_PORTAL
+    if 'TESTHUB Return' in display:
+        return SRC_RETURN
+    return 'other'
+
+
 def load_routes(quests_arc):
     """Ordered list of route dicts from sv_commonmechanics step 1, in registration order:
-    {order, npc(lower), npc_short(lower), tag, dest(x,y,z)}."""
+    {order, npc(lower), npc_short(lower), tag, dest(x,y,z), src, host}."""
     from arc_patcher import ArcArchive
     arc = ArcArchive.from_file(quests_arc)
     tree = qf.parse(arc.get_file(HOST_QST))
@@ -110,6 +162,7 @@ def load_routes(quests_arc):
         cbl = _blocks(container)
         idx = 0
         while idx + 2 < len(cbl):
+            display = dict(_fields(cbl[idx])).get("displayTag", "")
             for an, d in _entries(cbl[idx + 2]):
                 if an == "Action_BoatDialog":
                     npc = d.get("npc", "")
@@ -117,7 +170,8 @@ def load_routes(quests_arc):
                         order=order, step=s,
                         npc=npc.lower(), npc_short=npc.split(BS)[-1].lower(),
                         tag=d.get("tag", ""),
-                        dest=(s32(d.get("x", 0)), s32(d.get("y", 0)), s32(d.get("z", 0)))))
+                        dest=(s32(d.get("x", 0)), s32(d.get("y", 0)), s32(d.get("z", 0))),
+                        src=_src_from_display(display), host=HOST_QST))
                     order += 1
             idx += 3
     return routes
@@ -180,26 +234,27 @@ def facts_from_specs(testhub=True):
     import build_section_surgery as bss
     routes, order = [], 0
 
-    def add(npc, dests):
+    def add(npc, dests, src):
         nonlocal order
         short = npc.replace('/', BS).split(BS)[-1].lower()
         for xyz, tag in dests:
             # DESTS tables already hold SIGNED world coords (the arc path stores them unsigned and
             # s32-decodes on read; here they are native signed, so use them as-is).
             routes.append(dict(order=order, step=0, npc=npc.lower(), npc_short=short,
-                               tag=tag, dest=tuple(int(v) for v in xyz)))
+                               tag=tag, dest=tuple(int(v) for v in xyz),
+                               src=src, host=bqf.HELOS_PORTAL_HOST_QUEST))
             order += 1
 
-    add(bqf.HELOS_PORTAL_NPC, bqf.HELOS_PORTAL_DESTS)               # Almyros 4-dest (trig 1)
+    add(bqf.HELOS_PORTAL_NPC, bqf.HELOS_PORTAL_DESTS, SRC_PORTAL)   # Almyros 4-dest (trig 1)
     for npc in bqf.TESTHUB_AREA_RETURN_NPCS:                        # per-area returns (2 each)
         # b62 TRAVELERS-INTO-AREAS: sparta/uber override to return-to-origin; the rest keep the
         # shared Helos+BloodCave menu (see build_quest_files.TESTHUB_RETURN_DESTS_BY_NPC).
         dests = bqf.TESTHUB_RETURN_DESTS_BY_NPC.get(npc, bqf.TESTHUB_RETURN_DESTS)
-        add(npc, dests)
-    for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL:                      # the 25-record hub (1 each)
-        add(npc, [(xyz, tag)])
+        add(npc, dests, SRC_RETURN)
+    for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL:                      # the hub block (1 each)
+        add(npc, [(xyz, tag)], SRC_HUB)
     for npc, xyz, tag in bqf.TRAVELER_ENTER_OFFERS:                 # b62 enter-offers (registered last)
-        add(npc, [(xyz, tag)])
+        add(npc, [(xyz, tag)], SRC_ENTER)
 
     specs = dict(bss.merge_hub_into_inject_specs(bss.INJECT_SPECS) if testhub else bss.INJECT_SPECS)
     if testhub:
@@ -285,10 +340,154 @@ def evaluate(routes, placed):
         if r["dest"] == (0, 0, 0):
             fails.append(("G-DEST", f"{r['npc_short']} tag={r['tag']}: destination is (0,0,0)."))
 
+    # G-SOLE-SOURCE (b63): no PLACED NPC may have TRAVELER_ENTER_OFFERS as its only route source.
+    # Enter-offers are appended LAST to the host step and the class has zero in-game confirmations;
+    # they are only ever safe as a SECOND entry on an NPC that already owns a proven route. The
+    # Warden of the Spartan Crypt shipped mute to Steam because it was sole-sourced this way.
+    for n, lvs in sorted(placed.items()):
+        my = routes_by_npc.get(n, [])
+        if not my:
+            continue                      # already reported by G-ORPHAN
+        srcs = {r.get("src", "other") for r in my}
+        if srcs == {SRC_ENTER}:
+            tags = ", ".join(sorted(r["tag"] for r in my))
+            fails.append(("G-SOLE-SOURCE",
+                f"{n}: PLACED in {sorted(lvs)} and its ENTIRE menu ({tags}) comes from "
+                f"TRAVELER_ENTER_OFFERS - the appended-last, never-in-game-confirmed trigger "
+                f"class. An enter-offer may only be a SECOND entry on an NPC that already owns a "
+                f"HELOS_HUB_TRAVEL / per-area-return route. Move this route into "
+                f"HELOS_HUB_TRAVEL (this is the b63 silent-Warden bug)."))
+
     return fails
 
 
-def report(fails, routes, placed, quests, levels):
+# ── b63 G-DIALOG-CHAIN ────────────────────────────────────────────────────────────────────────
+# The full talk chain for every PLACED traveler: record -> quest -> loadable QUESTS window.
+# ARZ_ROSTER_SOURCES documents WHERE each link is proven, so a reader can audit it without
+# re-deriving the rosters.
+def arz_record_roster():
+    """Every NPC record the arz builder actually mints, normalized lowercase '\\' paths.
+    A placed traveler whose record is NOT here would resolve to nothing in the shipped .arz."""
+    import apply_svc_patches as asp
+    roster = set()
+    roster.add(_norm_rec(asp.PORTAL_MASTER_HELOS_NPC))          # Almyros
+    for r in asp.TESTHUB_AREA_RETURN_NPCS:                      # 5 per-area returns
+        roster.add(_norm_rec(r))
+    for row in asp.HELOS_HUB_OUTBOUND:                          # 14 Helos travelers
+        roster.add(_norm_rec(row[0]))
+    for r in asp.HELOS_HUB_RETURNS:                             # 11 area returns (incl. the
+        roster.add(_norm_rec(r))                                #   retired-but-kept Sparta donor)
+    roster.add(_norm_rec(asp.WARDEN_SPARTA_CRYPT_DBR))          # the catacomb Warden clone
+    return roster
+
+
+def _norm_rec(p):
+    p = p.decode('latin1') if isinstance(p, (bytes, bytearray)) else p
+    return p.replace('/', BS).lower()
+
+
+def host_quest_in_load_window(levels_arc=None):
+    """(ok, detail) - is the travelers' host quest inside the engine's proven ~256-entry QUESTS
+    load window? A quest registered past that window NEVER loads for any character (proven across
+    5 custom-quest chars + vanilla saves; docs/QUEST_STATE_INJECT.md sec 2), so every boat trigger
+    it carries would be dead and every traveler silent.
+
+    BUILD-FREE proof: the host quest IS svaera_plus_portals.QUEST_INSERT_ANCHOR - the anchor the
+    map's QUESTS rebuild splices the 4 SV questlines after, and which build_ordered_quest_list
+    asserts stays in-window (`anchor_idx + 1 + k < 256`, plus `len(ordered) <= 256`). If the
+    travelers' host quest ever stops being that anchor, this check goes red and the wave has to
+    prove the new host's index by hand.
+    BUILT-MAP proof (when levels_arc is given): read the map's QUESTS(0x1b) section and check the
+    host quest's ACTUAL index."""
+    import build_quest_files as bqf
+    import svaera_plus_portals as spp
+    host = bqf.HELOS_PORTAL_HOST_QUEST.lower()
+    anchor = spp.QUEST_INSERT_ANCHOR.decode('latin1').replace('/', BS).lower()
+    anchor_base = anchor.rsplit(BS, 1)[-1]
+    if anchor_base != host:
+        return False, (f'host quest {host!r} is NOT the QUESTS insert anchor {anchor_base!r} - '
+                       f'its load-window index is unproven; prove it or move the triggers back '
+                       f'onto the anchor quest')
+    detail = f'host {host!r} == QUEST_INSERT_ANCHOR (spliced in-window by build_ordered_quest_list)'
+    if levels_arc is None:
+        return True, detail + ' [build-free]'
+    try:
+        idx, total = _quests_index_of(Path(levels_arc), host)
+    except Exception as e:
+        return True, detail + f' [built-map read skipped: {e}]'
+    if idx is None:
+        return False, f'host quest {host!r} is NOT registered in the map QUESTS section at all'
+    if idx >= 256:
+        return False, (f'host quest {host!r} is registered at QUESTS index {idx} of {total} - '
+                       f'PAST the proven <=256 load window, so it never loads and every traveler '
+                       f'it hosts is silent')
+    return True, detail + f' [built map: index {idx} of {total}, in-window]'
+
+
+def _quests_index_of(levels_arc, host_basename):
+    """(index, total) of a quest basename in the built map's QUESTS(0x1b) section."""
+    import struct as _struct
+    from arc_patcher import ArcArchive
+    from merge_levels_binary import parse_sections
+    arc = ArcArchive.from_file(levels_arc)
+    data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
+    sec = next(s for s in parse_sections(data) if s['type'] == 0x1b)
+    d = data[sec['data_offset']:sec['data_offset'] + sec['size']]
+    pos = 0
+    n = _struct.unpack_from('<I', d, pos)[0]
+    pos += 4
+    for i in range(n):
+        ln = _struct.unpack_from('<I', d, pos)[0]
+        pos += 4
+        name = d[pos:pos + ln].decode('latin1')
+        pos += ln
+        if name.replace('/', BS).lower().rsplit(BS, 1)[-1] == host_basename:
+            return i, n
+    return None, n
+
+
+def evaluate_dialog_chain(routes, placed, levels_arc=None):
+    """b63 G-DIALOG-CHAIN. For every PLACED traveler NPC prove all three links resolve:
+    record (in the arz roster) -> quest (>=1 boat route, on the always-loaded host quest) ->
+    window (that host quest inside the ~256-entry QUESTS load window).
+    Returns [(class, msg)] exactly like evaluate()."""
+    fails = []
+    routes_by_npc = defaultdict(list)
+    for r in routes:
+        routes_by_npc[r["npc_short"]].append(r)
+    roster = arz_record_roster()
+    roster_short = {p.rsplit(BS, 1)[-1] for p in roster}
+
+    for n, lvs in sorted(placed.items()):
+        # LINK 1: RECORD - the .dbr the map places is actually minted into the shipped arz.
+        if n not in roster_short:
+            fails.append(("G-DIALOG-CHAIN",
+                f"{n}: PLACED in {sorted(lvs)} but its record is minted by NO arz builder "
+                f"(not in apply_svc_patches' NPC roster) - the shipped .arz has no such NPC, so "
+                f"the placement resolves to nothing."))
+            continue
+        # LINK 2: QUEST - it owns >=1 boat route, and that route rides the always-loaded host.
+        my = routes_by_npc.get(n, [])
+        if not my:
+            fails.append(("G-DIALOG-CHAIN",
+                f"{n}: PLACED in {sorted(lvs)} with a real arz record but registers NO boat "
+                f"route - clicking it opens nothing."))
+            continue
+        bad_host = sorted({r.get("host", "?") for r in my} - {HOST_QST})
+        if bad_host:
+            fails.append(("G-DIALOG-CHAIN",
+                f"{n}: registers boat route(s) in {bad_host} instead of the always-loaded "
+                f"{HOST_QST}. A new host quest needs its own QUESTS registration inside the "
+                f"<=256 load window - prove it or move the triggers back onto {HOST_QST}."))
+
+    # LINK 3: WINDOW - the host quest loads at all.
+    ok, detail = host_quest_in_load_window(levels_arc)
+    if not ok:
+        fails.append(("G-DIALOG-CHAIN", f"QUESTS load window: {detail}"))
+    return fails, detail
+
+
+def report(fails, routes, placed, quests, levels, chain_detail=None):
     routes_by_npc = defaultdict(list)
     for r in routes:
         routes_by_npc[r["npc_short"]].append(r)
@@ -298,11 +497,19 @@ def report(fails, routes, placed, quests, levels):
     print(f"  levels: {levels}")
     print(f"  boat NPCs with routes: {len(routes_by_npc)}   placed boat NPCs: {len(placed)}   "
           f"total routes: {len(routes)}")
+    n_enter = sum(1 for r in routes if r.get("src") == SRC_ENTER)
+    print(f"  route sources: hub={sum(1 for r in routes if r.get('src') == SRC_HUB)}  "
+          f"portal={sum(1 for r in routes if r.get('src') == SRC_PORTAL)}  "
+          f"testhub_return={sum(1 for r in routes if r.get('src') == SRC_RETURN)}  "
+          f"enter_offer={n_enter}")
+    if chain_detail:
+        print(f"  QUESTS load window: {chain_detail}")
     print("=" * 96)
     by_class = defaultdict(list)
     for cls, msg in fails:
         by_class[cls].append(msg)
-    for cls in ["G-COLLISION", "G-WARDEN", "G-ORPHAN", "G-DEST"]:
+    for cls in ["G-COLLISION", "G-WARDEN", "G-ORPHAN", "G-DEST",
+                "G-SOLE-SOURCE", "G-DIALOG-CHAIN"]:
         msgs = by_class.get(cls, [])
         status = "PASS" if not msgs else f"FAIL ({len(msgs)})"
         print(f"\n[{status}] {cls}")
@@ -315,7 +522,95 @@ def report(fails, routes, placed, quests, levels):
               f"{len({c for c,_ in fails})} class(es).")
     else:
         print("GATE PASS: every placed hub traveler owns a bound, fire-able, unique route "
-              "(no mute, no orphan, no dead, no warden, valid dests).")
+              "(no mute, no orphan, no dead, no warden, valid dests), draws it from a "
+              "Will-confirmed trigger class, and its record -> quest -> load-window dialog "
+              "chain fully resolves.")
+
+
+def negtest():
+    """b63 NEGATIVE TEST: plant each defect class into the spec-derived facts and prove the gate
+    goes RED. A gate that has never been shown to fail is not evidence of anything. Exit 0 = every
+    planted violation was caught AND the untouched baseline is green."""
+    import copy
+    ok = True
+
+    def run(label, mutate, want_cls):
+        nonlocal ok
+        routes, placed = facts_from_specs(testhub=True)
+        routes, placed = copy.deepcopy(routes), copy.deepcopy(placed)
+        mutate(routes, placed)
+        fails = evaluate(routes, placed)
+        chain, _d = evaluate_dialog_chain(routes, placed)
+        got = {c for c, _ in fails} | {c for c, _ in chain}
+        hit = want_cls in got
+        print(f"  [{'RED  OK' if hit else 'GREEN  MISS'}] {label:<58s} want={want_cls} got={sorted(got) or '(none)'}")
+        ok = ok and hit
+
+    print("=" * 96)
+    print("gate_traveler_responds --negtest (b63): planted-violation battery")
+    print("=" * 96)
+
+    # POSITIVE CONTROL: untouched facts must be GREEN, else the negtest proves nothing.
+    routes, placed = facts_from_specs(testhub=True)
+    base = evaluate(routes, placed) + evaluate_dialog_chain(routes, placed)[0]
+    print(f"  [{'GREEN OK' if not base else 'RED   MISS'}] positive control: untouched TESTHUB facts"
+          f"{'' if not base else ' -> ' + str(base)}")
+    ok = ok and not base
+
+    def sole_source(routes, placed):
+        """Re-create the EXACT shipped bug: the Warden's only route is an enter-offer."""
+        for r in routes:
+            if r["npc_short"] == "svc_warden_sparta_crypt.dbr":
+                r["src"] = SRC_ENTER
+    run("G-SOLE-SOURCE: Warden's whole menu is an enter-offer (THE b63 bug)",
+        sole_source, "G-SOLE-SOURCE")
+
+    def orphan_record(routes, placed):
+        """A placed traveler whose record no arz builder mints."""
+        placed["svc_helos_trav_ghost.dbr"] = {"startingfarmland06d.lvl"}
+        routes.append(dict(order=999, step=0, npc=r"records\quests\svc_helos_trav_ghost.dbr",
+                           npc_short="svc_helos_trav_ghost.dbr", tag="tagGhost",
+                           dest=(1, 2, 3), src=SRC_HUB, host=HOST_QST))
+    run("G-DIALOG-CHAIN link 1: placed NPC with no arz record",
+        orphan_record, "G-DIALOG-CHAIN")
+
+    def wrong_host(routes, placed):
+        """A traveler whose route rides a quest other than the always-loaded host."""
+        for r in routes:
+            if r["npc_short"] == "svc_warden_sparta_crypt.dbr":
+                r["host"] = "svc_brand_new_quest.qst"
+    run("G-DIALOG-CHAIN link 2: route hosted on a non-always-loaded quest",
+        wrong_host, "G-DIALOG-CHAIN")
+
+    def no_route(routes, placed):
+        """A placed traveler with a real record but zero boat routes."""
+        keep = [r for r in routes if r["npc_short"] != "svc_warden_sparta_crypt.dbr"]
+        routes[:] = keep
+    run("G-ORPHAN: placed traveler registers no boat route at all",
+        no_route, "G-ORPHAN")
+
+    def double_place(routes, placed):
+        placed["svc_warden_sparta_crypt.dbr"] = {"catacube02_floorlast.lvl", "maze03.lvl"}
+    run("G-WARDEN: one record placed in two levels", double_place, "G-WARDEN")
+
+    def steal(routes, placed):
+        """An earlier-registered NPC in the SAME level binds the Warden's tag first."""
+        routes.insert(0, dict(order=-1, step=0, npc=r"records\quests\svc_testhub_thief.dbr",
+                              npc_short="svc_testhub_thief.dbr", tag="tagSVCEnterSpartaCrypt",
+                              dest=(-5596, -2, -1410), src=SRC_HUB, host=HOST_QST))
+        placed["svc_testhub_thief.dbr"] = {"catacube02_floorlast.lvl"}
+    run("G-COLLISION: same-level earlier NPC steals the Warden's route", steal, "G-COLLISION")
+
+    def zero_dest(routes, placed):
+        for r in routes:
+            if r["npc_short"] == "svc_warden_sparta_crypt.dbr":
+                r["dest"] = (0, 0, 0)
+    run("G-DEST: route destination is (0,0,0)", zero_dest, "G-DEST")
+
+    print("=" * 96)
+    print("NEGTEST PASS: every planted violation was caught and the baseline is green."
+          if ok else "NEGTEST FAIL: at least one planted violation slipped through (see MISS).")
+    return 0 if ok else 1
 
 
 def main():
@@ -327,17 +622,23 @@ def main():
                          "(TESTHUB build) instead of reading built .arc files")
     ap.add_argument("--canonical", action="store_true",
                     help="with --specs: derive the CANONICAL build (INJECT_SPECS) not the TESTHUB one")
+    ap.add_argument("--negtest", action="store_true",
+                    help="b63: plant each defect class and prove the gate goes RED")
     args = ap.parse_args()
+    if args.negtest:
+        return negtest()
     if args.specs:
         routes, placed = facts_from_specs(testhub=not args.canonical)
         which = "canonical" if args.canonical else "TESTHUB"
         quests = levels = f"(spec-derived {which} tables, build-free)"
+        chain_fails, chain_detail = evaluate_dialog_chain(routes, placed)
     else:
         routes = load_routes(Path(args.quests))
         placed = load_placements(Path(args.levels))
         quests, levels = args.quests, args.levels
-    fails = evaluate(routes, placed)
-    report(fails, routes, placed, quests, levels)
+        chain_fails, chain_detail = evaluate_dialog_chain(routes, placed, levels_arc=args.levels)
+    fails = evaluate(routes, placed) + chain_fails
+    report(fails, routes, placed, quests, levels, chain_detail)
     return 1 if fails else 0
 
 
