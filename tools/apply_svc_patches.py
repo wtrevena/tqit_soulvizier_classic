@@ -9123,6 +9123,192 @@ def _verify_soul_naming(db, tags):
           f"auto-whitelisted")
 
 
+# ── R-201 SOUL TIER NAMING (Will 2026-08-10) ────────────────────────────────
+# Will: "the new souls we made dont have named variants, i.e., the epic, legendary
+# and normal versions of the soul of the gaolor are all named the same where as the
+# rest of the souls are named things like Soul of the Gaolor, Epic Soul of the
+# gaolor, legendary soul of the gaolor".
+#
+# THE MECHANISM (derived from the compliant majority, NOT invented): a soul's three
+# tier records SHARE ONE `itemNameTag` (the evocative base name) and differentiate
+# via `itemQualityTag`, which the engine renders as a PREFIX in front of the item
+# name. 641 of the 739 multi-tier soul families in the shipped build76 arz - every
+# single SV-original family, zero exceptions - use exactly:
+#     _soul_n  ->  itemQualityTag ABSENT          -> "Soul of the Gaoler"
+#     _soul_e  ->  itemQualityTag tagSoulEpic     -> "Epic Soul of the Gaoler"
+#     _soul_l  ->  itemQualityTag tagSoulLegendary-> "Legendary Soul of the Gaoler"
+# (`tagSoulEpic` = '{^F}Epic', `tagSoulLegendary` = '{^F}Legendary' - BOTH already
+# authored in the shipped Text.arc by the SV text pass, so this fix references
+# existing tags and authors NO new ones.)
+#
+# Because the prefix sits in FRONT of the shared name tag, the evocative
+# hand-designed names (law #2 / `_HAND_DESIGNED_SOUL_TAGS`) and the SV originals
+# are UNTOUCHED as strings - "Soul of the Gaoler" stays exactly that on normal and
+# simply gains "Epic "/"Legendary " on the higher tiers, which is precisely the
+# behaviour Will described and requires no exemption list.
+#
+# The 98 offending families are all OURS-path (`...\soul\svc_uber\*`): the
+# generators (`create_uber_souls.design_soul`, `_apply_dewired_hero_handcraft`,
+# and every hand-authored boss soul) write the same field set to all three tiers
+# and never emitted `itemQualityTag` at all.
+_SOUL_TIER_QUALITY = {'n': None, 'e': 'tagSoulEpic', 'l': 'tagSoulLegendary'}
+
+# SCOPE = the CANONICAL tier family, `<base>_soul_{n,e,l}.dbr` (+ SV's equivalent
+# `<base>_soul.dbr` normal spelling): 706 of the 739 multi-tier families and 100%
+# of both the OURS-path roster and every generator's output. Deliberately OUT of
+# scope, because they are neither tier families nor player-facing drops and would
+# only add noise: amgoz's git `(... conflicted copy ...)` junk records, the
+# `soultemplate*.dbr` authoring stubs, SV's `<base>_soul_n_.dbr` /
+# `<base>_soul_n__e.dbr` double-authored typo copies, `anysoul*`, `<x>_n_soul.dbr`,
+# and the loot-table / monster-variant records that share the soul folders but
+# carry no `itemNameTag` at all.
+_SOUL_FAMILY_SUFFIX = (('_soul_n', 'n'), ('_soul_e', 'e'), ('_soul_l', 'l'),
+                       ('_soul', 'n'))
+
+
+def _soul_family_key(record_name):
+    """(family_key, tier) for a canonical soul tier record, else (None, None).
+
+    family_key = lowercased directory + base with the tier suffix stripped, so
+    `...\\svc_uber\\polisgaoler_soul_e.dbr` -> (`...\\svc_uber\\polisgaoler`, 'e')."""
+    nl = record_name.replace('/', '\\').lower()
+    if nl.endswith('.dbr'):
+        nl = nl[:-4]
+    if 'conflicted copy' in nl:
+        return None, None
+    for suffix, tier in _SOUL_FAMILY_SUFFIX:
+        if nl.endswith(suffix):
+            base = nl[:-len(suffix)]
+            head = base.rsplit('\\', 1)[-1]
+            if not head or head.endswith('_'):
+                return None, None   # `..._soul_n_` typo copies: out of scope
+            return base, tier
+    return None, None
+
+
+def _iter_soul_tier_records(db):
+    """Yield (record_name, family_key, tier, name_tag) for every canonical soul
+    TIER record. A soul ITEM is a record under `records\\item\\equipmentring\\
+    soul\\...` carrying an `itemNameTag` (a player-visible name); records without
+    one are loot tables / monster variants, not items. Case-aliased clones of the
+    same path are de-duplicated (the roster carries both casings for some SV
+    records)."""
+    seen = set()
+    for n in db.record_names():
+        nl = n.replace('/', '\\').lower()
+        if '\\soul\\' not in nl or 'equipmentring' not in nl:
+            continue
+        if nl in seen:
+            continue
+        fam, tier = _soul_family_key(n)
+        if fam is None:
+            continue
+        tag = db.get_field_value(n, 'itemNameTag')
+        tag = tag[0] if isinstance(tag, list) else tag
+        if not (isinstance(tag, str) and tag.strip()):
+            continue
+        seen.add(nl)
+        yield n, fam, tier, tag.strip()
+
+
+def _apply_soul_tier_naming(db):
+    """R-201: give every Epic/Legendary soul record the convention quality tag.
+
+    ADD-ONLY and idempotent: a record that already carries an `itemQualityTag` is
+    left exactly as authored (so an SV original can never be rewritten by this
+    pass), and normal-tier records are never touched. Anything the normalizer
+    cannot reach is caught by `_verify_soul_tier_naming` immediately after."""
+    fixed = 0
+    for rec, _fam, tier, _tag in _iter_soul_tier_records(db):
+        want = _SOUL_TIER_QUALITY[tier]
+        if want is None:
+            continue
+        cur = db.get_field_value(rec, 'itemQualityTag')
+        cur = cur[0] if isinstance(cur, list) else cur
+        if isinstance(cur, str) and cur.strip():
+            continue
+        db.set_field(rec, 'itemQualityTag', want, DATA_TYPE_STRING)
+        fixed += 1
+    return fixed
+
+
+def _verify_soul_tier_naming(db, tags, base_tags=None):
+    """FAIL-LOUD (R-201). Two invariants over the FINAL assembled db:
+
+    C1 CONVENTION - every canonical soul tier record's `itemQualityTag` matches
+       its tier: normal = absent, `_soul_e` = tagSoulEpic, `_soul_l` =
+       tagSoulLegendary.
+    C2 DISTINCTNESS - Will's actual bug: within one soul family the tiers must
+       render DIFFERENT names. The rendered name is `<quality text> <name text>`,
+       so this compares the (itemQualityTag, itemNameTag) pair per tier and fails
+       if any two tiers of the same soul collapse to the same string.
+
+    There is NO exemption list: the convention is satisfied by SV originals, by
+    the evocative hand-designed souls, and by the generated souls alike, because
+    the tier word is a PREFIX in front of whatever the shared name tag says. An
+    exemption could therefore only ever hide a defect."""
+    c1 = []
+    fams = {}
+    n_records = 0
+    for rec, fam, tier, tag in _iter_soul_tier_records(db):
+        n_records += 1
+        cur = db.get_field_value(rec, 'itemQualityTag')
+        cur = cur[0] if isinstance(cur, list) else cur
+        cur = cur.strip() if isinstance(cur, str) else None
+        cur = cur or None
+        want = _SOUL_TIER_QUALITY[tier]
+        if cur != want:
+            c1.append((rec, tier, cur, want))
+        fams.setdefault(fam, {}).setdefault(tier, []).append((rec, cur, tag))
+
+    c2 = []
+    for fam, tiers in fams.items():
+        if len(tiers) < 2:
+            continue
+        rendered = {}
+        for tier, members in tiers.items():
+            rec, cur, tag = members[0]
+            rendered.setdefault((cur, tag), []).append((tier, rec))
+        for key, hits in rendered.items():
+            if len(hits) > 1:
+                c2.append((fam, key, hits))
+
+    if c1 or c2:
+        for rec, tier, cur, want in c1[:40]:
+            print(f"  SOUL-TIER OFFENDER (C1 convention): {rec} tier={tier} "
+                  f"itemQualityTag={cur!r}, expected {want!r}")
+        for fam, key, hits in c2[:40]:
+            tiers = '/'.join(t for t, _r in hits)
+            print(f"  SOUL-TIER OFFENDER (C2 identical name): {fam} tiers {tiers} "
+                  f"all render quality={key[0]!r} + name={key[1]!r} - the player "
+                  f"sees the SAME item name on every tier")
+        raise SystemExit(
+            f"R-201 soul tier-naming gate FAILED: {len(c1)} record(s) break the "
+            f"normal/Epic/Legendary itemQualityTag convention and {len(c2)} soul "
+            f"family/families render IDENTICAL display names across tiers (Will's "
+            f"bug: 'the epic, legendary and normal versions ... are all named the "
+            f"same')")
+
+    # Both quality tags must actually RESOLVE, or the prefix renders as raw tag
+    # text in-game. `tags` = the mod-authored tag dict; base_tags (optional) = the
+    # SV/base strings the Text build also emits (both live there today, which is
+    # why this fix authors NO new tag).
+    known = set(tags or ())
+    if base_tags:
+        known |= set(base_tags)
+    if known:
+        missing = [t for t in ('tagSoulEpic', 'tagSoulLegendary')
+                   if t not in known]
+        if missing:
+            print(f"  R-201 NOTE: {missing} not in the mod tag dict - they must "
+                  f"come from the SV text pass; validate_tags is the backstop")
+    n_multi = sum(1 for t in fams.values() if len(t) > 1)
+    print(f"  R-201 soul tier-naming gate OK: {n_records} canonical soul tier "
+          f"records / {len(fams)} soul families ({n_multi} multi-tier) - every "
+          f"tier carries its convention quality tag and renders a DISTINCT name")
+    return n_records
+
+
 def _verify_no_unclassified_soul_leaks(db):
     """Build-time invariant: NO non-Hero/Boss/Quest creature may drop a soul in any
     equipment slot. Runs after all wiring + gating, before the drop forcer. Raises
@@ -19282,6 +19468,20 @@ def run_registry_gates(db, tags, force_full_drops=True):
           f"{_n_curated} tags + auto-standardized {_n_auto} uncovered 'Soul of X' "
           f"OURS soul(s); SV-original-path names untouched")
     _verify_soul_naming(db, tags)
+
+    # ── R-201 SOUL TIER NAMING (Will 2026-08-10, fix/soul-tier-naming) ────────
+    # F6 above standardizes the soul's ONE shared name string. This closes the
+    # other half Will reported: the three TIERS of that soul must not all render
+    # the same name. The differentiator is `itemQualityTag` (the engine renders it
+    # as a prefix), which every SV-original family carries and none of our 98
+    # generated/hand-authored svc_uber families did. Runs after F6 (and after the
+    # whole registry) so it covers every soul in the FINAL assembled db, including
+    # any a future content module adds. Normalize, then prove it, fail-loud.
+    _n_tier = _apply_soul_tier_naming(db)
+    print(f"  R-201 soul tier naming: added the convention itemQualityTag to "
+          f"{_n_tier} Epic/Legendary soul record(s) (tagSoulEpic / "
+          f"tagSoulLegendary; normal tier stays bare)")
+    _verify_soul_tier_naming(db, tags)
 
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
     # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid
