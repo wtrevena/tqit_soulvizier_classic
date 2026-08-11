@@ -11,6 +11,16 @@
 > `Database/SoulvizierClassic.arz`), cross-checked against the pristine vanilla TQAE base
 > (`<game>/Resources/{Levels,Quests}.arc`) and the SVAERA reference
 > (`reference_mods/SVAERA_customquest/...`). Produced 2026-07-07. House style: no em dashes.
+>
+> ⚠️ **AMENDMENT 2026-08-10 (R-210, branch `fix/portal-atlantis-cap`) - two corrections to this
+> audit's scope.** (1) This audit covered LEVELS, QUESTS and scaling, but never the **act-selection
+> UI**: the portal window's page list is a single database record and the mod was shipping the BASE
+> game's copy, so a DLC owner saw Ragnarok / Atlantis / Eternal-Embers tabs. Now capped, see
+> `PORTAL_PAGE_DLC_CAP.md`. (2) The Q3 statement that "Atlantis is optional side content" understates
+> it: Atlantis branches from **Rhodes, mid-Immortal-Throne**, not post-Hades, so neither IT cap ever
+> covered it, and the Rhodes -> Gadir -> Atlantis boat chain is measurably live in our map
+> (`x3mq_AtlantisAdventure.qst` at registry idx 211 of 255; Marinos spawner + boatman both placed in
+> `Rhodes_CityFinal_01`). Tracked as `BL-PORTALCAP-DEBT-1`.
 
 ---
 

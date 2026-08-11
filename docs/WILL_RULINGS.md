@@ -4325,3 +4325,41 @@ is given the Epic tag. The gate is not vacuous.
 
 **NOT PROVEN IN-GAME.** The one-line check is Will's: pick up the Gaoler soul on Epic and on Legendary
 and read the item name.
+
+---
+
+## Act cap / DLC surfaces (new section; decade 210-219, opened 2026-08-10, branch `fix/portal-atlantis-cap`)
+
+## R-210 [2026-08-10] IMPLEMENTED (branch `fix/portal-atlantis-cap`) - no DLC act may appear on the portal page
+
+**VERBATIM (Will, 2026-08-10):** "in the portal page i see atlantis which should be disabled in this
+mod"
+
+This is the act-selection-UI half of the standing IMMORTAL-THRONE CAP ruling (Will, 2026-07-10:
+"lets not make atlantis or anything past immortal throne reachable for now and we will fine tune
+immortal throne then if we want to add in the other areas later then we can"). It is read as the
+general rule, not one tab: **no DLC act (Ragnarok / Atlantis / Eternal Embers) may be offered on any
+act-selection surface.**
+
+**LIST SOURCE.** The portal window's page list is ONE record,
+`records\ingameui\teleportmap\teleportmap.dbr` (`WorldlMapWindow.tpl`); each act page is a
+`<Page>Button` / `<Page>MapImage` / `<Page>ZoneList` triple. Base TQAE carries seven pages. SV 0.98i
+ships an IT-era copy with only the four base pages, but `strip_ui_overrides()` deletes every
+`records\ingameui\` record that is not a mastery tree, so the mod shipped NO override and the record
+resolved from the BASE `.arz`. The quest log's act tabs
+(`records\ingameui\player quests\questwindow.dbr` buttons/maps 5/6/7) fell through the same hole.
+
+**LAYER.** Mod `.arz` record override, the A5 pattern (a `.dbr`'s identity IS its record path, so
+the mod arz wins per path; the A5 inert-fix trap is specific to archive-hosted quest files keyed by
+md5 of the registry path). The base records are imported byte-faithfully and exactly the DLC fields
+deleted, so the four Immortal-Throne-era pages and AE's layout are preserved. The cap runs AFTER
+`strip_ui_overrides()` and asserts that ordering; a fail-loud golden gate
+(`tools/gate_dlc_act_ui_cap.py`, negative-tested) proves on the WRITTEN `.arz` that the rendered
+portal page list is exactly Greece / Egypt / Orient / Immortal Throne.
+
+**SEVERITY CORRECTION, recorded so nobody reads this as cosmetic.** Atlantis is not merely a dead
+list entry: `XPack3/Quests/x3mq_AtlantisAdventure.qst` is registered at index 211 of the map's
+255-entry QUESTS window, and BOTH `x3mq_marinos_rhodes_spawner.dbr` and `rhodes_boatmantogadir.dbr`
+are placed in `Rhodes_CityFinal_01` on the mandatory spine. An Atlantis-DLC owner can still SAIL to
+Atlantis. That leak stays OPEN as `BL-PORTALCAP-DEBT-1`; it needs its own lane and Will's sign-off on
+the layer. See `docs/PORTAL_PAGE_DLC_CAP.md`.
