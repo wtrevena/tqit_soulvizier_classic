@@ -5413,3 +5413,9 @@ execution; that is stated in the ship record rather than carried quietly.
 > master back to `ARMOR_MASTER_WEIGHT` moves the worst worn-slot yield 0.04517 -> 0.04249 against
 > D7b's 0.0375 floor, spending ~6% of the headroom and reding nothing. So no negative ships for it and
 > it is labelled what it is - a balance choice inside a margin, `BL-R181-DEBT-11`.
+
+## R-230 (Will 2026-08-11, verbatim): "every time we make a new build we should be pushing the code to remote on github"
+Standing law: EVERY build ship ends with `git push origin main --tags`. The ship step is not
+complete until the push succeeds. Applies to every lane from build84 onward (already baked
+into the in-flight b84/b86/b87 ship briefs); doc-only commits push at the next convenient
+point, ship commits push immediately.
