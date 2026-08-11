@@ -734,10 +734,32 @@ def audit_db(db, lk=None, verbose=False):
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
     problems, reports = [], []
+    seen_labels = set()
     for label, tables, weights, tier in all_surfaces(db, lk):
         probs, rep = SLD.audit_surface(d, dist, label, tables, weights, tier)
         problems.extend(probs)
         reports.append(rep)
+        seen_labels.add(label)
+        # STALE D5 PIN: a pinned surface that has fallen back under the global cap is
+        # dead config, and dead config is how an exemption outlives its reason (the
+        # svc_orb_breadth.OUT_OF_REACH stale-pin discipline, applied to the same class
+        # of decision). Reported, never quietly kept.
+        pin = SLD.D5_PINNED.get(label)
+        if pin and rep and rep.get('top_items'):
+            share = rep['top_items'][0][1] / (rep['total'] or 1.0)
+            if share <= SLD.MAX_ITEM_SHARE_TOTAL:
+                problems.append(
+                    "D5 STALE PIN: %s is pinned at %.3f but its worst single-item share "
+                    "is now %.4f, under the global cap of %.3f. Remove the pin from "
+                    "svc_loot_distribution.D5_PINNED - a ceiling nothing needs is a "
+                    "ceiling nobody re-reads." % (label, pin[0], share,
+                                                  SLD.MAX_ITEM_SHARE_TOTAL))
+    for label in sorted(SLD.D5_PINNED):
+        if label not in seen_labels:
+            problems.append(
+                "D5 STALE PIN: %s is pinned in svc_loot_distribution.D5_PINNED but is "
+                "no longer a surface this gate audits. Remove the pin, or find out why "
+                "the surface vanished." % label)
         if verbose and rep:
             tot = rep['total'] or 1.0
             print('    %-42s %s' % (label, '  '.join(

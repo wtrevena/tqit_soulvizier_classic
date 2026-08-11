@@ -191,8 +191,68 @@ MAX_ITEM_OVER_UNIFORM = 5.8
 # ... and no item may own more than this share of the whole surface's gear mass. This is
 # the absolute "one item dominates the run" bound and it DOES red the shipped build.
 MAX_ITEM_SHARE_TOTAL = 0.030
+# ── D5 PINS: a measured, reasoned per-surface ceiling. NOT a loosened cap. ────
+# BL-R181-DEBT-7 brought four level-banded orb tiers into the audit whose top item sits
+# at 3.2-4.5% of the surface's gear mass. MEASURED on build79, the state BEFORE any of
+# this: 3.2%, 4.58%, 4.61%, 4.47%. So these are PRE-EXISTING concentrations that were
+# invisible only because nobody audited the table - and the armour treatment IMPROVES two
+# of them (4.58 -> 3.84, 4.61 -> 3.38) and leaves the others flat. They cannot be
+# improved further from here: diluting a narrow pool needs more WIDE mass, and every one
+# of these surfaces is already at weapon:armour 0.42-0.49 against D6b's 0.24 floor.
+# WHY A PIN AND NOT A POOL-SIZE CLAUSE. The obvious alternative - let the cap scale with
+# the surface's pool size, the argument D4 makes for classes one block above - was
+# MEASURED AND REJECTED: the smallest x-uniform among the 24 pre-existing surfaces D5 reds
+# in the defect state is 3.53, and the largest among the new orb surfaces AFTER the wave
+# is 6.35, so any clause loose enough to pass the orbs would let 23 of those 24 shipped
+# defects through. The cap stays 0.030 for every surface in the mod; these four are held
+# to their OWN measured ceiling instead, and a regression on them still reds.
+# The CAUSE is base-game content this mod does not own - the same finding D4 records one
+# block below: the level-banded `all_<band>` static randomisers pay a narrow set of
+# high-band legendaries that overlap the unique tables. Registered as BL-R181-DEBT-9.
+# A pin whose surface has fallen back under the global cap is DEAD CONFIG and fails the
+# gate (the svc_orb_breadth.OUT_OF_REACH stale-pin discipline), so these cannot rot.
+D5_PINNED = {
+    'orb uberorb_default_29-31.dbr': (0.037, 'level-banded normal tier; MEASURED 0.0322 '
+        'after the wave and 0.0322 before it - unchanged by this contract, pre-existing'),
+    'orb uberorb_default_39-41.dbr': (0.044, 'level-banded epic tier; MEASURED 0.0384 '
+        'after the wave, IMPROVED from 0.0458 before it'),
+    'orb uberorb_default_43-45.dbr': (0.039, 'level-banded epic tier; MEASURED 0.0338 '
+        'after the wave, IMPROVED from 0.0461 before it'),
+    'orb uberorb_default_49-51.dbr': (0.052, 'level-banded epic tier; MEASURED 0.0453 '
+        'after the wave and 0.0447 before it - the thinnest legendary pool of the family '
+        '(N=103), and the worst single-item share left in the mod'),
+}
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
 ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per chest open
+# ── D7's VOLUME PROBLEM, and the volume-free form of the same invariant ──────
+# "0.52 pieces per open" is a statement about a container that spawns roughly 10.6 items
+# per open, because that is the container it was derived on: the R-181 calibration's
+# binding surface was `svc_uberorb_apex_e01c` at 0.6229, and its numSpawn equations
+# (Leinth's `(3+(1.6*numberOfPlayers))*2.2 / *2.4`) give S = 10.58. Every one of the 42
+# surfaces R-181 audited spawns AT LEAST that much (10.58 .. 18.96), so the number was
+# never volume-sensitive in practice and nothing said so.
+# BL-R181-DEBT-7 brought in 15 surfaces that spawn 5.06 .. 8.28. On those the same
+# absolute number is not a parity demand at all - it is a demand for MORE DROPS, i.e. for
+# numSpawn, and BL-R181-DEBT-5 reserves that lever to Will. MEASURED after the armour
+# treatment lands on them: they are pinned from the other side by D6b, running
+# weapon:armour 0.28 .. 0.49 against its 0.24 floor, so armour on them CANNOT be lifted
+# further without burying weapons. The absolute floor is unreachable there by
+# construction, not by neglect.
+# So D7 keeps its exact number and its exact behaviour on every container big enough for
+# it to mean what it says, and the volume-free form of the same invariant - the same
+# armour yield measured PER SPAWN ITERATION - is asserted on every surface as D7b.
+# THAT QUANTITY IS NEARLY A CONSTANT OF THE CONTRACT, which is why it is the honest form:
+# measured after the wave, EVERY chest, hoard, cage variant, DRX donor and orb in the mod
+# lands on 0.1406 (normal) / 0.0589 (epic) / 0.0996 (legendary) per iteration, and the
+# only surfaces below that are the three level-banded epic orb tiers at 0.0443 .. 0.0531.
+#   check                       defect (build79)   after wave   threshold   margin
+#   D7  thinnest slot / open     0.0071 .. 0.3314    >= 0.6229*   0.52        16%
+#   D7b thinnest slot / spawn    0.0011 .. 0.0175    >= 0.0443    0.0375      18%
+#   * on surfaces at or above the reference volume; D7 is not asserted below it.
+# D7b at 0.0375 REDS ALL 57 defect surfaces (the defect state's BEST reading is 0.0175,
+# 2.1x under), which makes it a strictly stronger revert-detector than the absolute floor.
+ARMOR_SLOT_FLOOR_REF_SPAWN = 10.58   # spawn iterations of the surface 0.52 was derived on
+ARMOR_SLOT_FLOOR_PER_SPAWN = 0.0375  # D7b: worn-slot pieces per SPAWN ITERATION
 MAX_WEAPON_ARMOUR_RATIO = 1.85   # legendary weapon mass : legendary armour mass
 # ... and the MIRROR, so "fix the armour" cannot quietly become "bury the weapons". The
 # binding case is the blood-cave mega chest `loottable_hidden_bloodcave_03`, which has NO
@@ -436,7 +496,9 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
 
     agg_slot = defaultdict(float)
     agg_item = defaultdict(float)
+    spawn = 0.0
     for wi, p in zip(w, profs):
+        spawn += wi * p.S
         for s, ev in p.by_slot().items():
             agg_slot[s] += wi * ev
         for it, ev in p.per_item.items():
@@ -492,11 +554,13 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 "class" % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / m,
                            SLOT_LABEL.get(s, s), over_uniform, MAX_ITEM_OVER_UNIFORM,
                            len(items), 100.0 / len(items)))
-        if tev / total > MAX_ITEM_SHARE_TOTAL:
+        pin, why = D5_PINNED.get(label, (None, None))
+        cap = MAX_ITEM_SHARE_TOTAL if pin is None else pin
+        if tev / total > cap:
             problems.append(
-                "D5 %s: %s is %.1f%% of the surface's whole %s gear mass (cap %.1f%%)"
+                "D5 %s: %s is %.1f%% of the surface's whole %s gear mass (cap %.1f%%%s)"
                 % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / total, ic,
-                   100.0 * MAX_ITEM_SHARE_TOTAL))
+                   100.0 * cap, '' if pin is None else ', its PINNED ceiling - %s' % why))
     # D8/D9 the WITHIN-SIDE balance. D1/D2 measure a class against ALL gear, so once
     # armour carries half the mass a weapon-side skew hides under them - which a planted
     # negative proved by coming back GREEN. Measure each side in its own denominator.
@@ -537,15 +601,31 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 % (label, wmass / amass, MIN_WEAPON_ARMOUR_RATIO, wmass, ic, amass, ic))
         for s in ARMOR_SLOTS:
             per_open = agg_slot.get(s, 0.0)
-            if per_open < ARMOR_SLOT_FLOOR:
+            # D7 - the absolute per-open floor, asserted on every container whose own
+            # spawn volume is at least the volume the floor was derived at. Below that
+            # the number is a numSpawn demand rather than a parity one (BL-R181-DEBT-5
+            # reserves numSpawn to Will), so D7b carries the invariant instead.
+            if spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN and per_open < ARMOR_SLOT_FLOOR:
                 problems.append(
                     "D7 %s: armour slot %s pays only %.2f %s piece(s) per open "
                     "(floor %.2f) - Will's \"i am not really seeing armor drops\""
                     % (label, SLOT_LABEL.get(s, s), per_open, ic, ARMOR_SLOT_FLOOR))
+            # D7b - the same invariant with the container's own volume divided out, so a
+            # low-volume orb is held to the same CONTRACT as a cage without being asked
+            # for drops it does not spawn. Asserted on every surface, and it reds all 57
+            # surfaces of the defect state on its own.
+            if spawn > 0 and per_open / spawn < ARMOR_SLOT_FLOOR_PER_SPAWN:
+                problems.append(
+                    "D7b %s: armour slot %s pays %.4f %s piece(s) per SPAWN ITERATION "
+                    "(floor %.4f; %.2f per open over S=%.2f iterations) - the worn slot "
+                    "is thin for what this container actually pays, not merely for its "
+                    "size" % (label, SLOT_LABEL.get(s, s), per_open / spawn, ic,
+                              ARMOR_SLOT_FLOOR_PER_SPAWN, per_open, spawn))
     report = {
         'label': label, 'tier': tier, 'classification': ic,
         'tables': [p.table for p in profs],
         'S': [p.S for p in profs],
+        'S_eff': spawn,
         'drops_per_open': [p.expected_drops() for p in profs],
         'slot_mass': dict(agg_slot), 'total': total,
         'top_items': sorted(agg_item.items(), key=lambda kv: -kv[1])[:12],
