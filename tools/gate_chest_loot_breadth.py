@@ -49,10 +49,18 @@ import svc_loot_breadth as SLB
 
 def main(argv):
     if len(argv) < 2:
-        print("usage: py tools/gate_chest_loot_breadth.py <arz> [--verbose]")
+        print("usage: py tools/gate_chest_loot_breadth.py <arz> [--verbose] [--apply]")
         return 2
     verbose = '--verbose' in argv[2:]
     db = ArzDatabase.from_arz(Path(argv[1]))
+    if '--apply' in argv[2:]:
+        # Apply the R-180 + R-181 wave in memory first, so REACHABILITY can be checked
+        # on the post-wave state from a pre-wave arz. R-181 only raises weights/chances
+        # and adds members, so this must never lose a pool - and that is a claim worth
+        # being able to re-run rather than assert.
+        import svc_armor_breadth as SAB
+        print("  --apply: R-180 + R-181 wave applied in memory")
+        SAB.apply_wave(db)
     print("\n=== chest loot-breadth audit ===")
     problems, stats = SLB.audit_db(db, verbose=verbose)
     print("mod-owned chest loot tables audited: %d" % len(stats))
