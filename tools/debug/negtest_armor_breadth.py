@@ -24,10 +24,10 @@ The planted defects are the REAL defect classes, not synthetic ones:
   N7 the MIRROR - the weapon row's legendary-share parity reverted on an apex orb table,
      which inverts the surface to 85% armour. Not hypothetical: that is exactly what the
      first R-181 round shipped into three live surfaces before the vet caught it.
-  N8 the b79 armour rows restored on an R-220 orb table, one per donor family - the
+  N10 the b79 armour rows restored on an R-220 orb table, one per donor family - the
      BL-R181-DEBT-7 defect itself, which BOTH loot gates passed for a whole build
      because no surface audited those tables;
-  N9 the SYNTHETIC ORPHAN, planted twice: a module writes a gear loot table that no
+  N11 the SYNTHETIC ORPHAN, planted twice: a module writes a gear loot table that no
      distribution surface covers, once through the shared builder (the LEDGER witness)
      and once as a raw field write (the REGISTRY TOUCH LOG witness). No threshold can
      see this defect - it is a rule about WRITES - and it is the shape of the fifteen
@@ -245,11 +245,11 @@ def main(argv):
           lambda d, k: [p for p in audit_surface_of(d, k, HOARD_L)
                         if p.startswith(('D3', 'D7'))])
 
-    # ── N8/N9: BL-R181-DEBT-7. The armour rows R-220 left to nobody, and the
+    # ── N10/N11: BL-R181-DEBT-7. The armour rows R-220 left to nobody, and the
     #    OWNERSHIP rule that makes "written by a module, audited by no surface"
     #    structurally impossible rather than merely fixed once.
 
-    # N8 - the R-220 armour rows reverted to exactly what b79 shipped, on one table
+    # N10 - the R-220 armour rows reverted to exactly what b79 shipped, on one table
     #      from EACH donor family. Before this lane both were invisible: the sweep did
     #      not write them and `all_surfaces` did not audit them, so both loot gates were
     #      green while the thinnest worn slot paid 0.007-0.029 pieces per open. This is
@@ -276,7 +276,7 @@ def main(argv):
               lambda d, k, t=table, tr=tier: [p for p in audit_surface_of(d, k, t, tr)
                                               if p.startswith(('D6', 'D7'))])
 
-    # N9 - THE SYNTHETIC ORPHAN. A module writes a gear loot table that no surface
+    # N11 - THE SYNTHETIC ORPHAN. A module writes a gear loot table that no surface
     #      audits. No threshold can catch this - only a rule about WRITES can - and it
     #      is the exact shape of the defect: R-220 wrote fifteen tables outside `\svc\`
     #      and R-181's folder-shaped ownership rule never looked at them.
@@ -315,17 +315,63 @@ def main(argv):
     # witness is exercised rather than merely absent - a gate that only ever runs in its
     # downgraded form is a gate nobody has tested.
     OWN.reset()
-    d3, k3 = load_fixed(arz)
-    d3._registry_touch_log = [('orb_armor_rows', t)
-                              for _key, (t, _tier) in SAB.orb_scope(d3, k3).items()]
-    own_ok = not SAB.ownership_problems(d3, k3)
+    dpc, kpc = load_fixed(arz)
+    dpc._registry_touch_log = [('orb_armor_rows', t)
+                               for _key, (t, _tier) in SAB.orb_scope(dpc, kpc).items()]
+    own_ok = not SAB.ownership_problems(dpc, kpc)
     print("%s POSITIVE CONTROL: every loot table this wave writes is inside a "
           "distribution surface (both witnesses live)" % ('OK ' if own_ok else 'XX '))
     if not own_ok:
         fails.append('positive control (ownership)')
-        for p in SAB.ownership_problems(d3, k3)[:6]:
+        for p in SAB.ownership_problems(dpc, kpc)[:6]:
             print("      %s" % p)
     OWN.reset()
+
+    # ── N7-N9: the D3 SIZE EXEMPTION (b81 / R-186). An exemption is the one construct
+    #    that can silently switch a gate off, so it gets more negatives than the rules it
+    #    carves out of. These do not plant loot edits; they attack the exemption itself.
+    def _d3x(mutate):
+        saved_min, saved_set = SLD.D3_MIN_CLASS_UNIVERSE, SLD.D3_ERA_EXEMPT
+        try:
+            mutate()
+            return SLD.era_exemption_problems(SLD.Db(base))
+        finally:
+            SLD.D3_MIN_CLASS_UNIVERSE, SLD.D3_ERA_EXEMPT = saved_min, saved_set
+
+    def _grow():
+        # thrown holds 5 Legendary records; drop the threshold under that and the
+        # exemption must declare itself void rather than keep protecting the class.
+        SLD.D3_MIN_CLASS_UNIVERSE = 4
+
+    def _typo():
+        SLD.D3_ERA_EXEMPT = ('thrwon',)
+
+    for label, mut in (("D3X the exempt class grew past D3_MIN_CLASS_UNIVERSE", _grow),
+                       ("D3X the exemption names a slot that does not exist", _typo)):
+        got = _d3x(mut)
+        ok = bool(got)
+        print("%s  %-72s -> %s" % ('OK ' if ok else 'FAIL', label,
+                                   'RED (correct)' if ok else 'GREEN (WRONG)'))
+        if not ok:
+            fails.append(label)
+
+    # N9 - and the exemption must be LOAD-BEARING, not decoration: with it removed, the
+    #      shipped build's thrown class must actually red D3. If this comes back green the
+    #      carve-out is protecting nothing and should be deleted.
+    saved_set = SLD.D3_ERA_EXEMPT
+    try:
+        SLD.D3_ERA_EXEMPT = ()
+        d3 = [p for p in SAB.audit_db(base, base_lk)[0]
+              if p.startswith('D3') and 'thrown' in p]
+    finally:
+        SLD.D3_ERA_EXEMPT = saved_set
+    ok = bool(d3)
+    print("%s  %-72s -> %s" % ('OK ' if ok else 'FAIL',
+                               "D3X exemption removed (it must be load-bearing)",
+                               ('RED (correct), %d D3 thrown finding(s)' % len(d3)) if ok
+                               else 'GREEN (WRONG - the exemption is decoration)'))
+    if not ok:
+        fails.append("D3X exemption is decoration")
 
     print()
     if fails:
@@ -333,8 +379,9 @@ def main(argv):
         for f in fails:
             print("   - %s" % f)
         return 1
-    print("NEGTEST PASS: every planted skew reds the distribution gate, and both the "
-          "fixed build and its deliberate themes stay green.")
+    print("NEGTEST PASS: every planted skew reds the distribution gate, the D3 size "
+          "exemption reds when it stops being earned and is load-bearing when it is, and "
+          "both the fixed build and its deliberate themes stay green.")
     return 0
 
 

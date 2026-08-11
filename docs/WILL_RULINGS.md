@@ -4621,6 +4621,185 @@ correct figures are in scope boundary 2 above. The conclusion it supported was u
 
 ---
 
+## Chest loot breadth (decade 180-189 CONTINUED; 2026-08-10, branch `fix/craft-thrown-breadth`)
+
+> R-180 (above) was the WEAPON-CLASS half of the chest-breadth wave. R-184 to R-186 are the
+> CRAFT-CHAIN half, from Will's follow-up the same day after reading `docs/CHEST_DROP_MATRIX.md`.
+>
+> ⚠️ **NUMBERING NOTE (collision avoided, not merely renamed).** This lane first minted these three
+> as R-181/182/183. The concurrent `fix/armor-loot-breadth` lane (b80, the loot-balance/armour wave
+> queued to ship AHEAD of this one) had already claimed **R-181** on its own branch for the armour
+> parity + weapon-class weight rebalance, both in `docs/WILL_RULINGS.md` and in code comments in
+> `tools/svc_loot_breadth.py`. On the `fix/debt-docs` LEDGER-HYGIENE precedent the INCUMBENT keeps
+> the number, so this lane moved wholesale to **R-184 / R-185 / R-186**, leaving 182-183 free in case
+> b80 mints more in the same decade. Nothing about any ruling's CONTENT changed. R-190..R-199 also
+> remain free.
+
+**VERBATIM (Will, 2026-08-10), the whole message, split into the three rulings below:**
+
+> "i meant do the mythic formulas drop. they can drop in normal as well, but the legendary items
+> should not drop in normal. All of the reagents need to be droppable somewhere in the game, ideally
+> from chests since that is where people will look. if players farm legendary long enough, they
+> should be able to find all the reagents without having to farm a specific area or a specific
+> character (except for the monster unique droppable items like the green items that are needed to
+> build some of the formulas...). Yes we should make the legendary thrown weapons droppable."
+
+## R-184 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - MYTHIC FORMULAS DROP ON EVERY DIFFICULTY, LEGENDARY ITEMS STILL DO NOT DROP ON NORMAL
+
+**VERBATIM:** *"i meant do the mythic formulas drop. they can drop in normal as well, but the
+legendary items should not drop in normal."*
+
+This is an explicit, narrow EXEMPTION carved out of the R-100 #17 tier law: **formulas** are exempt,
+**items** are not. It costs nothing to grant, because every supra formula record is
+`itemClassification = Common` - no legendary GEAR moves at all.
+
+**MEASURED CAUSE.** The 42 uber ("supra") craftables are built by 59 formula records, 42 of which sit
+on `records\xpack\item\loottables\arcaneformulae\supra.dbr` and 41 on the rarer `supra_special.dbr`.
+The base game wires those two pools into the EPIC and LEGENDARY act tables only:
+`02_act{1..4}_arcaneformulae` = `LootMasterTable [ ..._table 98, supra 2 ]`, `03_act{1..4}` =
+`[ ..._table 95, supra 5 ]`, and `03_act4_arcaneformulae_sp` for supra_special.
+`01_act{1..4}_arcaneformulae` is a bare `LootItemTable_FixedWeight` of 25 base formulas with no supra
+member at all - so a Normal-tier mod chest reached **0 of 42** uber formulas.
+
+**FIX.** Both pools are added as ONE new member each of all four `01_act{1..4}_arcaneformulae`
+tables, at weights computed against each table's own pre-existing total: `supra` at 1%,
+`supra_special` at 0.5%, so mythic formulas are **rarer on Normal (1.5% combined) than the base game
+already makes them on Epic (2%) and Legendary (5%)**. Base-game precedent for a
+`LootItemTable_FixedWeight` naming a loot TABLE in a `lootNameN` slot: 56 shipped records do it
+(e.g. `raremisc\01_rareunique_all.dbr` names `weapons\unique\sword_n01.dbr`). Nothing removed, no
+weight lowered. Blast radius is deliberate and matches the ruling: those four tables are the Normal
+formula source for 935 / 389 / 379 / 665 monster records as well as the chests, so mythic formulas
+now drop on Normal **everywhere**, not only from mod chests.
+
+**BOTH pools were required, and the gate is what proved it:** `artifact_mortoksskull_formula`
+(Mortok's Skull) exists ONLY on `supra_special`, so wiring `supra` alone left exactly one of the 42
+craftables formula-less on Normal and the F1 gate red. The same pair is what R-9 already treats as
+"wherever any supra / uber weapons formulas have a chance to drop".
+
+**MEASURED RESULT:** Normal craftable coverage **0/42 -> 42/42**; Epic and Legendary unchanged at
+42/42. Legendary GEAR reachable from the Normal branch: **0 before, 0 after** (re-proven by
+`svc_loot_breadth` B3 and by the new C2 rule).
+
+## R-185 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - EVERY REAGENT IS FINDABLE BY FARMING LEGENDARY; ONLY THE GREEN/MI ITEMS STAY MONSTER-SPECIFIC
+
+**VERBATIM:** *"All of the reagents need to be droppable somewhere in the game, ideally from chests
+since that is where people will look. if players farm legendary long enough, they should be able to
+find all the reagents without having to farm a specific area or a specific character (except for the
+monster unique droppable items like the green items that are needed to build some of the
+formulas...)."*
+
+**MEASURED CAUSE.** 78 distinct reagents feed the 42 craftables; **36 were unreachable from every
+Legendary-tier chest pool**, in four very different groups:
+
+| group | count | what it is |
+|---|---:|---|
+| MI / "green" (`itemClassification = Rare`) | 19 | Will's own exemption. Kept where they are. |
+| ordinary base uniques | 8 | 3 torso, 3 amulet, 2 ring - they live only on the act-2/act-3 banded tables (`caster_l02`, `finger_e02`, the DRX `randomized\*` tables) that no chest pool names. |
+| IT "divine artifacts" (`ItemArtifact`) | 6 | 0 of 292 artifacts were reachable from any mod chest at any difficulty. |
+| **records the MOD does not carry** | 3 | `records\xpack2\item\equipmentweapons\1hranged\{u_l_08, u_e_06, mi_l_machae}.dbr` are **RAGNAROK (xpack2)** records absent from the mod's own arz. *(Precision, round 2: they DO exist in an installed base game if the player owns Ragnarok - 12,483 `xpack2` records in Will's 74,013-record install - but xpack2 ships only with that DLC and R-210 caps the playable arc at Immortal Throne with the Ragnarok act pages suppressed.)* **All four thrown craftables (Charon's Toll, Hati, The Last Word, Sanguine Orbit) named exactly those three and nothing else, so all four were uncompletable in practice for everyone playing this mod.** |
+
+**FIX.** The 8 + 6 = 14 obtainable-but-unreachable reagents go into new mod-owned tables
+(`svc_craft_reagents_{torso,amulet,ring,artifact}_l01`), each hung off the LEGENDARY-tier host
+master(s) the chest pools already reach, at ~5% of each host's own total. **All 14 are
+`itemClassification = Legendary`, so they can only ever enter a legendary branch - the tier law holds
+by construction, not by promise.** No chest or hoard record is touched (that surface belongs to the
+concurrent loot-balance lane); this is pool membership only. The three Ragnarok ghosts cannot be "put
+into a pool" - a record that is not in the database has nothing to drop - so the four thrown formulas
+are repointed onto thrown records that DO exist in this era (the DRX vit wands), in the shape the
+database's own recipes use: **2 ordinary + 1 green, all three of the result's own item Class**, which
+43 of the 59 uber formulas already follow.
+
+**"NOT A SPECIFIC CHARACTER" IS A SURFACE COUNT, NOT A REACHABILITY QUESTION - rule G4.** The first
+cut of this lane hung the artifact reagents off `04_l_misc` alone. That satisfied "reachable from the
+legendary chest pool" and was still wrong: measured over the 19 legendary mod chest tables,
+`unique_torso_l01`, `amulet_l01`, `finger_l01` and `unique_1h_l01` are reached by **19/19** but
+`04_l_misc` by **1/19** - and that one surface is `svc_uberorb_apex_l01c`, the apex uber-boss loot
+orb. Six reagents behind one boss family is exactly what Will ruled out, and a union-reachability
+test cannot see the difference. The artifact family therefore also hangs off `amulet_l01` and
+`finger_l01` (a divine artifact is a trinket; jewellery is its closest kin), and the gate grew a
+SPREAD rule: **every non-MI reagent must be payable by at least half of the legendary chest surfaces,
+never fewer than 3.** Measured after: **60/60 non-MI reagents (54 ordinary + 6 artifact) at 19/19, floor 10.**
+
+**THE MI EXEMPTION IS EARNED BY A *LIVE* MONSTER, NOT ASSUMED.** The gate derives the MI roster by
+rule (`itemClassification == 'Rare'`), fails loud if it drifts from the committed list, and then
+proves every entry monster-farmable by walking the reference graph upward from the item to
+Monster-class records - **discounting dev duplicates** (`copy of ...`, `xxx...`). Will exempts the
+greens *because a monster drops them*; a green that no live monster drops is therefore **not** inside
+the exemption, and rule G3 FAILS the build unless it is chest-placed like an ordinary reagent.
+Roster and sources: `py tools/gate_craft_thrown_breadth.py <arz> --mi-sources`, and
+`docs/CHEST_DROP_MATRIX.md` section 2 carries the committed table.
+
+**THE ONE ORPHANED GREEN, RESOLVED (was `BL-CRAFT-DEBT-1`).** `mi_l_gigantes2` gates Doomherald,
+Swordfish and Omega, and MEASURED it has **zero live carriers**: its only carrier is the DRX dev
+duplicate `copy of anapaest_45`, because the live `anapaest_45` names placeholder
+`drxdishonorguard\equip\bogus\*` ITEM records in the same six slots and the
+`drxdishonorguard\equip\loottables\03_master_legendary` that would have re-hung the gigantes tables
+has **0 holders**. Rather than rewire a live boss's equip loadout (a loot-balance change, and it
+would visibly change what Anapaest wields), the green is chest-placed like an ordinary reagent:
+`svc_craft_reagents_orphanmi_l01` on `unique_1h_l01`, its own weapon class, reached **19/19**. The
+committed roster `MI_NO_LIVE_CARRIER` records it so a future lane that wires a real carrier - or that
+kills another green's last live carrier - has to come back to this ruling. **Those three craftables
+are completable; the ledger no longer disagrees with the data.**
+
+**MEASURED RESULT:** reagents reachable from a Legendary chest **42/78 -> 61/82** (the universe moves
+to 82 because the repoint replaces 3 dead records with 4 live ones and adds the 3 Common vit wands),
+which is **every single non-MI reagent plus the orphaned green**. Craftables whose reagents are all
+obtainable: **42/42, with no asterisk.** The seven Will named - Ananke's Canvas, Mortok's Skull, The
+All-Seeing Eye, Charon's Toll, Hati, The Last Word, Sanguine Orbit - go from **0/3 reagents to
+COMPLETABLE**, all seven.
+
+## R-186 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - THE LEGENDARY THROWN WEAPONS DROP
+
+**VERBATIM:** *"Yes we should make the legendary thrown weapons droppable."*
+
+Answering `docs/CHEST_DROP_MATRIX.md` known-gap #1, which reported the thrown / one-hand-ranged class
+as the one class **nothing in the mod could pay at all**: 5 legendary records existed, 0 were
+reachable, and there was no "unique one-hand-ranged" loot table in this TQIT-era database for the
+R-180 aggregate master to name. This ruling makes the four craft-only supra thrown weapons the ONLY
+supra items in the mod that also drop; the other 38 stay craft-only, unchanged.
+
+**FIX.** `records\item\loottables\svc\svc_unique_thrown_{n,e,l}01.dbr`, named by
+`svc_loot_breadth._master_members` as the **seventh class** of the `svc_unique_weapons_{tier}01`
+masters - so thrown is payable everywhere those masters are named, which is every mod chest's weapon
+row AND its guaranteed slot, testhub and Steam alike.
+
+* **`LootItemTable_FixedWeight`, not `DynWeight`, on purpose:** every legendary thrown record is
+  `itemLevel 65`, which sits outside the 46-56 band the `_e01` class tables use, so a level-banded
+  table could never pay one on the Epic tier.
+* **Tier law by membership:** `n` names ONLY the two `itemLevel`-30 wands (Rare + Common) - zero
+  Legendary; `e` and `l` name the 5 Legendary thrown, plus the 3 Common vit wands that the repointed
+  recipes need as reagents (rule G1 requires a legendary farmer to be able to find every reagent in a
+  chest).
+* **Weights are derived, not chosen, and they are PER TIER.** A full class weight is 1000 and buys
+  ~20 records, so a class takes `records/20` of one. Legendary/Epic thrown is 5 legendary records ->
+  **250**; NORMAL thrown is a 2-record band -> **100**. MEASURED against the masters as they shipped
+  (7 members, total **6100** at every tier): e/l **250 / 6350 = 3.94%** of a weapon roll, n
+  **100 / 6200 = 1.61%**. *(Correction of record: the first cut of this ruling said "250 against
+  6700 ... ~0.26%"; 6700 matches no measured state of the record, before or after, and the same wrong
+  pair was in the code comment. The derivation "5-record class vs 17-24, so a quarter of a class
+  weight" is unaffected and still holds.)* Inside the table the ordinary DRX wand carries 100, each
+  craft-tier supra 10 and each Common wand 5, so a specific supra thrown is ~6.5% of a thrown roll
+  and ~0.26% of a weapon roll: reachable, and still a prize.
+* **A DELIBERATE OMISSION, so it is a choice and not an oversight.** This era's only
+  Epic-classification thrown records - `f_n_kaskeron`, `f_l_qilinseternalpyre`, `f_l_godshatter` -
+  are BASE-GAME craft results, and they were **NOT** made droppable: making a base craft result fall
+  out of a chest devalues base crafting, and Will asked for the LEGENDARY thrown to drop. The
+  consequence is that Normal's thrown band cannot pay at that tier's target classification (Epic),
+  which is why the Normal master weight is derived from the 2-record band rather than the 5-record
+  one - the class no longer consumes an end-game-sized share of a Normal weapon roll for level-30
+  filler.
+* **PLAYER SURFACE CHECKED (process law #3), and it is the R-140 question:** R-140 proved that
+  equipping a `WeaponHunting_RangedOneHand` puts a creature into the `rangedOneHand` stance and that
+  SV's roster tables bind no clips for it, which is why the restored thrown MONSTERS froze. Measured
+  for the PLAYER: `records\creature\pc\anm\anm_malepc01.dbr` and `anm_femalepc.dbr` each carry **153
+  rangedOneHand fields, all 153 bound**, and the DRX vit wands already drop today (`03_m_wands` plus
+  the bloodwitch reavers), so the class is live player content in this build. No freeze risk.
+
+**MEASURED RESULT:** legendary thrown reachable from a Legendary chest **0 -> 5**, from an Epic chest
+**0 -> 5**, from Normal **0 -> 0** (2 non-legendary thrown instead). The class-breadth gate family
+grows the C1/C2 rules so a regression reds; 9/9 negative tests behave as specified.
+---
+
 ## Uber orb loot breadth (new section; decade 220-229, opened 2026-08-10, lane `fix/orb-loot-breadth`)
 
 ## R-220 [2026-08-10] IMPLEMENTED (branch `fix/orb-loot-breadth`, module `tools/patches/orb_loot_breadth.py`) - the uber's MYSTICAL ORB must pay every class too
