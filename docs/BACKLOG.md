@@ -1,5 +1,145 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - R-202 SOUL RENAMES + SV DUPLICATE CLEANUP: `BL-R201-DEBT-1` CLOSED, 40 duplicate soul names -> 5 (2026-08-11, branch `fix/soul-rename-ratified`) - BUILT + ALL GATES GREEN, **NOT DEPLOYED, NO TAG TAKEN**
+
+**Will (VERBATIM, 2026-08-11), on `docs/SOUL_RENAME_PROPOSAL.md`:**
+
+> "Proceed with ratifying all 5 and fix SV duplicates / collisions as you deem necessary."
+
+Ruling: **R-202** in `docs/WILL_RULINGS.md`. Proposal (now historical, header updated):
+`docs/SOUL_RENAME_PROPOSAL.md`. **This lane does NOT ship.** Two lanes are queued ahead of it
+(volume-trim b84, gaoler b85); the artifacts below are the lane's own gate proof, built into a
+private stage. The shared `work/` tree was never written, and TQ.exe was running throughout, so
+nothing was deployed.
+
+### The debt, and what is left of it
+
+Baseline reproduced BEFORE anything was touched, on the live `build83` arz + shipped `Text.arc`,
+using the R-201 gate's own canonical-family filter: **2,191 canonical soul tier records / 740
+families / 698 distinct display names / 40 duplicates** - the proposal's and the vet's numbers, to
+the record.
+
+| | groups | |
+|---|---:|---|
+| RENAMED (mod soul; SV never moves) | 5 | rows 7, 12, 14, 19, 38 |
+| RETIRED from the build output (SV dead `soul\test\` twins) | 29 groups / **30 families / 60 records** | row 32 held two of them |
+| SEPARATED (live two-monsters-one-tag SV pairs) | 2 | rows 11, 32 |
+| **REMAINING** (SV `_n` siblings + the typo twin) | **5** | rows 4, 10, 15, 37, 40 - the entire C3 waiver list |
+
+### The five renames, as they render in the built artifacts
+
+Read out of the built `.arz` + built `Text.arc`, all three tiers, with the R-201 quality prefix:
+
+| row | mod soul now reads | the SV soul it used to collide with (UNTOUCHED) |
+|---:|---|---|
+| 7 | Charon ~ Ferryman of the Styx Soul / Epic / Legendary | Charon Soul |
+| 12 | Soul of Rainbowbright the Standard-Bearer / Epic / Legendary | General Yrrt'ik Soul |
+| 14 | Frostmaw Soul / Epic / Legendary | Ice Mandible Soul |
+| 19 | Soul of the Pale Diadem / Epic / Legendary | Kallixenia ~ Liche Queen Soul |
+| 38 | Soul of Nomnom / Epic / Legendary | Plague Feast Soul |
+
+Separations: `empusa\alcestis` reads **Empusa Alcestis Soul** (`soulcarver` keeps SV's
+`tagSoulName200` = Empusa Soul Carver Soul); `maenad\maenadscout` reads **Maenad Scout Soul**
+(`maenadvanguard`, 212 referents, keeps SV's `tagSoulName34` = Maenad Vanguard Soul).
+
+### RECORD-DIFF vs the shipped `44499f56`: ADDED 0 / REMOVED 60 / MODIFIED 9, **ZERO unexplained**
+
+Measured by a script that does not import the code under test.
+
+* **REMOVED 60** - every one under `records\item\equipmentring\soul\test\`, all `_soul_e` / `_soul_l`.
+* **MODIFIED 9**, and the changed-field histogram over all of them is exactly **`itemNameTag` x6 +
+  `FileDescription` x6** and nothing else:
+  * 3 `empusa\alcestis_soul_*` - `itemNameTag` only;
+  * 3 `maenad\maenadscout_soul_*` - `itemNameTag` + `FileDescription` (it literally read
+    "Maenad Vanguard - Normal" on all three tiers; corrected rather than left as a decoy);
+  * 3 `svc_uber\boss_charon_soul_*` - `FileDescription` only, because row 7's NAME is a tag string,
+    not a record field.
+* **`chanceToEquipFinger2` appears NOWHERE in the diff.** That is the proof that the R-202 held
+  detachment preserved the b97 status quo byte-for-byte rather than re-enabling a drop.
+
+### Gates, all on the built artifacts
+
+| gate | result |
+|---|---|
+| DB build | **exit 0**, all fail-loud invariants green |
+| **R-202 retirement** | 60 records / 30 zero-referent families absent from the `.arz` |
+| **R-202 separations** | 6 records re-pointed; both siblings still own SV's shared tag |
+| **R-202 C3 cross-family** | **710 families / 705 distinct names, 5 ratified waivers of 5 allowed, 710/710 names resolved to real display text** |
+| R-201 soul tier naming | 2131 canonical tier records / 710 families (709 multi-tier), every tier a DISTINCT name |
+| F6 soul naming | 80 OURS-path souls compliant; 2158 SV-original paths whitelisted |
+| `soul_identity` verify | OK - 21 identity thieves detached (was 22; see the ripple below) + the held detachment asserted |
+| `validate_tags` | **RESULT: PASS** - 384 referenced mod tags present, all 444 authoritative tags present, `tagSoulEpic`/`tagSoulLegendary` defined (x759 each) |
+| `build_text_arc` duplicate-tag gate | OK, no conflicting duplicate definitions |
+| `run_contracts` on the artifact | **0 P0 / 0 P1 / 4492 P2, GATE PASS** |
+| A/B: same config on the shipped `44499f56` baseline | **4492** - the same number, so **ZERO** new violations |
+| INDEPENDENT artifact scan (arz + built Text.arc, not the in-build gate) | 2131 records / 710 families / **705 distinct / 5 duplicated**, all SV-vs-SV, exactly the waiver set, **0** `soul\test\` families |
+
+The last row matters: the in-build C3 gate and an independent scan of the shipped bytes agree
+exactly, so the gate's name resolution is validated against what the player will actually read
+rather than asserted.
+
+### TWO DEFECTS THIS LANE FOUND IN ITS OWN WORK, both recorded rather than quietly fixed
+
+**1. C3 WAS BLIND ON THE CHARON ROW, and the first full build is what exposed it.** The build printed
+`5 name tag(s) unresolved`; all five were the `create_uber_souls`-GENERATED `tagSoulSVC*` names, one
+of them `tagSoulSVC9005` - **row 7**. Cause: the gate is handed `extended_tags`, and generated names
+are emitted into `text_tags`, never into it. Those families were therefore compared by TAG IDENTITY,
+never collided, and the gate said OK. Worse, the offline harness had been fed
+`uber_soul_tags.txt` - the UNION of both - so it resolved 100% and reported zero unresolved: **the
+harness was measuring an easier gate than the build ran.** Fixed by resolving through the
+build-injected `_SV098I_NAME_TAGS`; 705/710 -> **710/710**. The harness now splits its tag sources
+the way the build does, and `N1b` plants a collision on a generated name specifically.
+
+**2. A pre-wave assertion asserted nothing.** The C3 offender lines are PRINTED, not carried in the
+`SystemExit`, so a check written against `str(exc)` could never fail. It now captures stdout and
+confirms the offender list names the Charon row.
+
+### RIPPLE, predicted then measured: the b97 Akara conviction LAPSES
+
+Row 19 renames our soul away from "Kallixenia ~ Liche Queen Soul", which is the string that made
+`01_akara` an identity thief. Measured on the shipped arz with the roll re-armed to 66 (the state
+the build is in when `soul_identity.apply` runs): **shipped name -> 1 thief (akara flagged); R-202
+name -> 0 thieves.** That would have failed the module's REVIEW GATE with "NO LONGER flagged" - the
+gate doing its job.
+
+Resolved by fixing the defect at the source and **holding the drop unchanged**: `01_akara` leaves
+`_REVIEWED` (22 -> 21) and moves to a new explicit `_R202_KEPT_DETACHED`, applied before the
+item-detach guard, printed every build, and ASSERTED in `verify()` over the final db. Re-enabling
+that drop is a Will decision (`docs/reports/b97_soul_identity_audit.md` sec 8) and R-202 was a naming
+ratification, not a drop ratification. `tools/contracts/tests_soul_identity_negative.py` gained **T8**
+(the held detachment must survive AND `verify()` must fire when it is re-armed) and its **T6** now
+plants the impersonating string instead of leaning on a live defect R-202 removed - without that it
+would have gone silently vacuous while still printing PASS.
+
+### NEGATIVE TESTS: 8 RED for C3, 24/24 PASS for soul-identity
+
+`tools/debug/negtest_r202_cross_family.py` (which also replays the whole wave offline against a
+pre-R-202 arz, and STOPS with a legible message if handed a post-wave one): planted mod-vs-SV
+collision; planted collision on a GENERATED name; planted mod-vs-mod collision; waiver list grown
+past the ceiling; an `svc_uber` family waivered; a retired `soul\test\` family waivered; a third
+family joining a waived name; the separation precondition broken. The gate is additionally proven
+**RED on the PRE-wave roster** (35 offenders + 5 waived = the 40 measured), so it is not vacuous in
+either direction.
+
+### DEBT / OPEN
+
+* **`BL-R202-DEBT-1` (P2, launch-gated): NOT PROVEN IN-GAME.** Will's check: the five renamed souls
+  read their new names on all three tiers, and a Maenad Scout soul and a Maenad Vanguard soul in the
+  same bag now read differently. **TQ bakes item data at pickup - re-drop a fresh one** before
+  calling a rename missing.
+* **`BL-R202-DEBT-2` (P2, WILL DECISION, unchanged by this wave):** row 19's Akara wire - whether
+  `d2npc\01_akara.dbr` gets its own soul identity or is re-pointed. The soul stays undroppable until
+  Will rules. The new name is correct either way.
+* **`BL-R202-DEBT-3` (P3):** the ~90 non-duplicate `um_*` / `us_*` / `swift_*` leftovers still in
+  `soul\test\`. Equally dead, but NOT display-name duplicates, so deliberately out of this
+  ratification - they belong to the dead-content audit lane.
+* **`BL-R202-DEBT-4` (P3, build ergonomics, NOT caused by this lane):** `tools/patches/souls_quality.py`
+  resolves the SV 0.98i arz by RELATIVE path instead of through `tools/check_build_inputs.py`, so it
+  hard-fails any build run from a git worktree at registry step 23/59 (`upstream/` is gitignored and
+  a worktree's copy is empty). Every other build input resolves correctly there. Worked around with
+  `SVC_SV098_ARZ`; the fix is to route it through the shared resolver.
+
+
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
@@ -1791,6 +1931,17 @@ targets. Fixing it means renaming souls (law #2 / evocative-names territory) and
 an agent call. Consequence acted on now: the Will test note was corrected to name only souls whose
 display name is provably UNIQUE (`Soul of the Gaoler`, `Soul of the Insatiable`) instead of Charon.
 
+> ### ✅ `BL-R201-DEBT-1` is CLOSED (2026-08-11) - Will RATIFIED, and it is implemented as **R-202**
+> Will, verbatim: *"Proceed with ratifying all 5 and fix SV duplicates / collisions as you deem
+> necessary."* Branch `fix/soul-rename-ratified`. **40 duplicate display names -> 5**: 5 mod souls
+> renamed (SV never moved), 30 dead `soul\test\` families retired from the build output on a
+> re-derived zero-referent proof, 2 live two-monsters-one-tag SV pairs separated, and the 5 that
+> remain (SV's `_n` siblings + the typo twin) are now the entire waiver list of a new fail-loud
+> **C3 CROSS-FAMILY** gate that is shrink-only and can never waiver anything under `svc_uber\`.
+> Full record: the **R-202 GATE RECORD at the top of this file**; ruling: `docs/WILL_RULINGS.md`
+> R-202. Residual debt moved to `BL-R202-DEBT-1..4`. Everything below this line is the ORIGINAL
+> pre-ratification note, kept as history.
+>
 > **PROPOSAL WRITTEN, AWAITING WILL'S SIGN-OFF (2026-08-11): `docs/SOUL_RENAME_PROPOSAL.md`.** All 40
 > groups re-measured from the build83 arz + shipped `Text.arc` with the gate's own canonical-family
 > filter (2,191 records / 740 families / 698 distinct names / 40 duplicates - the vet's numbers

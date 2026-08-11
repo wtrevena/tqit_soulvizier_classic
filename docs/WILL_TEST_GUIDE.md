@@ -1,5 +1,45 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-202 (2026-08-11): FIVE SOULS RENAMED, AND NO TWO SOULS READ THE SAME ANY MORE
+> **⚠️ NOT DEPLOYED YET.** Built and fully gated on branch `fix/soul-rename-ratified`; it ships behind
+> the two lanes queued ahead of it. Listed here now so the check is ready when it lands.
+> arz + Text.arc only (they ship together - this wave changes tag strings).
+> **Fully quit TQ and restart Steam before testing** (standing rule).
+>
+> **Background in one line:** 40 display names were shared by more than one soul, so two different
+> drops read identically in your bag. You ratified the 5 renames and gave me discretion on the SV
+> side; it is now 5, and all 5 are SV's own duplicates of itself.
+>
+> **THE ONE-LINE TEST:** kill anything that drops one of these and read the item name on **all three
+> tiers**. TQ bakes item data at PICKUP, so a soul you already own will keep its OLD name -
+> **re-drop a fresh one** before calling a rename missing.
+>
+> | you should now see | it used to read | who still has the old name (correctly - it is SV's) |
+> |---|---|---|
+> | **Charon ~ Ferryman of the Styx Soul** (first-form Charon, the fire kit) | Charon Soul | SV's form-2 Charon still drops **Charon Soul** - that is the point, two rewards reading as two |
+> | **Soul of Rainbowbright the Standard-Bearer** (DRX crow-hero) | General Yrrt'ik Soul | SV's formicid general keeps **General Yrrt'ik Soul** |
+> | **Frostmaw Soul** (the uber antlion, three cold auras) | Ice Mandible Soul | SV's crafting reagent keeps **Ice Mandible Soul** |
+> | **Soul of the Pale Diadem** | Kallixenia ~ Liche Queen Soul | the REAL Lich Queen keeps **Kallixenia ~ Liche Queen Soul** |
+> | **Soul of Nomnom** (DRX crow-hero glutton) | Plague Feast Soul | SV's carrion bird keeps **Plague Feast Soul** |
+>
+> Each should read plain on Normal, **"Epic "** in front on Epic, **"Legendary "** in front on
+> Legendary (that is R-201 still working).
+>
+> **THE SECOND CHECK, and the nicer one:** two SV monsters used to hand out souls with the SAME name.
+> Kill a **Maenad Scout** and a **Maenad Vanguard** and put both souls in the bag: they now read
+> **Maenad Scout Soul** and **Maenad Vanguard Soul** instead of both saying "Maenad Vanguard Soul".
+> Same for the empusa pair - **Empusa Alcestis Soul** vs **Empusa Soul Carver Soul**.
+>
+> **HONEST WARNING, one thing deliberately NOT done:** "Soul of the Pale Diadem" is still dropped by
+> nobody. It hangs off the D2 NPC **Akara**, and whether Akara should get his own soul or be
+> re-pointed is still YOUR call (the open item in `docs/reports/b97_soul_identity_audit.md` sec 8).
+> This wave changed the NAME only and deliberately left that drop switched off exactly as it has been
+> since b97 - it did not quietly turn it back on.
+>
+> **What did NOT change:** no soul was deleted from the game you can reach, no SV name was altered, no
+> drop rate moved, and no monster, map or quest was touched.
+
+
 > ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
 > **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule).

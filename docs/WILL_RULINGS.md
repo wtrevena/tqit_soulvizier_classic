@@ -5529,6 +5529,34 @@ only prints a NOTE - because over-deletion is the dangerous direction.
 a stale manifest is the exact shape of the historical `tagSoulSVC9005`/`9006` orphan bug.
 `validate_tags` is the authoritative gate.
 
+### MEASURED ON THE BUILT ARTIFACTS
+
+**Record-diff vs the shipped `44499f56`: ADDED 0 / REMOVED 60 / MODIFIED 9, ZERO unexplained**, and
+the changed-field histogram over all nine is exactly `itemNameTag` x6 + `FileDescription` x6 and
+nothing else. **`chanceToEquipFinger2` appears NOWHERE in it** - that is the proof the held
+detachment kept the b97 status quo byte-for-byte instead of re-enabling a drop. **det-2x
+byte-IDENTICAL** (`c3c3c886a1ff7d3ffd8148e2d277a2b5`, 55,472,335 B, 51,193 records) across two
+independent full builds, the second from the committed HEAD.
+
+`validate_tags` **PASS**; `run_contracts` **0 P0 / 0 P1 / 4492 P2** and the shipped baseline under the
+identical config also gives **4492**, so ZERO new violations. An INDEPENDENT scan of the built `.arz`
+plus the built `Text.arc` - not the in-build gate - reports **710 families / 705 distinct names / 5
+duplicated, all SV-vs-SV, exactly the waiver set, 0 `soul\test\` families**. The two measurements
+agree, so C3's name resolution is validated against what the player will read rather than asserted.
+
+> **THE GATE WAS BLIND ON A RATIFIED ROW, AND ONLY THE BUILD SAID SO.** The first full build printed
+> `5 name tag(s) unresolved`. All five were the `create_uber_souls`-GENERATED `tagSoulSVC*` names, one
+> of them **row 7, Charon** - so C3 was comparing those families by TAG IDENTITY and reporting OK. The
+> cause is wiring: the gate is handed `extended_tags`, and generated names go to `text_tags`. The
+> offline harness had been fed `uber_soul_tags.txt`, the UNION of both, so it resolved 100% and was
+> measuring an EASIER gate than the build ran. Fixed by resolving through the build-injected
+> `_SV098I_NAME_TAGS` (705/710 -> **710/710**), with the harness split to match the build's sources
+> and a dedicated negative (N1b) that plants a collision on a generated name.
+>
+> **LAW: A HARNESS THAT IS MORE GENEROUS THAN THE BUILD IS NOT A HARNESS.** If a gate's inputs differ
+> between the test rig and the real run, the rig must reproduce the SPLIT, not the union - the union
+> silently resolves what production cannot and turns the strongest check into the weakest.
+
 **NOT PROVEN IN-GAME.** Will's check: the five renamed souls read their new names on all three tiers,
 and a Maenad Scout soul and a Maenad Vanguard soul in the same bag now read differently. TQ bakes item
 data at pickup, so **re-drop a fresh one** before calling a rename missing.
