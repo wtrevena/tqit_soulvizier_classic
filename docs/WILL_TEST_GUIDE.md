@@ -1,4 +1,4 @@
-﻿# WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
+# WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
 > ## ðŸ†• R-230 + R-231 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
 > **NOT BUILT YET** (branch `fix/loot-volume-trim`; this note is written with the lane so the check is

@@ -1,4 +1,4 @@
-﻿# BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
+# BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
 ## GATE RECORD - R-231 UBER-ORB LEGENDARY: zero guaranteed-legendary rows, at most ONE legendary per open (2026-08-11, branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
 
