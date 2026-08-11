@@ -4149,6 +4149,18 @@ positive controls GREEN).
 NOT PROVEN IN-GAME. The build, DEV deploy and Steam ship are the orchestrator's; Will's check (kill
 Alkyoneus, open all 6 cage chests across 3 runs, expect legendary spears and visible class variety)
 is the remaining launch gate. See docs/WILL_TEST_GUIDE.md and the BACKLOG gate record.
+
+**STATUS 2026-08-10 (ship lane, tag `build75-dev`): BUILT + FULLY GATED + LIVE ON DEV.** arz
+`3fb1f3ce8889e27de2491ab12814547d` (55,539,324 B, 51,231 records), det-2x identical across two
+independent builds, 54-module registry order `0c76e6652069`. Record-diff vs the live baseline
+`9c190b99` = ADDED 27 / REMOVED 0 / MODIFIED 48 with ZERO unexplained rows. All gates green:
+`chest_loot_breadth` + `polis_vault` T1-T7 + `gate_chest_loot_breadth` + `gate_relic_difficulty_tiers`
+(33 branches, 0 leaks) + 3 negtests + `validate_tags` PASS + `run_contracts` 0 P0 / 0 P1 / 4492 P2.
+Coupling proof holds: `Levels.arc 78a3e263` / `Text.arc a9fed7ba` / `Quests.arc 6b25f8dd` byte-unchanged,
+so the change is arz-only and reaches the TESTHUB cage and canonical/Steam together, exactly as this
+ruling requires. Deployed to `SoulvizierClassicDEV` md5-verified with TQ closed (nothing killed).
+The Steam half rides the concurrent b63 SILENT-WARDEN package, which already stages this arz.
+Still NOT PROVEN IN-GAME - Will's cage check remains the launch gate.
 ## R-200 [2026-08-10] IMPLEMENTED (branch `fix/boar-snatcher-orb`, module `tools/patches/red_uber_orbs.py`) - every RED UBER drops the mystical orb
 
 **Will, VERBATIM (2026-08-10):**

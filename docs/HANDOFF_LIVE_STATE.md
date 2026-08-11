@@ -1,5 +1,33 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD75-DEV DEPLOYED TO DEV (2026-08-10) - R-180 chest-loot breadth; arz-ONLY; Steam rides the b63 package
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `3fb1f3ce8889e27de2491ab12814547d`**
+> (55,539,324 B, 51,231 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). **DEV2 no longer exists** - `SoulvizierClassicDEV` is the only DEV entry.
+> - **What it is:** R-180 chest-loot breadth (every mod chest pays every weapon class, SPEAR included; the cage's
+>   six chests get 3 themed variants per difficulty at 50/25/25) **plus** the 08-08/08-09 relic difficulty-tiering
+>   that had never shipped. det-2x identical across two independent builds; registry 54 modules, order `0c76e6652069`.
+> - **arz-ONLY.** At build time `Levels.arc 78a3e263` / `Text.arc a9fed7ba` / `Quests.arc 6b25f8dd` /
+>   `Creatures.arc 8c0d8d53` were md5-proven byte-unchanged. `validate_tags` PASS against the EXISTING `Text.arc`,
+>   so no Text rebuild was needed. Gate record: `docs/BACKLOG.md` -> BUILD75-DEV GATE RECORD. Tag `build75-dev`.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `9c190b99` (the arz this replaced) -> copy back over
+>   the DEV `Database/SoulvizierClassicDEV.arz`. A clean copy of the NEW artifact is kept at
+>   `local/SoulvizierClassic.build75-dev.R180.arz`.
+> - ⚠️ **The other DEV artifacts moved under this lane, by the concurrent b63 SILENT-WARDEN lane, not by it.**
+>   As of this note the DEV entry carries `Levels.arc 7a7ca9ac` and `Quests.arc 607ec99c` (the b63 Warden
+>   relocation + travel rewire), NOT the `3a6f9d74`/`6b25f8dd` pair that was live when this arz was built. The DEV
+>   surface therefore carries BOTH fixes; that is intended, and the two changes are disjoint (arz vs Levels+Quests).
+> - **Steam: NOT pushed by this lane.** `main` advanced to `824ed0c` (b63 Warden P0) then `5742775` (R-200 red-uber
+>   orbs) mid-build, and that lane staged `dist/workshop/content/SoulvizierClassic` with a COMBINED payload that
+>   **already contains this arz `3fb1f3ce`** plus its Warden `Levels.arc 6784cf0f` / `Quests.arc 607ec99c`, under a
+>   combined `docs/WORKSHOP_CHANGENOTE.bbcode`. A second package/upload here would have raced a concurrent write to
+>   the same Workshop item 3759792705. **Steam is still build74 (`d447f095`) until that combined push completes -
+>   whoever runs it owns the ship record.** Note `5742775` (R-200) is NOT in `3fb1f3ce`; a rebuild from current
+>   `main` before the push would fold it in.
+> - **Will's in-game check (build75-dev):** Prison of Souls / Hades Palace floor 4 - kill **Alkyoneus the
+>   Soul-Gaoler**, open **all 6 cage chests across 3 runs**; expect **legendary spears** and visible class variety
+>   between chests. Full note in `docs/WILL_TEST_GUIDE.md` (R-180 section). Fully quit TQ and restart Steam first.
+
 > ## BUILD40-DEV DEPLOYED TO DEV + DEV2 (2026-07-14, post-Steam-ship) - both DEV surfaces now build40-dev
 > **`SoulvizierClassicDEV` AND `SoulvizierClassicDEV2` both = build40-dev.** Deployed while TQ.exe was NOT
 > running (Steam client NOT restarted). Both DEV entries carry the **TESTHUB** Levels (the Helos traveler

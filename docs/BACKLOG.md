@@ -1,5 +1,112 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## 🟢 BUILD75-DEV GATE RECORD - R-180 CHEST LOOT BREADTH: BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main`, tag `build75-dev`)
+
+**This supersedes the "SOURCE ONLY, NOT BUILT" R-180 gate record further down.** The source lane's fix
+(`6899906`) is now a real, gated, deployed artifact. Will's order was "expand the bredth of the legendary
+items dropped in the testhub chests and also in the steam version" - the DEV half is DONE and verified on
+disk; the Steam half is carried by the concurrent b63 ship lane (see STEAM below), not by this lane.
+
+**BUILD (det-2x identity, `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`):**
+| item | value |
+|---|---|
+| `Database/SoulvizierClassic.arz` | **`3fb1f3ce8889e27de2491ab12814547d`**, 55,539,324 B, **51,231 records** |
+| baseline (the arz that was live on DEV) | `9c190b991a148ac6c35b1e852dac56fd`, 55,527,745 B, 51,204 records |
+| det-2x | TWO independent full builds (attempt 2 + attempt 3) each wrote **the same md5** `3fb1f3ce` |
+| registry | **54 modules OK, order `0c76e6652069`** |
+| build time | 7m14s, exit 0 |
+
+**RECORD-DIFF vs the live baseline `9c190b99`: ADDED 27 / REMOVED 0 / MODIFIED 48, ZERO unexplained rows.**
+Attribution is derived from the modules' own constants (`svc_loot_breadth.MASTER`, `polis_vault._PLACED_TIERED` /
+`_tier_table` / `_tier_container`, `svc_loot_breadth.chest_tables`), never hand-listed, and MODIFIED chest tables
+are additionally field-gated to the breadth contract (`loot1Name*/loot1Weight*/loot1Chance/loot6Chance/loot3*`):
+- **ADDED 27** = the 3 aggregate masters `svc_unique_weapons_{n,e,l}01` + 24 cage records (2 chests x 3 difficulties
+  x the 2 NEW themed variants `b`/`c`, each a loot table + a container). Variant `a` deliberately reuses the shipped
+  record paths, so the Legendary chain still lands on `polisvault_0N`.
+- **REMOVED 0** (records are never removed).
+- **MODIFIED 48** = 36 chest loot tables swept by `chest_loot_breadth` (incl. the 3 DRX donors
+  `loottable_hidden_bloodcave_0N`, every boss hoard, the Obsidian/uber-orb tables) + 12 polis_vault records
+  (6 ProxyAccessoryPools now naming 3 containers at 50/25/25, 6 cage tables re-themed).
+
+**GATES - ALL GREEN:**
+| gate | result |
+|---|---|
+| in-build `chest_loot_breadth.verify()` | **PASS** - 51 mod chest tables audited, every one pays all 6 weapon classes at its own tier (SPEAR named); thinnest pool `svc_charonhoard_loot_02` [e] = 111 |
+| in-build `polis_vault.verify()` T1-T7 | **PASS** - per-difficulty Proxies, Essence/Embodiment/Incarnation on N/E/L, Boss-lock + 100u unlock intact on **all 18 variant containers**, Legendary record + numSpawn richness preserved, no two cage tables field-identical, map places exactly the placed pair |
+| standalone `gate_chest_loot_breadth.py` | **GATE PASS** - n 181 (floor 150) / e 111..116 (floor 95) / l 308 (floor 260); Normal free of legendary gear |
+| standalone `gate_relic_difficulty_tiers.py` | **GATE PASS** - **33** mod-owned per-difficulty branches, **0 leaks** (up from 21: each cage pool now names 3 containers, so there is more tier surface, all clean) |
+| `negtest_chest_breadth.py` | **NEGTEST PASS** - every planted collapse reds the gate, unmodified build green |
+| `negtest_gaoler_chests.py` (the 08-08 negtest, re-run against the NEW variant shape AND against post-b63 `main` tooling) | **NEGTEST PASS** - all plants red, T6 control green |
+| `negtest_container_shape.py` | **ALL OK** - 2 positive controls PASS, 2 planted defects FAIL |
+| `validate_tags.py` | **RESULT: PASS** - 442 authoritative tags all resolve **in the EXISTING `Text.arc` `a9fed7ba`**, i.e. the wave authors zero new tags, which is what makes it arz-only |
+| `tools/contracts/run_contracts.py` (all 6 modules, LIVE work/+local/) | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** (every P2 pre-existing SV/DLC/base-inherited debt) |
+| 5 fail-loud DB invariants | soul-leak / soul-augment / soul item-skill activation / spawn-eligibility / boss-kit clone-shape all OK |
+| `negtest_arc_chain_resolution.py` (NEW, see BUILD-GATE REPAIR) | **NEGTEST PASS** |
+
+**COUPLING PROOF (fail-loud md5 match, taken against `work/` at build time): the change is arz-ONLY.**
+`Resources/Levels.arc` = `78a3e263ef10407808ef06858dfe9012` (canonical, unchanged), `Resources/Text.arc` =
+`a9fed7bace4dd809791210854efb569d`, `Resources/Quests.arc` = `6b25f8dd3c0b47a1438ef1dd1b69fc11`,
+`Resources/Creatures.arc` = `8c0d8d53610f0cbe50ee78ffe63839be`. **F3a was NOT taken** - no map edit, so
+`diff_maps_blobs.py` is not applicable to this lane. The TESTHUB cage reaches the fix because its 4 farm
+duplicates reference the SAME two records.
+
+**BEFORE -> AFTER (`py tools/debug/derive_gaoler_drops.py <arz>`), the cage Will farms:**
+| | BEFORE (`9c190b99`) | AFTER (`3fb1f3ce`) |
+|---|---|---|
+| containers per difficulty pool | **1** (six physical chests drew one collapsed pool) | **3 themed at 50/25/25** |
+| chest_01 themes | - | `_n`/`_e`/`_l` martial (spear + 1H) - `_Nb` hunter (bow + spear) - `_Nc` warden (shield + torso) |
+| chest_03 themes | - | `_n`/`_e`/`_l` apex (relic + master) - `_Nb` adept (+ staff) - `_Nc` sovereign (+ amulet + finger) |
+| weapon row `loot1Chance` | 14.0 | **40.0** |
+| shield row `loot6Chance` | 14.0 | **30.0** |
+| guaranteed slot (`loot3Chance` 100) | `unique_1h_*01` = axe/mace/sword ONLY | `svc_unique_weapons_*01` (every class, spear included) + the theme member |
+| relic tier per branch | 01 / 02 / 03 | **01 / 02 / 03 (unchanged)** |
+| `numSpawn` equations | `(3+(1.8*numberOfPlayers))*2.4..3.2` | **byte-identical** |
+
+**NON-REDUCTION:** no member removed, no chance lowered, guaranteed slot still 100%, numSpawn untouched and
+asserted per variant, Legendary chain still on `polisvault_0N`. Every edit is additive or a strict raise.
+
+**DEV DEPLOY - DONE + HASH-VERIFIED.** `CustomMaps\SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz`
+`9c190b99` -> **`3fb1f3ce`**, source==dest md5 verified after the copy. Rollback snapshot
+`local/DEV_arz_deployed_prev.arz` = `9c190b99` (verified == the live DEV arz BEFORE the copy; the deploy script
+refuses to run unless that matches). **TQ.exe was NOT running; nothing was killed and Steam was not restarted.**
+DEV2 no longer exists. A ship-safe copy of the exact artifact is preserved at
+`local/SoulvizierClassic.build75-dev.R180.arz`.
+
+**STEAM - NOT PUSHED BY THIS LANE (deliberate, and it is not a miss).** While this build was running, `main`
+advanced twice underneath it: `824ed0c` (b63 SILENT WARDEN, a P0 on the live Steam build) and `5742775`
+(R-200 red-uber orbs). That lane then rebuilt `Levels.arc` -> `6784cf0f` and `Quests.arc` -> `607ec99c`, deployed
+them to DEV, rewrote `docs/WORKSHOP_CHANGENOTE.bbcode` into a COMBINED note (its Warden bullet + this lane's two
+loot bullets), and staged `dist/workshop/content/SoulvizierClassic`. **That staged dist payload already carries
+this lane's arz `3fb1f3ce`** alongside its Warden map, so the chest fix ships to Steam inside that single
+combined push. Running a second `package_workshop.ps1` / `upload_workshop.ps1` here would have raced a concurrent
+packaging of the same Workshop item (3759792705) mid-write, and uploading BEFORE their map landed would have
+published a change note whose lead bullet (the Warden answering again) was false for the uploaded bytes. Both are
+disqualifying, so this lane stopped at the staged artifact. **Steam ship record is owed by the b63 lane.**
+
+**BUILD-GATE REPAIR shipped with this wave (`58c67f8`, own commit, own negtest).** The first ship build failed
+`champion_mesh.verify` with **65 "UNRESOLVED ANIMATION"** offenders against base-game clips - nothing to do with
+loot. Root cause, probed not guessed: `tools/mesh_assets._load_arc` resolved an art reference to the FIRST archive
+whose NAME matched and stopped, and the 2026-08-06 PR-2 dye layer stages an ADDITIVE 288-entry
+`work\SoulvizierClassic\Resources\Creatures.arc` that sorts ahead of the game install, so it shadowed the base
+game's 3,520-entry `Creatures.arc` wholesale (measured chain: mod 288 / base 3520 / xpack 925 / XPack2 1561 /
+XPack3 873 / XPack4 881). Fixed upstream at the resolver (BL-103): `_load_arcs()` returns the whole same-name
+chain with a per-archive entry index and `read_asset()` returns the first archive that actually CARRIES the entry
+- per-entry shadowing, which is what the engine does with an additive arc. Mod archives still win for their own
+entries (proven: `Creatures\pc\female\female1.msh` -> the dye layer). Gate: `tools/debug/negtest_arc_chain_resolution.py`
+(P1/P2 controls green, N1/N2/N3 plants red, incl. a replay of the pre-fix algorithm proven RED). After the repair
+`champion_mesh.verify` reports **"every reachable .anm resolves"**. The gate was REPAIRED, never waived.
+
+**RESIDUAL (honest):** NOT PROVEN IN-GAME. Will's check (kill Alkyoneus, open all 6 cage chests across 3 runs,
+expect legendary spears and visible class variety) is the remaining launch gate - see `docs/WILL_TEST_GUIDE.md`.
+DEBT: (a) `local/Levels_merged_TESTHUB.arc` (`42d83885`) is NOT the TESTHUB actually deployed to DEV, so the
+packager's TESTHUB md5 guard is comparing against a stale local file - it still passed here because the packaged
+map is the canonical one, but the guard should be re-pointed at the live TESTHUB; (b) the build prints an
+**R-96 CENSUS STAMP MISMATCH** warning (the Endless-Hunt sighting census was measured on Levels `943d0ab9`, work/
+now holds a different map) - the p_slot invariant is per-pool and unaffected, but the "~1 sighting per act" figure
+is unproven for the current map and wants a re-measure.
+
+---
+
 ## 🟢 BUILD RECORD - b63 SILENT WARDEN (2026-08-10, `fix/warden-sparta-dialog` @ `af40892`) - BUILT + ALL GATES GREEN
 
 Built from `af40892` (= `main` @ `6899906` merged in, so the tree is a strict superset of the

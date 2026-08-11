@@ -1,10 +1,26 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
 > ## 🆕 R-180 (2026-08-10): THE GAOLER-CAGE CHESTS NOW DROP DIFFERENT THINGS, AND LEGENDARY SPEARS ARE POSSIBLE
-> **Ships to the TESTHUB AND to Steam in the same change** (it is arz-only, and the 4 TESTHUB farm
-> duplicates use the same 2 records as the canonical pair). **NOT yet built/deployed at the time of
-> writing** - the orchestrator's build + DEV deploy comes first; then fully quit TQ and restart Steam
-> before testing (standing rule).
+> **✅ NOW LIVE ON DEV - build75-dev.** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
+> **`3fb1f3ce8889e27de2491ab12814547d`** (55,539,324 B), deployed + md5-verified 2026-08-10 while TQ was
+> closed. It is arz-only, so the 4 TESTHUB farm-duplicate chests get it too (they reference the same 2
+> records as the canonical pair). **Fully quit TQ and restart Steam before testing** (standing rule).
+> Steam: this arz is staged in the combined Workshop package alongside the b63 Warden fix; the Steam
+> ship record for both lands with that push.
+>
+> **WHICH CHESTS TO OPEN:** the Polis Daemonai vault-cage in the **Prison of Souls** (Hades Palace floor 4)
+> - where the Polybotes Soul drops and Alkyoneus the Soul-Gaoler guards the cage. **All 6 chests**
+> (2 canonical placements + the 4 farm duplicates), on **3 separate runs**.
+>
+> **WHAT BREADTH TO EXPECT (measured on the built arz, not estimated):** each difficulty pool now offers
+> **3 themed chests at 50/25/25** instead of 1, so the six physical chests stop mirroring each other -
+> chest_01 rolls **martial** (spear + one-hand), **hunter** (bow + spear) or **warden** (shield + torso);
+> chest_03 rolls **apex**, **adept** (staff) or **sovereign** (amulet + ring), each still with its
+> guaranteed relic. The weapon row fires at **40%** (was 14%) and the shield row at **30%** (was 14%).
+> Reachable distinct items per open: Legendary **258 -> 308**, Epic **90 -> 111**, Normal **99 -> 181**.
+> **SPEARS EXPLICITLY: legendary spears go 0 -> 22 reachable** (Achilles' Spear, Ares' Wrath, Soulharvest,
+> Peleus' Ashen Spear, Telamon's Boar Skewer, Onuris' Spear and the rest). Only 2 stay out by design:
+> the Endless Hunt's Runbreaker (his own guaranteed drop) and the DRX supra craft-only spear.
 >
 > **What was wrong (both halves were real, not perception).** Every mod chest inherited one collapsed
 > weapon row from the DRX donor: it named the 3-class `unique_1h` master plus bow and staff, and simply
