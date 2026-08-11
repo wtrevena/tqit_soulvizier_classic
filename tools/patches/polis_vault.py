@@ -31,6 +31,7 @@ if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
 import apply_svc_patches as M
+import svc_armor_breadth as SAB
 import svc_loot_breadth as SLB
 from apply_svc_patches import (
     DATA_TYPE_STRING as S,
@@ -622,7 +623,14 @@ def _build_vault(db, tags):
     #    guaranteed weapon slot is still widened, by the build-wide
     #    chest_loot_breadth sweep, so a future placement inherits the breadth.
     # ── WILL 2026-08-10: each difficulty branch now carries 3 THEMED variants.
+    # R-181 (Will 2026-08-10, "i am not really seeing armor drops"): the warden theme
+    # now names the aggregate ARMOUR master, so that master must exist BEFORE any theme
+    # is written - a theme member whose donor does not resolve is dropped, and a
+    # silently dropped warden armour member is exactly the class of hole this wave is
+    # closing. Both ensure_* helpers are idempotent, so armor_loot_breadth's own later
+    # call is a no-op.
     SLB.ensure_masters(db)
+    SAB.ensure_armor_masters(db)
     for N, nmin, nmax, themes, weights in _PLACED_TIERED:
         _convert_placed_chest_to_proxy(db, N, nmin, nmax, themes, weights)
     print("  POLIS VAULT: chest_01 + chest_03 (the placed pair) converted to "

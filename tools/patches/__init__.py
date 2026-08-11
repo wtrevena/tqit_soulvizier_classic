@@ -700,6 +700,52 @@ REGISTRY = [
                             # breadth gate (standalone twin:
                             # py tools/gate_chest_loot_breadth.py <arz>; negatives:
                             # py tools/debug/negtest_chest_breadth.py <arz>).
+    'armor_loot_breadth',   # R-181 (Will 2026-08-10), TWO reports in one sitting: "also what
+                            # about the armor? i am not really seeing armor drops like shields,
+                            # chest plates, helmets, etc." and "you overcorrected, that run 4
+                            # scorpions tail spears dropped". R-180 answered REACHABILITY; both
+                            # of these are RATE reports, and R-180's gate was GREEN while the
+                            # Gaoler cage paid 58.5 legendary weapons against 12.4 armour pieces
+                            # per six-chest run with SPEAR alone at 24.0% of the legendary mass.
+                            # MEASURED on the shipped build76 arz 16994072: zero mod chests have
+                            # an unreachable armour slot, so this is not a breadth defect at all -
+                            # the torso/head row fired at 33% and put only 200 of its 1888 weight
+                            # on unique armour (10.6%), arms/legs 31% and 400 of 2088 (19.2%),
+                            # shields 30% and 100 of 931 (10.7%), while the GUARANTEED loot3 slot
+                            # fires 100% every spawn iteration and is all weapons/relics.
+                            # THREE FIXES, all additive or a strict raise (numSpawn untouched, no
+                            # member removed, no chance or weight lowered, guaranteed slot still
+                            # 100%, so expected drops per open strictly RISE):
+                            # (1) every armour row lifted to the weapon row's own 40%;
+                            # (2) unique-armour members raised to 850 and one aggregate ARMOUR
+                            #     master (svc_unique_armor_{n,e,l}01 - all five worn slots at
+                            #     equal weight, R-180's machinery reused) dropped into the first
+                            #     free armour-row member slot at 800;
+                            # (3) the "overcorrected" half: unique_1h_*01 pays THREE classes from
+                            #     ONE member, so carrying a spear's weight made axe/mace/sword a
+                            #     third of a spear each - re-weighted to 3x its single-class
+                            #     siblings here AND inside R-180's weapon master, plus softened
+                            #     class-bias weights in svc_loot_breadth.THEMES (each theme keeps
+                            #     its shipped weapon:relic:armour split to the percent).
+                            # MEASURED cage run, before -> after: weapon:armour 4.73:1 -> 1.16:1;
+                            # armour 12.4 -> 49.7 pieces; SPEAR 24.0% -> 9.6% (even is 9.1%);
+                            # helm 1.6% -> 7.5%; P(4 copies of one spear in a run) 27.0% -> 5.5%,
+                            # and P(4 Scorpion's Tails specifically) 2.07% -> 0.38%.
+                            # ORDER IS LOAD-BEARING: immediately AFTER chest_loot_breadth, for
+                            # the same reason that module runs late (it sweeps the FINAL table
+                            # set) and because it raises weights R-180 wrote and reads members
+                            # R-180 added. polis_vault also calls ensure_armor_masters, because
+                            # the warden theme now names the armour master and a theme member
+                            # whose donor does not resolve is dropped.
+                            # SCOPE: every mod-owned gear chest + the 3 DRX donors. The
+                            # svc_uberorb_* tables are OUT, owned by the concurrent b79
+                            # fix/orb-loot-breadth lane, and are PRINTED on every run rather than
+                            # silently skipped (BL-R181-DEBT-1 - the R-200 lesson). General
+                            # MONSTER armour drops are measured and reported, never changed here.
+                            # Its verify() is the build-wide fail-loud DISTRIBUTION gate
+                            # (standalone twin: py tools/gate_loot_distribution.py <arz>;
+                            # calibration mode: --calibrate; negatives:
+                            # py tools/debug/negtest_armor_breadth.py <arz>).
     'red_uber_orbs',        # R-200 (Will 2026-08-10): "boar snatcher legendary spider should drop
                             # a mystical orb like the other red uber monsters". "Mystical orb" is
                             # literal - every genericbossorb_0N chest carries description

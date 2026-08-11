@@ -81,11 +81,22 @@ _BASE_ALL = r'records\item\loottables\weapons\mastertables\unique\all_%s0%d.dbr'
 MASTER = {t: r'records\item\loottables\svc\svc_unique_weapons_%s01.dbr' % t for t in TIERS}
 _MASTER_DONOR = r'records\item\loottables\weapons\mastertables\unique\all_l01.dbr'
 
+# How many weapon CLASSES `unique_1h_*01` covers (axe + club + sword). R-181: the
+# shipped master gave it the SAME weight as the single-class spear/bow/staff tables, so
+# each 1H class carried a THIRD of a spear's mass and spear/bow/staff were each 3x
+# over-represented. That is the arithmetic behind Will's "you overcorrected".
+_ONE_HAND_CLASSES = 3
+_CLASS_WEIGHT = 1000            # mass per weapon CLASS in the aggregate master
+
+
 # Members of the aggregate master: (path template applied per tier, weight).
 def _master_members(tier):
-    out = [(_XP_1H % tier, 1000)]
+    # R-181: weight per MEMBER = _CLASS_WEIGHT x (number of classes that member pays),
+    # so every one of the six weapon classes carries identical mass. Strictly a RAISE
+    # over the shipped 1000 (non-reduction law): nothing else moves.
+    out = [(_XP_1H % tier, _CLASS_WEIGHT * _ONE_HAND_CLASSES)]
     for fam in ('spear', 'bow', 'staff'):
-        out.append((_XP_UNIQUE % (fam, tier), 1000))
+        out.append((_XP_UNIQUE % (fam, tier), _CLASS_WEIGHT))
     for i in (1, 2, 3):
         out.append((_BASE_ALL % (tier, i), 700))
     return out
@@ -96,6 +107,11 @@ def kind_path(kind, tier):
     """Resolve a theme kind to its TIER-CORRECT loot table (never a mixed tier)."""
     if kind == 'broad':
         return MASTER[tier]
+    if kind == 'armor_broad':
+        # R-181: the armour twin of `broad` - one member that pays all FIVE worn
+        # slots evenly. Authored by tools/svc_armor_breadth.ensure_armor_masters.
+        import svc_armor_breadth as SAB
+        return SAB.ARMOR_MASTER[tier]
     if kind == 'unique_1h':
         return _XP_1H % tier
     if kind in ('spear', 'bow', 'staff', 'axe', 'club', 'sword'):
@@ -117,20 +133,38 @@ def kind_path(kind, tier):
 # LAW: the weapon:relic weight split of the chest that shipped is preserved (the
 # weapon side of every theme sums to the weight the single unique_1h member used to
 # carry), so this differentiates WHAT drops, never HOW MUCH.
+#
+# R-181 RE-WEIGHTING (Will 2026-08-10: "you overcorrected, that run 4 scorpions tail
+# spears dropped"). Every theme below keeps its shipped WEAPON : RELIC : ARMOUR split
+# to the percent - only the split BETWEEN weapon classes changes. The class-bias member
+# fell from 30% of the slot to 20% (martial spear) and from 20% to 10% (the secondary),
+# with the difference handed to the class-balanced `broad` master, because the bias
+# member stacked on TOP of a master that was itself spear-heavy. Denominators are 1000
+# so a reader can read a weight as per-mille directly.
+#   theme      weapons  relic  armour     shipped        R-181
+#   martial     100%      -       -      100/60/40      700/200/100
+#   hunter      100%      -       -      100/60/40      700/200/100
+#   warden       50%      -      50%     100/60/40      500/400/60/40
+#   apex         50%     50%      -      100/100        1000/1000
+#   adept        50%     50%      -      100/70/30      1000/800/200
+#   sovereign    50%     50%      -      100/70/15/15   1000/700/150/150
 THEMES = {
     # Gaoler cage chest_01 (no relic in its guaranteed slot, exactly as shipped).
-    'martial': [('broad', 100), ('spear', 60), ('unique_1h', 40)],
-    'hunter': [('broad', 100), ('bow', 60), ('spear', 40)],
-    'warden': [('broad', 100), ('shield', 60), ('torso', 40)],
-    # Gaoler cage chest_03 (apex: keeps its 100/100 weapon-vs-relic split verbatim).
-    'apex': [('relic', 100), ('broad', 100)],
-    'adept': [('relic', 100), ('broad', 70), ('staff', 30)],
-    'sovereign': [('relic', 100), ('broad', 70), ('amulet', 15), ('finger', 15)],
+    'martial': [('broad', 700), ('spear', 200), ('unique_1h', 100)],
+    'hunter': [('broad', 700), ('bow', 200), ('spear', 100)],
+    # warden is the ARMOUR theme: its shipped 50:50 weapon:armour split is preserved to
+    # the percent, but the armour half now spreads over all FIVE worn slots through the
+    # armour master instead of paying only shield + torso.
+    'warden': [('broad', 500), ('armor_broad', 400), ('shield', 60), ('torso', 40)],
+    # Gaoler cage chest_03 (apex: keeps its 50/50 weapon-vs-relic split verbatim).
+    'apex': [('relic', 1000), ('broad', 1000)],
+    'adept': [('relic', 1000), ('broad', 800), ('staff', 200)],
+    'sovereign': [('relic', 1000), ('broad', 700), ('amulet', 150), ('finger', 150)],
 }
 THEME_LABEL = {
     'martial': 'martial (spear + one-hand melee bias)',
     'hunter': 'hunter (bow + spear bias)',
-    'warden': 'warden (shield + heavy armour bias)',
+    'warden': 'warden (all five worn slots + shield bias)',
     'apex': 'apex (any weapon class + relic)',
     'adept': 'adept (staff/caster bias + relic)',
     'sovereign': 'sovereign (jewellery bias + relic)',
@@ -385,6 +419,12 @@ def set_guaranteed_theme(db, table, tier, theme, lk=None):
         p = lk.real(kind_path(kind, tier))
         if p:
             members.append((p, int(weight)))
+        else:
+            # R-181: never silent. A dropped theme member is a silently narrowed chest,
+            # which is the exact defect class this wave exists to close.
+            print("  LOOT BREADTH: WARNING theme %r member kind %r does not resolve at "
+                  "tier %r (%s); the theme ships WITHOUT it"
+                  % (theme, kind, tier, kind_path(kind, tier)))
     if not members:
         raise SystemExit("svc_loot_breadth: theme %r resolves to no donor at tier %r "
                          "(table %s)" % (theme, tier, table))

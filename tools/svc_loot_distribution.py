@@ -1,0 +1,494 @@
+r"""svc_loot_distribution.py - THE DROP-DISTRIBUTION MODEL (Will 2026-08-10, R-181).
+
+WILL, VERBATIM (2026-08-10), the two reports this module exists to answer:
+  1. "also what about the armor? i am not really seeing armor drops like shields,
+     chest plates, helmets, etc."
+  2. "you overcorrected, that run 4 scorpions tail spears dropped"
+
+R-180 proved a chest CAN reach a class (a reachability question). Neither report is a
+reachability question: both are about HOW OFTEN. `svc_loot_breadth` counts distinct
+reachable items; it cannot see that a chest reaches 22 legendary spears and 16 legendary
+helms and still pays 15 weapons for every 1.6 armour pieces. This module is the missing
+half: it computes the actual PROBABILITY MASS a chest puts on each equipment class and
+on each individual item, so "roughly even across classes" and "no outsized single-item
+share" are measurable, committed numbers instead of adjectives.
+
+THE ENGINE (how TQAE resolves a FixedItemLoot container, measured on the shipped db)
+------------------------------------------------------------------------------------
+* A FixedItemLoot record has SIX loot groups. Per spawn iteration each group rolls
+  INDEPENDENTLY at `loot{G}Chance` percent, and a group that fires picks exactly ONE
+  member by `loot{G}Weight{i}`. Independence is measured, not assumed: 167 of the 296
+  base-game FixedItemLoot tables have group chances summing to MORE than 100 (up to
+  226.2 on `hermit mage chest_*`), which is impossible under a mutually-exclusive
+  reading. The ~100% median is a design convention (one item per iteration on average),
+  not a mechanic.
+* The number of iterations is `numSpawnMin/MaxEquation`, evaluated with
+  `numberOfPlayers` and `averagePlayerLevel`. Expected iterations S = (min+max)/2.
+* So:  E[drops of item x per open] = S * SUM_G ( chance_G/100 * P(x | group G) ).
+  Everything this module reports is that one formula.
+
+LOOT-NODE KINDS (the `Class` field, measured counts in the shipped db)
+  LootMasterTable          table of tables, `lootName{i}`/`lootWeight{i}`  -> recurse
+  LootItemTable_FixedWeight  direct item paths + fixed weights            -> leaves
+  LootItemTable_DynWeight    `itemNames` + a level bell curve             -> leaves
+  LootRandomizerTable        affixes, not items                           -> ignored
+
+THE DynWeight ASSUMPTION, STATED ONCE AND USED EVERYWHERE
+---------------------------------------------------------
+`LootItemTable_DynWeight` weights its `itemNames` by a level bell curve whose peak
+depends on runtime state (`parentLevel`, `averagePlayerLevel`), so no static analysis
+can pin one exact number. This module models it as UNIFORM over `itemNames`. That is
+deliberately the assumption most FAVOURABLE to the shipped build: any real bell
+concentration only makes a single item's share HIGHER than reported, never lower. So
+every "before" skew number here is a LOWER BOUND on the skew Will actually saw, and
+every threshold this module enforces is enforced against the optimistic case.
+
+WHAT IT MEASURES (the two committed balance targets of R-181)
+-------------------------------------------------------------
+  ACROSS-CLASS  no single equipment class may hold more than MAX_CLASS_SHARE of a
+                surface's legendary-drop mass, and every class the surface claims to
+                pay must hold at least MIN_CLASS_SHARE. Even would be 1/11 = 9.1%
+                across the 6 weapon + 5 armour classes.
+  WITHIN-CLASS  no single ITEM may hold more than MAX_ITEM_SHARE_IN_CLASS of its own
+                class's mass (uniform over a 17-item table is 5.9%), and no single item
+                more than MAX_ITEM_SHARE_TOTAL of the surface's whole mass.
+  ARMOUR PARITY every armour slot must clear ARMOUR_SLOT_FLOOR expected legendary
+                pieces per open, and the weapon:armour mass ratio must not exceed
+                MAX_WEAPON_ARMOUR_RATIO. This is the half `svc_loot_breadth` is blind
+                to and the half Will reported.
+
+Shared by `tools/gate_loot_distribution.py` (standalone), the in-build gate
+`tools/patches/armor_loot_breadth.verify()` and `tools/debug/negtest_armor_breadth.py`,
+so the three can never disagree (the gate_relic_difficulty_tiers precedent).
+"""
+import re
+import sys
+from collections import defaultdict
+from pathlib import Path
+
+if __name__ == '__main__' or __package__ is None:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE EQUIPMENT SLOTS THIS CONTRACT BALANCES
+#
+# A SLOT is what a player wears or wields, which is not always one engine `Class`.
+# MEASURED on the shipped db, so nobody re-guesses these strings:
+#   * a shield's Class is `WeaponArmor_Shield` (475 records) - it is NOT
+#     `ArmorProtective_*`. A naive `startswith('Armor')` armour audit sees ZERO
+#     shields and a naive `startswith('Weapon')` weapon audit counts every shield as
+#     a weapon. Both errors point the same way: shields vanish from armour.
+#   * the arm slot is TWO classes - `ArmorProtective_Forearm` (armbands, 669) and
+#     `ArmorJewelry_Bracelet` (62, the caster armband line that
+#     `unique_arms_l01 -> bracelet_l01` pays at weight 50 of 100).
+# ─────────────────────────────────────────────────────────────────────────────
+WEAPON_SLOTS = {
+    'axe': ('WeaponMelee_Axe',),
+    'mace': ('WeaponMelee_Mace',),
+    'sword': ('WeaponMelee_Sword',),
+    'spear': ('WeaponHunting_Spear',),
+    'bow': ('WeaponHunting_Bow', 'WeaponHunting_RangedOneHand'),
+    'staff': ('WeaponMagical_Staff',),
+}
+# Will's own words: "shields, chest plates, helmets, etc." - one entry per worn slot.
+ARMOR_SLOTS = {
+    'helm': ('ArmorProtective_Head',),
+    'arms': ('ArmorProtective_Forearm', 'ArmorJewelry_Bracelet'),
+    'torso': ('ArmorProtective_UpperBody',),
+    'legs': ('ArmorProtective_LowerBody',),
+    'shield': ('WeaponArmor_Shield',),
+}
+GEAR_SLOTS = dict(WEAPON_SLOTS)
+GEAR_SLOTS.update(ARMOR_SLOTS)
+SLOT_ORDER = ('axe', 'mace', 'sword', 'spear', 'bow', 'staff',
+              'helm', 'arms', 'torso', 'legs', 'shield')
+CLASS_TO_SLOT = {c: s for s, cs in GEAR_SLOTS.items() for c in cs}
+SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPEAR',
+              'bow': 'bow', 'staff': 'staff', 'helm': 'helm', 'arms': 'arms',
+              'torso': 'torso', 'legs': 'legs', 'shield': 'shield'}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE COMMITTED BALANCE TARGETS (R-181)
+#
+# Every threshold below is DERIVED, not chosen: each was read off
+# `py tools/gate_loot_distribution.py <arz> --calibrate` run against BOTH the shipped
+# build76 arz (`16994072`, the state Will reported) and the R-181 dry run, and then
+# placed so that it REDS the shipped state and CLEARS the fixed state with margin. A
+# threshold that does not red the reported defect is decoration; a threshold with no
+# margin is a gate that gets switched off (the b63 1.0u lesson).
+#
+#   check                      shipped   R-181   threshold   reds shipped   margin
+#   D1 class share, table       0.4313   0.3822    0.42          yes          9%
+#   D2 class share, surface     0.3431   0.2083    0.25          yes         17%
+#   D3 thinnest class share     0.0106   0.0207    0.015         yes         38%
+#   D4 item share / uniform     4.13x    4.92x     5.8x          no*         18%
+#   D5 item share, surface      0.0583   0.0250    0.035         yes         40%
+#   D6 weapon : armour          7.21     1.43      2.20          yes         53%
+#   D7 thinnest armour slot     0.1109   0.6593    0.55          yes         17%
+#
+#   * D4 is a REGRESSION GUARD, and the report says so plainly rather than pretending
+#     otherwise. The cage's within-class spread was ALREADY near-uniform in the shipped
+#     build (the top spear carried 1.33x its class's uniform share), so the four
+#     Scorpion's Tails were a VOLUME x CLASS-SHARE event, not a within-class one - see
+#     the R-181 arithmetic. The worst within-class concentration in the whole mod, 4.9x
+#     uniform, sits on the NORMAL branch and is a base-game artefact: the static
+#     randomiser tables and the unique tables overlap on the same `u_n_*` items, and
+#     this mod owns neither. What R-181 does move is the number a player actually
+#     feels, D5: that same item's share of everything the surface drops falls 0.0583 ->
+#     0.0250 because the pool it competes in is far wider.
+# ─────────────────────────────────────────────────────────────────────────────
+# Even across the 11 gear classes is 9.1%. D1 is the coarse "no table collapses onto one
+# class" bound - a THEMED variant is designed to bias, and it is only ever met alongside
+# its two siblings, so D2 (the surface the player actually opens) is the binding
+# evenness contract. D1 exists to catch what shipped: SPEAR at 43.1% of one cage table.
+MAX_CLASS_SHARE_TABLE = 0.42
+MAX_CLASS_SHARE_AGGREGATE = 0.25
+# A class the surface claims to pay must actually be payable. The shipped cage put the
+# helm at 1.06% of its Epic mass - reachable, and invisible.
+MIN_CLASS_SHARE_TABLE = 0.015
+# "Near-uniform within a class": no item may carry more than this multiple of its
+# class's uniform share (1/n). Expressed as a MULTIPLE because a 7-item class cannot be
+# held to an absolute share below its own uniform 14.3%.
+MAX_ITEM_OVER_UNIFORM = 5.8
+# ... and no item may own more than this share of the whole surface's gear mass. This is
+# the absolute "one item dominates the run" bound and it DOES red the shipped build.
+MAX_ITEM_SHARE_TOTAL = 0.035
+# Armour parity. Every worn slot must be a REAL drop, not a rounding error.
+ARMOR_SLOT_FLOOR = 0.55          # expected legendary pieces of that slot per chest open
+MAX_WEAPON_ARMOUR_RATIO = 2.20   # legendary weapon mass : legendary armour mass
+
+
+def _n(s):
+    return str(s).replace('/', '\\').lower()
+
+
+def _sc(v):
+    return v[0] if isinstance(v, list) and v else v
+
+
+class Db:
+    """Case-insensitive read layer over one ArzDatabase (the db itself is case
+    sensitive and the shipped records are not internally consistent about case)."""
+
+    def __init__(self, db):
+        self.db = db
+        self._lower = {_n(x): x for x in db.record_names()}
+        self._fcache = {}
+
+    def refresh(self):
+        self._lower = {_n(x): x for x in self.db.record_names()}
+        self._fcache.clear()
+
+    def real(self, path):
+        if not isinstance(path, str):
+            path = _sc(path)
+            if not isinstance(path, str):
+                return None
+        return self._lower.get(_n(path))
+
+    def fields(self, path):
+        real = self.real(path)
+        if not real:
+            return {}
+        hit = self._fcache.get(real)
+        if hit is None:
+            hit = {}
+            for k, tf in (self.db.get_fields(real) or {}).items():
+                hit[k.split('###')[0]] = list(tf.values)
+            self._fcache[real] = hit
+        return hit
+
+    def gv(self, path, field):
+        v = self.fields(path).get(field)
+        return v[0] if v else None
+
+    def cls(self, path):
+        return str(self.gv(path, 'Class') or '')
+
+    def tpl(self, path):
+        return _n(self.gv(path, 'templateName') or '')
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NODE DISTRIBUTION: P(item | one pick from this loot node)
+# ─────────────────────────────────────────────────────────────────────────────
+class Distributor:
+    def __init__(self, d):
+        self.d = d
+        self._memo = {}
+
+    def dist(self, path, _stack=None, _depth=0):
+        """{item_record: probability} for ONE pick from `path`. Probabilities sum to
+        1.0 when the node resolves to anything at all, else {}."""
+        real = self.d.real(path)
+        if not real:
+            return {}
+        key = _n(real)
+        hit = self._memo.get(key)
+        if hit is not None:
+            return hit
+        stack = _stack or set()
+        if key in stack or _depth > 12:
+            return {}
+        tpl = self.d.tpl(real)
+        f = self.d.fields(real)
+        out = {}
+        if 'loot' not in tpl:
+            self._memo[key] = {real: 1.0}       # a plain item record: the leaf
+            return self._memo[key]
+        stack = stack | {key}
+        if tpl.endswith('lootitemtable_dynweight.tpl'):
+            names = [x for x in f.get('itemNames', []) if isinstance(x, str)]
+            # DOCUMENTED ASSUMPTION (module docstring): uniform over itemNames, the
+            # assumption most favourable to the shipped build.
+            if names:
+                p = 1.0 / len(names)
+                for it in names:
+                    r = self.d.real(it)
+                    if r:
+                        out[r] = out.get(r, 0.0) + p
+        elif tpl.endswith('lootrandomizertable.tpl'):
+            out = {}                             # affixes, not items
+        else:
+            # LootMasterTable + LootItemTable_FixedWeight share the lootName/lootWeight
+            # shape; the only difference is whether a child is a table or an item, and
+            # the recursion below decides that per child.
+            pairs = []
+            for i in range(1, 31):
+                nm = f.get('lootName%d' % i)
+                if not nm or not isinstance(nm[0], str) or not nm[0].strip():
+                    continue
+                wt = f.get('lootWeight%d' % i)
+                w = float(wt[0]) if wt else 0.0
+                if w > 0:
+                    pairs.append((nm[0], w))
+            tot = sum(w for _p, w in pairs)
+            if tot > 0:
+                for p_, w in pairs:
+                    share = w / tot
+                    for it, q in self.dist(p_, stack, _depth + 1).items():
+                        out[it] = out.get(it, 0.0) + share * q
+        if not _stack:
+            self._memo[key] = out
+        return out
+
+
+_NUM_SAFE = re.compile(r'^[\d\.\+\-\*\/\(\) ]+$')
+
+
+def eval_spawn(expr, players=1, apl=70):
+    """Evaluate a numSpawn equation. Arithmetic only, regex-guarded, never eval of
+    anything the regex has not already proven is arithmetic."""
+    if not expr:
+        return None
+    e = (str(expr).replace('numberOfPlayers', str(players))
+                  .replace('averagePlayerLevel', str(apl)))
+    if not _NUM_SAFE.match(e):
+        return None
+    try:
+        return float(eval(e, {'__builtins__': {}}, {}))   # noqa: S307 - guarded above
+    except Exception:
+        return None
+
+
+def spawn_iterations(d, table, players=1):
+    """Expected spawn iterations S for one open of `table`."""
+    lo = eval_spawn(d.gv(table, 'numSpawnMinEquation'), players)
+    hi = eval_spawn(d.gv(table, 'numSpawnMaxEquation'), players)
+    if lo is None and hi is None:
+        return 1.0
+    if lo is None:
+        return hi
+    if hi is None:
+        return lo
+    return (lo + hi) / 2.0
+
+
+class ChestProfile:
+    """The expected drop profile of ONE FixedItemLoot chest table, per open."""
+
+    def __init__(self, d, dist, table, players=1, classification='Legendary'):
+        self.table = d.real(table) or table
+        self.d = d
+        self.S = spawn_iterations(d, self.table, players)
+        f = d.fields(self.table)
+        self.groups = []
+        # E[count of item x per open], restricted to `classification` gear items.
+        self.per_item = defaultdict(float)
+        self.per_item_all = defaultdict(float)
+        for g in range(1, 7):
+            c = f.get('loot%dChance' % g)
+            chance = float(c[0]) / 100.0 if c else 0.0
+            pairs = []
+            for i in range(1, 7):
+                nm = f.get('loot%dName%d' % (g, i))
+                wt = f.get('loot%dWeight%d' % (g, i))
+                if nm and isinstance(nm[0], str) and nm[0].strip():
+                    w = float(wt[0]) if wt else 0.0
+                    if w > 0:
+                        pairs.append((nm[0], w))
+            tot = sum(w for _p, w in pairs)
+            self.groups.append((g, chance, pairs, tot))
+            if chance <= 0 or tot <= 0:
+                continue
+            for p_, w in pairs:
+                share = w / tot
+                for it, q in dist.dist(p_).items():
+                    self.per_item_all[it] += self.S * chance * share * q
+        for it, ev in self.per_item_all.items():
+            if str(d.gv(it, 'itemClassification') or '') == classification:
+                self.per_item[it] += ev
+
+    def by_slot(self):
+        out = defaultdict(float)
+        for it, ev in self.per_item.items():
+            s = CLASS_TO_SLOT.get(self.d.cls(it))
+            if s:
+                out[s] += ev
+        return dict(out)
+
+    def gear_mass(self):
+        return sum(self.by_slot().values())
+
+    def items_in_slot(self, slot):
+        return {it: ev for it, ev in self.per_item.items()
+                if CLASS_TO_SLOT.get(self.d.cls(it)) == slot}
+
+    def expected_drops(self):
+        """Expected item drops of ANY kind per open (the non-reduction quantity)."""
+        return self.S * sum(c for (_g, c, _p, t) in self.groups if t > 0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE AUDIT (shared by the standalone gate, the in-build gate and the negtests)
+# ─────────────────────────────────────────────────────────────────────────────
+def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
+                  require_armor=True, classification=None):
+    """Audit one SURFACE: a set of chest tables a player experiences together
+    (the cage's six physical chests, a boss hoard, the blood-cave mega chest).
+
+    `weights` = spawn-time selection weights over `tables` (a ProxyAccessoryPool's
+    per-variant weights); None = equal. Returns (problems, report)."""
+    ic = classification or {'n': 'Epic', 'e': 'Legendary', 'l': 'Legendary'}[tier]
+    profs = [ChestProfile(d, dist, t, players, ic) for t in tables]
+    profs = [p for p in profs if p.gear_mass() > 0]
+    if not profs:
+        return (['D0 %s: no chest table carries any %s gear at all' % (label, ic)], {})
+    if weights:
+        w = [float(x) for x in weights][:len(profs)]
+    else:
+        w = [1.0] * len(profs)
+    tw = sum(w) or 1.0
+    w = [x / tw for x in w]
+
+    agg_slot = defaultdict(float)
+    agg_item = defaultdict(float)
+    for wi, p in zip(w, profs):
+        for s, ev in p.by_slot().items():
+            agg_slot[s] += wi * ev
+        for it, ev in p.per_item.items():
+            if CLASS_TO_SLOT.get(d.cls(it)):
+                agg_item[it] += wi * ev
+    total = sum(agg_slot.values()) or 1.0
+    n_slots = len(GEAR_SLOTS) if require_armor else len(WEAPON_SLOTS)
+
+    problems = []
+    # D1 across-class evenness, per table (a theme may bias, but only so far).
+    for p in profs:
+        bs = p.by_slot()
+        m = sum(bs.values()) or 1.0
+        for s, ev in sorted(bs.items(), key=lambda kv: -kv[1]):
+            if ev / m > MAX_CLASS_SHARE_TABLE:
+                problems.append(
+                    "D1 %s / %s: class %s holds %.1f%% of the table's %s gear mass "
+                    "(cap %.1f%%, even is %.1f%%)"
+                    % (label, _n(p.table).rsplit('\\', 1)[-1], SLOT_LABEL.get(s, s),
+                       100.0 * ev / m, ic, 100.0 * MAX_CLASS_SHARE_TABLE,
+                       100.0 / n_slots))
+    # D2 across-class evenness, surface aggregate (what a farm run feels).
+    for s, ev in sorted(agg_slot.items(), key=lambda kv: -kv[1]):
+        if ev / total > MAX_CLASS_SHARE_AGGREGATE:
+            problems.append(
+                "D2 %s: class %s holds %.1f%% of the surface's %s gear mass "
+                "(cap %.1f%%, even is %.1f%%)"
+                % (label, SLOT_LABEL.get(s, s), 100.0 * ev / total, ic,
+                   100.0 * MAX_CLASS_SHARE_AGGREGATE, 100.0 / n_slots))
+    # D3 every gear class the surface pays must be reachable with real mass.
+    want = SLOT_ORDER if require_armor else tuple(WEAPON_SLOTS)
+    for s in want:
+        if agg_slot.get(s, 0.0) / total < MIN_CLASS_SHARE_TABLE:
+            problems.append(
+                "D3 %s: class %s holds only %.2f%% of the surface's %s gear mass "
+                "(floor %.1f%%) - the slot is starving, not merely thin"
+                % (label, SLOT_LABEL.get(s, s), 100.0 * agg_slot.get(s, 0.0) / total,
+                   ic, 100.0 * MIN_CLASS_SHARE_TABLE))
+    # D4/D5 within-class near-uniformity: no outsized single item.
+    by_slot_items = defaultdict(dict)
+    for it, ev in agg_item.items():
+        by_slot_items[CLASS_TO_SLOT[d.cls(it)]][it] = ev
+    for s, items in by_slot_items.items():
+        m = sum(items.values())
+        if m <= 0:
+            continue
+        top, tev = max(items.items(), key=lambda kv: kv[1])
+        over_uniform = (tev / m) * len(items)     # x the class's uniform share
+        if over_uniform > MAX_ITEM_OVER_UNIFORM:
+            problems.append(
+                "D4 %s: %s is %.1f%% of all %s drops = %.2fx the class's uniform share "
+                "(cap %.1fx; uniform over %d items is %.1f%%) - one item dominates its "
+                "class" % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / m,
+                           SLOT_LABEL.get(s, s), over_uniform, MAX_ITEM_OVER_UNIFORM,
+                           len(items), 100.0 / len(items)))
+        if tev / total > MAX_ITEM_SHARE_TOTAL:
+            problems.append(
+                "D5 %s: %s is %.1f%% of the surface's whole %s gear mass (cap %.1f%%)"
+                % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / total, ic,
+                   100.0 * MAX_ITEM_SHARE_TOTAL))
+    # D6/D7 armour parity: every wearable slot is a real drop, and weapons do not
+    # drown armour. This is the half Will reported and R-180 could not see.
+    if require_armor:
+        wmass = sum(agg_slot.get(s, 0.0) for s in WEAPON_SLOTS)
+        amass = sum(agg_slot.get(s, 0.0) for s in ARMOR_SLOTS)
+        if amass <= 0 or wmass / amass > MAX_WEAPON_ARMOUR_RATIO:
+            problems.append(
+                "D6 %s: weapon:armour mass is %s:1 (cap %.2f:1) - %.2f %s weapons vs "
+                "%.2f %s armour pieces per open"
+                % (label, ('inf' if amass <= 0 else '%.2f' % (wmass / amass)),
+                   MAX_WEAPON_ARMOUR_RATIO, wmass, ic, amass, ic))
+        for s in ARMOR_SLOTS:
+            per_open = agg_slot.get(s, 0.0)
+            if per_open < ARMOR_SLOT_FLOOR:
+                problems.append(
+                    "D7 %s: armour slot %s pays only %.2f %s piece(s) per open "
+                    "(floor %.2f) - Will's \"i am not really seeing armor drops\""
+                    % (label, SLOT_LABEL.get(s, s), per_open, ic, ARMOR_SLOT_FLOOR))
+    report = {
+        'label': label, 'tier': tier, 'classification': ic,
+        'tables': [p.table for p in profs],
+        'S': [p.S for p in profs],
+        'drops_per_open': [p.expected_drops() for p in profs],
+        'slot_mass': dict(agg_slot), 'total': total,
+        'top_items': sorted(agg_item.items(), key=lambda kv: -kv[1])[:12],
+        'weights': w,
+    }
+    return problems, report
+
+
+def p_at_least_k_same(n_draws, item_probs, k=4):
+    """P(some single item is drawn >= k times in n_draws), Poisson approximation over
+    independent items (exact enough at these rates; the draws are independent picks).
+    `item_probs` = iterable of per-draw probabilities for each item in the pool."""
+    import math
+    q = 1.0
+    for p in item_probs:
+        lam = n_draws * p
+        if lam <= 0:
+            continue
+        # P(X < k) for X ~ Poisson(lam)
+        term = math.exp(-lam)
+        cum = term
+        for i in range(1, k):
+            term *= lam / i
+            cum += term
+        q *= max(0.0, min(1.0, cum))
+    return 1.0 - q
