@@ -12,8 +12,8 @@ Planted defects, one per rule:
             (the one-craftable hole the first dry run actually found).
   N3  G0  - repoint a thrown formula back onto a Ragnarok ghost record -> a reagent
             that does not exist in the database.
-  N4  G1  - unhook the artifact reagent table from `04_l_misc` -> 6 non-MI reagents
-            become unreachable from every legendary chest.
+  N4  G1  - unhook the artifact reagent table from EVERY legendary host -> 6 non-MI
+            reagents become unreachable from every legendary chest.
   N5  G2  - drop an entry from the committed MI roster -> exemption-roster drift.
   N6  C1  - empty the legendary thrown table -> the thrown class is unpayable at its
             own tier on every legendary chest.
@@ -21,6 +21,17 @@ Planted defects, one per rule:
             reachable from Normal (the R-100 #17 tier law).
   N8  B3  - a control on the neighbouring rule: the same N7 edit must ALSO red
             svc_loot_breadth's Normal tier check, proving the two gates see it.
+  N9  G4  - unhook the artifact reagents from amulet_l01 + finger_l01 but LEAVE the
+            04_l_misc membership -> the six divine artifacts are still "reachable" from
+            the union of the legendary pools (G1 stays green) yet only ONE surface, the
+            apex uber-boss orb, can pay them. This is the exact defect the first cut of
+            this lane shipped, and it is the reason G4 exists: G1 alone cannot see it.
+  N10 G3  - unhook the orphaned green (`mi_l_gigantes2`, zero live monsters) from its
+            legendary host -> a green whose exemption is not earned by any live monster
+            and which no chest can pay either.
+  N11 G3  - drop the committed no-live-carrier roster entry -> roster drift, so a future
+            lane that fixes (or breaks) a green's live carrier cannot leave the roster
+            stale.
 
 Usage: py tools/debug/negtest_craft_thrown.py <arz>
 """
@@ -111,10 +122,11 @@ def main(argv):
     db.set_field(formula, 'reagent1BaseName', SCT.GHOST_REAGENTS[0])
     results.append(_run('N3', 'G0', db))
 
-    # N4 - artifact reagents unhooked from their legendary host
+    # N4 - artifact reagents unhooked from EVERY legendary host
     db = _fresh(arz)
     lk = SLB.Lookup(db)
-    _drop_member(db, lk, SCT.REAGENT_HOST['artifact'], 'svc_craft_reagents_artifact')
+    for host, _w in SCT.REAGENT_HOSTS['artifact']:
+        _drop_member(db, lk, host, 'svc_craft_reagents_artifact')
     results.append(_run('N4', 'G1', db))
 
     # N5 - committed MI roster drift
@@ -149,6 +161,38 @@ def main(argv):
     if b3:
         print("        %s" % b3[0][:150])
     results.append(bool(b3))
+
+    # N9 - the SPREAD defect: keep the one-surface host, drop the 19/19 ones. G1 must
+    # stay GREEN (the reagents are still in the union of the legendary pools) and G4
+    # must red - that asymmetry is the whole reason G4 exists.
+    db = _fresh(arz)
+    lk = SLB.Lookup(db)
+    keep = SCT.REAGENT_HOSTS['artifact'][0][0]          # 04_l_misc, the 1/19 surface
+    for host, _w in SCT.REAGENT_HOSTS['artifact'][1:]:
+        _drop_member(db, lk, host, 'svc_craft_reagents_artifact')
+    ok = _run('N9', 'G4', db)
+    probs, _s = SCT.audit_db(db)
+    g1 = [p for p in probs if p.startswith('G1')]
+    print("       %-4s %-58s %s" % ('G1', 'EXPECT GREEN (G1 cannot see a spread defect)',
+                                    'PASS' if not g1 else 'FAIL'))
+    results.append(ok and not g1)
+    del keep
+
+    # N10 - the orphaned green unhooked from its legendary host
+    db = _fresh(arz)
+    lk = SLB.Lookup(db)
+    for host, _w in SCT.REAGENT_HOSTS['orphanmi']:
+        _drop_member(db, lk, host, 'svc_craft_reagents_orphanmi')
+    results.append(_run('N10', 'G3', db))
+
+    # N11 - committed no-live-carrier roster drift
+    db = _fresh(arz)
+    saved = SCT.MI_NO_LIVE_CARRIER
+    try:
+        SCT.MI_NO_LIVE_CARRIER = ()
+        results.append(_run('N11', 'G3', db))
+    finally:
+        SCT.MI_NO_LIVE_CARRIER = saved
 
     bad = results.count(False)
     print("\n%d/%d negative tests behaved as specified." % (len(results) - bad,

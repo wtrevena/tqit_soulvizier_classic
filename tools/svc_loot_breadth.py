@@ -90,13 +90,19 @@ def _master_members(tier):
         out.append((_BASE_ALL % (tier, i), 700))
     # THE SEVENTH CLASS (Will 2026-08-10, "yes we should make the legendary thrown
     # weapons droppable"): this TQIT-era database ships NO unique one-hand-ranged loot
-    # table, so the mod authors one. Lazy import - svc_craft_thrown imports THIS module,
+    # table, so the mod authors one. Its weight is PER TIER (250 on e/l for the 5-record
+    # legendary band, 100 on n for the 2-record filler band) - see
+    # svc_craft_thrown.THROWN_MASTER_WEIGHT. NOTE FOR THE MERGE: fix/armor-loot-breadth
+    # (b80) rewrites every weight in this function, so these three master records are a
+    # genuine write/write overlap; the binding resolution is a quarter of a class weight
+    # on e/l and a tenth on n, re-derived from b80's own _CLASS_WEIGHT.
+    # Lazy import - svc_craft_thrown imports THIS module,
     # so the reference must not be resolved at import time. A tier whose thrown table
     # does not exist yet is simply skipped by ensure_masters' `if lk.real(p)` filter, and
     # the next ensure_masters call (chest_loot_breadth's, which runs after
     # craft_thrown_breadth) rewrites the master with it.
     import svc_craft_thrown as SCT
-    out.append((SCT.THROWN_TABLE[tier], SCT.THROWN_MASTER_WEIGHT))
+    out.append((SCT.THROWN_TABLE[tier], SCT.THROWN_MASTER_WEIGHT[tier]))
     return out
 
 

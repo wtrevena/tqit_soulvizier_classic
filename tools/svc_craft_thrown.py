@@ -25,6 +25,12 @@ THREE DEFECTS, ALL MEASURED ON THE LIVE arz 435cc485 (51,234 records, build77 er
 (B) 36 OF THE 78 UBER REAGENTS ARE UNREACHABLE FROM A LEGENDARY CHEST. Measured split:
        19 MI / "green" (itemClassification = Rare, the `mi_l_*` monster-infrequent items)
           -> EXEMPT BY WILL'S OWN WORDS, but each one must be PROVEN monster-farmable.
+          ONE of them, `mi_l_gigantes2`, has ZERO live carriers (its only carrier is the
+          dev duplicate `copy of anapaest_45`; the LIVE `anapaest_45` names placeholder
+          `equip\bogus\*` ITEM records instead of the gigantes club tables, and the
+          `03_master_legendary` that would have re-hung them has 0 holders). The
+          exemption's whole premise is "a monster drops it", so a green item that NO
+          live monster drops is NOT exempt - see rule 2 below.
         8 ordinary base uniques that live only on act-2/act-3 banded tables the chest
           pools never name (3 torso, 3 amulet, 2 ring).
         6 IT "divine artifacts" (ItemArtifact) - craftable from base arcane formulae the
@@ -51,14 +57,30 @@ THE FIX (this module is the ONE implementation; nothing may re-derive it)
    records do it (e.g. `raremisc\01_rareunique_all.dbr` names `weapons\unique\sword_n01`).
    Nothing is removed and no weight is lowered.
 
-2. REAGENT COMPLETABILITY. The 8 ordinary + 6 artifact reagents are placed into
-   mod-owned `svc_craft_reagents_*_l01` tables that are added as MEMBERS of the
-   LEGENDARY-tier hosts the chest pools already reach (`unique_torso_l01`, `amulet_l01`,
-   `finger_l01`, `04_l_misc`). LEGENDARY-ONLY BY CONSTRUCTION: every one of the 14 is
+2. REAGENT COMPLETABILITY. The 8 ordinary + 6 artifact reagents (plus the one orphaned
+   MI, below) are placed into mod-owned `svc_craft_reagents_*_l01` tables that are added
+   as MEMBERS of the LEGENDARY-tier hosts the chest pools already reach.
+   SPREAD IS PART OF THE CONTRACT, not a side effect. Will: "without having to farm a
+   specific area or a SPECIFIC CHARACTER". Measured over the 19 legendary mod chest
+   tables: `unique_torso_l01`, `amulet_l01`, `finger_l01` and `unique_1h_l01` are reached
+   by 19/19, but `04_l_misc` by 1/19 - and that ONE surface is `svc_uberorb_apex_l01c`,
+   the apex uber-boss orb. Hanging the artifact reagents off `04_l_misc` ALONE therefore
+   put six reagents behind exactly one boss family, which is the very thing Will ruled
+   out. They are now hung off `amulet_l01` and `finger_l01` as well (the jewellery /
+   trinket branch, the closest kin a divine artifact has), so all five families are
+   19/19, and rule G4 fails the build if any non-MI reagent falls under half the
+   legendary chest surfaces.
+   THE ORPHANED GREEN: `mi_l_gigantes2` (needed by Doomherald, Swordfish and Omega) has
+   no live monster at all, so it is chest-placed like an ordinary reagent - on
+   `unique_1h_l01`, its own weapon class - and rule G3 makes "MI with no live carrier and
+   no chest placement" a BUILD FAILURE rather than a warning.
+   LEGENDARY-ONLY BY CONSTRUCTION for the 14: every one is
    `itemClassification = Legendary`, so it may only ever enter an `_l01` / `_l`-tier host
-   (R-100 #17). The 4 dead thrown formulas are repointed off the three Ragnarok ghosts
-   onto thrown records that EXIST in this era (the DRX vit wands), which is the only
-   possible fix - a record that is not in the database cannot be put into a pool.
+   (R-100 #17); the orphaned green is `Rare`, which is a strictly lower rung and can
+   never breach the tier law. The 4 dead thrown formulas are repointed off the three
+   Ragnarok ghosts onto thrown records that EXIST in this era (the DRX vit wands), which
+   is the only possible fix - a record that is not in the database cannot be put into a
+   pool - and they are repointed in the SHAPE the database's own recipes use (below).
 
 3. THROWN. `records\item\loottables\svc\svc_unique_thrown_{n,e,l}01.dbr`, a
    `LootItemTable_FixedWeight` per tier (FixedWeight, not DynWeight, ON PURPOSE: every
@@ -66,11 +88,20 @@ THE FIX (this module is the ONE implementation; nothing may re-derive it)
    `_e01` DynWeight class tables use, so a level-banded table could never pay one on the
    Epic tier). Membership carries the tier law:
        n -> the two itemLevel-30 wands (Rare + Common). ZERO Legendary.
-       e -> the 5 Legendary thrown.
-       l -> the 5 Legendary thrown.
+       e -> the 5 Legendary thrown + the 3 Common vit wands (reagent reachability).
+       l -> the 5 Legendary thrown + the 3 Common vit wands (reagent reachability).
    The table is wired into `svc_loot_breadth._master_members` as the SEVENTH class of the
    `svc_unique_weapons_{tier}01` masters, so thrown becomes payable everywhere those
    masters are named (every mod chest's weapon row AND its guaranteed slot).
+   A DELIBERATE OMISSION, stated so it is a choice and not an oversight: this era's only
+   EPIC-classification thrown records (`f_n_kaskeron`, `f_l_qilinseternalpyre`,
+   `f_l_godshatter`) are BASE-GAME craft results. They were NOT made droppable - making a
+   base craft result fall out of a chest devalues base crafting, and Will asked for the
+   LEGENDARY thrown to drop, not the Epic ones. The consequence is that Normal's thrown
+   band cannot pay at the tier's target classification (Epic), so the Normal master
+   weight is derived from the 2-record Normal band (100) instead of the 5-record
+   legendary band (250) - the class stops consuming an end-game-sized share of a Normal
+   weapon roll for level-30 filler.
 
 NON-REDUCTION LAW (R-180, Will 2026-08-08): no member is removed, no chance or weight is
 lowered, no numSpawn equation is touched. Every edit here is additive or a strict raise.
@@ -78,6 +109,20 @@ lowered, no numSpawn equation is touched. Every edit here is additive or a stric
 TIER LAW (R-100 #17): asserted, not assumed - `audit_db` re-proves that the Normal branch
 reaches ZERO legendary GEAR after this module runs, and the thrown Normal table is the
 only new Normal-side membership it creates.
+
+CROSS-LANE RECORD OVERLAP (do NOT read this as "disjoint"). This module writes no chest
+or hoard `FixedItemLoot` record, no orb table and no hoard weight - but it is NOT
+record-disjoint from the concurrent lanes. Byte-measured, baseline build78 arz -> lane
+arz: 7 records ADDED, 0 REMOVED, 15 MODIFIED, and THREE of the 15 -
+`records\item\loottables\svc\svc_unique_weapons_{n,e,l}01.dbr` - are also rewritten by
+`fix/armor-loot-breadth` (b80), which changes every member weight in the same producer,
+`svc_loot_breadth._master_members`. That is a genuine write/write collision on three
+records. BINDING RESOLUTION (not a suggestion): on merge, thrown keeps a QUARTER of a
+class weight on e/l and a tenth of one on n, i.e. `_CLASS_WEIGHT // 4` and
+`_CLASS_WEIGHT // 10` under b80's constants, because the derivation below is about the
+size of the thrown class (5 legendary records against a 17-24 record class), not about
+the absolute number. Whoever merges re-derives from b80's `_CLASS_WEIGHT`; nobody picks
+a side by accident.
 
 Standalone gate twin: `py tools/gate_craft_thrown_breadth.py <arz>`.
 Negative tests:       `py tools/debug/negtest_craft_thrown.py <arz>`.
@@ -101,8 +146,9 @@ SUPRA_SPECIAL = r'records\xpack\item\loottables\arcaneformulae\supra_special.dbr
 NORMAL_FORMULA_TABLES = tuple(
     r'records\xpack\item\loottables\arcaneformulae\01_act%d_arcaneformulae.dbr' % i
     for i in (1, 2, 3, 4))
-# BOTH supra pools are needed: `supra` carries 42 formulas and `supra_special` 41, and the
-# two rosters are NOT the same. `artifact_mortoksskull_formula` (Mortok's Skull) exists
+# BOTH supra pools are needed: MEASURED on the built arz, `supra` carries 42 formula
+# leaves and `supra_special` 43, and the two rosters are NOT the same.
+# `artifact_mortoksskull_formula` (Mortok's Skull) exists
 # ONLY on supra_special, which the base game wires into `03_act4_arcaneformulae_sp`
 # (Legendary) alone - so wiring supra by itself would leave exactly one of the 42
 # craftables formula-less on Normal, and the F1 gate reds. This is the same pair R-9
@@ -130,26 +176,40 @@ _THROWN_CLEAR_SLOTS = 48        # supra has 42 members; clear well past it after
 
 _WAND = r'records\drxitem\equipmentweapon\wands\%s.dbr'
 _SUPRA = r'records\drxitem\supra\%s.dbr'
-# (path, weight) per tier. WEIGHTS: the DRX wand is an ordinary legendary drop and stays
-# the common outcome; the four craft-tier supras are prizes and each take 1/10th of its
-# weight, so a specific supra thrown is ~7% of a thrown roll (and ~0.26% of a weapon roll
-# once the class weight below is applied).
+# (path, weight) per tier. WEIGHTS: the DRX legendary wand is an ordinary legendary drop
+# and stays the common outcome; the four craft-tier supras are prizes and each take
+# 1/10th of its weight; the three COMMON vit wands sit at 1/20th because they are here
+# for one reason only - they are reagents of the four thrown recipes, and Will's rule is
+# that a legendary farmer must be able to find every reagent from chests. Measured share
+# of a thrown roll on e/l: legendary wand 64.5%, a specific supra 6.5%, the three commons
+# 9.7% combined (0.38% of a whole weapon roll).
+_COMMON_WAND_WEIGHT = 5
 THROWN_MEMBERS = {
     # Normal: itemLevel-30 wands only. ZERO Legendary -> R-100 #17 holds by construction.
     'n': ((_WAND % 'mi_vit_wand_01', 100), (_WAND % 'm_vit_wand_01', 50)),
     'e': ((_WAND % 'u_vit_wand', 100),
           (_SUPRA % 'svc_wep_charonstoll', 10), (_SUPRA % 'svc_wep_hati', 10),
-          (_SUPRA % 'svc_wep_lastword', 10), (_SUPRA % 'svc_wep_sanguineorbit', 10)),
+          (_SUPRA % 'svc_wep_lastword', 10), (_SUPRA % 'svc_wep_sanguineorbit', 10),
+          (_WAND % 'm_vit_wand_01', _COMMON_WAND_WEIGHT),
+          (_WAND % 'm_vit_wand_02', _COMMON_WAND_WEIGHT),
+          (_WAND % 'm_vit_wand_03', _COMMON_WAND_WEIGHT)),
     'l': ((_WAND % 'u_vit_wand', 100),
           (_SUPRA % 'svc_wep_charonstoll', 10), (_SUPRA % 'svc_wep_hati', 10),
-          (_SUPRA % 'svc_wep_lastword', 10), (_SUPRA % 'svc_wep_sanguineorbit', 10)),
+          (_SUPRA % 'svc_wep_lastword', 10), (_SUPRA % 'svc_wep_sanguineorbit', 10),
+          (_WAND % 'm_vit_wand_01', _COMMON_WAND_WEIGHT),
+          (_WAND % 'm_vit_wand_02', _COMMON_WAND_WEIGHT),
+          (_WAND % 'm_vit_wand_03', _COMMON_WAND_WEIGHT)),
 }
-# Weight of the thrown member inside `svc_unique_weapons_{tier}01`. DERIVED, not chosen:
-# every other class member carries 1000 for a 17-24 record class; thrown is the smallest
-# unique class in the database (5 legendary records), so it takes the proportional share
-# 5/20 = 0.25 of a full class weight. At 250 against the master's existing 6700 it is
-# 3.6% of a weapon roll - the class becomes reachable without re-weighting the other six.
-THROWN_MASTER_WEIGHT = 250
+# Weight of the thrown member inside `svc_unique_weapons_{tier}01`, PER TIER. DERIVED,
+# not chosen: every other class member carries 1000 for a 17-24 record class, so a full
+# class weight buys ~20 records. Legendary/Epic thrown is 5 legendary records -> 5/20 =
+# 0.25 of a class weight = 250. NORMAL thrown is a 2-record band (there is no droppable
+# Epic-classification thrown in this era, see the module docstring) -> 2/20 = 0.10 = 100.
+# MEASURED against the masters as they shipped (7 members, total 6100 at every tier):
+#   e / l  250 / 6350 = 3.94% of a weapon roll
+#   n      100 / 6200 = 1.61% of a weapon roll
+# The other six classes are not re-weighted at any tier.
+THROWN_MASTER_WEIGHT = {'n': 100, 'e': 250, 'l': 250}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (2) REAGENT COMPLETABILITY
@@ -160,50 +220,72 @@ GHOST_REAGENTS = (
     r'records\xpack2\item\equipmentweapons\1hranged\u_e_06.dbr',
     r'records\xpack2\item\equipmentweapons\1hranged\mi_l_machae.dbr',
 )
-# The repoint. The Ragnarok shape was "one legendary thrown + one epic thrown + one MI
-# thrown"; this era's equivalents are the DRX vit wands (u_ Legendary / mi_ Rare-green /
-# m_ Common - there is no Epic-classification droppable thrown record at all). Every
-# recipe therefore reads "one chest-droppable legendary thrown + two green thrown", which
-# is EXACTLY the 2-ordinary-plus-1-MI shape every other supra recipe already uses.
-# HONEST RESIDUAL: only THREE MI thrown records exist, so only three distinct pairs are
-# possible; Sanguine Orbit reuses Charon's Toll's pair. That is still strictly better than
-# what shipped, where all four named the same three records - and those three did not
-# exist, so no player could ever complete any of them.
+# The repoint. MEASURED house shape over the 59 uber formula records: 43 read
+# "2 ordinary + 1 MI, all three of the RESULT's own item Class" (e.g. ar_melee_torso =
+# a Legendary torso + an Epic torso + the green torso), 8 read "3 ordinary", 4 read
+# "3 artifact". The Ragnarok original for these four was the same 2+1 shape in thrown
+# form (u_l_08 Legendary + u_e_06 Epic + mi_l_machae green).
+# This era's thrown roster is: u_vit_wand (Legendary, chest-droppable), m_vit_wand_01/02/03
+# (Common, itemLevel 30/50/65), mi_vit_wand_01/02/03 (Rare/green, 30/50/65). There is NO
+# droppable Epic-classification thrown, so the middle slot takes the Common wand - and
+# each recipe therefore reads "the legendary thrown + a plain thrown + ONE green thrown",
+# the house shape exactly. The three Common wands are added to the e/l thrown tables
+# above so a legendary farmer finds them in chests (rule G1 proves it).
+# WHY IT CHANGED from the first cut of this lane (which used 1 ordinary + 2 green): all
+# three green vit wands come from ONE DRX monster family (the blood-cave reavers), so
+# two-greens-per-recipe made every thrown craftable depend on that family twice. One
+# green per recipe halves that, and the four (common, green) pairs are all distinct.
 THROWN_FORMULA_REAGENTS = {
     r'records\drxitem\supra\zrecipes\svc_thrown_charonstoll_formula.dbr':
-        (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_02'),
+        (_WAND % 'u_vit_wand', _WAND % 'm_vit_wand_03', _WAND % 'mi_vit_wand_01'),
     r'records\drxitem\supra\zrecipes\svc_thrown_hati_formula.dbr':
-        (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_02', _WAND % 'mi_vit_wand_03'),
+        (_WAND % 'u_vit_wand', _WAND % 'm_vit_wand_01', _WAND % 'mi_vit_wand_02'),
     r'records\drxitem\supra\zrecipes\svc_thrown_lastword_formula.dbr':
-        (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_03'),
+        (_WAND % 'u_vit_wand', _WAND % 'm_vit_wand_02', _WAND % 'mi_vit_wand_03'),
     r'records\drxitem\supra\zrecipes\svc_thrown_sanguineorbit_formula.dbr':
-        (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_02'),
+        (_WAND % 'u_vit_wand', _WAND % 'm_vit_wand_03', _WAND % 'mi_vit_wand_02'),
 }
 
 # The mod-owned reagent tables, one per FAMILY, LEGENDARY TIER ONLY (every reagent placed
-# here is itemClassification = Legendary, so it may never enter a Normal or Epic host).
+# here is itemClassification = Legendary - except the orphaned green, which is Rare, a
+# strictly LOWER rung - so none of them can ever enter a Normal or Epic host).
 REAGENT_TABLE = {
     'torso': r'records\item\loottables\svc\svc_craft_reagents_torso_l01.dbr',
     'amulet': r'records\item\loottables\svc\svc_craft_reagents_amulet_l01.dbr',
     'ring': r'records\item\loottables\svc\svc_craft_reagents_ring_l01.dbr',
     'artifact': r'records\item\loottables\svc\svc_craft_reagents_artifact_l01.dbr',
+    'orphanmi': r'records\item\loottables\svc\svc_craft_reagents_orphanmi_l01.dbr',
 }
-# The LEGENDARY-tier host each family hangs off. Every one is a LootMasterTable that the
-# legendary chest pools ALREADY reach (measured: 136 loot tables in the legendary pool
-# tree), so no chest row is touched - which is what keeps this lane off the chest/hoard
-# surface entirely.
-REAGENT_HOST = {
-    'torso': r'records\xpack\item\loottables\torso\mastertables\unique_torso_l01.dbr',
-    'amulet': r'records\xpack\item\loottables\amulet\unique\amulet_l01.dbr',
-    'ring': r'records\xpack\item\loottables\finger\unique\finger_l01.dbr',
-    'artifact': r'records\item\loottables\raremisc\mastertables\04_l_misc.dbr',
+# The LEGENDARY-tier host(s) each family hangs off, as ((host, weight), ...). Every host
+# is a LootMasterTable that the legendary chest pools already reach, so no chest row is
+# touched - which is what keeps this lane off the chest/hoard surface entirely.
+#
+# SPREAD IS MEASURED, NOT ASSUMED (the defect the first cut of this lane shipped). Over
+# the 19 legendary mod chest tables:
+#     unique_torso_l01  19/19      amulet_l01  19/19      finger_l01   19/19
+#     unique_1h_l01     19/19      04_l_misc    1/19  <-- svc_uberorb_apex_l01c ONLY
+# `04_l_misc` is reached by exactly one surface, and that surface is the apex uber-boss
+# orb, so the artifact family ALSO hangs off amulet_l01 + finger_l01 (a divine artifact
+# is a trinket; the jewellery branch is its closest kin). Rule G4 re-measures this every
+# build and fails if any non-MI reagent drops under half the legendary surfaces.
+#
+# Weights are each ~5% of the host's own measured total (torso 100, amulet 1000, finger
+# 1000, 04_l_misc 1357, unique_1h_l01 300), so a reagent is a rare tail on an existing
+# branch rather than a re-weighting of it. Nothing existing is lowered.
+REAGENT_HOSTS = {
+    'torso': ((r'records\xpack\item\loottables\torso\mastertables\unique_torso_l01.dbr', 5),),
+    'amulet': ((r'records\xpack\item\loottables\amulet\unique\amulet_l01.dbr', 50),),
+    'ring': ((r'records\xpack\item\loottables\finger\unique\finger_l01.dbr', 50),),
+    'artifact': ((r'records\item\loottables\raremisc\mastertables\04_l_misc.dbr', 60),
+                 (r'records\xpack\item\loottables\amulet\unique\amulet_l01.dbr', 50),
+                 (r'records\xpack\item\loottables\finger\unique\finger_l01.dbr', 50)),
+    # The orphaned green is a WeaponMelee_Mace, so it goes on the legendary one-hand
+    # master - its own class, and the table every mod chest reaches through the breadth
+    # master's first member.
+    'orphanmi': ((r'records\xpack\item\loottables\weapons\mastertables\unique_1h_l01.dbr', 5),),
 }
-# Host weights. Each is ~5% of its host's own measured total (torso 100, amulet 1000,
-# finger 1000, 04_l_misc 1357), so a reagent is a rare tail on an existing branch rather
-# than a re-weighting of it. Nothing existing is lowered.
-REAGENT_HOST_WEIGHT = {'torso': 5, 'amulet': 50, 'ring': 50, 'artifact': 60}
 
-# The 14 reagents that no chest could pay, by family. COMMITTED (not derived at apply
+# The reagents that no chest could pay, by family. COMMITTED (not derived at apply
 # time) so the placement is deterministic and reviewable; `audit_db` then re-proves
 # completability over the FINAL database, so a future content change that strands a
 # different reagent fails loud instead of silently shipping.
@@ -230,8 +312,29 @@ REAGENT_PLACEMENTS = {
         r'records\xpack\item\artifacts\e_da_crescentmoonofartemis.dbr',
         r'records\xpack\item\artifacts\e_da_demetersbounty.dbr',
     ),
+    # THE ORPHANED GREEN. `mi_l_gigantes2` gates Doomherald, Swordfish and Omega, and no
+    # LIVE monster drops it: the only carrier is the dev duplicate `copy of anapaest_45`
+    # (the live `anapaest_45` names placeholder `equip\bogus\*` ITEM records in the same
+    # slots, and `03_master_legendary`, which would have re-hung the gigantes tables, has
+    # zero holders). Will's exemption is for greens that a monster drops; this one has no
+    # monster, so it is chest-placed like an ordinary reagent. Rule G3 enforces the
+    # general form of that: an MI reagent that is neither live-monster-farmable nor
+    # chest-reachable FAILS the build.
+    'orphanmi': (
+        r'records\drxcreatures\drxdishonorguard\equip\weapons\mi_l_gigantes2.dbr',
+    ),
 }
 REAGENT_ITEM_WEIGHT = 100
+
+# G4, THE SPREAD RULE. Will: "if players farm legendary long enough, they should be able
+# to find all the reagents without having to farm a specific area or a SPECIFIC
+# CHARACTER". Reachability from the UNION of the legendary chest pools cannot see the
+# difference between 19 surfaces and 1, so the rule is expressed in surfaces: a non-MI
+# reagent must be payable by at least half of the legendary mod chest tables (a fraction,
+# so it self-scales when a lane adds or retires chests), and never fewer than 3 whether
+# or not the fraction says so. MEASURED after this wave: 57/57 non-MI reagents at 19/19.
+SPREAD_MIN_FRACTION = 0.5
+SPREAD_MIN_SURFACES = 3
 
 # MI / "green" reagents: Will's own exemption ("except for the monster unique droppable
 # items like the green items"). The RULE is `itemClassification == 'Rare'`; this list is
@@ -249,6 +352,12 @@ MI_REAGENTS = (
     # covered by the same Will exemption; `audit_db` proves each one monster-farmable.
     'mi_vit_wand_01', 'mi_vit_wand_02', 'mi_vit_wand_03',
 )
+# The MI reagents whose exemption is NOT earned by a live monster, and which are therefore
+# chest-placed instead (see REAGENT_PLACEMENTS['orphanmi']). COMMITTED so it cannot rot:
+# G3 fails if the set the database derives differs from this one in either direction, so
+# a future lane that wires a real carrier - or one that kills another green's last live
+# carrier - has to come back here.
+MI_NO_LIVE_CARRIER = ('mi_l_gigantes2',)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -310,16 +419,47 @@ def classify_reagent(db, lk, path):
     return 'ordinary'
 
 
-def chest_pool(db, lk, ex, tier):
-    """The set of leaf items every mod chest of `tier` can pay (lowercased)."""
-    out = set()
+def chest_leaf_sets(db, lk, ex, tier):
+    """{mod chest table of `tier`: frozenset(leaf items it can pay)} - the per-SURFACE
+    view. Cached on the expander because both the pool and the spread rule want it and a
+    whole-build audit expands 51 chest tables."""
+    cache = getattr(ex, '_svc_chest_leaf_sets', None)
+    if cache is None:
+        cache = {}
+        try:
+            ex._svc_chest_leaf_sets = cache
+        except AttributeError:
+            pass
+    hit = cache.get(tier)
+    if hit is not None:
+        return hit
     exempt = {_n(k) for k in SLB.EXEMPT}
+    out = {}
     for table in SLB.chest_tables(db, lk):
         if _n(table) in exempt:
             continue
         if SLB.infer_tier(db, table, lk) == tier:
-            out |= {_n(x) for x in ex.leaves(table)}
+            out[table] = frozenset(_n(x) for x in ex.leaves(table))
+    cache[tier] = out
     return out
+
+
+def chest_pool(db, lk, ex, tier):
+    """The set of leaf items every mod chest of `tier` can pay (lowercased)."""
+    out = set()
+    for leaves in chest_leaf_sets(db, lk, ex, tier).values():
+        out |= leaves
+    return out
+
+
+def spread_floor(n_surfaces):
+    """How many distinct legendary chest surfaces a non-MI reagent must be payable by."""
+    if n_surfaces <= SPREAD_MIN_SURFACES:
+        return n_surfaces               # tiny worlds: every surface must carry it
+    want = int(SPREAD_MIN_FRACTION * n_surfaces)
+    if SPREAD_MIN_FRACTION * n_surfaces > want:
+        want += 1                       # ceil, without importing math for one call
+    return max(SPREAD_MIN_SURFACES, want)
 
 
 # Record-name shapes the upstream authors used for dev duplicates / disabled copies.
@@ -355,13 +495,21 @@ def reverse_index(db):
     return rev
 
 
-def monster_sources(db, lk, reagent, max_depth=6):
+def monster_sources(db, lk, reagent, max_depth=6, exclude=None):
     """(monsters, tables) that can pay `reagent`, found by walking the reference graph
     UPWARD from the item through loot tables until a non-table holder is reached. This is
     the EVIDENCE behind Will's MI exemption ("except for the monster unique droppable
     items like the green items"): an exemption is only honest if something in the game
-    actually drops the thing."""
+    actually drops the thing.
+
+    `exclude` is a set of loot-table paths the walk refuses to traverse. It exists for one
+    reason and it is load-bearing: once a green is CHEST-placed through a mod reagent
+    table, the walk would climb that table into every monster that shares the host, and
+    the reagent would look monster-farmed BECAUSE we placed it. Passing the mod's own
+    reagent tables keeps the "does a live monster drop it" question answerable after the
+    fix, so rule G3's committed roster stays measurable instead of self-erasing."""
     rev = reverse_index(db)
+    skip = {_n(x) for x in (exclude or ())}
     seen = set()
     frontier = [_n(reagent)]
     monsters, tables = set(), set()
@@ -371,7 +519,7 @@ def monster_sources(db, lk, reagent, max_depth=6):
         for cur in frontier:
             for holder in rev.get(cur, ()):
                 hl = _n(holder)
-                if hl in seen:
+                if hl in seen or hl in skip:
                     continue
                 seen.add(hl)
                 cls = str(_sc(db.get_field_value(holder, 'Class')) or '')
@@ -384,6 +532,12 @@ def monster_sources(db, lk, reagent, max_depth=6):
         frontier = nxt
         depth += 1
     return sorted(monsters), sorted(tables)
+
+
+def mi_monster_sources(db, lk, reagent):
+    """`monster_sources` with the mod's own reagent tables cut out of the graph - the
+    form every MI-exemption question must use."""
+    return monster_sources(db, lk, reagent, exclude=REAGENT_TABLE.values())
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -556,18 +710,26 @@ def ensure_reagent_tables(db, lk=None, verbose=True):
 
 
 def wire_reagent_hosts(db, lk=None, verbose=True):
-    """(2b) Add each reagent table to its legendary host master (additive, idempotent)."""
+    """(2b) Add each reagent table to EVERY legendary host it is contracted to hang off
+    (additive, idempotent). A family may name more than one host on purpose: reachability
+    from the union of the chest pools is not the same thing as reachability from enough
+    distinct chest SURFACES (rule G4)."""
     lk = lk or Lookup(db)
     changes = []
-    for family, host in sorted(REAGENT_HOST.items()):
-        host_real = lk.real(host)
+    for family, hosts in sorted(REAGENT_HOSTS.items()):
         table = lk.real(REAGENT_TABLE[family])
-        if not host_real or not table:
-            print("  CRAFT/THROWN: WARNING reagent host or table missing for %r" % family)
+        if not table:
+            print("  CRAFT/THROWN: WARNING reagent table missing for %r" % family)
             continue
-        c = add_member(db, host_real, table, REAGENT_HOST_WEIGHT[family], lk)
-        if c:
-            changes.append('%s <- %s' % (_n(host_real).rsplit('\\', 1)[-1], c))
+        for host, weight in hosts:
+            host_real = lk.real(host)
+            if not host_real:
+                print("  CRAFT/THROWN: WARNING reagent host missing for %r: %s"
+                      % (family, host))
+                continue
+            c = add_member(db, host_real, table, weight, lk)
+            if c:
+                changes.append('%s <- %s' % (_n(host_real).rsplit('\\', 1)[-1], c))
     if verbose:
         for c in changes:
             print("  CRAFT/THROWN: reagent host - %s" % c)
@@ -670,7 +832,9 @@ def audit_formula_reachability(db, lk, ex):
 
 def audit_reagent_completability(db, lk, ex, prove_mi=True):
     """(c) Every NON-MI reagent of every uber craftable must be reachable from the
-    LEGENDARY-tier chest pools, and every MI exemption must be proven monster-farmable."""
+    LEGENDARY-tier chest pools (G1) and from ENOUGH DISTINCT legendary chest surfaces
+    (G4), and every MI exemption must be earned by a LIVE monster or replaced by a chest
+    placement (G3)."""
     problems = []
     forms = uber_formulas(db, lk)
     users = reagent_universe(db, lk, forms)
@@ -704,38 +868,66 @@ def audit_reagent_completability(db, lk, ex, prove_mi=True):
             % (sorted(derived_mi - committed) or 'none',
                sorted(committed - derived_mi) or 'none'))
 
+    # G4 - THE SPREAD RULE. Reachability from the UNION of the legendary chest pools
+    # cannot tell 19 surfaces from 1, and 1 surface IS "farm a specific character" when
+    # that surface is a boss orb. Only reagents that already pass G1 are graded, so a
+    # missing reagent is reported once, not twice.
+    surfaces = chest_leaf_sets(db, lk, ex, 'l')
+    floor = spread_floor(len(surfaces))
+    spread = {}
+    thin_spread = []
+    for reagent in buckets['ordinary'] + buckets['artifact']:
+        hits = sum(1 for leaves in surfaces.values() if reagent in leaves)
+        spread[reagent] = hits
+        if 0 < hits < floor:
+            thin_spread.append((reagent, hits))
+    if thin_spread:
+        problems.append(
+            "G4 %d non-MI reagent(s) are payable by too few distinct Legendary chest "
+            "surfaces (need >= %d of %d; Will: no farming a specific area or character): "
+            "%s" % (len(thin_spread), floor, len(surfaces),
+                    ', '.join('%s %d/%d' % (_n(r).rsplit('\\', 1)[-1], h, len(surfaces))
+                              for r, h in sorted(thin_spread))))
+
     mi_srcs = {}
-    thin = []
     if prove_mi:
-        # G3 - the exemption must be EARNED. A reagent is only "monster-farmed" if some
-        # Monster record in the database can actually pay it.
-        orphan = []
+        # G3 - the exemption must be EARNED, and it is earned by a LIVE monster. Will
+        # exempts the greens because "the monster unique droppable items" are farmed off
+        # monsters; a green whose only carrier is a dev duplicate is not farmed off
+        # anything, so the exemption does not apply to it and it must be chest-placed
+        # like an ordinary reagent. FAIL, not WARN - the old warning let three
+        # uncompletable craftables ship while the docs called them completable.
+        no_live = []
         for reagent in buckets['mi']:
-            monsters, tables = monster_sources(db, lk, reagent)
+            monsters, tables = mi_monster_sources(db, lk, reagent)
             mi_srcs[reagent] = (monsters, tables)
-            if not monsters:
-                orphan.append(reagent)
-            elif not [m for m in monsters if not _looks_dev_dead(m)]:
-                thin.append((reagent, monsters))
-        if orphan:
+            if [m for m in monsters if not _looks_dev_dead(m)]:
+                continue
+            no_live.append(reagent)
+            if reagent not in pool_l:
+                problems.append(
+                    "G3 MI/green reagent %s is exempt as 'monster-farmed' but NO LIVE "
+                    "monster can pay it (%s) and no Legendary chest pool reaches it "
+                    "either, so the %d craftable(s) it gates are uncompletable"
+                    % (_n(reagent).rsplit('\\', 1)[-1],
+                       ', '.join(_n(m).rsplit('\\', 1)[-1] for m in monsters[:3])
+                       or 'no carrier at all', len(users[reagent])))
+        derived_no_live = {_n(x).rsplit('\\', 1)[-1][:-4] for x in no_live}
+        if derived_no_live != set(MI_NO_LIVE_CARRIER):
             problems.append(
-                "G3 %d MI/green reagent(s) are exempt as 'monster-farmed' but NO monster "
-                "in the database can pay them, so they are unobtainable: %s"
-                % (len(orphan),
-                   ', '.join(_n(x).rsplit('\\', 1)[-1] for x in sorted(orphan))))
-        for reagent, monsters in thin:
-            # WARN, not FAIL: inherited DRX/SV debt, not something this contract caused,
-            # and the item is inside Will's own MI exemption. Never silent, though - a
-            # reagent whose only carrier is a dev duplicate is effectively unobtainable.
-            print("  CRAFT/THROWN WARN: MI reagent %s has carriers, but every one looks "
-                  "like a dev duplicate (%s) - see the BACKLOG debt register."
-                  % (_n(reagent).rsplit('\\', 1)[-1],
-                     ', '.join(_n(m).rsplit('\\', 1)[-1] for m in monsters[:3])))
+                "G3 the no-live-carrier MI roster drifted: derived-not-committed=%s "
+                "committed-not-derived=%s (svc_craft_thrown.MI_NO_LIVE_CARRIER and the "
+                "'orphanmi' placement must move in the same commit as whatever changed)"
+                % (sorted(derived_no_live - set(MI_NO_LIVE_CARRIER)) or 'none',
+                   sorted(set(MI_NO_LIVE_CARRIER) - derived_no_live) or 'none'))
 
     stats = {'total': len(users), 'mi': len(buckets['mi']),
              'ordinary': len(buckets['ordinary']), 'artifact': len(buckets['artifact']),
              'missing': len(buckets['missing']),
              'reachable_l': len([r for r in users if r in pool_l]),
+             'surfaces': len(surfaces), 'spread_floor': floor,
+             'spread_min': min(spread.values()) if spread else 0,
+             'spread': spread,
              'buckets': {k: sorted(v) for k, v in buckets.items()},
              'mi_sources': mi_srcs}
     return problems, stats
@@ -774,8 +966,10 @@ def audit_db(db, verbose=False, lk=None):
             print("    formulas [%s] %d/%d craftables covered, %d/%d formula records "
                   "reachable" % (tier, c, tot, fr, ftot))
         print("    reagents: %d total = %d MI + %d ordinary + %d artifact + %d missing; "
-              "%d reachable from Legendary chests"
+              "%d reachable from Legendary chests; thinnest non-MI spread %d of %d "
+              "legendary chest surfaces (floor %d)"
               % (rstats['total'], rstats['mi'], rstats['ordinary'], rstats['artifact'],
-                 rstats['missing'], rstats['reachable_l']))
+                 rstats['missing'], rstats['reachable_l'], rstats['spread_min'],
+                 rstats['surfaces'], rstats['spread_floor']))
         print("    thrown: %d mod chest table(s) audited" % audited)
     return problems, {'formulas': fstats, 'reagents': rstats, 'chests': audited}
