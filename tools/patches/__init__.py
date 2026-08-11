@@ -998,6 +998,57 @@ REGISTRY = [
                             # on a pre-wave arz, --calibrate to re-derive thresholds)
                             # and py tools/gate_chest_artifacts.py <arz>; negatives:
                             # py tools/debug/negtest_loot_volume.py <arz>.
+    'orb_legendary_chance', # R-231 (Will 2026-08-11), and it SUPERSEDES the b79 "orbs
+                            # stay generous" precedent wherever the two collide: "you
+                            # made the orbs way too good... those dont need to have
+                            # guaranteed legendary drops, they should just have a chance
+                            # to drop legendary items, but a low chance."
+                            # THE NUMBER HE ASKED FOR, measured on the shipped b83 arz:
+                            # THREE guaranteed-legendary rows in the whole orb surface,
+                            # one per difficulty, all of them group 4 of
+                            # svc_uberorb_apex_{n,e,l}01c at chance 100% where their five
+                            # sibling orb tables run the identical amulet/relic/ring row
+                            # at 12.7% or 21.2%; none is a PURE legendary row (0.4/5.2/
+                            # 6.3% legendary by weight).
+                            # THE ROW COUNT IS NOT WHERE THE GUARANTEE LIVED, which is
+                            # the finding: per ONE orb open b83 paid 2.58-6.29 legendary
+                            # items on Epic (93.6-99.9% chance of at least one) and
+                            # 3.74-8.43 on Legendary (98.4-99.99%) - six independent loot
+                            # groups over 5.06-10.58 spawn iterations, no 100% row
+                            # required. R-220's breadth gate, R-181's distribution gate
+                            # and R-230's volume gate were ALL green on that.
+                            # This module writes ONE field per census row - loot{g}Chance
+                            # - demoted to the richest NON-guaranteed chance that row
+                            # already carries in the orb family (21.2%), DERIVED from the
+                            # shipped bytes and cross-checked against the value the
+                            # contract was measured on. 3 records, 3 fields, 0 members,
+                            # 0 weights, 0 spawn equations: breadth and distribution
+                            # survive verbatim so the variety still lands WHEN a
+                            # legendary rolls.
+                            # With R-230's trim in the slot above, one open now pays
+                            # Normal 0.001-0.004 legendary / Epic 0.451-0.622 /
+                            # Legendary 0.699-0.846 - AT MOST ONE LEGENDARY ITEM PER OPEN
+                            # on Legendary difficulty against 8.43 shipped, a 90% cut.
+                            # ORDER IS LOAD-BEARING, immediately AFTER loot_volume_trim:
+                            # (1) armor_loot_breadth SKIPS the guaranteed row by design
+                            # (is_guaranteed_group - the WARDEN-theme lesson) and runs
+                            # far earlier, so it must still see group 4 at 100% or the
+                            # armour sweep would rewrite a theme row; (2) R-231's
+                            # readings are measured against R-230's TRIMMED spawn volume.
+                            # HONEST RESIDUE, not hidden: P(>=1 legendary) lands at
+                            # 54-61% on Legendary, which is not yet "a low chance". ~40%
+                            # of a Legendary orb's drop mass IS legendary-classified
+                            # because R-180/R-220 weighted svc_unique_weapons_l01 /
+                            # svc_unique_armor_l01 at ~47-50% of the weapon and shield
+                            # rows to buy class breadth. Going lower means scaling those
+                            # rows' chances, which divides D7b (worn-slot armour per
+                            # SPAWN ITERATION, asserted on all 63 surfaces) by the same
+                            # factor and reds armour parity on every orb - a COMPOSITION
+                            # decision in R-180/R-181/R-220's scope, priced for Will as
+                            # BL-R231-DEBT-1 rather than taken by a rate lane.
+                            # Standalone: py tools/gate_orb_legendary.py <arz>
+                            # (--census for Will's number, --calibrate, --apply);
+                            # negatives: py tools/debug/negtest_orb_legendary.py <arz>.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
