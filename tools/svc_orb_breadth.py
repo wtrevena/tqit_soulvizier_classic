@@ -1,4 +1,4 @@
-r"""svc_orb_breadth.py - THE UBER-ORB LOOT BREADTH CONTRACT (Will 2026-08-10, R-210).
+r"""svc_orb_breadth.py - THE UBER-ORB LOOT BREADTH CONTRACT (Will 2026-08-10, R-220).
 
 WILL, VERBATIM (2026-08-10)
 ---------------------------
@@ -126,6 +126,7 @@ Also the audit half (`audit_db`) so the standalone `tools/gate_orb_loot_breadth.
 the in-build registry gate (`tools/patches/orb_loot_breadth.verify`) and the
 negative tests all share ONE implementation and cannot disagree.
 """
+import inspect
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -137,6 +138,35 @@ if str(_TOOLS / 'patches') not in sys.path:
     sys.path.insert(0, str(_TOOLS / 'patches'))
 
 import svc_loot_breadth as SLB
+
+# ── the container noun, and the ONE shared-file coupling this lane owns ───────
+# `svc_loot_breadth.audit_table` gained a cosmetic `noun=` kwarg for R-220 - it is
+# the only edit this lane makes to that shared file, and it changes no check. TWO
+# sibling breadth lanes rewrite the same function (`fix/armor-loot-breadth` and
+# `fix/craft-thrown-breadth`, the latter adding its C1/C2 thrown block while keeping
+# the old signature), so a merge resolution that takes their hunk wholesale would
+# delete the kwarg and turn every call here into a TypeError INSIDE a fail-loud gate.
+# One word in one message must not be able to break a build - so the capability is
+# probed once, and the downgrade is ANNOUNCED rather than silent (the
+# `_base_rows` / B-GATE-HARDEN-1 idiom). Integration instruction: BL-R220-DEBT-5.
+NOUN = "an uber's orb"
+_NOUN_SUPPORTED = 'noun' in inspect.signature(SLB.audit_table).parameters
+_NOUN_WARNED = False
+
+
+def _audit_table(db, table, tier, ex, floor):
+    """`SLB.audit_table` with this lane's container noun, merge-tolerantly."""
+    global _NOUN_WARNED
+    if _NOUN_SUPPORTED:
+        return SLB.audit_table(db, table, tier, ex, floor=floor, noun=NOUN)
+    if not _NOUN_WARNED:
+        _NOUN_WARNED = True
+        print("  [svc_orb_breadth] WARNING svc_loot_breadth.audit_table has no `noun=` "
+              "kwarg on this tree, so orb B1 messages will say 'a chest'. The CHECKS "
+              "are unaffected. This is a merge resolution that dropped R-220's "
+              "one-word kwarg (BL-R220-DEBT-5) - no silent pass: this line IS the "
+              "downgrade.")
+    return SLB.audit_table(db, table, tier, ex, floor=floor)
 
 # ── the chain shape: proxy slot -> the difficulty it serves ──────────────────
 # Reuses red_uber_orbs._DIFF_FIELDS' three fields; the SHORT tier letter is what
@@ -204,7 +234,7 @@ OUT_OF_REACH = {
         "side-quest golden chests, the Cerberus and Skeletal Typhon repeat boss "
         "chests). Widening it would rewrite the base game's act-4 golden-chest "
         "economy, which is neither a mystical orb nor anything Will named - the "
-        "same boundary R-200 drew. Registered as BL-R210-DEBT-1.",
+        "same boundary R-200 drew. Registered as BL-R220-DEBT-1.",
 }
 
 # ── SHARED TABLES: acknowledged, deliberately not widened ───────────────────
@@ -346,6 +376,14 @@ def scope_tables(db, lk=None, base_rows=None, chains=None, shared=None):
     De-duplication matters: two orb tiers may legitimately share a table, and a
     table must be widened once and audited once. Tables shared with a container
     outside the uber chains are EXCLUDED (see `shared_tables`).
+
+    THE DE-DUPLICATION IS TIER-BLIND ON PURPOSE, AND `tier_conflicts` IS ITS GUARD.
+    The first chain wins, so a table reachable through TWO different difficulty
+    slots would be widened and audited at ONE tier only - a silent narrowing that
+    O4's scope COUNT cannot see, because the count stays the same. MEASURED on both
+    the build76 and build78 arz: 6 in-reach proxies x 3 slots = 18 chains resolving
+    to 18 DISTINCT tables, zero overlap, so this is inert today. `tier_conflicts`
+    makes it loud tomorrow (O4b).
     """
     chains = orb_chains(db, lk, base_rows) if chains is None else chains
     shared = shared_tables(db, lk, base_rows, chains) if shared is None else shared
@@ -354,6 +392,35 @@ def scope_tables(db, lk=None, base_rows=None, chains=None, shared=None):
         if table and _n(table) not in out and _n(table) not in shared:
             out[_n(table)] = (table, tier)
     return out
+
+
+def tier_conflicts(db, lk=None, base_rows=None, chains=None, shared=None):
+    """{norm(table): [tier, ...]} for tables reached at MORE THAN ONE difficulty.
+
+    Always empty on a healthy build (MEASURED empty on build76 and build78). It is
+    the explicit complement of `scope_tables`' first-wins de-duplication: if a chain
+    rewiring ever made one table serve two difficulty slots, that table would be
+    handed a single tier's master and audited against a single tier's floor with no
+    other signal at all. Reported as O4b so the narrowing is a decision, not a shrug.
+    """
+    chains = orb_chains(db, lk, base_rows) if chains is None else chains
+    shared = shared_tables(db, lk, base_rows, chains) if shared is None else shared
+    seen = defaultdict(set)
+    for _proxy, tier, _pool, _chest, table, _c in chains:
+        if table and _n(table) not in shared:
+            seen[_n(table)].add(tier)
+    return {t: sorted(v) for t, v in sorted(seen.items()) if len(v) > 1}
+
+
+def in_reach_proxies(lk, proxies):
+    """The uber proxies the mod overlay actually contains - the ones with tables.
+
+    MIN_PROXIES counts THESE, so apply() and audit_db must both measure it this way;
+    counting the raw `uber_proxies` map instead would make the apply-side collapse
+    guard one proxy weaker than its own floor (the base-only Dark Obelisk chain
+    inflates the raw map to 7).
+    """
+    return sorted(p for p in proxies if lk.real(p) is not None)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -398,13 +465,50 @@ def widen_chains(db, lk=None, base_rows=None, verbose=True, tables=None):
     tables = scope_tables(db, lk, base_rows) if tables is None else tables
     changes = {}
     for _key, (table, tier) in sorted(tables.items()):
+        keep = _hold_chances(db, lk, table)
         ch = SLB.widen_weapon_row(db, table, tier, lk)
+        ch = keep(ch)
         if ch:
             changes[table] = ch
             if verbose:
                 print("    %-58s [%s] %s"
                       % (_n(table).rsplit('\\', 1)[-1], tier, '; '.join(ch)))
     return changes, tables
+
+
+# ── THE PAYOUT HALF, ISOLATED SO IT CAN BE VETOED IN ONE EDIT ────────────────
+# Will asked for BREADTH: "all classes of items could be dropped". That is the
+# added loot1 member, and nothing else. The wave ALSO raises loot1Chance 13/14 -> 40
+# and loot6Chance 13/14 -> 30 on the same 15 base-game tables - defensible (they are
+# the values orb05's apex tables have shipped since build75, and R-180 made the
+# identical raise on the chests) but it is a PAYOUT change he did not ask for, and it
+# is half the field moves in this wave. So it is a named switch rather than a
+# re-derivation: set this False and the orbs gain every weapon class at exactly the
+# drop rate they have today. The breadth half is untouched by it either way.
+# This lives HERE, not in `svc_loot_breadth.widen_weapon_row`, because that builder is
+# shared with the CHESTS - editing it would silently revert R-180's chest raises too.
+RAISE_ROW_CHANCES = True
+_CHANCE_FIELDS = ('loot1Chance', 'loot6Chance')
+
+
+def _hold_chances(db, lk, table):
+    """Returns a filter that restores the two row chances when the payout half is off.
+
+    A no-op (identity) in the shipped configuration, so the default path writes
+    exactly what it wrote before this switch existed.
+    """
+    if RAISE_ROW_CHANCES:
+        return lambda changes: changes
+    import red_uber_orbs as RUO                       # the repo's dtype-safe snapshot
+    real = lk.real(table)
+    saved = [(f, RUO._snapshot_field(db, real, f)) for f in _CHANCE_FIELDS]
+
+    def _restore(changes):
+        for field, shot in saved:
+            if shot:
+                RUO._restore_field(db, real, field, shot)
+        return [c for c in changes if not c.startswith(_CHANCE_FIELDS)]
+    return _restore
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -425,6 +529,10 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
       O4        every uber drop chain resolves proxy -> pool -> chest -> table at all
                 three difficulties, and the derived scope never shrinks below the
                 measured floor (the "no table audited at all" trap).
+      O4b       no in-scope table is reached at TWO different difficulties. That is
+                the one narrowing O4's COUNT cannot see: `scope_tables` de-duplicates
+                first-wins, so such a table would silently be widened and audited at
+                one tier only while the table count stayed put.
       O5        every base-only (out-of-reach) uber chain is PINNED in OUT_OF_REACH
                 with its reason, and every pin still names a live uber chain - so a
                 NEW one is a human decision, not a quiet omission, and a stale pin
@@ -485,7 +593,7 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
             % (table_l.rsplit('\\', 1)[-1], len(outside),
                ', '.join(_n(o).rsplit('\\', 1)[-1] for o in outside[:4])))
 
-    resolved = {c[0] for c in chains}
+    resolved = in_reach_proxies(lk, proxies)
     for proxy, tier, pool, chest, table, carriers in chains:
         who = _who(carriers)
         if pool is None or chest is None or table is None:
@@ -498,20 +606,29 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
     tables = scope_tables(db, lk, base_rows, chains, shared)
     if len(resolved) < MIN_PROXIES or len(tables) < MIN_TABLES:
         problems.append(
-            "O4 SCOPE COLLAPSED: derived %d proxy/proxies and %d loot table(s); the "
-            "measured floor is %d/%d. An orb-breadth gate that audits nothing is the "
-            "failure mode this gate exists to prevent."
+            "O4 SCOPE COLLAPSED: derived %d in-reach proxy/proxies and %d loot "
+            "table(s); the measured floor is %d/%d. An orb-breadth gate that audits "
+            "nothing is the failure mode this gate exists to prevent."
             % (len(resolved), len(tables), MIN_PROXIES, MIN_TABLES))
 
+    # O4b - one table, two difficulties: the narrowing the table COUNT cannot show
+    for table_l, tiers in tier_conflicts(db, lk, base_rows, chains, shared).items():
+        problems.append(
+            "O4b TABLE REACHED AT %d DIFFERENT DIFFICULTIES: %s is in the drop chain "
+            "at tier(s) %s, but scope_tables de-duplicates first-wins, so it would be "
+            "widened with ONE tier's master and audited against ONE tier's floor. "
+            "Split the table per difficulty, or decide which tier owns it and pin "
+            "that decision." % (len(tiers), table_l.rsplit('\\', 1)[-1],
+                                ', '.join(DIFF_LABEL[t] for t in tiers)))
+
     for _key, (table, tier) in sorted(tables.items()):
-        problems.extend(SLB.audit_table(db, table, tier, ex, floor=floors[tier],
-                                        noun="uber's orb"))
+        problems.extend(_audit_table(db, table, tier, ex, floors[tier]))
         master = lk.real(SLB.MASTER[tier])
         named = {_n(nm) for _i, nm, _w in SLB._slot_members(db, table, 1)}
         if not master or _n(master) not in named:
             problems.append(
                 "O2b %s [%s] does not name the breadth master %s in its weapon row - "
-                "the R-210 fix is not present on this table (a collapse back to "
+                "the R-220 fix is not present on this table (a collapse back to "
                 "axe/club/sword + bow + staff, i.e. no spear path at all)."
                 % (_n(table).rsplit('\\', 1)[-1], tier,
                    _n(SLB.MASTER[tier]).rsplit('\\', 1)[-1]))

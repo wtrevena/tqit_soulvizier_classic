@@ -1,5 +1,5 @@
 r"""gate_orb_loot_breadth.py - AUDIT: every uber's MYSTICAL ORB can pay every weapon
-class at its own difficulty, SPEAR included (Will 2026-08-10, R-210).
+class at its own difficulty, SPEAR included (Will 2026-08-10, R-220).
 
 WHY THIS EXISTS
 ---------------
@@ -81,7 +81,7 @@ def main(argv):
         return 2
     verbose = '--verbose' in argv[2:]
     db = ArzDatabase.from_arz(Path(argv[1]))
-    print("\n=== uber orb loot-breadth audit (R-210) ===")
+    print("\n=== uber orb loot-breadth audit (R-220) ===")
     base_rows = load_base_rows('--mod-only' in argv[2:])
     lk = SLB.Lookup(db)
 

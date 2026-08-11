@@ -1,6 +1,6 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> ## 🆕 R-210 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
+> ## 🆕 R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
 > **⏳ BUILT IN BRANCH `fix/orb-loot-breadth`, NOT YET BUILT/DEPLOYED/SHIPPED.** arz-only when it lands
 > (no map/quest/Text change). **Fully quit TQ and restart Steam before testing** (standing rule).
 >
@@ -30,7 +30,7 @@
 > **EASIEST CHECK - it is the SAME TRIP you are already doing for R-180.** In the **Prison of Souls**
 > (Hades Palace floor 4), killing **Alkyoneus the Soul-Gaoler** finishes on his Unbound form, and the
 > Unbound Gaoler drops a **tier-4 Mystical Orb**. So one run tests both waves: open the six cage chests
-> (R-180) and the orb he drops (R-210). On Legendary the orb can now pay **308** distinct legendary
+> (R-180) and the orb he drops (R-220). On Legendary the orb can now pay **308** distinct legendary
 > items including **22 legendary spears**, where before it could pay 258 and **zero** spears.
 >
 > **Second check, low level:** the **Boar Snatcher** in Pine Forest / SpartaOptCave03 (the R-200 monster)
@@ -40,11 +40,18 @@
 > 1. **Spears out of an orb at all** - that was impossible before, at every tier and difficulty.
 > 2. **More than one thing per orb.** The weapon and shield rows used to fire ~1 open in 7; they now fire
 >    ~1 in 2.5 and ~1 in 3.3, so an orb should feel less like "one item and some potions".
-> 3. **Nothing got weaker.** Orb quantity is unchanged by design - the number of items an orb spits out,
->    its gold, its relic row and the apex orb's bigger payout are all byte-for-byte what they were. If an
->    orb feels *stingier* than before, that is a bug, not the design; say so.
+> 3. **Nothing got weaker.** The orb's spawn EQUATIONS, its gold, its relic row and the apex orb's
+>    larger payout are byte-for-byte what they were - only the weapon and shield rows fire more often
+>    (that is check 2, and it means MORE items, not fewer). If an orb feels *stingier* than before, that
+>    is a bug, not the design; say so.
 > 4. **Normal difficulty stays Normal.** No legendary gear should appear on Normal from any orb (the
 >    mercenary scrolls and arcane formulae that already showed up there are base-game and unchanged).
+>
+> **One thing to veto if you want it.** Will asked for BREADTH and got it (check 1). Checks 2's higher
+> drop rate was NOT asked for - it is the rate the Toxeus apex orb has had since build75, applied to the
+> rest of the ladder for consistency, and it is half the change. Say the word and the classes stay while
+> the drop rate goes back to what it is today; it is a one-line switch, not a rewrite.
+
 > ## NEW R-210 (2026-08-10): ATLANTIS IS GONE FROM THE PORTAL PAGE
 > **THE ONE-LINE TEST: open a portal (any rebirth fountain / teleport) and count the act tabs. You
 > should see exactly FOUR - Greece, Egypt, Orient, Immortal Throne - and NO Atlantis, no Ragnarok, no

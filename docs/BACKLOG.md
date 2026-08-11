@@ -1,9 +1,9 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## GATE RECORD - R-210 UBER ORB LOOT BREADTH: every mystical orb pays every weapon class, SPEAR included (Will 2026-08-10, branch `fix/orb-loot-breadth`) - NOT BUILT, NOT DEPLOYED, NO TAG TAKEN
+## GATE RECORD - R-220 UBER ORB LOOT BREADTH: every mystical orb pays every weapon class, SPEAR included (Will 2026-08-10, branch `fix/orb-loot-breadth`) - NOT BUILT, NOT DEPLOYED, NO TAG TAKEN
 
 **Will's order (2026-08-10, verbatim):** "for the mystical orbs that the uber monsters drop, the items should
-drop with increased breadth as well so all classes of items could be dropped". Ledgered R-210. DB-lane only
+drop with increased breadth as well so all classes of items could be dropped". Ledgered R-220. DB-lane only
 (arz); no Levels/Text/Quests change, 0 new tags, 0 new records.
 
 **"AS WELL" IS R-180.** The chest half shipped that morning (build75: every mod chest names the aggregate
@@ -43,7 +43,7 @@ chain lands on `g_default_{n,e,l}01c` - the act-4 GOLDEN CHEST tables (`tagChest
 FIVE base containers (the act-4 golden chests, 2 side-quest golden chests, the Cerberus and Skeletal
 Typhon repeat boss chests). Widening that would rewrite base-game golden-chest loot from a lane asked
 about mystical orbs, so it is PINNED in `svc_orb_breadth.OUT_OF_REACH` with the reason
-(`BL-R210-DEBT-1`). Two permanent guards shipped because of it: **O5** - a base-only uber chain must be
+(`BL-R220-DEBT-1`). Two permanent guards shipped because of it: **O5** - a base-only uber chain must be
 pinned with a reason, and a pin that no longer names a live chain is stale config; **O6** - an in-scope
 table that ANY container outside the uber chains also names is excluded from the sweep AND stops the
 build until a human decides (pin it in `SHARED_TABLES_ACKNOWLEDGED`). O6 is currently a pure guard: all
@@ -55,7 +55,8 @@ the ONE free loot1 member slot at weight 800; `loot1Chance` (weapons) 13/14 -> 4
 build75, so the ladder becomes self-consistent instead of gaining a new constant. 15 tables change; the 3
 apex tables are a proven no-op.
 
-**MEASURED (dry-run of the real code against the build76 arz)** - distinct target-classification items
+**MEASURED (dry-run of the real code, first on the build76 arz and RE-RUN on the live build78 arz
+`f6638462` after this branch merged `main`; bit-identical on both)** - distinct target-classification items
 (Normal pays Epic, Epic/Legendary pay Legendary) and reachable spears, before -> after:
 
 | tier | consumers | normal | epic | legendary | spear (n/e/l) |
@@ -89,16 +90,25 @@ exactly R-180's B3 exemption) and **ZERO legendary GEAR, before and after**.
 |---|---|
 | `py tools/gate_orb_loot_breadth.py <build76 arz>` (PRE-fix, proves the defect) | **RED as designed** - names all 15 collapsed tables, B1 (no spear) + O2b (master absent) on each, B2 on 8 |
 | the same gate over the post-apply state (dry-run) | **0 problems**, 18 tables audited, every one paying all 6 weapon classes |
-| `py tools/debug/negtest_orb_breadth.py <arz>` | **10/10 as designed**, each case asserting its own check code |
+| `py tools/debug/negtest_orb_breadth.py <arz>` | **11/11 as designed** on the LIVE build78 arz, each case asserting its own check code |
 | `apply()` S4 scope proof | **PASS** (table above) |
 | `py tools/patches/_check_registry.py` | **OK: 56 modules**, order `4d12677bf288c1f10b02932111656460063ee9be7218116de9fae7aadb021fc0` |
 | R-180 REGRESSION: `py tools/gate_chest_loot_breadth.py <arz>` | **PASS** (unchanged) |
 | R-180 REGRESSION: `py tools/debug/negtest_chest_breadth.py <arz>` | **PASS** (unchanged) |
+| `py tools/gate_relic_difficulty_tiers.py <arz>` | **PASS, 33 branches** - and BLIND to this lane by construction, see `BL-R220-DEBT-6` |
 | `py -m py_compile` on all 6 touched/added files | **OK** |
 
+**RE-MEASURED ON THE CURRENT BASE.** The numbers above were first taken on `build76-ship`; this branch has
+since merged `main` @ `178ff4a` and every one was RE-TAKEN against the live build78 arz (`f6638462`, 51,236
+records). All bit-identical, which is the proof - not the assumption - that build77 (soul names) and build78
+(portal page) never touched a loot table.
+
 The only edit to R-180's shipped file is an optional `noun=` kwarg on `audit_table`, used solely to make the
-B1 message say "orb" when the orb gate reuses it. Default `'chest'` keeps every R-180 message byte-identical,
-and both R-180 gates were re-run to prove it.
+B1 message name the container kind. It carries its own ARTICLE (`'a chest'` default, `"an uber's orb"` from
+this lane) so the message reads correctly either way; the default keeps every R-180 message byte-identical,
+and both R-180 gates were re-run to prove it. The orb side probes for the kwarg at import and degrades
+LOUDLY to the default if a merge ever drops it, so one word in one message can never break a build
+(`BL-R220-DEBT-5`).
 
 **NEGATIVES (`tools/debug/negtest_orb_breadth.py`)** - the arz is loaded once and `apply()` is run on it, so
 the battery works from a PRE-fix build; each case is planted, verified and undone:
@@ -111,6 +121,8 @@ on O6 rather than B1 because every non-uber chain in this db shares its tables w
 the correct answer is "a human decides", and the collapse-is-caught half is proven by N1 against a real
 in-scope table). N7 a base golden chest starts sharing an orb table -> O6, with B1/B2 proven NOT to fire
 (the table is EXCLUDED, not mis-audited). N8 the Dark Obelisk chain with its OUT_OF_REACH pin removed -> O5.
+N9 orb01's EPIC accessory pool repointed at orb01's NORMAL chest, so one table is reached at TWO
+difficulties -> **O4b**, the narrowing a table COUNT cannot see (`scope_tables` de-duplicates first-wins).
 P1 the unmodified post-apply build -> GREEN. P2 that same Aktaios orb with no uber carrier -> GREEN
 (scope-boundary proof). The battery runs over mod UNION base, like the build gate, so the base-only chain is
 visible to it - running the tests mod-only would be the R-200 HOLE 2 mistake in miniature.
@@ -126,12 +138,21 @@ renamed or repointed at anything that does not already resolve.
   `chest_loot_breadth` (which authors the shared masters) and after `red_uber_orbs` (which ADDS uber
   consumers), immediately before the no-op `visuals`.
 - `tools/gate_orb_loot_breadth.py` (NEW) - the standalone twin.
-- `tools/debug/negtest_orb_breadth.py` (NEW) - the 8 planted cases.
+- `tools/debug/negtest_orb_breadth.py` (NEW) - 9 planted cases + 2 positive controls.
 - `tools/svc_loot_breadth.py` - the one `noun=` kwarg described above.
-- `tools/patches/__init__.py`, `docs/WILL_RULINGS.md` (R-210), `docs/WILL_TEST_GUIDE.md`, this record.
+- `tools/patches/__init__.py`, `docs/WILL_RULINGS.md` (R-220), `docs/WILL_TEST_GUIDE.md`, this record.
+
+**THE PAYOUT HALF IS A NAMED, SEPARABLE WILL DECISION.** The 60 field moves are two halves: 30 are BREADTH
+(the added `loot1Name`/`loot1Weight` member - Will's actual order, spear 0 -> 18/9/22) and 30 are PAYOUT
+(`loot1Chance` 13/14 -> 40, `loot6Chance` 13/14 -> 30 - roughly 3x and 2.1x the fire rate). The payout half is
+defensible (orb05's shipped values since build75; R-180 made the identical raise on chests) but Will did not
+ask for it. **Veto cost: one line** - `svc_orb_breadth.RAISE_ROW_CHANCES = False` and the orbs gain every
+weapon class at exactly today's drop rate. The switch lives in the ORB module, NOT in the shared
+`svc_loot_breadth.widen_weapon_row`, so vetoing the orb payout cannot silently revert R-180's chest raises.
+Disclosed in `docs/WILL_TEST_GUIDE.md` as a veto point, not buried.
 
 **DEBT REGISTER**
-- `BL-R210-DEBT-1` - SCOPE BOUNDARY, two parts, both deliberate and both now machine-guarded.
+- `BL-R220-DEBT-1` - SCOPE BOUNDARY, two parts, both deliberate and both now machine-guarded.
   (a) The proxies consumed only by BASE act/quest bosses keep the collapsed weapon row -
   `bosschestproxy11_aktaios` (3 Telkines), `bosschestproxy21_typhon` (2), `bosschestproxy_blackwidow` (1),
   `coldworm_orb` (1), `1_default_33-35` (1). Same boundary R-200 drew (`BL-R200-DEBT-1`): widening there is an
@@ -142,16 +163,45 @@ renamed or repointed at anything that does not already resolve.
   containers. Pinned in `svc_orb_breadth.OUT_OF_REACH` with that reason; gate check O5 fails the build if a NEW
   base-only chain appears, and O6 fails it if any in-scope table ever becomes shared - so neither can be
   widened by accident, and neither is silently forgotten.
-- `BL-R210-DEBT-2` - **NOT PROVEN IN-GAME.** Nothing in this lane was launched. Will killing any orb-dropping
+- `BL-R220-DEBT-2` - **NOT PROVEN IN-GAME.** Nothing in this lane was launched. Will killing any orb-dropping
   uber and seeing spears / visible class variety out of the orb is the launch gate.
-- `BL-R210-DEBT-3` - the epic and legendary POOL FLOORS (80 / 200) sit BELOW the richest pre-wave tables, so on
+- `BL-R220-DEBT-3` - the epic and legendary POOL FLOORS (80 / 200) sit BELOW the richest pre-wave tables, so on
   those two branches a silent revert is caught by O1 (the spear class disappears) and O2b (the master stops
   being named), NOT by the count. Stated in the code rather than papered over: a count floor able to catch a
   revert there would sit within one item of the live value and would red on ordinary content edits.
-- `BL-R210-DEBT-4` - INTEGRATION: this branch is cut from `main` @ `d77c3b9` (build76-ship). Two waves are
-  building ahead of it (`soul-naming` -> build77, `portal-atlantis` -> build78). Expected conflicts are
-  both-sides-appended text only: the REGISTRY tail (`... chest_loot_breadth, red_uber_orbs, orb_loot_breadth,
-  visuals` - `visuals` must stay LAST), the ledger (append-only, newest last) and this BACKLOG (newest first).
+- `BL-R220-DEBT-4` - INTEGRATION vs `main`: **CLOSED IN-LANE.** Both waves that were building ahead have
+  landed (`soul-naming` -> build77, `portal-atlantis` -> build78) and `main` @ `178ff4a` is MERGED INTO this
+  branch (merge `e05eeb1`). The three expected append-only doc conflicts (`docs/BACKLOG.md`,
+  `docs/WILL_RULINGS.md`, `docs/WILL_TEST_GUIDE.md`) were resolved here, keeping BOTH sides; ZERO code
+  conflicts. The REGISTRY tail is intact and `visuals` is still LAST. **That merge is also what forced the
+  R-210 -> R-220 renumber**: `fix/portal-atlantis-cap` minted R-210 for the portal-page DLC cap and shipped it
+  publicly as `build78-ship`, so the number this lane had reserved against a build76 snapshot was gone. All 20
+  occurrences were renumbered and the ruling was moved to the ledger TAIL (append-only, newest LAST) behind
+  R-201 and R-210.
+- `BL-R220-DEBT-5` - **INTEGRATION vs the two SIBLING breadth lanes, and this one is still OPEN.** `main` is
+  clean, but sideways is not: `fix/armor-loot-breadth` and `fix/craft-thrown-breadth` BOTH edit
+  `tools/svc_loot_breadth.py` and `tools/patches/__init__.py`, and craft-thrown rewrites the exact function
+  this lane touched - it adds C1/C2 thrown checks to `audit_table` while KEEPING the old signature
+  `audit_table(db, table, tier, ex, floor=None)`, i.e. WITHOUT this lane's `noun=` kwarg.
+  - **Mitigated here:** `svc_orb_breadth` probes for the kwarg at import (`_NOUN_SUPPORTED`) and degrades to
+    the default noun with a loud one-line notice, so a merge that drops it costs one word in one message
+    instead of a `TypeError` inside a fail-loud gate. Nothing silently passes.
+  - **Still the integrator's job:** hand-resolve `audit_table` so BOTH the `noun=` kwarg AND craft-thrown's
+    C1/C2 block survive (they are independent additions to the same function).
+  - **Second order, and it is NOT cosmetic:** craft-thrown adds a 7th class (thrown) to `_master_members` and
+    armor-loot-breadth re-weights `unique_1h` 1000 -> 3000 in the same shared builder. Either landing changes
+    what the orb tables reach THROUGH the shared master, so `POOL_FLOOR` (n 150 / e 80 / l 200) and the
+    published before/after table must be RE-MEASURED on the integrated arz. After integration re-run:
+    `gate_orb_loot_breadth.py`, `debug/negtest_orb_breadth.py` AND `gate_chest_loot_breadth.py`.
+- `BL-R220-DEBT-6` - **NO INDEPENDENT TIER CORROBORATION for the 15 widened base-game tables.**
+  `tools/gate_relic_difficulty_tiers.py` skips any table failing `is_mod_loot`; MEASURED on the build78 arz,
+  0 of the 15 tables this lane writes are visible to it (only the 3 mod-owned apex tables are). So the tier
+  claim rests solely on this lane's own B1/B3 + O2b, and B3 only forbids legendary GEAR on the NORMAL branch:
+  an epic/legendary mixup that ADDED the wrong master ALONGSIDE the right one on an epic branch would pass
+  O2b unseen. Related and deliberate: orb02's Legendary slot resolves to `uberorb_default_53-55`, whose
+  shipped row named EPIC-band uniques (`1h_all_e03` / `bow_e03` / `staff_e03`) on Legendary difficulty, so
+  wiring it the Legendary master RETIERS a base-game table upward (138 -> 241, the only delta over +100).
+  Recorded in R-220 so nobody later reads it as an accident.
 
 ---
 ## SHIP RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis is GONE from the portal page, **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/portal-atlantis-cap` merge `599e5f0`, tag `build78-ship`)

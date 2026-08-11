@@ -1,5 +1,5 @@
 r"""negtest_orb_breadth.py - PLANTED NEGATIVES for the uber-ORB breadth gate
-(Will 2026-08-10, R-210: "for the mystical orbs that the uber monsters drop, the
+(Will 2026-08-10, R-220: "for the mystical orbs that the uber monsters drop, the
 items should drop with increased breadth as well so all classes of items could be
 dropped").
 
@@ -50,6 +50,7 @@ import orb_loot_breadth as OLB
 ORB01_N = r'records\item\containers\defaultloot\uberorb_default_13-15.dbr'
 ORB04_L = r'records\xpack\item\containers\loot tables\uberorb_default_l01c.dbr'
 ORB01_POOL_N = r'records\item\containers\new\genericboss01_normal_repeat.dbr'
+ORB01_POOL_E = r'records\item\containers\new\genericboss01_epic_repeat.dbr'
 SPEAR_N = r'records\xpack\item\loottables\weapons\unique\spear_n01.dbr'
 
 # An UBER that carries the ladder, used to kill the derivation in N5.
@@ -103,7 +104,7 @@ def main(argv):
         return 2
     global _BASE_ROWS
     db = ArzDatabase.from_arz(Path(argv[1]))
-    print("\n=== R-210 orb-breadth negatives ===")
+    print("\n=== R-220 orb-breadth negatives ===")
     OLB.apply(db, {})
     _BASE_ROWS = RUO.load_base_rows(required=False, who='negtest')   # cached by apply()
     if not _BASE_ROWS:
@@ -248,6 +249,21 @@ def main(argv):
         return lambda: SOB.OUT_OF_REACH.update(saved)
     run("N8 the base-only Dark Obelisk chain with its OUT_OF_REACH pin removed",
         _unpin, expect=('O5',))
+
+    # ── N9 ONE TABLE, TWO DIFFICULTIES: the narrowing a COUNT cannot show ───
+    # `scope_tables` de-duplicates first-wins, so a table reachable through two
+    # difficulty slots would be widened with ONE tier's master and audited against
+    # ONE tier's floor - silently. O4b is the only check that can see it. Planted by
+    # pointing orb01's EPIC accessory pool at orb01's NORMAL chest.
+    def _two_difficulties_one_table(d):
+        lk = SLB.Lookup(d)
+        pool_e = lk.real(ORB01_POOL_E)
+        chest_n = SLB._sc(d.get_field_value(lk.real(ORB01_POOL_N), 'fixedItemName1'))
+        saved = RUO._snapshot_field(d, pool_e, 'fixedItemName1')
+        d.set_field(pool_e, 'fixedItemName1', chest_n)
+        return lambda: RUO._restore_field(d, pool_e, 'fixedItemName1', saved)
+    run("N9 one orb table reached at TWO difficulties (first-wins narrowing)",
+        _two_difficulties_one_table, expect=('O4b',))
 
     # ── P2 scope boundary: that same collapsed orb, with no uber, is GREEN ──
     run("P2 the base-boss Aktaios orb with no uber carrier stays out of scope",

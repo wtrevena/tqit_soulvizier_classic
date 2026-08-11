@@ -547,12 +547,20 @@ def chest_tables(db, lk=None):
     return sorted(out)
 
 
-def audit_table(db, table, tier, ex, floor=None, noun='chest'):
+def audit_table(db, table, tier, ex, floor=None, noun='a chest'):
     """The per-container breadth contract. Returns a list of problem strings.
 
     `noun` only names the CONTAINER KIND in the B1 message so the shared contract
-    reads correctly wherever it is reused (R-210 passes 'orb'); it changes no
-    check. Default 'chest' keeps every R-180 message byte-identical.
+    reads correctly wherever it is reused (R-220 passes "an uber's orb"); it changes
+    no check, and it carries its own ARTICLE so a noun starting with a vowel does not
+    print "a uber's orb" - Will reads this output. The default keeps every R-180
+    message byte-identical.
+    COMPATIBILITY, and it is deliberate: this kwarg is the ONLY edit R-220 makes to
+    this shared file, and two sibling breadth lanes (`fix/armor-loot-breadth`,
+    `fix/craft-thrown-breadth`) also rewrite this function. If a merge resolution
+    ever drops the kwarg, `svc_orb_breadth` detects that at import and degrades to
+    the default noun with a LOUD one-line notice rather than dying on a TypeError
+    inside a fail-loud gate - one word in one message must never break a build.
       B1 every REQUIRED weapon class is reachable at the tier's own classification
          (SPEAR named explicitly - the reported defect);
       B2 the distinct target-classification pool is at least POOL_FLOOR[tier];
@@ -566,7 +574,7 @@ def audit_table(db, table, tier, ex, floor=None, noun='chest'):
     missing = [c for c in REQUIRED_WEAPON_CLASSES if not by_class.get(c)]
     if missing:
         problems.append(
-            "B1 %s [%s tier] reaches NO %s item of class(es): %s (a %s must be able "
+            "B1 %s [%s tier] reaches NO %s item of class(es): %s (%s must be able "
             "to pay every weapon class at its own tier)"
             % (base, tier, ic, ', '.join(missing), noun))
     fl = POOL_FLOOR[tier] if floor is None else floor

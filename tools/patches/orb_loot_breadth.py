@@ -1,4 +1,4 @@
-r"""orb_loot_breadth - WILL 2026-08-10 (R-210): the uber's MYSTICAL ORB pays every
+r"""orb_loot_breadth - WILL 2026-08-10 (R-220): the uber's MYSTICAL ORB pays every
 class too.
 
 WILL, VERBATIM: "for the mystical orbs that the uber monsters drop, the items
@@ -48,7 +48,7 @@ tables (`tagChest006`), each shared with FIVE base containers (the act-4 golden
 chests, two side-quest golden chests, the Cerberus and Skeletal Typhon repeat boss
 chests). Widening that would rewrite the base game's act-4 golden-chest economy from
 a lane asked about mystical orbs. It is PINNED in `svc_orb_breadth.OUT_OF_REACH`
-with that reason and registered as `BL-R210-DEBT-1`; a NEW base-only chain fails the
+with that reason and registered as `BL-R220-DEBT-1`; a NEW base-only chain fails the
 gate so it becomes a human decision instead of a silent omission.
 
 GATE (verify, post-finalization): `svc_orb_breadth.audit_db` over the final db -
@@ -73,7 +73,7 @@ import svc_loot_breadth as SLB
 import svc_orb_breadth as SOB
 
 MODULE_NAME = ("orb loot breadth - every uber's mystical orb pays every weapon "
-               "class, SPEAR included (R-210)")
+               "class, SPEAR included (R-220)")
 
 
 def _base_rows(required, who):
@@ -145,12 +145,27 @@ def apply(db, tags):
               "outside every uber chain: %s"
               % (table_l, len(outside),
                  ', '.join(SLB._n(o).rsplit('\\', 1)[-1] for o in outside[:4])))
-    if len(carriers) < SOB.MIN_PROXIES or len(tables) < SOB.MIN_TABLES:
+    # MIN_PROXIES counts the IN-REACH proxies (the ones that HAVE tables), so this
+    # side must measure it the same way verify() does. Counting the raw carrier map
+    # would include the base-only Dark Obelisk chain and leave the apply-side collapse
+    # guard one proxy weaker than its own documented floor.
+    reachable = SOB.in_reach_proxies(lk, carriers)
+    if len(reachable) < SOB.MIN_PROXIES or len(tables) < SOB.MIN_TABLES:
         raise SystemExit(
-            "[orb_loot_breadth] SCOPE COLLAPSED at apply(): %d proxy/proxies and %d "
-            "table(s), measured floor %d/%d. Widening nothing while reporting "
-            "success is the exact failure this module exists to prevent."
-            % (len(carriers), len(tables), SOB.MIN_PROXIES, SOB.MIN_TABLES))
+            "[orb_loot_breadth] SCOPE COLLAPSED at apply(): %d in-reach proxy/proxies "
+            "(of %d named) and %d table(s), measured floor %d/%d. Widening nothing "
+            "while reporting success is the exact failure this module exists to "
+            "prevent." % (len(reachable), len(carriers), len(tables),
+                          SOB.MIN_PROXIES, SOB.MIN_TABLES))
+    # O4b's twin on the write side: a table reached at two difficulties would be
+    # widened with one tier's master and never audited at the other.
+    conflicts = SOB.tier_conflicts(db, lk, base_rows, chains, shared)
+    if conflicts:
+        raise SystemExit(
+            "[orb_loot_breadth] TABLE REACHED AT TWO DIFFICULTIES: %s. scope_tables "
+            "de-duplicates first-wins, so widening would silently pick one tier's "
+            "master for a table that serves two. Decide deliberately."
+            % sorted(conflicts))
 
     # ── 3. the before-image for the scope proof ─────────────────────────────
     watched = [t for t, _tier in tables.values()]

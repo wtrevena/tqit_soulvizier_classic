@@ -751,7 +751,7 @@ REGISTRY = [
                             # stay green. Registered second-to-last so verify() reads the final
                             # assembled db after every other orb writer.
                             # Negative test: py tools/patches/red_uber_orbs.py --negtest <arz>
-    'orb_loot_breadth',     # R-210 (Will 2026-08-10): "for the mystical orbs that the uber
+    'orb_loot_breadth',     # R-220 (Will 2026-08-10): "for the mystical orbs that the uber
                             # monsters drop, the items should drop with increased breadth as
                             # well so all classes of items could be dropped". The "as well"
                             # points at R-180, which fixed the CHESTS that same morning; this
@@ -777,7 +777,7 @@ REGISTRY = [
                             # and whose 3 tables carry the identical collapse. The 6 proxies
                             # consumed only by BASE act/quest bosses (Aktaios, Typhon, Black
                             # Widow, coldworm, the wanddrop test proxy) stay OUT - the same
-                            # boundary R-200 drew - and are registered as BL-R210-DEBT-1.
+                            # boundary R-200 drew - and are registered as BL-R220-DEBT-1.
                             # Leinth needs nothing: uber_apex_orb repointed her chests onto
                             # the svc_uberorb_apex_* tables, so R-180 already widened them.
                             # WRITES per table: the tier-correct master into the ONE free
