@@ -145,7 +145,7 @@ under the model hardest on it, which is R-240's own rule applied asymmetrically.
   legendary-heavy rows moves D3/D4 and D6 instead. Either way it re-litigates the armour parity b75-b83
   shipped, which this lane was told is untouchable.
   **PRICED: (A) accept 54-61%** on the strength of the 90% cut in legendary ITEMS and the zero
-  guaranteed rows - cost nothing, the ceilings become permanent. **(B) push below ~30%** - one
+  guaranteed rows - cost nothing, the ceilings become permanent. **(B) push below the 25% low-chance bar** (`LOW_CHANCE_RULING_BAR`, the one number this lane proposes for what "a low chance" means: one open in four) - one
   composition lane in R-180/R-181/R-220's scope (give the Legendary-tier orb rows an epic-grade sibling
   pool to split their weight with, so the orb still pays two items but they are usually Epic), plus a
   re-derivation of D7b's floor for the orb family and a re-run of the orb-breadth gate. **One lane per

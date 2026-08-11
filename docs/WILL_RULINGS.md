@@ -5790,7 +5790,10 @@ Either way it re-litigates the armour parity b75-b83 shipped, which this lane wa
 
 - **(A) Accept 54-61%** as "a chance, not a guarantee", on the strength of the 90% cut in legendary
   ITEMS and the zero guaranteed rows. Cost: nothing. The ceilings above become permanent.
-- **(B) Push the chance below ~30%.** Needs a composition lane inside R-180/R-181/R-220's scope: give
+- **(B) Push the chance below the 25% LOW-CHANCE BAR.** 25% is `LOW_CHANCE_RULING_BAR` - one open in
+  four - and it is the single number this lane proposes for what "a low chance" means, since Will's
+  sentence fixes none. It is deliberately generous, so clearing it is a real bar and not a technicality.
+  Needs a composition lane inside R-180/R-181/R-220's scope: give
   the Legendary-tier orb rows an epic-grade sibling pool to split their weight with, so the orb still
   pays two items but they are usually Epic. Cost: one lane, a re-derivation of D7b's floor for the orb
   family, and a re-run of the orb-breadth gate. **It is one lane, and one lane per problem means it is
