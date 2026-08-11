@@ -225,6 +225,182 @@ the write does not go through a shared builder), and pulling it in would demand 
 thresholds of base-game monster loot, which is `BL-R181-DEBT-2` - an explicit Will decision, not a gate
 fix. **No live orphan today.** The residue is named in the gate's own PASS line so it cannot be
 mistaken for coverage.
+## SHIP RECORD - R-211 ATLANTIS SEA-VOYAGE CAP: the Atlantis SHIP is gone too, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/atlantis-voyage-cap` merge `0019861`, tag `build82-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' [U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content...
+Uploading content... Committing update...Success.` + `Updated Workshop item: 3759792705`. Confirmed
+independently from `C:\steamcmd\logs\workshop_log.txt`, not from the console text alone:
+**`Upload finished for workshop item 3759792705 : OK`, ManifestID `7197248715535460168`**
+(2026-08-11 04:08:40 -> 04:08:59). Pushed `-Update -Visibility 0` and the generated VDF was read back to
+confirm `"visibility" "0"` - the item stays PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single
+`SoulvizierClassic` wrapper.
+
+**This is an arz-only delta on top of `build81-ship`.** Only the database moved.
+
+| artifact | md5 | bytes | vs the item as of `build81-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`09a0f51dcc5c64b3d84c123a421aeef1`** | 55,562,756 | **CHANGED** from `f1671207` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+
+| gate | result |
+|---|---|
+| F9 dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above) |
+| packager TESTHUB guard + an independent re-check | **PASS** - packaged `6784cf0f` != TESTHUB `7a7ca9ac`; the hub did not ship, and the packaged map is positively asserted to BE the canonical `6784cf0f` |
+| single-wrapper assertion (packager + an independent check) + stale-layout check | **PASS** - content root holds exactly one `SoulvizierClassic` folder, no wrapperless leftovers |
+| **R-211 voyage-cap gate on the DIST arz** (not just the work copy) | **PASS** - `V5 resolvable Atlantis-transit routes = []` |
+| **R-210 DLC-cap gate on the DIST arz** | **PASS** - `portal pages = ['Greece', 'Egypt', 'Orient', 'Hades']`, quest-log tabs 1-4 |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| `run_contracts` A/B: the **baseline arz `f1671207`** under the **identical config** | **4492** - the same number, so this ship adds **ZERO new contract violations**, measured in both directions rather than assumed |
+| changenote VDF-safety | 2,375 chars, **0 double-quotes, 0 backslashes, 0 em dashes, pure ASCII** |
+
+**DEPLOY ORDER HONOURED END TO END.** DEV first (`build82-dev`, arz `09a0f51d`, 1 of 62 files changed,
+the 61 untouched siblings re-hashed after the copy), then Steam. **TQ.exe was never running, was never
+killed, and Steam was never restarted** at any point in this lane. Steam and DEV now differ only in the
+map: DEV carries the TESTHUB `Levels.arc` `7a7ca9ac` (local-only, by design), Steam the canonical
+`6784cf0f`.
+
+**Rollback (Steam, one push):** stage `local/build81_ship_f1671207.arz` as
+`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, re-package, re-upload; every other shipped
+artifact is already byte-identical to `build81-ship`.
+
+**RESIDUALS - stated plainly.**
+- **`BL-VOYAGECAP-DEBT-1` NOT PROVEN IN-GAME.** Nobody has walked Rhodes as a DLC owner. **Will's
+  one-line test: after beating Typhon, walk Rhodes - no Marinos, no captain offering Gadir, no Atlantis
+  adventure in the quest log; and the portal page still shows four act tabs.**
+- `BL-VOYAGECAP-DEBT-2` (P3) the two Tartarus suppressions are defence in depth, challengeable.
+  `BL-VOYAGECAP-DEBT-3` (P3) no in-fiction refusal line from the captain (his dialog is base-arc owned).
+- The Workshop cover image is still absent (`WARNING: no preview image`), unchanged by this push and
+  still Will's separate action.
+
+## BUILD82-DEV GATE RECORD - R-211 ATLANTIS SEA-VOYAGE CAP: the SHIP is gone too, `BL-PORTALCAP-DEBT-1` CLOSED - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the `fix/atlantis-voyage-cap` merge `0019861`, tag `build82-dev`)
+
+**Will's standing order (2026-08-10):** Atlantis is disabled in this mod. R-210 (`build78`) removed the
+Atlantis **PAGE** and explicitly left the **SHIP**, registered as `BL-PORTALCAP-DEBT-1`: *"an
+Atlantis-DLC owner can still SAIL Rhodes -> Gadir -> Atlantis. The page is gone, the voyage is not."*
+**This build closes the last Atlantis access path.** Ledgered **R-211**. Full RCA + 10-route audit:
+`docs/ATLANTIS_VOYAGE_CAP.md`. Ruling: `docs/WILL_RULINGS.md` -> R-211.
+
+**SHIP ORDER HONOURED.** This lane held on branch `fix/atlantis-voyage-cap` until ALL THREE queued waves
+had finished BOTH their DEV deploy and their Steam ship: `build79-ship` (orb breadth, 00:06),
+`build80-ship` (armour breadth + loot distribution, 01:06), `build81-ship` (the craft chain, 03:25). It
+then merged the then-current `main` (`23efa89`). One heavy build at a time was respected: the machine was
+verified idle of build processes before the build slot was taken, and no other build ran concurrently.
+
+**THE MERGE.** `main` <- `fix/atlantis-voyage-cap` at `0019861`. The only conflicts were in
+`docs/BACKLOG.md` and `docs/WILL_RULINGS.md`, both of the "both sides appended a new section" kind; every
+line of both sides was kept. **The code merged with ZERO conflicts** because the three breadth waves live
+entirely in `tools/patches/*` + `tools/svc_*` while this lane touches only `tools/build_svc_database.py`
+plus a new gate file. Post-merge the lane's delta vs `main` is still exactly its own 8 files.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into
+the work/ layout, **exit 0 "Done."**, run1 03:28 -> 03:37, det run2 03:39 -> 03:48).
+
+| artifact | md5 | bytes | vs `build81-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`09a0f51dcc5c64b3d84c123a421aeef1`** | 55,562,756 (51,253 rec) | **CHANGED** from `f1671207` (+6,205 B, +6 rec) |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**DETERMINISM: det-2x BYTE-IDENTICAL.** Two independent full builds of the committed tree produced
+`09a0f51d` both times (`local/build82_r211_run1.log`, `local/build82_r211_run2_det.log`).
+
+**arz-ONLY, and BOTH deploy couplings are SATISFIED rather than waived.** The cap authors NO text tag
+(it deletes and sets fields on six imported base records), so `validate_tags` PASSES against the
+EXISTING `Text.arc` and the arz+Text coupling holds without a Text rebuild. Nothing map-side moved, so
+the Levels+Quests coupling is not engaged at all. All four sibling artifacts were **md5-proven unchanged
+on disk after the build**, not assumed. The staged map is the CANONICAL `6784cf0f`, never the local-only
+TESTHUB `7a7ca9ac`.
+
+**RECORD-DIFF vs the shipped `f1671207`: ADDED 6 / REMOVED 0 / MODIFIED 0, ZERO unexplained.** The six
+additions are exactly the six capped records and nothing else in the database moved by one byte:
+`x3mq_marinos_rhodes_spawner.dbr`, `senechaloftartarus_corinth_spawner.dbr`, `rhodes_boatmantogadir.dbr`,
+`gadir_boatmantoatlantis.dbr`, `portaltotartarus.dbr`, `portaltotartarusfromcorinth.dbr`.
+
+**WHAT THE SIX OVERRIDES DO** (the A5 pattern: a `.dbr`'s identity IS its record path, and the mod `.arz`
+overrides the base `.arz` per path). Delete `actorToSpawn` on both `DLCActorSpawner` records (the template
+declares it `file_dbr` / `defaultValue ""`, so absence IS the declared default); `startVisible=0` +
+`IncludeInMap=0` on the two boundary boat captains; AND-unsatisfiable `RequireDLC=TQA2` +
+`RequireNoDLC=TQA2` on both Tartarus act portals. `dlcRequirement` is deliberately left at `DLC2` on both
+spawners, and the Malta / Hesperides captains plus every RETURN boatman are deliberately untouched (they
+are interior to an act that is now unreachable, and the return boats are the anti-strand path).
+
+**BASE-RECORD SHAPE PROVEN BEFORE THE BUILD, not assumed.** A read-only probe of the base-game
+`database.arz` confirmed all six records carry exactly the fields the cap manipulates: both spawners
+`actorToSpawn` present + `dlcRequirement=DLC2` + `Class=DLCActorSpawner`; both captains `startVisible=1` /
+`IncludeInMap=1` (INT) + `Class=Npc`; both portals `Class=FixedItemTeleport` with `RequireDLC` /
+`RequireNoDLC` ABSENT (so the cap ADDS them). A shape change would have been a hard `SystemExit` at build
+time rather than a silently inert cap.
+
+**THE LEAK WAS REPRODUCED AS AN ARTIFACT FACT FIRST.** Before any rebuild, the new gate was run against
+the LIVE `build78` arz and **FAILED with 7 checks**, `V5 4 resolvable Atlantis-transit route(s) remain`.
+The fix is therefore measured in both directions, not merely asserted.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery), twice | **exit 0, "Done."** both runs |
+| det-2x byte identity | **PASS** - `09a0f51d` == `09a0f51d` |
+| **NEW** `gate_atlantis_voyage_cap` in-memory, the instant the cap applies | **PASS** V1-V5 |
+| **NEW** `gate_atlantis_voyage_cap` on the WRITTEN `.arz` (the anti-inert proof) | **PASS** - `V5 resolvable Atlantis-transit routes = []` |
+| **NEW** `gate_atlantis_voyage_cap` on the **DEPLOYED DEV artifact** | **PASS** V1-V5 |
+| in-build FIDELITY assert (every unedited field byte-faithful to base) | **PASS** - 6 capped records |
+| `gate_atlantis_voyage_cap --negtest` (4 planted defects incl. a COLLATERAL over-reach) | **PASS - all 4 caught** |
+| R-210 `gate_dlc_act_ui_cap` on the written `.arz` AND on the deployed DEV artifact | **PASS** - `portal pages = ['Greece', 'Egypt', 'Orient', 'Hades']`, quest-log tabs 1-4 |
+| R-210 `gate_dlc_act_ui_cap --negtest` (3 planted defects) | **PASS - all 3 caught** |
+| `validate_tags` against the EXISTING `Text.arc` | **PASS** (22 upstream WARNs, pre-existing) |
+| **coexisting b79** `gate_orb_loot_breadth` | **PASS** on this artifact |
+| **coexisting b80** `gate_loot_distribution` | **PASS** on this artifact |
+| **coexisting b81** `gate_craft_thrown_breadth` | **PASS** on this artifact |
+| **coexisting** `gate_chest_loot_breadth` / `gate_relic_difficulty_tiers` / `gate_unlock_alignment` | **PASS** on this artifact |
+| Occult/Hunting golden-state gate | **PASS** - 84 waived, 0 other |
+| `run_contracts`, all 6 modules | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| `run_contracts` A/B: the **baseline `f1671207`** under the **identical config** | **4492** - the same number, so this ship adds **ZERO new contract violations**, measured in both directions rather than assumed |
+| `py_compile` on every edited tool | **PASS** |
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `09a0f51d`), copied with
+md5 source==dest verification **while TQ.exe was NOT running** - nothing killed, Steam not restarted.
+**1 of 62 DEV files changed; the other 61 were re-hashed after the copy and are byte-identical.**
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `f1671207` (the build81 arz this replaced)
+-> copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+`local/build81_ship_f1671207.arz`.
+
+**Will's in-game check (needs an Atlantis-DLC owner):** after beating Typhon, walk Rhodes. There is no
+Marinos, no ship captain offering Gadir, and the quest log offers no Atlantis adventure. The portal page
+still shows exactly four act tabs. Full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and
+restart Steam first.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **`BL-VOYAGECAP-DEBT-1` (P1, LAUNCH-GATED): NOT PROVEN IN-GAME.** Everything above is a database and
+  gate proof. The specific runtime risks carried: (a) the engine tolerating a `DLCActorSpawner` with
+  `actorToSpawn` absent (evidence: the template declares that field with `defaultValue = ""`, the same
+  argument R-210 shipped on); (b) a hidden `Npc` being non-conversable (evidence: `startVisible=0` ships
+  on 604 retail records and is TQ's own `Action_ShowNpc` gating idiom). Only an Atlantis-DLC owner
+  walking Rhodes can close this.
+- **`BL-VOYAGECAP-DEBT-2` (P3, scope note):** the two Tartarus portal suppressions were not strictly
+  required (Tartarus is reachable only from Gadir, now closed, or Corinth, already behind the A5 cap).
+  Kept as defence in depth on the A5-proven idiom; flagged so a vet can challenge them independently.
+- **`BL-VOYAGECAP-DEBT-3` (P3, cosmetic):** an in-fiction refusal line from the Rhodes captain was
+  rejected for now - his dialog lives in the base `Resources\XPack3\Dialog.arc`, so authoring one would
+  depend on exactly the unproven mod-arc-vs-base-arc shadowing this lane refused to bet on.
+- **The 20 XPack3 quests stay registered in the map's QUESTS window.** Not a debt: they are inert without
+  their NPCs (every step gates on a conversation, a pickup or a kill inside an unreachable act), exactly
+  like the retained x2/x4 entries analysed in `IT_ENDPOINT_AUDIT.md` Q2. De-registering them is a 688 MB
+  map rebuild for zero behavioural gain.
+- **Repo pytest modules NOT RUN (pre-existing environment gap, not a regression):** the four test modules
+  under `tools/` are import-time integration tests that need the gitignored
+  `reference_mods/SVAERA_customquest/Resources/Levels.arc` (absent in this checkout) and error at
+  COLLECTION regardless of code. Neither file this lane touched is imported by any of them. Stated
+  plainly rather than reported as a green suite.
 
 ## SHIP RECORD - R-184/185/186 THE CRAFT CHAIN is **LIVE ON STEAM** (2026-08-11, `main` @ the round-2 `fix/craft-thrown-breadth` merge, tag `build81-ship`)
 
@@ -1171,10 +1347,11 @@ md5 source==dest verification **while TQ.exe was NOT running** - nothing killed,
   `WorldlMapWindow` record with the DLC page fields absent. Evidence it does: the template declares
   every page variable with `defaultValue = ""`, and retail ships `records\ingameui\mini map\world\
   worldmap.dbr` on the same template with NO page fields at all.
-- **`BL-PORTALCAP-DEBT-1` (P1, OPEN, real act leak):** the Rhodes -> Gadir -> Atlantis BOAT CHAIN is
-  still live for an Atlantis-DLC owner. This lane removes the page, not the voyage. Needs its own lane
-  and Will's sign-off on the layer (recommended: override the Rhodes spawner record). Full option
-  analysis in `PORTAL_PAGE_DLC_CAP.md` section 8.
+- **`BL-PORTALCAP-DEBT-1` (P1, ~~OPEN~~ CLOSED 2026-08-11 by R-211, shipped as `build82`):** the Rhodes
+  -> Gadir -> Atlantis BOAT CHAIN was still live for an Atlantis-DLC owner when this record was written.
+  That lane removed the page, not the voyage. **R-211 closed the voyage** (six `records\xpack3\`
+  overrides; gate `tools/gate_atlantis_voyage_cap.py` V5 proves the derived resolvable-route list is
+  EMPTY). See the BUILD82 records at the top of this file and `docs/ATLANTIS_VOYAGE_CAP.md`.
 - **Repo pytest modules NOT RUN (pre-existing environment gap, not a regression):** the four test
   modules under `tools/` are import-time integration tests that need the gitignored
   `reference_mods/SVAERA_customquest/Resources/Levels.arc` (absent in this checkout) and error at

@@ -1,5 +1,34 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
+> **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
+> **Fully quit TQ and restart Steam before testing** (standing rule).
+>
+> **Background in one line:** `build78` took Atlantis off the portal page, but an Atlantis-DLC owner
+> could still SAIL there. This build closes that.
+>
+> **THE ONE-LINE TEST (needs the Atlantis DLC installed, otherwise there is nothing to see):**
+> On a character that has **beaten Typhon**, walk around **Rhodes**.
+>
+> **What you should see:**
+> 1. **No Marinos.** The Atlantis-quest NPC who used to appear in Rhodes City after Typhon is not there.
+> 2. **No ship captain offering Gadir.** The boat NPC on the Rhodes dock that offered to sail west is
+>    gone from the world and from the minimap.
+> 3. **No Atlantis adventure in the quest log.** Nothing new appears under your active quests.
+> 4. **The portal page still shows exactly FOUR act tabs** (Greece / Egypt / Orient / Immortal Throne),
+>    and the Immortal Throne page still lists Olympus and all of Hades. This is the `build78` behaviour,
+>    re-proved on this build so you can confirm nothing regressed.
+>
+> **What must still work (tell me if any of this broke):** everything else in Immortal Throne. Rhodes
+> itself is unchanged as a place - you can still walk it, fight in it, use its portal and its shops. Only
+> the two Atlantis-DLC travel NPCs are hidden. If you own the DLC, Rhodes should now look exactly the way
+> it looks for a player who does not own it.
+>
+> **Not covered by this test:** if you already sailed to Gadir or Atlantis on an earlier build and have a
+> character standing there, the RETURN boats were deliberately left working so you can sail back. That is
+> intentional anti-strand behaviour, not a leak.
+
+
 > ## 🆕 R-184/185/186 (2026-08-11): THE CRAFT CHAIN - FORMULAS ON NORMAL, EVERY REAGENT FARMABLE, THROWN LEGENDARIES DROP
 > **✅ LIVE ON DEV as `build81` (arz `f1671207`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured on
