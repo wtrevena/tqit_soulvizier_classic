@@ -4262,3 +4262,139 @@ Epic** (his Normal `.que` is the stale pre-PR-5 shape). If the Warden is still s
 diagnostic question is **did he walk in or teleport in** - that answer selects the already-identified
 fallback, a `GridEntrance` door (the proven build24/25 Knossos->Uber / Sparta L2 mechanism) instead of
 a boat NPC.
+
+---
+
+## Uber orb loot breadth (new section; decade 210-219, opened 2026-08-10, lane `fix/orb-loot-breadth`)
+
+## R-210 [2026-08-10] IMPLEMENTED (branch `fix/orb-loot-breadth`, module `tools/patches/orb_loot_breadth.py`) - the uber's MYSTICAL ORB must pay every class too
+
+**Will, VERBATIM (2026-08-10):**
+
+> "for the mystical orbs that the uber monsters drop, the items should drop with increased breadth
+> as well so all classes of items could be dropped"
+
+(Numbered R-210 rather than R-181: R-180 opened the 180-189 decade for the CHEST lane, R-200 took
+the 200s the same day, and this is a distinct container class with its own gate. The ruling text is
+what binds, not the number.)
+
+**"AS WELL" POINTS AT R-180, AND THAT IS EXACTLY WHAT THIS IS.** R-180 fixed the CHESTS that
+morning: every mod chest now names the aggregate weapon master `svc_unique_weapons_{n,e,l}01` and
+legendary spears went 0 -> 22. Will's "as well" is the OTHER half of the mod's loot economy - the
+on-death orb. The literal "mystical orb" is settled by R-200: every `genericbossorb_0N` chest carries
+`description = tagEndChest02` and base `Text_EN` defines `tagEndChest02 = Mystical Orb`.
+
+**THE DEFECT, MEASURED ON THE build76 SHIP ARZ (51,234 records) - IT IS R-180's DEFECT, IN A SECOND
+DONOR FAMILY, AND IT IS TOTAL.** Each orb tier is really THREE loot tables (the proxy's
+`accessory1` / `accessoryEpic1` / `accessoryLegendary1` slots -> pool -> chest -> `tables`). Every
+one of them carries the same collapsed weapon row, using 5 of its 6 member slots:
+
+    all_13-15 (w2000) . staff_all_13-15 (w500) . unique\1h_all_n01 (w27)
+    . unique\bow_n01 (w27) . unique\staff_n01 (w27)
+
+`1h_all_*01` is a LootMasterTable with exactly THREE children - axe, club, sword. The donor
+compensates for bow and staff by naming them DIRECTLY and forgot the third excluded class, SPEAR;
+the level-banded statics beside it carry no unique spears at all. Result: **0 spears of ANY quality
+were reachable from 15 of the 18 uber orb tables, at every tier and every difficulty.**
+
+**THE TELL, AND WHY THIS WAS INVISIBLE.** The three tables that were already fine are orb05's
+`records\item\loottables\svc\svc_uberorb_apex_{n,e,l}01c` - and only because they live in an `\svc\`
+folder, so R-180's `chest_loot_breadth` sweep (scoped to mod-OWNED FixedItemLoot) reached them. The
+other four tiers sit under `records\item\containers\defaultloot\` and `records\xpack\item\containers\
+loot tables\`, which that ownership rule cannot see. R-180's own gate was therefore GREEN on a build
+where four of five orb tiers could not drop a spear. This is the same lesson as R-200 hole 1, one
+layer down: a scope rule chosen for one container class silently excludes another.
+
+**IMPLEMENTED (arz-only - proxies, pools, chests and loot tables all live in the `.arz`, so the fix
+reaches the TESTHUB, DEV and canonical/Steam together with no Levels/Text/Quests rebuild):**
+- `tools/svc_orb_breadth.py` (NEW) is the ONE implementation of the orb contract, and it is a THIN
+  driver over R-180's `tools/svc_loot_breadth.py` - the same masters, the same `widen_weapon_row`,
+  the same `audit_table`. Not a second opinion.
+- `tools/patches/orb_loot_breadth.py` (NEW, registered after `chest_loot_breadth` and
+  `red_uber_orbs`, before the no-op `visuals`) applies it and carries the gate.
+- PER TABLE, and nothing else: the tier-correct master into the ONE free loot1 member slot at
+  weight 800, `loot1Chance` (weapons) 13/14 -> 40 and `loot6Chance` (shields) 13/14 -> 30. Those two
+  numbers are NOT invented here - they are the values orb05 has SHIPPED since build75, so the ladder
+  becomes self-consistent: after this wave every loot container in the mod, chest or orb, has the
+  same weapon-row shape.
+
+**SCOPE IS DERIVED, NEVER TYPED, AND DERIVED OVER MOD UNION BASE** (R-200 hole 2: a roster derived
+over the mod db alone is blind to a base-only uber). An UBER is R-200's own predicate - `um_*`
+basename or a `tagSVCMonster*` display tag. SCOPE = every proxy an uber names + every table its
+three difficulty slots resolve to. MEASURED: **51 uber carriers -> 7 proxies, 6 of them IN REACH
+-> 18 tables** =
+`genericbossorb_01..05` (the mystical-orb ladder) plus `bosschest02_charon`, whose terminal Ferryman
+`um_charonform2_ferryman_99` IS a red uber and whose three tables carry the identical collapse.
+
+**THE SCOPE BOUNDARY, STATED SO NOBODY WIDENS IT BY ACCIDENT** (the R-200 precedent, in spirit):
+the six proxies whose consumers are BASE act/quest bosses rather than ubers are OUT -
+`bosschestproxy11_aktaios` (3 Telkines), `bosschestproxy21_typhon` (2), `bosschestproxy_blackwidow`
+(1), `coldworm_orb` (1), `1_default_33-35` (1) - and `bosschestproxy_leinth`, whose three Boss-rank
+carriers are neither `um_` nor tagSVCMonster. Leinth needs nothing anyway: `uber_apex_orb` repointed
+her chests onto the `svc_uberorb_apex_*` tables, so R-180 already widened them and R-180's gate
+already covers them. Registered as `BL-R210-DEBT-1`. A negative test proves the boundary is real AND
+live: plant a new uber on the Aktaios orb and the derived scope GROWS to cover it and reds.
+
+**WHAT THE GATE FOUND ON ITS OWN FIRST UNION RUN, AND WHY IT IS NOT WIDENED.** Deriving over mod UNION
+base immediately paid for itself: exactly ONE uber names a proxy the mod overlay does not contain -
+the base-only Hero-rank DEVICE `records\creature\devices\darkobelisk\um_darkobelisk_55.dbr`
+(`tagAEMonsterName07`, the Dark Obelisk) -> `records\proxies boss\le_new\25_towerofjudgement_treasure.dbr`.
+MEASURED: it resolves fine in the base game, and its chain lands on `g_default_{n,e,l}01c` - the GOLDEN
+CHEST tables (`tagChest006`), each shared with FIVE base containers (the act-4 golden chests, two
+side-quest golden chests, the Cerberus and Skeletal Typhon repeat boss chests). Widening it would
+rewrite the base game's act-4 golden-chest economy from a lane asked about mystical orbs. It is PINNED
+in `svc_orb_breadth.OUT_OF_REACH` with that reason (`BL-R210-DEBT-1`), and a NEW base-only chain fails
+the gate (O5) so it becomes a human decision rather than a silent omission. TWO GUARDS came out of that
+finding and both ship: O5 (base-only chains must be pinned, and a pin that names nothing is stale
+config) and O6 (an in-scope table that ANY container outside the uber chains also names is excluded
+from the sweep and stops the build until a human decides - so this lane can never quietly rewrite
+shared base loot). Both are exercised by planted negatives; O6 is currently a pure guard, since all 15
+non-mod-owned in-scope tables were measured to have exactly ONE referrer, their own orb chest.
+
+**NON-REDUCTION / IDENTITY LAW (Will farms these ubers; R-100 #17 + Will 2026-08-08 preserved).**
+`apply()` snapshots all 60 in-scope records - every table AND every proxy, accessory pool and chest
+in every chain - and FAILS THE BUILD if any field outside `loot1Name<free>` / `loot1Weight<free>` /
+`loot1Chance` / `loot6Chance` moves, or if any chance drops. So numSpawn equations come through
+byte-unchanged (the apex tier keeps its `*2.2/*2.4` edge over the generic `*1.2/*1.6` and
+`*0.9/*1.3`), as do the relic row, the potion row, both armour rows, the mesh, the gold generator,
+the level equation and `description tagEndChest02`. No member is ever removed and no chance lowered.
+There is deliberately NO guaranteed-weapon retarget: an orb's loot3 is potions + rare misc at 10%,
+not the chests' 100% weapon slot, and adding one would change HOW MUCH an orb pays. Will asked for
+breadth.
+
+**TIER LAW preserved by construction:** the master is resolved through the DIFFICULTY SLOT the chain
+arrived on, so the normal branch can only gain `*_n01` tables (measured 100% Epic-classification).
+MEASURED BASELINE, stated rather than implied: the normal branch of every orb tier ALREADY reaches
+41-56 `ItemArtifact` + 3 `ItemArtifactFormula` Legendary-classified records (base-game mercenary
+scrolls and arcane formulae - exactly what R-180's own B3 exempts) and ZERO legendary GEAR, before
+and after.
+
+**MEASURED (dry-run of the real code against the build76 arz), target-classification pool and
+reachable spears, before -> after:**
+
+    orb01    n 117 -> 195   e  72 -> 99    l 194 -> 260     spear 0 -> 18 / 9 / 22
+    orb02    n 101 -> 182   e  75 -> 102   l 138 -> 241     spear 0 -> 18 / 9 / 22
+    orb03    n  96 -> 180   e  71 -> 96    l 196 -> 262     spear 0 -> 18 / 9 / 22
+    orb04    n  99 -> 181   e  95 -> 116   l 258 -> 308     spear 0 -> 18 / 9 / 22
+    orb05    n 181          e 116          l 308            unchanged - R-180 got there
+    charon   n  99 -> 181   e  95 -> 116   l 258 -> 308     spear 0 -> 18 / 9 / 22
+
+**GATE (law 4, no new surface without a gate):** `tools/gate_orb_loot_breadth.py` + the in-build
+`orb_loot_breadth.verify()`, sharing ONE implementation - O1 every in-scope table reaches every
+weapon class at its own difficulty (SPEAR named explicitly), O2 the per-branch pool floor
+(n 150 / e 80 / l 200, each ~15% under the post-wave thinnest table), O2b the breadth master is
+still NAMED in the weapon row (structural, so a re-collapse reds by name), O3 no legendary GEAR on
+the normal branch, O4 every chain resolves end to end at all three difficulties and the derived
+scope never shrinks below its measured 6-proxy / 18-table floor, O5 every base-only uber chain is
+PINNED with its reason and no pin is stale, O6 no in-scope table is shared with a container outside
+the uber chains. HONEST LIMIT recorded in the code: only the NORMAL floor also sits above the pre-wave
+value, so on the epic and legendary branches the revert catch is O1 + O2b, not the count. Negatives:
+`py tools/debug/negtest_orb_breadth.py <arz>` - 10/10, run over mod UNION base like the build gate,
+each case asserting its own check code (a re-collapse; a floor-only collapse with B1 proven NOT to
+fire; a tier leak; a broken chain link; the derivation killed; a NEW uber dragging an unseen chain into
+scope; a base chest starting to share an orb table, with B1/B2 proven NOT to fire; an unpinned
+base-only chain; plus two positive controls).
+
+**NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's; Will's kill of
+any orb-dropping uber and seeing spears / class variety out of the orb is the remaining launch gate.
+Registered as `BL-R210-DEBT-2`. See `docs/WILL_TEST_GUIDE.md` and the BACKLOG gate record.

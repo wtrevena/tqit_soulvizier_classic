@@ -39,12 +39,26 @@ disjoint by construction (`chest_loot_breadth` sweeps mod-owned `\svc\` tables,
 this one sweeps the uber drop chains) EXCEPT for orb05's three apex tables, which
 are already widened by the time this module runs and are therefore a no-op here.
 
+WHAT THE GATE FOUND ON ITS FIRST UNION RUN, AND WHY IT IS NOT WIDENED. Exactly one
+uber names a proxy the mod overlay does not contain: the base-only Hero-rank DEVICE
+`um_darkobelisk_55` (the Dark Obelisk) ->
+`records\proxies boss\le_new\25_towerofjudgement_treasure.dbr`. It resolves fine in
+the base game, and its chain lands on `g_default_{n,e,l}01c` - the GOLDEN CHEST
+tables (`tagChest006`), each shared with FIVE base containers (the act-4 golden
+chests, two side-quest golden chests, the Cerberus and Skeletal Typhon repeat boss
+chests). Widening that would rewrite the base game's act-4 golden-chest economy from
+a lane asked about mystical orbs. It is PINNED in `svc_orb_breadth.OUT_OF_REACH`
+with that reason and registered as `BL-R210-DEBT-1`; a NEW base-only chain fails the
+gate so it becomes a human decision instead of a silent omission.
+
 GATE (verify, post-finalization): `svc_orb_breadth.audit_db` over the final db -
 O1 every in-scope table reaches every weapon class at its own difficulty (SPEAR
 named explicitly), O2 the per-branch pool floor, O2b the breadth master is still
 NAMED in the weapon row, O3 no legendary GEAR on the normal branch, O4 every uber
 orb chain resolves end to end at all three difficulties and the derived scope never
-shrinks below its measured floor.
+shrinks below its measured floor, O5 every base-only chain is pinned with a reason
+and no pin is stale, O6 no in-scope table is shared with a container outside the
+uber chains (widening shared loot is a Will decision, not a sweep).
 Standalone twin: `py tools/gate_orb_loot_breadth.py <arz>`.
 Negative tests:  `py tools/debug/negtest_orb_breadth.py <arz>`.
 """
@@ -103,9 +117,11 @@ def apply(db, tags):
     lk.refresh()
 
     # ── 2. scope, measured and printed (the wave report IS the build log) ────
-    carriers = SOB.uber_proxies(db, base_rows)
-    chains = SOB.orb_chains(db, lk, base_rows)
-    tables = SOB.scope_tables(db, lk, base_rows)
+    carriers = SOB.uber_proxies(db, base_rows)          # one 51k-record scan
+    chains = SOB.orb_chains(db, lk, base_rows, carriers)
+    shared = SOB.shared_tables(db, lk, base_rows, chains)
+    unreachable = SOB.unreachable_chains(db, lk, base_rows, carriers)
+    tables = SOB.scope_tables(db, lk, base_rows, chains, shared)
     print("  ORB BREADTH: %d uber carrier(s) name %d proxy/proxies -> %d loot "
           "table(s) across %d difficulty chain(s)"
           % (sum(len(v) for v in carriers.values()), len(carriers), len(tables),
@@ -114,7 +130,21 @@ def apply(db, tags):
         real = lk.real(proxy_l)
         print("      %-34s %2d uber carrier(s)%s"
               % (proxy_l.rsplit('\\', 1)[-1], len(carriers[proxy_l]),
-                 '' if real else '   ** DOES NOT RESOLVE (verify() will red) **'))
+                 '' if real else '   OUT OF REACH (base-only proxy)'))
+    # Never silent: the base-only chains and any shared table are printed WITH
+    # their reason, and verify() reds on any that is not pinned.
+    for proxy_l, who in sorted(unreachable.items()):
+        why = SOB.OUT_OF_REACH.get(proxy_l) or next(
+            (v for k, v in SOB.OUT_OF_REACH.items() if SLB._n(k) == proxy_l), None)
+        print("  ORB BREADTH: OUT OF REACH %s (named by %s) - %s"
+              % (proxy_l, ', '.join(c.rsplit('\\', 1)[-1] for c in who),
+                 (why.split('.')[0] + '.') if why else
+                 '** NOT PINNED in svc_orb_breadth.OUT_OF_REACH; verify() will red **'))
+    for table_l, outside in sorted(shared.items()):
+        print("  ORB BREADTH: NOT WIDENED (shared) %s - also named by %d container(s) "
+              "outside every uber chain: %s"
+              % (table_l, len(outside),
+                 ', '.join(SLB._n(o).rsplit('\\', 1)[-1] for o in outside[:4])))
     if len(carriers) < SOB.MIN_PROXIES or len(tables) < SOB.MIN_TABLES:
         raise SystemExit(
             "[orb_loot_breadth] SCOPE COLLAPSED at apply(): %d proxy/proxies and %d "
@@ -130,7 +160,7 @@ def apply(db, tags):
     before = SOB.snapshot(db, watched)
 
     # ── 4. the widening (the R-180 contract, applied per difficulty slot) ────
-    changes, _ = SOB.widen_chains(db, lk, base_rows)
+    changes, _ = SOB.widen_chains(db, lk, base_rows, tables=tables)
     print("  ORB BREADTH: weapon row widened on %d of %d table(s); %d already "
           "carried it (orb05's apex tables, widened by chest_loot_breadth)."
           % (len(changes), len(tables), len(tables) - len(changes)))

@@ -771,7 +771,7 @@ REGISTRY = [
                             # over mod UNION base for R-200's HOLE 2 reason): every proxy an
                             # UBER names (um_* basename or a tagSVCMonster* display tag), and
                             # every loot table its accessory1/Epic1/Legendary1 slots resolve
-                            # to. MEASURED: 50 uber carriers -> 6 proxies -> 18 tables =
+                            # to. MEASURED: 51 uber carriers -> 7 proxies (6 IN REACH) -> 18 tables =
                             # genericbossorb_01..05 (the mystical-orb ladder, tagEndChest02)
                             # plus bosschest02_charon, whose terminal Ferryman IS a red uber
                             # and whose 3 tables carry the identical collapse. The 6 proxies

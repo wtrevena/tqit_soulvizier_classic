@@ -102,12 +102,16 @@ scan runs over mod UNION base, reusing `red_uber_orbs.load_base_rows` (already
 cached for the build).
 
 SCOPE = every proxy an UBER names, and every loot table its three difficulty slots
-resolve to. MEASURED on the build76 arz: 50 uber carriers -> 6 proxies -> 18 tables:
+resolve to. MEASURED on the build76 arz: **51 uber carriers -> 7 proxies, of which 6
+are in reach -> 18 tables**:
     genericbossorb_01/02/03/04/05  (the 5-tier mystical-orb ladder, tagEndChest02)
     bosschest02_charon             (xtagChest18 "Charon's Essence" - the Ferryman's
                                     terminal form `um_charonform2_ferryman_99` is a
                                     red uber, and its 3 tables carry the IDENTICAL
                                     collapsed weapon row)
+    25_towerofjudgement_treasure   OUT OF REACH - see OUT_OF_REACH below. Found BY
+                                   this gate on its first union run, which is R-200
+                                   HOLE 2 paying for itself immediately.
 
 DELIBERATELY OUT OF SCOPE, and it is the same boundary R-200 drew: the six proxies
 whose consumers are base act/quest bosses rather than ubers - `bosschestproxy11_aktaios`
@@ -174,10 +178,44 @@ POOL_FLOOR = {'n': 150, 'e': 80, 'l': 200}
 # collapses while a single spear survives.
 
 # Sanity floors on the scope itself: the derivation must never quietly shrink to
-# nothing (the `chest_loot_breadth` "no chest audited at all" lesson). MEASURED:
-# 6 proxies / 18 tables / 50 uber carriers on the build76 arz.
+# nothing (the `chest_loot_breadth` "no chest audited at all" lesson). MEASURED on
+# the build76 arz: 51 uber carriers -> 7 proxies, 6 of them IN REACH -> 18 tables.
+# The floor counts the IN-REACH proxies, since those are the ones with tables.
 MIN_PROXIES = 6
 MIN_TABLES = 18
+
+# ── OUT OF REACH: an uber whose proxy lives ONLY in the base game ────────────
+# FOUND BY THIS GATE ITSELF, running in mod-UNION-base mode (it is exactly the
+# R-200 HOLE 2 shape, so the union scan earning its keep on the first run is the
+# expected outcome, not a surprise). The mod overlay cannot widen a record it does
+# not contain, and importing a base container chain wholesale is a different
+# decision from widening one weapon row - so these are reported, counted and
+# PINNED with their reason, never silently dropped. An UNPINNED base-only chain
+# fails the gate, so a new one is a human decision rather than a quiet omission
+# (the `uber_quest_markers._exempt_closure` / R-200 EXEMPT discipline).
+OUT_OF_REACH = {
+    r'records\proxies boss\le_new\25_towerofjudgement_treasure.dbr':
+        "base-only proxy carried by the base-only Hero-rank DEVICE "
+        r"`records\creature\devices\darkobelisk\um_darkobelisk_55.dbr` "
+        "(tagAEMonsterName07, the Dark Obelisk - an `um_` record by filename, not a "
+        "fought uber). MEASURED: it resolves fine in the base game and its chain "
+        "lands on `g_default_{n,e,l}01c` - the GOLDEN CHEST tables (tagChest006), "
+        "each shared with FIVE base containers (the act-4 golden chests, 2 "
+        "side-quest golden chests, the Cerberus and Skeletal Typhon repeat boss "
+        "chests). Widening it would rewrite the base game's act-4 golden-chest "
+        "economy, which is neither a mystical orb nor anything Will named - the "
+        "same boundary R-200 drew. Registered as BL-R210-DEBT-1.",
+}
+
+# ── SHARED TABLES: acknowledged, deliberately not widened ───────────────────
+# EMPTY ON PURPOSE, and MEASURED empty: all 15 non-mod-owned in-scope tables have
+# exactly ONE referrer (their own orb chest), and the 3 mod-owned apex tables are
+# exempted by the mod-ownership clause of `shared_tables` (they are shared with
+# Leinth's chests on purpose, and R-180's gate already covers them). So this dict
+# is a GUARD, not live config: if a future uber chain ever lands on a table the
+# base game also uses, the gate stops the build and a human decides whether to
+# widen shared loot. Pin it here WITH the decision to make the gate green again.
+SHARED_TABLES_ACKNOWLEDGED = {}
 
 _n = SLB._n
 _sc = SLB._sc
@@ -223,19 +261,27 @@ def uber_proxies(db, base_rows=None):
     return dict(out)
 
 
-def orb_chains(db, lk=None, base_rows=None):
-    """[(proxy, difficulty, pool, chest, table, carriers)] for every uber drop chain.
+def orb_chains(db, lk=None, base_rows=None, proxies=None):
+    """[(proxy, difficulty, pool, chest, table, carriers)] for every uber drop chain
+    whose proxy the mod overlay actually contains.
 
     A link that does not resolve is reported with None in its place rather than
     dropped, so `audit_db` can red it instead of silently narrowing the scope.
+    A chain whose PROXY is base-only is not a broken chain - it is out of reach
+    (see OUT_OF_REACH); `unreachable_chains` reports those separately.
+
+    `proxies` lets a caller pass an already-computed `uber_proxies()` map. Deriving
+    it costs a full 51k-record scan, and the audit needs the same map four times,
+    so every helper here takes the precomputed value (the negative-test battery runs
+    the whole audit ten times over).
     """
     lk = lk or SLB.Lookup(db)
     chains = []
-    for proxy_l, carriers in sorted(uber_proxies(db, base_rows).items()):
+    proxies = uber_proxies(db, base_rows) if proxies is None else proxies
+    for proxy_l, carriers in sorted(proxies.items()):
         proxy = lk.real(proxy_l)
         if proxy is None:
-            chains.append((proxy_l, None, None, None, None, carriers))
-            continue
+            continue                       # -> unreachable_chains()
         for field, tier in DIFF_SLOTS:
             pool = lk.real(_sc(db.get_field_value(proxy, field)))
             chest = lk.real(_sc(db.get_field_value(pool, 'fixedItemName1'))) if pool else None
@@ -244,15 +290,68 @@ def orb_chains(db, lk=None, base_rows=None):
     return chains
 
 
-def scope_tables(db, lk=None, base_rows=None):
+def unreachable_chains(db, lk=None, base_rows=None, proxies=None):
+    """{norm(proxy): carriers} for uber proxies the MOD overlay does not contain.
+
+    These are base-game chains: real at runtime, invisible and un-editable from
+    the overlay. Kept as a first-class result instead of a silent skip.
+    """
+    lk = lk or SLB.Lookup(db)
+    proxies = uber_proxies(db, base_rows) if proxies is None else proxies
+    return {p: c for p, c in sorted(proxies.items()) if lk.real(p) is None}
+
+
+def _referrers(db, table_l, cache):
+    """Every record whose `tables` field names `table_l` (one pass, memoised)."""
+    if not cache:
+        for rec in db.record_names():
+            v = _sc(db.get_field_value(rec, 'tables'))
+            if isinstance(v, str) and v.strip():
+                cache.setdefault(_n(v), []).append(rec)
+    return cache.get(table_l, [])
+
+
+def shared_tables(db, lk=None, base_rows=None, chains=None):
+    """{norm(table): [outside referrer, ...]} for in-scope tables that are ALSO
+    named by a container outside every uber drop chain.
+
+    WHY THIS GUARD EXISTS. Widening a table changes loot for EVERY container that
+    names it. The orb tables are exclusive to their own orb chests (MEASURED: 1
+    referrer each), so widening them touches only uber drops. But a chain that
+    landed on a SHARED table - the Dark Obelisk's golden-chest tables are the live
+    example, 5 base referrers each - would quietly rewrite base-game loot from a
+    lane that was asked about mystical orbs. A table is therefore in scope only if
+    every referrer is one of the uber chains' own chests, OR the table is mod-owned
+    (an `\\svc\\` table is R-180's scope and is already gated there; the 3 apex
+    tables are exactly that case, shared deliberately with Leinth's chests).
+    """
+    lk = lk or SLB.Lookup(db)
+    chains = orb_chains(db, lk, base_rows) if chains is None else chains
+    chest_set = {_n(c[3]) for c in chains if c[3]}
+    cache = {}
+    out = {}
+    for _p, _t, _pool, _chest, table, _c in chains:
+        if not table or _n(table) in out or SLB.is_mod_owned(table):
+            continue
+        outside = [r for r in _referrers(db, _n(table), cache)
+                   if _n(r) not in chest_set]
+        if outside:
+            out[_n(table)] = outside
+    return out
+
+
+def scope_tables(db, lk=None, base_rows=None, chains=None, shared=None):
     """{norm(table): (real, tier)} - the in-scope loot tables, de-duplicated.
 
     De-duplication matters: two orb tiers may legitimately share a table, and a
-    table must be widened once and audited once.
+    table must be widened once and audited once. Tables shared with a container
+    outside the uber chains are EXCLUDED (see `shared_tables`).
     """
+    chains = orb_chains(db, lk, base_rows) if chains is None else chains
+    shared = shared_tables(db, lk, base_rows, chains) if shared is None else shared
     out = {}
-    for _proxy, tier, _pool, _chest, table, _c in orb_chains(db, lk, base_rows):
-        if table and _n(table) not in out:
+    for _proxy, tier, _pool, _chest, table, _c in chains:
+        if table and _n(table) not in out and _n(table) not in shared:
             out[_n(table)] = (table, tier)
     return out
 
@@ -288,7 +387,7 @@ def is_allowed_change(field):
     return field in ALLOWED_FIELDS or field.startswith(ALLOWED_FIELD_PREFIXES)
 
 
-def widen_chains(db, lk=None, base_rows=None, verbose=True):
+def widen_chains(db, lk=None, base_rows=None, verbose=True, tables=None):
     """Apply the R-180 weapon-row contract to every in-scope orb table.
 
     Returns (changes, tables) where changes = {table: [change, ...]}.
@@ -296,7 +395,7 @@ def widen_chains(db, lk=None, base_rows=None, verbose=True):
     (orb05, widened by chest_loot_breadth) reports no change.
     """
     lk = lk or SLB.Lookup(db)
-    tables = scope_tables(db, lk, base_rows)
+    tables = scope_tables(db, lk, base_rows) if tables is None else tables
     changes = {}
     for _key, (table, tier) in sorted(tables.items()):
         ch = SLB.widen_weapon_row(db, table, tier, lk)
@@ -326,6 +425,12 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
       O4        every uber drop chain resolves proxy -> pool -> chest -> table at all
                 three difficulties, and the derived scope never shrinks below the
                 measured floor (the "no table audited at all" trap).
+      O5        every base-only (out-of-reach) uber chain is PINNED in OUT_OF_REACH
+                with its reason, and every pin still names a live uber chain - so a
+                NEW one is a human decision, not a quiet omission, and a stale pin
+                cannot rot.
+      O6        no in-scope table is shared with a container outside the uber chains
+                (widening a shared table would change loot nobody asked about).
     """
     lk = lk or SLB.Lookup(db)
     ex = SLB.Expander(db, lk)
@@ -333,16 +438,51 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
     problems = []
     stats = {}
 
-    chains = orb_chains(db, lk, base_rows)
-    proxies = {c[0] for c in chains}
-    for proxy, tier, pool, chest, table, carriers in chains:
-        who = (carriers[0].rsplit('\\', 1)[-1] + (' +%d more' % (len(carriers) - 1)
-                                                  if len(carriers) > 1 else ''))
-        if tier is None:
+    def _who(carriers):
+        return (carriers[0].rsplit('\\', 1)[-1]
+                + (' +%d more' % (len(carriers) - 1) if len(carriers) > 1 else ''))
+
+    # ONE derivation, reused by every check below: each of these costs a full
+    # 51k-record scan, and the negative-test battery calls audit_db ten times.
+    proxies = uber_proxies(db, base_rows)
+    chains = orb_chains(db, lk, base_rows, proxies)
+
+    # O5 - base-only chains: pinned, or a gate failure
+    unreachable = unreachable_chains(db, lk, base_rows, proxies)
+    pinned = {_n(k) for k in OUT_OF_REACH}
+    for proxy_l, carriers in sorted(unreachable.items()):
+        if _n(proxy_l) not in pinned:
             problems.append(
-                "O4 DANGLING ORB: %s is named by %d uber record(s) (%s) but does not "
-                "resolve - the drop yields nothing." % (proxy, len(carriers), who))
+                "O5 OUT-OF-REACH ORB CHAIN, NOT PINNED: %s is named by %d uber "
+                "record(s) (%s) but does not exist in the mod overlay, so this lane "
+                "can neither audit nor widen it. Decide deliberately: import the "
+                "chain, or pin it in svc_orb_breadth.OUT_OF_REACH with the reason."
+                % (proxy_l, len(carriers), _who(carriers)))
+    for pin in sorted(pinned):
+        if pin not in {_n(k) for k in unreachable} and lk.real(pin) is None:
+            problems.append(
+                "O5 STALE OUT_OF_REACH PIN: %s is no longer an out-of-reach uber "
+                "chain (no uber names it, or it is gone). Remove the pin or fix the "
+                "record - a pin that names nothing is dead config." % pin)
+
+    # O6 - tables shared outside the uber chains are excluded, and said so
+    shared = shared_tables(db, lk, base_rows, chains)
+    ack = {_n(k) for k in SHARED_TABLES_ACKNOWLEDGED}
+    for table_l, outside in sorted(shared.items()):
+        if table_l in ack:
             continue
+        problems.append(
+            "O6 SHARED TABLE, NOT ACKNOWLEDGED: %s is in an uber's drop chain but is "
+            "ALSO named by %d container(s) outside every uber chain (%s), so widening "
+            "it would change loot this lane was never asked about. It is already "
+            "excluded from the sweep; decide deliberately and pin it in "
+            "svc_orb_breadth.SHARED_TABLES_ACKNOWLEDGED with the decision."
+            % (table_l.rsplit('\\', 1)[-1], len(outside),
+               ', '.join(_n(o).rsplit('\\', 1)[-1] for o in outside[:4])))
+
+    resolved = {c[0] for c in chains}
+    for proxy, tier, pool, chest, table, carriers in chains:
+        who = _who(carriers)
         if pool is None or chest is None or table is None:
             problems.append(
                 "O4 BROKEN CHAIN: %s [%s] -> pool=%s chest=%s table=%s (named by %s). "
@@ -350,13 +490,13 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
                 % (_n(proxy).rsplit('\\', 1)[-1], DIFF_LABEL[tier], bool(pool),
                    bool(chest), bool(table), who))
 
-    tables = scope_tables(db, lk, base_rows)
-    if len(proxies) < MIN_PROXIES or len(tables) < MIN_TABLES:
+    tables = scope_tables(db, lk, base_rows, chains, shared)
+    if len(resolved) < MIN_PROXIES or len(tables) < MIN_TABLES:
         problems.append(
             "O4 SCOPE COLLAPSED: derived %d proxy/proxies and %d loot table(s); the "
             "measured floor is %d/%d. An orb-breadth gate that audits nothing is the "
             "failure mode this gate exists to prevent."
-            % (len(proxies), len(tables), MIN_PROXIES, MIN_TABLES))
+            % (len(resolved), len(tables), MIN_PROXIES, MIN_TABLES))
 
     for _key, (table, tier) in sorted(tables.items()):
         problems.extend(SLB.audit_table(db, table, tier, ex, floor=floors[tier],

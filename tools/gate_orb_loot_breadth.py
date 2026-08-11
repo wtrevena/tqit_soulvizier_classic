@@ -28,6 +28,14 @@ guessed from a file name, since `uberorb_default_13-15` is a LEVEL band, not a t
   O4   every uber orb chain resolves proxy -> accessory pool -> chest -> loot table at
        all three difficulties, and the derived scope never shrinks below its measured
        floor (an orb gate that audits nothing is the failure this gate prevents).
+  O5   every uber chain whose proxy exists ONLY in the base game is PINNED in
+       `svc_orb_breadth.OUT_OF_REACH` with the reason it is not widened, and no pin is
+       stale. MEASURED: exactly one - the Dark Obelisk's Tower-of-Judgement treasure,
+       whose chain lands on the shared act-4 GOLDEN CHEST tables.
+  O6   no in-scope table is also named by a container outside every uber chain.
+       Widening a shared table would change base-game loot from a lane asked about
+       mystical orbs, so such a table is excluded from the sweep and the gate stops
+       the build until a human decides (pin it in SHARED_TABLES_ACKNOWLEDGED).
 
 SCOPE is DERIVED, never typed (the R-200 lesson): every proxy an UBER names
 (`um_*` basename or a `tagSVCMonster*` display tag), over mod UNION base, and every
@@ -83,7 +91,8 @@ def main(argv):
     for proxy_l in sorted(carriers):
         print("  %-36s %2d uber carrier(s)%s"
               % (proxy_l.rsplit('\\', 1)[-1], len(carriers[proxy_l]),
-                 '' if lk.real(proxy_l) else '   ** UNRESOLVED **'))
+                 '' if lk.real(proxy_l)
+                 else '   OUT OF REACH (base-only proxy; O5 requires a pin)'))
 
     problems, stats = SOB.audit_db(db, lk, base_rows, verbose=verbose)
     print("uber orb loot tables audited: %d" % len(stats))

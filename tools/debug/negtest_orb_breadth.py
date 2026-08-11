@@ -60,11 +60,22 @@ LADDER_PROXIES = tuple(r'records\item\containers\new\genericbossorb_%02d.dbr' % 
 AKTAIOS = r'records\item\containers\boss\proxy\bosschestproxy11_aktaios.dbr'
 NEW_UBER = r'records\creature\monster\skeleton\um_negtest_orbless_99.dbr'
 UBER_DONOR = r'records\creature\monster\skeleton\um_gorrahk_99.dbr'
+# A base act-4 GOLDEN chest (tagChest006). Its own tables have 5 base referrers,
+# which is why the Dark Obelisk's chain is pinned OUT_OF_REACH; N7 uses it as the
+# outside container that must never be allowed to drag an orb table into a sweep.
+GOLDEN_CHEST = r'records\xpack\item\containers\01c_goldenchest.dbr'
+
+_BASE_ROWS = None
 
 
 def audit(db):
-    """Fresh Lookup + Expander every call (records move between cases)."""
-    return SOB.audit_db(db, lk=None, base_rows=None)[0]
+    """Fresh Lookup + Expander every call (records move between cases).
+
+    Runs over mod UNION base, like the build gate does, so the base-only chains
+    (the Dark Obelisk) are visible to N8 instead of being invisible to the test
+    battery - which is the R-200 HOLE 2 mistake in miniature.
+    """
+    return SOB.audit_db(db, lk=None, base_rows=_BASE_ROWS)[0]
 
 
 def _strip_master(db, table):
@@ -90,9 +101,14 @@ def main(argv):
     if len(argv) < 2:
         print("usage: py tools/debug/negtest_orb_breadth.py <arz>")
         return 2
+    global _BASE_ROWS
     db = ArzDatabase.from_arz(Path(argv[1]))
     print("\n=== R-210 orb-breadth negatives ===")
     OLB.apply(db, {})
+    _BASE_ROWS = RUO.load_base_rows(required=False, who='negtest')   # cached by apply()
+    if not _BASE_ROWS:
+        print("  WARNING running MOD-ONLY: the base arz is unreadable, so N8 (the "
+              "base-only chain) cannot be exercised. Not a pass.")
 
     results = []
 
@@ -190,15 +206,48 @@ def main(argv):
     run("N5 every uber carrier of the ladder stripped (scope collapses)",
         _kill_derivation, expect=('O4',))
 
-    # ── N6 a NEW uber planted on a collapsed, out-of-scope orb ──────────────
-    def _new_uber_on_collapsed_orb(d):
+    # ── N6 a NEW uber drags a previously-unseen chain into scope ────────────
+    # The R-200 regression shape: nobody widened the new uber's orb. The base-boss
+    # Aktaios chain is invisible to this gate until an uber names it (P2 proves
+    # that), so the gate going RED and naming `telkine_default_19-21` - a table it
+    # never mentioned before - proves the derivation is LIVE, not a snapshot.
+    # HONEST NOTE ON WHICH CODE FIRES: it reds on O6, not B1, because every
+    # non-uber chain in this db shares its loot tables with sibling base chests
+    # (the three Telkines share one table set), so the gate's correct answer is
+    # "a human must decide whether to widen shared base loot", not "widen it".
+    # There is no chain in this db that is BOTH outside the current scope AND
+    # exclusive, so the collapse-is-caught half is proven by N1 against a real
+    # in-scope table rather than by fabricating a synthetic chain.
+    def _new_uber_on_unseen_orb(d):
         lk = SLB.Lookup(d)
         d.clone_record(lk.real(UBER_DONOR), NEW_UBER)
         d.set_field(NEW_UBER, SOB._TREASURE, lk.real(AKTAIOS))
         d._modified.add(NEW_UBER)
         return lambda: RUO._drop_record(d, NEW_UBER)
-    run("N6 a NEW uber wired to a collapsed base-boss orb (the R-200 shape)",
-        _new_uber_on_collapsed_orb, expect=('B1', 'O2b'))
+    run("N6 a NEW uber drags an unseen base-boss orb chain into scope",
+        _new_uber_on_unseen_orb, expect=('O6',))
+
+    # ── N7 an in-scope orb table that the BASE GAME starts sharing ─────────
+    # The guard that stops this lane from ever rewriting loot nobody asked about.
+    # A base golden chest is pointed at an orb table; the table must then be
+    # EXCLUDED from the sweep and reported (O6), never widened. `forbid=('B1','B2')`
+    # proves it was excluded rather than merely failing some other way.
+    def _share_an_orb_table(d):
+        lk = SLB.Lookup(d)
+        real = lk.real(GOLDEN_CHEST)
+        saved = RUO._snapshot_field(d, real, 'tables')
+        d.set_field(real, 'tables', lk.real(ORB04_L))
+        return lambda: RUO._restore_field(d, real, 'tables', saved)
+    run("N7 a base golden chest starts sharing an orb table (shared-loot guard)",
+        _share_an_orb_table, expect=('O6',), forbid=('B1', 'B2'))
+
+    # ── N8 a base-only uber chain that is NOT pinned ────────────────────────
+    def _unpin(d):
+        saved = dict(SOB.OUT_OF_REACH)
+        SOB.OUT_OF_REACH.clear()
+        return lambda: SOB.OUT_OF_REACH.update(saved)
+    run("N8 the base-only Dark Obelisk chain with its OUT_OF_REACH pin removed",
+        _unpin, expect=('O5',))
 
     # ── P2 scope boundary: that same collapsed orb, with no uber, is GREEN ──
     run("P2 the base-boss Aktaios orb with no uber carrier stays out of scope",
