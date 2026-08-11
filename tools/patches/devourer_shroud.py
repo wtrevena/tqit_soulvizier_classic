@@ -361,12 +361,32 @@ def _by_name_tag(db):
     """W2: every record in the DB described by one of his name tags.
 
     This is the witness that catches a DIFFICULTY CLONE - the Hunt already has one
-    (`um_toxeus_hunt_l_99`); if the Devourer ever gets one it keeps his description
-    tag, W1 never sees it, and the gate fails instead of shipping him unshrouded on
-    Legendary.
+    (`um_toxeus_hunt_l_99`, minted at build time by `toxeus_hunt_endless`); if the
+    Devourer ever gets one it keeps his description tag, W1 never sees it, and the
+    gate fails instead of shipping him unshrouded on Legendary.
+
+    PREFILTERED ON THE .arz RECORD-TYPE INDEX, which costs nothing to read: only
+    records the index calls `Monster`/`Pet` - or whose type it does not state at
+    all, which are checked rather than skipped - are decoded. Measured on the
+    shipped 51,253-record arz that is ~10k records instead of all of them, and it
+    takes a full-DB decode (63s, and the memory that implies) out of every build
+    that loads this module. `clone_record` copies the index type across, so a
+    build-time clone is still in scope. The `Class` field stays the authority; the
+    index is only used to decide what is worth opening.
+
+    MEASURED on the shipped `44499f56`, cold: **63.2s unfiltered -> 25.6s
+    prefiltered**, and the walk is paid ONCE - `verify()` hands its result to
+    `shroud_roster` instead of scanning again, and both entrypoints run in 0.24s /
+    0.34s once the decode cache is warm. In a real build the Monster/Pet records
+    are already decoded by the 50-odd modules ahead of this one, so the true
+    marginal cost is lower again.
     """
+    types = getattr(db, '_record_types', None) or {}
     out = []
     for n in db.record_names():
+        t = types.get(n)
+        if t and t not in ('Monster', 'Pet'):
+            continue
         d = _gv1(db, n, 'description')
         if d and str(d).lower() in _NAME_TAGS:
             cls = str(_gv1(db, n, 'Class') or '')
@@ -375,11 +395,15 @@ def _by_name_tag(db):
     return sorted(out)
 
 
-def shroud_roster(db):
-    """W1 U W2 - every surface of the Devourer that must wear the shroud."""
+def shroud_roster(db, w2=None):
+    """W1 U W2 - every surface of the Devourer that must wear the shroud.
+
+    `w2` may be passed in by a caller that has already paid for the scan, so one
+    apply()/verify() costs one walk rather than three.
+    """
     w1 = ([_DEVOURER] if db.has_record(_DEVOURER) else []) + _tiers_from_summon(db)
     seen, out = set(), []
-    for r in w1 + _by_name_tag(db):
+    for r in w1 + (list(w2) if w2 is not None else _by_name_tag(db)):
         if r not in seen:
             seen.add(r)
             out.append(r)
@@ -619,7 +643,8 @@ def verify(db, tags=None):
             "shipped a monster-only shroud exactly this way and Will reported it "
             "as never implemented." % _DEVOURER_SUMMON)
     w1 = set([_DEVOURER] if db.has_record(_DEVOURER) else []) | set(tiers)
-    w2 = set(_by_name_tag(db))
+    w2_list = _by_name_tag(db)          # ONE walk; reused by shroud_roster below
+    w2 = set(w2_list)
     if w2 and w1 and w2 - w1:
         problems.append(
             "ROSTER WITNESS DISAGREEMENT: %r carr(y) a Devourer name tag but are "
@@ -628,7 +653,7 @@ def verify(db, tags=None):
             "um_toxeus_hunt_l_99) and would ship with no shroud."
             % sorted(w2 - w1))
 
-    roster = shroud_roster(db)
+    roster = shroud_roster(db, w2=w2_list)
     for rec in roster:
         is_pet = rec != _DEVOURER
         slot = _slot_of(db, rec, _SHROUD)
