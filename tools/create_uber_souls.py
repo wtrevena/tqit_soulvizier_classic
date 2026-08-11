@@ -358,6 +358,14 @@ FORCE_INCLUDE = {
 # already display-ready.
 DISPLAY_NAME_OVERRIDES = {
     'uber': 'Waeizhi',   # um_uber_45 = "Waeizhi, Scion of Winter" (tagNewHero307)
+    # R-202 row 7 (Will ratified 2026-08-11): the generated boss_charon soul
+    # rendered the bare "Charon Soul", identical to SV's own
+    # `soul\charon\charon_soul` (tagSoulName193). SV keeps its string (law #2),
+    # so OURS moves. Will's double-soul ruling keeps BOTH Charon drops on purpose
+    # as a two-form reward, and two deliberate rewards must read as two: this is
+    # the FIRST form (the fire kit), SV's is the form-2 drop. The override also
+    # corrects the record's FileDescription, which is built from the same string.
+    'boss_charon': 'Charon ~ Ferryman of the Styx',
 }
 
 MANUAL_OVERRIDES = {

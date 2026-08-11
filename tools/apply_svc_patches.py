@@ -3390,7 +3390,12 @@ _HC_WRAITH = r'records\skills\soulskills\wraith_summon.dbr'                # kor
 _DEWIRED_HANDCRAFT = {
     'shadowhero':          ('Phantom Weaver',                'Hades',  _HC_ARARAT,     _HC_C_LOWHP,     [('characterDefensiveAbility', -150.0)], (43, 58, 73)),
     'blinkfang':           ('Spider Brooding',               'Greece', _HC_ARACHNEWEB, _HC_C_ATK,       [('characterDefensiveAbility', -16.0)],  (34, 45, 57)),
-    'frost':               ('Ice Mandible',                  'Egypt',  _HC_CHILLAIR,   _HC_C_ATK,       [('defensiveFire', -20.0)],              (19, 25, 32)),
+    # R-202 row 14 (Will ratified 2026-08-11): was 'Ice Mandible', which collided
+    # with SV's own `antlion\frostmandible_soul` (tagSoulName387). SV keeps its
+    # string (law #2); OUR uber-antlion soul is the one that moves. Three stacked
+    # cold auras on the thing's frozen jaws -> 'Frostmaw'. Still the F6
+    # '{^F}<X> Soul' shape, so it needs no gate exemption.
+    'frost':               ('Frostmaw',                      'Egypt',  _HC_CHILLAIR,   _HC_C_ATK,       [('defensiveFire', -20.0)],              (19, 25, 32)),
     'xhero_nightsmistress':('Alcestis',                      'Hades',  _HC_ALCESTIS,   _HC_C_POISONBOMB,[('characterStrength', -14.0)],          (27, 36, 46)),
     'glittertail':         ('Glittertail the Conjurer',      'Orient', _HC_FIRESPRITE, _HC_C_UNDEAD,    [],                                      (43, 58, 72)),
     'rebil':               ('Rebil Witfury',                 'Greece', _HC_BATTLESTD,  None,            [('characterSpellCastSpeedModifier', -15.0)], (34, 46, 58)),
@@ -7379,12 +7384,18 @@ def _create_kallixenia_soul(db):
     r"""Kallixenia (01_akara) - lich-queen caster raining soul orbs. Level 36/54/69.
 
     b97r2 IDENTITY CONFLICT (read before re-pointing this wire). This function
-    names the soul "Kallixenia ~ Liche Queen Soul" (tagSVCSoulKallixenia) but
-    attaches it to a record whose own `description` tag, tagD2NPCakara, reads
-    "Akara". The REAL Kallixenia (xpack\creatures\monster\abyssalliche\
-    xsq02_lichequeen_36.dbr) drops an identically-NAMED soul from
-    soul\abyssalliche\ at the same 66%, so in game a monster called Akara hands
-    out the Liche Queen's soul - exactly what Will reported on 2026-07-27.
+    attaches tagSVCSoulKallixenia to a record whose own `description` tag,
+    tagD2NPCakara, reads "Akara". The REAL Kallixenia
+    (xpack\creatures\monster\abyssalliche\xsq02_lichequeen_36.dbr) drops SV's own
+    soul from soul\abyssalliche\ at the same 66%, so in game a monster called
+    Akara handed out the Liche Queen's soul - exactly what Will reported on
+    2026-07-27.
+
+    R-202 (Will ratified 2026-08-11) closed the NAME half only: this soul used to
+    render "Kallixenia ~ Liche Queen Soul", byte-identical to SV's, and now reads
+    "{^F}Soul of the Pale Diadem" (authored once, in the extended tag block; the
+    tag is in _HAND_DESIGNED_SOUL_TAGS). That rename is deliberately
+    identity-neutral and does NOT resolve the wire below either way.
 
     tools/patches/soul_identity.py therefore detaches this roll
     (chanceToEquipFinger2 -> 0; the loot ref and the item records are KEPT). The
@@ -8985,7 +8996,13 @@ _SOUL_NAME_STANDARD = {
     'tagSVCSoulJabarto': '{^F}Team Jabarto Soul',
     'tagSVCSoulJiaco': '{^F}jiaco Soul',
     'tagSVCSoulKaets': '{^F}Kaets Soul',
-    'tagSVCSoulKallixenia': '{^F}Kallixenia ~ Liche Queen Soul',
+    # R-202 row 19: tagSVCSoulKallixenia MOVED to _HAND_DESIGNED_SOUL_TAGS. The
+    # flat standard rendered "{^F}Kallixenia ~ Liche Queen Soul", byte-identical
+    # to SV's own `abyssalliche\kallixenia_soul` (tagSoulName234, the REAL Lich
+    # Queen). SV keeps its string (law #2); ours becomes the marquee
+    # "{^F}Soul of the Pale Diadem", authored at its single site below
+    # (Rainbowbright / Nomnom / Anapaest precedent). NAME-ONLY: the Akara wire
+    # (docs/reports/b97_soul_identity_audit.md sec 8) is untouched and still open.
     'tagSVCSoulKir4': '{^F}Kir Trap Soul',
     'tagSVCSoulKreeloo': '{^F}Kreeloo Soul',
     'tagSVCSoulLeinth': '{^F}Leinth Soul',
@@ -8997,10 +9014,18 @@ _SOUL_NAME_STANDARD = {
     'tagSVCSoulNEmgiec': '{^F}Rong Saberbane the Hacker Soul',
     'tagSVCSoulNMega': '{^F}Rong Saberbane the Boss Soul',
     'tagSVCSoulNVio': '{^F}Rong Saberbane the Wizard Soul',
-    'tagSVCSoulNomnom': '{^F}Plague Feast Soul',
+    # R-202 row 38: tagSVCSoulNomnom MOVED to _HAND_DESIGNED_SOUL_TAGS. The flat
+    # standard rendered "{^F}Plague Feast Soul", identical to SV's own
+    # `carrionbird\plaguefeast_soul` (tagSoulName135) - a different monster
+    # entirely (the DRX crow-hero glutton, not SV's carrion bird). SV keeps its
+    # string; the already-authored "{^F}Soul of Nomnom" now wins end-to-end.
     'tagSVCSoulNumberouane': '{^F}Numberouane Soul',
     'tagSVCSoulProx': '{^F}Ancient Limos, Soul Stealer Soul',
-    'tagSVCSoulRainbowbright': "{^F}General Yrrt'ik Soul",
+    # R-202 row 12: tagSVCSoulRainbowbright MOVED to _HAND_DESIGNED_SOUL_TAGS.
+    # The flat standard rendered "{^F}General Yrrt'ik Soul", identical to SV's
+    # own `formicid\generalyrrtik_soul` (tagSoulName453) - again a different
+    # monster (the DRX crow-hero standard-bearer, not SV's formicid general).
+    # The already-authored "{^F}Soul of Rainbowbright the Standard-Bearer" wins.
     'tagSVCSoulSPHades': '{^F}Hades Soul (SP)',
     'tagSVCSoulSPToxeus': '{^F}Toxeus the Murderer Soul (SP)',
     'tagSVCSoulTombguardian': '{^F}Tomb Guardian ~ Hound of Anubis Soul',
@@ -9316,6 +9341,375 @@ def _verify_soul_tier_naming(db, tags, base_tags=None):
           f"records / {len(fams)} soul families ({n_multi} multi-tier) - every "
           f"tier carries its convention quality tag and renders a DISTINCT name")
     return n_records
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# R-202 CROSS-FAMILY SOUL NAMES (Will ratified 2026-08-11) - BL-R201-DEBT-1
+# ═══════════════════════════════════════════════════════════════════════════
+# R-201's gate proves the three TIERS of one soul read differently. It says
+# nothing about two DIFFERENT souls reading the same, which is how 40 display
+# names came to be shared by more than one family (`docs/SOUL_RENAME_PROPOSAL.md`,
+# measured on build83: 2,191 canonical tier records / 740 families / 698 distinct
+# names / 40 duplicates). Will ratified the proposal wholesale, verbatim:
+#
+#   "Proceed with ratifying all 5 and fix SV duplicates / collisions as you deem
+#    necessary."
+#
+# The five mod-vs-SV renames are applied at their own authoring sites (the F6
+# table, _HAND_DESIGNED_SOUL_TAGS, _DEWIRED_HANDCRAFT, create_uber_souls'
+# DISPLAY_NAME_OVERRIDES). The two functions below are the SV-side half of the
+# second clause, exercised conservatively, and C3 is the invariant that keeps the
+# whole class closed.
+#
+#   40 duplicates
+#   -  5  mod souls renamed (rows 7/12/14/19/38; SV never moved - law #2, R-49a)
+#   - 30  SV `soul\test\` dead twins RETIRED from the build output (29 groups;
+#         row 32 carried two of them)
+#   -  2  live two-monsters-one-tag SV pairs SEPARATED (rows 11 and 32)
+#   =  5  remain, ALL SV-vs-SV, and they are the C3 waiver list: SV's four `_n`
+#         double-authored siblings (rows 4/10/15/40) + SV's own typo twin
+#         (row 37). Left AS-IS on purpose: harmless, lowest-risk, and renaming
+#         them would be the name-drift R-49a forbids.
+
+# The exact family sets allowed to share one rendered display name. A duplicated
+# name passes ONLY if the set of families holding it is EXACTLY one of these, so
+# a NEW family joining a waived name is still RED.
+#
+# SHRINK-ONLY. This list may lose entries, never gain them: _C3_WAIVER_CEILING
+# is asserted at gate time, nothing under `svc_uber\` may ever appear here (our
+# own souls have no excuse), and nothing under `soul\test\` may either (those are
+# retired below - a waiver would silently re-bless a resurrected dead twin).
+_C3_CROSS_FAMILY_WAIVERS = (
+    # row 4  - SV double-authoring; the `_n` sibling is a crafting reagent.
+    frozenset({r'records\item\equipmentring\soul\furies\athenos',
+               r'records\item\equipmentring\soul\furies\athenos_n'}),
+    # row 10 - SV double-authoring; BOTH sides drop (vampiric_vulture_21 carries
+    #          the `_n` sibling). amgoz1's data.
+    frozenset({r'records\item\equipmentring\soul\vulture\diseasedvulture',
+               r'records\item\equipmentring\soul\vulture\diseasedvulture_n'}),
+    # row 15 - SV double-authoring; `_n` sibling is reagent-only.
+    frozenset({r'records\item\equipmentring\soul\vulture\infectedvulture',
+               r'records\item\equipmentring\soul\vulture\infectedvulture_n'}),
+    # row 40 - SV double-authoring; `_n` sibling is reagent-only.
+    frozenset({r'records\item\equipmentring\soul\vulture\vulturelord',
+               r'records\item\equipmentring\soul\vulture\vulturelord_n'}),
+    # row 37 - SV's OWN misspelled typo twin (`oythroneus`), reagent-only.
+    #          R-49a is explicit: no name-drift rename, misspellings included.
+    frozenset({r'records\item\equipmentring\soul\zombie\orythroneus',
+               r'records\item\equipmentring\soul\zombie\oythroneus'}),
+)
+_C3_WAIVER_CEILING = 5
+
+# The two live SV pairs where two DISTINCT monsters shared ONE name tag, so the
+# player could not tell the drops apart in the bag. One member of each pair keeps
+# SV's string untouched - the one whose identity the shared name actually names -
+# and the OTHER gets its own mod-owned tag. Names stay in SV's own plain
+# `<Family> <Name> Soul` register; this is SV housekeeping, NOT the amgoz1
+# evocative register, and nothing under svc_uber\ is touched.
+#   (family base, new mod tag, new string, the shared SV tag it must currently
+#    carry, the sibling that KEEPS that tag, FileDescription stem or None)
+_SV_TAG_SEPARATIONS = (
+    # row 11: "Empusa Soul Carver Soul" named `soulcarver` (18 monster droppers,
+    # `as_soulcarver_*`). `alcestis` is a different empusa entirely and is
+    # reagent-only, so it is the one that moves.
+    # NB `Alcestis Soul` alone is ALREADY TAKEN, by our own de-wired handcraft
+    # soul svc_uber\xhero_nightsmistress - hence the family-qualified form, which
+    # is both SV's own register and provably collision-free.
+    (r'records\item\equipmentring\soul\empusa\alcestis',
+     'tagSVCSoulEmpusaAlcestis', '{^F}Empusa Alcestis Soul', 'tagSoulName200',
+     r'records\item\equipmentring\soul\empusa\soulcarver', None),
+    # row 32: "Maenad Vanguard Soul" named `maenadvanguard` (212 referents, 69
+    # creature records - the dominant, correctly-named side). `maenadscout` is a
+    # distinct live SV monster and is the one that moves. Its FileDescription
+    # also literally read "Maenad Vanguard - <Tier>", so it is corrected in the
+    # same pass rather than left as a decoy for the next lane.
+    (r'records\item\equipmentring\soul\maenad\maenadscout',
+     'tagSVCSoulMaenadScout', '{^F}Maenad Scout Soul', 'tagSoulName34',
+     r'records\item\equipmentring\soul\maenad\maenadvanguard', 'Maenad Scout'),
+)
+_TIER_LABEL = {'n': 'Normal', 'e': 'Epic', 'l': 'Legendary'}
+
+
+def _apply_sv_tag_separations(db, tags):
+    """R-202: give ONE member of each live two-monsters-one-tag SV pair its own
+    name tag, so two different drops stop reading identically in the bag.
+
+    FAIL-LOUD and self-proving: every tier record must exist AND must still carry
+    the shared SV tag (if SV data ever changes underneath this, the build stops
+    instead of silently renaming the wrong thing), and the sibling must still
+    hold that shared tag afterwards - SV's own string is never edited, only
+    re-attributed to the single family whose identity it names."""
+    moved = 0
+    for base, newtag, newname, shared, sibling, filedesc in _SV_TAG_SEPARATIONS:
+        recs = []
+        for tier in ('n', 'e', 'l'):
+            rec = _resolve_record(db, f'{base}_soul_{tier}.dbr')
+            if rec is None:
+                raise SystemExit(
+                    f"R-202 separation FAILED: {base}_soul_{tier}.dbr is absent "
+                    f"from the db - the ratified pair no longer exists as "
+                    f"measured; re-run the audit before shipping")
+            cur = db.get_field_value(rec, 'itemNameTag')
+            cur = cur[0] if isinstance(cur, list) else cur
+            if cur != shared:
+                raise SystemExit(
+                    f"R-202 separation FAILED: {rec} carries itemNameTag={cur!r}, "
+                    f"expected the shared SV tag {shared!r}. The duplicate this "
+                    f"ratification described is not the duplicate in the db")
+            recs.append((rec, tier))
+        for rec, tier in recs:
+            db.set_field(rec, 'itemNameTag', newtag, DATA_TYPE_STRING)
+            if filedesc:
+                db.set_field(rec, 'FileDescription',
+                             f'{filedesc} - {_TIER_LABEL[tier]}', DATA_TYPE_STRING)
+            moved += 1
+        tags[newtag] = newname
+        # The sibling MUST still own the shared SV string - that is the whole
+        # point (SV's name stays on SV's monster, law #2 satisfied not waived).
+        sib = _resolve_record(db, f'{sibling}_soul_n.dbr')
+        sib_tag = db.get_field_value(sib, 'itemNameTag') if sib else None
+        sib_tag = sib_tag[0] if isinstance(sib_tag, list) else sib_tag
+        if sib_tag != shared:
+            raise SystemExit(
+                f"R-202 separation FAILED: after moving {base}, the sibling "
+                f"{sibling} no longer carries the shared SV tag {shared!r} "
+                f"(got {sib_tag!r}) - SV's own name would be orphaned")
+        print(f"  R-202 separation: {base.rsplit(chr(92), 1)[-1]} -> {newtag} "
+              f"= {newname!r} (3 records); {sibling.rsplit(chr(92), 1)[-1]} "
+              f"keeps SV's {shared}")
+    return moved
+
+
+# 30 families x {Epic, Legendary} = 60 records. Measured on the build83 arz; the
+# retirement DERIVES its own set every build and only ever uses this as a CEILING
+# (see the asymmetry in the docstring).
+_SOUL_TEST_RETIRE_EXPECTED = 60
+_SOUL_TEST_FOLDER = 'records\\item\\equipmentring\\soul\\test\\'
+
+
+def _retire_dead_soul_test_duplicates(db):
+    r"""R-202: drop SV's dead `soul\test\` duplicate tier records from the BUILD
+    OUTPUT. SV's source files on disk are untouched; these records simply stop
+    being written into the shipped .arz (the strip_ui_overrides /
+    remove_dead_orphan_records convention).
+
+    RETIREMENT PROTOCOL (`docs/WILL_RULINGS.md` law #2 of the four process laws):
+    deleting records defaults to WILL-VETO. Will granted this one explicitly
+    ("fix SV duplicates / collisions as you deem necessary"), and the standing
+    requirement - "unreferenced in code is NOT sufficient" - is met by evidence,
+    not by assertion:
+      * ZERO external referents, re-derived from the CURRENT arz every build by
+        the scan below (not trusted from the audit doc);
+      * ZERO hits for the literal path fragment in the shipped Levels.arc /
+        Quests.arc / Creatures.arc / Items.arc / Text.arc (byte-scanned in the
+        lane's proof, so a static world placement cannot hide from a DB-only
+        scan);
+      * every one is an `e`/`l`-only twin of a LIVE family that keeps dropping -
+        no soul, formula or monster loses anything.
+    They are unreachable by construction: nothing drops them, no formula consumes
+    them, no player can hold one.
+
+    SCOPE IS DELIBERATELY NARROW: only the canonical TIER records that carry a
+    display name and duplicate a live family. The other ~90 records in that
+    folder (`um_*`, `us_*`, `swift_*` monster/loot leftovers) are equally dead but
+    are NOT display-name duplicates, so they are out of THIS ratification and stay
+    for the dead-content audit lane.
+
+    ASYMMETRIC GUARD: retiring MORE than the ratified count fails the build loud
+    (over-deletion is the dangerous direction); retiring fewer only prints a NOTE
+    (SV data legitimately shrinking is benign). Anything with a referent is KEPT
+    and named."""
+    fams = {}
+    for rec, fam, tier, _tag in _iter_soul_tier_records(db):
+        if rec.replace('/', '\\').lower().startswith(_SOUL_TEST_FOLDER):
+            fams.setdefault(fam, []).append((rec, tier))
+    if not fams:
+        print("  R-202 retirement: no soul\\test\\ tier records present (already "
+              "retired, or SV source changed) - nothing to do")
+        return 0
+
+    # Referent census over the FINAL db: any string field on any record OUTSIDE
+    # the folder that names one of these records.
+    targets = {}
+    for fam, members in fams.items():
+        for rec, _t in members:
+            rl = rec.replace('/', '\\').lower()
+            targets[rl] = fam
+            if rl.endswith('.dbr'):
+                targets[rl[:-4]] = fam
+    referenced = {}
+    for holder in db.record_names():
+        if holder.replace('/', '\\').lower().startswith(_SOUL_TEST_FOLDER):
+            continue                       # intra-folder refs are not external
+        for key, tf in (db.get_fields(holder) or {}).items():
+            val = getattr(tf, 'value', tf)
+            for v in (val if isinstance(val, list) else [val]):
+                if not isinstance(v, str):
+                    continue
+                vl = v.replace('/', '\\').lower()
+                if 'soul\\test\\' not in vl:
+                    continue
+                for part in vl.split(';'):
+                    p = part.strip()
+                    fam = targets.get(p) or (
+                        targets.get(p[:-4]) if p.endswith('.dbr') else None)
+                    if fam is not None:
+                        referenced.setdefault(fam, []).append(
+                            (holder, key.split('###')[0]))
+
+    removed = 0
+    for fam in sorted(fams):
+        if fam in referenced:
+            hits = referenced[fam]
+            print(f"  R-202 retirement KEPT {fam}: {len(hits)} external "
+                  f"referent(s) found in THIS build, e.g. {hits[:3]} - a "
+                  f"referenced record is never retired")
+            continue
+        for rec, _tier in fams[fam]:
+            db._raw_records.pop(rec, None)
+            db._record_types.pop(rec, None)
+            db._record_timestamps.pop(rec, None)
+            db._decoded_cache.pop(rec, None)
+            db._modified.discard(rec)
+            removed += 1
+
+    if removed > _SOUL_TEST_RETIRE_EXPECTED:
+        raise SystemExit(
+            f"R-202 retirement FAILED: {removed} records retired but only "
+            f"{_SOUL_TEST_RETIRE_EXPECTED} were ratified (30 families x Epic + "
+            f"Legendary). Over-deletion is the dangerous direction - re-audit "
+            f"and re-ratify before raising this ceiling")
+    if removed < _SOUL_TEST_RETIRE_EXPECTED:
+        print(f"  R-202 retirement NOTE: {removed} records retired, ratified "
+              f"{_SOUL_TEST_RETIRE_EXPECTED} - fewer is benign (a referent was "
+              f"found, or SV's dead folder shrank), but it is not silent")
+    print(f"  R-202 retirement: {removed} dead soul\\test\\ tier record(s) from "
+          f"{len(fams) - len(referenced)} zero-referent duplicate family/families "
+          f"are ABSENT from this build's .arz (SV source files on disk untouched)")
+    return removed
+
+
+# SV 0.98i's own Text_EN.arc, the source build_text_arc.py emits the SV half of
+# the shipped Text.arc from. Loaded lazily + cached so C3 can resolve the SV
+# soul names the mod tag dict does not carry. `False` = tried and unavailable.
+_SV_TEXT_STRINGS = None
+
+
+def _sv_text_strings():
+    """{tag: string} from SV 0.98i's Text_EN.arc, or {} if it cannot be resolved.
+
+    An empty result DOWNGRADES C3 (families whose name tag will not resolve are
+    then compared by TAG IDENTITY instead of rendered string, which still catches
+    every shared-tag duplicate but not a same-string/different-tag one). The
+    downgrade ANNOUNCES itself rather than passing silently."""
+    global _SV_TEXT_STRINGS
+    if _SV_TEXT_STRINGS is not None:
+        return _SV_TEXT_STRINGS or {}
+    try:
+        import check_build_inputs
+        from build_text_arc import load_base_en_tags
+        path = check_build_inputs.resolve('sv098i_text_arc', verbose=False)
+        _SV_TEXT_STRINGS = load_base_en_tags(path) or {}
+    except Exception as exc:                                  # noqa: BLE001
+        print(f"  R-202 C3 DOWNGRADE: SV 0.98i Text_EN.arc unavailable ({exc}); "
+              f"unresolvable soul names fall back to tag-identity comparison")
+        _SV_TEXT_STRINGS = False
+        return {}
+    return _SV_TEXT_STRINGS
+
+
+def _rendered_soul_name(tag, strings):
+    """The comparison key for one soul family's display name.
+
+    ('STR', <colour-stripped text>) when the tag resolves, else ('TAG', <tag>) -
+    a typed key, so an UNRESOLVED tag can only ever collide with the same tag and
+    never produces a false positive against a resolved string."""
+    val = strings.get(tag)
+    if not isinstance(val, str) or not val.strip():
+        return ('TAG', tag)
+    return ('STR', _re.sub(r'\{\^[A-Za-z]\}', '', val).strip().casefold())
+
+
+def _verify_soul_cross_family_naming(db, tags, base_tags=None):
+    """FAIL-LOUD (R-202 C3 CROSS-FAMILY). No two canonical soul families may
+    render the same display name.
+
+    This is the clause R-201 was missing: R-201's C2 proves the three tiers of
+    ONE soul read differently, and said nothing about two DIFFERENT souls reading
+    identically - which is how BL-R201-DEBT-1 accumulated 40 shared names.
+
+    The waiver list is the ratified SV-vs-SV keep-as-is set and nothing else.
+    Three structural guards make it un-abusable: it is capped (shrink-only),
+    nothing under `svc_uber\\` may ever be waivered (our own souls have no
+    excuse - rule 3 of the proposal), and a waiver matches only the EXACT family
+    set, so a new family joining a waived name is still RED."""
+    # ---- guards on the waiver list itself (run before any data is read) -----
+    if len(_C3_CROSS_FAMILY_WAIVERS) > _C3_WAIVER_CEILING:
+        raise SystemExit(
+            f"R-202 C3 gate FAILED: the cross-family waiver list holds "
+            f"{len(_C3_CROSS_FAMILY_WAIVERS)} entries but the ceiling is "
+            f"{_C3_WAIVER_CEILING}. This list is SHRINK-ONLY - a new duplicate "
+            f"display name gets FIXED, not waivered")
+    for waiver in _C3_CROSS_FAMILY_WAIVERS:
+        for fam in waiver:
+            fl = fam.replace('/', '\\').lower()
+            if '\\svc_uber\\' in fl:
+                raise SystemExit(
+                    f"R-202 C3 gate FAILED: {fam} is under svc_uber\\ and may "
+                    f"NEVER be waivered - a mod soul that collides gets renamed")
+            if '\\soul\\test\\' in fl:
+                raise SystemExit(
+                    f"R-202 C3 gate FAILED: {fam} is a retired soul\\test\\ dead "
+                    f"twin and may never be waivered back into the build")
+
+    strings = dict(_sv_text_strings())
+    if base_tags:
+        strings.update(base_tags)
+    strings.update(tags or {})                # the mod's own authored strings
+
+    fam_tag = {}
+    for _rec, fam, tier, tag in _iter_soul_tier_records(db):
+        # The NORMAL tier carries the bare name the player reads; every tier of a
+        # family shares one itemNameTag by construction (R-201), so any tier is
+        # equivalent - prefer 'n' only for determinism.
+        if fam not in fam_tag or tier == 'n':
+            fam_tag[fam] = tag
+
+    by_name = {}
+    n_unresolved = 0
+    for fam, tag in fam_tag.items():
+        key = _rendered_soul_name(tag, strings)
+        if key[0] == 'TAG':
+            n_unresolved += 1
+        by_name.setdefault(key, set()).add(fam)
+
+    offenders = []
+    waived = 0
+    for key, families in by_name.items():
+        if len(families) < 2:
+            continue
+        if frozenset(families) in _C3_CROSS_FAMILY_WAIVERS:
+            waived += 1
+            continue
+        offenders.append((key, sorted(families)))
+
+    if offenders:
+        for key, families in sorted(offenders)[:40]:
+            shown = key[1] if key[0] == 'STR' else f'<tag {key[1]}>'
+            print(f"  SOUL-CROSS-FAMILY OFFENDER (C3): {len(families)} families "
+                  f"render {shown!r} - " + ' + '.join(families))
+        raise SystemExit(
+            f"R-202 C3 cross-family soul-naming gate FAILED: {len(offenders)} "
+            f"display name(s) are shared by more than one soul family, so two "
+            f"different souls read identically in the player's bag. Rename the "
+            f"MOD soul (SV originals never move - law #2 / R-49a); the waiver "
+            f"list is shrink-only and is not the fix")
+
+    print(f"  R-202 C3 cross-family gate OK: {len(fam_tag)} soul families / "
+          f"{len(by_name)} distinct display names; {waived} ratified SV-vs-SV "
+          f"waiver(s) of {_C3_WAIVER_CEILING} allowed; {n_unresolved} name tag(s) "
+          f"unresolved (compared by tag identity)")
+    return len(by_name)
 
 
 def _verify_no_unclassified_soul_leaks(db):
@@ -17080,6 +17474,16 @@ _HAND_DESIGNED_SOUL_TAGS = frozenset({
     # "{^F}Soul of the Coin-Drowned" (was "{^F}Dorus, the Drowned King Soul" in
     # _SOUL_NAME_STANDARD; removed there so this bespoke name WINS - Anapaest precedent).
     'tagSVCSoulDrownedKing', # {^F}Soul of the Coin-Drowned
+    # ── R-202 (Will ratified 2026-08-11, BL-R201-DEBT-1 rows 12/19/38) ────────
+    # Three MOD-owned souls whose flat F6 name was byte-identical to an SV
+    # original's. SV never moves (law #2 / R-49a), so ours do. All three already
+    # had, or now have, a bespoke evocative name at a single authoring site; each
+    # is removed from _SOUL_NAME_STANDARD so that authored string WINS end-to-end
+    # (the Anapaest A9 / Drowned-King b47 precedent - without this exemption the
+    # auto-transform flattens "Soul of X" back to "X Soul" BEFORE the gate sees it).
+    'tagSVCSoulRainbowbright', # {^F}Soul of Rainbowbright the Standard-Bearer
+    'tagSVCSoulNomnom',        # {^F}Soul of Nomnom
+    'tagSVCSoulKallixenia',    # {^F}Soul of the Pale Diadem
 })
 
 # Shared donors (all DB-verified present, probe_build36_content_donors.py).
@@ -18824,11 +19228,22 @@ def apply_all_extended_patches(db, force_full_drops=True, _defer_gates=False):
     tags['tagSVCSoulLimosLifeeaterDESC'] = (
         'The Lifeeater knows only endless hunger. Its soul drains the vitality of '
         'all it touches, feeding the bearer on the lives of the slain.')
-    tags['tagSVCSoulKallixenia'] = '{^F}Soul of Kallixenia'
+    # R-202 row 19 (Will ratified 2026-08-11). This is the SINGLE authoring site
+    # for the tag; the _SOUL_NAME_STANDARD entry that used to overwrite it with
+    # "{^F}Kallixenia ~ Liche Queen Soul" is gone, and the tag is exempted in
+    # _HAND_DESIGNED_SOUL_TAGS so the auto-transform cannot flatten "Soul of X".
+    # The old string was byte-identical to SV's real Lich Queen soul
+    # (tagSoulName234), which under law #2 could never move - so ours did.
+    # Deliberately IDENTITY-NEUTRAL prose: it describes the regalia and the two
+    # things the record actually grants (lichequeen_soulstrike's soul-orb rain +
+    # drxdeathchillaura), and names NO creature, so it stays correct whichever
+    # way Will later rules the still-OPEN Akara wire
+    # (docs/reports/b97_soul_identity_audit.md sec 8).
+    tags['tagSVCSoulKallixenia'] = '{^F}Soul of the Pale Diadem'
     tags['tagSVCSoulKallixeniaDESC'] = (
-        'Kallixenia, the Lich Queen, rained soul-orbs from a poisoned sky. Her '
-        "soul answers the call, drawing down a storm of life-stealing spirits "
-        "upon the bearer's foes.")
+        'The pale diadem outlasted the head that wore it. Its cold crown-light '
+        "rains soul-orbs upon the bearer's foes and wraps the bearer in the "
+        'killing chill of a throne that never fell.')
     tags['tagSVCSoulLilLued'] = "{^F}Soul of Lil'Lued the Elder Djinn"
     tags['tagSVCSoulLilLuedDESC'] = (
         "Bound in a crow-cursed lamp, the Elder Djinn Lil'Lued rages against its "
@@ -19474,6 +19889,17 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # RESTORES) plus an auto-transform for any uncovered OURS-path 'Soul of X'
     # (bloodshaman / F1-ripple souls). SV-ORIGINAL-PATH names are UNTOUCHED (law
     # #2). Then the provenance (by soul .dbr path) naming gate proves compliance.
+    # ── R-202 SV-SIDE CLEANUP (Will ratified 2026-08-11, BL-R201-DEBT-1) ──────
+    # Both run BEFORE F6 so the naming standard, the R-201 tier pass and the C3
+    # gate below all see the final roster: the retired dead twins are already
+    # gone, and the separated family's new mod tag is already in `tags` (so it
+    # flows into uber_soul_tags.txt -> Text.arc like every other mod tag, and
+    # validate_tags sees a resolvable tag rather than an orphan).
+    _retire_dead_soul_test_duplicates(db)
+    _n_sep = _apply_sv_tag_separations(db, tags)
+    print(f"  R-202 SV separations: {_n_sep} record(s) re-pointed to their own "
+          f"name tag; SV's shared strings stay on the family they name")
+
     _n_curated, _n_auto = _apply_soul_naming_standard(db, tags)
     print(f"  F6 soul naming: curated '{{^F}}<Monster> Soul' standard on "
           f"{_n_curated} tags + auto-standardized {_n_auto} uncovered 'Soul of X' "
@@ -19493,6 +19919,13 @@ def run_registry_gates(db, tags, force_full_drops=True):
           f"{_n_tier} Epic/Legendary soul record(s) (tagSoulEpic / "
           f"tagSoulLegendary; normal tier stays bare)")
     _verify_soul_tier_naming(db, tags)
+
+    # ── R-202 C3 CROSS-FAMILY (Will 2026-08-11, BL-R201-DEBT-1) ──────────────
+    # The clause R-201 was missing. R-201 proves the three tiers of ONE soul read
+    # differently; this proves two DIFFERENT souls never read the SAME. Runs last
+    # of the naming block, so it validates the FINAL strings after F6, the tier
+    # pass, the ratified renames and the SV separations have all landed.
+    _verify_soul_cross_family_naming(db, tags)
 
     # ── Multiplayer spawn-scaling equation fix (docs/MULTIPLAYER_COMPAT.md) ──
     # Rewrite SV's '/'-bearing proxy spawn/champion equations to '/'-free AE-valid
