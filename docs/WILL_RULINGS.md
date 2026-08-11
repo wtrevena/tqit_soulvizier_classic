@@ -4227,3 +4227,38 @@ no orb stays GREEN - the gate is red-only and does not invent policy for the 412
 
 **NOT PROVEN IN-GAME.** Will's kill of the Boar Snatcher (Silk Road / PineForest04 or SpartaOptCave03)
 and seeing the orb drop is the remaining launch gate - registered as `BL-R200-DEBT-2`.
+
+---
+
+## R-170 FOLLOW-UP - SHIP RECORD [2026-08-10] b63 SHIPPED: DEV + **STEAM** (tag `build75-ship`)
+
+STATUS: IMPLEMENTED -> **SHIPPED**. Merged to `main` at `824ed0c`. DEV carries the coupled pair
+(`Levels.arc` TESTHUB `7a7ca9ac`, `Quests.arc` `607ec99c`) with arz/Text/Creatures proven
+byte-unchanged. Workshop item 3759792705 updated and confirmed (`Committing update...Success.`),
+shipping canonical `Levels.arc` `6784cf0f` + `Quests.arc` `607ec99c` alongside the chest-loot wave's
+arz `3fb1f3ce`. **The entrance was unreachable for subscribers from 2026-08-06 to 2026-08-10.**
+
+R-170 AND ITS AMENDMENT REMAIN THE DESIGN LAW, UNCHANGED AND NOW MACHINE-ENFORCED. The Warden still
+offers EXACTLY ONE option, `tagSVCEnterSpartaCrypt`, landing `(-5596,-2,-1410)`, and NO Helos return.
+Nothing about Will's descend-only decision was traded away to fix the muteness: only the generator
+that emits the route changed, plus 6 units of position. `gate_travel_npc_invariants` T5c now asserts
+that menu shape directly, and `_assert_enter_offers_are_second_entries()` fails the BUILD if an
+enter-offer is ever again an NPC's sole menu source. Never re-add `tagSVCAreaReturnToHelos` to him.
+
+ONE CORRECTION TO THE b63 RCA, recorded so the next agent does not inherit a wrong number. The RCA
+prescribed a 4.0u minimum for the new `G-NPC-LANDING-SEP` check ("matching the existing collider
+threshold"). Measurement rejected that: 4.0u is the CONTAINER minimum, and applying it here would
+have failed roughly 20 boat-NPC/landing pairs that Will demonstrably travels through every session
+(the tightest proven-working pair is 1.12u at the Helos plaza). The shipped threshold is **1.0u**,
+which separates the actual defect (0.00u, coincident placement) from every confirmed-working case,
+and the gate PRINTS the tightest margin on each run (currently +0.12u) so drift is visible instead of
+silent. A gate calibrated to a round number that reds working content is a gate that gets switched
+off.
+
+WHAT IS STILL OWED, AND IT IS THE SAME DEBT THAT CAUSED THIS RULING. NOT PROVEN IN-GAME. The
+2026-08-06 amendment closed with "Will's walk is the remaining launch gate" and the walk failed; this
+ship closes on exactly the same standing, from bytes and gates alone. Will tests on **Legendary or
+Epic** (his Normal `.que` is the stale pre-PR-5 shape). If the Warden is still silent, the single
+diagnostic question is **did he walk in or teleport in** - that answer selects the already-identified
+fallback, a `GridEntrance` door (the proven build24/25 Knossos->Uber / Sparta L2 mechanism) instead of
+a boat NPC.

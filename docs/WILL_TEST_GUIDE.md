@@ -117,6 +117,24 @@
 > pick it -> you land inside `spartacryptlevel2` -> the return traveler there brings you back.
 > If he is STILL silent, say so and say **whether you walked in or teleported in** - that single
 > detail decides the next fix (a door instead of a boat NPC).
+>
+> **SHIPPED 2026-08-10, tag `build75-ship`. It is on DEV AND on Steam.** DEV has `Levels.arc`
+> `7a7ca9ac` + `Quests.arc` `607ec99c` (deployed together, and your arz/Text/Creatures were verified
+> byte-unchanged by the deploy). Workshop item 3759792705 was updated and confirmed, so subscribers
+> have it too - it had been broken for them since 6 August, and yours is the click that confirms it.
+> **Quit TQ and Steam fully, restart Steam, then launch TQ** before testing (standing law).
+>
+> **The exact walk:** Play Custom Quest -> `SoulvizierClassicDEV` on **Legendary or Epic** -> deepest
+> Athens catacomb (`CataCube02_FloorLast`) -> the **Warden of the Spartan Crypt** stands by the
+> stairs-down (he has moved about 6 units off the teleport arrival spot, so if you teleport in you now
+> land NEXT to him rather than inside him) -> **click him**.
+> **PASS = a dialog box opens with EXACTLY ONE choice, "Descend into the Sparta Crypt".**
+> Pick it -> you land inside `spartacryptlevel2` -> the return traveler there brings you back.
+> **FAIL = still no dialog box.** That is still a useful result: say so plus walked-in vs teleported-in.
+>
+> Same session, the other half of this Steam update (chest loot, R-180): kill Alkyoneus the
+> Soul-Gaoler and open all 6 vault-cage chests across about 3 runs - you should see legendary SPEARS
+> become possible and the six chests stop mirroring each other.
 
 ## 🩸🩸 OCEAN-CHAMBER CRASH FIX - build49-dev on DEV (2026-07-27) - DO THIS ONE FIRST
 

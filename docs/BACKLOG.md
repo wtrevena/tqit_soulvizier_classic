@@ -1,5 +1,71 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## 🚢 SHIP RECORD - b63 SILENT WARDEN (P0) + R-180 CHEST BREADTH: **LIVE ON STEAM** (2026-08-10, `main` @ `824ed0c` merged, tag `build75-ship`)
+
+**The P0 is closed on the artifact side.** Workshop item **3759792705 UPDATED and CONFIRMED** - SteamCMD:
+`Preparing content... Uploading content... Committing update...Success.` / `Updated Workshop item:
+3759792705`, pushed with `-Visibility 0` so the item stays PUBLIC. **The Sparta Crypt entrance was
+unreachable for every subscriber from 2026-08-06 to 2026-08-10; that window is now closed.**
+
+**ONE Steam update carries BOTH parallel waves, deliberately.** The chest-loot wave had already staged
+its arz into `work/` and written its own changenote while this lane was holding on-branch. Had the two
+pushed separately, the first push would have shipped R-180 **on top of a still-mute Warden**. So this
+lane staged its canonical map + quests into `work/` FIRST - which makes any subsequent package correct
+by construction - and then merged the two changenotes into one note that describes both fixes honestly.
+The chest-loot wave's own `build75-dev` record (below) states the same division: "the Steam half is
+carried by the concurrent b63 ship lane".
+
+| artifact | md5 | bytes | vs the previously-live Steam item | owner |
+|---|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | `3fb1f3ce8889e27de2491ab12814547d` | 55,539,324 | CHANGED from `d447f095` | chest-loot wave (R-180) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **unchanged** | - |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | CHANGED from `78a3e263` | **b63** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | CHANGED from `6b25f8dd` | **b63** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **unchanged** | - |
+
+Packaged payload: 56 files, 1188.3 MB, single `SoulvizierClassic` wrapper.
+
+**DEV deploy (`CustomMaps\SoulvizierClassicDEV`), coupled and md5-verified.** `Levels.arc`
+`7a7ca9ac7e313b6be6eb65bc45aca36a` (688,682,321 B, the **TESTHUB** variant) + `Quests.arc` `607ec99c...`
+written **together** via temp-in-target-dir -> md5-verify -> atomic replace, so an interrupted run could
+not leave a half-written map. `arz` / `Text.arc` / `Creatures.arc` were hashed before AND after and proven
+**byte-unchanged**. **TQ.exe was not running, was never killed, and Steam was never restarted.** Backups
+of the replaced pair: `local/b63_prev/` (`3a6f9d74` / `6b25f8dd`).
+
+**COUPLINGS - both honoured, and both PROVEN rather than asserted.**
+- *Levels+Quests*: shipped together in one deploy and one package.
+- *arz+Text*: the law is "together **when tags changed**", so hash-movement parity is the WRONG test -
+  an arz that adds no tag is correctly shipped against an unchanged `Text.arc`. The substance was
+  measured: `py tools/validate_tags.py <shipping arz> <shipping Text.arc>` -> **RESULT: PASS**; 9,659
+  distinct tag values referenced, **382 mod-owned, every one present in `Text.arc`**. (The 2 WARNs,
+  `tagNewMonster66` / `tagNewMonster46`, are pre-existing base/SV monster names, unrelated, non-blocking.)
+  **This also CLOSES the "08-09 arz+Text were not co-rebuilt" concern raised in the b63 RCA** - measured,
+  not carried forward as debt.
+
+**GATES RE-RUN AGAINST THE ACTUAL DEPLOYED / PACKAGED BYTES, not against the build outputs.**
+| gate | target | result |
+|---|---|---|
+| `gate_traveler_responds --quests --levels` | the **deployed DEV** pair | **GATE PASS**, exit 0: G-COLLISION, G-WARDEN, G-ORPHAN, G-DEST, **G-SOLE-SOURCE**, **G-DIALOG-CHAIN** |
+| `gate_landing_clearance --wiring v1` | the **deployed DEV** map | **G-LAND PASS**, exit 0. **156** boat-NPC/landing pairs; tightest margin **+0.12u** (the proven-working 1.12u Helos-plaza pair against the 1.0u floor). The Warden's 0.00u overlap is gone |
+| `gate_chest_loot_breadth` (**the other wave's gate**) | the **deployed DEV** arz | **GATE PASS**, exit 0. 51 tables; pools n **181** / e **111-116** / l **308**. The two fixes provably coexist |
+| `gate_travel_npc_invariants` | post-merge `main` | **GATE PASS**, exit 0 |
+| `negtest_warden_dialog` + `gate_traveler_responds --negtest` | post-merge `main` | **PASS**, exit 0 both (10/10 and 7/7 planted defects caught, positive controls green) |
+| `tools/patches/_check_registry.py` | post-merge `main` | OK, 54 modules, order `0c76e665206959...` (unmoved by this merge) |
+| `run_contracts` (upload push-gate 2) | the **dist payload** | **GATE PASS**: 0 P0 / 0 P1 / **4476 P2** - the identical P2 count the PR-5 ship recorded, so this wave adds **zero** new contract violations |
+| dist == work coupling (upload push-gate 1) | all 4 coupled artifacts | PASS (the upload aborts otherwise) |
+| packager TESTHUB guard | packaged map vs `local/Levels_merged_TESTHUB.arc` | PASS - canonical `6784cf0f` shipped; the hub `7a7ca9ac` did not |
+
+**RESIDUAL - and it is the SAME CLASS OF DEBT THAT CAUSED b63, so it is stated plainly.** This fix is
+**NOT PROVEN IN-GAME**. It is proven from bytes and gates only - which is exactly the standing the PR-5
+Warden had when it shipped mute. Will's click is still the launch gate. `docs/WILL_TEST_GUIDE.md` tells
+him to test on **Legendary or Epic** (his Normal `.que` is still the stale pre-PR-5 shape). If the Warden
+is STILL silent, the next suspect is already written down: `Action_BoatDialog` may only bind when the
+NPC's level is loaded at trigger time, so the one question that selects the fallback is **did he walk in
+or teleport in** - the cure being a `GridEntrance` door (the proven build24/25 mechanism) instead of a
+boat NPC. The chest-breadth half is likewise unwalked (Will opens the 6 cage chests across 3 runs).
+Cover art remains absent on the Workshop item (`WARNING: no preview image`), unchanged by this push and
+still Will's separate action.
+
 ## 🟢 BUILD75-DEV GATE RECORD - R-180 CHEST LOOT BREADTH: BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main`, tag `build75-dev`)
 
 **This supersedes the "SOURCE ONLY, NOT BUILT" R-180 gate record further down.** The source lane's fix
