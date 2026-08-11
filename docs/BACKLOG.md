@@ -96,7 +96,12 @@ exactly R-180's B3 exemption) and **ZERO legendary GEAR, before and after**.
 | R-180 REGRESSION: `py tools/gate_chest_loot_breadth.py <arz>` | **PASS** (unchanged) |
 | R-180 REGRESSION: `py tools/debug/negtest_chest_breadth.py <arz>` | **PASS** (unchanged) |
 | `py tools/gate_relic_difficulty_tiers.py <arz>` | **PASS, 33 branches** - and BLIND to this lane by construction, see `BL-R220-DEBT-6` |
+| SWITCH PROOF S1: `RAISE_ROW_CHANCES=False` (the payout veto) | **PASS** - 0 chance fields move, 0 tables reach 0 spears: breadth lands, payout does not |
+| SWITCH PROOF S2: `noun=` kwarg absent (a sibling merge drops it) | **PASS** - gate still RUNS, prints the loud downgrade, identical check codes `B1/B2/O2b` |
 | `py -m py_compile` on all 6 touched/added files | **OK** |
+
+Neither switch ships untested: S1 and S2 are the two safety paths this round added, and each was
+exercised against the live arz rather than reasoned about.
 
 **RE-MEASURED ON THE CURRENT BASE.** The numbers above were first taken on `build76-ship`; this branch has
 since merged `main` @ `178ff4a` and every one was RE-TAKEN against the live build78 arz (`f6638462`, 51,236
