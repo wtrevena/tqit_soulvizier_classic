@@ -1,17 +1,13 @@
-[h2]Fixed: the way into the Spartan Crypt, and chest loot that actually varies[/h2]
+[h2]Fixed: red uber monsters that dropped no loot orb[/h2]
 
-[b]Read this first if you have played since 6 August.[/b] The only entrance to the Spartan Crypt was broken, and this update repairs it.
-
-[list]
-[*][b]The Warden of the Spartan Crypt answers you again.[/b] Deep in the Athens catacombs he simply did not respond when clicked - no dialog box, nothing - and since he is the [i]only[/i] way down, the crypt below him was unreachable. Two things were wrong. His one travel offer was generated through the single code path in the travel system that had never been confirmed working in game; it now comes from the same proven path every other traveller in the mod uses. And he had been placed on exactly the spot both Spartan Crypt teleports drop you on, so an arriving player materialised inside him; he has moved a few paces, still right beside the same stairs down. His menu is unchanged: one option, descend. Sorry for the dead end - that entrance shipped on evidence rather than on a confirmed walk, and this is the correction.
-[/list]
-
-[h2]And two loot fixes[/h2]
+[b]A player report, and the audit it triggered.[/b] The Boar Snatcher - the red legendary spider in the Greek pine forest and the Spartan optional cave - died without dropping a Mystical Orb, while the other red uber monsters all drop one. He does now.
 
 [list]
-[*][b]Chests can finally drop every weapon class - spear included.[/b] Every chest this mod adds inherited one collapsed weapon list that could only pay axes, maces, swords, bows and staves. Spear was simply missing from it, which made a legendary spear [i]structurally impossible[/i] from any mod chest while two dozen of them sat in the database unreachable. Every mod-owned chest and boss hoard now draws from a full-breadth weapon table at its own rarity tier, so Achilles' Spear, Ares' Wrath, Soulharvest, Peleus' Ashen Spear, Telamon's Boar Skewer, Onuris' Spear and the rest are in play. Nothing was removed and no drop chance was lowered - the guaranteed slot keeps its exact weapon-to-relic split, it just is no longer limited to three classes.
-[*][b]The guarded chests stop mirroring each other.[/b] The chests in the Polis Daemonai vault-cage, in the Prison of Souls, used to draw from one collapsed pool, so every playthrough looked the same. Each chest now resolves one of three themes when the area loads - martial, hunter or warden for the plain chests, apex, adept or sovereign for the richer ones - so a cage full of chests reads as a cage full of different chests, and re-rolls on a later run.
-[*][b]Relics now match the difficulty you are playing.[/b] The guarded chests and the general-guard hoards could pay an Incarnation relic on Normal and an Essence relic on Legendary. Each difficulty branch now drops its own tier - Essence on Normal, Embodiment on Epic, Incarnation on Legendary - and a build-time audit walks every chest chain so a wrong-tier relic cannot come back. Legendary payouts were preserved exactly.
+[*][b]The Boar Snatcher drops a Mystical Orb.[/b] All three of his level variants were wired to the same generic boss orb the other low-level red ubers pay out. He is a base-game monster the mod had never touched, which is exactly why he slipped through: every drop audit this mod had ever run looked only at records the mod itself owns, and he is not one of them.
+[*][b]Seven more red ubers were silently orb-less, and are now fixed too.[/b] Once the audit was widened to the real runtime world - the mod plus the base game together - it found 55 red uber monsters, of which 14 paid no orb. Neferkha, the frost uber, the higher Phagia, Aithon in the Olympian Arena and Kravmoloch all now drop an orb matched to their level band. Six more are deliberate exceptions and were proven to be so: four are transformation shells whose final form already carries the orb, and two are summoned copies that are not supposed to drop anything at all.
+[*][b]A permanent gate so this class of bug cannot come back.[/b] Every orb in this mod used to be attached by a hand-typed list, which is how monsters got missed. The build now derives the whole red uber roster from the data and fails loudly if any red uber ships without an orb, with each exception having to re-prove itself every build.
 [/list]
+
+[i]No drop rate was lowered and no existing chest, orb or loot table was changed - this update only adds orbs to monsters that had none. The Spartan Crypt entrance fix and the chest breadth work from the previous update are included.[/i]
 
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA, the merge base for this Anniversary Edition port - [b]Dragonlord[/b] for DRX.[/i]
