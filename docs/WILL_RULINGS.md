@@ -4149,3 +4149,69 @@ positive controls GREEN).
 NOT PROVEN IN-GAME. The build, DEV deploy and Steam ship are the orchestrator's; Will's check (kill
 Alkyoneus, open all 6 cage chests across 3 runs, expect legendary spears and visible class variety)
 is the remaining launch gate. See docs/WILL_TEST_GUIDE.md and the BACKLOG gate record.
+## R-200 [2026-08-10] IMPLEMENTED (branch `fix/boar-snatcher-orb`, module `tools/patches/red_uber_orbs.py`) - every RED UBER drops the mystical orb
+
+**Will, VERBATIM (2026-08-10):**
+
+> "boar snatcher legendary spider should drop a mystical orb like the other red uber monsters"
+
+(Number chosen as R-200 rather than R-180/R-190 because two other lanes started the SAME day - the
+chest-loot-breadth wave and the Sparta-warden-dialog wave - and would naturally take the next tens.
+Renumber at integration if it collides; the ruling text is what binds.)
+
+**"MYSTICAL ORB" IS LITERAL, NOT A PARAPHRASE.** Every `genericbossorb_0N` chest in this mod carries
+`description = tagEndChest02`, and the base game's `Text_EN.arc` defines `tagEndChest02 = Mystical Orb`
+(siblings: `xtagChest17 = Hades' Essence`, `xtagChest18 = Charon's Essence`, `tagEndChest01 = Typhon's
+Essence`). b53 settled that the generic orb, NOT a bespoke "X's Essence", is the mod convention (R-47),
+and `docs/reports/b53_orb_essence.md` predicted this exact sentence.
+
+**THE BOAR SNATCHER, IDENTIFIED FROM THE BYTES.** Display tag `tagAEMonsterName06` = "Boar Snatcher";
+records `records\creature\monster\spider\um_boareater_{40,42,44}.dbr` (charLevel 15/17/19),
+`Monster.tpl`, `monsterClassification = Boss` (RED), placed in `Greece/Area003/PineForest04` +
+`Greece/MiniDungeons/SpartaOptCave03` in BASE and in our deployed map. The RECORD is named "boareater"
+while the DISPLAY name is "Boar Snatcher", which is why a filename search finds nothing - resolve
+through the tag, never the filename. All three carried NO `treasureProxyName` field at all.
+
+**WHY NO GATE CAUGHT IT - TWO HOLES, BOTH CLOSED.**
+1. There was NO orb-breadth gate at all. Every orb wiring in the repo is a hand-typed target list
+   (`_BOSS_ORB_TARGETS`, `general_guardians`, `polis_vault`, `diadochi`, `four_generals`,
+   `devourer_kit`, `leinth_wave`), and the only orb GATES were `uber_apex_orb.verify()` (the 8-record
+   Toxeus roster + Leinth) and `general_guardians`' own. R-99 already learned in this exact domain
+   that a typed list is how the Endless Hunt shipped orb-less for two waves.
+2. **THE HOLE THAT ACTUALLY HID IT:** every roster derivation in this repo runs over the MOD db only,
+   but the runtime resolution universe is mod UNION BASE. The Boar Snatcher is a base-only record, so
+   it was invisible to every derivation and would have survived a naively written class gate too.
+   `red_uber_orbs` derives its roster over the UNION, which is what actually closes this.
+
+**THE CLASS (derived, never typed):** `Monster.tpl` + `monsterClassification == 'Boss'` (the repo's own
+word for RED - see `_amend_boss_loot_orbs`, "Give red (Boss) custom bosses the base-game on-death
+chest-orb the red act bosses drop") AND either (a) basename starts `um_` (the uber namespace
+`uber_quest_drops` swept for R-101) or (b) it wears a `tagSVCMonster*` tag (our own ubers under a donor
+filename). MEASURED: 55 red ubers, 41 already orbed, 14 missing.
+
+**WIRED (8), tier = the minimum-distance measured consumer band:** Boar Snatcher x3 (15/17/19) ->
+orb01; Neferkha (32) -> orb02, and the orb rides the UBER because his terminal `as_ghosthero_32` is
+SHARED with five roaming mummy heroes; `um_frost_36` (36) -> orb02; `um_phagia_44` (44) -> orb03, whose
+lower twin `um_phagia_34` had been on orb02 all along; Aithon the Ember-Crowned (55) -> orb04, the
+rule-(b) catch; Kravmoloch (74) -> orb04 and deliberately NOT orb05, which R-99 reserves for the Toxeus
+roster.
+
+**EXEMPT (6), each condition re-proven mechanically so it cannot rot:** the 4 transform SHELLS whose
+TERMINAL form carries the orb (Charon, Mnemophage - the `_MN_ORB_SHELL` "shell: stay orb-less"
+precedent - Polis Gaoler, Tantalus), and the 2 `dropItems = 0` soul-summon copies of the Bloodcrow
+under `records\item\equipmentring\soul\test\`.
+
+**SCOPE BOUNDARY, STATED SO NOBODY WIDENS IT BY ACCIDENT.** 458 Boss-class records exist in the runtime
+universe and 346 carry no orb; this ruling does NOT touch the other 333 (base act/quest bosses that pay
+out through level-placed quest chests). Registered as `BL-R200-DEBT-1`.
+
+**GATE:** *every RED UBER carries a `treasureProxyName` that RESOLVES in mod UNION base, or is in a
+pinned EXEMPT set whose stated condition still holds.* Plus: the 8 pins land exactly, the Boar Snatcher
+override is present in the MOD db and still reads Boss/"Boar Snatcher", every pinned tier's
+3-difficulty chain resolves, each pin is still the minimum-distance tier, and nothing this module wires
+touches orb05. Negative test `py tools/patches/red_uber_orbs.py --negtest <arz>`: 9/9 as designed,
+including N3 (a NEW red uber with no orb = this very regression) and N8 (a Hero-rank `um_` record with
+no orb stays GREEN - the gate is red-only and does not invent policy for the 412 Hero ubers).
+
+**NOT PROVEN IN-GAME.** Will's kill of the Boar Snatcher (Silk Road / PineForest04 or SpartaOptCave03)
+and seeing the orb drop is the remaining launch gate - registered as `BL-R200-DEBT-2`.
