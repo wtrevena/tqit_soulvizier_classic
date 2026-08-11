@@ -1,5 +1,24 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## NEW R-201 (2026-08-10): OUR SOULS FINALLY HAVE EPIC AND LEGENDARY NAMES
+> **THE ONE-LINE TEST: pick up the Soul of the Gaoler on Epic, then on Legendary, and read the item
+> name.** You should now see **"Epic Soul of the Gaoler"** and **"Legendary Soul of the Gaoler"** where
+> all three tiers used to read plain "Soul of the Gaoler". Same for the other 97 souls we made -
+> Charon, Dagon, the Broodmother, the Blood Cult High Priest, every hand-crafted hero soul.
+>
+> **What was wrong.** A soul does not carry three names: the three tier records share ONE name and the
+> engine prefixes the tier word from a separate field (`itemQualityTag`). Every SV soul had it - all
+> 641 of them, no exceptions - and not one of the 98 souls WE authored did, because every generator we
+> wrote copies one field set to all three tiers and none of them ever set that field. So ours rendered
+> the same string on normal, epic and legendary.
+>
+> **Nothing was renamed.** The tier word goes in FRONT of the existing name, so "Soul of the Gaoler"
+> is still exactly "Soul of the Gaoler" on normal, and the SV originals were not touched at all.
+>
+> **If you see a soul that still reads the same on all three tiers, that is a real find** - the new
+> build gate says there are zero left, and it fails the build if one appears.
+
+
 > ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
 > **✅ LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
 > **`16994072e1cb244af9f4d759309162cb`** (55,549,261 B), deployed + md5-verified 2026-08-10 while TQ was

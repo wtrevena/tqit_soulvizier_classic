@@ -71,7 +71,22 @@ TAG_FIELDS = frozenset({
     'FileTextTag',
     'lootRandomizerName',
     'ActorName',
+    # R-201 (2026-08-10): the QUALITY word the engine renders as a PREFIX in
+    # front of itemNameTag ("Epic Soul of the Gaoler"). It is as player-visible
+    # as the name itself, and the soul roster now references it on 2000+ records.
+    'itemQualityTag',
 })
+
+# Tags this build REQUIRES Text.arc to define, whatever the mod-ownership filter
+# says about them, because a mod mechanic depends on them resolving and they are
+# NOT mod-authored (so the manifest/prefix filter would skip them silently).
+# R-201: `itemQualityTag` on every Epic/Legendary soul record points at these two
+# SV-inherited tags; if the SV text pass ever stopped emitting them the tier
+# prefix would render as the raw string "tagSoulEpic" in front of every soul.
+REQUIRED_TAGS = {
+    'tagSoulEpic': "R-201 soul tier prefix ('{^F}Epic')",
+    'tagSoulLegendary': "R-201 soul tier prefix ('{^F}Legendary')",
+}
 
 # Fallback only. Prefixes of tags this mod pipeline OWNS, used when the
 # authoritative manifest (mod_authored_tags.txt) is not available. Every prefix
@@ -338,6 +353,23 @@ def validate(arz_path, text_arc_path, authoritative_tags_path=None,
             print(f"    - {tag}   e.g. {first}{more}")
     else:
         print(f"  OK: all {len(refs)} referenced mod tags are present in Text.arc")
+
+    # REQUIRED_TAGS: not mod-authored, so the ownership filter above skips them,
+    # but a mod mechanic breaks visibly if Text.arc stops defining them.
+    req_missing = sorted(t for t in REQUIRED_TAGS if t not in defined)
+    if req_missing:
+        ok = False
+        print("")
+        print(f"  FAIL: {len(req_missing)} REQUIRED tag(s) missing from Text.arc:")
+        for tag in req_missing:
+            refd = len(all_refs.get(tag, ()))
+            print(f"    - {tag}   ({REQUIRED_TAGS[tag]}; referenced by "
+                  f"{refd} .arz record field(s))")
+    else:
+        _req = ', '.join(f"{t} x{len(all_refs.get(t, ()))}"
+                         for t in sorted(REQUIRED_TAGS))
+        print(f"  OK: all {len(REQUIRED_TAGS)} required non-mod tags defined "
+              f"in Text.arc ({_req})")
 
     # ── MONSTER-NAME BLIND-SPOT CROSS-CHECK (b52) ──────────────────────────────
     # The mod-owned filter above INTENTIONALLY skips non-mod-owned tags, assuming

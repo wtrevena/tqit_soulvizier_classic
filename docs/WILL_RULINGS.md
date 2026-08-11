@@ -4262,3 +4262,66 @@ Epic** (his Normal `.que` is the stale pre-PR-5 shape). If the Warden is still s
 diagnostic question is **did he walk in or teleport in** - that answer selects the already-identified
 fallback, a `GridEntrance` door (the proven build24/25 Knossos->Uber / Sparta L2 mechanism) instead of
 a boat NPC.
+
+## Soul tier naming (decade 200-209 continued; opened 2026-08-10, branch `fix/soul-tier-naming`)
+
+## R-201 [2026-08-10] IMPLEMENTED (branch `fix/soul-tier-naming`) - the Epic and Legendary tiers of OUR souls must be NAMED Epic and Legendary
+
+**Will, VERBATIM (2026-08-10):**
+
+> "the new souls we made dont have named variants, i.e., the epic, legendary and normal versions of
+> the soul of the gaolor are all named the same where as the rest of the souls are named things like
+> Soul of the Gaolor, Epic Soul of the gaolor, legendary soul of the gaolor"
+
+(R-201 follows R-200, which was minted the same day by the `fix/boar-snatcher-orb` lane. The ruling
+text is what binds; renumber at integration if it ever collides.)
+
+**HE DESCRIBED THE MECHANISM EXACTLY, AND IT WAS ALREADY IN THE DATA.** A soul does NOT carry three
+name strings. Its three tier records SHARE ONE `itemNameTag` - the evocative base name - and
+differentiate through **`itemQualityTag`**, which the engine renders as a PREFIX in front of the item
+name. Measured on the shipped `build76` arz (`16994072`), **641 of the 739 multi-tier soul families -
+every single SV-original family, zero exceptions** - carry:
+
+| tier record | `itemQualityTag` | what the player reads |
+|---|---|---|
+| `<base>_soul_n.dbr` | ABSENT | Soul of the Gaoler |
+| `<base>_soul_e.dbr` | `tagSoulEpic` (`{^F}Epic`) | **Epic** Soul of the Gaoler |
+| `<base>_soul_l.dbr` | `tagSoulLegendary` (`{^F}Legendary`) | **Legendary** Soul of the Gaoler |
+
+**THE DEFECT, EXHAUSTIVELY SCOPED.** The 98 non-compliant families are ALL of, and ONLY, the OURS-path
+roster under `records\item\equipmentring\soul\svc_uber\` - the Gaoler is one of them. Every one carried
+`itemQualityTag` on NO tier, so all three rendered the identical string. The cause is structural, not a
+per-soul slip: every generator (`create_uber_souls.design_soul`, `_apply_dewired_hero_handcraft`, and
+the hand-authored boss souls) writes ONE field set to all three tiers and none of them ever emitted the
+field. It would have recurred on the next soul we added.
+
+**NO EXEMPTION LIST, BY CONSTRUCTION - AND THAT IS THE POINT.** The tier word is a PREFIX in FRONT of
+the shared name tag, so law #2 (SV originals untouchable) and the evocative hand-designed names
+(`_HAND_DESIGNED_SOUL_TAGS`) are satisfied WITHOUT touching a single string: "Soul of the Gaoler" stays
+verbatim on normal and simply gains "Epic "/"Legendary " above it, which is precisely what Will
+described. The fix is ADD-ONLY - it never rewrites an authored `itemQualityTag` - so an SV original
+cannot be mutated by it even in principle. No new Text tag is authored: `tagSoulEpic` and
+`tagSoulLegendary` are already in the shipped `Text.arc` from the SV text pass.
+
+**FIX.** `apply_svc_patches._apply_soul_tier_naming(db)`, run inside `run_registry_gates` immediately
+after the F6 naming standard - i.e. AFTER the whole patches registry - so it also covers souls a future
+content module adds. 196 records changed (98 families x Epic + Legendary), 1 field each.
+
+**GATE (fail-loud, no whitelist): `_verify_soul_tier_naming(db, tags)`.**
+- **C1 CONVENTION** - every canonical soul tier record's `itemQualityTag` matches its tier.
+- **C2 DISTINCTNESS** - Will's bug stated as an invariant: within one soul family, no two tiers may
+  render the same `(quality, name)` pair.
+Scope is the canonical `<base>_soul_{n,e,l}` family plus SV's `<base>_soul` normal spelling. amgoz's
+`(... conflicted copy ...)` junk, the `soultemplate*` authoring stubs, SV's `_soul_n_` double-authored
+typo copies and the loot-table records that share the soul folders are out of scope by construction
+(no `itemNameTag`, or no tier family) - deliberately, so the gate reports defects and not noise.
+`validate_tags` gained `itemQualityTag` in `TAG_FIELDS` plus a `REQUIRED_TAGS` backstop, so the two
+prefix tags can never silently vanish from `Text.arc` and leave "tagSoulEpic" rendering in-game.
+
+**NEGATIVE-TESTED 4 ways** (`scratchpad/negtest_r201.py`): gate RED on the pre-fix build76 arz (196
+records / 98 families, ZERO false positives on SV originals); gate RED when ONE shipped record's tag is
+stripped; normalizer idempotently restores it and the gate goes GREEN; gate RED when the Legendary tier
+is given the Epic tag. The gate is not vacuous.
+
+**NOT PROVEN IN-GAME.** The one-line check is Will's: pick up the Gaoler soul on Epic and on Legendary
+and read the item name.
