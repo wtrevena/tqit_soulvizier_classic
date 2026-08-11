@@ -109,30 +109,66 @@ def split_ref(dbr_path):
     return head, rest.lower()
 
 
-def _load_arc(archive_name, mod_resources=None):
+def _load_arcs(archive_name, mod_resources=None):
+    r"""EVERY reachable archive of this name, in resolution order (mod dirs first,
+    then the game install), as [(path, ArcArchive, {inner_name: entry})].
+
+    SHADOWING IS PER ENTRY, NOT PER ARCHIVE - that is what the engine does, and
+    resolving only the FIRST archive of a name is a false-failure generator: the
+    moment the mod shipped an archive carrying a base-game NAME (the 2026-08-06
+    PR-2 dye layer stages an ADDITIVE 288-entry `work\<mod>\Resources\Creatures.arc`
+    beside the base game's 3,520-entry one), every base-game asset under that name
+    read as MISSING. That surfaced as 65 bogus "UNRESOLVED ANIMATION" offenders in
+    `champion_mesh.verify` - the exact "anim gate that cries wolf" its own docstring
+    warns about. A mod archive still WINS for any entry it actually contains; it
+    just no longer deletes the entries it does not.
+    """
     key = (archive_name.lower(), str(mod_resources or ''))
     if key in _ARC_CACHE:
         return _ARC_CACHE[key]
+    chain, seen = [], set()
     for d in _arc_dirs(mod_resources):
         p = d / (archive_name + '.arc')
-        if p.exists():
-            _ARC_CACHE[key] = (p, ArcArchive.from_file(p))
-            return _ARC_CACHE[key]
-    _ARC_CACHE[key] = (None, None)
-    return _ARC_CACHE[key]
+        if not p.exists():
+            continue
+        try:
+            rp = p.resolve()
+        except OSError:
+            rp = p
+        if rp in seen:
+            continue
+        seen.add(rp)
+        a = ArcArchive.from_file(p)
+        idx = {}
+        for e in a.entries:
+            if e.entry_type == 3:
+                idx.setdefault(e.name.lower().replace('/', '\\'), e)
+        chain.append((p, a, idx))
+    _ARC_CACHE[key] = chain
+    return chain
+
+
+def _load_arc(archive_name, mod_resources=None):
+    """Back-compat single-archive accessor: the FIRST reachable archive of this
+    name, or (None, None). Prefer `_load_arcs` - see its docstring."""
+    chain = _load_arcs(archive_name, mod_resources)
+    return (chain[0][0], chain[0][1]) if chain else (None, None)
 
 
 def read_asset(dbr_path, mod_resources=None):
     """(bytes, arc_path) for an art asset addressed the way a .dbr addresses it,
-    or (None, arc_path_or_None) when it does not resolve."""
+    or (None, arc_path_or_None) when it does not resolve. Walks the whole
+    same-name archive chain and returns the FIRST archive that actually carries
+    the entry (mod archives shadow the base game per entry)."""
     arcname, inner = split_ref(dbr_path)
-    p, a = _load_arc(arcname, mod_resources)
-    if a is None:
+    chain = _load_arcs(arcname, mod_resources)
+    if not chain:
         return None, None
-    for e in a.entries:
-        if e.entry_type == 3 and e.name.lower().replace('/', '\\') == inner:
+    for p, a, idx in chain:
+        e = idx.get(inner)
+        if e is not None:
             return a.get_file(e.name), p
-    return None, p
+    return None, chain[0][0]
 
 
 def asset_exists(dbr_path, mod_resources=None):
