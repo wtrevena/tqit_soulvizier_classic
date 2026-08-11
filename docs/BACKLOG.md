@@ -1,5 +1,104 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb + the orb-breadth class gate (Will 2026-08-10, branch `fix/boar-snatcher-orb`) - NOT BUILT, NOT DEPLOYED, NO TAG TAKEN
+
+**Will's order (2026-08-10, verbatim):** "boar snatcher legendary spider should drop a mystical orb like the
+other red uber monsters". Ledgered R-200. DB-lane only (arz); no Levels/Text/Quests change, 0 new tags.
+
+**THE TARGET, identified from the bytes.** "Boar Snatcher" is the DISPLAY name (`tagAEMonsterName06`, base
+`Text_EN/xmonsters.txt`); the RECORDS are `records\creature\monster\spider\um_boareater_{40,42,44}.dbr`
+(charLevel 15/17/19, `Monster.tpl`, `monsterClassification = Boss` = RED, placed in
+`Greece/Area003/PineForest04` + `Greece/MiniDungeons/SpartaOptCave03` in BASE and in our deployed map per
+`docs/reports/el_boss_audit.md`). All three carried NO `treasureProxyName` field at all. "Mystical orb" is
+literal: every `genericbossorb_0N` chest carries `description = tagEndChest02` and base `Text_EN` defines
+`tagEndChest02 = Mystical Orb` - the b53/R-47 generic orb, exactly the convention already in force.
+
+**WHY NO GATE CAUGHT IT - TWO HOLES, BOTH CLOSED BY THIS LANE.**
+1. **There was no orb-breadth gate at all.** Every orb wiring in the repo is a hand-typed target list
+   (`apply_svc_patches._BOSS_ORB_TARGETS`, `general_guardians`, `polis_vault`, `diadochi`, `four_generals`,
+   `devourer_kit`, `leinth_wave`) and the only orb GATES were `uber_apex_orb.verify()` (scoped to the
+   8-record Toxeus roster + Leinth) and `general_guardians`' own six guards. Nothing asserted the CLASS
+   invariant, so a red uber with no orb was not a gate failure - it was invisible. R-99 already wrote this
+   lesson down in this exact domain: a typed list is how the Endless Hunt shipped orb-less for two waves.
+2. **THE HOLE THAT ACTUALLY HID IT: every roster derivation in this repo runs over the MOD db only.** The
+   runtime resolution universe is mod UNION BASE (the model `_validate_container_loot_shapes` and
+   `fx_dangling_cleanup.verify()` already use), but `toxeus_roster()`, `uber_quest_drops.scan_uber_quest_leaks()`,
+   `uber_quest_markers`' placed-member roster and `_BOSS_ORB_TARGETS` can only ever see `db`. The Boar Snatcher
+   is base-only, so it was invisible to all of them and would have survived a naively written class gate too.
+   `red_uber_orbs` derives over the UNION - it loads the base arz itself (0.6s, cached) because
+   `build_svc_database` does `del base_db` long before the registry runs. apply() REQUIRES it; verify()
+   downgrades LOUDLY to mod-only rather than skipping (the `fx_dangling_cleanup` B-GATE-HARDEN-1 idiom).
+
+**THE CLASS (derived, never typed).** `Monster.tpl` + `monsterClassification == 'Boss'` (the repo's own word
+for RED - see `_amend_boss_loot_orbs`, "Give red (Boss) custom bosses the base-game on-death chest-orb the red
+act bosses drop") AND either (a) basename starts `um_` (the uber namespace R-101 swept over "all 611 ubers")
+or (b) a `tagSVCMonster*` display tag (our own ubers under a donor filename; adds 3 records - Dagon, the Hades
+Marshal, Aithon - of which only Aithon was a miss). **MEASURED: 55 red ubers / 41 already orbed / 14 missing.**
+
+**WIRED (8).** Tier = the minimum-distance MEASURED consumer band (ties to the lower tier); that rule
+reproduces all 8 pins with no special-casing, and `verify()` recomputes the bands and fails if a pin stops
+being minimal. Bands measured: orb01 [16,20], orb02 [33,35], orb03 [42,48], orb04 [38,58], orb05 RESERVED.
+
+| record | lvl | tier | why |
+|---|---|---|---|
+| `um_boareater_40` | 15 | orb01 | **WILL'S REPORT** - Boar Snatcher |
+| `um_boareater_42` | 17 | orb01 | " |
+| `um_boareater_44` | 19 | orb01 | " |
+| `um_neferkha_99` | 32 | orb02 | OURS. Terminal `as_ghosthero_32` is SHARED with 5 roaming mummy heroes, so the orb rides the uber himself |
+| `um_frost_36` | 36 | orb02 | SV 0.98i red uber (FileDescription "Uber hero") |
+| `um_phagia_44` | 44 | orb03 | SV 0.98i red uber whose lower twin `um_phagia_34` was on orb02 already |
+| `boss_satyrshaman_55` (Aithon) | 55 | orb04 | OURS, the rule-(b) catch. `bossarena.py` gave him an equipment table + a soul; the orb is a different field and was never wired |
+| `um_kravmoloch_99` | 74 | orb04 | OURS. Above every band -> the apex GENERIC tier. NOT orb05 (R-99 reserved) |
+
+**EXEMPT (6), each condition RE-PROVEN mechanically so it cannot rot.** 4 transform SHELLS whose TERMINAL
+carries the orb (`um_charon_ferryman_99`, `um_mnemophage_99` - the `_MN_ORB_SHELL` "shell: stay orb-less"
+precedent - `um_polisgaoler_99`, `um_tantalus_99`); 2 `dropItems = 0` soul-summon copies of the Bloodcrow
+under `records\item\equipmentring\soul\test\` (the FOUGHT `records\test\um_bloodcrow_50.dbr` is the one on
+orb04). Strip a terminal's orb, or flip a summon to `dropItems = 1`, and the gate fires.
+
+**BASE-OVERRIDE MECHANICS.** A mod `.arz` record REPLACES its base counterpart wholesale, so the 3 Boar
+Snatcher records are IMPORTED field-for-field with their own dtypes (the proven `import_base_game_bosses` /
+`_import_base_game_record` idiom) BEFORE the orb field is added - a stub carrying only `treasureProxyName`
+would have deleted the spider's kit, mesh, controller and stats. `apply()` PROVES the import: each imported
+record must equal its base original on every field except the single added `treasureProxyName`, and exactly
+8 records may change that field build-wide.
+
+**BLAST RADIUS: consumers ADDED ONLY.** No orb, pool, chest or loot table is edited and no consumer is
+removed, so `uber_apex_orb.DONOR_TIER_FLOORS` (explicitly FLOORS: orb01 >= 10, orb04 >= 19) still holds and
+its "the set of orb05 carriers is EXACTLY the Toxeus roster" assertion stays green - `verify()` also asserts
+this module wires nothing to orb05. `validate_tags` is manifest-based, so the base-owned `tagAEMonsterName06`
+the imported records carry can never false-positive.
+
+**GATES RUN THIS LANE (cheap/static only - the heavy build is the Ship phase, queued behind the chest-loot
+and warden-dialog waves):**
+
+| gate | result |
+|---|---|
+| `py -m py_compile` (module + `patches/__init__.py`) | OK |
+| `py tools/patches/_check_registry.py` | OK, 54 modules, order `9d6d7541ab556b3645b440cd4487419a21923381c8903ea8a07dcec23ae6a55d` |
+| `--analyze` vs the built arz `9c190b99` (+ base 74,013) | 55-record roster resolves; 14 orb-less pre-fix; bands as tabled |
+| `apply()` scope proof (real built arz) | exactly 8 records changed `treasureProxyName`; the 3 imports base-identical except the added field |
+| `verify()` post-apply | PASS - 55 red ubers (mod UNION base), 8 wired, 6 exempt re-proven, **0 orb-less** |
+| `--negtest` | **9/9 as designed** - N1 orb removed FAIL / N2 dangling orb FAIL / **N3 a NEW red uber with no orb FAIL (this very regression)** / N4 shell terminal stripped FAIL / N5 summon `dropItems=1` FAIL / N6 stale exemption FAIL / N7 non-minimal tier pin FAIL / **N8 a Hero-rank `um_` record with no orb stays GREEN** (scope proof: red-only) / N9 control PASS |
+
+**NOT RUN HERE (Ship phase owns them):** full DB build + determinism 2x, record-diff vs baseline,
+`run_contracts`, deploy. Expected contract impact: none beyond pre-existing P2 - `contracts_resources`
+resolves against mod UNION base and the 3 imported records are self-consistent base records.
+
+**DEBT REGISTER**
+- `BL-R200-DEBT-1` - SCOPE BOUNDARY: 333 non-uber Boss-class records (base act/quest bosses, `x4_*` Eternal
+  Embers, `jinchan_*`, Ragnarok/Atlantis chains) still carry no orb, deliberately. They pay out through
+  level-placed quest chests. If Will ever wants those too it is a separate, economy-wide decision.
+- `BL-R200-DEBT-2` - NOT PROVEN IN-GAME. Nothing in this lane was launched. Will killing the Boar Snatcher
+  (PineForest04 or SpartaOptCave03) and seeing the orb drop is the launch gate.
+- `BL-R200-DEBT-3` - the 4 non-uber, non-`tagSVC` Boss-class oddities the audit surfaced and deliberately did
+  NOT touch: `drxcreatures\crowheroes\murderbunny` (lvl 66, `tagUrderMunder`), `drxmap\quest\blockersquirrel`,
+  and the two `drxcreatures\bloodwitch\effects\*_bones` corpse props (lvl 1). Flagged for Will rather than
+  silently wired - they are outside the class he named.
+- `BL-R200-DEBT-4` - REGISTRY MERGE: this lane appends `'red_uber_orbs'` immediately before `'visuals'`, and
+  the same-day chest-loot wave appends `'chest_loot_breadth'` in the same region. Expect a trivial textual
+  conflict at integration; both lines belong, `'visuals'` stays LAST.
+
 ## GATE RECORD - GAOLER-CHEST DIFFICULTY TIERING + BUILD-WIDE RELIC-TIER AUDIT (Will 2026-08-08, branch `relic-tiering-redo`) - NOT DEPLOYED, NO TAG TAKEN
 
 **Will's order (2026-08-08):** the 2 Gaoler chests must drop Essence-only on Normal, Embodiment-only on Epic,
