@@ -187,8 +187,7 @@ _SUPRA = r'records\drxitem\supra\%s.dbr'
 # constant rather than copied - so if a later balance lane re-scales the master, thrown
 # re-scales with it instead of silently becoming a rounding error again (the exact defect
 # the b80 merge exposed; see THROWN_MASTER_WEIGHT).
-_THROWN_CLASS_WEIGHT = SLB._CLASS_WEIGHT + (SLB._BASE_MASTER_WEIGHT * 3
-                                            // SLB._ORIGINAL_WEAPON_CLASSES)
+_THROWN_CLASS_WEIGHT = SLB._CLASS_WEIGHT // 4
 # (path, weight) per tier.
 #
 # ROUND 1 made the DRX legendary wand the common outcome (100) and each craft-tier supra a
@@ -196,40 +195,31 @@ _THROWN_CLASS_WEIGHT = SLB._CLASS_WEIGHT + (SLB._BASE_MASTER_WEIGHT * 3
 # here for one reason only - they are reagents of the four thrown recipes, and Will's rule
 # is that a legendary farmer must be able to find every reagent from chests.
 #
-# ROUND 2, AT THE b80 MERGE: that shape does not survive class parity, and b80's D5 is
-# what proved it. With thrown carrying a real class's mass (see THROWN_MASTER_WEIGHT), a
-# member holding 100 of the class's 140 LEGENDARY weight - 71% - makes `u_vit_wand` alone
-# **3.2% to 5.2% of a whole surface's legendary gear mass** on 17 of the 42 surfaces,
-# against b80's 3.0% "no single item dominates the run" cap. Measured, not predicted.
-#
-# So the four supra rise to the wand's own weight (a RAISE; the non-reduction law forbids
-# solving this by cutting the wand). The five legendary thrown become UNIFORM, which is
-# what every other unique class table in the game already is - `spear_l01` does not make
-# one spear 71% of spears - and it is the only shape that satisfies D5 while thrown
-# carries class-parity mass: at 60 apiece the worst surface still measures 3.03%, over
-# cap. **The honest consequence, stated because it is a real design change:** a specific
-# supra thrown goes from ~6.5% of a thrown roll to 20%. It is a five-record class, so a
-# fifth of the class is what "this class is real now" arithmetically means; a supra thrown
-# is still rarer per-item than an ordinary legendary spear is per-spear-roll, because the
-# whole class is a small share of the weapon roll.
+# ROUND 2, AT THE b80 MERGE: this shape is KEPT, and it was re-tested rather than assumed.
+# The alternative - flattening the five legendary thrown to uniform - is only forced if
+# thrown carries a full class's mass, because b80's D5 caps any single item at 3.0% of a
+# surface and a member holding 71% of a class-parity thrown table puts `u_vit_wand` at
+# 3.2%-5.2% on 17 of the 42 surfaces. At the quarter-class weight this ruling actually
+# ships, the worst single-item share in the whole mod is a SHIELD at 2.57%, and no thrown
+# record appears in the D5 ranking at all. So the prize weighting survives, measured.
 _COMMON_WAND_WEIGHT = 5
-_THROWN_LEGENDARY_WEIGHT = 100      # uniform across the five legendary thrown records
+_SUPRA_THROWN_WEIGHT = 10       # a tenth of the ordinary legendary wand: these are prizes
 THROWN_MEMBERS = {
     # Normal: itemLevel-30 wands only. ZERO Legendary -> R-100 #17 holds by construction.
     'n': ((_WAND % 'mi_vit_wand_01', 100), (_WAND % 'm_vit_wand_01', 50)),
-    'e': ((_WAND % 'u_vit_wand', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_charonstoll', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_hati', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_lastword', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_sanguineorbit', _THROWN_LEGENDARY_WEIGHT),
+    'e': ((_WAND % 'u_vit_wand', 100),
+          (_SUPRA % 'svc_wep_charonstoll', _SUPRA_THROWN_WEIGHT),
+          (_SUPRA % 'svc_wep_hati', _SUPRA_THROWN_WEIGHT),
+          (_SUPRA % 'svc_wep_lastword', _SUPRA_THROWN_WEIGHT),
+          (_SUPRA % 'svc_wep_sanguineorbit', _SUPRA_THROWN_WEIGHT),
           (_WAND % 'm_vit_wand_01', _COMMON_WAND_WEIGHT),
           (_WAND % 'm_vit_wand_02', _COMMON_WAND_WEIGHT),
           (_WAND % 'm_vit_wand_03', _COMMON_WAND_WEIGHT)),
-    'l': ((_WAND % 'u_vit_wand', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_charonstoll', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_hati', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_lastword', _THROWN_LEGENDARY_WEIGHT),
-          (_SUPRA % 'svc_wep_sanguineorbit', _THROWN_LEGENDARY_WEIGHT),
+    'l': ((_WAND % 'u_vit_wand', 100),
+          (_SUPRA % 'svc_wep_charonstoll', _SUPRA_THROWN_WEIGHT),
+          (_SUPRA % 'svc_wep_hati', _SUPRA_THROWN_WEIGHT),
+          (_SUPRA % 'svc_wep_lastword', _SUPRA_THROWN_WEIGHT),
+          (_SUPRA % 'svc_wep_sanguineorbit', _SUPRA_THROWN_WEIGHT),
           (_WAND % 'm_vit_wand_01', _COMMON_WAND_WEIGHT),
           (_WAND % 'm_vit_wand_02', _COMMON_WAND_WEIGHT),
           (_WAND % 'm_vit_wand_03', _COMMON_WAND_WEIGHT)),
@@ -253,24 +243,36 @@ THROWN_MEMBERS = {
 # class, not to lower the floor: the floor is what makes "droppable" mean something, and
 # switching it off for the one class this ruling exists to add would be self-defeating.
 #
-# ROUND 2 (the binding derivation): apply **b80's OWN parity law** instead of round 1's.
-# b80's rule is that every weapon class carries identical mass. Thrown pays exactly one
-# class, so a naive reading gives it one `_CLASS_WEIGHT`. That is not enough, and the
-# reason is the asymmetry this whole ruling exists because of: the master has SEVEN
-# members but only FOUR of them are per-class donors. The three base act masters
-# (`all_{tier}0{1,2,3}`, 700 apiece = 2100) pay the six ORIGINAL classes and cannot pay
-# thrown, because no unique one-hand-ranged table exists in the base database - that is
-# R-186's founding fact. So each of the other six classes draws its mass TWICE: one
-# `_CLASS_WEIGHT` from its own donor plus an equal share of the base masters. Parity for
-# the seventh class therefore costs
-#     _CLASS_WEIGHT + 2100/6  =  1000 + 350  =  1350
-# and 1350 is what a class is actually worth in this master, not 1000. MEASURED at 1000
-# it still starved two surfaces (`polisvault_04` and `loottable_hidden_bloodcave_03`, both
-# at 1.28% against the 1.45% floor) for exactly this reason, which is the measurement that
-# sent the derivation back to the base masters.
-# MEASURED after, against b80's master (7 members, total 8100 at every tier):
-#   e / l  1350 / 9450 = 14.29% of a weapon-master roll
-#   n       100 / 8200 =  1.22% of a weapon-master roll
+# ROUND 2 (the binding derivation): **round 1's ratio was RIGHT, and the b80 merge is what
+# proved it from data instead of from a guess at class size.** The measured universe of
+# every gear class at its own target classification, off the built arz:
+#
+#   Legendary:  thrown 5 | bow 23 | mace 24 | SPEAR 24 | staff 25 | sword 28 | legs 33
+#               shield 33 | arms 37 | helm 39 | axe 41 | torso 71
+#   Epic:       thrown 3 | SPEAR 32 | bow 33 | mace 37 | staff 38 | sword 44 | ...
+#
+# Round 1 assumed "a full class weight buys ~20 records" and gave thrown 5/20 = a quarter.
+# The real smallest ordinary class is 23, so the true ratio is 5/23 - a quarter, to within
+# rounding. `_CLASS_WEIGHT // 4` therefore stands, now DERIVED from `SLB._CLASS_WEIGHT` so
+# a future balance lane re-scales thrown with everything else instead of silently
+# shrinking it (which is exactly what b80 did to the hard-coded 250).
+#
+# WHY NOT FULL PARITY, MEASURED. The obvious alternative was to give thrown a whole class
+# weight under b80's parity law (1000, or 1350 once you notice the three base act masters
+# pay the other six classes and structurally cannot pay thrown). Both were built and
+# measured, and full parity is WRONG for a five-record class:
+#   at 1350, a six-chest Gaoler cage run on Legendary pays 6.48 thrown, so **each of the
+#   four craft-only supra thrown lands 1.30 times per run - 2.9x as often as a plain
+#   legendary SPEAR (0.44)**.
+# That is the exact shape of the report Will already filed against this same wave family
+# ("you overcorrected, that run 4 scorpions tail spears dropped"), and it would gut the
+# craft chain that R-184 and R-185 exist to repair: nobody crafts Charon's Toll if a cage
+# run hands him one. At `_CLASS_WEIGHT // 4` a specific supra thrown is ~0.09 per cage
+# run, roughly a fifth as often as a specific legendary spear - reachable, and still a
+# prize, which is what R-186 committed to.
+# MEASURED against b80's master (7 members, total 8100 at every tier):
+#   e / l   250 / 8350 = 2.99% of a weapon-master roll
+#   n       100 / 8200 = 1.22% of a weapon-master roll
 # NORMAL STAYS AT 100 ON PURPOSE. Its table names only the itemLevel-30 wand band, which
 # sits BELOW the tier's target classification, so a full class weight would spend ~11% of
 # every Normal weapon roll on filler the player cannot use - and no gate would say so,
