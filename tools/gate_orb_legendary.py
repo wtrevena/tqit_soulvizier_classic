@@ -16,11 +16,19 @@ WHAT IT ASSERTS
   O2  no orb pays more than ORB_MAX_LEG_PER_OPEN legendary items per open (the
       headline: at most ONE on Legendary difficulty, against 8.43 shipped)
   O3  ... and pays at least one no more often than ORB_MAX_P_LEGENDARY of opens
-  O3b ... on the INTEGER-TRUNCATED spawn reading too (BL-R230-DEBT-5)
   O4  the MIRROR - a legendary must still be POSSIBLE at a real rate ("just a CHANCE",
       not "no chance"), so the ceiling cannot be met by deleting the reward
   O5  ... and the orb must still pay ORB_MIN_DROPS_PER_OPEN items of any kind, so the
       ceiling cannot be met by turning the orb into an empty box
+
+R-230 left two readings of the spawn count because the engine's rounding mode is unproven
+(`BL-R230-DEBT-5`), and its rule is that each check runs under the model hardest on it.
+Here that lands ASYMMETRICALLY, and the asymmetry is deliberate: truncated S is always
+<= continuous S and both readings rise with S, so the CONTINUOUS one is the pessimistic
+side of a CEILING (O2, O3) and the TRUNCATED one is the pessimistic side of a FLOOR (O4).
+There is therefore no truncated ceiling twin - it could never fire while its continuous
+parent was green, and a check that cannot fail is worse than no check because it still
+appears in the PASS line.
 
 All thresholds and their derivations live in `tools/svc_orb_legendary.py`; the in-build
 gate `tools/patches/orb_legendary_chance.verify` and the negative battery

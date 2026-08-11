@@ -177,7 +177,7 @@ rather than asserted.
 | `differentiation_problems` B3 (R-186) over BOTH cage families | **PASS - 0 findings**, 12 families / 36 tables - the twin's 3 themed variants are still distinct after the clone |
 | twin-vs-canonical `numSpawn` differs on all 18 | **PASS** - 0 identical, so the clone captured the SHIPPED volume and not the trimmed one |
 | map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03` (4 TESTHUB-only placements); `B41_SPECS` still names `svc_polisvault_chest_01/03` (2 canonical); the two families are DISJOINT |
-| registry integrity | order hash **`198242d6db75`**, `loot_volume_trim` last before the no-op `visuals` |
+| registry integrity | ⚠️ **SUPERSEDED by R-231 in the same lane** (see the gate record at the top of this file): the hash was `198242d6db75` with `loot_volume_trim` last before the no-op `visuals`. R-231 inserts `orb_legendary_chance` between them, so the manifest is now **61 modules, order hash `f5d23eca1b60`**, `loot_volume_trim` -> `orb_legendary_chance` -> `visuals`. `patches.selfcheck()` OK. The ordering is load-bearing in BOTH directions and is argued at both registry entries. |
 
 **ROUND-2 VET: 7 findings, ALL FIXED, each reproduced independently on `44499f56` before being
 touched.** 2 HIGH (the wave was NOT idempotent while four places claimed it was - measured 58-table

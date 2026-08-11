@@ -91,21 +91,28 @@ def apply(db, tags):
     print("\n=== patches-registry: %s ===" % MODULE_NAME)
     lk = SLB.Lookup(db)
 
-    # ── 1. the census FIRST, in the build log, because Will asked for the number ──
-    SOL.census(db, lk)
-
+    # The orb surface is derived ONCE and reused for the census, the wave and the
+    # calibration. Deriving it walks all 51k records looking for Monster templates, and
+    # this module needs it three times in a row; the scope is a function of the
+    # proxy -> pool -> chest -> table WIRING, which this module cannot touch (it writes
+    # one `loot{g}Chance` on a table already in the set), so reuse is sound rather than
+    # a shortcut. `verify()` deliberately re-derives on the FINAL db.
     scope0 = SOL.orb_tables(db, lk)
     if not scope0:
         raise SystemExit(
             "[orb_legendary_chance] SCOPE EMPTY: svc_orb_breadth derived no uber-orb "
             "loot table. Demoting nothing while reporting success is exactly how "
             "BL-R181-DEBT-7 shipped fifteen starving surfaces through two green gates.")
+
+    # ── 1. the census FIRST, in the build log, because Will asked for the number ──
+    SOL.census(db, lk, scope=scope0)
+
     before = {real: {k.split('###')[0]: list(tf.values)
                      for k, tf in (db.get_fields(real) or {}).items()}
               for _k, (real, _t) in scope0.items()}
 
     # ── 2. the wave ──────────────────────────────────────────────────────────
-    changed = SOL.apply_wave(db, lk, verbose=True)
+    changed = SOL.apply_wave(db, lk, verbose=True, scope=scope0)
     lk.refresh()
 
     # ── 3. SCOPE PROOF: only a loot{g}Chance moved, and only on a demoted row ──
@@ -134,7 +141,7 @@ def apply(db, tags):
             % (len(illegal), sorted(illegal)[:12]))
 
     # ── 4. the numbers, in the build log, because the report IS the log ──────
-    SOL.calibrate(db, lk)
+    SOL.calibrate(db, lk, scope=scope0)
     print("  ORB LEGENDARY: scope proof PASS - %d orb table(s) watched, %d guaranteed "
           "row(s) demoted, only their own loot{g}Chance moved."
           % (len(before), len(changed)))

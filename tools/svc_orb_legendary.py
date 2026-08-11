@@ -129,21 +129,38 @@ ORB_MAX_LEG_PER_OPEN = {'n': 0.05, 'e': 0.75, 'l': 1.00}
 # RATCHET at roughly 11% headroom, not a target: see the docstring's point 3 and
 # `BL-R231-DEBT-1`. They exist so the 90% cut can never be quietly given back.
 ORB_MAX_P_LEGENDARY = {'n': 0.02, 'e': 0.55, 'l': 0.68}
-# ... and the same reading under INTEGER TRUNCATION of the spawn count, the
-# pessimistic engine model R-230 introduced (`BL-R230-DEBT-5`). Measured worst
-# 0.0031 / 0.4498 / 0.5639. Held at the SAME headroom as O3 rather than at the
-# same value, so neither model is the one the gate happens to be lenient about.
-ORB_MAX_P_LEGENDARY_TRUNC = {'n': 0.02, 'e': 0.51, 'l': 0.63}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# THE FLOORS - the mirror direction, and the reason this file is a contract and
-# not a trim. "they should just have A CHANCE to drop legendary items" is an
-# instruction that legendary drops must remain POSSIBLE and non-trivial.
+# WHICH SPAWN MODEL EACH CHECK RUNS UNDER, AND WHY THERE IS NO CEILING TWIN
 #
-# O4 - measured best-case after the wave is e 0.3818 / l 0.5356 (the THINNEST orb
-# of each tier, which is the binding reading for a floor). Set at 0.15/0.25, so a
-# wave would have to more than HALVE the thinnest orb's legendary chance before
-# this reds - wide enough that honest retuning is not fought, tight enough that
+# R-230 introduced two readings of the spawn count because the engine's rounding
+# mode is unproven (`BL-R230-DEBT-5`): the CONTINUOUS mean S = (min+max)/2 and the
+# INTEGER-TRUNCATED S = (int(min)+int(max))/2. Its rule is "each check runs under
+# the model hardest on it", and that rule decides this file's shape too - but it
+# decides it ASYMMETRICALLY, which is worth stating because the first draft of this
+# module got it wrong in a way that shipped a dead check.
+#
+# `spawn_iterations_trunc <= spawn_iterations` ALWAYS, so:
+#   * E[legendary] and P(>=1) are both MONOTONE INCREASING in S, therefore the
+#     CONTINUOUS reading is the larger one, therefore it is the pessimistic side of
+#     a CEILING. O2 and O3 run on it, and a truncated ceiling twin could never fire
+#     while its continuous parent was green - it would be a check that cannot fail,
+#     which is worse than no check because it appears in the PASS line. The first
+#     draft had exactly that as "O3b"; it was removed once the monotonicity was
+#     written down instead of assumed, and the removal is recorded here rather than
+#     silently done.
+#   * The same monotonicity makes the TRUNCATED reading the pessimistic side of a
+#     FLOOR. So O4 runs on it, and prints the continuous reading beside it - the
+#     mirror of R-230's V7b, and for the identical reason.
+#
+# THE FLOORS - the reason this file is a contract and not a trim. "they should just
+# have A CHANCE to drop legendary items" is an instruction that legendary drops
+# remain POSSIBLE and non-trivial.
+#
+# O4 - measured on the TRUNCATED reading after the wave, thinnest orb of each tier
+# (the binding case for a floor): e 0.3479 | l 0.4942. Set at 0.15/0.25, so a wave
+# would have to more than HALVE the thinnest orb's legendary chance before this
+# reds - wide enough that honest retuning is not fought, tight enough that
 # "satisfy the ceiling by deleting the legendary" is impossible.
 # Normal is deliberately ABSENT: a Normal-difficulty orb legitimately measures
 # 0.05%-0.35% legendary, and inventing a floor there would be a number with no
@@ -173,8 +190,20 @@ FAMILY_CHANCE_TOL = 1e-6
 # breadth gate means by it and the two cannot drift apart (the BL-R181-DEBT-7
 # lesson: fifteen live surfaces starved because two waves disagreed about scope).
 # ─────────────────────────────────────────────────────────────────────────────
-def orb_tables(db, lk=None, base_rows=None):
-    """{norm(table): (real, tier)} for every in-scope uber-orb loot table."""
+def orb_tables(db, lk=None, base_rows=None, scope=None):
+    """{norm(table): (real, tier)} for every in-scope uber-orb loot table.
+
+    `scope` lets a caller pass an already-derived map. Deriving it costs a full 51k-record
+    scan (`SOB.uber_proxies` walks every record looking for Monster templates), and the
+    registry module needs the same map four times in one build - census, apply, calibrate,
+    verify. Reusing it across `apply_wave` is SAFE and not an optimisation shortcut: the
+    scope is a function of the proxy -> pool -> chest -> table WIRING, and this wave only
+    ever writes `loot{g}Chance` on a table that is already in it. Nothing here can add,
+    remove or repoint a link in that chain, so the set cannot move under the write. Any
+    module that COULD move it must re-derive - `verify()` does, on the final db.
+    """
+    if scope is not None:
+        return scope
     lk = lk or SLB.Lookup(db)
     chains = SOB.orb_chains(db, lk, base_rows)
     return SOB.scope_tables(db, lk, base_rows, chains)
@@ -238,7 +267,8 @@ def reading(d, dist, table):
 # THE CENSUS - the number Will asked for, as a function so the gate, the module
 # and the negatives all report the SAME count from the SAME rule.
 # ─────────────────────────────────────────────────────────────────────────────
-def guaranteed_legendary_rows(db, lk=None, d=None, dist=None, base_rows=None):
+def guaranteed_legendary_rows(db, lk=None, d=None, dist=None, base_rows=None,
+                              scope=None):
     """[(real, tier, group, chance, legendary_share)] - every orb loot group that fires
     on EVERY spawn iteration AND can pay a legendary.
 
@@ -249,14 +279,14 @@ def guaranteed_legendary_rows(db, lk=None, d=None, dist=None, base_rows=None):
     d = d or SLD.Db(db)
     dist = dist or SLD.Distributor(d)
     out = []
-    for _k, (real, tier) in sorted(orb_tables(db, lk, base_rows).items()):
+    for _k, (real, tier) in sorted(orb_tables(db, lk, base_rows, scope).items()):
         for (g, chance, leg) in group_profile(d, dist, real):
             if chance >= 1.0 and leg > 0.0:
                 out.append((real, tier, g, chance, leg))
     return out
 
 
-def family_chance(db, lk=None, d=None, dist=None, base_rows=None):
+def family_chance(db, lk=None, d=None, dist=None, base_rows=None, scope=None):
     """{group index: the richest NON-guaranteed chance that row carries across the orb
     family} - the demotion target, DERIVED from the shipped bytes.
 
@@ -271,7 +301,7 @@ def family_chance(db, lk=None, d=None, dist=None, base_rows=None):
     d = d or SLD.Db(db)
     dist = dist or SLD.Distributor(d)
     out = {}
-    for _k, (real, _tier) in sorted(orb_tables(db, lk, base_rows).items()):
+    for _k, (real, _tier) in sorted(orb_tables(db, lk, base_rows, scope).items()):
         for (g, chance, _leg) in group_profile(d, dist, real):
             if chance < 1.0:
                 out[g] = max(out.get(g, 0.0), chance)
@@ -281,28 +311,28 @@ def family_chance(db, lk=None, d=None, dist=None, base_rows=None):
 # ─────────────────────────────────────────────────────────────────────────────
 # THE WAVE (write side)
 # ─────────────────────────────────────────────────────────────────────────────
-def already_applied(db, lk=None, base_rows=None):
+def already_applied(db, lk=None, base_rows=None, scope=None):
     """The rows this wave would still have to demote. Empty == already applied (or
     never needed). Used as the apply-once guard, exactly like R-230's twin check:
     the demotion IS idempotent - a second run finds nothing at chance 100 and writes
     nothing - but saying so from a MEASUREMENT beats claiming it in a comment.
     """
-    return guaranteed_legendary_rows(db, lk, base_rows=base_rows)
+    return guaranteed_legendary_rows(db, lk, base_rows=base_rows, scope=scope)
 
 
-def apply_wave(db, lk=None, verbose=True, base_rows=None):
+def apply_wave(db, lk=None, verbose=True, base_rows=None, scope=None):
     """Demote every guaranteed-legendary orb row to the family chance. Returns
     [(real, tier, group, old_chance, new_chance)]."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
-    rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows)
+    rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows, scope)
     if not rows:
         if verbose:
             print("  ORB LEGENDARY: no guaranteed-legendary orb row present - nothing "
                   "to demote (the wave is a no-op on an already-ruled database).")
         return []
-    fam = family_chance(db, lk, d, dist, base_rows)
+    fam = family_chance(db, lk, d, dist, base_rows, scope)
     changed = []
     for (real, tier, g, chance, _leg) in rows:
         target = fam.get(g)
@@ -339,13 +369,13 @@ def apply_wave(db, lk=None, verbose=True, base_rows=None):
 # ─────────────────────────────────────────────────────────────────────────────
 # THE CONTRACT
 # ─────────────────────────────────────────────────────────────────────────────
-def problems(db, lk=None, report=None, base_rows=None):
+def problems(db, lk=None, report=None, base_rows=None, scope=None):
     """R-231. Returns a list of problem strings, empty when clean."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
     out = []
-    scope = orb_tables(db, lk, base_rows)
+    scope = orb_tables(db, lk, base_rows, scope)
     if not scope:
         return ["O0 the orb surface derived EMPTY. R-231 measures nothing and would "
                 "report success - the BL-R181-DEBT-7 failure verbatim. Check "
@@ -353,7 +383,7 @@ def problems(db, lk=None, report=None, base_rows=None):
 
     # O1 - Will's literal ruling: ZERO guaranteed-legendary rows.
     for (real, tier, g, chance, leg) in guaranteed_legendary_rows(db, lk, d, dist,
-                                                                 base_rows):
+                                                                 base_rows, scope):
         out.append(
             "O1 %s group %d fires on EVERY spawn iteration (chance %.1f%%) and pays "
             "legendary %.1f%% of the time, so an open of this orb is a guaranteed roll "
@@ -389,24 +419,20 @@ def problems(db, lk=None, report=None, base_rows=None):
                 "being quietly given back."
                 % (SLB._n(real), 100.0 * p1, TIER_NAME[tier],
                    100.0 * ORB_MAX_P_LEGENDARY[tier]))
-        if p1t > ORB_MAX_P_LEGENDARY_TRUNC[tier]:
-            out.append(
-                "O3b under INTEGER TRUNCATION of the spawn count %s pays at least one "
-                "legendary %.1f%% of the opens at difficulty %s (ceiling %.1f%%), "
-                "against %.1f%% on the continuous reading. The engine's rounding mode is "
-                "unproven (BL-R230-DEBT-5), so the ceiling has to hold under both or the "
-                "PASS line is quoting a model instead of a drop rate."
-                % (SLB._n(real), 100.0 * p1t, TIER_NAME[tier],
-                   100.0 * ORB_MAX_P_LEGENDARY_TRUNC[tier], 100.0 * p1))
-        # O4 - the MIRROR. "just a CHANCE" means a chance that still exists.
+        # O4 - the MIRROR. "just a CHANCE" means a chance that still exists. Measured
+        # on the INTEGER-TRUNCATED spawn count, which is the pessimistic side of a
+        # FLOOR (see the model block above); the continuous reading is printed beside
+        # it so a report says which model moved, not just that something did.
         floor = ORB_MIN_P_LEGENDARY.get(tier)
-        if floor is not None and p1 < floor:
+        if floor is not None and p1t < floor:
             out.append(
                 "O4 %s pays at least one legendary only %.1f%% of the opens at "
-                "difficulty %s (FLOOR %.1f%%). Will asked for a LOW chance, not for no "
-                "chance - an uber orb that can no longer pay a legendary satisfies the "
-                "ceiling by deleting the reward."
-                % (SLB._n(real), 100.0 * p1, TIER_NAME[tier], 100.0 * floor))
+                "difficulty %s under INTEGER TRUNCATION of the spawn count (FLOOR "
+                "%.1f%%; the continuous reading is %.1f%%). Will asked for a LOW chance, "
+                "not for no chance - an uber orb that can no longer pay a legendary "
+                "satisfies every ceiling above by deleting the reward."
+                % (SLB._n(real), 100.0 * p1t, TIER_NAME[tier], 100.0 * floor,
+                   100.0 * p1))
         # O5 - ... and the orb must still be worth opening at all.
         if drops < ORB_MIN_DROPS_PER_OPEN:
             out.append(
@@ -419,17 +445,17 @@ def problems(db, lk=None, report=None, base_rows=None):
         report.update({'tables': len(scope), 'worst_leg_per_open': worst_leg,
                        'worst_p': worst_p, 'thinnest_drops': thinnest,
                        'guaranteed': len(guaranteed_legendary_rows(db, lk, d, dist,
-                                                                  base_rows))})
+                                                                  base_rows, scope))})
     return out
 
 
-def census(db, lk=None, base_rows=None):
+def census(db, lk=None, base_rows=None, scope=None):
     """Will's question, printed: how many guaranteed-legendary rows per orb tier."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
-    scope = orb_tables(db, lk, base_rows)
-    rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows)
+    scope = orb_tables(db, lk, base_rows, scope)
+    rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows, scope)
     print('\n=== R-231 GUARANTEED-LEGENDARY CENSUS (Will asked for this number) ===')
     print('  %-11s %7s %10s   %s' % ('difficulty', 'tables', 'guar rows', 'which'))
     for tier in TIERS:
@@ -443,13 +469,13 @@ def census(db, lk=None, base_rows=None):
           % len(rows))
 
 
-def calibrate(db, lk=None, base_rows=None):
+def calibrate(db, lk=None, base_rows=None, scope=None):
     """Every reading behind every constant above, so none of them is taste."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
-    census(db, lk, base_rows)
-    scope = orb_tables(db, lk, base_rows)
+    scope = orb_tables(db, lk, base_rows, scope)
+    census(db, lk, base_rows, scope)
     print('\n=== R-231 ORB LEGENDARY CALIBRATION ===')
     print('  %-4s %-34s %7s %8s %9s %9s %9s'
           % ('tier', 'table', 'S', 'drops', 'E[leg]', 'P>=1', 'P>=1 tr'))
@@ -459,25 +485,27 @@ def calibrate(db, lk=None, base_rows=None):
         drops, e_leg, p1, p1t = reading(d, dist, real)
         print('  %-4s %-34s %7.3f %8.3f %9.3f %9.4f %9.4f'
               % (tier, SLB._n(real).rsplit('\\', 1)[-1][:34], S, drops, e_leg, p1, p1t))
-        a = agg.setdefault(tier, [0.0, 0.0, 0.0, 1e9, 1e9])
-        a[0] = max(a[0], e_leg)
-        a[1] = max(a[1], p1)
-        a[2] = max(a[2], p1t)
-        a[3] = min(a[3], p1)
-        a[4] = min(a[4], drops)
-    print('  %-11s %10s %10s %11s %11s %10s' % ('difficulty', 'maxE[leg]', 'maxP>=1',
-                                                'maxP>=1 tr', 'minP>=1', 'minDrops'))
+        a = agg.setdefault(tier, [0.0, 0.0, 1e9, 1e9, 1e9])
+        a[0] = max(a[0], e_leg)          # O2, continuous - the ceiling's own model
+        a[1] = max(a[1], p1)             # O3, continuous - likewise
+        a[2] = min(a[2], p1t)            # O4, TRUNCATED  - the floor's own model
+        a[3] = min(a[3], p1)             # ... and its continuous twin, for contrast
+        a[4] = min(a[4], drops)          # O5
+    # Each column is printed under the model its own check runs on, so a reader can
+    # compare a number here directly against the constant that gates it.
+    print('  %-11s %12s %12s %14s %13s %10s'
+          % ('difficulty', 'O2 maxE[leg]', 'O3 maxP>=1', 'O4 minP>=1 tr',
+             '(cont twin)', 'O5 minDrops'))
     for tier in TIERS:
         if tier not in agg:
             continue
         a = agg[tier]
-        print('  %-11s %10.3f %10.4f %11.4f %11.4f %10.3f'
+        print('  %-11s %12.3f %12.4f %14.4f %13.4f %10.3f'
               % (TIER_NAME[tier], a[0], a[1], a[2], a[3], a[4]))
-    print('  ceilings O2 %s | O3 %s | O3b %s' % (ORB_MAX_LEG_PER_OPEN,
-                                                 ORB_MAX_P_LEGENDARY,
-                                                 ORB_MAX_P_LEGENDARY_TRUNC))
-    print('  floors   O4 %s | O5 %.2f items/open'
-          % (ORB_MIN_P_LEGENDARY, ORB_MIN_DROPS_PER_OPEN))
+    print('  ceilings (CONTINUOUS S, the pessimistic side of a ceiling)  O2 %s | O3 %s'
+          % (ORB_MAX_LEG_PER_OPEN, ORB_MAX_P_LEGENDARY))
+    print('  floors   (TRUNCATED S for O4, the pessimistic side of a floor)  O4 %s | '
+          'O5 %.2f items/open' % (ORB_MIN_P_LEGENDARY, ORB_MIN_DROPS_PER_OPEN))
 
 
 def pass_line(report):
