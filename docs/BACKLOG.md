@@ -10062,3 +10062,14 @@ Two Steam comments, both dated BEFORE today's live update (Jul 28-29), so each i
 ### PR clarifications from Will 2026-08-06 (steer for the running lanes)
 - **PR-3 (maenads):** Will CONFIRMS the "maenads with ranged weapons" Flozer meant are EXACTLY the thrown-object monsters the R-108 wave fixed (thrown_anim_rig). So the lane's job is NOT to hunt a separate bow-maenad bug - it is to PROVE the shipped thrown fix makes those maenads animate/fire (ALREADY-FIXED with per-record proof from the live arz). If proven, this is closed; tell Flozer it is resolved in the current build.
 - **PR-5 (Sparta Crypt portal):** Will saw the Athens-tombs entrance to the Depths of the Spartan Crypt WORKING in the TESTHUB map variant, but has NOT tested the build shipped to Steam. TESTHUB variants are LOCAL-ONLY and never uploaded (CLAUDE.md), and many entrances/travelers were TESTHUB-gated during dev. THE CRUX: is the Sparta Crypt portal present in the CANONICAL/shipped Levels.arc, or only in the TESTHUB variant? Compare the two map builds directly; if it is TESTHUB-only, subscribers genuinely lack it and it must be promoted into the canonical map (navmesh-safe). If it is in canonical too, it is a findability issue -> a guide/marker hint.
+
+## BL-HOARD-WIRING (from CHEST_DROP_MATRIX audit 2026-08-10, P1 for the balance wave)
+The Charon / Tantalus / Mnemophage / Ephialtes / Diadochi / Obsidian hoards carry the full
+R-180 breadth in their 18 svc tables, but their PLACED CONTAINERS still name base
+boss_default_NN-NN tables - in game they pay stock base boss loot and NONE of the breadth.
+Wiring gap, not a loot gap. FIX (clearly within Will's standing breadth orders): repoint the
+placed hoard containers onto their svc tables (or make the svc tables the containers' named
+tables per current conventions) + extend the breadth gate to assert PLACED-CONTAINER->svc
+wiring so a built-but-unwired table can never pass again. Natural owner: the running
+loot-balance-and-armor wave (wf_2c26e81c) whose surface is chests+hoards; if it ships without
+this, it is the next wave's first item.
