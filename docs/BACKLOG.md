@@ -12441,3 +12441,9 @@ code comment); LOW-1 the single-family green concentration (halved by the 2+1 re
 verified map-side, `x2d_reaver_01` dropped as unplaced); LOW-2 the unstated Epic-craft-result choice
 (now stated, plus a per-tier Normal weight); LOW-3 the worktree build trap (filed as
 `BL-BUILD-DEBT-WORKTREE`); LOW-4 the two miscounts (4 tables vs 8 memberships; `supra_special` = 43).
+
+## ✅ IN-GAME CONFIRMED by Will 2026-08-11: the Atlantis PORTAL-PAGE cap (R-210/build78)
+works in-game ("the removal of atlantis portals worked by the way, i just checked").
+Closes the R-210 in-game gate (BL-PORTALCAP-DEBT-2). Still awaiting its own in-game check:
+the R-211/build82 sea-VOYAGE cap (Rhodes post-Typhon: no Marinos, no Gadir captain,
+no Atlantis adventure in the quest log) - BL-VOYAGECAP-DEBT-1 stays open until walked.
