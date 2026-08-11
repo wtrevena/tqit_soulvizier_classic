@@ -1,5 +1,174 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD81 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `f16712077f315e5d5cf38a32f9c1fec6`** (55,556,551 B, 51,247 records).
+> **Workshop item 3759792705 is now build81 CANONICAL** (was build80): `Upload finished ... : OK`,
+> ManifestID **`8270033132631496719`** (steamcmd 2026-08-11 03:22:40 -> 03:22:57), `-Update
+> -Visibility 0` with the VDF read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files,
+> 1188.3 MB, single wrapper. **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in
+> `docs/BACKLOG.md` -> BUILD81-DEV GATE RECORD. Tag `build81-ship` at this doc commit.
+> - **Push-gate before upload:** dist==work all 5 artifacts PASS, TESTHUB guard PASS (packaged
+>   `6784cf0f`, NOT the TESTHUB `7a7ca9ac`), `run_contracts` on the DIST payload **0 P0 / 0 P1 / 4492
+>   P2** - identical to the live baseline, so ZERO new violations. Changenote 3,193 chars, VDF-safe.
+> - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first
+>   (`build81-dev`).
+> - **Rollback (Steam):** re-upload the build80 arz, kept at `local/build80_ship_c5851a1a.arz`; the
+>   other four artifacts are unchanged. This ship's artifact: `local/build81_run1_f1671207.arz`.
+
+> ## BUILD81-DEV DEPLOYED TO DEV (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `f16712077f315e5d5cf38a32f9c1fec6`**
+> (55,556,551 B, 51,247 records), copied with md5 source==dest verification **while TQ.exe was NOT
+> running** (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 added, 0 removed;
+> the 61 siblings were re-hashed after the copy and are byte-identical. det-2x **byte-IDENTICAL**
+> across two independent full builds, the second with the prefix cache DISABLED.
+> - **What it is:** Will's craft-chain order after reading `docs/CHEST_DROP_MATRIX.md` - *"i meant do
+>   the mythic formulas drop. they can drop in normal as well, but the legendary items should not drop
+>   in normal. All of the reagents need to be droppable somewhere in the game... Yes we should make the
+>   legendary thrown weapons droppable."* Three defects, all measured and all closed:
+>   **(1)** the 42 uber "supra" formulas sat only on the Epic/Legendary act tables, so a Normal chest
+>   reached **0 of 42**; both supra pools are now members of all four `01_act*_arcaneformulae` at
+>   **1.42%-1.60%** - rarer on Normal than the base game already makes them on Epic (2%) and Legendary
+>   (5%). Normal coverage **0/42 -> 42/42**, and legendary GEAR on the Normal branch stays **0**.
+>   **(2)** 36 of the 78 reagents were unreachable from any Legendary chest, including 3 that **do not
+>   exist in this database** (Ragnarok `xpack2` records the four thrown recipes named, so all four were
+>   uncompletable for everyone playing the mod). Now **61 of 82 reachable**, every non-MI reagent on
+>   **19 of 19** legendary chest surfaces, all **42/42 craftables completable**.
+>   **(3)** the thrown class had no unique loot table in this era at all: **0 of 5** legendary thrown
+>   were reachable from anything. `svc_unique_thrown_{n,e,l}01` is authored and named as the seventh
+>   class of the breadth master.
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Text.arc a9fed7ba` / `Levels.arc 6784cf0f` /
+>   `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. **0 new tags authored**,
+>   so `validate_tags` PASSES against the EXISTING `Text.arc`.
+> - **Record-diff vs the shipped `c5851a1a`: ADDED 8 / REMOVED 0 / MODIFIED 16, ZERO unexplained.**
+>   Non-reduction proved mechanically over the whole diff: **18 values raised, 0 lowered, 18 members
+>   added, 0 removed**. The only replacements are the 12 reagent refs on the four thrown recipes, which
+>   is precisely what R-185 rules.
+> - **NEW permanent gate:** `tools/gate_craft_thrown_breadth.py` + the in-build
+>   `craft_thrown_breadth.verify()` sharing one implementation (F1/G1/G3/G4/C1/C2), negative-tested
+>   **12/12**. `svc_armor_breadth.apply_wave` now runs this module first in registry order so the dry
+>   run mirrors the real build.
+> - **⚠️ THE b80 MERGE WAS THE HARD PART - read the addendum before touching loot weights.** b80 had
+>   left a written merge hazard (`BL-R181-DEBT-4`); it is DISCHARGED (thrown is its own gear slot, 12
+>   classes not 11; `MAX_WEAPON_CLASS_SHARE` re-derived 0.29 -> 0.28). The non-obvious part: round 1
+>   satisfied b80's D3 mass floor by giving thrown full class parity, **all gates went green, and it
+>   was still wrong** - it paid 1.30 of each craft-only supra thrown per cage run, 2.9x a plain
+>   legendary spear. It was rebuilt. Thrown keeps its vetted quarter-class weight and is exempt from
+>   D3's MASS floor on a measured size rule (5 records against 23 for the next-smallest class), held to
+>   a REACHABILITY rule instead. Full argument: `docs/WILL_RULINGS.md` -> R-184/185/186 SHIPPED
+>   ADDENDUM.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 == the build79/build80 baseline.** Gate record:
+>   `docs/BACKLOG.md` -> BUILD81-DEV GATE RECORD. Registry: 58 modules.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `c5851a1a` (the build80 arz this
+>   replaced); the same bytes are kept at `local/build80_ship_c5851a1a.arz`, this artifact at
+>   `local/build81_run1_f1671207.arz`.
+> - **Will's in-game check:** full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and
+>   restart Steam first.
+
+> ## BUILD80 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-181 armour breadth + loot distribution; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `c5851a1abbebe9eb7744c9311fa14728`** (55,552,948 B, 51,239 records).
+> **Workshop item 3759792705 is now build80 CANONICAL** (was build79): `Upload finished ... : OK`, ManifestID
+> **`4755232758446325792`** (steamcmd `workshop_log.txt` 2026-08-11 01:02:13 -> 01:02:24), `-Update
+> -Visibility 0` with the VDF read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB,
+> single wrapper. **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in
+> `docs/BACKLOG.md` -> SHIP RECORD R-181 + BUILD80-DEV GATE RECORD. Tag `build80-ship` at this doc commit.
+> - **Push-gate:** dist==work all 5 artifacts PASS, TESTHUB guard PASS (canonical `6784cf0f`, not the DEV
+>   `7a7ca9ac`), single-wrapper PASS, `run_contracts` on the DIST payload 0 P0 / 0 P1 / 4492 P2 (identical to
+>   the build79 baseline, so ZERO new violations on the uploaded bytes), changenote 2,832 bytes pure ASCII.
+> - **TQ.exe never running, never killed; Steam never restarted** - `steam.exe` is still PID 3952 from
+>   2026-08-09 13:02:21, the same PID observed at the start of this lane. DEV was deployed first
+>   (`build80-dev`), and the three loot gates were re-run against the DEPLOYED DEV arz before packaging.
+> - **Rollback (Steam):** re-upload the build79 arz, kept at `local/build79_ship_883a31e2.arz`; the other
+>   four artifacts are unchanged. This ship's artifact: `local/build80_ship_c5851a1a.arz`.
+
+> ## BUILD80-DEV DEPLOYED TO DEV (2026-08-11) - R-181 armour breadth + loot distribution; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `c5851a1abbebe9eb7744c9311fa14728`**
+> (55,552,948 B, 51,239 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 added, 0 removed; the 61 siblings
+> were re-hashed after the copy and are byte-identical. det-2x **byte-IDENTICAL** across two independent
+> full builds, the second with the prefix cache DISABLED.
+> - **What it is:** R-181, Will's TWO reports in one sitting - "also what about the armor? i am not really
+>   seeing armor drops like shields, chest plates, helmets, etc." and "you overcorrected, that run 4
+>   scorpions tail spears dropped". **Both are RATE reports and R-180 could not see either**: R-180 asked
+>   REACHABILITY (can a chest pay a legendary spear at all) and was correctly green, while the cage paid
+>   **58.5 legendary weapons to 12.4 armour pieces (4.73:1)** with the helm at 1.6% of the run and SPEAR at
+>   24.0% against an even share of 9.1%. Now: **every one of the 11 gear classes sits between 7.8% and
+>   10.8%**, weapons:armour **1.22:1**, armour pieces per run **12.4 -> 49.4**, and nothing was reduced
+>   (total legendary gear per run RISES 70.8 -> 109.4).
+> - **The 4 Scorpion's Tails, arithmetically:** P(some legendary spear lands 4x in one cage run)
+>   **27.0% -> 6.3%**; P(four Scorpion's Tails specifically) **2.07% -> 0.45%**. ⚠️ **P(ANY single item
+>   lands 4x) only moves 47.3% -> 39.7%**, because volume ROSE. The honest sentence to Will is "much rarer
+>   for a spear, still routine for something", not "fixed". `numSpawn` is the volume lever and lowering it
+>   is HIS call (`BL-R181-DEBT-5`).
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Text.arc a9fed7ba` / `Levels.arc 7a7ca9ac` (TESTHUB,
+>   the DEV variant) / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged on the DEV
+>   surface. 0 new tags authored, so `validate_tags` PASSES against the EXISTING `Text.arc`.
+> - **Record-diff vs the shipped `883a31e2`: ADDED 3 / REMOVED 0 / MODIFIED 57, ZERO unexplained** - the 3
+>   armour masters, plus 54 swept surfaces + the 3 aggregate weapon masters. Non-reduction proved
+>   mechanically over the whole diff: **603 values raised, 0 lowered, 60 members added, 0 removed.**
+> - **NEW permanent gate:** `tools/gate_loot_distribution.py` + the in-build `armor_loot_breadth.verify()`
+>   sharing one implementation (D1-D9), negative-tested **7 plants RED / 2 controls GREEN**. It is
+>   ORTHOGONAL to R-180's reachability gate by construction: it reds the shipped arz with **328 findings
+>   over 42 surfaces** while R-180's gate is green on the same bytes.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 == the build79 baseline** under the identical config. Gate record:
+>   `docs/BACKLOG.md` -> BUILD80-DEV GATE RECORD. Ruling: `docs/WILL_RULINGS.md` -> R-181 + AMENDMENT.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `883a31e2` (the build79 arz this replaced);
+>   the same bytes are kept at `local/build79_ship_883a31e2.arz`, this artifact at
+>   `local/build80_run1_c5851a1a.arz`.
+> - **Will's in-game check:** Prison of Souls / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open
+>   all 6 cage chests across 2-3 runs; expect helms/chest plates/bracers/greaves/shields alongside weapons,
+>   no class dominating, no 4x-same-spear runs. Also check a red-uber Mystical Orb chest: those were the
+>   worst surfaces in the mod (0.07 helms per open) and now pay ~1.2 of every worn slot. Full note at the
+>   top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+
+> ## BUILD79 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-220 uber orb loot breadth; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `883a31e2b87f03a54a51c550147c8242`** (55,551,723 B, 51,236 records).
+> **Workshop item 3759792705 is now build79 CANONICAL** (was build78): `Upload finished : OK`, ManifestID
+> **`867654719607079771`** (steamcmd 2026-08-11 00:02:45 -> 00:03:08), `-Update -Visibility 0` with the VDF
+> read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB, single wrapper.
+> **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in `docs/BACKLOG.md` -> SHIP RECORD
+> R-220 + BUILD79-DEV GATE RECORD. Tag `build79-ship` at this doc commit.
+> - **Rollback (Steam):** re-upload the build78 arz, kept at `local/build78_ship_f6638462.arz`; the other
+>   four artifacts are unchanged. This ship's artifact: `local/build79_ship_883a31e2.arz`.
+
+> ## BUILD79-DEV DEPLOYED TO DEV (2026-08-10) - R-220 uber orb loot breadth; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `883a31e2b87f03a54a51c550147c8242`**
+> (55,551,723 B, 51,236 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 removed; the 61 siblings were
+> re-hashed after the copy and are byte-identical. det-2x **byte-IDENTICAL** across two independent full builds.
+> - **What it is:** R-220, Will's order "for the mystical orbs that the uber monsters drop, the items should
+>   drop with increased breadth as well so all classes of items could be dropped". R-180 fixed the CHESTS;
+>   the ORBS carried the identical collapsed weapon row in a second donor family (`1h_all_*01` = axe/club/
+>   sword, with bow and staff named directly and SPEAR forgotten), so **0 spears of any quality were
+>   reachable from 15 of the 18 uber orb tables, at every tier and every difficulty**. Scope is DERIVED from
+>   the consumer (51 uber carriers -> 7 proxies, 6 in reach -> 18 tables), never typed. 15 tables now name
+>   the tier-correct `svc_unique_weapons_{n,e,l}01` master at weight 800, with the weapon row at 40% and the
+>   shield row at 30% (orb05's shipped values since build75). Spear **0 -> 18 / 9 / 22**.
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Text.arc a9fed7ba` / `Levels.arc 7a7ca9ac` (TESTHUB,
+>   the DEV variant) / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged on the DEV
+>   surface. 0 new tags authored, so `validate_tags` PASSES against the EXISTING `Text.arc`.
+> - **Record-diff vs the shipped `f6638462`: ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained** - every one
+>   a loot table with exactly 4 changed fields, and the tier law is readable off the diff (every `[n]` table
+>   took `n01`, every `[e]` took `e01`, every `[l]` took `l01`). The 3 apex tables do not appear at all.
+> - **NEW permanent gate:** `tools/gate_orb_loot_breadth.py` + the in-build `orb_loot_breadth.verify()`
+>   sharing one implementation (O1-O6), negative-tested **11/11**. A second `apply()` on the finished arz is
+>   a measured no-op (0 tables widened, 0 chance raises), so the payout can never be double-raised.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2, and the build78 baseline under the identical config also gives 4492** -
+>   zero new violations, measured both directions. Gate record: `docs/BACKLOG.md` -> BUILD79-DEV GATE RECORD.
+>   Ruling: `docs/WILL_RULINGS.md` -> R-220.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `f6638462` (the build78 arz this replaced);
+>   the same bytes are kept at `local/build78_ship_f6638462.arz`, this artifact at `local/build79_run1_883a31e2.arz`.
+> - **Will's in-game check:** kill any orb-dropping uber and open the Mystical Orb - spears should now be
+>   possible, with visible class variety across kills. Same trip as R-180: the Prison of Souls / Hades Palace
+>   floor 4 **Unbound Gaoler** drops a tier-4 orb; the **Boar Snatcher** (Pine Forest / SpartaOptCave03) is the
+>   low-level tier-1 control. Full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart
+>   Steam first.
+> - ⚠️ **The higher DROP RATE is a separable, un-asked-for half and is vetoable in one line**
+>   (`svc_orb_breadth.RAISE_ROW_CHANCES = False`); the breadth half is untouched either way. See the BACKLOG
+>   record's closing section.
+
 > ## BUILD78 SHIPPED TO DEV **AND** STEAM (2026-08-10) - R-210 portal-page DLC cap; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
 > `Database/SoulvizierClassic.arz` = `f663846233295da3e8824bfa4d8925c8`** (55,551,546 B, 51,236 records).
@@ -48,6 +217,18 @@
 > - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first (`build77-dev`).
 > - Tag `build77-ship` at this doc commit. Rollback (Steam): re-upload the build76 set (arz `16994072`,
 >   kept at `local/build76_ship_16994072.arz`; the other four artifacts are unchanged).
+> - ✅ **POST-SHIP INDEPENDENT VET = GO** (ship operator, read-only, no rebuild/re-upload). Re-proved from
+>   bytes, not from this doc: record-diff `16994072` -> `435cc485` = **0 added / 0 removed / 196 modified,
+>   changed-field set exactly `['itemQualityTag']`, all under `svc_uber\`, 0 unexplained**; convention +
+>   distinctness over ALL THREE tiers (n=716 / e=739 / l=739 records, 740 families) = **0 C1 / 0 C2** on the
+>   shipped arz AND on the newer `f6638462` now live (so R-201 survived the R-210 rebuild); `tagSoulEpic`
+>   = `{^F}Epic` + `tagSoulLegendary` = `{^F}Legendary` both DEFINED in the shipped `Text.arc a9fed7ba`,
+>   which is what makes the byte-identical Text the coupling law SATISFIED (tag-diff = zero changed tags);
+>   Steam upload re-confirmed from `C:\steamcmd\logs\content_log.txt` (ManifestID `4847215467152146492`,
+>   `Upload finished ... : OK` 21:27:37). One NEW pre-existing debt found and registered:
+>   **`BL-R201-DEBT-1`** (5 of our 98 share a display name with an SV soul - Charon, General Yrrt'ik, Ice
+>   Mandible, Kallixenia, Plague Feast; the gate only checks within a family). Will's test note was
+>   corrected to use only provably-unique names.
 
 
 > ## BUILD77-DEV DEPLOYED TO DEV (2026-08-10) - R-201 soul tier naming; arz-ONLY

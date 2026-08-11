@@ -1,5 +1,22 @@
 # CHEST_DROP_MATRIX.md - what the chests can and cannot drop
 
+> ⚠️ **AMENDED 2026-08-10 by the craft-chain wave (R-184 / R-185 / R-186, branch
+> `fix/craft-thrown-breadth`).** Sections 1, 3 (weapons other than thrown), 4 and 5 still describe
+> the shipped build. Sections **2** (the uber-craft chain), the **thrown** row of section 3, and
+> known gap **#1** were all answered by that wave; each carries an inline BEFORE -> AFTER, and
+> **section 7 is the new craft-chain reference** (reagent classification, the committed MI/green
+> exemption roster, the thrown table). Re-derive any number here with the commands in the appendix.
+>
+> **ROUND 2 (same day, after the adversarial vet):** section 7 was re-measured and four claims in it
+> were WRONG and are now corrected - (a) the divine-artifact reagents reached **1** of the 19
+> legendary chest surfaces, not "the legendary pools" in any useful sense, so a SPREAD rule was added
+> and they now reach 19/19; (b) `mi_l_gigantes2` has **zero live** carriers, so "42 of 42 completable"
+> was true only if you counted a dev duplicate - it is now chest-placed and the claim is honest;
+> (c) the thrown master arithmetic was `250/6700 = 3.6%`, measured it is `250/6350 = 3.94%` on e/l
+> and `100/6200 = 1.61%` on Normal; (d) the three Ragnarok reagents are absent from the MOD database
+> but present in a Ragnarok owner's base game - the reason they were unreachable is R-210's act cap,
+> not non-existence.
+
 > **Will's questions (2026-08-10):** *"so what did you change for the chests? do the chests drop
 > the potions to craft uber weapons? what legendary items can they drop and which ones can they
 > not? what legendary armor and other equipment can they drop and what can they not? how does
@@ -8,6 +25,10 @@
 > **Every number below was parsed out of the arz that is live on DEV and on Steam right now**
 > (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, md5 `16994072e1cb244af9f4d759309162cb`,
 > 55,549,261 bytes, 51,234 records, build76/77 era). Nothing here is copied from an older report.
+> *(2026-08-10 amendment: the craft-chain wave re-derived section 2 and the thrown row against the
+> then-current DEV arz `435cc485ee43e739b85d4221e6c9bb4b`, 55,550,972 bytes, same 51,234 records -
+> the R-201 soul-naming and R-210 portal-cap waves had landed in between and moved neither the
+> record count nor any chest figure.)*
 > The R-180 gate was re-run against this exact file and passes: 51 chest tables, all 6 weapon
 > classes, pools n 181 / e 111-116 / l 308. Those figures match the R-180 build record exactly.
 
@@ -72,13 +93,13 @@ answer is:
 
 | Craft component | Do the chests drop it? |
 |---|---|
-| **Mythic Formulas** (the recipes) | **YES. All 42 of them, from every Epic-tier and Legendary-tier mod chest and boss hoard.** Zero from Normal-tier chests. |
-| **Reagents** | **Partly. 42 of the 78 distinct reagents drop from a Legendary-tier chest; 19 from an Epic-tier chest; 0 from Normal.** |
-| **The finished uber weapon itself** | **NEVER, by design.** All 42 are craft-only; no chest, hoard or monster in the game drops one. |
+| **Mythic Formulas** (the recipes) | **YES, on EVERY difficulty since R-184.** All 42 craftables have a chest-droppable formula on Normal, Epic and Legendary. *Was: Epic + Legendary only, zero from Normal.* |
+| **Reagents** | **Every non-MI reagent drops from a Legendary-tier chest since R-185: 57 of the 79.** The other 22 are the MI / "green" monster-specific items Will exempted by name (section 7). *Was: 42 of 78 from Legendary, 19 from Epic, 0 from Normal - and 3 of the 78 did not exist at all.* |
+| **The finished uber weapon itself** | **Craft-only, with FOUR named exceptions.** 38 of the 42 are craft-only and no chest, hoard or monster drops one. R-186 makes the four legendary THROWN supras (Charon's Toll, Hati, The Last Word, Sanguine Orbit) also droppable, at ~0.26% of a weapon roll each, on Epic and Legendary chests only. |
 | Ordinary potions and scrolls | Yes, incidentally. Each chest reaches 9 mana-potion records, 1 health-potion record and 9 to 12 spell scrolls. |
 | **Relics** (Essence / Embodiment / Incarnation) | Yes, 17 per chest, and always the right tier for the difficulty. |
 | **Charms** | **NEVER.** 122 charm records exist; not one is reachable from any mod chest at any difficulty. |
-| **Artifacts** (the equippable ones) | **NEVER.** 292 artifact records; 0 reachable. 80 of them are craft-only, the rest sit on base-game tables. Merc scrolls and spell scrolls (also technically "artifacts") do drop. |
+| **Artifacts** (the equippable ones) | **Only the 6 divine-artifact CRAFT REAGENTS, since R-185.** The other 286 of 292 still never drop: 80 are craft-only, the rest sit on base-game tables. Merc scrolls and spell scrolls (also technically "artifacts") do drop. |
 
 ### The uber-craft system as it stands today
 
@@ -88,12 +109,18 @@ built by 59 formula records. Every craftable has at least one chest-droppable fo
 
 Per craftable, how many of its three reagents you can farm from a Legendary-tier chest:
 
-| Reagents from a chest | Craftables |
-|---|---|
-| **3 of 3** | Band of the Elder Savage |
-| **2 of 3** | 31 craftables, including **Blood Whisper** (the bleed spear), **Paragon of Violence**, Shrike, Stormbringer, Omega, Agathodaemon, Darkflame Devourer, Titan Crest |
-| **1 of 3** | Ares Endless Assault, Void Prism, Ananke's Ring |
-| **0 of 3** | Ananke's Canvas, Mortok's Skull, The All-Seeing Eye, Charon's Toll, Hati, The Last Word, Sanguine Orbit |
+| Reagents from a chest | Craftables, BEFORE R-185 | Craftables, AFTER R-185 |
+|---|---|---|
+| **3 of 3** | 1 (Band of the Elder Savage) | **9** - the artifact + jewellery craftables, plus Doomherald / Swordfish / Omega now that the orphaned green `mi_l_gigantes2` is chest-placed |
+| **2 of 3** | 31 | **33** - the third reagent is an MI/green item in every case, including all four thrown craftables |
+| **1 of 3** | 3 | **0** |
+| **0 of 3** | **7** - Ananke's Canvas, Mortok's Skull, The All-Seeing Eye, Charon's Toll, Hati, The Last Word, Sanguine Orbit | **0** |
+
+Every craftable now has at least **2 of 3** reagents payable by a legendary chest, and the remaining
+one is always a green that a **live** monster drops (section 7.3 proves each, and the single green
+that had no live monster is itself chest-placed). So **42 of 42 craftables are completable** after
+R-185, with no asterisk. Before it, 7 could not be built at all and 3 more were gated behind a green
+that only a dev-duplicate record carried.
 
 Worked example, **Blood Whisper** (`drxitem\supra\wep_spear.dbr`, the 400-bleed spear):
 
@@ -104,10 +131,19 @@ Worked example, **Blood Whisper** (`drxitem\supra\wep_spear.dbr`, the 400-bleed 
 | Reagent 2, Queen Zenobia's Spear | **Chest-droppable** |
 | Reagent 3, Ichthian melee spear | **Not from a chest.** It is a monster-only drop (`l_ichthianspear`), so you have to kill Ichthians for it. |
 
-The 36 reagents you cannot get from a chest split as: 20 monster-specific green (Monster Infrequent)
-items, 6 that are base-game "divine artifacts" you have to craft in their own right, 8 ordinary
-uniques that only sit on base-game level-banded tables, and 2 DRX randomizer amulets. Section 6
-breaks all of this down item by item.
+**AFTER R-185** that last line reads: *Reagent 3, Ichthian melee spear - still a monster-only drop
+(`l_ichthianspear`), because it is an MI / green item and those are Will's stated exemption. Every
+NON-green reagent of every craftable now drops from a Legendary chest.*
+
+The 36 reagents you could not get from a chest split as: 20 monster-specific green (Monster
+Infrequent) items, 6 that are base-game "divine artifacts" you have to craft in their own right, 8
+ordinary uniques that only sit on base-game level-banded tables, and 2 DRX randomizer amulets.
+Section 6 breaks all of this down item by item. **R-185 (section 7) closed everything except the
+greens**, which are Will's own stated exemption: the 6 artifacts and the 8 + 2 ordinary uniques all
+went into the legendary chest pools. It also found a 37th problem section 6 could not see, because
+the records are simply absent: the Ragnarok
+(`records\xpack2\item\equipmentweapons\1hranged\`) records `u_l_08`, `u_e_06` and `mi_l_machae` were
+the ONLY reagents all four thrown craftables named, so those four were uncompletable by anybody.
 
 ---
 
@@ -125,7 +161,7 @@ many exist in the whole database.
 | **Staff** | **20** | 25 | 5, and all five are craft-only: **Scepter of Kronos**, **Staff of the Cosmos**, **Soul Seekkor**, **Helona's Ascension**, **The Munderizer**. |
 | **Shield** | **27** | 33 | 6. **Agathodaemon** (craft-only) plus 5 base-game uniques that only sit on the base level-banded shield tables (Zeno's Third Paradox, Chigon's Resolve, Venom Husk Shield, Sun Disc, Shield of the Korybantes). |
 | **Axe** | **19** | 41 | 22, but only 8 of those matter. Six are craft-only (**Darkflame Devourer**, **Charybdis Unchained**, **Erysichthon's Undying Hunger**, **Wrath of the Furies**, **Phoenix Ascendant**, **Scylla Unbound**), one is a quest item (**Sickle of Kronos**), one drops off a mod bleed-affix table (Cerberus' Bite). **The other 14 are dead records** that no loot table, container or monster in the entire 51,234-record database names: 13 sit at `records\equipmentweapon\axe\` (note the missing `item\` folder level) and the fourteenth is a dead duplicate of the Sickle. They are inherited DRX/SV debt, not something R-180 excluded. |
-| **Thrown / one-hand ranged** | **0** | 5 in the mod arz | **Nothing in the mod can pay this class at all.** Of the 5 in the mod's own arz, four are craft-only (**Charon's Toll**, **Hati**, **The Last Word**, **Sanguine Orbit**) and one is a DRX wand on its own randomizer. The base game adds many more (Ragnarok/Atlantis one-hand-ranged), but there is **no "unique one-hand-ranged" loot table anywhere in the mod or the base database** for the aggregate master to name; the only 12 base tables for the class are monster drops (monkeyman, potamoi warrior). **This is a real gap, not a design choice.** See "Known gaps" below. |
+| **Thrown / one-hand ranged** | **5** *(was 0)* | 5 in the mod arz | **Nothing. R-186 closed this class.** The audit was right that **no "unique one-hand-ranged" loot table existed anywhere in the mod or the base database** (the only 12 base tables for the class are monster drops: monkeyman, potamoi warrior), so R-186 AUTHORS one - `svc_unique_thrown_{n,e,l}01` - and names it as the seventh class of the aggregate master. All five in the mod arz are now reachable on Epic and Legendary: the DRX legendary wand at weight 100, each of the four supras (**Charon's Toll**, **Hati**, **The Last Word**, **Sanguine Orbit**) at 10, and the three Common vit wands at 5 (they are reagents of the repointed recipes, so a legendary farmer has to be able to find them). Normal reaches 2 non-legendary thrown and no legendary one. The Ragnarok/Atlantis one-hand-ranged range the base game adds stays out, like every other DLC item (R-210). |
 
 **Two-handed weapons are covered.** In Titan Quest a two-hander is not a separate item class; a 2H
 sword is still `WeaponMelee_Sword` on `weapon_sword.tpl`. The base `all_{tier}0{1,2,3}` masters that
@@ -153,7 +189,7 @@ Same Legendary-difficulty chest.
 | **Ring** | **16** | 24 | Two craft-only (Ananke's Ring, Band of the Elder Savage), 6 base-only. |
 | **Relic** | **17 per chest** | 292 | Always tier-matched: Essence-tier on Normal, Embodiment-tier on Epic, Incarnation-tier on Legendary. This is the R-100 / 2026-08-08 relic law and the gate re-proves it (33 branches, 0 leaks). |
 | **Charm** | **0** | 122 | **No mod chest drops a charm on any difficulty.** The donor table's rows simply never named the charm families. Not a regression from R-180, but worth knowing. |
-| **Artifact** | **0** | 292 | **No mod chest drops an equippable artifact.** 80 of the 292 are craft-only supra/DRX results; the rest are on their own base-game tables. Merc scrolls and spell scrolls do drop (41 records reachable from a Normal-tier chest, 9 from an Epic-tier one). |
+| **Artifact** | **6** *(was 0)* | 292 | R-185 made the **six IT "divine artifact" craft reagents** (Ikon of Zeus, Thoth's Glory, Marduk's Tablet of Destiny, Golden Eye of Sun Wukong, Crescent Moon of Artemis, Demeter's Bounty) droppable from Legendary chests, because two craftables need them and nothing dropped them. The other 286 still never drop: 80 are craft-only supra/DRX results and the rest sit on their own base-game tables. Merc scrolls and spell scrolls do drop (41 records reachable from a Normal-tier chest, 9 from an Epic-tier one). |
 | **Formula** | **4** legendary-grade **+ 42 uber** | 7 legendary-grade | The three legendary-grade formulae you cannot get are the base IT arcane formulae (Book of Dreams, Scroll of Oneiros, Shroud of Eternal Night), which sit on the base `act1_arcaneformulae` tables. |
 
 **Full class breakdown of one legendary chest (308 items):** torso 33, head 30, arms 28, legs 28,
@@ -195,14 +231,15 @@ and would rebalance the whole campaign.
 
 ### Known gaps (honest list)
 
-1. **Thrown / one-hand-ranged weapons cannot drop from any mod chest.** Five legendary records exist
-   in the mod arz and none are reachable; four are craft-only anyway, so the practical loss is one
-   DRX wand plus the whole Ragnarok/Atlantis one-hand-ranged range that the base game adds. Closing
-   it means **authoring** a unique one-hand-ranged loot table, because no such table exists in the
-   mod or the base database today (checked: 12 base tables carry `1hranged`, all of them
-   monster-specific).
+1. ~~**Thrown / one-hand-ranged weapons cannot drop from any mod chest.**~~ **CLOSED 2026-08-10 by
+   R-186** (`fix/craft-thrown-breadth`). The diagnosis was exactly right, including the hard part:
+   no unique one-hand-ranged loot table existed in the mod OR the base database (12 base tables
+   carry `1hranged`, all monster-specific), so closing it meant **authoring** one. That is what
+   R-186 does. All 5 thrown records in the mod arz are now reachable on Epic and Legendary; Normal
+   gets the itemLevel-30 wand band only.
 2. **Charms never drop from mod chests** (0 of 122), on any difficulty.
-3. **Equippable artifacts never drop from mod chests** (0 of 292).
+3. ~~**Equippable artifacts never drop from mod chests** (0 of 292).~~ **PARTLY CLOSED by R-185:**
+   the 6 divine-artifact CRAFT REAGENTS now drop from Legendary chests. The other 286 still do not.
 4. **The six boss hoards listed as "latent" above are wired to `boss_default_*`,** so the breadth
    work does not currently reach them in game.
 5. **`svc_obsidianhoard_loot_02` and `_03` reach the Normal-tier relic family as well as their own.**
@@ -323,17 +360,172 @@ the supra spear's green component is the **Ichthian Harpoon**, `mi_l_ichthianmel
 | **The Last Word** (thrown) | identical trio | as above |
 | **Sanguine Orbit** (thrown) | identical trio | as above |
 
-**Correction to an earlier reading.** The three `xpack2\item\equipmentweapons\1hranged\*` reagents are
-**not missing**. They are absent from the *mod's* arz but present in the base game database and named
-by base loot tables (`li_roh_machae`, `ranged_roh`, `roh_08/09/14/15`), and the game resolves against
-the merged database. So all four thrown uber weapons **are** craftable today; their reagents just
-have to be farmed from base Ragnarok content rather than from a chest.
+**Correction to an earlier reading, itself corrected (2026-08-10 round 2).** The three
+`xpack2\item\equipmentweapons\1hranged\*` reagents are absent from the *mod's* arz but **PRESENT in
+the installed base-game database** (measured on Will's install: 74,013 records, 12,483 of them
+`records\xpack2\*`), named by base loot tables (`li_roh_machae`, `ranged_roh`, `roh_08/09/14/15`).
+So "the record does not exist" is true of the mod database and false of a Ragnarok-owner's merged
+database. It does **not** follow that the four thrown craftables were craftable in practice:
+`records\xpack2\*` ships only with the **Ragnarok DLC**, which not every subscriber owns, and R-210
+caps this mod's playable arc at Immortal Throne with the Atlantis / Ragnarok / Eternal Embers act
+pages suppressed - so even a DLC owner playing this mod has no route to that content. The four
+recipes were therefore uncompletable for anyone playing the mod as shipped, which is why R-185
+repoints them onto records the mod itself carries. The gate rule G0 asks the precise question it can
+answer: *is the reagent absent from the MOD database*.
 
 **Practical shape of a fix wave.** Eight of the ten fixable reagents are ordinary torso / amulet /
 ring uniques, so making them chest-droppable is a matter of the relevant themed rows naming the base
 unique families they already almost reach. The two thrown reagents are blocked behind the same gap as
 "Known gaps" item 1: there is no unique one-hand-ranged loot table anywhere to name, so that half of
 the wave has to author one.
+
+---
+
+## 7. The uber-craft chain after R-184 / R-185 / R-186 (SHIPPED 2026-08-11 as build81)
+
+Everything in this section is derived by `py tools/gate_craft_thrown_breadth.py <arz> --verbose
+--mi-sources`, which is also the build's own fail-loud gate, so it cannot drift from what ships.
+**Measured on the shipped arz `f16712077f315e5d5cf38a32f9c1fec6`** (55,556,551 B, 51,247 records),
+which is live on DEV and on Steam. Sections 1-6 above describe the build76/77-era arz `16994072` that
+prompted Will's questions and are left as written; where the two disagree, this section is current.
+
+### 7.1 Formula reachability, per difficulty
+
+| Difficulty | Craftables with a chest-droppable formula | Formula records reachable |
+|---|---:|---:|
+| Normal | **42 / 42** *(was 0 / 42)* | 42 of 59 |
+| Epic | 42 / 42 | 42 of 59 |
+| Legendary | 42 / 42 | 42 of 59 |
+
+The 17 formula records that are never reachable are the duplicate `recipes\` twins of the
+`zrecipes\` primaries; every craftable is covered by at least one of its own formulas, which is the
+property that matters. Mythic-formula share of a Normal act table: **1.5%** (`supra` 1% +
+`supra_special` 0.5%), against the base game's own 2% on Epic and 5% on Legendary.
+
+### 7.2 Reagent classification (82 distinct reagents across the 42 craftables)
+
+| class | count | reachable from a Legendary chest | rule |
+|---|---:|---|---|
+| ordinary | 54 | **all 54** | anything not below |
+| artifact (`ItemArtifact`) | 6 | **all 6** | the IT divine artifacts |
+| MI / "green" (`itemClassification = Rare`) | 22 | 21 exempt by Will's ruling - monster-farmed; **1 chest-placed** (`mi_l_gigantes2`, which has no live monster - see 7.3) | R-185 |
+| missing (record absent from the db) | **0** *(was 3)* | n/a | must always be 0; the gate fails otherwise |
+
+**SPREAD, not just reachability (rule G4).** Reachability from the union of the legendary chest pools
+is not the same question as "can I farm it without chasing one boss". Measured over the **19**
+legendary mod chest tables, every non-MI reagent is payable by **19 of 19** of them (gate floor: half
+the surfaces, minimum 3). This is the rule that catches the round-1 defect where the six divine
+artifacts hung off `04_l_misc` alone - reached by exactly **1** surface,
+`svc_uberorb_apex_l01c`, the apex uber-boss orb. Re-derive with
+`py tools/gate_craft_thrown_breadth.py <arz> --spread`.
+
+### 7.3 The committed MI / green exemption roster, with who drops each
+
+Will, verbatim: *"except for the monster unique droppable items like the green items that are needed
+to build some of the formulas"*. 21 of these 22 stay monster-specific by design. The exemption is
+earned, not assumed: the gate proves each one is carried by a **LIVE** Monster record - dev
+duplicates (`copy of ...`, `xxx...`) do not count - and a green with no live carrier is NOT inside
+Will's exemption, so rule G3 FAILS the build unless it is chest-placed instead. The counts below are
+live monsters.
+
+| MI reagent | monsters that pay it | examples |
+|---|---:|---|
+| `mi_l_arachnos` | 51 | arachnos overseers / soldiers |
+| `mi_l_bandari` | 3 | Bandari the terracotta mage (all 3 difficulty records) |
+| `mi_l_dragonian` | 47 | dragonian headhunters / lancers |
+| `mi_l_empousa` | 45 | Ainex, Coronis, Feira, Lynexia and the other empousa ubers |
+| `mi_l_gigantes2` | **0** | **NO live monster.** Its only carrier is `copy of anapaest_45`, a DRX dev duplicate; the live `anapaest_45` names placeholder `equip\bogus\*` ITEM records in those slots and `equip\loottables\03_master_legendary` has 0 holders. **Not exempt, therefore chest-placed:** `svc_craft_reagents_orphanmi_l01` -> `unique_1h_l01`, reached 19/19. Committed in `MI_NO_LIVE_CARRIER`; see `BL-CRAFT-DEBT-1`. |
+| `mi_l_ichthianmelee` | 9 | ichthian trappers |
+| `mi_l_lamiamelee` | 20 | lamia lancers / ravagers |
+| `mi_l_liche` | 10 | abyssal liches, Chromatic Liche |
+| `mi_l_minotaur` | 4 | Minotaur Lord (all difficulties) + am_lord_21 |
+| `mi_l_neanderthalmage` | 11 | neanderthal bonecasters / shamans |
+| `mi_l_satyrbrigand` | 17 | satyr pillagers / mounted hunters |
+| `mi_l_satyrmage` | 52 | satyr magi / shamans / stormmages |
+| `mi_l_tigermanchampion` | 18 | tigerman champions / warlords |
+| `mi_l_tigermanmage` | 21 | tigerman sorcerers |
+| `mi_l_tigermanmelee` | 24 + 14 | tigerman warriors / archers (two records, torso and sword) |
+| `mi_l_troglodytemelee` | 23 | troglodyte berserkers / savages, Alkor |
+| `mi_l_tropicalarachnos` | 4 | tropical arachnos soldiers |
+| `mi_l_wraith` | 30 | wraiths and necromancers |
+| `mi_vit_wand_01/02/03` | 4-5 each | DRX bloodwitch reavers `d_reaver_40/41/42` + Leinth's guard reaver. PLACEMENT VERIFIED map-side: proxy pools `bw_reaver_lone` / `zparty_witchfest(_2099)` in `drxBC3.lvl` + `drxBC_Finale.lvl`, `q_leinth_lone` in `bossfight.lvl`. (`x2d_reaver_01` is NOT evidence: 0 DB holders, 0 map placements.) |
+
+### 7.4 The thrown class (`WeaponHunting_RangedOneHand`)
+
+14 records exist in the whole database: 5 Legendary, 3 Epic (all three are base-game craft results,
+so none of them can drop **and R-186 deliberately did not make them droppable** - see 7.6), 3 Rare,
+3 Common. The tables the mod now authors:
+
+| table | members | why |
+|---|---|---|
+| `svc_unique_thrown_n01` | `mi_vit_wand_01` (100), `m_vit_wand_01` (50) | both `itemLevel` 30 - Normal's own band. **Zero Legendary**, so the R-100 #17 tier law holds by construction. |
+| `svc_unique_thrown_e01` | `u_vit_wand` (100) + the 4 supras (10 each) + `m_vit_wand_01/02/03` (5 each) | Epic-tier chests pay Legendary-grade items, and there is no level-50s legendary thrown to pay instead. The three Common wands are here because the repointed recipes use them as reagents, and rule G1 requires a legendary farmer to find every reagent in a chest. |
+| `svc_unique_thrown_l01` | same eight | |
+
+They are named by `svc_unique_weapons_{tier}01` at a **per-tier** weight: **250** on Epic/Legendary
+and **100** on Normal. The 250 is not a literal any more - it is `svc_loot_breadth._CLASS_WEIGHT // 4`,
+so a future balance lane re-scales thrown with every other class instead of silently shrinking it.
+Against b80's master (7 members, total **8100** at every tier) that is **250 / 8350 = 2.99%** of a
+weapon-master roll on e/l and **100 / 8200 = 1.22%** on Normal.
+
+**WHY A QUARTER OF A CLASS AND NOT A WHOLE ONE - the b80 merge measured both.** The obvious reading of
+b80's parity law (every weapon class carries identical mass) says thrown should take a full class
+weight. It was built that way, and it is wrong for a five-record class:
+
+| six-chest Gaoler cage run, Legendary | full parity | **AS SHIPPED** |
+|---|---:|---:|
+| thrown items per run | 6.48 | **1.26** |
+| a specific craft-only supra thrown | 1.30 | **0.081** |
+| a specific plain legendary SPEAR | 0.44 | 0.44 |
+| the supra vs the spear | 2.9x MORE common | **5.4x rarer** |
+
+Forcing a five-record class to carry a broad class's mass makes each of its records disproportionately
+common - and four of the five are craft-only prizes. The whole-database class census is the reason:
+at Legendary, thrown is **5** records against **23** for the next-smallest class (bow), so a mass
+floor calibrated on ordinary classes does not transfer to it. That is why thrown is exempt from the
+R-181 distribution gate's D3 mass floor and is held to a **reachability** rule (C1/C2, over all 51 mod
+chest tables and all 18 uber orb tables) instead. The exemption is re-proved from the bytes every
+build and dies automatically if the class ever grows past 12 records.
+
+### 7.5 The four thrown formulas, before and after
+
+All four named `records\xpack2\item\equipmentweapons\1hranged\{u_l_08, u_e_06, mi_l_machae}.dbr` -
+**Ragnarok (`xpack2`) records the mod's own database does not carry.** They exist in an installed
+base game *if the player owns Ragnarok*, but R-210 caps this mod's playable arc at Immortal Throne
+and suppresses the Ragnarok act pages, so no player of this mod had a route to them: all four were
+uncompletable in practice (see the corrected note in 6.5). The
+Ragnarok shape was "one Legendary thrown + one Epic thrown + one green thrown", which is the same
+house shape 43 of the 59 uber formulas use (2 ordinary + 1 green, all of the result's own item
+Class). This era has no droppable Epic thrown, so the middle slot takes the Common vit wand:
+
+| craftable | reagents now |
+|---|---|
+| **Charon's Toll** | `u_vit_wand` + `m_vit_wand_03` + `mi_vit_wand_01` |
+| **Hati** | `u_vit_wand` + `m_vit_wand_01` + `mi_vit_wand_02` |
+| **The Last Word** | `u_vit_wand` + `m_vit_wand_02` + `mi_vit_wand_03` |
+| **Sanguine Orbit** | `u_vit_wand` + `m_vit_wand_03` + `mi_vit_wand_02` |
+
+All four (common, green) pairs are distinct, and each recipe needs **one** green instead of two - so
+a thrown craftable leans on the single DRX reaver family once, not twice. All three Common wands are
+chest-reachable through `svc_unique_thrown_{e,l}01`.
+
+### 7.6 What R-184/185/186 wrote (24 records: 8 added + 16 modified)
+
+`01_act{1,2,3,4}_arcaneformulae` (the supra members) · `svc_unique_thrown_{n,e,l}01` ·
+`svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01` · their legendary hosts
+(`unique_torso_l01`, `amulet_l01`, `finger_l01`, `04_l_misc`, `unique_1h_l01`) · the four
+`svc_thrown_*_formula` records. The three `svc_unique_weapons_{tier}01` masters gain the thrown
+member, written as always by `chest_loot_breadth` - **and those three are the one place this wave
+overlaps `fix/armor-loot-breadth`, which rewrites the same producer; see the INTEGRATION NOTES in
+`docs/BACKLOG.md`.** **No chest or hoard `FixedItemLoot` record, no orb table and no existing weight
+was touched.**
+
+**DELIBERATE OMISSION, recorded so it reads as a choice.** The three Epic-classification thrown
+records (`f_n_kaskeron`, `f_l_qilinseternalpyre`, `f_l_godshatter`) are base-game craft results and
+were NOT made droppable: a base craft result falling out of a chest devalues base crafting, and Will
+asked for the LEGENDARY thrown to drop. The cost is that the Normal thrown band cannot pay at that
+tier's target classification (Epic), which is exactly why its master weight is 100 and not 250.
+
 
 ---
 
@@ -344,6 +536,13 @@ py tools/gate_chest_loot_breadth.py work/SoulvizierClassic/Database/SoulvizierCl
 py tools/debug/derive_gaoler_drops.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
 py tools/debug/negtest_chest_breadth.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
 py tools/gate_relic_difficulty_tiers.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
+```
+
+Section 7 (the craft chain, the MI/green roster and the thrown class) re-derives from:
+
+```
+py tools/gate_craft_thrown_breadth.py work/SoulvizierClassic/Database/SoulvizierClassic.arz --verbose --mi-sources
+py tools/debug/negtest_craft_thrown.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
 ```
 
 The pool walk itself is `tools/svc_loot_breadth.py` (`Expander.leaves` chases a chest table down to

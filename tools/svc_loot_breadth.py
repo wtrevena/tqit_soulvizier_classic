@@ -81,13 +81,47 @@ _BASE_ALL = r'records\item\loottables\weapons\mastertables\unique\all_%s0%d.dbr'
 MASTER = {t: r'records\item\loottables\svc\svc_unique_weapons_%s01.dbr' % t for t in TIERS}
 _MASTER_DONOR = r'records\item\loottables\weapons\mastertables\unique\all_l01.dbr'
 
+# How many weapon CLASSES `unique_1h_*01` covers (axe + club + sword). R-181: the
+# shipped master gave it the SAME weight as the single-class spear/bow/staff tables, so
+# each 1H class carried a THIRD of a spear's mass and spear/bow/staff were each 3x
+# over-represented. That is the arithmetic behind Will's "you overcorrected".
+_ONE_HAND_CLASSES = 3
+_CLASS_WEIGHT = 1000            # mass per weapon CLASS in the aggregate master
+# The three base act masters (`all_{tier}0{1,2,3}`) and how many classes they pay. NAMED
+# rather than left inline because R-186's thrown member has to derive its own parity
+# weight from them: they pay the six ORIGINAL classes and structurally cannot pay thrown
+# (the base database has no unique one-hand-ranged table at all), so a class that is not
+# in them draws its mass once where every other class draws it twice. See
+# svc_craft_thrown._THROWN_CLASS_WEIGHT.
+_BASE_MASTER_WEIGHT = 700
+_ORIGINAL_WEAPON_CLASSES = 6
+
+
 # Members of the aggregate master: (path template applied per tier, weight).
 def _master_members(tier):
-    out = [(_XP_1H % tier, 1000)]
+    # R-181: weight per MEMBER = _CLASS_WEIGHT x (number of classes that member pays),
+    # so every one of the six weapon classes carries identical mass. Strictly a RAISE
+    # over the shipped 1000 (non-reduction law): nothing else moves.
+    out = [(_XP_1H % tier, _CLASS_WEIGHT * _ONE_HAND_CLASSES)]
     for fam in ('spear', 'bow', 'staff'):
-        out.append((_XP_UNIQUE % (fam, tier), 1000))
+        out.append((_XP_UNIQUE % (fam, tier), _CLASS_WEIGHT))
     for i in (1, 2, 3):
-        out.append((_BASE_ALL % (tier, i), 700))
+        out.append((_BASE_ALL % (tier, i), _BASE_MASTER_WEIGHT))
+    # THE SEVENTH CLASS (Will 2026-08-10, "yes we should make the legendary thrown
+    # weapons droppable"): this TQIT-era database ships NO unique one-hand-ranged loot
+    # table, so the mod authors one. Its weight is PER TIER (250 on e/l for the 5-record
+    # legendary band, 100 on n for the 2-record filler band) - see
+    # svc_craft_thrown.THROWN_MASTER_WEIGHT. NOTE FOR THE MERGE: fix/armor-loot-breadth
+    # (b80) rewrites every weight in this function, so these three master records are a
+    # genuine write/write overlap; the binding resolution is a quarter of a class weight
+    # on e/l and a tenth on n, re-derived from b80's own _CLASS_WEIGHT.
+    # Lazy import - svc_craft_thrown imports THIS module,
+    # so the reference must not be resolved at import time. A tier whose thrown table
+    # does not exist yet is simply skipped by ensure_masters' `if lk.real(p)` filter, and
+    # the next ensure_masters call (chest_loot_breadth's, which runs after
+    # craft_thrown_breadth) rewrites the master with it.
+    import svc_craft_thrown as SCT
+    out.append((SCT.THROWN_TABLE[tier], SCT.THROWN_MASTER_WEIGHT[tier]))
     return out
 
 
@@ -96,6 +130,11 @@ def kind_path(kind, tier):
     """Resolve a theme kind to its TIER-CORRECT loot table (never a mixed tier)."""
     if kind == 'broad':
         return MASTER[tier]
+    if kind == 'armor_broad':
+        # R-181: the armour twin of `broad` - one member that pays all FIVE worn
+        # slots evenly. Authored by tools/svc_armor_breadth.ensure_armor_masters.
+        import svc_armor_breadth as SAB
+        return SAB.ARMOR_MASTER[tier]
     if kind == 'unique_1h':
         return _XP_1H % tier
     if kind in ('spear', 'bow', 'staff', 'axe', 'club', 'sword'):
@@ -117,20 +156,56 @@ def kind_path(kind, tier):
 # LAW: the weapon:relic weight split of the chest that shipped is preserved (the
 # weapon side of every theme sums to the weight the single unique_1h member used to
 # carry), so this differentiates WHAT drops, never HOW MUCH.
+#
+# R-181 RE-WEIGHTING (Will 2026-08-10: "you overcorrected, that run 4 scorpions tail
+# spears dropped"). Every theme below keeps its shipped WEAPON : RELIC : ARMOUR split
+# to the percent - only the split BETWEEN weapon classes changes. The class-bias member
+# fell from 30% of the slot to 20% (martial spear) and from 20% to 10% (the secondary),
+# with the difference handed to the class-balanced `broad` master, because the bias
+# member stacked on TOP of a master that was itself spear-heavy.
+#
+# THE WEIGHTS BELOW ARE WHAT THE RECORD SHIPS, verified by reading the built db back.
+# Two corrections a vet had to make to an earlier version of this table, both worth
+# keeping because they are the traps:
+#   1. `martial` reads 700/200/600, not 700/200/100, and its denominator is 1500 - so a
+#      weight here is NOT per-mille. `unique_1h` pays THREE classes (axe/mace/sword) from
+#      one member slot, so `svc_armor_breadth.balance_one_hand` sets it to 3x its largest
+#      single-class sibling. At 100 against spear's 200 the "one-hand melee bias" was
+#      really a 6:1 SPEAR bias - the defect Will reported. 600 gives each of the three
+#      exactly spear's 200. The value is written here rather than left to the sweep so
+#      the design record states what the build produces; the sweep then recomputes 3x200
+#      and changes nothing.
+#   2. All three of martial's members are WEAPON tables, so that raise moves no
+#      weapon:relic:armour split. `warden` is the theme where the split is real, and it
+#      is the one the armour sweep used to overwrite (see `svc_armor_breadth.armor_groups`
+#      - the guaranteed slot is now excluded from the sweep, and warden ships its
+#      documented 500/400/60/40 = 50/50 again).
+#   theme      weapons  relic  armour     shipped        R-181 (as shipped)
+#   martial     100%      -       -      100/60/40      700/200/600  (of 1500)
+#   hunter      100%      -       -      100/60/40      700/200/100  (of 1000)
+#   warden       50%      -      50%     100/60/40      500/400/60/40
+#   apex         50%     50%      -      100/100        1000/1000
+#   adept        50%     50%      -      100/70/30      1000/800/200
+#   sovereign    50%     50%      -      100/70/15/15   1000/700/150/150
 THEMES = {
     # Gaoler cage chest_01 (no relic in its guaranteed slot, exactly as shipped).
-    'martial': [('broad', 100), ('spear', 60), ('unique_1h', 40)],
-    'hunter': [('broad', 100), ('bow', 60), ('spear', 40)],
-    'warden': [('broad', 100), ('shield', 60), ('torso', 40)],
-    # Gaoler cage chest_03 (apex: keeps its 100/100 weapon-vs-relic split verbatim).
-    'apex': [('relic', 100), ('broad', 100)],
-    'adept': [('relic', 100), ('broad', 70), ('staff', 30)],
-    'sovereign': [('relic', 100), ('broad', 70), ('amulet', 15), ('finger', 15)],
+    # unique_1h is 3x spear ON PURPOSE: it pays 3 classes from 1 member slot, so 600
+    # gives axe/mace/sword 200 each - exactly spear's 200. See the note above.
+    'martial': [('broad', 700), ('spear', 200), ('unique_1h', 600)],
+    'hunter': [('broad', 700), ('bow', 200), ('spear', 100)],
+    # warden is the ARMOUR theme: its shipped 50:50 weapon:armour split is preserved to
+    # the percent, but the armour half now spreads over all FIVE worn slots through the
+    # armour master instead of paying only shield + torso.
+    'warden': [('broad', 500), ('armor_broad', 400), ('shield', 60), ('torso', 40)],
+    # Gaoler cage chest_03 (apex: keeps its 50/50 weapon-vs-relic split verbatim).
+    'apex': [('relic', 1000), ('broad', 1000)],
+    'adept': [('relic', 1000), ('broad', 800), ('staff', 200)],
+    'sovereign': [('relic', 1000), ('broad', 700), ('amulet', 150), ('finger', 150)],
 }
 THEME_LABEL = {
     'martial': 'martial (spear + one-hand melee bias)',
     'hunter': 'hunter (bow + spear bias)',
-    'warden': 'warden (shield + heavy armour bias)',
+    'warden': 'warden (all five worn slots + shield bias)',
     'apex': 'apex (any weapon class + relic)',
     'adept': 'adept (staff/caster bias + relic)',
     'sovereign': 'sovereign (jewellery bias + relic)',
@@ -385,6 +460,12 @@ def set_guaranteed_theme(db, table, tier, theme, lk=None):
         p = lk.real(kind_path(kind, tier))
         if p:
             members.append((p, int(weight)))
+        else:
+            # R-181: never silent. A dropped theme member is a silently narrowed chest,
+            # which is the exact defect class this wave exists to close.
+            print("  LOOT BREADTH: WARNING theme %r member kind %r does not resolve at "
+                  "tier %r (%s); the theme ships WITHOUT it"
+                  % (theme, kind, tier, kind_path(kind, tier)))
     if not members:
         raise SystemExit("svc_loot_breadth: theme %r resolves to no donor at tier %r "
                          "(table %s)" % (theme, tier, table))
@@ -547,12 +628,31 @@ def chest_tables(db, lk=None):
     return sorted(out)
 
 
-def audit_table(db, table, tier, ex, floor=None):
-    """The per-chest breadth contract. Returns a list of problem strings.
+def audit_table(db, table, tier, ex, floor=None, noun='a chest'):
+    """The per-container breadth contract. Returns a list of problem strings.
+
+    `noun` only names the CONTAINER KIND in the B1 message so the shared contract
+    reads correctly wherever it is reused (R-220 passes "an uber's orb"); it changes
+    no check, and it carries its own ARTICLE so a noun starting with a vowel does not
+    print "a uber's orb" - Will reads this output. The default keeps every R-180
+    message byte-identical.
+    COMPATIBILITY, and it is deliberate: this kwarg is the ONLY edit R-220 makes to
+    this shared file, and two sibling breadth lanes (`fix/armor-loot-breadth`,
+    `fix/craft-thrown-breadth`) also rewrite this function. If a merge resolution
+    ever drops the kwarg, `svc_orb_breadth` detects that at import and degrades to
+    the default noun with a LOUD one-line notice rather than dying on a TypeError
+    inside a fail-loud gate - one word in one message must never break a build.
       B1 every REQUIRED weapon class is reachable at the tier's own classification
          (SPEAR named explicitly - the reported defect);
       B2 the distinct target-classification pool is at least POOL_FLOOR[tier];
-      B3 (Normal only) no legendary GEAR leaked in (tier law, formulae exempt).
+      B3 (Normal only) no legendary GEAR leaked in (tier law, formulae exempt);
+      C1/C2 the THROWN (one-hand-ranged) class is payable at the tier - the seventh
+         class, added 2026-08-10. It carries its own rule rather than joining
+         REQUIRED_WEAPON_CLASSES because the tier expectations differ: measured, this
+         TQIT-era db has no droppable Epic-classification thrown record at all, so
+         Normal's presence is carried by the itemLevel-30 wand band while Epic and
+         Legendary must reach a true Legendary thrown. Implementation lives in
+         tools/svc_craft_thrown.thrown_problems (ONE implementation, as with B1-B3).
     """
     problems = []
     base = _n(table).rsplit('\\', 1)[-1]
@@ -562,9 +662,9 @@ def audit_table(db, table, tier, ex, floor=None):
     missing = [c for c in REQUIRED_WEAPON_CLASSES if not by_class.get(c)]
     if missing:
         problems.append(
-            "B1 %s [%s tier] reaches NO %s item of class(es): %s (a chest must be able "
+            "B1 %s [%s tier] reaches NO %s item of class(es): %s (%s must be able "
             "to pay every weapon class at its own tier)"
-            % (base, tier, ic, ', '.join(missing)))
+            % (base, tier, ic, ', '.join(missing), noun))
     fl = POOL_FLOOR[tier] if floor is None else floor
     if total < fl:
         problems.append("B2 %s [%s tier] reaches only %d distinct %s items, floor is %d "
@@ -578,6 +678,9 @@ def audit_table(db, table, tier, ex, floor=None):
             problems.append("B3 %s [normal tier] reaches %d LEGENDARY gear item(s) "
                             "(tier law: Normal pays Essence/normal-tier only); e.g. %s"
                             % (base, len(leaked), sorted(leaked)[0]))
+    # C1/C2 - the thrown class. Lazy import: svc_craft_thrown imports this module.
+    import svc_craft_thrown as SCT
+    problems.extend(SCT.thrown_problems(db, table, tier, ex))
     return problems
 
 

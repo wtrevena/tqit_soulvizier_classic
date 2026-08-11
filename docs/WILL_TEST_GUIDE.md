@@ -1,5 +1,100 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-184/185/186 (2026-08-11): THE CRAFT CHAIN - FORMULAS ON NORMAL, EVERY REAGENT FARMABLE, THROWN LEGENDARIES DROP
+> **✅ LIVE ON DEV as `build81` (arz `f1671207`).** arz-only (no map / quest / Text change).
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured on
+> the shipped build, not estimated.
+>
+> **THREE THINGS TO LOOK FOR, in the order they are quickest to check:**
+>
+> **1. Mythic Formulas can now appear on NORMAL - but legendary ITEMS still cannot.**
+> Play a Normal-difficulty character and open mod chests (the Gaoler cage is the densest, but any of
+> them works - this also applies to ordinary monster formula drops, not just chests). Mythic Formulas
+> for the uber craftables are now possible: they sit at **~1.5% of a formula roll**, deliberately
+> **rarer than the base game already makes them on Epic (2%) and Legendary (5%)**, so this is a "over a
+> session you should see one or two", not "every chest". What you must **NOT** see on Normal is a
+> legendary ITEM - that is unchanged and re-proved: the Normal weapon branch reaches **116 items, 0 of
+> them Legendary**, and the new thrown table on Normal reaches **2 items, 0 Legendary**.
+> *If a legendary item drops on Normal, that is a bug - tell me and I will treat it as P0.*
+>
+> **2. Farm Legendary and the reagents accumulate - no specific boss, no specific area.**
+> All **42** uber craftables are now completable. Before this build, **seven** of them could not be
+> finished at all by anyone playing this mod: Ananke's Canvas, Mortok's Skull, The All-Seeing Eye, and
+> the four thrown ones (Charon's Toll, Hati, The Last Word, Sanguine Orbit) - the thrown four named
+> **Ragnarok items this mod's database does not contain**, so their recipes were dead ends.
+> Now: **61 of the 82 reagents drop from Legendary chests**, and every one of them is payable by **19
+> of 19** legendary chest surfaces, so no single boss or area gates anything. The 22 that stay
+> monster-specific are the **green / Monster Infrequent** items you exempted - and each one is now
+> *proven* to have a live monster that drops it (one green had no live carrier at all; it is
+> chest-placed instead).
+>
+> **3. The legendary thrown weapons drop.** They could not drop from anything before - there was no
+> unique one-hand-ranged loot table in the whole database, so one was authored.
+> Expect **about 1.3 thrown weapons per six-chest Gaoler cage run** on Legendary. Most of those are the
+> ordinary DRX vit wand; the four craft-tier ones stay prizes at **~0.08 per run each**, which is
+> roughly **five times rarer than any specific legendary spear**. That is deliberate: they are still
+> meant to be crafted, and a chest handing you one should feel like luck.
+> ⚠️ **This is the number I most want your eye on.** I built a version where the thrown class carried
+> a full class's weight - it looked correct by every automated check, and it paid **1.3 of each craft
+> weapon per run**, which would have made crafting them pointless. I rebuilt it. If it still feels too
+> generous (or too stingy) in play, it is one constant and one line to change.
+>
+> **Where to go:** Prison of Souls / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open all 6
+> cage chests, 2-3 runs. Same trip as the last three builds, so you can compare directly.
+
+> ## 🆕 R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
+> **✅ LIVE ON DEV AND ON STEAM as `build79` (arz `883a31e2`).** arz-only (no map/quest/Text change).
+> **Fully quit TQ and restart Steam before testing** (standing rule). The numbers in the table below are
+> measured on the shipped build, not estimated.
+>
+> **THE ONE-LINE TEST: kill any uber that drops a Mystical Orb, open it, and spears should now be in
+> the pool - along with visibly more class variety.**
+>
+> **What was wrong.** R-180 fixed the CHESTS. The ORBS had the exact same defect and nobody had looked:
+> every orb's weapon row named the 3-class `1h_all` master (axe / club / sword) plus bow and staff, and
+> forgot **spear** - so **a spear of any quality was impossible out of 15 of the 18 orb loot tables, on
+> every difficulty**. The only orb tier that was already fine is the Toxeus apex orb, purely by accident:
+> its tables live in our own folder, so R-180's chest sweep happened to reach them.
+>
+> **What changed (measured on the built arz, not estimated).** Every orb tier now names the same
+> aggregate weapon master the chests use, and its weapon row fires at **40%** (was 13/14%) with the
+> shield row at **30%** (was 13/14%) - the values the Toxeus apex orb has had since build75, so the whole
+> ladder now behaves the same way. Distinct reachable items per open:
+>
+> | orb tier (who drops it) | Normal | Epic | Legendary | spears |
+> |---|---|---|---|---|
+> | tier 1 - Mormo, Elephant Snatcher, Rakanizeus, Melalos, Calybe, Kaublasia, **Boar Snatcher** | 117 -> **195** | 72 -> **99** | 194 -> **260** | 0 -> **18 / 9 / 22** |
+> | tier 2 - Grimshell, Phagia, Permean, um_frost, Neferkha | 101 -> **182** | 75 -> **102** | 138 -> **241** | 0 -> **18 / 9 / 22** |
+> | tier 3 - Inkeyes, Palai, Xaiweng, the General's Guardians | 96 -> **180** | 71 -> **96** | 196 -> **262** | 0 -> **18 / 9 / 22** |
+> | tier 4 - the custom apex roster (**Unbound Gaoler**, Tantalus Unbound, Mnemophage Core, Aithon, Dagon, Helepolis, Ephialtes, Kravmoloch, Sarkoth, Vashkarr, Ilsevar, Gorrahk, Voranthys, Broodmother, Drowned King, Hades Marshal, Bloodcrow...) | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+> | tier 5 - the Toxeus roster | 181 | 116 | 308 | already fine (R-180) |
+> | Charon's Essence - the Ferryman's terminal form | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+>
+> **EASIEST CHECK - it is the SAME TRIP you are already doing for R-180.** In the **Prison of Souls**
+> (Hades Palace floor 4), killing **Alkyoneus the Soul-Gaoler** finishes on his Unbound form, and the
+> Unbound Gaoler drops a **tier-4 Mystical Orb**. So one run tests both waves: open the six cage chests
+> (R-180) and the orb he drops (R-220). On Legendary the orb can now pay **308** distinct legendary
+> items including **22 legendary spears**, where before it could pay 258 and **zero** spears.
+>
+> **Second check, low level:** the **Boar Snatcher** in Pine Forest / SpartaOptCave03 (the R-200 monster)
+> drops a tier-1 orb - useful for confirming the Normal and Epic branches too.
+>
+> **What to look for:**
+> 1. **Spears out of an orb at all** - that was impossible before, at every tier and difficulty.
+> 2. **More than one thing per orb.** The weapon and shield rows used to fire ~1 open in 7; they now fire
+>    ~1 in 2.5 and ~1 in 3.3, so an orb should feel less like "one item and some potions".
+> 3. **Nothing got weaker.** The orb's spawn EQUATIONS, its gold, its relic row and the apex orb's
+>    larger payout are byte-for-byte what they were - only the weapon and shield rows fire more often
+>    (that is check 2, and it means MORE items, not fewer). If an orb feels *stingier* than before, that
+>    is a bug, not the design; say so.
+> 4. **Normal difficulty stays Normal.** No legendary gear should appear on Normal from any orb (the
+>    mercenary scrolls and arcane formulae that already showed up there are base-game and unchanged).
+>
+> **One thing to veto if you want it.** Will asked for BREADTH and got it (check 1). Checks 2's higher
+> drop rate was NOT asked for - it is the rate the Toxeus apex orb has had since build75, applied to the
+> rest of the ladder for consistency, and it is half the change. Say the word and the classes stay while
+> the drop rate goes back to what it is today; it is a one-line switch, not a rewrite.
+
 > ## NEW R-210 (2026-08-10): ATLANTIS IS GONE FROM THE PORTAL PAGE
 > **THE ONE-LINE TEST: open a portal (any rebirth fountain / teleport) and count the act tabs. You
 > should see exactly FOUR - Greece, Egypt, Orient, Immortal Throne - and NO Atlantis, no Ragnarok, no
@@ -22,10 +117,30 @@
 > (`BL-PORTALCAP-DEBT-1`) and needs your call on how to block it.
 
 > ## NEW R-201 (2026-08-10): OUR SOULS FINALLY HAVE EPIC AND LEGENDARY NAMES
-> **THE ONE-LINE TEST: pick up the Soul of the Gaoler on Epic, then on Legendary, and read the item
-> name.** You should now see **"Epic Soul of the Gaoler"** and **"Legendary Soul of the Gaoler"** where
-> all three tiers used to read plain "Soul of the Gaoler". Same for the other 97 souls we made -
-> Charon, Dagon, the Broodmother, the Blood Cult High Priest, every hand-crafted hero soul.
+> **✅ LIVE ON DEV AND ON STEAM (build77-ship, Workshop item 3759792705).** arz
+> **`435cc485ee43e739b85d4221e6c9bb4b`**; the map, quests and Text did not move.
+>
+> **THE ONE-LINE TEST - two souls, three tiers each:**
+> 1. **Soul of the Gaoler** (Alkyoneus the Soul-Gaoler, Prison of Souls / Hades Palace floor 4 - the same
+>    boss as the chest-breadth test). Expect **"Soul of the Gaoler"** on normal, **"Epic Soul of the
+>    Gaoler"** on Epic, **"Legendary Soul of the Gaoler"** on Legendary.
+> 2. **Soul of the Insatiable** (Tantalus, `um_tantalus_99`, in the cave off the Stygian Marsh whose area
+>    banner reads **"Den of Tantalus"**). Expect **"Soul of the Insatiable"** / **"Epic Soul of the
+>    Insatiable"** / **"Legendary Soul of the Insatiable"**.
+>
+> All three tiers of both used to read the plain name. Same fix on the other 96 souls we made - Dagon, the
+> Broodmother, the Blood Cult High Priest, the Waking Dread, all four Toxeus souls, every hand-crafted
+> hero soul.
+>
+> ⚠️ **Use a FRESHLY DROPPED soul, not one already in your stash or caravan, if anything looks off.** The
+> name is read from the database at display time so a stored soul should update too, but TQ bakes item
+> data at pickup (standing lesson), and a stale stash item is the one way you could see "no change" on a
+> build that is actually correct.
+>
+> ⚠️ **Do not use Charon Soul as your test.** Two different souls render that exact name - ours and
+> Soulvizier's own - so it cannot tell you whether the fix landed. Same caution for General Yrrt'ik, Ice
+> Mandible, Kallixenia and Plague Feast. That duplicate-name overlap is older than this fix and is logged
+> as `BL-R201-DEBT-1`; renaming souls is your call, not ours.
 >
 > **What was wrong.** A soul does not carry three names: the three tier records share ONE name and the
 > engine prefixes the tier word from a separate field (`itemQualityTag`). Every SV soul had it - all
@@ -39,6 +154,72 @@
 > **If you see a soul that still reads the same on all three tiers, that is a real find** - the new
 > build gate says there are zero left, and it fails the build if one appears.
 
+> ## 🆕 R-181 (2026-08-10): ARMOUR NOW DROPS LIKE ARMOUR, AND NO ONE CLASS RUNS AWAY WITH THE RUN
+> **✅ LIVE ON DEV AND ON STEAM as `build80` (arz `c5851a1a`).** This is your two follow-up reports on
+> R-180: *"also what about the armor? i am not really seeing armor drops like shields, chest plates,
+> helmets, etc."* and *"you overcorrected, that run 4 scorpions tail spears dropped"*. Both were REAL
+> and both were measured, not guessed. arz-only again, so the map/quests/Text did not move.
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured
+> on the SHIPPED build, not predicted - the dry run and the build agree to the second decimal.
+>
+> **YOU WERE RIGHT ABOUT BOTH, AND HERE ARE THE NUMBERS.** R-180 proved a chest COULD pay every weapon
+> class; it never checked how OFTEN. On the build you played, one cage run paid **58.5 legendary
+> weapons against 12.4 armour pieces** - helms were 1.6% of everything that dropped - and **SPEAR alone
+> was 24% of the run** when an even split across the eleven gear slots is 9.1%. At 17 spear drops a run
+> over 22 distinct spears, **four copies of one spear was a 27% event**. Your run was the ordinary
+> case, not bad luck.
+>
+> **WHAT CHANGED.** Every armour row now fires at the weapon row's own 40% (they were 33/31/30, and
+> 32/32/30 on the orb chests), the
+> legendary share inside each armour row went from roughly 10-19% of the row's weight to about half,
+> and one new "armour master" pays all five worn slots evenly. On the weapon side, the one table that
+> covers axe + mace + sword was carrying a single spear's weight, so each of those three classes got a
+> third of a spear's chance; that is fixed, and the per-chest theme biases were softened. **Nothing was
+> reduced** - your cage run goes from about 71 to about 109 legendary items; only the mix changes.
+>
+> | per cage run | you played | after |
+> |---|---|---|
+> | SPEAR share | 24.0% | 9.8% |
+> | helm share | 1.6% | 8.7% |
+> | torso share | 3.7% | 9.1% |
+> | shield share | 7.1% | 10.8% |
+> | weapons : armour | 4.73 : 1 | 1.22 : 1 |
+> | armour pieces | 12.4 | 49.4 |
+> | P(4 copies of ONE spear) | 27.0% | 6.3% |
+> | P(4 Scorpion's Tails) | 2.07% | 0.45% |
+> | P(4 copies of ANY one item) | 47.3% | **39.7%** |
+>
+> Every one of the eleven gear classes now lands between 7.8% and 10.8% of a run, against an even
+> split of 9.1%. Before, the spread ran from 1.6% to 24.0%.
+>
+> **ONE THING I AM NOT GOING TO OVERSELL, because you would catch it anyway.** Four copies of a
+> *spear* is now about 1 run in 16 instead of 1 in 4. But four copies of *something* is still a bit
+> better than a coin flip - 39.7%, barely down from 47.3%. The reason is that I did not reduce
+> anything: your run went from about 71 legendary items to about 109, and with more items on the floor
+> some item will hit four copies fairly often just by volume. **If you want the total number of drops
+> per chest brought down, say so and I will do it** - that is the one lever I deliberately did not
+> pull, because cutting drops is exactly the kind of change you should get to approve.
+>
+> **HOW TO TEST IT (same cage as R-180 - Prison of Souls, Hades Palace floor 4, where Alkyoneus the
+> Soul-Gaoler guards the Polybotes cage):**
+> 1. Kill Alkyoneus (both forms) and open **all 6 chests**.
+> 2. You should now see **helmets, chest plates, bracers, greaves and shields** in the pile, not just
+>    weapons - expect roughly as much armour as weaponry.
+> 3. No single weapon class should dominate. If one class is clearly running the run again, say which.
+> 4. **Re-run 2-3 times.** Four copies of the same SPEAR should now be uncommon; four copies of some
+>    item or other will still turn up, and that is expected (see the note above).
+> 5. Boss hoards (Charon, Tantalus, the Diadochi, the guard pairs) and the blood-cave mega chest got
+>    the identical treatment, so check one of those too if you are passing.
+> 6. **NEW in this round - check a red-uber Mystical Orb chest** (the Boar Snatcher's, or any of the
+>    red ubers from R-200, or Leinth's). Those were the WORST offenders in the whole mod and had been
+>    missed: they were paying **0.07 helms per open** against 0.98 weapons. They now pay about **1.2
+>    of every worn slot**. If an orb chest still looks weapon-only, that is a real find.
+>
+> **WHAT WAS DELIBERATELY LEFT ALONE, so you can rule it in or out:** armour that drops off MONSTERS is
+> base-game wiring in this mod - of the ~1,500-1,850 records that carry each armour-drop chance, only
+> 12 to 14 are ours (under 1%) - and no monster in the database drops a shield off its body at all
+> (the field does not exist on a single record), so shields only ever come from chests and merchants.
+> If you want armour off monsters too, that is a separate wave and it needs your call.
 
 > ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
 > **✅ LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =

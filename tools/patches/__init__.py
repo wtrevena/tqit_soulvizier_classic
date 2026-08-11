@@ -671,6 +671,52 @@ REGISTRY = [
                             # assembled db. In-game confirmation launch-gated (name read-back proven
                             # from the rebuilt Text.arc in this lane).
                             # Negative test: py tools/patches/gorgon_vanilla_names.py --negtest
+    'craft_thrown_breadth', # Will 2026-08-10 ("i meant do the mythic formulas drop. they
+                            # can drop in normal as well, but the legendary items should
+                            # not drop in normal. All of the reagents need to be droppable
+                            # somewhere in the game... Yes we should make the legendary
+                            # thrown weapons droppable"): the CRAFT-CHAIN half of the
+                            # chest-breadth wave, where R-180 was the WEAPON-CLASS half.
+                            # THREE measured defects, all closed here. (1) The 42 uber
+                            # "supra" formulas sat on arcaneformulae\supra.dbr, which the
+                            # base game wires into the 02_ (Epic, 2%) and 03_ (Legendary,
+                            # 5%) act tables ONLY - a Normal chest reached 0 of 42. supra
+                            # is added to each 01_act{1..4}_arcaneformulae at ~1% of that
+                            # table's own total (rarer than either existing tier);
+                            # formulas are itemClassification=Common, so no legendary GEAR
+                            # moves and the R-100 #17 tier law is untouched. (2) 36 of the
+                            # 78 uber reagents were unreachable from a legendary chest: 19
+                            # MI/green (Will's own exemption, each PROVEN monster-farmable
+                            # by the gate), 8 ordinary base uniques + 6 IT divine artifacts
+                            # (placed into 4 new svc_craft_reagents_*_l01 tables hung off
+                            # the legendary hosts unique_torso_l01 / amulet_l01 /
+                            # finger_l01 / 04_l_misc - all 14 are Legendary-classified, so
+                            # they can only ever enter a legendary branch), and 3 that DO
+                            # NOT EXIST: Charon's Toll, Hati, The Last Word and Sanguine
+                            # Orbit all named RAGNAROK records
+                            # (xpack2\item\equipmentweapons\1hranged\{u_l_08,u_e_06,
+                            # mi_l_machae}) that this TQIT-era build never ships, so those
+                            # four formulas were uncompletable by anyone; they are
+                            # repointed onto thrown records that exist. (3) The THROWN
+                            # class had no unique loot table in this era at all, so 0 of 5
+                            # legendary thrown were reachable from anything: this module
+                            # authors svc_unique_thrown_{n,e,l}01 and svc_loot_breadth
+                            # names it as the SEVENTH class of svc_unique_weapons_{tier}01
+                            # at weight 250 (the proportional share of a 5-record class
+                            # against the 17-24 of the other six). Normal's thrown table
+                            # names ONLY the itemLevel-30 Rare/Common wands, so no
+                            # legendary thrown can reach Normal.
+                            # ORDER IS LOAD-BEARING: it must run immediately BEFORE
+                            # chest_loot_breadth, because ensure_masters silently skips a
+                            # master member whose donor does not resolve - the thrown
+                            # tables have to exist first. polis_vault's earlier call to
+                            # the same idempotent builder writes 7-member masters;
+                            # chest_loot_breadth's call rewrites them with the eighth.
+                            # Writes NO chest/hoard FixedItemLoot record, no orb table and
+                            # no weight another lane owns. verify() is the fail-loud
+                            # craft-chain gate (standalone twin:
+                            # py tools/gate_craft_thrown_breadth.py <arz>; negatives:
+                            # py tools/debug/negtest_craft_thrown.py <arz>).
     'chest_loot_breadth',   # Will 2026-08-10 ("there are never any legendary spears
                             # dropped it is basically the same items dropped over and
                             # over by all chests"): the BLAST-RADIUS half of the chest
@@ -700,6 +746,80 @@ REGISTRY = [
                             # breadth gate (standalone twin:
                             # py tools/gate_chest_loot_breadth.py <arz>; negatives:
                             # py tools/debug/negtest_chest_breadth.py <arz>).
+    'armor_loot_breadth',   # R-181 (Will 2026-08-10), TWO reports in one sitting: "also what
+                            # about the armor? i am not really seeing armor drops like shields,
+                            # chest plates, helmets, etc." and "you overcorrected, that run 4
+                            # scorpions tail spears dropped". R-180 answered REACHABILITY; both
+                            # of these are RATE reports, and R-180's gate was GREEN while the
+                            # Gaoler cage paid 58.5 legendary weapons against 12.4 armour pieces
+                            # per six-chest run with SPEAR alone at 24.0% of the legendary mass.
+                            # MEASURED on the shipped build76 arz 16994072: zero mod chests have
+                            # an unreachable armour slot, so this is not a breadth defect at all -
+                            # the torso/head row fired at 33% and put only 200 of its 1888 weight
+                            # on unique armour (10.6%), arms/legs 31% and 400 of 2088 (19.2%),
+                            # shields 30% and 100 of 931 (10.7%), while the GUARANTEED loot3 slot
+                            # fires 100% every spawn iteration and is all weapons/relics.
+                            # THREE FIXES, all additive or a strict raise (numSpawn untouched, no
+                            # member removed, no chance or weight lowered, guaranteed slot still
+                            # 100%, so expected drops per open strictly RISE):
+                            # (1) every armour row lifted to the weapon row's own 40%;
+                            # (2) unique-armour members raised to 850 and one aggregate ARMOUR
+                            #     master (svc_unique_armor_{n,e,l}01 - all five worn slots at
+                            #     equal weight, R-180's machinery reused) dropped into the first
+                            #     free armour-row member slot at 800;
+                            # (3) the "overcorrected" half: unique_1h_*01 pays THREE classes from
+                            #     ONE member, so carrying a spear's weight made axe/mace/sword a
+                            #     third of a spear each - re-weighted to 3x its single-class
+                            #     siblings here AND inside R-180's weapon master, plus softened
+                            #     class-bias weights in svc_loot_breadth.THEMES;
+                            # (4) WEAPON-ROW SHARE PARITY (added in the round-2 vet fix): the
+                            #     weapon row's aggregate master is raised until the row is
+                            #     WEAPON_ROW_LEGENDARY_SHARE = 50% legendary, mirroring what
+                            #     ARMOR_UNIQUE_WEIGHT already produces on the armour rows. The
+                            #     armour constant is an ABSOLUTE derived from ONE donor family;
+                            #     the armour statics happen to match across families but the
+                            #     WEAPON statics do not (DRX 1500 vs uberorb apex 2500), so
+                            #     lifting armour alone inverted the apex tables to 0.17:1 - an
+                            #     85%-armour surface. Expressed as a share it self-corrects: the
+                            #     cage and blood-cave rows are already above it and 0 records move.
+                            # THE GUARANTEED SLOT IS NOT SWEPT. armor_groups() skips any group at
+                            # chance >= 100 (read off the chance, NOT hardcoded to g3 - measured,
+                            # it is g3 on all 48 chest/hoard tables but g4 on the apex tables).
+                            # That row belongs to THEMES, and without the guard the sweep rewrote
+                            # the warden theme's documented 50/50 weapon:armour split to 12.8/87.2.
+                            # MEASURED six-chest cage run, before -> after: weapon:armour
+                            # 4.73:1 -> 1.22:1; armour 12.4 -> 49.4 pieces; SPEAR 24.0% -> 9.8%
+                            # and helm 1.6% -> 8.7% (even is 9.1%; after the wave EVERY one of
+                            # the 11 classes sits between 7.8% and 10.8%).
+                            # P(4 copies of ONE spear in a six-chest run)
+                            # 27.0% -> 6.3% and P(4 Scorpion's Tails specifically) 2.07% -> 0.45%
+                            # (analytic and Monte Carlo agree). NOT "negligible", and the record
+                            # says so: P(SOME single legendary item lands 4x anywhere in the run)
+                            # only moves 47.3% -> 39.7%, because total legendary gear per run
+                            # RISES 70.8 -> 109.5 while numSpawn is deliberately untouched under
+                            # the non-reduction law. numSpawn is the volume lever and it is a WILL
+                            # DECISION, logged as BL-R181-DEBT-5, not taken silently here.
+                            # ORDER IS LOAD-BEARING: immediately AFTER chest_loot_breadth, for
+                            # the same reason that module runs late (it sweeps the FINAL table
+                            # set) and because it raises weights R-180 wrote and reads members
+                            # R-180 added. polis_vault also calls ensure_armor_masters, because
+                            # the warden theme now names the armour master and a theme member
+                            # whose donor does not resolve is dropped.
+                            # SCOPE: every mod-owned gear chest - INCLUDING the 3
+                            # svc_uberorb_apex_* tables - plus the 3 DRX donors. There is NO
+                            # owner-based exclusion. An earlier round deferred the apex tables to
+                            # the concurrent b79 fix/orb-loot-breadth lane; that lane provably
+                            # does not widen armour on them (its own docstring calls them "a
+                            # no-op here"), and the exclusion also hid them from the gate, so
+                            # three LIVE surfaces - R-200's red-uber Mystical Orb chests and
+                            # Leinth's hoards - shipped paying 0.07 helms per open. apply() now
+                            # asserts WRITE SET == AUDIT SET and fails the build on any divergence.
+                            # General MONSTER armour drops are measured and reported, never
+                            # changed here (BL-R181-DEBT-2, a Will decision).
+                            # Its verify() is the build-wide fail-loud DISTRIBUTION gate
+                            # (standalone twin: py tools/gate_loot_distribution.py <arz>;
+                            # calibration mode: --calibrate; negatives:
+                            # py tools/debug/negtest_armor_breadth.py <arz>).
     'red_uber_orbs',        # R-200 (Will 2026-08-10): "boar snatcher legendary spider should drop
                             # a mystical orb like the other red uber monsters". "Mystical orb" is
                             # literal - every genericbossorb_0N chest carries description
@@ -751,6 +871,65 @@ REGISTRY = [
                             # stay green. Registered second-to-last so verify() reads the final
                             # assembled db after every other orb writer.
                             # Negative test: py tools/patches/red_uber_orbs.py --negtest <arz>
+    'orb_loot_breadth',     # R-220 (Will 2026-08-10): "for the mystical orbs that the uber
+                            # monsters drop, the items should drop with increased breadth as
+                            # well so all classes of items could be dropped". The "as well"
+                            # points at R-180, which fixed the CHESTS that same morning; this
+                            # is the same contract on the other half of the loot economy.
+                            # MEASURED on the build76 ship arz: the orb tables carry the
+                            # IDENTICAL collapsed weapon row (1h_all_*01 = axe/club/sword, bow
+                            # and staff named DIRECTLY, SPEAR forgotten) so 0 spears of any
+                            # quality were reachable from 15 of the 18 uber orb tables, at
+                            # every tier and every difficulty. The 3 that were already fine
+                            # are orb05's svc_uberorb_apex_* - and ONLY because they live in
+                            # an \svc\ folder, so chest_loot_breadth's mod-ownership sweep
+                            # reached them. This module finishes that sweep on the tables the
+                            # ownership rule could not see, from the SAME implementation
+                            # (tools/svc_loot_breadth.widen_weapon_row via
+                            # tools/svc_orb_breadth.py) - not a second opinion.
+                            # SCOPE IS DERIVED, NEVER TYPED (the R-200 lesson, and derived
+                            # over mod UNION base for R-200's HOLE 2 reason): every proxy an
+                            # UBER names (um_* basename or a tagSVCMonster* display tag), and
+                            # every loot table its accessory1/Epic1/Legendary1 slots resolve
+                            # to. MEASURED: 51 uber carriers -> 7 proxies (6 IN REACH) -> 18 tables =
+                            # genericbossorb_01..05 (the mystical-orb ladder, tagEndChest02)
+                            # plus bosschest02_charon, whose terminal Ferryman IS a red uber
+                            # and whose 3 tables carry the identical collapse. The 6 proxies
+                            # consumed only by BASE act/quest bosses (Aktaios, Typhon, Black
+                            # Widow, coldworm, the wanddrop test proxy) stay OUT - the same
+                            # boundary R-200 drew - and are registered as BL-R220-DEBT-1.
+                            # Leinth needs nothing: uber_apex_orb repointed her chests onto
+                            # the svc_uberorb_apex_* tables, so R-180 already widened them.
+                            # WRITES per table: the tier-correct master into the ONE free
+                            # loot1 member slot (w800) + loot1Chance 13/14 -> 40 + loot6Chance
+                            # 13/14 -> 30, which are the values orb05 has SHIPPED since
+                            # build75 - so the ladder becomes self-consistent instead of a new
+                            # number being invented. Everything else is proven byte-unchanged
+                            # by apply()'s S4 scope proof over the tables AND every proxy /
+                            # accessory pool / chest record in every chain: numSpawn equations
+                            # (the apex keeps its *2.2/*2.4 edge), the relic/potion/armour
+                            # rows, mesh, gold generator, level equation, tagEndChest02. No
+                            # member removed, no chance lowered; chances may only RISE.
+                            # There is deliberately NO guaranteed-weapon retarget: an orb's
+                            # loot3 is potions + rare misc at 10%, not the chests' 100% weapon
+                            # slot, and R-180's retargeter only rewrites a loot3 member
+                            # matching unique_1h_[nel]0N, which no orb table names.
+                            # ORDER IS LOAD-BEARING: after chest_loot_breadth (which authors
+                            # the shared masters from the same idempotent builder, and whose
+                            # sweep already widened orb05 - so those 3 tables are a NO-OP
+                            # here, which is why no S4b collision is expected between the two)
+                            # and after red_uber_orbs (which ADDS uber consumers, and the
+                            # scope is derived from uber carriers). MEASURED before -> after,
+                            # target-classification pool / reachable spears:
+                            #   orb01 n 117->195 e  72->99  l 194->260   spear 0 -> 18/9/22
+                            #   orb02 n 101->182 e  75->102 l 138->241   spear 0 -> 18/9/22
+                            #   orb03 n  96->180 e  71->96  l 196->262   spear 0 -> 18/9/22
+                            #   orb04 n  99->181 e  95->116 l 258->308   spear 0 -> 18/9/22
+                            #   orb05 n 181 e 116 l 308 (unchanged, already fixed by R-180)
+                            #   charon n 99->181 e 95->116 l 258->308    spear 0 -> 18/9/22
+                            # Its verify() is the fail-loud gate (standalone twin:
+                            # py tools/gate_orb_loot_breadth.py <arz>; negatives:
+                            # py tools/debug/negtest_orb_breadth.py <arz>).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
