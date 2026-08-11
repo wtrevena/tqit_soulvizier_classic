@@ -1,7 +1,7 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
 > ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
-> **✅ LIVE ON DEV - build76-dev.** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
+> **✅ LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
 > **`16994072e1cb244af9f4d759309162cb`** (55,549,261 B), deployed + md5-verified 2026-08-10 while TQ was
 > closed. arz-only; the map/quests/Text on DEV did not move. **Fully quit TQ and restart Steam before
 > testing** (standing rule).

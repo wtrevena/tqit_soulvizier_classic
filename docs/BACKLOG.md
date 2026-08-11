@@ -1,5 +1,53 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## 🚢 SHIP RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb is **LIVE ON STEAM** (2026-08-10, `main` @ `6b9167a`, tag `build76-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
+... OK`), `Preparing update... Preparing content... Uploading content... Committing update...Success.`,
+`Updated Workshop item: 3759792705`. Pushed `-Update -Visibility 0`, and the generated VDF was read back to
+confirm `"visibility" "0"` - the item stays PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single
+`SoulvizierClassic` wrapper. This steamcmd run printed no ManifestID line; the success is evidenced by the
+two quoted lines above plus the read-back VDF.
+
+**This is an arz-only delta on top of `build75-ship`**, which went out ~25 minutes earlier from the two
+parallel waves. Only the database moved.
+
+| artifact | md5 | bytes | vs the item as of `build75-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`16994072e1cb244af9f4d759309162cb`** | 55,549,261 | **CHANGED** from `3fb1f3ce` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged (**rebuilt byte-identical**) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+| gate | result |
+|---|---|
+| dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above) |
+| packager TESTHUB guard + an independent re-check | **PASS** - packaged `6784cf0f` != TESTHUB `7a7ca9ac`; the hub did not ship |
+| `run_contracts` on the **dist payload** | **GATE PASS** - 0 P0 / 0 P1 / 4492 P2 |
+| `run_contracts` A/B: the **baseline arz `3fb1f3ce`** under the **identical dist config** | **4492** - the same number, so this ship adds **ZERO new contract violations**. (The `build75-ship` record's 4476 is that lane's different invocation config, NOT a regression introduced here; measured rather than assumed, both directions.) |
+| changenote VDF-safety | 2,042 chars, **0 double-quotes, 0 backslashes, 0 em dashes** |
+| single-wrapper assertion (packager + uploader) | **PASS** both |
+
+**DEPLOY ORDER HONOURED END TO END.** DEV first (`build76-dev`, arz `16994072`, 2 of 62 files changed,
+60 untouched siblings), then Steam. **TQ.exe was never running, was never killed, and Steam was never
+restarted** at any point in this lane. Steam and DEV now differ only in the map: DEV carries the TESTHUB
+`Levels.arc` `7a7ca9ac` (local-only, by design), Steam carries the canonical `6784cf0f`.
+
+**Rollback (Steam, one push):** re-package with `local/db_backups/SoulvizierClassic_pre-r200_3fb1f3ce.arz`
+staged as `work/SoulvizierClassic/Database/SoulvizierClassic.arz` and re-upload; every other shipped
+artifact is already byte-identical to `build75-ship`.
+
+**RESIDUAL - stated plainly, same class as the b63 lesson.** The fix is proven from bytes and gates only:
+`BL-R200-DEBT-2` **NOT PROVEN IN-GAME**. Nobody has killed the Boar Snatcher and watched an orb fall.
+**Will's one-line test: kill the Boar Snatcher (the red legendary spider) in Greece Pine Forest
+(Area003/PineForest04) or the Sparta optional cave (SpartaOptCave03) and a Mystical Orb should drop.**
+The Workshop cover image is still absent (`WARNING: no preview image`), unchanged by this push and still
+Will's separate action.
+
+---
+
 ## 🟢 BUILD76-DEV GATE RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main` @ `5742775` merged, tag `build76-dev`)
 
 **Will's order (2026-08-10, verbatim):** "boar snatcher legendary spider should drop a mystical orb like
