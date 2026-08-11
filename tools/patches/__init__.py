@@ -958,7 +958,7 @@ REGISTRY = [
                             # armor_loot_breadth.verify's distribution gate.
                             # Standalone: py tools/gate_loot_distribution.py <arz>;
                             # negatives: py tools/debug/negtest_armor_breadth.py <arz>.
-    'loot_volume_trim',     # R-230 (Will 2026-08-11): "we probably need to trip the
+    'loot_volume_trim',     # R-240 (Will 2026-08-11): "we probably need to trip the
                             # loot-volume trim, especially on the steam version where
                             # maybe from the two chests, you get guaranteed 1 legendary
                             # item. on the testhub version we can spawn more that is
@@ -993,12 +993,12 @@ REGISTRY = [
                             # ruling (tools/svc_chest_artifacts.py) - which is NOT a
                             # no-op: 6 equippable artifacts are chest-reachable today
                             # by R-185's design, so the gate pins them by name with a
-                            # re-derived rule and the residue is BL-R230-DEBT-2.
+                            # re-derived rule and the residue is BL-R240-DEBT-2.
                             # Standalone: py tools/gate_loot_volume.py <arz> (--apply
                             # on a pre-wave arz, --calibrate to re-derive thresholds)
                             # and py tools/gate_chest_artifacts.py <arz>; negatives:
                             # py tools/debug/negtest_loot_volume.py <arz>.
-    'orb_legendary_chance', # R-231 (Will 2026-08-11), and it SUPERSEDES the b79 "orbs
+    'orb_legendary_chance', # R-241 (Will 2026-08-11), and it SUPERSEDES the b79 "orbs
                             # stay generous" precedent wherever the two collide: "you
                             # made the orbs way too good... those dont need to have
                             # guaranteed legendary drops, they should just have a chance
@@ -1016,7 +1016,7 @@ REGISTRY = [
                             # 3.74-8.43 on Legendary (98.4-99.99%) - six independent loot
                             # groups over 5.06-10.58 spawn iterations, no 100% row
                             # required. R-220's breadth gate, R-181's distribution gate
-                            # and R-230's volume gate were ALL green on that.
+                            # and R-240's volume gate were ALL green on that.
                             # This module writes ONE field per census row - loot{g}Chance
                             # - demoted to the richest NON-guaranteed chance that row
                             # already carries in the orb family (21.2%), DERIVED from the
@@ -1025,7 +1025,7 @@ REGISTRY = [
                             # 0 weights, 0 spawn equations: breadth and distribution
                             # survive verbatim so the variety still lands WHEN a
                             # legendary rolls.
-                            # With R-230's trim in the slot above, one open now pays
+                            # With R-240's trim in the slot above, one open now pays
                             # Normal 0.001-0.004 legendary / Epic 0.451-0.622 /
                             # Legendary 0.699-0.846 - AT MOST ONE LEGENDARY ITEM PER OPEN
                             # on Legendary difficulty against 8.43 shipped, a 90% cut.
@@ -1033,8 +1033,8 @@ REGISTRY = [
                             # (1) armor_loot_breadth SKIPS the guaranteed row by design
                             # (is_guaranteed_group - the WARDEN-theme lesson) and runs
                             # far earlier, so it must still see group 4 at 100% or the
-                            # armour sweep would rewrite a theme row; (2) R-231's
-                            # readings are measured against R-230's TRIMMED spawn volume.
+                            # armour sweep would rewrite a theme row; (2) R-241's
+                            # readings are measured against R-240's TRIMMED spawn volume.
                             # HONEST RESIDUE, not hidden: P(>=1 legendary) lands at
                             # 54-61% on Legendary, which is not yet "a low chance". ~40%
                             # of a Legendary orb's drop mass IS legendary-classified
@@ -1045,7 +1045,7 @@ REGISTRY = [
                             # SPAWN ITERATION, asserted on all 63 surfaces) by the same
                             # factor and reds armour parity on every orb - a COMPOSITION
                             # decision in R-180/R-181/R-220's scope, priced for Will as
-                            # BL-R231-DEBT-1 rather than taken by a rate lane.
+                            # BL-R241-DEBT-1 rather than taken by a rate lane.
                             # Standalone: py tools/gate_orb_legendary.py <arz>
                             # (--census for Will's number, --calibrate, --apply);
                             # negatives: py tools/debug/negtest_orb_legendary.py <arz>.

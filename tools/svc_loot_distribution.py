@@ -290,9 +290,9 @@ D5_PINNED = {
         '26.6% of its mass on one helm and this mod does not own that pool'),
 }
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
-# ── R-230 RE-ANCHOR (Will 2026-08-11, the loot-volume trim) ──────────────────
+# ── R-240 RE-ANCHOR (Will 2026-08-11, the loot-volume trim) ──────────────────
 # D7 is the ONLY check in this module that is not a ratio, so it is the only one a
-# VOLUME change can invalidate, and R-230 cut every mod surface's numSpawn by roughly
+# VOLUME change can invalidate, and R-240 cut every mod surface's numSpawn by roughly
 # an order of magnitude. Holding the literal 0.52 would have demanded 0.52 armour
 # pieces out of a container that now spawns ~1.1 loot iterations - which is D7 turning
 # into a numSpawn demand, precisely what the block below says it must never be, and it
@@ -310,7 +310,7 @@ D5_PINNED = {
 # the membership rule "S >= the anchor's S" then happened to exclude exactly the fifteen
 # R-220 orb tables - which b80 wanted excluded, for a reason it wrote down: armour on
 # them cannot be lifted any further without reding D6b, so the absolute floor is
-# "unreachable there by construction, not by neglect". R-230's never-empty floor
+# "unreachable there by construction, not by neglect". R-240's never-empty floor
 # (`svc_loot_volume.MIN_SPAWN_MIN_SOLO`) lifts every thin container to the SAME 1.125
 # iterations, the apex orb included, so that volume proxy stops separating anything:
 # anchored on the apex orb, D7 would newly assert on all fifteen and red two of them for
@@ -321,7 +321,7 @@ D5_PINNED = {
 #
 # THE COST, MEASURED (a first draft of this line said "42 of 57 to 21 of 75" and both
 # halves of the after-figure were wrong; the round-2 vet re-measured it). The audit set
-# after R-230 is 63 surfaces - the 57 canonical ones plus the 6 new TESTHUB cage twins -
+# after R-240 is 63 surfaces - the 57 canonical ones plus the 6 new TESTHUB cage twins -
 # and D7 is asserted on 24 of them, which is only 18 of the 57 CANONICAL surfaces.
 # Those 18: gaoler cage chest_01 [l], chest_03 [e], chest_03 [l]; the 3 blood-cave
 # donors; polisvault_02/_04/_05; and the 9 svc_*hoard_loot_03 tables. D7 now asserts on
@@ -335,13 +335,13 @@ D5_PINNED = {
 #
 # ⚠ CONSEQUENCE FOR ANY LANE RUNNING THIS GATE ON AN OLDER ARTIFACT: because the floor
 # is now DERIVED from the anchor surface's volume, `gate_loot_distribution.py` REDS on
-# any PRE-R-230 arz with `D7X2 ... ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 ... MEASURES
+# any PRE-R-240 arz with `D7X2 ... ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 ... MEASURES
 # 12.4800`. That is the anchor working, not a defect: on an untrimmed arz the anchor
 # surface really does measure 12.48. So this gate can no longer be used as a "the
-# baseline passes too" control against the rollback artifact or a pre-R-230 branch.
+# baseline passes too" control against the rollback artifact or a pre-R-240 branch.
 # Every OTHER coexisting gate still passes on the untrimmed arz.
 ARMOR_SLOT_FLOOR_PER_ITER_AT_REF = 0.52 / 10.58   # 0.049149..., the b80 derivation
-ARMOR_SLOT_FLOOR_REF_SPAWN = 1.310   # spawn iterations of the R-230 anchor surface
+ARMOR_SLOT_FLOOR_REF_SPAWN = 1.310   # spawn iterations of the R-240 anchor surface
 ARMOR_SLOT_FLOOR = ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * ARMOR_SLOT_FLOOR_REF_SPAWN
 # ── the ORIGINAL derivation, kept because a threshold nobody can re-derive is a
 #    threshold nobody can defend ──────────────────────────────────────────────
@@ -386,7 +386,7 @@ ARMOR_SLOT_FLOOR = ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * ARMOR_SLOT_FLOOR_REF_SPAWN
 # D7b at 0.0375 REDS ALL 57 defect surfaces (the defect state's BEST reading is 0.0175,
 # 2.1x under), which makes it a strictly stronger revert-detector than the absolute floor.
 #   (b80's own reading of this line: `ARMOR_SLOT_FLOOR_REF_SPAWN = 10.58`, the spawn
-#    volume of `svc_uberorb_apex_e01c` before R-230 trimmed it.)
+#    volume of `svc_uberorb_apex_e01c` before R-240 trimmed it.)
 # Relative slack on that comparison. It exists ONLY to absorb the last-bit error of a
 # weighted sum (1.7e-16 relative on the apex orbs); it is ~7 orders of magnitude smaller
 # than the coarsest real gap between two surfaces' volumes, so it can never admit or
@@ -399,7 +399,7 @@ ARMOR_SLOT_FLOOR_REF_TOL = 1e-9
 # is reached, so they carry the bare basename and NOT the `orb ` prefix the other fifteen
 # R-220 tables get. (D7X caught that distinction itself when this constant was first
 # written with the prefix - which is the check doing its job.)
-#   b80's value was `svc_uberorb_apex_e01c.dbr`; R-230 moved it for the reason given at
+#   b80's value was `svc_uberorb_apex_e01c.dbr`; R-240 moved it for the reason given at
 #   ARMOR_SLOT_FLOOR above, and this is the `cage_surfaces` LABEL, not a basename.
 ARMOR_SLOT_FLOOR_REF_SURFACE = 'gaoler cage chest_01 [l]'
 ARMOR_SLOT_FLOOR_PER_SPAWN = 0.0375  # D7b: worn-slot pieces per SPAWN ITERATION
@@ -663,7 +663,7 @@ def reference_surface_problems(reports):
     variant weights or to the comparison itself cannot switch D7 off at the reference
     surface without this reding.
 
-    D7X2 (R-230) is the second half, and it exists because the volume trim made
+    D7X2 (R-240) is the second half, and it exists because the volume trim made
     `ARMOR_SLOT_FLOOR` a DERIVED number: floor = per-iteration strength x the reference
     surface's spawn volume. A committed volume that no longer matches the reference
     surface's actual bytes silently rescales the floor - up, and D7 reds everywhere for

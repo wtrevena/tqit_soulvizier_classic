@@ -1,4 +1,4 @@
-r"""loot_volume_trim - how MUCH the chests pay (R-230, Will 2026-08-11).
+r"""loot_volume_trim - how MUCH the chests pay (R-240, Will 2026-08-11).
 
 WILL, VERBATIM (2026-08-11):
   "we probably need to trip the loot-volume trim, especially on the steam version
@@ -47,7 +47,7 @@ placements, so this module clones the whole cage chain to a `_hub` twin and
   never over-pays - and the canonical `B41_SPECS` is untouched, so
   `local/Levels_merged.arc` stays byte-identical and the Steam delta stays arz-only.
 
-GATE: `verify()` below runs the whole R-230 contract (V1-V7b) plus this module's own
+GATE: `verify()` below runs the whole R-240 contract (V1-V7b) plus this module's own
 scope proof. Standalone twin: `py tools/gate_loot_volume.py <arz>` (add `--apply` on a
 pre-wave arz, `--calibrate` to re-derive every threshold).
 Negatives: `py tools/debug/negtest_loot_volume.py <arz>` - and they plant in BOTH
@@ -71,7 +71,7 @@ import svc_loot_breadth as SLB
 import svc_loot_volume as SLV
 
 MODULE_NAME = ("loot volume trim - the canonical chests pay a run's worth, not a "
-               "vendor's stock, and the TESTHUB farm keeps its own (R-230)")
+               "vendor's stock, and the TESTHUB farm keeps its own (R-240)")
 
 # The ONLY two fields this module may move on an existing record. Everything else on
 # an in-scope loot table is that surface's identity: its members, its weights, its
@@ -139,7 +139,7 @@ def apply(db, tags):
 
 
 def verify(db, tags):
-    """The R-230 contract (V1-V7b) plus Will's artifact ruling, on the FINAL db.
+    """The R-240 contract (V1-V7b) plus Will's artifact ruling, on the FINAL db.
 
     Run as a verify() rather than at apply() time deliberately: every other loot module
     has already run by then, so what this measures is the volume the player actually
@@ -170,7 +170,7 @@ def verify(db, tags):
           "ceilings (worst %.2f gear/open on %s, cap %.2f); the two-chest cage run pays "
           "%s and still guarantees one at >= %.0f%% of runs on the continuous spawn "
           "model and >= %.0f%% under integer truncation (both gated - the engine's "
-          "rounding mode is unproven, BL-R230-DEBT-5); %d TESTHUB twin table(s) "
+          "rounding mode is unproven, BL-R240-DEBT-5); %d TESTHUB twin table(s) "
           "held at shipped volume by a FLOOR; every in-scope numSpawn equation still "
           "carries `numberOfPlayers` and spawns >= %.2f iteration(s) solo. Artifact "
           "ruling: %s."

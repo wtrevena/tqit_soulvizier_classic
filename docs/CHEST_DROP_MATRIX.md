@@ -1,6 +1,6 @@
 # CHEST_DROP_MATRIX.md - what the chests can and cannot drop
 
-> **VOLUME AMENDED 2026-08-11 by R-230 (branch fix/loot-volume-trim).** Sections 1-7 describe WHAT the chests pay and in WHAT PROPORTIONS, and every one of those numbers still holds. HOW MUCH they pay changed by roughly 10x: see the new **section 8**, which also corrects the artifact rows of sections 2 and 4 against Will 2026-08-11 ("artifacts should never drop from chests").
+> **VOLUME AMENDED 2026-08-11 by R-240 (branch fix/loot-volume-trim).** Sections 1-7 describe WHAT the chests pay and in WHAT PROPORTIONS, and every one of those numbers still holds. HOW MUCH they pay changed by roughly 10x: see the new **section 8**, which also corrects the artifact rows of sections 2 and 4 against Will 2026-08-11 ("artifacts should never drop from chests").
 
 > ⚠️ **AMENDED 2026-08-10 by the craft-chain wave (R-184 / R-185 / R-186, branch
 > `fix/craft-thrown-breadth`).** Sections 1, 3 (weapons other than thrown), 4 and 5 still describe
@@ -562,7 +562,7 @@ contradiction of the 111-116 per-table range.
 
 ---
 
-## 8. HOW MUCH the chests pay (R-230, Will 2026-08-11) - the volume trim
+## 8. HOW MUCH the chests pay (R-240, Will 2026-08-11) - the volume trim
 
 > Sections 1-7 answer WHAT a chest can pay and in WHAT PROPORTIONS. Neither question is this one.
 > Every distribution check in the mod is a ratio, and a ratio cannot see volume, which is why both
@@ -579,9 +579,9 @@ and after this trim it is first-order.** `spawn_iterations` returns the continuo
 max equations; post-trim every canonical cage table evaluates to between **1.0502 and 1.6128**
 iterations at one player, so if the engine truncates to an integer, every one of them is exactly ONE
 iteration. Before the trim S ran 5.06-18.96 and the fractional part was noise; now it is the whole
-question. Both readings are gated (`BL-R230-DEBT-5`).
+question. Both readings are gated (`BL-R240-DEBT-5`).
 
-| difficulty | grade it pays | shipped `build83` | after R-230, continuous | P(>=1) | after R-230, int-truncated | P(>=1) |
+| difficulty | grade it pays | shipped `build83` | after R-240, continuous | P(>=1) | after R-240, int-truncated | P(>=1) |
 |---|---|---:|---:|---:|---:|---:|
 | Normal | Epic | 43.71 | **3.84** | 99.99% | **3.29** | 99.96% |
 | Epic | Legendary | 28.17 | **2.68** | 96.86% | **2.12** | 93.78% |
@@ -670,7 +670,7 @@ The two collide. Measured on the shipped `build83` arz: **30 of 57 mod loot surf
 `ItemArtifact` record - 6 equippable plus 10 mercenary scrolls.** What ships today is
 `tools/gate_chest_artifacts.py`, which proves **135 of the 141 equippable artifacts unreachable** and
 pins the six R-185 craft reagents by name with a rule re-derived every build, so nothing new can leak.
-Full compliance is a one-row craft-lane change, priced in `BL-R230-DEBT-2`. A mercenary or spell scroll
+Full compliance is a one-row craft-lane change, priced in `BL-R240-DEBT-2`. A mercenary or spell scroll
 is NOT an equippable artifact here, and that is measured rather than assumed: 158 of the 299
 `ItemArtifact` records grant a skill under `records\skills\scroll skills\`, and 141 do not.
 
@@ -683,7 +683,7 @@ py tools/gate_chest_artifacts.py work/SoulvizierClassic/Database/SoulvizierClass
 py tools/debug/negtest_loot_volume.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
 ```
 
-`gate_loot_volume` also takes `--apply`, which applies the R-230 wave in memory so a **PRE-wave** arz
+`gate_loot_volume` also takes `--apply`, which applies the R-240 wave in memory so a **PRE-wave** arz
 measures against the same contract. `gate_chest_artifacts` takes only `--verbose` - it has no `--apply`
 and needs none, because artifact REACHABILITY is a property of the loot graph and the volume wave does
 not touch the graph.
@@ -703,7 +703,7 @@ The model is `tools/svc_loot_volume.py`; the spawn arithmetic it uses is
 `svc_loot_distribution.spawn_iterations` and `ChestProfile`, the same engine reading sections 1-7 rest
 on.
 
-### 8.7 Running the R-181 distribution gate on a PRE-R-230 arz REDS, and that is correct
+### 8.7 Running the R-181 distribution gate on a PRE-R-240 arz REDS, and that is correct
 
 `tools/gate_loot_distribution.py` on this branch **cannot be used as a "the baseline passes too"
 control against an untrimmed artifact** - the rollback arz, the previous build, or any lane branched
@@ -714,18 +714,18 @@ D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the refer
      gaoler cage chest_01 [l], which MEASURES 12.4800 spawn iterations
 ```
 
-That is the new derived anchor doing exactly what it was built to do (section 8.2 / R-230): the
+That is the new derived anchor doing exactly what it was built to do (section 8.2 / R-240): the
 armour-parity floor is now `per-iteration strength x anchor volume`, and D7X2 re-proves the committed
 volume against the anchor surface's own bytes every run. On an untrimmed arz the anchor surface really
 does measure 12.48, so the constant really is stale for that artifact. **RE-MEASURED on `44499f56`:
 that D7X2 is the ONLY finding the R-181 gate emits there (exactly 1 FAIL line), and every other
 coexisting gate still PASSES on the untrimmed arz** - `gate_chest_loot_breadth`,
 `gate_orb_loot_breadth`, `gate_craft_thrown_breadth` and `gate_chest_artifacts`, 0 findings each. So a
-lone D7X2 red on a pre-R-230 artifact is not a defect and should not be chased.
+lone D7X2 red on a pre-R-240 artifact is not a defect and should not be chased.
 
 ---
 
-## 9. HOW OFTEN AN UBER ORB PAYS A LEGENDARY (R-231, Will 2026-08-11)
+## 9. HOW OFTEN AN UBER ORB PAYS A LEGENDARY (R-241, Will 2026-08-11)
 
 Section 8 answered HOW MUCH every surface pays. This section answers the one question that survived
 it, and it is about the ORBS specifically. **Will, verbatim (2026-08-11), superseding the b79 "orbs
@@ -733,7 +733,7 @@ stay generous" precedent wherever the two collide:** *"you made the orbs way too
 need to have guaranteed legendary drops, they should just have a chance to drop legendary items, but a
 low chance."*
 
-Design record: `docs/WILL_RULINGS.md` -> **R-231**. Owner: `tools/patches/orb_legendary_chance.py`.
+Design record: `docs/WILL_RULINGS.md` -> **R-241**. Owner: `tools/patches/orb_legendary_chance.py`.
 
 ### 9.1 The guaranteed-legendary census (the number Will asked for)
 
@@ -749,15 +749,15 @@ item with `itemClassification = Legendary`. On the shipped `build83` arz `44499f
 | **total** | **18** | **3** | one row, one family | **none is PURE legendary** |
 
 Group 4 is the amulet / relic / ring / arcane-formula row. **All fifteen ordinary orb tables run that
-identical row at 12.7% or 21.2%** - the apex 100% was the outlier, which is why R-231's demotion target
+identical row at 12.7% or 21.2%** - the apex 100% was the outlier, which is why R-241's demotion target
 is DERIVED from that family spread (21.2%, the richest non-guaranteed value) rather than typed.
 
 ### 9.2 The guarantee was made of VOLUME, not of a 100% row
 
 This is the part the census alone would have hidden. Six loot groups roll INDEPENDENTLY on every spawn
-iteration, and before R-230 an orb ran 5.06 to 10.58 iterations. Per **one** orb open:
+iteration, and before R-240 an orb ran 5.06 to 10.58 iterations. Per **one** orb open:
 
-| difficulty | E[legendary items] b83 | -> R-230+R-231 | P(>=1 legendary) b83 | -> after |
+| difficulty | E[legendary items] b83 | -> R-240+R-241 | P(>=1 legendary) b83 | -> after |
 |---|---:|---:|---:|---:|
 | Normal | 0.003 .. 0.047 | **0.001 .. 0.004** | 0.3% .. 4.6% | **0.05% .. 0.35%** |
 | Epic | 2.579 .. 6.291 | **0.451 .. 0.622** | 93.6% .. 99.9% | **38.2% .. 49.0%** |
@@ -767,7 +767,7 @@ iteration, and before R-230 an orb ran 5.06 to 10.58 iterations. Per **one** orb
 It now pays at most one.** That is a ~90% cut in legendary throughput, and zero guaranteed rows.
 
 Worth stating plainly because it is the general lesson: **R-220's breadth gate, R-181's distribution
-gate and R-230's volume gate were ALL GREEN on that 8.43.** Breadth counts reachable items,
+gate and R-240's volume gate were ALL GREEN on that 8.43.** Breadth counts reachable items,
 distribution measures ratios, volume measures gear pieces of the tier's target grade. None of them
 measures how often the thing that falls out is legendary. A guarantee is not always a field.
 
@@ -781,7 +781,7 @@ rolls. The rate changed; the composition did not.
 One consequence worth knowing before it is reported as a bug: **the apex orb loses its guaranteed row
 entirely, and that row was 94% relics / amulets / rings.** Apex items-per-open goes 3.04 -> 2.15, and
 most of what left is the RELIC and JEWELLERY flow, not legendary gear. Registered as
-`BL-R231-DEBT-3`; the fix if Will wants it back is one field and it does not reopen the legendary
+`BL-R241-DEBT-3`; the fix if Will wants it back is one field and it does not reopen the legendary
 question, because that row is only 0.4-6.3% legendary.
 
 ### 9.4 The gate, and the half it could not reach
@@ -792,7 +792,7 @@ mirror**, a legendary must still be POSSIBLE at {e 15%, l 25%}; **O5 the second 
 still pay >= 1.50 items of any kind. Ceilings are measured on the CONTINUOUS spawn reading and O4 on
 the INTEGER-TRUNCATED one, because each is the pessimistic side of its own direction.
 
-> ⚠️ **`BL-R231-DEBT-1` - the "low chance" half is NOT fully discharged, and the gate says so in its
+> ⚠️ **`BL-R241-DEBT-1` - the "low chance" half is NOT fully discharged, and the gate says so in its
 > own PASS line.** P(at least one legendary) lands at **54-61% on Legendary difficulty**. After the
 > trim an orb pays ~2.06 items and **~40% of a Legendary orb's entire drop mass IS
 > legendary-classified**, because R-180/R-220 weighted `svc_unique_weapons_l01` /
@@ -808,7 +808,7 @@ the INTEGER-TRUNCATED one, because each is the pessimistic side of its own direc
 ```
 py tools/gate_orb_legendary.py <arz> --census      # the guaranteed-row count, per tier
 py tools/gate_orb_legendary.py <arz> --calibrate   # S, drops, E[legendary], P(>=1), both models
-py tools/gate_orb_legendary.py <arz> --apply       # apply R-230 + R-231 to a PRE-wave arz first
+py tools/gate_orb_legendary.py <arz> --apply       # apply R-240 + R-241 to a PRE-wave arz first
 py tools/debug/negtest_orb_legendary.py <arz>      # 7 planted defects RED, 3 controls GREEN
 ```
 

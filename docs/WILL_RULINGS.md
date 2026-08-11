@@ -5416,7 +5416,7 @@ execution; that is stated in the ship record rather than carried quietly.
 
 ---
 
-## R-230 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/loot_volume_trim.py`) - the chests pay a RUN's worth, not a vendor's stock; the TESTHUB farm keeps its own
+## R-240 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/loot_volume_trim.py`) - the chests pay a RUN's worth, not a vendor's stock; the TESTHUB farm keeps its own
 
 **WILL, VERBATIM (2026-08-11):**
 
@@ -5431,7 +5431,7 @@ non-reduction forbids without his say-so."* Three waves then raised COMPOSITION 
 still. MEASURED on the shipped `build83` arz `44499f56`, which is live on Steam and DEV right now, the
 two canonical cage chests opened once pay:
 
-| difficulty | grade it pays | shipped b83 | R-230 | cut |
+| difficulty | grade it pays | shipped b83 | R-240 | cut |
 |---|---|---:|---:|---:|
 | Normal | Epic | **43.71** | **3.84** | 11.4x |
 | Epic | Legendary | **28.17** | **2.68** | 10.5x |
@@ -5506,7 +5506,7 @@ behaviour.** `spawn_iterations` returns the CONTINUOUS mean of the min and max e
 trim S ran 5.06-18.96 and the fractional part was noise; after it, every canonical cage table
 evaluates to between **1.0502 and 1.6128** iterations solo, so under INTEGER TRUNCATION every one of
 them is exactly ONE iteration and the rounding mode is the whole question. **We do not know which the
-engine does** (`BL-R230-DEBT-5`), so both are gated:
+engine does** (`BL-R240-DEBT-5`), so both are gated:
 
 | difficulty | continuous gear | P(>=1), V7 floor 95% | int-truncated gear | P(>=1), V7b floor 90% |
 |---|---:|---:|---:|---:|
@@ -5529,7 +5529,7 @@ independently per iteration and their chances sum past 280%. The `numSpawn` leve
 literal "1 legendary item" per run; it bottoms out at 2.74 and this wave lands at 3.82 continuous
 (2.74 truncated - i.e. the truncated Legendary reading is ALREADY sitting on the mechanical floor).
 Going lower means lowering group chances or the guaranteed row - COMPOSITION, which this lane is
-forbidden to touch. Registered as `BL-R230-DEBT-1`. **If Will means literally one, that is the one-line
+forbidden to touch. Registered as `BL-R240-DEBT-1`. **If Will means literally one, that is the one-line
 follow-up and it needs his word, because it takes the guaranteed row below 100%.**
 
 > **ONE CONSTANT OF HEADROOM WAS LEFT ON THE TABLE, DELIBERATELY, AND IT SHOULD NOT BE DISCOVERED
@@ -5539,7 +5539,7 @@ follow-up and it needs his word, because it takes the guaranteed row below 100%.
 > itself). So the honest sentence is: **it is the per-difficulty LADDER, not the mechanics, holding
 > Legendary at 3.82** - "within 40% of the floor" is true and it is a choice, not a limit. One constant
 > if Will wants it tighter, and the ladder's own rationale (a Legendary container keeps more of its
-> shipped volume than a Normal one) is the only thing arguing against. `BL-R230-DEBT-6`.
+> shipped volume than a Normal one) is the only thing arguing against. `BL-R240-DEBT-6`.
 
 **THE TESTHUB HALF IS A RECORD SPLIT, BECAUSE THE ARZ IS SHARED.** The four TESTHUB farm-duplicate
 cage chests (Will 2026-08-08) named the SAME two container records as the two canonical placements, so
@@ -5578,21 +5578,21 @@ truncation band `[1,2)`, which moves the continuous model and literally nothing 
 > but the workflow the docs advertised did not exist. The twin's own existence is now the guard, a
 > second call fails LOUD, and `gate_loot_volume --apply` detects the applied state and says so.
 
-> **THE R-181 DISTRIBUTION GATE NOW REDS ON ANY PRE-R-230 ARZ, AND THAT IS THE ANCHOR WORKING.**
+> **THE R-181 DISTRIBUTION GATE NOW REDS ON ANY PRE-R-240 ARZ, AND THAT IS THE ANCHOR WORKING.**
 > `gate_loot_distribution.py` on this branch cannot be used as a "the baseline passes too" control
 > against the rollback artifact, the previous build, or any lane branched before this one: it emits
 > `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface gaoler
 > cage chest_01 [l], which MEASURES 12.4800 spawn iterations`. On an untrimmed arz the anchor surface
 > really does measure 12.48. **Every other coexisting gate still passes on the untrimmed arz** (chest
 > breadth 51 tables, orb breadth 18, craft/thrown, artifacts - all 0 findings), so a lone D7X2 red on a
-> pre-R-230 artifact is not a defect and the Ship lane should not chase it.
+> pre-R-240 artifact is not a defect and the Ship lane should not chase it.
 
 **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. **Will's check: Prison of Souls
 / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open BOTH canonical cage chests on Legendary -
 expect a handful of items with roughly one to four legendaries, not a floor covered in them; and on the
-DEV TESTHUB cage the four duplicates should still pour.** Registered as `BL-R230-DEBT-3`.
+DEV TESTHUB cage the four duplicates should still pour.** Registered as `BL-R240-DEBT-3`.
 
-### R-230 COMPANION RULING [2026-08-11] PENDING - "artifacts should never drop from chests"
+### R-240 COMPANION RULING [2026-08-11] PENDING - "artifacts should never drop from chests"
 
 **WILL, VERBATIM (2026-08-11):** *"artifacts should never drop from chests"*.
 
@@ -5602,7 +5602,7 @@ DEV TESTHUB cage the four duplicates should still pour.** Registered as `BL-R230
 > because of **R-185, one of Will's own rulings, shipped the day before**. A literal zero-artifact gate
 > would RED the live `build83` build and require reverting R-185. The six-artifact exemption is
 > therefore a **decision for Will, not a detail** - either he ratifies the exemption (and this entry
-> becomes IMPLEMENTED-WITH-EXEMPTION), or he takes the one-lane follow-up priced in `BL-R230-DEBT-2`
+> becomes IMPLEMENTED-WITH-EXEMPTION), or he takes the one-lane follow-up priced in `BL-R240-DEBT-2`
 > and the roster deletes itself. **The independent round-2 vet re-derived this from the bytes with its
 > own loot-graph walker and confirmed both halves: the relayed "current state already complies
 > (0/292)" is false, and the six reachable records are exactly
@@ -5636,7 +5636,7 @@ do not.** The 141 are what a player wears. A literal all-299 reading would deman
 scrolls out of the base game's own `04_*_misc` tables - changing every chest in the campaign - which is
 neither the ask nor something a loot lane may do.
 
-**WHAT FULL COMPLIANCE COSTS (`BL-R230-DEBT-2`), priced so Will can decide in one step:** delete the
+**WHAT FULL COMPLIANCE COSTS (`BL-R240-DEBT-2`), priced so Will can decide in one step:** delete the
 `svc_craft_reagents_artifact_l01` member from its three hosts (`04_l_misc`, `amulet_l01`, `finger_l01`);
 `svc_craft_thrown`'s rules G1 and G4 then RED on those six, so they need a new exemption class in the
 same shape as the existing MI/green one - *"a reagent that is itself a craftable"*.
@@ -5658,7 +5658,7 @@ quest chests, which is what they have always done.
 
 ---
 
-## R-231 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - an uber orb has a CHANCE at a legendary, not a guarantee
+## R-241 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - an uber orb has a CHANCE at a legendary, not a guarantee
 
 **WILL, VERBATIM (2026-08-11):**
 
@@ -5700,16 +5700,16 @@ missed the report. What Will hit is a guarantee made of **VOLUME**. Per ONE orb 
 
 An apex Legendary orb paid **eight and a half legendary-grade items per open**. Six loot groups
 rolling independently over 5.06-10.58 spawn iterations manufacture that with no 100% row involved -
-which is exactly why R-220's breadth gate, R-181's distribution gate and R-230's volume gate were
+which is exactly why R-220's breadth gate, R-181's distribution gate and R-240's volume gate were
 **all green** while Will was looking at a vending machine. A guarantee is not always a field.
 
 ### WHAT SHIPPED
 
 Two levers, in registry order:
 
-1. **R-230's volume trim** (previous slot) takes every orb to the never-empty floor:
+1. **R-240's volume trim** (previous slot) takes every orb to the never-empty floor:
    S 5.06 / 6.44 / 8.28 / 10.58 -> **1.125**.
-2. **R-231's demotion** discharges the literal half: the three guaranteed rows drop to the **richest
+2. **R-241's demotion** discharges the literal half: the three guaranteed rows drop to the **richest
    NON-guaranteed chance that same row already carries in the orb family (21.2%)**. The target is
    **DERIVED from the shipped bytes**, never typed, and cross-checked against the value the contract
    was measured on, so a retune of `boss_charon_*01b` cannot silently relocate the demotion (negtest
@@ -5722,7 +5722,7 @@ Two levers, in registry order:
 fails the build if anything else moves, so breadth and distribution survive verbatim and the variety
 still lands **WHEN** a legendary rolls. RESULT, per ONE orb open:
 
-| difficulty | E[legendary] shipped b83 | E[legendary] R-230+R-231 | cut | guaranteed rows |
+| difficulty | E[legendary] shipped b83 | E[legendary] R-240+R-241 | cut | guaranteed rows |
 |---|---:|---:|---:|---:|
 | Normal | 0.003 .. 0.047 | **0.001 .. 0.004** | ~12x | 1 -> **0** |
 | Epic | 2.579 .. 6.291 | **0.451 .. 0.622** | ~10x | 1 -> **0** |
@@ -5759,7 +5759,7 @@ not adjusted to match.) Negatives: `py tools/debug/negtest_orb_legendary.py <arz
 which is green on the continuous reading and RED under truncation, the exact case O4's model choice
 exists for) and 3 positive controls GREEN.
 
-### THE HALF THIS LANE COULD NOT REACH - `BL-R231-DEBT-1`, WILL DECISION
+### THE HALF THIS LANE COULD NOT REACH - `BL-R241-DEBT-1`, WILL DECISION
 
 **P(at least one legendary) lands at 54-61% on Legendary difficulty, and 60% is not "a low chance".**
 Stated here rather than buried, because the ruling is not fully discharged and a green gate must not

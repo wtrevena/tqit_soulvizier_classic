@@ -1,4 +1,4 @@
-r"""negtest_loot_volume.py - PLANTED NEGATIVES for the loot-VOLUME contract (R-230)
+r"""negtest_loot_volume.py - PLANTED NEGATIVES for the loot-VOLUME contract (R-240)
 and for Will's chest-artifact ruling.
 
 Will 2026-08-11: "we probably need to trip the loot-volume trim, especially on the steam
@@ -45,7 +45,7 @@ import svc_loot_breadth as SLB
 import svc_loot_distribution as SLD
 import svc_loot_volume as SLV
 
-# The shipped (pre-R-230) cage multipliers, so N1 is a verbatim revert and not a guess.
+# The shipped (pre-R-240) cage multipliers, so N1 is a verbatim revert and not a guess.
 SHIPPED_M = {'01': (2.4, 2.8), '03': (2.8, 3.2)}
 BRACKET = '(3+(1.8*numberOfPlayers))'
 # A Greater artifact that NOTHING reaches today (MEASURED: 0 of the 33 Greater records
@@ -141,7 +141,7 @@ def main(argv):
     # ── P1: the wave is green.
     probs = SLV.problems(base, base_lk)
     ok = not probs
-    print("%s P1 POSITIVE CONTROL: the R-230 build passes the volume contract "
+    print("%s P1 POSITIVE CONTROL: the R-240 build passes the volume contract "
           "(%d finding(s))" % ('OK ' if ok else 'XX ', len(probs)))
     for p in probs[:6]:
         print("      %s" % p)
@@ -321,7 +321,7 @@ def main(argv):
     #    V7b would be decoration: V7's continuous model can be satisfied by moving a
     #    number the player never experiences.
     #    The plant is two real, plausible edits in sequence:
-    #      1. the `BL-R230-DEBT-1` follow-up ("Will meant literally one") taken too
+    #      1. the `BL-R240-DEBT-1` follow-up ("Will meant literally one") taken too
     #         far - every cage group chance scaled by N10_CHANCE_SCALE, so the
     #         guarantee genuinely degrades;
     #      2. the MASK - numSpawnMax raised to just under TWO iterations solo. Under

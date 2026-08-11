@@ -1,6 +1,6 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> ## 🆕 R-230 + R-231 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
+> ## 🆕 R-240 + R-241 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
 > **NOT BUILT YET** (branch `fix/loot-volume-trim`; this note is written with the lane so the check is
 > ready when the build lands). arz-only - no map / quest / Text change on the canonical side.
 > **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is MEASURED
@@ -8,15 +8,15 @@
 >
 > **Your two asks, and what each one did:**
 >
-> **1. "from the two chests, you get guaranteed 1 legendary item" (R-230).**
+> **1. "from the two chests, you get guaranteed 1 legendary item" (R-240).**
 > The canonical Gaoler cage, both chests opened once, on Legendary difficulty: it paid **36.4**
 > legendary-grade pieces and now pays **3.8** (Normal 43.7 -> 3.8, Epic 28.2 -> 2.7). It still pays at
 > least one **99.6%** of the time, so the guarantee survives the cut. Honest note: the mechanical floor
 > is **2.74** per two-chest run, not 1.0 - six loot groups fire per spawn iteration and their chances
 > already sum past 280%, so "literally one" needs a composition change, not a volume one. That is
-> `BL-R230-DEBT-1`.
+> `BL-R240-DEBT-1`.
 >
-> **2. "you made the orbs way too good ... a chance to drop legendary items, but a low chance" (R-231).**
+> **2. "you made the orbs way too good ... a chance to drop legendary items, but a low chance" (R-241).**
 > **The number you asked for first: THREE guaranteed-legendary rows in the whole mod** - one per
 > difficulty, all of them the same row on the three apex orb tables, and none of them a pure-legendary
 > row. **They are all gone now (zero).**
@@ -34,7 +34,7 @@
 >   spear variety, the armour parity and the class breadth from the last few builds are all intact - they
 >   just arrive less often. If some class of item has stopped appearing entirely, that is a real bug.
 >
-> **⚠️ THE ONE THING I DID NOT FULLY FIX, so you can rule on it (`BL-R231-DEBT-1`).**
+> **⚠️ THE ONE THING I DID NOT FULLY FIX, so you can rule on it (`BL-R241-DEBT-1`).**
 > The CHANCE of seeing at least one legendary from an orb is still **54-61%** on Legendary. That is not
 > "a low chance" and I am not pretending it is. The reason: about **40% of everything a Legendary-tier
 > orb can pay IS legendary-grade**, because the last few builds deliberately weighted the unique weapon

@@ -46,7 +46,7 @@ to what a player calls an artifact: a literal all-299 rule would demand strippin
 scrolls out of the base game's own `04_*_misc` tables, changing every chest in the
 campaign, which is neither what he asked for nor something a loot lane may do.
 
-WHAT IS NOT ENFORCED, AND WHAT IT WOULD COST (`BL-R230-DEBT-2`)
+WHAT IS NOT ENFORCED, AND WHAT IT WOULD COST (`BL-R240-DEBT-2`)
 ----------------------------------------------------------------
 FULL compliance - zero equippable artifacts, roster included - is a small, bounded
 change and it belongs to the craft lane, not here:
@@ -193,7 +193,7 @@ def pass_line(db, lk=None):
             "drop from chests\" and what is asserted here is \"never EXCEPT %d pinned by "
             "name\". The exemption exists because R-185 - Will's own ruling - put them "
             "there, so a literal zero-artifact gate would red the shipped build. "
-            "RATIFICATION OR THE ONE-LANE FOLLOW-UP IS A WILL DECISION: BL-R230-DEBT-2 ***"
+            "RATIFICATION OR THE ONE-LANE FOLLOW-UP IS A WILL DECISION: BL-R240-DEBT-2 ***"
             % (n_equip - len(reach), n_equip, len(reach),
                sum(1 for p in db.record_names()
                    if d.cls(p) == 'ItemArtifact' and is_scroll(d, p)),

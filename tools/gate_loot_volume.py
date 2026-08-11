@@ -1,4 +1,4 @@
-r"""gate_loot_volume.py - AUDIT: how MUCH every mod loot surface pays (R-230).
+r"""gate_loot_volume.py - AUDIT: how MUCH every mod loot surface pays (R-240).
 
 WILL, VERBATIM (2026-08-11):
   "we probably need to trip the loot-volume trim, especially on the steam version
@@ -25,7 +25,7 @@ WHAT IT ASSERTS
   V7b ... and >= 90% of runs under INTEGER TRUNCATION of the spawn count, the
       pessimistic engine model - because post-trim every cage table sits between 1.05
       and 1.62 iterations solo, so the rounding mode is now first-order and unproven
-      (`BL-R230-DEBT-5`). V7 alone would have reported 96.9% Epic while a truncating
+      (`BL-R240-DEBT-5`). V7 alone would have reported 96.9% Epic while a truncating
       engine paid 93.8%.
 
 All thresholds and their derivations live in `tools/svc_loot_volume.py`; the in-build
@@ -36,7 +36,7 @@ audit and the build gate cannot disagree (the gate_relic_difficulty_tiers preced
 Usage:
   py tools/gate_loot_volume.py <arz>              # audit, exit 1 on any finding
   py tools/gate_loot_volume.py <arz> --calibrate  # worst observed value per check
-  py tools/gate_loot_volume.py <arz> --apply      # apply R-230 in memory first, so a
+  py tools/gate_loot_volume.py <arz> --apply      # apply R-240 in memory first, so a
                                                   # PRE-wave arz measures against the
                                                   # same contract
 
@@ -65,20 +65,20 @@ def main(argv):
     if '--apply' in argv[2:]:
         seen = SLV.already_applied(db)
         if seen:
-            print("  --apply SKIPPED: this arz ALREADY carries the R-230 wave (%d "
+            print("  --apply SKIPPED: this arz ALREADY carries the R-240 wave (%d "
                   "TESTHUB twin record(s) present, e.g. %s). The wave is APPLY-ONCE - "
                   "a second pass would re-clone the twin off the already-trimmed "
                   "canonical records and the canonical-vs-TESTHUB split would silently "
                   "vanish. Measuring the arz as built, which is the right answer here."
                   % (len(seen), seen[0]))
         else:
-            print("  --apply: R-230 wave applied in memory to a PRE-wave arz")
+            print("  --apply: R-240 wave applied in memory to a PRE-wave arz")
             SLV.apply_wave(db, verbose=True)
     lk = SLB.Lookup(db)
     if '--calibrate' in argv[2:]:
         SLV.calibrate(db, lk)
         return 0
-    print("\n=== loot-volume audit (R-230) ===")
+    print("\n=== loot-volume audit (R-240) ===")
     report = {}
     problems = SLV.problems(db, lk, report=report)
     print("loot surfaces in scope: %d canonical + %d TESTHUB twin record(s)"

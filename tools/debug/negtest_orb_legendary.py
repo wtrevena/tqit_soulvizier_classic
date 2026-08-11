@@ -1,5 +1,5 @@
 r"""negtest_orb_legendary.py - PLANTED NEGATIVES for the uber-orb legendary contract
-(R-231).
+(R-241).
 
 Will 2026-08-11: "you made the orbs way too good... those dont need to have guaranteed
 legendary drops, they should just have a chance to drop legendary items, but a low
@@ -8,7 +8,7 @@ chance."
 A RATE RULING HAS TWO WAYS TO BE WRONG, so these plant in BOTH directions - too much
 (the defect Will reported) and too little (this lane's own possible over-correction). A
 gate that only reds one side would let the next wave quietly delete the reward while
-reporting a clean sweep: that is the b80 D6b mirror lesson and R-230's N5.
+reporting a clean sweep: that is the b80 D6b mirror lesson and R-240's N5.
 
   M1  the apex guaranteed row restored to chance 100                     -> O1
        (Will's ruling, literally: the three rows this wave demoted)
@@ -19,12 +19,12 @@ reporting a clean sweep: that is the b80 D6b mirror lesson and R-230's N5.
        (the guarantee Will actually hit did not live in a 100% row - it lived in
         5.06-10.58 spawn iterations, so the battery has to plant it there)
   M4  THE MIRROR - every row's legendary weight MOVED onto that row's least-legendary
-      member, which is what `BL-R231-DEBT-1` option (B) would do badly. Row totals are
+      member, which is what `BL-R241-DEBT-1` option (B) would do badly. Row totals are
       preserved, so items-per-open never moves and O4 fires ALONE      -> O4, alone
   M5  THE TRUNCATION MIRROR - the same shift, tuned to sit ABOVE the floor on the
       continuous reading and BELOW it under integer truncation           -> O4, and
        green on the continuous reading, which is why O4 is measured on the truncated
-       one (BL-R230-DEBT-5)
+       one (BL-R240-DEBT-5)
   M6  THE SECOND MIRROR - every group chance scaled down until the orb is an empty
       box, which satisfies O2/O3/O4 the cheap way                        -> O5
   M7  the derived demotion target moved out from under the contract, so a future
@@ -57,7 +57,7 @@ APEX = {'n': r'records\item\loottables\svc\svc_uberorb_apex_n01c.dbr',
 # An ORDINARY orb that has never had a guaranteed row - M2's target, so O1 is proved
 # to be a sweep over the derived surface rather than three remembered records.
 ORDINARY_L = r'records\xpack\item\containers\loot tables\uberorb_default_l01c.dbr'
-# The shipped (pre-R-230) spawn multipliers of that same table, so M3 is a verbatim
+# The shipped (pre-R-240) spawn multipliers of that same table, so M3 is a verbatim
 # revert too. MEASURED on b83: `(2+(1.2*numberOfPlayers))*1.58` both sides -> S 5.06.
 SHIPPED_BRACKET = None      # read from the record at plant time; see `_shipped_eq`
 
@@ -70,7 +70,7 @@ SHIPPED_BRACKET = None      # read from the record at plant time; see `_shipped_
 # A rate is a ratio; a plant that scales a ratio's numerator and denominator together
 # plants nothing.
 #
-# What DOES move the rate is what option (B) of `BL-R231-DEBT-1` would actually do:
+# What DOES move the rate is what option (B) of `BL-R241-DEBT-1` would actually do:
 # move legendary weight onto a LESS legendary member. So the plant redistributes -
 # every above-average-legendary member of every live row gives (1-f) of its weight to
 # that row's LEAST legendary member. The row's TOTAL weight is unchanged, so drops per
@@ -103,7 +103,7 @@ M6_CHANCE_SCALE = 0.30
 
 def load_fixed(path):
     """The arz with BOTH waves applied, in registry order - which is the database the
-    contract is written against. R-230 first: R-231's readings are measured against the
+    contract is written against. R-240 first: R-241's readings are measured against the
     trimmed spawn volume, so a battery that skipped it would be testing a surface that
     never ships."""
     db = ArzDatabase.from_arz(Path(path))
@@ -120,7 +120,7 @@ def _must(lk, path, why):
 
     A plant that silently misses reports the gate as BLIND, which is an accusation
     against working code and the most expensive way for a negative battery to be wrong
-    (R-230's own first draft did exactly that, twice)."""
+    (R-240's own first draft did exactly that, twice)."""
     real = lk.real(path)
     if not real:
         raise SystemExit(
@@ -211,7 +211,7 @@ def main(argv):
     # ── Q1: the wave is green.
     probs = SOL.problems(base, base_lk)
     ok = not probs
-    print("%s Q1 POSITIVE CONTROL: the R-230+R-231 build passes the orb legendary "
+    print("%s Q1 POSITIVE CONTROL: the R-240+R-241 build passes the orb legendary "
           "contract (%d finding(s))" % ('OK ' if ok else 'XX ', len(probs)))
     for p in probs[:6]:
         print("      %s" % p)
@@ -245,7 +245,7 @@ def main(argv):
                       lambda: SLB.audit_db(base, verbose=False)[0]),
                      ('R-181 distribution',
                       lambda: SAB.audit_db(base, verbose=False)[0]),
-                     ('R-230 volume', lambda: SLV.problems(base, base_lk))):
+                     ('R-240 volume', lambda: SLV.problems(base, base_lk))):
         try:
             n = len(fn())
         except SystemExit as exc:
@@ -352,7 +352,7 @@ def main(argv):
     check('M5 THE TRUNCATION MIRROR: above the floor continuous, below it truncated',
           _gut_band, _p_m5,
           'the floor is measured under the LENIENT spawn model and a real collapse '
-          'ships green (the R-230 V7b defect, mirrored)')
+          'ships green (the R-240 V7b defect, mirrored)')
 
     # ── M6: the SECOND MIRROR - the orb becomes an empty box.
     def _empty(db, lk):

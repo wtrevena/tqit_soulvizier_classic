@@ -1246,10 +1246,10 @@ _B41_ROT = {'rot': Q_LEINTH_EXEMPLAR_ROT}
 
 
 def _hub_cage_rec(N):
-    r"""The TESTHUB-only cage-chest record for chest `N`, as placement bytes (R-230).
+    r"""The TESTHUB-only cage-chest record for chest `N`, as placement bytes (R-240).
 
     IMPORTED from `svc_loot_volume`, which is the single authority on the twin's record
-    names, rather than typed here. The whole point of R-230's split is that the four
+    names, rather than typed here. The whole point of R-240's split is that the four
     TESTHUB duplicates must land on DIFFERENT records from the two canonical placements;
     a typo here would silently put them back on the trimmed canonical pair and the DEV
     farm would quietly lose its volume with nothing failing. `svc_loot_volume.problems`
@@ -3006,7 +3006,7 @@ def build_hub_extra_specs():
         # (a shared one would be the only way to collide) - matches the base chest tuples' byte-shape.
         # B41_POLIS_KEY is defined module-level (line ~1233), collides with no other key in this dict
         # nor in HELOS_HUB_RETURN_SPECS, and is not R09_LVL_KEY, so it flows through the normal fold.
-        # ── R-230 SPLIT (Will 2026-08-11) ────────────────────────────────────────────
+        # ── R-240 SPLIT (Will 2026-08-11) ────────────────────────────────────────────
         # The four duplicates used to name the SAME two records as the canonical pair,
         # which is why they are listed here as `_hub_` records now. Will: "we probably
         # need to trip the loot-volume trim, especially on the steam version ... on the

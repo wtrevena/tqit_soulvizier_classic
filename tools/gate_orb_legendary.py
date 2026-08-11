@@ -1,11 +1,11 @@
-r"""gate_orb_legendary.py - AUDIT: how often an uber orb pays a LEGENDARY (R-231).
+r"""gate_orb_legendary.py - AUDIT: how often an uber orb pays a LEGENDARY (R-241).
 
 WILL, VERBATIM (2026-08-11), superseding the b79 "orbs stay generous" precedent:
   "you made the orbs way too good... those dont need to have guaranteed legendary
    drops, they should just have a chance to drop legendary items, but a low chance."
 
 `gate_orb_loot_breadth` (R-220) answers WHAT an orb can pay. `gate_loot_distribution`
-(R-181) answers in WHAT PROPORTIONS. `gate_loot_volume` (R-230) answers HOW MUCH, in
+(R-181) answers in WHAT PROPORTIONS. `gate_loot_volume` (R-240) answers HOW MUCH, in
 gear pieces. None of them can see how often the thing that falls out is LEGENDARY, and
 on the shipped b83 arz all three were GREEN while an apex Legendary orb paid 8.43
 legendary items per open with a 99.99% chance of at least one.
@@ -21,8 +21,8 @@ WHAT IT ASSERTS
   O5  ... and the orb must still pay ORB_MIN_DROPS_PER_OPEN items of any kind, so the
       ceiling cannot be met by turning the orb into an empty box
 
-R-230 left two readings of the spawn count because the engine's rounding mode is unproven
-(`BL-R230-DEBT-5`), and its rule is that each check runs under the model hardest on it.
+R-240 left two readings of the spawn count because the engine's rounding mode is unproven
+(`BL-R240-DEBT-5`), and its rule is that each check runs under the model hardest on it.
 Here that lands ASYMMETRICALLY, and the asymmetry is deliberate: truncated S is always
 <= continuous S and both readings rise with S, so the CONTINUOUS one is the pessimistic
 side of a CEILING (O2, O3) and the TRUNCATED one is the pessimistic side of a FLOOR (O4).
@@ -39,14 +39,14 @@ Usage:
   py tools/gate_orb_legendary.py <arz>              # audit, exit 1 on any finding
   py tools/gate_orb_legendary.py <arz> --census     # JUST the number Will asked for
   py tools/gate_orb_legendary.py <arz> --calibrate  # every reading behind every constant
-  py tools/gate_orb_legendary.py <arz> --apply      # apply R-230 + R-231 in memory first,
+  py tools/gate_orb_legendary.py <arz> --apply      # apply R-240 + R-241 in memory first,
                                                     # so a PRE-wave arz measures against
                                                     # the same contract
 
-⚠ `--apply` runs R-230's volume trim first and R-231's demotion second, because that is
+⚠ `--apply` runs R-240's volume trim first and R-241's demotion second, because that is
 the registry order and the two readings are not independent: the demotion's effect on
-E[legendary] is measured against the TRIMMED spawn volume. R-230's half is APPLY-ONCE
-and says so; R-231's half is naturally idempotent (a second pass finds no row at 100 and
+E[legendary] is measured against the TRIMMED spawn volume. R-240's half is APPLY-ONCE
+and says so; R-241's half is naturally idempotent (a second pass finds no row at 100 and
 writes nothing) and proves it by measurement rather than claiming it.
 """
 import sys
@@ -69,13 +69,13 @@ def main(argv):
     flags = argv[2:]
     if '--apply' in flags:
         if SLV.already_applied(db):
-            print("  --apply: R-230 volume wave already present, not re-run (APPLY-ONCE)")
+            print("  --apply: R-240 volume wave already present, not re-run (APPLY-ONCE)")
         else:
-            print("  --apply: R-230 volume trim applied in memory")
+            print("  --apply: R-240 volume trim applied in memory")
             SLV.apply_wave(db, verbose=False)
         lk = SLB.Lookup(db)
         n = len(SOL.already_applied(db, lk))
-        print("  --apply: R-231 demotion applied in memory (%d guaranteed-legendary "
+        print("  --apply: R-241 demotion applied in memory (%d guaranteed-legendary "
               "row(s) found)" % n)
         SOL.apply_wave(db, lk, verbose=True)
     lk = SLB.Lookup(db)
@@ -85,7 +85,7 @@ def main(argv):
     if '--calibrate' in flags:
         SOL.calibrate(db, lk)
         return 0
-    print("\n=== uber-orb legendary audit (R-231) ===")
+    print("\n=== uber-orb legendary audit (R-241) ===")
     report = {}
     problems = SOL.problems(db, lk, report=report)
     print("orb loot tables in scope: %d" % report.get('tables', 0))

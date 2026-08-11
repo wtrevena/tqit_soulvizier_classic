@@ -1,12 +1,12 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## GATE RECORD - R-231 UBER-ORB LEGENDARY: zero guaranteed-legendary rows, at most ONE legendary per open (2026-08-11, branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+## GATE RECORD - R-241 UBER-ORB LEGENDARY: zero guaranteed-legendary rows, at most ONE legendary per open (2026-08-11, branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
 
 **Will's ask (verbatim, 2026-08-11), and it SUPERSEDES the b79 "orbs stay generous" precedent wherever
 the two collide:** *"you made the orbs way too good... those dont need to have guaranteed legendary
 drops, they should just have a chance to drop legendary items, but a low chance."*
 
-Design record + the full derivation: `docs/WILL_RULINGS.md` -> **R-231**.
+Design record + the full derivation: `docs/WILL_RULINGS.md` -> **R-241**.
 
 ### THE NUMBER WILL ASKED FOR, MEASURED FIRST (`py tools/gate_orb_legendary.py <arz> --census`)
 
@@ -29,7 +29,7 @@ spread, never typed.
 
 Reporting *"3 rows, all 94%+ non-legendary"* would have answered the question and missed the report.
 The guarantee was made of VOLUME, not of a 100% row - six loot groups rolling independently over
-5.06-10.58 spawn iterations. **Per ONE orb open, shipped b83 -> R-230+R-231:**
+5.06-10.58 spawn iterations. **Per ONE orb open, shipped b83 -> R-240+R-241:**
 
 | difficulty | E[legendary items] before | after | cut | P(>=1 legendary) before | after | guar rows |
 |---|---:|---:|---:|---:|---:|---:|
@@ -45,7 +45,7 @@ The guarantee was made of VOLUME, not of a 100% row - six loot groups rolling in
 `loot{g}Chance`, on exactly the three rows the census returns, demoted to **21.2%**. **3 records, 3
 fields. 0 members, 0 weights, 0 spawn equations, 0 pools** - the module's scope proof FAILS THE BUILD
 if anything else moves, so breadth and distribution survive verbatim and the variety still lands WHEN
-a legendary rolls. The volume half (S 5.06/6.44/8.28/10.58 -> 1.125) is R-230's, in the registry slot
+a legendary rolls. The volume half (S 5.06/6.44/8.28/10.58 -> 1.125) is R-240's, in the registry slot
 immediately above.
 
 **ORDER IS LOAD-BEARING and it is the opposite of "fix it early":** `armor_loot_breadth` SKIPS the
@@ -58,8 +58,8 @@ would have handed a theme row to the armour sweep.
 | gate | result |
 |---|---|
 | `gate_orb_legendary` O1-O5 (NEW) on the shipped b83 arz | **29 findings - THE DEFECT REPRODUCED AS AN ARTIFACT FACT before any code was written** (3 O1 + 12 O2 + 14 O3). It read 43 in this lane's first commit, when the contract still carried the inert `O3b` truncated-ceiling twin; deleting a check that could never fail removed its 14 duplicate lines and nothing else. Re-measured, not adjusted. |
-| `gate_orb_legendary` O1-O5 (NEW) after R-230+R-231 | **PASS - 0 findings**, 18 tables, 0 guaranteed rows, worst 0.846 legendary/open (ceiling 1.00) |
-| `gate_loot_volume` V1-V7b (R-230) on the same db | **PASS - 0 findings** |
+| `gate_orb_legendary` O1-O5 (NEW) after R-240+R-241 | **PASS - 0 findings**, 18 tables, 0 guaranteed rows, worst 0.846 legendary/open (ceiling 1.00) |
+| `gate_loot_volume` V1-V7b (R-240) on the same db | **PASS - 0 findings** |
 | `gate_loot_distribution` (R-181) on the same db | **PASS - 0 findings** |
 | `gate_chest_loot_breadth` (R-180/R-186) on the same db | **PASS - 0 findings** |
 | `gate_orb_loot_breadth` (R-220) on the same db | **PASS - 0 findings** - the class variety b79 shipped is intact at the lower rate |
@@ -80,11 +80,11 @@ truncated twin of the O3 ceiling. Truncated S is always <= continuous S and both
 so a truncated CEILING can never fire while its continuous parent is green - a check that cannot fail,
 printed in a PASS line. It was removed once the monotonicity was written down instead of assumed, and
 the same monotonicity is why the FLOOR (O4) moved ONTO the truncated reading: each check now runs
-under the model hardest on it, which is R-230's own rule applied asymmetrically.
+under the model hardest on it, which is R-240's own rule applied asymmetrically.
 
 ### DEBT REGISTERED BY THIS LANE
 
-- `BL-R231-DEBT-1` - 🚨 **WILL DECISION. THE "LOW CHANCE" HALF IS NOT FULLY DISCHARGED.** P(at least
+- `BL-R241-DEBT-1` - 🚨 **WILL DECISION. THE "LOW CHANCE" HALF IS NOT FULLY DISCHARGED.** P(at least
   one legendary) lands at **54-61% on Legendary difficulty, and 60% is not "a low chance"**. Said here
   rather than buried, because a green gate must not imply a ruling is finished.
   **WHY:** after the trim an orb pays ~2.06 items per open and **~40% of a Legendary-tier orb's entire
@@ -104,13 +104,13 @@ under the model hardest on it, which is R-230's own rule applied asymmetrically.
   pool to split their weight with, so the orb still pays two items but they are usually Epic), plus a
   re-derivation of D7b's floor for the orb family and a re-run of the orb-breadth gate. **One lane per
   problem means it is not this one.**
-- `BL-R231-DEBT-2` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof.
+- `BL-R241-DEBT-2` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof.
   **Will's check: kill a Mystical Orb uber a few times on Legendary and open the orbs - you should get
   about two items each and a legendary should be an event, not the default.** Rides with
-  `BL-R230-DEBT-3` (same build, same test session). Fully quit TQ and restart Steam first.
-- `BL-R231-DEBT-3` - **THE APEX ORB LOSES ITS GUARANTEED ROW ENTIRELY, and that row was 94% relics /
+  `BL-R240-DEBT-3` (same build, same test session). Fully quit TQ and restart Steam first.
+- `BL-R241-DEBT-3` - **THE APEX ORB LOSES ITS GUARANTEED ROW ENTIRELY, and that row was 94% relics /
   amulets / rings.** The demotion takes the apex orb from 3.04 to 2.15 items per open - the single
-  largest per-surface cut in this lane after R-230's own - and most of what it removes is the RELIC and
+  largest per-surface cut in this lane after R-240's own - and most of what it removes is the RELIC and
   JEWELLERY flow, not legendary gear. Nothing gates relic-per-open today. If Will reports "the apex orb
   stopped paying relics", the fix is one field (raise `loot4Chance` back toward the family's 21.2% ->
   higher) and it does NOT reopen the legendary question, because that row is only 0.4-6.3% legendary.
@@ -119,19 +119,19 @@ under the model hardest on it, which is R-230's own rule applied asymmetrically.
 ---
 
 
-## GATE RECORD - R-230 LOOT-VOLUME TRIM: the canonical chests come down ~10x, the TESTHUB farm keeps its own, `BL-R181-DEBT-5` CLOSED (2026-08-11, branch `fix/loot-volume-trim`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+## GATE RECORD - R-240 LOOT-VOLUME TRIM: the canonical chests come down ~10x, the TESTHUB farm keeps its own, `BL-R181-DEBT-5` CLOSED (2026-08-11, branch `fix/loot-volume-trim`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
 
 **Will's ask (verbatim, 2026-08-11):** *"we probably need to trip the loot-volume trim, especially on
 the steam version where maybe from the two chests, you get guaranteed 1 legendary item. on the testhub
 version we can spawn more that is fine."*
 
 This is the say-so `BL-R181-DEBT-5` was explicitly waiting for. Design record + the full derivation:
-`docs/WILL_RULINGS.md` -> **R-230**.
+`docs/WILL_RULINGS.md` -> **R-240**.
 
 **MEASURED, canonical two-chest Gaoler cage run, against the shipped `build83` arz `44499f56`** (live
 on Steam and DEV right now):
 
-| difficulty | grade it pays | shipped b83 | R-230 | cut | P(>=1 at grade) | ceiling |
+| difficulty | grade it pays | shipped b83 | R-240 | cut | P(>=1 at grade) | ceiling |
 |---|---|---:|---:|---:|---:|---:|
 | Normal | Epic | 43.71 | **3.84** | 11.4x | 0.9999 | 4.55 |
 | Epic | Legendary | 28.17 | **2.68** | 10.5x | 0.9686 | 3.20 |
@@ -140,7 +140,7 @@ on Steam and DEV right now):
 **Those are the CONTINUOUS-model numbers. Under INTEGER TRUNCATION of the spawn count the same run
 pays 3.29 / 2.12 / 2.74 with P(>=1) 0.9996 / 0.9378 / 0.9830** - and the Epic 0.9378 is BELOW the 0.95
 V7 enforces, which is why V7b now enforces the truncated reading separately at 0.90. The engine's
-rounding mode is unproven (`BL-R230-DEBT-5`); both readings are gated and both are printed.
+rounding mode is unproven (`BL-R240-DEBT-5`); both readings are gated and both are printed.
 
 **TESTHUB twin: 43.71 / 28.17 / 36.41 - the shipped numbers, unchanged.** A 9.5x canonical-vs-DEV
 split on Legendary, and it is a RECORD split because one arz serves both map variants.
@@ -177,7 +177,7 @@ rather than asserted.
 | `differentiation_problems` B3 (R-186) over BOTH cage families | **PASS - 0 findings**, 12 families / 36 tables - the twin's 3 themed variants are still distinct after the clone |
 | twin-vs-canonical `numSpawn` differs on all 18 | **PASS** - 0 identical, so the clone captured the SHIPPED volume and not the trimmed one |
 | map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03` (4 TESTHUB-only placements); `B41_SPECS` still names `svc_polisvault_chest_01/03` (2 canonical); the two families are DISJOINT |
-| registry integrity | ⚠️ **SUPERSEDED by R-231 in the same lane** (see the gate record at the top of this file): the hash was `198242d6db75` with `loot_volume_trim` last before the no-op `visuals`. R-231 inserts `orb_legendary_chance` between them, so the manifest is now **61 modules, order hash `f5d23eca1b60`**, `loot_volume_trim` -> `orb_legendary_chance` -> `visuals`. `patches.selfcheck()` OK. The ordering is load-bearing in BOTH directions and is argued at both registry entries. |
+| registry integrity | ⚠️ **SUPERSEDED by R-241 in the same lane** (see the gate record at the top of this file): the hash was `198242d6db75` with `loot_volume_trim` last before the no-op `visuals`. R-241 inserts `orb_legendary_chance` between them, so the manifest is now **61 modules, order hash `f5d23eca1b60`**, `loot_volume_trim` -> `orb_legendary_chance` -> `visuals`. `patches.selfcheck()` OK. The ordering is load-bearing in BOTH directions and is argued at both registry entries. |
 
 **ROUND-2 VET: 7 findings, ALL FIXED, each reproduced independently on `44499f56` before being
 touched.** 2 HIGH (the wave was NOT idempotent while four places claimed it was - measured 58-table
@@ -186,7 +186,7 @@ ships as PENDING-AWAITING-RATIFICATION rather than as if satisfied), 2 MEDIUM (D
 misstated as "42-of-57 to 21-of-75" in three places - it is 24-of-63, 18 canonical; and the
 continuous spawn model overstated the guarantee, with the Epic truncated reading at 93.78% falling
 under the gate's own 95% floor - now V7b), 3 LOW (three richness-ORDER claims false in the unit their
-own tables print; the R-181 gate reds on any pre-R-230 arz and the Ship lane must not chase it;
+own tables print; the R-181 gate reds on any pre-R-240 arz and the Ship lane must not chase it;
 `clone_record`'s False return was ignored and the Legendary trim has one unspent constant of
 headroom). Negatives grew 9 -> 11. **No shipped artifact was ever at risk from the idempotency
 defect** - `patches.run_registry` asserts each module runs exactly once, which is why det-2x is
@@ -208,7 +208,7 @@ canonical surface** (`loottable_hidden_bloodcave_01`). D7b (0.0375 per spawn ite
 to, and the R-181 gate re-run on the trimmed db returns 0 findings. **D7X2** re-proves the committed
 anchor volume against the anchor surface's own bytes every run, so this cannot silently rescale again.
 
-> WARNING - **FOR THE SHIP LANE: `gate_loot_distribution.py` on this branch REDS on any PRE-R-230 arz,
+> WARNING - **FOR THE SHIP LANE: `gate_loot_distribution.py` on this branch REDS on any PRE-R-240 arz,
 > and that is the anchor working, not a defect.** It cannot be used as a "the baseline passes too"
 > control against the rollback artifact, the previous build, or any lane branched before this one - it
 > emits `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface
@@ -231,13 +231,13 @@ so the arz+Text coupling holds with no Text rebuild.
 > `local/Levels_merged.arc` stays byte-identical and the Steam delta stays arz-only.**
 
 **DEBT REGISTER**
-- `BL-R230-DEBT-1` - **THE numSpawn LEVER BOTTOMS OUT AT 2.74, NOT 1.0.** One spawn iteration of the
+- `BL-R240-DEBT-1` - **THE numSpawn LEVER BOTTOMS OUT AT 2.74, NOT 1.0.** One spawn iteration of the
   canonical cage already pays 1.60 + 1.14 = 2.74 Legendary-grade pieces, because six loot groups roll
   independently per iteration and their chances sum past 280%. This wave lands at 3.82, within 40% of
   that floor. Reaching a literal "1 legendary item" per run needs the group chances or the guaranteed
   100% row lowered - COMPOSITION, which this lane is forbidden to touch. **WILL DECISION** if he meant
   literally one.
-- `BL-R230-DEBT-2` - 🚨 **WILL DECISION REQUIRED. "artifacts should never drop from chests" ships as
+- `BL-R240-DEBT-2` - 🚨 **WILL DECISION REQUIRED. "artifacts should never drop from chests" ships as
   PENDING, and the green gate must NOT be read as compliance.** The premise the ruling was relayed
   with was wrong - "current state already complies (0/292)" is false - and the round-2 vet re-derived
   that independently with its own loot-graph walker. **6 equippable artifacts are chest-reachable on
@@ -252,12 +252,12 @@ so the arz+Text coupling holds with no Text rebuild.
   becomes IMPLEMENTED-WITH-EXEMPTION; or (b) take the follow-up - one craft-lane row deletion plus a
   *"reagent that is itself a craftable"* exemption class - after which A3 reds the now-dead pins and
   the roster deletes itself. `docs/CHEST_DROP_MATRIX.md` 6.5 independently reaches the same verdict, so
-  42-of-42 craft completability survives either way. Priced in full in R-230's companion ruling.
-- `BL-R230-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. Will's
+  42-of-42 craft completability survives either way. Priced in full in R-240's companion ruling.
+- `BL-R240-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. Will's
   check: Prison of Souls / Hades Palace floor 4, kill Alkyoneus, open BOTH canonical cage chests on
   Legendary - expect a handful of items with roughly one to four legendaries, not a floor covered in
   them. On the DEV TESTHUB cage the four duplicates should still pour (after the hub map rebuild).
-- `BL-R230-DEBT-4` - the trim is applied to the 3 DRX donors (`loottable_hidden_bloodcave_0N`) as well,
+- `BL-R240-DEBT-4` - the trim is applied to the 3 DRX donors (`loottable_hidden_bloodcave_0N`) as well,
   because `all_surfaces` audits them and R-181 writes them. That is deliberate and consistent, but it
   means the blood-cave mega chest - the game's designated jackpot - now pays **1.483-1.497** legendary
   per open instead of 17.45. **CORRECTED (round-2 vet): it is NOT "still the richest surface in the mod
@@ -269,7 +269,7 @@ so the arz+Text coupling holds with no Text rebuild.
   unchanged but the reason is honest: **if he wants the jackpot to READ as a jackpot, it needs a lift
   in absolute terms, and one constant on its family's trim is the lever** - the trim did not demote it,
   it was never top of that ranking.
-- `BL-R230-DEBT-5` - **THE ENGINE'S SPAWN-COUNT ROUNDING MODE IS UNPROVEN, and after this trim it is
+- `BL-R240-DEBT-5` - **THE ENGINE'S SPAWN-COUNT ROUNDING MODE IS UNPROVEN, and after this trim it is
   first-order.** `svc_loot_distribution.spawn_iterations` returns the CONTINUOUS mean of the min and max
   equations. Pre-trim S ran 5.06-18.96 so the fractional part was noise; post-trim every canonical cage
   table evaluates to between **1.0502 and 1.6128** iterations solo, so under integer truncation every
@@ -288,7 +288,7 @@ so the arz+Text coupling holds with no Text rebuild.
   this wave invented. **Closing this needs an
   in-game count** (open the cage N times on Epic and record how many legendaries fall), which is Will's
   test, not a static gate's.
-- `BL-R230-DEBT-6` - **ONE CONSTANT OF LEGENDARY HEADROOM WAS LEFT DELIBERATELY UNSPENT.** The
+- `BL-R240-DEBT-6` - **ONE CONSTANT OF LEGENDARY HEADROOM WAS LEFT DELIBERATELY UNSPENT.** The
   Legendary cage lands at S = 1.310/1.512, above the 1.05/1.20 never-empty floor, so `CANON_TRIM['l']`
   still has room the Normal and Epic tiers do not. Dropping Legendary to the floor takes its run from
   **3.82 to about 3.08** continuous (2.74 truncated, the mechanical floor itself). The docs correctly
@@ -1315,7 +1315,7 @@ copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are a
   6 cage chests, over 2-3 runs.** Expect helms / chest plates / bracers / greaves / shields alongside
   weapons at roughly equal volume, no single weapon class running the run, and four copies of the same
   SPEAR now uncommon. Full note at the top of `docs/WILL_TEST_GUIDE.md`.
-- **`BL-R181-DEBT-5` (P1, WILL DECISION -> CLOSED 2026-08-11 by `fix/loot-volume-trim` / R-230):**
+- **`BL-R181-DEBT-5` (P1, WILL DECISION -> CLOSED 2026-08-11 by `fix/loot-volume-trim` / R-240):**
   `numSpawn` is the drop-VOLUME lever and is deliberately untouched under the non-reduction law.
   Because total legendary gear RISES 70.8 -> 109.4, **P(four copies of ANY one item) only moves 47.3%
   -> 39.7%** even though P(four of one SPEAR) drops 27.0% -> 6.3%. Cutting drops per open needs Will's
@@ -1323,8 +1323,8 @@ copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are a
   **THE SAY-SO ARRIVED 2026-08-11:** *"we probably need to trip the loot-volume trim, especially on
   the steam version where maybe from the two chests, you get guaranteed 1 legendary item."* The lever
   is pulled: canonical cage run 36.41 -> 3.82 Legendary-grade gear (9.5x), TESTHUB twin held at 36.41.
-  Ruling `docs/WILL_RULINGS.md` -> R-230; GATE RECORD at the top of this file. The residual that
-  outlives it is `BL-R230-DEBT-1`: the lever bottoms out at 2.74 per run, so "literally one" would
+  Ruling `docs/WILL_RULINGS.md` -> R-240; GATE RECORD at the top of this file. The residual that
+  outlives it is `BL-R240-DEBT-1`: the lever bottoms out at 2.74 per run, so "literally one" would
   need the guaranteed row lowered and that is a separate Will decision.
 - **`BL-R181-DEBT-7` (P1, CLOSED 2026-08-11 by `fix/orb-armor-rows`, BUILT + SHIPPED as `build83`
   (arz `44499f56`) - BUILD83-DEV GATE RECORD + SHIP RECORD at the top of this
@@ -2340,9 +2340,9 @@ surface. 0.24 reds that by 30%, and negtest N7 re-plants it so the number stays 
 - `BL-R181-DEBT-5` - **WILL DECISION:** `numSpawn` (drop VOLUME) is untouched, so P(any single item
   lands 4x in a run) only falls 47.3% -> 39.7%. Lowering it would cut drops per open, which
   non-reduction forbids without Will's say-so.
-  **CLOSED 2026-08-11** by `fix/loot-volume-trim` / `tools/patches/loot_volume_trim.py` (R-230). Will
+  **CLOSED 2026-08-11** by `fix/loot-volume-trim` / `tools/patches/loot_volume_trim.py` (R-240). Will
   gave the say-so; the canonical cage run falls 36.41 -> 3.82 Legendary-grade gear while the TESTHUB
-  twin keeps 36.41. GATE RECORD at the top of this file, ruling at `docs/WILL_RULINGS.md` -> R-230.
+  twin keeps 36.41. GATE RECORD at the top of this file, ruling at `docs/WILL_RULINGS.md` -> R-240.
 - `BL-R181-DEBT-7` - **ARMOUR ON THE R-220 ORB TABLES IS OWNED BY NOBODY, and it starves.** b79
   merged to main as `914b227` while this lane was in vet-fix. Its 15 tables (`uberorb_default_*` x12,
   `boss_charon_{n,e,l}01b`) sit outside `\svc\`, so they were never in this module's ownership rule,

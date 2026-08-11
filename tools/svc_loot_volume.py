@@ -1,4 +1,4 @@
-r"""svc_loot_volume.py - THE DROP-VOLUME CONTRACT (Will 2026-08-11, R-230).
+r"""svc_loot_volume.py - THE DROP-VOLUME CONTRACT (Will 2026-08-11, R-240).
 
 WILL, VERBATIM (2026-08-11), the report this module exists to answer:
   "we probably need to trip the loot-volume trim, especially on the steam version
@@ -29,7 +29,7 @@ WHY THE TWO GATE FAMILIES SURVIVE A VOLUME CUT BY CONSTRUCTION
 * D7 is the single exception in the whole contract: an ABSOLUTE floor of
   `ARMOR_SLOT_FLOOR` worn-slot pieces PER OPEN. Its own block comment already says
   what to do here - "below that the number is a numSpawn demand rather than a parity
-  one" - so R-230 re-anchors D7's volume reference and floor TOGETHER, preserving its
+  one" - so R-240 re-anchors D7's volume reference and floor TOGETHER, preserving its
   per-iteration strength exactly. See `svc_loot_distribution` D7X2.
 
 THE LEVER, AND THE ONE THING THAT MUST NEVER HAPPEN
@@ -56,7 +56,7 @@ loot groups roll independently per iteration and their chances sum past 280%. So
 numSpawn lever CANNOT reach a literal 1.0 per two-chest run; 2.74 is its floor, and
 this wave lands at roughly 3.8 - within 40% of that floor. Going below it means
 lowering group chances or the guaranteed row, which is composition, which this lane
-is forbidden to touch. Registered as `BL-R230-DEBT-1`.
+is forbidden to touch. Registered as `BL-R240-DEBT-1`.
 
 TESTHUB vs CANONICAL: THE SPLIT IS BY RECORD, BECAUSE THE ARZ IS SHARED
 ------------------------------------------------------------------------
@@ -93,7 +93,7 @@ import svc_loot_distribution as SLD
 import svc_loot_ownership as OWN
 
 # ─────────────────────────────────────────────────────────────────────────────
-# THE LADDER (R-230). TWO committed constants and a floor; every per-table
+# THE LADDER (R-240). TWO committed constants and a floor; every per-table
 # multiplier below is DERIVED from them, so nothing here is a typed table of
 # magic numbers that can drift out of step with the surfaces it governs.
 #
@@ -159,7 +159,7 @@ MIN_SPAWN_MAX_SOLO = 1.20
 #     Legendary       3.823    0.9963       2.742      0.9830
 #
 # We do not know which one the engine does, and this lane is not the place to find
-# out (it needs an in-game count, which is `BL-R230-DEBT-5`). So the honest move is
+# out (it needs an in-game count, which is `BL-R240-DEBT-5`). So the honest move is
 # to enforce BOTH: V7 on the continuous reading, V7b on the truncated one, each
 # with its own committed floor. Enforcing only the continuous reading would have
 # let a 93.78% Epic guarantee ship under a PASS line that said 96.86%.
@@ -298,7 +298,7 @@ def solo_value(bracket, mult):
 
 
 def trimmed_multipliers(bracket, m_min, m_max, tier):
-    """The R-230 multipliers for one table: the shipped pair scaled by this tier's
+    """The R-240 multipliers for one table: the shipped pair scaled by this tier's
     trim, then raised to the never-empty floor. Returns (new_min, new_max, floored)
     where `floored` names which side the floor bound, for the report."""
     base = SLD.eval_spawn(bracket, players=1) or 1.0
@@ -331,7 +331,7 @@ def trimmed_multipliers(bracket, m_min, m_max, tier):
 # player opens, so it is exactly the set whose volume Will is talking about.
 # ─────────────────────────────────────────────────────────────────────────────
 def scope_tables(db, lk=None):
-    """{norm: (real, tier, is_hub)} for every loot table R-230 governs."""
+    """{norm: (real, tier, is_hub)} for every loot table R-240 governs."""
     lk = lk or SLB.Lookup(db)
     out = {}
     for _label, tables, _w, tier in SAB.all_surfaces(db, lk):
@@ -344,7 +344,7 @@ def scope_tables(db, lk=None):
 
 
 def trim_table(db, real, tier, lk=None):
-    """Apply the R-230 trim to ONE table. Returns a list of change strings.
+    """Apply the R-240 trim to ONE table. Returns a list of change strings.
 
     FAILS LOUD on an equation shape it cannot parse. A silent skip here is how a
     surface keeps shipping at 12x volume while the gate's PASS line claims the trim
@@ -411,7 +411,7 @@ def _cloned(db, src, dst):
 
 def already_applied(db, lk=None):
     r"""The TESTHUB twin records that already exist in `db` - i.e. the evidence that
-    the R-230 wave has ALREADY run on this database.
+    the R-240 wave has ALREADY run on this database.
 
     The twin IS the marker, and it is the only honest one available: nothing in a
     trimmed `numSpawn` equation says whether it was trimmed, so "has this wave run?"
@@ -453,7 +453,7 @@ def clone_hub_cage(db, lk=None, verbose=True):
     seen = already_applied(db, lk)
     if seen:
         raise SystemExit(
-            "[svc_loot_volume] the R-230 TESTHUB twin ALREADY EXISTS in this database "
+            "[svc_loot_volume] the R-240 TESTHUB twin ALREADY EXISTS in this database "
             "(%d record(s), e.g. %s), so `clone_hub_cage` has already run on it. A "
             "second run would clone the twin off the ALREADY-TRIMMED canonical records "
             "and the canonical-vs-TESTHUB split would silently cease to exist (measured: "
@@ -515,7 +515,7 @@ def clone_hub_cage(db, lk=None, verbose=True):
 
 
 def apply_wave(db, lk=None, verbose=True):
-    """The whole R-230 write, in the ONE order that is correct.
+    """The whole R-240 write, in the ONE order that is correct.
 
     ORDER IS LOAD-BEARING and it is the reverse of the obvious one: the TESTHUB twin
     is cloned FIRST, off the untrimmed canonical records, so it captures the shipped
@@ -622,7 +622,7 @@ def cage_run(d, dist, lk, tier, hub=False, truncate=False):
     named - "from the two chests" - so it is measured as a RUN and not per chest.
 
     `truncate` selects the INTEGER reading of the spawn count instead of the
-    continuous mean. The engine's rounding mode is unproven (`BL-R230-DEBT-5`), so
+    continuous mean. The engine's rounding mode is unproven (`BL-R240-DEBT-5`), so
     both are computed and both are gated: the continuous reading is the higher one
     and carries the CEILINGS (V1/V6), the truncated reading is the lower one and
     carries the GUARANTEE floor (V7b). Pairing them the other way round would let
@@ -660,7 +660,7 @@ def cage_run(d, dist, lk, tier, hub=False, truncate=False):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# THE COMMITTED VOLUME TARGETS (R-230)
+# THE COMMITTED VOLUME TARGETS (R-240)
 #
 # Every number below was read off `py tools/gate_loot_volume.py <arz> --calibrate`
 # on the shipped b83 arz `44499f56` (the DEFECT state, which every ceiling must red)
@@ -668,7 +668,7 @@ def cage_run(d, dist, lk, tier, hub=False, truncate=False):
 # margin). A threshold that does not red the reported defect is decoration; a
 # threshold with no margin is a gate that gets switched off (the b63 1.0u lesson).
 #
-#   check                              b83 (defect)   R-230   threshold  reds b83  margin
+#   check                              b83 (defect)   R-240   threshold  reds b83  margin
 #   V1 canonical gear / open, worst        23.892      2.153     2.55      yes  9x    18%
 #   V6 canonical CAGE RUN, Normal          43.714      3.839     4.55      yes  9.6x  18%
 #   V6 canonical CAGE RUN, Epic            28.166      2.676     3.20      yes  8.8x  20%
@@ -723,7 +723,7 @@ HUB_MIN_CAGE_RUN = {'n': 35.00, 'e': 23.00, 'l': 29.00}
 
 
 def problems(db, lk=None, report=None):
-    """The R-230 contract. Returns a list of problem strings, empty when clean."""
+    """The R-240 contract. Returns a list of problem strings, empty when clean."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
@@ -803,7 +803,7 @@ def problems(db, lk=None, report=None):
                 "two-chest cage run pays at least one %s gear piece only %.1f%% of the "
                 "time at difficulty %s (floor %.1f%%), against %.1f%% on the continuous "
                 "reading V7 uses. The engine's rounding mode is unproven "
-                "(BL-R230-DEBT-5), so the guarantee has to hold under the pessimistic "
+                "(BL-R240-DEBT-5), so the guarantee has to hold under the pessimistic "
                 "one too, or the PASS line is quoting a model instead of a drop rate."
                 % (_IC[tier], 100.0 * p_one_t, tier, 100.0 * MIN_P_AT_LEAST_ONE_TRUNC,
                    100.0 * p_one))
@@ -855,7 +855,7 @@ def calibrate(db, lk=None):
         S, leg, _pn = surface_reading(d, dist, tables, weights, tier)
         rows.append((leg, S, label, tier, any(is_hub(t) for t in tables)))
     rows.sort(key=lambda r: -r[0])
-    print('\n=== R-230 VOLUME CALIBRATION ===')
+    print('\n=== R-240 VOLUME CALIBRATION ===')
     print('  %-46s %3s %7s %9s' % ('surface', 'tie', 'S_eff', 'gear/open'))
     for leg, S, label, tier, ishub in rows:
         print('  %-46s %3s %7.3f %9.3f%s'
@@ -865,7 +865,7 @@ def calibrate(db, lk=None):
         print('  worst CANONICAL gear/open: %.3f on %s (V1 ceiling %.2f)'
               % (cw[0][0], cw[0][2], CANON_MAX_GEAR_PER_OPEN))
     # BOTH readings, side by side, because the engine's rounding mode is unproven and
-    # a single printed number would be read as a measurement (BL-R230-DEBT-5).
+    # a single printed number would be read as a measurement (BL-R240-DEBT-5).
     print('  cage RUN - continuous mean S vs INTEGER-TRUNCATED S (both gated: V6/V7 '
           'on the first, V7b on the second)')
     for tier in TIERS:

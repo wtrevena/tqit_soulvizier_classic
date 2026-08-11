@@ -603,7 +603,7 @@ def cage_surfaces(lk):
     alongside its two siblings, so judging one in isolation would both over-flag a
     deliberate theme and under-flag the mix the player actually opens.
 
-    R-230 (Will 2026-08-11) adds the TESTHUB TWIN as a second family. It is the same
+    R-240 (Will 2026-08-11) adds the TESTHUB TWIN as a second family. It is the same
     cage - `svc_loot_volume.clone_hub_cage` copies the canonical chain record for record
     - kept at the SHIPPED volume for Will's DEV farm while canonical trims, and the four
     TESTHUB-only duplicate placements name it. It is grouped here for the same reason the

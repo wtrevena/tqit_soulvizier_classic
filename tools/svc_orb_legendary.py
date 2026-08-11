@@ -1,4 +1,4 @@
-r"""svc_orb_legendary.py - THE UBER-ORB LEGENDARY CONTRACT (Will 2026-08-11, R-231).
+r"""svc_orb_legendary.py - THE UBER-ORB LEGENDARY CONTRACT (Will 2026-08-11, R-241).
 
 WILL, VERBATIM (2026-08-11), and this ruling SUPERSEDES the b79 "orbs stay generous"
 precedent it collides with:
@@ -37,7 +37,7 @@ rolled independently on 10.58 spawn iterations.
 
 WHAT THIS CONTRACT DOES, AND THE ONE THING IT DELIBERATELY DOES NOT
 --------------------------------------------------------------------
-1. R-230's volume trim (same lane) takes every orb's spawn volume to the never-empty
+1. R-240's volume trim (same lane) takes every orb's spawn volume to the never-empty
    floor: S 5.06/6.44/8.28/10.58 -> 1.125. That is what kills the volume guarantee.
 2. THIS module then discharges the literal half of the ruling: the three guaranteed
    rows are DEMOTED to chance-based, at the richest NON-guaranteed chance the same row
@@ -78,7 +78,7 @@ WHAT THIS CONTRACT DOES, AND THE ONE THING IT DELIBERATELY DOES NOT
    D6 (armour-slot share) instead. Either way the next step out of 60% is a COMPOSITION
    decision inside R-180/R-181/R-220's scope, not a volume one, and this lane is
    explicitly forbidden to take it quietly. It is priced for Will as
-   `BL-R231-DEBT-1`, with the ceilings below set where the authorised levers actually
+   `BL-R241-DEBT-1`, with the ceilings below set where the authorised levers actually
    reach so the gate is a true ratchet and not an aspiration nothing enforces.
 
 THE CONTRACT IS TWO-SIDED, BECAUSE A RATE RULING HAS TWO WAYS TO BE WRONG
@@ -92,7 +92,7 @@ turning the orb into an empty box.
 Shared by `tools/gate_orb_legendary.py` (standalone), the in-build gate
 `tools/patches/orb_legendary_chance.verify()` and
 `tools/debug/negtest_orb_legendary.py`, so the three can never disagree (the
-`gate_relic_difficulty_tiers` / R-230 precedent).
+`gate_relic_difficulty_tiers` / R-240 precedent).
 """
 import sys
 from pathlib import Path
@@ -113,7 +113,7 @@ TIER_NAME = {'n': 'Normal', 'e': 'Epic', 'l': 'Legendary'}
 # ─────────────────────────────────────────────────────────────────────────────
 # THE CEILINGS. Every one is DERIVED from the measured post-wave reading plus a
 # stated margin, in the direction that makes the check fail - never rounded to a
-# number that reads well. The margins are the R-230 construction (V7/V7b), so the
+# number that reads well. The margins are the R-240 construction (V7/V7b), so the
 # two contracts in this lane can be compared line for line.
 #
 # O2 - E[legendary items per open]. THE HEADLINE. Measured worst after the wave:
@@ -127,14 +127,14 @@ ORB_MAX_LEG_PER_OPEN = {'n': 0.05, 'e': 0.75, 'l': 1.00}
 # O3 - P(at least one legendary per open), the CHANCE half of Will's sentence.
 # Measured worst after the wave: n 0.0035 | e 0.4895 | l 0.6090. These are a
 # RATCHET at roughly 11% headroom, not a target: see the docstring's point 3 and
-# `BL-R231-DEBT-1`. They exist so the 90% cut can never be quietly given back.
+# `BL-R241-DEBT-1`. They exist so the 90% cut can never be quietly given back.
 ORB_MAX_P_LEGENDARY = {'n': 0.02, 'e': 0.55, 'l': 0.68}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WHICH SPAWN MODEL EACH CHECK RUNS UNDER, AND WHY THERE IS NO CEILING TWIN
 #
-# R-230 introduced two readings of the spawn count because the engine's rounding
-# mode is unproven (`BL-R230-DEBT-5`): the CONTINUOUS mean S = (min+max)/2 and the
+# R-240 introduced two readings of the spawn count because the engine's rounding
+# mode is unproven (`BL-R240-DEBT-5`): the CONTINUOUS mean S = (min+max)/2 and the
 # INTEGER-TRUNCATED S = (int(min)+int(max))/2. Its rule is "each check runs under
 # the model hardest on it", and that rule decides this file's shape too - but it
 # decides it ASYMMETRICALLY, which is worth stating because the first draft of this
@@ -151,7 +151,7 @@ ORB_MAX_P_LEGENDARY = {'n': 0.02, 'e': 0.55, 'l': 0.68}
 #     silently done.
 #   * The same monotonicity makes the TRUNCATED reading the pessimistic side of a
 #     FLOOR. So O4 runs on it, and prints the continuous reading beside it - the
-#     mirror of R-230's V7b, and for the identical reason.
+#     mirror of R-240's V7b, and for the identical reason.
 #
 # THE FLOORS - the reason this file is a contract and not a trim. "they should just
 # have A CHANCE to drop legendary items" is an instruction that legendary drops
@@ -247,7 +247,7 @@ def reading(d, dist, table):
     """(drops, E[legendary], P(>=1 legendary), P(>=1 legendary | truncated S)).
 
     P is computed from the per-iteration miss probability raised to S, because the
-    groups roll INDEPENDENTLY on each spawn iteration - the same construction R-230's
+    groups roll INDEPENDENTLY on each spawn iteration - the same construction R-240's
     `cage_run` uses, so "at least one" means the same thing in both contracts.
     """
     S = SLD.spawn_iterations(d, table)
@@ -313,7 +313,7 @@ def family_chance(db, lk=None, d=None, dist=None, base_rows=None, scope=None):
 # ─────────────────────────────────────────────────────────────────────────────
 def already_applied(db, lk=None, base_rows=None, scope=None):
     """The rows this wave would still have to demote. Empty == already applied (or
-    never needed). Used as the apply-once guard, exactly like R-230's twin check:
+    never needed). Used as the apply-once guard, exactly like R-240's twin check:
     the demotion IS idempotent - a second run finds nothing at chance 100 and writes
     nothing - but saying so from a MEASUREMENT beats claiming it in a comment.
     """
@@ -370,14 +370,14 @@ def apply_wave(db, lk=None, verbose=True, base_rows=None, scope=None):
 # THE CONTRACT
 # ─────────────────────────────────────────────────────────────────────────────
 def problems(db, lk=None, report=None, base_rows=None, scope=None):
-    """R-231. Returns a list of problem strings, empty when clean."""
+    """R-241. Returns a list of problem strings, empty when clean."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
     out = []
     scope = orb_tables(db, lk, base_rows, scope)
     if not scope:
-        return ["O0 the orb surface derived EMPTY. R-231 measures nothing and would "
+        return ["O0 the orb surface derived EMPTY. R-241 measures nothing and would "
                 "report success - the BL-R181-DEBT-7 failure verbatim. Check "
                 "svc_orb_breadth.orb_chains against this database."]
 
@@ -456,7 +456,7 @@ def census(db, lk=None, base_rows=None, scope=None):
     dist = SLD.Distributor(d)
     scope = orb_tables(db, lk, base_rows, scope)
     rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows, scope)
-    print('\n=== R-231 GUARANTEED-LEGENDARY CENSUS (Will asked for this number) ===')
+    print('\n=== R-241 GUARANTEED-LEGENDARY CENSUS (Will asked for this number) ===')
     print('  %-11s %7s %10s   %s' % ('difficulty', 'tables', 'guar rows', 'which'))
     for tier in TIERS:
         mine = [r for r in rows if r[1] == tier]
@@ -476,7 +476,7 @@ def calibrate(db, lk=None, base_rows=None, scope=None):
     dist = SLD.Distributor(d)
     scope = orb_tables(db, lk, base_rows, scope)
     census(db, lk, base_rows, scope)
-    print('\n=== R-231 ORB LEGENDARY CALIBRATION ===')
+    print('\n=== R-241 ORB LEGENDARY CALIBRATION ===')
     print('  %-4s %-34s %7s %8s %9s %9s %9s'
           % ('tier', 'table', 'S', 'drops', 'E[leg]', 'P>=1', 'P>=1 tr'))
     agg = {}

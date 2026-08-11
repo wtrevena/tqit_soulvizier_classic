@@ -1,4 +1,4 @@
-r"""orb_legendary_chance - the uber orbs stop guaranteeing legendaries (R-231).
+r"""orb_legendary_chance - the uber orbs stop guaranteeing legendaries (R-241).
 
 WILL, VERBATIM (2026-08-11). This ruling SUPERSEDES the b79 "orbs stay generous
 relative to chests" precedent wherever the two collide, and it says so in
@@ -18,7 +18,7 @@ THE ROW COUNT WAS NOT WHERE THE GUARANTEE LIVED. Per ONE orb open on the shipped
 arz: Epic 2.58-6.29 legendary items (93.6-99.9% chance of at least one), Legendary
 3.74-8.43 (98.4-99.99%). Six independent loot groups over 5.06-10.58 spawn iterations
 produce a guarantee with no 100% row involved, which is why R-220's breadth gate,
-R-181's distribution gate and R-230's volume gate were all green while Will was looking
+R-181's distribution gate and R-240's volume gate were all green while Will was looking
 at a vending machine.
 
 WHAT THIS MODULE WRITES
@@ -29,7 +29,7 @@ the orb family (21.2%, `boss_charon_*01b`'s value). The target is DERIVED from t
 shipped bytes and cross-checked against the value this contract was measured on, so a
 demotion can never silently land somewhere nobody chose. Three records, three fields.
 
-Combined with R-230's volume trim (previous registry slot), one orb open now pays:
+Combined with R-240's volume trim (previous registry slot), one orb open now pays:
   Normal 0.001-0.004 legendary | Epic 0.451-0.622 | Legendary 0.699-0.846
 i.e. AT MOST ONE LEGENDARY ITEM PER OPEN on Legendary difficulty, against 8.43 shipped -
 a 90% cut, with breadth and distribution untouched so the variety survives WHEN one rolls.
@@ -45,7 +45,7 @@ chances, which divides `svc_loot_distribution` D7b (worn-slot armour per SPAWN
 ITERATION, asserted on all 63 surfaces) by the same factor and reds armour parity on
 every orb - or scaling only the legendary-heavy rows, which moves D3/D4 and D6 instead.
 Either way it is a COMPOSITION decision inside R-180/R-181/R-220's scope, priced for
-Will as `BL-R231-DEBT-1` rather than taken by a rate lane. The ceilings this module
+Will as `BL-R241-DEBT-1` rather than taken by a rate lane. The ceilings this module
 gates on are set where the AUTHORISED levers actually reach, so the gate is a true
 ratchet and not an aspiration nothing enforces.
 
@@ -56,10 +56,10 @@ WHY IT IS REGISTERED HERE - immediately AFTER `loot_volume_trim`, before the no-
      leaves it to the theme - exactly as intended. Demoting BEFORE it would hand that
      row to the armour sweep and let a later pass rewrite a theme, which is the defect
      `armor_groups`' docstring exists to prevent.
-  2. R-231's readings are measured against R-230's TRIMMED spawn volume, so the volume
+  2. R-241's readings are measured against R-240's TRIMMED spawn volume, so the volume
      trim must already have landed when this module's verify() reports numbers.
 
-GATE: `verify()` below runs the whole R-231 contract (O1-O5) on the FINAL db, so a later
+GATE: `verify()` below runs the whole R-241 contract (O1-O5) on the FINAL db, so a later
 module that re-inflates an orb row reds here and gets named. Standalone twin:
 `py tools/gate_orb_legendary.py <arz>` (`--census` for Will's number, `--calibrate` to
 re-derive every threshold, `--apply` on a pre-wave arz).
@@ -77,7 +77,7 @@ import svc_loot_breadth as SLB
 import svc_orb_legendary as SOL
 
 MODULE_NAME = ("uber-orb legendary chance - an orb has a chance at a legendary, not a "
-               "guarantee (R-231)")
+               "guarantee (R-241)")
 
 # The ONLY field this module may move, and only on an orb table. Everything else on a
 # loot table is that surface's identity: its members, its weights, its spawn volume,
@@ -136,7 +136,7 @@ def apply(db, tags):
             "demoted guaranteed rows: %s. This module is allowed to change how OFTEN a "
             "guaranteed orb row fires and nothing else - the moment it touches a member, "
             "a weight, a spawn equation or a row the census did not name, it is silently "
-            "redoing R-180/R-181/R-220/R-230's work, and the gates that run after it "
+            "redoing R-180/R-181/R-220/R-240's work, and the gates that run after it "
             "would be validating a different wave than the one anyone reviewed."
             % (len(illegal), sorted(illegal)[:12]))
 
@@ -149,9 +149,9 @@ def apply(db, tags):
 
 
 def verify(db, tags):
-    """The R-231 contract (O1-O5) on the FINAL db.
+    """The R-241 contract (O1-O5) on the FINAL db.
 
-    A verify() rather than an apply()-time gate for the R-230 reason: every other loot
+    A verify() rather than an apply()-time gate for the R-240 reason: every other loot
     module has already run by then, so what this measures is the legendary rate the
     player actually gets - not the rate this module left behind a moment before
     something else moved it.
@@ -171,6 +171,6 @@ def verify(db, tags):
     print("  orb_legendary_chance gate PASS: %s. Both mirrors hold: a legendary is "
           "still possible on every Epic/Legendary orb (floors %s) and no orb has been "
           "reduced to an empty box (floor %.2f items/open). Residual chance-half debt: "
-          "BL-R231-DEBT-1."
+          "BL-R241-DEBT-1."
           % (SOL.pass_line(report), SOL.ORB_MIN_P_LEGENDARY,
              SOL.ORB_MIN_DROPS_PER_OPEN))
