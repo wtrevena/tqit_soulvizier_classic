@@ -31,7 +31,8 @@
 | `HANDOFF_LIVE_STATE.md` | The single current-state board: what/where, build27 sizes+MD5s, deploy asymmetry, standing rules. | 2026-07-08 | LIVE |
 | `BACKLOG.md` | The single bug/queue board (live-test findings + standing queue + Workshop feedback triage). | 2026-07-08 | LIVE |
 | `CUT_CONTENT.md` | Declared-unreachable-by-design areas (so the map contract suite does not flag them). | 2026-07-08 | LIVE |
-| `PORTAL_PAGE_DLC_CAP.md` | R-210: where the in-game portal page's act list comes from, why the DLC pages leaked in, the arz-record cap + its gate, and the still-open Rhodes-to-Atlantis travel leak. | 2026-08-10 | LIVE |
+| `PORTAL_PAGE_DLC_CAP.md` | R-210: where the in-game portal page's act list comes from, why the DLC pages leaked in, the arz-record cap + its gate. Its travel-leak debt is closed by `ATLANTIS_VOYAGE_CAP.md`. | 2026-08-10 | LIVE |
+| `ATLANTIS_VOYAGE_CAP.md` | R-211: the Rhodes to Gadir to Atlantis sea voyage - full route RCA, the 10-route access audit (incl. the absence proofs), the six arz-record overrides + their gate. Closes `BL-PORTALCAP-DEBT-1`. | 2026-08-10 | LIVE |
 
 ## RECIPE - how-to manuals & release procedures
 
