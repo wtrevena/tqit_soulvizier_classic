@@ -72,13 +72,15 @@ def main(argv):
 
     if '--mi-sources' in flags:
         print("\nMI / green exemption roster (Will: \"except for the monster unique "
-              "droppable items like the green items\"):")
+              "droppable items like the green items\"), with the monsters that pay each:")
         for reagent in r['buckets'].get('mi', ()):
-            srcs = SCT.monster_sources(db, lk, reagent)
-            print("  %-34s <- %s"
-                  % (SLB._n(reagent).rsplit('\\', 1)[-1],
-                     ', '.join(SLB._n(s).rsplit('\\', 1)[-1] for s in srcs) or
-                     '(NO monster loot table names it)'))
+            monsters, tables = r['mi_sources'].get(reagent) or \
+                SCT.monster_sources(db, lk, reagent)
+            names = sorted({SLB._n(m).rsplit('\\', 1)[-1][:-4] for m in monsters})
+            print("  %-26s %3d monster(s) via %d table(s): %s%s"
+                  % (SLB._n(reagent).rsplit('\\', 1)[-1][:-4], len(monsters), len(tables),
+                     ', '.join(names[:6]) or '(NONE - unobtainable)',
+                     ' ...' if len(names) > 6 else ''))
 
     if problems:
         print("\nPROBLEMS: %d" % len(problems))

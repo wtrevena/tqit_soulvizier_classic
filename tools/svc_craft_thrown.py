@@ -101,10 +101,22 @@ SUPRA_SPECIAL = r'records\xpack\item\loottables\arcaneformulae\supra_special.dbr
 NORMAL_FORMULA_TABLES = tuple(
     r'records\xpack\item\loottables\arcaneformulae\01_act%d_arcaneformulae.dbr' % i
     for i in (1, 2, 3, 4))
-# Measured, not chosen: the base game itself gives `supra` 2% of the Epic act tables and
-# 5% of the Legendary ones. Normal sits one rung BELOW the rarest of those, which is what
-# "they can drop in normal as well" plus "rarer than Epic/Legendary is fine" resolves to.
+# BOTH supra pools are needed: `supra` carries 42 formulas and `supra_special` 41, and the
+# two rosters are NOT the same. `artifact_mortoksskull_formula` (Mortok's Skull) exists
+# ONLY on supra_special, which the base game wires into `03_act4_arcaneformulae_sp`
+# (Legendary) alone - so wiring supra by itself would leave exactly one of the 42
+# craftables formula-less on Normal, and the F1 gate reds. This is the same pair R-9
+# ("let the Rite of the Undivided drop wherever else any supra / uber weapons formulas
+# have a chance to drop") already treats as THE two supra pools.
+#
+# Shares are measured, not chosen: the base game gives `supra` 2% of the Epic act tables
+# and 5% of the Legendary ones. Normal sits one rung BELOW the rarest of those (1%), and
+# supra_special - the rarer pool, which the base game hides behind a dedicated `_sp`
+# table - takes half of that again. Total mythic share on Normal 1.5%, still under Epic.
 NORMAL_SUPRA_SHARE = 0.01
+NORMAL_SUPRA_SPECIAL_SHARE = 0.005
+NORMAL_FORMULA_POOLS = ((SUPRA_POOL, NORMAL_SUPRA_SHARE),
+                        (SUPRA_SPECIAL, NORMAL_SUPRA_SPECIAL_SHARE))
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (3) THE THROWN CLASS
@@ -148,9 +160,15 @@ GHOST_REAGENTS = (
     r'records\xpack2\item\equipmentweapons\1hranged\u_e_06.dbr',
     r'records\xpack2\item\equipmentweapons\1hranged\mi_l_machae.dbr',
 )
-# The repoint. Each thrown craftable gets a DISTINCT reagent set drawn from the thrown
-# records this era actually has, so the four recipes are no longer literally identical
-# (they were: all four named the same three ghosts).
+# The repoint. The Ragnarok shape was "one legendary thrown + one epic thrown + one MI
+# thrown"; this era's equivalents are the DRX vit wands (u_ Legendary / mi_ Rare-green /
+# m_ Common - there is no Epic-classification droppable thrown record at all). Every
+# recipe therefore reads "one chest-droppable legendary thrown + two green thrown", which
+# is EXACTLY the 2-ordinary-plus-1-MI shape every other supra recipe already uses.
+# HONEST RESIDUAL: only THREE MI thrown records exist, so only three distinct pairs are
+# possible; Sanguine Orbit reuses Charon's Toll's pair. That is still strictly better than
+# what shipped, where all four named the same three records - and those three did not
+# exist, so no player could ever complete any of them.
 THROWN_FORMULA_REAGENTS = {
     r'records\drxitem\supra\zrecipes\svc_thrown_charonstoll_formula.dbr':
         (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_02'),
@@ -159,7 +177,7 @@ THROWN_FORMULA_REAGENTS = {
     r'records\drxitem\supra\zrecipes\svc_thrown_lastword_formula.dbr':
         (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_03'),
     r'records\drxitem\supra\zrecipes\svc_thrown_sanguineorbit_formula.dbr':
-        (_WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_02', _WAND % 'mi_vit_wand_03'),
+        (_WAND % 'u_vit_wand', _WAND % 'mi_vit_wand_01', _WAND % 'mi_vit_wand_02'),
 }
 
 # The mod-owned reagent tables, one per FAMILY, LEGENDARY TIER ONLY (every reagent placed
@@ -226,6 +244,10 @@ MI_REAGENTS = (
     'mi_l_neanderthalmage', 'mi_l_satyrbrigand', 'mi_l_satyrmage', 'mi_l_tigermanchampion',
     'mi_l_tigermanmage', 'mi_l_tigermanmelee', 'mi_l_troglodytemelee',
     'mi_l_tropicalarachnos', 'mi_l_wraith',
+    # The three DRX green wands this lane's thrown-formula repoint introduces. They are
+    # MI records by the same rule as every entry above (itemClassification = Rare) and are
+    # covered by the same Will exemption; `audit_db` proves each one monster-farmable.
+    'mi_vit_wand_01', 'mi_vit_wand_02', 'mi_vit_wand_03',
 )
 
 
@@ -300,22 +322,68 @@ def chest_pool(db, lk, ex, tier):
     return out
 
 
-def monster_sources(db, lk, reagent):
-    """Loot tables under a \\monster\\ folder that name `reagent` (the MI evidence)."""
-    target = _n(reagent)
-    out = set()
+# Record-name shapes the upstream authors used for dev duplicates / disabled copies.
+# A carrier whose name matches one is not evidence that anything in the world drops it.
+_DEV_DEAD_MARKERS = ('copy of ', 'copy (', 'xxx', 'backup', 'conflicted copy', '_old')
+
+
+def _looks_dev_dead(record):
+    base = _n(record).rsplit('\\', 1)[-1]
+    return any(m in base for m in _DEV_DEAD_MARKERS)
+
+
+def reverse_index(db):
+    r"""{referenced .dbr (lowercased): {records that name it}} over the WHOLE db, built
+    once and cached on the db object (the walk below runs for ~22 MI reagents and a
+    per-reagent full scan would be 22 whole-database passes)."""
+    cached = getattr(db, '_svc_craft_rev', None)
+    if cached is not None:
+        return cached
+    rev = defaultdict(set)
     for rec in db.record_names():
-        rl = _n(rec)
-        if '\\loottables\\' not in rl or '\\monster\\' not in rl:
-            continue
         for k, tf in (db.get_fields(rec) or {}).items():
             b = k.split('###')[0].lower()
             if 'weight' in b or 'chance' in b or 'equation' in b:
                 continue
             for v in tf.values:
-                if isinstance(v, str) and _n(v) == target:
-                    out.add(rec)
-    return sorted(out)
+                if isinstance(v, str) and v.lower().endswith('.dbr'):
+                    rev[_n(v)].add(rec)
+    try:
+        db._svc_craft_rev = rev
+    except AttributeError:
+        pass
+    return rev
+
+
+def monster_sources(db, lk, reagent, max_depth=6):
+    """(monsters, tables) that can pay `reagent`, found by walking the reference graph
+    UPWARD from the item through loot tables until a non-table holder is reached. This is
+    the EVIDENCE behind Will's MI exemption ("except for the monster unique droppable
+    items like the green items"): an exemption is only honest if something in the game
+    actually drops the thing."""
+    rev = reverse_index(db)
+    seen = set()
+    frontier = [_n(reagent)]
+    monsters, tables = set(), set()
+    depth = 0
+    while frontier and depth <= max_depth:
+        nxt = []
+        for cur in frontier:
+            for holder in rev.get(cur, ()):
+                hl = _n(holder)
+                if hl in seen:
+                    continue
+                seen.add(hl)
+                cls = str(_sc(db.get_field_value(holder, 'Class')) or '')
+                if cls.startswith('Monster'):
+                    monsters.add(holder)
+                    continue
+                if SLB.is_loot_table(lk, holder):
+                    tables.add(holder)
+                    nxt.append(hl)
+        frontier = nxt
+        depth += 1
+    return sorted(monsters), sorted(tables)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -365,30 +433,31 @@ def add_member(db, real, path, weight, lk=None):
 
 
 def wire_mythic_formulas_into_normal(db, lk=None, verbose=True):
-    """(1) `supra` becomes a member of every Normal-tier act formula table."""
+    """(1) BOTH supra pools become members of every Normal-tier act formula table."""
     lk = lk or Lookup(db)
-    supra = lk.real(SUPRA_POOL)
-    if not supra:
-        print("  CRAFT/THROWN: WARNING supra pool missing (%s); Normal formulas not "
-              "wired" % SUPRA_POOL)
-        return []
     changes = []
     for table in NORMAL_FORMULA_TABLES:
         real = lk.real(table)
         if not real:
             print("  CRAFT/THROWN: WARNING Normal formula table missing: %s" % table)
             continue
-        existing = _members(db, real)
-        if any(_n(nm) == _n(supra) for _i, nm, _w in existing):
-            continue                          # idempotent
-        total = sum(w for _i, _nm, w in existing)
-        # weight w such that w / (total + w) == NORMAL_SUPRA_SHARE
-        weight = max(1, int(round(total * NORMAL_SUPRA_SHARE / (1.0 - NORMAL_SUPRA_SHARE))))
-        c = add_member(db, real, supra, weight, lk)
-        if c:
-            changes.append('%s: %s [%.2f%% of %d]'
-                           % (_n(real).rsplit('\\', 1)[-1], c,
-                              100.0 * weight / float(total + weight), total + weight))
+        # The baseline total is read ONCE, before either pool is added, so the two shares
+        # are both measured against the table as it shipped (never compounding).
+        base_total = sum(w for _i, _nm, w in _members(db, real))
+        for pool, share in NORMAL_FORMULA_POOLS:
+            target = lk.real(pool)
+            if not target:
+                print("  CRAFT/THROWN: WARNING supra pool missing (%s); not wired into "
+                      "Normal" % pool)
+                continue
+            # weight w such that w / (base_total + w) == share
+            weight = max(1, int(round(base_total * share / (1.0 - share))))
+            c = add_member(db, real, target, weight, lk)   # idempotent
+            if c:
+                changes.append('%s: %s [%.2f%% of %d]'
+                               % (_n(real).rsplit('\\', 1)[-1], c,
+                                  100.0 * weight / float(base_total + weight),
+                                  base_total + weight))
     if verbose:
         for c in changes:
             print("  CRAFT/THROWN: mythic formulas on Normal - %s" % c)
@@ -599,7 +668,7 @@ def audit_formula_reachability(db, lk, ex):
     return problems, stats
 
 
-def audit_reagent_completability(db, lk, ex):
+def audit_reagent_completability(db, lk, ex, prove_mi=True):
     """(c) Every NON-MI reagent of every uber craftable must be reachable from the
     LEGENDARY-tier chest pools, and every MI exemption must be proven monster-farmable."""
     problems = []
@@ -635,11 +704,40 @@ def audit_reagent_completability(db, lk, ex):
             % (sorted(derived_mi - committed) or 'none',
                sorted(committed - derived_mi) or 'none'))
 
+    mi_srcs = {}
+    thin = []
+    if prove_mi:
+        # G3 - the exemption must be EARNED. A reagent is only "monster-farmed" if some
+        # Monster record in the database can actually pay it.
+        orphan = []
+        for reagent in buckets['mi']:
+            monsters, tables = monster_sources(db, lk, reagent)
+            mi_srcs[reagent] = (monsters, tables)
+            if not monsters:
+                orphan.append(reagent)
+            elif not [m for m in monsters if not _looks_dev_dead(m)]:
+                thin.append((reagent, monsters))
+        if orphan:
+            problems.append(
+                "G3 %d MI/green reagent(s) are exempt as 'monster-farmed' but NO monster "
+                "in the database can pay them, so they are unobtainable: %s"
+                % (len(orphan),
+                   ', '.join(_n(x).rsplit('\\', 1)[-1] for x in sorted(orphan))))
+        for reagent, monsters in thin:
+            # WARN, not FAIL: inherited DRX/SV debt, not something this contract caused,
+            # and the item is inside Will's own MI exemption. Never silent, though - a
+            # reagent whose only carrier is a dev duplicate is effectively unobtainable.
+            print("  CRAFT/THROWN WARN: MI reagent %s has carriers, but every one looks "
+                  "like a dev duplicate (%s) - see the BACKLOG debt register."
+                  % (_n(reagent).rsplit('\\', 1)[-1],
+                     ', '.join(_n(m).rsplit('\\', 1)[-1] for m in monsters[:3])))
+
     stats = {'total': len(users), 'mi': len(buckets['mi']),
              'ordinary': len(buckets['ordinary']), 'artifact': len(buckets['artifact']),
              'missing': len(buckets['missing']),
              'reachable_l': len([r for r in users if r in pool_l]),
-             'buckets': {k: sorted(v) for k, v in buckets.items()}}
+             'buckets': {k: sorted(v) for k, v in buckets.items()},
+             'mi_sources': mi_srcs}
     return problems, stats
 
 
