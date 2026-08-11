@@ -717,6 +717,31 @@ REGISTRY = [
                             # craft-chain gate (standalone twin:
                             # py tools/gate_craft_thrown_breadth.py <arz>; negatives:
                             # py tools/debug/negtest_craft_thrown.py <arz>).
+    'supra_recipe_laws',    # Will 2026-08-11, THREE rulings ("one of the items needed to
+                            # craft the formula needs to be found in legendary like the
+                            # rest of the craftable supra recipes" + "each craftable supra
+                            # should have different requirements (we should not have two
+                            # formulas that both require stymphalian, plisskey, and
+                            # deathweavers legtip)" + "the last word should not be dropped
+                            # in epic, only legendary"). FOURTEEN supra formulas each get
+                            # ONE reagent slot repointed: 10 collapse the five duplicate
+                            # reagent-set groups the build83 arz carried (a SIX-way axe
+                            # group, a three-way mace group and three pairs - 15 of the 42
+                            # craftables) to 42 distinct sets, and 4 give the thrown
+                            # recipes the Legendary-only reagent they lacked. Every
+                            # replacement is Legendary-only and already on 19/19 legendary
+                            # chest surfaces, so no loot table moves. LAW C's own fix is
+                            # four memberships in svc_craft_thrown.THROWN_MEMBERS['e']
+                            # (the supra thrown leave svc_unique_thrown_e01 and stay on
+                            # svc_unique_thrown_l01), because that module owns the table
+                            # and two modules must never write one record. ORDER IS
+                            # LOAD-BEARING: immediately AFTER craft_thrown_breadth, which
+                            # repoints the four thrown formulas off the Ragnarok ghosts -
+                            # this module reads the formula/result map afterwards and
+                            # fails loud on a stale one. Writes no loot table at all.
+                            # verify() is the fail-loud S1/S2/S3/S4 gate (standalone twin:
+                            # py tools/gate_supra_recipe_laws.py <arz>; negatives:
+                            # py tools/debug/negtest_supra_recipe_laws.py <arz>).
     'chest_loot_breadth',   # Will 2026-08-10 ("there are never any legendary spears
                             # dropped it is basically the same items dropped over and
                             # over by all chests"): the BLAST-RADIUS half of the chest

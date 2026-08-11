@@ -204,17 +204,64 @@ _THROWN_CLASS_WEIGHT = SLB._CLASS_WEIGHT // 4
 # record appears in the D5 ranking at all. So the prize weighting survives, measured.
 _COMMON_WAND_WEIGHT = 5
 _SUPRA_THROWN_WEIGHT = 10       # a tenth of the ordinary legendary wand: these are prizes
+# ─── WILL 2026-08-11 (LAW C): "the last word should not be dropped in epic, only
+# legendary." ────────────────────────────────────────────────────────────────────────
+# THE DEFECT HE SAW, LOCATED IN THE BYTES. There is exactly ONE record in the whole
+# 51,253-record database whose name is The Last Word - `records\drxitem\supra\
+# svc_wep_lastword.dbr` (no same-name base item, so nothing to disambiguate). It, and its
+# three siblings, were members of `svc_unique_thrown_e01` as well as the Legendary table,
+# and through `svc_unique_weapons_e01` that Epic membership reached **51 surfaces** (every
+# mod chest, every general's hoard, both polis vaults, the blood-cave mega chest and all
+# 18 uber orb tables). So a craft-only supra was a straight Epic chest drop. That is the
+# whole defect, and it is closed by removing FOUR memberships from ONE table.
+#
+# SCOPE, STATED: Will named The Last Word; all four thrown supras are the same kind of
+# object (craft-only, itemClassification = Legendary, authored by the same wave), so all
+# four leave the Epic table together. Leaving the other three would ship the exact bug he
+# filed, three more times.
+#
+# THEY STAY ON THE LEGENDARY TABLE. "only legendary" is a relocation, not a retirement -
+# R-186's own ask ("make the legendary thrown weapons droppable") is untouched at the tier
+# Will kept it for, and `svc_unique_thrown_l01` below is unchanged.
+#
+# R-180 NON-REDUCTION IS SUPERSEDED HERE, NOT SMUGGLED. R-180 says no member is removed
+# from a table; Will's newer ruling requires exactly that, and there is no additive way to
+# make an item stop dropping. The removal is scoped to four memberships of one Epic table,
+# and every SURVIVOR gains: the Epic thrown total goes 155 -> 115, so `u_vit_wand` rises
+# 64.5% -> 87.0% of a thrown roll and each Common vit wand 3.2% -> 4.3%. Nothing needs
+# compensating because nothing lost reach, and `THROWN_MASTER_WEIGHT` is untouched so how
+# OFTEN thrown rolls at all does not move.
+#
+# ─── WHY LAW A IS *NOT* SOLVED BY PROMOTING `u_vit_wand` (the collateral, measured) ────
+# The tempting one-move fix for LAW A ("every recipe needs a Legendary-only reagent") was
+# to take `u_vit_wand` - the reagent all four thrown recipes share - off this same Epic
+# table. It was built, measured, and it is WRONG, because it collides with LAW C:
+#
+#   the ENTIRE `WeaponHunting_RangedOneHand` universe at itemClassification = Legendary is
+#   FIVE records: `u_vit_wand` + the four supra thrown. (Measured on 44499f56: thrown
+#   splits Common 3 / Rare 3 / Epic 3 / Legendary 5, and the three "Epic" ones are
+#   `records\item\formulaitems\*` craft RESULTS that no table pays.)
+#
+# `SLB.TARGET_IC['e']` is **Legendary** - in this mod an Epic-difficulty chest pays
+# Legendary-classification gear - so rule C1 ("the thrown class is payable at its own
+# tier") can only ever be satisfied by one of those five. LAW C removes four of them from
+# Epic; promoting `u_vit_wand` would remove the fifth, leaving `svc_unique_thrown_e01`
+# holding three COMMON wands and reddng C1 on **every Epic mod chest in the game**. There
+# is no third option in the record universe and inventing a droppable Legendary thrown to
+# feed the gate is a new item class, not a smallest-correct change. So `u_vit_wand` STAYS
+# here at 100 as the Epic tier's C1 carrier, and LAW A is satisfied per-recipe instead -
+# four formulas, one reagent slot each, in `tools/svc_supra_recipes.RECIPE_OVERRIDES`.
 THROWN_MEMBERS = {
     # Normal: itemLevel-30 wands only. ZERO Legendary -> R-100 #17 holds by construction.
     'n': ((_WAND % 'mi_vit_wand_01', 100), (_WAND % 'm_vit_wand_01', 50)),
+    # Epic: `u_vit_wand` (the C1 carrier) + the three Common vit wands. NO supra thrown -
+    # LAW C. This table is the ONLY sub-Legendary surface in the database that ever paid
+    # one, so these four omissions close all 51 Epic-side surfaces at once.
     'e': ((_WAND % 'u_vit_wand', 100),
-          (_SUPRA % 'svc_wep_charonstoll', _SUPRA_THROWN_WEIGHT),
-          (_SUPRA % 'svc_wep_hati', _SUPRA_THROWN_WEIGHT),
-          (_SUPRA % 'svc_wep_lastword', _SUPRA_THROWN_WEIGHT),
-          (_SUPRA % 'svc_wep_sanguineorbit', _SUPRA_THROWN_WEIGHT),
           (_WAND % 'm_vit_wand_01', _COMMON_WAND_WEIGHT),
           (_WAND % 'm_vit_wand_02', _COMMON_WAND_WEIGHT),
           (_WAND % 'm_vit_wand_03', _COMMON_WAND_WEIGHT)),
+    # Legendary: unchanged - this is where "only legendary" puts them.
     'l': ((_WAND % 'u_vit_wand', 100),
           (_SUPRA % 'svc_wep_charonstoll', _SUPRA_THROWN_WEIGHT),
           (_SUPRA % 'svc_wep_hati', _SUPRA_THROWN_WEIGHT),

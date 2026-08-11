@@ -49,6 +49,7 @@ if __name__ == '__main__' or __package__ is None:
 from arz_patcher import ArzDatabase
 import svc_craft_thrown as SCT
 import svc_loot_breadth as SLB
+import svc_supra_recipes as SSR       # Will 2026-08-11: S1/S2/S3 join this gate family
 
 
 def main(argv):
@@ -104,18 +105,37 @@ def main(argv):
             print("  %3d/%d  %s" % (hits, r['surfaces'],
                                     SLB._n(reagent).rsplit('\\', 1)[-1][:-4]))
 
+    # WILL 2026-08-11: the three supra-recipe laws are part of the same contract - a chain
+    # that is completable but craftable without ever farming Legendary, or that hands two
+    # craftables the same three reagents, or that just DROPS the craftable on Epic, is
+    # still wrong. ONE implementation (tools/svc_supra_recipes.py), reported here so
+    # `py tools/gate_craft_thrown_breadth` covers the whole craft surface.
+    ex = SLB.Expander(db, lk)
+    sprob, sstats = SSR.audit_supra_laws(db, lk, ex, verbose=verbose)
+    problems.extend(sprob)
+    print("supra recipe laws: %d distinct reagent set(s) over %d craftables "
+          "(%d duplicate group(s)); %d of %d reagents are Legendary-only and every "
+          "craftable carries at least %d of them; %d supra item(s) loot-reachable, "
+          "%d of them below Legendary."
+          % (sstats['distinct_sets'], sstats['craftables'],
+             sstats['duplicate_groups'], sstats['legendary_only_reagents'],
+             sstats['reagents'], sstats['min_gated'], sstats['droppable_supras'],
+             sstats['sub_legendary_supras']))
+
     if problems:
         print("\nPROBLEMS: %d" % len(problems))
         for p in problems:
             print("  FAIL  %s" % p)
-        print("\nGATE FAIL: the uber-craft chain is not completable, or the thrown class "
-              "is unpayable.")
+        print("\nGATE FAIL: the uber-craft chain is not completable, the thrown class "
+              "is unpayable, or a supra recipe breaks one of the three 2026-08-11 laws.")
         return 1
     print("\nGATE PASS: every uber craftable is formula-reachable on every difficulty, "
           "every non-MI reagent is farmable from Legendary chests across enough distinct "
           "surfaces, every green exemption is earned by a live monster or replaced by a "
-          "chest placement, and the thrown class pays at every tier with no legendary "
-          "thrown on Normal.")
+          "chest placement, the thrown class pays at every tier with no legendary "
+          "thrown on Normal, every recipe is gated behind a Legendary-only reagent, "
+          "no two recipes want the same three things, and no supra item drops below "
+          "Legendary.")
     return 0
 
 
