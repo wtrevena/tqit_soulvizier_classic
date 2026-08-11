@@ -4523,6 +4523,12 @@ a designed theme from a defect is a gate that gets switched off - the b63 1.0u l
    `fix/craft-thrown-breadth` lane will silently invalidate at merge (`BL-R181-DEBT-4`).
 5. `numSpawn` - the drop-VOLUME lever - is untouched, and lowering it is a Will decision
    (`BL-R181-DEBT-5`).
+6. **The 15 loot tables R-220/b79 writes (`uberorb_default_*`, `boss_charon_*01b`) are outside this
+   module's `\svc\` ownership rule and R-220 widens only their weapon row, so armour on them is
+   owned by NOBODY - and measured with both waves applied, all fifteen starve it: weapon:armour
+   2.0:1 to 4.1:1, thinnest worn slot 0.01-0.04 per open against the D7 floor of 0.52.** Reported,
+   not fixed: one lane per problem, and b79 has already merged (`BL-R181-DEBT-7`). The fix is
+   mechanical - identical donor shape, one `widen_armor_rows` call per table plus `all_surfaces()`.
 
 **NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's. Will's check -
 kill Alkyoneus, open all six cage chests across a couple of runs, expect visible helms, chest plates,

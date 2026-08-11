@@ -80,8 +80,19 @@ SCOPE BOUNDARY, STATED SO NOBODY WIDENS IT BY ACCIDENT
   b79 `fix/orb-loot-breadth` covered them; it does not, and its own docstring says so.
   See `in_scope`. The tables b79 really writes (`uberorb_default_*`, `boss_charon_*01b`)
   sit outside `\svc\` and were never in this rule.
-* OUT, BY EVIDENCE: general MONSTER armour drops. Measured and reported, NOT changed -
-  see the R-181 report; that is a Will decision, not a silent scope widening.
+* OUT, BY EVIDENCE, MEASURED AND REPORTED RATHER THAN SILENTLY WIDENED (both are Will
+  decisions, and both are in the R-181 record with numbers):
+    - general MONSTER armour drops (BL-R181-DEBT-2): base-game-governed here, mod-owned
+      on 12-14 records of ~1500-1850, and `chanceToEquipShield` is not a field on ANY
+      record in the db, so no monster can drop a shield off its body at all.
+    - the 15 loot tables R-220/b79 writes (`uberorb_default_*`, `boss_charon_*01b`;
+      BL-R181-DEBT-7). They sit outside `\svc\` so they were never in this module's
+      ownership rule, and b79 widens only the weapon row on them. Measured after both
+      waves: ALL FIFTEEN starve armour - weapon:armour 2.0:1 to 4.1:1 and a thinnest worn
+      slot of 0.01-0.04 pieces per open against the D7 floor of 0.52. Armour on those
+      tables is owned by NOBODY. Not fixed here, because one lane per problem and b79 has
+      already merged; the fix is one `widen_armor_rows` call per table (identical donor
+      shape) plus adding them to `all_surfaces`, and it needs an owner.
 """
 import re
 import sys
@@ -519,6 +530,13 @@ def apply_wave(db, lk=None, quiet=True):
     import io
     from patches import armor_loot_breadth as ALB
     from patches import chest_loot_breadth as CLB
+    try:
+        # R-220 (b79) runs AFTER this module in the registry and edits loot tables, so a
+        # dry run that omitted it would not be measuring what the build produces. Guarded
+        # by ImportError only so this file still works on a tree where b79 has not landed.
+        from patches import orb_loot_breadth as OLB
+    except ImportError:
+        OLB = None
     lk = lk or SLB.Lookup(db)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf) if quiet else contextlib.nullcontext():
@@ -539,6 +557,8 @@ def apply_wave(db, lk=None, quiet=True):
                         SLB.widen_weapon_row(db, p, tier, lk)
         CLB.apply(db, None)
         ALB.apply(db, None)
+        if OLB is not None:
+            OLB.apply(db, None)          # registry order: orb_loot_breadth runs last
     lk.refresh()
     return db, lk
 

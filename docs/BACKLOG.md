@@ -702,6 +702,16 @@ surface. 0.24 reds that by 30%, and negtest N7 re-plants it so the number stays 
 - `BL-R181-DEBT-5` - **WILL DECISION:** `numSpawn` (drop VOLUME) is untouched, so P(any single item
   lands 4x in a run) only falls 47.3% -> 39.7%. Lowering it would cut drops per open, which
   non-reduction forbids without Will's say-so.
+- `BL-R181-DEBT-7` - **ARMOUR ON THE R-220 ORB TABLES IS OWNED BY NOBODY, and it starves.** b79
+  merged to main as `914b227` while this lane was in vet-fix. Its 15 tables (`uberorb_default_*` x12,
+  `boss_charon_{n,e,l}01b`) sit outside `\svc\`, so they were never in this module's ownership rule,
+  and R-220 widens only their WEAPON row. Measured with BOTH waves applied, all fifteen starve:
+  weapon:armour **2.0:1 to 4.1:1**, thinnest worn slot **0.01-0.04 pieces per open** against the D7
+  floor of 0.52 (e.g. `boss_charon_l01b` 0.73 weapons vs 0.21 armour, arms 0.03; `uberorb_default_13-15`
+  4.08:1, helm 0.03). NOT fixed here - one lane per problem, and b79 has already landed. The fix is
+  mechanical: they share the donor shape this module already handles, so it is one `widen_armor_rows`
+  call per table plus adding them to `all_surfaces()`. **It needs an owner.** Reproduce with the probe
+  in the R-181 amendment.
 - `BL-R181-DEBT-6` - NOT PROVEN IN-GAME. Will's cage check (kill Alkyoneus, open all six chests across
   a couple of runs, expect visible helms/chest plates/greaves/shields alongside weapons and no run
   dominated by one spear) plus a red-uber orb chest, is the remaining launch gate.
