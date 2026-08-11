@@ -133,6 +133,180 @@ _ACT5_UNGATE = r'records\xpack2\quests\objects\endportal_hades.dbr'             
 _ACT5_TIDY_EPIC = r'records\xpack2\quests\objects\endportal_hades_normal_epic.dbr'         # optional: suppress the redundant 2nd portal
 
 
+def _import_base_record_override(db, base_db, base_names, path, label):
+    """Copy a base-game record into the mod overlay (ensure_record + field copy),
+    mirroring import_base_game_bosses. Returns the overlay key, or None if the base
+    record is missing/empty.
+
+    ONE canonical copy of the base-record-import idiom (BL-107 canonical rows),
+    shared by the A5 Act-5 leak fix and the DLC act-UI cap below. `base_names` is
+    the caller's {lowercased-backslash path: real base key} index so the (large)
+    map is built once per pass, not per record.
+    """
+    want = path.replace('/', '\\').lower()
+    src = base_names.get(want)
+    if src is None:
+        print(f"  {label}: base record MISSING {path}")
+        return None
+    fields = base_db.get_fields(src)
+    if not fields:
+        print(f"  {label}: base record has no fields {path}")
+        return None
+    template = ''
+    for key, tf in fields.items():
+        if key.split('###')[0] == 'templateName' and tf.values:
+            template = str(tf.values[0]); break
+    from apply_svc_patches import _ensure_record
+    _ensure_record(db, path, template)
+    for key, tf in fields.items():
+        fn = key.split('###')[0]
+        vals = list(tf.values) if tf.values else []
+        if len(vals) == 1:
+            db.set_field(path, fn, vals[0], tf.dtype)
+        elif len(vals) > 1:
+            db.set_field(path, fn, vals, tf.dtype)
+    return path
+
+
+# ── PORTAL-PAGE / ACT-SELECTION DLC CAP ──────────────────────────────────────
+# Will, 2026-08-10: "in the portal page i see atlantis which should be disabled in
+# this mod". Standing ruling (Will 2026-07-10, BACKLOG): the campaign stays capped
+# at Immortal Throne; Atlantis and everything past IT must not be reachable.
+#
+# ROOT CAUSE. The portal window's page list is ONE record,
+# `records\ingameui\teleportmap\teleportmap.dbr` (template WorldlMapWindow.tpl):
+# each act page is a `<Page>Button` / `<Page>MapImage` / `<Page>ZoneList` triple.
+# The base TQAE record carries SEVEN pages - Greece, Egypt, Orient, Hades (Olympus
+# folded into HadesZoneList) plus the three DLC acts Scandia (Ragnarok), Atlantis
+# and China (Eternal Embers). SV 0.98i ships its own IT-era copy with only the four
+# base pages, but `strip_ui_overrides()` deletes EVERY `records\ingameui\*` record
+# that is not a mastery skill tree (SV's TQIT-era UI breaks AE's modern UI), so the
+# mod ends up with NO override and the record resolves from the BASE .arz - DLC tabs
+# and all. The quest log's act buttons are the same story:
+# `records\ingameui\player quests\questwindow.dbr` carries questLocationButton/
+# questMapBitmap 5/6/7 pointing at the XPack2/XPack3/XPack4 quest-log tabs, where
+# SV's own copy stops at 4.
+#
+# THE LAYER, and why it takes effect. This is a DATABASE-record fix, not a quest
+# fix, so the A5 inert-fix trap does not apply the same way but its lesson does:
+# identity is the FULL path. A .dbr's identity IS its record path, and the mod .arz
+# overrides the base .arz per record path - exactly how the A5 Act-5 fix overrides
+# `records\xpack2\quests\objects\portal_hadesscandia.dbr` (runtime-confirmed). The
+# ONE way this fix could ship inert is ordering: applied before strip_ui_overrides()
+# it would simply be deleted again. Hence apply_dlc_act_ui_cap() runs AFTER the
+# strip, asserts the strip already ran, and both an in-memory gate and an artifact
+# gate (tools/gate_dlc_act_ui_cap.py) prove the capped record is in the shipped .arz.
+#
+# Every non-DLC field is copied from the base record byte-faithfully, so the four
+# legitimate Immortal-Throne-era pages (and AE's modern layout) are preserved exactly.
+_DLC_ACT_UI_CAP = (
+    (r'records\ingameui\teleportmap\teleportmap.dbr',
+     'portal page',
+     ('ScandiaButton', 'ScandiaMapImage', 'ScandiaZoneList',        # Ragnarok
+      'AtlantisButton', 'AtlantisMapImage', 'AtlantisZoneList',     # Atlantis
+      'ChinaButton', 'ChinaMapImage', 'ChinaZoneList')),            # Eternal Embers
+    (r'records\ingameui\player quests\questwindow.dbr',
+     'quest-log act tabs',
+     ('questLocationButton5', 'questLocationButton6', 'questLocationButton7',
+      'questMapBitmap5', 'questMapBitmap6', 'questMapBitmap7')),
+)
+
+# ORDERING SIGNAL for the guard below. SV 0.98i populates BOTH capped namespaces
+# heavily (44 records under teleportmap\, plus its own player quests\ window set)
+# and strip_ui_overrides() deletes every one of them. So "any record in these two
+# namespaces other than the two we write" == the strip has NOT run yet. Deliberately
+# namespace-scoped rather than "any records\ingameui\ record", because later passes
+# (import_occult_select_mastery_art, fix_mastery_panel_buttons) legitimately ADD
+# records\ingameui\ records after the strip and must not trip this guard.
+_DLC_UI_CAP_NAMESPACES = (
+    'records\\ingameui\\teleportmap\\',
+    'records\\ingameui\\player quests\\',
+)
+
+
+def apply_dlc_act_ui_cap(db: ArzDatabase, base_db):
+    """Remove every DLC act (Ragnarok / Atlantis / Eternal Embers) from the portal
+    page and the quest-log act tabs, arz-only.
+
+    MUST be called AFTER strip_ui_overrides() - see the block comment above. The
+    ordering is asserted, not assumed.
+    """
+    print("\n=== DLC ACT-UI CAP: portal page + quest-log act tabs (Immortal-Throne cap) ===")
+    if base_db is None:
+        # Same blind-spot class as A5: without the base DB the two records cannot be
+        # imported and the arz silently ships the base game's DLC-laden UI.
+        _gate_unavailable(
+            'DLC act-UI cap',
+            'base_db unavailable, so the portal-page + quest-log records cannot be '
+            'imported - the arz would ship with the base game\'s Atlantis / Ragnarok / '
+            'Eternal-Embers act pages visible',
+            'pass the base-game database.arz as argv[5]')
+        return 0
+
+    # ORDERING GUARD: any surviving SV record in the two capped namespaces means
+    # strip_ui_overrides() has not run yet, so everything written below would be
+    # deleted again and the mod would ship the base game's DLC act pages.
+    targets = {p for p, _, _ in _DLC_ACT_UI_CAP}
+    leftovers = [n for n in db.record_names()
+                 if n.replace('/', '\\').lower().startswith(_DLC_UI_CAP_NAMESPACES)
+                 and n.replace('/', '\\').lower() not in targets]
+    if leftovers:
+        raise SystemExit(
+            f"  FAIL: apply_dlc_act_ui_cap() ran BEFORE strip_ui_overrides() "
+            f"({len(leftovers)} un-stripped SV UI record(s) still present in the capped "
+            f"namespaces, e.g. {leftovers[0]}). The strip would delete this cap again "
+            f"and the mod would ship the base game's DLC act pages. Move the call to "
+            f"just after strip_ui_overrides(db).")
+
+    base_names = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
+    n = 0
+    for path, what, drop_fields in _DLC_ACT_UI_CAP:
+        rec = _import_base_record_override(db, base_db, base_names, path, 'DLC-UI-CAP')
+        if rec is None:
+            raise SystemExit(
+                f"  FAIL: DLC act-UI cap cannot import the base record {path}; without "
+                f"it the mod ships the base game's DLC act pages. Check the base-game "
+                f"database.arz passed as argv[5].")
+        # Record-type parity with vanilla: keep the BASE record's own .arz record
+        # type. UI records carry no `Class`, so base's type is '' (8,126 base records
+        # are the same), whereas _ensure_record defaults it to the templateName. The
+        # A5 portal imports ship with the templateName variant and are runtime-
+        # confirmed, so both are safe; exact parity is the conservative choice here.
+        db._record_types[rec] = base_db._record_types.get(
+            base_names.get(path.replace('/', '\\').lower()), '')
+
+        ff = db.get_fields(rec) or {}
+        removed = []
+        for k in list(ff):
+            if k.split('###')[0] in drop_fields:
+                del ff[k]
+                removed.append(k.split('###')[0])
+        db._modified.add(rec)
+        missing = sorted(set(drop_fields) - set(removed))
+        if missing:
+            # The base game changed shape under us: never ship a cap we cannot prove.
+            raise SystemExit(
+                f"  FAIL: DLC act-UI cap expected to drop {len(drop_fields)} DLC field(s) "
+                f"from {path} but {len(missing)} were absent in the base record "
+                f"({', '.join(missing)}). The base game's record changed; review before "
+                f"shipping.")
+        n += 1
+        print(f"  CAP {what}: {path.split(chr(92))[-1]} -= {len(removed)} DLC field(s) "
+              f"({', '.join(sorted(removed))})")
+
+    # In-memory fail-loud proof, immediately (the artifact gate re-proves it on the
+    # written .arz after every later pass).
+    from gate_dlc_act_ui_cap import validate_db as _validate_cap
+    if _validate_cap(db, label='in-memory db (post-cap)') != 0:
+        raise SystemExit(
+            "DLC act-UI cap gate FAILED right after applying the cap; this build does "
+            "not ship (see tools/gate_dlc_act_ui_cap.py)")
+
+    print(f"  DLC act-UI cap: {n} record override(s) written; the portal page now lists "
+          f"Greece / Egypt / Orient / Immortal Throne only")
+    return n
+
+
 def apply_act5_leak_fix(db: ArzDatabase, base_db):
     """Override the post-Hades portal records so DLC owners are routed to Epic (the
     classic IT ending), not vanilla Act 5. arz-only, re-evaluated at spawn on every
@@ -154,31 +328,7 @@ def apply_act5_leak_fix(db: ArzDatabase, base_db):
     base_names = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
 
     def _import_base_record(path):
-        """Copy a base-game record into the overlay (ensure_record + field copy),
-        mirroring import_base_game_bosses. Returns the overlay key or None."""
-        want = path.replace('/', '\\').lower()
-        src = base_names.get(want)
-        if src is None:
-            print(f"  A5: base record MISSING {path}")
-            return None
-        fields = base_db.get_fields(src)
-        if not fields:
-            print(f"  A5: base record has no fields {path}")
-            return None
-        template = ''
-        for key, tf in fields.items():
-            if key.split('###')[0] == 'templateName' and tf.values:
-                template = str(tf.values[0]); break
-        from apply_svc_patches import _ensure_record
-        _ensure_record(db, path, template)
-        for key, tf in fields.items():
-            fn = key.split('###')[0]
-            vals = list(tf.values) if tf.values else []
-            if len(vals) == 1:
-                db.set_field(path, fn, vals[0], tf.dtype)
-            elif len(vals) > 1:
-                db.set_field(path, fn, vals, tf.dtype)
-        return path
+        return _import_base_record_override(db, base_db, base_names, path, 'A5')
 
     n = 0
     # 1+2. SUPPRESS the two act portals (AND-unsatisfiable DLC gate).
@@ -3789,6 +3939,15 @@ def _run_prefix(sv098_path, sv09_path, sv041_path, base_path):
     apply_act5_leak_fix(db, base_db)
 
     strip_ui_overrides(db)
+
+    # PORTAL-PAGE / ACT-SELECTION DLC CAP (Will 2026-08-10: "in the portal page i see
+    # atlantis which should be disabled in this mod"). MUST run AFTER
+    # strip_ui_overrides() - the strip deletes every records\ingameui\ record that is
+    # not a mastery tree, so a cap applied earlier would be deleted again and ship
+    # nothing (the A5 inert-fix lesson, ordering flavour). The function asserts the
+    # ordering and gates itself; needs base_db (still alive here).
+    apply_dlc_act_ui_cap(db, base_db)
+
     remove_dead_orphan_records(db)   # P3 hygiene: drop the corrupted potionexp_test orphan
     fix_chimera_chest_double_ext(db)  # Q4-3: .dbr.dbr rename (quest retargeted same wave)
     restore_potion_drops(db, db09)
@@ -4373,6 +4532,19 @@ def main():
         raise SystemExit(
             "Unlock-alignment gate FAILED on the written .arz; a mastery button's "
             "skillTier no longer matches its drawn row (b77 gate)")
+
+    # ── PORTAL-PAGE / ACT-SELECTION DLC-CAP gate (fail-loud): the shipped .arz must
+    # override records\ingameui\teleportmap\teleportmap.dbr and
+    # records\ingameui\player quests\questwindow.dbr with ZERO DLC-act entries, so a
+    # DLC-owning player never sees an Atlantis / Ragnarok / Eternal-Embers page. This
+    # is the ARTIFACT proof that the cap survived strip_ui_overrides() and every later
+    # pass (an in-memory-only proof is exactly how a cap ships inert). Enforces the
+    # standing IMMORTAL-THRONE CAP ruling (Will 2026-07-10).
+    from gate_dlc_act_ui_cap import validate as _validate_dlc_ui
+    if _validate_dlc_ui(str(output_path)) != 0:
+        raise SystemExit(
+            "Portal-page DLC-cap gate FAILED on the written .arz; the portal page or "
+            "the quest log still lists a DLC act (see tools/gate_dlc_act_ui_cap.py)")
 
     # ── F2 contract gate (build30, post-vet): the summons contract lane
     # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build
