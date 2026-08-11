@@ -511,9 +511,6 @@ def cage_surfaces(lk):
 
 
 # ── R-220's tables, derived from R-220's own scope rule (never typed here) ───
-_ORB_SCOPE_CACHE = {}
-
-
 def orb_scope(db, lk):
     r"""{norm(table): (real, tier)} for every loot table an UBER's mystical orb reaches.
 
@@ -544,12 +541,14 @@ def orb_scope(db, lk):
               "uber orb loot tables are NOT in the distribution surface set this run. "
               "No silent pass: this line IS the downgrade." % (exc,))
         return {}
-    key = (id(db), len(db.record_names()))
-    hit = _ORB_SCOPE_CACHE.get(key)
-    if hit is None:
-        hit = SOB.scope_tables(db, lk)
-        _ORB_SCOPE_CACHE[key] = hit
-    return hit
+    # Cached ON THE DB, keyed by its record count, so two dbs in one process (the
+    # negative battery builds a fresh one per case) can never read each other's scope.
+    count = len(db.record_names())
+    hit = getattr(db, '_svc_orb_scope_cache', None)
+    if hit is None or hit[0] != count:
+        hit = (count, SOB.scope_tables(db, lk))
+        db._svc_orb_scope_cache = hit
+    return hit[1]
 
 
 def orb_surfaces(db, lk, claimed):

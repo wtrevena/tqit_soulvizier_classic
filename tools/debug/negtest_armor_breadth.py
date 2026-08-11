@@ -24,6 +24,14 @@ The planted defects are the REAL defect classes, not synthetic ones:
   N7 the MIRROR - the weapon row's legendary-share parity reverted on an apex orb table,
      which inverts the surface to 85% armour. Not hypothetical: that is exactly what the
      first R-181 round shipped into three live surfaces before the vet caught it.
+  N8 the b79 armour rows restored on an R-220 orb table, one per donor family - the
+     BL-R181-DEBT-7 defect itself, which BOTH loot gates passed for a whole build
+     because no surface audited those tables;
+  N9 the SYNTHETIC ORPHAN, planted twice: a module writes a gear loot table that no
+     distribution surface covers, once through the shared builder (the LEDGER witness)
+     and once as a raw field write (the REGISTRY TOUCH LOG witness). No threshold can
+     see this defect - it is a rule about WRITES - and it is the shape of the fifteen
+     tables R-220 wrote outside `\svc\`.
 
 INPUT: any arz. The wave is applied IN MEMORY first (the same code path the build takes,
 and it is idempotent), so this runs against a pre-fix arz as well as a post-fix build and
@@ -44,6 +52,7 @@ from arz_patcher import ArzDatabase
 import svc_armor_breadth as SAB
 import svc_loot_breadth as SLB
 import svc_loot_distribution as SLD
+import svc_loot_ownership as OWN
 
 L = r'records\item\loottables\svc'
 CAGE_L = rf'{L}\polisvault_01.dbr'          # chest_01 Legendary variant a (martial)
@@ -52,6 +61,14 @@ HOARD_L = r'records\drxitem\container\svc_charonhoard_loot_03.dbr'
 APEX_L = rf'{L}\svc_uberorb_apex_l01c.dbr'   # a red-uber Mystical Orb chest / Leinth
 SPEAR_ITEM = r"records\item\equipmentweapon\spear\u_e_scorpion'stail.dbr"
 UNIQUE_TORSO_L = r'records\xpack\item\loottables\torso\mastertables\unique_torso_l01.dbr'
+# BL-R181-DEBT-7's own surfaces: an R-220 orb table from each of the two donor families.
+ORB_CHARON_L = r'records\xpack\item\containers\loot tables\boss_charon_l01b.dbr'
+ORB_BANDED_E = r'records\item\containers\defaultloot\uberorb_default_43-45.dbr'
+# The SYNTHETIC ORPHAN: a loot table written by a module and covered by no surface -
+# the exact shape of the fifteen R-220 tables before this lane. Deliberately OUTSIDE
+# `\svc\`, because inside it the mod-ownership sweep would (correctly) cover it and
+# there would be no orphan to catch.
+ORPHAN = r'records\item\containers\defaultloot\negtest_orphan_loot_l01.dbr'
 
 # The shipped (pre-R-181) armour-row shape, so N1 is a verbatim revert and not a guess.
 SHIPPED_ROWS = {2: 33.0, 5: 31.0, 6: 30.0}
@@ -227,6 +244,88 @@ def main(argv):
           _starve_slot,
           lambda d, k: [p for p in audit_surface_of(d, k, HOARD_L)
                         if p.startswith(('D3', 'D7'))])
+
+    # ── N8/N9: BL-R181-DEBT-7. The armour rows R-220 left to nobody, and the
+    #    OWNERSHIP rule that makes "written by a module, audited by no surface"
+    #    structurally impossible rather than merely fixed once.
+
+    # N8 - the R-220 armour rows reverted to exactly what b79 shipped, on one table
+    #      from EACH donor family. Before this lane both were invisible: the sweep did
+    #      not write them and `all_surfaces` did not audit them, so both loot gates were
+    #      green while the thinnest worn slot paid 0.007-0.029 pieces per open. This is
+    #      the defect itself, replanted, so the coverage cannot quietly regress.
+    def _revert_orb_armour(table):
+        def _m(d, k):
+            real = k.real(table)
+            for g in SAB.armor_groups(d, real):
+                d.set_field(real, 'loot%dChance' % g, 26.0)
+                for i, nm, _w in SLB._slot_members(d, real, g):
+                    n = SLB._n(nm)
+                    if 'svc_unique_armor' in n:
+                        d.set_field(real, 'loot%dName%d' % (g, i), '')
+                        d.set_field(real, 'loot%dWeight%d' % (g, i), 0)
+                    elif SAB._UNIQUE_ARMOR_RE.search(n):
+                        d.set_field(real, 'loot%dWeight%d' % (g, i), 27)
+        return _m
+
+    for label, table, tier in (('charon', ORB_CHARON_L, 'l'),
+                               ('level-banded', ORB_BANDED_E, 'e')):
+        check("D6/D7b the b79 armour rows restored on the %s orb table (the "
+              "BL-R181-DEBT-7 defect itself)" % label,
+              _revert_orb_armour(table),
+              lambda d, k, t=table, tr=tier: [p for p in audit_surface_of(d, k, t, tr)
+                                              if p.startswith(('D6', 'D7'))])
+
+    # N9 - THE SYNTHETIC ORPHAN. A module writes a gear loot table that no surface
+    #      audits. No threshold can catch this - only a rule about WRITES can - and it
+    #      is the exact shape of the defect: R-220 wrote fifteen tables outside `\svc\`
+    #      and R-181's folder-shaped ownership rule never looked at them.
+    #      Planted twice, once per witness, because they catch different bugs: the
+    #      LEDGER sees a module that goes through the shared builders, the REGISTRY
+    #      TOUCH LOG sees one that writes loot fields raw.
+    def _own_case(label, plant, expect):
+        OWN.reset()                       # the ledger is process-global by design
+        d, k = load_fixed(arz)
+        plant(d, k)
+        probs = SAB.ownership_problems(d, k)
+        hit = [p for p in probs if p.startswith(expect)]
+        if not hit:
+            fails.append(label)
+        print("%s %-70s -> %s" % ('OK ' if hit else 'XX ', label,
+                                  'RED (correct)' if hit else 'GREEN (BLIND)'))
+
+    def _plant_ledger_orphan(d, k):
+        d.clone_record(k.real(ORB_CHARON_L), ORPHAN)
+        k.refresh()
+        SAB.widen_armor_rows(d, ORPHAN, 'l', k)     # the builder registers the write
+
+    _own_case("OWN1 a module writes a gear loot table no surface audits (via the "
+              "shared builder)", _plant_ledger_orphan, 'OWN1')
+
+    def _plant_raw_orphan(d, k):
+        d.clone_record(k.real(ORB_CHARON_L), ORPHAN)
+        k.refresh()
+        d.set_field(ORPHAN, 'loot2Chance', 40.0)    # raw write, no builder involved
+        d._registry_touch_log = [('negtest_raw_writer', ORPHAN)]
+
+    _own_case("OWN2 a module writes loot rows RAW on a table no surface audits",
+              _plant_raw_orphan, 'OWN2')
+
+    # POSITIVE CONTROL 3: the fixed build's own ownership is clean, and the touch-log
+    # witness is exercised rather than merely absent - a gate that only ever runs in its
+    # downgraded form is a gate nobody has tested.
+    OWN.reset()
+    d3, k3 = load_fixed(arz)
+    d3._registry_touch_log = [('orb_armor_rows', t)
+                              for _key, (t, _tier) in SAB.orb_scope(d3, k3).items()]
+    own_ok = not SAB.ownership_problems(d3, k3)
+    print("%s POSITIVE CONTROL: every loot table this wave writes is inside a "
+          "distribution surface (both witnesses live)" % ('OK ' if own_ok else 'XX '))
+    if not own_ok:
+        fails.append('positive control (ownership)')
+        for p in SAB.ownership_problems(d3, k3)[:6]:
+            print("      %s" % p)
+    OWN.reset()
 
     print()
     if fails:
