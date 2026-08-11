@@ -1,5 +1,16 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD79 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-220 uber orb loot breadth; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `883a31e2b87f03a54a51c550147c8242`** (55,551,723 B, 51,236 records).
+> **Workshop item 3759792705 is now build79 CANONICAL** (was build78): `Upload finished : OK`, ManifestID
+> **`867654719607079771`** (steamcmd 2026-08-11 00:02:45 -> 00:03:08), `-Update -Visibility 0` with the VDF
+> read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB, single wrapper.
+> **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in `docs/BACKLOG.md` -> SHIP RECORD
+> R-220 + BUILD79-DEV GATE RECORD. Tag `build79-ship` at this doc commit.
+> - **Rollback (Steam):** re-upload the build78 arz, kept at `local/build78_ship_f6638462.arz`; the other
+>   four artifacts are unchanged. This ship's artifact: `local/build79_ship_883a31e2.arz`.
+
 > ## BUILD79-DEV DEPLOYED TO DEV (2026-08-10) - R-220 uber orb loot breadth; arz-ONLY
 > **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `883a31e2b87f03a54a51c550147c8242`**
 > (55,551,723 B, 51,236 records), copied with md5 source==dest verification **while TQ.exe was NOT running**

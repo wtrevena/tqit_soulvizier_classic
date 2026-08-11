@@ -1,5 +1,53 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - R-220 UBER ORB LOOT BREADTH: the mystical orbs are **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-loot-breadth` merge, tag `build79-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
+[U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content... Uploading content...
+Committing update...Success.`, `Updated Workshop item: 3759792705`. Independent evidence from
+`C:\steamcmd\logs\workshop_log.txt`: **`Uploaded new content ( ManifestID 867654719607079771 )`** then
+**`Upload finished for workshop item 3759792705 : OK`** (2026-08-11 00:02:45 -> 00:03:08). Pushed
+`-Update -Visibility 0` and the generated VDF was read back to confirm `"visibility" "0"` - the item stays
+PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single `SoulvizierClassic` wrapper.
+
+**arz-only delta on top of `build78`.** Only the database moved. **STEAM = DEV = `main`.**
+
+| artifact | md5 | bytes | vs the item as of `build78` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`883a31e2b87f03a54a51c550147c8242`** | 55,551,723 | **CHANGED** from `f6638462` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged (**no new tag authored**) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+| gate | result |
+|---|---|
+| dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above, 0 failures) |
+| packager TESTHUB guard | **PASS** - packaged `6784CF0F` != TESTHUB `7A7CA9AC`; the hub did not ship |
+| single-wrapper assertion | **PASS** - content root holds exactly 1 child, `SoulvizierClassic` |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B against the shipped baseline `f6638462` under the identical config | **4492** - the same number, so this ship adds **ZERO** new contract violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `883a31e2` from two independent full builds** |
+| changenote VDF-safety | 2,081 bytes, **0 double-quotes, 0 backslashes, 0 em dashes, 0 non-ASCII bytes, no BOM** |
+
+**DEPLOY ORDER HONOURED.** DEV first (`build79-dev`, arz `883a31e2`, 1 of 62 files changed, the 61 siblings
+re-hashed byte-identical), then Steam. **TQ.exe was never running, was never killed, and Steam was never
+restarted** at any point in this lane - checked immediately before the DEV copy, before packaging and
+before the upload.
+
+**PREVIEW IMAGE, stated honestly:** `-PreviewFile` was deliberately NOT passed, matching `build77-ship` and
+`build78`. The generated VDF carries **no `previewfile` key at all** (verified by grep), so the live item's
+existing cover tile is left exactly as it was; the script's blanket "BLANK tile" warning is generic, not a
+regression.
+
+**Rollback (Steam, one step):** re-package and re-upload with the `build78` arz, kept byte-exact at
+`local/build78_ship_f6638462.arz`; the other four artifacts are already unchanged. This ship's own artifact
+is kept at `local/build79_ship_883a31e2.arz`.
+
+**NOT PROVEN IN-GAME (`BL-R220-DEBT-2`).** Will's check: kill any orb-dropping uber, open the Mystical Orb,
+look for spears and class variety across kills. Fully quit TQ and restart Steam first.
+
 ## BUILD79-DEV GATE RECORD - R-220 UBER ORB LOOT BREADTH: every mystical orb pays every weapon class, SPEAR included - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main` @ `914b227` merge, tag `build79-dev`)
 
 **Will's order (verbatim, 2026-08-10):** "for the mystical orbs that the uber monsters drop, the items

@@ -1,8 +1,7 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
 > ## 🆕 R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
-> **✅ LIVE ON DEV as `build79-dev` (arz `883a31e2`); the Steam push is the next step in this same lane.**
-> arz-only (no map/quest/Text change).
+> **✅ LIVE ON DEV AND ON STEAM as `build79` (arz `883a31e2`).** arz-only (no map/quest/Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule). The numbers in the table below are
 > measured on the shipped build, not estimated.
 >
