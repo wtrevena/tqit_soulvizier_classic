@@ -10902,8 +10902,8 @@ deployed arz). `01_act{1,2,3,4}_arcaneformulae`, `svc_unique_thrown_{n,e,l}01`,
 `finger_l01`, `04_l_misc`, `unique_1h_l01`, and the four `svc_thrown_*_formula` records.
 (`chest_loot_breadth` additionally rewrites the three `svc_unique_weapons_{tier}01` masters with the
 new eighth member, as it always does - and see the INTEGRATION NOTES: **those three ARE shared with
-b80**.) Zero intersection with the orb lane's `svc_uberorb_*` and the armour lane's
-`svc_unique_armor_*` / `polisvault_*` / chest tables.
+b80**.) Zero intersection with the (now-shipped) orb lane's `svc_uberorb_*` / `uberorb_default_*` and
+with the armour lane's `svc_unique_armor_*` / `polisvault_*` / chest tables.
 
 > **Baseline caveat for anyone re-running the diff.** Diffing against the *deployed*
 > `work/SoulvizierClassic/Database/SoulvizierClassic.arz` shows **15 extra** modified records
@@ -10917,15 +10917,30 @@ b80**.) Zero intersection with the orb lane's `svc_uberorb_*` and the armour lan
 `chest_loot_breadth`, because `ensure_masters` silently skips a master member whose donor does not
 resolve - the thrown tables must exist first.
 
-**BUILD PROOF (round 2).** A full DB build was run from the lane worktree and completed clean:
-**51,244 records, 55,555,213 bytes, md5 `371c71287d2984c793e32d3212b496e3`**, every in-build gate
-green including `craft_thrown_breadth` (*"42/42 on n/e/l; 82 reagents = 22 MI + 54 ordinary + 6
-artifact + 0 missing, 61 reachable from Legendary chests, thinnest non-MI spread 19 of 19 legendary
-chest surfaces (floor 10); thrown payable on 51 mod chest tables with 0 legendary thrown on
-Normal"*), `chest_loot_breadth` (pools n 181 / e 116-121 / l 327 against floors 150 / 95 / 260),
-`gate_relic_difficulty_tiers`, `gate_dlc_act_ui_cap` and the 56-module registry selfcheck. Standalone
-gate + `negtest_craft_thrown` (12/12) re-run against that exact arz. Measured on it: legendary GEAR
-reachable from the Normal branch **0**, placed reagents reachable from Normal chests **0**.
+**BUILD PROOF (round 2, ON THE MERGED BASE).** STALE-BASE CATCH first: the lane was **10 commits
+behind main** - `fix/orb-loot-breadth` merged and SHIPPED as **R-220 / build79** during round 2.
+`main` was merged in (one conflict, `WILL_RULINGS.md`: both the R-184..R-186 and the R-220 sections
+kept; they are different decades and neither supersedes the other) and everything below was measured
+AFTER that merge.
+
+Full DB build from the lane worktree, exit 0: **51,244 records, 55,555,346 bytes, md5
+`5ad9829f3df1d5c52b0c121cec18bf38`**, every in-build gate green -
+`craft_thrown_breadth` (*"42/42 on n/e/l; 82 reagents = 22 MI + 54 ordinary + 6 artifact + 0 missing,
+61 reachable from Legendary chests, thinnest non-MI spread 19 of 19 legendary chest surfaces (floor
+10); thrown payable on 51 mod chest tables with 0 legendary thrown on Normal"*),
+`chest_loot_breadth` (51 tables, thinnest pool 116), **`orb_loot_breadth` (18 orb tables, all 6
+classes, l pool 246..327)**, `gate_relic_difficulty_tiers`, `gate_dlc_act_ui_cap`, and the now
+**57**-module registry selfcheck. Standalone gate + `negtest_craft_thrown` (12/12) re-run against
+that exact arz. Measured on the pre-merge build: legendary GEAR reachable from the Normal branch
+**0**, placed reagents reachable from Normal chests **0**.
+
+**THE b79 INTERACTION, MEASURED not assumed.** b79's orb gate shares
+`svc_loot_breadth.audit_table`, which this lane extended with the C1/C2 thrown rules - so those rules
+now apply to the 18 ORB tables as well. They pass: `orb_loot_breadth` widens each orb's weapon row
+with the same `svc_unique_weapons_{tier}01` master this lane hung thrown off ("weapon row widened on
+15 of 18 table(s); 3 already carried it"), so thrown is payable from an uber orb too. Nothing in
+either lane had to change for that; it is stated here because it was NOT true before the merge and a
+future edit to either side can break it.
 
 **NOT DONE / launch-gated:** in-game confirmation. No Ship/Steam build or deploy was run here. Will's
 one-line check: open a Legendary Gaoler cage chest until a thrown weapon drops, and confirm a Mythic
@@ -10990,8 +11005,16 @@ Formula can drop on a Normal character.
 
 ### INTEGRATION NOTES for whoever merges the three 2026-08-10 breadth lanes
 
-Measured against `fix/armor-loot-breadth` (b80) and `fix/orb-loot-breadth` (b79) as they stood when
-this lane finished.
+Measured against `fix/armor-loot-breadth` (b80) as it stands. **b79 is no longer a lane: it merged
+and shipped as R-220 / build79 and is now IN `main`, and this branch has merged `main`** - so the
+only concurrent lane left to reconcile with is b80.
+
+**POST-MERGE ARITHMETIC for b80, so the merger does not have to re-derive it.** b80's
+`_master_members` is `[unique_1h: _CLASS_WEIGHT * 3 = 3000, spear/bow/staff: 1000 each, all_*: 700
+x3]` = **8100**. Adding thrown at the binding resolution gives **8350 on e/l** (250 -> **2.99%** of a
+weapon roll) and **8200 on n** (100 -> **1.22%**). Both are strictly smaller shares than this lane
+measures on its own base (3.94% / 1.61%), because b80 raises the other classes; nothing has to be
+re-tuned, and `gate_loot_distribution` should be re-run on the merged tree rather than assumed.
 
 ⚠️ **THE RECORD INTERSECTION IS *NOT* EMPTY - correcting round 1's headline.** Record-level diff of
 the deployed arz against the round-2 lane build: **8 ADDED / 0 REMOVED / 16 MODIFIED by this lane**,
