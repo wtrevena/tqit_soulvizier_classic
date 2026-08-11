@@ -5236,9 +5236,10 @@ merged and did both halves itself (thrown has its own slot in `WEAPON_SLOTS`/`SL
 main into this lane: **D8's worst reading over all 57 surfaces is 0.2363.** The observation is kept
 because it is the evidence the debt was real.
 
-**RE-MEASURED AFTER `main` ADVANCED (b81, thrown as a real twelfth gear class).** `main` moved while
-this lane was in flight, so every number above was re-taken against `local/build81_run1_c502f173.arz`
-with the merge in place: distribution PASS on 57 surfaces across all 12 classes, orb / chest /
+**RE-MEASURED AFTER `main` ADVANCED (b81, thrown as a real twelfth gear class; and again after b82).**
+`main` moved twice while this lane was in flight, so every number above was re-taken with the merges in
+place - round 2's readings are against the SHIPPED `local/build81_ship_f1671207.arz`
+(`f16712077f315e5d5cf38a32f9c1fec6`), not the pre-ship run `c502f173` round 1 quoted: distribution PASS on 57 surfaces across all 12 classes, orb / chest /
 craft-thrown gates PASS, **16 negatives red and 3 positive controls green**, registry 59 modules order
 `ba6fde285aad`, and the D5 pins all still earned (49-51 moved 0.0453 -> 0.0451, still above the 0.030
 global cap, so none went stale). The merge had exactly two conflicts, both ADDITIVE - each side had
