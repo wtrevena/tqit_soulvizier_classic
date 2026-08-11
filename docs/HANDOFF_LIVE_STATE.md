@@ -48,6 +48,18 @@
 > - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first (`build77-dev`).
 > - Tag `build77-ship` at this doc commit. Rollback (Steam): re-upload the build76 set (arz `16994072`,
 >   kept at `local/build76_ship_16994072.arz`; the other four artifacts are unchanged).
+> - ✅ **POST-SHIP INDEPENDENT VET = GO** (ship operator, read-only, no rebuild/re-upload). Re-proved from
+>   bytes, not from this doc: record-diff `16994072` -> `435cc485` = **0 added / 0 removed / 196 modified,
+>   changed-field set exactly `['itemQualityTag']`, all under `svc_uber\`, 0 unexplained**; convention +
+>   distinctness over ALL THREE tiers (n=716 / e=739 / l=739 records, 740 families) = **0 C1 / 0 C2** on the
+>   shipped arz AND on the newer `f6638462` now live (so R-201 survived the R-210 rebuild); `tagSoulEpic`
+>   = `{^F}Epic` + `tagSoulLegendary` = `{^F}Legendary` both DEFINED in the shipped `Text.arc a9fed7ba`,
+>   which is what makes the byte-identical Text the coupling law SATISFIED (tag-diff = zero changed tags);
+>   Steam upload re-confirmed from `C:\steamcmd\logs\content_log.txt` (ManifestID `4847215467152146492`,
+>   `Upload finished ... : OK` 21:27:37). One NEW pre-existing debt found and registered:
+>   **`BL-R201-DEBT-1`** (5 of our 98 share a display name with an SV soul - Charon, General Yrrt'ik, Ice
+>   Mandible, Kallixenia, Plague Feast; the gate only checks within a family). Will's test note was
+>   corrected to use only provably-unique names.
 
 
 > ## BUILD77-DEV DEPLOYED TO DEV (2026-08-10) - R-201 soul tier naming; arz-ONLY

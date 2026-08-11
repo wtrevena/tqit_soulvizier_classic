@@ -231,6 +231,39 @@ deliberately NOT changed (they are SV data, not this defect, and touching them w
 ships double-authored copies of a few souls (`polyphemus_soul_n.dbr` alongside `polyphemus_soul_n_.dbr`).
 Registered here as debt; neither affects tier naming.
 
+**POST-SHIP INDEPENDENT VET (2026-08-10, ship operator, read-only - no rebuild, no re-upload).** Re-proved
+from bytes on disk with a script that does NOT import the code under test:
+- **Record-diff** `local/build76_ship_16994072.arz` -> `local/build77_ship_435cc485.arz`: **ADDED 0 /
+  REMOVED 0 / MODIFIED 196**; the changed-field set across ALL 196 is exactly `['itemQualityTag']`; every
+  one is under `svc_uber\`; **0 unexplained**. Split 98 `_e` + 98 `_l` families.
+- **Convention + distinctness over all three tiers** (n=716 / e=739 / l=739 records, 740 families, 709
+  3-tier; svc_uber 98, all 3-tier): **C1 = 0 offenders, C2 = 0 identical-render families**, on BOTH the
+  shipped `435cc485` arz AND the arz now live on DEV/Steam (`f6638462`, the R-210 lane's build off the
+  same `main`) - so R-201 survived the next lane's rebuild.
+- **Rendered strings resolved through the shipped `Text.arc`:** Gaoler = `Soul of the Gaoler` /
+  `Epic Soul of the Gaoler` / `Legendary Soul of the Gaoler`. Ditto Dagon, Broodmother.
+- **arz+Text coupling proved, not asserted:** `tagSoulEpic` = `{^F}Epic` and `tagSoulLegendary` =
+  `{^F}Legendary` are both DEFINED in the shipped `Text.arc a9fed7ba` (and in the DEV copy, same md5).
+  The correct tag-diff for this wave is therefore ZERO changed tags, and `Text.arc` being byte-identical
+  is the coupling law satisfied, not waived.
+- **Steam upload confirmed independently** from `C:\steamcmd\logs\content_log.txt`: `[AppID 475150] Upload
+  starting for workshop item 3759792705` 21:27:21 -> `Uploaded new content ( ManifestID
+  4847215467152146492 )` -> `Upload finished ... : OK` 21:27:37. TQ.exe not running at any point.
+
+**NEW DEBT FOUND BY THAT VET - `BL-R201-DEBT-1` (P2, OPEN, PRE-EXISTING, not caused by R-201).** The
+R-201 gate checks distinctness WITHIN a soul family; it does not check ACROSS families. A cross-family
+scan of rendered names finds **40 display names shared by more than one soul family**, of which **5
+involve one of our 98**: `Charon Soul` (`svc_uber\boss_charon_soul` vs SV `charon\charon_soul`),
+`General Yrrt'ik Soul` (`svc_uber\rainbowbright_soul` vs SV `formicid\generalyrrtik_soul`), `Ice Mandible
+Soul` (`svc_uber\frost_soul` vs SV `antlion\frostmandible_soul`), `Kallixenia ~ Liche Queen Soul`
+(`svc_uber\kallixenia_soul` vs SV `abyssalliche\kallixenia_soul`) and `Plague Feast Soul`. The remaining
+35 are SV-internal (mostly a `soul\test\` folder duplicating `soul\maenad\`). These name tags were
+duplicated long before this wave - R-201 only added the tier prefix in front - so nothing regressed, but
+**two different souls can read the same name in the player's bag**, which makes them ambiguous test
+targets. Fixing it means renaming souls (law #2 / evocative-names territory) and is a WILL DECISION, not
+an agent call. Consequence acted on now: the Will test note was corrected to name only souls whose
+display name is provably UNIQUE (`Soul of the Gaoler`, `Soul of the Insatiable`) instead of Charon.
+
 
 ## 🧭 LANE RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis / Ragnarok / Eternal Embers removed from the act-selection UI (2026-08-10, branch `fix/portal-atlantis-cap`, NOT BUILT/SHIPPED HERE)
 
