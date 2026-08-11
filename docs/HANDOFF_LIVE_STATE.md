@@ -1,5 +1,33 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD77-DEV DEPLOYED TO DEV (2026-08-10) - R-201 soul tier naming; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `435cc485ee43e739b85d4221e6c9bb4b`**
+> (55,550,972 B, 51,234 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). 1 of 62 DEV files changed; the 61 siblings were re-hashed after the
+> copy and are byte-identical.
+> - **What it is:** R-201. The 98 souls this port authored (all under `soul\svc_uber\`) had no
+>   `itemQualityTag` on any tier, so their normal / epic / legendary records all rendered the SAME name.
+>   Every SV-original family (641 of 739) has always carried n=absent / e=`tagSoulEpic` / l=`tagSoulLegendary`,
+>   which the engine renders as a PREFIX. 196 records (98 families x Epic + Legendary) now carry it, so the
+>   Gaoler reads "Soul of the Gaoler" / "Epic Soul of the Gaoler" / "Legendary Soul of the Gaoler".
+>   No string was renamed and no SV original was touched (the fix is ADD-ONLY).
+> - **arz-ONLY.** `Levels.arc 7a7ca9ac` (TESTHUB, the DEV variant) / `Text.arc a9fed7ba` / `Quests.arc 607ec99c` /
+>   `Creatures.arc 8c0d8d53` md5-proven byte-unchanged on the DEV surface. `validate_tags` PASS against the
+>   EXISTING `Text.arc` - this wave authors NO new tag, so no Text rebuild was needed and the arz+Text
+>   coupling law is satisfied rather than waived.
+> - **Record-diff vs the shipped `16994072`: ADDED 0 / REMOVED 0 / MODIFIED 196, ZERO unexplained** (each row
+>   is one `svc_uber\*_soul_{e,l}.dbr` with exactly one changed field). Gate record: `docs/BACKLOG.md` ->
+>   GATE RECORD - R-201 SOUL TIER NAMING. Ruling: `docs/WILL_RULINGS.md` -> R-201.
+> - **NEW permanent gate:** `_verify_soul_tier_naming` (fail-loud, no whitelist) runs in `run_registry_gates`
+>   after the whole patches registry, so souls added by any FUTURE content module are covered. Negative-tested
+>   4 ways.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `16994072` (the build76 arz this replaced) ->
+>   copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+>   `local/build76_ship_16994072.arz`.
+> - **Will's in-game check:** pick up the Soul of the Gaoler on Epic and on Legendary and read the item name.
+>   Full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+
+
 > ## BUILD75-DEV DEPLOYED TO DEV (2026-08-10) - R-180 chest-loot breadth; arz-ONLY; Steam rides the b63 package
 > **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `3fb1f3ce8889e27de2491ab12814547d`**
 > (55,539,324 B, 51,231 records), copied with md5 source==dest verification **while TQ.exe was NOT running**

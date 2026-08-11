@@ -1,13 +1,14 @@
-[h2]Fixed: red uber monsters that dropped no loot orb[/h2]
+[h2]Fixed: the mod's own souls had no Epic or Legendary names[/h2]
 
-[b]A player report, and the audit it triggered.[/b] The Boar Snatcher - the red legendary spider in the Greek pine forest and the Spartan optional cave - died without dropping a Mystical Orb, while the other red uber monsters all drop one. He does now.
+[b]A player-visible naming bug, and the structural cause behind it.[/b] Soulvizier's souls come in three tiers, and the higher two are meant to read [i]Epic Soul of the Gaoler[/i] and [i]Legendary Soul of the Gaoler[/i]. Every soul inherited from Soulvizier did exactly that. Every soul this port added did not: all three tiers showed the same plain name, so there was no way to tell an Epic soul from a Legendary one by reading it.
 
 [list]
-[*][b]The Boar Snatcher drops a Mystical Orb.[/b] All three of his level variants were wired to the same generic boss orb the other low-level red ubers pay out. He is a base-game monster the mod had never touched, which is exactly why he slipped through: every drop audit this mod had ever run looked only at records the mod itself owns, and he is not one of them.
-[*][b]Seven more red ubers were silently orb-less, and are now fixed too.[/b] Once the audit was widened to the real runtime world - the mod plus the base game together - it found 55 red uber monsters, of which 14 paid no orb. Neferkha, the frost uber, the higher Phagia, Aithon in the Olympian Arena and Kravmoloch all now drop an orb matched to their level band. Six more are deliberate exceptions and were proven to be so: four are transformation shells whose final form already carries the orb, and two are summoned copies that are not supposed to drop anything at all.
-[*][b]A permanent gate so this class of bug cannot come back.[/b] Every orb in this mod used to be attached by a hand-typed list, which is how monsters got missed. The build now derives the whole red uber roster from the data and fails loudly if any red uber ships without an orb, with each exception having to re-prove itself every build.
+[*][b]98 souls now show their tier.[/b] The Soul of the Gaoler, Charon, Dagon, the Broodmother, the Blood Cult High Priest and every other soul authored for this port now render the Epic and Legendary prefix the rest of the roster has always had.
+[*][b]Nothing was renamed.[/b] The tier word sits in front of the existing name, so the normal tier reads exactly as it did before and the original Soulvizier souls were not touched at all.
+[*][b]The cause was structural, not a typo.[/b] A soul's three tiers share one name and differentiate through a separate quality field. Every generator this port uses writes one set of values to all three tiers, and none of them ever set that field, so the defect would have repeated on the next soul added.
+[*][b]A permanent gate so it cannot come back.[/b] The build now fails loudly if any soul's tiers would render the same name, or if a tier carries the wrong quality word. It is checked against the whole roster on every build, with no exception list.
 [/list]
 
-[i]No drop rate was lowered and no existing chest, orb or loot table was changed - this update only adds orbs to monsters that had none. The Spartan Crypt entrance fix and the chest breadth work from the previous update are included.[/i]
+[i]This update changes item names only. No drop rate, loot table, stat, skill or map was touched. The Boar Snatcher orb fix, the Spartan Crypt entrance fix and the chest breadth work from the previous updates are all included.[/i]
 
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA, the merge base for this Anniversary Edition port - [b]Dragonlord[/b] for DRX.[/i]
