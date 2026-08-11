@@ -120,9 +120,15 @@ ARMOR_ROW_CHANCE = 40.0
 # value that brings the legendary share of the donor's torso/head row (static members
 # summing to 1188) to ~50%, matching what the weapon row's own master already carries.
 ARMOR_UNIQUE_WEIGHT = 850
-# Weight for the aggregate armour master in the one free member slot it claims. Mirrors
-# R-180's BREADTH_WEIGHT (800) exactly, so the two masters read as one mechanism.
-ARMOR_MASTER_WEIGHT = 800
+# Weight for the aggregate armour master in the one free member slot it claims. DERIVED,
+# not copied from R-180's BREADTH_WEIGHT: the only armour row with a free member slot in
+# the DRX donor shape is the SHIELD row, so whatever the master carries there is competing
+# with a shield member at ARMOR_UNIQUE_WEIGHT. At 800 the shield slot took 40.5% of the
+# whole armour side (D9, cap 44%, even 20%); at 2 x ARMOR_UNIQUE_WEIGHT the master
+# out-weighs the row's own slot and the shield share falls to 37.3% while every other worn
+# slot rises. Measured both ways - this is the value that balances the armour side, not a
+# round number.
+ARMOR_MASTER_WEIGHT = 2 * ARMOR_UNIQUE_WEIGHT
 
 # Path shapes. A member is "unique armour" when it lives under a worn-slot folder AND on
 # the `unique` path (the mastertables/unique split the base game itself uses).

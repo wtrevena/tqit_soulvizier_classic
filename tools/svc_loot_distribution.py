@@ -118,13 +118,15 @@ SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPE
 # margin is a gate that gets switched off (the b63 1.0u lesson).
 #
 #   check                      shipped   R-181   threshold   reds shipped   margin
-#   D1 class share, table       0.4313   0.3822    0.42          yes          9%
-#   D2 class share, surface     0.3431   0.2083    0.25          yes         17%
-#   D3 thinnest class share     0.0106   0.0207    0.015         yes         38%
-#   D4 item share / uniform     4.13x    4.92x     5.8x          no*         18%
-#   D5 item share, surface      0.0583   0.0250    0.035         yes         40%
-#   D6 weapon : armour          7.21     1.43      2.20          yes         53%
-#   D7 thinnest armour slot     0.1109   0.6593    0.55          yes         17%
+#   D1 class share, table       0.4313   0.3842    0.42          yes          9%
+#   D2 class share, surface     0.3431   0.1744    0.21          yes         17%
+#   D3 thinnest class share     0.0106   0.0201    0.016         yes         20%
+#   D4 item share / uniform     4.13x    4.92x     5.8x          no*         15%
+#   D5 item share, surface      0.0583   0.0246    0.030         yes         18%
+#   D6 weapon : armour          7.21     1.389     1.65          yes         16%
+#   D7 thinnest armour slot     0.1109   0.7224    0.60          yes         17%
+#   D8 class share of weapons   0.4145   0.2428    0.29          yes         16%
+#   D9 slot share of armour     0.5352   0.3725    0.44          yes         15%
 #
 #   * D4 is a REGRESSION GUARD, and the report says so plainly rather than pretending
 #     otherwise. The cage's within-class spread was ALREADY near-uniform in the shipped
@@ -142,20 +144,29 @@ SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPE
 # its two siblings, so D2 (the surface the player actually opens) is the binding
 # evenness contract. D1 exists to catch what shipped: SPEAR at 43.1% of one cage table.
 MAX_CLASS_SHARE_TABLE = 0.42
-MAX_CLASS_SHARE_AGGREGATE = 0.25
+MAX_CLASS_SHARE_AGGREGATE = 0.21
 # A class the surface claims to pay must actually be payable. The shipped cage put the
 # helm at 1.06% of its Epic mass - reachable, and invisible.
-MIN_CLASS_SHARE_TABLE = 0.015
+MIN_CLASS_SHARE_TABLE = 0.016
 # "Near-uniform within a class": no item may carry more than this multiple of its
 # class's uniform share (1/n). Expressed as a MULTIPLE because a 7-item class cannot be
 # held to an absolute share below its own uniform 14.3%.
 MAX_ITEM_OVER_UNIFORM = 5.8
 # ... and no item may own more than this share of the whole surface's gear mass. This is
 # the absolute "one item dominates the run" bound and it DOES red the shipped build.
-MAX_ITEM_SHARE_TOTAL = 0.035
+MAX_ITEM_SHARE_TOTAL = 0.030
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
-ARMOR_SLOT_FLOOR = 0.55          # expected legendary pieces of that slot per chest open
-MAX_WEAPON_ARMOUR_RATIO = 2.20   # legendary weapon mass : legendary armour mass
+ARMOR_SLOT_FLOOR = 0.60          # expected legendary pieces of that slot per chest open
+MAX_WEAPON_ARMOUR_RATIO = 1.65   # legendary weapon mass : legendary armour mass
+# D8/D9 - the WITHIN-SIDE balance, and the reason they exist is a negative test that
+# came back GREEN when it should have been RED. D1/D2 measure a class's share of ALL
+# gear; once armour parity lands, armour takes half the mass, so re-planting the shipped
+# spear over-weighting drops SPEAR to ~21% of total gear and slides under D1/D2. The
+# skew Will reported is INSIDE the weapon side, so it has to be measured there.
+# Even is 1/6 = 16.7% for weapons and 1/5 = 20.0% for armour; both thresholds are in
+# the table at the top of this block.
+MAX_WEAPON_CLASS_SHARE = 0.29
+MAX_ARMOUR_SLOT_SHARE = 0.44
 
 
 def _n(s):
@@ -444,10 +455,32 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 "D5 %s: %s is %.1f%% of the surface's whole %s gear mass (cap %.1f%%)"
                 % (label, _n(top).rsplit('\\', 1)[-1], 100.0 * tev / total, ic,
                    100.0 * MAX_ITEM_SHARE_TOTAL))
+    # D8/D9 the WITHIN-SIDE balance. D1/D2 measure a class against ALL gear, so once
+    # armour carries half the mass a weapon-side skew hides under them - which a planted
+    # negative proved by coming back GREEN. Measure each side in its own denominator.
+    wmass = sum(agg_slot.get(s, 0.0) for s in WEAPON_SLOTS)
+    if wmass > 0:
+        for s in WEAPON_SLOTS:
+            if agg_slot.get(s, 0.0) / wmass > MAX_WEAPON_CLASS_SHARE:
+                problems.append(
+                    "D8 %s: class %s holds %.1f%% of the surface's %s WEAPON mass "
+                    "(cap %.1f%%, even is %.1f%%) - the weapon side is skewed even when "
+                    "the whole-gear share looks calm"
+                    % (label, SLOT_LABEL[s], 100.0 * agg_slot.get(s, 0.0) / wmass, ic,
+                       100.0 * MAX_WEAPON_CLASS_SHARE, 100.0 / len(WEAPON_SLOTS)))
+    if require_armor:
+        _am = sum(agg_slot.get(s, 0.0) for s in ARMOR_SLOTS)
+        if _am > 0:
+            for s in ARMOR_SLOTS:
+                if agg_slot.get(s, 0.0) / _am > MAX_ARMOUR_SLOT_SHARE:
+                    problems.append(
+                        "D9 %s: slot %s holds %.1f%% of the surface's %s ARMOUR mass "
+                        "(cap %.1f%%, even is %.1f%%)"
+                        % (label, SLOT_LABEL[s], 100.0 * agg_slot.get(s, 0.0) / _am,
+                           ic, 100.0 * MAX_ARMOUR_SLOT_SHARE, 100.0 / len(ARMOR_SLOTS)))
     # D6/D7 armour parity: every wearable slot is a real drop, and weapons do not
     # drown armour. This is the half Will reported and R-180 could not see.
     if require_armor:
-        wmass = sum(agg_slot.get(s, 0.0) for s in WEAPON_SLOTS)
         amass = sum(agg_slot.get(s, 0.0) for s in ARMOR_SLOTS)
         if amass <= 0 or wmass / amass > MAX_WEAPON_ARMOUR_RATIO:
             problems.append(

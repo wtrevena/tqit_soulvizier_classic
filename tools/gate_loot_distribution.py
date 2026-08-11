@@ -112,6 +112,14 @@ def calibrate(db):
         am = sum(agg.get(s, 0.0) for s in SLD.ARMOR_SLOTS)
         if am > 0 and wm / am > worst['D6 weapon:armour'][0]:
             worst['D6 weapon:armour'] = (wm / am, label)
+        for s in SLD.WEAPON_SLOTS:
+            if wm > 0 and agg.get(s, 0.0) / wm > worst['D8 class share of weapons'][0]:
+                worst['D8 class share of weapons'] = (agg.get(s, 0.0) / wm,
+                                                      '%s %s' % (label, s))
+        for s in SLD.ARMOR_SLOTS:
+            if am > 0 and agg.get(s, 0.0) / am > worst['D9 slot share of armour'][0]:
+                worst['D9 slot share of armour'] = (agg.get(s, 0.0) / am,
+                                                    '%s %s' % (label, s))
         for s in SLD.ARMOR_SLOTS:
             if agg.get(s, 0.0) < thin[0]:
                 thin = (agg.get(s, 0.0), '%s %s' % (label, s))
