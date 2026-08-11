@@ -1,5 +1,22 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD80 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-181 armour breadth + loot distribution; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `c5851a1abbebe9eb7744c9311fa14728`** (55,552,948 B, 51,239 records).
+> **Workshop item 3759792705 is now build80 CANONICAL** (was build79): `Upload finished ... : OK`, ManifestID
+> **`4755232758446325792`** (steamcmd `workshop_log.txt` 2026-08-11 01:02:13 -> 01:02:24), `-Update
+> -Visibility 0` with the VDF read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB,
+> single wrapper. **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in
+> `docs/BACKLOG.md` -> SHIP RECORD R-181 + BUILD80-DEV GATE RECORD. Tag `build80-ship` at this doc commit.
+> - **Push-gate:** dist==work all 5 artifacts PASS, TESTHUB guard PASS (canonical `6784cf0f`, not the DEV
+>   `7a7ca9ac`), single-wrapper PASS, `run_contracts` on the DIST payload 0 P0 / 0 P1 / 4492 P2 (identical to
+>   the build79 baseline, so ZERO new violations on the uploaded bytes), changenote 2,832 bytes pure ASCII.
+> - **TQ.exe never running, never killed; Steam never restarted** - `steam.exe` is still PID 3952 from
+>   2026-08-09 13:02:21, the same PID observed at the start of this lane. DEV was deployed first
+>   (`build80-dev`), and the three loot gates were re-run against the DEPLOYED DEV arz before packaging.
+> - **Rollback (Steam):** re-upload the build79 arz, kept at `local/build79_ship_883a31e2.arz`; the other
+>   four artifacts are unchanged. This ship's artifact: `local/build80_ship_c5851a1a.arz`.
+
 > ## BUILD80-DEV DEPLOYED TO DEV (2026-08-11) - R-181 armour breadth + loot distribution; arz-ONLY
 > **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `c5851a1abbebe9eb7744c9311fa14728`**
 > (55,552,948 B, 51,239 records), copied with md5 source==dest verification **while TQ.exe was NOT running**

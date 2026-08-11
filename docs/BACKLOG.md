@@ -1,5 +1,49 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - R-181 ARMOUR BREADTH + LOOT DISTRIBUTION is **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/armor-loot-breadth` merge, tag `build80-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
+[U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content... Uploading content...
+Committing update...Success.` + `Updated Workshop item: 3759792705`. Confirmed independently from
+`C:\steamcmd\logs\workshop_log.txt`, not from the console text alone:
+
+```
+[2026-08-11 01:02:13] [AppID 475150] Upload starting for workshop item 3759792705 by AppID 475150
+[2026-08-11 01:02:24] [AppID 475150] Uploaded new content ( ManifestID 4755232758446325792 ) for item 3759792705.
+[2026-08-11 01:02:24] [AppID 475150] Upload finished for workshop item 3759792705 : OK
+```
+
+**The VDF was read back after the upload to confirm `"visibility" "0"`** - the item stays PUBLIC (it was
+already public; `-Update -Visibility 0` re-asserts rather than changes it). 56 files, 1188.3 MB, single
+`SoulvizierClassic` wrapper. `previewfile` was deliberately NOT passed and the script omits the key unless
+it is (`if ($PreviewFile)`), so the live cover tile is untouched.
+
+**STEAM = DEV = `main`** for the arz: **`c5851a1abbebe9eb7744c9311fa14728`** (55,552,948 B, 51,239 records).
+`Levels.arc 6784cf0f` **CANONICAL** (NOT the TESTHUB `7a7ca9ac`) / `Quests.arc 607ec99c` /
+`Text.arc a9fed7ba` / `Creatures.arc 8c0d8d53`, all byte-unchanged and re-uploaded as-is.
+
+**PUSH-GATE, every item measured:**
+
+| check | result |
+|---|---|
+| `dist == work` on all 5 artifacts | **PASS** - md5 compared pairwise, all MATCH |
+| TESTHUB guard | **PASS** - packaged Levels `6784CF0F` differs from TESTHUB `7A7CA9AC`; the DEV-only hub map cannot reach Steam |
+| single-wrapper | **PASS** - the content root has exactly 1 child (`SoulvizierClassic`); the stale wrapperless layout is ABSENT |
+| `run_contracts` on the DIST payload (arz + Text + Levels + Quests overrides) | **PASS - 0 P0 / 0 P1 / 4492 P2**, identical to the build79 baseline, so ZERO new violations on the bytes actually uploaded |
+| changenote | **2,832 bytes, pure ASCII (0 bytes > 127), no `"` char, VDF-safe**, verified programmatically before upload |
+
+**DEV was deployed first** (`build80-dev`), and the three loot gates were re-run against the DEPLOYED DEV
+arz before packaging. **TQ.exe was never running at any point in this lane, was never killed, and Steam was
+never restarted** - proven rather than asserted: `steam.exe` is still PID 3952 with StartTime 2026-08-09
+13:02:21, the same PID and start time observed at the start of this lane.
+
+**Rollback (Steam):** re-upload the build79 arz, kept at `local/build79_ship_883a31e2.arz`; the other four
+artifacts are unchanged. This ship's artifact: `local/build80_ship_c5851a1a.arz`.
+
+**STILL OWED:** `BL-R181-DEBT-1` (in-game proof is Will's cage run), `BL-R181-DEBT-5` (numSpawn volume lever
+is his call), `BL-R181-DEBT-7` (the 15 R-220 orb tables still starve armour and are owned by nobody). Full
+list in the BUILD80-DEV GATE RECORD below.
+
 ## BUILD80-DEV GATE RECORD - R-181 ARMOUR BREADTH + LOOT DISTRIBUTION: armour drops like armour and no class runs away with the run - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ `2f7f263`, tag `build80-dev`)
 
 **Will's two reports (verbatim, 2026-08-10):** *"also what about the armor? i am not really seeing armor
