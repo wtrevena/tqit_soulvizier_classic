@@ -254,6 +254,10 @@ fallen under it.
 
 ### ROUND-2 GATE SWEEP against the artifact that is LIVE RIGHT NOW (`build82`, `09a0f51d`)
 
+> **Historical: these are ROUND-2 readings.** Round 3 changed the loot numbers (not the gate set), so
+> where this table and the ROUND-3 sweep below disagree - `--calibrate` D5 `0.0451` -> **0.0308**, D7b
+> `0.0443` -> **0.0452** - the ROUND-3 figures are current. Every other row still reproduces.
+
 Re-run in full after the second `main` merge, against `local/build82_run1_09a0f51d.arz`
 (`09a0f51dcc5c64b3d84c123a421aeef1`, 55,562,756 B, 51,253 records) - the bytes on Steam and DEV today,
 not a lane artifact. b82 is a portal/travel-route lane; that it moves no loot is **measured here, not
