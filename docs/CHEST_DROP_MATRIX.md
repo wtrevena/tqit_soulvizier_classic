@@ -104,11 +104,10 @@ Worked example, **Blood Whisper** (`drxitem\supra\wep_spear.dbr`, the 400-bleed 
 | Reagent 2, Queen Zenobia's Spear | **Chest-droppable** |
 | Reagent 3, Ichthian melee spear | **Not from a chest.** It is a monster-only drop (`l_ichthianspear`), so you have to kill Ichthians for it. |
 
-The 36 reagents you cannot get from a chest split as: 27 that live on other loot tables (mostly
-monster-specific drops like the `mi_l_*` rare monster items, plus base-game level-banded unique
-tables) and 9 with no loot table at all (six IT "divine artifact" reagents such as Ikon of Zeus and
-Thoth's Glory, plus three Ragnarok-era one-hand-ranged records that this TQIT-era build never
-wires up).
+The 36 reagents you cannot get from a chest split as: 20 monster-specific green (Monster Infrequent)
+items, 6 that are base-game "divine artifacts" you have to craft in their own right, 8 ordinary
+uniques that only sit on base-game level-banded tables, and 2 DRX randomizer amulets. Section 6
+breaks all of this down item by item.
 
 ---
 
@@ -126,7 +125,7 @@ many exist in the whole database.
 | **Staff** | **20** | 25 | 5, and all five are craft-only: **Scepter of Kronos**, **Staff of the Cosmos**, **Soul Seekkor**, **Helona's Ascension**, **The Munderizer**. |
 | **Shield** | **27** | 33 | 6. **Agathodaemon** (craft-only) plus 5 base-game uniques that only sit on the base level-banded shield tables (Zeno's Third Paradox, Chigon's Resolve, Venom Husk Shield, Sun Disc, Shield of the Korybantes). |
 | **Axe** | **19** | 41 | 22, but only 8 of those matter. Six are craft-only (**Darkflame Devourer**, **Charybdis Unchained**, **Erysichthon's Undying Hunger**, **Wrath of the Furies**, **Phoenix Ascendant**, **Scylla Unbound**), one is a quest item (**Sickle of Kronos**), one drops off a mod bleed-affix table (Cerberus' Bite). **The other 14 are dead records** that no loot table, container or monster in the entire 51,234-record database names: 13 sit at `records\equipmentweapon\axe\` (note the missing `item\` folder level) and the fourteenth is a dead duplicate of the Sickle. They are inherited DRX/SV debt, not something R-180 excluded. |
-| **Thrown / one-hand ranged** | **0** | 5 | **Nothing in the mod can pay this class at all.** Four are craft-only (**Charon's Toll**, **Hati**, **The Last Word**, **Sanguine Orbit**) and one is a DRX wand on its own randomizer. There is no "unique one-hand-ranged" loot table in this TQIT-era database for the aggregate master to name. **This is a real gap, not a design choice.** See "Known gaps" below. |
+| **Thrown / one-hand ranged** | **0** | 5 in the mod arz | **Nothing in the mod can pay this class at all.** Of the 5 in the mod's own arz, four are craft-only (**Charon's Toll**, **Hati**, **The Last Word**, **Sanguine Orbit**) and one is a DRX wand on its own randomizer. The base game adds many more (Ragnarok/Atlantis one-hand-ranged), but there is **no "unique one-hand-ranged" loot table anywhere in the mod or the base database** for the aggregate master to name; the only 12 base tables for the class are monster drops (monkeyman, potamoi warrior). **This is a real gap, not a design choice.** See "Known gaps" below. |
 
 **Two-handed weapons are covered.** In Titan Quest a two-hander is not a separate item class; a 2H
 sword is still `WeaponMelee_Sword` on `weapon_sword.tpl`. The base `all_{tier}0{1,2,3}` masters that
@@ -196,10 +195,12 @@ and would rebalance the whole campaign.
 
 ### Known gaps (honest list)
 
-1. **Thrown / one-hand-ranged weapons cannot drop from any mod chest.** Five legendary records
-   exist and none are reachable. Four are craft-only anyway, so the practical loss is one DRX wand,
-   but the class is genuinely unpayable. Closing it needs a unique one-hand-ranged loot table to
-   exist for the aggregate master to name.
+1. **Thrown / one-hand-ranged weapons cannot drop from any mod chest.** Five legendary records exist
+   in the mod arz and none are reachable; four are craft-only anyway, so the practical loss is one
+   DRX wand plus the whole Ragnarok/Atlantis one-hand-ranged range that the base game adds. Closing
+   it means **authoring** a unique one-hand-ranged loot table, because no such table exists in the
+   mod or the base database today (checked: 12 base tables carry `1hranged`, all of them
+   monster-specific).
 2. **Charms never drop from mod chests** (0 of 122), on any difficulty.
 3. **Equippable artifacts never drop from mod chests** (0 of 292).
 4. **The six boss hoards listed as "latent" above are wired to `boss_default_*`,** so the breadth
@@ -209,6 +210,130 @@ and would rebalance the whole campaign.
    and the base game does routinely, and the table is latent anyway.
 6. **`polisvault_02`, `_04` and `_05`** are spare chest tables with no placement; the cage places
    only chest 01 and chest 03.
+
+---
+
+## 6. DROP SOURCES: if not a chest, then who?
+
+> Follow-up asks (Will, 2026-08-10). Same source of truth as the rest of this document, plus the
+> base-game `database.arz` (74,013 records) where the mod overlays rather than replaces it.
+
+### 6.1 Runbreaker: the Endless Hunt
+
+| | |
+|---|---|
+| **Who drops it** | **The Endless Hunt** (`um_toxeus_hunt_99` roaming, `um_toxeus_hunt_l_99` the fixed encounter). Boss classification, character level 40 / 68 / 100. |
+| **Is it guaranteed?** | **YES, 100%, every kill, either variant.** The right-hand slot fires at `chanceToEquipRightHand = 100`, its only member is `runbreaker_guaranteed_{n,e,l}` at weight 100, and that table holds exactly one item at weight 100. Nothing competes with it. |
+| **Which difficulties** | **All three.** There is a Runbreaker per difficulty (`runbreaker_guaranteed_n` / `_e` / `_l`), so a Normal-difficulty kill pays the Normal Runbreaker and so on. `svc_l_runbreaker` (the one section 3 lists as unreachable from chests) is the Legendary one. |
+| **Where he spawns** | Two mechanisms. **(A) Roaming:** he is a member of 346 base proxy pools referenced by 540 proxies across every Immortal Throne area, Rhodes (70 proxies), Medea's Grove (76), Epirus (55), Styx (78), Plains of Judgement (79), Tower of Judgement (49), Elysian Fields (82) and Hades Palace (49). He was never Hades-confined and was never difficulty-gated; the old "Hades-only" belief traced to a mislabelled code comment. **(B) The fixed encounter**, which is the one that carries the never-give-up "endless pursuit" behaviour Will asked to be Legendary-flavoured (R-90). |
+| **How often** | R-96 set the roam rate to **roughly one sighting per act**. Before that he was about 1 in 67,000 per spawn roll, which is why he seemed not to exist on Normal. |
+| **Also on his corpse** | His own soul (`toxeus_hunt_soul_*`, 100%) and the guaranteed Rite drop (`svc_rite_guaranteed`, 100%). |
+| **Detail** | `docs/reports/b98_endless_hunt.md`, sections 6 and 12. |
+
+### 6.2 Vein-Render and the Crimson Verdict
+
+**Who drops it: Blood Toxeus** (`um_bloodtoxeus_99`, the Devourer / Hemorrheus superboss), the
+deliberate ambush "with his guys next to the tattered parchment" in the blood-cave secret-door
+transition hallway. Boss classification, level 40 / 68 / 100, present on all three difficulties with
+a per-difficulty set (`crimsonverdict_guaranteed_n` / `_e` / `_l`).
+
+**The set has four pieces**, and they are the four members of that one table, at equal weight:
+
+| Piece | Slot | Record |
+|---|---|---|
+| **Vein-Render** | sword | `svc_l_veinrender` |
+| **Cowl of the Red Verdict** | head | `svc_l_crimsonverdict` (helm) |
+| **Sanguine Shroud** | torso | `svc_l_crimsonverdict` (armor) |
+| **Hemorrhage Bindings** | arms | `svc_l_crimsonverdict` (armband) |
+
+**Completion mechanics: one random piece per kill, so you farm him four-plus times.** His right-hand
+slot fires 100% of the time and picks between the Crimson Verdict table (weight 100) and a plain
+legendary sword table (weight 19). So **about 84% of kills pay a set piece**, and the piece is a
+uniform 1-in-4, giving **roughly 21% per specific piece per kill**. Nothing tracks which pieces you
+already hold, so duplicates happen.
+
+The set bonuses scale with pieces worn (2 / 3 / 4), from the `svc_crimsonverdict` ItemSet record:
+
+| Pieces | Bonus |
+|---|---|
+| 2 | +8% attack speed, +150 life, +6% life, +15% life leech, +15% offensive life, +25% bleed damage |
+| 3 | +12% attack speed, +300 life, +10% life, +25% leech, +25% offensive life, +45% bleed, +20% bleed duration |
+| 4 | +18% attack speed, +600 life, +15% life, +40% leech, +40% offensive life, +75% bleed, +40% bleed duration, plus 120 bleed retaliation over 3s |
+
+### 6.3 The three hand-placed uber rewards
+
+All three are **direct item references in the boss's Misc4 slot, at 100%, with no competing member**,
+so each is a **guaranteed drop on every kill, on every difficulty**. They are deliberately absent
+from every loot table, which is exactly why sections 3 and 4 list them as chest-unreachable.
+
+| Item | Boss | Where | Guaranteed? | Per-difficulty? |
+|---|---|---|---|---|
+| **The Golden Bough** (amulet) | **Charon the Ferryman, second form** (`um_charonform2_ferryman_99`), levels 48 / 72 / 100 | the ferryman boss fight; he also drops his own named "essence" boss chest | **100%, every kill** | Yes, `svc_goldenbough_{n,e,l}` |
+| **Lethe's Draught** (amulet) | **The Mnemophage** (`um_mnemophage_99`), levels 46 / 68 / 100 | Lower City of Lost Souls; his own "Mnemophage's Lethe-Hoard" chest sits nearby | **100%, every kill** | **No.** One single record serves all three difficulties |
+| **Mask of the Waking Dread** (helm) | **Ephialtes** (`um_ephialtes_99`), levels 58 / 78 / 97 | Dread Halls terminal vault, the back corner | **100%, every kill** | Yes, `svc_maskofdread_{n,e,l}` |
+
+Each of the three also drops his own soul at 33% and the usual relic / arcane-formula rows.
+
+### 6.4 Reagent enumeration for a fix wave
+
+Of the **78 distinct uber-craft reagents**, **42 are already droppable from a legendary-tier mod
+chest**. The 36 that are not split cleanly into "leave it alone" and "fix it":
+
+| Bucket | Count | Verdict |
+|---|---:|---|
+| **MI / green (Monster Infrequent)** | **20** | **Leave alone.** Monster-specific by design; that is the whole point of the class. None is chest-reachable and none should be. |
+| **Base-game "divine artifacts"** | **6** | **Leave alone.** They sit on **zero** loot tables in the mod *or* the base game: they are themselves crafted at the Enchanter. Two uber recipes are deliberately craft-a-craft chains. |
+| **Ordinary uniques on base tables** | **8** | **Fix-wave candidates.** Ordinary legendary uniques that any level-banded base table can pay but no mod chest can. |
+| **DRX randomizer amulets** | **2** | **Fix-wave candidates (low value).** `sandbox\chris\*` records reachable only through the DRX `u_l_nephriteammy` / `u_l_saphireammy` randomizers. |
+
+**The 20 MI/green reagents** (all `mi_*`, all classification Rare, **0 chest-reachable**). Will's two
+examples are both here: **Ismene's Helm** is `xpack\item\equipmentarmor\helm\mi_l_lamiamelee.dbr`, and
+the supra spear's green component is the **Ichthian Harpoon**, `mi_l_ichthianmelee.dbr`.
+
+> Animus, Bandari's Helm, Bai Hu's Mantle, Bracers of the Minotaur, Brigand's Bow, Deathweaver's
+> Legtip, Ethereal Leggings, Exotic Carapace, Head Hunter's Axe, **Ichthian Harpoon**, **Ismene's
+> Helm**, Prowler's Legguards, Sabertooth, Scepter of the Liche King, Shaman's Coil, Staff of the
+> Magi, The Night Mistress's Clutch, Warlord's Coat, Atouk, plus **Machae**
+> (`xpack2\...\1hranged\mi_l_machae.dbr`, which lives in the base game database rather than the mod's).
+
+**The 10 ordinary reagents that are NOT chest-droppable** (the actual fix-wave list):
+
+| Reagent | Slot | Today it drops from |
+|---|---|---|
+| Blessing of the Gods | amulet | base `amulet_e01` / `amulet_l01` |
+| Thoth's Mark | ring | base `finger_e02` / `finger_l02` |
+| Black Pearl Ring | ring | base `u_l_blackpearlring` randomizer |
+| Wyrmskin Harness | torso | base `melee_l03` |
+| Raiment of Logos | torso | base `caster_e02` / `caster_e03` |
+| Mantle of Amun-Ra | torso | base `caster_l02` |
+| Nephrite Talisman | amulet | DRX `u_l_nephriteammy` randomizer |
+| Saphire Amulet | amulet | DRX `u_l_saphireammy` randomizer |
+| `xpack2 ... u_e_06` (one-hand ranged) | thrown | base `roh_08` / `roh_09` |
+| `xpack2 ... u_l_08` (one-hand ranged) | thrown | base `roh_14` / `roh_15` |
+
+### 6.5 The seven craftables with no chest-droppable reagent, classified
+
+| Craftable | Its three reagents | Verdict |
+|---|---|---|
+| **Ananke's Canvas** (caster torso) | Bai Hu's Mantle **(MI)**, Raiment of Logos **(ordinary)**, Mantle of Amun-Ra **(ordinary)** | **2 must become chest-droppable.** The MI one stays monster-farmed. |
+| **Mortok's Skull** (artifact) | Crescent Moon of Artemis, Ikon of Zeus, Thoth's Glory, all **divine artifacts** | **No fix needed.** All three are themselves craftables; this recipe is a craft-a-craft by base-game design. |
+| **The All-Seeing Eye** (artifact) | Demeter's Bounty, Golden Eye of Sun Wukong, Marduk's Tablet of Destiny, all **divine artifacts** | **No fix needed**, same reason. |
+| **Charon's Toll** (thrown) | Machae **(MI)**, `u_e_06` **(ordinary)**, `u_l_08` **(ordinary)** | **2 must become chest-droppable**, and they are the same pair for all four thrown recipes. |
+| **Hati** (thrown) | identical trio | as above |
+| **The Last Word** (thrown) | identical trio | as above |
+| **Sanguine Orbit** (thrown) | identical trio | as above |
+
+**Correction to an earlier reading.** The three `xpack2\item\equipmentweapons\1hranged\*` reagents are
+**not missing**. They are absent from the *mod's* arz but present in the base game database and named
+by base loot tables (`li_roh_machae`, `ranged_roh`, `roh_08/09/14/15`), and the game resolves against
+the merged database. So all four thrown uber weapons **are** craftable today; their reagents just
+have to be farmed from base Ragnarok content rather than from a chest.
+
+**Practical shape of a fix wave.** Eight of the ten fixable reagents are ordinary torso / amulet /
+ring uniques, so making them chest-droppable is a matter of the relevant themed rows naming the base
+unique families they already almost reach. The two thrown reagents are blocked behind the same gap as
+"Known gaps" item 1: there is no unique one-hand-ranged loot table anywhere to name, so that half of
+the wave has to author one.
 
 ---
 
