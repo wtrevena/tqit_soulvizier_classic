@@ -671,6 +671,52 @@ REGISTRY = [
                             # assembled db. In-game confirmation launch-gated (name read-back proven
                             # from the rebuilt Text.arc in this lane).
                             # Negative test: py tools/patches/gorgon_vanilla_names.py --negtest
+    'craft_thrown_breadth', # Will 2026-08-10 ("i meant do the mythic formulas drop. they
+                            # can drop in normal as well, but the legendary items should
+                            # not drop in normal. All of the reagents need to be droppable
+                            # somewhere in the game... Yes we should make the legendary
+                            # thrown weapons droppable"): the CRAFT-CHAIN half of the
+                            # chest-breadth wave, where R-180 was the WEAPON-CLASS half.
+                            # THREE measured defects, all closed here. (1) The 42 uber
+                            # "supra" formulas sat on arcaneformulae\supra.dbr, which the
+                            # base game wires into the 02_ (Epic, 2%) and 03_ (Legendary,
+                            # 5%) act tables ONLY - a Normal chest reached 0 of 42. supra
+                            # is added to each 01_act{1..4}_arcaneformulae at ~1% of that
+                            # table's own total (rarer than either existing tier);
+                            # formulas are itemClassification=Common, so no legendary GEAR
+                            # moves and the R-100 #17 tier law is untouched. (2) 36 of the
+                            # 78 uber reagents were unreachable from a legendary chest: 19
+                            # MI/green (Will's own exemption, each PROVEN monster-farmable
+                            # by the gate), 8 ordinary base uniques + 6 IT divine artifacts
+                            # (placed into 4 new svc_craft_reagents_*_l01 tables hung off
+                            # the legendary hosts unique_torso_l01 / amulet_l01 /
+                            # finger_l01 / 04_l_misc - all 14 are Legendary-classified, so
+                            # they can only ever enter a legendary branch), and 3 that DO
+                            # NOT EXIST: Charon's Toll, Hati, The Last Word and Sanguine
+                            # Orbit all named RAGNAROK records
+                            # (xpack2\item\equipmentweapons\1hranged\{u_l_08,u_e_06,
+                            # mi_l_machae}) that this TQIT-era build never ships, so those
+                            # four formulas were uncompletable by anyone; they are
+                            # repointed onto thrown records that exist. (3) The THROWN
+                            # class had no unique loot table in this era at all, so 0 of 5
+                            # legendary thrown were reachable from anything: this module
+                            # authors svc_unique_thrown_{n,e,l}01 and svc_loot_breadth
+                            # names it as the SEVENTH class of svc_unique_weapons_{tier}01
+                            # at weight 250 (the proportional share of a 5-record class
+                            # against the 17-24 of the other six). Normal's thrown table
+                            # names ONLY the itemLevel-30 Rare/Common wands, so no
+                            # legendary thrown can reach Normal.
+                            # ORDER IS LOAD-BEARING: it must run immediately BEFORE
+                            # chest_loot_breadth, because ensure_masters silently skips a
+                            # master member whose donor does not resolve - the thrown
+                            # tables have to exist first. polis_vault's earlier call to
+                            # the same idempotent builder writes 7-member masters;
+                            # chest_loot_breadth's call rewrites them with the eighth.
+                            # Writes NO chest/hoard FixedItemLoot record, no orb table and
+                            # no weight another lane owns. verify() is the fail-loud
+                            # craft-chain gate (standalone twin:
+                            # py tools/gate_craft_thrown_breadth.py <arz>; negatives:
+                            # py tools/debug/negtest_craft_thrown.py <arz>).
     'chest_loot_breadth',   # Will 2026-08-10 ("there are never any legendary spears
                             # dropped it is basically the same items dropped over and
                             # over by all chests"): the BLAST-RADIUS half of the chest
