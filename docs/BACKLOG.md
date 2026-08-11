@@ -10248,3 +10248,83 @@ tables per current conventions) + extend the breadth gate to assert PLACED-CONTA
 wiring so a built-but-unwired table can never pass again. Natural owner: the running
 loot-balance-and-armor wave (wf_2c26e81c) whose surface is chests+hoards; if it ships without
 this, it is the next wave's first item.
+
+
+## CRAFT-CHAIN + THROWN WAVE (Will 2026-08-10, R-181/R-182/R-183) - FIX COMPLETE + GATED (branch `fix/craft-thrown-breadth`)
+
+Will's follow-up to the R-180 chest-breadth wave, after reading `docs/CHEST_DROP_MATRIX.md`
+(verbatim in `docs/WILL_RULINGS.md`, R-181..R-183 section). Three deliverables, all landed, all
+gated, all negative-tested. Nothing here touches a chest or hoard `FixedItemLoot` record, an orb
+table, or any existing weight - those surfaces belong to the concurrent orb (`fix/orb-loot-breadth`)
+and loot-balance/armour (`fix/armor-loot-breadth`) lanes.
+
+**(1) R-181 mythic formulas on every difficulty.** `supra.dbr` (42 formulas) + `supra_special.dbr`
+(41, and the ONLY home of `artifact_mortoksskull_formula`) added as members of all four
+`01_act{1..4}_arcaneformulae` tables at 1% + 0.5% of each table's own pre-existing total. Normal
+craftable coverage **0/42 -> 42/42**. Formulas are `itemClassification = Common`, so no legendary
+GEAR moves; the Normal legendary-gear count is 0 before and 0 after.
+
+**(2) R-182 reagent completability.** 78 reagents -> 79 (the thrown repoint swaps 3 dead records for
+4 live ones). Classification: **51 ordinary + 6 artifact + 22 MI/green + 0 missing** (was 3
+missing). Every non-MI reagent now drops from a Legendary chest: **42/78 -> 57/79 = 100% of the
+non-MI set.** Mechanism: 4 new `svc_craft_reagents_{torso,amulet,ring,artifact}_l01` tables hung off
+the legendary hosts `unique_torso_l01` / `amulet_l01` / `finger_l01` / `04_l_misc`. All 14 placed
+reagents are Legendary-classified, so the tier law holds by construction. The 4 thrown formulas are
+repointed off three RAGNAROK (`xpack2\...\1hranged\`) records that do not exist in this build - they
+made Charon's Toll, Hati, The Last Word and Sanguine Orbit uncompletable by anyone. **All 7 of the
+craftables Will named go from 0/3 reagents to COMPLETABLE; 42/42 craftables are completable.**
+
+**(3) R-183 thrown weapons droppable.** `svc_unique_thrown_{n,e,l}01` authored (the unique
+one-hand-ranged table this TQIT-era database never had) and named by
+`svc_loot_breadth._master_members` as the SEVENTH class of `svc_unique_weapons_{tier}01` at weight
+250. Legendary thrown reachable **0 -> 5** on Epic and Legendary chests, **0 -> 0** on Normal (2
+non-legendary wands instead). Player-surface check (process law #3): the PC animation tables
+`anm_malepc01` / `anm_femalepc` carry 153 bound `rangedOneHand` fields each, and the DRX vit wands
+already drop today, so the R-140 thrown-stance freeze does not apply to the player.
+
+**GATES (all four asked for, all negative-tested).** New family in `tools/svc_craft_thrown.py`, one
+implementation shared by the standalone gate, the in-build `verify()` and the negtests:
+- **F1** formula reachability - every craftable has a chest-droppable formula on EVERY tier;
+- **G0** no reagent names a record absent from the database;
+- **G1** every non-MI reagent reachable from the Legendary chest pools;
+- **G2** the committed MI exemption roster still equals the roster the rule derives;
+- **G3** every MI exemption is PROVEN monster-farmable by an upward walk of the reference graph;
+- **C1/C2** thrown-class presence per tier, with zero legendary thrown on Normal. C1/C2 are called
+  from inside `svc_loot_breadth.audit_table`, so `py tools/gate_chest_loot_breadth.py` covers the
+  seventh class too and the existing B3 legendary-item-tier gate stays green (re-proven).
+- Standalone: `py tools/gate_craft_thrown_breadth.py <arz> [--verbose] [--mi-sources]`
+- Negatives: `py tools/debug/negtest_craft_thrown.py <arz>` - **9/9 behaved as specified** (N0 green
+  control, N1/N2 F1, N3 G0, N4 G1, N5 G2, N6 C1, N7 C2, N8 the same edit reds sibling rule B3).
+
+**Records written by this lane: 19.** `01_act{1,2,3,4}_arcaneformulae`, `svc_unique_thrown_{n,e,l}01`,
+`svc_craft_reagents_{torso,amulet,ring,artifact}_l01`, `unique_torso_l01`, `amulet_l01`,
+`finger_l01`, `04_l_misc`, and the four `svc_thrown_*_formula` records. (`chest_loot_breadth`
+additionally rewrites the three `svc_unique_weapons_{tier}01` masters with the new eighth member, as
+it always does.) Zero intersection with the orb lane's `svc_uberorb_*` and the armour lane's
+`svc_unique_armor_*` / `polisvault_*` / chest tables.
+
+**Registry order is load-bearing:** `craft_thrown_breadth` runs immediately BEFORE
+`chest_loot_breadth`, because `ensure_masters` silently skips a master member whose donor does not
+resolve - the thrown tables must exist first.
+
+**NOT DONE / launch-gated:** in-game confirmation. Static gates only, per the lane brief; no Ship
+build was run here. Will's one-line check: open a Legendary Gaoler cage chest until a thrown weapon
+drops, and confirm a Mythic Formula can drop on a Normal character.
+
+### DEBT REGISTER (per "NO NEW SURFACE WITHOUT A GATE + DEBT REGISTER")
+
+- **BL-CRAFT-DEBT-1 (P2, honest residual, inherited DRX debt).** The MI reagent `mi_l_gigantes2`
+  (needed by Omega / `wep_club` and the Doomherald) has exactly ONE carrier in the database:
+  `records\drxcreatures\drxdishonorguard\copy of anapaest_45.dbr`, a DRX dev duplicate. The real
+  `anapaest_45` does not carry it. The G3 gate PASSES (a Monster record does carry it) but prints a
+  standing WARN. Whether that copy is placed in the world is a MAP question this lane did not open.
+  FIX when someone owns it: either move the equip/loot slot onto the live `anapaest_45`, or accept
+  it and say so. It is a loot-balance decision, deliberately not taken here.
+- **BL-CRAFT-DEBT-2 (P3, cosmetic).** Only three MI thrown records exist in this era, so the four
+  thrown recipes cannot all be distinct: **Sanguine Orbit reuses Charon's Toll's reagent pair.** If
+  a fourth green thrown record is ever added, differentiate it.
+- **BL-CRAFT-DEBT-3 (P3, unproven-in-game).** The four legendary thrown supras are now DROPPABLE as
+  well as craftable - the only 4 of the 42 supras with two acquisition paths. That was Will's
+  explicit instruction, but if he later wants the craft-only purity restored for them, the change is
+  one constant (`svc_craft_thrown.THROWN_MEMBERS`) and the gate rule C1 relaxes to the DRX wand
+  alone.
