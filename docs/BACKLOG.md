@@ -1,5 +1,51 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> ## ROUND-3 VET CORRECTIONS (2026-08-11, branch `fix/loot-volume-trim`) - READ BEFORE THE TWO GATE RECORDS BELOW
+> Seven findings, all discharged. Two of them changed what the lane CLAIMS, not just what it does.
+>
+> 1. **THE RULING IDS MOVED: this lane is now R-240 + R-241, and it used to be R-230 + R-231.** The vet
+>    found a two-way collision (`main` minted R-230 for Will's push-per-build law while this lane held
+>    R-230) and proposed renumbering main's single reference. **That fix was incomplete:**
+>    `feat/charon-rework` had independently minted **R-231** for the Golden Bough rework and had already
+>    merged main's R-230, so moving main alone would have left this lane's R-231 colliding with charon's,
+>    and charon is an in-flight branch this lane must not edit. **So this lane moved instead** - it was
+>    the only branch colliding with two others, and R-24x was free on every branch in the repo. 190
+>    mechanical replacements, 17 files, zero residual old ids, new-id counts (107 / 37) matching the old
+>    ones exactly. `main` was then merged in and the ledger conflict resolved **keep-both in ascending id
+>    order**, with main's R-230 preserved verbatim (byte-compared against its blob): the ledger reads
+>    R-200, R-201, R-210, R-211, R-220, R-230, R-240, R-241 and no id is used twice.
+>    **Merging this branch into `main` is now a fast-forward.**
+> 2. **THREE DOCS WERE DOUBLE-ENCODED BY THIS LANE'S OWN TOOLING, and round 2 reported that defect class
+>    as fixed when it had only fixed the BOM.** Every non-ASCII glyph in `BACKLOG.md` (616),
+>    `WILL_TEST_GUIDE.md` (94) and `CHEST_DROP_MATRIX.md` (3) had been read as the ANSI codepage and
+>    rewritten as UTF-8 - including the section marker on the first line of Will's own test note and the
+>    status glyphs on 82 BACKLOG entries - and it mechanically introduced **6 em dashes and 4 en dashes**,
+>    which the standing law forbids and `main`'s copies of these files do not contain. Reversed with a
+>    single cp1252-to-bytes-to-UTF-8 pass and **proved rather than eyeballed**: the ASCII projection of
+>    all three files is byte-identical before and after, so nothing but the mangled glyphs moved; suspect
+>    glyphs 616/94/3 -> **0/0/0**; em/en dashes now **0/0**, matching main. These files are never written
+>    from PowerShell again.
+> 3. **The CHANCE half of Will's orb ruling is still not discharged, and the contract now says so on every
+>    run instead of in a comment.** 54-61% is not "a low chance"; `ORB_MAX_P_LEGENDARY` is a ratchet, not
+>    a chosen rate. See `BL-R241-DEBT-1`, which now carries the mechanism (`LOW_CHANCE_RULING_BAR`, the
+>    banner on both gate paths, and negtests Q4/M8 proving it both fires and clears).
+> 4. **The cage lands at 2.74-3.98 pieces a run, not "1".** Unchanged and already registered as
+>    `BL-R240-DEBT-1`; the honest sentence is *"a handful, not a vendor's stock"*, and Will's test note
+>    now says it in those words rather than implying the literal 1 was delivered.
+> 5. **The TESTHUB half is inert until its map is rebuilt**, so it is now `BL-R240-DEBT-7`: SCHEDULED
+>    ship-lane work with an owner and closing evidence, not a warning the next lane inherits.
+> 6. **D7's absolute armour floor fell 8x and its reach shrank inside the lane that needed it to pass.**
+>    Correct (rescaling an absolute floor by a deliberate 10x volume cut is the point), carried by D7b on
+>    all 63 surfaces and re-proven from the bytes by D7X2 - but named out loud, and the ship lane must
+>    heed the D7X2 warning below: this gate can no longer be used as a baseline control on a pre-R-240 arz.
+> 7. **Two scope/precision corrections.** The volume gate's PASS line said *"every CANONICAL loot
+>    surface"* where it means every **mod-governed** surface; it now says so and names the nine base-game
+>    `defaultloot/orbrepeat_default_*` tables it deliberately leaves alone (**re-measured here:
+>    E\[legendary] <= 0.0753 per open, P(>=1) <= 7.26%, all nine confirmed outside scope**, so they do not
+>    offend the ruling). And the apex Epic row's legendary mass was quoted three ways (5.2% / 5.3% /
+>    5.25%); it **measures 5.2504%**, so 5.2 was a truncation and 5.3 was `%.1f` - every site, including
+>    the census formatter, now prints **0.44% / 5.25% / 6.28%** at the precision the bytes support.
+
 ## GATE RECORD - R-241 UBER-ORB LEGENDARY: zero guaranteed-legendary rows, at most ONE legendary per open (2026-08-11, branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
 
 **Will's ask (verbatim, 2026-08-11), and it SUPERSEDES the b79 "orbs stay generous" precedent wherever
@@ -16,9 +62,9 @@ chance 100 that can pay a legendary:
 
 | difficulty | orb tables | guaranteed-legendary rows | which |
 |---|---:|---:|---|
-| Normal | 6 | **1** | `svc_uberorb_apex_n01c` g4 @100% (0.4% legendary by weight) |
-| Epic | 6 | **1** | `svc_uberorb_apex_e01c` g4 @100% (5.3% legendary) |
-| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` g4 @100% (6.3% legendary) |
+| Normal | 6 | **1** | `svc_uberorb_apex_n01c` g4 @100% (0.44% legendary by weight) |
+| Epic | 6 | **1** | `svc_uberorb_apex_e01c` g4 @100% (5.25% legendary) |
+| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` g4 @100% (6.28% legendary) |
 | **total** | **18** | **3** | the SAME row on the SAME family; **none is a PURE legendary row** |
 
 All fifteen ordinary orb tables run that identical amulet/relic/ring/formula row at **12.7%** or
@@ -104,16 +150,35 @@ under the model hardest on it, which is R-240's own rule applied asymmetrically.
   pool to split their weight with, so the orb still pays two items but they are usually Epic), plus a
   re-derivation of D7b's floor for the orb family and a re-run of the orb-breadth gate. **One lane per
   problem means it is not this one.**
+  **ROUND-3 ADDITION - THE CEILING IS PROVISIONAL AND THE GATE NOW SAYS SO OUT LOUD.** The round-3 vet
+  was right that `ORB_MAX_P_LEGENDARY` = {n 2%, e 55%, l 68%} writes "not low" into the contract as the
+  permanent committed band, and that a later reader would take 68% for a rate somebody chose. It is not:
+  it is a ratchet holding the 90% cut already made. Two things now stop the misreading. (1) If Will
+  rules **(B)**, those two numbers come down **in the same commit as the fix**, and both the constant's
+  comment and Will's test note say so. (2) `svc_orb_legendary.undischarged_notice()` compares the
+  measured worst against `LOW_CHANCE_RULING_BAR` (**25%**, one open in four, deliberately generous so it
+  only fires when the gap is beyond argument) and prints a banner naming this debt on **every** run of
+  both the standalone audit and the in-build `verify`, on the PASS path as well as the FAIL path, with
+  the PASS line itself amended to *"PASS MEANS THE COMMITTED BAND IS HELD, NOT THAT R-241 IS FINISHED"*.
+  It does **not** red the gate: the remaining gap needs a composition change that is Will's A/B call,
+  and a gate may not take a ruling. Negtest `Q4` proves the banner fires on the shipping build; negtest
+  `M8` drives the rate under the bar and proves the banner **clears**, so it is a live measurement and
+  not a permanent decoration future readers learn to skip.
 - `BL-R241-DEBT-2` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof.
   **Will's check: kill a Mystical Orb uber a few times on Legendary and open the orbs - you should get
-  about two items each and a legendary should be an event, not the default.** Rides with
+  about two items each, and AT MOST ONE of them legendary.** Note the unit: the thing that dropped 10x
+  is legendary ITEMS PER OPEN (8.43 -> 0.85), not the chance of seeing one, which is still 54-61% and is
+  `BL-R241-DEBT-1`. **An earlier draft of this line said a legendary should "be an event, not the
+  default"; that contradicted this lane's own measurement and has been corrected** - more than half of
+  opens still contain one, and the honest test is the count in the pile, not the rarity of the event.
+  Rides with
   `BL-R240-DEBT-3` (same build, same test session). Fully quit TQ and restart Steam first.
 - `BL-R241-DEBT-3` - **THE APEX ORB LOSES ITS GUARANTEED ROW ENTIRELY, and that row was 94% relics /
   amulets / rings.** The demotion takes the apex orb from 3.04 to 2.15 items per open - the single
   largest per-surface cut in this lane after R-240's own - and most of what it removes is the RELIC and
   JEWELLERY flow, not legendary gear. Nothing gates relic-per-open today. If Will reports "the apex orb
   stopped paying relics", the fix is one field (raise `loot4Chance` back toward the family's 21.2% ->
-  higher) and it does NOT reopen the legendary question, because that row is only 0.4-6.3% legendary.
+  higher) and it does NOT reopen the legendary question, because that row is only 0.44-6.28% legendary.
   Recorded now so the cause is known before the symptom is reported.
 
 ---
@@ -296,6 +361,21 @@ so the arz+Text coupling holds with no Text rebuild.
   **it is the per-difficulty LADDER, not the mechanics, holding Legendary at 3.82.** One constant if
   Will wants it tighter; the only argument against is the ladder's own rationale, that a Legendary
   container should keep more of its shipped volume than a Normal one.
+- `BL-R240-DEBT-7` (round-3) - 🚢 **SCHEDULED SHIP-LANE WORK, NOT AN INHERITED CAVEAT: the TESTHUB
+  `Levels` variant must be REBUILT IN THE SAME WAVE that ships this arz.** The database half of Will's
+  *"on the testhub version we can spawn more that is fine"* is done and independently re-measured (the
+  44-record twin exists, holds 43.71 / 28.17 / 36.41 per run, and is unreachable from the canonical
+  map). But the four TESTHUB placements only reach the twin in a `Levels` built with `SVC_TEST_HUB=1`,
+  and the **currently deployed** DEV TESTHUB map still names `svc_polisvault_chest_01/03` - the records
+  this wave TRIMS. So on the day the arz lands and the hub map does not, **Will's DEV farm drops from
+  ~36 to ~3.8 pieces a run**, which is precisely the half he asked for going missing.
+  It is the safe direction (DEV under-pays, Steam never over-pays) and it was already written down as a
+  warning, but a warning is something the next lane inherits and a debt id is something it schedules.
+  **The ship lane owns this:** rebuild `local/Levels_merged_TESTHUB.arc` with `SVC_TEST_HUB=1`, redeploy
+  it to DEV, and hash-verify it landed, under the standing Levels+Quests deploy coupling. It is a heavy
+  map build, so it is planned into the wave rather than discovered at the end of it. **Canonical
+  `B41_SPECS` is untouched and `local/Levels_merged.arc` stays byte-identical, so this changes nothing
+  about the Steam delta, which remains arz-only.** Closing evidence: the DEV cage pours again.
 
 ---
 

@@ -27,22 +27,36 @@
 >
 > **WHAT TO DO:**
 > - Kill a **Mystical Orb uber** a few times on Legendary and open the orbs. Expect roughly **two items**
->   out of each, and a legendary should feel like an **event**, not the default.
+>   out of each, and **at most one of them legendary** - that is the half of your ruling that landed
+>   (8.4 legendary items per open became 0.85). Do NOT expect a legendary to feel rare yet: **a bit
+>   over half of opens still contain one**, which is the half that did not land. See the box below -
+>   it needs a decision from you, and the number there is the one to judge, not this bullet.
 > - Run the **Gaoler cage** (the two canonical chests). Expect a **handful** of pieces, not a vendor's
 >   stock, and still at least one legendary almost every run.
 > - Anything you can still get, you could get before: **no pool lost an item and no weight moved.** The
 >   spear variety, the armour parity and the class breadth from the last few builds are all intact - they
 >   just arrive less often. If some class of item has stopped appearing entirely, that is a real bug.
 >
-> **⚠️ THE ONE THING I DID NOT FULLY FIX, so you can rule on it (`BL-R241-DEBT-1`).**
-> The CHANCE of seeing at least one legendary from an orb is still **54-61%** on Legendary. That is not
-> "a low chance" and I am not pretending it is. The reason: about **40% of everything a Legendary-tier
-> orb can pay IS legendary-grade**, because the last few builds deliberately weighted the unique weapon
-> and armour pools that heavily to give you the class variety you asked for. So if the orb pays two
-> items, one of them is often legendary. Dropping that further means changing WHAT is in the pools (not
-> how much), which re-opens the armour-parity work - a separate lane, and your call:
-> **(A)** accept it - you now get ONE legendary instead of EIGHT, or
+> **⚠️ THE ONE THING I DID NOT FULLY FIX, AND IT NEEDS YOUR ANSWER BEFORE THIS SHIPS
+> (`BL-R241-DEBT-1`).**
+> You asked for two things about the orbs and I only delivered one. **Delivered:** no guaranteed
+> legendary rows (3 -> 0) and 8.4 legendary items per open -> 0.85. **Not delivered:** "but a low
+> chance". The chance of seeing at least one legendary from an orb is still **54-61%** on Legendary
+> and **38-49%** on Epic. **That is more likely than not, so it is not a low chance, and I am not
+> pretending it is.**
+>
+> The reason: about **40% of everything a Legendary-tier orb can pay IS legendary-grade**, because the
+> last few builds deliberately weighted the unique weapon and armour pools that heavily to give you the
+> class variety you asked for. So if the orb pays two items, one of them is often legendary. The volume
+> lever is spent - the orbs are already at the floor where they would start coming up EMPTY - so
+> dropping the rate further means changing WHAT is in the pools rather than how much, which re-opens
+> the armour-parity work. That is a separate lane and your call:
+> **(A)** accept it - you get ONE legendary instead of EIGHT, and roughly every other orb has one, or
 > **(B)** I add an epic-grade sibling pool so an orb usually pays Epics with an occasional legendary.
+>
+> If you pick **(B)**, the ceiling the gate currently commits (`ORB_MAX_P_LEGENDARY` = 55%/68%) comes
+> down in the same commit as the fix. It is set where it is to lock in the 90% cut already made, **not
+> because 55-68% is a rate anyone chose.**
 >
 > **On the TESTHUB (DEV) side nothing gets poorer:** the four farm-duplicate cage chests are being moved
 > onto their own records that keep the OLD, rich volume, so DEV farming stays fast while the Steam build

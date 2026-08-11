@@ -11,7 +11,7 @@ THE NUMBER HE ASKED FOR, MEASURED ON THE SHIPPED b83 ARZ `44499f56`
 THREE guaranteed-legendary rows in the entire orb surface - ONE per difficulty - and
 all three are the same row on the same family: group 4 of `svc_uberorb_apex_{n,e,l}01c`
 at chance 100%, where its five sibling orb tables run the identical amulet/relic/ring
-row at 12.7% or 21.2%. None of the three is a PURE legendary row (0.4% / 5.2% / 6.3%
+row at 12.7% or 21.2%. None of the three is a PURE legendary row (0.44% / 5.25% / 6.28%
 legendary by weight). Full census: `py tools/gate_orb_legendary.py <arz> --census`.
 
 THE ROW COUNT WAS NOT WHERE THE GUARANTEE LIVED. Per ONE orb open on the shipped b83
@@ -159,6 +159,15 @@ def verify(db, tags):
     lk = SLB.Lookup(db)
     report = {}
     problems = SOL.problems(db, lk, report=report)
+    # Same standing notice the standalone audit prints, from the same function, before
+    # the verdict on either path: the build log is where the ship lane looks, so the
+    # undischarged half of the ruling has to be legible there too.
+    notice = SOL.undischarged_notice(report)
+    if notice:
+        print("  " + "!" * 74)
+        for ln in notice.split("\n"):
+            print("  !! " + ln.strip())
+        print("  " + "!" * 74)
     if problems:
         for p in problems[:16]:
             print("  ORB LEGENDARY OFFENDER: %s" % p)

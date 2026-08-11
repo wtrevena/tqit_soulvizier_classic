@@ -782,7 +782,7 @@ One consequence worth knowing before it is reported as a bug: **the apex orb los
 entirely, and that row was 94% relics / amulets / rings.** Apex items-per-open goes 3.04 -> 2.15, and
 most of what left is the RELIC and JEWELLERY flow, not legendary gear. Registered as
 `BL-R241-DEBT-3`; the fix if Will wants it back is one field and it does not reopen the legendary
-question, because that row is only 0.4-6.3% legendary.
+question, because that row is only 0.44-6.28% legendary.
 
 ### 9.4 The gate, and the half it could not reach
 

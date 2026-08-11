@@ -154,16 +154,22 @@ def _row_members(db, d, dist, real, g):
     return members
 
 
-def _shift_legendary_weight(db, lk, table, f):
+def _shift_legendary_weight(db, lk, table, f, d=None, dist=None):
     """Move (1-f) of every ABOVE-AVERAGE-legendary member's weight onto its row's LEAST
     legendary member, on every live row of `table`.
 
     The row's TOTAL weight is preserved, so items-per-open does not move and O5 stays
     green: O4 fires alone, which is what makes the case prove O4. See the block comment
     on M5_WEIGHT_SHIFT for why the obvious "scale the legendary members down" plant is
-    blind - a rate is a ratio, and scaling every member of a row leaves it unchanged."""
-    d = SLD.Db(db)
-    dist = SLD.Distributor(d)
+    blind - a rate is a ratio, and scaling every member of a row leaves it unchanged.
+
+    `d`/`dist` are optional so a caller planting across MANY tables builds the reader
+    once instead of once per table (M8 plants on all twelve Epic/Legendary orbs, and
+    rebuilding there took the battery from seconds to minutes). Safe because each table
+    is read then written exactly once, so no plant ever reads a table it has already
+    modified; every ASSERTING call still builds its own fresh reader."""
+    d = d or SLD.Db(db)
+    dist = dist or SLD.Distributor(d)
     real = _must(lk, table, 'legendary-shift plant target')
     moved = 0
     for (g, _c, _s) in SOL.group_profile(d, dist, real):
@@ -407,15 +413,74 @@ def main(argv):
     if not ok:
         fails.append('M7')
 
+    # ── Q4: the UNDISCHARGED NOTICE is present while the gap is.
+    #    The round-3 vet's finding was that ORB_MAX_P_LEGENDARY = 55%/68% quietly writes
+    #    "not low" into the contract as if someone had chosen it. The answer was a notice
+    #    the gate prints on every run - and a notice nobody tests is a comment with extra
+    #    steps, so it is tested from both sides. This side: it must EXIST now.
+    rep_q4 = {}
+    SOL.problems(base, base_lk, report=rep_q4)
+    notice = SOL.undischarged_notice(rep_q4)
+    worst_now = rep_q4.get('worst_p', (0.0, '-'))[0]
+    ok = bool(notice) and 'BL-R241-DEBT-1' in notice
+    print("%s Q4 POSITIVE CONTROL: the R-241 chance-half notice FIRES on the shipping "
+          "build (worst %.1f%% vs low-chance bar %.0f%%) and names the debt"
+          % ('OK ' if ok else 'XX ', 100.0 * worst_now,
+             100.0 * SOL.LOW_CHANCE_RULING_BAR))
+    if not ok:
+        fails.append('Q4')
+
+    # ── M8: ... and it is a MEASUREMENT, not a permanent banner.
+    #    If a later lane actually delivers "a low chance", the notice has to go away by
+    #    itself. A notice that cannot clear would train every future reader to skip it,
+    #    which is exactly the failure mode it was written to prevent.
+    def _p_m8():
+        db, lk = load_fixed(arz)
+        pd = SLD.Db(db)
+        pdist = SLD.Distributor(pd)
+        # Only the Epic and Legendary orbs need moving: Normal already measures well
+        # under the bar, and planting on it would be writing to prove nothing.
+        for _k, (real, t) in sorted(SOL.orb_tables(db, lk).items()):
+            if t == 'n':
+                continue
+            _shift_legendary_weight(db, lk, SLB._n(real), 0.001, pd, pdist)
+        rep = {}
+        SOL.problems(db, lk, report=rep)
+        return rep
+    rep_m8 = _p_m8()
+    worst_m8 = rep_m8.get('worst_p', (0.0, '-'))[0]
+    cleared = SOL.undischarged_notice(rep_m8)
+    if worst_m8 > SOL.LOW_CHANCE_RULING_BAR:
+        # The plant did not reach the bar, so the case proves nothing either way. Say so
+        # rather than scoring a pass - a plant that silently misses is the expensive kind
+        # of wrong (see `_must`).
+        ok = False
+        detail = ('INCONCLUSIVE - the plant only reached %.1f%%, still above the %.0f%% '
+                  'bar, so this case never exercised the clearing path'
+                  % (100.0 * worst_m8, 100.0 * SOL.LOW_CHANCE_RULING_BAR))
+    else:
+        ok = cleared is None
+        detail = ('CLEARS (correct): at %.1f%% the notice is gone'
+                  % (100.0 * worst_m8) if ok else
+                  'STUCK (BLIND - the notice is a hardcoded banner, not a measurement, '
+                  'so it would still print after a lane fixed the thing it complains '
+                  'about)')
+    print("%s %-62s -> %s"
+          % ('OK ' if ok else 'XX ',
+             'M8 the chance-half notice when the chance half IS discharged', detail))
+    if not ok:
+        fails.append('M8')
+
     print()
     if fails:
         print("NEGTEST FAIL: %d case(s) did not behave as designed: %s"
               % (len(fails), ', '.join(fails)))
         return 1
-    print("NEGTEST PASS: 7 planted defects RED, 3 positive controls GREEN - the orb "
+    print("NEGTEST PASS: 8 planted defects RED, 4 positive controls GREEN - the orb "
           "legendary contract fires in BOTH directions, the floor holds under the "
-          "PESSIMISTIC spawn model, the derived demotion target cannot drift, and the "
-          "breadth/distribution gates stay green on the same database.")
+          "PESSIMISTIC spawn model, the derived demotion target cannot drift, the "
+          "breadth/distribution gates stay green on the same database, and the "
+          "chance-half notice both fires on the gap and clears when the gap closes.")
     return 0
 
 

@@ -5687,9 +5687,9 @@ i.e. a loot group at chance 100 that can pay a legendary:
 
 | difficulty | orb tables | guaranteed-legendary rows | which |
 |---|---:|---:|---|
-| Normal | 6 | **1** | `svc_uberorb_apex_n01c` g4 @100% (0.4% legendary by weight) |
-| Epic | 6 | **1** | `svc_uberorb_apex_e01c` g4 @100% (5.3% legendary) |
-| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` g4 @100% (6.3% legendary) |
+| Normal | 6 | **1** | `svc_uberorb_apex_n01c` g4 @100% (0.44% legendary by weight) |
+| Epic | 6 | **1** | `svc_uberorb_apex_e01c` g4 @100% (5.25% legendary) |
+| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` g4 @100% (6.28% legendary) |
 | **total** | **18** | **3** | all three the SAME row on the SAME family; **none is a PURE legendary row** |
 
 All fifteen ordinary orb tables run that identical amulet/relic/ring/formula row at **12.7%** or
@@ -5795,3 +5795,32 @@ Either way it re-litigates the armour parity b75-b83 shipped, which this lane wa
   pays two items but they are usually Epic. Cost: one lane, a re-derivation of D7b's floor for the orb
   family, and a re-run of the orb-breadth gate. **It is one lane, and one lane per problem means it is
   not this one.**
+
+**ROUND-3 AMENDMENT (2026-08-11): THE COMMITTED CEILING IS NOT A CHOSEN RATE, AND THE GATE SAYS SO.**
+The round-3 vet's objection was not that the lane stopped in the wrong place - it independently
+confirmed the lever is spent - but that `ORB_MAX_P_LEGENDARY` = {n 2%, e 55%, l 68%} silently writes
+"not low" into the design law as the permanent band, so a later reader lands on 68% and concludes 68%
+is the intent. It is not. It is a ratchet holding the 90% cut in legendary ITEMS that this wave DID
+deliver. Three corrections carry that:
+
+1. **If Will rules (B), those two numbers come down IN THE SAME COMMIT as the fix.** Recorded in the
+   constant's own comment, in `BL-R241-DEBT-1`, and in Will's test note.
+2. **`svc_orb_legendary.undischarged_notice()`** measures the worst surface against
+   `LOW_CHANCE_RULING_BAR` (**25%** - one open in four, deliberately generous so the notice only fires
+   when the gap is beyond argument, and explicitly NOT asserted as a number Will gave) and prints a
+   banner naming this debt on **every** run of the standalone audit and the in-build `verify`, on the
+   PASS path as well as the FAIL path. The PASS line now ends *"PASS MEANS THE COMMITTED BAND IS HELD,
+   NOT THAT R-241 IS FINISHED"*. It does **not** red the gate: closing the gap is a composition ruling,
+   and **a gate may not take a ruling on Will's behalf** - the same principle that made this lane log
+   `BL-R181-DEBT-5` instead of cutting volume quietly three waves ago.
+3. **The notice is tested from both sides**, because a notice nobody tests is a comment with extra
+   steps: negtest **Q4** proves it fires on the shipping build, and negtest **M8** drives the measured
+   rate under the bar and proves it **CLEARS** - so it is a live measurement that will disappear by
+   itself when a later lane actually delivers "a low chance", not a permanent banner readers learn to
+   skip.
+
+**AND THE TEST NOTE WAS WRONG BEFORE IT WAS RIGHT.** Both this ledger's companion test note and
+`BL-R241-DEBT-2` told Will to expect a legendary to "be an event, not the default" - twenty lines above
+the admission that it happens on 54-61% of opens, which is more likely than not. Corrected in both
+places to the unit that actually moved: **at most one legendary per open**, count the pile, and judge
+the rate against the number in the debt rather than against a sentence that flattered the result.

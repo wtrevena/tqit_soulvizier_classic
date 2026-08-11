@@ -1008,8 +1008,8 @@ REGISTRY = [
                             # one per difficulty, all of them group 4 of
                             # svc_uberorb_apex_{n,e,l}01c at chance 100% where their five
                             # sibling orb tables run the identical amulet/relic/ring row
-                            # at 12.7% or 21.2%; none is a PURE legendary row (0.4/5.2/
-                            # 6.3% legendary by weight).
+                            # at 12.7% or 21.2%; none is a PURE legendary row (0.44/5.25/
+                            # 6.28% legendary by weight).
                             # THE ROW COUNT IS NOT WHERE THE GUARANTEE LIVED, which is
                             # the finding: per ONE orb open b83 paid 2.58-6.29 legendary
                             # items on Epic (93.6-99.9% chance of at least one) and

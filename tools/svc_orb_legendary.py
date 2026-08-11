@@ -15,7 +15,7 @@ WILL ASKED FOR THE NUMBER FIRST, SO HERE IT IS, MEASURED ON THE SHIPPED b83 ARZ
   and all three are the SAME row on the SAME family: group 4 of
   `svc_uberorb_apex_{n,e,l}01c`, the amulet/relic/ring/formula row, at chance 100.0
   where its five sibling orb tables run the identical row at 12.7% or 21.2%. Its
-  legendary MASS is small (0.4% / 5.2% / 6.3% by weight), so ZERO of the three is a
+  legendary MASS is small (0.44% / 5.25% / 6.28% by weight), so ZERO of the three is a
   pure-legendary row. The literal count Will asked for is therefore **one per tier,
   three in total, none of them pure**.
 
@@ -128,7 +128,28 @@ ORB_MAX_LEG_PER_OPEN = {'n': 0.05, 'e': 0.75, 'l': 1.00}
 # Measured worst after the wave: n 0.0035 | e 0.4895 | l 0.6090. These are a
 # RATCHET at roughly 11% headroom, not a target: see the docstring's point 3 and
 # `BL-R241-DEBT-1`. They exist so the 90% cut can never be quietly given back.
+#
+# ⚠ PROVISIONAL, AND THE ROUND-3 VET WAS RIGHT TO SAY SO. 55% and 68% are a
+# RECORD OF WHAT THIS WAVE COULD REACH, NOT A RATE ANYONE CHOSE. Will's words
+# were "a low chance"; 55-68% is more likely than not, which is the opposite.
+# Writing the measurement into a committed ceiling is correct - it stops the cut
+# being given back - but a later reader must not mistake it for the design intent,
+# because the obvious misreading is "the contract says 68%, so 68% is fine".
+# It is not fine. It is undischarged, it is `BL-R241-DEBT-1`, and if Will rules
+# option (B) these two numbers come down IN THE SAME COMMIT as the fix.
+# `LOW_CHANCE_RULING_BAR` below makes the gate say that out loud on every run so
+# the qualification cannot rot inside a comment nobody opens.
 ORB_MAX_P_LEGENDARY = {'n': 0.02, 'e': 0.55, 'l': 0.68}
+
+# The bar this lane reads "a low chance" against: ONE OPEN IN FOUR. Nothing in
+# Will's sentence fixes a number, so this is not asserted as his - it is the
+# threshold at which this lane stops claiming his ruling is discharged, and it is
+# deliberately generous (25% is still a common event) so the notice fires only
+# when the gap is beyond argument. It does NOT red the gate: the remaining gap
+# needs a composition change that re-opens R-180/R-181/R-220 armour parity, which
+# is Will's A/B call and not something a gate may take. It prints, every run,
+# in the PASS line and the FAIL path both.
+LOW_CHANCE_RULING_BAR = 0.25
 
 # ─────────────────────────────────────────────────────────────────────────────
 # WHICH SPAWN MODEL EACH CHECK RUNS UNDER, AND WHY THERE IS NO CEILING TWIN
@@ -360,7 +381,7 @@ def apply_wave(db, lk=None, verbose=True, base_rows=None, scope=None):
         changed.append((real, tier, g, chance, target))
         if verbose:
             print("    %-46s [%s] loot%dChance %.1f%% -> %.1f%% (guaranteed row "
-                  "carrying %.1f%% legendary mass, demoted to the family value)"
+                  "carrying %.2f%% legendary mass, demoted to the family value)"
                   % (SLB._n(real).rsplit('\\', 1)[-1], tier, g,
                      100.0 * chance, 100.0 * target, 100.0 * _leg))
     return changed
@@ -461,7 +482,13 @@ def census(db, lk=None, base_rows=None, scope=None):
     for tier in TIERS:
         mine = [r for r in rows if r[1] == tier]
         n = sum(1 for _k, (_r, t) in scope.items() if t == tier)
-        which = ', '.join('%s g%d @%.1f%% (%.1f%% legendary)'
+        # TWO decimals, deliberately: the Epic row measures 5.2504%, which one
+        # decimal renders as 5.3 while a truncating reader writes 5.2 - and the
+        # round-2 vet caught this file's own docstring and its sibling module
+        # disagreeing for exactly that reason. Two decimals is the precision the
+        # bytes actually support, and it makes the printed number and the prose
+        # around it the SAME number.
+        which = ', '.join('%s g%d @%.1f%% (%.2f%% legendary)'
                           % (SLB._n(r[0]).rsplit('\\', 1)[-1], r[2],
                              100.0 * r[3], 100.0 * r[4]) for r in mine) or '-'
         print('  %-11s %7d %10d   %s' % (TIER_NAME[tier], n, len(mine), which))
@@ -506,6 +533,32 @@ def calibrate(db, lk=None, base_rows=None, scope=None):
           % (ORB_MAX_LEG_PER_OPEN, ORB_MAX_P_LEGENDARY))
     print('  floors   (TRUNCATED S for O4, the pessimistic side of a floor)  O4 %s | '
           'O5 %.2f items/open' % (ORB_MIN_P_LEGENDARY, ORB_MIN_DROPS_PER_OPEN))
+
+
+def undischarged_notice(report):
+    """The standing notice that the CHANCE half of R-241 is not delivered, or None.
+
+    Returned rather than printed so every caller - the standalone audit, the in-build
+    `verify`, and the negative battery - shows the same words, and so a test can assert
+    the notice EXISTS while the gap does.  It is not a finding: `problems()` stays the
+    list of things a lane did wrong, and this is a thing Will has not yet ruled on.
+    """
+    worst, where = report.get('worst_p', (0.0, '-'))
+    if worst <= LOW_CHANCE_RULING_BAR:
+        return None
+    return (
+        "R-241 CHANCE HALF NOT DISCHARGED (`BL-R241-DEBT-1`, awaiting Will's A/B call).\n"
+        "  Will asked for \"a chance to drop legendary items, but A LOW CHANCE\". The ITEM\n"
+        "  half landed: zero guaranteed rows and %.3f legendary items per open against 8.43\n"
+        "  shipped. The CHANCE half did not: the worst orb still pays at least one legendary\n"
+        "  %.1f%% of opens (%s), against a low-chance bar of %.0f%%.\n"
+        "  The volume lever is SPENT - the orbs sit at the never-empty spawn floor - so the\n"
+        "  remaining gap needs a POOL COMPOSITION change, which re-opens the R-180/R-181/R-220\n"
+        "  armour-parity and breadth work. That is Will's call, not a gate's, so this prints\n"
+        "  instead of redding. ORB_MAX_P_LEGENDARY is a ratchet holding the 90%% cut already\n"
+        "  made; it is NOT a rate anyone chose, and option (B) lowers it in the same commit."
+        % (report.get('worst_leg_per_open', (0.0, '-'))[0], 100.0 * worst, where,
+           100.0 * LOW_CHANCE_RULING_BAR))
 
 
 def pass_line(report):

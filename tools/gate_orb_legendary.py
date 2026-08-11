@@ -89,6 +89,14 @@ def main(argv):
     report = {}
     problems = SOL.problems(db, lk, report=report)
     print("orb loot tables in scope: %d" % report.get('tables', 0))
+    # The standing notice prints on BOTH paths and BEFORE the verdict, so it cannot be
+    # lost under a wall of findings and cannot be skimmed past by a reader who stops at
+    # the word PASS. It is not a finding; see svc_orb_legendary.undischarged_notice.
+    notice = SOL.undischarged_notice(report)
+    if notice:
+        print("\n" + "!" * 78)
+        print("!! " + notice.replace("\n", "\n!! "))
+        print("!" * 78)
     if problems:
         print("\nORB LEGENDARY FINDINGS: %d" % len(problems))
         for p in problems:
@@ -97,9 +105,12 @@ def main(argv):
         return 1
     print("\nGATE PASS: %s. No orb loot row is a guaranteed legendary roll; every orb "
           "keeps a real but bounded chance at one (floors %s), and none of them has "
-          "become an empty box (floor %.2f items/open)."
+          "become an empty box (floor %.2f items/open).%s"
           % (SOL.pass_line(report), SOL.ORB_MIN_P_LEGENDARY,
-             SOL.ORB_MIN_DROPS_PER_OPEN))
+             SOL.ORB_MIN_DROPS_PER_OPEN,
+             "" if not notice else
+             "\n  PASS MEANS THE COMMITTED BAND IS HELD, NOT THAT R-241 IS FINISHED - "
+             "see the notice above (`BL-R241-DEBT-1`)."))
     return 0
 
 

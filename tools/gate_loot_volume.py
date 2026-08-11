@@ -90,13 +90,25 @@ def main(argv):
         print("\nGATE FAIL: a loot surface pays outside its committed volume band.")
         return 1
     worst, who = report.get('worst_surface', (0.0, '-'))
-    print("\nGATE PASS: every CANONICAL loot surface pays at most %.2f target-grade gear "
+    # "every canonical loot surface" means every surface THIS MOD GOVERNS - the set the
+    # distribution gate audits, derived not typed (see svc_loot_volume.scope_tables). It
+    # does NOT mean every loot table in Titan Quest, and the round-3 vet was right that
+    # the old wording would eventually be read that way. The base game's nine
+    # `defaultloot/orbrepeat_default_*` tables are the visible example: outside scope,
+    # still at their shipped volume, and measured at E[legendary] <= 0.075 per open with
+    # P(>=1) <= 7.3%, so they do not offend Will's ruling and are deliberately left alone
+    # rather than quietly swept in. `--scope` lists the set.
+    print("\nGATE PASS: every MOD-GOVERNED canonical loot surface (%d of them; base-game "
+          "tables this mod does not own, such as `defaultloot/orbrepeat_default_*`, are "
+          "out of scope by design and keep their stock volume) pays at most %.2f "
+          "target-grade gear "
           "piece(s) per open (worst %.2f on %s); the two-chest cage run stays under "
           "%s and still pays at least one at >= %.0f%% of runs on the continuous "
           "reading and >= %.0f%% under integer truncation; the TESTHUB twin keeps "
           "its shipped volume (floor %s); every in-scope numSpawn equation still carries "
           "`numberOfPlayers` and still spawns >= %.2f iteration(s) solo."
-          % (SLV.CANON_MAX_GEAR_PER_OPEN, worst, who, SLV.CANON_MAX_CAGE_RUN,
+          % (report.get('canonical', 0),
+             SLV.CANON_MAX_GEAR_PER_OPEN, worst, who, SLV.CANON_MAX_CAGE_RUN,
              100.0 * SLV.MIN_P_AT_LEAST_ONE, 100.0 * SLV.MIN_P_AT_LEAST_ONE_TRUNC,
              SLV.HUB_MIN_CAGE_RUN, SLV.MIN_SPAWN_MIN_SOLO))
     return 0
