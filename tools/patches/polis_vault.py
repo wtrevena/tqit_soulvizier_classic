@@ -170,6 +170,12 @@ _GUAR_RELIC = r'records\xpack\item\loottables\relics\03_act4_relics.dbr'
 # the Class swap at the SAME path needs NO Levels edit (canonical Levels md5 stays
 # 78a3e263). The LEGENDARY chain REUSES the existing polisvault_0N table verbatim
 # so Will's Legendary farm payout is byte-preserved.
+# The per-difficulty donor maps this conversion is built on. Since 2026-08-10 the
+# guaranteed slot is written by svc_loot_breadth.set_guaranteed_theme, whose kind_path()
+# resolves the SAME tables through the SAME tier keys (kinds 'unique_1h' and 'relic');
+# these two maps are kept as the readable statement of the tier law they encode
+# (01=Essence/Normal, 02=Embodiment/Epic, 03=Incarnation/Legendary) and as the
+# cross-check a reviewer reads next to the shared resolver.
 _UNIQUE_TIER = {
     'n': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_n01.dbr',
     'e': r'records\xpack\item\loottables\weapons\mastertables\unique_1h_e01.dbr',
