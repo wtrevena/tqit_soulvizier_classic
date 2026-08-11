@@ -725,23 +725,51 @@ REGISTRY = [
                             #     ONE member, so carrying a spear's weight made axe/mace/sword a
                             #     third of a spear each - re-weighted to 3x its single-class
                             #     siblings here AND inside R-180's weapon master, plus softened
-                            #     class-bias weights in svc_loot_breadth.THEMES (each theme keeps
-                            #     its shipped weapon:relic:armour split to the percent).
-                            # MEASURED cage run, before -> after: weapon:armour 4.73:1 -> 1.10:1;
-                            # armour 12.4 -> 51.8 pieces; SPEAR 24.0% -> 9.3% (even is 9.1%);
-                            # helm 1.6% -> 8.5%; P(4 copies of one spear in a run) 27.0% -> 5.3%,
-                            # and P(4 Scorpion's Tails specifically) 2.07% -> 0.37%.
+                            #     class-bias weights in svc_loot_breadth.THEMES;
+                            # (4) WEAPON-ROW SHARE PARITY (added in the round-2 vet fix): the
+                            #     weapon row's aggregate master is raised until the row is
+                            #     WEAPON_ROW_LEGENDARY_SHARE = 50% legendary, mirroring what
+                            #     ARMOR_UNIQUE_WEIGHT already produces on the armour rows. The
+                            #     armour constant is an ABSOLUTE derived from ONE donor family;
+                            #     the armour statics happen to match across families but the
+                            #     WEAPON statics do not (DRX 1500 vs uberorb apex 2500), so
+                            #     lifting armour alone inverted the apex tables to 0.17:1 - an
+                            #     85%-armour surface. Expressed as a share it self-corrects: the
+                            #     cage and blood-cave rows are already above it and 0 records move.
+                            # THE GUARANTEED SLOT IS NOT SWEPT. armor_groups() skips any group at
+                            # chance >= 100 (read off the chance, NOT hardcoded to g3 - measured,
+                            # it is g3 on all 48 chest/hoard tables but g4 on the apex tables).
+                            # That row belongs to THEMES, and without the guard the sweep rewrote
+                            # the warden theme's documented 50/50 weapon:armour split to 12.8/87.2.
+                            # MEASURED six-chest cage run, before -> after: weapon:armour
+                            # 4.73:1 -> 1.22:1; armour 12.4 -> 49.4 pieces; SPEAR 24.0% -> 9.8%
+                            # and helm 1.6% -> 8.7% (even is 9.1%; after the wave EVERY one of
+                            # the 11 classes sits between 7.8% and 10.8%).
+                            # P(4 copies of ONE spear in a six-chest run)
+                            # 27.0% -> 6.3% and P(4 Scorpion's Tails specifically) 2.07% -> 0.45%
+                            # (analytic and Monte Carlo agree). NOT "negligible", and the record
+                            # says so: P(SOME single legendary item lands 4x anywhere in the run)
+                            # only moves 47.3% -> 39.7%, because total legendary gear per run
+                            # RISES 70.8 -> 109.5 while numSpawn is deliberately untouched under
+                            # the non-reduction law. numSpawn is the volume lever and it is a WILL
+                            # DECISION, logged as BL-R181-DEBT-5, not taken silently here.
                             # ORDER IS LOAD-BEARING: immediately AFTER chest_loot_breadth, for
                             # the same reason that module runs late (it sweeps the FINAL table
                             # set) and because it raises weights R-180 wrote and reads members
                             # R-180 added. polis_vault also calls ensure_armor_masters, because
                             # the warden theme now names the armour master and a theme member
                             # whose donor does not resolve is dropped.
-                            # SCOPE: every mod-owned gear chest + the 3 DRX donors. The
-                            # svc_uberorb_* tables are OUT, owned by the concurrent b79
-                            # fix/orb-loot-breadth lane, and are PRINTED on every run rather than
-                            # silently skipped (BL-R181-DEBT-1 - the R-200 lesson). General
-                            # MONSTER armour drops are measured and reported, never changed here.
+                            # SCOPE: every mod-owned gear chest - INCLUDING the 3
+                            # svc_uberorb_apex_* tables - plus the 3 DRX donors. There is NO
+                            # owner-based exclusion. An earlier round deferred the apex tables to
+                            # the concurrent b79 fix/orb-loot-breadth lane; that lane provably
+                            # does not widen armour on them (its own docstring calls them "a
+                            # no-op here"), and the exclusion also hid them from the gate, so
+                            # three LIVE surfaces - R-200's red-uber Mystical Orb chests and
+                            # Leinth's hoards - shipped paying 0.07 helms per open. apply() now
+                            # asserts WRITE SET == AUDIT SET and fails the build on any divergence.
+                            # General MONSTER armour drops are measured and reported, never
+                            # changed here (BL-R181-DEBT-2, a Will decision).
                             # Its verify() is the build-wide fail-loud DISTRIBUTION gate
                             # (standalone twin: py tools/gate_loot_distribution.py <arz>;
                             # calibration mode: --calibrate; negatives:

@@ -83,6 +83,22 @@ if __name__ == '__main__' or __package__ is None:
 #     `ArmorJewelry_Bracelet` (62, the caster armband line that
 #     `unique_arms_l01 -> bracelet_l01` pays at weight 50 of 100).
 # ─────────────────────────────────────────────────────────────────────────────
+# ⚠ CROSS-LANE MERGE HAZARD, WRITTEN DOWN BECAUSE IT IS INVISIBLE AT MERGE TIME.
+# `WeaponHunting_RangedOneHand` is bucketed into `bow` here because, on the db this was
+# calibrated against, nothing in scope pays that class and giving it its own slot would
+# make D3 (the starvation floor) red every surface for a class that does not exist yet.
+# The concurrent lane `fix/craft-thrown-breadth` adds a THROWN / one-hand-ranged member to
+# `svc_loot_breadth._master_members` plus a C1/C2 rule in `audit_table`. The moment that
+# lane merges, every legendary thrown item the master pays is counted as BOW mass by D2
+# and D8 - inflating the measured bow share and masking exactly the thrown starvation this
+# gate should be able to see. AT MERGE, DO BOTH:
+#   1. give thrown its own entry here and in SLOT_ORDER / SLOT_LABEL, and
+#   2. re-run `--calibrate` and re-derive MAX_WEAPON_CLASS_SHARE - it is 0.29 against SIX
+#      weapon classes (even 16.7%); with seven, even is 14.3%.
+# Tracked as BL-R181-DEBT-4. The two Python files themselves auto-merge cleanly (verified
+# with `git merge-tree --write-tree` against fix/orb-loot-breadth, fix/craft-thrown-breadth
+# and main - the only conflicts are append-adjacent lines in the three doc ledgers), which
+# is precisely why this needs a written note: nothing will fail to tell you.
 WEAPON_SLOTS = {
     'axe': ('WeaponMelee_Axe',),
     'mace': ('WeaponMelee_Mace',),

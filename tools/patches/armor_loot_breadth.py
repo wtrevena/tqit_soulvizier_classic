@@ -17,7 +17,11 @@ WHAT IT WRITES (all additive or a strict raise; nothing removed, nothing lowered
   * per chest table: EVERY armour row lifted to the weapon row's own 40% (shipped
     torso/head 33, arms/legs 31, shield 30), its unique-armour members raised to 850
     (shipped 100-200 against ~1700 of static junk), and the armour master dropped into
-    the first free armour-row member slot at 800;
+    the first free armour-row member slot at 1700 (= 2 x ARMOR_UNIQUE_WEIGHT);
+  * per chest table: the weapon row's aggregate master raised until the row is 50%
+    legendary (WEAPON_ROW_LEGENDARY_SHARE), the mirror of what ARMOR_UNIQUE_WEIGHT
+    produces on the armour rows - without it the uberorb apex donor family, whose weapon
+    statics are 2500 against the DRX family's 1500, inverts to an 85%-armour surface;
   * per chest table: `unique_1h_*01` re-weighted to 3x its single-class siblings,
     because that ONE member pays THREE classes (axe/mace/sword) and carrying a
     spear's weight made each of them a third of a spear. That, plus the same

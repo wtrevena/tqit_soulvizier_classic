@@ -139,18 +139,36 @@ def kind_path(kind, tier):
 # to the percent - only the split BETWEEN weapon classes changes. The class-bias member
 # fell from 30% of the slot to 20% (martial spear) and from 20% to 10% (the secondary),
 # with the difference handed to the class-balanced `broad` master, because the bias
-# member stacked on TOP of a master that was itself spear-heavy. Denominators are 1000
-# so a reader can read a weight as per-mille directly.
-#   theme      weapons  relic  armour     shipped        R-181
-#   martial     100%      -       -      100/60/40      700/200/100
-#   hunter      100%      -       -      100/60/40      700/200/100
+# member stacked on TOP of a master that was itself spear-heavy.
+#
+# THE WEIGHTS BELOW ARE WHAT THE RECORD SHIPS, verified by reading the built db back.
+# Two corrections a vet had to make to an earlier version of this table, both worth
+# keeping because they are the traps:
+#   1. `martial` reads 700/200/600, not 700/200/100, and its denominator is 1500 - so a
+#      weight here is NOT per-mille. `unique_1h` pays THREE classes (axe/mace/sword) from
+#      one member slot, so `svc_armor_breadth.balance_one_hand` sets it to 3x its largest
+#      single-class sibling. At 100 against spear's 200 the "one-hand melee bias" was
+#      really a 6:1 SPEAR bias - the defect Will reported. 600 gives each of the three
+#      exactly spear's 200. The value is written here rather than left to the sweep so
+#      the design record states what the build produces; the sweep then recomputes 3x200
+#      and changes nothing.
+#   2. All three of martial's members are WEAPON tables, so that raise moves no
+#      weapon:relic:armour split. `warden` is the theme where the split is real, and it
+#      is the one the armour sweep used to overwrite (see `svc_armor_breadth.armor_groups`
+#      - the guaranteed slot is now excluded from the sweep, and warden ships its
+#      documented 500/400/60/40 = 50/50 again).
+#   theme      weapons  relic  armour     shipped        R-181 (as shipped)
+#   martial     100%      -       -      100/60/40      700/200/600  (of 1500)
+#   hunter      100%      -       -      100/60/40      700/200/100  (of 1000)
 #   warden       50%      -      50%     100/60/40      500/400/60/40
 #   apex         50%     50%      -      100/100        1000/1000
 #   adept        50%     50%      -      100/70/30      1000/800/200
 #   sovereign    50%     50%      -      100/70/15/15   1000/700/150/150
 THEMES = {
     # Gaoler cage chest_01 (no relic in its guaranteed slot, exactly as shipped).
-    'martial': [('broad', 700), ('spear', 200), ('unique_1h', 100)],
+    # unique_1h is 3x spear ON PURPOSE: it pays 3 classes from 1 member slot, so 600
+    # gives axe/mace/sword 200 each - exactly spear's 200. See the note above.
+    'martial': [('broad', 700), ('spear', 200), ('unique_1h', 600)],
     'hunter': [('broad', 700), ('bow', 200), ('spear', 100)],
     # warden is the ARMOUR theme: its shipped 50:50 weapon:armour split is preserved to
     # the percent, but the armour half now spreads over all FIVE worn slots through the
