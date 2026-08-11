@@ -4560,3 +4560,16 @@ changes the shared master's membership are the integrator's, registered as `BL-R
 **NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's; Will's kill of
 any orb-dropping uber and seeing spears / class variety out of the orb is the remaining launch gate.
 Registered as `BL-R220-DEBT-2`. See `docs/WILL_TEST_GUIDE.md` and the BACKLOG gate record.
+
+**SHIPPED (2026-08-11, tags `build79-dev` + `build79-ship`).** Everything above was built and re-measured
+on the real artifact rather than the dry-run, and every predicted number came out identical: arz
+`883a31e2b87f03a54a51c550147c8242` (55,551,723 B, 51,236 records), det-2x byte-identical, record-diff vs
+the shipped `f6638462` = **15 MODIFIED / 0 added / 0 removed, 4 fields each, ZERO unexplained**, with the
+tier law readable straight off the diff (`[n]`->`n01`, `[e]`->`e01`, `[l]`->`l01`). Spear **0 -> 18 / 9 /
+22** on every tier that was broken; pools n 180..195 / e 96..116 / l 241..308. Live on DEV and on Steam
+(item 3759792705, ManifestID `867654719607079771`, still PUBLIC). arz-ONLY: Text/Levels/Quests/Creatures
+md5-proven byte-unchanged, so the arz+Text coupling was SATISFIED, not waived. Contracts 0 P0 / 0 P1 /
+4492 P2, identical to the baseline A/B. The PAYOUT half shipped ON, as argued above, and stays vetoable in
+one line (`RAISE_ROW_CHANCES = False`). One new debt filed by the ship lane: `BL-R220-DEBT-7` (the R-200
+negtest harness cannot run against a post-R-200 arz - pre-existing, measured on the untouched shipped
+baseline too). Full records: `docs/BACKLOG.md` -> SHIP RECORD + BUILD79-DEV GATE RECORD.
