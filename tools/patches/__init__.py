@@ -304,11 +304,36 @@ REGISTRY = [
                             # now wires a ROSTER = {monster} + {every tier READ from
                             # summon_toxeus_enslaver.spawnObjects}, each in its own lowest free slot
                             # (pets use 1-12 + 15; nothing dropped), and its gate additionally
-                            # asserts the pets' controller really fires self-buffs
-                            # (BuffSelfBehavior=WhenEnemyIsSeen) - a toggle the AI never toggles is
-                            # an empty slot. Deriving the tiers is what makes the miss unrepeatable.
+                            # asserts the pets' controller really fires self-buffs - a toggle the
+                            # AI never toggles is an empty slot. Deriving the tiers is what makes
+                            # the miss unrepeatable.
+                            # ⚠️ b104 (R-250, Will 2026-08-11: "toxeus the murderer, devourer of
+                            # souls we need to add the black shadow shroud around him, the same one
+                            # that his demon summon guys have" - the THIRD filing). The name fuses
+                            # two variants; the demon clause resolves it, because ONLY the
+                            # Enslaver's marauders carry a black shadow shroud (the Devourer's
+                            # Blood Demons carry FX_blood_CHEST/HANDS/HEAD). And the demons' shroud
+                            # was never in a FIELD - it is `CreateEntity{attach="SpecialHit01";
+                            # entity="...ShadowStalker_Smoke.dbr"}` compiled INTO ShadowStalker.msh,
+                            # which is why it renders every frame and why two waves of field edits
+                            # could not match it. champion_mesh (b102) then moved him onto the
+                            # FX-free SkeletonGrayBlack01New.msh to kill the green, removing his
+                            # last always-on emitter. So b104: (a) a new EffectEntity
+                            # svc_enslaver_shroud_fx playing the demons' OWN
+                            # Effects\MonsterFX\ShadowStalker_Smoke01.pfx with the donor's WEAPON
+                            # boneList deleted; (b) the pak attaches it at Bone_Waist - a bone that
+                            # EXISTS on his rig - never the demons' own SpecialHit01, which does
+                            # not, and an FX on a missing attach point renders NOTHING silently;
+                            # (c) every roster surface moves to an SVC-OWNED CLONE of its
+                            # controller with BuffSelfBehavior=WheneverPossible, so the shroud is
+                            # ON out of combat (the shared originals drive the Devourer and 148
+                            # other pets and are NEVER edited). Provably visual-only: the gate
+                            # asserts the shroud is the ONLY Skill_BuffSelf* in either kit.
+                            # Gates: provenance DERIVED from the marauders' mesh binary, rig-attach
+                            # checked against each wearer's own mesh, A9 render resolution on the
+                            # .pfx (base-game Effects.arc), shared-record leak check, CRASH LAW.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-                            # (17 plants, 7 of them the b102 pet-tier class)
+                            # (24 plants, 12 of them the b104 always-on/shape/rig class)
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
@@ -589,43 +614,12 @@ REGISTRY = [
                             # verify() fails if the mesh is ever emptied out of the DB entirely
                             # (RETIREMENT PROTOCOL).
                             # Negative test: py tools/patches/champion_mesh.py --negtest (12 plants)
-    'devourer_shroud',      # Will 2026-08-11, verbatim: "toxeus the murderer, devourer of souls
-                            # we need to add the black shadow shroud around him, the same one that
-                            # his demon summon guys have". THE NAME DOES NOT EXIST - it fuses
-                            # "Devourer of Blood" and "Enslaver of Souls" - so it was resolved from
-                            # the records: enslaver_shroud already put the shroud on the Enslaver's
-                            # monster AND all three pet tiers and that SHIPPED in build83, so "we
-                            # need to ADD" cannot be about him; the Devourer of Blood is the only
-                            # Toxeus variant carrying NO shroud on ANY surface, and his summons are
-                            # literally the blooddemon-folder Blood Demons ("his demon summon
-                            # guys"). Ground truth on the shipped 44499f56: um_bloodtoxeus_99 +
-                            # pets\bloodtoxeus_1..3 have NO charFxPakRunningNames at all, and their
-                            # only body FX is svc_black_poison -> 343_dark_smoke x2 on
-                            # 'R Hand';'L Hand' - two HAND emitters, not a shroud "around him".
-                            # Gives him BOTH channels the marauders carry: the demons' own
-                            # drxshadowcloakrunning_fx_pak on charFxPakRunningNames, plus a
-                            # persistent Skill_BuffSelfToggled (svc_devourer_shroud +
-                            # svc_devourer_shroud_charfxpak) in a FREE slot - NO skill dropped
-                            # (R-26 spirit; he used skillName1..18, so 19 was free, pets 8).
-                            # HIS OWN records, not svc_enslaver_shroud: R-93 exists because 9 of
-                            # his 12 slots were once literally the Enslaver's records.
-                            # ORDER IS LOAD-BEARING: registered after EVERY module that authors or
-                            # rewrites his record - toxeus_champion_kits, black_poison (owner of
-                            # svc_black_poison, which this lane must NOT displace), devourer_kit
-                            # (which claims slots by "lowest free" and would otherwise race this
-                            # one) and champion_mesh - so it is the ratified last writer of the FX
-                            # slot it claims. Still before fx_dangling_cleanup so the FX hygiene
-                            # sweep covers the final state.
-                            # ROSTER IS DERIVED FROM TWO WITNESSES THAT MUST AGREE: the anchor +
-                            # summon_bloodtoxeus.spawnObjects (a 4th tier is auto-in-scope), and
-                            # every record described by his name tags (which catches a DIFFICULTY
-                            # CLONE - the Hunt already has one, um_toxeus_hunt_l_99). Placement
-                            # needs no leg: q_bloodtoxeus_lone name1/2/3, q_bloodtoxeus_ambush and
-                            # egg_blooddragon are all PROXIES at the one monster record.
-                            # CRASH LAW asserted, not assumed: verify() walks every skill slot on
-                            # every roster member and FAILS if any Skill_SpawnPet* record in his
-                            # kit carries a charFxPak field (the build28 crash trap).
-                            # Negative test: py tools/patches/devourer_shroud.py --negtest (24 plants)
+    # b104 NOTE (Will 2026-08-11): the 'devourer_shroud' module that briefly sat
+    # HERE was deleted, target misidentified. Its own measurement disconfirmed it:
+    # the Devourer's Blood Demons carry blood FX, no shadow shroud, so "the same
+    # one that his demon summon guys have" cannot be him. The fix moved into
+    # `enslaver_shroud` above (R-250). The Devourer's own missing shroud is a
+    # QUESTION for Will (BL-R250-DEBT-2), not a change made on our authority.
     'fx_dangling_cleanup',  # b91 DEBT: B-FX-DANGLING-1 (strip the 353 dangling
                             # Chris\UnarmedProjectile_FX01 particleEffectName2/3 slots off 177
                             # records - base-game ABSENCE parity, the same operation build30 F7a

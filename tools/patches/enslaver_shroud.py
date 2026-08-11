@@ -1,151 +1,120 @@
-r"""enslaver_shroud - THE ENSLAVER'S BLACK SHROUD (b98, R-95).
+r"""enslaver_shroud - THE ENSLAVER'S BLACK SHADOW SHROUD (b98 R-95, b102 R-102,
+b104 R-250).
 
-WILL (2026-07-28), verbatim fragment: he wants the Enslaver to have
-    "the same black shroud smoke his summoned demons have"
+WILL (2026-08-11), verbatim, the THIRD filing of the same sentence:
 
---------------------------------------------------------------------------------
-THE FINDING THAT CHANGES THE TASK: HE ALREADY HAS THE FX
---------------------------------------------------------------------------------
-`records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr` already carries
-    charFxPakRunningNames = records\skills\stealth\drxpet\drx_pet_fx\
-                            drxshadowcloakrunning_fx_pak.dbr
-which is the SAME pak, pointing at the SAME EffectEntity
-(`drxshadowcloakrunning_fx` -> `DRXeffects\shadowcloakrunning.pfx`, boneList
-Bone_R_Weapon;Bone_L_Weapon), that `um_enslaver_marauder_99` carries. Only 14
-records in the whole 51,098-record DB carry `charFxPakRunningNames` and he is one
-of them. So the ask is NOT "give him the FX" - it is "make the FX he already has
-actually show".
-
-TWO CANDIDATE CAUSES; ONE ELIMINATED FROM THE ASSET BYTES.
-  * ELIMINATED - bone mismatch. Both `Bone_R_Weapon` and `Bone_L_Weapon` exist on
-    RevenantPoison.msh (the Enslaver's rig) exactly as they do on ShadowStalker.msh
-    (the marauders'). The FX binds fine. Reported as wrong rather than shipped.
-    (Worth keeping for future FX work: the WAIST attach point is named "Smoke02" on
-    ShadowStalker and "Waist" on RevenantPoison, so a body-shroud FX targeting
-    "Smoke02" would work on the marauders and silently do nothing on him.)
-  * SURVIVING CAUSE - THE CHANNEL. `charFxPakRunningNames` renders ONLY while the
-    character is RUNNING. The marauders are melee chasers that run at you
-    constantly, so they smoke continuously. The Enslaver is a caster -
-    characterSpellCastSpeed 2.0, summons marauders, full armour, run speed 1.5 -
-    who stands and casts. His running FX almost never plays.
+> "toxeus the murderer, devourer of souls we need to add the black shadow shroud
+>  around him, the same one that his demon summon guys have"
 
 --------------------------------------------------------------------------------
-THE FIX, ON A SHIPPED IN-HOUSE PATTERN
+b104 - WHICH TOXEUS. THE NAME IS FUSED; THE DEMON CLAUSE RESOLVES IT
 --------------------------------------------------------------------------------
-`charFxPakSelfNames` is the PERSISTENT channel, and it is a SKILL field, never a
-Monster field (184 carriers DB-wide, ZERO of them Monster-class). So the shipped way
-to put a persistent FX on a monster's body is a self-buff SKILL in one of its skill
-slots - which is exactly what R-7 already did for the Devourer with
-`svc_black_poison` (Skill_BuffSelfToggled -> charFxPakSelfNames -> a CharFxPak).
+No variant is called "Devourer of Souls". The name fuses two of them - "Toxeus
+the Murderer, DEVOURER OF BLOOD" and "Toxeus the Murderer, ENSLAVER OF SOULS" -
+so the only discriminating words in the sentence are **"the same one that his
+demon summon guys have"**. That clause was measured on the shipped `build83` arz
+(`44499f56`, the hash `docs/HANDOFF_LIVE_STATE.md` records as LIVE) at the layer
+that actually renders, which is NOT the `.dbr` field layer:
 
-  1. `records\skills\monster skills\buff_self\svc_enslaver_shroud.dbr` -
-     Skill_BuffSelfToggled cloned from `empusamerc_enchantment`, the ONE shipped
-     zero-payload self-buff toggle in this exact namespace (0 non-zero
-     offensive/defensive/character fields), so the shroud carries NO combat payload
-     at all. This is a VISUAL skill and only a visual skill. The donor's purple
-     weapon tint (0.9, 0.1, 1.0) is zeroed to (0,0,0), which the b83 tint model
-     established as the inert "NO TINT" default (195 shipped records) - a zero
-     channel is OFF, not black, so this cannot recolour his weapon.
-  2. `records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr` -
-     a CharFxPak cloned from the shipped `343_weapon_poisoncharfxpak` structure,
-     with the particle swapped to the marauders' own `drxshadowcloakrunning_fx`
-     AND the donor's attach points dropped (see ROUND 4 below).
-     NOTE THE FORMAT DIFFERENCE, easy to get wrong: a CharFxPak uses
-     `particleEffectAttachPoints` with FRIENDLY names ("R Hand"), whereas an
-     EffectEntity uses `boneList` with raw bone names ("Bone_R_Weapon"). They are
-     not interchangeable.
+| whose demons | record | mesh | mesh-embedded FX (always on) |
+|---|---|---|---|
+| **ENSLAVER's** Enslaved Shadow Marauders | `um_enslaver_marauder_99`, `pets\enslaver_marauder_1..3` | `ShadowStalker.msh` | **`Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr`** -> `Effects\MonsterFX\ShadowStalker_Smoke01.pfx` |
+| DEVOURER's Blood Demons | `drxcreatures\blooddemon\um_devourer_bloodspawn_99` | `DRX\meshes\blooddemon01.msh` | `FX_blood_CHEST/HANDS/HEAD_fx` - BLOOD effects, no shadow shroud |
 
-     ⚠️ ROUND 4 SHAPE FIX (adversarial-vet finding, 2026-07-29). Rounds 1-3 kept
-     the donor's `'R Hand';'L Hand'` pair, so the Enslaver smoked from two FISTS
-     while his marauders smoke from the whole BODY. The colour half of Will's ask
-     was right and the shape half was not, and nothing in this file noticed,
-     because every gate here checked the particle IDENTITY and none checked the
-     emission SHAPE. Will asked for "the same black shroud smoke his summoned
-     demons have"; same means same shape too. Read out of the built arz:
-     `drxshadowcloakrunning_fx_pak` (Class FxPak) carries `particleEffectNames`
-     x1 and NO `particleEffectAttachPoints` at all. The pak now mirrors that -
-     one body emitter, zero attach points - and verify() DERIVES the expectation
-     from the demons' live record, so if their shroud ever changes shape this
-     fails loud instead of drifting. Convention check before making the change:
-     of the 294 resolvable `charFxPakSelfNames` references in the DB, 248 point
-     at an attach-free pak and 46 at one with attach points; 86 of the 131
-     CharFxPak records omit the field entirely, and none carries an empty one -
-     hence ABSENCE rather than an empty list.
-     STILL NOT CLAIMED: what this looks like IN GAME. The shape now matches the
-     demons' by construction and by gate, but nobody has seen it (BL-b98-DEBT-2
-     below covers the colour; the shape inherits the same launch gate).
-  3. Wired into the LOWEST FREE `skillName` slot on the Enslaver. NO SKILL IS
-     DROPPED TO MAKE ROOM - the design brief assumed all 12 of his slots were full
-     and that one would have to be sacrificed under R-26's spirit. GROUND TRUTH: he
-     uses skillName1..18 and the Monster template goes to at least 23 (um_mnemophage_99
-     uses skillName23), so slot 19 is free and no functional skill is touched.
-  4. `charFxPakRunningNames` is KEPT as-is, so he smokes harder when he moves and
-     still matches the marauders he commands.
-
-His controller (`controller_skeleton_toxeus`) carries BuffSelfBehavior =
-'WhenEnemyIsSeen', so the toggle fires the moment the fight starts.
+Only the Enslaver's demons carry a black shadow shroud, and Will has confirmed
+that one by eye (R-102 fourth amendment, verbatim: *"yes the demons that he
+summons have the proper black shroud and they dont have any green"*). The same
+sentence was filed as R-95 on 2026-07-28 ("the same black shroud smoke his
+summoned demons have") and again as R-102's second amendment ("that is still not
+implemented"). **Target: Toxeus the Murderer, ENSLAVER OF SOULS.**
 
 --------------------------------------------------------------------------------
-COLOUR: THE ONLY IN-GAME-CONFIRMED BLACK IN THIS WHOLE AREA
+b104 - WHY HE STILL HAS NO SHROUD, AFTER TWO WAVES THAT SAID HE DID
 --------------------------------------------------------------------------------
-The player-surface checklist forbids claiming a colour from a non-in-game-confirmed
-asset. `343_dark_smoke` (the Devourer's shipped black poison particle) is explicitly
-NOT confirmed - R-10 calls it "the green-rendering 343_dark_smoke" and black_poison's
-own docstring flags it (BP-SMOKE-1). `hades2_shadowcloud_charfxpak` is not confirmed
-either. `DRXeffects\shadowcloakrunning.pfx` IS: Will has SEEN it, on the marauders,
-and called it "the black shroud smoke". That is why this module uses it and nothing
-else, and it is also literally what he asked for.
+Because both prior waves worked in the `.dbr` FIELD layer and the demons' shroud
+was never in a field. It is compiled into their MESH:
+
+    ShadowStalker.msh ... CreateEntity { attach = "SpecialHit01";
+                                         entity = "Records\Effects\MonsterFX\
+                                                   ShadowStalker_Smoke.dbr" }
+
+A mesh renders every frame. That is why the marauders smoke constantly, standing
+still, out of combat - and why nothing the Enslaver had could match it:
+
+  1. `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak` renders ONLY while
+     the character RUNS (R-95's finding). He is a caster who stands and casts.
+  2. `svc_enslaver_shroud` (b98/b102) is a `Skill_BuffSelfToggled`, and both his
+     controllers shipped `BuffSelfBehavior = WhenEnemyIsSeen` - so it fires when
+     a fight starts and is OFF when Will stands looking at the summoned pet,
+     which is exactly how he inspects it (the R-102 screenshot).
+  3. Worse, BOTH of those channels pointed at `drxshadowcloakrunning_fx`, whose
+     own `boneList = Bone_R_Weapon; Bone_L_Weapon` pins the smoke to his two
+     WEAPON bones. Even when it did play it came off his fists, not from around
+     him - the round-4 defect R-95 fixed at the PAK layer while the EffectEntity
+     underneath kept doing it.
+  4. And `champion_mesh` (b102, R-102) moved him off `RevenantPoison.msh` to kill
+     the green - onto `SkeletonGrayBlack01New.msh`, which carries NO embedded FX
+     at all. That fix was right and it is not being undone; but it removed his
+     last always-on emitter, which is why this request arrives now.
 
 --------------------------------------------------------------------------------
-THE BLOCKER THIS MODULE CANNOT CLEAR (reported, NOT silently deferred)
+b104 - THE FIX: THE DEMONS' OWN PARTICLE, ON A BODY BONE, ALWAYS ON
 --------------------------------------------------------------------------------
-b92 proved from asset bytes that `Creatures\Monster\Skeleton\RevenantPoison.msh` -
-the mesh the Enslaver wears in the DEPLOYED arz - ends with
-`CreateEntity { attach = "Waist"; entity = "...RevenantPoison_FX.dbr" }` ->
-`Effects\MonsterFX\Buffs\RevenantPoison.pfx`, whose colour keyframes decode to
-R 0.534 / G 1.000 / B 0.591 = GREEN, compiled INTO THE MESH FILE and therefore
-invisible to any .arz scan. Black body-smoke over a green waist aura will not read
-as a black shroud - and after the round-4 shape fix the two now occupy the SAME
-space (both body-centred, the mesh aura at the waist), so if anything the mesh
-green matters more, not less.
-That mesh work belongs to the green-diff lane (b92, commit 60d7789, reachable only
-from tag build53-dev and NOT deployed) and turns on a Will answer about giving each
-champion a different aura-free mesh. It is registered as BL-b98-DEBT-2. NO REPORT
-FROM THIS LANE MAY CLAIM THE ENSLAVER READS BLACK until Will has looked at him in
-game with the mesh question settled.
+Three legs, all on MONSTER-RECORD fields and skill records (CRASH LAW: never a
+`charFxPak*` on a SpawnPet skill - the build28 trap, asserted in verify()):
+
+  A. **THE ASSET.** `svc_enslaver_shroud_fx` (our own EffectEntity, cloned from
+     the shipped `drxshadowcloakrunning_fx` for structure) points at
+     `Effects\MonsterFX\ShadowStalker_Smoke01.pfx` - byte-for-byte the file the
+     demons' mesh plays - and its donor's weapon `boneList` is DELETED, so the
+     smoke is no longer nailed to his fists.
+     It is our own record rather than a direct reference to the base-game
+     `Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr` for one reason: a record
+     that lives only in the base `.arz` cannot be read, gated or diffed by this
+     build. The `.pfx` - the thing that renders - is identical either way, and
+     verify() proves that file ships (A9 render resolution) rather than assuming.
+
+  B. **THE SHAPE.** `particleEffectAttachPoints = ['Bone_Waist']`.
+     ⚠️ We may NOT copy the demons' own attach name: `SpecialHit01` is a helper
+     that exists on `ShadowStalker.msh` and **does NOT exist on
+     `SkeletonGrayBlack01New.msh`** (measured in both mesh binaries), and an FX
+     aimed at a missing attach point silently renders NOTHING - the exact trap
+     R-95 wrote down and nobody had checked since. `Bone_Waist` IS present on his
+     rig (and on the demons'), it is where `RevenantPoison_FX` hung its aura on
+     his old mesh, and the base game ships body-wrap paks that attach at raw bone
+     names (`dmgabsolute_*charfxpak` -> `Bone_Spine02`, both shoulders). verify()
+     re-reads the wearer's mesh binary and FAILS if any attach point this pak
+     names is missing from that rig.
+
+  C. **ALWAYS ON.** Every roster surface gets an SVC-OWNED CLONE of whatever
+     controller it currently carries, with the single field `BuffSelfBehavior`
+     set to `WheneverPossible` (34 shipped carriers, including the DRX demon
+     controllers). The shared originals are NEVER edited: `controller_skeleton_
+     toxeus` also drives the Devourer and 4 others, and `controller_skelly_
+     aggressive` drives 148 pets. Flipping this is provably visual-only here
+     because the shroud is the ONLY `Skill_BuffSelf*` in either kit (measured:
+     monster slot 19, pets slot 13, nothing else) - and verify() asserts that,
+     so the day someone adds a real self-buff to him the gate fails instead of
+     quietly changing a boss fight.
+
+`charFxPakRunningNames` is KEPT untouched on every surface (ADD, never take
+away): the demons carry it too, so he still smokes harder when he moves.
+
+WHAT IS NOT CLAIMED: how it READS in game. Nobody has seen it. `BL-R250-DEBT-1`.
 
 --------------------------------------------------------------------------------
-b102 / R-102 SECOND AMENDMENT - THE SHROUD REACHED THE MONSTER AND NOTHING ELSE
+WHAT THIS MODULE DOES NOT TOUCH (reported, not silently deferred)
 --------------------------------------------------------------------------------
-WILL, VERBATIM:
-
-> "no the black is not the demon shroud i asked for, that is still not implemented.
->  the black is something else"
-
-HE WAS RIGHT AND THIS MODULE WAS WRONG. Measured on the built arz: the shroud sat
-in the MONSTER's slot 19 and on NONE of the three `pets\toxeus_enslaver_*` tiers.
-Will summons the PET. So from where he stands the request was simply never
-delivered, and the black he did see was the pre-existing DRX
-`charFxPakRunningNames` the pet records already carried - "the black is something
-else", exactly.
-
-The blocker above is also LIFTED: R-102's fourth amendment exonerated this pak as
-a green source (Will: "the demons that he summons have the proper black shroud and
-they dont have any green" - they carry the byte-identical pak), and the b102
-`champion_mesh` module removes the mesh-embedded green underneath it. So the
-shroud can now be claimed as black on the FX side; what still needs Will's EYE is
-only how it reads on the new mesh.
-
-WHAT CHANGED HERE (one idea, not a list): the shroud is wired to a ROSTER, and the
-roster is DERIVED - the monster plus every tier read out of
-`summon_toxeus_enslaver.spawnObjects` at build time. A 4th tier appended to that
-summon is picked up by the fix and by the gate with no code change, which is the
-only way "a future tier cannot be skipped" can be true of anything.
-Each pet gets the shroud in ITS OWN lowest free `skillName` slot (they use 1-12
-and 15; nothing is dropped, R-26's spirit), and their controller
-`controller_skelly_aggressive` carries `BuffSelfBehavior = WhenEnemyIsSeen`, the
-same trigger the monster's controller uses - so the toggle actually fires on a
-summoned pet rather than sitting inert in a slot.
+  * **The Devourer of Blood.** He has no body shroud either (`GoldenSkeleton01.msh`
+    is FX-free, he has no `charFxPakRunningNames`, and his only FX is R-7's
+    `svc_black_poison` = two HAND emitters of the not-colour-confirmed
+    `343_dark_smoke`). That is a real gap - but Will did not ask for it, his
+    demons are BLOOD demons with no shadow shroud to copy, and crimson is his
+    design. It is a QUESTION for Will, registered as `BL-R250-DEBT-2`, not a
+    change this lane makes on its own authority.
+  * **The Endless Hunt** already wears `ShadowStalker.msh` and therefore already
+    has the demons' embedded smoke, by construction. Nothing to do.
+  * **`svc_black_poison`, meshes, textures, skills, stats.** Not this lane's.
 """
 
 import sys as _sys
@@ -153,7 +122,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))   # tools/ on path
 
-MODULE_NAME = "Enslaver persistent black shroud (R-95)"
+MODULE_NAME = "Enslaver persistent black shadow shroud (R-95 / R-102 / R-250)"
 
 DATA_TYPE_INT = 0
 DATA_TYPE_FLOAT = 1
@@ -165,34 +134,54 @@ _MARAUDER = r'records\creature\monster\shadowstalker\um_enslaver_marauder_99.dbr
 # are never listed - they are read out of this summon's spawnObjects, so the
 # roster cannot go stale when a tier is added.
 _ENSLAVER_SUMMON = r'records\skills\soulskills\summon_toxeus_enslaver.dbr'
-# The pets' AI controller. Named here because a self-buff toggle is inert without
-# a controller that fires it; the gate asserts this rather than assuming it.
-_PET_CONTROLLER_BUFF_TRIGGER = 'WhenEnemyIsSeen'
+# W2, the second roster witness: anything carrying his name tag. This is what
+# catches a difficulty CLONE minted at build time (the Hunt has exactly one,
+# `um_toxeus_hunt_l_99`) that the summon chain cannot see.
+_NAME_TAGS = ('tagsvcmonsterenslaver', 'tagsvcmonsterenslaverpet')
 
-# the in-game-CONFIRMED black: the smoke Will saw on the marauders
+# ── the demons' own shroud, measured not assumed ────────────────────────────
+# `um_enslaver_marauder_99.mesh` = ShadowStalker.msh, whose binary ends in
+#   CreateEntity { attach = "SpecialHit01"; entity = "<_DEMON_FX_REF>" }
+# and that base-game EffectEntity plays <_DEMON_PFX>. verify() re-derives the
+# first from the mesh every build, so if the marauders' shroud ever moves, the
+# "same one his demons have" claim fails loud instead of silently going stale.
+_DEMON_FX_REF = r'records\effects\monsterfx\shadowstalker_smoke.dbr'
+_DEMON_PFX = r'Effects\MonsterFX\ShadowStalker_Smoke01.pfx'
+# the demons' MESH attach helper - NAMED HERE ONLY TO BE REFUSED. It does not
+# exist on the Enslaver's rig; copying it would render nothing at all.
+_DEMON_MESH_ATTACH = 'SpecialHit01'
+
+# the running channel both he and his demons already carry (kept, never removed)
 _SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx.dbr'
 _SHADOWCLOAK_PAK = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
 
 # structure donors (both DB-verified)
 _SKILL_DONOR = r'records\skills\monster skills\buff_self\empusamerc_enchantment.dbr'
 _PAK_DONOR = r'records\effects\weaponenchantments\343_weapon_poisoncharfxpak.dbr'
+_FX_DONOR = _SHADOWCLOAK_FX          # an EffectEntity we already ship + gate
 
 _SHROUD = r'records\skills\monster skills\buff_self\svc_enslaver_shroud.dbr'
 _SHROUD_PAK = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr'
+_SHROUD_FX = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_fx.dbr'
 
-# ── SHAPE (round 4 fix; see the ROUND 4 block in the docstring) ─────────────
-# The demons' own pak emits from the WHOLE BODY: `drxshadowcloakrunning_fx_pak`
-# carries `particleEffectNames` x1 and NO `particleEffectAttachPoints` at all.
-# Round 1 cloned the 343 weapon-enchantment pak's STRUCTURE wholesale and kept
-# its 'R Hand';'L Hand' attach pair, so the Enslaver smoked from two hands while
-# his marauders smoked from the body - the colour half of Will's ask was right
-# and the SHAPE half was not. Measured off the built arz before changing it:
-# of the 294 resolvable `charFxPakSelfNames` references in the DB, 248 point at a
-# pak with NO attach points and only 46 at one with any; all 14
-# `charFxPakRunningNames` references (the demons' channel) are attach-free. So
-# body-centred is both the faithful answer and the overwhelming convention.
-_ATTACH = []            # [] == emit from the body, exactly like the demons' pak
-_PARTICLE_COUNT = 1     # one entry, matching drxshadowcloakrunning_fx_pak x1
+# ── SHAPE (b104) ────────────────────────────────────────────────────────────
+# A bone that EXISTS on his rig, and the one his old mesh hung its aura on.
+# Never `SpecialHit01` (missing from his rig -> silent nothing) and never
+# 'R Hand'/'L Hand' (the b98 round-4 defect: smoke off two fists).
+_ATTACH = ['Bone_Waist']
+_PARTICLE_COUNT = 1     # ONE body emitter, exactly like the demons' one CreateEntity
+
+# ── ALWAYS ON (b104) ────────────────────────────────────────────────────────
+_BUFF_TRIGGER = 'WheneverPossible'
+_CTRL_PREFIX = 'svc_alwayson_'
+
+# ── TEST HOOKS ──────────────────────────────────────────────────────────────
+# The two asset-level gates read `.msh` binaries out of the shipped `.arc`s. The
+# negative test cannot ship archives, so it injects the two answers instead. In a
+# real build both stay None and the gates read the real assets (or announce a
+# loud DOWNGRADE - never a silent pass).
+_RIG_NAMES_OVERRIDE = None      # {mesh_ref_lower: set(attach/bone names)}
+_DEMON_FX_OVERRIDE = None       # [entity refs embedded in the demons' mesh]
 
 
 def _norm(p):
@@ -204,20 +193,47 @@ def _gv1(db, rec, f):
     return v[0] if isinstance(v, list) and v else v
 
 
+def _lst(db, rec, f):
+    v = db.get_field_value(rec, f)
+    if v is None:
+        return []
+    return [str(x) for x in (v if isinstance(v, list) else [v]) if str(x).strip()]
+
+
 def _require(db, *recs):
     missing = [r for r in recs if not db.has_record(r)]
     if missing:
         raise SystemExit("[enslaver_shroud] required record(s) missing: %s" % missing)
 
 
-def _free_skillname_slot(db, rec, lo=1, hi=23):
-    ff = db.get_fields(rec) or {}
-    used = set()
-    for k, tf in ff.items():
+def _skill_slots(db, rec):
+    """{slot: skill path} for every non-blank skillName<i> on rec."""
+    out = {}
+    for k, tf in (db.get_fields(rec) or {}).items():
         b = k.split('###')[0]
         if b.startswith('skillName') and b[9:].isdigit() and tf.values \
                 and str(tf.values[0]).strip():
-            used.add(int(b[9:]))
+            out[int(b[9:])] = str(tf.values[0])
+    return out
+
+
+def _level_slots(db, rec):
+    """{slot} for every skillLevel<i> PRESENT on rec, blank name or not.
+
+    Orphan `skillLevel` arrays with no `skillName` beside them are SV-donor
+    residue and they are real: a name-only freeness test would silently
+    overwrite one, which is a field change no record diff can explain.
+    """
+    out = set()
+    for k, tf in (db.get_fields(rec) or {}).items():
+        b = k.split('###')[0]
+        if b.startswith('skillLevel') and b[10:].isdigit() and tf.values:
+            out.add(int(b[10:]))
+    return out
+
+
+def _free_skillname_slot(db, rec, lo=1, hi=23):
+    used = set(_skill_slots(db, rec)) | _level_slots(db, rec)
     for i in range(lo, hi + 1):
         if i not in used:
             return i
@@ -226,23 +242,19 @@ def _free_skillname_slot(db, rec, lo=1, hi=23):
 
 def _slot_of(db, rec, skill):
     want = _norm(skill)
-    ff = db.get_fields(rec) or {}
-    for k, tf in ff.items():
-        b = k.split('###')[0]
-        if b.startswith('skillName') and b[9:].isdigit() and tf.values \
-                and _norm(tf.values[0]) == want:
-            return int(b[9:])
+    for i, p in _skill_slots(db, rec).items():
+        if _norm(p) == want:
+            return i
     return None
 
 
 def _del_field(db, rec, name):
     """Remove a field slot entirely rather than blanking it to ''.
 
-    Same rule the sibling module uses (B-TOXEUS-2): a live reference blanked to
-    the empty string is a loader hazard, an ABSENT field is the shipped way to
-    say "this record does not use this". 86 of the 131 CharFxPak records in the
-    DB simply omit `particleEffectAttachPoints`; none of them carries an empty
-    one, so absence - not emptiness - is the precedented shape.
+    A live reference blanked to the empty string is a loader hazard; an ABSENT
+    field is the shipped way to say "this record does not use this". 86 of the
+    131 CharFxPak records in the DB simply omit `particleEffectAttachPoints` and
+    none carries an empty one, so absence - not emptiness - is precedented.
     """
     ff = db.get_fields(rec)
     if not ff:
@@ -257,17 +269,106 @@ def _del_field(db, rec, name):
     return hit
 
 
+# ── ASSET-LEVEL READERS (the layer four waves never looked at) ──────────────
+
+def _mesh_names(mesh_ref):
+    """(status, set(attach/bone helper names)) out of a mesh binary.
+
+    status PASS / SKIP. SKIP means the archives are not reachable from this
+    working tree; the caller ANNOUNCES that rather than counting it as a pass.
+    """
+    if _RIG_NAMES_OVERRIDE is not None:
+        got = _RIG_NAMES_OVERRIDE.get(_norm(mesh_ref))
+        return ('PASS', got) if got is not None else ('SKIP', set())
+    try:
+        import re
+        import mesh_assets
+        if not mesh_assets.arcs_available():
+            return ('SKIP', set())
+        data, _arc = mesh_assets.read_asset(mesh_ref)
+        if not data:
+            return ('SKIP', set())
+        names = set()
+        for m in re.finditer(rb'[A-Za-z][A-Za-z0-9_ ]{2,31}\x00', data):
+            names.add(m.group(0)[:-1].decode('ascii'))
+        return ('PASS', names)
+    except Exception:                                        # noqa: BLE001
+        return ('SKIP', set())
+
+
+def _demon_embedded_fx(db):
+    """(status, [effect refs]) compiled into the MARAUDERS' mesh.
+
+    This is the provenance anchor for the whole module: the shroud Will pointed
+    at is not a field, it is this CreateEntity block. Deriving it every build is
+    what makes "the same one that his demon summon guys have" a checked claim.
+    """
+    if _DEMON_FX_OVERRIDE is not None:
+        return ('PASS', list(_DEMON_FX_OVERRIDE))
+    mesh = _gv1(db, _MARAUDER, 'mesh')
+    if not mesh:
+        return ('FAIL', [])
+    try:
+        import mesh_assets
+        if not mesh_assets.arcs_available():
+            return ('SKIP', [])
+        data, _arc = mesh_assets.read_asset(str(mesh))
+        if not data:
+            return ('SKIP', [])
+        return ('PASS', mesh_assets.embedded_fx_of(data))
+    except Exception:                                        # noqa: BLE001
+        return ('SKIP', [])
+
+
+def pfx_resolution(pfx=_DEMON_PFX):
+    """A9-STYLE RENDER RESOLUTION: does the particle file actually SHIP?
+
+    Resolution is not rendering (the A9/D5 lesson). The record chain can be
+    perfect and he still smokes nothing if the `.pfx` is in no shipped archive.
+    Walks the mod's staged `Resources` first, then the game install, which is the
+    order the engine uses - this particular file is a BASE-GAME asset, so a
+    mod-only search would report a false failure.
+    """
+    try:
+        import mesh_assets
+        if not mesh_assets.arcs_available():
+            return ('SKIP', 'no reachable .arc archives from this working tree')
+        data, arcp = mesh_assets.read_asset(pfx)
+        if not data:
+            return ('FAIL', '%r is in NO shipped archive, so the shroud would '
+                            'resolve to nothing and he would smoke nothing' % pfx)
+        return ('PASS', '%s -> %s (%d bytes)' % (pfx, arcp, len(data)))
+    except Exception as e:                                   # noqa: BLE001
+        return ('SKIP', 'could not read the archives (%s)' % e)
+
+
+# ── BUILD ───────────────────────────────────────────────────────────────────
+
+def _build_fx(db):
+    """Our own EffectEntity playing the demons' own .pfx, body-attachable."""
+    _require(db, _FX_DONOR)
+    if not db.has_record(_SHROUD_FX):
+        db.clone_record(_FX_DONOR, _SHROUD_FX)
+    db.set_field(_SHROUD_FX, 'effectFile', _DEMON_PFX)
+    # THE DONOR'S WEAPON BONES MUST GO. `drxshadowcloakrunning_fx` carries
+    # boneList = Bone_R_Weapon;Bone_L_Weapon, which is why every previous
+    # rendering of this shroud came off his fists instead of from around him.
+    _del_field(db, _SHROUD_FX, 'boneList')
+    db.set_field(_SHROUD_FX, 'FileDescription',
+                 'SVC Enslaver: the demons own ShadowStalker smoke, body-attached '
+                 '(visual only)')
+    db._modified.add(_SHROUD_FX)
+
+
 def _build_pak(db):
-    _require(db, _PAK_DONOR, _SHADOWCLOAK_FX)
+    _require(db, _PAK_DONOR)
     if not db.has_record(_SHROUD_PAK):
         db.clone_record(_PAK_DONOR, _SHROUD_PAK)
-    # value-only overrides on a cloned record (dtype preserved).
-    db.set_field(_SHROUD_PAK, 'particleEffectNames', [_SHADOWCLOAK_FX] * _PARTICLE_COUNT)
+    # value-only overrides on a cloned record (dtype preserved - the dtype lesson).
+    db.set_field(_SHROUD_PAK, 'particleEffectNames', [_SHROUD_FX] * _PARTICLE_COUNT)
     if _ATTACH:
         db.set_field(_SHROUD_PAK, 'particleEffectAttachPoints', list(_ATTACH))
     else:
-        # BODY-CENTRED: drop the donor's hand pair so he smokes the way his
-        # marauders do, which is what Will actually asked for.
         _del_field(db, _SHROUD_PAK, 'particleEffectAttachPoints')
     db._modified.add(_SHROUD_PAK)
 
@@ -283,8 +384,31 @@ def _build_skill(db):
             db.set_field(_SHROUD, f, 0.0)
     db.set_field(_SHROUD, 'skillMaxLevel', 3)
     db.set_field(_SHROUD, 'FileDescription',
-                 'SVC Enslaver: persistent black shroud (visual only, no payload)')
+                 'SVC Enslaver: persistent black shadow shroud (visual only, no payload)')
     db._modified.add(_SHROUD)
+
+
+def _always_on_controller(db, src):
+    """An SVC-OWNED clone of `src` whose ONLY difference is BuffSelfBehavior.
+
+    The shared originals are never written: `controller_skeleton_toxeus` also
+    drives the Devourer, `um_toxeus_99`, `um_toxeus_21` and two dev dummies, and
+    `controller_skelly_aggressive` drives 148 pets. Editing either in place to
+    fix ONE champion's FX is the `genericbossorb_04` mistake (R-103's required
+    check) with an AI field instead of a loot field.
+    """
+    head, _sep, base = str(src).rpartition('\\')
+    dest = '%s\\%s%s' % (head, _CTRL_PREFIX, base)
+    if not db.has_record(dest):
+        if not db.clone_record(src, dest):
+            raise SystemExit("[enslaver_shroud] could not clone controller %s" % src)
+    db.set_field(dest, 'BuffSelfBehavior', _BUFF_TRIGGER)
+    db._modified.add(dest)
+    return dest
+
+
+def _is_ours(ctrl):
+    return str(ctrl).rsplit('\\', 1)[-1].lower().startswith(_CTRL_PREFIX)
 
 
 def _pet_tiers(db):
@@ -298,23 +422,48 @@ def _pet_tiers(db):
     """
     if not db.has_record(_ENSLAVER_SUMMON):
         return []
-    v = db.get_field_value(_ENSLAVER_SUMMON, 'spawnObjects')
-    v = v if isinstance(v, list) else ([v] if v else [])
     out = []
-    for x in v:
-        s = str(x).strip()
+    for x in _lst(db, _ENSLAVER_SUMMON, 'spawnObjects'):
+        s = x.strip()
         if s and db.has_record(s) and s not in out:
             out.append(s)
     return out
 
 
-def shroud_roster(db):
-    """{monster} + {every derived pet tier} - the surfaces the shroud must cover."""
-    return ([_ENSLAVER] if db.has_record(_ENSLAVER) else []) + _pet_tiers(db)
+def _by_name_tag(db):
+    """W2: every Monster/Pet record described by one of his name tags.
+
+    Catches a build-time DIFFICULTY CLONE, which the summon chain cannot see.
+    Prefiltered on the .arz record-type index so this costs a slice of the DB
+    rather than a full decode.
+    """
+    types = getattr(db, '_record_types', None) or {}
+    out = []
+    for n in db.record_names():
+        t = types.get(n)
+        if t and t not in ('Monster', 'Pet'):
+            continue
+        d = _gv1(db, n, 'description')
+        if d and str(d).lower() in _NAME_TAGS:
+            cls = str(_gv1(db, n, 'Class') or '')
+            if cls.startswith('Monster') or cls.startswith('Pet'):
+                out.append(n)
+    return sorted(out)
+
+
+def shroud_roster(db, w2=None):
+    """{monster} + {every derived pet tier} + {anything wearing his name tag}."""
+    w1 = ([_ENSLAVER] if db.has_record(_ENSLAVER) else []) + _pet_tiers(db)
+    seen, out = set(), []
+    for r in w1 + (list(w2) if w2 is not None else _by_name_tag(db)):
+        if r not in seen:
+            seen.add(r)
+            out.append(r)
+    return out
 
 
 def _wire_one(db, rec):
-    """Put the shroud in this record's own lowest FREE skill slot."""
+    """Shroud slot + always-on controller on one surface."""
     slot = _slot_of(db, rec, _SHROUD) or _free_skillname_slot(db, rec)
     if slot is None:
         raise SystemExit(
@@ -323,49 +472,56 @@ def _wire_one(db, rec):
             "Will rather than sacrificing one." % rec)
     db.set_field(rec, 'skillName%d' % slot, _SHROUD)
     # Level is cosmetic here (the shroud carries no payload at all - the
-    # VISUAL-ONLY invariant below enforces that), so any granted level shows it.
-    # The monster keeps its per-difficulty [1,2,3]; a pet tier is already ONE
-    # record per tier, so a scalar 1 is the honest shape there.
-    if rec == _ENSLAVER:
-        db.set_field(rec, 'skillLevel%d' % slot, [1, 2, 3])
-    else:
-        db.set_field(rec, 'skillLevel%d' % slot, 1)
+    # VISUAL-ONLY invariant enforces that), it only has to be non-zero to show.
+    # The monster keeps its per-difficulty [1,2,3]; a pet tier IS one record per
+    # tier, so a scalar 1 is the honest shape there.
+    db.set_field(rec, 'skillLevel%d' % slot, [1, 2, 3] if rec == _ENSLAVER else 1)
+
+    ctrl = _gv1(db, rec, 'controller')
+    if not ctrl or not db.has_record(str(ctrl)):
+        raise SystemExit(
+            "[enslaver_shroud] %s has no resolvable controller (%r), so a "
+            "self-buff shroud can never fire on it." % (rec, ctrl))
+    ours = str(ctrl) if _is_ours(ctrl) else _always_on_controller(db, str(ctrl))
+    db.set_field(rec, 'controller', ours)
     db._modified.add(rec)
-    return slot
+    return slot, ours
 
 
-def _wire(db):
+def apply(db, tags):
+    print("\n=== [enslaver_shroud] THE ENSLAVER'S BLACK SHADOW SHROUD "
+          "(R-95 / R-102 / b104 R-250) ===")
     _require(db, _ENSLAVER)
-    roster = shroud_roster(db)
     tiers = _pet_tiers(db)
     if not tiers:
         raise SystemExit(
             "[enslaver_shroud] %s spawns no resolvable pet, so the tier roster "
-            "is EMPTY. That is the exact b98 failure this module now exists to "
+            "is EMPTY. That is the exact b98 failure this module exists to "
             "prevent (shroud on the monster, nothing on what Will summons) - "
             "stop rather than ship a monster-only shroud again." % _ENSLAVER_SUMMON)
-    for rec in roster:
-        slot = _wire_one(db, rec)
-        print("  shroud -> skillName%-2d on %s%s"
-              % (slot, rec, '   (MONSTER)' if rec == _ENSLAVER else '   (PET TIER)'))
-    print("  %d surface(s) wired (1 monster + %d derived pet tier(s)); NO existing "
-          "skill dropped; charFxPakRunningNames kept as-is everywhere."
-          % (len(roster), len(tiers)))
-
-
-def apply(db, tags):
-    print("\n=== [enslaver_shroud] b98 THE ENSLAVER'S BLACK SHROUD (R-95) "
-          "+ b102 every pet tier (R-102 2nd amendment) ===")
+    _build_fx(db)
     _build_pak(db)
     _build_skill(db)
-    _wire(db)
+    for rec in shroud_roster(db):
+        slot, ctrl = _wire_one(db, rec)
+        print("  shroud -> skillName%-2d  ctrl=%-58s %s%s"
+              % (slot, ctrl.rsplit('\\', 1)[-1], rec,
+                 '   (MONSTER)' if rec == _ENSLAVER else '   (PET TIER)'))
+    print("  %d surface(s): the demons' own %s on Bone_Waist, always on "
+          "(BuffSelfBehavior=%s on SVC-owned controller clones); NO skill dropped; "
+          "charFxPakRunningNames untouched everywhere."
+          % (len(shroud_roster(db)), _DEMON_PFX.rsplit('\\', 1)[-1], _BUFF_TRIGGER))
     print("=== [enslaver_shroud] done (verify() runs post-finalization) ===\n")
     return tags
 
 
+# ── GATE ────────────────────────────────────────────────────────────────────
+
 def verify(db, tags=None):
     problems = []
+    notes = []
 
+    # ── the skill ───────────────────────────────────────────────────────────
     if not db.has_record(_SHROUD):
         problems.append("shroud skill missing: %s" % _SHROUD)
     else:
@@ -376,9 +532,8 @@ def verify(db, tags=None):
             problems.append("shroud charFxPakSelfNames=%r != %s"
                             % (_gv1(db, _SHROUD, 'charFxPakSelfNames'), _SHROUD_PAK))
         # VISUAL-ONLY invariant: a shroud must never quietly become a stat buff.
-        ff = db.get_fields(_SHROUD) or {}
         payload = []
-        for k, tf in ff.items():
+        for k, tf in (db.get_fields(_SHROUD) or {}).items():
             b = k.split('###')[0]
             if not (b.startswith('offensive') or b.startswith('defensive')
                     or b.startswith('character')):
@@ -390,7 +545,7 @@ def verify(db, tags=None):
         if payload:
             problems.append(
                 "VISUAL-ONLY: the shroud picked up a combat payload (%s). It is a "
-                "cosmetic buff; a stat change here silently rebalances the Enslaver."
+                "cosmetic buff; a stat change here silently rebalances a boss."
                 % sorted(set(payload))[:6])
         for f in ('skillWeaponTintRed', 'skillWeaponTintGreen', 'skillWeaponTintBlue'):
             t = _gv1(db, _SHROUD, f)
@@ -399,69 +554,87 @@ def verify(db, tags=None):
                                 "the donor's purple tint would recolour his weapon)"
                                 % (f, t))
 
+    # ── the EffectEntity: the demons' particle, off the weapon bones ────────
+    if not db.has_record(_SHROUD_FX):
+        problems.append("shroud EffectEntity missing: %s" % _SHROUD_FX)
+    else:
+        if str(_gv1(db, _SHROUD_FX, 'Class') or '') != 'EffectEntity':
+            problems.append("%s Class=%r != EffectEntity"
+                            % (_SHROUD_FX, _gv1(db, _SHROUD_FX, 'Class')))
+        eff = str(_gv1(db, _SHROUD_FX, 'effectFile') or '')
+        if _norm(eff) != _norm(_DEMON_PFX):
+            problems.append(
+                "ASSET PROVENANCE: %s plays %r, expected %r - the exact particle "
+                "file the demons' own mesh plays. Will asked for 'the same one "
+                "that his demon summon guys have'; a different .pfx is a different "
+                "shroud, and no colour check in this file would notice."
+                % (_SHROUD_FX, eff, _DEMON_PFX))
+        bl = _lst(db, _SHROUD_FX, 'boneList')
+        if bl:
+            problems.append(
+                "SHAPE: %s carries boneList=%r. The donor pinned this smoke to "
+                "Bone_R_Weapon/Bone_L_Weapon, which is why every previous version "
+                "of this shroud came off his FISTS instead of from around him. A "
+                "body shroud must carry no boneList and be placed by the pak's "
+                "attach point." % (_SHROUD_FX, bl))
+
+    # ── the pak: one body emitter, on a bone that exists on his rig ─────────
     if not db.has_record(_SHROUD_PAK):
         problems.append("shroud CharFxPak missing: %s" % _SHROUD_PAK)
     else:
-        names = db.get_field_value(_SHROUD_PAK, 'particleEffectNames') or []
-        names = names if isinstance(names, list) else [names]
-        if not names or any(_norm(n) != _norm(_SHADOWCLOAK_FX) for n in names):
-            problems.append(
-                "COLOUR PROVENANCE: the shroud pak must use ONLY %s - the marauders' "
-                "own shadowcloak smoke, the single in-game-CONFIRMED black in this "
-                "area. Got %r. (343_dark_smoke and hades2_shadowcloud are NOT "
-                "colour-confirmed; R-10 calls 343_dark_smoke green-rendering.)"
-                % (_SHADOWCLOAK_FX, names))
-        # SHAPE leg (round 4). Will asked for "the same black shroud smoke his
-        # summoned demons have" - same means same SHAPE as well as same colour.
-        # The demons' pak has no attach points, so neither may this one: a hand
-        # pair would put the smoke on two fists instead of round the body, and
-        # that difference is invisible to every colour check in this file.
-        apf = db.get_field_value(_SHROUD_PAK, 'particleEffectAttachPoints')
-        ap = [str(x) for x in (apf if isinstance(apf, list) else [apf] if apf else []) if str(x).strip()]
-        if [str(x) for x in ap] != _ATTACH:
-            problems.append(
-                "SHAPE: shroud pak particleEffectAttachPoints=%r, expected %r. The "
-                "demons' own %s emits from the WHOLE BODY with no attach points; an "
-                "attach pair (the 343 weapon-enchantment donor's shape) would smoke "
-                "from the hands instead and would NOT be 'the same shroud his "
-                "summoned demons have'. Bone names (Bone_R_Weapon) are doubly wrong "
-                "here - those belong on an EffectEntity boneList, never on a pak."
-                % (ap, _ATTACH, _SHADOWCLOAK_PAK.rsplit('\\', 1)[-1]))
+        names = _lst(db, _SHROUD_PAK, 'particleEffectNames')
+        if not names or any(_norm(n) != _norm(_SHROUD_FX) for n in names):
+            problems.append("shroud pak particleEffectNames=%r, expected %r"
+                            % (names, [_SHROUD_FX]))
         if len(names) != _PARTICLE_COUNT:
             problems.append(
-                "shroud pak has %d particleEffectNames entr(ies), expected %d. The "
-                "donor duplicated its effect once per attach point; with no attach "
-                "points there is exactly one body emitter, as on the demons' pak."
+                "shroud pak has %d particleEffectNames entr(ies), expected %d - the "
+                "demons carry exactly ONE CreateEntity smoke, so one emitter is the "
+                "faithful match and duplicates would just thicken it."
                 % (len(names), _PARTICLE_COUNT))
-
-    # The SHAPE expectation above is only honest if it is DERIVED from the record
-    # it claims to copy. Read the demons' own pak and require that it really is
-    # attach-free; if the marauders' shroud ever grows attach points, this gate
-    # fails loud instead of silently letting the two drift apart.
-    if db.has_record(_SHADOWCLOAK_PAK):
-        dapf = db.get_field_value(_SHADOWCLOAK_PAK, 'particleEffectAttachPoints')
-        dap = [str(x) for x in (dapf if isinstance(dapf, list) else [dapf] if dapf else [])
-               if str(x).strip()]
-        if dap != _ATTACH:
+        ap = _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')
+        if ap != _ATTACH:
             problems.append(
-                "the DEMONS' pak %s now has particleEffectAttachPoints=%r while this "
-                "module still copies %r. The shape reference moved; re-derive "
-                "_ATTACH from it rather than leaving the two shrouds different."
-                % (_SHADOWCLOAK_PAK, dap, _ATTACH))
+                "SHAPE: shroud pak particleEffectAttachPoints=%r, expected %r. "
+                "'R Hand'/'L Hand' is the b98 round-4 defect (smoke off two fists) "
+                "and %r is the demons' OWN mesh helper, which does not exist on his "
+                "rig and would render nothing at all."
+                % (ap, _ATTACH, _DEMON_MESH_ATTACH))
+
+    # ── PROVENANCE, DERIVED FROM THE DEMONS' MESH (not from a comment) ──────
+    st, refs = _demon_embedded_fx(db)
+    if st == 'FAIL':
+        problems.append("the marauders (%s) have no mesh, so the shroud's "
+                        "provenance cannot be derived at all" % _MARAUDER)
+    elif st == 'SKIP':
+        notes.append("DEMON-MESH PROVENANCE DOWNGRADED (not a pass): the .arc "
+                     "archives are not reachable from this working tree, so the "
+                     "marauders' embedded shroud could not be re-derived")
     else:
-        problems.append("the demons' shape/colour reference pak is missing: %s"
-                        % _SHADOWCLOAK_PAK)
+        stems = [str(r).replace('/', '\\').rsplit('\\', 1)[-1].lower() for r in refs]
+        want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
+        if want not in stems:
+            problems.append(
+                "PROVENANCE: the marauders' mesh no longer embeds %s (it embeds "
+                "%r). The whole premise of this module is that THAT is the shroud "
+                "Will pointed at; re-derive it rather than letting the two drift "
+                "apart." % (want, refs))
+        pfx_stem = _DEMON_PFX.rsplit('\\', 1)[-1].lower()
+        if not pfx_stem.startswith(want[:-4].rstrip('0123456789_')):
+            problems.append(
+                "PROVENANCE: the shroud plays %r, which is not a file of the "
+                "demons' %r family." % (_DEMON_PFX, want))
 
-    if not db.has_record(_SHADOWCLOAK_FX):
-        problems.append("the confirmed shadowcloak EffectEntity is missing: %s"
-                        % _SHADOWCLOAK_FX)
-    elif not _gv1(db, _SHADOWCLOAK_FX, 'effectFile'):
-        problems.append("%s has no effectFile" % _SHADOWCLOAK_FX)
+    # ── A9 RENDER RESOLUTION: resolution is not rendering ──────────────────
+    st, detail = pfx_resolution()
+    if st == 'FAIL':
+        problems.append("A9 RENDER RESOLUTION: %s" % detail)
+    elif st == 'SKIP':
+        notes.append("A9 render resolution DOWNGRADED (not a pass): %s" % detail)
+    else:
+        notes.append("A9 render resolution PASS: %s" % detail)
 
-    # ── ROSTER LEG (b102, R-102 second amendment). The shroud must be on the
-    #    MONSTER *and* on every pet tier, and the tier list must be DERIVED, or
-    #    the b98 failure repeats the next time a tier is added: Will summons the
-    #    pet, so a monster-only shroud is, from where he stands, not implemented.
+    # ── ROSTER: two witnesses, which must agree ────────────────────────────
     if not db.has_record(_ENSLAVER):
         problems.append("Enslaver missing: %s" % _ENSLAVER)
     if not db.has_record(_ENSLAVER_SUMMON):
@@ -475,69 +648,153 @@ def verify(db, tags=None):
             "%s spawns NO resolvable pet: the derived tier roster is EMPTY. b98 "
             "shipped a monster-only shroud exactly this way and Will reported it "
             "as never implemented." % _ENSLAVER_SUMMON)
+    w2_list = _by_name_tag(db)
+    w1 = set([_ENSLAVER] if db.has_record(_ENSLAVER) else []) | set(tiers)
+    if w1 and set(w2_list) - w1:
+        problems.append(
+            "ROSTER WITNESS DISAGREEMENT: %r carr(y) an Enslaver name tag but are "
+            "not reachable from the anchor + summon. A difficulty clone or a new "
+            "tier has appeared (the Hunt has exactly such a clone, "
+            "um_toxeus_hunt_l_99) and would ship with no shroud."
+            % sorted(set(w2_list) - w1))
 
-    for rec in shroud_roster(db):
+    roster = shroud_roster(db, w2=w2_list)
+    ours_carriers = set()
+    for rec in roster:
         is_pet = rec != _ENSLAVER
+        tag = ' (PET TIER)' if is_pet else ' (MONSTER)'
         slot = _slot_of(db, rec, _SHROUD)
         if slot is None:
             problems.append(
-                "SHROUD MISSING on %s%s - the shroud is in none of its skillName "
-                "slots. R-102's second amendment: b98 wired the MONSTER ONLY, all "
-                "three pet tiers were skipped, and the pet is what Will summons."
-                % (rec, ' (PET TIER)' if is_pet else ' (MONSTER)'))
-            continue
-        lv = db.get_field_value(rec, 'skillLevel%d' % slot)
-        lv0 = lv[0] if isinstance(lv, list) and lv else lv
-        if not lv0:
-            problems.append("%s: shroud sits at skillLevel%d=%r (level 0 is not "
-                            "granted, so it never displays)" % (rec, slot, lv))
-        if is_pet:
-            # A self-buff toggle is inert unless the controller fires it. The
-            # pets run controller_skelly_aggressive; assert the trigger rather
-            # than assuming it, so a controller repoint cannot silently kill the
-            # shroud on the exact surface Will looks at.
-            ctrl = _gv1(db, rec, 'controller')
-            if not ctrl or not db.has_record(str(ctrl)):
-                problems.append("%s has no resolvable controller (%r), so its "
-                                "self-buff shroud can never fire" % (rec, ctrl))
+                "SHROUD MISSING on %s%s - it is in none of its skillName slots. "
+                "R-102's second amendment: b98 wired the MONSTER ONLY, every pet "
+                "tier was skipped, and the pet is what Will summons." % (rec, tag))
+        else:
+            lv = db.get_field_value(rec, 'skillLevel%d' % slot)
+            lv0 = lv[0] if isinstance(lv, list) and lv else lv
+            if not lv0:
+                problems.append("%s: shroud sits at skillLevel%d=%r (level 0 is not "
+                                "granted, so it never displays)" % (rec, slot, lv))
+
+        # ── ALWAYS ON, and provably visual-only ────────────────────────────
+        ctrl = _gv1(db, rec, 'controller')
+        if not ctrl or not db.has_record(str(ctrl)):
+            problems.append("%s has no resolvable controller (%r), so its self-buff "
+                            "shroud can never fire" % (rec, ctrl))
+        else:
+            ours_carriers.add(str(ctrl))
+            if not _is_ours(ctrl):
+                problems.append(
+                    "%s%s still runs the SHARED controller %s. Either the shroud is "
+                    "combat-gated on it (the WhenEnemyIsSeen default - OFF while "
+                    "Will stands looking at the summoned pet, which is how he "
+                    "inspects it), or a shared AI record was edited in place and "
+                    "148 other pets moved with it." % (rec, tag, ctrl))
+            trig = str(_gv1(db, str(ctrl), 'BuffSelfBehavior'))
+            if trig != _BUFF_TRIGGER:
+                problems.append(
+                    "%s: controller %s has BuffSelfBehavior=%r, expected %r. A "
+                    "toggled shroud the AI only fires in combat is not a shroud "
+                    "he wears; that is why this request has now been filed three "
+                    "times." % (rec, ctrl, trig, _BUFF_TRIGGER))
+        # the AI flip is only safe while the shroud is the ONLY self-buff here
+        others = []
+        for i, sk in sorted(_skill_slots(db, rec).items()):
+            if _norm(sk) == _norm(_SHROUD) or not db.has_record(sk):
+                continue
+            if 'BuffSelf' in str(_gv1(db, sk, 'Class') or ''):
+                others.append((i, sk))
+        if others:
+            problems.append(
+                "AI SIDE EFFECT: %s carries other Skill_BuffSelf* skill(s) %r. "
+                "BuffSelfBehavior=%s makes the AI fire ALL of them out of combat, "
+                "so this lane's visual-only claim no longer holds - split the "
+                "trigger or get Will's call before shipping."
+                % (rec, others, _BUFF_TRIGGER))
+
+        # ── RIG: an attach point missing from the wearer's mesh renders NOTHING
+        mesh = _gv1(db, rec, 'mesh')
+        if not mesh:
+            problems.append("%s has no mesh field, so the shroud's attach point "
+                            "cannot be checked against its rig" % rec)
+        else:
+            st, names = _mesh_names(str(mesh))
+            if st == 'SKIP':
+                notes.append("RIG ATTACH DOWNGRADED (not a pass) for %s: %s could "
+                             "not be read" % (rec.rsplit('\\', 1)[-1], mesh))
             else:
-                trig = _gv1(db, str(ctrl), 'BuffSelfBehavior')
-                if str(trig) != _PET_CONTROLLER_BUFF_TRIGGER:
+                missing = [a for a in _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')
+                           if a not in names]
+                if missing:
                     problems.append(
-                        "%s: controller %s has BuffSelfBehavior=%r, expected %r. A "
-                        "Skill_BuffSelfToggled that the AI never toggles is a slot "
-                        "with nothing in it."
-                        % (rec, ctrl, trig, _PET_CONTROLLER_BUFF_TRIGGER))
-        # R-26 spirit + "ADD, never take away": the pre-existing DRX running FX
-        # (the black smoke Will already sees) must survive on every surface that
-        # had it. The monster and the pet tiers all carry it on main.
+                        "RIG ATTACH: %s wears %s, which has no %r. An FX aimed at an "
+                        "attach point the mesh does not carry renders NOTHING, "
+                        "silently - the trap R-95 wrote down and no wave checked. "
+                        "(The demons' own %r is exactly such a name on this rig.)"
+                        % (rec, mesh, missing, _DEMON_MESH_ATTACH))
+
+        # ── ADD, never take away: the running channel he shares with them ──
         run = _gv1(db, rec, 'charFxPakRunningNames')
         if _norm(run) != _norm(_SHADOWCLOAK_PAK):
             problems.append(
-                "%s: charFxPakRunningNames is %r, expected %s. This module must "
-                "ADD the persistent channel, never take away the running one that "
+                "%s: charFxPakRunningNames is %r, expected %s. This module ADDS a "
+                "persistent channel; it must never take away the running one that "
                 "matches his marauders." % (rec, run, _SHADOWCLOAK_PAK))
+
+        # ── CRASH LAW (the build28 trap) over the WHOLE kit ────────────────
+        for i, sk in sorted(_skill_slots(db, rec).items()):
+            if not db.has_record(sk):
+                continue
+            if not str(_gv1(db, sk, 'Class') or '').startswith('Skill_SpawnPet'):
+                continue
+            bad = sorted({k.split('###')[0] for k in (db.get_fields(sk) or {})
+                          if k.split('###')[0].lower().startswith('charfxpak')})
+            if bad:
+                problems.append(
+                    "CRASH LAW: %s skillName%d -> %s is a SpawnPet skill carrying "
+                    "%r. FX belong on MONSTER-RECORD fields or a "
+                    "Skill_BuffSelfToggled, NEVER a charFxPak on a SpawnPet skill - "
+                    "that is the build28 crash trap." % (rec, i, sk, bad))
+
+    # ── SHARED-RECORD LAW: our clones may not leak onto anything else ───────
+    for n in db.record_names():
+        c = _gv1(db, n, 'controller')
+        if c and _is_ours(c) and n not in set(roster):
+            problems.append(
+                "SHARED-RECORD LAW: %s (outside the Enslaver roster) now runs the "
+                "always-on controller %s. This lane's AI change must reach the "
+                "Enslaver family and nothing else." % (n, c))
+
+    # the running channel's provenance must still hold on the demons themselves
     if db.has_record(_MARAUDER):
         if _norm(_gv1(db, _MARAUDER, 'charFxPakRunningNames')) != _norm(_SHADOWCLOAK_PAK):
             problems.append("the marauders lost their shadowcloak running FX (%r)"
                             % _gv1(db, _MARAUDER, 'charFxPakRunningNames'))
+    else:
+        problems.append("the shroud's provenance record is missing: %s" % _MARAUDER)
 
+    for n in notes:
+        print("  [enslaver_shroud] %s" % n)
     if problems:
         for p in problems:
             print("  ENSLAVER-SHROUD OFFENDER: %s" % p)
         raise SystemExit("enslaver_shroud.verify FAILED: %d problem(s)" % len(problems))
-    print("  [enslaver_shroud].verify OK: persistent shroud on the marauders' own "
-          "confirmed shadowcloak smoke, visual-only (no payload, no tint), in a FREE "
-          "slot on ALL %d surface(s) - the monster AND every derived pet tier (%d), "
-          "each with a controller that actually fires self-buffs; every running FX "
-          "untouched. WHAT IS STILL NOT CLAIMED: how it READS in game - only Will's "
-          "eye settles that (BL-R102-DEBT-1)."
-          % (len(shroud_roster(db)), len(_pet_tiers(db))))
+    print("  [enslaver_shroud].verify OK: the Enslaver of Souls wears the demons' own "
+          "%s on Bone_Waist - a bone his rig actually carries - fired by SVC-owned "
+          "controller clones at BuffSelfBehavior=%s so it is ON out of combat, "
+          "visual-only (no payload, no tint, and the shroud is the only self-buff in "
+          "either kit), on ALL %d surface(s): the monster AND every derived pet tier "
+          "(%d). Running FX untouched everywhere; no charFxPak on any SpawnPet skill. "
+          "WHAT IS STILL NOT CLAIMED: how it READS in game (BL-R250-DEBT-1)."
+          % (_DEMON_PFX.rsplit('\\', 1)[-1], _BUFF_TRIGGER, len(roster), len(tiers)))
     return tags
 
 
+# ── NEGATIVE TEST ───────────────────────────────────────────────────────────
+
 def _negtest():
     """py tools/patches/enslaver_shroud.py --negtest"""
+    global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE
     from collections import OrderedDict
 
     class _TF(object):
@@ -548,6 +805,7 @@ def _negtest():
         def __init__(self):
             self.d = {}
             self._modified = set()
+            self._record_types = {}
 
         def has_record(self, n):
             return n in self.d
@@ -567,85 +825,134 @@ def _negtest():
         def set_field(self, n, f, v, dt=None):
             self.d.setdefault(n, {})[f] = v if isinstance(v, list) else [v]
 
+    _MESH_M = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
+    _MESH_D = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
+    _RIG = {_norm(_MESH_M): {'Bone_Waist', 'Bone_Spine02', 'Bone_Head',
+                             'Bone_R_Weapon', 'Bone_L_Weapon'},
+            _norm(_MESH_D): {'Bone_Waist', 'SpecialHit01'}}
     _PETS = [r'records\skills\soulskills\pets\toxeus_enslaver_%d.dbr' % i
              for i in (1, 2, 3)]
-    _CTRL = (r'records\skills\spirit\drxpet\drxpet_controllers'
-             r'\controller_skelly_aggressive.dbr')
+    _CTRL_M = r'records\controllers\monster\svc_alwayson_controller_skeleton_toxeus.dbr'
+    _CTRL_P = (r'records\skills\spirit\drxpet\drxpet_controllers'
+               r'\svc_alwayson_controller_skelly_aggressive.dbr')
+    _SHARED_P = (r'records\skills\spirit\drxpet\drxpet_controllers'
+                 r'\controller_skelly_aggressive.dbr')
+    _SPAWN = r'records\skills\boss skills\svc_enslaver_summonmarauders.dbr'
 
     def _base():
         db = _Stub()
-        db.d[_SHADOWCLOAK_FX] = {'effectFile': [r'DRXeffects\shadowcloakrunning.pfx']}
-        # the demons' pak: one body emitter, NO attach points (this is the shape
-        # the module derives its own from).
         db.d[_SHADOWCLOAK_PAK] = {'particleEffectNames': [_SHADOWCLOAK_FX]}
-        db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHADOWCLOAK_FX] * _PARTICLE_COUNT}
+        db.d[_SHADOWCLOAK_FX] = {'Class': ['EffectEntity'],
+                                 'effectFile': [r'DRXeffects\shadowcloakrunning.pfx'],
+                                 'boneList': ['Bone_R_Weapon', 'Bone_L_Weapon']}
+        db.d[_SHROUD_FX] = {'Class': ['EffectEntity'], 'effectFile': [_DEMON_PFX]}
+        db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHROUD_FX] * _PARTICLE_COUNT,
+                             'particleEffectAttachPoints': list(_ATTACH)}
         db.d[_SHROUD] = {'Class': ['Skill_BuffSelfToggled'],
                          'charFxPakSelfNames': [_SHROUD_PAK],
                          'skillWeaponTintRed': [0.0], 'skillWeaponTintGreen': [0.0],
                          'skillWeaponTintBlue': [0.0]}
-        db.d[_ENSLAVER] = {'skillName19': [_SHROUD], 'skillLevel19': [1, 2, 3],
+        db.d[_MARAUDER] = {'Class': ['Monster'], 'mesh': [_MESH_D],
                            'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
-        db.d[_MARAUDER] = {'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
-        db.d[_CTRL] = {'BuffSelfBehavior': [_PET_CONTROLLER_BUFF_TRIGGER]}
-        db.d[_ENSLAVER_SUMMON] = {'spawnObjects': list(_PETS)}
+        db.d[_SPAWN] = {'Class': ['Skill_SpawnPetMonster'], 'spawnObjects': [_MARAUDER]}
+        db.d[_CTRL_M] = {'BuffSelfBehavior': [_BUFF_TRIGGER]}
+        db.d[_CTRL_P] = {'BuffSelfBehavior': [_BUFF_TRIGGER]}
+        db.d[_SHARED_P] = {'BuffSelfBehavior': ['WhenEnemyIsSeen']}
+        db.d[_ENSLAVER] = {'Class': ['Monster'], 'description': ['tagSVCMonsterEnslaver'],
+                           'mesh': [_MESH_M], 'controller': [_CTRL_M],
+                           'charFxPakRunningNames': [_SHADOWCLOAK_PAK],
+                           'skillName8': [_SPAWN],
+                           'skillName19': [_SHROUD], 'skillLevel19': [1, 2, 3]}
+        db.d[_ENSLAVER_SUMMON] = {'Class': ['Skill_SpawnPet'], 'spawnObjects': list(_PETS)}
         for p in _PETS:
-            db.d[p] = {'skillName13': [_SHROUD], 'skillLevel13': [1],
-                       'controller': [_CTRL],
-                       'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
+            db.d[p] = {'Class': ['Pet'], 'description': ['tagSVCMonsterEnslaverPet'],
+                       'mesh': [_MESH_M], 'controller': [_CTRL_P],
+                       'charFxPakRunningNames': [_SHADOWCLOAK_PAK],
+                       'skillName13': [_SHROUD], 'skillLevel13': [1]}
+        # a bystander that must NOT move with the Enslaver's AI change
+        db.d[r'records\skills\soulskills\pets\boneash_1.dbr'] = {
+            'Class': ['Pet'], 'controller': [_SHARED_P]}
         return db
 
     plants = [
-        ('unconfirmed colour asset swapped in',
-         lambda db: db.d[_SHROUD_PAK].__setitem__(
-             'particleEffectNames',
-             [r'records\effects\custom\343_dark_smoke.dbr'] * 2)),
-        ('the shroud grows a combat payload',
-         lambda db: db.d[_SHROUD].__setitem__('offensivePhysicalMin', [500.0])),
-        ('the donor purple tint comes back',
-         lambda db: db.d[_SHROUD].__setitem__('skillWeaponTintBlue', [1.0])),
-        ('the shroud falls out of the Enslaver kit',
-         lambda db: db.d[_ENSLAVER].pop('skillName19')),
-        ('his running FX is taken away instead of added to',
-         lambda db: db.d[_ENSLAVER].__setitem__('charFxPakRunningNames', [''])),
-        ('bone names used where attach-point names belong',
-         lambda db: db.d[_SHROUD_PAK].__setitem__(
-             'particleEffectAttachPoints', ['Bone_R_Weapon', 'Bone_L_Weapon'])),
-        # ROUND 4: the defect the vet found. Hands-only emission passes every
-        # colour check and is still the WRONG SHROUD, so it gets its own plant.
-        ('the donor hand-pair comes back (hands-only, not the demons body shroud)',
-         lambda db: db.d[_SHROUD_PAK].__setitem__(
-             'particleEffectAttachPoints', ['R Hand', 'L Hand'])),
-        ('one emitter per (absent) attach point becomes two duplicate emitters',
-         lambda db: db.d[_SHROUD_PAK].__setitem__(
-             'particleEffectNames', [_SHADOWCLOAK_FX, _SHADOWCLOAK_FX])),
-        ('the demons shape reference itself drifts to a hand pair',
-         lambda db: db.d[_SHADOWCLOAK_PAK].__setitem__(
-             'particleEffectAttachPoints', ['R Hand', 'L Hand'])),
-        ('the demons shape/colour reference pak disappears',
-         lambda db: db.d.pop(_SHADOWCLOAK_PAK)),
-        # ── b102 / R-102 second amendment: the defect Will reported as "still not
-        #    implemented". Every one of these passed b98's gate unchanged.
-        ('THE b98 DEFECT ITSELF: shroud on the monster, on NO pet tier',
+        # ── b104: the reason this was filed a third time ────────────────────
+        ('THE b104 DEFECT: the shroud is combat-gated again (WhenEnemyIsSeen)',
+         lambda db: db.d[_CTRL_P].__setitem__('BuffSelfBehavior', ['WhenEnemyIsSeen'])),
+        ('a pet is left on the SHARED controller, so its shroud is combat-gated',
+         lambda db: db.d[_PETS[0]].__setitem__('controller', [_SHARED_P])),
+        ('the shared pet controller is edited IN PLACE (148 other pets move with it)',
+         lambda db: [db.d[p].__setitem__('controller', [_SHARED_P]) for p in _PETS]
+         + [db.d[_SHARED_P].__setitem__('BuffSelfBehavior', [_BUFF_TRIGGER])]),
+        ('our always-on controller leaks onto a record outside the roster',
+         lambda db: db.d[r'records\skills\soulskills\pets\boneash_1.dbr']
+         .__setitem__('controller', [_CTRL_P])),
+        ('a real self-buff joins the kit, so the AI flip stops being visual-only',
+         lambda db: (db.d.__setitem__(r'records\skills\x\rage.dbr',
+                                      {'Class': ['Skill_BuffSelfDuration']}),
+                     db.d[_ENSLAVER].__setitem__('skillName20',
+                                                 [r'records\skills\x\rage.dbr']))),
+        ('the shroud is aimed at the demons OWN mesh helper, absent from his rig',
+         lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
+                                                  [_DEMON_MESH_ATTACH])),
+        ('the attach point is dropped, so placement is undefined',
+         lambda db: db.d[_SHROUD_PAK].pop('particleEffectAttachPoints')),
+        ('the b98 round-4 defect returns: smoke off two fists',
+         lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
+                                                  ['R Hand', 'L Hand'])),
+        ('the weapon boneList comes back on the EffectEntity (fists again)',
+         lambda db: db.d[_SHROUD_FX].__setitem__('boneList',
+                                                 ['Bone_R_Weapon', 'Bone_L_Weapon'])),
+        ('the shroud stops playing the demons own .pfx',
+         lambda db: db.d[_SHROUD_FX].__setitem__(
+             'effectFile', [r'DRXeffects\shadowcloakrunning.pfx'])),
+        ('the marauders mesh no longer embeds the shroud (provenance is gone)',
+         lambda db: _set_demon_fx([r'Records\Effects\MonsterFX\Something_Else.dbr'])),
+        ('the wearer loses his mesh, so the rig check cannot run',
+         lambda db: db.d[_PETS[1]].pop('mesh')),
+        # ── inherited legs that must not regress ───────────────────────────
+        ('THE b98 DEFECT: shroud on the monster, on NO pet tier',
          lambda db: [db.d[p].pop('skillName13') for p in _PETS]),
         ('one pet tier is skipped while the other two are wired',
          lambda db: db.d[_PETS[1]].pop('skillName13')),
         ('a NEW 4th pet tier is summoned and never gets the shroud',
          lambda db: (db.d.__setitem__(
              r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr',
-             {'controller': [_CTRL],
+             {'Class': ['Pet'], 'description': ['tagSVCMonsterEnslaverPet'],
+              'mesh': [_MESH_M], 'controller': [_CTRL_P],
               'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}),
              db.d[_ENSLAVER_SUMMON].__setitem__(
-                 'spawnObjects', _PETS + [
-                     r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr']))),
+                 'spawnObjects',
+                 _PETS + [r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr']))),
+        ('a LEGENDARY difficulty clone appears wearing his name tag',
+         lambda db: db.d.__setitem__(
+             r'records\creature\monster\shadowstalker\um_toxeus_enslaver_l_99.dbr',
+             {'Class': ['Monster'], 'description': ['tagSVCMonsterEnslaver'],
+              'mesh': [_MESH_M], 'controller': [_CTRL_M]})),
         ('the summon loses its spawnObjects, so the tier roster goes silently empty',
          lambda db: db.d[_ENSLAVER_SUMMON].__setitem__('spawnObjects', [])),
-        ('a pet gets the shroud at level 0 (present in a slot, never displayed)',
+        ('a pet gets the shroud at level 0 (in a slot, never displayed)',
          lambda db: db.d[_PETS[0]].__setitem__('skillLevel13', [0])),
-        ('the pets controller stops firing self-buffs, so the toggle is inert',
-         lambda db: db.d[_CTRL].__setitem__('BuffSelfBehavior', ['NeverBuff'])),
-        ('a pet loses the pre-existing DRX running smoke instead of gaining a shroud',
+        ('the shroud grows a combat payload',
+         lambda db: db.d[_SHROUD].__setitem__('offensivePhysicalMin', [500.0])),
+        ('the donor purple tint comes back',
+         lambda db: db.d[_SHROUD].__setitem__('skillWeaponTintBlue', [1.0])),
+        ('the shroud stops being a self-buff toggle',
+         lambda db: db.d[_SHROUD].__setitem__('Class', ['Skill_AttackRadius'])),
+        ('a pet loses the pre-existing DRX running smoke',
          lambda db: db.d[_PETS[2]].__setitem__('charFxPakRunningNames', [''])),
+        ('CRASH LAW: a charFxPak lands on his SpawnPet skill (the build28 trap)',
+         lambda db: db.d[_SPAWN].__setitem__('charFxPakSelfNames', [_SHROUD_PAK])),
+        ('the demons themselves lose the running shroud (provenance unevidenced)',
+         lambda db: db.d[_MARAUDER].__setitem__('charFxPakRunningNames', [''])),
     ]
+
+    def _set_demon_fx(v):
+        global _DEMON_FX_OVERRIDE
+        _DEMON_FX_OVERRIDE = v
+
+    _RIG_NAMES_OVERRIDE = _RIG
+    _DEMON_FX_OVERRIDE = [r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr']
+    clean_fx = list(_DEMON_FX_OVERRIDE)
     try:
         verify(_base())
     except SystemExit as e:
@@ -653,6 +960,7 @@ def _negtest():
         return 1
     bad = 0
     for label, plant in plants:
+        _DEMON_FX_OVERRIDE = list(clean_fx)
         db = _base()
         plant(db)
         try:
@@ -662,6 +970,7 @@ def _negtest():
             continue
         print("  negtest FAIL (missed): %s" % label)
         bad += 1
+    _DEMON_FX_OVERRIDE = list(clean_fx)
     print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
     return 1 if bad else 0
 
