@@ -4398,3 +4398,103 @@ base-only chain; plus two positive controls).
 **NOT PROVEN IN-GAME.** The build, DEV deploy and Steam ship are the orchestrator's; Will's kill of
 any orb-dropping uber and seeing spears / class variety out of the orb is the remaining launch gate.
 Registered as `BL-R210-DEBT-2`. See `docs/WILL_TEST_GUIDE.md` and the BACKLOG gate record.
+## Soul tier naming (decade 200-209 continued; opened 2026-08-10, branch `fix/soul-tier-naming`)
+
+## R-201 [2026-08-10] IMPLEMENTED (branch `fix/soul-tier-naming`) - the Epic and Legendary tiers of OUR souls must be NAMED Epic and Legendary
+
+**Will, VERBATIM (2026-08-10):**
+
+> "the new souls we made dont have named variants, i.e., the epic, legendary and normal versions of
+> the soul of the gaolor are all named the same where as the rest of the souls are named things like
+> Soul of the Gaolor, Epic Soul of the gaolor, legendary soul of the gaolor"
+
+(R-201 follows R-200, which was minted the same day by the `fix/boar-snatcher-orb` lane. The ruling
+text is what binds; renumber at integration if it ever collides.)
+
+**HE DESCRIBED THE MECHANISM EXACTLY, AND IT WAS ALREADY IN THE DATA.** A soul does NOT carry three
+name strings. Its three tier records SHARE ONE `itemNameTag` - the evocative base name - and
+differentiate through **`itemQualityTag`**, which the engine renders as a PREFIX in front of the item
+name. Measured on the shipped `build76` arz (`16994072`), **641 of the 739 multi-tier soul families -
+every single SV-original family, zero exceptions** - carry:
+
+| tier record | `itemQualityTag` | what the player reads |
+|---|---|---|
+| `<base>_soul_n.dbr` | ABSENT | Soul of the Gaoler |
+| `<base>_soul_e.dbr` | `tagSoulEpic` (`{^F}Epic`) | **Epic** Soul of the Gaoler |
+| `<base>_soul_l.dbr` | `tagSoulLegendary` (`{^F}Legendary`) | **Legendary** Soul of the Gaoler |
+
+**THE DEFECT, EXHAUSTIVELY SCOPED.** The 98 non-compliant families are ALL of, and ONLY, the OURS-path
+roster under `records\item\equipmentring\soul\svc_uber\` - the Gaoler is one of them. Every one carried
+`itemQualityTag` on NO tier, so all three rendered the identical string. The cause is structural, not a
+per-soul slip: every generator (`create_uber_souls.design_soul`, `_apply_dewired_hero_handcraft`, and
+the hand-authored boss souls) writes ONE field set to all three tiers and none of them ever emitted the
+field. It would have recurred on the next soul we added.
+
+**NO EXEMPTION LIST, BY CONSTRUCTION - AND THAT IS THE POINT.** The tier word is a PREFIX in FRONT of
+the shared name tag, so law #2 (SV originals untouchable) and the evocative hand-designed names
+(`_HAND_DESIGNED_SOUL_TAGS`) are satisfied WITHOUT touching a single string: "Soul of the Gaoler" stays
+verbatim on normal and simply gains "Epic "/"Legendary " above it, which is precisely what Will
+described. The fix is ADD-ONLY - it never rewrites an authored `itemQualityTag` - so an SV original
+cannot be mutated by it even in principle. No new Text tag is authored: `tagSoulEpic` and
+`tagSoulLegendary` are already in the shipped `Text.arc` from the SV text pass.
+
+**FIX.** `apply_svc_patches._apply_soul_tier_naming(db)`, run inside `run_registry_gates` immediately
+after the F6 naming standard - i.e. AFTER the whole patches registry - so it also covers souls a future
+content module adds. 196 records changed (98 families x Epic + Legendary), 1 field each.
+
+**GATE (fail-loud, no whitelist): `_verify_soul_tier_naming(db, tags)`.**
+- **C1 CONVENTION** - every canonical soul tier record's `itemQualityTag` matches its tier.
+- **C2 DISTINCTNESS** - Will's bug stated as an invariant: within one soul family, no two tiers may
+  render the same `(quality, name)` pair.
+Scope is the canonical `<base>_soul_{n,e,l}` family plus SV's `<base>_soul` normal spelling. amgoz's
+`(... conflicted copy ...)` junk, the `soultemplate*` authoring stubs, SV's `_soul_n_` double-authored
+typo copies and the loot-table records that share the soul folders are out of scope by construction
+(no `itemNameTag`, or no tier family) - deliberately, so the gate reports defects and not noise.
+`validate_tags` gained `itemQualityTag` in `TAG_FIELDS` plus a `REQUIRED_TAGS` backstop, so the two
+prefix tags can never silently vanish from `Text.arc` and leave "tagSoulEpic" rendering in-game.
+
+**NEGATIVE-TESTED 4 ways** (`scratchpad/negtest_r201.py`): gate RED on the pre-fix build76 arz (196
+records / 98 families, ZERO false positives on SV originals); gate RED when ONE shipped record's tag is
+stripped; normalizer idempotently restores it and the gate goes GREEN; gate RED when the Legendary tier
+is given the Epic tag. The gate is not vacuous.
+
+**NOT PROVEN IN-GAME.** The one-line check is Will's: pick up the Gaoler soul on Epic and on Legendary
+and read the item name.
+
+---
+
+## Act cap / DLC surfaces (new section; decade 210-219, opened 2026-08-10, branch `fix/portal-atlantis-cap`)
+
+## R-210 [2026-08-10] IMPLEMENTED (branch `fix/portal-atlantis-cap`) - no DLC act may appear on the portal page
+
+**VERBATIM (Will, 2026-08-10):** "in the portal page i see atlantis which should be disabled in this
+mod"
+
+This is the act-selection-UI half of the standing IMMORTAL-THRONE CAP ruling (Will, 2026-07-10:
+"lets not make atlantis or anything past immortal throne reachable for now and we will fine tune
+immortal throne then if we want to add in the other areas later then we can"). It is read as the
+general rule, not one tab: **no DLC act (Ragnarok / Atlantis / Eternal Embers) may be offered on any
+act-selection surface.**
+
+**LIST SOURCE.** The portal window's page list is ONE record,
+`records\ingameui\teleportmap\teleportmap.dbr` (`WorldlMapWindow.tpl`); each act page is a
+`<Page>Button` / `<Page>MapImage` / `<Page>ZoneList` triple. Base TQAE carries seven pages. SV 0.98i
+ships an IT-era copy with only the four base pages, but `strip_ui_overrides()` deletes every
+`records\ingameui\` record that is not a mastery tree, so the mod shipped NO override and the record
+resolved from the BASE `.arz`. The quest log's act tabs
+(`records\ingameui\player quests\questwindow.dbr` buttons/maps 5/6/7) fell through the same hole.
+
+**LAYER.** Mod `.arz` record override, the A5 pattern (a `.dbr`'s identity IS its record path, so
+the mod arz wins per path; the A5 inert-fix trap is specific to archive-hosted quest files keyed by
+md5 of the registry path). The base records are imported byte-faithfully and exactly the DLC fields
+deleted, so the four Immortal-Throne-era pages and AE's layout are preserved. The cap runs AFTER
+`strip_ui_overrides()` and asserts that ordering; a fail-loud golden gate
+(`tools/gate_dlc_act_ui_cap.py`, negative-tested) proves on the WRITTEN `.arz` that the rendered
+portal page list is exactly Greece / Egypt / Orient / Immortal Throne.
+
+**SEVERITY CORRECTION, recorded so nobody reads this as cosmetic.** Atlantis is not merely a dead
+list entry: `XPack3/Quests/x3mq_AtlantisAdventure.qst` is registered at index 211 of the map's
+255-entry QUESTS window, and BOTH `x3mq_marinos_rhodes_spawner.dbr` and `rhodes_boatmantogadir.dbr`
+are placed in `Rhodes_CityFinal_01` on the mandatory spine. An Atlantis-DLC owner can still SAIL to
+Atlantis. That leak stays OPEN as `BL-PORTALCAP-DEBT-1`; it needs its own lane and Will's sign-off on
+the layer. See `docs/PORTAL_PAGE_DLC_CAP.md`.

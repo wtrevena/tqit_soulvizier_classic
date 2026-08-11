@@ -154,6 +154,341 @@ renamed or repointed at anything that does not already resolve.
   visuals` - `visuals` must stay LAST), the ledger (append-only, newest last) and this BACKLOG (newest first).
 
 ---
+## SHIP RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis is GONE from the portal page, **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/portal-atlantis-cap` merge `599e5f0`, tag `build78-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
+[U:1:106507138] ... OK`), `Preparing update... Preparing content... Uploading content... Committing
+update...Success.`, `Updated Workshop item: 3759792705`. **`Upload finished for workshop item 3759792705 :
+OK`, ManifestID `3967507886597870867`** (steamcmd workshop log 2026-08-10 21:59:12 -> 21:59:32). Pushed
+`-Update -Visibility 0` and the generated VDF was read back to confirm `"visibility" "0"` - the item stays
+PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single `SoulvizierClassic` wrapper.
+
+**This is an arz-only delta on top of `build77-ship`.** Only the database moved.
+
+| artifact | md5 | bytes | vs the item as of `build77-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`f663846233295da3e8824bfa4d8925c8`** | 55,551,546 | **CHANGED** from `435cc485` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+
+| gate | result |
+|---|---|
+| F9 dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above) |
+| packager TESTHUB guard + an independent re-check | **PASS** - packaged `6784cf0f` != TESTHUB `7a7ca9ac`; the hub did not ship |
+| single-wrapper assertion (packager + uploader + an independent check) | **PASS** all three |
+| **R-210 DLC-cap gate on the DIST arz** (not just the work copy) | **PASS** - T1-T7; `portal pages = ['Greece', 'Egypt', 'Orient', 'Hades']`, ZERO DLC-act entries |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| `run_contracts` A/B: the **baseline arz `435cc485`** under the **identical dist config** | **4492** - the same number, so this ship adds **ZERO new contract violations**, measured in both directions rather than assumed |
+| changenote VDF-safety | 2,048 chars, **0 double-quotes, 0 backslashes, 0 em dashes** |
+
+**DEPLOY ORDER HONOURED END TO END.** DEV first (`build78-dev`, arz `f6638462`, 1 of 62 files changed,
+61 untouched siblings re-hashed after the copy), then Steam. **TQ.exe was never running, was never
+killed, and Steam was never restarted** at any point in this lane. Steam and DEV now differ only in the
+map: DEV carries the TESTHUB `Levels.arc` `7a7ca9ac` (local-only, by design), Steam the canonical `6784cf0f`.
+
+**Rollback (Steam, one push):** stage `local/build77_ship_435cc485.arz` as
+`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, re-package, re-upload; every other shipped
+artifact is already byte-identical to `build77-ship`.
+
+**RESIDUALS - stated plainly.**
+- **`BL-PORTALCAP-DEBT-2` NOT PROVEN IN-GAME.** Nobody has opened a portal and counted the tabs.
+  **Will's one-line test: open a portal - four act tabs (Greece / Egypt / Orient / Immortal Throne), no
+  Atlantis, and the Immortal Throne page still lists Olympus and all of Hades.**
+- **`BL-PORTALCAP-DEBT-1` (P1, OPEN):** an Atlantis-DLC owner can still SAIL Rhodes -> Gadir -> Atlantis.
+  The page is gone, the voyage is not. Own lane, needs Will's sign-off on the layer.
+- The Workshop cover image is still absent (`WARNING: no preview image`), unchanged by this push and
+  still Will's separate action.
+
+## BUILD78-DEV GATE RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis / Ragnarok / Eternal Embers removed from the act-selection UI - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main` @ `599e5f0` merge, tag `build78-dev`)
+
+**Will's bug (verbatim, 2026-08-10):** "in the portal page i see atlantis which should be disabled in
+this mod". Ledgered **R-210**. RCA + audit + layer argument: `docs/PORTAL_PAGE_DLC_CAP.md`.
+
+**SHIP ORDER HONOURED.** This lane held on branch `fix/portal-atlantis-cap` until the soul-naming wave
+had finished BOTH its DEV deploy (`build77-dev`, 21:00) and its Steam ship (`build77-ship`, steamcmd
+`Upload finished : OK` 21:27:37, ManifestID `4847215467152146492`), then merged into the then-current
+`main` (`b158752`). One heavy build at a time was respected: the machine was verified idle of build
+processes before the build slot was taken.
+
+**THE BUILD** (`PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into the work/ layout,
+exit 0 "Done.", 21:30:32 -> 21:42:18).
+
+| artifact | md5 | bytes | vs `build77-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`f663846233295da3e8824bfa4d8925c8`** | 55,551,546 (51,236 rec) | **CHANGED** from `435cc485` (+574 B, +2 rec) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and both deploy couplings are SATISFIED rather than waived.** The fix authors NO text tag
+(it deletes fields from two imported base records), so `validate_tags` PASSES against the EXISTING
+`Text.arc` and the arz+Text coupling holds without a Text rebuild. Nothing map-side moved, so the
+Levels+Quests coupling is not engaged at all. All four sibling artifacts were md5-proven unchanged on
+disk, not assumed.
+
+**RECORD-DIFF vs the shipped `435cc485`: ADDED 2 / REMOVED 0 / MODIFIED 0, ZERO unexplained.** The two
+additions are exactly the two capped records - `records\ingameui\teleportmap\teleportmap.dbr` and
+`records\ingameui\player quests\questwindow.dbr`. No other record in the database moved by one byte.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery) | **exit 0, "Done."** |
+| **NEW** `gate_dlc_act_ui_cap` in-memory, the instant the cap applies | **PASS** (T1-T7) |
+| **NEW** `gate_dlc_act_ui_cap` on the WRITTEN `.arz` (the anti-inert proof) | **PASS** - `T6 portal pages = ['Greece', 'Egypt', 'Orient', 'Hades']`, ZERO DLC-act entries; `T5` quest-log act tabs 1-4 only |
+| ordering guard (cap must run AFTER `strip_ui_overrides`) | **PASS** - fail-loud, asserted not assumed |
+| `validate_tags` (against the EXISTING Text.arc) | **PASS** - 382 mod-owned refs present, 442 authoritative tags present |
+| `run_contracts`, all 6 modules, work/ tree | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** - the SAME 4492 the `build77-ship` record measured, so ZERO new contract violations |
+| R-201 soul-tier gate (coexisting wave) | **PASS** - carried green through this build |
+| unlock-alignment gate (b77, coexisting) | **PASS** - 238 live buttons, 13/13 waivers |
+| in-build summons contract lane | **PASS** - 0 P0 / 0 P1 / 111 P2 |
+| `py_compile` on every edited tool | **PASS** |
+
+**NEGATIVE TESTS (3, `py tools/gate_dlc_act_ui_cap.py <arz> --negtest`): all 3 planted defects caught.**
+1. Atlantis button + map image put back on `teleportmap.dbr` -> **RED** (T3 extra fields, T6 page list).
+2. A LEGITIMATE page dropped (`GreeceButton`) -> **RED** (T3 missing, T6 list short). The gate is not a
+   one-way "no DLC" check; it fails equally if a base act goes missing.
+3. The Atlantis quest-log tab put back on `questwindow.dbr` -> **RED** (T5).
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `f6638462`), copied with
+md5 source==dest verification **while TQ.exe was NOT running** - nothing killed, Steam not restarted.
+**1 of 62 DEV files changed; the other 61 were re-hashed after the copy and are byte-identical.**
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `435cc485` (the build77 arz this replaced)
+-> copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+`local/build77_ship_435cc485.arz`.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **`BL-PORTALCAP-DEBT-2` (P1, LAUNCH-GATED): NOT PROVEN IN-GAME.** Everything above is a database and
+  gate proof. **Will's one-line test: open a portal and count the act tabs - four (Greece / Egypt /
+  Orient / Immortal Throne), no Atlantis.** The specific runtime risk carried: the engine tolerating a
+  `WorldlMapWindow` record with the DLC page fields absent. Evidence it does: the template declares
+  every page variable with `defaultValue = ""`, and retail ships `records\ingameui\mini map\world\
+  worldmap.dbr` on the same template with NO page fields at all.
+- **`BL-PORTALCAP-DEBT-1` (P1, OPEN, real act leak):** the Rhodes -> Gadir -> Atlantis BOAT CHAIN is
+  still live for an Atlantis-DLC owner. This lane removes the page, not the voyage. Needs its own lane
+  and Will's sign-off on the layer (recommended: override the Rhodes spawner record). Full option
+  analysis in `PORTAL_PAGE_DLC_CAP.md` section 8.
+- **Repo pytest modules NOT RUN (pre-existing environment gap, not a regression):** the four test
+  modules under `tools/` are import-time integration tests that need the gitignored
+  `reference_mods/SVAERA_customquest/Resources/Levels.arc` (absent in this checkout) and error at
+  COLLECTION regardless of code. None of them import either file this lane touched
+  (`tools/build_svc_database.py`, `tools/gate_dlc_act_ui_cap.py`), and this merge changed no test module.
+  Stated plainly rather than reported as a green suite.
+
+## SHIP RECORD - R-201 SOUL TIER NAMING: Epic/Legendary soul names are **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/soul-tier-naming` merge, tag `build77-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' ... to Steam Public...OK`), `Preparing update... Preparing content... Uploading content...
+Committing update...Success.`, `Updated Workshop item: 3759792705`. Pushed `-Update -Visibility 0` and the
+generated VDF was read back to confirm `"visibility" "0"` - the item stays PUBLIC. Packaged payload:
+**56 files, 1188.3 MB**, single `SoulvizierClassic` wrapper. This steamcmd run printed no ManifestID line
+(same as the `build76-ship` run); the success is evidenced by the quoted lines plus the read-back VDF.
+
+**arz-only delta on top of `build76-ship`.** Only the database moved.
+
+| artifact | md5 | bytes | vs the item as of `build76-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`435cc485ee43e739b85d4221e6c9bb4b`** | 55,550,972 | **CHANGED** from `16994072` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged (**no new tag authored**) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+| gate | result |
+|---|---|
+| dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above) |
+| packager TESTHUB guard | **PASS** - packaged `6784CF0F` != TESTHUB `7A7CA9AC`; the hub did not ship |
+| single-wrapper assertion | **PASS** - content root holds exactly 1 child, `SoulvizierClassic` |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B against the shipped baseline `16994072` under the identical config | **4492** - the same number, so this ship adds **ZERO** new contract violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `435cc485` from two independent full builds** |
+| changenote VDF-safety | 1,939 chars, **0 double-quotes, 0 backslashes, 0 em dashes, pure ASCII** |
+
+**DEPLOY ORDER HONOURED.** DEV first (`build77-dev`, arz `435cc485`, 1 of 62 files changed, the 61
+siblings re-hashed byte-identical), then Steam. **TQ.exe was never running, was never killed, and Steam
+was never restarted** at any point in this lane.
+
+**PREVIEW IMAGE, stated honestly:** `-PreviewFile` was deliberately NOT passed, per the uploader's own
+documented isolation decision (a failing legacy-cloud preview upload made two earlier sessions misread a
+successful content upload as failed). The generated VDF therefore carries **no `previewfile` key at all**,
+so the live item's existing cover tile is left exactly as it was - the script's blanket "BLANK tile"
+warning is generic, not a regression. `assets/workshop_preview.jpg` is present if a future lane wants to
+push it deliberately.
+
+**NOT PROVEN IN-GAME.** Will's one-line check: read the Soul of the Gaoler's name on Epic and on
+Legendary. Fully quit TQ and restart Steam first.
+
+
+## GATE RECORD - R-201 SOUL TIER NAMING (2026-08-10, branch `fix/soul-tier-naming`)
+
+**Will's bug (verbatim):** "the new souls we made dont have named variants, i.e., the epic, legendary
+and normal versions of the soul of the gaolor are all named the same where as the rest of the souls are
+named things like Soul of the Gaolor, Epic Soul of the gaolor, legendary soul of the gaolor".
+
+**ROOT CAUSE.** Tier differentiation is `itemQualityTag` (rendered by the engine as a PREFIX in front
+of the shared `itemNameTag`), not three separate names. 641 of 739 multi-tier soul families - EVERY
+SV-original family, zero exceptions - carry n=absent / e=`tagSoulEpic` / l=`tagSoulLegendary`. The 98
+families under `records\item\equipmentring\soul\svc_uber\` (all of, and only, the souls WE authored)
+carried it on no tier, because every generator writes one field set to all three tiers.
+
+**THE BUILD.**
+
+| artifact | md5 | bytes | vs `build76-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`435cc485ee43e739b85d4221e6c9bb4b`** | 55,550,972 | **CHANGED** from `16994072` |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and the arz+Text coupling law is SATISFIED rather than waived:** this wave authors NO new
+text tag (it points 196 records at `tagSoulEpic` / `tagSoulLegendary`, which the SV text pass already
+emits), so `Text.arc` did not need to move and `validate_tags` PASSES against the EXISTING one.
+
+**RECORD-DIFF vs the shipped `16994072`: ADDED 0 / REMOVED 0 / MODIFIED 196, ZERO unexplained.** All
+196 are `svc_uber\*_soul_{e,l}.dbr`, each with exactly ONE changed field, e.g.
+`polisgaoler_soul_e.dbr :: itemQualityTag: None -> ['tagSoulEpic']` and
+`polisgaoler_soul_l.dbr :: itemQualityTag: None -> ['tagSoulLegendary']`. No non-`svc_uber` record moved.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (`build_svc_database.py`, RELEASE drop rates, work/ layout) | **exit 0, "Done."** - whole fail-loud battery green |
+| **NEW** `_verify_soul_tier_naming` (R-201, fail-loud, no whitelist) | **PASS** - 2191 canonical soul tier records / 740 families (739 multi-tier), every tier convention-tagged and rendering a DISTINCT name |
+| F6 soul-naming gate (unchanged) | PASS - 83 OURS-path souls, 2158 SV-original paths whitelisted |
+| `validate_tags` (against the EXISTING Text.arc) | **PASS** - 382 mod-owned refs present; **`tagSoulEpic` x789 + `tagSoulLegendary` x789 both defined**; 442 authoritative tags present |
+| `run_contracts` (all 6 modules, work/ + base game) | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** - the SAME 4492 the `build76-ship` record measured, so this ship adds ZERO new contract violations |
+| in-build summons contract lane | PASS - 0 P0 / 0 P1 / 111 P2 |
+| unlock-alignment gate (b77) | PASS - 238 live buttons, 13/13 waivers |
+| `py_compile` on both edited tools | PASS |
+
+**NEGATIVE TESTS (4, `scratchpad/negtest_r201.py` + the pre-flight).**
+1. Gate run against the PRE-FIX shipped `16994072` arz -> **RED**, naming exactly 196 records / 98
+   families and **zero false positives on SV-original or SVAERA-path souls**.
+2. Strip `itemQualityTag` from ONE shipped record (`polisgaoler_soul_e`) -> **RED** with 1 C1 + 1 C2.
+3. Re-run the normalizer -> restores exactly 1 record, gate **GREEN** (idempotent).
+4. Give the Legendary tier the Epic tag -> **RED** (the gate checks the VALUE, not mere presence).
+
+**WHAT IS OWED / NOT PROVEN.** Not proven in-game. Will's check: read the Gaoler soul's name on Epic
+and on Legendary. Two PRE-EXISTING, out-of-scope soul-name quirks were observed during the audit and
+deliberately NOT changed (they are SV data, not this defect, and touching them would collide with law
+#2): `maenadscout` and `maenadvanguard` share one name tag (both read "Maenad Vanguard Soul"), and SV
+ships double-authored copies of a few souls (`polyphemus_soul_n.dbr` alongside `polyphemus_soul_n_.dbr`).
+Registered here as debt; neither affects tier naming.
+
+**POST-SHIP INDEPENDENT VET (2026-08-10, ship operator, read-only - no rebuild, no re-upload).** Re-proved
+from bytes on disk with a script that does NOT import the code under test:
+- **Record-diff** `local/build76_ship_16994072.arz` -> `local/build77_ship_435cc485.arz`: **ADDED 0 /
+  REMOVED 0 / MODIFIED 196**; the changed-field set across ALL 196 is exactly `['itemQualityTag']`; every
+  one is under `svc_uber\`; **0 unexplained**. Split 98 `_e` + 98 `_l` families.
+- **Convention + distinctness over all three tiers** (n=716 / e=739 / l=739 records, 740 families, 709
+  3-tier; svc_uber 98, all 3-tier): **C1 = 0 offenders, C2 = 0 identical-render families**, on BOTH the
+  shipped `435cc485` arz AND the arz now live on DEV/Steam (`f6638462`, the R-210 lane's build off the
+  same `main`) - so R-201 survived the next lane's rebuild.
+- **Rendered strings resolved through the shipped `Text.arc`:** Gaoler = `Soul of the Gaoler` /
+  `Epic Soul of the Gaoler` / `Legendary Soul of the Gaoler`. Ditto Dagon, Broodmother.
+- **arz+Text coupling proved, not asserted:** `tagSoulEpic` = `{^F}Epic` and `tagSoulLegendary` =
+  `{^F}Legendary` are both DEFINED in the shipped `Text.arc a9fed7ba` (and in the DEV copy, same md5).
+  The correct tag-diff for this wave is therefore ZERO changed tags, and `Text.arc` being byte-identical
+  is the coupling law satisfied, not waived.
+- **Steam upload confirmed independently** from `C:\steamcmd\logs\content_log.txt`: `[AppID 475150] Upload
+  starting for workshop item 3759792705` 21:27:21 -> `Uploaded new content ( ManifestID
+  4847215467152146492 )` -> `Upload finished ... : OK` 21:27:37. TQ.exe not running at any point.
+
+**NEW DEBT FOUND BY THAT VET - `BL-R201-DEBT-1` (P2, OPEN, PRE-EXISTING, not caused by R-201).** The
+R-201 gate checks distinctness WITHIN a soul family; it does not check ACROSS families. A cross-family
+scan of rendered names finds **40 display names shared by more than one soul family**, of which **5
+involve one of our 98**: `Charon Soul` (`svc_uber\boss_charon_soul` vs SV `charon\charon_soul`),
+`General Yrrt'ik Soul` (`svc_uber\rainbowbright_soul` vs SV `formicid\generalyrrtik_soul`), `Ice Mandible
+Soul` (`svc_uber\frost_soul` vs SV `antlion\frostmandible_soul`), `Kallixenia ~ Liche Queen Soul`
+(`svc_uber\kallixenia_soul` vs SV `abyssalliche\kallixenia_soul`) and `Plague Feast Soul`. The remaining
+35 are SV-internal (mostly a `soul\test\` folder duplicating `soul\maenad\`). These name tags were
+duplicated long before this wave - R-201 only added the tier prefix in front - so nothing regressed, but
+**two different souls can read the same name in the player's bag**, which makes them ambiguous test
+targets. Fixing it means renaming souls (law #2 / evocative-names territory) and is a WILL DECISION, not
+an agent call. Consequence acted on now: the Will test note was corrected to name only souls whose
+display name is provably UNIQUE (`Soul of the Gaoler`, `Soul of the Insatiable`) instead of Charon.
+
+
+## 🧭 LANE RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis / Ragnarok / Eternal Embers removed from the act-selection UI (2026-08-10, branch `fix/portal-atlantis-cap`, NOT BUILT/SHIPPED HERE)
+
+**Will (verbatim):** "in the portal page i see atlantis which should be disabled in this mod". Full RCA,
+audit and proof: **`docs/PORTAL_PAGE_DLC_CAP.md`**. Ruling: **R-210** in `docs/WILL_RULINGS.md`.
+
+**LIST SOURCE.** The portal window's page list is ONE record,
+`records\ingameui\teleportmap\teleportmap.dbr` (`WorldlMapWindow.tpl`): each act page is a
+`<Page>Button` / `<Page>MapImage` / `<Page>ZoneList` triple, and base TQAE carries SEVEN pages (Greece,
+Egypt, Orient, Hades, Scandia=Ragnarok, Atlantis, China=Eternal Embers). SV 0.98i ships an IT-era copy
+with only the four base pages, but `strip_ui_overrides()` deletes every `records\ingameui\` record that
+is not a mastery tree, so the mod shipped **no override** and the record resolved from the **BASE** `.arz`
+- DLC tabs and all. Measured on build76: 0 teleportmap records in the mod arz. The quest log's act tabs
+(`records\ingameui\player quests\questwindow.dbr` buttons/maps 5/6/7 pointing at XPack2/3/4) fell through
+the same hole.
+
+**AUDIT.** All 56 base `records\ingameui\` / `records\ui\` records naming a DLC namespace classified. The
+COMPLETE set of DLC-act ENTRIES in the act-selection UI is **3 portal pages + 3 quest-log tabs = 15
+fields on 2 records**. The 3 DLC tab-button records and 26 DLC zone records are leaves reachable only
+from those lists; `teleportmapbackground.dbr` (XPack4 frame art shown to non-DLC owners too) and the 24
+`altcasinomerchantwindow` orb records are NOT act selection and were deliberately left alone.
+
+**FIX + LAYER.** `build_svc_database.apply_dlc_act_ui_cap()` imports each BASE record byte-faithfully and
+deletes exactly the DLC fields (9 + 6). Mod-`.arz`-over-base per record path, the A5 pattern (the A5
+inert-fix trap is specific to archive-hosted quest files keyed by md5 of the FULL registry path; a
+`.dbr`'s identity IS its record path). The real trap here is ORDERING: the cap runs immediately AFTER
+`strip_ui_overrides()` and **asserts** it, because applied earlier it would be deleted again and ship
+inert. `_import_base_record_override()` was extracted so A5 and this cap share one copy (BL-107).
+
+**GATE `tools/gate_dlc_act_ui_cap.py`** (fail-loud, committed golden allow-list; wired into the DB build
+twice - in-memory right after the cap, and on the WRITTEN `.arz` after `gate_unlock_alignment`).
+T1 record present (the anti-inert proof) / T2 no banned DLC field / T3 page-field set == golden /
+T4 no field value names a DLC namespace / T5 quest-log tabs 1-4 only / T6 rendered page list ==
+`Greece, Egypt, Orient, Hades` / T7 no stray teleportmap override.
+
+| gate (static; run against build76's shipped arz + the base-game arz) | result |
+|---|---|
+| BEFORE: gate on the shipped build76 arz | **FAIL as expected** - `T1 teleportmap.dbr ABSENT`, `T5 questwindow.dbr ABSENT` (the bug, as an artifact fact) |
+| AFTER: real `apply_dlc_act_ui_cap()` then arz written to disk then gate on the FILE | **PASS 7/7**, portal pages = `['Greece','Egypt','Orient','Hades']` |
+| `--negtest` (Atlantis back / a legit page dropped / Atlantis quest-log tab back) | **PASS - all 3 planted defects RED** |
+| fidelity: capped record vs base record | **PASS** - identical minus exactly the DLC fields (names, dtypes, values, record type) |
+| record delta vs the build76 arz | **+2 records, 0 removed, 0 changed** |
+| `py_compile` on both touched modules | **PASS** |
+
+**SEVERITY - the portal page is the tip, not the whole leak.** `XPack3/Quests/x3mq_AtlantisAdventure.qst`
+is registered at **index 211** of the map's **255**-entry QUESTS window, and BOTH
+`x3mq_marinos_rhodes_spawner.dbr` (a `DLCActorSpawner`) and `rhodes_boatmantogadir.dbr` are **placed in
+`XPack/Levels/Area01_Rhodes/Rhodes_CityFinal_01.lvl`** on the mandatory spine, with
+`gadir_boatmantoatlantis` placed in `Gadir01B`. **An Atlantis-DLC owner can still SAIL to Atlantis.**
+
+**DEBT REGISTER**
+- `BL-PORTALCAP-DEBT-1` (**P1, OPEN, real act leak**) - the Rhodes to Gadir to Atlantis boat chain is
+  live. The A5 one-field DB suppression is NOT available: a whole-base-DB census found DLC gate fields
+  (`RequireDLC`/`RequireNoDLC`) on **17 records only, all `FixedItemTeleport.tpl` /
+  `FixedItemTyphonPortal.tpl`**, with no Atlantis token at all (only `TQA2`, `TQX4`); Marinos is a
+  `DLCActorSpawner` and the boatmen are plain `Npc.tpl`. Four candidate layers are ranked in
+  `docs/PORTAL_PAGE_DLC_CAP.md` section 8; recommend overriding the Rhodes spawner in the mod `.arz` as
+  its own lane, with Will's sign-off. This supersedes the "PARKED" status of the Rhodes/Atlantis entry
+  cap recorded under the 2026-07-10 IT-cap ruling: it is now measured, not conditional.
+- `BL-PORTALCAP-DEBT-2` (P2, LAUNCH-GATED) - NOT PROVEN IN-GAME. Everything above is a database + gate
+  proof. Will opening a portal and seeing four tabs is the launch gate. Runtime risk carried: the engine
+  tolerating a `WorldlMapWindow` record with the DLC page fields absent. Evidence it does: the template
+  declares every page variable with `defaultValue = ""`, and retail ships
+  `records\ingameui\mini map\world\worldmap.dbr` on the same template with NO page fields at all.
+- `BL-PORTALCAP-DEBT-3` (P3, scope) - the quest-log cap was not in Will's report; included because it is
+  the same law, the same record shape and the same removal, and SV 0.98i's own copy of that record
+  already stops at act 4. Flagged so a vet can challenge it separately from the portal page.
+
+**NOT RUN HERE (Ship phase owns them):** full DB build + determinism, record-diff vs baseline,
+`run_contracts`, deploy. No Text/map rebuild is needed (arz-only). Deploy coupling: **arz only**; no
+Levels/Quests/Text change, so this rides any arz push.
 
 ## 🚢 SHIP RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb is **LIVE ON STEAM** (2026-08-10, `main` @ `6b9167a`, tag `build76-ship`)
 
@@ -10217,3 +10552,14 @@ Two Steam comments, both dated BEFORE today's live update (Jul 28-29), so each i
 ### PR clarifications from Will 2026-08-06 (steer for the running lanes)
 - **PR-3 (maenads):** Will CONFIRMS the "maenads with ranged weapons" Flozer meant are EXACTLY the thrown-object monsters the R-108 wave fixed (thrown_anim_rig). So the lane's job is NOT to hunt a separate bow-maenad bug - it is to PROVE the shipped thrown fix makes those maenads animate/fire (ALREADY-FIXED with per-record proof from the live arz). If proven, this is closed; tell Flozer it is resolved in the current build.
 - **PR-5 (Sparta Crypt portal):** Will saw the Athens-tombs entrance to the Depths of the Spartan Crypt WORKING in the TESTHUB map variant, but has NOT tested the build shipped to Steam. TESTHUB variants are LOCAL-ONLY and never uploaded (CLAUDE.md), and many entrances/travelers were TESTHUB-gated during dev. THE CRUX: is the Sparta Crypt portal present in the CANONICAL/shipped Levels.arc, or only in the TESTHUB variant? Compare the two map builds directly; if it is TESTHUB-only, subscribers genuinely lack it and it must be promoted into the canonical map (navmesh-safe). If it is in canonical too, it is a findability issue -> a guide/marker hint.
+
+## BL-HOARD-WIRING (from CHEST_DROP_MATRIX audit 2026-08-10, P1 for the balance wave)
+The Charon / Tantalus / Mnemophage / Ephialtes / Diadochi / Obsidian hoards carry the full
+R-180 breadth in their 18 svc tables, but their PLACED CONTAINERS still name base
+boss_default_NN-NN tables - in game they pay stock base boss loot and NONE of the breadth.
+Wiring gap, not a loot gap. FIX (clearly within Will's standing breadth orders): repoint the
+placed hoard containers onto their svc tables (or make the svc tables the containers' named
+tables per current conventions) + extend the breadth gate to assert PLACED-CONTAINER->svc
+wiring so a built-but-unwired table can never pass again. Natural owner: the running
+loot-balance-and-armor wave (wf_2c26e81c) whose surface is chests+hoards; if it ships without
+this, it is the next wave's first item.

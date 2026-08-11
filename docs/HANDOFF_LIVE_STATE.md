@@ -1,5 +1,95 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD78 SHIPPED TO DEV **AND** STEAM (2026-08-10) - R-210 portal-page DLC cap; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `f663846233295da3e8824bfa4d8925c8`** (55,551,546 B, 51,236 records).
+> DEV copied with md5 source==dest verification **while TQ.exe was NOT running** (nothing killed, Steam
+> not restarted); **1 of 62 DEV files changed**, the 61 siblings re-hashed after the copy and byte-identical.
+> Steam: **Workshop item 3759792705, `Upload finished : OK`, ManifestID `3967507886597870867`**
+> (steamcmd 2026-08-10 21:59:12 -> 21:59:32), `-Update -Visibility 0` with the VDF read back to confirm
+> `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB, single wrapper.
+> - **What it is:** R-210, Will's bug "in the portal page i see atlantis which should be disabled in this
+>   mod". The portal window's page list is ONE record, `records\ingameui\teleportmap\teleportmap.dbr`;
+>   SV ships a four-page IT-era copy but `strip_ui_overrides()` deletes every `records\ingameui\` record
+>   that is not a mastery tree, so the mod shipped NO override and the BASE game's seven-page record won.
+>   The base record is now imported byte-faithfully with exactly the 9 DLC page fields deleted, plus the
+>   same treatment for the quest log's 6 DLC act-tab fields on `player quests\questwindow.dbr`. The cap
+>   runs AFTER the strip and asserts that ordering (the one way it could ship inert).
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Levels.arc 6784cf0f` (canonical) / `Text.arc a9fed7ba` /
+>   `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. 0 new tags authored, so
+>   `validate_tags` PASSES against the EXISTING `Text.arc` and no Text rebuild was needed.
+> - **Record-diff vs the shipped `435cc485`: ADDED 2 / REMOVED 0 / MODIFIED 0, ZERO unexplained** - the two
+>   capped records and nothing else. Gate records: `docs/BACKLOG.md` -> R-210 SHIP RECORD + BUILD78-DEV GATE
+>   RECORD. Ruling: `docs/WILL_RULINGS.md` -> R-210. RCA: `docs/PORTAL_PAGE_DLC_CAP.md`.
+> - **NEW permanent gate:** `tools/gate_dlc_act_ui_cap.py` (fail-loud, golden allow-list, negative-tested
+>   3 ways) runs in-memory at cap time, on the WRITTEN `.arz`, and again on the DIST payload at push-gate.
+>   It fails equally if a DLC act reappears OR if one of the four legitimate acts goes missing.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 on the dist payload, and the baseline arz under the identical config
+>   also gives 4492** - zero new violations, measured both directions.
+> - **Rollback (one step, either surface):** `local/build77_ship_435cc485.arz` (also
+>   `local/DEV_arz_deployed_prev.arz`) = the build77 arz this replaced.
+> - **Will's in-game check:** open a portal and count the act tabs - four (Greece / Egypt / Orient /
+>   Immortal Throne), no Atlantis; the Immortal Throne page still lists Olympus and all of Hades. Full note
+>   at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+> - ⚠️ **STILL OPEN (`BL-PORTALCAP-DEBT-1`, P1):** this removes the Atlantis PAGE, not the Atlantis VOYAGE.
+>   An Atlantis-DLC owner can still sail Rhodes -> Gadir -> Atlantis. Needs its own lane and Will's sign-off
+>   on the layer; options ranked in `PORTAL_PAGE_DLC_CAP.md` section 8.
+
+> ## BUILD77 SHIPPED TO STEAM (2026-08-10) - R-201 soul tier naming; arz-only delta on build76-ship
+> **Workshop item 3759792705 is now build77 CANONICAL** (was build76). `Committing update...Success.` +
+> `Updated Workshop item: 3759792705`; VDF read back `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB,
+> single wrapper. **STEAM = DEV = `main`** for the arz: `435cc485ee43e739b85d4221e6c9bb4b` (55,550,972 B).
+> - `Database/SoulvizierClassic.arz` = **`435cc485`** (CHANGED from `16994072`). det-2x byte-identical.
+> - `Resources/Levels.arc` = `6784cf0f` CANONICAL (NOT the TESTHUB `7a7ca9ac`) / `Quests.arc` = `607ec99c` /
+>   `Text.arc` = `a9fed7ba` / `Creatures.arc` = `8c0d8d53` - all byte-unchanged, re-uploaded as-is.
+> - **Push-gate:** dist==work all 5 artifacts PASS, TESTHUB guard PASS, single-wrapper PASS,
+>   `run_contracts` on the dist payload 0 P0 / 0 P1 / 4492 P2 (identical to the baseline A/B, so ZERO new
+>   violations), changenote 1,939 chars VDF-safe.
+> - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first (`build77-dev`).
+> - Tag `build77-ship` at this doc commit. Rollback (Steam): re-upload the build76 set (arz `16994072`,
+>   kept at `local/build76_ship_16994072.arz`; the other four artifacts are unchanged).
+> - ✅ **POST-SHIP INDEPENDENT VET = GO** (ship operator, read-only, no rebuild/re-upload). Re-proved from
+>   bytes, not from this doc: record-diff `16994072` -> `435cc485` = **0 added / 0 removed / 196 modified,
+>   changed-field set exactly `['itemQualityTag']`, all under `svc_uber\`, 0 unexplained**; convention +
+>   distinctness over ALL THREE tiers (n=716 / e=739 / l=739 records, 740 families) = **0 C1 / 0 C2** on the
+>   shipped arz AND on the newer `f6638462` now live (so R-201 survived the R-210 rebuild); `tagSoulEpic`
+>   = `{^F}Epic` + `tagSoulLegendary` = `{^F}Legendary` both DEFINED in the shipped `Text.arc a9fed7ba`,
+>   which is what makes the byte-identical Text the coupling law SATISFIED (tag-diff = zero changed tags);
+>   Steam upload re-confirmed from `C:\steamcmd\logs\content_log.txt` (ManifestID `4847215467152146492`,
+>   `Upload finished ... : OK` 21:27:37). One NEW pre-existing debt found and registered:
+>   **`BL-R201-DEBT-1`** (5 of our 98 share a display name with an SV soul - Charon, General Yrrt'ik, Ice
+>   Mandible, Kallixenia, Plague Feast; the gate only checks within a family). Will's test note was
+>   corrected to use only provably-unique names.
+
+
+> ## BUILD77-DEV DEPLOYED TO DEV (2026-08-10) - R-201 soul tier naming; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `435cc485ee43e739b85d4221e6c9bb4b`**
+> (55,550,972 B, 51,234 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). 1 of 62 DEV files changed; the 61 siblings were re-hashed after the
+> copy and are byte-identical.
+> - **What it is:** R-201. The 98 souls this port authored (all under `soul\svc_uber\`) had no
+>   `itemQualityTag` on any tier, so their normal / epic / legendary records all rendered the SAME name.
+>   Every SV-original family (641 of 739) has always carried n=absent / e=`tagSoulEpic` / l=`tagSoulLegendary`,
+>   which the engine renders as a PREFIX. 196 records (98 families x Epic + Legendary) now carry it, so the
+>   Gaoler reads "Soul of the Gaoler" / "Epic Soul of the Gaoler" / "Legendary Soul of the Gaoler".
+>   No string was renamed and no SV original was touched (the fix is ADD-ONLY).
+> - **arz-ONLY.** `Levels.arc 7a7ca9ac` (TESTHUB, the DEV variant) / `Text.arc a9fed7ba` / `Quests.arc 607ec99c` /
+>   `Creatures.arc 8c0d8d53` md5-proven byte-unchanged on the DEV surface. `validate_tags` PASS against the
+>   EXISTING `Text.arc` - this wave authors NO new tag, so no Text rebuild was needed and the arz+Text
+>   coupling law is satisfied rather than waived.
+> - **Record-diff vs the shipped `16994072`: ADDED 0 / REMOVED 0 / MODIFIED 196, ZERO unexplained** (each row
+>   is one `svc_uber\*_soul_{e,l}.dbr` with exactly one changed field). Gate record: `docs/BACKLOG.md` ->
+>   GATE RECORD - R-201 SOUL TIER NAMING. Ruling: `docs/WILL_RULINGS.md` -> R-201.
+> - **NEW permanent gate:** `_verify_soul_tier_naming` (fail-loud, no whitelist) runs in `run_registry_gates`
+>   after the whole patches registry, so souls added by any FUTURE content module are covered. Negative-tested
+>   4 ways.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `16994072` (the build76 arz this replaced) ->
+>   copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+>   `local/build76_ship_16994072.arz`.
+> - **Will's in-game check:** pick up the Soul of the Gaoler on Epic and on Legendary and read the item name.
+>   Full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+
+
 > ## BUILD75-DEV DEPLOYED TO DEV (2026-08-10) - R-180 chest-loot breadth; arz-ONLY; Steam rides the b63 package
 > **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `3fb1f3ce8889e27de2491ab12814547d`**
 > (55,539,324 B, 51,231 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
