@@ -10425,23 +10425,41 @@ and loot-balance/armour (`fix/armor-loot-breadth`) lanes.
 craftable coverage **0/42 -> 42/42**. Formulas are `itemClassification = Common`, so no legendary
 GEAR moves; the Normal legendary-gear count is 0 before and 0 after.
 
-**(2) R-185 reagent completability.** 78 reagents -> 79 (the thrown repoint swaps 3 dead records for
-4 live ones). Classification: **51 ordinary + 6 artifact + 22 MI/green + 0 missing** (was 3
-missing). Every non-MI reagent now drops from a Legendary chest: **42/78 -> 57/79 = 100% of the
-non-MI set.** Mechanism: 4 new `svc_craft_reagents_{torso,amulet,ring,artifact}_l01` tables hung off
-the legendary hosts `unique_torso_l01` / `amulet_l01` / `finger_l01` / `04_l_misc`. All 14 placed
-reagents are Legendary-classified, so the tier law holds by construction. The 4 thrown formulas are
-repointed off three RAGNAROK (`xpack2\...\1hranged\`) records that do not exist in this build - they
-made Charon's Toll, Hati, The Last Word and Sanguine Orbit uncompletable by anyone. **All 7 of the
-craftables Will named go from 0/3 reagents to COMPLETABLE; 42/42 craftables are completable.**
+**(2) R-185 reagent completability.** 78 reagents -> 82 (the thrown repoint swaps 3 dead records for
+4 live ones and adds the 3 Common vit wands). Classification: **54 ordinary + 6 artifact + 22
+MI/green + 0 missing** (was 3 missing). Every non-MI reagent, plus the one orphaned green, now drops
+from a Legendary chest: **42/78 -> 61/82.** Mechanism: 5 new
+`svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01` tables hung off the legendary hosts
+`unique_torso_l01` / `amulet_l01` / `finger_l01` / `04_l_misc` / `unique_1h_l01`. All 14 of the
+originally-stranded reagents are Legendary-classified and the orphaned green is Rare, a lower rung,
+so the tier law holds by construction. The 4 thrown formulas are repointed off three RAGNAROK
+(`xpack2\...\1hranged\`) records that do not exist in this build - they made Charon's Toll, Hati, The
+Last Word and Sanguine Orbit uncompletable by anyone - into the house shape (2 ordinary + 1 green,
+all of the result's own item Class) that 43 of the 59 uber formulas use. **All 7 of the craftables
+Will named go from 0/3 reagents to COMPLETABLE; 42/42 craftables are completable, no asterisk.**
+
+**(2b) SPREAD, not just reachability (round-2 fix).** The first cut hung the artifact reagents off
+`04_l_misc` alone. Measured over the 19 legendary mod chest tables that is **1/19**, and the one
+surface is `svc_uberorb_apex_l01c`, the apex uber-boss orb - six reagents behind one boss family,
+which is precisely Will's "not a specific character". `unique_torso_l01` / `amulet_l01` /
+`finger_l01` / `unique_1h_l01` are all **19/19**, so the artifact family also hangs off `amulet_l01`
+and `finger_l01`, and the gate grew rule **G4**: every non-MI reagent must be payable by at least
+half the legendary chest surfaces (floor 3). **Measured after: 57/57 non-MI reagents at 19/19, floor
+10.** Note this also removes an accidental cross-lane coupling: `svc_uberorb_apex_*` is b79's surface.
 
 **(3) R-186 thrown weapons droppable.** `svc_unique_thrown_{n,e,l}01` authored (the unique
 one-hand-ranged table this TQIT-era database never had) and named by
-`svc_loot_breadth._master_members` as the SEVENTH class of `svc_unique_weapons_{tier}01` at weight
-250. Legendary thrown reachable **0 -> 5** on Epic and Legendary chests, **0 -> 0** on Normal (2
-non-legendary wands instead). Player-surface check (process law #3): the PC animation tables
-`anm_malepc01` / `anm_femalepc` carry 153 bound `rangedOneHand` fields each, and the DRX vit wands
-already drop today, so the R-140 thrown-stance freeze does not apply to the player.
+`svc_loot_breadth._master_members` as the SEVENTH class of `svc_unique_weapons_{tier}01` at a PER
+TIER weight: **250 on e/l** (5 legendary records / 20 per class weight) and **100 on n** (a 2-record
+filler band). Measured against the masters as they shipped (7 members, total 6100 at every tier):
+e/l **250/6350 = 3.94%** of a weapon roll, n **100/6200 = 1.61%**. Legendary thrown reachable
+**0 -> 5** on Epic and Legendary chests, **0 -> 0** on Normal (2 non-legendary wands instead).
+DELIBERATE OMISSION, stated: the 3 Epic-classification thrown records are base-game craft results and
+were NOT made droppable, which is why Normal's thrown band cannot pay at its target classification
+and why its master weight is derived from the 2-record band. Player-surface check (process law #3):
+the PC animation tables `anm_malepc01` / `anm_femalepc` carry 153 bound `rangedOneHand` fields each,
+and the DRX vit wands already drop today, so the R-140 thrown-stance freeze does not apply to the
+player.
 
 **GATES (all four asked for, all negative-tested).** New family in `tools/svc_craft_thrown.py`, one
 implementation shared by the standalone gate, the in-build `verify()` and the negtests:
@@ -10449,19 +10467,26 @@ implementation shared by the standalone gate, the in-build `verify()` and the ne
 - **G0** no reagent names a record absent from the database;
 - **G1** every non-MI reagent reachable from the Legendary chest pools;
 - **G2** the committed MI exemption roster still equals the roster the rule derives;
-- **G3** every MI exemption is PROVEN monster-farmable by an upward walk of the reference graph;
+- **G3** every MI exemption is EARNED BY A LIVE MONSTER (an upward walk of the reference graph,
+  discounting dev duplicates and refusing to traverse the mod's own reagent tables) - or the green is
+  chest-placed instead, and the committed `MI_NO_LIVE_CARRIER` roster still matches the database;
+- **G4** SPREAD - every non-MI reagent is payable by >= half the legendary chest SURFACES (union
+  reachability cannot tell 19 surfaces from 1);
 - **C1/C2** thrown-class presence per tier, with zero legendary thrown on Normal. C1/C2 are called
   from inside `svc_loot_breadth.audit_table`, so `py tools/gate_chest_loot_breadth.py` covers the
   seventh class too and the existing B3 legendary-item-tier gate stays green (re-proven).
-- Standalone: `py tools/gate_craft_thrown_breadth.py <arz> [--verbose] [--mi-sources]`
-- Negatives: `py tools/debug/negtest_craft_thrown.py <arz>` - **9/9 behaved as specified** (N0 green
-  control, N1/N2 F1, N3 G0, N4 G1, N5 G2, N6 C1, N7 C2, N8 the same edit reds sibling rule B3).
+- Standalone: `py tools/gate_craft_thrown_breadth.py <arz> [--verbose] [--mi-sources] [--spread]`
+- Negatives: `py tools/debug/negtest_craft_thrown.py <arz>` - **12/12 behaved as specified** (N0
+  green control, N1/N2 F1, N3 G0, N4 G1, N5 G2, N6 C1, N7 C2, N8 the same edit reds sibling rule B3,
+  **N9 the spread defect - G4 reds while G1 stays GREEN, which is the whole reason G4 exists**,
+  N10 the orphaned green unhooked from its host, N11 no-live-carrier roster drift).
 
-**Records written by this lane: 19.** `01_act{1,2,3,4}_arcaneformulae`, `svc_unique_thrown_{n,e,l}01`,
-`svc_craft_reagents_{torso,amulet,ring,artifact}_l01`, `unique_torso_l01`, `amulet_l01`,
-`finger_l01`, `04_l_misc`, and the four `svc_thrown_*_formula` records. (`chest_loot_breadth`
-additionally rewrites the three `svc_unique_weapons_{tier}01` masters with the new eighth member, as
-it always does.) Zero intersection with the orb lane's `svc_uberorb_*` and the armour lane's
+**Records written by this lane: 20.** `01_act{1,2,3,4}_arcaneformulae`, `svc_unique_thrown_{n,e,l}01`,
+`svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01`, `unique_torso_l01`, `amulet_l01`,
+`finger_l01`, `04_l_misc`, `unique_1h_l01`, and the four `svc_thrown_*_formula` records.
+(`chest_loot_breadth` additionally rewrites the three `svc_unique_weapons_{tier}01` masters with the
+new eighth member, as it always does - and see the INTEGRATION NOTES: **those three ARE shared with
+b80**.) Zero intersection with the orb lane's `svc_uberorb_*` and the armour lane's
 `svc_unique_armor_*` / `polisvault_*` / chest tables.
 
 **Registry order is load-bearing:** `craft_thrown_breadth` runs immediately BEFORE
@@ -10474,37 +10499,86 @@ drops, and confirm a Mythic Formula can drop on a Normal character.
 
 ### DEBT REGISTER (per "NO NEW SURFACE WITHOUT A GATE + DEBT REGISTER")
 
-- **BL-CRAFT-DEBT-1 (P2, honest residual, inherited DRX debt).** The MI reagent `mi_l_gigantes2`
-  (needed by Omega / `wep_club` and the Doomherald) has exactly ONE carrier in the database:
-  `records\drxcreatures\drxdishonorguard\copy of anapaest_45.dbr`, a DRX dev duplicate. The real
-  `anapaest_45` does not carry it. The G3 gate PASSES (a Monster record does carry it) but prints a
-  standing WARN. Whether that copy is placed in the world is a MAP question this lane did not open.
-  FIX when someone owns it: either move the equip/loot slot onto the live `anapaest_45`, or accept
-  it and say so. It is a loot-balance decision, deliberately not taken here.
-- **BL-CRAFT-DEBT-2 (P3, cosmetic).** Only three MI thrown records exist in this era, so the four
-  thrown recipes cannot all be distinct: **Sanguine Orbit reuses Charon's Toll's reagent pair.** If
-  a fourth green thrown record is ever added, differentiate it.
+- **BL-CRAFT-DEBT-1 (P2) - RESOLVED IN ROUND 2, kept as the record of WHY.** The MI reagent
+  `mi_l_gigantes2` (needed by Omega / `wep_club`, the Doomherald and the Swordfish) has **zero live
+  carriers**: its only carrier is `records\drxcreatures\drxdishonorguard\copy of anapaest_45.dbr`, a
+  DRX dev duplicate. MEASURED why the live boss lost it: `anapaest_45` names placeholder
+  `drxdishonorguard\equip\bogus\{arms,head,legs,torso,shield,weapon}.dbr` ITEM records in those six
+  slots (upstream DRX wiring - no SVC tool writes anything named `bogus`), and
+  `drxdishonorguard\equip\loottables\03_master_legendary.dbr`, which names the gigantes club chain,
+  has **0 holders**. RESOLUTION TAKEN: the green is chest-placed
+  (`svc_craft_reagents_orphanmi_l01` -> `unique_1h_l01`, reached 19/19) rather than rewiring a live
+  boss's equip loadout, which would visibly change what Anapaest wields and is a loot-balance call.
+  Rule G3 is now a FAILURE, not a warning, and `MI_NO_LIVE_CARRIER` commits the roster.
+  **STILL OPEN for whoever owns DRX monster loot:** Anapaest the Dishonored currently equips and
+  drops a placeholder record literally named `bogus\weapon.dbr` at weight 5000 (100% of its
+  right-hand slot) - and the same for head/torso/legs/arms/shield. That is an upstream defect worth
+  its own item; this lane deliberately did not open it.
+- **BL-CRAFT-DEBT-2 (P3) - REDUCED IN ROUND 2, still worth stating.** All three green thrown records
+  (`mi_vit_wand_01/02/03`) come from **one DRX monster family**: `d_reaver_40/41/42` and
+  `svc_leinth_guard_reaver`. Round 1 had every thrown recipe needing TWO of them; the round-2
+  repoint to the house shape (2 ordinary + 1 green) makes it **one per recipe**, with all four
+  (common wand, green wand) pairs distinct. PLACEMENT VERIFIED map-side against
+  `local/merged_source`: the proxy pools `bw_reaver_lone` and `zparty_witchfest(_2099)` are present
+  in `Levels\World\xBloodCave\drxBC3.lvl` and `drxBC_Finale.lvl`, and `q_leinth_lone` in
+  `bossfight.lvl`, so the family really is in the shipped world. `x2d_reaver_01` is DROPPED from the
+  evidence: 0 DB holders and 0 map placements (an xpack2/Ragnarok leftover). Residual, honestly
+  stated: the green half of the thrown chain is farmed in the blood cave. Will's exemption covers
+  greens by the letter, but if a second green thrown source is ever wanted, a different family is
+  the place to add it.
 - **BL-CRAFT-DEBT-3 (P3, unproven-in-game).** The four legendary thrown supras are now DROPPABLE as
   well as craftable - the only 4 of the 42 supras with two acquisition paths. That was Will's
   explicit instruction, but if he later wants the craft-only purity restored for them, the change is
   one constant (`svc_craft_thrown.THROWN_MEMBERS`) and the gate rule C1 relaxes to the DRX wand
   alone.
+- **BL-CRAFT-DEBT-4 (P3, stated choice, not an oversight).** This era's only Epic-classification
+  thrown records (`f_n_kaskeron`, `f_l_qilinseternalpyre`, `f_l_godshatter`) are BASE-GAME craft
+  results and were deliberately NOT made droppable, so the Normal thrown band cannot pay at that
+  tier's target classification (Epic) and instead pays two `itemLevel`-30 wands. Mitigated by
+  deriving the Normal master weight from the 2-record band (100, 1.61% of a weapon roll) instead of
+  the legendary 5-record one (250, 3.94%). If Will ever wants Normal thrown to pay Epic, the change
+  is to add those three to `THROWN_MEMBERS['n']` and accept that base craft results then drop.
+- **BL-BUILD-DEBT-WORKTREE (P2, pre-existing, NOT this lane - filed because it bit two agents).**
+  `tools/patches/souls_quality.py` hard-aborts the whole DB build in any worktree unless
+  `SVC_SV098_ARZ` is set: it reads the SV 0.98i arz by RELATIVE path
+  (`upstream\soulvizier_098i\Database\database.arz`) instead of going through
+  `tools/check_build_inputs.py`, which resolves the same file under the DIFFERENT env name
+  `SVC_SV098I_ARZ` via the main-checkout cache. So `py tools/check_build_inputs.py --all` reports
+  PASS in a worktree and the build then dies at module [23/56]. FIX: route `souls_quality` through
+  `check_build_inputs.resolve('sv098i_arz', ...)`, or accept `SVC_SV098I_ARZ` as an alias.
+  SECOND, SAME AREA: with a COLD prefix cache the mastery waves abort on their own spec-drift
+  guards - `Mastery W1 B6: base game arz REQUIRED ... (pass the 5th build argument)` if argv[5] is
+  omitted, and `Mastery W2: records\skills\nature\drxrenewal.dbr defensiveConvert !=
+  skillCooldownTime (already fixed?) - spec drift, reconcile` even WITH argv[5]. A warm
+  `.build_cache/prefix-*.pkl` hides both because the prefix is restored from the pickle. Any lane
+  that builds from a clean worktree hits them; reconcile the drxrenewal guard against the record it
+  now finds.
 
 ### INTEGRATION NOTES for whoever merges the three 2026-08-10 breadth lanes
 
 Measured against `fix/armor-loot-breadth` (b80) and `fix/orb-loot-breadth` (b79) as they stood when
-this lane finished. **Record intersection is EMPTY** - this lane writes 19 records, none of which is
-an `svc_uberorb_*` (b79), an `svc_unique_armor_*` / `polisvault_*` / chest `FixedItemLoot` (b80).
-The three FILE-level collisions are all in shared modules and all mechanical:
+this lane finished.
 
-1. **`tools/svc_loot_breadth.py` `_master_members()` - REAL semantic overlap, resolve deliberately.**
+⚠️ **THE RECORD INTERSECTION IS *NOT* EMPTY - correcting round 1's headline.** Byte-level record diff
+of the baseline build78 arz against the lane-built arz: **7 ADDED / 0 REMOVED / 15 MODIFIED**, and
+**three of the 15 - `records\item\loottables\svc\svc_unique_weapons_{n,e,l}01.dbr` - are ALSO
+rewritten by b80**, because both lanes change the same producer,
+`svc_loot_breadth._master_members()`. That is a genuine write/write collision on three records, not
+merely a textual one. Everything else IS disjoint: no `svc_uberorb_*` (b79), no
+`svc_unique_armor_*` / `polisvault_*` / chest or hoard `FixedItemLoot` (b80). Round 1 disclosed the
+overlap here in item 1 but the completion summary and the module docstring both claimed "record
+intersection is EMPTY"; anyone merging on the strength of the headline would have picked one side of
+the conflict without re-deriving. Both have been corrected.
+
+1. **`tools/svc_loot_breadth.py` `_master_members()` - REAL write/write overlap on 3 records.**
    b80 rewrites the member weights (`_CLASS_WEIGHT * _ONE_HAND_CLASSES` for `unique_1h`, so each of
-   the six classes carries equal mass); this lane APPENDS an eighth member, the thrown table, at a
-   flat 250. Both edits are additive and compatible in intent, but the merged function must decide
-   what thrown's weight means under b80's scheme. **Recommended resolution:** keep b80's
-   class-normalised scheme and give thrown `_CLASS_WEIGHT // 4` (250 with `_CLASS_WEIGHT = 1000`),
-   which is the same number this lane derived independently (thrown is a 5-record class against
-   17-24 for the others, so a quarter share). If b80 raises `_CLASS_WEIGHT`, thrown scales with it.
+   the six classes carries equal mass); this lane APPENDS an eighth member, the thrown table, at
+   250 on e/l and 100 on n. **BINDING RESOLUTION (not a recommendation):** keep b80's
+   class-normalised scheme and give thrown `_CLASS_WEIGHT // 4` on e/l and `_CLASS_WEIGHT // 10` on
+   n (250 / 100 with `_CLASS_WEIGHT = 1000`) - the same numbers this lane derived independently,
+   because the derivation is about CLASS SIZE (5 legendary thrown records against 17-24 for the
+   other classes; 2 records in the Normal thrown band) and not about the absolute weight. If b80
+   changes `_CLASS_WEIGHT`, thrown scales with it. Do not pick a side by accident.
 2. **`tools/svc_loot_breadth.py` `audit_table()` - trivial.** b79 edits the same function; this lane
    appends two lines calling `svc_craft_thrown.thrown_problems`. Keep both.
 3. **`tools/patches/__init__.py` REGISTRY - trivial, but ORDER IS LOAD-BEARING.**
@@ -10519,6 +10593,18 @@ to move again - 184-186 stay valid either way.
 
 **GATE INTERACTION:** this lane's C1/C2 thrown rules run from inside `svc_loot_breadth.audit_table`,
 so `gate_chest_loot_breadth` grows a seventh class. b80's own distribution gate
-(`gate_loot_distribution.py`) will see the thrown member as new mass in the weapon row (250 against
-6700 = 3.6%); if its weapon-vs-armour ratio cap is tight, re-run it after the merge rather than
-assuming. Nothing in this lane lowers any existing weight, so the direction of any shift is known.
+(`gate_loot_distribution.py`) will see the thrown member as new mass in the weapon row - MEASURED
+**250 against 6100 -> 250/6350 = 3.94%** on Epic/Legendary and **100/6200 = 1.61%** on Normal (the
+round-1 figure "250 against 6700 = 3.6%" was wrong; 6700 matches no measured state of the record). If
+its weapon-vs-armour ratio cap is tight, re-run it after the merge rather than assuming. Nothing in
+this lane lowers any existing weight, so the direction of any shift is known.
+
+**ROUND-2 VET FIXES (this lane, after the first adversarial vet).** All 8 findings closed: HIGH-1 the
+1/19 artifact spread (now 19/19 + rule G4 + N9 negative test); HIGH-2 `mi_l_gigantes2` with zero live
+carriers (chest-placed, G3 now FAILS instead of warning, doc headline corrected); MEDIUM-1 the false
+"record intersection is EMPTY" claim (corrected in three places, resolution made binding); MEDIUM-2
+R-186's 6700/3.6% arithmetic (corrected to the measured 6100 -> 6350 / 3.94% in the ruling AND the
+code comment); LOW-1 the single-family green concentration (halved by the 2+1 recipe shape, placement
+verified map-side, `x2d_reaver_01` dropped as unplaced); LOW-2 the unstated Epic-craft-result choice
+(now stated, plus a per-tier Normal weight); LOW-3 the worktree build trap (filed as
+`BL-BUILD-DEBT-WORKTREE`); LOW-4 the two miscounts (4 tables vs 8 memberships; `supra_special` = 43).

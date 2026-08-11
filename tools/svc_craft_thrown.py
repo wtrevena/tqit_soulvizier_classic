@@ -36,11 +36,17 @@ THREE DEFECTS, ALL MEASURED ON THE LIVE arz 435cc485 (51,234 records, build77 er
         6 IT "divine artifacts" (ItemArtifact) - craftable from base arcane formulae the
           chests DO drop, but not droppable themselves; 0 of 292 artifacts were reachable
           from any mod chest at any difficulty.
-        3 records that DO NOT EXIST in this TQIT-era database at all:
+        3 records THIS MOD'S DATABASE DOES NOT CARRY:
           `records\xpack2\item\equipmentweapons\1hranged\{u_l_08,u_e_06,mi_l_machae}.dbr`
-          are RAGNAROK (xpack2) records. All four thrown craftables (Charon's Toll, Hati,
-          The Last Word, Sanguine Orbit) name exactly those three, so those four formulas
-          are DEAD: they can never be completed by anybody.
+          are RAGNAROK (xpack2) records. PRECISION (measured, and the round-1 wording was
+          loose): they DO exist in an installed base-game database if the player owns
+          Ragnarok - 12,483 `records\xpack2\*` in Will's 74,013-record install. They are
+          still unreachable for a player of this mod: xpack2 ships only with the Ragnarok
+          DLC, and R-210 caps the playable arc at Immortal Throne with the Atlantis /
+          Ragnarok / Eternal Embers act pages suppressed. All four thrown craftables
+          (Charon's Toll, Hati, The Last Word, Sanguine Orbit) name exactly those three,
+          so those four formulas were DEAD IN PRACTICE for everyone playing the mod.
+          Rule G0 asks the question it can answer: is the reagent absent from the MOD db.
 
 (C) THE THROWN CLASS IS UNPAYABLE. 14 `WeaponHunting_RangedOneHand` records exist
     (5 Legendary, 3 Epic - all base craft results -, 3 Rare, 3 Common) and there is no
