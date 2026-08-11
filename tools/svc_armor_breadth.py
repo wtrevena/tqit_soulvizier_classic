@@ -149,6 +149,43 @@ ARMOR_UNIQUE_WEIGHT = 850
 # slot rises. Measured both ways - this is the value that balances the armour side, not a
 # round number.
 ARMOR_MASTER_WEIGHT = 2 * ARMOR_UNIQUE_WEIGHT
+# ── EVENNESS: a member is only as even as the POOL BEHIND IT ─────────────────
+# `ARMOR_UNIQUE_WEIGHT` is an ABSOLUTE weight, and it carries an assumption the round-2
+# vet of BL-R181-DEBT-7 made expensive: that the pool behind the member SPREADS the
+# weight it is given. Measured on the shipped b82 arz `09a0f51d` over all 55 distinct
+# unique-armour members any in-scope armour row names, the share of a member's OWN
+# in-tier mass carried by its single largest item is:
+#     the aggregate armour master        0.0121 .. 0.0346   (N = 47 .. 149 items)
+#     the xpack / base per-slot family    0.0370 .. 0.2000   (N =  5 ..  36)
+#     the base-game LEVEL-BANDED family   0.0489 .. 0.4643   (N =  5 ..  30)
+# `legsall_e03` (N=6) puts 46.4% of its own mass on ONE item, `headall_n03` 25.0%.
+# Raising such a member 27 -> 850 multiplies THAT ITEM ~31x, and that - not any
+# pre-existing base-game concentration - is what pushed four orb surfaces over Will's
+# 3.0% "one item dominates the run" cap in the first round of this lane (measured
+# against the LIVE b82 artifact: 49-51 went 0.0330 -> 0.0451, 29-31 0.0251 -> 0.0323).
+# So the weight a member may carry is bounded by its pool's own evenness: no member is
+# raised past the weight at which its TOP ITEM carries what a reference-even pool's top
+# item carries at ARMOR_UNIQUE_WEIGHT.
+#   target = ARMOR_UNIQUE_WEIGHT * ARMOR_UNIQUE_REF_TOP_SHARE / top_share    (capped at
+#   ARMOR_UNIQUE_WEIGHT, so this is only ever a bound and never a boost)
+# THE REFERENCE IS THE SHIPPED FLEET, NOT A TASTE, and it is deliberately set to catch
+# SKEW rather than pool size. The highest top-share reachable from any of the 42
+# pre-existing surfaces is `unique_torso_e01` at 0.1967, so anything at or under that is
+# a rate this wave has already shipped and re-vetted. Just above it sit the banded
+# `shield_e0{1,2,3}` at exactly 0.2000 - which is 1/5 of a FIVE-item pool, i.e. PERFECTLY
+# UNIFORM. A top-share bound punishes a small pool even when nothing inside it is skewed,
+# and capping a uniform pool buys nothing (850 -> 839, noise). 0.21 clears both, so the
+# bound fires only where an item is over-weighted INSIDE its pool. Measured consequence:
+# 0 of the 42 pre-existing surfaces change a single field, and the bound binds on exactly
+# the 9 level-banded pools above 0.21, every one of them reachable ONLY from the 15 R-220
+# orb tables this lane owns.
+ARMOR_UNIQUE_REF_TOP_SHARE = 0.21
+# ... and the weight a narrow member cannot carry is NOT dropped: it moves to the
+# aggregate master, the one instrument that is even by construction. Total unique-armour
+# weight per table is conserved at 5 x ARMOR_UNIQUE_WEIGHT + ARMOR_MASTER_WEIGHT; only
+# its DISTRIBUTION moves, from the concentrating instruments to the spreading one. On a
+# table where nothing is capped the surplus is 0 and the master lands on
+# ARMOR_MASTER_WEIGHT exactly, which is why the 42 pre-existing surfaces do not move.
 
 # Path shapes. A member is "unique armour" when it lives under a worn-slot folder AND on
 # the `unique` path (the mastertables/unique split the base game itself uses).
@@ -326,6 +363,58 @@ def armor_groups(db, real):
     return out
 
 
+_TIER_CLASS = {'n': 'Epic', 'e': 'Legendary', 'l': 'Legendary'}
+
+
+def _pool_reader(db):
+    r"""One (Db, Distributor) per db, for reading the POOL behind a loot-table member.
+
+    Cached on the db, and safe to cache for one specific measured reason: the only
+    members this is ever asked about are per-slot unique-armour pools
+    (`_UNIQUE_ARMOR_RE`), which live under base-game/xpack paths that NO module in this
+    repo writes - verified by grep over `tools/*.py` and `tools/patches/*.py`. A cached
+    resolution of a table the wave later edits would be stale; a cached resolution of a
+    table nothing edits cannot be.
+    """
+    r = getattr(db, '_svc_armor_pool_reader', None)
+    if r is None:
+        d = SLD.Db(db)
+        r = (d, SLD.Distributor(d), {})
+        db._svc_armor_pool_reader = r
+    return r
+
+
+def pool_top_share(db, member, tier):
+    """Share of a member's OWN in-tier mass carried by its single largest item.
+
+    0.0 for a member that resolves to nothing in this tier - which makes the evenness
+    bound below a no-op there rather than a division by zero.
+    """
+    d, dist, memo = _pool_reader(db)
+    key = (SLB._n(member), tier)
+    if key in memo:
+        return memo[key]
+    ic = _TIER_CLASS[tier]
+    qs = [q for it, q in dist.dist(member).items()
+          if str(d.gv(it, 'itemClassification') or '') == ic]
+    tot = sum(qs)
+    memo[key] = (max(qs) / tot) if tot > 0 else 0.0
+    return memo[key]
+
+
+def armor_unique_target(db, member, tier):
+    """The weight ONE unique-armour member may carry, bounded by its pool's evenness.
+
+    See ARMOR_UNIQUE_REF_TOP_SHARE for the derivation. Computed from the POOL and never
+    from the member's current weight, so it is stable across re-runs: the sweep is
+    idempotent for the same reason `balance_one_hand` is.
+    """
+    s = pool_top_share(db, member, tier)
+    if s <= ARMOR_UNIQUE_REF_TOP_SHARE:
+        return ARMOR_UNIQUE_WEIGHT
+    return int(round(ARMOR_UNIQUE_WEIGHT * ARMOR_UNIQUE_REF_TOP_SHARE / s))
+
+
 def _raise_weight(db, real, field, target):
     cur = SLB._sc(db.get_field_value(real, field))
     cur = int(cur) if cur is not None else 0
@@ -417,16 +506,33 @@ def widen_armor_rows(db, table, tier, lk=None):
     OWN.note_write(real, 'svc_armor_breadth.widen_armor_rows')
     changes = []
     groups = armor_groups(db, real)
+    # PASS 1 - what each unique-armour member may carry, bounded by its POOL's evenness,
+    # and the surplus that bound hands to the aggregate master. Computed before anything
+    # is written because the master's weight depends on the whole table's surplus, not on
+    # one row's; a member-by-member write order would have to guess it.
+    plan, surplus = [], 0
+    for g in groups:
+        for i, nm, _w in SLB._slot_members(db, real, g):
+            if _UNIQUE_ARMOR_RE.search(SLB._n(nm)):
+                t = armor_unique_target(db, nm, tier)
+                plan.append((g, i, nm, t))
+                surplus += ARMOR_UNIQUE_WEIGHT - t
+    master_weight = ARMOR_MASTER_WEIGHT + surplus
+    # PASS 2 - the writes. Raise-only throughout (`_raise_weight`), which is also the
+    # fail-loud story for a STALE cached arz: an input that already carries 850 on a
+    # narrow member keeps it, the surplus never reaches the master, and D5 reds naming
+    # the surface. A silently-lowered weight would trip the lane's own scope proof.
     for g in groups:
         if SLB._raise_chance(db, real, g, ARMOR_ROW_CHANCE):
             changes.append('loot%dChance->%g' % (g, ARMOR_ROW_CHANCE))
-        for i, nm, _w in SLB._slot_members(db, real, g):
-            if _UNIQUE_ARMOR_RE.search(SLB._n(nm)):
-                if _raise_weight(db, real, 'loot%dWeight%d' % (g, i),
-                                 ARMOR_UNIQUE_WEIGHT):
-                    changes.append('loot%dWeight%d %s -> %d'
-                                   % (g, i, SLB._n(nm).rsplit('\\', 1)[-1],
-                                      ARMOR_UNIQUE_WEIGHT))
+    for g, i, nm, t in plan:
+        if _raise_weight(db, real, 'loot%dWeight%d' % (g, i), t):
+            changes.append('loot%dWeight%d %s -> %d%s'
+                           % (g, i, SLB._n(nm).rsplit('\\', 1)[-1], t,
+                              '' if t >= ARMOR_UNIQUE_WEIGHT
+                              else ' (pool top share %.3f > %.2f; %d to the master)'
+                              % (pool_top_share(db, nm, tier),
+                                 ARMOR_UNIQUE_REF_TOP_SHARE, ARMOR_UNIQUE_WEIGHT - t)))
     # One armour master, into the first armour row that still has a free member slot.
     if master and groups:
         already = False
@@ -439,17 +545,21 @@ def widen_armor_rows(db, table, tier, lk=None):
                     # ARMOR_MASTER_WEIGHT would otherwise survive the sweep untouched,
                     # and the balance this module commits to would be silently stale.
                     if _raise_weight(db, real, 'loot%dWeight%d' % (g, i),
-                                     ARMOR_MASTER_WEIGHT):
+                                     master_weight):
                         changes.append('loot%dWeight%d armour master -> %d'
-                                       % (g, i, ARMOR_MASTER_WEIGHT))
+                                       % (g, i, master_weight))
         if not already:
             for g in groups:
                 idx = SLB._first_free_member(db, real, g)
                 if idx is not None:
                     SLB._set_str(db, real, 'loot%dName%d' % (g, idx), master)
                     db.set_field(real, 'loot%dWeight%d' % (g, idx),
-                                 int(ARMOR_MASTER_WEIGHT))
-                    changes.append('loot%dName%d=armour master' % (g, idx))
+                                 int(master_weight))
+                    changes.append('loot%dName%d=armour master (weight %d%s)'
+                                   % (g, idx, master_weight,
+                                      '' if not surplus
+                                      else ', %d of it surplus from narrow pools'
+                                      % surplus))
                     break
             else:
                 # Every armour row is 6/6. Never drop a member to make room - report it,
@@ -540,17 +650,25 @@ def orb_scope(db, lk, fresh=False):
     uber's orb chain to a different EXISTING table adds and removes no records, so the
     cache would go on serving the pre-rewire scope. The newly reached table would be
     neither swept nor audited, and neither ownership witness would fire, because nothing
-    wrote IT. Two changes close that by construction:
-      * the key also carries `len(db._modified)`, so any write to a record not already
-        touched invalidates it; and
-      * `fresh=True`, which the GATE uses, so the coverage assertion is never made against
-        a cache at all. `orb_armor_rows.verify` additionally compares that fresh
-        derivation against the set apply() actually SWEPT and fails loud on any
-        difference - the honest form of the invariant, because it catches a mid-build
-        rewire whatever the cache did.
+    wrote IT.
+    ⚠️ AND THE KEY DOES NOT FULLY CLOSE THAT - the round-3 vet was right to push back on
+    an earlier version of this paragraph that said it did. `len(db._modified)` counts
+    DISTINCT touched records, so a rewire that edits a record ALREADY in `_modified`
+    moves neither number and can still be served a stale scope. A length-keyed cache
+    cannot do better; only a content hash of every chain-relevant field could, and that
+    costs the scan the cache exists to avoid.
+    So the key is a NARROWING, not a proof, and the proof is elsewhere:
+      * `len(db._modified)` in the key catches every rewire that touches a record no
+        earlier pass had touched - the common case, and cheap; and
+      * `fresh=True`, which the GATE uses, so the coverage assertion is never made
+        against a cache at all; and
+      * `orb_armor_rows.verify` compares that fresh derivation against the set apply()
+        actually SWEPT (`db._svc_orb_swept`) and fails loud on any difference. THAT pair
+        is the real guarantee: it catches a mid-build rewire whatever the cache did,
+        including the already-modified-record case the key is blind to.
     Unreachable today (`visuals`, the only registry module after this one, writes nothing,
     and the monolith's finalization does not touch orb chains) - but a cache that can go
-    stale by construction is exactly the kind of quiet narrowing BL-R181-DEBT-7 was.
+    stale quietly is exactly the kind of narrowing BL-R181-DEBT-7 was.
 
     WHAT THE WRITE-SENSITIVE KEY COSTS, measured on the build82 arz (51,253 records) so
     nobody has to guess whether correctness here was expensive: first derivation 26.19s

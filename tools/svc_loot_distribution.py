@@ -242,36 +242,52 @@ MAX_ITEM_OVER_UNIFORM = 5.8
 # ... and no item may own more than this share of the whole surface's gear mass. This is
 # the absolute "one item dominates the run" bound and it DOES red the shipped build.
 MAX_ITEM_SHARE_TOTAL = 0.030
-# ── D5 PINS: a measured, reasoned per-surface ceiling. NOT a loosened cap. ────
-# BL-R181-DEBT-7 brought four level-banded orb tiers into the audit whose top item sits
-# at 3.2-4.5% of the surface's gear mass. MEASURED on build79, the state BEFORE any of
-# this: 3.2%, 4.58%, 4.61%, 4.47%. So these are PRE-EXISTING concentrations that were
-# invisible only because nobody audited the table - and the armour treatment IMPROVES two
-# of them (4.58 -> 3.84, 4.61 -> 3.38) and leaves the others flat. They cannot be
-# improved further from here: diluting a narrow pool needs more WIDE mass, and every one
-# of these surfaces is already at weapon:armour 0.42-0.49 against D6b's 0.24 floor.
+# ── D5 PINS: ONE measured per-surface ceiling, and it is a TIGHTENING. ───────
+# ⚠️ THIS BLOCK IS A CORRECTION, AND THE CORRECTION IS THE POINT. The first round of
+# BL-R181-DEBT-7 pinned FOUR orb surfaces at 0.037/0.044/0.039/0.052 and justified all
+# four with numbers measured on `build79` - three ships stale by the time it was written.
+# Re-measured against `local/build82_run1_09a0f51d.arz`, the LIVE artifact that build
+# replaces (Steam = DEV, md5 09a0f51d), the true before -> after of that round was
+# 29-31 0.0251 -> 0.0323, 39-41 0.0338 -> 0.0383, 43-45 0.0339 -> 0.0337,
+# 49-51 0.0330 -> 0.0451: three got WORSE, one was flat, and 29-31 was pushed from
+# COMPLIANT to over-cap by the lane itself. The claimed cause (base-game level-banded
+# `all_<band>` randomisers) was also wrong - the top item on all four AFTER that round
+# was an armour piece the round's own rows introduced. The real cause is measured and
+# fixed at source: see `svc_armor_breadth.ARMOR_UNIQUE_REF_TOP_SHARE`. Raising a narrow,
+# internally-skewed base-game pool (`legsall_e03`, N=6, 46.4% of its own mass on one
+# item) from 27 to 850 multiplied that item ~31x. Bounding each member's weight by its
+# pool's evenness and handing the surplus to the aggregate master closes THREE of the
+# four outright: 29-31 0.0292, 43-45 0.0272, 49-51 0.0286, all under the global 0.030
+# with no pin at all.
+# ONE SURFACE IS LEFT, AND ITS PIN IS BELOW ITS OWN PRE-LANE VALUE. `uberorb_default_
+# 39-41` measured 0.0338 on the live b82 artifact and measures 0.0308 after this lane -
+# a 9% IMPROVEMENT on a surface that was already over the cap before anything here
+# touched it. It cannot be brought the last 3% without capping `unique_torso_e01`
+# (top share 0.1967), which is reachable from 19 pre-existing cage/hoard/apex surfaces
+# and would cut their torso mass ~12% against D7's 0.52/open floor - measured, and
+# rejected as a worse trade than one honest pin. So the pin is 0.033: a CEILING THE
+# SURFACE ALREADY BEAT BEFORE THIS LANE EXISTED, not a cap raised to admit this lane's
+# own work. The global cap stays 0.030 for all 57 surfaces.
 # WHY A PIN AND NOT A POOL-SIZE CLAUSE. The obvious alternative - let the cap scale with
 # the surface's pool size, the argument D4 makes for classes one block above - was
 # MEASURED AND REJECTED: the smallest x-uniform among the 24 pre-existing surfaces D5 reds
 # in the defect state is 3.53, and the largest among the new orb surfaces AFTER the wave
 # is 6.35, so any clause loose enough to pass the orbs would let 23 of those 24 shipped
-# defects through. The cap stays 0.030 for every surface in the mod; these four are held
-# to their OWN measured ceiling instead, and a regression on them still reds.
-# The CAUSE is base-game content this mod does not own - the same finding D4 records one
-# block below: the level-banded `all_<band>` static randomisers pay a narrow set of
-# high-band legendaries that overlap the unique tables. Registered as BL-R181-DEBT-9.
+# defects through.
+# THE RESIDUE, stated rather than dressed up: these orb tables pay only 2.7-5.8 legendary
+# gear pieces per open, because roughly half of every armour row is base-game static junk
+# that yields no legendary at all. "No item over 3% of the mass" on a surface that thin
+# demands an effective pool of 33+ items in every class it pays, and the base-game
+# per-slot pools it names hold 5-9. That is the honest reason one surface still needs a
+# ceiling, and it is registered as BL-R181-DEBT-9.
 # A pin whose surface has fallen back under the global cap is DEAD CONFIG and fails the
-# gate (the svc_orb_breadth.OUT_OF_REACH stale-pin discipline), so these cannot rot.
+# gate (the svc_orb_breadth.OUT_OF_REACH stale-pin discipline) - which is exactly how the
+# other three pins in this block were caught and deleted, by the gate, not by a reader.
 D5_PINNED = {
-    'orb uberorb_default_29-31.dbr': (0.037, 'level-banded normal tier; MEASURED 0.0322 '
-        'after the wave and 0.0322 before it - unchanged by this contract, pre-existing'),
-    'orb uberorb_default_39-41.dbr': (0.044, 'level-banded epic tier; MEASURED 0.0384 '
-        'after the wave, IMPROVED from 0.0458 before it'),
-    'orb uberorb_default_43-45.dbr': (0.039, 'level-banded epic tier; MEASURED 0.0338 '
-        'after the wave, IMPROVED from 0.0461 before it'),
-    'orb uberorb_default_49-51.dbr': (0.052, 'level-banded epic tier; MEASURED 0.0453 '
-        'after the wave and 0.0447 before it - the thinnest legendary pool of the family '
-        '(N=103), and the worst single-item share left in the mod'),
+    'orb uberorb_default_39-41.dbr': (0.033, 'level-banded epic tier; MEASURED 0.0308 '
+        'after this lane against 0.0338 on the live b82 arz 09a0f51d BEFORE it - the pin '
+        'is BELOW the surface\'s own pre-lane value. Its `headall_e01` pool (N=8) puts '
+        '26.6% of its mass on one helm and this mod does not own that pool'),
 }
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
 ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per chest open
@@ -301,13 +317,17 @@ ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per ch
 # So D7 keeps its exact number and its exact behaviour on every container big enough for
 # it to mean what it says, and the volume-free form of the same invariant - the same
 # armour yield measured PER SPAWN ITERATION - is asserted on every surface as D7b.
-# THAT QUANTITY IS NEARLY A CONSTANT OF THE CONTRACT, which is why it is the honest form:
-# measured after the wave, EVERY chest, hoard, cage variant, DRX donor and orb in the mod
-# lands on 0.1406 (normal) / 0.0589 (epic) / 0.0996 (legendary) per iteration, and the
-# only surfaces below that are the three level-banded epic orb tiers at 0.0443 .. 0.0531.
+# THAT QUANTITY IS NEARLY A CONSTANT OF THE CONTRACT, which is why it is the honest form.
+# Re-measured after the wave on the live b82 arz `09a0f51d`, 47 of the 57 surfaces land on
+# EXACTLY 0.1406 (normal, 16 of them) / 0.0589 (epic, 14) / 0.0996 (legendary, 17) per
+# iteration. The round-1 text claimed that was every surface in the mod; it is not, and
+# the ten exceptions are both known and boring: the three gaoler cage surfaces, whose
+# guaranteed row belongs to a THEME and not to this sweep (0.0673 / 0.1137 / 0.1606 - two
+# of the three ABOVE their tier's constant), and the seven level-banded orb tiers whose
+# per-slot pools are narrow enough for the evenness bound to bite (0.0452 .. 0.1296).
 #   check                       defect (build79)   after wave   threshold   margin
 #   D7  thinnest slot / open     0.0071 .. 0.3314    >= 0.6229*   0.52        16%
-#   D7b thinnest slot / spawn    0.0011 .. 0.0175    >= 0.0443    0.0375      18%
+#   D7b thinnest slot / spawn    0.0011 .. 0.0175    >= 0.0452    0.0375      20%
 #   * on surfaces at or above the reference volume; D7 is not asserted below it.
 # D7b at 0.0375 REDS ALL 57 defect surfaces (the defect state's BEST reading is 0.0175,
 # 2.1x under), which makes it a strictly stronger revert-detector than the absolute floor.

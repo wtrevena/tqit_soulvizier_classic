@@ -22,11 +22,19 @@ module claims is a table no gate audits, and no THRESHOLD can catch that.
 WHAT THIS MODULE WRITES - `svc_armor_breadth.widen_armor_rows`, the R-181 treatment
 verbatim, once per in-scope orb table, and nothing else:
   * every ARMOUR row lifted to the weapon row's own 40% (donor shipped 26/31/32/33/30);
-  * every unique-armour member raised to ARMOR_UNIQUE_WEIGHT (donor shipped 27/28
-    against ~1700 of static junk);
+  * every unique-armour member raised toward ARMOR_UNIQUE_WEIGHT (donor shipped 27/28
+    against ~1700 of static junk), BOUNDED BY ITS POOL'S OWN EVENNESS - see
+    `svc_armor_breadth.ARMOR_UNIQUE_REF_TOP_SHARE`. The base-game LEVEL-BANDED per-slot
+    pools these nine tables name are narrow and internally skewed (`legsall_e03`, N=6,
+    46.4% of its own mass on one item), so raising them flat to 850 multiplied that one
+    item ~31x and pushed four surfaces over Will's 3.0% single-item cap. The bound is
+    non-binding on all 42 pre-existing surfaces by construction;
   * the aggregate armour master `svc_unique_armor_{n,e,l}01` - one member paying all
-    five worn slots at equal weight - into the first free armour-row member slot
-    (always the shield row on these donors, which ship 2 of 6 members used);
+    five worn slots at equal weight, N=47..149 and top item 1.2-3.5% - into the first
+    free armour-row member slot (always the shield row on these donors, which ship 2 of 6
+    members used), carrying ARMOR_MASTER_WEIGHT PLUS whatever weight the bound above took
+    off the narrow members. Total unique-armour weight per table is conserved; only its
+    distribution moves, from the concentrating instruments to the spreading one;
   * the weapon row's own R-181 corrections, so lifting armour cannot INVERT a surface:
     `unique_1h`/`1h_all` re-weighted to 3x its single-class siblings (it pays three
     classes from one member slot) and the aggregate weapon master raised until the row
@@ -155,9 +163,10 @@ def apply(db, tags):
             print("    %-46s [%s] %s"
                   % (SLB._n(real).rsplit('\\', 1)[-1], tier, '; '.join(ch)))
     print("  ORB ARMOUR: armour rows lifted on %d of %d table(s) (row chance -> %g%%, "
-          "unique-armour weight -> %d, armour master at %d)"
+          "unique-armour weight -> %d bounded by pool evenness at top share %.2f, "
+          "armour master at %d + the surplus that bound released)"
           % (lifted, len(targets), SAB.ARMOR_ROW_CHANCE, SAB.ARMOR_UNIQUE_WEIGHT,
-             SAB.ARMOR_MASTER_WEIGHT))
+             SAB.ARMOR_UNIQUE_REF_TOP_SHARE, SAB.ARMOR_MASTER_WEIGHT))
 
     # ── 5. SCOPE PROOF: only armour-row + weapon-weight fields moved, never down
     illegal = []
@@ -218,10 +227,27 @@ def apply(db, tags):
 
 
 def verify(db, tags):
-    """OWNERSHIP gate. The distribution numbers are `armor_loot_breadth.verify`'s job -
-    it audits these tables now - so what is asserted here is the thing that was missing:
-    that every table the orb derivation produces is actually INSIDE that audit set, and
-    that no loot table written anywhere in this build escaped it."""
+    """OWNERSHIP gate. The distribution NUMBERS are `armor_loot_breadth.verify`'s job -
+    it audits these tables now - so what is asserted here is the ownership half.
+
+    WHAT EACH CHECK ACTUALLY PROVES, stated precisely because the round-3 vet caught an
+    earlier version of this docstring overselling the middle one:
+      * SWEPT-vs-FRESH - the load-bearing one. A derivation taken from the db's FINAL
+        state, compared against the set `apply()` really swept. This is what catches a
+        later pass rewiring an orb chain: nothing WROTE the newly-reached table, so no
+        ownership witness can see it and no threshold can either.
+      * `missing` - a CACHE / REWIRE DETECTOR, not independent coverage evidence.
+        `all_surfaces` derives its orb surfaces from `orb_scope` too, so in the ordinary
+        case the two sides cannot disagree - that identity IS the intent (coverage by
+        construction), and this check exists to red if a stale cached derivation ever
+        makes the audit set and the fresh scope diverge. Do not read a PASS here as proof
+        that the orbs are audited; `armor_loot_breadth.verify` is what proves that, and
+        on a db where this module never ran it reds with 93 findings while this one
+        still passes.
+      * OWNERSHIP - `ownership_problems`, the two witnesses (OWN1 the shared-builder
+        ledger, OWN2 the registry touch log). This is the check that makes the orphan
+        class structurally impossible, and its negatives are N11a/N11b.
+    """
     lk = SLB.Lookup(db)
     surfaces = SAB.all_surfaces(db, lk)
     audited = {SLB._n(t) for (_l, ts, _w, _tr) in surfaces for t in ts}

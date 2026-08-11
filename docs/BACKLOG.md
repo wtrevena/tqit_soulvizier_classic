@@ -122,13 +122,40 @@ own PASS line**), and **D7b** asserts the same invariant per SPAWN ITERATION on 
 contract - after the wave every surface in the mod lands on 0.1406 / 0.0589 / 0.0996 per iteration by
 tier - and **D7b at 0.0375 reds all 57 defect surfaces**, its best reading being 0.0175.
 
-**FOUR D5 PINS, MEASURED, NOT A LOOSENED CAP.** `uberorb_default_{29-31,39-41,43-45,49-51}` hold a
-single item at 3.2-4.5% of gear mass against the 3.0% cap. Measured on build79 BEFORE any of this:
-3.2%, 4.58%, 4.61%, 4.47% - pre-existing, invisible only because nobody audited the table, and this
-wave IMPROVES two of them. A pool-size clause (D4's argument, applied to surfaces) was measured and
-REJECTED: it would let **23 of the 24 pre-existing surfaces D5 reds in the defect state through**. The
-global cap stays 0.030 for the whole mod; these four carry their own ceiling with a written reason, and
-a pin that falls back under the cap reds as dead config.
+**ROUND-3 CORRECTION: THE FOUR D5 PINS ARE GONE, AND SO IS THE CONCENTRATION THAT NEEDED THEM.**
+Round 2 of this lane pinned `uberorb_default_{29-31,39-41,43-45,49-51}` at 0.037/0.044/0.039/0.052 and
+justified all four on numbers measured on **build79 - three ships stale**. Re-measured against
+`local/build82_run1_09a0f51d.arz`, the LIVE artifact this build replaces (Steam = DEV, md5 `09a0f51d`),
+that round's true before -> after was **29-31 0.0251 -> 0.0323, 39-41 0.0338 -> 0.0383,
+43-45 0.0339 -> 0.0337, 49-51 0.0330 -> 0.0451**: three got WORSE, one was flat, and 29-31 was pushed
+from COMPLIANT to over-cap **by the lane itself**. The stated cause was wrong too - the top item on all
+four AFTER that round was an armour piece the round's own rows introduced (`um_n_crownoftheelements`,
+`usm_e_vestmentsofthebattlemage`), not a base-game randomiser.
+
+**THE REAL CAUSE, MEASURED, AND FIXED AT SOURCE.** `ARMOR_UNIQUE_WEIGHT = 850` is an absolute weight
+derived on the xpack donor family, and it assumed the pool behind a member SPREADS what it is given.
+Measured over all 55 distinct unique-armour members: the aggregate master carries **1.2-3.5%** of its
+own mass on its top item (N=47-149), the xpack family **3.7-20.0%**, and the base-game LEVEL-BANDED
+family the nine `uberorb_default_<band>` tables are cloned from **4.9-46.4%** (`legsall_e03`, N=6).
+Raising such a member 27 -> 850 multiplies that one item **~31x**. So `svc_armor_breadth` now bounds
+each member by its pool's own evenness (`ARMOR_UNIQUE_REF_TOP_SHARE = 0.21`) and hands the surplus to
+the aggregate master, conserving total unique-armour weight per table and moving only its distribution.
+The reference is set above the highest top-share reachable from any pre-existing surface
+(`unique_torso_e01` 0.1967) and above the perfectly-uniform 5-item banded shields (0.2000), so it fires
+on SKEW and not on pool size: **0 of the 42 pre-existing surfaces change a single field.**
+
+**Result: 29-31 0.0292, 43-45 0.0272, 49-51 0.0286 - all under the global 0.030, unpinned.** The gate
+caught its own three dead pins as `D5 STALE PIN` findings and they were deleted.
+
+**ONE PIN REMAINS, AND IT IS A TIGHTENING.** `uberorb_default_39-41` measures **0.0308 after this lane
+against 0.0338 before it** - a 9% improvement on a surface that was already over the cap before
+anything here touched it. The last 3% needs `unique_torso_e01` capped, which is reachable from 19
+pre-existing cage/hoard/apex surfaces and would cut their torso mass ~12% against D7's 0.52/open floor:
+measured, and rejected as a worse trade than one honest pin. The pin is **0.033 - below the surface's
+own pre-lane value**, so it admits nothing this lane created. A pool-size clause (D4's argument applied
+to surfaces) stays measured and REJECTED: it would let **23 of the 24 pre-existing surfaces D5 reds in
+the defect state through**. The global cap stays 0.030 for all 57 surfaces, and a pin that falls back
+under it reds as dead config - which is exactly how the other three died.
 
 ### DEBT MOVED BY THIS LANE
 

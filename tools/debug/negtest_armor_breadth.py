@@ -27,6 +27,11 @@ The planted defects are the REAL defect classes, not synthetic ones:
   N10 the b79 armour rows restored on an R-220 orb table, one per donor family - the
      BL-R181-DEBT-7 defect itself, which BOTH loot gates passed for a whole build
      because no surface audited those tables;
+  N14 the POOL-EVENNESS BOUND defeated - the narrow level-banded armour members raised
+     FLAT to ARMOR_UNIQUE_WEIGHT on the worst orb surface. That is what round 1 of
+     BL-R181-DEBT-7 shipped, and it multiplied one greaves record ~31x into a 4.5%
+     single-item share. See the note beside it for the half that is deliberately NOT
+     pinned, and why;
   N11 the SYNTHETIC ORPHAN, planted twice: a module writes a gear loot table that no
      distribution surface covers, once through the shared builder (the LEDGER witness)
      and once as a raw field write (the REGISTRY TOUCH LOG witness). No threshold can
@@ -68,6 +73,9 @@ UNIQUE_TORSO_L = r'records\xpack\item\loottables\torso\mastertables\unique_torso
 # BL-R181-DEBT-7's own surfaces: an R-220 orb table from each of the two donor families.
 ORB_CHARON_L = r'records\xpack\item\containers\loot tables\boss_charon_l01b.dbr'
 ORB_BANDED_E = r'records\item\containers\defaultloot\uberorb_default_43-45.dbr'
+# The single worst pool-evenness surface in the mod: its `legsall_e03` member (N=6) puts
+# 46.4% of its own mass on ONE item, so it is where the evenness bound earns its keep.
+ORB_BANDED_WORST = r'records\item\containers\defaultloot\uberorb_default_49-51.dbr'
 # The SYNTHETIC ORPHAN: a loot table written by a module and covered by no surface -
 # the exact shape of the fifteen R-220 tables before this lane. Deliberately OUTSIDE
 # `\svc\`, because inside it the mod-ownership sweep would (correctly) cover it and
@@ -279,6 +287,34 @@ def main(argv):
               _revert_orb_armour(table),
               lambda d, k, t=table, tr=tier: [p for p in audit_surface_of(d, k, t, tr)
                                               if p.startswith(('D6', 'D7'))])
+
+    # N14 - THE EVENNESS BOUND (ARMOR_UNIQUE_REF_TOP_SHARE). Defeat it: every
+    #      unique-armour member on the worst level-banded orb table raised FLAT to
+    #      ARMOR_UNIQUE_WEIGHT, which is exactly what round 1 of this lane shipped and
+    #      exactly what pushed that surface to a 4.5% single-item share.
+    #
+    # ⚠️ WHAT IS NOT PINNED HERE, stated rather than implied. The bound's OTHER half -
+    #    handing the withheld weight to the aggregate master - was planted too and came
+    #    back GREEN, so it is NOT shipped as a negative. Measured: forcing the master
+    #    back to ARMOR_MASTER_WEIGHT on all 15 orb tables moves the worst worn-slot yield
+    #    0.04517 -> 0.04249 per spawn iteration against D7b's 0.0375 floor, i.e. it
+    #    spends about 6% of the headroom and reds nothing. The surplus is therefore a
+    #    BALANCE CHOICE living inside D7b's margin, not a gate-enforced invariant, and it
+    #    is registered as BL-R181-DEBT-11 rather than dressed up as a guarded one.
+    def _flatten_bound(d, k):
+        real = k.real(ORB_BANDED_WORST)
+        for g in SAB.armor_groups(d, real):
+            for i, nm, _w in SLB._slot_members(d, real, g):
+                n = SLB._n(nm)
+                if 'svc_unique_armor' in n:
+                    d.set_field(real, 'loot%dWeight%d' % (g, i), SAB.ARMOR_MASTER_WEIGHT)
+                elif SAB._UNIQUE_ARMOR_RE.search(n):
+                    d.set_field(real, 'loot%dWeight%d' % (g, i), SAB.ARMOR_UNIQUE_WEIGHT)
+    check("D5 the pool-evenness bound defeated - narrow banded members flat at %d "
+          "(round 1 of this lane)" % SAB.ARMOR_UNIQUE_WEIGHT,
+          _flatten_bound,
+          lambda d, k: [p for p in audit_surface_of(d, k, ORB_BANDED_WORST, 'e')
+                        if p.startswith('D5')])
 
     # N11 - THE SYNTHETIC ORPHAN. A module writes a gear loot table that no surface
     #      audits. No threshold can catch this - only a rule about WRITES can - and it
