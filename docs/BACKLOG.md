@@ -1,5 +1,64 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## GATE RECORD - R-201 SOUL TIER NAMING (2026-08-10, branch `fix/soul-tier-naming`)
+
+**Will's bug (verbatim):** "the new souls we made dont have named variants, i.e., the epic, legendary
+and normal versions of the soul of the gaolor are all named the same where as the rest of the souls are
+named things like Soul of the Gaolor, Epic Soul of the gaolor, legendary soul of the gaolor".
+
+**ROOT CAUSE.** Tier differentiation is `itemQualityTag` (rendered by the engine as a PREFIX in front
+of the shared `itemNameTag`), not three separate names. 641 of 739 multi-tier soul families - EVERY
+SV-original family, zero exceptions - carry n=absent / e=`tagSoulEpic` / l=`tagSoulLegendary`. The 98
+families under `records\item\equipmentring\soul\svc_uber\` (all of, and only, the souls WE authored)
+carried it on no tier, because every generator writes one field set to all three tiers.
+
+**THE BUILD.**
+
+| artifact | md5 | bytes | vs `build76-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`435cc485ee43e739b85d4221e6c9bb4b`** | 55,550,972 | **CHANGED** from `16994072` |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and the arz+Text coupling law is SATISFIED rather than waived:** this wave authors NO new
+text tag (it points 196 records at `tagSoulEpic` / `tagSoulLegendary`, which the SV text pass already
+emits), so `Text.arc` did not need to move and `validate_tags` PASSES against the EXISTING one.
+
+**RECORD-DIFF vs the shipped `16994072`: ADDED 0 / REMOVED 0 / MODIFIED 196, ZERO unexplained.** All
+196 are `svc_uber\*_soul_{e,l}.dbr`, each with exactly ONE changed field, e.g.
+`polisgaoler_soul_e.dbr :: itemQualityTag: None -> ['tagSoulEpic']` and
+`polisgaoler_soul_l.dbr :: itemQualityTag: None -> ['tagSoulLegendary']`. No non-`svc_uber` record moved.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (`build_svc_database.py`, RELEASE drop rates, work/ layout) | **exit 0, "Done."** - whole fail-loud battery green |
+| **NEW** `_verify_soul_tier_naming` (R-201, fail-loud, no whitelist) | **PASS** - 2191 canonical soul tier records / 740 families (739 multi-tier), every tier convention-tagged and rendering a DISTINCT name |
+| F6 soul-naming gate (unchanged) | PASS - 83 OURS-path souls, 2158 SV-original paths whitelisted |
+| `validate_tags` (against the EXISTING Text.arc) | **PASS** - 382 mod-owned refs present; **`tagSoulEpic` x789 + `tagSoulLegendary` x789 both defined**; 442 authoritative tags present |
+| `run_contracts` (all 6 modules, work/ + base game) | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** - the SAME 4492 the `build76-ship` record measured, so this ship adds ZERO new contract violations |
+| in-build summons contract lane | PASS - 0 P0 / 0 P1 / 111 P2 |
+| unlock-alignment gate (b77) | PASS - 238 live buttons, 13/13 waivers |
+| `py_compile` on both edited tools | PASS |
+
+**NEGATIVE TESTS (4, `scratchpad/negtest_r201.py` + the pre-flight).**
+1. Gate run against the PRE-FIX shipped `16994072` arz -> **RED**, naming exactly 196 records / 98
+   families and **zero false positives on SV-original or SVAERA-path souls**.
+2. Strip `itemQualityTag` from ONE shipped record (`polisgaoler_soul_e`) -> **RED** with 1 C1 + 1 C2.
+3. Re-run the normalizer -> restores exactly 1 record, gate **GREEN** (idempotent).
+4. Give the Legendary tier the Epic tag -> **RED** (the gate checks the VALUE, not mere presence).
+
+**WHAT IS OWED / NOT PROVEN.** Not proven in-game. Will's check: read the Gaoler soul's name on Epic
+and on Legendary. Two PRE-EXISTING, out-of-scope soul-name quirks were observed during the audit and
+deliberately NOT changed (they are SV data, not this defect, and touching them would collide with law
+#2): `maenadscout` and `maenadvanguard` share one name tag (both read "Maenad Vanguard Soul"), and SV
+ships double-authored copies of a few souls (`polyphemus_soul_n.dbr` alongside `polyphemus_soul_n_.dbr`).
+Registered here as debt; neither affects tier naming.
+
+
 ## 🚢 SHIP RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb is **LIVE ON STEAM** (2026-08-10, `main` @ `6b9167a`, tag `build76-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
