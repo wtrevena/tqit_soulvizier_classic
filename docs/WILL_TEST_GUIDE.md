@@ -1,10 +1,51 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## NEW R-210 (2026-08-10): ATLANTIS IS GONE FROM THE PORTAL PAGE
+> **THE ONE-LINE TEST: open a portal (any rebirth fountain / teleport) and count the act tabs. You
+> should see exactly FOUR - Greece, Egypt, Orient, Immortal Throne - and NO Atlantis, no Ragnarok, no
+> Eternal Embers.** Then click each of the four and check the destination lists still look right
+> (Olympus and all of Hades are still on the Immortal Throne page).
+>
+> **Second surface, same fix:** open the quest log. Its act tabs should also stop at Immortal Throne.
+>
+> **What was wrong.** The portal window's page list is ONE database record. Soulvizier ships an
+> Immortal-Throne-era copy with the four base pages, but our user-interface cleanup pass deletes every
+> such record (it has to - Soulvizier's old UI records break the modern mastery screens), so the mod
+> shipped no copy at all and the BASE GAME's seven-page version took over. If you own the expansions,
+> you got their tabs. Now the four base pages are imported back faithfully with the three expansion
+> pages deleted, and a build gate fails loudly if any of them ever reappears.
+>
+> **If you see any tab other than those four, that is a real find** - the gate says there are zero.
+>
+> ⚠️ **STILL OPEN, be aware:** this removes the Atlantis PAGE, not the Atlantis VOYAGE. If you own the
+> Atlantis DLC you can still sail Rhodes -> Gadir -> Atlantis by boat. That is a separate fix
+> (`BL-PORTALCAP-DEBT-1`) and needs your call on how to block it.
+
 > ## NEW R-201 (2026-08-10): OUR SOULS FINALLY HAVE EPIC AND LEGENDARY NAMES
-> **THE ONE-LINE TEST: pick up the Soul of the Gaoler on Epic, then on Legendary, and read the item
-> name.** You should now see **"Epic Soul of the Gaoler"** and **"Legendary Soul of the Gaoler"** where
-> all three tiers used to read plain "Soul of the Gaoler". Same for the other 97 souls we made -
-> Charon, Dagon, the Broodmother, the Blood Cult High Priest, every hand-crafted hero soul.
+> **✅ LIVE ON DEV AND ON STEAM (build77-ship, Workshop item 3759792705).** arz
+> **`435cc485ee43e739b85d4221e6c9bb4b`**; the map, quests and Text did not move.
+>
+> **THE ONE-LINE TEST - two souls, three tiers each:**
+> 1. **Soul of the Gaoler** (Alkyoneus the Soul-Gaoler, Prison of Souls / Hades Palace floor 4 - the same
+>    boss as the chest-breadth test). Expect **"Soul of the Gaoler"** on normal, **"Epic Soul of the
+>    Gaoler"** on Epic, **"Legendary Soul of the Gaoler"** on Legendary.
+> 2. **Soul of the Insatiable** (Tantalus, `um_tantalus_99`, in the cave off the Stygian Marsh whose area
+>    banner reads **"Den of Tantalus"**). Expect **"Soul of the Insatiable"** / **"Epic Soul of the
+>    Insatiable"** / **"Legendary Soul of the Insatiable"**.
+>
+> All three tiers of both used to read the plain name. Same fix on the other 96 souls we made - Dagon, the
+> Broodmother, the Blood Cult High Priest, the Waking Dread, all four Toxeus souls, every hand-crafted
+> hero soul.
+>
+> ⚠️ **Use a FRESHLY DROPPED soul, not one already in your stash or caravan, if anything looks off.** The
+> name is read from the database at display time so a stored soul should update too, but TQ bakes item
+> data at pickup (standing lesson), and a stale stash item is the one way you could see "no change" on a
+> build that is actually correct.
+>
+> ⚠️ **Do not use Charon Soul as your test.** Two different souls render that exact name - ours and
+> Soulvizier's own - so it cannot tell you whether the fix landed. Same caution for General Yrrt'ik, Ice
+> Mandible, Kallixenia and Plague Feast. That duplicate-name overlap is older than this fix and is logged
+> as `BL-R201-DEBT-1`; renaming souls is your call, not ours.
 >
 > **What was wrong.** A soul does not carry three names: the three tier records share ONE name and the
 > engine prefixes the tier word from a separate field (`itemQualityTag`). Every SV soul had it - all
