@@ -996,4 +996,5 @@ def verify(db, tags):
           "re-identified on the frozen tiers; A9 clean on 3 own-rig clones with "
           "no invented actorHeight; 0 charFxPak, 0 dangling skill refs, permanent "
           "pets TTL-free; no 'ferryman' exemption; every svc_* Champion escort has "
-          "strictly ascending life; 0 skills shared with the base Charon forms)")
+          "strictly ascending life; 0 charon_* signature skills and 0 shared cast "
+          "rotation vs boss_charon_43 / boss_charonform2_43)")
