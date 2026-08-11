@@ -112,22 +112,41 @@ SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPE
 # THE COMMITTED BALANCE TARGETS (R-181)
 #
 # Every threshold below is DERIVED, not chosen: each was read off
-# `py tools/gate_loot_distribution.py <arz> --calibrate` run against BOTH the shipped
-# build76 arz (`16994072`, the state Will reported) and the R-181 dry run, and then
-# placed so that it REDS the shipped state and CLEARS the fixed state with margin. A
-# threshold that does not red the reported defect is decoration; a threshold with no
-# margin is a gate that gets switched off (the b63 1.0u lesson).
+# `py tools/gate_loot_distribution.py <arz> --calibrate` (shipped) and the same command
+# with `--apply` (fixed), run against the CURRENT build78 arz
+# `f663846233295da3e8824bfa4d8925c8`, and then placed so that it REDS the shipped state
+# and CLEARS the fixed state with margin. A threshold that does not red the reported
+# defect is decoration; a threshold with no margin is a gate that gets switched off (the
+# b63 1.0u lesson).
+#
+# THESE NUMBERS WERE RE-DERIVED, AND SAYING SO IS THE POINT. The first R-181 round
+# calibrated against a 36-surface set that silently EXCLUDED the six structurally hardest
+# surfaces in the mod - the 3 `svc_uberorb_apex_*` tables (deferred to a lane that did not
+# own them) and the 3 DRX donors (written by the wave, absent from the audit). With all 42
+# surfaces in scope the same 15-20% margin discipline lands on different values: four
+# thresholds move OUT (D2, D3, D6, D7) and one moves IN (D1 0.42 -> 0.35, which the old
+# set could not afford). Every one still reds the reported defect by a wide margin; none
+# was moved to make a red go away without a stated derivation.
 #
 #   check                      shipped   R-181   threshold   reds shipped   margin
-#   D1 class share, table       0.4313   0.3548    0.42          yes         16%
-#   D2 class share, surface     0.3431   0.1744    0.21          yes         17%
-#   D3 thinnest class share     0.0106   0.0201    0.016         yes         20%
-#   D4 item share / uniform     4.13x    4.93x     5.8x          no*         15%
-#   D5 item share, surface      0.0583   0.0246    0.030         yes         18%
-#   D6 weapon : armour          7.21     1.389     1.65          yes         16%
-#   D7 thinnest armour slot     0.1109   0.7348    0.60          yes         18%
-#   D8 class share of weapons   0.4145   0.2431    0.29          yes         16%
-#   D9 slot share of armour     0.5352   0.3492    0.44          yes         21%
+#   D1 class share, table       0.4313   0.2083    0.35        yes  (23%)     40%
+#   D2 class share, surface     0.3431   0.2083    0.25        yes  (37%)     17%
+#   D3 thinnest class share     0.0106   0.0175    0.0145      yes  (27%)     17%
+#   D4 item share / uniform     4.19x    5.04x     5.8x        no*             13%
+#   D5 item share, surface      0.0583   0.0260    0.030       yes  (94%)     13%
+#   D6 weapon : armour          7.206    1.5857    1.85        yes (289%)     14%
+#   D6b lowest weapon : armour  1.5257   0.2845    0.24        yes  (30%)**   16%
+#   D7 thinnest armour slot     0.0397   0.6229    0.52        yes  (13x)     16%
+#   D8 class share of weapons   0.4145   0.2413    0.29        yes  (43%)     17%
+#   D9 slot share of armour     0.5352   0.2918    0.44        yes  (22%)     34%
+#
+#   ** D6b is a MIRROR guard, so the shipped build cannot red it (shipped, weapons
+#      dominated everywhere - the lowest ratio in the mod was 1.53:1). The defect it must
+#      red is this wave's OWN over-correction, and it caught one for real: with armour
+#      lifted to parity but the weapon row still carrying the apex donor's diluted 29.6%
+#      legendary share, `svc_uberorb_apex_n01c` inverted to 0.1683:1 - an 85%-armour
+#      surface. 0.24 reds that by 30%. That measurement is the derivation, and negtest N7
+#      re-plants it so the number stays load-bearing.
 #
 #   * D4 is a REGRESSION GUARD, and the report says so plainly rather than pretending
 #     otherwise. The cage's within-class spread was ALREADY near-uniform in the shipped
@@ -144,11 +163,11 @@ SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPE
 # class" bound - a THEMED variant is designed to bias, and it is only ever met alongside
 # its two siblings, so D2 (the surface the player actually opens) is the binding
 # evenness contract. D1 exists to catch what shipped: SPEAR at 43.1% of one cage table.
-MAX_CLASS_SHARE_TABLE = 0.42
-MAX_CLASS_SHARE_AGGREGATE = 0.21
+MAX_CLASS_SHARE_TABLE = 0.35
+MAX_CLASS_SHARE_AGGREGATE = 0.25
 # A class the surface claims to pay must actually be payable. The shipped cage put the
 # helm at 1.06% of its Epic mass - reachable, and invisible.
-MIN_CLASS_SHARE_TABLE = 0.016
+MIN_CLASS_SHARE_TABLE = 0.0145
 # "Near-uniform within a class": no item may carry more than this multiple of its
 # class's uniform share (1/n). Expressed as a MULTIPLE because a 7-item class cannot be
 # held to an absolute share below its own uniform 14.3%.
@@ -157,14 +176,14 @@ MAX_ITEM_OVER_UNIFORM = 5.8
 # the absolute "one item dominates the run" bound and it DOES red the shipped build.
 MAX_ITEM_SHARE_TOTAL = 0.030
 # Armour parity. Every worn slot must be a REAL drop, not a rounding error.
-ARMOR_SLOT_FLOOR = 0.60          # expected legendary pieces of that slot per chest open
-MAX_WEAPON_ARMOUR_RATIO = 1.65   # legendary weapon mass : legendary armour mass
+ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per chest open
+MAX_WEAPON_ARMOUR_RATIO = 1.85   # legendary weapon mass : legendary armour mass
 # ... and the MIRROR, so "fix the armour" cannot quietly become "bury the weapons". The
 # binding case is the blood-cave mega chest `loottable_hidden_bloodcave_03`, which has NO
 # guaranteed weapon slot at all (`loot3Chance = 0`) and was already armour-leaning at
 # 1.60:1 before this wave; it measures 0.33:1 after, so the floor sits at 0.25 (24%
 # margin) to catch a future inversion without reding a surface whose SHAPE is the reason.
-MIN_WEAPON_ARMOUR_RATIO = 0.25
+MIN_WEAPON_ARMOUR_RATIO = 0.24
 # D8/D9 - the WITHIN-SIDE balance, and the reason they exist is a negative test that
 # came back GREEN when it should have been RED. D1/D2 measure a class's share of ALL
 # gear; once armour parity lands, armour takes half the mass, so re-planting the shipped

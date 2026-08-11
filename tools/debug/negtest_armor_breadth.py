@@ -19,8 +19,11 @@ The planted defects are the REAL defect classes, not synthetic ones:
   N4 one spear wired in directly at a dominating weight - the "4 copies of the SAME
      legendary spear" failure, planted as a single-item share instead of a volume effect
      so D4 is proven independently of D2;
-  N5 an armour row switched off entirely (weapons drown armour);
-  N6 a whole worn slot starved by aiming its unique member at the wrong slot.
+  N5 an armour chance row switched off entirely (weapons drown armour);
+  N6 a whole worn slot starved by aiming its unique member at the wrong slot;
+  N7 the MIRROR - the weapon row's legendary-share parity reverted on an apex orb table,
+     which inverts the surface to 85% armour. Not hypothetical: that is exactly what the
+     first R-181 round shipped into three live surfaces before the vet caught it.
 
 INPUT: any arz. The wave is applied IN MEMORY first (the same code path the build takes,
 and it is idempotent), so this runs against a pre-fix arz as well as a post-fix build and
@@ -46,6 +49,7 @@ L = r'records\item\loottables\svc'
 CAGE_L = rf'{L}\polisvault_01.dbr'          # chest_01 Legendary variant a (martial)
 CAGE_LC = rf'{L}\polisvault_01_lc.dbr'      # chest_01 Legendary variant c (warden)
 HOARD_L = r'records\drxitem\container\svc_charonhoard_loot_03.dbr'
+APEX_L = rf'{L}\svc_uberorb_apex_l01c.dbr'   # a red-uber Mystical Orb chest / Leinth
 SPEAR_ITEM = r"records\item\equipmentweapon\spear\u_e_scorpion'stail.dbr"
 UNIQUE_TORSO_L = r'records\xpack\item\loottables\torso\mastertables\unique_torso_l01.dbr'
 
@@ -55,32 +59,13 @@ SHIPPED_UNIQUE_W = {2: 100, 5: 200, 6: 100}
 
 
 def load_fixed(path):
-    """Load an arz and apply the R-181 wave in memory (quietly)."""
-    db = ArzDatabase.from_arz(Path(path))
-    lk = SLB.Lookup(db)
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        from patches import armor_loot_breadth as ALB
-        from patches import chest_loot_breadth as CLB
-        SLB.ensure_masters(db, lk)
-        SAB.ensure_armor_masters(db, lk)
-        lk.refresh()
-        for N, themes in (('01', ['martial', 'hunter', 'warden']),
-                          ('03', ['apex', 'adept', 'sovereign'])):
-            for tier in SLB.TIERS:
-                for v, theme in zip(('a', 'b', 'c'), themes):
-                    if v == 'a':
-                        p = (rf'{L}\polisvault_{N}.dbr' if tier == 'l'
-                             else rf'{L}\polisvault_{N}_{tier}.dbr')
-                    else:
-                        p = rf'{L}\polisvault_{N}_{tier}{v}.dbr'
-                    if lk.real(p):
-                        SLB.set_guaranteed_theme(db, p, tier, theme, lk)
-                        SLB.widen_weapon_row(db, p, tier, lk)
-        CLB.apply(db, None)
-        ALB.apply(db, None)
-    lk.refresh()
-    return db, lk
+    """Load an arz and apply the R-181 wave in memory (quietly).
+
+    The wave sequence itself lives in `svc_armor_breadth.apply_wave` so the negtests,
+    `gate_loot_distribution.py --apply` and the in-build gate cannot drift apart about
+    what "after the wave" means.
+    """
+    return SAB.apply_wave(ArzDatabase.from_arz(Path(path)))
 
 
 def audit_surface_of(db, lk, table, tier='l'):
@@ -197,15 +182,38 @@ def main(argv):
           lambda d, k: [p for p in audit_surface_of(d, k, CAGE_L)
                         if p.startswith(('D4', 'D5'))])
 
-    # N5 - an armour row switched off entirely.
+    # N5 - an armour row switched off entirely (weapons drown armour).
+    #      PLANTED ON THE MARTIAL VARIANT, NOT THE WARDEN ONE, and the reason is the
+    #      contract: the warden theme's GUARANTEED slot deliberately pays armour
+    #      (armour master 400 + shield 60 + torso 40 of 1000), so killing its CHANCE rows
+    #      leaves ~1.0 armour piece per slot per open still arriving - correctly green.
+    #      `polisvault_01` (martial) has an all-weapon guaranteed slot, so its armour
+    #      comes only from the chance rows and switching them off is a real starvation.
     def _kill_row(d, k):
-        real = k.real(CAGE_LC)
+        real = k.real(CAGE_L)
         for g in SAB.armor_groups(d, real):
             d.set_field(real, 'loot%dChance' % g, 0.0)
-    check("D6/D7 every armour row switched off on the warden cage variant",
+    check("D6/D7 every armour CHANCE row switched off on the martial cage variant",
           _kill_row,
-          lambda d, k: [p for p in audit_surface_of(d, k, CAGE_LC)
+          lambda d, k: [p for p in audit_surface_of(d, k, CAGE_L)
                         if p.startswith(('D6', 'D7'))])
+
+    # N7 - the MIRROR. Revert the weapon row's legendary-share parity on an apex orb
+    #      table (master back to R-180's flat BREADTH_WEIGHT) and the surface inverts to
+    #      ~0.17:1 weapon:armour - 85% armour. This is the over-correction the first
+    #      R-181 round actually shipped into three live surfaces, so it is planted rather
+    #      than argued: it proves MIN_WEAPON_ARMOUR_RATIO is load-bearing and that
+    #      "fix the armour" cannot quietly become "bury the weapons".
+    def _revert_weapon_parity(d, k):
+        real = k.real(APEX_L)
+        for i, nm, _w in SLB._slot_members(d, real, 1):
+            if SAB._WEAPON_MASTER_RE.search(SLB._n(nm)):
+                d.set_field(real, 'loot1Weight%d' % i, SLB.BREADTH_WEIGHT)
+    check("D6b weapon-row share parity reverted on the apex orb table (armour buries "
+          "weapons)",
+          _revert_weapon_parity,
+          lambda d, k: [p for p in audit_surface_of(d, k, APEX_L)
+                        if p.startswith('D6b')])
 
     # N6 - a whole worn slot starved by aiming its unique member at another slot.
     def _starve_slot(d, k):

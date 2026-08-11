@@ -39,6 +39,13 @@ Usage:
   py tools/gate_loot_distribution.py <arz> --verbose    # per-surface slot table
   py tools/gate_loot_distribution.py <arz> --calibrate  # print the worst OBSERVED
                                                         # value per check and exit 0
+  py tools/gate_loot_distribution.py <arz> --apply ...  # apply the R-181 wave in memory
+                                                        # first, so a PRE-wave arz can be
+                                                        # measured against the same
+                                                        # contract (idempotent; this is
+                                                        # how the before/after arithmetic
+                                                        # in the R-181 record is
+                                                        # reproduced from one command)
 """
 import sys
 from collections import defaultdict
@@ -61,6 +68,7 @@ def calibrate(db):
     worst = defaultdict(lambda: (0.0, ''))
     best_min = (1e9, '')
     thin = (1e9, '')
+    low_ratio = (1e9, '')
     for label, tables, weights, tier in SAB.all_surfaces(db, lk):
         profs = [SLD.ChestProfile(d, dist, t, 1,
                                   {'n': 'Epic', 'e': 'Legendary',
@@ -112,6 +120,8 @@ def calibrate(db):
         am = sum(agg.get(s, 0.0) for s in SLD.ARMOR_SLOTS)
         if am > 0 and wm / am > worst['D6 weapon:armour'][0]:
             worst['D6 weapon:armour'] = (wm / am, label)
+        if am > 0 and wm / am < low_ratio[0]:
+            low_ratio = (wm / am, label)                    # D6b, the MIRROR
         for s in SLD.WEAPON_SLOTS:
             if wm > 0 and agg.get(s, 0.0) / wm > worst['D8 class share of weapons'][0]:
                 worst['D8 class share of weapons'] = (agg.get(s, 0.0) / wm,
@@ -128,6 +138,7 @@ def calibrate(db):
         v, who = worst[k]
         print('  %-28s %8.4f   %s' % (k, v, who))
     print('  %-28s %8.4f   %s' % ('D3 thinnest class share', best_min[0], best_min[1]))
+    print('  %-28s %8.4f   %s' % ('D6b LOWEST weapon:armour', low_ratio[0], low_ratio[1]))
     print('  %-28s %8.4f   %s' % ('D7 thinnest armour slot', thin[0], thin[1]))
 
 
@@ -137,6 +148,12 @@ def main(argv):
               "[--verbose] [--calibrate]")
         return 2
     db = ArzDatabase.from_arz(Path(argv[1]))
+    if '--apply' in argv[2:]:
+        # Audit the arz AS IF the wave had run - so a PRE-wave arz can be measured
+        # against the same contract the build gate enforces, and the before/after
+        # arithmetic in the R-181 record is reproducible from one command.
+        print("  --apply: R-181 wave applied in memory (idempotent; safe on a built arz)")
+        SAB.apply_wave(db)
     if '--calibrate' in argv[2:]:
         calibrate(db)
         return 0
@@ -144,10 +161,6 @@ def main(argv):
     print("\n=== loot-distribution audit (R-181) ===")
     problems, reports = SAB.audit_db(db, verbose=verbose)
     print("loot surfaces audited: %d" % len(reports))
-    orb = [t for t in SLB.chest_tables(db) if SAB.is_orb_lane_table(t)]
-    if orb:
-        print("  %d orb table(s) OUT OF SCOPE - owned by the b79 fix/orb-loot-breadth "
-              "lane (BL-R181-DEBT-1)" % len(orb))
     for k, why in sorted(SLB.EXEMPT.items()):
         print("  EXEMPT %s - %s" % (k, why))
     if problems:

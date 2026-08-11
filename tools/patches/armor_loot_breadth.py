@@ -29,10 +29,13 @@ module runs late: it must sweep the FINAL table set, and it must see R-180's wea
 masters and widened rows already in place (it raises weights R-180 wrote, and its
 `unique_1h` correction reads the members R-180 added).
 
-SCOPE. In: every mod-owned gear chest + the 3 DRX donors. OUT BY OWNER: the
-`svc_uberorb_*` orb tables, owned by the concurrent b79 `fix/orb-loot-breadth` lane -
-listed loudly on every run, never silently skipped. OUT BY EVIDENCE: general monster
-armour drops, measured and reported for a Will decision, never changed here.
+SCOPE. In: every mod-owned gear chest (including the 3 `svc_uberorb_apex_*` tables that
+back the red-uber Mystical Orb chests and Leinth's hoards) + the 3 DRX donors. There is
+NO owner-based exclusion: the previous round deferred the apex tables to b79
+`fix/orb-loot-breadth`, which provably does not widen armour on them and says so in its
+own docstring. `apply()` now asserts WRITE SET == AUDIT SET and fails the build if they
+ever diverge again. OUT BY EVIDENCE: general monster armour drops, measured and reported
+for a Will decision, never changed here.
 
 GATE (verify, post-finalization): `svc_armor_breadth.audit_db` over the final db -
 per SURFACE, no class over its share cap, no starving class, no single item dominating
@@ -66,7 +69,6 @@ def apply(db, tags):
 
     donor_tiers = {SLB._n(p): t for t, p in SLB.DRX_DONORS.items()}
     targets = [t for t in SLB.chest_tables(db, lk) if SAB.in_scope(t)]
-    orb_lane = [t for t in SLB.chest_tables(db, lk) if SAB.is_orb_lane_table(t)]
 
     widened = 0
     no_armor_row = []
@@ -94,13 +96,22 @@ def apply(db, tags):
               % len(no_armor_row))
         for s in no_armor_row:
             print("      %s" % s)
-    if orb_lane:
-        # Never silent: these belong to another lane, and saying so on every build is
-        # what keeps the boundary from turning into a hole (the R-200 lesson).
-        print("  ARMOUR BREADTH: %d orb table(s) NOT touched - owned by the b79 "
-              "fix/orb-loot-breadth lane (BL-R181-DEBT-1):" % len(orb_lane))
-        for s in orb_lane:
-            print("      %s" % SLB._n(s).rsplit('\\', 1)[-1])
+    # WRITE SET == AUDIT SET, asserted here rather than trusted. Every table this sweep
+    # touched must be a table `all_surfaces` will audit; the previous round wrote the 3
+    # DRX donors and the gate never looked at them, and it excluded the 3 apex orb
+    # tables from BOTH, which is how a starving surface shipped twice.
+    audited = {SLB._n(t) for (_l, ts, _w, _tr) in SAB.all_surfaces(db, lk) for t in ts}
+    unaudited = sorted(SLB._n(t) for t in (targets + list(SLB.DRX_DONORS.values()))
+                       if lk.real(t) and SLB._n(lk.real(t)) not in audited)
+    if unaudited:
+        for s in unaudited:
+            print("  ARMOUR BREADTH: UNAUDITED WRITE %s" % s)
+        raise SystemExit(
+            "armor_loot_breadth FAILED: %d table(s) are written by this wave but are "
+            "not in the distribution gate's surface set - a write the gate cannot see "
+            "is exactly how R-180 stayed green through both of Will's reports"
+            % len(unaudited))
+    print("  ARMOUR BREADTH: write set == audit set (%d table(s) audited)." % len(audited))
     print("=== armor_loot_breadth done ===\n")
 
 

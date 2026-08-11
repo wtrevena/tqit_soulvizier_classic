@@ -22,10 +22,12 @@ is not misperceiving a wide pool; he is correctly reading a starving one.
 
 THE THREE CAUSES, ALL MEASURED, ALL FIXED HERE
 -----------------------------------------------
-1. THE GUARANTEED SLOT IS A WEAPON SLOT. `loot3Chance = 100` fires every spawn
+1. THE GUARANTEED SLOT IS A WEAPON SLOT. The 100%-chance slot fires every spawn
    iteration (S = 12.48 on chest_01) and every member of it is a weapon or relic table.
-   Armour only ever arrives through the CHANCE rows. Untouched by this module: the
-   guaranteed slot's weapon:relic split is R-180 law and Will farms it.
+   Armour only ever arrives through the CHANCE rows. Untouched by this module, and now
+   ENFORCED rather than merely intended: `armor_groups` skips any group whose chance is
+   100, so the theme's own composition survives the sweep (see its docstring - the
+   warden theme was being rewritten from 50/50 to 12.8/87.2 before that guard existed).
 2. THE ARMOUR ROWS FIRE COLDER THAN THE WEAPON ROW. R-180 lifted the weapon row to 40%
    and the shield row to 30% and left the torso/head row at 33% and the arms/legs row at
    31%. This module lifts every armour row to the SAME 40% the weapon row already has.
@@ -69,11 +71,15 @@ Legendary farm, not about total item count.
 SCOPE BOUNDARY, STATED SO NOBODY WIDENS IT BY ACCIDENT
 -------------------------------------------------------
 * IN: every mod-owned gear chest loot table (the `\svc\` / `svc_` rule R-180 set) plus
-  the 3 DRX donors, i.e. the vault cage, all 8 boss hoards, the 3 guard-pair hoards and
-  the hidden-blood-cave mega chest.
-* OUT, BY OWNER: the `svc_uberorb_*` orb tables belong to the concurrent
-  `fix/orb-loot-breadth` lane (b79), which owns armour slots for orb tables. They are
-  listed loudly on every run and registered as debt, never silently skipped.
+  the 3 DRX donors, i.e. the vault cage, all 8 boss hoards, the 3 guard-pair hoards, the
+  3 `svc_uberorb_apex_*` orb tables and the hidden-blood-cave mega chest. Every table
+  this module WRITES is also a table the gate AUDITS - `all_surfaces` and the sweep read
+  the same scope rule, because a write the gate cannot see is how R-180 stayed GREEN
+  through both of Will's reports.
+* NO OWNER-BASED EXCLUSION EXISTS. The apex orb tables were carved out on the claim that
+  b79 `fix/orb-loot-breadth` covered them; it does not, and its own docstring says so.
+  See `in_scope`. The tables b79 really writes (`uberorb_default_*`, `boss_charon_*01b`)
+  sit outside `\svc\` and were never in this rule.
 * OUT, BY EVIDENCE: general MONSTER armour drops. Measured and reported, NOT changed -
   see the R-181 report; that is a Will decision, not a silent scope widening.
 """
@@ -138,22 +144,51 @@ _UNIQUE_ARMOR_RE = re.compile(
 _UNIQUE_1H_RE = re.compile(r'\\unique_1h_[nel]0\d\.dbr$')
 _SINGLE_CLASS_UNIQUE_RE = re.compile(
     r'\\weapons\\unique\\(axe|club|sword|spear|bow|staff|throwing)_[nel]0\d\.dbr$')
+# R-180's aggregate weapon master, by name (the mirror of ARMOR_MASTER on this side).
+_WEAPON_MASTER_RE = re.compile(r'\\svc_unique_weapons_[nel]01\.dbr$')
 
-# Tables owned by the concurrent orb lane (b79 `fix/orb-loot-breadth`), which covers
-# armour slots for ORB tables. Never written here; always PRINTED.
-ORB_LANE_PREFIX = 'svc_uberorb_'
-
-
-def is_orb_lane_table(path):
-    return ORB_LANE_PREFIX in SLB._n(path).rsplit('\\', 1)[-1]
-
+# The legendary share a WEAPON row must reach, mirroring what ARMOR_UNIQUE_WEIGHT was
+# derived to produce on the body-armour rows (measured after the sweep: torso/head 50.2%,
+# arms/legs 50.2%). MEASURED CAUSE, not a taste: `ARMOR_UNIQUE_WEIGHT = 850` is an
+# ABSOLUTE weight derived from ONE donor family, and the armour statics happen to be
+# identical across families - so every armour row lands at ~50% legendary everywhere. The
+# WEAPON row's legendary members were instead left at whatever the donor shipped, and the
+# two families differ sharply:
+#     DRX donor / vault cage   statics 1500, uniques 1800  ->  54.5% legendary
+#     uberorb apex donor       statics 2500, uniques 1050  ->  29.6% legendary
+# So lifting armour to parity lifted the apex tables' armour ~17x while their weapon side
+# stayed diluted, and they inverted to 0.17:1 weapon:armour - an 85%-armour surface, which
+# is Will's "you overcorrected" complaint pointed the other way. Expressing the rule as a
+# SHARE instead of an absolute self-corrects across donor families: the cage and the
+# blood-cave donors are already above it and are left untouched (verified: 0 records
+# change), and only the apex family moves.
+WEAPON_ROW_LEGENDARY_SHARE = 0.50
 
 def in_scope(path):
-    """Mod-owned gear chest tables this module may write."""
+    """Mod-owned gear chest tables this module may write.
+
+    NO OWNER-BASED EXCLUSIONS. A previous round of this module carved out
+    `svc_uberorb_apex_{n,e,l}01c` on the stated grounds that the concurrent b79
+    `fix/orb-loot-breadth` lane "owns armour slots for orb tables". That was FALSE and a
+    vet proved it twice: (1) applying b79's wave to the same arz changes 15 records
+    (`uberorb_default_*`, `boss_charon_*01b`, xpack `uberorb_default_*01c`) and touches
+    NONE of the three apex tables; (2) b79's own module docstring says so in writing -
+    the apex tables "are already widened by the time this module runs and are therefore
+    a no-op here", and what it widens is "only the CLASSES the weapon row can pay".
+    Nobody was widening armour on them, and because the exclusion also removed them from
+    `all_surfaces()` the fail-loud gate could not see the hole either - the exact R-180
+    failure mode this wave exists to end.
+
+    They are mod-owned `\\svc\\` gear tables of the ordinary shape, and they are LIVE
+    player-facing surfaces: `genericboss05_chest_{normal,epic,legendary}` (the red-uber
+    Mystical Orb chests R-200 shipped to Steam) and `bosschest_leinth_{01,02,03}`. So
+    they are swept and gated here like every other mod chest. The lane boundary that
+    remains real is the one b79 actually writes - the `uberorb_default_*` /
+    `boss_charon_*01b` tables, which live outside `\\svc\\` and were never in this
+    module's ownership rule to begin with.
+    """
     p = SLB._n(path)
-    if p in {SLB._n(k) for k in SLB.EXEMPT}:
-        return False
-    return not is_orb_lane_table(p)
+    return p not in {SLB._n(k) for k in SLB.EXEMPT}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -212,12 +247,44 @@ def ensure_armor_masters(db, lk=None, verbose=True):
     return built
 
 
+def is_guaranteed_group(db, real, g):
+    r"""True when loot group `g` fires on EVERY spawn iteration.
+
+    Read off `loot{G}Chance` rather than assumed to be group 3. That distinction is
+    load-bearing and measured: on all 48 chest/hoard tables the guaranteed slot IS
+    group 3, but on the three `svc_uberorb_apex_*` tables it is group 4 (g3 there is a
+    10% row). A hardcoded `g == 3` would have swept the apex tables' real theme slot
+    and skipped their 10% row - the same class of layout assumption `armor_groups`
+    already refuses to make about which rows carry armour.
+    """
+    c = SLB._sc(db.get_field_value(real, 'loot%dChance' % g))
+    try:
+        return float(c) >= 100.0
+    except (TypeError, ValueError):
+        return False
+
+
 def armor_groups(db, real):
-    """The loot groups of `real` that carry worn-slot gear, detected from the member
-    PATHS rather than assumed to be groups 2/5/6 - a hoard authored from a different
-    donor must not slip through on a layout assumption."""
+    r"""The loot groups of `real` that carry worn-slot gear AND that this module owns,
+    detected from the member PATHS rather than assumed to be groups 2/5/6 - a hoard
+    authored from a different donor must not slip through on a layout assumption.
+
+    THE GUARANTEED SLOT IS EXCLUDED, and that exclusion is the contract, not a detail.
+    The 100%-chance slot is the THEME's instrument: `svc_loot_breadth.THEMES` writes its
+    entire composition, and R-181's law is that "each theme keeps its shipped
+    weapon:relic:armour split to the percent". Detecting armour rows purely from member
+    paths broke that law on exactly three records - `polisvault_01_{n,e,l}c`, the WARDEN
+    theme, whose guaranteed slot is deliberately 50% weapon / 50% armour (broad 500 vs
+    armour master 400 + shield 60 + torso 40). Sweeping it raised the armour side to
+    1700 + 850 + 850 and shipped 12.8% weapon / 87.2% armour - a theme rewritten by a
+    later pass, with four documents still stating the shipped split. The sweep owns the
+    CHANCE rows; the theme owns the guaranteed row. Measured: this changes 3 records of
+    the 51 in scope and no other.
+    """
     out = []
     for g in range(1, 7):
+        if is_guaranteed_group(db, real, g):
+            continue
         members = SLB._slot_members(db, real, g)
         if any(_SLOT_FOLDER_RE.search(SLB._n(nm)) for _i, nm, _w in members):
             out.append(g)
@@ -252,6 +319,51 @@ def balance_one_hand(db, real, group):
             if _raise_weight(db, real, 'loot%dWeight%d' % (group, i), target):
                 changes.append('loot%dWeight%d unique_1h -> %d (3 classes)'
                                % (group, i, target))
+    return changes
+
+
+def _is_unique_weapon_member(nm):
+    n = SLB._n(nm)
+    return bool(_WEAPON_MASTER_RE.search(n) or _UNIQUE_1H_RE.search(n)
+                or _SINGLE_CLASS_UNIQUE_RE.search(n))
+
+
+def balance_weapon_row(db, real, group):
+    r"""Bring ONE weapon row's legendary share up to WEAPON_ROW_LEGENDARY_SHARE by
+    raising the AGGREGATE WEAPON MASTER, and nothing else. Strictly a raise; returns the
+    changes (empty when the row already clears the share).
+
+    WHY THE MASTER AND NOT THE PER-CLASS MEMBERS. The obvious alternative - raise
+    `bow_l01` / `staff_l01` / `spear_l01` to a common weight - was measured and rejected:
+    the apex weapon row names bow and staff DIRECTLY but has no spear member and no free
+    slot to add one, so raising the named members would have paid axe/mace/sword/bow/staff
+    ~473 each against SPEAR's 133 - a 3.5x deficit on the exact class R-180 exists to
+    protect, rebuilt by the fix for a different defect. The aggregate master pays all six
+    classes evenly by construction, so putting the whole increase there leaves the
+    within-weapon spread near-uniform (measured after: bow 425 vs spear 375, 1.13x).
+    Same law as the armour master: "the master is the even-spread instrument, so any
+    per-class bias must be expressed by a THEME, never smuggled in here."
+    """
+    members = SLB._slot_members(db, real, group)
+    master = [(i, nm, w) for i, nm, w in members
+              if _WEAPON_MASTER_RE.search(SLB._n(nm))]
+    if not master:
+        return []
+    static = sum(w for _i, nm, w in members if not _is_unique_weapon_member(nm))
+    other_unique = sum(w for _i, nm, w in members
+                       if _is_unique_weapon_member(nm)
+                       and not _WEAPON_MASTER_RE.search(SLB._n(nm)))
+    if static <= 0:
+        return []
+    share = WEAPON_ROW_LEGENDARY_SHARE
+    # U / (U + static) = share  ->  U = static * share / (1 - share)
+    want_unique = static * share / (1.0 - share)
+    target = int(round(want_unique - other_unique))
+    changes = []
+    for i, _nm, _w in master:
+        if _raise_weight(db, real, 'loot%dWeight%d' % (group, i), target):
+            changes.append('loot%dWeight%d weapon master -> %d (row legendary share '
+                           '-> %.0f%%)' % (group, i, target, 100.0 * share))
     return changes
 
 
@@ -306,9 +418,18 @@ def widen_armor_rows(db, table, tier, lk=None):
                 print("  ARMOUR BREADTH: NOTE %s has no free armour-row member slot; "
                       "parity rests on the row chance + unique weights alone"
                       % SLB._n(real).rsplit('\\', 1)[-1])
-    # The weapon row's own 1H correction (the "overcorrected" half of R-181).
+    # The weapon row's own corrections (the "overcorrected" half of R-181). The 1H
+    # re-weight runs FIRST because the master's parity target is computed from the row's
+    # final non-master unique mass, which the 1H raise is part of.
     for g in range(1, 7):
         changes.extend(balance_one_hand(db, real, g))
+    # ... and the weapon side's own share parity, so lifting armour cannot invert a
+    # surface. Skips the guaranteed slot for the same reason armor_groups does: that row
+    # belongs to the THEME.
+    for g in range(1, 7):
+        if is_guaranteed_group(db, real, g):
+            continue
+        changes.extend(balance_weapon_row(db, real, g))
     if changes:
         db._modified.add(real)
     return changes
@@ -351,8 +472,19 @@ def cage_surfaces(lk):
 
 
 def all_surfaces(db, lk):
-    """Every surface the distribution gate covers: the two cage chests as multi-variant
-    surfaces, then every remaining in-scope mod chest table as a surface of its own."""
+    r"""Every surface the distribution gate covers: the two cage chests as multi-variant
+    surfaces, then every remaining in-scope mod chest table as a surface of its own, then
+    the 3 DRX donors.
+
+    THE DONORS ARE AUDITED BECAUSE THEY ARE WRITTEN. `armor_loot_breadth.apply()` sweeps
+    `targets + SLB.DRX_DONORS.values()`, so the blood-cave mega chest
+    (`loottable_hidden_bloodcave_{01,02,03}`) is a record this wave EDITS - but the donor
+    names match neither half of `chest_tables`' mod-ownership rule (`\svc\` / `svc_`), so
+    they fell out of the audit set while staying in the write set. A vet caught it: they
+    are the most weapon-inverted surfaces in the mod (w:a 0.31 / 0.37 / 0.33) and they
+    are the very case MIN_WEAPON_ARMOUR_RATIO cites as its binding derivation, yet the
+    gate could not see them. Nothing may be written by this wave and left unaudited.
+    """
     surfaces = cage_surfaces(lk)
     claimed = {SLB._n(t) for (_l, ts, _w, _tr) in surfaces for t in ts}
     for table in SLB.chest_tables(db, lk):
@@ -361,8 +493,54 @@ def all_surfaces(db, lk):
         tier = SLB.infer_tier(db, table, lk)
         if tier is None:
             continue
+        claimed.add(SLB._n(table))
+        surfaces.append((SLB._n(table).rsplit('\\', 1)[-1], [table], [1], tier))
+    for tier, table in sorted(SLB.DRX_DONORS.items()):
+        if not lk.real(table) or SLB._n(table) in claimed:
+            continue
+        claimed.add(SLB._n(table))
         surfaces.append((SLB._n(table).rsplit('\\', 1)[-1], [table], [1], tier))
     return surfaces
+
+
+def apply_wave(db, lk=None, quiet=True):
+    r"""Apply the whole R-180 + R-181 chest wave to `db` IN MEMORY, exactly as the build
+    does, and return (db, lk).
+
+    ONE implementation, three consumers: `gate_loot_distribution.py --apply`, the
+    negative tests, and any probe that needs to compare a pre-wave arz with the post-wave
+    state. The `gate_relic_difficulty_tiers` precedent - the standalone tool, the in-build
+    gate and the negtests must not be able to disagree about what "after the wave" means,
+    which they can the moment two of them keep their own copy of this sequence.
+
+    Safe to call on an already-built arz: every step is idempotent and raise-only.
+    """
+    import contextlib
+    import io
+    from patches import armor_loot_breadth as ALB
+    from patches import chest_loot_breadth as CLB
+    lk = lk or SLB.Lookup(db)
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf) if quiet else contextlib.nullcontext():
+        SLB.ensure_masters(db, lk)
+        ensure_armor_masters(db, lk)
+        lk.refresh()
+        for N, themes in (('01', ['martial', 'hunter', 'warden']),
+                          ('03', ['apex', 'adept', 'sovereign'])):
+            for tier in TIERS:
+                for v, theme in zip(('a', 'b', 'c'), themes):
+                    if v == 'a':
+                        p = (r'%s\polisvault_%s.dbr' % (_L, N) if tier == 'l'
+                             else r'%s\polisvault_%s_%s.dbr' % (_L, N, tier))
+                    else:
+                        p = r'%s\polisvault_%s_%s%s.dbr' % (_L, N, tier, v)
+                    if lk.real(p):
+                        SLB.set_guaranteed_theme(db, p, tier, theme, lk)
+                        SLB.widen_weapon_row(db, p, tier, lk)
+        CLB.apply(db, None)
+        ALB.apply(db, None)
+    lk.refresh()
+    return db, lk
 
 
 def audit_db(db, lk=None, verbose=False):
