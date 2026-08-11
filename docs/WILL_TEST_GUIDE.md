@@ -1,5 +1,37 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-180 (2026-08-10): THE GAOLER-CAGE CHESTS NOW DROP DIFFERENT THINGS, AND LEGENDARY SPEARS ARE POSSIBLE
+> **Ships to the TESTHUB AND to Steam in the same change** (it is arz-only, and the 4 TESTHUB farm
+> duplicates use the same 2 records as the canonical pair). **NOT yet built/deployed at the time of
+> writing** - the orchestrator's build + DEV deploy comes first; then fully quit TQ and restart Steam
+> before testing (standing rule).
+>
+> **What was wrong (both halves were real, not perception).** Every mod chest inherited one collapsed
+> weapon row from the DRX donor: it named the 3-class `unique_1h` master plus bow and staff, and simply
+> forgot **spear** - so a legendary spear was structurally impossible, in the cage AND in every boss
+> hoard, while 24 legendary spears sat in the DB unreachable. And the only slot that reliably fired was
+> the 100% guaranteed one, which always paid an axe/mace/sword, so every open looked the same.
+>
+> **What to check (Prison of Souls, Hades Palace floor 4 - where Polybotes stands and the Soul-Gaoler
+> guards the cage):**
+> 1. Kill **Alkyoneus the Soul-Gaoler** (both forms) so the cage unlocks, then open **all 6 chests**.
+> 2. Expect **visible class variety between chests in the SAME run** - the chests now come in themes:
+>    a martial/spear chest, a hunter (bow) chest, a warden (shield/armour) chest, an apex chest with a
+>    guaranteed relic, a caster/staff chest and a jewellery chest. Each of the 6 physical chests rolls
+>    its own theme when the area loads, so they should no longer read as six copies of one chest.
+> 3. Expect **legendary spears to actually appear** across a few runs (22 of them are now reachable -
+>    Achilles' Spear, Ares' Wrath, Soulharvest, Peleus' Ashen Spear, Telamon's Boar Skewer, Onuris'
+>    Spear and the rest). Two are deliberately NOT in the pool: the Endless Hunt's Runbreaker (his own
+>    guaranteed drop) and the DRX supra craft-only spear.
+> 4. **Re-run the cage 2-3 times** and confirm the mix shifts between playthroughs, not just between
+>    chests.
+> 5. **Nothing should have got worse:** same number of items per chest, chest_03 still pays its
+>    guaranteed relic at the same rate, and the difficulty tiers are unchanged (Essence on Normal,
+>    Embodiment on Epic, Incarnation on Legendary).
+> 6. The same breadth landed on **every other mod chest** (Charon / Tantalus / Mnemophage / Ephialtes /
+>    Diadochi / the three general-guard pairs / Obsidian / the blood-cave mega chest), so spot-check one
+>    boss hoard elsewhere if you get the chance.
+
 > ## NOW LIVE ON DEV + DEV2: build40-dev (2026-07-14) - see BUILD40 CHECKS below
 > **BOTH `SoulvizierClassicDEV` and `SoulvizierClassicDEV2` now run build40-dev** - the TESTHUB map (full
 > Helos traveler hub) over the build40 DB/Text/Quests (12 b40 content lanes b41-b53 + the warden P1 fix).
