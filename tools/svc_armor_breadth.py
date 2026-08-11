@@ -551,6 +551,13 @@ def orb_scope(db, lk, fresh=False):
     Unreachable today (`visuals`, the only registry module after this one, writes nothing,
     and the monolith's finalization does not touch orb chains) - but a cache that can go
     stale by construction is exactly the kind of quiet narrowing BL-R181-DEBT-7 was.
+
+    WHAT THE WRITE-SENSITIVE KEY COSTS, measured on the build82 arz (51,253 records) so
+    nobody has to guess whether correctness here was expensive: first derivation 26.19s
+    (one-time - it warms `svc_orb_breadth`'s own chain caches), cache hit 0.008s,
+    RE-derivation after an invalidating write 1.90s, `fresh=True` 1.86s. So the pessimistic
+    key costs about two seconds per write-batch, and a build pays it a handful of times.
+    Every one of those four derivations returned the identical 18 tables.
     """
     try:
         import svc_orb_breadth as SOB
