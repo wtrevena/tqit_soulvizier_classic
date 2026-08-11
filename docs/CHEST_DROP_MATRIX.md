@@ -722,3 +722,95 @@ that D7X2 is the ONLY finding the R-181 gate emits there (exactly 1 FAIL line), 
 coexisting gate still PASSES on the untrimmed arz** - `gate_chest_loot_breadth`,
 `gate_orb_loot_breadth`, `gate_craft_thrown_breadth` and `gate_chest_artifacts`, 0 findings each. So a
 lone D7X2 red on a pre-R-230 artifact is not a defect and should not be chased.
+
+---
+
+## 9. HOW OFTEN AN UBER ORB PAYS A LEGENDARY (R-231, Will 2026-08-11)
+
+Section 8 answered HOW MUCH every surface pays. This section answers the one question that survived
+it, and it is about the ORBS specifically. **Will, verbatim (2026-08-11), superseding the b79 "orbs
+stay generous" precedent wherever the two collide:** *"you made the orbs way too good... those dont
+need to have guaranteed legendary drops, they should just have a chance to drop legendary items, but a
+low chance."*
+
+Design record: `docs/WILL_RULINGS.md` -> **R-231**. Owner: `tools/patches/orb_legendary_chance.py`.
+
+### 9.1 The guaranteed-legendary census (the number Will asked for)
+
+A **guaranteed-legendary row** is a loot group at `loot{g}Chance = 100` whose pool can resolve to an
+item with `itemClassification = Legendary`. On the shipped `build83` arz `44499f56`, across the whole
+18-table orb surface:
+
+| difficulty | orb tables | guaranteed-legendary rows | which | its legendary mass |
+|---|---:|---:|---|---:|
+| Normal | 6 | **1** | `svc_uberorb_apex_n01c` group 4 @ 100% | 0.4% |
+| Epic | 6 | **1** | `svc_uberorb_apex_e01c` group 4 @ 100% | 5.3% |
+| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` group 4 @ 100% | 6.3% |
+| **total** | **18** | **3** | one row, one family | **none is PURE legendary** |
+
+Group 4 is the amulet / relic / ring / arcane-formula row. **All fifteen ordinary orb tables run that
+identical row at 12.7% or 21.2%** - the apex 100% was the outlier, which is why R-231's demotion target
+is DERIVED from that family spread (21.2%, the richest non-guaranteed value) rather than typed.
+
+### 9.2 The guarantee was made of VOLUME, not of a 100% row
+
+This is the part the census alone would have hidden. Six loot groups roll INDEPENDENTLY on every spawn
+iteration, and before R-230 an orb ran 5.06 to 10.58 iterations. Per **one** orb open:
+
+| difficulty | E[legendary items] b83 | -> R-230+R-231 | P(>=1 legendary) b83 | -> after |
+|---|---:|---:|---:|---:|
+| Normal | 0.003 .. 0.047 | **0.001 .. 0.004** | 0.3% .. 4.6% | **0.05% .. 0.35%** |
+| Epic | 2.579 .. 6.291 | **0.451 .. 0.622** | 93.6% .. 99.9% | **38.2% .. 49.0%** |
+| Legendary | 3.738 .. 8.432 | **0.699 .. 0.846** | 98.4% .. 99.99% | **53.6% .. 60.9%** |
+
+**An apex Legendary orb paid 8.43 legendary-grade items per open with a 99.99% chance of at least one.
+It now pays at most one.** That is a ~90% cut in legendary throughput, and zero guaranteed rows.
+
+Worth stating plainly because it is the general lesson: **R-220's breadth gate, R-181's distribution
+gate and R-230's volume gate were ALL GREEN on that 8.43.** Breadth counts reachable items,
+distribution measures ratios, volume measures gear pieces of the tier's target grade. None of them
+measures how often the thing that falls out is legendary. A guarantee is not always a field.
+
+### 9.3 What moved, and what deliberately did not
+
+**3 records, 3 fields**: `loot4Chance` 100% -> 21.2% on the three apex tables. **0 members, 0 weights,
+0 spawn equations, 0 pools.** Everything in sections 1-7 therefore holds verbatim - the class variety,
+the spear sanity and the armour parity of b75-b83 are exactly what still lands **when** a legendary
+rolls. The rate changed; the composition did not.
+
+One consequence worth knowing before it is reported as a bug: **the apex orb loses its guaranteed row
+entirely, and that row was 94% relics / amulets / rings.** Apex items-per-open goes 3.04 -> 2.15, and
+most of what left is the RELIC and JEWELLERY flow, not legendary gear. Registered as
+`BL-R231-DEBT-3`; the fix if Will wants it back is one field and it does not reopen the legendary
+question, because that row is only 0.4-6.3% legendary.
+
+### 9.4 The gate, and the half it could not reach
+
+`py tools/gate_orb_legendary.py <arz>` - O1 zero guaranteed-legendary rows; O2 at most
+{n 0.05, e 0.75, **l 1.00**} legendary items per open; O3 at most {n 2%, e 55%, l 68%} chance; **O4 the
+mirror**, a legendary must still be POSSIBLE at {e 15%, l 25%}; **O5 the second mirror**, the orb must
+still pay >= 1.50 items of any kind. Ceilings are measured on the CONTINUOUS spawn reading and O4 on
+the INTEGER-TRUNCATED one, because each is the pessimistic side of its own direction.
+
+> âš ï¸ **`BL-R231-DEBT-1` - the "low chance" half is NOT fully discharged, and the gate says so in its
+> own PASS line.** P(at least one legendary) lands at **54-61% on Legendary difficulty**. After the
+> trim an orb pays ~2.06 items and **~40% of a Legendary orb's entire drop mass IS
+> legendary-classified**, because R-180/R-220 weighted `svc_unique_weapons_l01` /
+> `svc_unique_armor_l01` at ~47-50% of the weapon and shield rows to buy the class breadth in section
+> 4. If the orb pays anything, there is a good chance the thing it pays is legendary. Moving it
+> further means scaling those rows' `loot{g}Chance`, which divides **D7b** (worn-slot armour per SPAWN
+> ITERATION, section 8.2) by the same factor and reds armour parity on every orb. That is a
+> COMPOSITION decision in R-180/R-181/R-220's scope, priced for Will in `docs/BACKLOG.md`, not taken
+> by a rate lane.
+
+### 9.5 Re-derive every number in this section
+
+```
+py tools/gate_orb_legendary.py <arz> --census      # the guaranteed-row count, per tier
+py tools/gate_orb_legendary.py <arz> --calibrate   # S, drops, E[legendary], P(>=1), both models
+py tools/gate_orb_legendary.py <arz> --apply       # apply R-230 + R-231 to a PRE-wave arz first
+py tools/debug/negtest_orb_legendary.py <arz>      # 7 planted defects RED, 3 controls GREEN
+```
+
+On the shipped b83 arz the audit emits **43 findings** - the defect reproduced as an artifact fact
+before any code was written.

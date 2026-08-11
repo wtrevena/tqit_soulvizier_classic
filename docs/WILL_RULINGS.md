@@ -5655,3 +5655,133 @@ non-uber, non-`tagSVC` Boss-class oddities the R-200 audit surfaced and declined
 already asserts the positive side (every RED uber HAS an orb, negtest N3 reds a new red uber with no
 orb, N8 proves the scope stays red-only). The ordinary bosses keep paying through their level-placed
 quest chests, which is what they have always done.
+
+---
+
+## R-231 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - an uber orb has a CHANCE at a legendary, not a guarantee
+
+**WILL, VERBATIM (2026-08-11):**
+
+> "you made the orbs way too good... those dont need to have guaranteed legendary drops, they should
+> just have a chance to drop legendary items, but a low chance."
+
+**THIS RULING SUPERSEDES THE b79 "ORBS STAY GENEROUS" PRECEDENT WHEREVER THE TWO COLLIDE**, and that
+is recorded here rather than resolved quietly inside a module. R-220's b79 record carries Will's
+earlier instruction that orbs remain generous *relative to chests*; that half survives (a trimmed orb
+still pays about 2.06 items against a cage chest's 2.15, and the apex orb is still the richest orb in
+the mod). What does NOT survive is "an orb reliably pays legendaries".
+
+### THE NUMBER HE ASKED FOR, MEASURED FIRST
+
+On the shipped `build83` arz `44499f56` - live on Steam and DEV at the time of the ruling - the orb
+surface is **18 loot tables, 6 per difficulty** (15 ordinary + 3 apex). Guaranteed-legendary rows,
+i.e. a loot group at chance 100 that can pay a legendary:
+
+| difficulty | orb tables | guaranteed-legendary rows | which |
+|---|---:|---:|---|
+| Normal | 6 | **1** | `svc_uberorb_apex_n01c` g4 @100% (0.4% legendary by weight) |
+| Epic | 6 | **1** | `svc_uberorb_apex_e01c` g4 @100% (5.3% legendary) |
+| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` g4 @100% (6.3% legendary) |
+| **total** | **18** | **3** | all three the SAME row on the SAME family; **none is a PURE legendary row** |
+
+All fifteen ordinary orb tables run that identical amulet/relic/ring/formula row at **12.7%** or
+**21.2%**. The apex 100% was the outlier.
+
+### THE ROW COUNT IS NOT WHERE THE GUARANTEE LIVED, AND THAT IS THE FINDING
+
+Answering *"three rows, and all of them are 94%+ non-legendary"* would have answered the question and
+missed the report. What Will hit is a guarantee made of **VOLUME**. Per ONE orb open on b83:
+
+| difficulty | E[legendary items per open] | P(at least one legendary) |
+|---|---:|---:|
+| Normal | 0.003 .. 0.047 | 0.3% .. 4.6% |
+| Epic | **2.579 .. 6.291** | **93.6% .. 99.9%** |
+| Legendary | **3.738 .. 8.432** | **98.4% .. 99.99%** |
+
+An apex Legendary orb paid **eight and a half legendary-grade items per open**. Six loot groups
+rolling independently over 5.06-10.58 spawn iterations manufacture that with no 100% row involved -
+which is exactly why R-220's breadth gate, R-181's distribution gate and R-230's volume gate were
+**all green** while Will was looking at a vending machine. A guarantee is not always a field.
+
+### WHAT SHIPPED
+
+Two levers, in registry order:
+
+1. **R-230's volume trim** (previous slot) takes every orb to the never-empty floor:
+   S 5.06 / 6.44 / 8.28 / 10.58 -> **1.125**.
+2. **R-231's demotion** discharges the literal half: the three guaranteed rows drop to the **richest
+   NON-guaranteed chance that same row already carries in the orb family (21.2%)**. The target is
+   **DERIVED from the shipped bytes**, never typed, and cross-checked against the value the contract
+   was measured on, so a retune of `boss_charon_*01b` cannot silently relocate the demotion (negtest
+   M7). Will's ruling offers *"chance-based OR non-legendary"*; chance-based is the smaller change,
+   because making the row non-legendary means deleting `amulet_{tier}01` and `finger_{tier}01` from
+   it - the ONLY legendary amulet and ring an orb can pay, i.e. breadth Will asked for in b75-b83,
+   destroyed to satisfy a rate ruling.
+
+**3 records, 3 fields. 0 members, 0 weights, 0 spawn equations, 0 pools.** The module's scope proof
+fails the build if anything else moves, so breadth and distribution survive verbatim and the variety
+still lands **WHEN** a legendary rolls. RESULT, per ONE orb open:
+
+| difficulty | E[legendary] shipped b83 | E[legendary] R-230+R-231 | cut | guaranteed rows |
+|---|---:|---:|---:|---:|
+| Normal | 0.003 .. 0.047 | **0.001 .. 0.004** | ~12x | 1 -> **0** |
+| Epic | 2.579 .. 6.291 | **0.451 .. 0.622** | ~10x | 1 -> **0** |
+| Legendary | 3.738 .. 8.432 | **0.699 .. 0.846** | **~10x** | 1 -> **0** |
+
+**THE HEADLINE, in the unit the report was made in: at most ONE legendary item per orb open on
+Legendary difficulty, against 8.43 shipped - a 90% cut, with zero guaranteed-legendary rows anywhere
+in the surface.**
+
+### THE GATE, AND ITS MIRROR
+
+`tools/gate_orb_legendary.py` / `tools/patches/orb_legendary_chance.verify()`, one shared
+implementation in `tools/svc_orb_legendary.py`:
+
+- **O1** ZERO guaranteed-legendary rows (the ruling, literally).
+- **O2** no orb pays more than `ORB_MAX_LEG_PER_OPEN` = {n 0.05, e 0.75, **l 1.00**} legendary items
+  per open.
+- **O3** ... and pays at least one no more often than `ORB_MAX_P_LEGENDARY` = {n 2%, e 55%, l 68%}.
+- **O4** THE MIRROR: a legendary must still be POSSIBLE at a real rate, floor {e 15%, l 25%} - because
+  *"just a CHANCE"* is an instruction that the chance still exists. Measured on the INTEGER-TRUNCATED
+  spawn count, which is the pessimistic side of a floor.
+- **O5** THE SECOND MIRROR: an orb must still pay at least 1.50 items of any kind per open, so no
+  ceiling can be satisfied by turning the orb into an empty box.
+
+There is deliberately **no truncated CEILING twin**. Truncated S is always <= continuous S and both
+readings rise with S, so a truncated ceiling could never fire while its continuous parent was green:
+a check that cannot fail, printed in a PASS line, is worse than no check. The first draft had one; it
+was removed once the monotonicity was written down instead of assumed.
+
+**REPRODUCED AS AN ARTIFACT FACT BEFORE IT WAS FIXED:** the gate emits **43 findings** on the live b83
+arz. Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - 7 planted defects RED (including M5,
+which is green on the continuous reading and RED under truncation, the exact case O4's model choice
+exists for) and 3 positive controls GREEN.
+
+### THE HALF THIS LANE COULD NOT REACH - `BL-R231-DEBT-1`, WILL DECISION
+
+**P(at least one legendary) lands at 54-61% on Legendary difficulty, and 60% is not "a low chance".**
+Stated here rather than buried, because the ruling is not fully discharged and a green gate must not
+imply that it is.
+
+**WHY.** After the trim an orb pays ~2.06 items per open, and **~40% of a Legendary-tier orb's entire
+drop mass IS legendary-classified** - because R-180/R-220 deliberately weighted
+`svc_unique_weapons_l01` and `svc_unique_armor_l01` at ~47-50% of the weapon and shield rows to buy
+the CLASS BREADTH Will asked for in the same fortnight. If the orb pays anything, there is a good
+chance the thing it pays is legendary. That is composition, not volume.
+
+**WHY THIS LANE DID NOT SIMPLY DO IT.** The only remaining lever is scaling those rows'
+`loot{g}Chance`, and that is NOT the volume lever `numSpawn` is: `svc_loot_distribution` **D7b asserts
+worn-slot armour pieces PER SPAWN ITERATION (>= 0.0375) on all 63 surfaces**, and a uniform
+group-chance scale divides that reading by the same factor - reding armour parity on every orb.
+Scaling only the legendary-heavy rows moves D3/D4 (weapon:armour) and D6 (armour-slot share) instead.
+Either way it re-litigates the armour parity b75-b83 shipped, which this lane was told is untouchable.
+
+**THE TWO OPTIONS, PRICED:**
+
+- **(A) Accept 54-61%** as "a chance, not a guarantee", on the strength of the 90% cut in legendary
+  ITEMS and the zero guaranteed rows. Cost: nothing. The ceilings above become permanent.
+- **(B) Push the chance below ~30%.** Needs a composition lane inside R-180/R-181/R-220's scope: give
+  the Legendary-tier orb rows an epic-grade sibling pool to split their weight with, so the orb still
+  pays two items but they are usually Epic. Cost: one lane, a re-derivation of D7b's floor for the orb
+  family, and a re-run of the orb-breadth gate. **It is one lane, and one lane per problem means it is
+  not this one.**
