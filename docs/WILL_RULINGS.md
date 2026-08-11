@@ -5419,3 +5419,72 @@ Standing law: EVERY build ship ends with `git push origin main --tags`. The ship
 complete until the push succeeds. Applies to every lane from build84 onward (already baked
 into the in-flight b84/b86/b87 ship briefs); doc-only commits push at the next convenient
 point, ship commits push immediately.
+
+## R-231 [2026-08-11] IMPLEMENTED (branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`) - the three supra-craft laws
+
+**WILL, VERBATIM, LAW A:**
+> "ok for the four epic craftable reagent's, we need to change it so that one of the items needed to
+> craft the formula needs to be found in legendary like the rest of the craftable supra recipes."
+
+**WILL, VERBATIM, LAW B:**
+> "each craftable supra should have different requirements (we should not have two formulas that both
+> require stymphalian, plisskey, and deathweavers legtip)"
+
+**WILL, VERBATIM, LAW C:**
+> "the last word should not be dropped in epic, only legendary"
+
+**THE LAWS, stated so a later lane cannot re-break them:** every one of the supra recipes names at
+least one reagent whose only obtain paths are Legendary-tier; no two supra craftables name the same
+reagent set; and no supra ITEM is reachable from a Normal- or Epic-tier loot surface.
+
+**WHAT WAS WRONG, measured on the build83 ship arz `44499f56` (51,253 records).** LAW A: 4 offenders,
+exactly the four thrown Will named; the other 38 were already gated. LAW B: **5 duplicate groups over
+15 of the 42 craftables** - a SIX-way axe group Will did not know about, a three-way mace group, and
+three pairs including his own example. LAW C: 4 offenders; the supra thrown sat on
+`svc_unique_thrown_e01` as well as `_l01`, and through `svc_unique_weapons_e01` that Epic membership
+reached **51 surfaces** (every mod chest, every general's hoard, both polis vaults, the blood-cave
+mega chest, all 18 uber orb tables). **There is no name collision**: exactly one record in the
+database is named The Last Word, `records\drxitem\supra\svc_wep_lastword.dbr`. **No monster pays any
+supra**, and Normal was already clean.
+
+**THE FIX: 14 formula fields and 4 loot memberships. No new record, no formula/result change.**
+
+**LAW C IS A RELOCATION, NOT A RETIREMENT.** "only legendary" leaves `svc_unique_thrown_l01`
+untouched, so R-186's own ask ("make the legendary thrown weapons droppable") still holds at the tier
+Will kept it for. Rule S4c fails the build if a later lane finishes the job Will did not ask for.
+R-180/R-186 non-reduction is SUPERSEDED for these four memberships and nothing else; every surviving
+member of the Epic thrown table GAINS share (total 155 -> 115).
+
+> **LAW A IS PER-RECIPE BECAUSE THE ONE-MOVE FIX COLLIDES WITH LAW C, and this is the reusable
+> lesson.** Promoting the shared `u_vit_wand` off the Epic thrown table would have fixed all four
+> recipes with one membership and no formula edit - and it reds C1 on every Epic mod chest in the
+> game. The ENTIRE `WeaponHunting_RangedOneHand` universe at `itemClassification = Legendary` is
+> **five records**: `u_vit_wand` plus the four supra thrown. `TARGET_IC['e']` is Legendary, so C1
+> ("the thrown class is payable at its own tier") can only ever be satisfied by one of those five.
+> LAW C removes four; promoting `u_vit_wand` removes the fifth. **Before promoting a shared reagent
+> out of a tier, count how many records of its CLASS remain at that tier's target classification.**
+
+**GATES (fail-loud, in the craft gate family; `tools/svc_supra_recipes.py` is the one implementation
+shared by the in-build gate, the standalone gate and the negatives):** S1 Legendary-only reagent per
+recipe; S2 reagent-set uniqueness (+S2b two formulas of one craftable must agree); S3 every
+replacement resolves, is not one of the 13 dead `records\equipmentweapon\axe\` twins, and is
+Legendary-reachable; S4 no supra item below Legendary (+S4b the 38 craft-only supras named by no loot
+table at all, +S4c the four stay droppable on Legendary). **10/10 negatives behave**, N1 being the
+shipped defect replanted byte-for-byte.
+
+**S3 EARNED ITS KEEP DURING THE LANE:** the in-flight LAW B table pointed Ten Suns' Wrath at
+Zhurong's Firebow, which an EPIC chest pool reaches - it would have de-duplicated the recipe while
+adding no gate. The pick is now Qin Warbow (Legendary-only, and Hou Yi's myth is Chinese anyway).
+
+**SPEAR ORPHAN CENSUS (Will, same session: "are there any other orphaned spears that we can make
+craftable supra formulas for?") - ANSWER: THERE ARE NONE, and the number is zero rather than small.**
+Measured: **0** Legendary-classification spears that nothing in the database names; **0** spear
+records in a dead twin folder (`records\equipmentweapon\` contains ONE subfolder, `axe`, with 151
+records - the axe case that produced 14 dead axes has no spear equivalent); 22 of the 24 Legendary
+spears are chest-reachable and the other 2 are already purposed (`drxitem\supra\wep_spear` = Blood
+Whisper, the craft-only supra; `svc_l_runbreaker` = the mod's own guaranteed drop). Of 32
+Epic-classification spears exactly 2 sit outside the chest pools and both are purposed. The 101
+unnamed `\spear\default\` and 39 `\spear\old\` records are base random-generation art and dev-era
+duplicates - no itemLevel, no unique name tag - not orphaned uniques. **New craftable spear supras
+would therefore have to be authored from scratch** (new item records + new Text tags + art), which is
+a content lane with a Text.arc coupling, not a reagent edit. Registered as `BL-R231-DEBT-1`.

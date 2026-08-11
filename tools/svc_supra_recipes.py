@@ -149,7 +149,7 @@ and every replacement is a record that was ALREADY in the game and already reach
                                                             bronze bird's talon
 
   BOWS (keep Stormbringer on Khamsin - a khamsin IS a storm)
-    Ten Suns' Wrath               <- Qin War Bow            Hou Yi shot nine of the ten
+    Ten Suns' Wrath               <- Qin Warbow             Hou Yi shot nine of the ten
                                                             suns out of a Chinese sky,
                                                             so he gets a Chinese bow
 

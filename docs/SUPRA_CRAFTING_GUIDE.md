@@ -1,34 +1,49 @@
 # The Supra Crafting Guide - all 42 uber craftables and how to farm them
 
-> Everything below was read out of the arz you are playing:
-> `SoulvizierClassic.arz` md5 `44499f56ed52bc91219db64eb4de2f11` (build83, 51,253 records).
-> No source is guessed. If an item is listed as chest-farmable, a chest table in that build
-> literally names it.
+> Everything below was read out of the arz you are playing. The measured baseline is
+> `SoulvizierClassic.arz` md5 `44499f56ed52bc91219db64eb4de2f11` (build83, 51,253 records),
+> **plus the three 2026-08-11 supra rulings** applied on top of it (14 formulas repointed by
+> one reagent slot each, and four memberships removed from one Epic loot table).
+> No source is guessed. If an item is listed as chest-farmable, a chest table literally names it.
+
+> ### What changed on 2026-08-11 (Will's three rulings)
+> **A.** Every recipe now needs at least one reagent that **only Legendary can pay**. The four
+> thrown weapons used to need nothing Legendary-only; they do now.
+> **B.** **No two recipes want the same three things any more.** Fifteen of the 42 craftables used
+> to share a reagent set with at least one sibling (six axes were identical to each other).
+> Ten of them changed exactly one reagent.
+> **C.** **The Last Word and its three siblings no longer drop from Epic chests.** They still drop
+> on Legendary. Nothing else about them changed.
+> If you already banked reagents, nothing you banked is wasted - every reagent that left a recipe
+> is still a droppable item, and every reagent that entered one was already droppable.
 
 ## How supra crafting works
 
-The red-name "supra" items are the mod's top craft tier. You do not find them: **nothing in the
-game drops a finished supra item.** You build each one at an Enchanter/Mystic from:
+The red-name "supra" items are the mod's top craft tier. You do not find them: **38 of the 42
+drop from nothing at all**, and the four that do drop (the thrown weapons) drop **only on
+Legendary**. You build each one at an Enchanter/Mystic from:
 
 1. its **Mythic Formula** (a recipe scroll), plus
 2. **three reagent items** you have to find.
 
-There are **42 craftables**, built by 59 formula records, needing **82 distinct reagents**.
+There are **42 craftables**, built by 59 formula records, needing **91 distinct reagents** -
+and all 42 reagent sets are different from one another.
 
 ## The three things worth knowing before you farm
 
-**1. Every formula now drops on every difficulty.** All 42 Mythic Formulas sit on the shared
+**1. Every formula still drops on every difficulty.** All 42 Mythic Formulas sit on the shared
 `supra` / `supra_special` formula tables, and every mod chest and boss hoard reaches them on
 **Normal, Epic and Legendary**. You can bank recipes right now on Epic. There is no reason to wait.
 
-**2. Reagents split two ways.** Of the 82 reagents, **62 drop from chests** (the Gaoler cage counts,
+**2. Reagents split two ways.** Of the 91 reagents, **69 come from chests** (the Gaoler cage counts,
 and so do the general-guard hoards, the Mystical Orb chests and the blood-cave mega chest) and
-**20 are Monster Infrequents** - the green items that only ever drop from one monster family. No
-chest in the game pays a green. Those 20 are the ones you have to go and hunt.
+**22 are Monster Infrequents** - the green items that only ever drop from one monster family. No
+chest in the game pays a green. Those are the ones you have to go and hunt.
 
-**3. Only 4 of the 42 are craftable at Epic.** Almost every recipe wants at least one reagent that
-only appears on **Legendary-tier** chests. Those four are the thrown weapons: **Charon's Toll**,
-**Hati**, **Sanguine Orbit** and **The Last Word**.
+**3. None of the 42 is craftable at Epic any more.** Every recipe wants at least one reagent that
+only appears on **Legendary-tier** chests - that is Will's ruling A, and it now applies to the
+four thrown weapons (**Charon's Toll**, **Hati**, **Sanguine Orbit**, **The Last Word**) exactly
+as it always applied to the other 38. Epic is for banking, not for finishing.
 
 ## What to do on Epic right now
 
@@ -39,7 +54,8 @@ only appears on **Legendary-tier** chests. Those four are the thrown weapons: **
 - **Hunt the greens as you go.** They are level-appropriate drops from ordinary monster families in
   Act 3 and Act 4. If you are walking past Tigermen or Dragonians anyway, that is free progress -
   see the shopping list.
-- **Finish the four thrown weapons.** They are the only supras that need nothing Legendary-only.
+- **Do not wait for a supra to drop.** Four of them can, on Legendary only, out of the thrown slot.
+  Everything else in this guide is built, never found.
 
 ## Reading the labels
 
@@ -59,31 +75,31 @@ recipe actually wants.
 | # | Craftable | Class | Formula | Reagent 1 | Reagent 2 | Reagent 3 |
 |---|---|---|---|---|---|---|
 | 1 | **Blood Whisper** | spear | any chest, **N/E/L** | Peleus' Ashen Spear `chest L` | Queen Zenobia's Spear `chest EL` | Ichthian Harpoon `green` |
-| 2 | **Aquimae** | sword | any chest, **N/E/L** | Stymphalian Talon `chest L` | Plissken `chest EL` | Deathweaver's Legtip `green` |
+| 2 | **Aquimae** | sword | any chest, **N/E/L** | Pagos `chest L` | Plissken `chest EL` | Deathweaver's Legtip `green` |
 | 3 | **Crystal Tear of Nyx** | sword | any chest, **N/E/L** | Stymphalian Talon `chest L` | Plissken `chest EL` | Deathweaver's Legtip `green` |
 | 4 | **Ripulsar** | sword | any chest, **N/E/L** | Mindrazor `chest L` | Griefmaker `chest EL` | Sabertooth `green` |
-| 5 | **Shrike** | sword | any chest, **N/E/L** | Mindrazor `chest L` | Griefmaker `chest EL` | Sabertooth `green` |
+| 5 | **Shrike** | sword | any chest, **N/E/L** | Stymphalian Talon `chest L` | Griefmaker `chest EL` | Sabertooth `green` |
 | 6 | **The Unholy Heartpiercer** | sword | any chest, **N/E/L** | Mindrazor `chest L` | Stymphalian Talon `chest L` | Sabertooth `green` |
-| 7 | **Charybdis Unchained** | axe | any chest, **N/E/L** | Pyrophoric Lop `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
+| 7 | **Charybdis Unchained** | axe | any chest, **N/E/L** | Acheron's Touch `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
 | 8 | **Darkflame Devourer** | axe | any chest, **N/E/L** | Pyrophoric Lop `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
-| 9 | **Erysichthon's Undying Hunger** | axe | any chest, **N/E/L** | Pyrophoric Lop `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
-| 10 | **Phoenix Ascendant** | axe | any chest, **N/E/L** | Pyrophoric Lop `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
-| 11 | **Scylla Unbound** | axe | any chest, **N/E/L** | Pyrophoric Lop `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
-| 12 | **Wrath of the Furies** | axe | any chest, **N/E/L** | Pyrophoric Lop `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
+| 9 | **Erysichthon's Undying Hunger** | axe | any chest, **N/E/L** | Erysichthon's Hunger `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
+| 10 | **Phoenix Ascendant** | axe | any chest, **N/E/L** | Phoenix `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
+| 11 | **Scylla Unbound** | axe | any chest, **N/E/L** | Cerberus' Bite `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
+| 12 | **Wrath of the Furies** | axe | any chest, **N/E/L** | The Furies `chest L` | Shai'tan `chest EL` | Head Hunter's Axe `green` |
 | 13 | **Omega** | mace | any chest, **N/E/L** | Sapros the Corrupter `chest L` | Demeter's Sorrow `chest EL` | Animus `chest L` |
-| 14 | **Sword Fish** | mace | any chest, **N/E/L** | Sapros the Corrupter `chest L` | Demeter's Sorrow `chest EL` | Animus `chest L` |
-| 15 | **The Doomcaller's Maul** | mace | any chest, **N/E/L** | Sapros the Corrupter `chest L` | Demeter's Sorrow `chest EL` | Animus `chest L` |
+| 14 | **Sword Fish** | mace | any chest, **N/E/L** | Kraken's Fist `chest L` | Demeter's Sorrow `chest EL` | Animus `chest L` |
+| 15 | **The Doomcaller's Maul** | mace | any chest, **N/E/L** | Horn of Tiamat `chest L` | Demeter's Sorrow `chest EL` | Animus `chest L` |
 | 16 | **Stormbringer** | bow | any chest, **N/E/L** | Helios' Fury `chest L` | Khamsin `chest EL` | Brigand's Bow `green` |
-| 17 | **Ten Suns' Wrath** | bow | any chest, **N/E/L** | Helios' Fury `chest L` | Khamsin `chest EL` | Brigand's Bow `green` |
+| 17 | **Ten Suns' Wrath** | bow | any chest, **N/E/L** | Helios' Fury `chest L` | Qin Warbow `chest L` | Brigand's Bow `green` |
 | 18 | **Helona's Ascension** | staff | any chest, **N/E/L** | Praxidikae `chest L` | Sakur-Aba `chest L` | Scepter of the Liche King `green` |
 | 19 | **Scepter of Kronos** | staff | any chest, **N/E/L** | Sakur-Aba `chest L` | Rod of the Ancients `chest EL` | The Night Mistress's Clutch `green` |
 | 20 | **Soul Seekkor** | staff | any chest, **N/E/L** | Praxidikae `chest L` | Archon's Judgment `chest EL` | Scepter of the Liche King `green` |
 | 21 | **Staff of the Cosmos** | staff | any chest, **N/E/L** | Riddle of the Sphinx `chest L` | Shikigami `chest EL` | Staff of the Magi `green` |
 | 22 | **The Munderizer** | staff | any chest, **N/E/L** | Rod of the Ancients `chest EL` | Riddle of the Sphinx `chest L` | Staff of the Magi `green` |
-| 23 | **Charon's Toll** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Reaver's Wand (`m_vit_wand_03.dbr`) `chest EL` | Perversion of the Bloodborn (`mi_vit_wand_01.dbr`) `chest N` |
-| 24 | **Hati** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Reaver's Wand (`m_vit_wand_01.dbr`) `chest NEL` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
-| 25 | **Sanguine Orbit** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Reaver's Wand (`m_vit_wand_03.dbr`) `chest EL` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
-| 26 | **The Last Word** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Reaver's Wand (`m_vit_wand_02.dbr`) `chest EL` | Perversion of the Bloodborn (`mi_vit_wand_03.dbr`) `green` |
+| 23 | **Charon's Toll** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Essence of Styx `chest L` | Perversion of the Bloodborn (`mi_vit_wand_01.dbr`) `chest N` |
+| 24 | **Hati** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Crescent Moon of Artemis `chest L` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
+| 25 | **Sanguine Orbit** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Blood of Ouranos `chest L` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
+| 26 | **The Last Word** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Scepter of Thanatos `chest L` | Perversion of the Bloodborn (`mi_vit_wand_03.dbr`) `green` |
 | 27 | **Agathodaemon** | shield | any chest, **N/E/L** | Aionios `chest L` | Eidolon Shell `chest EL` | Exotic Carapace `green` |
 | 28 | **Cystalline Mask** | helm | any chest, **N/E/L** | Crest of Hypnos `chest L` | Crown of Dockma'Ar `chest EL` | Bandari's Helm `green` |
 | 29 | **Galefury** | helm | any chest, **N/E/L** | Tracker's Hood `chest L` | Crystalline Helm `chest EL` | Ismene's Helm `green` |
@@ -105,8 +121,12 @@ recipe actually wants.
 
 ## The green shopping list
 
-These 20 are the only reagents no chest will ever pay. Everything else on this page can come out of
-a chest.
+Twenty-two of the 91 reagents are Monster Infrequents. These 20 are the ones no chest will ever
+pay; the other two carry a chest placement and are labelled `chest ...` in the table above.
+Everything else on this page can come out of a chest.
+
+**None of these changed on 2026-08-11.** Every green slot in every recipe is exactly where it was -
+the three rulings only touched the non-green slots.
 
 | Green reagent | Dropped by | Where | Needed for |
 |---|---|---|---|
@@ -159,11 +179,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Stymphalian Talon** (lvl 59) - **CHEST-FARM (Legendary chests only)**
+- **Pagos** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Plissken** (lvl 56) - **CHEST-FARM (Epic + Legendary chests)**
 - **Deathweaver's Legtip** (lvl 54) - **MONSTER-GREEN** - Malevolent Arachnos ~ Veteran Soldier / Malevolent Arachnos ~ Elite Soldier / Malevolent Arachnos ~ Deathspinner; wherever that family spawns
 
-**Farm it along the way:** Stymphalian Talon only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Plissken can already drop for you on Epic - bank it when it appears; the green Deathweaver's Legtip never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Pagos only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Plissken can already drop for you on Epic - bank it when it appears; the green Deathweaver's Legtip never comes from a chest, so pick it up while you level.
 
 ### Crystal Tear of Nyx
 *Legendary sword, item level 65. physical 110*
@@ -195,11 +215,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Mindrazor** (lvl 59) - **CHEST-FARM (Legendary chests only)**
+- **Stymphalian Talon** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Griefmaker** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Sabertooth** (lvl 61) - **MONSTER-GREEN** - Tigerman ~ Elite Prowler / Tigerman ~ Prowler / Borealic Warrior; Act 3 (Chang'an, Great Wall, Jade Palace, Silk Road, Tomb of Qin)
 
-**Farm it along the way:** Mindrazor only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Griefmaker can already drop for you on Epic - bank it when it appears; the green Sabertooth never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Stymphalian Talon only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Griefmaker can already drop for you on Epic - bank it when it appears; the green Sabertooth never comes from a chest, so pick it up while you level.
 
 ### The Unholy Heartpiercer
 *Legendary sword, item level 65. bleed 250, physical 150*
@@ -221,11 +241,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Pyrophoric Lop** (lvl 69) - **CHEST-FARM (Legendary chests only)**
+- **Acheron's Touch** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Shai'tan** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Head Hunter's Axe** (lvl 61) - **MONSTER-GREEN** - Ancient Dragonian ~ Frost Scourge / Ancient Dragonian ~ Deathlance / Elder Dragonian ~ Headhunter; Act 3 (Chang'an, Great Wall, Jade Palace, Silk Road, Tomb of Qin)
 
-**Farm it along the way:** Pyrophoric Lop only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Acheron's Touch only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
 
 ### Darkflame Devourer
 *Legendary axe, item level 65. physical 200*
@@ -245,11 +265,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Pyrophoric Lop** (lvl 69) - **CHEST-FARM (Legendary chests only)**
+- **Erysichthon's Hunger** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Shai'tan** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Head Hunter's Axe** (lvl 61) - **MONSTER-GREEN** - Ancient Dragonian ~ Frost Scourge / Ancient Dragonian ~ Deathlance / Elder Dragonian ~ Headhunter; Act 3 (Chang'an, Great Wall, Jade Palace, Silk Road, Tomb of Qin)
 
-**Farm it along the way:** Pyrophoric Lop only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Erysichthon's Hunger only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
 
 ### Phoenix Ascendant
 *Legendary axe, item level 65. fire 60, physical 200, carries a granted skill*
@@ -257,11 +277,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Pyrophoric Lop** (lvl 69) - **CHEST-FARM (Legendary chests only)**
+- **Phoenix** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Shai'tan** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Head Hunter's Axe** (lvl 61) - **MONSTER-GREEN** - Ancient Dragonian ~ Frost Scourge / Ancient Dragonian ~ Deathlance / Elder Dragonian ~ Headhunter; Act 3 (Chang'an, Great Wall, Jade Palace, Silk Road, Tomb of Qin)
 
-**Farm it along the way:** Pyrophoric Lop only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Phoenix only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
 
 ### Scylla Unbound
 *Legendary axe, item level 65. physical 195*
@@ -269,11 +289,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Pyrophoric Lop** (lvl 69) - **CHEST-FARM (Legendary chests only)**
+- **Cerberus' Bite** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Shai'tan** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Head Hunter's Axe** (lvl 61) - **MONSTER-GREEN** - Ancient Dragonian ~ Frost Scourge / Ancient Dragonian ~ Deathlance / Elder Dragonian ~ Headhunter; Act 3 (Chang'an, Great Wall, Jade Palace, Silk Road, Tomb of Qin)
 
-**Farm it along the way:** Pyrophoric Lop only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Cerberus' Bite only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
 
 ### Wrath of the Furies
 *Legendary axe, item level 65. bleed 200, physical 200*
@@ -281,11 +301,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Pyrophoric Lop** (lvl 69) - **CHEST-FARM (Legendary chests only)**
+- **The Furies** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Shai'tan** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Head Hunter's Axe** (lvl 61) - **MONSTER-GREEN** - Ancient Dragonian ~ Frost Scourge / Ancient Dragonian ~ Deathlance / Elder Dragonian ~ Headhunter; Act 3 (Chang'an, Great Wall, Jade Palace, Silk Road, Tomb of Qin)
 
-**Farm it along the way:** Pyrophoric Lop only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
+**Farm it along the way:** The Furies only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Shai'tan can already drop for you on Epic - bank it when it appears; the green Head Hunter's Axe never comes from a chest, so pick it up while you level.
 
 ## Maces and clubs
 
@@ -307,11 +327,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Sapros the Corrupter** (lvl 59) - **CHEST-FARM (Legendary chests only)**
+- **Kraken's Fist** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Demeter's Sorrow** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Animus** (lvl 68) - **CHEST-FARM (Legendary chests only)**
 
-**Farm it along the way:** Sapros the Corrupter, Animus only drop from **Legendary-tier** chests, so the craft itself waits for Legendary; Demeter's Sorrow can already drop for you on Epic - bank it when it appears.
+**Farm it along the way:** Kraken's Fist, Animus only drop from **Legendary-tier** chests, so the craft itself waits for Legendary; Demeter's Sorrow can already drop for you on Epic - bank it when it appears.
 
 ### The Doomcaller's Maul
 *Legendary mace, item level 65. physical 280*
@@ -319,11 +339,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (1 formula record; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Sapros the Corrupter** (lvl 59) - **CHEST-FARM (Legendary chests only)**
+- **Horn of Tiamat** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Demeter's Sorrow** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
 - **Animus** (lvl 68) - **CHEST-FARM (Legendary chests only)**
 
-**Farm it along the way:** Sapros the Corrupter, Animus only drop from **Legendary-tier** chests, so the craft itself waits for Legendary; Demeter's Sorrow can already drop for you on Epic - bank it when it appears.
+**Farm it along the way:** Horn of Tiamat, Animus only drop from **Legendary-tier** chests, so the craft itself waits for Legendary; Demeter's Sorrow can already drop for you on Epic - bank it when it appears.
 
 ## Bows
 
@@ -346,10 +366,10 @@ source, and what to do about it at your stage.
 
 **Reagents:**
 - **Helios' Fury** (lvl 59) - **CHEST-FARM (Legendary chests only)**
-- **Khamsin** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
+- **Qin Warbow** (lvl 59) - **CHEST-FARM (Legendary chests only)**
 - **Brigand's Bow** (lvl 4) - **MONSTER-GREEN** - Chaos ~ Mountain Satyr ~ Pillager / Mountain Satyr ~ Pillager / Dark Satyr ~ Pillager; wherever that family spawns
 
-**Farm it along the way:** Helios' Fury only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Khamsin can already drop for you on Epic - bank it when it appears; the green Brigand's Bow never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Helios' Fury and Qin Warbow only drop from **Legendary-tier** chests, so the craft itself waits for Legendary; the green Brigand's Bow never comes from a chest, so pick it up while you level.
 
 ## Staves
 
@@ -422,10 +442,12 @@ source, and what to do about it at your stage.
 
 **Reagents:**
 - **Scepter of Eternal Love** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
-- **Reaver's Wand (`m_vit_wand_03.dbr`)** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
+- **Essence of Styx** (lvl 64) - **CHEST-FARM (Legendary chests only)** - the toll is paid on the river he ferries
 - **Perversion of the Bloodborn (`mi_vit_wand_01.dbr`)** (lvl 30) - **CHEST-FARM (Normal chests)**
 
-**Farm it along the way:** Perversion of the Bloodborn only drops from **Normal-difficulty** chests, so that one is a quick Normal cage run; Scepter of Eternal Love, Reaver's Wand can already drop for you on Epic - bank them when one appears; **nothing here is Legendary-gated - this one is craftable on Epic**.
+**Farm it along the way:** Essence of Styx only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Perversion of the Bloodborn is a quick Normal cage run; Scepter of Eternal Love can already drop for you on Epic - bank it when one appears.
+
+**It can also drop, on Legendary only.** The four supra thrown are the only supra items in the game that any chest pays, and since 2026-08-11 they pay on **Legendary chests only** (Will: "the last word should not be dropped in epic, only legendary"). Crafting is still by far the reliable route.
 
 ### Hati
 *Legendary thrown weapon, item level 65. bleed 200, physical 220*
@@ -434,10 +456,12 @@ source, and what to do about it at your stage.
 
 **Reagents:**
 - **Scepter of Eternal Love** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
-- **Reaver's Wand (`m_vit_wand_01.dbr`)** (lvl 30) - **CHEST-FARM (any difficulty)**
+- **Crescent Moon of Artemis** (lvl 5) - **CHEST-FARM (Legendary chests only)** - the wolf is handed the moon he chases
 - **Perversion of the Bloodborn (`mi_vit_wand_02.dbr`)** (lvl 50) - **MONSTER-GREEN** - Blood Reaver of the Sanctuary / Blood Cult - Reaver; wherever that family spawns
 
-**Farm it along the way:** Scepter of Eternal Love, Reaver's Wand can already drop for you on Epic - bank them when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level; **nothing here is Legendary-gated - this one is craftable on Epic**.
+**Farm it along the way:** Crescent Moon of Artemis only drops from **Legendary-tier** chests, so the craft itself waits for Legendary (and Mortok's Skull wants one too, so bank two); Scepter of Eternal Love can already drop for you on Epic - bank it when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level.
+
+**It can also drop, on Legendary only.** The four supra thrown are the only supra items in the game that any chest pays, and since 2026-08-11 they pay on **Legendary chests only** (Will: "the last word should not be dropped in epic, only legendary"). Crafting is still by far the reliable route.
 
 ### Sanguine Orbit
 *Legendary thrown weapon, item level 65. bleed 350, physical 180*
@@ -446,10 +470,12 @@ source, and what to do about it at your stage.
 
 **Reagents:**
 - **Scepter of Eternal Love** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
-- **Reaver's Wand (`m_vit_wand_03.dbr`)** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
+- **Blood of Ouranos** (lvl 59) - **CHEST-FARM (Legendary chests only)** - sky-blood, still falling
 - **Perversion of the Bloodborn (`mi_vit_wand_02.dbr`)** (lvl 50) - **MONSTER-GREEN** - Blood Reaver of the Sanctuary / Blood Cult - Reaver; wherever that family spawns
 
-**Farm it along the way:** Scepter of Eternal Love, Reaver's Wand can already drop for you on Epic - bank them when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level; **nothing here is Legendary-gated - this one is craftable on Epic**.
+**Farm it along the way:** Blood of Ouranos only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Scepter of Eternal Love can already drop for you on Epic - bank it when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level.
+
+**It can also drop, on Legendary only.** The four supra thrown are the only supra items in the game that any chest pays, and since 2026-08-11 they pay on **Legendary chests only** (Will: "the last word should not be dropped in epic, only legendary"). Crafting is still by far the reliable route.
 
 ### The Last Word
 *Legendary thrown weapon, item level 65. lightning 5, physical 300, carries a granted skill*
@@ -458,10 +484,12 @@ source, and what to do about it at your stage.
 
 **Reagents:**
 - **Scepter of Eternal Love** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
-- **Reaver's Wand (`m_vit_wand_02.dbr`)** (lvl 50) - **CHEST-FARM (Epic + Legendary chests)**
+- **Scepter of Thanatos** (lvl 59) - **CHEST-FARM (Legendary chests only)** - Death gets the last word
 - **Perversion of the Bloodborn (`mi_vit_wand_03.dbr`)** (lvl 65) - **MONSTER-GREEN** - Blood Reaver of the Sanctuary / Blood Cult - Reaver; wherever that family spawns
 
-**Farm it along the way:** Scepter of Eternal Love, Reaver's Wand can already drop for you on Epic - bank them when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level; **nothing here is Legendary-gated - this one is craftable on Epic**.
+**Farm it along the way:** Scepter of Thanatos only drops from **Legendary-tier** chests, so the craft itself waits for Legendary; Scepter of Eternal Love can already drop for you on Epic - bank it when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level.
+
+**It can also drop, on Legendary only.** The four supra thrown are the only supra items in the game that any chest pays, and since 2026-08-11 they pay on **Legendary chests only** (Will: "the last word should not be dropped in epic, only legendary"). Crafting is still by far the reliable route.
 
 ## Shields
 
