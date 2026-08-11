@@ -2,10 +2,21 @@
 
 ## GATE RECORD - BL-R181-DEBT-7 CLOSED: the uber orbs' ARMOUR has an owner, and an un-owned loot table is now structurally impossible (2026-08-11, branch `fix/orb-armor-rows`, module `tools/patches/orb_armor_rows.py`)
 
-**NOT BUILT / NOT DEPLOYED BY THIS LANE - static gates only.** Two heavy lanes are queued ahead of
-this ship (craft+thrown b81 `wf_387297f6`, atlantis-voyage b82 `wf_28049543`) and the one-heavy-build-
-at-a-time law holds. Everything below is measured by running the real code paths IN MEMORY against
-committed artifacts, which is also what makes every number reproducible from one command.
+**NOT BUILT / NOT DEPLOYED BY THIS LANE - static gates only.** Everything below is measured by running
+the real code paths IN MEMORY against committed artifacts, which is also what makes every number
+reproducible from one command.
+
+> **`main` MOVED TWICE DURING THIS LANE, AND BOTH QUEUED SHIPS HAVE NOW LANDED.** The two heavy lanes
+> that were queued ahead of this one both shipped while it was in flight: **b81 craft+thrown**
+> (`wf_387297f6`, `23efa89`) and **b82 atlantis-voyage** (`wf_28049543`, `4c07bfb`). The
+> one-heavy-build-at-a-time law was honoured throughout - this lane never built. `main` was re-merged
+> after EACH, most recently at **`4c07bfb`**, and the full gate sweep was re-run against the artifact
+> that is actually live each time. **CURRENT LIVE / SHIPPED STATE = `build82`, arz
+> `09a0f51dcc5c64b3d84c123a421aeef1`** (55,562,756 B, 51,253 records) on Steam AND DEV. Both merges hit
+> the same single conflict - the additive `docs/BACKLOG.md` header where two lanes prepend a record -
+> and both kept both sides; `tools/` auto-merged clean each time. b82 is a portal/travel-route change
+> and touches no loot table, so every loot number below is unmoved by it (verified, not assumed:
+> the gate sweep and calibration below are re-taken against `09a0f51d`).
 
 **MEASURE EVERYTHING FROM `local/build80_ship_c5851a1a.arz`, NOT FROM `work/`.** During this lane
 `work/SoulvizierClassic/Database/SoulvizierClassic.arz` was rewritten by a concurrent lane (md5
