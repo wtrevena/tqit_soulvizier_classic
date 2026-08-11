@@ -149,13 +149,20 @@ def verify(db, tags):
     # EVERY surface (D7b). The per-open floor D7 is asserted too, on every surface at or
     # above the volume it was derived at - saying "every worn slot clears 0.52/open"
     # while a low-volume orb sits at 0.28 would be a gate lying in its own PASS line.
+    # ... and D7's reach is COUNTED, not implied. The round-2 vet found three surfaces
+    # silently outside it (a 1.78e-15 float shortfall) while this very line said the floor
+    # held "on every surface at or above S=10.58". Printing the number makes a surface
+    # leaving D7 visible in the build log instead of invisible.
+    n_d7 = sum(1 for r in reports if r and r.get('d7_asserted'))
     print("  armor_loot_breadth gate PASS: %d loot surface(s) audited; every worn slot "
           "clears %.4f piece(s) per SPAWN ITERATION (thinnest %s = %.4f) and %.2f/open "
-          "on every surface at or above S=%.2f, no class over %.0f%% of a surface, no "
+          "on the %d surface(s) at or above S=%.2f (D7X: incl. the reference surface "
+          "%s), no class over %.0f%% of a surface, no "
           "item over %.1fx its class uniform share, worst weapon:armour %.2f:1 on %s "
           "(cap %.2f)."
           % (len(reports), SLD.ARMOR_SLOT_FLOOR_PER_SPAWN, thin_ps_label, thin_ps,
-             SLD.ARMOR_SLOT_FLOOR, SLD.ARMOR_SLOT_FLOOR_REF_SPAWN,
+             SLD.ARMOR_SLOT_FLOOR, n_d7, SLD.ARMOR_SLOT_FLOOR_REF_SPAWN,
+             SLD.ARMOR_SLOT_FLOOR_REF_SURFACE,
              100.0 * SLD.MAX_CLASS_SHARE_AGGREGATE,
              SLD.MAX_ITEM_OVER_UNIFORM, worst_ratio, worst_label,
              SLD.MAX_WEAPON_ARMOUR_RATIO))

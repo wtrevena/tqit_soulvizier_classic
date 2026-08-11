@@ -353,7 +353,7 @@ def main(argv):
         probs, _reps = SAB.audit_db(d, k)
         return [p for p in probs if p.startswith('D7 ') and 'apex_e01c' in p]
 
-    check("D7 armour cut 25%% on the REFERENCE surface (svc_uberorb_apex_e01c, the "
+    check("D7 armour cut 25% on the REFERENCE surface (svc_uberorb_apex_e01c, the "
           "0.40-0.52/open band the float boundary left unguarded)",
           _cut_reference_armour, _probe_reference_d7)
 

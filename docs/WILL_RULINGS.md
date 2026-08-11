@@ -5252,3 +5252,70 @@ SoulvizierClassic.arz` was rewritten by a concurrent build (md5 `c502f173` at 01
 `c5851a1a`). Two readings taken against it before that was noticed were discarded and re-taken. This is
 `BL-R181-DEBT-8` biting a second time; while a fleet is running, the committed artifacts in `local/`
 are the only safe baselines.
+
+### R-181 SECOND AMENDMENT, ROUND 2 [2026-08-11] - the independent vet found this lane committing its own defect class, and the law it produced
+
+The round-2 vet returned **1 HIGH, 2 MEDIUM, 2 LOW**. All five are closed on this branch. One of them
+matters far past its patch, because it is this ruling's own subject caught happening again.
+
+**THE HIGH: A FAIL-LOUD GATE WENT QUIET ON A LIVE SURFACE WHILE ITS PASS LINE SAID OTHERWISE.** D7 -
+the absolute "every worn slot pays at least 0.52 legendary pieces per open" floor - is asserted only
+on containers at or above the volume it was derived at, via `spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN`.
+`S_eff` is a WEIGHTED SUM over a surface's variants, not a literal, so the three
+`svc_uberorb_apex_{n,e,l}01c` surfaces compute **10.579999999999998** - `1.78e-15` under the constant.
+The comparison was therefore False and **D7 was never evaluated on them at all**, leaving an unguarded
+band of **0.3968 .. 0.52 pieces per open** on each, roughly a quarter of the floor. It was guarded
+before this lane. Worse, `svc_uberorb_apex_e01c` at 0.6229 is **the exact surface the 0.52 number was
+calibrated on**, and two documents said in writing that D7 kept its exact behaviour on "all 42,
+byte-identical". Both were false for 3 of the 42. The vet demonstrated it rather than arguing it:
+cutting that surface's armour rows 25% reds on `main` and passed GREEN on this branch.
+
+> **LAW: A THRESHOLD MUST BE ASSERTED, DEMONSTRABLY, AT THE PLACE ITS NUMBER WAS DERIVED.** A
+> calibration anchor is the one surface where a threshold provably means what it says. If the check is
+> not switched ON there, the number is folklore. `svc_loot_distribution.reference_surface_problems`
+> (**D7X**) now asserts exactly that, from the opposite direction to the comparison it protects: not
+> "is the `>=` written correctly" but "is D7 demonstrably ON at the reference surface, and is that
+> surface still in the audit set at all". A future edit to the threshold, the equations, the variant
+> weights or the comparison cannot switch D7 off there without reding. It caught its own constant
+> being written with a wrong label prefix on the first run.
+
+> **LAW: A GATE STATES THE COUNT, NEVER THE UNIVERSAL.** "every surface at or above the reference
+> volume" is unfalsifiable in a log; **"the 42 of 57 surfaces at or above the reference volume"** is a
+> number a reader can watch move. Both the standalone gate and the in-build gate now print it. This is
+> the same discipline `armor_loot_breadth` already applied to D7b ("saying every worn slot clears
+> 0.52/open while a low-volume orb sits at 0.28 would be a gate lying in its own PASS line") - the
+> round-1 lane wrote that sentence and then broke it two constants over.
+
+**THE FIX IS A TOLERANCE PLUS A STRUCTURE, NOT A TOLERANCE.** `d7_applies()` is now the single
+implementation of the boundary (`ARMOR_SLOT_FLOOR_REF_TOL = 1e-9` relative - seven orders of magnitude
+under the coarsest real gap between two surfaces' volumes, so it can only ever absorb float noise),
+used by the audit, both PASS lines and the negatives alike. Two permanent negatives pin it: **N12**
+plants the vet's own regression on the reference surface inside the band D7b alone cannot see, **N13**
+nudges the reference volume past that surface's own S_eff so D7X itself must red. Measured after:
+**D7 asserted on 42 of 57 surfaces**, every calibration number unchanged, 16 negatives red.
+
+**THE TWO MEDIUMS: A GATE MUST NOT CLAIM MORE REACH THAN IT HAS.** The ownership gate printed "every
+loot table written in this build is audited by a surface or EXEMPT", which neither witness could
+enforce: `tools/apply_svc_patches.py` runs OUTSIDE `run_registry` (no touch log -> OWN2 blind) and
+writes some loot rows without a shared builder (-> OWN1 blind). Both halves done. Its **27
+`svc_*hoard_loot_{01,02,03}` gear containers now call `note_write`**, so the ledger genuinely covers
+them - measured, all 27 are inside the audited surface set and ownership stays at 0 problems. Its
+base-game `defaultloot` restore is deliberately OUTSIDE the contract and is now **named in the PASS
+line itself** and registered as `BL-R181-DEBT-10`: those writes copy a value straight out of the base
+arz, restoring a base-game row to its base-game shape rather than widening a mod surface, and
+base-game monster loot is `BL-R181-DEBT-2`, a Will decision. The second medium was record hygiene -
+three gate numbers in the BACKLOG record did not reproduce (35 vs **51** tables, 13 vs **16**
+negatives, 58/`4a8297a0` vs **59**/`ba6fde28`); they were pre-merge readings left standing beside
+post-merge ones and are **corrected in place**, because this repo's records are the audit trail a cold
+successor trusts. `main` was re-merged at **`0019861`** (b81 shipped, b82 atlantis-voyage landed);
+sole conflict was the additive BACKLOG header, `tools/` auto-merged clean, all gates re-green.
+
+**THE TWO LOWS, both "the proof did not prove what it printed".** The scope proof's name-field branch
+was a bare `pass` whose comment claimed the value was checked above - it was not, so a donor shape
+carrying an existing member could have been clobbered while the proof reported PASS and the failure
+text promised "no member removed". It now asserts the slot was empty. And `orb_scope`'s cache was keyed
+on record count alone, so a rewire that moved a chain between EXISTING tables would serve a stale
+scope; the key now carries the write count, the gate derives with `fresh=True` from the db's final
+state, and `verify()` compares that against what `apply()` actually swept and fails loud on any
+difference - the only way to catch a table reached after the sweep, since nothing wrote it and no
+ownership witness would fire.
