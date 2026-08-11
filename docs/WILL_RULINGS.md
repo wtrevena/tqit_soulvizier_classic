@@ -5424,6 +5424,19 @@ point, ship commits push immediately.
 
 ---
 
+> **NUMBERING NOTE (2026-08-11): these two rulings were R-230 and R-231 for most of their lane, and
+> moved here under this ledger's own precedent - the LIVE ruling keeps its number, the newcomer moves
+> to the next free slot.** Three branches had minted into the same range on the same day: `main` took
+> **R-230** for Will's push-per-build law, `feat/charon-rework` took **R-231** for the Golden Bough
+> rework, and this lane held both. This lane was the only one colliding with two others and the only
+> one that could be renumbered without editing somebody else's in-flight branch, so it took the free
+> decade wholesale and in order. 190 references moved, zero old ids left, and the counts before and
+> after match exactly (107 and 37).
+>
+> **R-240 and R-241 are now CLAIMED. The next free ruling number is R-242** - and the lesson for the
+> next lane is the cheap one: **check every branch, not just `main`, before minting an id**, because
+> `git grep '^## R-' main` would have said R-231 was free and it was not.
+
 ## R-240 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/loot_volume_trim.py`) - the chests pay a RUN's worth, not a vendor's stock; the TESTHUB farm keeps its own
 
 **WILL, VERBATIM (2026-08-11):**
