@@ -112,6 +112,72 @@
 > **If you see a soul that still reads the same on all three tiers, that is a real find** - the new
 > build gate says there are zero left, and it fails the build if one appears.
 
+> ## 🆕 R-181 (2026-08-10): ARMOUR NOW DROPS LIKE ARMOUR, AND NO ONE CLASS RUNS AWAY WITH THE RUN
+> **✅ LIVE ON DEV AND ON STEAM as `build80` (arz `c5851a1a`).** This is your two follow-up reports on
+> R-180: *"also what about the armor? i am not really seeing armor drops like shields, chest plates,
+> helmets, etc."* and *"you overcorrected, that run 4 scorpions tail spears dropped"*. Both were REAL
+> and both were measured, not guessed. arz-only again, so the map/quests/Text did not move.
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured
+> on the SHIPPED build, not predicted - the dry run and the build agree to the second decimal.
+>
+> **YOU WERE RIGHT ABOUT BOTH, AND HERE ARE THE NUMBERS.** R-180 proved a chest COULD pay every weapon
+> class; it never checked how OFTEN. On the build you played, one cage run paid **58.5 legendary
+> weapons against 12.4 armour pieces** - helms were 1.6% of everything that dropped - and **SPEAR alone
+> was 24% of the run** when an even split across the eleven gear slots is 9.1%. At 17 spear drops a run
+> over 22 distinct spears, **four copies of one spear was a 27% event**. Your run was the ordinary
+> case, not bad luck.
+>
+> **WHAT CHANGED.** Every armour row now fires at the weapon row's own 40% (they were 33/31/30, and
+> 32/32/30 on the orb chests), the
+> legendary share inside each armour row went from roughly 10-19% of the row's weight to about half,
+> and one new "armour master" pays all five worn slots evenly. On the weapon side, the one table that
+> covers axe + mace + sword was carrying a single spear's weight, so each of those three classes got a
+> third of a spear's chance; that is fixed, and the per-chest theme biases were softened. **Nothing was
+> reduced** - your cage run goes from about 71 to about 109 legendary items; only the mix changes.
+>
+> | per cage run | you played | after |
+> |---|---|---|
+> | SPEAR share | 24.0% | 9.8% |
+> | helm share | 1.6% | 8.7% |
+> | torso share | 3.7% | 9.1% |
+> | shield share | 7.1% | 10.8% |
+> | weapons : armour | 4.73 : 1 | 1.22 : 1 |
+> | armour pieces | 12.4 | 49.4 |
+> | P(4 copies of ONE spear) | 27.0% | 6.3% |
+> | P(4 Scorpion's Tails) | 2.07% | 0.45% |
+> | P(4 copies of ANY one item) | 47.3% | **39.7%** |
+>
+> Every one of the eleven gear classes now lands between 7.8% and 10.8% of a run, against an even
+> split of 9.1%. Before, the spread ran from 1.6% to 24.0%.
+>
+> **ONE THING I AM NOT GOING TO OVERSELL, because you would catch it anyway.** Four copies of a
+> *spear* is now about 1 run in 16 instead of 1 in 4. But four copies of *something* is still a bit
+> better than a coin flip - 39.7%, barely down from 47.3%. The reason is that I did not reduce
+> anything: your run went from about 71 legendary items to about 109, and with more items on the floor
+> some item will hit four copies fairly often just by volume. **If you want the total number of drops
+> per chest brought down, say so and I will do it** - that is the one lever I deliberately did not
+> pull, because cutting drops is exactly the kind of change you should get to approve.
+>
+> **HOW TO TEST IT (same cage as R-180 - Prison of Souls, Hades Palace floor 4, where Alkyoneus the
+> Soul-Gaoler guards the Polybotes cage):**
+> 1. Kill Alkyoneus (both forms) and open **all 6 chests**.
+> 2. You should now see **helmets, chest plates, bracers, greaves and shields** in the pile, not just
+>    weapons - expect roughly as much armour as weaponry.
+> 3. No single weapon class should dominate. If one class is clearly running the run again, say which.
+> 4. **Re-run 2-3 times.** Four copies of the same SPEAR should now be uncommon; four copies of some
+>    item or other will still turn up, and that is expected (see the note above).
+> 5. Boss hoards (Charon, Tantalus, the Diadochi, the guard pairs) and the blood-cave mega chest got
+>    the identical treatment, so check one of those too if you are passing.
+> 6. **NEW in this round - check a red-uber Mystical Orb chest** (the Boar Snatcher's, or any of the
+>    red ubers from R-200, or Leinth's). Those were the WORST offenders in the whole mod and had been
+>    missed: they were paying **0.07 helms per open** against 0.98 weapons. They now pay about **1.2
+>    of every worn slot**. If an orb chest still looks weapon-only, that is a real find.
+>
+> **WHAT WAS DELIBERATELY LEFT ALONE, so you can rule it in or out:** armour that drops off MONSTERS is
+> base-game wiring in this mod - of the ~1,500-1,850 records that carry each armour-drop chance, only
+> 12 to 14 are ours (under 1%) - and no monster in the database drops a shield off its body at all
+> (the field does not exist on a single record), so shields only ever come from chests and merchants.
+> If you want armour off monsters too, that is a separate wave and it needs your call.
 
 > ## 🆕 R-200 (2026-08-10): THE BOAR SNATCHER NOW DROPS A MYSTICAL ORB
 > **✅ LIVE ON DEV (build76-dev) AND ON STEAM (build76-ship, Workshop item 3759792705).** `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` =
