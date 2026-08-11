@@ -1,5 +1,58 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
+> **✅ LIVE ON DEV AND ON STEAM as `build79` (arz `883a31e2`).** arz-only (no map/quest/Text change).
+> **Fully quit TQ and restart Steam before testing** (standing rule). The numbers in the table below are
+> measured on the shipped build, not estimated.
+>
+> **THE ONE-LINE TEST: kill any uber that drops a Mystical Orb, open it, and spears should now be in
+> the pool - along with visibly more class variety.**
+>
+> **What was wrong.** R-180 fixed the CHESTS. The ORBS had the exact same defect and nobody had looked:
+> every orb's weapon row named the 3-class `1h_all` master (axe / club / sword) plus bow and staff, and
+> forgot **spear** - so **a spear of any quality was impossible out of 15 of the 18 orb loot tables, on
+> every difficulty**. The only orb tier that was already fine is the Toxeus apex orb, purely by accident:
+> its tables live in our own folder, so R-180's chest sweep happened to reach them.
+>
+> **What changed (measured on the built arz, not estimated).** Every orb tier now names the same
+> aggregate weapon master the chests use, and its weapon row fires at **40%** (was 13/14%) with the
+> shield row at **30%** (was 13/14%) - the values the Toxeus apex orb has had since build75, so the whole
+> ladder now behaves the same way. Distinct reachable items per open:
+>
+> | orb tier (who drops it) | Normal | Epic | Legendary | spears |
+> |---|---|---|---|---|
+> | tier 1 - Mormo, Elephant Snatcher, Rakanizeus, Melalos, Calybe, Kaublasia, **Boar Snatcher** | 117 -> **195** | 72 -> **99** | 194 -> **260** | 0 -> **18 / 9 / 22** |
+> | tier 2 - Grimshell, Phagia, Permean, um_frost, Neferkha | 101 -> **182** | 75 -> **102** | 138 -> **241** | 0 -> **18 / 9 / 22** |
+> | tier 3 - Inkeyes, Palai, Xaiweng, the General's Guardians | 96 -> **180** | 71 -> **96** | 196 -> **262** | 0 -> **18 / 9 / 22** |
+> | tier 4 - the custom apex roster (**Unbound Gaoler**, Tantalus Unbound, Mnemophage Core, Aithon, Dagon, Helepolis, Ephialtes, Kravmoloch, Sarkoth, Vashkarr, Ilsevar, Gorrahk, Voranthys, Broodmother, Drowned King, Hades Marshal, Bloodcrow...) | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+> | tier 5 - the Toxeus roster | 181 | 116 | 308 | already fine (R-180) |
+> | Charon's Essence - the Ferryman's terminal form | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+>
+> **EASIEST CHECK - it is the SAME TRIP you are already doing for R-180.** In the **Prison of Souls**
+> (Hades Palace floor 4), killing **Alkyoneus the Soul-Gaoler** finishes on his Unbound form, and the
+> Unbound Gaoler drops a **tier-4 Mystical Orb**. So one run tests both waves: open the six cage chests
+> (R-180) and the orb he drops (R-220). On Legendary the orb can now pay **308** distinct legendary
+> items including **22 legendary spears**, where before it could pay 258 and **zero** spears.
+>
+> **Second check, low level:** the **Boar Snatcher** in Pine Forest / SpartaOptCave03 (the R-200 monster)
+> drops a tier-1 orb - useful for confirming the Normal and Epic branches too.
+>
+> **What to look for:**
+> 1. **Spears out of an orb at all** - that was impossible before, at every tier and difficulty.
+> 2. **More than one thing per orb.** The weapon and shield rows used to fire ~1 open in 7; they now fire
+>    ~1 in 2.5 and ~1 in 3.3, so an orb should feel less like "one item and some potions".
+> 3. **Nothing got weaker.** The orb's spawn EQUATIONS, its gold, its relic row and the apex orb's
+>    larger payout are byte-for-byte what they were - only the weapon and shield rows fire more often
+>    (that is check 2, and it means MORE items, not fewer). If an orb feels *stingier* than before, that
+>    is a bug, not the design; say so.
+> 4. **Normal difficulty stays Normal.** No legendary gear should appear on Normal from any orb (the
+>    mercenary scrolls and arcane formulae that already showed up there are base-game and unchanged).
+>
+> **One thing to veto if you want it.** Will asked for BREADTH and got it (check 1). Checks 2's higher
+> drop rate was NOT asked for - it is the rate the Toxeus apex orb has had since build75, applied to the
+> rest of the ladder for consistency, and it is half the change. Say the word and the classes stay while
+> the drop rate goes back to what it is today; it is a one-line switch, not a rewrite.
+
 > ## NEW R-210 (2026-08-10): ATLANTIS IS GONE FROM THE PORTAL PAGE
 > **THE ONE-LINE TEST: open a portal (any rebirth fountain / teleport) and count the act tabs. You
 > should see exactly FOUR - Greece, Egypt, Orient, Immortal Throne - and NO Atlantis, no Ragnarok, no

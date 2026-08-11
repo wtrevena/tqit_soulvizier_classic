@@ -1,5 +1,420 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - R-220 UBER ORB LOOT BREADTH: the mystical orbs are **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-loot-breadth` merge, tag `build79-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
+[U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content... Uploading content...
+Committing update...Success.`, `Updated Workshop item: 3759792705`. Independent evidence from
+`C:\steamcmd\logs\workshop_log.txt`: **`Uploaded new content ( ManifestID 867654719607079771 )`** then
+**`Upload finished for workshop item 3759792705 : OK`** (2026-08-11 00:02:45 -> 00:03:08). Pushed
+`-Update -Visibility 0` and the generated VDF was read back to confirm `"visibility" "0"` - the item stays
+PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single `SoulvizierClassic` wrapper.
+
+**arz-only delta on top of `build78`.** Only the database moved. **STEAM = DEV = `main`.**
+
+| artifact | md5 | bytes | vs the item as of `build78` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`883a31e2b87f03a54a51c550147c8242`** | 55,551,723 | **CHANGED** from `f6638462` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged (**no new tag authored**) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+| gate | result |
+|---|---|
+| dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above, 0 failures) |
+| packager TESTHUB guard | **PASS** - packaged `6784CF0F` != TESTHUB `7A7CA9AC`; the hub did not ship |
+| single-wrapper assertion | **PASS** - content root holds exactly 1 child, `SoulvizierClassic` |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B against the shipped baseline `f6638462` under the identical config | **4492** - the same number, so this ship adds **ZERO** new contract violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `883a31e2` from two independent full builds** |
+| changenote VDF-safety | 2,081 bytes, **0 double-quotes, 0 backslashes, 0 em dashes, 0 non-ASCII bytes, no BOM** |
+
+**DEPLOY ORDER HONOURED.** DEV first (`build79-dev`, arz `883a31e2`, 1 of 62 files changed, the 61 siblings
+re-hashed byte-identical), then Steam. **TQ.exe was never running, was never killed, and Steam was never
+restarted** at any point in this lane - checked immediately before the DEV copy, before packaging and
+before the upload.
+
+**PREVIEW IMAGE, stated honestly:** `-PreviewFile` was deliberately NOT passed, matching `build77-ship` and
+`build78`. The generated VDF carries **no `previewfile` key at all** (verified by grep), so the live item's
+existing cover tile is left exactly as it was; the script's blanket "BLANK tile" warning is generic, not a
+regression.
+
+**Rollback (Steam, one step):** re-package and re-upload with the `build78` arz, kept byte-exact at
+`local/build78_ship_f6638462.arz`; the other four artifacts are already unchanged. This ship's own artifact
+is kept at `local/build79_ship_883a31e2.arz`.
+
+**NOT PROVEN IN-GAME (`BL-R220-DEBT-2`).** Will's check: kill any orb-dropping uber, open the Mystical Orb,
+look for spears and class variety across kills. Fully quit TQ and restart Steam first.
+
+## BUILD79-DEV GATE RECORD - R-220 UBER ORB LOOT BREADTH: every mystical orb pays every weapon class, SPEAR included - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-10, `main` @ `914b227` merge, tag `build79-dev`)
+
+**Will's order (verbatim, 2026-08-10):** "for the mystical orbs that the uber monsters drop, the items
+should drop with increased breadth as well so all classes of items could be dropped". Ledgered **R-220**.
+Ruling + full argument: `docs/WILL_RULINGS.md` -> R-220. Lane gate record (pre-build, branch
+`fix/orb-loot-breadth`): the R-220 GATE RECORD immediately BELOW this one, kept verbatim.
+
+**SHIP ORDER HONOURED.** This lane held on branch until BOTH queued waves had finished their deploys -
+soul-naming (`build77-dev` 21:00, `build77-ship` 21:27:37) and portal-atlantis (`build78`, DEV + Steam
+21:59:32). `main` was then at `178ff4a`; the branch had already merged it (`e05eeb1`), so the integration
+merge `914b227` was a clean `--no-ff` with ZERO conflicts. One heavy build at a time was respected: the
+machine was verified idle of build processes (the sibling armor-breadth negtest and the craft-lane probe
+had both exited) before the build slot was taken. TQ.exe was NOT running at any point.
+
+**THE DEFECT, RE-PROVED FROM BYTES BY THIS LANE BEFORE BUILDING.**
+`py tools/gate_orb_loot_breadth.py local/build78_ship_f6638462.arz` -> **RED as designed on the LIVE
+shipped arz**: 15 tables, B1 (no spear reachable) + O2b (breadth master absent) on every one, B2 (pool
+collapsed) on 8. That is the shipped state Will was playing.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into the
+work/ layout, **exit 0 "Done."**, log `local/build79_r220_run1.log`).
+
+| artifact | md5 | bytes | vs `build78` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`883a31e2b87f03a54a51c550147c8242`** | 55,551,723 (51,236 rec) | **CHANGED** from `f6638462` (+177 B, +0 rec) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and both deploy couplings are SATISFIED rather than waived.** The wave authors NO text tag
+(it adds one loot-table member and raises two chance fields on 15 existing records), so `validate_tags`
+PASSES against the EXISTING `Text.arc` and the arz+Text coupling holds with no Text rebuild. Nothing
+map-side moved, so the Levels+Quests coupling is not engaged. All four sibling artifacts were md5-proven
+unchanged on disk, not assumed.
+
+**RECORD-DIFF vs the shipped `f6638462`: ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained.** Every one
+of the 15 is a loot table with EXACTLY 4 changed fields - `loot1Name6` (None -> the breadth master),
+`loot1Weight6` (0 -> 800), `loot1Chance` (13/14 -> 40), `loot6Chance` (13/14 -> 30). The TIER LAW is
+readable straight off the diff and was checked that way rather than trusted: every `[n]` table took
+`svc_unique_weapons_n01`, every `[e]` took `e01`, every `[l]` took `l01`, with no exceptions. No other
+record in the database moved by one byte - in particular the 3 apex tables (`svc_uberorb_apex_*`) do not
+appear in the diff at all, which is the predicted no-op.
+**WHAT THE MODULE DID, from the build log (not from the branch's prediction).**
+`ORB BREADTH: 51 uber carrier(s) name 7 proxy/proxies -> 18 loot table(s) across 18 difficulty chain(s)`;
+`weapon row widened on 15 of 18 table(s); 3 already carried it (orb05's apex tables, widened by
+chest_loot_breadth)`; `scope proof PASS - 60 record(s) watched (tables + every proxy/pool/chest in every
+chain); the only fields that moved are the one added loot1 member and 30 chance raise(s), no chance
+lowered, no member removed`. Registry: **56 modules**, order
+`4d12677bf288c1f10b02932111656460063ee9be7218116de9fae7aadb021fc0`, `orb_loot_breadth` at slot 55 of 56
+(after `chest_loot_breadth` and `red_uber_orbs`, immediately before the no-op `visuals`).
+
+**MEASURED ON THE BUILT ARZ** (`py tools/gate_orb_loot_breadth.py <arz> --verbose`), distinct
+target-classification items and reachable spears per table - these are BUILD numbers, not the branch's
+dry-run:
+
+| branch | tables | pool range (floor) | spear |
+|---|---|---|---|
+| normal (pays Epic) | 6 | 180..195 (floor 150) | 18 on every table |
+| epic (pays Legendary) | 6 | 96..116 (floor 80) | 9 on every table |
+| legendary (pays Legendary) | 6 | 241..308 (floor 200) | 22 on every table |
+
+Per tier, before -> after: orb01 `n 117->195 / e 72->99 / l 194->260`; orb02 `n 101->182 / e 75->102 /
+l 138->241`; orb03 `n 96->180 / e 71->96 / l 196->262`; orb04 `n 99->181 / e 95->116 / l 258->308`;
+orb05 unchanged at `181 / 116 / 308` (R-180 got there); charon `n 99->181 / e 95->116 / l 258->308`.
+Spears **0 -> 18 / 9 / 22** on every tier that was broken. Every one of these matches the branch's
+dry-run prediction exactly, which is what makes the dry-run trustworthy in hindsight.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery, 56 registry modules + every `verify()` hook) | **exit 0, "Done."** |
+| **NEW** `orb_loot_breadth.verify()` in-build | **PASS** - 18 tables audited, every one pays all 6 weapon classes at its own difficulty (SPEAR included); thinnest pool `uberorb_default_49-51` [e] = 96 |
+| **NEW** `py tools/gate_orb_loot_breadth.py <built arz>` (the standalone twin) | **PASS** - table above; the same 18 tables, O1-O6 all green |
+| **NEW** `py tools/debug/negtest_orb_breadth.py <built arz>` | **11/11 as designed** - N1 re-collapse -> B1+O2b; N2 floor-only collapse -> B2 with B1 proven NOT firing; N3 tier leak -> B3+O2b; N4 broken chain -> O4; N5 derivation killed -> O4; N6 new uber drags a base chain in -> O6; N7 base chest shares an orb table -> O4+O6; N8 unpinned base-only chain -> O5; N9 one table at two difficulties -> O4+O4b; P1/P2 positive controls GREEN |
+| **IDEMPOTENCE, measured not argued** | the negtest re-runs `apply()` on the POST-fix arz: `widened on 0 of 18 table(s); 18 already carried it ... 0 chance raise(s)`. A second application is a proven no-op, so no chance can ever be double-raised |
+| R-180 REGRESSION `py tools/gate_chest_loot_breadth.py` | **PASS** - 51 mod chest tables, n 181..181 / e 111..116 / l 308..308, all 6 classes |
+| R-180 REGRESSION `py tools/debug/negtest_chest_breadth.py` | **PASS** - every planted collapse reds, unmodified build green |
+| R-180 in-build `chest_loot_breadth` gate | **PASS** - 51 tables, thinnest `svc_charonhoard_loot_02` [e] = 111 |
+| R-200 in-build `red_uber_orbs` gate | **PASS** - 55 red ubers in the runtime universe (mod UNION base), 8 wired, 6 exempt with conditions re-proven, **0 orb-less** |
+| R-200 `py tools/patches/red_uber_orbs.py --negtest` | **9/9 as designed** on the pre-R-200 `build75` arz. See the NOTE below - this battery needs a pre-R-200 input by construction and that is PRE-EXISTING |
+| R-201 in-build soul tier-naming gate | **PASS** - 2191 canonical soul tier records / 740 families (739 multi-tier), every tier carries its convention quality tag and renders a DISTINCT name |
+| R-210 `py tools/gate_dlc_act_ui_cap.py` (in-build AND standalone on the written arz) | **PASS** - T1-T7; portal pages `['Greece','Egypt','Orient','Hades']`, ZERO DLC-act entries; quest-log act tabs 1-4 only |
+| b63 WARDEN / TRAVELER DIALOG `py tools/debug/negtest_warden_dialog.py` | **PASS 10/10** - and its positive half re-proves the live wiring: T2 helos-hub 24 records canonical=0 / TESTHUB=1, T4 return-travellers, T5c Sparta Warden clone canonical x1 descend-only, all label tags resolve |
+| b77 `py tools/gate_unlock_alignment.py` | **PASS** - 238 live buttons (199 tiered, 39 positional-only), 13/13 waivers |
+| R-100 #17 `py tools/gate_relic_difficulty_tiers.py` | **PASS** - 33 mod-owned per-difficulty branches, each names only its own tier |
+| Occult/Hunting golden-state gate (in-build) | **PASS** - 84 waived, 0 other |
+| `py tools/validate_tags.py <arz> <EXISTING Text.arc> uber_soul_tags.txt` | **PASS** - 442/442 authoritative tags present, both required non-mod tags (`tagSoulEpic` x789 / `tagSoulLegendary` x789) defined; 2 pre-existing base/SV monster-name WARNs, non-blocking, unchanged |
+| `py tools/contracts/run_contracts.py`, all 6 modules, LIVE work/+local/ | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B: the same runner against the shipped baseline `f6638462` under the identical config | **4492** - byte-for-byte the same number, so this wave adds **ZERO** new contract violations, measured in both directions rather than assumed |
+| `py tools/patches/_check_registry.py` | **OK: 56 modules**, order `4d12677b...` (identical to the branch's record) |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `883a31e2` from two independent full builds** |
+
+**NOTE, stated plainly rather than reported as a red:** `red_uber_orbs.py --negtest` exits 1 on ANY
+post-R-200 arz, including the untouched shipped `build78` baseline - its harness calls `apply()`, and that
+`apply()` deliberately asserts it is the first author of `um_boareater_40.dbr`. Both directions were
+measured: the shipped `f6638462` fails identically (so the behaviour is PRE-EXISTING and this wave changed
+nothing about it), and the pre-R-200 `build75` arz runs the full battery **9/9 as designed**, ending on the
+same `55 red ubers / 8 wired / 6 exempt / 0 orb-less` the in-build gate reports for build79. Registered as
+`BL-R220-DEBT-7`: the R-200 negtest should reload-and-skip rather than fail when the record already exists.
+
+**Repo pytest modules NOT RUN (pre-existing environment gap, not a regression):** the test modules under
+`tools/` are import-time integration tests needing the gitignored
+`reference_mods/SVAERA_customquest/Resources/Levels.arc` (absent in this checkout) and error at COLLECTION
+regardless of code. This merge changed no test module.
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = **`883a31e2`**), copied
+with md5 source==dest verification **while TQ.exe was NOT running** - nothing killed, Steam not restarted.
+The deploy script hashed all 62 DEV files before and after: **1 of 62 changed** (the arz), 0 removed, and
+the 61 siblings are byte-identical, with `Text.arc a9fed7ba` / `Levels.arc 7a7ca9ac` (the TESTHUB variant,
+which is what the DEV entry carries) / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` named explicitly.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `f6638462` (the build78 arz this replaced) ->
+copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+`local/build78_ship_f6638462.arz`, and this wave's own artifact at `local/build79_run1_883a31e2.arz`.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **`BL-R220-DEBT-2` (P1, LAUNCH-GATED): NOT PROVEN IN-GAME.** Everything above is a database and gate
+  proof. **Will's test: kill any orb-dropping uber, open the Mystical Orb, and look for spears and visible
+  class variety across kills.** Easiest trip is the one he is already making for R-180 - the Prison of
+  Souls / Hades Palace floor 4 **Unbound Gaoler** drops a tier-4 orb; the low-level control is the **Boar
+  Snatcher** (Pine Forest / SpartaOptCave03) for a tier-1 orb. Full note at the top of
+  `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+- **`BL-R220-DEBT-5` (P1, OPEN, sideways integration):** `fix/armor-loot-breadth` and
+  `fix/craft-thrown-breadth` are BOTH still unmerged (verified: neither is an ancestor of `main` @
+  `914b227`), and both rewrite `tools/svc_loot_breadth.py`. Whoever lands them must hand-resolve
+  `audit_table` so BOTH this lane's `noun=` kwarg AND craft-thrown's C1/C2 block survive, and must
+  RE-MEASURE `POOL_FLOOR` (n 150 / e 80 / l 200) plus the before/after table, because a 7th master class
+  or a re-weighted `unique_1h` changes what the orb tables reach THROUGH the shared master. Then re-run
+  `gate_orb_loot_breadth.py`, `debug/negtest_orb_breadth.py` AND `gate_chest_loot_breadth.py`.
+- **`BL-R220-DEBT-6` (P2, OPEN):** no INDEPENDENT tier corroboration for the 15 widened base-game tables -
+  `gate_relic_difficulty_tiers.py` skips them all (`is_mod_loot`), so its PASS is silent on this wave
+  either way. Re-confirmed on the built arz: it audits 33 branches, none of them one this lane writes.
+- **`BL-R220-DEBT-7` (P2, NEW, filed by this lane):** `tools/patches/red_uber_orbs.py --negtest` cannot run
+  against any post-R-200 arz - its `apply()` asserts first authorship of `um_boareater_40.dbr` and exits 1.
+  Measured on the untouched shipped `f6638462` as well, so it is pre-existing, but it means the R-200
+  battery silently needs a stale input. It should reload-and-skip (or accept an already-authored record)
+  instead of failing.
+- **`BL-R220-DEBT-1` (P2, OPEN by design):** the scope BOUNDARY - the base-only Dark Obelisk chain
+  (`um_darkobelisk_55` -> `25_towerofjudgement_treasure` -> the act-4 GOLDEN CHEST tables shared with five
+  base containers) stays PINNED and un-widened, as do the five proxies consumed only by base act/quest
+  bosses. Widening either is an economy-wide decision for Will. Guards O5 and O6 fail the build if a new
+  base-only chain appears or an in-scope table ever becomes shared, so neither can drift silently.
+- **`BL-R220-DEBT-3` (P2):** the epic/legendary POOL FLOORS sit below the richest pre-wave tables, so on
+  those two branches a silent revert is caught by O1 + O2b, not by the count. Stated, not papered over.
+
+**THE PAYOUT HALF IS A NAMED, SEPARABLE WILL DECISION - SHIPPED ON, VETOABLE IN ONE LINE.** Of the 60
+field moves, 30 are BREADTH (the added `loot1Name6`/`loot1Weight6` member - Will's actual order, spear
+0 -> 18/9/22) and 30 are PAYOUT (`loot1Chance` 13/14 -> 40, `loot6Chance` 13/14 -> 30). The payout half was
+NOT asked for. It ships because it is not an invented number - those are the values orb05's apex tables
+have carried since `build75`, and R-180 made the identical raise on the chests without objection, so
+shipping it makes the whole ladder self-consistent rather than leaving the orbs as the one odd rung.
+**Veto cost: one line** - `svc_orb_breadth.RAISE_ROW_CHANCES = False`, rebuild, and the orbs keep every
+weapon class at exactly today's drop rate. The switch lives in the ORB module, never in the shared
+`svc_loot_breadth.widen_weapon_row`, so vetoing it cannot silently revert R-180's chest raises. Proven by
+switch test S1 in the lane record, and disclosed to Will in `docs/WILL_TEST_GUIDE.md` as a veto point.
+
+## GATE RECORD - R-220 UBER ORB LOOT BREADTH: every mystical orb pays every weapon class, SPEAR included (Will 2026-08-10, branch `fix/orb-loot-breadth`) - SUPERSEDED BY THE BUILD79 RECORDS ABOVE (this was the pre-build lane record; it said NOT BUILT / NOT DEPLOYED / NO TAG TAKEN and every one of those is now closed)
+
+**Will's order (2026-08-10, verbatim):** "for the mystical orbs that the uber monsters drop, the items should
+drop with increased breadth as well so all classes of items could be dropped". Ledgered R-220. DB-lane only
+(arz); no Levels/Text/Quests change, 0 new tags, 0 new records.
+
+**"AS WELL" IS R-180.** The chest half shipped that morning (build75: every mod chest names the aggregate
+weapon master, legendary spears 0 -> 22). This is the same contract on the other half of the loot economy -
+the on-death orb - and it is deliberately implemented as a THIN DRIVER over R-180's own
+`tools/svc_loot_breadth.py`, not a second opinion.
+
+**THE DEFECT, MEASURED ON THE build76 SHIP ARZ (`16994072`, 51,234 records).** An orb tier is really THREE
+loot tables (proxy `accessory1`/`accessoryEpic1`/`accessoryLegendary1` -> ProxyAccessoryPool -> FixedItemContainer
+-> `tables`). Every one of them carries R-180's collapsed weapon row in a second donor family, using 5 of its
+6 member slots: `all_13-15` (w2000) + `staff_all_13-15` (w500) + `unique\1h_all_n01` (w27) + `unique\bow_n01`
+(w27) + `unique\staff_n01` (w27). `1h_all_*01` is a LootMasterTable with exactly THREE children - axe, club,
+sword. The donor names bow and staff DIRECTLY to compensate and forgot the third excluded class, SPEAR; the
+level-banded statics beside it hold no unique spears at all. **Result: 0 spears of ANY quality were reachable
+from 15 of the 18 uber orb tables, at every tier and every difficulty.**
+
+**WHY R-180's OWN GATE WAS GREEN ON THIS.** The only three orb tables that were already correct are orb05's
+`records\item\loottables\svc\svc_uberorb_apex_{n,e,l}01c` - and only because they sit in an `\svc\` folder, so
+`chest_loot_breadth`'s mod-OWNERSHIP sweep reached them. The other four tiers live under
+`records\item\containers\defaultloot\` and `records\xpack\item\containers\loot tables\`, which that ownership
+rule cannot see. Same lesson as R-200 hole 1, one layer down: **a scope rule chosen for one container class
+silently excludes another.** This lane closes it by deriving scope from the CONSUMER (the uber) rather than
+from where the table happens to live.
+
+**SCOPE - DERIVED, NEVER TYPED, OVER MOD UNION BASE (R-200 hole 2).** UBER = R-200's predicate (`um_*`
+basename or a `tagSVCMonster*` display tag). Scope = every proxy an uber names + every table its three
+difficulty slots resolve to. **MEASURED: 51 uber carriers -> 7 proxies (6 IN REACH) -> 18 tables** = `genericbossorb_01..05`
+(the mystical-orb ladder, `description tagEndChest02` = base `Text_EN` "Mystical Orb") plus
+`bosschest02_charon`, whose terminal Ferryman `um_charonform2_ferryman_99` IS a red uber and whose three
+tables carry the identical collapse.
+
+**THE GATE'S OWN FIRST FINDING, AND THE TWO GUARDS THAT CAME OUT OF IT.** Deriving over mod UNION base
+paid for itself on the first run: exactly ONE uber names a proxy the mod overlay does not contain - the
+base-only Hero-rank DEVICE `um_darkobelisk_55` (the Dark Obelisk, `tagAEMonsterName07`) ->
+`records\proxies boss\le_new\25_towerofjudgement_treasure.dbr`. It resolves in the base game, and its
+chain lands on `g_default_{n,e,l}01c` - the act-4 GOLDEN CHEST tables (`tagChest006`), each shared with
+FIVE base containers (the act-4 golden chests, 2 side-quest golden chests, the Cerberus and Skeletal
+Typhon repeat boss chests). Widening that would rewrite base-game golden-chest loot from a lane asked
+about mystical orbs, so it is PINNED in `svc_orb_breadth.OUT_OF_REACH` with the reason
+(`BL-R220-DEBT-1`). Two permanent guards shipped because of it: **O5** - a base-only uber chain must be
+pinned with a reason, and a pin that no longer names a live chain is stale config; **O6** - an in-scope
+table that ANY container outside the uber chains also names is excluded from the sweep AND stops the
+build until a human decides (pin it in `SHARED_TABLES_ACKNOWLEDGED`). O6 is currently a pure guard: all
+15 non-mod-owned in-scope tables were measured to have exactly ONE referrer, their own orb chest.
+
+**WHAT IT WRITES, PER TABLE, AND NOTHING ELSE:** the tier-correct master `svc_unique_weapons_{n,e,l}01` into
+the ONE free loot1 member slot at weight 800; `loot1Chance` (weapons) 13/14 -> 40; `loot6Chance` (shields)
+13/14 -> 30. **Those two numbers are not invented here** - they are the values orb05 has SHIPPED since
+build75, so the ladder becomes self-consistent instead of gaining a new constant. 15 tables change; the 3
+apex tables are a proven no-op.
+
+**MEASURED (dry-run of the real code, first on the build76 arz and RE-RUN on the live build78 arz
+`f6638462` after this branch merged `main`; bit-identical on both)** - distinct target-classification items
+(Normal pays Epic, Epic/Legendary pay Legendary) and reachable spears, before -> after:
+
+| tier | consumers | normal | epic | legendary | spear (n/e/l) |
+|---|---|---|---|---|---|
+| `genericbossorb_01` | 13 | 117 -> **195** | 72 -> **99** | 194 -> **260** | 0 -> **18 / 9 / 22** |
+| `genericbossorb_02` | 7 | 101 -> **182** | 75 -> **102** | 138 -> **241** | 0 -> **18 / 9 / 22** |
+| `genericbossorb_03` | 13 | 96 -> **180** | 71 -> **96** | 196 -> **262** | 0 -> **18 / 9 / 22** |
+| `genericbossorb_04` | 21 | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+| `genericbossorb_05` | 8 | 181 | 116 | 308 | 18 / 9 / 22 (unchanged - R-180 got there) |
+| `bosschest02_charon` | 4 | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+
+**NON-REDUCTION / IDENTITY PROOF (in `apply()`, fails the BUILD, not a comment).** All 60 in-scope records
+are snapshotted - every table AND every proxy, accessory pool and chest in every chain - and any field moving
+outside `loot1Name<free>` / `loot1Weight<free>` / `loot1Chance` / `loot6Chance`, or any chance DROPPING, fails
+loud. Dry-run result: **60 records watched, exactly 15 tables changed, 4 fields each, 30 chance raises, 0
+lowered, 0 members removed, every proxy/pool/chest field-identical.** So numSpawn equations come through
+byte-unchanged (the apex keeps its `*2.2/*2.4` edge over the generic `*1.2/*1.6` and `*0.9/*1.3`), as do the
+relic row, the potion row, both armour rows, the mesh, the gold generator, the level equation and
+`description tagEndChest02`. No guaranteed-weapon retarget was applied: an orb's loot3 is potions + rare misc
+at 10%, not the chests' 100% weapon slot, and adding one would change HOW MUCH an orb pays. Will asked for
+breadth.
+
+**TIER LAW (R-100 #17 + Will 2026-08-08).** The master is resolved through the DIFFICULTY SLOT the chain
+arrived on, so the normal branch can only gain `*_n01` tables (measured 100% Epic-classification). Measured
+baseline, stated rather than implied: the normal branch of every orb tier ALREADY reaches 41-56 `ItemArtifact`
++ 3 `ItemArtifactFormula` Legendary-classified records (base-game mercenary scrolls / arcane formulae -
+exactly R-180's B3 exemption) and **ZERO legendary GEAR, before and after**.
+
+**GATES RUN IN THIS LANE (static; no ship build - that phase owns the heavy gates)**
+| gate | result |
+|---|---|
+| `py tools/gate_orb_loot_breadth.py <build76 arz>` (PRE-fix, proves the defect) | **RED as designed** - names all 15 collapsed tables, B1 (no spear) + O2b (master absent) on each, B2 on 8 |
+| the same gate over the post-apply state (dry-run) | **0 problems**, 18 tables audited, every one paying all 6 weapon classes |
+| `py tools/debug/negtest_orb_breadth.py <arz>` | **11/11 as designed** on the LIVE build78 arz, each case asserting its own check code |
+| `apply()` S4 scope proof | **PASS** (table above) |
+| `py tools/patches/_check_registry.py` | **OK: 56 modules**, order `4d12677bf288c1f10b02932111656460063ee9be7218116de9fae7aadb021fc0` |
+| R-180 REGRESSION: `py tools/gate_chest_loot_breadth.py <arz>` | **PASS** (unchanged) |
+| R-180 REGRESSION: `py tools/debug/negtest_chest_breadth.py <arz>` | **PASS** (unchanged) |
+| `py tools/gate_relic_difficulty_tiers.py <arz>` | **PASS, 33 branches** - and BLIND to this lane by construction, see `BL-R220-DEBT-6` |
+| SWITCH PROOF S1: `RAISE_ROW_CHANCES=False` (the payout veto) | **PASS** - 0 chance fields move, 0 tables reach 0 spears: breadth lands, payout does not |
+| SWITCH PROOF S2: `noun=` kwarg absent (a sibling merge drops it) | **PASS** - gate still RUNS, prints the loud downgrade, identical check codes `B1/B2/O2b` |
+| `py -m py_compile` on all 6 touched/added files | **OK** |
+
+Neither switch ships untested: S1 and S2 are the two safety paths this round added, and each was
+exercised against the live arz rather than reasoned about.
+
+**RE-MEASURED ON THE CURRENT BASE.** The numbers above were first taken on `build76-ship`; this branch has
+since merged `main` @ `178ff4a` and every one was RE-TAKEN against the live build78 arz (`f6638462`, 51,236
+records). All bit-identical, which is the proof - not the assumption - that build77 (soul names) and build78
+(portal page) never touched a loot table.
+
+The only edit to R-180's shipped file is an optional `noun=` kwarg on `audit_table`, used solely to make the
+B1 message name the container kind. It carries its own ARTICLE (`'a chest'` default, `"an uber's orb"` from
+this lane) so the message reads correctly either way; the default keeps every R-180 message byte-identical,
+and both R-180 gates were re-run to prove it. The orb side probes for the kwarg at import and degrades
+LOUDLY to the default if a merge ever drops it, so one word in one message can never break a build
+(`BL-R220-DEBT-5`).
+
+**NEGATIVES (`tools/debug/negtest_orb_breadth.py`)** - the arz is loaded once and `apply()` is run on it, so
+the battery works from a PRE-fix build; each case is planted, verified and undone:
+N1 one orb table re-collapsed to the shipped 3-class row -> B1 + O2b. N2 the pool collapsed to the master
+alone -> B2 fires with **B1 proven NOT to fire** (the floor's own case, isolated). N3 the LEGENDARY master on
+a NORMAL orb table -> B3. N4 an accessory pool that no longer names its chest -> O4. N5 every uber carrier of
+the ladder stripped -> O4 scope collapse. N6 a NEW uber drags the base-boss Aktaios chain into scope -> the
+derived scope GROWS and reds on a table the gate never mentioned before (the R-200 regression shape; it reds
+on O6 rather than B1 because every non-uber chain in this db shares its tables with sibling base chests, so
+the correct answer is "a human decides", and the collapse-is-caught half is proven by N1 against a real
+in-scope table). N7 a base golden chest starts sharing an orb table -> O6, with B1/B2 proven NOT to fire
+(the table is EXCLUDED, not mis-audited). N8 the Dark Obelisk chain with its OUT_OF_REACH pin removed -> O5.
+N9 orb01's EPIC accessory pool repointed at orb01's NORMAL chest, so one table is reached at TWO
+difficulties -> **O4b**, the narrowing a table COUNT cannot see (`scope_tables` de-duplicates first-wins).
+P1 the unmodified post-apply build -> GREEN. P2 that same Aktaios orb with no uber carrier -> GREEN
+(scope-boundary proof). The battery runs over mod UNION base, like the build gate, so the base-only chain is
+visible to it - running the tests mod-only would be the R-200 HOLE 2 mistake in miniature.
+
+**NOT RUN HERE (Ship phase owns them):** full DB build + determinism 2x, record-diff vs baseline,
+`validate_tags`, `run_contracts`, DEV deploy, Steam. Expected diff: **15 MODIFIED records, 0 ADDED, 0
+REMOVED**, every one a loot table, 4 fields each. Expected contract impact: none - no record is created,
+renamed or repointed at anything that does not already resolve.
+
+**FILES**
+- `tools/svc_orb_breadth.py` (NEW) - the contract: derived scope + audit half, shared by all three callers.
+- `tools/patches/orb_loot_breadth.py` (NEW) - registry module (`apply` + `verify`), registered after
+  `chest_loot_breadth` (which authors the shared masters) and after `red_uber_orbs` (which ADDS uber
+  consumers), immediately before the no-op `visuals`.
+- `tools/gate_orb_loot_breadth.py` (NEW) - the standalone twin.
+- `tools/debug/negtest_orb_breadth.py` (NEW) - 9 planted cases + 2 positive controls.
+- `tools/svc_loot_breadth.py` - the one `noun=` kwarg described above.
+- `tools/patches/__init__.py`, `docs/WILL_RULINGS.md` (R-220), `docs/WILL_TEST_GUIDE.md`, this record.
+
+**THE PAYOUT HALF IS A NAMED, SEPARABLE WILL DECISION.** The 60 field moves are two halves: 30 are BREADTH
+(the added `loot1Name`/`loot1Weight` member - Will's actual order, spear 0 -> 18/9/22) and 30 are PAYOUT
+(`loot1Chance` 13/14 -> 40, `loot6Chance` 13/14 -> 30 - roughly 3x and 2.1x the fire rate). The payout half is
+defensible (orb05's shipped values since build75; R-180 made the identical raise on chests) but Will did not
+ask for it. **Veto cost: one line** - `svc_orb_breadth.RAISE_ROW_CHANCES = False` and the orbs gain every
+weapon class at exactly today's drop rate. The switch lives in the ORB module, NOT in the shared
+`svc_loot_breadth.widen_weapon_row`, so vetoing the orb payout cannot silently revert R-180's chest raises.
+Disclosed in `docs/WILL_TEST_GUIDE.md` as a veto point, not buried.
+
+**DEBT REGISTER**
+- `BL-R220-DEBT-1` - SCOPE BOUNDARY, two parts, both deliberate and both now machine-guarded.
+  (a) The proxies consumed only by BASE act/quest bosses keep the collapsed weapon row -
+  `bosschestproxy11_aktaios` (3 Telkines), `bosschestproxy21_typhon` (2), `bosschestproxy_blackwidow` (1),
+  `coldworm_orb` (1), `1_default_33-35` (1). Same boundary R-200 drew (`BL-R200-DEBT-1`): widening there is an
+  economy-wide decision for Will, not a lane's to take. The last two do not resolve in the mod db at all; they
+  are named by non-uber records and are `fx_dangling_cleanup` territory, not this lane's.
+  (b) The ONE uber chain the mod overlay cannot reach: `um_darkobelisk_55` (the base-only Dark Obelisk device)
+  -> `25_towerofjudgement_treasure`, whose chain lands on the act-4 GOLDEN CHEST tables shared with five base
+  containers. Pinned in `svc_orb_breadth.OUT_OF_REACH` with that reason; gate check O5 fails the build if a NEW
+  base-only chain appears, and O6 fails it if any in-scope table ever becomes shared - so neither can be
+  widened by accident, and neither is silently forgotten.
+- `BL-R220-DEBT-2` - **NOT PROVEN IN-GAME.** Nothing in this lane was launched. Will killing any orb-dropping
+  uber and seeing spears / visible class variety out of the orb is the launch gate.
+- `BL-R220-DEBT-3` - the epic and legendary POOL FLOORS (80 / 200) sit BELOW the richest pre-wave tables, so on
+  those two branches a silent revert is caught by O1 (the spear class disappears) and O2b (the master stops
+  being named), NOT by the count. Stated in the code rather than papered over: a count floor able to catch a
+  revert there would sit within one item of the live value and would red on ordinary content edits.
+- `BL-R220-DEBT-4` - INTEGRATION vs `main`: **CLOSED IN-LANE.** Both waves that were building ahead have
+  landed (`soul-naming` -> build77, `portal-atlantis` -> build78) and `main` @ `178ff4a` is MERGED INTO this
+  branch (merge `e05eeb1`). The three expected append-only doc conflicts (`docs/BACKLOG.md`,
+  `docs/WILL_RULINGS.md`, `docs/WILL_TEST_GUIDE.md`) were resolved here, keeping BOTH sides; ZERO code
+  conflicts. The REGISTRY tail is intact and `visuals` is still LAST. **That merge is also what forced the
+  R-210 -> R-220 renumber**: `fix/portal-atlantis-cap` minted R-210 for the portal-page DLC cap and shipped it
+  publicly as `build78-ship`, so the number this lane had reserved against a build76 snapshot was gone. All 20
+  occurrences were renumbered and the ruling was moved to the ledger TAIL (append-only, newest LAST) behind
+  R-201 and R-210.
+- `BL-R220-DEBT-5` - **INTEGRATION vs the two SIBLING breadth lanes, and this one is still OPEN.** `main` is
+  clean, but sideways is not: `fix/armor-loot-breadth` and `fix/craft-thrown-breadth` BOTH edit
+  `tools/svc_loot_breadth.py` and `tools/patches/__init__.py`, and craft-thrown rewrites the exact function
+  this lane touched - it adds C1/C2 thrown checks to `audit_table` while KEEPING the old signature
+  `audit_table(db, table, tier, ex, floor=None)`, i.e. WITHOUT this lane's `noun=` kwarg.
+  - **Mitigated here:** `svc_orb_breadth` probes for the kwarg at import (`_NOUN_SUPPORTED`) and degrades to
+    the default noun with a loud one-line notice, so a merge that drops it costs one word in one message
+    instead of a `TypeError` inside a fail-loud gate. Nothing silently passes.
+  - **Still the integrator's job:** hand-resolve `audit_table` so BOTH the `noun=` kwarg AND craft-thrown's
+    C1/C2 block survive (they are independent additions to the same function).
+  - **Second order, and it is NOT cosmetic:** craft-thrown adds a 7th class (thrown) to `_master_members` and
+    armor-loot-breadth re-weights `unique_1h` 1000 -> 3000 in the same shared builder. Either landing changes
+    what the orb tables reach THROUGH the shared master, so `POOL_FLOOR` (n 150 / e 80 / l 200) and the
+    published before/after table must be RE-MEASURED on the integrated arz. After integration re-run:
+    `gate_orb_loot_breadth.py`, `debug/negtest_orb_breadth.py` AND `gate_chest_loot_breadth.py`.
+- `BL-R220-DEBT-6` - **NO INDEPENDENT TIER CORROBORATION for the 15 widened base-game tables.**
+  `tools/gate_relic_difficulty_tiers.py` skips any table failing `is_mod_loot`; MEASURED on the build78 arz,
+  0 of the 15 tables this lane writes are visible to it (only the 3 mod-owned apex tables are). So the tier
+  claim rests solely on this lane's own B1/B3 + O2b, and B3 only forbids legendary GEAR on the NORMAL branch:
+  an epic/legendary mixup that ADDED the wrong master ALONGSIDE the right one on an epic branch would pass
+  O2b unseen. Related and deliberate: orb02's Legendary slot resolves to `uberorb_default_53-55`, whose
+  shipped row named EPIC-band uniques (`1h_all_e03` / `bow_e03` / `staff_e03`) on Legendary difficulty, so
+  wiring it the Legendary master RETIERS a base-game table upward (138 -> 241, the only delta over +100).
+  Recorded in R-220 so nobody later reads it as an accident.
+
+---
 ## SHIP RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis is GONE from the portal page, **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/portal-atlantis-cap` merge `599e5f0`, tag `build78-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
