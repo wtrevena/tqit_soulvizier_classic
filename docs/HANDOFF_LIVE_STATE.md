@@ -1,5 +1,20 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD77 SHIPPED TO STEAM (2026-08-10) - R-201 soul tier naming; arz-only delta on build76-ship
+> **Workshop item 3759792705 is now build77 CANONICAL** (was build76). `Committing update...Success.` +
+> `Updated Workshop item: 3759792705`; VDF read back `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB,
+> single wrapper. **STEAM = DEV = `main`** for the arz: `435cc485ee43e739b85d4221e6c9bb4b` (55,550,972 B).
+> - `Database/SoulvizierClassic.arz` = **`435cc485`** (CHANGED from `16994072`). det-2x byte-identical.
+> - `Resources/Levels.arc` = `6784cf0f` CANONICAL (NOT the TESTHUB `7a7ca9ac`) / `Quests.arc` = `607ec99c` /
+>   `Text.arc` = `a9fed7ba` / `Creatures.arc` = `8c0d8d53` - all byte-unchanged, re-uploaded as-is.
+> - **Push-gate:** dist==work all 5 artifacts PASS, TESTHUB guard PASS, single-wrapper PASS,
+>   `run_contracts` on the dist payload 0 P0 / 0 P1 / 4492 P2 (identical to the baseline A/B, so ZERO new
+>   violations), changenote 1,939 chars VDF-safe.
+> - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first (`build77-dev`).
+> - Tag `build77-ship` at this doc commit. Rollback (Steam): re-upload the build76 set (arz `16994072`,
+>   kept at `local/build76_ship_16994072.arz`; the other four artifacts are unchanged).
+
+
 > ## BUILD77-DEV DEPLOYED TO DEV (2026-08-10) - R-201 soul tier naming; arz-ONLY
 > **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `435cc485ee43e739b85d4221e6c9bb4b`**
 > (55,550,972 B, 51,234 records), copied with md5 source==dest verification **while TQ.exe was NOT running**

@@ -1,5 +1,50 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - R-201 SOUL TIER NAMING: Epic/Legendary soul names are **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/soul-tier-naming` merge, tag `build77-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' ... to Steam Public...OK`), `Preparing update... Preparing content... Uploading content...
+Committing update...Success.`, `Updated Workshop item: 3759792705`. Pushed `-Update -Visibility 0` and the
+generated VDF was read back to confirm `"visibility" "0"` - the item stays PUBLIC. Packaged payload:
+**56 files, 1188.3 MB**, single `SoulvizierClassic` wrapper. This steamcmd run printed no ManifestID line
+(same as the `build76-ship` run); the success is evidenced by the quoted lines plus the read-back VDF.
+
+**arz-only delta on top of `build76-ship`.** Only the database moved.
+
+| artifact | md5 | bytes | vs the item as of `build76-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`435cc485ee43e739b85d4221e6c9bb4b`** | 55,550,972 | **CHANGED** from `16994072` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged (**no new tag authored**) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+| gate | result |
+|---|---|
+| dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above) |
+| packager TESTHUB guard | **PASS** - packaged `6784CF0F` != TESTHUB `7A7CA9AC`; the hub did not ship |
+| single-wrapper assertion | **PASS** - content root holds exactly 1 child, `SoulvizierClassic` |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B against the shipped baseline `16994072` under the identical config | **4492** - the same number, so this ship adds **ZERO** new contract violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `435cc485` from two independent full builds** |
+| changenote VDF-safety | 1,939 chars, **0 double-quotes, 0 backslashes, 0 em dashes, pure ASCII** |
+
+**DEPLOY ORDER HONOURED.** DEV first (`build77-dev`, arz `435cc485`, 1 of 62 files changed, the 61
+siblings re-hashed byte-identical), then Steam. **TQ.exe was never running, was never killed, and Steam
+was never restarted** at any point in this lane.
+
+**PREVIEW IMAGE, stated honestly:** `-PreviewFile` was deliberately NOT passed, per the uploader's own
+documented isolation decision (a failing legacy-cloud preview upload made two earlier sessions misread a
+successful content upload as failed). The generated VDF therefore carries **no `previewfile` key at all**,
+so the live item's existing cover tile is left exactly as it was - the script's blanket "BLANK tile"
+warning is generic, not a regression. `assets/workshop_preview.jpg` is present if a future lane wants to
+push it deliberately.
+
+**NOT PROVEN IN-GAME.** Will's one-line check: read the Soul of the Gaoler's name on Epic and on
+Legendary. Fully quit TQ and restart Steam first.
+
+
 ## GATE RECORD - R-201 SOUL TIER NAMING (2026-08-10, branch `fix/soul-tier-naming`)
 
 **Will's bug (verbatim):** "the new souls we made dont have named variants, i.e., the epic, legendary
