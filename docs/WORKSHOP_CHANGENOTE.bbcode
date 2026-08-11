@@ -1,15 +1,52 @@
-[h2]Fixed: Atlantis is now genuinely unreachable, the sea voyage included[/h2]
+[h1]build83 - the ordinary Mystical Orbs now pay armour, not just weapons[/h1]
 
-[b]The previous update took Atlantis off the portal page, but a player who owns the Atlantis DLC could still sail there.[/b] Atlantis is disabled in this mod, so a clean act list was only half the job. This update closes the travel route itself.
+A database-only update. No map, quest or text change, so an existing character is unaffected and no
+new game is needed.
+
+[h2]What was wrong[/h2]
+
+An earlier update taught every Mystical Orb to pay all six weapon classes, spear included. It widened
+only the WEAPON row. A second update gave the mod's own chests and the apex orb a matching ARMOUR row,
+but it decided which loot tables it owned by asking what folder they lived in, and fifteen orb tables
+live somewhere else.
+
+So nobody owned the armour on those fifteen, no audit looked at them, and both of the build's fail-loud
+loot checks stayed green for three releases while fifteen live drop tables quietly starved. The ordinary
+uber orbs, the level-banded ones most ubers drop, and Charon's orb were running between 3.4 and 8.5
+weapons for every armour piece, with the thinnest worn slot paying as little as 0.007 pieces per open.
+In practice that is a helm roughly once every 140 orbs.
+
+[h2]What changed[/h2]
+
+All fifteen now get the same armour treatment the apex orb has shipped with since build75:
 
 [list]
-[*][b]The Rhodes to Gadir voyage is closed.[/b] Atlantis does not branch off the end of the campaign, it branches off Rhodes, in the middle of Immortal Throne, on the mandatory route to Hades. That is why the two earlier act caps never touched it: both of those close post Hades transitions. The quest NPC who starts the Atlantis adventure and the ship captain who carries you west are both suppressed, so the route no longer opens.
-[*][b]The Gadir to Atlantis landing is closed too[/b], at its own link rather than only upstream, so there is no single point of failure.
-[*][b]The two Tartarus act portals are closed[/b] by the same method already proven on the Act 5 cap, as defence in depth.
-[*][b]Immortal Throne era travel is untouched.[/b] Only the two Atlantis DLC boat NPCs are hidden. Rhodes itself is unchanged: you can still walk it, fight in it, use its portal and its shops. If you own the DLC, Rhodes now looks the way it already looks for a player who does not.
-[*][b]The return boats were deliberately left working.[/b] If you sailed west on an earlier build and have a character standing in Gadir, Malta or Atlantis, you can still sail back. Stranding a character would have been the one change worse than the leak.
-[*][b]The portal page is unchanged and re-checked[/b]: four act tabs, Greece, Egypt, Orient and Immortal Throne, with Olympus and all of Hades still listed.
-[*][b]A permanent gate so it cannot come back.[/b] The build now derives the list of routes that could still reach Atlantis and fails loudly unless that list is empty. It also fails if the cap reaches too far and touches an Atlantis record it was never meant to. It is checked against four deliberately broken builds.
+[*]Weapons to armour moves from 3.41 to 8.47 down to 0.28 to 0.49, matching the apex orb exactly.
+[*]The thinnest worn slot moves from 0.007 to 0.041 per open up to 0.29 to 1.16 per open.
+[*]Every worn slot is covered: head, torso, arms, legs and shield.
+[*]Total items per orb open goes UP, not sideways: 7.93 to 9.24, 9.32 to 11.77, 13.68 to 15.83.
 [/list]
 
-[i]This update changes six database records only. No stat, skill, monster, quest, map or text was touched. The craft chain, the armour and loot distribution balance, the uber orb weapon breadth, the portal page cap, the Epic and Legendary soul names and the chest breadth work from the previous updates are all included.[/i]
+Nothing was reduced anywhere. Across the whole change, 165 values were raised, 15 members were added,
+and zero values were lowered or replaced. The orb pools also grew rather than shrank.
+
+[h2]The class of bug is gone, not just this one[/h2]
+
+Ownership no longer depends on what folder a loot table sits in. The distribution check now derives the
+orb tables from the orb feature's own scope, and it enforces a single rule: every loot table any module
+writes must be inside the audited surface set. Two independent witnesses back it, and a missing witness
+is announced rather than quietly passing. A future feature cannot add a loot table that nobody audits.
+
+[h2]One honest note[/h2]
+
+On these fifteen surfaces the mix now reads armour-heavy, roughly 2 to 3.5 armour pieces per weapon.
+That is the exact ratio the apex orb has been shipping for several releases, so it is consistent rather
+than invented, but it is a real change in feel and worth knowing about before you open one.
+
+[h2]Verification[/h2]
+
+Built twice from the committed source with byte-identical output. The change touches exactly 15 records
+out of 51,253 and nothing else in the database moved by one byte. Every existing gate still passes on
+the uploaded files, including the loot distribution, orb breadth, chest breadth, craft and thrown,
+relic tier and Immortal Throne campaign cap checks, and the contract suite reports the same count as the
+previous release, so this update adds zero new violations.

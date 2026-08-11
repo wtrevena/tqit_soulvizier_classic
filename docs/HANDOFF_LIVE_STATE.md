@@ -1,10 +1,17 @@
 # HANDOFF LIVE STATE
-> ## BUILD83-DEV DEPLOYED TO DEV (2026-08-11) - BL-R181-DEBT-7: the fifteen ordinary uber orbs pay armour at parity; arz-ONLY
-> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `44499f56ed52bc91219db64eb4de2f11`**
-> (55,562,820 B, 51,253 records), copied with md5 source==dest verification **while TQ.exe was NOT
-> running** (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 added, 0 removed; the
-> folder was md5-inventoried before and after and the other 61 are byte-identical. det-2x
-> **byte-IDENTICAL** across two independent full builds, the second with the prefix cache disabled.
+> ## BUILD83 SHIPPED TO DEV **AND** STEAM (2026-08-11) - BL-R181-DEBT-7: the fifteen ordinary uber orbs pay armour at parity; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `44499f56ed52bc91219db64eb4de2f11`** (55,562,820 B, 51,253 records).
+> DEV copied with md5 source==dest verification **while TQ.exe was NOT running** (nothing killed, Steam
+> not restarted); **1 of 62 DEV files changed**, 0 added, 0 removed, the folder md5-inventoried before and
+> after and the other 61 byte-identical. det-2x **byte-IDENTICAL** across two independent full builds, the
+> second with the prefix cache disabled.
+> Steam: **Workshop item 3759792705, `Upload finished ... : OK`, ManifestID `4288024812107747101`**
+> (steamcmd workshop log 2026-08-11 08:33:31 -> 08:33:42), `-Update -Visibility 0` with the VDF read back
+> to confirm `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB, single wrapper. **STEAM = DEV =
+> `main`.** Push-gate: dist==work all 5 artifacts PASS, TESTHUB guard PASS (packaged `6784cf0f`, NOT the
+> TESTHUB `7a7ca9ac`), single-wrapper PASS, `run_contracts` on the DIST payload **0 P0 / 0 P1 / 4492 P2**,
+> identical to the live baseline. Changenote 2,981 bytes, VDF-safe. Tag `build83-ship` at this doc commit.
 > - **What it is:** the last un-owned loot surface in the mod. R-220 (`build79`) wrote fifteen loot
 >   tables and widened only their WEAPON row; R-181 (`build80`) decided ownership by asking what FOLDER a
 >   table lived in (`\svc\`), and those fifteen live elsewhere. So **nobody owned their armour, no surface

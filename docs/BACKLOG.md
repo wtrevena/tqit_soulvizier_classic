@@ -1,5 +1,57 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' [U:1:106507138] to Steam Public...OK`), `Uploading content... Committing update...Success.`
++ `Updated Workshop item: 3759792705`, exit 0. Independent evidence from
+`C:\steamcmd\logs\workshop_log.txt`: **`Uploaded new content ( ManifestID 4288024812107747101 )`** then
+**`Upload finished for workshop item 3759792705 : OK`** (2026-08-11 08:33:31 -> 08:33:42). Pushed
+`-Update -Visibility 0` and the generated VDF was read back to confirm `"visibility" "0"` - the item
+stays PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single `SoulvizierClassic` wrapper.
+
+**arz-only delta on top of `build82`.** Only the database moved. **STEAM = DEV = `main`.**
+
+| artifact | md5 | bytes | vs the item as of `build82` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`44499f56ed52bc91219db64eb4de2f11`** | 55,562,820 | **CHANGED** from `09a0f51d` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged (**no new tag authored**) |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+| gate | result |
+|---|---|
+| dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above, 0 failures) |
+| packager TESTHUB guard | **PASS** - packaged `6784CF0F` != TESTHUB `7A7CA9AC`; the hub did not ship |
+| single-wrapper assertion | **PASS** - content root holds exactly 1 child, `SoulvizierClassic` |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| A/B against the shipped baseline `09a0f51d` under the identical config | **4492** - the same number, so this ship adds **ZERO** new contract violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `44499f56` from two independent full builds**, the second with the prefix cache disabled |
+| changenote VDF-safety | 2,981 bytes, **0 double-quotes, 0 backslashes, 0 em dashes, 0 non-ASCII bytes, no BOM** |
+
+**DEPLOY ORDER HONOURED.** DEV first (`build83-dev`, arz `44499f56`, 1 of 62 files changed, the 61
+siblings re-hashed byte-identical), then Steam. **TQ.exe was never running, was never killed, and Steam
+was never restarted** at any point in this lane - checked immediately before the DEV copy and again
+immediately before the upload.
+
+**PREVIEW IMAGE, stated honestly:** `-PreviewFile` was deliberately NOT passed, matching every ship since
+`build77`. The generated VDF carries **no `previewfile` key at all** (verified by grep), so the live
+item's existing cover tile is left exactly as it was; the script's blanket "no preview image" warning is
+generic, not a regression.
+
+**Rollback (Steam, one step):** re-package and re-upload with the `build82` arz, kept byte-exact at
+`local/build82_run1_09a0f51d.arz`; the other four artifacts are already unchanged. This ship's own
+artifact is kept at `local/build83_run1_44499f56.arz`.
+
+**NOT PROVEN IN-GAME (rides with `BL-R181-DEBT-1`).** Everything above is a database and gate proof.
+**Will's check: kill any Mystical Orb uber and open the orb - helms, torsos, greaves and shields should
+fall out of it alongside weapons, across a few kills.** Honest warning in the same note: these fifteen
+now run armour-HEAVY (2 to 3.5 armour per weapon), which is the apex orb's own shipped ratio, but if it
+reads as an armour vending machine that is a real finding and one constant moves it back. Fully quit TQ
+and restart Steam first.
+
 ## BUILD83-DEV GATE RECORD - BL-R181-DEBT-7 CLOSED: the fifteen ordinary uber orbs pay armour at parity, and an un-owned loot table is now structurally impossible - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-dev`)
 
 **Will's standing order (R-181):** orbs roll ALL item classes, armour parity included. R-220 (`build79`)

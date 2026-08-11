@@ -245,7 +245,7 @@
 >    of every worn slot**. If an orb chest still looks weapon-only, that is a real find.
 >
 > **ADDED AFTER THE FACT (BL-R181-DEBT-7, round 3): the ORDINARY uber orbs too, and one honest
-> warning. ✅ LIVE ON DEV as `build83` (arz `44499f56`)** - arz-only, no map / quest / Text change;
+> warning. ✅ LIVE ON DEV **AND STEAM** as `build83` (arz `44499f56`)** - arz-only, no map / quest / Text change;
 > fully quit TQ and restart Steam before testing. Item 6 above covers the red-uber and Leinth orbs. Fifteen more orb loot tables - the
 > level-banded ones every ordinary uber drops, plus Charon's - had their armour owned by NOBODY and
 > were running **3.4:1 to 8.5:1 weapons:armour with a worn slot as thin as 0.007 pieces per open**.
