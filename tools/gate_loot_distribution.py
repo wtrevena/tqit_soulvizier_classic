@@ -177,12 +177,18 @@ def main(argv):
         print("\nGATE FAIL: a loot surface is skewed across classes, dominated by one "
               "item, or starving a worn slot.")
         return 1
+    # D7's reach is COUNTED, never implied. The round-1 vet found three surfaces silently
+    # outside it while this line claimed otherwise, so the line now states the number and
+    # names the reference surface D7X asserts on.
+    n_d7 = sum(1 for r in reports if r and r.get('d7_asserted'))
     print("\nGATE PASS: every mod loot surface spreads across all %d equipment classes "
           "within its committed bounds; every worn slot clears %.4f piece(s) per SPAWN "
-          "ITERATION (D7b, all %d surfaces) and %.2f per open on every surface at or "
-          "above the reference spawn volume of %.2f (D7)."
+          "ITERATION (D7b, all %d surfaces) and %.2f per open on the %d of %d surfaces "
+          "at or above the reference spawn volume of %.2f (D7), the reference surface "
+          "%s among them (D7X)."
           % (len(SLD.GEAR_SLOTS), SLD.ARMOR_SLOT_FLOOR_PER_SPAWN, len(reports),
-             SLD.ARMOR_SLOT_FLOOR, SLD.ARMOR_SLOT_FLOOR_REF_SPAWN))
+             SLD.ARMOR_SLOT_FLOOR, n_d7, len(reports), SLD.ARMOR_SLOT_FLOOR_REF_SPAWN,
+             SLD.ARMOR_SLOT_FLOOR_REF_SURFACE))
     if SLD.D5_PINNED:
         print("  D5 PINS (measured per-surface ceilings, each with a reason; a pin that "
               "falls back under the %.3f global cap reds as dead config):"

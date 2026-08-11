@@ -67,6 +67,15 @@ from patches.champion_mesh import (                                # noqa: E402
     ENSLAVER_MESH as _R102_ENSLAVER_MESH,
 )
 
+# BL-R181-DEBT-7's ownership ledger. This monolith is NOT a registry module, so the
+# registry touch log (OWN2) cannot see it - and it authors real gear containers: the 27
+# `svc_*hoard_loot_{01,02,03}` tables, cloned from the blood-cave mega chest and given a
+# guaranteed loot3 slot. Those tables ARE all inside the distribution gate's surface set
+# today, but before this the gate could not PROVE it, while its PASS line said "every loot
+# table written in this build". Registering the writes here makes the claim true for them
+# rather than lucky. See `tools/svc_loot_ownership.py`.
+import svc_loot_ownership as _OWN                                  # noqa: E402
+
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
 NORMAL_SCROLLS = [
@@ -15867,6 +15876,7 @@ def _create_obsidian_roulette(db, tags):
         sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE); sf(lt, 'loot3Weight1', 100)
         sf(lt, 'loot3Name2', _OBS_GUAR_RELIC); sf(lt, 'loot3Weight2', 60)
         db._modified.add(lt)
+        _OWN.note_write(lt, 'apply_svc_patches (obsidian hoard)')
 
         # chest: clone the blood-cave mega chest, retheme to a Boss-locked hoard.
         ch = _OBS_CHEST[t]
@@ -17197,6 +17207,7 @@ def _svc_build_dedicated_hoard(db, prefix, desc_tag):
         sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE_TIER[t]); sf(lt, 'loot3Weight1', 100)
         sf(lt, 'loot3Name2', _OBS_GUAR_RELIC_TIER[t]); sf(lt, 'loot3Weight2', 60)
         db._modified.add(lt)
+        _OWN.note_write(lt, 'apply_svc_patches (%s hoard)' % prefix)
         # chest: clone the blood-cave mega chest, retheme to this boss's Boss-locked hoard.
         ch = rf'{base}\svc_{prefix}hoard_{t}.dbr'
         db.clone_record(_OBS_CHEST_DONOR[t], ch)

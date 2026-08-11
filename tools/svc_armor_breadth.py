@@ -511,8 +511,12 @@ def cage_surfaces(lk):
 
 
 # ── R-220's tables, derived from R-220's own scope rule (never typed here) ───
-def orb_scope(db, lk):
+def orb_scope(db, lk, fresh=False):
     r"""{norm(table): (real, tier)} for every loot table an UBER's mystical orb reaches.
+
+    `fresh=True` bypasses the cache entirely. The GATE uses it, so the coverage assertion
+    is always made against a derivation taken from the FINAL db state - see the caching
+    note below.
 
     THIS IS A DERIVATION, NOT A LIST, and that is the whole point of BL-R181-DEBT-7.
     R-181 decided what it owned by asking what FOLDER a table lived in; R-220 then wrote
@@ -529,8 +533,24 @@ def orb_scope(db, lk):
     out-of-reach chain. Running mod-only here keeps the distribution gate free of a
     base-arz dependency it would otherwise acquire.
 
-    Cached per db by record count: the derivation costs a full 51k-record template scan
-    and `all_surfaces` is called by apply(), by the gate and by `--calibrate`.
+    CACHING, and why the key is not just the record count. The derivation costs a full
+    51k-record template scan and `all_surfaces` is called by apply(), by the gate and by
+    `--calibrate`, so it is cached on the db. The key was originally `len(record_names())`
+    alone, and the round-2 vet was right that that is not enough: a pass that REWIRED an
+    uber's orb chain to a different EXISTING table adds and removes no records, so the
+    cache would go on serving the pre-rewire scope. The newly reached table would be
+    neither swept nor audited, and neither ownership witness would fire, because nothing
+    wrote IT. Two changes close that by construction:
+      * the key also carries `len(db._modified)`, so any write to a record not already
+        touched invalidates it; and
+      * `fresh=True`, which the GATE uses, so the coverage assertion is never made against
+        a cache at all. `orb_armor_rows.verify` additionally compares that fresh
+        derivation against the set apply() actually SWEPT and fails loud on any
+        difference - the honest form of the invariant, because it catches a mid-build
+        rewire whatever the cache did.
+    Unreachable today (`visuals`, the only registry module after this one, writes nothing,
+    and the monolith's finalization does not touch orb chains) - but a cache that can go
+    stale by construction is exactly the kind of quiet narrowing BL-R181-DEBT-7 was.
     """
     try:
         import svc_orb_breadth as SOB
@@ -541,12 +561,15 @@ def orb_scope(db, lk):
               "uber orb loot tables are NOT in the distribution surface set this run. "
               "No silent pass: this line IS the downgrade." % (exc,))
         return {}
-    # Cached ON THE DB, keyed by its record count, so two dbs in one process (the
-    # negative battery builds a fresh one per case) can never read each other's scope.
-    count = len(db.record_names())
+    # Cached ON THE DB, so two dbs in one process (the negative battery builds a fresh one
+    # per case) can never read each other's scope. Key = (record count, write count), the
+    # second half being what makes a rewire that adds no records invalidate it.
+    if fresh:
+        return SOB.scope_tables(db, lk)
+    key = (len(db.record_names()), len(getattr(db, '_modified', ())))
     hit = getattr(db, '_svc_orb_scope_cache', None)
-    if hit is None or hit[0] != count:
-        hit = (count, SOB.scope_tables(db, lk))
+    if hit is None or hit[0] != key:
+        hit = (key, SOB.scope_tables(db, lk))
         db._svc_orb_scope_cache = hit
     return hit[1]
 
@@ -614,6 +637,13 @@ def ownership_problems(db, lk=None, surfaces=None):
     WRITES can. So:
 
         every loot table written in this build must be in the surface set.
+
+    ...where "written" means what the witnesses below can actually SEE. That qualifier is
+    load-bearing and was added in round 2: the monolith `tools/apply_svc_patches.py` runs
+    outside `run_registry`, so no touch log records it, and it writes some loot rows
+    without a shared builder. Its 27 hoard gear containers now register with the ledger;
+    its base-game `defaultloot` restore is deliberately outside the contract
+    (BL-R181-DEBT-2 / -10). `tools/svc_loot_ownership.py` states the reach exactly.
 
     TWO WITNESSES (`tools/svc_loot_ownership.py` explains why one is not enough):
       * the LEDGER - the four shared loot builders register every table they touch, so
@@ -768,6 +798,12 @@ def audit_db(db, lk=None, verbose=False):
                     "svc_loot_distribution.D5_PINNED - a ceiling nothing needs is a "
                     "ceiling nobody re-reads." % (label, pin[0], share,
                                                   SLD.MAX_ITEM_SHARE_TOTAL))
+    # D7X: the surface ARMOR_SLOT_FLOOR was calibrated on must still be D7-ASSERTED.
+    # Runs after every surface is measured because it reads their reports. The round-1
+    # vet found D7 switched off on all three apex orb surfaces by a 1.78e-15 float
+    # shortfall, with the PASS line still claiming the floor held; this is the assertion
+    # from the other side, so the exclusion cannot recur silently.
+    problems.extend(SLD.reference_surface_problems(reports))
     for label in sorted(SLD.D5_PINNED):
         if label not in seen_labels:
             problems.append(

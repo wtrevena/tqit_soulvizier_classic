@@ -27,6 +27,29 @@ lives. Coverage is proven from the writes, so a future lane that widens a sixtee
 table in a new folder is inside the contract the moment it writes, with no list to
 remember to update.
 
+EXACTLY WHAT THE WITNESSES REACH, because a gate must not overstate itself
+--------------------------------------------------------------------------------
+The round-2 vet of this lane found the PASS line claiming "every loot table written in
+this build" while neither witness could see `tools/apply_svc_patches.py` - the 19k-line
+monolith, which runs OUTSIDE `run_registry` (so no touch log) and writes some loot rows
+directly (so no builder). Enforced reach, stated plainly:
+
+  * REGISTRY MODULES - both witnesses.
+  * ANY caller of the four shared builders, anywhere, including dry runs and the
+    negative battery - the ledger.
+  * THE MONOLITH'S HOARD AUTHORING - the 27 `svc_*hoard_loot_{01,02,03}` gear containers
+    it clones from the blood-cave mega chest. These now call `note_write` at both
+    authoring sites, so the ledger covers them; measured, all 27 are inside the audited
+    surface set.
+
+  NOT covered, by decision, and registered as BL-R181-DEBT-10: the monolith's
+  `_restore_thrown_weapon_drops`, which writes `loot6Name5/6` on base-game
+  `containers\defaultloot\` monster tables. Those writes copy a value straight OUT of the
+  base arz - they restore a base-game row to its base-game shape rather than widening a
+  mod surface - and base-game MONSTER loot is BL-R181-DEBT-2, an explicit Will decision.
+  Pulling them into the surface set would demand mod distribution thresholds of base-game
+  monster tables, which is a design change, not a gate fix.
+
 TWO INDEPENDENT WITNESSES, because one of them is only available inside a build
 --------------------------------------------------------------------------------
 1. THE LEDGER (this module). Every shared loot builder - `svc_loot_breadth`'s

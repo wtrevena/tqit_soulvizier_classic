@@ -131,6 +131,12 @@ def apply(db, tags):
         targets.append((real, tier, groups))
     print("  ORB ARMOUR: %d uber orb loot table(s) derived, %d carry armour rows"
           % (len(scope), len(targets)))
+    # What this pass ACTUALLY swept, recorded for verify() to compare against a FRESH
+    # derivation taken after every later module has run. If anything rewires an orb chain
+    # between here and the gate, the two sets differ and the gate reds naming the tables -
+    # which is the only way a table reached after the sweep can be caught, since nothing
+    # wrote it and neither ownership witness would fire.
+    db._svc_orb_swept = sorted(scope)
 
     # ── 3. the before-image, for the scope proof and the printed deltas ──────
     d0 = SLD.Db(db)
@@ -171,12 +177,23 @@ def apply(db, tags):
                 if float(b[0]) < float(a[0]):
                     illegal.append('%s.%s LOWERED %s -> %s' % (base, field, a[0], b[0]))
             except (TypeError, ValueError, IndexError):
-                pass          # a name field: additive by construction, checked above
+                # A NAME field. The round-2 vet caught this branch as a bare `pass`
+                # whose comment claimed the value was "additive by construction, checked
+                # above" - it was not: the prefix test above only proves the field lives
+                # in an armour row, never that the slot was EMPTY. The SystemExit text
+                # promises "no member removed", so prove it here instead of asserting it:
+                # a name write is legal only into an empty slot. A future donor shape that
+                # already carries a member in, say, `loot6Name3` would otherwise be
+                # silently clobbered while this proof printed PASS.
+                if str(a[0] if a else '').strip():
+                    illegal.append('%s.%s MEMBER REPLACED %r -> %r'
+                                   % (base, field, a[0], (b[0] if b else '')))
     if illegal:
         raise SystemExit(
             "[orb_armor_rows] SCOPE PROOF FAILED: %d field(s) outside the allowed set "
-            "moved, or moved DOWN (allowed: the armour rows loot2/loot5/loot6 and the "
-            "weapon row's loot1Weight* corrections, raises only): %s. An orb's identity "
+            "moved, moved DOWN, or REPLACED an existing member (allowed: the armour rows "
+            "loot2/loot5/loot6 and the weapon row's loot1Weight* corrections, raises "
+            "only, names into empty slots only): %s. An orb's identity "
             "- numSpawn equations, the relic row, the potion row, the mesh, the gold "
             "generator and the level equation - must come through this sweep "
             "byte-unchanged." % (len(illegal), sorted(illegal)[:12]))
@@ -208,7 +225,21 @@ def verify(db, tags):
     lk = SLB.Lookup(db)
     surfaces = SAB.all_surfaces(db, lk)
     audited = {SLB._n(t) for (_l, ts, _w, _tr) in surfaces for t in ts}
-    scope = SAB.orb_scope(db, lk)
+    # FRESH, never the cache: the gate runs after every other module, so the only
+    # derivation worth asserting on is one taken from the db's FINAL state.
+    scope = SAB.orb_scope(db, lk, fresh=True)
+    swept = getattr(db, '_svc_orb_swept', None)
+    if swept is not None and sorted(scope) != swept:
+        gained = sorted(set(scope) - set(swept))
+        lost = sorted(set(swept) - set(scope))
+        raise SystemExit(
+            "orb_armor_rows gate FAILED: the uber orb scope CHANGED between the sweep and "
+            "this gate - %d table(s) newly reached %s, %d no longer reached %s. A pass "
+            "after this module rewired an orb drop chain, so a table the player can now "
+            "open was never given its armour rows, and no ownership witness can see it "
+            "because nothing WROTE it. Move that pass before orb_armor_rows in the "
+            "registry, or widen the sweep to cover it."
+            % (len(gained), gained[:6], len(lost), lost[:6]))
     missing = sorted(k for k, (t, _tier) in scope.items()
                      if SLB._n(lk.real(t) or t) not in audited)
     if missing:
@@ -226,7 +257,17 @@ def verify(db, tags):
             "audited by no distribution surface. Coverage must be DERIVED from the "
             "writes, never from a list of names - a list is how fifteen live surfaces "
             "starved through two green gates." % len(problems))
+    # THE PASS LINE STATES ONLY WHAT THE TWO WITNESSES ENFORCE. The round-2 vet caught
+    # this claiming "every loot table written in this build", which the witnesses cannot
+    # see: `tools/apply_svc_patches.py` is not a registry module, so OWN2 is blind to it,
+    # and OWN1 only sees what goes through the shared builders. Its 27 hoard tables now
+    # call `note_write` and so ARE covered - the residue is its base-game `defaultloot`
+    # thrown-drop restore, named here and registered as BL-R181-DEBT-10. A gate that
+    # overstates its reach is the same failure as a gate that goes quiet.
     print("  orb_armor_rows gate PASS: %d uber orb loot table(s) derived, every one "
-          "inside the distribution surface set (%d surfaces); every loot table written "
-          "in this build is audited by a surface or EXEMPT with a reason."
+          "inside the distribution surface set (%d surfaces); every loot table written by "
+          "a REGISTRY MODULE, by a shared loot builder, or by the monolith's hoard "
+          "authoring is audited by a surface or EXEMPT with a reason. NOT covered, by "
+          "decision: apply_svc_patches' restore of base-game `containers\\defaultloot\\` "
+          "rows to their base-game values (BL-R181-DEBT-2 / BL-R181-DEBT-10)."
           % (len(scope), len(surfaces)))

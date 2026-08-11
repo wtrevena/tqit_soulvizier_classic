@@ -59,6 +59,10 @@ CAGE_L = rf'{L}\polisvault_01.dbr'          # chest_01 Legendary variant a (mart
 CAGE_LC = rf'{L}\polisvault_01_lc.dbr'      # chest_01 Legendary variant c (warden)
 HOARD_L = r'records\drxitem\container\svc_charonhoard_loot_03.dbr'
 APEX_L = rf'{L}\svc_uberorb_apex_l01c.dbr'   # a red-uber Mystical Orb chest / Leinth
+# The D7 REFERENCE surface: ARMOR_SLOT_FLOOR (0.52/open) was calibrated on this exact
+# table's 0.6229 reading, and its S_eff of 10.58 is ARMOR_SLOT_FLOOR_REF_SPAWN. N12/N13
+# are the two negatives that keep D7 demonstrably switched ON here.
+APEX_E = rf'{L}\svc_uberorb_apex_e01c.dbr'
 SPEAR_ITEM = r"records\item\equipmentweapon\spear\u_e_scorpion'stail.dbr"
 UNIQUE_TORSO_L = r'records\xpack\item\loottables\torso\mastertables\unique_torso_l01.dbr'
 # BL-R181-DEBT-7's own surfaces: an R-220 orb table from each of the two donor families.
@@ -326,6 +330,50 @@ def main(argv):
         for p in SAB.ownership_problems(dpc, kpc)[:6]:
             print("      %s" % p)
     OWN.reset()
+
+    # ── N12/N13: D7X, THE REFERENCE SURFACE. The round-2 vet found D7 switched OFF on
+    #    all three `svc_uberorb_apex_*` surfaces - including the very one ARMOR_SLOT_FLOOR
+    #    was calibrated on - by a 1.78e-15 shortfall in a weighted S_eff against a bare
+    #    `spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN`. Nothing failed; the PASS line went on
+    #    claiming the floor held. These two pin it from both sides: N12 plants a real
+    #    armour regression in the band that was unguarded, N13 attacks the structural
+    #    check itself.
+
+    # N12 - an armour cut on the REFERENCE surface, landing inside the band that the
+    #      float-boundary defect left unguarded: below D7's 0.52/open but above D7b's
+    #      effective floor, so D7b alone cannot see it. Only D7 being genuinely ASSERTED
+    #      on this surface catches it. This is the vet's demonstrated regression, made
+    #      permanent.
+    def _cut_reference_armour(d, k):
+        real = k.real(APEX_E)
+        for g in SAB.armor_groups(d, real):
+            d.set_field(real, 'loot%dChance' % g, SAB.ARMOR_ROW_CHANCE * 0.75)
+
+    def _probe_reference_d7(d, k):
+        probs, _reps = SAB.audit_db(d, k)
+        return [p for p in probs if p.startswith('D7 ') and 'apex_e01c' in p]
+
+    check("D7 armour cut 25%% on the REFERENCE surface (svc_uberorb_apex_e01c, the "
+          "0.40-0.52/open band the float boundary left unguarded)",
+          _cut_reference_armour, _probe_reference_d7)
+
+    # N13 - D7X itself. Move the reference volume just above the reference surface's own
+    #      S_eff and the surface falls out of D7 exactly as it did in round 1. D7X must
+    #      RED. If this comes back green the tolerance is the only thing standing between
+    #      this gate and a silent re-exclusion, and a single constant edit would undo it.
+    saved_ref = SLD.ARMOR_SLOT_FLOOR_REF_SPAWN
+    try:
+        SLD.ARMOR_SLOT_FLOOR_REF_SPAWN = saved_ref * 1.001
+        d7x = [p for p in SAB.audit_db(base, base_lk)[0] if p.startswith('D7X')]
+    finally:
+        SLD.ARMOR_SLOT_FLOOR_REF_SPAWN = saved_ref
+    ok = bool(d7x)
+    print("%s %-70s -> %s"
+          % ('OK ' if ok else 'XX ',
+             "D7X the reference surface falls out of D7 (the round-1 defect)",
+             'RED (correct)' if ok else 'GREEN (BLIND - D7 can be switched off silently)'))
+    if not ok:
+        fails.append("D7X reference-surface exclusion")
 
     # ── N7-N9: the D3 SIZE EXEMPTION (b81 / R-186). An exemption is the one construct
     #    that can silently switch a gate off, so it gets more negatives than the rules it

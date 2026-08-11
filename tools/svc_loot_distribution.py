@@ -282,6 +282,15 @@ ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per ch
 # (Leinth's `(3+(1.6*numberOfPlayers))*2.2 / *2.4`) give S = 10.58. Every one of the 42
 # surfaces R-181 audited spawns AT LEAST that much (10.58 .. 18.96), so the number was
 # never volume-sensitive in practice and nothing said so.
+# ⚠️ AND THAT "AT LEAST" IS A FLOATING-POINT STATEMENT, which is how the round-1 vet
+# caught this gate switching itself off. The three `svc_uberorb_apex_{n,e,l}01c` surfaces
+# compute S_eff = 10.579999999999998 - 1.78e-15 UNDER the constant - because S_eff is a
+# weighted sum over variants, not a literal. A bare `spawn >= REF` therefore evaluated
+# FALSE on them and D7 silently stopped being asserted on the very surface the 0.52 floor
+# was derived on, leaving an unguarded 0.3968 .. 0.52 per-open band on each. The
+# comparison is made with a relative tolerance below, and `reference_surface_problems`
+# asserts from the other side that the reference surface is still D7-asserted, so the
+# exclusion cannot recur silently no matter which way a future edit moves the numbers.
 # BL-R181-DEBT-7 brought in 15 surfaces that spawn 5.06 .. 8.28. On those the same
 # absolute number is not a parity demand at all - it is a demand for MORE DROPS, i.e. for
 # numSpawn, and BL-R181-DEBT-5 reserves that lever to Will. MEASURED after the armour
@@ -303,7 +312,31 @@ ARMOR_SLOT_FLOOR = 0.52          # expected legendary pieces of that slot per ch
 # D7b at 0.0375 REDS ALL 57 defect surfaces (the defect state's BEST reading is 0.0175,
 # 2.1x under), which makes it a strictly stronger revert-detector than the absolute floor.
 ARMOR_SLOT_FLOOR_REF_SPAWN = 10.58   # spawn iterations of the surface 0.52 was derived on
+# Relative slack on that comparison. It exists ONLY to absorb the last-bit error of a
+# weighted sum (1.7e-16 relative on the apex orbs); it is ~7 orders of magnitude smaller
+# than the coarsest real gap between two surfaces' volumes, so it can never admit or
+# exclude a surface on anything but float noise.
+ARMOR_SLOT_FLOOR_REF_TOL = 1e-9
+# The surface the 0.52 floor was derived on. Named so `reference_surface_problems` can
+# assert that D7 is still ASSERTED on it - the check that would have caught the round-1
+# defect from the other side. This is the surface's LABEL in `all_surfaces`: the three
+# `svc_uberorb_apex_*` tables are claimed by the mod-ownership sweep before `orb_surfaces`
+# is reached, so they carry the bare basename and NOT the `orb ` prefix the other fifteen
+# R-220 tables get. (D7X caught that distinction itself when this constant was first
+# written with the prefix - which is the check doing its job.)
+ARMOR_SLOT_FLOOR_REF_SURFACE = 'svc_uberorb_apex_e01c.dbr'
 ARMOR_SLOT_FLOOR_PER_SPAWN = 0.0375  # D7b: worn-slot pieces per SPAWN ITERATION
+
+
+def d7_applies(spawn):
+    """Is the absolute per-open floor (D7) asserted on a surface of this spawn volume?
+
+    ONE implementation, because the round-1 defect was a second, subtly different copy of
+    this comparison living inline: `audit_surface` gates on it, `reference_surface_problems`
+    asserts on it, the gate's PASS line counts with it and the negative battery plants
+    against it. A bare `>=` here is the bug (see the block comment above).
+    """
+    return spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN * (1.0 - ARMOR_SLOT_FLOOR_REF_TOL)
 MAX_WEAPON_ARMOUR_RATIO = 1.85   # legendary weapon mass : legendary armour mass
 # ... and the MIRROR, so "fix the armour" cannot quietly become "bury the weapons". The
 # binding case is the blood-cave mega chest `loottable_hidden_bloodcave_03`, which has NO
@@ -534,6 +567,56 @@ class ChestProfile:
 # ─────────────────────────────────────────────────────────────────────────────
 # THE AUDIT (shared by the standalone gate, the in-build gate and the negtests)
 # ─────────────────────────────────────────────────────────────────────────────
+def reference_surface_problems(reports):
+    r"""D7X - THE REFERENCE SURFACE MUST STILL BE D7-ASSERTED. Returns a list of problems.
+
+    Born from the round-1 vet, which is worth stating plainly because it is this lane's
+    own defect class in miniature: `svc_uberorb_apex_e01c` is the surface the 0.52 floor
+    was CALIBRATED on (0.6229 pieces per open, the binding reading of the whole R-181
+    derivation) - and a 1.78e-15 floating-point shortfall in its weighted S_eff made
+    `spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN` evaluate False, so D7 stopped being asserted on
+    it entirely. Nothing failed. The gate's PASS line went on claiming the floor held "on
+    every surface at or above the reference spawn volume" while its own reference surface
+    sat outside the check, with an unguarded 0.3968 .. 0.52 per-open band.
+
+    `d7_applies`' tolerance fixes THAT instance. This function is the structural half, and
+    it is deliberately asserted from the opposite direction: not "is the comparison
+    written correctly" but "is the check demonstrably ON at the one place we know its
+    number means something". A future edit to the threshold, to the equations, to the
+    variant weights or to the comparison itself cannot switch D7 off at the reference
+    surface without this reding.
+
+    Also reds if the reference surface is ABSENT from the audit set, because a calibration
+    anchor that no longer exists is a threshold nobody can re-derive.
+    """
+    problems = []
+    ref = None
+    for rep in reports:
+        if rep and rep.get('label') == ARMOR_SLOT_FLOOR_REF_SURFACE:
+            ref = rep
+            break
+    if ref is None:
+        problems.append(
+            "D7X the D7 reference surface %r is not in the audit set. ARMOR_SLOT_FLOOR "
+            "(%.2f/open) was derived on it, so a threshold whose anchor has vanished can "
+            "no longer be re-derived or defended. Re-anchor the constant on a surface "
+            "that exists (and say so where it is defined), or find out why the surface "
+            "left the set." % (ARMOR_SLOT_FLOOR_REF_SURFACE, ARMOR_SLOT_FLOOR))
+        return problems
+    if not ref.get('d7_asserted'):
+        problems.append(
+            "D7X D7 is NOT asserted on its own reference surface %s (S_eff=%.17g vs "
+            "ARMOR_SLOT_FLOOR_REF_SPAWN=%.17g, short by %.3e). The absolute %.2f/open "
+            "floor was calibrated on this exact surface, so it being outside the check "
+            "means the floor is unenforced where it is best understood - and the PASS "
+            "line would still claim it held. This is the round-1 float-boundary defect "
+            "recurring; see d7_applies."
+            % (ARMOR_SLOT_FLOOR_REF_SURFACE, ref.get('S_eff', 0.0),
+               ARMOR_SLOT_FLOOR_REF_SPAWN,
+               ARMOR_SLOT_FLOOR_REF_SPAWN - ref.get('S_eff', 0.0), ARMOR_SLOT_FLOOR))
+    return problems
+
+
 def era_exemption_problems(d, classification=None):
     r"""RE-PROVE every `D3_ERA_EXEMPT` entry against the database. Returns a list of
     problems, empty when every exemption is still earned.
@@ -710,7 +793,7 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
             # spawn volume is at least the volume the floor was derived at. Below that
             # the number is a numSpawn demand rather than a parity one (BL-R181-DEBT-5
             # reserves numSpawn to Will), so D7b carries the invariant instead.
-            if spawn >= ARMOR_SLOT_FLOOR_REF_SPAWN and per_open < ARMOR_SLOT_FLOOR:
+            if d7_applies(spawn) and per_open < ARMOR_SLOT_FLOOR:
                 problems.append(
                     "D7 %s: armour slot %s pays only %.2f %s piece(s) per open "
                     "(floor %.2f) - Will's \"i am not really seeing armor drops\""
@@ -731,6 +814,10 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
         'tables': [p.table for p in profs],
         'S': [p.S for p in profs],
         'S_eff': spawn,
+        # Reported, not recomputed by callers: the gate's PASS line states how many
+        # surfaces D7 is actually asserted on, so a surface dropping out of the absolute
+        # floor is a VISIBLE number rather than a silent exclusion.
+        'd7_asserted': d7_applies(spawn),
         'drops_per_open': [p.expected_drops() for p in profs],
         'slot_mass': dict(agg_slot), 'total': total,
         'top_items': sorted(agg_item.items(), key=lambda kv: -kv[1])[:12],
