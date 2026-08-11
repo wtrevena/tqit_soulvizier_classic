@@ -80,19 +80,21 @@ SCOPE BOUNDARY, STATED SO NOBODY WIDENS IT BY ACCIDENT
   b79 `fix/orb-loot-breadth` covered them; it does not, and its own docstring says so.
   See `in_scope`. The tables b79 really writes (`uberorb_default_*`, `boss_charon_*01b`)
   sit outside `\svc\` and were never in this rule.
-* OUT, BY EVIDENCE, MEASURED AND REPORTED RATHER THAN SILENTLY WIDENED (both are Will
-  decisions, and both are in the R-181 record with numbers):
-    - general MONSTER armour drops (BL-R181-DEBT-2): base-game-governed here, mod-owned
-      on 12-14 records of ~1500-1850, and `chanceToEquipShield` is not a field on ANY
-      record in the db, so no monster can drop a shield off its body at all.
-    - the 15 loot tables R-220/b79 writes (`uberorb_default_*`, `boss_charon_*01b`;
-      BL-R181-DEBT-7). They sit outside `\svc\` so they were never in this module's
-      ownership rule, and b79 widens only the weapon row on them. Measured after both
-      waves: ALL FIFTEEN starve armour - weapon:armour 2.0:1 to 4.1:1 and a thinnest worn
-      slot of 0.01-0.04 pieces per open against the D7 floor of 0.52. Armour on those
-      tables is owned by NOBODY. Not fixed here, because one lane per problem and b79 has
-      already merged; the fix is one `widen_armor_rows` call per table (identical donor
-      shape) plus adding them to `all_surfaces`, and it needs an owner.
+* THE 15 R-220 ORB TABLES ARE NOW IN, AND THE OWNERSHIP RULE THAT EXCLUDED THEM IS GONE
+  (BL-R181-DEBT-7, closed by `tools/patches/orb_armor_rows.py`). `uberorb_default_*` and
+  `boss_charon_*01b` live outside `\svc\`, so R-181's folder-shaped ownership rule never
+  reached them and R-220 widened only their WEAPON row: measured on the shipped build80
+  arz all fifteen starved, weapon:armour 3.4:1 to 8.4:1 with a thinnest worn slot of
+  0.007-0.044 pieces per open against the D7 floor of 0.52. `all_surfaces` no longer asks
+  what FOLDER a table lives in - it asks R-220's own scope derivation which tables the
+  uber orb chains reach, so a SIXTEENTH orb table is covered the day it is written, with
+  no list to update. `ownership_problems` then closes the class outright: any loot table
+  a module writes and no surface audits fails the build. See `tools/svc_loot_ownership.py`.
+* OUT, BY EVIDENCE, MEASURED AND REPORTED RATHER THAN SILENTLY WIDENED (a Will decision,
+  in the R-181 record with numbers): general MONSTER armour drops (BL-R181-DEBT-2) are
+  base-game-governed here, mod-owned on 12-14 records of ~1500-1850, and
+  `chanceToEquipShield` is not a field on ANY record in the db, so no monster can drop a
+  shield off its body at all.
 """
 import re
 import sys
@@ -102,6 +104,7 @@ if __name__ == '__main__' or __package__ is None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
 import svc_loot_breadth as SLB
 import svc_loot_distribution as SLD
+import svc_loot_ownership as OWN
 
 TIERS = SLB.TIERS
 
@@ -149,12 +152,33 @@ ARMOR_MASTER_WEIGHT = 2 * ARMOR_UNIQUE_WEIGHT
 
 # Path shapes. A member is "unique armour" when it lives under a worn-slot folder AND on
 # the `unique` path (the mastertables/unique split the base game itself uses).
+#
+# TWO DONOR FAMILIES SPELL "unique" DIFFERENTLY, AND THAT IS WHY THE ORB TABLES STARVED
+# (BL-R181-DEBT-7). The xpack/DRX family this module was written against names its
+# unique-armour tables `\torso\mastertables\unique_torso_l01.dbr` - the token is
+# `unique_<slot>`. The base-game LEVEL-BANDED family the nine `uberorb_default_<band>`
+# tables are cloned from instead names `\torso\mastertables\unique\torsoall_n01.dbr` and
+# `\head\mastertables\uniques\headall_n01.dbr` - a `unique\` (and, on head, `uniqueS\`)
+# SUBFOLDER. The old expression required the token to be `unique_` right after the slot
+# folder, so on those nine tables it matched only the shield member, and the four body
+# slots kept the donor's weight of 27 against ~1700 of static junk. MEASURED: helm/arms/
+# torso/legs 0.026 pieces per open each, against the D7 floor of 0.52.
+# The expression below accepts both spellings and is strictly WIDER than the old one
+# (every path the old regex matched still matches), so it can only ever raise more
+# members - never fewer. Measured on the 42 pre-existing surfaces: 0 records change.
 _SLOT_FOLDER_RE = re.compile(r'\\(torso|head|arms|legs|shields)\\')
 _UNIQUE_ARMOR_RE = re.compile(
-    r'\\(torso|head|arms|legs|shields)\\(mastertables\\unique_\w+|unique)\\?')
-_UNIQUE_1H_RE = re.compile(r'\\unique_1h_[nel]0\d\.dbr$')
+    r'\\(torso|head|arms|legs|shields)\\(mastertables\\)?uniques?')
+# Same two-family split on the weapon side: the xpack family names the 3-class one-hand
+# master `\weapons\mastertables\unique_1h_l01.dbr`, the level-banded family names
+# `\weapons\mastertables\unique\1h_all_l01.dbr`, and its single-class siblings sit under
+# `\weapons\mastertables\unique\` rather than `\weapons\unique\`. Without both spellings
+# `balance_one_hand` cannot see that ONE member is paying axe+mace+sword, and
+# `balance_weapon_row` counts three unique tables as static and over-raises the master.
+_UNIQUE_1H_RE = re.compile(r'\\(unique_1h|1h_all)_[nel]0\d\.dbr$')
 _SINGLE_CLASS_UNIQUE_RE = re.compile(
-    r'\\weapons\\unique\\(axe|club|sword|spear|bow|staff|throwing)_[nel]0\d\.dbr$')
+    r'\\weapons\\(mastertables\\)?unique\\'
+    r'(axe|club|sword|spear|bow|staff|throwing)_[nel]0\d\.dbr$')
 # R-180's aggregate weapon master, by name (the mirror of ARMOR_MASTER on this side).
 _WEAPON_MASTER_RE = re.compile(r'\\svc_unique_weapons_[nel]01\.dbr$')
 
@@ -387,6 +411,10 @@ def widen_armor_rows(db, table, tier, lk=None):
     master = lk.real(ARMOR_MASTER[tier])
     if not real:
         return []
+    # Registering IS writing (svc_loot_ownership): the ledger is populated by the
+    # builder, never by its callers, so a new caller cannot forget to claim a table
+    # and leave its distribution owned by nobody - the BL-R181-DEBT-7 defect class.
+    OWN.note_write(real, 'svc_armor_breadth.widen_armor_rows')
     changes = []
     groups = armor_groups(db, real)
     for g in groups:
@@ -482,10 +510,70 @@ def cage_surfaces(lk):
     return out
 
 
+# ── R-220's tables, derived from R-220's own scope rule (never typed here) ───
+_ORB_SCOPE_CACHE = {}
+
+
+def orb_scope(db, lk):
+    r"""{norm(table): (real, tier)} for every loot table an UBER's mystical orb reaches.
+
+    THIS IS A DERIVATION, NOT A LIST, and that is the whole point of BL-R181-DEBT-7.
+    R-181 decided what it owned by asking what FOLDER a table lived in; R-220 then wrote
+    fifteen tables in other folders and their armour belonged to nobody. Asking R-220's
+    own `scope_tables` instead means the answer to "which orb tables exist" has exactly
+    ONE implementation, on the lane that owns the orbs - so a sixteenth orb table, or a
+    rewired drop chain, is inside the distribution gate the moment R-220 sees it.
+
+    Derived MOD-ONLY (no `base_rows`). R-220 derives over mod UNION base to catch a
+    base-only uber, but a base-only chain is by definition one the overlay does not
+    contain and therefore one nothing can widen OR audit - `svc_orb_breadth.OUT_OF_REACH`
+    is where that decision lives. Measured on the build80 arz: mod-only and union give the
+    same 18 tables, and the union's one extra proxy (the Dark Obelisk) is the pinned
+    out-of-reach chain. Running mod-only here keeps the distribution gate free of a
+    base-arz dependency it would otherwise acquire.
+
+    Cached per db by record count: the derivation costs a full 51k-record template scan
+    and `all_surfaces` is called by apply(), by the gate and by `--calibrate`.
+    """
+    try:
+        import svc_orb_breadth as SOB
+    except ImportError as exc:              # pragma: no cover - packaging
+        # Never a silent narrowing: if R-220's module is gone, the 15 orb tables drop
+        # out of the audit set, which is the exact hole this function closes.
+        print("  ARMOUR BREADTH: WARNING svc_orb_breadth is not importable (%r), so the "
+              "uber orb loot tables are NOT in the distribution surface set this run. "
+              "No silent pass: this line IS the downgrade." % (exc,))
+        return {}
+    key = (id(db), len(db.record_names()))
+    hit = _ORB_SCOPE_CACHE.get(key)
+    if hit is None:
+        hit = SOB.scope_tables(db, lk)
+        _ORB_SCOPE_CACHE[key] = hit
+    return hit
+
+
+def orb_surfaces(db, lk, claimed):
+    """Every R-220 orb table as a surface of its own, skipping ones already claimed.
+
+    An orb is opened alone - one uber dies, one orb drops - so unlike the cage there is
+    no multi-variant pool to aggregate: the table IS the surface. The 3
+    `svc_uberorb_apex_*` tables are already claimed by the mod-ownership sweep above and
+    are skipped here rather than audited twice.
+    """
+    out = []
+    for _key, (table, tier) in sorted(orb_scope(db, lk).items()):
+        real = lk.real(table)
+        if not real or SLB._n(real) in claimed:
+            continue
+        claimed.add(SLB._n(real))
+        out.append(("orb %s" % SLB._n(real).rsplit('\\', 1)[-1], [real], [1], tier))
+    return out
+
+
 def all_surfaces(db, lk):
     r"""Every surface the distribution gate covers: the two cage chests as multi-variant
     surfaces, then every remaining in-scope mod chest table as a surface of its own, then
-    the 3 DRX donors.
+    the 3 DRX donors, then every loot table an uber's mystical orb reaches.
 
     THE DONORS ARE AUDITED BECAUSE THEY ARE WRITTEN. `armor_loot_breadth.apply()` sweeps
     `targets + SLB.DRX_DONORS.values()`, so the blood-cave mega chest
@@ -511,7 +599,75 @@ def all_surfaces(db, lk):
             continue
         claimed.add(SLB._n(table))
         surfaces.append((SLB._n(table).rsplit('\\', 1)[-1], [table], [1], tier))
+    surfaces.extend(orb_surfaces(db, lk, claimed))
     return surfaces
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OWNERSHIP: no loot table a module writes may escape the distribution gate
+# ─────────────────────────────────────────────────────────────────────────────
+def ownership_problems(db, lk=None, surfaces=None):
+    r"""The structural half of BL-R181-DEBT-7. Returns a list of problem strings.
+
+    R-181 shipped a fail-loud distribution gate and it was GREEN while fifteen live
+    surfaces starved, because the gate audited the tables R-181 had decided it owned and
+    R-220 wrote fifteen others. No number could have caught that; only a rule about
+    WRITES can. So:
+
+        every loot table written in this build must be in the surface set.
+
+    TWO WITNESSES (`tools/svc_loot_ownership.py` explains why one is not enough):
+      * the LEDGER - the four shared loot builders register every table they touch, so
+        any caller is covered, including dry runs and the negative battery;
+      * the REGISTRY TOUCH LOG - `patches/__init__.run_registry` records every
+        `db._modified.add()` against the module that made it, which also catches a module
+        that writes loot fields RAW without going through a builder. Restricted to
+        FixedItemLoot records, because that is the template the distribution model reads;
+        a LootMasterTable (the masters this wave authors) is a component of a surface,
+        not a surface.
+
+    `svc_loot_breadth.EXEMPT` is the ONE escape hatch and it costs a written reason - the
+    same door a non-gear mod table already uses.
+    """
+    lk = lk or SLB.Lookup(db)
+    audited = {SLB._n(t) for (_l, ts, _w, _tr) in
+               (surfaces if surfaces is not None else all_surfaces(db, lk))
+               for t in ts}
+    exempt = {SLB._n(k) for k in SLB.EXEMPT}
+    problems = []
+
+    def _uncovered(table_l):
+        return table_l not in audited and table_l not in exempt
+
+    for table_l, writers in sorted(OWN.writes().items()):
+        if _uncovered(table_l):
+            problems.append(
+                "OWN1 %s is WRITTEN by %s but no distribution surface audits it. A loot "
+                "table nobody audits is how BL-R181-DEBT-7 shipped fifteen starving "
+                "surfaces through two green gates. Put it in a surface (derive it, never "
+                "type it) or, if it is not a gear container, add it to "
+                "svc_loot_breadth.EXEMPT with a reason."
+                % (table_l, ', '.join(writers)))
+
+    reg = OWN.registry_writes(db)
+    if reg is None:
+        print("  ARMOUR BREADTH: NOTE no registry touch log on this db "
+              "(db._registry_touch_log absent), so OWN2 - the witness that catches a "
+              "module writing loot rows RAW, without a shared builder - did not run this "
+              "pass. The ledger witness (OWN1) still did. No silent pass: this line IS "
+              "the downgrade.")
+    else:
+        for table_l, modules in sorted(reg.items()):
+            real = lk.real(table_l)
+            if not real or not SLB._n(lk.tpl(real)).endswith('fixeditemloot.tpl'):
+                continue
+            if _uncovered(table_l):
+                problems.append(
+                    "OWN2 %s is a FixedItemLoot container WRITTEN by registry module(s) "
+                    "%s, and no distribution surface audits it. Same rule as OWN1: cover "
+                    "it with a derived surface, or EXEMPT it with a reason."
+                    % (table_l, ', '.join(modules)))
+    return problems
 
 
 def apply_wave(db, lk=None, quiet=True):
@@ -537,6 +693,13 @@ def apply_wave(db, lk=None, quiet=True):
         from patches import orb_loot_breadth as OLB
     except ImportError:
         OLB = None
+    try:
+        # ... and BL-R181-DEBT-7's module runs after THAT, because the armour parity it
+        # writes on the orb tables includes the weapon row's own share balance, which can
+        # only be computed once R-220 has put the breadth master in the row.
+        from patches import orb_armor_rows as OAR
+    except ImportError:
+        OAR = None
     lk = lk or SLB.Lookup(db)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf) if quiet else contextlib.nullcontext():
@@ -558,7 +721,9 @@ def apply_wave(db, lk=None, quiet=True):
         CLB.apply(db, None)
         ALB.apply(db, None)
         if OLB is not None:
-            OLB.apply(db, None)          # registry order: orb_loot_breadth runs last
+            OLB.apply(db, None)          # registry order: orb_loot_breadth, then ...
+        if OAR is not None:
+            OAR.apply(db, None)          # ... orb_armor_rows, the last loot writer
     lk.refresh()
     return db, lk
 
