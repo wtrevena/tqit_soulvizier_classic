@@ -717,6 +717,8 @@ D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the refer
 That is the new derived anchor doing exactly what it was built to do (section 8.2 / R-230): the
 armour-parity floor is now `per-iteration strength x anchor volume`, and D7X2 re-proves the committed
 volume against the anchor surface's own bytes every run. On an untrimmed arz the anchor surface really
-does measure 12.48, so the constant really is stale for that artifact. **Every other coexisting gate
-still passes on the untrimmed arz** (chest breadth 51 tables, orb breadth 18, craft/thrown, artifacts -
-all 0 findings), so a lone D7X2 red on a pre-R-230 artifact is not a defect and should not be chased.
+does measure 12.48, so the constant really is stale for that artifact. **RE-MEASURED on `44499f56`:
+that D7X2 is the ONLY finding the R-181 gate emits there (exactly 1 FAIL line), and every other
+coexisting gate still PASSES on the untrimmed arz** - `gate_chest_loot_breadth`,
+`gate_orb_loot_breadth`, `gate_craft_thrown_breadth` and `gate_chest_artifacts`, 0 findings each. So a
+lone D7X2 red on a pre-R-230 artifact is not a defect and should not be chased.

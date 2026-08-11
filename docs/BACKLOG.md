@@ -55,8 +55,23 @@ rather than asserted.
 | D7X + **D7X2** (NEW) reference-surface | **PASS** |
 | `gate_chest_artifacts` (NEW) | **PASS** - 135 of 141 equippable artifacts unreachable, 6 pinned |
 | `negtest_loot_volume` (NEW) | **11 planted defects RED / 3 positive controls GREEN** (N10 = the truncation mask V7b exists for; N11 = a second `apply_wave`) |
-| map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03`; `B41_SPECS` still names `svc_polisvault_chest_01/03` |
+| `differentiation_problems` B3 (R-186) over BOTH cage families | **PASS - 0 findings**, 12 families / 36 tables - the twin's 3 themed variants are still distinct after the clone |
+| twin-vs-canonical `numSpawn` differs on all 18 | **PASS** - 0 identical, so the clone captured the SHIPPED volume and not the trimmed one |
+| map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03` (4 TESTHUB-only placements); `B41_SPECS` still names `svc_polisvault_chest_01/03` (2 canonical); the two families are DISJOINT |
 | registry integrity | order hash **`198242d6db75`**, `loot_volume_trim` last before the no-op `visuals` |
+
+**ROUND-2 VET: 7 findings, ALL FIXED, each reproduced independently on `44499f56` before being
+touched.** 2 HIGH (the wave was NOT idempotent while four places claimed it was - measured 58-table
+drift on a second apply, now an apply-once re-entry guard that fails loud; and Will's artifact ruling
+ships as PENDING-AWAITING-RATIFICATION rather than as if satisfied), 2 MEDIUM (D7's reach was
+misstated as "42-of-57 to 21-of-75" in three places - it is 24-of-63, 18 canonical; and the
+continuous spawn model overstated the guarantee, with the Epic truncated reading at 93.78% falling
+under the gate's own 95% floor - now V7b), 3 LOW (three richness-ORDER claims false in the unit their
+own tables print; the R-181 gate reds on any pre-R-230 arz and the Ship lane must not chase it;
+`clone_record`'s False return was ignored and the Legendary trim has one unspent constant of
+headroom). Negatives grew 9 -> 11. **No shipped artifact was ever at risk from the idempotency
+defect** - `patches.run_registry` asserts each module runs exactly once, which is why det-2x is
+byte-identical; what was broken was the workflow the docs advertised.
 
 **D7 HAD TO MOVE, AND IT IS THE ONE THING IN THE R-181 CONTRACT A VOLUME CUT COULD BREAK.** Every
 other distribution check is a ratio and divides volume out. D7 is an absolute per-open armour floor,
@@ -79,9 +94,10 @@ anchor volume against the anchor surface's own bytes every run, so this cannot s
 > control against the rollback artifact, the previous build, or any lane branched before this one - it
 > emits `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface
 > gaoler cage chest_01 [l], which MEASURES 12.4800 spawn iterations`, because on an untrimmed arz the
-> anchor surface really does measure 12.48. **Every other coexisting gate still passes on the untrimmed
-> arz** (chest breadth 51 tables, orb breadth 18, craft/thrown, artifacts - all 0 findings). Do not
-> chase it.
+> anchor surface really does measure 12.48. **RE-MEASURED on `44499f56`: that D7X2 is the ONLY finding
+> the R-181 gate emits there (exactly 1 FAIL line), and every other coexisting gate still PASSES on the
+> untrimmed arz** - `gate_chest_loot_breadth`, `gate_orb_loot_breadth`, `gate_craft_thrown_breadth` and
+> `gate_chest_artifacts`, 0 findings each. Do not chase it.
 
 **WHAT THE SHIP LANE OWES (not run here, by instruction).** Full DB build + det-2x, record-diff vs
 `44499f56`, `run_contracts`, `validate_tags`, DEV deploy, Steam. Expected record-diff: **ADDED 44**
