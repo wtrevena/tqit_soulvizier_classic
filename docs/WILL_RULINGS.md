@@ -5419,3 +5419,137 @@ Standing law: EVERY build ship ends with `git push origin main --tags`. The ship
 complete until the push succeeds. Applies to every lane from build84 onward (already baked
 into the in-flight b84/b86/b87 ship briefs); doc-only commits push at the next convenient
 point, ship commits push immediately.
+
+---
+
+## R-231 [2026-08-11] IMPLEMENTED (branch `feat/charon-rework`, module `tools/patches/charon_rework.py`) - the Golden Bough uber is replaced, not patched. **NAMES FLAGGED FOR WILL VETO.**
+
+### R-231-A - WILL'S ORDER, VERBATIM, AND THE ARTIFACT PROOF THAT HE IS RIGHT
+
+> "the charon uber boss we created needs to be re-worked, he is pretty much identical to the base
+> game charon boss we cloned him off. maybe we can replace him with a different uber monster that
+> is more unique"
+
+**Do not restate this as "the same guy, bigger" - that diagnosis is wrong and the fix would have
+been wrong with it.** `um_charon_ferryman_99` (Charon01.msh, sc 1.7) ALREADY rig-swapped to
+`um_charonform2_ferryman_99` (Charon02.msh, sc 1.2). The defect was the KIT, byte-for-byte,
+measured on the live build83 arz (51,253 records):
+
+| slot | ours F1 | `boss_charon_43` | ours F2 | `boss_charonform2_43` |
+|---|---|---|---|---|
+| skillName1 | charon_projectiletrigger | charon_projectiletrigger | charon_projectiletrigger | charon_projectiletrigger |
+| skillName4 | charon_selfbuff | charon_selfbuff | charon_selfbuff | charon_selfbuff |
+| skillName6 | charon_geyserform1 | charon_geyserform1 | charon_geyserform2 | charon_geyserform2 |
+| skillName7 | charon_summon | charon_summon | charon_swoopstomp | charon_swoopstomp |
+| skillName8 | - | - | charon_tidalwave | charon_tidalwave |
+| specialAttack 1..4 | identical | identical | identical | identical |
+
+The ONLY authored deltas were `characterLife`, four resist floats, `scale`, `actorHeight`, one
+aura and a `deathEffect`. `apply_svc_patches._create_goldenbough_boss` said it out loud in its own
+comment: *"Keep Charon02's own kit verbatim"*. **R-100 #3 filed this on 2026-07-29** ("needs its own
+kit, held to the amgoz1 bar") **and it was never built.** This ruling closes it.
+
+Two further defects the same encounter carried, both now fixed and both gated:
+
+* **BOTH forms shared ONE display tag** (`tagSVCMonsterCharonFerryman`), so the phase turn had no
+  name change on screen at all. They are now distinct strings and `verify()` fails if they collide.
+* The Champion escort `svc_charon_wraith_99` shipped `characterLife = [878.0, 300.0, 400.0]` -
+  **life FALLING from Normal to Epic.** That is R-100 #18 (*"super weak ... they appear just like
+  normal guys"*) as a measurable field. Nobody had filed it.
+
+### R-231-B - THE IDENTITY RULING. Charon leaves the Golden Bough forecourt.
+
+**ORMENOS, THE GILDED ROOT** (phase 1) to **ORMENOS, THE BOUGH IN BLOOM** (phase 2, terminal),
+escorted by two **HANDBRIARS**. **This wave owns the final boss + soul naming under Will's order.**
+
+* **PLANT.** Race census of all 53 Boss-class mod ubers: Undead 18, Demon 14, Beastman 8,
+  Insectoid 4, Magical 3, Animal 3, Beast 2, Device 1, **Plant ZERO**. Both forms are Plant.
+* **THE ONLY UBER IN THE MOD THAT BUILDS TERRAIN.** `Skill_DefensiveWall` has **zero** carriers
+  across the whole uber roster; phase 1 casts `quillwards` (cd 20, spawns `pets\quillvine_12` on a
+  10-to-30s TTL ladder) and grows cover between itself and you, while `drx_earthbind` (radius 22,
+  cd 20) stops you leaving.
+* **THE WOOD DOES NOT BLEED, THE FLOWER DOES.** Phase 1 keeps the donor's native
+  `ascacophus_bleeddamageimmunity` (`defensiveBleeding 100.0`), which tells the mod's marquee bleed
+  spears to sit down for half the fight; phase 2 does NOT carry it, so that build comes back for
+  the kill. *Honest framing: bleed immunity is NOT a roster first - `um_helepolis_99` already
+  carries the identical record. It is a first for a LIVING boss.*
+* **BEAT 2 IS A REAL PHASE BEAT WITH NO NEW SPAWN TECH.** `svc_bough_splitting`
+  (`Skill_PassiveOnLifeBuffSelf`, `lifeMonitorPercent 33.0`, 12s, cd 5) fires ITSELF at 33% life -
+  the `um_vashkarr_99` pattern - and this lane folds the thorn retaliation into that record, so the
+  thorns come out WITH the splitting instead of on a random cast roll.
+* **NAMES ARE THIS LANE'S INVENTION AND SHIP AS DEFAULTS FLAGGED FOR WILL VETO**, per the standing
+  creative-bar rule (the R-125 precedent). Six Will-decisions are listed in the lane report; every
+  one is implemented at its recommended value behind a named constant, so none of them blocks.
+
+**ARZ-ONLY. NO MAP REBUILD.** The Golden Bough forecourt placement, `q_goldenbough_lone`, its pool,
+`limit_goldenbough`, the one hoard chest, `svc_charon_chest` and the TESTHUB yard twins are all
+REUSED. All three guaranteed rewards survive on the terminal: the Golden Bough amulet at
+`lootMisc4` / 100%, the hoard, and a soul.
+
+### R-231-C - THE b86 COORDINATION NOTE: **ROW 7 STANDS. NO SUPERSEDE WAS NEEDED.**
+
+The brief for this lane anticipated that row 7 of `docs/SOUL_RENAME_PROPOSAL.md` would have to be
+superseded. **It does not, and the next agent must not re-litigate this.** The two records are
+different, quoted here so the question is closed:
+
+| | row 7's soul | OUR uber's soul |
+|---|---|---|
+| record | `records\item\equipmentring\soul\svc_uber\boss_charon_soul_{n,e,l}.dbr` | `records\item\equipmentring\soul\svc_uber\ferryman_soul_{n,e,l}.dbr` |
+| tag | `tagSoulSVC9005` (GENERATED by `create_uber_souls`) | `tagSVCSoulFerryman` (hand-designed; in `_HAND_DESIGNED_SOUL_TAGS`) |
+| dropper | the BASE-GAME `boss_charon_{39,41,43}` | our uber's terminal form |
+
+They never collided. Our uber vacating the ferryman display namespace entirely **strengthens** row
+7's primary (`DISPLAY_NAME_OVERRIDES['boss_charon']`) rather than conflicting with it. **b86 ships
+row 7 unchanged.**
+
+### R-231-D - RETIREMENT PROTOCOL: nothing is deleted, and here is why that is the SAFE choice
+
+No record is retired. The three monster records are **rewritten IN PLACE at their existing paths**,
+because TQ bakes ITEM paths into saves but not MONSTER paths, and because three separate gates key
+on those exact basenames - authoring new paths reds all three:
+
+1. `tools/verify_soul_drop_rates.py` pins `um_charonform2_ferryman_99` to `('PLACED', 33.0)`; a new
+   terminal at a new path leaves the old record un-PLACED and its klass flips.
+2. `tools/build_svc_database.py:SOUL_RATE_ZERO_PINS` pins the chain HEAD `um_charon_ferryman_99` at 0.
+3. `tools/patches/uber_quest_drops.LEAKS[0]` and `tools/patches/red_uber_orbs.EXEMPT` key on the pair.
+
+The record NAMES now lie about their contents. That is registered as `BL-BOUGH-DEBT-1` for a future
+breaking build, exactly as the frozen ITEM paths are.
+
+One sanctioned workaround IS retired: `_SUMMON_IDENTITY_ALLOW['ferryman']` is deleted, because the
+soul's summon is now the SAME species as its dropper (both `SVMesh/meshes/hellflower.msh`) and the
+F2 identity gate - which compares the summon SOURCE's mesh to the DROPPER's mesh - is green with no
+exemption. `'voranthys'` stays. If this wave is ever reverted, that gate reds loudly and names the
+record, which is the correct alarm.
+
+### THE FIVE SPEC CORRECTIONS THIS LANE MEASURED (the ratified spec was wrong on each)
+
+1. **Cast slots: the spec allocated FOUR new casts on phase 1 and only THREE are free.** The donor
+   occupies `specialAttackSkillName` (stumpstomp) and `specialAttack3` (hero_quillvines) - both its
+   own-family signature, which R-125 forbids displacing - and the engine caps at five. The thorn
+   coat moved onto the beat-2 self-trigger instead; nothing was displaced.
+2. **Skill slots:** the donor also occupies `skillName15` and `skillName17`, not just 1-6/10/11/12,
+   and it DOES carry `racial_plant` as a skill (the spec said it did not).
+3. **`boss_conversionimmunity` IS resolvable** and both shipped forms carry it; the spec told the
+   implementer to probe-and-skip. It ships.
+4. **THE TERMINAL KEEPS `bosschest02_charon`, AND THIS IS A HARD GATE, NOT TASTE.** The spec's lore
+   reading wanted the Charon-named orb gone (b53 did exactly that for Dagon). MEASURED:
+   `tools/svc_orb_breadth.py` sets `MIN_PROXIES = 6` / `MIN_TABLES = 18`, `orb_loot_breadth.apply`
+   RAISES below either floor, and that scope is derived as "every proxy an UBER names" - and this
+   terminal is the ONLY uber naming that proxy. Retargeting it drops the scope to 5/15, reds the
+   build, and orphans three tables that `orb_loot_breadth` + `orb_armor_rows` already widened. The
+   hellflower donor inherits no chest, so the module SETS it explicitly. `BL-BOUGH-DEBT-4`.
+5. **`offensiveTrapMin/Max`** (the spec's soul proc) is carried by **ZERO** of the DB's 2,095 soul
+   records and only 32 records DB-wide. The field that means the same thing and that souls actually
+   carry is `offensiveSlowPhysicalMin` + `...DurationMin`. That ships instead.
+
+### THE GATE THAT SHIPS WITH THE NEW SURFACE (process law #4)
+
+`charon_rework.verify()`, fail-loud, negative-tested (10 planted defects, every one RED, restoration
+proved GREEN after each): the proxy chain resolves to the new boss on BOTH the forecourt and the
+TESTHUB yard; all three guaranteed rewards stay wired; A9 (own-rig clones only, the donor's own
+skin, no invented `actorHeight` per R-126); the crash laws (no `charFxPak`, no dangling skill ref,
+permanent pets TTL-free); **a NEW strictly-ascending-`characterLife` invariant over EVERY `svc_*`
+Champion escort in the DB, not just ours** - that is the R-231-A escort defect made structurally
+impossible; and an identity gate that reds if any `charon_*` signature skill or any shared cast
+rotation ever comes back.

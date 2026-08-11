@@ -678,13 +678,15 @@ def verify(db, tags):
     def gv(rec, field):
         return _one(db, rec, field)
 
+    # ONE lowercase index for the whole gate. The naive per-call
+    # `any(... for n in db.record_names())` fallback is O(51k) on every miss and
+    # turns a gate into a minute of wall clock inside the build.
+    _names = {_n(n) for n in db.record_names()}
+
     def resolves(path):
         if not isinstance(path, str) or not path.strip():
             return False
-        if db.has_record(path):
-            return True
-        low = _n(path)
-        return any(_n(n) == low for n in db.record_names())
+        return db.has_record(path) or _n(path) in _names
 
     # ---- 1. THE PROXY CHAIN RESOLVES END TO END (the hard constraint) ------
     for proxy, pool, label in ((_PROXY, _POOL, 'canonical forecourt'),
@@ -797,16 +799,23 @@ def verify(db, tags):
         if got_m != _n(gv(donor, 'mesh')):
             problems.append("A9: %s no longer renders on the rig of its donor %s"
                             % (rec, donor))
-        tex = gv(rec, 'baseTexture')
-        if tex:
-            carriers = sum(1 for n in db.record_names()
-                           if _n(_one(db, n, 'baseTexture')) == _n(tex))
-            if carriers < 2:
-                problems.append(
-                    "A9: %s baseTexture %r has %d live carrier(s) - a skin with no "
-                    "OTHER live carrier on this mesh is the 343_dark_smoke / "
-                    "Vort-green trap. Ship the donor's own skin."
-                    % (rec, tex, carriers))
+        # SKIN: assert we ship the DONOR'S OWN texture. That is strictly stronger
+        # than "this .tex has >= 2 carriers somewhere in the DB" (which a skin
+        # borrowed from a DIFFERENT mesh would also pass - and cross-mesh UV is
+        # exactly the 343_dark_smoke / Vort-green trap), and it is O(1) instead of
+        # a 51k-record full decode inside a build gate.
+        tex, dtex = gv(rec, 'baseTexture'), gv(donor, 'baseTexture')
+        if _ORM_USE_SKIN_ALT and rec == _ORM:
+            if _n(tex) != _n(_ORM_SKIN_ALT):
+                problems.append("A9: %s skin=%r but _ORM_USE_SKIN_ALT is on"
+                                % (rec, tex))
+        elif _n(tex) != _n(dtex):
+            problems.append(
+                "A9: %s baseTexture=%r but its donor %s renders on %r. Ship the "
+                "donor's OWN skin: a texture proven on a DIFFERENT mesh is the "
+                "343_dark_smoke / Vort-green trap (R-125 player-surface law - a "
+                "colour may only be claimed from an in-game-CONFIRMED asset)."
+                % (rec, tex, donor, dtex))
         # R-126: actorHeight is a per-rig constant, inherited, never invented
         want_h = _RIG_ACTOR_HEIGHT[rec]
         got_h = gv(rec, 'actorHeight')

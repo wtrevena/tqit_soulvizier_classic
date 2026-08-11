@@ -8836,15 +8836,16 @@ _SUMMON_IDENTITY_ALLOW = {
                  "(a Sepulchral Wyrm) - the epithet-matched themed form, a "
                  "registered design choice, NOT a Meritamen-class body conflation "
                  "(meritamen spec verifier false-positive list, section E).",
-    'ferryman': "Charon 'the Unferried' (C2 Golden Bough) drops from his risen-"
-                "giant form-2 body (Charon02.msh) but the {^F}Soul of the Unferried "
-                "S2 summon is deliberately built from charon_minion_30 (CharonGhost "
-                "oarsman) - Charon's OWN signature is calling the drowned dead to "
-                "row his boat (charon_summon is in his kit), so the raised oarsman "
-                "is the themed minion by design, NOT a Meritamen-class dropper/body "
-                "conflation. Same sanctioned pattern as voranthys; the round-1 vet "
-                "named this exact allow-set entry as the way to ship the EXTREME "
-                "default S2 while keeping the F2 identity gate green.",
+    # 'ferryman': RETIRED by `tools/patches/charon_rework.py` (Will 2026-08-11).
+    # It existed because the {^F}Soul of the Unferried summoned a CharonGhost
+    # oarsman while its dropper wore Charon02.msh - a deliberate but exempt
+    # cross-body summon. The Golden Bough rework replaces that encounter with
+    # Ormenos, whose soul summons the SAME species as its dropper (both
+    # SVMesh/meshes/hellflower.msh), so the F2 identity gate - which compares the
+    # summon SOURCE's mesh to the DROPPER's mesh - is green with NO exemption.
+    # A sanctioned workaround retired rather than carried. If charon_rework is
+    # ever reverted, this gate reds LOUDLY and names the record, which is the
+    # correct behaviour: put the entry back with the old encounter.
 }
 
 
@@ -11846,6 +11847,15 @@ def _create_enslaver_warband(db):
 # (decided); J2 = breadth ON (all shipped custom Boss-class + the content-wave ubers,
 # terminal form only). The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0).
 # Charon EXCLUDED: um_charonform2_ferryman_99 already inherits BossChest02_Charon.
+# AMENDED 2026-08-11 (the Golden Bough rework): that record is now Ormenos, the
+# Bough in Bloom, cloned from the SV hellflower, which INHERITS NO chest at all -
+# so the "already inherits" premise is dead. The exclusion still stands and the
+# row still must not be added here, because `tools/patches/charon_rework.py` SETS
+# `treasureProxyName = bosschest02_charon` explicitly on the terminal: it is the
+# ONLY uber naming that proxy, and svc_orb_breadth's MIN_PROXIES=6 / MIN_TABLES=18
+# floors red the build if that consumer disappears. Retargeting it to _APEX_ORB
+# (the b53/Dagon treatment the lore wants, since a plant boss dropping "Charon's
+# Essence" is a naming lie) needs a coordinated floor re-measure: BL-BOUGH-DEBT-4.
 # Monster records are NOT clone-shape-gated (Goldenbough deathEffect precedent).
 _APEX_ORB = r'records\item\containers\new\genericbossorb_04.dbr'
 _MN_ORB_SHELL = r'records\xpack\creatures\monster\epiales\um_mnemophage_99.dbr'  # shell: stay orb-less
@@ -17606,7 +17616,12 @@ _GB_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_goldenbough.dbr'
 _GB_YARD_PROXY = r'records\drxmap\proxy\q_yard_goldenbough.dbr'
 _GB_AMULET_DONOR = r'records\xpack\item\equipmentarmor\amulet\u_l_001.dbr'
 _GB_AMULET = {t: r'records\item\equipmentamulet\svc_goldenbough_%s.dbr' % t for t in ('n', 'e', 'l')}
-_GB_AMULET_LOOT = r'records\item\loottables\svc\goldenbough_guaranteed.dbr'
+# _GB_AMULET_LOOT DELETED 2026-08-11: it named
+# `records\item\loottables\svc\goldenbough_guaranteed.dbr`, which DOES NOT EXIST
+# in the arz and never did. `_svc_guarantee_unique` IGNORES its `loot_name`
+# argument entirely - it writes lootMisc{n}Item1 + chanceToEquipMisc{n}=100
+# straight onto the monster - so the constant was a dead reference that read like
+# a live loot table. Found by the Golden Bough rework lane; zero behaviour change.
 _GB_MESH = r'XPack\Creatures\Monster\Charon\Charon01.msh'
 _GB_MESH2 = r'XPack\Creatures\Monster\Charon\Charon02.msh'
 _GB_BAND = [48, 72, 100]
@@ -17616,7 +17631,27 @@ _AC_ONHIT = r'records\xpack\ai controllers\autocast_items\basetemplates\base_ats
 
 
 def _create_goldenbough_boss(db, tags):
-    """C2: Charon, the Unferried - the risen ferryman-toll atop the Golden Bough
+    """SUPERSEDED DOWNSTREAM, DELIBERATELY STILL RUN (Will 2026-08-11).
+
+    Will: *"the charon uber boss we created needs to be re-worked, he is pretty
+    much identical to the base game charon boss we cloned him off. maybe we can
+    replace him with a different uber monster that is more unique"* - and the arz
+    agreed: both forms carried `boss_charon_43` / `boss_charonform2_43`'s kit
+    byte-for-byte. `tools/patches/charon_rework.py` (REGISTRY, right after
+    `uber_quest_drops`) REWRITES all three monster records this function authors,
+    IN PLACE at the same frozen paths, into ORMENOS, THE GILDED ROOT.
+
+    This function is NOT gutted, and that is on purpose: `uber_quest_drops` runs
+    BEFORE the rework and REQUIRES the Charon-derived form 2 to still carry the
+    inherited `perPartyMemberDropItemName` it exists to clear (it SystemExits if
+    the field is already absent). It also still authors everything the rework
+    REUSES rather than re-derives: the amulet tiers, the hoard chain, the world
+    chest proxy, the limit record and the pool/proxy skeleton. Read this for the
+    chain; read charon_rework.py for what actually fights you.
+
+    ORIGINAL DOCSTRING FOLLOWS.
+
+    C2: Charon, the Unferried - the risen ferryman-toll atop the Golden Bough
     shrine (EXTREME: genuine two-phase Charon, deathchill cold shroud, S1 cold/
     vitality stat soul 'Soul of the Unferried', THE GOLDEN BOUGH amulet, reused
     Boss-locked hoard). Form-2 FX per the vet byte-truth: the donor carries no
@@ -17715,7 +17750,7 @@ def _create_goldenbough_boss(db, tags):
                          'tagSVCitmGoldenBough', 'tagSVCitmGoldenBoughDESC', il,
                          _gb_amulet_block(mult))
     _svc_guarantee_unique(db, _GB_FORM2, [_GB_AMULET['n'], _GB_AMULET['e'], _GB_AMULET['l']],
-                          _GB_AMULET_LOOT)
+                          None)
 
     # ── S2 THE ONE SUMMON (EXTREME-promoted default): {^F}Soul of the Unferried
     #    raises a permanent drowned oarsman - Charon's own signature (calling the

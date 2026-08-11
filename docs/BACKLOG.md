@@ -1,5 +1,126 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, ORMENOS THE GILDED ROOT is in (2026-08-11, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
+
+**Will, verbatim (2026-08-11):** *"the charon uber boss we created needs to be re-worked, he is
+pretty much identical to the base game charon boss we cloned him off. maybe we can replace him with
+a different uber monster that is more unique"*
+
+He is right and the arz proved it: both our forms carried `boss_charon_43` / `boss_charonform2_43`'s
+kit BYTE-FOR-BYTE. Full artifact proof, the identity ruling, the b86 row-7 coordination note, the
+retirement-protocol record and the five measured spec corrections are in **`docs/WILL_RULINGS.md`
+R-231-A..D**. This entry is the DEBT REGISTER half.
+
+**WHAT SHIPPED (arz-only; the forecourt placement and proxy chain are REUSED, no map rebuild):**
+
+| | record (PATH FROZEN) | donor | what it is now |
+|---|---|---|---|
+| phase 1 | `um_charon_ferryman_99.dbr` | `xhero_strongbark_44` | **Ormenos, the Gilded Root** - Plant, Ascacophus02 @2.8, bleed-immune, root-snare + the mod's ONLY `Skill_DefensiveWall` + quill fan, splits at 33% |
+| phase 2 | `um_charonform2_ferryman_99.dbr` | `us_hellflower_37` | **Ormenos, the Bough in Bloom** - Plant, amgoz1's own SV hellflower @2.0, fire burst + petal ring, NOT bleed-immune |
+| escort x2 | `svc_charon_wraith_99.dbr` | `am_quillvine_35` | **Handbriar** - Plant, QuilVine01 @1.55, life `[4200, 5800, 7600]` (ASCENDING; the shipped one was `[878, 300, 400]`) |
+| new skill | `svc_bough_splitting.dbr` | `lowhealth_berserkerrage01` | the self-firing 33%-life phase beat, with the thorn retaliation folded in |
+
+**STATIC PROOF RUN THIS LANE (no DB build - the Ship phase owns that):**
+`py tools/patches/_check_registry.py` -> OK, 60 modules, order
+`96d61e6f2b0ce3072fa00ad7c480591af216ff3f1bdabe99458d6fe27df92454`; and a harness that runs
+`charon_rework.apply()` + `verify()` over the LIVE build83 arz (`work/SoulvizierClassic/Database/
+SoulvizierClassic.arz`, 51,253 records) -> **apply GREEN, verify GREEN, 15 records written**, then
+**10 planted negatives, every one RED, with restoration proved GREEN after each**: pool repointed to
+the old boss / Golden Bough chance 50 / escort life made descending / `charFxPakSelfNames` on the
+boss / invented `actorHeight` / terminal orb retargeted / a `charon_*` signature skill returning /
+the `'ferryman'` exemption returning / the chain HEAD starting to pay the soul / both forms sharing
+one display string.
+
+### PLAYER-SURFACE CHECKLIST (process law #3 - enumerated, none silently deferred)
+
+| surface | state |
+|---|---|
+| phase-1 boss name | `tagSVCMonsterCharonFerryman` -> `{^r}Ormenos, the Gilded Root` (key kept, string rewritten) |
+| phase-2 boss name | `tagSVCMonsterOrmenosBloom` -> `{^r}Ormenos, the Bough in Bloom` (**MINTED** - the two forms shared ONE tag before, so the phase turn had no name change) |
+| escort name | `tagSVCMonsterCharonWraith` -> `{^G}Handbriar` |
+| soul name + DESC | `tagSVCSoulFerryman` -> `{^F}Soul of the Gilded Root` (+ DESC). Already in `_HAND_DESIGNED_SOUL_TAGS`, so the F6 naming standard cannot flatten it |
+| summon skill name + DESC | `tagSVCSummonCharonOarsman` -> `Graft the Gilded Bloom` (+ DESC) |
+| pet name | `tagSVCPetOarsman` -> `Gilded Bloom` |
+| hoard chest name | `tagSVCCharonHoard` -> `The Orchard of Hands` |
+| amulet name / DESC | name UNCHANGED (`The Golden Bough`); DESC rewritten - the shipped one read *"Torn from Charon at his own deserted dock"* |
+| in-game colour prefixes | `{^r}` both boss forms, `{^G}` champion, `{^F}` soul - all present, gated |
+| proxy preview mesh + scale | `Ascacophus02.msh` @ 2.8 on BOTH the canonical forecourt proxy and the TESTHUB yard proxy (was Charon01 @ 1.7) |
+| race in tooltip | **Plant** on all three (inherited from the donors; the roster had zero Plant ubers) |
+| soul icon | unchanged `SVItems\jewelry\soul_{n,e,l}_icon.tex` via `_create_soul` boilerplate |
+| pet-bar portrait | `_build_boss_summon(..., player_facing=True)` default - on-identity, never the Lyia nymph (the b40 deferred-portraits lesson) |
+| R-100 #7 exclamation marker | `DisplayAsQuestItem` re-asserted 1 / 1 / 0 after the re-clone (`uber_quest_markers` writes it earlier in REGISTRY and its `verify()` re-derives on the final db) |
+| sounds | donor-native throughout; no sound record is authored or repointed |
+| **NOT proven in-game** | scale / density / colour-in-renderer - `BL-BOUGH-DEBT-2` and `BL-BOUGH-DEBT-3` below |
+
+### DEBT REGISTER (open, this lane)
+
+* **`BL-BOUGH-DEBT-1` (P3, OPEN) - the frozen record names now lie.**
+  `um_charon_ferryman_99`, `um_charonform2_ferryman_99`, `svc_charon_wraith_99`, `ferryman_soul_*`,
+  `summon_charon_oarsman`, `charon_oarsman_*`, `svc_charonhoard_*` and `svc_charon_chest` all still
+  say "charon" and none of them is Charon any more. They are frozen for two independent reasons -
+  TQ bakes ITEM paths into saves at pickup, and `build_section_surgery.INJECT_SPECS` places the
+  forecourt proxy and the world chest BY NAME - plus three gates key on the monster basenames
+  (`verify_soul_drop_rates` EXPECT, `build_svc_database.SOUL_RATE_ZERO_PINS`,
+  `uber_quest_drops.LEAKS` / `red_uber_orbs.EXEMPT`). Rename in a future BREAKING build, all at
+  once, with a map rebuild and a save-compat note.
+
+* **`BL-BOUGH-DEBT-2` (P2, OPEN) - NOT PROVEN IN-GAME.** Everything here is proven at the artifact,
+  not in the renderer. Three things need Will's eyes:
+  1. **Scale 2.8 on Ascacophus02 is 1.55x the rig's max live scale** (measured range 1.15..1.80,
+     max = `kaets.dbr`). Large scales DO work in this mod (`um_polisgaoler_99` ships Gigantes02 at
+     3.5, `um_vashkarr_99` at 3.0), so the risk is footprint / collision / landing clearance, not
+     the renderer. **REQUIRED BEFORE THE CANONICAL PLACEMENT IS BLESSED:** a TESTHUB yard sweep at
+     2.8 / 3.1 / 3.4 on `q_yard_goldenbough` (never uploaded) plus a **b44 landing/clearance gate
+     re-run on `q_goldenbough_lone`** - the footprint grows from one 1.7 body to a 2.8 plus two
+     1.55, which is a NEW SURFACE. Record the reading either way; 3.4 is available if clean.
+  2. **`quillwards` has never been fielded by a Boss-class monster in this mod.** Worst-case
+     simultaneous density: 1 boss + 2 Handbriars + up to 6 `hero_quillvines` adds + the wall pets.
+     That sits under the Enslaver's shipped 9, but it must be COUNTED in game (the b76 chumbi-freeze
+     precedent), not assumed.
+  3. **Both forms are Plant**, so a player who brings a fire build finds beat 3 easier than
+     intended. Flagged for Will's play test; deliberately NOT pre-nerfed.
+
+* **`BL-BOUGH-DEBT-3` (P3, OPEN) - the dead-trunk skin is unconfirmed and ships OFF.**
+  `_ORM_USE_SKIN_ALT = False`; the module ships the donor's own `Ascacophus01B.tex` (3 live carriers
+  on this exact mesh, zero risk). `DRXtextures\creatures\ascacophus\ascacophus_deadtrunk.tex` has
+  ONE live `baseTexture` carrier, and `ascacophus_evil.tex` has 3 but on **Ascacophus01.msh, not
+  02** - cross-mesh UV is the 343_dark_smoke / Vort-green trap. TESTHUB-verify before claiming any
+  colour (R-125 player-surface law).
+
+* **`BL-BOUGH-DEBT-4` (P2, OPEN) - the encounter still drops an orb called "Charon's Essence".**
+  The terminal keeps `treasureProxyName = bosschest02_charon` (`xtagChest18`), which now reads as
+  another boss's named essence on a plant - exactly the defect b53 fixed for Dagon. **It cannot be
+  retargeted in isolation:** `tools/svc_orb_breadth.py` enforces `MIN_PROXIES = 6` /
+  `MIN_TABLES = 18`, `orb_loot_breadth.apply` RAISES below either floor, the scope is DERIVED as
+  "every proxy an UBER names", and this terminal is the ONLY uber naming that proxy - so dropping
+  it takes the scope to 5 proxies / 15 tables, reds the build, and orphans three tables
+  `orb_loot_breadth` + `orb_armor_rows` already widened (the BL-R181-DEBT-7 ownership gate). Fix
+  needs its own wave: retarget to `_APEX_ORB` **and** re-measure both floors **and** re-audit the
+  three `boss_charon_*01b` tables' ownership together.
+
+* **`BL-BOUGH-DEBT-5` (P3, OPEN) - the monolith still authors the Charon encounter first.**
+  `apply_svc_patches._create_goldenbough_boss` runs, builds Charon, and `charon_rework` then
+  overwrites all three monster records. That is DELIBERATE this wave (`uber_quest_drops` runs before
+  the rework and REQUIRES the Charon-derived form 2 to still carry the inherited
+  `perPartyMemberDropItemName` it exists to clear; the monolith also still authors the amulet tiers,
+  hoard chain, world chest, limit and pool/proxy skeleton that the rework REUSES). It is wasted work
+  and a trap for the next reader. Collapse it only together with `BL-BOUGH-DEBT-1`.
+
+### SIX WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
+
+1. **Names** - Ormenos, the Gilded Root / Ormenos, the Bough in Bloom / Handbriar / Soul of the
+   Gilded Root. *This lane's invention; ships as the default, flagged for veto (R-125 precedent).*
+2. **Scale** - `_ORM_SCALE = 2.8`, `_BLOOM_SCALE = 2.0`. Sweep 3.1 and 3.4 (BL-BOUGH-DEBT-2).
+   Note the bloom is deliberately SMALLER than the trunk: "it doubles in size" is the base Charon's
+   own beat, and a huge slow tree bursting into something compact, fast and burning reads better.
+3. **Skin** - donor's own `Ascacophus01B` (safe). Alt behind `_ORM_SKIN_ALT` / `_ORM_USE_SKIN_ALT`.
+4. **Soul grant** - the root proc (`offensiveSlowPhysical*`) plus the amgoz1-tradition downside
+   (negative `characterRunSpeed`, -8/-6/-5%). *Recommend keep.*
+5. **"The Orchard of Hands"** as the hoard chest name (was "Ferryman's Toll-Hoard"). *Recommend yes.*
+6. **Bleed immunity on phase 1** - it hard-counters the mod's own marquee bleed spears for half the
+   fight. *Recommend keep: it is the fight's whole shape, and beat 3 gives the build back. One skill
+   slot removes it if Will hates it in play.*
+
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
