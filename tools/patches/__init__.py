@@ -825,6 +825,65 @@ REGISTRY = [
                             # stay green. Registered second-to-last so verify() reads the final
                             # assembled db after every other orb writer.
                             # Negative test: py tools/patches/red_uber_orbs.py --negtest <arz>
+    'orb_loot_breadth',     # R-220 (Will 2026-08-10): "for the mystical orbs that the uber
+                            # monsters drop, the items should drop with increased breadth as
+                            # well so all classes of items could be dropped". The "as well"
+                            # points at R-180, which fixed the CHESTS that same morning; this
+                            # is the same contract on the other half of the loot economy.
+                            # MEASURED on the build76 ship arz: the orb tables carry the
+                            # IDENTICAL collapsed weapon row (1h_all_*01 = axe/club/sword, bow
+                            # and staff named DIRECTLY, SPEAR forgotten) so 0 spears of any
+                            # quality were reachable from 15 of the 18 uber orb tables, at
+                            # every tier and every difficulty. The 3 that were already fine
+                            # are orb05's svc_uberorb_apex_* - and ONLY because they live in
+                            # an \svc\ folder, so chest_loot_breadth's mod-ownership sweep
+                            # reached them. This module finishes that sweep on the tables the
+                            # ownership rule could not see, from the SAME implementation
+                            # (tools/svc_loot_breadth.widen_weapon_row via
+                            # tools/svc_orb_breadth.py) - not a second opinion.
+                            # SCOPE IS DERIVED, NEVER TYPED (the R-200 lesson, and derived
+                            # over mod UNION base for R-200's HOLE 2 reason): every proxy an
+                            # UBER names (um_* basename or a tagSVCMonster* display tag), and
+                            # every loot table its accessory1/Epic1/Legendary1 slots resolve
+                            # to. MEASURED: 51 uber carriers -> 7 proxies (6 IN REACH) -> 18 tables =
+                            # genericbossorb_01..05 (the mystical-orb ladder, tagEndChest02)
+                            # plus bosschest02_charon, whose terminal Ferryman IS a red uber
+                            # and whose 3 tables carry the identical collapse. The 6 proxies
+                            # consumed only by BASE act/quest bosses (Aktaios, Typhon, Black
+                            # Widow, coldworm, the wanddrop test proxy) stay OUT - the same
+                            # boundary R-200 drew - and are registered as BL-R220-DEBT-1.
+                            # Leinth needs nothing: uber_apex_orb repointed her chests onto
+                            # the svc_uberorb_apex_* tables, so R-180 already widened them.
+                            # WRITES per table: the tier-correct master into the ONE free
+                            # loot1 member slot (w800) + loot1Chance 13/14 -> 40 + loot6Chance
+                            # 13/14 -> 30, which are the values orb05 has SHIPPED since
+                            # build75 - so the ladder becomes self-consistent instead of a new
+                            # number being invented. Everything else is proven byte-unchanged
+                            # by apply()'s S4 scope proof over the tables AND every proxy /
+                            # accessory pool / chest record in every chain: numSpawn equations
+                            # (the apex keeps its *2.2/*2.4 edge), the relic/potion/armour
+                            # rows, mesh, gold generator, level equation, tagEndChest02. No
+                            # member removed, no chance lowered; chances may only RISE.
+                            # There is deliberately NO guaranteed-weapon retarget: an orb's
+                            # loot3 is potions + rare misc at 10%, not the chests' 100% weapon
+                            # slot, and R-180's retargeter only rewrites a loot3 member
+                            # matching unique_1h_[nel]0N, which no orb table names.
+                            # ORDER IS LOAD-BEARING: after chest_loot_breadth (which authors
+                            # the shared masters from the same idempotent builder, and whose
+                            # sweep already widened orb05 - so those 3 tables are a NO-OP
+                            # here, which is why no S4b collision is expected between the two)
+                            # and after red_uber_orbs (which ADDS uber consumers, and the
+                            # scope is derived from uber carriers). MEASURED before -> after,
+                            # target-classification pool / reachable spears:
+                            #   orb01 n 117->195 e  72->99  l 194->260   spear 0 -> 18/9/22
+                            #   orb02 n 101->182 e  75->102 l 138->241   spear 0 -> 18/9/22
+                            #   orb03 n  96->180 e  71->96  l 196->262   spear 0 -> 18/9/22
+                            #   orb04 n  99->181 e  95->116 l 258->308   spear 0 -> 18/9/22
+                            #   orb05 n 181 e 116 l 308 (unchanged, already fixed by R-180)
+                            #   charon n 99->181 e 95->116 l 258->308    spear 0 -> 18/9/22
+                            # Its verify() is the fail-loud gate (standalone twin:
+                            # py tools/gate_orb_loot_breadth.py <arz>; negatives:
+                            # py tools/debug/negtest_orb_breadth.py <arz>).
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
