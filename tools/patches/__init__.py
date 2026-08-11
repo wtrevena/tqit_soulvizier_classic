@@ -641,8 +641,8 @@ REGISTRY = [
                             # boss_charonform2_43's kit BYTE-FOR-BYTE (same skillNames, same
                             # specialAttack rotation); the only authored deltas were life,
                             # four resist floats, scale, actorHeight and one aura. Replaces the
-                            # encounter IN PLACE at the three frozen record paths with ORMENOS,
-                            # THE GILDED ROOT -> THE BOUGH IN BLOOM + 2 Handbriar champions:
+                            # encounter IN PLACE at the three frozen record paths with AKREMON,
+                            # THE GRASPING ROOT -> THE HEARTWOOD ABLAZE + 2 Handbriar champions:
                             # Plant (race count in the 53-boss uber roster: ZERO), the mod's
                             # ONLY Skill_DefensiveWall carrier, bleed-immune phase 1 that stops
                             # being bleed-immune in phase 2. ARZ-ONLY - the Golden Bough

@@ -8840,8 +8840,8 @@ _SUMMON_IDENTITY_ALLOW = {
     # It existed because the {^F}Soul of the Unferried summoned a CharonGhost
     # oarsman while its dropper wore Charon02.msh - a deliberate but exempt
     # cross-body summon. The Golden Bough rework replaces that encounter with
-    # Ormenos, whose soul summons the SAME species as its dropper (both
-    # SVMesh/meshes/hellflower.msh), so the F2 identity gate - which compares the
+    # Akremon, whose soul summons the SAME species as its dropper (both
+    # DRX\meshes\emberoakmesh.msh), so the F2 identity gate - which compares the
     # summon SOURCE's mesh to the DROPPER's mesh - is green with NO exemption.
     # A sanctioned workaround retired rather than carried. If charon_rework is
     # ever reverted, this gate reds LOUDLY and names the record, which is the
@@ -11243,11 +11243,26 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
             _run_fields = {k.split('###')[0] for k, tf in _tblf.items()
                            if k.split('###')[0].endswith('RunAnim')
                            and tf.values and str(tf.values[0]).strip()}
-            if _run_fields and f'{_row}RunAnim' not in _run_fields:
+            # 2026-08-11 (Golden Bough rework lane): the guard used to read
+            # `if _run_fields and ...`, which INVERTED it on the single worst
+            # case. An anim table with ZERO locomotion clips yields an EMPTY
+            # `_run_fields`, so the condition short-circuited to False and the
+            # assert PASSED - it only ever fired on a table that had SOME rows
+            # with locomotion but not the pet's row. `anm_quilvine.dbr` has no
+            # *RunAnim field at all, so a summon built from the SV hellflower or
+            # any quilvine sailed straight through and produced permanently
+            # immobile permanent pets with no warning. That is precisely the D19
+            # Huo-ren class this assert exists to make unbuildable. Dropping the
+            # leading truthiness test makes a locomotion-less table fail LOUD,
+            # which is the whole point of a fail-loud gate.
+            if f'{_row}RunAnim' not in _run_fields:
+                _loco = (sorted(_run_fields) if _run_fields else
+                         'NONE - this table binds no locomotion clip at all, '
+                         'so EVERY row on it is immobile')
                 raise SystemExit(
                     f"D19 pet-mobility: {path} primary anim row '{_row}' has "
                     f"no TABLE RunAnim in {anim[0]} (table rows with "
-                    f"locomotion: {sorted(_run_fields)}) -> pet would be "
+                    f"locomotion: {_loco}) -> pet would be "
                     f"IMMOBILE. Equip the source monster's weapon "
                     f"(table-covered row) or use a table that covers "
                     f"'{_row}'.")
@@ -11263,6 +11278,31 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         db._modified.add(path)
     # build36 A1: register this family (source + pets) for the three fail-loud pet
     # gates (parity / gear / skill-kit), run once after all pets are built.
+    #
+    # 2026-08-11 (Golden Bough rework lane): this was a blind `.append`, and the
+    # list is cleared exactly once per run (apply_all_extended_patches). The pet
+    # RECORDS are rebuilt in place, so when two callers build the SAME pet paths
+    # from DIFFERENT sources - the monolith's `_create_goldenbough_boss` and then
+    # the registry module that reworks that encounter - the first pair became a
+    # LIE the moment the second ran, and `run_registry_gates` still judged it:
+    # PET-STAT-MIRROR compared the newly-built pets against the SUPERSEDED
+    # source and red-lined the whole build, and the F2 soul-summon-identity gate
+    # red-lined next for the same reason. Registration now REPLACES by pet-path
+    # set, which is the only semantically correct answer: the pets on disk can
+    # only have been built from one source, and it is the last one to write them.
+    # Pure improvement - with no duplicate pet set the behaviour is identical.
+    _pp = {str(p).replace('/', '\\').strip().lower() for p in pet_paths}
+    _stale = [(s, p) for s, p in _SUMMON_PET_BUILDS
+              if {str(q).replace('/', '\\').strip().lower() for q in p} == _pp]
+    if _stale:
+        _SUMMON_PET_BUILDS[:] = [(s, p) for s, p in _SUMMON_PET_BUILDS
+                                 if {str(q).replace('/', '\\').strip().lower()
+                                     for q in p} != _pp]
+        print(f"    summon-pet registry: SUPERSEDED {len(_stale)} earlier "
+              f"registration(s) of {sorted(_pp)[0].rsplit(chr(92), 1)[-1]} et al. "
+              f"(was built from {_stale[-1][0].rsplit(chr(92), 1)[-1]}, now from "
+              f"{source_path.rsplit(chr(92), 1)[-1]}) - the pet gates judge the "
+              f"source that actually wrote the pets.")
     _SUMMON_PET_BUILDS.append((source_path, list(pet_paths)))
     ss = _find_record(db, lyia_summon)
     if ss:
@@ -11847,8 +11887,8 @@ def _create_enslaver_warband(db):
 # (decided); J2 = breadth ON (all shipped custom Boss-class + the content-wave ubers,
 # terminal form only). The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0).
 # Charon EXCLUDED: um_charonform2_ferryman_99 already inherits BossChest02_Charon.
-# AMENDED 2026-08-11 (the Golden Bough rework): that record is now Ormenos, the
-# Bough in Bloom, cloned from the SV hellflower, which INHERITS NO chest at all -
+# AMENDED 2026-08-11 (the Golden Bough rework): that record is now Akremon, the
+# Heartwood Ablaze, cloned from the DRX ember oak, which INHERITS NO chest at all -
 # so the "already inherits" premise is dead. The exclusion still stands and the
 # row still must not be added here, because `tools/patches/charon_rework.py` SETS
 # `treasureProxyName = bosschest02_charon` explicitly on the terminal: it is the
@@ -17639,7 +17679,7 @@ def _create_goldenbough_boss(db, tags):
     agreed: both forms carried `boss_charon_43` / `boss_charonform2_43`'s kit
     byte-for-byte. `tools/patches/charon_rework.py` (REGISTRY, right after
     `uber_quest_drops`) REWRITES all three monster records this function authors,
-    IN PLACE at the same frozen paths, into ORMENOS, THE GILDED ROOT.
+    IN PLACE at the same frozen paths, into AKREMON, THE GRASPING ROOT.
 
     This function is NOT gutted, and that is on purpose: `uber_quest_drops` runs
     BEFORE the rework and REQUIRES the Charon-derived form 2 to still carry the

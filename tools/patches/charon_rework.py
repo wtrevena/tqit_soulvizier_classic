@@ -24,27 +24,32 @@ were `characterLife`, four resist floats, `scale`, `actorHeight`, one aura and a
 *"Keep Charon02's own kit verbatim"*. There was nothing to salvage.
 
 ================================================================================
-WHAT SHIPS: ORMENOS, THE GILDED ROOT
+WHAT SHIPS: AKREMON, THE GRASPING ROOT
 ================================================================================
-Every hand that ever reached for the Golden Bough is still at the shrine, grown
-through and held fast, because the black tree those wrists are grown into is what
-the forecourt actually keeps. Ormenos does not ferry, does not bargain and does
-not bleed. It takes the toll in arms. And when the trunk finally splits, the
-gold-burning bloom that grows the boughs steps out of it to take yours.
+`akremon` (ἀκρέμων) is the Greek word for a BOUGH. The thing the forecourt keeps
+is the Golden Bough, and the thing that grows it is now the boss - which is a
+tighter lore fit than the ferryman who merely stood next to it ever was.
+
+Every hand that ever reached for the Bough is still at the shrine, grown through
+and held fast, because the black tree those wrists are grown into is what the
+forecourt actually keeps. Akremon does not ferry, does not bargain and does not
+bleed. It takes the toll in arms. And when the trunk finally splits, the burning
+heartwood that grows the boughs walks out of it to take yours.
 
 Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
 
-  BEAT 1 - THE ROOTED WARDEN (phase 1, `Ascacophus02.msh`, PLANT)
+  BEAT 1 - THE GRASPING ROOT (phase 1, `Ascacophus02.msh`, PLANT, rs 1.35)
     * THE WOOD DOES NOT BLEED - the donor's native `ascacophus_bleeddamageimmunity`
       (Skill_Passive, `defensiveBleeding 100.0`) stays. The mod's marquee weapons
       are bleed spears; half this fight tells that build to sit down.
       HONEST: NOT a roster first - `um_helepolis_99` already carries the identical
       record. It is a first for a LIVING boss, and it is what makes beat 3 land.
     * ROOT-SNARE - `drx_earthbind` (Skill_AttackRadius, radius 22.0, cd 20).
-      You do not kite this fight.
     * THE THICKET - `quillwards` (Skill_DefensiveWall, cd 20, spawns
       `pets\quillvine_12` on a 10->30s TTL ladder). **ZERO other uber in the mod
-      fields a Skill_DefensiveWall.** It grows cover between you and it.
+      fields a Skill_DefensiveWall.** It grows cover between you and it. The
+      immobile quilvine rig still appears in this fight - as the WALL, the one
+      role where being rooted to the spot is the entire point (see CORRECTION 9).
     * QUILL VOLLEY - `razorquill_megaburst` (Skill_AttackProjectileFan): the
       reach that makes the snare a threat instead of a nap.
     * RETINUE FROM ITS OWN FAMILY (the R-125 bar, satisfied literally): the
@@ -53,23 +58,29 @@ Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
   BEAT 2 - THE SPLITTING (`svc_bough_splitting`)
     A clone of `lowhealth_berserkerrage01` (Skill_PassiveOnLifeBuffSelf,
     `lifeMonitorPercent 33.0`, `skillActiveDuration 12.0`, cd 5.0) - it fires
-    ITSELF at 33% life with zero AI wiring, the pattern `um_vashkarr_99` already
-    ships. At the trigger the bark splits and the THORNS COME OUT: this lane
-    moves the thorn coat onto the trigger record as `retaliationPierce`, so it is
-    a phase-gated beat rather than a random cast (see CORRECTION 1).
+    ITSELF at 33% life with zero AI wiring. At the trigger the bark splits and
+    the THORNS COME OUT: this lane moves the thorn coat onto the trigger record
+    as `retaliationPierce`, so it is a phase-gated beat rather than a random cast
+    (see CORRECTION 1). Precedent for the MECHANIC, corrected: see CORRECTION 7.
 
-  BEAT 3 - THE BOUGH IN BLOOM (phase 2, terminal, SV `hellflower.msh`, PLANT)
-    The trunk bursts and amgoz1's OWN SV hellflower walks out of it. Slow
-    physical/pierce zoning inverts into fast fire burst; SV's kit rides verbatim
-    (`quilvine_barb`, `sv\hellflower\firedart`, `volcanicorb`, `flamesurge`) plus
+  BEAT 3 - THE HEARTWOOD ABLAZE (phase 2, terminal, `emberoakmesh.msh`, PLANT,
+    rs 1.45)
+    The trunk bursts and the burning heartwood walks out of it, faster than the
+    shell it came from. Slow physical/pierce zoning inverts into a fire kit that
+    rides its donor's own records verbatim: `ringofflame` (a TOGGLED burning ring
+    it simply wears - the fire reads on screen with zero FX authoring),
+    `ringofflame_softenmetal`, `volcanicorb` + `volcanicorb_immolation` +
+    `volcanicorb_fragmentation`, `drxheatshield`, `emberoak_stoneform`, plus
     `razorquill_nova` (Skill_AttackProjectileRing) and the thorn coat.
-    **BLEED IMMUNITY DOES NOT CARRY.** The wood was immune; the flower is not.
-    The build you shelved in beat 1 comes back for the kill. That is the whole
-    shape of the fight in one sentence.
+    **BLEED IMMUNITY DOES NOT CARRY**, and `defensiveLife` drops 60 -> 40, so the
+    bleed/vitality build you shelved in beat 1 genuinely comes back for the kill.
+    That is the whole shape of the fight in one sentence, and CORRECTION 10 is
+    why it is now true rather than merely claimed.
 
-  THE HANDBRIAR (Champion escort x2, `QuilVine01.msh`, PLANT)
-    A ground-hugging whipping vine: maximum silhouette contrast against a
-    2.8-scale trunk. That IS R-100 #18 ("they appear just like normal guys").
+  THE HANDBRIAR (Champion escort x2, `JungleCreep01.msh`, PLANT, rs 1.30)
+    A ground-hugging whipping vine that can actually keep up: maximum silhouette
+    contrast against a 2.8-scale trunk. That IS R-100 #18 ("they appear just like
+    normal guys").
 
 ================================================================================
 HOW IT SHIPS: ARZ-ONLY, IN PLACE, AT THE FROZEN RECORD PATHS
@@ -80,9 +91,9 @@ places `q_goldenbough_lone` and `svc_charon_chest` BY NAME, so those names are
 frozen. This module therefore REPLACES THE CONTENTS of the three monster records
 the chain already names, rather than authoring new paths and repointing:
 
-    um_charon_ferryman_99.dbr      <- xhero_strongbark_44   (Ormenos)
-    um_charonform2_ferryman_99.dbr <- us_hellflower_37      (the Bloom)
-    svc_charon_wraith_99.dbr       <- am_quillvine_35       (the Handbriar)
+    um_charon_ferryman_99.dbr      <- xhero_strongbark_44   (the Grasping Root)
+    um_charonform2_ferryman_99.dbr <- um_emberoak_42        (the Heartwood Ablaze)
+    svc_charon_wraith_99.dbr       <- am_junglecreep_41     (the Handbriar)
 
 MEASURED reason this is the ONLY safe shape (not a preference - three hard-coded
 gates key on those exact basenames, and authoring new paths reds all three):
@@ -151,6 +162,18 @@ CORRECTIONS TO THE RATIFIED SPEC - each one measured on the LIVE arz
    instead, with the amgoz1-tradition downside (negative `characterRunSpeed`,
    2,158 souls carry the field) intact.
 
+5b. THE CENSUS TALLIES ARE RE-MEASURED, NOT COPIED. Round 2 re-ran the race
+   census on the live artifact rather than trusting the spec: `um_*`/`svc_um_*`
+   with `monsterClassification == Boss` = **53** records - Undead 18, Demon 14,
+   Beastman 8, Insectoid 4, Magical 3, Animal 3, Beast 2, Device 1, **Plant 0**.
+   That reproduces the ratified spec's numbers exactly on
+   `work/SoulvizierClassic/Database/SoulvizierClassic.arz` (build83, 51,253
+   records). A round-2 vet pass reported 50 / Demon 12 / Beastman 7 off a
+   different artifact; the conclusion is identical either way and the one number
+   the design rests on - Plant = ZERO - holds in both readings. Also re-measured
+   there: the Boss-uber `characterRunSpeed` band is min 0.35 / median 1.00 /
+   max 4.00, which is the frame CORRECTION 9 uses.
+
 6. b86 SOUL-RENAME ROW 7 STANDS - NO SUPERSEDE WAS NEEDED. Verified in
    `docs/SOUL_RENAME_PROPOSAL.md`: row 7 governs `tagSoulSVC9005` on
    `records\item\equipmentring\soul\svc_uber\boss_charon_soul_{n,e,l}.dbr`, the
@@ -164,6 +187,85 @@ CORRECTIONS TO THE RATIFIED SPEC - each one measured on the LIVE arz
    `svc_charon_wraith_99` has `characterLife = [878.0, 300.0, 400.0]` - life FALLS
    from Normal to Epic. That is R-100 #18 as a measurable field. It dies with this
    wave and `verify()` carries a strictly-ascending gate so it cannot come back.
+   AND THE BEAT-2 CITATION IS CORRECTED: round 1 cited "the pattern
+   `um_vashkarr_99` already ships". Measured - `um_vashkarr_99` carries
+   `lowhealth_berserkerrage01` at `skillLevel 0`, i.e. INACTIVE by the mod's own
+   B-SOUL-PROC-1 lesson, so it proves nothing. The MECHANIC is fine and the real
+   live precedent is `elder_um_boarmonstrous_16` (Champion, `skillLevel 5`) and
+   `elder_am_boar_09` (`skillLevel 3`) on `lowhealth_boarberserkerrage01`; this
+   lane wires `svc_bough_splitting` at level 10, inside its `skillMaxLevel 15`.
+
+8. **"ORMENOS" WAS A NAME COLLISION AND IS DEAD.** The ratified spec named the
+   boss Ormenos. Measured: `Ormenos` is ALREADY a boss in this database - the
+   China Telkine, `boss_chinatelkine_ormenos_{38,41,44}.dbr`, with **59 records**
+   carrying the name including `controller_ormenos`, six `ormenos_*` boss skills,
+   three `ormenos_magmasprite_*` minions, `Ormenos_FireSpawn_FX` and its OWN soul
+   at `records\item\equipmentring\soul\telkine\ormenos_soul_{n,e,l}.dbr`. Shipping
+   a second, unrelated Ormenos with its own soul is exactly the duplicate-identity
+   class Will keeps filing. The boss is now **AKREMON** (ἀκρέμων, Greek for
+   "bough"): 0 record hits and 0 text-resource hits across the whole mod, and a
+   tighter lore fit than Ormenos ever had, because the shrine's whole subject is
+   a bough. `verify()` now carries a COLLISION GATE so no future rename can
+   reintroduce a display name that an unrelated live monster family already owns.
+
+9. **THE TERMINAL, THE ESCORTS AND THE SOUL PET WERE ALL IMMOBILE. DONORS SWAPPED.**
+   Round 1 built phase 2 from `us_hellflower_37` and the escort from
+   `am_quillvine_35`. Both ship `characterRunSpeed = 0.0`, and it is NOT tunable:
+   their anim table `records\creature\monster\quilvine\anm\anm_quilvine.dbr`
+   declares the `*RunAnimSpeed` scalars but binds **NO `unarmedRunAnim` and no
+   `unarmedWalkAnim` clip at all** (measured; compare `anm_ascacophus02`,
+   `anm_bogdweller` and `anm_junglecreep`, which all bind both). Raising runSpeed
+   would ask the rig for an animation it does not bind - the B-SOUL-PROC-2 / D19
+   class the crash laws forbid - and no new art is allowed. So the TERMINAL form,
+   the form carrying all three guaranteed rewards, could not chase the player at
+   all; the two "escorts" could not escort; and the soul's marquee permanent
+   summon would never follow its owner. The encounter was very likely EASIER than
+   the Charon it replaces, which is the opposite of the order.
+   RESOLUTION - swap to donors that OWN a rig with locomotion, keeping Plant:
+     * phase 2: `um_emberoak_42` (`DRX\meshes\emberoakmesh.msh`, `anm_bogdweller`,
+       rs 1.0, Plant, Hero, live scale 1.90, `actorHeight` 1.0). Strictly better
+       than the hellflower on every axis the design cared about: it is MOBILE, its
+       fire kit is RICHER and native (`ringofflame` is a toggled burning ring it
+       simply wears, plus two volcanicorb modifiers and `drxheatshield`), it keeps
+       PLANT so the Plant=0 headline stands, its live scale 1.90 makes the 2.0 ask
+       a 1.05x stretch instead of the hellflower's 1.33x, and its rotation leaves
+       cast slots 4 and 5 free behind only ONE chance-100 slot instead of three -
+       which is also the structural fix for the round-1 finding that the added
+       casts would rarely fire.
+     * escort: `am_junglecreep_41` (`JungleCreep01.msh`, `anm_junglecreep`, rs 1.0,
+       Plant, 15 live carriers, live scale range 0.70..1.60 so the 1.55 ask is
+       INSIDE proven range). It also carries NO soul loot at all, so the escort
+       cannot leak one even before `_svc_clear_soul_loot` runs.
+   HONEST COST: the terminal is no longer amgoz1's own SV hellflower. The
+   immobile quilvine rig still appears in the fight, in the one role where being
+   rooted is correct - the `quillwards` wall pets.
+   SPEEDS, all written explicitly and all inside the measured Boss-uber band
+   (min 0.35, median 1.00, max 4.00): phase 1 **1.35** (rig-proven exactly -
+   `credits_ringlesstree` ships 1.35 on Ascacophus02.msh), the terminal **1.45**
+   (above this rig's only live carrier at 1.0; disclosed, cosmetic-only risk since
+   the rig binds the clip), the Handbriar **1.30** (rig-proven exactly -
+   `um_speckledjim_45` ships 1.30 on JungleCreep01.msh). The soul pet inherits the
+   donor's 1.0, which is both the shipped oarsman's value and a clean pass of
+   PET-STAT-MIRROR's `pet >= 0.90 x source`.
+   The shipped Charon forms ran 2.8 and 4.0 - the two FASTEST bodies in the entire
+   53-boss uber roster. This encounter deliberately does not chase that outlier.
+
+10. **DURABILITY RE-CALIBRATED TO THE GAOLER, AND THE VITALITY WALL CUT.**
+   Round 1 set life at "exact parity with the shipped Charon forms" - 28,000 +
+   30,000 = **58,000 on Epic** - which was never itself calibrated against
+   anything. `docs/reports/gaoler_variance_rca.md` is the reference frame this
+   lane was told to use: Alkyoneus the Soul-Gaoler is **two forms totalling 35,000
+   on Epic** plus a six-strong guard horde, and the RCA's verdict is hard-but-fair
+   and killable ("no action warranted") after Will beat him on the second attempt.
+   58,000 is 1.66x that, on an encounter that is now MOBILE in both phases. Ships
+   at **13,000/17,000/22,000 + 14,000/18,000/24,000 = 27,000 / 35,000 / 46,000**
+   against the Gaoler's 26,000 / 35,000 / 47,000 - an Epic total matched exactly.
+   NO WALLS, and one real one is removed: round 1 shipped `defensiveLife 100` on
+   BOTH forms, i.e. 100% VITALITY immunity end to end, which silently contradicted
+   the design's own headline that the bleed/vitality build comes back in beat 3.
+   Ships 60 on phase 1 and **40** on the terminal. Bleed immunity (phase 1 only,
+   donor-native) stays, because that is the deliberate half-fight lever and it is
+   WILL-DECISION 6; a lever the fight then hands back is not a wall.
 
 ================================================================================
 CRASH-LAW COMPLIANCE, ITEMISED
@@ -184,10 +286,19 @@ CRASH-LAW COMPLIANCE, ITEMISED
   Correction to the spec: `xhero_strongbark_44` declares **752** animation fields,
   not zero - which is exactly why cloning it wholesale is safe (the full anim
   table comes with the clone, so the B-SOUL-PROC-2 class cannot arise).
-* SOUL-LEAK INVARIANT - **both** donors ship `chanceToEquipFinger2 = 33.0` with
-  their OWN soul in `lootFinger2Item1` (`strongbark_soul_*`, `hellflower_soul_*`).
+* SOUL-LEAK INVARIANT - both BOSS donors ship `chanceToEquipFinger2 = 33.0` with
+  their OWN soul in `lootFinger2Item1` (`strongbark_soul_*`, `emberoak_soul_*`).
   A raw clone therefore inherits a FOREIGN soul drop (the R-42/R-106 class).
-  `_svc_clear_soul_loot` runs on all three BEFORE `_create_soul` rewires the Bloom.
+  `_svc_clear_soul_loot` runs on all three BEFORE `_create_soul` rewires the
+  terminal. (The escort donor `am_junglecreep_41` carries no soul at all, so it is
+  clean even before the clear - belt and braces, and `verify()` proves it.)
+* D19 PET MOBILITY - every body this encounter places or summons must sit on an
+  anim table that BINDS `unarmedRunAnim`, not merely declare a nonzero runSpeed.
+  `verify()` asserts this per body. Round 1 shipped three permanently immobile
+  permanent pets past a monolith assert whose guard was inverted on exactly that
+  case; this wave fixes the assert upstream (`apply_svc_patches` D19 block) and
+  states the invariant here too, because a gate that only lives in one place is
+  one refactor away from not existing.
 
 ORDERING: registered immediately AFTER `uber_quest_drops` and BEFORE every
 breadth/derivation module (`chest_loot_breadth`, `armor_loot_breadth`,
@@ -215,7 +326,7 @@ from apply_svc_patches import (                       # noqa: E402
 )
 
 MODULE_NAME = ("Golden Bough uber rework (Will 2026-08-11): Charon out, "
-               "Ormenos the Gilded Root in - arz-only, frozen proxy chain")
+               "Akremon the Grasping Root in - arz-only, frozen proxy chain")
 
 S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
 
@@ -244,10 +355,18 @@ _SOUL_TIERS = [r'records\item\equipmentring\soul\svc_uber\%s_soul_%s.dbr'
                % (_SOUL_BASENAME, t) for t in ('n', 'e', 'l')]
 
 # ── DONORS (each OWNS the rig its clone renders on - no cross-rig swap) ──────
+# EVERY ONE IS D19-MOBILE: its `charAnimationTableName` BINDS `unarmedRunAnim`.
+# That is a hard selection criterion, not a happy accident - see CORRECTION 9.
+# The round-1 donors `us_hellflower_37` / `am_quillvine_35` are BANNED for any
+# placed or summoned body in this encounter: `anm_quilvine.dbr` binds no
+# locomotion clip at all, so anything built on it is a statue.
 _D_ORM = r'records\xpack\creatures\monster\ascacophus\xhero_strongbark_44.dbr'
-_D_BLOOM = r'records\creature\monster\quilvine\us_hellflower_37.dbr'
-_D_BRIAR = r'records\creature\monster\quilvine\am_quillvine_35.dbr'
+_D_BLOOM = r'records\creature\monster\bogdweller\um_emberoak_42.dbr'
+_D_BRIAR = r'records\creature\monster\junglecreep\am_junglecreep_41.dbr'
 _D_SPLIT = r'records\skills\monster skills\lowhealth_berserkerrage01.dbr'
+# The immobile rig this lane REFUSES to place a body on. Named so `verify()` can
+# say WHY when it reds, and so a future edit cannot quietly reintroduce it.
+_BANNED_ANIM = r'records\creature\monster\quilvine\anm\anm_quilvine.dbr'
 
 _SPLIT = r'records\skills\monster skills\lowhealth\svc_bough_splitting.dbr'
 
@@ -276,44 +395,69 @@ _ORB = r'records\xpack\item\containers\proxies\bosschest02_charon.dbr'   # see C
 
 # ── MESHES (per-rig; each is its own donor's, so A9 is satisfied by construction)
 _MESH_ORM = r'XPack\Creatures\Monster\Ascacophus\Ascacophus02.msh'
-_MESH_BLOOM = r'SVMesh/meshes/hellflower.msh'
-_MESH_BRIAR = r'Creatures\Monster\QuilVine\QuilVine01.msh'
+_MESH_BLOOM = r'DRX\meshes\emberoakmesh.msh'
+_MESH_BRIAR = r'Creatures\Monster\JungleCreep\JungleCreep01.msh'
 _SKIN_ORM = r'XPack\Creatures\Monster\Ascacophus\Ascacophus01B.tex'      # donor's own, 3 live carriers
-# WILL-DECISION 3, shipped OFF: the DRX dead-trunk skin has ONE live baseTexture
-# carrier and `ascacophus_evil.tex` has 3 but on Ascacophus01.msh, NOT 02 -
-# cross-mesh UV is the 343_dark_smoke / Vort-green trap. TESTHUB-verify first.
+# WILL-DECISION 3, shipped OFF: the DRX dead-trunk skin's only live baseTexture
+# carrier is `um_deadtrunk_45`, which renders on `deadtrunk.msh` - a DIFFERENT
+# mesh from Ascacophus02. Cross-mesh UV is the 343_dark_smoke / Vort-green trap,
+# so this ships off behind a constant and needs a TESTHUB confirmation before any
+# colour claim is made. (`um_deadtrunk_45` was also evaluated as an alternative
+# phase-1 donor this round - Plant, D19-mobile at rs 1.10, and it owns the skin -
+# and rejected only because `xhero_strongbark_44` brings `hero_quillvines`, the
+# own-family retinue the R-125 bar wants, and the deadtrunk does not.)
 _ORM_SKIN_ALT = r'DRXtextures\creatures\ascacophus\ascacophus_deadtrunk.tex'
 _ORM_USE_SKIN_ALT = False
 
 # ── THE NUMBERS ─────────────────────────────────────────────────────────────
 _BAND = [48, 72, 100]
-# Life is EXACT PARITY with the two shipped Charon forms - deliberately zero
-# balance drift, so the vet's only job this wave is identity, not numbers.
-# Frame of reference: docs/reports/gaoler_variance_rca.md - the Gaoler is
-# 15,000/20,000/27,000 + 11,000/15,000/20,000 across two forms (35,000 on Epic
-# with a six-strong guard horde) and Will beat him on the second attempt. This
-# encounter sits at 28,000 + 30,000 = 58,000 on Epic with two Champions: inside
-# the killable-uber band, a hard fight, and - unlike the Gaoler - it has no
-# racial pet-damage reduction and no life-drain cascade, which is where the
-# Gaoler's real wall came from. No walls; the wall in this fight is literal and
-# made of quillvines.
-_ORM_LIFE = [22000.0, 28000.0, 34000.0]
-_BLOOM_LIFE = [24000.0, 30000.0, 36000.0]
+# DURABILITY, CALIBRATED - see CORRECTION 10. Round 1 justified its numbers as
+# "exact parity with the shipped Charon forms", which was never itself calibrated
+# against anything and landed at 58,000 on Epic. The reference frame this lane was
+# told to use is docs/reports/gaoler_variance_rca.md: Alkyoneus the Soul-Gaoler is
+# 15,000/20,000/27,000 + 11,000/15,000/20,000 = 26,000 / 35,000 / 47,000 across
+# two forms, PLUS a six-strong guard horde, and the RCA's verdict on him is
+# hard-but-fair and killable ("no action warranted", beaten on attempt two).
+#
+#   this encounter   27,000 / 35,000 / 46,000  (two forms + two Champions)
+#   the Gaoler       26,000 / 35,000 / 47,000  (two forms + six guards)
+#
+# Epic matched exactly. NO WALLS, and this fight is deliberately gentler than the
+# Gaoler on the two levers his RCA identified as the real ones: it has no 25%
+# racial pet-damage reduction and no life-drain cascade. The wall in this fight is
+# literal, made of quillvines, and has a cooldown.
+_ORM_LIFE = [13000.0, 17000.0, 22000.0]
+_BLOOM_LIFE = [14000.0, 18000.0, 24000.0]
+# MOBILITY (CORRECTION 9). Written EXPLICITLY on all three bodies: two of the
+# three donors sit at the roster's median 1.0 and the encounter needs to be able
+# to close. Measured Boss-uber band on the live arz: min 0.35, median 1.00,
+# max 4.00. The shipped Charon forms ran 2.8 and 4.0 - the two fastest bodies in
+# the whole 53-boss roster - and this encounter deliberately does not chase that.
+_ORM_SPEED = 1.35     # RIG-PROVEN: credits_ringlesstree ships 1.35 on Ascacophus02.msh
+_BLOOM_SPEED = 1.45   # above this rig's only live carrier (1.0); disclosed, see BL-BOUGH-DEBT-5
+_BRIAR_SPEED = 1.30   # RIG-PROVEN: um_speckledjim_45 ships 1.30 on JungleCreep01.msh
 # WILL-DECISION 2: ship 2.8 / 2.0; TESTHUB yard sweep 3.1 and 3.4 before the
 # canonical placement is blessed. Measured live scale ranges on the exact rigs:
-# Ascacophus02.msh 1.15..1.80 (max = kaets.dbr); hellflower.msh 1.50 on all 4
-# carriers. Large scales DO work here (um_polisgaoler_99 ships Gigantes02 at 3.5,
-# um_vashkarr_99 at 3.0) so the risk is footprint/clearance, not the renderer.
+# Ascacophus02.msh 1.15..1.80 (max = kaets.dbr, a Quest-class DRX crow hero);
+# emberoakmesh.msh 1.90 on its single carrier, so the 2.0 ask is a 1.05x stretch
+# (the round-1 hellflower would have been 1.33x); JungleCreep01.msh 0.70..1.60,
+# so 1.55 is INSIDE proven range. Large scales DO work here (um_polisgaoler_99
+# ships Gigantes02 at 3.5, um_vashkarr_99 at 3.0) so the residual risk is
+# footprint/clearance, not the renderer - and only phase 1 carries it.
 _ORM_SCALE = 2.8
 _BLOOM_SCALE = 2.0
 _BRIAR_SCALE = 1.55
 # THE R-100 #18 FIX, and the anti-regression gate's reason to exist: the shipped
-# escort was [878.0, 300.0, 400.0] - life FALLING from Normal to Epic.
-_BRIAR_LIFE = [4200.0, 5800.0, 7600.0]
+# escort was [878.0, 300.0, 400.0] - life FALLING from Normal to Epic. Sized off
+# the live Champion-escort roster (svc_tantalus_famishedshade_90 = 4500/6500/9000,
+# svc_obs_escort_bonehallow = 7671/9589/11507): two of these, not six.
+_BRIAR_LIFE = [5000.0, 7000.0, 9500.0]
 
 # `actorHeight` is a per-RIG constant, inherited, NEVER invented (R-126, measured
-# over 2,122 rigs). Ascacophus02 = 0.0 on all 4 live carriers; hellflower.msh and
-# QuilVine01.msh = 1.0. This module NEVER writes the field; verify() proves it.
+# over 2,122 rigs). Ascacophus02 = 0.0 on all 4 live carriers; emberoakmesh.msh
+# and JungleCreep01.msh = 1.0. This module NEVER writes the field; verify() proves
+# it, and reads the value off each body's OWN DONOR rather than a hard-coded map,
+# so a future donor swap cannot leave a stale constant behind.
 _RIG_ACTOR_HEIGHT = {_ORM: 0.0, _BLOOM: 1.0, _BRIAR: 1.0}
 
 # ── TAGS ────────────────────────────────────────────────────────────────────
@@ -322,8 +466,12 @@ _RIG_ACTOR_HEIGHT = {_ORM: 0.0, _BLOOM: 1.0, _BRIAR: 1.0}
 # it fixes a real defect: the two shipped forms SHARED one display tag, so the
 # phase turn had no name change at all.
 _TAG_ORM = 'tagSVCMonsterCharonFerryman'        # KEY KEPT, string rewritten
-_TAG_BLOOM = 'tagSVCMonsterOrmenosBloom'        # MINTED (the two forms now differ)
+_TAG_BLOOM = 'tagSVCMonsterAkremonBlaze'        # MINTED (the two forms now differ)
 _TAG_BRIAR = 'tagSVCMonsterCharonWraith'        # KEY KEPT, string rewritten
+# CORRECTION 8: every display name this module mints is checked against the live
+# record namespace by verify(). "Ormenos" - the ratified spec's choice - failed
+# that check: it is the China Telkine, 59 records deep, with its own soul.
+_NAME_TOKENS = ('akremon', 'handbriar')
 _TAG_HOARD = 'tagSVCCharonHoard'                # KEY KEPT, string rewritten
 _TAG_SOUL = 'tagSVCSoulFerryman'                # KEY KEPT (in _HAND_DESIGNED_SOUL_TAGS)
 _TAG_SUMMON = 'tagSVCSummonCharonOarsman'       # KEY KEPT, string rewritten
@@ -423,7 +571,7 @@ def apply(db, tags):
     # ── BEAT 2 SKILL: the self-firing splitting, with the thorns folded in ───
     _replace_record(db, _D_SPLIT, _SPLIT)
     _sf(db, _SPLIT, 'FileDescription',
-        'Ormenos: THE SPLITTING - at 33% life the bark comes apart and the '
+        'Akremon: THE SPLITTING - at 33% life the bark comes apart and the '
         'thorns come out (Skill_PassiveOnLifeBuffSelf, self-firing, no AI wiring)')
     _sf(db, _SPLIT, 'lifeMonitorPercent', 33.0)
     _sf(db, _SPLIT, 'skillActiveDuration', 12.0)
@@ -433,15 +581,20 @@ def apply(db, tags):
     _sf(db, _SPLIT, 'retaliationPierceMin', 180.0)
     _sf(db, _SPLIT, 'retaliationPierceMax', 260.0)
 
-    # ── BEAT 1: ORMENOS, THE GILDED ROOT (phase 1, the placed head) ─────────
+    # ── BEAT 1: AKREMON, THE GRASPING ROOT (phase 1, the placed head) ───────
     _replace_record(db, _D_ORM, _ORM)
     _sf(db, _ORM, 'monsterClassification', 'Boss')
     _sf(db, _ORM, 'description', _TAG_ORM)
     _sf(db, _ORM, 'charLevel', list(_BAND))
     _sf(db, _ORM, 'characterLife', list(_ORM_LIFE))
     _sf(db, _ORM, 'scale', _ORM_SCALE)
+    _sf(db, _ORM, 'characterRunSpeed', _ORM_SPEED)      # CORRECTION 9
     # actorHeight DELIBERATELY NOT WRITTEN (R-126: per-rig constant, inherited).
-    _sf(db, _ORM, 'defensiveLife', 100.0, F)
+    # CORRECTION 10: 60, not 100. `defensiveLife` is VITALITY resistance, and 100
+    # on BOTH forms walled the mod's own marquee bleed/vitality line end to end
+    # while the design claimed beat 3 hands it back. A tree resists poison and
+    # shrugs off cuts; it is not a vitality boss.
+    _sf(db, _ORM, 'defensiveLife', 60.0, F)
     _sf(db, _ORM, 'defensivePierce', 50.0, F)
     _sf(db, _ORM, 'defensivePhysical', 30.0, F)
     _sf(db, _ORM, 'defensivePoison', 60.0, F)
@@ -472,22 +625,30 @@ def apply(db, tags):
                 "donor's rotation moved; re-measure before displacing anything - "
                 "slots 1 and 3 are its own-family signature (R-125)."
                 % (_want, _ORM, _free))
-    _cast(db, _ORM, '2', _SK_EARTHBIND, 18.0, 'MediumRange', 6.0, 4.0)
-    _cast(db, _ORM, '4', _SK_QUILLWARDS, 15.0, 'ShortRange', 10.0, 6.0)
-    _cast(db, _ORM, '5', _SK_MEGABURST, 22.0, 'LongRange', 6.0, 3.0)
+    # Round 1 wired the snare at chance 18 on a 20s skill cooldown, which is one
+    # roll every twenty seconds on the fight's ONLY anti-kite lever - too thin to
+    # support the design's own "you do not kite this fight". Raised; the skill's
+    # own `skillCooldownTime 20.0` still does the real spacing, so this only
+    # changes how reliably the boss reaches for it, not how often it lands.
+    _cast(db, _ORM, '2', _SK_EARTHBIND, 40.0, 'MediumRange', 6.0, 4.0)
+    _cast(db, _ORM, '4', _SK_QUILLWARDS, 30.0, 'ShortRange', 10.0, 6.0)
+    _cast(db, _ORM, '5', _SK_MEGABURST, 35.0, 'LongRange', 6.0, 3.0)
 
-    # ── BEAT 3: ORMENOS, THE BOUGH IN BLOOM (phase 2, terminal) ─────────────
+    # ── BEAT 3: AKREMON, THE HEARTWOOD ABLAZE (phase 2, terminal) ───────────
     _replace_record(db, _D_BLOOM, _BLOOM)
     _sf(db, _BLOOM, 'monsterClassification', 'Boss')
     _sf(db, _BLOOM, 'description', _TAG_BLOOM)
     _sf(db, _BLOOM, 'charLevel', list(_BAND))
     _sf(db, _BLOOM, 'characterLife', list(_BLOOM_LIFE))
     _sf(db, _BLOOM, 'scale', _BLOOM_SCALE)
-    _sf(db, _BLOOM, 'defensiveLife', 100.0, F)
+    _sf(db, _BLOOM, 'characterRunSpeed', _BLOOM_SPEED)   # CORRECTION 9: it can hunt now
+    # BLEED IMMUNITY DELIBERATELY DOES NOT CARRY, AND VITALITY RESISTANCE DROPS
+    # 60 -> 40. Together those are what actually hands the shelved bleed/vitality
+    # build the kill, instead of the design merely saying so (CORRECTION 10).
+    _sf(db, _BLOOM, 'defensiveLife', 40.0, F)
     _sf(db, _BLOOM, 'defensivePierce', 50.0, F)
     _sf(db, _BLOOM, 'defensivePhysical', 30.0, F)
     _sf(db, _BLOOM, 'defensiveFire', 60.0, F)
-    # BLEED IMMUNITY DELIBERATELY DOES NOT CARRY - that is the fight's shape.
     _sf(db, _BLOOM, 'actorToSpawnOnDeath', '', S)          # terminal
     _sf(db, _BLOOM, 'spawnEffect', _FX_BLOOM_SPAWN, S)
     _sf(db, _BLOOM, 'deathEffect', _FX_BLOOM_DEATH, S)
@@ -506,8 +667,13 @@ def apply(db, tags):
                 "charon_rework: cast slot %r on %s is NOT free (free: %r); SV's "
                 "own firedart/volcanicorb/flamesurge rotation is kept verbatim "
                 "and must not be displaced." % (_want, _BLOOM, _free))
-    _cast(db, _BLOOM, '4', _SK_NOVA, 25.0, 'ShortRange', 5.0, 3.0)
-    _cast(db, _BLOOM, '5', _SK_THORNYAURA, 15.0, 'AnyRange', 12.0, 8.0)
+    # Chances raised from round 1's 25/15. The round-1 donor put THREE chance-100
+    # zero-delay casts ahead of these, so the two additions - the only things
+    # differentiating phase 2 from a plain donor - were the least likely casts in
+    # the fight. The emberoak donor fixes that structurally (its rotation is
+    # 100/40/50 with real delays), and these numbers finish the job.
+    _cast(db, _BLOOM, '4', _SK_NOVA, 50.0, 'ShortRange', 5.0, 3.0)
+    _cast(db, _BLOOM, '5', _SK_THORNYAURA, 40.0, 'AnyRange', 12.0, 8.0)
 
     # ── THE HANDBRIAR (Champion escort x2) - the R-100 #18 fix ──────────────
     _replace_record(db, _D_BRIAR, _BRIAR)
@@ -516,6 +682,7 @@ def apply(db, tags):
     _sf(db, _BRIAR, 'charLevel', list(_BAND))
     _sf(db, _BRIAR, 'characterLife', list(_BRIAR_LIFE))       # explicit ASCENDING
     _sf(db, _BRIAR, 'scale', _BRIAR_SCALE)
+    _sf(db, _BRIAR, 'characterRunSpeed', _BRIAR_SPEED)        # an escort must escort
     _sf(db, _BRIAR, 'handHitDamageMin', 180.0)
     _sf(db, _BRIAR, 'handHitDamageMax', 240.0)
     _sf(db, _BRIAR, 'defensivePierce', 25.0, F)
@@ -537,9 +704,9 @@ def apply(db, tags):
     _sf(db, _BLOOM, 'DisplayAsQuestItem', 1)
 
     # ── THE PROXY CHAIN: REUSED, never rebuilt (arz-only; no map rebuild) ────
-    for pool, desc in ((_POOL, 'Ormenos, the Gilded Root (main) + 2 Handbriar '
+    for pool, desc in ((_POOL, 'Akremon, the Grasping Root (main) + 2 Handbriar '
                                'champion escorts'),
-                       (_YARD_POOL, 'YARD: Ormenos + 2 Handbriars @100% '
+                       (_YARD_POOL, 'YARD: Akremon + 2 Handbriars @100% '
                                     '(TESTHUB-only, never uploaded)')):
         _sf(db, pool, 'FileDescription', desc)
         for f in ('name1', 'name2', 'name3'):
@@ -553,7 +720,7 @@ def apply(db, tags):
     for entry in asp._MOD_AUTHORED_SPAWN_PROXIES:
         if _n(entry.get('proxy')) == _n(_PROXY):
             entry['main_monster'] = _ORM
-            entry['name'] = 'q_goldenbough_lone (Ormenos + 2 Handbriar escorts)'
+            entry['name'] = 'q_goldenbough_lone (Akremon + 2 Handbriar escorts)'
         elif _n(entry.get('proxy')) == _n(_YARD_PROXY):
             entry['main_monster'] = _ORM
             entry['name'] = 'q_yard_goldenbough (TESTHUB yard)'
@@ -625,7 +792,24 @@ def apply(db, tags):
     # ── THE SUMMON: same species as the dropper -> the F2 identity gate goes
     #    GREEN WITH NO EXEMPTION, so a sanctioned workaround is RETIRED rather
     #    than carried. The gate compares the SOURCE's mesh to the DROPPER's mesh;
-    #    both are now SVMesh/meshes/hellflower.msh.
+    #    both are now DRX\meshes\emberoakmesh.msh.
+    #
+    #    THE STALE-REGISTRATION TRAP (round-1 P0, proven to red the full build).
+    #    The monolith's `_create_goldenbough_boss` already built THESE EXACT pet
+    #    paths from `charon_minion_30`, and `_SUMMON_PET_BUILDS` was a blind
+    #    append cleared once per run. `run_registry_gates` runs AFTER every module
+    #    and feeds the WHOLE list to the three pet gates, so the superseded pair
+    #    was still judged: PET-STAT-MIRROR compared our newly-built pets against
+    #    charon_minion_30 and failed, and the F2 identity gate failed next
+    #    (charon_minion_30 wears CharonGhost.msh, our dropper does not) - which is
+    #    exactly what `_SUMMON_IDENTITY_ALLOW['ferryman']` used to paper over.
+    #    `_build_boss_summon` now supersedes by pet-path set upstream, which is
+    #    the durable fix. This prune stays as the idempotent belt-and-braces so
+    #    the module is correct even against an older monolith, and verify()
+    #    asserts the END STATE rather than trusting either half.
+    _pp = {_n(p) for p in _PETS}
+    asp._SUMMON_PET_BUILDS[:] = [(s, p) for s, p in asp._SUMMON_PET_BUILDS
+                                 if {_n(q) for q in p} != _pp]
     _build_boss_summon(
         db, _D_BLOOM, _PETS, _SUMMON, _TAG_SUMMON, _TAG_PET,
         char_level=list(_BAND), life=[5500.0, 8000.0, 11000.0],
@@ -638,8 +822,8 @@ def apply(db, tags):
     asp._SUMMON_IDENTITY_ALLOW.pop('ferryman', None)
 
     # ── TAGS (arz + Text are a COUPLED deploy; validate_tags is a build gate) ─
-    tags[_TAG_ORM] = '{^r}Ormenos, the Gilded Root'
-    tags[_TAG_BLOOM] = '{^r}Ormenos, the Bough in Bloom'
+    tags[_TAG_ORM] = '{^r}Akremon, the Grasping Root'
+    tags[_TAG_BLOOM] = '{^r}Akremon, the Heartwood Ablaze'
     tags[_TAG_BRIAR] = '{^G}Handbriar'
     tags[_TAG_HOARD] = 'The Orchard of Hands'
     tags[_TAG_AMULET] = 'The Golden Bough'
@@ -647,28 +831,31 @@ def apply(db, tags):
         'The tree grew it and would not let it go. Cut it while it still burned, '
         'and the wood it came off is still standing at the shrine with every hand '
         'that tried before yours grown into it.')
-    tags[_TAG_SOUL] = '{^F}Soul of the Gilded Root'
+    tags[_TAG_SOUL] = '{^F}Soul of the Grasping Root'
     tags[_TAG_SOUL + 'DESC'] = (
-        'It never chased anything. It grew where it stood and waited for hands. '
-        'Carry its soul and the ground takes hold of whatever you strike, and '
-        'takes a little hold of you as well.')
-    tags[_TAG_SUMMON] = 'Graft the Gilded Bloom'
+        'It waited at the shrine for hands and it never had to wait long. Carry '
+        'its soul and the ground takes hold of whatever you strike, and takes a '
+        'little hold of you as well.')
+    tags[_TAG_SUMMON] = 'Graft the Burning Heartwood'
     tags[_TAG_SUMMON + 'DESC'] = (
-        'The bough that burns is the part of the tree that is still hungry. Speak '
-        'its soul and a cutting takes root beside you, opens, and burns for you '
-        'until something puts it out.')
-    tags[_TAG_PET] = 'Gilded Bloom'
+        'The heartwood is the part of the tree that is still hungry. Speak its '
+        'soul and a burning cutting takes root beside you, stands up, and walks '
+        'for you until something puts it out.')
+    tags[_TAG_PET] = 'Burning Heartwood'
 
     print("  charon_rework: Charon is OUT of the Golden Bough forecourt. "
-          "ORMENOS, THE GILDED ROOT [%s] (Plant, Ascacophus02 @%.1f, bleed-immune, "
-          "root-snare + the mod's ONLY Skill_DefensiveWall + quill fan, splits at "
-          "33%%) -> THE BOUGH IN BLOOM [%s] (Plant, SV hellflower @%.1f, fire "
-          "burst + petal ring, NOT bleed-immune) + 2 Handbriar champions "
-          "[%s, ascending]; proxy chain REUSED (no map rebuild); Golden Bough "
-          "Misc4 100%%, one hoard chest, soul re-identified; "
+          "AKREMON, THE GRASPING ROOT [%s, rs %.2f] (Plant, Ascacophus02 @%.1f, "
+          "bleed-immune, root-snare + the mod's ONLY Skill_DefensiveWall + quill "
+          "fan, splits at 33%%) -> THE HEARTWOOD ABLAZE [%s, rs %.2f] (Plant, DRX "
+          "emberoak @%.1f, ring of flame + volcanic orb + petal ring, NOT "
+          "bleed-immune, vitality res 40) + 2 Handbriar champions [%s, ascending, "
+          "rs %.2f]; Epic total %s vs the Gaoler's 35,000 (gaoler_variance_rca); "
+          "every body D19-mobile; proxy chain REUSED (no map rebuild); Golden "
+          "Bough Misc4 100%%, one hoard chest, soul re-identified; "
           "_SUMMON_IDENTITY_ALLOW['ferryman'] RETIRED; %d record(s) written."
-          % (_ORM_LIFE, _ORM_SCALE, _BLOOM_LIFE, _BLOOM_SCALE, _BRIAR_LIFE,
-             len(_TOUCHED)))
+          % (_ORM_LIFE, _ORM_SPEED, _ORM_SCALE, _BLOOM_LIFE, _BLOOM_SPEED,
+             _BLOOM_SCALE, _BRIAR_LIFE, _BRIAR_SPEED,
+             f"{int(_ORM_LIFE[1] + _BLOOM_LIFE[1]):,}", len(_TOUCHED)))
 
 
 # ── verify: THE GATE (post-finalization, reads the FINAL assembled db) ──────
@@ -881,9 +1068,105 @@ def verify(db, tags):
     if 'ferryman' in asp._SUMMON_IDENTITY_ALLOW:
         problems.append(
             "_SUMMON_IDENTITY_ALLOW still carries 'ferryman'. The summon body is "
-            "now the SAME species as the dropper (both SVMesh hellflower), so the "
-            "F2 identity gate is green with no exemption - a retired workaround "
-            "must not be carried.")
+            "now the SAME species as the dropper (both DRX emberoak), so the F2 "
+            "identity gate is green with no exemption - a retired workaround must "
+            "not be carried.")
+
+    # ---- 4b. THE SUMMON-PET REGISTRY NAMES EXACTLY ONE, CORRECT, SOURCE ----
+    #      Round-1 P0: `_create_goldenbough_boss` builds these same pet paths from
+    #      `charon_minion_30` earlier in the run, `_SUMMON_PET_BUILDS` was a blind
+    #      append, and `run_registry_gates` judges the WHOLE list afterwards - so
+    #      the superseded pair red-lined PET-STAT-MIRROR and then the F2 identity
+    #      gate on a build this module's own verify() called green. Assert the END
+    #      STATE here: the pets on disk can only have been built once, and it must
+    #      be by us, from the terminal's donor.
+    _pp = {_n(p) for p in _PETS}
+    _pairs = [(s, p) for s, p in asp._SUMMON_PET_BUILDS if {_n(q) for q in p} == _pp]
+    if len(_pairs) != 1:
+        problems.append(
+            "_SUMMON_PET_BUILDS has %d registration(s) for the soul pets %s, "
+            "expected exactly 1. Every extra entry is a SUPERSEDED build that "
+            "run_registry_gates will still judge - PET-STAT-MIRROR compares the "
+            "live pets against a source that no longer wrote them, and the F2 "
+            "soul-summon-identity gate compares meshes that no longer match. "
+            "Sources currently registered: %s"
+            % (len(_pairs), [p.rsplit('\\', 1)[-1] for p in _PETS],
+               [s for s, _ in _pairs]))
+    elif _n(_pairs[0][0]) != _n(_D_BLOOM):
+        problems.append(
+            "_SUMMON_PET_BUILDS registers the soul pets against %r, expected the "
+            "terminal's own donor %s. The pet gates would judge the wrong source."
+            % (_pairs[0][0], _D_BLOOM))
+
+    # ---- 4c. D19: EVERY BODY THIS ENCOUNTER FIELDS CAN ACTUALLY MOVE -------
+    #      Round-1 P1: the TERMINAL (the form carrying all three guaranteed
+    #      rewards), both Champion escorts and the soul's permanent pet all
+    #      shipped `characterRunSpeed 0.0` on `anm_quilvine`, a table that binds
+    #      NO locomotion clip at all - so the reward-bearer could not chase, the
+    #      escorts could not escort, and the marquee permanent summon could never
+    #      follow its owner. A nonzero runSpeed is NOT sufficient evidence on its
+    #      own; the rig has to bind the clip. Both halves are asserted.
+    for rec, label in ((_ORM, 'phase 1'), (_BLOOM, 'the TERMINAL form'),
+                       (_BRIAR, 'the Champion escort')) + tuple(
+                           (p, 'the soul summon pet') for p in _PETS):
+        if not resolves(rec):
+            continue
+        try:
+            rs = float(gv(rec, 'characterRunSpeed') or 0)
+        except (TypeError, ValueError):
+            rs = 0.0
+        if rs <= 0:
+            problems.append(
+                "D19 MOBILITY: %s (%s) has characterRunSpeed=%r. An immobile body "
+                "cannot chase, escort or follow; the whole encounter degrades to a "
+                "turret the player plinks from out of range." % (rec, label, rs))
+        anim = db.get_field_value(rec, 'charAnimationTableName')
+        a0 = anim[0] if isinstance(anim, list) and anim else anim
+        if not (isinstance(a0, str) and a0.strip()):
+            problems.append("D19 MOBILITY: %s (%s) declares no "
+                            "charAnimationTableName" % (rec, label))
+            continue
+        if _n(a0) == _n(_BANNED_ANIM):
+            problems.append(
+                "D19 MOBILITY: %s (%s) sits on %s, which binds NO locomotion clip "
+                "whatsoever - every body on that table is a statue regardless of "
+                "characterRunSpeed. This lane bans it for placed and summoned "
+                "bodies; it is legal ONLY for the quillwards wall pets, where "
+                "being rooted is the point." % (rec, label, a0))
+            continue
+        if not resolves(a0):
+            problems.append("D19 MOBILITY: %s (%s) anim table %r does not resolve"
+                            % (rec, label, a0))
+            continue
+        _tf = db.get_fields(a0) or {}
+        _runs = {k.split('###')[0] for k, tf in _tf.items()
+                 if k.split('###')[0].endswith('RunAnim')
+                 and tf.values and str(tf.values[0]).strip()}
+        if 'unarmedRunAnim' not in _runs:
+            problems.append(
+                "D19 MOBILITY: %s (%s) is weaponless and its anim table %s binds "
+                "no unarmedRunAnim (rows with locomotion: %s). Raising runSpeed "
+                "would ask the rig for a clip it does not have - the "
+                "B-SOUL-PROC-2 class." % (rec, label, a0, sorted(_runs) or 'NONE'))
+
+    # ---- 4d. NO END-TO-END VITALITY WALL ----------------------------------
+    #      The design's headline is that phase 1 benches the mod's marquee
+    #      bleed/vitality line and phase 3 hands it back. `defensiveLife` is
+    #      VITALITY resistance; round 1 shipped 100 on BOTH forms, which walls it
+    #      for the entire fight and makes the headline false. The terminal must
+    #      leave a real opening.
+    _vl = float(gv(_BLOOM, 'defensiveLife') or 0)
+    if _vl >= 100.0:
+        problems.append(
+            "%s defensiveLife=%r. That is 100%% VITALITY immunity on the TERMINAL "
+            "form, so the bleed/vitality build benched by phase 1's bleed immunity "
+            "never gets its kill - the fight's whole stated shape would be a lie, "
+            "and 'no walls' would be false." % (_BLOOM, _vl))
+    if float(gv(_BLOOM, 'defensiveBleeding') or 0) > 0:
+        problems.append(
+            "%s defensiveBleeding=%r - bleed immunity must NOT carry to the "
+            "terminal; that is the reversal the whole fight is built on."
+            % (_BLOOM, gv(_BLOOM, 'defensiveBleeding')))
 
     # ---- 5. THE ESCORT LIFE INVARIANT (the live defect this wave kills) ----
     #        R-100 #18 as a measurable field. Stated over EVERY mod-authored
@@ -940,6 +1223,36 @@ def verify(db, tags):
         problems.append("both forms share one display string - the phase turn "
                         "must read on screen (the shipped encounter's own defect)")
 
+    # ---- 7b. NAME COLLISION: the boss's name is not already someone else's ---
+    #
+    # The ratified spec named this boss ORMENOS. `Ormenos` is the China Telkine -
+    # `boss_chinatelkine_ormenos_{38,41,44}` plus `controller_ormenos`, six
+    # `ormenos_*` boss skills, three `ormenos_magmasprite_*` minions,
+    # `Ormenos_FireSpawn_FX` and its OWN soul at `soul\telkine\ormenos_soul_*`:
+    # 59 records. Shipping a second, unrelated Ormenos with its own soul is the
+    # duplicate-identity class Will keeps filing, so the name is now AKREMON and
+    # this gate makes the mistake unrepeatable. It checks the NAME TOKEN against
+    # the live record namespace, ignoring the records this module itself owns.
+    _ours = {_n(x) for x in (_ORM, _BLOOM, _BRIAR, _SUMMON, _SPLIT)} \
+        | {_n(x) for x in _PETS} | {_n(x) for x in _SOUL_TIERS}
+    for token in _NAME_TOKENS:
+        foreign = sorted(n for n in _names
+                         if token in n and n not in _ours)[:6]
+        if foreign:
+            problems.append(
+                "NAME COLLISION: this wave's display name contains %r, but %d "
+                "record(s) it does not own already carry that token, e.g. %s. A "
+                "second unrelated monster wearing an existing boss's name (with "
+                "its own soul) is the duplicate-identity defect class - pick a "
+                "name the database does not already use."
+                % (token, len(foreign), foreign))
+    for tag in (_TAG_ORM, _TAG_BLOOM, _TAG_BRIAR, _TAG_SOUL, _TAG_SUMMON, _TAG_PET):
+        s = str(tags.get(tag, ''))
+        if 'ormenos' in s.lower():
+            problems.append(
+                "tag %s = %r still says 'Ormenos', which is the China Telkine "
+                "(boss_chinatelkine_ormenos_*, 59 records, own soul)." % (tag, s))
+
     # ---- 8. THE KIT IS NOT THE BASE BOSS'S KIT (Will's actual complaint) ---
     #
     # Stated precisely, because "zero shared skills" would be WRONG: boss_scaling,
@@ -987,14 +1300,64 @@ def verify(db, tags):
                 "base boss %s (%s). The AI cast rotation is what the player "
                 "actually sees, so it must not overlap." % (rec, len(shared), base, shared))
 
+    # ---- 9. DURABILITY STAYS INSIDE THE KILLABLE-UBER BAND -----------------
+    #
+    # Anchored on the LIVE Gaoler rather than a constant, so the band tracks the
+    # roster instead of going stale. docs/reports/gaoler_variance_rca.md is the
+    # named reference frame: two forms, 35,000 on Epic, six-strong guard horde,
+    # verdict hard-but-fair and killable, "no action warranted". This encounter is
+    # two forms + two Champions with no racial pet-damage reduction and no
+    # life-drain cascade, so it must not out-tank him.
+    _GAOLER = [r'records\xpack\creatures\monster\gigantes\um_polisgaoler_99.dbr',
+               r'records\xpack\creatures\monster\gigantes'
+               r'\um_polisgaoler_unbound_99.dbr']
+
+    def _epic(rec):
+        v = db.get_field_value(rec, 'characterLife')
+        v = v if isinstance(v, list) else [v]
+        try:
+            return float(v[1] if len(v) > 1 else v[0] or 0)
+        except (TypeError, ValueError, IndexError):
+            return 0.0
+
+    if all(resolves(g) for g in _GAOLER):
+        ref = sum(_epic(g) for g in _GAOLER)
+        ours = _epic(_ORM) + _epic(_BLOOM)
+        if ref > 0 and ours > ref * 1.15:
+            problems.append(
+                "DURABILITY: this encounter totals %.0f life on Epic across its "
+                "two forms against the Gaoler's %.0f - %.2fx. The Gaoler is the "
+                "ratified 'hard but fair, killable' reference (gaoler_variance_rca"
+                ".md, no action warranted) and he brings SIX guards to our two. "
+                "Anything materially above him is a wall, and the order asked for "
+                "a hard fight, not an unkillable one." % (ours, ref, ours / ref))
+        if ref > 0 and ours < ref * 0.55:
+            problems.append(
+                "DURABILITY: this encounter totals only %.0f life on Epic against "
+                "the Gaoler's %.0f (%.2fx). Will's order was that the Golden Bough "
+                "uber be a REAL uber; a pushover is its own kind of failure."
+                % (ours, ref, ours / ref))
+    for rec, life in ((_ORM, _ORM_LIFE), (_BLOOM, _BLOOM_LIFE)):
+        got_l = db.get_field_value(rec, 'characterLife')
+        got_l = got_l if isinstance(got_l, list) else [got_l]
+        vals = [float(x or 0) for x in got_l[:3]]
+        if len(vals) < 3 or not (vals[0] < vals[1] < vals[2]):
+            problems.append("%s characterLife=%r must rise Normal -> Epic -> "
+                            "Legendary" % (rec, got_l))
+
     if problems:
         raise SystemExit("charon_rework.verify FAILED:\n  " + "\n  ".join(problems))
 
-    print("  charon_rework.verify: OK (proxy chain resolves to Ormenos + 2 "
+    print("  charon_rework.verify: OK (proxy chain resolves to Akremon + 2 "
           "Handbriars on BOTH the forecourt and the TESTHUB yard; Golden Bough "
           "guaranteed on the terminal; hoard + world chest + orb intact; soul "
           "re-identified on the frozen tiers; A9 clean on 3 own-rig clones with "
           "no invented actorHeight; 0 charFxPak, 0 dangling skill refs, permanent "
-          "pets TTL-free; no 'ferryman' exemption; every svc_* Champion escort has "
-          "strictly ascending life; 0 charon_* signature skills and 0 shared cast "
-          "rotation vs boss_charon_43 / boss_charonform2_43)")
+          "pets TTL-free; no 'ferryman' exemption; EXACTLY ONE summon-pet "
+          "registration and it names the terminal's own donor; all 6 placed and "
+          "summoned bodies D19-MOBILE on tables that bind unarmedRunAnim; no "
+          "end-to-end vitality wall; no display-name collision with a live record "
+          "family; Epic durability inside the Gaoler-anchored band; every svc_* "
+          "Champion escort has strictly ascending life; 0 charon_* signature "
+          "skills and 0 shared cast rotation vs boss_charon_43 / "
+          "boss_charonform2_43)")
