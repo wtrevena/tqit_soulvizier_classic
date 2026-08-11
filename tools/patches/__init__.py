@@ -633,6 +633,46 @@ REGISTRY = [
                             # LAST, so it is the ratified final writer on its own field. A WARN
                             # naming a module that also writes perPartyMemberDropItemName on any of
                             # those 3 is a real finding: investigate before shipping.
+    'charon_rework',        # WILL 2026-08-11, verbatim: "the charon uber boss we created
+                            # needs to be re-worked, he is pretty much identical to the base
+                            # game charon boss we cloned him off. maybe we can replace him
+                            # with a different uber monster that is more unique". He is right
+                            # and the arz proves it: both our forms carried boss_charon_43 /
+                            # boss_charonform2_43's kit BYTE-FOR-BYTE (same skillNames, same
+                            # specialAttack rotation); the only authored deltas were life,
+                            # four resist floats, scale, actorHeight and one aura. Replaces the
+                            # encounter IN PLACE at the three frozen record paths with ORMENOS,
+                            # THE GILDED ROOT -> THE BOUGH IN BLOOM + 2 Handbriar champions:
+                            # Plant (race count in the 53-boss uber roster: ZERO), the mod's
+                            # ONLY Skill_DefensiveWall carrier, bleed-immune phase 1 that stops
+                            # being bleed-immune in phase 2. ARZ-ONLY - the Golden Bough
+                            # forecourt placement, its proxy/pool chain and the world chest are
+                            # REUSED, never rebuilt, so no map rebuild is implied.
+                            # ORDER IS LOAD-BEARING, both sides:
+                            #  * AFTER `uber_quest_drops` - that module REQUIRES the pre-rework
+                            #    um_charonform2_ferryman_99 to still carry the inherited
+                            #    perPartyMemberDropItemName it clears (it SystemExits if the
+                            #    field is already absent). Running after it means the leak is
+                            #    cleared on the old contents and the new donors carry no such
+                            #    field at all, which its verify() accepts.
+                            #  * BEFORE every breadth/derivation module (chest_loot_breadth,
+                            #    armor_loot_breadth, red_uber_orbs, orb_loot_breadth,
+                            #    orb_armor_rows) - those derive their scope FROM these monster
+                            #    records, so they must see the final contents at apply() AND
+                            #    verify() time or the two disagree.
+                            # It re-asserts DisplayAsQuestItem after its re-clone, because
+                            # `uber_quest_markers` (earlier) writes that field on these records
+                            # and its verify() re-derives on the final db.
+                            # Its verify() is the fail-loud gate: the proxy chain resolves to
+                            # the new boss on BOTH the forecourt and the TESTHUB yard, all three
+                            # guaranteed rewards stay wired (Golden Bough at Misc4 100%, the one
+                            # hoard chest, the soul), A9 render chain (own-rig clones only, no
+                            # invented actorHeight, no single-carrier skin), the crash laws, the
+                            # NEW strictly-ascending-life invariant over every svc_* Champion
+                            # escort (the shipped one was [878, 300, 400] - life FELL from Normal
+                            # to Epic, R-100 #18 as a measurable field), and an identity gate that
+                            # fails if any charon_* signature skill or shared cast rotation ever
+                            # comes back.
     'pc_dissolve_restore',  # PR-1 (Steam player fleurydid 2026-07-29, "quand je meurt tombe
                             # invisible"): the PLAYER goes INVISIBLE on death/respawn. The two
                             # ACTIVE PC records (femalepc01/malepc01) are taken verbatim from SV
