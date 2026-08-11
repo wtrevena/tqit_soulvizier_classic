@@ -22,6 +22,11 @@ WHAT IT ASSERTS
   V6  the canonical two-chest cage RUN stays under CANON_MAX_CAGE_RUN, per difficulty
   V7  ... and still pays at least one item at the tier's target grade >= 95% of runs,
       because Will's word was "guaranteed"
+  V7b ... and >= 90% of runs under INTEGER TRUNCATION of the spawn count, the
+      pessimistic engine model - because post-trim every cage table sits between 1.05
+      and 1.62 iterations solo, so the rounding mode is now first-order and unproven
+      (`BL-R230-DEBT-5`). V7 alone would have reported 96.9% Epic while a truncating
+      engine paid 93.8%.
 
 All thresholds and their derivations live in `tools/svc_loot_volume.py`; the in-build
 gate `tools/patches/loot_volume_trim.verify` and the negative battery
@@ -33,7 +38,14 @@ Usage:
   py tools/gate_loot_volume.py <arz> --calibrate  # worst observed value per check
   py tools/gate_loot_volume.py <arz> --apply      # apply R-230 in memory first, so a
                                                   # PRE-wave arz measures against the
-                                                  # same contract (idempotent)
+                                                  # same contract
+
+⚠ `--apply` IS APPLY-ONCE, and it says so rather than assuming. The wave is not
+idempotent: `clone_hub_cage` would re-clone the TESTHUB twin off already-TRIMMED
+canonical records and the split would silently vanish (measured: 58 tables drift).
+So `--apply` on an arz that ALREADY carries the wave is detected and SKIPPED with a
+printed line - the audit then measures the built bytes, which is what you wanted
+anyway. Only a genuinely pre-wave arz gets the in-memory apply.
 """
 import sys
 from pathlib import Path
@@ -51,8 +63,17 @@ def main(argv):
         return 2
     db = ArzDatabase.from_arz(Path(argv[1]))
     if '--apply' in argv[2:]:
-        print("  --apply: R-230 wave applied in memory (idempotent; safe on a built arz)")
-        SLV.apply_wave(db, verbose=True)
+        seen = SLV.already_applied(db)
+        if seen:
+            print("  --apply SKIPPED: this arz ALREADY carries the R-230 wave (%d "
+                  "TESTHUB twin record(s) present, e.g. %s). The wave is APPLY-ONCE - "
+                  "a second pass would re-clone the twin off the already-trimmed "
+                  "canonical records and the canonical-vs-TESTHUB split would silently "
+                  "vanish. Measuring the arz as built, which is the right answer here."
+                  % (len(seen), seen[0]))
+        else:
+            print("  --apply: R-230 wave applied in memory to a PRE-wave arz")
+            SLV.apply_wave(db, verbose=True)
     lk = SLB.Lookup(db)
     if '--calibrate' in argv[2:]:
         SLV.calibrate(db, lk)
@@ -71,12 +92,13 @@ def main(argv):
     worst, who = report.get('worst_surface', (0.0, '-'))
     print("\nGATE PASS: every CANONICAL loot surface pays at most %.2f target-grade gear "
           "piece(s) per open (worst %.2f on %s); the two-chest cage run stays under "
-          "%s and still pays at least one at >= %.0f%% of runs; the TESTHUB twin keeps "
+          "%s and still pays at least one at >= %.0f%% of runs on the continuous "
+          "reading and >= %.0f%% under integer truncation; the TESTHUB twin keeps "
           "its shipped volume (floor %s); every in-scope numSpawn equation still carries "
           "`numberOfPlayers` and still spawns >= %.2f iteration(s) solo."
           % (SLV.CANON_MAX_GEAR_PER_OPEN, worst, who, SLV.CANON_MAX_CAGE_RUN,
-             100.0 * SLV.MIN_P_AT_LEAST_ONE, SLV.HUB_MIN_CAGE_RUN,
-             SLV.MIN_SPAWN_MIN_SOLO))
+             100.0 * SLV.MIN_P_AT_LEAST_ONE, 100.0 * SLV.MIN_P_AT_LEAST_ONE_TRUNC,
+             SLV.HUB_MIN_CAGE_RUN, SLV.MIN_SPAWN_MIN_SOLO))
     return 0
 
 

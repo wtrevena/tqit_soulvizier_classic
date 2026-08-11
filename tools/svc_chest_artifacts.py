@@ -188,8 +188,12 @@ def pass_line(db, lk=None):
     return ("%d of %d equippable artifact(s) unreachable from every mod chest, hoard "
             "and orb; the remaining %d are the pinned R-185 craft reagents, each "
             "re-proved still live and still named by a formula. Scrolls are out of "
-            "scope by measurement (%d of them), not by assumption. RESIDUE, stated: "
-            "those %d pins are Will's ruling NOT yet fully implemented - BL-R230-DEBT-2"
+            "scope by measurement (%d of them), not by assumption. "
+            "*** THIS PASS IS NOT COMPLIANCE: Will's ruling was \"artifacts should never "
+            "drop from chests\" and what is asserted here is \"never EXCEPT %d pinned by "
+            "name\". The exemption exists because R-185 - Will's own ruling - put them "
+            "there, so a literal zero-artifact gate would red the shipped build. "
+            "RATIFICATION OR THE ONE-LANE FOLLOW-UP IS A WILL DECISION: BL-R230-DEBT-2 ***"
             % (n_equip - len(reach), n_equip, len(reach),
                sum(1 for p in db.record_names()
                    if d.cls(p) == 'ItemArtifact' and is_scroll(d, p)),

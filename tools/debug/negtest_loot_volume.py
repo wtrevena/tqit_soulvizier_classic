@@ -25,6 +25,9 @@ clean sweep, which is the same shape as the b80 D6b mirror finding.
   N8  the scroll discriminator broken                                   -> A4
   N9  D7X2 - the D7 anchor surface's volume moved out from under the committed
       constant, which silently rescales the armour-parity floor         -> D7X2
+  N10 THE TRUNCATION MASK - the guarantee degraded for real, then "repaired" by
+      raising numSpawnMax INSIDE the truncation band [1,2)              -> V7b, V7 GREEN
+  N11 a SECOND apply_wave on the same database                          -> SystemExit
   P1/P2/P3 positive controls: the wave is green, the TESTHUB twin's DELIBERATE richness
       stays green (a gate that reds the ruling's own other half is worthless), and the
       six R-185 pins stay green.
@@ -54,6 +57,30 @@ PLANT_ARTIFACT = r'records\xpack\item\artifacts\e_ga_crimsonviper.dbr'
 # nothing and reported the GATE as blind. A negtest whose plant silently misses is worse
 # than no negtest, because it accuses working code. Hence `_must` below.
 PIN_ROW = r'records\item\loottables\svc\svc_craft_reagents_artifact_l01.dbr'
+
+# ── N10's two plant constants, both SCANNED rather than chosen ───────────────
+# The mask only works below TWO iterations solo, because `int(1.99) == int(1.05) == 1`:
+# that is the entire band in which the continuous model moves and the truncated one
+# cannot. 1.99 is the top of it.
+N10_MASK_MAX_SOLO = 1.99
+# The composition scale is SWEPT, not chosen. The usable band is narrow by nature -
+# it is exactly the gap between the two floors - so the value is the one that
+# maximises the SMALLER of the two margins, and the whole sweep is recorded so the
+# next reader can see the band rather than trust the number. MEASURED, Epic (the
+# binding difficulty), with numSpawnMin at the never-empty floor and numSpawnMax
+# masked to 1.99 iterations:
+#     f      V7 (cont, floor 0.95)     V7b (trunc, floor 0.90)     other findings
+#     0.85   0.9656  green by 0.0156   0.8914  RED   by 0.0086     none
+#     0.84   0.9637  green by 0.0137   0.8876  RED   by 0.0124     none   <- taken
+#     0.82   0.9599  green by 0.0099   0.8798  RED   by 0.0202     none
+#     0.80   0.9557  green by 0.0057   0.8716  RED   by 0.0284     none
+#     0.75   0.9435  RED               0.8494  RED                 none
+# 0.84 maximises min(margin) at 0.0124. Note what the sweep also proves: NO other
+# check fires anywhere in the band - the plant is legal under V1, V3, V4, V5 and V6,
+# which is precisely why the continuous model alone would have shipped it. If a
+# future retune moves the surface far enough, this case goes BLIND rather than wrong,
+# and `check` prints BLIND instead of passing quietly.
+N10_CHANCE_SCALE = 0.84
 
 
 def load_fixed(path):
@@ -290,13 +317,81 @@ def main(argv):
     check('N9 the D7 anchor surface\'s volume drifts', _move_anchor, _p_d7x2,
           'ARMOR_SLOT_FLOOR silently rescales with whatever numSpawn was edited last')
 
+    # ── N10: THE TRUNCATION MASK. This is the defect V7b exists for, and without it
+    #    V7b would be decoration: V7's continuous model can be satisfied by moving a
+    #    number the player never experiences.
+    #    The plant is two real, plausible edits in sequence:
+    #      1. the `BL-R230-DEBT-1` follow-up ("Will meant literally one") taken too
+    #         far - every cage group chance scaled by N10_CHANCE_SCALE, so the
+    #         guarantee genuinely degrades;
+    #      2. the MASK - numSpawnMax raised to just under TWO iterations solo. Under
+    #         the continuous model that lifts S from ~1.19 to ~1.52 and the guarantee
+    #         "recovers"; under truncation `int(1.99) == int(1.05) == 1` and NOTHING
+    #         changes, because the engine either rolls one iteration or it does not.
+    #    MEASURED at this scale: Epic P(>=1) 0.9637 continuous (V7 floor 0.95, GREEN)
+    #    against 0.8876 truncated (V7b floor 0.90, RED). V1/V6/V3/V4/V5 stay silent -
+    #    the plant is legal under every other rule in the contract, which is the whole
+    #    point. If a future retune moves the base numbers this case goes BLIND rather
+    #    than wrong, and the printed line says so.
+    def _truncation_mask(db, lk):
+        hi_m = round(N10_MASK_MAX_SOLO / 4.8, 4)
+        lo_m = round(SLV.MIN_SPAWN_MIN_SOLO / 4.8 + 0.0001, 4)
+        for N in SLV.CAGE_CHESTS:
+            for tier in SLV.TIERS:
+                for v in SLV.VARIANTS:
+                    real = _must(lk, SLV.canon_cage_table(N, tier, v),
+                                 'the N10 truncation-mask target')
+                    for g in range(1, 7):
+                        c = lk.gv(real, 'loot%dChance' % g)
+                        if c is not None:
+                            db.set_field(real, 'loot%dChance' % g,
+                                         round(float(c) * N10_CHANCE_SCALE, 4))
+                    db.set_field(real, 'numSpawnMinEquation',
+                                 SLV.format_eq(BRACKET, lo_m))
+                    db.set_field(real, 'numSpawnMaxEquation',
+                                 SLV.format_eq(BRACKET, hi_m))
+                    db._modified.add(real)
+
+    def _p_v7b(db, lk):
+        p = SLV.problems(db, lk)
+        v7b, v7 = codes(p, 'V7b'), codes(p, 'V7')
+        # V7 must stay SILENT. That is the assertion: the continuous model was
+        # satisfied by an edit the player cannot feel, and only V7b noticed.
+        return ('%d V7b, V7 silent as designed' % len(v7b)) if (v7b and not v7) else ''
+    check('N10 MASK: guarantee "fixed" by raising numSpawnMax inside [1,2)',
+          _truncation_mask, _p_v7b,
+          'the continuous model can be satisfied by a number no player experiences')
+
+    # ── N11: a SECOND apply_wave. The round-2 vet measured the consequence: 58 tables
+    #    drift, the twin is re-cloned off the ALREADY-TRIMMED canonical records, and
+    #    the canonical-vs-TESTHUB split silently ceases to exist (DEV lands at ~1.04x
+    #    canonical instead of ~9.5x). Planted rather than trusted to a docstring,
+    #    because four docstrings claimed the opposite and all four were wrong.
+    def _double_apply(db, lk):
+        try:
+            SLV.apply_wave(db, verbose=False)
+        except SystemExit as e:
+            return str(e)
+        return ''
+    db2, lk2 = load_fixed(arz)
+    hit = _double_apply(db2, lk2)
+    ok = bool(hit) and 'ALREADY EXISTS' in hit
+    print("%s %-58s -> %s"
+          % ('OK ' if ok else 'XX ', 'N11 a second apply_wave on the same database',
+             'RED (correct): SystemExit re-entry guard' if ok
+             else 'GREEN (BLIND - the twin gets re-cloned off trimmed records and the '
+                  'TESTHUB split silently vanishes)'))
+    if not ok:
+        fails.append('N11')
+
     print()
     if fails:
         print("NEGTEST FAIL: %d case(s) did not behave as designed: %s"
               % (len(fails), ', '.join(fails)))
         return 1
-    print("NEGTEST PASS: 9 planted defects RED, 3 positive controls GREEN - the volume "
-          "contract fires in BOTH directions and the artifact ruling is enforced.")
+    print("NEGTEST PASS: 11 planted defects RED, 3 positive controls GREEN - the volume "
+          "contract fires in BOTH directions, the guarantee holds under BOTH spawn-count "
+          "models, the apply-once guard is real, and the artifact ruling is enforced.")
     return 0
 
 

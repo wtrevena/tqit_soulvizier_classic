@@ -5453,15 +5453,22 @@ one"*. So D7's floor is now DERIVED in code (a per-iteration strength times an a
 **D7X2** re-proves the committed anchor against the anchor surface's own bytes every run. The anchor
 also MOVES, off `svc_uberorb_apex_e01c` and onto `gaoler cage chest_01 [l]`: the never-empty floor
 lifts every thin container to the same 1.125 iterations, so the old volume proxy stopped separating
-anything and D7 would newly have red the fifteen R-220 orb tables b80 deliberately excluded. D7's reach
-falls from 42-of-57 surfaces to 21-of-75, and D7b (unchanged, all 75 surfaces) carries the invariant -
-exactly as R-181's own comment predicted it would have to.
+anything and D7 would newly have red the fifteen R-220 orb tables b80 deliberately excluded.
+
+**THE COST, MEASURED and not estimated (an earlier draft of this line said "42-of-57 to 21-of-75" and
+both halves were wrong):** the audit set is **63** surfaces after this wave (57 canonical + the 6 new
+TESTHUB twins), and **D7 is asserted on 24 of them - only 18 of the 57 CANONICAL surfaces.** That is a
+bigger canonical cost than the wrong number admitted. The 18: cage chest_01 [l], chest_03 [e],
+chest_03 [l]; the 3 blood-cave donors; `polisvault_02/_04/_05`; and the 9 `svc_*hoard_loot_03` tables.
+D7 now asserts on **no orb at all** (apex or level-banded), on **none of the 18 `_01`/`_02` hoard
+tables**, and on exactly **one Normal-difficulty canonical surface** (`loottable_hidden_bloodcave_01`).
+**D7b - 0.0375 worn-slot pieces per SPAWN ITERATION, unchanged, asserted on all 63 - is what carries
+the invariant now**, exactly as R-181's own comment predicted it would have to, and the R-181 gate
+re-run on the trimmed db returns 0 findings.
 
 **THE LADDER, and it is per DIFFICULTY as asked.** Every equation keeps its exact
 `(<bracket>)*<M>` shape and only `<M>` moves, so `numberOfPlayers` co-op scaling is preserved
-byte-for-byte in form. The trim is MULTIPLICATIVE on each table's shipped multiplier, so the shipped
-richness ORDER survives (blood-cave mega chest richest, cage chest_03 above chest_01, apex orb above a
-level-banded one - the b79 precedent Will asked to keep):
+byte-for-byte in form.
 
 | tier | trim | e.g. cage chest_01 | S before -> after |
 |---|---:|---|---|
@@ -5469,26 +5476,70 @@ level-banded one - the b79 precedent Will asked to keep):
 | Epic | x0.095 | `*2.4/*2.8` -> `*0.228/*0.266` | 12.48 -> 1.186 |
 | Legendary | x0.105 | `*2.4/*2.8` -> `*0.252/*0.294` | 12.48 -> 1.310 |
 
-Stated rather than hidden: at these volumes the never-empty floor lifts the thinnest orbs OFF the
-multiplicative ladder, so the spread between the richest and thinnest surface COMPRESSES. That is a
-mechanical consequence of a discrete spawn count, not a design choice, and `--calibrate` prints both
-numbers so it can never be silent.
+**RANK IS PRESERVED IN SPAWN VOLUME (S), AND THAT IS THE ONLY UNIT THE CLAIM HOLDS IN.** The trim is
+multiplicative on each table's shipped multiplier, so S keeps its order: the blood-cave mega chest
+stays the highest-S surface (1.991 against the cage's 1.310/1.512) and cage chest_03 stays above
+chest_01 on every difficulty. Two corrections to what that does NOT mean, both measured, because an
+earlier draft of this ruling claimed the order survived generally:
+- **In gear per open the order is different, and it was different BEFORE this wave** - the trim
+  neither caused it nor can fix it. On the shipped `build83` arz cage chest_01 [n] already paid 23.88
+  against the blood cave's 17.45 and the hoards' 19.19, and chest_03 already paid less than chest_01 on
+  all three difficulties. After: cage 2.153, hoards 1.730, blood cave 1.483-1.497. Gear-per-open is S
+  times COMPOSITION, and composition is R-180/R-181/R-220's, not this lever's.
+- **The orb rank does not survive even in S.** The never-empty floor lifts every thin container to the
+  same floor volume, so `svc_uberorb_apex_n01c` and `orb uberorb_default_n01c` both land on S 1.125 /
+  1.014 gear per open - EQUAL, where shipped they were 10.58/9.53 against 5.06/4.56. The b79 precedent
+  Will asked to keep ("orbs stay generous relative to chests") survives in the sense he asked for - an
+  orb at 1.014 against a cage chest at 2.153 is generous - but "apex beats level-banded" is a casualty
+  of the discrete floor, recorded as one rather than repeated. `--calibrate` prints S and gear/open
+  side by side for all 63 surfaces so neither claim need be made from memory.
 
-**"GUARANTEED" IS TREATED AS A GUARANTEE, NOT AN AVERAGE.** A never-empty floor
-(`MIN_SPAWN_MIN_SOLO = 1.05` iterations at one player) keeps at least one loot iteration on every
-container, so the 100% guaranteed row still fires. P(the two-chest run pays at least one item at the
-tier's grade) = **99.99% Normal / 96.86% Epic / 99.63% Legendary**, gated at 95%. That floor is not
-taste: build28/29/30 replaced a numSpawn equation with the bare literal `48`, the engine's evaluator
-returned 0, and the chest opened and dropped NOTHING - a P0 that took three builds to find. V3 and V4
-plant that P0 rather than trusting a comment.
+**"GUARANTEED" IS TREATED AS A GUARANTEE, NOT AN AVERAGE - UNDER BOTH READINGS OF THE SPAWN COUNT.** A
+never-empty floor (`MIN_SPAWN_MIN_SOLO = 1.05` iterations at one player) keeps at least one loot
+iteration on every container, so the 100% guaranteed row still fires. That floor is not taste:
+build28/29/30 replaced a numSpawn equation with the bare literal `48`, the engine's evaluator returned
+0, and the chest opened and dropped NOTHING - a P0 that took three builds to find. V3 and V4 plant that
+P0 rather than trusting a comment.
+
+**The model is a MODEL, and this ruling says so rather than letting one number stand as measured engine
+behaviour.** `spawn_iterations` returns the CONTINUOUS mean of the min and max equations. Before the
+trim S ran 5.06-18.96 and the fractional part was noise; after it, every canonical cage table
+evaluates to between **1.0502 and 1.6128** iterations solo, so under INTEGER TRUNCATION every one of
+them is exactly ONE iteration and the rounding mode is the whole question. **We do not know which the
+engine does** (`BL-R230-DEBT-5`), so both are gated:
+
+| difficulty | continuous gear | P(>=1), V7 floor 95% | int-truncated gear | P(>=1), V7b floor 90% |
+|---|---:|---:|---:|---:|
+| Normal | 3.84 | 99.99% | 3.29 | 99.96% |
+| Epic | 2.68 | 96.86% | 2.12 | **93.78%** |
+| Legendary | 3.82 | 99.63% | 2.74 | 98.30% |
+
+The Epic truncated figure is **below the 95% V7 enforces**, and V7 reported green because its model
+never discretises - which is precisely why V7b exists and why the two floors are separate numbers. The
+direction of the error is benign for the ask: 2.1-2.7 legendaries a run is CLOSER to "guaranteed 1
+legendary item" than 2.7-3.8. Two consequences worth carrying forward: **the ceilings (V1/V6) stay on
+the continuous reading**, which is the higher one, so every check is evaluated under the model hardest
+on it; and **solo, the per-difficulty ladder is a continuous-model artefact** - all three difficulties
+truncate to the same single iteration, and what separates them is composition. The ladder still does
+real work in co-op, where every bracket exceeds 13.8 iterations.
 
 **THE MECHANICAL FLOOR IS 2.74, NOT 1.0, AND THAT IS STATED PLAINLY.** ONE spawn iteration of the
 canonical cage already pays 1.60 + 1.14 = 2.74 Legendary-grade pieces, because six loot groups roll
 independently per iteration and their chances sum past 280%. The `numSpawn` lever cannot reach a
-literal "1 legendary item" per run; it bottoms out at 2.74 and this wave lands at 3.82, within 40% of
-that floor. Going lower means lowering group chances or the guaranteed row - COMPOSITION, which this
-lane is forbidden to touch. Registered as `BL-R230-DEBT-1`. **If Will means literally one, that is the
-one-line follow-up and it needs his word, because it takes the guaranteed row below 100%.**
+literal "1 legendary item" per run; it bottoms out at 2.74 and this wave lands at 3.82 continuous
+(2.74 truncated - i.e. the truncated Legendary reading is ALREADY sitting on the mechanical floor).
+Going lower means lowering group chances or the guaranteed row - COMPOSITION, which this lane is
+forbidden to touch. Registered as `BL-R230-DEBT-1`. **If Will means literally one, that is the one-line
+follow-up and it needs his word, because it takes the guaranteed row below 100%.**
+
+> **ONE CONSTANT OF HEADROOM WAS LEFT ON THE TABLE, DELIBERATELY, AND IT SHOULD NOT BE DISCOVERED
+> LATER.** The Legendary cage lands at S = 1.310 / 1.512, comfortably ABOVE the 1.05 / 1.20 never-empty
+> floor, so `CANON_TRIM['l']` still has room the Normal and Epic tiers do not. Dropping Legendary to
+> the floor takes its run from **3.82 to about 3.08** continuous (2.74 truncated, the mechanical floor
+> itself). So the honest sentence is: **it is the per-difficulty LADDER, not the mechanics, holding
+> Legendary at 3.82** - "within 40% of the floor" is true and it is a choice, not a limit. One constant
+> if Will wants it tighter, and the ladder's own rationale (a Legendary container keeps more of its
+> shipped volume than a Normal one) is the only thing arguing against. `BL-R230-DEBT-6`.
 
 **THE TESTHUB HALF IS A RECORD SPLIT, BECAUSE THE ARZ IS SHARED.** The four TESTHUB farm-duplicate
 cage chests (Will 2026-08-08) named the SAME two container records as the two canonical placements, so
@@ -5510,10 +5561,31 @@ PROVEN both ways: the hub specs name `svc_polisvault_hub_chest_01/03`, `B41_SPEC
 shared by `tools/gate_loot_volume.py`, `loot_volume_trim.verify()` and the negatives. V1 canonical
 ceiling per open, V2 TESTHUB FLOOR (so a later lane cannot quietly kill the DEV farm while every
 ceiling stays green), V3 never-empty, V4 equation form, V5 the twin is strictly richer, V6 the cage RUN
-ceiling per difficulty, V7 the guarantee. Negatives:
-`py tools/debug/negtest_loot_volume.py <arz>` - **9 planted defects RED, 3 controls GREEN**, and they
+ceiling per difficulty, V7 the guarantee, V7b the guarantee under integer truncation. Negatives:
+`py tools/debug/negtest_loot_volume.py <arz>` - **11 planted defects RED, 3 controls GREEN**, and they
 plant in BOTH directions: too much (N1, the defect Will reported) and too little (N5, the MIRROR - this
-lane's own over-correction, trimmed until the guarantee dies).
+lane's own over-correction, trimmed until the guarantee dies). Two more were added by the round-2 vet:
+**N10** plants the defect V7b exists for - a guarantee "repaired" by raising `numSpawnMax` inside the
+truncation band `[1,2)`, which moves the continuous model and literally nothing a player sees - and
+**N11** plants a SECOND `apply_wave` on the same database.
+
+> **THE WAVE IS APPLY-ONCE, NOT IDEMPOTENT, and four places in the round-1 lane claimed otherwise.**
+> `clone_hub_cage` would re-clone the TESTHUB twin off the already-TRIMMED canonical records (the
+> canonical-vs-TESTHUB split then simply ceases to exist), and the trim is multiplicative with no
+> marker in the bytes saying it has already run. **Measured: a second apply drifts 58 tables and lands
+> the DEV farm at ~1.04x canonical instead of ~9.5x.** No shipped artifact was ever at risk -
+> `patches.run_registry` asserts each module runs exactly once, which is why det-2x is byte-identical -
+> but the workflow the docs advertised did not exist. The twin's own existence is now the guard, a
+> second call fails LOUD, and `gate_loot_volume --apply` detects the applied state and says so.
+
+> **THE R-181 DISTRIBUTION GATE NOW REDS ON ANY PRE-R-230 ARZ, AND THAT IS THE ANCHOR WORKING.**
+> `gate_loot_distribution.py` on this branch cannot be used as a "the baseline passes too" control
+> against the rollback artifact, the previous build, or any lane branched before this one: it emits
+> `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface gaoler
+> cage chest_01 [l], which MEASURES 12.4800 spawn iterations`. On an untrimmed arz the anchor surface
+> really does measure 12.48. **Every other coexisting gate still passes on the untrimmed arz** (chest
+> breadth 51 tables, orb breadth 18, craft/thrown, artifacts - all 0 findings), so a lone D7X2 red on a
+> pre-R-230 artifact is not a defect and the Ship lane should not chase it.
 
 **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. **Will's check: Prison of Souls
 / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open BOTH canonical cage chests on Legendary -
@@ -5523,6 +5595,21 @@ DEV TESTHUB cage the four duplicates should still pour.** Registered as `BL-R230
 ### R-230 COMPANION RULING [2026-08-11] PENDING - "artifacts should never drop from chests"
 
 **WILL, VERBATIM (2026-08-11):** *"artifacts should never drop from chests"*.
+
+> 🚨 **WILL DECISION REQUIRED BEFORE THIS COUNTS AS SATISFIED - do not read the green gate as
+> compliance.** The ruling as stated is NOT what ships. What ships asserts *"zero equippable artifacts
+> reachable from any mod chest, hoard or orb EXCEPT six pinned by name"*, and those six are reachable
+> because of **R-185, one of Will's own rulings, shipped the day before**. A literal zero-artifact gate
+> would RED the live `build83` build and require reverting R-185. The six-artifact exemption is
+> therefore a **decision for Will, not a detail** - either he ratifies the exemption (and this entry
+> becomes IMPLEMENTED-WITH-EXEMPTION), or he takes the one-lane follow-up priced in `BL-R230-DEBT-2`
+> and the roster deletes itself. **The independent round-2 vet re-derived this from the bytes with its
+> own loot-graph walker and confirmed both halves: the relayed "current state already complies
+> (0/292)" is false, and the six reachable records are exactly
+> `e_da_crescentmoonofartemis`, `e_da_demetersbounty`, `l_da_goldeneyeofsunwukong`, `l_da_ikonofzeus`,
+> `l_da_mardukstabletofdestiny`, `l_da_thothsglory`**, reached via
+> `records\item\loottables\svc\svc_craft_reagents_artifact_l01.dbr`, which is named by
+> `04_l_misc.lootName7`, `amulet_l01.lootName4` and `finger_l01.lootName3`.
 
 **THE PREMISE THIS ARRIVED WITH WAS WRONG, AND SAYING SO IS THE POINT.** It was relayed as a no-op -
 "current state already complies (0/292), assert it so it can never regress". It does not comply.

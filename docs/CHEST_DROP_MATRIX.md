@@ -574,21 +574,59 @@ version we can spawn more that is fine."*
 
 ### 8.1 The canonical Gaoler cage, per run (both chests opened once)
 
-| difficulty | grade it pays | shipped `build83` | after R-230 | cut | P(at least one) |
-|---|---|---:|---:|---:|---:|
-| Normal | Epic | 43.71 | **3.84** | 11.4x | 99.99% |
-| Epic | Legendary | 28.17 | **2.68** | 10.5x | 96.86% |
-| Legendary | Legendary | 36.41 | **3.82** | 9.5x | 99.63% |
+**Two readings are given for every row, because the engine's rounding of the spawn count is unproven
+and after this trim it is first-order.** `spawn_iterations` returns the continuous mean of the min and
+max equations; post-trim every canonical cage table evaluates to between **1.0502 and 1.6128**
+iterations at one player, so if the engine truncates to an integer, every one of them is exactly ONE
+iteration. Before the trim S ran 5.06-18.96 and the fractional part was noise; now it is the whole
+question. Both readings are gated (`BL-R230-DEBT-5`).
+
+| difficulty | grade it pays | shipped `build83` | after R-230, continuous | P(>=1) | after R-230, int-truncated | P(>=1) |
+|---|---|---:|---:|---:|---:|---:|
+| Normal | Epic | 43.71 | **3.84** | 99.99% | **3.29** | 99.96% |
+| Epic | Legendary | 28.17 | **2.68** | 96.86% | **2.12** | 93.78% |
+| Legendary | Legendary | 36.41 | **3.82** | 99.63% | **2.74** | 98.30% |
 
 "Guaranteed" is treated as a guarantee, not an average: a never-empty floor keeps at least one loot
-iteration on every container, so the 100% guaranteed row still fires and the gate holds P(at least one
-item at the tier's grade) at 95%.
+iteration on every container, so the 100% guaranteed row still fires. The gate holds P(at least one
+item at the tier's grade) at **95% on the continuous reading (V7) and 90% on the truncated one (V7b)**,
+the two floors set by the identical construction (37-38% headroom on the failure side).
+
+**The direction of the modelling error is benign for the ask.** The truncated reading is the
+pessimistic one, and 2.1-2.7 legendaries a run is CLOSER to Will's "guaranteed 1 legendary item" than
+the 2.7-3.8 the continuous model reports. What is NOT benign is quoting one number as if it were
+measured engine behaviour, which is why both are printed here, in `--calibrate`, and in the gate.
+
+**A consequence worth knowing before touching the ladder:** solo, all three difficulties truncate to
+the same single iteration, so the per-difficulty trim (x0.085 / x0.095 / x0.105) is, at one player, a
+continuous-model artefact - what separates the difficulties under truncation is the tables' own
+composition. The ladder still does real work in co-op, where every bracket exceeds 13.8 iterations and
+a multiplier difference is many whole iterations.
 
 ### 8.2 Every other surface, proportionally
 
-The trim is MULTIPLICATIVE on each table's own shipped multiplier, so the richness ORDER is preserved:
-the blood-cave mega chest is still the richest surface in the mod, cage chest_03 still beats chest_01,
-and an apex orb still beats a level-banded one (the b79 precedent).
+The trim is MULTIPLICATIVE on each table's own shipped multiplier, so the richness order is preserved
+**in SPAWN VOLUME (S)** - the column this table's "S before -> S after" pair prints. The blood-cave
+mega chest stays the highest-S surface in the mod (1.991 against the cage's 1.310/1.512), and cage
+chest_03 stays above chest_01 on every difficulty.
+
+> WARNING - **Read that in S, not in gear per open, and read the two exceptions.** An earlier draft of
+> this paragraph claimed the order survived generally, two rows above a table that prints the opposite.
+> Corrected, measured:
+> - **In GEAR PER OPEN the order is different, and it was different BEFORE this wave too** - so the
+>   trim neither caused it nor can fix it. On the shipped `build83` arz the cage chest_01 [n] already
+>   paid **23.88** against the blood cave's **17.45** and the hoards' **19.19**, and chest_03 already
+>   paid LESS than chest_01 on all three difficulties (19.83 vs 23.88 on Normal). After the wave: cage
+>   **2.153**, hoards **1.730**, blood cave **1.483-1.497**; chest_03 1.686/1.193/1.724 against
+>   chest_01 2.153/1.483/2.099. Gear-per-open is S times the surface's own group COMPOSITION, and
+>   composition belongs to sections 1-7, not to the volume lever.
+> - **The orb rank does not survive even in S.** The never-empty floor lifts every thin container to
+>   exactly the same floor volume, so `svc_uberorb_apex_n01c` and `orb uberorb_default_n01c` both land
+>   on S **1.125** / **1.014** gear per open - EQUAL, where shipped they were 10.58/9.53 against
+>   5.06/4.56. What they sit on is the floor, not the ladder. The b79 precedent Will asked to keep
+>   ("orbs stay generous relative to chests") survives in the sense he asked for - an orb at 1.014
+>   against a cage chest at 2.153 is generous - but "an apex orb still beats a level-banded one" is a
+>   casualty of the discrete floor and is recorded as one rather than repeated.
 
 | surface family | count | S before | S after | gear per open, before -> after |
 |---|---:|---:|---:|---|
@@ -645,7 +683,40 @@ py tools/gate_chest_artifacts.py work/SoulvizierClassic/Database/SoulvizierClass
 py tools/debug/negtest_loot_volume.py work/SoulvizierClassic/Database/SoulvizierClassic.arz
 ```
 
-Add `--apply` to either gate to measure a PRE-wave arz against the same contract (idempotent, safe on
-a built arz). The model is `tools/svc_loot_volume.py`; the spawn arithmetic it uses is
+`gate_loot_volume` also takes `--apply`, which applies the R-230 wave in memory so a **PRE-wave** arz
+measures against the same contract. `gate_chest_artifacts` takes only `--verbose` - it has no `--apply`
+and needs none, because artifact REACHABILITY is a property of the loot graph and the volume wave does
+not touch the graph.
+
+> WARNING - **`--apply` IS APPLY-ONCE, and the gate now says so instead of assuming.** The wave is
+> **not idempotent**, in two independent ways: `clone_hub_cage` would re-clone the TESTHUB twin off the
+> already-TRIMMED canonical records (so the canonical-vs-TESTHUB split silently ceases to exist), and
+> the trim is multiplicative with no marker in the bytes saying it has already run (so a second pass
+> trims the trim). **Measured: a second apply drifts 58 tables and lands the DEV farm at ~1.04x
+> canonical instead of ~9.5x.** Shipped builds were never at risk - `patches.run_registry` asserts each
+> module runs exactly once, which is why det-2x is byte-identical - but an earlier draft of this line
+> claimed idempotency in four places and it was false in all four. `--apply` against an arz that
+> already carries the wave is now DETECTED and SKIPPED with a printed line, and the audit measures the
+> built bytes, which is the right answer anyway.
+
+The model is `tools/svc_loot_volume.py`; the spawn arithmetic it uses is
 `svc_loot_distribution.spawn_iterations` and `ChestProfile`, the same engine reading sections 1-7 rest
 on.
+
+### 8.7 Running the R-181 distribution gate on a PRE-R-230 arz REDS, and that is correct
+
+`tools/gate_loot_distribution.py` on this branch **cannot be used as a "the baseline passes too"
+control against an untrimmed artifact** - the rollback arz, the previous build, or any lane branched
+before this one. It emits:
+
+```
+D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface
+     gaoler cage chest_01 [l], which MEASURES 12.4800 spawn iterations
+```
+
+That is the new derived anchor doing exactly what it was built to do (section 8.2 / R-230): the
+armour-parity floor is now `per-iteration strength x anchor volume`, and D7X2 re-proves the committed
+volume against the anchor surface's own bytes every run. On an untrimmed arz the anchor surface really
+does measure 12.48, so the constant really is stale for that artifact. **Every other coexisting gate
+still passes on the untrimmed arz** (chest breadth 51 tables, orb breadth 18, craft/thrown, artifacts -
+all 0 findings), so a lone D7X2 red on a pre-R-230 artifact is not a defect and should not be chased.

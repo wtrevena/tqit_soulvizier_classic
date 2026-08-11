@@ -317,11 +317,29 @@ D5_PINNED = {
 # a starvation b80 already measured, priced and declined to fix. Anchoring instead on
 # `gaoler cage chest_01 [l]` - the surface Will's ruling is literally about, and the
 # richest cage branch - reproduces b80's membership intent (rich containers in, the thin
-# R-220 orbs out) under the new volumes. The cost is stated rather than hidden: D7's
-# reach falls from 42 of 57 surfaces to 21 of 75, because after the trim most surfaces
-# genuinely are the same size. D7b, unchanged at 0.0375 per iteration and asserted on
-# ALL 75, is what carries the invariant now - exactly as the block below predicted it
-# would have to ("the volume-free form ... is asserted on every surface as D7b").
+# R-220 orbs out) under the new volumes.
+#
+# THE COST, MEASURED (a first draft of this line said "42 of 57 to 21 of 75" and both
+# halves of the after-figure were wrong; the round-2 vet re-measured it). The audit set
+# after R-230 is 63 surfaces - the 57 canonical ones plus the 6 new TESTHUB cage twins -
+# and D7 is asserted on 24 of them, which is only 18 of the 57 CANONICAL surfaces.
+# Those 18: gaoler cage chest_01 [l], chest_03 [e], chest_03 [l]; the 3 blood-cave
+# donors; polisvault_02/_04/_05; and the 9 svc_*hoard_loot_03 tables. D7 now asserts on
+# NO orb at all (apex or level-banded), on NONE of the 18 _01/_02 hoard tables, and on
+# exactly ONE Normal-difficulty canonical surface (loottable_hidden_bloodcave_01) -
+# because after the trim most surfaces genuinely are the same size.
+# D7b, unchanged at 0.0375 per iteration and asserted on ALL 63, is what carries the
+# invariant now - exactly as the block below predicted it would have to ("the
+# volume-free form ... is asserted on every surface as D7b") - and the R-181 gate
+# re-run against the trimmed db returns 0 findings.
+#
+# ⚠ CONSEQUENCE FOR ANY LANE RUNNING THIS GATE ON AN OLDER ARTIFACT: because the floor
+# is now DERIVED from the anchor surface's volume, `gate_loot_distribution.py` REDS on
+# any PRE-R-230 arz with `D7X2 ... ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 ... MEASURES
+# 12.4800`. That is the anchor working, not a defect: on an untrimmed arz the anchor
+# surface really does measure 12.48. So this gate can no longer be used as a "the
+# baseline passes too" control against the rollback artifact or a pre-R-230 branch.
+# Every OTHER coexisting gate still passes on the untrimmed arz.
 ARMOR_SLOT_FLOOR_PER_ITER_AT_REF = 0.52 / 10.58   # 0.049149..., the b80 derivation
 ARMOR_SLOT_FLOOR_REF_SPAWN = 1.310   # spawn iterations of the R-230 anchor surface
 ARMOR_SLOT_FLOOR = ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * ARMOR_SLOT_FLOOR_REF_SPAWN

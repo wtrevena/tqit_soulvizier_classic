@@ -18,6 +18,11 @@ on Steam and DEV right now):
 | Epic | Legendary | 28.17 | **2.68** | 10.5x | 0.9686 | 3.20 |
 | Legendary | Legendary | 36.41 | **3.82** | 9.5x | 0.9963 | 4.55 |
 
+**Those are the CONTINUOUS-model numbers. Under INTEGER TRUNCATION of the spawn count the same run
+pays 3.29 / 2.12 / 2.74 with P(>=1) 0.9996 / 0.9378 / 0.9830** - and the Epic 0.9378 is BELOW the 0.95
+V7 enforces, which is why V7b now enforces the truncated reading separately at 0.90. The engine's
+rounding mode is unproven (`BL-R230-DEBT-5`); both readings are gated and both are printed.
+
 **TESTHUB twin: 43.71 / 28.17 / 36.41 - the shipped numbers, unchanged.** A 9.5x canonical-vs-DEV
 split on Legendary, and it is a RECORD split because one arz serves both map variants.
 
@@ -43,13 +48,13 @@ rather than asserted.
 
 | gate | result |
 |---|---|
-| `gate_loot_volume` V1-V7 (NEW) | **PASS - 0 findings**, 69 canonical + 18 TESTHUB tables in scope |
+| `gate_loot_volume` V1-V7 + **V7b** (NEW) | **PASS - 0 findings**, 69 canonical + 18 TESTHUB tables in scope |
 | `gate_loot_distribution` (R-181) with the trim applied | **PASS - 0 findings, 63 surfaces** |
 | `gate_chest_loot_breadth` (R-180/R-220/R-186) with the trim applied | **PASS - 0 findings, 69 tables** |
 | `ownership_problems` (the BL-R181-DEBT-7 structural half) | **PASS - 0 findings** |
 | D7X + **D7X2** (NEW) reference-surface | **PASS** |
 | `gate_chest_artifacts` (NEW) | **PASS** - 135 of 141 equippable artifacts unreachable, 6 pinned |
-| `negtest_loot_volume` (NEW) | **9 planted defects RED / 3 positive controls GREEN** |
+| `negtest_loot_volume` (NEW) | **11 planted defects RED / 3 positive controls GREEN** (N10 = the truncation mask V7b exists for; N11 = a second `apply_wave`) |
 | map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03`; `B41_SPECS` still names `svc_polisvault_chest_01/03` |
 | registry integrity | order hash **`198242d6db75`**, `loot_volume_trim` last before the no-op `visuals` |
 
@@ -58,11 +63,25 @@ other distribution check is a ratio and divides volume out. D7 is an absolute pe
 so its number is now DERIVED in code (a per-iteration strength times an anchor volume) and its anchor
 moves off `svc_uberorb_apex_e01c` onto `gaoler cage chest_01 [l]` - because the never-empty floor lifts
 every thin container to the same 1.125 iterations, so the old volume proxy stopped separating anything
-and D7 would newly have red the 15 R-220 orb tables b80 deliberately excluded. **Cost, stated: D7's
-reach falls 42-of-57 -> 21-of-75 surfaces.** D7b (0.0375 per spawn iteration, unchanged, all 75
-surfaces) is what carries the invariant now - exactly as R-181's own comment predicted it would have
-to. **D7X2** re-proves the committed anchor volume against the anchor surface's own bytes every run,
-so this cannot silently rescale again.
+and D7 would newly have red the 15 R-220 orb tables b80 deliberately excluded. **Cost, MEASURED (an
+earlier draft of this line said "42-of-57 -> 21-of-75" and both halves were wrong): the audit set is
+63 surfaces after this wave (57 canonical + 6 new TESTHUB twins), and D7 is asserted on 24 of them -
+only 18 of the 57 CANONICAL surfaces.** Those 18: cage chest_01 [l], chest_03 [e], chest_03 [l]; the 3
+blood-cave donors; `polisvault_02/_04/_05`; the 9 `svc_*hoard_loot_03` tables. D7 asserts on **no orb
+at all**, on **none of the 18 `_01`/`_02` hoard tables**, and on exactly **one Normal-difficulty
+canonical surface** (`loottable_hidden_bloodcave_01`). D7b (0.0375 per spawn iteration, unchanged, all
+63 surfaces) is what carries the invariant now - exactly as R-181's own comment predicted it would have
+to, and the R-181 gate re-run on the trimmed db returns 0 findings. **D7X2** re-proves the committed
+anchor volume against the anchor surface's own bytes every run, so this cannot silently rescale again.
+
+> WARNING - **FOR THE SHIP LANE: `gate_loot_distribution.py` on this branch REDS on any PRE-R-230 arz,
+> and that is the anchor working, not a defect.** It cannot be used as a "the baseline passes too"
+> control against the rollback artifact, the previous build, or any lane branched before this one - it
+> emits `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface
+> gaoler cage chest_01 [l], which MEASURES 12.4800 spawn iterations`, because on an untrimmed arz the
+> anchor surface really does measure 12.48. **Every other coexisting gate still passes on the untrimmed
+> arz** (chest breadth 51 tables, orb breadth 18, craft/thrown, artifacts - all 0 findings). Do not
+> chase it.
 
 **WHAT THE SHIP LANE OWES (not run here, by instruction).** Full DB build + det-2x, record-diff vs
 `44499f56`, `run_contracts`, `validate_tags`, DEV deploy, Steam. Expected record-diff: **ADDED 44**
@@ -83,21 +102,65 @@ so the arz+Text coupling holds with no Text rebuild.
   that floor. Reaching a literal "1 legendary item" per run needs the group chances or the guaranteed
   100% row lowered - COMPOSITION, which this lane is forbidden to touch. **WILL DECISION** if he meant
   literally one.
-- `BL-R230-DEBT-2` - **"artifacts should never drop from chests" is PENDING, not implemented.** The
-  premise it was relayed with was wrong: 30 of 57 surfaces reach an artifact today (6 equippable + 10
-  merc scrolls), and the 6 are R-185's deliberate divine-artifact craft reagents. The gate that ships
-  pins those 6 by name with a re-derived rule and proves the other 135 unreachable, so nothing new can
-  leak. Full compliance is one craft-lane change, priced in R-230's companion ruling.
+- `BL-R230-DEBT-2` - 🚨 **WILL DECISION REQUIRED. "artifacts should never drop from chests" ships as
+  PENDING, and the green gate must NOT be read as compliance.** The premise the ruling was relayed
+  with was wrong - "current state already complies (0/292)" is false - and the round-2 vet re-derived
+  that independently with its own loot-graph walker. **6 equippable artifacts are chest-reachable on
+  the live b83 arz** (`e_da_crescentmoonofartemis`, `e_da_demetersbounty`, `l_da_goldeneyeofsunwukong`,
+  `l_da_ikonofzeus`, `l_da_mardukstabletofdestiny`, `l_da_thothsglory`), via
+  `records\item\loottables\svc\svc_craft_reagents_artifact_l01.dbr`, named by `04_l_misc.lootName7`,
+  `amulet_l01.lootName4` and `finger_l01.lootName3`. They are there **because of R-185, one of Will's
+  own rulings, shipped the day before** - so a literal zero-artifact gate would RED the live build and
+  require reverting R-185. What ships asserts *"zero EXCEPT six pinned by name"*, with A2/A3
+  re-deriving each pin from the bytes every run so the roster can only shrink honestly, and proves the
+  other 135 unreachable. **Will's call, two options:** (a) ratify the six-artifact exemption, and this
+  becomes IMPLEMENTED-WITH-EXEMPTION; or (b) take the follow-up - one craft-lane row deletion plus a
+  *"reagent that is itself a craftable"* exemption class - after which A3 reds the now-dead pins and
+  the roster deletes itself. `docs/CHEST_DROP_MATRIX.md` 6.5 independently reaches the same verdict, so
+  42-of-42 craft completability survives either way. Priced in full in R-230's companion ruling.
 - `BL-R230-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. Will's
   check: Prison of Souls / Hades Palace floor 4, kill Alkyoneus, open BOTH canonical cage chests on
   Legendary - expect a handful of items with roughly one to four legendaries, not a floor covered in
   them. On the DEV TESTHUB cage the four duplicates should still pour (after the hub map rebuild).
 - `BL-R230-DEBT-4` - the trim is applied to the 3 DRX donors (`loottable_hidden_bloodcave_0N`) as well,
   because `all_surfaces` audits them and R-181 writes them. That is deliberate and consistent, but it
-  means the blood-cave mega chest - the game's designated jackpot - now pays 1.50 legendary per open
-  instead of 17.45. It is still the richest surface in the mod by construction (the trim is
-  multiplicative), and if Will wants the jackpot to stay a jackpot in ABSOLUTE terms, that is a
-  one-constant change to its family's trim.
+  means the blood-cave mega chest - the game's designated jackpot - now pays **1.483-1.497** legendary
+  per open instead of 17.45. **CORRECTED (round-2 vet): it is NOT "still the richest surface in the mod
+  by construction", and it was not before this wave either.** It is the richest in SPAWN VOLUME (S
+  1.991 against the cage's 1.310/1.512), which is the unit the multiplicative trim preserves. In GEAR
+  PER OPEN it sits BELOW the cage (2.153) and below all nine `_01` hoards (1.730) - and it already did
+  on the shipped b83 arz (17.45 against the cage's 23.88 and the hoards' 19.19), because gear-per-open
+  is S times COMPOSITION and composition is R-180/R-181's. So the decision in front of Will is
+  unchanged but the reason is honest: **if he wants the jackpot to READ as a jackpot, it needs a lift
+  in absolute terms, and one constant on its family's trim is the lever** - the trim did not demote it,
+  it was never top of that ranking.
+- `BL-R230-DEBT-5` - **THE ENGINE'S SPAWN-COUNT ROUNDING MODE IS UNPROVEN, and after this trim it is
+  first-order.** `svc_loot_distribution.spawn_iterations` returns the CONTINUOUS mean of the min and max
+  equations. Pre-trim S ran 5.06-18.96 so the fractional part was noise; post-trim every canonical cage
+  table evaluates to between **1.0502 and 1.6128** iterations solo, so under integer truncation every
+  one is exactly ONE iteration. Continuous vs truncated for the two-chest run: Normal 3.839 / P 0.9999
+  vs 3.291 / 0.9996; Epic 2.676 / 0.9686 vs **2.123 / 0.9378**; Legendary 3.823 / 0.9963 vs 2.742 /
+  0.9830. **The Epic 0.9378 is below the 0.95 V7 enforces**, and V7 reported green because its model
+  never discretises - so V7b now enforces the truncated reading separately at 0.90 (same 37-38%
+  failure-side headroom construction) and `--calibrate` prints both. Two facts that ride with it:
+  the direction of the error is BENIGN for the ask (2.1-2.7 a run is closer to "guaranteed 1 legendary
+  item" than 2.7-3.8), and **solo, the per-difficulty ladder x0.085/x0.095/x0.105 is a continuous-model
+  artefact** - all three difficulties truncate to the same single iteration and what separates them is
+  composition; the ladder still does real work in co-op. Reassuring precedent, re-measured here rather
+  than taken on trust: of the 360 records on the shipped b83 arz carrying a `numSpawnMinEquation`,
+  **57 already evaluate to between 1.0 and 2.0 iterations at one player and ZERO evaluate below 1.0**
+  (303 are above 2.0). So a never-empty floor of one iteration is base-game practice, not a novelty
+  this wave invented. **Closing this needs an
+  in-game count** (open the cage N times on Epic and record how many legendaries fall), which is Will's
+  test, not a static gate's.
+- `BL-R230-DEBT-6` - **ONE CONSTANT OF LEGENDARY HEADROOM WAS LEFT DELIBERATELY UNSPENT.** The
+  Legendary cage lands at S = 1.310/1.512, above the 1.05/1.20 never-empty floor, so `CANON_TRIM['l']`
+  still has room the Normal and Epic tiers do not. Dropping Legendary to the floor takes its run from
+  **3.82 to about 3.08** continuous (2.74 truncated, the mechanical floor itself). The docs correctly
+  say the lever bottoms out at 2.74 and this wave lands at 3.82 "within 40%", but they did not say that
+  **it is the per-difficulty LADDER, not the mechanics, holding Legendary at 3.82.** One constant if
+  Will wants it tighter; the only argument against is the ladder's own rationale, that a Legendary
+  container should keep more of its shipped volume than a Normal one.
 
 ---
 

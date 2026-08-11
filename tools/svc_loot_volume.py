@@ -104,16 +104,31 @@ import svc_loot_ownership as OWN
 # container rolls a second loot iteration at all, and a steeper ladder would buy
 # nothing a player could feel while making the Normal cage feel broken.
 #
-# RANK IS PRESERVED, NOT FLATTENED. The trim is MULTIPLICATIVE on each table's own
-# shipped multiplier, so the shipped richness ORDER survives: the blood-cave mega
-# chest stays the richest surface in the mod, cage chest_03 stays richer than
-# chest_01, and the apex orb stays richer than a level-banded one - which is the
-# b79 precedent Will asked to keep ("orbs stay generous relative to chests"). What
-# the FLOOR below does to that order is measured and stated in the gate's own
-# report rather than hidden: the thinnest orbs are already so close to one
-# iteration that the floor lifts them off the multiplicative ladder, so the spread
-# COMPRESSES. That is a mechanical consequence of a discrete spawn count, not a
-# design choice, and V-CALIBRATE prints both numbers so it can never be silent.
+# RANK IS PRESERVED IN SPAWN VOLUME (S), AND ONLY THERE. An earlier draft of this
+# block claimed more, in a unit the table under it printed the opposite of, and the
+# round-2 vet caught it. The trim is MULTIPLICATIVE on each table's own shipped
+# multiplier, so S keeps its shipped order: the blood-cave mega chest stays the
+# highest-S surface in the mod (1.991, against the cage's 1.310/1.512), and cage
+# chest_03 stays above chest_01 on every difficulty. TWO CORRECTIONS to what that
+# does NOT mean, both MEASURED rather than reasoned:
+#   * IN GEAR PER OPEN THE ORDER IS DIFFERENT, AND IT WAS ALREADY DIFFERENT BEFORE
+#     THIS WAVE - so the trim neither caused it nor can fix it. On the SHIPPED b83
+#     arz the cage chest_01 [n] already paid 23.88 against the blood cave's 17.45
+#     and the hoards' 19.19, and chest_03 already paid LESS than chest_01 on all
+#     three difficulties (19.83 vs 23.88 on Normal). After the wave: cage 2.153,
+#     hoards 1.730, blood cave 1.483-1.497; chest_03 1.686/1.193/1.724 against
+#     chest_01 2.153/1.483/2.099. Gear-per-open is S times the surface's own group
+#     COMPOSITION, and composition belongs to R-180/R-181/R-220, not to this lane.
+#   * THE ORB RANK DOES NOT SURVIVE EVEN IN S. The never-empty floor lifts every
+#     thin container to exactly the same floor volume, so `svc_uberorb_apex_n01c`
+#     and `orb uberorb_default_n01c` both land on S 1.125 / 1.014 gear per open -
+#     EQUAL, where shipped they were 10.58/9.53 against 5.06/4.56. What they are
+#     sitting on is the floor, not the ladder. The b79 precedent Will asked to keep
+#     ("orbs stay generous relative to chests") survives in the sense he asked for -
+#     an orb paying 1.014 against a cage chest's 2.153 is generous - but "an apex
+#     orb still beats a level-banded one" is a casualty of the discrete floor, and
+#     it is recorded as one instead of repeated. `--calibrate` prints S and gear per
+#     open side by side for all 63 surfaces so neither claim need be made from memory.
 # ─────────────────────────────────────────────────────────────────────────────
 CANON_TRIM = {'n': 0.085, 'e': 0.095, 'l': 0.105}
 
@@ -126,6 +141,59 @@ MIN_SPAWN_MIN_SOLO = 1.05
 # ... and `numSpawnMax` at least this, so a trimmed container can still roll a
 # SECOND iteration and the per-difficulty ladder has somewhere to express itself.
 MIN_SPAWN_MAX_SOLO = 1.20
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE ENGINE'S ROUNDING MODE IS UNPROVEN, SO BOTH READINGS ARE ENFORCED
+#
+# `svc_loot_distribution.spawn_iterations` returns the CONTINUOUS mean (min+max)/2.
+# Before this wave that was harmless: S ran 5.06 .. 18.96 and the fractional part
+# was noise. AFTER the trim it is first-order, because every canonical cage table
+# now evaluates to between 1.0502 and 1.6128 iterations solo - so under INTEGER
+# TRUNCATION every one of them is exactly ONE iteration, and the per-difficulty
+# ladder stops being expressible at all at one player. MEASURED, both readings of
+# the two-chest run:
+#
+#     difficulty   continuous  P(>=1)   int-truncated  P(>=1)
+#     Normal          3.839    0.9999       3.291      0.9996
+#     Epic            2.676    0.9686       2.123      0.9378
+#     Legendary       3.823    0.9963       2.742      0.9830
+#
+# We do not know which one the engine does, and this lane is not the place to find
+# out (it needs an in-game count, which is `BL-R230-DEBT-5`). So the honest move is
+# to enforce BOTH: V7 on the continuous reading, V7b on the truncated one, each
+# with its own committed floor. Enforcing only the continuous reading would have
+# let a 93.78% Epic guarantee ship under a PASS line that said 96.86%.
+#
+# TWO CONSEQUENCES WORTH READING TWICE, because they change what the ladder means:
+#   * the truncated reading is the CONSERVATIVE one, and it is CLOSER to what Will
+#     asked for ("guaranteed 1 legendary item"): 2.1 to 2.7 a run, not 2.7 to 3.8.
+#     The direction of the modelling error is therefore benign for the ruling.
+#   * `CANON_TRIM`'s per-difficulty ladder is, at these volumes, a CONTINUOUS-model
+#     artefact. Solo, all three difficulties truncate to the same single iteration,
+#     so what separates them under truncation is the tables' own composition, not
+#     the multiplier. The ladder still does real work in co-op (at six players every
+#     bracket is >= 13.8, where a multiplier difference is many whole iterations),
+#     which is why it stays - but nobody should read "x0.085 vs x0.105" as a solo
+#     difficulty difference.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def spawn_iterations_trunc(d, table, players=1):
+    """S under INTEGER TRUNCATION of each equation - the conservative reading.
+
+    Deliberately NOT a rounding of the continuous mean: the engine evaluates the two
+    equations separately, so if it truncates it truncates each one, and (int(min) +
+    int(max))/2 is what that gives. At solo volumes this is the difference between a
+    93.8% guarantee and a 96.9% one."""
+    lo = SLD.eval_spawn(d.gv(table, 'numSpawnMinEquation'), players)
+    hi = SLD.eval_spawn(d.gv(table, 'numSpawnMaxEquation'), players)
+    if lo is None and hi is None:
+        return 1.0
+    if lo is None:
+        return float(int(hi))
+    if hi is None:
+        return float(int(lo))
+    return (int(lo) + int(hi)) / 2.0
 
 # ─────────────────────────────────────────────────────────────────────────────
 # THE HUB TWIN (naming). Deliberately a PREFIX (`polisvault_hub_01_l`) and not a
@@ -322,6 +390,45 @@ def trim_table(db, real, tier, lk=None):
 # ─────────────────────────────────────────────────────────────────────────────
 # THE HUB TWIN (write side)
 # ─────────────────────────────────────────────────────────────────────────────
+def _cloned(db, src, dst):
+    r"""`db.clone_record(src, dst)`, but a FALSE return is fatal instead of silent.
+
+    `arz_patcher.ArzDatabase.clone_record` returns False when the source is absent
+    from `_raw_records` and writes nothing. Every call site here is preceded by an
+    `lk.real()` that raises on a miss, so this is belt-and-braces - but a silently
+    skipped clone inside the one function that creates the TESTHUB split is exactly
+    the shape of defect this lane exists to prevent: the twin would come out
+    incomplete, the four DEV placements would dangle, and the only thing left to
+    notice would be V5 firing several hundred lines later with no idea why."""
+    if not db.clone_record(src, dst):
+        raise SystemExit(
+            "[svc_loot_volume] clone_record(%s -> %s) returned False, so NOTHING was "
+            "written. The source record is not in the database's raw record table. The "
+            "TESTHUB twin would have shipped incomplete and the four DEV cage "
+            "placements would name a record that does not exist." % (src, dst))
+    return True
+
+
+def already_applied(db, lk=None):
+    r"""The TESTHUB twin records that already exist in `db` - i.e. the evidence that
+    the R-230 wave has ALREADY run on this database.
+
+    The twin IS the marker, and it is the only honest one available: nothing in a
+    trimmed `numSpawn` equation says whether it was trimmed, so "has this wave run?"
+    cannot be answered from the canonical records alone. It can be answered from the
+    twin, because the twin exists only because this module authored it."""
+    lk = lk or SLB.Lookup(db)
+    seen = []
+    for N in CAGE_CHESTS:
+        if lk.real(hub_cage_chest(N)):
+            seen.append(hub_cage_chest(N))
+        for tier in TIERS:
+            for v in VARIANTS:
+                if lk.real(hub_cage_table(N, tier, v)):
+                    seen.append(hub_cage_table(N, tier, v))
+    return seen
+
+
 def clone_hub_cage(db, lk=None, verbose=True):
     r"""Clone the whole canonical cage chain to its `_hub` twin, BEFORE the trim.
 
@@ -331,9 +438,29 @@ def clone_hub_cage(db, lk=None, verbose=True):
     with no second copy of the tuning to keep in step. The hub is therefore
     definitionally "what shipped", and V5 proves it stayed that way.
 
-    Returns the list of records authored (idempotent: a re-run rewrites the same
-    bytes, which is what makes the det-2x build identical)."""
+    APPLY-ONCE, AND THE GUARD BELOW IS WHY (round-2 vet). An earlier draft of this
+    docstring claimed the clone was idempotent. It is not, and the failure is silent
+    and total: on a second call the "canonical" records it clones FROM are the
+    already-TRIMMED ones, so the twin is re-authored at the trimmed volume and the
+    TESTHUB-vs-canonical split simply ceases to exist. MEASURED on the b83 arz, a
+    second `apply_wave` drifts 58 tables - `polisvault_hub_03_lb` falls from the
+    shipped `*2.8/*3.2` to `*0.294/*0.336`, canonical falls a second time to
+    `*0.2188/*0.25`, and the DEV farm ends up POORER than intended at ~1.04x
+    canonical instead of ~9.5x. So the twin's own existence is the guard.
+
+    Returns the list of records authored."""
     lk = lk or SLB.Lookup(db)
+    seen = already_applied(db, lk)
+    if seen:
+        raise SystemExit(
+            "[svc_loot_volume] the R-230 TESTHUB twin ALREADY EXISTS in this database "
+            "(%d record(s), e.g. %s), so `clone_hub_cage` has already run on it. A "
+            "second run would clone the twin off the ALREADY-TRIMMED canonical records "
+            "and the canonical-vs-TESTHUB split would silently cease to exist (measured: "
+            "58 tables drift, the DEV farm lands at ~1.04x canonical instead of ~9.5x). "
+            "This wave is APPLY-ONCE by construction. In a build, `patches.run_registry` "
+            "already asserts each module runs exactly once; if you are driving it by hand, "
+            "load a fresh arz." % (len(seen), seen[0]))
     made = []
     for N in CAGE_CHESTS:
         src_chest = lk.real(canon_cage_chest(N))
@@ -354,10 +481,10 @@ def clone_hub_cage(db, lk=None, verbose=True):
                         "canonical cage exactly or the DEV farm stops matching what "
                         "Will is testing." % (N, tier, v, src_t, src_c))
                 dst_t, dst_c = hub_cage_table(N, tier, v), hub_cage_container(N, tier, v)
-                db.clone_record(src_t, dst_t)
+                _cloned(db, src_t, dst_t)
                 db._modified.add(dst_t)
                 OWN.note_write(dst_t, 'loot_volume_trim (TESTHUB twin)')
-                db.clone_record(src_c, dst_c)
+                _cloned(db, src_c, dst_c)
                 db.set_field(dst_c, 'tables', dst_t)
                 db._modified.add(dst_c)
                 made += [dst_t, dst_c]
@@ -368,13 +495,13 @@ def clone_hub_cage(db, lk=None, verbose=True):
                     "difficulty chain would dangle."
                     % canon_cage_pool(N, tier))
             dst_p = hub_cage_pool(N, tier)
-            db.clone_record(src_p, dst_p)
+            _cloned(db, src_p, dst_p)
             for i, v in enumerate(VARIANTS, start=1):
                 db.set_field(dst_p, 'fixedItemName%d' % i, hub_cage_container(N, tier, v))
             db._modified.add(dst_p)
             made.append(dst_p)
         dst_chest = hub_cage_chest(N)
-        db.clone_record(src_chest, dst_chest)
+        _cloned(db, src_chest, dst_chest)
         db.set_field(dst_chest, 'accessory1', hub_cage_pool(N, 'n'))
         db.set_field(dst_chest, 'accessoryEpic1', hub_cage_pool(N, 'e'))
         db.set_field(dst_chest, 'accessoryLegendary1', hub_cage_pool(N, 'l'))
@@ -395,9 +522,23 @@ def apply_wave(db, lk=None, verbose=True):
     volume without this module having to remember what the shipped volume WAS. Trim
     first and the twin would inherit the trim and the split would silently not exist.
 
-    Idempotent: re-running writes the same bytes (the trim of an already-trimmed
-    multiplier is floored to the same value, and the clone is a fresh copy), which is
-    what lets the standalone gate run `--apply` against a BUILT arz.
+    APPLY-ONCE, ENFORCED - NOT IDEMPOTENT. An earlier draft of this docstring said
+    the opposite, in four places across the code and docs, and the round-2 vet
+    measured it false: a second `apply_wave` on the same db drifts 58 tables. Two
+    independent reasons, and neither is fixable by tidying:
+      * `clone_hub_cage` would re-clone the twin off the ALREADY-TRIMMED canonical
+        records, so the canonical-vs-TESTHUB split would cease to exist (the DEV farm
+        lands at ~1.04x canonical instead of ~9.5x);
+      * `trim_table` is MULTIPLICATIVE and the bytes carry no marker saying they have
+        already been trimmed, so a second pass trims the trim (`*0.294` -> `*0.25`,
+        floored). There is no way to tell an already-trimmed multiplier from a
+        deliberately-small one by looking at it.
+    So the guard is the twin's own existence, checked in `clone_hub_cage`, and a
+    second call FAILS LOUD rather than half-working. Shipped builds were never at
+    risk - `patches.run_registry` asserts each module runs exactly once, which is why
+    det-2x is byte-identical - but the workflow the docs advertised did not exist.
+    `tools/gate_loot_volume.py --apply` now detects the applied state and says so
+    instead of corrupting its own measurement.
     """
     lk = lk or SLB.Lookup(db)
     made = clone_hub_cage(db, lk, verbose=verbose)
@@ -474,11 +615,18 @@ def _p_none_per_iter(d, dist, table, ic):
     return q
 
 
-def cage_run(d, dist, lk, tier, hub=False):
+def cage_run(d, dist, lk, tier, hub=False, truncate=False):
     """The reading a PLAYER gets: both cage chests opened once, at one difficulty.
 
     Returns (expected target-grade gear, P(at least one)). This is the quantity Will
-    named - "from the two chests" - so it is measured as a RUN and not per chest."""
+    named - "from the two chests" - so it is measured as a RUN and not per chest.
+
+    `truncate` selects the INTEGER reading of the spawn count instead of the
+    continuous mean. The engine's rounding mode is unproven (`BL-R230-DEBT-5`), so
+    both are computed and both are gated: the continuous reading is the higher one
+    and carries the CEILINGS (V1/V6), the truncated reading is the lower one and
+    carries the GUARANTEE floor (V7b). Pairing them the other way round would let
+    each check be evaluated under whichever model happens to flatter it."""
     total, p_none = 0.0, 1.0
     for N in CAGE_CHESTS:
         tabs, wts = [], []
@@ -489,10 +637,25 @@ def cage_run(d, dist, lk, tier, hub=False):
                 wts.append(w)
         if not tabs:
             continue
-        S, leg, pn = surface_reading(d, dist, tabs, wts, tier)
-        total += leg
-        # One open = S iterations; the per-iteration miss probability compounds.
-        p_none *= pn ** S
+        if not truncate:
+            S, leg, pn = surface_reading(d, dist, tabs, wts, tier)
+            total += leg
+            # One open = S iterations; the per-iteration miss probability compounds.
+            p_none *= pn ** S
+            continue
+        # Truncated: rescale each variant's own per-open reading from its continuous
+        # S to its integer S. Done PER TABLE and not on the weighted mean, because
+        # int() is not linear and the three variants can truncate differently.
+        ic = _IC[tier]
+        tw = float(sum(wts)) or 1.0
+        for t, w in zip(tabs, wts):
+            share = w / tw
+            real = d.real(t) or t
+            prof = SLD.ChestProfile(d, dist, real, 1, ic)
+            s_cont = prof.S or 1.0
+            s_trunc = spawn_iterations_trunc(d, real)
+            total += share * (prof.gear_mass() / s_cont) * s_trunc
+            p_none *= (_p_none_per_iter(d, dist, real, ic) ** s_trunc) ** share
     return total, 1.0 - p_none
 
 
@@ -514,14 +677,25 @@ def cage_run(d, dist, lk, tier, hub=False):
 #   V2 TESTHUB cage run, Epic                n/a      28.166    23.00       -         18%
 #   V2 TESTHUB cage run, Legendary           n/a      36.411    29.00       -         20%
 #   V7 P(>=1 target-grade | canon run)     1.0000      0.9686    0.95      no*        37%
+#   V7b  ... the same, INTEGER-TRUNCATED    1.0000      0.9378    0.90      no*        38%
 #
-#   * V7 is a MIRROR guard, the D6b construction: the SHIPPED build cannot red it,
-#     because shipped the cage paid 36 legendaries a run and the guarantee was never
-#     in doubt. The defect V7 exists to red is THIS LANE'S OWN over-correction - a
-#     trim taken far enough to turn Will's "guaranteed 1 legendary item" into a coin
-#     flip - and its margin is honestly read on the FAILURE side: 3.14% of runs pay
-#     nothing at Epic against the 5.00% the floor allows, so 37% headroom, not 2%.
-#     Negtest N5 plants exactly that over-correction and N5 is what keeps it load-bearing.
+#   * V7/V7b are MIRROR guards, the D6b construction: the SHIPPED build cannot red
+#     them, because shipped the cage paid 36 legendaries a run and the guarantee was
+#     never in doubt. The defect they exist to red is THIS LANE'S OWN over-correction
+#     - a trim taken far enough to turn Will's "guaranteed 1 legendary item" into a
+#     coin flip - and their margins are honestly read on the FAILURE side: 3.14% of
+#     Epic runs pay nothing against the 5.00% V7 allows (37% headroom, not 2%), and
+#     6.22% against the 10.00% V7b allows (38%, the same construction). Negtests N5
+#     and N10 plant the over-correction and are what keep them load-bearing.
+#
+#   V7b IS THE CONSERVATIVE READING AND IT EXISTS BECAUSE THE MODEL IS UNPROVEN.
+#   `spawn_iterations` is a continuous mean; post-trim every canonical cage table
+#   truncates to exactly ONE iteration solo, so if the engine truncates, the Epic
+#   guarantee is 93.78% and not the 96.86% V7 measures - BELOW V7's own 95% floor,
+#   with V7 reporting green because its model never discretises. That gap shipping
+#   silently is the defect. It does NOT move the ceilings: V1/V6 stay on the
+#   continuous reading, which is the HIGHER one, so each check is evaluated under
+#   the model that is hardest on it rather than the one that flatters it.
 #
 # V1's ceiling is stated PER OPEN and per tier-target-classification, so one number
 # governs 60 surfaces of wildly different shapes. The worst canonical surface after
@@ -535,6 +709,13 @@ CANON_MAX_CAGE_RUN = {'n': 4.55, 'e': 3.20, 'l': 4.55}
 # item". The floor is what makes that true: `MIN_SPAWN_MIN_SOLO` keeps one loot
 # iteration on each chest and the 100% guaranteed row fires inside it.
 MIN_P_AT_LEAST_ONE = 0.95
+# ... and the same guarantee read under INTEGER TRUNCATION of the spawn count, which
+# is the pessimistic engine model (see `spawn_iterations_trunc`). Set at 0.90 by the
+# SAME construction as V7 and not by taste: V7 allows 5.00% of runs to pay nothing
+# and the measured worst is 3.14%, so 37% headroom on the failure side; V7b allows
+# 10.00% and the measured worst is 6.22%, so 38% headroom, the identical margin. The
+# two floors differ because the two models do, not because one check is softer.
+MIN_P_AT_LEAST_ONE_TRUNC = 0.90
 # The TESTHUB half of the ruling - "on the testhub version we can spawn more that is
 # fine". A FLOOR, in the opposite direction from every other number here, so a future
 # lane cannot quietly trim the DEV farm to nothing while the ceilings all stay green.
@@ -611,6 +792,21 @@ def problems(db, lk=None, report=None):
                 "only %.1f%% of the time at difficulty %s (floor %.1f%%). The trim has "
                 "turned Will's GUARANTEE into a coin flip."
                 % (_IC[tier], 100.0 * p_one, tier, 100.0 * MIN_P_AT_LEAST_ONE))
+        # V7b - the same guarantee under the PESSIMISTIC engine model. Separate from V7
+        # rather than folded into it, so a report can say which reading failed: V7 alone
+        # means the trim went too far under any model, V7b alone means it went too far
+        # only if the engine truncates, which is a different (and cheaper) conversation.
+        _tot_t, p_one_t = cage_run(d, dist, lk, tier, hub=False, truncate=True)
+        if p_one_t < MIN_P_AT_LEAST_ONE_TRUNC:
+            out.append(
+                "V7b under INTEGER TRUNCATION of the spawn count the canonical "
+                "two-chest cage run pays at least one %s gear piece only %.1f%% of the "
+                "time at difficulty %s (floor %.1f%%), against %.1f%% on the continuous "
+                "reading V7 uses. The engine's rounding mode is unproven "
+                "(BL-R230-DEBT-5), so the guarantee has to hold under the pessimistic "
+                "one too, or the PASS line is quoting a model instead of a drop rate."
+                % (_IC[tier], 100.0 * p_one_t, tier, 100.0 * MIN_P_AT_LEAST_ONE_TRUNC,
+                   100.0 * p_one))
 
     # V2/V5 - the TESTHUB half. Only asserted once the twin exists, so a db built
     # before this lane is not retro-failed; V5's own absence check is what makes
@@ -668,8 +864,15 @@ def calibrate(db, lk=None):
     if cw:
         print('  worst CANONICAL gear/open: %.3f on %s (V1 ceiling %.2f)'
               % (cw[0][0], cw[0][2], CANON_MAX_GEAR_PER_OPEN))
+    # BOTH readings, side by side, because the engine's rounding mode is unproven and
+    # a single printed number would be read as a measurement (BL-R230-DEBT-5).
+    print('  cage RUN - continuous mean S vs INTEGER-TRUNCATED S (both gated: V6/V7 '
+          'on the first, V7b on the second)')
     for tier in TIERS:
         tot, p1 = cage_run(d, dist, lk, tier, hub=False)
+        tot_t, p1_t = cage_run(d, dist, lk, tier, hub=False, truncate=True)
         htot, _ = cage_run(d, dist, lk, tier, hub=True)
-        print('  cage RUN [%s]: canonical %.3f %s gear, P(>=1) %.4f | TESTHUB %.3f'
-              % (tier, tot, _IC[tier], p1, htot))
+        htot_t, _ = cage_run(d, dist, lk, tier, hub=True, truncate=True)
+        print('    [%s] canonical %.3f %s gear P(>=1) %.4f | trunc %.3f P(>=1) %.4f '
+              '|| TESTHUB %.3f | trunc %.3f'
+              % (tier, tot, _IC[tier], p1, tot_t, p1_t, htot, htot_t))

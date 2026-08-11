@@ -47,11 +47,17 @@ placements, so this module clones the whole cage chain to a `_hub` twin and
   never over-pays - and the canonical `B41_SPECS` is untouched, so
   `local/Levels_merged.arc` stays byte-identical and the Steam delta stays arz-only.
 
-GATE: `verify()` below runs the whole R-230 contract (V1-V7) plus this module's own
+GATE: `verify()` below runs the whole R-230 contract (V1-V7b) plus this module's own
 scope proof. Standalone twin: `py tools/gate_loot_volume.py <arz>` (add `--apply` on a
 pre-wave arz, `--calibrate` to re-derive every threshold).
 Negatives: `py tools/debug/negtest_loot_volume.py <arz>` - and they plant in BOTH
 directions, because a volume contract has two ways to be wrong.
+
+⚠ APPLY-ONCE, NOT IDEMPOTENT. `apply_wave` refuses a second run and says why: the twin
+would be re-cloned off the ALREADY-TRIMMED canonical records and the canonical-vs-TESTHUB
+split would silently cease to exist (measured: 58 tables drift). `run_registry` already
+asserts each module runs exactly once, so a build cannot hit this - the guard is for
+anyone driving the wave by hand, and for the `--apply` flag on the standalone gate.
 """
 import sys
 from pathlib import Path
@@ -133,7 +139,7 @@ def apply(db, tags):
 
 
 def verify(db, tags):
-    """The R-230 contract (V1-V7) plus Will's artifact ruling, on the FINAL db.
+    """The R-230 contract (V1-V7b) plus Will's artifact ruling, on the FINAL db.
 
     Run as a verify() rather than at apply() time deliberately: every other loot module
     has already run by then, so what this measures is the volume the player actually
@@ -162,11 +168,14 @@ def verify(db, tags):
 
     print("  loot_volume_trim gate PASS: %d canonical loot table(s) inside the volume "
           "ceilings (worst %.2f gear/open on %s, cap %.2f); the two-chest cage run pays "
-          "%s and still guarantees one at >= %.0f%% of runs; %d TESTHUB twin table(s) "
+          "%s and still guarantees one at >= %.0f%% of runs on the continuous spawn "
+          "model and >= %.0f%% under integer truncation (both gated - the engine's "
+          "rounding mode is unproven, BL-R230-DEBT-5); %d TESTHUB twin table(s) "
           "held at shipped volume by a FLOOR; every in-scope numSpawn equation still "
           "carries `numberOfPlayers` and spawns >= %.2f iteration(s) solo. Artifact "
           "ruling: %s."
           % (report.get('canonical', 0), report.get('worst_surface', (0, ''))[0],
              report.get('worst_surface', (0, '-'))[1], SLV.CANON_MAX_GEAR_PER_OPEN,
              SLV.CANON_MAX_CAGE_RUN, 100.0 * SLV.MIN_P_AT_LEAST_ONE,
+             100.0 * SLV.MIN_P_AT_LEAST_ONE_TRUNC,
              report.get('hub', 0), SLV.MIN_SPAWN_MIN_SOLO, SCA.pass_line(db, lk)))
