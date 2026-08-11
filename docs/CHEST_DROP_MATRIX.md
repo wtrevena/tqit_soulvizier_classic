@@ -564,6 +564,13 @@ contradiction of the 111-116 per-table range.
 
 ## 8. HOW MUCH the chests pay (R-240, Will 2026-08-11) - the volume trim
 
+> **ID NOTE (round-3, 2026-08-11): this lane's rulings are R-240 and R-241. They were R-230 and R-231
+> until a three-way collision was found** - `main` had minted R-230 for Will's push-per-build law and
+> `feat/charon-rework` had independently minted R-231 for the Golden Bough rework. This lane moved
+> because it was the only branch colliding with two others and the only one whose ids could be changed
+> without editing somebody else's in-flight branch. If you are reading an older note that says R-230
+> loot volume or R-231 orbs, it means these two sections.
+
 > Sections 1-7 answer WHAT a chest can pay and in WHAT PROPORTIONS. Neither question is this one.
 > Every distribution check in the mod is a ratio, and a ratio cannot see volume, which is why both
 > loot gates were GREEN on the shipped `build83` arz while two chests paid 36 legendaries.
