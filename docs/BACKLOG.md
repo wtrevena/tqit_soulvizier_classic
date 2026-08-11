@@ -10411,21 +10411,21 @@ loot-balance-and-armor wave (wf_2c26e81c) whose surface is chests+hoards; if it 
 this, it is the next wave's first item.
 
 
-## CRAFT-CHAIN + THROWN WAVE (Will 2026-08-10, R-181/R-182/R-183) - FIX COMPLETE + GATED (branch `fix/craft-thrown-breadth`)
+## CRAFT-CHAIN + THROWN WAVE (Will 2026-08-10, R-184/R-185/R-186) - FIX COMPLETE + GATED (branch `fix/craft-thrown-breadth`)
 
 Will's follow-up to the R-180 chest-breadth wave, after reading `docs/CHEST_DROP_MATRIX.md`
-(verbatim in `docs/WILL_RULINGS.md`, R-181..R-183 section). Three deliverables, all landed, all
+(verbatim in `docs/WILL_RULINGS.md`, R-184..R-186 section). Three deliverables, all landed, all
 gated, all negative-tested. Nothing here touches a chest or hoard `FixedItemLoot` record, an orb
 table, or any existing weight - those surfaces belong to the concurrent orb (`fix/orb-loot-breadth`)
 and loot-balance/armour (`fix/armor-loot-breadth`) lanes.
 
-**(1) R-181 mythic formulas on every difficulty.** `supra.dbr` (42 formulas) + `supra_special.dbr`
+**(1) R-184 mythic formulas on every difficulty.** `supra.dbr` (42 formulas) + `supra_special.dbr`
 (41, and the ONLY home of `artifact_mortoksskull_formula`) added as members of all four
 `01_act{1..4}_arcaneformulae` tables at 1% + 0.5% of each table's own pre-existing total. Normal
 craftable coverage **0/42 -> 42/42**. Formulas are `itemClassification = Common`, so no legendary
 GEAR moves; the Normal legendary-gear count is 0 before and 0 after.
 
-**(2) R-182 reagent completability.** 78 reagents -> 79 (the thrown repoint swaps 3 dead records for
+**(2) R-185 reagent completability.** 78 reagents -> 79 (the thrown repoint swaps 3 dead records for
 4 live ones). Classification: **51 ordinary + 6 artifact + 22 MI/green + 0 missing** (was 3
 missing). Every non-MI reagent now drops from a Legendary chest: **42/78 -> 57/79 = 100% of the
 non-MI set.** Mechanism: 4 new `svc_craft_reagents_{torso,amulet,ring,artifact}_l01` tables hung off
@@ -10435,7 +10435,7 @@ repointed off three RAGNAROK (`xpack2\...\1hranged\`) records that do not exist 
 made Charon's Toll, Hati, The Last Word and Sanguine Orbit uncompletable by anyone. **All 7 of the
 craftables Will named go from 0/3 reagents to COMPLETABLE; 42/42 craftables are completable.**
 
-**(3) R-183 thrown weapons droppable.** `svc_unique_thrown_{n,e,l}01` authored (the unique
+**(3) R-186 thrown weapons droppable.** `svc_unique_thrown_{n,e,l}01` authored (the unique
 one-hand-ranged table this TQIT-era database never had) and named by
 `svc_loot_breadth._master_members` as the SEVENTH class of `svc_unique_weapons_{tier}01` at weight
 250. Legendary thrown reachable **0 -> 5** on Epic and Legendary chests, **0 -> 0** on Normal (2
@@ -10489,3 +10489,36 @@ drops, and confirm a Mythic Formula can drop on a Normal character.
   explicit instruction, but if he later wants the craft-only purity restored for them, the change is
   one constant (`svc_craft_thrown.THROWN_MEMBERS`) and the gate rule C1 relaxes to the DRX wand
   alone.
+
+### INTEGRATION NOTES for whoever merges the three 2026-08-10 breadth lanes
+
+Measured against `fix/armor-loot-breadth` (b80) and `fix/orb-loot-breadth` (b79) as they stood when
+this lane finished. **Record intersection is EMPTY** - this lane writes 19 records, none of which is
+an `svc_uberorb_*` (b79), an `svc_unique_armor_*` / `polisvault_*` / chest `FixedItemLoot` (b80).
+The three FILE-level collisions are all in shared modules and all mechanical:
+
+1. **`tools/svc_loot_breadth.py` `_master_members()` - REAL semantic overlap, resolve deliberately.**
+   b80 rewrites the member weights (`_CLASS_WEIGHT * _ONE_HAND_CLASSES` for `unique_1h`, so each of
+   the six classes carries equal mass); this lane APPENDS an eighth member, the thrown table, at a
+   flat 250. Both edits are additive and compatible in intent, but the merged function must decide
+   what thrown's weight means under b80's scheme. **Recommended resolution:** keep b80's
+   class-normalised scheme and give thrown `_CLASS_WEIGHT // 4` (250 with `_CLASS_WEIGHT = 1000`),
+   which is the same number this lane derived independently (thrown is a 5-record class against
+   17-24 for the others, so a quarter share). If b80 raises `_CLASS_WEIGHT`, thrown scales with it.
+2. **`tools/svc_loot_breadth.py` `audit_table()` - trivial.** b79 edits the same function; this lane
+   appends two lines calling `svc_craft_thrown.thrown_problems`. Keep both.
+3. **`tools/patches/__init__.py` REGISTRY - trivial, but ORDER IS LOAD-BEARING.**
+   `craft_thrown_breadth` MUST stay immediately before `chest_loot_breadth` (the thrown tables have
+   to exist before `ensure_masters` runs, or the eighth member is silently skipped). b79/b80 append
+   elsewhere in the manifest. Re-run `py tools/patches/_check_registry.py` after merging.
+
+**RULING NUMBER:** this lane's three rulings were renumbered R-181/182/183 -> **R-184/185/186**
+because b80 had already claimed R-181 on its branch. See the numbering note in
+`docs/WILL_RULINGS.md`. If b80's R-181 is itself renumbered before it lands, this lane does NOT need
+to move again - 184-186 stay valid either way.
+
+**GATE INTERACTION:** this lane's C1/C2 thrown rules run from inside `svc_loot_breadth.audit_table`,
+so `gate_chest_loot_breadth` grows a seventh class. b80's own distribution gate
+(`gate_loot_distribution.py`) will see the thrown member as new mass in the weapon row (250 against
+6700 = 3.6%); if its weapon-vs-armour ratio cap is tight, re-run it after the merge rather than
+assuming. Nothing in this lane lowers any existing weight, so the direction of any shift is known.

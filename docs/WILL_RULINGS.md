@@ -4368,9 +4368,17 @@ the layer. See `docs/PORTAL_PAGE_DLC_CAP.md`.
 
 ## Chest loot breadth (decade 180-189 CONTINUED; 2026-08-10, branch `fix/craft-thrown-breadth`)
 
-> R-180 (above) was the WEAPON-CLASS half of the chest-breadth wave. R-181 to R-183 are the
+> R-180 (above) was the WEAPON-CLASS half of the chest-breadth wave. R-184 to R-186 are the
 > CRAFT-CHAIN half, from Will's follow-up the same day after reading `docs/CHEST_DROP_MATRIX.md`.
-> Numbers 181-183 continue the section R-180 opened; R-190..R-199 remain free.
+>
+> ⚠️ **NUMBERING NOTE (collision avoided, not merely renamed).** This lane first minted these three
+> as R-181/182/183. The concurrent `fix/armor-loot-breadth` lane (b80, the loot-balance/armour wave
+> queued to ship AHEAD of this one) had already claimed **R-181** on its own branch for the armour
+> parity + weapon-class weight rebalance, both in `docs/WILL_RULINGS.md` and in code comments in
+> `tools/svc_loot_breadth.py`. On the `fix/debt-docs` LEDGER-HYGIENE precedent the INCUMBENT keeps
+> the number, so this lane moved wholesale to **R-184 / R-185 / R-186**, leaving 182-183 free in case
+> b80 mints more in the same decade. Nothing about any ruling's CONTENT changed. R-190..R-199 also
+> remain free.
 
 **VERBATIM (Will, 2026-08-10), the whole message, split into the three rulings below:**
 
@@ -4381,7 +4389,7 @@ the layer. See `docs/PORTAL_PAGE_DLC_CAP.md`.
 > character (except for the monster unique droppable items like the green items that are needed to
 > build some of the formulas...). Yes we should make the legendary thrown weapons droppable."
 
-## R-181 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - MYTHIC FORMULAS DROP ON EVERY DIFFICULTY, LEGENDARY ITEMS STILL DO NOT DROP ON NORMAL
+## R-184 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - MYTHIC FORMULAS DROP ON EVERY DIFFICULTY, LEGENDARY ITEMS STILL DO NOT DROP ON NORMAL
 
 **VERBATIM:** *"i meant do the mythic formulas drop. they can drop in normal as well, but the
 legendary items should not drop in normal."*
@@ -4417,7 +4425,7 @@ craftables formula-less on Normal and the F1 gate red. The same pair is what R-9
 42/42. Legendary GEAR reachable from the Normal branch: **0 before, 0 after** (re-proven by
 `svc_loot_breadth` B3 and by the new C2 rule).
 
-## R-182 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - EVERY REAGENT IS FINDABLE BY FARMING LEGENDARY; ONLY THE GREEN/MI ITEMS STAY MONSTER-SPECIFIC
+## R-185 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - EVERY REAGENT IS FINDABLE BY FARMING LEGENDARY; ONLY THE GREEN/MI ITEMS STAY MONSTER-SPECIFIC
 
 **VERBATIM:** *"All of the reagents need to be droppable somewhere in the game, ideally from chests
 since that is where people will look. if players farm legendary long enough, they should be able to
@@ -4465,7 +4473,7 @@ Omega and the Doomherald), has exactly ONE carrier in the database and it is
 WARN, because a reagent whose only carrier is a dev copy is effectively unobtainable. Moving it onto
 the live boss is a loot-balance decision and was deliberately NOT taken in this lane.
 
-## R-183 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - THE LEGENDARY THROWN WEAPONS DROP
+## R-186 [2026-08-10] IMPLEMENTED (`fix/craft-thrown-breadth`) - THE LEGENDARY THROWN WEAPONS DROP
 
 **VERBATIM:** *"Yes we should make the legendary thrown weapons droppable."*
 
