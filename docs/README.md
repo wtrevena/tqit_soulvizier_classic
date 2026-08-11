@@ -65,6 +65,7 @@
 | `MASTERY_AUDIT.md` | All 10 masteries + 2 DLC audit (0 port defects; protected Occult/Hunting trees). | 2026-07-07 | RECIPE |
 | `UBER_WEAPONS_AUDIT.md` | DRX "supra" ultra-craftable set audit (Blood Whisper + Paragon verified). | 2026-07-07 | RECIPE |
 | `CHEST_DROP_MATRIX.md` | Will's drop-breadth reference: what every mod chest can and cannot pay, per weapon class / armour slot / craft component, parsed from the shipped arz `16994072`. | 2026-08-10 | RECIPE |
+| `SUPRA_CRAFTING_GUIDE.md` | Player-facing farming guide: all 42 supra craftables, their Mythic Formulas and all 82 reagents labelled CHEST-FARM / MONSTER-GREEN, parsed from build83 `44499f56`. | 2026-08-11 | RECIPE |
 | `IT_ENDPOINT_AUDIT.md` | Does the playable arc end at Immortal Throne? (the act-portal cap). | 2026-07-07 | RECIPE |
 | `SOULS_COMPLETENESS_AUDIT.md` | Souls roster completeness audit + tag list. | 2026-07-06 | RECIPE |
 | `BOSS_SOULS_DESIGN.md` | Boss-souls design doc (the ~60-soul roster, per-tier values). | 2026-07-06 | RECIPE |
