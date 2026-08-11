@@ -1791,6 +1791,17 @@ targets. Fixing it means renaming souls (law #2 / evocative-names territory) and
 an agent call. Consequence acted on now: the Will test note was corrected to name only souls whose
 display name is provably UNIQUE (`Soul of the Gaoler`, `Soul of the Insatiable`) instead of Charon.
 
+> **PROPOSAL WRITTEN, AWAITING WILL'S SIGN-OFF (2026-08-11): `docs/SOUL_RENAME_PROPOSAL.md`.** All 40
+> groups re-measured from the build83 arz + shipped `Text.arc` with the gate's own canonical-family
+> filter (2,191 records / 740 families / 698 distinct names / 40 duplicates - the vet's numbers
+> reproduced exactly), each group classified SV-original vs mod-authored vs generated, and resolved by
+> the standing rule: **5 RENAME PROPOSED** (all mod-vs-SV: Charon, General Yrrt'ik, Ice Mandible,
+> Kallixenia, Plague Feast), **35 KEEP-AS-IS** (all SV-vs-SV, law #2 + R-49a). New fact the proposal
+> establishes: the 29 `soul\test\` duplicates have **ZERO external referents**, so they are SV dead
+> content, not a player-visible naming defect. Nothing is implemented; the doc is a ratification table
+> Will approves line-by-line or wholesale. All 5 renames are mod-owned TAG-STRING changes (0 records
+> renamed / retired / re-pointed, 0 SV tags touched) and ride any future arz+Text wave once ratified.
+
 
 ## 🧭 LANE RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis / Ragnarok / Eternal Embers removed from the act-selection UI (2026-08-10, branch `fix/portal-atlantis-cap`, NOT BUILT/SHIPPED HERE)
 
