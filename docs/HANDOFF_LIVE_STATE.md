@@ -1,4 +1,48 @@
 # HANDOFF LIVE STATE
+> ## BUILD83-DEV DEPLOYED TO DEV (2026-08-11) - BL-R181-DEBT-7: the fifteen ordinary uber orbs pay armour at parity; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `44499f56ed52bc91219db64eb4de2f11`**
+> (55,562,820 B, 51,253 records), copied with md5 source==dest verification **while TQ.exe was NOT
+> running** (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 added, 0 removed; the
+> folder was md5-inventoried before and after and the other 61 are byte-identical. det-2x
+> **byte-IDENTICAL** across two independent full builds, the second with the prefix cache disabled.
+> - **What it is:** the last un-owned loot surface in the mod. R-220 (`build79`) wrote fifteen loot
+>   tables and widened only their WEAPON row; R-181 (`build80`) decided ownership by asking what FOLDER a
+>   table lived in (`\svc\`), and those fifteen live elsewhere. So **nobody owned their armour, no surface
+>   audited them, and both fail-loud loot gates were GREEN for three builds while fifteen live surfaces
+>   starved**: weapon:armour **3.41:1 to 8.47:1**, thinnest worn slot **0.007 to 0.041** pieces per open.
+>   They now run **0.28:1 to 0.49:1** with a thinnest worn slot of **0.29 to 1.16**, which is the ratio
+>   the three apex orb tables R-181 already rescued have shipped since `build75`. Total drops per open
+>   **RISE on all 15** (7.93 -> 9.24, 9.32 -> 11.77, 13.68 -> 15.83) and are flat on all 42 others.
+> - **The class of defect is dead, not just this instance.** Ownership is no longer a folder test: the
+>   distribution gate DERIVES the orb tables from R-220's own scope, and `ownership_problems` enforces
+>   "every loot table a module WRITES must be inside the gate's surface set" from two witnesses - the
+>   shared-builder ledger (OWN1) and the registry touch log (OWN2). **This build is OWN2's first live
+>   execution** and it passed with the touch log present; in harnesses with no registry run it ANNOUNCES
+>   its own downgrade rather than passing silently.
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Levels.arc 6784cf0f` (canonical) / `Text.arc
+>   a9fed7ba` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. **0 new tags**
+>   authored, so `validate_tags` PASSES against the EXISTING `Text.arc` and no Text rebuild was needed.
+> - **Record-diff vs the shipped `09a0f51d`: ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained**, 12
+>   fields each. Censused mechanically over all 180 field changes: **165 raised, 15 field-added, 0
+>   LOWERED, 0 member-replaced**. The three apex tables are absent from the diff, the predicted no-op.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2, and the baseline arz under the identical config also gives 4492**
+>   - zero new violations. Every coexisting gate (b79 orb breadth, b80 loot distribution, b81
+>   craft/thrown, chest breadth, relic tiers, unlock alignment, R-210 DLC cap, R-211 voyage cap) PASSES on
+>   this artifact, and the two loot gates were re-run against the DEPLOYED DEV bytes as the anti-inert
+>   proof. Negatives: **17 RED + 3 positive controls GREEN** (armour) and **11/11** (orb).
+> - **Gate records:** `docs/BACKLOG.md` -> BUILD83-DEV GATE RECORD + the lane GATE RECORD under it.
+>   Ruling: `docs/WILL_RULINGS.md` -> R-181 SECOND AMENDMENT.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `09a0f51d` (the build82 arz this
+>   replaced); the same bytes at `local/build82_run1_09a0f51d.arz`, this artifact at
+>   `local/build83_run1_44499f56.arz`.
+> - ⚠️ **NOT PROVEN IN-GAME (rides with `BL-R181-DEBT-1`).** **Will's check: kill any Mystical Orb uber
+>   and open the orb - helms, torsos, greaves and shields should now fall out of it alongside weapons,
+>   across a few kills.** Honest warning in the same note: these fifteen now run armour-HEAVY (2 to 3.5
+>   armour per weapon), which is the apex orb's own shipped ratio, but if it reads as an armour vending
+>   machine that is a real finding and one constant moves it back. Full note in `docs/WILL_TEST_GUIDE.md`.
+>   Fully quit TQ and restart Steam first.
+
+
 > ## BUILD82 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-211 Atlantis sea-voyage cap; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
 > `Database/SoulvizierClassic.arz` = `09a0f51dcc5c64b3d84c123a421aeef1`** (55,562,756 B, 51,253 records).

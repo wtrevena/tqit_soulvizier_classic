@@ -1,5 +1,108 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD83-DEV GATE RECORD - BL-R181-DEBT-7 CLOSED: the fifteen ordinary uber orbs pay armour at parity, and an un-owned loot table is now structurally impossible - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-dev`)
+
+**Will's standing order (R-181):** orbs roll ALL item classes, armour parity included. R-220 (`build79`)
+widened only the WEAPON row of the fifteen loot tables it writes, and R-181 (`build80`) decided what it
+owned by asking what FOLDER a table lived in (`\svc\`). Those fifteen live in other folders, so **their
+armour was owned by NOBODY and both fail-loud loot gates stayed GREEN for three builds while fifteen
+live surfaces starved.** Registered as `BL-R181-DEBT-7`; this build closes it and kills the whole
+un-owned class. Design record + the per-table before/after: the lane GATE RECORD immediately below.
+Ruling: `docs/WILL_RULINGS.md` -> R-181 SECOND AMENDMENT.
+
+**SHIP ORDER HONOURED.** This lane held on branch until BOTH queued waves had finished their DEV deploy
+**and** their Steam ship: `build81-ship` (the craft chain, `23efa89`) and `build82-ship` (the Atlantis
+sea-voyage cap, `4c07bfb`). `main` was re-merged after each; at ship time `main` was still `4c07bfb` and
+already an ancestor of the lane, so **this merge carried zero conflicts** and no re-measurement was owed:
+the lane's round-3 sweep was taken against `local/build82_run1_09a0f51d.arz`, the exact bytes then live on
+Steam and DEV. One heavy build at a time was respected: the machine was verified idle of build processes
+(the only Python running was MCP servers) before the build slot was taken.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into
+the work/ layout, **exit 0 "Done."** both runs; `local/build83_debt7_run1.log`,
+`local/build83_debt7_run2_det.log`).
+
+| artifact | md5 | bytes | vs `build82-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`44499f56ed52bc91219db64eb4de2f11`** | 55,562,820 (51,253 rec) | **CHANGED** from `09a0f51d` (+64 B, **+0 rec**) |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**DETERMINISM: det-2x BYTE-IDENTICAL.** Two independent full builds of the committed tree produced
+`44499f56` both times, the second with the prefix cache DISABLED (`SVC_PREFIX_CACHE=0`).
+
+**arz-ONLY, and BOTH deploy couplings are SATISFIED rather than waived.** The wave authors **0 new
+tags** (it raises weights/chances and adds one existing armour-master member per table), so
+`validate_tags` PASSES against the EXISTING `Text.arc` and the arz+Text coupling holds with no Text
+rebuild. Nothing map-side moved, so the Levels+Quests coupling is not engaged. All four siblings were
+**md5-proven unchanged on disk after the build**, not assumed. The staged map is the CANONICAL
+`6784cf0f`, never the local-only TESTHUB `7a7ca9ac`.
+
+**RECORD-DIFF vs the shipped `09a0f51d`: ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained** - the
+fifteen R-220 orb tables and nothing else, **12 fields each**. The whole 180-field delta was censused
+mechanically: **165 RAISED, 15 FIELD-ADDED** (the armour master into a `loot6Name3` slot that did not
+exist), **0 LOWERED, 0 MEMBER-REPLACED, 0 removed** - non-reduction proved over the diff rather than
+asserted. The nine `uberorb_default_<band>` tables, the three `boss_charon_{n,e,l}01b` and the three
+`uberorb_default_{n,e,l}01c`; the three `svc_uberorb_apex_*` tables R-181 already rescued are absent
+from the diff, which is the predicted no-op and what makes them the exemplar.
+
+**OWN2 RAN LIVE FOR THE FIRST TIME, and this build was its first live execution** (named as a residual by
+the round-3 vet, so it is reported as a result, not glossed). `db._registry_touch_log` only exists under
+`run_registry`; the build log carries the full touch table with all fifteen orb tables attributed
+`<- orb_loot_breadth, orb_armor_rows`, and the ownership gate consumed it and passed with both witnesses
+live. In the NEGTEST harness there is no registry run, so OWN2 correctly **ANNOUNCES its own downgrade**
+("no registry touch log on this db ... this line IS the downgrade") instead of passing silently. Both
+halves of the design are therefore proven on real output.
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery), twice | **exit 0, "Done."** both runs |
+| det-2x byte identity | **PASS** - `44499f56` == `44499f56` (run 2 with the prefix cache off) |
+| in-build `orb_armor_rows` gate (NEW) | **PASS** - 18 orb tables DERIVED, every one inside the 57-surface distribution set; ownership 0 problems with **both** witnesses live |
+| in-build `armor_loot_breadth` gate | **PASS** - 57 surfaces; thinnest worn slot `uberorb_default_43-45/legs` = **0.0452** per spawn iteration against the 0.0375 floor; D7 asserted on **42 of 57**, D7X confirms `svc_uberorb_apex_e01c.dbr` among them |
+| `gate_loot_distribution` on the WRITTEN `.arz` | **PASS - 57 surfaces, 0 findings**; exactly one D5 pin (`uberorb_default_39-41` at 0.033, printed with its reason and BELOW that surface's own pre-lane 0.0338) |
+| `gate_orb_loot_breadth` (R-220) | **PASS - 18 tables**; pools GREW: n Epic 181..249 (floor 150), e Legendary 117..124 (floor 80), l Legendary 314..327 (floor 200) |
+| `gate_chest_loot_breadth` (R-180) | **PASS - 51 tables** (16 n / 16 e / 19 l), every pool floor cleared |
+| `gate_craft_thrown_breadth` (b81 / R-186) | **PASS** - 42/42 craftables formula-reachable on every difficulty, 61/82 reagents from Legendary chests, thinnest non-MI spread 19 of 19 surfaces, 51 thrown-audited tables |
+| `gate_relic_difficulty_tiers` | **PASS** - 33 per-difficulty branches, no cross-tier contamination |
+| unlock-alignment gate (b77) | **PASS** - 238 live buttons, 13/13 manifest waivers |
+| Occult/Hunting golden-state gate | **PASS** - 84 waived, 0 other |
+| `validate_tags` against the EXISTING `Text.arc` | **PASS** (22 upstream WARNs, pre-existing) |
+| **coexisting R-210** `gate_dlc_act_ui_cap` on the written `.arz` AND on the deployed DEV artifact | **PASS** - `portal pages = ['Greece', 'Egypt', 'Orient', 'Hades']` |
+| **coexisting R-211** `gate_atlantis_voyage_cap` on the written `.arz` AND on the deployed DEV artifact | **PASS** - `V5 resolvable Atlantis-transit routes = []` |
+| `gate_loot_distribution` + `gate_orb_loot_breadth` on the **DEPLOYED DEV artifact** | **PASS** - 57 surfaces / 18 tables, the anti-inert proof |
+| `debug/negtest_armor_breadth.py` | **PASS, exit 0 - 17 negatives RED, 3 positive controls GREEN (20 OK lines)**. ⚠️ **COUNT CORRECTED:** the lane record says "16 negatives" in both its round-2 and round-3 sweep tables; round 3 ADDED N14 (the pool-evenness bound defeated) and never incremented the figure. Measured here it runs **17**: R-181's 7, this lane's 7 (2 donor families, OWN1, OWN2, D7, D7X, N14), b81's 3 D3X |
+| `debug/negtest_orb_breadth.py` (R-220) | **PASS - 11/11 as designed** |
+| `patches/_check_registry.py` | **OK - 59 modules**, order `ba6fde285aad4fc60158fa368ae23cdab2a6087ac0860ca7c6e24e5c651aa4bb` |
+| `run_contracts`, all 6 modules | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| `run_contracts` A/B: the **baseline `09a0f51d`** under the **identical config** | **4492** - the same number, so this build adds **ZERO new contract violations**, measured in both directions rather than assumed |
+| `py_compile` on every edited tool | **PASS** |
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `44499f56`), copied with
+md5 **source == dest** verification **while TQ.exe was NOT running** - nothing killed, Steam not
+restarted, checked immediately before the copy. **1 of 62 DEV files changed, 0 added, 0 removed;** the
+whole folder was md5-inventoried before and after and the other 61 are byte-identical.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `09a0f51d` (the build82 arz this replaced)
+-> copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are also kept at
+`local/build82_run1_09a0f51d.arz`; this build's artifact at `local/build83_run1_44499f56.arz`.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **`BL-R181-DEBT-7` is CLOSED** as a database and gate fact. Its in-game half rides with
+  `BL-R181-DEBT-1`: **Will's check is to kill any Mystical Orb uber and expect worn armour OUT OF THE
+  ORB** - helms, torsos, greaves, shields visible across a few kills. Full note in
+  `docs/WILL_TEST_GUIDE.md`.
+- **`BL-R181-DEBT-9` (P2)** and **`BL-R181-DEBT-11` (P3)** carry forward unchanged from the lane record.
+- **`BL-R181-DEBT-10` (P2)** unchanged: the monolith's base-game `defaultloot` restore stays outside the
+  ownership contract by decision, and the gate's own PASS line names it so it cannot be read as coverage.
+- **Repo pytest modules NOT RUN** (pre-existing environment gap, not a regression): the four test modules
+  under `tools/` need the gitignored `reference_mods/SVAERA_customquest/Resources/Levels.arc` and error at
+  COLLECTION regardless of code. Stated plainly rather than reported as a green suite.
+
 ## GATE RECORD - BL-R181-DEBT-7 CLOSED: the uber orbs' ARMOUR has an owner, and an un-owned loot table is now structurally impossible (2026-08-11, branch `fix/orb-armor-rows`, module `tools/patches/orb_armor_rows.py`)
 
 **NOT BUILT / NOT DEPLOYED BY THIS LANE - static gates only.** Everything below is measured by running
@@ -864,7 +967,8 @@ copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are a
   untouched under the non-reduction law. Because total legendary gear RISES 70.8 -> 109.4, **P(four
   copies of ANY one item) only moves 47.3% -> 39.7%** even though P(four of one SPEAR) drops 27.0% ->
   6.3%. Cutting drops per open needs Will's say-so; it is not taken quietly here.
-- **`BL-R181-DEBT-7` (P1, CLOSED 2026-08-11 by `fix/orb-armor-rows` - GATE RECORD at the top of this
+- **`BL-R181-DEBT-7` (P1, CLOSED 2026-08-11 by `fix/orb-armor-rows`, BUILT + SHIPPED as `build83`
+  (arz `44499f56`) - BUILD83-DEV GATE RECORD + SHIP RECORD at the top of this
   file; the measured range below was taken before b79's own weapon-row raise landed and understates
   it, the shipped build80 reading is 3.45:1 to 8.38:1 with a thinnest slot of 0.007):** the 15 loot
   tables R-220 writes
